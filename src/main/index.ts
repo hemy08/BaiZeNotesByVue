@@ -1,7 +1,8 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { getApplicationMenu } from './menu/menu'
 
 function createWindow(): void {
   // Create the browser window.
@@ -9,18 +10,18 @@ function createWindow(): void {
     width: 900,
     height: 670,
     show: false,
-    autoHideMenuBar: true,
+    title: 'HemyMarkdownEditor',
+    autoHideMenuBar: false,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
+      sandbox: false
     }
   })
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
   })
-  require('./menu_index.d.ts')
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -34,6 +35,9 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
+  Menu.setApplicationMenu(menu)
 }
 
 // This method will be called when Electron has finished

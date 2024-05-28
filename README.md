@@ -1,5 +1,5 @@
 # HemyMarkdownEditor
-HemyMarkdownEditor 个人的markdown编辑器项目
+HemyMarkdownEditor 个人的markdown编辑器项目，基于Electron + Vue + TypeScript
 
 An Electron application with Vue and TypeScript
 
