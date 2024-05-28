@@ -13,13 +13,14 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
     }
   })
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
   })
+  require('./menu_index.d.ts')
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
