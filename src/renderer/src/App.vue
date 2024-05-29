@@ -1,26 +1,64 @@
-<script setup lang="ts">
-import Versions from './components/Versions.vue'
-const ipcHandle = () => window.electron.ipcRenderer.send('ping')
-
-</script>
-
 <template>
-  <img alt="logo" class="logo" src="./assets/electron.svg" />
-  <div class="creator">Powered by electron-vite</div>
-  <div class="text">
-    Build an Electron app with
-    <span class="vue">Vue</span>
-    and
-    <span class="ts">TypeScript</span>
-  </div>
-  <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
-  <div class="actions">
-    <div class="action">
-      <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">Documentation</a>
+  <div id="container">
+    <div id="file-bar"></div>
+    <div id="workspace-area">
+      <div id="navi-tab"></div>
+      <div id="split-pane">
+        <div id="directory">
+          <div id="file-tree" class="directory-panel active"></div>
+          <div id="outline" class="directory-panel">
+            <div class="markdown-toc"></div>
+          </div>
+        </div>
+        <div id="ide" class="theme-default">
+          <div style="width: 50%; height: 100%" id="monaco"></div>
+        </div>
+      </div>
     </div>
-    <div class="action">
-      <a target="_blank" rel="noreferrer" @click="ipcHandle">Send IPC</a>
-    </div>
+    <div class="status-bar"></div>
   </div>
-  <Versions />
 </template>
+
+<script setup lang="ts"></script>
+
+<style scoped>
+#container {
+  display: flex;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+.column {
+  height: 2px;
+  color: #2e3243;
+  user-select: none;
+  line-height: 2px;
+  padding: 0 5px;
+  background-color: #ffffff;
+  display: none;
+}
+
+.resizer {
+  display: auto;
+  cursor: col-resize;
+  width: 20px; /* Adjust this based on your needs */
+  color: blue;
+  background-color: #f0dc4e;
+  height: 100%;
+  /* Other styles... */
+}
+
+.status-bar {
+  font-size: 13px;
+  height: 20px;
+  background-color: #ffffff;
+  color: #777777;
+  padding: 0;
+  display: flex;
+  justify-content: space-between;
+  cursor: default;
+  user-select: none;
+  align-items: center;
+}
+</style>

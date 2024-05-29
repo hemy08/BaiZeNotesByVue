@@ -6,8 +6,8 @@ const versions = reactive({ ...window.electron.process.versions })
 
 <template>
   <ul class="versions">
-    <li class="electron-version">Electron v{{ versions.electron }}</li>
-    <li class="chrome-version">Chromium v{{ versions.chrome }}</li>
-    <li class="node-version">Node v{{ versions.node }}</li>
+    <br class="electron-version">Electron v{{ versions.electron }}</br>
+    <br class="chrome-version">Chromium v{{ versions.chrome }}</br>
+    <br class="node-version">Node v{{ versions.node }}</br>
   </ul>
 </template>

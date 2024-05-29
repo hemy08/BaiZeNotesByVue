@@ -4,10 +4,11 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getApplicationMenu } from './menu/menu'
 
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
+    width: 1280,
     height: 670,
     show: false,
     title: 'HemyMarkdownEditor',
