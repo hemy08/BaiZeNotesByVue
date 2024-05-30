@@ -1,6 +1,10 @@
 <template>
   <div id="md-edit" class="md-edit">
-    <MdEdit v-model="markdownEditorCode" @update:code="handleMarkdownCodeUpdate" />
+    <MdEdit
+      v-model="markdownEditorCode"
+      :code="initialCodeContent"
+      @update:code="handleMarkdownCodeUpdate"
+    />
   </div>
   <div id="resizer-md" class="md">1</div>
   <div id="md-preview" class="md-preview">
@@ -14,19 +18,28 @@ import MdEdit from './MarkdownEdit.vue'
 import MdPreview from './MarkdownPreview.vue'
 
 const markdownEditorCode = ref('')
+let initialCodeContent = 'Hello world'
 
 function handleMarkdownCodeUpdate(newValue: string) {
   markdownEditorCode.value = newValue
-  console.log(newValue)
 }
+
+window.electron.ipcRenderer.on('open-selected-file-content', (_, fileContent: string) => {
+  if (fileContent) {
+    initialCodeContent = fileContent
+    handleMarkdownCodeUpdate(fileContent)
+  } else {
+    handleMarkdownCodeUpdate(initialCodeContent)
+  }
+})
 </script>
 
 <style scoped>
 #md-edit {
   height: calc(100vh - 40px - 2px - 20px);
   width: 50%;
-  overflow: auto;
   margin: 0;
+  overflow: hidden;
 }
 
 #resizer-md {
@@ -42,5 +55,6 @@ function handleMarkdownCodeUpdate(newValue: string) {
   width: 50%;
   height: auto;
   color: black;
+  overflow: auto;
 }
 </style>

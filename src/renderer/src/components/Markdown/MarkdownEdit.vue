@@ -45,12 +45,9 @@ onMounted(() => {
       lineNumbers: 'on'
     })
 
-    console.log(editorInstance)
-
     // 监听编辑器内容变化
     editorInstance.onDidChangeModelContent(() => {
       if (editorInstance != null) {
-        console.log(editorInstance.getValue())
         emit('update:code', editorInstance.getValue())
       }
     })

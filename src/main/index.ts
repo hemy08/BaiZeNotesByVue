@@ -4,21 +4,25 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getApplicationMenu } from './menu/menu'
 
-
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     show: false,
-    title: 'HemyMarkdownEditor',
+    title: 'Hemy Markdown Editor',
     autoHideMenuBar: false,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      nodeIntegration: true, // 允许在渲染进程中使用Node.js功能
+      contextIsolation: false
     }
   })
+
+  require('@electron/remote/main').initialize()
+  require('@electron/remote/main').enable(mainWindow.webContents)
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()

@@ -1,4 +1,5 @@
-import { app } from 'electron'
+import { app, dialog } from 'electron'
+import * as fs from 'node:fs'
 
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
@@ -52,7 +53,28 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '打开文件',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        console.log('openFile')
+        dialog
+          .showOpenDialog(mainWindow, {
+            properties: ['openFile'],
+            filters: [{ name: 'Markdown Files', extensions: ['md'] }]
+          })
+          .then((result) => {
+            if (result.canceled) return
+            const filePath = result.filePaths[0]
+            // 发送文件内容到渲染进程
+            fs.readFile(filePath, 'utf8', (err, data) => {
+              if (!err) {
+                mainWindow.webContents.send('open-selected-file-content', data)
+              } else {
+                console.log('openFile failed', filePath, err, data)
+              }
+            })
+          })
+          .catch((err) => {
+            console.error('Error reading file:', err)
+            // event.reply('selected-file-content-error', err.message)
+          })
       }
     },
     {
@@ -62,10 +84,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      type: 'separator',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
+      type: 'separator'
     },
     {
       label: '导出',
