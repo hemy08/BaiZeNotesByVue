@@ -50,6 +50,7 @@ onMounted(() => {
     // 监听编辑器内容变化
     editorInstance.onDidChangeModelContent(() => {
       if (editorInstance != null) {
+        console.log(editorInstance.getValue())
         emit('update:code', editorInstance.getValue())
       }
     })
@@ -83,5 +84,6 @@ onBeforeUnmount(() => {
   overflow: auto;
   /* 隐藏水平滚动条 */
   overflow-x: hidden;
+  overflow-y: hidden;
 }
 </style>
