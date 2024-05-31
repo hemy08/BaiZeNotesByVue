@@ -17,6 +17,12 @@ const renderedMarkdownContent = ref('')
 
 const md = MarkdownIt()
 
+md.options.html = true
+md.options.linkify = true
+md.options.langPrefix = 'language-'
+md.options.breaks = true
+md.options.typographer = true
+
 // 组件挂载时，进行初始渲染
 onMounted(() => {
   updateMarkdown()
@@ -33,4 +39,5 @@ function updateMarkdown() {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+</style>

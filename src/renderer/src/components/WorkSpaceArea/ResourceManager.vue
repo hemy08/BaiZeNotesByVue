@@ -3,9 +3,7 @@
 </script>
 
 <template>
-  <div>
-    2222222
-  </div>
+  <div>2222222</div>
 </template>
 
 <style scoped>

@@ -33,6 +33,8 @@ const emit = defineEmits(['update:code'])
 
 // 初始化编辑器
 onMounted(() => {
+  monacoEditorContainer.value.style.width = '100%'
+  monacoEditorContainer.value.style.height = '100%'
   if (monacoEditorContainer.value) {
     editorInstance = monaco.editor.create(monacoEditorContainer.value, {
       value: props.code,
@@ -64,20 +66,33 @@ watch(
   }
 )
 
-// 销毁编辑器实例
-onBeforeUnmount(() => {
-  if (editorInstance) {
-    editorInstance.dispose()
-    editorInstance = null
+onMounted(() => {
+  function handleEditCompResize() {
+    if (editorInstance && monacoEditorContainer.value) {
+      // 使用 Monaco Editor 的 layout 方法来更新大小
+      editorInstance.layout()
+    }
   }
+
+  window.addEventListener('resize', handleEditCompResize)
+
+  // 销毁编辑器实例
+  onBeforeUnmount(() => {
+    window.removeEventListener('resize', handleEditCompResize)
+    if (editorInstance) {
+      editorInstance.dispose()
+      editorInstance = null
+    }
+  })
 })
+
+
 </script>
 
 <style scoped>
 .monaco-editor-container {
   height: 100%;
   width: 100%;
-  margin: 0;
   overflow: auto;
   /* 隐藏水平滚动条 */
   overflow-x: hidden;

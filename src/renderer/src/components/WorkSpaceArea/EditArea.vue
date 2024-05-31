@@ -16,7 +16,6 @@ import MdContainer from '../Markdown/MarkdownContainer.vue'
 
 #md-container {
   height: calc(100vh - 40px - 2px - 20px);
-  width: 100%;
   display: flex;
   flex-direction: row;
 }
