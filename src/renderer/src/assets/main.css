@@ -13,22 +13,6 @@ body {
   user-select: none;
 }
 
-code {
-  font-weight: 600;
-  padding: 3px 5px;
-  border-radius: 2px;
-  background-color: var(--color-background-mute);
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    SF Mono,
-    Menlo,
-    Consolas,
-    Liberation Mono,
-    monospace;
-  font-size: 85%;
-}
-
 #app {
   width: 100%;
   height: 100vh;
@@ -183,4 +167,8 @@ code {
   .actions {
     display: none;
   }
+}
+
+div p {
+  display: inline;
 }
