@@ -4,25 +4,25 @@
 export function getAppToolsMenuItem(mainWindow: Electron.BrowserWindow) {
   const toolsMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '电子表格',
+      label: '电子表格 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '配图制作',
+      label: '配图制作 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '绘图工具',
+      label: '绘图工具 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: 'xxxx',
+      label: 'xxxx ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }

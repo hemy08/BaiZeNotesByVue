@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getApplicationMenu } from './menu/menu'
 import '../plugins/plugin'
+import { openAndSendSelectFileContent } from './menu/file'
 
 function createWindow(): void {
   // Create the browser window.
@@ -26,6 +27,7 @@ function createWindow(): void {
   require('@electron/remote/main').enable(mainWindow.webContents)
 
   mainWindow.on('ready-to-show', () => {
+    mainWindow.maximize()
     mainWindow.show()
   })
 
@@ -41,6 +43,10 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  ipcMain.on('open-select-file', (event, message) => {
+    openAndSendSelectFileContent(mainWindow, message)
+  })
 
   const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
   Menu.setApplicationMenu(menu)

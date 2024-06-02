@@ -1,4 +1,7 @@
-const image_links = '![]()'
+import {showFontDialog} from "./specialFontBlock";
+import {blockcode} from "./blockcode";
+
+const image_links = '![]()\n'
 
 function getFormattedDate() {
   const now = new Date()
@@ -13,4 +16,4 @@ function getFormattedDate() {
   return `<span style="color:rgb(100,180,246);font-size:11pt">最后更新：${fmt_date}</span>\n`
 }
 
-export { image_links, getFormattedDate }
+export { image_links, getFormattedDate,  showFontDialog, blockcode}

@@ -9,6 +9,8 @@
     "src/lib/templates/*.ts",
     "src/lib/templates/writing/*.ts",
     "src/lib/templates/textblock/*.ts",
+    "src/lib/templates/textblock/*.js",
+    "src/lib/templates/textblock/*.html",
     "src/lib/templates/plantuml/*.ts",
     "src/lib/templates/mermaid/*.ts",
     "src/lib/scripts/mermaid.js",

@@ -30,58 +30,25 @@ export function getAppViewMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   const viewMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '全屏',
+      label: '全屏 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '编辑模式',
+      label: '编辑模式 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '预览模式',
+      label: '预览模式 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '编辑/预览模式',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      type: 'separator'
-    },
-    {
-      label: '显示/隐藏资源管理器',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '显示/隐藏行号',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '显示/隐藏制表符',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '显示/隐藏换行符',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '显示/隐藏文章大纲',
+      label: '编辑/预览模式 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -90,7 +57,40 @@ export function getAppViewMenuItem(mainWindow: Electron.BrowserWindow) {
       type: 'separator'
     },
     {
-      label: '折叠/展开标题',
+      label: '显示/隐藏资源管理器 ...待开发',
+      click: () => {
+        mainWindow.webContents.send('OpenFile', null)
+      }
+    },
+    {
+      label: '显示/隐藏行号 ...待开发',
+      click: () => {
+        mainWindow.webContents.send('OpenFile', null)
+      }
+    },
+    {
+      label: '显示/隐藏制表符 ...待开发',
+      click: () => {
+        mainWindow.webContents.send('OpenFile', null)
+      }
+    },
+    {
+      label: '显示/隐藏换行符 ...待开发',
+      click: () => {
+        mainWindow.webContents.send('OpenFile', null)
+      }
+    },
+    {
+      label: '显示/隐藏文章大纲 ...待开发',
+      click: () => {
+        mainWindow.webContents.send('OpenFile', null)
+      }
+    },
+    {
+      type: 'separator'
+    },
+    {
+      label: '折叠/展开标题 ...待开发',
       submenu: viewMenuCollapseExpand
     }
   ]

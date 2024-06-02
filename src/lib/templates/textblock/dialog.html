@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自定义字体样式对话框</title>
+  <style>
+    /* 添加你的 CSS 样式 */
+  </style>
+</head>
+<body>
+
+<h2>选择字体样式</h2>
+
+<label for="fontFamily">字体：</label>
+<input type="text" id="fontFamily" placeholder="输入字体名称">
+
+<label for="fontColor">颜色：</label>
+<input type="color" id="fontColor">
+
+<div>
+  <input type="checkbox" id="boldCheckbox">
+  <label for="boldCheckbox">加粗</label>
+</div>
+
+<div>
+  <input type="checkbox" id="italicCheckbox">
+  <label for="italicCheckbox">倾斜</label>
+</div>
+
+<button id="applyButton">应用</button>
+
+<script src="specialFontBlock.ts"></script>
+</body>
+</html>

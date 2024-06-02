@@ -3,10 +3,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, onBeforeUnmount, defineEmits, defineProps } from 'vue'
-
 // 引入 Monaco Editor
 import * as monaco from 'monaco-editor'
+import { ref, onMounted, watch, onBeforeUnmount, defineEmits, defineProps } from 'vue'
 
 const props = defineProps({
   // 代码内容
@@ -28,6 +27,7 @@ const props = defineProps({
 
 const monacoEditorContainer = ref<HTMLElement | null>(null)
 let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let editorCursorPos: monaco.Position | null = null
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
@@ -67,14 +67,14 @@ onMounted(() => {
 })
 
 window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context: string) => {
-  console.log('context2222', context)
   if (context) {
-    insertTextAfterCursor(editorInstance, editorCursorPos, context)
+    insertTextAfterCursor(editorInstance, context)
   }
 })
 
 // 定义一个函数来插入字符串
-function insertTextAfterCursor(editor, position, textToInsert: string) {
+function insertTextAfterCursor(editor, textToInsert: string) {
+  const position = editor.getPosition()
   if (!position) return
 
   // 创建一个编辑操作，将字符串插入到光标之后

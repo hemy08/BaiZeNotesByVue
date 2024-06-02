@@ -40,7 +40,7 @@ function contactus() {
 export function getAppHelpsMenuItem(mainWindow: Electron.BrowserWindow) {
   const helpMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '版本发行说明',
+      label: '版本发布 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -49,19 +49,19 @@ export function getAppHelpsMenuItem(mainWindow: Electron.BrowserWindow) {
       type: 'separator'
     },
     {
-      label: '键盘快捷方式',
+      label: '键盘快捷方式 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '使用文档',
+      label: '使用文档 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '提交创意/意见',
+      label: '提交创意/意见 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -76,25 +76,25 @@ export function getAppHelpsMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      label: '主页',
+      label: '主页 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '致谢',
+      label: '致谢 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '开源软件',
+      label: '开源软件 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '检查更新',
+      label: '检查更新 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }

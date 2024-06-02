@@ -19,7 +19,7 @@ import MdPreview from './MarkdownPreviewComponent.vue'
 
 // 使用 ref 来创建响应式引用
 const markdownEditorCode = ref('')
-let initialCodeContent = 'Hello world'
+let initialCodeContent = ''
 
 // 存储窗口宽度
 const windowWidth = ref(window.innerWidth)
@@ -54,12 +54,8 @@ const mdPreviewComponentStyle = computed(() => {
 })
 
 function handleMarkdownCodeUpdate(newValue: string) {
-  window.electron.ipcRenderer.send('pre-code-proc', newValue)
+  markdownEditorCode.value = newValue
 }
-
-window.electron.ipcRenderer.on('pre-code-proc-result', (_, content: string) => {
-  markdownEditorCode.value = content
-})
 
 window.electron.ipcRenderer.on('open-selected-file-content', (_, fileContent: string) => {
   if (fileContent) {

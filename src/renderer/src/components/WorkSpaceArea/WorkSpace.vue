@@ -40,7 +40,8 @@ const naviTabStyle = computed(() => ({
 // 拖动区域
 const resMgrStyle = computed(() => ({
   width: resMgrWidth.value, // 视窗宽度
-  height: '100%' // 视窗高度
+  height: '100%', // 视窗高度
+  background: 'whitesmoke'
   //marginLeft: naviTabWidth.value // 左侧遗留navi-tab宽度
 }))
 

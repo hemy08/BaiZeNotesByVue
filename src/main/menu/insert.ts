@@ -5,19 +5,24 @@
 export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
   const insertMenuItemCodeBlock: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '特殊字体',
+      label: '特殊字体 ...待开发',
+      click: () => {
+        import('../../lib/templates/textblock/textblock').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.showFontDialog(mainWindow)
+          )
+        })
+      }
+    },
+    {
+      label: 'markdown表格 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: 'markdown表格',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: 'Html表格',
+      label: 'Html表格 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -25,23 +30,25 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '折叠代码块',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        import('../../lib/templates/textblock/textblock').then((module) => {
+          mainWindow.webContents.send('monaco-insert-text-block-templates', module.blockcode)
+        })
       }
     },
     {
-      label: '内容选项卡',
+      label: '内容选项卡 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '网格模板',
+      label: '网格模板 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: 'xxxx模板',
+      label: 'xxxx模板 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -67,25 +74,25 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      label: '问题处理模板',
+      label: '问题处理模板 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '帖子模板',
+      label: '帖子模板 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '文章封面',
+      label: '文章封面 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: 'xxxx模板',
+      label: 'xxxx模板 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -176,7 +183,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '需求图',
       click: () => {
         import('../../lib/templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.requirementDiagram)
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.requirementDiagram
+          )
         })
       }
     },
@@ -306,7 +316,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '部署图',
       click: () => {
         import('../../lib/templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.DeploymentDiagram)
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.DeploymentDiagram
+          )
         })
       }
     },
@@ -346,7 +359,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       label: 'EBNF 图表',
       click: () => {
         import('../../lib/templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.ExtendedBackusNaurForm)
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.ExtendedBackusNaurForm
+          )
         })
       }
     },
@@ -354,7 +370,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       label: 'Regex 图表',
       click: () => {
         import('../../lib/templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.RegularExpression)
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.RegularExpression
+          )
         })
       }
     },
@@ -426,7 +445,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '信息工程图',
       click: () => {
         import('../../lib/templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.InformationEngineering)
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.InformationEngineering
+          )
         })
       }
     },
@@ -434,7 +456,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '实体关系图',
       click: () => {
         import('../../lib/templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.EntityRelationship)
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.EntityRelationship
+          )
         })
       }
     }
@@ -445,7 +470,7 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       submenu: insertMenuItemWriteTemp
     },
     {
-      label: '插入卡片',
+      label: '插入卡片 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -455,13 +480,13 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       submenu: insertMenuItemCodeBlock
     },
     {
-      label: '插入数学公式',
+      label: '插入数学公式 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '插入链接',
+      label: '插入链接 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -478,13 +503,13 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       submenu: insertMenuItemPlantUML
     },
     {
-      label: '自定义模板',
+      label: '自定义模板 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '模板管理',
+      label: '模板管理 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }

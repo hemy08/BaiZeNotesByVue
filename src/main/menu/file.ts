@@ -1,27 +1,27 @@
-import { app, dialog } from 'electron'
+import {app, dialog} from 'electron'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const fs = require('fs').promises
 const path = require('path')
+import * as fs from 'fs'
 
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
   const fileMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '新建文件(N)',
+      label: '新建文件(N)  ...待开发',
       accelerator: 'ctrl+n',
       click: () => {
         shouOpenDirectoryDialog(mainWindow)
       }
     },
     {
-      label: '新建文件夹(D)',
+      label: '新建文件夹(D) ...待开发',
       accelerator: 'ctrl+d',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '从文件导入',
+      label: '从文件导入 ...待开发',
       submenu: [
         {
           label: 'World',
@@ -68,25 +68,25 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       type: 'separator'
     },
     {
-      label: '导出',
+      label: '导出 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '另存为',
+      label: '另存为 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '保存',
+      label: '保存 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '保存所有',
+      label: '保存所有 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -95,13 +95,13 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       type: 'separator'
     },
     {
-      label: '历史记录',
+      label: '历史记录 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '从磁盘重新读取',
+      label: '从磁盘重新读取 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -176,10 +176,16 @@ function traverseDirectory(dir, callback) {
                 // 如果是目录，则递归调用 traverseDirectory
                 traverseDirectory(item.path, (subItems) => {
                   item.children = subItems
+                  item.type = 'folder'
                   resolve(item)
                 })
-              } else if (path.extname(item.name) === '.md') {
+              } else if (
+                path.extname(item.name) === '.md' ||
+                path.extname(item.name) === '.png' ||
+                path.extname(item.name) === '.jpg'
+              ) {
                 // 如果是 .md 文件，则直接解析
+                item.type = 'file'
                 resolve(item)
               } else {
                 // 对于非 .md 文件，我们不需要它，所以简单地解析
@@ -230,16 +236,20 @@ function shouOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
       if (result.canceled) return
       const filePath = result.filePaths[0]
       // 发送文件内容到渲染进程
-      fs.readFile(filePath, 'utf8', (err, data) => {
-        if (!err) {
-          mainWindow.webContents.send('open-selected-file-content', data)
-        } else {
-          console.log('openFile failed', filePath, err, data)
-        }
-      })
+      openAndSendSelectFileContent(mainWindow, filePath)
     })
     .catch((err) => {
       console.error('Error reading file:', err)
       // event.reply('selected-file-content-error', err.message)
     })
+}
+
+export function openAndSendSelectFileContent(mainWindow, filePath) {
+  fs.readFile(filePath, 'utf8', (err, data) => {
+    if (!err) {
+      mainWindow.webContents.send('open-selected-file-content', data)
+    } else {
+      console.log('openFile failed', filePath, err, data)
+    }
+  })
 }

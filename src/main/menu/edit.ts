@@ -4,14 +4,14 @@
 export function getAppEditMenuItem(mainWindow: Electron.BrowserWindow) {
   const editMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '撤销',
+      label: '撤销 ...待开发',
       role: 'undo',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '恢复',
+      label: '恢复 ...待开发',
       role: 'redo',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
@@ -21,28 +21,28 @@ export function getAppEditMenuItem(mainWindow: Electron.BrowserWindow) {
       type: 'separator'
     },
     {
-      label: '拷贝',
+      label: '拷贝 ...待开发',
       role: 'copy',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '剪切',
+      label: '剪切 ...待开发',
       role: 'cut',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '黏贴',
+      label: '黏贴 ...待开发',
       role: 'paste',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '删除',
+      label: '删除 ...待开发',
       role: 'delete',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
@@ -55,13 +55,13 @@ export function getAppEditMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      label: '查找',
+      label: '查找 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '在文件中查找',
+      label: '在文件中查找 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
@@ -70,13 +70,13 @@ export function getAppEditMenuItem(mainWindow: Electron.BrowserWindow) {
       type: 'separator'
     },
     {
-      label: '替换',
+      label: '替换 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '在文件中替换',
+      label: '在文件中替换 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
