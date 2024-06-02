@@ -17,7 +17,7 @@ const props = defineProps({
   // 编辑器语言
   language: {
     type: String,
-    default: 'javascript'
+    default: 'typescript'
   },
   // 编辑器主题
   theme: {
@@ -28,14 +28,15 @@ const props = defineProps({
 
 const monacoEditorContainer = ref<HTMLElement | null>(null)
 let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
+let editorCursorPos: monaco.Position | null = null
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
 
 // 初始化编辑器
 onMounted(() => {
-  monacoEditorContainer.value.style.width = '100%'
-  monacoEditorContainer.value.style.height = '100%'
   if (monacoEditorContainer.value) {
+    monacoEditorContainer.value.style.width = '100%'
+    monacoEditorContainer.value.style.height = '100%'
     editorInstance = monaco.editor.create(monacoEditorContainer.value, {
       value: props.code,
       language: props.language,
@@ -47,14 +48,50 @@ onMounted(() => {
       lineNumbers: 'on'
     })
 
+    editorInstance.setPosition({ lineNumber: 1, column: 1 })
+
     // 监听编辑器内容变化
     editorInstance.onDidChangeModelContent(() => {
       if (editorInstance != null) {
         emit('update:code', editorInstance.getValue())
       }
     })
+
+    // 监听编辑器光标位置变化
+    editorInstance.onDidChangeCursorPosition(() => {
+      if (editorInstance != null) {
+        editorCursorPos = editorInstance.getPosition()
+      }
+    })
   }
 })
+
+window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context: string) => {
+  console.log('context2222', context)
+  if (context) {
+    insertTextAfterCursor(editorInstance, editorCursorPos, context)
+  }
+})
+
+// 定义一个函数来插入字符串
+function insertTextAfterCursor(editor, position, textToInsert: string) {
+  if (!position) return
+
+  // 创建一个编辑操作，将字符串插入到光标之后
+  const edit = {
+    range: new monaco.Range(
+      position.lineNumber,
+      position.column,
+      position.lineNumber,
+      position.column
+    ), // 这是一个空范围，表示插入位置
+    text: textToInsert, // 要插入的文本
+    forceMoveMarkers: true // 如果需要，强制移动标记（如断点）
+  }
+
+  // 执行编辑操作
+  editor.executeEdits('', [edit])
+}
 
 // 监听代码内容变化
 watch(
@@ -85,8 +122,6 @@ onMounted(() => {
     }
   })
 })
-
-
 </script>
 
 <style scoped>

@@ -1,5 +1,5 @@
 <template>
-  <div v-html="renderedMarkdownContent"></div>
+  <div class="markdown-content" v-html="renderedMarkdownContent"></div>
 </template>
 
 <script setup lang="ts">
@@ -22,6 +22,7 @@ md.options.linkify = true
 md.options.langPrefix = 'language-'
 md.options.breaks = true
 md.options.typographer = true
+md.enable(['link']).enable('image')
 
 // 组件挂载时，进行初始渲染
 onMounted(() => {
@@ -40,4 +41,9 @@ function updateMarkdown() {
 </script>
 
 <style scoped>
+.markdown-content {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto; /* 允许垂直滚动条在需要时出现 */
+}
 </style>

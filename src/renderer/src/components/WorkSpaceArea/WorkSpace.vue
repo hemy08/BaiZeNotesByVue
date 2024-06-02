@@ -17,15 +17,15 @@
     1
   </div>
   <!-- 右侧编辑区域 -->
-  <div id="edit-area" class="edit-area" :style="editAreaStyle">
-    <EditArea />
+  <div id="md-container" class="md-container" :style="mdContainerStyle">
+    <MdContainer />
   </div>
 </template>
 
 <script setup lang="ts">
 import NaviTab from './NaviTab.vue'
-import ResManager from './ResourceManager.vue'
-import EditArea from './EditArea.vue'
+import ResManager from '../ResourceManager/ResourceManager.vue'
+import MdContainer from '../Markdown/MarkdownContainer.vue'
 import { computed, ref } from 'vue'
 
 // 使用 ref 来创建响应式引用
@@ -52,25 +52,13 @@ const resizerMainStyle = computed(() => ({
 }))
 
 // 预览区域样式设置
-const editAreaStyle = computed(() => ({
+const mdContainerStyle = computed(() => ({
   width: `calc(100vw - ${naviTabWidth.value} - ${resMgrWidth.value} - 2px)`, // 视窗宽度
   height: '100%' // 视窗高度
   // marginLeft: 'naviTabWidth.value + resMgrWidth.value + 2px' // 左侧遗留navi-tab宽度
 }))
 
 function startResizerMainResize() {}
-/*
-function resize() {
-
-}
-
-function stopResizerMainResize() {
-
-}
-
-function handleResize() {
-
-}*/
 </script>
 
 <style scoped>
@@ -96,7 +84,7 @@ function handleResize() {
   /* Other styles... */
 }
 
-#edit-area {
+#md-container {
   height: 100vh;
   display: flex;
   flex-direction: column;

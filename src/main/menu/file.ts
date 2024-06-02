@@ -1,5 +1,7 @@
 import { app, dialog } from 'electron'
-import * as fs from 'node:fs'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const fs = require('fs').promises
+const path = require('path')
 
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
@@ -8,7 +10,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '新建文件(N)',
       accelerator: 'ctrl+n',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        shouOpenDirectoryDialog(mainWindow)
       }
     },
     {
@@ -53,34 +55,13 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '打开文件',
       click: () => {
-        console.log('openFile')
-        dialog
-          .showOpenDialog(mainWindow, {
-            properties: ['openFile'],
-            filters: [{ name: 'Markdown Files', extensions: ['md'] }]
-          })
-          .then((result) => {
-            if (result.canceled) return
-            const filePath = result.filePaths[0]
-            // 发送文件内容到渲染进程
-            fs.readFile(filePath, 'utf8', (err, data) => {
-              if (!err) {
-                mainWindow.webContents.send('open-selected-file-content', data)
-              } else {
-                console.log('openFile failed', filePath, err, data)
-              }
-            })
-          })
-          .catch((err) => {
-            console.error('Error reading file:', err)
-            // event.reply('selected-file-content-error', err.message)
-          })
+        shouOpenSelectFileDialog(mainWindow)
       }
     },
     {
       label: '打开文件夹',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        shouOpenDirectoryDialog(mainWindow)
       }
     },
     {
@@ -141,4 +122,124 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
     accelerator: 'alt+f',
     submenu: fileMenuItems
   }
+}
+
+function shouOpenDirectoryDialog(mainWindow: Electron.BrowserWindow) {
+  dialog
+    .showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
+    })
+    .then((result) => {
+      if (result.canceled) return
+
+      const dirPath = result.filePaths[0]
+
+      traverseDirectory(dirPath, (mdFiles) => {
+        // 发送文件名列表到渲染进程
+        mainWindow.webContents.send('file-system-data', JSON.stringify(mdFiles))
+      })
+    })
+    .catch((err) => {
+      console.error('Error opening directory dialog:', err)
+    })
+}
+
+// 递归读取目录中的 .md 文件
+// 递归读取目录中的 .md 文件，并构建目录树
+function traverseDirectory(dir, callback) {
+  fs.readdir(dir, (err, files) => {
+    if (err) {
+      console.error(err)
+      return
+    }
+
+    const items = files.map((file) => {
+      const fullPath = path.join(dir, file)
+      return {
+        name: file,
+        path: fullPath,
+        isDirectory: false, // 默认为文件
+        children: [] // 初始化 children 为空数组
+      }
+    })
+
+    Promise.all(
+      items.map((item) => {
+        return new Promise((resolve, reject) => {
+          fs.lstat(item.path, (err, stats) => {
+            if (err) {
+              reject(err)
+            } else {
+              item.isDirectory = stats.isDirectory()
+
+              if (item.isDirectory) {
+                // 如果是目录，则递归调用 traverseDirectory
+                traverseDirectory(item.path, (subItems) => {
+                  item.children = subItems
+                  resolve(item)
+                })
+              } else if (path.extname(item.name) === '.md') {
+                // 如果是 .md 文件，则直接解析
+                resolve(item)
+              } else {
+                // 对于非 .md 文件，我们不需要它，所以简单地解析
+                resolve(null)
+              }
+            }
+          })
+        })
+      })
+    )
+      .then((resolvedItems) => {
+        // 过滤掉非 .md 文件和目录（它们为 null）
+        const filteredItems = resolvedItems.filter(Boolean)
+
+        // 构建完整的目录树
+        const tree = filteredItems.reduce((acc, item) => {
+          if (item.isDirectory) {
+            // 如果目录已经在树中，则添加其子项
+            const existingDir = acc.find((dir) => dir.path === item.path)
+            if (existingDir) {
+              existingDir.children = existingDir.children.concat(item.children)
+            } else {
+              acc.push(item)
+            }
+          } else {
+            // 对于文件，直接添加到树中（假设它们总是添加到顶层目录）
+            acc.push(item)
+          }
+          return acc
+        }, [])
+
+        // 调用回调并传入目录树
+        callback(tree)
+      })
+      .catch((err) => {
+        console.error(err)
+      })
+  })
+}
+
+function shouOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
+  dialog
+    .showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [{ name: 'Markdown Files', extensions: ['md'] }]
+    })
+    .then((result) => {
+      if (result.canceled) return
+      const filePath = result.filePaths[0]
+      // 发送文件内容到渲染进程
+      fs.readFile(filePath, 'utf8', (err, data) => {
+        if (!err) {
+          mainWindow.webContents.send('open-selected-file-content', data)
+        } else {
+          console.log('openFile failed', filePath, err, data)
+        }
+      })
+    })
+    .catch((err) => {
+      console.error('Error reading file:', err)
+      // event.reply('selected-file-content-error', err.message)
+    })
 }
