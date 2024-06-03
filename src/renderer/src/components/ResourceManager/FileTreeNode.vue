@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, defineProps, PropType} from 'vue'
+import { ref, defineProps, PropType } from 'vue'
 
 // 定义 props 类型
 // @ts-ignore eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -38,13 +38,19 @@ const props = defineProps({
     type: Object as PropType<{
       id: never
       name: string
+      path: string
       type: 'folder' | 'file'
+      isDirectory: boolean
       isIndented: boolean
+      isExpanded: boolean
       children?: {
         id: never
         name: string
+        path: string
         type: 'folder' | 'file'
+        isDirectory: boolean
         isIndented: boolean
+        isExpanded: boolean
         children?: never[]
       }[]
     }>,
@@ -52,10 +58,15 @@ const props = defineProps({
   },
   isIndented: {
     type: Boolean,
-    default: false, // 根据你的需求设置默认值
+    default: false // 根据你的需求设置默认值
+  },
+  isExpanded: {
+    type: Boolean,
+    default: false
   }
 })
 
+// eslint-disable-next-line vue/no-dupe-keys
 const isExpanded = ref(false) // 控制文件夹是否展开
 const toggleFolder = () => {
   isExpanded.value = !isExpanded.value
@@ -75,5 +86,10 @@ function handleClick(node) {
 <style scoped>
 .indented {
   margin-left: 1em; /* 设置缩进 */
+}
+
+.file-tree-node {
+  overflow-y: auto;
+  height: 100%;
 }
 </style>

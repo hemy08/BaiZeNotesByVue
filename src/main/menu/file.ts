@@ -1,7 +1,8 @@
-import {app, dialog} from 'electron'
+import { app, dialog } from 'electron'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
 import * as fs from 'fs'
+import { FileItem } from '../model/IntfDefine'
 
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
@@ -152,12 +153,12 @@ function traverseDirectory(dir, callback) {
       console.error(err)
       return
     }
-
     const items = files.map((file) => {
       const fullPath = path.join(dir, file)
       return {
         name: file,
         path: fullPath,
+        type: 'file',
         isDirectory: false, // 默认为文件
         children: [] // 初始化 children 为空数组
       }
@@ -198,10 +199,10 @@ function traverseDirectory(dir, callback) {
     )
       .then((resolvedItems) => {
         // 过滤掉非 .md 文件和目录（它们为 null）
-        const filteredItems = resolvedItems.filter(Boolean)
+        const filteredItems: FileItem[] = resolvedItems.filter(Boolean) as FileItem[]
 
         // 构建完整的目录树
-        const tree = filteredItems.reduce((acc, item) => {
+        const tree: FileItem[] = filteredItems.reduce((acc: FileItem[], item: FileItem) => {
           if (item.isDirectory) {
             // 如果目录已经在树中，则添加其子项
             const existingDir = acc.find((dir) => dir.path === item.path)
@@ -215,7 +216,7 @@ function traverseDirectory(dir, callback) {
             acc.push(item)
           }
           return acc
-        }, [])
+        }, []) as FileItem[]
 
         // 调用回调并传入目录树
         callback(tree)

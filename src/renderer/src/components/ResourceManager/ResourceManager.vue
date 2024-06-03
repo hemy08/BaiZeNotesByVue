@@ -1,12 +1,14 @@
 <template>
-  <div id="file-tree">
-    <FileTreeNode
-      v-for="(rootItem, index) in fileSystemTree"
-      :key="index"
-      v-model:is-expanded="rootItem.isExpanded"
-      :is-indented="false"
-      :node="rootItem"
-    />
+  <div id="file-manager">
+    <div id="file-tree">
+      <FileTreeNode
+        v-for="(rootItem, index) in fileSystemTree"
+        :key="index"
+        v-model:is-expanded="rootItem.isExpanded"
+        :is-indented="false"
+        :node="rootItem"
+      />
+    </div>
   </div>
 </template>
 
@@ -14,7 +16,18 @@
 import { ref } from 'vue'
 import FileTreeNode from './FileTreeNode.vue'
 
-const fileSystemTree = ref<[]>([])
+interface FileSysItem {
+  id: never
+  name: string
+  path: string
+  type: 'file' | 'folder'
+  isDirectory: boolean
+  isIndented: boolean
+  isExpanded: boolean
+  children?: []
+}
+
+const fileSystemTree = ref<FileSysItem[]>([])
 
 window.electron.ipcRenderer.on('file-system-data', (_, fileSystemData: string) => {
   try {
@@ -25,15 +38,14 @@ window.electron.ipcRenderer.on('file-system-data', (_, fileSystemData: string) =
     console.error('Error parsing file system data:', error)
   }
 })
-
 </script>
 
 <style scoped>
-
-#file-tree {
+#file-manager {
   background: whitesmoke;
   color: black;
   margin-left: 4px;
+  overflow: auto;
+  height: 100%;
 }
-
 </style>

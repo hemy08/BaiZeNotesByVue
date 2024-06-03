@@ -44,7 +44,7 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  ipcMain.on('open-select-file', (event, message) => {
+  ipcMain.on('open-select-file', (_, message) => {
     openAndSendSelectFileContent(mainWindow, message)
   })
 

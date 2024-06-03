@@ -10,7 +10,7 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
         import('../../lib/templates/textblock/textblock').then((module) => {
           mainWindow.webContents.send(
             'monaco-insert-text-block-templates',
-            module.showFontDialog(mainWindow)
+            module.showFontDialog()
           )
         })
       }

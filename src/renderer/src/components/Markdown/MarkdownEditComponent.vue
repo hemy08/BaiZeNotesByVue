@@ -40,7 +40,8 @@ const mdEditComponetStyle = computed(() => {
   const editWidth = `${windowWidth.value * 0.5}px`
   return {
     width: editWidth,
-    height: `100%` // 视窗高度
+    height: `100%`, // 视窗高度
+    maxWidth: editWidth
   }
 })
 
@@ -49,7 +50,8 @@ const mdPreviewComponentStyle = computed(() => {
   const previewWidth = `${windowWidth.value * 0.5}px`
   return {
     width: previewWidth,
-    height: '100%' // 视窗高度
+    height: '100%', // 视窗高度
+    maxWidth: previewWidth
   }
 })
 

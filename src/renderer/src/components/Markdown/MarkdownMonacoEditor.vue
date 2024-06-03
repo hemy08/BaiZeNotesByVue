@@ -27,8 +27,6 @@ const props = defineProps({
 
 const monacoEditorContainer = ref<HTMLElement | null>(null)
 let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-let editorCursorPos: monaco.Position | null = null
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
 
@@ -54,13 +52,6 @@ onMounted(() => {
     editorInstance.onDidChangeModelContent(() => {
       if (editorInstance != null) {
         emit('update:code', editorInstance.getValue())
-      }
-    })
-
-    // 监听编辑器光标位置变化
-    editorInstance.onDidChangeCursorPosition(() => {
-      if (editorInstance != null) {
-        editorCursorPos = editorInstance.getPosition()
       }
     })
   }

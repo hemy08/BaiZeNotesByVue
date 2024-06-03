@@ -1,4 +1,4 @@
-import {showFontDialog} from "./specialFontBlock";
+import {showFontDialog} from "./CustomFontDialog";
 import {blockcode} from "./blockcode";
 
 const image_links = '![]()\n'
