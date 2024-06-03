@@ -1,35 +1,92 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>自定义字体样式对话框</title>
-  <style>
-    /* 添加你的 CSS 样式 */
-  </style>
-</head>
-<body>
+  <html lang="zh">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字样式选择</title>
+    <style>
+      .label-style {
+        width: 80px;
+        margin-top: 12px;
+        text-align: center;
+       }
+      .input-style  {
+         width: 150px;
+        margin-top: 10px;
+       }
+    </style>
+  </head>
+  <body>
+    <div style="margin-top: 10px;display: flex; flex-direction: row;">
+      <div style="margin-top: 10px;display: flex; flex-direction: column;">
+        <div class="label-style"><label for="fontFamily">选择字体：</label></div>
+        <div class="label-style"><label for="fontSize">字体大小：</label></div>
+        <div class="label-style"><label for="fontColor">字体颜色：</label></div>
+        <div class="label-style"><label for="backgroundColor">背&nbsp;&nbsp;景&nbsp;色：</label></div>
+        <div class="label-style"><label for="fontBold">加&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;粗：</label></div>
+        <div class="label-style"><label for="fontItalic">倾&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;斜：</label></div>
+        <div class="label-style"><label for="fontUnderline">下&nbsp;&nbsp;划&nbsp;线：</label></div>
+        <div class="label-style"><label for="fontDeleteLine">删&nbsp;&nbsp;除&nbsp;线：</label></div>
+        <div class="label-style"><label for="fontDoubleDeleteLine">双删除线：</label></div>
+      </div>
+      <div style="margin-top: 10px;display: flex; flex-direction: column;">
+        <div class="input-style"><select name="editor-font" id="fontFamily">
+          <option value="Cascadia Code" style="font-family: \Cascadia Code\">Cascadia Code</option>
+          <option value="Consolas" style="font-family: \Consolas\">Consolas</option>
+          <option value="DejaVu Sans Mono" style="font-family: \DejaVu Sans Mono\">DejaVuSans Mono</option>
+          <option value="Fira Code" style="font-family: \Droid Sans\">Droid Sans</option>
+          <option value="Fira Code" style="font-family: \Fira Sans\">Fira Sans</option>
+          <option value="Fira Code" style="font-family: \Fira Code\">Fira Code</option>
+          <option value="Hack" style="font-family: \Hack\">Hack</option>
+          <option value="Hack" style="font-family: \Helvetica Neue\">Helvetica Neue</option>
+          <option value="Hack" style="font-family: \Inter\">Inter</option>
+          <option value="JetBrains Mono" style="font-family: \JetBrains Mono\">JetBrains Mono</option>
+          <option value="Menlo" style="font-family: \Menlo\">Menlo</option>
+          <option value="SimHei" style="font-family: \Roboto\">Roboto</option>
+          <option value="SimHei" style="font-family: \Oxygen\">Oxygen</option>
+          <option value="SimHei" style="font-family: \sans-serif\">sans-serif</option>
+          <option value="SimHei" style="font-family: \Segoe UI\">Segoe UI</option>
+          <option value="SimHei" style="font-family: \SimHei\">SimHei</option>
+          <option value="Source Code Pro" style="font-family: \Source Code Pro\">Source Code Pro</option>
+          <option value="SimHei" style="font-family: \Ubuntu\">Ubuntu</option>
+          <option value="Ubuntu Mono" style="font-family: \Ubuntu Mono\">Ubuntu Mono</option>
+        </select></div>
+        <div class="input-style" style="width: 40px"><input type="text" id="fontSize" style="width: 100px"></div>
+        <div class="input-style"><input type="color" id="fontColor" style="width: 100px"></div>
+        <div class="input-style"><input type="color" id="backgroundColor" style="width: 100px"></div>
+        <div class="input-style"><input type="checkbox" id="fontBold"></div>
+        <div class="input-style"><input type="checkbox" id="fontItalic"></div>
+        <div class="input-style"><input type="checkbox" id="fontUnderline"></div>
+        <div class="input-style"><input type="checkbox" id="fontDeleteLine"></div>
+        <div class="input-style"><input type="checkbox" id="fontDoubleDeleteLine"></div>
+      </div>
+      <div style="margin-top: 10px;width:5px; color:white; height:300px; display: flex; background-color: black"></div>
+      <div style="margin-top: 10px;margin-left:20px;display: flex; flex-direction: column;">
+        <div>
+          <div class="label-style"><label for="fontFamily">编辑区域：</label></div>
+          <input type="text" id="fontSize" style="width: 300px;height: 100px;">
+        </div>
+        <div style="margin-top: 10px">
+          <div class="label-style"><label for="fontFamily">效果预览：</label></div>
+          <input type="text" id="fontSize" style="width: 300px;height: 100px;">
+        </div>
+      </div>
+    </div>
 
-<h2>选择字体样式</h2>
+    <button id="applyButton" onclick="sendUserInputFontStyle()" STYLE="width: 125px;margin-top: 10px;margin-left: 50px;">应用</button>
+    <button id="cancelButton" onclick="sendDialogCancelFontStyle()" STYLE="width: 125px;margin-top: 10px;margin-left: 200px;">取消</button>
+    <script>
+      const { ipcRenderer } = require('electron')
 
-<label for="fontFamily">字体：</label>
-<input type="text" id="fontFamily" placeholder="输入字体名称">
+      function sendUserInputFontStyle() {
+        const fontFamily = document.getElementById('fontFamily').value
+        ipcRenderer.send('user-input-custom-font-dialog-apply', fontFamily)
+      }
 
-<label for="fontColor">颜色：</label>
-<input type="color" id="fontColor">
-
-<div>
-  <input type="checkbox" id="boldCheckbox">
-  <label for="boldCheckbox">加粗</label>
-</div>
-
-<div>
-  <input type="checkbox" id="italicCheckbox">
-  <label for="italicCheckbox">倾斜</label>
-</div>
-
-<button id="applyButton">应用</button>
-
-<script src="specialFontBlock.ts"></script>
-</body>
+      function sendDialogCancelFontStyle() {
+        console.log('closed')
+        ipcRenderer.send('closed')
+      }
+    </script>
+  </body>
 </html>
