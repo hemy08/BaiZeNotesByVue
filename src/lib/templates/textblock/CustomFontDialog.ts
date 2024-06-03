@@ -8,8 +8,8 @@ export function showFontDialog() {
 // 创建一个自定义对话框的函数
 function createCustomDialog() {
   customDialogWindow = new BrowserWindow({
-    width: 700,
-    height: 450,
+    width: 830,
+    height: 530,
     minimizable: false,
     maximizable: false,
     title: '文字样式选择',
@@ -28,7 +28,9 @@ function createCustomDialog() {
   customDialogWindow.setMenu(null)
 
   // 加载一个 HTML 文件作为对话框的内容
-  customDialogWindow.loadURL(`data:text/html;charset=utf-8,${encodeURI(CustomFontDialogHtml)}`)
+  customDialogWindow.loadURL(
+    `data:text/html;charset=utf-8,${encodeURIComponent(CustomFontDialogHtml)}`
+  )
 
   // 当窗口关闭时，清除引用
   customDialogWindow.on('closed', () => {
@@ -38,50 +40,62 @@ function createCustomDialog() {
   // 显示窗口
   customDialogWindow.show()
 
-  ipcMain.on('user-input-to-custom-font-dialog', (_, inputData) => {
+  ipcMain.on('user-input-custom-font-dialog-apply', (_, inputData) => {
     console.log('inputData', inputData)
-    customDialogWindow.close()
+    if (customDialogWindow) {
+      customDialogWindow.close()
+    }
   })
 
   ipcMain.on('user-input-custom-font-dialog-cancel', () => {
-    customDialogWindow.close()
+    if (customDialogWindow) {
+      customDialogWindow.close()
+    }
   })
 }
 
 const CustomFontDialogHtml =
   '<!DOCTYPE html>\n' +
-  '  <html lang="zh">\n' +
+  '<html lang="zh">\n' +
   '  <head>\n' +
   '    <meta charset="UTF-8">\n' +
   '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
   '    <title>文字样式选择</title>\n' +
   '    <style>\n' +
   '      .label-style {\n' +
-  '         width: 80px;\n' +
-  '         margin-top: 12px;\n' +
-  '         text-align: center;\n' +
-  '       }\n' +
+  '        width: 100px;\n' +
+  '        margin-top: 12px;\n' +
+  '        text-align: center;\n' +
+  '      }\n' +
   '      .input-style  {\n' +
-  '         width: 170px;\n' +
-  '         margin-top: 10px;\n' +
-  '       }\n' +
+  '        width: 170px;\n' +
+  '        margin-top: 10px;\n' +
+  '      }\n' +
+  '      .color-button {\n' +
+  '        width: 10px;\n' +
+  '        height: 15px;\n' +
+  '        margin-top: 10px;\n' +
+  '      }\n' +
   '    </style>\n' +
   '  </head>\n' +
   '  <body>\n' +
-  '    <div style="display: flex; flex-direction: row; margin-left: 20px;">\n' +
-  '      <div style="margin-top: 10px; margin-left 20px; display: flex; flex-direction: column;">\n' +
-  '        <div class="label-style"><label for="fontFamily">选择字体：</label></div>\n' +
-  '        <div class="label-style"><label for="fontSize">字体大小：</label></div>\n' +
-  '        <div class="label-style"><label for="fontColor">字体颜色：</label></div>\n' +
-  '        <div class="label-style"><label for="backgroundColor">背&nbsp;&nbsp;景&nbsp;色：</label></div>\n' +
-  '        <div class="label-style"><label for="fontBold">加&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;粗：</label></div>\n' +
-  '        <div class="label-style"><label for="fontItalic">倾&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;斜：</label></div>\n' +
-  '        <div class="label-style"><label for="fontUnderline">下&nbsp;&nbsp;划&nbsp;线：</label></div>\n' +
-  '        <div class="label-style"><label for="fontDeleteLine">删&nbsp;&nbsp;除&nbsp;线：</label></div>\n' +
-  '        <div class="label-style"><label for="fontDoubleDeleteLine">双删除线：</label></div>\n' +
-  '      </div>\n' +
-  '      <div style="margin-top: 10px;display: flex; flex-direction: column;">\n' +
-  '        <div class="input-style"><select name="editor-font" id="fontFamily">\n' +
+  '  <div style="display: flex; flex-direction: row; margin-left: 20px;">\n' +
+  '    <div style="margin-top: 10px; margin-left: 20px; display: flex; flex-direction: column;">\n' +
+  '      <div class="label-style"><label for="fontFamily">选择字体：</label></div>\n' +
+  '      <div class="label-style"><label for="fontSize">字体大小：</label></div>\n' +
+  '      <div class="label-style"><label for="fontColor">字体颜色：</label></div>\n' +
+  '      <div class="label-style" style="height: 40px"><label for="fontColor"></label></div>\n' +
+  '      <div class="label-style"><label for="backgroundColor">背&nbsp;&nbsp;景&nbsp;色：</label></div>\n' +
+  '      <div class="label-style" style="height: 40px"><label for="backgroundColor"></label></div>\n' +
+  '      <div class="label-style"><label for="fontBold">加&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;粗：</label></div>\n' +
+  '      <div class="label-style"><label for="fontItalic">倾&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;斜：</label></div>\n' +
+  '      <div class="label-style"><label for="fontUnderline">下&nbsp;&nbsp;划&nbsp;线：</label></div>\n' +
+  '      <div class="label-style"><label for="fontDeleteLine">删&nbsp;&nbsp;除&nbsp;线：</label></div>\n' +
+  '    </div>\n' +
+  '    <div style="margin-top: 10px;display: flex; flex-direction: column;">\n' +
+  '      <div class="input-style">\n' +
+  '        <select name="editor-font" id="fontFamily">\n' +
+  '          <option value="Arial" style="font-family: \'Arial\'">Arial</option>\n' +
   '          <option value="Cascadia Code" style="font-family: \'Cascadia Code\'">Cascadia Code</option>\n' +
   '          <option value="Consolas" style="font-family: \'Consolas\'">Consolas</option>\n' +
   '          <option value="DejaVu Sans Mono" style="font-family: \'DejaVu Sans Mono\'">DejaVuSans Mono</option>\n' +
@@ -101,45 +115,186 @@ const CustomFontDialogHtml =
   '          <option value="Source Code Pro" style="font-family: \'Source Code Pro\'">Source Code Pro</option>\n' +
   '          <option value="SimHei" style="font-family: \'Ubuntu\'">Ubuntu</option>\n' +
   '          <option value="Ubuntu Mono" style="font-family: \'Ubuntu Mono\'">Ubuntu Mono</option>\n' +
-  '        </select></div>\n' +
-  '        <div class="input-style" style="width: 40px"><input type="text" id="fontSize" style="width: 100px"></div>\n' +
-  '        <div class="input-style"><input type="color" id="fontColor" style="width: 100px"></div>\n' +
-  '        <div class="input-style"><input type="color" id="backgroundColor" style="width: 100px" value="wihite"></div>\n' +
-  '        <div class="input-style"><input type="checkbox" id="fontBold"></div>\n' +
-  '        <div class="input-style"><input type="checkbox" id="fontItalic"></div>\n' +
-  '        <div class="input-style"><input type="checkbox" id="fontUnderline"></div>\n' +
-  '        <div class="input-style"><input type="checkbox" id="fontDeleteLine"></div>\n' +
-  '        <div class="input-style"><input type="checkbox" id="fontDoubleDeleteLine"></div>\n' +
+  '        </select>\n' +
   '      </div>\n' +
-  '      <div style="margin-top: 10px; width:2px; color:white; height:300px; display: flex; background-color: black"></div>\n' +
-  '      <div style="margin-top: 10px; margin-left: 20px; display: flex; flex-direction: column;">\n' +
+  '      <div class="input-style" style="width: 40px">\n' +
+  '        <select name="editor-font-size" id="fontSize">\n' +
+  '          <option value="5px">5px</option>\n' +
+  '          <option value="6px">6px</option>\n' +
+  '          <option value="7px">7px</option>\n' +
+  '          <option value="8px">8px</option>\n' +
+  '          <option value="9px">9px</option>\n' +
+  '          <option value="10px">10px</option>\n' +
+  '          <option value="11px">11px</option>\n' +
+  '          <option value="12px">12px</option>\n' +
+  '          <option value="13px">13px</option>\n' +
+  '          <option value="14px">14px</option>\n' +
+  '          <option value="15px">15px</option>\n' +
+  '          <option value="16px">16px</option>\n' +
+  '          <option value="17px">17px</option>\n' +
+  '          <option value="18px">18px</option>\n' +
+  '          <option value="19px">19px</option>\n' +
+  '          <option value="20px">20px</option>\n' +
+  '          <option value="21px">21px</option>\n' +
+  '          <option value="22px">22px</option>\n' +
+  '          <option value="23px">23px</option>\n' +
+  '          <option value="24px">24px</option>\n' +
+  '          <option value="25px">25px</option>\n' +
+  '          <option value="26px">26px</option>\n' +
+  '          <option value="27px">27px</option>\n' +
+  '          <option value="28px">28px</option>\n' +
+  '          <option value="29px">29px</option>\n' +
+  '          <option value="30px">30px</option>\n' +
+  '          <option value="31px">31px</option>\n' +
+  '          <option value="32px">32px</option>\n' +
+  '          <option value="33px">33px</option>\n' +
+  '        </select>\n' +
+  '      </div>\n' +
+  '      <div class="input-style"><input type="color" id="fontColor" style="width: 160px">\n' +
   '        <div>\n' +
-  '          <div class="label-style"><label for="fontFamily">编辑区域：</label></div>\n' +
-  '          <textarea id="fontSize" style="width: 350px;height: 100px;overflow-y: auto;"></textarea>\n' +
+  '          <button class="color-button" style="background-color: #FFFFFF;" onClick="setColor(\'#ffffff\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #000000;" onClick="setColor(\'#000000\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #FF00FF;" onClick="setColor(\'#FF00FF\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #0000FF;" onClick="setColor(\'#0000FF\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #0184bb;" onClick="setColor(\'#0184bb\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #4078f2;" onClick="setColor(\'#4078f2\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #00FFFF;" onClick="setColor(\'#00FFFF\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #FF0000;" onClick="setColor(\'#FF0000\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #228B22;" onClick="setColor(\'#228B22\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #00FF00;" onClick="setColor(\'#00FF00\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #ADFF2F;" onClick="setColor(\'#ADFF2F\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #f0dc4e;" onClick="setColor(\'#f0dc4e\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #FFFF00;" onClick="setColor(\'#FFFF00\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #986801;" onClick="setColor(\'#986801\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #c18401;" onClick="setColor(\'#c18401\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #e45649;" onClick="setColor(\'#e45649\')"></button>\n' +
   '        </div>\n' +
+  '      </div>\n' +
+  '      <div class="input-style"><input type="color" id="backgroundColor" style="width: 160px">\n' +
+  '        <div>\n' +
+  '          <button class="color-button" style="background-color: #FFFFFF;" onClick="setBackGroundColor(\'#ffffff\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #000000;" onClick="setBackGroundColor(\'#000000\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #FF00FF;" onClick="setBackGroundColor(\'#FF00FF\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #0000FF;" onClick="setBackGroundColor(\'#0000FF\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #0184bb;" onClick="setBackGroundColor(\'#0184bb\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #4078f2;" onClick="setBackGroundColor(\'#4078f2\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #00FFFF;" onClick="setBackGroundColor(\'#00FFFF\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #FF0000;" onClick="setBackGroundColor(\'#FF0000\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #228B22;" onClick="setBackGroundColor(\'#228B22\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #00FF00;" onClick="setBackGroundColor(\'#00FF00\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #ADFF2F;" onClick="setBackGroundColor(\'#ADFF2F\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #f0dc4e;" onClick="setBackGroundColor(\'#f0dc4e\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #FFFF00;" onClick="setBackGroundColor(\'#FFFF00\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #986801;" onClick="setBackGroundColor(\'#986801\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #c18401;" onClick="setBackGroundColor(\'#c18401\')"></button>\n' +
+  '          <button class="color-button" style="background-color: #e45649;" onClick="setBackGroundColor(\'#e45649\')"></button>\n' +
+  '        </div>\n' +
+  '      </div>\n' +
+  '      <div class="input-style"><input type="checkbox" id="fontBold"></div>\n' +
+  '      <div class="input-style"><input type="checkbox" id="fontItalic"></div>\n' +
+  '      <div class="input-style"><input type="checkbox" id="fontUnderline"></div>\n' +
+  '      <div class="input-style"><input type="checkbox" id="fontDeleteLine"></div>\n' +
+  '    </div>\n' +
+  '    <div style="margin-top: 10px; margin-left: 20px; width:2px; color:white; height:370px; display: flex; background-color: black"></div>\n' +
+  '    <div style="margin-top: 10px; margin-left: 20px; display: flex; flex-direction: column;">\n' +
+  '      <div>\n' +
+  '        <div class="label-style"><label for="textInput">编辑区域：</label></div>\n' +
+  '        <textarea id="textInput" style="width: 400px;height: 140px;overflow-y: auto;"></textarea>\n' +
+  '      </div>\n' +
   '      <div style="margin-top: 10px; height:2px; color:white; width:350px; display: flex; background-color: black"></div>\n' +
-  '        <div style="margin-top: 10px">\n' +
-  '          <div class="label-style"><label for="fontFamily">效果预览：</label></div>\n' +
-  '          <div id="preview-area" style="width: 350px;height: 100px; overflow:auto;">\n' +
-  '            <p class="preview-text" id="previewText">这是一段预览文字。</p>\n' +
-  '          </div>\n' +
+  '      <div style="margin-top: 10px">\n' +
+  '        <div class="label-style"><label for="previewText">效果预览：</label></div>\n' +
+  '        <div id="preview-area" style="width: 400px;height: 140px; overflow:auto;">\n' +
+  '          <p class="preview-text" id="previewText">这是一段预览文字。</p>\n' +
   '        </div>\n' +
   '      </div>\n' +
   '    </div>\n' +
+  '  </div>\n' +
+  '  <button id="applyButton" onClick="sendUserInputFontStyle()" style="width: 125px;margin-top: 30px;margin-left: 100px;">应用</button>\n' +
+  '  <button id="cancelButton" onClick="sendDialogCancelFontStyle()" style="width: 125px;margin-top: 30px;margin-left: 200px;">取消</button>\n' +
+  '  <script>\n' +
+  "    const { ipcRenderer } = require('electron');\n" +
+  '    let fontStyle = {\n' +
+  '      fontFamily:"Arial",\n' +
+  '      fontSize: "10px",\n' +
+  '      fontColor: "black",\n' +
+  '      fontBackGroundColor:"white",\n' +
+  '      fontBold: false,\n' +
+  '      fontItalic: false,\n' +
+  '      fontUnderline:false,\n' +
+  '      fontDeleteLine:false,\n' +
+  "      textInput: ''\n" +
+  '    };\n' +
   '\n' +
-  '    <button id="applyButton" onclick="sendUserInputFontStyle()" STYLE="width: 125px;margin-top: 30px;margin-left: 100px;">应用</button>\n' +
-  '    <button id="cancelButton" onclick="sendDialogCancelFontStyle()" STYLE="width: 125px;margin-top: 30px;margin-left: 200px;">取消</button>\n' +
-  '    <script>\n' +
-  "      const { ipcRenderer } = require('electron');\n" +
+  '    function updateFontFamily(event) {\n' +
+  '      fontStyle.fontFamily = event.target.value\n' +
+  '      document.getElementById("previewText").style.fontFamily = event.target.value\n' +
+  '    }\n' +
+  '    function updateFontSize(event) {\n' +
+  '      fontStyle.fontSize = event.target.value\n' +
+  '      document.getElementById("previewText").style.fontSize = event.target.value\n' +
+  '    }\n' +
+  '    function updateFontColor(event) {\n' +
+  '      fontStyle.fontColor = event.target.value\n' +
+  '      document.getElementById("previewText").style.color = event.target.value\n' +
+  '    }\n' +
+  '    function updateBackgroundColor(event) {\n' +
+  '      fontStyle.fontBackGroundColor = event.target.value\n' +
+  '      document.getElementById("previewText").style.backgroundColor = event.target.value\n' +
+  '    }\n' +
+  '    function updateFontBold(event) {\n' +
+  '      if (event.target.checked) {\n' +
+  '        document.getElementById("previewText").style.fontWeight = \'bold\';\n' +
+  '        fontStyle.fontBold = true\n' +
+  '      }\n' +
+  '    }\n' +
+  '    function updateFontItalic(event) {\n' +
+  '      if (event.target.checked) {\n' +
+  '        document.getElementById("previewText").style.fontStyle = \'italic\';\n' +
+  '        fontStyle.fontItalic = true\n' +
+  '      }\n' +
+  '    }\n' +
+  '    function updateFontUnderline(event) {\n' +
+  '      if (event.target.checked) {\n' +
+  '        document.getElementById("previewText").style.textDecoration += \' underline\';\n' +
+  '        fontStyle.fontUnderline = true\n' +
+  '      }\n' +
+  '    }\n' +
+  '    function updateFontDeleteLine(event) {\n' +
+  '      if (event.target.checked) {\n' +
+  '        document.getElementById("previewText").style.textDecoration += \' line-through\';\n' +
+  '        fontStyle.fontDeleteLine = true\n' +
+  '      }\n' +
+  '    }\n' +
+  '    function updateTextInput(event) {\n' +
+  '      document.getElementById("previewText").textContent = event.target.value\n' +
+  '      fontStyle.textInput = true\n' +
+  '    }\n' +
+  '    // 监听文本输入和样式输入的变化\n' +
+  "    document.getElementById('fontFamily').addEventListener('input', updateFontFamily);\n" +
+  "    document.getElementById('fontSize').addEventListener('input', updateFontSize);\n" +
+  "    document.getElementById('fontColor').addEventListener('input', updateFontColor);\n" +
+  "    document.getElementById('backgroundColor').addEventListener('input', updateBackgroundColor);\n" +
+  "    document.getElementById('fontBold').addEventListener('input', updateFontBold);\n" +
+  "    document.getElementById('fontItalic').addEventListener('input', updateFontItalic);\n" +
+  "    document.getElementById('fontUnderline').addEventListener('input', updateFontUnderline);\n" +
+  "    document.getElementById('fontDeleteLine').addEventListener('input', updateFontDeleteLine);\n" +
+  "    document.getElementById('textInput').addEventListener('input', updateTextInput);\n" +
   '\n' +
-  '      function sendUserInputFontStyle() {\n' +
-  "        const fontFamily = document.getElementById('fontFamily').value;\n" +
-  "        ipcRenderer.send('user-input-custom-font-dialog-apply', fontFamily);\n" +
-  '      }\n' +
-  '      function sendDialogCancelFontStyle() {\n' +
-  "        console.log('closed');" +
-  "        ipcRenderer.send('user-input-custom-font-dialog-cancel');\n" +
-  '      }\n' +
-  '    </script>\n' +
+  '    function sendUserInputFontStyle() {\n' +
+  "      ipcRenderer.send('user-input-custom-font-dialog-apply', fontStyle);\n" +
+  '    }\n' +
+  '    function sendDialogCancelFontStyle() {\n' +
+  "      ipcRenderer.send('user-input-custom-font-dialog-cancel');\n" +
+  '    }\n' +
+  '    function setColor(color) {\n' +
+  "      document.getElementById('fontColor').value = color;\n" +
+  '      document.getElementById("previewText").style.color = color\n' +
+  '    }\n' +
+  '    function setBackGroundColor(color) {\n' +
+  "      document.getElementById('backgroundColor').value = color\n" +
+  "      document.getElementById('previewText').style.backgroundColor = color;\n" +
+  '    }\n' +
+  '  </script>\n' +
   '  </body>\n' +
-  '</html>'
+  '</html>\n'

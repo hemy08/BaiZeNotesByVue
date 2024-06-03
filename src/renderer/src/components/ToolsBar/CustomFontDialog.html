@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字样式选择</title>
+    <style>
+      .label-style {
+        width: 80px;
+        margin-top: 12px;
+        text-align: center;
+      }
+      .input-style  {
+        width: 170px;
+        margin-top: 10px;
+      }
+      .color-button {
+        width: 10px;
+        height: 15px;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+  <div style="display: flex; flex-direction: row; margin-left: 20px;">
+    <div style="margin-top: 10px; margin-left: 20px; display: flex; flex-direction: column;">
+      <div class="label-style"><label for="fontFamily">选择字体：</label></div>
+      <div class="label-style"><label for="fontSize">字体大小：</label></div>
+      <div class="label-style"><label for="fontColor">字体颜色：</label></div>
+      <div class="label-style" style="height: 40px"><label for="fontColor"></label></div>
+      <div class="label-style"><label for="backgroundColor">背&nbsp;&nbsp;景&nbsp;色：</label></div>
+      <div class="label-style" style="height: 40px"><label for="backgroundColor"></label></div>
+      <div class="label-style"><label for="fontBold">加&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;粗：</label></div>
+      <div class="label-style"><label for="fontItalic">倾&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;斜：</label></div>
+      <div class="label-style"><label for="fontUnderline">下&nbsp;&nbsp;划&nbsp;线：</label></div>
+      <div class="label-style"><label for="fontDeleteLine">删&nbsp;&nbsp;除&nbsp;线：</label></div>
+    </div>
+    <div style="margin-top: 10px;display: flex; flex-direction: column;">
+      <div class="input-style">
+        <select name="editor-font" id="fontFamily">
+          <option value="Arial" style="font-family: 'Arial'">Arial</option>
+          <option value="Cascadia Code" style="font-family: 'Cascadia Code'">Cascadia Code</option>
+          <option value="Consolas" style="font-family: 'Consolas'">Consolas</option>
+          <option value="DejaVu Sans Mono" style="font-family: 'DejaVu Sans Mono'">DejaVuSans Mono</option>
+          <option value="Fira Code" style="font-family: 'Droid Sans'">Droid Sans</option>
+          <option value="Fira Code" style="font-family: 'Fira Sans'">Fira Sans</option>
+          <option value="Fira Code" style="font-family: 'Fira Code'">Fira Code</option>
+          <option value="Hack" style="font-family: 'Hack'">Hack</option>
+          <option value="Hack" style="font-family: 'Helvetica Neue'">Helvetica Neue</option>
+          <option value="Hack" style="font-family: 'Inter'">Inter</option>
+          <option value="JetBrains Mono" style="font-family: 'JetBrains Mono'">JetBrains Mono</option>
+          <option value="Menlo" style="font-family: 'Menlo'">Menlo</option>
+          <option value="SimHei" style="font-family: 'Roboto'">Roboto</option>
+          <option value="SimHei" style="font-family: 'Oxygen'">Oxygen</option>
+          <option value="SimHei" style="font-family: 'sans-serif'">sans-serif</option>
+          <option value="SimHei" style="font-family: 'Segoe UI'">Segoe UI</option>
+          <option value="SimHei" style="font-family: 'SimHei'">SimHei</option>
+          <option value="Source Code Pro" style="font-family: 'Source Code Pro'">Source Code Pro</option>
+          <option value="SimHei" style="font-family: 'Ubuntu'">Ubuntu</option>
+          <option value="Ubuntu Mono" style="font-family: 'Ubuntu Mono'">Ubuntu Mono</option>
+        </select>
+      </div>
+      <div class="input-style" style="width: 40px">
+        <select name="editor-font-size" id="fontSize">
+          <option value="5px">5px</option>
+          <option value="6px">6px</option>
+          <option value="7px">7px</option>
+          <option value="8px">8px</option>
+          <option value="9px">9px</option>
+          <option value="10px">10px</option>
+          <option value="11px">11px</option>
+          <option value="12px">12px</option>
+          <option value="13px">13px</option>
+          <option value="14px">14px</option>
+          <option value="15px">15px</option>
+          <option value="16px">16px</option>
+          <option value="17px">17px</option>
+          <option value="18px">18px</option>
+          <option value="19px">19px</option>
+          <option value="20px">20px</option>
+          <option value="21px">21px</option>
+          <option value="22px">22px</option>
+          <option value="23px">23px</option>
+          <option value="24px">24px</option>
+          <option value="25px">25px</option>
+          <option value="26px">26px</option>
+          <option value="27px">27px</option>
+          <option value="28px">28px</option>
+          <option value="29px">29px</option>
+          <option value="30px">30px</option>
+          <option value="31px">31px</option>
+          <option value="32px">32px</option>
+          <option value="33px">33px</option>
+        </select>
+      </div>
+      <div class="input-style"><input type="color" id="fontColor" style="width: 160px">
+        <div>
+          <button class="color-button" style="background-color: #FFFFFF;" onclick="setColor('#ffffff')"></button>
+          <button class="color-button" style="background-color: #000000;" onclick="setColor('#000000')"></button>
+          <button class="color-button" style="background-color: #FF00FF;" onclick="setColor('#FF00FF')"></button>
+          <button class="color-button" style="background-color: #0000FF;" onclick="setColor('#0000FF')"></button>
+          <button class="color-button" style="background-color: #0184bb;" onclick="setColor('#0184bb')"></button>
+          <button class="color-button" style="background-color: #4078f2;" onclick="setColor('#4078f2')"></button>
+          <button class="color-button" style="background-color: #00FFFF;" onclick="setColor('#00FFFF')"></button>
+          <button class="color-button" style="background-color: #FF0000;" onclick="setColor('#FF0000')"></button>
+          <button class="color-button" style="background-color: #228B22;" onclick="setColor('#228B22')"></button>
+          <button class="color-button" style="background-color: #00FF00;" onclick="setColor('#00FF00')"></button>
+          <button class="color-button" style="background-color: #ADFF2F;" onclick="setColor('#ADFF2F')"></button>
+          <button class="color-button" style="background-color: #f0dc4e;" onclick="setColor('#f0dc4e')"></button>
+          <button class="color-button" style="background-color: #FFFF00;" onclick="setColor('#FFFF00')"></button>
+          <button class="color-button" style="background-color: #986801;" onclick="setColor('#986801')"></button>
+          <button class="color-button" style="background-color: #c18401;" onclick="setColor('#c18401')"></button>
+          <button class="color-button" style="background-color: #e45649;" onclick="setColor('#e45649')"></button>
+        </div>
+      </div>
+      <div class="input-style"><input type="color" id="backgroundColor" style="width: 160px">
+        <div>
+          <button class="color-button" style="background-color: #FFFFFF;" onclick="setBackGroundColor('#ffffff')"></button>
+          <button class="color-button" style="background-color: #000000;" onclick="setBackGroundColor('#000000')"></button>
+          <button class="color-button" style="background-color: #FF00FF;" onclick="setBackGroundColor('#FF00FF')"></button>
+          <button class="color-button" style="background-color: #0000FF;" onclick="setBackGroundColor('#0000FF')"></button>
+          <button class="color-button" style="background-color: #0184bb;" onclick="setBackGroundColor('#0184bb')"></button>
+          <button class="color-button" style="background-color: #4078f2;" onclick="setBackGroundColor('#4078f2')"></button>
+          <button class="color-button" style="background-color: #00FFFF;" onclick="setBackGroundColor('#00FFFF')"></button>
+          <button class="color-button" style="background-color: #FF0000;" onclick="setBackGroundColor('#FF0000')"></button>
+          <button class="color-button" style="background-color: #228B22;" onclick="setBackGroundColor('#228B22')"></button>
+          <button class="color-button" style="background-color: #00FF00;" onclick="setBackGroundColor('#00FF00')"></button>
+          <button class="color-button" style="background-color: #ADFF2F;" onclick="setBackGroundColor('#ADFF2F')"></button>
+          <button class="color-button" style="background-color: #f0dc4e;" onclick="setBackGroundColor('#f0dc4e')"></button>
+          <button class="color-button" style="background-color: #FFFF00;" onclick="setBackGroundColor('#FFFF00')"></button>
+          <button class="color-button" style="background-color: #986801;" onclick="setBackGroundColor('#986801')"></button>
+          <button class="color-button" style="background-color: #c18401;" onclick="setBackGroundColor('#c18401')"></button>
+          <button class="color-button" style="background-color: #e45649;" onclick="setBackGroundColor('#e45649')"></button>
+        </div>
+      </div>
+      <div class="input-style"><input type="checkbox" id="fontBold"></div>
+      <div class="input-style"><input type="checkbox" id="fontItalic"></div>
+      <div class="input-style"><input type="checkbox" id="fontUnderline"></div>
+      <div class="input-style"><input type="checkbox" id="fontDeleteLine"></div>
+    </div>
+    <div style="margin-top: 10px; width:2px; color:white; height:370px; display: flex; background-color: black"></div>
+    <div style="margin-top: 10px; margin-left: 20px; display: flex; flex-direction: column;">
+      <div>
+        <div class="label-style"><label for="textInput">编辑区域：</label></div>
+        <textarea id="textInput" style="width: 400px;height: 150px;overflow-y: auto;"></textarea>
+      </div>
+      <div style="margin-top: 10px; height:2px; color:white; width:350px; display: flex; background-color: black"></div>
+      <div style="margin-top: 10px">
+        <div class="label-style"><label for="previewText">效果预览：</label></div>
+        <div id="preview-area" style="width: 400px;height: 150px; overflow:auto;">
+          <p class="preview-text" id="previewText">这是一段预览文字。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button id="applyButton" onclick="sendUserInputFontStyle()" style="width: 125px;margin-top: 30px;margin-left: 100px;">应用</button>
+  <button id="cancelButton" onclick="sendDialogCancelFontStyle()" style="width: 125px;margin-top: 30px;margin-left: 200px;">取消</button>
+  <script>
+    //const { ipcRenderer } = require('electron');
+    let fontStyle = {
+      fontFamily:"Arial",
+      fontSize: "10px",
+      fontColor: "black",
+      fontBackGroundColor:"white",
+      fontBold: false,
+      fontItalic: false,
+      fontUnderline:false,
+      fontDeleteLine:false,
+      textInput: ''
+    };
+
+    function updateFontFamily(event) {
+      fontStyle.fontFamily = event.target.value
+      document.getElementById("previewText").style.fontFamily = event.target.value
+    }
+    function updateFontSize(event) {
+      fontStyle.fontSize = event.target.value
+      document.getElementById("previewText").style.fontSize = event.target.value
+    }
+    function updateFontColor(event) {
+      fontStyle.fontColor = event.target.value
+      document.getElementById("previewText").style.color = event.target.value
+    }
+    function updateBackgroundColor(event) {
+      fontStyle.fontBackGroundColor = event.target.value
+      document.getElementById("previewText").style.backgroundColor = event.target.value
+    }
+    function updateFontBold(event) {
+      console.log('event', event)
+      if (event.target.checked) {
+        document.getElementById("previewText").style.fontWeight = 'bold';
+        fontStyle.fontBold = true
+      }
+    }
+    function updateFontItalic(event) {
+      if (event.target.checked) {
+        document.getElementById("previewText").style.fontStyle = 'italic';
+        fontStyle.fontItalic = true
+      }
+    }
+    function updateFontUnderline(event) {
+      if (event.target.checked) {
+        document.getElementById("previewText").style.textDecoration += ' underline';
+        fontStyle.fontUnderline = true
+      }
+    }
+    function updateFontDeleteLine(event) {
+      if (event.target.checked) {
+        document.getElementById("previewText").style.textDecoration += ' line-through';
+        fontStyle.fontDeleteLine = true
+      }
+    }
+    function updateTextInput(event) {
+      document.getElementById("previewText").textContent = event.target.value
+      fontStyle.textInput = true
+    }
+    // 监听文本输入和样式输入的变化
+    document.getElementById('fontFamily').addEventListener('input', updateFontFamily);
+    document.getElementById('fontSize').addEventListener('input', updateFontSize);
+    document.getElementById('fontColor').addEventListener('input', updateFontColor);
+    document.getElementById('backgroundColor').addEventListener('input', updateBackgroundColor);
+    document.getElementById('fontBold').addEventListener('input', updateFontBold);
+    document.getElementById('fontItalic').addEventListener('input', updateFontItalic);
+    document.getElementById('fontUnderline').addEventListener('input', updateFontUnderline);
+    document.getElementById('fontDeleteLine').addEventListener('input', updateFontDeleteLine);
+    document.getElementById('textInput').addEventListener('input', updateTextInput);
+
+    function sendUserInputFontStyle() {
+      //ipcRenderer.send('user-input-custom-font-dialog-apply', fontStyle);
+    }
+    function sendDialogCancelFontStyle() {
+      //ipcRenderer.send('user-input-custom-font-dialog-cancel');
+    }
+    function setColor(color) {
+      document.getElementById('fontColor').value = color;
+      document.getElementById("previewText").style.color = color
+    }
+    function setBackGroundColor(color) {
+      console.log('color', color)
+      document.getElementById('backgroundColor').value = color
+      document.getElementById('previewText').style.backgroundColor = color;
+    }
+  </script>
+  </body>
+</html>
