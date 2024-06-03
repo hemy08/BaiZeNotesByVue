@@ -5,12 +5,12 @@
 export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
   const insertMenuItemCodeBlock: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '特殊字体 ...待开发',
+      label: '特殊字体',
       click: () => {
         import('../../lib/templates/textblock/textblock').then((module) => {
           mainWindow.webContents.send(
             'monaco-insert-text-block-templates',
-            module.showFontDialog()
+            module.showFontDialog(mainWindow)
           )
         })
       }

@@ -2,11 +2,11 @@ import { BrowserWindow, ipcMain } from 'electron'
 
 let customDialogWindow: Electron.BrowserWindow | null
 
-export function showFontDialog() {
-  createCustomDialog()
+export function showFontDialog(mainWindow: Electron.BrowserWindow) {
+  createCustomDialog(mainWindow)
 }
 // 创建一个自定义对话框的函数
-function createCustomDialog() {
+function createCustomDialog(mainWindow: Electron.BrowserWindow) {
   customDialogWindow = new BrowserWindow({
     width: 830,
     height: 530,
@@ -35,21 +35,58 @@ function createCustomDialog() {
   // 当窗口关闭时，清除引用
   customDialogWindow.on('closed', () => {
     customDialogWindow = null
+    ipcMain.removeListener('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
   })
 
   // 显示窗口
   customDialogWindow.show()
 
-  ipcMain.on('user-input-custom-font-dialog-apply', (_, inputData) => {
-    console.log('inputData', inputData)
-    if (customDialogWindow) {
-      customDialogWindow.close()
+  function processCustomFontDialogApply(_, inputData) {
+    console.log('inputData111', inputData)
+    let htmlContext = inputData.textInput
+    const fontBold = '<b>'
+    const fontItalic = '<i>'
+    const fontUnderline = '<u>'
+    const fontDeleteLine = '<s>'
+    if (inputData.fontBold) {
+      htmlContext = fontBold + htmlContext + '</b>'
     }
-  })
+    if (inputData.fontItalic) {
+      htmlContext = fontItalic + htmlContext + '</i>'
+    }
+    if (inputData.fontUnderline) {
+      htmlContext = fontUnderline + htmlContext + '</u>'
+      if (inputData.fontDeleteLine) {
+        htmlContext = fontDeleteLine + htmlContext + '</s>'
+      }
+    } else {
+      if (inputData.fontDeleteLine) {
+        htmlContext = fontUnderline + htmlContext + '</s>'
+      }
+    }
+    let fontBefore = '<font'
+    fontBefore += ` font-family="${inputData.fontFamily}"`
+    fontBefore += ` size=${inputData.fontSize}`
+    fontBefore += ` color="${inputData.fontColor}"`
+    fontBefore += ` style="background-color: ${inputData.fontBackGroundColor}">`
+    fontBefore += htmlContext
+
+    htmlContext = fontBefore + '</font>'
+    console.log('htmlContext', htmlContext)
+    mainWindow.webContents.send('monaco-insert-text-block-templates', htmlContext)
+    if (customDialogWindow) {
+      ipcMain.removeListener('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
+      customDialogWindow.close()
+      customDialogWindow = null
+    }
+  }
+  ipcMain.on('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
 
   ipcMain.on('user-input-custom-font-dialog-cancel', () => {
     if (customDialogWindow) {
+      ipcMain.removeListener('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
       customDialogWindow.close()
+      customDialogWindow = null
     }
   })
 }
@@ -268,7 +305,7 @@ const CustomFontDialogHtml =
   '    }\n' +
   '    function updateTextInput(event) {\n' +
   '      document.getElementById("previewText").textContent = event.target.value\n' +
-  '      fontStyle.textInput = true\n' +
+  '      fontStyle.textInput = event.target.value\n' +
   '    }\n' +
   '    // 监听文本输入和样式输入的变化\n' +
   "    document.getElementById('fontFamily').addEventListener('input', updateFontFamily);\n" +
@@ -282,16 +319,19 @@ const CustomFontDialogHtml =
   "    document.getElementById('textInput').addEventListener('input', updateTextInput);\n" +
   '\n' +
   '    function sendUserInputFontStyle() {\n' +
+  "      console.log('sendUserInputFontStyle')\n" +
   "      ipcRenderer.send('user-input-custom-font-dialog-apply', fontStyle);\n" +
   '    }\n' +
   '    function sendDialogCancelFontStyle() {\n' +
   "      ipcRenderer.send('user-input-custom-font-dialog-cancel');\n" +
   '    }\n' +
   '    function setColor(color) {\n' +
+  '      fontStyle.fontColor = color\n' +
   "      document.getElementById('fontColor').value = color;\n" +
   '      document.getElementById("previewText").style.color = color\n' +
   '    }\n' +
   '    function setBackGroundColor(color) {\n' +
+  '      fontStyle.fontBackGroundColor = color\n' +
   "      document.getElementById('backgroundColor').value = color\n" +
   "      document.getElementById('previewText').style.backgroundColor = color;\n" +
   '    }\n' +

@@ -9,6 +9,13 @@
         width: 80px;
         margin-top: 12px;
         text-align: center;
+        font-family: 'Menlo', 'Lucida Console', monospace;
+        font-size: 15px;
+        color: #ffffff;
+        background-color: #e45649;
+        font-style: italic;
+        text-decoration-line: underline line-through;
+        font-weight: bold;
       }
       .input-style  {
         width: 170px;
@@ -160,8 +167,8 @@
     let fontStyle = {
       fontFamily:"Arial",
       fontSize: "10px",
-      fontColor: "black",
-      fontBackGroundColor:"white",
+      fontColor: '',
+      fontBackGroundColor:'',
       fontBold: false,
       fontItalic: false,
       fontUnderline:false,
@@ -178,10 +185,12 @@
       document.getElementById("previewText").style.fontSize = event.target.value
     }
     function updateFontColor(event) {
+      console.log('updateFontColor', event.target.value)
       fontStyle.fontColor = event.target.value
       document.getElementById("previewText").style.color = event.target.value
     }
     function updateBackgroundColor(event) {
+      console.log('updateBackgroundColor', event.target.value)
       fontStyle.fontBackGroundColor = event.target.value
       document.getElementById("previewText").style.backgroundColor = event.target.value
     }
@@ -212,7 +221,7 @@
     }
     function updateTextInput(event) {
       document.getElementById("previewText").textContent = event.target.value
-      fontStyle.textInput = true
+      fontStyle.textInput = event.target.value
     }
     // 监听文本输入和样式输入的变化
     document.getElementById('fontFamily').addEventListener('input', updateFontFamily);
@@ -226,17 +235,18 @@
     document.getElementById('textInput').addEventListener('input', updateTextInput);
 
     function sendUserInputFontStyle() {
-      //ipcRenderer.send('user-input-custom-font-dialog-apply', fontStyle);
+      ipcRenderer.send('user-input-custom-font-dialog-apply', fontStyle);
     }
     function sendDialogCancelFontStyle() {
       //ipcRenderer.send('user-input-custom-font-dialog-cancel');
     }
     function setColor(color) {
+      console.log('setColor', color)
       document.getElementById('fontColor').value = color;
       document.getElementById("previewText").style.color = color
     }
     function setBackGroundColor(color) {
-      console.log('color', color)
+      console.log('setBackGroundColor', color)
       document.getElementById('backgroundColor').value = color
       document.getElementById('previewText').style.backgroundColor = color;
     }

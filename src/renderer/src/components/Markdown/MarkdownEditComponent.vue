@@ -81,7 +81,6 @@ window.electron.ipcRenderer.on('monaco-insert-writing-templates', (_, fileConten
 <style scoped>
 #md-edit-component {
   margin: 0;
-  overflow: hidden;
   display: flex;
   float: left;
 }
