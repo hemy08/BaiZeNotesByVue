@@ -65,7 +65,7 @@ function renderMathBlockInText(text: string): string {
   return renderMathInText(text, regex, true)
 }
 
-function katexRenderMathInText(text: string): string {
+export function katexRenderMathInText(text: string): string {
   // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
   const result = renderMathBlockInText(text)
   return renderMathLineInText(result)

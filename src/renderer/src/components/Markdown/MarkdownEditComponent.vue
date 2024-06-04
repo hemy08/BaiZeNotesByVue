@@ -1,5 +1,5 @@
 <template>
-  <div id="md-edit-component" class="md-edit-component" :style="mdEditComponetStyle">
+  <div id="md-edit-component" class="md-edit-component" :style="mdEditComponentStyle">
     <MdMonacoEdit
       v-model="markdownEditorCode"
       :code="initialCodeContent"
@@ -36,7 +36,7 @@ function updateWindowWidth() {
 window.addEventListener('resize', updateWindowWidth)
 
 // 编辑区域大小计算
-const mdEditComponetStyle = computed(() => {
+const mdEditComponentStyle = computed(() => {
   const editWidth = `${windowWidth.value * 0.5}px`
   return {
     width: editWidth,
@@ -56,7 +56,8 @@ const mdPreviewComponentStyle = computed(() => {
 })
 
 function handleMarkdownCodeUpdate(newValue: string) {
-  window.electron.ipcRenderer.send('render-monaco-editor-content', newValue)
+  // window.electron.ipcRenderer.send('render-monaco-editor-content', newValue)
+  markdownEditorCode.value = newValue
 }
 
 window.electron.ipcRenderer.on('open-selected-file-content', (_, fileContent: string) => {
