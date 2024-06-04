@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>选择表格大小</title>
+  <style>
+      .label-style {
+        width: 80px;
+        margin-top: 12px;
+        text-align: center;
+      }
+      .input-style  {
+        width: 100px;
+        margin-top: 10px;
+      }
+      .color-button {
+        width: 80px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="display: flex; flex-direction: row; margin-left: 20px;">
+        <div class="label-style"><label for="sheet-row">行：</label></div>
+        <div class="input-style"><input type="text" id="sheet-row" style="width: 100px"></div>
+        <div class="label-style"><label for="sheet-col">列：</label></div>
+        <div class="input-style"><input type="text" id="sheet-col" style="width: 100px"></div>
+    </div>
+    <button id="insertButton" onclick="sendUserInputSheetStyle()" class="color-button" style="margin-left: 80px;">插入</button>
+    <button id="cancelButton" onclick="sendDialogCancelSheetStyle()" class="color-button" style="margin-left: 120px;">取消</button>
+    <script>
+      const { ipcRenderer } = require('electron');
+      let sheetStyle = {
+        row:1,
+        col:1
+      };
+      function updateSheetRow(event) {
+        sheetStyle.row = event.target.value
+      }
+      function updateSheetCol(event) {
+        sheetStyle.col = event.target.value
+      }
+      // 监听文本输入和样式输入的变化
+      document.getElementById('sheet-row').addEventListener('input', updateSheetRow);
+      document.getElementById('sheet-col').addEventListener('input', updateSheetCol);
+      function sendUserInputSheetStyle() {
+        ipcRenderer.send('user-input-sheet-row-col-insert', sheetStyle);
+      }
+      function sendDialogCancelSheetStyle() {
+        ipcRenderer.send('user-input-sheet-row-col-cancel');
+      }
+    </script>
+  </body>
+</html>
