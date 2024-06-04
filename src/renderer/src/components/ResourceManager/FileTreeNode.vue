@@ -3,15 +3,22 @@
     <div class="node-content" @click="handleClick(node)">
       <!-- 如果是文件夹，显示文件夹图标和名称，并提供一个展开/收起按钮 -->
       <span v-if="node.type === 'folder'">
-        <button @click="toggleFolder">
-          {{ isExpanded ? '<' : 'v' }}
+        <button style="border: none; background-color: transparent" @click="toggleFolder">
+          {{ isExpanded ? 'v' : '>' }}
         </button>
-        <i class="folder-icon">📁</i>
+        <i
+          class="folder-icon"
+          style="
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu,
+              Cantarell, 'Helvetica Neue', sans-serif;
+          "
+          >{{ isExpanded ? '📂' : '📁' }}</i
+        >
         <span>{{ node.name }}</span>
       </span>
       <!-- 如果是文件，只显示文件图标和名称 -->
       <span v-else>
-        <i class="file-icon">📄</i>
+        <i class="file-icon">📝</i>
         <span>{{ node.name }}</span>
       </span>
     </div>

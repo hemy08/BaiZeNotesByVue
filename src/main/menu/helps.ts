@@ -4,7 +4,7 @@ import os from 'os'
 
 // eslint-disable-next-line no-unused-vars
 function about() {
-  const message = `Hemy Markdown Editor v2.0.0`
+  const message = `Hemy Markdown Editor v1.0.0`
   const v8_v = `引擎版本：${process.versions.v8}\n`
   const sys_info = `当前系统：${os.type()} ${os.arch()} ${os.release()}\n`
   const ele_v = `Electron ：v${process.versions.electron}\n`

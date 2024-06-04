@@ -42,7 +42,7 @@ window.electron.ipcRenderer.on('file-system-data', (_, fileSystemData: string) =
 
 <style scoped>
 #file-manager {
-  background: whitesmoke;
+  background: ghostwhite;
   color: black;
   margin-left: 4px;
   overflow: auto;

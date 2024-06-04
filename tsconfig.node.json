@@ -14,8 +14,8 @@
     "src/lib/templates/plantuml/*.ts",
     "src/lib/templates/mermaid/*.ts",
     "src/lib/scripts/mermaid.js",
-    "src/plugins/**/*.ts",
-    "src/plugins/*.ts",
+    "src/main/plugins/**/*.ts",
+    "src/main/plugins/*.ts",
     "src/preload/**/*"],
   "compilerOptions": {
     "composite": true,

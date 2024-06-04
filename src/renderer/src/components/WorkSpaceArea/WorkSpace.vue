@@ -4,7 +4,7 @@
     <NaviTab />
   </div>
   <!-- 中间资源管理显示区域，宽度可以调节 -->
-  <div id="resource-manager" class="resource-manager" :style="resMgrStyle">
+  <div id="resource-manager" class="resource-manager" :style="resMgrStyle" v-show="isShowResourceMgrArea">
     <ResManager />
   </div>
   <!-- 资源管理器和编辑区域的宽度调节条 -->
@@ -31,12 +31,10 @@ import { computed, ref } from 'vue'
 // 使用 ref 来创建响应式引用
 const resMgrWidth = ref('300px')
 const naviTabWidth = ref('40px')
-
 const naviTabStyle = computed(() => ({
   width: naviTabWidth.value, // 视窗宽度
   height: '100%' // 视窗高度
 }))
-
 // 拖动区域
 const resMgrStyle = computed(() => ({
   width: resMgrWidth.value, // 视窗宽度
@@ -44,20 +42,20 @@ const resMgrStyle = computed(() => ({
   background: 'whitesmoke'
   //marginLeft: naviTabWidth.value // 左侧遗留navi-tab宽度
 }))
-
 // 拖动区域
 const resizerMainStyle = computed(() => ({
   width: '2px', // 视窗宽度
   height: '100% - 20px - 2px' // 视窗高度
   // marginLeft: naviTabWidth.value + resMgrWidth.value // 左侧遗留navi-tab宽度
 }))
-
 // 预览区域样式设置
 const mdContainerStyle = computed(() => ({
   width: `calc(100vw - ${naviTabWidth.value} - ${resMgrWidth.value} - 2px)`, // 视窗宽度
   height: '100%' // 视窗高度
   // marginLeft: 'naviTabWidth.value + resMgrWidth.value + 2px' // 左侧遗留navi-tab宽度
 }))
+const isShowResourceMgrArea = true
+
 
 function startResizerMainResize() {}
 </script>
