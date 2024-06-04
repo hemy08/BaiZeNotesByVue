@@ -1,13 +1,13 @@
 import { BrowserWindow, ipcMain } from 'electron'
 
-let customDialogWindow: Electron.BrowserWindow | null
+let fontSelectDialog: Electron.BrowserWindow | null
 
-export function showFontDialog(mainWindow: Electron.BrowserWindow) {
-  createCustomDialog(mainWindow)
+export function showFontSelectDialog(mainWindow: Electron.BrowserWindow) {
+  createFontSelectDialog(mainWindow)
 }
 // 创建一个自定义对话框的函数
-function createCustomDialog(mainWindow: Electron.BrowserWindow) {
-  customDialogWindow = new BrowserWindow({
+function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
+  fontSelectDialog = new BrowserWindow({
     width: 830,
     height: 530,
     minimizable: false,
@@ -21,28 +21,37 @@ function createCustomDialog(mainWindow: Electron.BrowserWindow) {
     }
   })
 
-  if (!customDialogWindow) {
+  if (!fontSelectDialog) {
     return
   }
 
-  customDialogWindow.setMenu(null)
+  fontSelectDialog.setMenu(null)
 
   // 加载一个 HTML 文件作为对话框的内容
-  customDialogWindow.loadURL(
+  fontSelectDialog.loadURL(
     `data:text/html;charset=utf-8,${encodeURIComponent(CustomFontDialogHtml)}`
   )
 
   // 当窗口关闭时，清除引用
-  customDialogWindow.on('closed', () => {
-    customDialogWindow = null
+  fontSelectDialog.on('closed', () => {
+    fontSelectDialog = null
     ipcMain.removeListener('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
+    ipcMain.removeListener('user-input-custom-font-dialog-cancel', () => {})
   })
 
   // 显示窗口
-  customDialogWindow.show()
+  fontSelectDialog.show()
+
+  function exitFontSelectDialog() {
+    if (fontSelectDialog) {
+      ipcMain.removeListener('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
+      ipcMain.removeListener('user-input-custom-font-dialog-cancel', () => {})
+      fontSelectDialog.close()
+      fontSelectDialog = null
+    }
+  }
 
   function processCustomFontDialogApply(_, inputData) {
-    console.log('inputData111', inputData)
     let htmlContext = inputData.textInput
     const fontBold = '<b>'
     const fontItalic = '<i>'
@@ -64,30 +73,20 @@ function createCustomDialog(mainWindow: Electron.BrowserWindow) {
         htmlContext = fontUnderline + htmlContext + '</s>'
       }
     }
-    let fontBefore = '<font'
-    fontBefore += ` font-family="${inputData.fontFamily}"`
-    fontBefore += ` size=${inputData.fontSize}`
-    fontBefore += ` color="${inputData.fontColor}"`
-    fontBefore += ` style="background-color: ${inputData.fontBackGroundColor}">`
-    fontBefore += htmlContext
-
-    htmlContext = fontBefore + '</font>'
-    console.log('htmlContext', htmlContext)
+    let fontBefore = '<span style="'
+    fontBefore += `font-size: ${inputData.fontSize}; `
+    fontBefore += `color: ${inputData.fontColor}; `
+    fontBefore += `background-color: ${inputData.fontBackGroundColor}; `
+    fontBefore += `font-family='${inputData.fontFamily}';`
+    fontBefore += '">' + htmlContext
+    htmlContext = fontBefore + '</span>\n'
     mainWindow.webContents.send('monaco-insert-text-block-templates', htmlContext)
-    if (customDialogWindow) {
-      ipcMain.removeListener('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
-      customDialogWindow.close()
-      customDialogWindow = null
-    }
+    exitFontSelectDialog()
   }
   ipcMain.on('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
 
   ipcMain.on('user-input-custom-font-dialog-cancel', () => {
-    if (customDialogWindow) {
-      ipcMain.removeListener('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
-      customDialogWindow.close()
-      customDialogWindow = null
-    }
+    exitFontSelectDialog()
   })
 }
 
@@ -156,35 +155,35 @@ const CustomFontDialogHtml =
   '      </div>\n' +
   '      <div class="input-style" style="width: 40px">\n' +
   '        <select name="editor-font-size" id="fontSize">\n' +
-  '          <option value="5px">5px</option>\n' +
-  '          <option value="6px">6px</option>\n' +
-  '          <option value="7px">7px</option>\n' +
-  '          <option value="8px">8px</option>\n' +
-  '          <option value="9px">9px</option>\n' +
-  '          <option value="10px">10px</option>\n' +
-  '          <option value="11px">11px</option>\n' +
-  '          <option value="12px">12px</option>\n' +
-  '          <option value="13px">13px</option>\n' +
-  '          <option value="14px">14px</option>\n' +
-  '          <option value="15px">15px</option>\n' +
-  '          <option value="16px">16px</option>\n' +
-  '          <option value="17px">17px</option>\n' +
-  '          <option value="18px">18px</option>\n' +
-  '          <option value="19px">19px</option>\n' +
-  '          <option value="20px">20px</option>\n' +
-  '          <option value="21px">21px</option>\n' +
-  '          <option value="22px">22px</option>\n' +
-  '          <option value="23px">23px</option>\n' +
-  '          <option value="24px">24px</option>\n' +
-  '          <option value="25px">25px</option>\n' +
-  '          <option value="26px">26px</option>\n' +
-  '          <option value="27px">27px</option>\n' +
-  '          <option value="28px">28px</option>\n' +
-  '          <option value="29px">29px</option>\n' +
-  '          <option value="30px">30px</option>\n' +
-  '          <option value="31px">31px</option>\n' +
-  '          <option value="32px">32px</option>\n' +
-  '          <option value="33px">33px</option>\n' +
+  '          <option value="5pt">5pt</option>\n' +
+  '          <option value="6pt">6pt</option>\n' +
+  '          <option value="7pt">7pt</option>\n' +
+  '          <option value="8pt">8pt</option>\n' +
+  '          <option value="9pt">9pt</option>\n' +
+  '          <option value="10pt">10pt</option>\n' +
+  '          <option value="11pt">11pt</option>\n' +
+  '          <option value="12pt">12pt</option>\n' +
+  '          <option value="13pt">13pt</option>\n' +
+  '          <option value="14pt">14pt</option>\n' +
+  '          <option value="15pt">15pt</option>\n' +
+  '          <option value="16pt">16pt</option>\n' +
+  '          <option value="17pt">17pt</option>\n' +
+  '          <option value="18pt">18pt</option>\n' +
+  '          <option value="19pt">19pt</option>\n' +
+  '          <option value="20pt">20pt</option>\n' +
+  '          <option value="21pt">21pt</option>\n' +
+  '          <option value="22pt">22pt</option>\n' +
+  '          <option value="23pt">23pt</option>\n' +
+  '          <option value="24pt">24pt</option>\n' +
+  '          <option value="25pt">25pt</option>\n' +
+  '          <option value="26pt">26pt</option>\n' +
+  '          <option value="27pt">27pt</option>\n' +
+  '          <option value="28pt">28pt</option>\n' +
+  '          <option value="29pt">29pt</option>\n' +
+  '          <option value="30pt">30pt</option>\n' +
+  '          <option value="31pt">31pt</option>\n' +
+  '          <option value="32pt">32pt</option>\n' +
+  '          <option value="33pt">33pt</option>\n' +
   '        </select>\n' +
   '      </div>\n' +
   '      <div class="input-style"><input type="color" id="fontColor" style="width: 160px">\n' +
@@ -248,14 +247,14 @@ const CustomFontDialogHtml =
   '    </div>\n' +
   '  </div>\n' +
   '  <button id="applyButton" onClick="sendUserInputFontStyle()" style="width: 125px;margin-top: 30px;margin-left: 100px;">应用</button>\n' +
-  '  <button id="cancelButton" onClick="sendDialogCancelFontStyle()" style="width: 125px;margin-top: 30px;margin-left: 200px;">取消</button>\n' +
+  '  <button id="cancelButton" onClick="sendDialogCancelFontStyle()" style="width: 125px;margin-top: 30px;margin-left: 300px;">取消</button>\n' +
   '  <script>\n' +
   "    const { ipcRenderer } = require('electron');\n" +
   '    let fontStyle = {\n' +
   '      fontFamily:"Arial",\n' +
-  '      fontSize: "10px",\n' +
-  '      fontColor: "black",\n' +
-  '      fontBackGroundColor:"white",\n' +
+  '      fontSize: "15pt",\n' +
+  '      fontColor: "#000000",\n' +
+  '      fontBackGroundColor:"#FFFFFF",\n' +
   '      fontBold: false,\n' +
   '      fontItalic: false,\n' +
   '      fontUnderline:false,\n' +
@@ -319,7 +318,6 @@ const CustomFontDialogHtml =
   "    document.getElementById('textInput').addEventListener('input', updateTextInput);\n" +
   '\n' +
   '    function sendUserInputFontStyle() {\n' +
-  "      console.log('sendUserInputFontStyle')\n" +
   "      ipcRenderer.send('user-input-custom-font-dialog-apply', fontStyle);\n" +
   '    }\n' +
   '    function sendDialogCancelFontStyle() {\n' +

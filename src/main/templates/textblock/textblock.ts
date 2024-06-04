@@ -1,7 +1,10 @@
-import {showFontDialog} from "./CustomFontDialog";
-import {blockcode} from "./blockcode";
+import { showFontSelectDialog } from './ShowFontSelectDialog'
+import { showMarkdownSheetDialog } from './ShowMdSheetDialog'
+import { blockcode } from './constBlockCode'
 
 const image_links = '![]()\n'
+const linksList =
+  '- []()\n' + '- []()\n' + '- []()\n' + '- []()\n' + '- []()\n' + '- []()\n' + '- []()\n'
 
 function getFormattedDate() {
   const now = new Date()
@@ -16,4 +19,11 @@ function getFormattedDate() {
   return `<span style="color:rgb(100,180,246);font-size:11pt">最后更新：${fmt_date}</span>\n`
 }
 
-export { image_links, getFormattedDate,  showFontDialog, blockcode}
+export {
+  image_links,
+  getFormattedDate,
+  showFontSelectDialog,
+  showMarkdownSheetDialog,
+  blockcode,
+  linksList
+}
