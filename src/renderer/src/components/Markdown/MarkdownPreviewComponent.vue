@@ -3,19 +3,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, defineProps, watchEffect } from 'vue'
-import MarkdownIt from 'markdown-it'
+import { ref } from 'vue'
+/*import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
 import hljs from "highlight.js";
-
-const props = defineProps({
-  code: {
-    type: String,
-    default: ''
-  }
-})
-
-const renderedMarkdownContent = ref('')
+import mk from '/node_mo'
 
 const md = MarkdownIt()
 md.options.html = true
@@ -23,7 +15,7 @@ md.options.linkify = true
 md.options.langPrefix = 'language-'
 md.options.breaks = true
 md.options.typographer = true
-md.use(highlightjs, { inline: true, hljs: hljs })
+md.use(highlightjs, { inline: true, hljs: hljs }).use(mk)
 md.options.highlight = function (str, lang) {
   if (lang && hljs.getLanguage(lang)) {
     try {
@@ -34,9 +26,9 @@ md.options.highlight = function (str, lang) {
   }
 
   return ''
-}
+}*/
 
-// 组件挂载时，进行初始渲染
+/*// 组件挂载时，进行初始渲染
 onMounted(() => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   hljs.registerLanguage('actionscript', require('highlight.js/lib/languages/actionscript'))
@@ -50,11 +42,20 @@ watchEffect(() => {
 
 // 定义一个函数来更新 Markdown 的渲染
 function updateMarkdown() {
-  renderedMarkdownContent.value = md.render(props.code)
-}
+  renderedMarkdownContent.value = md.render(htmlContent)
+}*/
+
+const renderedMarkdownContent = ref('')
+
+window.electron.ipcRenderer.on('markdown-rendered', (_, htmlContent: string) => {
+  renderedMarkdownContent.value =  htmlContent
+})
 </script>
 
 <style scoped>
+
+@import "katex/dist/katex.min.css";
+
 .markdown-content {
   width: 100%;
   height: 100%;

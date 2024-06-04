@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KaTeX Demo</title>
+  <link rel="stylesheet" href="../../../main/lib/Katex/katex.css">
+  <script src="../../../main/lib/Katex/katex.js"></script>
+</head>
+<body>
+<div id="katex-container">
+  <div>
+    <label>预览区域</label>
+    <input id="katex-preview" style="width:300px;height: 200px;margin-left: 20px">
+  </div>
+  <div style="width:400px;height: 2px; margin-top: 10px; color: black; background-color: black"></div>
+  <div>
+    <label>编辑区域</label>
+    <input id="katex-input" style="width:300px;height: 100px; margin-top: 10px; margin-left: 20px">
+  </div>
+</div>
+
+<script>
+  import {katex} from "../../../main/lib/Katex/katex";
+
+  katex.render("c = \\sqrt{a^2 + b^2 + c^2}", document.getElementById("katex-preview"));
+</script>
+
+</body>
+</html>

@@ -56,7 +56,7 @@ const mdPreviewComponentStyle = computed(() => {
 })
 
 function handleMarkdownCodeUpdate(newValue: string) {
-  markdownEditorCode.value = newValue
+  window.electron.ipcRenderer.send('render-monaco-editor-content', newValue)
 }
 
 window.electron.ipcRenderer.on('open-selected-file-content', (_, fileContent: string) => {

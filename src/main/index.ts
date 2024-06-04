@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
 import { openAndSendSelectFileContent } from './menu/file'
+import { processMarkdownRender } from './utils/MarkdownContentRender'
 
 function createWindow(): void {
   // Create the browser window.
@@ -46,6 +47,10 @@ function createWindow(): void {
 
   ipcMain.on('open-select-file', (_, message) => {
     openAndSendSelectFileContent(mainWindow, message)
+  })
+
+  ipcMain.on('render-monaco-editor-content', (_, message) => {
+    processMarkdownRender(mainWindow, message)
   })
 
   const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
