@@ -1,5 +1,3 @@
-import { ipcMain } from 'electron'
+import { showMermaidEditDialog } from './ShowMermaidEditDialog'
 
-ipcMain.on('pre-code-proc', (event, message) => {
-  event.sender.send('pre-code-proc-result', message)
-})
+export { showMermaidEditDialog }

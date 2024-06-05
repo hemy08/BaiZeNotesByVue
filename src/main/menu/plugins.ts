@@ -1,5 +1,3 @@
-// import { app } from 'electron'
-
 // eslint-disable-next-line no-unused-vars
 export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
   const pluginsMenuItems: Electron.MenuItemConstructorOptions[] = [
@@ -7,6 +5,14 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
       label: 'PlantUML插件 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
+      }
+    },
+    {
+      label: 'Mermaid绘图',
+      click: () => {
+        import('../plugins/plugin').then((module) => {
+          module.showMermaidEditDialog(mainWindow)
+        })
       }
     },
     {

@@ -1,5 +1,4 @@
 import { BrowserWindow, ipcMain } from 'electron'
-import { katexRenderToString } from '../../utils/KatexRender'
 
 let customMermaidEditDialog: Electron.BrowserWindow | null
 
@@ -36,48 +35,69 @@ function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
 
   // 当窗口关闭时，清除引用
   customMermaidEditDialog.on('closed', () => {
-    ipcMain.removeListener('user-insert-math-line-text', processMathLineTextInsert)
-    ipcMain.removeListener('user-insert-math-block-text', processMathBlockTextInsert)
-    ipcMain.removeListener('user-insert-math-text-cancel', () => {})
+    ipcMain.removeListener('user-input-mermaid-graph-context', processMermaidRenderText)
     customMermaidEditDialog = null
   })
 
   // 显示窗口
   customMermaidEditDialog.show()
 
-  function exitCustomFontDialog() {
+  /*function exitCustomFontDialog() {
     if (customMermaidEditDialog) {
-      ipcMain.removeListener('user-insert-math-line-text', processMathLineTextInsert)
-      ipcMain.removeListener('user-insert-math-block-text', processMathBlockTextInsert)
-      ipcMain.removeListener('user-insert-math-text-cancel', () => {})
+      ipcMain.removeListener('user-input-mermaid-graph-context', processMermaidRenderText)
       customMermaidEditDialog.close()
       customMermaidEditDialog = null
     }
-  }
+  }*/
 
-  function processMathLineTextInsert(_, MermaidEdit) {
+  function processMermaidRenderText(_, MermaidEdit) {
     mainWindow.webContents.send('monaco-insert-text-block-templates', MermaidEdit + '\n')
-    exitCustomFontDialog()
+    // exitCustomFontDialog()
+    ipcMain.removeListener('user-input-mermaid-graph-context', processMermaidRenderText)
   }
-
-  function processMathBlockTextInsert(_, MermaidEdit) {
-    mainWindow.webContents.send('monaco-insert-text-block-templates', MermaidEdit + '\n')
-    exitCustomFontDialog()
-  }
-
-  ipcMain.on('user-insert-math-line-text', processMathLineTextInsert)
-  ipcMain.on('user-insert-math-block-text', processMathBlockTextInsert)
-  ipcMain.on('user-insert-math-text-cancel', () => {
-    exitCustomFontDialog()
-  })
-
-  ipcMain.on('sync-katex-render-message', (event, arg) => {
-    if (arg == '') {
-      event.returnValue = katexRenderToString(latexInit)
-    } else {
-      event.returnValue = katexRenderToString(arg)
-    }
-  })
+  ipcMain.on('user-input-mermaid-graph-context', processMermaidRenderText)
 }
 
 const mermaidEditDialogHtmlContext =
+  '<!DOCTYPE html>\n' +
+  '<html lang="zh">\n' +
+  '<head>\n' +
+  '    <meta charset="UTF-8">\n' +
+  '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+  '    <title>Mermaid编辑</title>\n' +
+  '    <script src="../../../main/lib/mermaid/dist/mermaid.min.js"></script>\n' +
+  '</head>\n' +
+  '<body>\n' +
+  '    <div id="mermaidGraph" class="mermaid">\n' +
+  '      mindmap\n' +
+  '        root((mindmap))\n' +
+  '          Origins\n' +
+  '            Long history\n' +
+  '            ::icon(fa fa-book)\n' +
+  '            Popularisation\n' +
+  '              British popular psychology author Tony Buzan\n' +
+  '          Research\n' +
+  '            On effectiveness<br/>and features\n' +
+  '            On Automatic creation\n' +
+  '              Uses\n' +
+  '                  Creative techniques\n' +
+  '                  Strategic planning\n' +
+  '                  Argument mapping\n' +
+  '          Tools\n' +
+  '            Pen and paper\n' +
+  '            Mermaid\n' +
+  '    </div>\n' +
+  '    <script>\n' +
+  "    const { ipcRenderer } = require('electron');\n" +
+  "        var graphDefinition = document.getElementById('mermaidGraph').textContent;\n" +
+  "        mermaid.render('myGraph', graphDefinition, svgObject => document.body.appendChild(svgObject));\n" +
+  "        const svgData = document.getElementById('mermaidGraph').innerHTML\n" +
+  "        console.log('svg', svgData)\n" +
+  '        setTimeout(function() {\n' +
+  "            var chartHtml = document.getElementById('mermaidGraph').innerHTML;\n" +
+  "            ipcRenderer.send('user-input-mermaid-graph-context', chartHtml);\n" +
+  "            console.log('result', chartHtml); // 输出包含 Mermaid 图表的 HTML 字符串\n" +
+  '        }, 1000);\n' +
+  '    </script>\n' +
+  '</body>\n' +
+  '</html>\n'
