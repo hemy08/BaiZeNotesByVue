@@ -3,28 +3,66 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KaTeX Demo</title>
+  <title>KaTeX公式编辑器</title>
   <link rel="stylesheet" href="../../../main/lib/Katex/katex.css">
   <script src="../../../main/lib/Katex/katex.js"></script>
+  <style>
+    #textInput {width: 620px;height: 100px;overflow-y: auto;margin-left: 20px;margin-top: 10px;flex-direction: column}
+    #katex-preview {width: 600px;height: 150px;display:flex;justify-content:center;align-items: center}
+    .btn-style {width:650px;margin-top: 10px; display:flex; justify-content:center;align-items: center;gap: 150px}
+  </style>
 </head>
 <body>
-<div id="katex-container">
-  <div>
-    <label>预览区域</label>
-    <input id="katex-preview" style="width:300px;height: 200px;margin-left: 20px">
+  <div id="katex-container">
+    <div style="flex-direction: row">
+      <div><label style="width: 10px">预览：</label></div>
+      <div id="katex-preview" ></div>
+    </div>
+    <div style="width:650px;height: 2px; margin-top: 10px; color: black; background-color: black"></div>
+    <div style="margin-top: 10px">
+      <div><label style="width: 10px; margin-top: 10px">公式编辑：</label></div>
+      <div><textarea id="textInput" class="text-input"></textarea></div>
+    </div>
   </div>
-  <div style="width:400px;height: 2px; margin-top: 10px; color: black; background-color: black"></div>
-  <div>
-    <label>编辑区域</label>
-    <input id="katex-input" style="width:300px;height: 100px; margin-top: 10px; margin-left: 20px">
+  <div class="btn-style">
+    <button id="insert-math-line" onclick="sendInsertMathLineText()">插入行内公式</button>
+    <button id="insert-math-block" onclick="sendInsertMathBlockText()">插入公式块</button>
+    <button id="cancel-insert-math" onclick="sendCancelInsertMathText()">取消编辑</button>
   </div>
-</div>
+  <script>
+  // const { ipcRenderer } = require('electron')
 
-<script>
-  import {katex} from "../../../main/lib/Katex/katex";
-
-  katex.render("c = \\sqrt{a^2 + b^2 + c^2}", document.getElementById("katex-preview"));
-</script>
-
+  let latex = ''
+  document.addEventListener('DOMContentLoaded', () => {
+    // 初始显示 c = \sqrt{a^2 + b^2}
+    const latexInit = '傅里叶级数公式 : x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)'
+    document.getElementById('katex-preview').innerHTML = katex.renderToString(latexInit)
+    document.getElementById('textInput').textContent = latexInit
+  })
+  // 处理textInput的input事件，获取内容，渲染后进行显示
+  function updateTextInput(event) {
+    const inputText = event.target.value
+    let html = ''
+    try {
+      html = katex.renderToString(inputText)
+    } catch (error) {
+      html = latex
+    }
+    document.getElementById("katex-preview").innerHTML = html
+    latex = event.target.value
+  }
+  // 监控textInput的input事件
+  document.getElementById('textInput').addEventListener('input', updateTextInput);
+  // 这里是JavaScript函数，例如：
+  function sendInsertMathLineText() {
+    ipcRenderer.send('user-insert-math-line-text', '$' + latex + '$')
+  }
+  function sendInsertMathBlockText() {
+    ipcRenderer.send('user-insert-math-block-text', '$$' + latex + '$$')
+  }
+  function sendCancelInsertMathText() {
+    ipcRenderer.send('user-insert-math-text-cancel')
+  }
+  </script>
 </body>
 </html>

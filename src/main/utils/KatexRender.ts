@@ -13,7 +13,7 @@ md.use(highlightjs, { inline: true, hljs: hljs })
 md.options.highlight = function (str, lang) {
   if (lang && hljs.getLanguage(lang)) {
     try {
-      return hljs.highlight(str, {language: lang, ignoreIllegals:true}).value
+      return hljs.highlight(str, { language: lang, ignoreIllegals: true }).value
     } catch (__) {
       return ''
     }
@@ -36,12 +36,14 @@ function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string
     try {
       html = katex.renderToString(latex)
     } catch (error) {
-      console.error('LaTeX代码有误:', error)
       html = latex
     }
 
     if (isBlock) {
-      html = '<div style="text-align: center;"><p>' + html + '</p></div>'
+      html =
+        '<div style="text-align: center;margin-top: 20px;margin-bottom: 20px"><p>' +
+        html +
+        '</p></div>'
     }
     // 替换原始文本中的 $latex$ 为渲染后的 HTML
     // 注意：这里我们假设文本中不含有会破坏 HTML 的特殊字符
@@ -65,13 +67,25 @@ function renderMathBlockInText(text: string): string {
   return renderMathInText(text, regex, true)
 }
 
+export function katexRenderToString(text: string): string {
+  let html = ''
+  try {
+    html = katex.renderToString(text)
+  } catch (error) {
+    html = text
+  }
+
+  return html
+}
+
 export function katexRenderMathInText(text: string): string {
   // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
   const result = renderMathBlockInText(text)
   return renderMathLineInText(result)
 }
 
+/*
 export function processMarkdownRender(mainWindow: Electron.BrowserWindow, data) {
   const htmlContent = md.render(data)
   mainWindow.webContents.send('markdown-rendered', katexRenderMathInText(htmlContent))
-}
+}*/

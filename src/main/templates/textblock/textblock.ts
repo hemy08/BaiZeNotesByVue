@@ -1,5 +1,6 @@
 import { showFontSelectDialog } from './ShowFontSelectDialog'
 import { showMarkdownSheetDialog } from './ShowMdSheetDialog'
+import { showMathTextDialog } from './ShowMathTextDialog'
 import { blockcode } from './constBlockCode'
 
 const image_links = '![]()\n'
@@ -24,6 +25,7 @@ export {
   getFormattedDate,
   showFontSelectDialog,
   showMarkdownSheetDialog,
+  showMathTextDialog,
   blockcode,
   linksList
 }

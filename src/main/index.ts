@@ -1,7 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
 import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
 import { openAndSendSelectFileContent } from './menu/file'
@@ -15,7 +14,6 @@ function createWindow(): void {
     show: false,
     title: 'Hemy Markdown Editor',
     autoHideMenuBar: false,
-    ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -24,7 +22,9 @@ function createWindow(): void {
     }
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   require('@electron/remote/main').initialize()
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   require('@electron/remote/main').enable(mainWindow.webContents)
 
   mainWindow.on('ready-to-show', () => {

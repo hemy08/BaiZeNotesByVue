@@ -3,11 +3,11 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted, ref, watchEffect} from 'vue'
+import { onMounted, ref, watchEffect } from 'vue'
 import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
-import hljs from "highlight.js";
-import { katexRenderMathInText } from '../../../../main/utils/MarkdownContentRender'
+import hljs from 'highlight.js'
+import { katexRenderMathInText } from '../../../../main/utils/KatexRender'
 
 const props = defineProps({
   code: {
@@ -60,8 +60,7 @@ function updateMarkdown() {
 </script>
 
 <style scoped>
-
-@import "katex/dist/katex.min.css";
+@import 'katex/dist/katex.min.css';
 
 .markdown-content {
   width: 100%;

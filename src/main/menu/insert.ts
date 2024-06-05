@@ -487,9 +487,11 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       submenu: insertMenuItemCodeBlock
     },
     {
-      label: '插入数学公式 ...待开发',
+      label: '插入数学公式',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        import('../templates/textblock/textblock').then((module) => {
+          module.showMathTextDialog(mainWindow)
+        })
       }
     },
     {
