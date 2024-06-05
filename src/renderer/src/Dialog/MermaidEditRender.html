@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid编辑</title>
+    <!-- 引入Mermaid的CSS（如果有的话，Mermaid的CSS通常用于主题或样式定制） -->
+    <!-- <link rel="stylesheet" href="../../../main/lib/mermaid/dist/themes/theme-default.d.ts"> -->
+    <!-- 引入Mermaid的JavaScript -->
+    <script src="../../../main/lib/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div id="mermaidGraph" class="mermaid">
+mindmap
+  root((mindmap))
+    Origins
+      Long history
+      ::icon(fa fa-book)
+      Popularisation
+        British popular psychology author Tony Buzan
+    Research
+      On effectiveness<br/>and features
+      On Automatic creation
+        Uses
+            Creative techniques
+            Strategic planning
+            Argument mapping
+    Tools
+      Pen and paper
+      Mermaid
+    </div>
+
+    <script>
+        // 初始化Mermaid并渲染图表
+        // mermaid.initialize({ startOnLoad: true });
+        // 或者，如果你想要更精确地控制何时渲染图表，可以使用以下代码：
+        var graphDefinition = document.getElementById('mermaidGraph').textContent;
+        mermaid.render('myGraph', graphDefinition, svgObject => document.body.appendChild(svgObject));
+        const svgData = document.getElementById('mermaidGraph').innerHTML
+        console.log('svg', svgData)
+
+        setTimeout(function() {
+            var chartHtml = document.getElementById('mermaidGraph').innerHTML;
+            console.log('result', chartHtml); // 输出包含 Mermaid 图表的 HTML 字符串
+        }, 1000);
+    </script>
+</body>
+</html>
