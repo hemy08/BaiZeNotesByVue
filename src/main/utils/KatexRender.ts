@@ -1,26 +1,4 @@
-import MarkdownIt from 'markdown-it'
-import highlightjs from 'markdown-it-highlightjs'
-import hljs from 'highlight.js'
 import katex from '../lib/Katex/katex.mjs'
-
-const md = MarkdownIt()
-md.options.html = true
-md.options.linkify = true
-md.options.langPrefix = 'language-'
-md.options.breaks = true
-md.options.typographer = true
-md.use(highlightjs, { inline: true, hljs: hljs })
-md.options.highlight = function (str, lang) {
-  if (lang && hljs.getLanguage(lang)) {
-    try {
-      return hljs.highlight(str, { language: lang, ignoreIllegals: true }).value
-    } catch (__) {
-      return ''
-    }
-  }
-
-  return ''
-}
 
 function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string {
   // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
@@ -84,8 +62,3 @@ export function katexRenderMathInText(text: string): string {
   return renderMathLineInText(result)
 }
 
-/*
-export function processMarkdownRender(mainWindow: Electron.BrowserWindow, data) {
-  const htmlContent = md.render(data)
-  mainWindow.webContents.send('markdown-rendered', katexRenderMathInText(htmlContent))
-}*/
