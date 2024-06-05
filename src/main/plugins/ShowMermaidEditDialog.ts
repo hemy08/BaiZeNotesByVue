@@ -1,6 +1,7 @@
-import { BrowserWindow, ipcMain } from 'electron'
+/*import { BrowserWindow, ipcMain } from 'electron'
+import getMermaidSvg from '../utils/MermaidRender'
 
-let customMermaidEditDialog: Electron.BrowserWindow | null
+let customMermaidEditDialog: Electron.BrowserWindow | null*/
 
 export function showMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
   createMermaidEditDialog(mainWindow)
@@ -8,7 +9,8 @@ export function showMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
 
 // 创建一个自定义对话框的函数
 function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
-  customMermaidEditDialog = new BrowserWindow({
+  console.log('createMermaidEditDialog 11111')
+  /*customMermaidEditDialog = new BrowserWindow({
     width: 1280,
     height: 550,
     minimizable: false,
@@ -50,14 +52,34 @@ function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
     }
   }*/
 
-  function processMermaidRenderText(_, MermaidEdit) {
-    mainWindow.webContents.send('monaco-insert-text-block-templates', MermaidEdit + '\n')
-    // exitCustomFontDialog()
-    ipcMain.removeListener('user-input-mermaid-graph-context', processMermaidRenderText)
-  }
-  ipcMain.on('user-input-mermaid-graph-context', processMermaidRenderText)
-}
+  const graphData =
+    'classDiagram\n' +
+    'direction LR\n' +
+    'Animal ()-- Dog\n' +
+    'Animal ()-- Cat\n' +
+    'note for Cat "should have no members area"\n' +
+    'Dog : bark()\n' +
+    'Dog : species()'
+  mainWindow.webContents.send('mermaid-graph-definition', graphData)
 
+  /*function processMermaidRenderText(event, mermaidGraphData) {
+    getMermaidSvg(mermaidGraphData)
+      .then((svg) => {
+        event.returnValue = svg
+      })
+      .catch((error) => {
+        console.error(error)
+      })
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    /* require('mermaid').mermaid.render('id', mermaidGraphData, (svgData) => {
+      mainWindow.webContents.send('monaco-insert-text-block-templates', svgData)
+    })
+    event.returnValue = mermaidGraphData
+    mainWindow.webContents.send('monaco-insert-text-block-templates', mermaidGraphData)
+  }
+  ipcMain.on('user-input-mermaid-graph-context', processMermaidRenderText)*/
+}
+/*
 const mermaidEditDialogHtmlContext =
   '<!DOCTYPE html>\n' +
   '<html lang="zh">\n' +
@@ -65,39 +87,18 @@ const mermaidEditDialogHtmlContext =
   '    <meta charset="UTF-8">\n' +
   '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
   '    <title>Mermaid编辑</title>\n' +
-  '    <script src="../../../main/lib/mermaid/dist/mermaid.min.js"></script>\n' +
   '</head>\n' +
   '<body>\n' +
   '    <div id="mermaidGraph" class="mermaid">\n' +
   '      mindmap\n' +
   '        root((mindmap))\n' +
   '          Origins\n' +
-  '            Long history\n' +
-  '            ::icon(fa fa-book)\n' +
-  '            Popularisation\n' +
-  '              British popular psychology author Tony Buzan\n' +
-  '          Research\n' +
-  '            On effectiveness<br/>and features\n' +
-  '            On Automatic creation\n' +
-  '              Uses\n' +
-  '                  Creative techniques\n' +
-  '                  Strategic planning\n' +
-  '                  Argument mapping\n' +
   '          Tools\n' +
   '            Pen and paper\n' +
   '            Mermaid\n' +
   '    </div>\n' +
   '    <script>\n' +
-  "    const { ipcRenderer } = require('electron');\n" +
-  "        var graphDefinition = document.getElementById('mermaidGraph').textContent;\n" +
-  "        mermaid.render('myGraph', graphDefinition, svgObject => document.body.appendChild(svgObject));\n" +
-  "        const svgData = document.getElementById('mermaidGraph').innerHTML\n" +
-  "        console.log('svg', svgData)\n" +
-  '        setTimeout(function() {\n' +
-  "            var chartHtml = document.getElementById('mermaidGraph').innerHTML;\n" +
-  "            ipcRenderer.send('user-input-mermaid-graph-context', chartHtml);\n" +
-  "            console.log('result', chartHtml); // 输出包含 Mermaid 图表的 HTML 字符串\n" +
-  '        }, 1000);\n' +
   '    </script>\n' +
   '</body>\n' +
   '</html>\n'
+*/

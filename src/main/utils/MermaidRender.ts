@@ -1,5 +1,15 @@
-import mermaid from '../lib/mermaid'
-import mermaidAPI from 'mermaid/dist/mermaidAPI'
+import mermaid from '../../main/lib/mermaid/dist/mermaid.esm.mjs'
 
-function renderMermaidGraph(id, mermaidContent, container) {
+export default function getMermaidSvg(graphDefinition: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    try {
+      // 使用mermaid的API渲染图表
+      mermaid.render('mermaidSvg', graphDefinition, (svgGraph) => {
+        // 渲染完成后，svgGraph是包含SVG的字符串
+        resolve(svgGraph)
+      })
+    } catch (error) {
+      reject(error)
+    }
+  })
 }

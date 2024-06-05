@@ -49,9 +49,9 @@ function createWindow(): void {
     openAndSendSelectFileContent(mainWindow, message)
   })
 
-  /*ipcMain.on('render-monaco-editor-content', (_, message) => {
-    processMarkdownRender(mainWindow, message)
-  })*/
+  ipcMain.on('mermaid-graph-svg-data-to-main', (_, svgData) => {
+    console.log('svgData', svgData)
+  })
 
   const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
   Menu.setApplicationMenu(menu)

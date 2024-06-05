@@ -1,5 +1,8 @@
-<template>
+<template xmlns="http://www.w3.org/1999/html">
   <div class="markdown-content" v-html="renderedMarkdownContent"></div>
+  <div id="mermaid-render-area">
+    <MermaidRender v-if="showMermaidComponent"/>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -8,6 +11,7 @@ import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
 import hljs from 'highlight.js'
 import { katexRenderMathInText } from '../../../../main/utils/KatexRender'
+import MermaidRender from './MermaidRender.vue'
 
 const props = defineProps({
   code: {
@@ -17,6 +21,7 @@ const props = defineProps({
 })
 
 const renderedMarkdownContent = ref('')
+const showMermaidComponent = ref(false)
 
 const md = MarkdownIt()
 md.options.html = true
@@ -67,5 +72,10 @@ function updateMarkdown() {
   height: 100%;
   overflow-y: auto; /* 允许垂直滚动条在需要时出现 */
   display: inline-block;
+}
+
+#mermaid-render-area {
+  display: none;
+  visibility: hidden;
 }
 </style>

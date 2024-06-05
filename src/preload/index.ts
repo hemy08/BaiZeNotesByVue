@@ -1,5 +1,6 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const remoteDialog = require('@electron/remote').dialog
 
 // Custom APIs for renderer
@@ -56,6 +57,8 @@ window.saveImage = (name, data) => {
         }
         // fs.writeFileSync(filePath, Buffer.from(buffer))
         // shell.showItemInFolder(filePath)
-      } catch (e) { /* empty */ }
+      } catch (e) {
+        /* empty */
+      }
     })
 }
