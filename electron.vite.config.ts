@@ -12,7 +12,9 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src')
+        '@renderer': resolve('src/renderer/src'),
+        '@mainer': resolve('src/main'),
+        '@libs': resolve('src/renderer/src/lib')
       }
     },
     plugins: [vue()]

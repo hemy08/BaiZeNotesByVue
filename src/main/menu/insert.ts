@@ -7,7 +7,7 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '特殊字体',
       click: () => {
-        import('../templates/textblock/textblock').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.showFontSelectDialog(mainWindow)
         })
       }
@@ -15,7 +15,7 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: 'markdown表格',
       click: () => {
-        import('../templates/textblock/textblock').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.showMarkdownSheetDialog(mainWindow)
         })
       }
@@ -489,7 +489,7 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '插入数学公式',
       click: () => {
-        import('../templates/textblock/textblock').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.showMathTextDialog(mainWindow)
         })
       }

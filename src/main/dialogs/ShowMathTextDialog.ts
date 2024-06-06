@@ -1,5 +1,5 @@
 import { BrowserWindow, ipcMain } from 'electron'
-import { katexRenderToString } from '../../utils/KatexRender'
+import { katexRenderToString } from '../utils/KatexRender'
 
 let customMathTextDialog: Electron.BrowserWindow | null
 

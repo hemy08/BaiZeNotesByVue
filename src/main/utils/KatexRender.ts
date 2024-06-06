@@ -1,4 +1,4 @@
-import katex from '../lib/Katex/katex.mjs'
+import katex from '../../renderer/src/lib/Katex/katex.mjs'
 
 function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string {
   // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
@@ -61,4 +61,3 @@ export function katexRenderMathInText(text: string): string {
   const result = renderMathBlockInText(text)
   return renderMathLineInText(result)
 }
-

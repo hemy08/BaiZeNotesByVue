@@ -16,6 +16,17 @@
     "src/main/plugins/*.ts",
     "src/main/utils/**/*.ts",
     "src/main/utils/*.js",
+    "src/renderer/src/lib/**/*.ts",
+    "src/renderer/src/lib/themes/*.ts",
+    "src/renderer/src/lib/Katex/**/*.ts",
+    "src/renderer/src/lib/Katex/**/*.js",
+    "src/renderer/src/lib/Katex/**/*.mjs",
+    "src/renderer/src/lib/Katex/*.ts",
+    "src/renderer/src/lib/Katex/*.js",
+    "src/renderer/src/lib/Katex/*.mjs",
+    "src/renderer/src/lib/mermaid/**/*.ts",
+    "src/renderer/src/lib/mermaid/**/*.js",
+    "src/renderer/src/lib/mermaid/**/*.mjs",
     "src/preload/*.d.ts"
   ],
   "compilerOptions": {

@@ -19,7 +19,6 @@ const props = defineProps({
 })
 
 const renderedMarkdownContent = ref('')
-const showMermaidComponent = ref(false)
 
 const md = MarkdownIt()
 md.options.html = true

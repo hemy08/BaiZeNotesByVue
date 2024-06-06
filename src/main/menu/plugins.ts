@@ -4,7 +4,7 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: 'PlantUML Online',
       click: () => {
-        import('../plugins/plugin').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.OpenPlantUmlOnline()
         })
       }
@@ -12,7 +12,7 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: 'Mermaid 在线编辑',
       click: () => {
-        import('../plugins/plugin').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.OpenMermaidLiveEditor()
         })
       }
@@ -20,7 +20,7 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '菜鸟工具',
       click: () => {
-        import('../plugins/plugin').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.OpenJYShareOnline()
         })
       }
@@ -28,7 +28,7 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: 'SVG在线',
       click: () => {
-        import('../plugins/plugin').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.OpenSvgEditorOnline()
         })
       }
@@ -36,14 +36,15 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '菜鸟绘图工具',
       click: () => {
-        import('../plugins/plugin').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.OpenShapeFlyDiagramOnline()
         })
       }
-    },{
+    },
+    {
       label: '在线流程图',
       click: () => {
-        import('../plugins/plugin').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.OpenDiagramsOnline()
         })
       }
@@ -51,7 +52,7 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '菜鸟在线办公软件',
       click: () => {
-        import('../plugins/plugin').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.OpenJYShareOfficeOnline()
         })
       }
@@ -59,7 +60,7 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '思维导图',
       click: () => {
-        import('../plugins/plugin').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.OpenMindmapOnline()
         })
       }
@@ -67,7 +68,7 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: 'HTML表格生成器',
       click: () => {
-        import('../plugins/plugin').then((module) => {
+        import('../dialogs/dialogs').then((module) => {
           module.OpenHtmlSheetCreateOnline()
         })
       }

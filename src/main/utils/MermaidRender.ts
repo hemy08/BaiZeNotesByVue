@@ -1,4 +1,4 @@
-import mermaid from '../../main/lib/mermaid/dist/mermaid.esm.mjs'
+import mermaid from '../../renderer/src/lib/mermaid/dist/mermaid.esm.mjs'
 
 export default function getMermaidSvg(graphDefinition: string): Promise<string> {
   return new Promise((resolve, reject) => {
