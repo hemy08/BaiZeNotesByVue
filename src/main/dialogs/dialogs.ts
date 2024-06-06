@@ -2,6 +2,7 @@ import { openOnlineWebPage } from './OpenOnlineWebPages'
 import { showFontSelectDialog } from './ShowFontSelectDialog'
 import { showMarkdownSheetDialog } from './ShowMdSheetDialog'
 import { showMathTextDialog } from './ShowMathTextDialog'
+import { showMermaidEditDialog } from './ShowMermaidEditDialog'
 
 function OpenMermaidLiveEditor() {
   openOnlineWebPage('https://mermaid.live/edit')
@@ -51,5 +52,6 @@ export {
   OpenHtmlSheetCreateOnline,
   showFontSelectDialog,
   showMarkdownSheetDialog,
-  showMathTextDialog
+  showMathTextDialog,
+  showMermaidEditDialog
 }

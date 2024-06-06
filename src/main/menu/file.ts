@@ -245,7 +245,7 @@ function shouOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
     })
 }
 
-export function openAndSendSelectFileContent(mainWindow, filePath) {
+export function openAndSendSelectFileContent(mainWindow: Electron.BrowserWindow, filePath: string) {
   fs.readFile(filePath, 'utf8', (err, data) => {
     if (!err) {
       mainWindow.webContents.send('open-selected-file-content', data)

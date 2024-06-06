@@ -8,31 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
 </head>
 <body>
-  <div style="display: flex; flex-direction: row; margin-left: 20px;">
-    <div id="mermaidEdit" style="width: 40vw;height: calc(100vh - 50px);">
-      <div class="label-style"><label for="textInput">编辑区域：</label></div>
-      <textarea id="textInput" style="width: 40vw;height: calc(100vh - 100px);margin-top: 10px">
-mindmap
-  root((mindmap))
-    Origins
-      Long history
-      ::icon(fa fa-book)
-      Popularisation
-        British popular psychology author Tony Buzan
-    Research
-      On effectiveness<br/>and features
-      On Automatic creation
-        Uses
-            Creative techniques
-            Strategic planning
-            Argument mapping
-    Tools
-      Pen and paper
-      Mermaid
-      </textarea>
-    </div>
-    <div style="width: 60vw;">
-      <div id="mermaidPreview" class="mermaid">
+      <div id="mermaidGraph" class="mermaid">
 mindmap
   root((mindmap))
     Origins
@@ -51,24 +27,19 @@ mindmap
       Pen and paper
       Mermaid
       </div>
-    </div>
-  </div>
   <script>
-    //mermaid.initialize({ startOnLoad: false });
-    function updateGraphDefine(event) {
-      const graphDefinition = event.target.value
-      console.log(graphDefinition);
+    const { ipcRenderer } = require('electron')
+    mermaid.initialize({ startOnLoad: true });
 
-      // 清除之前的SVG（如果有）
-      const mermaidPreview = document.getElementById('mermaidPreview');
-      mermaidPreview.innerHTML = graphDefinition
+    var graphDefinition = document.getElementById('mermaidGraph').textContent;
+    mermaid.render('mermaid-id', graphDefinition, svgObject => document.appendChild(svgObject));
+    // const svgData = document.getElementById('mermaidGraph').innerHTML
+    setTimeout(function() {
+      var chartHtml = document.getElementById('mermaidGraph').outerHTML;
+      console.log(chartHtml);
+      ipcRenderer.send('user-input-mermaid-graph-context', chartHtml)
+    }, 1000);
 
-      mermaid.render('mermaidPreview', graphDefinition,  function(svgObject) {
-        mermaidPreview.appendChild(svgObject)
-        console.log(svgObject.outerHTML);
-      });
-    }
-    document.getElementById('textInput').addEventListener('input', updateGraphDefine);
   </script>
 </body>
 </html>

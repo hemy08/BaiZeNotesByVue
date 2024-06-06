@@ -4,7 +4,10 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
 import { openAndSendSelectFileContent } from './menu/file'
+import { HemyRender } from "./utils/HemyRender";
 // import { processMarkdownRender } from './utils/MarkdownContentRender'
+
+let CustomRenderMarkdownResult = ''
 
 function createWindow(): void {
   // Create the browser window.

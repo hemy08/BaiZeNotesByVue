@@ -1,6 +1,6 @@
 <template xmlns="http://www.w3.org/1999/html">
   <div class="markdown-content" v-html="renderedMarkdownContent"></div>
-  <MermaidPreview />
+  <MermaidRender v-if="isShowMermaidPreview"/>
 </template>
 
 <script setup lang="ts">
@@ -8,8 +8,8 @@ import { onMounted, ref, watchEffect } from 'vue'
 import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
 import hljs from 'highlight.js'
-import { katexRenderMathInText } from '../../../../main/utils/KatexRender'
-import MermaidPreview from './MermaidPreview.vue'
+
+import MermaidRender from './MermaidRender.vue'
 
 const props = defineProps({
   code: {
@@ -19,6 +19,7 @@ const props = defineProps({
 })
 
 const renderedMarkdownContent = ref('')
+const isShowMermaidPreview = ref(false)
 
 const md = MarkdownIt()
 md.options.html = true
@@ -53,12 +54,9 @@ watchEffect(() => {
 
 // 定义一个函数来更新 Markdown 的渲染
 function updateMarkdown() {
-  renderedMarkdownContent.value = md.render(katexRenderMathInText(props.code))
+  const result = window.electron.ipcRenderer.sendSync('render-monaco-editor-content', props.code);
+  renderedMarkdownContent.value = md.render(result)
 }
-
-/*window.electron.ipcRenderer.on('markdown-rendered', (_, htmlContent: string) => {
-  renderedMarkdownContent.value =  htmlContent
-})*/
 </script>
 
 <style scoped>

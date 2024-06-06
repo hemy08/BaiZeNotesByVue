@@ -4,6 +4,14 @@
 export function getAppToolsMenuItem(mainWindow: Electron.BrowserWindow) {
   const toolsMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
+      label: 'Mermaid绘图',
+      click: () => {
+        import('../dialogs/dialogs').then((module) => {
+          module.showMermaidEditDialog(mainWindow)
+        })
+      }
+    },
+    {
       label: '电子表格 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)

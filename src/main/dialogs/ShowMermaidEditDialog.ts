@@ -1,7 +1,7 @@
-/*import { BrowserWindow, ipcMain } from 'electron'
-import getMermaidSvg from '../utils/MermaidRender'
+import { BrowserWindow, ipcMain } from 'electron'
+import { join } from 'path'
 
-let customMermaidEditDialog: Electron.BrowserWindow | null*/
+let customMermaidEditDialog: Electron.BrowserWindow | null
 
 export function showMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
   createMermaidEditDialog(mainWindow)
@@ -10,7 +10,7 @@ export function showMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
 // 创建一个自定义对话框的函数
 function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
   console.log('createMermaidEditDialog 11111')
-  /*customMermaidEditDialog = new BrowserWindow({
+  customMermaidEditDialog = new BrowserWindow({
     width: 1280,
     height: 550,
     minimizable: false,
@@ -31,9 +31,7 @@ function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
   customMermaidEditDialog.setMenu(null)
 
   // 加载一个 HTML 文件作为对话框的内容
-  customMermaidEditDialog.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(mermaidEditDialogHtmlContext)}`
-  )
+  customMermaidEditDialog.loadURL(join(__dirname, '../../src/renderer/src/Dialog/MermaidEditRender.html'))
 
   // 当窗口关闭时，清除引用
   customMermaidEditDialog.on('closed', () => {
@@ -44,6 +42,10 @@ function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
   // 显示窗口
   customMermaidEditDialog.show()
 
+  function processMermaidRenderText(_, mermaidGraphData) {
+    console.log(mermaidGraphData)
+  }
+  ipcMain.on('user-input-mermaid-graph-context', processMermaidRenderText)
   /*function exitCustomFontDialog() {
     if (customMermaidEditDialog) {
       ipcMain.removeListener('user-input-mermaid-graph-context', processMermaidRenderText)
