@@ -1,8 +1,6 @@
 <template xmlns="http://www.w3.org/1999/html">
   <div class="markdown-content" v-html="renderedMarkdownContent"></div>
-  <div id="mermaid-render-area">
-    <MermaidRender v-if="showMermaidComponent"/>
-  </div>
+  <MermaidPreview />
 </template>
 
 <script setup lang="ts">
@@ -11,7 +9,7 @@ import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
 import hljs from 'highlight.js'
 import { katexRenderMathInText } from '../../../../main/utils/KatexRender'
-import MermaidRender from './MermaidRender.vue'
+import MermaidPreview from './MermaidPreview.vue'
 
 const props = defineProps({
   code: {
