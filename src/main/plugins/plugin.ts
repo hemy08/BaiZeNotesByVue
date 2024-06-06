@@ -1,3 +1,10 @@
-import { showMermaidEditDialog } from './ShowMermaidEditDialog'
+import { openOnlineWebPage } from './OpenOnlineWebPages'
 
-export { showMermaidEditDialog }
+function OpenMermaidLiveEditor() {
+  openOnlineWebPage('https://mermaid.live/edit')
+}
+function OpenPlantUmlOnline() {
+  openOnlineWebPage('http://www.plantuml.com/plantuml/uml/')
+}
+
+export { OpenMermaidLiveEditor, OpenPlantUmlOnline }

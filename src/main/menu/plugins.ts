@@ -2,16 +2,18 @@
 export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
   const pluginsMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: 'PlantUML插件 ...待开发',
+      label: 'PlantUML Online',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        import('../plugins/plugin').then((module) => {
+          module.OpenPlantUmlOnline()
+        })
       }
     },
     {
-      label: 'Mermaid绘图',
+      label: 'Mermaid 在线编辑',
       click: () => {
         import('../plugins/plugin').then((module) => {
-          module.showMermaidEditDialog(mainWindow)
+          module.OpenMermaidLiveEditor()
         })
       }
     },
