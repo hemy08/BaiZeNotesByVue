@@ -1,0 +1,11 @@
+<html lang="zh"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>'Mermaid编辑'</title><script type="module" src="../../../main/lib/mermaid/dist/mermaid.min.js"></script></head><body><div id="mermaidGraph" class="mermaid"></div><script>var graphDefinition = document.getElementById('mermaidGraph').textContent;
+mermaid.render('mermaid-id', graphDefinition, svgObject => document.body.appendChild(svgObject));
+const svgData = document.getElementById('mermaidGraph').innerHTML
+console.log('svg', svgData)
+setTimeout(function() {
+    var chartHtml = document.getElementById('mermaidGraph').innerHTML;
+    console.log('result', chartHtml);
+}, 1000);
+</script></body></html>
