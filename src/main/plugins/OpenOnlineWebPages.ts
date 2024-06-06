@@ -1,7 +1,7 @@
 import { BrowserWindow } from 'electron'
 
 export function openOnlineWebPage(url: string) {
-  let localOpenWebPageDialog = new BrowserWindow({
+  const localOpenWebPageDialog = new BrowserWindow({
     width: 1280,
     height: 960,
     autoHideMenuBar: true,
@@ -13,8 +13,4 @@ export function openOnlineWebPage(url: string) {
   })
 
   localOpenWebPageDialog.loadURL(url)
-
-  localOpenWebPageDialog.on('closed', () => {
-    localOpenWebPageDialog = null
-  })
 }

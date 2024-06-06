@@ -6,19 +6,6 @@
     <title>Mermaid编辑</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.css">
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
-    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-    <link rel="stylesheet" href="https://pathli.com/app/assets/build/style/select2_material.css"/>
-    <link rel="stylesheet" href="https://pathli.com/app/assets/build/style/materialize.css" />
-    <link rel='stylesheet' href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/mermaid/6.0.0/mermaid.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/6.0.0/mermaid.js"></script>
-    <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/js/materialize.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/select2/3.5.2/select2.min.js"></script>
-    <link href="https://cdn.rawgit.com/novus/nvd3/master/build/nv.d3.css" rel="stylesheet" type="text/css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.2/d3.min.js" charset="utf-8"></script>
-    <script src="https://cdn.rawgit.com/novus/nvd3/master/build/nv.d3.js"></script>
 </head>
 <body>
   <div style="display: flex; flex-direction: row; margin-left: 20px;">
@@ -67,20 +54,6 @@ mindmap
     </div>
   </div>
   <script>
-    $(document).on('change', function(){
-   var config = {
-            startOnLoad:true,
-            htmlLabels:true,
-            callback:function(id){
-                console.log(id,' rendered');
-            },
-            flowchart:{
-                    useMaxWidth:false,
-                }
-        };
-        mermaid.initialize(config);
-});
-
     //mermaid.initialize({ startOnLoad: false });
     function updateGraphDefine(event) {
       const graphDefinition = event.target.value
