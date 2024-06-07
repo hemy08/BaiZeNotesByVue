@@ -55,21 +55,18 @@ mindmap
   </div>
   <script>
     //const { ipcRenderer } = require('electron')
-    mermaid.initialize({ startOnLoad: true });
+    mermaid.initialize({ startOnLoad: false });
     function updateGraph(event) {
       console.log('graphDesc', event.target.value)
       document.getElementById('textInput').innerHTML = event.target.value
       const graphDesc = document.getElementById('textInput').innerHTML;
       console.log('graphDesc', graphDesc)
       const mermaidPreview = document.getElementById('mermaidPreview')
-      console.log('mermaidPreview', mermaidPreview.firstChild)
+      console.log('mermaidPreview', mermaidPreview)
       if (mermaidPreview.firstChild) {
         mermaidPreview.firstChild = ''
       }
-      mermaid.render('mermaidPreview', graphDesc,  function(svgObject) {
-        mermaidPreview.appendChild(svgObject)
-        console.log(svgObject.outerHTML);
-      });
+      mermaid.init(undefined, mermaidPreview);
     }
       // 监听文本输入和样式输入的变化
     document.getElementById('textInput').addEventListener('input', updateGraph);
