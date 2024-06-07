@@ -22,6 +22,17 @@ export const HemyMermaidParse = async (code: string): Promise<unknown> => {
 
 import { mermaidHandleGetRenderResult } from '../dialogs/dialogs'
 
+// 存储mermaid字符和svg的隐射关系，单个文档存储，如果文档保存，则清空
+const mermaidToSvgMap: Map<string, string> = new Map()
+
+function storeMermaidMapping(mermaidCode: string, svgString: string): void {
+  mermaidToSvgMap.set(mermaidCode, svgString);
+}
+
+function querySvgByMermaidCode(mermaidCode: string): string | undefined {
+  return mermaidToSvgMap.get(mermaidCode)
+}
+
 async function waitAsyncRenderResult(text: string): Promise<string> {
   try {
     //if (awaitRenderPromise) {
@@ -44,15 +55,23 @@ async function MermaidRenderAllGraph(text: string): Promise<string> {
     const graphDesc = match[1]
     // 使用 KaTeX 渲染 LaTeX 字符串为 HTML
     let mermaidRenderSvgString = ''
-    try {
-      //if (asyncResult) {
-      mermaidRenderSvgString = await waitAsyncRenderResult(graphDesc)
-      //}
-    } catch (error) {
-      console.log('waitAsyncRenderResult error', error)
-      mermaidRenderSvgString = graphDesc
+    // 从已经存储的map中获取
+    const mapSvg = querySvgByMermaidCode(graphDesc)
+    if (mapSvg != undefined) {
+      console.log('querySvgByMermaidCode success', graphDesc.substring(0, 100))
+      mermaidRenderSvgString = mapSvg
+    } else {
+      try {
+        //if (asyncResult) {
+        mermaidRenderSvgString = await waitAsyncRenderResult(graphDesc)
+        storeMermaidMapping(graphDesc, mermaidRenderSvgString)
+        //}
+      } catch (error) {
+        console.log('waitAsyncRenderResult error', error)
+        mermaidRenderSvgString = graphDesc
+      }
     }
-    console.log('mermaidRenderSvgString error', mermaidRenderSvgString)
+    // console.log('mermaidRenderSvgString error', mermaidRenderSvgString)
     mermaidRenderSvgString =
       '<pre class="mermaid"><code>' + mermaidRenderSvgString + '</code></pre>'
     // 替换原始文本中的 $latex$ 为渲染后的 HTML

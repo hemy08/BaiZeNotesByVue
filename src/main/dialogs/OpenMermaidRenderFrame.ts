@@ -12,7 +12,7 @@ export async function mermaidHandleGetRenderResult(text: string): Promise<string
     setTimeout(() => {
       console.log('mermaidHandleGetRenderResult setTimeout 11111')
       if (mermaidRenderResult != '') {
-        console.log('mermaidHandleGetRenderResult setTimeout 22222', mermaidRenderResult)
+        // console.log('mermaidHandleGetRenderResult setTimeout 22222', mermaidRenderResult)
         resolve(mermaidRenderResult)
       } else {
         reject(new Error('Wait mermaid render result time out'))
@@ -85,18 +85,6 @@ function createMermaidRenderHtmlContent(mermaidGraphDesc: string): Document {
     '    mermaid.initialize({ startOnLoad: true });\n' +
     "    var graphDefinition = document.getElementById('mermaidGraph').textContent;\n" +
     "    mermaid.render('mermaidGraph', graphDefinition, svgObject => document.appendChild(svgObject));\n" +
-    '    function updateGraph(event, message) {\n' +
-    "      document.getElementById('mermaidGraph').innerHTML = message\n" +
-    "      mermaidGraph = document.getElementById('mermaidGraph').innerHTML\n" +
-    '      mermaid.init(undefined, mermaidGraph)\n' +
-    "      console.log('message', message);\n" +
-    '      const graphDefinition = mermaid.parse(graphDesc)\n' +
-    "      console.log('mermaid.parse(graphDesc) ', graphDefinition)" +
-    '      const svgGraph = mermaid.renderSvg(graphDefinition)\n' +
-    "      console.log('mermaid.parse(graphDesc) ', svgGraph)" +
-    "      ipcRenderer.send('mermaid-render-svg-result', chartHtml)\n" +
-    '    }\n' +
-    "    ipcMain.on('update-mermaid-render-graph', updateGraph)\n" +
     '    setTimeout(function() {\n' +
     "      var chartHtml = document.getElementById('mermaidGraph').outerHTML;\n" +
     "      console.log('chartHtml', chartHtml);\n" +

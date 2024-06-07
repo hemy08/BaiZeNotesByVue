@@ -10,7 +10,7 @@ export async function HemyRender(
     const mermaidRenderResult = await MermaidRenderAllGraph(katexRenderResult)
     if (mermaidRenderResult) {
       mainWindow.webContents.send('pre-render-monaco-editor-content-result', mermaidRenderResult)
-      console.log('HemyRender mermaidRenderResult', mermaidRenderResult)
+      // console.log('HemyRender mermaidRenderResult', mermaidRenderResult)
     }
   } catch (error) {
     console.error(error)
