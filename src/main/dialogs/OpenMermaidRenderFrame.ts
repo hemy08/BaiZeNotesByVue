@@ -7,7 +7,7 @@ let mermaidRenderWindow: Electron.CrossProcessExports.BrowserWindow
 let mermaidRenderResult: string | PromiseLike<string> // 假设这是一个全局变量
 
 export async function mermaidHandleGetRenderResult(text: string): Promise<string> {
-  updateMermaidWindowHtml(text)
+  createMermaidRenderFrame(text)
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       console.log('mermaidHandleGetRenderResult setTimeout 11111')
