@@ -23,26 +23,32 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '折叠代码块',
       click: () => {
-        import('../templates/textblock/textblock').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.blockcode)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_textblock.blockcode
+          )
         })
       }
     },
     {
       label: '图片链接',
       click: () => {
-        import('../templates/textblock/textblock').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.image_links)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_textblock.image_links
+          )
         })
       }
     },
     {
       label: '文章更新日期',
       click: () => {
-        import('../templates/textblock/textblock').then((module) => {
+        import('../templates/templates').then((module) => {
           mainWindow.webContents.send(
             'monaco-insert-text-block-templates',
-            module.getFormattedDate()
+            module.T_textblock.getFormattedDate()
           )
         })
       }
@@ -50,8 +56,11 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '链接列表',
       click: () => {
-        import('../templates/textblock/textblock').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.linksList)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_textblock.linksList
+          )
         })
       }
     },
@@ -78,10 +87,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '力扣解题模板',
       click: () => {
-        import('../templates/writing/writing').then((module) => {
+        import('../templates/templates').then((module) => {
           mainWindow.webContents.send(
             'monaco-insert-writing-templates',
-            module.leetcode_problem_solving
+            module.T_writing.leetcode_problem_solving
           )
         })
       }
@@ -89,24 +98,33 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '问题处理模板',
       click: () => {
-        import('../templates/writing/writing').then((module) => {
-          mainWindow.webContents.send('monaco-insert-writing-templates', module.problemResolving)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-writing-templates',
+            module.T_writing.problemResolving
+          )
         })
       }
     },
     {
       label: '文章封面',
       click: () => {
-        import('../templates/writing/writing').then((module) => {
-          mainWindow.webContents.send('monaco-insert-writing-templates', module.thesisCoverPage)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-writing-templates',
+            module.T_writing.thesisCoverPage
+          )
         })
       }
     },
     {
       label: '论文模板',
       click: () => {
-        import('../templates/writing/writing').then((module) => {
-          mainWindow.webContents.send('monaco-insert-writing-templates', module.thesisTemplates)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-writing-templates',
+            module.T_writing.thesisTemplates
+          )
         })
       }
     }
@@ -115,90 +133,111 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '基本流程图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.graph)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send('monaco-insert-text-block-templates', module.T_mermaid.graph)
         })
       }
     },
     {
       label: 'flowchart',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.flowchart)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.flowchart
+          )
         })
       }
     },
     {
       label: '序列图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.sequenceDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.sequenceDiagram
+          )
         })
       }
     },
     {
       label: '类图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.classDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.classDiagram
+          )
         })
       }
     },
     {
       label: '状态图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.stateDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.stateDiagram
+          )
         })
       }
     },
     {
       label: '实体关系图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.erDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.erDiagram
+          )
         })
       }
     },
     {
       label: '用户旅程图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.journey)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.journey
+          )
         })
       }
     },
     {
       label: '甘特图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.gantt)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send('monaco-insert-text-block-templates', module.T_mermaid.gantt)
         })
       }
     },
     {
       label: '饼图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.pie)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send('monaco-insert-text-block-templates', module.T_mermaid.pie)
         })
       }
     },
     {
       label: '象限图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.quadrantChart)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.quadrantChart
+          )
         })
       }
     },
     {
       label: '需求图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
+        import('../templates/templates').then((module) => {
           mainWindow.webContents.send(
             'monaco-insert-text-block-templates',
-            module.requirementDiagram
+            module.T_mermaid.requirementDiagram
           )
         })
       }
@@ -206,72 +245,90 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: 'GitGraph',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.gitGraph)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.gitGraph
+          )
         })
       }
     },
     {
       label: 'C4图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.C4Context)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.C4Context
+          )
         })
       }
     },
     {
       label: '思维导图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.mindmap)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.mindmap
+          )
         })
       }
     },
     {
       label: '时间线图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.timeline)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.timeline
+          )
         })
       }
     },
     {
       label: 'Zenuml',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.zenuml)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send('monaco-insert-text-block-templates', module.T_mermaid.zenuml)
         })
       }
     },
     {
       label: '桑基图',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.sankey)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send('monaco-insert-text-block-templates', module.T_mermaid.sankey)
         })
       }
     },
     {
       label: 'XYChart',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.xychart)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.xychart
+          )
         })
       }
     },
     {
       label: 'BlockDiagram',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.blockDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_mermaid.blockDiagram
+          )
         })
       }
     },
     {
       label: 'Packet',
       click: () => {
-        import('../templates/mermaid/mermaid').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.packet)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send('monaco-insert-text-block-templates', module.T_mermaid.packet)
         })
       }
     }
@@ -280,58 +337,76 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '序列图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.SequenceDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.SequenceDiagram
+          )
         })
       }
     },
     {
       label: '用例图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.UseCaseDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.UseCaseDiagram
+          )
         })
       }
     },
     {
       label: '类图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.ClassDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.ClassDiagram
+          )
         })
       }
     },
     {
       label: '对象图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.ObjectDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.ObjectDiagram
+          )
         })
       }
     },
     {
       label: '活动图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.ActivityDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.ActivityDiagram
+          )
         })
       }
     },
     {
       label: '组件图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.ComponentDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.ComponentDiagram
+          )
         })
       }
     },
     {
       label: '部署图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
+        import('../templates/templates').then((module) => {
           mainWindow.webContents.send(
             'monaco-insert-text-block-templates',
-            module.DeploymentDiagram
+            module.T_plantuml.DeploymentDiagram
           )
         })
       }
@@ -339,42 +414,54 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '状态图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.StateDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.StateDiagram
+          )
         })
       }
     },
     {
       label: '定时图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.TimingDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.TimingDiagram
+          )
         })
       }
     },
     {
       label: 'JSON 数据',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.JsonDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.JsonDiagram
+          )
         })
       }
     },
     {
       label: 'YAML 数据',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.YamlDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.YamlDiagram
+          )
         })
       }
     },
     {
       label: 'EBNF 图表',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
+        import('../templates/templates').then((module) => {
           mainWindow.webContents.send(
             'monaco-insert-text-block-templates',
-            module.ExtendedBackusNaurForm
+            module.T_plantuml.ExtendedBackusNaurForm
           )
         })
       }
@@ -382,10 +469,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: 'Regex 图表',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
+        import('../templates/templates').then((module) => {
           mainWindow.webContents.send(
             'monaco-insert-text-block-templates',
-            module.RegularExpression
+            module.T_plantuml.RegularExpression
           )
         })
       }
@@ -393,74 +480,95 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '网络图 (nwdiag)',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.nwdiag)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.nwdiag
+          )
         })
       }
     },
     {
       label: '用户界面模型 (salt)',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.salt)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send('monaco-insert-text-block-templates', module.T_plantuml.salt)
         })
       }
     },
     {
       label: '架构图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.ArchimateDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.ArchimateDiagram
+          )
         })
       }
     },
     {
       label: '规范和描述语言（SDL）',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.ActivityDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.ActivityDiagram
+          )
         })
       }
     },
     {
       label: 'Ditaa 图表',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.DitaaDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.DitaaDiagram
+          )
         })
       }
     },
     {
       label: '甘特图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.GanttDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.GanttDiagram
+          )
         })
       }
     },
     {
       label: '思维导图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.MindmapDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.MindmapDiagram
+          )
         })
       }
     },
     {
       label: 'WBS 图表',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
-          mainWindow.webContents.send('monaco-insert-text-block-templates', module.WBSDiagram)
+        import('../templates/templates').then((module) => {
+          mainWindow.webContents.send(
+            'monaco-insert-text-block-templates',
+            module.T_plantuml.WBSDiagram
+          )
         })
       }
     },
     {
       label: '信息工程图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
+        import('../templates/templates').then((module) => {
           mainWindow.webContents.send(
             'monaco-insert-text-block-templates',
-            module.InformationEngineering
+            module.T_plantuml.InformationEngineering
           )
         })
       }
@@ -468,10 +576,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '实体关系图',
       click: () => {
-        import('../templates/plantuml/plantuml').then((module) => {
+        import('../templates/templates').then((module) => {
           mainWindow.webContents.send(
             'monaco-insert-text-block-templates',
-            module.EntityRelationship
+            module.T_plantuml.EntityRelationship
           )
         })
       }

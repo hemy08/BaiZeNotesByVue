@@ -1,5 +1,5 @@
 export const ActivityDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   ':Ready;\n' +
   ':next(o); <<procedure>>\n' +
@@ -26,4 +26,4 @@ export const ActivityDiagram =
   'end split\n' +
   ':finish;\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

@@ -3,6 +3,7 @@ import { showFontSelectDialog } from './ShowFontSelectDialog'
 import { showMarkdownSheetDialog } from './ShowMdSheetDialog'
 import { showMathTextDialog } from './ShowMathTextDialog'
 import { showMermaidEditDialog } from './ShowMermaidEditDialog'
+import { mermaidHandleGetRenderResult } from './OpenMermaidRenderFrame'
 
 function OpenMermaidLiveEditor() {
   openOnlineWebPage('https://mermaid.live/edit')
@@ -53,5 +54,6 @@ export {
   showFontSelectDialog,
   showMarkdownSheetDialog,
   showMathTextDialog,
-  showMermaidEditDialog
+  showMermaidEditDialog,
+  mermaidHandleGetRenderResult
 }

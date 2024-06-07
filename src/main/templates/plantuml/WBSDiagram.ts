@@ -1,5 +1,5 @@
 export const WBSDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startwbs\n' +
   '<style>\n' +
   'wbsDiagram {\n' +
@@ -15,4 +15,4 @@ export const WBSDiagram =
   '** this is my workpackage <<pink>>\n' +
   '** this is another workpackage\n' +
   '@endwbs\n' +
-  '```'
+  '```\n\n'

@@ -1,5 +1,5 @@
 export const journey =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'journey\n' +
   '    title My working day\n' +
   '    section Go to work\n' +
@@ -9,4 +9,4 @@ export const journey =
   '    section Go home\n' +
   '      Go downstairs: 5: Me\n' +
   '      Sit down: 5: Me\n' +
-  '```'
+  '```\n\n'

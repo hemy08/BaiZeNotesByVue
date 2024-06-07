@@ -1,5 +1,5 @@
 export const MindmapDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startmindmap\n' +
   '*[#Orange] root node\n' +
   ' *[#lightgreen] some first level node\n' +
@@ -7,4 +7,4 @@ export const MindmapDiagram =
   '  *[#lightblue] another second level node\n' +
   ' *[#lightgreen] another first level node\n' +
   '@endmindmap\n' +
-  '```'
+  '```\n\n'

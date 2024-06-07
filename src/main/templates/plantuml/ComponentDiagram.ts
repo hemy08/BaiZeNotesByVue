@@ -1,5 +1,5 @@
 export const ComponentDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   '\n' +
   'package "Some Group" {\n' +
@@ -32,4 +32,4 @@ export const ComponentDiagram =
   '[Folder 3] --> [Frame 4]\n' +
   '\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

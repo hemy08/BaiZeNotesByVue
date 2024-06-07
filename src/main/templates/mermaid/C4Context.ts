@@ -1,5 +1,5 @@
 export const C4Context =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'C4Context\n' +
   '   title System Context diagram for Internet Banking System\n' +
   '   Enterprise_Boundary(b0, "BankBoundary0") {\n' +
@@ -42,4 +42,4 @@ export const C4Context =
   '   UpdateRelStyle(SystemC, customerA, $textColor="red", $lineColor="red", $offsetX="-50", $offsetY="20")\n' +
   '\n' +
   '   UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")\n' +
-  '```'
+  '```\n\n'

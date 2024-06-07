@@ -1,5 +1,5 @@
 export const ClassDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   '\n' +
   'abstract class AbstractList\n' +
@@ -28,4 +28,4 @@ export const ClassDiagram =
   'annotation SuppressWarnings\n' +
   '\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

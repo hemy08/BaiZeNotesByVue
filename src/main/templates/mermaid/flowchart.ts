@@ -1,5 +1,5 @@
 export const flowchart =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'flowchart TB\n' +
   '    c1-->a2\n' +
   '    subgraph one\n' +
@@ -11,4 +11,4 @@ export const flowchart =
   '    subgraph three\n' +
   '    c1-->c2\n' +
   '    end\n' +
-  '```'
+  '```\n\n'

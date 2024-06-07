@@ -1,5 +1,5 @@
 export const EntityRelationship =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startchen\n' +
   '\n' +
   'entity PARENT {\n' +
@@ -19,4 +19,4 @@ export const EntityRelationship =
   'PARENT_OF =N= CHILD\n' +
   '\n' +
   '@endchen\n' +
-  '```'
+  '```\n\n'

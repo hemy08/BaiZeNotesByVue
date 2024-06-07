@@ -1,5 +1,5 @@
 export const SequenceDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   'skinparam sequenceArrowThickness 2\n' +
   'skinparam roundcorner 20\n' +
@@ -28,4 +28,4 @@ export const SequenceDiagram =
   'A --> User: Done\n' +
   'deactivate A\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

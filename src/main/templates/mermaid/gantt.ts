@@ -1,5 +1,5 @@
 export const gantt =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'gantt\n' +
   '    dateFormat  YYYY-MM-DD\n' +
   '    title       Adding GANTT diagram functionality to mermaid\n' +
@@ -30,4 +30,4 @@ export const gantt =
   '    Describe gantt syntax               :after doc1, 3d\n' +
   '    Add gantt diagram to demo page      :20h\n' +
   '    Add another diagram to demo page    :48h\n' +
-  '```'
+  '```\n\n'

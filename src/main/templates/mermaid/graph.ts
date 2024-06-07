@@ -1,5 +1,5 @@
 export const graph =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'graph TB\n' +
   '    sq[Square shape] --> ci((Circle shape))\n' +
   '\n' +
@@ -21,4 +21,4 @@ export const graph =
   '     classDef orange fill:#f96,stroke:#333,stroke-width:4px;\n' +
   '     class sq,e green\n' +
   '     class di orange\n' +
-  '```'
+  '```\n\n'

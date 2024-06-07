@@ -1,5 +1,5 @@
 export const nwdiag =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   '\n' +
   'nwdiag {\n' +
@@ -29,4 +29,4 @@ export const nwdiag =
   '  }\n' +
   '}\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

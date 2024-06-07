@@ -45,7 +45,7 @@ function renderMathBlockInText(text: string): string {
   return renderMathInText(text, regex, true)
 }
 
-function KatexRenderToString(text: string): string {
+function katexRenderToString(text: string): string {
   let html = ''
   try {
     html = katex.renderToString(text)
@@ -56,13 +56,13 @@ function KatexRenderToString(text: string): string {
   return html
 }
 
-function KatexRenderMathInText(text: string): string {
+function katexRenderMathInText(text: string): string {
   // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
   const result = renderMathBlockInText(text)
   return renderMathLineInText(result)
 }
 
 export {
-  KatexRenderToString,
-  KatexRenderMathInText
+  katexRenderToString,
+  katexRenderMathInText
 }

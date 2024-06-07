@@ -1,5 +1,5 @@
 export const stateDiagram =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'stateDiagram-v2\n' +
   '    [*] --> First\n' +
   '\n' +
@@ -16,4 +16,4 @@ export const stateDiagram =
   '            }\n' +
   '        }\n' +
   '    }\n' +
-  '```'
+  '```\n\n'

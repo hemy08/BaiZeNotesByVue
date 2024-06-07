@@ -1,5 +1,5 @@
 export const ObjectDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml PERT\n' +
   'left to right direction\n' +
   '\' Horizontal lines: -->, <--, <-->\n' +
@@ -31,4 +31,4 @@ export const ObjectDiagram =
   'task.3 --> task.4\n' +
   'task.4 --> task.5 : Label 4\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

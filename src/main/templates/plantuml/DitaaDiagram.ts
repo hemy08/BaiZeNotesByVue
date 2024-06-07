@@ -1,5 +1,5 @@
 export const DitaaDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   'ditaa\n' +
   '+--------+   +-------+    +-------+\n' +
@@ -12,4 +12,4 @@ export const DitaaDiagram =
   '    |       Lots of work      |\n' +
   '    +-------------------------+\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

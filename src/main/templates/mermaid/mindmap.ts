@@ -1,5 +1,5 @@
 export const mindmap =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'mindmap\n' +
   '  root((mindmap))\n' +
   '    Origins\n' +
@@ -17,4 +17,4 @@ export const mindmap =
   '    Tools\n' +
   '      Pen and paper\n' +
   '      Mermaid\n' +
-  '```'
+  '```\n\n'

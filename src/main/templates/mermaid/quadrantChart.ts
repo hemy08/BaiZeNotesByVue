@@ -1,5 +1,5 @@
 export const quadrantChart =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   '%%{init: {"quadrantChart": {"chartWidth": 400, "chartHeight": 400}, "themeVariables": {"quadrant1TextFill": "#ff0000"} }}%%\n' +
   'quadrantChart\n' +
   '    title Reach and engagement of campaigns\n' +
@@ -15,4 +15,4 @@ export const quadrantChart =
   '    Campaign D: [0.78, 0.34]\n' +
   '    Campaign E: [0.40, 0.34]\n' +
   '    Campaign F: [0.35, 0.78]\n' +
-  '```'
+  '```\n\n'

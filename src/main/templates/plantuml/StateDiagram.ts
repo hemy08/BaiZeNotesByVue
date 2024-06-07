@@ -1,5 +1,5 @@
 export const StateDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   '[*] -> State1\n' +
   'State1 --> State2 : Succeeded\n' +
@@ -20,4 +20,4 @@ export const StateDiagram =
   'State3 --> [*] : Succeeded / Save Result\n' +
   'State3 --> [*] : Aborted\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

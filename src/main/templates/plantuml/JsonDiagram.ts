@@ -1,5 +1,5 @@
 export const JsonDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startjson\n' +
   '#highlight "lastName"\n' +
   '#highlight "address" / "city"\n' +
@@ -29,4 +29,4 @@ export const JsonDiagram =
   '  "spouse": null\n' +
   '}\n' +
   '@endjson\n' +
-  '```'
+  '```\n\n'

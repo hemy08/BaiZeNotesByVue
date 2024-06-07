@@ -1,5 +1,5 @@
 export const AsciiMath =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   ':<latex>\\int_0^1f(x)dx</latex>;\n' +
   ':<latex>x^2+y_1+z_{12}^{34}</latex>;\n' +
@@ -9,4 +9,4 @@ export const AsciiMath =
   '<latex>P(y|\\mathbf{x}) \\mbox{ or } f(\\mathbf{x})+\\epsilon</latex>\n' +
   'end note\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

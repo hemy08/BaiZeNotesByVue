@@ -1,5 +1,5 @@
 export const TimingDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   'scale 5 as 150 pixels\n' +
   '\n' +
@@ -59,4 +59,4 @@ export const TimingDiagram =
   'db@:write_beg-1 <-> @:write_end : setup time\n' +
   'db@:write_beg-1 -> addr@:write_end+1 : hold\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

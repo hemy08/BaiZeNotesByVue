@@ -1,5 +1,5 @@
 export const InformationEngineering =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   '\n' +
   '\' hide the spot\n' +
@@ -33,4 +33,4 @@ export const InformationEngineering =
   'e01 |o..o{ e03\n' +
   '\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

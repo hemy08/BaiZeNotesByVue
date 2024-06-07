@@ -1,5 +1,5 @@
 export const UseCaseDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   'left to right direction\n' +
   'actor Guest as g\n' +
@@ -18,4 +18,4 @@ export const UseCaseDiagram =
   'g --> UC2\n' +
   'g --> UC3\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

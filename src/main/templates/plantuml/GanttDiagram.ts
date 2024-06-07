@@ -1,5 +1,5 @@
 export const GanttDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startgantt\n' +
   'saturday are closed\n' +
   'sunday are closed\n' +
@@ -13,4 +13,4 @@ export const GanttDiagram =
   '2021-01-18 to 2021-01-22 are named [End\'s committee]\n' +
   '2021-01-18 to 2021-01-22 are colored in salmon \n' +
   '@endgantt\n' +
-  '```'
+  '```\n\n'

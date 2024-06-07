@@ -1,5 +1,5 @@
 export const DeploymentDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   '\n' +
   'allowmixing\n' +
@@ -62,4 +62,4 @@ export const DeploymentDiagram =
   'usecase/ "usecase/"\n' +
   'state state\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

@@ -1,5 +1,5 @@
 export const sankey =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   '---\n' +
   'config:\n' +
   '  sankey:\n' +
@@ -75,4 +75,4 @@ export const sankey =
   'UK land based bioenergy,Bio-conversion,182.01\n' +
   'Wave,Electricity grid,19.013\n' +
   'Wind,Electricity grid,289.366\n' +
-  '```'
+  '```\n\n'

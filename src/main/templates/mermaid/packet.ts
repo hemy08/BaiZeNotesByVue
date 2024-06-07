@@ -1,5 +1,5 @@
 export const packet =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   '---\n' +
   'title: "TCP Packet"\n' +
   '---\n' +
@@ -21,4 +21,4 @@ export const packet =
   '144-159: "Urgent Pointer"\n' +
   '160-191: "(Options and Padding)"\n' +
   '192-255: "Data (variable length)"\n' +
-  '```'
+  '```\n\n'

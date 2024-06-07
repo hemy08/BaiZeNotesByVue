@@ -7,7 +7,7 @@ import { openAndSendSelectFileContent } from './menu/file'
 import { HemyRender } from "./utils/HemyRender";
 // import { processMarkdownRender } from './utils/MarkdownContentRender'
 
-let CustomRenderMarkdownResult = ''
+// let CustomRenderMarkdownResult = ''
 
 function createWindow(): void {
   // Create the browser window.
@@ -50,6 +50,10 @@ function createWindow(): void {
 
   ipcMain.on('open-select-file', (_, message) => {
     openAndSendSelectFileContent(mainWindow, message)
+  })
+
+  ipcMain.on('pre-render-monaco-editor-content', (event, message) => {
+    HemyRender(mainWindow, message)
   })
 
   ipcMain.on('mermaid-graph-svg-data-to-main', (_, svgData) => {

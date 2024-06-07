@@ -1,5 +1,5 @@
 export const sequenceDiagram =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'sequenceDiagram\n' +
   '    participant web as Web Browser\n' +
   '    participant blog as Blog Service\n' +
@@ -28,4 +28,4 @@ export const sequenceDiagram =
   '            blog-->>-web: Successfully posted\n' +
   '        end\n' +
   '    end\n' +
-  '```'
+  '```\n\n'

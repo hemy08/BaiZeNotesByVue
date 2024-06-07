@@ -1,5 +1,5 @@
 export const gitGraph =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'gitGraph\n' +
   '    commit id: "1"\n' +
   '    commit id: "2"\n' +
@@ -22,4 +22,4 @@ export const gitGraph =
   '    commit id: "8"\n' +
   '    checkout main\n' +
   '    commit id: "9"\n' +
-  '```'
+  '```\n\n'

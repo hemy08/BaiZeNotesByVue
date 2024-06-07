@@ -1,5 +1,5 @@
 export const timeline =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'timeline\n' +
   '    title History of Social Media Platform\n' +
   '    2002 : LinkedIn\n' +
@@ -7,4 +7,4 @@ export const timeline =
   '         : Google\n' +
   '    2005 : Youtube\n' +
   '    2006 : Twitter\n' +
-  '```'
+  '```\n\n'

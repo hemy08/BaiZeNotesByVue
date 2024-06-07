@@ -1,5 +1,5 @@
 export const erDiagram =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'erDiagram\n' +
   '    CAR ||--o{ NAMED-DRIVER : allows\n' +
   '    CAR {\n' +
@@ -21,4 +21,4 @@ export const erDiagram =
   '        string driverLicence PK, FK\n' +
   '    }\n' +
   '    MANUFACTURER only one to zero or more CAR : makes\n' +
-  '```'
+  '```\n\n'

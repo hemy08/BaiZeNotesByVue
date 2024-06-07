@@ -1,5 +1,5 @@
 export const zenuml =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'zenuml\n' +
   '    try {\n' +
   '      Consumer->API: Book something\n' +
@@ -9,4 +9,4 @@ export const zenuml =
   '    } finally {\n' +
   '      API->BookingService: rollback status\n' +
   '    }\n' +
-  '```'
+  '```\n\n'

@@ -1,11 +1,14 @@
-import { KatexRenderMathInText } from './KatexRender'
+import { katexRenderMathInText } from './KatexRender'
 import { MermaidRenderAllGraph } from './MermaidRender'
 
-export function HemyRender(text: string): string {
-  console.log('text111 ', text)
-  let result = KatexRenderMathInText(text)
-  console.log('katex result = ', result)
-  result = MermaidRenderAllGraph(result)
-  console.log('mermaid result = ', result)
-  return result
+export async function HemyRender(mainWindow: Electron.BrowserWindow, text: string) {
+  const katexRenderResult = katexRenderMathInText(text)
+  try {
+    const mermaidRenderResult = await MermaidRenderAllGraph(katexRenderResult)
+    if (mermaidRenderResult) {
+      mainWindow.webContents.send('pre-render-monaco-editor-content-result', mermaidRenderResult)
+    }
+  } catch (error) {
+    console.log(error)
+  }
 }

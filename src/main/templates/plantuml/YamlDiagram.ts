@@ -1,5 +1,5 @@
 export const YamlDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startyaml\n' +
   '#highlight "french-hens"\n' +
   '#highlight "xmas-fifth-day" / "partridges"\n' +
@@ -23,4 +23,4 @@ export const YamlDiagram =
   '\t\tlocation: "a pear tree"\n' +
   '\tturtle-doves: two\n' +
   '@endyaml\n' +
-  '```'
+  '```\n\n'

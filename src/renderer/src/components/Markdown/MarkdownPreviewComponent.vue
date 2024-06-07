@@ -54,9 +54,14 @@ watchEffect(() => {
 
 // 定义一个函数来更新 Markdown 的渲染
 function updateMarkdown() {
-  const result = window.electron.ipcRenderer.sendSync('render-monaco-editor-content', props.code);
-  renderedMarkdownContent.value = md.render(result)
+  window.electron.ipcRenderer.send('pre-render-monaco-editor-content', props.code)
+  // renderedMarkdownContent.value = md.render(result)
 }
+
+window.electron.ipcRenderer.on('pre-render-monaco-editor-content-result', (_, context: string) => {
+  renderedMarkdownContent.value = md.render(context)
+})
+
 </script>
 
 <style scoped>

@@ -1,5 +1,5 @@
 export const ArchimateDiagram =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   'skinparam rectangle<<behavior>> {\n' +
   '\troundCorner 25\n' +
@@ -64,4 +64,4 @@ export const ArchimateDiagram =
   '<$aComponent> : application component\n' +
   'endlegend\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'

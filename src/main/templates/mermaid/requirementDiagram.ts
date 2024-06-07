@@ -1,5 +1,5 @@
 export const requirementDiagram =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   'requirementDiagram\n' +
   '\n' +
   '    requirement test_req {\n' +
@@ -67,4 +67,4 @@ export const requirementDiagram =
   '    test_req5 - refines -> test_req6\n' +
   '    test_entity3 - verifies -> test_req5\n' +
   '    test_req <- copies - test_entity2\n' +
-  '```'
+  '```\n\n'

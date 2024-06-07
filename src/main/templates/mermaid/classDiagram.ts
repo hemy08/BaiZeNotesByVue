@@ -1,5 +1,5 @@
 export const classDiagram =
-  '```mermaid\n' +
+  '\n```mermaid\n' +
   '---\n' +
   'title: Animal example\n' +
   '---\n' +
@@ -26,4 +26,4 @@ export const classDiagram =
   '        +bool is_wild\n' +
   '        +run()\n' +
   '    }\n' +
-  '```'
+  '```\n\n'

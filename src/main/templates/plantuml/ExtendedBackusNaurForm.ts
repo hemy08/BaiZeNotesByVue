@@ -1,5 +1,5 @@
 export const ExtendedBackusNaurForm =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startebnf\n' +
   '<style>\n' +
   'element {\n' +
@@ -19,4 +19,4 @@ export const ExtendedBackusNaurForm =
   '| "repetition", 4 * \'2\';\n' +
   '(* Global End Note *)\n' +
   '@endebnf\n' +
-  '```'
+  '```\n\n'

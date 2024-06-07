@@ -1,5 +1,5 @@
 export const salt =
-  '```plantuml\n' +
+  '\n```plantuml\n' +
   '@startuml\n' +
   'start\n' +
   'while (\\n{{\\nsalt\\n{+\\nPassword | "****     "\\n[Cancel] | [  OK   ]}\\n}}\\n) is (Incorrect)\n' +
@@ -14,4 +14,4 @@ export const salt =
   ':log request;\n' +
   ':disable service;\n' +
   '@enduml\n' +
-  '```'
+  '```\n\n'
