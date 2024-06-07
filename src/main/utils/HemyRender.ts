@@ -1,7 +1,10 @@
 import { katexRenderMathInText } from './KatexRender'
 import { MermaidRenderAllGraph } from './MermaidRender'
 
-export async function HemyRender(mainWindow: Electron.BrowserWindow, text: string) {
+export async function HemyRender(
+  mainWindow: Electron.CrossProcessExports.BrowserWindow,
+  text: string
+) {
   const katexRenderResult = katexRenderMathInText(text)
   try {
     const mermaidRenderResult = await MermaidRenderAllGraph(katexRenderResult)

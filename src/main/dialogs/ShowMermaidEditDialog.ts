@@ -31,7 +31,9 @@ function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
   customMermaidEditDialog.setMenu(null)
 
   // 加载一个 HTML 文件作为对话框的内容
-  customMermaidEditDialog.loadURL(join(__dirname, '../../src/renderer/src/Dialog/MermaidEditRender.html'))
+  customMermaidEditDialog.loadURL(
+    join(__dirname, '../../src/renderer/src/Dialog/MermaidEditRender.html')
+  )
 
   // 当窗口关闭时，清除引用
   customMermaidEditDialog.on('closed', () => {

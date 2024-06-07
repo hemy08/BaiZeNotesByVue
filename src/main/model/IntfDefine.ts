@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { BrowserWindow } from 'electron'
+// import { BrowserWindow } from 'electron'
 
 export interface FileItem {
   name: string

@@ -1,16 +1,18 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 
-let mermaidRenderWindow = ''
-let mermaidRenderResult: string | null = null // 假设这是一个全局变量
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// let mainWin: Electron.CrossProcessExports.BrowserWindow
+let mermaidRenderWindow: Electron.CrossProcessExports.BrowserWindow
+let mermaidRenderResult: string | PromiseLike<string> // 假设这是一个全局变量
 
 export async function mermaidHandleGetRenderResult(text: string): Promise<string> {
-  await updateMermaidWindowHtml(text)
+  updateMermaidWindowHtml(text)
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      //console.log('mermaidHandleGetRenderResult setTimeout 11111')
+      console.log('mermaidHandleGetRenderResult setTimeout 11111')
       if (mermaidRenderResult != '') {
-        //console.log('mermaidHandleGetRenderResult setTimeout 22222')
+        console.log('mermaidHandleGetRenderResult setTimeout 22222', mermaidRenderResult)
         resolve(mermaidRenderResult)
       } else {
         reject(new Error('Wait mermaid render result time out'))
@@ -19,7 +21,7 @@ export async function mermaidHandleGetRenderResult(text: string): Promise<string
   })
 }
 
-export function createMermaidRenderFrame(mainWindow: Electron.BrowserWindow, graphDesc: string) {
+export function createMermaidRenderFrame(graphDesc: string) {
   mermaidRenderWindow = new BrowserWindow({
     width: 800,
     height: 600,
@@ -33,12 +35,13 @@ export function createMermaidRenderFrame(mainWindow: Electron.BrowserWindow, gra
     }
   })
   // let mermaidSvgData = ''
+  // mainWin = mainWindow
   const mermaidFrame = createMermaidRenderHtmlContent(graphDesc)
   const tempHtml = mermaidFrame.documentElement.outerHTML
 
   // 加载一个 HTML 文件作为对话框的内容
   mermaidRenderWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(tempHtml)}`)
-  mermaidRenderWindow.show()
+  // mermaidRenderWindow.show()
 
   function processMermaidRenderResult(_, result) {
     mermaidRenderResult = result

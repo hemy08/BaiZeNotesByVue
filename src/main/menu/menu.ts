@@ -7,7 +7,7 @@ import { getAppToolsMenuItem } from './tools'
 import { getAppPluginsMenuItem } from './plugins'
 import { getAppHelpsMenuItem } from './helps'
 
-export function getApplicationMenu(mainWindow: Electron.BrowserWindow) {
+export function getApplicationMenu(mainWindow: Electron.CrossProcessExports.BrowserWindow) {
   return [
     getAppFileMenuItem(mainWindow),
     getAppEditMenuItem(mainWindow),

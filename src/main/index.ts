@@ -7,7 +7,7 @@ import { openAndSendSelectFileContent } from './menu/file'
 import { HemyRender } from './utils/HemyRender'
 import { createMermaidRenderFrame } from './dialogs/OpenMermaidRenderFrame'
 
-let mainWindow = ''
+let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
 function createWindow(): void {
   // Create the browser window.
@@ -35,7 +35,7 @@ function createWindow(): void {
     mainWindow.maximize()
     mainWindow.show()
     // 加载一个子窗口，不对外显示
-    createMermaidRenderFrame(mainWindow, '')
+    createMermaidRenderFrame('')
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -55,7 +55,7 @@ function createWindow(): void {
     openAndSendSelectFileContent(mainWindow, message)
   })
 
-  ipcMain.on('pre-render-monaco-editor-content', (event, message) => {
+  ipcMain.on('pre-render-monaco-editor-content', (_, message) => {
     HemyRender(mainWindow, message)
   })
 

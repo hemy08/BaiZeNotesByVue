@@ -24,10 +24,9 @@ import { mermaidHandleGetRenderResult } from '../dialogs/dialogs'
 
 async function waitAsyncRenderResult(text: string): Promise<string> {
   try {
-    const awaitRenderPromise = await mermaidHandleGetRenderResult(text)
-    if (awaitRenderPromise) {
-      return awaitRenderPromise
-    }
+    //if (awaitRenderPromise) {
+    return await mermaidHandleGetRenderResult(text)
+    //}
   } catch (error) {
     console.log('mermaidHandleGetRenderResult error', error)
     return text
@@ -46,14 +45,14 @@ async function MermaidRenderAllGraph(text: string): Promise<string> {
     // 使用 KaTeX 渲染 LaTeX 字符串为 HTML
     let mermaidRenderSvgString = ''
     try {
-      const asyncResult = await waitAsyncRenderResult(graphDesc)
-      if (asyncResult) {
-        mermaidRenderSvgString = asyncResult
-      }
+      //if (asyncResult) {
+      mermaidRenderSvgString = await waitAsyncRenderResult(graphDesc)
+      //}
     } catch (error) {
       console.log('waitAsyncRenderResult error', error)
       mermaidRenderSvgString = graphDesc
     }
+    console.log('mermaidRenderSvgString error', mermaidRenderSvgString)
     mermaidRenderSvgString =
       '<pre class="mermaid"><code>' + mermaidRenderSvgString + '</code></pre>'
     // 替换原始文本中的 $latex$ 为渲染后的 HTML

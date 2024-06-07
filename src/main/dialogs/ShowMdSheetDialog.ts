@@ -5,6 +5,7 @@ let customMarkdownSheetDialog: Electron.BrowserWindow | null
 export function showMarkdownSheetDialog(mainWindow: Electron.BrowserWindow) {
   createMarkdownSheetDialog(mainWindow)
 }
+
 // 创建一个自定义对话框的函数
 function createMarkdownSheetDialog(mainWindow: Electron.BrowserWindow) {
   customMarkdownSheetDialog = new BrowserWindow({
