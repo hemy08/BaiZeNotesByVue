@@ -4,14 +4,14 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
 import { openAndSendSelectFileContent } from './menu/file'
-import { HemyRender } from "./utils/HemyRender";
-// import { processMarkdownRender } from './utils/MarkdownContentRender'
+import { HemyRender } from './utils/HemyRender'
+import { createMermaidRenderFrame } from './dialogs/OpenMermaidRenderFrame'
 
-// let CustomRenderMarkdownResult = ''
+let mainWindow = ''
 
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     show: false,
@@ -25,6 +25,7 @@ function createWindow(): void {
     }
   })
 
+  // globalMainWindow = mainWindow
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   require('@electron/remote/main').initialize()
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -33,6 +34,8 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow.maximize()
     mainWindow.show()
+    // 加载一个子窗口，不对外显示
+    createMermaidRenderFrame(mainWindow, '')
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {

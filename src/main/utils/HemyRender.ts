@@ -7,8 +7,9 @@ export async function HemyRender(mainWindow: Electron.BrowserWindow, text: strin
     const mermaidRenderResult = await MermaidRenderAllGraph(katexRenderResult)
     if (mermaidRenderResult) {
       mainWindow.webContents.send('pre-render-monaco-editor-content-result', mermaidRenderResult)
+      console.log('HemyRender mermaidRenderResult', mermaidRenderResult)
     }
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }

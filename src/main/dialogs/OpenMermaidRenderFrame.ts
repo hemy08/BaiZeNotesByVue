@@ -1,10 +1,11 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 
+let mermaidRenderWindow = ''
 let mermaidRenderResult: string | null = null // 假设这是一个全局变量
 
 export async function mermaidHandleGetRenderResult(text: string): Promise<string> {
-  await createMermaidRenderFrame(text)
+  await updateMermaidWindowHtml(text)
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       //console.log('mermaidHandleGetRenderResult setTimeout 11111')
@@ -18,8 +19,8 @@ export async function mermaidHandleGetRenderResult(text: string): Promise<string
   })
 }
 
-export function createMermaidRenderFrame(graphDesc: string) {
-  let mermaidRenderFrame = new BrowserWindow({
+export function createMermaidRenderFrame(mainWindow: Electron.BrowserWindow, graphDesc: string) {
+  mermaidRenderWindow = new BrowserWindow({
     width: 800,
     height: 600,
     title: '文字样式选择',
@@ -36,21 +37,25 @@ export function createMermaidRenderFrame(graphDesc: string) {
   const tempHtml = mermaidFrame.documentElement.outerHTML
 
   // 加载一个 HTML 文件作为对话框的内容
-  mermaidRenderFrame.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(tempHtml)}`)
+  mermaidRenderWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(tempHtml)}`)
+  mermaidRenderWindow.show()
 
   function processMermaidRenderResult(_, result) {
     mermaidRenderResult = result
     ipcMain.removeListener('mermaid-render-svg-result', processMermaidRenderResult)
-    mermaidRenderFrame.close()
   }
 
   ipcMain.on('mermaid-render-svg-result', processMermaidRenderResult)
 
   // 当窗口关闭时，清除引用
-  mermaidRenderFrame.on('closed', () => {
+  mermaidRenderWindow.on('closed', () => {
     ipcMain.removeListener('mermaid-render-svg-result', processMermaidRenderResult)
-    mermaidRenderFrame = null
   })
+}
+
+export function updateMermaidWindowHtml(graphDesc: string) {
+  console.log('updateMermaidWindowHtml ', graphDesc)
+  mermaidRenderWindow.webContents.send('update-mermaid-render-graph', graphDesc)
 }
 
 function createMermaidRenderHtmlContent(mermaidGraphDesc: string): Document {
@@ -73,15 +78,27 @@ function createMermaidRenderHtmlContent(mermaidGraphDesc: string): Document {
 
   const ele_body_script = document.createElement('script')
   ele_body_script.textContent =
-    "    const { ipcRenderer } = require('electron');\n" +
+    "    const { ipcRenderer, ipcMain } = require('electron');\n" +
     '    mermaid.initialize({ startOnLoad: true });\n' +
     "    var graphDefinition = document.getElementById('mermaidGraph').textContent;\n" +
     "    mermaid.render('mermaidGraph', graphDefinition, svgObject => document.appendChild(svgObject));\n" +
+    '    function updateGraph(event, message) {\n' +
+    "      document.getElementById('mermaidGraph').innerHTML = message\n" +
+    "      mermaidGraph = document.getElementById('mermaidGraph').innerHTML\n" +
+    '      mermaid.init(undefined, mermaidGraph)\n' +
+    "      console.log('message', message);\n" +
+    '      const graphDefinition = mermaid.parse(graphDesc)\n' +
+    "      console.log('mermaid.parse(graphDesc) ', graphDefinition)" +
+    '      const svgGraph = mermaid.renderSvg(graphDefinition)\n' +
+    "      console.log('mermaid.parse(graphDesc) ', svgGraph)" +
+    "      ipcRenderer.send('mermaid-render-svg-result', chartHtml)\n" +
+    '    }\n' +
+    "    ipcMain.on('update-mermaid-render-graph', updateGraph)\n" +
     '    setTimeout(function() {\n' +
     "      var chartHtml = document.getElementById('mermaidGraph').outerHTML;\n" +
     "      console.log('chartHtml', chartHtml);\n" +
     "      ipcRenderer.send('mermaid-render-svg-result', chartHtml)\n" +
-    '    }, 200);\n'
+    '    }, 1000);\n'
 
   document.head.appendChild(ele_head_link)
   document.head.appendChild(ele_head_script)

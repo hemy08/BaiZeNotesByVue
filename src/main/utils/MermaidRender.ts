@@ -55,7 +55,7 @@ async function MermaidRenderAllGraph(text: string): Promise<string> {
       mermaidRenderSvgString = graphDesc
     }
     mermaidRenderSvgString =
-      '<br><pre class="mermaid"><code>' + mermaidRenderSvgString + '</code></pre><br>'
+      '<pre class="mermaid"><code>' + mermaidRenderSvgString + '</code></pre>'
     // 替换原始文本中的 $latex$ 为渲染后的 HTML
     // 注意：这里我们假设文本中不含有会破坏 HTML 的特殊字符
     renderResult = renderResult.replace(match[0], mermaidRenderSvgString)

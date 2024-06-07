@@ -56,14 +56,25 @@ mindmap
   <script>
     //const { ipcRenderer } = require('electron')
     mermaid.initialize({ startOnLoad: true });
-
-    var graphDefinition = document.getElementById('textInput').textContent;
-    mermaid.render('mermaid-id', graphDefinition)
-    // const svgData = document.getElementById('mermaidGraph').innerHTML
+    function updateGraph(event) {
+      console.log('graphDesc', event.target.value)
+      document.getElementById('textInput').innerHTML = event.target.value
+      const graphDesc = document.getElementById('textInput').innerHTML;
+      console.log('graphDesc', graphDesc)
+      const mermaidPreview = document.getElementById('mermaidPreview')
+      console.log('mermaidPreview', mermaidPreview.firstChild)
+      if (mermaidPreview.firstChild) {
+        mermaidPreview.firstChild = ''
+      }
+      mermaid.render('mermaidPreview', graphDesc,  function(svgObject) {
+        mermaidPreview.appendChild(svgObject)
+        console.log(svgObject.outerHTML);
+      });
+    }
+      // 监听文本输入和样式输入的变化
+    document.getElementById('textInput').addEventListener('input', updateGraph);
     setTimeout(function() {
       var chartHtml = document.getElementById('mermaidPreview').outerHTML;
-      console.log('chartHtml', chartHtml);
-      ipcRenderer.send('user-input-mermaid-graph-context', chartHtml)
     }, 1000);
 
   </script>
