@@ -35,9 +35,7 @@ function querySvgByMermaidCode(mermaidCode: string): string | undefined {
 
 async function waitAsyncRenderResult(text: string): Promise<string> {
   try {
-    //if (awaitRenderPromise) {
     return await mermaidHandleGetRenderResult(text)
-    //}
   } catch (error) {
     console.log('mermaidHandleGetRenderResult error', error)
     return text

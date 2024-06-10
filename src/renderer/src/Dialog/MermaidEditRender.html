@@ -55,7 +55,17 @@ mindmap
   </div>
   <script>
     //const { ipcRenderer } = require('electron')
-    mermaid.initialize({ startOnLoad: false });
+    mermaid.initialize({ startOnLoad: true });
+
+    function generateEightDigitRandomNumber() {
+      let num = '';
+      while (num.length < 8) {
+        let randomNum = Math.floor(Math.random() * 90000000) + 10000000; // 生成10000000到99999999之间的随机数
+        num = String(randomNum).slice(-8); // 截取最后8位
+      }
+      return num;
+    }
+
     function updateGraph(event) {
       console.log('graphDesc', event.target.value)
       document.getElementById('textInput').innerHTML = event.target.value
@@ -66,12 +76,16 @@ mindmap
       if (mermaidPreview.firstChild) {
         mermaidPreview.firstChild = ''
       }
-      mermaid.init(undefined, mermaidPreview);
+      const tempId = 'mermaid-' + generateEightDigitRandomNumber()
+      mermaid.render('mermaidPreview', graphDesc, SvgObject => {
+        console.log('SvgObject', SvgObject)
+      })
     }
       // 监听文本输入和样式输入的变化
     document.getElementById('textInput').addEventListener('input', updateGraph);
     setTimeout(function() {
       var chartHtml = document.getElementById('mermaidPreview').outerHTML;
+      console.log('SvgObject', SvgObject)
     }, 1000);
 
   </script>

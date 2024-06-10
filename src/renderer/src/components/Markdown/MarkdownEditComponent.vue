@@ -8,7 +8,7 @@
   </div>
   <div id="resizer-md" class="resizer-md">1</div>
   <div id="md-preview" class="md-preview" :style="mdPreviewComponentStyle">
-    <MdPreview :code="markdownEditorCode" />
+    <MdPreview :editor-content="markdownEditorContent" />
   </div>
 </template>
 
@@ -19,6 +19,7 @@ import MdPreview from './MarkdownPreviewComponent.vue'
 
 // 使用 ref 来创建响应式引用
 const markdownEditorCode = ref('')
+const markdownEditorContent = ref('')
 let initialCodeContent = ''
 
 // 存储窗口宽度
@@ -57,7 +58,7 @@ const mdPreviewComponentStyle = computed(() => {
 
 function handleMarkdownCodeUpdate(newValue: string) {
   // window.electron.ipcRenderer.send('render-monaco-editor-content', newValue)
-  markdownEditorCode.value = newValue
+  markdownEditorContent.value = newValue
 }
 
 window.electron.ipcRenderer.on('open-selected-file-content', (_, fileContent: string) => {

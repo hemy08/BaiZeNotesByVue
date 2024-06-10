@@ -48,7 +48,9 @@
     "requires-port": "^1.0.0",
     "tough-cookie": "^4.1.4",
     "universalify": "^2.0.1",
-    "url-parse": "^1.5.10"
+    "url-parse": "^1.5.10",
+    "vue-class-component": "^7.2.6",
+    "vue-property-decorator": "^9.1.2"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config": "^1.0.2",
