@@ -29,7 +29,8 @@ md.options.linkify = true
 md.options.langPrefix = 'language-'
 md.options.breaks = true
 md.options.typographer = true
-md.use(highlightjs, { inline: true, hljs: hljs })
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+md.use(highlightjs, { inline: true, hljs: hljs }).use(require('markdown-it-plantuml'))
 md.options.highlight = function (str, lang) {
   if (lang && hljs.getLanguage(lang)) {
     try {
