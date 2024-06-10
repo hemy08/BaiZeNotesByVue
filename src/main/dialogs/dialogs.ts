@@ -13,6 +13,10 @@ function OpenPlantUmlOnline() {
   openOnlineWebPage('http://www.plantuml.com/plantuml/uml/')
 }
 
+function OpenPlantText() {
+  openOnlineWebPage('https://www.planttext.com/')
+}
+
 function OpenJYShareOnline() {
   openOnlineWebPage('https://www.jyshare.com/')
 }
@@ -44,6 +48,7 @@ function OpenHtmlSheetCreateOnline() {
 export {
   OpenMermaidLiveEditor,
   OpenPlantUmlOnline,
+  OpenPlantText,
   OpenJYShareOnline,
   OpenSvgEditorOnline,
   OpenShapeFlyDiagramOnline,

@@ -58,7 +58,9 @@ async function mermaidRender(graphDefinition: string): Promise<string> {
   try {
     const renderSvg = await mermaid.render('mermaidContainer', graphDefinition)
     return Promise.resolve(
-      '<pre class="mermaid"><code style="height: auto;display: flex">' + renderSvg.svg + '</code></pre>'
+      '<div><pre class="mermaid"><code style="height: auto;display: flex">' +
+        renderSvg.svg +
+        '</code></pre></div>'
     )
   } catch (error) {
     console.log('mermaidRender error', error)

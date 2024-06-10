@@ -1,11 +1,21 @@
+//import { exec } from 'child_process'
+
 // eslint-disable-next-line no-unused-vars
 export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
   const pluginsMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: 'PlantUML Online',
+      label: 'PlantUML Server',
       click: () => {
         import('../dialogs/dialogs').then((module) => {
           module.OpenPlantUmlOnline()
+        })
+      }
+    },
+    {
+      label: 'PlantText',
+      click: () => {
+        import('../dialogs/dialogs').then((module) => {
+          module.OpenPlantText()
         })
       }
     },
