@@ -4,7 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
 import { openAndSendSelectFileContent } from './menu/file'
-import { HemyRender } from './utils/HemyRender'
+import { HemyRenderPre, HemyRenderPost } from './utils/HemyRender'
 import { createMermaidRenderFrame } from './dialogs/OpenMermaidRenderFrame'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
@@ -56,7 +56,11 @@ function createWindow(): void {
   })
 
   ipcMain.on('pre-render-monaco-editor-content', (_, message) => {
-    HemyRender(mainWindow, message)
+    HemyRenderPre(mainWindow, message)
+  })
+
+  ipcMain.on('post-render-monaco-editor-content', (_, message) => {
+    HemyRenderPost(mainWindow, message)
   })
 
   ipcMain.on('mermaid-graph-svg-data-to-main', (_, svgData) => {

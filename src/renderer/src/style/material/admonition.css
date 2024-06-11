@@ -99,7 +99,7 @@
 
 .admonition .admonition,.admonition details,details .admonition,details details {
   margin-bottom: 1em;
-  margin-top: 1em
+  margin-top: 1em;
 }
 
 .admonition .md-typeset__scrollwrap,details .md-typeset__scrollwrap {

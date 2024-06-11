@@ -1,8 +1,8 @@
 import { katexRenderMathInText } from './KatexRender'
-import { materialAdmonitions } from './MaterialRender'
+import { materialAdmonitionsPreRender, materialAdmonitionsPostRender} from './MaterialRender'
 // import { plantumlRender } from './PlantumlRender'
 
-export async function HemyRender(
+export async function HemyRenderPre(
   mainWindow: Electron.CrossProcessExports.BrowserWindow,
   text: string
 ) {
@@ -16,6 +16,14 @@ export async function HemyRender(
   } catch (error) {
     console.error(error)
   }*/
-  const materialRenderResult = materialAdmonitions(katexRenderResult)
+  const materialRenderResult = materialAdmonitionsPreRender(katexRenderResult)
   mainWindow.webContents.send('pre-render-monaco-editor-content-result', materialRenderResult)
+}
+
+export async function HemyRenderPost(
+  mainWindow: Electron.CrossProcessExports.BrowserWindow,
+  text: string
+) {
+  const materialRenderResult = materialAdmonitionsPostRender(text)
+  mainWindow.webContents.send('post-render-monaco-editor-content-result', materialRenderResult)
 }
