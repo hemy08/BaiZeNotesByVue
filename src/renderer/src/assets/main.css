@@ -7,10 +7,8 @@ body {
   height: 100vh;
   width: 100%;
   margin: 0;
-  overflow: hidden;
   background-image: url('./wavy-lines.svg');
   background-size: cover;
-  user-select: none;
 }
 
 #app {
@@ -54,7 +52,6 @@ body {
 .tip {
   font-size: 16px;
   line-height: 24px;
-  color: var(--ev-c-text-2);
   font-weight: 600;
 }
 
@@ -167,8 +164,4 @@ body {
   .actions {
     display: none;
   }
-}
-
-div p {
-  display: inline;
 }
