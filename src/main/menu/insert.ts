@@ -5,14 +5,6 @@
 export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
   const insertMenuItemCodeBlock: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '特殊字体',
-      click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.showFontSelectDialog(mainWindow)
-        })
-      }
-    },
-    {
       label: 'markdown表格',
       click: () => {
         import('../dialogs/dialogs').then((module) => {
@@ -125,6 +117,16 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
             'monaco-insert-writing-templates',
             module.T_writing.thesisTemplates
           )
+        })
+      }
+    }
+  ]
+  const insertMaterialItem: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'Admonition',
+      click: () => {
+        import('../dialogs/dialogs').then((module) => {
+          module.createAdmonitionDialog(mainWindow)
         })
       }
     }
@@ -587,15 +589,26 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   const insertMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '插入写作模板',
+      label: '写作模板',
       submenu: insertMenuItemWriteTemp
     },
     {
-      label: '插入文本',
+      label: '文本',
       submenu: insertMenuItemCodeBlock
     },
     {
-      label: '插入数学公式',
+      type: 'separator'
+    },
+    {
+      label: '特殊字体',
+      click: () => {
+        import('../dialogs/dialogs').then((module) => {
+          module.showFontSelectDialog(mainWindow)
+        })
+      }
+    },
+    {
+      label: '数学公式',
       click: () => {
         import('../dialogs/dialogs').then((module) => {
           module.showMathTextDialog(mainWindow)
@@ -604,6 +617,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     },
     {
       type: 'separator'
+    },
+    {
+      label: 'Material',
+      submenu: insertMaterialItem
     },
     {
       label: 'Mermaid',

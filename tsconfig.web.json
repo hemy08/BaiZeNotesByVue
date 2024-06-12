@@ -27,6 +27,8 @@
     "src/renderer/src/lib/mermaid/**/*.ts",
     "src/renderer/src/lib/mermaid/**/*.js",
     "src/renderer/src/lib/mermaid/**/*.mjs",
+    "src/main/themes/monaco-themes/**/*.ts",
+    "src/main/themes/monaco-themes/*.js",
     "src/preload/*.d.ts"
   ],
   "compilerOptions": {

@@ -4,6 +4,7 @@ import { showMarkdownSheetDialog } from './ShowMdSheetDialog'
 import { showMathTextDialog } from './ShowMathTextDialog'
 import { showMermaidEditDialog } from './ShowMermaidEditDialog'
 import { mermaidHandleGetRenderResult } from './OpenMermaidRenderFrame'
+import { createAdmonitionDialog } from './ShowAdmonitionsDialog'
 
 function OpenMermaidLiveEditor() {
   openOnlineWebPage('https://mermaid.live/edit')
@@ -60,5 +61,6 @@ export {
   showMarkdownSheetDialog,
   showMathTextDialog,
   showMermaidEditDialog,
-  mermaidHandleGetRenderResult
+  mermaidHandleGetRenderResult,
+  createAdmonitionDialog
 }

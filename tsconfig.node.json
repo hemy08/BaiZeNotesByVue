@@ -23,6 +23,8 @@
     "src/main/templates/textblock/*.html",
     "src/main/templates/plantuml/*.ts",
     "src/main/templates/mermaid/*.ts",
+    "src/main/themes/monaco-themes/**/*.ts",
+    "src/main/themes/monaco-themes/*.js",
     "src/main/plugins/**/*.ts",
     "src/main/plugins/*.ts",
     "src/main/utils/*.ts",

@@ -13,8 +13,9 @@ materialMd.options.typographer = true
 materialMd.use(highlightjs, { inline: true, hljs: hljs })
 
 function matchCodeBlock(lines: string[]): string[] {
-  const codeBlocks = []
-  codeBlocks.push(lines[0].trim().replace(/^t|^ {4}/, ''))
+  const codeBlocks: string[] = []
+  const lineStr: string = lines[0].trim().replace(/^(t| {4})/, '')
+  codeBlocks.push(lineStr)
   // 找到块的结尾，跳过这部分，从下一行开始
   for (let i = 1; i < lines.length; i++) {
     const currentLine = lines[i]
@@ -59,17 +60,9 @@ function materialParserAdmonitions(text: string): {
   title: string
   content: string
 } {
-  const defaults = {
-    type: 'undefined',
-    title: 'undefined',
-    content: 'undefined'
-  }
   // 字符串按照行分割
   const lines = text.split(/\r?\n/)
-  // 至少需要有标题行
-  if (lines.length < 2) {
-    return defaults
-  }
+  console.log('lines', lines)
   // 第一行是type和title
   // 去掉两边的空白
   const firstLine = lines[0].trim()
@@ -80,14 +73,19 @@ function materialParserAdmonitions(text: string): {
   if (startIndex != -1) {
     typeStr = firstLine.substring(0, startIndex).trim()
     // 去掉开头和结束的双引号
-    titleStr = firstLine.substring(startIndex + 1, firstLine.length - 1).trim()
+    titleStr = firstLine.substring(startIndex, firstLine.length - 1).trim()
   } else {
     // 只有类型，没有title
     typeStr = firstLine.trim()
   }
   // 内容项从第二行开始，遍历所有内容，每行内容前后加上<p></p>
-  const contentStr = materialAdmonitionsContentRender(lines.slice(1))
-  console.log('contentStr', contentStr)
+  let contentStr
+  if (lines.length >= 2) {
+    contentStr = materialAdmonitionsContentRender(lines.slice(1))
+  } else {
+    contentStr = 'undefined'
+  }
+
   return {
     type: typeStr.toLowerCase(),
     title: titleStr,
@@ -95,7 +93,7 @@ function materialParserAdmonitions(text: string): {
   }
 }
 
-export function materialAdmonitionsPreRender(text: string): string {
+export function materialAdmonitionsRender(text: string): string {
   let renderResult = text
   let match: RegExpExecArray | null = null
   // 匹配字符串中所有以!!!开始的内容（直到遇到另一个
