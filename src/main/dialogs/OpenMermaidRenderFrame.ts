@@ -10,7 +10,7 @@ export async function mermaidHandleGetRenderResult(text: string): Promise<string
   createMermaidRenderFrame(text)
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      console.log('mermaidHandleGetRenderResult setTimeout 11111')
+      //console.log('mermaidHandleGetRenderResult setTimeout 11111')
       if (mermaidRenderResult != '') {
         // console.log('mermaidHandleGetRenderResult setTimeout 22222', mermaidRenderResult)
         resolve(mermaidRenderResult)
@@ -57,7 +57,7 @@ export function createMermaidRenderFrame(graphDesc: string) {
 }
 
 export function updateMermaidWindowHtml(graphDesc: string) {
-  console.log('updateMermaidWindowHtml ', graphDesc)
+  //console.log('updateMermaidWindowHtml ', graphDesc)
   mermaidRenderWindow.webContents.send('update-mermaid-render-graph', graphDesc)
 }
 
@@ -87,7 +87,6 @@ function createMermaidRenderHtmlContent(mermaidGraphDesc: string): Document {
     "    mermaid.render('mermaidGraph', graphDefinition, svgObject => document.appendChild(svgObject));\n" +
     '    setTimeout(function() {\n' +
     "      var chartHtml = document.getElementById('mermaidGraph').outerHTML;\n" +
-    "      console.log('chartHtml', chartHtml);\n" +
     "      ipcRenderer.send('mermaid-render-svg-result', chartHtml)\n" +
     '    }, 1000);\n'
 

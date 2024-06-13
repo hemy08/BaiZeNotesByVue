@@ -1,12 +1,14 @@
 import { ipcMain, BrowserWindow } from 'electron'
 
+let customAdmonitionDialog: Electron.BrowserWindow | null
+
 export function createAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
-  const customAdmonitionDialog = new BrowserWindow({
+  customAdmonitionDialog = new BrowserWindow({
     width: 550,
-    height: 1000,
+    height: 600,
     minimizable: false,
     maximizable: false,
-    title: '文字样式选择',
+    title: 'Admonition',
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
@@ -29,9 +31,7 @@ export function createAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
   // 当窗口关闭时，清除引用
   customAdmonitionDialog.on('closed', () => {
     ipcMain.removeListener('user-input-insert-admonitions', processAdmonitionInsert)
-    ipcMain.removeListener('user-input-cancel-admonitions', () => {
-      exitCustomFontDialog()
-    })
+    ipcMain.removeListener('user-input-cancel-admonitions', () => {})
   })
 
   // 显示窗口
@@ -42,6 +42,7 @@ export function createAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
       ipcMain.removeListener('user-input-insert-admonitions', processAdmonitionInsert)
       ipcMain.removeListener('user-input-cancel-admonitions', () => {})
       customAdmonitionDialog.close()
+      customAdmonitionDialog = null
     }
   }
 
@@ -50,8 +51,12 @@ export function createAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
     exitCustomFontDialog()
   }
 
+  function processAdmonitionCancel() {
+    exitCustomFontDialog()
+  }
+
   ipcMain.on('user-input-insert-admonitions', processAdmonitionInsert)
-  ipcMain.on('user-input-cancel-admonitions', ()=>{customAdmonitionDialog.close()})
+  ipcMain.on('user-input-cancel-admonitions', processAdmonitionCancel)
 }
 
 const admonitionHtmlContent =
@@ -466,11 +471,11 @@ const admonitionHtmlContent =
   '  </div>\n' +
   '  <div style="display: flex;flex-direction: row;margin-top: 10px">\n' +
   '    <div><label style="width:10px;margin-left:20px;">内容：</label></div>\n' +
-  '    <textarea id="admonitionsContent" style="width: 400px;height: 250px;overflow-y: auto;"></textarea>\n' +
+  '    <textarea id="admonitionsContent" style="width: 400px;height: 100px;overflow-y: auto;"></textarea>\n' +
   '  </div>\n' +
   '  <div style="display: flex;flex-direction: row;margin-top: 10px">\n' +
   '    <div><label style="width:10px;margin-left:20px;" for="previewText">预览：</label></div>\n' +
-  '    <div style="width: 400px;height: 500px; overflow:auto;">\n' +
+  '    <div style="width: 400px;height: 250px; overflow:auto;">\n' +
   '      <p id="previewText">这是一段预览文字。</p>\n' +
   '    </div>\n' +
   '  </div>\n' +

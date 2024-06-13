@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted, ref, watchEffect} from 'vue'
+import { onMounted, ref, watchEffect } from 'vue'
 import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
 import hljs from 'highlight.js'
@@ -27,7 +27,7 @@ const md = MarkdownIt()
 md.options.html = true
 md.options.linkify = true
 md.options.langPrefix = 'language-'
-md.options.breaks = true
+md.options.breaks = false
 md.options.typographer = true
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 md.use(highlightjs, { inline: true, hljs: hljs }).use(require('markdown-it-plantuml'))
@@ -100,7 +100,8 @@ window.electron.ipcRenderer.on(
   async (_, context: string) => {
     const result = await preRenderMermaidProc(context)
     updateMarkdownPostRender(md.render(result))
-})
+  }
+)
 
 // 后处理结果，输出到预览窗口
 window.electron.ipcRenderer.on(

@@ -62,7 +62,7 @@ function materialParserAdmonitions(text: string): {
 } {
   // 字符串按照行分割
   const lines = text.split(/\r?\n/)
-  console.log('lines', lines)
+  //console.log('lines', lines)
   // 第一行是type和title
   // 去掉两边的空白
   const firstLine = lines[0].trim()
@@ -104,14 +104,14 @@ export function materialAdmonitionsRender(text: string): string {
   const regex = /!!!([\s\S]*?)(?=\n[!#`=\-+[$|{<:*~>\S]|$)/g
   // 使用全局搜索来查找所有匹配项，匹配到的字符串，已经去掉了前缀和后缀
   while ((match = regex.exec(renderResult)) !== null) {
-    console.log('match[1]', match[1])
+    //console.log('match[1]', match[1])
     const content = materialParserAdmonitions(match[1])
     const renderHtml =
       `<div class="admonition ${content.type}">` +
       `<p class="admonition-title">${content.title}</p>` +
       `${content.content}</div>`
     renderResult = renderResult.replace(match[0], renderHtml)
-    console.log('renderResult', renderResult)
+    //console.log('renderResult', renderResult)
   }
 
   return renderResult

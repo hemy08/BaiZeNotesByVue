@@ -9,7 +9,7 @@ export function showMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
 
 // 创建一个自定义对话框的函数
 function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
-  console.log('createMermaidEditDialog 11111')
+  //console.log('createMermaidEditDialog 11111')
   customMermaidEditDialog = new BrowserWindow({
     width: 1280,
     height: 550,

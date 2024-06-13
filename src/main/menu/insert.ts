@@ -631,6 +631,9 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       submenu: insertMenuItemPlantUML
     },
     {
+      type: 'separator'
+    },
+    {
       label: '自定义模板 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
