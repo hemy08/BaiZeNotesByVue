@@ -5,6 +5,7 @@
         v-for="(rootItem, index) in fileSystemTree"
         :key="index"
         v-model:is-expanded="rootItem.isExpanded"
+        v-model:file-extension="rootItem.fileExtension"
         :is-indented="false"
         :node="rootItem"
       />
@@ -21,6 +22,7 @@ interface FileSysItem {
   name: string
   path: string
   type: 'file' | 'folder'
+  fileExtension: string
   isDirectory: boolean
   isIndented: boolean
   isExpanded: boolean
@@ -34,6 +36,7 @@ window.electron.ipcRenderer.on('file-system-data', (_, fileSystemData: string) =
     // 解析接收到的 JSON 数据
     // 更新响应式引用
     fileSystemTree.value = JSON.parse(fileSystemData)
+    console.log('fileSystemTree', fileSystemTree)
   } catch (error) {
     console.error('Error parsing file system data:', error)
   }

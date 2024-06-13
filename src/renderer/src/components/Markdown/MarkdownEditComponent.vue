@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
 import MdMonacoEdit from './MarkdownMonacoEditor.vue'
 import MdPreview from './MarkdownPreviewComponent.vue'
 
@@ -24,6 +24,10 @@ let initialCodeContent = ''
 
 // 存储窗口宽度
 const windowWidth = ref(window.innerWidth)
+
+onMounted(()=>{
+  window.addEventListener('keydown', this.handleKeyDown);
+})
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateWindowWidth)
@@ -56,15 +60,17 @@ const mdPreviewComponentStyle = computed(() => {
   }
 })
 
+
 function handleMarkdownCodeUpdate(newValue: string) {
   // window.electron.ipcRenderer.send('render-monaco-editor-content', newValue)
   markdownEditorContent.value = newValue
+  CurrentActiveFile.content = newValue
 }
 
-window.electron.ipcRenderer.on('open-selected-file-content', (_, fileContent: string) => {
-  if (fileContent) {
-    initialCodeContent = fileContent
-    handleMarkdownCodeUpdate(fileContent)
+window.electron.ipcRenderer.on('open-selected-file', (_, content) => {
+  if (content) {
+    initialCodeContent = content
+    handleMarkdownCodeUpdate(content)
   } else {
     handleMarkdownCodeUpdate(initialCodeContent)
   }

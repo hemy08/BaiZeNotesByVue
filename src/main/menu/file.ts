@@ -1,8 +1,9 @@
-import { app, dialog } from 'electron'
+import {app, dialog, ipcMain} from 'electron'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
 import * as fs from 'fs'
 import { FileItem } from '../model/IntfDefine'
+import {writeFile} from "fs";
 
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
@@ -159,6 +160,7 @@ function traverseDirectory(dir, callback) {
         name: file,
         path: fullPath,
         type: 'file',
+        fileExtension: '.md',
         isDirectory: false, // 默认为文件
         children: [] // 初始化 children 为空数组
       }
@@ -187,6 +189,7 @@ function traverseDirectory(dir, callback) {
               ) {
                 // 如果是 .md 文件，则直接解析
                 item.type = 'file'
+                item.fileExtension = path.extname(item.name)
                 resolve(item)
               } else {
                 // 对于非 .md 文件，我们不需要它，所以简单地解析
@@ -227,6 +230,15 @@ function traverseDirectory(dir, callback) {
   })
 }
 
+function getFileNameFromPath(filePath: string): string {
+  const lastIndex = filePath.lastIndexOf('/') || filePath.lastIndexOf('\\')
+  if (lastIndex === -1) {
+    // 如果没有找到'/'或'\\'，则整个字符串就是文件名（或路径错误）
+    return filePath
+  }
+  return filePath.slice(lastIndex + 1)
+}
+
 function shouOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
   dialog
     .showOpenDialog(mainWindow, {
@@ -235,9 +247,14 @@ function shouOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
     })
     .then((result) => {
       if (result.canceled) return
-      const filePath = result.filePaths[0]
+      const fileProperties: FileProperties = {
+        name: getFileNameFromPath(result.filePaths[0]),
+        path: result.filePaths[0],
+        type: 'file',
+        content: ''
+      }
       // 发送文件内容到渲染进程
-      openAndSendSelectFileContent(mainWindow, filePath)
+      openAndSendSelectFileContent(mainWindow, fileProperties)
     })
     .catch((err) => {
       console.error('Error reading file:', err)
@@ -245,12 +262,31 @@ function shouOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
     })
 }
 
-export function openAndSendSelectFileContent(mainWindow: Electron.BrowserWindow, filePath: string) {
-  fs.readFile(filePath, 'utf8', (err, data) => {
+export function openAndSendSelectFileContent(
+  mainWindow: Electron.BrowserWindow,
+  fileProperties: FileProperties
+) {
+  fs.readFile(fileProperties.path, 'utf8', (err, data) => {
     if (!err) {
-      mainWindow.webContents.send('open-selected-file-content', data)
+      window.CurrentActiveFile = fileProperties
+      mainWindow.webContents.send('open-selected-file', data)
     } else {
-      console.log('openFile failed', filePath, err, data)
+      console.log('openFile failed', fileProperties.path, err, data)
     }
   })
 }
+
+function saveActiveFile() {
+  fs.writeFile(CurrentActiveFile.path, CurrentActiveFile.content, (err) => {
+    console.log('error', err)
+  })
+}
+
+// 监听键盘事件
+function handleKeyDown(event) {
+  if (event.ctrlKey && event.key === 's') {
+    saveActiveFile()
+  }
+}
+
+ipcMain.on('keydown', handleKeyDown)
