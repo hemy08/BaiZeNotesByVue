@@ -274,6 +274,6 @@ function initialize() {
 }
 
 // 监听来自渲染进程的 IPC 消息，并返回全局数据
-ipcMain.handle('get-global-file-manager-svg-data', async () => {
-  return global.FileMgrSvgs
+ipcMain.on('get-global-file-manager-svg-data', async (event,args) => {
+  event.returnValue = global.FileMgrSvgs
 })

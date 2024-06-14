@@ -37,7 +37,7 @@ window.electron.ipcRenderer.on('file-system-data', (_, fileSystemData: string) =
     // 更新响应式引用
     fileSystemTree.value = JSON.parse(fileSystemData)
     // console.log('fileSystemTree', fileSystemTree)
-    console.log('global.FileMgrSvgs', global)
+    // console.log('global.FileMgrSvgs', global)
   } catch (error) {
     console.error('Error parsing file system data:', error)
   }
