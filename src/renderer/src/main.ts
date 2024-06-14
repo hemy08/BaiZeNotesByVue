@@ -6,6 +6,7 @@ import './lib/Katex/katex.css'
 import './style/material/admonition.css'
 import './style/material/gridcards.css'
 
+
 import { createApp } from 'vue'
 import App from './App.vue'
 

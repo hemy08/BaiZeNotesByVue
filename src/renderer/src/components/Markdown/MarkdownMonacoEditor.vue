@@ -54,6 +54,8 @@ onMounted(() => {
         emit('update:code', editorInstance.getValue())
       }
     })
+
+    global.mdEditor = editorInstance
   }
 })
 

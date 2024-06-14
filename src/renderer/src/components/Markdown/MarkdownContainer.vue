@@ -12,6 +12,10 @@ import MdEditComp from './MarkdownEditComponent.vue'
 #md-edit-tools-bar {
   width: 100%;
   height: 40px;
+  background-color: #f2f2f2;
+  color: black;
+  align-items: center;
+  display: flex;
 }
 
 #md-edit-component {

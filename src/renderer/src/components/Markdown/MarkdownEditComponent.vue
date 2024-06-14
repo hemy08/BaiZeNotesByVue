@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref} from 'vue'
+import { computed, onMounted, onUnmounted, onBeforeUnmount, ref } from 'vue'
 import MdMonacoEdit from './MarkdownMonacoEditor.vue'
 import MdPreview from './MarkdownPreviewComponent.vue'
 
@@ -24,10 +24,6 @@ let initialCodeContent = ''
 
 // 存储窗口宽度
 const windowWidth = ref(window.innerWidth)
-
-onMounted(()=>{
-  window.addEventListener('keydown', this.handleKeyDown);
-})
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateWindowWidth)
@@ -60,11 +56,9 @@ const mdPreviewComponentStyle = computed(() => {
   }
 })
 
-
 function handleMarkdownCodeUpdate(newValue: string) {
-  // window.electron.ipcRenderer.send('render-monaco-editor-content', newValue)
+  window.electron.ipcRenderer.send('update-select-file-content', newValue)
   markdownEditorContent.value = newValue
-  CurrentActiveFile.content = newValue
 }
 
 window.electron.ipcRenderer.on('open-selected-file', (_, content) => {
@@ -83,6 +77,22 @@ window.electron.ipcRenderer.on('monaco-insert-writing-templates', (_, fileConten
   } else {
     handleMarkdownCodeUpdate(initialCodeContent)
   }
+})
+
+onMounted(() => {
+  function handleKeyDownEvent(event) {
+    // console.log('keyDown', event)
+    if (event.ctrlKey && event.key === 's') {
+      window.electron.ipcRenderer.send('save-file-content-to-disk', markdownEditorContent.value)
+    }
+  }
+
+  window.addEventListener('keydown', handleKeyDownEvent)
+
+  // 销毁编辑器实例
+  onBeforeUnmount(() => {
+    window.removeEventListener('keydown', handleKeyDownEvent)
+  })
 })
 </script>
 

@@ -4,7 +4,12 @@
     <NaviTab />
   </div>
   <!-- 中间资源管理显示区域，宽度可以调节 -->
-  <div id="resource-manager" class="resource-manager" :style="resMgrStyle" v-show="isShowResourceMgrArea">
+  <div
+    v-show="isShowResourceMgrArea"
+    id="resource-manager"
+    class="resource-manager"
+    :style="resMgrStyle"
+  >
     <ResManager />
   </div>
   <!-- 资源管理器和编辑区域的宽度调节条 -->
@@ -55,7 +60,6 @@ const mdContainerStyle = computed(() => ({
   // marginLeft: 'naviTabWidth.value + resMgrWidth.value + 2px' // 左侧遗留navi-tab宽度
 }))
 const isShowResourceMgrArea = true
-
 
 function startResizerMainResize() {}
 </script>

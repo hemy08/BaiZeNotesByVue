@@ -1,9 +1,8 @@
-import {app, dialog, ipcMain} from 'electron'
+import { app, dialog, ipcMain } from 'electron'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
 import * as fs from 'fs'
 import { FileItem } from '../model/IntfDefine'
-import {writeFile} from "fs";
 
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
@@ -76,15 +75,15 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      label: '另存为 ...待开发',
+      label: '另存为',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        saveActiveFileAs()
       }
     },
     {
-      label: '保存 ...待开发',
+      label: '保存',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        saveActiveFile()
       }
     },
     {
@@ -126,6 +125,16 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
   }
 }
 
+function StartAutoSaveFileTime() {
+  if (global.SavingFile) {
+    setInterval(() => {
+      saveActiveFile()
+      // 在这里执行你的任务代码
+    }, global.SaveFileInterval) // 每5秒执行一次
+    global.SavingFile = true
+  }
+}
+
 function shouOpenDirectoryDialog(mainWindow: Electron.BrowserWindow) {
   dialog
     .showOpenDialog(mainWindow, {
@@ -133,10 +142,11 @@ function shouOpenDirectoryDialog(mainWindow: Electron.BrowserWindow) {
     })
     .then((result) => {
       if (result.canceled) return
-
       const dirPath = result.filePaths[0]
-
       traverseDirectory(dirPath, (mdFiles) => {
+        global.mdFileTree = mdFiles
+        // 设置定时任务
+        //StartAutoSaveFileTime()
         // 发送文件名列表到渲染进程
         mainWindow.webContents.send('file-system-data', JSON.stringify(mdFiles))
       })
@@ -254,6 +264,7 @@ function shouOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
         content: ''
       }
       // 发送文件内容到渲染进程
+      //StartAutoSaveFileTime()
       openAndSendSelectFileContent(mainWindow, fileProperties)
     })
     .catch((err) => {
@@ -268,7 +279,7 @@ export function openAndSendSelectFileContent(
 ) {
   fs.readFile(fileProperties.path, 'utf8', (err, data) => {
     if (!err) {
-      window.CurrentActiveFile = fileProperties
+      global.__current_active_file = fileProperties
       mainWindow.webContents.send('open-selected-file', data)
     } else {
       console.log('openFile failed', fileProperties.path, err, data)
@@ -276,17 +287,55 @@ export function openAndSendSelectFileContent(
   })
 }
 
-function saveActiveFile() {
-  fs.writeFile(CurrentActiveFile.path, CurrentActiveFile.content, (err) => {
-    console.log('error', err)
-  })
+ipcMain.on('update-select-file-content', (_, content) => {
+  global.__current_active_file.content = content
+})
+
+export function saveActiveFile() {
+  const curFile = global.__current_active_file
+  // 文件存在，直接写入
+  if (curFile) {
+    fs.writeFile(curFile.path, curFile.content, (err) => {
+      if (err) {
+        console.log('写入文件时发生错误', err)
+      }
+    })
+  } else {
+    // 文件不存在，新建文件，写入，指定文件路径和文件名
+    try {
+      fs.appendFileSync(filePath, '', {
+        mode: 0o666,
+        encoding: 'utf-8'
+      })
+    } catch (e) {
+      if (global.MainShowWarn) {
+        window.Alert('无法写入文件', `文件创建失败: ${e.message}`)
+      }
+      return
+    }
+  }
+}
+
+export function saveActiveFileAs() {
+  const curFile = global.__current_active_file
+  if (curFile) {
+    fs.writeFile(curFile.path, curFile.content, (err) => {
+      console.log('error', err)
+    })
+  }
 }
 
 // 监听键盘事件
 function handleKeyDown(event) {
+  console.log('handleKeyDown', event)
   if (event.ctrlKey && event.key === 's') {
     saveActiveFile()
   }
 }
 
 ipcMain.on('keydown', handleKeyDown)
+
+ipcMain.on('save-file-content-to-disk', (_, content) => {
+  global.__current_active_file.content = content
+  saveActiveFile()
+})
