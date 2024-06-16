@@ -34,9 +34,9 @@
   <button id="line-enter-icon" class="tool-button" @click="handleUpdateInsertText('\r\n')"></button>
   <div style="width: 1px; height: 30px; background-color: black; color: black; margin: 2px"></div>
   <!-- 行内代码 代码块 行内公式 公式块 -->
-  <button id="code-line" class="tool-button" @click="handleUpdateFontFormat('``')"></button>
+  <button id="code-line" class="tool-button" @click="handleUpdateFontFormat('codeline')"></button>
   <button id="code-block" class="tool-button" @click="handleUpdateInsertText('\r\n```\r\n\r\n```\r\n')"></button>
-  <button id="math-line" class="tool-button" @click="handleUpdateFontFormat('$$')"></button>
+  <button id="math-line" class="tool-button" @click="handleUpdateFontFormat('mathline')"></button>
   <button id="math-block" class="tool-button" @click="handleUpdateInsertText('\r\n$$\r\n\r\n$$\r\n')"></button>
   <div style="width: 1px; height: 30px; background-color: black; color: black; margin: 2px"></div>
   <!-- 超链接 锚点链接 任务列表 -->

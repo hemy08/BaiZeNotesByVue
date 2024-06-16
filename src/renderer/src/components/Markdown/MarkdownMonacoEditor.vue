@@ -326,6 +326,12 @@ const fontStyleHandleFuncMap = {
   deleteline(editor: monaco.editor.IStandaloneCodeEditor) {
     return updateHandleFontStyle(editor, '~~', '~~')
   },
+  codeline(editor: monaco.editor.IStandaloneCodeEditor) {
+    return updateHandleFontStyle(editor, '`', '`')
+  },
+  mathline(editor: monaco.editor.IStandaloneCodeEditor) {
+    return updateHandleFontStyle(editor, '$', '$')
+  },
   italic(editor: monaco.editor.IStandaloneCodeEditor, style: string) {
     return updateHandleFontItalic(editor, style)
   }
