@@ -4,7 +4,14 @@ pre code.hljs {
   padding: 1em
 }
 code.hljs {
-  padding: 3px 5px
+  padding: 3px 5px;
+  background-color: #f1f4f8;
+}
+
+.hljs-attribute {
+  background-color: #f1f4f8;
+  color: #ff4030;
+  font-weight: bold;
 }
 /*
 
@@ -52,7 +59,6 @@ hue-6-2: #c18401
 .hljs-string,
 .hljs-regexp,
 .hljs-addition,
-.hljs-attribute,
 .hljs-meta .hljs-string {
   color: #50a14f
 }

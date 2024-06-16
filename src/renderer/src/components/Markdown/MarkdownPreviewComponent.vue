@@ -31,17 +31,6 @@ md.options.breaks = false
 md.options.typographer = true
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 md.use(highlightjs, { inline: true, hljs: hljs }).use(require('markdown-it-plantuml'))
-md.options.highlight = function (str, lang) {
-  if (lang && hljs.getLanguage(lang)) {
-    try {
-      return hljs.highlight(str, { language: lang, ignoreIllegals: true }).value
-    } catch (__) {
-      return ''
-    }
-  }
-
-  return ''
-}
 
 // 组件挂载时，进行初始渲染
 onMounted(() => {

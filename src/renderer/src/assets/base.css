@@ -38,9 +38,8 @@
   margin: 0;
   font-weight: normal;
 }*/
-
 ul {
-  list-style: none;
+  list-style: disc;
 }
 
 body {
