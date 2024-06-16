@@ -2,11 +2,10 @@ import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 // import { hemyShare } from './global'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const remoteDialog = require('@electron/remote').dialog
+// const remoteDialog = require('@electron/remote').dialog
 
 // Custom APIs for renderer
 const api = {}
-
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
@@ -28,7 +27,7 @@ if (process.contextIsolated) {
   // window.hemy = hemyShare
 }
 
-window.saveImage = (name, data) => {
+/*window.saveImage = (name, data) => {
   remoteDialog
     .showSaveDialog({
       title: '保存图片',
@@ -57,7 +56,6 @@ window.saveImage = (name, data) => {
         // fs.writeFileSync(filePath, Buffer.from(buffer))
         // shell.showItemInFolder(filePath)
       } catch (e) {
-        /* empty */
       }
     })
-}
+}*/

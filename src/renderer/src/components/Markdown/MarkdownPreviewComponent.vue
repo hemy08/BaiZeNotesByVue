@@ -55,9 +55,20 @@ watchEffect(() => {
   updateMarkdownPreRender()
 })
 
+function generateRandomNumberString(length: number): string {
+  let result = ''
+  const characters = '0123456789'
+  const charactersLength = characters.length
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength))
+  }
+  return result
+}
+
 async function mermaidRender(graphDefinition: string): Promise<string> {
   try {
-    const renderSvg = await mermaid.render('mermaidContainer', graphDefinition)
+    const mermaidId = 'mermaid' + generateRandomNumberString(10)
+    const renderSvg = await mermaid.render(mermaidId, graphDefinition)
     return Promise.resolve(
       '<div><pre class="mermaid"><code style="height: auto;display: flex">' +
         renderSvg.svg +

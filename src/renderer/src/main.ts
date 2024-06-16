@@ -5,9 +5,24 @@ import './style/material/admonition.css'
 import './lib/Katex/katex.css'
 import './style/material/admonition.css'
 import './style/material/gridcards.css'
-
-
+import { createStore } from 'vuex'
 import { createApp } from 'vue'
 import App from './App.vue'
 
-createApp(App).mount('#app')
+const store = createStore({
+  state: {
+    header: ''
+  },
+  mutations: {
+    setFormatHeader(state, value) {
+      state.header = value
+    }
+  },
+  actions: {
+    updateFormatHeader({ commit }, value) {
+      commit('setFormatHeader', value)
+    }
+  }
+})
+
+createApp(App).use(store).mount('#app')

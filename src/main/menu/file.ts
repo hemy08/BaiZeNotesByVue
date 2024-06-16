@@ -146,7 +146,7 @@ function shouOpenDirectoryDialog(mainWindow: Electron.BrowserWindow) {
       traverseDirectory(dirPath, (mdFiles) => {
         global.mdFileTree = mdFiles
         // 设置定时任务
-        //StartAutoSaveFileTime()
+        StartAutoSaveFileTime()
         // 发送文件名列表到渲染进程
         mainWindow.webContents.send('file-system-data', JSON.stringify(mdFiles))
       })
@@ -264,7 +264,7 @@ function shouOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
         content: ''
       }
       // 发送文件内容到渲染进程
-      //StartAutoSaveFileTime()
+      StartAutoSaveFileTime()
       openAndSendSelectFileContent(mainWindow, fileProperties)
     })
     .catch((err) => {
@@ -288,13 +288,18 @@ export function openAndSendSelectFileContent(
 }
 
 ipcMain.on('update-select-file-content', (_, content) => {
-  global.__current_active_file.content = content
+  const curFile = global.__current_active_file
+  // 文件打开了
+  if (curFile != undefined) {
+    global.__current_active_file.content = content
+  }
+  // 没有打开文件，使用另存为动作
 })
 
 export function saveActiveFile() {
   const curFile = global.__current_active_file
   // 文件存在，直接写入
-  if (curFile) {
+  if (curFile != undefined) {
     fs.writeFile(curFile.path, curFile.content, (err) => {
       if (err) {
         console.log('写入文件时发生错误', err)
@@ -302,17 +307,7 @@ export function saveActiveFile() {
     })
   } else {
     // 文件不存在，新建文件，写入，指定文件路径和文件名
-    try {
-      fs.appendFileSync(filePath, '', {
-        mode: 0o666,
-        encoding: 'utf-8'
-      })
-    } catch (e) {
-      if (global.MainShowWarn) {
-        window.Alert('无法写入文件', `文件创建失败: ${e.message}`)
-      }
-      return
-    }
+    console.log('写入文件时发生错误, 文件不存在')
   }
 }
 
@@ -327,7 +322,6 @@ export function saveActiveFileAs() {
 
 // 监听键盘事件
 function handleKeyDown(event) {
-  console.log('handleKeyDown', event)
   if (event.ctrlKey && event.key === 's') {
     saveActiveFile()
   }
@@ -336,6 +330,9 @@ function handleKeyDown(event) {
 ipcMain.on('keydown', handleKeyDown)
 
 ipcMain.on('save-file-content-to-disk', (_, content) => {
-  global.__current_active_file.content = content
-  saveActiveFile()
+  const curFile = global.__current_active_file
+  if (curFile != undefined) {
+    global.__current_active_file.content = content
+    saveActiveFile()
+  }
 })

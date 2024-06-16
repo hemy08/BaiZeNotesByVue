@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, PropType, onMounted } from 'vue'
+import { ref, defineProps, PropType } from 'vue'
 
 // 定义 props 类型
 // @ts-ignore eslint-disable-next-line @typescript-eslint/no-unused-vars

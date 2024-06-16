@@ -57,6 +57,7 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
     const fontItalic = '<i>'
     const fontUnderline = '<u>'
     const fontDeleteLine = '<s>'
+    htmlContext = '\r\n' + htmlContext + '\r\n'
     if (inputData.fontBold) {
       htmlContext = fontBold + htmlContext + '</b>'
     }
@@ -304,7 +305,7 @@ const CustomFontDialogHtml =
   '    }\n' +
   '    function updateTextInput(event) {\n' +
   '      document.getElementById("previewText").textContent = event.target.value\n' +
-  '      fontStyle.textInput = event.target.value\n' +
+  '      fontStyle.textInput = event.target.value.replace(/\\r?\\n/g,"\\n<br>")\n' +
   '    }\n' +
   '    // 监听文本输入和样式输入的变化\n' +
   "    document.getElementById('fontFamily').addEventListener('input', updateFontFamily);\n" +

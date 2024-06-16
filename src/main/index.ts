@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
-import { openAndSendSelectFileContent, saveActiveFile } from './menu/file'
+import { openAndSendSelectFileContent } from './menu/file'
 import { HemyRenderPre, HemyRenderPost } from './utils/HemyRender'
 import { createMermaidRenderFrame } from './dialogs/OpenMermaidRenderFrame'
 
@@ -274,6 +274,6 @@ function initialize() {
 }
 
 // 监听来自渲染进程的 IPC 消息，并返回全局数据
-ipcMain.on('get-global-file-manager-svg-data', async (event,args) => {
+ipcMain.on('get-global-file-manager-svg-data', async (event) => {
   event.returnValue = global.FileMgrSvgs
 })
