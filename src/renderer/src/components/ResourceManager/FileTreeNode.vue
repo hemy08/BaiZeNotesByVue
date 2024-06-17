@@ -31,12 +31,12 @@
       <!-- 如果是文件，只显示文件图标和名称 -->
       <div v-else>
         <svg
-          v-if="fileExtension && getSvg(isExpanded, fileExtension)"
-          :class="['file-icon', getSvg(isExpanded, fileExtension).className]"
-          :style="getSvg(isExpanded, fileExtension).style"
-          :viewBox="getSvg(isExpanded, fileExtension).viewBox"
+          v-if="fileExtension && getSvg(false, fileExtension)"
+          :class="['file-icon', getSvg(false, fileExtension).className]"
+          :style="getSvg(false, fileExtension).style"
+          :viewBox="getSvg(false, fileExtension).viewBox"
         >
-          <path :d="getSvg(isExpanded, fileExtension).path" />
+          <path :d="getSvg(false, fileExtension).path" />
         </svg>
         <span
           id="file-manager-file"
@@ -57,21 +57,37 @@
         :is-indented="true"
       />
     </div>
+    <!--
+    <div v-if="isContextMenuVisible" id="custom-context-menu" class="custom-context-menu" :style="{ top: menuTop + 'px', left: menuLeft + 'px' }">
+      <ul>
+        <li>菜单项1</li>
+        <li>菜单项2</li>
+      </ul>
+    </div>
+    -->
     <FileMgrContextMenu
-      v-if="isContextMenuVisible"
+      v-show="isContextMenuVisible"
+      id="custom-context-menu"
+      class="custom-context-menu"
+      :style="{ top: menuTop + 'px', left: menuLeft + 'px' }"
       :node="currentContextMenuNode"
-      @click.self="hideContextMenu"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, PropType } from 'vue'
+import {ref, defineProps, PropType, onMounted} from 'vue'
 import FileMgrContextMenu from './FileMgrContextMenu.vue'
 import { FileSysItem, FileMgrSvgs } from './resource-manager'
 
 const isContextMenuVisible = ref(false)
 let currentContextMenuNode: FileSysItem
+// let lastContextMenuNode = ''
+const menuTop = ref('')
+const menuLeft = ref('')
+const nodes = document.querySelectorAll('.file-tree-node'); // 示例选择器
+const contextMenu = document.querySelector('#context-menu'); // 右键菜单元素
+let currentNode // 用于跟踪当前显示菜单的节点
 
 // 定义 props 类型
 // @ts-ignore eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -91,6 +107,10 @@ const props = defineProps({
   fileExtension: {
     type: String,
     default: '.md'
+  },
+  hasContextMenu: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -126,18 +146,40 @@ function handleClick(node: FileSysItem) {
   }
 }
 
-const hideContextMenu = () => {
-  isContextMenuVisible.value = false
-}
+onMounted(() => {
+  // 为每个节点添加点击事件监听器
+  nodes.forEach(node => {
+    node.addEventListener('contextmenu', (event) => {
+      // 检查并关闭旧菜单（如果有）
+      if (currentNode && currentNode !== node) {
+        node.st.display = 'none'
+        currentNode = null
+      }
+    })
+
+    // 添加右键点击事件监听器来显示菜单
+    node.addEventListener('contextmenu', (event) => {
+      event.preventDefault(); // 阻止默认右键菜单显示
+      event.stopPropagation(); // 阻止事件冒泡（如果需要）
+      node.style.display = 'block'
+      currentNode = node; // 更新当前节点
+    })
+})
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function showContextMenu(event, node: FileSysItem) {
-  hideContextMenu()
-  console.log('event', event)
-  console.log('node', node)
-  isContextMenuVisible.value = true
-  currentContextMenuNode = node
+function showContextMenu(event) {
+  contextMenu.style.display = 'block'
 }
+/*
+function checkClickOutSide(event, node: FileSysItem) {
+  console.log('checkClickOutSide event', event)
+    isContextMenuVisible.value = false
+  }
+}*/
+/*
+onBeforeUnmount(() => {
+  document.removeEventListener('click', hideContextMenu)
+})*/
 </script>
 
 <style scoped>
@@ -180,5 +222,14 @@ function showContextMenu(event, node: FileSysItem) {
   width: 20px;
   height: 20px;
   overflow: hidden;
+}
+
+.custom-context-menu {
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background-color: #f5f5f5;
+  width: 200px;
+  position: absolute; /* 相对于最近的已定位祖先元素（或body）定位 */
+  z-index: 1000; /* 确保显示在其他元素之上 */
 }
 </style>

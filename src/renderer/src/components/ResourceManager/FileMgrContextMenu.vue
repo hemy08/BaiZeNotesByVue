@@ -1,5 +1,5 @@
 <template>
-  <div id="custom-context-menu" class="custom-context-menu" :style="contentMenuStyle">
+  <div id="custom-context-menu" class="custom-context-menu">
     <ul>
       <li>菜单项1</li>
       <li>菜单项2</li>
@@ -31,24 +31,7 @@ const props = defineProps({
     default: '.md'
   }
 })
-
-// 预览区域样式设置
-const contentMenuStyle = computed(() => {
-  return {
-    marginLeft: '60px'
-  }
-})
-
 </script>
 
 <style scoped>
-.custom-context-menu {
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  background-color: #f5f5f5;
-  width: 200px;
-  margin-left: 40px;
-  position: absolute; /* 相对于最近的已定位祖先元素（或body）定位 */
-  z-index: 1000; /* 确保显示在其他元素之上 */
-}
 </style>
