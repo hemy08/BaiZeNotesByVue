@@ -65,29 +65,25 @@
       </ul>
     </div>
     -->
-    <FileMgrContextMenu
-      v-show="isContextMenuVisible"
-      id="custom-context-menu"
-      class="custom-context-menu"
-      :style="{ top: menuTop + 'px', left: menuLeft + 'px' }"
-      :node="currentContextMenuNode"
-    />
   </div>
+  <FileMgrContextMenu
+    v-show="isContextMenuVisible"
+    id="custom-context-menu"
+    class="custom-context-menu"
+    :style="{ top: menuTop + 'px', left: menuLeft + 'px' }"
+    :node="currentContextMenuNode"
+  />
 </template>
 
 <script setup lang="ts">
-import {ref, defineProps, PropType, onMounted} from 'vue'
+import { ref, defineProps, PropType } from 'vue'
 import FileMgrContextMenu from './FileMgrContextMenu.vue'
 import { FileSysItem, FileMgrSvgs } from './resource-manager'
 
 const isContextMenuVisible = ref(false)
 let currentContextMenuNode: FileSysItem
-// let lastContextMenuNode = ''
 const menuTop = ref('')
 const menuLeft = ref('')
-const nodes = document.querySelectorAll('.file-tree-node'); // 示例选择器
-const contextMenu = document.querySelector('#context-menu'); // 右键菜单元素
-let currentNode // 用于跟踪当前显示菜单的节点
 
 // 定义 props 类型
 // @ts-ignore eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -146,29 +142,19 @@ function handleClick(node: FileSysItem) {
   }
 }
 
-onMounted(() => {
-  // 为每个节点添加点击事件监听器
-  nodes.forEach(node => {
-    node.addEventListener('contextmenu', (event) => {
-      // 检查并关闭旧菜单（如果有）
-      if (currentNode && currentNode !== node) {
-        node.st.display = 'none'
-        currentNode = null
-      }
-    })
-
-    // 添加右键点击事件监听器来显示菜单
-    node.addEventListener('contextmenu', (event) => {
-      event.preventDefault(); // 阻止默认右键菜单显示
-      event.stopPropagation(); // 阻止事件冒泡（如果需要）
-      node.style.display = 'block'
-      currentNode = node; // 更新当前节点
-    })
-})
+const hideContextMenu = () => {
+  isContextMenuVisible.value = false
+  document.addEventListener('click', hideContextMenu)
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function showContextMenu(event) {
-  contextMenu.style.display = 'block'
+function showContextMenu(event, node: FileSysItem) {
+  hideContextMenu()
+  menuTop.value = event.pageY
+  menuLeft.value = event.pageX
+  isContextMenuVisible.value = true
+  currentContextMenuNode = node
+  document.addEventListener('click', hideContextMenu)
 }
 /*
 function checkClickOutSide(event, node: FileSysItem) {
