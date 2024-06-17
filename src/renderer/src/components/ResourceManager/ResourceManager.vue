@@ -16,28 +16,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import FileTreeNode from './FileTreeNode.vue'
-
-interface FileSysItem {
-  id: never
-  name: string
-  path: string
-  type: 'file' | 'folder'
-  fileExtension: string
-  isDirectory: boolean
-  isIndented: boolean
-  isExpanded: boolean
-  children?: []
-}
+import { FileSysItem } from './resource-manager'
 
 const fileSystemTree = ref<FileSysItem[]>([])
 
 window.electron.ipcRenderer.on('file-system-data', (_, fileSystemData: string) => {
   try {
-    // 解析接收到的 JSON 数据
-    // 更新响应式引用
+    // 解析接收到的 JSON 数据 更新响应式引用
     fileSystemTree.value = JSON.parse(fileSystemData)
-    // console.log('fileSystemTree', fileSystemTree)
-    // console.log('global.FileMgrSvgs', global)
   } catch (error) {
     console.error('Error parsing file system data:', error)
   }
