@@ -1,8 +1,13 @@
 <template>
-  <div class="file-tree-node" :class="{ indented: isIndented }">
-    <div class="node-content" @click="handleClick(node)">
+  <div
+    id="file-tree-node"
+    class="file-tree-node"
+    :class="{ indented: isIndented }"
+    @contextmenu.prevent="showContextMenu($event, node)"
+  >
+    <div id="node-content" class="node-content" @click="handleClick(node)">
       <!-- 如果是文件夹，显示文件夹图标和名称，并提供一个展开/收起按钮 -->
-      <div v-if="node.type === 'folder'">
+      <span v-if="node.type === 'folder'">
         <button style="border: none; background-color: transparent" @click="toggleFolder">
           <svg
             v-if="getSvg(isExpanded, 'collapse')"
@@ -21,15 +26,9 @@
         >
           <path :d="getSvg(isExpanded, 'folder').path" />
         </svg>
-        <span
-          id="file-manager-folder"
-          class="file-manager-node-name"
-          @contextmenu.prevent="showContextMenu($event, node)"
-          >{{ node.name }}</span
-        >
-      </div>
+      </span>
       <!-- 如果是文件，只显示文件图标和名称 -->
-      <div v-else>
+      <span v-else>
         <svg
           v-if="fileExtension && getSvg(false, fileExtension)"
           :class="['file-icon', getSvg(false, fileExtension).className]"
@@ -38,13 +37,8 @@
         >
           <path :d="getSvg(false, fileExtension).path" />
         </svg>
-        <span
-          id="file-manager-file"
-          class="file-manager-node-name"
-          @contextmenu.prevent="showContextMenu($event, node)"
-          >{{ node.name }}</span
-        >
-      </div>
+      </span>
+      <span id="file-manager-node" class="file-manager-node">{{ node.name }}</span>
     </div>
     <!-- 如果当前是文件夹并且已经展开，递归显示子节点 -->
     <div v-if="node.type === 'folder' && isExpanded">
@@ -57,22 +51,13 @@
         :is-indented="true"
       />
     </div>
-    <!--
-    <div v-if="isContextMenuVisible" id="custom-context-menu" class="custom-context-menu" :style="{ top: menuTop + 'px', left: menuLeft + 'px' }">
-      <ul>
-        <li>菜单项1</li>
-        <li>菜单项2</li>
-      </ul>
-    </div>
-    -->
+    <FileMgrContextMenu
+      id="custom-context-menu"
+      class="custom-context-menu"
+      :style="{ top: menuTop + 'px', left: menuLeft + 'px', display: displayMode }"
+      :node="fileTreeNode"
+    />
   </div>
-  <FileMgrContextMenu
-    v-show="isContextMenuVisible"
-    id="custom-context-menu"
-    class="custom-context-menu"
-    :style="{ top: menuTop + 'px', left: menuLeft + 'px' }"
-    :node="currentContextMenuNode"
-  />
 </template>
 
 <script setup lang="ts">
@@ -80,10 +65,12 @@ import { ref, defineProps, PropType } from 'vue'
 import FileMgrContextMenu from './FileMgrContextMenu.vue'
 import { FileSysItem, FileMgrSvgs } from './resource-manager'
 
-const isContextMenuVisible = ref(false)
-let currentContextMenuNode: FileSysItem
 const menuTop = ref('')
 const menuLeft = ref('')
+const displayMode = ref('none')
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let lastContextMenuNode
+let fileTreeNode
 
 // 定义 props 类型
 // @ts-ignore eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -142,30 +129,37 @@ function handleClick(node: FileSysItem) {
   }
 }
 
-const hideContextMenu = () => {
-  isContextMenuVisible.value = false
-  document.addEventListener('click', hideContextMenu)
+function hideAllContextMenu() {
+  // 获取所有文件节点和右键菜单元素
+  const fileTreeNodes = document.querySelectorAll('.file-tree-node')
+  // 为每个文件节点添加contextmenu事件监听器
+  fileTreeNodes.forEach(function (treeNode) {
+    // 获取当前 file-tree-node 下的 custom-context-menu
+    const menuItem = treeNode.querySelector('.custom-context-menu')
+    if (menuItem) {
+      menuItem.style.display = 'none'
+    }
+  })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function showContextMenu(event, node: FileSysItem) {
-  hideContextMenu()
-  menuTop.value = event.pageY
-  menuLeft.value = event.pageX
-  isContextMenuVisible.value = true
-  currentContextMenuNode = node
-  document.addEventListener('click', hideContextMenu)
+function handleDocumentClick() {
+  hideAllContextMenu()
+  // 移除事件监听器，避免重复添加
+  document.removeEventListener('click', handleDocumentClick)
 }
-/*
-function checkClickOutSide(event, node: FileSysItem) {
-  console.log('checkClickOutSide event', event)
-    isContextMenuVisible.value = false
-  }
-}*/
-/*
-onBeforeUnmount(() => {
-  document.removeEventListener('click', hideContextMenu)
-})*/
+
+function showContextMenu(event, node: FileSysItem) {
+  hideAllContextMenu()
+  // 设置菜单的位置
+  menuLeft.value = event.pageX
+  menuTop.value = event.pageY
+  // 显示菜单
+  displayMode.value = 'block'
+  fileTreeNode = node
+
+  // 点击页面其他位置时隐藏右键菜单
+  document.addEventListener('click', handleDocumentClick)
+}
 </script>
 
 <style scoped>
@@ -184,11 +178,16 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.file-manager-node-name {
+.file-manager-node {
   font-size: 12pt;
   margin-left: 4px;
+  width: 100%;
   white-space: nowrap;
   overflow: hidden;
+}
+
+.file-manager-node:hover {
+  background-color: #e1e4e8;
 }
 
 .file-icon {
@@ -211,9 +210,10 @@ onBeforeUnmount(() => {
 }
 
 .custom-context-menu {
-  border: 1px solid #ccc;
+  display: none;
+  border: 1px solid #eeeeee;
   border-radius: 10px;
-  background-color: #f5f5f5;
+  background-color: #fefefe;
   width: 200px;
   position: absolute; /* 相对于最近的已定位祖先元素（或body）定位 */
   z-index: 1000; /* 确保显示在其他元素之上 */
