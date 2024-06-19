@@ -1,4 +1,6 @@
 import ContextMenu from '@imengyu/vue3-context-menu'
+import * as fs from 'fs'
+import * as path from 'path'
 
 export interface FileSysItem {
   id: never
@@ -101,10 +103,16 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
         label: '新建',
         children: [
           {
+            label: '文件',
+            onClick: () => {
+              ctxMenuCreateFolder(node, false)
+            }
+          },
+          {
             label: '文件夹',
             divided: true,
             onClick: () => {
-              alert('文件夹')
+              ctxMenuCreateFolder(node, true)
             }
           },
           {
@@ -239,4 +247,18 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
       }
     ]
   })
+}
+
+function ctxMenuCreateFolder(node: FileSysItem, isFolder: boolean) {
+  let directoryPath
+  if (node.type === 'folder') {
+    directoryPath = node.path
+  } else {
+    const lastIndex1 = node.path.lastIndexOf('\\')
+    const lastIndex2 = node.path.lastIndexOf('/')
+    const lastIndex = Math.max(lastIndex1, lastIndex2)
+    directoryPath = node.path.substring(0, lastIndex)
+  }
+
+  window.electron.ipcRenderer.send('file-manager-context-menu-create-file', directoryPath, isFolder)
 }

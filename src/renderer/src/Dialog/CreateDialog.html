@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>新建文件/文件夹</title>
+</head>
+<body>
+<div><label for="file-folder-name">文件夹/文件名：</label></div>
+<div><input type="text" id="file-folder-name" style="width: 300px"></div>
+</body>
+<script>
+  const { ipcRenderer } = require('electron');
+  const inputElement = document.getElementById('file-folder-name')
+  inputElement.addEventListener('keyup', function(event) {
+    if (event.key === 'Enter') {
+      const name = inputElement.value
+      ipcRenderer.send('user-input-create-file-folder-name', name)
+    }
+  });
+</script>
+</html>

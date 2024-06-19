@@ -6,6 +6,8 @@ import './plugins/plugin'
 import { openAndSendSelectFileContent } from './menu/file'
 import { HemyRenderPre, HemyRenderPost } from './utils/HemyRender'
 import { createMermaidRenderFrame } from './dialogs/OpenMermaidRenderFrame'
+import { showCreateFileFolderDialog } from './dialogs/dialogs'
+import { CreateFileFolder } from './utils/fileStream'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -62,6 +64,19 @@ function createWindow(): void {
 
   ipcMain.on('post-render-monaco-editor-content', (_, message) => {
     HemyRenderPost(mainWindow, message)
+  })
+
+  ipcMain.on('file-manager-context-menu-create-file', (_, dirPath, isFolder) => {
+    console.log('file-manager-context-menu-create-file')
+    const createFileFolderDialog = showCreateFileFolderDialog(mainWindow)
+    function processCreateFileFolder(_, name) {
+      ipcMain.removeListener('user-input-create-file-folder-name', processCreateFileFolder)
+      console.log('fileFolderName', name)
+      createFileFolderDialog.close()
+      CreateFileFolder(name, dirPath, isFolder)
+    }
+
+    ipcMain.on('user-input-create-file-folder-name', processCreateFileFolder)
   })
 
   ipcMain.on('mermaid-graph-svg-data-to-main', (_, svgData) => {

@@ -111,7 +111,6 @@ function handleClick(node: FileSysItem) {
 }
 
 function onContextMenu(e: MouseEvent, node: FileSysItem) {
-  console.log('node', node)
   handleContextMenu(e, node)
 }
 </script>
