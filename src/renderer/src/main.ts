@@ -5,6 +5,8 @@ import './style/material/admonition.css'
 import './lib/Katex/katex.css'
 import './style/material/admonition.css'
 import './style/material/gridcards.css'
+import '@imengyu/vue3-context-menu/lib/vue3-context-menu.css'
+import { ContextMenu } from '@imengyu/vue3-context-menu'
 import { createStore } from 'vuex'
 import { createApp } from 'vue'
 import App from './App.vue'
@@ -25,4 +27,7 @@ const store = createStore({
   }
 })
 
-createApp(App).use(store).mount('#app')
+const app = createApp(App)
+app.use(store)
+app.use(ContextMenu)
+app.mount('#app')

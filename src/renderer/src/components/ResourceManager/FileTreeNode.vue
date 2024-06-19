@@ -4,7 +4,7 @@
       id="node-content"
       class="node-content"
       @click="handleClick(node)"
-      @contextmenu.prevent="showContextMenu($event)"
+      @contextmenu.prevent="onContextMenu($event, node)"
     >
       <!-- 如果是文件夹，显示文件夹图标和名称，并提供一个展开/收起按钮 -->
       <span v-if="node.type === 'folder'">
@@ -39,12 +39,6 @@
         </svg>
       </span>
       <span id="file-manager-node" class="file-manager-node">{{ node.name }}</span>
-      <FileMgrContextMenu
-        id="custom-context-menu"
-        class="custom-context-menu"
-        :style="{ top: menuTop + 'px', left: menuLeft + 'px', display: displayMode }"
-        :node="node"
-      />
     </div>
     <!-- 如果当前是文件夹并且已经展开，递归显示子节点 -->
     <div v-if="node.type === 'folder' && isExpanded" id="file-subtree" class="file-subtree">
@@ -55,6 +49,7 @@
         v-model:file-extension="child.fileExtension"
         :node="child"
         :is-indented="true"
+        @contextmenu:node="onContextMenu($event, node)"
       />
     </div>
   </div>
@@ -62,12 +57,7 @@
 
 <script setup lang="ts">
 import { ref, defineProps, PropType } from 'vue'
-import FileMgrContextMenu from './FileMgrContextMenu.vue'
-import { FileSysItem, FileMgrSvgs } from './resource-manager'
-
-const menuTop = ref('')
-const menuLeft = ref('')
-const displayMode = ref('none')
+import { FileSysItem, getFileMgrSvg, handleContextMenu } from './resource-manager'
 
 // 定义 props 类型
 // @ts-ignore eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -95,13 +85,7 @@ const props = defineProps({
 })
 
 function getSvg(isExpanded: boolean, extension: string) {
-  if (extension == 'folder') {
-    return isExpanded ? FileMgrSvgs['folder-open'] : FileMgrSvgs['folder-close']
-  } else if (extension == 'collapse') {
-    return isExpanded ? FileMgrSvgs['folder-collapse-open'] : FileMgrSvgs['folder-collapse-close']
-  } else {
-    return FileMgrSvgs[extension.toLowerCase()] || FileMgrSvgs['default']
-  }
+  return getFileMgrSvg(isExpanded, extension)
 }
 
 // eslint-disable-next-line vue/no-dupe-keys
@@ -126,63 +110,9 @@ function handleClick(node: FileSysItem) {
   }
 }
 
-function hideSubFileTreeContextMenu(element) {
-  // 获取所有文件节点和右键菜单元素
-  const fileSubTree = element.querySelector('.file-subtree')
-  if (fileSubTree) {
-    const fileSubTreeNodes = fileSubTree.querySelectorAll('.file-tree-node')
-    console.log('hideSubFileTreeContextMenu fileSubTreeNodes', fileSubTreeNodes)
-    // 为每个文件节点添加contextmenu事件监听器
-    fileSubTreeNodes.forEach(function (fileSubNode) {
-      console.log('hideSubFileTreeContextMenu fileSubNode', fileSubNode)
-      const menuItem = fileSubNode.querySelector('.custom-context-menu')
-      console.log('hideSubFileTreeContextMenu menuItem', menuItem)
-      if (menuItem) {
-        menuItem.style.display = 'none'
-      }
-      hideSubFileTreeContextMenu(fileSubNode)
-    })
-  }
-}
-
-function hideAllContextMenu() {
-  // 获取所有文件节点和右键菜单元素
-  const fileTree = document.getElementById('file-tree')
-  console.log('fileTree', fileTree)
-  if (fileTree) {
-    const fileTreeNodes = fileTree.querySelectorAll('.file-tree-node')
-    console.log('fileTreeNodes', fileTreeNodes)
-    // 为每个文件节点添加contextmenu事件监听器
-    fileTreeNodes.forEach(function (fileNode) {
-      console.log('hideAllContextMenu fileNode', fileNode)
-      hideSubFileTreeContextMenu(fileNode)
-      const menuItem = fileNode.querySelector('.custom-context-menu')
-      console.log('menuItem', menuItem)
-      if (menuItem) {
-        menuItem.style.display = 'none'
-      }
-      hideSubFileTreeContextMenu(fileSubNode)
-    })
-  }
-}
-
-function handleDocumentClick() {
-  hideAllContextMenu()
-  document.removeEventListener('click', handleDocumentClick)
-}
-
-function showContextMenu(event) {
-  hideAllContextMenu()
-  setTimeout(function () {
-    console.log('SvgObject', event.toString())
-  }, 5000)
-  // 设置菜单的位置
-  menuLeft.value = event.pageX
-  menuTop.value = event.pageY
-  // 显示菜单
-  displayMode.value = 'block'
-  // 点击页面其他位置时隐藏右键菜单
-  document.addEventListener('click', handleDocumentClick)
+function onContextMenu(e: MouseEvent, node: FileSysItem) {
+  console.log('node', node)
+  handleContextMenu(e, node)
 }
 </script>
 

@@ -53,7 +53,7 @@
   <button
     id="line-scan"
     class="tool-button"
-    @click="handleUpdateInsertText('------------\r\n')"
+    @click="handleUpdateInsertText('\r\n------------\r\n')"
   ></button>
   <button id="line-enter-icon" class="tool-button" @click="handleUpdateInsertText('\r\n')"></button>
   <div style="width: 1px; height: 30px; background-color: black; color: black; margin: 2px"></div>
@@ -99,7 +99,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import EventBus from '../../event-bus'
-import { MdEditToolSvgs } from './markdown-edit-tools'
+import { MdEditToolSvgs } from './markdown-edit'
 
 onMounted(() => {
   for (const key in MdEditToolSvgs) {

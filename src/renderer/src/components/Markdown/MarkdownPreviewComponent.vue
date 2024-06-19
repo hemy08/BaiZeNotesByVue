@@ -10,7 +10,7 @@ import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
 import hljs from 'highlight.js'
 import MermaidRender from './MermaidRender.vue'
-import mermaid from 'mermaid'
+import { preRenderMermaidProc } from './markdown-edit'
 
 const props = defineProps({
   editorContent: {
@@ -43,46 +43,6 @@ onMounted(() => {
 watchEffect(() => {
   updateMarkdownPreRender()
 })
-
-function generateRandomNumberString(length: number): string {
-  let result = ''
-  const characters = '0123456789'
-  const charactersLength = characters.length
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength))
-  }
-  return result
-}
-
-async function mermaidRender(graphDefinition: string): Promise<string> {
-  try {
-    const mermaidId = 'mermaid' + generateRandomNumberString(10)
-    const renderSvg = await mermaid.render(mermaidId, graphDefinition)
-    return Promise.resolve(
-      '<div><pre class="mermaid"><code style="height: auto;display: flex">' +
-        renderSvg.svg +
-        '</code></pre></div>'
-    )
-  } catch (error) {
-    console.log('mermaidRender error', error)
-  }
-
-  return ''
-}
-
-async function preRenderMermaidProc(text: string) {
-  // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
-  let renderResult = text
-  let match: RegExpExecArray | null = null
-  const regex = /```mermaid([\s\S]*?)```/g
-  // 使用全局搜索来查找所有匹配项
-  while ((match = regex.exec(text)) !== null) {
-    const renderedSvg = await mermaidRender(match[1])
-    renderResult = renderResult.replace(match[0], renderedSvg)
-  }
-
-  return renderResult
-}
 
 // 定义一个函数来更新 Markdown 的渲染，预处理
 async function updateMarkdownPreRender() {

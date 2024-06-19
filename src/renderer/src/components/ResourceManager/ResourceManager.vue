@@ -28,6 +28,7 @@ window.electron.ipcRenderer.on('file-system-data', (_, fileSystemData: string) =
     console.error('Error parsing file system data:', error)
   }
 })
+
 </script>
 
 <style scoped>

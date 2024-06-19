@@ -1,3 +1,5 @@
+import ContextMenu from '@imengyu/vue3-context-menu'
+
 export interface FileSysItem {
   id: never
   name: string
@@ -78,4 +80,163 @@ export const FileMgrSvgs: MappingTable = {
     viewBox: '0 0 24 24',
     path: 'm10 17 5-5-5-5v10Z'
   }
+}
+
+export function getFileMgrSvg(isExpanded: boolean, extension: string) {
+  if (extension == 'folder') {
+    return isExpanded ? FileMgrSvgs['folder-open'] : FileMgrSvgs['folder-close']
+  } else if (extension == 'collapse') {
+    return isExpanded ? FileMgrSvgs['folder-collapse-open'] : FileMgrSvgs['folder-collapse-close']
+  } else {
+    return FileMgrSvgs[extension.toLowerCase()] || FileMgrSvgs['default']
+  }
+}
+
+export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
+  ContextMenu.showContextMenu({
+    x: e.x,
+    y: e.y,
+    items: [
+      {
+        label: '新建',
+        children: [
+          {
+            label: '文件夹',
+            divided: true,
+            onClick: () => {
+              alert('文件夹')
+            }
+          },
+          {
+            label: 'Markdown文件',
+            onClick: () => {
+              alert('Markdown文件')
+            }
+          },
+          {
+            label: '从Word文档导入',
+            onClick: () => {
+              alert('从Word文档导入')
+            }
+          },
+          {
+            label: '从HTML文档导入',
+            onClick: () => {
+              alert('从HTML文档导入')
+            }
+          }
+        ],
+        divided: true
+      },
+      {
+        label: '复制',
+        children: [
+          {
+            label: '文件夹/文件',
+            divided: true,
+            onClick: () => {
+              alert('文件夹/文件')
+            }
+          },
+          {
+            label: '文件夹名称',
+            onClick: () => {
+              alert('文件夹名称')
+            }
+          },
+          {
+            label: '文件夹绝对路径',
+            onClick: () => {
+              alert('文件夹绝对路径')
+            }
+          },
+          {
+            label: '相对于当前打开文件路径',
+            onClick: () => {
+              alert('相对于当前打开文件路径')
+            }
+          },
+          {
+            label: '复制为本地图片链接',
+            onClick: () => {
+              alert('复制为本地图片链接')
+            }
+          },
+          {
+            label: '复制为本地文件链接',
+            onClick: () => {
+              alert('复制为本地文件链接')
+            }
+          }
+        ]
+      },
+      {
+        label: '剪切',
+        onClick: () => {
+          alert('剪切')
+        }
+      },
+      {
+        label: '粘贴',
+        onClick: () => {
+          alert('粘贴')
+        }
+      },
+      {
+        label: '删除',
+        onClick: () => {
+          alert('删除')
+        },
+        divided: true
+      },
+      {
+        label: '查找',
+        children: [
+          {
+            label: '在文件中查找',
+            onClick: () => {
+              alert('在文件中查找')
+            }
+          },
+          {
+            label: '在文件夹中查找',
+            onClick: () => {
+              alert('在文件夹中查找')
+            }
+          }
+        ]
+      },
+      {
+        label: '重命名',
+        onClick: () => {
+          alert('重命名')
+        }
+      },
+      {
+        label: '刷新',
+        onClick: () => {
+          alert('刷新')
+        },
+        divided: true
+      },
+      {
+        label: '在资源管理器打开',
+        onClick: () => {
+          alert('在资源管理器打开')
+        }
+      },
+      {
+        label: '从磁盘重新加载',
+        onClick: () => {
+          alert('从磁盘重新加载')
+        }
+      },
+      {
+        label: '属性',
+        onClick: () => {
+          alert('属性')
+        }
+      }
+    ]
+  })
 }

@@ -83,7 +83,7 @@ async function plantumlRenderFromServer(text: string): Promise<string> {
       console.error('Fetch error:', error)
     }
 
-    console.log('plantumlRenderSvgString', plantumlRenderSvgString)
+    // console.log('plantumlRenderSvgString', plantumlRenderSvgString)
     // 替换原有文字内容
     plantumlRenderSvgString =
       '<div><pre class="plantuml"><code style="height: auto;display: flex">' +
