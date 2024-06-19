@@ -1,8 +1,10 @@
 import { app, dialog, ipcMain } from 'electron'
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const path = require('path')
-import * as fs from 'fs'
-import { FileItem } from '../model/IntfDefine'
+import {
+  openSelectFile,
+  reloadDirectoryFromDisk,
+  saveActiveFile,
+  saveActiveFileAs
+} from '../utils/file-utils'
 
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
@@ -11,7 +13,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '新建文件(N)  ...待开发',
       accelerator: 'ctrl+n',
       click: () => {
-        shouOpenDirectoryDialog(mainWindow)
+        showOpenDirectoryDialog(mainWindow)
       }
     },
     {
@@ -56,13 +58,13 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '打开文件',
       click: () => {
-        shouOpenSelectFileDialog(mainWindow)
+        showOpenSelectFileDialog(mainWindow)
       }
     },
     {
       label: '打开文件夹',
       click: () => {
-        shouOpenDirectoryDialog(mainWindow)
+        showOpenDirectoryDialog(mainWindow)
       }
     },
     {
@@ -102,9 +104,9 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      label: '从磁盘重新读取 ...待开发',
+      label: '从磁盘重新加载',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        reloadDirectoryFromDisk()
       }
     },
     {
@@ -125,119 +127,19 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
   }
 }
 
-function StartAutoSaveFileTime() {
-  if (global.SavingFile) {
-    setInterval(() => {
-      saveActiveFile()
-      // 在这里执行你的任务代码
-    }, global.SaveFileInterval) // 每5秒执行一次
-    global.SavingFile = true
-  }
-}
-
-function shouOpenDirectoryDialog(mainWindow: Electron.BrowserWindow) {
+function showOpenDirectoryDialog(mainWindow: Electron.BrowserWindow) {
   dialog
     .showOpenDialog(mainWindow, {
       properties: ['openDirectory']
     })
     .then((result) => {
       if (result.canceled) return
-      const dirPath = result.filePaths[0]
-      traverseDirectory(dirPath, (mdFiles) => {
-        global.mdFileTree = mdFiles
-        // 设置定时任务
-        StartAutoSaveFileTime()
-        // 发送文件名列表到渲染进程
-        mainWindow.webContents.send('file-system-data', JSON.stringify(mdFiles))
-      })
+      global.RootPath = result.filePaths[0]
+      reloadDirectoryFromDisk()
     })
     .catch((err) => {
       console.error('Error opening directory dialog:', err)
     })
-}
-
-// 递归读取目录中的 .md 文件
-// 递归读取目录中的 .md 文件，并构建目录树
-function traverseDirectory(dir, callback) {
-  fs.readdir(dir, (err, files) => {
-    if (err) {
-      console.error(err)
-      return
-    }
-    const items = files.map((file) => {
-      const fullPath = path.join(dir, file)
-      return {
-        name: file,
-        path: fullPath,
-        type: 'file',
-        fileExtension: '.md',
-        isDirectory: false, // 默认为文件
-        children: [] // 初始化 children 为空数组
-      }
-    })
-
-    Promise.all(
-      items.map((item) => {
-        return new Promise((resolve, reject) => {
-          fs.lstat(item.path, (err, stats) => {
-            if (err) {
-              reject(err)
-            } else {
-              item.isDirectory = stats.isDirectory()
-
-              if (item.isDirectory) {
-                // 如果是目录，则递归调用 traverseDirectory
-                traverseDirectory(item.path, (subItems) => {
-                  item.children = subItems
-                  item.type = 'folder'
-                  resolve(item)
-                })
-              } else if (
-                path.extname(item.name) === '.md' ||
-                path.extname(item.name) === '.png' ||
-                path.extname(item.name) === '.jpg'
-              ) {
-                // 如果是 .md 文件，则直接解析
-                item.type = 'file'
-                item.fileExtension = path.extname(item.name)
-                resolve(item)
-              } else {
-                // 对于非 .md 文件，我们不需要它，所以简单地解析
-                resolve(null)
-              }
-            }
-          })
-        })
-      })
-    )
-      .then((resolvedItems) => {
-        // 过滤掉非 .md 文件和目录（它们为 null）
-        const filteredItems: FileItem[] = resolvedItems.filter(Boolean) as FileItem[]
-
-        // 构建完整的目录树
-        const tree: FileItem[] = filteredItems.reduce((acc: FileItem[], item: FileItem) => {
-          if (item.isDirectory) {
-            // 如果目录已经在树中，则添加其子项
-            const existingDir = acc.find((dir) => dir.path === item.path)
-            if (existingDir) {
-              existingDir.children = existingDir.children.concat(item.children)
-            } else {
-              acc.push(item)
-            }
-          } else {
-            // 对于文件，直接添加到树中（假设它们总是添加到顶层目录）
-            acc.push(item)
-          }
-          return acc
-        }, []) as FileItem[]
-
-        // 调用回调并传入目录树
-        callback(tree)
-      })
-      .catch((err) => {
-        console.error(err)
-      })
-  })
 }
 
 function getFileNameFromPath(filePath: string): string {
@@ -249,7 +151,7 @@ function getFileNameFromPath(filePath: string): string {
   return filePath.slice(lastIndex + 1)
 }
 
-function shouOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
+function showOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
   dialog
     .showOpenDialog(mainWindow, {
       properties: ['openFile'],
@@ -263,28 +165,12 @@ function shouOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
         type: 'file',
         content: ''
       }
-      // 发送文件内容到渲染进程
-      StartAutoSaveFileTime()
-      openAndSendSelectFileContent(mainWindow, fileProperties)
+      openSelectFile(mainWindow, fileProperties)
     })
     .catch((err) => {
       console.error('Error reading file:', err)
       // event.reply('selected-file-content-error', err.message)
     })
-}
-
-export function openAndSendSelectFileContent(
-  mainWindow: Electron.BrowserWindow,
-  fileProperties: FileProperties
-) {
-  fs.readFile(fileProperties.path, 'utf8', (err, data) => {
-    if (!err) {
-      global.__current_active_file = fileProperties
-      mainWindow.webContents.send('open-selected-file', data)
-    } else {
-      console.log('openFile failed', fileProperties.path, err, data)
-    }
-  })
 }
 
 ipcMain.on('update-select-file-content', (_, content) => {
@@ -295,30 +181,6 @@ ipcMain.on('update-select-file-content', (_, content) => {
   }
   // 没有打开文件，使用另存为动作
 })
-
-export function saveActiveFile() {
-  const curFile = global.__current_active_file
-  // 文件存在，直接写入
-  if (curFile != undefined) {
-    fs.writeFile(curFile.path, curFile.content, (err) => {
-      if (err) {
-        console.log('写入文件时发生错误', err)
-      }
-    })
-  } else {
-    // 文件不存在，新建文件，写入，指定文件路径和文件名
-    console.log('写入文件时发生错误, 文件不存在')
-  }
-}
-
-export function saveActiveFileAs() {
-  const curFile = global.__current_active_file
-  if (curFile) {
-    fs.writeFile(curFile.path, curFile.content, (err) => {
-      console.log('error', err)
-    })
-  }
-}
 
 // 监听键盘事件
 function handleKeyDown(event) {

@@ -32,7 +32,9 @@ declare global {
 
   interface Global extends NodeJS.Global {
     __current_active_file?: FileProperties // 使用 ? 表示它可能是 undefined
+    MainWindow: Electron.BrowserWindow
     MainShowWarn: string
+    RootPath: string
     SavingFile: boolean
     SaveFileInterval: string
     Emoji: GlobalEmoji
@@ -44,4 +46,13 @@ declare global {
     KatexConfig: NonNullable<unknown>
     SupportLanguage: []
   }
+}
+
+export interface FileItem {
+  name: string
+  path: string
+  type: 'file' | 'folder'
+  isDirectory: boolean
+  fileExtension: string
+  children: FileItem[]
 }

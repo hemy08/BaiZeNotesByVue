@@ -1,6 +1,4 @@
 import ContextMenu from '@imengyu/vue3-context-menu'
-import * as fs from 'fs'
-import * as path from 'path'
 
 export interface FileSysItem {
   id: never
@@ -8,9 +6,9 @@ export interface FileSysItem {
   path: string
   type: 'file' | 'folder'
   fileExtension: string
-  isDirectory: boolean
-  isIndented: boolean
-  isExpanded: boolean
+  isDirectory?: boolean
+  isIndented?: boolean
+  isExpanded?: boolean
   children?: {
     id: never
     name: string
@@ -105,20 +103,20 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
           {
             label: '文件',
             onClick: () => {
-              ctxMenuCreateFolder(node, false)
+              ctxMenuCreateFolder(node, false, '')
             }
           },
           {
             label: '文件夹',
             divided: true,
             onClick: () => {
-              ctxMenuCreateFolder(node, true)
+              ctxMenuCreateFolder(node, true, '')
             }
           },
           {
             label: 'Markdown文件',
             onClick: () => {
-              alert('Markdown文件')
+              ctxMenuCreateFolder(node, false, '.md')
             }
           },
           {
@@ -236,7 +234,7 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
       {
         label: '从磁盘重新加载',
         onClick: () => {
-          alert('从磁盘重新加载')
+          ctxMenuReloadFromDisk()
         }
       },
       {
@@ -249,8 +247,8 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
   })
 }
 
-function ctxMenuCreateFolder(node: FileSysItem, isFolder: boolean) {
-  let directoryPath
+function ctxMenuCreateFolder(node: FileSysItem, isFolder: boolean, fileExtension: string) {
+  let directoryPath: string
   if (node.type === 'folder') {
     directoryPath = node.path
   } else {
@@ -260,5 +258,14 @@ function ctxMenuCreateFolder(node: FileSysItem, isFolder: boolean) {
     directoryPath = node.path.substring(0, lastIndex)
   }
 
-  window.electron.ipcRenderer.send('file-manager-context-menu-create-file', directoryPath, isFolder)
+  window.electron.ipcRenderer.send(
+    'file-manager-context-menu-create-file',
+    directoryPath,
+    isFolder,
+    fileExtension
+  )
+}
+
+function ctxMenuReloadFromDisk() {
+  window.electron.ipcRenderer.send('file-manager-context-menu-reload-from-disk', '')
 }
