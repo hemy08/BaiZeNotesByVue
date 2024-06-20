@@ -18,6 +18,7 @@ import StatusBar from './components/StatusBar.vue'
 #editor-container {
   width: 100%;
   height: 100vh;
+  overflow: hidden;
 }
 
 #file-bar {

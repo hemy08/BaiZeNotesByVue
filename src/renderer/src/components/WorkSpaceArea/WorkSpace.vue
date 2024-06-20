@@ -1,6 +1,6 @@
 <template>
   <!-- 左侧区域导航，固定宽度，放置图标，鼠标悬停显示详细信息 -->
-  <div id="navi-tab" class="navi-tab" :style="naviTabStyle">
+  <div id="navi-tab" class="navi-tab">
     <NaviTab />
   </div>
   <!-- 中间资源管理显示区域，宽度可以调节 -->
@@ -8,21 +8,14 @@
     v-show="isShowResourceMgrArea"
     id="resource-manager"
     class="resource-manager"
-    :style="resMgrStyle"
+    :style="{ width: resMgrWidth }"
   >
     <ResManager />
   </div>
   <!-- 资源管理器和编辑区域的宽度调节条 -->
-  <div
-    id="resizer-main"
-    class="resizer-main"
-    :style="resizerMainStyle"
-    @mousedown="startResizerMainResize()"
-  >
-    1
-  </div>
+  <div id="resizer-main" class="resizer-main" :style="{ left: resizerLeft }"  @mousedown="startCursorPosition($event)"></div>
   <!-- 右侧编辑区域 -->
-  <div id="md-container" class="md-container" :style="mdContainerStyle">
+  <div id="md-container" class="md-container" :style="{ width: mdContainerWidth }">
     <MdContainer />
   </div>
 </template>
@@ -31,37 +24,52 @@
 import NaviTab from './NaviTab.vue'
 import ResManager from '../ResourceManager/ResourceManager.vue'
 import MdContainer from '../Markdown/MarkdownContainer.vue'
-import { computed, ref } from 'vue'
+import { ref, computed } from 'vue'
 
+let mouseStartX = 0
 // 使用 ref 来创建响应式引用
 const resMgrWidth = ref('300px')
 const naviTabWidth = ref('40px')
-const naviTabStyle = computed(() => ({
-  width: naviTabWidth.value, // 视窗宽度
-  height: '100%' // 视窗高度
-}))
-// 拖动区域
-const resMgrStyle = computed(() => ({
-  width: resMgrWidth.value, // 视窗宽度
-  height: '100%', // 视窗高度
-  background: 'whitesmoke'
-  //marginLeft: naviTabWidth.value // 左侧遗留navi-tab宽度
-}))
-// 拖动区域
-const resizerMainStyle = computed(() => ({
-  width: '2px', // 视窗宽度
-  height: '100% - 20px - 2px' // 视窗高度
-  // marginLeft: naviTabWidth.value + resMgrWidth.value // 左侧遗留navi-tab宽度
-}))
-// 预览区域样式设置
-const mdContainerStyle = computed(() => ({
-  width: `calc(100vw - ${naviTabWidth.value} - ${resMgrWidth.value} - 2px)`, // 视窗宽度
-  height: '100%' // 视窗高度
-  // marginLeft: 'naviTabWidth.value + resMgrWidth.value + 2px' // 左侧遗留navi-tab宽度
-}))
-const isShowResourceMgrArea = true
+const resizerLeft = computed(() => {
+  return resMgrWidth.value
+})
 
-function startResizerMainResize() {}
+// 使用 computed 属性来动态计算 mdContainerWidth
+const mdContainerWidth = computed(() => {
+  // 注意这里使用了 parseInt 移除 'px' 后缀，并且确保计算是有效的
+  const resMgrWidthValue = parseInt(resMgrWidth.value.replace('px', ''), 10)
+  const naviTabWidthValue = parseInt(naviTabWidth.value.replace('px', ''), 10)
+  // 减去 resMgrWidth, naviTabWidth 以及可能的间隙（例如 2px）
+  return `calc(100vw - ${naviTabWidthValue}px - ${resMgrWidthValue}px - 2px)`
+})
+const isShowResourceMgrArea = ref(true)
+
+function startCursorPosition(e: MouseEvent) {
+  mouseStartX = e.clientX
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+function onMouseMove(e: MouseEvent) {
+  const moveX = e.clientX - mouseStartX
+  const newWidth = parseInt(resMgrWidth.value, 10) + moveX
+  // 限制最小和最大宽度（可选）
+  const minWidth = 100
+  const maxWidth = window.innerWidth - 600
+  if (newWidth > maxWidth) {
+    resMgrWidth.value = maxWidth + 'px'
+  } else if (newWidth < minWidth) {
+    resMgrWidth.value = minWidth + 'px'
+  } else {
+    resMgrWidth.value = newWidth + 'px'
+  }
+  mouseStartX = e.clientX
+}
+
+function onMouseUp() {
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('mouseup', onMouseUp)
+}
 </script>
 
 <style scoped>
@@ -70,17 +78,22 @@ function startResizerMainResize() {}
   background-color: white;
   display: flex;
   float: left;
+  width: 40px;
 }
 
 #resource-manager .resource-manager {
   height: 100vh;
   display: flex;
   float: left;
+  margin-right: 2px;
+  flex-direction: column;
+  background: whitesmoke;
 }
 
 #resizer-main {
-  cursor: col-resize;
+  cursor: ew-resize;
   color: blue;
+  width: 2px;
   background-color: #f0dc4e;
   height: calc(100vh - 20px);
   float: left;

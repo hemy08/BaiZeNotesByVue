@@ -1,22 +1,25 @@
 <template>
-  <div id="file-manager">
-    <div id="file-tree">
-      <FileTreeNode
-        v-for="(rootItem, index) in fileSystemTree"
-        :key="index"
-        v-model:is-expanded="rootItem.isExpanded"
-        v-model:file-extension="rootItem.fileExtension"
-        :is-indented="false"
-        :node="rootItem"
-      />
+  <div style="display: flex; flex-direction: row; width: 100%; height: 100%">
+    <div id="resizer-navi-tab-file-manager" class="resizer-navi-tab-file-manager"></div>
+    <div id="file-manager" class="file-manager">
+      <div id="file-tree">
+        <FileTreeNode
+          v-for="(rootItem, index) in fileSystemTree"
+          :key="index"
+          v-model:is-expanded="rootItem.isExpanded"
+          v-model:file-extension="rootItem.fileExtension"
+          :is-indented="false"
+          :node="rootItem"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import {ref} from 'vue'
+import { ref } from 'vue'
 import FileTreeNode from './FileTreeNode.vue'
-import {FileSysItem} from './resource-manager'
+import { FileSysItem } from './resource-manager'
 
 const fileSystemTree = ref<FileSysItem[]>([])
 
@@ -48,11 +51,19 @@ window.electron.ipcRenderer.on('file-system-data', (_, fileSystemData: string) =
 </script>
 
 <style scoped>
-#file-manager {
+.resizer-navi-tab-file-manager {
+  width: 1px;
+  height: 100%;
+  background-color: #00b0ff;
+  color: #00b0ff;
+  fill: #00b0ff;
+}
+
+.file-manager {
   background: ghostwhite;
   color: black;
-  margin-left: 4px;
   overflow: auto;
   height: 100%;
+  width: calc(100% - 1px);
 }
 </style>
