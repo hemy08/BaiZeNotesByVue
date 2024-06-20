@@ -1,8 +1,9 @@
 import { BrowserWindow } from 'electron'
 
 // 创建一个自定义对话框的函数
-export function showCreateFileFolderDialog(mainWindow: Electron.BrowserWindow): Electron.BrowserWindow {
-  let customCreateDialog = new BrowserWindow({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function showCreateFileFolderDialog(): Electron.BrowserWindow {
+  const customCreateDialog = new BrowserWindow({
     width: 400,
     height: 120,
     minimizable: false,
@@ -16,21 +17,12 @@ export function showCreateFileFolderDialog(mainWindow: Electron.BrowserWindow): 
     }
   })
 
-  if (!customCreateDialog) {
-    return
-  }
-
   customCreateDialog.setMenu(null)
 
   // 加载一个 HTML 文件作为对话框的内容
   customCreateDialog.loadURL(
     `data:text/html;charset=utf-8,${encodeURIComponent(customCreateDialogHtml)}`
   )
-
-  // 当窗口关闭时，清除引用
-  customCreateDialog.on('closed', () => {
-    customCreateDialog = null
-  })
 
   // 显示窗口
   customCreateDialog.show()

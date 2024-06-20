@@ -1,40 +1,98 @@
 <template>
-  <div id="md-edit-component" class="md-edit-component" :style="{ width: monacoEditorWidth }">
+  <div
+    v-if="isShowEditArea"
+    id="md-edit-component"
+    class="md-edit-component"
+    :style="{ width: monacoEditorWidth }"
+  >
     <MdMonacoEdit
       v-model="markdownEditorCode"
       :code="initialCodeContent"
-      :view-width="monacoEditorWidth"
+      :editor-area-width="monacoEditorWidthPx"
       @update:code="handleMarkdownCodeUpdate"
     />
   </div>
-  <div id="resizer-md" class="resizer-md" @mousedown="onEditorResizerMouseDown($event)"></div>
-  <div id="md-preview" class="md-preview" :style="{ width: editPreviewAreaWidth }">
+  <div
+    v-if="isShowResizer"
+    id="resizer-md"
+    class="resizer-md"
+    :style="{ left: resizerLeft }"
+    @mousedown="onEditorResizerMouseDown($event)"
+  ></div>
+  <div
+    v-if="isShowPreviewArea"
+    id="md-preview"
+    class="md-preview"
+    :style="{ width: editPreviewAreaWidth, left: editPreviewAreaLeft }"
+  >
     <MdPreview :editor-content="markdownEditorContent" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, onBeforeUnmount, ref } from 'vue'
+import {computed, onMounted, onBeforeUnmount, ref, defineProps, watch} from 'vue'
 import MdMonacoEdit from './MarkdownMonacoEditor.vue'
 import MdPreview from './MarkdownPreviewComponent.vue'
 
+const props = defineProps({
+  // 编辑器宽度
+  editorPreviewWidth: {
+    type: String,
+    default: '100%'
+  }
+})
+
 // 使用 ref 来创建响应式引用
+const isShowEditArea = ref(true)
+const isShowResizer = ref(true)
+const isShowPreviewArea = ref(true)
 const markdownEditorCode = ref('')
 const markdownEditorContent = ref('')
-const monacoEditorWidth = ref('900px')
+const monacoEditorWidth = ref('50%')
+const resizerWidth = ref(4)
 let initialCodeContent = ''
 let editorMouseStart = 0
 
 // 存储窗口宽度
-const windowWidth = ref(window.innerWidth)
+const windowWidth = ref(props.editorPreviewWidth)
 
-// 预览区域样式设置
+// 假设 windowWidth.value 是视口宽度（以像素为单位）
+// 转换函数，将像素值转换为百分比字符串
+function pxToPercent(pxValue: number, totalWidth: number) {
+  if (!totalWidth) return '0%' // 如果没有总宽度，则返回 0%
+  return ((pxValue / totalWidth) * 100).toFixed(2) + '%' // 保留两位小数
+}
+
+// 预览区域宽度（百分比），基于 Monaco Editor 的宽度计算
+const monacoEditorWidthPx = computed(() => {
+  const windowWidthValue = parseInt(windowWidth.value.replace('px', ''), 10)
+  return (parseFloat(monacoEditorWidth.value.replace('%', '')) / 100) * windowWidthValue + 'px'
+})
+
+// 预览区域宽度（百分比），基于 Monaco Editor 的宽度计算
 const editPreviewAreaWidth = computed(() => {
-  // 注意这里使用了 parseInt 移除 'px' 后缀，并且确保计算是有效的
-  const editAreaWidth = parseInt(monacoEditorWidth.value.replace('px', ''), 10)
-  // 减去 editAreaWidth以及可能的间隙（例如 2px）
-  const previewAreaWidth = windowWidth.value - editAreaWidth - 2
-  return previewAreaWidth + 'px'
+
+  const windowWidthValue = parseInt(windowWidth.value.replace('px', ''), 10)
+  const editAreaWidth = parseFloat(monacoEditorWidth.value.replace('%', '')) / 100
+  const previewAreaWidth = 1 - editAreaWidth - resizerWidth.value / windowWidthValue
+  console.log('windowWidthValue', windowWidthValue)
+  console.log('previewAreaWidth', previewAreaWidth)
+  return pxToPercent(previewAreaWidth * windowWidthValue, windowWidthValue)
+})
+
+// 预览区域左边距（百分比），基于 Monaco Editor 的宽度计算
+const editPreviewAreaLeft = computed(() => {
+  const windowWidthValue = parseInt(windowWidth.value.replace('px', ''), 10)
+  const editAreaWidth = parseFloat(monacoEditorWidth.value.replace('%', '')) / 100
+  return pxToPercent(
+    (editAreaWidth + resizerWidth.value / windowWidthValue) * windowWidthValue,
+    windowWidthValue
+  )
+})
+
+// 分隔符左边距（百分比）
+const resizerLeft = computed(() => {
+  return monacoEditorWidth.value
 })
 
 function onEditorResizerMouseDown(e: MouseEvent) {
@@ -42,20 +100,31 @@ function onEditorResizerMouseDown(e: MouseEvent) {
   window.addEventListener('mousemove', onEditorMouseMove)
   window.addEventListener('mouseup', onEditorMouseUp)
 }
-
+// 编辑器大小调整逻辑（百分比）
 function onEditorMouseMove(e: MouseEvent) {
+  const windowWidthValue = parseInt(windowWidth.value.replace('px', ''), 10)
   const moveX = e.clientX - editorMouseStart
-  const newWidth = parseInt(monacoEditorWidth.value, 10) + moveX
-  // 限制最小和最大宽度（可选）
-  const minWidth = 100
-  const maxWidth = window.innerWidth * 0.7
-  if (newWidth > maxWidth) {
-    monacoEditorWidth.value = maxWidth + 'px'
-  } else if (newWidth < minWidth) {
-    monacoEditorWidth.value = minWidth + 'px'
-  } else {
-    monacoEditorWidth.value = newWidth + 'px'
+  // 将当前百分比宽度转换为像素值
+  const currentWidthPx =
+    (parseFloat(monacoEditorWidth.value.replace('%', '')) / 100) * windowWidthValue
+  const newWidthPx = currentWidthPx + moveX
+
+  // 转换为百分比
+  let newWidthPercent = pxToPercent(newWidthPx, windowWidthValue)
+
+  // 限制最小和最大宽度（百分比）
+  const minWidthPercent = '20%'
+  const maxWidthPercent = '70%'
+
+  if (newWidthPercent > maxWidthPercent) {
+    newWidthPercent = maxWidthPercent
+  } else if (newWidthPercent < minWidthPercent) {
+    newWidthPercent = minWidthPercent
   }
+
+  // 更新 Monaco Editor 宽度
+  monacoEditorWidth.value = newWidthPercent
+
   editorMouseStart = e.clientX
 }
 
@@ -63,17 +132,6 @@ function onEditorMouseUp() {
   window.removeEventListener('mousemove', onEditorMouseMove)
   window.removeEventListener('mouseup', onEditorMouseUp)
 }
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateWindowWidth)
-})
-
-// 监听窗口宽度变化
-function updateWindowWidth() {
-  windowWidth.value = window.innerWidth
-}
-
-window.addEventListener('resize', updateWindowWidth)
 
 function handleMarkdownCodeUpdate(newValue: string) {
   window.electron.ipcRenderer.send('update-select-file-content', newValue)
@@ -97,6 +155,34 @@ window.electron.ipcRenderer.on('monaco-insert-writing-templates', (_, fileConten
     handleMarkdownCodeUpdate(initialCodeContent)
   }
 })
+
+window.electron.ipcRenderer.on('markdown-edit-model', () => {
+  isShowEditArea.value = true
+  isShowResizer.value = false
+  isShowPreviewArea.value = false
+  monacoEditorWidth.value = '100%'
+})
+
+window.electron.ipcRenderer.on('markdown-preview-model', () => {
+  isShowEditArea.value = false
+  isShowResizer.value = false
+  isShowPreviewArea.value = true
+  monacoEditorWidth.value = '0%'
+})
+
+window.electron.ipcRenderer.on('markdown-edit-preview-model', () => {
+  isShowEditArea.value = true
+  isShowResizer.value = true
+  isShowPreviewArea.value = true
+  monacoEditorWidth.value = '50%'
+})
+
+watch(
+  () => props.editorPreviewWidth,
+  (newWidth) => {
+    windowWidth.value = newWidth
+  }
+)
 
 onMounted(() => {
   function handleKeyDownEvent(event) {
@@ -126,10 +212,8 @@ onMounted(() => {
 #resizer-md {
   cursor: ew-resize;
   color: blue;
-  display: flex;
   background-color: blue;
-  float: left;
-  width: 2px;
+  width: 4px;
 }
 
 #md-preview {

@@ -55,7 +55,7 @@ function createWindow(): void {
   }
 
   ipcMain.on('open-select-file', (_, message) => {
-    console.log('open-select-file', message)
+    // console.log('open-select-file', message)
     openSelectFile(mainWindow, message)
   })
 
@@ -72,7 +72,7 @@ function createWindow(): void {
   })
 
   ipcMain.on('file-manager-context-menu-create-file', (_, dirPath, isFolder, fileExtension) => {
-    const createFileFolderDialog = showCreateFileFolderDialog(global.MainWindow)
+    const createFileFolderDialog = showCreateFileFolderDialog()
     function processCreateFileFolder(_, name: string) {
       createFileFolderDialog.close()
       CreateFileFolder(name, dirPath, isFolder, fileExtension)

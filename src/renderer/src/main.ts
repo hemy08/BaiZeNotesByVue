@@ -29,5 +29,5 @@ const store = createStore({
 
 const app = createApp(App)
 app.use(store)
-app.use(ContextMenu)
+app.component('ContextMenu', ContextMenu)
 app.mount('#app')

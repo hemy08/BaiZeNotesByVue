@@ -16,7 +16,7 @@
   <div id="resizer-main" class="resizer-main" :style="{ left: resizerLeft }"  @mousedown="startCursorPosition($event)"></div>
   <!-- 右侧编辑区域 -->
   <div id="md-container" class="md-container" :style="{ width: mdContainerWidth }">
-    <MdContainer />
+    <MdContainer :md-container-width="mdContainerWidth" />
   </div>
 </template>
 
@@ -40,12 +40,12 @@ const mdContainerWidth = computed(() => {
   // 注意这里使用了 parseInt 移除 'px' 后缀，并且确保计算是有效的
   const naviTabWidthValue = parseInt(naviTabWidth.value.replace('px', ''), 10)
   // 减去 resMgrWidth, naviTabWidth 以及可能的间隙（例如 2px）
+  let containerWidth = window.innerWidth - naviTabWidthValue - 2
   if (isShowResourceMgrArea.value) {
     const resMgrWidthValue = parseInt(resMgrWidth.value.replace('px', ''), 10)
-    return `calc(100vw - ${naviTabWidthValue}px - ${resMgrWidthValue}px - 2px)`
-  } else {
-    return `calc(100vw - ${naviTabWidthValue}px - 2px)`
+    containerWidth = window.innerWidth - naviTabWidthValue - resMgrWidthValue - 2
   }
+  return containerWidth + 'px'
 })
 
 const isShowResourceMgrArea = ref(true)
@@ -56,8 +56,10 @@ function onSwitchNaviTab(value: string) {
   } else if (value == 'file-explorer') {
     window.electron.ipcRenderer.send('file-manager-context-menu-reload-from-disk', '')
     naviResManagerShow.value = 'file-explorer'
+    isShowResourceMgrArea.value = true
   } else if (value == 'markdown-toc') {
     naviResManagerShow.value = 'markdown-toc'
+    isShowResourceMgrArea.value = true
   } else {
     naviResManagerShow.value = 'file-explorer'
   }

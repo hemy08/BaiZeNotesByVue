@@ -21,9 +21,9 @@ const props = defineProps({
     default: 'typescript'
   },
   // 编辑器宽度
-  viewWidth: {
+  editorAreaWidth: {
     type: String,
-    default: 'typescript'
+    default: '50%'
   },
   // 编辑器主题
   theme: {
@@ -47,6 +47,7 @@ onMounted(() => {
       language: props.language,
       theme: props.theme,
       wordWrap: 'on', // 启用自动换行
+      automaticLayout: true, // 设置自动布局为 true
       minimap: {
         enabled: false //关闭小型缩略图，它显示整个文档的概览，并且允许用户快速导航到文档的不同部分。
       },
@@ -84,10 +85,11 @@ watch(
 
 // 监听父组件区域变化
 watch(
-  () => props.viewWidth,
+  () => props.editorAreaWidth,
   (newWidth) => {
-    if (editorInstance) {
+    if (editorInstance && monacoEditorContainer.value) {
       monacoEditorContainer.value.style.width = newWidth
+      console.log('newWidth', newWidth)
       editorInstance.layout()
     }
   }

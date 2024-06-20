@@ -14,8 +14,8 @@ function StartAutoSaveFileTime() {
 }
 
 export function buildFileTree(rootPath: string, mdFiles: FileItem[]): FileItem[] {
-  const lastIndex = Math.max(rootPath.lastIndexOf('\\'), rootPath.lastIndexOf('/'));
-  const directoryName = rootPath.substring(lastIndex + 1);
+  const lastIndex = Math.max(rootPath.lastIndexOf('\\'), rootPath.lastIndexOf('/'))
+  const directoryName = rootPath.substring(lastIndex + 1)
 
   // 假设 mdFiles 包含了文件和目录，并且每个对象都有一个 isFile 属性
   const directory: FileItem = {
@@ -24,22 +24,12 @@ export function buildFileTree(rootPath: string, mdFiles: FileItem[]): FileItem[]
     type: 'folder', // 或者使用 isFile: false
     fileExtension: '',
     isDirectory: true, // 明确指定这是一个目录
-    children: mdFiles.map(fileItem => {
-      // 如果 fileItem 是文件，保持不变
-      // 如果 fileItem 是目录，递归调用 buildFileTree
-      if (!fileItem.isDirectory) {
-        return fileItem;
-      } else {
-        // 假设 fileItem.children 包含了该目录下的所有文件和子目录
-        return {
-          ...fileItem,
-          children: buildFileTree(fileItem.path, fileItem.children || []) // 递归处理子目录
-        };
-      }
+    children: mdFiles.map((fileItem) => {
+      return fileItem
     })
-  };
+  }
 
-  return [directory]; // 返回文件树的根目录
+  return [directory] // 返回文件树的根目录
 }
 
 // 递归读取目录中的 .md 文件
@@ -184,7 +174,7 @@ export function openSelectFile(mainWindow: Electron.BrowserWindow, filePropertie
     if (!err) {
       fileProperties.content = data
       global.__current_active_file = fileProperties
-      console.log('openSelectFile', fileProperties)
+      // console.log('openSelectFile', fileProperties)
       mainWindow.webContents.send('open-selected-file', data)
     } else {
       console.log('openFile failed', fileProperties.path, err, data)

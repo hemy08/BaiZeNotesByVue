@@ -36,21 +36,21 @@ export function getAppViewMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      label: '编辑模式 ...待开发',
+      label: '编辑模式',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('markdown-edit-model', null)
       }
     },
     {
-      label: '预览模式 ...待开发',
+      label: '预览模式',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('markdown-preview-model', null)
       }
     },
     {
-      label: '编辑/预览模式 ...待开发',
+      label: '编辑/预览模式',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('markdown-edit-preview-model', null)
       }
     },
     {
