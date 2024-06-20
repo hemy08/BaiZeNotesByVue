@@ -78,6 +78,7 @@ window.electron.ipcRenderer.on(
 .markdown-content {
   width: 100%;
   height: 100%;
+  margin-left: 15px;
   overflow-y: auto; /* 允许垂直滚动条在需要时出现 */
   display: inline-block;
 }

@@ -15,6 +15,7 @@ import StatusBar from './components/StatusBar.vue'
 </script>
 
 <style scoped>
+/* 需要隐藏滚动条，如果不隐藏，在区域内部，窗口会层叠*/
 #editor-container {
   width: 100%;
   height: 100vh;

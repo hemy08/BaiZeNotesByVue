@@ -1,7 +1,7 @@
 <template>
   <!-- 左侧区域导航，固定宽度，放置图标，鼠标悬停显示详细信息 -->
-  <div id="navi-tab" class="navi-tab">
-    <NaviTab />
+  <div id="navi-tab" class="navi-tab" :style="{ width: naviTabWidth }">
+    <NaviTab @update:navi:tab="onSwitchNaviTab" />
   </div>
   <!-- 中间资源管理显示区域，宽度可以调节 -->
   <div
@@ -10,7 +10,7 @@
     class="resource-manager"
     :style="{ width: resMgrWidth }"
   >
-    <ResManager />
+    <ResManager :navi-show="naviResManagerShow" />
   </div>
   <!-- 资源管理器和编辑区域的宽度调节条 -->
   <div id="resizer-main" class="resizer-main" :style="{ left: resizerLeft }"  @mousedown="startCursorPosition($event)"></div>
@@ -28,6 +28,7 @@ import { ref, computed } from 'vue'
 
 let mouseStartX = 0
 // 使用 ref 来创建响应式引用
+const naviResManagerShow = ref('file-explorer')
 const resMgrWidth = ref('300px')
 const naviTabWidth = ref('40px')
 const resizerLeft = computed(() => {
@@ -37,12 +38,30 @@ const resizerLeft = computed(() => {
 // 使用 computed 属性来动态计算 mdContainerWidth
 const mdContainerWidth = computed(() => {
   // 注意这里使用了 parseInt 移除 'px' 后缀，并且确保计算是有效的
-  const resMgrWidthValue = parseInt(resMgrWidth.value.replace('px', ''), 10)
   const naviTabWidthValue = parseInt(naviTabWidth.value.replace('px', ''), 10)
   // 减去 resMgrWidth, naviTabWidth 以及可能的间隙（例如 2px）
-  return `calc(100vw - ${naviTabWidthValue}px - ${resMgrWidthValue}px - 2px)`
+  if (isShowResourceMgrArea.value) {
+    const resMgrWidthValue = parseInt(resMgrWidth.value.replace('px', ''), 10)
+    return `calc(100vw - ${naviTabWidthValue}px - ${resMgrWidthValue}px - 2px)`
+  } else {
+    return `calc(100vw - ${naviTabWidthValue}px - 2px)`
+  }
 })
+
 const isShowResourceMgrArea = ref(true)
+
+function onSwitchNaviTab(value: string) {
+  if (value == 'switch-open-close') {
+    isShowResourceMgrArea.value = !isShowResourceMgrArea.value
+  } else if (value == 'file-explorer') {
+    window.electron.ipcRenderer.send('file-manager-context-menu-reload-from-disk', '')
+    naviResManagerShow.value = 'file-explorer'
+  } else if (value == 'markdown-toc') {
+    naviResManagerShow.value = 'markdown-toc'
+  } else {
+    naviResManagerShow.value = 'file-explorer'
+  }
+}
 
 function startCursorPosition(e: MouseEvent) {
   mouseStartX = e.clientX

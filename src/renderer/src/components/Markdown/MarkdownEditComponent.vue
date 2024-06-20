@@ -1,13 +1,14 @@
 <template>
-  <div id="md-edit-component" class="md-edit-component" :style="mdEditComponentStyle">
+  <div id="md-edit-component" class="md-edit-component" :style="{ width: monacoEditorWidth }">
     <MdMonacoEdit
       v-model="markdownEditorCode"
       :code="initialCodeContent"
+      :view-width="monacoEditorWidth"
       @update:code="handleMarkdownCodeUpdate"
     />
   </div>
-  <div id="resizer-md" class="resizer-md">1</div>
-  <div id="md-preview" class="md-preview" :style="mdPreviewComponentStyle">
+  <div id="resizer-md" class="resizer-md" @mousedown="onEditorResizerMouseDown($event)"></div>
+  <div id="md-preview" class="md-preview" :style="{ width: editPreviewAreaWidth }">
     <MdPreview :editor-content="markdownEditorContent" />
   </div>
 </template>
@@ -20,10 +21,48 @@ import MdPreview from './MarkdownPreviewComponent.vue'
 // 使用 ref 来创建响应式引用
 const markdownEditorCode = ref('')
 const markdownEditorContent = ref('')
+const monacoEditorWidth = ref('900px')
 let initialCodeContent = ''
+let editorMouseStart = 0
 
 // 存储窗口宽度
 const windowWidth = ref(window.innerWidth)
+
+// 预览区域样式设置
+const editPreviewAreaWidth = computed(() => {
+  // 注意这里使用了 parseInt 移除 'px' 后缀，并且确保计算是有效的
+  const editAreaWidth = parseInt(monacoEditorWidth.value.replace('px', ''), 10)
+  // 减去 editAreaWidth以及可能的间隙（例如 2px）
+  const previewAreaWidth = windowWidth.value - editAreaWidth - 2
+  return previewAreaWidth + 'px'
+})
+
+function onEditorResizerMouseDown(e: MouseEvent) {
+  editorMouseStart = e.clientX
+  window.addEventListener('mousemove', onEditorMouseMove)
+  window.addEventListener('mouseup', onEditorMouseUp)
+}
+
+function onEditorMouseMove(e: MouseEvent) {
+  const moveX = e.clientX - editorMouseStart
+  const newWidth = parseInt(monacoEditorWidth.value, 10) + moveX
+  // 限制最小和最大宽度（可选）
+  const minWidth = 100
+  const maxWidth = window.innerWidth * 0.7
+  if (newWidth > maxWidth) {
+    monacoEditorWidth.value = maxWidth + 'px'
+  } else if (newWidth < minWidth) {
+    monacoEditorWidth.value = minWidth + 'px'
+  } else {
+    monacoEditorWidth.value = newWidth + 'px'
+  }
+  editorMouseStart = e.clientX
+}
+
+function onEditorMouseUp() {
+  window.removeEventListener('mousemove', onEditorMouseMove)
+  window.removeEventListener('mouseup', onEditorMouseUp)
+}
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateWindowWidth)
@@ -35,26 +74,6 @@ function updateWindowWidth() {
 }
 
 window.addEventListener('resize', updateWindowWidth)
-
-// 编辑区域大小计算
-const mdEditComponentStyle = computed(() => {
-  const editWidth = `${windowWidth.value * 0.5}px`
-  return {
-    width: editWidth,
-    height: `100%`, // 视窗高度
-    maxWidth: editWidth
-  }
-})
-
-// 预览区域样式设置
-const mdPreviewComponentStyle = computed(() => {
-  const previewWidth = `${windowWidth.value * 0.5}px`
-  return {
-    width: previewWidth,
-    height: '100%', // 视窗高度
-    maxWidth: previewWidth
-  }
-})
 
 function handleMarkdownCodeUpdate(newValue: string) {
   window.electron.ipcRenderer.send('update-select-file-content', newValue)
@@ -101,13 +120,14 @@ onMounted(() => {
   margin: 0;
   display: flex;
   float: left;
+  height: 100%;
 }
 
 #resizer-md {
-  cursor: col-resize;
+  cursor: ew-resize;
   color: blue;
   display: flex;
-  background-color: red;
+  background-color: blue;
   float: left;
   width: 2px;
 }
@@ -117,5 +137,6 @@ onMounted(() => {
   color: black;
   display: flex;
   float: left;
+  height: 100%;
 }
 </style>

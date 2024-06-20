@@ -20,6 +20,11 @@ const props = defineProps({
     type: String,
     default: 'typescript'
   },
+  // 编辑器宽度
+  viewWidth: {
+    type: String,
+    default: 'typescript'
+  },
   // 编辑器主题
   theme: {
     type: String,
@@ -66,12 +71,24 @@ window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context
     EditInsTextAfterCursor(editorInstance, context)
   }
 })
+
 // 监听代码内容变化
 watch(
   () => props.code,
   (newCode) => {
     if (editorInstance) {
       editorInstance.setValue(newCode)
+    }
+  }
+)
+
+// 监听父组件区域变化
+watch(
+  () => props.viewWidth,
+  (newWidth) => {
+    if (editorInstance) {
+      monacoEditorContainer.value.style.width = newWidth
+      editorInstance.layout()
     }
   }
 )

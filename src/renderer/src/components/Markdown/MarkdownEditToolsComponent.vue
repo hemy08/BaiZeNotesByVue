@@ -4,97 +4,57 @@
        插入图片 图片居中 Emoji 表格 标记 分类 | material mermaid plantuml |
   -->
   <!-- H1 H2 H3 H4 H5 H6 -->
-  <button id="format-header-1" class="tool-button" @click="handleUpdateHeaderFormat('H1')"></button>
-  <button id="format-header-2" class="tool-button" @click="handleUpdateHeaderFormat('H2')"></button>
-  <button id="format-header-3" class="tool-button" @click="handleUpdateHeaderFormat('H3')"></button>
-  <button id="format-header-4" class="tool-button" @click="handleUpdateHeaderFormat('H4')"></button>
-  <button id="format-header-5" class="tool-button" @click="handleUpdateHeaderFormat('H5')"></button>
-  <button id="format-header-6" class="tool-button" @click="handleUpdateHeaderFormat('H6')"></button>
+  <button id="h1" title="一级标题" class="tool-btn" @click="onFontHeaderFormat('H1')"></button>
+  <button id="h2" title="二级标题" class="tool-btn" @click="onFontHeaderFormat('H2')"></button>
+  <button id="h3" title="三级标题" class="tool-btn" @click="onFontHeaderFormat('H3')"></button>
+  <button id="h4" title="四级标题" class="tool-btn" @click="onFontHeaderFormat('H4')"></button>
+  <button id="h5" title="五级标题" class="tool-btn" @click="onFontHeaderFormat('H5')"></button>
+  <button id="h6" title="六级标题" class="tool-btn" @click="onFontHeaderFormat('H6')"></button>
   <div style="width: 1px; height: 30px; background-color: black; color: black; margin: 2px"></div>
   <!-- 字体 大小 加粗 倾斜 删除线 下划线 颜色 引用 -->
-  <button
-    id="format-font-family"
-    class="tool-button"
-    @click="handleUpdateFontFormat('fontfamily')"
-  ></button>
-  <button id="format-size" class="tool-button" @click="handleUpdateFontFormat('fontsize')"></button>
-  <button id="format-bold" class="tool-button" @click="handleUpdateFontFormat('bold')"></button>
-  <button id="format-italic" class="tool-button" @click="handleUpdateFontFormat('italic')"></button>
-  <button
-    id="format-delete-line"
-    class="tool-button"
-    @click="handleUpdateFontFormat('deleteline')"
-  ></button>
-  <button
-    id="format-underline"
-    class="tool-button"
-    @click="handleUpdateFontFormat('underline')"
-  ></button>
-  <button
-    id="format-color-fill"
-    class="tool-button"
-    @click="handleUpdateFontFormat('color')"
-  ></button>
-  <button
-    id="font-format-quote"
-    class="tool-button"
-    @click="handleUpdateFontFormat('fontfamily')"
-  ></button>
+  <button id="f-family" title="字体样式" class="tool-btn" @click="onFontFormat('fontfamily')"></button>
+  <button id="f-size" title="字体大小" class="tool-btn" @click="onFontFormat('fontsize')"></button>
+  <button id="f-bold" title="加粗" class="tool-btn" @click="onFontFormat('bold')"></button>
+  <button id="f-italic" title="倾斜" class="tool-btn" @click="onFontFormat('italic')"></button>
+  <button id="f-delete" title="删除线" class="tool-btn" @click="onFontFormat('deleteline')"></button>
+  <button id="f-under" title="下划线" class="tool-btn" @click="onFontFormat('underline')"></button>
+  <button id="color-fill" title="颜色" class="tool-btn" @click="onFontFormat('color')"></button>
+  <button id="f-quote" class="tool-btn" title="引用" @click="onFontFormat('quote')"></button>
   <div style="width: 1px; height: 30px; background-color: black; color: black; margin: 2px"></div>
   <!-- 文字左对齐 文字居中 两边对其 文字右对齐 -->
-  <button id="format-align-left" class="tool-button"></button>
-  <button id="format-align-center" class="tool-button"></button>
-  <button id="format-align-justify" class="tool-button"></button>
-  <button id="format-align-right" class="tool-button"></button>
+  <button id="align-left" title="左对齐" class="tool-btn"></button>
+  <button id="align-center" title="文字居中" class="tool-btn"></button>
+  <button id="align-justify" title="两边对齐" class="tool-btn"></button>
+  <button id="align-right" title="右对齐" class="tool-btn"></button>
   <div style="width: 1px; height: 30px; background-color: black; color: black; margin: 2px"></div>
   <!-- 有序列表 无序列表 水平线 段内换行 -->
-  <button id="format-list-numbered" class="tool-button"></button>
-  <button id="format-list-bulleted" class="tool-button"></button>
-  <button
-    id="line-scan"
-    class="tool-button"
-    @click="handleUpdateInsertText('\r\n------------\r\n')"
-  ></button>
-  <button id="line-enter-icon" class="tool-button" @click="handleUpdateInsertText('\r\n')"></button>
+  <button id="list-numbered" title="有序列表" class="tool-btn"></button>
+  <button id="list-bulleted" title="无序列表" class="tool-btn"></button>
+  <button id="line-scan" class="tool-btn" title="水平线"  @click="onInsertText('\r\n------------\r\n')"></button>
+  <button id="line-enter" class="tool-btn" title="段内换行" @click="onInsertText('\r\n')"></button>
   <div style="width: 1px; height: 30px; background-color: black; color: black; margin: 2px"></div>
   <!-- 行内代码 代码块 行内公式 公式块 -->
-  <button id="code-line" class="tool-button" @click="handleUpdateFontFormat('codeline')"></button>
-  <button
-    id="code-block"
-    class="tool-button"
-    @click="handleUpdateInsertText('\r\n```\r\n\r\n```\r\n')"
-  ></button>
-  <button id="math-line" class="tool-button" @click="handleUpdateFontFormat('mathline')"></button>
-  <button
-    id="math-block"
-    class="tool-button"
-    @click="handleUpdateInsertText('\r\n$$\r\n\r\n$$\r\n')"
-  ></button>
+  <button id="code-line" class="tool-btn" title="行内代码" @click="onFontFormat('codeline')"></button>
+  <button id="code-block" class="tool-btn" title="代码块" @click="onInsertText('\r\n```\r\n\r\n```\r\n')"></button>
+  <button id="math-line" class="tool-btn" title="行内公式" @click="onFontFormat('mathline')"></button>
+  <button id="math-block" class="tool-btn" title="公式块" @click="onInsertText('\r\n$$\r\n\r\n$$\r\n')"></button>
   <div style="width: 1px; height: 30px; background-color: black; color: black; margin: 2px"></div>
   <!-- 超链接 锚点链接 任务列表 -->
-  <button id="line-links" class="tool-button" @click="handleUpdateInsertText('[]()')"></button>
-  <button id="task-lists" class="tool-button"></button>
+  <button id="line-links" title="公式块" class="tool-btn" @click="onInsertText('[]()')"></button>
+  <button id="task-lists" title="公式块" class="tool-btn"></button>
   <div style="width: 1px; height: 30px; background-color: black; color: black; margin: 2px"></div>
   <!-- 插入图片 图片居中 Emoji 表格 标记 分类 -->
-  <button id="insert-images" class="tool-button"></button>
-  <button id="images-center" class="tool-button"></button>
-  <button id="insert-emoji" class="tool-button"></button>
-  <button id="insert-table" class="tool-button"></button>
-  <button id="insert-label" class="tool-button"></button>
-  <button id="insert-classification" class="tool-button"></button>
+  <button id="i-images" title="插入图片" class="tool-btn"></button>
+  <button id="images-center" title="图片居中" class="tool-btn"></button>
+  <button id="i-emoji" title="Emoji" class="tool-btn"></button>
+  <button id="i-table" title="表格" class="tool-btn"></button>
+  <button id="i-label" title="标记" class="tool-btn"></button>
+  <button id="i-classification" title="分类" class="tool-btn"></button>
   <div style="width: 1px; height: 30px; background-color: black; color: black; margin: 2px"></div>
   <!-- material mermaid plantuml -->
-  <button id="insert-material" class="tool-button"></button>
-  <button
-    id="insert-mermaid"
-    class="tool-button"
-    @click="handleUpdateInsertText('\r\n```mermaid\r\n\r\n```\r\n')"
-  ></button>
-  <button
-    id="insert-plantuml"
-    class="tool-button"
-    @click="handleUpdateInsertText('\r\n```plantuml\r\n@startuml\r\n\r\n@enduml\r\n```\r\n')"
-  ></button>
+  <button id="i-material" title="material" class="tool-btn"></button>
+  <button id="i-mermaid" title="mermaid" class="tool-btn" @click="onInsertText('\r\n```mermaid\r\n\r\n```\r\n')" ></button>
+  <button id="i-plantuml" title="plantuml" class="tool-btn" @click="onInsertText('\r\n```plantuml\r\n@startuml\r\n\r\n@enduml\r\n```\r\n')" ></button>
 </template>
 <script setup lang="ts">
 import { onMounted } from 'vue'
@@ -113,16 +73,16 @@ onMounted(() => {
   }
 })
 
-function handleUpdateHeaderFormat(header: string) {
+function onFontHeaderFormat(header: string) {
   EventBus.$emit('monaco-editor-update-header-format', header)
 }
 
-function handleUpdateFontFormat(header: string) {
+function onFontFormat(header: string) {
   EventBus.$emit('monaco-editor-update-font-format', header)
 }
 
-function handleUpdateInsertText(header: string) {
-  EventBus.$emit('monaco-editor-insert-text', header)
+function onInsertText(header: string) {
+  EventBus.$emit('monaco-editor-i-text', header)
 }
 </script>
 
@@ -151,7 +111,7 @@ function handleUpdateInsertText(header: string) {
   place-items: center;
 }
 
-.tool-button {
+.tool-btn {
   height: 40px;
   width: 40px;
   border: none;
@@ -161,7 +121,7 @@ function handleUpdateInsertText(header: string) {
   place-items: center;
 }
 
-.tool-button:hover {
+.tool-btn:hover {
   background-color: #eeffff;
 }
 </style>
