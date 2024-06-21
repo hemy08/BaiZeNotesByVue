@@ -77,7 +77,9 @@ window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context
 watch(
   () => props.code,
   (newCode) => {
+    //console.log('newCode length', newCode.length)
     if (editorInstance) {
+      //console.log('newCode length', newCode.length)
       editorInstance.setValue(newCode)
     }
   }
@@ -89,7 +91,7 @@ watch(
   (newWidth) => {
     if (editorInstance && monacoEditorContainer.value) {
       monacoEditorContainer.value.style.width = newWidth
-      console.log('newWidth', newWidth)
+      //console.log('newWidth', newWidth)
       editorInstance.layout()
     }
   }

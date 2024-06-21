@@ -8,6 +8,7 @@
 import { onMounted, ref, watchEffect } from 'vue'
 import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
+import { full as emoji } from 'markdown-it-emoji'
 import hljs from 'highlight.js'
 import MermaidRender from './MermaidRender.vue'
 import { preRenderMermaidProc } from './markdown-edit'
@@ -23,14 +24,22 @@ const renderedMarkdownContent = ref('')
 const isShowMermaidContainer = ref(false)
 const isShowMermaidComponent = ref(false)
 
-const md = MarkdownIt()
-md.options.html = true
-md.options.linkify = true
-md.options.langPrefix = 'language-'
-md.options.breaks = false
-md.options.typographer = true
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-md.use(highlightjs, { inline: true, hljs: hljs }).use(require('markdown-it-plantuml'))
+const md = MarkdownIt({
+  html: true, // 在源码中启用 HTML 标签
+  xhtmlOut: true, // 使用 '/' 来闭合单标签 （比如 <br />）。 这个选项只对完全的 CommonMark 模式兼容。
+  linkify: true, // 将类似 URL 的文本自动转换为链接。
+  langPrefix: 'language-', // 给围栏代码块的 CSS 语言前缀。对于额外的高亮代码非常有用。
+  breaks: false, // 转换段落里的 '\n' 到 <br>。
+  // 启用一些语言中立的替换 + 引号美化
+  // 双 + 单引号替换对，当 typographer 启用时。
+  // 或者智能引号等，可以是 String 或 Array。
+  // 比方说，你可以支持 '«»„“' 给俄罗斯人使用， '„“‚‘'  给德国人使用。
+  // 还有 ['«\xA0', '\xA0»', '‹\xA0', '\xA0›'] 给法国人使用（包括 nbsp）。
+  typographer: false
+})
+  .use(highlightjs, { inline: true, hljs: hljs })
+  .use(require('markdown-it-plantuml'))
+  .use(emoji)
 
 // 组件挂载时，进行初始渲染
 onMounted(() => {

@@ -30,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onBeforeUnmount, ref, defineProps, watch} from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, defineProps, watch } from 'vue'
 import MdMonacoEdit from './MarkdownMonacoEditor.vue'
 import MdPreview from './MarkdownPreviewComponent.vue'
 
@@ -50,7 +50,7 @@ const markdownEditorCode = ref('')
 const markdownEditorContent = ref('')
 const monacoEditorWidth = ref('50%')
 const resizerWidth = ref(4)
-let initialCodeContent = ''
+const initialCodeContent = ref('')
 let editorMouseStart = 0
 
 // 存储窗口宽度
@@ -71,12 +71,11 @@ const monacoEditorWidthPx = computed(() => {
 
 // 预览区域宽度（百分比），基于 Monaco Editor 的宽度计算
 const editPreviewAreaWidth = computed(() => {
-
   const windowWidthValue = parseInt(windowWidth.value.replace('px', ''), 10)
   const editAreaWidth = parseFloat(monacoEditorWidth.value.replace('%', '')) / 100
   const previewAreaWidth = 1 - editAreaWidth - resizerWidth.value / windowWidthValue
-  console.log('windowWidthValue', windowWidthValue)
-  console.log('previewAreaWidth', previewAreaWidth)
+  //console.log('windowWidthValue', windowWidthValue)
+  //console.log('previewAreaWidth', previewAreaWidth)
   return pxToPercent(previewAreaWidth * windowWidthValue, windowWidthValue)
 })
 
@@ -138,43 +137,57 @@ function handleMarkdownCodeUpdate(newValue: string) {
   markdownEditorContent.value = newValue
 }
 
-window.electron.ipcRenderer.on('open-selected-file', (_, content) => {
+function onHandleNewContent(content: string) {
   if (content) {
-    initialCodeContent = content
-    handleMarkdownCodeUpdate(content)
+    // console.log('content open-selected-file len', content.length)
+    // 编辑区域显示时，传入
+    if (isShowEditArea.value) {
+      initialCodeContent.value = content
+    }
+    // 预览模式、编辑器/预览模式，才进行渲染
+    if (isShowPreviewArea.value) {
+      handleMarkdownCodeUpdate(content)
+    }
   } else {
-    handleMarkdownCodeUpdate(initialCodeContent)
+    // console.log('content bull')
+    handleMarkdownCodeUpdate(content)
   }
+}
+
+window.electron.ipcRenderer.on('open-selected-file', (_, content) => {
+  onHandleNewContent(content)
 })
 
 window.electron.ipcRenderer.on('monaco-insert-writing-templates', (_, fileContent: string) => {
-  if (fileContent) {
-    initialCodeContent = fileContent
-    handleMarkdownCodeUpdate(fileContent)
-  } else {
-    handleMarkdownCodeUpdate(initialCodeContent)
-  }
+  onHandleNewContent(fileContent)
 })
 
+function onHandleEditorShow(edit: boolean, preview: boolean) {
+  isShowEditArea.value = edit
+  isShowPreviewArea.value = preview
+  if (edit && preview) {
+    isShowResizer.value = true
+    monacoEditorWidth.value = '50%'
+  } else {
+    isShowResizer.value = false
+    if (edit) {
+      monacoEditorWidth.value = '100%'
+    } else {
+      monacoEditorWidth.value = '0%'
+    }
+  }
+}
+
 window.electron.ipcRenderer.on('markdown-edit-model', () => {
-  isShowEditArea.value = true
-  isShowResizer.value = false
-  isShowPreviewArea.value = false
-  monacoEditorWidth.value = '100%'
+  onHandleEditorShow(true, false)
 })
 
 window.electron.ipcRenderer.on('markdown-preview-model', () => {
-  isShowEditArea.value = false
-  isShowResizer.value = false
-  isShowPreviewArea.value = true
-  monacoEditorWidth.value = '0%'
+  onHandleEditorShow(false, true)
 })
 
 window.electron.ipcRenderer.on('markdown-edit-preview-model', () => {
-  isShowEditArea.value = true
-  isShowResizer.value = true
-  isShowPreviewArea.value = true
-  monacoEditorWidth.value = '50%'
+  onHandleEditorShow(true, true)
 })
 
 watch(

@@ -1,5 +1,7 @@
 <template>
-  <div id="md-edit-tools-bar" class="md-edit-tools-bar"><MdEditTools /></div>
+  <div id="md-edit-tools-bar" class="md-edit-tools-bar">
+    <MdEditTools :tool-bar-width="props.mdContainerWidth" />
+  </div>
   <div id="md-edit-component" class="md-edit-component">
     <MdEditComp :editor-preview-width="props.mdContainerWidth" />
   </div>

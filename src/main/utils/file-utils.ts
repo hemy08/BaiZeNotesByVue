@@ -156,6 +156,9 @@ export function CreateFileFolder(
 }
 
 export function reloadDirectoryFromDisk() {
+  if (!global.RootPath) {
+    return
+  }
   // 重新加载文件资源管理器
   TraverseDirectory(global.RootPath, (mdFiles) => {
     const fileTree = buildFileTree(global.RootPath, mdFiles)

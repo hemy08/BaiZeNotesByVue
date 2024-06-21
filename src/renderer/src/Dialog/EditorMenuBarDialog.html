@@ -4,10 +4,39 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>::before 示例</title>
-  <link rel="stylesheet" href="../style/material/admonition.css">
-  <link rel="stylesheet" href="../style/preview_font/atom-one-light.css">
-  <link rel="stylesheet" href="../style/sheet_dialog/normalize.css">
-  <link rel="stylesheet" href="../assets/main.css">
+  <style>
+    .tool-btn {
+      height: 40px;
+      width: 40px;
+      border: none;
+      background-color: #f2f2f2;
+      color: black;
+      fill: black;
+      place-items: center;
+      display: inline-block;
+    }
+
+    .tool-btn:hover {
+      background-color: #eeffff;
+    }
+
+    .button-group {
+      display: flex; /* 使用flex布局 */
+      justify-content: space-between; /* 按钮之间平均分布空间 */
+      border: 1px solid #ccc; /* 可选：添加边框以模拟下拉列表的外观 */
+      padding: 5px; /* 可选：添加内边距 */
+    }
+
+    .button-group button {
+      flex: 0 0 auto; /* 不让按钮伸缩 */
+      margin-right: 5px; /* 可选：按钮之间的间隔 */
+    }
+
+    /* 最后一个按钮没有右边的间隔 */
+    .button-group button:last-child {
+      margin-right: 0;
+    }
+  </style>
 </head>
 <body>
   <button id="h1" title="一级标题" class="tool-btn" @click="onFontHeaderFormat('H1')"></button>
@@ -56,19 +85,20 @@
   <button id="i-material" title="material" class="tool-btn"></button>
   <button id="i-mermaid" title="mermaid" class="tool-btn" @click="onInsertText('\r\n```mermaid\r\n\r\n```\r\n')" ></button>
   <button id="i-plantuml" title="plantuml" class="tool-btn" @click="onInsertText('\r\n```plantuml\r\n@startuml\r\n\r\n@enduml\r\n```\r\n')" ></button>
-  <select id="toggle-buttons" title="更多" class="tool-btn">
-    <button id="i-images" title="插入图片" class="tool-btn">11</button>
-    <button id="images-center" title="图片居中" class="tool-btn">22</button>
-    <button id="i-emoji" title="Emoji" class="tool-btn">33</button>
-    <button id="i-table" title="表格" class="tool-btn">44</button>
-    <button id="i-label" title="标记" class="tool-btn">55</button>
-  </select>
+  <button id="buttons" class="tool-btn" @click="onShowMore">
+    <svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5H7Z"/></svg>
+    <div id="button-group" class="button-group" style="display: none">
+      <button id="i-images" title="插入图片" class="tool-btn" style="display: none">11</button>
+      <button id="images-center" title="图片居中" class="tool-btn" style="display: none">22</button>
+      <button id="i-emoji" title="Emoji" class="tool-btn" style="display: none">33</button>
+      <button id="i-table" title="表格" class="tool-btn" style="display: none">44</button>
+      <button id="i-label" title="标记" class="tool-btn" style="display: none">55</button>
+    </div>
+  </button>
+
 </body>
 <script>
-  type MappingTable = {
-    [key: string]: string // 键是字符串，值是数字
-  }
-  const MdEditToolSvgs: MappingTable = {
+  const MdEditToolSvgs = {
     h1: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 4h2v6h4V4h2v14H9v-6H5v6H3V4m11 14v-2h2V6.31l-2.5 1.44V5.44L16 4h2v12h2v2h-6Z"/></svg>',
     h2: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 4h2v6h4V4h2v14H9v-6H5v6H3V4m18 14h-6a2 2 0 0 1-2-2c0-.53.2-1 .54-1.36l4.87-5.23c.37-.36.59-.86.59-1.41a2 2 0 0 0-2-2 2 2 0 0 0-2 2h-2a4 4 0 0 1 4-4 4 4 0 0 1 4 4c0 1.1-.45 2.1-1.17 2.83L15 16h6v2Z"/></svg>',
     h3: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 4h2v6h4V4h2v14H9v-6H5v6H3V4m12 0h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-1h2v1h4v-4h-4v-2h4V6h-4v1h-2V6a2 2 0 0 1 2-2Z"/></svg>',
@@ -153,6 +183,14 @@
         element.innerHTML = MdEditToolSvgs[key]
       }
     }
+  }
+
+  function onShowMore() {
+    const group = document.getElementById('button-group')
+    const childs = group.querySelectorAll('tool-btn')
+    childs.forEach((item) => {
+      item.style.display = 'block'
+    })
   }
 </script>
 </html>

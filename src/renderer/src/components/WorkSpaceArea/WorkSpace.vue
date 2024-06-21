@@ -13,7 +13,12 @@
     <ResManager :navi-show="naviResManagerShow" />
   </div>
   <!-- 资源管理器和编辑区域的宽度调节条 -->
-  <div id="resizer-main" class="resizer-main" :style="{ left: resizerLeft }"  @mousedown="startCursorPosition($event)"></div>
+  <div
+    id="resizer-main"
+    class="resizer-main"
+    :style="{ left: resizerLeft }"
+    @mousedown="startCursorPosition($event)"
+  ></div>
   <!-- 右侧编辑区域 -->
   <div id="md-container" class="md-container" :style="{ width: mdContainerWidth }">
     <MdContainer :md-container-width="mdContainerWidth" />
@@ -24,11 +29,12 @@
 import NaviTab from './NaviTab.vue'
 import ResManager from '../ResourceManager/ResourceManager.vue'
 import MdContainer from '../Markdown/MarkdownContainer.vue'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 let mouseStartX = 0
 // 使用 ref 来创建响应式引用
 const naviResManagerShow = ref('file-explorer')
+const windowWidth = ref(window.innerWidth)
 const resMgrWidth = ref('300px')
 const naviTabWidth = ref('40px')
 const resizerLeft = computed(() => {
@@ -40,11 +46,16 @@ const mdContainerWidth = computed(() => {
   // 注意这里使用了 parseInt 移除 'px' 后缀，并且确保计算是有效的
   const naviTabWidthValue = parseInt(naviTabWidth.value.replace('px', ''), 10)
   // 减去 resMgrWidth, naviTabWidth 以及可能的间隙（例如 2px）
-  let containerWidth = window.innerWidth - naviTabWidthValue - 2
+  let containerWidth = windowWidth.value - naviTabWidthValue - 2
   if (isShowResourceMgrArea.value) {
     const resMgrWidthValue = parseInt(resMgrWidth.value.replace('px', ''), 10)
-    containerWidth = window.innerWidth - naviTabWidthValue - resMgrWidthValue - 2
+    containerWidth = windowWidth.value - naviTabWidthValue - resMgrWidthValue - 2
+    //console.log('resMgrWidthValue', resMgrWidthValue)
   }
+  //console.log('windowWidth.value', windowWidth.value)
+  //console.log('window.innerWidth', window.innerWidth)
+  //console.log('naviTabWidthValue', naviTabWidthValue)
+  //console.log('containerWidth', containerWidth)
   return containerWidth + 'px'
 })
 
@@ -76,7 +87,7 @@ function onMouseMove(e: MouseEvent) {
   const newWidth = parseInt(resMgrWidth.value, 10) + moveX
   // 限制最小和最大宽度（可选）
   const minWidth = 100
-  const maxWidth = window.innerWidth - 600
+  const maxWidth = windowWidth.value - 600
   if (newWidth > maxWidth) {
     resMgrWidth.value = maxWidth + 'px'
   } else if (newWidth < minWidth) {
@@ -91,6 +102,19 @@ function onMouseUp() {
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('mouseup', onMouseUp)
 }
+
+onMounted(() => {
+  windowWidth.value = window.innerWidth
+  function onWindowResized() {
+    // console.log('resize window.innerWidth', window.innerWidth)
+    windowWidth.value = window.innerWidth
+  }
+  window.addEventListener('resize', onWindowResized)
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('resize', onWindowResized)
+  })
+})
 </script>
 
 <style scoped>
