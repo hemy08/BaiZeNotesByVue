@@ -24,11 +24,11 @@ const props = defineProps({
 <style scoped>
 #md-edit-tools-bar {
   width: 100%;
-  height: 40px;
+  height: auto;
   background-color: #f2f2f2;
   color: black;
-  align-items: center;
   display: flex;
+  flex-wrap: wrap;
 }
 
 #md-edit-component {

@@ -35,10 +35,10 @@
   <button id="code-line" class="tool-btn" title="行内代码" @click="onFontFormat('codeline')"></button>
   <button id="code-block" class="tool-btn" title="代码块" @click="onInsertText('\r\n```\r\n\r\n```\r\n')"></button>
   <button id="math-line" class="tool-btn" title="行内公式" @click="onFontFormat('mathline')"></button>
-  <button id="math-block" class="tool-btn" title="公式块 btn-split-line" @click="onInsertText('\r\n$$\r\n\r\n$$\r\n')"></button>
+  <button id="math-block" class="tool-btn" title="公式块" @click="onInsertText('\r\n$$\r\n\r\n$$\r\n')"></button>
   <!-- 超链接 锚点链接 任务列表 -->
-  <button id="line-links" title="公式块" class="tool-btn" @click="onInsertText('[]()')"></button>
-  <button id="task-lists" title="公式块" class="tool-btn btn-split-line"></button>
+  <button id="line-links" title="超链接" class="tool-btn" @click="onInsertText('[]()')"></button>
+  <button id="task-lists" title="任务列表" class="tool-btn btn-split-line"></button>
   <!-- 插入图片 图片居中 Emoji 表格 标记 分类 -->
   <button id="i-images" title="插入图片" class="tool-btn"></button>
   <button id="images-center" title="图片居中" class="tool-btn"></button>
@@ -50,16 +50,6 @@
   <button id="i-material" title="material" class="tool-btn"></button>
   <button id="i-mermaid" title="mermaid" class="tool-btn" @click="onInsertText('\r\n```mermaid\r\n\r\n```\r\n')" ></button>
   <button id="i-plantuml" title="plantuml" class="tool-btn" @click="onInsertText('\r\n```plantuml\r\n@startuml\r\n\r\n@enduml\r\n```\r\n')" ></button>
-  <select id="toggle-buttons" title="更多" class="tool-btn">
-    <div>
-    <button id="i-images" title="插入图片" class="tool-btn">11</button>
-    <button id="images-center" title="图片居中" class="tool-btn">22</button>
-    <button id="i-emoji" title="Emoji" class="tool-btn">33</button>
-    <button id="i-table" title="表格" class="tool-btn">44</button>
-    <button id="i-label" title="标记" class="tool-btn">55</button>
-    <button id="i-classification" title="分类" class="tool-btn btn-split-line">66</button>
-    </div>
-  </select>
 </template>
 <script setup lang="ts">
 import { onMounted, watch, ref, onBeforeUnmount } from 'vue'
@@ -109,20 +99,6 @@ function onRearrangeMenuButtons() {
   if (showMenuNum > buttonIds.length) {
     return
   }
-  buttonIds.forEach(function (id, index) {
-    if (index >= showMenuNum && id != 'toggle-buttons') {
-      const button = document.getElementById(id)
-      if (button) {
-        button.style.display = 'none'
-        // 跳过最后一个适合显示的按钮
-        const option = document.createElement('option')
-        option.value = id // 可以使用按钮的ID作为值
-        option.text = button.title // 使用按钮的title属性作为文本
-        option.innerHTML = button.innerHTML
-        // select.appendChild(option)
-      }
-    }
-  })
 }
 
 onMounted(() => {
@@ -130,16 +106,38 @@ onMounted(() => {
   onRearrangeMenuButtons()
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function onShowMore() {
+  const group = document.getElementById('button-group')
+  if (group) {
+    if (group.style.display === 'none') {
+      group.style.display = 'block'
+    } else {
+      group.style.display = 'none'
+    }
+  }
+}
+
+function onHideMore() {
+  const group = document.getElementById('button-group')
+  if (group) {
+    group.style.display = 'none'
+  }
+}
+
 function onFontHeaderFormat(context: string) {
   EventBus.$emit('monaco-editor-update-header-format', context)
+  onHideMore()
 }
 
 function onFontFormat(context: string) {
   EventBus.$emit('monaco-editor-update-font-format', context)
+  onHideMore()
 }
 
 function onInsertText(context: string) {
   EventBus.$emit('monaco-editor-insert-text', context)
+  onHideMore()
 }
 
 watch(
@@ -161,8 +159,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .tool-btn {
-  height: 40px;
-  width: 40px;
+  height: 35px;
+  width: 35px;
   border: none;
   background-color: #f2f2f2;
   color: black;
@@ -173,19 +171,5 @@ onBeforeUnmount(() => {
 
 .tool-btn:hover {
   background-color: #eeffff;
-}
-
-/* 隐藏下拉框，直到需要它 */
-.tool-select {
-  display: none;
-}
-
-/* 当显示下拉框时，隐藏切换按钮（可选） */
-.btn-toolbar.show-options #toggle-options {
-  display: none;
-}
-
-.btn-toolbar.show-options .tool-select {
-  display: inline-block;
 }
 </style>

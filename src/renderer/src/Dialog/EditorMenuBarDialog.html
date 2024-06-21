@@ -39,23 +39,23 @@
   </style>
 </head>
 <body>
-  <button id="h1" title="一级标题" class="tool-btn" @click="onFontHeaderFormat('H1')"></button>
-  <button id="h2" title="二级标题" class="tool-btn" @click="onFontHeaderFormat('H2')"></button>
-  <button id="h3" title="三级标题" class="tool-btn" @click="onFontHeaderFormat('H3')"></button>
-  <button id="h4" title="四级标题" class="tool-btn" @click="onFontHeaderFormat('H4')"></button>
-  <button id="h5" title="五级标题" class="tool-btn" @click="onFontHeaderFormat('H5')"></button>
-  <button id="h6" title="六级标题" class="tool-btn btn-split-line" @click="onFontHeaderFormat('H6')"></button>
+  <button id="h1" title="一级标题" class="tool-btn" onclick="onFontHeaderFormat('H1')"></button>
+  <button id="h2" title="二级标题" class="tool-btn" onclick="onFontHeaderFormat('H2')"></button>
+  <button id="h3" title="三级标题" class="tool-btn" onclick="onFontHeaderFormat('H3')"></button>
+  <button id="h4" title="四级标题" class="tool-btn" onclick="onFontHeaderFormat('H4')"></button>
+  <button id="h5" title="五级标题" class="tool-btn" onclick="onFontHeaderFormat('H5')"></button>
+  <button id="h6" title="六级标题" class="tool-btn btn-split-line" onclick="onFontHeaderFormat('H6')"></button>
   <!-- 字体 大小 加粗 倾斜 删除线 下划线 颜色 引用 -->
-  <button id="f-family" title="字体样式" class="tool-btn" @click="onFontFormat('fontfamily')"></button>
-  <button id="f-size" title="字体大小" class="tool-btn" @click="onFontFormat('fontsize')"></button>
-  <button id="f-bold" title="加粗" class="tool-btn" @click="onFontFormat('bold')"></button>
-  <button id="f-italic" title="倾斜" class="tool-btn" @click="onFontFormat('italic')"></button>
-  <button id="f-delete" title="删除线" class="tool-btn" @click="onFontFormat('deleteline')"></button>
-  <button id="f-under" title="下划线" class="tool-btn" @click="onFontFormat('underline')"></button>
-  <button id="color-fill" title="颜色" class="tool-btn" @click="onFontFormat('color')"></button>
-  <button id="f-quote" title="引用" class="tool-btn" @click="onFontFormat('quote')"></button>
-  <button id="f-super" title="上标" class="tool-btn" @click="onInsertText('<sup> </sup>')"></button>
-  <button id="f-sub" title="下标" class="tool-btn btn-split-line" @click="onInsertText('<sub> </sub>')"></button>
+  <button id="f-family" title="字体样式" class="tool-btn" onclick="onFontFormat('fontfamily')"></button>
+  <button id="f-size" title="字体大小" class="tool-btn" onclick="onFontFormat('fontsize')"></button>
+  <button id="f-bold" title="加粗" class="tool-btn" onclick="onFontFormat('bold')"></button>
+  <button id="f-italic" title="倾斜" class="tool-btn" onclick="onFontFormat('italic')"></button>
+  <button id="f-delete" title="删除线" class="tool-btn" onclick="onFontFormat('deleteline')"></button>
+  <button id="f-under" title="下划线" class="tool-btn" onclick="onFontFormat('underline')"></button>
+  <button id="color-fill" title="颜色" class="tool-btn" onclick="onFontFormat('color')"></button>
+  <button id="f-quote" title="引用" class="tool-btn" onclick="onFontFormat('quote')"></button>
+  <button id="f-super" title="上标" class="tool-btn" onclick="onInsertText('<sup> </sup>')"></button>
+  <button id="f-sub" title="下标" class="tool-btn btn-split-line" onclick="onInsertText('<sub> </sub>')"></button>
   <!-- 文字左对齐 文字居中 两边对其 文字右对齐 -->
   <button id="align-left" title="左对齐" class="tool-btn"></button>
   <button id="align-center" title="文字居中" class="tool-btn"></button>
@@ -64,15 +64,15 @@
   <!-- 有序列表 无序列表 水平线 段内换行 -->
   <button id="list-numbered" title="有序列表" class="tool-btn"></button>
   <button id="list-bulleted" title="无序列表" class="tool-btn"></button>
-  <button id="line-scan" class="tool-btn" title="水平线"  @click="onInsertText('\r\n------------\r\n')"></button>
-  <button id="line-enter" class="tool-btn" title="段内换行 btn-split-line" @click="onInsertText('\r\n')"></button>
+  <button id="line-scan" class="tool-btn" title="水平线"  onclick="onInsertText('\r\n------------\r\n')"></button>
+  <button id="line-enter" class="tool-btn" title="段内换行 btn-split-line" onclick="onInsertText('\r\n')"></button>
   <!-- 行内代码 代码块 行内公式 公式块 -->
-  <button id="code-line" class="tool-btn" title="行内代码" @click="onFontFormat('codeline')"></button>
-  <button id="code-block" class="tool-btn" title="代码块" @click="onInsertText('\r\n```\r\n\r\n```\r\n')"></button>
-  <button id="math-line" class="tool-btn" title="行内公式" @click="onFontFormat('mathline')"></button>
-  <button id="math-block" class="tool-btn" title="公式块 btn-split-line" @click="onInsertText('\r\n$$\r\n\r\n$$\r\n')"></button>
+  <button id="code-line" class="tool-btn" title="行内代码" onclick="onFontFormat('codeline')"></button>
+  <button id="code-block" class="tool-btn" title="代码块" onclick="onInsertText('\r\n```\r\n\r\n```\r\n')"></button>
+  <button id="math-line" class="tool-btn" title="行内公式" onclick="onFontFormat('mathline')"></button>
+  <button id="math-block" class="tool-btn" title="公式块 btn-split-line" onclick="onInsertText('\r\n$$\r\n\r\n$$\r\n')"></button>
   <!-- 超链接 锚点链接 任务列表 -->
-  <button id="line-links" title="公式块" class="tool-btn" @click="onInsertText('[]()')"></button>
+  <button id="line-links" title="公式块" class="tool-btn" onclick="onInsertText('[]()')"></button>
   <button id="task-lists" title="公式块" class="tool-btn btn-split-line"></button>
   <!-- 插入图片 图片居中 Emoji 表格 标记 分类 -->
   <button id="i-images" title="插入图片" class="tool-btn"></button>
@@ -83,18 +83,18 @@
   <button id="i-classification" title="分类" class="tool-btn btn-split-line"></button>
   <!-- material mermaid plantuml -->
   <button id="i-material" title="material" class="tool-btn"></button>
-  <button id="i-mermaid" title="mermaid" class="tool-btn" @click="onInsertText('\r\n```mermaid\r\n\r\n```\r\n')" ></button>
-  <button id="i-plantuml" title="plantuml" class="tool-btn" @click="onInsertText('\r\n```plantuml\r\n@startuml\r\n\r\n@enduml\r\n```\r\n')" ></button>
-  <button id="buttons" class="tool-btn" @click="onShowMore">
+  <button id="i-mermaid" title="mermaid" class="tool-btn" onclick="onInsertText('\r\n```mermaid\r\n\r\n```\r\n')" ></button>
+  <button id="i-plantuml" title="plantuml" class="tool-btn" onclick="onInsertText('\r\n```plantuml\r\n@startuml\r\n\r\n@enduml\r\n```\r\n')" ></button>
+  <button id="buttons" class="tool-btn" onclick="onShowMore()">
     <svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5H7Z"/></svg>
-    <div id="button-group" class="button-group" style="display: none">
-      <button id="i-images" title="插入图片" class="tool-btn" style="display: none">11</button>
-      <button id="images-center" title="图片居中" class="tool-btn" style="display: none">22</button>
-      <button id="i-emoji" title="Emoji" class="tool-btn" style="display: none">33</button>
-      <button id="i-table" title="表格" class="tool-btn" style="display: none">44</button>
-      <button id="i-label" title="标记" class="tool-btn" style="display: none">55</button>
-    </div>
   </button>
+  <div id="button-group" class="button-group" style="display: none">
+    <button id="i-images" title="插入图片" class="tool-btn" onclick="onInsertText('111')">11</button>
+    <button id="images-center" title="图片居中" class="tool-btn" onclick="onInsertText('222')">22</button>
+    <button id="i-emoji" title="Emoji" class="tool-btn" onclick="onInsertText('333')">33</button>
+    <button id="i-table" title="表格" class="tool-btn" onclick="onInsertText('444')">44</button>
+    <button id="i-label" title="标记" class="tool-btn" onclick="onInsertText('555')">55</button>
+  </div>
 
 </body>
 <script>
@@ -184,13 +184,34 @@
       }
     }
   }
+  let show = false
+  function onInsertText(value) {
+    console.log(value)
+    onHideMore()
+  }
+
+  function onFontFormat(value) {
+    console.log(value)
+    onHideMore()
+  }
+
+  function onFontHeaderFormat(value) {
+    console.log(value)
+    onHideMore()
+  }
 
   function onShowMore() {
     const group = document.getElementById('button-group')
-    const childs = group.querySelectorAll('tool-btn')
-    childs.forEach((item) => {
-      item.style.display = 'block'
-    })
+    if (group.style.display === 'none') {
+      group.style.display = 'block'
+    } else {
+      group.style.display = 'none'
+    }
+  }
+
+  function onHideMore() {
+    const group = document.getElementById('button-group')
+    group.style.display = 'none'
   }
 </script>
 </html>
