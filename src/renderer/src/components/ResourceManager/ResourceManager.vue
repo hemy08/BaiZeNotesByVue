@@ -1,5 +1,8 @@
 <template>
-  <div v-if="showFileExplorer" style="display: flex; flex-direction: row; width: 100%; height: 100%">
+  <div
+    v-if="showFileExplorer"
+    style="display: flex; flex-direction: row; width: 100%; height: 100%"
+  >
     <div id="resizer-navi-tab-file-manager" class="resizer-navi-tab-file-manager"></div>
     <div id="file-manager" class="file-manager">
       <div id="file-tree">
@@ -18,9 +21,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import FileTreeNode from './FileTreeNode.vue'
 import { FileSysItem } from './resource-manager'
+import EventBus from '../../event-bus'
 
 const showFileExplorer = ref(true)
 const showMarkdownToc = ref(false)
@@ -43,19 +47,44 @@ window.electron.ipcRenderer.on('file-system-data', (_, fileSystemData: string) =
   }
 })
 
+let fileTreeHtml = ''
+
 // 监听父组件切换
 watch(
   () => props.naviShow,
   (value) => {
     if (value == 'markdown-toc') {
+      // 保存当前tree信息
+      const fileTree = document.getElementById('.file-tree')
+      if (fileTree) {
+        fileTreeHtml = fileTree.innerHTML
+      }
+      console.log('fileTreeHtml', fileTreeHtml)
       showMarkdownToc.value = true
       showFileExplorer.value = false
+      EventBus.$emit('monaco-editor-get-chapters', true)
     } else if (value == 'file-explorer') {
       showFileExplorer.value = true
+      console.log('fileTreeHtml', fileTreeHtml)
+      const fileTree = document.getElementById('.file-tree')
+      if (fileTree) {
+        console.log('fileTree.innerHTML', fileTree.innerHTML)
+        fileTree.innerHTML = fileTreeHtml
+      }
       showMarkdownToc.value = false
     }
   }
 )
+
+onMounted(() => {
+  EventBus.$on('monaco-editor-chapters', (headings) => {
+    console.log('headings', headings)
+  })
+
+  onBeforeUnmount(() => {
+    EventBus.$off('monaco-editor-chapters', () => {})
+  })
+})
 </script>
 
 <style scoped>

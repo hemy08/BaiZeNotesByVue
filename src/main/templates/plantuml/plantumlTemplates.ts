@@ -22,54 +22,29 @@ import { UseCaseDiagram } from './UseCaseDiagram'
 import { WBSDiagram } from './WBSDiagram'
 import { YamlDiagram } from './YamlDiagram'
 
-export class plantUmlTemplates {
-  ActivityDiagram: string
-  ArchimateDiagram: string
-  AsciiMath: string
-  ClassDiagram: string
-  ComponentDiagram: string
-  DeploymentDiagram: string
-  DitaaDiagram: string
-  EntityRelationship: string
-  ExtendedBackusNaurForm: string
-  GanttDiagram: string
-  InformationEngineering: string
-  JsonDiagram: string
-  MindmapDiagram: string
-  nwdiag: string
-  ObjectDiagram: string
-  RegularExpression: string
-  salt: string
-  SequenceDiagram: string
-  StateDiagram: string
-  TimingDiagram: string
-  UseCaseDiagram: string
-  WBSDiagram: string
-  YamlDiagram: string
-
-  constructor() {
-    this.ActivityDiagram = ActivityDiagram
-    this.ArchimateDiagram = ArchimateDiagram
-    this.AsciiMath = AsciiMath
-    this.ClassDiagram = ClassDiagram
-    this.ComponentDiagram = ComponentDiagram
-    this.DeploymentDiagram = DeploymentDiagram
-    this.DitaaDiagram = DitaaDiagram
-    this.EntityRelationship = EntityRelationship
-    this.ExtendedBackusNaurForm = ExtendedBackusNaurForm
-    this.GanttDiagram = GanttDiagram
-    this.InformationEngineering = InformationEngineering
-    this.JsonDiagram = JsonDiagram
-    this.MindmapDiagram = MindmapDiagram
-    this.nwdiag = nwdiag
-    this.ObjectDiagram = ObjectDiagram
-    this.RegularExpression = RegularExpression
-    this.salt = salt
-    this.SequenceDiagram = SequenceDiagram
-    this.StateDiagram = StateDiagram
-    this.TimingDiagram = TimingDiagram
-    this.UseCaseDiagram = UseCaseDiagram
-    this.WBSDiagram = WBSDiagram
-    this.YamlDiagram = YamlDiagram
-  }
+export const plantumlDiagrams = {
+  ActivityDiagram: { label: '活动图', diagram: ActivityDiagram },
+  ActivityDiagram2: { label: '规范和描述语言（SDL）', diagram: ActivityDiagram },
+  ArchimateDiagram: { label: '架构图', diagram: ArchimateDiagram },
+  AsciiMath: { label: 'AsciiMath', diagram: AsciiMath },
+  ClassDiagram: { label: '类图', diagram: ClassDiagram },
+  ComponentDiagram: { label: '组件图', diagram: ComponentDiagram },
+  DeploymentDiagram: { label: '部署图', diagram: DeploymentDiagram },
+  DitaaDiagram: { label: 'Ditaa 图表', diagram: DitaaDiagram },
+  EntityRelationship: { label: '实体关系图', diagram: EntityRelationship },
+  ExtendedBackusNaurForm: { label: 'EBNF 图表', diagram: ExtendedBackusNaurForm },
+  GanttDiagram: { label: '甘特图', diagram: GanttDiagram },
+  InformationEngineering: { label: '信息工程图', diagram: InformationEngineering },
+  JsonDiagram: { label: 'JSON 数据', diagram: JsonDiagram },
+  MindmapDiagram: { label: '思维导图', diagram: MindmapDiagram },
+  nwdiag: { label: '网络图', diagram: nwdiag },
+  ObjectDiagram: { label: '对象图', diagram: ObjectDiagram },
+  RegularExpression: { label: 'Regex 图表', diagram: RegularExpression },
+  salt: { label: '用户界面模型', diagram: salt },
+  SequenceDiagram: { label: '序列图', diagram: SequenceDiagram },
+  StateDiagram: { label: '状态图', diagram: StateDiagram },
+  TimingDiagram: { label: '定时图', diagram: TimingDiagram },
+  UseCaseDiagram: { label: '用例图', diagram: UseCaseDiagram },
+  WBSDiagram: { label: 'WBS 图表', diagram: WBSDiagram },
+  YamlDiagram: { label: 'YAML 数据', diagram: YamlDiagram }
 }

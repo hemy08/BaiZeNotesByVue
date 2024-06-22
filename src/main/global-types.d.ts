@@ -35,12 +35,12 @@ declare global {
 
   interface Hemy {
     dialog: hemyDialog
-    templates: hemyTemplates
     file: FileUtils
   }
 
   interface Global extends NodeJS.Global {
     __current_active_file?: FileProperties // 使用 ? 表示它可能是 undefined
+    hemy: Hemy
     MainWindow: Electron.BrowserWindow
     MainShowWarn: string
     RootPath: string

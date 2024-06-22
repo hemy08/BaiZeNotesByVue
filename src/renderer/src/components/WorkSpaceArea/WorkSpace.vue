@@ -60,15 +60,29 @@ const mdContainerWidth = computed(() => {
 })
 
 const isShowResourceMgrArea = ref(true)
-
+let fileTreeHtml = ''
 function onSwitchNaviTab(value: string) {
   if (value == 'switch-open-close') {
     isShowResourceMgrArea.value = !isShowResourceMgrArea.value
   } else if (value == 'file-explorer') {
-    window.electron.ipcRenderer.send('file-manager-context-menu-reload-from-disk', '')
+    //window.electron.ipcRenderer.send('file-manager-context-menu-reload-from-disk', '')
     naviResManagerShow.value = 'file-explorer'
     isShowResourceMgrArea.value = true
+    if (fileTreeHtml) {
+      const fileTree = document.getElementById('.resource-manager')
+      if (fileTree) {
+        fileTree.innerHTML = fileTreeHtml
+      }
+    }
   } else if (value == 'markdown-toc') {
+    // 保存当前tree信息
+    const fileTree = document.getElementById('.resource-manager')
+    console.log('workspace fileTree', fileTree)
+    if (fileTree) {
+      fileTreeHtml = fileTree.innerHTML
+      console.log('workspace fileTree.innerHTML', fileTree.innerHTML)
+    }
+    console.log('workspace fileTreeHtml', fileTreeHtml)
     naviResManagerShow.value = 'markdown-toc'
     isShowResourceMgrArea.value = true
   } else {

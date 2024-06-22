@@ -66,6 +66,8 @@ export const MdEditToolSvgs: MappingTable = {
     '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 5a7 7 0 0 0-7 7 7 7 0 0 0 7 7c1.04 0 2.06-.24 3-.68.94.44 1.96.68 3 .68a7 7 0 0 0 7-7 7 7 0 0 0-7-7c-1.04 0-2.06.24-3 .68-.94-.44-1.96-.68-3-.68m0 2c.34 0 .67.03 1 .1-1.28 1.31-2 3.07-2 4.9 0 1.83.72 3.59 2 4.89-.33.07-.66.11-1 .11a5 5 0 0 1-5-5 5 5 0 0 1 5-5m6 0a5 5 0 0 1 5 5 5 5 0 0 1-5 5c-.34 0-.67-.03-1-.1 1.28-1.31 2-3.07 2-4.9 0-1.83-.72-3.59-2-4.89.33-.07.66-.11 1-.11Z"/></svg>',
   'i-emoji':
     '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5.5 2C3.56 2 2 3.56 2 5.5v13C2 20.44 3.56 22 5.5 22H16l6-6V5.5C22 3.56 20.44 2 18.5 2h-13m.25 2h12.5A1.75 1.75 0 0 1 20 5.75V15h-1.5c-1.94 0-3.5 1.56-3.5 3.5V20H5.75A1.75 1.75 0 0 1 4 18.25V5.75A1.75 1.75 0 0 1 5.75 4m8.69 2.77c-.16 0-.32.02-.47.06-.94.26-1.47 1.22-1.23 2.17.05.15.12.3.21.44l3.23-.88c0-.17-.02-.34-.06-.51-.21-.75-.9-1.28-1.68-1.28M8.17 8.5c-.17 0-.32 0-.47.05-.93.26-1.48 1.22-1.23 2.15.03.16.12.3.21.46l3.23-.88c0-.17-.02-.34-.06-.5A1.72 1.72 0 0 0 8.17 8.5m8.55 2.76-9.13 2.51a5.266 5.266 0 0 0 5.36 1.64 5.273 5.273 0 0 0 3.77-4.15Z"/></svg>',
+  'i-symbol':
+    '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 7v7h2V7H2m4 0v2h4v2H8v3h2v-1c1.11 0 2-.89 2-2V9c0-1.11-.89-2-2-2H6m9.8 0-.2 2H14v2h1.4l-.2 2H14v2h1l-.2 2h2l.2-2h1.4l-.2 2h2l.2-2H22v-2h-1.4l.2-2H22V9h-1l.2-2h-2L19 9h-1.4l.2-2h-2m1.6 4h1.4l-.2 2h-1.4l.2-2M2 15v2h2v-2H2m6 0v2h2v-2H8Z"/></svg>',
   'i-table':
     '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m0 4v4h6V8H5m8 0v4h6V8h-6m-8 6v4h6v-4H5m8 0v4h6v-4h-6Z"/></svg>',
   'i-label':
@@ -291,7 +293,7 @@ function editUpdateFontStyle(
     text: newText, // 要插入的文本
     forceMoveMarkers: false // 如果需要，强制移动标记（如断点）
   }
-  editor.executeEdits('editSetFontItalic', [edit])
+  editor.executeEdits('editUpdateFontStyle', [edit])
 }
 
 function editSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor, style: string) {
@@ -362,6 +364,33 @@ function editSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor, style: s
   editor.executeEdits('editSetFontItalic', [edit])
 }
 
+function editSetFontAlign(
+  editor: monaco.editor.IStandaloneCodeEditor,
+  startStr: string,
+  endStr: string
+) {
+  // 获取当前的选择范围
+  const selection = editor.getSelection()
+  if (!selection || selection.isEmpty()) {
+    // 没有选择，则直接插入字符串
+    EditInsTextAfterCursor(editor, startStr + endStr)
+    return
+  }
+  // 获取编辑器模型, 确保模型存在
+  const model = editor.getModel()
+  if (!model) return
+
+  const selectedText = model.getValueInRange(selection)
+  const newText = `${startStr}${selectedText}${endStr}`
+
+  const edit = {
+    range: selection, // 这是一个空范围，表示插入位置
+    text: newText, // 要插入的文本
+    forceMoveMarkers: true // 如果需要，强制移动标记（如断点）
+  }
+  editor.executeEdits('editSetFontAlign', [edit])
+}
+
 const fontStyleHandleFuncMap = {
   fontfamily(editor: monaco.editor.IStandaloneCodeEditor, style: string) {
     return editUpdateFontStyleCommon(editor, style)
@@ -386,6 +415,18 @@ const fontStyleHandleFuncMap = {
   },
   italic(editor: monaco.editor.IStandaloneCodeEditor, style: string) {
     return editSetFontItalic(editor, style)
+  },
+  alignleft(editor: monaco.editor.IStandaloneCodeEditor) {
+    return editSetFontAlign(editor, '<p style="text-align: left;">\r\n\r\n', '\r\n\r\n</p>')
+  },
+  aligncenter(editor: monaco.editor.IStandaloneCodeEditor) {
+    return editSetFontAlign(editor, '<p style="text-align: center;">\r\n', '\r\n</p>')
+  },
+  alignjustify(editor: monaco.editor.IStandaloneCodeEditor) {
+    return editSetFontAlign(editor, '<p style="text-align: justify;width: 100%">\r\n', '\r\n</p>')
+  },
+  alignright(editor: monaco.editor.IStandaloneCodeEditor) {
+    return editSetFontAlign(editor, '<p style="text-align: right;">\r\n', '\r\n</p>')
   }
 }
 // 假设 editor 是您已经初始化的 Monaco Editor 实例

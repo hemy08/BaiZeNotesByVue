@@ -5,13 +5,17 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watchEffect } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
 import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
 import { full as emoji } from 'markdown-it-emoji'
 import hljs from 'highlight.js'
 import MermaidRender from './MermaidRender.vue'
 import { preRenderMermaidProc } from './markdown-edit'
+import EventBus from '../../event-bus'
+import { marked } from 'marked'
+import { Remarkable } from 'remarkable'
+import 'commonmark'
 
 const props = defineProps({
   editorContent: {
@@ -23,6 +27,7 @@ const props = defineProps({
 const renderedMarkdownContent = ref('')
 const isShowMermaidContainer = ref(false)
 const isShowMermaidComponent = ref(false)
+let isTocOpen = false
 
 const md = MarkdownIt({
   html: true, // 在源码中启用 HTML 标签
@@ -41,6 +46,8 @@ const md = MarkdownIt({
   .use(require('markdown-it-plantuml'))
   .use(emoji)
 
+const remark = new Remarkable()
+
 // 组件挂载时，进行初始渲染
 onMounted(() => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -52,6 +59,61 @@ onMounted(() => {
 watchEffect(() => {
   updateMarkdownPreRender()
 })
+
+interface markdownTOC {
+  level: string
+  text: string
+  lineNumber: number
+}
+
+function getMarkdownChapters(tocOpen: boolean) {
+  isTocOpen = tocOpen
+  // 提取大纲
+  const headings: markdownTOC[] = []
+  const mdTokens = md.parse(props.editorContent, [])
+  console.log('markdown-it tokens', mdTokens)
+  mdTokens.forEach((token) => {
+    if (token.type === 'heading_open') {
+      const healing: markdownTOC = {
+        level: token.tag,
+        text: '',
+        lineNumber: token.map[1]
+      }
+      let nextToken = mdTokens[mdTokens.indexOf(token) + 1]
+      while (nextToken && nextToken.type !== 'heading_close') {
+        if (nextToken.type === 'inline' && nextToken.children) {
+          nextToken.children.forEach((child) => {
+            if (child.type === 'text') {
+              healing.text += child.content
+            }
+          })
+        }
+        nextToken = mdTokens[mdTokens.indexOf(nextToken) + 1]
+      }
+
+      headings.push(healing)
+    }
+  })
+  EventBus.$emit('monaco-editor-chapters', headings)
+}
+
+onMounted(() => {
+  EventBus.$on('monaco-editor-get-chapters', getMarkdownChapters)
+
+  onBeforeUnmount(() => {
+    EventBus.$off('monaco-editor-get-chapters', getMarkdownChapters)
+  })
+})
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getTokens() {
+  const markedTokens = marked.lexer(props.editorContent)
+  console.log('markedTokens tokens', markedTokens)
+  const remarkTokens = remark.parse(props.editorContent, [])
+  console.log('remarkTokens tokens', remarkTokens)
+  const mdTokens = md.parse(props.editorContent, [])
+  console.log('markdown-it tokens', mdTokens)
+}
 
 // 定义一个函数来更新 Markdown 的渲染，预处理
 async function updateMarkdownPreRender() {

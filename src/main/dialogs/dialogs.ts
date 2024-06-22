@@ -108,6 +108,7 @@ class onlineWebPage {
   }
 
   frontEnd() {
+    // window.open('https://www.jyshare.com/front-end/7688/')
     openOnlineWebPage('https://www.jyshare.com/front-end/7688/')
   }
 }

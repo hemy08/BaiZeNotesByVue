@@ -59,7 +59,16 @@ onMounted(() => {
     // 监听编辑器内容变化
     editorInstance.onDidChangeModelContent(() => {
       if (editorInstance != null) {
-        emit('update:code', editorInstance.getValue())
+        const context = editorInstance.getValue()
+        emit('update:code', context)
+        EventBus.$emit('monaco-editor-content-length', context.length)
+      }
+    })
+
+    // 监听光标位置
+    editorInstance.onDidChangeCursorPosition((e) => {
+      if (editorInstance != null) {
+        EventBus.$emit('monaco-editor-cursor-position', e.position)
       }
     })
 
@@ -116,7 +125,7 @@ onMounted(() => {
     EventBus.$off('monaco-editor-update-font-format', (value: string) => {
       EditSetFontStyle(editorInstance, value)
     })
-    EventBus.$off('monaco-editor-update-font-format', (value: string) => {
+    EventBus.$off('monaco-editor-insert-text', (value: string) => {
       EditInsTextAfterCursor(editorInstance, value)
     })
   })

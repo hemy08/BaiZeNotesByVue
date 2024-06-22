@@ -89,6 +89,7 @@ function createWindow(): void {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ipcMain.on('file-manager-context-menu-reload-from-disk', (_) => {
+    console.log('file-manager-context-menu-reload-from-disk')
     reloadDirectoryFromDisk()
   })
   const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
