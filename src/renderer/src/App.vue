@@ -49,6 +49,6 @@ import StatusBar from './components/StatusBar.vue'
   user-select: none;
   align-items: center;
   margin: 0;
-  z-index: 2;
+  z-index: 1000;
 }
 </style>

@@ -1,10 +1,18 @@
-import * as T_mermaid from './mermaid/mermaidTemplates'
-import * as T_plantuml from './plantuml/plantumlTemplates'
-import * as T_textblock from './textblock/textblockTemplates'
-import * as T_writing from './writing/writingTemplates'
+import { mermaidTemplates } from './mermaid/mermaidTemplates'
+import { plantUmlTemplates } from './plantuml/plantumlTemplates'
+import { textBlockTemplates } from './textblock/textblockTemplates'
+import { writeTemplates } from './writing/writingTemplates'
 
-export {
-  T_mermaid,
-  T_plantuml,
-  T_textblock,
-  T_writing }
+export class hemyTemplates {
+  mermaid: mermaidTemplates
+  plantuml: plantUmlTemplates
+  textblock: textBlockTemplates
+  writing: writeTemplates
+
+  constructor() {
+    this.mermaid = new mermaidTemplates()
+    this.plantuml = new plantUmlTemplates()
+    this.textblock = new textBlockTemplates()
+    this.writing = new writeTemplates()
+  }
+}

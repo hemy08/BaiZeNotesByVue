@@ -1,8 +1,15 @@
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.
 import { ipcMain } from 'electron'
+import { hemyDialog } from '../dialogs/dialogs'
+import { hemyTemplates } from '../templates/templates'
+import { FileUtils } from './file-utils'
 
 export function globalInitialize(mainWindow: Electron.BrowserWindow) {
+  global.hemy.dialog = new hemyDialog(mainWindow)
+  global.hemy.template = new hemyTemplates()
+  global.hemy.file = new FileUtils(mainWindow)
+
   global.MainWindow = mainWindow
   global.MainShowWarn = false
   global.SavingFile = false

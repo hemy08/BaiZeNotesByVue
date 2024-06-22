@@ -53,14 +53,14 @@ async function MermaidRenderAllGraph(text: string): Promise<string> {
     // 从已经存储的map中获取
     const mapSvg = querySvgByMermaidCode(graphDesc)
     if (mapSvg != undefined) {
-      console.log('querySvgByMermaidCode success', graphDesc.substring(0, 100))
+      //console.log('querySvgByMermaidCode success', graphDesc.substring(0, 100))
       mermaidRenderSvgString = mapSvg
     } else {
       try {
         mermaidRenderSvgString = await waitAsyncRenderResult(graphDesc)
         storeMermaidMapping(graphDesc, mermaidRenderSvgString)
       } catch (error) {
-        console.log('waitAsyncRenderResult error', error)
+        //console.log('waitAsyncRenderResult error', error)
         mermaidRenderSvgString = graphDesc
       }
     }

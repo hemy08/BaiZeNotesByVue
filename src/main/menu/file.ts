@@ -1,10 +1,5 @@
-import { app, dialog, ipcMain } from 'electron'
-import {
-  openSelectFile,
-  reloadDirectoryFromDisk,
-  saveActiveFile,
-  saveActiveFileAs
-} from '../utils/file-utils'
+import { app, ipcMain } from 'electron'
+import { reloadDirectoryFromDisk, saveActiveFile, saveActiveFileAs } from '../utils/file-utils'
 
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
@@ -13,7 +8,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '新建文件(N)  ...待开发',
       accelerator: 'ctrl+n',
       click: () => {
-        showOpenDirectoryDialog(mainWindow)
+        global.hemy.file.openDirectory()
       }
     },
     {
@@ -24,28 +19,28 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      label: '从文件导入 ...待开发',
+      label: '从文件导入',
       submenu: [
         {
-          label: 'World',
+          label: 'World ...待开发',
           click: () => {
             mainWindow.webContents.send('OpenFile', null)
           }
         },
         {
-          label: 'Html',
+          label: 'Html ...待开发',
           click: () => {
             mainWindow.webContents.send('OpenFile', null)
           }
         },
         {
-          label: 'Json',
+          label: 'Json ...待开发',
           click: () => {
             mainWindow.webContents.send('OpenFile', null)
           }
         },
         {
-          label: 'Yaml',
+          label: 'Yaml ...待开发',
           click: () => {
             mainWindow.webContents.send('OpenFile', null)
           }
@@ -58,13 +53,14 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '打开文件',
       click: () => {
-        showOpenSelectFileDialog(mainWindow)
+        global.hemy.file.openFile()
       }
     },
     {
       label: '打开文件夹',
+      accelerator: 'ctrl+o',
       click: () => {
-        showOpenDirectoryDialog(mainWindow)
+        global.hemy.file.openDirectory()
       }
     },
     {
@@ -84,6 +80,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
     },
     {
       label: '保存',
+      accelerator: 'ctrl+s',
       click: () => {
         saveActiveFile()
       }
@@ -105,6 +102,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
     },
     {
       label: '从磁盘重新加载',
+      accelerator: 'ctrl+r',
       click: () => {
         reloadDirectoryFromDisk()
       }
@@ -125,52 +123,6 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
     accelerator: 'alt+f',
     submenu: fileMenuItems
   }
-}
-
-function showOpenDirectoryDialog(mainWindow: Electron.BrowserWindow) {
-  dialog
-    .showOpenDialog(mainWindow, {
-      properties: ['openDirectory']
-    })
-    .then((result) => {
-      if (result.canceled) return
-      global.RootPath = result.filePaths[0]
-      reloadDirectoryFromDisk()
-    })
-    .catch((err) => {
-      console.error('Error opening directory dialog:', err)
-    })
-}
-
-function getFileNameFromPath(filePath: string): string {
-  const lastIndex = filePath.lastIndexOf('/') || filePath.lastIndexOf('\\')
-  if (lastIndex === -1) {
-    // 如果没有找到'/'或'\\'，则整个字符串就是文件名（或路径错误）
-    return filePath
-  }
-  return filePath.slice(lastIndex + 1)
-}
-
-function showOpenSelectFileDialog(mainWindow: Electron.BrowserWindow) {
-  dialog
-    .showOpenDialog(mainWindow, {
-      properties: ['openFile'],
-      filters: [{ name: 'Markdown Files', extensions: ['md'] }]
-    })
-    .then((result) => {
-      if (result.canceled) return
-      const fileProperties: FileProperties = {
-        name: getFileNameFromPath(result.filePaths[0]),
-        path: result.filePaths[0],
-        type: 'file',
-        content: ''
-      }
-      openSelectFile(mainWindow, fileProperties)
-    })
-    .catch((err) => {
-      console.error('Error reading file:', err)
-      // event.reply('selected-file-content-error', err.message)
-    })
 }
 
 ipcMain.on('update-select-file-content', (_, content) => {

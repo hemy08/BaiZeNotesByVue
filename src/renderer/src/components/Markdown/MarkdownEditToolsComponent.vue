@@ -52,7 +52,7 @@
   <button id="i-plantuml" title="plantuml" class="tool-btn" @click="onInsertText('\r\n```plantuml\r\n@startuml\r\n\r\n@enduml\r\n```\r\n')" ></button>
 </template>
 <script setup lang="ts">
-import { onMounted, watch, ref, onBeforeUnmount } from 'vue'
+import { onMounted, watch, ref } from 'vue'
 import EventBus from '../../event-bus'
 import { MdEditToolSvgs } from './markdown-edit'
 
@@ -81,80 +81,28 @@ function initButtonSvg() {
   }
 }
 
-function onRearrangeMenuButtons() {
-  showWidth.value = props.toolBarWidth
-  const select = document.getElementById('align-options')
-  if (select) {
-    while (select.firstChild) {
-      select.removeChild(select.firstChild)
-    }
-  }
-
-  // 遍历按钮ID数组，将不在当前视口中的按钮添加到下拉框中
-  console.log('showWidth ', showWidth)
-  const toolBarSize = parseInt(showWidth.value.replace('px', ''), 10)
-  const showMenuNum = Math.floor(toolBarSize / 40)
-  console.log('showMenuNum ', showMenuNum)
-  console.log('buttonIds.length ', buttonIds.length)
-  if (showMenuNum > buttonIds.length) {
-    return
-  }
-}
-
 onMounted(() => {
   initButtonSvg()
-  onRearrangeMenuButtons()
 })
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function onShowMore() {
-  const group = document.getElementById('button-group')
-  if (group) {
-    if (group.style.display === 'none') {
-      group.style.display = 'block'
-    } else {
-      group.style.display = 'none'
-    }
-  }
-}
-
-function onHideMore() {
-  const group = document.getElementById('button-group')
-  if (group) {
-    group.style.display = 'none'
-  }
-}
 
 function onFontHeaderFormat(context: string) {
   EventBus.$emit('monaco-editor-update-header-format', context)
-  onHideMore()
 }
 
 function onFontFormat(context: string) {
   EventBus.$emit('monaco-editor-update-font-format', context)
-  onHideMore()
 }
 
 function onInsertText(context: string) {
   EventBus.$emit('monaco-editor-insert-text', context)
-  onHideMore()
 }
 
 watch(
   () => props.toolBarWidth,
   (value) => {
     showWidth.value = value
-    onRearrangeMenuButtons()
   }
 )
-
-onMounted(() => {
-  window.addEventListener('resize', onRearrangeMenuButtons)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', onRearrangeMenuButtons)
-})
 </script>
 
 <style scoped>

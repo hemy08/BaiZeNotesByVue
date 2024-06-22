@@ -1,4 +1,7 @@
 import * as monaco from 'monaco-editor'
+import { hemyDialog } from './dialogs/dialogs'
+import { hemyTemplates } from './templates/templates'
+import { FileUtils } from './utils/file-utils'
 // global-types.d.ts
 declare global {
   interface FileProperties {
@@ -28,6 +31,12 @@ declare global {
 
   interface GlobalEditToolBar {
     Font: string
+  }
+
+  interface Hemy {
+    dialog: hemyDialog
+    templates: hemyTemplates
+    file: FileUtils
   }
 
   interface Global extends NodeJS.Global {

@@ -1,86 +1,64 @@
-//import { exec } from 'child_process'
-
 // eslint-disable-next-line no-unused-vars
 export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
   const pluginsMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
       label: 'PlantUML Server',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.OpenPlantUmlOnline()
-        })
+        global.hemy.dialog.web.plantumlServe()
       }
     },
     {
       label: 'PlantText',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.OpenPlantText()
-        })
+        global.hemy.dialog.web.plantText()
       }
     },
     {
       label: 'Mermaid 在线编辑',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.OpenMermaidLiveEditor()
-        })
+        global.hemy.dialog.web.mermaidLiveEdit()
       }
     },
     {
       label: '菜鸟工具',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.OpenJYShareOnline()
-        })
+        global.hemy.dialog.jy.home()
       }
     },
     {
       label: 'SVG在线',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.OpenSvgEditorOnline()
-        })
+        global.hemy.dialog.jy.svgEditor()
       }
     },
     {
       label: '菜鸟绘图工具',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.OpenShapeFlyDiagramOnline()
-        })
+        global.hemy.dialog.jy.shapeFlyDiagram()
       }
     },
     {
       label: '在线流程图',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.OpenDiagramsOnline()
-        })
+        global.hemy.dialog.web.diagramsNet()
       }
     },
     {
       label: '菜鸟在线办公软件',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.OpenJYShareOfficeOnline()
-        })
+        global.hemy.dialog.jy.office()
       }
     },
     {
       label: '思维导图',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.OpenMindmapOnline()
-        })
+        global.hemy.dialog.web.mindLineWebapp()
       }
     },
     {
       label: 'HTML表格生成器',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.OpenHtmlSheetCreateOnline()
-        })
+        global.hemy.dialog.web.frontEnd()
       }
     },
     {

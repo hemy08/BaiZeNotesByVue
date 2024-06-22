@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu, globalShortcut } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { getApplicationMenu } from './menu/menu'
@@ -23,7 +23,8 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       nodeIntegration: true, // 允许在渲染进程中使用Node.js功能
-      contextIsolation: false
+      contextIsolation: false,
+      webSecurity: false
     }
   })
 
@@ -37,6 +38,10 @@ function createWindow(): void {
     mainWindow.show()
     // 加载一个子窗口，不对外显示
     createMermaidRenderFrame('')
+  })
+
+  globalShortcut.register('F12', () => {
+    mainWindow.webContents.openDevTools()
   })
 
   globalInitialize(mainWindow)

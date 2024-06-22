@@ -22,28 +22,54 @@ import { UseCaseDiagram } from './UseCaseDiagram'
 import { WBSDiagram } from './WBSDiagram'
 import { YamlDiagram } from './YamlDiagram'
 
-export {
-  ActivityDiagram,
-  ArchimateDiagram,
-  AsciiMath,
-  ClassDiagram,
-  ComponentDiagram,
-  DeploymentDiagram,
-  DitaaDiagram,
-  EntityRelationship,
-  ExtendedBackusNaurForm,
-  GanttDiagram,
-  InformationEngineering,
-  JsonDiagram,
-  MindmapDiagram,
-  nwdiag,
-  ObjectDiagram,
-  RegularExpression,
-  salt,
-  SequenceDiagram,
-  StateDiagram,
-  TimingDiagram,
-  UseCaseDiagram,
-  WBSDiagram,
-  YamlDiagram
+export class plantUmlTemplates {
+  ActivityDiagram: string
+  ArchimateDiagram: string
+  AsciiMath: string
+  ClassDiagram: string
+  ComponentDiagram: string
+  DeploymentDiagram: string
+  DitaaDiagram: string
+  EntityRelationship: string
+  ExtendedBackusNaurForm: string
+  GanttDiagram: string
+  InformationEngineering: string
+  JsonDiagram: string
+  MindmapDiagram: string
+  nwdiag: string
+  ObjectDiagram: string
+  RegularExpression: string
+  salt: string
+  SequenceDiagram: string
+  StateDiagram: string
+  TimingDiagram: string
+  UseCaseDiagram: string
+  WBSDiagram: string
+  YamlDiagram: string
+
+  constructor() {
+    this.ActivityDiagram = ActivityDiagram
+    this.ArchimateDiagram = ArchimateDiagram
+    this.AsciiMath = AsciiMath
+    this.ClassDiagram = ClassDiagram
+    this.ComponentDiagram = ComponentDiagram
+    this.DeploymentDiagram = DeploymentDiagram
+    this.DitaaDiagram = DitaaDiagram
+    this.EntityRelationship = EntityRelationship
+    this.ExtendedBackusNaurForm = ExtendedBackusNaurForm
+    this.GanttDiagram = GanttDiagram
+    this.InformationEngineering = InformationEngineering
+    this.JsonDiagram = JsonDiagram
+    this.MindmapDiagram = MindmapDiagram
+    this.nwdiag = nwdiag
+    this.ObjectDiagram = ObjectDiagram
+    this.RegularExpression = RegularExpression
+    this.salt = salt
+    this.SequenceDiagram = SequenceDiagram
+    this.StateDiagram = StateDiagram
+    this.TimingDiagram = TimingDiagram
+    this.UseCaseDiagram = UseCaseDiagram
+    this.WBSDiagram = WBSDiagram
+    this.YamlDiagram = YamlDiagram
+  }
 }

@@ -19,25 +19,48 @@ import { timeline } from './timeline'
 import { xychart } from './xychart'
 import { zenuml } from './zenuml'
 
-export {
-  flowchart,
-  blockDiagram,
-  C4Context,
-  classDiagram,
-  erDiagram,
-  gantt,
-  gitGraph,
-  graph,
-  journey,
-  mindmap,
-  packet,
-  pie,
-  quadrantChart,
-  requirementDiagram,
-  sankey,
-  sequenceDiagram,
-  stateDiagram,
-  timeline,
-  xychart,
-  zenuml
+export class mermaidTemplates {
+  flowchart: string
+  blockDiagram: string
+  C4Context: string
+  classDiagram: string
+  erDiagram: string
+  gantt: string
+  gitGraph: string
+  graph: string
+  journey: string
+  mindmap: string
+  packet: string
+  pie: string
+  quadrantChart: string
+  requirementDiagram: string
+  sankey: string
+  sequenceDiagram: string
+  stateDiagram: string
+  timeline: string
+  xychart: string
+  zenuml: string
+
+  constructor() {
+    this.flowchart = flowchart
+    this.blockDiagram = blockDiagram
+    this.C4Context = C4Context
+    this.classDiagram = classDiagram
+    this.erDiagram = erDiagram
+    this.gantt = gantt
+    this.gitGraph = gitGraph
+    this.graph = graph
+    this.journey = journey
+    this.mindmap = mindmap
+    this.packet = packet
+    this.pie = pie
+    this.quadrantChart = quadrantChart
+    this.requirementDiagram = requirementDiagram
+    this.sankey = sankey
+    this.sequenceDiagram = sequenceDiagram
+    this.stateDiagram = stateDiagram
+    this.timeline = timeline
+    this.xychart = xychart
+    this.zenuml = zenuml
+  }
 }

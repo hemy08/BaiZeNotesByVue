@@ -146,7 +146,6 @@ onMounted(() => {
 }
 
 #md-container {
-  height: 100vh;
   display: flex;
   flex-direction: column;
   float: left;

@@ -1,14 +1,10 @@
-// import { app } from 'electron'
-
 // eslint-disable-next-line no-unused-vars
 export function getAppToolsMenuItem(mainWindow: Electron.BrowserWindow) {
   const toolsMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
       label: 'Mermaid绘图',
       click: () => {
-        import('../dialogs/dialogs').then((module) => {
-          module.showMermaidEditDialog(mainWindow)
-        })
+        global.hemy.dialog.mermaidLocalEdit()
       }
     },
     {

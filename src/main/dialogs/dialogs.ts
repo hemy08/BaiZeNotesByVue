@@ -66,3 +66,88 @@ export {
   createAdmonitionDialog,
   showCreateFileFolderDialog
 }
+
+class jyShare {
+  home() {
+    openOnlineWebPage('https://www.jyshare.com/')
+  }
+
+  svgEditor() {
+    openOnlineWebPage('https://www.jyshare.com/more/svgeditor/')
+  }
+
+  shapeFlyDiagram() {
+    openOnlineWebPage('https://www.jyshare.com/more/shapefly-diagram/')
+  }
+
+  office() {
+    openOnlineWebPage('https://www.jyshare.com/office/')
+  }
+
+}
+
+class onlineWebPage {
+  mermaidLiveEdit() {
+    openOnlineWebPage('https://mermaid.live/edit')
+  }
+
+  plantumlServe() {
+    openOnlineWebPage('http://www.plantuml.com/plantuml/uml/')
+  }
+
+  plantText() {
+    openOnlineWebPage('https://www.planttext.com/')
+  }
+
+  mindLineWebapp() {
+    openOnlineWebPage('https://www.mindline.cn/webapp')
+  }
+
+  diagramsNet() {
+    openOnlineWebPage('https://app.diagrams.net/')
+  }
+
+  frontEnd() {
+    openOnlineWebPage('https://www.jyshare.com/front-end/7688/')
+  }
+}
+
+export class hemyDialog {
+  mainWindow: Electron.BrowserWindow
+  jy: jyShare
+  web: onlineWebPage
+
+  constructor(mainWindow: Electron.BrowserWindow) {
+    this.mainWindow = mainWindow
+    this.jy = new jyShare()
+    this.web = new onlineWebPage()
+  }
+
+  selectFont() {
+    showFontSelectDialog(this.mainWindow)
+  }
+
+  markdownSheet() {
+    showMarkdownSheetDialog(this.mainWindow)
+  }
+
+  mathKatex() {
+    showMathTextDialog(this.mainWindow)
+  }
+
+  mermaidLocalEdit() {
+    showMermaidEditDialog(this.mainWindow)
+  }
+
+  getMermaidRender(text: string): Promise<string> {
+    return mermaidHandleGetRenderResult(text)
+  }
+
+  admonition() {
+    createAdmonitionDialog(this.mainWindow)
+  }
+
+  createFileFolder(): Electron.BrowserWindow {
+    return showCreateFileFolderDialog()
+  }
+}

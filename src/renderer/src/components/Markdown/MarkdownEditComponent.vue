@@ -229,11 +229,12 @@ onMounted(() => {
   width: 4px;
 }
 
-#md-preview {
+.md-preview {
   background-color: white;
   color: black;
   display: flex;
-  float: left;
+  overflow-x: hidden;
+  overflow-y: scroll;
   height: 100%;
 }
 </style>

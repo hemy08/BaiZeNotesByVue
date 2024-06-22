@@ -1,5 +1,7 @@
 import * as fs from 'fs'
 import { FileItem } from '../global-types'
+import { dialog } from 'electron'
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
 
@@ -150,7 +152,7 @@ export function CreateFileFolder(
       type: 'file',
       content: ''
     }
-    console.log('global.__current_active_file', global.__current_active_file)
+    //console.log('global.__current_active_file', global.__current_active_file)
     global.MainWindow.webContents.send('open-selected-file', '# ')
   }
 }
@@ -206,5 +208,73 @@ export function saveActiveFileAs() {
     fs.writeFile(curFile.path, curFile.content, (err) => {
       console.log('error', err)
     })
+  }
+}
+
+export function parseDirectoryPath(fullName: string): string {
+  const lastIndex1 = fullName.lastIndexOf('\\')
+  const lastIndex2 = fullName.lastIndexOf('/')
+  const lastIndex = Math.max(lastIndex1, lastIndex2)
+  return fullName.substring(0, lastIndex)
+}
+
+export class FileUtils {
+  mainWindow: Electron.BrowserWindow
+
+  constructor(mainWindow: Electron.BrowserWindow) {
+    this.mainWindow = mainWindow
+  }
+
+  openDirectory() {
+    dialog
+      .showOpenDialog(this.mainWindow, {
+        properties: ['openDirectory']
+      })
+      .then((result) => {
+        if (result.canceled) return
+        global.RootPath = result.filePaths[0]
+        reloadDirectoryFromDisk()
+      })
+      .catch((err) => {
+        console.error('Error opening directory dialog:', err)
+      })
+  }
+
+  parserFileName(filePath: string): string {
+    const lastIndex = filePath.lastIndexOf('/') || filePath.lastIndexOf('\\')
+    if (lastIndex === -1) {
+      // 如果没有找到'/'或'\\'，则整个字符串就是文件名（或路径错误）
+      return filePath
+    }
+    return filePath.slice(lastIndex + 1)
+  }
+
+  parseDirectoryPath(fullName: string): string {
+    const lastIndex1 = fullName.lastIndexOf('\\')
+    const lastIndex2 = fullName.lastIndexOf('/')
+    const lastIndex = Math.max(lastIndex1, lastIndex2)
+    return fullName.substring(0, lastIndex)
+  }
+
+  openFile() {
+    dialog
+      .showOpenDialog(this.mainWindow, {
+        properties: ['openFile'],
+        filters: [{ name: 'Markdown Files', extensions: ['md'] }]
+      })
+      .then((result) => {
+        if (result.canceled) return
+        const fileProperties: FileProperties = {
+          name: this.parserFileName(result.filePaths[0]),
+          path: result.filePaths[0],
+          type: 'file',
+          content: ''
+        }
+        openSelectFile(this.mainWindow, fileProperties)
+      })
+      .catch((err) => {
+        console.error('Error reading file:', err)
+        // event.reply('selected-file-content-error', err.message)
+      })
   }
 }
