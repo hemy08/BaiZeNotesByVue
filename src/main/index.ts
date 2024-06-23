@@ -60,7 +60,7 @@ function createWindow(): void {
   }
 
   ipcMain.on('open-select-file', (_, message) => {
-    console.log('open-select-file', message)
+    // console.log('open-select-file', message)
     openSelectFile(mainWindow, message)
   })
 
@@ -77,19 +77,12 @@ function createWindow(): void {
   })
 
   ipcMain.on('file-manager-context-menu-create-file', (_, dirPath, isFolder, fileExtension) => {
-    const createFileFolderDialog = showCreateFileFolderDialog()
-    function processCreateFileFolder(_, name: string) {
-      createFileFolderDialog.close()
-      CreateFileFolder(name, dirPath, isFolder, fileExtension)
-      ipcMain.removeListener('user-input-create-file-folder-name', processCreateFileFolder)
-    }
-
-    ipcMain.on('user-input-create-file-folder-name', processCreateFileFolder)
+    showCreateFileFolderDialog(dirPath, isFolder, fileExtension)
   })
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ipcMain.on('file-manager-context-menu-reload-from-disk', (_) => {
-    console.log('file-manager-context-menu-reload-from-disk')
+    // console.log('file-manager-context-menu-reload-from-disk')
     reloadDirectoryFromDisk()
   })
   const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))

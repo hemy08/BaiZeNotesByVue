@@ -7,10 +7,10 @@ export async function HemyRenderPre(
   mainWindow: Electron.CrossProcessExports.BrowserWindow,
   text: string
 ) {
-  let renderResult = katexRenderMathInText(text)
-  renderResult = materialAdmonitionsRender(renderResult)
+  let renderResult = materialAdmonitionsRender(text)
   renderResult = preRenderImageUrlConvert(renderResult)
   renderResult = preRenderFileUrlConvert(renderResult)
+  renderResult = katexRenderMathInText(renderResult)
   mainWindow.webContents.send('pre-render-monaco-editor-content-result', renderResult)
 }
 
@@ -18,7 +18,7 @@ export async function HemyRenderPost(
   mainWindow: Electron.CrossProcessExports.BrowserWindow,
   text: string
 ) {
-  const renderResult = materialAdmonitionsPostRender(text)
+  let renderResult = materialAdmonitionsPostRender(text)
   mainWindow.webContents.send('post-render-monaco-editor-content-result', renderResult)
 }
 
@@ -51,7 +51,12 @@ function preRenderImageUrlConvert(text: string): string {
     // match[1] images/20240602173139鏂囦欢绠＄悊鍣?png
     const imgSrc = covertFileUrl(match[1])
     const altText = parseAltText(match[0])
-    const htmlContent = '<p><img src="' + imgSrc + '" alt="' + altText +  '"></p>'
+    const htmlContent =
+      '<p><img style="width: 100%; max-width: 900px; height: auto" src="' +
+      imgSrc +
+      '" alt="' +
+      altText +
+      '"></p>'
     renderResult = renderResult.replace(match[0], htmlContent)
   }
   return renderResult

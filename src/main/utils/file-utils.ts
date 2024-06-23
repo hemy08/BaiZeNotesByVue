@@ -121,7 +121,7 @@ export function TraverseDirectory(dir: string, callback: (fileItems: FileItem[])
 export function CreateFileFolder(
   name: string,
   dirPath: string,
-  isFolder: string,
+  isFolder: boolean,
   fileExtension: string
 ) {
   let fullName = dirPath.replace('/', '\\') + '\\' + name
@@ -129,14 +129,14 @@ export function CreateFileFolder(
     if (!fs.existsSync(fullName)) {
       fs.mkdirSync(fullName, { recursive: true })
     } else {
-      alert(`${fullName} 已存在`)
+      dialog.showErrorBox('出错啦!!!', `${fullName} 已存在`)
     }
   } else {
     fullName = fullName + fileExtension
     // 使用 fs.writeFile 创建并写入文件
     fs.writeFile(fullName, '', (err) => {
       if (err) {
-        alert(`${fullName} 失败 ${err}`)
+        dialog.showErrorBox('出错啦!!!', `${fullName} 失败 ${err}`)
       }
     })
   }
@@ -150,10 +150,10 @@ export function CreateFileFolder(
       name: name,
       path: fullName,
       type: 'file',
-      content: ''
+      content: '# ' + name
     }
     //console.log('global.__current_active_file', global.__current_active_file)
-    global.MainWindow.webContents.send('show-selected-file-context', '# ')
+    global.MainWindow.webContents.send('show-selected-file-context', '# ' + name)
   }
 }
 

@@ -9,6 +9,12 @@ function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string
   while ((match = regex.exec(text)) !== null) {
     // 获取匹配到的 LaTeX 字符串（去掉 $ 符号）
     const latex = match[1]
+    if (!isBlock) {
+      // 行内公式，如果有换行符，则不渲染，放在有些代码内部有单个的$
+      if (match[1].lastIndexOf('\n') !== -1) {
+        continue
+      }
+    }
     // 使用 KaTeX 渲染 LaTeX 字符串为 HTML
     let html = ''
     try {
@@ -59,10 +65,8 @@ function katexRenderToString(text: string): string {
 function katexRenderMathInText(text: string): string {
   // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
   const result = renderMathBlockInText(text)
+  // console.log('renderMathBlockInText', result)
   return renderMathLineInText(result)
 }
 
-export {
-  katexRenderToString,
-  katexRenderMathInText
-}
+export { katexRenderToString, katexRenderMathInText }

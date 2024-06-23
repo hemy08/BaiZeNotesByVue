@@ -1,9 +1,16 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, ipcMain} from 'electron'
+import { CreateFileFolder } from '../utils/file-utils'
+
+let customCreateDialog: Electron.BrowserWindow | null
 
 // 创建一个自定义对话框的函数
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function showCreateFileFolderDialog(): Electron.BrowserWindow {
-  const customCreateDialog = new BrowserWindow({
+export function showCreateFileFolderDialog(
+  dirPath: string,
+  isFolder: boolean,
+  fileExtension: string
+) {
+  customCreateDialog = new BrowserWindow({
     width: 400,
     height: 120,
     minimizable: false,
@@ -26,7 +33,23 @@ export function showCreateFileFolderDialog(): Electron.BrowserWindow {
 
   // 显示窗口
   customCreateDialog.show()
-  return customCreateDialog
+
+  customCreateDialog.on('closed', () => {
+    customCreateDialog = null
+    ipcMain.removeListener('user-input-create-file-folder-name', processCreateFileFolder)
+  })
+
+  function processCreateFileFolder(_, name: string) {
+    if (!isFolder && fileExtension.length == 0 && name.indexOf('.') === -1) {
+      name = name + '.md'
+    }
+    CreateFileFolder(name, dirPath, isFolder, fileExtension)
+    if (customCreateDialog) {
+      customCreateDialog.close()
+    }
+  }
+
+  ipcMain.on('user-input-create-file-folder-name', processCreateFileFolder)
 }
 
 const customCreateDialogHtml =
