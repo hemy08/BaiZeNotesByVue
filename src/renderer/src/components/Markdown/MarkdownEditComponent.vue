@@ -154,7 +154,7 @@ function onHandleNewContent(content: string) {
   }
 }
 
-window.electron.ipcRenderer.on('open-selected-file', (_, content) => {
+window.electron.ipcRenderer.on('show-selected-file-context', (_, content) => {
   onHandleNewContent(content)
 })
 
@@ -233,8 +233,7 @@ onMounted(() => {
   background-color: white;
   color: black;
   display: flex;
-  overflow-x: hidden;
-  overflow-y: scroll;
+  overflow: hidden;
   height: 100%;
 }
 </style>

@@ -88,12 +88,6 @@ export function getAppHelpsMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      label: '开源软件 ...待开发',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
       label: '检查更新 ...待开发',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)

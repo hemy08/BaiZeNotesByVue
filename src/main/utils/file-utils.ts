@@ -153,7 +153,7 @@ export function CreateFileFolder(
       content: ''
     }
     //console.log('global.__current_active_file', global.__current_active_file)
-    global.MainWindow.webContents.send('open-selected-file', '# ')
+    global.MainWindow.webContents.send('show-selected-file-context', '# ')
   }
 }
 
@@ -180,7 +180,7 @@ export function openSelectFile(mainWindow: Electron.BrowserWindow, filePropertie
       fileProperties.content = data
       global.__current_active_file = fileProperties
       // console.log('openSelectFile', fileProperties)
-      mainWindow.webContents.send('open-selected-file', data)
+      mainWindow.webContents.send('show-selected-file-context', data)
     } else {
       console.log('openFile failed', fileProperties.path, err, data)
     }

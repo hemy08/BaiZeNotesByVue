@@ -1,6 +1,8 @@
 import mermaid from 'mermaid'
 import { Range } from 'monaco-editor'
 import * as monaco from 'monaco-editor'
+import EventBus from '../../event-bus'
+import MarkdownIt from 'markdown-it'
 
 type MappingTable = {
   [key: string]: string // 键是字符串，值是数字
@@ -82,46 +84,6 @@ export const MdEditToolSvgs: MappingTable = {
     '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19.5 17c-.13 0-.26 0-.39.04l-1.61-3.25a2.5 2.5 0 0 0-1.75-4.29c-.13 0-.25 0-.39.04l-1.63-3.25c.48-.45.77-1.08.77-1.79a2.5 2.5 0 0 0-5 0c0 .71.29 1.34.76 1.79L8.64 9.54c-.14-.04-.26-.04-.39-.04a2.5 2.5 0 0 0-1.75 4.29l-1.61 3.25C4.76 17 4.63 17 4.5 17a2.5 2.5 0 0 0 0 5A2.5 2.5 0 0 0 7 19.5c0-.7-.29-1.34-.76-1.79l1.62-3.25c.14.04.26.04.39.04s.25 0 .39-.04l1.63 3.25c-.47.45-.77 1.09-.77 1.79a2.5 2.5 0 0 0 5 0A2.5 2.5 0 0 0 12 17c-.13 0-.26 0-.39.04L10 13.79c.46-.45.75-1.08.75-1.79s-.29-1.34-.75-1.79l1.61-3.25c.13.04.26.04.39.04s.26 0 .39-.04L14 10.21c-.45.45-.75 1.09-.75 1.79a2.5 2.5 0 0 0 2.5 2.5c.13 0 .25 0 .39-.04l1.63 3.25c-.47.45-.77 1.09-.77 1.79a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0-2.5-2.5Z"/></svg>',
   'toggle-buttons':
     '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5H7Z"/></svg>'
-}
-
-function generateRandomNumberString(length: number): string {
-  let result = ''
-  const characters = '0123456789'
-  const charactersLength = characters.length
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength))
-  }
-  return result
-}
-
-async function mermaidRender(graphDefinition: string): Promise<string> {
-  try {
-    const mermaidId = 'mermaid' + generateRandomNumberString(10)
-    const renderSvg = await mermaid.render(mermaidId, graphDefinition)
-    return Promise.resolve(
-      '<div><pre class="mermaid"><code style="height: auto;display: flex">' +
-        renderSvg.svg +
-        '</code></pre></div>'
-    )
-  } catch (error) {
-    console.log('mermaidRender error', error)
-  }
-
-  return ''
-}
-
-export async function preRenderMermaidProc(text: string) {
-  // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
-  let renderResult = text
-  let match: RegExpExecArray | null = null
-  const regex = /```mermaid([\s\S]*?)```/g
-  // 使用全局搜索来查找所有匹配项
-  while ((match = regex.exec(text)) !== null) {
-    const renderedSvg = await mermaidRender(match[1])
-    renderResult = renderResult.replace(match[0], renderedSvg)
-  }
-
-  return renderResult
 }
 
 // 定义一个函数来插入字符串
@@ -435,4 +397,134 @@ export function EditSetFontStyle(editor: monaco.editor.IStandaloneCodeEditor, st
   if (handler) {
     handler(editor, style.toLowerCase())
   }
+}
+
+export class hemyMarkdown {
+  editor: monaco.editor.IStandaloneCodeEditor
+
+  constructor(editor: monaco.editor.IStandaloneCodeEditor) {
+    this.editor = editor
+  }
+
+  SetEditor(editor: monaco.editor.IStandaloneCodeEditor) {
+    this.editor = editor
+  }
+
+  GetEditor(): monaco.editor.IStandaloneCodeEditor {
+    return this.editor
+  }
+
+  SetFontStyle(style: string) {
+    EditSetFontStyle(this.editor, style)
+  }
+
+  CvtToHeader(header: string) {
+    EditCvtToHeader(this.editor, header)
+  }
+
+  InsertAfterCursor(textToInsert: string) {
+    EditInsTextAfterCursor(this.editor, textToInsert)
+  }
+
+  PreMermaidRender(text: string): Promise<string> {
+    return preRenderMermaidProc(text)
+  }
+}
+
+function generateRandomNumberString(length: number): string {
+  let result = ''
+  const characters = '0123456789'
+  const charactersLength = characters.length
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength))
+  }
+  return result
+}
+
+function removeMermaidDiv(mermaidId: string) {
+  const divElement = document.getElementById('d' + mermaidId)
+  if (divElement) {
+    divElement.remove()
+  }
+}
+
+async function mermaidRender(graphDefinition: string): Promise<string> {
+  const mermaidId = 'mermaid' + generateRandomNumberString(10)
+  try {
+    const renderSvg = await mermaid.render(mermaidId, graphDefinition)
+    // 删除mermaid.render过程中增加的div
+    removeMermaidDiv(mermaidId)
+    return Promise.resolve(
+      '<div><pre class="mermaid"><code style="height: auto;display: flex">' +
+        renderSvg.svg +
+        '</code></pre></div>'
+    )
+  } catch (error) {
+    console.log('mermaidRender error', error)
+  }
+  removeMermaidDiv(mermaidId)
+  return ''
+}
+
+export async function preRenderMermaidProc(text: string): Promise<string> {
+  // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
+  let renderResult = text
+  let match: RegExpExecArray | null = null
+  const regex = /```mermaid([\s\S]*?)```/g
+  // 使用全局搜索来查找所有匹配项
+  while ((match = regex.exec(text)) !== null) {
+    const renderedSvg = await mermaidRender(match[1])
+    renderResult = renderResult.replace(match[0], renderedSvg)
+  }
+
+  return renderResult
+}
+
+export function PreMarkdownRender(text: string): Promise<string> {
+  return preRenderMermaidProc(text)
+}
+
+interface markdownTOC {
+  level: string
+  text: string
+  lineNumber: number
+}
+
+export function ParserMarkdownChapters(md: MarkdownIt, text: string) {
+  // 提取大纲
+  const headings: markdownTOC[] = []
+  const mdTokens = md.parse(text, [])
+  console.log('markdown-it tokens', mdTokens)
+  mdTokens.forEach((token) => {
+    if (token.type === 'heading_open') {
+      const healing: markdownTOC = {
+        level: token.tag,
+        text: '',
+        lineNumber: 0
+      }
+
+      if (token.map) {
+        healing.lineNumber = token.map[1]
+      }
+
+      let nextToken = mdTokens[mdTokens.indexOf(token) + 1]
+      while (nextToken && nextToken.type !== 'heading_close') {
+        if (nextToken.type === 'inline' && nextToken.children) {
+          nextToken.children.forEach((child) => {
+            if (child.type === 'text') {
+              healing.text += child.content
+            }
+          })
+        }
+        nextToken = mdTokens[mdTokens.indexOf(nextToken) + 1]
+      }
+
+      headings.push(healing)
+    }
+  })
+  EventBus.$emit('monaco-editor-chapters', headings)
+}
+
+export function PostMarkdownRender(text: string): string {
+  return text
 }

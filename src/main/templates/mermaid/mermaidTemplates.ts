@@ -20,6 +20,7 @@ import { xychart } from './xychart'
 import { zenuml } from './zenuml'
 
 export const mermaidDiagrams = {
+  baseDiagram: { label: '基础框架', diagram: '\n```mermaid\n\n```\n\n' },
   flowchart: { label: 'flowchart', diagram: flowchart },
   blockDiagram: { label: 'BlockDiagram', diagram: blockDiagram },
   C4Context: { label: 'C4图', diagram: C4Context },

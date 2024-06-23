@@ -12,6 +12,11 @@
 <script setup lang="ts">
 import WorkSpace from './components/WorkSpaceArea/WorkSpace.vue'
 import StatusBar from './components/StatusBar.vue'
+
+// 打开浏览器网页地址
+window.electron.ipcRenderer.on('open-url-in-web-browser-window', (_, link: string) => {
+  window.open(link, '_blank', 'noopener, noreferrer')
+})
 </script>
 
 <style scoped>

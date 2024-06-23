@@ -1,20 +1,16 @@
 <template xmlns="http://www.w3.org/1999/html">
-  <div class="markdown-content" v-html="renderedMarkdownContent"></div>
-  <div v-show="isShowMermaidContainer" ref="mermaidContainer" class="mermaid"></div>
-  <MermaidRender v-show="isShowMermaidComponent" />
+  <div id="markdown-preview-html" class="markdown-preview-html" v-html="renderedMarkdownContent"></div>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
-import MarkdownIt from 'markdown-it'
+import { onBeforeUnmount, onMounted, onUpdated, ref, watchEffect} from 'vue'
 import highlightjs from 'markdown-it-highlightjs'
 import { full as emoji } from 'markdown-it-emoji'
 import hljs from 'highlight.js'
-import MermaidRender from './MermaidRender.vue'
-import { preRenderMermaidProc } from './markdown-edit'
+import { PreMarkdownRender, PostMarkdownRender, ParserMarkdownChapters} from './markdown-edit'
 import EventBus from '../../event-bus'
-import { marked } from 'marked'
-import { Remarkable } from 'remarkable'
+//import { marked } from 'marked'
+//import { Remarkable } from 'remarkable'
 import 'commonmark'
 
 const props = defineProps({
@@ -25,10 +21,11 @@ const props = defineProps({
 })
 
 const renderedMarkdownContent = ref('')
-const isShowMermaidContainer = ref(false)
-const isShowMermaidComponent = ref(false)
-let isTocOpen = false
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+//let isTocOpen = false
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const MarkdownIt = require('markdown-it')
 const md = MarkdownIt({
   html: true, // 在源码中启用 HTML 标签
   xhtmlOut: true, // 使用 '/' 来闭合单标签 （比如 <br />）。 这个选项只对完全的 CommonMark 模式兼容。
@@ -43,16 +40,14 @@ const md = MarkdownIt({
   typographer: false
 })
   .use(highlightjs, { inline: true, hljs: hljs })
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   .use(require('markdown-it-plantuml'))
   .use(emoji)
-
-const remark = new Remarkable()
 
 // 组件挂载时，进行初始渲染
 onMounted(() => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   hljs.registerLanguage('actionscript', require('highlight.js/lib/languages/actionscript'))
-  updateMarkdownPreRender()
 })
 
 // 监听 props.editorContent 的变化，并在变化时更新 Markdown
@@ -60,41 +55,9 @@ watchEffect(() => {
   updateMarkdownPreRender()
 })
 
-interface markdownTOC {
-  level: string
-  text: string
-  lineNumber: number
-}
-
-function getMarkdownChapters(tocOpen: boolean) {
-  isTocOpen = tocOpen
-  // 提取大纲
-  const headings: markdownTOC[] = []
-  const mdTokens = md.parse(props.editorContent, [])
-  console.log('markdown-it tokens', mdTokens)
-  mdTokens.forEach((token) => {
-    if (token.type === 'heading_open') {
-      const healing: markdownTOC = {
-        level: token.tag,
-        text: '',
-        lineNumber: token.map[1]
-      }
-      let nextToken = mdTokens[mdTokens.indexOf(token) + 1]
-      while (nextToken && nextToken.type !== 'heading_close') {
-        if (nextToken.type === 'inline' && nextToken.children) {
-          nextToken.children.forEach((child) => {
-            if (child.type === 'text') {
-              healing.text += child.content
-            }
-          })
-        }
-        nextToken = mdTokens[mdTokens.indexOf(nextToken) + 1]
-      }
-
-      headings.push(healing)
-    }
-  })
-  EventBus.$emit('monaco-editor-chapters', headings)
+function getMarkdownChapters() {
+  // isTocOpen = tocOpen
+  ParserMarkdownChapters(md, props.editorContent)
 }
 
 onMounted(() => {
@@ -106,14 +69,15 @@ onMounted(() => {
 })
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function getTokens() {
+/*function getTokens() {
+  const remark = new Remarkable()
   const markedTokens = marked.lexer(props.editorContent)
   console.log('markedTokens tokens', markedTokens)
   const remarkTokens = remark.parse(props.editorContent, [])
   console.log('remarkTokens tokens', remarkTokens)
   const mdTokens = md.parse(props.editorContent, [])
   console.log('markdown-it tokens', mdTokens)
-}
+}*/
 
 // 定义一个函数来更新 Markdown 的渲染，预处理
 async function updateMarkdownPreRender() {
@@ -129,7 +93,7 @@ function updateMarkdownPostRender(text: string) {
 window.electron.ipcRenderer.on(
   'pre-render-monaco-editor-content-result',
   async (_, context: string) => {
-    const result = await preRenderMermaidProc(context)
+    const result = await PreMarkdownRender(context)
     updateMarkdownPostRender(md.render(result))
   }
 )
@@ -138,19 +102,61 @@ window.electron.ipcRenderer.on(
 window.electron.ipcRenderer.on(
   'post-render-monaco-editor-content-result',
   async (_, context: string) => {
-    renderedMarkdownContent.value = context
+    renderedMarkdownContent.value = PostMarkdownRender(context)
   }
 )
+
+function parserFileName(filePath: string): string {
+  const lastIndex = filePath.lastIndexOf('/') || filePath.lastIndexOf('\\')
+  if (lastIndex === -1) {
+    // 如果没有找到'/'或'\\'，则整个字符串就是文件名（或路径错误）
+    return filePath
+  }
+  return filePath.slice(lastIndex + 1)
+}
+
+onUpdated(() => {
+  const links = document.querySelectorAll('#markdown-preview-html a')
+  console.log('links', links)
+  //遍历链接
+  for (let i = 0; i < links.length; i++) {
+    const href = links[i].getAttribute('href')
+    console.log('href', href)
+    if (!href) {
+      continue
+    }
+    if (href.endsWith('.md')) {
+      links[i].addEventListener('click', (event) => {
+        event.preventDefault()
+        const fileInfo: FileProperties = {
+          name: parserFileName(href),
+          path: href,
+          type: 'file',
+          content: ''
+        }
+        window.electron.ipcRenderer.send('open-select-file', fileInfo)
+      })
+    }
+
+    if (href.startsWith('http')) {
+      links[i].addEventListener('click', (event) => {
+        event.preventDefault()
+        window.open(href, '_blank', 'noopener, noreferrer')
+      })
+    }
+  }
+})
 </script>
 
 <style scoped>
 @import 'katex/dist/katex.min.css';
 
-.markdown-content {
+.markdown-preview-html {
   width: 100%;
   height: 100%;
   margin-left: 15px;
   overflow-y: auto; /* 允许垂直滚动条在需要时出现 */
+  overflow-x: auto;
   display: inline-block;
 }
 </style>

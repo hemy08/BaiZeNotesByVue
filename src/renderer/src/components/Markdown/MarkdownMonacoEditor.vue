@@ -7,7 +7,7 @@
 import * as monaco from 'monaco-editor'
 import { ref, onMounted, watch, onBeforeUnmount, defineEmits, defineProps } from 'vue'
 import EventBus from '../../event-bus'
-import { EditSetFontStyle, EditCvtToHeader, EditInsTextAfterCursor } from './markdown-edit'
+import { hemyMarkdown } from './markdown-edit'
 
 const props = defineProps({
   // 代码内容
@@ -36,6 +36,7 @@ const monacoEditorContainer = ref<HTMLElement | null>(null)
 let editorInstance: monaco.editor.IStandaloneCodeEditor
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
+let myEdit: hemyMarkdown
 
 // 初始化编辑器
 onMounted(() => {
@@ -53,6 +54,8 @@ onMounted(() => {
       },
       lineNumbers: 'on'
     })
+
+    myEdit = new hemyMarkdown(editorInstance)
 
     editorInstance.setPosition({ lineNumber: 1, column: 1 })
 
@@ -73,12 +76,13 @@ onMounted(() => {
     })
 
     global.mdEditor = editorInstance
+    myEdit.SetEditor(editorInstance)
   }
 })
 
 window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context: string) => {
   if (context) {
-    EditInsTextAfterCursor(editorInstance, context)
+    myEdit.InsertAfterCursor(context)
   }
 })
 
@@ -108,25 +112,25 @@ watch(
 
 onMounted(() => {
   EventBus.$on('monaco-editor-update-header-format', (value: string) => {
-    EditCvtToHeader(editorInstance, value)
+    myEdit.CvtToHeader(value)
   })
   EventBus.$on('monaco-editor-update-font-format', (value: string) => {
-    EditSetFontStyle(editorInstance, value)
+    myEdit.SetFontStyle(value)
   })
 
   EventBus.$on('monaco-editor-insert-text', (value: string) => {
-    EditInsTextAfterCursor(editorInstance, value)
+    myEdit.InsertAfterCursor(value)
   })
 
   onBeforeUnmount(() => {
     EventBus.$off('monaco-editor-update-header-format', (value: string) => {
-      EditCvtToHeader(editorInstance, value)
+      myEdit.CvtToHeader(value)
     })
     EventBus.$off('monaco-editor-update-font-format', (value: string) => {
-      EditSetFontStyle(editorInstance, value)
+      myEdit.SetFontStyle(value)
     })
     EventBus.$off('monaco-editor-insert-text', (value: string) => {
-      EditInsTextAfterCursor(editorInstance, value)
+      myEdit.InsertAfterCursor(value)
     })
   })
 })

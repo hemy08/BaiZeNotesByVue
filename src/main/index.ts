@@ -60,7 +60,7 @@ function createWindow(): void {
   }
 
   ipcMain.on('open-select-file', (_, message) => {
-    // console.log('open-select-file', message)
+    console.log('open-select-file', message)
     openSelectFile(mainWindow, message)
   })
 

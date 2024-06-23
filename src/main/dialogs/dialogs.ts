@@ -7,57 +7,9 @@ import { mermaidHandleGetRenderResult } from './OpenMermaidRenderFrame'
 import { createAdmonitionDialog } from './ShowAdmonitionsDialog'
 import { showCreateFileFolderDialog } from './showCreateDialog'
 
-function OpenMermaidLiveEditor() {
-  openOnlineWebPage('https://mermaid.live/edit')
-}
-
-function OpenPlantUmlOnline() {
-  openOnlineWebPage('http://www.plantuml.com/plantuml/uml/')
-}
-
-function OpenPlantText() {
-  openOnlineWebPage('https://www.planttext.com/')
-}
-
-function OpenJYShareOnline() {
-  openOnlineWebPage('https://www.jyshare.com/')
-}
-
-function OpenSvgEditorOnline() {
-  openOnlineWebPage('https://www.jyshare.com/more/svgeditor/')
-}
-
-function OpenShapeFlyDiagramOnline() {
-  openOnlineWebPage('https://www.jyshare.com/more/shapefly-diagram/')
-}
-
-function OpenJYShareOfficeOnline() {
-  openOnlineWebPage('https://www.jyshare.com/office/')
-}
-
-function OpenMindmapOnline() {
-  openOnlineWebPage('https://www.mindline.cn/webapp')
-}
-
-function OpenDiagramsOnline() {
-  openOnlineWebPage('https://app.diagrams.net/')
-}
-
-function OpenHtmlSheetCreateOnline() {
-  openOnlineWebPage('https://www.jyshare.com/front-end/7688/')
-}
 
 export {
-  OpenMermaidLiveEditor,
-  OpenPlantUmlOnline,
-  OpenPlantText,
-  OpenJYShareOnline,
-  OpenSvgEditorOnline,
-  OpenShapeFlyDiagramOnline,
-  OpenJYShareOfficeOnline,
-  OpenMindmapOnline,
-  OpenDiagramsOnline,
-  OpenHtmlSheetCreateOnline,
+  openOnlineWebPage,
   showFontSelectDialog,
   showMarkdownSheetDialog,
   showMathTextDialog,
@@ -67,61 +19,11 @@ export {
   showCreateFileFolderDialog
 }
 
-class jyShare {
-  home() {
-    openOnlineWebPage('https://www.jyshare.com/')
-  }
-
-  svgEditor() {
-    openOnlineWebPage('https://www.jyshare.com/more/svgeditor/')
-  }
-
-  shapeFlyDiagram() {
-    openOnlineWebPage('https://www.jyshare.com/more/shapefly-diagram/')
-  }
-
-  office() {
-    openOnlineWebPage('https://www.jyshare.com/office/')
-  }
-
-}
-
-class onlineWebPage {
-  mermaidLiveEdit() {
-    openOnlineWebPage('https://mermaid.live/edit')
-  }
-
-  plantumlServe() {
-    openOnlineWebPage('http://www.plantuml.com/plantuml/uml/')
-  }
-
-  plantText() {
-    openOnlineWebPage('https://www.planttext.com/')
-  }
-
-  mindLineWebapp() {
-    openOnlineWebPage('https://www.mindline.cn/webapp')
-  }
-
-  diagramsNet() {
-    openOnlineWebPage('https://app.diagrams.net/')
-  }
-
-  frontEnd() {
-    // window.open('https://www.jyshare.com/front-end/7688/')
-    openOnlineWebPage('https://www.jyshare.com/front-end/7688/')
-  }
-}
-
 export class hemyDialog {
   mainWindow: Electron.BrowserWindow
-  jy: jyShare
-  web: onlineWebPage
 
   constructor(mainWindow: Electron.BrowserWindow) {
     this.mainWindow = mainWindow
-    this.jy = new jyShare()
-    this.web = new onlineWebPage()
   }
 
   selectFont() {
@@ -151,4 +53,17 @@ export class hemyDialog {
   createFileFolder(): Electron.BrowserWindow {
     return showCreateFileFolderDialog()
   }
+}
+
+export const webAppDialogs = {
+  mermaidWeb: { label: 'Mermaid在线编辑器', link: 'https://mermaid.live/edit' },
+  plantTextWeb: { label: 'PlantText编辑器', link: 'https://www.planttext.com/' },
+  mindline: { label: '在线思维导图工具', link: 'https://www.mindline.cn/webapp' },
+  diagrams: { label: '在线流程图绘制', link: 'https://app.diagrams.net/' },
+  plantumlWeb: { label: 'PlantUml 网页服务器', link: 'http://www.plantuml.com/plantuml/uml/' },
+  jyShare: { label: '菜鸟工具首页', link: 'https://www.jyshare.com/' },
+  jySvgEditor: { label: '菜鸟SVG图片编辑器', link: 'https://www.jyshare.com/more/svgeditor/' },
+  jyShapeFlyDiagram: { label: '菜鸟绘图工具', link: 'https://www.jyshare.com/more/shapefly-diagram/' },
+  jyOffice: { label: '菜鸟在线办公工具大全', link: 'https://www.jyshare.com/office/' },
+  jyFrontEnd: { label: '菜鸟在线表格生成', link: 'https://www.jyshare.com/front-end/7688/' },
 }

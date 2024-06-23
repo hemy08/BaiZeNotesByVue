@@ -23,6 +23,7 @@ import { WBSDiagram } from './WBSDiagram'
 import { YamlDiagram } from './YamlDiagram'
 
 export const plantumlDiagrams = {
+  baseDiagram: { label: '基础框架', diagram: '\n```plantuml\n@startuml\n\n@enduml\n```\n\n' },
   ActivityDiagram: { label: '活动图', diagram: ActivityDiagram },
   ActivityDiagram2: { label: '规范和描述语言（SDL）', diagram: ActivityDiagram },
   ArchimateDiagram: { label: '架构图', diagram: ArchimateDiagram },

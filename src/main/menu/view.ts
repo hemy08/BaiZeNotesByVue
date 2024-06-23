@@ -30,12 +30,6 @@ export function getAppViewMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   const viewMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '全屏 ...待开发',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
       label: '编辑模式',
       click: () => {
         mainWindow.webContents.send('markdown-edit-model', null)

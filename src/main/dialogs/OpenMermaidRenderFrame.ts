@@ -41,9 +41,10 @@ export function createMermaidRenderFrame(graphDesc: string) {
 
   // 加载一个 HTML 文件作为对话框的内容
   mermaidRenderWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(tempHtml)}`)
+  mermaidFrame.close()
   // mermaidRenderWindow.show()
 
-  function processMermaidRenderResult(_, result) {
+  function processMermaidRenderResult(_, result: string) {
     mermaidRenderResult = result
     ipcMain.removeListener('mermaid-render-svg-result', processMermaidRenderResult)
   }
