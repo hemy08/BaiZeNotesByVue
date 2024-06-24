@@ -26,7 +26,7 @@ const plantumlContextMenuItems = Object.keys(plantumlDiagrams).map((diagram) => 
 export function handleMermaidContextMenu(e: MouseEvent) {
   ContextMenu.showContextMenu({
     x: e.x,
-    y: e.y,
+    y: e.y + 10,
     items: mermaidContextMenuItems as MenuItem[]
   })
 }
@@ -34,7 +34,7 @@ export function handleMermaidContextMenu(e: MouseEvent) {
 export function handlePlantUmlContextMenu(e: MouseEvent) {
   ContextMenu.showContextMenu({
     x: e.x,
-    y: e.y,
+    y: e.y + 10,
     items: plantumlContextMenuItems as MenuItem[]
   })
 }

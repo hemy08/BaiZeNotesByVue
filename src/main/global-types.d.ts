@@ -1,6 +1,4 @@
 import * as monaco from 'monaco-editor'
-import { hemyDialog } from './dialogs/dialogs'
-import { hemyTemplates } from './templates/templates'
 import { FileUtils } from './utils/file-utils'
 // global-types.d.ts
 declare global {
@@ -34,7 +32,6 @@ declare global {
   }
 
   interface Hemy {
-    dialog: hemyDialog
     file: FileUtils
   }
 

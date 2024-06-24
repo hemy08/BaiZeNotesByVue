@@ -1,8 +1,5 @@
 <template>
-  <div
-    v-if="showFileExplorer"
-    style="display: flex; flex-direction: row; width: 100%; height: 100%"
-  >
+  <div v-if="showFileExplorer" id="resource-manager-component" class="resource-manager-component">
     <div id="resizer-navi-tab-file-manager" class="resizer-navi-tab-file-manager"></div>
     <div id="file-manager" class="file-manager">
       <div id="file-tree">
@@ -88,6 +85,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.resource-manager-component {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+}
+
 .resizer-navi-tab-file-manager {
   width: 1px;
   height: 100%;

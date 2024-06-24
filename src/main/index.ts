@@ -6,7 +6,7 @@ import './plugins/plugin'
 import { HemyRenderPre, HemyRenderPost } from './utils/HemyRender'
 import { createMermaidRenderFrame } from './dialogs/OpenMermaidRenderFrame'
 import { globalInitialize } from './utils/global'
-import { CreateFileFolder, openSelectFile, reloadDirectoryFromDisk } from './utils/file-utils'
+import { openSelectFile, reloadDirectoryFromDisk } from './utils/file-utils'
 import { showCreateFileFolderDialog } from './dialogs/showCreateDialog'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow

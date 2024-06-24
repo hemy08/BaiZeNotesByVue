@@ -1049,7 +1049,7 @@ const symbolContextMenus = Object.keys(symbols).map((symbol) => {
 export function handleSymbolContextMenu(e: MouseEvent) {
   ContextMenu.showContextMenu({
     x: e.x,
-    y: e.y,
+    y: e.y + 10,
     items: symbolContextMenus as MenuItem[]
   })
 }

@@ -31,12 +31,16 @@ import ResManager from '../ResourceManager/ResourceManager.vue'
 import MdContainer from '../Markdown/MarkdownContainer.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
-let mouseStartX = 0
 // 使用 ref 来创建响应式引用
 const naviResManagerShow = ref('file-explorer')
 const windowWidth = ref(window.innerWidth)
 const resMgrWidth = ref('300px')
 const naviTabWidth = ref('40px')
+const isShowResourceMgrArea = ref(true)
+
+let mouseStartX = 0
+let fileTreeHtml = ''
+
 const resizerLeft = computed(() => {
   return resMgrWidth.value
 })
@@ -59,8 +63,6 @@ const mdContainerWidth = computed(() => {
   return containerWidth + 'px'
 })
 
-const isShowResourceMgrArea = ref(true)
-let fileTreeHtml = ''
 function onSwitchNaviTab(value: string) {
   if (value == 'switch-open-close') {
     isShowResourceMgrArea.value = !isShowResourceMgrArea.value
@@ -77,12 +79,12 @@ function onSwitchNaviTab(value: string) {
   } else if (value == 'markdown-toc') {
     // 保存当前tree信息
     const fileTree = document.getElementById('.resource-manager')
-    console.log('workspace fileTree', fileTree)
+    // console.log('workspace fileTree', fileTree)
     if (fileTree) {
       fileTreeHtml = fileTree.innerHTML
-      console.log('workspace fileTree.innerHTML', fileTree.innerHTML)
+      // console.log('workspace fileTree.innerHTML', fileTree.innerHTML)
     }
-    console.log('workspace fileTreeHtml', fileTreeHtml)
+    // console.log('workspace fileTreeHtml', fileTreeHtml)
     naviResManagerShow.value = 'markdown-toc'
     isShowResourceMgrArea.value = true
   } else {
