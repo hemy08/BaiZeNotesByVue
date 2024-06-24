@@ -14,7 +14,7 @@
 </template>
 <script setup lang="ts">
 import { onMounted, watch, ref } from 'vue'
-import { MdEditToolButtons } from './editor-contextmenu'
+import { MdEditToolButtons } from './monaco-editor-contextmenu'
 
 const showWidth = ref('')
 
