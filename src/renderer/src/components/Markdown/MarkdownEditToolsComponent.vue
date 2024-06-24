@@ -14,7 +14,7 @@
 </template>
 <script setup lang="ts">
 import { onMounted, watch, ref } from 'vue'
-import { MdEditToolButtons } from './markdown-edit-tools'
+import { MdEditToolButtons } from './editor-contextmenu'
 
 const showWidth = ref('')
 

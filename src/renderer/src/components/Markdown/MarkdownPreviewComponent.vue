@@ -1,13 +1,17 @@
 <template xmlns="http://www.w3.org/1999/html">
-  <div id="markdown-preview-html" class="markdown-preview-html" v-html="renderedMarkdownContent"></div>
+  <div
+    id="markdown-preview-html"
+    class="markdown-preview-html"
+    v-html="renderedMarkdownContent"
+  ></div>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, onUpdated, ref, watchEffect} from 'vue'
+import { onBeforeUnmount, onMounted, onUpdated, ref, watchEffect } from 'vue'
 import highlightjs from 'markdown-it-highlightjs'
 import { full as emoji } from 'markdown-it-emoji'
 import hljs from 'highlight.js'
-import { PreMarkdownRender, PostMarkdownRender, ParserMarkdownChapters} from './markdown-edit'
+import { PreMarkdownRender, PostMarkdownRender, ParserMarkdownChapters } from './markdown-edit'
 import EventBus from '../../event-bus'
 //import { marked } from 'marked'
 //import { Remarkable } from 'remarkable'
@@ -117,11 +121,11 @@ function parserFileName(filePath: string): string {
 
 onUpdated(() => {
   const links = document.querySelectorAll('#markdown-preview-html a')
-  console.log('links', links)
+  //console.log('links', links)
   //遍历链接
   for (let i = 0; i < links.length; i++) {
     const href = links[i].getAttribute('href')
-    console.log('href', href)
+    //console.log('href', href)
     if (!href) {
       continue
     }

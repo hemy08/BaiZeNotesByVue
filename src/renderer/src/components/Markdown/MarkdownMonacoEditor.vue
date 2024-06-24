@@ -5,9 +5,13 @@
 <script setup lang="ts">
 // 引入 Monaco Editor
 import * as monaco from 'monaco-editor'
-import { ref, onMounted, watch, onBeforeUnmount, defineEmits, defineProps } from 'vue'
+import { ref, onMounted, watch, onBeforeUnmount, defineProps } from 'vue'
 import EventBus from '../../event-bus'
 import { hemyMarkdown } from './markdown-edit'
+import { monacoEditorEvent } from './monaco-editor-event'
+
+// 定义 emit 函数
+const emit = defineEmits(['update:code'])
 
 const props = defineProps({
   // 代码内容
@@ -34,8 +38,7 @@ const props = defineProps({
 
 const monacoEditorContainer = ref<HTMLElement | null>(null)
 let editorInstance: monaco.editor.IStandaloneCodeEditor
-// 定义 emit 函数
-const emit = defineEmits(['update:code'])
+
 let myEdit: hemyMarkdown
 
 // 初始化编辑器
@@ -57,9 +60,6 @@ onMounted(() => {
 
     myEdit = new hemyMarkdown(editorInstance)
 
-    editorInstance.setPosition({ lineNumber: 1, column: 1 })
-
-    // 监听编辑器内容变化
     editorInstance.onDidChangeModelContent(() => {
       if (editorInstance != null) {
         const context = editorInstance.getValue()
@@ -68,16 +68,15 @@ onMounted(() => {
       }
     })
 
-    // 监听光标位置
-    editorInstance.onDidChangeCursorPosition((e) => {
-      if (editorInstance != null) {
-        EventBus.$emit('monaco-editor-cursor-position', e.position)
-      }
-    })
+    monacoEditorEvent(editorInstance)
 
     global.mdEditor = editorInstance
     myEdit.SetEditor(editorInstance)
   }
+
+  onBeforeUnmount(() => {
+    editorInstance.dispose()
+  })
 })
 
 window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context: string) => {
@@ -148,9 +147,6 @@ onMounted(() => {
   // 销毁编辑器实例
   onBeforeUnmount(() => {
     window.removeEventListener('resize', handleEditCompResize)
-    if (editorInstance) {
-      editorInstance.dispose()
-    }
   })
 })
 </script>

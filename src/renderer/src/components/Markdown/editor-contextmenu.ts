@@ -1,7 +1,43 @@
+import { handleEmojiContextMenu } from './contextmenu-emojis'
+import { handleSymbolContextMenu } from './contextmenu-symbols'
+import { mermaidDiagrams } from '../../../../main/templates/mermaid/mermaidTemplates'
+import { plantumlDiagrams } from '../../../../main/templates/plantuml/plantumlTemplates'
+import ContextMenu, { MenuItem } from '@imengyu/vue3-context-menu'
 import EventBus from '../../event-bus'
-import { handleEmojiContextMenu } from './emoji-contextmenu'
-import { handleMermaidContextMenu, handlePlantUmlContextMenu } from './diagrams'
-import { handleSymbolContextMenu } from './symbols-contextmenu'
+
+const mermaidContextMenuItems = Object.keys(mermaidDiagrams).map((diagram) => {
+  return {
+    label: mermaidDiagrams[diagram].label, // 根据类别设置标签
+    onClick: () => {
+      EventBus.$emit('monaco-editor-insert-text', mermaidDiagrams[diagram].diagram)
+    }
+  }
+})
+
+const plantumlContextMenuItems = Object.keys(plantumlDiagrams).map((diagram) => {
+  return {
+    label: plantumlDiagrams[diagram].label, // 根据类别设置标签
+    onClick: () => {
+      EventBus.$emit('monaco-editor-insert-text', plantumlDiagrams[diagram].diagram)
+    }
+  }
+})
+
+function handleMermaidContextMenu(e: MouseEvent) {
+  ContextMenu.showContextMenu({
+    x: e.x,
+    y: e.y + 10,
+    items: mermaidContextMenuItems as MenuItem[]
+  })
+}
+
+function handlePlantUmlContextMenu(e: MouseEvent) {
+  ContextMenu.showContextMenu({
+    x: e.x,
+    y: e.y + 10,
+    items: plantumlContextMenuItems as MenuItem[]
+  })
+}
 
 const mdConstContext = {
   linescan: '\r\n------------\r\n',
@@ -48,28 +84,22 @@ function onInsertText(_, label: string) {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function onEmojiContextMenu(e: Event, _) {
-  if (event instanceof MouseEvent) {
-    handleEmojiContextMenu(e as MouseEvent)
-  }
+  handleEmojiContextMenu(e as MouseEvent)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function onSymbolsContextMenu(e: Event, _) {
-  if (event instanceof MouseEvent) {
-    handleSymbolContextMenu(e as MouseEvent)
-  }
+  handleSymbolContextMenu(e as MouseEvent)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function onMermaidContextMenu(e: Event, _) {
-  if (event instanceof MouseEvent) {
-    handleMermaidContextMenu(e as MouseEvent)
-  }
+  handleMermaidContextMenu(e as MouseEvent)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function onPlantUmlContextMenu(e: Event, _) {
-    handlePlantUmlContextMenu(e as MouseEvent)
+  handlePlantUmlContextMenu(e as MouseEvent)
 }
 
 export const MdEditToolButtons: MarkdownEditToolButtonMap = {

@@ -202,6 +202,8 @@ onMounted(() => {
     // console.log('keyDown', event)
     if (event.ctrlKey && event.key === 's') {
       window.electron.ipcRenderer.send('save-file-content-to-disk', markdownEditorContent.value)
+    } else if (event.ctrlKey && event.key === 'v') {
+      console.log('event', event)
     }
   }
 
