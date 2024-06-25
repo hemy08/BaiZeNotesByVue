@@ -58,7 +58,7 @@ function createWindow(): void {
 
   ipcMain.on('open-select-file', (_, message) => {
     // console.log('open-select-file', message)
-    utils.fileUtils.OpenSelectFile(message)
+    utils.FileUtils.OpenSelectFile(message)
   })
 
   ipcMain.on('pre-render-monaco-editor-content', (_, message) => {
@@ -102,15 +102,15 @@ function createWindow(): void {
     console.log('file-manager-context-menu-find-in', value)
   })
 
-  ipcMain.on('file-manager-context-menu-rename', (_, path, name) => {
+  ipcMain.on('file-manager-context-menu-rename', (_, path) => {
     // console.log('file-manager-context-menu-rename', path, name)
-    dialogs.ShowFileFolderRenameDialog(path, name)
+    dialogs.ShowFileFolderRenameDialog(path)
   })
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ipcMain.on('file-manager-context-menu-reload-from-disk', (_) => {
     // console.log('file-manager-context-menu-reload-from-disk')
-    utils.fileUtils.ReloadDirFromDisk()
+    utils.FileUtils.ReloadDirFromDisk()
   })
 
   ipcMain.on('monaco-editor-insert-image', () => {

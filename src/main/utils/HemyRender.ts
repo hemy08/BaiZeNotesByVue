@@ -29,7 +29,7 @@ function covertFileUrl(imgUrl: string): string {
   }
 
   // 获取当前文件的路径，拼接imgUrl
-  const dir = parseDirectoryPath(file.path)
+  const dir = ParseDirectoryPath(file.path)
   return dir.replace('\\', '/') + '/' + imgUrl
 }
 

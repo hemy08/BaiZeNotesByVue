@@ -8,7 +8,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '新建文件(N)  ...待开发',
       accelerator: 'ctrl+n',
       click: () => {
-        fileUtils.OpenDir()
+        fileUtils.OpenDir(mainWindow)
       }
     },
     {
@@ -60,7 +60,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '打开文件夹',
       accelerator: 'ctrl+o',
       click: () => {
-        fileUtils.OpenDir()
+        fileUtils.OpenDir(mainWindow)
       }
     },
     {

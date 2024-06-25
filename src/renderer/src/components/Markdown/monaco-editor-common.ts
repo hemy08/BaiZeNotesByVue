@@ -100,7 +100,7 @@ function updateSelection(
     newText = content.substring(prefix.length, content.length - suffix.length)
   } else {
     selectRange = selection
-    newText = `${prefix}${selectedText}${suffix}`
+    newText = `${prefix}${content}${suffix}`
   }
 
   replaceSelection(editor, newText, false, selectRange)
@@ -121,7 +121,7 @@ function EditSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor) {
   let selectRange: monaco.Range = selection
   const selectedText = model.getValueInRange(selection)
   // 选择的部分就有*
-  let newText: string
+  let newText = ''
   if (selectedText.startsWith('***') && selectedText.endsWith('***')) {
     newText = selectedText.substring(1, selectedText.length - 1)
   } else if (selectedText.startsWith('**') && selectedText.endsWith('**')) {
@@ -139,7 +139,7 @@ function EditSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor) {
     if (content.startsWith('***') && content.endsWith('***')) {
       newText = content.substring(1, content.length - 1)
     } else {
-      updateSelection(editor, selection, '*', '*')
+      updateSelection(editor, selection, model, '*', '*')
     }
   }
 
@@ -222,11 +222,11 @@ function EditUpdateFontStyle(
   const selectRange: monaco.Range = selection
   const selectedText = model.getValueInRange(selection)
   // 选择的部分就有*
-  let newText: string
+  let newText = ''
   if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix)) {
     newText = selectedText.substring(prefix.length, selectedText.length - suffix.length)
   } else {
-    updateSelection(editor, selection, prefix, suffix)
+    updateSelection(editor, selection, model, prefix, suffix)
   }
 
   replaceSelection(editor, newText, false, selectRange)
