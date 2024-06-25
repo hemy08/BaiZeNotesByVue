@@ -78,6 +78,34 @@ export function EditCvtToHeader(editor: monaco.editor.IStandaloneCodeEditor, hea
   ConvertContextToHeader(editor, position, model, header)
 }
 
+function updateSelection(
+  editor: monaco.editor.IStandaloneCodeEditor,
+  selection: monaco.Selection,
+  model: monaco.editor.IModel,
+  prefix: string,
+  suffix: string
+) {
+  let newText = ''
+  if (!selection || selection.isEmpty()) return
+  const { startLineNumber, startColumn, endLineNumber, endColumn } = selection
+  // 选择的部分没有*，向前后增加三个字符
+  if (!model) return
+  const lineLength = model.getLineLength(endLineNumber)
+  const start = Math.max(1, startColumn - prefix.length)
+  const end = Math.min(lineLength + 1, endColumn + suffix.length)
+  let selectRange = new monaco.Range(startLineNumber, start, endLineNumber, end)
+  const content = model.getValueInRange(selectRange)
+  // 三个*，说明文字本来是加粗倾斜的，去掉倾斜
+  if (content.startsWith(prefix) && content.endsWith(suffix)) {
+    newText = content.substring(prefix.length, content.length - suffix.length)
+  } else {
+    selectRange = selection
+    newText = `${prefix}${selectedText}${suffix}`
+  }
+
+  replaceSelection(editor, newText, false, selectRange)
+}
+
 function EditSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor) {
   // 获取当前的选择范围
   const selection = editor.getSelection()
@@ -103,35 +131,15 @@ function EditSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor) {
   } else {
     // 选择的部分没有*，向前后增加三个字符
     const lineLength = model.getLineLength(endLineNumber)
-    let start = Math.max(1, startColumn - 3)
-    let end = Math.min(lineLength + 1, endColumn + 3)
+    const start = Math.max(1, startColumn - 3)
+    const end = Math.min(lineLength + 1, endColumn + 3)
     selectRange = new monaco.Range(startLineNumber, start, endLineNumber, end)
-    let content = model.getValueInRange(selectRange)
+    const content = model.getValueInRange(selectRange)
     // 三个*，说明文字本来是加粗倾斜的，去掉倾斜
     if (content.startsWith('***') && content.endsWith('***')) {
       newText = content.substring(1, content.length - 1)
     } else {
-      start = Math.max(1, startColumn - 2)
-      end = Math.min(lineLength + 1, endColumn + 2)
-      selectRange = new monaco.Range(startLineNumber, start, endLineNumber, end)
-      content = model.getValueInRange(selectRange)
-      // 两个*号，说明文字本身是加粗的，加上倾斜符
-      if (content.startsWith('**') && content.endsWith('**')) {
-        newText = `*${content}*`
-      } else {
-        // 一个*号，说明文字本身是倾斜的，去掉倾斜符
-        start = Math.max(1, startColumn - 1)
-        end = Math.min(lineLength + 1, endColumn + 1)
-        selectRange = new monaco.Range(startLineNumber, start, endLineNumber, end)
-        content = model.getValueInRange(selectRange)
-        if (content.startsWith('*') && content.endsWith('*')) {
-          newText = content.substring(1, content.length - 1)
-        } else {
-          selectRange = selection
-          const selectedText = model.getValueInRange(selection)
-          newText = `*${selectedText}*`
-        }
-      }
+      updateSelection(editor, selection, '*', '*')
     }
   }
 
@@ -158,6 +166,13 @@ const styleHandlers = {
       return content.substring(2, content.length - 2)
     } else {
       return `~~${content}~~`
+    }
+  },
+  italic(content: string) {
+    if (content.startsWith('*') && content.endsWith('*')) {
+      return content.substring(1, content.length - 1)
+    } else {
+      return `*${content}*`
     }
   }
 }
@@ -191,55 +206,42 @@ function EditUpdateFontStyleCommon(editor: monaco.editor.IStandaloneCodeEditor, 
 
 function EditUpdateFontStyle(
   editor: monaco.editor.IStandaloneCodeEditor,
-  startStr: string,
-  endStr: string
+  prefix: string,
+  suffix: string
 ) {
   // 获取当前的选择范围
   const selection = editor.getSelection()
   if (!selection || selection.isEmpty()) {
     // 没有选择，则直接插入字符串
-    EditInsTextAfterCursor(editor, startStr + endStr)
+    EditInsTextAfterCursor(editor, prefix + suffix)
     return
   }
   // 获取编辑器模型, 确保模型存在
   const model = editor.getModel()
   if (!model) return
-  const { startLineNumber, startColumn, endLineNumber, endColumn } = selection
-  let selectRange: monaco.Range = selection
+  const selectRange: monaco.Range = selection
   const selectedText = model.getValueInRange(selection)
   // 选择的部分就有*
   let newText: string
-  if (selectedText.startsWith(startStr) && selectedText.endsWith(endStr)) {
-    newText = selectedText.substring(startStr.length, selectedText.length - endStr.length)
+  if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix)) {
+    newText = selectedText.substring(prefix.length, selectedText.length - suffix.length)
   } else {
-    // 选择的部分没有*，向前后增加三个字符
-    const lineLength = model.getLineLength(endLineNumber)
-    const start = Math.max(1, startColumn - startStr.length)
-    const end = Math.min(lineLength + 1, endColumn + endStr.length)
-    selectRange = new monaco.Range(startLineNumber, start, endLineNumber, end)
-    const content = model.getValueInRange(selectRange)
-    // 三个*，说明文字本来是加粗倾斜的，去掉倾斜
-    if (content.startsWith(startStr) && content.endsWith(endStr)) {
-      newText = content.substring(startStr.length, content.length - endStr.length)
-    } else {
-      selectRange = selection
-      newText = `${startStr}${selectedText}${endStr}`
-    }
+    updateSelection(editor, selection, prefix, suffix)
   }
 
   replaceSelection(editor, newText, false, selectRange)
 }
 
-function EditSetFontAlign(
+function EditAppendPrefixSuffix(
   editor: monaco.editor.IStandaloneCodeEditor,
-  startStr: string,
-  endStr: string
+  prefix: string,
+  suffix: string
 ) {
   // 获取当前的选择范围
   const selection = editor.getSelection()
   if (!selection || selection.isEmpty()) {
     // 没有选择，则直接插入字符串
-    EditInsTextAfterCursor(editor, startStr + endStr)
+    EditInsTextAfterCursor(editor, prefix + suffix)
     return
   }
   // 获取编辑器模型, 确保模型存在
@@ -247,7 +249,7 @@ function EditSetFontAlign(
   if (!model) return
 
   const selectedText = model.getValueInRange(selection)
-  const newText = `${startStr}${selectedText}${endStr}`
+  const newText = `${prefix}${selectedText}${suffix}`
 
   replaceSelection(editor, newText, true, selection)
 }
@@ -292,20 +294,38 @@ export const EventHandleMaps = {
   codeline(editor: monaco.editor.IStandaloneCodeEditor) {
     EditUpdateFontStyle(editor, '`', '`')
   },
+  codeblock(editor: monaco.editor.IStandaloneCodeEditor) {
+    EditAppendPrefixSuffix(editor, '\r\n```\r\n', '```\r\n')
+  },
   mathline(editor: monaco.editor.IStandaloneCodeEditor) {
     EditUpdateFontStyle(editor, '$', '$')
   },
+  mathblock(editor: monaco.editor.IStandaloneCodeEditor) {
+    EditAppendPrefixSuffix(editor, '\r\n$$\r\n', '$$\r\n')
+  },
   alignleft(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditSetFontAlign(editor, '<p style="text-align: left;">\r\n\r\n', '\r\n\r\n</p>')
+    EditAppendPrefixSuffix(editor, '<p style="text-align: left;">\r\n\r\n', '\r\n\r\n</p>')
   },
   aligncenter(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditSetFontAlign(editor, '<p style="text-align: center;">\r\n', '\r\n</p>')
+    EditAppendPrefixSuffix(editor, '<p style="text-align: center;">\r\n', '\r\n</p>')
   },
   alignjustify(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditSetFontAlign(editor, '<p style="text-align: justify;width: 100%">\r\n', '\r\n</p>')
+    EditAppendPrefixSuffix(editor, '<p style="text-align: justify;width: 100%">\r\n', '\r\n</p>')
   },
   alignright(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditSetFontAlign(editor, '<p style="text-align: right;">\r\n', '\r\n</p>')
+    EditAppendPrefixSuffix(editor, '<p style="text-align: right;">\r\n', '\r\n</p>')
+  },
+  keyboard(editor: monaco.editor.IStandaloneCodeEditor) {
+    EditAppendPrefixSuffix(editor, '<kbd>', '</kbd>')
+  },
+  link(editor: monaco.editor.IStandaloneCodeEditor) {
+    EditAppendPrefixSuffix(editor, '[]()', '')
+  },
+  paste(editor: monaco.editor.IStandaloneCodeEditor) {
+    EditAppendPrefixSuffix(editor, '[]()', '')
+  },
+  insertimage(editor: monaco.editor.IStandaloneCodeEditor) {
+    EditAppendPrefixSuffix(editor, '[]()', '')
   }
 }
 

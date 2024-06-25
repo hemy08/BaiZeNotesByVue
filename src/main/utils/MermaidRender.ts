@@ -20,7 +20,7 @@ export const HemyMermaidParse = async (code: string): Promise<unknown> => {
   return await mermaid.parse(code)
 }*/
 
-import { mermaidHandleGetRenderResult } from '../dialogs/dialogs'
+import { HandleMermaidGetRenderResult } from '../dialogs/dialogs'
 
 // 存储mermaid字符和svg的隐射关系，单个文档存储，如果文档保存，则清空
 const mermaidToSvgMap: Map<string, string> = new Map()
@@ -35,7 +35,7 @@ function querySvgByMermaidCode(mermaidCode: string): string | undefined {
 
 async function waitAsyncRenderResult(text: string): Promise<string> {
   try {
-    return await mermaidHandleGetRenderResult(text)
+    return await HandleMermaidGetRenderResult(text)
   } catch (error) {
     console.log('mermaidHandleGetRenderResult error', error)
     return text

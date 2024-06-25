@@ -1,11 +1,14 @@
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.
 import { ipcMain } from 'electron'
-import { FileUtils } from './file-utils'
+import * as fileUtils from './file-utils'
+import * as dialogs from '../dialogs/dialogs'
+
 
 export function globalInitialize(mainWindow: Electron.BrowserWindow) {
   global.hemy = {
-    file: new FileUtils(mainWindow)
+    file: fileUtils,
+    dialog: dialogs
   }
 
   global.MainWindow = mainWindow

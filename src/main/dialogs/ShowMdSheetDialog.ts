@@ -2,7 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 
 let customMarkdownSheetDialog: Electron.BrowserWindow | null
 
-export function showMarkdownSheetDialog(mainWindow: Electron.BrowserWindow) {
+export function ShowMarkdownSheetDialog(mainWindow: Electron.BrowserWindow) {
   createMarkdownSheetDialog(mainWindow)
 }
 

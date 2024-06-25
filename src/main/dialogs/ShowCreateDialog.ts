@@ -1,11 +1,12 @@
-import { BrowserWindow, ipcMain} from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import { CreateFileFolder } from '../utils/file-utils'
+import { JSDOM } from 'jsdom'
 
 let customCreateDialog: Electron.BrowserWindow | null
 
 // 创建一个自定义对话框的函数
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function showCreateFileFolderDialog(
+export function ShowCreateFileFolderDialog(
   dirPath: string,
   isFolder: boolean,
   fileExtension: string
@@ -26,10 +27,9 @@ export function showCreateFileFolderDialog(
 
   customCreateDialog.setMenu(null)
 
+  const temphtml = makeCreateFileFolderDialogHtml()
   // 加载一个 HTML 文件作为对话框的内容
-  customCreateDialog.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(customCreateDialogHtml)}`
-  )
+  customCreateDialog.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(temphtml)}`)
 
   // 显示窗口
   customCreateDialog.show()
@@ -52,24 +52,31 @@ export function showCreateFileFolderDialog(
   ipcMain.on('user-input-create-file-folder-name', processCreateFileFolder)
 }
 
-const customCreateDialogHtml =
-  '<!DOCTYPE html>\n' +
-  '<html lang="en">\n' +
-  '<head>\n' +
-  '  <meta charset="UTF-8">\n' +
-  '  <title>新建文件/文件夹</title>\n' +
-  '</head>\n' +
-  '<body>\n' +
-  '<div><input type="text" id="file-folder-name" style="width: 320px; margin: 20px"></div>\n' +
-  '</body>\n' +
-  '<script>\n' +
-  "  const { ipcRenderer } = require('electron')\n" +
-  "  const inputElement = document.getElementById('file-folder-name')\n" +
-  "  inputElement.addEventListener('keyup', function(event) {\n" +
-  "    if (event.key === 'Enter') {\n" +
-  '      const name = inputElement.value\n' +
-  "      ipcRenderer.send('user-input-create-file-folder-name', name)\n" +
-  '    }\n' +
-  '  });\n' +
-  '</script>\n' +
-  '</html>'
+function makeCreateFileFolderDialogHtml(): string {
+  // 创建一个空的HTML文档
+  const { document } = new JSDOM(
+    `<!DOCTYPE html><html lang="zh"><head><title>新建文件/文件夹</title></head><body></body></html>`
+  ).window
+
+  const ele_body_input = document.createElement('input')
+  ele_body_input.type = 'text'
+  ele_body_input.id = 'file-folder-name'
+  ele_body_input.style.width = '320px'
+  ele_body_input.style.margin = '20px'
+
+  const ele_body_script = document.createElement('script')
+  ele_body_script.textContent =
+    "  const { ipcRenderer } = require('electron')\n" +
+    "  const inputElement = document.getElementById('file-folder-name')\n" +
+    "  inputElement.addEventListener('keyup', function(event) {\n" +
+    "    if (event.key === 'Enter') {\n" +
+    '      const name = inputElement.value\n' +
+    "      ipcRenderer.send('user-input-create-file-folder-name', name)\n" +
+    '    }\n' +
+    '  });\n'
+
+  document.body.appendChild(ele_body_input)
+  document.body.appendChild(ele_body_script)
+
+  return document.documentElement.outerHTML
+}

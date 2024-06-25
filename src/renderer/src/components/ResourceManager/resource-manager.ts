@@ -103,32 +103,32 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
           {
             label: '文件',
             onClick: () => {
-              ctxMenuCreateFolder(node, false, '')
+              onHandleCreateFolder(node, false, '')
             }
           },
           {
             label: '文件夹',
             divided: true,
             onClick: () => {
-              ctxMenuCreateFolder(node, true, '')
+              onHandleCreateFolder(node, true, '')
             }
           },
           {
             label: 'Markdown文件',
             onClick: () => {
-              ctxMenuCreateFolder(node, false, '.md')
+              onHandleCreateFolder(node, false, '.md')
             }
           },
           {
             label: '从Word文档导入',
             onClick: () => {
-              alert('从Word文档导入')
+              onHandleImport('word')
             }
           },
           {
             label: '从HTML文档导入',
             onClick: () => {
-              alert('从HTML文档导入')
+              onHandleImport('html')
             }
           }
         ],
@@ -141,37 +141,37 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
             label: '文件夹/文件',
             divided: true,
             onClick: () => {
-              alert('文件夹/文件')
+              onHandleCopy('file')
             }
           },
           {
             label: '文件夹名称',
             onClick: () => {
-              alert('文件夹名称')
+              onHandleCopy('foldername')
             }
           },
           {
             label: '文件夹绝对路径',
             onClick: () => {
-              alert('文件夹绝对路径')
+              onHandleCopy('realpath')
             }
           },
           {
             label: '相对于当前打开文件路径',
             onClick: () => {
-              alert('相对于当前打开文件路径')
+              onHandleCopy('relativepath')
             }
           },
           {
             label: '复制为本地图片链接',
             onClick: () => {
-              alert('复制为本地图片链接')
+              onHandleCopy('imaglink')
             }
           },
           {
             label: '复制为本地文件链接',
             onClick: () => {
-              alert('复制为本地文件链接')
+              onHandleCopy('filelink')
             }
           }
         ]
@@ -179,19 +179,19 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
       {
         label: '剪切',
         onClick: () => {
-          alert('剪切')
+          onHandleCut()
         }
       },
       {
         label: '粘贴',
         onClick: () => {
-          alert('粘贴')
+          onHandlePaste()
         }
       },
       {
         label: '删除',
         onClick: () => {
-          alert('删除')
+          onHandleDelete(node)
         },
         divided: true
       },
@@ -201,13 +201,13 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
           {
             label: '在文件中查找',
             onClick: () => {
-              alert('在文件中查找')
+              onHandleFind('file')
             }
           },
           {
             label: '在文件夹中查找',
             onClick: () => {
-              alert('在文件夹中查找')
+              onHandleFind('folder')
             }
           }
         ]
@@ -215,7 +215,7 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
       {
         label: '重命名',
         onClick: () => {
-          alert('重命名')
+          onHandleRename(node)
         }
       },
       {
@@ -234,7 +234,7 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
       {
         label: '从磁盘重新加载',
         onClick: () => {
-          ctxMenuReloadFromDisk()
+          onHandleReloadFromDisk()
         }
       },
       {
@@ -247,7 +247,7 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
   })
 }
 
-function ctxMenuCreateFolder(node: FileSysItem, isFolder: boolean, fileExtension: string) {
+function onHandleCreateFolder(node: FileSysItem, isFolder: boolean, fileExtension: string) {
   let directoryPath: string
   if (node.type === 'folder') {
     directoryPath = node.path
@@ -266,6 +266,34 @@ function ctxMenuCreateFolder(node: FileSysItem, isFolder: boolean, fileExtension
   )
 }
 
-function ctxMenuReloadFromDisk() {
+function onHandleImport(value: string) {
+  window.electron.ipcRenderer.send('file-manager-context-menu-import-from', value)
+}
+
+function onHandleCopy(value: string) {
+  window.electron.ipcRenderer.send('file-manager-context-menu-copy-as', value)
+}
+
+function onHandleCut() {
+  window.electron.ipcRenderer.send('file-manager-context-menu-cut', '')
+}
+
+function onHandlePaste() {
+  window.electron.ipcRenderer.send('file-manager-context-menu-paste', '')
+}
+
+function onHandleDelete(node: FileSysItem) {
+  window.electron.ipcRenderer.send('file-manager-context-menu-delete', node.path)
+}
+
+function onHandleFind(value: string) {
+  window.electron.ipcRenderer.send('file-manager-context-menu-find-in', value)
+}
+
+function onHandleRename(node: FileSysItem) {
+  window.electron.ipcRenderer.send('file-manager-context-menu-rename', node.path, node.name)
+}
+
+function onHandleReloadFromDisk() {
   window.electron.ipcRenderer.send('file-manager-context-menu-reload-from-disk', '')
 }

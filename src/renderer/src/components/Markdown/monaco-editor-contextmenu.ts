@@ -82,6 +82,10 @@ function onInsertText(_, label: string) {
   EventBus.$emit('monaco-editor-insert-text', getInsertContext(label))
 }
 
+function onInsertImage(_, label: string) {
+  window.electron.ipcRenderer.send('monaco-editor-insert-image', label)
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function onEmojiContextMenu(e: Event, _) {
   handleEmojiContextMenu(e as MouseEvent)
@@ -347,8 +351,8 @@ export const MdEditToolButtons: MarkdownEditToolButtonMap = {
     id: 'insert-images',
     title: '插入图片',
     class: 'tool-btn',
-    clickFn: onInsertText,
-    param: 'insertimages',
+    clickFn: onInsertImage,
+    param: 'insertimage',
     svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m8.5 13.5 2.5 3 3.5-4.5 4.5 6H5m16 1V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Z"/></svg>'
   },
   'images-center': {

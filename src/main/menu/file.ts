@@ -1,5 +1,5 @@
 import { app, ipcMain } from 'electron'
-import { reloadDirectoryFromDisk, saveActiveFile, saveActiveFileAs } from '../utils/file-utils'
+import * as fileUtils from '../utils/file-utils'
 
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
@@ -8,7 +8,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '新建文件(N)  ...待开发',
       accelerator: 'ctrl+n',
       click: () => {
-        global.hemy.file.openDirectory()
+        fileUtils.OpenDir()
       }
     },
     {
@@ -53,14 +53,14 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '打开文件',
       click: () => {
-        global.hemy.file.openFile()
+        fileUtils.OpenFile(mainWindow)
       }
     },
     {
       label: '打开文件夹',
       accelerator: 'ctrl+o',
       click: () => {
-        global.hemy.file.openDirectory()
+        fileUtils.OpenDir()
       }
     },
     {
@@ -75,14 +75,14 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '另存为',
       click: () => {
-        saveActiveFileAs()
+        fileUtils.SaveActiveFileAs()
       }
     },
     {
       label: '保存',
       accelerator: 'ctrl+s',
       click: () => {
-        saveActiveFile()
+        fileUtils.SaveActiveFile()
       }
     },
     {
@@ -104,7 +104,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '从磁盘重新加载',
       accelerator: 'ctrl+r',
       click: () => {
-        reloadDirectoryFromDisk()
+        fileUtils.ReloadDirFromDisk()
       }
     },
     {
@@ -137,7 +137,7 @@ ipcMain.on('update-select-file-content', (_, content) => {
 // 监听键盘事件
 function handleKeyDown(event) {
   if (event.ctrlKey && event.key === 's') {
-    saveActiveFile()
+    fileUtils.SaveActiveFile()
   }
 }
 
@@ -147,6 +147,6 @@ ipcMain.on('save-file-content-to-disk', (_, content) => {
   const curFile = global.__current_active_file
   if (curFile != undefined) {
     global.__current_active_file.content = content
-    saveActiveFile()
+    fileUtils.SaveActiveFile()
   }
 })

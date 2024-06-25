@@ -1,5 +1,7 @@
 import * as monaco from 'monaco-editor'
-import { FileUtils } from './utils/file-utils'
+import * as fileUtils from './utils/file-utils'
+import * as dialogs from '../dialogs/dialogs'
+
 // global-types.d.ts
 declare global {
   interface FileProperties {
@@ -32,7 +34,8 @@ declare global {
   }
 
   interface Hemy {
-    file: FileUtils
+    file: fileUtils
+    dialog: dialogs
   }
 
   interface Global extends NodeJS.Global {

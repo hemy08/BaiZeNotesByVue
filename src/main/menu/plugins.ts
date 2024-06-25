@@ -1,17 +1,20 @@
-import { webAppDialogs, openOnlineWebPage } from '../dialogs/dialogs'
+import * as dialogs from '../dialogs/dialogs'
 
 const openUrlsInBrowser = true
 
 // eslint-disable-next-line no-unused-vars
 export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
-  const onlineTools = Object.keys(webAppDialogs).map((name) => {
+  const onlineTools = Object.keys(dialogs.webDialogs).map((name) => {
     return {
-      label: webAppDialogs[name].label, // 根据类别设置标签
+      label: dialogs.webDialogs[name].label, // 根据类别设置标签
       click: () => {
         if (openUrlsInBrowser) {
-          mainWindow.webContents.send('open-url-in-web-browser-window', webAppDialogs[name].link)
+          mainWindow.webContents.send(
+            'open-url-in-web-browser-window',
+            dialogs.webDialogs[name].link
+          )
         } else {
-          openOnlineWebPage(webAppDialogs[name].link)
+          dialogs.OpenOnlineWebPage(dialogs.webDialogs[name].link)
         }
       }
     }

@@ -8,14 +8,14 @@ const path = require('path')
 function StartAutoSaveFileTime() {
   if (global.SavingFile) {
     setInterval(() => {
-      saveActiveFile()
+      SaveActiveFile()
       // 在这里执行你的任务代码
     }, global.SaveFileInterval) // 每5秒执行一次
     global.SavingFile = true
   }
 }
 
-export function buildFileTree(rootPath: string, mdFiles: FileItem[]): FileItem[] {
+export function BuildFileTree(rootPath: string, mdFiles: FileItem[]): FileItem[] {
   const lastIndex = Math.max(rootPath.lastIndexOf('\\'), rootPath.lastIndexOf('/'))
   const directoryName = rootPath.substring(lastIndex + 1)
 
@@ -118,13 +118,8 @@ export function TraverseDirectory(dir: string, callback: (fileItems: FileItem[])
   })
 }
 
-export function CreateFileFolder(
-  name: string,
-  dirPath: string,
-  isFolder: boolean,
-  fileExtension: string
-) {
-  let fullName = dirPath.replace('/', '\\') + '\\' + name
+export function CreateFileFolder(name: string, path: string, isFolder: boolean, extension: string) {
+  let fullName = path.replace('/', '\\') + '\\' + name
   if (isFolder) {
     if (!fs.existsSync(fullName)) {
       fs.mkdirSync(fullName, { recursive: true })
@@ -132,17 +127,13 @@ export function CreateFileFolder(
       dialog.showErrorBox('出错啦!!!', `${fullName} 已存在`)
     }
   } else {
-    fullName = fullName + fileExtension
+    fullName = fullName + extension
     // 使用 fs.writeFile 创建并写入文件
-    fs.writeFile(fullName, '', (err) => {
-      if (err) {
-        dialog.showErrorBox('出错啦!!!', `${fullName} 失败 ${err}`)
-      }
-    })
+    fs.writeFileSync(fullName, '')
   }
 
   // 重新加载文件资源管理器
-  reloadDirectoryFromDisk()
+  ReloadDirFromDisk()
 
   if (!isFolder) {
     // 打开当前文件
@@ -157,13 +148,13 @@ export function CreateFileFolder(
   }
 }
 
-export function reloadDirectoryFromDisk() {
+export function ReloadDirFromDisk() {
   if (!global.RootPath) {
     return
   }
   // 重新加载文件资源管理器
   TraverseDirectory(global.RootPath, (mdFiles) => {
-    const fileTree = buildFileTree(global.RootPath, mdFiles)
+    const fileTree = BuildFileTree(global.RootPath, mdFiles)
     global.mdFileTree = fileTree
     // 设置定时任务
     StartAutoSaveFileTime()
@@ -172,109 +163,179 @@ export function reloadDirectoryFromDisk() {
   })
 }
 
-export function openSelectFile(mainWindow: Electron.BrowserWindow, fileProperties: FileProperties) {
+export function OpenSelectFile(fileProperties: FileProperties) {
   // 发送文件内容到渲染进程
   StartAutoSaveFileTime()
   fs.readFile(fileProperties.path, 'utf8', (err, data) => {
     if (!err) {
       fileProperties.content = data
       global.__current_active_file = fileProperties
-      // console.log('openSelectFile', fileProperties)
-      mainWindow.webContents.send('show-selected-file-context', data)
+      // console.log('OpenSelectFile', fileProperties)
+      global.MainWindow.webContents.send('show-selected-file-context', data)
     } else {
       console.log('openFile failed', fileProperties.path, err, data)
     }
   })
 }
 
-export function saveActiveFile() {
+export function SaveActiveFile() {
   const curFile = global.__current_active_file
   // 文件存在，直接写入
   if (curFile != undefined) {
-    fs.writeFile(curFile.path, curFile.content, (err) => {
-      if (err) {
-        console.log('写入文件时发生错误', err)
-      }
-    })
+    fs.writeFileSync(curFile.path, curFile.content)
   } else {
     // 文件不存在，新建文件，写入，指定文件路径和文件名
     console.log('写入文件时发生错误, 文件不存在')
   }
 }
 
-export function saveActiveFileAs() {
+export function SaveActiveFileAs() {
   const curFile = global.__current_active_file
   if (curFile) {
-    fs.writeFile(curFile.path, curFile.content, (err) => {
-      console.log('error', err)
-    })
+    fs.writeFileSync(curFile.path, curFile.content)
   }
 }
 
-export function parseDirectoryPath(fullName: string): string {
+export function ParseDirectoryPath(fullName: string): string {
   const lastIndex1 = fullName.lastIndexOf('\\')
   const lastIndex2 = fullName.lastIndexOf('/')
   const lastIndex = Math.max(lastIndex1, lastIndex2)
   return fullName.substring(0, lastIndex)
 }
 
-export class FileUtils {
-  mainWindow: Electron.BrowserWindow
-
-  constructor(mainWindow: Electron.BrowserWindow) {
-    this.mainWindow = mainWindow
+export function RenameFileFolder(name: string, newName: string) {
+  const path = ParseDirectoryPath(name)
+  let newFullPath = ''
+  // 目录
+  if (name.lastIndexOf('.') === -1) {
+    newFullPath = path.replace('/', '\\') + '\\' + newName
+  } else {
+    const extension = name.substring(name.lastIndexOf('.'))
+    newFullPath = path.replace('/', '\\') + '\\' + newName + extension
   }
 
-  openDirectory() {
-    dialog
-      .showOpenDialog(this.mainWindow, {
-        properties: ['openDirectory']
-      })
-      .then((result) => {
-        if (result.canceled) return
-        global.RootPath = result.filePaths[0]
-        reloadDirectoryFromDisk()
-      })
-      .catch((err) => {
-        console.error('Error opening directory dialog:', err)
-      })
-  }
-
-  parserFileName(filePath: string): string {
-    const lastIndex = filePath.lastIndexOf('/') || filePath.lastIndexOf('\\')
-    if (lastIndex === -1) {
-      // 如果没有找到'/'或'\\'，则整个字符串就是文件名（或路径错误）
-      return filePath
+  fs.renameSync(name, newFullPath, (err) => {
+    if (err) {
+      dialog.showErrorBox('重命名失败', err)
     }
-    return filePath.slice(lastIndex + 1)
+  })
+
+  // 重新加载文件资源管理器
+  ReloadDirFromDisk()
+
+  // console.log('newFullPath', newFullPath)
+  if (newFullPath.lastIndexOf('.') !== -1) {
+    const fileProperties: FileProperties = {
+      name: ParserFileName(newFullPath),
+      path: newFullPath,
+      type: 'file',
+      content: ''
+    }
+    // console.log('fileProperties', fileProperties)
+    OpenSelectFile(fileProperties)
+  }
+}
+
+export function DeleteFileFolder(name: string) {
+  // 文件、目录，如果是目录，
+  if (name.lastIndexOf('.') === -1) {
+    fs.rm(name, { recursive: true })
+  } else {
+    fs.unlinkSync(name)
   }
 
-  parseDirectoryPath(fullName: string): string {
-    const lastIndex1 = fullName.lastIndexOf('\\')
-    const lastIndex2 = fullName.lastIndexOf('/')
-    const lastIndex = Math.max(lastIndex1, lastIndex2)
-    return fullName.substring(0, lastIndex)
+  // 重新加载文件资源管理器
+  ReloadDirFromDisk()
+}
+
+export function ParserFileName(filePath: string): string {
+  const lastIndex = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))
+  if (lastIndex === -1) {
+    // 如果没有找到'/'或'\\'，则整个字符串就是文件名（或路径错误）
+    return filePath
+  }
+  return filePath.slice(lastIndex + 1)
+}
+
+export function ParseDir(fullName: string): string {
+  const lastIndex1 = fullName.lastIndexOf('\\')
+  const lastIndex2 = fullName.lastIndexOf('/')
+  const lastIndex = Math.max(lastIndex1, lastIndex2)
+  return fullName.substring(0, lastIndex)
+}
+
+export function OpenFile(mainWindow: Electron.BrowserWindow) {
+  dialog
+    .showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [{ name: 'Markdown Files', extensions: ['md'] }]
+    })
+    .then((result) => {
+      if (result.canceled) return
+      const fileProperties: FileProperties = {
+        name: ParserFileName(result.filePaths[0]),
+        path: result.filePaths[0],
+        type: 'file',
+        content: ''
+      }
+      OpenSelectFile(fileProperties)
+    })
+    .catch((err) => {
+      console.error('Error reading file:', err)
+      // event.reply('selected-file-content-error', err.message)
+    })
+}
+
+export function CreateFile(path: string, name: string, extension: string) {
+  const fullName = path.replace('/', '\\') + '\\' + name + extension
+  // 使用 fs.writeFile 创建并写入文件
+  fs.writeFileSync(fullName, '')
+
+  // 重新加载文件资源管理器
+  ReloadDirFromDisk()
+
+  // 打开当前文件
+  global.__current_active_file = {
+    name: name,
+    path: fullName,
+    type: 'file',
+    content: '# ' + name
+  }
+  //console.log('global.__current_active_file', global.__current_active_file)
+  global.MainWindow.webContents.send('show-selected-file-context', '# ' + name)
+}
+
+export function OpenDir(mainWindow: Electron.BrowserWindow) {
+  dialog
+    .showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
+    })
+    .then((result) => {
+      if (result.canceled) return
+      global.RootPath = result.filePaths[0]
+      ReloadDirFromDisk()
+    })
+    .catch((err) => {
+      console.error('Error opening directory dialog:', err)
+    })
+}
+
+export function CreateFolder(path: string, name: string) {
+  const fullName = path.replace('/', '\\') + '\\' + name
+  if (!fs.existsSync(fullName)) {
+    fs.mkdirSync(fullName, { recursive: true })
+  } else {
+    dialog.showErrorBox('出错啦!!!', `${fullName} 已存在`)
   }
 
-  openFile() {
-    dialog
-      .showOpenDialog(this.mainWindow, {
-        properties: ['openFile'],
-        filters: [{ name: 'Markdown Files', extensions: ['md'] }]
-      })
-      .then((result) => {
-        if (result.canceled) return
-        const fileProperties: FileProperties = {
-          name: this.parserFileName(result.filePaths[0]),
-          path: result.filePaths[0],
-          type: 'file',
-          content: ''
-        }
-        openSelectFile(this.mainWindow, fileProperties)
-      })
-      .catch((err) => {
-        console.error('Error reading file:', err)
-        // event.reply('selected-file-content-error', err.message)
-      })
-  }
+  // 重新加载文件资源管理器
+  ReloadDirFromDisk()
+}
+
+export function Rename(name: string, newName: string) {
+  RenameFileFolder(name, newName)
+}
+
+export function Delete(name: string) {
+  DeleteFileFolder(name)
 }

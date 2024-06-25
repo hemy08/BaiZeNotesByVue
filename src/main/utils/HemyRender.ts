@@ -1,6 +1,6 @@
 import { katexRenderMathInText } from './KatexRender'
 import { materialAdmonitionsRender, materialAdmonitionsPostRender } from './MaterialRender'
-import { parseDirectoryPath } from './file-utils'
+import { ParseDirectoryPath } from './file-utils'
 // import { plantumlRender } from './PlantumlRender'
 
 export async function HemyRenderPre(
@@ -18,7 +18,7 @@ export async function HemyRenderPost(
   mainWindow: Electron.CrossProcessExports.BrowserWindow,
   text: string
 ) {
-  let renderResult = materialAdmonitionsPostRender(text)
+  const renderResult = materialAdmonitionsPostRender(text)
   mainWindow.webContents.send('post-render-monaco-editor-content-result', renderResult)
 }
 

@@ -2,7 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 
 let fontSelectDialog: Electron.BrowserWindow | null
 
-export function showFontSelectDialog(mainWindow: Electron.BrowserWindow) {
+export function ShowFontSelectDialog(mainWindow: Electron.BrowserWindow) {
   createFontSelectDialog(mainWindow)
 }
 // 创建一个自定义对话框的函数

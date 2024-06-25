@@ -3,11 +3,8 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
-import { HemyRenderPre, HemyRenderPost } from './utils/HemyRender'
-import { createMermaidRenderFrame } from './dialogs/OpenMermaidRenderFrame'
-import { globalInitialize } from './utils/global'
-import { openSelectFile, reloadDirectoryFromDisk } from './utils/file-utils'
-import { showCreateFileFolderDialog } from './dialogs/showCreateDialog'
+import * as utils from './utils/utils'
+import * as dialogs from './dialogs/dialogs'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -37,14 +34,14 @@ function createWindow(): void {
     mainWindow.maximize()
     mainWindow.show()
     // 加载一个子窗口，不对外显示
-    createMermaidRenderFrame('')
+    dialogs.CreateMermaidRenderFrame('')
   })
 
   globalShortcut.register('F12', () => {
     mainWindow.webContents.openDevTools()
   })
 
-  globalInitialize(mainWindow)
+  utils.globalInitialize(mainWindow)
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url).then((r) => console.log(r))
@@ -61,15 +58,15 @@ function createWindow(): void {
 
   ipcMain.on('open-select-file', (_, message) => {
     // console.log('open-select-file', message)
-    openSelectFile(mainWindow, message)
+    utils.fileUtils.OpenSelectFile(message)
   })
 
   ipcMain.on('pre-render-monaco-editor-content', (_, message) => {
-    HemyRenderPre(mainWindow, message)
+    utils.HemyRenderPre(mainWindow, message)
   })
 
   ipcMain.on('post-render-monaco-editor-content', (_, message) => {
-    HemyRenderPost(mainWindow, message)
+    utils.HemyRenderPost(mainWindow, message)
   })
 
   ipcMain.on('mermaid-graph-svg-data-to-main', (_, svgData) => {
@@ -77,14 +74,49 @@ function createWindow(): void {
   })
 
   ipcMain.on('file-manager-context-menu-create-file', (_, dirPath, isFolder, fileExtension) => {
-    showCreateFileFolderDialog(dirPath, isFolder, fileExtension)
+    dialogs.ShowCreateFileFolderDialog(dirPath, isFolder, fileExtension)
+  })
+
+  ipcMain.on('file-manager-context-menu-import-from', (_, value) => {
+    console.log('file-manager-context-menu-import-from', value)
+  })
+
+  ipcMain.on('file-manager-context-menu-copy-as', (_, value) => {
+    console.log('file-manager-context-menu-copy-as', value)
+  })
+
+  ipcMain.on('file-manager-context-menu-cut', (_, value) => {
+    console.log('file-manager-context-menu-cut', value)
+  })
+
+  ipcMain.on('file-manager-context-menu-paste', (_, value) => {
+    console.log('file-manager-context-menu-paste', value)
+  })
+
+  ipcMain.on('file-manager-context-menu-delete', (_, value) => {
+    // console.log('file-manager-context-menu-delete', value)
+    dialogs.ShowConfirmDeleteDialog(value)
+  })
+
+  ipcMain.on('file-manager-context-menu-find-in', (_, value) => {
+    console.log('file-manager-context-menu-find-in', value)
+  })
+
+  ipcMain.on('file-manager-context-menu-rename', (_, path, name) => {
+    // console.log('file-manager-context-menu-rename', path, name)
+    dialogs.ShowFileFolderRenameDialog(path, name)
   })
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ipcMain.on('file-manager-context-menu-reload-from-disk', (_) => {
     // console.log('file-manager-context-menu-reload-from-disk')
-    reloadDirectoryFromDisk()
+    utils.fileUtils.ReloadDirFromDisk()
   })
+
+  ipcMain.on('monaco-editor-insert-image', () => {
+    console.log('monaco-editor-insert-image')
+  })
+
   const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
   Menu.setApplicationMenu(menu)
 }

@@ -4,6 +4,7 @@ import {
   textBlocks,
   fileTemplates
 } from '../templates/templates'
+import * as dialogs from '../dialogs/dialogs'
 
 // eslint-disable-next-line no-unused-vars
 export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
@@ -53,7 +54,7 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: 'Admonition',
       click: () => {
-        global.hemy.dialog.admonition()
+        dialogs.ShowAdmonitionDialog(mainWindow)
       }
     }
   ]
@@ -72,19 +73,19 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     {
       label: '特殊字体',
       click: () => {
-        global.hemy.dialog.selectFont()
+        dialogs.ShowFontSelectDialog(mainWindow)
       }
     },
     {
       label: '数学公式',
       click: () => {
-        global.hemy.dialog.mathKatex()
+        dialogs.ShowMathTextDialog(mainWindow)
       }
     },
     {
       label: 'markdown表格',
       click: () => {
-        global.hemy.dialog.markdownSheet()
+        dialogs.ShowMarkdownSheetDialog(mainWindow)
       }
     },
     {

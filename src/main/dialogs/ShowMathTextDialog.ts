@@ -3,7 +3,7 @@ import { katexRenderToString } from '../utils/KatexRender'
 
 let customMathTextDialog: Electron.BrowserWindow | null
 
-export function showMathTextDialog(mainWindow: Electron.BrowserWindow) {
+export function ShowMathTextDialog(mainWindow: Electron.BrowserWindow) {
   createMathTextDialog(mainWindow)
 }
 

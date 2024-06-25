@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 
-export function openOnlineWebPage(url: string) {
+export function OpenOnlineWebPage(url: string) {
   const localOpenWebPageDialog = new BrowserWindow({
     width: 1280,
     height: 960,

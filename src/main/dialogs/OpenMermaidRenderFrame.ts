@@ -6,8 +6,8 @@ import { JSDOM } from 'jsdom'
 let mermaidRenderWindow: Electron.CrossProcessExports.BrowserWindow
 let mermaidRenderResult: string | PromiseLike<string> // 假设这是一个全局变量
 
-export async function mermaidHandleGetRenderResult(text: string): Promise<string> {
-  createMermaidRenderFrame(text)
+export async function HandleMermaidGetRenderResult(text: string): Promise<string> {
+  CreateMermaidRenderFrame(text)
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       //console.log('mermaidHandleGetRenderResult setTimeout 11111')
@@ -21,7 +21,7 @@ export async function mermaidHandleGetRenderResult(text: string): Promise<string
   })
 }
 
-export function createMermaidRenderFrame(graphDesc: string) {
+export function CreateMermaidRenderFrame(graphDesc: string) {
   mermaidRenderWindow = new BrowserWindow({
     width: 800,
     height: 600,

@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 
 let customAdmonitionDialog: Electron.BrowserWindow | null
 
-export function createAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
+export function ShowAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
   customAdmonitionDialog = new BrowserWindow({
     width: 550,
     height: 600,

@@ -33,6 +33,15 @@ function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyU, function () {
     EventHandleMaps['underline'](editor)
   })
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, function () {
+    EventHandleMaps['keyboard'](editor)
+  })
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyL, function () {
+    EventHandleMaps['link'](editor)
+  })
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, function () {
+    EventHandleMaps['paste'](editor)
+  })
 }
 
 export function monacoEditorEvent(editor: monaco.editor.IStandaloneCodeEditor) {

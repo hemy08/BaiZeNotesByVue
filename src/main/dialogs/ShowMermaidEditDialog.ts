@@ -3,7 +3,7 @@ import { join } from 'path'
 
 let customMermaidEditDialog: Electron.BrowserWindow | null
 
-export function showMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
+export function ShowMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
   createMermaidEditDialog(mainWindow)
 }
 
