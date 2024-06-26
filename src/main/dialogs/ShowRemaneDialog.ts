@@ -12,6 +12,7 @@ export function ShowFileFolderRenameDialog(fullName: string) {
     height: 150,
     minimizable: false,
     maximizable: false,
+    resizable: false,
     title: '重命名',
     autoHideMenuBar: true,
     webPreferences: {
@@ -32,7 +33,7 @@ export function ShowFileFolderRenameDialog(fullName: string) {
 
   customRenameDialog.on('closed', () => {
     customRenameDialog = null
-    ipcMain.removeListener('user-input-rename-file-folder-name', processRenameFileFolder)
+    ipcMain.removeListener('dialog-rename-file-folder-enter', processRenameFileFolder)
   })
 
   function processRenameFileFolder(_, newName: string) {
@@ -42,7 +43,7 @@ export function ShowFileFolderRenameDialog(fullName: string) {
     }
   }
 
-  ipcMain.on('user-input-rename-file-folder-name', processRenameFileFolder)
+  ipcMain.on('dialog-rename-file-folder-enter', processRenameFileFolder)
 }
 
 function makeRenameDialogHtml(path: string): string {
@@ -59,7 +60,7 @@ function makeRenameDialogHtml(path: string): string {
   const ele_body_input = document.createElement('input')
   ele_body_input.type = 'text'
   ele_body_input.id = 'file-folder-name'
-  ele_body_input.style = `width:500px;margin:10px`
+  ele_body_input.style.cssText = `width:500px;margin:10px`
   ele_body_input.placeholder = '请输入文件/文件夹名'
 
   const ele_body_script = document.createElement('script')
@@ -69,7 +70,7 @@ function makeRenameDialogHtml(path: string): string {
     "  inputElement.addEventListener('keyup', function(event) {\n" +
     "    if (event.key === 'Enter') {\n" +
     '      const name = inputElement.value\n' +
-    "      ipcRenderer.send('user-input-rename-file-folder-name', name)\n" +
+    "      ipcRenderer.send('dialog-rename-file-folder-enter', name)\n" +
     '    }\n' +
     '  });\n'
 

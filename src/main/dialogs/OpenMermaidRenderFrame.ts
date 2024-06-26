@@ -27,6 +27,7 @@ export function CreateMermaidRenderFrame(graphDesc: string) {
     height: 600,
     title: '文字样式选择',
     show: false,
+    resizable: false,
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
@@ -46,14 +47,14 @@ export function CreateMermaidRenderFrame(graphDesc: string) {
 
   function processMermaidRenderResult(_, result: string) {
     mermaidRenderResult = result
-    ipcMain.removeListener('mermaid-render-svg-result', processMermaidRenderResult)
+    ipcMain.removeListener('dialog-mermaid-render-svg-result', processMermaidRenderResult)
   }
 
-  ipcMain.on('mermaid-render-svg-result', processMermaidRenderResult)
+  ipcMain.on('dialog-mermaid-render-svg-result', processMermaidRenderResult)
 
   // 当窗口关闭时，清除引用
   mermaidRenderWindow.on('closed', () => {
-    ipcMain.removeListener('mermaid-render-svg-result', processMermaidRenderResult)
+    ipcMain.removeListener('dialog-mermaid-render-svg-result', processMermaidRenderResult)
   })
 }
 
@@ -88,7 +89,7 @@ function createMermaidRenderHtmlContent(mermaidGraphDesc: string): Document {
     "    mermaid.render('mermaidGraph', graphDefinition, svgObject => document.appendChild(svgObject));\n" +
     '    setTimeout(function() {\n' +
     "      var chartHtml = document.getElementById('mermaidGraph').outerHTML;\n" +
-    "      ipcRenderer.send('mermaid-render-svg-result', chartHtml)\n" +
+    "      ipcRenderer.send('dialog-mermaid-render-svg-result', chartHtml)\n" +
     '    }, 1000);\n'
 
   document.head.appendChild(ele_head_link)

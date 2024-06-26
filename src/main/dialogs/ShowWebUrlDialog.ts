@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow, ipcMain, IpcMainEvent } from 'electron'
 import { JSDOM } from 'jsdom'
 
 let customWebUrlDialog: Electron.BrowserWindow | null
@@ -11,7 +11,8 @@ export function ShowWebUrlDialog(mainWindow: Electron.BrowserWindow) {
     height: 180,
     minimizable: false,
     maximizable: false,
-    title: '重命名',
+    resizable: false,
+    title: '插入网页链接',
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
@@ -31,8 +32,8 @@ export function ShowWebUrlDialog(mainWindow: Electron.BrowserWindow) {
 
   customWebUrlDialog.on('closed', () => {
     customWebUrlDialog = null
-    ipcMain.removeListener('web-url-dialog-insert', processWebUrlDialogInsert)
-    ipcMain.removeListener('web-url-dialog-cancel', () => {})
+    ipcMain.removeListener('dialog-web-url-btn-insert', processWebUrlDialogInsert)
+    ipcMain.removeListener('dialog-web-url-btn-cancel', () => {})
   })
 
   function exitCustomWebUrlDialog() {
@@ -42,8 +43,8 @@ export function ShowWebUrlDialog(mainWindow: Electron.BrowserWindow) {
     }
   }
 
-  function processWebUrlDialogInsert(_, webLinks: string) {
-    console.log('processWebUrlDialogInsert', webLinks)
+  function processWebUrlDialogInsert(_: IpcMainEvent, webLinks: { title: string; addr: string }) {
+    // console.log('processWebUrlDialogInsert', webLinks)
     const webUrl = '[' + webLinks.title + '](' + webLinks.addr + ')'
     mainWindow.webContents.send('monaco-insert-text-block-templates', webUrl)
     if (customWebUrlDialog) {
@@ -51,8 +52,8 @@ export function ShowWebUrlDialog(mainWindow: Electron.BrowserWindow) {
     }
   }
 
-  ipcMain.on('web-url-dialog-insert', processWebUrlDialogInsert)
-  ipcMain.on('web-url-dialog-cancel', () => {
+  ipcMain.on('dialog-web-url-btn-insert', processWebUrlDialogInsert)
+  ipcMain.on('dialog-web-url-btn-cancel', () => {
     exitCustomWebUrlDialog()
   })
 }
@@ -130,18 +131,18 @@ function makeWebUrlDialogHtml(): string {
     }
     // 监听文本输入和样式输入的变化
     document.getElementById('web-title-input').addEventListener('input', function() {
-      console.log('image-title-input', this.value)
+      // console.log('image-title-input', this.value)
       webUrl.title = this.value
     })
     document.getElementById('web-addr-input').addEventListener('input', function() {
-      console.log('image-url-addr-input', this.value)
+      // console.log('image-url-addr-input', this.value)
       webUrl.addr = this.value
     })
     document.getElementById('insert-web-url').onclick = function() {
-      ipcRenderer.send('web-url-dialog-insert', webUrl)
+      ipcRenderer.send('dialog-web-url-btn-insert', webUrl)
     }
     document.getElementById('cancel-input').onclick = function() {
-      ipcRenderer.send('web-url-dialog-cancel')
+      ipcRenderer.send('dialog-web-url-btn-cancel')
     }`
 
   document.head.appendChild(webDivStyle)

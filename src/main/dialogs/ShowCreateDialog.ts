@@ -16,6 +16,7 @@ export function ShowCreateFileFolderDialog(
     height: 120,
     minimizable: false,
     maximizable: false,
+    resizable: false,
     title: '新建文件/文件夹',
     autoHideMenuBar: true,
     webPreferences: {
@@ -36,7 +37,7 @@ export function ShowCreateFileFolderDialog(
 
   customCreateDialog.on('closed', () => {
     customCreateDialog = null
-    ipcMain.removeListener('user-input-create-file-folder-name', processCreateFileFolder)
+    ipcMain.removeListener('dialog-create-file-folder-enter', processCreateFileFolder)
   })
 
   function processCreateFileFolder(_, name: string) {
@@ -49,7 +50,7 @@ export function ShowCreateFileFolderDialog(
     }
   }
 
-  ipcMain.on('user-input-create-file-folder-name', processCreateFileFolder)
+  ipcMain.on('dialog-create-file-folder-enter', processCreateFileFolder)
 }
 
 function makeCreateFileFolderDialogHtml(): string {
@@ -61,7 +62,7 @@ function makeCreateFileFolderDialogHtml(): string {
   const ele_body_input = document.createElement('input')
   ele_body_input.type = 'text'
   ele_body_input.id = 'file-folder-name'
-  ele_body_input.style = 'width:320px;margin:20px'
+  ele_body_input.style.cssText = 'width:320px;margin:20px'
   ele_body_input.placeholder = '请输入文件/文件夹名，文件默认后缀.md'
 
   const ele_body_script = document.createElement('script')
@@ -71,7 +72,7 @@ function makeCreateFileFolderDialogHtml(): string {
     "  inputElement.addEventListener('keyup', function(event) {\n" +
     "    if (event.key === 'Enter') {\n" +
     '      const name = inputElement.value\n' +
-    "      ipcRenderer.send('user-input-create-file-folder-name', name)\n" +
+    "      ipcRenderer.send('dialog-create-file-folder-enter', name)\n" +
     '    }\n' +
     '  });\n'
 

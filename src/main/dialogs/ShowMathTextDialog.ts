@@ -17,7 +17,8 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
     height: 550,
     minimizable: false,
     maximizable: false,
-    title: '文字样式选择',
+    resizable: false,
+    title: '插入数学公式',
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
@@ -39,9 +40,9 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
 
   // 当窗口关闭时，清除引用
   customMathTextDialog.on('closed', () => {
-    ipcMain.removeListener('user-insert-math-line-text', processMathLineTextInsert)
-    ipcMain.removeListener('user-insert-math-block-text', processMathBlockTextInsert)
-    ipcMain.removeListener('user-insert-math-text-cancel', () => {})
+    ipcMain.removeListener('dialog-math-line-text-btn-insert', processMathLineTextInsert)
+    ipcMain.removeListener('dialog-math-block-text-btn-insert', processMathBlockTextInsert)
+    ipcMain.removeListener('dialog-math-text-btn-cancel', () => {})
     customMathTextDialog = null
   })
 
@@ -50,9 +51,9 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
 
   function exitCustomFontDialog() {
     if (customMathTextDialog) {
-      ipcMain.removeListener('user-insert-math-line-text', processMathLineTextInsert)
-      ipcMain.removeListener('user-insert-math-block-text', processMathBlockTextInsert)
-      ipcMain.removeListener('user-insert-math-text-cancel', () => {})
+      ipcMain.removeListener('dialog-math-line-text-btn-insert', processMathLineTextInsert)
+      ipcMain.removeListener('dialog-math-block-text-btn-insert', processMathBlockTextInsert)
+      ipcMain.removeListener('dialog-math-text-btn-cancel', () => {})
       customMathTextDialog.close()
       customMathTextDialog = null
     }
@@ -68,9 +69,9 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
     exitCustomFontDialog()
   }
 
-  ipcMain.on('user-insert-math-line-text', processMathLineTextInsert)
-  ipcMain.on('user-insert-math-block-text', processMathBlockTextInsert)
-  ipcMain.on('user-insert-math-text-cancel', () => {
+  ipcMain.on('dialog-math-line-text-btn-insert', processMathLineTextInsert)
+  ipcMain.on('dialog-math-block-text-btn-insert', processMathBlockTextInsert)
+  ipcMain.on('dialog-math-text-btn-cancel', () => {
     exitCustomFontDialog()
   })
 
@@ -134,9 +135,9 @@ const mdMathTextDialogHtmlContext =
   '    // 监控textInput的input事件\n' +
   "    document.getElementById('textInput').addEventListener('input', updateTextInput);\n" +
   '    // 这里是JavaScript函数，例如：\n' +
-  "    function sendInsertMathLineText() {ipcRenderer.send('user-insert-math-line-text', '$' + latexData + '$')}\n" +
-  "    function sendInsertMathBlockText() {ipcRenderer.send('user-insert-math-block-text', '$$' + latexData + '$$')}\n" +
-  "    function sendCancelInsertMathText() {ipcRenderer.send('user-insert-math-text-cancel')}\n" +
+  "    function sendInsertMathLineText() {ipcRenderer.send('dialog-math-line-text-btn-insert', '$' + latexData + '$')}\n" +
+  "    function sendInsertMathBlockText() {ipcRenderer.send('dialog-math-block-text-btn-insert', '$$' + latexData + '$$')}\n" +
+  "    function sendCancelInsertMathText() {ipcRenderer.send('dialog-math-text-btn-cancel')}\n" +
   '  </script>\n' +
   '</body>\n' +
   '</html>\n'

@@ -15,7 +15,8 @@ function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
     height: 550,
     minimizable: false,
     maximizable: false,
-    title: '文字样式选择',
+    resizable: false,
+    title: 'Mermaid绘图',
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
@@ -37,7 +38,7 @@ function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
 
   // 当窗口关闭时，清除引用
   customMermaidEditDialog.on('closed', () => {
-    ipcMain.removeListener('user-input-mermaid-graph-context', processMermaidRenderText)
+    ipcMain.removeListener('dialog-mermaid-graph-insert', processMermaidRenderText)
     customMermaidEditDialog = null
   })
 
@@ -47,10 +48,10 @@ function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
   function processMermaidRenderText(_, mermaidGraphData) {
     console.log(mermaidGraphData)
   }
-  ipcMain.on('user-input-mermaid-graph-context', processMermaidRenderText)
+  ipcMain.on('dialog-mermaid-graph-insert', processMermaidRenderText)
   /*function exitCustomFontDialog() {
     if (customMermaidEditDialog) {
-      ipcMain.removeListener('user-input-mermaid-graph-context', processMermaidRenderText)
+      ipcMain.removeListener('dialog-mermaid-graph-insert', processMermaidRenderText)
       customMermaidEditDialog.close()
       customMermaidEditDialog = null
     }
@@ -81,7 +82,7 @@ function createMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
     event.returnValue = mermaidGraphData
     mainWindow.webContents.send('monaco-insert-text-block-templates', mermaidGraphData)
   }
-  ipcMain.on('user-input-mermaid-graph-context', processMermaidRenderText)*/
+  ipcMain.on('dialog-mermaid-graph-insert', processMermaidRenderText)*/
 }
 /*
 const mermaidEditDialogHtmlContext =

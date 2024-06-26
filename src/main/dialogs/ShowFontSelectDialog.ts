@@ -12,6 +12,7 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
     height: 530,
     minimizable: false,
     maximizable: false,
+    resizable: false,
     title: '文字样式选择',
     autoHideMenuBar: true,
     webPreferences: {
@@ -35,8 +36,8 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
   // 当窗口关闭时，清除引用
   fontSelectDialog.on('closed', () => {
     fontSelectDialog = null
-    ipcMain.removeListener('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
-    ipcMain.removeListener('user-input-custom-font-dialog-cancel', () => {})
+    ipcMain.removeListener('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
+    ipcMain.removeListener('dialog-user-font-select-btn-cancel', () => {})
   })
 
   // 显示窗口
@@ -44,8 +45,8 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
 
   function exitFontSelectDialog() {
     if (fontSelectDialog) {
-      ipcMain.removeListener('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
-      ipcMain.removeListener('user-input-custom-font-dialog-cancel', () => {})
+      ipcMain.removeListener('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
+      ipcMain.removeListener('dialog-user-font-select-btn-cancel', () => {})
       fontSelectDialog.close()
       fontSelectDialog = null
     }
@@ -84,9 +85,9 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
     mainWindow.webContents.send('monaco-insert-text-block-templates', htmlContext)
     exitFontSelectDialog()
   }
-  ipcMain.on('user-input-custom-font-dialog-apply', processCustomFontDialogApply)
+  ipcMain.on('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
 
-  ipcMain.on('user-input-custom-font-dialog-cancel', () => {
+  ipcMain.on('dialog-user-font-select-btn-cancel', () => {
     exitFontSelectDialog()
   })
 }
@@ -319,10 +320,10 @@ const CustomFontDialogHtml =
   "    document.getElementById('textInput').addEventListener('input', updateTextInput);\n" +
   '\n' +
   '    function sendUserInputFontStyle() {\n' +
-  "      ipcRenderer.send('user-input-custom-font-dialog-apply', fontStyle);\n" +
+  "      ipcRenderer.send('dialog-user-font-select-btn-insert', fontStyle);\n" +
   '    }\n' +
   '    function sendDialogCancelFontStyle() {\n' +
-  "      ipcRenderer.send('user-input-custom-font-dialog-cancel');\n" +
+  "      ipcRenderer.send('dialog-user-font-select-btn-cancel');\n" +
   '    }\n' +
   '    function setColor(color) {\n' +
   '      fontStyle.fontColor = color\n' +

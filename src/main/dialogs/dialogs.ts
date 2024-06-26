@@ -8,6 +8,7 @@ import { ShowAdmonitionDialog } from './ShowAdmonitionsDialog'
 import { ShowCreateFileFolderDialog } from './ShowCreateDialog'
 import { ShowFileFolderRenameDialog } from './ShowRemaneDialog'
 import { ShowWebUrlDialog } from './ShowWebUrlDialog'
+import { ShowInsertImageDialog } from './ShowInsertImageDialog'
 import { dialog } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 
@@ -46,7 +47,8 @@ export {
   ShowCreateFileFolderDialog,
   ShowFileFolderRenameDialog,
   ShowConfirmDeleteDialog,
-  ShowWebUrlDialog
+  ShowWebUrlDialog,
+  ShowInsertImageDialog
 }
 
 export const webDialogs = {

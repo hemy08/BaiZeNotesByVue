@@ -4,13 +4,12 @@
   <meta charset="UTF-8">
   <title>插入图片</title>
   <style>
-    #image-components {margin: 5px;}
+    #image-components {margin: 5px;width: 560px}
     #image-components > div {margin: 15px;}
-    #image-components input {margin-left: 10px;width: 300px;}
-    .color-button {width: 100px;margin-top: 10px;}
-    .btn-style {width:450px;display:flex; justify-content:center;align-items: center;gap: 100px}
-    #image-url-file {display: inline-block;position: relative;width: 100px;height: 25px;margin-left: 10px;cursor: pointer;}
-    #image-url-file {display: block;background-color: #f0f0f0;border: 1px solid #ccc;border-radius: 5px;
+    #image-components input {margin-left: 10px;width: 350px;}
+    .image-button-style {width: 100px;margin-top: 10px;}
+    .image-button-container-style {width:500px;display:flex; justify-content:center;align-items: center;gap: 100px}
+    #image-url-file-label {background-color: #f0f0f0;border: 1px solid #ccc;border-radius: 5px;margin: 2px;
         line-height: 25px;text-align: center;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;cursor: pointer;}
     #image-url-file-input input[type="file"] {position: absolute;opacity: 0;cursor: pointer;}
   </style>
@@ -19,12 +18,12 @@
   <div id="image-components">
     <div id="image-title">
       <label id="image-title-label" for="image-title-input">图片描述</label>
-      <input is="image-title-input" type="text" placeholder="请输入图片描述">
+      <input id="image-title-input" type="text" placeholder="请输入图片描述">
     </div>
     <div id="image-url">
       <label id="image-url-label" for="image-url-input">图片地址</label>
       <input id="image-url-input" type="text" placeholder="支持相对路径/绝对路径">
-      <label id="image-url-file-label" for="image-url-file-input">选择文件</label>
+      <label id="image-url-file-label" for="image-url-file-input">&nbsp;选择文件&nbsp;</label>
       <input id="image-url-file-input" type="file" accept="image/*" style="display: none;">
     </div>
     <div id="image-href">
@@ -32,19 +31,65 @@
       <input id="image-href-input" type="text" placeholder="请输入网络图片地址">
     </div>
   </div>
-  <div class="btn-style">
-    <button id="insert-image" onclick="sendUserInputSheetStyle()" class="color-button">插入</button>
-    <button id="cancel-input" onclick="sendDialogCancelSheetStyle()" class="color-button">取消</button>
+  <div class="image-button-container-style">
+    <button id="insert-image" class="image-button-style">插入</button>
+    <button id="cancel-image" class="image-button-style">取消</button>
   </div>
   <script>
+    // const { ipcRenderer } = require('electron');
+    let imgFile = {
+      title: '',
+      href: '',
+      file: '',
+    }
     document.getElementById('image-url-file-input').addEventListener('change', function(e) {
-      const file = e.target.files[0]
-      if (file) {
-        if (file.type.startsWith('image/')) {
+      const image = e.target.files[0]
+      imgFile.file = image.path
+      console.log('imgFile', imgFile)
+      console.log('image', image)
+      console.log('e', e)
+      console.log('this', this)
+      if (image) {
+        if (image.type.startsWith('image/')) {
             document.getElementById('image-url-input').value = this.value
         }
       }
     })
+    document.getElementById('image-title-input').addEventListener('input', function (e){
+      imgFile.title = this.value
+      console.log('imgFile', imgFile)
+    })
+    document.getElementById('image-href-input').addEventListener('input', function (e){
+      imgFile.href = this.value
+      console.log('imgFile', imgFile)
+    })
+    document.getElementById('image-url-input').addEventListener('input', function (e){
+      const imageUrl = this.value
+      const lastIndex = Math.max(imageUrl.lastIndexOf('\\'), imageUrl.lastIndexOf('/'))
+      imgFile.path = imageUrl
+      imgFile.name = imageUrl.substring(lastIndex)
+      imgFile.type = imageUrl.substring(imageUrl.lastIndexOf('.'))
+      console.log('imgFile', imgFile)
+    })
+    document.getElementById('insert-image').onclick = function(e) {
+      console.log('imgFile', imgFile)
+      if (imgFile.path.length !== 0 && imgFile.href.length !== 0) {
+        alert('本地路径和网络路径只能选择一个！')
+        return
+      }
+      if (imgFile.path.length === 0 && imgFile.href.length === 0) {
+        alert('本地路径和网络路径必须选择一个！')
+        return
+      }
+      if (imgFile.href.length !== 0 && !imgFile.href.startsWith('http')) {
+        alert('网络路径地址不合法，请输入http或https路径！')
+        return
+      }
+      ipcRenderer.send('dialog-insert-image-btn-insert', imgFile)
+    }
+    document.getElementById('cancel-image').onclick = function(e) {
+      ipcRenderer.send('dialog-insert-image-btn-cancel')
+    }
   </script>
 </body>
 </html>

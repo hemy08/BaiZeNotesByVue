@@ -14,6 +14,7 @@ function createMarkdownSheetDialog(mainWindow: Electron.BrowserWindow) {
     height: 180,
     minimizable: false,
     maximizable: false,
+    resizable: false,
     title: '表格样式选择',
     autoHideMenuBar: true,
     webPreferences: {
@@ -36,8 +37,8 @@ function createMarkdownSheetDialog(mainWindow: Electron.BrowserWindow) {
   // 当窗口关闭时，清除引用
   customMarkdownSheetDialog.on('closed', () => {
     customMarkdownSheetDialog = null
-    ipcMain.removeListener('user-input-sheet-row-col-insert', processMarkdownSheetInsert)
-    ipcMain.removeListener('user-input-sheet-row-col-cancel', () => {})
+    ipcMain.removeListener('dialog-markdown-sheet-btn-insert', processMarkdownSheetInsert)
+    ipcMain.removeListener('dialog-markdown-sheet-btn-cancel', () => {})
   })
 
   // 显示窗口
@@ -45,8 +46,8 @@ function createMarkdownSheetDialog(mainWindow: Electron.BrowserWindow) {
 
   function exitCustomFontDialog() {
     if (customMarkdownSheetDialog) {
-      ipcMain.removeListener('user-input-sheet-row-col-insert', processMarkdownSheetInsert)
-      ipcMain.removeListener('user-input-sheet-row-col-cancel', () => {})
+      ipcMain.removeListener('dialog-markdown-sheet-btn-insert', processMarkdownSheetInsert)
+      ipcMain.removeListener('dialog-markdown-sheet-btn-cancel', () => {})
       customMarkdownSheetDialog.close()
       customMarkdownSheetDialog = null
     }
@@ -81,9 +82,9 @@ function createMarkdownSheetDialog(mainWindow: Electron.BrowserWindow) {
     exitCustomFontDialog()
   }
 
-  ipcMain.on('user-input-sheet-row-col-insert', processMarkdownSheetInsert)
+  ipcMain.on('dialog-markdown-sheet-btn-insert', processMarkdownSheetInsert)
 
-  ipcMain.on('user-input-sheet-row-col-cancel', () => {
+  ipcMain.on('dialog-markdown-sheet-btn-cancel', () => {
     exitCustomFontDialog()
   })
 }
@@ -134,7 +135,7 @@ function insertElementCol(doc: Document, div: Element) {
   ele_input_col.id = 'sheet-col'
   ele_input_col.type = 'text'
   ele_input_col.style.width = '100px'
-  ele_input_row.placeholder = '请输入数字'
+  ele_input_col.placeholder = '请输入数字'
   // <div class="input-style"><input type="text" id="sheet-col" style="width: 100px"></div>
   ele_div_input_col.appendChild(ele_input_col)
   div.appendChild(ele_div_label_col)
@@ -288,10 +289,10 @@ function makeMdSheetDialogHtml(): string {
     document.getElementById('sheet-row').addEventListener('input', updateSheetRow);
     document.getElementById('sheet-col').addEventListener('input', updateSheetCol);
     document.getElementById('insertButton').onclick = function() {
-      ipcRenderer.send('user-input-sheet-row-col-insert', sheetStyle)
+      ipcRenderer.send('dialog-markdown-sheet-btn-insert', sheetStyle)
     }
     document.getElementById('cancelButton').onclick = function() {
-      ipcRenderer.send('user-input-sheet-row-col-cancel')
+      ipcRenderer.send('dialog-markdown-sheet-btn-cancel')
     }`
 
   // 将<style>元素添加到<head>中

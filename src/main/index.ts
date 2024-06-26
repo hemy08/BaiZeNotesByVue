@@ -5,6 +5,7 @@ import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
+import {ShowInsertImageDialog} from "./dialogs/dialogs";
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -74,7 +75,7 @@ function createWindow(): void {
   })
 
   ipcMain.on('monaco-editor-insert-image', () => {
-    dialogs.ShowWebUrlDialog(mainWindow)
+    dialogs.ShowInsertImageDialog(mainWindow)
   })
 
   ipcMain.on('file-manager-context-menu-create-file', (_, dirPath, isFolder, fileExtension) => {

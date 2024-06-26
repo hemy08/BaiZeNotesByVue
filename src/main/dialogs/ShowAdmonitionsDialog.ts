@@ -8,6 +8,7 @@ export function ShowAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
     height: 600,
     minimizable: false,
     maximizable: false,
+    resizable: false,
     title: 'Admonition',
     autoHideMenuBar: true,
     webPreferences: {
@@ -30,8 +31,8 @@ export function ShowAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
 
   // 当窗口关闭时，清除引用
   customAdmonitionDialog.on('closed', () => {
-    ipcMain.removeListener('user-input-insert-admonitions', processAdmonitionInsert)
-    ipcMain.removeListener('user-input-cancel-admonitions', () => {})
+    ipcMain.removeListener('dialog-material-admonitions-btn-insert', processAdmonitionInsert)
+    ipcMain.removeListener('dialog-material-admonitions-btn-cancel', () => {})
   })
 
   // 显示窗口
@@ -39,8 +40,8 @@ export function ShowAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
 
   function exitCustomFontDialog() {
     if (customAdmonitionDialog) {
-      ipcMain.removeListener('user-input-insert-admonitions', processAdmonitionInsert)
-      ipcMain.removeListener('user-input-cancel-admonitions', () => {})
+      ipcMain.removeListener('dialog-material-admonitions-btn-insert', processAdmonitionInsert)
+      ipcMain.removeListener('dialog-material-admonitions-btn-cancel', () => {})
       customAdmonitionDialog.close()
       customAdmonitionDialog = null
     }
@@ -55,8 +56,8 @@ export function ShowAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
     exitCustomFontDialog()
   }
 
-  ipcMain.on('user-input-insert-admonitions', processAdmonitionInsert)
-  ipcMain.on('user-input-cancel-admonitions', processAdmonitionCancel)
+  ipcMain.on('dialog-material-admonitions-btn-insert', processAdmonitionInsert)
+  ipcMain.on('dialog-material-admonitions-btn-cancel', processAdmonitionCancel)
 }
 
 const admonitionHtmlContent =
@@ -518,10 +519,10 @@ const admonitionHtmlContent =
   '  document.getElementById("admonitionsContent").addEventListener("input", updateContent);\n' +
   '  function sendInsertAdmonitions() {\n' +
   '    const text = "!!! " + typeStr + " \\"" + titleStr + "\\"\\n\\t" + contentStr + "\\n"\n' +
-  '    ipcRenderer.send("user-input-insert-admonitions", text);\n' +
+  '    ipcRenderer.send("dialog-material-admonitions-btn-insert", text);\n' +
   '  }\n' +
   '  function sendCancelAdmonitions() {\n' +
-  '    ipcRenderer.send("user-input-cancel-admonitions");\n' +
+  '    ipcRenderer.send("dialog-material-admonitions-btn-cancel");\n' +
   '  }\n' +
   '</script>\n' +
   '</html>\n'
