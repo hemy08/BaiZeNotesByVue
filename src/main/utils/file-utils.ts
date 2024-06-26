@@ -214,7 +214,11 @@ export function RenameFileFolder(name: string, newName: string) {
     newFullPath = path.replace('/', '\\') + '\\' + newName + extension
   }
 
-  fs.renameSync(name, newFullPath)
+  fs.renameSync(name, newFullPath, (err) => {
+    if (err) {
+      dialog.showErrorBox('重命名失败', err)
+    }
+  })
 
   // 重新加载文件资源管理器
   ReloadDirFromDisk()
@@ -235,16 +239,12 @@ export function RenameFileFolder(name: string, newName: string) {
 export function DeleteFileFolder(name: string) {
   // 文件、目录，如果是目录，
   if (name.lastIndexOf('.') === -1) {
-    fs.rm(name, { recursive: true }, (err) => {
-      if (err) {
-        console.log('DeleteFileFolder', err)
-      }
-    })
+    fs.rm(name, { recursive: true })
   } else {
     fs.unlinkSync(name)
   }
 
-  // 重新加载文件资源管理器
+  // 重新加载文件资源管理器  
   ReloadDirFromDisk()
 }
 

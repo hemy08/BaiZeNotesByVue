@@ -7,6 +7,7 @@ import { HandleMermaidGetRenderResult, CreateMermaidRenderFrame } from './OpenMe
 import { ShowAdmonitionDialog } from './ShowAdmonitionsDialog'
 import { ShowCreateFileFolderDialog } from './ShowCreateDialog'
 import { ShowFileFolderRenameDialog } from './ShowRemaneDialog'
+import { ShowWebUrlDialog } from './ShowWebUrlDialog'
 import { dialog } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 
@@ -44,7 +45,8 @@ export {
   ShowAdmonitionDialog,
   ShowCreateFileFolderDialog,
   ShowFileFolderRenameDialog,
-  ShowConfirmDeleteDialog
+  ShowConfirmDeleteDialog,
+  ShowWebUrlDialog
 }
 
 export const webDialogs = {

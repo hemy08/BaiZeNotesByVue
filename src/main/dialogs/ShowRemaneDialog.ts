@@ -56,12 +56,11 @@ function makeRenameDialogHtml(path: string): string {
   ele_body_old_path.style.margin = '10px'
   ele_body_old_path.textContent = path
 
-
   const ele_body_input = document.createElement('input')
   ele_body_input.type = 'text'
   ele_body_input.id = 'file-folder-name'
-  ele_body_input.style.width = '500px'
-  ele_body_input.style.margin = '10px'
+  ele_body_input.style = `width:500px;margin:10px`
+  ele_body_input.placeholder = '请输入文件/文件夹名'
 
   const ele_body_script = document.createElement('script')
   ele_body_script.textContent =

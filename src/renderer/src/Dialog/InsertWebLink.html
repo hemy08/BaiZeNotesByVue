@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>插入网页链接</title>
+  <style>
+    #web-url-components {margin: 5px;}
+    #web-url-components > div {margin: 15px;}
+    #web-url-components input {width: 300px;}
+    .web-url-button {width: 100px;margin-top: 10px;}
+    .web-url-btn-style {width:450px;display:flex; justify-content:center;align-items: center;gap: 100px}
+  </style>
+</head>
+<body>
+  <div id="web-url-components">
+    <div id="web-url-title">
+      <label id="web-title-label" for="image-title-label">地址描述：</label>
+      <input id="web-title-input" type="text" placeholder="请输入地址描述">
+    </div>
+    <div id="web-url-addr">
+      <label id="web-addr-label" for="image-url-addr-input">网站地址：</label>
+      <input id="web-addr-input" type="text" placeholder="请输入http/https路径">
+    </div>
+  </div>
+  <div class="web-url-btn-style">
+    <button id="insert-image" class="web-url-button">插入</button>
+    <button id="cancel-input" class="web-url-button">取消</button>
+  </div>
+  <script>
+    // const { ipcRenderer } = require('electron');
+    let webUrl = {
+      title : '',
+      addr : ''
+    }
+    // 监听文本输入和样式输入的变化
+    document.getElementById('web-title-input').addEventListener('input', function() {
+      console.log('image-title-input', this.value)
+      webUrl.title = this.value
+    })
+    document.getElementById('web-addr-input').addEventListener('input', function() {
+      console.log('image-url-addr-input', this.value)
+      webUrl.addr = this.value
+    })
+    document.getElementById('insert-image').onclick = function() {
+      //ipcRenderer.send('web-url-dialog-insert', title, addr)
+    }
+    document.getElementById('cancel-input').onclick = function() {
+      //ipcRenderer.send('web-url-dialog-cancel')
+    }
+  </script>
+</body>
+</html>

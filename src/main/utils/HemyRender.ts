@@ -67,12 +67,12 @@ function preRenderFileUrlConvert(text: string): string {
   let match: RegExpExecArray | null = null
   const regex = /\[[^\]]*\]\(([^)]*)\)/g
   while ((match = regex.exec(renderResult)) !== null) {
-    // match[0] ![1111](images/20240602173139鏂囦欢绠＄悊鍣?png)
+    // match[0] [1111](images/20240602173139鏂囦欢绠＄悊鍣?png)
     // match[1] images/20240602173139鏂囦欢绠＄悊鍣?png
     if (!match[1].startsWith('http')) {
       const fileSrc = covertFileUrl(match[1])
       const altText = parseAltText(match[0])
-      const htmlContent = '<p><a href="' + fileSrc + '">' + altText + '</p>'
+      const htmlContent = '<p><a href="' + fileSrc + '">' + altText + '</a></p>'
       renderResult = renderResult.replace(match[0], htmlContent)
     }
   }

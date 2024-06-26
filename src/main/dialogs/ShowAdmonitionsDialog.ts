@@ -467,7 +467,7 @@ const admonitionHtmlContent =
   '  </div>\n' +
   '  <div style="display: flex;flex-direction: row;margin-top: 10px">\n' +
   '    <div><label style="width:10px;margin-left:20px;">标题：</label></div>\n' +
-  '    <input id="admonitionsTitle" style="width: 400px;">\n' +
+  '    <input id="admonitionsTitle" style="width: 400px;" placeholder="请输入标题">\n' +
   '  </div>\n' +
   '  <div style="display: flex;flex-direction: row;margin-top: 10px">\n' +
   '    <div><label style="width:10px;margin-left:20px;">内容：</label></div>\n' +

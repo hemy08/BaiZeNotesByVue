@@ -61,8 +61,8 @@ function makeCreateFileFolderDialogHtml(): string {
   const ele_body_input = document.createElement('input')
   ele_body_input.type = 'text'
   ele_body_input.id = 'file-folder-name'
-  ele_body_input.style.width = '320px'
-  ele_body_input.style.margin = '20px'
+  ele_body_input.style = 'width:320px;margin:20px'
+  ele_body_input.placeholder = '请输入文件/文件夹名，文件默认后缀.md'
 
   const ele_body_script = document.createElement('script')
   ele_body_script.textContent =

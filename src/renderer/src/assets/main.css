@@ -157,6 +157,8 @@ table {
   border: 1px solid black; /* 设置外部边框为1px宽，实线，黑色 */
 }
 
+table th {background-color:#2195f3;font-size:13pt}
+
 td, th {
   border: 1px solid black;
   padding: 5px;

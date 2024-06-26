@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自定义文件选择按钮</title>
+    <style>
+        .custom-file-input {display: inline-block;position: relative;width: 100px;height: 25px;margin-left: 10px;cursor: pointer;}
+        .custom-file-input label {display: block;background-color: #f0f0f0;border: 1px solid #ccc;border-radius: 5px;
+            line-height: 25px;text-align: center;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;cursor: pointer;}
+        .custom-file-input input[type="file"] {position: absolute;opacity: 0;cursor: pointer;}
+        .file-name {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="custom-file-input">
+        <label for="myImageInput">选择文件</label>
+        <input type="file" id="myImageInput" accept="image/*" style="display: none;">
+    </div>
+    <div class="file-name" id="fileName"></div>
+
+    <script>
+        document.getElementById('myImageInput').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                // 检查文件是否真的是一个图片文件
+                if (file.type.startsWith('image/')) {
+                    document.getElementById('fileName').textContent = '已选择文件: ' + file.name;
+                } else {
+                    alert('请选择一个图片文件！');
+                    this.value = ''; // 清空文件选择
+                    document.getElementById('fileName').textContent = '';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

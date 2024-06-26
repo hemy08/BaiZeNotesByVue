@@ -10,7 +10,12 @@ function replaceSelection(
   if (selectionRange === null) return
 
   const edit = {
-    range: selectionRange,
+    range: new monaco.Range(
+      selectionRange.startLineNumber,
+      selectionRange.startColumn,
+      selectionRange.endLineNumber,
+      selectionRange.endColumn
+    ),
     text: value,
     forceMoveMarkers: moveMarks
   }
@@ -140,6 +145,7 @@ function EditSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor) {
       newText = content.substring(1, content.length - 1)
     } else {
       updateSelection(editor, selection, model, '*', '*')
+      return
     }
   }
 
@@ -225,11 +231,10 @@ function EditUpdateFontStyle(
   let newText = ''
   if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix)) {
     newText = selectedText.substring(prefix.length, selectedText.length - suffix.length)
+    replaceSelection(editor, newText, false, selectRange)
   } else {
     updateSelection(editor, selection, model, prefix, suffix)
   }
-
-  replaceSelection(editor, newText, false, selectRange)
 }
 
 function EditAppendPrefixSuffix(

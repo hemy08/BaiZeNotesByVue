@@ -107,7 +107,7 @@ const mdMathTextDialogHtmlContext =
   '    <div style="width:1200px;height:2px;margin-top:10px;margin-left:20px;color:black;background-color:black"></div>\n' +
   '    <div style="margin-top:10px">\n' +
   '      <div><label style="width:10px;margin-top:10px;margin-left:20px;">公式编辑：傅里叶级数公式：x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)</label></div>\n' +
-  '      <div><textarea id="textInput" class="text-input"></textarea></div>\n' +
+  '      <div><textarea id="textInput" class="text-input" placeholder="x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)"></textarea></div>\n' +
   '    </div>\n' +
   '  </div>\n' +
   '  <div class="btn-style">\n' +

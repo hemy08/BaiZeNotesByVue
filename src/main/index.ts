@@ -69,8 +69,12 @@ function createWindow(): void {
     utils.HemyRenderPost(mainWindow, message)
   })
 
-  ipcMain.on('mermaid-graph-svg-data-to-main', (_, svgData) => {
-    console.log('svgData', svgData)
+  ipcMain.on('monaco-editor-insert-web-links', () => {
+    dialogs.ShowWebUrlDialog(mainWindow)
+  })
+
+  ipcMain.on('monaco-editor-insert-image', () => {
+    dialogs.ShowWebUrlDialog(mainWindow)
   })
 
   ipcMain.on('file-manager-context-menu-create-file', (_, dirPath, isFolder, fileExtension) => {

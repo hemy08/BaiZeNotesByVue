@@ -40,10 +40,10 @@ function handlePlantUmlContextMenu(e: MouseEvent) {
 }
 
 const mdConstContext = {
-  linescan: '\r\n------------\r\n',
-  lineenter: '\r\n',
-  codeblock: '\r\n```\r\n\r\n```\r\n',
-  mathblock: '\r\n$$\r\n\r\n$$\r\n',
+  linescan: '\r\n\r\n---------------\r\n\r\n',
+  lineenter: '\r\n\r\n',
+  codeblock: '\r\n\r\n```\r\n\r\n```\r\n\r\n',
+  mathblock: '\r\n\r\n$$\r\n\r\n$$\r\n\r\n',
   linelinks: '[]()',
   fontsuper: '<sup> </sup>',
   fontsub: '<sub> </sub>'
@@ -82,8 +82,12 @@ function onInsertText(_, label: string) {
   EventBus.$emit('monaco-editor-insert-text', getInsertContext(label))
 }
 
-function onInsertImage(_, label: string) {
-  window.electron.ipcRenderer.send('monaco-editor-insert-image', label)
+function onInsertWebLinks() {
+  window.electron.ipcRenderer.send('monaco-editor-insert-web-links')
+}
+
+function onInsertImage() {
+  window.electron.ipcRenderer.send('monaco-editor-insert-image')
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -331,12 +335,12 @@ export const MdEditToolButtons: MarkdownEditToolButtonMap = {
     param: 'mathblock',
     svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M14 2H4l5 8-5 8h12v-4h-2v2H8.25L12 10 8.25 4H14v2h2V2z"/></svg>'
   },
-  'line-links': {
-    id: 'line-links',
-    title: '超链接',
+  'web-links': {
+    id: 'web-links',
+    title: '网站链接',
     class: 'tool-btn',
-    clickFn: onInsertText,
-    param: 'linelinks',
+    clickFn: onInsertWebLinks,
+    param: 'weblinks',
     svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10.59 13.41c.41.39.41 1.03 0 1.42-.39.39-1.03.39-1.42 0a5.003 5.003 0 0 1 0-7.07l3.54-3.54a5.003 5.003 0 0 1 7.07 0 5.003 5.003 0 0 1 0 7.07l-1.49 1.49c.01-.82-.12-1.64-.4-2.42l.47-.48a2.982 2.982 0 0 0 0-4.24 2.982 2.982 0 0 0-4.24 0l-3.53 3.53a2.982 2.982 0 0 0 0 4.24m2.82-4.24c.39-.39 1.03-.39 1.42 0a5.003 5.003 0 0 1 0 7.07l-3.54 3.54a5.003 5.003 0 0 1-7.07 0 5.003 5.003 0 0 1 0-7.07l1.49-1.49c-.01.82.12 1.64.4 2.43l-.47.47a2.982 2.982 0 0 0 0 4.24 2.982 2.982 0 0 0 4.24 0l3.53-3.53a2.982 2.982 0 0 0 0-4.24.973.973 0 0 1 0-1.42Z"/></svg>'
   },
   'task-lists': {

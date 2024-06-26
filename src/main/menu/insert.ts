@@ -89,6 +89,12 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
+      label: '网页链接',
+      click: () => {
+        dialogs.ShowWebUrlDialog(mainWindow)
+      }
+    },
+    {
       type: 'separator'
     },
     {

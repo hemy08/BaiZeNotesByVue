@@ -5,36 +5,56 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>选择表格大小</title>
   <style>
-      .label-style {
-        width: 80px;
-        margin-top: 12px;
-        text-align: center;
-      }
-      .input-style  {
-        width: 100px;
-        margin-top: 10px;
-      }
-      .color-button {
-        width: 80px;
-        margin-top: 20px;
-      }
+      .label-style {width: 80px;margin-top: 12px;text-align: center}
+      .input-style  {width: 100px;margin-top: 10px;}
+      .color-button {width: 60px;margin-top: 20px;}
+      .btn-style {width:450px;display:flex; justify-content:center;align-items: center;gap: 200px}
     </style>
   </head>
   <body>
-    <div style="display: flex; flex-direction: row; margin-left: 20px;">
-        <div class="label-style"><label for="sheet-row">行：</label></div>
-        <div class="input-style"><input type="text" id="sheet-row" style="width: 100px"></div>
-        <div class="label-style"><label for="sheet-col">列：</label></div>
-        <div class="input-style"><input type="text" id="sheet-col" style="width: 100px"></div>
+    <div style="display: flex; flex-direction: column; margin-left: 20px; width: 450px">
+      <div style="display: flex; flex-direction: row; margin-left: 20px;width: 450px">
+          <div class="label-style"><label for="sheet-col-row">单元格数：</label></div>
+          <div class="label-style"><label for="sheet-row">行数：</label></div>
+          <div class="input-style"><input type="text" id="sheet-row" style="width: 100px"></div>
+          <div class="label-style"><label for="sheet-col">列数：</label></div>
+          <div class="input-style"><input type="text" id="sheet-col" style="width: 100px"></div>
+      </div>
+      <div id='checkbox-container' style="display: flex; flex-direction: row; margin-left: 20px;width: 450px;justify-content:center;align-items: center;flex: 1">
+        <div class="label-style"><label for="sheet-col-row">对齐方式：</label></div>
+        <div id='checkbox-list' style="display:flex;flex: 1;gap: 30px;margin-top: 15px">
+          <div><input type="checkbox" id="checkbox-default" name="默认" value="default"><label for="checkbox-default">默认</label></div>
+          <div><input type="checkbox" id="checkbox-align-left" name="左对齐" value="align-left"><label for="checkbox-align-left">左对齐</label></div>
+          <div><input type="checkbox" id="checkbox-align-center" name="居中对齐" value="align-center"><label for="checkbox-align-center">居中对齐</label></div>
+          <div><input type="checkbox" id="checkbox-align-right" name="右对齐" value="align-right"><label for="checkbox-align-right">右对齐</label></div>
+        </div>
+      </div>
+      <div class="btn-style">
+        <button id="insertButton" onclick="sendUserInputSheetStyle()" class="color-button">插入</button>
+        <button id="cancelButton" onclick="sendDialogCancelSheetStyle()" class="color-button">取消</button>
+      </div>
     </div>
-    <button id="insertButton" onclick="sendUserInputSheetStyle()" class="color-button" style="margin-left: 80px;">插入</button>
-    <button id="cancelButton" onclick="sendDialogCancelSheetStyle()" class="color-button" style="margin-left: 120px;">取消</button>
     <script>
       const { ipcRenderer } = require('electron');
       let sheetStyle = {
         row:1,
-        col:1
+        col:1,
+        align:''
       };
+      // 获取所有的复选框
+      const checkboxes = document.querySelectorAll('#checkbox-list input[type="checkbox"]');
+      checkboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('input', function() {
+          if (this.checked) {
+            sheetStyle.align = this.value
+            checkboxes.forEach(function(other) {
+              if (other !== this && other.checked) {
+                  other.checked = false
+              }
+            }.bind(this))
+          }
+        })
+      })
       function updateSheetRow(event) {
         sheetStyle.row = event.target.value
       }
