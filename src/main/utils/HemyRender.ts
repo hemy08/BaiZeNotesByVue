@@ -34,7 +34,7 @@ function covertFileUrl(url: string): string {
   }
 
   // 如果输入的就是绝对路径，则不替换
-  if (url.startsWith('./') !== -1) {
+  if (!url.startsWith('./')) {
     url = url.substring(2)
   }
   // 获取当前文件的路径，拼接imgUrl
@@ -61,7 +61,7 @@ function preRenderImageUrlConvert(text: string): string {
     const imgSrc = covertFileUrl(match[1])
     const altText = parseAltText(match[0])
     const htmlContent =
-      '<p><img style="width: 100%; max-width: 900px; height: auto" src="' +
+      '<p><img style="width: auto; max-width: 900px; height: auto" src="' +
       imgSrc +
       '" alt="' +
       altText +

@@ -75,7 +75,6 @@ onMounted(() => {
     global.mdEditor = editorInstance
   }
 
-  monaco.editor.addEditorAction()
   onBeforeUnmount(() => {
     editorInstance.dispose()
   })

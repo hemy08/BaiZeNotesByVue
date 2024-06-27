@@ -346,41 +346,27 @@ export function Delete(name: string) {
   DeleteFileFolder(name)
 }
 
-function ParserImageBuffer(content: string): string {
+function ParserImageBuffer(content: string): Buffer | null {
   const supportImages = [
-    { prefix: 'data:image/png;base64,', reg: /^data:image\/png;base64,/, encode: 'base64' },
-    { prefix: 'data:image/jpeg;base64,', reg: /^data:image\/jpeg;base64,/, encode: 'base64' },
-    { prefix: 'data:image/gif;base64,', reg: /^data:image\/gif;base64,/, encode: 'base64' },
-    { prefix: 'data:image/bmp;base64,', reg: /^data:image\/bmp;base64,/, encode: 'base64' },
-    { prefix: 'data:image/x-icon;base64,', reg: /^data:image\/x-icon;base64,/, encode: 'base64' }
+    { prefix: 'data:image/png;base64,', reg: /^data:image\/png;base64,/ },
+    { prefix: 'data:image/jpeg;base64,', reg: /^data:image\/jpeg;base64,/ },
+    { prefix: 'data:image/gif;base64,', reg: /^data:image\/gif;base64,/ },
+    { prefix: 'data:image/bmp;base64,', reg: /^data:image\/bmp;base64,/ },
+    { prefix: 'data:image/x-icon;base64,', reg: /^data:image\/x-icon;base64,/ }
   ]
   for (const item of supportImages) {
     if (content.startsWith(item.prefix)) {
       const newContent = content.replace(item.reg, '')
-      return Buffer.from(newContent, item.encode)
+      return Buffer.from(newContent, 'base64')
     }
   }
 
-  return ''
+  return null
 }
 
-export function SaveImageDataToFile(name: string, base64Image: string) {
-  if (!global.current_active_file) {
-    dialog.showErrorBox('出错啦!!!', `未打开任何文件，请先打开一个文件`)
-    return false
-  }
-
-  const curDir = ParseDirectoryPath(global.current_active_file.path)
-  // 解码 base64 字符串
-  const imgBuffer = ParserImageBuffer(base64Image)
-  if (imgBuffer.length === 0) {
-    dialog.showErrorBox(
-      '出错啦!!!',
-      `解析文件格式失败，当前只支持*.png;*.jpg;*.jpeg;*.bmp;*gif;*.ico;`
-    )
-    return false
-  }
+function CreateImagesDir(): string {
   // 定义输出文件的路径
+  const curDir = ParseDirectoryPath(global.current_active_file.path)
   const outDir = path.join(curDir, 'images')
   if (!fs.existsSync(outDir)) {
     // 如果目录不存在，则创建它
@@ -388,23 +374,86 @@ export function SaveImageDataToFile(name: string, base64Image: string) {
       // Node.js v10.12.0+ 支持递归创建目录
       fs.mkdirSync(outDir, { recursive: true })
     } catch (err) {
-      dialog.showErrorBox('出错啦!!!', `${outDir} 不存在，创建目录失败，${err.message}`)
-      return false
+      dialog.showErrorBox('出错啦!!!', `${outDir} 不存在，创建目录失败，${err}`)
+      return ''
     }
   }
 
-  const outFilePath = path.join(outDir, name)
-  if (!fs.existsSync(outFilePath)) {
-    // 目录下文件已经存在，直接返回
-    return true
+  return outDir
+}
+
+function SaveImagesFile(outFilePath: string, base64Image: string): boolean {
+  // 解码 base64 字符串
+  const imgBuffer = ParserImageBuffer(base64Image)
+  if (imgBuffer === null) {
+    dialog.showErrorBox(
+      '出错啦!!!',
+      `解析文件格式失败，当前只支持*.png;*.jpg;*.jpeg;*.bmp;*gif;*.ico;`
+    )
+    return false
   }
 
   try {
     fs.writeFileSync(outFilePath, imgBuffer, 'binary') // 'binary' 参数在这里是可选的，因为 Buffer 已经是二进制数据
   } catch (err) {
-    dialog.showErrorBox('出错啦!!!', `保存图像时出错: ${err.message}`)
+    dialog.showErrorBox('出错啦!!!', `保存图像时出错: ${err}`)
     return false
   }
 
   return true
+}
+
+export function SaveImageDataToFile(name: string, base64Image: string) {
+  // console.log('SaveImageDataToFile', base64Image.substring(0, 512))
+  if (!global.current_active_file) {
+    dialog.showErrorBox('出错啦!!!', `未打开任何文件，请先打开一个文件`)
+    return false
+  }
+
+  const outDir = CreateImagesDir()
+  if (outDir.length === 0) {
+    return false
+  }
+
+  const outFilePath = path.join(outDir, name)
+  if (fs.existsSync(outFilePath)) {
+    // 目录下文件已经存在，直接返回
+    dialog.showErrorBox('出错啦!!!', `文件已经存在 ${name}`)
+    return true
+  }
+  return SaveImagesFile(outFilePath, base64Image)
+}
+
+function getImageFileName(): string {
+  let result = ''
+  for (let i = 0; i < 16; i++) {
+    result += Math.floor(Math.random() * 10) // 生成0到9之间的随机数
+  }
+  return result
+}
+
+export function InsertImagesToFile(base64Image: string): string {
+  // console.log('InsertImagesToFile', base64Image.substring(0, 512))
+  if (!global.current_active_file) {
+    dialog.showErrorBox('出错啦!!!', `未打开任何文件，请先打开一个文件`)
+    return ''
+  }
+
+  const outDir = CreateImagesDir()
+  if (outDir.length === 0) {
+    return ''
+  }
+
+  const fileName = getImageFileName() + '.png'
+  const outFilePath = path.join(outDir, fileName)
+  if (fs.existsSync(outFilePath)) {
+    // 目录下文件已经存在，直接返回
+    dialog.showErrorBox('出错啦!!!', `文件已经存在 ${fileName}`)
+    return ''
+  }
+
+  if (SaveImagesFile(outFilePath, base64Image) === false) {
+    return ''
+  }
+  return fileName
 }

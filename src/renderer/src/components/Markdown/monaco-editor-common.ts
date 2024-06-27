@@ -326,11 +326,11 @@ export const EventHandleMaps = {
   link(editor: monaco.editor.IStandaloneCodeEditor) {
     EditAppendPrefixSuffix(editor, '[]()', '')
   },
-  paste(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditAppendPrefixSuffix(editor, '[]()', '')
+  paste(editor: monaco.editor.IStandaloneCodeEditor, context: string) {
+    EditInsTextAfterCursor(editor, context)
   },
-  insertimage(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditAppendPrefixSuffix(editor, '[]()', '')
+  insertimage(context: string) {
+    window.electron.ipcRenderer.send('monaco-editor-container-insert-image', context)
   }
 }
 

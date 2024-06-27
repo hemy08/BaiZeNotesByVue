@@ -87,7 +87,7 @@ function onInsertWebLinks() {
 }
 
 function onInsertImage() {
-  window.electron.ipcRenderer.send('monaco-editor-insert-image')
+  window.electron.ipcRenderer.send('monaco-editor-tools-insert-image')
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -5,7 +5,6 @@ import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
-import {ShowInsertImageDialog} from "./dialogs/dialogs";
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -74,7 +73,7 @@ function createWindow(): void {
     dialogs.ShowWebUrlDialog(mainWindow)
   })
 
-  ipcMain.on('monaco-editor-insert-image', () => {
+  ipcMain.on('monaco-editor-tools-insert-image', () => {
     dialogs.ShowInsertImageDialog(mainWindow)
   })
 
@@ -118,8 +117,15 @@ function createWindow(): void {
     utils.FileUtils.ReloadDirFromDisk()
   })
 
-  ipcMain.on('monaco-editor-insert-image', () => {
-    console.log('monaco-editor-insert-image')
+  ipcMain.on('monaco-editor-container-insert-image', (_, context: string) => {
+    const imageName = utils.FileUtils.InsertImagesToFile(context)
+    console.log('imageName', imageName)
+    if (imageName.length !== 0) {
+      mainWindow.webContents.send(
+        'monaco-insert-text-block-templates',
+        '\r\n\r\n![](./images/' + imageName + ')\r\n\r\n'
+      )
+    }
   })
 
   const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))

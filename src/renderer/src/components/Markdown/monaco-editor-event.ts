@@ -39,11 +39,34 @@ function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyL, function () {
     EventHandleMaps['link'](editor)
   })
-  /*editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, function (event) {
-    console.log('addCommand event', event)
-    console.log('addCommand event', global)
-    // EventHandleMaps['paste'](editor)
-  })*/
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, async function () {
+    const items = await navigator.clipboard.read()
+    let isImage = false
+    for (const item of items) {
+      // 检查项目类型是否为图片
+      console.log('item.types', item.types)
+      let context: Blob
+      if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
+        context = await item.getType('image/png') // 或者使用其他 MIME 类型
+        const reader = new FileReader()
+        reader.onload = function (event) {
+          isImage = true
+          const context = event.target?.result?.toString()
+          if (context) {
+            EventHandleMaps['insertimage'](context)
+          }
+        }
+        // 以 DataURL 的形式读取 Blob
+        reader.readAsDataURL(context)
+      }
+    }
+
+    if (!isImage) {
+      const text = await navigator.clipboard.readText()
+      console.log('text', text)
+      EventHandleMaps['paste'](editor, text)
+    }
+  })
 }
 
 export function monacoEditorEvent(editor: monaco.editor.IStandaloneCodeEditor) {
@@ -56,22 +79,5 @@ export function monacoEditorEvent(editor: monaco.editor.IStandaloneCodeEditor) {
     }
   })
 
-  editor.onDidPaste(function (event) {
-    console.log('onPaste event', event.clipboardData)
-    console.log('addEventListener paste items', global.clipboardData)
-  })
-
-  const editorDom = editor.getDomNode()
-  console.log('editorDom ', editorDom)
-  const editorConDom = editor.getContainerDomNode()
-  console.log('editorConDom ', editorConDom)
-  editorDom.addEventListener('paste', function (event) {
-    // 阻止粘贴事件的默认行为
-    event.preventDefault()
-    // 你可以在这里添加额外的逻辑，比如显示一个提示等
-    console.log('addEventListener paste event', event)
-    const items = (event.clipboardData || global.clipboardData).items
-    console.log('addEventListener paste items', items)
-  })
   registerEditorKeyMaps(editor)
 }

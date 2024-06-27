@@ -1,8 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 import * as Utils from '../utils/utils'
-const path = require('path')
-import * as fs from 'fs'
 
 let insertImageDialog: Electron.BrowserWindow | null
 
