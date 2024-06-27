@@ -137,13 +137,13 @@ export function CreateFileFolder(name: string, path: string, isFolder: boolean, 
 
   if (!isFolder) {
     // 打开当前文件
-    global.__current_active_file = {
+    global.current_active_file = {
       name: name,
       path: fullName,
       type: 'file',
       content: '# ' + name
     }
-    //console.log('global.__current_active_file', global.__current_active_file)
+    //console.log('global.current_active_file', global.current_active_file)
     global.MainWindow.webContents.send('show-selected-file-context', '# ' + name)
   }
 }
@@ -169,7 +169,7 @@ export function OpenSelectFile(fileProperties: FileProperties) {
   fs.readFile(fileProperties.path, 'utf8', (err, data) => {
     if (!err) {
       fileProperties.content = data
-      global.__current_active_file = fileProperties
+      global.current_active_file = fileProperties
       // console.log('OpenSelectFile', fileProperties)
       global.MainWindow.webContents.send('show-selected-file-context', data)
     } else {
@@ -179,7 +179,7 @@ export function OpenSelectFile(fileProperties: FileProperties) {
 }
 
 export function SaveActiveFile() {
-  const curFile = global.__current_active_file
+  const curFile = global.current_active_file
   // 文件存在，直接写入
   if (curFile != undefined) {
     fs.writeFileSync(curFile.path, curFile.content)
@@ -190,13 +190,16 @@ export function SaveActiveFile() {
 }
 
 export function SaveActiveFileAs() {
-  const curFile = global.__current_active_file
+  const curFile = global.current_active_file
   if (curFile) {
     fs.writeFileSync(curFile.path, curFile.content)
   }
 }
 
 export function ParseDirectoryPath(fullName: string): string {
+  if (fullName.lastIndexOf('.') === -1) {
+    return fullName
+  }
   const lastIndex1 = fullName.lastIndexOf('\\')
   const lastIndex2 = fullName.lastIndexOf('/')
   const lastIndex = Math.max(lastIndex1, lastIndex2)
@@ -258,6 +261,9 @@ export function ParserFileName(filePath: string): string {
 }
 
 export function ParseDir(fullName: string): string {
+  if (fullName.lastIndexOf('.') === -1) {
+    return fullName
+  }
   const lastIndex1 = fullName.lastIndexOf('\\')
   const lastIndex2 = fullName.lastIndexOf('/')
   const lastIndex = Math.max(lastIndex1, lastIndex2)
@@ -295,13 +301,13 @@ export function CreateFile(path: string, name: string, extension: string) {
   ReloadDirFromDisk()
 
   // 打开当前文件
-  global.__current_active_file = {
+  global.current_active_file = {
     name: name,
     path: fullName,
     type: 'file',
     content: '# ' + name
   }
-  //console.log('global.__current_active_file', global.__current_active_file)
+  //console.log('global.current_active_file', global.current_active_file)
   global.MainWindow.webContents.send('show-selected-file-context', '# ' + name)
 }
 
@@ -338,4 +344,67 @@ export function Rename(name: string, newName: string) {
 
 export function Delete(name: string) {
   DeleteFileFolder(name)
+}
+
+function ParserImageBuffer(content: string): string {
+  const supportImages = [
+    { prefix: 'data:image/png;base64,', reg: /^data:image\/png;base64,/, encode: 'base64' },
+    { prefix: 'data:image/jpeg;base64,', reg: /^data:image\/jpeg;base64,/, encode: 'base64' },
+    { prefix: 'data:image/gif;base64,', reg: /^data:image\/gif;base64,/, encode: 'base64' },
+    { prefix: 'data:image/bmp;base64,', reg: /^data:image\/bmp;base64,/, encode: 'base64' },
+    { prefix: 'data:image/x-icon;base64,', reg: /^data:image\/x-icon;base64,/, encode: 'base64' }
+  ]
+  for (const item of supportImages) {
+    if (content.startsWith(item.prefix)) {
+      const newContent = content.replace(item.reg, '')
+      return Buffer.from(newContent, item.encode)
+    }
+  }
+
+  return ''
+}
+
+export function SaveImageDataToFile(name: string, base64Image: string) {
+  if (!global.current_active_file) {
+    dialog.showErrorBox('出错啦!!!', `未打开任何文件，请先打开一个文件`)
+    return false
+  }
+
+  const curDir = ParseDirectoryPath(global.current_active_file.path)
+  // 解码 base64 字符串
+  const imgBuffer = ParserImageBuffer(base64Image)
+  if (imgBuffer.length === 0) {
+    dialog.showErrorBox(
+      '出错啦!!!',
+      `解析文件格式失败，当前只支持*.png;*.jpg;*.jpeg;*.bmp;*gif;*.ico;`
+    )
+    return false
+  }
+  // 定义输出文件的路径
+  const outDir = path.join(curDir, 'images')
+  if (!fs.existsSync(outDir)) {
+    // 如果目录不存在，则创建它
+    try {
+      // Node.js v10.12.0+ 支持递归创建目录
+      fs.mkdirSync(outDir, { recursive: true })
+    } catch (err) {
+      dialog.showErrorBox('出错啦!!!', `${outDir} 不存在，创建目录失败，${err.message}`)
+      return false
+    }
+  }
+
+  const outFilePath = path.join(outDir, name)
+  if (!fs.existsSync(outFilePath)) {
+    // 目录下文件已经存在，直接返回
+    return true
+  }
+
+  try {
+    fs.writeFileSync(outFilePath, imgBuffer, 'binary') // 'binary' 参数在这里是可选的，因为 Buffer 已经是二进制数据
+  } catch (err) {
+    dialog.showErrorBox('出错啦!!!', `保存图像时出错: ${err.message}`)
+    return false
+  }
+
+  return true
 }

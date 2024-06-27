@@ -11,7 +11,11 @@ import { onBeforeUnmount, onMounted, onUpdated, ref, watchEffect } from 'vue'
 import highlightjs from 'markdown-it-highlightjs'
 import { full as emoji } from 'markdown-it-emoji'
 import hljs from 'highlight.js'
-import { PreMarkdownRender, PostMarkdownRender, ParserMarkdownChapters } from './monaco-editor-render'
+import {
+  PreMarkdownRender,
+  PostMarkdownRender,
+  ParserMarkdownChapters
+} from './monaco-editor-render'
 import EventBus from '../../event-bus'
 //import { marked } from 'marked'
 //import { Remarkable } from 'remarkable'
@@ -125,13 +129,12 @@ onUpdated(() => {
   //遍历链接
   for (let i = 0; i < links.length; i++) {
     const href = links[i].getAttribute('href')
-    //console.log('href', href)
     if (!href) {
       continue
     }
-    if (href.endsWith('.md')) {
-      links[i].addEventListener('click', (event) => {
-        event.preventDefault()
+    links[i].addEventListener('click', (event) => {
+      event.preventDefault()
+      if (href.endsWith('.md')) {
         const fileInfo: FileProperties = {
           name: parserFileName(href),
           path: href,
@@ -139,15 +142,10 @@ onUpdated(() => {
           content: ''
         }
         window.electron.ipcRenderer.send('open-select-file', fileInfo)
-      })
-    }
-
-    if (href.startsWith('http')) {
-      links[i].addEventListener('click', (event) => {
-        event.preventDefault()
+      } else if (href.startsWith('http')) {
         window.open(href, '_blank', 'noopener, noreferrer')
-      })
-    }
+      }
+    })
   }
 })
 </script>

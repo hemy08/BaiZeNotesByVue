@@ -207,7 +207,15 @@ onMounted(() => {
     }
   }
 
+  function handleEditPaste(event) {
+    event.preventDefault()
+    const items = (event.clipboardData || global.clipboardData).items
+    console.log('handleEditPaste', event.clipboardData)
+    console.log('items', items)
+  }
+
   window.addEventListener('keydown', handleKeyDownEvent)
+  window.addEventListener('paste', handleEditPaste)
 
   // 销毁编辑器实例
   onBeforeUnmount(() => {

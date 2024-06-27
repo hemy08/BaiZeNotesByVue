@@ -1,5 +1,9 @@
 <template>
-  <div ref="monacoEditorContainer" class="monaco-editor-container"></div>
+  <div
+    id="monaco-editor-container"
+    ref="monacoEditorContainer"
+    class="monaco-editor-container"
+  ></div>
 </template>
 
 <script setup lang="ts">
@@ -7,7 +11,7 @@
 import * as monaco from 'monaco-editor'
 import { ref, onMounted, watch, onBeforeUnmount, defineProps } from 'vue'
 import EventBus from '../../event-bus'
-import { EditSetFontStyle, EditInsTextAfterCursor} from './monaco-editor-common'
+import { EditSetFontStyle, EditInsTextAfterCursor } from './monaco-editor-common'
 import { monacoEditorEvent } from './monaco-editor-event'
 
 // 定义 emit 函数
@@ -22,7 +26,7 @@ const props = defineProps({
   // 编辑器语言
   language: {
     type: String,
-    default: 'typescript'
+    default: 'text'
   },
   // 编辑器宽度
   editorAreaWidth: {
@@ -53,6 +57,8 @@ onMounted(() => {
       minimap: {
         enabled: false //关闭小型缩略图，它显示整个文档的概览，并且允许用户快速导航到文档的不同部分。
       },
+      tabSize: 4,
+      fontSize: 16,
       lineNumbers: 'on'
     })
 
@@ -65,9 +71,11 @@ onMounted(() => {
     })
 
     monacoEditorEvent(editorInstance)
+
     global.mdEditor = editorInstance
   }
 
+  monaco.editor.addEditorAction()
   onBeforeUnmount(() => {
     editorInstance.dispose()
   })

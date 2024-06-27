@@ -39,7 +39,8 @@ declare global {
   }
 
   interface Global extends NodeJS.Global {
-    __current_active_file?: FileProperties // 使用 ? 表示它可能是 undefined
+    current_active_file?: FileProperties // 使用 ? 表示它可能是 undefined
+    ImagePath: string
     hemy: Hemy
     MainWindow: Electron.BrowserWindow
     MainShowWarn: string

@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
+import * as Utils from '../utils/utils'
 const path = require('path')
 import * as fs from 'fs'
 
@@ -8,7 +9,9 @@ let insertImageDialog: Electron.BrowserWindow | null
 interface IMGFile {
   title: string
   href: string
-  file: fs.file
+  path: string
+  content: string
+  name: string
 }
 
 // 创建一个自定义对话框的函数
@@ -53,14 +56,22 @@ export function ShowInsertImageDialog(mainWindow: Electron.BrowserWindow) {
 
   function processImageInsert(_, imgFile: IMGFile) {
     let imgUrl = ''
-    if (imgFile.file !== null) {
-      const path = imgFile.file.path
-      console.log('imgFile', imgFile)
-      imgUrl = '![' + imgFile.title + '](' + path + ')'
-    } else {
+    if (imgFile.content.length !== 0) {
+      if (Utils.FileUtils.SaveImageDataToFile(imgFile.name, imgFile.content)) {
+        imgUrl = '![' + imgFile.title + '](./images/' + imgFile.name + ')'
+      }
+    } else if (imgFile.path.length !== 0) {
+      imgUrl = '![' + imgFile.title + '](' + imgFile.path + ')'
+    } else if (imgFile.href.length !== 0) {
       imgUrl = '![' + imgFile.title + '](' + imgFile.href + ')'
+    } else {
+      imgUrl = ''
     }
-    mainWindow.webContents.send('monaco-insert-text-block-templates', imgUrl)
+
+    if (imgUrl.length !== 0) {
+      mainWindow.webContents.send('monaco-insert-text-block-templates', imgUrl)
+    }
+
     if (insertImageDialog) {
       insertImageDialog.close()
     }
@@ -178,52 +189,43 @@ function makeInsertImageDialogHtml(): string {
       title: '',
       href: '',
       path: '',
-      name: '',
-      type: ''
+      content: ''
     }
     document.getElementById('image-url-file-input').addEventListener('change', function(e) {
       const image = e.target.files[0]
-      imgFile.path = this.value
-      imgFile.name = image.name
-      imgFile.type = image.type
-      console.log('imgFile', imgFile)
-      console.log('image', image)
       if (image) {
         if (image.type.startsWith('image/')) {
-            document.getElementById('image-url-input').value = this.value
+          imgFile.href = ''
+          imgFile.path = ''
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            imgFile.content = e.target.result
+          }
+          reader.readAsDataURL(image)
+          imgFile.name = image.name
+          console.log('image-url-file-input imgFile', imgFile)
+          document.getElementById('image-url-input').value = './images/' + image.name
+          document.getElementById('image-href-input').value = ''
         }
       }
     })
     document.getElementById('image-title-input').addEventListener('input', function (e){
       imgFile.title = this.value
-      console.log('imgFile', imgFile)
     })
     document.getElementById('image-href-input').addEventListener('input', function (e){
       imgFile.href = this.value
-      console.log('imgFile', imgFile)
+      imgFile.path = ''
+      imgFile.content = ''
+      document.getElementById('image-url-input').value = ''
+      console.log('image-href-input imgFile', imgFile)
     })
     document.getElementById('image-url-input').addEventListener('input', function (e){
-      const imageUrl = this.value
-      const lastIndex = Math.max(imageUrl.lastIndexOf('\\\\'), imageUrl.lastIndexOf('/'))
-      imgFile.path = imageUrl
-      imgFile.name = imageUrl.substring(lastIndex)
-      imgFile.type = imageUrl.substring(imageUrl.lastIndexOf('.'))
-      console.log('imgFile', imgFile)
+      imgFile.path = this.value
+      imgFile.content = ''
+      imgFile.href = ''
+      document.getElementById('image-href-input').value = ''
     })
     document.getElementById('insert-image').onclick = function(e) {
-      console.log('imgFile', imgFile)
-      if (imgFile.path.length !== 0 && imgFile.href.length !== 0) {
-        alert('本地路径和网络路径只能选择一个！')
-        return
-      }
-      if (imgFile.path.length === 0 && imgFile.href.length === 0) {
-        alert('本地路径和网络路径必须选择一个！')
-        return
-      }
-      if (imgFile.href.length !== 0 && !imgFile.href.startsWith('http')) {
-        alert('网络路径地址不合法，请输入http或https路径！')
-        return
-      }
       ipcRenderer.send('dialog-insert-image-btn-insert', imgFile)
     }
     document.getElementById('cancel-image').onclick = function(e) {

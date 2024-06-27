@@ -16,6 +16,7 @@ export function globalInitialize(mainWindow: Electron.BrowserWindow) {
   global.SavingFile = false
   global.SaveFileInterval = 5000
   global.RootPath = ''
+  global.ImagePath = './images'
   // 假设你想在主进程中存储一些全局数据
   global.icons = {
     file_icon: '📝',

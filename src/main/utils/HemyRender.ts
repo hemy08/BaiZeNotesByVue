@@ -22,15 +22,24 @@ export async function HemyRenderPost(
   mainWindow.webContents.send('post-render-monaco-editor-content-result', renderResult)
 }
 
-function covertFileUrl(imgUrl: string): string {
-  const file = global.__current_active_file
+function covertFileUrl(url: string): string {
+  const file = global.current_active_file
   if (!file) {
-    return imgUrl
+    return url
   }
 
+  // 如果输入的就是绝对路径，则不替换
+  if (url.indexOf(':') !== -1) {
+    return url
+  }
+
+  // 如果输入的就是绝对路径，则不替换
+  if (url.startsWith('./') !== -1) {
+    url = url.substring(2)
+  }
   // 获取当前文件的路径，拼接imgUrl
-  const dir = ParseDirectoryPath(file.path)
-  return dir.replace('\\', '/') + '/' + imgUrl
+  const fullPath = ParseDirectoryPath(file.path) + '\\' + url
+  return fullPath.replace('\\', '/')
 }
 
 function parseAltText(text: string): string {

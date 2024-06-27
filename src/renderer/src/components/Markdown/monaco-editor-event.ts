@@ -39,9 +39,11 @@ function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyL, function () {
     EventHandleMaps['link'](editor)
   })
-  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, function () {
-    EventHandleMaps['paste'](editor)
-  })
+  /*editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, function (event) {
+    console.log('addCommand event', event)
+    console.log('addCommand event', global)
+    // EventHandleMaps['paste'](editor)
+  })*/
 }
 
 export function monacoEditorEvent(editor: monaco.editor.IStandaloneCodeEditor) {
@@ -54,9 +56,22 @@ export function monacoEditorEvent(editor: monaco.editor.IStandaloneCodeEditor) {
     }
   })
 
-  editor.onDidPaste((e) => {
-    console.log('onDidPaste ', e)
+  editor.onDidPaste(function (event) {
+    console.log('onPaste event', event.clipboardData)
+    console.log('addEventListener paste items', global.clipboardData)
   })
 
+  const editorDom = editor.getDomNode()
+  console.log('editorDom ', editorDom)
+  const editorConDom = editor.getContainerDomNode()
+  console.log('editorConDom ', editorConDom)
+  editorDom.addEventListener('paste', function (event) {
+    // 阻止粘贴事件的默认行为
+    event.preventDefault()
+    // 你可以在这里添加额外的逻辑，比如显示一个提示等
+    console.log('addEventListener paste event', event)
+    const items = (event.clipboardData || global.clipboardData).items
+    console.log('addEventListener paste items', items)
+  })
   registerEditorKeyMaps(editor)
 }

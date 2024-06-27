@@ -126,10 +126,10 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
 }
 
 ipcMain.on('update-select-file-content', (_, content) => {
-  const curFile = global.__current_active_file
+  const curFile = global.current_active_file
   // 文件打开了
   if (curFile != undefined) {
-    global.__current_active_file.content = content
+    global.current_active_file.content = content
   }
   // 没有打开文件，使用另存为动作
 })
@@ -144,9 +144,9 @@ function handleKeyDown(event) {
 ipcMain.on('keydown', handleKeyDown)
 
 ipcMain.on('save-file-content-to-disk', (_, content) => {
-  const curFile = global.__current_active_file
+  const curFile = global.current_active_file
   if (curFile != undefined) {
-    global.__current_active_file.content = content
+    global.current_active_file.content = content
     fileUtils.SaveActiveFile()
   }
 })
