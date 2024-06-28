@@ -33,6 +33,7 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow.maximize()
     mainWindow.show()
+    mainWindow.webContents.openDevTools()
     // 加载一个子窗口，不对外显示
     dialogs.CreateMermaidRenderFrame('')
   })

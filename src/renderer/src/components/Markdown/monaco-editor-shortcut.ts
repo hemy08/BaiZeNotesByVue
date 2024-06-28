@@ -44,7 +44,7 @@ function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
     let isImage = false
     for (const item of items) {
       // 检查项目类型是否为图片
-      console.log('item.types', item.types)
+      // console.log('item.types', item.types)
       let context: Blob
       if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
         context = await item.getType('image/png') // 或者使用其他 MIME 类型
@@ -63,13 +63,13 @@ function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
 
     if (!isImage) {
       const text = await navigator.clipboard.readText()
-      console.log('text', text)
+      // console.log('text', text)
       EventHandleMaps['paste'](editor, text)
     }
   })
 }
 
-export function monacoEditorEvent(editor: monaco.editor.IStandaloneCodeEditor) {
+function onDidChange(editor: monaco.editor.IStandaloneCodeEditor) {
   editor.setPosition({ lineNumber: 1, column: 1 })
 
   // 监听光标位置
@@ -78,6 +78,7 @@ export function monacoEditorEvent(editor: monaco.editor.IStandaloneCodeEditor) {
       EventBus.$emit('monaco-editor-cursor-position', e.position)
     }
   })
-
-  registerEditorKeyMaps(editor)
 }
+
+export const MonacoEditorKeyMaps = registerEditorKeyMaps
+export const MonacoEditorDidChange = onDidChange

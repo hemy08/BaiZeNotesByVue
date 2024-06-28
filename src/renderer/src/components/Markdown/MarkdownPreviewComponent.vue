@@ -11,11 +11,7 @@ import { onBeforeUnmount, onMounted, onUpdated, ref, watchEffect } from 'vue'
 import highlightjs from 'markdown-it-highlightjs'
 import { full as emoji } from 'markdown-it-emoji'
 import hljs from 'highlight.js'
-import {
-  PreMarkdownRender,
-  PostMarkdownRender,
-  ParserMarkdownChapters
-} from './monaco-editor-render'
+import * as editor from './monaco-editor'
 import EventBus from '../../event-bus'
 //import { marked } from 'marked'
 //import { Remarkable } from 'remarkable'
@@ -65,7 +61,7 @@ watchEffect(() => {
 
 function getMarkdownChapters() {
   // isTocOpen = tocOpen
-  ParserMarkdownChapters(md, props.editorContent)
+  editor.Render.ParserMarkdownChapters(md, props.editorContent)
 }
 
 onMounted(() => {
@@ -101,7 +97,7 @@ function updateMarkdownPostRender(text: string) {
 window.electron.ipcRenderer.on(
   'pre-render-monaco-editor-content-result',
   async (_, context: string) => {
-    const result = await PreMarkdownRender(context)
+    const result = await editor.Render.PreMarkdownRender(context)
     updateMarkdownPostRender(md.render(result))
   }
 )
@@ -110,7 +106,7 @@ window.electron.ipcRenderer.on(
 window.electron.ipcRenderer.on(
   'post-render-monaco-editor-content-result',
   async (_, context: string) => {
-    renderedMarkdownContent.value = PostMarkdownRender(context)
+    renderedMarkdownContent.value = editor.Render.PostMarkdownRender(context)
   }
 )
 

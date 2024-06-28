@@ -96,6 +96,7 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
   ContextMenu.showContextMenu({
     x: e.x,
     y: e.y,
+    zIndex: 3,
     items: [
       {
         label: '新建',

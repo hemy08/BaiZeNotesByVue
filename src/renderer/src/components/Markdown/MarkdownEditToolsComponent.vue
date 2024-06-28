@@ -4,7 +4,7 @@
        插入图片 图片居中 Emoji 表格 标记 分类 | material mermaid plantuml |
   -->
   <button
-    v-for="(items, index) in MdEditToolButtons"
+    v-for="(items, index) in editor.QuickAccess"
     :id="items.id"
     :key="index"
     :title="items.title"
@@ -14,7 +14,7 @@
 </template>
 <script setup lang="ts">
 import { onMounted, watch, ref } from 'vue'
-import { MdEditToolButtons } from './monaco-editor-contextmenu'
+import * as editor from './monaco-editor'
 
 const showWidth = ref('')
 
@@ -27,12 +27,12 @@ const props = defineProps({
 })
 
 function initButtonSvg() {
-  for (const key in MdEditToolButtons) {
-    if (Object.prototype.hasOwnProperty.call(MdEditToolButtons, key)) {
+  for (const key in editor.QuickAccess) {
+    if (Object.prototype.hasOwnProperty.call(editor.QuickAccess, key)) {
       // 确保 key 是 svgs 对象自身的属性
       const element = document.getElementById(key)
       if (element) {
-        element.innerHTML = MdEditToolButtons[key].svg
+        element.innerHTML = editor.QuickAccess[key].svg
       }
     }
   }

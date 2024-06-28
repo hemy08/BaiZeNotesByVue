@@ -11,8 +11,7 @@
 import * as monaco from 'monaco-editor'
 import { ref, onMounted, watch, onBeforeUnmount, defineProps } from 'vue'
 import EventBus from '../../event-bus'
-import { EditSetFontStyle, EditInsTextAfterCursor } from './monaco-editor-common'
-import { monacoEditorEvent } from './monaco-editor-event'
+import * as editor from './monaco-editor'
 
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
@@ -23,20 +22,10 @@ const props = defineProps({
     type: String,
     default: 'test'
   },
-  // 编辑器语言
-  language: {
-    type: String,
-    default: 'text'
-  },
   // 编辑器宽度
   editorAreaWidth: {
     type: String,
     default: '50%'
-  },
-  // 编辑器主题
-  theme: {
-    type: String,
-    default: 'vs-light' // 或 'vs-dark'
   }
 })
 
@@ -48,19 +37,11 @@ onMounted(() => {
   if (monacoEditorContainer.value) {
     monacoEditorContainer.value.style.width = '100%'
     monacoEditorContainer.value.style.height = '100%'
-    editorInstance = monaco.editor.create(monacoEditorContainer.value, {
-      value: props.code,
-      language: props.language,
-      theme: props.theme,
-      wordWrap: 'on', // 启用自动换行
-      automaticLayout: true, // 设置自动布局为 true
-      minimap: {
-        enabled: false //关闭小型缩略图，它显示整个文档的概览，并且允许用户快速导航到文档的不同部分。
-      },
-      tabSize: 4,
-      fontSize: 16,
-      lineNumbers: 'on'
-    })
+    editorInstance = monaco.editor.create(
+      monacoEditorContainer.value,
+      editor.Options,
+      editor.Override
+    )
 
     editorInstance.onDidChangeModelContent(() => {
       if (editorInstance != null) {
@@ -70,7 +51,8 @@ onMounted(() => {
       }
     })
 
-    monacoEditorEvent(editorInstance)
+    editor.DidChange(editorInstance)
+    editor.KeyMaps(editorInstance)
 
     global.mdEditor = editorInstance
   }
@@ -82,7 +64,7 @@ onMounted(() => {
 
 window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context: string) => {
   if (context) {
-    EditInsTextAfterCursor(editorInstance, context)
+    editor.InsertAfterCursor(editorInstance, context)
   }
 })
 
@@ -112,25 +94,24 @@ watch(
 
 onMounted(() => {
   EventBus.$on('monaco-editor-update-header-format', (value: string) => {
-    EditSetFontStyle(editorInstance, value)
+    editor.UpdateContext(editorInstance, value)
   })
   EventBus.$on('monaco-editor-update-font-format', (value: string) => {
-    EditSetFontStyle(editorInstance, value)
+    editor.UpdateContext(editorInstance, value)
   })
-
   EventBus.$on('monaco-editor-insert-text', (value: string) => {
-    EditInsTextAfterCursor(editorInstance, value)
+    editor.InsertAfterCursor(editorInstance, value)
   })
 
   onBeforeUnmount(() => {
     EventBus.$off('monaco-editor-update-header-format', (value: string) => {
-      EditSetFontStyle(editorInstance, value)
+      editor.UpdateContext(editorInstance, value)
     })
     EventBus.$off('monaco-editor-update-font-format', (value: string) => {
-      EditSetFontStyle(editorInstance, value)
+      editor.UpdateContext(editorInstance, value)
     })
-    EventBus.$off('monaco-editor-insert-text', (value: string) => {
-      EditInsTextAfterCursor(editorInstance, value)
+    EventBus.$on('monaco-editor-insert-text', (value: string) => {
+      editor.InsertAfterCursor(editorInstance, value)
     })
   })
 })

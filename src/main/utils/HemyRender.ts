@@ -34,7 +34,7 @@ function covertFileUrl(url: string): string {
   }
 
   // 如果输入的就是绝对路径，则不替换
-  if (!url.startsWith('./')) {
+  if (url.startsWith('./')) {
     url = url.substring(2)
   }
   // 获取当前文件的路径，拼接imgUrl

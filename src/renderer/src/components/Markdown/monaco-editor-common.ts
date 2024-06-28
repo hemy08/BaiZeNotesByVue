@@ -56,7 +56,7 @@ function ConvertContextToHeader(
 }
 
 // 定义一个函数来插入字符串
-export function EditInsTextAfterCursor(
+export function OnInsertAfterCursor(
   editor: monaco.editor.IStandaloneCodeEditor,
   textToInsert: string
 ) {
@@ -72,7 +72,7 @@ export function EditInsTextAfterCursor(
 }
 
 // 假设 editor 是您已经初始化的 Monaco Editor 实例
-export function EditCvtToHeader(editor: monaco.editor.IStandaloneCodeEditor, header: string) {
+function editorOnChangeHeaderLevel(editor: monaco.editor.IStandaloneCodeEditor, header: string) {
   const position = editor.getPosition()
   if (!position) return
 
@@ -111,12 +111,12 @@ function updateSelection(
   replaceSelection(editor, newText, false, selectRange)
 }
 
-function EditSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor) {
+function editorOnSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor) {
   // 获取当前的选择范围
   const selection = editor.getSelection()
   if (!selection || selection.isEmpty()) {
     // 没有选择，则直接插入字符串
-    EditInsTextAfterCursor(editor, '**')
+    OnInsertAfterCursor(editor, '**')
     return
   }
   // 获取编辑器模型, 确保模型存在
@@ -152,65 +152,7 @@ function EditSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor) {
   replaceSelection(editor, newText, false, selectRange)
 }
 
-const styleHandlers = {
-  underline(content: string) {
-    if (content.startsWith('<u>') && content.endsWith('</u>')) {
-      return content.substring(3, content.length - 4)
-    } else {
-      return `<u>${content}</u>`
-    }
-  },
-  bold(content: string) {
-    if (content.startsWith('**') && content.endsWith('**')) {
-      return content.substring(2, content.length - 2)
-    } else {
-      return `**${content}**`
-    }
-  },
-  deleteline(content: string) {
-    if (content.startsWith('~~') && content.endsWith('~~')) {
-      return content.substring(2, content.length - 2)
-    } else {
-      return `~~${content}~~`
-    }
-  },
-  italic(content: string) {
-    if (content.startsWith('*') && content.endsWith('*')) {
-      return content.substring(1, content.length - 1)
-    } else {
-      return `*${content}*`
-    }
-  }
-}
-
-function EditUpdateFontStyleCommon(editor: monaco.editor.IStandaloneCodeEditor, style: string) {
-  // 获取当前的选择范围
-  const selection = editor.getSelection()
-  if (!selection || selection.isEmpty()) return
-  // 获取编辑器模型, 确保模型存在
-  const model = editor.getModel()
-  if (!model) return
-
-  let newText = ''
-  // 获取选择内容的起始和结束位置，前后增加三个字符的选择
-  const { startLineNumber, startColumn, endLineNumber, endColumn } = selection
-  const lineLength = model.getLineLength(endLineNumber)
-  const start = Math.max(1, startColumn - 3)
-  let end = Math.min(lineLength + 1, endColumn + 3)
-  if (style.toLowerCase() == 'underline') {
-    end = Math.min(lineLength + 1, endColumn + 4)
-  }
-  // 获取偏移后的字符
-  const selectRange = new monaco.Range(startLineNumber, start, endLineNumber, end)
-  const content = model.getValueInRange(selectRange)
-  const handler = styleHandlers[style.toLowerCase()]
-  if (handler) {
-    newText = handler(content)
-  }
-  replaceSelection(editor, newText, false, selectRange)
-}
-
-function EditUpdateFontStyle(
+function editorOnUpdateFontStyle(
   editor: monaco.editor.IStandaloneCodeEditor,
   prefix: string,
   suffix: string
@@ -219,7 +161,7 @@ function EditUpdateFontStyle(
   const selection = editor.getSelection()
   if (!selection || selection.isEmpty()) {
     // 没有选择，则直接插入字符串
-    EditInsTextAfterCursor(editor, prefix + suffix)
+    OnInsertAfterCursor(editor, prefix + suffix)
     return
   }
   // 获取编辑器模型, 确保模型存在
@@ -237,7 +179,7 @@ function EditUpdateFontStyle(
   }
 }
 
-function EditAppendPrefixSuffix(
+function editorOnPrefixSuffix(
   editor: monaco.editor.IStandaloneCodeEditor,
   prefix: string,
   suffix: string
@@ -246,7 +188,7 @@ function EditAppendPrefixSuffix(
   const selection = editor.getSelection()
   if (!selection || selection.isEmpty()) {
     // 没有选择，则直接插入字符串
-    EditInsTextAfterCursor(editor, prefix + suffix)
+    OnInsertAfterCursor(editor, prefix + suffix)
     return
   }
   // 获取编辑器模型, 确保模型存在
@@ -259,75 +201,136 @@ function EditAppendPrefixSuffix(
   replaceSelection(editor, newText, true, selection)
 }
 
+function editorOnPasteHandle(editor: monaco.editor.IStandaloneCodeEditor, context: string) {
+  // 获取当前的选择范围
+  const selection = editor.getSelection()
+  if (!selection || selection.isEmpty()) {
+    // 没有选择，则直接插入字符串
+    OnInsertAfterCursor(editor, context)
+    return
+  }
+
+  replaceSelection(editor, context, true, selection)
+}
+
+const ctxMaps = {
+  bold: { prefix: '**', suffix: '**' },
+  deleteline: { prefix: '~~', suffix: '~~' },
+  underline: { prefix: '<u>', suffix: '</u>' },
+  codeline: { prefix: '`', suffix: '`' },
+  codeblock: { prefix: '\r\n```\r\n', suffix: '\r\n```\r\n' },
+  mathline: { prefix: '$', suffix: '$' },
+  mathblock: { prefix: '\r\n$$\r\n', suffix: '\r\n$$\r\n' },
+  alignleft: { prefix: '<p style="text-align: left;">\r\n\r\n', suffix: '\r\n\r\n</p>\r\n' },
+  aligncenter: { prefix: '<p style="text-align: center;">\r\n', suffix: '\r\n</p>\r\n' },
+  alignjustify: { prefix: '<p style="text-align: justify">\r\n', suffix: '\r\n</p>\r\n' },
+  alignright: { prefix: '<p style="text-align: right;">\r\n', suffix: '\r\n</p>\r\n' },
+  keyboard: { prefix: '<kbd>', suffix: '</kbd>' },
+  link: { prefix: '[]()', suffix: '' },
+  fontsuper: { prefix: '<sup>', suffix: '</sup>' },
+  fontsub: { prefix: '<sub>', suffix: '</sub>' },
+  linescan: { prefix: '\r\n\r\n---------------\r\n\r\n', suffix: '' },
+  lineenter: { prefix: '\r\n\r\n', suffix: '' },
+  linelinks: { prefix: '[]()', suffix: '' },
+  tasklists: { prefix: '\r\n- [ ]', suffix: '' },
+  listnumbered: { prefix: '\r\n1. ', suffix: '' },
+  listbulleted: { prefix: '\r\n- []()', suffix: '' },
+  fontquote: { prefix: '\r\n> ', suffix: '' }
+}
+
 export const EventHandleMaps = {
-  fontfamily(editor: monaco.editor.IStandaloneCodeEditor, style: string) {
-    EditUpdateFontStyleCommon(editor, style)
-  },
-  fontsize(editor: monaco.editor.IStandaloneCodeEditor, style: string) {
-    EditUpdateFontStyleCommon(editor, style)
-  },
   h1(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditCvtToHeader(editor, 'h1')
+    editorOnChangeHeaderLevel(editor, 'h1')
   },
   h2(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditCvtToHeader(editor, 'h2')
+    editorOnChangeHeaderLevel(editor, 'h2')
   },
   h3(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditCvtToHeader(editor, 'h3')
+    editorOnChangeHeaderLevel(editor, 'h3')
   },
   h4(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditCvtToHeader(editor, 'h4')
+    editorOnChangeHeaderLevel(editor, 'h4')
   },
   h5(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditCvtToHeader(editor, 'h5')
+    editorOnChangeHeaderLevel(editor, 'h5')
   },
   h6(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditCvtToHeader(editor, 'h6')
+    editorOnChangeHeaderLevel(editor, 'h6')
   },
   bold(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditUpdateFontStyle(editor, '**', '**')
+    editorOnUpdateFontStyle(editor, ctxMaps['bold'].prefix, ctxMaps['bold'].suffix)
   },
   italic(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditSetFontItalic(editor)
+    editorOnSetFontItalic(editor)
   },
   deleteline(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditUpdateFontStyle(editor, '~~', '~~')
+    editorOnUpdateFontStyle(editor, ctxMaps['deleteline'].prefix, ctxMaps['deleteline'].suffix)
   },
   underline(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditUpdateFontStyle(editor, '<u>', '</u>')
+    editorOnUpdateFontStyle(editor, ctxMaps['underline'].prefix, ctxMaps['underline'].suffix)
   },
-  codeline(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditUpdateFontStyle(editor, '`', '`')
+  fontquote(editor: monaco.editor.IStandaloneCodeEditor) {
+    editorOnUpdateFontStyle(editor, ctxMaps['fontquote'].prefix, ctxMaps['fontquote'].suffix)
   },
-  codeblock(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditAppendPrefixSuffix(editor, '\r\n```\r\n', '```\r\n')
+  fontsuper(editor: monaco.editor.IStandaloneCodeEditor) {
+    editorOnPrefixSuffix(editor, ctxMaps['fontsuper'].prefix, ctxMaps['fontsuper'].suffix)
   },
-  mathline(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditUpdateFontStyle(editor, '$', '$')
-  },
-  mathblock(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditAppendPrefixSuffix(editor, '\r\n$$\r\n', '$$\r\n')
+  fontsub(editor: monaco.editor.IStandaloneCodeEditor) {
+    editorOnPrefixSuffix(editor, ctxMaps['fontsub'].prefix, ctxMaps['fontsub'].suffix)
   },
   alignleft(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditAppendPrefixSuffix(editor, '<p style="text-align: left;">\r\n\r\n', '\r\n\r\n</p>')
+    editorOnPrefixSuffix(editor, ctxMaps['alignleft'].prefix, ctxMaps['alignleft'].suffix)
   },
   aligncenter(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditAppendPrefixSuffix(editor, '<p style="text-align: center;">\r\n', '\r\n</p>')
+    editorOnPrefixSuffix(editor, ctxMaps['aligncenter'].prefix, ctxMaps['aligncenter'].suffix)
   },
   alignjustify(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditAppendPrefixSuffix(editor, '<p style="text-align: justify;width: 100%">\r\n', '\r\n</p>')
+    editorOnPrefixSuffix(editor, ctxMaps['alignjustify'].prefix, ctxMaps['alignjustify'].suffix)
   },
   alignright(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditAppendPrefixSuffix(editor, '<p style="text-align: right;">\r\n', '\r\n</p>')
+    editorOnPrefixSuffix(editor, ctxMaps['alignright'].prefix, ctxMaps['alignright'].suffix)
+  },
+  listnumbered(editor: monaco.editor.IStandaloneCodeEditor) {
+    OnInsertAfterCursor(editor, ctxMaps['listnumbered'].prefix)
+  },
+  listbulleted(editor: monaco.editor.IStandaloneCodeEditor) {
+    OnInsertAfterCursor(editor, ctxMaps['listbulleted'].prefix)
+  },
+  linescan(editor: monaco.editor.IStandaloneCodeEditor) {
+    OnInsertAfterCursor(editor, ctxMaps['linescan'].prefix)
+  },
+  lineenter(editor: monaco.editor.IStandaloneCodeEditor) {
+    OnInsertAfterCursor(editor, ctxMaps['lineenter'].prefix)
+  },
+  codeline(editor: monaco.editor.IStandaloneCodeEditor) {
+    editorOnUpdateFontStyle(editor, ctxMaps['codeline'].prefix, ctxMaps['codeline'].suffix)
+  },
+  codeblock(editor: monaco.editor.IStandaloneCodeEditor) {
+    editorOnPrefixSuffix(editor, ctxMaps['codeblock'].prefix, ctxMaps['codeblock'].suffix)
+  },
+  mathline(editor: monaco.editor.IStandaloneCodeEditor) {
+    editorOnUpdateFontStyle(editor, ctxMaps['mathline'].prefix, ctxMaps['mathline'].suffix)
+  },
+  mathblock(editor: monaco.editor.IStandaloneCodeEditor) {
+    editorOnPrefixSuffix(editor, ctxMaps['mathblock'].prefix, ctxMaps['mathblock'].suffix)
   },
   keyboard(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditAppendPrefixSuffix(editor, '<kbd>', '</kbd>')
+    editorOnPrefixSuffix(editor, ctxMaps['keyboard'].prefix, ctxMaps['keyboard'].suffix)
   },
   link(editor: monaco.editor.IStandaloneCodeEditor) {
-    EditAppendPrefixSuffix(editor, '[]()', '')
+    editorOnPrefixSuffix(editor, ctxMaps['link'].prefix, ctxMaps['link'].suffix)
+  },
+  linelinks(editor: monaco.editor.IStandaloneCodeEditor) {
+    OnInsertAfterCursor(editor, ctxMaps['linelinks'].prefix)
+  },
+  weblinks(editor: monaco.editor.IStandaloneCodeEditor) {
+    OnInsertAfterCursor(editor, ctxMaps['linelinks'].prefix)
+  },
+  tasklists(editor: monaco.editor.IStandaloneCodeEditor) {
+    OnInsertAfterCursor(editor, ctxMaps['tasklists'].prefix)
   },
   paste(editor: monaco.editor.IStandaloneCodeEditor, context: string) {
-    EditInsTextAfterCursor(editor, context)
+    editorOnPasteHandle(editor, context)
   },
   insertimage(context: string) {
     window.electron.ipcRenderer.send('monaco-editor-container-insert-image', context)
@@ -335,7 +338,7 @@ export const EventHandleMaps = {
 }
 
 // 假设 editor 是您已经初始化的 Monaco Editor 实例
-export function EditSetFontStyle(editor: monaco.editor.IStandaloneCodeEditor, style: string) {
+export function UpdateContextFormat(editor: monaco.editor.IStandaloneCodeEditor, style: string) {
   const handler = EventHandleMaps[style.toLowerCase()]
   if (handler) {
     handler(editor, style.toLowerCase())
