@@ -11,6 +11,12 @@ import EventBus from '../event-bus'
 import { onBeforeUnmount, onMounted } from 'vue'
 import { Position } from 'monaco-editor'
 
+function onUpdateEditorFilePath(value: string) {
+  const element = document.getElementById('status-bar-file-path')
+  if (!element) return
+  element.textContent = `${value}`
+}
+
 function onUpdateEditorContentLength(value: string) {
   const element = document.getElementById('status-bar-file-size')
   if (!element) return
@@ -24,15 +30,23 @@ function onUpdateEditorCursorPosition(position: Position) {
 }
 
 onMounted(() => {
-  EventBus.$on('monaco-editor-content-length', (value: string) => {
+  EventBus.$on('monaco-editor-statusbar-file-path', (value: string) => {
+    onUpdateEditorFilePath(value)
+  })
+
+  EventBus.$on('monaco-editor-statusbar-content-length', (value: string) => {
     onUpdateEditorContentLength(value)
   })
 
-  EventBus.$on('monaco-editor-cursor-position', (position: Position) => {
+  EventBus.$on('monaco-editor-statusbar-cursor-position', (position: Position) => {
     onUpdateEditorCursorPosition(position)
   })
 
   onBeforeUnmount(() => {
+    EventBus.$off('monaco-editor-statusbar-file-path', (value: string) => {
+      onUpdateEditorFilePath(value)
+    })
+
     EventBus.$off('monaco-editor-content-length', (value: string) => {
       onUpdateEditorContentLength(value)
     })

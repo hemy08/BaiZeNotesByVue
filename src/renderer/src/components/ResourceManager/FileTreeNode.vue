@@ -58,6 +58,7 @@
 <script setup lang="ts">
 import { ref, defineProps, PropType } from 'vue'
 import { FileSysItem, getFileMgrSvg, handleContextMenu } from './resource-manager'
+import EventBus from '../../event-bus'
 
 // 定义 props 类型
 // @ts-ignore eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -107,6 +108,7 @@ function handleFileSelect(node: FileSysItem) {
 function handleClick(node: FileSysItem) {
   if (node.type === 'file' && node.name.endsWith('.md')) {
     handleFileSelect(node)
+    EventBus.$emit('monaco-editor-statusbar-file-path', node.path)
   }
 }
 

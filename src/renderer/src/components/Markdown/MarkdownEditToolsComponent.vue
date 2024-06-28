@@ -14,7 +14,7 @@
 </template>
 <script setup lang="ts">
 import { onMounted, watch, ref } from 'vue'
-import * as editor from './monaco-editor'
+import * as editor from './hemy-editor'
 
 const showWidth = ref('')
 

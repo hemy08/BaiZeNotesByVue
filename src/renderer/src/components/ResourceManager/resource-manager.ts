@@ -139,40 +139,42 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
         label: '复制',
         children: [
           {
-            label: '文件夹/文件',
+            label: '文件/文件夹',
             divided: true,
             onClick: () => {
-              onHandleCopy('file')
+              onHandleCopy(node, 'file')
             }
           },
           {
-            label: '文件夹名称',
+            label: '文件/文件夹名称',
             onClick: () => {
-              onHandleCopy('foldername')
+              onHandleCopy(node, 'fullname')
             }
           },
           {
             label: '文件夹绝对路径',
             onClick: () => {
-              onHandleCopy('realpath')
+              onHandleCopy(node, 'realpath')
             }
           },
           {
             label: '相对于当前打开文件路径',
             onClick: () => {
-              onHandleCopy('relativepath')
+              onHandleCopy(node, 'relativepath')
             }
           },
           {
             label: '复制为本地图片链接',
+            disabled: node.type !== 'file',
             onClick: () => {
-              onHandleCopy('imaglink')
+              onHandleCopy(node, 'imagelink')
             }
           },
           {
             label: '复制为本地文件链接',
+            disabled: node.type !== 'file',
             onClick: () => {
-              onHandleCopy('filelink')
+              onHandleCopy(node, 'filelink')
             }
           }
         ]
@@ -220,13 +222,6 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
         }
       },
       {
-        label: '刷新',
-        onClick: () => {
-          alert('刷新')
-        },
-        divided: true
-      },
-      {
         label: '在资源管理器打开',
         onClick: () => {
           alert('在资源管理器打开')
@@ -236,12 +231,6 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
         label: '从磁盘重新加载',
         onClick: () => {
           onHandleReloadFromDisk()
-        }
-      },
-      {
-        label: '属性',
-        onClick: () => {
-          alert('属性')
         }
       }
     ]
@@ -271,8 +260,20 @@ function onHandleImport(value: string) {
   window.electron.ipcRenderer.send('file-manager-context-menu-import-from', value)
 }
 
-function onHandleCopy(value: string) {
-  window.electron.ipcRenderer.send('file-manager-context-menu-copy-as', value)
+async function onHandleCopy(node: FileSysItem, value: string) {
+  if (value === 'fullname') {
+    await navigator.clipboard.writeText(node.name)
+  } else if (value === 'realpath') {
+    await navigator.clipboard.writeText(node.path)
+  } else if (value === 'relativepath') {
+    window.electron.ipcRenderer.send('file-manager-context-menu-copy-relative-path', node.path)
+  } else if (value === 'imagelink') {
+    window.electron.ipcRenderer.send('file-manager-context-menu-copy-imagelink', node.path)
+  } else if (value === 'filelink') {
+    window.electron.ipcRenderer.send('file-manager-context-menu-copy-filelink', node.path)
+  } else {
+    window.electron.ipcRenderer.send('file-manager-context-menu-copy-file', node.path)
+  }
 }
 
 function onHandleCut() {

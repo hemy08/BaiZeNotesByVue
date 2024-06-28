@@ -1,5 +1,5 @@
-import { showEmojiQuickAccess } from './quick-access-emojis'
-import { showSymbolQuickAccess } from './quick-access-symbols'
+import { showEmojiQuickAccess } from './hemy-quick-access-emojis'
+import { showSymbolQuickAccess } from './hemy-quick-access-symbols'
 import { mermaidDiagrams } from '../../../../main/templates/mermaid/mermaidTemplates'
 import { plantumlDiagrams } from '../../../../main/templates/plantuml/plantumlTemplates'
 import ContextMenu, { MenuItem } from '@imengyu/vue3-context-menu'

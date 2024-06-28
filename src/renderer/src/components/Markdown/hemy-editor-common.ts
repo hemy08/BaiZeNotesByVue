@@ -1,6 +1,6 @@
 import * as monaco from 'monaco-editor'
 
-function replaceSelection(
+export function replaceSelection(
   editor: monaco.editor.IStandaloneCodeEditor,
   value: string,
   moveMarks: boolean,

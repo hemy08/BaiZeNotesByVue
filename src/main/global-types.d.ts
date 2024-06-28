@@ -12,6 +12,28 @@ declare global {
     children?: []
   }
 
+  interface FileSysItem {
+    id: never
+    name: string
+    path: string
+    type: 'file' | 'folder'
+    fileExtension: string
+    isDirectory?: boolean
+    isIndented?: boolean
+    isExpanded?: boolean
+    children?: {
+      id: never
+      name: string
+      path: string
+      fileExtension: string
+      type: 'folder' | 'file'
+      isDirectory: boolean
+      isIndented: boolean
+      isExpanded: boolean
+      children?: never[]
+    }[]
+  }
+
   interface GlobalEmoji {
     file_icon: string
     folder_open: string
@@ -47,6 +69,7 @@ declare global {
     RootPath: string
     SavingFile: boolean
     SaveFileInterval: string
+    CopyCutFrom: string
     Emoji: GlobalEmoji
     FileMgrSvgs: GlobalSvg
     EditorToolBar: GlobalEditToolBar

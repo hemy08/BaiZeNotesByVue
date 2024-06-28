@@ -11,7 +11,7 @@
 import * as monaco from 'monaco-editor'
 import { ref, onMounted, watch, onBeforeUnmount, defineProps } from 'vue'
 import EventBus from '../../event-bus'
-import * as editor from './monaco-editor'
+import * as editor from './hemy-editor'
 
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
@@ -47,12 +47,13 @@ onMounted(() => {
       if (editorInstance != null) {
         const context = editorInstance.getValue()
         emit('update:code', context)
-        EventBus.$emit('monaco-editor-content-length', context.length)
+        EventBus.$emit('monaco-editor-statusbar-content-length', context.length)
       }
     })
 
     editor.DidChange(editorInstance)
     editor.KeyMaps(editorInstance)
+    editor.AddActions(editorInstance)
 
     global.mdEditor = editorInstance
   }
@@ -72,9 +73,10 @@ window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context
 watch(
   () => props.code,
   (newCode) => {
-    //console.log('newCode length', newCode.length)
     if (editorInstance) {
-      //console.log('newCode length', newCode.length)
+      if (newCode.length === 0) {
+        newCode = '# '
+      }
       editorInstance.setValue(newCode)
     }
   }

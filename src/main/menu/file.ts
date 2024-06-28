@@ -86,19 +86,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      label: '保存所有 ...待开发',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
       type: 'separator'
-    },
-    {
-      label: '历史记录 ...待开发',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
     },
     {
       label: '从磁盘重新加载',

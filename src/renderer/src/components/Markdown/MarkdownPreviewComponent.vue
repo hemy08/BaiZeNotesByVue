@@ -11,7 +11,7 @@ import { onBeforeUnmount, onMounted, onUpdated, ref, watchEffect } from 'vue'
 import highlightjs from 'markdown-it-highlightjs'
 import { full as emoji } from 'markdown-it-emoji'
 import hljs from 'highlight.js'
-import * as editor from './monaco-editor'
+import * as editor from './hemy-editor'
 import EventBus from '../../event-bus'
 //import { marked } from 'marked'
 //import { Remarkable } from 'remarkable'
@@ -35,7 +35,7 @@ const md = MarkdownIt({
   xhtmlOut: true, // 使用 '/' 来闭合单标签 （比如 <br />）。 这个选项只对完全的 CommonMark 模式兼容。
   linkify: true, // 将类似 URL 的文本自动转换为链接。
   langPrefix: 'language-', // 给围栏代码块的 CSS 语言前缀。对于额外的高亮代码非常有用。
-  breaks: false, // 转换段落里的 '\n' 到 <br>。
+  breaks: true, // 转换段落里的 '\n' 到 <br>。
   // 启用一些语言中立的替换 + 引号美化
   // 双 + 单引号替换对，当 typographer 启用时。
   // 或者智能引号等，可以是 String 或 Array。

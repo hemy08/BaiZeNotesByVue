@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import { FileItem } from '../global-types'
-import { dialog } from 'electron'
+import { dialog, clipboard } from 'electron'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
@@ -129,7 +129,7 @@ export function CreateFileFolder(name: string, path: string, isFolder: boolean, 
   } else {
     fullName = fullName + extension
     // 使用 fs.writeFile 创建并写入文件
-    fs.writeFileSync(fullName, '')
+    fs.writeFileSync(fullName, '# ' + name + '\r\n')
   }
 
   // 重新加载文件资源管理器
@@ -141,7 +141,7 @@ export function CreateFileFolder(name: string, path: string, isFolder: boolean, 
       name: name,
       path: fullName,
       type: 'file',
-      content: '# ' + name
+      content: '# ' + name + '\r\n'
     }
     //console.log('global.current_active_file', global.current_active_file)
     global.MainWindow.webContents.send('show-selected-file-context', '# ' + name)
@@ -170,6 +170,9 @@ export function OpenSelectFile(fileProperties: FileProperties) {
     if (!err) {
       fileProperties.content = data
       global.current_active_file = fileProperties
+      if (data.length === 0) {
+        data = '\r\n'
+      }
       // console.log('OpenSelectFile', fileProperties)
       global.MainWindow.webContents.send('show-selected-file-context', data)
     } else {
@@ -456,4 +459,37 @@ export function InsertImagesToFile(base64Image: string): string {
     return ''
   }
   return fileName
+}
+
+export async function CopyRelativePath(toPath: string) {
+  let relative = path.relative(global.current_active_file.path, toPath)
+  if (relative.startsWith('../') || relative.startsWith('..\\')) {
+    relative = relative.substring(3)
+  }
+  relative = relative.replace('\\', '/')
+  await clipboard.writeText(relative)
+}
+
+export async function CopyFileLink(toPath: string) {
+  let relative = path.relative(global.current_active_file.path, toPath)
+  if (relative.startsWith('../') || relative.startsWith('..\\')) {
+    relative = relative.substring(3)
+  }
+  let fileLink = '[' + ParserFileName(toPath) + '](' + relative + ')'
+  fileLink = fileLink.replace('\\', '/')
+  await clipboard.writeText(fileLink)
+}
+
+export async function CopyImageLink(toPath: string) {
+  let relative = path.relative(global.current_active_file.path, toPath)
+  if (relative.startsWith('../') || relative.startsWith('..\\')) {
+    relative = relative.substring(3)
+  }
+  let fileLink = '![' + ParserFileName(toPath) + '](' + relative + ')'
+  fileLink = fileLink.replace('\\', '/')
+  await clipboard.writeText(fileLink)
+}
+
+export function CopyCutFileFolderFrom(node: string) {
+  global.CopyCutFrom = node
 }

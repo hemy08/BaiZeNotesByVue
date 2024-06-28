@@ -1,6 +1,6 @@
 import * as monaco from 'monaco-editor'
 import EventBus from '../../event-bus'
-import { EventHandleMaps } from './monaco-editor-common'
+import { EventHandleMaps } from './hemy-editor-common'
 
 function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Digit1, function () {
@@ -75,9 +75,10 @@ function onDidChange(editor: monaco.editor.IStandaloneCodeEditor) {
   // 监听光标位置
   editor.onDidChangeCursorPosition((e) => {
     if (editor != null) {
-      EventBus.$emit('monaco-editor-cursor-position', e.position)
+      EventBus.$emit('monaco-editor-statusbar-cursor-position', e.position)
     }
   })
+
 }
 
 export const MonacoEditorKeyMaps = registerEditorKeyMaps

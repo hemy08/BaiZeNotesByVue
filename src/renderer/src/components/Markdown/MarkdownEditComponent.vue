@@ -50,7 +50,7 @@ const markdownEditorCode = ref('')
 const markdownEditorContent = ref('')
 const monacoEditorWidth = ref('50%')
 const resizerWidth = ref(4)
-const initialCodeContent = ref('')
+const initialCodeContent = ref('# ')
 let editorMouseStart = 0
 
 // 存储窗口宽度
@@ -138,8 +138,7 @@ function handleMarkdownCodeUpdate(newValue: string) {
 }
 
 function onHandleNewContent(content: string) {
-  if (content) {
-    // console.log('content open-selected-file len', content.length)
+  if (content.length !== 0) {
     // 编辑区域显示时，传入
     if (isShowEditArea.value) {
       initialCodeContent.value = content
@@ -150,7 +149,7 @@ function onHandleNewContent(content: string) {
     }
   } else {
     // console.log('content bull')
-    handleMarkdownCodeUpdate(content)
+    handleMarkdownCodeUpdate('\r\n')
   }
 }
 

@@ -86,8 +86,20 @@ function createWindow(): void {
     console.log('file-manager-context-menu-import-from', value)
   })
 
-  ipcMain.on('file-manager-context-menu-copy-as', (_, value) => {
-    console.log('file-manager-context-menu-copy-as', value)
+  ipcMain.on('file-manager-context-menu-copy-relative-path', (_, value) => {
+    utils.FileUtils.CopyRelativePath(value)
+  })
+
+  ipcMain.on('file-manager-context-menu-copy-imagelink', (_, value) => {
+    utils.FileUtils.CopyImageLink(value)
+  })
+
+  ipcMain.on('file-manager-context-menu-copy-filelink', (_, value) => {
+    utils.FileUtils.CopyFileLink(value)
+  })
+
+  ipcMain.on('file-manager-context-menu-copy-file', (_, value) => {
+    utils.FileUtils.CopyCutFileFolderFrom(value)
   })
 
   ipcMain.on('file-manager-context-menu-cut', (_, value) => {

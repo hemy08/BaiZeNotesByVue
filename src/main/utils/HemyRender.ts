@@ -81,7 +81,7 @@ function preRenderFileUrlConvert(text: string): string {
     if (!match[1].startsWith('http')) {
       const fileSrc = covertFileUrl(match[1])
       const altText = parseAltText(match[0])
-      const htmlContent = '<p><a href="' + fileSrc + '">' + altText + '</a></p>'
+      const htmlContent = '<a href="' + fileSrc + '">' + altText + '</a>'
       renderResult = renderResult.replace(match[0], htmlContent)
     }
   }
