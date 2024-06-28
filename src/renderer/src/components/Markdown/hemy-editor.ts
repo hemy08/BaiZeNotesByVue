@@ -17,7 +17,7 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
   tabSize: 4,
   fontFamily: 'Hack',
   lineNumbers: 'on',
-  accessibilitySupport: false, // 启用或禁用辅助功能支持。
+  accessibilitySupport: 'off', // 启用或禁用辅助功能支持。
   snippetSuggestions: 'none', // 控制代码片段建议的显示方式
   unicodeHighlight: {
     ambiguousCharacters: false,
@@ -28,9 +28,8 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
   inlineSuggest: {
     enabled: false
   }, // 控制内联建议的启用或禁用
-  enableDropIntoEditor: false, //允许将文件或其他内容拖放到编辑器中。
   dragAndDrop: false, //启用或禁用拖放功能。
-  renderValidationDecorations: false // 启用或禁用验证装饰的渲染。
+  renderValidationDecorations: 'off' // 启用或禁用验证装饰的渲染。
 }
 
 const MonacoEditorOverride: monaco.editor.IEditorOverrideServices = {}

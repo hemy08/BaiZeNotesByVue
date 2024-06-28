@@ -12,7 +12,7 @@ import { ShowInsertImageDialog } from './ShowInsertImageDialog'
 import { dialog } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 
-function ShowConfirmDeleteDialog(path: string) {
+function ShowConfirmDeleteDialog(path: string, isFile: boolean) {
   dialog
     .showMessageBox({
       type: 'question',
@@ -24,7 +24,7 @@ function ShowConfirmDeleteDialog(path: string) {
       if (result.response === 0) {
         // console.log('用户点击了“是”')
         // 在这里执行“是”的操作
-        fileUtils.DeleteFileFolder(path)
+        fileUtils.DeleteFileFolder(path, isFile)
       } else {
         // console.log('用户点击了“否”')
         return

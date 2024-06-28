@@ -70,6 +70,7 @@ function onShowMarkdownTOC() {
   color: white;
   fill: #986801;
   border: none; /* 去掉外边框 */
+  margin-top: 10px;
 }
 
 .navi-tab-item:hover {

@@ -1,9 +1,13 @@
 import * as fs from 'fs'
 import { FileItem } from '../global-types'
-import { dialog, clipboard } from 'electron'
+import { dialog, clipboard, shell } from 'electron'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const fsExtra = require('fs-extra')
+
+const reloadFromDiskTime = 100
 
 function StartAutoSaveFileTime() {
   if (global.SavingFile) {
@@ -13,6 +17,17 @@ function StartAutoSaveFileTime() {
     }, global.SaveFileInterval) // 每5秒执行一次
     global.SavingFile = true
   }
+}
+
+function showErrorMessageBox(message: string) {
+  dialog.showMessageBox({
+    title: `错误！`,
+    type: 'info',
+    message: '出错啦',
+    detail: message,
+    noLink: true,
+    buttons: ['确定']
+  })
 }
 
 export function BuildFileTree(rootPath: string, mdFiles: FileItem[]): FileItem[] {
@@ -124,16 +139,13 @@ export function CreateFileFolder(name: string, path: string, isFolder: boolean, 
     if (!fs.existsSync(fullName)) {
       fs.mkdirSync(fullName, { recursive: true })
     } else {
-      dialog.showErrorBox('出错啦!!!', `${fullName} 已存在`)
+      showErrorMessageBox(`${fullName} 已存在`)
     }
   } else {
     fullName = fullName + extension
     // 使用 fs.writeFile 创建并写入文件
     fs.writeFileSync(fullName, '# ' + name + '\r\n')
   }
-
-  // 重新加载文件资源管理器
-  ReloadDirFromDisk()
 
   if (!isFolder) {
     // 打开当前文件
@@ -146,6 +158,11 @@ export function CreateFileFolder(name: string, path: string, isFolder: boolean, 
     //console.log('global.current_active_file', global.current_active_file)
     global.MainWindow.webContents.send('show-selected-file-context', '# ' + name)
   }
+
+  // 重新加载文件资源管理器
+  setTimeout(() => {
+    ReloadDirFromDisk()
+  }, reloadFromDiskTime)
 }
 
 export function ReloadDirFromDisk() {
@@ -188,7 +205,7 @@ export function SaveActiveFile() {
     fs.writeFileSync(curFile.path, curFile.content)
   } else {
     // 文件不存在，新建文件，写入，指定文件路径和文件名
-    console.log('写入文件时发生错误, 文件不存在')
+    showErrorMessageBox('写入文件时发生错误, 文件不存在')
   }
 }
 
@@ -209,11 +226,11 @@ export function ParseDirectoryPath(fullName: string): string {
   return fullName.substring(0, lastIndex)
 }
 
-export function RenameFileFolder(name: string, newName: string) {
+export function RenameFileFolder(name: string, newName: string, isFile: boolean) {
   const path = ParseDirectoryPath(name)
   let newFullPath = ''
   // 目录
-  if (name.lastIndexOf('.') === -1) {
+  if (!isFile) {
     newFullPath = path.replace('/', '\\') + '\\' + newName
   } else {
     const extension = name.substring(name.lastIndexOf('.'))
@@ -223,10 +240,12 @@ export function RenameFileFolder(name: string, newName: string) {
   fs.renameSync(name, newFullPath)
 
   // 重新加载文件资源管理器
-  ReloadDirFromDisk()
+  setTimeout(() => {
+    ReloadDirFromDisk()
+  }, reloadFromDiskTime)
 
   // console.log('newFullPath', newFullPath)
-  if (newFullPath.lastIndexOf('.') !== -1) {
+  if (isFile) {
     const fileProperties: FileProperties = {
       name: ParserFileName(newFullPath),
       path: newFullPath,
@@ -238,20 +257,21 @@ export function RenameFileFolder(name: string, newName: string) {
   }
 }
 
-export function DeleteFileFolder(name: string) {
+export function DeleteFileFolder(name: string, isFile: boolean) {
   // 文件、目录，如果是目录，
-  if (name.lastIndexOf('.') === -1) {
+  if (!isFile) {
     fs.rm(name, { recursive: true }, (err) => {
-      if (!err) {
-        console.log(err)
+      if (err) {
+        showErrorMessageBox(err.message)
       }
     })
   } else {
     fs.unlinkSync(name)
   }
 
-  // 重新加载文件资源管理器
-  ReloadDirFromDisk()
+  setTimeout(() => {
+    ReloadDirFromDisk()
+  }, reloadFromDiskTime)
 }
 
 export function ParserFileName(filePath: string): string {
@@ -301,7 +321,9 @@ export function CreateFile(path: string, name: string, extension: string) {
   fs.writeFileSync(fullName, '')
 
   // 重新加载文件资源管理器
-  ReloadDirFromDisk()
+  setTimeout(() => {
+    ReloadDirFromDisk()
+  }, reloadFromDiskTime)
 
   // 打开当前文件
   global.current_active_file = {
@@ -325,7 +347,7 @@ export function OpenDir(mainWindow: Electron.BrowserWindow) {
       ReloadDirFromDisk()
     })
     .catch((err) => {
-      console.error('Error opening directory dialog:', err)
+      showErrorMessageBox('Error opening directory dialog:' + err)
     })
 }
 
@@ -334,19 +356,20 @@ export function CreateFolder(path: string, name: string) {
   if (!fs.existsSync(fullName)) {
     fs.mkdirSync(fullName, { recursive: true })
   } else {
-    dialog.showErrorBox('出错啦!!!', `${fullName} 已存在`)
+    showErrorMessageBox(`${fullName} 已存在`)
   }
 
-  // 重新加载文件资源管理器
-  ReloadDirFromDisk()
+  setTimeout(() => {
+    ReloadDirFromDisk()
+  }, reloadFromDiskTime)
 }
 
-export function Rename(name: string, newName: string) {
-  RenameFileFolder(name, newName)
+export function Rename(name: string, newName: string, isFile: boolean) {
+  RenameFileFolder(name, newName, isFile)
 }
 
-export function Delete(name: string) {
-  DeleteFileFolder(name)
+export function Delete(name: string, isFile: boolean) {
+  DeleteFileFolder(name, isFile)
 }
 
 function ParserImageBuffer(content: string): Buffer | null {
@@ -377,7 +400,7 @@ function CreateImagesDir(): string {
       // Node.js v10.12.0+ 支持递归创建目录
       fs.mkdirSync(outDir, { recursive: true })
     } catch (err) {
-      dialog.showErrorBox('出错啦!!!', `${outDir} 不存在，创建目录失败，${err}`)
+      showErrorMessageBox(`${outDir} 不存在，创建目录失败，${err}`)
       return ''
     }
   }
@@ -389,17 +412,14 @@ function SaveImagesFile(outFilePath: string, base64Image: string): boolean {
   // 解码 base64 字符串
   const imgBuffer = ParserImageBuffer(base64Image)
   if (imgBuffer === null) {
-    dialog.showErrorBox(
-      '出错啦!!!',
-      `解析文件格式失败，当前只支持*.png;*.jpg;*.jpeg;*.bmp;*gif;*.ico;`
-    )
+    showErrorMessageBox(`解析文件格式失败，当前只支持*.png;*.jpg;*.jpeg;*.bmp;*gif;*.ico;`)
     return false
   }
 
   try {
     fs.writeFileSync(outFilePath, imgBuffer, 'binary') // 'binary' 参数在这里是可选的，因为 Buffer 已经是二进制数据
   } catch (err) {
-    dialog.showErrorBox('出错啦!!!', `保存图像时出错: ${err}`)
+    showErrorMessageBox(`保存图像时出错: ${err}`)
     return false
   }
 
@@ -409,7 +429,7 @@ function SaveImagesFile(outFilePath: string, base64Image: string): boolean {
 export function SaveImageDataToFile(name: string, base64Image: string) {
   // console.log('SaveImageDataToFile', base64Image.substring(0, 512))
   if (!global.current_active_file) {
-    dialog.showErrorBox('出错啦!!!', `未打开任何文件，请先打开一个文件`)
+    showErrorMessageBox(`未打开任何文件，请先打开一个文件`)
     return false
   }
 
@@ -421,7 +441,7 @@ export function SaveImageDataToFile(name: string, base64Image: string) {
   const outFilePath = path.join(outDir, name)
   if (fs.existsSync(outFilePath)) {
     // 目录下文件已经存在，直接返回
-    dialog.showErrorBox('出错啦!!!', `文件已经存在 ${name}`)
+    showErrorMessageBox(`文件已经存在 ${name}`)
     return true
   }
   return SaveImagesFile(outFilePath, base64Image)
@@ -438,7 +458,7 @@ function getImageFileName(): string {
 export function InsertImagesToFile(base64Image: string): string {
   // console.log('InsertImagesToFile', base64Image.substring(0, 512))
   if (!global.current_active_file) {
-    dialog.showErrorBox('出错啦!!!', `未打开任何文件，请先打开一个文件`)
+    showErrorMessageBox(`未打开任何文件，请先打开一个文件`)
     return ''
   }
 
@@ -451,7 +471,7 @@ export function InsertImagesToFile(base64Image: string): string {
   const outFilePath = path.join(outDir, fileName)
   if (fs.existsSync(outFilePath)) {
     // 目录下文件已经存在，直接返回
-    dialog.showErrorBox('出错啦!!!', `文件已经存在 ${fileName}`)
+    showErrorMessageBox(`文件已经存在 ${fileName}`)
     return ''
   }
 
@@ -461,35 +481,114 @@ export function InsertImagesToFile(base64Image: string): string {
   return fileName
 }
 
-export async function CopyRelativePath(toPath: string) {
+export function CopyRelativePath(toPath: string) {
   let relative = path.relative(global.current_active_file.path, toPath)
   if (relative.startsWith('../') || relative.startsWith('..\\')) {
     relative = relative.substring(3)
   }
   relative = relative.replace('\\', '/')
-  await clipboard.writeText(relative)
+  clipboard.writeText(relative)
 }
 
-export async function CopyFileLink(toPath: string) {
+export function CopyFileLink(toPath: string) {
   let relative = path.relative(global.current_active_file.path, toPath)
   if (relative.startsWith('../') || relative.startsWith('..\\')) {
     relative = relative.substring(3)
   }
   let fileLink = '[' + ParserFileName(toPath) + '](' + relative + ')'
   fileLink = fileLink.replace('\\', '/')
-  await clipboard.writeText(fileLink)
+  clipboard.writeText(fileLink)
 }
 
-export async function CopyImageLink(toPath: string) {
+export function CopyImageLink(toPath: string) {
   let relative = path.relative(global.current_active_file.path, toPath)
   if (relative.startsWith('../') || relative.startsWith('..\\')) {
     relative = relative.substring(3)
   }
   let fileLink = '![' + ParserFileName(toPath) + '](' + relative + ')'
   fileLink = fileLink.replace('\\', '/')
-  await clipboard.writeText(fileLink)
+  clipboard.writeText(fileLink)
 }
 
-export function CopyCutFileFolderFrom(node: string) {
-  global.CopyCutFrom = node
+export function FileManagerContextMenuCopy(fromPath: string, isFile: boolean) {
+  global.srcDirCopyCut = fromPath
+  global.isCopyOrCut = 'copy'
+  global.isCopyCutFile = isFile
+}
+
+export function FileManagerContextMenuCut(fromPath: string, isFile: boolean) {
+  global.srcDirCopyCut = fromPath
+  global.isCopyOrCut = 'cut'
+  global.isCopyCutFile = isFile
+}
+
+export async function FileManagerContextMenuPaste(toPath: string, isFile: string) {
+  if (isFile) {
+    showErrorMessageBox(`目标不是一个目录！`)
+    return
+  }
+
+  const src = global.srcDirCopyCut
+  if (src.length === 0) {
+    showErrorMessageBox(`未拷贝/剪切源文件！`)
+    return
+  }
+
+  if (src === toPath) {
+    showErrorMessageBox(`源路径和目标路径相同！`)
+    return
+  }
+
+  // 先在目标目录中创建一个与原目录同名文件夹，返回进行拷贝
+  const lastIndex = Math.max(src.lastIndexOf('\\'), src.lastIndexOf('//'))
+  const srcName = src.substring(lastIndex)
+  const destPath = path.join(toPath, srcName)
+  if (fs.existsSync(destPath)) {
+    showErrorMessageBox(`文件/文件夹已经存在！\r\n` + destPath)
+    return
+  }
+
+  try {
+    await fsExtra.copy(src, destPath, { recursive: true })
+  } catch (err) {
+    showErrorMessageBox((err as Error).message)
+    return
+  }
+
+  // 如果是剪切动作，需要删除原目录
+  if (global.isCopyOrCut === 'cut') {
+    try {
+      await fsExtra.remove(src)
+    } catch (err) {
+      showErrorMessageBox((err as Error).message)
+      return
+    }
+  }
+
+  setTimeout(() => {
+    global.srcDirCopyCut = ''
+    global.isCopyOrCut = ''
+    ReloadDirFromDisk()
+  }, reloadFromDiskTime)
+
+  // 防止重新加载时，前面操作还没有完成，这里设置100ms的定时器处理
+  setTimeout(() => {
+    // 如果是剪切动作，需要删除原目录
+    if (global.isCopyOrCut === 'cut') {
+      fsExtra.remove(src)
+    }
+    global.srcDirCopyCut = ''
+    global.isCopyOrCut = ''
+    ReloadDirFromDisk()
+  }, reloadFromDiskTime)
+}
+
+export function OpenFolderExplorer(path: string) {
+  if (path.lastIndexOf('.') === -1) {
+    const lastIndex = Math.max(path.lastIndexOf('//'), path.lastIndexOf('\\'))
+    const folderPath = path.substring(0, lastIndex)
+    shell.showItemInFolder(folderPath)
+  } else {
+    shell.showItemInFolder(path)
+  }
 }

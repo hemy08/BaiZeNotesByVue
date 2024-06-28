@@ -40,6 +40,7 @@
     "commonmark": "^0.31.0",
     "electron-store": "^9.0.0",
     "electron-updater": "^6.1.8",
+    "fs-extra": "^11.2.0",
     "highlight.js": "^11.9.0",
     "jsdom": "^24.1.0",
     "katex": "^0.16.10",

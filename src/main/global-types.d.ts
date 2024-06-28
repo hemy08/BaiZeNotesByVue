@@ -69,7 +69,9 @@ declare global {
     RootPath: string
     SavingFile: boolean
     SaveFileInterval: string
-    CopyCutFrom: string
+    srcDirCopyCut: string
+    isCopyOrCut: 'copy' | 'cut'
+    isCopyCutFile: boolean
     Emoji: GlobalEmoji
     FileMgrSvgs: GlobalSvg
     EditorToolBar: GlobalEditToolBar

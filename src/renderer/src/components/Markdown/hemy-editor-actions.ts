@@ -1,7 +1,7 @@
 import * as myEditor from './hemy-editor'
 import * as monaco from 'monaco-editor'
 
-function EnterAction(editor: monaco.editor.IStandaloneCodeEditor, ...args) {
+function EnterAction(editor: monaco.editor.IStandaloneCodeEditor) {
   // 获取鼠标当前位置
   const position = editor.getPosition()
   if (!position) return
@@ -22,7 +22,12 @@ function EnterAction(editor: monaco.editor.IStandaloneCodeEditor, ...args) {
   } else if (content.startsWith('- ')) {
     myEditor.InsertAfterCursor(editor, '\r\n- ')
   } else {
-    myEditor.replaceSelection(editor, '\r\n', position)
+    myEditor.replaceSelection(
+      editor,
+      '\r\n',
+      true,
+      new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
+    )
   }
 }
 

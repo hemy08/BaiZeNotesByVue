@@ -182,13 +182,13 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
       {
         label: '剪切',
         onClick: () => {
-          onHandleCut()
+          onHandleCut(node)
         }
       },
       {
         label: '粘贴',
         onClick: () => {
-          onHandlePaste()
+          onHandlePaste(node)
         }
       },
       {
@@ -224,7 +224,7 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
       {
         label: '在资源管理器打开',
         onClick: () => {
-          alert('在资源管理器打开')
+          onHandleOpenExplorer(node)
         }
       },
       {
@@ -272,20 +272,32 @@ async function onHandleCopy(node: FileSysItem, value: string) {
   } else if (value === 'filelink') {
     window.electron.ipcRenderer.send('file-manager-context-menu-copy-filelink', node.path)
   } else {
-    window.electron.ipcRenderer.send('file-manager-context-menu-copy-file', node.path)
+    window.electron.ipcRenderer.send(
+      'file-manager-context-menu-copy-file',
+      node.path,
+      node.type === 'file'
+    )
   }
 }
 
-function onHandleCut() {
-  window.electron.ipcRenderer.send('file-manager-context-menu-cut', '')
+function onHandleCut(node: FileSysItem) {
+  window.electron.ipcRenderer.send('file-manager-context-menu-cut', node.path, node.type === 'file')
 }
 
-function onHandlePaste() {
-  window.electron.ipcRenderer.send('file-manager-context-menu-paste', '')
+function onHandlePaste(node: FileSysItem) {
+  window.electron.ipcRenderer.send(
+    'file-manager-context-menu-paste',
+    node.path,
+    node.type === 'file'
+  )
 }
 
 function onHandleDelete(node: FileSysItem) {
-  window.electron.ipcRenderer.send('file-manager-context-menu-delete', node.path)
+  window.electron.ipcRenderer.send(
+    'file-manager-context-menu-delete',
+    node.path,
+    node.type === 'file'
+  )
 }
 
 function onHandleFind(value: string) {
@@ -293,7 +305,15 @@ function onHandleFind(value: string) {
 }
 
 function onHandleRename(node: FileSysItem) {
-  window.electron.ipcRenderer.send('file-manager-context-menu-rename', node.path, node.name)
+  window.electron.ipcRenderer.send(
+    'file-manager-context-menu-rename',
+    node.path,
+    node.type === 'file'
+  )
+}
+
+function onHandleOpenExplorer(node: FileSysItem) {
+  window.electron.ipcRenderer.send('file-manager-context-menu-open-in-explorer', node.path)
 }
 
 function onHandleReloadFromDisk() {

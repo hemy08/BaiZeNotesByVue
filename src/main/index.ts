@@ -98,30 +98,35 @@ function createWindow(): void {
     utils.FileUtils.CopyFileLink(value)
   })
 
-  ipcMain.on('file-manager-context-menu-copy-file', (_, value) => {
-    utils.FileUtils.CopyCutFileFolderFrom(value)
+  ipcMain.on('file-manager-context-menu-copy-file', (_, path, isFile) => {
+    utils.FileUtils.FileManagerContextMenuCopy(path, isFile)
   })
 
-  ipcMain.on('file-manager-context-menu-cut', (_, value) => {
-    console.log('file-manager-context-menu-cut', value)
+  ipcMain.on('file-manager-context-menu-cut', (_, path, isFile) => {
+    utils.FileUtils.FileManagerContextMenuCut(path, isFile)
   })
 
-  ipcMain.on('file-manager-context-menu-paste', (_, value) => {
-    console.log('file-manager-context-menu-paste', value)
+  ipcMain.on('file-manager-context-menu-paste', (_, value, isFile) => {
+    utils.FileUtils.FileManagerContextMenuPaste(value, isFile)
   })
 
-  ipcMain.on('file-manager-context-menu-delete', (_, value) => {
+  ipcMain.on('file-manager-context-menu-delete', (_, value, isFile) => {
     // console.log('file-manager-context-menu-delete', value)
-    dialogs.ShowConfirmDeleteDialog(value)
+    dialogs.ShowConfirmDeleteDialog(value, isFile)
   })
 
   ipcMain.on('file-manager-context-menu-find-in', (_, value) => {
     console.log('file-manager-context-menu-find-in', value)
   })
 
-  ipcMain.on('file-manager-context-menu-rename', (_, path) => {
+  ipcMain.on('file-manager-context-menu-rename', (_, path, isFile) => {
     // console.log('file-manager-context-menu-rename', path, name)
-    dialogs.ShowFileFolderRenameDialog(path)
+    dialogs.ShowFileFolderRenameDialog(path, isFile)
+  })
+
+  ipcMain.on('file-manager-context-menu-open-in-explorer', (_, path) => {
+    // console.log('file-manager-context-menu-rename', path, name)
+    utils.FileUtils.OpenFolderExplorer(path)
   })
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

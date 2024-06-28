@@ -6,7 +6,7 @@ let customRenameDialog: Electron.BrowserWindow | null
 
 // 创建一个自定义对话框的函数
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function ShowFileFolderRenameDialog(fullName: string) {
+export function ShowFileFolderRenameDialog(fullName: string, isFile: boolean) {
   customRenameDialog = new BrowserWindow({
     width: 550,
     height: 150,
@@ -37,7 +37,7 @@ export function ShowFileFolderRenameDialog(fullName: string) {
   })
 
   function processRenameFileFolder(_, newName: string) {
-    RenameFileFolder(fullName, newName)
+    RenameFileFolder(fullName, newName, isFile)
     if (customRenameDialog) {
       customRenameDialog.close()
     }
