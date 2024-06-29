@@ -70,7 +70,11 @@ function createWindow(): void {
     utils.HemyRenderPost(mainWindow, message)
   })
 
-  ipcMain.on('monaco-editor-insert-web-links', () => {
+  ipcMain.on('monaco-editor-tools-insert-table', () => {
+    dialogs.ShowMarkdownSheetDialog(mainWindow)
+  })
+
+  ipcMain.on('monaco-editor-tools-insert-web-links', () => {
     dialogs.ShowWebUrlDialog(mainWindow)
   })
 
@@ -86,16 +90,16 @@ function createWindow(): void {
     console.log('file-manager-context-menu-import-from', value)
   })
 
-  ipcMain.on('file-manager-context-menu-copy-relative-path', (_, value) => {
-    utils.FileUtils.CopyRelativePath(value)
+  ipcMain.on('file-manager-context-menu-copy-relative-path', (_, path) => {
+    utils.FileUtils.CopyRelativePath(path)
   })
 
-  ipcMain.on('file-manager-context-menu-copy-imagelink', (_, value) => {
-    utils.FileUtils.CopyImageLink(value)
+  ipcMain.on('file-manager-context-menu-copy-imagelink', (_, path) => {
+    utils.FileUtils.CopyImageLink(path)
   })
 
-  ipcMain.on('file-manager-context-menu-copy-filelink', (_, value) => {
-    utils.FileUtils.CopyFileLink(value)
+  ipcMain.on('file-manager-context-menu-copy-filelink', (_, path) => {
+    utils.FileUtils.CopyFileLink(path)
   })
 
   ipcMain.on('file-manager-context-menu-copy-file', (_, path, isFile) => {

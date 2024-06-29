@@ -17,6 +17,7 @@ import { onMounted, watch, ref } from 'vue'
 import * as editor from './hemy-editor'
 
 const showWidth = ref('')
+const showPicker = ref(false)
 
 const props = defineProps({
   // 编辑器宽度
@@ -41,6 +42,10 @@ function initButtonSvg() {
 onMounted(() => {
   initButtonSvg()
 })
+
+function updateColor() {
+  showPicker.value = false
+}
 
 watch(
   () => props.toolBarWidth,

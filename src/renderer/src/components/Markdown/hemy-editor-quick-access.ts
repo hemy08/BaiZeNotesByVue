@@ -58,8 +58,12 @@ function onFontFormat(_, context: string) {
   EventBus.$emit('monaco-editor-update-font-format', context)
 }
 
+function onInsertTable() {
+  window.electron.ipcRenderer.send('monaco-editor-tools-insert-table')
+}
+
 function onInsertWebLinks() {
-  window.electron.ipcRenderer.send('monaco-editor-insert-web-links')
+  window.electron.ipcRenderer.send('monaco-editor-tools-insert-web-links')
 }
 
 function onInsertImage() {
@@ -131,6 +135,22 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     param: 'H6',
     svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 4h2v6h4V4h2v14H9v-6H5v6H3V4m12 0h4a2 2 0 0 1 2 2v1h-2V6h-4v4h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m0 8v4h4v-4h-4Z"/></svg>'
   },
+  'font-family': {
+    id: 'font-family',
+    title: '字体样式',
+    class: 'tool-btn',
+    clickFn: onFontFormat,
+    param: 'fontfamily',
+    svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 8h3v12h1v1h-4v-1h1v-3h-4l-1.5 3H14v1h-4v-1h1l6-12m1 1-3.5 7H18V9M5 3h5c1.11 0 2 .89 2 2v11H9v-5H6v5H3V5c0-1.11.89-2 2-2m1 2v4h3V5H6Z"/></svg>'
+  },
+  'font-size': {
+    id: 'font-size',
+    title: '字体大小',
+    class: 'tool-btn',
+    clickFn: onFontFormat,
+    param: 'fontsize',
+    svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 4v3h5v12h3V7h5V4H2m19 5h-9v3h3v7h3v-7h3V9Z"/></svg>'
+  },
   'font-bold': {
     id: 'font-bold',
     title: '加粗',
@@ -163,6 +183,14 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     param: 'underline',
     svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 21h14v-2H5v2m7-4a6 6 0 0 0 6-6V3h-2.5v8a3.5 3.5 0 0 1-3.5 3.5A3.5 3.5 0 0 1 8.5 11V3H6v8a6 6 0 0 0 6 6Z"/></svg>'
   },
+  /*'font-color': {
+    id: 'font-color',
+    title: '颜色',
+    class: 'tool-btn',
+    clickFn: onHandleFontColor,
+    param: 'fontcolor',
+    svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 11.5s-2 2.17-2 3.5a2 2 0 0 0 2 2 2 2 0 0 0 2-2c0-1.33-2-3.5-2-3.5M5.21 10 10 5.21 14.79 10m1.77-1.06L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15c-.59.56-.59 1.53 0 2.12l5.5 5.5c.29.29.68.44 1.06.44s.77-.15 1.06-.44l5.5-5.5c.59-.59.59-1.56 0-2.12Z"/></svg>'
+  },*/
   'font-quote': {
     id: 'font-quote',
     title: '引用',
@@ -307,19 +335,11 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     param: 'insertimage',
     svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m8.5 13.5 2.5 3 3.5-4.5 4.5 6H5m16 1V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Z"/></svg>'
   },
-  'images-center': {
-    id: 'images-center',
-    title: '图片居中',
-    class: 'tool-btn',
-    clickFn: onFontFormat,
-    param: 'imagescenter',
-    svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 5a7 7 0 0 0-7 7 7 7 0 0 0 7 7c1.04 0 2.06-.24 3-.68.94.44 1.96.68 3 .68a7 7 0 0 0 7-7 7 7 0 0 0-7-7c-1.04 0-2.06.24-3 .68-.94-.44-1.96-.68-3-.68m0 2c.34 0 .67.03 1 .1-1.28 1.31-2 3.07-2 4.9 0 1.83.72 3.59 2 4.89-.33.07-.66.11-1 .11a5 5 0 0 1-5-5 5 5 0 0 1 5-5m6 0a5 5 0 0 1 5 5 5 5 0 0 1-5 5c-.34 0-.67-.03-1-.1 1.28-1.31 2-3.07 2-4.9 0-1.83-.72-3.59-2-4.89.33-.07.66-.11 1-.11Z"/></svg>'
-  },
   'insert-table': {
     id: 'insert-table',
     title: '表格',
     class: 'tool-btn',
-    clickFn: onFontFormat,
+    clickFn: onInsertTable,
     param: 'insertable',
     svg: '<svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m0 4v4h6V8H5m8 0v4h6V8h-6m-8 6v4h6v-4H5m8 0v4h6v-4h-6Z"/></svg>'
   },

@@ -1,9 +1,20 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow, ipcMain, dialog } from 'electron'
 import { katexRenderToString } from '../utils/KatexRender'
 
-let customMathTextDialog: Electron.BrowserWindow | null
+let customMathTextDialog: Electron.BrowserWindow | null = null
 
 export function ShowMathTextDialog(mainWindow: Electron.BrowserWindow) {
+  if (customMathTextDialog !== null ) {
+    dialog.showMessageBox({
+      title: `错误！`,
+      type: 'info',
+      message: '出错啦',
+      detail: '已经存在一个公式编辑对话框了，请先关闭！',
+      noLink: true,
+      buttons: ['确定']
+    })
+    return
+  }
   createMathTextDialog(mainWindow)
 }
 
@@ -53,6 +64,9 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
     if (customMathTextDialog) {
       ipcMain.removeListener('dialog-math-line-text-btn-insert', processMathLineTextInsert)
       ipcMain.removeListener('dialog-math-block-text-btn-insert', processMathBlockTextInsert)
+      ipcMain.removeListener('dialog-math-math-text-btn-insert', processMathCodeBlockInsert)
+      ipcMain.removeListener('dialog-math-katex-text-btn-insert', processMathCodeBlockInsert)
+      ipcMain.removeListener('dialog-math-latex-text-btn-insert', processMathCodeBlockInsert)
       ipcMain.removeListener('dialog-math-text-btn-cancel', () => {})
       customMathTextDialog.close()
       customMathTextDialog = null
@@ -69,8 +83,16 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
     exitCustomFontDialog()
   }
 
+  function processMathCodeBlockInsert(_, mathText) {
+    mainWindow.webContents.send('monaco-insert-text-block-templates', mathText)
+    exitCustomFontDialog()
+  }
+
   ipcMain.on('dialog-math-line-text-btn-insert', processMathLineTextInsert)
   ipcMain.on('dialog-math-block-text-btn-insert', processMathBlockTextInsert)
+  ipcMain.on('dialog-math-math-text-btn-insert', processMathCodeBlockInsert)
+  ipcMain.on('dialog-math-katex-text-btn-insert', processMathCodeBlockInsert)
+  ipcMain.on('dialog-math-latex-text-btn-insert', processMathCodeBlockInsert)
   ipcMain.on('dialog-math-text-btn-cancel', () => {
     exitCustomFontDialog()
   })
@@ -95,7 +117,7 @@ const mdMathTextDialogHtmlContext =
   '  <style>\n' +
   '    #textInput {width:1200px;height:100px;overflow-y:auto;margin-left:20px;margin-top:10px;flex-direction:column}\n' +
   '    #katex-preview {width:1200px;height:250px;display:flex;justify-content:center;align-items:center}\n' +
-  '    .btn-style {width:1200px;margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 150px}\n' +
+  '    .btn-style {width:1200px;margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 50px}\n' +
   '    .katex-html {position: absolute;left: -9999px}\n' +
   '  </style>\n' +
   '</head>\n' +
@@ -114,6 +136,9 @@ const mdMathTextDialogHtmlContext =
   '  <div class="btn-style">\n' +
   '    <button id="insert-math-line" onclick="sendInsertMathLineText()">插入行内公式</button>\n' +
   '    <button id="insert-math-block" onclick="sendInsertMathBlockText()">插入公式块</button>\n' +
+  '    <button id="insert-math-math" onclick="sendInsertMathCodeBlock()">插入Math</button>\n' +
+  '    <button id="insert-math-katex" onclick="sendInsertKatexCodeBlock()">插入Katex</button>\n' +
+  '    <button id="insert-math-latex" onclick="sendInsertLatexCodeBlock()">插入Latex</button>\n' +
   '    <button id="cancel-insert-math" onclick="sendCancelInsertMathText()">取消编辑</button>\n' +
   '  </div>\n' +
   '  <script>\n' +
@@ -136,7 +161,10 @@ const mdMathTextDialogHtmlContext =
   "    document.getElementById('textInput').addEventListener('input', updateTextInput);\n" +
   '    // 这里是JavaScript函数，例如：\n' +
   "    function sendInsertMathLineText() {ipcRenderer.send('dialog-math-line-text-btn-insert', '$' + latexData + '$')}\n" +
-  "    function sendInsertMathBlockText() {ipcRenderer.send('dialog-math-block-text-btn-insert', '$$' + latexData + '$$')}\n" +
+  "    function sendInsertMathBlockText() {ipcRenderer.send('dialog-math-block-text-btn-insert', '$$\\r\\n' + latexData + '\\r\\n$$\\r\\n')}\n" +
+  "    function sendInsertMathCodeBlock() {ipcRenderer.send('dialog-math-math-text-btn-insert', '```math\\r\\n' + latexData + '\\r\\n```\\r\\n')}\n" +
+  "    function sendInsertKatexCodeBlock() {ipcRenderer.send('dialog-math-katex-text-btn-insert', '```katex\\r\\n' + latexData + '\\r\\n```\\r\\n')}\n" +
+  "    function sendInsertLatexCodeBlock() {ipcRenderer.send('dialog-math-latex-text-btn-insert', '```latex\\r\\n' + latexData + '\\r\\n```\\r\\n')}\n" +
   "    function sendCancelInsertMathText() {ipcRenderer.send('dialog-math-text-btn-cancel')}\n" +
   '  </script>\n' +
   '</body>\n' +

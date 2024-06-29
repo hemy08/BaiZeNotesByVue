@@ -213,6 +213,31 @@ function editorOnPasteHandle(editor: monaco.editor.IStandaloneCodeEditor, contex
   replaceSelection(editor, context, true, selection)
 }
 
+
+function editorOnFontQuote(editor: monaco.editor.IStandaloneCodeEditor) {
+  // 获取当前的选择范围
+  const selection = editor.getSelection()
+  if (!selection || selection.isEmpty()) {
+    // 没有选择，则直接插入字符串
+    OnInsertAfterCursor(editor, '> ')
+    return
+  }
+
+  // 获取编辑器模型, 确保模型存在
+  const model = editor.getModel()
+  if (!model) return
+
+  // 有选择，每行行首增加 >
+  console.log('selection', selection)
+  let newText = ''
+  for (let line = selection.startLineNumber; line < selection.endLineNumber; line++) {
+    const context = model.getLineContent(line)
+    newText = newText + '> ' + context + '\r\n'
+  }
+  console.log('newText', newText)
+  replaceSelection(editor, newText, false, selection as monaco.Range)
+}
+
 const ctxMaps = {
   bold: { prefix: '**', suffix: '**' },
   deleteline: { prefix: '~~', suffix: '~~' },
@@ -235,7 +260,7 @@ const ctxMaps = {
   tasklists: { prefix: '\r\n- [ ]', suffix: '' },
   listnumbered: { prefix: '\r\n1. ', suffix: '' },
   listbulleted: { prefix: '\r\n- []()', suffix: '' },
-  fontquote: { prefix: '\r\n> ', suffix: '' }
+  fontquote: { prefix: '> ', suffix: '' }
 }
 
 export const EventHandleMaps = {
@@ -270,7 +295,7 @@ export const EventHandleMaps = {
     editorOnUpdateFontStyle(editor, ctxMaps['underline'].prefix, ctxMaps['underline'].suffix)
   },
   fontquote(editor: monaco.editor.IStandaloneCodeEditor) {
-    editorOnUpdateFontStyle(editor, ctxMaps['fontquote'].prefix, ctxMaps['fontquote'].suffix)
+    editorOnFontQuote(editor)
   },
   fontsuper(editor: monaco.editor.IStandaloneCodeEditor) {
     editorOnPrefixSuffix(editor, ctxMaps['fontsuper'].prefix, ctxMaps['fontsuper'].suffix)

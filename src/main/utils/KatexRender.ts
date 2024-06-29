@@ -37,20 +37,6 @@ function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string
   return result
 }
 
-function renderMathLineInText(text: string): string {
-  // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
-  const regex = /\$([^$]+)\$/g
-
-  return renderMathInText(text, regex, false)
-}
-
-function renderMathBlockInText(text: string): string {
-  // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
-  const regex = /\$\$([^$]+)\$\$/g
-
-  return renderMathInText(text, regex, true)
-}
-
 function katexRenderToString(text: string): string {
   let html = ''
   try {
@@ -62,11 +48,38 @@ function katexRenderToString(text: string): string {
   return html
 }
 
+function renderMathCodeBlock(text: string, regex: RegExp): string {
+  // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
+  let renderResult = text
+  let match: RegExpExecArray | null = null
+  // 使用全局搜索来查找所有匹配项
+  while ((match = regex.exec(text)) !== null) {
+    const mathBlocks = katex.renderToString(match[1])
+    console.log('result ```math', regex, match[1])
+    renderResult = renderResult.replace(
+      match[0],
+      '<div style="text-align: center;"><p>' + mathBlocks + '</p></div>'
+    )
+  }
+
+  return renderResult
+}
+
 function katexRenderMathInText(text: string): string {
   // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
-  const result = renderMathBlockInText(text)
-  // console.log('renderMathBlockInText', result)
-  return renderMathLineInText(result)
+  // 公式块$$ $$
+  let result = renderMathInText(text, /\$\$([^$]+)\$\$/g, true)
+  // 行内公式$  $
+  result = renderMathInText(result, /\$([^$]+)\$/g, false)
+  // ```math   ```
+  result = renderMathCodeBlock(result, /```math([\s\S]*?)```/g)
+  //console.log('result ```math', result)
+  // ```katex   ```
+  result = renderMathCodeBlock(result, /```katex([\s\S]*?)```/g)
+  //console.log('result ```katex', result)
+  // ```latex   ```
+  result = renderMathCodeBlock(result, /```latex([\s\S]*?)```/g)
+  return result
 }
 
 export { katexRenderToString, katexRenderMathInText }

@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="../style/material/admonition.css">
 </head>
 <body>
+  <div>
+    <div class="color-picker" :style="{ backgroundColor: color }" @click="showPicker = true"></div>
+    <input v-model="color" type="color" v-show="showPicker" @input="showPicker = false">
+  </div>
   <div class="admonition note">
     <p class="admonition-title">这是 note 类型的提示框</p>
     <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla et euismod nulla. Curabitur feugiat, tortor non consequat finibus, justo purus auctor massa, nec semper lorem quam in massa.</p>

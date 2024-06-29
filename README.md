@@ -1,11 +1,8 @@
-# HemyMarkdownEditor
-HemyMarkdownEditor 个人的markdown编辑器项目，基于Electron + Vue + TypeScript
+# Hemy Markdown Editor
 
-An Electron application with Vue and TypeScript
+HemyMarkdownEditor 个人的markdown编辑器项目，基于Electron + Vue+ Vite + TypeScript
 
-## Recommended IDE Setup
-
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin)
+具体点击工具栏帮助->关于按钮
 
 ## Project Setup
 
@@ -23,13 +20,13 @@ $ npm run dev
 
 ### Build
 
+当前只支持Windows下的编译，其他平台未编译测试
+
 ```bash
 # For windows
 $ npm run build:win
-
-# For macOS
-$ npm run build:mac
-
-# For Linux
-$ npm run build:linux
 ```
+
+## Docs
+
+[Docs](./MarkdownSyntax.md)

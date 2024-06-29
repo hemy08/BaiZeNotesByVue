@@ -482,6 +482,10 @@ export function InsertImagesToFile(base64Image: string): string {
 }
 
 export function CopyRelativePath(toPath: string) {
+  if (!global.current_active_file) {
+    showErrorMessageBox(`请先打开一个文件！`)
+    return
+  }
   let relative = path.relative(global.current_active_file.path, toPath)
   if (relative.startsWith('../') || relative.startsWith('..\\')) {
     relative = relative.substring(3)
@@ -491,6 +495,10 @@ export function CopyRelativePath(toPath: string) {
 }
 
 export function CopyFileLink(toPath: string) {
+  if (!global.current_active_file) {
+    showErrorMessageBox(`请先打开一个文件！`)
+    return
+  }
   let relative = path.relative(global.current_active_file.path, toPath)
   if (relative.startsWith('../') || relative.startsWith('..\\')) {
     relative = relative.substring(3)
@@ -501,6 +509,10 @@ export function CopyFileLink(toPath: string) {
 }
 
 export function CopyImageLink(toPath: string) {
+  if (!global.current_active_file) {
+    showErrorMessageBox(`请先打开一个文件！`)
+    return
+  }
   let relative = path.relative(global.current_active_file.path, toPath)
   if (relative.startsWith('../') || relative.startsWith('..\\')) {
     relative = relative.substring(3)
