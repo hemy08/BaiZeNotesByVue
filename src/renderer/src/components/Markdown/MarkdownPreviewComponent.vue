@@ -72,17 +72,6 @@ onMounted(() => {
   })
 })
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-/*function getTokens() {
-  const remark = new Remarkable()
-  const markedTokens = marked.lexer(props.editorContent)
-  console.log('markedTokens tokens', markedTokens)
-  const remarkTokens = remark.parse(props.editorContent, [])
-  console.log('remarkTokens tokens', remarkTokens)
-  const mdTokens = md.parse(props.editorContent, [])
-  console.log('markdown-it tokens', mdTokens)
-}*/
-
 // 定义一个函数来更新 Markdown 的渲染，预处理
 async function updateMarkdownPreRender() {
   window.electron.ipcRenderer.send('pre-render-monaco-editor-content', props.editorContent)

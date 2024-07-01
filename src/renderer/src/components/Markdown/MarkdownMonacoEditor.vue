@@ -135,7 +135,17 @@ onMounted(() => {
     }
   }
 
+  function handleScrollEvent(event) {
+    console.log('handleScrollEvent', event)
+    EventBus.$emit('monaco-editor-scroll-event', context.length)
+  }
+
+  editorInstance.getDomNode().addEventListener('scroll', function() {
+    console.log('scroll')
+  })
+
   window.addEventListener('resize', handleEditCompResize)
+  window.addEventListener('scroll', handleScrollEvent)
 
   // 销毁编辑器实例
   onBeforeUnmount(() => {
