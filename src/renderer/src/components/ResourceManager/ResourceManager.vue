@@ -4,17 +4,25 @@
     <div id="file-manager" class="file-manager">
       <div id="file-tree">
         <FileTreeNode
-          v-for="(rootItem, index) in fileSystemTree"
-          :key="index"
-          v-model:is-expanded="rootItem.isExpanded"
-          v-model:file-extension="rootItem.fileExtension"
+          v-for="item in fileNodes"
+          :key="item.id"
+          :ref="`node-${item.id}`"
+          v-model:is-expanded="item.isExpanded"
+          v-model:file-extension="item.fileExtension"
           :is-indented="false"
-          :node="rootItem"
+          :node="item"
         />
       </div>
     </div>
   </div>
-  <div v-if="showMarkdownToc">1111111</div>
+  <div v-if="showMarkdownToc" id="markdown-toc-component" class="markdown-toc-component">
+    <div id="markdown-toc-heading">
+      <div v-for="item in tocArray" :key="item.id" @click="scrollToSection(item)">
+        <!-- 根据 level 添加适当的缩进 -->
+        <span v-html="getIndentedText(item)"></span>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -22,10 +30,12 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import FileTreeNode from './FileTreeNode.vue'
 import { FileSysItem } from './resource-manager'
 import EventBus from '../../event-bus'
+import { MarkdownTOC } from '../hemy'
 
 const showFileExplorer = ref(true)
 const showMarkdownToc = ref(false)
-const fileSystemTree = ref<FileSysItem[]>([])
+const fileNodes = ref<FileSysItem[]>([])
+const tocArray = ref<[]>([])
 
 const props = defineProps({
   // 代码内容
@@ -35,16 +45,16 @@ const props = defineProps({
   }
 })
 
-window.electron.ipcRenderer.on('file-system-data', (_, fileSystemData: string) => {
+
+
+window.electron.ipcRenderer.on('file-system-data', (_, fileTree: string) => {
   try {
     // 更新响应式数据
-    fileSystemTree.value = JSON.parse(fileSystemData) as FileSysItem[]
+    fileNodes.value = JSON.parse(fileTree) as FileSysItem[]
   } catch (error) {
     console.error('Error parsing file system data:', error)
   }
 })
-
-let fileTreeHtml = ''
 
 // 监听父组件切换
 watch(
@@ -52,30 +62,31 @@ watch(
   (value) => {
     if (value == 'markdown-toc') {
       // 保存当前tree信息
-      const fileTree = document.getElementById('.file-tree')
-      if (fileTree) {
-        fileTreeHtml = fileTree.innerHTML
-      }
-      console.log('fileTreeHtml', fileTreeHtml)
       showMarkdownToc.value = true
       showFileExplorer.value = false
       EventBus.$emit('monaco-editor-get-chapters', true)
     } else if (value == 'file-explorer') {
       showFileExplorer.value = true
-      console.log('fileTreeHtml', fileTreeHtml)
-      const fileTree = document.getElementById('.file-tree')
-      if (fileTree) {
-        console.log('fileTree.innerHTML', fileTree.innerHTML)
-        fileTree.innerHTML = fileTreeHtml
-      }
       showMarkdownToc.value = false
+      console.log('monaco-editor-switch-explorer')
+      EventBus.$emit('monaco-editor-switch-explorer', true)
     }
   }
 )
 
+function getIndentedText(item: MarkdownTOC) {
+  // 返回带有缩进的文本
+  const indent = '&nbsp;&nbsp;&nbsp;'.repeat(item.level.slice(1) * 2)
+  return `${indent}${item.text}`
+}
+
+function scrollToSection(item: MarkdownTOC) {
+  EventBus.$emit('monaco-editor-locate-target-line', item)
+}
+
 onMounted(() => {
-  EventBus.$on('monaco-editor-chapters', (headings) => {
-    console.log('headings', headings)
+  EventBus.$on('monaco-editor-chapters', (toc: MarkdownTOC[]) => {
+    tocArray.value = toc
   })
 
   onBeforeUnmount(() => {
@@ -106,5 +117,15 @@ onMounted(() => {
   overflow: auto;
   height: 100%;
   width: calc(100% - 1px);
+}
+
+.markdown-toc-component {
+  display: flex;
+  flex-direction: row;
+  background: ghostwhite;
+  color: black;
+  overflow: auto;
+  width: auto;
+  height: 100%;
 }
 </style>

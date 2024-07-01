@@ -12,6 +12,7 @@ import * as monaco from 'monaco-editor'
 import { ref, onMounted, watch, onBeforeUnmount, defineProps } from 'vue'
 import EventBus from '../../event-bus'
 import * as editor from './hemy-editor'
+import { MarkdownTOC } from '../hemy'
 
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
@@ -104,6 +105,11 @@ onMounted(() => {
   EventBus.$on('monaco-editor-insert-text', (value: string) => {
     editor.InsertAfterCursor(editorInstance, value)
   })
+  EventBus.$on('monaco-editor-locate-target-line', (item: MarkdownTOC) => {
+    editorInstance.revealLines(item.lineNumber, item.lineNumber + 20, {
+      scrollType: monaco.editor.ScrollType.Smooth
+    })
+  })
 
   onBeforeUnmount(() => {
     EventBus.$off('monaco-editor-update-header-format', (value: string) => {
@@ -113,6 +119,9 @@ onMounted(() => {
       editor.UpdateContext(editorInstance, value)
     })
     EventBus.$on('monaco-editor-insert-text', (value: string) => {
+      editor.InsertAfterCursor(editorInstance, value)
+    })
+    EventBus.$on('monaco-editor-locate-target-line', (value: string) => {
       editor.InsertAfterCursor(editorInstance, value)
     })
   })

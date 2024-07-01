@@ -9,6 +9,14 @@ const fsExtra = require('fs-extra')
 
 const reloadFromDiskTime = 100
 
+function getMathRandom(maxLength: Number): string {
+  let result = ''
+  for (let i = 0; i < maxLength; i++) {
+    result += Math.floor(Math.random() * 10) // 生成0到9之间的随机数
+  }
+  return result
+}
+
 function StartAutoSaveFileTime() {
   if (global.SavingFile) {
     setInterval(() => {
@@ -54,12 +62,13 @@ export function BuildFileTree(rootPath: string, mdFiles: FileItem[]): FileItem[]
 export function TraverseDirectory(dir: string, callback: (fileItems: FileItem[]) => void) {
   fs.readdir(dir, (err, files) => {
     if (err) {
-      console.error(err)
+      showErrorMessageBox('获取目录列表失败！')
       return
     }
     const items = files.map((file) => {
       const fullPath = path.join(dir, file)
       return {
+        id: getMathRandom(8),
         name: file,
         path: fullPath,
         type: 'file',
@@ -447,14 +456,6 @@ export function SaveImageDataToFile(name: string, base64Image: string) {
   return SaveImagesFile(outFilePath, base64Image)
 }
 
-function getImageFileName(): string {
-  let result = ''
-  for (let i = 0; i < 16; i++) {
-    result += Math.floor(Math.random() * 10) // 生成0到9之间的随机数
-  }
-  return result
-}
-
 export function InsertImagesToFile(base64Image: string): string {
   // console.log('InsertImagesToFile', base64Image.substring(0, 512))
   if (!global.current_active_file) {
@@ -467,7 +468,7 @@ export function InsertImagesToFile(base64Image: string): string {
     return ''
   }
 
-  const fileName = getImageFileName() + '.png'
+  const fileName = getMathRandom(16) + '.png'
   const outFilePath = path.join(outDir, fileName)
   if (fs.existsSync(outFilePath)) {
     // 目录下文件已经存在，直接返回

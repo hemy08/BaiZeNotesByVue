@@ -1,6 +1,7 @@
 import mermaid from 'mermaid'
 import MarkdownIt from 'markdown-it'
 import EventBus from '../../event-bus'
+import MarkdownTOC from '../hemy'
 
 function generateRandomNumberString(length: number): string {
   let result = ''
@@ -55,20 +56,14 @@ export function PreMarkdownRender(text: string): Promise<string> {
   return preRenderMermaidProc(text)
 }
 
-interface markdownTOC {
-  level: string
-  text: string
-  lineNumber: number
-}
-
 export function ParserMarkdownChapters(md: MarkdownIt, text: string) {
   // 提取大纲
-  const headings: markdownTOC[] = []
+  const headings: MarkdownTOC[] = []
   const mdTokens = md.parse(text, [])
-  console.log('markdown-it tokens', mdTokens)
+  // console.log('markdown-it tokens', mdTokens)
   mdTokens.forEach((token) => {
     if (token.type === 'heading_open') {
-      const healing: markdownTOC = {
+      const healing: MarkdownTOC = {
         level: token.tag,
         text: '',
         lineNumber: 0

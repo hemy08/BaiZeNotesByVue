@@ -59,16 +59,16 @@ watchEffect(() => {
   updateMarkdownPreRender()
 })
 
-function getMarkdownChapters() {
+function UpdateMarkdownChapters() {
   // isTocOpen = tocOpen
   editor.Render.ParserMarkdownChapters(md, props.editorContent)
 }
 
 onMounted(() => {
-  EventBus.$on('monaco-editor-get-chapters', getMarkdownChapters)
+  EventBus.$on('monaco-editor-get-chapters', UpdateMarkdownChapters)
 
   onBeforeUnmount(() => {
-    EventBus.$off('monaco-editor-get-chapters', getMarkdownChapters)
+    EventBus.$off('monaco-editor-get-chapters', UpdateMarkdownChapters)
   })
 })
 
@@ -90,6 +90,7 @@ async function updateMarkdownPreRender() {
 
 // 定义一个函数来更新 Markdown 的渲染，渲染后处理
 function updateMarkdownPostRender(text: string) {
+  UpdateMarkdownChapters()
   window.electron.ipcRenderer.send('post-render-monaco-editor-content', text)
 }
 

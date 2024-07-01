@@ -39,7 +39,6 @@ const naviTabWidth = ref('40px')
 const isShowResourceMgrArea = ref(true)
 
 let mouseStartX = 0
-let fileTreeHtml = ''
 
 const resizerLeft = computed(() => {
   return resMgrWidth.value
@@ -54,12 +53,7 @@ const mdContainerWidth = computed(() => {
   if (isShowResourceMgrArea.value) {
     const resMgrWidthValue = parseInt(resMgrWidth.value.replace('px', ''), 10)
     containerWidth = windowWidth.value - naviTabWidthValue - resMgrWidthValue - 2
-    //console.log('resMgrWidthValue', resMgrWidthValue)
   }
-  //console.log('windowWidth.value', windowWidth.value)
-  //console.log('window.innerWidth', window.innerWidth)
-  //console.log('naviTabWidthValue', naviTabWidthValue)
-  //console.log('containerWidth', containerWidth)
   return containerWidth + 'px'
 })
 
@@ -67,24 +61,10 @@ function onSwitchNaviTab(value: string) {
   if (value == 'switch-open-close') {
     isShowResourceMgrArea.value = !isShowResourceMgrArea.value
   } else if (value == 'file-explorer') {
-    //window.electron.ipcRenderer.send('file-manager-context-menu-reload-from-disk', '')
     naviResManagerShow.value = 'file-explorer'
     isShowResourceMgrArea.value = true
-    if (fileTreeHtml) {
-      const fileTree = document.getElementById('.resource-manager')
-      if (fileTree) {
-        fileTree.innerHTML = fileTreeHtml
-      }
-    }
   } else if (value == 'markdown-toc') {
     // 保存当前tree信息
-    const fileTree = document.getElementById('.resource-manager')
-    // console.log('workspace fileTree', fileTree)
-    if (fileTree) {
-      fileTreeHtml = fileTree.innerHTML
-      // console.log('workspace fileTree.innerHTML', fileTree.innerHTML)
-    }
-    // console.log('workspace fileTreeHtml', fileTreeHtml)
     naviResManagerShow.value = 'markdown-toc'
     isShowResourceMgrArea.value = true
   } else {
