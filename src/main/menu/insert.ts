@@ -5,6 +5,14 @@ import {
   fileTemplates
 } from '../templates/templates'
 import * as dialogs from '../dialogs/dialogs'
+import * as utils from '../utils/utils'
+
+const InsertFromFiles = {
+  json: { label: 'JSON' },
+  text: { label: 'TEXT' },
+  ini: { label: 'INI' },
+  yaml: { label: 'YAML' }
+}
 
 // eslint-disable-next-line no-unused-vars
 export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
@@ -50,6 +58,15 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     }
   })
 
+  const insertFromItem = Object.keys(InsertFromFiles).map((key) => {
+    return {
+      label: InsertFromFiles[key].label, // 根据类别设置标签
+      click: () => {
+        utils.FileUtils.InsertImportFormFile(mainWindow, key, false)
+      }
+    }
+  })
+
   const insertMaterialItem: Electron.MenuItemConstructorOptions[] = [
     {
       label: 'Admonition',
@@ -58,6 +75,7 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     }
   ]
+
   const insertMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
       label: '写作模板',
@@ -93,6 +111,13 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       click: () => {
         dialogs.ShowWebUrlDialog(mainWindow)
       }
+    },
+    {
+      type: 'separator'
+    },
+    {
+      label: '来自文件',
+      submenu: insertFromItem
     },
     {
       type: 'separator'

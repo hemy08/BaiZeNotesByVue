@@ -1,15 +1,18 @@
 import * as fs from 'fs'
+import * as mammoth from 'mammoth'
 import { FileItem } from '../global-types'
-import { dialog, clipboard, shell } from 'electron'
+import { clipboard, dialog, shell } from 'electron'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const fsExtra = require('fs-extra')
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const TurndownService = require('turndown')
 
 const reloadFromDiskTime = 100
 
-function getMathRandom(maxLength: Number): string {
+function getMathRandom(maxLength: number): string {
   let result = ''
   for (let i = 0; i < maxLength; i++) {
     result += Math.floor(Math.random() * 10) // 生成0到9之间的随机数
@@ -27,7 +30,7 @@ function StartAutoSaveFileTime() {
   }
 }
 
-function showErrorMessageBox(message: string) {
+export function showErrorMessageBox(message: string) {
   dialog.showMessageBox({
     title: `错误！`,
     type: 'info',
@@ -225,16 +228,6 @@ export function SaveActiveFileAs() {
   }
 }
 
-export function ParseDirectoryPath(fullName: string): string {
-  if (fullName.lastIndexOf('.') === -1) {
-    return fullName
-  }
-  const lastIndex1 = fullName.lastIndexOf('\\')
-  const lastIndex2 = fullName.lastIndexOf('/')
-  const lastIndex = Math.max(lastIndex1, lastIndex2)
-  return fullName.substring(0, lastIndex)
-}
-
 export function RenameFileFolder(name: string, newName: string, isFile: boolean) {
   const path = ParseDirectoryPath(name)
   let newFullPath = ''
@@ -292,7 +285,7 @@ export function ParserFileName(filePath: string): string {
   return filePath.slice(lastIndex + 1)
 }
 
-export function ParseDir(fullName: string): string {
+export function ParseDirectoryPath(fullName: string): string {
   if (fullName.lastIndexOf('.') === -1) {
     return fullName
   }
@@ -345,7 +338,7 @@ export function CreateFile(path: string, name: string, extension: string) {
   global.MainWindow.webContents.send('show-selected-file-context', '# ' + name)
 }
 
-export function OpenDir(mainWindow: Electron.BrowserWindow) {
+export function OpenDirectory(mainWindow: Electron.BrowserWindow) {
   dialog
     .showOpenDialog(mainWindow, {
       properties: ['openDirectory']
@@ -360,7 +353,28 @@ export function OpenDir(mainWindow: Electron.BrowserWindow) {
     })
 }
 
-export function CreateFolder(path: string, name: string) {
+export function GetSelectDir(
+  mainWindow: Electron.BrowserWindow,
+  cb: (path: string | null) => void
+): string {
+  dialog
+    .showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
+    })
+    .then((result) => {
+      if (result.canceled) {
+        cb(null)
+      } else {
+        cb(result.filePaths[0])
+      }
+    })
+    .catch((err) => {
+      showErrorMessageBox('Error opening directory dialog:' + err)
+      cb(null)
+    })
+}
+
+export function CreateDirectory(path: string, name: string) {
   const fullName = path.replace('/', '\\') + '\\' + name
   if (!fs.existsSync(fullName)) {
     fs.mkdirSync(fullName, { recursive: true })
@@ -604,4 +618,120 @@ export function OpenFolderExplorer(path: string) {
   } else {
     shell.showItemInFolder(path)
   }
+}
+
+const InsertImportFrom = {
+  word: {
+    name: 'Word Files',
+    extensions: ['doc', 'docx'],
+    importReader: convertDocxToMarkdown,
+    insertReader: convertDocxToMarkdown,
+    argStart: '',
+    argEnd: ''
+  },
+  html: {
+    name: 'HTML Files',
+    extensions: ['html', 'htm', 'mhtml'],
+    importReader: convertHtmlToMarkdown,
+    insertReader: convertHtmlToMarkdown,
+    argStart: '',
+    argEnd: ''
+  },
+  sheet: {
+    name: 'Sheet Files',
+    extensions: ['csv', 'xls', 'xlsx', 'xlsm', 'xlsb'],
+    importReader: ReadFile,
+    insertReader: ReadFile,
+    argStart: '```text\r\n',
+    argEnd: '\r\n```\r\n'
+  },
+  json: {
+    name: 'Json Files',
+    extensions: ['json'],
+    importReader: ReadFile,
+    insertReader: ReadFile,
+    argStart: '```json\r\n',
+    argEnd: '\r\n```\r\n'
+  },
+  text: {
+    name: 'Text Files',
+    extensions: ['txt', 'log', 'ini'],
+    importReader: ReadFile,
+    insertReader: ReadFile,
+    argStart: '```text\r\n',
+    argEnd: '\r\n```\r\n'
+  },
+  yaml: {
+    name: 'YAML Files',
+    extensions: ['yaml', 'yml'],
+    importReader: ReadFile,
+    insertReader: ReadFile,
+    argStart: '```yaml\r\n',
+    argEnd: '\r\n```\r\n'
+  }
+}
+
+function convertDocxToMarkdown(file: string): Promise<string> {
+  return mammoth
+    .convertToHtml({ path: file })
+    .then((result) => {
+      const turndownService = new TurndownService()
+      return turndownService.turndown(result.value)
+    })
+    .catch((error) => {
+      throw error
+    })
+}
+
+async function ReadFile(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(data)
+      }
+    })
+  })
+}
+
+async function convertHtmlToMarkdown(file: string): Promise<string> {
+  try {
+    const htmlContent = await ReadFile(file)
+    const turndownService = new TurndownService()
+    return turndownService.turndown(htmlContent)
+  } catch (error) {
+    console.error('Error converting HTML to Markdown:', error)
+  }
+}
+
+export async function InsertImportFormFile(
+  mainWindow: Electron.BrowserWindow,
+  fileType: string,
+  isImport: boolean
+) {
+  const model = InsertImportFrom[fileType]
+  if (!model) {
+    showErrorMessageBox(
+      '暂不支持当前格式的文件。\r\n当前支持*.txt、*.json、*.yaml、*.yml、*.csv、*.ini、*.doc、*.docx、*.html、*.htm'
+    )
+  }
+
+  const channel = isImport ? 'show-selected-file-context' : 'monaco-editor-insert-after-cursor'
+  const readerFn = isImport ? model.importReader : model.insertReader
+  dialog
+    .showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [{ name: model.name, extensions: model.extensions }]
+    })
+    .then(async (result) => {
+      if (result.canceled) return
+      const file = result.filePaths[0]
+
+      const context = await readerFn(file)
+      mainWindow.webContents.send(channel, model.argStart + context + model.argEnd)
+    })
+    .catch((err) => {
+      showErrorMessageBox('Error opening file dialog:' + err)
+    })
 }

@@ -1,48 +1,55 @@
 import { app, ipcMain } from 'electron'
 import * as fileUtils from '../utils/file-utils'
+import * as dialogs from '../dialogs/dialogs'
 
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
   const fileMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '新建文件(N)  ...待开发',
+      label: '新建文件(N)',
       accelerator: 'ctrl+n',
       click: () => {
-        fileUtils.OpenDir(mainWindow)
+        dialogs.ShowNewFileFolderDialog(mainWindow, true)
       }
     },
     {
-      label: '新建文件夹(D) ...待开发',
+      label: '新建文件夹(D)',
       accelerator: 'ctrl+d',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        dialogs.ShowNewFileFolderDialog(mainWindow, false)
       }
     },
     {
       label: '从文件导入',
       submenu: [
         {
-          label: 'World ...待开发',
+          label: '从 Word 导入',
           click: () => {
-            mainWindow.webContents.send('OpenFile', null)
+            fileUtils.InsertImportFormFile(mainWindow, 'word', true)
           }
         },
         {
-          label: 'Html ...待开发',
+          label: '从 HTML 导入',
           click: () => {
-            mainWindow.webContents.send('OpenFile', null)
+            fileUtils.InsertImportFormFile(mainWindow, 'html', true)
           }
         },
         {
-          label: 'Json ...待开发',
+          label: '从 JSON 导入',
           click: () => {
-            mainWindow.webContents.send('OpenFile', null)
+            fileUtils.InsertImportFormFile(mainWindow, 'json', true)
           }
         },
         {
-          label: 'Yaml ...待开发',
+          label: '从 YAML 导入',
           click: () => {
-            mainWindow.webContents.send('OpenFile', null)
+            fileUtils.InsertImportFormFile(mainWindow, 'yaml', true)
+          }
+        },
+        {
+          label: '从文本文件导入',
+          click: () => {
+            fileUtils.InsertImportFormFile(mainWindow, 'text', true)
           }
         }
       ]
@@ -60,17 +67,34 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '打开文件夹',
       accelerator: 'ctrl+o',
       click: () => {
-        fileUtils.OpenDir(mainWindow)
+        fileUtils.OpenDirectory(mainWindow)
       }
     },
     {
       type: 'separator'
     },
     {
-      label: '导出 ...待开发',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
+      label: '导出为',
+      submenu: [
+        {
+          label: '导出为Word',
+          click: () => {
+            fileUtils.ImportFromWord(mainWindow)
+          }
+        },
+        {
+          label: '导出为Html',
+          click: () => {
+            fileUtils.ImportFormHtml(mainWindow)
+          }
+        },
+        {
+          label: '导出为PDF',
+          click: () => {
+            fileUtils.ImportFormJSON(mainWindow)
+          }
+        }
+      ]
     },
     {
       label: '另存为',

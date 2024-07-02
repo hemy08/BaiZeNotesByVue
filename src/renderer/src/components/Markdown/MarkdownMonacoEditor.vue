@@ -64,6 +64,12 @@ onMounted(() => {
   })
 })
 
+window.electron.ipcRenderer.on('monaco-editor-insert-after-cursor', (_, context: string) => {
+  if (context) {
+    editor.InsertAfterCursor(editorInstance, context)
+  }
+})
+
 window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context: string) => {
   if (context) {
     editor.InsertAfterCursor(editorInstance, context)

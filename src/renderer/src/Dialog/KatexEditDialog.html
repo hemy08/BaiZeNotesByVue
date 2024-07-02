@@ -7,9 +7,9 @@
   <link rel="stylesheet" href="../../../main/lib/Katex/katex.css">
   <script src="../../../main/lib/Katex/katex.js"></script>
   <style>
-    #textInput {width: 620px;height: 100px;overflow-y: auto;margin-left: 20px;margin-top: 10px;flex-direction: column}
-    #katex-preview {width: 600px;height: 150px;display:flex;justify-content:center;align-items: center}
-    .btn-style {width:650px;margin-top: 10px; display:flex; justify-content:center;align-items: center;gap: 150px}
+    #textInput {width: 1200px;height: 100px;overflow-y: auto;margin-left: 20px;margin-top: 10px;flex-direction: column}
+    #katex-preview {width: 1200px;height: 150px;display:flex;justify-content:center;align-items: center}
+    .btn-style {width:1200px;margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 50px}
   </style>
 </head>
 <body>
@@ -18,7 +18,7 @@
       <div><label style="width: 10px">预览：</label></div>
       <div id="katex-preview" ></div>
     </div>
-    <div style="width:650px;height: 2px; margin-top: 10px; color: black; background-color: black"></div>
+    <div style="width:1200px;height: 2px; margin-top: 10px; color: black; background-color: black"></div>
     <div style="margin-top: 10px">
       <div><label style="width: 10px; margin-top: 10px">公式编辑：</label></div>
       <div><textarea id="textInput" class="text-input"></textarea></div>
@@ -27,6 +27,9 @@
   <div class="btn-style">
     <button id="insert-math-line" onclick="sendInsertMathLineText()">插入行内公式</button>
     <button id="insert-math-block" onclick="sendInsertMathBlockText()">插入公式块</button>
+    <button id="insert-math-math" onclick="sendInsertMathCodeBlock()">插入Math</button>
+    <button id="insert-math-katex" onclick="sendInsertKatexCodeBlock()">插入Katex</button>
+    <button id="insert-math-latex" onclick="sendInsertLatexCodeBlock()">插入Latex</button>
     <button id="cancel-insert-math" onclick="sendCancelInsertMathText()">取消编辑</button>
   </div>
   <script>
@@ -54,15 +57,13 @@
   // 监控textInput的input事件
   document.getElementById('textInput').addEventListener('input', updateTextInput);
   // 这里是JavaScript函数，例如：
-  function sendInsertMathLineText() {
-    ipcRenderer.send('user-insert-math-line-text', '$' + latex + '$')
-  }
-  function sendInsertMathBlockText() {
-    ipcRenderer.send('user-insert-math-block-text', '$$' + latex + '$$')
-  }
-  function sendCancelInsertMathText() {
-    ipcRenderer.send('user-insert-math-text-cancel')
-  }
+  function sendInsertMathLineText() {ipcRenderer.send('user-insert-math-line-text', '$' + latex + '$')}
+  function sendInsertMathBlockText() {ipcRenderer.send('user-insert-math-block-text', '$$' + latex + '$$')}
+  function sendCancelInsertMathText() {ipcRenderer.send('user-insert-math-text-cancel')}
+  function sendInsertMathCodeBlock() {ipcRenderer.send('dialog-math-math-text-btn-insert', '```math\\r\\n' + latexData + '\\r\\n```\\r\\n')}
+  function sendInsertKatexCodeBlock() {ipcRenderer.send('dialog-math-katex-text-btn-insert', '```katex\\r\\n' + latexData + '\\r\\n```\\r\\n')}
+  function sendInsertLatexCodeBlock() {ipcRenderer.send('dialog-math-latex-text-btn-insert', '```latex\\r\\n' + latexData + '\\r\\n```\\r\\n')}
+
   </script>
 </body>
 </html>

@@ -138,7 +138,7 @@ function handleMarkdownCodeUpdate(newValue: string) {
 }
 
 function onHandleNewContent(content: string) {
-  if (content.length !== 0) {
+  if (content) {
     // 编辑区域显示时，传入
     if (isShowEditArea.value) {
       initialCodeContent.value = content

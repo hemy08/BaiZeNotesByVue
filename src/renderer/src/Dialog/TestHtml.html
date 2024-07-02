@@ -1,48 +1,53 @@
 <!DOCTYPE html>
-<html><head>
-  <meta charset="UTF-8">
-  <style>
-  .font-color-picker {
-  position: relative;
-  display: inline-block;
-}
+<html lang="en">
 
-.tool-btn {
-  /* 你的按钮样式 */
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-}
-
-.fixed-size-svg {
-  /* 你的 SVG 图标样式 */
-  width: 20px; /* 示例大小 */
-  height: 20px;
-  vertical-align: middle;
-  margin-right: 5px; /* 与 input 保持一些间距 */
-}
-
-.font-color-picker input[type="color"] {
-  /* 你的颜色选择器样式 */
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: 0; /* 初始隐藏，通过 v-show 控制显示 */
-  cursor: pointer;
-  width: 100%; /* 覆盖整个按钮 */
-  height: 100%;
-}
-  </style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>test</title>
 </head>
 
 <body>
-  <button id="font-color" title="颜色" class="tool-btn" @click="showPicker = !showPicker">
-    <svg class="fixed-size-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 11.5s-2 2.17-2 3.5a2 2 0 0 0 2 2 2 2 0 0 0 2-2c0-1.33-2-3.5-2-3.5M5.21 10 10 5.21 14.79 10m1.77-1.06L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15c-.59.56-.59 1.53 0 2.12l5.5 5.5c.29.29.68.44 1.06.44s.77-.15 1.06-.44l5.5-5.5c.59-.59.59-1.56 0-2.12Z"/></svg>
-  </button>
-  <input v-if="showPicker" type="color" v-show="showPicker" @input="showPicker = !showPicker">
-<script>
+    <div class="container">
+        <input id="document" type="file" />
+        <div class="row" style="width: 100%;">
+            <div class="span8">
+                <div id="output" class="well"></div>
+            </div>
+        </div>
+    </div>
 
-</script>
+    <script src="https://cdn.bootcss.com/mammoth/1.4.8/mammoth.browser.js"></script>
+    <script type="text/javascript">
+        document.getElementById("document")
+            .addEventListener("change", readFileInputEventAsArrayBuffer, false);
+
+        function displayResult(result) {
+            let html = result.value;
+            let newHTML = html.replace(//g, '')
+            .replace('<h1>', '<h1 style="text-align: center;">')
+            .replace(/<table>/g, '<table style="border-collapse: collapse;">')
+            .replace(/<tr>/g, '<tr style="height: 30px;">')
+            .replace(/<td>/g, '<td style="border: 1px solid pink;">')
+            .replace(/<p>/g, '<p style="text-indent: 2em;">');
+            document.getElementById("output").innerHTML = newHTML;
+        }
+
+        function readFileInputEventAsArrayBuffer(event) {
+            var file = event.target.files[0];
+            var reader = new FileReader();
+
+            reader.onload = function (loadEvent) {
+                var arrayBuffer = loadEvent.target.result;//arrayBuffer
+                mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
+                    .then(displayResult)
+                    .done();
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
 </body>
+
 </html>

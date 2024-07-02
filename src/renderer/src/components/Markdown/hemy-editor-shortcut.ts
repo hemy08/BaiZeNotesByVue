@@ -79,13 +79,13 @@ function onDidChange(editor: monaco.editor.IStandaloneCodeEditor) {
     }
   })
 
-  console.log('onDidChange getScrollTop', editor.getScrollTop())
+  /*console.log('onDidChange getScrollTop', editor.getScrollTop())
   console.log('onDidChange getScrollHeight', editor.getScrollHeight())
   console.log('onDidChange getScrollHeight', editor.getScrollHeight())
   console.log('onDidChange getScrollLeft', editor.getScrollLeft())
   console.log('onDidChange editor.getLayoutInfo().contentLeft', editor.getLayoutInfo().contentLeft)
   console.log('onDidChange editor.getLayoutInfo().height', editor.getLayoutInfo().height)
-  console.log('onDidChange editor.getLayoutInfo()', editor.getLayoutInfo())
+  console.log('onDidChange editor.getLayoutInfo()', editor.getLayoutInfo())*/
 }
 
 export const MonacoEditorKeyMaps = registerEditorKeyMaps

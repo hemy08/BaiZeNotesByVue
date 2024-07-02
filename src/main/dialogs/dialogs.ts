@@ -5,10 +5,11 @@ import { ShowMathTextDialog } from './ShowMathTextDialog'
 import { ShowMermaidEditDialog } from './ShowMermaidEditDialog'
 import { HandleMermaidGetRenderResult, CreateMermaidRenderFrame } from './OpenMermaidRenderFrame'
 import { ShowAdmonitionDialog } from './ShowAdmonitionsDialog'
-import { ShowCreateFileFolderDialog } from './ShowCreateDialog'
+import { ShowCreateFileFolderDialog } from './ShowCreateFileFolderDialog'
 import { ShowFileFolderRenameDialog } from './ShowRemaneDialog'
 import { ShowWebUrlDialog } from './ShowWebUrlDialog'
 import { ShowInsertImageDialog } from './ShowInsertImageDialog'
+import { ShowNewFileFolderDialog } from './ShowNewFileFolderDialog'
 import { dialog } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 
@@ -48,7 +49,8 @@ export {
   ShowFileFolderRenameDialog,
   ShowConfirmDeleteDialog,
   ShowWebUrlDialog,
-  ShowInsertImageDialog
+  ShowInsertImageDialog,
+  ShowNewFileFolderDialog
 }
 
 export const webDialogs = {
