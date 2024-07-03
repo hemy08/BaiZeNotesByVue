@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="isShowEditArea"
+    v-show="isShowEditArea"
     id="md-edit-component"
     class="md-edit-component"
     :style="{ width: monacoEditorWidth }"
@@ -13,14 +13,14 @@
     />
   </div>
   <div
-    v-if="isShowResizer"
+    v-show="isShowResizer"
     id="resizer-md"
     class="resizer-md"
     :style="{ left: resizerLeft }"
     @mousedown="onEditorResizerMouseDown($event)"
   ></div>
   <div
-    v-if="isShowPreviewArea"
+    v-show="isShowPreviewArea"
     id="md-preview"
     class="md-preview"
     :style="{ width: editPreviewAreaWidth, left: editPreviewAreaLeft }"
