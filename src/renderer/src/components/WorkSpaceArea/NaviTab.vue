@@ -33,7 +33,7 @@ let currentNaviTal = 'file-explorer'
 const emit = defineEmits(['update:navi:tab'])
 
 function onShowFileExplorer() {
-  if (currentNaviTal == 'file-explorer') {
+  if (currentNaviTal === 'file-explorer') {
     // 隐藏文件资源管理器
     emit('update:navi:tab', 'switch-open-close')
   } else {
@@ -44,7 +44,7 @@ function onShowFileExplorer() {
 }
 
 function onShowMarkdownTOC() {
-  if (currentNaviTal == 'markdown-toc') {
+  if (currentNaviTal === 'markdown-toc') {
     // 隐藏文件资源管理器
     emit('update:navi:tab', 'switch-open-close')
   } else {

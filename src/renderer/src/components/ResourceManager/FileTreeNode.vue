@@ -86,20 +86,9 @@ const props = defineProps({
   }
 })
 
-let curActiveNode: FileSysItem | null = null
-
 onMounted(() => {
   const handleEditorSwitchExplorer = () => {
     // console.log('curActiveNode', curActiveNode)
-    if (curActiveNode != null) {
-      const refName = `node-${curActiveNode.id}`
-      // 注意：在 Composition API 中，你不能使用 this.$refs，你需要用另一种方式来引用 DOM 元素
-      // 假设你有一个方法来获取对应的 DOM 元素，这里只是一个示例
-      const nodeElement = document.getElementById(refName) // 或者其他方式获取 DOM 元素
-      if (nodeElement) {
-        nodeElement.scrollIntoView({ behavior: 'smooth' })
-      }
-    }
   }
   EventBus.$on('monaco-editor-switch-explorer', handleEditorSwitchExplorer)
 
@@ -131,8 +120,6 @@ function handleFileSelect(node: FileSysItem) {
 function handleClick(node: FileSysItem) {
   if (node.type === 'file' && node.name.endsWith('.md')) {
     handleFileSelect(node)
-    curActiveNode = node
-    // console.log('handleClick node', node)
     EventBus.$emit('monaco-editor-statusbar-file-path', node.path)
   }
 }

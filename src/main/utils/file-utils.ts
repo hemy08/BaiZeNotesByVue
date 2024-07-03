@@ -1,5 +1,7 @@
 import * as fs from 'fs'
 import * as mammoth from 'mammoth'
+import csv from 'csv-parser'
+import { detect } from 'jschardet'
 import { FileItem } from '../global-types'
 import { clipboard, dialog, shell } from 'electron'
 
@@ -9,6 +11,8 @@ const path = require('path')
 const fsExtra = require('fs-extra')
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const TurndownService = require('turndown')
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const iconv = require('iconv-lite')
 
 const reloadFromDiskTime = 100
 
@@ -637,19 +641,27 @@ const InsertImportFrom = {
     argStart: '',
     argEnd: ''
   },
-  sheet: {
+  excel: {
     name: 'Sheet Files',
-    extensions: ['csv', 'xls', 'xlsx', 'xlsm', 'xlsb'],
+    extensions: ['xls', 'xlsx'],
     importReader: ReadFile,
     insertReader: ReadFile,
     argStart: '```text\r\n',
     argEnd: '\r\n```\r\n'
   },
+  csv: {
+    name: 'Sheet Files',
+    extensions: ['csv'],
+    importReader: convertCsvToMarkdown,
+    insertReader: convertCsvToMarkdown,
+    argStart: '\r\n',
+    argEnd: '\r\n'
+  },
   json: {
     name: 'Json Files',
     extensions: ['json'],
-    importReader: ReadFile,
-    insertReader: ReadFile,
+    importReader: formatJsonString,
+    insertReader: formatJsonString,
     argStart: '```json\r\n',
     argEnd: '\r\n```\r\n'
   },
@@ -705,6 +717,89 @@ async function convertHtmlToMarkdown(file: string): Promise<string> {
   }
 }
 
+function csvStringParser(csvData: string, resolve, reject) {
+  const headers: string[] = []
+  const rows: { [key: string]: string }[] = []
+  const csvParser = csv()
+  csvParser.on('headers', (headerRow) => {
+    headers.push(...Object.keys(headerRow))
+  })
+  csvParser.on('data', (row: CsvRow) => {
+    rows.push(row)
+  })
+  csvParser.on('end', () => {
+    // 构建Markdown表格
+    console.log('headers', headers)
+    let markdownTable = `| ${headers.join('| ')} |\n| ${headers.map(() => '---').join('| ')} |\n`
+
+    rows.forEach((row) => {
+      const rowString = Object.values(row)
+        .map((value) => `| ${value} `)
+        .join('')
+      markdownTable += `| ${rowString} |\n`
+    })
+
+    resolve(markdownTable)
+  })
+  csvParser.on('error', reject)
+  csvParser.write(csvData)
+  csvParser.end()
+}
+
+async function convertCsvToMarkdown(csvFile: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    fs.readFile(csvFile, (err, buffer) => {
+      if (err) {
+        reject(err)
+        return
+      }
+      const detectCode = detect(buffer)
+      const utf8String = iconv.decode(buffer, detectCode.encoding)
+      console.log('buffer', buffer)
+      console.log('detectCode', detectCode)
+      csvStringParser(utf8String, resolve, reject)
+    })
+  })
+}
+
+function formatterJson(obj: never, indentLevel = 0, indent = 2): string {
+  let result = ''
+  const indentStr = ' '.repeat(indentLevel * indent)
+
+  if (Array.isArray(obj)) {
+    obj.forEach((item) => {
+      if (result !== '') {
+        result += ',\n'
+      }
+      result += indentStr + indentStr + formatterJson(item, indentLevel + 1)
+    })
+    return '[' + result + (result ? '\n' + indentStr : '') + ']'
+  } else if (typeof obj === 'object' && obj !== null) {
+    const keys = Object.keys(obj)
+    keys.forEach((key) => {
+      if (result !== '') {
+        result += ',\n'
+      }
+      result += indentStr + '"' + key + '": ' + formatterJson(obj[key], indentLevel + 1)
+    })
+    return '{' + result + (result ? '\n' + indentStr : '') + '}'
+  } else {
+    return JSON.stringify(obj)
+  }
+}
+
+async function formatJsonString(filePath: string): Promise<string> {
+  const jsonStr = await ReadFile(filePath)
+  try {
+    // 解析JSON字符串为JavaScript对象
+    const parsed = JSON.parse(jsonStr)
+    return formatterJson(parsed)
+  } catch (error) {
+    console.error('Invalid JSON:', error)
+    return jsonStr // 或者可以返回一个错误消息
+  }
+}
+
 export async function InsertImportFormFile(
   mainWindow: Electron.BrowserWindow,
   fileType: string,
@@ -713,7 +808,8 @@ export async function InsertImportFormFile(
   const model = InsertImportFrom[fileType]
   if (!model) {
     showErrorMessageBox(
-      '暂不支持当前格式的文件。\r\n当前支持*.txt、*.json、*.yaml、*.yml、*.csv、*.ini、*.doc、*.docx、*.html、*.htm'
+      '暂不支持当前格式的文件。\r\n' +
+        '当前支持*.txt、*.json、*.yaml、*.yml、*.csv、*.ini、*.doc、*.docx、*.html、*.htm、*.xls、*.xlsx'
     )
   }
 

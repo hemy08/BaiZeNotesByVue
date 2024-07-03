@@ -1,5 +1,5 @@
 <template>
-  <div v-if="showFileExplorer" id="resource-manager-component" class="resource-manager-component">
+  <div v-show="showFileExplorer" id="resource-manager-component" class="resource-manager-component">
     <div id="resizer-navi-tab-file-manager" class="resizer-navi-tab-file-manager"></div>
     <div id="file-manager" class="file-manager">
       <div id="file-tree">
@@ -15,7 +15,7 @@
       </div>
     </div>
   </div>
-  <div v-if="showMarkdownToc" id="markdown-toc-component" class="markdown-toc-component">
+  <div v-show="showMarkdownToc" id="markdown-toc-component" class="markdown-toc-component">
     <div id="markdown-toc-heading">
       <div v-for="item in tocArray" :key="item.id" @click="scrollToSection(item)">
         <!-- 根据 level 添加适当的缩进 -->

@@ -8,10 +8,12 @@ import * as dialogs from '../dialogs/dialogs'
 import * as utils from '../utils/utils'
 
 const InsertFromFiles = {
-  json: { label: 'JSON' },
-  text: { label: 'TEXT' },
-  ini: { label: 'INI' },
-  yaml: { label: 'YAML' }
+  json: { label: '*.json' },
+  text: { label: '*.txt;*.log' },
+  ini: { label: '*.ini' },
+  yaml: { label: '*.yaml;*.yml' },
+  csv: { label: '*.csv' },
+  excel: { label: '*.xls;*.xlsx' }
 }
 
 // eslint-disable-next-line no-unused-vars
