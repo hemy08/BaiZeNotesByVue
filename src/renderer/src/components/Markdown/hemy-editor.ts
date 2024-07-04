@@ -16,7 +16,10 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
   },
   tabSize: 4,
   fontFamily: 'Hack',
+  fontSize: 14,
   lineNumbers: 'on',
+  tabCompletion: 'on',
+  renderWhitespace: 'all',
   accessibilitySupport: 'off', // 启用或禁用辅助功能支持。
   snippetSuggestions: 'none', // 控制代码片段建议的显示方式
   unicodeHighlight: {
@@ -29,13 +32,50 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     enabled: false
   }, // 控制内联建议的启用或禁用
   dragAndDrop: false, //启用或禁用拖放功能。
-  renderValidationDecorations: 'off' // 启用或禁用验证装饰的渲染。
+  renderValidationDecorations: 'off', // 启用或禁用验证装饰的渲染。
+  folding: true, // 启用或禁用代码折叠
+  showRegionSectionHeaders: true,
+  showMarkSectionHeaders: true,
+  sectionHeaderFontSize: 10
+}
+
+function UpdateLineNumber(editor: monaco.editor.IStandaloneCodeEditor) {
+  const showLine = editor.getOption(monaco.editor.EditorOption.lineNumbers)
+  if (showLine.renderType) {
+    editor.updateOptions({ lineNumbers: 'off' })
+  } else {
+    editor.updateOptions({ lineNumbers: 'on' })
+  }
+}
+
+function UpdateEditorTheme(editor: monaco.editor.IStandaloneCodeEditor, newTheme: string) {}
+
+function UpdateTableSize(editor: monaco.editor.IStandaloneCodeEditor, newSize: string) {}
+
+function UpdateFontSize(editor: monaco.editor.IStandaloneCodeEditor, newSize: string) {}
+
+function UpdateRenderWhitespace(editor: monaco.editor.IStandaloneCodeEditor) {
+  const whiteSpace = editor.getOption(monaco.editor.EditorOption.renderWhitespace)
+  console.log('renderWhitespace', whiteSpace)
+  if (whiteSpace === 'all') {
+    editor.updateOptions({ renderWhitespace: 'none' })
+  } else {
+    editor.updateOptions({ renderWhitespace: 'all' })
+  }
+}
+
+const MonacoEditorOpMaps = {
+  lineNumbers: UpdateLineNumber,
+  theme: UpdateEditorTheme,
+  tabSize: UpdateTableSize,
+  fontSize: UpdateFontSize,
+  renderWhitespace: UpdateRenderWhitespace
 }
 
 const MonacoEditorOverride: monaco.editor.IEditorOverrideServices = {}
-
 const Options = MonacoEditorOptions
 const Override = MonacoEditorOverride
+const OptMaps = MonacoEditorOpMaps
 const QuickAccess = MdEditQuickAccess
 const KeyMaps = MonacoEditorKeyMaps
 const DidChange = MonacoEditorDidChange
@@ -53,5 +93,6 @@ export {
   Options,
   Override,
   QuickAccess,
-  Render
+  Render,
+  OptMaps
 }

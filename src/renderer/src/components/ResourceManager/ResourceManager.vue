@@ -45,8 +45,6 @@ const props = defineProps({
   }
 })
 
-
-
 window.electron.ipcRenderer.on('file-system-data', (_, fileTree: string) => {
   try {
     // 更新响应式数据
@@ -56,21 +54,25 @@ window.electron.ipcRenderer.on('file-system-data', (_, fileTree: string) => {
   }
 })
 
+function SwitchResourceManager(value: string) {
+  if (value == 'markdown-toc') {
+    // 保存当前tree信息
+    showMarkdownToc.value = true
+    showFileExplorer.value = false
+    EventBus.$emit('monaco-editor-get-chapters', true)
+  } else if (value == 'file-explorer') {
+    showFileExplorer.value = true
+    showMarkdownToc.value = false
+    console.log('monaco-editor-switch-explorer')
+    EventBus.$emit('monaco-editor-switch-explorer', true)
+  }
+}
+
 // 监听父组件切换
 watch(
   () => props.naviShow,
   (value) => {
-    if (value == 'markdown-toc') {
-      // 保存当前tree信息
-      showMarkdownToc.value = true
-      showFileExplorer.value = false
-      EventBus.$emit('monaco-editor-get-chapters', true)
-    } else if (value == 'file-explorer') {
-      showFileExplorer.value = true
-      showMarkdownToc.value = false
-      console.log('monaco-editor-switch-explorer')
-      EventBus.$emit('monaco-editor-switch-explorer', true)
-    }
+    SwitchResourceManager(value)
   }
 )
 

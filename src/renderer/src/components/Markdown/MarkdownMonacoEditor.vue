@@ -76,6 +76,17 @@ window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context
   }
 })
 
+window.electron.ipcRenderer.on(
+  'monaco-editor-update-options',
+  (_, option: string, newValue: string) => {
+    editor.OptMaps[option](editorInstance, newValue)
+  }
+)
+
+window.electron.ipcRenderer.on('monaco-editor-trigger-undo-redo', (_, option: string) => {
+  editorInstance.trigger('keyboard', option, {})
+})
+
 // 监听代码内容变化
 watch(
   () => props.code,
@@ -146,7 +157,7 @@ onMounted(() => {
     EventBus.$emit('monaco-editor-scroll-event', context.length)
   }
 
-  editorInstance.getDomNode().addEventListener('scroll', function() {
+  editorInstance.getDomNode().addEventListener('scroll', function () {
     console.log('scroll')
   })
 

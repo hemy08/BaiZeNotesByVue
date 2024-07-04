@@ -4,79 +4,57 @@
 export function getAppEditMenuItem(mainWindow: Electron.BrowserWindow) {
   const editMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '撤销 ...待开发',
-      role: 'undo',
+      label: '撤销',
+      accelerator: 'ctrl+z',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('monaco-editor-trigger-undo-redo', 'undo')
       }
     },
     {
-      label: '恢复 ...待开发',
-      role: 'redo',
+      label: '恢复',
+      accelerator: 'ctrl+y',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      type: 'separator'
-    },
-    {
-      label: '拷贝 ...待开发',
-      role: 'copy',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '剪切 ...待开发',
-      role: 'cut',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '黏贴 ...待开发',
-      role: 'paste',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '删除 ...待开发',
-      role: 'delete',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      type: 'separator',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '查找 ...待开发',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '在文件中查找 ...待开发',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('monaco-editor-trigger-undo-redo', 'redo')
       }
     },
     {
       type: 'separator'
     },
     {
-      label: '替换 ...待开发',
+      label: '拷贝',
+      accelerator: 'ctrl+c',
+      role: 'copy'
+    },
+    {
+      label: '剪切',
+      accelerator: 'ctrl+x',
+      role: 'cut'
+    },
+    {
+      label: '黏贴',
+      accelerator: 'ctrl+v',
+      role: 'paste'
+    },
+    {
+      type: 'separator'
+    },
+    {
+      label: '跳转到行',
+      accelerator: 'ctrl+g',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '在文件中替换 ...待开发',
+      label: '在文件中查找',
+      accelerator: 'ctrl+f',
+      click: () => {
+        mainWindow.webContents.send('OpenFile', null)
+      }
+    },
+    {
+      label: '在文件中替换',
+      accelerator: 'ctrl+r',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }

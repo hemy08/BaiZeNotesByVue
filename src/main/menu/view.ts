@@ -31,18 +31,21 @@ export function getAppViewMenuItem(mainWindow: Electron.BrowserWindow) {
   const viewMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
       label: '编辑模式',
+      accelerator: 'f9',
       click: () => {
         mainWindow.webContents.send('markdown-edit-model', null)
       }
     },
     {
       label: '预览模式',
+      accelerator: 'f10',
       click: () => {
         mainWindow.webContents.send('markdown-preview-model', null)
       }
     },
     {
       label: '编辑/预览模式',
+      accelerator: 'f11',
       click: () => {
         mainWindow.webContents.send('markdown-edit-preview-model', null)
       }
@@ -51,33 +54,27 @@ export function getAppViewMenuItem(mainWindow: Electron.BrowserWindow) {
       type: 'separator'
     },
     {
-      label: '显示/隐藏资源管理器 ...待开发',
+      label: '显示/隐藏资源管理器',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('menu-view-hide-display-res-manager', null)
       }
     },
     {
-      label: '显示/隐藏行号 ...待开发',
+      label: '显示/隐藏行号',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('menu-view-update-monaco-editor-option', 'lineNumbers')
       }
     },
     {
-      label: '显示/隐藏制表符 ...待开发',
+      label: '显示/隐藏空白字符',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('menu-view-update-monaco-editor-option', 'renderWhitespace')
       }
     },
     {
-      label: '显示/隐藏换行符 ...待开发',
+      label: '显示/隐藏文章大纲',
       click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '显示/隐藏文章大纲 ...待开发',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('menu-view-hide-display-res-manager', null)
       }
     },
     {

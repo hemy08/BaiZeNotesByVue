@@ -99,6 +99,10 @@ function onMouseUp() {
   window.removeEventListener('mouseup', onMouseUp)
 }
 
+window.electron.ipcRenderer.on('menu-view-hide-display-res-manager', () => {
+  isShowResourceMgrArea.value = !isShowResourceMgrArea.value
+})
+
 onMounted(() => {
   windowWidth.value = window.innerWidth
   function onWindowResized() {
