@@ -35,7 +35,7 @@ import { MarkdownTOC } from '../hemy'
 const showFileExplorer = ref(true)
 const showMarkdownToc = ref(false)
 const fileNodes = ref<FileSysItem[]>([])
-const tocArray = ref<[]>([])
+const tocArray = ref<MarkdownTOC[]>([])
 
 const props = defineProps({
   // 代码内容

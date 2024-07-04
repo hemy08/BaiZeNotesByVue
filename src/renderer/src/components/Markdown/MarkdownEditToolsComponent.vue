@@ -17,6 +17,7 @@ import { onMounted, watch, ref } from 'vue'
 import * as editor from './hemy-editor'
 
 const showWidth = ref('')
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const showPicker = ref(false)
 
 const props = defineProps({
@@ -42,10 +43,6 @@ function initButtonSvg() {
 onMounted(() => {
   initButtonSvg()
 })
-
-function updateColor() {
-  showPicker.value = false
-}
 
 watch(
   () => props.toolBarWidth,

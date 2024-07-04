@@ -10,7 +10,7 @@ const EventBus = {
     }
     this.callbacks.get(eventName).push(callback)
   },
-  $emit(eventName, payload) {
+  $emit(eventName, payload?) {
     if (this.callbacks.has(eventName)) {
       this.callbacks.get(eventName).forEach((callback) => {
         callback(payload)

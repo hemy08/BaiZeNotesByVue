@@ -33,10 +33,7 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
   }, // 控制内联建议的启用或禁用
   dragAndDrop: false, //启用或禁用拖放功能。
   renderValidationDecorations: 'off', // 启用或禁用验证装饰的渲染。
-  folding: true, // 启用或禁用代码折叠
-  showRegionSectionHeaders: true,
-  showMarkSectionHeaders: true,
-  sectionHeaderFontSize: 10
+  folding: true // 启用或禁用代码折叠
 }
 
 function UpdateLineNumber(editor: monaco.editor.IStandaloneCodeEditor) {
@@ -48,11 +45,22 @@ function UpdateLineNumber(editor: monaco.editor.IStandaloneCodeEditor) {
   }
 }
 
-function UpdateEditorTheme(editor: monaco.editor.IStandaloneCodeEditor, newTheme: string) {}
+function UpdateEditorTheme(editor: monaco.editor.IStandaloneCodeEditor, newTheme: string) {
+  monaco.editor.setTheme(newTheme)
+  console.log('newSize', newTheme)
+}
 
-function UpdateTableSize(editor: monaco.editor.IStandaloneCodeEditor, newSize: string) {}
+function UpdateTableSize(editor: monaco.editor.IStandaloneCodeEditor, newSize: string) {
+  const oldSize = editor.getOption(monaco.editor.EditorOption.tabIndex)
+  console.log('oldSize', oldSize)
+  console.log('newSize', newSize)
+}
 
-function UpdateFontSize(editor: monaco.editor.IStandaloneCodeEditor, newSize: string) {}
+function UpdateFontSize(editor: monaco.editor.IStandaloneCodeEditor, newSize: string) {
+  const oldSize = editor.getOption(monaco.editor.EditorOption.fontSize)
+  console.log('oldSize', oldSize)
+  console.log('newSize', newSize)
+}
 
 function UpdateRenderWhitespace(editor: monaco.editor.IStandaloneCodeEditor) {
   const whiteSpace = editor.getOption(monaco.editor.EditorOption.renderWhitespace)

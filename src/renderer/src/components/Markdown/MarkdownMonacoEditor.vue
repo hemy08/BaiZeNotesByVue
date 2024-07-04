@@ -123,9 +123,11 @@ onMounted(() => {
     editor.InsertAfterCursor(editorInstance, value)
   })
   EventBus.$on('monaco-editor-locate-target-line', (item: MarkdownTOC) => {
-    editorInstance.revealLines(item.lineNumber, item.lineNumber + 20, {
-      scrollType: monaco.editor.ScrollType.Smooth
-    })
+    editorInstance.revealLines(
+      item.lineNumber,
+      item.lineNumber + 20,
+      monaco.editor.ScrollType.Smooth
+    )
   })
 
   onBeforeUnmount(() => {
@@ -154,10 +156,10 @@ onMounted(() => {
 
   function handleScrollEvent(event) {
     console.log('handleScrollEvent', event)
-    EventBus.$emit('monaco-editor-scroll-event', context.length)
+    EventBus.$emit('monaco-editor-scroll-event', null)
   }
 
-  editorInstance.getDomNode().addEventListener('scroll', function () {
+  editorInstance?.getDomNode()?.addEventListener('scroll', function () {
     console.log('scroll')
   })
 
