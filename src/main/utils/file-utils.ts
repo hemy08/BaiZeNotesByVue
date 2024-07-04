@@ -360,7 +360,7 @@ export function OpenDirectory(mainWindow: Electron.BrowserWindow) {
 export function GetSelectDir(
   mainWindow: Electron.BrowserWindow,
   cb: (path: string | null) => void
-): string {
+) {
   dialog
     .showOpenDialog(mainWindow, {
       properties: ['openDirectory']
@@ -713,7 +713,8 @@ async function convertHtmlToMarkdown(file: string): Promise<string> {
     const turndownService = new TurndownService()
     return turndownService.turndown(htmlContent)
   } catch (error) {
-    console.error('Error converting HTML to Markdown:', error)
+    showErrorMessageBox('Error converting HTML to Markdown:' + error)
+    return 'convert failed'
   }
 }
 
@@ -724,7 +725,7 @@ function csvStringParser(csvData: string, resolve, reject) {
   csvParser.on('headers', (headerRow) => {
     headers.push(...Object.keys(headerRow))
   })
-  csvParser.on('data', (row: CsvRow) => {
+  csvParser.on('data', (row: { [key: string]: string }) => {
     rows.push(row)
   })
   csvParser.on('end', () => {
@@ -762,7 +763,7 @@ async function convertCsvToMarkdown(csvFile: string): Promise<string> {
   })
 }
 
-function formatterJson(obj: never, indentLevel = 0, indent = 2): string {
+function formatterJson(obj: unknown, indentLevel = 0, indent = 2): string {
   let result = ''
   const indentStr = ' '.repeat(indentLevel * indent)
 
@@ -792,7 +793,7 @@ async function formatJsonString(filePath: string): Promise<string> {
   const jsonStr = await ReadFile(filePath)
   try {
     // 解析JSON字符串为JavaScript对象
-    const parsed = JSON.parse(jsonStr)
+    const parsed = JSON.parse(jsonStr) as never
     return formatterJson(parsed)
   } catch (error) {
     console.error('Invalid JSON:', error)
@@ -830,4 +831,8 @@ export async function InsertImportFormFile(
     .catch((err) => {
       showErrorMessageBox('Error opening file dialog:' + err)
     })
+}
+
+export function ExportToFile(fileType: string) {
+  console.log('export markdown to file ', fileType)
 }

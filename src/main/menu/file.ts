@@ -9,14 +9,14 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       label: '新建文件(N)',
       accelerator: 'ctrl+n',
       click: () => {
-        dialogs.ShowNewFileFolderDialog(mainWindow, true)
+        dialogs.ShowNewFileFolderDialog(true)
       }
     },
     {
       label: '新建文件夹(D)',
       accelerator: 'ctrl+d',
       click: () => {
-        dialogs.ShowNewFileFolderDialog(mainWindow, false)
+        dialogs.ShowNewFileFolderDialog(false)
       }
     },
     {
@@ -79,19 +79,19 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
         {
           label: '导出为Word',
           click: () => {
-            fileUtils.ImportFromWord(mainWindow)
+            fileUtils.ExportToFile('word')
           }
         },
         {
           label: '导出为Html',
           click: () => {
-            fileUtils.ImportFormHtml(mainWindow)
+            fileUtils.ExportToFile('html')
           }
         },
         {
           label: '导出为PDF',
           click: () => {
-            fileUtils.ImportFormJSON(mainWindow)
+            fileUtils.ExportToFile('pdf')
           }
         }
       ]

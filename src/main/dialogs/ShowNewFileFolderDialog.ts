@@ -6,7 +6,7 @@ let customNewFileDialog: Electron.BrowserWindow | null
 
 // 创建一个自定义对话框的函数
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function ShowNewFileFolderDialog(mainWindow: Electron.BrowserWindow, isFile: boolean) {
+export function ShowNewFileFolderDialog(isFile: boolean) {
   customNewFileDialog = new BrowserWindow({
     width: 650,
     height: 200,
@@ -49,11 +49,13 @@ export function ShowNewFileFolderDialog(mainWindow: Electron.BrowserWindow, isFi
   }
 
   function processNewFileFolder(event) {
-    GetSelectDir(customNewFileDialog, function (path) {
-      if (path) {
-        event.returnValue = path
-      }
-    })
+    if (customNewFileDialog) {
+      GetSelectDir(customNewFileDialog, function (path) {
+        if (path) {
+          event.returnValue = path
+        }
+      })
+    }
   }
 
   function processNewFileFolderConfirm(_, fileInfo: { name: string; path: string }) {
@@ -74,7 +76,7 @@ export function ShowNewFileFolderDialog(mainWindow: Electron.BrowserWindow, isFi
   ipcMain.on('dialog-new-file-folder-cancel', exitCustomFontDialog)
 }
 
-function createFileFolderName(doc: Document): Document {
+function createFileFolderName(doc: Document): HTMLDivElement {
   const eleDiv = doc.createElement('div')
   eleDiv.style.marginLeft = '15px'
   eleDiv.style.marginRight = '10px'
@@ -93,7 +95,7 @@ function createFileFolderName(doc: Document): Document {
   return eleDiv
 }
 
-function createFileFolderPath(doc: Document): Document {
+function createFileFolderPath(doc: Document): HTMLDivElement {
   const eleDiv = doc.createElement('div')
   eleDiv.style.marginLeft = '15px'
   eleDiv.style.marginRight = '10px'
@@ -112,7 +114,7 @@ function createFileFolderPath(doc: Document): Document {
   return eleDiv
 }
 
-function createFileFolderSelect(doc: Document): Document {
+function createFileFolderSelect(doc: Document): HTMLDivElement {
   const eleDiv = doc.createElement('div')
   eleDiv.style.marginLeft = '15px'
   eleDiv.style.marginRight = '10px'
@@ -130,7 +132,7 @@ function createFileFolderSelect(doc: Document): Document {
   return eleDiv
 }
 
-function createButtons(doc: Document): Document {
+function createButtons(doc: Document): HTMLDivElement {
   const eleDiv = doc.createElement('div')
   eleDiv.className = 'btn-list-style'
   const eleDivConfirm = doc.createElement('button')

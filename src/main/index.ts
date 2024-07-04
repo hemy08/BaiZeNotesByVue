@@ -150,6 +150,9 @@ function createWindow(): void {
     }
   })
 
+  mainWindow.on('close', () => {
+    // mainWindow = null
+  })
   const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
   Menu.setApplicationMenu(menu)
 }
