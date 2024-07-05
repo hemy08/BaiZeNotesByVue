@@ -42,6 +42,8 @@ export function getAppSettingMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '设置(S)',
+    enable: true,
+    accelerator: 'alt+s',
     submenu: settingMenuItems
   }
 }

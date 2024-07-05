@@ -19,26 +19,26 @@ import { timeline } from './timeline'
 import { xychart } from './xychart'
 import { zenuml } from './zenuml'
 
-export const mermaidDiagrams = {
-  baseDiagram: { label: '基础框架', diagram: '\n```mermaid\n\n```\n\n' },
-  flowchart: { label: 'flowchart', diagram: flowchart },
-  blockDiagram: { label: 'BlockDiagram', diagram: blockDiagram },
-  C4Context: { label: 'C4图', diagram: C4Context },
-  classDiagram: { label: '类图', diagram: classDiagram },
-  erDiagram: { label: '实体关系图', diagram: erDiagram },
-  gantt: { label: '甘特图', diagram: gantt },
-  gitGraph: { label: 'Git图', diagram: gitGraph },
-  graph: { label: '基本流程图', diagram: graph },
-  journey: { label: '用户旅程图', diagram: journey },
-  mindmap: { label: '思维导图', diagram: mindmap },
-  packet: { label: 'Packet', diagram: packet },
-  pie: { label: '饼图', diagram: pie },
-  quadrantChart: { label: '象限图', diagram: quadrantChart },
-  requirementDiagram: { label: '需求图', diagram: requirementDiagram },
-  sankey: { label: '桑基图', diagram: sankey },
-  sequenceDiagram: { label: '序列图', diagram: sequenceDiagram },
-  stateDiagram: { label: '状态图', diagram: stateDiagram },
-  timeline: { label: '时间线图', diagram: timeline },
-  xychart: { label: 'XYChart', diagram: xychart },
-  zenuml: { label: 'Zenuml', diagram: zenuml }
-}
+export const mermaidDiagrams: MenuContext[] = [
+  { label: '基础框架', context: '\n```mermaid\n\n```\n\n' },
+  { label: 'flowchart', context: flowchart },
+  { label: 'BlockDiagram', context: blockDiagram },
+  { label: 'C4图', context: C4Context },
+  { label: '类图', context: classDiagram },
+  { label: '实体关系图', context: erDiagram },
+  { label: '甘特图', context: gantt },
+  { label: 'Git图', context: gitGraph },
+  { label: '基本流程图', context: graph },
+  { label: '用户旅程图', context: journey },
+  { label: '思维导图', context: mindmap },
+  { label: 'Packet', context: packet },
+  { label: '饼图', context: pie },
+  { label: '象限图', context: quadrantChart },
+  { label: '需求图', context: requirementDiagram },
+  { label: '桑基图', context: sankey },
+  { label: '序列图', context: sequenceDiagram },
+  { label: '状态图', context: stateDiagram },
+  { label: '时间线图', context: timeline },
+  { label: 'XYChart', context: xychart },
+  { label: 'Zenuml', context: zenuml }
+]

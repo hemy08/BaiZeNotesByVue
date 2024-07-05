@@ -102,6 +102,8 @@ export function getAppHelpsMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '帮助(H)',
+    enable: true,
+    accelerator: 'alt+h',
     submenu: helpMenuItems
   }
 }

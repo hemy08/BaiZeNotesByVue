@@ -1,9 +1,4 @@
-import {
-  mermaidDiagrams,
-  plantumlDiagrams,
-  textBlocks,
-  fileTemplates
-} from '../templates/templates'
+import * as template from '../templates/templates'
 import * as dialogs from '../dialogs/dialogs'
 import * as utils from '../utils/utils'
 
@@ -16,50 +11,19 @@ const InsertFromFiles = {
   excel: { label: '*.xls;*.xlsx' }
 }
 
+function GenSubMenu(mainWindow: Electron.BrowserWindow, items: MenuContext, channel: string) {
+  return items.map((item) => {
+    return {
+      label: item.label, // 根据类别设置标签
+      click: () => {
+        mainWindow.webContents.send(channel, item.context)
+      }
+    }
+  })
+}
+
 // eslint-disable-next-line no-unused-vars
 export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
-  const mermaidMenuItems = Object.keys(mermaidDiagrams).map((name) => {
-    return {
-      label: mermaidDiagrams[name].label, // 根据类别设置标签
-      click: () => {
-        mainWindow.webContents.send(
-          'monaco-insert-text-block-templates',
-          mermaidDiagrams[name].diagram
-        )
-      }
-    }
-  })
-
-  const plantumlMenuItems = Object.keys(plantumlDiagrams).map((name) => {
-    return {
-      label: plantumlDiagrams[name].label, // 根据类别设置标签
-      click: () => {
-        mainWindow.webContents.send(
-          'monaco-insert-text-block-templates',
-          plantumlDiagrams[name].diagram
-        )
-      }
-    }
-  })
-
-  const testBlockMenuItems = Object.keys(textBlocks).map((name) => {
-    return {
-      label: textBlocks[name].label, // 根据类别设置标签
-      click: () => {
-        mainWindow.webContents.send('monaco-insert-text-block-templates', textBlocks[name].data)
-      }
-    }
-  })
-
-  const writeTemplatesMenuItems = Object.keys(fileTemplates).map((name) => {
-    return {
-      label: fileTemplates[name].label, // 根据类别设置标签
-      click: () => {
-        mainWindow.webContents.send('monaco-insert-writing-templates', fileTemplates[name].data)
-      }
-    }
-  })
-
   const insertFromItem = Object.keys(InsertFromFiles).map((key) => {
     return {
       label: InsertFromFiles[key].label, // 根据类别设置标签
@@ -79,17 +43,6 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
 
   const insertMenuItems: Electron.MenuItemConstructorOptions[] = [
-    {
-      label: '写作模板',
-      submenu: writeTemplatesMenuItems
-    },
-    {
-      label: '文本',
-      submenu: testBlockMenuItems
-    },
-    {
-      type: 'separator'
-    },
     {
       label: '特殊字体',
       click: () => {
@@ -114,31 +67,33 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
         dialogs.ShowWebUrlDialog(mainWindow)
       }
     },
+    { type: 'separator' },
     {
-      type: 'separator'
+      label: '写作模板',
+      submenu: GenSubMenu(mainWindow, template.files, 'monaco-insert-writing-templates')
+    },
+    {
+      label: '文本',
+      submenu: GenSubMenu(mainWindow, template.texts, 'monaco-insert-text-block-templates')
     },
     {
       label: '来自文件',
       submenu: insertFromItem
     },
-    {
-      type: 'separator'
-    },
+    { type: 'separator' },
     {
       label: 'Material',
       submenu: insertMaterialItem
     },
     {
       label: 'Mermaid',
-      submenu: mermaidMenuItems
+      submenu: GenSubMenu(mainWindow, template.mermaid, 'monaco-insert-text-block-templates')
     },
     {
       label: 'PlantUML',
-      submenu: plantumlMenuItems
+      submenu: GenSubMenu(mainWindow, template.plantuml, 'monaco-insert-text-block-templates')
     },
-    {
-      type: 'separator'
-    },
+    { type: 'separator' },
     {
       label: '自定义模板 ...待开发',
       click: () => {
@@ -154,6 +109,8 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '插入(I)',
+    enable: true,
+    accelerator: 'alt+i',
     submenu: insertMenuItems
   }
 }

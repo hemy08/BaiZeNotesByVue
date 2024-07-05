@@ -29,6 +29,8 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
 
   return {
     label: '插件(P)',
+    enable: true,
+    accelerator: 'alt+p',
     submenu: pluginsMenuItems
   }
 }

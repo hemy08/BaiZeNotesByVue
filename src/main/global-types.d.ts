@@ -4,6 +4,10 @@ import * as dialogs from '../dialogs/dialogs'
 
 // global-types.d.ts
 declare global {
+  interface MenuContext {
+    label: string,
+    context: string
+  }
   interface FileProperties {
     name: string
     path: string

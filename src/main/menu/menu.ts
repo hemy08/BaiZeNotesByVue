@@ -6,12 +6,14 @@ import { getAppSettingMenuItem } from './setting'
 import { getAppToolsMenuItem } from './tools'
 import { getAppPluginsMenuItem } from './plugins'
 import { getAppHelpsMenuItem } from './helps'
+import { getAppEncodingMenuItem } from './encoding'
 
 export function getApplicationMenu(mainWindow: Electron.CrossProcessExports.BrowserWindow) {
   return [
     getAppFileMenuItem(mainWindow),
     getAppEditMenuItem(mainWindow),
     getAppViewMenuItem(mainWindow),
+    getAppEncodingMenuItem(mainWindow),
     getAppInsertMenuItem(mainWindow),
     getAppSettingMenuItem(mainWindow),
     getAppToolsMenuItem(mainWindow),

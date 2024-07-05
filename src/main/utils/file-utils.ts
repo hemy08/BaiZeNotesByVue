@@ -833,6 +833,7 @@ export async function InsertImportFormFile(
     })
 }
 
-export function ExportToFile(fileType: string) {
+export function ExportToFile(mainWindow: Electron.BrowserWindow, fileType: string) {
+  console.log('export markdown to file ', mainWindow.getSize())
   console.log('export markdown to file ', fileType)
 }

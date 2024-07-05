@@ -3,4 +3,9 @@ import { plantumlDiagrams } from './plantuml/plantumlTemplates'
 import { textBlocks } from './textblock/textblockTemplates'
 import { fileTemplates } from './writing/writingTemplates'
 
-export { mermaidDiagrams, plantumlDiagrams, textBlocks, fileTemplates }
+const mermaid = mermaidDiagrams
+const plantuml = plantumlDiagrams
+const texts = textBlocks
+const files = fileTemplates
+
+export { mermaid, plantuml, texts, files }

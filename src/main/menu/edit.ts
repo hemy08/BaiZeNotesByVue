@@ -1,5 +1,3 @@
-// import { app } from 'electron'
-
 // eslint-disable-next-line no-unused-vars
 export function getAppEditMenuItem(mainWindow: Electron.BrowserWindow) {
   const editMenuItems: Electron.MenuItemConstructorOptions[] = [
@@ -62,6 +60,8 @@ export function getAppEditMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '编辑(E)',
+    enable: true,
+    accelerator: 'alt+e',
     submenu: editMenuItems
   }
 }

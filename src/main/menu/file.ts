@@ -2,6 +2,40 @@ import { app, ipcMain } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 import * as dialogs from '../dialogs/dialogs'
 
+export const ImportExport = [
+  { type: 'import', label: '从 Word 导入', fileType: 'word' },
+  { type: 'import', label: '从 HTML 导入', fileType: 'html' },
+  { type: 'import', label: '从 JSON 导入', fileType: 'json' },
+  { type: 'import', label: '从 YAML 导入', fileType: 'yaml' },
+  { type: 'import', label: '从文本文件导入', fileType: 'text' },
+  { type: 'separator', label: 'separator' },
+  { type: 'export', label: '导出为Word', fileType: 'word' },
+  { type: 'export', label: '导出为HTML', fileType: 'html' },
+  { type: 'export', label: '导出为PDF', fileType: 'pdf' }
+]
+
+function GenImportExportSubMenuItems(mainWindow: Electron.BrowserWindow) {
+  return ImportExport.map((item:{ type: string, label:string, fileType: string }) => {
+    if (item.type === 'separator') {
+      return { type: 'separator' }
+    } else if (item.type === 'import') {
+      return {
+        label: item.label, // 根据类别设置标签
+        click: () => {
+          fileUtils.InsertImportFormFile(mainWindow, item.fileType, true)
+        }
+      }
+    } else {
+      return {
+        label: item.label, // 根据类别设置标签
+        click: () => {
+          fileUtils.ExportToFile(mainWindow, item.fileType)
+        }
+      }
+    }
+  })
+}
+
 // eslint-disable-next-line no-unused-vars
 export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
   const fileMenuItems: Electron.MenuItemConstructorOptions[] = [
@@ -20,43 +54,10 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      label: '从文件导入',
-      submenu: [
-        {
-          label: '从 Word 导入',
-          click: () => {
-            fileUtils.InsertImportFormFile(mainWindow, 'word', true)
-          }
-        },
-        {
-          label: '从 HTML 导入',
-          click: () => {
-            fileUtils.InsertImportFormFile(mainWindow, 'html', true)
-          }
-        },
-        {
-          label: '从 JSON 导入',
-          click: () => {
-            fileUtils.InsertImportFormFile(mainWindow, 'json', true)
-          }
-        },
-        {
-          label: '从 YAML 导入',
-          click: () => {
-            fileUtils.InsertImportFormFile(mainWindow, 'yaml', true)
-          }
-        },
-        {
-          label: '从文本文件导入',
-          click: () => {
-            fileUtils.InsertImportFormFile(mainWindow, 'text', true)
-          }
-        }
-      ]
+      label: '导入导出',
+      submenu: GenImportExportSubMenuItems(mainWindow)
     },
-    {
-      type: 'separator'
-    },
+    { type: 'separator' },
     {
       label: '打开文件',
       click: () => {
@@ -70,32 +71,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
         fileUtils.OpenDirectory(mainWindow)
       }
     },
-    {
-      type: 'separator'
-    },
-    {
-      label: '导出为',
-      submenu: [
-        {
-          label: '导出为Word',
-          click: () => {
-            fileUtils.ExportToFile('word')
-          }
-        },
-        {
-          label: '导出为Html',
-          click: () => {
-            fileUtils.ExportToFile('html')
-          }
-        },
-        {
-          label: '导出为PDF',
-          click: () => {
-            fileUtils.ExportToFile('pdf')
-          }
-        }
-      ]
-    },
+    { type: 'separator' },
     {
       label: '另存为',
       click: () => {
@@ -110,18 +86,13 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     },
     {
-      type: 'separator'
-    },
-    {
       label: '从磁盘重新加载',
       accelerator: 'ctrl+r',
       click: () => {
         fileUtils.ReloadDirFromDisk()
       }
     },
-    {
-      type: 'separator'
-    },
+    { type: 'separator' },
     {
       label: '退出',
       role: 'quit',

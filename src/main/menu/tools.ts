@@ -36,6 +36,8 @@ export function getAppToolsMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '工具(T)',
+    enable: true,
+    accelerator: 'alt+t',
     submenu: toolsMenuItems
   }
 }

@@ -87,6 +87,8 @@ export function getAppViewMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '视图(V)',
+    enable: true,
+    accelerator: 'alt+v',
     submenu: viewMenuItems
   }
 }
