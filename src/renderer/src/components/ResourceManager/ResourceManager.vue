@@ -76,9 +76,14 @@ watch(
   }
 )
 
-function getIndentedText(item: MarkdownTOC) {
+function getIndentedText(item: MarkdownTOC): string {
+  const levelStr = item.level.slice(1)
+  if (!levelStr) {
+    return item.text
+  }
   // 返回带有缩进的文本
-  const indent = '&nbsp;&nbsp;&nbsp;'.repeat(item.level.slice(1) * 2)
+  const levelNum = parseInt(levelStr, 10)
+  const indent = '&nbsp;&nbsp;&nbsp;'.repeat(levelNum * 2)
   return `${indent}${item.text}`
 }
 

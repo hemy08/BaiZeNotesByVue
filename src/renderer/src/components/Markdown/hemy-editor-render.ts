@@ -3,7 +3,7 @@ import MarkdownIt from 'markdown-it'
 import EventBus from '../../event-bus'
 import { MarkdownTOC } from '../hemy'
 
-function generateRandomNumberString(length: number): string {
+function genRandomNumString(length: number): string {
   let result = ''
   const characters = '0123456789'
   const charactersLength = characters.length
@@ -21,7 +21,7 @@ function removeMermaidDiv(mermaidId: string) {
 }
 
 async function mermaidRender(graphDefinition: string): Promise<string> {
-  const mermaidId = 'mermaid' + generateRandomNumberString(10)
+  const mermaidId = 'mermaid' + genRandomNumString(10)
   try {
     const renderSvg = await mermaid.render(mermaidId, graphDefinition)
     // 删除mermaid.render过程中增加的div
@@ -64,6 +64,7 @@ export function ParserMarkdownChapters(md: MarkdownIt, text: string) {
   mdTokens.forEach((token) => {
     if (token.type === 'heading_open') {
       const healing: MarkdownTOC = {
+        id: genRandomNumString(10),
         level: token.tag,
         text: '',
         lineNumber: 0

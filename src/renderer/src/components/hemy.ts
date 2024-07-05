@@ -1,5 +1,5 @@
 export interface MarkdownTOC {
-  id: never
+  id: string
   level: string
   text: string
   lineNumber: number

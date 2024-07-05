@@ -46,6 +46,8 @@ function UpdateLineNumber(editor: monaco.editor.IStandaloneCodeEditor) {
 }
 
 function UpdateEditorTheme(editor: monaco.editor.IStandaloneCodeEditor, newTheme: string) {
+  const oldSize = editor.getOption(monaco.editor.EditorOption.tabIndex)
+  console.log('oldSize', oldSize)
   monaco.editor.setTheme(newTheme)
   console.log('newSize', newTheme)
 }

@@ -17,8 +17,6 @@ import { onMounted, watch, ref } from 'vue'
 import * as editor from './hemy-editor'
 
 const showWidth = ref('')
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const showPicker = ref(false)
 
 const props = defineProps({
   // 编辑器宽度
