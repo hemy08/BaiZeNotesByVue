@@ -10,6 +10,7 @@ import { ShowFileFolderRenameDialog } from './ShowRemaneDialog'
 import { ShowWebUrlDialog } from './ShowWebUrlDialog'
 import { ShowInsertImageDialog } from './ShowInsertImageDialog'
 import { ShowNewFileFolderDialog } from './ShowNewFileFolderDialog'
+import { ShowSystemSettingDialog } from './ShowSystemSettingDialog'
 import { dialog } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 
@@ -50,21 +51,19 @@ export {
   ShowConfirmDeleteDialog,
   ShowWebUrlDialog,
   ShowInsertImageDialog,
-  ShowNewFileFolderDialog
+  ShowNewFileFolderDialog,
+  ShowSystemSettingDialog
 }
 
-export const webDialogs = {
-  mermaidWeb: { label: 'Mermaid在线编辑器', link: 'https://mermaid.live/edit' },
-  plantTextWeb: { label: 'PlantText编辑器', link: 'https://www.planttext.com/' },
-  mindline: { label: '在线思维导图工具', link: 'https://www.mindline.cn/webapp' },
-  diagrams: { label: '在线流程图绘制', link: 'https://app.diagrams.net/' },
-  plantumlWeb: { label: 'PlantUml 网页服务器', link: 'http://www.plantuml.com/plantuml/uml/' },
-  jyShare: { label: '菜鸟工具首页', link: 'https://www.jyshare.com/' },
-  jySvgEditor: { label: '菜鸟SVG图片编辑器', link: 'https://www.jyshare.com/more/svgeditor/' },
-  jyShapeFlyDiagram: {
-    label: '菜鸟绘图工具',
-    link: 'https://www.jyshare.com/more/shapefly-diagram/'
-  },
-  jyOffice: { label: '菜鸟在线办公工具大全', link: 'https://www.jyshare.com/office/' },
-  jyFrontEnd: { label: '菜鸟在线表格生成', link: 'https://www.jyshare.com/front-end/7688/' }
-}
+export const WebLinks: MenuContext[] = [
+  { label: 'Mermaid在线编辑器', context: 'https://mermaid.live/edit' },
+  { label: 'PlantText编辑器', context: 'https://www.planttext.com/' },
+  { label: '在线思维导图工具', context: 'https://www.mindline.cn/webapp' },
+  { label: '在线流程图绘制', context: 'https://app.diagrams.net/' },
+  { label: 'PlantUml 网页服务器', context: 'http://www.plantuml.com/plantuml/uml/' },
+  { label: '菜鸟工具首页', context: 'https://www.jyshare.com/' },
+  { label: '菜鸟SVG图片编辑器', context: 'https://www.jyshare.com/more/svgeditor/' },
+  { label: '菜鸟绘图工具', context: 'https://www.jyshare.com/more/shapefly-diagram/' },
+  { label: '菜鸟在线办公工具大全', context: 'https://www.jyshare.com/office/' },
+  { label: '菜鸟在线表格生成', context: 'https://www.jyshare.com/front-end/7688/' }
+]

@@ -1,28 +1,22 @@
-// import { app } from 'electron'
+import * as dialogs from '../dialogs/dialogs'
 
 // eslint-disable-next-line no-unused-vars
 export function getAppSettingMenuItem(mainWindow: Electron.BrowserWindow) {
   const settingMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '系统设置 ...待开发',
+      label: '系统设置',
+      click: () => {
+        dialogs.ShowSystemSettingDialog()
+      }
+    },
+    {
+      label: '主题设置',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }
     },
     {
-      label: '主题 ...待开发',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '字体 ...待开发',
-      click: () => {
-        mainWindow.webContents.send('OpenFile', null)
-      }
-    },
-    {
-      label: '编辑器 ...待开发',
+      label: '编辑器设置',
       click: () => {
         mainWindow.webContents.send('OpenFile', null)
       }

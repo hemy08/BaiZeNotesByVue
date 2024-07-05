@@ -3,8 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <title>系统设置</title>
+  <style>
+    .btn-list-style {width:400px;margin-top:10px; display:flex; justify-content:center;align-items:center;gap: 100px}
+  </style>
 </head>
 <body>
-
+<div style="display: flex; flex-direction: row; margin-left: 20px;">
+  <div style="margin-top: 10px; margin-left: 20px; display: flex; flex-direction: column;">
+    <div style="margin: 5px"><label for="system-language">系统语言：</label></div>
+    <div style="margin: 5px"><label for="system-resource-manager">资源管理器：</label></div>
+    <div style="margin: 5px"><label for="system-editor-view-model">编辑器视图：</label></div>
+  </div>
+  <div style="margin-top: 15px;display: flex; flex-direction: column;">
+    <select id="system-language" name="system-language" style="margin: 5px">
+      <option value="zh-cn">简体中文(默认)</option>
+      <option value="zh-tw">繁體中文</option>
+      <option value="en">English</option>
+    </select>
+    <select id="system-resource-manager" name="system-resource-manager" style="margin: 5px">
+      <option value="default">显示(默认)</option>
+      <option value="hide">隐藏</option>
+    </select>
+    <select id="system-editor-view-model" name="system-editor-view-model" style="margin: 5px">
+      <option value="default">编辑/预览模式(默认)</option>
+      <option value="editor-model">编辑模式</option>
+      <option value="preview-model">预览模式</option>
+    </select>
+  </div>
+</div>
+<div class="btn-list-style">
+  <button id="system-setting-apply" style="width: 100px" @click="">应用</button>
+  <button id="system-setting-cancel" style="width: 100px" @click="">取消</button>
+</div>
+<script>
+  const { ipcRenderer } = require('electron');
+  let SystemSetting = {
+    language:"zh-cn",
+    resourceManager: "default",
+    editorModel: 'default'
+  };
+  document.getElementById('system-language').addEventListener('input', (event) => {
+    SystemSetting.language = event.target.value
+  })
+  document.getElementById('system-resource-manager').addEventListener('input', (event) => {
+    SystemSetting.resourceManager = event.target.value
+  })
+  document.getElementById('system-editor-view-model').addEventListener('input', (event) => {
+    SystemSetting.editorModel = event.target.value
+  })
+  document.getElementById('system-setting-apply').onclick = function(e) {
+    ipcRenderer.send('dialog-system-setting-apply', SystemSetting)
+  }
+  document.getElementById('system-setting-cancel').onclick = function(e) {
+    ipcRenderer.send('dialog-system-setting-cancel')
+  }
+</script>
 </body>
 </html>

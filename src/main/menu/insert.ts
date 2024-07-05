@@ -11,6 +11,17 @@ const InsertFromFiles = {
   excel: { label: '*.xls;*.xlsx' }
 }
 
+function GenInsertFromSubMenu(mainWindow: Electron.BrowserWindow) {
+  return Object.keys(InsertFromFiles).map((key) => {
+    return {
+      label: InsertFromFiles[key].label, // 根据类别设置标签
+      click: () => {
+        utils.FileUtils.InsertImportFormFile(mainWindow, key, false)
+      }
+    }
+  })
+}
+
 function GenSubMenu(mainWindow: Electron.BrowserWindow, items: MenuContext, channel: string) {
   return items.map((item) => {
     return {
@@ -22,18 +33,8 @@ function GenSubMenu(mainWindow: Electron.BrowserWindow, items: MenuContext, chan
   })
 }
 
-// eslint-disable-next-line no-unused-vars
-export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
-  const insertFromItem = Object.keys(InsertFromFiles).map((key) => {
-    return {
-      label: InsertFromFiles[key].label, // 根据类别设置标签
-      click: () => {
-        utils.FileUtils.InsertImportFormFile(mainWindow, key, false)
-      }
-    }
-  })
-
-  const insertMaterialItem: Electron.MenuItemConstructorOptions[] = [
+function GenMaterialSubMenu(mainWindow: Electron.BrowserWindow) {
+  return [
     {
       label: 'Admonition',
       click: () => {
@@ -41,7 +42,10 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
       }
     }
   ]
+}
 
+// eslint-disable-next-line no-unused-vars
+export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
   const insertMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
       label: '特殊字体',
@@ -78,12 +82,12 @@ export function getAppInsertMenuItem(mainWindow: Electron.BrowserWindow) {
     },
     {
       label: '来自文件',
-      submenu: insertFromItem
+      submenu: GenInsertFromSubMenu(mainWindow)
     },
     { type: 'separator' },
     {
       label: 'Material',
-      submenu: insertMaterialItem
+      submenu: GenMaterialSubMenu(mainWindow)
     },
     {
       label: 'Mermaid',

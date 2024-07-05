@@ -4,17 +4,14 @@ const openUrlsInBrowser = true
 
 // eslint-disable-next-line no-unused-vars
 export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
-  const onlineTools = Object.keys(dialogs.webDialogs).map((name) => {
+  const onlineTools = dialogs.WebLinks.map((item) => {
     return {
-      label: dialogs.webDialogs[name].label, // 根据类别设置标签
+      label: item.label, // 根据类别设置标签
       click: () => {
         if (openUrlsInBrowser) {
-          mainWindow.webContents.send(
-            'open-url-in-web-browser-window',
-            dialogs.webDialogs[name].link
-          )
+          mainWindow.webContents.send('open-url-in-web-browser-window', item.context)
         } else {
-          dialogs.OpenOnlineWebPage(dialogs.webDialogs[name].link)
+          dialogs.OpenOnlineWebPage(item.context)
         }
       }
     }
