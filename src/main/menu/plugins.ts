@@ -3,7 +3,9 @@ import * as dialogs from '../dialogs/dialogs'
 const openUrlsInBrowser = true
 
 // eslint-disable-next-line no-unused-vars
-export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
+export function getAppPluginsMenuItem(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions {
   const onlineTools = dialogs.WebLinks.map((item) => {
     return {
       label: item.label, // 根据类别设置标签
@@ -26,7 +28,7 @@ export function getAppPluginsMenuItem(mainWindow: Electron.BrowserWindow) {
 
   return {
     label: '插件(P)',
-    enable: true,
+    enabled: true,
     accelerator: 'alt+p',
     submenu: pluginsMenuItems
   }

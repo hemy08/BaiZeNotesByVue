@@ -1,7 +1,9 @@
 import * as dialogs from '../dialogs/dialogs'
 
 // eslint-disable-next-line no-unused-vars
-export function getAppToolsMenuItem(mainWindow: Electron.BrowserWindow) {
+export function getAppToolsMenuItem(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions {
   const toolsMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
       label: 'Mermaid绘图',
@@ -36,7 +38,7 @@ export function getAppToolsMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '工具(T)',
-    enable: true,
+    enabled: true,
     accelerator: 'alt+t',
     submenu: toolsMenuItems
   }

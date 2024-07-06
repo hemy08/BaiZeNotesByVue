@@ -8,7 +8,9 @@ import { getAppPluginsMenuItem } from './plugins'
 import { getAppHelpsMenuItem } from './helps'
 import { getAppEncodingMenuItem } from './encoding'
 
-export function getApplicationMenu(mainWindow: Electron.CrossProcessExports.BrowserWindow) {
+export function getApplicationMenu(
+  mainWindow: Electron.CrossProcessExports.BrowserWindow
+): Electron.MenuItemConstructorOptions[] {
   return [
     getAppFileMenuItem(mainWindow),
     getAppEditMenuItem(mainWindow),

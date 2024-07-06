@@ -62,7 +62,7 @@ export function ShowSystemSettingDialog() {
   })
 }
 
-function createDivLabelList(doc: Document): HTMLDivElement {
+function createDivLabelList(doc: Document): HTMLElement {
   const eleDiv = doc.createElement('div')
   eleDiv.style.cssText =
     'margin-top: 10px; margin-left: 20px; display: flex; flex-direction: column;'
@@ -94,7 +94,7 @@ function createDivLabelList(doc: Document): HTMLDivElement {
   return eleDiv
 }
 
-function createLanguageSelect(doc: Document): HTMLDivElement {
+function createLanguageSelect(doc: Document): Element {
   const divLanSelect = doc.createElement('select')
   divLanSelect.style.cssText = 'margin: 5px'
   divLanSelect.id = 'system-language'
@@ -119,7 +119,7 @@ function createLanguageSelect(doc: Document): HTMLDivElement {
   return divLanSelect
 }
 
-function createResourceManager(doc: Document): HTMLDivElement {
+function createResourceManager(doc: Document): HTMLElement {
   const divResSelect = doc.createElement('select')
   divResSelect.style.cssText = 'margin: 5px'
   divResSelect.id = 'system-resource-manager'
@@ -139,7 +139,7 @@ function createResourceManager(doc: Document): HTMLDivElement {
   return divResSelect
 }
 
-function createEditorViewModel(doc: Document): HTMLDivElement {
+function createEditorViewModel(doc: Document): HTMLElement {
   const divViewModel = doc.createElement('select')
   divViewModel.style.cssText = 'margin: 5px'
   divViewModel.id = 'system-editor-view-model'
@@ -164,7 +164,7 @@ function createEditorViewModel(doc: Document): HTMLDivElement {
   return divViewModel
 }
 
-function createDivSelect(doc: Document): HTMLDivElement {
+function createDivSelect(doc: Document): HTMLElement {
   const eleDiv = doc.createElement('div')
   eleDiv.style.cssText = 'margin-top: 15px;display: flex; flex-direction: column;'
   const eleLanSelect = createLanguageSelect(doc)
@@ -176,7 +176,7 @@ function createDivSelect(doc: Document): HTMLDivElement {
   return eleDiv
 }
 
-function createSettingButtons(doc: Document): HTMLDivElement {
+function createSettingButtons(doc: Document): HTMLElement {
   const eleDiv = doc.createElement('div')
   eleDiv.className = 'btn-list-style'
   const eleDivConfirm = doc.createElement('button')

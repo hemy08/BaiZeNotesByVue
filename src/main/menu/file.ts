@@ -3,41 +3,41 @@ import * as fileUtils from '../utils/file-utils'
 import * as dialogs from '../dialogs/dialogs'
 
 export const ImportExport = [
-  { type: 'import', label: '从 Word 导入', fileType: 'word' },
-  { type: 'import', label: '从 HTML 导入', fileType: 'html' },
-  { type: 'import', label: '从 JSON 导入', fileType: 'json' },
-  { type: 'import', label: '从 YAML 导入', fileType: 'yaml' },
-  { type: 'import', label: '从文本文件导入', fileType: 'text' },
-  { type: 'separator', label: 'separator' },
-  { type: 'export', label: '导出为Word', fileType: 'word' },
-  { type: 'export', label: '导出为HTML', fileType: 'html' },
-  { type: 'export', label: '导出为PDF', fileType: 'pdf' }
+  { menuType: 'import', label: '从 Word 导入', fileType: 'word' },
+  { menuType: 'import', label: '从 HTML 导入', fileType: 'html' },
+  { menuType: 'import', label: '从 JSON 导入', fileType: 'json' },
+  { menuType: 'import', label: '从 YAML 导入', fileType: 'yaml' },
+  { menuType: 'import', label: '从文本文件导入', fileType: 'text' },
+  { menuType: 'separator', label: 'separator', fileType: 'separator' },
+  { menuType: 'export', label: '导出为Word', fileType: 'word' },
+  { menuType: 'export', label: '导出为HTML', fileType: 'html' },
+  { menuType: 'export', label: '导出为PDF', fileType: 'pdf' }
 ]
 
-function GenImportExportSubMenuItems(mainWindow: Electron.BrowserWindow) {
-  return ImportExport.map((item:{ type: string, label:string, fileType: string }) => {
-    if (item.type === 'separator') {
+function GenImportExportSubMenuItems(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions[] {
+  return ImportExport.map((item): Electron.MenuItemConstructorOptions => {
+    if (item.menuType === 'separator') {
       return { type: 'separator' }
-    } else if (item.type === 'import') {
-      return {
-        label: item.label, // 根据类别设置标签
-        click: () => {
-          fileUtils.InsertImportFormFile(mainWindow, item.fileType, true)
-        }
-      }
     } else {
+      const clickFn =
+        item.menuType === 'import'
+          ? () => fileUtils.InsertImportFormFile(mainWindow, item.fileType, true)
+          : () => fileUtils.ExportToFile(mainWindow, item.fileType)
       return {
+        type: 'normal',
         label: item.label, // 根据类别设置标签
-        click: () => {
-          fileUtils.ExportToFile(mainWindow, item.fileType)
-        }
+        click: clickFn
       }
     }
-  })
+  }).filter((item) => item != null)
 }
 
 // eslint-disable-next-line no-unused-vars
-export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
+export function getAppFileMenuItem(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions {
   const fileMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
       label: '新建文件(N)',
@@ -102,7 +102,7 @@ export function getAppFileMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '文件(F)',
-    enable: true,
+    enabled: true,
     accelerator: 'alt+f',
     submenu: fileMenuItems
   }

@@ -1,23 +1,25 @@
 export const OpenWithEncode = [
-  { type: 'menu', label: 'UTF-8', encoding: 'utf8:' },
-  { type: 'menu', label: 'UTF-16LE', encoding: 'utf-16le' },
-  { type: 'menu', label: 'UTF-16BE', encoding: 'utf-16be' },
-  { type: 'separator', label: 'separator', encoding: 'separator' },
-  { type: 'menu', label: 'GBK(简体中文)', encoding: 'gbk' },
-  { type: 'menu', label: 'GB2312(简体中文)', encoding: 'gb2312' },
-  { type: 'menu', label: 'GB18030(简体中文)', encoding: 'gb18030' },
-  { type: 'menu', label: 'Big5(繁体中文)', encoding: 'big5' },
-  { type: 'menu', label: 'Big5-HKSCS(繁体中文)', encoding: 'big5-hkscs' },
-  { type: 'separator', label: 'separator', encoding: 'separator' },
-  { type: 'menu', label: '十六进制', encoding: 'hex' },
-  { type: 'nomenu', label: '注意: 请勿直接编辑乱码文件。', encoding: 'none' }
+  { menuType: 'menu', label: 'UTF-8', encoding: 'utf8:' },
+  { menuType: 'menu', label: 'UTF-16LE', encoding: 'utf-16le' },
+  { menuType: 'menu', label: 'UTF-16BE', encoding: 'utf-16be' },
+  { menuType: 'separator', label: 'separator', encoding: 'separator' },
+  { menuType: 'menu', label: 'GBK(简体中文)', encoding: 'gbk' },
+  { menuType: 'menu', label: 'GB2312(简体中文)', encoding: 'gb2312' },
+  { menuType: 'menu', label: 'GB18030(简体中文)', encoding: 'gb18030' },
+  { menuType: 'menu', label: 'Big5(繁体中文)', encoding: 'big5' },
+  { menuType: 'menu', label: 'Big5-HKSCS(繁体中文)', encoding: 'big5-hkscs' },
+  { menuType: 'separator', label: 'separator', encoding: 'separator' },
+  { menuType: 'menu', label: '十六进制', encoding: 'hex' },
+  { menuType: 'nomenu', label: '注意: 请勿直接编辑乱码文件。', encoding: 'none' }
 ]
 
-function GenOpenWithEncodeSubMenuItems(mainWindow: Electron.BrowserWindow) {
+function GenOpenWithEncodeSubMenuItems(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions[] {
   return OpenWithEncode.map((item) => {
-    if (item.type === 'separator') {
+    if (item.menuType === 'separator') {
       return { type: 'separator' }
-    } else if (item.type === 'nomenu') {
+    } else if (item.menuType === 'nomenu') {
       return {
         label: item.label, // 根据类别设置标签
         enable: false
@@ -26,7 +28,7 @@ function GenOpenWithEncodeSubMenuItems(mainWindow: Electron.BrowserWindow) {
       return {
         label: item.label, // 根据类别设置标签
         click: () => {
-          mainWindow.webContents.send('open-with-encoding', ittm.encoding)
+          mainWindow.webContents.send('open-with-encoding', item.encoding)
         }
       }
     }
@@ -48,7 +50,9 @@ export const ConvertToEncode = [
   { type: 'nomenu', label: '注意: 请勿直接编辑乱码文件。', encoding: 'enabled' }
 ]
 
-function GenCvtEncodeSubMenuItems(mainWindow: Electron.BrowserWindow) {
+function GenCvtEncodeSubMenuItems(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions[] {
   return ConvertToEncode.map((item) => {
     if (item.type === 'separator') {
       return { type: 'separator' }

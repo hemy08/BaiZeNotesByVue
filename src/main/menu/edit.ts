@@ -1,5 +1,7 @@
 // eslint-disable-next-line no-unused-vars
-export function getAppEditMenuItem(mainWindow: Electron.BrowserWindow) {
+export function getAppEditMenuItem(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions {
   const editMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
       label: '撤销',
@@ -60,7 +62,7 @@ export function getAppEditMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '编辑(E)',
-    enable: true,
+    enabled: true,
     accelerator: 'alt+e',
     submenu: editMenuItems
   }

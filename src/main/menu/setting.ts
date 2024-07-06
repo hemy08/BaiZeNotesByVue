@@ -1,7 +1,9 @@
 import * as dialogs from '../dialogs/dialogs'
 
 // eslint-disable-next-line no-unused-vars
-export function getAppSettingMenuItem(mainWindow: Electron.BrowserWindow) {
+export function getAppSettingMenuItem(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions {
   const settingMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
       label: '系统设置',
@@ -36,7 +38,7 @@ export function getAppSettingMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '设置(S)',
-    enable: true,
+    enabled: true,
     accelerator: 'alt+s',
     submenu: settingMenuItems
   }

@@ -1,7 +1,9 @@
 // import { app } from 'electron'
 
 // eslint-disable-next-line no-unused-vars
-export function getAppViewMenuItem(mainWindow: Electron.BrowserWindow) {
+export function getAppViewMenuItem(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions {
   const viewMenuCollapseExpand: Electron.MenuItemConstructorOptions[] = [
     {
       label: '一级标题',
@@ -87,7 +89,7 @@ export function getAppViewMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '视图(V)',
-    enable: true,
+    enabled: true,
     accelerator: 'alt+v',
     submenu: viewMenuItems
   }

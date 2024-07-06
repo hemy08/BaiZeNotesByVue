@@ -37,7 +37,9 @@ function contactus() {
   })
 }
 // eslint-disable-next-line no-unused-vars
-export function getAppHelpsMenuItem(mainWindow: Electron.BrowserWindow) {
+export function getAppHelpsMenuItem(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions {
   const helpMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
       label: '版本发布 ...待开发',
@@ -102,7 +104,7 @@ export function getAppHelpsMenuItem(mainWindow: Electron.BrowserWindow) {
   ]
   return {
     label: '帮助(H)',
-    enable: true,
+    enabled: true,
     accelerator: 'alt+h',
     submenu: helpMenuItems
   }
