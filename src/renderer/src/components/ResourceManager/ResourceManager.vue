@@ -63,7 +63,6 @@ function SwitchResourceManager(value: string) {
   } else if (value == 'file-explorer') {
     showFileExplorer.value = true
     showMarkdownToc.value = false
-    console.log('monaco-editor-switch-explorer')
     EventBus.$emit('monaco-editor-switch-explorer', true)
   }
 }
