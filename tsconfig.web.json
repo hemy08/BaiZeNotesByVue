@@ -28,6 +28,12 @@
     "src/renderer/src/lib/mermaid/**/*.ts",
     "src/renderer/src/lib/mermaid/**/*.js",
     "src/renderer/src/lib/mermaid/**/*.mjs",
+    "src/renderer/src/lib/monaco-editor/**/*.nls.js",
+    "src/renderer/src/lib/monaco-editor/**/*.js",
+    "src/renderer/src/lib/monaco-editor/**/*.ts",
+    "src/renderer/src/lib/monaco-editor/min/vs/editor/*.nls.js",
+    "src/renderer/src/lib/monaco-themes/**/*.ts",
+    "src/renderer/src/lib/monaco-themes/**/*.js",
     "src/main/themes/monaco-themes/**/*.ts",
     "src/main/themes/monaco-themes/*.js",
     "src/preload/*.d.ts"

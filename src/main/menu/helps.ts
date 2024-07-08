@@ -7,6 +7,7 @@ function about() {
   const message = `Hemy Markdown Editor v1.0.0`
   const v8_v = `引擎版本：${process.versions.v8}\n`
   const sys_info = `当前系统：${os.type()} ${os.arch()} ${os.release()}\n`
+  const sys_plt = `当前平台：${process.platform}\n`
   const ele_v = `Electron ：v${process.versions.electron}\n`
   const chrom_v = `Chromium ：v${process.versions.chrome}\n`
   const node_v = `Node ：v${process.versions.node}\n`
@@ -16,7 +17,7 @@ function about() {
     title: `关于 Hemy Markdown Editor`,
     type: 'info',
     message: message,
-    detail: v8_v + sys_info + ele_v + chrom_v + node_v + vue,
+    detail: v8_v + sys_info + sys_plt + ele_v + chrom_v + node_v + vue,
     noLink: true,
     buttons: ['确定']
   })

@@ -55,6 +55,7 @@ onMounted(() => {
     editor.DidChange(editorInstance)
     editor.KeyMaps(editorInstance)
     editor.AddActions(editorInstance)
+    editor.LoadScript()
 
     global.mdEditor = editorInstance
   }

@@ -40,3 +40,23 @@ export function MonacoEditorAddActions(editor: monaco.editor.IStandaloneCodeEdit
     run: EnterAction
   })
 }
+
+export function LoadLocalScript() {
+  const script = document.createElement('script')
+  script.id = 'app-lib-monaco-vs-loader'
+  script.type = 'text/javascript'
+  script.src = 'src/lib/monaco-editor/min/vs/loader.js'
+  /*script.onload = function () {
+    require.config({
+      paths: {
+        vs: 'app/lib/monaco/vs',
+        themes: 'app/lib/monaco/themes'
+      },
+      'vs/nls': {
+        availableLanguages: {
+          '*': 'zh-cn'
+        }
+      }
+    })
+  }*/
+}
