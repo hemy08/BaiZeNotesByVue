@@ -39,6 +39,16 @@ export function MonacoEditorAddActions(editor: monaco.editor.IStandaloneCodeEdit
     // 回调函数
     run: EnterAction
   })
+  editor.addAction({
+    id: 'hemy-custom-contextmenu',
+    label: 'Hemy Custom ContextMenu',
+    contextMenuGroupId: 'navigation',
+    // 回调函数
+    run: (editor, ...args) => {
+      console.log(editor.getModel()?.getLanguageId())
+      alert('args' + args)
+    }
+  })
 }
 
 export function LoadLocalScript() {
