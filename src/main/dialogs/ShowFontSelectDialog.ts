@@ -1,4 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
+import { JSDOM } from 'jsdom'
+import * as digcom from './dialog_common'
 
 let fontSelectDialog: Electron.BrowserWindow | null
 
@@ -30,7 +32,7 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
 
   // 加载一个 HTML 文件作为对话框的内容
   fontSelectDialog.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(CustomFontDialogHtml)}`
+    `data:text/html;charset=utf-8,${encodeURIComponent(makeFontDialogHtml())}`
   )
 
   // 当窗口关闭时，清除引用
@@ -92,6 +94,251 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
   })
 }
 
+function createLabelList(doc: Document): HTMLElement {
+  const labelStyle = 'width: 100px;margin: 5px;text-align: right;'
+  const labels: digcom.Label[] = [
+    { forHtml: 'fontFamily', text: '选择字体：', divCss: labelStyle },
+    { forHtml: 'fontSize', text: '字体大小：', divCss: labelStyle },
+    { forHtml: 'fontColor', text: '字体颜色：', divCss: labelStyle },
+    { forHtml: 'fontColor', text: '', divCss: 'height: 60px' },
+    { forHtml: 'backgroundColor', text: '背\u00A0\u00A0景\u00A0\u00A0色：', divCss: labelStyle },
+    { forHtml: 'backgroundColor', text: '', divCss: 'height: 60px' },
+    {
+      forHtml: 'fontBold',
+      text: '加\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0粗：',
+      divCss: labelStyle
+    },
+    {
+      forHtml: 'fontItalic',
+      text: '倾\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0斜：',
+      divCss: labelStyle
+    },
+    { forHtml: 'fontUnderline', text: '下\u00A0\u00A0划\u00A0\u00A0线：', divCss: labelStyle },
+    { forHtml: 'fontDeleteLine', text: '删\u00A0\u00A0除\u00A0\u00A0线：', divCss: labelStyle }
+  ]
+
+  const LabelList = digcom.NewLabelList(doc, labels)
+  LabelList.style.cssText =
+    'margin-top: 10px; margin-left: 20px; display: flex; flex-direction: column;'
+  return LabelList
+}
+
+function createFontFamilySelect(doc: Document): HTMLElement {
+  const options: digcom.Option[] = [
+    { value: 'Arial', optCss: "font-family: 'Arial'" },
+    { value: 'Cascadia Code', optCss: "font-family: 'Cascadia Code'" },
+    { value: 'Consolas', optCss: "font-family: 'Consolas'" },
+    { value: 'DejaVu Sans Mono', optCss: "font-family: 'DejaVu Sans Mono'" },
+    { value: 'Droid Sans', optCss: "font-family: 'Droid Sans'" },
+    { value: 'Fira Sans', optCss: "font-family: 'Fira Sans'" },
+    { value: 'Fira Code', optCss: "font-family: 'Fira Code'" },
+    { value: 'Hack', optCss: "font-family: 'Hack'" },
+    { value: 'Helvetica Neue', optCss: "font-family: 'Helvetica Neue'" },
+    { value: 'Inter', optCss: "font-family: 'Inter'" },
+    { value: 'JetBrains Mono', optCss: "font-family: 'JetBrains Mono'" },
+    { value: 'Menlo', optCss: "font-family: 'Menlo'" },
+    { value: 'Roboto', optCss: "font-family: 'Roboto'" },
+    { value: 'Oxygen', optCss: "font-family: 'Oxygen'" },
+    { value: 'sans-serif', optCss: "font-family: 'sans-serif'" },
+    { value: 'Segoe UI', optCss: "font-family: 'Segoe UI'" },
+    { value: 'SimHei', optCss: "font-family: 'SimHei'" },
+    { value: 'Source Code Pro', optCss: "font-family: 'Source Code Pro'" },
+    { value: 'Ubuntu', optCss: "font-family: 'Ubuntu'" },
+    { value: 'Ubuntu Mono', optCss: "font-family: 'Ubuntu Mono'" }
+  ]
+
+  const FontFamily = digcom.NewSelect(doc, options)
+  FontFamily.name = 'editor-font-family'
+  FontFamily.id = 'editor-font-family'
+
+  const DivEle = doc.createElement('div')
+  DivEle.className = 'input-style'
+  DivEle.appendChild(FontFamily)
+  return DivEle
+}
+
+function createFontSizeSelect(doc: Document): HTMLElement {
+  const options: digcom.Option[] = []
+  for (let i = 5; i < 40; i++) {
+    options.push({ value: `${i}pt` })
+  }
+
+  const FontSize = digcom.NewSelect(doc, options)
+  FontSize.name = 'editor-font-size'
+  FontSize.id = 'editor-font-size'
+
+  const DivEle = doc.createElement('div')
+  DivEle.className = 'input-style'
+  DivEle.style.cssText = 'width: 40px'
+  DivEle.appendChild(FontSize)
+  return DivEle
+}
+
+const colors = [
+  '#FFFFFF',
+  '#000000',
+  '#FF00FF',
+  '#0000FF',
+  '#0184bb',
+  '#4078f2',
+  '#00FFFF',
+  '#FF0000',
+  '#228B22',
+  '#00FF00',
+  '#ADFF2F',
+  '#f0dc4e',
+  '#FFFF00',
+  '#986801',
+  '#c18401',
+  '#e45649'
+]
+
+function createColorList(doc: Document): HTMLElement {
+  const colorButtons: digcom.Button[] = []
+  colors.forEach((color) => {
+    colorButtons.push({
+      id: 'color-button',
+      text: '',
+      btnCss: `background-color: ${color};border: none;padding: 5;`,
+      btnClass: 'color-button'
+    })
+  })
+  const colorDiv = doc.createElement('div')
+  colorDiv.className = 'input-style'
+  const colorInput = doc.createElement('input')
+  colorInput.type = 'color'
+  colorInput.id = 'fontColor'
+  colorInput.style.cssText = 'width: 160px'
+  colorDiv.appendChild(colorInput)
+  colorDiv.appendChild(digcom.NewButtonList(doc, colorButtons))
+  return colorDiv
+}
+
+function createBackgroundColorList(doc: Document): HTMLElement {
+  const colorBackButtons: digcom.Button[] = []
+  colors.forEach((color) => {
+    colorBackButtons.push({
+      id: 'background-color-button',
+      text: '',
+      btnCss: `background-color: ${color};border: none;padding: 5;`,
+      btnClass: 'color-button'
+    })
+  })
+  const colorDiv = doc.createElement('div')
+  colorDiv.className = 'input-style'
+  const colorBackInput = doc.createElement('input')
+  colorBackInput.type = 'color'
+  colorBackInput.id = 'backgroundColor'
+  colorBackInput.style.cssText = 'width: 160px'
+  colorDiv.appendChild(colorBackInput)
+  colorDiv.appendChild(digcom.NewButtonList(doc, colorBackButtons))
+  return colorDiv
+}
+
+function createInputs(doc: Document): HTMLElement {
+  const divEle = doc.createElement('div')
+  divEle.style.cssText = 'margin-top: 10px;display: flex; flex-direction: column;'
+  divEle.appendChild(createFontFamilySelect(doc))
+  divEle.appendChild(createFontSizeSelect(doc))
+  divEle.appendChild(createColorList(doc))
+  divEle.appendChild(createBackgroundColorList(doc))
+  divEle.appendChild(digcom.NewCheckBox(doc, 'input-style', 'fontBold'))
+  divEle.appendChild(digcom.NewCheckBox(doc, 'input-style', 'fontItalic'))
+  divEle.appendChild(digcom.NewCheckBox(doc, 'input-style', 'fontUnderline'))
+  divEle.appendChild(digcom.NewCheckBox(doc, 'input-style', 'fontDeleteLine'))
+  return divEle
+}
+
+function createEditPreview(doc: Document): HTMLElement {
+  const divEle = doc.createElement('div')
+  divEle.style.cssText =
+    'margin-top: 10px; margin-left: 20px; display: flex; flex-direction: column;'
+
+  const divEditArea = doc.createElement('div')
+  divEditArea.appendChild(
+    digcom.NewLabelDiv(doc, { divClass: 'label-style', forHtml: 'textInput', text: '编辑区域：' })
+  )
+  divEditArea.appendChild(
+    digcom.NewTextArea(doc, 'textInput', 'width: 400px;height: 140px;overflow-y: auto;')
+  )
+  divEle.appendChild(divEditArea)
+
+  const divLine = doc.createElement('div')
+  divLine.style.cssText =
+    'margin-top: 10px; height:2px; color:white; width:350px; display: flex; background-color: black'
+  divEle.appendChild(divLine)
+
+  const divPreArea = doc.createElement('div')
+  divPreArea.style.cssText = 'margin-top: 10px'
+  divPreArea.appendChild(
+    digcom.NewLabelDiv(doc, { divClass: 'label-style', forHtml: 'previewText', text: '效果预览：' })
+  )
+  const preview = doc.createElement('div')
+  preview.id = 'preview-area'
+  preview.style.cssText = 'width: 400px;height: 140px; overflow:auto;'
+  preview.innerHTML = '<p class="preview-text" id="previewText">这是一段预览文字。</p>'
+  divPreArea.appendChild(preview)
+  divEle.appendChild(divPreArea)
+  return divEle
+}
+
+function createBodyDiv(doc: Document): HTMLElement {
+  const div = doc.createElement('div')
+  div.style.cssText = 'display: flex; flex-direction: row; margin-left: 20px;'
+  div.appendChild(createLabelList(doc))
+  div.appendChild(createInputs(doc))
+  const divLine = doc.createElement('div')
+  divLine.style.cssText =
+    'margin-top: 10px; margin-left: 20px; width:2px; color:white; height:370px; display: flex; background-color: black'
+  div.appendChild(divLine)
+  div.appendChild(createEditPreview(doc))
+  return div
+}
+
+function makeFontDialogHtml(): string {
+  const { document } = new JSDOM(
+    `<!DOCTYPE html><html lang="zh"><head><title>特殊文字编辑</title></head><body></body></html>`
+  ).window
+
+  const webDivStyle = document.createElement('style')
+  webDivStyle.textContent = `
+    .label-style {width: 100px;margin-top: 12px;text-align: center;}
+    .input-style {width: 170px;margin-top: 10px;}
+    .color-button {width: 18px;height: 18px;margin-top: 10px;border-width:1px;}`
+  document.head.appendChild(webDivStyle)
+
+  const divBody = createBodyDiv(document)
+  document.body.appendChild(divBody)
+
+  const eleScript = document.createElement('script')
+  eleScript.textContent = `
+    const { ipcRenderer } = require('electron');
+    let SystemSetting = {
+      language:"zh-cn",
+      resourceManager: "default",
+      editorModel: 'default'
+    };
+    document.getElementById('system-language').addEventListener('input', (event) => {
+      SystemSetting.language = event.target.value
+    })
+    document.getElementById('system-resource-manager').addEventListener('input', (event) => {
+      SystemSetting.resourceManager = event.target.value
+    })
+    document.getElementById('system-editor-view-model').addEventListener('input', (event) => {
+      SystemSetting.editorModel = event.target.value
+    })
+    document.getElementById('system-setting-apply').onclick = function(e) {
+      ipcRenderer.send('dialog-system-setting-apply', SystemSetting)
+    }
+    document.getElementById('system-setting-cancel').onclick = function(e) {
+      ipcRenderer.send('dialog-system-setting-cancel')
+    }`
+
+  document.body.appendChild(eleScript)
+  return document.documentElement.outerHTML
+}
+
+/*
 const CustomFontDialogHtml =
   '<!DOCTYPE html>\n' +
   '<html lang="zh">\n' +
@@ -338,3 +585,4 @@ const CustomFontDialogHtml =
   '  </script>\n' +
   '  </body>\n' +
   '</html>\n'
+*/

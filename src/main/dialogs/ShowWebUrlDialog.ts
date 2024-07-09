@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, IpcMainEvent } from 'electron'
 import { JSDOM } from 'jsdom'
+import * as digcom from './dialog_common'
 
 let customWebUrlDialog: Electron.BrowserWindow | null
 
@@ -59,19 +60,14 @@ export function ShowWebUrlDialog(mainWindow: Electron.BrowserWindow) {
 }
 
 function createWebUrlButtonList(doc: Document): Element {
-  const eleButtons = doc.createElement('div')
-  eleButtons.className = 'web-url-btn-style'
-  const eleInsertButton = doc.createElement('button')
-  eleInsertButton.id = 'insert-web-url'
-  eleInsertButton.className = 'web-url-button'
-  eleInsertButton.textContent = '插入'
-  const eleCancelButton = doc.createElement('button')
-  eleCancelButton.id = 'cancel-input'
-  eleCancelButton.className = 'web-url-button'
-  eleCancelButton.textContent = '取消'
-  eleButtons.appendChild(eleInsertButton)
-  eleButtons.appendChild(eleCancelButton)
-  return eleButtons
+  const buttons: digcom.Button = [
+    { id: 'insert-web-url', text: '确定', btnCss: 'web-url-button' },
+    { id: 'cancel-input', text: '取消', btnCss: 'web-url-button' }
+  ]
+
+  const btnList = digcom.NewButtonList(doc, buttons)
+  btnList.className = 'web-url-btn-style'
+  return btnList
 }
 
 function makeWebUrlDialogHtml(): string {

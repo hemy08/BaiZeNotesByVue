@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { GetSelectDir, CreateFile, CreateDirectory } from '../utils/file-utils'
 import { JSDOM } from 'jsdom'
+import * as digcom from './dialog_common'
 
 let customNewFileDialog: Electron.BrowserWindow | null
 
@@ -133,19 +134,14 @@ function createFileFolderSelect(doc: Document): HTMLDivElement {
 }
 
 function createButtons(doc: Document): HTMLDivElement {
-  const eleDiv = doc.createElement('div')
-  eleDiv.className = 'btn-list-style'
-  const eleDivConfirm = doc.createElement('button')
-  eleDivConfirm.id = 'file-folder-confirm'
-  eleDivConfirm.style.cssText = 'width: 100px'
-  eleDivConfirm.textContent = '确定'
-  const eleDivCancel = doc.createElement('button')
-  eleDivCancel.id = 'file-folder-cancel'
-  eleDivCancel.style.cssText = 'width: 100px'
-  eleDivCancel.textContent = '取消'
-  eleDiv.appendChild(eleDivConfirm)
-  eleDiv.appendChild(eleDivCancel)
-  return eleDiv
+  const buttons: digcom.Button = [
+    { id: 'file-folder-confirm', text: '确定', btnCss: 'width: 100px' },
+    { id: 'file-folder-cancel', text: '取消', btnCss: 'width: 100px' }
+  ]
+
+  const btnList = digcom.NewButtonList(doc, buttons)
+  btnList.className = 'btn-list-style'
+  return btnList
 }
 
 function makeNewFileFolderDialogHtml(): string {

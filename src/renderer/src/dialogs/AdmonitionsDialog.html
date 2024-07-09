@@ -40,49 +40,49 @@
       <p id="previewText">这是一段预览文字。</p>
     </div>
   </div>
+  <div style="width:400px;margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 10px">
+    <button id="applyButton" onclick="sendInsertAdmonitions()" style="width: 125px;margin-top: 30px;margin-left: 50px;">应用</button>
+    <button id="cancelButton" onclick="sendCancelAdmonitions()" style="width: 125px;margin-top: 30px;margin-left: 50px;">取消</button>
+  </div>
+  <script>
+    //const { ipcRenderer } = require('electron')
+    let typeStr='note'
+    let titleStr='这是一个演示'
+    let contentStr = '这是一个演示'
+    let previewText = ''
+    document.getElementById("previewText").outerHTML = '<div class="admonition note"><p class="admonition-title">这是一个演示</p>这是一个演示</div>'
+    function updateType(event) {
+      typeStr = event.target.value.toLowerCase()
+      console.log('typeStr', typeStr)
+      updatePreviewText()
+    }
+    function updateTitle(event) {
+      titleStr = event.target.value.toLowerCase()
+      console.log('titleStr', titleStr)
+      updatePreviewText()
+    }
+    function updateContent(event) {
+      contentStr = document.getElementById("admonitionsContent").value
+      contentStr = contentStr.replace(/\n/g,'<br>')
+      console.log('contentStr', contentStr)
+      updatePreviewText()
+    }
+    function updatePreviewText() {
+      previewText = `<div class="admonition ${typeStr}">` +
+        `<p class="admonition-title">${titleStr}</p>` +
+        `${contentStr}</div>`
+      document.getElementById("previewText").innerHTML = previewText
+    }
+    // 监听文本输入和样式输入的变化
+    document.getElementById('admonitionsType').addEventListener('input', updateType);
+    document.getElementById('admonitionsTitle').addEventListener('input', updateTitle)
+    document.getElementById('admonitionsContent').addEventListener('input', updateContent);
+    function sendInsertAdmonitions() {
+      //ipcRenderer.send('user-input-insert-admonitions', previewText);
+    }
+    function sendCancelAdmonitions() {
+      //ipcRenderer.send('user-input-cancel-admonitions');
+    }
+  </script>
 </body>
-<div style="width:400px;margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 10px">
-  <button id="applyButton" onclick="sendInsertAdmonitions()" style="width: 125px;margin-top: 30px;margin-left: 50px;">应用</button>
-  <button id="cancelButton" onclick="sendCancelAdmonitions()" style="width: 125px;margin-top: 30px;margin-left: 50px;">取消</button>
-</div>
-<script>
-  //const { ipcRenderer } = require('electron')
-  let typeStr='note'
-  let titleStr='这是一个演示'
-  let contentStr = '这是一个演示'
-  let previewText = ''
-  document.getElementById("previewText").outerHTML = '<div class="admonition note"><p class="admonition-title">这是一个演示</p>这是一个演示</div>'
-  function updateType(event) {
-    typeStr = event.target.value.toLowerCase()
-    console.log('typeStr', typeStr)
-    updatePreviewText()
-  }
-  function updateTitle(event) {
-    titleStr = event.target.value.toLowerCase()
-    console.log('titleStr', titleStr)
-    updatePreviewText()
-  }
-  function updateContent(event) {
-    contentStr = document.getElementById("admonitionsContent").value
-    contentStr = contentStr.replace(/\n/g,'<br>')
-    console.log('contentStr', contentStr)
-    updatePreviewText()
-  }
-  function updatePreviewText() {
-    previewText = `<div class="admonition ${typeStr}">` +
-      `<p class="admonition-title">${titleStr}</p>` +
-      `${contentStr}</div>`
-    document.getElementById("previewText").innerHTML = previewText
-  }
-  // 监听文本输入和样式输入的变化
-  document.getElementById('admonitionsType').addEventListener('input', updateType);
-  document.getElementById('admonitionsTitle').addEventListener('input', updateTitle)
-  document.getElementById('admonitionsContent').addEventListener('input', updateContent);
-  function sendInsertAdmonitions() {
-    //ipcRenderer.send('user-input-insert-admonitions', previewText);
-  }
-  function sendCancelAdmonitions() {
-    //ipcRenderer.send('user-input-cancel-admonitions');
-  }
-</script>
 </html>

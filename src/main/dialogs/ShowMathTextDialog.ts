@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain, dialog } from 'electron'
 import { katexRenderToString } from '../utils/KatexRender'
 import { JSDOM } from 'jsdom'
+import * as digcom from './dialog_common'
 
 let customMathTextDialog: Electron.BrowserWindow | null = null
 
@@ -156,7 +157,8 @@ function createKatexContainer(doc: Document): HTMLElement {
   divContainer.id = 'katex-container'
 
   const divLine = doc.createElement('div')
-  divLine.style.cssText = 'width:1200px;height:2px;margin-top:10px;margin-left:20px;color:black;background-color:black'
+  divLine.style.cssText =
+    'width:1200px;height:2px;margin-top:10px;margin-left:20px;color:black;background-color:black'
 
   divContainer.appendChild(createKatexPreview(doc))
   divContainer.appendChild(divLine)
@@ -164,29 +166,25 @@ function createKatexContainer(doc: Document): HTMLElement {
   return divContainer
 }
 
-function createButtonEle(doc: Document, id: string, text: string): HTMLButtonElement {
-  const buttonEle = doc.createElement('button')
-  buttonEle.id = id
-  buttonEle.textContent = text
-  return buttonEle
-}
-
 function createButtonList(doc: Document): HTMLElement {
-  const eleDiv = doc.createElement('div')
-  eleDiv.className = 'btn-list-style'
-  eleDiv.appendChild(createButtonEle(doc, 'insert-math-line', '插入行内公式'))
-  eleDiv.appendChild(createButtonEle(doc, 'insert-math-block', '插入公式块'))
-  eleDiv.appendChild(createButtonEle(doc, 'insert-math-math', '插入Math'))
-  eleDiv.appendChild(createButtonEle(doc, 'insert-math-katex', '插入Katex'))
-  eleDiv.appendChild(createButtonEle(doc, 'insert-math-latex', '插入Latex'))
-  eleDiv.appendChild(createButtonEle(doc, 'cancel-insert-math', '取消编辑'))
-  return eleDiv
+  const buttons: digcom.Button = [
+    { id: 'insert-math-line', text: '插入行内公式' },
+    { id: 'insert-math-block', text: '插入公式块' },
+    { id: 'insert-math-math', text: '插入Math' },
+    { id: 'insert-math-katex', text: '插入Katex' },
+    { id: 'insert-math-latex', text: '插入Latex' },
+    { id: 'cancel-insert-math', text: '取消编辑' }
+  ]
+
+  const btnList = digcom.NewButtonList(doc, buttons)
+  btnList.className = 'btn-list-style'
+  return btnList
 }
 
 function makeMathTextDialogHtml(): string {
   // 创建一个空的HTML文档
   const { document } = new JSDOM(
-    `<!DOCTYPE html><html lang="zh"><head><title>系统设置</title></head><body></body></html>`
+    `<!DOCTYPE html><html lang="zh"><head><title>数学公式编辑</title></head><body></body></html>`
   ).window
 
   const webDivStyle = document.createElement('style')

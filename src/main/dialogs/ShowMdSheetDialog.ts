@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
+import * as digcom from './dialog_common'
 
 let customMarkdownSheetDialog: Electron.BrowserWindow | null
 
@@ -210,19 +211,14 @@ function createCheckBoxList(doc: Document): Element {
 }
 
 function createButtonList(doc: Document): Element {
-  const eleButtons = doc.createElement('div')
-  eleButtons.className = 'btn-style'
-  const eleInsertButton = doc.createElement('button')
-  eleInsertButton.id = 'insertButton'
-  eleInsertButton.className = 'color-button'
-  eleInsertButton.textContent = '插入'
-  const eleCancelButton = doc.createElement('button')
-  eleCancelButton.id = 'cancelButton'
-  eleCancelButton.className = 'color-button'
-  eleCancelButton.textContent = '取消'
-  eleButtons.appendChild(eleInsertButton)
-  eleButtons.appendChild(eleCancelButton)
-  return eleButtons
+  const buttons: digcom.Button = [
+    { id: 'insertButton', text: '应用', btnClass: 'color-button' },
+    { id: 'cancelButton', text: '取消', btnClass: 'color-button' }
+  ]
+
+  const btnList = digcom.NewButtonList(doc, buttons)
+  btnList.className = 'btn-style'
+  return btnList
 }
 
 function createBodyDiv(doc: Document): Element {

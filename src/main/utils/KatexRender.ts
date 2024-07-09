@@ -55,7 +55,7 @@ function renderMathCodeBlock(text: string, regex: RegExp): string {
   // 使用全局搜索来查找所有匹配项
   while ((match = regex.exec(text)) !== null) {
     const mathBlocks = katex.renderToString(match[1])
-    console.log('result ```math', regex, match[1])
+    // console.log('result ```math', regex, match[1])
     renderResult = renderResult.replace(
       match[0],
       '<div style="text-align: center;"><p>' + mathBlocks + '</p></div>'

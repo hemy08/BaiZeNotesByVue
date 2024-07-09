@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
+import * as digcom from './dialog_common'
 
 let systemSettingDialog: Electron.BrowserWindow | null
 
@@ -95,72 +96,40 @@ function createDivLabelList(doc: Document): HTMLElement {
 }
 
 function createLanguageSelect(doc: Document): Element {
-  const divLanSelect = doc.createElement('select')
+  const options: digcom.Option[] = [
+    { value: 'zh-cn', text: '简体中文(默认)' },
+    { value: 'zh-tw', text: '繁體中文' },
+    { value: 'en-us', text: 'English(US)' }
+  ]
+  const divLanSelect = digcom.NewSelect(doc, options)
   divLanSelect.style.cssText = 'margin: 5px'
   divLanSelect.id = 'system-language'
   divLanSelect.name = 'system-language'
-
-  const divLanZhCn = doc.createElement('option')
-  divLanZhCn.value = 'zh-cn'
-  divLanZhCn.textContent = '简体中文(默认)'
-
-  const divLanZhTw = doc.createElement('option')
-  divLanZhTw.value = 'zh-tw'
-  divLanZhTw.textContent = '繁體中文'
-
-  const divLanEnUs = doc.createElement('option')
-  divLanEnUs.value = 'en-us'
-  divLanEnUs.textContent = 'English'
-
-  divLanSelect.appendChild(divLanZhCn)
-  divLanSelect.appendChild(divLanZhTw)
-  divLanSelect.appendChild(divLanEnUs)
-
   return divLanSelect
 }
 
 function createResourceManager(doc: Document): HTMLElement {
-  const divResSelect = doc.createElement('select')
+  const options: digcom.Option[] = [
+    { value: 'default', text: '显示(默认)' },
+    { value: 'hide', text: '隐藏' }
+  ]
+  const divResSelect = digcom.NewSelect(doc, options)
   divResSelect.style.cssText = 'margin: 5px'
   divResSelect.id = 'system-resource-manager'
   divResSelect.name = 'system-resource-manager'
-
-  const divResDisplay = doc.createElement('option')
-  divResDisplay.value = 'default'
-  divResDisplay.textContent = '显示(默认)'
-
-  const divResHide = doc.createElement('option')
-  divResHide.value = 'hide'
-  divResHide.textContent = '隐藏'
-
-  divResSelect.appendChild(divResDisplay)
-  divResSelect.appendChild(divResHide)
-
   return divResSelect
 }
 
 function createEditorViewModel(doc: Document): HTMLElement {
-  const divViewModel = doc.createElement('select')
+  const options: digcom.Option[] = [
+    { value: 'default', text: '编辑/预览模式(默认)' },
+    { value: 'editor-model', text: '编辑模式' },
+    { value: 'preview-model', text: '预览模式' }
+  ]
+  const divViewModel = digcom.NewSelect(doc, options)
   divViewModel.style.cssText = 'margin: 5px'
   divViewModel.id = 'system-editor-view-model'
   divViewModel.name = 'system-editor-view-model'
-
-  const divEditPreview = doc.createElement('option')
-  divEditPreview.value = 'default'
-  divEditPreview.textContent = '编辑/预览模式(默认)'
-
-  const divEditorModel = doc.createElement('option')
-  divEditorModel.value = 'editor-model'
-  divEditorModel.textContent = '编辑模式'
-
-  const divPreviewModel = doc.createElement('option')
-  divPreviewModel.value = 'preview-model'
-  divPreviewModel.textContent = '预览模式'
-
-  divViewModel.appendChild(divEditPreview)
-  divViewModel.appendChild(divEditorModel)
-  divViewModel.appendChild(divPreviewModel)
-
   return divViewModel
 }
 
@@ -179,16 +148,12 @@ function createDivSelect(doc: Document): HTMLElement {
 function createSettingButtons(doc: Document): HTMLElement {
   const eleDiv = doc.createElement('div')
   eleDiv.className = 'btn-list-style'
-  const eleDivConfirm = doc.createElement('button')
-  eleDivConfirm.id = 'system-setting-apply'
-  eleDivConfirm.style.cssText = 'width: 100px'
-  eleDivConfirm.textContent = '应用'
-  const eleDivCancel = doc.createElement('button')
-  eleDivCancel.id = 'system-setting-cancel'
-  eleDivCancel.style.cssText = 'width: 100px'
-  eleDivCancel.textContent = '取消'
-  eleDiv.appendChild(eleDivConfirm)
-  eleDiv.appendChild(eleDivCancel)
+  eleDiv.appendChild(
+    digcom.NewButton(doc, { id: 'system-setting-apply', text: '应用', btnCss: 'width: 100px' })
+  )
+  eleDiv.appendChild(
+    digcom.NewButton(doc, { id: 'system-setting-cancel', text: '取消', btnCss: 'width: 100px' })
+  )
   return eleDiv
 }
 

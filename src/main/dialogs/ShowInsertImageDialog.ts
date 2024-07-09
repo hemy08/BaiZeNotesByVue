@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 import * as Utils from '../utils/utils'
+import * as digcom from './dialog_common'
 
 let insertImageDialog: Electron.BrowserWindow | null
 
@@ -141,19 +142,14 @@ function createImgHrefDiv(doc: Document): Element {
 }
 
 function createImgButtonDiv(doc: Document): Element {
-  const buttons = doc.createElement('div')
-  buttons.className = 'image-button-container-style'
-  const imgInsBtn = doc.createElement('button')
-  imgInsBtn.id = 'insert-image'
-  imgInsBtn.className = 'image-button-style'
-  imgInsBtn.textContent = '插入'
-  const imgCancelBtn = doc.createElement('button')
-  imgCancelBtn.id = 'cancel-image'
-  imgCancelBtn.className = 'image-button-style'
-  imgCancelBtn.textContent = '取消'
-  buttons.appendChild(imgInsBtn)
-  buttons.appendChild(imgCancelBtn)
-  return buttons
+  const buttons: digcom.Button = [
+    { id: 'insert-image', text: '应用', btnClass: 'image-button-style' },
+    { id: 'cancelButton', text: '取消', btnClass: 'image-button-style' }
+  ]
+
+  const btnList = digcom.NewButtonList(doc, buttons)
+  btnList.className = 'image-button-container-style'
+  return btnList
 }
 
 function makeInsertImageDialogHtml(): string {
@@ -201,7 +197,6 @@ function makeInsertImageDialogHtml(): string {
           }
           reader.readAsDataURL(image)
           imgFile.name = image.name
-          console.log('image-url-file-input imgFile', imgFile)
           document.getElementById('image-url-input').value = './images/' + image.name
           document.getElementById('image-href-input').value = ''
         }
@@ -215,7 +210,6 @@ function makeInsertImageDialogHtml(): string {
       imgFile.path = ''
       imgFile.content = ''
       document.getElementById('image-url-input').value = ''
-      console.log('image-href-input imgFile', imgFile)
     })
     document.getElementById('image-url-input').addEventListener('input', function (e){
       imgFile.path = this.value
