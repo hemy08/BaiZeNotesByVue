@@ -1,10 +1,11 @@
 import { BrowserWindow, ipcMain, dialog } from 'electron'
 import { katexRenderToString } from '../utils/KatexRender'
+import { JSDOM } from 'jsdom'
 
 let customMathTextDialog: Electron.BrowserWindow | null = null
 
 export function ShowMathTextDialog(mainWindow: Electron.BrowserWindow) {
-  if (customMathTextDialog !== null ) {
+  if (customMathTextDialog !== null) {
     dialog.showMessageBox({
       title: `错误！`,
       type: 'info',
@@ -46,8 +47,9 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
 
   // 加载一个 HTML 文件作为对话框的内容
   customMathTextDialog.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(mdMathTextDialogHtmlContext)}`
+    `data:text/html;charset=utf-8,${encodeURIComponent(makeMathTextDialogHtml())}`
   )
+  //customMathTextDialog.loadFile(join(__dirname, '../renderer/src/dialogs/KatexEditDialog.html'))
 
   // 当窗口关闭时，清除引用
   customMathTextDialog.on('closed', () => {
@@ -106,6 +108,145 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
   })
 }
 
+function createKatexPreview(doc: Document): HTMLElement {
+  const eleDiv = doc.createElement('div')
+  eleDiv.style.cssText = 'flex-direction:row'
+
+  const divLabel = doc.createElement('div')
+  const previewLabel = doc.createElement('label')
+  previewLabel.style.cssText = 'width:10px;margin-left:20px;'
+  previewLabel.textContent = '预览区域'
+  divLabel.appendChild(previewLabel)
+
+  const divPreview = doc.createElement('div')
+  divPreview.style.cssText = 'font-size: 2em;overflow-wrap:break-word;word-break: break-all'
+  divPreview.id = 'katex-preview'
+
+  eleDiv.appendChild(divLabel)
+  eleDiv.appendChild(divPreview)
+  return eleDiv
+}
+
+function createKatexEditor(doc: Document): HTMLElement {
+  const eleDiv = doc.createElement('div')
+  eleDiv.style.cssText = 'margin-top:10px'
+
+  const divLabel = doc.createElement('div')
+  const inputLabel = doc.createElement('label')
+  inputLabel.style.cssText = 'width:10px;margin-top:10px;margin-left:20px;'
+  inputLabel.textContent =
+    '公式编辑：傅里叶级数公式：x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)'
+  divLabel.appendChild(inputLabel)
+
+  const divTextArea = doc.createElement('div')
+  const textArea = doc.createElement('textarea')
+  textArea.className = 'text-input'
+  textArea.id = 'textInput'
+  textArea.placeholder =
+    'x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)'
+  divTextArea.appendChild(textArea)
+
+  eleDiv.appendChild(divLabel)
+  eleDiv.appendChild(divTextArea)
+  return eleDiv
+}
+
+function createKatexContainer(doc: Document): HTMLElement {
+  const divContainer = doc.createElement('div')
+  divContainer.id = 'katex-container'
+
+  const divLine = doc.createElement('div')
+  divLine.style.cssText = 'width:1200px;height:2px;margin-top:10px;margin-left:20px;color:black;background-color:black'
+
+  divContainer.appendChild(createKatexPreview(doc))
+  divContainer.appendChild(divLine)
+  divContainer.appendChild(createKatexEditor(doc))
+  return divContainer
+}
+
+function createButtonEle(doc: Document, id: string, text: string): HTMLButtonElement {
+  const buttonEle = doc.createElement('button')
+  buttonEle.id = id
+  buttonEle.textContent = text
+  return buttonEle
+}
+
+function createButtonList(doc: Document): HTMLElement {
+  const eleDiv = doc.createElement('div')
+  eleDiv.className = 'btn-list-style'
+  eleDiv.appendChild(createButtonEle(doc, 'insert-math-line', '插入行内公式'))
+  eleDiv.appendChild(createButtonEle(doc, 'insert-math-block', '插入公式块'))
+  eleDiv.appendChild(createButtonEle(doc, 'insert-math-math', '插入Math'))
+  eleDiv.appendChild(createButtonEle(doc, 'insert-math-katex', '插入Katex'))
+  eleDiv.appendChild(createButtonEle(doc, 'insert-math-latex', '插入Latex'))
+  eleDiv.appendChild(createButtonEle(doc, 'cancel-insert-math', '取消编辑'))
+  return eleDiv
+}
+
+function makeMathTextDialogHtml(): string {
+  // 创建一个空的HTML文档
+  const { document } = new JSDOM(
+    `<!DOCTYPE html><html lang="zh"><head><title>系统设置</title></head><body></body></html>`
+  ).window
+
+  const webDivStyle = document.createElement('style')
+  webDivStyle.textContent = `
+    #textInput {width:1200px;height:100px;overflow-y:auto;margin-left:20px;margin-top:10px;flex-direction:column}
+    #katex-preview {width:1200px;height:250px;display:flex;justify-content:center;align-items:center}
+    .btn-list-style {width:1200px;margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 50px}
+    .katex-html {position: absolute;left: -9999px}`
+  document.head.appendChild(webDivStyle)
+
+  const divContainer = createKatexContainer(document)
+  document.body.appendChild(divContainer)
+
+  const btnList = createButtonList(document)
+  document.body.appendChild(btnList)
+
+  const eleScript = document.createElement('script')
+  eleScript.textContent = `
+    const { ipcRenderer } = require('electron');
+    let latexData = ''
+    const result = ipcRenderer.sendSync('sync-katex-render-message', latexData);
+    document.getElementById("katex-preview").innerHTML = result
+    document.getElementById("textInput").textContent = latexData
+    // 处理textInput的input事件，获取内容，渲染后进行显示
+    function updateTextInput(event) {
+      let inputText = event.target.value
+      let html = ''
+      try {
+        html = ipcRenderer.sendSync('sync-katex-render-message', inputText);
+      } catch (error) {html = latex}
+      document.getElementById("katex-preview").innerHTML = html
+      latexData = event.target.value
+    }
+    // 监控textInput的input事件
+    document.getElementById('textInput').addEventListener('input', updateTextInput);
+    document.getElementById('insert-math-line').onclick = function(e) {
+      ipcRenderer.send('dialog-math-line-text-btn-insert', '$' + latexData + '$')
+    }
+    document.getElementById('insert-math-block').onclick = function(e) {
+      ipcRenderer.send('dialog-math-block-text-btn-insert', '$$\\r\\n' + latexData + '\\r\\n$$\\r\\n')
+    }
+    document.getElementById('insert-math-math').onclick = function(e) {
+      ipcRenderer.send('dialog-math-math-text-btn-insert', '\`\`\`math\\r\\n' +  latexData + '\\r\\n\`\`\`\\r\\n')
+    }
+    document.getElementById('insert-math-katex').onclick = function(e) {
+      ipcRenderer.send('dialog-math-katex-text-btn-insert', '\`\`\`katex\\r\\n' + latexData + '\\r\\n\`\`\`\\r\\n')
+    }
+    document.getElementById('insert-math-latex').onclick = function(e) {
+      ipcRenderer.send('dialog-math-latex-text-btn-insert', '\`\`\`latex\\r\\n' + latexData + '\\r\\n\`\`\`\\r\\n')
+    }
+    document.getElementById('cancel-insert-math').onclick = function(e) {
+      ipcRenderer.send('dialog-math-text-btn-cancel')
+    }`
+
+  document.body.appendChild(eleScript)
+  return document.documentElement.outerHTML
+}
+
+/*
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const mdMathTextDialogHtmlContext =
   '<!DOCTYPE html>\n' +
   '<html lang="zh">\n' +
@@ -169,3 +310,4 @@ const mdMathTextDialogHtmlContext =
   '  </script>\n' +
   '</body>\n' +
   '</html>\n'
+*/

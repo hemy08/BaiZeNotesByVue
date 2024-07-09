@@ -1,30 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KaTeX公式编辑器</title>
   <link rel="stylesheet" href="../../../main/lib/Katex/katex.css">
-  <script src="../../../main/lib/Katex/katex.js"></script>
   <style>
-    #textInput {width: 1200px;height: 100px;overflow-y: auto;margin-left: 20px;margin-top: 10px;flex-direction: column}
-    #katex-preview {width: 1200px;height: 150px;display:flex;justify-content:center;align-items: center}
-    .btn-style {width:1200px;margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 50px}
+    #textInput {width:1200px;height:100px;overflow-y:auto;margin-left:20px;margin-top:10px;flex-direction:column}
+    #katex-preview {width:1200px;height:250px;display:flex;justify-content:center;align-items:center}
+    .btn-list-style {width:1200px;margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 50px}
+    .katex-html {position: absolute;left: -9999px}
   </style>
 </head>
 <body>
   <div id="katex-container">
-    <div style="flex-direction: row">
-      <div><label style="width: 10px">预览：</label></div>
-      <div id="katex-preview" ></div>
+    <div style="flex-direction:row">
+      <div><label style="width:10px;margin-left:20px;">预览：</label></div>
+      <div id="katex-preview" style="font-size: 2em;overflow-wrap:break-word;word-break: break-all"></div>
     </div>
-    <div style="width:1200px;height: 2px; margin-top: 10px; color: black; background-color: black"></div>
-    <div style="margin-top: 10px">
-      <div><label style="width: 10px; margin-top: 10px">公式编辑：</label></div>
-      <div><textarea id="textInput" class="text-input"></textarea></div>
+    <div style="width:1200px;height:2px;margin-top:10px;margin-left:20px;color:black;background-color:black"></div>
+    <div style="margin-top:10px">
+      <div><label style="width:10px;margin-top:10px;margin-left:20px;">公式编辑：傅里叶级数公式：x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)</label></div>
+      <div><textarea id="textInput" class="text-input" placeholder="x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)"></textarea></div>
     </div>
   </div>
-  <div class="btn-style">
+  <div class="btn-list-style">
     <button id="insert-math-line" onclick="sendInsertMathLineText()">插入行内公式</button>
     <button id="insert-math-block" onclick="sendInsertMathBlockText()">插入公式块</button>
     <button id="insert-math-math" onclick="sendInsertMathCodeBlock()">插入Math</button>
@@ -33,37 +33,30 @@
     <button id="cancel-insert-math" onclick="sendCancelInsertMathText()">取消编辑</button>
   </div>
   <script>
-  // const { ipcRenderer } = require('electron')
-
-  let latex = ''
-  document.addEventListener('DOMContentLoaded', () => {
-    // 初始显示 c = \sqrt{a^2 + b^2}
-    const latexInit = '傅里叶级数公式 : x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)'
-    document.getElementById('katex-preview').innerHTML = katex.renderToString(latexInit)
-    document.getElementById('textInput').textContent = latexInit
-  })
-  // 处理textInput的input事件，获取内容，渲染后进行显示
-  function updateTextInput(event) {
-    const inputText = event.target.value
-    let html = ''
-    try {
-      html = katex.renderToString(inputText)
-    } catch (error) {
-      html = latex
+    const { ipcRenderer } = require('electron');
+    let latexData = ''
+    const result = ipcRenderer.sendSync('sync-katex-render-message', latexData);
+    document.getElementById("katex-preview").innerHTML = result
+    document.getElementById("textInput").textContent = latexData
+    // 处理textInput的input事件，获取内容，渲染后进行显示
+    function updateTextInput(event) {
+      let inputText = event.target.value
+      let html = ''
+      try {
+        html = ipcRenderer.sendSync('sync-katex-render-message', inputText);
+      } catch (error) {html = latex}
+      document.getElementById("katex-preview").innerHTML = html
+      latexData = event.target.value
     }
-    document.getElementById("katex-preview").innerHTML = html
-    latex = event.target.value
-  }
-  // 监控textInput的input事件
-  document.getElementById('textInput').addEventListener('input', updateTextInput);
-  // 这里是JavaScript函数，例如：
-  function sendInsertMathLineText() {ipcRenderer.send('user-insert-math-line-text', '$' + latex + '$')}
-  function sendInsertMathBlockText() {ipcRenderer.send('user-insert-math-block-text', '$$' + latex + '$$')}
-  function sendCancelInsertMathText() {ipcRenderer.send('user-insert-math-text-cancel')}
-  function sendInsertMathCodeBlock() {ipcRenderer.send('dialog-math-math-text-btn-insert', '```math\\r\\n' + latexData + '\\r\\n```\\r\\n')}
-  function sendInsertKatexCodeBlock() {ipcRenderer.send('dialog-math-katex-text-btn-insert', '```katex\\r\\n' + latexData + '\\r\\n```\\r\\n')}
-  function sendInsertLatexCodeBlock() {ipcRenderer.send('dialog-math-latex-text-btn-insert', '```latex\\r\\n' + latexData + '\\r\\n```\\r\\n')}
-
+    // 监控textInput的input事件
+    document.getElementById('textInput').addEventListener('input', updateTextInput);
+    // 这里是JavaScript函数，例如：
+    function sendInsertMathLineText() {ipcRenderer.send('dialog-math-line-text-btn-insert', '$' + latexData + '$')}
+    function sendInsertMathBlockText() {ipcRenderer.send('dialog-math-block-text-btn-insert', '$$\\r\\n' + latexData + '\\r\\n$$\\r\\n')}
+    function sendInsertMathCodeBlock() {ipcRenderer.send('dialog-math-math-text-btn-insert', '```math\\r\\n' +  latexData + '\\r\\n```\\r\\n')}
+    function sendInsertKatexCodeBlock() {ipcRenderer.send('dialog-math-katex-text-btn-insert', '```katex\\r\\n' + latexData + '\\r\\n```\\r\\n')}
+    function sendInsertLatexCodeBlock() {ipcRenderer.send('dialog-math-latex-text-btn-insert', '```latex\\r\\n' + latexData + '\\r\\n```\\r\\n')}
+    function sendCancelInsertMathText() {ipcRenderer.send('dialog-math-text-btn-cancel')}
   </script>
 </body>
 </html>
