@@ -348,10 +348,16 @@ function createFontStyle1(doc: Document): HTMLElement {
 function createFontStyleBox1(doc: Document): HTMLElement {
   const divEle = doc.createElement('div')
   divEle.style.cssText = 'margin: 7px;display: flex; flex-direction: column;'
-  divEle.appendChild(digcom.NewCheckBox(doc, 'checkbox-style', 'edit-font-bold'))
-  divEle.appendChild(digcom.NewCheckBox(doc, 'checkbox-style', 'edit-font-italic'))
-  divEle.appendChild(digcom.NewCheckBox(doc, 'checkbox-style', 'edit-font-underline'))
-  divEle.appendChild(digcom.NewCheckBox(doc, 'checkbox-style', 'edit-font-deleteline'))
+  const boxes: digcom.CheckBox[] = [
+    { id: 'edit-font-bold', value: 'bold', name: 'edit-font-bold' },
+    { id: 'edit-font-italic', value: 'italic', name: 'edit-font-italic' },
+    { id: 'edit-font-underline', value: 'underline', name: 'edit-font-underline' },
+    { id: 'edit-font-deleteline', value: 'deleteline', name: 'edit-font-deleteline' }
+  ]
+  boxes.map((item) => {
+    const checkbox = digcom.NewCheckBox(doc, 'checkbox-style', item)
+    divEle.appendChild(checkbox)
+  })
   return divEle
 }
 
@@ -373,10 +379,17 @@ function createFontStyle2(doc: Document): HTMLElement {
 function createFontStyleBox2(doc: Document): HTMLElement {
   const divEle = doc.createElement('div')
   divEle.style.cssText = 'margin: 7px;display: flex; flex-direction: column;'
-  divEle.appendChild(digcom.NewCheckBox(doc, 'checkbox-style', 'edit-align-left'))
-  divEle.appendChild(digcom.NewCheckBox(doc, 'checkbox-style', 'edit-align-center'))
-  divEle.appendChild(digcom.NewCheckBox(doc, 'checkbox-style', 'edit-align-right'))
-  divEle.appendChild(digcom.NewCheckBox(doc, 'checkbox-style', 'edit-align-justify'))
+  divEle.id = 'edit-align-checkbox-list'
+  const boxes: digcom.CheckBox[] = [
+    { id: 'edit-align-left', value: 'left', name: 'edit-align-left' },
+    { id: 'edit-align-center', value: 'center', name: 'edit-align-center' },
+    { id: 'edit-align-right', value: 'right', name: 'edit-align-right' },
+    { id: 'edit-align-justify', value: 'justify', name: 'edit-align-justify' }
+  ]
+  boxes.map((item) => {
+    const checkbox = digcom.NewCheckBox(doc, 'checkbox-style', item)
+    divEle.appendChild(checkbox)
+  })
   return divEle
 }
 
@@ -498,30 +511,20 @@ function makeFontDialogHtml(): string {
         fontStyle.fontDeleteLine = true
       }
     }
-    function updateAlignLeft(event) {
-      if (event.target.checked) {
-        document.getElementById("previewText").style.textAlign = 'left';
-        fontStyle.textAlign = 'left'
-      }
-    }
-    function updateAlignCenter(event) {
-      if (event.target.checked) {
-        document.getElementById("previewText").style.textAlign = 'center'
-        fontStyle.textAlign = 'center'
-      }
-    }
-    function updateAlignRight(event) {
-      if (event.target.checked) {
-        document.getElementById("previewText").style.textAlign = 'right'
-        fontStyle.textAlign = 'right'
-      }
-    }
-    function updateAlignJustify(event) {
-      if (event.target.checked) {
-        document.getElementById("previewText").style.textAlign = 'justify'
-        fontStyle.textAlign = 'justify'
-      }
-    }
+    const checkboxes = document.querySelectorAll('#edit-align-checkbox-list input[type="checkbox"]');
+    checkboxes.forEach(function(checkbox) {
+      checkbox.addEventListener('input', function() {
+        if (this.checked) {
+          fontStyle.textAlign = this.value
+          document.getElementById("previewText").style.textAlign = this.value
+          checkboxes.forEach(function(other) {
+            if (other !== this && other.checked) {
+                other.checked = false
+            }
+          }.bind(this))
+        }
+      })
+    })
     function updateTextInput(event) {
       const inputText = event.target.value
       document.getElementById("previewText").innerText = inputText
@@ -536,10 +539,6 @@ function makeFontDialogHtml(): string {
     document.getElementById('edit-font-italic').addEventListener('input', updateFontItalic)
     document.getElementById('edit-font-underline').addEventListener('input', updateFontUnderline)
     document.getElementById('edit-font-deleteline').addEventListener('input', updateFontDeleteLine)
-    document.getElementById('edit-align-left').addEventListener('input', updateAlignLeft)
-    document.getElementById('edit-align-center').addEventListener('input', updateAlignCenter)
-    document.getElementById('edit-align-right').addEventListener('input', updateAlignRight)
-    document.getElementById('edit-align-justify').addEventListener('input', updateAlignJustify)
     document.getElementById('text-input-area').addEventListener('input', updateTextInput)
     document.getElementById('font-select-apply').onclick = function(e) {
       ipcRenderer.send('dialog-user-font-select-btn-insert', fontStyle)

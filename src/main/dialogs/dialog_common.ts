@@ -97,12 +97,22 @@ export function NewLabelList(doc: Document, items: Label[]): HTMLElement {
   return eleDiv
 }
 
-export function NewCheckBox(doc: Document, divClass: string, id: string): HTMLElement {
+export interface CheckBox {
+  id: string
+  value: string
+  name?: string
+}
+
+export function NewCheckBox(doc: Document, divClass: string, item: CheckBox): HTMLElement {
   const boxDiv = doc.createElement('div')
   boxDiv.className = divClass
   const boxEle = doc.createElement('input')
   boxEle.type = 'checkbox'
-  boxEle.id = id
+  boxEle.id = item.id
+  if (item.name) {
+    boxEle.name = item.name
+  }
+  boxEle.value = item.value
   boxDiv.appendChild(boxEle)
   return boxDiv
 }
