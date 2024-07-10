@@ -167,7 +167,7 @@ function createKatexContainer(doc: Document): HTMLElement {
 }
 
 function createButtonList(doc: Document): HTMLElement {
-  const buttons: digcom.Button = [
+  const buttons: digcom.Button[] = [
     { id: 'insert-math-line', text: '插入行内公式' },
     { id: 'insert-math-block', text: '插入公式块' },
     { id: 'insert-math-math', text: '插入Math' },

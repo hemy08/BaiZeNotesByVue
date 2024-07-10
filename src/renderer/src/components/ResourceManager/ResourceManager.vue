@@ -16,6 +16,9 @@
     </div>
   </div>
   <div v-show="showMarkdownToc" id="markdown-toc-component" class="markdown-toc-component">
+    <div
+      style="width: 1px; height: 100%; background-color: #00b0ff; color: #00b0ff; fill: #00b0ff"
+    ></div>
     <div id="markdown-toc-heading">
       <div v-for="item in tocArray" :key="item.id" @click="scrollToSection(item)">
         <!-- 根据 level 添加适当的缩进 -->

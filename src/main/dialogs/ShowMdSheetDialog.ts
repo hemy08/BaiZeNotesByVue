@@ -211,7 +211,7 @@ function createCheckBoxList(doc: Document): Element {
 }
 
 function createButtonList(doc: Document): Element {
-  const buttons: digcom.Button = [
+  const buttons: digcom.Button[] = [
     { id: 'insertButton', text: '应用', btnClass: 'color-button' },
     { id: 'cancelButton', text: '取消', btnClass: 'color-button' }
   ]

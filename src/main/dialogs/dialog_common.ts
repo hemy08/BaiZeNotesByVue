@@ -73,7 +73,7 @@ export function NewLabel(doc: Document, item: Label): HTMLLabelElement {
   return labelEle
 }
 
-export function NewLabelDiv(doc: Document, item: Label): HTMLLabelElement {
+export function NewLabelDiv(doc: Document, item: Label): HTMLElement {
   const labelDiv = doc.createElement('div')
   if (item.divId) {
     labelDiv.id = item.divId
@@ -97,7 +97,6 @@ export function NewLabelList(doc: Document, items: Label[]): HTMLElement {
   return eleDiv
 }
 
-
 export function NewCheckBox(doc: Document, divClass: string, id: string): HTMLElement {
   const boxDiv = doc.createElement('div')
   boxDiv.className = divClass
@@ -115,3 +114,14 @@ export function NewTextArea(doc: Document, id: string, cssText: string): HTMLEle
   return textArea
 }
 
+export function ApplyCancelButton(doc: Document): Element {
+  const buttons: Button[] = [
+    { id: 'applyButton', text: '应用' },
+    { id: 'cancelButton', text: '取消' }
+  ]
+
+  const btnList = NewButtonList(doc, buttons)
+  btnList.style.cssText =
+    'margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 50px'
+  return btnList
+}

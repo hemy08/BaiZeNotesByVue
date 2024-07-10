@@ -133,8 +133,8 @@ function createFileFolderSelect(doc: Document): HTMLDivElement {
   return eleDiv
 }
 
-function createButtons(doc: Document): HTMLDivElement {
-  const buttons: digcom.Button = [
+function createButtons(doc: Document): HTMLElement {
+  const buttons: digcom.Button[] = [
     { id: 'file-folder-confirm', text: '确定', btnCss: 'width: 100px' },
     { id: 'file-folder-cancel', text: '取消', btnCss: 'width: 100px' }
   ]

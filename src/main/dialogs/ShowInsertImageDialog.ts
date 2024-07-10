@@ -142,7 +142,7 @@ function createImgHrefDiv(doc: Document): Element {
 }
 
 function createImgButtonDiv(doc: Document): Element {
-  const buttons: digcom.Button = [
+  const buttons: digcom.Button[] = [
     { id: 'insert-image', text: '应用', btnClass: 'image-button-style' },
     { id: 'cancelButton', text: '取消', btnClass: 'image-button-style' }
   ]

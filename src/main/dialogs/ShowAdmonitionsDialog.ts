@@ -135,7 +135,7 @@ function createDivPreviewEle(doc: Document): HTMLElement {
 function createButtonList(doc: Document): HTMLElement {
   const btnStyle =
     'width:800px;margin-top:10px; display:flex; justify-content:center;align-items:center;gap: 200px'
-  const buttons: digcom.Button = [
+  const buttons: digcom.Button[] = [
     { id: 'applyButton', text: '应用', btnCss: 'width: 125px;margin-top: 30px;' },
     { id: 'cancelButton', text: '取消', btnCss: 'width: 125px;margin-top: 30px;' }
   ]
