@@ -20,7 +20,7 @@ export function getApplicationMenu(
     getAppInsertMenuItem(mainWindow),
     getAppSettingMenuItem(mainWindow),
     getAppToolsMenuItem(mainWindow),
-    getAppPluginsMenuItem(mainWindow),
+    getAppPluginsMenuItem(),
     getAppOnlineLinkMenuItem(mainWindow),
     getAppHelpsMenuItem(mainWindow)
   ]

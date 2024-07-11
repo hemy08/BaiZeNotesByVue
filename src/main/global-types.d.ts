@@ -79,7 +79,6 @@ declare global {
     Emoji: GlobalEmoji
     FileMgrSvgs: GlobalSvg
     EditorToolBar: GlobalEditToolBar
-    mdEditor: monaco.editor.IStandaloneCodeEditor
     mdFileTree: ''
     MonacoEditorConfig: monaco.editor.IStandaloneEditorConstructionOptions
     KatexConfig: NonNullable<unknown>

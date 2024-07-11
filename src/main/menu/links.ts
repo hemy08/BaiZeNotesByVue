@@ -1,6 +1,3 @@
-import * as dialogs from '../dialogs/dialogs'
-
-
 export const WebLinks: MenuContext[] = [
   { label: 'Mermaid在线编辑器', context: 'https://mermaid.live/edit' },
   { label: 'PlantText编辑器', context: 'https://www.planttext.com/' },

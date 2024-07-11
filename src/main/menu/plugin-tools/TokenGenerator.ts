@@ -70,4 +70,9 @@ function makeTokenGeneratorHtml(): string {
     .color-button {width: 18px;height: 18px;border-width:.2px;}
     .background-color-button {width: 18px;height: 18px;border-width:.2px;}`
   document.head.appendChild(webDivStyle)
+  const eleScript = document.createElement('script')
+  eleScript.textContent = `
+    const { ipcRenderer } = require('electron');`
+  document.body.appendChild(eleScript)
+  return document.documentElement.outerHTML
 }
