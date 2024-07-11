@@ -213,7 +213,6 @@ function editorOnPasteHandle(editor: monaco.editor.IStandaloneCodeEditor, contex
   replaceSelection(editor, context, true, selection)
 }
 
-
 function editorOnFontQuote(editor: monaco.editor.IStandaloneCodeEditor) {
   // 获取当前的选择范围
   const selection = editor.getSelection()

@@ -4,14 +4,27 @@ import * as digcom from './dialog_common'
 
 let fontSelectDialog: Electron.BrowserWindow | null
 
+interface FontSelect {
+  fontFamily: string
+  fontSize: string
+  fontColor: string
+  fontBackGroundColor: string
+  fontBold: boolean
+  fontItalic: boolean
+  fontUnderline: boolean
+  fontDeleteLine: boolean
+  textAlign: 'left' | 'center' | 'right' | 'justify'
+  textInput: ''
+}
+
 export function ShowFontSelectDialog(mainWindow: Electron.BrowserWindow) {
   createFontSelectDialog(mainWindow)
 }
 // 创建一个自定义对话框的函数
 function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
   fontSelectDialog = new BrowserWindow({
-    width: 930,
-    height: 600,
+    width: 1280,
+    height: 620,
     minimizable: false,
     maximizable: false,
     resizable: false,
@@ -54,7 +67,7 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
     }
   }
 
-  function processCustomFontDialogApply(_, inputData) {
+  function processCustomFontDialogApply(_, inputData: FontSelect) {
     let htmlContext = inputData.textInput
     const fontBold = '<b>'
     const fontItalic = '<i>'
@@ -164,80 +177,25 @@ function createFontSizeSelect(doc: Document): HTMLElement {
   return DivEle
 }
 
-const colors = [
-  '#000000', // 黑色
-  '#333333', // 更深的灰色
-  '#404040', // 深灰色
-  '#000080', // 海军蓝
-  '#0000FF', // 海军蓝
-  '#00FF00', // 暗绿色
-  '#009900', // 暗绿色
-  '#004400', // 暗绿色
-  '#808000', // 橄榄绿
-  '#FF0000', // 暗红色
-  '#BB0000', // 暗红色
-  '#8B0000', // 暗红色
-  '#008080', // 水绿色
-  '#ADD8E6', // 浅蓝色
-  '#DDA0DD', // 浅紫色
-  '#90EE90', // 浅绿色
-  '#8FBC8F', // 老花色
-  '#D2691E', // 巧克力色
-  '#CD853F', // 棕色
-  '#DEB887', // 枯叶色
-  '#F08080', // 浅珊瑚色
-  '#E9967A', // 土黄色
-  '#FFA07A', // 浅橙色
-  '#FFA500', // 橙色
-  '#FFD700', // 金色
-  '#FADEAD', // 浅肉色
-  '#FFB6C1', // 浅粉红色
-  '#9932CC', // 中紫色
-  '#EE82EE', // 淡紫色
-  '#800080', // 紫色
-  '#6A5ACD', // 亮紫色
-  '#483D8B', // 暗紫色
-  '#00CED1', // 暗青色
-  '#00FFFF', // 青色
-  '#00BFFF', // 天蓝色
-  '#1E90FF', // 多瑙河蓝
-  '#008B8B', // 暗青色
-  '#32CD32', // 翠绿
-  '#ADFF2F', // 鲜绿色
-  '#F0FFF0', // 蜜糖色
-  '#FFFAFA', // 乳白色
-  '#E0FFFF', // 浅青色
-  '#FFFF00', // 黄色
-  '#F0E68C', // 浅米色
-  '#CCCCCC', // 另一种中灰色
-  '#808080', // 中灰色
-  '#696969', // 深灰色变种
-  '#87CEFA', // 浅蓝色
-  '#6495ED', // 亮蓝色
-  '#1DA1F2', // Twitter蓝
-  '#3B5998', // Facebook蓝
-  '#0077B5' // LinkedIn蓝
-]
-
 // 注意：由于颜色列表是手动添加的，并且包含了一些重复的或相似的颜色以保持总数为52，
 // 因此在实际应用中可能需要根据具体需求进行调整。
 // 另外，'#FFFAFA' 在列表中出现了两次，这里是为了凑数，通常应该避免重复。
 function createColorList(doc: Document): HTMLElement {
   const colorButtons: digcom.Button[] = []
-  colors.forEach((color) => {
+  digcom.CommonColors.forEach((color) => {
     colorButtons.push({
       id: 'color-button',
       text: '',
-      btnCss: `background-color: ${color};border: none;padding: 5;margin-top: 5px;`,
+      btnCss: `background-color: ${color};border: none;padding: 1;margin-top: 5px;`,
       btnClass: 'color-button'
     })
   })
   const colorDiv = doc.createElement('div')
-  colorDiv.className = 'input-style'
+  colorDiv.style.cssText = 'width: 300px;margin-top: 5px;'
   const colorInput = doc.createElement('input')
   colorInput.type = 'color'
   colorInput.id = 'edit-font-color'
-  colorInput.style.cssText = 'width: 230px;margin-top: 5px;'
+  colorInput.style.cssText = 'width: 290px;margin-top: 5px;'
   colorDiv.appendChild(colorInput)
   colorDiv.appendChild(digcom.NewButtonList(doc, colorButtons))
   return colorDiv
@@ -245,20 +203,20 @@ function createColorList(doc: Document): HTMLElement {
 
 function createBackgroundColorList(doc: Document): HTMLElement {
   const colorBackButtons: digcom.Button[] = []
-  colors.forEach((color) => {
+  digcom.CommonColors.forEach((color) => {
     colorBackButtons.push({
       id: 'background-color-button',
       text: '',
-      btnCss: `background-color: ${color};border: none;padding: 5;margin-top: 10px;`,
+      btnCss: `background-color: ${color};border: none;padding: 1;margin-top: 5px;`,
       btnClass: 'background-color-button'
     })
   })
   const colorDiv = doc.createElement('div')
-  colorDiv.className = 'input-style'
+  colorDiv.style.cssText = 'width: 300px;margin-top: 5px;'
   const colorBackInput = doc.createElement('input')
   colorBackInput.type = 'color'
   colorBackInput.id = 'backgroundColor'
-  colorBackInput.style.cssText = 'width: 230px;margin-top: 10px;'
+  colorBackInput.style.cssText = 'width: 290px;margin-top: 10px;'
   colorDiv.appendChild(colorBackInput)
   colorDiv.appendChild(digcom.NewButtonList(doc, colorBackButtons))
   return colorDiv
@@ -291,14 +249,14 @@ function createEditPreview(doc: Document): HTMLElement {
     digcom.NewTextArea(
       doc,
       'text-input-area',
-      'width: 440px;height: 150px;overflow-y: auto;margin-top:10px'
+      'width: 740px;height: 150px;overflow-y: auto;margin-top:10px'
     )
   )
   divEle.appendChild(divEditArea)
 
   const divLine = doc.createElement('div')
   divLine.style.cssText =
-    'margin-top: 10px; height:2px; color:white; width:440px; display: flex; background-color: black'
+    'margin-top: 10px; height:2px; color:white; width:740px; display: flex; background-color: black'
   divEle.appendChild(divLine)
 
   const divPreArea = doc.createElement('div')
@@ -308,7 +266,7 @@ function createEditPreview(doc: Document): HTMLElement {
   )
   const preview = doc.createElement('div')
   preview.id = 'preview-area'
-  preview.style.cssText = 'width: 440px;height: 250px; overflow:auto;'
+  preview.style.cssText = 'width: 740px;height: 260px; overflow:auto;'
   preview.innerHTML = '<p class="preview-text" id="previewText">这是一段预览文字。</p>'
   divPreArea.appendChild(preview)
   divEle.appendChild(divPreArea)
@@ -341,7 +299,8 @@ function createFontStyle1(doc: Document): HTMLElement {
   ]
 
   const LabelList = digcom.NewLabelList(doc, labels)
-  LabelList.style.cssText = 'margin-top: 10px; display: flex; flex-direction: column;'
+  LabelList.style.cssText =
+    'margin-top: 10px;margin-left: 20px;display: flex; flex-direction: column;'
   return LabelList
 }
 
@@ -372,7 +331,7 @@ function createFontStyle2(doc: Document): HTMLElement {
 
   const LabelList = digcom.NewLabelList(doc, labels)
   LabelList.style.cssText =
-    'margin-top: 10px;margin-left: 40px; display: flex; flex-direction: column;'
+    'margin-top: 10px;margin-left: 60px; display: flex; flex-direction: column;'
   return LabelList
 }
 
@@ -435,7 +394,7 @@ function createButtonList(doc: Document): HTMLElement {
 
   const btnList = digcom.NewButtonList(doc, buttons)
   btnList.style.cssText =
-    'width:900px;margin-top:5px; display:flex; justify-content:center;align-items:center;gap: 200px'
+    'width:1200px;margin-top:5px; display:flex; justify-content:center;align-items:center;gap: 200px'
   return btnList
 }
 
@@ -449,8 +408,8 @@ function makeFontDialogHtml(): string {
     .label-style {width: 100px;margin-top: 5px;text-align: center;}
     .input-style {width: 250px;margin-top: 5px;}
     .checkbox-style {margin-top: 11px;margin-left:5px}
-    .color-button {width: 18px;height: 18px;border-width:1px;}
-    .background-color-button {width: 18px;height: 18px;border-width:1px;}`
+    .color-button {width: 18px;height: 18px;border-width:.2px;}
+    .background-color-button {width: 18px;height: 18px;border-width:.2px;}`
   document.head.appendChild(webDivStyle)
   const divBody = createBodyDiv(document)
   document.body.appendChild(divBody)

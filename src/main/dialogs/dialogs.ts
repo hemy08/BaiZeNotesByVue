@@ -54,16 +54,3 @@ export {
   ShowNewFileFolderDialog,
   ShowSystemSettingDialog
 }
-
-export const WebLinks: MenuContext[] = [
-  { label: 'Mermaid在线编辑器', context: 'https://mermaid.live/edit' },
-  { label: 'PlantText编辑器', context: 'https://www.planttext.com/' },
-  { label: '在线思维导图工具', context: 'https://www.mindline.cn/webapp' },
-  { label: '在线流程图绘制', context: 'https://app.diagrams.net/' },
-  { label: 'PlantUml 网页服务器', context: 'http://www.plantuml.com/plantuml/uml/' },
-  { label: '菜鸟工具首页', context: 'https://www.jyshare.com/' },
-  { label: '菜鸟SVG图片编辑器', context: 'https://www.jyshare.com/more/svgeditor/' },
-  { label: '菜鸟绘图工具', context: 'https://www.jyshare.com/more/shapefly-diagram/' },
-  { label: '菜鸟在线办公工具大全', context: 'https://www.jyshare.com/office/' },
-  { label: '菜鸟在线表格生成', context: 'https://www.jyshare.com/front-end/7688/' }
-]

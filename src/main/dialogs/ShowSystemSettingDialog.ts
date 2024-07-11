@@ -9,7 +9,7 @@ let systemSettingDialog: Electron.BrowserWindow | null
 export function ShowSystemSettingDialog() {
   systemSettingDialog = new BrowserWindow({
     width: 450,
-    height: 200,
+    height: 240,
     minimizable: false,
     maximizable: false,
     resizable: false,
@@ -64,34 +64,27 @@ export function ShowSystemSettingDialog() {
 }
 
 function createDivLabelList(doc: Document): HTMLElement {
-  const eleDiv = doc.createElement('div')
+  const labels: digcom.Label[] = [
+    {
+      forHtml: 'system-language',
+      text: '系\u00A0\u00A0统\u00A0\u00A0语\u00A0\u00A0\u00A0言：',
+      divCss: 'margin: 5px'
+    },
+    {
+      forHtml: 'system-resource-manager',
+      text: '资\u00A0源\u00A0管\u00A0理\u00A0器：',
+      divCss: 'margin: 5px'
+    },
+    {
+      forHtml: 'system-editor-view-model',
+      text: '编\u00A0辑\u00A0器\u00A0视\u00A0图：',
+      divCss: 'margin: 5px'
+    },
+    { forHtml: 'system-plugin-open-model', text: '插件打开方式：', divCss: 'margin: 5px' }
+  ]
+  const eleDiv = digcom.NewLabelList(doc, labels)
   eleDiv.style.cssText =
     'margin-top: 10px; margin-left: 20px; display: flex; flex-direction: column;'
-  const divLanguage = doc.createElement('div')
-  divLanguage.style.cssText = 'margin: 5px'
-  const divLanguageLabel = doc.createElement('label')
-  divLanguageLabel.htmlFor = 'system-language'
-  divLanguageLabel.textContent = '系统语言：'
-  divLanguage.appendChild(divLanguageLabel)
-
-  const divResMgr = doc.createElement('div')
-  divResMgr.style.cssText = 'margin: 5px'
-  const divResMgrLabel = doc.createElement('label')
-  divResMgrLabel.htmlFor = 'system-resource-manager'
-  divResMgrLabel.textContent = '资源管理器：'
-  divResMgr.appendChild(divResMgrLabel)
-
-  const divEditModel = doc.createElement('div')
-  divEditModel.style.cssText = 'margin: 5px'
-  const divEditModelLabel = doc.createElement('label')
-  divEditModelLabel.htmlFor = 'system-editor-view-model'
-  divEditModelLabel.textContent = '编辑器视图：'
-  divEditModel.appendChild(divEditModelLabel)
-
-  eleDiv.appendChild(divLanguage)
-  eleDiv.appendChild(divResMgr)
-  eleDiv.appendChild(divEditModel)
-
   return eleDiv
 }
 
@@ -123,6 +116,7 @@ function createResourceManager(doc: Document): HTMLElement {
 function createEditorViewModel(doc: Document): HTMLElement {
   const options: digcom.Option[] = [
     { value: 'default', text: '编辑/预览模式(默认)' },
+    { value: 'editor-preview-model', text: '编辑/预览模式' },
     { value: 'editor-model', text: '编辑模式' },
     { value: 'preview-model', text: '预览模式' }
   ]
@@ -133,15 +127,26 @@ function createEditorViewModel(doc: Document): HTMLElement {
   return divViewModel
 }
 
+function createPluginOpenModel(doc: Document): HTMLElement {
+  const options: digcom.Option[] = [
+    { value: 'default', text: '浏览器网页(默认)' },
+    { value: 'browser', text: '浏览器网页' },
+    { value: 'local-dialog', text: 'app对话框' }
+  ]
+  const divViewModel = digcom.NewSelect(doc, options)
+  divViewModel.style.cssText = 'margin: 5px'
+  divViewModel.id = 'system-plugin-open-model'
+  divViewModel.name = 'system-plugin-open-model'
+  return divViewModel
+}
+
 function createDivSelect(doc: Document): HTMLElement {
   const eleDiv = doc.createElement('div')
   eleDiv.style.cssText = 'margin-top: 15px;display: flex; flex-direction: column;'
-  const eleLanSelect = createLanguageSelect(doc)
-  const eleResMgr = createResourceManager(doc)
-  const eleEditViewModel = createEditorViewModel(doc)
-  eleDiv.appendChild(eleLanSelect)
-  eleDiv.appendChild(eleResMgr)
-  eleDiv.appendChild(eleEditViewModel)
+  eleDiv.appendChild(createLanguageSelect(doc))
+  eleDiv.appendChild(createResourceManager(doc))
+  eleDiv.appendChild(createEditorViewModel(doc))
+  eleDiv.appendChild(createPluginOpenModel(doc))
   return eleDiv
 }
 
@@ -184,7 +189,8 @@ function makeSystemSettingDialogHtml(): string {
     let SystemSetting = {
       language:"zh-cn",
       resourceManager: "default",
-      editorModel: 'default'
+      editorModel: 'default',
+      pluginOpen: 'browser'
     };
     document.getElementById('system-language').addEventListener('input', (event) => {
       SystemSetting.language = event.target.value
@@ -194,6 +200,9 @@ function makeSystemSettingDialogHtml(): string {
     })
     document.getElementById('system-editor-view-model').addEventListener('input', (event) => {
       SystemSetting.editorModel = event.target.value
+    })
+    document.getElementById('system-plugin-open-model').addEventListener('input', (event) => {
+      SystemSetting.pluginOpen = event.target.value
     })
     document.getElementById('system-setting-apply').onclick = function(e) {
       ipcRenderer.send('dialog-system-setting-apply', SystemSetting)
