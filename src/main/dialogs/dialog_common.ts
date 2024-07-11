@@ -401,6 +401,9 @@ export const RedGreenColors = [
   '#FFFF00'
 ]
 
+export const ButtonStyle =
+  'padding: 5px 20px;font-size: 16px;cursor: pointer;border-radius: 4px;background-color: #007bff;color: white;border-width: 0'
+
 export interface Option {
   value: string
   text?: string
@@ -445,6 +448,8 @@ export function NewButton(doc: Document, item: Button): HTMLButtonElement {
   buttonEle.textContent = item.text
   if (item.btnCss) {
     buttonEle.style.cssText = item.btnCss
+  } else {
+    buttonEle.style.cssText = ButtonStyle
   }
   if (item.btnClass) {
     buttonEle.className = item.btnClass

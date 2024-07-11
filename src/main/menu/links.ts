@@ -130,6 +130,12 @@ export function getAppOnlineLinkMenuItem(
         mainWindow.webContents.send('open-url-in-web-browser-window', 'https://tool.lu/')
       }
     },
+    {
+      label: 'SOJSON在线解析',
+      click: () => {
+        mainWindow.webContents.send('open-url-in-web-browser-window', 'https://www.sojson.com/jshtml.html')
+      }
+    },
     { type: 'separator' },
     {
       label: '流程图网站',

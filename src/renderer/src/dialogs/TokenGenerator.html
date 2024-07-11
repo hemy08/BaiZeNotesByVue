@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; text-align: center;}
+    #token {margin-top: 20px;padding: 10px;border: 1px solid #ccc;width: 300px;text-align: center;}
+    .checkbox-style {width:600px;margin-top:15px; display:flex; justify-content:center;align-items:center;gap: 40px}
+    .button-list-style {width:600px;margin-top:15px; display:flex; justify-content:center;align-items:center;gap: 80px}
+    .button-style {padding: 1px 20px;font-size: 16px;cursor: pointer;}
+    #token-output {margin: 10px 0;padding: 8px;font-size: 16px;border: 1px solid #ccc;border-radius: 4px; width:600px;height:80px;margin-top:15px;display:flex;}
+  </style>
+</head>
+<body>
+  <h1>Token Generator</h1>
+  <div class="checkbox-style">
+    <div>
+      <input type="checkbox" id="char-uppercase" name="" value="uppercase">
+      <label for="char-uppercase">大写(ABC...)</label>
+    </div>
+    <div>
+      <input type="checkbox" id="char-lowercase" name="" value="lowercase">
+      <label for="char-lowercase">小写(abc...)</label>
+    </div>
+    <div>
+      <input type="checkbox" id="char-number" name="" value="number">
+      <label for="char-number">数字(123...)</label>
+    </div>
+    <div>
+      <input type="checkbox" id="char-symbols" name="" value="symbols">
+      <label for="char-symbols">符号(!-;...)</label>
+    </div>
+  </div>
+  <div style="width:600px;margin-top:15px;display:flex;">
+      <label for="char-uppercase">长度</label>
+      <input type="text" id="text-uppercase" name="" value="uppercase">
+  </div>
+  <div>
+    <textarea type="text" id="token-output" name="" placeholder="5izAjsvx"></textarea>
+  </div>
+  <div class="button-list-style">
+    <button id="token-generator" class="button-style">生成</button>
+    <button id="token-refresh" class="button-style">刷新</button>
+    <button id="token-copy" class="button-style">复制</button>
+    <button id="token-cancel" class="button-style">取消</button>
+  </div>
+  <script>
+    function generateToken() {
+      // 这里是一个简单的示例，实际生成逻辑可能更复杂
+      const token = Math.random().toString(36).substr(2, 9); // 生成一个随机的token
+      document.getElementById('token').textContent = `Generated Token: ${token}`;
+    }
+  </script>
+</body>
+</html>

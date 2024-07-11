@@ -388,13 +388,13 @@ function createBodyDiv(doc: Document): HTMLElement {
 
 function createButtonList(doc: Document): HTMLElement {
   const buttons: digcom.Button[] = [
-    { id: 'font-select-apply', text: '应用', btnCss: 'width: 125px;margin-top: 10px' },
-    { id: 'font-select-cancel', text: '取消', btnCss: 'width: 125px;margin-top: 10px' }
+    { id: 'font-select-apply', text: '应用', btnCss: digcom.ButtonStyle },
+    { id: 'font-select-cancel', text: '取消', btnCss: digcom.ButtonStyle }
   ]
 
   const btnList = digcom.NewButtonList(doc, buttons)
   btnList.style.cssText =
-    'width:1200px;margin-top:5px; display:flex; justify-content:center;align-items:center;gap: 200px'
+    'width:1200px;margin-top:5px; display:flex; justify-content:center;align-items:center;gap: 400px'
   return btnList
 }
 

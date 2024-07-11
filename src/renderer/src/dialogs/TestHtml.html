@@ -1,53 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>test</title>
-</head>
-
-<body>
-    <div class="container">
-        <input id="document" type="file" />
-        <div class="row" style="width: 100%;">
-            <div class="span8">
-                <div id="output" class="well"></div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.bootcss.com/mammoth/1.4.8/mammoth.browser.js"></script>
-    <script type="text/javascript">
-        document.getElementById("document")
-            .addEventListener("change", readFileInputEventAsArrayBuffer, false);
-
-        function displayResult(result) {
-            let html = result.value;
-            let newHTML = html.replace(//g, '')
-            .replace('<h1>', '<h1 style="text-align: center;">')
-            .replace(/<table>/g, '<table style="border-collapse: collapse;">')
-            .replace(/<tr>/g, '<tr style="height: 30px;">')
-            .replace(/<td>/g, '<td style="border: 1px solid pink;">')
-            .replace(/<p>/g, '<p style="text-indent: 2em;">');
-            document.getElementById("output").innerHTML = newHTML;
+    <title>文本输入框示例</title>
+    <style>
+        /* 简单的样式来美化页面 */
+        input[type="text"] {
+            margin: 10px 0;
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
 
-        function readFileInputEventAsArrayBuffer(event) {
-            var file = event.target.files[0];
-            var reader = new FileReader();
+    <h2>文本输入框示例</h2>
 
-            reader.onload = function (loadEvent) {
-                var arrayBuffer = loadEvent.target.result;//arrayBuffer
-                mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
-                    .then(displayResult)
-                    .done();
-            };
+    <!-- 大写输入框 -->
+    <label for="uppercase">大写（ABC...）:</label>
+    <input type="text" id="uppercase" maxlength="8" placeholder="输入大写字母" />
 
-            reader.readAsArrayBuffer(file);
+    <!-- 数字输入框 -->
+    <label for="numbers">数字（123..）:</label>
+    <input type="text" id="numbers" maxlength="8" placeholder="输入数字" />
+
+    <!-- 小写输入框 -->
+    <label for="lowercase">小写(abc..):</label>
+    <input type="text" id="lowercase" maxlength="8" placeholder="输入小写字母" />
+
+    <!-- 符号输入框 -->
+    <label for="symbols">符号(!-):</label>
+    <input type="text" id="symbols" maxlength="8" placeholder="输入符号" />
+
+    <!-- 固定长度（8）且已预填充值的输入框 -->
+    <label for="fixedlength">长度 (8):</label>
+    <input type="text" id="fixedlength" value="5izAjsvx" readonly />
+
+    <!-- 复制按钮 -->
+    <button onclick="copyToClipboard()">复制</button>
+
+    <!-- 刷新按钮 -->
+    <button onclick="window.location.reload()">刷新</button>
+
+    <script>
+        // 复制函数，用于将固定长度的值复制到剪贴板
+        function copyToClipboard() {
+            const el = document.getElementById('fixedlength');
+            el.select();
+            document.execCommand('copy');
+            alert('已复制到剪贴板');
         }
     </script>
-</body>
 
+</body>
 </html>

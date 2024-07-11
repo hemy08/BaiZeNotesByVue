@@ -61,8 +61,8 @@ export function ShowWebUrlDialog(mainWindow: Electron.BrowserWindow) {
 
 function createWebUrlButtonList(doc: Document): Element {
   const buttons: digcom.Button[] = [
-    { id: 'insert-web-url', text: '确定', btnCss: 'web-url-button' },
-    { id: 'cancel-input', text: '取消', btnCss: 'web-url-button' }
+    { id: 'insert-web-url', text: '确定' },
+    { id: 'cancel-input', text: '取消' }
   ]
 
   const btnList = digcom.NewButtonList(doc, buttons)

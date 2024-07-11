@@ -153,12 +153,8 @@ function createDivSelect(doc: Document): HTMLElement {
 function createSettingButtons(doc: Document): HTMLElement {
   const eleDiv = doc.createElement('div')
   eleDiv.className = 'btn-list-style'
-  eleDiv.appendChild(
-    digcom.NewButton(doc, { id: 'system-setting-apply', text: '应用', btnCss: 'width: 100px' })
-  )
-  eleDiv.appendChild(
-    digcom.NewButton(doc, { id: 'system-setting-cancel', text: '取消', btnCss: 'width: 100px' })
-  )
+  eleDiv.appendChild(digcom.NewButton(doc, { id: 'system-setting-apply', text: '应用' }))
+  eleDiv.appendChild(digcom.NewButton(doc, { id: 'system-setting-cancel', text: '取消' }))
   return eleDiv
 }
 
