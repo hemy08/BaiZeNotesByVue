@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { CreateFileFolder } from '../utils/file-utils'
 import { JSDOM } from 'jsdom'
+import * as digcom from './dialog_common'
 
 let customCreateDialog: Electron.BrowserWindow | null
 
@@ -11,6 +12,10 @@ export function ShowCreateFileFolderDialog(
   isFolder: boolean,
   fileExtension: string
 ) {
+  if (customCreateDialog) {
+    digcom.ShowAlreadyExistDialog()
+    return
+  }
   customCreateDialog = new BrowserWindow({
     width: 400,
     height: 120,

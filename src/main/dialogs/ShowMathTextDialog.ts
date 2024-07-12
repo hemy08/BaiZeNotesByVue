@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, dialog } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import { katexRenderToString } from '../utils/KatexRender'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
@@ -7,14 +7,7 @@ let customMathTextDialog: Electron.BrowserWindow | null = null
 
 export function ShowMathTextDialog(mainWindow: Electron.BrowserWindow) {
   if (customMathTextDialog !== null) {
-    dialog.showMessageBox({
-      title: `错误！`,
-      type: 'info',
-      message: '出错啦',
-      detail: '已经存在一个公式编辑对话框了，请先关闭！',
-      noLink: true,
-      buttons: ['确定']
-    })
+    digcom.ShowAlreadyExistDialog()
     return
   }
   createMathTextDialog(mainWindow)

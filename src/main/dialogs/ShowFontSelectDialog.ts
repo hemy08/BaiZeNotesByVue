@@ -18,6 +18,10 @@ interface FontSelect {
 }
 
 export function ShowFontSelectDialog(mainWindow: Electron.BrowserWindow) {
+  if (fontSelectDialog) {
+    digcom.ShowAlreadyExistDialog()
+    return
+  }
   createFontSelectDialog(mainWindow)
 }
 // 创建一个自定义对话框的函数

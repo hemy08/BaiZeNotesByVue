@@ -20,16 +20,31 @@
     @mousedown="startCursorPosition($event)"
   ></div>
   <!-- 右侧编辑区域 -->
-  <div id="md-container" class="md-container" :style="{ width: mdContainerWidth }">
-    <MdContainer :md-container-width="mdContainerWidth" />
+  <div
+    v-show="isShowMdContainer"
+    id="md-container"
+    class="md-container"
+    :style="{ width: workAreaWidth }"
+  >
+    <MdContainer :md-container-width="workAreaWidth" />
+  </div>
+  <div
+    v-show="isShowToolsContainer"
+    id="tools-containers"
+    class="tools-containers"
+    :style="{ width: workAreaWidth }"
+  >
+    <PluginTools :tools-area-width="workAreaWidth" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import EventBus from '../../event-bus'
 import NaviTab from './NaviTab.vue'
 import ResManager from '../ResourceManager/ResourceManager.vue'
 import MdContainer from '../Markdown/MarkdownContainer.vue'
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import PluginTools from '../PluginTools/PluginTools.vue'
 
 // 使用 ref 来创建响应式引用
 const naviResManagerShow = ref('file-explorer')
@@ -37,6 +52,8 @@ const windowWidth = ref(window.innerWidth)
 const resMgrWidth = ref('300px')
 const naviTabWidth = ref('40px')
 const isShowResourceMgrArea = ref(true)
+const isShowMdContainer = ref(true)
+const isShowToolsContainer = ref(false)
 
 let mouseStartX = 0
 
@@ -44,8 +61,8 @@ const resizerLeft = computed(() => {
   return resMgrWidth.value
 })
 
-// 使用 computed 属性来动态计算 mdContainerWidth
-const mdContainerWidth = computed(() => {
+// 使用 computed 属性来动态计算 workAreaWidth
+const workAreaWidth = computed(() => {
   // 注意这里使用了 parseInt 移除 'px' 后缀，并且确保计算是有效的
   const naviTabWidthValue = parseInt(naviTabWidth.value.replace('px', ''), 10)
   // 减去 resMgrWidth, naviTabWidth 以及可能的间隙（例如 2px）
@@ -55,6 +72,16 @@ const mdContainerWidth = computed(() => {
     containerWidth = windowWidth.value - naviTabWidthValue - resMgrWidthValue - 2
   }
   return containerWidth + 'px'
+})
+
+EventBus.$on('plugin-tools-container-show', (value: boolean) => {
+  if (value) {
+    isShowMdContainer.value = false
+    isShowToolsContainer.value = true
+  } else {
+    isShowMdContainer.value = true
+    isShowToolsContainer.value = false
+  }
 })
 
 function onSwitchNaviTab(value: string) {
@@ -146,6 +173,12 @@ onMounted(() => {
 }
 
 #md-container {
+  display: flex;
+  flex-direction: column;
+  float: left;
+}
+
+#tools-containers {
   display: flex;
   flex-direction: column;
   float: left;

@@ -5,6 +5,10 @@ import * as digcom from './dialog_common'
 let customAdmonitionDialog: Electron.BrowserWindow | null
 
 export function ShowAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
+  if (customAdmonitionDialog) {
+    digcom.ShowAlreadyExistDialog()
+    return
+  }
   customAdmonitionDialog = new BrowserWindow({
     width: 950,
     height: 650,

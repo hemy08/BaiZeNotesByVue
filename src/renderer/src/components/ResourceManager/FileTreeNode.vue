@@ -115,6 +115,7 @@ function handleFileSelect(node: FileSysItem) {
     content: ''
   }
   window.electron.ipcRenderer.send('open-select-file', fileInfo)
+  EventBus.$emit('plugin-tools-container-show', false)
 }
 
 function handleClick(node: FileSysItem) {

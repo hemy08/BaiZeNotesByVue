@@ -16,6 +16,11 @@ interface IMGFile {
 // 创建一个自定义对话框的函数
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ShowInsertImageDialog(mainWindow: Electron.BrowserWindow) {
+  if (insertImageDialog) {
+    digcom.ShowAlreadyExistDialog()
+    return
+  }
+
   insertImageDialog = new BrowserWindow({
     width: 590,
     height: 240,

@@ -1,3 +1,5 @@
+import { dialog } from 'electron'
+
 export const WebSafe216Colors = [
   '#000000',
   '#000033',
@@ -403,6 +405,17 @@ export const RedGreenColors = [
 
 export const ButtonStyle =
   'padding: 5px 20px;font-size: 16px;cursor: pointer;border-radius: 4px;background-color: #007bff;color: white;border-width: 0'
+
+export function ShowAlreadyExistDialog() {
+  dialog.showMessageBox({
+    title: `错误！`,
+    type: 'info',
+    message: '出错啦',
+    detail: '已经有一个相同的对话框，请先关闭！！！',
+    noLink: true,
+    buttons: ['确定']
+  })
+}
 
 export interface Option {
   value: string

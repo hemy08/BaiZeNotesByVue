@@ -33,6 +33,7 @@
 import { computed, onMounted, onBeforeUnmount, ref, defineProps, watch } from 'vue'
 import MdMonacoEdit from './MarkdownMonacoEditor.vue'
 import MdPreview from './MarkdownPreviewComponent.vue'
+import EventBus from '../../event-bus'
 
 const props = defineProps({
   // 编辑器宽度
@@ -154,6 +155,7 @@ function onHandleNewContent(content: string) {
 }
 
 window.electron.ipcRenderer.on('show-selected-file-context', (_, content) => {
+  EventBus.$emit('plugin-tools-container-show', false)
   onHandleNewContent(content)
 })
 

@@ -41,7 +41,7 @@
     "composite": true,
     "target": "ES6",
     "module": "CommonJS",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "allowJs": true,
     "moduleResolution": "Node",

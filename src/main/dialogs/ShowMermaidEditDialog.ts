@@ -1,9 +1,14 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import * as digcom from './dialog_common'
 
 let customMermaidEditDialog: Electron.BrowserWindow | null
 
 export function ShowMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
+  if (customMermaidEditDialog !== null) {
+    digcom.ShowAlreadyExistDialog()
+    return
+  }
   createMermaidEditDialog(mainWindow)
 }
 

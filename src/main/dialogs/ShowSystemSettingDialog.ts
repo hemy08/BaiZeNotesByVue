@@ -7,6 +7,10 @@ let systemSettingDialog: Electron.BrowserWindow | null
 // 创建一个自定义对话框的函数
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ShowSystemSettingDialog() {
+  if (systemSettingDialog !== null) {
+    digcom.ShowAlreadyExistDialog()
+    return
+  }
   systemSettingDialog = new BrowserWindow({
     width: 450,
     height: 240,

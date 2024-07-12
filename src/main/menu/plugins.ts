@@ -1,30 +1,75 @@
-import * as dialogs from '../dialogs/dialogs'
-
-export const WebLinks: MenuContext[] = [
-  { label: 'Mermaid在线编辑器', context: 'https://mermaid.live/edit' },
-  { label: 'PlantText编辑器', context: 'https://www.planttext.com/' },
-  { label: '在线思维导图工具', context: 'https://www.mindline.cn/webapp' },
-  { label: '在线流程图绘制', context: 'https://app.diagrams.net/' },
-  { label: 'PlantUml 网页服务器', context: 'http://www.plantuml.com/plantuml/uml/' }
+export const Encrypt: MenuContext[] = [
+  { label: 'Token Generator', context: 'token-generator' },
+  { label: 'Hash Text', context: 'hash-text' },
+  { label: 'UUIDs 生成器', context: 'uuids-generator' },
+  { label: 'ULID 生成器', context: 'ulid-generator' },
+  { label: '加密/解密文本', context: 'encrypt-decrypt' },
+  { label: 'BIP39密码生成器', context: 'bip39-generator' },
+  { label: 'Hmac 生成器', context: 'hmac-generator' },
+  { label: 'RSA密钥对生成器', context: 'rsa-generator' }
 ]
 
-function GenWebOnlineSubMenu(items: MenuContext[]): Electron.MenuItemConstructorOptions[] {
+export const Convert: MenuContext[] = [
+  { label: '日期时间转换器', context: 'date-converter' },
+  { label: '整数基转换器', context: 'base-converter' },
+  { label: '罗马数字转换器', context: 'roman-numeral-converter' },
+  { label: 'Color 选择器', context: 'color-converter' },
+  { label: '大小写转换', context: 'case-converter' },
+  { label: '文本到 ASCII 二进制', context: 'text-to-binary' },
+  { label: '文本转 Unicode', context: 'text-to-unicode' },
+  { label: 'YAML◀▶JSON', context: 'yaml-json-converter' },
+  { label: 'YAML◀▶TOML', context: 'yaml-toml-converter' },
+  { label: 'JSON◀▶TOML', context: 'json-toml-converter' },
+  { label: 'JSON◀▶CSV', context: 'json-toml-converter' },
+  { label: 'List 转换器', context: 'list-converter' },
+  { label: 'JSON格式化', context: 'json-formatter' },
+  { label: 'SQL格式化', context: 'sql-formatter' },
+  { label: 'XML格式化', context: 'xml-formatter' },
+  { label: 'YAML格式化', context: 'yaml-formatter' },
+  { label: 'HTML格式化', context: 'html-formatter' },
+  { label: 'TOML 转 YAML', context: 'yaml-to-toml-converter' },
+]
+
+export const NetWork: MenuContext[] = [
+  { label: 'IPv4子网计算器', context: 'ipv4-subnet-calculator' },
+  { label: 'Ipv4地址转换器', context: 'ipv4-address-converter' },
+  { label: 'MAC地址查找', context: 'mac-address-lookup' },
+  { label: 'MAC 地址生成器', context: 'mac-address-generator' },
+  { label: 'IPv6 ULA生成器', context: 'ipv6-ula-generator' },
+  { label: 'WiFi 二维码生成器', context: 'wifi-qrcode-generator' },
+  { label: '二维码生成器', context: 'qrcode-generator' }
+]
+
+function GenPluginToolsShow(
+  mainWindow: Electron.BrowserWindow,
+  items: MenuContext[]
+): Electron.MenuItemConstructorOptions[] {
   return items.map((item) => {
     return {
       label: item.label, // 根据类别设置标签
       click: () => {
-        dialogs.OpenOnlineWebPage(item.context)
+        mainWindow.webContents.send('plugin-tools-show', item.context)
       }
     }
   })
 }
 
 // eslint-disable-next-line no-unused-vars
-export function getAppPluginsMenuItem(): Electron.MenuItemConstructorOptions {
+export function getAppPluginsMenuItem(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions {
   const pluginsMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '在线工具网站',
-      submenu: GenWebOnlineSubMenu(WebLinks)
+      label: '加解密',
+      submenu: GenPluginToolsShow(mainWindow, Encrypt)
+    },
+    {
+      label: '转换器',
+      submenu: GenPluginToolsShow(mainWindow, Convert)
+    },
+    {
+      label: '网络',
+      submenu: GenPluginToolsShow(mainWindow, NetWork)
     }
   ]
 
