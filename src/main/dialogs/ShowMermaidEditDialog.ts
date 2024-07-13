@@ -5,7 +5,7 @@ import * as digcom from './dialog_common'
 let customMermaidEditDialog: Electron.BrowserWindow | null
 
 export function ShowMermaidEditDialog(mainWindow: Electron.BrowserWindow) {
-  if (customMermaidEditDialog !== null) {
+  if (customMermaidEditDialog) {
     digcom.ShowAlreadyExistDialog()
     return
   }

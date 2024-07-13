@@ -5,7 +5,7 @@ import * as digcom from './dialog_common'
 let customMarkdownSheetDialog: Electron.BrowserWindow | null
 
 export function ShowMarkdownSheetDialog(mainWindow: Electron.BrowserWindow) {
-  if (customMarkdownSheetDialog !== null) {
+  if (customMarkdownSheetDialog) {
     digcom.ShowAlreadyExistDialog()
     return
   }

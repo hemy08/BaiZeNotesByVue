@@ -12,6 +12,8 @@ module.exports = {
   ],
   rules: {
     'vue/require-default-prop': 'off',
-    'vue/multi-word-component-names': 'off'
+    'vue/multi-word-component-names': 'off',
+    'max-len': ['off', {'code': 120}],
+    'eol-last': ['off', 'windows']
   }
 }

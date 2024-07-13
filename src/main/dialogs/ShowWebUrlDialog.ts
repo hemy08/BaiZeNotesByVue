@@ -7,7 +7,7 @@ let customWebUrlDialog: Electron.BrowserWindow | null
 // 创建一个自定义对话框的函数
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ShowWebUrlDialog(mainWindow: Electron.BrowserWindow) {
-  if (customWebUrlDialog !== null) {
+  if (customWebUrlDialog) {
     digcom.ShowAlreadyExistDialog()
     return
   }

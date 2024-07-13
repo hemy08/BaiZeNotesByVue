@@ -20,14 +20,13 @@ export const Convert: MenuContext[] = [
   { label: 'YAML◀▶JSON', context: 'yaml-json-converter' },
   { label: 'YAML◀▶TOML', context: 'yaml-toml-converter' },
   { label: 'JSON◀▶TOML', context: 'json-toml-converter' },
-  { label: 'JSON◀▶CSV', context: 'json-toml-converter' },
+  { label: 'JSON◀▶CSV', context: 'json-csv-converter' },
   { label: 'List 转换器', context: 'list-converter' },
   { label: 'JSON格式化', context: 'json-formatter' },
   { label: 'SQL格式化', context: 'sql-formatter' },
   { label: 'XML格式化', context: 'xml-formatter' },
   { label: 'YAML格式化', context: 'yaml-formatter' },
-  { label: 'HTML格式化', context: 'html-formatter' },
-  { label: 'TOML 转 YAML', context: 'yaml-to-toml-converter' },
+  { label: 'HTML格式化', context: 'html-formatter' }
 ]
 
 export const NetWork: MenuContext[] = [
@@ -60,15 +59,15 @@ export function getAppPluginsMenuItem(
 ): Electron.MenuItemConstructorOptions {
   const pluginsMenuItems: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '加解密',
+      label: '加解密插件',
       submenu: GenPluginToolsShow(mainWindow, Encrypt)
     },
     {
-      label: '转换器',
+      label: '各类转换器',
       submenu: GenPluginToolsShow(mainWindow, Convert)
     },
     {
-      label: '网络',
+      label: '网络计算插件',
       submenu: GenPluginToolsShow(mainWindow, NetWork)
     }
   ]

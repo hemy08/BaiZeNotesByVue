@@ -33,7 +33,7 @@
         id="token-output"
         name=""
         placeholder="生成的令牌......"
-        readonly="readonly"
+        readonly="true"
       ></textarea>
     </div>
     <div class="button-list-style">
@@ -78,7 +78,10 @@ function GeneratorToken() {
     result += characters[values[i] % characters.length]
   }
   generatorTokenStr.value = result
-  document.getElementById('token-output').textContent = generatorTokenStr.value
+  const tkOut = document.getElementById('token-output')
+  if (tkOut) {
+    tkOut.textContent = generatorTokenStr.value
+  }
 }
 
 function RefreshToken() {
@@ -87,7 +90,10 @@ function RefreshToken() {
 
 function ClearToken() {
   generatorTokenStr.value = ''
-  document.getElementById('token-output').textContent = ''
+  const tkOut = document.getElementById('token-output')
+  if (tkOut) {
+    tkOut.textContent = ''
+  }
 }
 </script>
 

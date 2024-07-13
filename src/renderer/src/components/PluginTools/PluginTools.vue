@@ -1,33 +1,16 @@
 <template>
-  <div class="plugin-tools-container">
+  <div id="plugin-tools-container" class="plugin-tools-container">
     <div id="plugin-tool-close" class="close-button" @click="handleClosePluginTools">
       <button>返回编辑器</button>
     </div>
-    <div v-show="showTokenGenerator" id="plugin-tool-token-generator"><TokenGenerator /></div>
-    <div v-show="showHashText" id="plugin-tool-hash-text"><HashText /></div>
-    <div v-show="showUUIDSGenerator" id="plugin-tool-uuids-generator"><UUIDSGenerator /></div>
-    <div v-show="showULIDGenerator" id="plugin-tool-ulid-generator"><ULIDGenerator /></div>
-    <div v-show="showEncryptDecrypt" id="plugin-tool-encrypt-decrypt"><EncryptDecrypt /></div>
-    <div v-show="showBIP39Generator" id="plugin-tool-bip39-generator"><BIP39Generator /></div>
-    <div v-show="showHmacGenerator" id="plugin-tool-hmac-generator"><HmacGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showDateConvert" id="plugin-tool-date-convert"><DateConvert /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
-    <div v-show="showRSAGenerator" id="plugin-tool-rsa-generator"><RSAGenerator /></div>
+    <div
+      v-for="tool in pluginTools"
+      :id="`plugin-tool-${tool.id}`"
+      :key="tool.id"
+      style="display: none"
+    >
+      <component :is="tool.component"></component>
+    </div>
   </div>
 </template>
 
@@ -43,52 +26,66 @@ import BIP39Generator from './Encryption/BIP39Generator.vue'
 import HmacGenerator from './Encryption/HmacGenerator.vue'
 import RSAGenerator from './Encryption/RSAGenerator.vue'
 import DateConvert from './Convert/DateConvert.vue'
+import ColorConvert from './Convert/ColorConvert.vue'
+import BaseConvert from './Convert/BaseConvert.vue'
+import RomanNumber from './Convert/RomanNumber.vue'
+import CaseConvert from './Convert/CaseConvert.vue'
+import HtmlFormatter from './Convert/HtmlFormatter.vue'
+import JsonCsvConvert from './Convert/JsonCsvConvert.vue'
+import JsonFormatter from './Convert/JsonFormatter.vue'
+import JsonTomlConvert from './Convert/JsonTomlConvert.vue'
+import ListConvert from './Convert/ListConvert.vue'
+import SqlFormatter from './Convert/SqlFormatter.vue'
+import TextToBinary from './Convert/TextToBinary.vue'
+import TextToUnicode from './Convert/TextToUnicode.vue'
+import XmlFormatter from './Convert/XmlFormatter.vue'
+import YamlFormatter from './Convert/YamlFormatter.vue'
+import YamlJsonConvert from './Convert/YamlJsonConvert.vue'
+import YamlTomlConvert from './Convert/YamlTomlConvert.vue'
+import Ipv4AddrConvert from './NetWork/Ipv4AddrConvert.vue'
+import Ipv4SubnetCalc from './NetWork/Ipv4SubnetCalc.vue'
+import Ipv6UlaGenerator from './NetWork/Ipv6UlaGenerator.vue'
+import MacAddrGenerator from './NetWork/MacAddrGenerator.vue'
+import MacAddrLookup from './NetWork/MacAddrLookup.vue'
+import QrcodeGenerator from './NetWork/QrcodeGenerator.vue'
+import WifiQrcodeGenerator from './NetWork/WifiQrcodeGenerator.vue'
 
-const showTokenGenerator = ref(false)
-const showHashText = ref(false)
-const showUUIDSGenerator = ref(false)
-const showULIDGenerator = ref(false)
-const showEncryptDecrypt = ref(false)
-const showBIP39Generator = ref(false)
-const showHmacGenerator = ref(false)
-const showRSAGenerator = ref(false)
-const showDateConvert = ref(false)
 let isShowPluginToolsContainer = false
+let lastToolsId = ''
 
 const pluginTools = [
-  { tools: 'token-generator', ref: showTokenGenerator },
-  { tools: 'hash-text', ref: showHashText },
-  { tools: 'uuids-generator', ref: showUUIDSGenerator },
-  { tools: 'ulid-generator', ref: showULIDGenerator },
-  { tools: 'encrypt-decrypt', ref: showEncryptDecrypt },
-  { tools: 'bip39-generator', ref: showBIP39Generator },
-  { tools: 'hmac-generator', ref: showHmacGenerator },
-  { tools: 'rsa-generator', ref: showRSAGenerator },
-  { tools: 'date-converter', ref: showDateConvert },
-  { tools: 'base-converter', ref: show  },
-  { tools: 'roman-numeral-converter', ref: show  },
-  { tools: 'color-converter', ref: show  },
-  { tools: 'case-converter', ref: show  },
-  { tools: 'text-to-binary', ref: show  },
-  { tools: 'text-to-unicode', ref: show  },
-  { tools: 'yaml-json-converter', ref: show  },
-  { tools: 'yaml-toml-converter', ref: show  },
-  { tools: 'json-toml-converter', ref: show  },
-  { tools: 'json-toml-converter', ref: show  },
-  { tools: 'list-converter', ref: show  },
-  { tools: 'json-formatter', ref: show  },
-  { tools: 'sql-formatter', ref: show  },
-  { tools: 'xml-formatter', ref: show  },
-  { tools: 'yaml-formatter', ref: show  },
-  { tools: 'html-formatter', ref: show  },
-  { tools: 'yaml-to-toml-converter', ref: show  },
-  { tools: 'ipv4-subnet-calculator', ref: show  },
-  { tools: 'ipv4-address-converter', ref: show  },
-  { tools: 'mac-address-lookup', ref: show  },
-  { tools: 'mac-address-generator', ref: show  },
-  { tools: 'ipv6-ula-generator', ref: show  },
-  { tools: 'wifi-qrcode-generator', ref: show  },
-  { tools: 'qrcode-generator', ref: show  }
+  { id: 'token-generator', component: TokenGenerator },
+  { id: 'hash-text', component: HashText },
+  { id: 'uuids-generator', component: UUIDSGenerator },
+  { id: 'ulid-generator', component: ULIDGenerator },
+  { id: 'encrypt-decrypt', component: EncryptDecrypt },
+  { id: 'bip39-generator', component: BIP39Generator },
+  { id: 'hmac-generator', component: HmacGenerator },
+  { id: 'rsa-generator', component: RSAGenerator },
+  { id: 'date-converter', component: DateConvert },
+  { id: 'color-converter', component: ColorConvert },
+  { id: 'base-converter', component: BaseConvert },
+  { id: 'roman-numeral-converter', component: RomanNumber },
+  { id: 'case-converter', component: CaseConvert },
+  { id: 'text-to-binary', component: TextToBinary },
+  { id: 'text-to-unicode', component: TextToUnicode },
+  { id: 'yaml-json-converter', component: YamlJsonConvert },
+  { id: 'yaml-toml-converter', component: YamlTomlConvert },
+  { id: 'json-toml-converter', component: JsonTomlConvert },
+  { id: 'json-csv-converter', component: JsonCsvConvert },
+  { id: 'list-converter', component: ListConvert },
+  { id: 'json-formatter', component: JsonFormatter },
+  { id: 'sql-formatter', component: SqlFormatter },
+  { id: 'xml-formatter', component: XmlFormatter },
+  { id: 'yaml-formatter', component: YamlFormatter },
+  { id: 'html-formatter', component: HtmlFormatter },
+  { id: 'ipv4-subnet-calculator', component: Ipv4AddrConvert },
+  { id: 'ipv4-address-converter', component: Ipv4SubnetCalc },
+  { id: 'mac-address-lookup', component: MacAddrLookup },
+  { id: 'mac-address-generator', component: MacAddrGenerator },
+  { id: 'ipv6-ula-generator', component: Ipv6UlaGenerator },
+  { id: 'wifi-qrcode-generator', component: WifiQrcodeGenerator },
+  { id: 'qrcode-generator', component: QrcodeGenerator }
 ]
 
 const props = defineProps({
@@ -104,14 +101,22 @@ window.electron.ipcRenderer.on('plugin-tools-show', (_, context: string) => {
     EventBus.$emit('plugin-tools-container-show', true)
     isShowPluginToolsContainer = true
   }
-  pluginTools.map((name) => {
-    name.ref.value = name.tools === context
-  })
+  const currentId = 'plugin-tool-' + context
+  if (lastToolsId) {
+    const last = document.getElementById(lastToolsId)
+    last.style.display = 'none'
+  }
+  document.getElementById(currentId).style.display = 'flex'
+  lastToolsId = currentId
 })
 
 function handleClosePluginTools() {
   if (isShowPluginToolsContainer) {
     isShowPluginToolsContainer = false
+  }
+  if (lastToolsId) {
+    const last = document.getElementById(lastToolsId)
+    last.style.display = 'none'
   }
   EventBus.$emit('plugin-tools-container-show', false)
 }

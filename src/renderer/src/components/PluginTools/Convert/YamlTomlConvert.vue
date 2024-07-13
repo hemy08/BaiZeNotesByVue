@@ -1,0 +1,21 @@
+<template>
+  <div>
+    <h1 style="display: flex; align-items: center; justify-content: center">YAML 和 TOML转换器</h1>
+    <div style="color: grey; background-color: grey; height: 2px"></div>
+    <p style="color: grey">解析YAML并将其转换为TOML。或者将TOML转成YAML</p>
+    <p>
+      YAML 到 TOML<a href="https://tools.w3cschool.cn/yaml-to-toml">
+        https://tools.w3cschool.cn/yaml-to-toml
+      </a>
+    </p>
+    <p>
+      TOML 到 YAML<a href="https://tools.w3cschool.cn/toml-to-yaml">
+        https://tools.w3cschool.cn/toml-to-yaml
+      </a>
+    </p>
+  </div>
+</template>
+
+<script setup lang="ts"></script>
+
+<style scoped></style>

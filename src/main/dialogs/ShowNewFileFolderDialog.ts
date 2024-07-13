@@ -8,7 +8,7 @@ let customNewFileDialog: Electron.BrowserWindow | null
 // 创建一个自定义对话框的函数
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ShowNewFileFolderDialog(isFile: boolean) {
-  if (customNewFileDialog !== null) {
+  if (customNewFileDialog) {
     digcom.ShowAlreadyExistDialog()
     return
   }
