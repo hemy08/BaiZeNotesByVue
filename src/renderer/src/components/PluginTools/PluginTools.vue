@@ -1,5 +1,9 @@
 <template>
-  <div id="plugin-tools-container" class="plugin-tools-container">
+  <div
+    id="plugin-tools-container"
+    class="plugin-tools-container"
+    :style="{ width: containerWidth }"
+  >
     <div id="plugin-tool-close" class="close-button" @click="handleClosePluginTools">
       <button>返回编辑器</button>
     </div>
@@ -15,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, ref, watch } from 'vue'
+import { defineProps, watch, ref } from 'vue'
 import EventBus from '../../event-bus'
 import TokenGenerator from './Encryption/TokenGenerator.vue'
 import HashText from './Encryption/HashText.vue'
@@ -52,6 +56,8 @@ import WifiQrcodeGenerator from './NetWork/WifiQrcodeGenerator.vue'
 
 let isShowPluginToolsContainer = false
 let lastToolsId = ''
+
+const containerWidth = ref()
 
 const pluginTools = [
   { id: 'token-generator', component: TokenGenerator },
@@ -104,9 +110,14 @@ window.electron.ipcRenderer.on('plugin-tools-show', (_, context: string) => {
   const currentId = 'plugin-tool-' + context
   if (lastToolsId) {
     const last = document.getElementById(lastToolsId)
-    last.style.display = 'none'
+    if (last) {
+      last.style.display = 'none'
+    }
   }
-  document.getElementById(currentId).style.display = 'flex'
+  const current = document.getElementById(currentId)
+  if (current) {
+    current.style.display = 'flex'
+  }
   lastToolsId = currentId
 })
 
@@ -116,7 +127,9 @@ function handleClosePluginTools() {
   }
   if (lastToolsId) {
     const last = document.getElementById(lastToolsId)
-    last.style.display = 'none'
+    if (last) {
+      last.style.display = 'none'
+    }
   }
   EventBus.$emit('plugin-tools-container-show', false)
 }
@@ -124,7 +137,7 @@ function handleClosePluginTools() {
 watch(
   () => props.toolsAreaWidth,
   (width) => {
-    console.log('PluginTools', width)
+    containerWidth.value = width
   }
 )
 </script>
@@ -140,6 +153,7 @@ watch(
   justify-content: flex-start; /* 你可以根据需要调整 */
   background-color: #fafafa;
   color: black;
+  overflow-y: auto;
 }
 
 .close-button {
@@ -157,6 +171,10 @@ watch(
   padding: 10px 20px; /* 内边距 */
   border-radius: 5px; /* 圆角 */
   cursor: pointer; /* 重复设置，确保按钮样式 */
+}
+
+.close-button button:hover {
+  background-color: #ff9100; /* 深蓝色背景 */
 }
 
 .tool-section h1 {

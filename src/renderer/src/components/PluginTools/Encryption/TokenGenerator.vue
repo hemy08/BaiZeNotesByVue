@@ -99,12 +99,12 @@ function ClearToken() {
 
 <style scoped>
 .button-list-style {
-  width: 600px;
+  width: 60vw;
   margin-top: 20px;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 80px;
+  gap: 10vw;
 }
 
 .button-style {
@@ -117,13 +117,17 @@ function ClearToken() {
   cursor: pointer; /* 重复设置，确保按钮样式 */
 }
 
+.button-style:hover {
+  background-color: #ff9100; /* 深蓝色背景 */
+}
+
 #token-output {
   padding: 8px;
   font-size: 16px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  width: 600px;
-  height: 500px;
+  width: 60vw;
+  height: 30vh;
   margin: 15px 0 10px;
   display: flex;
 }
