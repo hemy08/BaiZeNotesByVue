@@ -31,24 +31,32 @@
     <div>
       <textarea
         id="token-output"
-        name=""
+        :style="{ width: props.viewWidth }"
         placeholder="生成的令牌......"
-        readonly="true"
+        readonly
       ></textarea>
     </div>
-    <div class="button-list-style">
-      <button id="token-generator" class="button-style" @click="GeneratorToken">生成</button>
-      <button id="token-refresh" class="button-style" @click="RefreshToken">刷新</button>
-      <button id="token-clear" class="button-style" @click="ClearToken">清空</button>
+    <div class="plugin-tools-btn-list" :style="{ width: props.viewWidth }">
+      <button id="token-generator" class="plugin-tools-btn" @click="GeneratorToken">生成</button>
+      <button id="token-refresh" class="plugin-tools-btn" @click="RefreshToken">刷新</button>
+      <button id="token-clear" class="plugin-tools-btn" @click="ClearToken">清空</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, defineProps } from 'vue'
 const selectedTypes = ref<string[]>([])
 const tokenLength = ref<number>(64)
 const generatorTokenStr = ref<string>('')
+
+const props = defineProps({
+  // 编辑器宽度
+  viewWidth: {
+    type: String,
+    default: '100%'
+  }
+})
 
 const boxTypes = [
   { value: 'uppercase', label: '大写(ABCDEFGHIJKLMNOPQRSTUVWXYZ)' },
@@ -56,6 +64,7 @@ const boxTypes = [
   { value: 'number', label: '数字(0123456789)' },
   { value: 'symbols', label: '符号(!@#$%^&*()_+{}:<>?[]\\|~)' }
 ]
+
 function getCharacters() {
   let chars = ''
   if (selectedTypes.value.includes('uppercase')) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -98,36 +107,12 @@ function ClearToken() {
 </script>
 
 <style scoped>
-.button-list-style {
-  width: 60vw;
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10vw;
-}
-
-.button-style {
-  padding: 5px 20px;
-  font-size: 18px;
-  color: black; /* 白色文字 */
-  background-color: deepskyblue; /* 深蓝色背景 */
-  border: none; /* 无边框 */
-  border-radius: 5px; /* 圆角 */
-  cursor: pointer; /* 重复设置，确保按钮样式 */
-}
-
-.button-style:hover {
-  background-color: #ff9100; /* 深蓝色背景 */
-}
-
 #token-output {
   padding: 8px;
   font-size: 16px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  width: 60vw;
-  height: 30vh;
+  height: 150px;
   margin: 15px 0 10px;
   display: flex;
 }

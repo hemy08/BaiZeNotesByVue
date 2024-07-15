@@ -6,10 +6,20 @@
     <a href="https://tools.w3cschool.cn/mac-address-lookup">
       https://tools.w3cschool.cn/mac-address-lookup
     </a>
+    <div :style="{ width: props.viewWidth }">TEST</div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { defineProps } from 'vue'
+
+const props = defineProps({
+  // 编辑器宽度
+  viewWidth: {
+    type: String,
+    default: '100%'
+  }
+})
 </script>
 
 <style scoped></style>

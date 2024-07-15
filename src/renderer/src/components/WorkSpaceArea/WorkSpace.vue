@@ -182,5 +182,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   float: left;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 </style>

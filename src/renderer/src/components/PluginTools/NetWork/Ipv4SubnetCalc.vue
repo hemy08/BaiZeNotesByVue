@@ -6,10 +6,20 @@
     <a href="https://tools.w3cschool.cn/ipv4-subnet-calculator">
       https://tools.w3cschool.cn/ipv4-subnet-calculator
     </a>
+    <div :style="{ width: props.viewWidth }">TEST</div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { defineProps } from 'vue'
+
+const props = defineProps({
+  // 编辑器宽度
+  viewWidth: {
+    type: String,
+    default: '100%'
+  }
+})
 </script>
 
 <style scoped></style>

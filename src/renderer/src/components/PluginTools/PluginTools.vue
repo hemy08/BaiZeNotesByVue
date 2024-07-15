@@ -1,9 +1,5 @@
 <template>
-  <div
-    id="plugin-tools-container"
-    class="plugin-tools-container"
-    :style="{ width: containerWidth }"
-  >
+  <div id="plugin-tools-container" class="plugin-tools-container">
     <div id="plugin-tool-close" class="close-button" @click="handleClosePluginTools">
       <button>返回编辑器</button>
     </div>
@@ -13,13 +9,13 @@
       :key="tool.id"
       style="display: none"
     >
-      <component :is="tool.component"></component>
+      <component :is="tool.component" :view-width="toolsViewWidth"></component>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineProps, watch, ref } from 'vue'
+import { defineProps, watch, computed, ref } from 'vue'
 import EventBus from '../../event-bus'
 import TokenGenerator from './Encryption/TokenGenerator.vue'
 import HashText from './Encryption/HashText.vue'
@@ -56,8 +52,6 @@ import WifiQrcodeGenerator from './NetWork/WifiQrcodeGenerator.vue'
 
 let isShowPluginToolsContainer = false
 let lastToolsId = ''
-
-const containerWidth = ref()
 
 const pluginTools = [
   { id: 'token-generator', component: TokenGenerator },
@@ -102,6 +96,14 @@ const props = defineProps({
   }
 })
 
+const toolWidth = ref(props.toolsAreaWidth)
+
+const toolsViewWidth = computed(() => {
+  const toolWidthValue = parseInt(toolWidth.value.replace('px', ''), 10)
+  const conWidthValue = toolWidthValue - 100
+  return conWidthValue + 'px'
+})
+
 window.electron.ipcRenderer.on('plugin-tools-show', (_, context: string) => {
   if (!isShowPluginToolsContainer) {
     EventBus.$emit('plugin-tools-container-show', true)
@@ -137,7 +139,7 @@ function handleClosePluginTools() {
 watch(
   () => props.toolsAreaWidth,
   (width) => {
-    containerWidth.value = width
+    toolWidth.value = width
   }
 )
 </script>
@@ -154,6 +156,7 @@ watch(
   background-color: #fafafa;
   color: black;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .close-button {

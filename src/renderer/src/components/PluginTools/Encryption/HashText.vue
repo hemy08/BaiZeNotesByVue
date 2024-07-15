@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 style="display: flex; align-items: center; justify-content: center">Hash 哈希文本生成</h1>
+    <h1 class="header-display-center">Hash 哈希文本生成</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">
       使用所需的函数哈希文本字符串：MD5、SHA1、SHA256、SHA224、SHA512、SHA384、SHA3或RIPEMD160
@@ -14,11 +14,11 @@
         id="hash-text-input"
         v-model="textInput"
         placeholder="请输入你的文本..."
-        style="width: 60vw; height: 20vh"
+        :style="{ width: props.viewWidth, height: '20vh' }"
       ></textarea>
     </div>
     <div style="margin-top: 5px"><label>摘要编码：</label></div>
-    <select id="hash-text-encode-type" v-model="encodeType" style="width: 910px">
+    <select id="hash-text-encode-type" v-model="encodeType" :style="{ width: props.viewWidth }">
       <option value="Binary">Binary（base2）</option>
       <option value="Hexadecimal" selected>Hexadecimal（base16）</option>
       <option value="base64">Base64（base64）</option>
@@ -29,28 +29,46 @@
       :key="item.text"
       style="margin-top: 15px; display: flex; flex-direction: row"
     >
-      <div class="hash-text-label">
+      <div class="hash-text-label" :style="{ width: hashLabelWidth}">
         <label>{{ item.text }}</label>
       </div>
       <input
         :id="item.id"
         type="text"
         class="hash-text-result-output"
+        :style="hashResultStyle"
         :placeholder="item.text + '哈希结果...'"
         :value="item.result"
         readonly
       />
-      <button class="hash-text-click-button" @click="onCopyToClipboard(item.result)">复制</button>
+      <button
+        class="hash-text-click-button"
+        :style="{ width: hashButtonWidth }"
+        @click="onCopyToClipboard(item.result)"
+      >
+        复制
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch} from 'vue'
+import { ref, watch, defineProps, computed } from 'vue'
 import CryptoJS from 'crypto-js'
+
+const props = defineProps({
+  // 编辑器宽度
+  viewWidth: {
+    type: String,
+    default: '100%'
+  }
+})
 
 const textInput = ref('')
 const encodeType = ref('')
+const hashLabelWidth = ref('150px')
+const hashButtonWidth = ref('100px')
+const hashViewWidth = ref(props.viewWidth)
 const hashTextInput = [
   { id: 'hash-text-md5', text: 'MD5', fn: CryptoJS.MD5, result: '' },
   { id: 'hash-text-sha1', text: 'SHA1', fn: CryptoJS.SHA1, result: '' },
@@ -61,6 +79,16 @@ const hashTextInput = [
   { id: 'hash-text-sha512', text: 'SHA512', fn: CryptoJS.SHA512, result: '' },
   { id: 'hash-text-ripemd160', text: 'RIPEMD160', fn: CryptoJS.RIPEMD160, result: '' }
 ]
+
+const hashResultStyle = computed(() => {
+  const hashViewWidthValue = parseInt(hashViewWidth.value.replace('px', ''), 10)
+  const hashLabelWidthValue = parseInt(hashLabelWidth.value.replace('px', ''), 10)
+  const hashButtonWidthValue = parseInt(hashButtonWidth.value.replace('px', ''), 10)
+  const hashResultWidthValue = hashViewWidthValue - hashLabelWidthValue - hashButtonWidthValue
+  return {
+    width: hashResultWidthValue + 'px'
+  }
+})
 
 function onCopyToClipboard(context: string) {
   navigator.clipboard.writeText(context)
@@ -97,6 +125,13 @@ watch(encodeType, (encode) => {
     item.result = hashBuffer
   })
 })
+
+watch(
+  () => props.viewWidth,
+  (width) => {
+    hashViewWidth.value = width
+  }
+)
 </script>
 
 <style scoped>
@@ -110,7 +145,6 @@ watch(encodeType, (encode) => {
 
 .hash-text-click-button {
   margin-left: 7px;
-  width: 100px;
   height: 30px;
   background-color: deepskyblue;
   border: none;
@@ -123,7 +157,6 @@ watch(encodeType, (encode) => {
 .hash-text-result-output {
   background-color: white;
   height: 25px;
-  width: 640px;
   margin-left: 7px;
   border-width: 1px;
 }
