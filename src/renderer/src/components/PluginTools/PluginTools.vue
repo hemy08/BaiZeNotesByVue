@@ -3,13 +3,8 @@
     <div id="plugin-tool-close" class="close-button" @click="handleClosePluginTools">
       <button>返回编辑器</button>
     </div>
-    <div
-      v-for="tool in pluginTools"
-      :id="`plugin-tool-${tool.id}`"
-      :key="tool.id"
-      style="display: none"
-    >
-      <component :is="tool.component" :view-width="toolsViewWidth"></component>
+    <div v-if="visibleTool" :id="`plugin-tool-${visibleTool.id}`">
+      <component :is="visibleTool.component" :view-width="toolsViewWidth"></component>
     </div>
   </div>
 </template>
@@ -51,7 +46,6 @@ import QrcodeGenerator from './NetWork/QrcodeGenerator.vue'
 import WifiQrcodeGenerator from './NetWork/WifiQrcodeGenerator.vue'
 
 let isShowPluginToolsContainer = false
-let lastToolsId = ''
 
 const pluginTools = [
   { id: 'token-generator', component: TokenGenerator },
@@ -104,35 +98,24 @@ const toolsViewWidth = computed(() => {
   return conWidthValue + 'px'
 })
 
+const activeToolId = ref('')
+const visibleTool = computed(() => {
+  return pluginTools.find((tool) => tool.id === activeToolId.value)
+})
+
 window.electron.ipcRenderer.on('plugin-tools-show', (_, context: string) => {
   if (!isShowPluginToolsContainer) {
     EventBus.$emit('plugin-tools-container-show', true)
     isShowPluginToolsContainer = true
   }
-  const currentId = 'plugin-tool-' + context
-  if (lastToolsId) {
-    const last = document.getElementById(lastToolsId)
-    if (last) {
-      last.style.display = 'none'
-    }
-  }
-  const current = document.getElementById(currentId)
-  if (current) {
-    current.style.display = 'flex'
-  }
-  lastToolsId = currentId
+  activeToolId.value = context
 })
 
 function handleClosePluginTools() {
   if (isShowPluginToolsContainer) {
     isShowPluginToolsContainer = false
   }
-  if (lastToolsId) {
-    const last = document.getElementById(lastToolsId)
-    if (last) {
-      last.style.display = 'none'
-    }
-  }
+  activeToolId.value = ''
   EventBus.$emit('plugin-tools-container-show', false)
 }
 
@@ -156,7 +139,7 @@ watch(
   background-color: #fafafa;
   color: black;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .close-button {

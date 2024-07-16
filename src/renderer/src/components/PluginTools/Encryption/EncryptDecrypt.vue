@@ -1,15 +1,15 @@
 <template>
   <div>
-    <h1 class="header-display-center">加密/解密文本</h1>
+    <h1 class="header-display-center">加密/解密文本，对称加密算法</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
-    <p style="color: grey">使用加密算法（如AES、TripleDES、Rabbit或RC4）加密和解密文本明文。</p>
+    <p style="color: grey">使用加密算法(如AES、TripleDES、Rabbit或RC4)加密和解密文本明文。</p>
     <a href="https://tools.w3cschool.cn/encryption"> https://tools.w3cschool.cn/encryption </a>
     <div id="encrypt-area" class="div-style-display-column" :style="{ width: encDecWidth }">
       <label for="input-text">请输入你需要加密的文本: </label>
       <textarea
         id="input-enc-dec-text"
         v-model="encDecInput"
-        placeholder="请输入你需要加密的文本..."
+        placeholder="解密结果，或请输入你需要加密的文本..."
         :style="{ width: encDecWidth, height: '80px' }"
       ></textarea>
       <div style="margin-top: 5px">
@@ -25,48 +25,56 @@
       <div style="margin-top: 5px">
         <label>请选择加密算法</label>
         <select v-model="encDecAlg" style="margin-left: 10px">
-          <option id="encrypt-by-AES" value="AES">AES（默认）</option>
-          <option id="encrypt-by-DES" value="DES">DES</option>
-          <option id="encrypt-by-TripleDES" value="TripleDES">TripleDES</option>
-          <option id="encrypt-by-RC4" value="RC4">RC4</option>
-          <option id="encrypt-by-RC4Drop" value="RC4Drop">RC4Drop</option>
-          <option id="encrypt-by-Rabbit" value="DES">Rabbit</option>
-          <option id="encrypt-by-RabbitLegacy" value="DES">RabbitLegacy</option>
+          <option id="encrypt-by-AES" value="AES">AES (AES block cipher algorithm)</option>
+          <option id="encrypt-by-DES" value="DES">DES (DES block cipher algorithm)</option>
+          <option id="encrypt-by-TripleDES" value="TripleDES">
+            TripleDES (Triple-DES block cipher algorithm)
+          </option>
+          <option id="encrypt-by-RC4" value="RC4">RC4 (RC4 stream cipher algorithm)</option>
+          <option id="encrypt-by-RC4Drop" value="RC4Drop">
+            RC4Drop (Modified RC4 stream cipher algorithm)
+          </option>
+          <option id="encrypt-by-Rabbit" value="DES">
+            Rabbit (Rabbit stream cipher algorithm)
+          </option>
+          <option id="encrypt-by-RabbitLegacy" value="DES">
+            RabbitLegacy (Rabbit stream cipher algorithm)
+          </option>
         </select>
       </div>
       <div style="margin-top: 5px">
         <label>请选择加密模式</label>
         <select v-model="encDecMod" style="margin-left: 10px">
-          <option id="encrypt-mod-CBC" value="CBC">CBC（默认，Cipher Block Chaining mode.）</option>
-          <option id="encrypt-mod-CFB" value="CFB">CFB（Cipher Feedback block mode.）</option>
-          <option id="encrypt-mod-CTR" value="CTR">CTR（Counter block mode.）</option>
+          <option id="encrypt-mod-CBC" value="CBC">CBC (默认，Cipher Block Chaining mode)</option>
+          <option id="encrypt-mod-CFB" value="CFB">CFB (Cipher Feedback block mode)</option>
+          <option id="encrypt-mod-CTR" value="CTR">CTR (Counter block mode)</option>
           <option id="encrypt-mod-CTRGladman" value="CTRGladman">
-            CTRGladman（Counter block mode compatible with Dr Brian Gladman fileenc.c）
+            CTRGladman (Counter block mode compatible with Dr Brian Gladman fileenc.c)
           </option>
-          <option id="encrypt-mod-OFB" value="OFB">OFB（Output Feedback block mode.）</option>
-          <option id="encrypt-mod-ECB" value="ECB">ECB（Electronic Codebook block mode.）</option>
+          <option id="encrypt-mod-OFB" value="OFB">OFB (Output Feedback block mode)</option>
+          <option id="encrypt-mod-ECB" value="ECB">ECB (Electronic Codebook block mode)</option>
         </select>
       </div>
       <div style="margin-top: 5px">
         <label>请选择填充方式</label>
         <select v-model="encDecPad" style="margin-left: 10px">
           <option id="encrypt-pad-Pkcs7" value="Pkcs7">
-            Pkcs7（默认，PKCS #5/7 padding strategy.）
+            Pkcs7 (默认，PKCS #5/7 padding strategy)
           </option>
           <option id="encrypt-pad-AnsiX923" value="AnsiX923">
-            AnsiX923（ANSI X.923 padding strategy.）
+            AnsiX923 (ANSI X.923 padding strategy)
           </option>
           <option id="encrypt-pad-Iso10126" value="Iso10126">
-            Iso10126（ISO 10126 padding strategy.）
+            Iso10126 (ISO 10126 padding strategy)
           </option>
           <option id="encrypt-pad-Iso97971" value="Iso97971">
-            Iso97971（ISO/IEC 9797-1 Padding Method 2.）
+            Iso97971 (ISO/IEC 9797-1 Padding Method 2)
           </option>
           <option id="encrypt-pad-ZeroPadding" value="ZeroPadding">
-            ZeroPadding（Zero padding strategy.）
+            ZeroPadding (Zero padding strategy)
           </option>
           <option id="encrypt-pad-NoPadding" value="NoPadding">
-            NoPadding（A noop padding strategy.）
+            NoPadding (A noop padding strategy)
           </option>
         </select>
       </div>
@@ -75,7 +83,7 @@
         <textarea
           id="encrypt-result"
           v-model="EncryptResult"
-          placeholder="加密结果..."
+          placeholder="加密结果，或输入要进行解密的密文..."
           :style="{ width: encDecWidth, height: '150px' }"
         ></textarea>
       </div>
@@ -91,12 +99,6 @@
 import { computed, defineProps, watch, ref } from 'vue'
 import CryptoJS from 'crypto-js'
 
-const encDecInput = ref('')
-const encDecSecKey = ref('')
-const encDecAlg = ref('AES')
-const encDecMod = ref('CBC')
-const encDecPad = ref('Pkcs7')
-const EncryptResult = ref('')
 const props = defineProps({
   // 编辑器宽度
   viewWidth: {
@@ -118,6 +120,13 @@ const encDecWidth = computed(() => {
   const encDecWidthVal = viewWidthVal - 30
   return encDecWidthVal + 'px'
 })
+
+const encDecInput = ref('')
+const encDecSecKey = ref('')
+const encDecAlg = ref('AES')
+const encDecMod = ref('CBC')
+const encDecPad = ref('Pkcs7')
+const EncryptResult = ref('')
 
 const cryptoAlg = {
   AES: CryptoJS.AES,
@@ -180,9 +189,13 @@ function handleDecrypt() {
     mode: cryptoMode[encDecMod.value],
     padding: cryptoPad[encDecPad.value]
   }
-  //const encrypt_str = EncryptResult.value
-  const decrypted = cryptoAlg[encDecAlg.value].decrypt(EncryptResult.value, secretKey, options)
-  encDecInput.value = decrypted.toString(CryptoJS.enc.Utf8)
+
+  try {
+    const decrypted = cryptoAlg[encDecAlg.value].decrypt(EncryptResult.value, secretKey, options)
+    encDecInput.value = decrypted.toString(CryptoJS.enc.Utf8)
+  } catch (error) {
+    alert('解密失败：', error)
+  }
 }
 </script>
 

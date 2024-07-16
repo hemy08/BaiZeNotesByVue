@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 class="header-display-center">Hash 哈希文本生成</h1>
+    <h1 class="header-display-center">Hash 哈希文本生成，非对称加密</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">
       使用所需的函数哈希文本字符串：MD5、SHA1、SHA256、SHA224、SHA512、SHA384、SHA3或RIPEMD160
@@ -14,7 +14,7 @@
         id="hash-text-input"
         v-model="textInput"
         placeholder="请输入你的文本..."
-        :style="{ width: props.viewWidth, height: '20vh' }"
+        :style="{ width: props.viewWidth, height: '100px' }"
       ></textarea>
     </div>
     <div style="margin-top: 5px"><label>摘要编码：</label></div>
@@ -29,7 +29,7 @@
       :key="item.text"
       style="margin-top: 15px; display: flex; flex-direction: row"
     >
-      <div class="hash-text-label" :style="{ width: hashLabelWidth}">
+      <div class="hash-text-label" :style="{ width: hashLabelWidth }">
         <label>{{ item.text }}</label>
       </div>
       <input
@@ -136,7 +136,6 @@ watch(
 
 <style scoped>
 .hash-text-label {
-  width: 150px;
   height: 30px;
   background-color: lightgreen;
   border: none;

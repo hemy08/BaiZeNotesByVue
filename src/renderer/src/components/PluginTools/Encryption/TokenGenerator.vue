@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :style="{ width: props.viewWidth }">
     <h1 style="display: flex; align-items: center; justify-content: center">Token Generator</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">使用您想要的字符、大写或小写字母、数字和/或符号生成随机字符串。</p>
