@@ -1,7 +1,13 @@
 import { globalInitialize } from './global'
 import * as FileUtils from './file-utils'
 import { HemyRenderPre, HemyRenderPost } from './HemyRender'
-import { CreateRsaKeyPair, CreateHash, CreateHmac, CryptoDecrypt, CryptoEncrypt } from './encrypt_decrypt'
+import {
+  CreateRsaKeyPair,
+  CreateHash,
+  CreateHmac,
+  CryptoDecrypt,
+  CryptoEncrypt
+} from './encrypt_decrypt'
 import { ipcMain } from 'electron'
 
 export {
@@ -91,17 +97,11 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     }
   )
 
-  ipcMain.on(
-    'plugin-tools-crypto-encrypt',
-    (event, context: string, secretKey: string, algorithm: string) => {
-      event.returnValue = CryptoEncrypt(context, secretKey, algorithm)
-    }
-  )
+  ipcMain.on('plugin-tools-crypto-encrypt', (event, data: string) => {
+    event.returnValue = CryptoEncrypt(data)
+  })
 
-  ipcMain.on(
-    'plugin-tools-crypto-decrypt',
-    (event, context: string, secretKey: string, algorithm: string) => {
-      event.returnValue = CryptoDecrypt(context, secretKey, algorithm)
-    }
-  )
+  ipcMain.on('plugin-tools-crypto-decrypt', (event, data: string) => {
+    event.returnValue = CryptoDecrypt(data)
+  })
 }

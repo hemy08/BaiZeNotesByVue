@@ -1,4 +1,3 @@
-import { ipcMain } from 'electron'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const crypto = require('crypto')
 
@@ -63,7 +62,7 @@ function DigestBufferToBinaryString(hexString: Buffer) {
     .toString()
     .split('')
     .map((char) => {
-      let binary = char.charCodeAt(0).toString(2)
+      const binary = char.charCodeAt(0).toString(2)
       return binary.padStart(8, '0')
     })
     .join('')
@@ -114,6 +113,15 @@ export function CreateHmac(context: string, secKey: string, encType: string) {
   return result
 }
 
+interface CryptoData {
+  context: string
+  secretKey: string
+  algorithm: string
+  inputEncoding?: string
+  outputEncoding?: string
+  iv?: string
+}
+
 /* [
   'aes-128-cbc',
   'aes-128-cfb',
@@ -145,9 +153,37 @@ export function CreateHmac(context: string, secKey: string, encType: string) {
   'rc4'
 ]*/
 
-export function CryptoEncrypt(context: string, secretKey: string, algorithm: string) {
-  const cipher = crypto.createCipheriv(algorithm, secretKey)
-  const result = cipher.encrypt()
+export function CryptoEncrypt(data: CryptoData): string {
+  let bufIv: Buffer
+  if (!data.iv) {
+    // 如果未提供IV，则生成一个（这取决于算法是否需要IV）
+    // 注意：对于某些算法（如AES-GCM），IV是必需的
+    const cipherinfo = crypto.getCipherInfo(data.algorithm)
+    console.log('cipher info', cipherinfo)
+    bufIv = crypto.randomBytes(crypto.getCipherInfo(data.algorithm).ivLength)
+    data.iv = bufIv.toString()
+  } else {
+    bufIv = Buffer.from(data.iv)
+  }
+
+  if (!data.inputEncoding) {
+    data.inputEncoding = 'utf8'
+  }
+
+  if (!data.outputEncoding) {
+    data.outputEncoding = 'hex'
+  }
+
+  try {
+    const cipher = crypto.createCipheriv(data.algorithm, Buffer.from(data.secretKey), bufIv)
+    let encrypted = cipher.update(data.context, data.inputEncoding, data.outputEncoding)
+    encrypted += cipher.final(data.outputEncoding)
+    return encrypted.toString()
+  } catch (error) {
+    console.log(error)
+  }
 }
 
-export function CryptoDecrypt() {}
+export function CryptoDecrypt(data: CryptoData) {
+  return ''
+}
