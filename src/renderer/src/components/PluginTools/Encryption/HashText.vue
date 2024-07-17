@@ -70,14 +70,15 @@ const hashLabelWidth = ref('150px')
 const hashButtonWidth = ref('100px')
 const hashViewWidth = ref(props.viewWidth)
 const hashTextInput = [
-  { id: 'hash-text-md5', text: 'MD5', fn: CryptoJS.MD5, result: '' },
-  { id: 'hash-text-sha1', text: 'SHA1', fn: CryptoJS.SHA1, result: '' },
-  { id: 'hash-text-sha3', text: 'SHA3', fn: CryptoJS.SHA3, result: '' },
-  { id: 'hash-text-sha224', text: 'SHA224', fn: CryptoJS.SHA224, result: '' },
-  { id: 'hash-text-sha256', text: 'SHA256', fn: CryptoJS.SHA256, result: '' },
-  { id: 'hash-text-sha384', text: 'SHA384', fn: CryptoJS.SHA384, result: '' },
-  { id: 'hash-text-sha512', text: 'SHA512', fn: CryptoJS.SHA512, result: '' },
-  { id: 'hash-text-ripemd160', text: 'RIPEMD160', fn: CryptoJS.RIPEMD160, result: '' }
+  { id: 'hash-text-md4', text: 'MD4', result: '' },
+  { id: 'hash-text-md5', text: 'MD5', result: '' },
+  { id: 'hash-text-sha1', text: 'SHA1', result: '' },
+  { id: 'hash-text-sha224', text: 'SHA224', result: '' },
+  { id: 'hash-text-sha256', text: 'SHA256', result: '' },
+  { id: 'hash-text-sha384', text: 'SHA384', result: '' },
+  { id: 'hash-text-sha512', text: 'SHA512', result: '' },
+  { id: 'hash-text-sha512-256', text: 'SHA512-256', result: '' },
+  { id: 'hash-text-ripemd160', text: 'RIPEMD160', result: '' }
 ]
 
 const hashResultStyle = computed(() => {
@@ -90,48 +91,45 @@ const hashResultStyle = computed(() => {
   }
 })
 
-function onCopyToClipboard(context: string) {
-  navigator.clipboard.writeText(context)
-}
-
-watch(textInput, (newCode) => {
-  hashTextInput.map((item) => {
-    item.result = item.fn(newCode).toString()
-  })
-})
-
-function hexStringToBinaryString(hexString) {
-  return hexString
-    .split('')
-    .map(function (hexChar) {
-      return parseInt(hexChar, 16).toString(2).padStart(4, '0')
-    })
-    .join('')
-}
-
-watch(encodeType, (encode) => {
-  let hashBuffer = ''
-  hashTextInput.map((item) => {
-    const hashArray = item.fn(textInput.value)
-    if (encode === 'Binary') {
-      hashBuffer = hexStringToBinaryString(CryptoJS.enc.Hex.stringify(hashArray))
-    } else if (encode === 'base64') {
-      hashBuffer = CryptoJS.enc.Base64.stringify(hashArray)
-    } else if (encode === 'Base64url') {
-      hashBuffer = CryptoJS.enc.Base64url.stringify(hashArray)
-    } else {
-      hashBuffer = CryptoJS.enc.Hex.stringify(hashArray)
-    }
-    item.result = hashBuffer
-  })
-})
-
 watch(
   () => props.viewWidth,
   (width) => {
     hashViewWidth.value = width
   }
 )
+
+function onCopyToClipboard(context: string) {
+  navigator.clipboard.writeText(context)
+}
+
+watch(
+  () => textInput.value,
+  () => {
+    getHashTextResult()
+  }
+)
+
+watch(
+  () => encodeType.value,
+  () => {
+    if (!textInput.value) {
+      alert('请先输入要进行Hash的文本....')
+      return
+    }
+    getHashTextResult()
+  }
+)
+
+function getHashTextResult() {
+  const result = window.electron.ipcRenderer.sendSync(
+    'plugin-tools-generator-hash-text',
+    textInput.value,
+    encodeType.value
+  )
+  hashTextInput.forEach((item) => {
+    item.result = result[item.text] // 使用方括号语法来动态访问属性
+  })
+}
 </script>
 
 <style scoped>

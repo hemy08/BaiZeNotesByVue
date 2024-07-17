@@ -11,7 +11,7 @@ import { ShowWebUrlDialog } from './ShowWebUrlDialog'
 import { ShowInsertImageDialog } from './ShowInsertImageDialog'
 import { ShowNewFileFolderDialog } from './ShowNewFileFolderDialog'
 import { ShowSystemSettingDialog } from './ShowSystemSettingDialog'
-import { dialog } from 'electron'
+import { dialog, ipcMain } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 
 function ShowConfirmDeleteDialog(path: string, isFile: boolean) {
@@ -53,4 +53,41 @@ export {
   ShowInsertImageDialog,
   ShowNewFileFolderDialog,
   ShowSystemSettingDialog
+}
+
+
+export function MainWindowListenDialogsEvent(mainWindow: Electron.BrowserWindow) {
+  ipcMain.on('monaco-editor-tools-insert-table', () => {
+    ShowMarkdownSheetDialog(mainWindow)
+  })
+
+  ipcMain.on('monaco-editor-tools-insert-web-links', () => {
+    ShowWebUrlDialog(mainWindow)
+  })
+
+  ipcMain.on('monaco-editor-tools-insert-image', () => {
+    ShowInsertImageDialog(mainWindow)
+  })
+
+  ipcMain.on('file-manager-context-menu-create-file', (_, dirPath, isFolder, fileExtension) => {
+    ShowCreateFileFolderDialog(dirPath, isFolder, fileExtension)
+  })
+
+  ipcMain.on('file-manager-context-menu-import-from', (_, value) => {
+    log('file-manager-context-menu-import-from', value)
+  })
+
+  ipcMain.on('file-manager-context-menu-delete', (_, value, isFile) => {
+    // console.log('file-manager-context-menu-delete', value)
+    ShowConfirmDeleteDialog(value, isFile)
+  })
+
+  ipcMain.on('file-manager-context-menu-find-in', (_, value) => {
+    console.log('file-manager-context-menu-find-in', value)
+  })
+
+  ipcMain.on('file-manager-context-menu-rename', (_, path, isFile) => {
+    // console.log('file-manager-context-menu-rename', path, name)
+    ShowFileFolderRenameDialog(path, isFile)
+  })
 }

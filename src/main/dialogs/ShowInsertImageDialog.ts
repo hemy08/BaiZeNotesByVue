@@ -51,13 +51,6 @@ export function ShowInsertImageDialog(mainWindow: Electron.BrowserWindow) {
     ipcMain.removeListener('dialog-insert-image-btn-cancel', () => {})
   })
 
-  function exitInsertImageDialog() {
-    if (insertImageDialog) {
-      insertImageDialog.close()
-      insertImageDialog = null
-    }
-  }
-
   function processImageInsert(_, imgFile: IMGFile) {
     let imgUrl = ''
     if (imgFile.content.length !== 0) {
@@ -83,7 +76,7 @@ export function ShowInsertImageDialog(mainWindow: Electron.BrowserWindow) {
 
   ipcMain.on('dialog-insert-image-btn-insert', processImageInsert)
   ipcMain.on('dialog-insert-image-btn-cancel', () => {
-    exitInsertImageDialog()
+    insertImageDialog.close()
   })
 }
 
@@ -149,7 +142,7 @@ function createImgHrefDiv(doc: Document): Element {
 function createImgButtonDiv(doc: Document): Element {
   const buttons: digcom.Button[] = [
     { id: 'insert-image', text: '应用', btnClass: 'image-button-style' },
-    { id: 'cancelButton', text: '取消', btnClass: 'image-button-style' }
+    { id: 'cancel-image', text: '取消', btnClass: 'image-button-style' }
   ]
 
   const btnList = digcom.NewButtonList(doc, buttons)

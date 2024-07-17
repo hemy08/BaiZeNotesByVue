@@ -17,7 +17,6 @@ import HashText from './Encryption/HashText.vue'
 import UUIDSGenerator from './Encryption/UUIDSGenerator.vue'
 import ULIDGenerator from './Encryption/ULIDGenerator.vue'
 import EncryptDecrypt from './Encryption/EncryptDecrypt.vue'
-import BIP39Generator from './Encryption/BIP39Generator.vue'
 import HmacGenerator from './Encryption/HmacGenerator.vue'
 import RSAGenerator from './Encryption/RSAGenerator.vue'
 import DateConvert from './Convert/DateConvert.vue'
@@ -44,6 +43,7 @@ import MacAddrGenerator from './NetWork/MacAddrGenerator.vue'
 import MacAddrLookup from './NetWork/MacAddrLookup.vue'
 import QrcodeGenerator from './NetWork/QrcodeGenerator.vue'
 import WifiQrcodeGenerator from './NetWork/WifiQrcodeGenerator.vue'
+import CryptoEncDec from './Encryption/CryptoEncDec.vue'
 
 let isShowPluginToolsContainer = false
 
@@ -53,7 +53,7 @@ const pluginTools = [
   { id: 'uuids-generator', component: UUIDSGenerator },
   { id: 'ulid-generator', component: ULIDGenerator },
   { id: 'encrypt-decrypt', component: EncryptDecrypt },
-  { id: 'bip39-generator', component: BIP39Generator },
+  { id: 'crypto-encrypt-decrypt', component: CryptoEncDec },
   { id: 'hmac-generator', component: HmacGenerator },
   { id: 'rsa-generator', component: RSAGenerator },
   { id: 'date-converter', component: DateConvert },

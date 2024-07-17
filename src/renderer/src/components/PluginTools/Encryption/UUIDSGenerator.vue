@@ -135,8 +135,8 @@ const uuidTextStyle = computed(() => {
     height: textHeight + 'px',
     marginLeft: '20px',
     minHeight: '50px',
-    overflowY: 'hidden',
-    textAlign: 'center'
+    textAlign: 'center',
+    overflowY: 'hidden'
   }
 })
 

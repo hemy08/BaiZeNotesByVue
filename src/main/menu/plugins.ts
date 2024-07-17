@@ -4,7 +4,7 @@ export const Encrypt: MenuContext[] = [
   { label: 'UUIDs 生成器', context: 'uuids-generator' },
   { label: 'ULID 生成器', context: 'ulid-generator' },
   { label: '加密/解密文本', context: 'encrypt-decrypt' },
-  { label: 'BIP39密码生成器', context: 'bip39-generator' },
+  { label: 'Crypto加密/解密文本', context: 'crypto-encrypt-decrypt' },
   { label: 'Hmac 生成器', context: 'hmac-generator' },
   { label: 'RSA密钥对生成器', context: 'rsa-generator' }
 ]
@@ -79,3 +79,4 @@ export function getAppPluginsMenuItem(
     submenu: pluginsMenuItems
   }
 }
+
