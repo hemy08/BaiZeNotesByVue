@@ -26,7 +26,6 @@
 
 <script setup lang="ts">
 import { computed, defineProps, ref, watch } from 'vue'
-import forge from 'node-forge'
 
 const props = defineProps({
   // 编辑器宽度

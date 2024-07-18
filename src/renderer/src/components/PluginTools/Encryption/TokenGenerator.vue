@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { ref, defineProps } from 'vue'
-const selectedTypes = ref<string[]>([])
+const selectedTypes = ref<string[]>(['uppercase', 'lowercase', 'number'])
 const tokenLength = ref<number>(64)
 const generatorTokenStr = ref<string>('')
 

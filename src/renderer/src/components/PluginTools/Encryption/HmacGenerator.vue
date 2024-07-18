@@ -56,7 +56,6 @@
 
 <script setup lang="ts">
 import { ref, watch, defineProps, computed } from 'vue'
-import CryptoJS from 'crypto-js'
 
 const props = defineProps({
   // 编辑器宽度
@@ -67,7 +66,7 @@ const props = defineProps({
 })
 
 const textInput = ref('1')
-const encodeType = ref('')
+const encodeType = ref('Hexadecimal')
 const secretKey = ref('12345678')
 const hmacLabelWidth = ref('150px')
 const hashButtonWidth = ref('100px')

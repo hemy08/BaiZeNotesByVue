@@ -12,7 +12,7 @@ function generateRsaKeyPair(
     type: 'pkcs8',
     format: 'pem'
   }
-) {
+): Promise<{ publicKey: string; privateKey: string }> {
   return new Promise((resolve, reject) => {
     crypto.generateKeyPair(
       'rsa',
@@ -95,7 +95,6 @@ export function CreateHmac(context: string, secKey: string, encType: string) {
   if (['binary', 'base64', 'base64url'].includes(encType.toLowerCase())) {
     encoding = encType.toLowerCase()
   }
-  console.log('crypto.getCiphers()', crypto.getCiphers(), crypto.createCipheriv())
   const result: HashResult = {}
   hashTextInput.forEach((item) => {
     try {
@@ -113,77 +112,62 @@ export function CreateHmac(context: string, secKey: string, encType: string) {
   return result
 }
 
-interface CryptoData {
-  context: string
-  secretKey: string
-  algorithm: string
-  inputEncoding?: string
-  outputEncoding?: string
-  iv?: string
-}
-
-/* [
-  'aes-128-cbc',
-  'aes-128-cfb',
-  'aes-128-ctr',
-  'aes-128-ecb',
-  'aes-128-gcm',
-  'aes-128-ofb',
-  'aes-192-cbc',
-  'aes-192-ctr',
-  'aes-192-ecb',
-  'aes-192-gcm',
-  'aes-192-ofb',
-  'aes-256-cbc',
-  'aes-256-cfb',
-  'aes-256-ctr',
-  'aes-256-ecb',
-  'aes-256-gcm',
-  'aes-256-ofb',
-  'bf-cbc',
-  'bf-cfb',
-  'bf-ecb',
-  'des-cbc',
-  'des-ecb',
-  'des-ede',
-  'des-ede-cbc',
-  'des-ede3',
-  'des-ede3-cbc',
-  'rc2-cbc',
-  'rc4'
-]*/
-
-export function CryptoEncrypt(data: CryptoData): string {
+export function CryptoEncrypt(data: CryptoData): CryptoResult {
+  const cipherInfo = crypto.getCipherInfo(data.algorithm)
   let bufIv: Buffer
   if (!data.iv) {
     // 如果未提供IV，则生成一个（这取决于算法是否需要IV）
     // 注意：对于某些算法（如AES-GCM），IV是必需的
-    const cipherinfo = crypto.getCipherInfo(data.algorithm)
-    console.log('cipher info', cipherinfo)
-    bufIv = crypto.randomBytes(crypto.getCipherInfo(data.algorithm).ivLength)
+    bufIv = crypto.randomBytes(cipherInfo.ivLength)
     data.iv = bufIv.toString()
   } else {
-    bufIv = Buffer.from(data.iv)
+    bufIv = Buffer.from(data.iv, 'hex')
   }
-
-  if (!data.inputEncoding) {
-    data.inputEncoding = 'utf8'
+  let secretKey: Buffer
+  if (!data.secretKey) {
+    data.secretKeyEncoding = 'hex'
+    secretKey = crypto.randomBytes(cipherInfo.keyLength)
+  } else {
+    secretKey = Buffer.from(data.secretKey, data.secretKeyEncoding)
   }
+  const inputEncoding = data.inputEncoding || 'utf8'
+  const outputEncoding = data.outputEncoding || 'hex'
 
-  if (!data.outputEncoding) {
-    data.outputEncoding = 'hex'
-  }
-
+  let result = ''
   try {
-    const cipher = crypto.createCipheriv(data.algorithm, Buffer.from(data.secretKey), bufIv)
-    let encrypted = cipher.update(data.context, data.inputEncoding, data.outputEncoding)
-    encrypted += cipher.final(data.outputEncoding)
-    return encrypted.toString()
+    const cipher = crypto.createCipheriv(data.algorithm, secretKey, bufIv)
+    let encrypted = cipher.update(data.context, inputEncoding, outputEncoding)
+    encrypted += cipher.final(outputEncoding)
+    result = encrypted
   } catch (error) {
     console.log(error)
+    result = error as string
+  }
+  return {
+    context: result,
+    iv: bufIv.toString('hex'),
+    secretKey: secretKey.toString(data.secretKeyEncoding),
+    secretKeyEncoding: data.secretKeyEncoding
   }
 }
 
 export function CryptoDecrypt(data: CryptoData) {
-  return ''
+  let bufIv: Buffer
+  if (data.iv) {
+    bufIv = Buffer.from(data.iv, 'hex' as BufferEncoding)
+  } else {
+    bufIv = crypto.randomBytes(crypto.getCipherInfo(data.algorithm).ivLength)
+  }
+  const bufKey = Buffer.from(data.secretKey, data.secretKeyEncoding)
+  const inputEncoding = data.inputEncoding || 'hex'
+  const outputEncoding = data.outputEncoding || 'utf8'
+  try {
+    const decipher = crypto.createDecipheriv(data.algorithm, bufKey, bufIv)
+    let decrypted = decipher.update(data.context, inputEncoding, outputEncoding)
+    decrypted += decipher.final(outputEncoding)
+    return decrypted
+  } catch (error) {
+    console.log(error)
+    return error
+  }
 }

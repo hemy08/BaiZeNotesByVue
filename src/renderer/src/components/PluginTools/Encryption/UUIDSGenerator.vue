@@ -38,7 +38,12 @@
         </div>
       </div>
       <div style="margin-top: 10px">
-        <input v-model="uuidNameSpace" :style="uuidNameSpaceStyle" placeholder="uuids namespace" />
+        <input
+          v-model="uuidNameSpace"
+          :style="uuidNameSpaceStyle"
+          style="text-align: center"
+          placeholder="uuids namespace"
+        />
       </div>
       <div class="div-style-display-row" style="margin-top: 10px">
         <div class="uuid-label-style"><label>名称：</label></div>
@@ -47,7 +52,12 @@
     </div>
     <div class="div-style-display-row" style="margin-top: 10px">
       <div class="uuid-label-style"><label>UUIDS：</label></div>
-      <textarea v-model="uuidList" :style="uuidTextStyle" placeholder="uuids" />
+      <textarea
+        v-model="uuidList"
+        :style="uuidTextStyle"
+        style="overflow-y: hidden; text-align: center"
+        placeholder="uuids"
+      />
     </div>
     <div class="plugin-tools-btn-list" :style="{ width: props.viewWidth, textAlign: 'center' }">
       <button id="uuids-copy" class="plugin-tools-btn" @click="UuidsCopy">拷贝</button>
@@ -134,9 +144,7 @@ const uuidTextStyle = computed(() => {
     width: uuidTextWidth.value + 'px',
     height: textHeight + 'px',
     marginLeft: '20px',
-    minHeight: '50px',
-    textAlign: 'center',
-    overflowY: 'hidden'
+    minHeight: '50px'
   }
 })
 

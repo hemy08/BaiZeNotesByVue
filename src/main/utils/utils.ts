@@ -97,11 +97,11 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     }
   )
 
-  ipcMain.on('plugin-tools-crypto-encrypt', (event, data: string) => {
+  ipcMain.on('plugin-tools-crypto-encrypt', (event, data: CryptoData) => {
     event.returnValue = CryptoEncrypt(data)
   })
 
-  ipcMain.on('plugin-tools-crypto-decrypt', (event, data: string) => {
+  ipcMain.on('plugin-tools-crypto-decrypt', (event, data: CryptoData) => {
     event.returnValue = CryptoDecrypt(data)
   })
 }

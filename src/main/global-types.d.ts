@@ -5,7 +5,7 @@ import * as dialogs from '../dialogs/dialogs'
 // global-types.d.ts
 declare global {
   interface MenuContext {
-    label: string,
+    label: string
     context: string
   }
   interface FileProperties {
@@ -62,6 +62,23 @@ declare global {
   interface Hemy {
     file: fileUtils
     dialog: dialogs
+  }
+
+  interface CryptoData {
+    context: string
+    secretKey: string
+    secretKeyEncoding: BufferEncoding
+    algorithm: string
+    inputEncoding?: BufferEncoding
+    outputEncoding?: BufferEncoding
+    iv?: string
+  }
+
+  interface CryptoResult {
+    context: string
+    secretKey: string
+    secretKeyEncoding: BufferEncoding
+    iv: string
   }
 
   interface Global extends NodeJS.Global {

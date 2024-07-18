@@ -39,6 +39,9 @@ function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyL, function () {
     EventHandleMaps['link'](editor)
   })
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
+    EventBus.$emit('monaco-editor-save-file-content-to-disk', true)
+  })
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, async function () {
     const items = await navigator.clipboard.read()
     let isImage = false

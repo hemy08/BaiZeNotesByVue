@@ -74,7 +74,7 @@ export function MainWindowListenDialogsEvent(mainWindow: Electron.BrowserWindow)
   })
 
   ipcMain.on('file-manager-context-menu-import-from', (_, value) => {
-    log('file-manager-context-menu-import-from', value)
+    console.log('file-manager-context-menu-import-from', value)
   })
 
   ipcMain.on('file-manager-context-menu-delete', (_, value, isFile) => {

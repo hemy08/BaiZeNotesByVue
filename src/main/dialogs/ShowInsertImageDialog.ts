@@ -76,7 +76,9 @@ export function ShowInsertImageDialog(mainWindow: Electron.BrowserWindow) {
 
   ipcMain.on('dialog-insert-image-btn-insert', processImageInsert)
   ipcMain.on('dialog-insert-image-btn-cancel', () => {
-    insertImageDialog.close()
+    if (insertImageDialog) {
+      insertImageDialog.close()
+    }
   })
 }
 

@@ -203,20 +203,12 @@ onMounted(() => {
     // console.log('keyDown', event)
     if (event.ctrlKey && event.key === 's') {
       window.electron.ipcRenderer.send('save-file-content-to-disk', markdownEditorContent.value)
-    } else if (event.ctrlKey && event.key === 'v') {
-      console.log('event', event)
     }
   }
 
-  function handleEditPaste(event) {
-    event.preventDefault()
-    const items = (event.clipboardData || global.clipboardData).items
-    console.log('handleEditPaste', event.clipboardData)
-    console.log('items', items)
-  }
-
-  window.addEventListener('keydown', handleKeyDownEvent)
-  window.addEventListener('paste', handleEditPaste)
+  EventBus.$on('monaco-editor-save-file-content-to-disk', () => {
+    window.electron.ipcRenderer.send('save-file-content-to-disk', markdownEditorContent.value)
+  })
 
   // 销毁编辑器实例
   onBeforeUnmount(() => {
