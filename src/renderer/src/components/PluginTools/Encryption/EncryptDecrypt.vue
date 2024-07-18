@@ -3,7 +3,13 @@
     <h1 class="header-display-center">加密/解密文本，对称加密算法</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">使用加密算法(如AES、TripleDES、Rabbit或RC4)加密和解密文本明文。</p>
-    <a href="https://tools.w3cschool.cn/encryption"> https://tools.w3cschool.cn/encryption </a>
+    <a
+      class="plugin-tools-openurl"
+      role="button"
+      @click="openUrl('https://tools.w3cschool.cn/encryption')"
+    >
+      https://tools.w3cschool.cn/encryption
+    </a>
     <div id="encrypt-area" class="div-style-display-column" :style="{ width: encDecWidth }">
       <label for="input-text">请输入你需要加密的文本: </label>
       <textarea
@@ -177,6 +183,10 @@ const cryptoPad = {
 }
 
 const iv = CryptoJS.lib.WordArray.random(128 / 8)
+
+function openUrl(link) {
+  window.open(link, '_blank', 'noopener, noreferrer')
+}
 
 function handleEncrypt() {
   if (!encDecInput.value) {

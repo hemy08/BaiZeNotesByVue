@@ -188,6 +188,22 @@ td, th {
   justify-content: center;
 }
 
+.plugin-tools-openurl {
+  display: flex;
+  color: blue;
+  background-color: #eeeeee;
+  font-size: large;
+  font-style: italic;
+}
+
+.plugin-tools-openurl:hover {
+  display: flex;
+  color: red;
+  background-color: lightyellow;
+  font-size: large;
+  font-style: normal;
+}
+
 .plugin-tools-btn-list {
   margin-top: 20px;
   display: flex;

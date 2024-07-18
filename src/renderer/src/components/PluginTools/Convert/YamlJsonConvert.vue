@@ -4,12 +4,20 @@
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">将JSON转换为YAML。或者将YAMl转成JSON</p>
     <p>
-      YAML到JSON转换器<a href="https://tools.w3cschool.cn/yaml-to-json-converter">
+      YAML到JSON转换器<a
+        class="plugin-tools-openurl"
+        role="button"
+        @click="openUrl('https://tools.w3cschool.cn/yaml-to-json-converter')"
+      >
         https://tools.w3cschool.cn/yaml-to-json-converter
       </a>
     </p>
     <p>
-      JSON到YAML转换器<a href="https://tools.w3cschool.cn/json-to-yaml-converter">
+      JSON到YAML转换器<a
+        class="plugin-tools-openurl"
+        role="button"
+        @click="openUrl('https://tools.w3cschool.cn/json-to-yaml-converter')"
+      >
         https://tools.w3cschool.cn/json-to-yaml-converter
       </a>
     </p>
@@ -27,6 +35,10 @@ const props = defineProps({
     default: '100%'
   }
 })
+
+function openUrl(link) {
+  window.open(link, '_blank', 'noopener, noreferrer')
+}
 </script>
 
 <style scoped></style>

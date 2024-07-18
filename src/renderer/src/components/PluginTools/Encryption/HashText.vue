@@ -7,7 +7,13 @@
       <br />先将输入进行encode，然后根据算法获取对应的哈希值，最后在进行响应的编码，得到最终的结果，文中使用的是CryptoJS
       <br />二进制的编码，是将对应的16进制编码转换为二进制进行显示，不是直接对哈希结果array进行处理
     </p>
-    <a href="https://tools.w3cschool.cn/hash-text"> https://tools.w3cschool.cn/hash-text </a>
+    <a
+      class="plugin-tools-openurl"
+      role="button"
+      @click="openUrl('https://tools.w3cschool.cn/hash-text')"
+    >
+      https://tools.w3cschool.cn/hash-text
+    </a>
     <div style="margin-top: 5px"><label>需要进行HASH的文本：</label></div>
     <div>
       <textarea
@@ -96,6 +102,10 @@ watch(
     hashViewWidth.value = width
   }
 )
+
+function openUrl(link) {
+  window.open(link, '_blank', 'noopener, noreferrer')
+}
 
 function onCopyToClipboard(context: string) {
   navigator.clipboard.writeText(context)

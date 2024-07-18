@@ -3,7 +3,11 @@
     <h1 style="display: flex; align-items: center; justify-content: center">密钥对生成器</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">生成新的随机RSA或者ed25519私钥和公钥pem证书。</p>
-    <a href="https://tools.w3cschool.cn/rsa-key-pair-generator">
+    <a
+      class="plugin-tools-openurl"
+      role="button"
+      @click="openUrl('https://tools.w3cschool.cn/rsa-key-pair-generator')"
+    >
       https://tools.w3cschool.cn/rsa-key-pair-generator
     </a>
     <div class="div-style-display-row" style="margin-top: 10px">
@@ -81,6 +85,10 @@ const rsaPrivateKeyStyle = computed(() => {
     height: '500px'
   }
 })
+
+function openUrl(link) {
+  window.open(link, '_blank', 'noopener, noreferrer')
+}
 
 function refreshKeyPair() {
   window.electron.ipcRenderer.send('plugin-tools-generator-rsa-key-pairs', inputBits.value)

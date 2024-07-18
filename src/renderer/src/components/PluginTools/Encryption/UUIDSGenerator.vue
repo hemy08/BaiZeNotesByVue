@@ -5,7 +5,11 @@
     <p style="color: grey">
       通用唯一标识符（UUID）是一个128位数字，用于标识计算机系统中的信息。可能的UUID数量为16^32，即2^128或约3.4x10^38（这是一个很大的数字！）。
     </p>
-    <a href="https://tools.w3cschool.cn/uuid-generator">
+    <a
+      class="plugin-tools-openurl"
+      role="button"
+      @click="openUrl('https://tools.w3cschool.cn/uuid-generator')"
+    >
       https://tools.w3cschool.cn/uuid-generator
     </a>
     <div class="div-style-display-row" style="margin-top: 10px">
@@ -154,6 +158,10 @@ const uuidNameStyle = computed(() => {
     marginLeft: '20px'
   }
 })
+
+function openUrl(link) {
+  window.open(link, '_blank', 'noopener, noreferrer')
+}
 
 function generatorUUID(version: string): string {
   if (version === 'NIL') {

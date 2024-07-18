@@ -3,7 +3,11 @@
     <h1 class="header-display-center">Hmac 生成器</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">使用密钥和您喜欢的哈希函数计算基于哈希的消息身份验证代码（HMAC）。</p>
-    <a href="https://tools.w3cschool.cn/hmac-generator">
+    <a
+      class="plugin-tools-openurl"
+      role="button"
+      @click="openUrl('https://tools.w3cschool.cn/hmac-generator')"
+    >
       https://tools.w3cschool.cn/hmac-generator
     </a>
     <div style="margin-top: 5px"><label>需要进行Hmac的文本：</label></div>
@@ -92,6 +96,10 @@ const hmacResultStyle = computed(() => {
     width: hashResultWidthValue + 'px'
   }
 })
+
+function openUrl(link) {
+  window.open(link, '_blank', 'noopener, noreferrer')
+}
 
 function onCopyToClipboard(context: string) {
   navigator.clipboard.writeText(context)
