@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :style="{ width: props.workAreaWidth }">
     <h1 style="display: flex; align-items: center; justify-content: center">JSON 转 CSV</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">使用自动标头检测将JSON转换为CSV。</p>
@@ -10,7 +10,7 @@
     >
       https://tools.w3cschool.cn/json-to-csv
     </a>
-    <div :style="{ width: props.viewWidth }">TEST</div>
+    <div :style="{ width: props.workAreaWidth }">TEST</div>
   </div>
 </template>
 
@@ -19,7 +19,7 @@ import { defineProps } from 'vue'
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }

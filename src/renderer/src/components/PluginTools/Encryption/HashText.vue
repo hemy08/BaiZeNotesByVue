@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :style="{ width: props.workAreaWidth }">
     <h1 class="header-display-center">Hash 哈希文本生成，非对称加密</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">
@@ -20,11 +20,11 @@
         id="hash-text-input"
         v-model="textInput"
         placeholder="请输入你的文本..."
-        :style="{ width: props.viewWidth, height: '100px' }"
+        :style="{ width: props.workAreaWidth, height: '100px' }"
       ></textarea>
     </div>
     <div style="margin-top: 5px"><label>摘要编码：</label></div>
-    <select id="hash-text-encode-type" v-model="encodeType" :style="{ width: props.viewWidth }">
+    <select id="hash-text-encode-type" v-model="encodeType" :style="{ width: props.workAreaWidth }">
       <option value="Binary">Binary（base2）</option>
       <option value="Hexadecimal" selected>Hexadecimal（base16）</option>
       <option value="base64">Base64（base64）</option>
@@ -63,7 +63,7 @@ import { ref, watch, defineProps, computed } from 'vue'
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }
@@ -73,7 +73,7 @@ const textInput = ref('')
 const encodeType = ref('Hexadecimal')
 const hashLabelWidth = ref('150px')
 const hashButtonWidth = ref('100px')
-const hashViewWidth = ref(props.viewWidth)
+const hashViewWidth = ref(props.workAreaWidth)
 const hashTextInput = [
   { id: 'hash-text-md4', text: 'MD4', result: '' },
   { id: 'hash-text-md5', text: 'MD5', result: '' },
@@ -97,7 +97,7 @@ const hashResultStyle = computed(() => {
 })
 
 watch(
-  () => props.viewWidth,
+  () => props.workAreaWidth,
   (width) => {
     hashViewWidth.value = width
   }

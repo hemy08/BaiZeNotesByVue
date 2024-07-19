@@ -1,5 +1,5 @@
 <template>
-  <div :style="{ width: props.viewWidth }">
+  <div :style="{ width: props.workAreaWidth }">
     <h1 class="header-display-center">Hmac 生成器</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">使用密钥和您喜欢的哈希函数计算基于哈希的消息身份验证代码（HMAC）。</p>
@@ -16,7 +16,7 @@
         id="hmac-text-input"
         v-model="textInput"
         placeholder="请输入你的文本..."
-        :style="{ width: props.viewWidth, height: '100px' }"
+        :style="{ width: props.workAreaWidth, height: '100px' }"
       ></textarea>
     </div>
     <div class="div-style-display-row">
@@ -63,7 +63,7 @@ import { ref, watch, defineProps, computed } from 'vue'
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }
@@ -74,7 +74,7 @@ const encodeType = ref('Hexadecimal')
 const secretKey = ref('12345678')
 const hmacLabelWidth = ref('150px')
 const hashButtonWidth = ref('100px')
-const hashViewWidth = ref(props.viewWidth)
+const hashViewWidth = ref(props.workAreaWidth)
 const hmacTextInput = [
   { id: 'hmac-text-md4', text: 'MD4', result: '' },
   { id: 'hmac-text-md5', text: 'MD5', result: '' },
@@ -143,7 +143,7 @@ watch(
 )
 
 watch(
-  () => props.viewWidth,
+  () => props.workAreaWidth,
   (width) => {
     hashViewWidth.value = width
   }

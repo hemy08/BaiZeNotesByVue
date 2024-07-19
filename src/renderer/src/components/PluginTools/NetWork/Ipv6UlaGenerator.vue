@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :style="{ width: props.workAreaWidth }">
     <h1 style="display: flex; align-items: center; justify-content: center">IPv6 ULA生成器</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">根据RFC4193在网络上生成您自己的本地不可路由IP地址。</p>
@@ -10,7 +10,7 @@
     >
       https://tools.w3cschool.cn/ipv6-ula-generator
     </a>
-    <div :style="{ width: props.viewWidth }">TEST</div>
+    <div :style="{ width: props.workAreaWidth }">TEST</div>
   </div>
 </template>
 
@@ -19,7 +19,7 @@ import { defineProps } from 'vue'
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }

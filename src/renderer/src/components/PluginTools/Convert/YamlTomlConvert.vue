@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :style="{ width: props.workAreaWidth }">
     <h1 style="display: flex; align-items: center; justify-content: center">YAML 和 TOML转换器</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">解析YAML并将其转换为TOML。或者将TOML转成YAML</p>
@@ -22,7 +22,7 @@
         https://tools.w3cschool.cn/toml-to-yaml
       </a>
     </p>
-    <div :style="{ width: props.viewWidth }">TEST</div>
+    <div :style="{ width: props.workAreaWidth }">TEST</div>
   </div>
 </template>
 
@@ -31,7 +31,7 @@ import { defineProps } from 'vue'
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }

@@ -4,7 +4,7 @@
       <button>返回编辑器</button>
     </div>
     <div v-if="visibleTool" :id="`plugin-tool-${visibleTool.id}`">
-      <component :is="visibleTool.component" :view-width="toolsViewWidth"></component>
+      <component :is="visibleTool.component" :work-area-width="toolsViewWidth"></component>
     </div>
   </div>
 </template>
@@ -44,6 +44,11 @@ import MacAddrLookup from './NetWork/MacAddrLookup.vue'
 import QrcodeGenerator from './NetWork/QrcodeGenerator.vue'
 import WifiQrcodeGenerator from './NetWork/WifiQrcodeGenerator.vue'
 import CryptoEncDec from './Encryption/CryptoEncDec.vue'
+import ASCIIComparison from './Informations/ASCIIComparison.vue'
+import HTMLSpecialChar from './Informations/HTMLSpecialChar.vue'
+import FormulaSymbol from './Informations/FormulaSymbol.vue'
+import PhysicalSymbolic from './Informations/PhysicalSymbolic.vue'
+import SubnetMaskMapTable from './Informations/SubnetMaskMapTable.vue'
 
 let isShowPluginToolsContainer = false
 
@@ -73,13 +78,18 @@ const pluginTools = [
   { id: 'xml-formatter', component: XmlFormatter },
   { id: 'yaml-formatter', component: YamlFormatter },
   { id: 'html-formatter', component: HtmlFormatter },
-  { id: 'ipv4-subnet-calculator', component: Ipv4AddrConvert },
-  { id: 'ipv4-address-converter', component: Ipv4SubnetCalc },
+  { id: 'ipv4-subnet-calculator', component: Ipv4SubnetCalc },
+  { id: 'ipv4-address-converter', component: Ipv4AddrConvert },
   { id: 'mac-address-lookup', component: MacAddrLookup },
   { id: 'mac-address-generator', component: MacAddrGenerator },
   { id: 'ipv6-ula-generator', component: Ipv6UlaGenerator },
   { id: 'wifi-qrcode-generator', component: WifiQrcodeGenerator },
-  { id: 'qrcode-generator', component: QrcodeGenerator }
+  { id: 'qrcode-generator', component: QrcodeGenerator },
+  { id: 'ascii-table', component: ASCIIComparison },
+  { id: 'html-special-char-table', component: HTMLSpecialChar },
+  { id: 'formula-symbol-table', component: FormulaSymbol },
+  { id: 'physical-symbolic-constant', component: PhysicalSymbolic },
+  { id: 'subnet-mask-map-table', component: SubnetMaskMapTable }
 ]
 
 const props = defineProps({

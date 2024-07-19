@@ -1,5 +1,5 @@
 <template>
-  <div :style="{ width: props.viewWidth }">
+  <div :style="{ width: props.workAreaWidth }">
     <h1 class="header-display-center">UUIDs 生成器</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">
@@ -63,7 +63,7 @@
         placeholder="uuids"
       />
     </div>
-    <div class="plugin-tools-btn-list" :style="{ width: props.viewWidth, textAlign: 'center' }">
+    <div class="plugin-tools-btn-list" :style="{ width: props.workAreaWidth, textAlign: 'center' }">
       <button id="uuids-copy" class="plugin-tools-btn" @click="UuidsCopy">拷贝</button>
       <button id="uuids-refresh" class="plugin-tools-btn" @click="RefreshUuids">刷新</button>
     </div>
@@ -76,7 +76,7 @@ import * as uuid from 'uuid'
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }
@@ -84,7 +84,7 @@ const props = defineProps({
 
 const activeUUIDVersion = ref('v1')
 const activeNameSpace = ref('DNS')
-const uuidsViewWidth = ref(props.viewWidth)
+const uuidsViewWidth = ref(props.workAreaWidth)
 const isShowNamespace = ref(false)
 const uuidNumber = ref(1)
 const uuidNameSpace = ref('6ba7b810-9dad-11d1-80b4-00c04fd430c8')
@@ -107,7 +107,7 @@ const uuidNameSpaces = {
 const uuidNameSpaceKeys = Object.keys(uuidNameSpaces)
 
 watch(
-  () => props.viewWidth,
+  () => props.workAreaWidth,
   (newWidth) => {
     uuidsViewWidth.value = newWidth
   }
@@ -128,10 +128,10 @@ watch(
 )
 
 const uuidTextWidth = computed(() => {
-  const viewWidthVal = parseInt(uuidsViewWidth.value.replace('px', ''), 10)
-  const workWidthVal = viewWidthVal - 50
+  const workWidthVal = parseInt(uuidsViewWidth.value.replace('px', ''), 10)
+  const textWidthVal = workWidthVal - 50
   const textMarginLeft = 170
-  return workWidthVal - textMarginLeft
+  return textWidthVal - textMarginLeft
 })
 
 const uuidNameSpaceStyle = computed(() => {

@@ -1,5 +1,5 @@
 <template>
-  <div :style="{ width: props.viewWidth }">
+  <div :style="{ width: props.workAreaWidth }">
     <h1 style="display: flex; align-items: center; justify-content: center">ULID 生成器</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">生成随机的通用唯一词典可排序标识符（ULID）。</p>
@@ -30,7 +30,7 @@
       <div class="ulid-label-style"><label>ULID LIST：</label></div>
       <textarea v-model="ulidList" :style="ulidTextStyle" placeholder="ulid list" />
     </div>
-    <div class="plugin-tools-btn-list" :style="{ width: props.viewWidth, textAlign: 'center' }">
+    <div class="plugin-tools-btn-list" :style="{ width: props.workAreaWidth, textAlign: 'center' }">
       <button id="ulids-copy" class="plugin-tools-btn" @click="ulidsCopy">拷贝</button>
       <button id="ulids-refresh" class="plugin-tools-btn" @click="ulidsRefresh">刷新</button>
     </div>
@@ -43,20 +43,20 @@ import { ulid } from 'ulid'
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }
 })
 
 const ulidList = ref('')
-const ulidsViewWidth = ref(props.viewWidth)
+const ulidsViewWidth = ref(props.workAreaWidth)
 const ulidNumber = ref(1)
 const activeFormatterStyle = ref('RAW')
 const formatterStyle = ['RAW', 'JSON']
 
 watch(
-  () => props.viewWidth,
+  () => props.workAreaWidth,
   (newWidth) => {
     ulidsViewWidth.value = newWidth
   }
@@ -69,10 +69,10 @@ watch(
   }
 )
 const ulidTextWidth = computed(() => {
-  const viewWidthVal = parseInt(ulidsViewWidth.value.replace('px', ''), 10)
-  const workWidthVal = viewWidthVal - 50
+  const workWidthVal = parseInt(ulidsViewWidth.value.replace('px', ''), 10)
+  const textWidthVal = workWidthVal - 50
   const textMarginLeft = 170
-  return workWidthVal - textMarginLeft
+  return textWidthVal - textMarginLeft
 })
 
 const ulidTextStyle = computed(() => {

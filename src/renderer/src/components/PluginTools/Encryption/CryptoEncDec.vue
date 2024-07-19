@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :style="{ width: props.workAreaWidth }">
     <h1 class="header-display-center">Crypto 加密/解密文本</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">使用NodeJs的crypto加解密算法，进行加解密文本处理。</p>
@@ -93,28 +93,27 @@ import { computed, defineProps, ref, watch } from 'vue'
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }
 })
-const hashViewWidth = ref(props.viewWidth)
+let workWidthVal = ''
 
 watch(
-  () => props.viewWidth,
+  () => props.workAreaWidth,
   (width) => {
-    hashViewWidth.value = width
+    workWidthVal = parseInt(width.replace('px', ''), 10)
   }
 )
-const viewWidthVal = parseInt(hashViewWidth.value.replace('px', ''), 10)
 
 const cryptoWidth = computed(() => {
-  const cryptoWidthVal = viewWidthVal - 30
+  const cryptoWidthVal = workWidthVal - 30
   return cryptoWidthVal + 'px'
 })
 
 const secretWidth = computed(() => {
-  const cryptoWidthVal = viewWidthVal - 400
+  const cryptoWidthVal = workWidthVal - 400
   return cryptoWidthVal + 'px'
 })
 

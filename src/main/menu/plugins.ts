@@ -39,6 +39,14 @@ export const NetWork: MenuContext[] = [
   { label: '二维码生成器', context: 'qrcode-generator' }
 ]
 
+export const Information: MenuContext[] = [
+  { label: 'ASCII对照表', context: 'ascii-table' },
+  { label: 'HTML特殊字符查询', context: 'html-special-char-table' },
+  { label: '数学公式符号', context: 'formula-symbol-table' },
+  { label: '物理符号常数', context: 'physical-symbolic-constant' },
+  { label: '子网掩码对照表', context: 'subnet-mask-map-table' },
+]
+
 function GenPluginToolsShow(
   mainWindow: Electron.BrowserWindow,
   items: MenuContext[]
@@ -69,6 +77,10 @@ export function getAppPluginsMenuItem(
     {
       label: '网络计算插件',
       submenu: GenPluginToolsShow(mainWindow, NetWork)
+    },
+    {
+      label: '字符查询',
+      submenu: GenPluginToolsShow(mainWindow, Information)
     }
   ]
 

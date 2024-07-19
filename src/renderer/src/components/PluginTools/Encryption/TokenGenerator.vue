@@ -1,5 +1,5 @@
 <template>
-  <div :style="{ width: props.viewWidth }">
+  <div :style="{ width: props.workAreaWidth }">
     <h1 style="display: flex; align-items: center; justify-content: center">Token Generator</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">使用您想要的字符、大写或小写字母、数字和/或符号生成随机字符串。</p>
@@ -35,12 +35,12 @@
     <div>
       <textarea
         id="token-output"
-        :style="{ width: props.viewWidth }"
+        :style="{ width: props.workAreaWidth }"
         placeholder="生成的令牌......"
         readonly
       ></textarea>
     </div>
-    <div class="plugin-tools-btn-list" :style="{ width: props.viewWidth }">
+    <div class="plugin-tools-btn-list" :style="{ width: props.workAreaWidth }">
       <button id="token-generator" class="plugin-tools-btn" @click="GeneratorToken">生成</button>
       <button id="token-refresh" class="plugin-tools-btn" @click="RefreshToken">刷新</button>
       <button id="token-clear" class="plugin-tools-btn" @click="ClearToken">清空</button>
@@ -56,7 +56,7 @@ const generatorTokenStr = ref<string>('')
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }

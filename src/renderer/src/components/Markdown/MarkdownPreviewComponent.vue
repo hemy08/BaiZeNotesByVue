@@ -1,4 +1,4 @@
-<template xmlns="http://www.w3.org/1999/html">
+<template>
   <div
     id="markdown-preview-html"
     class="markdown-preview-html"

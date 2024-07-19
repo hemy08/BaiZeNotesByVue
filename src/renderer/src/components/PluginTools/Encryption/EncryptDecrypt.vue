@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :style="{ width: props.workAreaWidth }">
     <h1 class="header-display-center">加密/解密文本，对称加密算法</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">使用加密算法(如AES、TripleDES、Rabbit或RC4)加密和解密文本明文。</p>
@@ -75,23 +75,23 @@ import CryptoJS from 'crypto-js'
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }
 })
-const hashViewWidth = ref(props.viewWidth)
+const hashViewWidth = ref(props.workAreaWidth)
 
 watch(
-  () => props.viewWidth,
+  () => props.workAreaWidth,
   (width) => {
     hashViewWidth.value = width
   }
 )
 
 const encDecWidth = computed(() => {
-  const viewWidthVal = parseInt(hashViewWidth.value.replace('px', ''), 10)
-  const encDecWidthVal = viewWidthVal - 30
+  const workWidthVal = parseInt(hashViewWidth.value.replace('px', ''), 10)
+  const encDecWidthVal = workWidthVal - 30
   return encDecWidthVal + 'px'
 })
 

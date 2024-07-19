@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :style="{ width: props.workAreaWidth }">
     <h1 style="display: flex; align-items: center; justify-content: center">JSON 和 TOML 转换</h1>
     <div style="color: grey; background-color: grey; height: 2px"></div>
     <p style="color: grey">解析JSON并将其转换为TOML。解析TOML并将其转换为JSON。</p>
@@ -19,7 +19,7 @@
         https://tools.w3cschool.cn/toml-to-json
       </a>
     </p>
-    <div :style="{ width: props.viewWidth }">TEST</div>
+    <div :style="{ width: props.workAreaWidth }">TEST</div>
   </div>
 </template>
 
@@ -28,7 +28,7 @@ import { defineProps } from 'vue'
 
 const props = defineProps({
   // 编辑器宽度
-  viewWidth: {
+  workAreaWidth: {
     type: String,
     default: '100%'
   }
