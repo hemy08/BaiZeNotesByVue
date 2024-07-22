@@ -49,6 +49,7 @@ import HTMLSpecialChar from './Informations/HTMLSpecialChar.vue'
 import FormulaSymbol from './Informations/FormulaSymbol.vue'
 import PhysicalSymbolic from './Informations/PhysicalSymbolic.vue'
 import SubnetMaskMapTable from './Informations/SubnetMaskMapTable.vue'
+import HttpStatusCode from './Informations/HttpStatusCode.vue'
 
 let isShowPluginToolsContainer = false
 
@@ -89,7 +90,8 @@ const pluginTools = [
   { id: 'html-special-char-table', component: HTMLSpecialChar },
   { id: 'formula-symbol-table', component: FormulaSymbol },
   { id: 'physical-symbolic-constant', component: PhysicalSymbolic },
-  { id: 'subnet-mask-map-table', component: SubnetMaskMapTable }
+  { id: 'subnet-mask-map-table', component: SubnetMaskMapTable },
+  { id: 'http-status-code-table', component: HttpStatusCode }
 ]
 
 const props = defineProps({

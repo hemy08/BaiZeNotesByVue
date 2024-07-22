@@ -3,7 +3,7 @@ export const WebLinks: MenuContext[] = [
   { label: 'PlantText编辑器', context: 'https://www.planttext.com/' },
   { label: '在线思维导图工具', context: 'https://www.mindline.cn/webapp' },
   { label: '在线流程图绘制', context: 'https://app.diagrams.net/' },
-  { label: 'PlantUml 网页服务器', context: 'http://www.plantuml.com/plantuml/uml/' },
+  { label: 'PlantUml 网页服务器', context: 'http://www.plantuml.com/plantuml/uml/' }
 ]
 
 export const JYShare: MenuContext[] = [
@@ -45,7 +45,10 @@ export const EncodeDecode: MenuContext[] = [
   { label: 'JSON格式化', context: 'https://www.w3cschool.cn/tools/index?name=jsonparse' },
   { label: 'Escape加密/解密', context: 'https://www.w3cschool.cn/tools/index?name=escapepwd' },
   { label: 'MD5在线加密', context: 'https://www.w3cschool.cn/tools/index?name=CreateMD5Password' },
-  { label: '高强度密码生成', context: 'https://www.w3cschool.cn/tools/index?name=CreateStrongPassword' },
+  {
+    label: '高强度密码生成',
+    context: 'https://www.w3cschool.cn/tools/index?name=CreateStrongPassword'
+  },
   { label: '摩尔斯密码', context: 'https://www.w3cschool.cn/tools/index?name=morse' },
   { label: '在线算法加密', context: 'https://www.w3cschool.cn/tools/index?name=hash_md5_sha' },
   { label: '生成htpasswd', context: 'https://www.w3cschool.cn/tools/index?name=htpasswd' },
@@ -73,6 +76,17 @@ export const OnlineIDE: MenuContext[] = [
   { label: 'TypeScript语言', context: 'https://www.w3cschool.cn/tryrun/runcode?lang=typescript' }
 ]
 
+export const Links: MenuContext[] = [
+  { label: '菜鸟工具', context: 'https://www.jyshare.com/' },
+  { label: 'W3CSchool工具', context: 'https://tools.w3cschool.cn/' },
+  { label: '百宝箱', context: 'https://www.box3.cn/#' },
+  { label: 'ToolFK', context: 'https://www.toolfk.com/' },
+  { label: 'JSON工具箱BeJson', context: 'https://www.bejson.com/' },
+  { label: '即时工具67tool', context: 'https://www.67tool.com/' },
+  { label: '在线工具ToolLu', context: 'https://tool.lu/' },
+  { label: 'SoJSON在线解析', context: 'https://www.sojson.com/jshtml.html' }
+]
+
 function GenWebOnlineSubMenu(
   mainWindow: Electron.BrowserWindow,
   items: MenuContext[]
@@ -91,48 +105,7 @@ export function getAppOnlineLinkMenuItem(
   mainWindow: Electron.BrowserWindow
 ): Electron.MenuItemConstructorOptions {
   const OnlineLinkMenuItems: Electron.MenuItemConstructorOptions[] = [
-    {
-      label: '菜鸟工具',
-      click: () => {
-        mainWindow.webContents.send('open-url-in-web-browser-window', 'https://www.jyshare.com/')
-      }
-    },
-    {
-      label: 'W3CSchool工具',
-      click: () => {
-        mainWindow.webContents.send('open-url-in-web-browser-window', 'https://tools.w3cschool.cn/')
-      }
-    },
-    {
-      label: 'ToolFK',
-      click: () => {
-        mainWindow.webContents.send('open-url-in-web-browser-window', 'https://www.toolfk.com/')
-      }
-    },
-    {
-      label: 'BEJSON',
-      click: () => {
-        mainWindow.webContents.send('open-url-in-web-browser-window', 'https://www.bejson.com/')
-      }
-    },
-    {
-      label: '即时工具67tool',
-      click: () => {
-        mainWindow.webContents.send('open-url-in-web-browser-window', 'https://www.67tool.com/')
-      }
-    },
-    {
-      label: '在线工具ToolLu',
-      click: () => {
-        mainWindow.webContents.send('open-url-in-web-browser-window', 'https://tool.lu/')
-      }
-    },
-    {
-      label: 'SOJSON在线解析',
-      click: () => {
-        mainWindow.webContents.send('open-url-in-web-browser-window', 'https://www.sojson.com/jshtml.html')
-      }
-    },
+    ...GenWebOnlineSubMenu(mainWindow, Links),
     { type: 'separator' },
     {
       label: '流程图网站',

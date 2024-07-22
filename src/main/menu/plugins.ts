@@ -45,6 +45,7 @@ export const Information: MenuContext[] = [
   { label: '数学公式符号', context: 'formula-symbol-table' },
   { label: '物理符号常数', context: 'physical-symbolic-constant' },
   { label: '子网掩码对照表', context: 'subnet-mask-map-table' },
+  { label: 'HTTP状态码查询', context: 'http-status-code-table' },
 ]
 
 function GenPluginToolsShow(
@@ -79,7 +80,7 @@ export function getAppPluginsMenuItem(
       submenu: GenPluginToolsShow(mainWindow, NetWork)
     },
     {
-      label: '字符查询',
+      label: '常用对照表',
       submenu: GenPluginToolsShow(mainWindow, Information)
     }
   ]
