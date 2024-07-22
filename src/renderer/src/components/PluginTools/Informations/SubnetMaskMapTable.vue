@@ -11,7 +11,7 @@
         placeholder="Search ASCII..."
       />
     </div>
-    <table style="margin-top: 20px" class="subnet-mask-map-table-style" :style="{ width: subnetMaskMapTable }">
+    <table style="margin-top: 20px" class="subnet-mask-map-table-style" :style="{ width: subnetMaskMapTableWidth }">
       <thead>
         <tr>
           <th class="subnet-mask-map-table-th">掩码</th>

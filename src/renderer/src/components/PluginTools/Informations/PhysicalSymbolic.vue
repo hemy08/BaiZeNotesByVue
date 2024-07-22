@@ -11,7 +11,7 @@
         placeholder="Search ASCII..."
       />
     </div>
-    <table style="margin-top: 20px" class="physical-symbol-table-style" :style="{ width: physicalSymbolTable }">
+    <table style="margin-top: 20px" class="physical-symbol-table-style" :style="{ width: physicalSymbolTableWidth }">
       <thead>
         <tr>
           <th class="physical-symbol-table-th">符号</th>

@@ -26,9 +26,9 @@
         :style="addrText"
       />
       <div style="margin-left: 5px; margin-right: 5px">/</div>
-      <input v-model="inputIpv4Mask" type="text" class="ipv4-addr-text" :style="addrText" />
-      <button style="margin-left: 10px" class="plugin-tools-btn" @click="SubnetCalc">计算</button>
-      <button style="margin-left: 10px" class="plugin-tools-btn" @click="SubnetReset">重置</button>
+      <input v-model="inputIpv4Cidr" type="number" class="ipv4-addr-text" :style="addrText" />
+      <button style="margin-left: 10px" class="plugin-tools-btn" @click="NetWorkCalc('subnet')">计算</button>
+      <button style="margin-left: 10px" class="plugin-tools-btn" @click="NetWorkReset('subnet')">重置</button>
     </div>
     <div class="div-style-display-row" style="margin-top: 10px">
       <div class="subnet-label">可用地址：</div>
@@ -52,44 +52,87 @@
     </div>
     <div style="color: grey">在网络掩码“位格式”也被称为CIDR格式（CIDR=无类别域间路由选择）。</div>
     <h3>子网掩码转换器（对位点分十进制格式）</h3>
+    <div style="color: grey">根据网络掩码，计算掩码位。掩码不合法，返回无效。</div>
     <div class="div-style-display-row" style="margin-top: 10px">
       <div class="subnet-label">设置：</div>
       <input
-        v-for="(octet, index) in zeroIPV4"
+        v-for="(_, index) in inputNetworkMask"
         :key="index"
+        v-model="inputNetworkMask[index]"
         type="text"
         class="ipv4-addr-text"
         :style="addrText"
-        :value="octet"
-        @input="updateIpPart(index, $event.target.value)"
       />
       <div style="margin-left: 5px; margin-right: 5px">结果/</div>
-      <input type="text" class="subnet-out-number" :style="addrText" readonly />
-      <button style="margin-left: 10px" class="plugin-tools-btn" @click="SubnetCalc">计算</button>
-      <button style="margin-left: 10px" class="plugin-tools-btn" @click="SubnetReset">重置</button>
+      <input v-model="outNetworkMaskBits" type="text" class="subnet-out-number" :style="addrText" readonly />
+      <button style="margin-left: 10px" class="plugin-tools-btn" @click="NetWorkCalc('mask')">计算</button>
+      <button style="margin-left: 10px" class="plugin-tools-btn" @click="NetWorkReset('mask')">重置</button>
     </div>
     <h3>子网掩码转换器（位点分十进制格式）</h3>
     <div class="div-style-display-row" style="margin-top: 10px">
       <div class="subnet-label">设置：</div>
       <div style="margin-left: 5px; margin-right: 5px">/</div>
-      <input type="text" class="ipv4-addr-text" :style="addrText" />
-      <button style="margin-left: 10px" class="plugin-tools-btn" @click="SubnetCalc">计算</button>
-      <button style="margin-left: 10px" class="plugin-tools-btn" @click="SubnetReset">重置</button>
+      <input v-model="inputNetMaskBits" type="number" class="ipv4-addr-text" :style="addrText" />
+      <button style="margin-left: 10px" class="plugin-tools-btn" @click="NetWorkCalc('maskBit')">计算</button>
+      <button style="margin-left: 10px" class="plugin-tools-btn" @click="NetWorkReset('maskBit')">重置</button>
     </div>
     <div
-      v-for="item in maskOutPut"
+      v-for="item in bitsMaskOutPut"
       :key="item.id"
       class="div-style-display-row"
       style="margin-top: 10px"
     >
       <div class="subnet-label">{{ item.label }}</div>
       <input
-        v-for="(octet, index) in item.ip"
+        v-for="(_, index) in item.ip"
         :key="index"
-        type="text"
+        v-model="item.ip[index]"
         class="subnet-out-number"
         :style="addrText"
-        :value="octet"
+        readonly
+      />
+    </div>
+    <div class="div-style-display-row" style="margin-top: 10px">
+      <div class="subnet-label">可用地址数：</div>
+      <input v-model="maskBitValidNumber" class="subnet-out-number" :style="addrText" readonly />
+    </div>
+    <div class="div-style-display-row" style="margin-top: 10px">
+      <div class="subnet-label">地址总数量：</div>
+      <input v-model="maskBitTotalNumber" class="subnet-out-number" :style="addrText" readonly />
+    </div>
+    <h3>所需IP数量掩码地址转换器</h3>
+    <div style="color: grey">根据所需的IP地址数量，计算相应的掩码Bit数、十进制、十六进制掩码</div>
+    <div class="div-style-display-row" style="margin-top: 10px">
+      <div class="subnet-label">设置：</div>
+      <input v-model="inputIpNumber" type="number" class="ipv4-addr-text" :style="addrText" />
+      <button style="margin-left: 10px" class="plugin-tools-btn" @click="NetWorkCalc('number')">计算</button>
+      <button style="margin-left: 10px" class="plugin-tools-btn" @click="NetWorkReset('number')">重置</button>
+    </div>
+    <div class="div-style-display-row" style="margin-top: 10px">
+      <div class="subnet-label">掩码位数：</div>
+      <input v-model="ipNumberBits" class="subnet-out-number" :style="addrText" readonly />
+    </div>
+    <div class="div-style-display-row" style="margin-top: 10px">
+      <div class="subnet-label">可用地址数：</div>
+      <input v-model="ipNumberBitsValid" class="subnet-out-number" :style="addrText" readonly />
+    </div>
+    <div class="div-style-display-row" style="margin-top: 10px">
+      <div class="subnet-label">地址总数量：</div>
+      <input v-model="ipNumberBitsTotal" class="subnet-out-number" :style="addrText" readonly />
+    </div>
+    <div
+      v-for="item in ipNumberOutPut"
+      :key="item.id"
+      class="div-style-display-row"
+      style="margin-top: 10px"
+    >
+      <div class="subnet-label">{{ item.label }}</div>
+      <input
+        v-for="(_, index) in item.ip"
+        :key="index"
+        v-model="item.ip[index]"
+        class="subnet-out-number"
+        :style="addrText"
         readonly
       />
     </div>
@@ -98,6 +141,7 @@
 
 <script setup lang="ts">
 import { computed, defineProps, ref, watch } from 'vue'
+import * as net from './NetWork'
 
 const props = defineProps({
   // 编辑器宽度
@@ -109,29 +153,54 @@ const props = defineProps({
 
 const workWidthVal = ref(props.workAreaWidth)
 const inputIpv4Addr = ref([192, 168, 16, 0])
-const inputIpv4Mask = ref(24)
+const inputNetworkMask = ref([255, 255, 255, 0])
+const outNetworkMaskBits = ref('24')
+const inputNetMaskBits = ref(24)
+const inputIpv4Cidr = ref('24')
 const validAddrNumber = ref(0)
+const maskBitValidNumber = ref(0)
+const maskBitTotalNumber = ref(0)
+const inputIpNumber = ref(255)
+const ipNumberBits = ref(0)
+const ipNumberBitsValid = ref(0)
+const ipNumberBitsTotal = ref(0)
 
 interface IPNET {
   id: string
   label: string
-  ip: number[]
+  ip: string[]
 }
 
-const subnetOutPut: IPNET[] = ref({
-  mask: { id: 'subnet-addr-input-mask', label: '掩码：', ip: [0, 0, 0, 0] },
-  network: { id: 'subnet-addr-input-network', label: '网络：', ip: [0, 0, 0, 0] },
-  first: { id: 'subnet-addr-input-first', label: '第一个可用：', ip: [0, 0, 0, 0] },
-  last: { id: 'subnet-addr-input-last', label: '最后可用：', ip: [0, 0, 0, 0] },
-  broadcasts: { id: 'subnet-addr-input-broadcasts', label: '广播：', ip: [0, 0, 0, 0] }
+interface CombSubNet {
+  mask: IPNET
+  network: IPNET
+  first: IPNET
+  last: IPNET
+  broadcasts: IPNET
+}
+
+const subnetOutPut = ref<CombSubNet>({
+  mask: { id: 'subnet-addr-input-mask', label: '网络掩码：', ip: ['0', '0', '0', '0'] },
+  network: { id: 'subnet-addr-input-network', label: '网络地址：', ip: ['0', '0', '0', '0'] },
+  first: { id: 'subnet-addr-input-first', label: '第一个可用：', ip: ['0', '0', '0', '0'] },
+  last: { id: 'subnet-addr-input-last', label: '最后可用：', ip: ['0', '0', '0', '0'] },
+  broadcasts: { id: 'subnet-addr-input-broadcasts', label: '广播：', ip: ['0', '0', '0', '0'] }
 })
 
-const maskOutPut: IPNET[] = [
-  { id: 'mask-output-dec', label: 'Dec 十进制：', ip: [0, 0, 0, 0] },
-  { id: 'mask-output-hex', label: 'Hex 十六进制：', ip: [0, 0, 0, 0] }
-]
+interface CombinedIPNET {
+  dec: IPNET
+  hex: IPNET
+}
 
-const zeroIPV4 = [0, 0, 0, 0]
+const bitsMaskOutPut = ref<CombinedIPNET>({
+  dec: { id: 'mask-output-dec', label: 'Dec 十进制：', ip: ['0', '0', '0', '0'] },
+  hex: { id: 'mask-output-hex', label: 'Hex 十六进制：', ip: ['0', '0', '0', '0'] }
+})
+
+const ipNumberOutPut = ref<CombinedIPNET>({
+  dec: { id: 'ip-number-mask-output-dec', label: 'Dec 十进制：', ip: ['0', '0', '0', '0'] },
+  hex: { id: 'ip-number-mask-output-hex', label: 'Hex 十六进制：', ip: ['0', '0', '0', '0'] }
+})
 
 watch(
   () => props.workAreaWidth,
@@ -155,91 +224,22 @@ function openUrl(link) {
   window.open(link, '_blank', 'noopener, noreferrer')
 }
 
-function CalculatedValidAddrNumber() {
-  const hostAddrBits = 32 - inputIpv4Mask.value
-  const hostNum1 = 2 ** hostAddrBits - 1
-  // 可用地址中，去掉网络地址和广播地址
-  validAddrNumber.value = hostNum1 - 2
-}
-
-// 计算地址是否有效
-function isValidIPAddress(ip: number[]) {
-  if (ip.length !== 4) {
-    return false // IP地址应该有4个八位字节
-  }
-  for (let i = 0; i < 4; i++) {
-    if (ip[i] < 0 || ip[i] > 255) {
-      return false // 任何一个八位字节不在0-255范围内都无效
-    }
-  }
-  return true // 所有八位字节都在0-255范围内，IP地址有效
-}
-
-// 地址偏移计算
-function CalculatedValidAddr(ip: number[], offset: number) {
-  ip[3] = ip[3] + offset
-  if (ip[3] > 255) {
-    ip[3] -= 255
-    ip[2] = ip[2] + offset
-    if (ip[2] > 255) {
-      ip[2] -= 255
-      ip[1] = ip[1] + offset
-      if (ip[1] > 255) {
-        ip[1] -= 255
-        ip[0] = ip[0] + offset
-        if (ip[0] > 255) {
-          ip[0] = '无效'
-          ip[1] = '无效'
-          ip[2] = '无效'
-          ip[3] = '无效'
-        }
-      }
-    }
-  }
-}
-
-function IpAddrAssign(dest: number[], src: number[]) {
-  dest[0] = src[0]
-  dest[1] = src[1]
-  dest[2] = src[2]
-  dest[3] = src[3]
-}
-
-function CalculatedNetworkAddr() {
-  IpAddrAssign(subnetOutPut.value['network'].ip, inputIpv4Addr.value)
-}
-
-function CalculatedFirstAddr() {
-  IpAddrAssign(subnetOutPut.value['first'].ip, inputIpv4Addr.value)
-  CalculatedValidAddr(subnetOutPut.value['first'].ip, 1)
-}
-
-function CalculatedLastAddr() {
-  IpAddrAssign(subnetOutPut.value['last'].ip, subnetOutPut.value['broadcasts'].ip)
-  subnetOutPut.value['last'].ip[3] = subnetOutPut.value['broadcasts'].ip[3] - 1
-}
-
-function CalculatedBroadcastsAddr() {
-  IpAddrAssign(subnetOutPut.value['broadcasts'].ip, inputIpv4Addr.value)
-  subnetOutPut.value['broadcasts'].ip[3] = 255
-}
-
 function SubnetCalc() {
-  console.log('inputIpv4Addr', inputIpv4Addr)
-  if (!isValidIPAddress(inputIpv4Addr.value)) {
+  if (!net.isValidIPV4(inputIpv4Addr.value)) {
     alert('输入IP地址无效')
     return
   }
+  const netIpv4 = new net.IPV4(inputIpv4Addr.value.join('.'), inputIpv4Cidr.value)
   // 计算可用地址个数
-  CalculatedValidAddrNumber()
+  validAddrNumber.value = netIpv4.hostNumber
+  // 计算掩码
+  subnetOutPut.value['broadcasts'].ip = netIpv4.broadcastAddr.split('.')
   // 网络地址和主机地址一致
-  CalculatedNetworkAddr()
+  subnetOutPut.value['network'].ip = netIpv4.networkAddr.split('.')
   // 广播地址是地址段的最后一个地址
-  CalculatedBroadcastsAddr()
-  // 第一个可用地址
-  CalculatedFirstAddr()
-  // 最后一个可用地址
-  CalculatedLastAddr()
+  subnetOutPut.value['mask'].ip = netIpv4.networkMask.split('.')
+  subnetOutPut.value['first'].ip = netIpv4.firstAddress.split('.')
+  subnetOutPut.value['last'].ip = netIpv4.lastAddress.split('.')
 }
 
 function SubnetReset() {
@@ -249,8 +249,60 @@ function SubnetReset() {
   })
 }
 
-function updateIpPart(index, val) {
-  console.log(index, val)
+function getBitsByMask() {
+  outNetworkMaskBits.value = net.GetBitsWithMask(inputNetworkMask.value.join('.'))
+}
+
+function getBitsByMaskReset() {
+  inputNetworkMask.value = [255, 255, 255, 0]
+}
+
+function getMaskByBits() {
+  bitsMaskOutPut.value.dec.ip = net.GetMaskWithBits(inputNetMaskBits.value).split('.')
+  bitsMaskOutPut.value.hex.ip = net.GetMaskWithBits(inputNetMaskBits.value, 16).split('.')
+  maskBitValidNumber.value = net.GetHostNumber(inputNetMaskBits.value)
+  maskBitTotalNumber.value = maskBitValidNumber.value + 2
+}
+
+function getMaskByBitsReset() {
+  bitsMaskOutPut.value.dec.ip = ['0', '0', '0', '0']
+  bitsMaskOutPut.value.hex.ip = ['0', '0', '0', '0']
+  maskBitValidNumber.value = 0
+  maskBitTotalNumber.value = 0
+}
+
+function getMaskByIPNumber() {
+  ipNumberBits.value = net.GetMaskByIpNumber(inputIpNumber.value)
+  ipNumberOutPut.value.dec.ip = net.GetMaskWithBits(ipNumberBits.value).split('.')
+  ipNumberOutPut.value.hex.ip = net.GetMaskWithBits(ipNumberBits.value, 16).split('.')
+  ipNumberBitsValid.value = net.GetHostNumber(ipNumberBits.value)
+  ipNumberBitsTotal.value = ipNumberBitsValid.value + 2
+}
+
+function getMaskByIPNumberReset() {
+  ipNumberOutPut.value.dec.ip = ['0', '0', '0', '0']
+  ipNumberOutPut.value.hex.ip = ['0', '0', '0', '0']
+  ipNumberBits.value = 0
+  ipNumberBitsValid.value = 0
+  ipNumberBitsTotal.value = 0
+  inputIpNumber.value = 255
+}
+
+const netWork = {
+  subnet: { calc: SubnetCalc, reset: SubnetReset },
+  mask: { calc: getBitsByMask, reset: getBitsByMaskReset },
+  maskBit: { calc: getMaskByBits, reset: getMaskByBitsReset },
+  number: { calc: getMaskByIPNumber, reset: getMaskByIPNumberReset }
+}
+
+function NetWorkCalc(name: string) {
+  const handler = netWork[name]
+  handler.calc()
+}
+
+function NetWorkReset(name: string) {
+  const handler = netWork[name]
+  handler.reset()
 }
 </script>
 

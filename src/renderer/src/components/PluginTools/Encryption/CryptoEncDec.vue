@@ -98,7 +98,7 @@ const props = defineProps({
     default: '100%'
   }
 })
-let workWidthVal = ''
+let workWidthVal: number
 
 watch(
   () => props.workAreaWidth,
