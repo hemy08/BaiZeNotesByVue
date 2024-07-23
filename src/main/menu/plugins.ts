@@ -47,7 +47,8 @@ export const Information: MenuContext[] = [
   { label: '子网掩码对照表', context: 'subnet-mask-map-table' },
   { label: 'HTTP状态码查询', context: 'http-status-code-table' },
   { label: '数字大小写', context: 'numeric-case-table' },
-  { label: '常用字体', context: 'normal-font-style-table' }
+  { label: '常用字体对照', context: 'normal-font-style-table' },
+  { label: '文件类型（MIME头）', context: 'file-name-extension-table' }
 ]
 
 function GenPluginToolsShow(
