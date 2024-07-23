@@ -46,6 +46,8 @@ export const Information: MenuContext[] = [
   { label: '物理符号常数', context: 'physical-symbolic-constant' },
   { label: '子网掩码对照表', context: 'subnet-mask-map-table' },
   { label: 'HTTP状态码查询', context: 'http-status-code-table' },
+  { label: '数字大小写', context: 'numeric-case-table' },
+  { label: '常用字体', context: 'normal-font-style-table' }
 ]
 
 function GenPluginToolsShow(
@@ -92,4 +94,3 @@ export function getAppPluginsMenuItem(
     submenu: pluginsMenuItems
   }
 }
-

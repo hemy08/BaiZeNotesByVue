@@ -131,35 +131,63 @@ function createLabelList(doc: Document): HTMLElement {
 
 function createFontFamilySelect(doc: Document): HTMLElement {
   const options: digcom.Option[] = [
-    { value: 'Arial', optCss: "font-family: 'Arial'" },
-    { value: 'Cascadia Code', optCss: "font-family: 'Cascadia Code'" },
-    { value: 'Consolas', optCss: "font-family: 'Consolas'" },
-    { value: 'DejaVu Sans Mono', optCss: "font-family: 'DejaVu Sans Mono'" },
-    { value: 'Droid Sans', optCss: "font-family: 'Droid Sans'" },
-    { value: 'Fira Sans', optCss: "font-family: 'Fira Sans'" },
-    { value: 'Fira Code', optCss: "font-family: 'Fira Code'" },
-    { value: 'Hack', optCss: "font-family: 'Hack'" },
-    { value: 'Helvetica Neue', optCss: "font-family: 'Helvetica Neue'" },
-    { value: 'Inter', optCss: "font-family: 'Inter'" },
-    { value: 'JetBrains Mono', optCss: "font-family: 'JetBrains Mono'" },
-    { value: 'Menlo', optCss: "font-family: 'Menlo'" },
-    { value: 'Roboto', optCss: "font-family: 'Roboto'" },
-    { value: 'Oxygen', optCss: "font-family: 'Oxygen'" },
-    { value: 'sans-serif', optCss: "font-family: 'sans-serif'" },
-    { value: 'Segoe UI', optCss: "font-family: 'Segoe UI'" },
-    { value: 'SimHei', optCss: "font-family: 'SimHei'" },
-    { value: 'Source Code Pro', optCss: "font-family: 'Source Code Pro'" },
-    { value: 'Ubuntu', optCss: "font-family: 'Ubuntu'" },
-    { value: 'Ubuntu Mono', optCss: "font-family: 'Ubuntu Mono'" }
+    { value: 'Arial', optCss: "font-family:'Arial';font-size:18px" },
+    { value: 'Cascadia Code', optCss: "font-family:'Cascadia Code';font-size:18px" },
+    { value: 'Consolas', optCss: "font-family:'Consolas';font-size:18px" },
+    { value: 'DejaVu Sans Mono', optCss: "font-family:'DejaVu Sans Mono';font-size:18px" },
+    { value: 'Droid Sans', optCss: "font-family:'Droid Sans';font-size:18px" },
+    { value: 'Fira Sans', optCss: "font-family:'Fira Sans';font-size:18px" },
+    { value: 'Fira Code', optCss: "font-family:'Fira Code';font-size:18px" },
+    { value: 'Hack', optCss: "font-family:'Hack';font-size:18px" },
+    { value: 'Helvetica Neue', optCss: "font-family:'Helvetica Neue';font-size:18px" },
+    { value: 'Inter', optCss: "font-family:'Inter';font-size:18px" },
+    { value: 'JetBrains Mono', optCss: "font-family:'JetBrains Mono';font-size:18px" },
+    { value: 'Menlo', optCss: "font-family:'Menlo';font-size:18px" },
+    { value: 'Roboto', optCss: "font-family:'Roboto';font-size:18px" },
+    { value: 'Oxygen', optCss: "font-family:'Oxygen';font-size:18px" },
+    { value: 'sans-serif', optCss: "font-family:'sans-serif';font-size:18px" },
+    { value: 'Segoe UI', optCss: "font-family:'Segoe UI';font-size:18px" },
+    { value: 'SimHei', optCss: "font-family:'SimHei';font-size:18px" },
+    { value: 'Source Code Pro', optCss: "font-family:'Source Code Pro';font-size:18px" },
+    { value: 'Ubuntu', optCss: "font-family:'Ubuntu';font-size:18px" },
+    { value: 'Ubuntu Mono', optCss: "font-family:'Ubuntu Mono';font-size:18px" },
+    { value: 'Helvetica', optCss: "font-family:'Helvetica';font-size:18px" },
+    { value: 'Verdana', optCss: "font-family:'Verdana';font-size:18px" },
+    { value: 'Geneva', optCss: "font-family:'Geneva';font-size:18px" },
+    { value: 'Tahoma', optCss: "font-family:'Tahoma';font-size:18px" },
+    { value: 'Trebuchet MS', optCss: "font-family:'Trebuchet MS';font-size:18px" },
+    { value: '黑体', optCss: "font-family:'SimHei';font-size:18px" },
+    { value: '宋体', optCss: "font-family:'SimSun';font-size:18px" },
+    { value: '新宋体', optCss: "font-family:'NSimSun';font-size:18px" },
+    { value: '仿宋', optCss: "font-family:'FangSong';font-size:18px" },
+    { value: '楷体', optCss: "font-family:'KaiTi';font-size:18px" },
+    { value: '微软雅黑', optCss: "font-family:'Microsoft YaHei';font-size:18px" },
+    { value: '隶书', optCss: "font-family:'LiSu';font-size:18px" },
+    { value: '幼圆', optCss: "font-family:'YouYuan';font-size:18px" },
+    { value: '华文细黑', optCss: "font-family:'STXihei';font-size:18px" },
+    { value: '华文楷体', optCss: "font-family:'STKaiti';font-size:18px" },
+    { value: '华文楷体', optCss: "font-family:'STKaiti';font-size:18px" },
+    { value: '华文宋体', optCss: "font-family:'STSong';font-size:18px" },
+    { value: '华文中宋', optCss: "font-family:'STZhongsong';font-size:18px" },
+    { value: '华文仿宋', optCss: "font-family:'STFangsong';font-size:18px" },
+    { value: '方正舒体', optCss: "font-family:'FZShuTi';font-size:18px" },
+    { value: '方正姚体', optCss: "font-family:'FZYaoti';font-size:18px" },
+    { value: '华文彩云', optCss: "font-family:'STCaiyun';font-size:18px" },
+    { value: '华文琥珀', optCss: "font-family:'STHupo';font-size:18px" },
+    { value: '华文隶书', optCss: "font-family:'STLiti';font-size:18px" },
+    { value: '华文行楷', optCss: "font-family:'STXingkai';font-size:18px" },
+    { value: '华文新魏', optCss: "font-family:'STXinwei';font-size:18px" },
+    { value: '华文黑体', optCss: "font-family:'STHeiti';font-size:18px" }
   ]
 
   const FontFamily = digcom.NewSelect(doc, options)
   FontFamily.name = 'edit-font-family'
   FontFamily.id = 'edit-font-family'
+  FontFamily.style.cssText = 'width:250px;height:25px'
 
   const DivEle = doc.createElement('div')
   DivEle.className = 'input-style'
-  DivEle.style.cssText = 'width:250px;margin-top: 15px;'
+  DivEle.style.cssText = 'width:250px;margin-top: 15px;height:25px'
   DivEle.appendChild(FontFamily)
   return DivEle
 }
@@ -167,16 +195,17 @@ function createFontFamilySelect(doc: Document): HTMLElement {
 function createFontSizeSelect(doc: Document): HTMLElement {
   const options: digcom.Option[] = []
   for (let i = 5; i < 40; i++) {
-    options.push({ value: `${i}pt` })
+    options.push({ value: `${i}pt`, optCss: 'font-size:18px' })
   }
 
   const FontSize = digcom.NewSelect(doc, options)
   FontSize.name = 'edit-font-size'
   FontSize.id = 'edit-font-size'
+  FontSize.style.cssText = 'width: 80px;height:25px'
 
   const DivEle = doc.createElement('div')
   DivEle.className = 'input-style'
-  DivEle.style.cssText = 'width: 80px;margin-top: 15px;'
+  DivEle.style.cssText = 'width: 80px;margin-top: 10px;height:25px'
   DivEle.appendChild(FontSize)
   return DivEle
 }

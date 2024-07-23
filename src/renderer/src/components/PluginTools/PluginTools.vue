@@ -50,6 +50,8 @@ import FormulaSymbol from './Informations/FormulaSymbol.vue'
 import PhysicalSymbolic from './Informations/PhysicalSymbolic.vue'
 import SubnetMaskMapTable from './Informations/SubnetMaskMapTable.vue'
 import HttpStatusCode from './Informations/HttpStatusCode.vue'
+import NumericCase from './Informations/NumericCase.vue'
+import NormalFontStyle from './Informations/NormalFontStyle.vue'
 
 let isShowPluginToolsContainer = false
 
@@ -91,7 +93,9 @@ const pluginTools = [
   { id: 'formula-symbol-table', component: FormulaSymbol },
   { id: 'physical-symbolic-constant', component: PhysicalSymbolic },
   { id: 'subnet-mask-map-table', component: SubnetMaskMapTable },
-  { id: 'http-status-code-table', component: HttpStatusCode }
+  { id: 'http-status-code-table', component: HttpStatusCode },
+  { id: 'numeric-case-table', component: NumericCase },
+  { id: 'normal-font-style-table', component: NormalFontStyle }
 ]
 
 const props = defineProps({

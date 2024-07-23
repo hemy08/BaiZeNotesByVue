@@ -34,6 +34,17 @@ interface HTTPStatusCodeInfo {
   desc: string
 }
 
+interface NumericCaseInfo {
+  number: string
+  lower: string
+  upper: string
+}
+
+interface NormalFontStyle {
+  name: string
+  cssStyle: string
+}
+
 export const ASCIITable: ASCIIInfo[] = [
   { bin: '0000 0000', oct: '00', dec: '0', hex: '0x00', abridge: 'NUL(null)', mark: '空字符' },
   {
@@ -526,15 +537,15 @@ export const HTMLSpecCharTable: HTMLChar[] = [
   { id: '&#8226', mark: '着重号' },
   { id: '&#9702', mark: '句号' },
   { id: '&#38', mark: '逻辑与符号' },
-  { id: '&#8478', mark1: 'R标' },
-  { id: '&#124', mark2: '竖线' },
-  { id: '&#64', mark3: '邮箱符号' },
-  { id: '&#8451', mark1: '摄氏度' },
-  { id: '&#8457', mark2: '华氏度' },
-  { id: '&#176', mark3: '度' },
-  { id: '&#166', mark1: '竖虚线' },
-  { id: '&#8211', mark2: '连接符' },
-  { id: '&#8212', mark3: '横线' },
+  { id: '&#8478', mark: 'R标' },
+  { id: '&#124', mark: '竖线' },
+  { id: '&#64', mark: '邮箱符号' },
+  { id: '&#8451', mark: '摄氏度' },
+  { id: '&#8457', mark: '华氏度' },
+  { id: '&#176', mark: '度' },
+  { id: '&#166', mark: '竖虚线' },
+  { id: '&#8211', mark: '连接符' },
+  { id: '&#8212', mark: '横线' },
   { id: '&#8230', mark: '省略号' },
   { id: '&#182', mark: '行首符号' },
   { id: '&#8764', mark: '波浪线' },
@@ -851,6 +862,61 @@ export const HTTPStatusCodeTable: HTTPStatusCodeInfo[] = [
     desc: '服务器达到带宽限制。这不是一个官方的状态码，但是仍被广泛使用。'
   },
   { code: '510 Not Extended', desc: '获取资源所需要的策略并没有没满足。' }
+]
+
+export const NumericCaseTable: NumericCaseInfo[] = [
+  { number: '1', lower: '一', upper: '壹' },
+  { number: '2', lower: '二', upper: '贰' },
+  { number: '3', lower: '三', upper: '叁' },
+  { number: '4', lower: '四', upper: '肆' },
+  { number: '5', lower: '五', upper: '伍' },
+  { number: '6', lower: '六', upper: '陆' },
+  { number: '7', lower: '七', upper: '柒' },
+  { number: '8', lower: '八', upper: '捌' },
+  { number: '9', lower: '九', upper: '玖' },
+  { number: '10', lower: '十', upper: '拾' },
+  { number: '100', lower: '百', upper: '佰' },
+  { number: '1000', lower: '千', upper: '仟' },
+  { number: '10000', lower: '万', upper: '万' },
+  { number: '10000万', lower: '亿', upper: '亿' },
+  { number: '10000亿', lower: '兆', upper: '兆' },
+  { number: '10000兆', lower: '京', upper: '京' },
+  { number: '10000京', lower: '垓', upper: '垓' },
+  { number: '10000垓', lower: '秭', upper: '秭' },
+  { number: '10000秭', lower: '穰', upper: '穰' },
+  { number: '10000穰', lower: '沟', upper: '沟' },
+  { number: '10000沟', lower: '涧', upper: '涧' }
+]
+
+export const NormalFontTable: NormalFontStyle[] = [
+  { name: 'Arial', cssStyle: 'Arial' },
+  { name: 'Helvetica', cssStyle: 'Helvetica' },
+  { name: 'Verdana', cssStyle: 'Verdana' },
+  { name: 'Geneva', cssStyle: 'Geneva' },
+  { name: 'Tahoma', cssStyle: 'Tahoma' },
+  { name: 'Trebuchet MS', cssStyle: 'Trebuchet MS' },
+  { name: '黑体', cssStyle: 'SimHei' },
+  { name: '宋体', cssStyle: 'SimSun' },
+  { name: '新宋体', cssStyle: 'NSimSun' },
+  { name: '仿宋', cssStyle: 'FangSong' },
+  { name: '楷体', cssStyle: 'KaiTi' },
+  { name: '微软雅黑', cssStyle: 'Microsoft YaHei' },
+  { name: '隶书', cssStyle: 'LiSu' },
+  { name: '幼圆', cssStyle: 'YouYuan' },
+  { name: '华文细黑', cssStyle: 'STXihei' },
+  { name: '华文楷体', cssStyle: 'STKaiti' },
+  { name: '华文楷体', cssStyle: 'STKaiti' },
+  { name: '华文宋体', cssStyle: 'STSong' },
+  { name: '华文中宋', cssStyle: 'STZhongsong' },
+  { name: '华文仿宋', cssStyle: 'STFangsong' },
+  { name: '方正舒体', cssStyle: 'FZShuTi' },
+  { name: '方正姚体', cssStyle: 'FZYaoti' },
+  { name: '华文彩云', cssStyle: 'STCaiyun' },
+  { name: '华文琥珀', cssStyle: 'STHupo' },
+  { name: '华文隶书', cssStyle: 'STLiti' },
+  { name: '华文行楷', cssStyle: 'STXingkai' },
+  { name: '华文新魏', cssStyle: 'STXinwei' },
+  { name: '华文黑体', cssStyle: 'STHeiti' }
 ]
 
 export function CompressedArray(table: [], num: number): [] {
