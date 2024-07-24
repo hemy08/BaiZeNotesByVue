@@ -7,7 +7,7 @@ import { getAppToolsMenuItem } from './tools'
 import { getAppPluginsMenuItem } from './plugins'
 import { getAppHelpsMenuItem } from './helps'
 import { getAppEncodingMenuItem } from './encoding'
-import { getAppOnlineLinkMenuItem } from './links'
+import { getAppOnlineToolHomeMenuItem, getAppOnlineLinkMenuItem } from './links'
 
 export function getApplicationMenu(
   mainWindow: Electron.CrossProcessExports.BrowserWindow
@@ -21,6 +21,7 @@ export function getApplicationMenu(
     getAppSettingMenuItem(mainWindow),
     getAppToolsMenuItem(mainWindow),
     getAppPluginsMenuItem(mainWindow),
+    getAppOnlineToolHomeMenuItem(mainWindow),
     getAppOnlineLinkMenuItem(mainWindow),
     getAppHelpsMenuItem(mainWindow)
   ]

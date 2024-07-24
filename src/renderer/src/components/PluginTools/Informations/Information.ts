@@ -50,6 +50,11 @@ interface HTMLMimeType {
   type: string
 }
 
+interface GreeceLetterInfo {
+  char: string
+  code: string
+}
+
 export const ASCIITable: ASCIIInfo[] = [
   { bin: '0000 0000', oct: '00', dec: '0', hex: '0x00', abridge: 'NUL(null)', mark: '空字符' },
   {
@@ -1271,6 +1276,73 @@ export const HTMLMimeTypeTable: HTMLMimeType[] = [
   { ext: '.xap', type: 'application/x-silverlight-app' },
   { ext: '.crx', type: 'application/octet-stream' },
   { ext: '.php', type: 'text/html' }
+]
+
+export const GreeceLetterTable: GreeceLetterInfo[] = [
+  { char: '&Alpha;', code: '&#913;' },
+  { char: '&alpha;', code: '&#945;' },
+  { char: '&Beta;', code: '&#914;' },
+  { char: '&beta;', code: '&#946;' },
+  { char: '&Gamma;', code: '&#915;' },
+  { char: '&gamma;', code: '&#947;' },
+  { char: '&Delta;', code: '&#916;' },
+  { char: '&delta;', code: '&#948;' },
+  { char: '&Epsilon;', code: '&#917;' },
+  { char: '&epsilon;', code: '&#949;' },
+  { char: '&Zeta;', code: '&#918;' },
+  { char: '&zeta;', code: '&#950;' },
+  { char: '&Eta;', code: '&#919;' },
+  { char: '&eta;', code: '&#951;' },
+  { char: '&Theta;', code: '&#920;' },
+  { char: '&theta;', code: '&#952;' },
+  { char: '&Iota;', code: '&#921;' },
+  { char: '&iota;', code: '&#953;' },
+  { char: '&Kappa;', code: '&#922;' },
+  { char: '&kappa;', code: '&#954;' },
+  { char: '&Lambda;', code: '&#923;' },
+  { char: '&lambda;', code: '&#955;' },
+  { char: '&Mu;', code: '&#924;' },
+  { char: '&mu;', code: '&#956;' },
+  { char: '&Nu;', code: '&#925;' },
+  { char: '&nu;', code: '&#957;' },
+  { char: '&Xi;', code: '&#926;' },
+  { char: '&xi;', code: '&#958;' },
+  { char: '&Omicron;', code: '&#927;' },
+  { char: '&omicron;', code: '&#959;' },
+  { char: '&Pi;', code: '&#928;' },
+  { char: '&pi;', code: '&#960;' },
+  { char: '&Rho;', code: '&#929;' },
+  { char: '&rho;', code: '&#961;' },
+  { char: '&Sigma;', code: '&#930;' },
+  { char: '&sigmaf;', code: '&#962;' },
+  { char: '&Tau;', code: '&#931;' },
+  { char: '&sigma;', code: '&#963;' },
+  { char: '&Upsilon;', code: '&#932;' },
+  { char: '&tau;', code: '&#964;' },
+  { char: '&Phi;', code: '&#933;' },
+  { char: '&upsilon;', code: '&#965;' },
+  { char: '&Chi;', code: '&#934;' },
+  { char: '&phi;', code: '&#966;' },
+  { char: '&Psi;', code: '&#935;' },
+  { char: '&chi;', code: '&#967;' },
+  { char: '&Omega;', code: '&#936;' },
+  { char: '&psi;', code: '&#968;' },
+  { char: '&omega;', code: '&#969;' },
+  { char: '&thetasym;', code: '&#977;' },
+  { char: '&upsih;', code: '&#978;' },
+  { char: '&piv;', code: '&#982;' },
+  { char: '&weierp;', code: '&#8472;' },
+  { char: '&real;', code: '&#8476;' },
+  { char: '&image;', code: '&#8465;' },
+  { char: '&alefsym;', code: '&#8501;' },
+  { char: '&part;', code: '&#8706;' },
+  { char: '&forall;', code: '&#8704;' },
+  { char: '&empty;', code: '&#8709;' },
+  { char: '&notin;', code: '&#8713;' },
+  { char: '&nabla;', code: '&#8711;' },
+  { char: '&isin;', code: '&#8712;' },
+  { char: '&prop;', code: '&#8733;' },
+  { char: '&and;', code: '&#8869;' }
 ]
 
 export function CompressedArray(table: [], num: number): [] {

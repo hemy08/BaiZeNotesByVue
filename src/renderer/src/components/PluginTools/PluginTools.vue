@@ -53,6 +53,7 @@ import HttpStatusCode from './Informations/HttpStatusCode.vue'
 import NumericCase from './Informations/NumericCase.vue'
 import NormalFontStyle from './Informations/NormalFontStyle.vue'
 import FileNameExtension from './Informations/FileNameExtension.vue'
+import GreeceLetter from './Informations/GreeceLetter.vue'
 
 let isShowPluginToolsContainer = false
 
@@ -97,7 +98,8 @@ const pluginTools = [
   { id: 'http-status-code-table', component: HttpStatusCode },
   { id: 'numeric-case-table', component: NumericCase },
   { id: 'normal-font-style-table', component: NormalFontStyle },
-  { id: 'file-name-extension-table', component: FileNameExtension }
+  { id: 'file-name-extension-table', component: FileNameExtension },
+  { id: 'greece-letter-table', component: GreeceLetter }
 ]
 
 const props = defineProps({
