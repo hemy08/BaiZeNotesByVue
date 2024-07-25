@@ -1,11 +1,6 @@
-import { mermaidDiagrams } from './mermaid/mermaidTemplates'
-import { plantumlDiagrams } from './plantuml/plantumlTemplates'
-import { textBlocks } from './textblock/textblockTemplates'
-import { fileTemplates } from './writing/writingTemplates'
+import * as mermaid from './mermaid/mermaid'
+import * as plantuml from './plantuml/plantuml'
+import * as textblock from './textblock/textblock'
+import * as writing from './writing/writing'
 
-const mermaid = mermaidDiagrams
-const plantuml = plantumlDiagrams
-const texts = textBlocks
-const files = fileTemplates
-
-export { mermaid, plantuml, texts, files }
+export { mermaid, plantuml, textblock, writing }

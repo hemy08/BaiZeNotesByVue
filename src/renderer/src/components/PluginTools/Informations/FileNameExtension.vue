@@ -26,7 +26,7 @@
       </thead>
       <tbody>
         <tr v-for="(item, index) in filterFileNameExt" :key="index">
-          <template v-for="symbol in item" :key="symbol.id">
+          <template v-for="(symbol, idx) in item" :key="idx">
             <td class="file-name-ext-preview">
               {{ symbol.ext }}
             </td>

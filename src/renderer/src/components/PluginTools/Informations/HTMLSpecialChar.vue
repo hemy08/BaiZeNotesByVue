@@ -31,7 +31,7 @@
       </thead>
       <tbody>
         <tr v-for="(item, index) in filterHtmlSpecChar" :key="index">
-          <template v-for="symbol in item" :key="symbol.id">
+          <template v-for="(symbol, idx) in item" :key="idx">
             <td class="html-spec-char-table-preview" v-html="symbol.id"></td>
             <td class="html-spec-char-table-td">
               {{ symbol.id }}

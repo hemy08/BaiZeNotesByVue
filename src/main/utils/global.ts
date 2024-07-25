@@ -4,7 +4,6 @@ import { ipcMain } from 'electron'
 import * as fileUtils from './file-utils'
 import * as dialogs from '../dialogs/dialogs'
 
-
 export function globalInitialize(mainWindow: Electron.BrowserWindow) {
   global.hemy = {
     file: fileUtils,

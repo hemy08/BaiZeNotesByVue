@@ -20,9 +20,9 @@
       style="width: 1px; height: 100%; background-color: #00b0ff; color: #00b0ff; fill: #00b0ff"
     ></div>
     <div id="markdown-toc-heading">
-      <div v-for="item in tocArray" :key="item.id" @click="scrollToSection(item)">
+      <div v-for="item in tocArray" :id="item.id" :key="item.id" @click="scrollToSection(item)">
         <!-- 根据 level 添加适当的缩进 -->
-        <span v-html="getIndentedText(item)"></span>
+        <span class="markdown-toc-title" v-html="getIndentedText(item)"></span>
       </div>
     </div>
   </div>
@@ -85,7 +85,7 @@ function getIndentedText(item: MarkdownTOC): string {
   }
   // 返回带有缩进的文本
   const levelNum = parseInt(levelStr, 10)
-  const indent = '&nbsp;&nbsp;&nbsp;'.repeat(levelNum * 2)
+  const indent = '&nbsp;'.repeat(levelNum * 2)
   return `${indent}${item.text}`
 }
 
@@ -136,5 +136,17 @@ onMounted(() => {
   overflow: auto;
   width: auto;
   height: 100%;
+}
+
+.markdown-toc-title {
+  color: red;
+  width: 100%;
+  display: inline-block;
+  font-family: 'STXinwei', serif;
+}
+
+.markdown-toc-title:hover {
+  background-color: #9dddff;
+  display: inline-block;
 }
 </style>

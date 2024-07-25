@@ -17,9 +17,4 @@ function getFmtData(): string {
   return `<span style="color:rgb(100,180,246);font-size:11pt">最后更新：${fmt_date}</span>\n`
 }
 
-export const textBlocks: MenuContext[] = [
-  { label: '图片链接', context: image_links },
-  { label: '折叠代码块', context: blockcode },
-  { label: '有序链接列表', context: linksList },
-  { label: '文章更新日期', context: getFmtData() }
-]
+export { image_links, blockcode, linksList, getFmtData }

@@ -1,10 +1,10 @@
 interface ASCIIInfo {
-  bit: string
+  bin: string
   oct: string
   dec: string
   hex: string
   abridge: string
-  mask: string
+  mark: string
 }
 
 interface FormulaSymInfo {
@@ -1345,8 +1345,8 @@ export const GreeceLetterTable: GreeceLetterInfo[] = [
   { char: '&and;', code: '&#8869;' }
 ]
 
-export function CompressedArray(table: [], num: number): [] {
-  return table.reduce((acc, item, index) => {
+export function CompressedArray<T>(table: T[], num: number): T[][] {
+  return table.reduce((acc: T[][], item, index) => {
     // 计算当前元素应该属于哪个子数组
     const subArrayIndex = Math.floor(index / num)
     // 如果子数组还不存在，则初始化它

@@ -28,7 +28,7 @@
       </thead>
       <tbody>
         <tr v-for="(item, index) in filterGreeceLetter" :key="index">
-          <template v-for="symbol in item" :key="symbol.id">
+          <template v-for="(symbol, idx) in item" :key="idx">
             <td class="greece-letter-table-preview" v-html="symbol.code"></td>
             <td class="greece-letter-table-td">
               {{ symbol.char }}

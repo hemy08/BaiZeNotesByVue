@@ -28,7 +28,7 @@
       </thead>
       <tbody>
         <tr v-for="(item, index) in filterFormulaSymbol" :key="index">
-          <template v-for="symbol in item" :key="symbol.id">
+          <template v-for="(symbol, idx) in item" :key="idx">
             <td class="formula-symbol-table-td">
               {{ symbol.id }}
             </td>

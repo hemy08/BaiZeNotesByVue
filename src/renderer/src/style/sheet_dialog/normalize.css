@@ -51,10 +51,10 @@ h1 {
  */
 
 hr {
-  border: 1px outset #b1b1b1;
+  border: .3em outset deepskyblue;
   font-size: unset;
-  height: 10px;
-  background-color: #efefef;
+  height: 1px;
+  background-color: yellow;
 }
 
 /**
