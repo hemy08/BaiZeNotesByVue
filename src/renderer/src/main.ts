@@ -32,3 +32,4 @@ const app = createApp(App)
 app.use(store)
 app.component('ContextMenu', ContextMenu)
 app.mount('#app')
+

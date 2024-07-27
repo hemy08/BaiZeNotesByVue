@@ -104,13 +104,13 @@ const pluginTools = [
 
 const props = defineProps({
   // 编辑器宽度
-  toolsAreaWidth: {
+  pluginsAreaWidth: {
     type: String,
     default: '100%'
   }
 })
 
-const toolWidth = ref(props.toolsAreaWidth)
+const toolWidth = ref(props.pluginsAreaWidth)
 
 const toolsViewWidth = computed(() => {
   const toolWidthValue = parseInt(toolWidth.value.replace('px', ''), 10)
@@ -140,7 +140,7 @@ function handleClosePluginTools() {
 }
 
 watch(
-  () => props.toolsAreaWidth,
+  () => props.pluginsAreaWidth,
   (width) => {
     toolWidth.value = width
   }

@@ -14,6 +14,7 @@
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "start": "electron-vite preview",
+    "copy": "copyfile.bat",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build && .\\copyfile.bat ",
     "postinstall": "electron-builder install-app-deps",

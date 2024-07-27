@@ -11,6 +11,7 @@ import { ShowWebUrlDialog } from './ShowWebUrlDialog'
 import { ShowInsertImageDialog } from './ShowInsertImageDialog'
 import { ShowNewFileFolderDialog } from './ShowNewFileFolderDialog'
 import { ShowSystemSettingDialog } from './ShowSystemSettingDialog'
+import { ShowThemeSettingDialog } from  './ShowThemeSettingDialog'
 import { dialog, ipcMain } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 
@@ -52,7 +53,8 @@ export {
   ShowWebUrlDialog,
   ShowInsertImageDialog,
   ShowNewFileFolderDialog,
-  ShowSystemSettingDialog
+  ShowSystemSettingDialog,
+  ShowThemeSettingDialog
 }
 
 

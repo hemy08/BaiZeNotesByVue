@@ -29,12 +29,20 @@
     <MdContainer :md-container-width="workAreaWidth" />
   </div>
   <div
-    v-show="isShowToolsContainer"
-    id="tools-containers"
-    class="tools-containers"
+    v-show="isShowPluginsContainer"
+    id="plugin-containers"
+    class="plugin-containers"
     :style="{ width: workAreaWidth }"
   >
-    <PluginTools :tools-area-width="workAreaWidth" />
+    <PluginTools :plugins-area-width="workAreaWidth" />
+  </div>
+  <div
+    v-show="isShowToolsContainer"
+    id="tool-containers"
+    class="tool-containers"
+    :style="{ width: workAreaWidth }"
+  >
+    <HemyTools :plugins-area-width="workAreaWidth" />
   </div>
 </template>
 
@@ -45,6 +53,7 @@ import NaviTab from './NaviTab.vue'
 import ResManager from '../ResourceManager/ResourceManager.vue'
 import MdContainer from '../Markdown/MarkdownContainer.vue'
 import PluginTools from '../PluginTools/PluginTools.vue'
+import HemyTools from '../HemyTools/HemyTools.vue'
 
 // 使用 ref 来创建响应式引用
 const naviResManagerShow = ref('file-explorer')
@@ -53,6 +62,7 @@ const resMgrWidth = ref('300px')
 const naviTabWidth = ref('40px')
 const isShowResourceMgrArea = ref(true)
 const isShowMdContainer = ref(true)
+const isShowPluginsContainer = ref(false)
 const isShowToolsContainer = ref(false)
 
 let mouseStartX = 0
@@ -77,10 +87,10 @@ const workAreaWidth = computed(() => {
 EventBus.$on('plugin-tools-container-show', (value: boolean) => {
   if (value) {
     isShowMdContainer.value = false
-    isShowToolsContainer.value = true
+    isShowPluginsContainer.value = true
   } else {
     isShowMdContainer.value = true
-    isShowToolsContainer.value = false
+    isShowPluginsContainer.value = false
   }
 })
 
@@ -178,7 +188,15 @@ onMounted(() => {
   float: left;
 }
 
-#tools-containers {
+#plugin-containers {
+  display: flex;
+  flex-direction: column;
+  float: left;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#tool-containers {
   display: flex;
   flex-direction: column;
   float: left;
