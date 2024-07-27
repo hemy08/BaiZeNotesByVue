@@ -17,6 +17,7 @@
     "src/main/plugins/*.ts",
     "src/main/utils/**/*.ts",
     "src/main/utils/*.js",
+    "src/renderer/src/dialogs/**/*.ts",
     "src/renderer/src/lib/**/*.ts",
     "src/renderer/src/lib/themes/*.ts",
     "src/renderer/src/lib/Katex/**/*.ts",

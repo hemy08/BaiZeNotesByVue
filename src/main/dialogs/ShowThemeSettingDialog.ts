@@ -27,5 +27,5 @@ export function ShowThemeSettingDialog() {
     ThemeWindow.webContents.openDevTools()
   })
   // 加载一个 HTML 文件作为对话框的内容
-  ThemeWindow.loadFile(join(__dirname, '../../renderer/src/dialogs/ThemeSet/index.html'))
+  ThemeWindow.loadFile(join(__dirname, '../renderer/src/dialogs/ThemeSet/index.html'))
 }
