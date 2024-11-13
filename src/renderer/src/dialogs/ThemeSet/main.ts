@@ -1,5 +1,5 @@
-import { createApp } from 'vue'
-import themeSetting from './dialogs/ThemeSet/themeSetting.vue'
+//import { createApp } from 'vue'
+//import ThemeSetting from "./ThemeSetting.vue";
 
-const themeDialog = createApp(themeSetting)
-themeDialog.mount('#theme')
+//const themeDialog = createApp(ThemeSetting)
+//themeDialog.mount('#theme')
