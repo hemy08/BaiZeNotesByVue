@@ -16,6 +16,7 @@ function createWindow(): void {
     show: false,
     title: 'Hemy Markdown Editor',
     autoHideMenuBar: false,
+    icon: join(__dirname, '../HemyMarkdownEditor.ico'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

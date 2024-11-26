@@ -8,7 +8,7 @@ import {
   CryptoDecrypt,
   CryptoEncrypt
 } from './encrypt_decrypt'
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 
 export {
   globalInitialize,
@@ -103,5 +103,9 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
 
   ipcMain.on('plugin-tools-crypto-decrypt', (event, data: CryptoData) => {
     event.returnValue = CryptoDecrypt(data)
+  })
+
+  ipcMain.on('navi-tab-open-exe', async (_, exePath: string) => {
+    await shell.openPath(exePath)
   })
 }

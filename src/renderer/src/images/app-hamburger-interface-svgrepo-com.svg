@@ -1,0 +1,16 @@
+<?xml version="1.0" ?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<style>.cls-1{fill:#8c9eff;}.cls-2{fill:#5f7cf9;}</style>
+</defs>
+<title/>
+<g id="Menu">
+<rect class="cls-1" height="6" rx="1" ry="1" width="10" x="11" y="13"/>
+<rect class="cls-1" height="6" rx="1" ry="1" width="10" x="11" y="20"/>
+<rect class="cls-1" height="6" rx="1" ry="1" width="10" x="11" y="6"/>
+<path class="cls-2" d="M20,13H16v6h4a1,1,0,0,0,1-1V14A1,1,0,0,0,20,13Z"/>
+<path class="cls-2" d="M20,20H16v6h4a1,1,0,0,0,1-1V21A1,1,0,0,0,20,20Z"/>
+<path class="cls-2" d="M20,6H16v6h4a1,1,0,0,0,1-1V7A1,1,0,0,0,20,6Z"/>
+</g>
+</svg>

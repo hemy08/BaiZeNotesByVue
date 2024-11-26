@@ -1,6 +1,14 @@
 import * as myEditor from './hemy-editor'
 import * as monaco from 'monaco-editor'
 
+function matchStartWith(
+  str: string,
+  matcher: { [Symbol.match](string: string): RegExpMatchArray | null }
+): string | null {
+  const match = str.match(matcher)
+  return match ? match[0] : null
+}
+
 function EnterAction(editor: monaco.editor.IStandaloneCodeEditor) {
   // 获取鼠标当前位置
   const position = editor.getPosition()
@@ -17,10 +25,24 @@ function EnterAction(editor: monaco.editor.IStandaloneCodeEditor) {
   const content = model.getLineContent(position.lineNumber)
   // 获取上一行内容，如果是- [开头，插入\r\n- []()
   // 获取上一行内容，如果是- 开头，插入\r\n-
-  if (content.startsWith('- [')) {
-    myEditor.InsertAfterCursor(editor, '\r\n- []()')
-  } else if (content.startsWith('- ')) {
-    myEditor.InsertAfterCursor(editor, '\r\n- ')
+  const start_list = matchStartWith(content, /^\s*- /)
+  const start_link = matchStartWith(content, /^\s*- \[/)
+  //console.log('start_list', start_list, start_list?.length)
+  //console.log('start_link', start_link, start_link?.length)
+  let insertText = '\r\n'
+  if (start_link != null) {
+    if (start_link.length != content.length) {
+      insertText = '\r\n' + start_link
+    }
+  } else if (start_list != null && start_list.length != content.length) {
+    insertText = '\r\n' + start_list
+  } else {
+    insertText = '\r\n'
+  }
+  //console.log('insertText', insertText, content.length)
+
+  if (insertText != '\r\n') {
+    myEditor.InsertAfterCursor(editor, insertText)
   } else {
     myEditor.replaceSelection(
       editor,
