@@ -13,6 +13,7 @@ asarUnpack:
   - resources/**
 win:
   executableName: HemyMarkdownEditor
+  icon: HemyMarkdownEditor.ico
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
