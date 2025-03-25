@@ -6,6 +6,7 @@ export function getAppToolsMenuItem(
 ): Electron.MenuItemConstructorOptions {
   const ToolsMenuConfig: Array<{ label: string; click?: () => void }> = [
     { label: 'Mermaid绘图', click: () => dialogs.ShowMermaidEditDialog(mainWindow) },
+    { label: '公式编辑器', click: () => mainWindow.webContents.send('plugin-tools-show', 'latex') },
     { label: '电子表格 ...待开发', click: () => mainWindow.webContents.send('OpenFile', null) },
     { label: '配图制作 ...待开发', click: () => mainWindow.webContents.send('OpenFile', null) },
     { label: '绘图工具 ...待开发', click: () => mainWindow.webContents.send('OpenFile', null) },
