@@ -12,6 +12,7 @@ import { ShowInsertImageDialog } from './ShowInsertImageDialog'
 import { ShowNewFileFolderDialog } from './ShowNewFileFolderDialog'
 import { ShowSystemSettingDialog } from './ShowSystemSettingDialog'
 import { ShowThemeSettingDialog } from  './ShowThemeSettingDialog'
+import { ShowQuickLinkSettingDialog } from  './ShowQuickLinkSettingDialog'
 import { dialog, ipcMain } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 
@@ -54,7 +55,8 @@ export {
   ShowInsertImageDialog,
   ShowNewFileFolderDialog,
   ShowSystemSettingDialog,
-  ShowThemeSettingDialog
+  ShowThemeSettingDialog,
+  ShowQuickLinkSettingDialog
 }
 
 
