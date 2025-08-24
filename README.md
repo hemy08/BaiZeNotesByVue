@@ -1,6 +1,6 @@
-# Hemy Markdown Editor
+# 白泽笔记 - Markdown Editor Powered By Electron and Vue
 
-HemyMarkdownEditor 个人的markdown编辑器项目，基于Electron + Vue+ Vite + TypeScript
+个人的markdown编辑器项目，基于Electron + Vue+ Vite + TypeScript
 
 具体点击工具栏帮助->关于按钮
 

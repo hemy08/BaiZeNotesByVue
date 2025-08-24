@@ -4,7 +4,7 @@ import os from 'os'
 
 // eslint-disable-next-line no-unused-vars
 function about() {
-  const message = `Hemy Markdown Editor v1.0.0`
+  const message = `白泽笔记 v1.0.0`
   const v8_v = `引擎版本：${process.versions.v8}\n`
   const sys_info = `当前系统：${os.type()} ${os.arch()} ${os.release()}\n`
   const sys_plt = `当前平台：${process.platform}\n`
@@ -14,7 +14,7 @@ function about() {
   const vue = `Vue ：v3.4.27\nVite ：v5.2.11\nTypeScript ：5.4.5\n`
 
   dialog.showMessageBox({
-    title: `关于 Hemy Markdown Editor`,
+    title: `关于 白泽笔记`,
     type: 'info',
     message: message,
     detail: v8_v + sys_info + sys_plt + ele_v + chrom_v + node_v + vue,

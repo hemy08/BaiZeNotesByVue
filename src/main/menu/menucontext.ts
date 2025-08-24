@@ -82,14 +82,12 @@ export const W3School: MenuContext[] = [
   { label: 'HTML在线验证', context: 'https://validator.w3.org/#validate_by_uri+with_options' },
   { label: '网络计算器', context: 'https://www.w3cschool.cn/tools/index?name=ipcalc' },
   { label: 'Excel/CSV转JSON', context: 'https://www.w3cschool.cn/tools/index?name=excel_col2json' },
-  { label: '网络计算器', context: 'https://www.w3cschool.cn/tools/index?name=ipcalc' },
   { label: 'XML JSON互转', context: 'https://www.w3cschool.cn/tools/index?name=xmljson' },
   { label: 'XML格式化工具', context: 'https://www.w3cschool.cn/tools/index?name=xmlformat' },
   { label: '文本美化排版', context: 'https://www.w3cschool.cn/tools/index?name=txt_paiban' },
   { label: 'HTML 拾色器', context: 'https://www.w3cschool.cn/tools/index?name=cpicker' },
   { label: 'ColorPicker', context: 'https://www.w3cschool.cn/tools/index?name=ColorPicker' },
-  { label: 'WEB安全色查询', context: 'https://www.w3cschool.cn/tools/index?name=safe_color' },
-  { label: '网络计算器', context: 'https://www.w3cschool.cn/tools/index?name=ipcalc' }
+  { label: 'WEB安全色查询', context: 'https://www.w3cschool.cn/tools/index?name=safe_color' }
 ]
 
 export const EncodeDecode: MenuContext[] = [

@@ -14,7 +14,7 @@ function createWindow(): void {
     width: 1280,
     height: 800,
     show: false,
-    title: 'Hemy Markdown Editor',
+    title: '白泽笔记 -- Markdown Editor Powered By Electron and Vue',
     autoHideMenuBar: false,
     icon: join(__dirname, '../HemyMarkdownEditor.ico'),
     webPreferences: {

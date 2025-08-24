@@ -1,5 +1,5 @@
 <template>
-  <div id="status-bar-file-path">Hemy Markdown Editor</div>
+  <div id="status-bar-file-path">白泽笔记</div>
   <div id="status-bar-file-type">Markdown</div>
   <div id="status-bar-file-type">utf-8</div>
   <div id="status-bar-cursor-position">行</div>
