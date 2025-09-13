@@ -10,5 +10,5 @@ rmdir /S /Q /Y "out\renderer\src\style"
 mkdir "out\renderer\src\style"
 xcopy /S /E /Y /I "src\renderer\src\style" "out\renderer\src\style"
 
-del "out\HemyMarkdownEditor.ico"
-copy "HemyMarkdownEditor.ico" "out\HemyMarkdownEditor.ico"
+del "out\BaiZeNotes.ico"
+copy "BaiZeNotes.ico" "out\BaiZeNotes.ico"

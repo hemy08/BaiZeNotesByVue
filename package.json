@@ -1,11 +1,11 @@
 {
-  "name": "白泽笔记",
+  "name": "BaiZeNotes",
   "version": "1.0.0",
   "description": "An Electron application with Vue and TypeScript",
   "main": "./out/main/index.js",
   "author": "hemy08",
   "email": "zhaojunwei008@yeah.net",
-  "repo": "https://github.com/hemy08/HemyMarkdownEditor",
+  "repo": "https://github.com/hemy08/BaiZeNotesByVue.git",
   "homepage": "https://electron-vite.org",
   "scripts": {
     "format": "prettier --write .",

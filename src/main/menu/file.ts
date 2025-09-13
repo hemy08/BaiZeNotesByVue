@@ -2,36 +2,52 @@ import { app, ipcMain } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 import * as dialogs from '../dialogs/dialogs'
 
-export const ImportExport = [
+export const importMenusDef = [
   { menuType: 'import', label: '从 Word 导入', fileType: 'word' },
   { menuType: 'import', label: '从 HTML 导入', fileType: 'html' },
   { menuType: 'import', label: '从 JSON 导入', fileType: 'json' },
   { menuType: 'import', label: '从 YAML 导入', fileType: 'yaml' },
-  { menuType: 'import', label: '从文本文件导入', fileType: 'text' },
-  { menuType: 'separator', label: 'separator', fileType: 'separator' },
+  { menuType: 'import', label: '从 XML 导入', fileType: 'xml' },
+  { menuType: 'import', label: '从文本文件导入', fileType: 'text' }
+]
+
+export const exportMenusDef = [
   { menuType: 'export', label: '导出为Word', fileType: 'word' },
+  { menuType: 'export', label: '导出为JSON', fileType: 'json' },
+  { menuType: 'export', label: '导出为XML', fileType: 'xml' },
+  { menuType: 'export', label: '导出为YAML', fileType: 'yaml' },
   { menuType: 'export', label: '导出为HTML', fileType: 'html' },
   { menuType: 'export', label: '导出为PDF', fileType: 'pdf' }
 ]
 
-function GenImportExportSubMenuItems(
+function GenImportSubMenuItems(
   mainWindow: Electron.BrowserWindow
 ): Electron.MenuItemConstructorOptions[] {
-  return ImportExport.map((item): Electron.MenuItemConstructorOptions => {
-    if (item.menuType === 'separator') {
-      return { type: 'separator' }
-    } else {
-      const clickFn =
-        item.menuType === 'import'
-          ? () => fileUtils.InsertImportFormFile(mainWindow, item.fileType, true)
-          : () => fileUtils.ExportToFile(mainWindow, item.fileType)
+  return importMenusDef
+    .map((item): Electron.MenuItemConstructorOptions => {
+      const clickFn = () => fileUtils.InsertImportFormFile(mainWindow, item.fileType, true)
       return {
         type: 'normal',
         label: item.label, // 根据类别设置标签
         click: clickFn
       }
-    }
-  }).filter((item) => item != null)
+    })
+    .filter((item) => item != null)
+}
+
+function GenExportSubMenuItems(
+  mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions[] {
+  return exportMenusDef
+    .map((item): Electron.MenuItemConstructorOptions => {
+      const clickFn = () => fileUtils.ExportToFile(mainWindow, item.fileType)
+      return {
+        type: 'normal',
+        label: item.label, // 根据类别设置标签
+        click: clickFn
+      }
+    })
+    .filter((item) => item != null)
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -54,11 +70,6 @@ export function getAppFileMenuItem(
       }
     },
     {
-      label: '导入导出',
-      submenu: GenImportExportSubMenuItems(mainWindow)
-    },
-    { type: 'separator' },
-    {
       label: '打开文件',
       click: () => {
         fileUtils.OpenFile(mainWindow)
@@ -70,6 +81,15 @@ export function getAppFileMenuItem(
       click: () => {
         fileUtils.OpenDirectory(mainWindow)
       }
+    },
+    { type: 'separator' },
+    {
+      label: '从文件导入',
+      submenu: GenImportSubMenuItems(mainWindow)
+    },
+    {
+      label: '导出到文件',
+      submenu: GenExportSubMenuItems(mainWindow)
     },
     { type: 'separator' },
     {

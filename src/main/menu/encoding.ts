@@ -1,92 +1,92 @@
 export const OpenWithEncode = [
-  { menuType: 'menu', label: 'UTF-8', encoding: 'utf8:' },
-  { menuType: 'menu', label: 'UTF-16LE', encoding: 'utf-16le' },
-  { menuType: 'menu', label: 'UTF-16BE', encoding: 'utf-16be' },
-  { menuType: 'separator', label: 'separator', encoding: 'separator' },
-  { menuType: 'menu', label: 'GBK(简体中文)', encoding: 'gbk' },
-  { menuType: 'menu', label: 'GB2312(简体中文)', encoding: 'gb2312' },
-  { menuType: 'menu', label: 'GB18030(简体中文)', encoding: 'gb18030' },
-  { menuType: 'menu', label: 'Big5(繁体中文)', encoding: 'big5' },
-  { menuType: 'menu', label: 'Big5-HKSCS(繁体中文)', encoding: 'big5-hkscs' },
-  { menuType: 'separator', label: 'separator', encoding: 'separator' },
-  { menuType: 'menu', label: '十六进制', encoding: 'hex' },
-  { menuType: 'nomenu', label: '注意: 请勿直接编辑乱码文件。', encoding: 'none' }
+    { menuType: 'menu', label: 'UTF-8', encoding: 'utf8:' },
+    { menuType: 'menu', label: 'UTF-16LE', encoding: 'utf-16le' },
+    { menuType: 'menu', label: 'UTF-16BE', encoding: 'utf-16be' },
+    { menuType: 'separator', label: 'separator', encoding: 'separator' },
+    { menuType: 'menu', label: 'GBK(简体中文)', encoding: 'gbk' },
+    { menuType: 'menu', label: 'GB2312(简体中文)', encoding: 'gb2312' },
+    { menuType: 'menu', label: 'GB18030(简体中文)', encoding: 'gb18030' },
+    { menuType: 'menu', label: 'Big5(繁体中文)', encoding: 'big5' },
+    { menuType: 'menu', label: 'Big5-HKSCS(繁体中文)', encoding: 'big5-hkscs' },
+    { menuType: 'separator', label: 'separator', encoding: 'separator' },
+    { menuType: 'menu', label: '十六进制', encoding: 'hex' },
+    { menuType: 'nomenu', label: '注意: 请勿直接编辑乱码文件。', encoding: 'none' }
 ]
 
 function GenOpenWithEncodeSubMenuItems(
-  mainWindow: Electron.BrowserWindow
+    mainWindow: Electron.BrowserWindow
 ): Electron.MenuItemConstructorOptions[] {
-  return OpenWithEncode.map((item) => {
-    if (item.menuType === 'separator') {
-      return { type: 'separator' }
-    } else if (item.menuType === 'nomenu') {
-      return {
-        label: item.label, // 根据类别设置标签
-        enable: false
-      }
-    } else {
-      return {
-        label: item.label, // 根据类别设置标签
-        click: () => {
-          mainWindow.webContents.send('open-with-encoding', item.encoding)
+    return OpenWithEncode.map((item) => {
+        if (item.menuType === 'separator') {
+            return { type: 'separator' }
+        } else if (item.menuType === 'nomenu') {
+            return {
+                label: item.label, // 根据类别设置标签
+                enable: false
+            }
+        } else {
+            return {
+                label: item.label, // 根据类别设置标签
+                click: () => {
+                    mainWindow.webContents.send('open-with-encoding', item.encoding)
+                }
+            }
         }
-      }
-    }
-  })
+    })
 }
 
 export const ConvertToEncode = [
-  { type: 'menu', label: '转为 UTF-8 编码', encoding: 'utf8:' },
-  { type: 'menu', label: '转为 UTF-16 Little Endian 编码', encoding: 'utf-16le' },
-  { type: 'menu', label: '转为 UTF-16 Big Endian 编码', encoding: 'utf-16be' },
-  { type: 'separator', label: 'separator', encoding: 'separator' },
-  { type: 'menu', label: '转为 GBK(简体中文) 编码', encoding: 'gbk' },
-  { type: 'menu', label: '转为 GB2312(简体中文) 编码', encoding: 'gb2312' },
-  { type: 'menu', label: '转为 GB18030(简体中文) 编码', encoding: 'gb18030' },
-  { type: 'menu', label: '转为 Big5(繁体中文) 编码', encoding: 'big5' },
-  { type: 'menu', label: '转为 Big5-HKSCS(繁体中文) 编码', encoding: 'big5-hkscs' },
-  { type: 'separator', label: 'separator', encoding: 'separator' },
-  { type: 'menu', label: '转为 十六进制 编码', encoding: 'hex' },
-  { type: 'nomenu', label: '注意: 请勿直接编辑乱码文件。', encoding: 'enabled' }
+    { type: 'menu', label: '转为 UTF-8 编码', encoding: 'utf8:' },
+    { type: 'menu', label: '转为 UTF-16 Little Endian 编码', encoding: 'utf-16le' },
+    { type: 'menu', label: '转为 UTF-16 Big Endian 编码', encoding: 'utf-16be' },
+    { type: 'separator', label: 'separator', encoding: 'separator' },
+    { type: 'menu', label: '转为 GBK(简体中文) 编码', encoding: 'gbk' },
+    { type: 'menu', label: '转为 GB2312(简体中文) 编码', encoding: 'gb2312' },
+    { type: 'menu', label: '转为 GB18030(简体中文) 编码', encoding: 'gb18030' },
+    { type: 'menu', label: '转为 Big5(繁体中文) 编码', encoding: 'big5' },
+    { type: 'menu', label: '转为 Big5-HKSCS(繁体中文) 编码', encoding: 'big5-hkscs' },
+    { type: 'separator', label: 'separator', encoding: 'separator' },
+    { type: 'menu', label: '转为 十六进制 编码', encoding: 'hex' },
+    { type: 'nomenu', label: '注意: 请勿直接编辑乱码文件。', encoding: 'enabled' }
 ]
 
 function GenCvtEncodeSubMenuItems(
-  mainWindow: Electron.BrowserWindow
+    mainWindow: Electron.BrowserWindow
 ): Electron.MenuItemConstructorOptions[] {
-  return ConvertToEncode.map((item) => {
-    if (item.type === 'separator') {
-      return { type: 'separator' }
-    } else if (item.type === 'nomenu') {
-      return {
-        label: item.label, // 根据类别设置标签
-        enable: false
-      }
-    } else {
-      return {
-        label: item.label, // 根据类别设置标签
-        click: () => {
-          mainWindow.webContents.send('convert-to-encoding', item.encoding)
+    return ConvertToEncode.map((item) => {
+        if (item.type === 'separator') {
+            return { type: 'separator' }
+        } else if (item.type === 'nomenu') {
+            return {
+                label: item.label, // 根据类别设置标签
+                enable: false
+            }
+        } else {
+            return {
+                label: item.label, // 根据类别设置标签
+                click: () => {
+                    mainWindow.webContents.send('convert-to-encoding', item.encoding)
+                }
+            }
         }
-      }
-    }
-  })
+    })
 }
 
 export function getAppEncodingMenuItem(mainWindow: Electron.BrowserWindow) {
-  const EncodingMenuItems: Electron.MenuItemConstructorOptions[] = [
-    {
-      label: '重新用...编码打开',
-      submenu: GenOpenWithEncodeSubMenuItems(mainWindow)
-    },
-    {
-      label: '转为...编码',
-      submenu: GenCvtEncodeSubMenuItems(mainWindow)
+    const EncodingMenuItems: Electron.MenuItemConstructorOptions[] = [
+        {
+            label: '重新用...编码打开',
+            submenu: GenOpenWithEncodeSubMenuItems(mainWindow)
+        },
+        {
+            label: '转为...编码',
+            submenu: GenCvtEncodeSubMenuItems(mainWindow)
+        }
+    ]
+    return {
+        label: '编码(C)',
+        enable: true,
+        accelerator: 'alt+c',
+        submenu: EncodingMenuItems
     }
-  ]
-  return {
-    label: '编码(C)',
-    enable: true,
-    accelerator: 'alt+c',
-    submenu: EncodingMenuItems
-  }
 }

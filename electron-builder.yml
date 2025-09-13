@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: HemyMarkdownEditor
+productName: BaiZeNotes
 directories:
   buildResources: build
 files:
@@ -12,8 +12,8 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: HemyMarkdownEditor
-  icon: HemyMarkdownEditor.ico
+  executableName: BaiZeNotes
+  icon: BaiZeNotes.ico
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

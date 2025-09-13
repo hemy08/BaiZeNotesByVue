@@ -16,7 +16,7 @@ function createWindow(): void {
     show: false,
     title: '白泽笔记 -- Markdown Editor Powered By Electron and Vue',
     autoHideMenuBar: false,
-    icon: join(__dirname, '../HemyMarkdownEditor.ico'),
+    icon: join(__dirname, '../BaiZeNotes.ico'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -63,6 +63,7 @@ function createWindow(): void {
 
   mainWindow.on('close', () => {
     // mainWindow = null
+    app.quit()
   })
   const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
   Menu.setApplicationMenu(menu)
