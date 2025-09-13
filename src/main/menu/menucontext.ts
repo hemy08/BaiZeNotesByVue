@@ -168,7 +168,8 @@ export const Links: MenuContext[] = [
     { label: 'PlantText编辑器', context: 'https://www.planttext.com/' },
     { label: '在线思维导图工具', context: 'https://www.mindline.cn/webapp' },
     { label: '在线流程图绘制', context: 'https://app.diagrams.net/' },
-    { label: 'PlantUml 网页服务器', context: 'http://www.plantuml.com/plantuml/uml/' }
+    { label: 'PlantUml 网页服务器', context: 'http://www.plantuml.com/plantuml/uml/' },
+    { label: '锤子在线工具网', context: 'https://www.toolhelper.cn/' }
 ]
 
 export const DevOpsTool: MenuContext[] = [
@@ -279,6 +280,17 @@ export const Information: MenuContext[] = [
     { label: '常用字体对照', context: 'normal-font-style-table' },
     { label: '文件类型（MIME头）', context: 'file-name-extension-table' },
     { label: '希腊字母对照', context: 'greece-letter-table' }
+]
+
+export const GitHubProject: MenuContext[] = [
+    { label: 'IT TOOLS 助力开发人员和IT工作者', context: 'https://it-tools.tech/' },
+    { label: 'Ghost 个人网站搭建', context: 'https://ghost.org/' },
+    { label: 'Priospace - 集大成的效率工具', context: 'https://github.com/AnoyRC/priospace' },
+    { label: 'Plane - 开发者友好的项目管理神器', context: 'https://github.com/makeplane/plane' },
+    {
+        label: 'OpenProject - 功能强大的企业级项目管理',
+        context: 'https://github.com/opf/openproject'
+    }
 ]
 
 export function GenElectronMenuItem(

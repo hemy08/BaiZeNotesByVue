@@ -6,401 +6,412 @@ import { FontFamily } from '../utils/common'
 let fontSelectDialog: Electron.BrowserWindow | null
 
 interface FontSelect {
-  fontFamily: string
-  fontSize: string
-  fontColor: string
-  fontBackGroundColor: string
-  fontBold: boolean
-  fontItalic: boolean
-  fontUnderline: boolean
-  fontDeleteLine: boolean
-  textAlign: 'left' | 'center' | 'right' | 'justify'
-  textInput: ''
+    fontFamily: string
+    fontSize: string
+    fontColor: string
+    fontBackGroundColor: string
+    fontBold: boolean
+    fontItalic: boolean
+    fontUnderline: boolean
+    fontDeleteLine: boolean
+    textAlign: 'left' | 'center' | 'right' | 'justify'
+    textInput: ''
 }
 
 export function ShowFontSelectDialog(mainWindow: Electron.BrowserWindow) {
-  if (fontSelectDialog) {
-    digcom.ShowAlreadyExistDialog()
-    return
-  }
-  createFontSelectDialog(mainWindow)
+    if (fontSelectDialog) {
+        digcom.ShowAlreadyExistDialog()
+        return
+    }
+    createFontSelectDialog(mainWindow)
 }
 // 创建一个自定义对话框的函数
 function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
-  fontSelectDialog = new BrowserWindow({
-    width: 1280,
-    height: 620,
-    minimizable: false,
-    maximizable: false,
-    resizable: false,
-    title: '文字样式选择',
-    autoHideMenuBar: true,
-    webPreferences: {
-      nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-      contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
-      sandbox: false
+    fontSelectDialog = new BrowserWindow({
+        width: 1280,
+        height: 620,
+        minimizable: false,
+        maximizable: false,
+        resizable: false,
+        title: '文字样式选择',
+        autoHideMenuBar: true,
+        webPreferences: {
+            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
+            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
+            sandbox: false
+        }
+    })
+
+    if (!fontSelectDialog) {
+        return
     }
-  })
 
-  if (!fontSelectDialog) {
-    return
-  }
+    fontSelectDialog.setMenu(null)
 
-  fontSelectDialog.setMenu(null)
+    // 加载一个 HTML 文件作为对话框的内容
+    fontSelectDialog.loadURL(
+        `data:text/html;charset=utf-8,${encodeURIComponent(makeFontDialogHtml())}`
+    )
 
-  // 加载一个 HTML 文件作为对话框的内容
-  fontSelectDialog.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(makeFontDialogHtml())}`
-  )
+    // 当窗口关闭时，清除引用
+    fontSelectDialog.on('closed', () => {
+        fontSelectDialog = null
+        ipcMain.removeListener('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
+        ipcMain.removeListener('dialog-user-font-select-btn-cancel', () => {})
+    })
 
-  // 当窗口关闭时，清除引用
-  fontSelectDialog.on('closed', () => {
-    fontSelectDialog = null
-    ipcMain.removeListener('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
-    ipcMain.removeListener('dialog-user-font-select-btn-cancel', () => {})
-  })
+    // 显示窗口
+    fontSelectDialog.show()
 
-  // 显示窗口
-  fontSelectDialog.show()
-
-  function exitFontSelectDialog() {
-    if (fontSelectDialog) {
-      ipcMain.removeListener('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
-      ipcMain.removeListener('dialog-user-font-select-btn-cancel', () => {})
-      fontSelectDialog.close()
-      fontSelectDialog = null
+    function exitFontSelectDialog() {
+        if (fontSelectDialog) {
+            ipcMain.removeListener(
+                'dialog-user-font-select-btn-insert',
+                processCustomFontDialogApply
+            )
+            ipcMain.removeListener('dialog-user-font-select-btn-cancel', () => {})
+            fontSelectDialog.close()
+            fontSelectDialog = null
+        }
     }
-  }
 
-  function processCustomFontDialogApply(_, inputData: FontSelect) {
-    let htmlContext = inputData.textInput
-    const fontBold = '<b>'
-    const fontItalic = '<i>'
-    const fontUnderline = '<u>'
-    const fontDeleteLine = '<s>'
-    htmlContext = '\r\n' + htmlContext + '\r\n'
-    if (inputData.fontBold) {
-      htmlContext = fontBold + htmlContext + '</b>'
+    function processCustomFontDialogApply(_, inputData: FontSelect) {
+        let htmlContext = inputData.textInput
+        const fontBold = '<b>'
+        const fontItalic = '<i>'
+        const fontUnderline = '<u>'
+        const fontDeleteLine = '<s>'
+        htmlContext = '\r\n' + htmlContext + '\r\n'
+        if (inputData.fontBold) {
+            htmlContext = fontBold + htmlContext + '</b>'
+        }
+        if (inputData.fontItalic) {
+            htmlContext = fontItalic + htmlContext + '</i>'
+        }
+        if (inputData.fontUnderline) {
+            htmlContext = fontUnderline + htmlContext + '</u>'
+            if (inputData.fontDeleteLine) {
+                htmlContext = fontDeleteLine + htmlContext + '</s>'
+            }
+        } else {
+            if (inputData.fontDeleteLine) {
+                htmlContext = fontUnderline + htmlContext + '</s>'
+            }
+        }
+        let fontBefore = '<span style="'
+        fontBefore += `font-size: ${inputData.fontSize}; `
+        fontBefore += `color: ${inputData.fontColor}; `
+        fontBefore += `background-color: ${inputData.fontBackGroundColor}; `
+        fontBefore += `font-family: '${inputData.fontFamily}';`
+        fontBefore += `text-align: ${inputData.textAlign};`
+        fontBefore += `display: block;`
+        fontBefore += '">' + htmlContext
+        htmlContext = fontBefore + '</span>\n'
+        mainWindow.webContents.send('monaco-insert-text-block-templates', htmlContext)
+        exitFontSelectDialog()
     }
-    if (inputData.fontItalic) {
-      htmlContext = fontItalic + htmlContext + '</i>'
-    }
-    if (inputData.fontUnderline) {
-      htmlContext = fontUnderline + htmlContext + '</u>'
-      if (inputData.fontDeleteLine) {
-        htmlContext = fontDeleteLine + htmlContext + '</s>'
-      }
-    } else {
-      if (inputData.fontDeleteLine) {
-        htmlContext = fontUnderline + htmlContext + '</s>'
-      }
-    }
-    let fontBefore = '<span style="'
-    fontBefore += `font-size: ${inputData.fontSize}; `
-    fontBefore += `color: ${inputData.fontColor}; `
-    fontBefore += `background-color: ${inputData.fontBackGroundColor}; `
-    fontBefore += `font-family: '${inputData.fontFamily}';`
-    fontBefore += `text-align: ${inputData.textAlign};`
-    fontBefore += `display: block;`
-    fontBefore += '">' + htmlContext
-    htmlContext = fontBefore + '</span>\n'
-    mainWindow.webContents.send('monaco-insert-text-block-templates', htmlContext)
-    exitFontSelectDialog()
-  }
-  ipcMain.on('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
+    ipcMain.on('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
 
-  ipcMain.on('dialog-user-font-select-btn-cancel', () => {
-    exitFontSelectDialog()
-  })
+    ipcMain.on('dialog-user-font-select-btn-cancel', () => {
+        exitFontSelectDialog()
+    })
 }
 
 function createLabelList(doc: Document): HTMLElement {
-  const labelStyle = 'width: 100px;margin: 5px;text-align: right;'
-  const labels: digcom.Label[] = [
-    { forHtml: 'edit-font-family', text: '选择字体：', divCss: labelStyle },
-    { forHtml: 'edit-font-size', text: '字体大小：', divCss: labelStyle },
-    { forHtml: 'edit-font-color', text: '字体颜色：', divCss: labelStyle },
-    { forHtml: 'edit-font-color', text: '', divCss: 'height: 105px' },
-    { forHtml: 'backgroundColor', text: '背\u00A0\u00A0景\u00A0\u00A0色：', divCss: labelStyle },
-    { forHtml: 'backgroundColor', text: '', divCss: 'height: 100px' }
-  ]
+    const labelStyle = 'width: 100px;margin: 5px;text-align: right;'
+    const labels: digcom.Label[] = [
+        { forHtml: 'edit-font-family', text: '选择字体：', divCss: labelStyle },
+        { forHtml: 'edit-font-size', text: '字体大小：', divCss: labelStyle },
+        { forHtml: 'edit-font-color', text: '字体颜色：', divCss: labelStyle },
+        { forHtml: 'edit-font-color', text: '', divCss: 'height: 105px' },
+        {
+            forHtml: 'backgroundColor',
+            text: '背\u00A0\u00A0景\u00A0\u00A0色：',
+            divCss: labelStyle
+        },
+        { forHtml: 'backgroundColor', text: '', divCss: 'height: 100px' }
+    ]
 
-  const LabelList = digcom.NewLabelList(doc, labels)
-  LabelList.style.cssText = 'margin-top: 10px; display: flex; flex-direction: column;'
-  return LabelList
+    const LabelList = digcom.NewLabelList(doc, labels)
+    LabelList.style.cssText = 'margin-top: 10px; display: flex; flex-direction: column;'
+    return LabelList
 }
 
 function createFontFamilySelect(doc: Document): HTMLElement {
-  const FontFamilyDiv = digcom.NewSelect(doc, FontFamily)
-  FontFamilyDiv.name = 'edit-font-family'
-  FontFamilyDiv.id = 'edit-font-family'
-  FontFamilyDiv.style.cssText = 'width:250px;height:25px'
+    const FontFamilyDiv = digcom.NewSelect(doc, FontFamily)
+    FontFamilyDiv.name = 'edit-font-family'
+    FontFamilyDiv.id = 'edit-font-family'
+    FontFamilyDiv.style.cssText = 'width:250px;height:25px'
 
-  const DivEle = doc.createElement('div')
-  DivEle.className = 'input-style'
-  DivEle.style.cssText = 'width:250px;margin-top: 15px;height:25px'
-  DivEle.appendChild(FontFamilyDiv)
-  return DivEle
+    const DivEle = doc.createElement('div')
+    DivEle.className = 'input-style'
+    DivEle.style.cssText = 'width:250px;margin-top: 15px;height:25px'
+    DivEle.appendChild(FontFamilyDiv)
+    return DivEle
 }
 
 function createFontSizeSelect(doc: Document): HTMLElement {
-  const options: digcom.Option[] = []
-  for (let i = 5; i < 40; i++) {
-    options.push({ value: `${i}pt`, optCss: 'font-size:18px' })
-  }
+    const options: digcom.Option[] = []
+    for (let i = 5; i < 40; i++) {
+        options.push({ value: `${i}pt`, optCss: 'font-size:18px' })
+    }
 
-  const FontSize = digcom.NewSelect(doc, options)
-  FontSize.name = 'edit-font-size'
-  FontSize.id = 'edit-font-size'
-  FontSize.style.cssText = 'width: 80px;height:25px'
+    const FontSize = digcom.NewSelect(doc, options)
+    FontSize.name = 'edit-font-size'
+    FontSize.id = 'edit-font-size'
+    FontSize.style.cssText = 'width: 80px;height:25px'
 
-  const DivEle = doc.createElement('div')
-  DivEle.className = 'input-style'
-  DivEle.style.cssText = 'width: 80px;margin-top: 10px;height:25px'
-  DivEle.appendChild(FontSize)
-  return DivEle
+    const DivEle = doc.createElement('div')
+    DivEle.className = 'input-style'
+    DivEle.style.cssText = 'width: 80px;margin-top: 10px;height:25px'
+    DivEle.appendChild(FontSize)
+    return DivEle
 }
 
 // 注意：由于颜色列表是手动添加的，并且包含了一些重复的或相似的颜色以保持总数为52，
 // 因此在实际应用中可能需要根据具体需求进行调整。
 // 另外，'#FFFAFA' 在列表中出现了两次，这里是为了凑数，通常应该避免重复。
 function createColorList(doc: Document): HTMLElement {
-  const colorButtons: digcom.Button[] = []
-  digcom.CommonColors.forEach((color) => {
-    colorButtons.push({
-      id: 'color-button',
-      text: '',
-      btnCss: `background-color: ${color};border: none;padding: 1;margin-top: 5px;`,
-      btnClass: 'color-button'
+    const colorButtons: digcom.Button[] = []
+    digcom.CommonColors.forEach((color) => {
+        colorButtons.push({
+            id: 'color-button',
+            text: '',
+            btnCss: `background-color: ${color};border: none;padding: 1;margin-top: 5px;`,
+            btnClass: 'color-button'
+        })
     })
-  })
-  const colorDiv = doc.createElement('div')
-  colorDiv.style.cssText = 'width: 300px;margin-top: 5px;'
-  const colorInput = doc.createElement('input')
-  colorInput.type = 'color'
-  colorInput.id = 'edit-font-color'
-  colorInput.style.cssText = 'width: 290px;margin-top: 5px;'
-  colorDiv.appendChild(colorInput)
-  colorDiv.appendChild(digcom.NewButtonList(doc, colorButtons))
-  return colorDiv
+    const colorDiv = doc.createElement('div')
+    colorDiv.style.cssText = 'width: 300px;margin-top: 5px;'
+    const colorInput = doc.createElement('input')
+    colorInput.type = 'color'
+    colorInput.id = 'edit-font-color'
+    colorInput.style.cssText = 'width: 290px;margin-top: 5px;'
+    colorDiv.appendChild(colorInput)
+    colorDiv.appendChild(digcom.NewButtonList(doc, colorButtons))
+    return colorDiv
 }
 
 function createBackgroundColorList(doc: Document): HTMLElement {
-  const colorBackButtons: digcom.Button[] = []
-  digcom.CommonColors.forEach((color) => {
-    colorBackButtons.push({
-      id: 'background-color-button',
-      text: '',
-      btnCss: `background-color: ${color};border: none;padding: 1;margin-top: 5px;`,
-      btnClass: 'background-color-button'
+    const colorBackButtons: digcom.Button[] = []
+    digcom.CommonColors.forEach((color) => {
+        colorBackButtons.push({
+            id: 'background-color-button',
+            text: '',
+            btnCss: `background-color: ${color};border: none;padding: 1;margin-top: 5px;`,
+            btnClass: 'background-color-button'
+        })
     })
-  })
-  const colorDiv = doc.createElement('div')
-  colorDiv.style.cssText = 'width: 300px;margin-top: 5px;'
-  const colorBackInput = doc.createElement('input')
-  colorBackInput.type = 'color'
-  colorBackInput.id = 'backgroundColor'
-  colorBackInput.style.cssText = 'width: 290px;margin-top: 10px;'
-  colorDiv.appendChild(colorBackInput)
-  colorDiv.appendChild(digcom.NewButtonList(doc, colorBackButtons))
-  return colorDiv
+    const colorDiv = doc.createElement('div')
+    colorDiv.style.cssText = 'width: 300px;margin-top: 5px;'
+    const colorBackInput = doc.createElement('input')
+    colorBackInput.type = 'color'
+    colorBackInput.id = 'backgroundColor'
+    colorBackInput.style.cssText = 'width: 290px;margin-top: 10px;'
+    colorDiv.appendChild(colorBackInput)
+    colorDiv.appendChild(digcom.NewButtonList(doc, colorBackButtons))
+    return colorDiv
 }
 
 function createInputs(doc: Document): HTMLElement {
-  const divEle = doc.createElement('div')
-  divEle.style.cssText = 'display: flex; flex-direction: column;'
-  divEle.appendChild(createFontFamilySelect(doc))
-  divEle.appendChild(createFontSizeSelect(doc))
-  divEle.appendChild(createColorList(doc))
-  divEle.appendChild(createBackgroundColorList(doc))
-  return divEle
+    const divEle = doc.createElement('div')
+    divEle.style.cssText = 'display: flex; flex-direction: column;'
+    divEle.appendChild(createFontFamilySelect(doc))
+    divEle.appendChild(createFontSizeSelect(doc))
+    divEle.appendChild(createColorList(doc))
+    divEle.appendChild(createBackgroundColorList(doc))
+    return divEle
 }
 
 function createEditPreview(doc: Document): HTMLElement {
-  const divEle = doc.createElement('div')
-  divEle.style.cssText =
-    'margin-top: 5px; margin-left: 20px; display: flex; flex-direction: column;'
+    const divEle = doc.createElement('div')
+    divEle.style.cssText =
+        'margin-top: 5px; margin-left: 20px; display: flex; flex-direction: column;'
 
-  const divEditArea = doc.createElement('div')
-  divEditArea.appendChild(
-    digcom.NewLabelDiv(doc, {
-      divClass: 'label-style',
-      forHtml: 'text-input-area',
-      text: '编辑区域：'
-    })
-  )
-  divEditArea.appendChild(
-    digcom.NewTextArea(
-      doc,
-      'text-input-area',
-      'width: 740px;height: 150px;overflow-y: auto;margin-top:10px'
+    const divEditArea = doc.createElement('div')
+    divEditArea.appendChild(
+        digcom.NewLabelDiv(doc, {
+            divClass: 'label-style',
+            forHtml: 'text-input-area',
+            text: '编辑区域：'
+        })
     )
-  )
-  divEle.appendChild(divEditArea)
+    divEditArea.appendChild(
+        digcom.NewTextArea(
+            doc,
+            'text-input-area',
+            'width: 740px;height: 150px;overflow-y: auto;margin-top:10px'
+        )
+    )
+    divEle.appendChild(divEditArea)
 
-  const divLine = doc.createElement('div')
-  divLine.style.cssText =
-    'margin-top: 10px; height:2px; color:white; width:740px; display: flex; background-color: black'
-  divEle.appendChild(divLine)
+    const divLine = doc.createElement('div')
+    divLine.style.cssText =
+        'margin-top: 10px; height:2px; color:white; width:740px; display: flex; background-color: black'
+    divEle.appendChild(divLine)
 
-  const divPreArea = doc.createElement('div')
-  divPreArea.style.cssText = 'margin-top: 5px'
-  divPreArea.appendChild(
-    digcom.NewLabelDiv(doc, { divClass: 'label-style', forHtml: 'previewText', text: '效果预览：' })
-  )
-  const preview = doc.createElement('div')
-  preview.id = 'preview-area'
-  preview.style.cssText = 'width: 740px;height: 260px; overflow:auto;'
-  preview.innerHTML = '<p class="preview-text" id="previewText">这是一段预览文字。</p>'
-  divPreArea.appendChild(preview)
-  divEle.appendChild(divPreArea)
-  return divEle
+    const divPreArea = doc.createElement('div')
+    divPreArea.style.cssText = 'margin-top: 5px'
+    divPreArea.appendChild(
+        digcom.NewLabelDiv(doc, {
+            divClass: 'label-style',
+            forHtml: 'previewText',
+            text: '效果预览：'
+        })
+    )
+    const preview = doc.createElement('div')
+    preview.id = 'preview-area'
+    preview.style.cssText = 'width: 740px;height: 260px; overflow:auto;'
+    preview.innerHTML = '<p class="preview-text" id="previewText">这是一段预览文字。</p>'
+    divPreArea.appendChild(preview)
+    divEle.appendChild(divPreArea)
+    return divEle
 }
 
 function createFontStyle1(doc: Document): HTMLElement {
-  const labelStyle = 'width: 100px;margin: 5px;text-align: right;'
-  const labels: digcom.Label[] = [
-    {
-      forHtml: 'edit-font-bold',
-      text: '加\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0粗：',
-      divCss: labelStyle
-    },
-    {
-      forHtml: 'edit-font-italic',
-      text: '倾\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0斜：',
-      divCss: labelStyle
-    },
-    {
-      forHtml: 'edit-font-underline',
-      text: '下\u00A0\u00A0划\u00A0\u00A0线：',
-      divCss: labelStyle
-    },
-    {
-      forHtml: 'edit-font-deleteline',
-      text: '删\u00A0\u00A0除\u00A0\u00A0线：',
-      divCss: labelStyle
-    }
-  ]
+    const labelStyle = 'width: 100px;margin: 5px;text-align: right;'
+    const labels: digcom.Label[] = [
+        {
+            forHtml: 'edit-font-bold',
+            text: '加\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0粗：',
+            divCss: labelStyle
+        },
+        {
+            forHtml: 'edit-font-italic',
+            text: '倾\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0斜：',
+            divCss: labelStyle
+        },
+        {
+            forHtml: 'edit-font-underline',
+            text: '下\u00A0\u00A0划\u00A0\u00A0线：',
+            divCss: labelStyle
+        },
+        {
+            forHtml: 'edit-font-deleteline',
+            text: '删\u00A0\u00A0除\u00A0\u00A0线：',
+            divCss: labelStyle
+        }
+    ]
 
-  const LabelList = digcom.NewLabelList(doc, labels)
-  LabelList.style.cssText =
-    'margin-top: 10px;margin-left: 20px;display: flex; flex-direction: column;'
-  return LabelList
+    const LabelList = digcom.NewLabelList(doc, labels)
+    LabelList.style.cssText =
+        'margin-top: 10px;margin-left: 20px;display: flex; flex-direction: column;'
+    return LabelList
 }
 
 function createFontStyleBox1(doc: Document): HTMLElement {
-  const divEle = doc.createElement('div')
-  divEle.style.cssText = 'margin: 7px;display: flex; flex-direction: column;'
-  const boxes: digcom.CheckBox[] = [
-    { id: 'edit-font-bold', value: 'bold', name: 'edit-font-bold' },
-    { id: 'edit-font-italic', value: 'italic', name: 'edit-font-italic' },
-    { id: 'edit-font-underline', value: 'underline', name: 'edit-font-underline' },
-    { id: 'edit-font-deleteline', value: 'deleteline', name: 'edit-font-deleteline' }
-  ]
-  boxes.map((item) => {
-    const checkbox = digcom.NewCheckBox(doc, 'checkbox-style', item)
-    divEle.appendChild(checkbox)
-  })
-  return divEle
+    const divEle = doc.createElement('div')
+    divEle.style.cssText = 'margin: 7px;display: flex; flex-direction: column;'
+    const boxes: digcom.CheckBox[] = [
+        { id: 'edit-font-bold', value: 'bold', name: 'edit-font-bold' },
+        { id: 'edit-font-italic', value: 'italic', name: 'edit-font-italic' },
+        { id: 'edit-font-underline', value: 'underline', name: 'edit-font-underline' },
+        { id: 'edit-font-deleteline', value: 'deleteline', name: 'edit-font-deleteline' }
+    ]
+    boxes.map((item) => {
+        const checkbox = digcom.NewCheckBox(doc, 'checkbox-style', item)
+        divEle.appendChild(checkbox)
+    })
+    return divEle
 }
 
 function createFontStyle2(doc: Document): HTMLElement {
-  const labelStyle = 'width: 100px;margin: 5px;text-align: right;'
-  const labels: digcom.Label[] = [
-    { forHtml: 'edit-align-left', text: '左\u00A0对\u00A0\u00A0齐：', divCss: labelStyle },
-    { forHtml: 'edit-align-center', text: '居中对齐：', divCss: labelStyle },
-    { forHtml: 'edit-align-right', text: '右\u00A0对\u00A0\u00A0齐：', divCss: labelStyle },
-    { forHtml: 'edit-align-justify', text: '两端对齐：', divCss: labelStyle }
-  ]
+    const labelStyle = 'width: 100px;margin: 5px;text-align: right;'
+    const labels: digcom.Label[] = [
+        { forHtml: 'edit-align-left', text: '左\u00A0对\u00A0\u00A0齐：', divCss: labelStyle },
+        { forHtml: 'edit-align-center', text: '居中对齐：', divCss: labelStyle },
+        { forHtml: 'edit-align-right', text: '右\u00A0对\u00A0\u00A0齐：', divCss: labelStyle },
+        { forHtml: 'edit-align-justify', text: '两端对齐：', divCss: labelStyle }
+    ]
 
-  const LabelList = digcom.NewLabelList(doc, labels)
-  LabelList.style.cssText =
-    'margin-top: 10px;margin-left: 60px; display: flex; flex-direction: column;'
-  return LabelList
+    const LabelList = digcom.NewLabelList(doc, labels)
+    LabelList.style.cssText =
+        'margin-top: 10px;margin-left: 60px; display: flex; flex-direction: column;'
+    return LabelList
 }
 
 function createFontStyleBox2(doc: Document): HTMLElement {
-  const divEle = doc.createElement('div')
-  divEle.style.cssText = 'margin: 7px;display: flex; flex-direction: column;'
-  divEle.id = 'edit-align-checkbox-list'
-  const boxes: digcom.CheckBox[] = [
-    { id: 'edit-align-left', value: 'left', name: 'edit-align-left' },
-    { id: 'edit-align-center', value: 'center', name: 'edit-align-center' },
-    { id: 'edit-align-right', value: 'right', name: 'edit-align-right' },
-    { id: 'edit-align-justify', value: 'justify', name: 'edit-align-justify' }
-  ]
-  boxes.map((item) => {
-    const checkbox = digcom.NewCheckBox(doc, 'checkbox-style', item)
-    divEle.appendChild(checkbox)
-  })
-  return divEle
+    const divEle = doc.createElement('div')
+    divEle.style.cssText = 'margin: 7px;display: flex; flex-direction: column;'
+    divEle.id = 'edit-align-checkbox-list'
+    const boxes: digcom.CheckBox[] = [
+        { id: 'edit-align-left', value: 'left', name: 'edit-align-left' },
+        { id: 'edit-align-center', value: 'center', name: 'edit-align-center' },
+        { id: 'edit-align-right', value: 'right', name: 'edit-align-right' },
+        { id: 'edit-align-justify', value: 'justify', name: 'edit-align-justify' }
+    ]
+    boxes.map((item) => {
+        const checkbox = digcom.NewCheckBox(doc, 'checkbox-style', item)
+        divEle.appendChild(checkbox)
+    })
+    return divEle
 }
 
 function createFontStyle(doc: Document): HTMLElement {
-  const div = doc.createElement('div')
-  div.style.cssText = 'display: flex; flex-direction: row;'
-  div.appendChild(createFontStyle1(doc))
-  div.appendChild(createFontStyleBox1(doc))
-  div.appendChild(createFontStyle2(doc))
-  div.appendChild(createFontStyleBox2(doc))
-  return div
+    const div = doc.createElement('div')
+    div.style.cssText = 'display: flex; flex-direction: row;'
+    div.appendChild(createFontStyle1(doc))
+    div.appendChild(createFontStyleBox1(doc))
+    div.appendChild(createFontStyle2(doc))
+    div.appendChild(createFontStyleBox2(doc))
+    return div
 }
 
 function createFontSizeColor(doc: Document): HTMLElement {
-  const divRow = doc.createElement('div')
-  divRow.style.cssText = 'display: flex; flex-direction: row;'
-  divRow.appendChild(createLabelList(doc))
-  divRow.appendChild(createInputs(doc))
-  const div = doc.createElement('div')
-  div.style.cssText = 'display: flex; flex-direction: column;'
-  div.appendChild(divRow)
-  div.appendChild(createFontStyle(doc))
-  return div
+    const divRow = doc.createElement('div')
+    divRow.style.cssText = 'display: flex; flex-direction: row;'
+    divRow.appendChild(createLabelList(doc))
+    divRow.appendChild(createInputs(doc))
+    const div = doc.createElement('div')
+    div.style.cssText = 'display: flex; flex-direction: column;'
+    div.appendChild(divRow)
+    div.appendChild(createFontStyle(doc))
+    return div
 }
 
 function createBodyDiv(doc: Document): HTMLElement {
-  const div = doc.createElement('div')
-  div.style.cssText = 'display: flex; flex-direction: row;margin-left: 20px;'
-  div.appendChild(createFontSizeColor(doc))
-  const divLine = doc.createElement('div')
-  divLine.style.cssText =
-    'margin-top: 10px; margin-left: 20px; width:2px; color:white; height:460px; display: flex; background-color: black'
-  div.appendChild(divLine)
-  div.appendChild(createEditPreview(doc))
-  return div
+    const div = doc.createElement('div')
+    div.style.cssText = 'display: flex; flex-direction: row;margin-left: 20px;'
+    div.appendChild(createFontSizeColor(doc))
+    const divLine = doc.createElement('div')
+    divLine.style.cssText =
+        'margin-top: 10px; margin-left: 20px; width:2px; color:white; height:460px; display: flex; background-color: black'
+    div.appendChild(divLine)
+    div.appendChild(createEditPreview(doc))
+    return div
 }
 
 function createButtonList(doc: Document): HTMLElement {
-  const buttons: digcom.Button[] = [
-    { id: 'font-select-apply', text: '应用', btnCss: digcom.ButtonStyle },
-    { id: 'font-select-cancel', text: '取消', btnCss: digcom.ButtonStyle }
-  ]
+    const buttons: digcom.Button[] = [
+        { id: 'font-select-apply', text: '应用', btnCss: digcom.ButtonStyle },
+        { id: 'font-select-cancel', text: '取消', btnCss: digcom.ButtonStyle }
+    ]
 
-  const btnList = digcom.NewButtonList(doc, buttons)
-  btnList.style.cssText =
-    'width:1200px;margin-top:5px; display:flex; justify-content:center;align-items:center;gap: 400px'
-  return btnList
+    const btnList = digcom.NewButtonList(doc, buttons)
+    btnList.style.cssText =
+        'width:1200px;margin-top:5px; display:flex; justify-content:center;align-items:center;gap: 400px'
+    return btnList
 }
 
 function makeFontDialogHtml(): string {
-  const { document } = new JSDOM(
-    `<!DOCTYPE html><html lang="zh"><head><title>特殊文字编辑</title></head><body></body></html>`
-  ).window
+    const { document } = new JSDOM(
+        `<!DOCTYPE html><html lang="zh"><head><title>特殊文字编辑</title></head><body></body></html>`
+    ).window
 
-  const webDivStyle = document.createElement('style')
-  webDivStyle.textContent = `
+    const webDivStyle = document.createElement('style')
+    webDivStyle.textContent = `
     .label-style {width: 100px;margin-top: 5px;text-align: center;}
     .input-style {width: 250px;margin-top: 5px;}
     .checkbox-style {margin-top: 11px;margin-left:5px}
     .color-button {width: 18px;height: 18px;border-width:.2px;}
     .background-color-button {width: 18px;height: 18px;border-width:.2px;}`
-  document.head.appendChild(webDivStyle)
-  const divBody = createBodyDiv(document)
-  document.body.appendChild(divBody)
-  document.body.appendChild(createButtonList(document))
+    document.head.appendChild(webDivStyle)
+    const divBody = createBodyDiv(document)
+    document.body.appendChild(divBody)
+    document.body.appendChild(createButtonList(document))
 
-  const eleScript = document.createElement('script')
-  eleScript.textContent = `
+    const eleScript = document.createElement('script')
+    eleScript.textContent = `
     const { ipcRenderer } = require('electron')
     let fontStyle = {
       fontFamily:"Arial",
@@ -507,6 +518,6 @@ function makeFontDialogHtml(): string {
         document.getElementById("previewText").style.backgroundColor = color
       }
     })`
-  document.body.appendChild(eleScript)
-  return document.documentElement.outerHTML
+    document.body.appendChild(eleScript)
+    return document.documentElement.outerHTML
 }

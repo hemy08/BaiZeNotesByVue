@@ -13,23 +13,22 @@ import { createApp } from 'vue'
 import App from './App.vue'
 
 const store = createStore({
-  state: {
-    header: ''
-  },
-  mutations: {
-    setFormatHeader(state, value) {
-      state.header = value
+    state: {
+        header: ''
+    },
+    mutations: {
+        setFormatHeader(state, value) {
+            state.header = value
+        }
+    },
+    actions: {
+        updateFormatHeader({ commit }, value) {
+            commit('setFormatHeader', value)
+        }
     }
-  },
-  actions: {
-    updateFormatHeader({ commit }, value) {
-      commit('setFormatHeader', value)
-    }
-  }
 })
 
 const app = createApp(App)
 app.use(store)
 app.component('ContextMenu', ContextMenu)
 app.mount('#app')
-

@@ -7,124 +7,124 @@ let customWebUrlDialog: Electron.BrowserWindow | null
 // 创建一个自定义对话框的函数
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ShowWebUrlDialog(mainWindow: Electron.BrowserWindow) {
-  if (customWebUrlDialog) {
-    digcom.ShowAlreadyExistDialog()
-    return
-  }
-
-  customWebUrlDialog = new BrowserWindow({
-    width: 630,
-    height: 180,
-    minimizable: false,
-    maximizable: false,
-    resizable: false,
-    title: '插入网页链接',
-    autoHideMenuBar: true,
-    webPreferences: {
-      nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-      contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
-      sandbox: false
-    }
-  })
-
-  customWebUrlDialog.setMenu(null)
-
-  const tempHtml = makeWebUrlDialogHtml()
-  // 加载一个 HTML 文件作为对话框的内容
-  customWebUrlDialog.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(tempHtml)}`)
-
-  // 显示窗口
-  customWebUrlDialog.show()
-
-  customWebUrlDialog.on('closed', () => {
-    customWebUrlDialog = null
-    ipcMain.removeListener('dialog-web-url-btn-insert', processWebUrlDialogInsert)
-    ipcMain.removeListener('dialog-web-url-btn-cancel', () => {})
-  })
-
-  function exitCustomWebUrlDialog() {
     if (customWebUrlDialog) {
-      customWebUrlDialog.close()
-      customWebUrlDialog = null
+        digcom.ShowAlreadyExistDialog()
+        return
     }
-  }
 
-  function processWebUrlDialogInsert(_: IpcMainEvent, webLinks: { title: string; addr: string }) {
-    // console.log('processWebUrlDialogInsert', webLinks)
-    const webUrl = '[' + webLinks.title + '](' + webLinks.addr + ')'
-    mainWindow.webContents.send('monaco-insert-text-block-templates', webUrl)
-    if (customWebUrlDialog) {
-      customWebUrlDialog.close()
+    customWebUrlDialog = new BrowserWindow({
+        width: 630,
+        height: 180,
+        minimizable: false,
+        maximizable: false,
+        resizable: false,
+        title: '插入网页链接',
+        autoHideMenuBar: true,
+        webPreferences: {
+            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
+            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
+            sandbox: false
+        }
+    })
+
+    customWebUrlDialog.setMenu(null)
+
+    const tempHtml = makeWebUrlDialogHtml()
+    // 加载一个 HTML 文件作为对话框的内容
+    customWebUrlDialog.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(tempHtml)}`)
+
+    // 显示窗口
+    customWebUrlDialog.show()
+
+    customWebUrlDialog.on('closed', () => {
+        customWebUrlDialog = null
+        ipcMain.removeListener('dialog-web-url-btn-insert', processWebUrlDialogInsert)
+        ipcMain.removeListener('dialog-web-url-btn-cancel', () => {})
+    })
+
+    function exitCustomWebUrlDialog() {
+        if (customWebUrlDialog) {
+            customWebUrlDialog.close()
+            customWebUrlDialog = null
+        }
     }
-  }
 
-  ipcMain.on('dialog-web-url-btn-insert', processWebUrlDialogInsert)
-  ipcMain.on('dialog-web-url-btn-cancel', () => {
-    exitCustomWebUrlDialog()
-  })
+    function processWebUrlDialogInsert(_: IpcMainEvent, webLinks: { title: string; addr: string }) {
+        // console.log('processWebUrlDialogInsert', webLinks)
+        const webUrl = '[' + webLinks.title + '](' + webLinks.addr + ')'
+        mainWindow.webContents.send('monaco-insert-text-block-templates', webUrl)
+        if (customWebUrlDialog) {
+            customWebUrlDialog.close()
+        }
+    }
+
+    ipcMain.on('dialog-web-url-btn-insert', processWebUrlDialogInsert)
+    ipcMain.on('dialog-web-url-btn-cancel', () => {
+        exitCustomWebUrlDialog()
+    })
 }
 
 function createWebUrlButtonList(doc: Document): Element {
-  const buttons: digcom.Button[] = [
-    { id: 'insert-web-url', text: '确定' },
-    { id: 'cancel-input', text: '取消' }
-  ]
+    const buttons: digcom.Button[] = [
+        { id: 'insert-web-url', text: '确定' },
+        { id: 'cancel-input', text: '取消' }
+    ]
 
-  const btnList = digcom.NewButtonList(doc, buttons)
-  btnList.className = 'web-url-btn-style'
-  return btnList
+    const btnList = digcom.NewButtonList(doc, buttons)
+    btnList.className = 'web-url-btn-style'
+    return btnList
 }
 
 function makeWebUrlDialogHtml(): string {
-  // 创建一个空的HTML文档
-  const { document } = new JSDOM(
-    `<!DOCTYPE html><html lang="zh"><head><title>插入网页链接</title></head><body></body></html>`
-  ).window
+    // 创建一个空的HTML文档
+    const { document } = new JSDOM(
+        `<!DOCTYPE html><html lang="zh"><head><title>插入网页链接</title></head><body></body></html>`
+    ).window
 
-  const webDivStyle = document.createElement('style')
-  webDivStyle.textContent = `
+    const webDivStyle = document.createElement('style')
+    webDivStyle.textContent = `
     #web-url-components {margin: 5px;}
     #web-url-components > div {margin: 15px;}
     #web-url-components input {width: 460px;}
     .web-url-button {width: 100px;margin-top: 10px;}
     .web-url-btn-style {width:500px;display:flex; justify-content:center;align-items: center;gap: 100px}`
 
-  const webDiv = document.createElement('div')
-  webDiv.id = 'web-url-components'
+    const webDiv = document.createElement('div')
+    webDiv.id = 'web-url-components'
 
-  const webDivTitle = document.createElement('div')
-  webDivTitle.id = 'web-url-title'
-  const webDivTitleLabel = document.createElement('label')
-  webDivTitleLabel.id = 'web-title-label'
-  webDivTitleLabel.htmlFor = 'web-title-input'
-  webDivTitleLabel.textContent = '地址描述：'
-  const webDivTitleInput = document.createElement('input')
-  webDivTitleInput.id = 'web-title-input'
-  webDivTitleInput.type = 'text'
-  webDivTitleInput.placeholder = '请输入地址描述...'
-  webDivTitle.appendChild(webDivTitleLabel)
-  webDivTitle.appendChild(webDivTitleInput)
+    const webDivTitle = document.createElement('div')
+    webDivTitle.id = 'web-url-title'
+    const webDivTitleLabel = document.createElement('label')
+    webDivTitleLabel.id = 'web-title-label'
+    webDivTitleLabel.htmlFor = 'web-title-input'
+    webDivTitleLabel.textContent = '地址描述：'
+    const webDivTitleInput = document.createElement('input')
+    webDivTitleInput.id = 'web-title-input'
+    webDivTitleInput.type = 'text'
+    webDivTitleInput.placeholder = '请输入地址描述...'
+    webDivTitle.appendChild(webDivTitleLabel)
+    webDivTitle.appendChild(webDivTitleInput)
 
-  const webDivUrl = document.createElement('div')
-  webDivUrl.id = 'web-url-addr'
-  const webDivUrlLabel = document.createElement('label')
-  webDivUrlLabel.id = 'web-addr-label'
-  webDivUrlLabel.htmlFor = 'web-addr-input'
-  webDivUrlLabel.textContent = '网站地址：'
-  const webDivUrlInput = document.createElement('input')
-  webDivUrlInput.id = 'web-addr-input'
-  webDivUrlInput.type = 'text'
-  webDivUrlInput.placeholder = '请输入http/https路径...'
-  webDivUrl.appendChild(webDivUrlLabel)
-  webDivUrl.appendChild(webDivUrlInput)
+    const webDivUrl = document.createElement('div')
+    webDivUrl.id = 'web-url-addr'
+    const webDivUrlLabel = document.createElement('label')
+    webDivUrlLabel.id = 'web-addr-label'
+    webDivUrlLabel.htmlFor = 'web-addr-input'
+    webDivUrlLabel.textContent = '网站地址：'
+    const webDivUrlInput = document.createElement('input')
+    webDivUrlInput.id = 'web-addr-input'
+    webDivUrlInput.type = 'text'
+    webDivUrlInput.placeholder = '请输入http/https路径...'
+    webDivUrl.appendChild(webDivUrlLabel)
+    webDivUrl.appendChild(webDivUrlInput)
 
-  webDiv.appendChild(webDivTitle)
-  webDiv.appendChild(webDivUrl)
+    webDiv.appendChild(webDivTitle)
+    webDiv.appendChild(webDivUrl)
 
-  const webDivButtons = createWebUrlButtonList(document)
+    const webDivButtons = createWebUrlButtonList(document)
 
-  const webDivScript = document.createElement('script')
-  webDivScript.textContent = `
+    const webDivScript = document.createElement('script')
+    webDivScript.textContent = `
     const { ipcRenderer } = require('electron');
     let webUrl = {
       title : '',
@@ -146,10 +146,10 @@ function makeWebUrlDialogHtml(): string {
       ipcRenderer.send('dialog-web-url-btn-cancel')
     }`
 
-  document.head.appendChild(webDivStyle)
-  document.body.appendChild(webDiv)
-  document.body.appendChild(webDivButtons)
-  document.body.appendChild(webDivScript)
+    document.head.appendChild(webDivStyle)
+    document.body.appendChild(webDiv)
+    document.body.appendChild(webDivButtons)
+    document.body.appendChild(webDivScript)
 
-  return document.documentElement.outerHTML
+    return document.documentElement.outerHTML
 }

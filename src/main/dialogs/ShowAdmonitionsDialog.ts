@@ -5,162 +5,165 @@ import * as digcom from './dialog_common'
 let customAdmonitionDialog: Electron.BrowserWindow | null
 
 export function ShowAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
-  if (customAdmonitionDialog) {
-    digcom.ShowAlreadyExistDialog()
-    return
-  }
-  customAdmonitionDialog = new BrowserWindow({
-    width: 950,
-    height: 650,
-    minimizable: false,
-    maximizable: false,
-    resizable: false,
-    title: 'Admonition',
-    autoHideMenuBar: true,
-    webPreferences: {
-      nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-      contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
-      sandbox: false
-    }
-  })
-
-  if (!customAdmonitionDialog) {
-    return
-  }
-
-  customAdmonitionDialog.setMenu(null)
-
-  // 加载一个 HTML 文件作为对话框的内容
-  customAdmonitionDialog.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(makeAdmonitionDialogHtml())}`
-  )
-
-  // 当窗口关闭时，清除引用
-  customAdmonitionDialog.on('closed', () => {
-    ipcMain.removeListener('dialog-material-admonitions-btn-insert', processAdmonitionInsert)
-    ipcMain.removeListener('dialog-material-admonitions-btn-cancel', () => {})
-  })
-
-  // 显示窗口
-  customAdmonitionDialog.show()
-
-  function exitCustomFontDialog() {
     if (customAdmonitionDialog) {
-      ipcMain.removeListener('dialog-material-admonitions-btn-insert', processAdmonitionInsert)
-      ipcMain.removeListener('dialog-material-admonitions-btn-cancel', () => {})
-      customAdmonitionDialog.close()
-      customAdmonitionDialog = null
+        digcom.ShowAlreadyExistDialog()
+        return
     }
-  }
+    customAdmonitionDialog = new BrowserWindow({
+        width: 950,
+        height: 650,
+        minimizable: false,
+        maximizable: false,
+        resizable: false,
+        title: 'Admonition',
+        autoHideMenuBar: true,
+        webPreferences: {
+            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
+            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
+            sandbox: false
+        }
+    })
 
-  function processAdmonitionInsert(_, Admonition) {
-    mainWindow.webContents.send('monaco-insert-text-block-templates', Admonition + '\n')
-    exitCustomFontDialog()
-  }
+    if (!customAdmonitionDialog) {
+        return
+    }
 
-  function processAdmonitionCancel() {
-    exitCustomFontDialog()
-  }
+    customAdmonitionDialog.setMenu(null)
 
-  ipcMain.on('dialog-material-admonitions-btn-insert', processAdmonitionInsert)
-  ipcMain.on('dialog-material-admonitions-btn-cancel', processAdmonitionCancel)
+    // 加载一个 HTML 文件作为对话框的内容
+    customAdmonitionDialog.loadURL(
+        `data:text/html;charset=utf-8,${encodeURIComponent(makeAdmonitionDialogHtml())}`
+    )
+
+    // 当窗口关闭时，清除引用
+    customAdmonitionDialog.on('closed', () => {
+        ipcMain.removeListener('dialog-material-admonitions-btn-insert', processAdmonitionInsert)
+        ipcMain.removeListener('dialog-material-admonitions-btn-cancel', () => {})
+    })
+
+    // 显示窗口
+    customAdmonitionDialog.show()
+
+    function exitCustomFontDialog() {
+        if (customAdmonitionDialog) {
+            ipcMain.removeListener(
+                'dialog-material-admonitions-btn-insert',
+                processAdmonitionInsert
+            )
+            ipcMain.removeListener('dialog-material-admonitions-btn-cancel', () => {})
+            customAdmonitionDialog.close()
+            customAdmonitionDialog = null
+        }
+    }
+
+    function processAdmonitionInsert(_, Admonition) {
+        mainWindow.webContents.send('monaco-insert-text-block-templates', Admonition + '\n')
+        exitCustomFontDialog()
+    }
+
+    function processAdmonitionCancel() {
+        exitCustomFontDialog()
+    }
+
+    ipcMain.on('dialog-material-admonitions-btn-insert', processAdmonitionInsert)
+    ipcMain.on('dialog-material-admonitions-btn-cancel', processAdmonitionCancel)
 }
 
 function createDivLabelEle(doc: Document, text: string): HTMLElement {
-  const eleDiv = doc.createElement('div')
-  eleDiv.style.cssText = 'display: flex;flex-direction: row;margin-top: 10px'
+    const eleDiv = doc.createElement('div')
+    eleDiv.style.cssText = 'display: flex;flex-direction: row;margin-top: 10px'
 
-  const eleDivLabel = doc.createElement('div')
-  const eleLabel = doc.createElement('label')
-  eleLabel.style.cssText = 'width:50px;margin-left:20px;'
-  eleLabel.textContent = text
-  eleDivLabel.appendChild(eleLabel)
-  eleDiv.appendChild(eleDivLabel)
-  return eleDiv
+    const eleDivLabel = doc.createElement('div')
+    const eleLabel = doc.createElement('label')
+    eleLabel.style.cssText = 'width:50px;margin-left:20px;'
+    eleLabel.textContent = text
+    eleDivLabel.appendChild(eleLabel)
+    eleDiv.appendChild(eleDivLabel)
+    return eleDiv
 }
 
 function createDivTypeEle(doc: Document): HTMLElement {
-  const eleDiv = createDivLabelEle(doc, '类型：')
-  const eleDivSelect = doc.createElement('div')
-  eleDivSelect.style.cssText = 'width: 200px'
+    const eleDiv = createDivLabelEle(doc, '类型：')
+    const eleDivSelect = doc.createElement('div')
+    eleDivSelect.style.cssText = 'width: 200px'
 
-  const options: digcom.Option[] = [
-    { value: 'Note' },
-    { value: 'Abstract' },
-    { value: 'Info' },
-    { value: 'Tip' },
-    { value: 'Success' },
-    { value: 'Question' },
-    { value: 'Warning' },
-    { value: 'Failure' },
-    { value: 'Danger' },
-    { value: 'Bug' },
-    { value: 'Example' },
-    { value: 'Quote' },
-    { value: 'Pied-Piper' }
-  ]
-  const eleSelect = digcom.NewSelect(doc, options)
-  eleSelect.id = 'admonitionsType'
-  eleSelect.style.cssText = 'width: 200px'
+    const options: digcom.Option[] = [
+        { value: 'Note' },
+        { value: 'Abstract' },
+        { value: 'Info' },
+        { value: 'Tip' },
+        { value: 'Success' },
+        { value: 'Question' },
+        { value: 'Warning' },
+        { value: 'Failure' },
+        { value: 'Danger' },
+        { value: 'Bug' },
+        { value: 'Example' },
+        { value: 'Quote' },
+        { value: 'Pied-Piper' }
+    ]
+    const eleSelect = digcom.NewSelect(doc, options)
+    eleSelect.id = 'admonitionsType'
+    eleSelect.style.cssText = 'width: 200px'
 
-  eleDivSelect.appendChild(eleSelect)
-  eleDiv.appendChild(eleDivSelect)
-  return eleDiv
+    eleDivSelect.appendChild(eleSelect)
+    eleDiv.appendChild(eleDivSelect)
+    return eleDiv
 }
 
 function createDivTitleEle(doc: Document): HTMLElement {
-  const eleDiv = createDivLabelEle(doc, '标题：')
-  const eleInput = doc.createElement('input')
-  eleInput.id = 'admonitionsTitle'
-  eleInput.style.cssText = 'width: 820px;'
-  eleDiv.appendChild(eleInput)
-  return eleDiv
+    const eleDiv = createDivLabelEle(doc, '标题：')
+    const eleInput = doc.createElement('input')
+    eleInput.id = 'admonitionsTitle'
+    eleInput.style.cssText = 'width: 820px;'
+    eleDiv.appendChild(eleInput)
+    return eleDiv
 }
 
 function createDivContextEle(doc: Document): HTMLElement {
-  const eleDiv = createDivLabelEle(doc, '内容：')
-  const eleTextArea = doc.createElement('textarea')
-  eleTextArea.id = 'admonitionsContent'
-  eleTextArea.style.cssText = 'width: 820px;height: 150px;overflow-y: auto;'
-  eleDiv.appendChild(eleTextArea)
-  return eleDiv
+    const eleDiv = createDivLabelEle(doc, '内容：')
+    const eleTextArea = doc.createElement('textarea')
+    eleTextArea.id = 'admonitionsContent'
+    eleTextArea.style.cssText = 'width: 820px;height: 150px;overflow-y: auto;'
+    eleDiv.appendChild(eleTextArea)
+    return eleDiv
 }
 
 function createDivPreviewEle(doc: Document): HTMLElement {
-  const eleDiv = createDivLabelEle(doc, '预览：')
-  const elePreview = doc.createElement('div')
-  elePreview.id = 'admonitionsPreview'
-  elePreview.style.cssText = 'width: 820px;height: 300px; overflow:auto;'
-  elePreview.innerHTML = '<p id="previewText">这是一段预览文字。</p>'
-  eleDiv.appendChild(elePreview)
-  return eleDiv
+    const eleDiv = createDivLabelEle(doc, '预览：')
+    const elePreview = doc.createElement('div')
+    elePreview.id = 'admonitionsPreview'
+    elePreview.style.cssText = 'width: 820px;height: 300px; overflow:auto;'
+    elePreview.innerHTML = '<p id="previewText">这是一段预览文字。</p>'
+    eleDiv.appendChild(elePreview)
+    return eleDiv
 }
 
 function createButtonList(doc: Document): HTMLElement {
-  const btnStyle =
-    'width:800px;margin-top:10px; display:flex; justify-content:center;align-items:center;gap: 200px'
-  const buttons: digcom.Button[] = [
-    { id: 'applyButton', text: '应用', btnCss: digcom.ButtonStyle },
-    { id: 'cancelButton', text: '取消', btnCss: digcom.ButtonStyle }
-  ]
+    const btnStyle =
+        'width:800px;margin-top:10px; display:flex; justify-content:center;align-items:center;gap: 200px'
+    const buttons: digcom.Button[] = [
+        { id: 'applyButton', text: '应用', btnCss: digcom.ButtonStyle },
+        { id: 'cancelButton', text: '取消', btnCss: digcom.ButtonStyle }
+    ]
 
-  const Buttons = digcom.NewButtonList(doc, buttons)
-  Buttons.style.cssText = btnStyle
-  return Buttons
+    const Buttons = digcom.NewButtonList(doc, buttons)
+    Buttons.style.cssText = btnStyle
+    return Buttons
 }
 
 function makeAdmonitionDialogHtml(): string {
-  // 创建一个空的HTML文档
-  const { document } = new JSDOM(
-    `<!DOCTYPE html><html lang="zh"><head><title>Admonition 编辑</title></head><body></body></html>`
-  ).window
+    // 创建一个空的HTML文档
+    const { document } = new JSDOM(
+        `<!DOCTYPE html><html lang="zh"><head><title>Admonition 编辑</title></head><body></body></html>`
+    ).window
 
-  /*const webLink = document.createElement('link')
+    /*const webLink = document.createElement('link')
   webLink.rel = 'stylesheet'
   webLink.href = join(__dirname, '../renderer/src/style/material/admonition.css')
   document.head.appendChild(webLink)*/
-  const webDivStyle = document.createElement('style')
-  webDivStyle.textContent = `
+    const webDivStyle = document.createElement('style')
+    webDivStyle.textContent = `
     :root {
     --md-primary-fg-color: #4051b5;
     --md-primary-fg-color--light: #5d6cc0;
@@ -549,16 +552,16 @@ function makeAdmonitionDialogHtml(): string {
       -webkit-mask-image: var(--md-admonition-icon--pied-piper);
       mask-image: var(--md-admonition-icon--pied-piper);
   }`
-  document.head.appendChild(webDivStyle)
+    document.head.appendChild(webDivStyle)
 
-  document.body.appendChild(createDivTypeEle(document))
-  document.body.appendChild(createDivTitleEle(document))
-  document.body.appendChild(createDivContextEle(document))
-  document.body.appendChild(createDivPreviewEle(document))
-  document.body.appendChild(createButtonList(document))
+    document.body.appendChild(createDivTypeEle(document))
+    document.body.appendChild(createDivTitleEle(document))
+    document.body.appendChild(createDivContextEle(document))
+    document.body.appendChild(createDivPreviewEle(document))
+    document.body.appendChild(createButtonList(document))
 
-  const eleScript = document.createElement('script')
-  eleScript.textContent = `
+    const eleScript = document.createElement('script')
+    eleScript.textContent = `
     const { ipcRenderer } = require('electron');
     let typeStr='note'
     let titleStr='这是一个演示'
@@ -599,8 +602,8 @@ function makeAdmonitionDialogHtml(): string {
     }
     `
 
-  document.body.appendChild(eleScript)
-  return document.documentElement.outerHTML
+    document.body.appendChild(eleScript)
+    return document.documentElement.outerHTML
 }
 
 /*const admonitionHtmlContent =

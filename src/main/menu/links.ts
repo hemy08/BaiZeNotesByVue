@@ -17,6 +17,20 @@ export function getAppOnlineToolHomeMenuItem(
     }
 }
 
+export function getAppGitHubPrjHomeMenuItem(
+    mainWindow: Electron.BrowserWindow
+): Electron.MenuItemConstructorOptions {
+    return {
+        label: 'GitHub开源',
+        enabled: true,
+        submenu: menucontext.GenElectronMenuItem(
+            mainWindow,
+            CHANNEL_OPEN_URL_WEB,
+            menucontext.GitHubProject
+        )
+    }
+}
+
 export const OnlineLinkMenuItem: menucontext.SubMenuItems[] = [
     { label: '菜鸟在线工具（无序）', MenuContext: menucontext.JYShare },
     { label: '编程狮在线工具（无序）', MenuContext: menucontext.W3School },

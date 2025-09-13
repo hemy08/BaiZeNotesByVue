@@ -7,22 +7,27 @@ import { getAppToolsMenuItem } from './tools'
 import { getAppPluginsMenuItem } from './plugins'
 import { getAppHelpsMenuItem } from './helps'
 import { getAppEncodingMenuItem } from './encoding'
-import { getAppOnlineToolHomeMenuItem, getAppOnlineLinkMenuItem } from './links'
+import {
+    getAppOnlineToolHomeMenuItem,
+    getAppOnlineLinkMenuItem,
+    getAppGitHubPrjHomeMenuItem
+} from './links'
 
 export function getApplicationMenu(
-  mainWindow: Electron.CrossProcessExports.BrowserWindow
+    mainWindow: Electron.CrossProcessExports.BrowserWindow
 ): Electron.MenuItemConstructorOptions[] {
-  return [
-    getAppFileMenuItem(mainWindow),
-    getAppEditMenuItem(mainWindow),
-    getAppViewMenuItem(mainWindow),
-    getAppEncodingMenuItem(mainWindow),
-    getAppInsertMenuItem(mainWindow),
-    getAppSettingMenuItem(mainWindow),
-    getAppToolsMenuItem(mainWindow),
-    getAppPluginsMenuItem(mainWindow),
-    getAppOnlineToolHomeMenuItem(mainWindow),
-    getAppOnlineLinkMenuItem(mainWindow),
-    getAppHelpsMenuItem(mainWindow)
-  ]
+    return [
+        getAppFileMenuItem(mainWindow),
+        getAppEditMenuItem(mainWindow),
+        getAppViewMenuItem(mainWindow),
+        getAppEncodingMenuItem(mainWindow),
+        getAppInsertMenuItem(mainWindow),
+        getAppSettingMenuItem(mainWindow),
+        getAppToolsMenuItem(mainWindow),
+        getAppPluginsMenuItem(mainWindow),
+        getAppOnlineToolHomeMenuItem(mainWindow),
+        getAppOnlineLinkMenuItem(mainWindow),
+        getAppGitHubPrjHomeMenuItem(mainWindow),
+        getAppHelpsMenuItem(mainWindow)
+    ]
 }

@@ -1,31 +1,46 @@
 <template>
-  <div v-show="showFileExplorer" id="resource-manager-component" class="resource-manager-component">
-    <div id="resizer-navi-tab-file-manager" class="resizer-navi-tab-file-manager"></div>
-    <div id="file-manager" class="file-manager">
-      <div id="file-tree">
-        <FileTreeNode
-          v-for="item in fileNodes"
-          :key="item.id"
-          :ref="`node-${item.id}`"
-          v-model:is-expanded="item.isExpanded"
-          v-model:file-extension="item.fileExtension"
-          :is-indented="false"
-          :node="item"
-        />
-      </div>
-    </div>
-  </div>
-  <div v-show="showMarkdownToc" id="markdown-toc-component" class="markdown-toc-component">
     <div
-      style="width: 1px; height: 100%; background-color: #00b0ff; color: #00b0ff; fill: #00b0ff"
-    ></div>
-    <div id="markdown-toc-heading">
-      <div v-for="item in tocArray" :id="item.id" :key="item.id" @click="scrollToSection(item)">
-        <!-- 根据 level 添加适当的缩进 -->
-        <span class="markdown-toc-title" v-html="getIndentedText(item)"></span>
-      </div>
+        v-show="showFileExplorer"
+        id="resource-manager-component"
+        class="resource-manager-component"
+    >
+        <div id="resizer-navi-tab-file-manager" class="resizer-navi-tab-file-manager"></div>
+        <div id="file-manager" class="file-manager">
+            <div id="file-tree">
+                <FileTreeNode
+                    v-for="item in fileNodes"
+                    :key="item.id"
+                    :ref="`node-${item.id}`"
+                    v-model:is-expanded="item.isExpanded"
+                    v-model:file-extension="item.fileExtension"
+                    :is-indented="false"
+                    :node="item"
+                />
+            </div>
+        </div>
     </div>
-  </div>
+    <div v-show="showMarkdownToc" id="markdown-toc-component" class="markdown-toc-component">
+        <div
+            style="
+                width: 1px;
+                height: 100%;
+                background-color: #00b0ff;
+                color: #00b0ff;
+                fill: #00b0ff;
+            "
+        ></div>
+        <div id="markdown-toc-heading">
+            <div
+                v-for="item in tocArray"
+                :id="item.id"
+                :key="item.id"
+                @click="scrollToSection(item)"
+            >
+                <!-- 根据 level 添加适当的缩进 -->
+                <span class="markdown-toc-title" v-html="getIndentedText(item)"></span>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -41,112 +56,112 @@ const fileNodes = ref<FileSysItem[]>([])
 const tocArray = ref<MarkdownTOC[]>([])
 
 const props = defineProps({
-  // 代码内容
-  naviShow: {
-    type: String,
-    default: 'test'
-  }
+    // 代码内容
+    naviShow: {
+        type: String,
+        default: 'test'
+    }
 })
 
 window.electron.ipcRenderer.on('file-system-data', (_, fileTree: string) => {
-  try {
-    // 更新响应式数据
-    fileNodes.value = JSON.parse(fileTree) as FileSysItem[]
-  } catch (error) {
-    console.error('Error parsing file system data:', error)
-  }
+    try {
+        // 更新响应式数据
+        fileNodes.value = JSON.parse(fileTree) as FileSysItem[]
+    } catch (error) {
+        console.error('Error parsing file system data:', error)
+    }
 })
 
 function SwitchResourceManager(value: string) {
-  if (value == 'markdown-toc') {
-    // 保存当前tree信息
-    showMarkdownToc.value = true
-    showFileExplorer.value = false
-    EventBus.$emit('monaco-editor-get-chapters', true)
-  } else if (value == 'file-explorer') {
-    showFileExplorer.value = true
-    showMarkdownToc.value = false
-    EventBus.$emit('monaco-editor-switch-explorer', true)
-  }
+    if (value == 'markdown-toc') {
+        // 保存当前tree信息
+        showMarkdownToc.value = true
+        showFileExplorer.value = false
+        EventBus.$emit('monaco-editor-get-chapters', true)
+    } else if (value == 'file-explorer') {
+        showFileExplorer.value = true
+        showMarkdownToc.value = false
+        EventBus.$emit('monaco-editor-switch-explorer', true)
+    }
 }
 
 // 监听父组件切换
 watch(
-  () => props.naviShow,
-  (value) => {
-    SwitchResourceManager(value)
-  }
+    () => props.naviShow,
+    (value) => {
+        SwitchResourceManager(value)
+    }
 )
 
 function getIndentedText(item: MarkdownTOC): string {
-  const levelStr = item.level.slice(1)
-  if (!levelStr) {
-    return item.text
-  }
-  // 返回带有缩进的文本
-  const levelNum = parseInt(levelStr, 10)
-  const indent = '&nbsp;'.repeat(levelNum * 2)
-  return `${indent}${item.text}`
+    const levelStr = item.level.slice(1)
+    if (!levelStr) {
+        return item.text
+    }
+    // 返回带有缩进的文本
+    const levelNum = parseInt(levelStr, 10)
+    const indent = '&nbsp;'.repeat(levelNum * 2)
+    return `${indent}${item.text}`
 }
 
 function scrollToSection(item: MarkdownTOC) {
-  EventBus.$emit('monaco-editor-locate-target-line', item)
+    EventBus.$emit('monaco-editor-locate-target-line', item)
 }
 
 onMounted(() => {
-  EventBus.$on('monaco-editor-chapters', (toc: MarkdownTOC[]) => {
-    tocArray.value = toc
-  })
+    EventBus.$on('monaco-editor-chapters', (toc: MarkdownTOC[]) => {
+        tocArray.value = toc
+    })
 
-  onBeforeUnmount(() => {
-    EventBus.$off('monaco-editor-chapters', () => {})
-  })
+    onBeforeUnmount(() => {
+        EventBus.$off('monaco-editor-chapters', () => {})
+    })
 })
 </script>
 
 <style scoped>
 .resource-manager-component {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  height: 100%;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
 }
 
 .resizer-navi-tab-file-manager {
-  width: 1px;
-  height: 100%;
-  background-color: #00b0ff;
-  color: #00b0ff;
-  fill: #00b0ff;
+    width: 1px;
+    height: 100%;
+    background-color: #00b0ff;
+    color: #00b0ff;
+    fill: #00b0ff;
 }
 
 .file-manager {
-  background: ghostwhite;
-  color: black;
-  overflow: auto;
-  height: 100%;
-  width: calc(100% - 1px);
+    background: ghostwhite;
+    color: black;
+    overflow: auto;
+    height: 100%;
+    width: calc(100% - 1px);
 }
 
 .markdown-toc-component {
-  display: flex;
-  flex-direction: row;
-  background: ghostwhite;
-  color: black;
-  overflow: auto;
-  width: auto;
-  height: 100%;
+    display: flex;
+    flex-direction: row;
+    background: ghostwhite;
+    color: black;
+    overflow: auto;
+    width: auto;
+    height: 100%;
 }
 
 .markdown-toc-title {
-  color: red;
-  width: 100%;
-  display: inline-block;
-  font-family: 'STXinwei', serif;
+    color: red;
+    width: 100%;
+    display: inline-block;
+    font-family: 'STXinwei', serif;
 }
 
 .markdown-toc-title:hover {
-  background-color: #9dddff;
-  display: inline-block;
+    background-color: #9dddff;
+    display: inline-block;
 }
 </style>

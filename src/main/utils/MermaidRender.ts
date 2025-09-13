@@ -26,50 +26,50 @@ import { HandleMermaidGetRenderResult } from '../dialogs/dialogs'
 const mermaidToSvgMap: Map<string, string> = new Map()
 
 function storeMermaidMapping(mermaidCode: string, svgString: string): void {
-  mermaidToSvgMap.set(mermaidCode, svgString);
+    mermaidToSvgMap.set(mermaidCode, svgString)
 }
 
 function querySvgByMermaidCode(mermaidCode: string): string | undefined {
-  return mermaidToSvgMap.get(mermaidCode)
+    return mermaidToSvgMap.get(mermaidCode)
 }
 
 async function waitAsyncRenderResult(text: string): Promise<string> {
-  try {
-    return await HandleMermaidGetRenderResult(text)
-  } catch (error) {
-    console.log('mermaidHandleGetRenderResult error', error)
-    return text
-  }
+    try {
+        return await HandleMermaidGetRenderResult(text)
+    } catch (error) {
+        console.log('mermaidHandleGetRenderResult error', error)
+        return text
+    }
 }
 
 async function MermaidRenderAllGraph(text: string): Promise<string> {
-  let renderResult = text
-  let match: RegExpExecArray | null = null
-  const regex = /```mermaid([\s\S]*?)```/g
-  // 使用全局搜索来查找所有匹配项
-  while ((match = regex.exec(text)) !== null) {
-    const graphDesc = match[1]
-    let mermaidRenderSvgString = ''
-    // 从已经存储的map中获取
-    const mapSvg = querySvgByMermaidCode(graphDesc)
-    if (mapSvg != undefined) {
-      //console.log('querySvgByMermaidCode success', graphDesc.substring(0, 100))
-      mermaidRenderSvgString = mapSvg
-    } else {
-      try {
-        mermaidRenderSvgString = await waitAsyncRenderResult(graphDesc)
-        storeMermaidMapping(graphDesc, mermaidRenderSvgString)
-      } catch (error) {
-        //console.log('waitAsyncRenderResult error', error)
-        mermaidRenderSvgString = graphDesc
-      }
+    let renderResult = text
+    let match: RegExpExecArray | null = null
+    const regex = /```mermaid([\s\S]*?)```/g
+    // 使用全局搜索来查找所有匹配项
+    while ((match = regex.exec(text)) !== null) {
+        const graphDesc = match[1]
+        let mermaidRenderSvgString = ''
+        // 从已经存储的map中获取
+        const mapSvg = querySvgByMermaidCode(graphDesc)
+        if (mapSvg != undefined) {
+            //console.log('querySvgByMermaidCode success', graphDesc.substring(0, 100))
+            mermaidRenderSvgString = mapSvg
+        } else {
+            try {
+                mermaidRenderSvgString = await waitAsyncRenderResult(graphDesc)
+                storeMermaidMapping(graphDesc, mermaidRenderSvgString)
+            } catch (error) {
+                //console.log('waitAsyncRenderResult error', error)
+                mermaidRenderSvgString = graphDesc
+            }
+        }
+        mermaidRenderSvgString =
+            '<pre class="mermaid"><code>' + mermaidRenderSvgString + '</code></pre>'
+        renderResult = renderResult.replace(match[0], mermaidRenderSvgString)
     }
-    mermaidRenderSvgString =
-      '<pre class="mermaid"><code>' + mermaidRenderSvgString + '</code></pre>'
-    renderResult = renderResult.replace(match[0], mermaidRenderSvgString)
-  }
 
-  return renderResult
+    return renderResult
 }
 
 export { MermaidRenderAllGraph }

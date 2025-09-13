@@ -1,6 +1,6 @@
 export interface MarkdownTOC {
-  id: string
-  level: string
-  text: string
-  lineNumber: number
+    id: string
+    level: string
+    text: string
+    lineNumber: number
 }
