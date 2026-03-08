@@ -9,6 +9,7 @@ import {
     CryptoEncrypt
 } from './encrypt_decrypt'
 import { ipcMain, shell } from 'electron'
+import { getQuickLinks } from './quick-link-config'
 
 export {
     globalInitialize,
@@ -107,5 +108,11 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
 
     ipcMain.on('navi-tab-open-exe', async (_, exePath: string) => {
         await shell.openPath(exePath)
+    })
+
+    // 快速链接配置相关IPC
+    ipcMain.on('get-quick-links', (event) => {
+        const links = getQuickLinks()
+        event.returnValue = links
     })
 }

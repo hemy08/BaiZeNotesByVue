@@ -1,0 +1,46 @@
+{
+    "navItems": [
+        {
+            "id": "file-explorer",
+            "title": "文件资源管理器",
+            "icon": "FileExplorerIcon",
+            "type": "internal",
+            "action": "toggle-tab"
+        },
+        {
+            "id": "markdown-toc",
+            "title": "Markdown目录",
+            "icon": "MarkdownIcon",
+            "type": "internal",
+            "action": "toggle-tab"
+        },
+        {
+            "id": "wechat",
+            "title": "微信",
+            "icon": "WeChatIcon",
+            "type": "external",
+            "path": "D:\\Tencent\\WeChat\\WeChat.exe"
+        },
+        {
+            "id": "edge",
+            "title": "Edge浏览器",
+            "icon": "EdgeIcon",
+            "type": "external",
+            "path": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+        },
+        {
+            "id": "baidu-disk",
+            "title": "百度网盘",
+            "icon": "BaiduDiskIcon",
+            "type": "external",
+            "path": "D:\\BaiduNetdisk\\BaiduNetdisk.exe"
+        },
+        {
+            "id": "wxyy",
+            "title": "文心一言",
+            "icon": "WenXinIcon",
+            "type": "web",
+            "url": "https://yiyan.baidu.com/"
+        }
+    ]
+}

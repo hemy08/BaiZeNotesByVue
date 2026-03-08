@@ -16,7 +16,7 @@ function createWindow(): void {
         show: false,
         title: '白泽笔记 -- Markdown Editor Powered By Electron and Vue',
         autoHideMenuBar: false,
-        icon: join(__dirname, '../BaiZeNotes.ico'),
+        icon: join(__dirname, '../baize_clear_icon.ico'),
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
             sandbox: false,

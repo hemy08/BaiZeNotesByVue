@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- 渐变背景 -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#764ba2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 树叶渐变 - 绿色 -->
+    <linearGradient id="leafGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#66BB6A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#81C784;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 树叶渐变 - 深绿 -->
+    <linearGradient id="leafDarkGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2E7D32;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#43A047;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 树叶渐变 - 浅绿 -->
+    <linearGradient id="leafLightGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#81C784;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A5D6A7;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 阴影效果 -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- 树叶阴影 -->
+    <filter id="leafShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- 立体文字阴影 -->
+    <filter id="text3D" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="1" dy="1" stdDeviation="0" flood-color="#000" flood-opacity="0.7"/>
+      <feDropShadow dx="2" dy="2" stdDeviation="0" flood-color="#000" flood-opacity="0.6"/>
+      <feDropShadow dx="3" dy="3" stdDeviation="0" flood-color="#000" flood-opacity="0.5"/>
+      <feDropShadow dx="4" dy="4" stdDeviation="0" flood-color="#000" flood-opacity="0.4"/>
+      <feDropShadow dx="5" dy="5" stdDeviation="0" flood-color="#000" flood-opacity="0.3"/>
+      <feDropShadow dx="6" dy="6" stdDeviation="1" flood-color="#000" flood-opacity="0.2"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#fff" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  
+  <!-- 圆角背景 -->
+  <rect width="512" height="512" rx="100" fill="url(#bgGrad)" filter="url(#shadow)"/>
+  
+  <!-- 外圈树叶花边 -->
+  <g filter="url(#leafShadow)">
+    <!-- 顶部树叶 (5片) -->
+    <path d="M 156 70 Q 176 50 196 60 Q 216 70 216 90 Q 216 110 196 115 Q 176 120 156 110 Q 136 100 156 70 Z" 
+          fill="url(#leafGreen)" opacity="0.9"/>
+    <path d="M 176 75 L 196 105" stroke="#2E7D32" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 216 60 Q 236 45 256 50 Q 276 55 276 75 Q 276 95 256 100 Q 236 105 216 95 Q 196 85 216 60 Z" 
+          fill="url(#leafDarkGreen)" opacity="0.9"/>
+    <path d="M 236 65 L 256 95" stroke="#1B5E20" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 256 50 Q 276 45 296 60 Q 316 75 316 95 Q 316 115 296 110 Q 276 105 256 100 Q 236 95 256 50 Z" 
+          fill="url(#leafGreen)" opacity="0.9"/>
+    <path d="M 276 65 L 296 95" stroke="#2E7D32" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 296 60 Q 316 50 336 70 Q 356 90 356 110 Q 356 130 336 120 Q 316 110 296 95 Q 276 80 296 60 Z" 
+          fill="url(#leafLightGreen)" opacity="0.9"/>
+    <path d="M 316 75 L 336 105" stroke="#43A047" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 336 70 Q 356 55 376 65 Q 396 75 396 95 Q 396 115 376 115 Q 356 115 336 105 Q 316 95 336 70 Z" 
+          fill="url(#leafDarkGreen)" opacity="0.9"/>
+    <path d="M 356 75 L 376 105" stroke="#1B5E20" stroke-width="1.5" opacity="0.5"/>
+    
+    <!-- 右侧树叶 (5片) -->
+    <path d="M 442 156 Q 462 176 452 196 Q 442 216 422 216 Q 402 216 397 196 Q 392 176 402 156 Q 412 136 442 156 Z" 
+          fill="url(#leafGreen)" opacity="0.9"/>
+    <path d="M 437 176 L 407 196" stroke="#2E7D32" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 452 196 Q 467 216 462 236 Q 457 256 437 256 Q 417 256 412 236 Q 407 216 417 196 Q 427 176 452 196 Z" 
+          fill="url(#leafDarkGreen)" opacity="0.9"/>
+    <path d="M 447 216 L 417 236" stroke="#1B5E20" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 462 236 Q 467 256 452 276 Q 437 296 417 296 Q 397 296 402 276 Q 407 256 412 236 Q 417 216 462 236 Z" 
+          fill="url(#leafGreen)" opacity="0.9"/>
+    <path d="M 447 256 L 417 276" stroke="#2E7D32" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 452 276 Q 462 296 442 316 Q 422 336 402 336 Q 382 336 392 316 Q 402 296 417 276 Q 432 256 452 276 Z" 
+          fill="url(#leafLightGreen)" opacity="0.9"/>
+    <path d="M 437 296 L 407 316" stroke="#43A047" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 442 316 Q 457 336 447 356 Q 437 376 417 376 Q 397 376 397 356 Q 397 336 407 316 Q 417 296 442 316 Z" 
+          fill="url(#leafDarkGreen)" opacity="0.9"/>
+    <path d="M 437 336 L 407 356" stroke="#1B5E20" stroke-width="1.5" opacity="0.5"/>
+    
+    <!-- 底部树叶 (5片) -->
+    <path d="M 356 442 Q 336 462 316 452 Q 296 442 296 422 Q 296 402 316 397 Q 336 392 356 402 Q 376 412 356 442 Z" 
+          fill="url(#leafGreen)" opacity="0.9"/>
+    <path d="M 336 437 L 316 407" stroke="#2E7D32" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 296 452 Q 276 467 256 462 Q 236 457 236 437 Q 236 417 256 412 Q 276 407 296 417 Q 316 427 296 452 Z" 
+          fill="url(#leafDarkGreen)" opacity="0.9"/>
+    <path d="M 276 447 L 256 417" stroke="#1B5E20" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 256 462 Q 236 467 216 452 Q 196 437 196 417 Q 196 397 216 402 Q 236 407 256 412 Q 276 417 256 462 Z" 
+          fill="url(#leafGreen)" opacity="0.9"/>
+    <path d="M 236 447 L 216 417" stroke="#2E7D32" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 216 452 Q 196 462 176 442 Q 156 422 156 402 Q 156 382 176 392 Q 196 402 216 417 Q 236 432 216 452 Z" 
+          fill="url(#leafLightGreen)" opacity="0.9"/>
+    <path d="M 196 437 L 176 407" stroke="#43A047" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 176 442 Q 156 457 136 447 Q 116 437 116 417 Q 116 397 136 397 Q 156 397 176 407 Q 196 417 176 442 Z" 
+          fill="url(#leafDarkGreen)" opacity="0.9"/>
+    <path d="M 156 437 L 136 407" stroke="#1B5E20" stroke-width="1.5" opacity="0.5"/>
+    
+    <!-- 左侧树叶 (5片) -->
+    <path d="M 70 356 Q 50 336 60 316 Q 70 296 90 296 Q 110 296 115 316 Q 120 336 110 356 Q 100 376 70 356 Z" 
+          fill="url(#leafGreen)" opacity="0.9"/>
+    <path d="M 75 336 L 105 316" stroke="#2E7D32" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 60 316 Q 45 296 50 276 Q 55 256 75 256 Q 95 256 100 276 Q 105 296 95 316 Q 85 336 60 316 Z" 
+          fill="url(#leafDarkGreen)" opacity="0.9"/>
+    <path d="M 65 296 L 95 276" stroke="#1B5E20" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 50 276 Q 45 256 60 236 Q 75 216 95 216 Q 115 216 110 236 Q 105 256 100 276 Q 95 296 50 276 Z" 
+          fill="url(#leafGreen)" opacity="0.9"/>
+    <path d="M 65 256 L 95 236" stroke="#2E7D32" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 60 236 Q 50 216 70 196 Q 90 176 110 176 Q 130 176 120 196 Q 110 216 95 236 Q 80 256 60 236 Z" 
+          fill="url(#leafLightGreen)" opacity="0.9"/>
+    <path d="M 75 216 L 105 196" stroke="#43A047" stroke-width="1.5" opacity="0.5"/>
+    
+    <path d="M 70 196 Q 55 176 65 156 Q 75 136 95 136 Q 115 136 115 156 Q 115 176 105 196 Q 95 216 70 196 Z" 
+          fill="url(#leafDarkGreen)" opacity="0.9"/>
+    <path d="M 75 176 L 105 156" stroke="#1B5E20" stroke-width="1.5" opacity="0.5"/>
+  </g>
+  
+  <!-- 立体白字 - 微软雅黑/黑体 (缩小到320px) -->
+  <text x="256" y="340" 
+        font-family="Microsoft YaHei, SimHei, Heiti SC, sans-serif" 
+        font-size="320" 
+        font-weight="bold" 
+        fill="rgba(255,255,255,0.98)" 
+        text-anchor="middle" 
+        filter="url(#text3D)">白</text>
+  
+  <!-- 文字外描边 -->
+  <text x="256" y="340" 
+        font-family="Microsoft YaHei, SimHei, Heiti SC, sans-serif" 
+        font-size="320" 
+        font-weight="bold" 
+        fill="none" 
+        stroke="rgba(255,255,255,0.4)" 
+        stroke-width="2"
+        text-anchor="middle">白</text>
+</svg>

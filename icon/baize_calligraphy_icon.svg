@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- 深蓝色星空背景渐变 -->
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a1929;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1a237e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#283593;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 金色渐变 -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFA000;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 绿色树叶渐变 -->
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2E7D32;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 文字阴影效果 -->
+    <filter id="textShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#FFD700" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- 圆角背景 - 星空 -->
+  <rect width="512" height="512" rx="100" fill="url(#skyGrad)"/>
+  
+  <!-- 更多星星装饰 -->
+  <g fill="white">
+    <!-- 大星星 -->
+    <circle cx="80" cy="80" r="3" opacity="0.9"/>
+    <circle cx="432" cy="80" r="3" opacity="0.9"/>
+    <circle cx="80" cy="432" r="3" opacity="0.9"/>
+    <circle cx="432" cy="432" r="3" opacity="0.9"/>
+    <circle cx="256" cy="60" r="3" opacity="0.9"/>
+    <circle cx="60" cy="256" r="3" opacity="0.9"/>
+    <circle cx="452" cy="256" r="3" opacity="0.9"/>
+    
+    <!-- 中等星星 -->
+    <circle cx="120" cy="150" r="2.5" opacity="0.85"/>
+    <circle cx="392" cy="150" r="2.5" opacity="0.85"/>
+    <circle cx="120" cy="362" r="2.5" opacity="0.85"/>
+    <circle cx="392" cy="362" r="2.5" opacity="0.85"/>
+    <circle cx="180" cy="100" r="2.5" opacity="0.85"/>
+    <circle cx="332" cy="100" r="2.5" opacity="0.85"/>
+    <circle cx="180" cy="412" r="2.5" opacity="0.85"/>
+    <circle cx="332" cy="412" r="2.5" opacity="0.85"/>
+    <circle cx="100" cy="200" r="2.5" opacity="0.85"/>
+    <circle cx="412" cy="200" r="2.5" opacity="0.85"/>
+    <circle cx="100" cy="312" r="2.5" opacity="0.85"/>
+    <circle cx="412" cy="312" r="2.5" opacity="0.85"/>
+    
+    <!-- 小星星 -->
+    <circle cx="150" cy="130" r="2" opacity="0.8"/>
+    <circle cx="362" cy="130" r="2" opacity="0.8"/>
+    <circle cx="150" cy="382" r="2" opacity="0.8"/>
+    <circle cx="362" cy="382" r="2" opacity="0.8"/>
+    <circle cx="220" cy="90" r="2" opacity="0.8"/>
+    <circle cx="292" cy="90" r="2" opacity="0.8"/>
+    <circle cx="220" cy="422" r="2" opacity="0.8"/>
+    <circle cx="292" cy="422" r="2" opacity="0.8"/>
+    <circle cx="90" cy="220" r="2" opacity="0.8"/>
+    <circle cx="422" cy="220" r="2" opacity="0.8"/>
+    <circle cx="90" cy="292" r="2" opacity="0.8"/>
+    <circle cx="422" cy="292" r="2" opacity="0.8"/>
+    
+    <!-- 更小的星星 -->
+    <circle cx="130" cy="180" r="1.5" opacity="0.75"/>
+    <circle cx="382" cy="180" r="1.5" opacity="0.75"/>
+    <circle cx="130" cy="332" r="1.5" opacity="0.75"/>
+    <circle cx="382" cy="332" r="1.5" opacity="0.75"/>
+    <circle cx="200" cy="110" r="1.5" opacity="0.75"/>
+    <circle cx="312" cy="110" r="1.5" opacity="0.75"/>
+    <circle cx="200" cy="402" r="1.5" opacity="0.75"/>
+    <circle cx="312" cy="402" r="1.5" opacity="0.75"/>
+    <circle cx="110" cy="240" r="1.5" opacity="0.75"/>
+    <circle cx="402" cy="240" r="1.5" opacity="0.75"/>
+    <circle cx="110" cy="272" r="1.5" opacity="0.75"/>
+    <circle cx="402" cy="272" r="1.5" opacity="0.75"/>
+    
+    <!-- 微小星星 -->
+    <circle cx="160" cy="160" r="1" opacity="0.7"/>
+    <circle cx="352" cy="160" r="1" opacity="0.7"/>
+    <circle cx="160" cy="352" r="1" opacity="0.7"/>
+    <circle cx="352" cy="352" r="1" opacity="0.7"/>
+    <circle cx="240" cy="100" r="1" opacity="0.7"/>
+    <circle cx="272" cy="100" r="1" opacity="0.7"/>
+    <circle cx="240" cy="412" r="1" opacity="0.7"/>
+    <circle cx="272" cy="412" r="1" opacity="0.7"/>
+    <circle cx="100" cy="240" r="1" opacity="0.7"/>
+    <circle cx="412" cy="240" r="1" opacity="0.7"/>
+    <circle cx="100" cy="272" r="1" opacity="0.7"/>
+    <circle cx="412" cy="272" r="1" opacity="0.7"/>
+  </g>
+  
+  <!-- 树叶装饰 - 四角外移 -->
+  <g>
+    <!-- 左上角树叶 -->
+    <path d="M 50 50 Q 70 30 90 40 Q 110 50 105 70 Q 100 90 80 95 Q 60 100 50 80 Q 40 60 50 50 Z" 
+          fill="url(#leafGrad)" opacity="0.9"/>
+    <path d="M 65 55 L 85 85" stroke="#1B5E20" stroke-width="2" opacity="0.6"/>
+    
+    <!-- 右上角树叶 -->
+    <path d="M 462 50 Q 442 30 422 40 Q 402 50 407 70 Q 412 90 432 95 Q 452 100 462 80 Q 472 60 462 50 Z" 
+          fill="url(#leafGrad)" opacity="0.9"/>
+    <path d="M 447 55 L 427 85" stroke="#1B5E20" stroke-width="2" opacity="0.6"/>
+    
+    <!-- 左下角树叶 -->
+    <path d="M 50 462 Q 70 482 90 472 Q 110 462 105 442 Q 100 422 80 417 Q 60 412 50 432 Q 40 452 50 462 Z" 
+          fill="url(#leafGrad)" opacity="0.9"/>
+    <path d="M 65 457 L 85 427" stroke="#1B5E20" stroke-width="2" opacity="0.6"/>
+    
+    <!-- 右下角树叶 -->
+    <path d="M 462 462 Q 442 482 422 472 Q 402 462 407 442 Q 412 422 432 417 Q 452 412 462 432 Q 472 452 462 462 Z" 
+          fill="url(#leafGrad)" opacity="0.9"/>
+    <path d="M 447 457 L 427 427" stroke="#1B5E20" stroke-width="2" opacity="0.6"/>
+  </g>
+  
+  <!-- 书法字体 "白泽" - 居中 -->
+  <text x="256" y="300" 
+        font-family="KaiTi, STKaiti, SimSun, FangSong, serif" 
+        font-size="180" 
+        font-weight="bold" 
+        fill="url(#goldGrad)" 
+        text-anchor="middle" 
+        filter="url(#textShadow)"
+        letter-spacing="20">白泽</text>
+  
+  <!-- 文字外描边 -->
+  <text x="256" y="300" 
+        font-family="KaiTi, STKaiti, SimSun, FangSong, serif" 
+        font-size="180" 
+        font-weight="bold" 
+        fill="none" 
+        stroke="rgba(255,215,0,0.3)" 
+        stroke-width="3"
+        text-anchor="middle"
+        letter-spacing="20">白泽</text>
+</svg>

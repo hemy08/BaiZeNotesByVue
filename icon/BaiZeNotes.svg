@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- 多彩渐变背景 -->
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7B8FE8;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#9B7BB8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E87B9B;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 花边渐变1 - 蓝色 -->
+    <linearGradient id="border1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5B9FE8;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#3B7FC8;stop-opacity:0.6" />
+    </linearGradient>
+    
+    <!-- 花边渐变2 - 紫色 -->
+    <linearGradient id="border2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B6BB8;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#6B4B98;stop-opacity:0.5" />
+    </linearGradient>
+    
+    <!-- 花边渐变3 - 粉色 -->
+    <linearGradient id="border3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E86B9B;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#C84B7B;stop-opacity:0.4" />
+    </linearGradient>
+    
+    <!-- 花边渐变4 - 绿色 -->
+    <linearGradient id="border4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6BB898;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#4B9878;stop-opacity:0.3" />
+    </linearGradient>
+    
+    <!-- 花边渐变5 - 橙色 -->
+    <linearGradient id="border5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8A86B;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#C8884B;stop-opacity:0.2" />
+    </linearGradient>
+    
+    <!-- 柔和的阴影 -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+    
+    <!-- 超强立体文字阴影 -->
+    <filter id="text3D" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="1" dy="1" stdDeviation="0" flood-color="#000" flood-opacity="0.6"/>
+      <feDropShadow dx="2" dy="2" stdDeviation="0" flood-color="#000" flood-opacity="0.5"/>
+      <feDropShadow dx="3" dy="3" stdDeviation="0" flood-color="#000" flood-opacity="0.4"/>
+      <feDropShadow dx="4" dy="4" stdDeviation="0" flood-color="#000" flood-opacity="0.3"/>
+      <feDropShadow dx="5" dy="5" stdDeviation="0" flood-color="#000" flood-opacity="0.2"/>
+      <feDropShadow dx="6" dy="6" stdDeviation="1" flood-color="#000" flood-opacity="0.15"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#fff" flood-opacity="0.4"/>
+    </filter>
+    
+    <!-- 柔和的发光效果 -->
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 柔和的圆角背景 -->
+  <rect width="512" height="512" rx="100" fill="url(#grad1)" filter="url(#softShadow)"/>
+  
+  <!-- 清晰花边 - 第1圈(最外圈) - 蓝色填充圆环 -->
+  <circle cx="256" cy="256" r="235" fill="none" stroke="url(#border1)" stroke-width="10"/>
+  <circle cx="256" cy="256" r="230" fill="none" stroke="#5B9FE8" stroke-width="2" opacity="0.5"/>
+  
+  <!-- 清晰花边 - 第2圈 - 紫色填充圆环 -->
+  <circle cx="256" cy="256" r="215" fill="none" stroke="url(#border2)" stroke-width="9"/>
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#8B6BB8" stroke-width="2" opacity="0.5"/>
+  
+  <!-- 清晰花边 - 第3圈 - 粉色填充圆环 -->
+  <circle cx="256" cy="256" r="195" fill="none" stroke="url(#border3)" stroke-width="8"/>
+  <circle cx="256" cy="256" r="191" fill="none" stroke="#E86B9B" stroke-width="2" opacity="0.5"/>
+  
+  <!-- 清晰花边 - 第4圈 - 绿色填充圆环 -->
+  <circle cx="256" cy="256" r="175" fill="none" stroke="url(#border4)" stroke-width="7"/>
+  <circle cx="256" cy="256" r="171" fill="none" stroke="#6BB898" stroke-width="2" opacity="0.5"/>
+  
+  <!-- 清晰花边 - 第5圈 - 橙色填充圆环 -->
+  <circle cx="256" cy="256" r="155" fill="none" stroke="url(#border5)" stroke-width="6"/>
+  <circle cx="256" cy="256" r="152" fill="none" stroke="#E8A86B" stroke-width="2" opacity="0.5"/>
+  
+  <!-- 有趣的装饰性虚线圆环 -->
+  <circle cx="256" cy="256" r="225" fill="none" stroke="white" stroke-width="2" stroke-dasharray="15,8" opacity="0.3"/>
+  <circle cx="256" cy="256" r="205" fill="none" stroke="white" stroke-width="2" stroke-dasharray="12,6" opacity="0.25"/>
+  <circle cx="256" cy="256" r="185" fill="none" stroke="white" stroke-width="2" stroke-dasharray="10,5" opacity="0.2"/>
+  
+  <!-- 有趣的星星装饰 -->
+  <g opacity="0.6">
+    <!-- 顶部星星 -->
+    <polygon points="256,40 260,50 270,50 262,57 265,67 256,61 247,67 250,57 242,50 252,50" fill="#FFD700"/>
+    
+    <!-- 左侧星星 -->
+    <polygon points="60,256 64,266 74,266 66,273 69,283 60,277 51,283 54,273 46,266 56,266" fill="#FFD700"/>
+    
+    <!-- 右侧星星 -->
+    <polygon points="452,256 456,266 466,266 458,273 461,283 452,277 443,283 446,273 438,266 448,266" fill="#FFD700"/>
+    
+    <!-- 底部星星 -->
+    <polygon points="256,472 260,462 270,462 262,455 265,445 256,451 247,445 250,455 242,462 252,462" fill="#FFD700"/>
+  </g>
+  
+  <!-- 有趣的小圆点装饰 -->
+  <g opacity="0.5">
+    <circle cx="120" cy="120" r="8" fill="#FFD700"/>
+    <circle cx="392" cy="120" r="8" fill="#FFD700"/>
+    <circle cx="120" cy="392" r="8" fill="#FFD700"/>
+    <circle cx="392" cy="392" r="8" fill="#FFD700"/>
+  </g>
+  
+  <!-- 多彩角落装饰 - 左上角 -->
+  <g opacity="0.5">
+    <path d="M 70 70 Q 115 70 115 115" fill="none" stroke="#5B9FE8" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 70 70 Q 70 115 115 115" fill="none" stroke="#8B6BB8" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="70" cy="70" r="8" fill="#E86B9B"/>
+    <circle cx="115" cy="115" r="6" fill="#6BB898"/>
+  </g>
+  
+  <!-- 多彩角落装饰 - 右上角 -->
+  <g opacity="0.5">
+    <path d="M 442 70 Q 397 70 397 115" fill="none" stroke="#6BB898" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 442 70 Q 442 115 397 115" fill="none" stroke="#E8A86B" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="442" cy="70" r="8" fill="#5B9FE8"/>
+    <circle cx="397" cy="115" r="6" fill="#8B6BB8"/>
+  </g>
+  
+  <!-- 多彩角落装饰 - 左下角 -->
+  <g opacity="0.5">
+    <path d="M 70 442 Q 115 442 115 397" fill="none" stroke="#E86B9B" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 70 442 Q 70 397 115 397" fill="none" stroke="#6BB898" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="70" cy="442" r="8" fill="#8B6BB8"/>
+    <circle cx="115" cy="397" r="6" fill="#E8A86B"/>
+  </g>
+  
+  <!-- 多彩角落装饰 - 右下角 -->
+  <g opacity="0.5">
+    <path d="M 442 442 Q 397 442 397 397" fill="none" stroke="#E8A86B" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 442 442 Q 442 397 397 397" fill="none" stroke="#5B9FE8" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="442" cy="442" r="8" fill="#6BB898"/>
+    <circle cx="397" cy="397" r="6" fill="#E86B9B"/>
+  </g>
+  
+  <!-- 超立体的大白字 -->
+  <text x="256" y="350" 
+        font-family="Arial, sans-serif" 
+        font-size="380" 
+        font-weight="bold" 
+        fill="rgba(255,255,255,0.98)" 
+        text-anchor="middle" 
+        filter="url(#text3D)"
+        style="text-shadow: 0 2px 8px rgba(0,0,0,0.2), 0 0 15px rgba(255,255,255,0.2)">白</text>
+  
+  <!-- 柔和的文字外描边 -->
+  <text x="256" y="350" 
+        font-family="Arial, sans-serif" 
+        font-size="380" 
+        font-weight="bold" 
+        fill="none" 
+        stroke="rgba(255,255,255,0.4)" 
+        stroke-width="2"
+        text-anchor="middle">白</text>
+</svg>

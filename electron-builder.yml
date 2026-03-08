@@ -13,7 +13,7 @@ asarUnpack:
   - resources/**
 win:
   executableName: BaiZeNotes
-  icon: BaiZeNotes.ico
+  icon: icon\baize_clear_icon.ico
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
