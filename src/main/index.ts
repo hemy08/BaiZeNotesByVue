@@ -5,6 +5,7 @@ import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
+import { getCurrentThemeStyles } from './utils/theme-config'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -19,10 +20,9 @@ function createWindow(): void {
         icon: join(__dirname, '../baize_clear_icon.ico'),
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
-            sandbox: false,
-            nodeIntegration: true, // 允许在渲染进程中使用Node.js功能
+            nodeIntegration: true,
             contextIsolation: false,
-            webSecurity: false
+            sandbox: false
         }
     })
 
@@ -37,8 +37,10 @@ function createWindow(): void {
         mainWindow.webContents.openDevTools()
         // 加载一个子窗口，不对外显示
         dialogs.CreateMermaidRenderFrame('')
+        // 发送初始主题样式到主窗口
+        const theme = getCurrentThemeStyles()
+        mainWindow.webContents.send('baize-notes:init-theme-styles', theme)
     })
-
     globalShortcut.register('F12', () => {
         mainWindow.webContents.openDevTools()
     })
@@ -85,6 +87,18 @@ app.whenReady().then(() => {
 
     // IPC test
     ipcMain.on('ping', () => console.log('pong'))
+
+    // 监听主题更新请求
+    ipcMain.on('baize-notes:update-theme', () => {
+        const theme = getCurrentThemeStyles()
+        // 发送主题更新到所有窗口
+        BrowserWindow.getAllWindows().forEach(window => {
+            window.webContents.send('baize-notes:theme-updated', theme)
+        })
+        // 重新设置菜单（如果需要根据主题更新菜单项）
+        const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
+        Menu.setApplicationMenu(menu)
+    })
 
     createWindow()
 

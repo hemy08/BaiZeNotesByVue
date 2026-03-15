@@ -6,12 +6,204 @@
     <title>Mermaid编辑</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.css">
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --secondary-text-color: #666666;
+            --border-color: #e0e0e0;
+            --accent-color: #1976d2;
+            --hover-bg: #f0f0f0;
+            --title-bar-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+            background: var(--bg-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .title-bar {
+            width: 100%;
+            height: 40px;
+            background: var(--title-bar-gradient);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            -webkit-app-region: drag;
+            flex-shrink: 0;
+        }
+
+        .title-bar-title {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(255,255,255,0.15);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #fff;
+            transition: all 0.2s;
+            -webkit-app-region: no-drag;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,80,80,0.95);
+            transform: scale(1.05);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            padding: 20px;
+            gap: 0;
+            min-height: 0;
+        }
+
+        .edit-area {
+            flex: 0 0 40%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-right: 10px;
+        }
+
+        .label-style {
+            color: var(--text-color);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        #textInput {
+            flex: 1;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text-color);
+            font-size: 13px;
+            font-family: "Fira Code", "Consolas", monospace;
+            resize: none;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        #textInput:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(100,150,255,0.1);
+        }
+
+        .preview-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-left: 10px;
+        }
+
+        #mermaidPreview {
+            flex: 1;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .template-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .template-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .template-btn:hover {
+            background: var(--hover-bg);
+            border-color: var(--accent-color);
+            transform: translateY(-1px);
+        }
+
+        /* 拖动分隔条样式 */
+        .resizer {
+            width: 8px;
+            background: var(--border-color);
+            cursor: col-resize;
+            position: relative;
+            flex-shrink: 0;
+            transition: background 0.2s;
+            border-radius: 4px;
+        }
+
+        .resizer:hover {
+            background: var(--accent-color);
+        }
+
+        .resizer::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 2px;
+        }
+
+        .resizer.resizing {
+            background: var(--accent-color);
+        }
+    </style>
 </head>
 <body>
-  <div style="display: flex; flex-direction: row; margin-left: 20px;">
-    <div id="mermaidEdit" style="width: 40vw;height: calc(100vh - 50px);">
-      <div class="label-style"><label for="textInput">编辑区域：</label></div>
-      <textarea id="textInput" style="width: 40vw;height: calc(100vh - 100px);margin-top: 10px">
+    <!-- 标题栏 -->
+    <div class="title-bar">
+        <span class="title-bar-title">Mermaid 图表编辑</span>
+        <button class="close-btn" id="close-dialog-btn">x</button>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="main-content">
+        <!-- 编辑区域 -->
+        <div class="edit-area">
+            <div class="label-style"><label for="textInput">编辑区域：</label></div>
+            <textarea id="textInput">
 mindmap
   root((mindmap))
     Origins
@@ -29,10 +221,21 @@ mindmap
     Tools
       Pen and paper
       Mermaid
-      </textarea>
-    </div>
-    <div style="width: 60vw;">
-      <div id="mermaidPreview" class="mermaid">
+            </textarea>
+
+            <!-- Mermaid 图示按钮 -->
+            <div class="template-buttons" id="templateButtons">
+                <!-- 按钮将通过 JavaScript 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 拖动分隔条 -->
+        <div class="resizer" id="resizer"></div>
+
+        <!-- 预览区域 -->
+        <div class="preview-area">
+            <div class="label-style"><label>预览区域：</label></div>
+            <div id="mermaidPreview" class="mermaid">
 mindmap
   root((mindmap))
     Origins
@@ -50,44 +253,221 @@ mindmap
     Tools
       Pen and paper
       Mermaid
-      </div>
+            </div>
+        </div>
     </div>
-  </div>
-  <script>
-    //const { ipcRenderer } = require('electron')
-    mermaid.initialize({ startOnLoad: true });
 
-    function generateEightDigitRandomNumber() {
-      let num = '';
-      while (num.length < 8) {
-        let randomNum = Math.floor(Math.random() * 90000000) + 10000000; // 生成10000000到99999999之间的随机数
-        num = String(randomNum).slice(-8); // 截取最后8位
-      }
-      return num;
-    }
+    <script>
+        const { ipcRenderer } = require('electron')
+        mermaid.initialize({ startOnLoad: true });
 
-    function updateGraph(event) {
-      console.log('graphDesc', event.target.value)
-      document.getElementById('textInput').innerHTML = event.target.value
-      const graphDesc = document.getElementById('textInput').innerHTML;
-      console.log('graphDesc', graphDesc)
-      const mermaidPreview = document.getElementById('mermaidPreview')
-      console.log('mermaidPreview', mermaidPreview)
-      if (mermaidPreview.firstChild) {
-        mermaidPreview.firstChild = ''
-      }
-      const tempId = 'mermaid-' + generateEightDigitRandomNumber()
-      mermaid.render('mermaidPreview', graphDesc, SvgObject => {
-        console.log('SvgObject', SvgObject)
-      })
-    }
-      // 监听文本输入和样式输入的变化
-    document.getElementById('textInput').addEventListener('input', updateGraph);
-    setTimeout(function() {
-      var chartHtml = document.getElementById('mermaidPreview').outerHTML;
-      console.log('SvgObject', SvgObject)
-    }, 1000);
+        // Mermaid 模板数据
+        const mermaidTemplates = [
+            {
+                label: '基础框架',
+                context: 'flowchart'
+            },
+            {
+                label: 'flowchart',
+                context: 'flowchart TB\n    c1-->a2\n    subgraph one\n    a1-->a2\n    end\n    subgraph two\n    b1-->b2\n    end\n    subgraph three\n    c1-->c2\n    end\n'
+            },
+            {
+                label: 'BlockDiagram',
+                context: 'block-beta\n    id1["This is a block"]\n    id2["This is another block"]\n    id1 --> id2\n'
+            },
+            {
+                label: '类图',
+                context: 'classDiagram\n    Animal <|-- Duck\n    Animal <|-- Fish\n    Animal <|-- Zebra\n    Animal : +int age\n    Animal : +String gender\n    Animal: +isMammal()\n    Animal: +mate()\n    class Duck{\n        +String beakColor\n        +swim()\n        +quack()\n    }\n    class Fish{\n        -int sizeInFeet\n        -canEat()\n    }\n    class Zebra{\n        +bool is_wild\n        +run()\n    }\n'
+            },
+            {
+                label: '实体关系图',
+                context: 'erDiagram\n    CUSTOMER ||--o{ ORDER : places\n    ORDER ||--|{ LINE-ITEM : contains\n    CUSTOMER {\n        string name\n        string custNumber\n        string sector\n    }\n    ORDER {\n        int orderNumber\n        string deliveryAddress\n    }\n    LINE-ITEM {\n        string productCode\n        int quantity\n        float pricePerUnit\n    }\n'
+            },
+            {
+                label: '甘特图',
+                context: 'gantt\n    title A Gantt Diagram\n    dateFormat YYYY-MM-DD\n    section Section\n        A task          :a1, 2014-01-01, 30d\n        Another task    :after a1, 20d\n    section Another\n        Task in Another :2014-01-12, 12d\n        another task    :24d\n'
+            },
+            {
+                label: 'Git图',
+                context: 'gitGraph\n    commit\n    commit\n    branch develop\n    checkout develop\n    commit\n    commit\n    checkout main\n    merge develop\n    commit\n'
+            },
+            {
+                label: '基本流程图',
+                context: 'graph TD\n    A[Start] --> B{Is it?}\n    B -->|Yes| C[OK]\n    B -->|No| D[End]\n'
+            },
+            {
+                label: '用户旅程图',
+                context: 'journey\n    title My working day\n    section Go to work\n        Make tea: 5: Me\n        Go upstairs: 3: Me\n        Do work: 1: Me, Cat\n    section Go home\n        Go downstairs: 5: Me\n        Sit down: 5: Me\n'
+            },
+            {
+                label: '思维导图',
+                context: 'mindmap\n    root((mindmap))\n        Origins\n            Long history\n            ::icon(fa fa-book)\n            Popularisation\n                British popular psychology author Tony Buzan\n        Research\n            On effectiveness<br/>and features\n            On Automatic creation\n                Uses\n                    Creative techniques\n                    Strategic planning\n                    Argument mapping\n        Tools\n            Pen and paper\n            Mermaid\n'
+            },
+            {
+                label: '饼图',
+                context: 'pie showData\n    title Key elements in Product X\n    "Calcium" : 42.96\n    "Potassium" : 50.05\n    "Magnesium" : 10.01\n    "Iron" : 5\n'
+            },
+            {
+                label: '象限图',
+                context: 'quadrantChart\n    title Reach and engagement of campaigns\n    x-axis Low Reach --> High Reach\n    y-axis Low Engagement --> High Engagement\n    quadrant-1 We should expand\n    quadrant-2 Need to promote\n    quadrant-3 Re-evaluate\n    quadrant-4 May be improved\n    Campaign A: [0.3, 0.6]\n    Campaign B: [0.45, 0.23]\n    Campaign C: [0.57, 0.69]\n    Campaign D: [0.78, 0.34]\n    Campaign E: [0.40, 0.34]\n    Campaign F: [0.35, 0.78]\n'
+            },
+            {
+                label: '需求图',
+                context: 'requirementDiagram\n    requirement test_req {\n        id: 1\n        text: the test text.\n        risk: high\n        verifymethod: test\n    }\n    element test_entity {\n        type: simulation\n    }\n    test_entity - satisfies -> test_req\n'
+            },
+            {
+                label: '桑基图',
+                context: 'sankey-beta\n    A,B,10\n    B,C,5\n    A,C,5\n'
+            },
+            {
+                label: '序列图',
+                context: 'sequenceDiagram\n    Alice->>John: Hello John, how are you?\n    John-->>Alice: Great!\n    Alice-)John: See you later!\n'
+            },
+            {
+                label: '状态图',
+                context: 'stateDiagram-v2\n    [*] --> Still\n    Still --> [*]\n    Still --> Moving\n    Moving --> Still\n    Moving --> Crash\n    Crash --> [*]\n'
+            },
+            {
+                label: '时间线图',
+                context: 'timeline\n    title History of Social Media Platform\n    2002 : LinkedIn\n    2004 : Facebook\n         : Google\n    2005 : Youtube\n    2006 : Twitter\n'
+            },
+            {
+                label: 'XYChart',
+                context: 'xychart-beta\n    title "Sales Revenue"\n    x-axis [jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec]\n    y-axis "Revenue (in $)" 0 --> 4000\n    bar [500, 1000, 750, 3200, 4200, 3000, 2000, 1500, 800, 1200, 1800, 2200]\n'
+            }
+        ];
 
-  </script>
+        // 生成模板按钮
+        function createTemplateButtons() {
+            const container = document.getElementById('templateButtons');
+            mermaidTemplates.forEach(template => {
+                const button = document.createElement('button');
+                button.className = 'template-btn';
+                button.textContent = template.label;
+                button.onclick = function() {
+                    insertTemplate(template.context);
+                };
+                container.appendChild(button);
+            });
+        }
+
+        // 插入模板到编辑区域
+        function insertTemplate(context) {
+            const textInput = document.getElementById('textInput');
+            textInput.value = context;
+            // 触发 input 事件以更新预览
+            const event = new Event('input', { bubbles: true });
+            textInput.dispatchEvent(event);
+        }
+
+        // 初始化按钮
+        createTemplateButtons();
+
+        // 拖动分隔条功能
+        const resizer = document.getElementById('resizer');
+        const editArea = document.querySelector('.edit-area');
+        const mainContent = document.querySelector('.main-content');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            resizer.classList.add('resizing');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const containerRect = mainContent.getBoundingClientRect();
+            const editAreaRect = editArea.getBoundingClientRect();
+            
+            // 计算新的宽度百分比
+            const newWidth = e.clientX - containerRect.left - 20; // 减去 padding
+            const containerWidth = containerRect.width - 40; // 减去左右 padding
+            const percentage = (newWidth / containerWidth) * 100;
+            
+            // 限制最小和最大宽度 (10% - 90%)
+            const clampedPercentage = Math.max(10, Math.min(90, percentage));
+            
+            // 设置新的宽度
+            editArea.style.flex = `0 0 ${clampedPercentage}%`;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                resizer.classList.remove('resizing');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+
+        // 关闭按钮事件
+        document.getElementById('close-dialog-btn').onclick = function(e) {
+            window.close();
+        };
+
+        // 主题更新监听
+        ipcRenderer.on('baize-notes:theme-updated', function() {
+            location.reload();
+        });
+
+        ipcRenderer.on('baize-notes:init-theme-styles', function(event, theme) {
+            var root = document.documentElement;
+            root.style.setProperty('--bg-color', theme.backgroundColor);
+            root.style.setProperty('--card-bg', theme.cardBackground);
+            root.style.setProperty('--text-color', theme.textColor);
+            root.style.setProperty('--secondary-text-color', theme.secondaryTextColor);
+            root.style.setProperty('--border-color', theme.borderColor);
+            root.style.setProperty('--accent-color', theme.accentColor);
+            root.style.setProperty('--hover-bg', theme.hoverBackground);
+            root.style.setProperty('--title-bar-gradient', theme.titleBarGradient);
+        });
+
+        function generateEightDigitRandomNumber() {
+            let num = '';
+            while (num.length < 8) {
+                let randomNum = Math.floor(Math.random() * 90000000) + 10000000;
+                num = String(randomNum).slice(-8);
+            }
+            return num;
+        }
+
+        function updateGraph(event) {
+            const graphDesc = event.target.value;
+            console.log('graphDesc', graphDesc);
+
+            const mermaidPreview = document.getElementById('mermaidPreview');
+            console.log('mermaidPreview', mermaidPreview);
+
+            // 清空预览区域
+            mermaidPreview.innerHTML = '';
+
+            // 生成临时ID
+            const tempId = 'mermaid-' + generateEightDigitRandomNumber();
+
+            try {
+                // 使用 mermaid.render 渲染图表
+                mermaid.render(tempId, graphDesc).then(({svg}) => {
+                    mermaidPreview.innerHTML = svg;
+                }).catch(error => {
+                    console.error('Mermaid render error:', error);
+                    mermaidPreview.innerHTML = '<p style="color: red;">渲染错误: ' + error.message + '</p>';
+                });
+            } catch (error) {
+                console.error('Mermaid render error:', error);
+                mermaidPreview.innerHTML = '<p style="color: red;">渲染错误: ' + error.message + '</p>';
+            }
+        }
+
+        // 监听文本输入和样式输入的变化
+        document.getElementById('textInput').addEventListener('input', updateGraph);
+
+        setTimeout(function() {
+            var chartHtml = document.getElementById('mermaidPreview').outerHTML;
+            console.log('SvgObject', SvgObject)
+        }, 1000);
+    </script>
 </body>
 </html>

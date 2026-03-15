@@ -1,12 +1,15 @@
+/**
+ * 新建文件/文件夹对话框（带路径选择）
+ */
+
 import { BrowserWindow, ipcMain } from 'electron'
 import { GetSelectDir, CreateFile, CreateDirectory } from '../utils/file-utils'
 import { JSDOM } from 'jsdom'
+import { getCurrentThemeStyles } from '../utils/theme-config'
 import * as digcom from './dialog_common'
 
 let customNewFileDialog: Electron.BrowserWindow | null
 
-// 创建一个自定义对话框的函数
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ShowNewFileFolderDialog(isFile: boolean) {
     if (customNewFileDialog) {
         digcom.ShowAlreadyExistDialog()
@@ -14,47 +17,54 @@ export function ShowNewFileFolderDialog(isFile: boolean) {
     }
 
     customNewFileDialog = new BrowserWindow({
-        width: 650,
-        height: 200,
+        width: 550,
+        height: 250,
         minimizable: false,
         maximizable: false,
         resizable: false,
         title: '新建文件/文件夹',
         autoHideMenuBar: true,
+        frame: false,
         webPreferences: {
-            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
+            nodeIntegration: true,
+            contextIsolation: false,
             sandbox: false
         }
     })
 
     customNewFileDialog.setMenu(null)
 
-    const temphtml = makeNewFileFolderDialogHtml()
-    // 加载一个 HTML 文件作为对话框的内容
-    customNewFileDialog.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(temphtml)}`)
+    const html = makeNewFileFolderDialogHtml(isFile)
+    customNewFileDialog.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
 
-    // 显示窗口
     customNewFileDialog.show()
+
+    const theme = getCurrentThemeStyles()
+    customNewFileDialog.webContents.send('baize-notes:init-theme-styles', theme)
 
     customNewFileDialog.on('closed', () => {
         customNewFileDialog = null
-        ipcMain.removeListener('dialog-new-file-folder-show-select', processNewFileFolder)
-        ipcMain.removeListener('dialog-new-file-folder-confirm', processNewFileFolderConfirm)
-        ipcMain.removeListener('dialog-new-file-folder-cancel', exitCustomFontDialog)
+        ipcMain.removeListener('dialog-new-file-folder-confirm', processConfirm)
+        ipcMain.removeListener('dialog-new-file-folder-cancel', processCancel)
+        ipcMain.removeListener('dialog-new-file-folder-show-select', processShowSelect)
     })
 
-    function exitCustomFontDialog() {
-        if (customNewFileDialog) {
-            ipcMain.removeListener('dialog-new-file-folder-show-select', processNewFileFolder)
-            ipcMain.removeListener('dialog-new-file-folder-confirm', processNewFileFolderConfirm)
-            ipcMain.removeListener('dialog-new-file-folder-cancel', exitCustomFontDialog)
-            customNewFileDialog.close()
-            customNewFileDialog = null
+    function processConfirm(_, data: { name: string; path: string }) {
+        if (data.name && data.path) {
+            if (isFile)  {
+                CreateFile(data.name, data.path, '.md')
+            } else  {
+                CreateDirectory(data.name, data.path)
+            }
         }
+        if (customNewFileDialog) customNewFileDialog.close()
     }
 
-    function processNewFileFolder(event) {
+    function processCancel() {
+        if (customNewFileDialog) customNewFileDialog.close()
+    }
+
+    function processShowSelect(event: Electron.IpcMainEvent) {
         if (customNewFileDialog) {
             GetSelectDir(customNewFileDialog, function (path) {
                 if (path) {
@@ -64,142 +74,282 @@ export function ShowNewFileFolderDialog(isFile: boolean) {
         }
     }
 
-    function processNewFileFolderConfirm(_, fileInfo: { name: string; path: string }) {
-        if (isFile) {
-            if (fileInfo.name.lastIndexOf('.') === -1) {
-                CreateFile(fileInfo.path, fileInfo.name, '.md')
-            } else {
-                CreateFile(fileInfo.path, fileInfo.name, '')
-            }
-        } else {
-            CreateDirectory(fileInfo.path, fileInfo.name)
-        }
-        exitCustomFontDialog()
-    }
-
-    ipcMain.on('dialog-new-file-folder-show-select', processNewFileFolder)
-    ipcMain.on('dialog-new-file-folder-confirm', processNewFileFolderConfirm)
-    ipcMain.on('dialog-new-file-folder-cancel', exitCustomFontDialog)
+    ipcMain.on('dialog-new-file-folder-confirm', processConfirm)
+    ipcMain.on('dialog-new-file-folder-cancel', processCancel)
+    ipcMain.on('dialog-new-file-folder-show-select', processShowSelect)
 }
 
-function createFileFolderName(doc: Document): HTMLDivElement {
-    const eleDiv = doc.createElement('div')
-    eleDiv.style.marginLeft = '15px'
-    eleDiv.style.marginRight = '10px'
-    eleDiv.style.marginTop = '5px'
-    const eleDivInputLabel = doc.createElement('label')
-    eleDivInputLabel.id = 'file-folder-name-label'
-    eleDivInputLabel.htmlFor = 'file-folder-name'
-    eleDivInputLabel.textContent = '文件/文件夹名称：'
-    const eleDivInput = doc.createElement('input')
-    eleDivInput.type = 'text'
-    eleDivInput.id = 'file-folder-name'
-    eleDivInput.style.cssText = 'width:400px;margin:5px'
-    eleDivInput.placeholder = '请输入文件/文件夹名称，文件默认后缀为.md'
-    eleDiv.appendChild(eleDivInputLabel)
-    eleDiv.appendChild(eleDivInput)
-    return eleDiv
-}
-
-function createFileFolderPath(doc: Document): HTMLDivElement {
-    const eleDiv = doc.createElement('div')
-    eleDiv.style.marginLeft = '15px'
-    eleDiv.style.marginRight = '10px'
-    eleDiv.style.marginTop = '5px'
-    const eleDivPathLabel = doc.createElement('label')
-    eleDivPathLabel.id = 'file-folder-path-label'
-    eleDivPathLabel.htmlFor = 'file-folder-path'
-    eleDivPathLabel.textContent = '文件/文件夹路径：'
-    const eleDivPath = doc.createElement('input')
-    eleDivPath.type = 'text'
-    eleDivPath.id = 'file-folder-path'
-    eleDivPath.style.cssText = 'width:400px;margin:5px'
-    eleDivPath.placeholder = '请输入/选择文件或文件夹路径'
-    eleDiv.appendChild(eleDivPathLabel)
-    eleDiv.appendChild(eleDivPath)
-    return eleDiv
-}
-
-function createFileFolderSelect(doc: Document): HTMLDivElement {
-    const eleDiv = doc.createElement('div')
-    eleDiv.style.marginLeft = '15px'
-    eleDiv.style.marginRight = '10px'
-    eleDiv.style.marginTop = '5px'
-    const eleDivSelectLabel = doc.createElement('label')
-    eleDivSelectLabel.id = 'file-folder-select-label'
-    eleDivSelectLabel.htmlFor = 'file-folder-select'
-    eleDivSelectLabel.textContent = '选择文件/文件夹路径：'
-    const eleDivSelect = doc.createElement('button')
-    eleDivSelect.id = 'file-folder-select'
-    eleDivSelect.style.cssText = 'width: 350px;margin-left: 20px;'
-    eleDivSelect.textContent = '选择文件/文件夹路径'
-    eleDiv.appendChild(eleDivSelectLabel)
-    eleDiv.appendChild(eleDivSelect)
-    return eleDiv
-}
-
-function createButtons(doc: Document): HTMLElement {
-    const buttons: digcom.Button[] = [
-        { id: 'file-folder-confirm', text: '确定' },
-        { id: 'file-folder-cancel', text: '取消' }
-    ]
-
-    const btnList = digcom.NewButtonList(doc, buttons)
-    btnList.className = 'btn-list-style'
-    return btnList
-}
-
-function makeNewFileFolderDialogHtml(): string {
-    // 创建一个空的HTML文档
+function makeNewFileFolderDialogHtml(isFile: boolean): string {
+    const theme = getCurrentThemeStyles()
+    const title = isFile ? '新建文件' : '新建文件夹'
+    const placeholder = isFile ? '文件' : '文件夹'
     const { document } = new JSDOM(
-        `<!DOCTYPE html><html lang="zh"><head><title>新建文件/文件夹</title></head><body></body></html>`
+        `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>${title}</title></head><body></body></html>`
     ).window
 
-    const webDivStyle = document.createElement('style')
-    webDivStyle.textContent = `
-    .btn-list-style {width:600px;margin-top:10px; display:flex; justify-content:center;align-items:center;gap: 200px}`
+    // 创建样式
+    const styleElement = document.createElement('style')
+    styleElement.textContent = `
+        :root {
+            --bg-color: ${theme.backgroundColor};
+            --card-bg: ${theme.cardBackground};
+            --text-color: ${theme.textColor};
+            --secondary-text-color: ${theme.secondaryTextColor};
+            --border-color: ${theme.borderColor};
+            --accent-color: ${theme.accentColor};
+            --hover-bg: ${theme.hoverBackground};
+            --title-bar-gradient: ${theme.titleBarGradient};
+        }
 
-    const eleDiv = document.createElement('div')
-    eleDiv.style.margin = '10px'
-    const eleDivName = createFileFolderName(document)
-    const eleDivPath = createFileFolderPath(document)
-    const eleDivSelect = createFileFolderSelect(document)
-    eleDiv.appendChild(eleDivName)
-    eleDiv.appendChild(eleDivPath)
-    eleDiv.appendChild(eleDivSelect)
-    const eleButtons = createButtons(document)
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    const eleDivScript = document.createElement('script')
-    eleDivScript.textContent = `
-    const { ipcRenderer } = require('electron');
-    let newFileFolder = {
-      name: '',
-      path: ''
-    }
-    function updateFileFolderName(event) {
-      newFileFolder.name = event.target.value
-    }
-    function updateFileFolderDir(event) {
-      newFileFolder.path = event.target.value
-    }
-    document.getElementById('file-folder-name').addEventListener('input', updateFileFolderName)
-    document.getElementById('file-folder-path').addEventListener('input', updateFileFolderDir)
-    document.getElementById('file-folder-select').onclick = function(e) {
-      const select = ipcRenderer.sendSync('dialog-new-file-folder-show-select')
-      newFileFolder.path = select
-      document.getElementById('file-folder-path').value = select
-    }
-    document.getElementById('file-folder-confirm').onclick = function(e) {
-      ipcRenderer.send('dialog-new-file-folder-confirm', newFileFolder)
-    }
-    document.getElementById('file-folder-cancel').onclick = function(e) {
-      ipcRenderer.send('dialog-new-file-folder-cancel')
-    }`
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+            background: var(--bg-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-    document.head.appendChild(webDivStyle)
-    document.body.appendChild(eleDiv)
-    document.body.appendChild(eleButtons)
-    document.body.appendChild(eleDivScript)
+        .title-bar {
+            width: 100%;
+            height: 32px;
+            background: var(--title-bar-gradient);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            -webkit-app-region: drag;
+        }
+
+        .title-bar-title {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .close-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #fff;
+            transition: all 0.2s;
+            -webkit-app-region: no-drag;
+        }
+
+        .close-btn:hover { background: rgba(255,100,100,0.9); }
+
+        .main-content {
+            flex: 1;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group label {
+            color: var(--text-color);
+            font-size: 13px;
+            min-width: 80px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .input-group button {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            background: var(--card-bg);
+            color: var(--text-color);
+            transition: all 0.2s;
+        }
+
+        .input-group button:hover {
+            background: var(--hover-bg);
+            border-color: var(--accent-color);
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+            margin-top: 5px;
+        }
+
+        button.primary {
+            padding: 8px 30px;
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            background: var(--accent-color);
+            color: #fff;
+        }
+
+        button.primary:hover { opacity: 0.9; }
+
+        button.secondary {
+            padding: 8px 30px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        button.secondary:hover {
+            background: var(--hover-bg);
+            border-color: var(--accent-color);
+        }`
+    document.head.appendChild(styleElement)
+
+    // 创建标题栏
+    const titleBar = document.createElement('div')
+    titleBar.className = 'title-bar'
+
+    const titleSpan = document.createElement('span')
+    titleSpan.className = 'title-bar-title'
+    titleSpan.textContent = title
+
+    const closeBtn = document.createElement('button')
+    closeBtn.className = 'close-btn'
+    closeBtn.textContent = 'x'
+    closeBtn.id = 'close-dialog-btn'
+
+    titleBar.appendChild(titleSpan)
+    titleBar.appendChild(closeBtn)
+
+    // 创建主内容区域
+    const mainContent = document.createElement('div')
+    mainContent.className = 'main-content'
+
+    // 创建名称输入组
+    const inputGroup1 = document.createElement('div')
+    inputGroup1.className = 'input-group'
+
+    const label1 = document.createElement('label')
+    label1.textContent = '名称：'
+
+    const input1 = document.createElement('input')
+    input1.type = 'text'
+    input1.id = 'file-folder-name'
+    input1.placeholder = '请输入' + placeholder + '名称'
+
+    inputGroup1.appendChild(label1)
+    inputGroup1.appendChild(input1)
+
+    // 创建路径输入组
+    const inputGroup2 = document.createElement('div')
+    inputGroup2.className = 'input-group'
+
+    const label2 = document.createElement('label')
+    label2.textContent = '保存路径：'
+
+    const input2 = document.createElement('input')
+    input2.type = 'text'
+    input2.id = 'file-folder-path'
+    input2.placeholder = '请输入或选择保存路径'
+
+    const selectBtn = document.createElement('button')
+    selectBtn.id = 'file-folder-select'
+    selectBtn.textContent = '选择'
+
+    inputGroup2.appendChild(label2)
+    inputGroup2.appendChild(input2)
+    inputGroup2.appendChild(selectBtn)
+
+    // 创建按钮区域
+    const buttonsDiv = document.createElement('div')
+    buttonsDiv.className = 'buttons'
+
+    const cancelBtn = document.createElement('button')
+    cancelBtn.id = 'file-folder-cancel'
+    cancelBtn.className = 'secondary'
+    cancelBtn.textContent = '取消'
+
+    const confirmBtn = document.createElement('button')
+    confirmBtn.id = 'file-folder-confirm'
+    confirmBtn.className = 'primary'
+    confirmBtn.textContent = '确定'
+
+    buttonsDiv.appendChild(cancelBtn)
+    buttonsDiv.appendChild(confirmBtn)
+
+    // 组装主内容
+    mainContent.appendChild(inputGroup1)
+    mainContent.appendChild(inputGroup2)
+    mainContent.appendChild(buttonsDiv)
+
+    // 组装页面
+    document.body.appendChild(titleBar)
+    document.body.appendChild(mainContent)
+
+    // 创建脚本
+    const scriptElement = document.createElement('script')
+    scriptElement.textContent = `
+    const { ipcRenderer } = require("electron");
+    let newFileFolder = { name: "", path: "" };
+
+    document.getElementById("file-folder-name").addEventListener("input", function() {
+        newFileFolder.name = this.value;
+    });
+    document.getElementById("file-folder-path").addEventListener("input", function() {
+        newFileFolder.path = this.value;
+    });
+    document.getElementById("file-folder-select").onclick = function() {
+        var select = ipcRenderer.sendSync("dialog-new-file-folder-show-select");
+        if (select) {
+            newFileFolder.path = select;
+            document.getElementById("file-folder-path").value = select;
+        }
+    };
+    document.getElementById("file-folder-confirm").onclick = function() {
+        ipcRenderer.send("dialog-new-file-folder-confirm", newFileFolder);
+    };
+    document.getElementById("file-folder-cancel").onclick = function() {
+        ipcRenderer.send("dialog-new-file-folder-cancel");
+    };
+    document.getElementById("close-dialog-btn").onclick = function() {
+        ipcRenderer.send("dialog-new-file-folder-cancel");
+    };
+
+    ipcRenderer.on("baize-notes:theme-updated", function() {
+        location.reload();
+    });`
+
+    document.body.appendChild(scriptElement)
 
     return document.documentElement.outerHTML
 }

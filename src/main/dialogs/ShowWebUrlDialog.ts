@@ -1,11 +1,14 @@
+/**
+ * 插入网页链接对话框
+ */
+
 import { BrowserWindow, ipcMain, IpcMainEvent } from 'electron'
 import { JSDOM } from 'jsdom'
+import { getCurrentThemeStyles } from '../utils/theme-config'
 import * as digcom from './dialog_common'
 
 let customWebUrlDialog: Electron.BrowserWindow | null
 
-// 创建一个自定义对话框的函数
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ShowWebUrlDialog(mainWindow: Electron.BrowserWindow) {
     if (customWebUrlDialog) {
         digcom.ShowAlreadyExistDialog()
@@ -13,143 +16,288 @@ export function ShowWebUrlDialog(mainWindow: Electron.BrowserWindow) {
     }
 
     customWebUrlDialog = new BrowserWindow({
-        width: 630,
-        height: 180,
+        width: 500,
+        height: 220,
         minimizable: false,
         maximizable: false,
         resizable: false,
-        title: '插入网页链接',
+        title: '插入链接',
         autoHideMenuBar: true,
+        frame: false,
         webPreferences: {
-            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
+            nodeIntegration: true,
+            contextIsolation: false,
             sandbox: false
         }
     })
 
     customWebUrlDialog.setMenu(null)
 
-    const tempHtml = makeWebUrlDialogHtml()
-    // 加载一个 HTML 文件作为对话框的内容
-    customWebUrlDialog.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(tempHtml)}`)
+    const html = makeWebUrlDialogHtml()
+    customWebUrlDialog.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
 
-    // 显示窗口
     customWebUrlDialog.show()
+
+    const theme = getCurrentThemeStyles()
+    customWebUrlDialog.webContents.send('baize-notes:init-theme-styles', theme)
 
     customWebUrlDialog.on('closed', () => {
         customWebUrlDialog = null
-        ipcMain.removeListener('dialog-web-url-btn-insert', processWebUrlDialogInsert)
-        ipcMain.removeListener('dialog-web-url-btn-cancel', () => {})
+        ipcMain.removeListener('dialog-web-url-btn-insert', processInsertWebUrl)
+        ipcMain.removeListener('dialog-web-url-btn-cancel', processCancelWebUrl)
     })
 
-    function exitCustomWebUrlDialog() {
-        if (customWebUrlDialog) {
-            customWebUrlDialog.close()
-            customWebUrlDialog = null
-        }
+    function processInsertWebUrl(_: IpcMainEvent, webUrl: { title: string; addr: string }) {
+        const text = '[' + webUrl.title + '](' + webUrl.addr + ')'
+        mainWindow.webContents.send('monaco-insert-text-block-templates', text)
+        if (customWebUrlDialog) customWebUrlDialog.close()
     }
 
-    function processWebUrlDialogInsert(_: IpcMainEvent, webLinks: { title: string; addr: string }) {
-        // console.log('processWebUrlDialogInsert', webLinks)
-        const webUrl = '[' + webLinks.title + '](' + webLinks.addr + ')'
-        mainWindow.webContents.send('monaco-insert-text-block-templates', webUrl)
-        if (customWebUrlDialog) {
-            customWebUrlDialog.close()
-        }
+    function processCancelWebUrl() {
+        if (customWebUrlDialog) customWebUrlDialog.close()
     }
 
-    ipcMain.on('dialog-web-url-btn-insert', processWebUrlDialogInsert)
-    ipcMain.on('dialog-web-url-btn-cancel', () => {
-        exitCustomWebUrlDialog()
-    })
-}
-
-function createWebUrlButtonList(doc: Document): Element {
-    const buttons: digcom.Button[] = [
-        { id: 'insert-web-url', text: '确定' },
-        { id: 'cancel-input', text: '取消' }
-    ]
-
-    const btnList = digcom.NewButtonList(doc, buttons)
-    btnList.className = 'web-url-btn-style'
-    return btnList
+    ipcMain.on('dialog-web-url-btn-insert', processInsertWebUrl)
+    ipcMain.on('dialog-web-url-btn-cancel', processCancelWebUrl)
 }
 
 function makeWebUrlDialogHtml(): string {
-    // 创建一个空的HTML文档
+    const theme = getCurrentThemeStyles()
     const { document } = new JSDOM(
-        `<!DOCTYPE html><html lang="zh"><head><title>插入网页链接</title></head><body></body></html>`
+        `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>插入链接</title></head><body></body></html>`
     ).window
 
-    const webDivStyle = document.createElement('style')
-    webDivStyle.textContent = `
-    #web-url-components {margin: 5px;}
-    #web-url-components > div {margin: 15px;}
-    #web-url-components input {width: 460px;}
-    .web-url-button {width: 100px;margin-top: 10px;}
-    .web-url-btn-style {width:500px;display:flex; justify-content:center;align-items: center;gap: 100px}`
+    // 创建样式
+    const styleElement = document.createElement('style')
+    styleElement.textContent = `
+        :root {
+            --bg-color: ${theme.backgroundColor};
+            --card-bg: ${theme.cardBackground};
+            --text-color: ${theme.textColor};
+            --secondary-text-color: ${theme.secondaryTextColor};
+            --border-color: ${theme.borderColor};
+            --accent-color: ${theme.accentColor};
+            --hover-bg: ${theme.hoverBackground};
+            --title-bar-gradient: ${theme.titleBarGradient};
+        }
 
-    const webDiv = document.createElement('div')
-    webDiv.id = 'web-url-components'
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    const webDivTitle = document.createElement('div')
-    webDivTitle.id = 'web-url-title'
-    const webDivTitleLabel = document.createElement('label')
-    webDivTitleLabel.id = 'web-title-label'
-    webDivTitleLabel.htmlFor = 'web-title-input'
-    webDivTitleLabel.textContent = '地址描述：'
-    const webDivTitleInput = document.createElement('input')
-    webDivTitleInput.id = 'web-title-input'
-    webDivTitleInput.type = 'text'
-    webDivTitleInput.placeholder = '请输入地址描述...'
-    webDivTitle.appendChild(webDivTitleLabel)
-    webDivTitle.appendChild(webDivTitleInput)
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+            background: var(--bg-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-    const webDivUrl = document.createElement('div')
-    webDivUrl.id = 'web-url-addr'
-    const webDivUrlLabel = document.createElement('label')
-    webDivUrlLabel.id = 'web-addr-label'
-    webDivUrlLabel.htmlFor = 'web-addr-input'
-    webDivUrlLabel.textContent = '网站地址：'
-    const webDivUrlInput = document.createElement('input')
-    webDivUrlInput.id = 'web-addr-input'
-    webDivUrlInput.type = 'text'
-    webDivUrlInput.placeholder = '请输入http/https路径...'
-    webDivUrl.appendChild(webDivUrlLabel)
-    webDivUrl.appendChild(webDivUrlInput)
+        .title-bar {
+            width: 100%;
+            height: 32px;
+            background: var(--title-bar-gradient);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            -webkit-app-region: drag;
+        }
 
-    webDiv.appendChild(webDivTitle)
-    webDiv.appendChild(webDivUrl)
+        .title-bar-title {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 500;
+        }
 
-    const webDivButtons = createWebUrlButtonList(document)
+        .close-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #fff;
+            transition: all 0.2s;
+            -webkit-app-region: no-drag;
+        }
 
-    const webDivScript = document.createElement('script')
-    webDivScript.textContent = `
-    const { ipcRenderer } = require('electron');
-    let webUrl = {
-      title : '',
-      addr : ''
-    }
-    // 监听文本输入和样式输入的变化
-    document.getElementById('web-title-input').addEventListener('input', function() {
-      // console.log('image-title-input', this.value)
-      webUrl.title = this.value
-    })
-    document.getElementById('web-addr-input').addEventListener('input', function() {
-      // console.log('image-url-addr-input', this.value)
-      webUrl.addr = this.value
-    })
-    document.getElementById('insert-web-url').onclick = function() {
-      ipcRenderer.send('dialog-web-url-btn-insert', webUrl)
-    }
-    document.getElementById('cancel-input').onclick = function() {
-      ipcRenderer.send('dialog-web-url-btn-cancel')
-    }`
+        .close-btn:hover { background: rgba(255,100,100,0.9); }
 
-    document.head.appendChild(webDivStyle)
-    document.body.appendChild(webDiv)
-    document.body.appendChild(webDivButtons)
-    document.body.appendChild(webDivScript)
+        .main-content {
+            flex: 1;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group label {
+            color: var(--text-color);
+            font-size: 13px;
+            min-width: 70px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+            margin-top: 5px;
+        }
+
+        button {
+            padding: 8px 30px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        button:hover {
+            background: var(--hover-bg);
+            border-color: var(--accent-color);
+        }
+
+        button.primary {
+            background: var(--accent-color);
+            color: #fff;
+            border-color: var(--accent-color);
+        }
+
+        button.primary:hover { opacity: 0.9; }`
+    document.head.appendChild(styleElement)
+
+    // 创建标题栏
+    const titleBar = document.createElement('div')
+    titleBar.className = 'title-bar'
+
+    const titleSpan = document.createElement('span')
+    titleSpan.className = 'title-bar-title'
+    titleSpan.textContent = '插入链接'
+
+    const closeBtn = document.createElement('button')
+    closeBtn.className = 'close-btn'
+    closeBtn.textContent = 'x'
+    closeBtn.id = 'close-dialog-btn'
+
+    titleBar.appendChild(titleSpan)
+    titleBar.appendChild(closeBtn)
+
+    // 创建主内容区域
+    const mainContent = document.createElement('div')
+    mainContent.className = 'main-content'
+
+    // 创建链接描述输入组
+    const inputGroup1 = document.createElement('div')
+    inputGroup1.className = 'input-group'
+
+    const label1 = document.createElement('label')
+    label1.textContent = '链接描述：'
+
+    const input1 = document.createElement('input')
+    input1.type = 'text'
+    input1.id = 'web-title-input'
+    input1.placeholder = '请输入链接描述'
+
+    inputGroup1.appendChild(label1)
+    inputGroup1.appendChild(input1)
+
+    // 创建网站地址输入组
+    const inputGroup2 = document.createElement('div')
+    inputGroup2.className = 'input-group'
+
+    const label2 = document.createElement('label')
+    label2.textContent = '网站地址：'
+
+    const input2 = document.createElement('input')
+    input2.type = 'text'
+    input2.id = 'web-addr-input'
+    input2.placeholder = '请输入 http/https 链接'
+
+    inputGroup2.appendChild(label2)
+    inputGroup2.appendChild(input2)
+
+    // 创建按钮区域
+    const buttonsDiv = document.createElement('div')
+    buttonsDiv.className = 'buttons'
+
+    const cancelBtn = document.createElement('button')
+    cancelBtn.id = 'cancel-input'
+    cancelBtn.textContent = '取消'
+
+    const insertBtn = document.createElement('button')
+    insertBtn.id = 'insert-web-url'
+    insertBtn.className = 'primary'
+    insertBtn.textContent = '插入'
+
+    buttonsDiv.appendChild(cancelBtn)
+    buttonsDiv.appendChild(insertBtn)
+
+    // 组装主内容
+    mainContent.appendChild(inputGroup1)
+    mainContent.appendChild(inputGroup2)
+    mainContent.appendChild(buttonsDiv)
+
+    // 组装页面
+    document.body.appendChild(titleBar)
+    document.body.appendChild(mainContent)
+
+    // 创建脚本
+    const scriptElement = document.createElement('script')
+    scriptElement.textContent = `
+    const { ipcRenderer } = require("electron");
+    let webUrl = { title: "", addr: "" };
+
+    document.getElementById("web-title-input").addEventListener("input", function() {
+        webUrl.title = this.value;
+    });
+    document.getElementById("web-addr-input").addEventListener("input", function() {
+        webUrl.addr = this.value;
+    });
+    document.getElementById("insert-web-url").onclick = function() {
+        ipcRenderer.send("dialog-web-url-btn-insert", webUrl);
+    };
+    document.getElementById("cancel-input").onclick = function() {
+        ipcRenderer.send("dialog-web-url-btn-cancel");
+    };
+    document.getElementById("close-dialog-btn").onclick = function() {
+        ipcRenderer.send("dialog-web-url-btn-cancel");
+    };
+
+    ipcRenderer.on("baize-notes:theme-updated", function() {
+        location.reload();
+    });`
+
+    document.body.appendChild(scriptElement)
 
     return document.documentElement.outerHTML
 }

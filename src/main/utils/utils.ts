@@ -10,6 +10,7 @@ import {
 } from './encrypt_decrypt'
 import { ipcMain, shell } from 'electron'
 import { getQuickLinks } from './quick-link-config'
+import { getCurrentTheme, getCurrentThemeStyles, themes } from './theme-config'
 
 export {
     globalInitialize,
@@ -111,8 +112,23 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     })
 
     // 快速链接配置相关IPC
-    ipcMain.on('get-quick-links', (event) => {
+    ipcMain.on('baize-notes:get-quick-links', (event) => {
         const links = getQuickLinks()
         event.returnValue = links
+    })
+
+    // 主题配置相关IPC
+    ipcMain.on('get-current-theme', (event) => {
+        const theme = getCurrentTheme()
+        event.returnValue = theme
+    })
+
+    ipcMain.on('get-current-theme-styles', (event) => {
+        const styles = getCurrentThemeStyles()
+        event.returnValue = styles
+    })
+
+    ipcMain.on('get-all-themes', (event) => {
+        event.returnValue = themes
     })
 }

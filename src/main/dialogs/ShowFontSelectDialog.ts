@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
+import { getCurrentThemeStyles } from '../utils/theme-config'
 import { FontFamily } from '../utils/common'
 
 let fontSelectDialog: Electron.BrowserWindow | null
@@ -29,12 +30,15 @@ export function ShowFontSelectDialog(mainWindow: Electron.BrowserWindow) {
 function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
     fontSelectDialog = new BrowserWindow({
         width: 1280,
-        height: 620,
+        height: 800,
+        minWidth: 1000,
+        minHeight: 600,
         minimizable: false,
-        maximizable: false,
-        resizable: false,
+        maximizable: true,
+        resizable: true,
         title: '文字样式选择',
         autoHideMenuBar: true,
+        frame: false,
         webPreferences: {
             nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
             contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
@@ -117,37 +121,12 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
     })
 }
 
-function createLabelList(doc: Document): HTMLElement {
-    const labelStyle = 'width: 100px;margin: 5px;text-align: right;'
-    const labels: digcom.Label[] = [
-        { forHtml: 'edit-font-family', text: '选择字体：', divCss: labelStyle },
-        { forHtml: 'edit-font-size', text: '字体大小：', divCss: labelStyle },
-        { forHtml: 'edit-font-color', text: '字体颜色：', divCss: labelStyle },
-        { forHtml: 'edit-font-color', text: '', divCss: 'height: 105px' },
-        {
-            forHtml: 'backgroundColor',
-            text: '背\u00A0\u00A0景\u00A0\u00A0色：',
-            divCss: labelStyle
-        },
-        { forHtml: 'backgroundColor', text: '', divCss: 'height: 100px' }
-    ]
-
-    const LabelList = digcom.NewLabelList(doc, labels)
-    LabelList.style.cssText = 'margin-top: 10px; display: flex; flex-direction: column;'
-    return LabelList
-}
-
 function createFontFamilySelect(doc: Document): HTMLElement {
     const FontFamilyDiv = digcom.NewSelect(doc, FontFamily)
     FontFamilyDiv.name = 'edit-font-family'
     FontFamilyDiv.id = 'edit-font-family'
-    FontFamilyDiv.style.cssText = 'width:250px;height:25px'
-
-    const DivEle = doc.createElement('div')
-    DivEle.className = 'input-style'
-    DivEle.style.cssText = 'width:250px;margin-top: 15px;height:25px'
-    DivEle.appendChild(FontFamilyDiv)
-    return DivEle
+    FontFamilyDiv.style.cssText = 'width: 200px; height: 32px;'
+    return FontFamilyDiv
 }
 
 function createFontSizeSelect(doc: Document): HTMLElement {
@@ -159,76 +138,148 @@ function createFontSizeSelect(doc: Document): HTMLElement {
     const FontSize = digcom.NewSelect(doc, options)
     FontSize.name = 'edit-font-size'
     FontSize.id = 'edit-font-size'
-    FontSize.style.cssText = 'width: 80px;height:25px'
-
-    const DivEle = doc.createElement('div')
-    DivEle.className = 'input-style'
-    DivEle.style.cssText = 'width: 80px;margin-top: 10px;height:25px'
-    DivEle.appendChild(FontSize)
-    return DivEle
+    FontSize.style.cssText = 'width: 200px; height: 32px;'
+    return FontSize
 }
 
 // 注意：由于颜色列表是手动添加的，并且包含了一些重复的或相似的颜色以保持总数为52，
 // 因此在实际应用中可能需要根据具体需求进行调整。
 // 另外，'#FFFAFA' 在列表中出现了两次，这里是为了凑数，通常应该避免重复。
 function createColorList(doc: Document): HTMLElement {
-    const colorButtons: digcom.Button[] = []
-    digcom.CommonColors.forEach((color) => {
-        colorButtons.push({
-            id: 'color-button',
-            text: '',
-            btnCss: `background-color: ${color};border: none;padding: 1;margin-top: 5px;`,
-            btnClass: 'color-button'
-        })
-    })
     const colorDiv = doc.createElement('div')
-    colorDiv.style.cssText = 'width: 300px;margin-top: 5px;'
+    colorDiv.style.cssText = 'margin: 4px 0;'
+
+    // 标签和调色盘
+    const labelRow = doc.createElement('div')
+    labelRow.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
+    //const label = doc.createElement('label')
+    //label.style.cssText = 'min-width: 80px; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: right;'
+    //label.textContent = '字体颜色：'
+    //label.htmlFor = 'edit-font-color'
+    labelRow.appendChild(
+        digcom.NewLabelDiv(doc, {
+            divClass: 'label-style',
+            forHtml: 'edit-font-color',
+            text: '字体颜色：'
+        })
+    )
+    //labelRow.appendChild(label)
+
     const colorInput = doc.createElement('input')
     colorInput.type = 'color'
     colorInput.id = 'edit-font-color'
-    colorInput.style.cssText = 'width: 290px;margin-top: 5px;'
-    colorDiv.appendChild(colorInput)
-    colorDiv.appendChild(digcom.NewButtonList(doc, colorButtons))
+    colorInput.style.cssText = 'width: 100px; height: 32px;'
+    labelRow.appendChild(colorInput)
+    colorDiv.appendChild(labelRow)
+
+    // 颜色按钮（4行，每行16个）
+    const buttonsDiv = doc.createElement('div')
+    buttonsDiv.style.cssText = 'display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-left: 92px;'
+    digcom.CommonColors.forEach((color) => {
+        const btn = doc.createElement('button')
+        btn.className = 'color-button'
+        btn.style.backgroundColor = color
+        btn.style.padding = '0'
+        btn.style.margin = '0'
+        buttonsDiv.appendChild(btn)
+    })
+    colorDiv.appendChild(buttonsDiv)
+
     return colorDiv
 }
 
 function createBackgroundColorList(doc: Document): HTMLElement {
-    const colorBackButtons: digcom.Button[] = []
-    digcom.CommonColors.forEach((color) => {
-        colorBackButtons.push({
-            id: 'background-color-button',
-            text: '',
-            btnCss: `background-color: ${color};border: none;padding: 1;margin-top: 5px;`,
-            btnClass: 'background-color-button'
-        })
-    })
     const colorDiv = doc.createElement('div')
-    colorDiv.style.cssText = 'width: 300px;margin-top: 5px;'
+    colorDiv.style.cssText = 'margin: 4px 0;'
+
+    // 标签和调色盘
+    const labelRow = doc.createElement('div')
+    labelRow.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
+    //const label = doc.createElement('label')
+    //label.style.cssText = 'min-width: 80px; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: right;'
+    //label.textContent = '背景色：'
+    //label.htmlFor = 'backgroundColor'
+    //labelRow.appendChild(label)
+    labelRow.appendChild(
+        digcom.NewLabelDiv(doc, {
+            divClass: 'label-style',
+            forHtml: 'backgroundColor',
+            text: '背景色：'
+        })
+    )
     const colorBackInput = doc.createElement('input')
     colorBackInput.type = 'color'
     colorBackInput.id = 'backgroundColor'
-    colorBackInput.style.cssText = 'width: 290px;margin-top: 10px;'
-    colorDiv.appendChild(colorBackInput)
-    colorDiv.appendChild(digcom.NewButtonList(doc, colorBackButtons))
+    colorBackInput.style.cssText = 'width: 100px; height: 32px;'
+    labelRow.appendChild(colorBackInput)
+    colorDiv.appendChild(labelRow)
+
+    // 颜色按钮（4行，每行16个）
+    const buttonsDiv = doc.createElement('div')
+    buttonsDiv.style.cssText = 'display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-left: 92px;'
+    digcom.CommonColors.forEach((color) => {
+        const btn = doc.createElement('button')
+        btn.className = 'background-color-button'
+        btn.style.backgroundColor = color
+        btn.style.padding = '0'
+        btn.style.margin = '0'
+        buttonsDiv.appendChild(btn)
+    })
+    colorDiv.appendChild(buttonsDiv)
+
     return colorDiv
 }
 
 function createInputs(doc: Document): HTMLElement {
     const divEle = doc.createElement('div')
-    divEle.style.cssText = 'display: flex; flex-direction: column;'
-    divEle.appendChild(createFontFamilySelect(doc))
-    divEle.appendChild(createFontSizeSelect(doc))
-    divEle.appendChild(createColorList(doc))
-    divEle.appendChild(createBackgroundColorList(doc))
+    divEle.style.cssText = 'display: flex; flex-direction: column; gap: 0;'
+
+    // 第一行：字体选择
+    const row1 = doc.createElement('div')
+    row1.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
+    //const fontLabel = doc.createElement('label')
+    //fontLabel.style.cssText = 'min-width: 80px; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: right;'
+    //fontLabel.textContent = '选择字体：'
+    //fontLabel.htmlFor = 'edit-font-family'
+    row1.appendChild(
+        digcom.NewLabelDiv(doc, {
+            divClass: 'label-style',
+            forHtml: 'edit-font-family',
+            text: '选择字体：'
+        })
+    )
+    //row1.appendChild(fontLabel)
+    row1.appendChild(createFontFamilySelect(doc))
+    divEle.appendChild(row1)
+
+    // 第二行：字号选择
+    const row2 = doc.createElement('div')
+    row2.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
+    //const sizeLabel = doc.createElement('label')
+    //sizeLabel.style.cssText = 'min-width: 80px; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: right;'
+    //sizeLabel.textContent = '字体大小：'
+    //sizeLabel.htmlFor = 'edit-font-size'
+    row2.appendChild(
+        digcom.NewLabelDiv(doc, {
+            divClass: 'label-style',
+            forHtml: 'edit-font-size',
+            text: '字体大小：'
+        })
+    )
+    //row2.appendChild(sizeLabel)
+    row2.appendChild(createFontSizeSelect(doc))
+    divEle.appendChild(row2)
+
     return divEle
 }
 
 function createEditPreview(doc: Document): HTMLElement {
     const divEle = doc.createElement('div')
     divEle.style.cssText =
-        'margin-top: 5px; margin-left: 20px; display: flex; flex-direction: column;'
+        'display: flex; flex-direction: column; gap: 16px; flex: 1; min-width: 0;'
 
     const divEditArea = doc.createElement('div')
+    divEditArea.style.cssText = 'display: flex; flex-direction: column; gap: 8px;'
     divEditArea.appendChild(
         digcom.NewLabelDiv(doc, {
             divClass: 'label-style',
@@ -240,18 +291,18 @@ function createEditPreview(doc: Document): HTMLElement {
         digcom.NewTextArea(
             doc,
             'text-input-area',
-            'width: 740px;height: 150px;overflow-y: auto;margin-top:10px'
+            'width: 100%; height: 150px; overflow-y: auto; flex-shrink: 0;'
         )
     )
     divEle.appendChild(divEditArea)
 
     const divLine = doc.createElement('div')
     divLine.style.cssText =
-        'margin-top: 10px; height:2px; color:white; width:740px; display: flex; background-color: black'
+        'height: 2px; background: var(--border-color); opacity: 0.3; flex-shrink: 0;'
     divEle.appendChild(divLine)
 
     const divPreArea = doc.createElement('div')
-    divPreArea.style.cssText = 'margin-top: 5px'
+    divPreArea.style.cssText = 'display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0;'
     divPreArea.appendChild(
         digcom.NewLabelDiv(doc, {
             divClass: 'label-style',
@@ -261,122 +312,121 @@ function createEditPreview(doc: Document): HTMLElement {
     )
     const preview = doc.createElement('div')
     preview.id = 'preview-area'
-    preview.style.cssText = 'width: 740px;height: 260px; overflow:auto;'
+    preview.style.cssText = 'width: 100%; flex: 1; overflow: auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; min-height: 0;'
     preview.innerHTML = '<p class="preview-text" id="previewText">这是一段预览文字。</p>'
     divPreArea.appendChild(preview)
     divEle.appendChild(divPreArea)
     return divEle
 }
 
-function createFontStyle1(doc: Document): HTMLElement {
-    const labelStyle = 'width: 100px;margin: 5px;text-align: right;'
-    const labels: digcom.Label[] = [
-        {
-            forHtml: 'edit-font-bold',
-            text: '加\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0粗：',
-            divCss: labelStyle
-        },
-        {
-            forHtml: 'edit-font-italic',
-            text: '倾\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0斜：',
-            divCss: labelStyle
-        },
-        {
-            forHtml: 'edit-font-underline',
-            text: '下\u00A0\u00A0划\u00A0\u00A0线：',
-            divCss: labelStyle
-        },
-        {
-            forHtml: 'edit-font-deleteline',
-            text: '删\u00A0\u00A0除\u00A0\u00A0线：',
-            divCss: labelStyle
-        }
-    ]
-
-    const LabelList = digcom.NewLabelList(doc, labels)
-    LabelList.style.cssText =
-        'margin-top: 10px;margin-left: 20px;display: flex; flex-direction: column;'
-    return LabelList
-}
-
-function createFontStyleBox1(doc: Document): HTMLElement {
-    const divEle = doc.createElement('div')
-    divEle.style.cssText = 'margin: 7px;display: flex; flex-direction: column;'
-    const boxes: digcom.CheckBox[] = [
-        { id: 'edit-font-bold', value: 'bold', name: 'edit-font-bold' },
-        { id: 'edit-font-italic', value: 'italic', name: 'edit-font-italic' },
-        { id: 'edit-font-underline', value: 'underline', name: 'edit-font-underline' },
-        { id: 'edit-font-deleteline', value: 'deleteline', name: 'edit-font-deleteline' }
-    ]
-    boxes.map((item) => {
-        const checkbox = digcom.NewCheckBox(doc, 'checkbox-style', item)
-        divEle.appendChild(checkbox)
-    })
-    return divEle
-}
-
-function createFontStyle2(doc: Document): HTMLElement {
-    const labelStyle = 'width: 100px;margin: 5px;text-align: right;'
-    const labels: digcom.Label[] = [
-        { forHtml: 'edit-align-left', text: '左\u00A0对\u00A0\u00A0齐：', divCss: labelStyle },
-        { forHtml: 'edit-align-center', text: '居中对齐：', divCss: labelStyle },
-        { forHtml: 'edit-align-right', text: '右\u00A0对\u00A0\u00A0齐：', divCss: labelStyle },
-        { forHtml: 'edit-align-justify', text: '两端对齐：', divCss: labelStyle }
-    ]
-
-    const LabelList = digcom.NewLabelList(doc, labels)
-    LabelList.style.cssText =
-        'margin-top: 10px;margin-left: 60px; display: flex; flex-direction: column;'
-    return LabelList
-}
-
-function createFontStyleBox2(doc: Document): HTMLElement {
-    const divEle = doc.createElement('div')
-    divEle.style.cssText = 'margin: 7px;display: flex; flex-direction: column;'
-    divEle.id = 'edit-align-checkbox-list'
-    const boxes: digcom.CheckBox[] = [
-        { id: 'edit-align-left', value: 'left', name: 'edit-align-left' },
-        { id: 'edit-align-center', value: 'center', name: 'edit-align-center' },
-        { id: 'edit-align-right', value: 'right', name: 'edit-align-right' },
-        { id: 'edit-align-justify', value: 'justify', name: 'edit-align-justify' }
-    ]
-    boxes.map((item) => {
-        const checkbox = digcom.NewCheckBox(doc, 'checkbox-style', item)
-        divEle.appendChild(checkbox)
-    })
-    return divEle
-}
-
-function createFontStyle(doc: Document): HTMLElement {
+function createFontStyleButtons(doc: Document): HTMLElement {
     const div = doc.createElement('div')
-    div.style.cssText = 'display: flex; flex-direction: row;'
-    div.appendChild(createFontStyle1(doc))
-    div.appendChild(createFontStyleBox1(doc))
-    div.appendChild(createFontStyle2(doc))
-    div.appendChild(createFontStyleBox2(doc))
+    div.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
+
+    // 第一行：加粗、下划线
+    const row = doc.createElement('div')
+    row.style.cssText = 'display: flex; flex-direction: row; gap: 20px;'
+
+    // 加粗按钮
+    const boldBtn = doc.createElement('button')
+    boldBtn.id = 'edit-font-bold'
+    boldBtn.className = 'font-style-button'
+    boldBtn.textContent = '加粗'
+    boldBtn.style.cssText = 'padding: 8px 20px; min-width: 80px;'
+    row.appendChild(boldBtn)
+
+    // 下划线按钮
+    const underlineBtn = doc.createElement('button')
+    underlineBtn.id = 'edit-font-underline'
+    underlineBtn.className = 'font-style-button'
+    underlineBtn.textContent = '下划线'
+    underlineBtn.style.cssText = 'padding: 8px 20px; min-width: 80px;'
+    row.appendChild(underlineBtn)
+
+    // 倾斜按钮
+    const italicBtn = doc.createElement('button')
+    italicBtn.id = 'edit-font-italic'
+    italicBtn.className = 'font-style-button'
+    italicBtn.textContent = '倾斜'
+    italicBtn.style.cssText = 'padding: 8px 20px; min-width: 80px;'
+    row.appendChild(italicBtn)
+
+    // 删除线按钮
+    const deletelineBtn = doc.createElement('button')
+    deletelineBtn.id = 'edit-font-deleteline'
+    deletelineBtn.className = 'font-style-button'
+    deletelineBtn.textContent = '删除线'
+    deletelineBtn.style.cssText = 'padding: 8px 20px; min-width: 80px;'
+    row.appendChild(deletelineBtn)
+
+    div.appendChild(row)
     return div
 }
 
+function createAlignSelect(doc: Document): HTMLElement {
+    const divEle = doc.createElement('div')
+    divEle.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
+
+    // 标签
+    divEle.appendChild(
+        digcom.NewLabelDiv(doc, {
+            divClass: 'label-style',
+            forHtml: 'edit-align-select',
+            text: '对齐方式：'
+        })
+    )
+    //divEle.appendChild(label)
+
+    // 下拉框
+    const options: digcom.Option[] = [
+        { value: 'left', text: '左对齐' },
+        { value: 'center', text: '居中对齐' },
+        { value: 'right', text: '右对齐' },
+        { value: 'justify', text: '两端对齐' }
+    ]
+
+    const select = digcom.NewSelect(doc, options)
+    select.id = 'edit-align-select'
+    select.name = 'edit-align-select'
+    select.style.cssText = 'width: 200px; height: 32px;'
+    divEle.appendChild(select)
+
+    return divEle
+}
+
 function createFontSizeColor(doc: Document): HTMLElement {
-    const divRow = doc.createElement('div')
-    divRow.style.cssText = 'display: flex; flex-direction: row;'
-    divRow.appendChild(createLabelList(doc))
-    divRow.appendChild(createInputs(doc))
     const div = doc.createElement('div')
-    div.style.cssText = 'display: flex; flex-direction: column;'
-    div.appendChild(divRow)
-    div.appendChild(createFontStyle(doc))
+    div.style.cssText = 'display: flex; flex-direction: column; gap: 0;'
+
+    // 字体、字号
+    div.appendChild(createInputs(doc))
+    // 对齐方式
+    div.appendChild(createAlignSelect(doc))
+    // 字体样式区域（加粗、倾斜、下划线、删除线）
+    div.appendChild(createFontStyleButtons(doc))
+    // 颜色选择区域
+    div.appendChild(createColorList(doc))
+    div.appendChild(createBackgroundColorList(doc))
     return div
 }
 
 function createBodyDiv(doc: Document): HTMLElement {
     const div = doc.createElement('div')
-    div.style.cssText = 'display: flex; flex-direction: row;margin-left: 20px;'
-    div.appendChild(createFontSizeColor(doc))
+    div.style.cssText = 'display: flex; flex-direction: row; gap: 24px; width: 100%; flex: 1; min-height: 0;'
+
+    // 左侧区域：固定宽度
+    const leftPanel = doc.createElement('div')
+    leftPanel.style.cssText = 'width: 420px; flex-shrink: 0; overflow-y: auto;'
+    leftPanel.appendChild(createFontSizeColor(doc))
+    div.appendChild(leftPanel)
+
+    // 分隔线
     const divLine = doc.createElement('div')
     divLine.style.cssText =
-        'margin-top: 10px; margin-left: 20px; width:2px; color:white; height:460px; display: flex; background-color: black'
+        'width: 2px; background: var(--border-color); opacity: 0.3; flex-shrink: 0;'
     div.appendChild(divLine)
+
+    // 右侧区域：自适应
     div.appendChild(createEditPreview(doc))
     return div
 }
@@ -389,25 +439,76 @@ function createButtonList(doc: Document): HTMLElement {
 
     const btnList = digcom.NewButtonList(doc, buttons)
     btnList.style.cssText =
-        'width:1200px;margin-top:5px; display:flex; justify-content:center;align-items:center;gap: 400px'
+        'width:100%; display:flex; justify-content:center;align-items:center;gap: 400px; padding: 10px 0; flex-shrink: 0;'
     return btnList
 }
 
 function makeFontDialogHtml(): string {
+    const theme = getCurrentThemeStyles()
     const { document } = new JSDOM(
         `<!DOCTYPE html><html lang="zh"><head><title>特殊文字编辑</title></head><body></body></html>`
     ).window
 
     const webDivStyle = document.createElement('style')
     webDivStyle.textContent = `
-    .label-style {width: 100px;margin-top: 5px;text-align: center;}
-    .input-style {width: 250px;margin-top: 5px;}
-    .checkbox-style {margin-top: 11px;margin-left:5px}
-    .color-button {width: 18px;height: 18px;border-width:.2px;}
-    .background-color-button {width: 18px;height: 18px;border-width:.2px;}`
+    :root {
+        --bg-color: ${theme.backgroundColor};
+        --card-bg: ${theme.cardBackground};
+        --text-color: ${theme.textColor};
+        --secondary-text-color: ${theme.secondaryTextColor};
+        --border-color: ${theme.borderColor};
+        --accent-color: ${theme.accentColor};
+        --hover-bg: ${theme.hoverBackground};
+        --title-bar-gradient: ${theme.titleBarGradient};
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif; background: var(--bg-color); min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    .title-bar { width: 100%; height: 40px; background: var(--title-bar-gradient); display: flex; justify-content: space-between; align-items: center; padding: 0 16px; -webkit-app-region: drag; flex-shrink: 0; }
+    .title-bar-title { color: #fff; font-size: 14px; font-weight: 500; letter-spacing: 0.5px; }
+    .close-btn { width: 32px; height: 32px; border: none; background: rgba(255,255,255,0.15); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; transition: all 0.2s; -webkit-app-region: no-drag; }
+    .close-btn:hover { background: rgba(255,80,80,0.95); transform: scale(1.05); }
+    .main-content { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+    .label-style { min-width: 80px; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: right; display: flex; align-items: center; justify-content: flex-end; }
+    .input-style { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; color: var(--text-color); font-size: 13px; transition: all 0.2s; }
+    .input-style:focus { border-color: var(--accent-color); outline: none; box-shadow: 0 0 0 3px rgba(100,150,255,0.1); }
+    .checkbox-style { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-color); }
+    .font-style-button { padding: 8px 20px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-color); font-size: 13px; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+    .font-style-button:hover { background: var(--hover-bg); border-color: var(--accent-color); }
+    .font-style-button.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+    .color-button { width: 20px; height: 20px; border: 1px solid var(--border-color); border-radius: 0; cursor: pointer; transition: all 0.2s; }
+    .color-button:hover { transform: scale(1.1); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    .background-color-button { width: 20px; height: 20px; border: 1px solid var(--border-color); border-radius: 0; cursor: pointer; transition: all 0.2s; }
+    .background-color-button:hover { transform: scale(1.1); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    button { padding: 10px 24px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-color); font-size: 13px; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+    button:hover { background: var(--hover-bg); border-color: var(--accent-color); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    button:active { transform: translateY(0); }
+    textarea { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; color: var(--text-color); font-size: 13px; resize: none; transition: all 0.2s; }
+    textarea:focus { border-color: var(--accent-color); outline: none; box-shadow: 0 0 0 3px rgba(100,150,255,0.1); }
+    select { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 12px; color: var(--text-color); font-size: 13px; cursor: pointer; }
+    select:focus { border-color: var(--accent-color); outline: none; }
+    input[type="color"] { border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; }`
     document.head.appendChild(webDivStyle)
-    const divBody = createBodyDiv(document)
-    document.body.appendChild(divBody)
+
+    // 创建标题栏
+    const titleBar = document.createElement('div')
+    titleBar.className = 'title-bar'
+    const titleSpan = document.createElement('span')
+    titleSpan.className = 'title-bar-title'
+    titleSpan.textContent = '特殊文字编辑'
+    const closeBtn = document.createElement('button')
+    closeBtn.className = 'close-btn'
+    closeBtn.textContent = 'x'
+    closeBtn.id = 'close-dialog-btn'
+    titleBar.appendChild(titleSpan)
+    titleBar.appendChild(closeBtn)
+    document.body.appendChild(titleBar)
+
+    // 创建主内容区域
+    const mainContent = document.createElement('div')
+    mainContent.className = 'main-content'
+    mainContent.appendChild(createBodyDiv(document))
+    document.body.appendChild(mainContent)
+
     document.body.appendChild(createButtonList(document))
 
     const eleScript = document.createElement('script')
@@ -442,43 +543,63 @@ function makeFontDialogHtml(): string {
       document.getElementById("previewText").style.backgroundColor = event.target.value
     }
     function updateFontBold(event) {
-      if (event.target.checked) {
-        document.getElementById("previewText").style.fontWeight = 'bold';
+      const btn = event.target
+      const isActive = btn.classList.contains('active')
+      if (isActive) {
+        btn.classList.remove('active')
+        document.getElementById("previewText").style.fontWeight = 'normal'
+        fontStyle.fontBold = false
+      } else {
+        btn.classList.add('active')
+        document.getElementById("previewText").style.fontWeight = 'bold'
         fontStyle.fontBold = true
       }
     }
     function updateFontItalic(event) {
-      if (event.target.checked) {
-        document.getElementById("previewText").style.fontStyle = 'italic';
+      const btn = event.target
+      const isActive = btn.classList.contains('active')
+      if (isActive) {
+        btn.classList.remove('active')
+        document.getElementById("previewText").style.fontStyle = 'normal'
+        fontStyle.fontItalic = false
+      } else {
+        btn.classList.add('active')
+        document.getElementById("previewText").style.fontStyle = 'italic'
         fontStyle.fontItalic = true
       }
     }
     function updateFontUnderline(event) {
-      if (event.target.checked) {
-        document.getElementById("previewText").style.textDecoration += ' underline';
+      const btn = event.target
+      const isActive = btn.classList.contains('active')
+      if (isActive) {
+        btn.classList.remove('active')
+        const currentDecoration = document.getElementById("previewText").style.textDecoration
+        document.getElementById("previewText").style.textDecoration = currentDecoration.replace('underline', '').trim()
+        fontStyle.fontUnderline = false
+      } else {
+        btn.classList.add('active')
+        document.getElementById("previewText").style.textDecoration += ' underline'
         fontStyle.fontUnderline = true
       }
     }
     function updateFontDeleteLine(event) {
-      if (event.target.checked) {
-        document.getElementById("previewText").style.textDecoration += ' line-through';
+      const btn = event.target
+      const isActive = btn.classList.contains('active')
+      if (isActive) {
+        btn.classList.remove('active')
+        const currentDecoration = document.getElementById("previewText").style.textDecoration
+        document.getElementById("previewText").style.textDecoration = currentDecoration.replace('line-through', '').trim()
+        fontStyle.fontDeleteLine = false
+      } else {
+        btn.classList.add('active')
+        document.getElementById("previewText").style.textDecoration += ' line-through'
         fontStyle.fontDeleteLine = true
       }
     }
-    const checkboxes = document.querySelectorAll('#edit-align-checkbox-list input[type="checkbox"]');
-    checkboxes.forEach(function(checkbox) {
-      checkbox.addEventListener('input', function() {
-        if (this.checked) {
-          fontStyle.textAlign = this.value
-          document.getElementById("previewText").style.textAlign = this.value
-          checkboxes.forEach(function(other) {
-            if (other !== this && other.checked) {
-                other.checked = false
-            }
-          }.bind(this))
-        }
-      })
-    })
+    function updateTextAlign(event) {
+      fontStyle.textAlign = event.target.value
+      document.getElementById("previewText").style.textAlign = event.target.value
+    }
     function updateTextInput(event) {
       const inputText = event.target.value
       document.getElementById("previewText").innerText = inputText
@@ -489,15 +610,19 @@ function makeFontDialogHtml(): string {
     document.getElementById('edit-font-size').addEventListener('input', updateFontSize)
     document.getElementById('edit-font-color').addEventListener('input', updateFontColor)
     document.getElementById('backgroundColor').addEventListener('input', updateBackgroundColor)
-    document.getElementById('edit-font-bold').addEventListener('input', updateFontBold)
-    document.getElementById('edit-font-italic').addEventListener('input', updateFontItalic)
-    document.getElementById('edit-font-underline').addEventListener('input', updateFontUnderline)
-    document.getElementById('edit-font-deleteline').addEventListener('input', updateFontDeleteLine)
+    document.getElementById('edit-font-bold').addEventListener('click', updateFontBold)
+    document.getElementById('edit-font-italic').addEventListener('click', updateFontItalic)
+    document.getElementById('edit-font-underline').addEventListener('click', updateFontUnderline)
+    document.getElementById('edit-font-deleteline').addEventListener('click', updateFontDeleteLine)
+    document.getElementById('edit-align-select').addEventListener('change', updateTextAlign)
     document.getElementById('text-input-area').addEventListener('input', updateTextInput)
     document.getElementById('font-select-apply').onclick = function(e) {
       ipcRenderer.send('dialog-user-font-select-btn-insert', fontStyle)
     }
     document.getElementById('font-select-cancel').onclick = function(e) {
+      ipcRenderer.send('dialog-user-font-select-btn-cancel')
+    }
+    document.getElementById('close-dialog-btn').onclick = function(e) {
       ipcRenderer.send('dialog-user-font-select-btn-cancel')
     }
     const buttons = document.querySelectorAll('.color-button')
@@ -517,6 +642,26 @@ function makeFontDialogHtml(): string {
         document.getElementById('backgroundColor').value = color;
         document.getElementById("previewText").style.backgroundColor = color
       }
+    })
+    // 监听主题更新，动态更新label颜色
+    ipcRenderer.on('baize-notes:theme-updated', function() {
+      location.reload()
+    })
+    ipcRenderer.on('baize-notes:init-theme-styles', function(event, theme) {
+      var root = document.documentElement
+      root.style.setProperty('--bg-color', theme.backgroundColor)
+      root.style.setProperty('--card-bg', theme.cardBackground)
+      root.style.setProperty('--text-color', theme.textColor)
+      root.style.setProperty('--secondary-text-color', theme.secondaryTextColor)
+      root.style.setProperty('--border-color', theme.borderColor)
+      root.style.setProperty('--accent-color', theme.accentColor)
+      root.style.setProperty('--hover-bg', theme.hoverBackground)
+      root.style.setProperty('--title-bar-gradient', theme.titleBarGradient)
+      // 更新所有label的颜色
+      var labels = document.querySelectorAll('label')
+      labels.forEach(function(label) {
+        label.style.color = theme.textColor
+      })
     })`
     document.body.appendChild(eleScript)
     return document.documentElement.outerHTML

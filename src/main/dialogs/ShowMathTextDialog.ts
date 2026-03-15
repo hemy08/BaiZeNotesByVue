@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { katexRenderToString } from '../utils/KatexRender'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
+import { getCurrentThemeStyles } from '../utils/theme-config'
 
 let customMathTextDialog: Electron.BrowserWindow | null = null
 
@@ -14,7 +15,7 @@ export function ShowMathTextDialog(mainWindow: Electron.BrowserWindow) {
 }
 
 const latexInit =
-    '傅里叶级数公式：x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)'
+    'x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)'
 
 // 创建一个自定义对话框的函数
 function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
@@ -23,12 +24,13 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
         height: 550,
         minimizable: false,
         maximizable: false,
-        resizable: false,
+        resizable: true,
         title: '插入数学公式',
         autoHideMenuBar: true,
+        frame: false,
         webPreferences: {
-            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
+            nodeIntegration: true,
+            contextIsolation: false,
             sandbox: false
         }
     })
@@ -43,31 +45,25 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
     customMathTextDialog.loadURL(
         `data:text/html;charset=utf-8,${encodeURIComponent(makeMathTextDialogHtml())}`
     )
-    //customMathTextDialog.loadFile(join(__dirname, '../renderer/src/dialogs/KatexEditDialog.html'))
+
+    // 发送主题样式
+    customMathTextDialog.webContents.on('did-finish-load', () => {
+        const theme = getCurrentThemeStyles()
+        customMathTextDialog?.webContents.send('baize-notes:init-theme-styles', theme)
+    })
 
     // 当窗口关闭时，清除引用
     customMathTextDialog.on('closed', () => {
         ipcMain.removeListener('dialog-math-line-text-btn-insert', processMathLineTextInsert)
         ipcMain.removeListener('dialog-math-block-text-btn-insert', processMathBlockTextInsert)
-        ipcMain.removeListener('dialog-math-text-btn-cancel', () => {})
+        ipcMain.removeListener('dialog-math-text-btn-cancel', () => {
+            exitCustomFontDialog();
+        })
         customMathTextDialog = null
     })
 
     // 显示窗口
     customMathTextDialog.show()
-
-    function exitCustomFontDialog() {
-        if (customMathTextDialog) {
-            ipcMain.removeListener('dialog-math-line-text-btn-insert', processMathLineTextInsert)
-            ipcMain.removeListener('dialog-math-block-text-btn-insert', processMathBlockTextInsert)
-            ipcMain.removeListener('dialog-math-math-text-btn-insert', processMathCodeBlockInsert)
-            ipcMain.removeListener('dialog-math-katex-text-btn-insert', processMathCodeBlockInsert)
-            ipcMain.removeListener('dialog-math-latex-text-btn-insert', processMathCodeBlockInsert)
-            ipcMain.removeListener('dialog-math-text-btn-cancel', () => {})
-            customMathTextDialog.close()
-            customMathTextDialog = null
-        }
-    }
 
     function processMathLineTextInsert(_, mathText) {
         mainWindow.webContents.send('monaco-insert-text-block-templates', mathText + '\n')
@@ -84,14 +80,29 @@ function createMathTextDialog(mainWindow: Electron.BrowserWindow) {
         exitCustomFontDialog()
     }
 
+    function processMathTextCancel() {
+        exitCustomFontDialog()
+    }
+
+    function exitCustomFontDialog() {
+        if (customMathTextDialog) {
+            ipcMain.removeListener('dialog-math-line-text-btn-insert', processMathLineTextInsert)
+            ipcMain.removeListener('dialog-math-block-text-btn-insert', processMathBlockTextInsert)
+            ipcMain.removeListener('dialog-math-math-text-btn-insert', processMathCodeBlockInsert)
+            ipcMain.removeListener('dialog-math-katex-text-btn-insert', processMathCodeBlockInsert)
+            ipcMain.removeListener('dialog-math-latex-text-btn-insert', processMathCodeBlockInsert)
+            ipcMain.removeListener('dialog-math-text-btn-cancel', processMathTextCancel)
+            customMathTextDialog.close()
+            customMathTextDialog = null
+        }
+    }
+
     ipcMain.on('dialog-math-line-text-btn-insert', processMathLineTextInsert)
     ipcMain.on('dialog-math-block-text-btn-insert', processMathBlockTextInsert)
     ipcMain.on('dialog-math-math-text-btn-insert', processMathCodeBlockInsert)
     ipcMain.on('dialog-math-katex-text-btn-insert', processMathCodeBlockInsert)
     ipcMain.on('dialog-math-latex-text-btn-insert', processMathCodeBlockInsert)
-    ipcMain.on('dialog-math-text-btn-cancel', () => {
-        exitCustomFontDialog()
-    })
+    ipcMain.on('dialog-math-text-btn-cancel', processMathTextCancel)
 
     ipcMain.on('sync-katex-render-message', (event, arg) => {
         if (arg == '') {
@@ -128,16 +139,14 @@ function createKatexEditor(doc: Document): HTMLElement {
     const divLabel = doc.createElement('div')
     const inputLabel = doc.createElement('label')
     inputLabel.style.cssText = 'width:10px;margin-top:10px;margin-left:20px;'
-    inputLabel.textContent =
-        '公式编辑：傅里叶级数公式：x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)'
+    inputLabel.textContent = '公式编辑'
     divLabel.appendChild(inputLabel)
 
     const divTextArea = doc.createElement('div')
     const textArea = doc.createElement('textarea')
     textArea.className = 'text-input'
     textArea.id = 'textInput'
-    textArea.placeholder =
-        'x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)'
+    textArea.placeholder = '输入 LaTeX 公式...'
     divTextArea.appendChild(textArea)
 
     eleDiv.appendChild(divLabel)
@@ -149,13 +158,32 @@ function createKatexContainer(doc: Document): HTMLElement {
     const divContainer = doc.createElement('div')
     divContainer.id = 'katex-container'
 
-    const divLine = doc.createElement('div')
-    divLine.style.cssText =
-        'width:1200px;height:2px;margin-top:10px;margin-left:20px;color:black;background-color:black'
+    const titleBar = doc.createElement('div')
+    titleBar.className = 'title-bar'
 
-    divContainer.appendChild(createKatexPreview(doc))
-    divContainer.appendChild(divLine)
-    divContainer.appendChild(createKatexEditor(doc))
+    const titleSpan = doc.createElement('span')
+    titleSpan.className = 'title-bar-title'
+    titleSpan.textContent = '数学公式'
+
+    const closeBtn = doc.createElement('button')
+    closeBtn.className = 'close-btn'
+    closeBtn.textContent = 'x'
+    closeBtn.id = 'close-dialog-btn'
+
+    titleBar.appendChild(titleSpan)
+    titleBar.appendChild(closeBtn)
+
+    const mainContent = doc.createElement('div')
+    mainContent.className = 'main-content'
+
+    const previewDiv = createKatexPreview(doc)
+    const editorDiv = createKatexEditor(doc)
+
+    mainContent.appendChild(previewDiv)
+    mainContent.appendChild(editorDiv)
+
+    divContainer.appendChild(titleBar)
+    divContainer.appendChild(mainContent)
     return divContainer
 }
 
@@ -175,6 +203,8 @@ function createButtonList(doc: Document): HTMLElement {
 }
 
 function makeMathTextDialogHtml(): string {
+    const theme = getCurrentThemeStyles()
+
     // 创建一个空的HTML文档
     const { document } = new JSDOM(
         `<!DOCTYPE html><html lang="zh"><head><title>数学公式编辑</title></head><body></body></html>`
@@ -182,10 +212,34 @@ function makeMathTextDialogHtml(): string {
 
     const webDivStyle = document.createElement('style')
     webDivStyle.textContent = `
-    #textInput {width:1200px;height:100px;overflow-y:auto;margin-left:20px;margin-top:10px;flex-direction:column}
-    #katex-preview {width:1200px;height:250px;display:flex;justify-content:center;align-items:center}
-    .btn-list-style {width:1200px;margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 50px}
-    .katex-html {position: absolute;left: -9999px}`
+    :root {
+        --bg-color: ${theme.backgroundColor};
+        --card-bg: ${theme.cardBackground};
+        --text-color: ${theme.textColor};
+        --secondary-text-color: ${theme.secondaryTextColor};
+        --border-color: ${theme.borderColor};
+        --accent-color: ${theme.accentColor};
+        --hover-bg: ${theme.hoverBackground};
+        --title-bar-gradient: ${theme.titleBarGradient};
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif; background: var(--bg-color); min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    .title-bar { width: 100%; height: 36px; background: var(--title-bar-gradient); display: flex; justify-content: space-between; align-items: center; padding: 0 12px; -webkit-app-region: drag; }
+    .title-bar-title { color: #fff; font-size: 14px; font-weight: 500; }
+    .close-btn { width: 28px; height: 28px; border: none; background: rgba(255,255,255,0.2); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; transition: all 0.2s; -webkit-app-region: no-drag; }
+    .close-btn:hover { background: rgba(255,100,100,0.9); }
+    .main-content { flex: 1; padding: 15px 20px; display: flex; flex-direction: column; }
+    #textInput { width: 100%; height: 100px; overflow-y: auto; margin-top: 10px; flex-direction: column; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; color: var(--text-color); font-size: 14px; font-family: "Fira Code", "Consolas", monospace; resize: none; outline: none; }
+    #textInput:focus { border-color: var(--accent-color); }
+    #katex-preview { width: 100%; height: 250px; display: flex; justify-content: center; align-items: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; color: var(--text-color); }
+    #katex-preview .katex { color: var(--text-color); }
+    .btn-list-style { width: 100%; margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 15px; }
+    .katex-html { position: absolute; left: -9999px; }
+    label { color: var(--text-color); font-size: 13px; font-weight: 500; }
+    button { padding: 8px 20px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--card-bg); color: var(--text-color); font-size: 13px; cursor: pointer; transition: all 0.2s; }
+    button:hover { background: var(--hover-bg); border-color: var(--accent-color); }
+    button.primary { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+    button.primary:hover { opacity: 0.9; }`
     document.head.appendChild(webDivStyle)
 
     const divContainer = createKatexContainer(document)
@@ -197,40 +251,67 @@ function makeMathTextDialogHtml(): string {
     const eleScript = document.createElement('script')
     eleScript.textContent = `
     const { ipcRenderer } = require('electron');
-    let latexData = ''
-    const result = ipcRenderer.sendSync('sync-katex-render-message', latexData);
-    document.getElementById("katex-preview").innerHTML = result
-    document.getElementById("textInput").textContent = latexData
+    const latexInit = '${latexInit.replace(/\\/g, '\\\\')}';
+    let latexData = latexInit;
+
+    // 初始化预览
+    const result = ipcRenderer.sendSync('sync-katex-render-message', latexInit);
+    document.getElementById("katex-preview").innerHTML = result;
+    document.getElementById("textInput").value = latexInit;
+
     // 处理textInput的input事件，获取内容，渲染后进行显示
     function updateTextInput(event) {
-      let inputText = event.target.value
-      let html = ''
+      let inputText = event.target.value;
+      let html = '';
       try {
         html = ipcRenderer.sendSync('sync-katex-render-message', inputText);
-      } catch (error) {html = latex}
-      document.getElementById("katex-preview").innerHTML = html
-      latexData = event.target.value
+      } catch (error) {
+        html = '<span style="color:red">公式语法错误</span>';
+      }
+      document.getElementById("katex-preview").innerHTML = html;
+      latexData = event.target.value;
     }
+
     // 监控textInput的input事件
     document.getElementById('textInput').addEventListener('input', updateTextInput);
+
     document.getElementById('insert-math-line').onclick = function(e) {
-      ipcRenderer.send('dialog-math-line-text-btn-insert', '$' + latexData + '$')
-    }
+      ipcRenderer.send('dialog-math-line-text-btn-insert', '$' + latexData + '$');
+    };
     document.getElementById('insert-math-block').onclick = function(e) {
-      ipcRenderer.send('dialog-math-block-text-btn-insert', '$$\\r\\n' + latexData + '\\r\\n$$\\r\\n')
-    }
+      ipcRenderer.send('dialog-math-block-text-btn-insert', '$$\\r\\n' + latexData + '\\r\\n$$\\r\\n');
+    };
     document.getElementById('insert-math-math').onclick = function(e) {
-      ipcRenderer.send('dialog-math-math-text-btn-insert', '\`\`\`math\\r\\n' +  latexData + '\\r\\n\`\`\`\\r\\n')
-    }
+      ipcRenderer.send('dialog-math-math-text-btn-insert', '~~~math\\r\\n' + latexData + '\\r\\n~~~\\r\\n');
+    };
     document.getElementById('insert-math-katex').onclick = function(e) {
-      ipcRenderer.send('dialog-math-katex-text-btn-insert', '\`\`\`katex\\r\\n' + latexData + '\\r\\n\`\`\`\\r\\n')
-    }
+      ipcRenderer.send('dialog-math-katex-text-btn-insert', '~~~katex\\r\\n' + latexData + '\\r\\n~~~\\r\\n');
+    };
     document.getElementById('insert-math-latex').onclick = function(e) {
-      ipcRenderer.send('dialog-math-latex-text-btn-insert', '\`\`\`latex\\r\\n' + latexData + '\\r\\n\`\`\`\\r\\n')
-    }
+      ipcRenderer.send('dialog-math-latex-text-btn-insert', '~~~latex\\r\\n' + latexData + '\\r\\n~~~\\r\\n');
+    };
     document.getElementById('cancel-insert-math').onclick = function(e) {
-      ipcRenderer.send('dialog-math-text-btn-cancel')
-    }`
+      ipcRenderer.send('dialog-math-text-btn-cancel');
+    };
+    document.getElementById('close-dialog-btn').onclick = function(e) {
+      ipcRenderer.send('dialog-math-text-btn-cancel');
+    };
+
+    // 监听主题更新
+    ipcRenderer.on('baize-notes:theme-updated', function() {
+      location.reload();
+    });
+    ipcRenderer.on('baize-notes:init-theme-styles', function(event, theme) {
+      var root = document.documentElement;
+      root.style.setProperty('--bg-color', theme.backgroundColor);
+      root.style.setProperty('--card-bg', theme.cardBackground);
+      root.style.setProperty('--text-color', theme.textColor);
+      root.style.setProperty('--secondary-text-color', theme.secondaryTextColor);
+      root.style.setProperty('--border-color', theme.borderColor);
+      root.style.setProperty('--accent-color', theme.accentColor);
+      root.style.setProperty('--hover-bg', theme.hoverBackground);
+      root.style.setProperty('--title-bar-gradient', theme.titleBarGradient);
+    });`
 
     document.body.appendChild(eleScript)
     return document.documentElement.outerHTML

@@ -66,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 let currentNaviTal = 'file-explorer'
 
@@ -88,8 +88,13 @@ const quickLinks = ref<QuickLinkItem[]>([])
 
 // 加载快速链接配置
 function loadQuickLinks() {
-    const links = window.electron.ipcRenderer.sendSync('get-quick-links')
+    const links = window.electron.ipcRenderer.sendSync('baize-notes:get-quick-links')
     quickLinks.value = links.filter((link: QuickLinkItem) => link.enabled)
+}
+
+// 监听快速链接更新事件
+function handleQuickLinksUpdated() {
+    loadQuickLinks()
 }
 
 // 快速链接点击事件
@@ -135,6 +140,13 @@ function onOpenHemyNotes() {
 // 组件挂载时加载配置
 onMounted(() => {
     loadQuickLinks()
+    // 监听快速链接更新事件，实现立即生效
+    window.electron.ipcRenderer.on('baize-notes:quick-links-updated', handleQuickLinksUpdated)
+})
+
+// 组件卸载时移除监听
+onUnmounted(() => {
+    window.electron.ipcRenderer.removeListener('baize-notes:quick-links-updated', handleQuickLinksUpdated)
 })
 </script>
 

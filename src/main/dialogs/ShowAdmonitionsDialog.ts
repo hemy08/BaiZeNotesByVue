@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
+import { getCurrentThemeStyles } from '../utils/theme-config'
 
 let customAdmonitionDialog: Electron.BrowserWindow | null
 
@@ -12,11 +13,14 @@ export function ShowAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
     customAdmonitionDialog = new BrowserWindow({
         width: 950,
         height: 650,
+        minWidth: 800,
+        minHeight: 600,
         minimizable: false,
         maximizable: false,
-        resizable: false,
+        resizable: true,
         title: 'Admonition',
         autoHideMenuBar: true,
+        frame: false,
         webPreferences: {
             nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
             contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
@@ -71,11 +75,11 @@ export function ShowAdmonitionDialog(mainWindow: Electron.BrowserWindow) {
 
 function createDivLabelEle(doc: Document, text: string): HTMLElement {
     const eleDiv = doc.createElement('div')
-    eleDiv.style.cssText = 'display: flex;flex-direction: row;margin-top: 10px'
+    eleDiv.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 12px;'
 
     const eleDivLabel = doc.createElement('div')
+    eleDivLabel.className = 'label-style'
     const eleLabel = doc.createElement('label')
-    eleLabel.style.cssText = 'width:50px;margin-left:20px;'
     eleLabel.textContent = text
     eleDivLabel.appendChild(eleLabel)
     eleDiv.appendChild(eleDivLabel)
@@ -84,8 +88,6 @@ function createDivLabelEle(doc: Document, text: string): HTMLElement {
 
 function createDivTypeEle(doc: Document): HTMLElement {
     const eleDiv = createDivLabelEle(doc, '类型：')
-    const eleDivSelect = doc.createElement('div')
-    eleDivSelect.style.cssText = 'width: 200px'
 
     const options: digcom.Option[] = [
         { value: 'Note' },
@@ -104,54 +106,66 @@ function createDivTypeEle(doc: Document): HTMLElement {
     ]
     const eleSelect = digcom.NewSelect(doc, options)
     eleSelect.id = 'admonitionsType'
-    eleSelect.style.cssText = 'width: 200px'
+    eleSelect.className = 'input-style'
+    eleSelect.style.cssText = 'width: 200px; height: 32px;'
 
-    eleDivSelect.appendChild(eleSelect)
-    eleDiv.appendChild(eleDivSelect)
+    eleDiv.appendChild(eleSelect)
     return eleDiv
 }
 
 function createDivTitleEle(doc: Document): HTMLElement {
     const eleDiv = createDivLabelEle(doc, '标题：')
     const eleInput = doc.createElement('input')
+    eleInput.type = 'text'
     eleInput.id = 'admonitionsTitle'
-    eleInput.style.cssText = 'width: 820px;'
+    eleInput.className = 'input-style'
+    eleInput.style.cssText = 'width: 400px; height: 32px;'
     eleDiv.appendChild(eleInput)
     return eleDiv
 }
-
 function createDivContextEle(doc: Document): HTMLElement {
     const eleDiv = createDivLabelEle(doc, '内容：')
     const eleTextArea = doc.createElement('textarea')
     eleTextArea.id = 'admonitionsContent'
-    eleTextArea.style.cssText = 'width: 820px;height: 150px;overflow-y: auto;'
+    eleTextArea.className = 'input-style'
+    eleTextArea.style.cssText = 'width: 100%; height: 100px; overflow-y: auto; resize: none;'
     eleDiv.appendChild(eleTextArea)
     return eleDiv
 }
 
 function createDivPreviewEle(doc: Document): HTMLElement {
-    const eleDiv = createDivLabelEle(doc, '预览：')
+    const eleDiv = doc.createElement('div')
+    eleDiv.style.cssText = 'display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0;'
+
+    // 标签
+    const labelDiv = doc.createElement('div')
+    labelDiv.className = 'label-style'
+    const label = doc.createElement('label')
+    label.textContent = '预览：'
+    labelDiv.appendChild(label)
+    eleDiv.appendChild(labelDiv)
+
+    // 预览区域
     const elePreview = doc.createElement('div')
     elePreview.id = 'admonitionsPreview'
-    elePreview.style.cssText = 'width: 820px;height: 300px; overflow:auto;'
+    elePreview.className = 'preview-container'
+    elePreview.style.cssText = 'width: 100%; flex: 1; overflow: auto; padding: 16px;'
     elePreview.innerHTML = '<p id="previewText">这是一段预览文字。</p>'
     eleDiv.appendChild(elePreview)
     return eleDiv
 }
 
 function createButtonList(doc: Document): HTMLElement {
-    const btnStyle =
-        'width:800px;margin-top:10px; display:flex; justify-content:center;align-items:center;gap: 200px'
+    const btnStyle = 'width: 100%; margin-top: 16px; display: flex; justify-content: flex-end; align-items: center; gap: 200px; padding-right: 24px; padding-bottom: 16px;'
     const buttons: digcom.Button[] = [
-        { id: 'applyButton', text: '应用', btnCss: digcom.ButtonStyle },
-        { id: 'cancelButton', text: '取消', btnCss: digcom.ButtonStyle }
+        { id: 'applyButton', text: '应用', btnClass: 'primary-button' },
+        { id: 'cancelButton', text: '取消', btnClass: 'secondary-button' }
     ]
 
     const Buttons = digcom.NewButtonList(doc, buttons)
     Buttons.style.cssText = btnStyle
     return Buttons
 }
-
 function makeAdmonitionDialogHtml(): string {
     // 创建一个空的HTML文档
     const { document } = new JSDOM(
@@ -162,8 +176,41 @@ function makeAdmonitionDialogHtml(): string {
   webLink.rel = 'stylesheet'
   webLink.href = join(__dirname, '../renderer/src/style/material/admonition.css')
   document.head.appendChild(webLink)*/
+    const theme = getCurrentThemeStyles()
     const webDivStyle = document.createElement('style')
     webDivStyle.textContent = `
+    :root {
+    --bg-color: ${theme.backgroundColor};
+    --card-bg: ${theme.cardBackground};
+    --text-color: ${theme.textColor};
+    --secondary-text-color: ${theme.secondaryTextColor};
+    --border-color: ${theme.borderColor};
+    --accent-color: ${theme.accentColor};
+    --hover-bg: ${theme.hoverBackground};
+    --title-bar-gradient: ${theme.titleBarGradient};
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif; background: var(--bg-color); min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    .title-bar { width: 100%; height: 40px; background: var(--title-bar-gradient); display: flex; justify-content: space-between; align-items: center; padding: 0 16px; -webkit-app-region: drag; flex-shrink: 0; }
+    .title-bar-title { color: #fff; font-size: 14px; font-weight: 500; letter-spacing: 0.5px; }
+    .close-btn { width: 32px; height: 32px; border: none; background: rgba(255,255,255,0.15); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; transition: all 0.2s; -webkit-app-region: no-drag; }
+    .close-btn:hover { background: rgba(255,80,80,0.95); transform: scale(1.05); }
+    .main-content { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+    .label-style { min-width: 80px; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: right; display: flex; align-items: center; justify-content: flex-end; }
+    .input-style { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; color: var(--text-color); font-size: 13px; transition: all 0.2s; }
+    .input-style:focus { border-color: var(--accent-color); outline: none; box-shadow: 0 0 0 3px rgba(100,150,255,0.1); }
+    .checkbox-style { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-color); }
+    .preview-container { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); }
+    button { padding: 10px 24px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-color); font-size: 13px; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+    button:hover { background: var(--hover-bg); border-color: var(--accent-color); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    button:active { transform: translateY(0); }
+    .primary-button { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+    .primary-button:hover { background: var(--accent-color); opacity: 0.9; }
+    .secondary-button { background: var(--card-bg); color: var(--text-color); }
+    select { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 12px; color: var(--text-color); font-size: 13px; cursor: pointer; }
+    select:focus { border-color: var(--accent-color); outline: none; }
+    textarea { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; color: var(--text-color); font-size: 13px; resize: none; transition: all 0.2s; }
+    textarea:focus { border-color: var(--accent-color); outline: none; box-shadow: 0 0 0 3px rgba(100,150,255,0.1); }
     :root {
     --md-primary-fg-color: #4051b5;
     --md-primary-fg-color--light: #5d6cc0;
@@ -554,10 +601,35 @@ function makeAdmonitionDialogHtml(): string {
   }`
     document.head.appendChild(webDivStyle)
 
-    document.body.appendChild(createDivTypeEle(document))
-    document.body.appendChild(createDivTitleEle(document))
-    document.body.appendChild(createDivContextEle(document))
-    document.body.appendChild(createDivPreviewEle(document))
+    // 创建标题栏
+    const titleBar = document.createElement('div')
+    titleBar.className = 'title-bar'
+    const titleSpan = document.createElement('span')
+    titleSpan.className = 'title-bar-title'
+    titleSpan.textContent = 'Admonition 编辑'
+    const closeBtn = document.createElement('button')
+    closeBtn.className = 'close-btn'
+    closeBtn.textContent = 'x'
+    closeBtn.id = 'close-dialog-btn'
+    titleBar.appendChild(titleSpan)
+    titleBar.appendChild(closeBtn)
+    document.body.appendChild(titleBar)
+
+    // 创建主内容区域
+    const mainContent = document.createElement('div')
+    mainContent.className = 'main-content'
+
+    // 创建左侧控制区域
+    const controlArea = document.createElement('div')
+    controlArea.style.cssText = 'display: flex; flex-direction: column; gap: 12px;'
+    controlArea.appendChild(createDivTypeEle(document))
+    controlArea.appendChild(createDivTitleEle(document))
+    controlArea.appendChild(createDivContextEle(document))
+
+    mainContent.appendChild(controlArea)
+    mainContent.appendChild(createDivPreviewEle(document))
+    document.body.appendChild(mainContent)
+
     document.body.appendChild(createButtonList(document))
 
     const eleScript = document.createElement('script')
@@ -600,98 +672,27 @@ function makeAdmonitionDialogHtml(): string {
     document.getElementById('cancelButton').onclick = function(e) {
       ipcRenderer.send("dialog-material-admonitions-btn-cancel");
     }
+    document.getElementById('close-dialog-btn').onclick = function(e) {
+      ipcRenderer.send("dialog-material-admonitions-btn-cancel");
+    }
+
+    // 监听主题更新
+    ipcRenderer.on('baize-notes:theme-updated', function() {
+      location.reload();
+    });
+    ipcRenderer.on('baize-notes:init-theme-styles', function(event, theme) {
+      var root = document.documentElement;
+      root.style.setProperty('--bg-color', theme.backgroundColor);
+      root.style.setProperty('--card-bg', theme.cardBackground);
+      root.style.setProperty('--text-color', theme.textColor);
+      root.style.setProperty('--secondary-text-color', theme.secondaryTextColor);
+      root.style.setProperty('--border-color', theme.borderColor);
+      root.style.setProperty('--accent-color', theme.accentColor);
+      root.style.setProperty('--hover-bg', theme.hoverBackground);
+      root.style.setProperty('--title-bar-gradient', theme.titleBarGradient);
+    });
     `
 
     document.body.appendChild(eleScript)
     return document.documentElement.outerHTML
 }
-
-/*const admonitionHtmlContent =
-  '<!DOCTYPE html>\n' +
-  '<html lang="en">\n' +
-  '<head>\n' +
-  '  <meta charset="UTF-8">\n' +
-  '  <title>Admonitions</title>\n' +
-  '</head>\n' +
-  '<body>\n' +
-  '  <div style="display: flex;flex-direction: row;margin-top: 10px">\n' +
-  '    <div><label style="width:50px;margin-left:20px;">类型：</label></div>\n' +
-  '    <div style="width: 200px">\n' +
-  '      <select id="admonitionsType" style="width: 200px">\n' +
-  '        <option value="Note">Note</option>\n' +
-  '        <option value="Abstract">Abstract</option>\n' +
-  '        <option value="Info">Info</option>\n' +
-  '        <option value="Tip">Tip</option>\n' +
-  '        <option value="Success">Success</option>\n' +
-  '        <option value="Question">Question</option>\n' +
-  '        <option value="Warning">Warning</option>\n' +
-  '        <option value="Failure">Failure</option>\n' +
-  '        <option value="Danger">Danger</option>\n' +
-  '        <option value="Bug">Bug</option>\n' +
-  '        <option value="Example">Example</option>\n' +
-  '        <option value="Quote">Quote</option>\n' +
-  '        <option value="Pied-Piper">Pied Piper</option>\n' +
-  '      </select>\n' +
-  '    </div>\n' +
-  '  </div>\n' +
-  '  <div style="display: flex;flex-direction: row;margin-top: 10px">\n' +
-  '    <div><label style="width:10px;margin-left:20px;">标题：</label></div>\n' +
-  '    <input id="admonitionsTitle" style="width: 400px;" placeholder="请输入标题">\n' +
-  '  </div>\n' +
-  '  <div style="display: flex;flex-direction: row;margin-top: 10px">\n' +
-  '    <div><label style="width:10px;margin-left:20px;">内容：</label></div>\n' +
-  '    <textarea id="admonitionsContent" style="width: 400px;height: 100px;overflow-y: auto;"></textarea>\n' +
-  '  </div>\n' +
-  '  <div style="display: flex;flex-direction: row;margin-top: 10px">\n' +
-  '    <div><label style="width:10px;margin-left:20px;" for="previewText">预览：</label></div>\n' +
-  '    <div style="width: 400px;height: 250px; overflow:auto;">\n' +
-  '      <p id="previewText">这是一段预览文字。</p>\n' +
-  '    </div>\n' +
-  '  </div>\n' +
-  '</body>\n' +
-  '<div style="width:500px;margin-top:20px; display:flex; justify-content:center;align-items:center;gap: 10px">\n' +
-  '  <button id="applyButton" onclick="sendInsertAdmonitions()" style="width: 125px;margin-top: 30px;margin-left: 50px;">应用</button>\n' +
-  '  <button id="cancelButton" onclick="sendCancelAdmonitions()" style="width: 125px;margin-top: 30px;margin-left: 50px;">取消</button>\n' +
-  '</div>\n' +
-  '<script>\n' +
-  "  const { ipcRenderer } = require('electron');\n" +
-  "  let typeStr='note'\n" +
-  "  let titleStr='这是一个演示'\n" +
-  "  let contentStr = '这是一个演示'\n" +
-  "  let fmtContent = '这是一个演示'\n" +
-  "  let previewText = ''\n" +
-  '  document.getElementById("previewText").innerHTML = \'<div class="admonition note"><p class="admonition-title">这是一个演示</p>这是一个演示</div>\'\n' +
-  '  function updateType(event) {\n' +
-  '    typeStr = event.target.value.toLowerCase()\n' +
-  '    updatePreviewText()\n' +
-  '  }\n' +
-  '  function updateTitle(event) {\n' +
-  '    titleStr = event.target.value.toLowerCase()\n' +
-  '    updatePreviewText()\n' +
-  '  }\n' +
-  '  function updateContent(event) {\n' +
-  "    contentStr = document.getElementById('admonitionsContent').value\n" +
-  "    fmtContent = contentStr.replace(/\\n/g,'<br>')\n" +
-  '    contentStr = contentStr.replace(/\\n/g,"\\n    ")\n' +
-  '    updatePreviewText()\n' +
-  '  }\n' +
-  '  function updatePreviewText() {\n' +
-  '    previewText = `<div class="admonition ${typeStr}">` +\n' +
-  '      `<p class="admonition-title">${titleStr}</p>` +\n' +
-  '      `${fmtContent}</div>`\n' +
-  '    document.getElementById("previewText").innerHTML = previewText\n' +
-  '  }\n' +
-  '  // 监听文本输入和样式输入的变化\n' +
-  '  document.getElementById("admonitionsType").addEventListener("input", updateType);\n' +
-  '  document.getElementById("admonitionsTitle").addEventListener("input", updateTitle)\n' +
-  '  document.getElementById("admonitionsContent").addEventListener("input", updateContent);\n' +
-  '  function sendInsertAdmonitions() {\n' +
-  '    const text = "!!! " + typeStr + " \\"" + titleStr + "\\"\\n\\t" + contentStr + "\\n"\n' +
-  '    ipcRenderer.send("dialog-material-admonitions-btn-insert", text);\n' +
-  '  }\n' +
-  '  function sendCancelAdmonitions() {\n' +
-  '    ipcRenderer.send("dialog-material-admonitions-btn-cancel");\n' +
-  '  }\n' +
-  '</script>\n' +
-  '</html>\n'
-*/

@@ -11,6 +11,7 @@ import {
     QuickLinkItem,
     resetToDefault
 } from '../utils/quick-link-config'
+import { getCurrentThemeStyles } from '../utils/theme-config'
 
 let quickLinkSettingDialog: Electron.BrowserWindow | null
 
@@ -19,13 +20,14 @@ let quickLinkSettingDialog: Electron.BrowserWindow | null
  */
 export function ShowQuickLinkSettingDialog() {
     quickLinkSettingDialog = new BrowserWindow({
-        width: 900,
+        width: 1100,
         height: 600,
         minimizable: false,
         maximizable: false,
         resizable: true,
         title: '快速链接设置',
         autoHideMenuBar: true,
+        frame: false,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -43,30 +45,45 @@ export function ShowQuickLinkSettingDialog() {
     // 初始化时发送当前配置
     quickLinkSettingDialog.webContents.on('did-finish-load', () => {
         const links = getQuickLinks()
-        quickLinkSettingDialog?.webContents.send('init-quick-links', links)
+        quickLinkSettingDialog?.webContents.send('baize-notes:init-quick-links', links)
+        // 发送当前主题样式
+        const theme = getCurrentThemeStyles()
+        quickLinkSettingDialog?.webContents.send('baize-notes:init-theme-styles', theme)
     })
 
     quickLinkSettingDialog.on('closed', () => {
         quickLinkSettingDialog = null
-        ipcMain.removeListener('save-quick-links', handleSaveQuickLinks)
-        ipcMain.removeListener('reset-quick-links', handleResetQuickLinks)
+        ipcMain.removeListener('baize-notes:save-quick-links', handleSaveQuickLinks)
+        ipcMain.removeListener('baize-notes:reset-quick-links', handleResetQuickLinks)
     })
 
     // 保存配置
     function handleSaveQuickLinks(_, links: QuickLinkItem[]) {
         saveQuickLinks(links)
-        quickLinkSettingDialog?.webContents.send('save-success')
+        quickLinkSettingDialog?.webContents.send('baize-notes:save-success')
+        // 通知所有渲染进程更新快速链接
+        BrowserWindow.getAllWindows().forEach(win => {
+            if (win !== quickLinkSettingDialog) {
+                win.webContents.send('baize-notes:quick-links-updated')
+            }
+        })
     }
 
     // 重置配置
     function handleResetQuickLinks() {
         resetToDefault()
         const links = getQuickLinks()
-        quickLinkSettingDialog?.webContents.send('init-quick-links', links)
+        quickLinkSettingDialog?.webContents.send('baize-notes:init-quick-links', links)
+        // 通知所有渲染进程更新快速链接
+        BrowserWindow.getAllWindows().forEach(win => {
+            if (win !== quickLinkSettingDialog) {
+                win.webContents.send('baize-notes:quick-links-updated')
+            }
+        })
     }
 
-    ipcMain.on('save-quick-links', handleSaveQuickLinks)
-    ipcMain.on('reset-quick-links', handleResetQuickLinks)
+    ipcMain.on('baize-notes:save-quick-links', handleSaveQuickLinks)
+    ipcMain.on('baize-notes:reset-quick-links', handleResetQuickLinks)
 }
 
 /**
@@ -88,24 +105,73 @@ function makeQuickLinkSettingDialogHtml(): string {
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f5f5f5;
+            background-color: var(--bg-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .title-bar {
+            width: 100%;
+            height: 32px;
+            background: var(--title-bar-gradient);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            -webkit-app-region: drag;
+            flex-shrink: 0;
+        }
+        
+        .title-bar-title {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        .close-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #fff;
+            transition: all 0.2s;
+            -webkit-app-region: no-drag;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255,100,100,0.9);
+        }
+        
+        .main-content {
+            flex: 1;
             padding: 20px;
+            overflow-y: auto;
         }
 
         .container {
-            max-width: 850px;
+            max-width: 1050px;
             margin: 0 auto;
-            background: white;
+            background: var(--card-bg);
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 20px;
+            border: 1px solid var(--border-color);
         }
-
+        
         h2 {
-            color: #333;
+            color: var(--text-color);
             margin-bottom: 20px;
             font-size: 20px;
-            border-bottom: 2px solid #0366d6;
+            border-bottom: 2px solid var(--accent-color);
             padding-bottom: 10px;
         }
 
@@ -114,33 +180,34 @@ function makeQuickLinkSettingDialogHtml(): string {
             gap: 10px;
             margin-bottom: 20px;
             padding: 10px;
-            background: #f8f9fa;
+            background: var(--bg-color);
             border-radius: 4px;
         }
 
         button {
             padding: 8px 16px;
-            border: 1px solid #d1d5da;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
-            background: white;
+            background: var(--card-bg);
+            color: var(--text-color);
             cursor: pointer;
             font-size: 14px;
             transition: all 0.2s;
         }
 
         button:hover {
-            background: #f6f8fa;
-            border-color: #0366d6;
+            background: var(--hover-bg);
+            border-color: var(--accent-color);
         }
 
         button.primary {
-            background: #0366d6;
-            color: white;
-            border-color: #0366d6;
+            background: var(--accent-color);
+            color: var(--card-bg);
+            border-color: var(--accent-color);
         }
 
         button.primary:hover {
-            background: #0257c5;
+            opacity: 0.9;
         }
 
         button.danger {
@@ -154,9 +221,8 @@ function makeQuickLinkSettingDialogHtml(): string {
         }
 
         .links-list {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #e1e4e8;
+            /* 移除高度限制和滚动条 */
+            border: 1px solid var(--border-color);
             border-radius: 4px;
         }
 
@@ -164,7 +230,7 @@ function makeQuickLinkSettingDialogHtml(): string {
             display: flex;
             align-items: center;
             padding: 12px;
-            border-bottom: 1px solid #e1e4e8;
+            border-bottom: 1px solid var(--border-color);
             transition: background 0.2s;
         }
 
@@ -173,7 +239,7 @@ function makeQuickLinkSettingDialogHtml(): string {
         }
 
         .link-item:hover {
-            background: #f6f8fa;
+            background: var(--hover-bg);
         }
 
         .link-item.disabled {
@@ -205,13 +271,13 @@ function makeQuickLinkSettingDialogHtml(): string {
 
         .link-name {
             font-weight: 600;
-            color: #24292e;
+            color: var(--text-color);
             margin-bottom: 4px;
         }
 
         .link-path {
             font-size: 12px;
-            color: #586069;
+            color: var(--secondary-text-color);
             word-break: break-all;
         }
 
@@ -243,12 +309,12 @@ function makeQuickLinkSettingDialogHtml(): string {
         }
 
         .edit-form-content {
-            background: white;
+            background: var(--card-bg);
             padding: 24px;
             border-radius: 8px;
-            width: 500px;
-            max-height: 80vh;
-            overflow-y: auto;
+            width: 650px;
+            /* 移除滚动条 */
+            border: 1px solid var(--border-color);
         }
 
         .form-group {
@@ -259,7 +325,7 @@ function makeQuickLinkSettingDialogHtml(): string {
             display: block;
             margin-bottom: 6px;
             font-weight: 600;
-            color: #24292e;
+            color: var(--text-color);
         }
 
         .form-group input,
@@ -267,9 +333,11 @@ function makeQuickLinkSettingDialogHtml(): string {
         .form-group textarea {
             width: 100%;
             padding: 8px 12px;
-            border: 1px solid #e1e4e8;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
             font-size: 14px;
+            background: var(--card-bg);
+            color: var(--text-color);
         }
 
         .form-group textarea {
@@ -282,6 +350,17 @@ function makeQuickLinkSettingDialogHtml(): string {
             gap: 10px;
             justify-content: flex-end;
             margin-top: 20px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
         }
 
         .checkbox-group {
@@ -297,30 +376,30 @@ function makeQuickLinkSettingDialogHtml(): string {
         .empty-state {
             text-align: center;
             padding: 40px;
-            color: #586069;
+            color: var(--secondary-text-color);
         }
 
         .toast {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            background: #28a745;
-            color: white;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent-color);
+            color: var(--card-bg);
+            padding: 10px 20px;
             border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
             z-index: 2000;
         }
 
         .toast.show {
-            display: block;
-            animation: slideIn 0.3s ease;
+            opacity: 1;
         }
 
         @keyframes slideIn {
             from {
-                transform: translateX(100%);
+                transform: translateX(-20px);
                 opacity: 0;
             }
             to {
@@ -331,8 +410,13 @@ function makeQuickLinkSettingDialogHtml(): string {
     </style>
 </head>
 <body>
+    <div class="title-bar">
+        <span class="title-bar-title">🔗 快速链接设置</span>
+        <button class="close-btn" onclick="window.close()">✕</button>
+    </div>
+    <div class="main-content">
     <div class="container">
-        <h2>快速链接设置</h2>
+        
 
         <div class="toolbar">
             <button class="primary" onclick="showAddForm()">➕ 添加链接</button>
@@ -350,32 +434,32 @@ function makeQuickLinkSettingDialogHtml(): string {
         <div class="edit-form-content">
             <h3 id="formTitle">添加快速链接</h3>
 
-            <div class="form-group">
-                <label>名称 *</label>
-                <input type="text" id="linkName" placeholder="例如: QQ">
-            </div>
-
-            <div class="form-group">
-                <label>类型 *</label>
-                <select id="linkType">
-                    <option value="url">网页链接</option>
-                    <option value="exe">本地程序</option>
-                </select>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>名称 *</label>
+                    <input type="text" id="linkName" placeholder="例如: QQ">
+                </div>
+                <div class="form-group">
+                    <label>类型 *</label>
+                    <select id="linkType">
+                        <option value="url">网页链接</option>
+                        <option value="exe">本地程序</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>图标类型 *</label>
+                    <select id="iconType">
+                        <option value="svg">SVG代码</option>
+                        <option value="img">图片URL</option>
+                        <option value="emoji">Emoji</option>
+                        <option value="text">文字(1-2字)</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-group">
                 <label>路径 *</label>
                 <input type="text" id="linkPath" placeholder="URL地址或本地程序路径">
-            </div>
-
-            <div class="form-group">
-                <label>图标类型 *</label>
-                <select id="iconType">
-                    <option value="svg">SVG代码</option>
-                    <option value="img">图片URL</option>
-                    <option value="emoji">Emoji</option>
-                    <option value="text">文字(1-2字)</option>
-                </select>
             </div>
 
             <div class="form-group">
@@ -403,17 +487,39 @@ function makeQuickLinkSettingDialogHtml(): string {
     <script>
         const { ipcRenderer } = require('electron')
 
+        // 初始化主题变量
+        function initThemeStyles(theme) {
+            document.documentElement.style.setProperty('--bg-color', theme.backgroundColor)
+            document.documentElement.style.setProperty('--card-bg', theme.cardBackground)
+            document.documentElement.style.setProperty('--text-color', theme.textColor)
+            document.documentElement.style.setProperty('--secondary-text-color', theme.secondaryTextColor)
+            document.documentElement.style.setProperty('--border-color', theme.borderColor)
+            document.documentElement.style.setProperty('--accent-color', theme.accentColor)
+            document.documentElement.style.setProperty('--hover-bg', theme.hoverBackground)
+            document.documentElement.style.setProperty('--title-bar-gradient', theme.titleBarGradient)
+        }
+
+        // 监听主题初始化
+        ipcRenderer.on('baize-notes:init-theme-styles', (event, theme) => {
+            initThemeStyles(theme)
+        })
+
+        // 监听主题更新
+        ipcRenderer.on('baize-notes:theme-updated', () => {
+            location.reload()
+        })
+
         let currentLinks = []
         let editingId = null
 
         // 初始化
-        ipcRenderer.on('init-quick-links', (event, links) => {
+        ipcRenderer.on('baize-notes:init-quick-links', (event, links) => {
             currentLinks = links
             renderLinksList()
         })
 
         // 保存成功
-        ipcRenderer.on('save-success', () => {
+        ipcRenderer.on('baize-notes:save-success', () => {
             showToast('保存成功!')
         })
 
@@ -581,13 +687,13 @@ function makeQuickLinkSettingDialogHtml(): string {
 
         // 保存所有配置
         function saveAll() {
-            ipcRenderer.send('save-quick-links', currentLinks)
+            ipcRenderer.send('baize-notes:save-quick-links', currentLinks)
         }
 
         // 重置为默认
         function resetToDefault() {
             if (!confirm('确定要重置为默认配置吗? 这将丢失所有自定义配置!')) return
-            ipcRenderer.send('reset-quick-links')
+            ipcRenderer.send('baize-notes:reset-quick-links')
         }
 
         // 显示提示消息
@@ -600,6 +706,7 @@ function makeQuickLinkSettingDialogHtml(): string {
             }, 2000)
         }
     </script>
+    </div>
 </body>
 </html>
         `

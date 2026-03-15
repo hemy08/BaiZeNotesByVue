@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 import * as Utils from '../utils/utils'
 import * as digcom from './dialog_common'
+import { getCurrentThemeStyles } from '../utils/theme-config'
 
 let insertImageDialog: Electron.BrowserWindow | null
 
@@ -14,44 +15,56 @@ interface IMGFile {
 }
 
 // 创建一个自定义对话框的函数
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ShowInsertImageDialog(mainWindow: Electron.BrowserWindow) {
     if (insertImageDialog) {
         digcom.ShowAlreadyExistDialog()
         return
     }
+    createInsertImageDialog(mainWindow)
+}
 
+function createInsertImageDialog(mainWindow: Electron.BrowserWindow) {
     insertImageDialog = new BrowserWindow({
-        width: 590,
-        height: 240,
+        width: 600,
+        height: 300,
         minimizable: false,
         maximizable: false,
-        resizable: false,
+        resizable: true,
         title: '插入图片',
         autoHideMenuBar: true,
+        frame: false,
         webPreferences: {
-            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
+            nodeIntegration: true,
+            contextIsolation: false,
             sandbox: false
         }
     })
 
+    if (!insertImageDialog) {
+        return
+    }
+
     insertImageDialog.setMenu(null)
 
-    const tempHtml = makeInsertImageDialogHtml()
-    // 加载一个 HTML 文件作为对话框的内容
-    insertImageDialog.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(tempHtml)}`)
+    insertImageDialog.loadURL(
+        `data:text/html;charset=utf-8,${encodeURIComponent(makeInsertImageDialogHtml())}`
+    )
 
-    // 显示窗口
-    insertImageDialog.show()
-
-    insertImageDialog.on('closed', () => {
-        insertImageDialog = null
-        ipcMain.removeListener('dialog-insert-image-btn-insert', processImageInsert)
-        ipcMain.removeListener('dialog-insert-image-btn-cancel', () => {})
+    // 发送主题样式
+    insertImageDialog.webContents.on('did-finish-load', () => {
+        const theme = getCurrentThemeStyles()
+        insertImageDialog?.webContents.send('baize-notes:init-theme-styles', theme)
     })
 
-    function processImageInsert(_, imgFile: IMGFile) {
+    insertImageDialog.on('closed', () => {
+        ipcMain.removeListener('dialog-insert-image-btn-insert', processInsertImage)
+        ipcMain.removeListener('dialog-insert-image-btn-cancel', processCancelImage)
+        insertImageDialog = null
+    })
+
+    insertImageDialog.show()
+
+    function processInsertImage(_, imgFile: IMGFile) {
         let imgUrl = ''
         if (imgFile.content.length !== 0) {
             if (Utils.FileUtils.SaveImageDataToFile(imgFile.name, imgFile.content)) {
@@ -68,37 +81,43 @@ export function ShowInsertImageDialog(mainWindow: Electron.BrowserWindow) {
         if (imgUrl.length !== 0) {
             mainWindow.webContents.send('monaco-insert-text-block-templates', imgUrl)
         }
+        exitInsertImageDialog()
+    }
 
+    function processCancelImage() {
+        exitInsertImageDialog()
+    }
+
+    function exitInsertImageDialog() {
         if (insertImageDialog) {
+            ipcMain.removeListener('dialog-insert-image-btn-insert', processInsertImage)
+            ipcMain.removeListener('dialog-insert-image-btn-cancel', processCancelImage)
             insertImageDialog.close()
+            insertImageDialog = null
         }
     }
 
-    ipcMain.on('dialog-insert-image-btn-insert', processImageInsert)
-    ipcMain.on('dialog-insert-image-btn-cancel', () => {
-        if (insertImageDialog) {
-            insertImageDialog.close()
-        }
-    })
+    ipcMain.on('dialog-insert-image-btn-insert', processInsertImage)
+    ipcMain.on('dialog-insert-image-btn-cancel', processCancelImage)
 }
 
-function createImgTitleDiv(doc: Document): Element {
+function createImgTitleDiv(doc: Document): HTMLElement {
     const imgDivTitle = doc.createElement('div')
     imgDivTitle.id = 'image-title'
     const imgDivTitleLabel = doc.createElement('label')
     imgDivTitleLabel.id = 'image-title-label'
     imgDivTitleLabel.htmlFor = 'image-title-input'
-    imgDivTitleLabel.textContent = '图片描述'
+    imgDivTitleLabel.textContent = '图片标题'
     const imgDivTitleInput = doc.createElement('input')
     imgDivTitleInput.id = 'image-title-input'
     imgDivTitleInput.type = 'text'
-    imgDivTitleInput.placeholder = '请输入图片描述...'
+    imgDivTitleInput.placeholder = '请输入图片标题...'
     imgDivTitle.appendChild(imgDivTitleLabel)
     imgDivTitle.appendChild(imgDivTitleInput)
     return imgDivTitle
 }
 
-function createImgUrlDiv(doc: Document): Element {
+function createImgUrlDiv(doc: Document): HTMLElement {
     const imgDivUrl = doc.createElement('div')
     imgDivUrl.id = 'image-url'
     const imgDivUrlLabel = doc.createElement('label')
@@ -108,24 +127,26 @@ function createImgUrlDiv(doc: Document): Element {
     const imgDivUrlInput = doc.createElement('input')
     imgDivUrlInput.id = 'image-url-input'
     imgDivUrlInput.type = 'text'
-    imgDivUrlInput.placeholder = '支持相对路径/绝对路径...'
-    const imgDivUrlFileLabel = doc.createElement('label')
-    imgDivUrlFileLabel.id = 'image-url-file-label'
-    imgDivUrlFileLabel.htmlFor = 'image-url-file-input'
-    imgDivUrlFileLabel.textContent = ' 选择文件 '
-    const imgDivUrlFileInput = doc.createElement('input')
-    imgDivUrlFileInput.id = 'image-url-file-input'
-    imgDivUrlFileInput.type = 'file'
-    imgDivUrlFileInput.accept = 'image/*'
-    imgDivUrlFileInput.style.cssText = `display: none;`
+    imgDivUrlInput.placeholder = '请输入图片路径...'
     imgDivUrl.appendChild(imgDivUrlLabel)
     imgDivUrl.appendChild(imgDivUrlInput)
-    imgDivUrl.appendChild(imgDivUrlFileLabel)
-    imgDivUrl.appendChild(imgDivUrlFileInput)
+
+    const imgDivUrlFile = doc.createElement('div')
+    imgDivUrlFile.id = 'image-url-file-input'
+    const imgDivUrlFileLabel = doc.createElement('label')
+    imgDivUrlFileLabel.id = 'image-url-file-label'
+    imgDivUrlFileLabel.textContent = '选择本地图片'
+    const imgDivUrlFileInput = doc.createElement('input')
+    imgDivUrlFileInput.type = 'file'
+    imgDivUrlFileInput.accept = 'image/*'
+    imgDivUrlFileLabel.appendChild(imgDivUrlFileInput)
+    imgDivUrlFile.appendChild(imgDivUrlFileLabel)
+    imgDivUrl.appendChild(imgDivUrlFile)
+
     return imgDivUrl
 }
 
-function createImgHrefDiv(doc: Document): Element {
+function createImgHrefDiv(doc: Document): HTMLElement {
     const imgDivHref = doc.createElement('div')
     imgDivHref.id = 'image-title'
     const imgDivHrefLabel = doc.createElement('label')
@@ -153,6 +174,8 @@ function createImgButtonDiv(doc: Document): Element {
 }
 
 function makeInsertImageDialogHtml(): string {
+    const theme = getCurrentThemeStyles()
+
     // 创建一个空的HTML文档
     const { document } = new JSDOM(
         `<!DOCTYPE html><html lang="zh"><head><title>插入图片</title></head><body></body></html>`
@@ -160,14 +183,54 @@ function makeInsertImageDialogHtml(): string {
 
     const webDivStyle = document.createElement('style')
     webDivStyle.textContent = `
-    #image-components {margin: 5px;width: 560px}
-    #image-components > div {margin: 15px;}
-    #image-components input {margin-left: 10px;width: 350px;}
-    .image-button-style {width: 100px;margin-top: 10px;}
-    .image-button-container-style {width:500px;display:flex; justify-content:center;align-items: center;gap: 100px}
-    #image-url-file-label {background-color: #f0f0f0;border: 1px solid #ccc;border-radius: 5px;margin: 2px;
-        line-height: 25px;text-align: center;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;cursor: pointer;}
-    #image-url-file-input input[type="file"] {position: absolute;opacity: 0;cursor: pointer;}`
+    :root {
+        --bg-color: ${theme.backgroundColor};
+        --card-bg: ${theme.cardBackground};
+        --text-color: ${theme.textColor};
+        --secondary-text-color: ${theme.secondaryTextColor};
+        --border-color: ${theme.borderColor};
+        --accent-color: ${theme.accentColor};
+        --hover-bg: ${theme.hoverBackground};
+        --title-bar-gradient: ${theme.titleBarGradient};
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif; background: var(--bg-color); min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    .title-bar { width: 100%; height: 40px; background: var(--title-bar-gradient); display: flex; justify-content: space-between; align-items: center; padding: 0 16px; -webkit-app-region: drag; }
+    .title-bar-title { color: #fff; font-size: 14px; font-weight: 500; letter-spacing: 0.5px; }
+    .close-btn { width: 32px; height: 32px; border: none; background: rgba(255,255,255,0.15); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; transition: all 0.2s; -webkit-app-region: no-drag; }
+    .close-btn:hover { background: rgba(255,80,80,0.95); transform: scale(1.05); }
+    .main-content { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; }
+    #image-components { width: 100%; display: flex; flex-direction: column; gap: 20px; }
+    #image-components > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    #image-components label { color: var(--text-color); font-size: 13px; min-width: 80px; font-weight: 500; }
+    #image-components input[type="text"] { flex: 1; min-width: 200px; max-width: 400px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px; color: var(--text-color); font-size: 13px; transition: all 0.2s; }
+    #image-components input[type="text"]:focus { border-color: var(--accent-color); outline: none; box-shadow: 0 0 0 3px rgba(100,150,255,0.1); }
+    #image-components input[type="text"]::placeholder { color: var(--secondary-text-color); opacity: 0.6; }
+    .image-button-style { min-width: 100px; padding: 10px 28px; }
+    .image-button-container-style { width: 100%; display: flex; justify-content: center; align-items: center; gap: 24px; margin-top: 8px; }
+    #image-url-file-input { display: flex; align-items: center; }
+    #image-url-file-label { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; line-height: 36px; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; padding: 0 20px; color: var(--text-color); transition: all 0.2s; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+    #image-url-file-label:hover { background: var(--hover-bg); border-color: var(--accent-color); transform: translateY(-1px); }
+    #image-url-file-label::before { content: "📁"; font-size: 14px; }
+    #image-url-file-input input[type="file"] { position: absolute; opacity: 0; cursor: pointer; width: 0; height: 0; }
+    button { padding: 10px 24px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-color); font-size: 13px; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+    button:hover { background: var(--hover-bg); border-color: var(--accent-color); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    button:active { transform: translateY(0); }`
+
+    const titleBar = document.createElement('div')
+    titleBar.className = 'title-bar'
+    const titleSpan = document.createElement('span')
+    titleSpan.className = 'title-bar-title'
+    titleSpan.textContent = '插入图片'
+    const closeBtn = document.createElement('button')
+    closeBtn.className = 'close-btn'
+    closeBtn.textContent = 'x'
+    closeBtn.id = 'close-dialog-btn'
+    titleBar.appendChild(titleSpan)
+    titleBar.appendChild(closeBtn)
+
+    const mainContent = document.createElement('div')
+    mainContent.className = 'main-content'
 
     const imgDiv = document.createElement('div')
     imgDiv.id = 'image-components'
@@ -175,6 +238,7 @@ function makeInsertImageDialogHtml(): string {
     imgDiv.appendChild(createImgUrlDiv(document))
     imgDiv.appendChild(createImgHrefDiv(document))
     imgDiv.appendChild(createImgButtonDiv(document))
+    mainContent.appendChild(imgDiv)
 
     const imgDivScript = document.createElement('script')
     imgDivScript.textContent = `
@@ -222,10 +286,29 @@ function makeInsertImageDialogHtml(): string {
     }
     document.getElementById('cancel-image').onclick = function(e) {
       ipcRenderer.send('dialog-insert-image-btn-cancel')
-    }`
+    }
+    document.getElementById('close-dialog-btn').onclick = function(e) {
+      ipcRenderer.send('dialog-insert-image-btn-cancel')
+    }
+    // 监听主题更新
+    ipcRenderer.on('baize-notes:theme-updated', function() {
+      location.reload()
+    })
+    ipcRenderer.on('baize-notes:init-theme-styles', function(event, theme) {
+      var root = document.documentElement
+      root.style.setProperty('--bg-color', theme.backgroundColor)
+      root.style.setProperty('--card-bg', theme.cardBackground)
+      root.style.setProperty('--text-color', theme.textColor)
+      root.style.setProperty('--secondary-text-color', theme.secondaryTextColor)
+      root.style.setProperty('--border-color', theme.borderColor)
+      root.style.setProperty('--accent-color', theme.accentColor)
+      root.style.setProperty('--hover-bg', theme.hoverBackground)
+      root.style.setProperty('--title-bar-gradient', theme.titleBarGradient)
+    })`
 
     document.head.appendChild(webDivStyle)
-    document.body.appendChild(imgDiv)
+    document.body.appendChild(titleBar)
+    document.body.appendChild(mainContent)
     document.body.appendChild(imgDivScript)
 
     return document.documentElement.outerHTML
