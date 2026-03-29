@@ -1,7 +1,7 @@
 2026年3月30日：
 
-`BaiZeNotes 1.1.0.exe`   是免安装直接使用
-`BaiZeNotes Setup 1.1.0.exe` 是`windows`下的安装包，目前不支持`linux、macos、HarmonyOS`，可以自行下载编译
+`Bai Ze Notes 1.1.0 windows.x64.exe`   是免安装直接使用
+`Bai Ze Notes Setup 1.1.0 windows.x64.exe` 是`Windows`下的安装包，目前不提供`Linux、macOS、HarmonyOS`，可以自行下载编译
 
 更新日志：
 - 依赖升级
@@ -18,6 +18,10 @@
   - 解决大型项目类型检查时的性能问题
 - 版本更新
   - 版本号更新至 1.1.0
+  - 增加Linux、macOS编译配置
+  - 帮助菜单增加技术栈版本信息
+  - 整理项目详细文档
+  - 增加完善文件导入导出功能
 
 2026年3月15日：
 

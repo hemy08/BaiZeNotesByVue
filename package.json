@@ -21,12 +21,12 @@
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "npm run build && electron-builder --mac",
-    "build:linux": "npm run build && electron-builder --linux"
+    "build:linux": "npm run build && electron-builder --linux",
+    "build:all": "npm run build && npm run build:unpack && electron-builder --win --mac --linux"
   },
   "build": {
     "appId": "hemy08.BaiZeNotes",
     "productName": "Bai Ze Notes",
-    "artifactName": "${name}-${version}-${arch}.${ext}",
     "win": {
       "icon": "icon/baize_clear_icon.ico",
       "target": [
