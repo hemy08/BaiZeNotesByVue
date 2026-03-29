@@ -26,16 +26,6 @@ export interface QuickLinkConfig {
 // 默认快速链接配置
 const defaultQuickLinks: QuickLinkItem[] = [
     {
-        id: 'wechat',
-        name: '微信',
-        type: 'exe',
-        path: 'D:\\Tencent\\WeChat\\WeChat.exe',
-        icon: 'text',
-        iconContent: '微信',
-        enabled: true,
-        order: 1
-    },
-    {
         id: 'deepseek',
         name: 'DeepSeek',
         type: 'url',
@@ -43,7 +33,7 @@ const defaultQuickLinks: QuickLinkItem[] = [
         icon: 'text',
         iconContent: 'DS',
         enabled: true,
-        order: 2
+        order: 1
     },
     {
         id: 'wenxin',
@@ -53,17 +43,7 @@ const defaultQuickLinks: QuickLinkItem[] = [
         icon: 'text',
         iconContent: '文',
         enabled: true,
-        order: 3
-    },
-    {
-        id: 'doubao',
-        name: '豆包',
-        type: 'exe',
-        path: 'D:\\豆包\\Doubao\\Doubao.exe',
-        icon: 'text',
-        iconContent: '豆',
-        enabled: true,
-        order: 4
+        order: 2
     },
     {
         id: 'chatgpt',
@@ -73,27 +53,7 @@ const defaultQuickLinks: QuickLinkItem[] = [
         icon: 'text',
         iconContent: 'AI',
         enabled: true,
-        order: 5
-    },
-    {
-        id: 'clion',
-        name: 'Clion',
-        type: 'exe',
-        path: 'D:\\JetBrains\\CLion\\bin\\clion64.exe',
-        icon: 'text',
-        iconContent: 'CL',
-        enabled: true,
-        order: 6
-    },
-    {
-        id: 'vscode',
-        name: 'VSCode',
-        type: 'exe',
-        path: 'D:\\Microsoft VS Code\\Code.exe',
-        icon: 'text',
-        iconContent: 'VS',
-        enabled: true,
-        order: 7
+        order: 3
     }
 ]
 

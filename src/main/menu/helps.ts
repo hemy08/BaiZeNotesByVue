@@ -1,5 +1,6 @@
 import { ShowHelpAboutDialog } from '../dialogs/ShowHelpAboutDialog'
 import { ShowHelpContactUsDialog } from '../dialogs/ShowHelpContactUsDialog'
+import { ShowTechStackDialog } from '../dialogs/ShowTechStackDialog'
 
 // 获取构建日期
 
@@ -49,6 +50,12 @@ export function getAppHelpsMenuItem(
         },
         {
             type: 'separator'
+        },
+        {
+            label: '技术栈',
+            click: () => {
+                ShowTechStackDialog()
+            }
         },
         {
             label: '关于',

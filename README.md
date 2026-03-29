@@ -45,16 +45,40 @@
 
 ## 🛠️ 技术栈
 
-| 技术 | 版本 | 说明 |
-|------|------|------|
-| Electron | 28+ | 跨平台桌面应用框架 |
-| Vue | 3+ | 渐进式 JavaScript 框架 |
-| TypeScript | 5+ | JavaScript 的超集 |
-| Vite | 5+ | 下一代前端构建工具 |
-| Electron Vite | - | Electron 应用的构建工具 |
-| Monaco Editor | - | 代码编辑器 |
-| Mermaid | - | 图表和可视化工具 |
-| KaTeX | - | 数学公式渲染 |
+### 核心框架
+
+| 技术 | 版本 | 说明 | 官网 |
+|------|------|------|------|
+| [Electron](https://www.electronjs.org/) | ^31.0.1 | 跨平台桌面应用框架 | https://www.electronjs.org/ |
+| [Vue 3](https://vuejs.org/) | ^3.4.27 | 渐进式 JavaScript 框架 | https://vuejs.org/ |
+| [TypeScript](https://www.typescriptlang.org/) | ^5.4.5 | JavaScript 的超集 | https://www.typescriptlang.org/ |
+| [Vite](https://vitejs.dev/) | ^5.2.11 | 下一代前端构建工具 | https://vitejs.dev/ |
+| [electron-vite](https://electron-vite.org/) | ^2.2.0 | Electron 专用 Vite 构建工具 | https://electron-vite.org/ |
+
+### 编辑器与渲染
+
+| 技术 | 版本 | 说明 | 官网 |
+|------|------|------|------|
+| [Monaco Editor](https://microsoft.github.io/monaco-editor/) | ^0.49.0 | VS Code 同款代码编辑器 | https://microsoft.github.io/monaco-editor/ |
+| [markdown-it](https://markdown-it.github.io/) | ^14.1.0 | Markdown 解析器 | https://markdown-it.github.io/ |
+| [Mermaid](https://mermaid-js.github.io/mermaid/) | ^10.9.1 | 流程图/时序图渲染 | https://mermaid-js.github.io/mermaid/ |
+| [KaTeX](https://katex.org/) | ^0.16.10 | 数学公式渲染 | https://katex.org/ |
+| [highlight.js](https://highlightjs.org/) | ^11.9.0 | 代码语法高亮 | https://highlightjs.org/ |
+
+### 数据与存储
+
+| 技术 | 版本 | 说明 | 官网 |
+|------|------|------|------|
+| [electron-store](https://github.com/sindresorhus/electron-store) | ^8.2.0 | Electron 数据持久化 | https://github.com/sindresorhus/electron-store |
+| [electron-updater](https://www.electron.build/auto-update) | ^6.1.8 | 应用自动更新 | https://www.electron.build/auto-update |
+
+### 工具库
+
+| 技术 | 版本 | 说明 | 官网 |
+|------|------|------|------|
+| [crypto-js](https://cryptojs.gitbook.io/docs/) | ^4.2.0 | JavaScript 加密库 | https://cryptojs.gitbook.io/docs/ |
+| [mammoth](https://github.com/mwilliamson/mammoth.js) | ^1.8.0 | Word 文档解析 | https://github.com/mwilliamson/mammoth.js |
+| [turndown](https://github.com/mixmark-io/turndown) | ^7.2.0 | HTML 转 Markdown | https://github.com/mixmark-io/turndown |
 
 ## 📦 安装与使用
 

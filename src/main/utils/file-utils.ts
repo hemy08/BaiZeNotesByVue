@@ -4,6 +4,9 @@ import csv from 'csv-parser'
 import { detect } from 'jschardet'
 import { FileItem } from '../global-types'
 import { clipboard, dialog, shell } from 'electron'
+import { ShowImportOptionDialog }  from'../dialogs/ShowImportOptionDialog'
+import { ShowSuccessDialog } from "../dialogs/ShowSuccessDialog";
+import { saveLastOpenedFile, saveLastOpenedDirectory } from './file-state'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
@@ -208,6 +211,9 @@ export function OpenSelectFile(fileProperties: FileProperties) {
       }
       // console.log('OpenSelectFile', fileProperties)
       global.MainWindow.webContents.send('show-selected-file-context', data)
+
+      // 保存上次打开的文件
+      saveLastOpenedFile(fileProperties.path)
     } else {
       console.log('openFile failed', fileProperties.path, err, data)
     }
@@ -219,6 +225,11 @@ export function SaveActiveFile() {
   // 文件存在，直接写入
   if (curFile != undefined) {
     fs.writeFileSync(curFile.path, curFile.content)
+    // 通知渲染进程文件已保存
+    const { BrowserWindow } = require('electron')
+    BrowserWindow.getAllWindows().forEach((window: Electron.BrowserWindow) => {
+      window.webContents.send('file-saved-success')
+    })
   } else {
     // 文件不存在，新建文件，写入，指定文件路径和文件名
     showErrorMessageBox('写入文件时发生错误, 文件不存在')
@@ -351,6 +362,9 @@ export function OpenDirectory(mainWindow: Electron.BrowserWindow) {
       if (result.canceled) return
       global.RootPath = result.filePaths[0]
       ReloadDirFromDisk()
+
+      // 保存上次打开的目录
+      saveLastOpenedDirectory(result.filePaths[0])
     })
     .catch((err) => {
       showErrorMessageBox('Error opening directory dialog:' + err)
@@ -680,6 +694,14 @@ const InsertImportFrom = {
     insertReader: ReadFile,
     argStart: '```yaml\r\n',
     argEnd: '\r\n```\r\n'
+  },
+  xml: {
+    name: 'XML Files',
+    extensions: ['xml'],
+    importReader: ReadFile,
+    insertReader: ReadFile,
+    argStart: '```xml\r\n',
+    argEnd: '\r\n```\r\n'
   }
 }
 
@@ -812,28 +834,411 @@ export async function InsertImportFormFile(
       '暂不支持当前格式的文件。\r\n' +
         '当前支持*.txt、*.json、*.yaml、*.yml、*.csv、*.ini、*.doc、*.docx、*.html、*.htm、*.xls、*.xlsx'
     )
+    return
   }
 
-  const channel = isImport ? 'show-selected-file-context' : 'monaco-editor-insert-after-cursor'
-  const readerFn = isImport ? model.importReader : model.insertReader
-  dialog
-    .showOpenDialog(mainWindow, {
-      properties: ['openFile'],
-      filters: [{ name: model.name, extensions: model.extensions }]
-    })
-    .then(async (result) => {
-      if (result.canceled) return
-      const file = result.filePaths[0]
+  // 选择要导入的文件
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [{ name: model.name, extensions: model.extensions }]
+  })
 
-      const context = await readerFn(file)
-      mainWindow.webContents.send(channel, model.argStart + context + model.argEnd)
-    })
-    .catch((err) => {
-      showErrorMessageBox('Error opening file dialog:' + err)
-    })
+  if (result.canceled) return
+
+  const file = result.filePaths[0]
+  const readerFn = model.importReader
+
+  try {
+    const context = await readerFn(file)
+    const content = model.argStart + context + model.argEnd
+
+    if (isImport) {
+      // 显示导入选项对话框
+      ShowImportOptionDialog(mainWindow, async (option: string, filePath?: string) => {
+        switch (option) {
+          case 'replace':
+            // 替换当前内容
+            mainWindow.webContents.send('show-selected-file-context', content)
+            break
+
+          case 'newfile':
+            // 新建文件
+            if (filePath) {
+              // 保存内容到新文件
+              fs.writeFileSync(filePath, content, 'utf-8')
+              // 打开新文件
+              const { OpenSelectFile } = require('./file-utils')
+              OpenSelectFile(mainWindow, filePath, path.basename(filePath))
+            }
+            break
+
+          case 'insert':
+            // 插入到当前位置
+            mainWindow.webContents.send('monaco-editor-insert-after-cursor', content)
+            break
+        }
+      })
+    } else {
+      // 直接插入到当前位置
+      mainWindow.webContents.send('monaco-editor-insert-after-cursor', content)
+    }
+  } catch (err) {
+    showErrorMessageBox('导入文件失败: ' + err)
+  }
 }
 
-export function ExportToFile(mainWindow: Electron.BrowserWindow, fileType: string) {
-  console.log('export markdown to file ', mainWindow.getSize())
-  console.log('export markdown to file ', fileType)
+export async function ExportToFile(mainWindow: Electron.BrowserWindow, fileType: string) {
+  // 获取当前编辑器内容
+  const currentContent = global.current_active_file?.content || ''
+
+  if (!currentContent) {
+    showErrorMessageBox('当前没有内容可导出')
+    return
+  }
+
+  // 根据文件类型选择导出方式
+  const exporters = {
+    word: exportToWord,
+    json: exportToJson,
+    xml: exportToXml,
+    yaml: exportToYaml,
+    html: exportToHtml,
+    pdf: exportToPdf
+  }
+
+  const exporter = exporters[fileType]
+  if (!exporter) {
+    showErrorMessageBox(`暂不支持导出为 ${fileType} 格式`)
+    return
+  }
+
+  try {
+    await exporter(mainWindow, currentContent)
+  } catch (error) {
+    showErrorMessageBox(`导出失败: ${error}`)
+  }
+}
+
+/**
+ * 导出为 Word 文档
+ */
+async function exportToWord(mainWindow: Electron.BrowserWindow, content: string) {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: '导出为 Word 文档',
+    defaultPath: 'untitled.docx',
+    filters: [{ name: 'Word 文档', extensions: ['docx'] }]
+  })
+
+  if (result.canceled || !result.filePath) return
+
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const officegen = require('officegen')
+  const docx = officegen('docx')
+
+  // 将 Markdown 转换为纯文本（简化处理）
+  const lines = content.split('\n')
+  lines.forEach((line) => {
+    // 处理标题
+    if (line.startsWith('# ')) {
+      docx.createP().addText(line.substring(2), { bold: true, font_size: 24 })
+    } else if (line.startsWith('## ')) {
+      docx.createP().addText(line.substring(3), { bold: true, font_size: 20 })
+    } else if (line.startsWith('### ')) {
+      docx.createP().addText(line.substring(4), { bold: true, font_size: 18 })
+    } else if (line.trim()) {
+      // 普通段落
+      docx.createP().addText(line)
+    }
+  })
+
+  const stream = fs.createWriteStream(result.filePath)
+  docx.generate(stream)
+
+  stream.on('close', () => {
+      showInfoMessageBox(`导出成功: ${result.filePath}`)
+  })
+}
+
+/**
+ * 导出为 JSON 文件
+ */
+async function exportToJson(mainWindow: Electron.BrowserWindow, content: string) {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: '导出为 JSON 文件',
+    defaultPath: 'untitled.json',
+    filters: [{ name: 'JSON 文件', extensions: ['json'] }]
+  })
+
+  if (result.canceled || !result.filePath) return
+
+  // 将内容转换为 JSON 对象
+  const jsonContent = {
+    content: content,
+    metadata: {
+      exportedAt: new Date().toISOString(),
+      version: '1.0.2',
+      type: 'markdown'
+    }
+  }
+
+  fs.writeFileSync(result.filePath, JSON.stringify(jsonContent, null, 2), 'utf-8')
+  showInfoMessageBox(`导出成功: ${result.filePath}`)
+}
+
+/**
+ * 导出为 XML 文件
+ */
+async function exportToXml(mainWindow: Electron.BrowserWindow, content: string) {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: '导出为 XML 文件',
+    defaultPath: 'untitled.xml',
+    filters: [{ name: 'XML 文件', extensions: ['xml'] }]
+  })
+
+  if (result.canceled || !result.filePath) return
+
+  // 将内容转换为 XML 格式
+  const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<document>
+  <metadata>
+    <exportedAt>${new Date().toISOString()}</exportedAt>
+    <version>1.0.2</version>
+    <type>markdown</type>
+  </metadata>
+  <content><![CDATA[${content}]]></content>
+</document>`
+
+  fs.writeFileSync(result.filePath, xmlContent, 'utf-8')
+  showInfoMessageBox(`导出成功: ${result.filePath}`)
+}
+
+/**
+ * 导出为 YAML 文件
+ */
+async function exportToYaml(mainWindow: Electron.BrowserWindow, content: string) {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: '导出为 YAML 文件',
+    defaultPath: 'untitled.yaml',
+    filters: [{ name: 'YAML 文件', extensions: ['yaml', 'yml'] }]
+  })
+
+  if (result.canceled || !result.filePath) return
+
+  // 将内容转换为 YAML 格式
+  const yamlContent = `content: |
+${content
+  .split('\n')
+  .map((line) => `  ${line}`)
+  .join('\n')}
+metadata:
+  exportedAt: ${new Date().toISOString()}
+  version: 1.0.2
+  type: markdown`
+
+  fs.writeFileSync(result.filePath, yamlContent, 'utf-8')
+  showInfoMessageBox(`导出成功: ${result.filePath}`)
+}
+
+/**
+ * 导出为 HTML 文件
+ */
+async function exportToHtml(mainWindow: Electron.BrowserWindow, content: string) {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: '导出为 HTML 文件',
+    defaultPath: 'untitled.html',
+    filters: [{ name: 'HTML 文件', extensions: ['html', 'htm'] }]
+  })
+
+  if (result.canceled || !result.filePath) return
+
+  // 使用 markdown-it 将 Markdown 转换为 HTML
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const MarkdownIt = require('markdown-it')
+  const md = new MarkdownIt({
+    html: true,
+    linkify: true,
+    typographer: true
+  })
+
+  const htmlContent = md.render(content)
+
+  // 生成完整的 HTML 文档
+  const fullHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>白泽笔记导出</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+    }
+    code {
+      background-color: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    blockquote {
+      border-left: 4px solid #ddd;
+      margin: 0;
+      padding-left: 1em;
+      color: #666;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+  </style>
+</head>
+<body>
+${htmlContent}
+</body>
+</html>`
+
+  fs.writeFileSync(result.filePath, fullHtml, 'utf-8')
+  showInfoMessageBox(`导出成功: ${result.filePath}`)
+}
+
+/**
+ * 导出为 PDF 文件
+ */
+async function exportToPdf(mainWindow: Electron.BrowserWindow, content: string) {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: '导出为 PDF 文件',
+    defaultPath: 'untitled.pdf',
+    filters: [{ name: 'PDF 文件', extensions: ['pdf'] }]
+  })
+
+  if (result.canceled || !result.filePath) return
+
+  // 使用 markdown-it 将 Markdown 转换为 HTML
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const MarkdownIt = require('markdown-it')
+  const md = new MarkdownIt({
+    html: true,
+    linkify: true,
+    typographer: true
+  })
+
+  const htmlContent = md.render(content)
+
+  // 生成完整的 HTML 文档
+  const fullHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>白泽笔记导出</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+    }
+    code {
+      background-color: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    blockquote {
+      border-left: 4px solid #ddd;
+      margin: 0;
+      padding-left: 1em;
+      color: #666;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+  </style>
+</head>
+<body>
+${htmlContent}
+</body>
+</html>`
+
+  // 创建一个隐藏的窗口来打印 PDF
+  const printWindow = new (require('electron').BrowserWindow)({
+    width: 800,
+    height: 600,
+    show: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  })
+
+  // 加载 HTML 内容
+  printWindow.loadURL(
+    'data:text/html;charset=utf-8,' + encodeURIComponent(fullHtml)
+  )
+
+  // 等待页面加载完成后打印
+  printWindow.webContents.on('did-finish-load', () => {
+    // 使用 Electron 的打印功能生成 PDF
+    const pdfOptions = {
+      pageSize: 'A4',
+      printBackground: true,
+      marginsType: 1 // 0: default, 1: none, 2: minimum
+    }
+
+    printWindow.webContents.printToPDF(pdfOptions).then((data) => {
+      fs.writeFileSync(result.filePath!, data)
+      printWindow.close()
+      showInfoMessageBox(`导出成功: ${result.filePath}`)
+    }).catch((error) => {
+      printWindow.close()
+      showErrorMessageBox(`PDF 导出失败: ${error}`)
+    })
+  })
+}
+
+/**
+ * 显示信息对话框
+ */
+function showInfoMessageBox(message: string) {
+    ShowSuccessDialog('导出成功', message)
 }

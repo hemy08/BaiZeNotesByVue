@@ -6,6 +6,7 @@ import './plugins/plugin'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
 import { getCurrentThemeStyles } from './utils/theme-config'
+import { restoreLastOpenedFile } from './utils/file-state'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -40,6 +41,9 @@ function createWindow(): void {
         // 发送初始主题样式到主窗口
         const theme = getCurrentThemeStyles()
         mainWindow.webContents.send('baize-notes:init-theme-styles', theme)
+        
+        // 恢复上次打开的文件
+        restoreLastOpenedFile(mainWindow)
     })
     globalShortcut.register('F12', () => {
         mainWindow.webContents.openDevTools()
