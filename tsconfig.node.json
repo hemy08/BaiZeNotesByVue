@@ -41,11 +41,11 @@
   "compilerOptions": {
     "composite": true,
     "target": "ES6",
-    "module": "CommonJS",
+    "module": "NodeNext",
     "strict": false,
     "esModuleInterop": true,
     "allowJs": true,
-    "moduleResolution": "Node",
+    "moduleResolution": "NodeNext",
     "types": ["electron-vite/node"]
   }
 }

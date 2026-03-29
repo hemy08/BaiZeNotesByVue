@@ -42,6 +42,9 @@
   "compilerOptions": {
     "composite": true,
     "baseUrl": ".",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"

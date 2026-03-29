@@ -1,3 +1,24 @@
+2026年3月30日：
+
+`BaiZeNotes 1.1.0.exe`   是免安装直接使用
+`BaiZeNotes Setup 1.1.0.exe` 是`windows`下的安装包，目前不支持`linux、macos、HarmonyOS`，可以自行下载编译
+
+更新日志：
+- 依赖升级
+  - Electron 升级至 38.0.0，支持最新特性和性能优化
+  - TypeScript 升级至 6.0.2，支持最新语言特性
+  - ESLint 升级至 9.26.0，使用最新 linting 规则
+  - @vue/eslint-config-typescript 升级至 14.7.0，支持 ESLint 9.x
+- TypeScript 配置优化
+  - 更新 tsconfig.node.json，使用 module: "NodeNext" 和 moduleResolution: "NodeNext"
+  - 更新 tsconfig.web.json，添加 ignoreDeprecations: "6.0" 以兼容未来版本
+  - 修复 TypeScript 编译器堆栈溢出问题，增加 Node.js 堆栈大小配置
+- 构建优化
+  - 修改 typecheck:node 脚本，增加 --max-old-space-size=8192 --stack-size=4096 参数
+  - 解决大型项目类型检查时的性能问题
+- 版本更新
+  - 版本号更新至 1.1.0
+
 2026年3月15日：
 
 `BaiZeNotes 1.0.2.exe`   是免安装直接使用

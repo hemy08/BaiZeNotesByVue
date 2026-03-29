@@ -8,11 +8,11 @@ import './style/material/gridcards.css'
 import '@imengyu/vue3-context-menu/lib/vue3-context-menu.css'
 import 'os'
 import { ContextMenu } from '@imengyu/vue3-context-menu'
-import { createStore } from 'vuex'
+import { createStore, Store } from 'vuex'
 import { createApp } from 'vue'
 import App from './App.vue'
 
-const store = createStore({
+const store : Store<any> = createStore({
     state: {
         header: ''
     },

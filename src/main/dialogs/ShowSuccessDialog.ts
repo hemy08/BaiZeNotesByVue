@@ -19,7 +19,7 @@ export function ShowSuccessDialog(title: string, message: string) {
 
     successDialog = new BrowserWindow({
         width: 450,
-        height: 220,
+        height: 250,
         minimizable: false,
         maximizable: false,
         resizable: false,
@@ -186,7 +186,7 @@ function makeSuccessHtml(title: string, message: string): string {
         <span class="title-text">${title}</span>
         <button class="close-btn" onclick="window.close()">x</button>
     </div>
-    
+
     <div class="container">
         <svg class="success-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="45" fill="none" stroke="${theme.accentColor}" stroke-width="3"/>

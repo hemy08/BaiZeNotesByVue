@@ -1,6 +1,6 @@
 {
-  "name": "BaiZeNotes",
-  "version": "1.0.2",
+  "name": "baize-notes",
+  "version": "1.1.0",
   "description": "An Electron application with Vue and TypeScript",
   "main": "./out/main/index.js",
   "author": "hemy08",
@@ -10,7 +10,7 @@
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts,.vue --fix",
-    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:node": "node --max-old-space-size=8192 --stack-size=4096 node_modules/typescript/lib/tsc.js --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "start": "electron-vite preview",
@@ -24,10 +24,11 @@
     "build:linux": "npm run build && electron-builder --linux"
   },
   "build": {
-    "appId": "com.example.BaiZeNotes",
-    "productName": "BaiZeNotes",
+    "appId": "hemy08.BaiZeNotes",
+    "productName": "Bai Ze Notes",
+    "artifactName": "${name}-${version}-${arch}.${ext}",
     "win": {
-      "icon": "baize_clear_icon.ico",
+      "icon": "icon/baize_clear_icon.ico",
       "target": [
         "nsis",
         "portable"
@@ -58,7 +59,7 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/eslint-config-prettier": "^9.0.0",
-    "@vue/eslint-config-typescript": "^13.0.0",
+    "@vue/eslint-config-typescript": "^14.7.0",
     "commonmark": "^0.31.0",
     "crypto-js": "^4.2.0",
     "csv-parser": "^3.0.0",
@@ -107,23 +108,24 @@
     "vite-plugin-copy": "^0.1.6",
     "vite-plugin-monaco-editor": "^1.1.0",
     "vue": "^3.4.27",
-    "vue-tsc": "^2.0.19"
+    "vue-tsc": "^2.0.19",
+    "vuex": "^4.1.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config": "^1.0.2",
     "@electron-toolkit/eslint-config-ts": "^2.0.0",
     "@electron-toolkit/tsconfig": "^1.0.1",
     "@rushstack/eslint-patch": "^1.10.3",
-    "electron": "^31.0.1",
+    "electron": "^38.0.0",
     "electron-builder": "^24.13.3",
     "electron-vite": "^2.2.0",
-    "eslint": "^8.56.0",
+    "eslint": "^9.26.0",
     "eslint-plugin-vue": "^9.26.0",
     "markdown-it-mermaid": "^0.2.5",
     "markdown-it-mermaid-less": "^0.0.7",
     "markdown-it-mermaid-plugin": "^0.1.0",
     "markdown-it-textual-uml": "^0.17.1",
     "prettier": "^3.2.5",
-    "typescript": "^5.4.5"
+    "typescript": "^6.0.2"
   }
 }
