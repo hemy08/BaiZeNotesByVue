@@ -1,0 +1,15 @@
+{
+  "id": "light",
+  "name": "明亮主题",
+  "description": "简洁明亮，适合日常使用",
+  "backgroundColor": "#fafafa",
+  "cardBackground": "#ffffff",
+  "textColor": "#212121",
+  "secondaryTextColor": "#757575",
+  "borderColor": "#e0e0e0",
+  "accentColor": "#2196f3",
+  "buttonBackground": "#2196f3",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#e3f2fd",
+  "titleBarGradient": "linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%)"
+}

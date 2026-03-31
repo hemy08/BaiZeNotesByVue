@@ -1,0 +1,15 @@
+{
+  "id": "eyecare-lilac",
+  "name": "护眼丁香",
+  "description": "淡雅的丁香紫护眼主题",
+  "backgroundColor": "#faf5fa",
+  "cardBackground": "#fdf8fd",
+  "textColor": "#3a2a40",
+  "secondaryTextColor": "#6a5a70",
+  "borderColor": "#e8d8e8",
+  "accentColor": "#9a70a0",
+  "buttonBackground": "#9a70a0",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#f5e8f5",
+  "titleBarGradient": "linear-gradient(135deg, #d8bfd8 0%, #c8a8c8 100%)"
+}

@@ -9,7 +9,7 @@ import {
     getCurrentTheme,
     getCurrentThemeStyles,
     setTheme,
-    themes,
+    getAllThemes,
     ThemeType
 } from '../utils/theme-config'
 
@@ -264,7 +264,8 @@ function makeThemeSettingDialogHtml(): string {
     themeGrid.id = 'themeGrid'
 
     // 生成主题卡片
-    for (const [type, styles] of Object.entries(themes)) {
+    const themes = getAllThemes()
+    for (const { type, styles } of themes) {
         const isSelected = type === currentThemeType
 
         const themeCard = document.createElement('div')

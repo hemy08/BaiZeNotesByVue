@@ -1,0 +1,15 @@
+{
+  "id": "baize",
+  "name": "白泽主题",
+  "description": "默认主题，清新简洁",
+  "backgroundColor": "#ffffff",
+  "cardBackground": "#f5f5f5",
+  "textColor": "#333333",
+  "secondaryTextColor": "#666666",
+  "borderColor": "#e0e0e0",
+  "accentColor": "#00b0ff",
+  "buttonBackground": "#00b0ff",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#e3f2fd",
+  "titleBarGradient": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+}

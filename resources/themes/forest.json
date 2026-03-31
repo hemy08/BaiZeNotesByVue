@@ -1,0 +1,15 @@
+{
+  "id": "forest",
+  "name": "森林绿意",
+  "description": "自然的森林绿，清新自然",
+  "backgroundColor": "#f0fff8",
+  "cardBackground": "#e0ffe8",
+  "textColor": "#2f5f4a",
+  "secondaryTextColor": "#5f8f7a",
+  "borderColor": "#c0e8d0",
+  "accentColor": "#43a047",
+  "buttonBackground": "#43a047",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#e8f5e9",
+  "titleBarGradient": "linear-gradient(135deg, #81c784 0%, #66bb6a 100%)"
+}

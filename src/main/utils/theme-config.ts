@@ -1,10 +1,13 @@
 /**
  * 主题配置管理模块
  * 用于管理应用的主题设置
+ * 使用新的主题管理器（theme-manager.ts）来优化性能
  */
 
 // @ts-ignore
 import Store from 'electron-store'
+import * as path from 'path'
+import * as fs from 'fs'
 
 // 主题类型
 export type ThemeType = 'baize' | 'warm' | 'light' | 'lavender' | 'coral' | 'mint' | 'sunset' | 'rose' | 'dark' | 'deepdark' | 'icon' | 'ocean' | 'forest' | 'eyecare-green' | 'eyecare-beige' | 'eyecare-blue' | 'eyecare-pink' | 'eyecare-amber' | 'eyecare-teal' | 'eyecare-lilac'
@@ -16,9 +19,9 @@ export interface ThemeConfig {
 
 // 主题样式定义
 export interface ThemeStyles {
+    id: string
     name: string
     description: string
-    titleBarGradient: string
     backgroundColor: string
     cardBackground: string
     textColor: string
@@ -28,314 +31,14 @@ export interface ThemeStyles {
     buttonBackground: string
     buttonTextColor: string
     hoverBackground: string
+    titleBarGradient: string
 }
 
-// 预定义主题
-export const themes: Record<ThemeType, ThemeStyles> = {
-    // ========== 浅色主题 ==========
-    // 白泽紫主题（默认）
-    baize: {
-        name: '白泽紫韵',
-        description: '优雅的紫色渐变主题',
-        titleBarGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        backgroundColor: '#f5f0ff',
-        cardBackground: '#ffffff',
-        textColor: '#2d2d2d',
-        secondaryTextColor: '#666666',
-        borderColor: '#e0d4f0',
-        accentColor: '#764ba2',
-        buttonBackground: '#764ba2',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#f0e8ff'
-    },
-    // 暖白主题
-    warm: {
-        name: '暖白温馨',
-        description: '温暖的米白色主题',
-        titleBarGradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-        backgroundColor: '#faf8f5',
-        cardBackground: '#ffffff',
-        textColor: '#3d3d3d',
-        secondaryTextColor: '#777777',
-        borderColor: '#e8e0d8',
-        accentColor: '#e07a5f',
-        buttonBackground: '#e07a5f',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#f5f0eb'
-    },
-    // 浅色主题
-    light: {
-        name: '清新简约',
-        description: '简洁明亮的浅色主题',
-        titleBarGradient: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 50%, #90caf9 100%)',
-        backgroundColor: '#ffffff',
-        cardBackground: '#f5f5f5',
-        textColor: '#212121',
-        secondaryTextColor: '#757575',
-        borderColor: '#e0e0e0',
-        accentColor: '#1976d2',
-        buttonBackground: '#1976d2',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#f0f0f0'
-    },
-    // 浅蓝浅紫渐变主题
-    lavender: {
-        name: '薰衣草梦',
-        description: '浅蓝浅紫渐变护眼主题',
-        titleBarGradient: 'linear-gradient(135deg, #b8c5e8 0%, #d4b8e8 100%)',
-        backgroundColor: '#f5f3fa',
-        cardBackground: '#ffffff',
-        textColor: '#3a3550',
-        secondaryTextColor: '#6a6580',
-        borderColor: '#ddd8ea',
-        accentColor: '#8b7ec8',
-        buttonBackground: '#8b7ec8',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#ebe8f5'
-    },
-    // 珊瑚主题
-    coral: {
-        name: '珊瑚暖阳',
-        description: '温暖的珊瑚色主题',
-        titleBarGradient: 'linear-gradient(135deg, #ffb8a3 0%, #ff9a8b 100%)',
-        backgroundColor: '#fff5f2',
-        cardBackground: '#ffffff',
-        textColor: '#4a3530',
-        secondaryTextColor: '#7a6555',
-        borderColor: '#f5d8d0',
-        accentColor: '#e07850',
-        buttonBackground: '#e07850',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#f5e8e5'
-    },
-    // 薄荷主题
-    mint: {
-        name: '薄荷清风',
-        description: '清新的薄荷绿主题',
-        titleBarGradient: 'linear-gradient(135deg, #a8e6cf 0%, #7fcdbb 100%)',
-        backgroundColor: '#f0faf5',
-        cardBackground: '#ffffff',
-        textColor: '#2a4a3a',
-        secondaryTextColor: '#5a7a6a',
-        borderColor: '#c8e8d8',
-        accentColor: '#3cb371',
-        buttonBackground: '#3cb371',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#e0f5ea'
-    },
-    // 日落主题
-    sunset: {
-        name: '日落余晖',
-        description: '温暖的橙红渐变主题',
-        titleBarGradient: 'linear-gradient(135deg, #ffd89b 0%, #f9a86b 100%)',
-        backgroundColor: '#fffbf5',
-        cardBackground: '#ffffff',
-        textColor: '#4a3a2a',
-        secondaryTextColor: '#7a6a5a',
-        borderColor: '#f0e0d0',
-        accentColor: '#e08840',
-        buttonBackground: '#e08840',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#f5f0e8'
-    },
-    // 玫瑰主题
-    rose: {
-        name: '玫瑰花园',
-        description: '浪漫的玫瑰粉主题',
-        titleBarGradient: 'linear-gradient(135deg, #f5b7b1 0%, #ec7063 100%)',
-        backgroundColor: '#fdf5f5',
-        cardBackground: '#ffffff',
-        textColor: '#4a2a2a',
-        secondaryTextColor: '#7a5a5a',
-        borderColor: '#f0d8d8',
-        accentColor: '#c05050',
-        buttonBackground: '#c05050',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#f8e8e8'
-    },
-    // ========== 深色主题 ==========
-    // 深色主题
-    dark: {
-        name: '深邃夜空',
-        description: '护眼深色主题',
-        titleBarGradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        backgroundColor: '#0f0f1a',
-        cardBackground: '#1a1a2e',
-        textColor: '#e0e0e0',
-        secondaryTextColor: '#888888',
-        borderColor: '#2a2a4a',
-        accentColor: '#4fc3f7',
-        buttonBackground: '#4fc3f7',
-        buttonTextColor: '#1e1e1e',
-        hoverBackground: '#252540'
-    },
-    // 深黑主题
-    deepdark: {
-        name: '极简深黑',
-        description: '纯黑背景深色主题',
-        titleBarGradient: 'linear-gradient(135deg, #1f1f1f 0%, #0a0a0a 100%)',
-        backgroundColor: '#000000',
-        cardBackground: '#121212',
-        textColor: '#ffffff',
-        secondaryTextColor: '#aaaaaa',
-        borderColor: '#333333',
-        accentColor: '#bb86fc',
-        buttonBackground: '#bb86fc',
-        buttonTextColor: '#000000',
-        hoverBackground: '#1f1f1f'
-    },
-    // 图标主题
-    icon: {
-        name: '白泽图标',
-        description: '与白泽图标一致的紫粉渐变主题',
-        titleBarGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-        backgroundColor: '#1a1625',
-        cardBackground: '#2d2640',
-        textColor: '#ffffff',
-        secondaryTextColor: '#c0b8d0',
-        borderColor: '#4a4060',
-        accentColor: '#f093fb',
-        buttonBackground: '#f093fb',
-        buttonTextColor: '#1a1625',
-        hoverBackground: '#3d3555'
-    },
-    // 海洋主题
-    ocean: {
-        name: '深海蔚蓝',
-        description: '深邃的海洋蓝主题',
-        titleBarGradient: 'linear-gradient(135deg, #4a90a4 0%, #2a6070 100%)',
-        backgroundColor: '#0a1a20',
-        cardBackground: '#152530',
-        textColor: '#d0e0e8',
-        secondaryTextColor: '#809098',
-        borderColor: '#2a4050',
-        accentColor: '#40a0c0',
-        buttonBackground: '#40a0c0',
-        buttonTextColor: '#0a1a20',
-        hoverBackground: '#203540'
-    },
-    // 森林主题
-    forest: {
-        name: '森林秘境',
-        description: '深邃的森林绿主题',
-        titleBarGradient: 'linear-gradient(135deg, #4a7a50 0%, #2a5030 100%)',
-        backgroundColor: '#0a150a',
-        cardBackground: '#152015',
-        textColor: '#c8e0c8',
-        secondaryTextColor: '#809080',
-        borderColor: '#2a402a',
-        accentColor: '#50a050',
-        buttonBackground: '#50a050',
-        buttonTextColor: '#0a150a',
-        hoverBackground: '#203020'
-    },
-    // ========== 护眼主题 ==========
-    // 护眼绿色主题
-    'eyecare-green': {
-        name: '护眼绿洲',
-        description: '柔和的绿色护眼主题',
-        titleBarGradient: 'linear-gradient(135deg, #a8e6cf 0%, #88d8b0 100%)',
-        backgroundColor: '#e8f5e9',
-        cardBackground: '#f1f8f2',
-        textColor: '#2e4a2f',
-        secondaryTextColor: '#5a7a5b',
-        borderColor: '#c8e6c9',
-        accentColor: '#4caf50',
-        buttonBackground: '#4caf50',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#d4edda'
-    },
-    // 护眼米黄主题
-    'eyecare-beige': {
-        name: '护眼米黄',
-        description: '温和的米黄色护眼主题',
-        titleBarGradient: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
-        backgroundColor: '#faf6f0',
-        cardBackground: '#fff9f0',
-        textColor: '#4a4035',
-        secondaryTextColor: '#7a7065',
-        borderColor: '#e5ddd0',
-        accentColor: '#c9a66b',
-        buttonBackground: '#c9a66b',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#f5efe5'
-    },
-    // 护眼淡蓝主题
-    'eyecare-blue': {
-        name: '护眼淡蓝',
-        description: '舒适的淡蓝色护眼主题',
-        titleBarGradient: 'linear-gradient(135deg, #b8d4e8 0%, #9fc5d8 100%)',
-        backgroundColor: '#f0f7fc',
-        cardBackground: '#f5fafd',
-        textColor: '#2c4a5e',
-        secondaryTextColor: '#5a7a8e',
-        borderColor: '#d0e4f0',
-        accentColor: '#5c9ece',
-        buttonBackground: '#5c9ece',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#e0eff8'
-    },
-    // 护眼粉色主题
-    'eyecare-pink': {
-        name: '护眼樱粉',
-        description: '柔和的樱花粉护眼主题',
-        titleBarGradient: 'linear-gradient(135deg, #ffd1dc 0%, #ffb6c1 100%)',
-        backgroundColor: '#fff5f8',
-        cardBackground: '#fffafb',
-        textColor: '#4a2a35',
-        secondaryTextColor: '#7a5a65',
-        borderColor: '#f5d8e0',
-        accentColor: '#e08090',
-        buttonBackground: '#e08090',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#f8e8ec'
-    },
-    // 护眼琥珀主题
-    'eyecare-amber': {
-        name: '护眼琥珀',
-        description: '温暖的琥珀色护眼主题',
-        titleBarGradient: 'linear-gradient(135deg, #ffe4b5 0%, #ffd9a0 100%)',
-        backgroundColor: '#fffbf0',
-        cardBackground: '#fffdf5',
-        textColor: '#4a3a20',
-        secondaryTextColor: '#7a6a50',
-        borderColor: '#f0e5d0',
-        accentColor: '#d4a050',
-        buttonBackground: '#d4a050',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#f8f0e0'
-    },
-    // 护眼青色主题
-    'eyecare-teal': {
-        name: '护眼青瓷',
-        description: '清雅的青瓷色护眼主题',
-        titleBarGradient: 'linear-gradient(135deg, #b2dfdb 0%, #80cbc4 100%)',
-        backgroundColor: '#f0faf8',
-        cardBackground: '#f5fcfa',
-        textColor: '#2a4a45',
-        secondaryTextColor: '#5a7a75',
-        borderColor: '#c8e8e0',
-        accentColor: '#26a69a',
-        buttonBackground: '#26a69a',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#e0f5f0'
-    },
-    // 护眼丁香主题
-    'eyecare-lilac': {
-        name: '护眼丁香',
-        description: '淡雅的丁香紫护眼主题',
-        titleBarGradient: 'linear-gradient(135deg, #d8bfd8 0%, #c8a8c8 100%)',
-        backgroundColor: '#faf5fa',
-        cardBackground: '#fdf8fd',
-        textColor: '#3a2a40',
-        secondaryTextColor: '#6a5a70',
-        borderColor: '#e8d8e8',
-        accentColor: '#9a70a0',
-        buttonBackground: '#9a70a0',
-        buttonTextColor: '#ffffff',
-        hoverBackground: '#f5e8f5'
-    }
-}
+// 主题缓存 - 避免重复读取文件
+const themeCache = new Map<ThemeType, ThemeStyles>()
+
+// 主题目录路径
+let THEME_DIR_PATH: string = ''
 
 // 创建存储实例
 // @ts-ignore
@@ -351,6 +54,103 @@ if (!store.has('themeConfig')) {
 }
 
 /**
+ * 初始化主题管理器
+ * 在应用启动时调用一次，预加载所有主题到缓存
+ */
+export function initializeThemeManager(): void {
+    // 设置主题目录路径
+    // 在开发环境和生产环境中，路径可能不同，需要动态判断
+    // 如果在开发环境中，__dirname 指向 out/main/
+    // 如果在生产环境中，__dirname 指向 app.asar 或解压后的目录
+    // 我们需要向上查找 resources 目录
+
+    // 尝试多个可能的路径
+    const possiblePaths = [
+        path.join(__dirname, '../../../resources/themes'),  // 开发环境
+        path.join(__dirname, '../../resources/themes'),     // 生产环境（未打包）
+        path.join(process.resourcesPath, 'themes'),         // Electron resources
+        path.join(path.dirname(process.execPath), 'resources/themes')  // 独立可执行文件
+    ]
+
+    // 找到第一个存在的路径
+    for (const testPath of possiblePaths) {
+        if (fs.existsSync(testPath)) {
+            THEME_DIR_PATH = testPath
+            break
+        }
+    }
+
+    // 如果还是找不到，尝试使用相对路径
+    if (!THEME_DIR_PATH) {
+        THEME_DIR_PATH = path.join(__dirname, '../../../resources/theme')
+    }
+
+    // 预加载所有主题到缓存
+    preloadAllThemes()
+
+    console.log('Theme manager initialized, theme directory:', THEME_DIR_PATH)
+    console.log('Preloaded themes:', Array.from(themeCache.keys()))
+}
+
+/**
+ * 预加载所有主题到缓存
+ * 这个函数在应用启动时调用一次，避免后续加载窗口时的文件读取
+ */
+function preloadAllThemes(): void {
+    try {
+        const themeFiles = fs.readdirSync(THEME_DIR_PATH)
+
+        themeFiles.forEach(file => {
+            if (file.endsWith('.json')) {
+                const themeId = file.replace('.json', '') as ThemeType
+                loadThemeToCache(themeId)
+            }
+        })
+    } catch (error) {
+        console.error('Failed to preload themes:', error)
+    }
+}
+
+/**
+ * 加载主题到缓存
+ */
+function loadThemeToCache(themeId: ThemeType): ThemeStyles | undefined {
+    if (themeCache.has(themeId)) {
+        return themeCache.get(themeId)
+    }
+
+    try {
+        const themeFilePath = path.join(THEME_DIR_PATH, `${themeId}.json`)
+        const themeData = JSON.parse(fs.readFileSync(themeFilePath, 'utf-8')) as ThemeStyles
+
+        // 验证主题数据
+        if (!validateThemeData(themeData)) {
+            console.error(`Invalid theme data for ${themeId}`)
+            return undefined
+        }
+
+        themeCache.set(themeId, themeData)
+        return themeData
+    } catch (error) {
+        console.error(`Failed to load theme ${themeId}:`, error)
+        return undefined
+    }
+}
+
+/**
+ * 验证主题数据
+ */
+function validateThemeData(theme: any): theme is ThemeStyles {
+    const requiredFields = [
+        'id', 'name', 'description', 'backgroundColor', 'cardBackground',
+        'textColor', 'secondaryTextColor', 'borderColor', 'accentColor',
+        'buttonBackground', 'buttonTextColor', 'hoverBackground', 'titleBarGradient'
+    ]
+
+    return requiredFields.every(field => field in theme)
+}
+
+/**
  * 获取当前主题
  */
 export function getCurrentTheme(): ThemeType {
@@ -361,10 +161,42 @@ export function getCurrentTheme(): ThemeType {
 
 /**
  * 获取当前主题样式
+ * 从缓存中读取，避免文件I/O操作
  */
 export function getCurrentThemeStyles(): ThemeStyles {
     const themeType = getCurrentTheme()
-    return themes[themeType]
+
+    // 从缓存中获取
+    let themeStyles = themeCache.get(themeType)
+
+    // 如果缓存中没有，尝试加载
+    if (!themeStyles) {
+        themeStyles = loadThemeToCache(themeType)
+    }
+
+    // 如果还是没有，返回默认主题
+    if (!themeStyles) {
+        console.warn(`Theme ${themeType} not found, using default theme`)
+        themeStyles = themeCache.get('baize')!
+    }
+
+    return themeStyles!
+}
+
+/**
+ * 获取指定主题样式
+ * 从缓存中读取
+ */
+export function getThemeStyles(themeType: ThemeType): ThemeStyles | undefined {
+    // 从缓存中获取
+    let themeStyles = themeCache.get(themeType)
+
+    // 如果缓存中没有，尝试加载
+    if (!themeStyles) {
+        themeStyles = loadThemeToCache(themeType)
+    }
+
+    return themeStyles
 }
 
 /**
@@ -377,9 +209,10 @@ export function setTheme(theme: ThemeType): void {
 
 /**
  * 获取所有主题列表
+ * 从缓存中读取，避免文件I/O操作
  */
 export function getAllThemes(): { type: ThemeType; styles: ThemeStyles }[] {
-    return Object.entries(themes).map(([type, styles]) => ({
+    return Array.from(themeCache.entries()).map(([type, styles]) => ({
         type: type as ThemeType,
         styles
     }))
@@ -390,4 +223,34 @@ export function getAllThemes(): { type: ThemeType; styles: ThemeStyles }[] {
  */
 export function resetToDefaultTheme(): void {
     setTheme('baize')
+}
+
+/**
+ * 获取主题缓存统计信息
+ */
+export function getThemeCacheStats(): { count: number; themes: ThemeType[] } {
+    return {
+        count: themeCache.size,
+        themes: Array.from(themeCache.keys())
+    }
+}
+
+/**
+ * 重新加载主题（用于开发调试）
+ */
+export function reloadTheme(themeType: ThemeType): boolean {
+    // 从缓存中移除
+    themeCache.delete(themeType)
+
+    // 重新加载
+    const themeStyles = loadThemeToCache(themeType)
+
+    return themeStyles !== null
+}
+
+/**
+ * 清空主题缓存
+ */
+export function clearThemeCache(): void {
+    themeCache.clear()
 }

@@ -1,0 +1,15 @@
+{
+  "id": "eyecare-beige",
+  "name": "护眼米",
+  "description": "温和的米色调，舒适护眼",
+  "backgroundColor": "#f5f5dc",
+  "cardBackground": "#faf8f0",
+  "textColor": "#4a4a3a",
+  "secondaryTextColor": "#7a7a6a",
+  "borderColor": "#e8e8d8",
+  "accentColor": "#8d6e63",
+  "buttonBackground": "#8d6e63",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#efebe9",
+  "titleBarGradient": "linear-gradient(135deg, #d7ccc8 0%, #bcaaa4 100%)"
+}

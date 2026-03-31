@@ -1,0 +1,15 @@
+{
+  "id": "eyecare-pink",
+  "name": "护眼粉",
+  "description": "温柔的粉色调，舒适怡人",
+  "backgroundColor": "#fce4ec",
+  "cardBackground": "#f8e8f0",
+  "textColor": "#4a2a3a",
+  "secondaryTextColor": "#7a5a6a",
+  "borderColor": "#f8bbd9",
+  "accentColor": "#e91e63",
+  "buttonBackground": "#e91e63",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#fce4ec",
+  "titleBarGradient": "linear-gradient(135deg, #f48fb1 0%, #f06292 100%)"
+}

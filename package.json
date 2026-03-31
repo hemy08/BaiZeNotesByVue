@@ -16,7 +16,7 @@
     "start": "electron-vite preview",
     "copy": ".\\build\\copyfile.bat",
     "dev": "electron-vite dev",
-    "build": "npm run typecheck && electron-vite build && copy ",
+    "build": "npm run typecheck && electron-vite build && npm run copy ",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
@@ -26,7 +26,7 @@
   },
   "build": {
     "appId": "hemy08.BaiZeNotes",
-    "productName": "Bai Ze Notes",
+    "productName": "BaiZeNotes",
     "win": {
       "icon": "resources/icon/baize_clear_icon.ico",
       "target": [

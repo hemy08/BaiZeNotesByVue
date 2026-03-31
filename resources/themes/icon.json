@@ -1,0 +1,15 @@
+{
+  "id": "icon",
+  "name": "科技蓝",
+  "description": "现代科技感蓝色主题",
+  "backgroundColor": "#f5f9ff",
+  "cardBackground": "#e8f2ff",
+  "textColor": "#1a3a5c",
+  "secondaryTextColor": "#4a6a8c",
+  "borderColor": "#b8d4ff",
+  "accentColor": "#2196f3",
+  "buttonBackground": "#2196f3",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#e3f2fd",
+  "titleBarGradient": "linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%)"
+}

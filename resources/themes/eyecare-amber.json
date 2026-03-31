@@ -1,0 +1,15 @@
+{
+  "id": "eyecare-amber",
+  "name": "护眼琥珀",
+  "description": "温暖的琥珀色，柔和舒适",
+  "backgroundColor": "#fff8e1",
+  "cardBackground": "#fffde7",
+  "textColor": "#4a4a2a",
+  "secondaryTextColor": "#7a7a5a",
+  "borderColor": "#ffecb3",
+  "accentColor": "#ffc107",
+  "buttonBackground": "#ffc107",
+  "buttonTextColor": "#1a1a1a",
+  "hoverBackground": "#fff8e1",
+  "titleBarGradient": "linear-gradient(135deg, #ffe082 0%, #ffd54f 100%)"
+}

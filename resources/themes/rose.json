@@ -1,0 +1,15 @@
+{
+  "id": "rose",
+  "name": "玫瑰晨曦",
+  "description": "优雅的玫瑰红，温馨浪漫",
+  "backgroundColor": "#fff0f5",
+  "cardBackground": "#ffe0e8",
+  "textColor": "#5c3a4a",
+  "secondaryTextColor": "#8c6a7a",
+  "borderColor": "#ffd0e0",
+  "accentColor": "#e91e63",
+  "buttonBackground": "#e91e63",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#fce4ec",
+  "titleBarGradient": "linear-gradient(135deg, #f8bbd0 0%, #f48fb1 100%)"
+}

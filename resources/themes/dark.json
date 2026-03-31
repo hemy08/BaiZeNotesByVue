@@ -1,0 +1,15 @@
+{
+  "id": "dark",
+  "name": "深邃夜空",
+  "description": "深色主题，护眼舒适",
+  "backgroundColor": "#1e1e1e",
+  "cardBackground": "#2d2d2d",
+  "textColor": "#e0e0e0",
+  "secondaryTextColor": "#b0b0b0",
+  "borderColor": "#404040",
+  "accentColor": "#64b5f6",
+  "buttonBackground": "#64b5f6",
+  "buttonTextColor": "#1e1e1e",
+  "hoverBackground": "#3d3d3d",
+  "titleBarGradient": "linear-gradient(135deg, #2c3e50 0%, #34495e 100%)"
+}

@@ -1,11 +1,13 @@
 import { app, shell, BrowserWindow, ipcMain, Menu, globalShortcut } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+// @ts-ignore
 import { getApplicationMenu } from './menu/menu'
+// @ts-ignore
 import './plugins/plugin'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
-import { getCurrentThemeStyles } from './utils/theme-config'
+import { getCurrentThemeStyles, initializeThemeManager } from './utils/theme-config'
 import { restoreLastOpenedFile } from './utils/file-state'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
@@ -18,7 +20,7 @@ function createWindow(): void {
         show: false,
         title: '白泽笔记 -- Markdown Editor Powered By Electron and Vue',
         autoHideMenuBar: false,
-        icon: join(__dirname, '../baize_clear_icon.ico'),
+        icon: join(__dirname, '../icon/baize_clear_icon.ico'),
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
             nodeIntegration: true,
@@ -81,6 +83,9 @@ function createWindow(): void {
 app.whenReady().then(() => {
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.electron')
+
+    // 初始化主题管理器 - 在应用启动时预加载所有主题
+    initializeThemeManager()
 
     // Default open or close DevTools by F12 in development
     // and ignore CommandOrControl + R in production.

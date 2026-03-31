@@ -1,0 +1,15 @@
+{
+  "id": "lavender",
+  "name": "薰衣草梦",
+  "description": "浪漫的薰衣草紫，梦幻温柔",
+  "backgroundColor": "#f8f4ff",
+  "cardBackground": "#f0e8ff",
+  "textColor": "#4a3f5c",
+  "secondaryTextColor": "#7a6f8c",
+  "borderColor": "#d8c8f0",
+  "accentColor": "#9c27b0",
+  "buttonBackground": "#9c27b0",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#f3e5f5",
+  "titleBarGradient": "linear-gradient(135deg, #e1bee7 0%, #ce93d8 100%)"
+}

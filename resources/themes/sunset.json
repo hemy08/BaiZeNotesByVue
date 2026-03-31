@@ -1,0 +1,15 @@
+{
+  "id": "sunset",
+  "name": "日落余晖",
+  "description": "温暖的日落色调，宁静祥和",
+  "backgroundColor": "#fff8f0",
+  "cardBackground": "#ffe8d8",
+  "textColor": "#5c4a3a",
+  "secondaryTextColor": "#8c7a6a",
+  "borderColor": "#ffd8b8",
+  "accentColor": "#ff9800",
+  "buttonBackground": "#ff9800",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#fff3e0",
+  "titleBarGradient": "linear-gradient(135deg, #ffcc80 0%, #ff9800 100%)"
+}

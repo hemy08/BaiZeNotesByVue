@@ -1,0 +1,15 @@
+{
+  "id": "warm",
+  "name": "暖阳主题",
+  "description": "温暖的橙色调，给人舒适感",
+  "backgroundColor": "#fff8f0",
+  "cardBackground": "#ffeedd",
+  "textColor": "#4a3f35",
+  "secondaryTextColor": "#7a6f65",
+  "borderColor": "#ffdcb0",
+  "accentColor": "#ff9800",
+  "buttonBackground": "#ff9800",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#fff3e0",
+  "titleBarGradient": "linear-gradient(135deg, #f6d365 0%, #fda085 100%)"
+}

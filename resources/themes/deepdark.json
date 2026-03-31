@@ -1,0 +1,15 @@
+{
+  "id": "deepdark",
+  "name": "深空黑曜",
+  "description": "极深色主题，极致护眼",
+  "backgroundColor": "#121212",
+  "cardBackground": "#1e1e1e",
+  "textColor": "#e0e0e0",
+  "secondaryTextColor": "#a0a0a0",
+  "borderColor": "#333333",
+  "accentColor": "#90caf9",
+  "buttonBackground": "#90caf9",
+  "buttonTextColor": "#121212",
+  "hoverBackground": "#2d2d2d",
+  "titleBarGradient": "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)"
+}

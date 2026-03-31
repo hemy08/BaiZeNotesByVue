@@ -1,0 +1,15 @@
+{
+  "id": "eyecare-green",
+  "name": "护眼绿",
+  "description": "经典的护眼绿色，减轻眼部疲劳",
+  "backgroundColor": "#c7edcc",
+  "cardBackground": "#d7f5dc",
+  "textColor": "#1a3a2a",
+  "secondaryTextColor": "#4a6a5a",
+  "borderColor": "#a8e0b0",
+  "accentColor": "#4caf50",
+  "buttonBackground": "#4caf50",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#c8e6c9",
+  "titleBarGradient": "linear-gradient(135deg, #a5d6a7 0%, #81c784 100%)"
+}

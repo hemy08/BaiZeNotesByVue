@@ -1,0 +1,15 @@
+{
+  "id": "eyecare-teal",
+  "name": "护眼青",
+  "description": "清新的青色调，护眼舒适",
+  "backgroundColor": "#e0f2f1",
+  "cardBackground": "#e8f5f3",
+  "textColor": "#1a4a4a",
+  "secondaryTextColor": "#4a7a7a",
+  "borderColor": "#b2dfdb",
+  "accentColor": "#009688",
+  "buttonBackground": "#009688",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#e0f2f1",
+  "titleBarGradient": "linear-gradient(135deg, #80cbc4 0%, #4db6ac 100%)"
+}

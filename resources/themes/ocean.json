@@ -1,0 +1,15 @@
+{
+  "id": "ocean",
+  "name": "海洋之心",
+  "description": "深邃的海洋蓝，宁静深远",
+  "backgroundColor": "#f0f8ff",
+  "cardBackground": "#e0f0ff",
+  "textColor": "#1a3a5c",
+  "secondaryTextColor": "#4a6a8c",
+  "borderColor": "#b8d4f0",
+  "accentColor": "#0288d1",
+  "buttonBackground": "#0288d1",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#e1f5fe",
+  "titleBarGradient": "linear-gradient(135deg, #4fc3f7 0%, #039be5 100%)"
+}

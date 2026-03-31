@@ -22,7 +22,7 @@ win:
       arch:
         - x64
 nsis:
-  artifactName: ${productName} Setup ${version} windows.${arch}.${ext}
+  artifactName: ${productName}_Setup_${version}_windows_${arch}.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
@@ -36,7 +36,7 @@ nsis:
   deleteAppDataOnUninstall: false
   runAfterFinish: true
 portable:
-  artifactName: ${productName} ${version} windows.${arch}.${ext}
+  artifactName: ${productName}_Setup_${version}_windows_${arch}.${ext}
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
@@ -46,7 +46,7 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
 dmg:
-  artifactName: ${productName}-${version}-macos.${arch}.${ext}
+  artifactName: ${productName}_Setup_${version}_MacOS_${arch}.${ext}
 linux:
   target:
     - AppImage
@@ -55,7 +55,7 @@ linux:
   maintainer: electronjs.org
   category: Utility
 appImage:
-  artifactName: ${productName}-${version}-linux.${arch}.${ext}
+  artifactName: ${productName}_Setup_${version}_Linux_${arch}.${ext}
 npmRebuild: false
 publish:
   provider: generic

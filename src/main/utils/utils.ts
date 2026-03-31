@@ -1,6 +1,9 @@
+// @ts-ignore
 import { globalInitialize } from './global'
 import * as FileUtils from './file-utils'
+// @ts-ignore
 import { HemyRenderPre, HemyRenderPost } from './HemyRender'
+// @ts-ignore
 import {
     CreateRsaKeyPair,
     CreateHash,
@@ -9,8 +12,9 @@ import {
     CryptoEncrypt
 } from './encrypt_decrypt'
 import { ipcMain, shell } from 'electron'
+// @ts-ignore
 import { getQuickLinks } from './quick-link-config'
-import { getCurrentTheme, getCurrentThemeStyles, themes } from './theme-config'
+import { getCurrentTheme, getCurrentThemeStyles, getAllThemes } from './theme-config'
 
 export {
     globalInitialize,
@@ -129,6 +133,6 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     })
 
     ipcMain.on('get-all-themes', (event) => {
-        event.returnValue = themes
+        event.returnValue = getAllThemes()
     })
 }

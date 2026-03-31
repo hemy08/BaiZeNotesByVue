@@ -1,0 +1,15 @@
+{
+  "id": "coral",
+  "name": "珊瑚暖阳",
+  "description": "活力的珊瑚色，温暖明亮",
+  "backgroundColor": "#fff5f0",
+  "cardBackground": "#ffe8e0",
+  "textColor": "#5c3f3a",
+  "secondaryTextColor": "#8c6f6a",
+  "borderColor": "#ffd0c0",
+  "accentColor": "#ff7043",
+  "buttonBackground": "#ff7043",
+  "buttonTextColor": "#ffffff",
+  "hoverBackground": "#ffebe0",
+  "titleBarGradient": "linear-gradient(135deg, #ffccbc 0%, #ffab91 100%)"
+}

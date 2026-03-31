@@ -3,7 +3,6 @@
 /out
 .DS_Store
 *.log*
-/build
 .vscode
 .idea
 

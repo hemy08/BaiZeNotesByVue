@@ -1,0 +1,23 @@
+rmdir /S /Q /Y "out\renderer\src\lib"
+mkdir "out\renderer\src\lib"
+xcopy /S /E /Y /I "src\renderer\src\lib" "out\renderer\src\lib"
+
+rmdir /S /Q /Y "out\renderer\src\dialogs"
+mkdir "out\renderer\src\dialogs"
+xcopy /S /E /Y /I "src\renderer\src\dialogs" "out\renderer\src\dialogs"
+
+rmdir /S /Q /Y "out\renderer\src\style"
+mkdir "out\renderer\src\style"
+xcopy /S /E /Y /I "src\renderer\src\style" "out\renderer\src\style"
+
+rmdir /S /Q "out\themes" 2>nul
+mkdir "out\themes"
+xcopy /S /E /Y /I "resources\themes" "out\themes"
+
+rmdir /S /Q "out\icon" 2>nul
+mkdir "out\icon"
+xcopy /S /E /Y /I "resources\icon" "out\icon"
+
+rmdir /S /Q "out\config" 2>nul
+mkdir "out\config"
+xcopy /S /E /Y /I "resources\config" "out\config"
