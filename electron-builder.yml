@@ -13,7 +13,7 @@ asarUnpack:
   - resources/**
 win:
   executableName: BaiZeNotes
-  icon: icon\baize_clear_icon.ico
+  icon: resources/icon/baize_clear_icon.ico
   target:
     - target: nsis
       arch:
@@ -29,9 +29,9 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   allowElevation: true
-  installerIcon: icon\baize_clear_icon.ico
-  uninstallerIcon: icon\baize_clear_icon.ico
-  installerHeaderIcon: icon\baize_clear_icon.ico
+  installerIcon: resources/icon/baize_clear_icon.ico
+  uninstallerIcon: resources/icon/baize_clear_icon.ico
+  installerHeaderIcon: resources/icon/baize_clear_icon.ico
   createUninstallRegistryKey: true
   deleteAppDataOnUninstall: false
   runAfterFinish: true

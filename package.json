@@ -14,9 +14,9 @@
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "start": "electron-vite preview",
-    "copy": "copyfile.bat",
+    "copy": ".\\build\\copyfile.bat",
     "dev": "electron-vite dev",
-    "build": "npm run typecheck && electron-vite build && .\\copyfile.bat ",
+    "build": "npm run typecheck && electron-vite build && copy ",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
@@ -28,7 +28,7 @@
     "appId": "hemy08.BaiZeNotes",
     "productName": "Bai Ze Notes",
     "win": {
-      "icon": "icon/baize_clear_icon.ico",
+      "icon": "resources/icon/baize_clear_icon.ico",
       "target": [
         "nsis",
         "portable"
