@@ -1,6 +1,6 @@
 import { katexRenderMathInText } from './KatexRender'
 import { materialAdmonitionsRender, materialAdmonitionsPostRender } from './MaterialRender'
-import { ParseDirectoryPath } from './file-utils'
+import { ParseDirectoryPath } from '../utils/file-utils'
 // import { plantumlRender } from './PlantumlRender'
 
 export async function HemyRenderPre(

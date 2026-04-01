@@ -2,7 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 import * as Utils from '../utils/utils'
 import * as digcom from './dialog_common'
-import { getCurrentThemeStyles } from '../utils/theme-config'
+import { getCurrentThemeStyles } from '../theme-config/theme-config'
 
 let insertImageDialog: Electron.BrowserWindow | null
 

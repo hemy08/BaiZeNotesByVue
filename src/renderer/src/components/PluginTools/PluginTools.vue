@@ -54,7 +54,6 @@ import NumericCase from './Informations/NumericCase.vue'
 import NormalFontStyle from './Informations/NormalFontStyle.vue'
 import FileNameExtension from './Informations/FileNameExtension.vue'
 import GreeceLetter from './Informations/GreeceLetter.vue'
-import LatexEditor from './Tools/LatexEditor.vue'
 
 let isShowPluginToolsContainer = false
 
@@ -100,8 +99,8 @@ const pluginTools = [
     { id: 'numeric-case-table', component: NumericCase },
     { id: 'normal-font-style-table', component: NormalFontStyle },
     { id: 'file-name-extension-table', component: FileNameExtension },
-    { id: 'greece-letter-table', component: GreeceLetter },
-    { id: 'latex', component: LatexEditor }
+    { id: 'greece-letter-table', component: GreeceLetter }
+    //{ id: 'latex', component: LatexEditor }
 ]
 
 const props = defineProps({

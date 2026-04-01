@@ -4,7 +4,7 @@
 
 import { BrowserWindow, ipcMain, IpcMainEvent } from 'electron'
 import { JSDOM } from 'jsdom'
-import { getCurrentThemeStyles } from '../utils/theme-config'
+import { getCurrentThemeStyles } from '../theme-config/theme-config'
 import * as digcom from './dialog_common'
 
 let customWebUrlDialog: Electron.BrowserWindow | null

@@ -25,8 +25,8 @@
           <h2><i class="fa fa-edit"></i>输入区域<span>Input</span></h2>
         </div>
         <div class="card-body" style="background-color: rgb(255, 255, 255); border-top: 0px solid rgb(0, 0, 0);">
-          <div id="wrap_shortcut" class="form-group"><ul id="ul_navtabs" class="nav nav-tabs" style="border-bottom: 1px solid rgb(222, 226, 230);"><li class="nav-item"><a id="a_shortcut_0" class="nav-link active" href="##" style="color: rgb(73, 80, 87); background-color: rgb(255, 255, 255); border-width: 1px; border-style: solid; border-color: rgb(222, 226, 230) rgb(222, 226, 230) transparent; border-image: initial;">快捷工具</a></li><li class="nav-item"><a id="a_shortcut_1" class="nav-link" href="##" style="color: rgb(0, 0, 0); background-color: rgb(255, 255, 255); border: 0px solid transparent;">公式模板</a></li><li class="nav-item"><a id="a_shortcut_mathpix" class="nav-link" href="##" style="color: rgb(0, 0, 0); background-color: rgb(255, 255, 255); border: 0px solid transparent;">图片识别</a></li></ul><div id="wrap_shortcut_0" class="wrap-shortcut" style="display: block;"><div style="display: flex; flex-flow: row; justify-content: space-around; align-items: center;"><div class="dropdown" style="padding: 0px; margin: 0.5rem 0.5rem 0.5rem 0px; order: 0; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/symbol.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">常用符号<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_0_layer2_0" class="dropdown-menu" data-layer1index="0" data-layer2index="0" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 1; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/greek.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">希腊字母<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_0_layer2_1" class="dropdown-menu" data-layer1index="0" data-layer2index="1" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 2; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/frac.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">分数微分<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_0_layer2_2" class="dropdown-menu" data-layer1index="0" data-layer2index="2" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 3; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/sqrt.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">根式角标<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_0_layer2_3" class="dropdown-menu" data-layer1index="0" data-layer2index="3" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 4; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/limit.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">极限对数<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_0_layer2_4" class="dropdown-menu" data-layer1index="0" data-layer2index="4" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px; display: none;"><div class="dropdown-divider" style="border-top: 1px solid rgb(233, 236, 239);"></div><p style="margin: 0.5rem auto 0px 1rem; color: rgb(0, 0, 0);">极限 Limits</p><div class="dropdown-divider" style="margin-bottom: 0.6rem; border-top: 1px solid rgb(233, 236, 239);"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.8rem 0.2rem; width: 3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_1_lim_lim.svg"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 1.2rem 0px 0.3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_2_lim_limto0.svg" style="width: 3.4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 1.2rem 0px 0.3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_3_lim_limtoinfty.svg" style="width: 3.4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.7rem 0.2rem 0.6rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_4_lim_limtf.svg" style="width: 3.8rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 1.1rem 0px 0.4rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_5_lim_max.svg" style="width: 3.6rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 1.1rem 0px 0.4rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_6_lim_min.svg" style="width: 3.6rem;"></div><div class="dropdown-divider" style="border-top: 1px solid rgb(233, 236, 239);"></div><p style="margin: 0.5rem auto 0px 1rem; color: rgb(0, 0, 0);">对数指数 Logarithms and exponentials</p><div class="dropdown-divider" style="margin-bottom: 0.6rem; border-top: 1px solid rgb(233, 236, 239);"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.7rem 0.2rem; width: 3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_7_log_log.svg"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.8rem 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_8_log_lg.svg" style="width: 2.4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.8rem 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_9_log_ln.svg" style="width: 2.4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.9rem 0.2rem 0.4rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_10_log_exp.svg" style="width: 3.2rem;"></div><div class="dropdown-divider" style="border-top: 1px solid rgb(233, 236, 239);"></div><p style="margin: 0.5rem auto 0px 1rem; color: rgb(0, 0, 0);">界限 Bounds</p><div class="dropdown-divider" style="margin-bottom: 0.6rem; border-top: 1px solid rgb(233, 236, 239);"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.2rem; width: 3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_11_bound_min.svg"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.4rem 0.2rem 0px; width: 3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_12_bound_max.svg"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_13_bound_sup.svg" style="width: 2.6rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0px 0.2rem 0.4rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_14_bound_inf.svg" style="width: 2.4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0px 0.2rem 0.4rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_15_bound_lim.svg" style="width: 2.6rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_16_bound_limsup.svg" style="width: 4.6rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.1rem 0.2rem 0.3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_17_bound_liminf.svg" style="width: 4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_18_bound_dim.svg" style="width: 2.9rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_19_bound_ker.svg" style="width: 2.8rem;"></div></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 5; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/trig.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">三角函数<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_0_layer2_5" class="dropdown-menu dropdown-menu-right" data-layer1index="0" data-layer2index="5" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 6; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/integral.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">积分运算<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_0_layer2_6" class="dropdown-menu dropdown-menu-right" data-layer1index="0" data-layer2index="6" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 7; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/sum.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">大型运算<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_0_layer2_7" class="dropdown-menu dropdown-menu-right" data-layer1index="0" data-layer2index="7" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 8; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/bracket.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">括号取整<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_0_layer2_8" class="dropdown-menu dropdown-menu-right" data-layer1index="0" data-layer2index="8" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem 0px 0.5rem 0.5rem; order: 9; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/matrix.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">数组矩阵<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_0_layer2_9" class="dropdown-menu dropdown-menu-right" data-layer1index="0" data-layer2index="9" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div></div></div><div id="wrap_shortcut_mathpix" class="wrap-shortcut" style="display: none;"><div id="wrap_shortcut_mathpix_in" style="width: 100%; height: 26rem; border: 1px solid rgba(0, 0, 0, 0.125); margin-top: 1rem; border-radius: 0.25rem;"><div class="form-group" style="text-align: center; margin-top: 1rem;"><button id="btn_clearpic" class="btn btn-light theme-fill" style="margin-right: 0.5rem;"><i class="fa fa-trash-o"></i>清除</button><button id="btn_upload" class="btn btn-light theme-fill" style="margin-left: 0.5rem;"><i class="fa fa-upload"></i>上传</button><input id="upload" type="file" accept="image/png,image/jpeg" style="display: none;"></div><div id="wrap_shortcut_mathpix_drag" class="form-group" style="width: 90%; height: 20rem; border: 1px dashed rgba(0, 0, 0, 0.3); margin: 0px auto; border-radius: 4px; position: relative;"><img id="img_mathpix" style="height: auto; width: 100%; max-height: 20rem; margin: auto; box-shadow: rgba(0, 0, 0, 0.2) 0px 0px 5px; border-radius: 4px; position: absolute;"><div id="upload-text" style="font-size: 1.2rem; color: rgb(221, 221, 221); pointer-events: none; user-select: none;"><div style="text-align:left;width:80%;margin:5rem auto auto auto;"><li>点击“上传”按钮上传本地图片文件</li><li>拖拽本地图片文件至此处</li><li>复制其他网页中的图片,或截取屏幕图片到剪切板后，在当前页面全局粘贴</li></div></div></div></div></div><div id="wrap_shortcut_1" class="wrap-shortcut" style="display: none;"><div style="display: flex; flex-flow: row; justify-content: space-around; align-items: center;"><div class="dropdown" style="padding: 0px; margin: 0.5rem 0.5rem 0.5rem 0px; order: 0; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/algebra.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">代数<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_1_layer2_0" class="dropdown-menu" data-layer1index="1" data-layer2index="0" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 1; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/geometry.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">几何<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_1_layer2_1" class="dropdown-menu" data-layer1index="1" data-layer2index="1" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 2; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/inequality.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">不等式<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_1_layer2_2" class="dropdown-menu" data-layer1index="1" data-layer2index="2" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 3; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/calculous.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">积分<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_1_layer2_3" class="dropdown-menu" data-layer1index="1" data-layer2index="3" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 4; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/array.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">矩阵<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_1_layer2_4" class="dropdown-menu" data-layer1index="1" data-layer2index="4" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 5; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/trigonometry.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">三角<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_1_layer2_5" class="dropdown-menu dropdown-menu-right" data-layer1index="1" data-layer2index="5" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 6; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/statistics.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">统计<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_1_layer2_6" class="dropdown-menu dropdown-menu-right" data-layer1index="1" data-layer2index="6" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 7; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/sequence.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">数列<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_1_layer2_7" class="dropdown-menu dropdown-menu-right" data-layer1index="1" data-layer2index="7" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 8; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/physics.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">物理<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_1_layer2_8" class="dropdown-menu dropdown-menu-right" data-layer1index="1" data-layer2index="8" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem 0px 0.5rem 0.5rem; order: 9; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/chemistry.png"><p class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">化学<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></p></button><div id="shortcut_1_layer2_9" class="dropdown-menu dropdown-menu-right" data-layer1index="1" data-layer2index="9" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div></div></div></div>
-          <div id="wrap_immediate" class="form-group"><row class="row" style="padding: 0px 15px;"><div class="col-5 col-sm-5 col-md-5 col-lg-5 col-xl-5" style="padding: 0px;"><div class="dropdown" style="display: inline-block;"><button id="btn_color" class="btn btn-light theme-fill" type="button"><i class="fa fa-paint-brush"></i>颜色<i class="fa fa-caret-down"></i></button><div id="wrap_color" class="dropdown-menu" style="box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; background-color: rgb(255, 255, 255);"></div></div><div class="dropdown" style="display: inline-block;"><button id="btn_fontfamily" class="btn btn-light theme-fill" type="button"><i class="fa fa-font"></i>字体<i class="fa fa-caret-down"></i></button><div id="wrap_fontfamily" class="dropdown-menu" style="box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; background-color: rgb(255, 255, 255);"></div></div><div class="dropdown" style="display: inline-block;"><button id="btn_fontsize" class="btn btn-light theme-fill" type="button"><i class="fa fa-text-height"></i>字号<i class="fa fa-caret-down"></i></button><div id="wrap_fontsize" class="dropdown-menu" style="box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; background-color: rgb(255, 255, 255);"></div></div></div><div class="col-6 col-sm-6 col-md-6 col-lg-6 col-xl-6" style="padding: 0px;"><button id="btn_array" class="btn btn-light theme-fill" type="button" style="float: right;">array环境</button><button id="btn_align" class="btn btn-light theme-fill" type="button" style="float: right;">align环境</button><button id="btn_eqnarray" class="btn btn-light theme-fill" type="button" style="float: right;">eqnarray环境</button><button id="btn_equation" class="btn btn-light theme-fill" type="button" style="float: right;">none环境</button></div><div class="col-1 col-sm-1 col-md-1 col-lg-1 col-xl-1" style="padding: 0px;"><button id="btn_clear" class="btn btn-light theme-fill" type="button" style="float: right;"><i class="fa fa-trash-o"></i>清空</button></div></row></div>
+          <div id="wrap_shortcut" class="form-group"><ul id="ul_navtabs" class="nav nav-tabs" style="border-bottom: 1px solid rgb(222, 226, 230);"><li class="nav-item"><a id="a_shortcut_0" class="nav-link active" href="##" style="color: rgb(73, 80, 87); background-color: rgb(255, 255, 255); border-width: 1px; border-style: solid; border-color: rgb(222, 226, 230) rgb(222, 226, 230) transparent; border-image: initial;">快捷工具</a></li><li class="nav-item"><a id="a_shortcut_1" class="nav-link" href="##" style="color: rgb(0, 0, 0); background-color: rgb(255, 255, 255); border: 0px solid transparent;">公式模板</a></li><li class="nav-item"><a id="a_shortcut_mathpix" class="nav-link" href="##" style="color: rgb(0, 0, 0); background-color: rgb(255, 255, 255); border: 0px solid transparent;">图片识别</a></li></ul><div id="wrap_shortcut_0" class="wrap-shortcut" style="display: block;"><div style="display: flex; flex-flow: row; justify-content: space-around; align-items: center;"><div class="dropdown" style="padding: 0px; margin: 0.5rem 0.5rem 0.5rem 0px; order: 0; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/symbol.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">常用符号<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_0_layer2_0" class="dropdown-menu" data-layer1index="0" data-layer2index="0" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 1; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/greek.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">希腊字母<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_0_layer2_1" class="dropdown-menu" data-layer1index="0" data-layer2index="1" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 2; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/frac.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">分数微分<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_0_layer2_2" class="dropdown-menu" data-layer1index="0" data-layer2index="2" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 3; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/sqrt.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">根式角标<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_0_layer2_3" class="dropdown-menu" data-layer1index="0" data-layer2index="3" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 4; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/limit.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">极限对数<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_0_layer2_4" class="dropdown-menu" data-layer1index="0" data-layer2index="4" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px; display: none;"><div class="dropdown-divider" style="border-top: 1px solid rgb(233, 236, 239);"></div><div style="margin: 0.5rem auto 0px 1rem; color: rgb(0, 0, 0);">极限 Limits</div><div class="dropdown-divider" style="margin-bottom: 0.6rem; border-top: 1px solid rgb(233, 236, 239);"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.8rem 0.2rem; width: 3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_1_lim_lim.svg"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 1.2rem 0px 0.3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_2_lim_limto0.svg" style="width: 3.4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 1.2rem 0px 0.3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_3_lim_limtoinfty.svg" style="width: 3.4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.7rem 0.2rem 0.6rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_4_lim_limtf.svg" style="width: 3.8rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 1.1rem 0px 0.4rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_5_lim_max.svg" style="width: 3.6rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 1.1rem 0px 0.4rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_6_lim_min.svg" style="width: 3.6rem;"></div><div class="dropdown-divider" style="border-top: 1px solid rgb(233, 236, 239);"></div><div style="margin: 0.5rem auto 0px 1rem; color: rgb(0, 0, 0);">对数指数 Logarithms and exponentials</div><div class="dropdown-divider" style="margin-bottom: 0.6rem; border-top: 1px solid rgb(233, 236, 239);"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.7rem 0.2rem; width: 3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_7_log_log.svg"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.8rem 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_8_log_lg.svg" style="width: 2.4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.8rem 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_9_log_ln.svg" style="width: 2.4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.9rem 0.2rem 0.4rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_10_log_exp.svg" style="width: 3.2rem;"></div><div class="dropdown-divider" style="border-top: 1px solid rgb(233, 236, 239);"></div><div style="margin: 0.5rem auto 0px 1rem; color: rgb(0, 0, 0);">界限 Bounds</div><div class="dropdown-divider" style="margin-bottom: 0.6rem; border-top: 1px solid rgb(233, 236, 239);"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.2rem; width: 3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_11_bound_min.svg"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.4rem 0.2rem 0px; width: 3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_12_bound_max.svg"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_13_bound_sup.svg" style="width: 2.6rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0px 0.2rem 0.4rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_14_bound_inf.svg" style="width: 2.4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0px 0.2rem 0.4rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_15_bound_lim.svg" style="width: 2.6rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_16_bound_limsup.svg" style="width: 4.6rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.1rem 0.2rem 0.3rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_17_bound_liminf.svg" style="width: 4rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_18_bound_dim.svg" style="width: 2.9rem;"></div><div class="btn btn-light theme-fill" style="margin: 0.2rem; padding: 0.2rem;"><img class="layer2-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer2/limit/limit_19_bound_ker.svg" style="width: 2.8rem;"></div></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 5; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/trig.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">三角函数<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_0_layer2_5" class="dropdown-menu dropdown-menu-right" data-layer1index="0" data-layer2index="5" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 6; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/integral.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">积分运算<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_0_layer2_6" class="dropdown-menu dropdown-menu-right" data-layer1index="0" data-layer2index="6" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 7; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/sum.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">大型运算<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_0_layer2_7" class="dropdown-menu dropdown-menu-right" data-layer1index="0" data-layer2index="7" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 8; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/bracket.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">括号取整<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_0_layer2_8" class="dropdown-menu dropdown-menu-right" data-layer1index="0" data-layer2index="8" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem 0px 0.5rem 0.5rem; order: 9; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/shortcut/layer1/matrix.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">数组矩阵<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_0_layer2_9" class="dropdown-menu dropdown-menu-right" data-layer1index="0" data-layer2index="9" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div></div></div><div id="wrap_shortcut_mathpix" class="wrap-shortcut" style="display: none;"><div id="wrap_shortcut_mathpix_in" style="width: 100%; height: 26rem; border: 1px solid rgba(0, 0, 0, 0.125); margin-top: 1rem; border-radius: 0.25rem;"><div class="form-group" style="text-align: center; margin-top: 1rem;"><button id="btn_clearpic" class="btn btn-light theme-fill" style="margin-right: 0.5rem;"><i class="fa fa-trash-o"></i>清除</button><button id="btn_upload" class="btn btn-light theme-fill" style="margin-left: 0.5rem;"><i class="fa fa-upload"></i>上传</button><input id="upload" type="file" accept="image/png,image/jpeg" style="display: none;"></div><div id="wrap_shortcut_mathpix_drag" class="form-group" style="width: 90%; height: 20rem; border: 1px dashed rgba(0, 0, 0, 0.3); margin: 0px auto; border-radius: 4px; position: relative;"><img id="img_mathpix" style="height: auto; width: 100%; max-height: 20rem; margin: auto; box-shadow: rgba(0, 0, 0, 0.2) 0px 0px 5px; border-radius: 4px; position: absolute;"><div id="upload-text" style="font-size: 1.2rem; color: rgb(221, 221, 221); pointer-events: none; user-select: none;"><div style="text-align:left;width:80%;margin:5rem auto auto auto;"><li>点击“上传”按钮上传本地图片文件</li><li>拖拽本地图片文件至此处</li><li>复制其他网页中的图片,或截取屏幕图片到剪切板后，在当前页面全局粘贴</li></div></div></div></div></div><div id="wrap_shortcut_1" class="wrap-shortcut" style="display: none;"><div style="display: flex; flex-flow: row; justify-content: space-around; align-items: center;"><div class="dropdown" style="padding: 0px; margin: 0.5rem 0.5rem 0.5rem 0px; order: 0; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/algebra.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">代数<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_1_layer2_0" class="dropdown-menu" data-layer1index="1" data-layer2index="0" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 1; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/geometry.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">几何<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_1_layer2_1" class="dropdown-menu" data-layer1index="1" data-layer2index="1" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 2; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/inequality.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">不等式<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_1_layer2_2" class="dropdown-menu" data-layer1index="1" data-layer2index="2" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 3; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/calculous.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">积分<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_1_layer2_3" class="dropdown-menu" data-layer1index="1" data-layer2index="3" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 4; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/array.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">矩阵<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_1_layer2_4" class="dropdown-menu" data-layer1index="1" data-layer2index="4" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 5; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/trigonometry.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">三角<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_1_layer2_5" class="dropdown-menu dropdown-menu-right" data-layer1index="1" data-layer2index="5" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 6; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/statistics.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">统计<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_1_layer2_6" class="dropdown-menu dropdown-menu-right" data-layer1index="1" data-layer2index="6" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 7; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/sequence.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">数列<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_1_layer2_7" class="dropdown-menu dropdown-menu-right" data-layer1index="1" data-layer2index="7" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem; order: 8; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/physics.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">物理<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_1_layer2_8" class="dropdown-menu dropdown-menu-right" data-layer1index="1" data-layer2index="8" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div><div class="dropdown" style="padding: 0px; margin: 0.5rem 0px 0.5rem 0.5rem; order: 9; flex-grow: 0;"><button class="btn btn-light theme-fill" type="button"><img class="layer1-img" src="https://latexlive-resourse.oss-cn-beijing.aliyuncs.com/img/template/layer1/chemistry.png"><div class="layer1-p" style="font-size: 0.5rem; margin: 0px auto 0.2rem;">化学<div style="margin: -0.3rem auto -0.4rem; font-size: 1rem;"><i class="fa fa-caret-down"></i></div></div></button><div id="shortcut_1_layer2_9" class="dropdown-menu dropdown-menu-right" data-layer1index="1" data-layer2index="9" style="background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; margin-top: -1px; padding: 1rem; width: 434.5px;"></div></div></div></div></div>
+          <div id="wrap_immediate" class="form-group"><div class="row" style="padding: 0px 15px;"><div class="col-5 col-sm-5 col-md-5 col-lg-5 col-xl-5" style="padding: 0px;"><div class="dropdown" style="display: inline-block;"><button id="btn_color" class="btn btn-light theme-fill" type="button"><i class="fa fa-paint-brush"></i>颜色<i class="fa fa-caret-down"></i></button><div id="wrap_color" class="dropdown-menu" style="box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; background-color: rgb(255, 255, 255);"></div></div><div class="dropdown" style="display: inline-block;"><button id="btn_fontfamily" class="btn btn-light theme-fill" type="button"><i class="fa fa-font"></i>字体<i class="fa fa-caret-down"></i></button><div id="wrap_fontfamily" class="dropdown-menu" style="box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; background-color: rgb(255, 255, 255);"></div></div><div class="dropdown" style="display: inline-block;"><button id="btn_fontsize" class="btn btn-light theme-fill" type="button"><i class="fa fa-text-height"></i>字号<i class="fa fa-caret-down"></i></button><div id="wrap_fontsize" class="dropdown-menu" style="box-shadow: rgba(0, 0, 0, 0.2) 4px 4px 4px 1px; background-color: rgb(255, 255, 255);"></div></div></div><div class="col-6 col-sm-6 col-md-6 col-lg-6 col-xl-6" style="padding: 0px;"><button id="btn_array" class="btn btn-light theme-fill" type="button" style="float: right;">array环境</button><button id="btn_align" class="btn btn-light theme-fill" type="button" style="float: right;">align环境</button><button id="btn_eqnarray" class="btn btn-light theme-fill" type="button" style="float: right;">eqnarray环境</button><button id="btn_equation" class="btn btn-light theme-fill" type="button" style="float: right;">none环境</button></div><div class="col-1 col-sm-1 col-md-1 col-lg-1 col-xl-1" style="padding: 0px;"><button id="btn_clear" class="btn btn-light theme-fill" type="button" style="float: right;"><i class="fa fa-trash-o"></i>清空</button></div></div></div>
           <div id="wrap_txtainput" class="form-group">
             <textarea id="txta_input" class="form-control twins" placeholder="请输入您的LaTeX表达式" maxlength="16384" spellcheck="false" wrap="off" style="border: 1px solid rgb(206, 212, 218); background-color: rgba(0, 0, 0, 0); color: rgba(0, 0, 0, 0.01); caret-color: rgb(0, 0, 0);"></textarea>
             <div id="div_copy" class="form-control twins" style="background-color: rgb(255, 255, 255); color: rgb(0, 0, 0);"></div>
@@ -62,7 +62,7 @@ const props = defineProps({
 })
 
 
-function openUrl(link) {
+function openUrl(link :string) {
   window.open(link, '_blank', 'noopener, noreferrer')
 }
 </script>
@@ -589,7 +589,6 @@ pre code {
 }
 
 .row {
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-wrap: wrap;
   flex-wrap: wrap;
@@ -2104,7 +2103,6 @@ textarea.form-control {
 }
 
 .form-row {
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-wrap: wrap;
   flex-wrap: wrap;
@@ -2138,7 +2136,6 @@ textarea.form-control {
 }
 
 .form-check-inline {
-  display: -ms-inline-flexbox;
   display: inline-flex;
   -ms-flex-align: center;
   align-items: center;
@@ -2376,7 +2373,6 @@ textarea.form-control {
 }
 
 .form-inline {
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-flow: row wrap;
   flex-flow: row wrap;
@@ -2390,7 +2386,6 @@ textarea.form-control {
 
 @media (min-width: 576px) {
   .form-inline label {
-    display:-ms-flexbox;
     display: flex;
     -ms-flex-align: center;
     align-items: center;
@@ -2400,9 +2395,7 @@ textarea.form-control {
   }
 
   .form-inline .form-group {
-    display: -ms-flexbox;
     display: flex;
-    -ms-flex: 0 0 auto;
     flex: 0 0 auto;
     -ms-flex-flow: row wrap;
     flex-flow: row wrap;
@@ -2426,7 +2419,6 @@ textarea.form-control {
   }
 
   .form-inline .form-check {
-    display: -ms-flexbox;
     display: flex;
     -ms-flex-align: center;
     align-items: center;
@@ -3326,7 +3318,6 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 
 .btn-group,.btn-group-vertical {
   position: relative;
-  display: -ms-inline-flexbox;
   display: inline-flex;
   vertical-align: middle
 }
@@ -3346,9 +3337,7 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .btn-toolbar {
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
   -ms-flex-pack: start;
   justify-content: flex-start
@@ -3434,9 +3423,7 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 
 .input-group {
   position: relative;
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
   -ms-flex-align: stretch;
   align-items: stretch;
@@ -3474,7 +3461,6 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .input-group>.custom-file {
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-align: center;
   align-items: center
@@ -3491,7 +3477,6 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .input-group-append,.input-group-prepend {
-  display: -ms-flexbox;
   display: flex
 }
 
@@ -3517,7 +3502,6 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .input-group-text {
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-align: center;
   align-items: center;
@@ -3582,7 +3566,6 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .custom-control-inline {
-  display: -ms-inline-flexbox;
   display: inline-flex;
   margin-right: 1rem
 }
@@ -4023,9 +4006,7 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .nav {
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
   padding-left: 0;
   margin-bottom: 0;
@@ -4093,15 +4074,12 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .nav-fill .nav-item {
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   text-align: center
 }
 
 .nav-justified .nav-item {
-  -ms-flex-preferred-size: 0;
   flex-basis: 0;
-  -ms-flex-positive: 1;
   flex-grow: 1;
   text-align: center
 }
@@ -4116,25 +4094,17 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 
 .navbar {
   position: relative;
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
-  -ms-flex-align: center;
   align-items: center;
-  -ms-flex-pack: justify;
   justify-content: space-between;
   padding: .5rem 1rem
 }
 
 .navbar>.container,.navbar>.container-fluid {
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
-  -ms-flex-align: center;
   align-items: center;
-  -ms-flex-pack: justify;
   justify-content: space-between
 }
 
@@ -4153,9 +4123,7 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .navbar-nav {
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-direction: column;
   flex-direction: column;
   padding-left: 0;
   margin-bottom: 0;
@@ -4179,9 +4147,7 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .navbar-collapse {
-  -ms-flex-preferred-size: 100%;
   flex-basis: 100%;
-  -ms-flex-positive: 1;
   flex-grow: 1;
   -ms-flex-align: center;
   align-items: center
@@ -4219,14 +4185,12 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 
 @media (min-width: 576px) {
   .navbar-expand-sm {
-    -ms-flex-flow:row nowrap;
     flex-flow: row nowrap;
     -ms-flex-pack: start;
     justify-content: flex-start
   }
 
   .navbar-expand-sm .navbar-nav {
-    -ms-flex-direction: row;
     flex-direction: row
   }
 
@@ -4240,14 +4204,11 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
   }
 
   .navbar-expand-sm>.container,.navbar-expand-sm>.container-fluid {
-    -ms-flex-wrap: nowrap;
     flex-wrap: nowrap
   }
 
   .navbar-expand-sm .navbar-collapse {
-    display: -ms-flexbox!important;
     display: flex!important;
-    -ms-flex-preferred-size: auto;
     flex-basis: auto
   }
 
@@ -4265,14 +4226,11 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 
 @media (min-width: 768px) {
   .navbar-expand-md {
-    -ms-flex-flow:row nowrap;
     flex-flow: row nowrap;
-    -ms-flex-pack: start;
     justify-content: flex-start
   }
 
   .navbar-expand-md .navbar-nav {
-    -ms-flex-direction: row;
     flex-direction: row
   }
 
@@ -4286,14 +4244,11 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
   }
 
   .navbar-expand-md>.container,.navbar-expand-md>.container-fluid {
-    -ms-flex-wrap: nowrap;
     flex-wrap: nowrap
   }
 
   .navbar-expand-md .navbar-collapse {
-    display: -ms-flexbox!important;
     display: flex!important;
-    -ms-flex-preferred-size: auto;
     flex-basis: auto
   }
 
@@ -4311,14 +4266,11 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 
 @media (min-width: 992px) {
   .navbar-expand-lg {
-    -ms-flex-flow:row nowrap;
     flex-flow: row nowrap;
-    -ms-flex-pack: start;
     justify-content: flex-start
   }
 
   .navbar-expand-lg .navbar-nav {
-    -ms-flex-direction: row;
     flex-direction: row
   }
 
@@ -4332,14 +4284,12 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
   }
 
   .navbar-expand-lg>.container,.navbar-expand-lg>.container-fluid {
-    -ms-flex-wrap: nowrap;
+
     flex-wrap: nowrap
   }
 
   .navbar-expand-lg .navbar-collapse {
-    display: -ms-flexbox!important;
     display: flex!important;
-    -ms-flex-preferred-size: auto;
     flex-basis: auto
   }
 
@@ -4357,14 +4307,11 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 
 @media (min-width: 1200px) {
   .navbar-expand-xl {
-    -ms-flex-flow:row nowrap;
     flex-flow: row nowrap;
-    -ms-flex-pack: start;
     justify-content: flex-start
   }
 
   .navbar-expand-xl .navbar-nav {
-    -ms-flex-direction: row;
     flex-direction: row
   }
 
@@ -4378,14 +4325,11 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
   }
 
   .navbar-expand-xl>.container,.navbar-expand-xl>.container-fluid {
-    -ms-flex-wrap: nowrap;
     flex-wrap: nowrap
   }
 
   .navbar-expand-xl .navbar-collapse {
-    display: -ms-flexbox!important;
     display: flex!important;
-    -ms-flex-preferred-size: auto;
     flex-basis: auto
   }
 
@@ -4395,9 +4339,7 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .navbar-expand {
-  -ms-flex-flow: row nowrap;
   flex-flow: row nowrap;
-  -ms-flex-pack: start;
   justify-content: flex-start
 }
 
@@ -4407,7 +4349,6 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .navbar-expand .navbar-nav {
-  -ms-flex-direction: row;
   flex-direction: row
 }
 
@@ -4421,14 +4362,11 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .navbar-expand>.container,.navbar-expand>.container-fluid {
-  -ms-flex-wrap: nowrap;
   flex-wrap: nowrap
 }
 
 .navbar-expand .navbar-collapse {
-  display: -ms-flexbox!important;
   display: flex!important;
-  -ms-flex-preferred-size: auto;
   flex-basis: auto
 }
 
@@ -4528,10 +4466,8 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 
 .card {
   position: relative;
-  display: -ms-flexbox;
   display: flex;
   width: auto;
-  -ms-flex-direction: column;
   flex-direction: column;
   word-wrap: break-word;
   background-color: #fff;
@@ -4556,7 +4492,6 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .card-body {
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   padding: 1.25rem
 }
@@ -4646,9 +4581,7 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .card-deck {
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-direction: column;
   flex-direction: column
 }
 
@@ -4658,18 +4591,14 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 
 @media (min-width: 576px) {
   .card-deck {
-    -ms-flex-flow:row wrap;
     flex-flow: row wrap;
     margin-right: -15px;
     margin-left: -15px
   }
 
   .card-deck .card {
-    display: -ms-flexbox;
     display: flex;
-    -ms-flex: 1 0 0%;
     flex: 1 0 0%;
-    -ms-flex-direction: column;
     flex-direction: column;
     margin-right: 15px;
     margin-bottom: 0;
@@ -4678,9 +4607,7 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .card-group {
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-direction: column;
   flex-direction: column
 }
 
@@ -4690,12 +4617,10 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 
 @media (min-width: 576px) {
   .card-group {
-    -ms-flex-flow:row wrap;
     flex-flow: row wrap
   }
 
   .card-group>.card {
-    -ms-flex: 1 0 0%;
     flex: 1 0 0%;
     margin-bottom: 0
   }
@@ -4783,9 +4708,7 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .breadcrumb {
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
   padding: .75rem 1rem;
   margin-bottom: 1rem;
@@ -4818,7 +4741,6 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
 }
 
 .pagination {
-  display: -ms-flexbox;
   display: flex;
   padding-left: 0;
   list-style: none;
@@ -5246,7 +5168,6 @@ a.badge-dark.focus,a.badge-dark:focus {
 }
 
 .progress {
-  display: -ms-flexbox;
   display: flex;
   height: 1rem;
   overflow: hidden;
@@ -5256,11 +5177,8 @@ a.badge-dark.focus,a.badge-dark:focus {
 }
 
 .progress-bar {
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-direction: column;
   flex-direction: column;
-  -ms-flex-pack: center;
   justify-content: center;
   color: #fff;
   text-align: center;
@@ -5293,7 +5211,6 @@ a.badge-dark.focus,a.badge-dark:focus {
 }
 
 .media {
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-align: start;
   align-items: flex-start
@@ -5305,9 +5222,7 @@ a.badge-dark.focus,a.badge-dark:focus {
 }
 
 .list-group {
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-direction: column;
   flex-direction: column;
   padding-left: 0;
   margin-bottom: 0
@@ -5698,7 +5613,6 @@ a.close.disabled {
 }
 
 .toast-header {
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-align: center;
   align-items: center;
@@ -5761,7 +5675,6 @@ a.close.disabled {
 }
 
 .modal-dialog-scrollable {
-  display: -ms-flexbox;
   display: flex;
   max-height: calc(100% - 1rem)
 }
@@ -5772,7 +5685,6 @@ a.close.disabled {
 }
 
 .modal-dialog-scrollable .modal-footer,.modal-dialog-scrollable .modal-header {
-  -ms-flex-negative: 0;
   flex-shrink: 0
 }
 
@@ -5781,7 +5693,6 @@ a.close.disabled {
 }
 
 .modal-dialog-centered {
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-align: center;
   align-items: center;
@@ -5795,7 +5706,6 @@ a.close.disabled {
 }
 
 .modal-dialog-centered.modal-dialog-scrollable {
-  -ms-flex-direction: column;
   flex-direction: column;
   -ms-flex-pack: center;
   justify-content: center;
@@ -5812,9 +5722,7 @@ a.close.disabled {
 
 .modal-content {
   position: relative;
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-direction: column;
   flex-direction: column;
   width: 100%;
   pointer-events: auto;
@@ -5844,7 +5752,6 @@ a.close.disabled {
 }
 
 .modal-header {
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-align: start;
   align-items: flex-start;
@@ -5868,13 +5775,11 @@ a.close.disabled {
 
 .modal-body {
   position: relative;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   padding: 1rem
 }
 
 .modal-footer {
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-align: center;
   align-items: center;
@@ -6296,7 +6201,6 @@ a.close.disabled {
   top: 0;
   bottom: 0;
   z-index: 1;
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-align: center;
   align-items: center;
@@ -6351,7 +6255,6 @@ a.close.disabled {
   bottom: 0;
   left: 0;
   z-index: 15;
-  display: -ms-flexbox;
   display: flex;
   -ms-flex-pack: center;
   justify-content: center;
@@ -6363,7 +6266,6 @@ a.close.disabled {
 
 .carousel-indicators li {
   box-sizing: content-box;
-  -ms-flex: 0 1 auto;
   flex: 0 1 auto;
   width: 30px;
   height: 3px;
@@ -6723,12 +6625,10 @@ a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
 }
 
 .d-flex {
-  display: -ms-flexbox!important;
   display: flex!important
 }
 
 .d-inline-flex {
-  display: -ms-inline-flexbox!important;
   display: inline-flex!important
 }
 
@@ -6762,12 +6662,10 @@ a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
   }
 
   .d-sm-flex {
-    display: -ms-flexbox!important;
     display: flex!important
   }
 
   .d-sm-inline-flex {
-    display: -ms-inline-flexbox!important;
     display: inline-flex!important
   }
 }
@@ -6802,12 +6700,10 @@ a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
   }
 
   .d-md-flex {
-    display: -ms-flexbox!important;
     display: flex!important
   }
 
   .d-md-inline-flex {
-    display: -ms-inline-flexbox!important;
     display: inline-flex!important
   }
 }
@@ -6842,12 +6738,10 @@ a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
   }
 
   .d-lg-flex {
-    display: -ms-flexbox!important;
     display: flex!important
   }
 
   .d-lg-inline-flex {
-    display: -ms-inline-flexbox!important;
     display: inline-flex!important
   }
 }
@@ -6882,12 +6776,10 @@ a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
   }
 
   .d-xl-flex {
-    display: -ms-flexbox!important;
     display: flex!important
   }
 
   .d-xl-inline-flex {
-    display: -ms-inline-flexbox!important;
     display: inline-flex!important
   }
 }
@@ -6922,12 +6814,10 @@ a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
   }
 
   .d-print-flex {
-    display: -ms-flexbox!important;
     display: flex!important
   }
 
   .d-print-inline-flex {
-    display: -ms-inline-flexbox!important;
     display: inline-flex!important
   }
 }
@@ -7922,7 +7812,6 @@ a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
 }
 
 .position-sticky {
-  position: -webkit-sticky!important;
   position: sticky!important
 }
 
@@ -7942,9 +7831,8 @@ a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
   z-index: 1030
 }
 
-@supports ((position: -webkit-sticky) or (position:sticky)) {
+@supports (position:sticky) {
   .sticky-top {
-    position:-webkit-sticky;
     position: sticky;
     top: 0;
     z-index: 1020
@@ -10082,7 +9970,7 @@ a.text-dark:focus,a.text-dark:hover {
 }
 
 .text-hide {
-  font: 0/0 a;
+  font: inherit;
   color: transparent;
   text-shadow: none;
   background-color: transparent;

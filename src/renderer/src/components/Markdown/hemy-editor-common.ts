@@ -104,8 +104,10 @@ function updateSelection(
     if (content.startsWith(prefix) && content.endsWith(suffix)) {
         newText = content.substring(prefix.length, content.length - suffix.length)
     } else {
+        // 重新获取选择范围内的文本，而不是使用扩展范围的内容
+        const selectedText = model.getValueInRange(selection)
+        newText = `${prefix}${selectedText}${suffix}`
         selectRange = selection
-        newText = `${prefix}${content}${suffix}`
     }
 
     replaceSelection(editor, newText, false, selectRange)

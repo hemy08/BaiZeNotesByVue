@@ -5,7 +5,7 @@
 
 import { BrowserWindow } from 'electron'
 import { JSDOM } from 'jsdom'
-import { getCurrentThemeStyles } from '../utils/theme-config'
+import { getCurrentThemeStyles } from '../theme-config/theme-config'
 
 let aboutDialog: Electron.BrowserWindow | null
 
@@ -207,6 +207,13 @@ function makeAboutHtml(): string {
 
         .app-name {
             font-size: 24px;
+            font-weight: bold;
+            color: ${theme.textColor};
+            margin-top: 15px;
+        }
+
+        .app-desc {
+            font-size: 16px;
             font-weight: bold;
             color: ${theme.textColor};
             margin-top: 15px;

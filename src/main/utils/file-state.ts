@@ -1,19 +1,28 @@
 /**
- * 文件状态管理
- * 保存和恢复上次打开的文件和目录
+ * 文件状态管理模块
+ * 用于管理文件的打开状态、最近文件列表等
  */
 
+// @ts-ignore
 import Store from 'electron-store'
-import { BrowserWindow } from 'electron'
+import * as path from 'path'
+// @ts-ignore
+import * as FileUtils from './file-utils'
 
-// 创建存储实例
-const fileStateStore = new Store({
+// 文件状态配置接口
+export interface FileState {
+    lastOpenedFile: string | null
+    lastOpenedDirectory: string | null
+    recentFiles: string[]
+}
+
+// 创建文件状态存储实例
+const fileStateStore = new Store<FileState>({
     name: 'file-state',
     defaults: {
-        lastOpenedFile: null as string | null,
-        lastOpenedDirectory: null as string | null,
-        recentFiles: [] as string[],
-        maxRecentFiles: 10
+        lastOpenedFile: null,
+        lastOpenedDirectory: null,
+        recentFiles: []
     }
 })
 
@@ -23,28 +32,10 @@ const fileStateStore = new Store({
 export function saveLastOpenedFile(filePath: string): void {
     fileStateStore.set('lastOpenedFile', filePath)
     
-    // 同时更新最近文件列表
-    const recentFiles = getRecentFiles()
-    const index = recentFiles.indexOf(filePath)
-    if (index > -1) {
-        recentFiles.splice(index, 1)
-    }
-    recentFiles.unshift(filePath)
-    
-    // 限制最近文件数量
-    const maxRecent = fileStateStore.get('maxRecentFiles') as number
-    if (recentFiles.length > maxRecent) {
-        recentFiles.splice(maxRecent)
-    }
-    
-    fileStateStore.set('recentFiles', recentFiles)
-}
-
-/**
- * 保存上次打开的目录
- */
-export function saveLastOpenedDirectory(dirPath: string): void {
-    fileStateStore.set('lastOpenedDirectory', dirPath)
+    // 添加到最近文件列表
+    const recentFiles = fileStateStore.get('recentFiles', []) as string[]
+    const updatedRecentFiles = [filePath, ...recentFiles.filter(f => f !== filePath)].slice(0, 10)
+    fileStateStore.set('recentFiles', updatedRecentFiles)
 }
 
 /**
@@ -55,6 +46,20 @@ export function getLastOpenedFile(): string | null {
 }
 
 /**
+ * 清除上次打开的文件记录
+ */
+export function clearLastOpenedFile(): void {
+    fileStateStore.set('lastOpenedFile', null)
+}
+
+/**
+ * 保存上次打开的目录
+ */
+export function saveLastOpenedDirectory(dirPath: string): void {
+    fileStateStore.set('lastOpenedDirectory', dirPath)
+}
+
+/**
  * 获取上次打开的目录
  */
 export function getLastOpenedDirectory(): string | null {
@@ -62,37 +67,39 @@ export function getLastOpenedDirectory(): string | null {
 }
 
 /**
- * 获取最近文件列表
- */
-export function getRecentFiles(): string[] {
-    return fileStateStore.get('recentFiles') as string[]
-}
-
-/**
- * 清除上次打开的文件
- */
-export function clearLastOpenedFile(): void {
-    fileStateStore.set('lastOpenedFile', null)
-}
-
-/**
- * 清除上次打开的目录
+ * 清除上次打开的目录记录
  */
 export function clearLastOpenedDirectory(): void {
     fileStateStore.set('lastOpenedDirectory', null)
 }
 
 /**
- * 清除所有文件状态
+ * 获取最近文件列表
  */
-export function clearAllFileState(): void {
-    fileStateStore.clear()
+export function getRecentFiles(): string[] {
+    return fileStateStore.get('recentFiles', []) as string[]
+}
+
+/**
+ * 清除最近文件列表
+ */
+export function clearRecentFiles(): void {
+    fileStateStore.set('recentFiles', [])
+}
+
+/**
+ * 从最近文件列表中移除指定文件
+ */
+export function removeRecentFile(filePath: string): void {
+    const recentFiles = fileStateStore.get('recentFiles', []) as string[]
+    const updatedRecentFiles = recentFiles.filter(f => f !== filePath)
+    fileStateStore.set('recentFiles', updatedRecentFiles)
 }
 
 /**
  * 恢复上次打开的文件
  */
-export function restoreLastOpenedFile(mainWindow: BrowserWindow): void {
+export function restoreLastOpenedFile(): void {
     const lastFile = getLastOpenedFile()
     const lastDir = getLastOpenedDirectory()
     
@@ -101,10 +108,16 @@ export function restoreLastOpenedFile(mainWindow: BrowserWindow): void {
         try {
             const fs = require('fs')
             if (fs.existsSync(lastFile)) {
-                // 导入文件打开函数
-                const { OpenSelectFile } = require('./file-utils')
-                const path = require('path')
-                OpenSelectFile(mainWindow, lastFile, path.basename(lastFile))
+                // 创建FileProperties对象
+                const fileProperties = {
+                    name: path.basename(lastFile),
+                    path: lastFile,
+                    type: 'file' as const,
+                    content: ''
+                }
+                
+                // 调用OpenSelectFile
+                FileUtils.OpenSelectFile(fileProperties)
                 console.log('已恢复上次打开的文件:', lastFile)
             } else {
                 console.log('上次打开的文件不存在:', lastFile)
@@ -116,21 +129,26 @@ export function restoreLastOpenedFile(mainWindow: BrowserWindow): void {
         }
     }
     
-    // 如果没有文件，恢复目录
-    if (!lastFile && lastDir) {
+    // 如果没有文件，尝试恢复目录
+    else if (lastDir) {
         try {
             const fs = require('fs')
             if (fs.existsSync(lastDir)) {
-                // 发送目录路径到渲染进程
-                mainWindow.webContents.send('restore-last-directory', lastDir)
-                console.log('已恢复上次打开的目录:', lastDir)
+                console.log('上次打开的目录:', lastDir)
+                // 可以在这里添加打开目录的逻辑
             } else {
                 console.log('上次打开的目录不存在:', lastDir)
-                // 目录不存在，清除记录
                 clearLastOpenedDirectory()
             }
         } catch (error) {
             console.error('恢复上次打开的目录失败:', error)
         }
     }
+}
+
+/**
+ * 重置所有文件状态
+ */
+export function resetFileState(): void {
+    fileStateStore.clear()
 }

@@ -3,12 +3,19 @@ productName: BaiZeNotes
 directories:
   buildResources: build
 files:
+  - out/**/*
+  - '!out/renderer/src/**'  # 排除渲染进程源码（已在asar中）
+  - resources/**/*
   - '!**/.vscode/*'
   - '!src/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslint ignore,.eslintrc.cjs,.prettier ignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+extraResources:
+  - from: "resources"
+    to: "resources"
+    filter: ["**/*"]
 asarUnpack:
   - resources/**
 win:

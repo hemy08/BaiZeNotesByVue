@@ -1,5 +1,5 @@
 import { BrowserWindow, ipcMain } from 'electron'
-import { getCurrentThemeStyles } from '../utils/theme-config'
+import { getCurrentThemeStyles } from '../theme-config/theme-config'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
 

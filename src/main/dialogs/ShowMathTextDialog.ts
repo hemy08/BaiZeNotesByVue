@@ -1,8 +1,8 @@
 import { BrowserWindow, ipcMain } from 'electron'
-import { katexRenderToString } from '../utils/KatexRender'
+import { katexRenderToString } from '../renders/KatexRender'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
-import { getCurrentThemeStyles } from '../utils/theme-config'
+import { getCurrentThemeStyles } from '../theme-config/theme-config'
 
 let customMathTextDialog: Electron.BrowserWindow | null = null
 

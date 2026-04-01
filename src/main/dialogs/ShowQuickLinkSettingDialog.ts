@@ -11,7 +11,7 @@ import {
     QuickLinkItem,
     resetToDefault
 } from '../utils/quick-link-config'
-import { getCurrentThemeStyles } from '../utils/theme-config'
+import { getCurrentThemeStyles } from '../theme-config/theme-config'
 
 let quickLinkSettingDialog: Electron.BrowserWindow | null
 

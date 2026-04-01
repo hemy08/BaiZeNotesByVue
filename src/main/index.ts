@@ -7,8 +7,8 @@ import { getApplicationMenu } from './menu/menu'
 import './plugins/plugin'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
-import { getCurrentThemeStyles, initializeThemeManager } from './utils/theme-config'
 import { restoreLastOpenedFile } from './utils/file-state'
+import { getCurrentThemeStyles } from './theme-config/theme-config'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -45,7 +45,7 @@ function createWindow(): void {
         mainWindow.webContents.send('baize-notes:init-theme-styles', theme)
         
         // 恢复上次打开的文件
-        restoreLastOpenedFile(mainWindow)
+        restoreLastOpenedFile()
     })
     globalShortcut.register('F12', () => {
         mainWindow.webContents.openDevTools()
@@ -85,7 +85,6 @@ app.whenReady().then(() => {
     electronApp.setAppUserModelId('com.electron')
 
     // 初始化主题管理器 - 在应用启动时预加载所有主题
-    initializeThemeManager()
 
     // Default open or close DevTools by F12 in development
     // and ignore CommandOrControl + R in production.

@@ -9,9 +9,9 @@ import {
     getCurrentTheme,
     getCurrentThemeStyles,
     setTheme,
-    getAllThemes,
+    themes,
     ThemeType
-} from '../utils/theme-config'
+} from '../theme-config/theme-config'
 
 let themeSettingDialog: Electron.BrowserWindow | null
 
@@ -264,8 +264,7 @@ function makeThemeSettingDialogHtml(): string {
     themeGrid.id = 'themeGrid'
 
     // 生成主题卡片
-    const themes = getAllThemes()
-    for (const { type, styles } of themes) {
+    for (const [type, styles] of Object.entries(themes)) {
         const isSelected = type === currentThemeType
 
         const themeCard = document.createElement('div')

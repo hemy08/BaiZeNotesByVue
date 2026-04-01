@@ -5,7 +5,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { CreateFileFolder } from '../utils/file-utils'
 import { JSDOM } from 'jsdom'
-import { getCurrentThemeStyles } from '../utils/theme-config'
+import { getCurrentThemeStyles } from '../theme-config/theme-config'
 import * as digcom from './dialog_common'
 
 let customCreateDialog: Electron.BrowserWindow | null

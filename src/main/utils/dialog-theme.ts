@@ -3,7 +3,7 @@
  * 为对话框提供统一的主题样式
  */
 
-import { getCurrentThemeStyles, ThemeStyles } from './theme-config'
+import { getCurrentThemeStyles, ThemeStyles } from '../theme-config/theme-config'
 
 /**
  * 获取主题CSS变量样式

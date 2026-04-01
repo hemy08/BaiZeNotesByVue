@@ -2,7 +2,7 @@
 import { globalInitialize } from './global'
 import * as FileUtils from './file-utils'
 // @ts-ignore
-import { HemyRenderPre, HemyRenderPost } from './HemyRender'
+import { HemyRenderPre, HemyRenderPost } from '../renders/HemyRender'
 // @ts-ignore
 import {
     CreateRsaKeyPair,
@@ -14,7 +14,7 @@ import {
 import { ipcMain, shell } from 'electron'
 // @ts-ignore
 import { getQuickLinks } from './quick-link-config'
-import { getCurrentTheme, getCurrentThemeStyles, getAllThemes } from './theme-config'
+import { getCurrentTheme, getCurrentThemeStyles, getAllThemes } from '../theme-config/theme-config'
 
 export {
     globalInitialize,

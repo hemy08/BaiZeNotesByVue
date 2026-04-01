@@ -1,7 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import * as digcom from './dialog_common'
-import { getCurrentThemeStyles } from '../utils/theme-config'
+import { getCurrentThemeStyles } from '../theme-config/theme-config'
 
 let customMermaidEditDialog: Electron.BrowserWindow | null
 

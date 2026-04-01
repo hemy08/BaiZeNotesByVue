@@ -5,7 +5,7 @@
 
 import { BrowserWindow } from 'electron'
 import { JSDOM } from 'jsdom'
-import { getCurrentThemeStyles } from '../utils/theme-config'
+import { getCurrentThemeStyles } from '../theme-config/theme-config'
 
 let techStackDialog: Electron.BrowserWindow | null
 
