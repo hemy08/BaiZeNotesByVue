@@ -8,7 +8,7 @@ import './plugins/plugin'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
 import { restoreLastOpenedFile } from './utils/file-state'
-import { getCurrentThemeStyles } from './theme-config/theme-config'
+import { getCurrentThemeStyles } from './themes/theme-config'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -25,7 +25,9 @@ function createWindow(): void {
             preload: join(__dirname, '../preload/index.js'),
             nodeIntegration: true,
             contextIsolation: false,
-            sandbox: false
+            sandbox: false,
+            webSecurity: false,
+            allowRunningInsecureContent: true
         }
     })
 
@@ -96,9 +98,19 @@ app.whenReady().then(() => {
     // IPC test
     ipcMain.on('ping', () => console.log('pong'))
 
+    // 获取当前主题
+    ipcMain.handle('get-current-theme', () => {
+        return getCurrentThemeStyles()
+    })
+
     // 监听主题更新请求
     ipcMain.on('baize-notes:update-theme', () => {
         const theme = getCurrentThemeStyles()
+        console.log('[Main] Sending theme update:', theme)
+        if (!theme) {
+            console.error('[Main] Failed to get current theme styles')
+            return
+        }
         // 发送主题更新到所有窗口
         BrowserWindow.getAllWindows().forEach(window => {
             window.webContents.send('baize-notes:theme-updated', theme)

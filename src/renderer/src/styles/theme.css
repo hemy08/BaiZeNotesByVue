@@ -1,0 +1,194 @@
+/* 全局主题样式 */
+:root {
+    --theme-background-color: #f5f0ff;
+    --theme-card-background: #ffffff;
+    --theme-text-color: #2d2d2d;
+    --theme-secondary-text-color: #666666;
+    --theme-border-color: #e0d4f0;
+    --theme-accent-color: #764ba2;
+    --theme-button-background: #764ba2;
+    --theme-button-text-color: #ffffff;
+    --theme-hover-background: #f0e8ff;
+    --theme-title-bar-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* 全局主题应用 */
+body {
+    background-color: var(--theme-background-color);
+    color: var(--theme-text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 预览区域主题 */
+#markdown-preview-html {
+    background-color: var(--theme-card-background);
+    color: var(--theme-text-color);
+    padding: 20px;
+    border-radius: 4px;
+}
+
+/* 预览区域中的标题颜色 */
+#markdown-preview-html h1,
+#markdown-preview-html h2,
+#markdown-preview-html h3,
+#markdown-preview-html h4,
+#markdown-preview-html h5,
+#markdown-preview-html h6 {
+    color: var(--theme-text-color);
+    border-color: var(--theme-border-color);
+}
+
+/* 预览区域中的链接 */
+#markdown-preview-html a {
+    color: var(--theme-accent-color);
+}
+
+/* 预览区域中的代码块 */
+#markdown-preview-html code,
+#markdown-preview-html pre {
+    background-color: var(--theme-hover-background);
+    border: 1px solid var(--theme-border-color);
+}
+
+/* 预览区域中的表格 */
+#markdown-preview-html table {
+    border-color: var(--theme-border-color);
+}
+
+#markdown-preview-html th,
+#markdown-preview-html td {
+    border-color: var(--theme-border-color);
+}
+
+#markdown-preview-html th {
+    background-color: var(--theme-hover-background);
+}
+
+/* 预览区域中的引用 */
+#markdown-preview-html blockquote {
+    border-left-color: var(--theme-accent-color);
+    background-color: var(--theme-hover-background);
+}
+
+/* 预览区域中的列表 */
+#markdown-preview-html ul,
+#markdown-preview-html ol {
+    color: var(--theme-text-color);
+}
+
+/* 预览区域中的分隔线 */
+#markdown-preview-html hr {
+    border-color: var(--theme-border-color);
+}
+
+/* 状态栏主题 */
+.status-bar {
+    background-color: var(--theme-card-background);
+    color: var(--theme-secondary-text-color);
+    border-top: 1px solid var(--theme-border-color);
+}
+
+/* 工具栏按钮主题 */
+.tool-btn {
+    background-color: var(--theme-card-background);
+    color: var(--theme-text-color);
+    border: 1px solid var(--theme-border-color);
+}
+
+.tool-btn:hover {
+    background-color: var(--theme-hover-background);
+    border-color: var(--theme-accent-color);
+}
+
+/* 下拉菜单主题 */
+.dropdown-menu {
+    background-color: var(--theme-card-background);
+    border: 1px solid var(--theme-border-color);
+    color: var(--theme-text-color);
+}
+
+.dropdown-item {
+    color: var(--theme-text-color);
+}
+
+.dropdown-item:hover {
+    background-color: var(--theme-hover-background);
+    color: var(--theme-accent-color);
+}
+
+/* 模态框主题 */
+.modal {
+    background-color: var(--theme-card-background);
+    color: var(--theme-text-color);
+    border: 1px solid var(--theme-border-color);
+}
+
+.modal-header {
+    background-color: var(--theme-title-bar-gradient);
+    color: var(--theme-button-text-color);
+}
+
+/* 表单元素主题 */
+input,
+textarea,
+select {
+    background-color: var(--theme-card-background);
+    color: var(--theme-text-color);
+    border: 1px solid var(--theme-border-color);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--theme-accent-color);
+    box-shadow: 0 0 0 2px var(--theme-accent-color)20;
+}
+
+/* 按钮主题 */
+button {
+    background-color: var(--theme-button-background);
+    color: var(--theme-button-text-color);
+    border: none;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: var(--theme-hover-background);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 滚动条主题 */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--theme-card-background);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--theme-border-color);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--theme-accent-color);
+}
+
+/* 选择文本主题 */
+::selection {
+    background-color: var(--theme-accent-color);
+    color: var(--theme-button-text-color);
+}
+
+/* 工具提示主题 */
+[title]:hover::after {
+    background-color: var(--theme-text-color);
+    color: var(--theme-card-background);
+}

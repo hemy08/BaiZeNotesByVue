@@ -114,6 +114,15 @@ export function getAppFileMenuItem(
         },
         { type: 'separator' },
         {
+            label: '重启应用',
+            accelerator: 'ctrl+shift+r',
+            click: () => {
+                app.relaunch()
+                app.quit()
+            }
+        },
+        { type: 'separator' },
+        {
             label: '退出',
             role: 'quit',
             accelerator: 'f4',

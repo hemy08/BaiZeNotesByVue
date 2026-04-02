@@ -189,15 +189,15 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         name: '白泽图标',
         description: '与白泽图标一致的紫粉渐变主题',
         titleBarGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-        backgroundColor: '#1a1625',
-        cardBackground: '#2d2640',
-        textColor: '#ffffff',
-        secondaryTextColor: '#c0b8d0',
-        borderColor: '#4a4060',
+        backgroundColor: '#f5f7fa',
+        cardBackground: '#ffffff',
+        textColor: '#1a1a1a',
+        secondaryTextColor: '#4a4a4a',
+        borderColor: '#e1e4e8',
         accentColor: '#f093fb',
         buttonBackground: '#f093fb',
         buttonTextColor: '#1a1625',
-        hoverBackground: '#3d3555'
+        hoverBackground: '#e8f0fe'
     },
     // 海洋主题
     ocean: {
@@ -219,15 +219,15 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         name: '森林秘境',
         description: '深邃的森林绿主题',
         titleBarGradient: 'linear-gradient(135deg, #4a7a50 0%, #2a5030 100%)',
-        backgroundColor: '#0a150a',
-        cardBackground: '#152015',
-        textColor: '#c8e0c8',
-        secondaryTextColor: '#809080',
-        borderColor: '#2a402a',
+        backgroundColor: '#f5f8f5',
+        cardBackground: '#ffffff',
+        textColor: '#1a1a1a',
+        secondaryTextColor: '#4a4a4a',
+        borderColor: '#d8e8d8',
         accentColor: '#50a050',
         buttonBackground: '#50a050',
         buttonTextColor: '#0a150a',
-        hoverBackground: '#203020'
+        hoverBackground: '#e8f5e9'
     },
     // ========== 护眼主题 ==========
     // 护眼绿色主题

@@ -24,9 +24,9 @@
             style="
                 width: 1px;
                 height: 100%;
-                background-color: #00b0ff;
-                color: #00b0ff;
-                fill: #00b0ff;
+                background-color: var(--theme-border-color, #00b0ff);
+                color: var(--theme-border-color, #00b0ff);
+                fill: var(--theme-border-color, #00b0ff);
             "
         ></div>
         <div id="markdown-toc-heading">
@@ -130,14 +130,14 @@ onMounted(() => {
 .resizer-navi-tab-file-manager {
     width: 1px;
     height: 100%;
-    background-color: #00b0ff;
-    color: #00b0ff;
-    fill: #00b0ff;
+    background-color: var(--theme-border-color, #00b0ff);
+    color: var(--theme-border-color, #00b0ff);
+    fill: var(--theme-border-color, #00b0ff);
 }
 
 .file-manager {
-    background: ghostwhite;
-    color: black;
+    background: var(--theme-card-background, ghostwhite);
+    color: var(--theme-text-color, black);
     overflow: auto;
     height: 100%;
     width: calc(100% - 1px);
@@ -146,22 +146,22 @@ onMounted(() => {
 .markdown-toc-component {
     display: flex;
     flex-direction: row;
-    background: ghostwhite;
-    color: black;
+    background: var(--theme-card-background, ghostwhite);
+    color: var(--theme-text-color, black);
     overflow: auto;
     width: auto;
     height: 100%;
 }
 
 .markdown-toc-title {
-    color: red;
+    color: var(--theme-accent-color, red);
     width: 100%;
     display: inline-block;
     font-family: 'STXinwei', serif;
 }
 
 .markdown-toc-title:hover {
-    background-color: #9dddff;
+    background-color: var(--theme-hover-background, #9dddff);
     display: inline-block;
 }
 </style>

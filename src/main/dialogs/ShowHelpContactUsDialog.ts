@@ -4,7 +4,7 @@
 
 import { BrowserWindow } from 'electron'
 import { JSDOM } from 'jsdom'
-import { getCurrentThemeStyles } from '../theme-config/theme-config'
+import { getCurrentThemeStyles } from '../themes/theme-config'
 
 let contactUsDialog: Electron.BrowserWindow | null
 

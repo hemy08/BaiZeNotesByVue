@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, watch, computed, ref } from 'vue'
+import { watch, computed, ref } from 'vue'
 import EventBus from '../../event-bus'
 import TokenGenerator from './Encryption/TokenGenerator.vue'
 import HashText from './Encryption/HashText.vue'

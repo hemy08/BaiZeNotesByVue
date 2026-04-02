@@ -1,7 +1,9 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
+// @ts-ignore
 import * as digcom from './dialog_common'
-import { getCurrentThemeStyles } from '../theme-config/theme-config'
+// @ts-ignore
+import { getCurrentThemeStyles } from '../themes/theme-config'
 
 let customAdmonitionDialog: Electron.BrowserWindow | null
 

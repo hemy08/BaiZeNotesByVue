@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import MdEditTools from './MarkdownEditToolsComponent.vue'
 import MdEditComp from './MarkdownEditComponent.vue'
-import { defineProps, ref } from 'vue'
+import { ref } from 'vue'
 
 const toolsBarRef = ref(null)
 
@@ -27,8 +27,8 @@ const props = defineProps({
 #md-edit-tools-bar {
     width: 100%;
     height: auto;
-    background-color: #f2f2f2;
-    color: black;
+    background-color: var(--theme-background-color, #f2f2f2);
+    color: var(--theme-text-color, black);
     display: flex;
     flex-wrap: wrap;
 }

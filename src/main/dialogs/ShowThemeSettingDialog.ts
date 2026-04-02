@@ -5,13 +5,14 @@
 
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
+// @ts-ignore
 import {
     getCurrentTheme,
     getCurrentThemeStyles,
     setTheme,
     themes,
     ThemeType
-} from '../theme-config/theme-config'
+} from '../themes/theme-config'
 
 let themeSettingDialog: Electron.BrowserWindow | null
 
@@ -65,9 +66,10 @@ function handleSetTheme(event: Electron.IpcMainEvent, themeType: ThemeType) {
     event.reply('baize-notes:theme-changed', themeType)
     
     const newThemeStyles = getCurrentThemeStyles()
+    console.log('[Theme Dialog] Applying theme:', themeType, newThemeStyles)
     
     BrowserWindow.getAllWindows().forEach(win => {
-        win.webContents.send('baize-notes:theme-updated')
+        win.webContents.send('baize-notes:theme-updated', newThemeStyles)
         win.webContents.send('baize-notes:init-theme-styles', newThemeStyles)
     })
 }

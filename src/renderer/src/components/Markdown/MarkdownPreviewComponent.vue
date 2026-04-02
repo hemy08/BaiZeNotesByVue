@@ -147,4 +147,124 @@ onUpdated(() => {
     overflow-x: auto;
     display: inline-block;
 }
+
+/* 代码块样式优化 */
+.markdown-preview-html :deep(pre) {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 12px;
+    margin: 10px 0;
+    overflow-x: auto;
+    border: 1px solid #e0e0e0;
+}
+
+.markdown-preview-html :deep(code) {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333;
+}
+
+.markdown-preview-html :deep(pre code) {
+    background-color: transparent;
+    padding: 0;
+    border: none;
+}
+
+/* 行内代码样式 */
+.markdown-preview-html :deep(p code),
+.markdown-preview-html :deep(li code) {
+    background-color: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+/* 代码高亮样式 */
+.markdown-preview-html :deep(.hljs) {
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+.markdown-preview-html :deep(.hljs-comment),
+.markdown-preview-html :deep(.hljs-quote) {
+    color: #998;
+    font-style: italic;
+}
+
+.markdown-preview-html :deep(.hljs-keyword),
+.markdown-preview-html :deep(.hljs-selector-tag),
+.markdown-preview-html :deep(.hljs-subst) {
+    color: #333;
+    font-weight: bold;
+}
+
+.markdown-preview-html :deep(.hljs-number),
+.markdown-preview-html :deep(.hljs-literal),
+.markdown-preview-html :deep(.hljs-variable),
+.markdown-preview-html :deep(.hljs-template-variable),
+.markdown-preview-html :deep(.hljs-tag .hljs-attr) {
+    color: #008080;
+}
+
+.markdown-preview-html :deep(.hljs-string),
+.markdown-preview-html :deep(.hljs-doctag) {
+    color: #d14;
+}
+
+.markdown-preview-html :deep(.hljs-title),
+.markdown-preview-html :deep(.hljs-section),
+.markdown-preview-html :deep(.hljs-selector-id) {
+    color: #900;
+    font-weight: bold;
+}
+
+.markdown-preview-html :deep(.hljs-type),
+.markdown-preview-html :deep(.hljs-class .hljs-title) {
+    color: #458;
+    font-weight: bold;
+}
+
+.markdown-preview-html :deep(.hljs-tag),
+.markdown-preview-html :deep(.hljs-name),
+.markdown-preview-html :deep(.hljs-attribute) {
+    color: #000080;
+    font-weight: normal;
+}
+
+.markdown-preview-html :deep(.hljs-regexp),
+.markdown-preview-html :deep(.hljs-link) {
+    color: #009926;
+}
+
+.markdown-preview-html :deep(.hljs-symbol),
+.markdown-preview-html :deep(.hljs-bullet) {
+    color: #990073;
+}
+
+.markdown-preview-html :deep(.hljs-built_in),
+.markdown-preview-html :deep(.hljs-builtin-name) {
+    color: #0086b3;
+}
+
+.markdown-preview-html :deep(.hljs-meta) {
+    color: #999;
+    font-weight: bold;
+}
+
+.markdown-preview-html :deep(.hljs-deletion) {
+    background: #fdd;
+}
+
+.markdown-preview-html :deep(.hljs-addition) {
+    background: #dfd;
+}
+
+.markdown-preview-html :deep(.hljs-emphasis) {
+    font-style: italic;
+}
+
+.markdown-preview-html :deep(.hljs-strong) {
+    font-weight: bold;
+}
 </style>

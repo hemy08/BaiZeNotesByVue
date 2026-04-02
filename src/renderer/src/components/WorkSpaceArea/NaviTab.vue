@@ -155,13 +155,13 @@ onUnmounted(() => {
     width: 100%;
     display: flex;
     flex-direction: column;
-    background-color: white;
+    background-color: var(--theme-card-background, white);
     margin: 1px;
 }
 
 .navi-tab-item {
     width: 100%;
-    background-color: white;
+    background-color: var(--theme-card-background, white);
     color: white;
     fill: #986801;
     border: none; /* 去掉外边框 */
@@ -169,7 +169,7 @@ onUnmounted(() => {
 }
 
 .navi-tab-item:hover {
-    background-color: grey;
+    background-color: var(--theme-hover-background, grey);
 }
 .text-icon {
     font-size: 20px;

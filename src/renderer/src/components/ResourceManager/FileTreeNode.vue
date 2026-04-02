@@ -155,7 +155,7 @@ function onContextMenu(e: MouseEvent, node: FileSysItem) {
 }
 
 .file-manager-node:hover {
-    background-color: #e1e4e8;
+    background-color: var(--theme-hover-background, #e1e4e8);
 }
 
 .file-icon {
@@ -179,9 +179,9 @@ function onContextMenu(e: MouseEvent, node: FileSysItem) {
 
 .custom-context-menu {
     display: none;
-    border: 1px solid #eeeeee;
+    border: 1px solid var(--theme-border-color, #eeeeee);
     border-radius: 10px;
-    background-color: #fefefe;
+    background-color: var(--theme-card-background, #fefefe);
     width: 200px;
     position: absolute; /* 相对于最近的已定位祖先元素（或body）定位 */
     z-index: 1000; /* 确保显示在其他元素之上 */

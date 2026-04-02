@@ -55,14 +55,14 @@ watch(
     height: 35px;
     width: 35px;
     border: none;
-    background-color: #f2f2f2;
-    color: black;
-    fill: black;
+    background-color: var(--theme-background-color, #f2f2f2);
+    color: var(--theme-text-color, black);
+    fill: var(--theme-text-color, black);
     place-items: center;
     display: inline-block;
 }
 
 .tool-btn:hover {
-    background-color: #eeffff;
+    background-color: var(--theme-hover-background, #eeffff);
 }
 </style>

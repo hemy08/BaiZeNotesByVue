@@ -4,7 +4,9 @@ import csv from 'csv-parser'
 import { detect } from 'jschardet'
 import { FileItem } from '../global-types'
 import { clipboard, dialog, shell } from 'electron'
+// @ts-ignore
 import { ShowImportOptionDialog }  from'../dialogs/ShowImportOptionDialog'
+// @ts-ignore
 import { ShowSuccessDialog } from "../dialogs/ShowSuccessDialog";
 import { saveLastOpenedFile, saveLastOpenedDirectory } from './file-state'
 

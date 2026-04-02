@@ -14,7 +14,7 @@ import {
 import { ipcMain, shell } from 'electron'
 // @ts-ignore
 import { getQuickLinks } from './quick-link-config'
-import { getCurrentTheme, getCurrentThemeStyles, getAllThemes } from '../theme-config/theme-config'
+import { getCurrentTheme, getCurrentThemeStyles, getAllThemes } from '../themes/theme-config'
 
 export {
     globalInitialize,

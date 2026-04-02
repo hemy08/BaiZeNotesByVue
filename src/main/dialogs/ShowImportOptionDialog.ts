@@ -5,7 +5,7 @@
 
 import { BrowserWindow, dialog } from 'electron'
 import { JSDOM } from 'jsdom'
-import { getCurrentThemeStyles } from '../theme-config/theme-config'
+import { getCurrentThemeStyles } from '../themes/theme-config'
 
 let importOptionDialog: Electron.BrowserWindow | null
 

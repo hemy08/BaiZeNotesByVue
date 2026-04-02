@@ -157,10 +157,11 @@ onMounted(() => {
 <style scoped>
 #navi-tab {
     height: calc(100vh - 2px - 20px);
-    background-color: white;
+    background-color: var(--theme-card-background, white);
     display: flex;
     float: left;
     width: 40px;
+    border-right: 1px solid var(--theme-border-color, #e0e0e0);
 }
 
 #resource-manager .resource-manager {
@@ -169,14 +170,15 @@ onMounted(() => {
     float: left;
     margin-right: 2px;
     flex-direction: column;
-    background: whitesmoke;
+    background: var(--theme-background-color, whitesmoke);
+    border-right: 1px solid var(--theme-border-color, #e0e0e0);
 }
 
 #resizer-main {
     cursor: ew-resize;
-    color: blue;
+    color: var(--theme-accent-color, blue);
     width: 2px;
-    background-color: #f0dc4e;
+    background-color: var(--theme-border-color, #f0dc4e);
     height: calc(100vh - 20px);
     float: left;
     /* Other styles... */
@@ -186,6 +188,7 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     float: left;
+    background-color: var(--theme-background-color, #ffffff);
 }
 
 #plugin-containers {
@@ -194,6 +197,7 @@ onMounted(() => {
     float: left;
     overflow-x: hidden;
     overflow-y: auto;
+    background-color: var(--theme-background-color, #ffffff);
 }
 
 #tool-containers {
@@ -202,5 +206,26 @@ onMounted(() => {
     float: left;
     overflow-x: hidden;
     overflow-y: auto;
+    background-color: var(--theme-background-color, #ffffff);
+}
+
+/* 应用主题到所有子元素 */
+* {
+    color: var(--theme-text-color, #2d2d2d);
+}
+
+/* 链接颜色 */
+a {
+    color: var(--theme-accent-color, #764ba2);
+}
+
+/* 按钮样式 */
+button {
+    background-color: var(--theme-button-background, #764ba2);
+    color: var(--theme-button-text-color, #ffffff);
+}
+
+button:hover {
+    background-color: var(--theme-hover-background, #f0e8ff);
 }
 </style>

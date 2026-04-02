@@ -9,7 +9,7 @@
 <script setup lang="ts">
 // 引入 Monaco Editor
 import * as monaco from 'monaco-editor'
-import { ref, onMounted, watch, onBeforeUnmount, defineProps } from 'vue'
+import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import EventBus from '../../event-bus'
 import * as editor from './hemy-editor'
 import { MarkdownTOC } from '../hemy'
