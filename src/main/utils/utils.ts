@@ -14,7 +14,7 @@ import {
 import { ipcMain, shell } from 'electron'
 // @ts-ignore
 import { getQuickLinks } from './quick-link-config'
-import { getCurrentTheme, getCurrentThemeStyles, getAllThemes } from '../themes/theme-config'
+import { getCurrentTheme, getCurrentThemeStyles, getAllThemes, getSeparateEditorTheme, getMonacoTheme } from '../themes/theme-config'
 
 export {
     globalInitialize,
@@ -133,6 +133,15 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     })
 
     ipcMain.on('get-all-themes', (event) => {
+    ipcMain.on('get-separate-editor-theme', (event) => {
+        const separate = getSeparateEditorTheme()
+        event.returnValue = separate
+    })
+
+    ipcMain.on('get-monaco-theme', (event) => {
+        const theme = getMonacoTheme()
+        event.returnValue = theme
+    })
         event.returnValue = getAllThemes()
     })
 }

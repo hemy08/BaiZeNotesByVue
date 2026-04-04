@@ -30,6 +30,13 @@ export interface ThemeStyles {
     hoverBackground: string
 }
 
+export interface ThemeConfig {
+    currentTheme: ThemeType
+    separateEditorTheme: boolean // 是否单独配置编辑器主题
+    editorTheme?: MonacoThemeType // Monaco 编辑器主题
+}
+
+
 // 预定义主题
 export const themes: Record<ThemeType, ThemeStyles> = {
     // ========== 浅色主题 ==========
@@ -353,6 +360,17 @@ if (!store.has('themeConfig')) {
 /**
  * 获取当前主题
  */
+
+/**
+ * 获取所有应用主题
+ */
+export function getAllThemes(): { type: ThemeType; styles: ThemeStyles }[] {
+    return Object.entries(themes).map(([type, styles]) => ({
+        type: type as ThemeType,
+        styles
+    }))
+}
+
 export function getCurrentTheme(): ThemeType {
     // @ts-ignore
     const config = store.get('themeConfig') as ThemeConfig
@@ -375,14 +393,588 @@ export function setTheme(theme: ThemeType): void {
     store.set('themeConfig', { currentTheme: theme })
 }
 
+// Monaco 主题类型定义
+export type MonacoThemeType = 'vs' | 'vs-dark' | 'hc-black' | 'Active4D' | 'All Hallows Eve' | 'Amy' | 'Birds of Paradise' | 'Blackboard' | 'Brilliance Black' | 'Brilliance Dull' | 'Chrome DevTools' | 'Clouds Midnight' | 'Clouds' | 'Cobalt' | 'Cobalt2' | 'Dawn' | 'Dominion Day' | 'Dracula' | 'Dreamweaver' | 'Eiffel' | 'Espresso Libre' | 'GitHub Dark' | 'GitHub Light' | 'GitHub' | 'IDLE' | 'idleFingers' | 'iPlastic' | 'Katzenmilch' | 'krTheme' | 'Kuroir Theme' | 'LAZY' | 'MagicWB (Amiga)' | 'Merbivore Soft' | 'Merbivore' | 'monoindustrial' | 'Monokai Bright' | 'Monokai' | 'Night Owl' | 'Nord' | 'Oceanic Next' | 'Pastels on Dark' | 'Slush and Poppies' | 'Solarized-dark' | 'Solarized-light' | 'SpaceCadet' | 'Sunburst' | 'Textmate (Mac Classic)' | 'Tomorrow' | 'Tomorrow-Night' | 'Tomorrow-Night-Blue' | 'Tomorrow-Night-Bright' | 'Tomorrow-Night-Eighties' | 'Twilight' | 'Upstream Sunburst' | 'Vibrant Ink' | 'Xcode_default' | 'Zenburnesque'
+
+// Monaco 编辑器主题配置接口
+export interface MonacoThemeConfig {
+    name: string
+    description: string
+    isDark: boolean
+    backgroundColor?: string
+    foregroundColor?: string
+    cardBackground?: string
+    borderColor?: string
+}
+
 /**
- * 获取所有主题列表
+ * Monaco 编辑器主题配置
+ * 从主题 JSON 文件中提取实际的颜色信息
  */
-export function getAllThemes(): { type: ThemeType; styles: ThemeStyles }[] {
-    return Object.entries(themes).map(([type, styles]) => ({
-        type: type as ThemeType,
-        styles
+export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
+    // 内置主题
+    'vs': {
+        name: 'Visual Studio Light',
+        description: 'Visual Studio 浅色主题',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
+        foregroundColor: '#000000',
+        cardBackground: '#FFFFFF',
+        borderColor: '#D3D3D3'
+    },
+    'vs-dark': {
+        name: 'Visual Studio Dark',
+        description: 'Visual Studio 深色主题',
+        isDark: true,
+        backgroundColor: '#1E1E1E',
+        foregroundColor: '#D4D4D4',
+        cardBackground: '#2D2D2D',
+        borderColor: '#404040'
+    },
+    'hc-black': {
+        name: 'High Contrast',
+        description: '高对比度主题',
+        isDark: true,
+        backgroundColor: '#000000',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#000000',
+        borderColor: '#FFFFFF'
+    },
+    // 扩展主题
+    'Active4D': {
+        name: 'Active4D',
+        description: 'Active4D 主题',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
+        foregroundColor: '#3B3B3B',
+        cardBackground: '#FFFFFF',
+        borderColor: '#D3D3D3'
+    },
+    'All Hallows Eve': {
+        name: 'All Hallows Eve',
+        description: 'All Hallows Eve 主题',
+        isDark: true,
+        backgroundColor: '#000000',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#1A1A1A',
+        borderColor: '#333333'
+    },
+    'Amy': {
+        name: 'Amy',
+        description: 'Amy 主题',
+        isDark: true,
+        backgroundColor: '#200020',
+        foregroundColor: '#F8F8F8',
+        cardBackground: '#2D002D',
+        borderColor: '#401040'
+    },
+    'Birds of Paradise': {
+        name: 'Birds of Paradise',
+        description: 'Birds of Paradise 主题',
+        isDark: true,
+        backgroundColor: '#2A1B1A',
+        foregroundColor: '#F8F8F2',
+        cardBackground: '#3A2B2A',
+        borderColor: '#4A3B3A'
+    },
+    'Blackboard': {
+        name: 'Blackboard',
+        description: 'Blackboard 主题',
+        isDark: true,
+        backgroundColor: '#0C1021',
+        foregroundColor: '#F8F8F8',
+        cardBackground: '#1C2031',
+        borderColor: '#2C3041'
+    },
+    'Brilliance Black': {
+        name: 'Brilliance Black',
+        description: 'Brilliance Black 主题',
+        isDark: true,
+        backgroundColor: '#000000',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#1A1A1A',
+        borderColor: '#333333'
+    },
+    'Brilliance Dull': {
+        name: 'Brilliance Dull',
+        description: 'Brilliance Dull 主题',
+        isDark: true,
+        backgroundColor: '#1A1A1A',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#2A2A2A',
+        borderColor: '#3A3A3A'
+    },
+    'Chrome DevTools': {
+        name: 'Chrome DevTools',
+        description: 'Chrome DevTools 主题',
+        isDark: true,
+        backgroundColor: '#1E1E1E',
+        foregroundColor: '#D4D4D4',
+        cardBackground: '#2D2D2D',
+        borderColor: '#404040'
+    },
+    'Clouds Midnight': {
+        name: 'Clouds Midnight',
+        description: 'Clouds Midnight 主题',
+        isDark: true,
+        backgroundColor: '#191919',
+        foregroundColor: '#9E9E9E',
+        cardBackground: '#2A2A2A',
+        borderColor: '#3A3A3A'
+    },
+    'Clouds': {
+        name: 'Clouds',
+        description: 'Clouds 主题',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
+        foregroundColor: '#4C4C4C',
+        cardBackground: '#FFFFFF',
+        borderColor: '#D3D3D3'
+    },
+    'Cobalt': {
+        name: 'Cobalt',
+        description: 'Cobalt 主题',
+        isDark: true,
+        backgroundColor: '#002240',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#103350',
+        borderColor: '#204260'
+    },
+    'Cobalt2': {
+        name: 'Cobalt2',
+        description: 'Cobalt2 主题',
+        isDark: true,
+        backgroundColor: '#122F3A',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#224F5A',
+        borderColor: '#326F7A'
+    },
+    'Dawn': {
+        name: 'Dawn',
+        description: 'Dawn 主题',
+        isDark: false,
+        backgroundColor: '#F9F9F9',
+        foregroundColor: '#080808',
+        cardBackground: '#FFFFFF',
+        borderColor: '#E0E0E0'
+    },
+    'Dominion Day': {
+        name: 'Dominion Day',
+        description: 'Dominion Day 主题',
+        isDark: true,
+        backgroundColor: '#2A2A2A',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#3A3A3A',
+        borderColor: '#4A4A4A'
+    },
+    'Dracula': {
+        name: 'Dracula',
+        description: 'Dracula 主题',
+        isDark: true,
+        backgroundColor: '#282A36',
+        foregroundColor: '#F8F8F2',
+        cardBackground: '#383A46',
+        borderColor: '#44475A'
+    },
+    'Dreamweaver': {
+        name: 'Dreamweaver',
+        description: 'Dreamweaver 主题',
+        isDark: true,
+        backgroundColor: '#1E1E1E',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#2E2E2E',
+        borderColor: '#3E3E3E'
+    },
+    'Eiffel': {
+        name: 'Eiffel',
+        description: 'Eiffel 主题',
+        isDark: true,
+        backgroundColor: '#2B2B2B',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#3B3B3B',
+        borderColor: '#4B4B4B'
+    },
+    'Espresso Libre': {
+        name: 'Espresso Libre',
+        description: 'Espresso Libre 主题',
+        isDark: true,
+        backgroundColor: '#2A2A2A',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#3A3A3A',
+        borderColor: '#4A4A4A'
+    },
+    'GitHub Dark': {
+        name: 'GitHub Dark',
+        description: 'GitHub Dark 主题',
+        isDark: true,
+        backgroundColor: '#0D1117',
+        foregroundColor: '#C9D1D9',
+        cardBackground: '#161B22',
+        borderColor: '#30363D'
+    },
+    'GitHub Light': {
+        name: 'GitHub Light',
+        description: 'GitHub Light 主题',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
+        foregroundColor: '#24292F',
+        cardBackground: '#F6F8FA',
+        borderColor: '#D0D7DE'
+    },
+    'GitHub': {
+        name: 'GitHub',
+        description: 'GitHub 主题',
+        isDark: true,
+        backgroundColor: '#0D1117',
+        foregroundColor: '#C9D1D9',
+        cardBackground: '#161B22',
+        borderColor: '#30363D'
+    },
+    'IDLE': {
+        name: 'IDLE',
+        description: 'IDLE 主题',
+        isDark: true,
+        backgroundColor: '#FFFFFF',
+        foregroundColor: '#000000',
+        cardBackground: '#F0F0F0',
+        borderColor: '#D0D0D0'
+    },
+    'idleFingers': {
+        name: 'idleFingers',
+        description: 'idleFingers 主题',
+        isDark: true,
+        backgroundColor: '#323232',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#424242',
+        borderColor: '#525252'
+    },
+    'iPlastic': {
+        name: 'iPlastic',
+        description: 'iPlastic 主题',
+        isDark: false,
+        backgroundColor: '#E0E0E0',
+        foregroundColor: '#000000',
+        cardBackground: '#F0F0F0',
+        borderColor: '#D0D0D0'
+    },
+    'Katzenmilch': {
+        name: 'Katzenmilch',
+        description: 'Katzenmilch 主题',
+        isDark: false,
+        backgroundColor: '#F8F8F8',
+        foregroundColor: '#000000',
+        cardBackground: '#FFFFFF',
+        borderColor: '#E0E0E0'
+    },
+    'krTheme': {
+        name: 'krTheme',
+        description: 'krTheme 主题',
+        isDark: true,
+        backgroundColor: '#0B0B0B',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#1B1B1B',
+        borderColor: '#2B2B2B'
+    },
+    'Kuroir Theme': {
+        name: 'Kuroir Theme',
+        description: 'Kuroir Theme 主题',
+        isDark: false,
+        backgroundColor: '#E6E1DC',
+        foregroundColor: '#000000',
+        cardBackground: '#F0EBE6',
+        borderColor: '#D0CBC6'
+    },
+    'LAZY': {
+        name: 'LAZY',
+        description: 'LAZY 主题',
+        isDark: true,
+        backgroundColor: '#1C1C1C',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#2C2C2C',
+        borderColor: '#3C3C3C'
+    },
+    'MagicWB (Amiga)': {
+        name: 'MagicWB (Amiga)',
+        description: 'MagicWB (Amiga) 主题',
+        isDark: true,
+        backgroundColor: '#000080',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#101090',
+        borderColor: '#2020A0'
+    },
+    'Merbivore Soft': {
+        name: 'Merbivore Soft',
+        description: 'Merbivore Soft 主题',
+        isDark: true,
+        backgroundColor: '#262626',
+        foregroundColor: '#E0E0E0',
+        cardBackground: '#363636',
+        borderColor: '#464646'
+    },
+    'Merbivore': {
+        name: 'Merbivore',
+        description: 'Merbivore 主题',
+        isDark: true,
+        backgroundColor: '#1B1B1B',
+        foregroundColor: '#E0E0E0',
+        cardBackground: '#2B2B2B',
+        borderColor: '#3B3B3B'
+    },
+    'monoindustrial': {
+        name: 'monoindustrial',
+        description: 'monoindustrial 主题',
+        isDark: true,
+        backgroundColor: '#222C28',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#323C38',
+        borderColor: '#424C48'
+    },
+    'Monokai Bright': {
+        name: 'Monokai Bright',
+        description: 'Monokai Bright 主题',
+        isDark: true,
+        backgroundColor: '#272822',
+        foregroundColor: '#F8F8F2',
+        cardBackground: '#373832',
+        borderColor: '#474842'
+    },
+    'Monokai': {
+        name: 'Monokai',
+        description: 'Monokai 主题',
+        isDark: true,
+        backgroundColor: '#272822',
+        foregroundColor: '#F8F8F2',
+        cardBackground: '#373832',
+        borderColor: '#474842'
+    },
+    'Night Owl': {
+        name: 'Night Owl',
+        description: 'Night Owl 主题',
+        isDark: true,
+        backgroundColor: '#011627',
+        foregroundColor: '#D6DEEB',
+        cardBackground: '#112637',
+        borderColor: '#223647'
+    },
+    'Nord': {
+        name: 'Nord',
+        description: 'Nord 主题',
+        isDark: true,
+        backgroundColor: '#2E3440',
+        foregroundColor: '#D8DEE9',
+        cardBackground: '#3E4450',
+        borderColor: '#4C5565'
+    },
+    'Oceanic Next': {
+        name: 'Oceanic Next',
+        description: 'Oceanic Next 主题',
+        isDark: true,
+        backgroundColor: '#1B2B34',
+        foregroundColor: '#C0C5CE',
+        cardBackground: '#2B3B44',
+        borderColor: '#3B4B54'
+    },
+    'Pastels on Dark': {
+        name: 'Pastels on Dark',
+        description: 'Pastels on Dark 主题',
+        isDark: true,
+        backgroundColor: '#211E1E',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#312E2E',
+        borderColor: '#413E3E'
+    },
+    'Slush and Poppies': {
+        name: 'Slush and Poppies',
+        description: 'Slush and Poppies 主题',
+        isDark: true,
+        backgroundColor: '#2C2C2C',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#3C3C3C',
+        borderColor: '#4C4C4C'
+    },
+    'Solarized-dark': {
+        name: 'Solarized Dark',
+        description: 'Solarized Dark 主题',
+        isDark: true,
+        backgroundColor: '#002B36',
+        foregroundColor: '#839496',
+        cardBackground: '#073642',
+        borderColor: '#094552'
+    },
+    'Solarized-light': {
+        name: 'Solarized Light',
+        description: 'Solarized Light 主题',
+        isDark: false,
+        backgroundColor: '#FDF6E3',
+        foregroundColor: '#657B83',
+        cardBackground: '#EEE8D5',
+        borderColor: '#B58900'
+    },
+    'SpaceCadet': {
+        name: 'SpaceCadet',
+        description: 'SpaceCadet 主题',
+        isDark: true,
+        backgroundColor: '#0D0D0D',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#1D1D1D',
+        borderColor: '#2D2D2D'
+    },
+    'Sunburst': {
+        name: 'Sunburst',
+        description: 'Sunburst 主题',
+        isDark: true,
+        backgroundColor: '#1A1A1A',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#2A2A2A',
+        borderColor: '#3A3A3A'
+    },
+    'Textmate (Mac Classic)': {
+        name: 'Textmate (Mac Classic)',
+        description: 'Textmate (Mac Classic) 主题',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
+        foregroundColor: '#000000',
+        cardBackground: '#F0F0F0',
+        borderColor: '#D0D0D0'
+    },
+    'Tomorrow': {
+        name: 'Tomorrow',
+        description: 'Tomorrow 主题',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
+        foregroundColor: '#4D4D4C',
+        cardBackground: '#F8F8F8',
+        borderColor: '#E0E0E0'
+    },
+    'Tomorrow-Night': {
+        name: 'Tomorrow Night',
+        description: 'Tomorrow Night 主题',
+        isDark: true,
+        backgroundColor: '#1D1F21',
+        foregroundColor: '#C5C8C6',
+        cardBackground: '#2D2F31',
+        borderColor: '#3D3F41'
+    },
+    'Tomorrow-Night-Blue': {
+        name: 'Tomorrow Night Blue',
+        description: 'Tomorrow Night Blue 主题',
+        isDark: true,
+        backgroundColor: '#002451',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#103461',
+        borderColor: '#204471'
+    },
+    'Tomorrow-Night-Bright': {
+        name: 'Tomorrow Night Bright',
+        description: 'Tomorrow Night Bright 主题',
+        isDark: true,
+        backgroundColor: '#000000',
+        foregroundColor: '#E0E0E0',
+        cardBackground: '#1A1A1A',
+        borderColor: '#2A2A2A'
+    },
+    'Tomorrow-Night-Eighties': {
+        name: 'Tomorrow Night Eighties',
+        description: 'Tomorrow Night Eighties 主题',
+        isDark: true,
+        backgroundColor: '#2D2D2D',
+        foregroundColor: '#CCCCCC',
+        cardBackground: '#3D3D3D',
+        borderColor: '#4D4D4D'
+    },
+    'Twilight': {
+        name: 'Twilight',
+        description: 'Twilight 主题',
+        isDark: true,
+        backgroundColor: '#141414',
+        foregroundColor: '#F7F7F7',
+        cardBackground: '#242424',
+        borderColor: '#343434'
+    },
+    'Upstream Sunburst': {
+        name: 'Upstream Sunburst',
+        description: 'Upstream Sunburst 主题',
+        isDark: true,
+        backgroundColor: '#1A1A1A',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#2A2A2A',
+        borderColor: '#3A3A3A'
+    },
+    'Vibrant Ink': {
+        name: 'Vibrant Ink',
+        description: 'Vibrant Ink 主题',
+        isDark: true,
+        backgroundColor: '#1A1A1A',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#2A2A2A',
+        borderColor: '#3A3A3A'
+    },
+    'Xcode_default': {
+        name: 'Xcode_default',
+        description: 'Xcode_default 主题',
+        isDark: true,
+        backgroundColor: '#1E1E1E',
+        foregroundColor: '#FFFFFF',
+        cardBackground: '#2E2E2E',
+        borderColor: '#3E3E3E'
+    },
+    'Zenburnesque': {
+        name: 'Zenburnesque',
+        description: 'Zenburnesque 主题',
+        isDark: true,
+        backgroundColor: '#3F3F3F',
+        foregroundColor: '#DCDCCC',
+        cardBackground: '#4F4F4F',
+        borderColor: '#5F5F5F'
+    }
+}
+
+/**
+ * 获取所有 Monaco 编辑器主题
+ */
+export function getAllMonacoThemes(): { type: MonacoThemeType; config: MonacoThemeConfig }[] {
+    return Object.entries(monacoThemes).map(([type, config]) => ({
+        type: type as MonacoThemeType,
+        config
     }))
+}
+
+/**
+ * 获取是否单独配置编辑器主题
+ */
+export function getSeparateEditorTheme(): boolean {
+    // @ts-ignore
+    const config = store.get('themeConfig') as ThemeConfig
+    return config.separateEditorTheme || false
+}
+
+/**
+ * 设置是否单独配置编辑器主题
+ */
+export function setSeparateEditorTheme(separate: boolean): void {
+    // @ts-ignore
+    const config = store.get('themeConfig') as ThemeConfig
+    // @ts-ignore
+    store.set('themeConfig', { ...config, separateEditorTheme: separate })
+}
+
+/**
+ * 获取 Monaco 编辑器主题
+ */
+export function getMonacoTheme(): MonacoThemeType {
+    // @ts-ignore
+    const config = store.get('themeConfig') as ThemeConfig
+    return config.editorTheme || 'vs'
+}
+
+/**
+ * 设置 Monaco 编辑器主题
+ */
+export function setMonacoTheme(theme: MonacoThemeType): void {
+    // @ts-ignore
+    const config = store.get('themeConfig') as ThemeConfig
+    // @ts-ignore
+    store.set('themeConfig', { ...config, editorTheme: theme })
 }
 
 /**
@@ -390,4 +982,6 @@ export function getAllThemes(): { type: ThemeType; styles: ThemeStyles }[] {
  */
 export function resetToDefaultTheme(): void {
     setTheme('baize')
+    setSeparateEditorTheme(false)
+    setMonacoTheme('vs')
 }

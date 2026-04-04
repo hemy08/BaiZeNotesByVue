@@ -32,8 +32,22 @@ interface ThemeStyles {
     hoverBackground: string
 }
 
+// 主题更新数据接口
+interface ThemeUpdateData {
+    themeType: string
+    separateEditorTheme: boolean
+    monacoTheme: string
+    themeStyles: ThemeStyles
+}
+
 // 当前主题样式
 const currentTheme = ref<ThemeStyles | null>(null)
+
+// 是否单独配置编辑器主题
+const separateEditorTheme = ref(false)
+
+// Monaco 编辑器主题
+const monacoEditorTheme = ref('vs')
 
 // 计算容器样式
 const containerStyles = computed(() => {
@@ -90,9 +104,6 @@ function applyTheme(theme: ThemeStyles) {
         previewContainer.style.color = theme.textColor
     }
 
-    // 更新Monaco编辑器主题
-    updateMonacoEditorTheme(theme)
-
     // 强制所有组件重新应用主题
     document.querySelectorAll('[data-theme]').forEach(element => {
         (element as HTMLElement).setAttribute('data-theme', theme.name)
@@ -100,12 +111,22 @@ function applyTheme(theme: ThemeStyles) {
 }
 
 // 更新Monaco编辑器主题
-function updateMonacoEditorTheme(theme: ThemeStyles) {
-    // 根据主题名称设置Monaco编辑器主题
-    const themeName = theme.name.includes('dark') || theme.name.includes('深') ? 'vs-dark' : 'vs'
+async function updateMonacoEditorTheme(theme: ThemeStyles, separate: boolean, monacoThemeName: string) {
+    if (typeof monaco === 'undefined') return
 
-    // 动态定义自定义主题
-    if (typeof monaco !== 'undefined') {
+    // 如果单独配置了编辑器主题，使用配置的主题
+    if (separate) {
+        // 加载 Monaco 主题
+        const loadedTheme = await loadMonacoTheme(monacoThemeName)
+        if (loadedTheme) {
+            // 通过 IPC 发送主题更新事件
+            window.electron.ipcRenderer.send("monaco-editor-update-options", "theme", loadedTheme)
+        }
+    } else {
+        // 否则根据应用主题自动选择
+        const themeName = theme.name.includes('dark') || theme.name.includes('深') ? 'vs-dark' : 'vs'
+
+        // 动态定义自定义主题
         monaco.editor.defineTheme('custom-theme', {
             base: themeName,
             inherit: true,
@@ -120,20 +141,57 @@ function updateMonacoEditorTheme(theme: ThemeStyles) {
             }
         })
         monaco.editor.setTheme('custom-theme')
+
+        // 通过 IPC 发送主题更新事件
+        window.electron.ipcRenderer.send("monaco-editor-update-options", "theme", "custom-theme")
     }
 
     // 发送事件通知编辑器组件更新主题
     EventBus.$emit('theme-updated', theme)
 }
 
+// 加载 Monaco 编辑器主题
+async function loadMonacoTheme(themeName: string): Promise<string | null> {
+    if (typeof monaco === 'undefined') return null
+
+    // 内置主题直接设置
+    if (themeName === 'vs' || themeName === 'vs-dark' || themeName === 'hc-black') {
+        monaco.editor.setTheme(themeName)
+        return themeName
+    }
+
+    // 加载扩展主题
+    try {
+        const themeData = await import(`@libs/monaco-themes/themes/${themeName}.json`)
+        monaco.editor.defineTheme(themeName, themeData.default || themeData)
+        monaco.editor.setTheme(themeName)
+        return themeName
+    } catch (error) {
+        console.error(`Failed to load Monaco theme: ${themeName}`, error)
+        // 失败时回退到默认主题
+        monaco.editor.setTheme('vs')
+        return 'vs'
+    }
+}
+
 // 监听主题更新事件
-function handleThemeUpdate(_event: any, theme: ThemeStyles | undefined) {
-    console.log('[Renderer] Received theme update:', theme)
-    if (!theme) {
-        console.error('[Renderer] Received undefined theme data')
+async function handleThemeUpdate(_event: any, data: ThemeUpdateData) {
+    console.log('[Renderer] Received theme update:', data)
+    
+    if (!data || !data.themeStyles) {
+        console.error('[Renderer] Received invalid theme data')
         return
     }
-    applyTheme(theme)
+
+    // 更新配置状态
+    separateEditorTheme.value = data.separateEditorTheme
+    monacoEditorTheme.value = data.monacoTheme
+
+    // 应用主题样式
+    applyTheme(data.themeStyles)
+
+    // 更新 Monaco 编辑器主题
+    await updateMonacoEditorTheme(data.themeStyles, data.separateEditorTheme, data.monacoTheme)
 }
 
 // 打开浏览器网页地址
@@ -145,11 +203,17 @@ window.electron.ipcRenderer.on('open-url-in-web-browser-window', (_, link: strin
 window.electron.ipcRenderer.on('baize-notes:theme-updated', handleThemeUpdate)
 
 onMounted(async () => {
-    // 初始化时请求当前主题
+    // 初始化时请求当前主题配置
     try {
-        const theme = await window.electron.ipcRenderer.invoke('get-current-theme')
-        if (theme) {
-            applyTheme(theme)
+        const themeStyles = await window.electron.ipcRenderer.invoke('get-current-theme-styles')
+        const separate = window.electron.ipcRenderer.sendSync('get-separate-editor-theme')
+        const monacoTheme = window.electron.ipcRenderer.sendSync('get-monaco-theme')
+        
+        if (themeStyles) {
+            separateEditorTheme.value = separate
+            monacoEditorTheme.value = monacoTheme
+            applyTheme(themeStyles)
+            await updateMonacoEditorTheme(themeStyles, separate, monacoTheme)
         }
     } catch (error) {
         console.error('Failed to get current theme:', error)
@@ -163,15 +227,12 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* 需要隐藏滚动条，如果不隐藏，在区域内部，窗口会层叠*/
-#editor-container {
-    width: 100%;
-    height: 100vh;
+.workspace-area {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
     overflow: hidden;
-}
-
-#file-bar {
-    width: 100%;
-    height: 0.5px;
+    height: calc(100vh - 2px - 24px);
 }
 
 #workspace-area {
@@ -180,22 +241,24 @@ onBeforeUnmount(() => {
     flex-direction: row;
 }
 
-.workspace-area {
-    height: calc(100vh - 2px - 20px);
+.status-bar {
+    height: 24px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 12px;
+    border-top: 1px solid var(--theme-border-color, #e0e0e0);
 }
 
-.status-bar {
-    font-size: 13px;
-    height: 20px;
-    background-color: var(--theme-card-background, #ffffff);
-    color: var(--theme-secondary-text-color, #f5f7fa);
-    padding: 0;
+#file-bar {
+    height: 2px;
+    background: var(--theme-accent-color, #764ba2);
+}
+
+#editor-container {
     display: flex;
-    justify-content: space-between;
-    cursor: default;
-    user-select: none;
-    align-items: center;
-    margin: 0;
-    z-index: 1000;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
 }
 </style>
