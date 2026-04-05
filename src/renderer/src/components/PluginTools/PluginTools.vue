@@ -3,39 +3,43 @@
         <div id="plugin-tool-close" class="close-button" @click="handleClosePluginTools">
             <button>返回编辑器</button>
         </div>
-        <div v-if="visibleTool" :id="`plugin-tool-${visibleTool.id}`">
+        <div v-if="visibleTool" :id="`plugin-tool-${visibleTool.id}`" class="plugin-tool-content">
             <component :is="visibleTool.component" :work-area-width="toolsViewWidth"></component>
+        </div>
+        <div v-else class="plugin-tool-placeholder">
+            <p>请选择一个工具</p>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { watch, computed, ref } from 'vue'
+import { watch, computed, ref, onMounted } from 'vue'
 import EventBus from '../../event-bus'
 import TokenGenerator from './Encryption/TokenGenerator.vue'
 import HashText from './Encryption/HashText.vue'
 import UUIDSGenerator from './Encryption/UUIDSGenerator.vue'
 import ULIDGenerator from './Encryption/ULIDGenerator.vue'
-import EncryptDecrypt from './Encryption/EncryptDecrypt.vue'
-import HmacGenerator from './Encryption/HmacGenerator.vue'
 import RSAGenerator from './Encryption/RSAGenerator.vue'
+import HmacGenerator from './Encryption/HmacGenerator.vue'
+import EncryptDecrypt from './Encryption/EncryptDecrypt.vue'
+import CryptoEncDec from './Encryption/CryptoEncDec.vue'
+import BaseConvert from './Convert/BaseConvert.vue'
+import CaseConvert from './Convert/CaseConvert.vue'
 import DateConvert from './Convert/DateConvert.vue'
 import ColorConvert from './Convert/ColorConvert.vue'
-import BaseConvert from './Convert/BaseConvert.vue'
-import RomanNumber from './Convert/RomanNumber.vue'
-import CaseConvert from './Convert/CaseConvert.vue'
-import HtmlFormatter from './Convert/HtmlFormatter.vue'
-import JsonCsvConvert from './Convert/JsonCsvConvert.vue'
-import JsonFormatter from './Convert/JsonFormatter.vue'
-import JsonTomlConvert from './Convert/JsonTomlConvert.vue'
-import ListConvert from './Convert/ListConvert.vue'
-import SqlFormatter from './Convert/SqlFormatter.vue'
 import TextToBinary from './Convert/TextToBinary.vue'
 import TextToUnicode from './Convert/TextToUnicode.vue'
+import ListConvert from './Convert/ListConvert.vue'
+import JsonFormatter from './Convert/JsonFormatter.vue'
 import XmlFormatter from './Convert/XmlFormatter.vue'
 import YamlFormatter from './Convert/YamlFormatter.vue'
+import SqlFormatter from './Convert/SqlFormatter.vue'
+import HtmlFormatter from './Convert/HtmlFormatter.vue'
+import JsonCsvConvert from './Convert/JsonCsvConvert.vue'
+import JsonTomlConvert from './Convert/JsonTomlConvert.vue'
 import YamlJsonConvert from './Convert/YamlJsonConvert.vue'
 import YamlTomlConvert from './Convert/YamlTomlConvert.vue'
+import RomanNumber from './Convert/RomanNumber.vue'
 import Ipv4AddrConvert from './NetWork/Ipv4AddrConvert.vue'
 import Ipv4SubnetCalc from './NetWork/Ipv4SubnetCalc.vue'
 import Ipv6UlaGenerator from './NetWork/Ipv6UlaGenerator.vue'
@@ -43,18 +47,25 @@ import MacAddrGenerator from './NetWork/MacAddrGenerator.vue'
 import MacAddrLookup from './NetWork/MacAddrLookup.vue'
 import QrcodeGenerator from './NetWork/QrcodeGenerator.vue'
 import WifiQrcodeGenerator from './NetWork/WifiQrcodeGenerator.vue'
-import CryptoEncDec from './Encryption/CryptoEncDec.vue'
 import ASCIIComparison from './Informations/ASCIIComparison.vue'
-import HTMLSpecialChar from './Informations/HTMLSpecialChar.vue'
+import FileNameExtension from './Informations/FileNameExtension.vue'
 import FormulaSymbol from './Informations/FormulaSymbol.vue'
+import GreeceLetter from './Informations/GreeceLetter.vue'
+import HTMLSpecialChar from './Informations/HTMLSpecialChar.vue'
+import HttpStatusCode from './Informations/HttpStatusCode.vue'
+import NormalFontStyle from './Informations/NormalFontStyle.vue'
+import NumericCase from './Informations/NumericCase.vue'
 import PhysicalSymbolic from './Informations/PhysicalSymbolic.vue'
 import SubnetMaskMapTable from './Informations/SubnetMaskMapTable.vue'
-import HttpStatusCode from './Informations/HttpStatusCode.vue'
-import NumericCase from './Informations/NumericCase.vue'
-import NormalFontStyle from './Informations/NormalFontStyle.vue'
-import FileNameExtension from './Informations/FileNameExtension.vue'
-import GreeceLetter from './Informations/GreeceLetter.vue'
 
+const props = defineProps({
+    pluginsAreaWidth: {
+        type: String,
+        default: '100%'
+    }
+})
+
+const toolWidth = ref(props.pluginsAreaWidth)
 let isShowPluginToolsContainer = false
 
 const pluginTools = [
@@ -103,16 +114,6 @@ const pluginTools = [
     //{ id: 'latex', component: LatexEditor }
 ]
 
-const props = defineProps({
-    // 编辑器宽度
-    pluginsAreaWidth: {
-        type: String,
-        default: '100%'
-    }
-})
-
-const toolWidth = ref(props.pluginsAreaWidth)
-
 const toolsViewWidth = computed(() => {
     const toolWidthValue = parseInt(toolWidth.value.replace('px', ''), 10)
     const conWidthValue = toolWidthValue - 100
@@ -146,45 +147,80 @@ watch(
         toolWidth.value = width
     }
 )
+
+onMounted(() => {
+    // 监听主题更新事件
+    EventBus.$on('theme-updated', applyThemeStyles)
+})
+
+function applyThemeStyles() {
+    // 主题样式通过 CSS 变量自动应用，无需额外处理
+}
 </script>
 
 <style scoped>
 .plugin-tools-container {
-    position: relative; /* 设置为相对定位，以便子元素可以使用绝对定位 */
-    width: 100%; /* 或你需要的宽度 */
-    height: 100%; /* 或你需要的高度 */
+    position: relative;
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center; /* 这不会直接影响h1的居中，但影响整个容器的子元素 */
-    justify-content: flex-start; /* 你可以根据需要调整 */
-    background-color: #fafafa;
-    color: black;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: var(--theme-background-color);
+    color: var(--theme-text-color);
     overflow-y: auto;
     overflow-x: auto;
+    padding-top: 50px; /* 为绝对定位的关闭按钮留出空间 */
 }
 
 .close-button {
-    position: absolute; /* 绝对定位 */
-    top: 10px; /* 距离顶部 */
-    right: 10px; /* 距离右边 */
-    font-size: 18px; /* 保持字体大小 */
-    cursor: pointer; /* 鼠标悬停时显示指针 */
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 10;
 }
 
 .close-button button {
-    background-color: deepskyblue; /* 深蓝色背景 */
-    color: white; /* 白色文字 */
-    border: none; /* 无边框 */
-    padding: 10px 20px; /* 内边距 */
-    border-radius: 5px; /* 圆角 */
-    cursor: pointer; /* 重复设置，确保按钮样式 */
+    background-color: var(--theme-button-background);
+    color: var(--theme-button-text-color);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
 .close-button button:hover {
-    background-color: #ff9100; /* 深蓝色背景 */
+    background-color: var(--theme-hover-background);
+}
+
+/* 确保动态组件容器正确显示 */
+.plugin-tool-content {
+    width: 100%;
+    min-height: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* 占位符样式 */
+.plugin-tool-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--theme-secondary-text-color);
+}
+
+.plugin-tool-placeholder p {
+    font-size: 16px;
+    text-align: center;
 }
 
 .tool-section h1 {
-    text-align: center; /* 居中显示 */
+    text-align: center;
 }
 </style>

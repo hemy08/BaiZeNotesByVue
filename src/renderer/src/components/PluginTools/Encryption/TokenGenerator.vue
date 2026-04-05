@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 style="display: flex; align-items: center; justify-content: center">Token Generator</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">使用您想要的字符、大写或小写字母、数字和/或符号生成随机字符串。</p>
@@ -117,6 +117,7 @@ function ClearToken() {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 #token-output {
     padding: 8px;
     font-size: 16px;

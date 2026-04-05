@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">文件类型（MIME头）</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">文件类型（MIME头）</p>
@@ -75,6 +75,7 @@ const filterFileNameExt = computed(() => {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .file-name-ext-style {
     width: 100%;
     border-collapse: collapse;

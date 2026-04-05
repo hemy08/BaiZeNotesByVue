@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 style="display: flex; align-items: center; justify-content: center">IPv6 ULA生成器</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">根据RFC4193在网络上生成您自己的本地不可路由IP地址。</p>
@@ -30,4 +30,5 @@ function openUrl(link) {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+@import '../plugin-tools-theme.css';</style>

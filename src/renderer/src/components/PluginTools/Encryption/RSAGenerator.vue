@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 style="display: flex; align-items: center; justify-content: center">密钥对生成器</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">生成新的随机RSA或者ed25519私钥和公钥pem证书。</p>
@@ -110,6 +110,7 @@ window.electron.ipcRenderer.on(
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .rsa-gen-label-style {
     width: 150px;
     text-align: justify;

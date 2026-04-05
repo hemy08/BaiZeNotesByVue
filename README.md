@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 ![Electron](https://img.shields.io/badge/Electron-38.0.0-blue.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.4.27-brightgreen.svg)
@@ -38,11 +38,13 @@
 - **图片管理**: 支持本地图片插入和管理
 
 #### 🎭 主题系统
-- **20+ 精美主题**: 浅色、深色、护眼三大类主题
-  - 浅色主题：白泽紫韵、暖白温馨、清新简约、薰衣草梦、珊瑚暖阳、薄荷清风、日落余晖、玫瑰晨曦
+- **29+ 精美主题**: 浅色、深色、护眼三大类主题
+  - 浅色主题：白泽紫韵、暖白温馨、清新简约、薰衣草梦、珊瑚暖阳、薄荷清风、日落余晖、玫瑰晨曦、温暖
   - 深色主题：深邃夜空、深空黑曜、科技蓝、海洋之心、森林绿意
   - 护眼主题：护眼绿、护眼米、护眼蓝、护眼粉、护眼琥珀、护眼青、护眼紫
+- **双主题配置**: 支持应用主题和编辑器主题分开设置，提供更灵活的个性化体验
 - **实时切换**: 主题实时切换，所有窗口同步更新
+- **主题预览**: 提供主题预览功能，支持可视化选择主题
 
 #### 🔧 插件工具集
 - **转换工具**: JSON/YAML/TOML 互转、大小写转换、颜色格式转换、日期格式转换等
@@ -67,6 +69,7 @@
 - **本地存储**: 所有数据本地存储，保护隐私
 - **文件关联**: 支持 .md 文件关联打开
 - **状态持久化**: 编辑器状态自动保存和恢复
+- **文件状态管理**: 应用关闭时自动保存当前打开的文件和目录结构，重新打开后自动加载上次的工作状态
 
 ## 🔧 技术栈
 
@@ -202,10 +205,20 @@ BaiZeNotesByVue/
 │   │   ├── index.ts              # 主进程入口
 │   │   ├── dialogs/              # 对话框模块
 │   │   ├── menu/                 # 菜单系统
+│   │   ├── renders/              # 渲染器模块
+│   │   │   ├── HemyRender.ts     # 自定义渲染器
+│   │   │   ├── KatexRender.ts    # KaTeX 渲染器
+│   │   │   ├── MaterialRender.ts # Material Admonitions 渲染器
+│   │   │   ├── MermaidRender.ts  # Mermaid 渲染器
+│   │   │   └── PlantumlRender.ts # PlantUML 渲染器
 │   │   ├── templates/            # 模板系统
 │   │   │   ├── mermaid/          # Mermaid 图表模板
 │   │   │   ├── plantuml/         # PlantUML 模板
 │   │   │   └── writing/          # 写作模板
+│   │   ├── themes/               # 主题配置模块
+│   │   │   ├── theme-config.ts   # 主题配置
+│   │   │   ├── theme-config-optimized.ts # 优化版主题配置
+│   │   │   └── theme-css-generator.ts # 主题CSS生成器
 │   │   └── utils/                # 工具模块
 │   ├── preload/                  # 预加载脚本
 │   │   └── index.ts              # 预加载脚本入口
@@ -219,11 +232,44 @@ BaiZeNotesByVue/
 │       │   │   ├── Katex/        # KaTeX 数学库
 │       │   │   ├── mermaid/      # Mermaid 图表库
 │       │   │   └── monaco-editor/ # Monaco 编辑器
-│       │   └── style/            # 样式文件
+│       │   └── styles/           # 样式文件
 │       └── index.html            # HTML 入口
 ├── doc/                          # 项目文档
+│   ├── 架构文档.md               # 项目架构说明
+│   ├── 功能分析报告.md           # 功能分析报告
+│   ├── 规格文档.md               # 产品规格说明
+│   ├── 设计文档.md               # UI设计规范
+│   ├── 项目详细文档.md           # 项目概述和技术架构
+│   ├── 文件导入功能说明.md       # 文件导入功能说明
+│   ├── 文件导出功能说明.md       # 文件导出功能说明
+│   ├── 主题设置详细方案.md       # 主题系统优化方案
+│   ├── 主题优化方案.md           # 主题优化方案
+│   └── 文档更新摘要.md           # 文档更新历史
 ├── icon/                         # 应用图标
 ├── resources/                    # 资源文件
+│   └── themes/                   # 主题配置文件
+│       ├── lavender.json         # 薰衣草梦主题
+│       ├── coral.json            # 珊瑚暖阳主题
+│       ├── mint.json             # 薄荷清风主题
+│       ├── sunset.json           # 日落余晖主题
+│       ├── rose.json             # 玫瑰晨曦主题
+│       ├── night.json            # 深邃夜空主题
+│       ├── obsidian.json         # 深空黑曜主题
+│       ├── tech-blue.json        # 科技蓝主题
+│       ├── ocean.json            # 海洋之心主题
+│       ├── forest.json           # 森林绿意主题
+│       ├── eye-green.json        # 护眼绿主题
+│       ├── eye-beige.json        # 护眼米主题
+│       ├── eye-blue.json         # 护眼蓝主题
+│       ├── eye-pink.json         # 护眼粉主题
+│       ├── eye-amber.json        # 护眼琥珀主题
+│       ├── eye-cyan.json         # 护眼青主题
+│       ├── eye-purple.json       # 护眼紫主题
+│       └── warm.json             # 温暖主题
+├── config/                       # 配置文件目录
+├── build/                        # 构建脚本
+│   ├── copyfile.bat              # 文件复制脚本
+│   └── installer.nsh             # NSIS安装程序配置
 ├── dist/                         # 构建输出目录
 ├── out/                          # 编译输出目录
 ├── electron.vite.config.ts       # Electron-Vite 配置

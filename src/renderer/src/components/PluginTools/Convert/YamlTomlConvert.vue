@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 style="display: flex; align-items: center; justify-content: center">
             YAML 和 TOML转换器
         </h1>
@@ -44,4 +44,5 @@ function openUrl(link) {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+@import '../plugin-tools-theme.css';</style>

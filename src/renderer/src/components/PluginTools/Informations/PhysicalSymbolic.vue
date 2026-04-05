@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">物理符号常量</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">物理符号常量查询</p>
@@ -70,6 +70,7 @@ const filterPhysicalSymbol = computed(() => {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .physical-symbol-table-style {
     width: 100%;
     border-collapse: collapse;

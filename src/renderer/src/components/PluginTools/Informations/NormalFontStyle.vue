@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">常见字体对照</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">常见字体对照查询</p>
@@ -71,6 +71,7 @@ const filterNormalFontStyle = computed(() => {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .normal-font-style-style {
     width: 100%;
     border-collapse: collapse;

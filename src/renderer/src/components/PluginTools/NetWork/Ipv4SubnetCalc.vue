@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">IPv4子网计算器</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">解析IPv4 CIDR块，并获取有关子网络的所有所需信息。</p>
@@ -390,6 +390,7 @@ function NetWorkReset(name: string) {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .subnet-label {
     width: 120px;
     background-color: lightblue;

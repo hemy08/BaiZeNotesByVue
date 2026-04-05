@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 style="display: flex; align-items: center; justify-content: center">JSON 转 CSV</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">使用自动标头检测将JSON转换为CSV。</p>
@@ -30,4 +30,5 @@ function openUrl(link) {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+@import '../plugin-tools-theme.css';</style>

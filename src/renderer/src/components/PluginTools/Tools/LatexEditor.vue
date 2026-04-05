@@ -1,5 +1,5 @@
 <template>
-  <div :style="{ width: props.workAreaWidth }">
+  <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
     <h1 class="header-display-center">Latex公式编辑器</h1>
     <div style="color: grey; background-color: grey; height: 2px; margin-top: 10px"></div>
     <p style="color: grey; margin-top: 10px">
@@ -68,6 +68,7 @@ function openUrl(link :string) {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 
 :root {
   --blue: #007bff;

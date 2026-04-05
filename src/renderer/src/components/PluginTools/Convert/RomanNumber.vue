@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 style="display: flex; align-items: center; justify-content: center">罗马数字转换器</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">将罗马数字转换为数字，并将数字转换为罗马数字。</p>
@@ -30,4 +30,5 @@ function openUrl(link) {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+@import '../plugin-tools-theme.css';</style>

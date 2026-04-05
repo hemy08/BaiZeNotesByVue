@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">UUIDs 生成器</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">
@@ -211,6 +211,7 @@ function RefreshUuids() {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .uuid-label-style {
     width: 150px;
     text-align: justify;

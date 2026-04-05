@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">加密/解密文本，对称加密算法</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">使用加密算法(如AES、TripleDES、Rabbit或RC4)加密和解密文本明文。</p>
@@ -256,4 +256,5 @@ function handleDecrypt() {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+@import '../plugin-tools-theme.css';</style>

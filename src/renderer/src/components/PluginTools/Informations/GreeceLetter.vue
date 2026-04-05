@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">希腊字母对照</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">希腊字母大小写对照</p>
@@ -78,6 +78,7 @@ const filterGreeceLetter = computed(() => {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .greece-letter-table-style {
     width: 100%;
     border-collapse: collapse;

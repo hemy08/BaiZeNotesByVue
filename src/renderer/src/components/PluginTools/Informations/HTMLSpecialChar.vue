@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">HTML特殊字符对照表</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">HTML特殊字符对照表，支持查询</p>
@@ -82,6 +82,7 @@ const filterHtmlSpecChar = computed(() => {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .html-spec-char-table-style {
     width: 100%;
     border-collapse: collapse;

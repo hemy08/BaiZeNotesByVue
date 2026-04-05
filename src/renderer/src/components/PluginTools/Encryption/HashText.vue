@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">Hash 哈希文本生成，非对称加密</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">
@@ -146,6 +146,7 @@ function getHashTextResult() {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .hash-text-label {
     height: 30px;
     background-color: lightgreen;

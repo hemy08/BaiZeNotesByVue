@@ -1,10 +1,10 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 style="display: flex; align-items: center; justify-content: center">
             JSON美化和格式化
         </h1>
-        <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">将JSON字符串修饰为友好的可读格式。</p>
+        <div class="divider" style="height: 2px"></div>
+        <p>将JSON字符串修饰为友好的可读格式。</p>
         <a
             class="plugin-tools-openurl"
             role="button"
@@ -13,8 +13,8 @@
             https://tools.w3cschool.cn/json-prettify
         </a>
         <h1 style="display: flex; align-items: center; justify-content: center">JSON 压缩</h1>
-        <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">通过删除不必要的空白来缩小和压缩JSON</p>
+        <div class="divider" style="height: 2px"></div>
+        <p>通过删除不必要的空白来缩小和压缩JSON</p>
         <a
             class="plugin-tools-openurl"
             role="button"
@@ -42,4 +42,14 @@ function openUrl(link) {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+@import '../plugin-tools-theme.css';
+
+.plugin-tools-openurl {
+    display: block;
+    text-align: center;
+    margin: 10px 0;
+    cursor: pointer;
+    text-decoration: underline;
+}
+</style>

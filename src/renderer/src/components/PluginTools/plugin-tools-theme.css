@@ -1,0 +1,71 @@
+/* Plugin Tools 主题样式 */
+.plugin-tools-theme {
+    /* 使用主题 CSS 变量 */
+    background-color: var(--theme-background-color);
+    color: var(--theme-text-color);
+}
+
+.plugin-tools-theme h1 {
+    color: var(--theme-text-color);
+}
+
+.plugin-tools-theme h2 {
+    color: var(--theme-text-color);
+}
+
+.plugin-tools-theme h3 {
+    color: var(--theme-text-color);
+}
+
+.plugin-tools-theme p {
+    color: var(--theme-secondary-text-color);
+}
+
+.plugin-tools-theme a {
+    color: var(--theme-accent-color);
+}
+
+.plugin-tools-theme a:hover {
+    color: var(--theme-hover-background);
+}
+
+.plugin-tools-theme button {
+    background-color: var(--theme-button-background);
+    color: var(--theme-button-text-color);
+    border-color: var(--theme-border-color);
+}
+
+.plugin-tools-theme button:hover {
+    background-color: var(--theme-hover-background);
+}
+
+.plugin-tools-theme input {
+    background-color: var(--theme-card-background);
+    color: var(--theme-text-color);
+    border-color: var(--theme-border-color);
+}
+
+.plugin-tools-theme textarea {
+    background-color: var(--theme-card-background);
+    color: var(--theme-text-color);
+    border-color: var(--theme-border-color);
+}
+
+.plugin-tools-theme select {
+    background-color: var(--theme-card-background);
+    color: var(--theme-text-color);
+    border-color: var(--theme-border-color);
+}
+
+.plugin-tools-theme .divider {
+    background-color: var(--theme-border-color);
+}
+
+.plugin-tools-theme .card {
+    background-color: var(--theme-card-background);
+    border-color: var(--theme-border-color);
+}
+
+.plugin-tools-theme .border {
+    border-color: var(--theme-border-color);
+}

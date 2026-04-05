@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">Crypto 加密/解密文本</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">使用NodeJs的crypto加解密算法，进行加解密文本处理。</p>
@@ -273,6 +273,7 @@ function CryptoDecryptResult() {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .crypto-text-label {
     width: 175px;
     background-color: lightblue;

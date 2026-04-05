@@ -96,6 +96,7 @@ export const W3School: MenuContext[] = [
     { label: 'WEB安全色查询', context: 'https://www.w3cschool.cn/tools/index?name=safe_color' }
 ]
 
+// @ts-ignore
 export const EncodeDecode: MenuContext[] = [
     { label: '二维码在线生成工具', context: 'https://www.w3cschool.cn/tools/index?name=qrcode' },
     { label: '二维码在线解码', context: 'https://www.w3cschool.cn/tools/index?name=qrdecode' },

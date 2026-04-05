@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">数字大小写单位</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">数字大小写单位</p>
@@ -70,6 +70,7 @@ const filterNumericCase = computed(() => {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .numeric-case-table-style {
     width: 100%;
     border-collapse: collapse;

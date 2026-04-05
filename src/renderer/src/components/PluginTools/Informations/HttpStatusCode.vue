@@ -1,5 +1,5 @@
 <template>
-    <div :style="{ width: props.workAreaWidth }">
+    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 class="header-display-center">HTTP 消息状态码</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">HTTP 消息状态码和对应的解释</p>
@@ -72,6 +72,7 @@ function cleanHtml(desc) {
 </script>
 
 <style scoped>
+@import '../plugin-tools-theme.css';
 .http-code-table-style {
     width: 100%;
     border-collapse: collapse;
