@@ -88,7 +88,7 @@
 
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| [Monaco Editor](https://microsoft.github.io/monaco-editor/) | 0.49.0 | VS Code 同款代码编辑器 |
+| [Monaco Editor](https://microsoft.github.io/monaco-editor/) | 0.55.0 | VS Code 同款代码编辑器 |
 | [markdown-it](https://markdown-it.github.io/) | 14.1.0 | Markdown 解析器 |
 | [Mermaid](https://mermaid-js.github.io/mermaid/) | 10.9.1 | 流程图、时序图渲染 |
 | [KaTeX](https://katex.org/) | 0.16.10 | 数学公式渲染 |
