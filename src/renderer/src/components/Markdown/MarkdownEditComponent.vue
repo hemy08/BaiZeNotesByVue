@@ -176,6 +176,12 @@ watch(
 )
 
 onMounted(() => {
+    // 初始化容器宽度
+    const parentElement = document.getElementById('md-edit-component')?.parentElement
+    if (parentElement) {
+        windowWidth.value = parentElement.clientWidth.toString()
+    }
+
     function handleKeyDownEvent(event) {
         // console.log('keyDown', event)
         if (event.ctrlKey && event.key === 's') {
@@ -190,9 +196,19 @@ onMounted(() => {
         window.electron.ipcRenderer.send('save-file-content-to-disk', markdownEditorContent.value)
     })
 
+    // 监听窗口大小变化
+    const handleResize = () => {
+        const parentElement = document.getElementById('md-edit-component')?.parentElement
+        if (parentElement) {
+            windowWidth.value = parentElement.clientWidth.toString()
+        }
+    }
+    window.addEventListener('resize', handleResize)
+
     // 销毁编辑器实例
     onBeforeUnmount(() => {
         window.removeEventListener('keydown', handleKeyDownEvent)
+        window.removeEventListener('resize', handleResize)
     })
 })
 </script>
@@ -200,22 +216,29 @@ onMounted(() => {
 <style scoped>
 #md-edit-component {
     margin: 0;
-    display: flex;
-    float: left;
+    padding: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
     height: 100%;
+    overflow: hidden;
 }
 
 #resizer-md {
     cursor: ew-resize;
-    color: blue;
-    background-color: blue;
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background-color: var(--theme-border-color, #00b0ff);
     width: 4px;
+    z-index: 10;
 }
 
 .md-preview {
     background-color: var(--theme-card-background);
     color: var(--theme-text-color);
-    display: flex;
+    position: absolute;
+    top: 0;
     overflow: hidden;
     height: 100%;
 }

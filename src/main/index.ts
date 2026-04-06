@@ -26,8 +26,9 @@ function createWindow(): void {
             nodeIntegration: true,
             contextIsolation: false,
             sandbox: false,
-            webSecurity: false,
-            allowRunningInsecureContent: true
+            // 仅在开发环境禁用 webSecurity，生产环境启用以增强安全性
+            webSecurity: is.dev ? false : true,
+            allowRunningInsecureContent: is.dev ? true : false
         }
     })
 
@@ -39,18 +40,23 @@ function createWindow(): void {
     mainWindow.on('ready-to-show', () => {
         mainWindow.maximize()
         mainWindow.show()
-        mainWindow.webContents.openDevTools()
+        // DevTools 默认不打开，通过 F12 切换
         // 加载一个子窗口，不对外显示
         dialogs.CreateMermaidRenderFrame('')
         // 发送初始主题样式到主窗口
         const theme = getCurrentThemeStyles()
         mainWindow.webContents.send('baize-notes:init-theme-styles', theme)
-        
+
         // 恢复上次打开的文件
         restoreLastOpenedFile()
     })
+    // F12 切换 DevTools 打开/关闭
     globalShortcut.register('F12', () => {
-        mainWindow.webContents.openDevTools()
+        if (mainWindow.webContents.isDevToolsOpened()) {
+            mainWindow.webContents.closeDevTools()
+        } else {
+            mainWindow.webContents.openDevTools()
+        }
     })
 
     utils.globalInitialize(mainWindow)

@@ -39,5 +39,6 @@ const props = defineProps({
     flex: 1;
     width: 100%;
     flex-direction: row;
+    position: relative;
 }
 </style>

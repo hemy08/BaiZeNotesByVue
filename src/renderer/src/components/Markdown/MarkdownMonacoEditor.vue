@@ -56,6 +56,14 @@ onMounted(() => {
         editor.KeyMaps(editorInstance)
         editor.AddActions(editorInstance)
         editor.LoadScript()
+        
+        // 初始化后立即布局，确保编辑器尺寸正确
+        editorInstance.layout()
+        
+        // 延迟再次布局，确保DOM完全渲染后尺寸正确
+        setTimeout(() => {
+            editorInstance.layout()
+        }, 100)
     }
 
     onBeforeUnmount(() => {
@@ -102,10 +110,10 @@ watch(
 // 监听父组件区域变化
 watch(
     () => props.editorAreaWidth,
-    (newWidth) => {
-        if (editorInstance && monacoEditorContainer.value) {
-            monacoEditorContainer.value.style.width = newWidth
-            //console.log('newWidth', newWidth)
+    () => {
+        // 当父容器宽度变化时，只需要调用 layout() 让 Monaco 重新计算尺寸
+        // 不需要设置容器宽度，因为容器始终是 100% 相对于父容器
+        if (editorInstance) {
             editorInstance.layout()
         }
     }

@@ -148,20 +148,30 @@ onMounted(() => {
     flex-direction: row;
     background: var(--theme-card-background, ghostwhite);
     color: var(--theme-text-color, black);
-    overflow: auto;
-    width: auto;
+    width: 100%;
+    height: 100%;
+}
+
+#markdown-toc-heading {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
     height: 100%;
 }
 
 .markdown-toc-title {
     color: var(--theme-accent-color, red);
+    display: block;
     width: 100%;
-    display: inline-block;
+    padding: 4px 8px;
     font-family: 'STXinwei', serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
 }
 
 .markdown-toc-title:hover {
     background-color: var(--theme-hover-background, #9dddff);
-    display: inline-block;
 }
 </style>
