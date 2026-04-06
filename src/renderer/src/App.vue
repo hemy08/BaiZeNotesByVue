@@ -1,6 +1,26 @@
 <template>
     <div id="editor-container" :style="containerStyles">
-        <!-- 应用工具栏和下发区域分割部分，2px高度，宽度与app一致 -->
+        <!-- 标题栏区域，高度24px，宽度与app一致 -->
+        <!-- div id="title-bar" class="title-bar">
+            <div class="title-left">
+                <img src="../../../resources/icon/baize_clear_icon.svg" class="title-icon" alt=""/>
+                <span class="title-text">白泽笔记 - Markdown Editor Powered By Election + Vue</span>
+            </div>
+            <div class="window-controls">
+                <button class="window-btn minimize" @click="minimizeWindow" title="最小化">
+                    <svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg>
+                </button>
+                <button class="window-btn maximize" @click="maximizeWindow" title="最大化">
+                    <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" fill="none"/></svg>
+                </button>
+                <button class="window-btn close" @click="closeWindow" title="关闭">
+                    <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+                </button>
+            </div>
+        </div-->
+        <!-- 菜单栏区域，高度24px，宽度与app一致 -->
+        <!--div id="menu-bar" class="menu-bar"><MenuBar /></div-->
+        <!-- 应用工具栏和下方区域分割部分，2px高度，宽度与app一致 -->
         <div id="file-bar"></div>
         <!-- 整个工作区域 -->
         <div id="workspace-area" class="workspace-area"><WorkSpace /></div>
@@ -13,6 +33,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import WorkSpace from './components/WorkSpaceArea/WorkSpace.vue'
 import StatusBar from './components/StatusBar.vue'
+import MenuBar from './components/MenuBar.vue'
 import EventBus from './event-bus'
 import * as monaco from 'monaco-editor'
 
@@ -177,7 +198,7 @@ async function loadMonacoTheme(themeName: string): Promise<string | null> {
 // 监听主题更新事件
 async function handleThemeUpdate(_event: any, data: ThemeUpdateData) {
     console.log('[Renderer] Received theme update:', data)
-    
+
     if (!data || !data.themeStyles) {
         console.error('[Renderer] Received invalid theme data')
         return
@@ -208,7 +229,7 @@ onMounted(async () => {
         const themeStyles = await window.electron.ipcRenderer.invoke('get-current-theme-styles')
         const separate = window.electron.ipcRenderer.sendSync('get-separate-editor-theme')
         const monacoTheme = window.electron.ipcRenderer.sendSync('get-monaco-theme')
-        
+
         if (themeStyles) {
             separateEditorTheme.value = separate
             monacoEditorTheme.value = monacoTheme
@@ -220,19 +241,101 @@ onMounted(async () => {
     }
 })
 
+// 窗口控制函数
+function minimizeWindow() {
+    window.electron.ipcRenderer.send('window-minimize')
+}
+
+function maximizeWindow() {
+    window.electron.ipcRenderer.send('window-maximize')
+}
+
+function closeWindow() {
+    window.electron.ipcRenderer.send('window-close')
+}
+
 onBeforeUnmount(() => {
     window.electron.ipcRenderer.removeListener('baize-notes:theme-updated', handleThemeUpdate)
 })
 </script>
 
 <style scoped>
+.menu-bar {
+    height: 35px;
+}
+
+.title-bar {
+    background: var(--theme-title-bar-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    color: #fff;
+    font-size: 13px;
+
+.title-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.title-text {
+    margin-left: 8px;
+}
+
+.window-controls {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.window-btn {
+    width: 46px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.window-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.window-btn.close:hover {
+    background: #e81123;
+}
+
+.window-btn svg {
+    width: 12px;
+    height: 12px;
+    stroke: #fff;
+    stroke-width: 1.5;
+    fill: none;
+}
+
+.window-btn.close:hover svg {
+    stroke: #fff;
+}
+    font-weight: 500;
+    height: 30px;
+}
+
+.title-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
 /* 需要隐藏滚动条，如果不隐藏，在区域内部，窗口会层叠*/
 .workspace-area {
     flex: 1;
     display: flex;
     flex-direction: row;
     overflow: hidden;
-    height: calc(100vh - 2px - 24px);
+    height: calc(100vh - 2px - 30px - 30px - 30px);
 }
 
 #workspace-area {

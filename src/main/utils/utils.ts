@@ -2,19 +2,19 @@
 import { globalInitialize } from './global'
 import * as FileUtils from './file-utils'
 // @ts-ignore
-import { HemyRenderPre, HemyRenderPost } from '../renders/HemyRender'
+import { HemyRenderPost, HemyRenderPre } from '../renders/HemyRender'
 // @ts-ignore
-import {
-    CreateRsaKeyPair,
-    CreateHash,
-    CreateHmac,
-    CryptoDecrypt,
-    CryptoEncrypt
-} from './encrypt_decrypt'
+import { CreateHash, CreateHmac, CreateRsaKeyPair, CryptoDecrypt, CryptoEncrypt } from './encrypt_decrypt'
 import { ipcMain, shell } from 'electron'
 // @ts-ignore
 import { getQuickLinks } from './quick-link-config'
-import { getCurrentTheme, getCurrentThemeStyles, getAllThemes, getSeparateEditorTheme, getMonacoTheme } from '../themes/theme-config'
+import {
+    getAllThemes,
+    getCurrentTheme,
+    getCurrentThemeStyles,
+    getMonacoTheme,
+    getSeparateEditorTheme
+} from '../themes/theme-config'
 
 export {
     globalInitialize,
@@ -123,24 +123,20 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
 
     // 主题配置相关IPC
     ipcMain.on('get-current-theme', (event) => {
-        const theme = getCurrentTheme()
-        event.returnValue = theme
+        event.returnValue = getCurrentTheme ()
     })
 
     ipcMain.on('get-current-theme-styles', (event) => {
-        const styles = getCurrentThemeStyles()
-        event.returnValue = styles
+        event.returnValue = getCurrentThemeStyles ()
     })
 
     ipcMain.on('get-all-themes', (event) => {
     ipcMain.on('get-separate-editor-theme', (event) => {
-        const separate = getSeparateEditorTheme()
-        event.returnValue = separate
+        event.returnValue = getSeparateEditorTheme ()
     })
 
     ipcMain.on('get-monaco-theme', (event) => {
-        const theme = getMonacoTheme()
-        event.returnValue = theme
+        event.returnValue = getMonacoTheme ()
     })
         event.returnValue = getAllThemes()
     })

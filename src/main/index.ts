@@ -104,12 +104,30 @@ app.whenReady().then(() => {
     // IPC test
     ipcMain.on('ping', () => console.log('pong'))
 
-    // 获取当前主题
-    ipcMain.handle('get-current-theme', () => {
-        return getCurrentThemeStyles()
+    // 监听主题更新请求
+
+    // 窗口控制
+    ipcMain.on('window-minimize', () => {
+        if (mainWindow) {
+            mainWindow.minimize()
+        }
     })
 
-    // 监听主题更新请求
+    ipcMain.on('window-maximize', () => {
+        if (mainWindow) {
+            if (mainWindow.isMaximized()) {
+                mainWindow.unmaximize()
+            } else {
+                mainWindow.maximize()
+            }
+        }
+    })
+
+    ipcMain.on('window-close', () => {
+        if (mainWindow) {
+            mainWindow.close()
+        }
+    })
     ipcMain.on('baize-notes:update-theme', () => {
         const theme = getCurrentThemeStyles()
         console.log('[Main] Sending theme update:', theme)

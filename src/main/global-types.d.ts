@@ -103,6 +103,15 @@ declare global {
     }
 }
 
+export interface BaiZeMenuItem {
+    label: string
+    accelerator?: string
+    click?: string
+    submenu?: BaiZeMenuItem[]
+    type?: string
+    enabled?: boolean
+} // 白泽编辑器菜单项
+
 export interface FileItem {
     name: string
     path: string

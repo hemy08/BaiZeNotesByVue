@@ -154,6 +154,11 @@ function onHandleEditorShow(edit: boolean, preview: boolean) {
             resizerPosition.value = '0%'
         }
     }
+
+    // 视图切换后，通知Monaco编辑器重新布局
+    setTimeout(() => {
+        EventBus.$emit('monaco-editor-relayout')
+    }, 100)
 }
 
 window.electron.ipcRenderer.on('markdown-edit-model', () => {

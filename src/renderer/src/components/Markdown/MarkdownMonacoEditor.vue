@@ -136,6 +136,13 @@ onMounted(() => {
             monaco.editor.ScrollType.Smooth
         )
     })
+    
+    // 监听视图切换后的重新布局事件
+    EventBus.$on('monaco-editor-relayout', () => {
+        if (editorInstance) {
+            editorInstance.layout()
+        }
+    })
 
     onBeforeUnmount(() => {
         EventBus.$off('monaco-editor-update-header-format', (value: string) => {
