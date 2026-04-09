@@ -1,9 +1,41 @@
 <template>
     <div id="editor-container" :style="containerStyles">
         <!-- 标题栏区域，高度24px，宽度与app一致 -->
-        <!-- div id="title-bar" class="title-bar">
+        <div id="title-bar" class="title-bar">
             <div class="title-left">
-                <img src="../../../resources/icon/baize_clear_icon.svg" class="title-icon" alt=""/>
+                <svg class="title-icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                            <stop offset="50%" style="stop-color:#764ba2;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" />
+                        </linearGradient>
+                        <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#e8e8e8;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <rect width="512" height="512" rx="100" fill="url(#bgGrad)"/>
+                    <g transform="translate(256, 280)">
+                        <ellipse cx="0" cy="0" rx="120" ry="80" fill="url(#bodyGrad)" opacity="0.95"/>
+                        <circle cx="0" cy="-60" r="70" fill="url(#bodyGrad)" opacity="0.95"/>
+                        <circle cx="-25" cy="-70" r="12" fill="#333"/>
+                        <circle cx="25" cy="-70" r="12" fill="#333"/>
+                        <circle cx="-22" cy="-73" r="4" fill="#fff"/>
+                        <circle cx="28" cy="-73" r="4" fill="#fff"/>
+                        <path d="M -30 -120 Q -35 -150 -20 -160 Q -10 -150 -15 -120" fill="#ffd700" stroke="#daa520" stroke-width="2"/>
+                        <path d="M 30 -120 Q 35 -150 20 -160 Q 10 -150 15 -120" fill="#ffd700" stroke="#daa520" stroke-width="2"/>
+                        <path d="M -60 -40 Q -80 -60 -70 -90 Q -50 -70 -40 -50" fill="#e8e8e8" opacity="0.8"/>
+                        <path d="M 60 -40 Q 80 -60 70 -90 Q 50 -70 40 -50" fill="#e8e8e8" opacity="0.8"/>
+                        <path d="M -40 -50 Q -60 -40 -70 -20" fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M 40 -50 Q 60 -40 70 -20" fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round"/>
+                        <rect x="-90" y="40" width="25" height="60" rx="10" fill="url(#bodyGrad)" opacity="0.9"/>
+                        <rect x="65" y="40" width="25" height="60" rx="10" fill="url(#bodyGrad)" opacity="0.9"/>
+                        <rect x="-50" y="50" width="20" height="50" rx="8" fill="url(#bodyGrad)" opacity="0.9"/>
+                        <rect x="30" y="50" width="20" height="50" rx="8" fill="url(#bodyGrad)" opacity="0.9"/>
+                        <path d="M 0 80 Q 30 100 50 90 Q 70 80 80 100" fill="none" stroke="url(#bodyGrad)" stroke-width="15" stroke-linecap="round" opacity="0.8"/>
+                    </g>
+                </svg>
                 <span class="title-text">白泽笔记 - Markdown Editor Powered By Election + Vue</span>
             </div>
             <div class="window-controls">
@@ -17,9 +49,9 @@
                     <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg>
                 </button>
             </div>
-        </div-->
+        </div>
         <!-- 菜单栏区域，高度24px，宽度与app一致 -->
-        <!--div id="menu-bar" class="menu-bar"><MenuBar /></div-->
+        <div id="menu-bar" class="menu-bar"><MenuBar /></div>
         <!-- 应用工具栏和下方区域分割部分，2px高度，宽度与app一致 -->
         <div id="file-bar"></div>
         <!-- 整个工作区域 -->

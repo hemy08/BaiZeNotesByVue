@@ -1,4 +1,14 @@
-import { blockcode } from './constBlockCode'
+// textblock templates merged
+
+// ========== constBlockCode.ts ==========
+const blockcode =
+    '\n<details>\n' +
+    '<summary style="color:rgb(0,0,255);font-weight:bold">xxxx</summary>\n' +
+    '<blockcode><pre><code>\n' +
+    '```\n\n' +
+    '```\n\n' +
+    '</code></pre></blockcode></details>\n'
+
 
 const image_links = '![]()\n'
 const linksList =
@@ -17,4 +27,11 @@ function getFmtData(): string {
     return `<span style="color:rgb(100,180,246);font-size:11pt">最后更新：${fmt_date}</span>\n`
 }
 
-export { image_links, blockcode, linksList, getFmtData }
+
+// Export all
+export {
+    blockcode,
+    linksList,
+    image_links,
+    getFmtData
+}

@@ -1,14 +1,15 @@
 import * as dialogs from '../dialogs/dialogs'
 import * as utils from '../utils/utils'
 import * as menucontext from './menucontext'
+import * as templates from '../common/templates'
 
 const InsertFromFiles = {
-    json: { label: '*.json' },
-    text: { label: '*.txt;*.log' },
-    ini: { label: '*.ini' },
-    yaml: { label: '*.yaml;*.yml' },
-    csv: { label: '*.csv' },
-    excel: { label: '*.xls;*.xlsx' }
+    json: { label: '*.json', menu_action: 'baize:menu:insert:from-file:json' },
+    text: { label: '*.txt;*.log', menu_action: 'baize:menu:insert:from-file:text' },
+    ini: { label: '*.ini', menu_action: 'baize:menu:insert:from-file:ini' },
+    yaml: { label: '*.yaml;*.yml', menu_action: 'baize:menu:insert:from-file:yaml' },
+    csv: { label: '*.csv', menu_action: 'baize:menu:insert:from-file:csv' },
+    excel: { label: '*.xls;*.xlsx', menu_action: 'baize:menu:insert:from-file:excel' }
 }
 
 function GenInsertFromSubMenu(
@@ -37,14 +38,15 @@ function GenMaterialSubMenu(
     ]
 }
 
-const CHANNEL_INSERT_WRITING_TEMPLATE = 'monaco-insert-writing-templates'
-const CHANNEL_INSERT_TEXTBLOCK_TEMPLATE = 'monaco-insert-text-block-templates'
-
 const insertSubMenu = {
-    mermaid: { channel: CHANNEL_INSERT_TEXTBLOCK_TEMPLATE, MenuContext: menucontext.Mermaid },
-    plantuml: { channel: CHANNEL_INSERT_TEXTBLOCK_TEMPLATE, MenuContext: menucontext.PlantUML },
-    writing: { channel: CHANNEL_INSERT_WRITING_TEMPLATE, MenuContext: menucontext.Writing },
-    textblock: { channel: CHANNEL_INSERT_TEXTBLOCK_TEMPLATE, MenuContext: menucontext.TextBlock }
+    mermaid: {
+        channel: templates.CHANNEL_INSERT_TEXTBLOCK,
+        MenuContext: [...templates.MermaidPart1,...templates.MermaidPart2] },
+    plantuml: {
+        channel: templates.CHANNEL_INSERT_TEXTBLOCK,
+        MenuContext: [ ...templates.PlantUMLPart1,...templates.PlantUMLPart2]  },
+    writing: { channel: templates.CHANNEL_INSERT_WRITING, MenuContext: templates.Writing },
+    textblock: { channel: templates.CHANNEL_INSERT_TEXTBLOCK, MenuContext: templates.TextBlock }
 }
 
 function GenSubMenuItemInsert(

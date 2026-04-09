@@ -1,14 +1,13 @@
-import { app, shell, BrowserWindow, ipcMain, Menu, globalShortcut } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, globalShortcut } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-// @ts-ignore
-import { getApplicationMenu } from './menu/menu'
 // @ts-ignore
 import './plugins/plugin'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
 import { restoreLastOpenedFile } from './utils/file-state'
 import { getCurrentThemeStyles } from './themes/theme-config'
+import {HandleBaiZeMenuAction} from "./menu/menu_ipc";
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -19,6 +18,7 @@ function createWindow(): void {
         height: 800,
         show: false,
         title: '白泽笔记 -- Markdown Editor Powered By Electron and Vue',
+        frame: false,
         autoHideMenuBar: false,
         icon: join(__dirname, '../icon/baize_clear_icon.ico'),
         webPreferences: {
@@ -27,7 +27,7 @@ function createWindow(): void {
             contextIsolation: false,
             sandbox: false,
             // 仅在开发环境禁用 webSecurity，生产环境启用以增强安全性
-            webSecurity: is.dev ? false : true,
+            webSecurity: !is.dev,
             allowRunningInsecureContent: is.dev ? true : false
         }
     })
@@ -81,8 +81,6 @@ function createWindow(): void {
         // mainWindow = null
         app.quit()
     })
-    const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
-    Menu.setApplicationMenu(menu)
 }
 
 // This method will be called when Electron has finished
@@ -139,9 +137,10 @@ app.whenReady().then(() => {
         BrowserWindow.getAllWindows().forEach(window => {
             window.webContents.send('baize-notes:theme-updated', theme)
         })
-        // 重新设置菜单（如果需要根据主题更新菜单项）
-        const menu = Menu.buildFromTemplate(getApplicationMenu(mainWindow))
-        Menu.setApplicationMenu(menu)
+    })
+
+    ipcMain.on('baize-notes:menu-action', (_, action) => {
+        HandleBaiZeMenuAction(action, mainWindow);
     })
 
     createWindow()

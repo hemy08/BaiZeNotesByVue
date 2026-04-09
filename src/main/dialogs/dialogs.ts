@@ -13,6 +13,9 @@ import { ShowNewFileFolderDialog } from './ShowNewFileFolderDialog'
 import { ShowSystemSettingDialog } from './ShowSystemSettingDialog'
 import { ShowThemeSettingDialog } from './ShowThemeSettingDialog'
 import { ShowQuickLinkSettingDialog } from './ShowQuickLinkSettingDialog'
+import {ShowTechStackDialog} from './ShowTechStackDialog'
+import {ShowHelpAboutDialog} from  './ShowHelpAboutDialog'
+import {ShowHelpContactUsDialog} from  './ShowHelpContactUsDialog'
 import { dialog, ipcMain } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 
@@ -47,7 +50,6 @@ export {
     ShowMermaidEditDialog,
     HandleMermaidGetRenderResult,
     CreateMermaidRenderFrame,
-    ShowAdmonitionDialog,
     ShowCreateFileFolderDialog,
     ShowFileFolderRenameDialog,
     ShowConfirmDeleteDialog,
@@ -56,7 +58,11 @@ export {
     ShowNewFileFolderDialog,
     ShowSystemSettingDialog,
     ShowThemeSettingDialog,
-    ShowQuickLinkSettingDialog
+    ShowQuickLinkSettingDialog,
+    ShowTechStackDialog,
+    ShowHelpAboutDialog,
+    ShowHelpContactUsDialog,
+    ShowAdmonitionDialog
 }
 
 export function MainWindowListenDialogsEvent(mainWindow: Electron.BrowserWindow) {

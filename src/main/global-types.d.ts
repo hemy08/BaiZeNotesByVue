@@ -4,10 +4,6 @@ import * as dialogs from '../dialogs/dialogs'
 
 // global-types.d.ts
 declare global {
-    interface MenuContext {
-        label: string
-        context: string
-    }
     interface FileProperties {
         name: string
         path: string
@@ -103,13 +99,19 @@ declare global {
     }
 }
 
-export interface BaiZeMenuItem {
+export interface MenuContext {
     label: string
+    context: string
+}
+
+export interface BaiZeMenuItem {
+    label?: string
     accelerator?: string
-    click?: string
+    menu_action?: string
     submenu?: BaiZeMenuItem[]
     type?: string
     enabled?: boolean
+    usl?:string
 } // 白泽编辑器菜单项
 
 export interface FileItem {

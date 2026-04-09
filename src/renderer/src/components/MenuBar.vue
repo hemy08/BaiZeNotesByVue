@@ -22,7 +22,7 @@
                     @mouseenter="handleSubmenuEnter"
                 >
                     <BaiZeSubMenuItem
-                        :items="menuMap[activeMenu].submenu"
+                        :items="menuMap[activeMenu].submenu || []"
                         :level="0"
                         @close="closeMenu"
                     />
@@ -34,7 +34,9 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { BaiZeMenuItem, menuMap } from "@renderer/components/MenuCompents/menu_config"
+import { menuMap } from './MenuBar/menu_config'
+import {HandleMenuAction} from './MenuBar/menu_actions';
+import {BaiZeMenuItem} from '../../../main/global-types';
 
 const activeMenu = ref<number | null>(null)
 const submenuPosition = ref({ x: 0, y: 0 })
@@ -44,7 +46,7 @@ const isSubmenuHovered = ref(false)
 // 计算子菜单位置，确保不超出屏幕
 function calculateSubmenuPosition(x: number, y: number) {
     const screenWidth = window.innerWidth
-    const screenHeight = window.innerHeight
+    // const screenHeight = window.innerHeight
     const menuWidth = 220
     const padding = 8
 
@@ -87,9 +89,9 @@ const BaiZeSubMenuItem = defineComponent({
         const activeSubmenu = ref<number | null>(null)
 
         const handleItemClick = (item: BaiZeMenuItem) => {
-            if (item.click && !item.submenu) {
-                window.electron.ipcRenderer.send('menu-action', item.click)
-                emit('close')
+            if (item.menu_action && !item.submenu) {
+              HandleMenuAction(item.menu_action)
+              emit('close')
             }
         }
 
@@ -140,7 +142,7 @@ const BaiZeSubMenuItem = defineComponent({
                 if (hasSubmenu && isActive) {
                     const nestedSubmenu = h('div', { class: 'nested-submenu' }, [
                         h(BaiZeSubMenuItem, {
-                            items: item.submenu,
+                            items: item.submenu || [],
                             level: props.level + 1,
                             onClose: () => emit('close')
                         })

@@ -5,6 +5,7 @@ import { MonacoEditorKeyMaps, MonacoEditorDidChange } from './hemy-editor-shortc
 import { MonacoEditorAddActions, LoadLocalScript } from './hemy-editor-actions'
 import * as Render from './hemy-editor-render'
 
+// @ts-ignore
 const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = {
     value: '',
     language: 'markdown',
@@ -42,8 +43,7 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     renderLineHighlight: 'all', // 优化行高亮
     scrollBeyondLastLine: false, // 减少渲染区域
     foldingMaximumRegions: 5000, // 限制折叠区域数量，防止内存占用过高
-    undoLimit: 100, // 限制撤销历史，减少内存占用
-    stableMinimapScroll: true, // 稳定minimap滚动，提升性能
+    //stableMinimapScroll: true, // 稳定minimap滚动，提升性能
 
     // 优化建议配置
     quickSuggestions: {
@@ -71,11 +71,11 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     glyphMargin: false, // 禁用字形边距
 
     // 优化编辑器行为
-    readOnlyMessage: null, // 禁用只读消息
+    //readOnlyMessage: null, // 禁用只读消息
     occurrencesHighlight: 'off', // 禁用出现高亮
     selectionHighlight: false, // 禁用选择高亮
-    wordHighlight: 'off', // 禁用单词高亮
-    wordHighlightStrong: 'off', // 禁用强单词高亮
+    //wordHighlight: 'off', // 禁用单词高亮
+    //wordHighlightStrong: 'off', // 禁用强单词高亮
     bracketPairColorization: {
         enabled: false // 禁用括号对颜色化，提升性能
     }

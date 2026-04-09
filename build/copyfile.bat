@@ -1,12 +1,12 @@
-rmdir /S /Q /Y "out\renderer\src\lib"
+rmdir /S /Q "out\renderer\src\lib" 2>nul
 mkdir "out\renderer\src\lib"
 xcopy /S /E /Y /I "src\renderer\src\lib" "out\renderer\src\lib"
 
-rmdir /S /Q /Y "out\renderer\src\dialogs"
+rmdir /S /Q "out\renderer\src\dialogs" 2>nul
 mkdir "out\renderer\src\dialogs"
 xcopy /S /E /Y /I "src\renderer\src\dialogs" "out\renderer\src\dialogs"
 
-rmdir /S /Q /Y "out\renderer\src\style"
+rmdir /S /Q "out\renderer\src\style" 2>nul
 mkdir "out\renderer\src\style"
 xcopy /S /E /Y /I "src\renderer\src\style" "out\renderer\src\style"
 

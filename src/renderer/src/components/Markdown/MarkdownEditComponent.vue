@@ -201,6 +201,10 @@ onMounted(() => {
         window.electron.ipcRenderer.send('save-file-content-to-disk', markdownEditorContent.value)
     })
 
+    EventBus.$on('baize:monaco-editor-use-template', (value: string) => {
+      onHandleNewContent(value)
+    })
+
     // 监听窗口大小变化
     const handleResize = () => {
         const parentElement = document.getElementById('md-edit-component')?.parentElement

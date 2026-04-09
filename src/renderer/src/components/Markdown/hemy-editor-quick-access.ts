@@ -1,23 +1,25 @@
 import { showEmojiQuickAccess } from './hemy-quick-access-emojis'
 import { showSymbolQuickAccess } from './hemy-quick-access-symbols'
-import * as menucontext from '../../../../main/menu/menucontext'
+import * as Templates from '../../../../main/common/templates'
 import ContextMenu, { MenuItem } from '@imengyu/vue3-context-menu'
 import EventBus from '../../event-bus'
 
-const mermaidContextMenuItems = Object.keys(menucontext.Mermaid).map((diagram) => {
+
+const mermaidContextMenuItems = Object.keys(Templates.Mermaid).map((diagram) => {
     return {
-        label: menucontext.Mermaid[diagram].label, // 根据类别设置标签
+        label: Templates.Mermaid[diagram].label, // 根据类别设置标签
         onClick: () => {
-            EventBus.$emit('monaco-editor-insert-text', menucontext.Mermaid[diagram].context)
+            EventBus.$emit('monaco-editor-insert-text', Templates.Mermaid[diagram].context)
         }
     }
 })
 
-const plantumlContextMenuItems = Object.keys(menucontext.PlantUML).map((diagram) => {
+
+const plantumlContextMenuItems = Object.keys(Templates.PlantUML).map((diagram) => {
     return {
-        label: menucontext.PlantUML[diagram].label, // 根据类别设置标签
+        label: Templates.PlantUML[diagram].label, // 根据类别设置标签
         onClick: () => {
-            EventBus.$emit('monaco-editor-insert-text', menucontext.PlantUML[diagram].context)
+            EventBus.$emit('monaco-editor-insert-text', Templates.PlantUML[diagram].context)
         }
     }
 })
