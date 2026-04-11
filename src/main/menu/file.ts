@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron'
+import { app } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 import * as dialogs from '../dialogs/dialogs'
 
@@ -136,29 +136,3 @@ export function getAppFileMenuItem(
         submenu: fileMenuItems
     }
 }
-
-ipcMain.on('update-select-file-content', (_, content) => {
-    const curFile = global.current_active_file
-    // 文件打开了
-    if (curFile != undefined) {
-        global.current_active_file.content = content
-    }
-    // 没有打开文件，使用另存为动作
-})
-
-// 监听键盘事件
-function handleKeyDown(event) {
-    if (event.ctrlKey && event.key === 's') {
-        fileUtils.SaveActiveFile()
-    }
-}
-
-ipcMain.on('keydown', handleKeyDown)
-
-ipcMain.on('save-file-content-to-disk', (_, content) => {
-    const curFile = global.current_active_file
-    if (curFile != undefined) {
-        global.current_active_file.content = content
-        fileUtils.SaveActiveFile()
-    }
-})

@@ -1,6 +1,8 @@
 <template>
-    <div id="status-bar-file-path" :class="{ 'unsaved': isUnsaved }">
+    <div id="status-bar-file-path" :class="{ 'unsaved': isUnsaved, 'saved': !isUnsaved }">
         <span v-if="isUnsaved" class="unsaved-indicator">●</span>
+        <span v-else class="saved-indicator">●</span>
+        <div class="file-path-label">文件路径:</div>
         {{ filePath }}
     </div>
     <div id="status-bar-file-type">Markdown</div>
@@ -18,6 +20,7 @@ const filePath = ref('白泽笔记')
 const isUnsaved = ref(false)
 
 function onUpdateEditorFilePath(value: string) {
+    console.log('文件路径:', value)
     filePath.value = value
 }
 
@@ -33,30 +36,23 @@ function onUpdateEditorCursorPosition(position: Position) {
     element.textContent = `行 ${position.lineNumber} 列 ${position.column}`
 }
 
-function onUpdateFileSavedStatus(saved: boolean) {
-    isUnsaved.value = !saved
-}
-
 onMounted(() => {
+    // 监听文件保存成功
+    window.electron.ipcRenderer.on('monaco-editor-user-select-file', (_, value) => {
+        onUpdateEditorFilePath(value)
+    })
+
     EventBus.$on('monaco-editor-statusbar-file-path', (value: string) => {
         onUpdateEditorFilePath(value)
     })
 
     EventBus.$on('monaco-editor-statusbar-content-length', (value: string) => {
         onUpdateEditorContentLength(value)
+        isUnsaved.value = true
     })
 
     EventBus.$on('monaco-editor-statusbar-cursor-position', (position: Position) => {
         onUpdateEditorCursorPosition(position)
-    })
-
-    EventBus.$on('monaco-editor-file-saved-status', (saved: boolean) => {
-        onUpdateFileSavedStatus(saved)
-    })
-
-    // 监听文件内容变化，标记为未保存
-    window.electron.ipcRenderer.on('update-select-file-content', () => {
-        isUnsaved.value = true
     })
 
     // 监听文件保存成功
@@ -74,9 +70,6 @@ onMounted(() => {
         })
         EventBus.$off('monaco-editor-cursor-position', (position: Position) => {
             onUpdateEditorCursorPosition(position)
-        })
-        EventBus.$off('monaco-editor-file-saved-status', (saved: boolean) => {
-            onUpdateFileSavedStatus(saved)
         })
     })
 })
@@ -96,6 +89,22 @@ onMounted(() => {
     background-color: rgba(255, 107, 107, 0.1);
     padding: 2px 8px;
     border-radius: 3px;
+}
+
+#status-bar-file-path.saved {
+    color: #52c41a;
+    font-weight: 600;
+    background-color: rgba(82, 194, 26, 0.1);
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+
+.unsaved-indicator {
+    color: #ff6b6b;
+}
+
+.saved-indicator {
+    color: #52c41a;
 }
 
 .unsaved-indicator {

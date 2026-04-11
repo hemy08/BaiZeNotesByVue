@@ -15,7 +15,8 @@ const systemSettingStore = new Store<SystemSetting>({
         resourceManager: 'default',
         editorModel: 'default',
         pluginOpen: 'browser',
-        menuBarStyle: 'electron' // 默认使用Electron样式
+        menuBarStyle: 'electron', // 默认使用Electron样式
+        autoSaveInterval: 10 // 默认10秒
     }
 })
 
@@ -49,7 +50,8 @@ export function getSystemSetting(): SystemSetting {
         resourceManager: systemSettingStore.get('resourceManager', 'default'),
         editorModel: systemSettingStore.get('editorModel', 'default'),
         pluginOpen: systemSettingStore.get('pluginOpen', 'browser'),
-        menuBarStyle: systemSettingStore.get('menuBarStyle', 'electron')
+        menuBarStyle: systemSettingStore.get('menuBarStyle', 'electron'),
+        autoSaveInterval: systemSettingStore.get('autoSaveInterval', 10)
     }
 }
 
@@ -121,4 +123,21 @@ export function getPluginOpen(): string {
  */
 export function setPluginOpen(mode: string): void {
     systemSettingStore.set('pluginOpen', mode)
+}
+
+/**
+ * 获取自动保存间隔（秒）
+ */
+export function getAutoSaveInterval(): number {
+    return systemSettingStore.get('autoSaveInterval', 10)
+}
+
+/**
+ * 设置自动保存间隔（秒）
+ * @param interval 间隔时间（秒），范围：5-86400
+ */
+export function setAutoSaveInterval(interval: number): void {
+    // 验证范围
+    const validInterval = Math.max(5, Math.min(86400, interval))
+    systemSettingStore.set('autoSaveInterval', validInterval)
 }

@@ -2,13 +2,17 @@ import { app, shell, BrowserWindow, ipcMain, globalShortcut } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 // @ts-ignore
-import './plugins/plugin'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
 import { restoreLastOpenedFile } from './utils/file-state'
 import { getCurrentThemeStyles } from './themes/theme-config'
 import {HandleBaiZeMenuAction} from "./menu/menu_ipc";
 import * as EditorSettingUtils from './utils/editor-setting'
+import * as fs from "node:fs";
+import { getSystemSetting } from './themes/system-setting'
+import { StartAutoSaveFileTime } from './utils/file-utils'
+const timers: NodeJS.Timeout[] = []
+const watchers: fs.FSWatcher[] = []
 //import { SystemSetting } from "./global-types";
 //import { getApplicationMenu } from './menu/menu'
 //import * as SystemSettingUtils from './utils/system-setting'
@@ -84,6 +88,12 @@ function createWindow(): void {
 
     dialogs.MainWindowListenDialogsEvent(mainWindow)
     utils.MainWindowListenUtilsEvent(mainWindow)
+
+    // 从系统设置读取自动保存间隔并启动自动保存
+    const systemSetting = getSystemSetting()
+    const autoSaveInterval = (systemSetting.autoSaveInterval || 10) * 1000 // 转换为毫秒
+    StartAutoSaveFileTime(autoSaveInterval)
+    console.log('[Main] Auto save started with interval:', autoSaveInterval, 'ms')
 
     mainWindow.on('close', () => {
         // mainWindow = null
@@ -167,4 +177,16 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit()
     }
+})
+
+// 应用关闭时清理
+app.on('before-quit', () => {
+    // 清理所有定时器
+    timers.forEach(timer => clearInterval(timer))
+
+    // 清理所有文件监听器
+    watchers.forEach(watcher => watcher.close())
+
+    // 清理IPC监听器
+    ipcMain.removeAllListeners()
 })

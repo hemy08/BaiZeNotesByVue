@@ -69,7 +69,7 @@ export function ShowImportOptionDialog(
     ipcMain.once('import-option-confirm', async (_event: any, option: ImportOption) => {
         let filePath: string | undefined
 
-        console.log('用户选择:', option)
+        console.log('user choose :', option)
         if (option === 'newfile') {
             // 如果选择新建文件，弹出保存对话框
             const result = await dialog.showSaveDialog(mainWindow, {

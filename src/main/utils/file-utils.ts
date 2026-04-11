@@ -29,14 +29,52 @@ function getMathRandom(maxLength: number): string {
   return result
 }
 
-function StartAutoSaveFileTime() {
-  if (global.SavingFile) {
-    setInterval(() => {
-      SaveActiveFile()
-      // 在这里执行你的任务代码
-    }, global.SaveFileInterval) // 每5秒执行一次
-    global.SavingFile = true
+// 自动保存定时器
+let autoSaveTimer: NodeJS.Timeout | null = null
+
+/**
+ * 启动文件自动保存
+ * @param interval 保存间隔时间（毫秒），默认10秒
+ */
+export function StartAutoSaveFileTime(interval: number = 10000): void {
+  // 如果已经在运行，先停止
+  if (autoSaveTimer) {
+    StopAutoSaveFileTime()
   }
+
+  // 设置保存间隔
+  global.SaveFileInterval = interval.toString()
+  global.SavingFile = true
+
+  console.log(`auto save files: ${interval}ms`)
+
+  // 启动定时器
+  autoSaveTimer = setInterval(() => {
+    // 只有当文件有修改时才保存
+    if (global.current_active_file && global.current_active_file.content) {
+      console.log('auto save files:', global.current_active_file.path)
+      SaveActiveFile()
+    }
+  }, interval)
+}
+
+/**
+ * 停止文件自动保存
+ */
+export function StopAutoSaveFileTime(): void {
+  if (autoSaveTimer) {
+    clearInterval(autoSaveTimer)
+    autoSaveTimer = null
+    global.SavingFile = false
+    console.log('stop auto save timer')
+  }
+}
+
+/**
+ * 检查自动保存是否正在运行
+ */
+export function IsAutoSaveRunning(): boolean {
+  return autoSaveTimer !== null
 }
 
 export function showErrorMessageBox(message: string) {
@@ -211,8 +249,9 @@ export function OpenSelectFile(fileProperties: FileProperties) {
       if (data.length === 0) {
         data = '\r\n'
       }
-      // console.log('OpenSelectFile', fileProperties)
+      console.log('OpenSelectFile', fileProperties.path)
       global.MainWindow.webContents.send('show-selected-file-context', data)
+      global.MainWindow.webContents.send('monaco-editor-user-select-file', fileProperties.path)
 
       // 保存上次打开的文件
       saveLastOpenedFile(fileProperties.path)
@@ -226,6 +265,7 @@ export function SaveActiveFile() {
   const curFile = global.current_active_file
   // 文件存在，直接写入
   if (curFile != undefined) {
+      console.log('curFile', curFile)
     fs.writeFileSync(curFile.path, curFile.content)
     // 通知渲染进程文件已保存
     const { BrowserWindow } = require('electron')
@@ -234,7 +274,7 @@ export function SaveActiveFile() {
     })
   } else {
     // 文件不存在，新建文件，写入，指定文件路径和文件名
-    showErrorMessageBox('写入文件时发生错误, 文件不存在')
+    showErrorMessageBox('error File not exist')
   }
 }
 

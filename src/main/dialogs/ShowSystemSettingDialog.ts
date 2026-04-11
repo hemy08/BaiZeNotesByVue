@@ -3,6 +3,7 @@ import { getCurrentThemeStyles } from '../themes/theme-config'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
 import * as SystemSettingUtils from '../themes/system-setting'
+import { StartAutoSaveFileTime } from '../utils/file-utils'
 
 let systemSettingDialog: Electron.BrowserWindow | null
 
@@ -15,7 +16,7 @@ export function ShowSystemSettingDialog (mainWindow: Electron.BrowserWindow) {
     }
     systemSettingDialog = new BrowserWindow({
         width: 500,
-        height: 350,
+        height: 400,
         minimizable: false,
         maximizable: false,
         resizable: false,
@@ -68,11 +69,17 @@ export function ShowSystemSettingDialog (mainWindow: Electron.BrowserWindow) {
             editorModel: string
             pluginOpen: string
             menuBarStyle: string
+            autoSaveInterval: number
         }
     ) {
         console.log('[SystemSettingDialog] Applying settings:', SysSetting)
         // 保存系统设置
         SystemSettingUtils.saveSystemSetting(SysSetting)
+
+        // 重新启动自动保存定时器
+        const autoSaveInterval = (SysSetting.autoSaveInterval || 10) * 1000 // 转换为毫秒
+        StartAutoSaveFileTime(autoSaveInterval)
+        console.log('[SystemSettingDialog] Auto save interval updated to:', autoSaveInterval, 'ms')
 
         // 发送设置更新信号
         console.log('[SystemSettingDialog] Sending update signal to mainWindow')
@@ -145,6 +152,19 @@ function createMenuBarStyle(doc: Document): HTMLElement {
     return divMenuBarStyle
 }
 
+function createAutoSaveIntervalInput(doc: Document): HTMLElement {
+    const input = doc.createElement('input')
+    input.type = 'number'
+    input.id = 'system-auto-save-interval'
+    input.name = 'system-auto-save-interval'
+    input.min = '5'
+    input.max = '86400'
+    input.step = '1'
+    input.value = '10'
+    input.style.cssText = 'width: 100px; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); color: var(--text-color);'
+    return input
+}
+
 function createSettingInputs(doc: Document): HTMLElement {
     const divEle = doc.createElement('div')
     divEle.style.cssText = 'display: flex; flex-direction: column; gap: 0;'
@@ -213,6 +233,26 @@ function createSettingInputs(doc: Document): HTMLElement {
     )
     row5.appendChild(createMenuBarStyle(doc))
     divEle.appendChild(row5)
+
+    // 第六行：文件自动保存周期
+    const row6 = doc.createElement('div')
+    row6.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
+    row6.appendChild(
+        digcom.NewLabelDiv(doc, {
+            divClass: 'label-style',
+            forHtml: 'system-auto-save-interval',
+            text: '文件自动保存周期（秒）：'
+        })
+    )
+    const autoSaveContainer = doc.createElement('div')
+    autoSaveContainer.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 8px;'
+    autoSaveContainer.appendChild(createAutoSaveIntervalInput(doc))
+    const hint = doc.createElement('span')
+    hint.style.cssText = 'color: var(--secondary-text-color); font-size: 12px;'
+    hint.textContent = '最小5秒，最大24小时（86400秒）'
+    autoSaveContainer.appendChild(hint)
+    row6.appendChild(autoSaveContainer)
+    divEle.appendChild(row6)
 
     return divEle
 }
@@ -417,6 +457,9 @@ function makeSystemSettingDialogHtml(): string {
         if (savedSettings.menuBarStyle) {
             document.getElementById('system-menu-bar-style').value = savedSettings.menuBarStyle;
         }
+        if (savedSettings.autoSaveInterval) {
+            document.getElementById('system-auto-save-interval').value = savedSettings.autoSaveInterval;
+        }
     });
 
     let SystemSetting = {
@@ -424,7 +467,8 @@ function makeSystemSettingDialogHtml(): string {
       resourceManager: "default",
       editorModel: 'default',
       pluginOpen: 'browser',
-      menuBarStyle: 'electron'
+      menuBarStyle: 'electron',
+      autoSaveInterval: 10
     };
     document.getElementById('system-language').addEventListener('input', (event) => {
       SystemSetting.language = event.target.value
@@ -440,6 +484,13 @@ function makeSystemSettingDialogHtml(): string {
     })
     document.getElementById('system-menu-bar-style').addEventListener('input', (event) => {
       SystemSetting.menuBarStyle = event.target.value
+    })
+    document.getElementById('system-auto-save-interval').addEventListener('input', (event) => {
+      let value = parseInt(event.target.value)
+      // 验证范围
+      if (value < 5) value = 5
+      if (value > 86400) value = 86400
+      SystemSetting.autoSaveInterval = value
     })
     document.getElementById('system-setting-apply').onclick = function(e) {
       ipcRenderer.send('dialog-system-setting-apply', SystemSetting)

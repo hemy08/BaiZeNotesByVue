@@ -31,7 +31,7 @@ const fileStateStore = new Store<FileState>({
  */
 export function saveLastOpenedFile(filePath: string): void {
     fileStateStore.set('lastOpenedFile', filePath)
-    
+
     // 同时添加到最近文件列表
     const recentFiles = fileStateStore.get('recentFiles', []) as string[]
     const updatedRecentFiles = [filePath, ...recentFiles.filter(f => f !== filePath)].slice(0, 10) // 最多保留10个
@@ -102,39 +102,41 @@ export function removeRecentFile(filePath: string): void {
 export function restoreLastOpenedFile(): void {
     const lastFile = getLastOpenedFile()
     const lastDir = getLastOpenedDirectory()
-    
+    console.log('try to restore last time opened file:', lastFile)
+    console.log('try to restore last time opened directory:', lastDir)
+
     // 先尝试恢复目录（如果存在）
     if (lastDir) {
         try {
             const fs = require('fs')
             if (fs.existsSync(lastDir)) {
-                console.log('恢复上次打开的目录:', lastDir)
-                
+                console.log('open last directory:', lastDir)
+
                 // 设置全局根路径
                 global.RootPath = lastDir
-                
+
                 // 重新加载目录
                 FileUtils.ReloadDirFromDisk()
-                
+
                 // 保存上次打开的目录
                 saveLastOpenedDirectory(lastDir)
             } else {
-                console.log('上次打开的目录不存在:', lastDir)
+                console.log('last directory not exist :', lastDir)
                 clearLastOpenedDirectory()
             }
         } catch (error) {
-            console.error('恢复上次打开的目录失败:', error)
+            console.error('restore last time opened directory failed:', error)
             clearLastOpenedDirectory()
         }
     }
-    
+
     // 然后尝试恢复文件（如果存在）
     if (lastFile) {
         try {
             const fs = require('fs')
             if (fs.existsSync(lastFile)) {
-                console.log('恢复上次打开的文件:', lastFile)
-                
+                console.log('restore lastest open file :', lastFile)
+
                 // 创建FileProperties对象
                 const fileProperties = {
                     name: path.basename(lastFile),
@@ -142,15 +144,15 @@ export function restoreLastOpenedFile(): void {
                     type: 'file' as const,
                     content: ''
                 }
-                
+
                 // 调用OpenSelectFile
                 FileUtils.OpenSelectFile(fileProperties)
             } else {
-                console.log('上次打开的文件不存在:', lastFile)
+                console.log('lastest open file not exist:', lastFile)
                 clearLastOpenedFile()
             }
         } catch (error) {
-            console.error('恢复上次打开的文件失败:', error)
+            console.error('restore lastest open file failed:', error)
             clearLastOpenedFile()
         }
     }

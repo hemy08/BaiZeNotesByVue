@@ -9,6 +9,7 @@ import { ipcMain, shell } from 'electron'
 // @ts-ignore
 import { getQuickLinks } from './quick-link-config'
 import { getCurrentTheme, getCurrentThemeStyles, getMonacoTheme, getSeparateEditorTheme } from '../themes/theme-config'
+import * as fileUtils from "./file-utils";
 
 export {
     globalInitialize,
@@ -132,4 +133,36 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     ipcMain.on('get-monaco-theme', (event) => {
         event.returnValue = getMonacoTheme ()
     })
+
+    ipcMain.on('update-select-file-content', (_, content) => {
+        console.log('[ipcMain] update-select-file-content   ', content.length)
+        const curFile = global.current_active_file
+        // 文件打开了
+        if (curFile != undefined) {
+            global.current_active_file.content = content
+            console.log('update file :', curFile.path, 'length:', content.length)
+        } else {
+            // 没有打开文件，提示用户
+            console.warn('not file opened, show save as')
+            fileUtils.SaveActiveFileAs()
+        }
+    })
+
+    // 监听键盘事件
+    function handleKeyDown(event) {
+        if (event.ctrlKey && event.key === 's') {
+            fileUtils.SaveActiveFile()
+        }
+    }
+
+    ipcMain.on('keydown', handleKeyDown)
+
+    ipcMain.on('save-file-content-to-disk', (_, content) => {
+        const curFile = global.current_active_file
+        if (curFile != undefined) {
+            global.current_active_file.content = content
+            fileUtils.SaveActiveFile()
+        }
+    })
+
 }

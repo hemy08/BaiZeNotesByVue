@@ -102,6 +102,7 @@ watch(
             if (newCode.length === 0) {
                 newCode = '# '
             }
+            console.log('update code:', newCode)
             editorInstance.setValue(newCode)
         }
     }
@@ -146,7 +147,7 @@ onMounted(() => {
 
     // 监听编辑器配置更新
     window.electron.ipcRenderer.on('baize-notes:editor-setting-updated', (_, settings: any) => {
-        console.log('收到编辑器配置更新:', settings)
+        console.log('baize-notes:editor-setting-updated:', settings)
         if (editorInstance) {
             editor.updateEditorOptions(editorInstance, settings)
         }
@@ -154,7 +155,7 @@ onMounted(() => {
 
     // 监听编辑器配置初始化
     window.electron.ipcRenderer.on('baize-notes:init-editor-setting', (_, settings: any) => {
-        console.log('收到编辑器配置初始化:', settings)
+        console.log('baize-notes:init-editor-setting:', settings)
         if (editorInstance) {
             editor.updateEditorOptions(editorInstance, settings)
         }

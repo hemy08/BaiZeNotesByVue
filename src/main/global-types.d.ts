@@ -106,6 +106,7 @@ export interface SystemSetting {
     editorModel: string
     pluginOpen: string
     menuBarStyle: string // 'electron' | 'windows-native'
+    autoSaveInterval: number // 自动保存间隔（秒），最小5秒，最大86400秒（24小时）
 }
 
 export interface MenuContext {

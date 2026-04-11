@@ -230,7 +230,7 @@ export function updateEditorOption(
         editor.updateOptions({ [optionKey]: value })
     }
 
-    console.log(`更新编辑器配置: ${key} = ${value}`)
+    console.log(`update editor option: ${key} = ${value}`)
 }
 
 /**
@@ -271,7 +271,7 @@ export function updateEditorOptions(
 
     // 一次性更新所有配置
     editor.updateOptions(options)
-    console.log('批量更新编辑器配置:', options)
+    console.log('batch update monaco editor options:', options)
 }
 
 const MonacoEditorOverride: monaco.editor.IEditorOverrideServices = {}

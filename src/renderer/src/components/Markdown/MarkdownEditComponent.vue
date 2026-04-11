@@ -111,6 +111,7 @@ function stopResizing() {
 }
 
 function handleMarkdownCodeUpdate(newValue: string) {
+    console.log('handleMarkdownCodeUpdate', newValue)
   window.electron.ipcRenderer.send('update-select-file-content', newValue)
   markdownEditorContent.value = newValue
 }
