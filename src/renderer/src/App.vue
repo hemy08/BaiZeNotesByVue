@@ -1,7 +1,7 @@
 <template>
     <div id="editor-container" :style="containerStyles">
         <!-- 标题栏区域，高度24px，宽度与app一致 -->
-        <div id="title-bar" class="title-bar">
+        <div v-show="electronMenu" id="title-bar" class="title-bar">
             <div class="title-left">
                 <svg class="title-icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
                     <defs>
@@ -51,7 +51,7 @@
             </div>
         </div>
         <!-- 菜单栏区域，高度24px，宽度与app一致 -->
-        <div id="menu-bar" class="menu-bar"><MenuBar /></div>
+        <div v-show="electronMenu" id="menu-bar" class="menu-bar"><MenuBar /></div>
         <!-- 应用工具栏和下方区域分割部分，2px高度，宽度与app一致 -->
         <div id="file-bar"></div>
         <!-- 整个工作区域 -->
@@ -68,6 +68,8 @@ import StatusBar from './components/StatusBar.vue'
 import MenuBar from './components/MenuBar.vue'
 import EventBus from './event-bus'
 import * as monaco from 'monaco-editor'
+import { SystemSetting } from "../../main/global-types";
+const electronMenu = ref(true)
 
 // 主题样式接口
 interface ThemeStyles {
@@ -173,7 +175,7 @@ async function updateMonacoEditorTheme(theme: ThemeStyles, separate: boolean, mo
         const loadedTheme = await loadMonacoTheme(monacoThemeName)
         if (loadedTheme) {
             // 通过 IPC 发送主题更新事件
-            window.electron.ipcRenderer.send("monaco-editor-update-options", "theme", loadedTheme)
+            window.electron.ipcRenderer.send("baize-notes:monaco-editor-update-options", "theme", loadedTheme)
         }
     } else {
         // 否则根据应用主题自动选择
@@ -246,6 +248,10 @@ async function handleThemeUpdate(_event: any, data: ThemeUpdateData) {
     // 更新 Monaco 编辑器主题
     await updateMonacoEditorTheme(data.themeStyles, data.separateEditorTheme, data.monacoTheme)
 }
+
+window.electron.ipcRenderer.on('baize-notes:system-setting-update', (_, setting:SystemSetting) => {
+    electronMenu.value = setting.menuBarStyle === 'electron' || setting.menuBarStyle === 'default';
+})
 
 // 打开浏览器网页地址
 window.electron.ipcRenderer.on('open-url-in-web-browser-window', (_, link: string) => {

@@ -48,9 +48,13 @@ const fileMenu: BaiZeMenuItem = {
         importMenu,
         exportMenu,
         { type: 'separator' },
+        { label: '保存', accelerator: 'Ctrl+S', menu_action: 'baize:menu:file:save' },
         { label: '另存为', menu_action: 'baize:menu:file:save-as' },
+        { label: '从磁盘重新加载', accelerator: 'Ctrl+R', menu_action: 'baize:menu:file:reload' },
         { type: 'separator' },
-        { label: '关闭文件', menu_action: 'baize:menu:file:close-file' }
+        { label: '重启应用', accelerator: 'Ctrl+Shift+R', menu_action: 'baize:menu:file:relaunch' },
+        { type: 'separator' },
+        { label: '退出', accelerator: 'F4', menu_action: 'baize:menu:file:exit' }
     ]
 }
 
@@ -64,8 +68,11 @@ const editMenu: BaiZeMenuItem = {
         { label: '复制', accelerator: 'Ctrl+C', menu_action: 'baize:menu:edit:copy' },
         { label: '粘贴', accelerator: 'Ctrl+V', menu_action: 'baize:menu:edit:paste' },
         { type: 'separator' },
-        { label: '查找', accelerator: 'Ctrl+F', menu_action: 'baize:menu:edit:find' },
-        { label: '替换', accelerator: 'Ctrl+H', menu_action: 'baize:menu:edit:replace' }
+        { label: '跳转到行', accelerator: 'Ctrl+G', menu_action: 'baize:menu:edit:go-line' },
+        { label: '查找', accelerator: 'Ctrl+F', menu_action: 'baize:menu:edit:find-in-file' },
+        { label: '替换', accelerator: 'Ctrl+H', menu_action: 'baize:menu:edit:replace-in-file' },
+        { label: '在文件中查找', accelerator: 'Ctrl+Shift+F', menu_action: 'baize:menu:edit:find-in-dir' },
+        { label: '在文件中替换', accelerator: 'Ctrl+Shift+H', menu_action: 'baize:menu:edit:replace-in-dir' }
     ]
 }
 
@@ -84,11 +91,14 @@ const viewMenu: BaiZeMenuItem = {
         { type: 'separator' },
         { label: '折叠/展开标题',
             submenu: [
+                { label: '全部折叠', menu_action: 'baize:menu:view:fold:all-fold' },
+                { label: '全部展开', menu_action: 'baize:menu:view:fold:all-expand' },
                 { label: '一级标题', menu_action: 'baize:menu:view:fold:level1' },
                 { label: '二级标题', menu_action: 'baize:menu:view:fold:level2' },
                 { label: '三级标题', menu_action: 'baize:menu:view:fold:level3' },
                 { label: '四级标题', menu_action: 'baize:menu:view:fold:level4' },
                 { label: '五级标题', menu_action: 'baize:menu:view:fold:level5' },
+                { label: '六级标题', menu_action: 'baize:menu:view:fold:level6' },
             ]}
     ]
 }
@@ -183,8 +193,8 @@ const insertMenu: BaiZeMenuItem = {
 const settingMenu: BaiZeMenuItem = {
     label: '设置',
     submenu: [
-        { label: '主题设置', menu_action: 'baize:menu:setting:theme' },
         { label: '系统设置', menu_action: 'baize:menu:setting:system' },
+        { label: '主题设置', menu_action: 'baize:menu:setting:theme' },
         { type: 'separator' },
         { label: '快速链接设置', menu_action: 'baize:menu:setting:quick-link' },
         { label: '编辑器设置', menu_action: 'baize:menu:setting:monaco-editor' }

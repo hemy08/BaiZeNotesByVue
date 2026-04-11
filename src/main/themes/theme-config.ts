@@ -7,7 +7,7 @@
 import Store from 'electron-store'
 
 // 主题类型
-export type ThemeType = 'baize' | 'warm' | 'light' | 'lavender' | 'coral' | 'mint' | 'sunset' | 'rose' | 'dark' | 'deepdark' | 'icon' | 'ocean' | 'forest' | 'eyecare-green' | 'eyecare-beige' | 'eyecare-blue' | 'eyecare-pink' | 'eyecare-amber' | 'eyecare-teal' | 'eyecare-lilac'
+export type ThemeType = 'baize' | 'warm' | 'light' | 'lavender' | 'coral' | 'mint' | 'sunset' | 'rose' | 'eyecare-green' | 'eyecare-beige' | 'eyecare-blue' | 'eyecare-pink' | 'eyecare-amber' | 'eyecare-teal' | 'eyecare-lilac' | 'baize-beast' | 'baize-clear' | 'dark' | 'deepdark' | 'icon' | 'ocean' | 'forest' | 'baize-text' | 'baize-starry'
 
 // 主题配置接口
 export interface ThemeConfig {
@@ -90,11 +90,11 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         name: '薰衣草梦',
         description: '浅蓝浅紫渐变护眼主题',
         titleBarGradient: 'linear-gradient(135deg, #b8c5e8 0%, #d4b8e8 100%)',
-        backgroundColor: '#f5f3fa',
-        cardBackground: '#ffffff',
+        backgroundColor: '#e8e4f8',
+        cardBackground: '#f5f2fa',
         textColor: '#3a3550',
         secondaryTextColor: '#6a6580',
-        borderColor: '#ddd8ea',
+        borderColor: '#d0c8e8',
         accentColor: '#8b7ec8',
         buttonBackground: '#8b7ec8',
         buttonTextColor: '#ffffff',
@@ -105,8 +105,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         name: '珊瑚暖阳',
         description: '温暖的珊瑚色主题',
         titleBarGradient: 'linear-gradient(135deg, #ffb8a3 0%, #ff9a8b 100%)',
-        backgroundColor: '#fff5f2',
-        cardBackground: '#ffffff',
+        backgroundColor: '#e8e4f8',
+        cardBackground: '#f5f2fa',
         textColor: '#4a3530',
         secondaryTextColor: '#7a6555',
         borderColor: '#f5d8d0',
@@ -135,11 +135,11 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         name: '日落余晖',
         description: '温暖的橙红渐变主题',
         titleBarGradient: 'linear-gradient(135deg, #ffd89b 0%, #f9a86b 100%)',
-        backgroundColor: '#fffbf5',
-        cardBackground: '#ffffff',
+        backgroundColor: '#fff8e8',
+        cardBackground: '#fffbf0',
         textColor: '#4a3a2a',
         secondaryTextColor: '#7a6a5a',
-        borderColor: '#f0e0d0',
+        borderColor: '#f0e0c8',
         accentColor: '#e08840',
         buttonBackground: '#e08840',
         buttonTextColor: '#ffffff',
@@ -150,11 +150,11 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         name: '玫瑰花园',
         description: '浪漫的玫瑰粉主题',
         titleBarGradient: 'linear-gradient(135deg, #f5b7b1 0%, #ec7063 100%)',
-        backgroundColor: '#fdf5f5',
-        cardBackground: '#ffffff',
+        backgroundColor: '#fff0f0',
+        cardBackground: '#fef5f5',
         textColor: '#4a2a2a',
         secondaryTextColor: '#7a5a5a',
-        borderColor: '#f0d8d8',
+        borderColor: '#f8d8d8',
         accentColor: '#c05050',
         buttonBackground: '#c05050',
         buttonTextColor: '#ffffff',
@@ -166,7 +166,7 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         name: '深邃夜空',
         description: '护眼深色主题',
         titleBarGradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        backgroundColor: '#0f0f1a',
+        backgroundColor: '#fff0f0',
         cardBackground: '#1a1a2e',
         textColor: '#e0e0e0',
         secondaryTextColor: '#888888',
@@ -196,15 +196,15 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         name: '白泽图标',
         description: '与白泽图标一致的紫粉渐变主题',
         titleBarGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-        backgroundColor: '#f5f7fa',
-        cardBackground: '#ffffff',
-        textColor: '#1a1a1a',
-        secondaryTextColor: '#4a4a4a',
-        borderColor: '#e1e4e8',
+        backgroundColor: '#1a1625',
+        cardBackground: '#2d2640',
+        textColor: '#e8e0f8',
+        secondaryTextColor: '#b8b0c8',
+        borderColor: '#3d3560',
         accentColor: '#f093fb',
         buttonBackground: '#f093fb',
         buttonTextColor: '#1a1625',
-        hoverBackground: '#e8f0fe'
+        hoverBackground: '#352d50',
     },
     // 海洋主题
     ocean: {
@@ -341,6 +341,67 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonBackground: '#9a70a0',
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5e8f5'
+    },
+    // ========== 图标样式主题 ==========
+    // 白泽文字主题 - 基于baize_text_icon.svg（深色）
+    'baize-text': {
+        name: '白泽文字',
+        description: '紫粉渐变配金色文字深色主题',
+        titleBarGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+        backgroundColor: '#1a1625',
+        cardBackground: '#2d2640',
+        textColor: '#e8e0f8',
+        secondaryTextColor: '#b8b0c8',
+        borderColor: '#3d3560',
+        accentColor: '#ffd700',
+        buttonBackground: '#764ba2',
+        buttonTextColor: '#ffffff',
+        hoverBackground: '#352d50'
+    },
+    // 白泽星空主题 - 基于baize_spaced_icon.svg（深色）
+    'baize-starry': {
+        name: '白泽星空',
+        description: '深蓝星空配金色主题',
+        titleBarGradient: 'linear-gradient(135deg, #0a1929 0%, #1a237e 50%, #283593 100%)',
+        backgroundColor: '#0d1421',
+        cardBackground: '#1a237e',
+        textColor: '#e8e8e8',
+        secondaryTextColor: '#b8b8b8',
+        borderColor: '#2a3a5e',
+        accentColor: '#ffd700',
+        buttonBackground: '#ffd700',
+        buttonTextColor: '#0a1929',
+        hoverBackground: '#252e5e'
+    },
+    // 白泽神兽主题 - 基于baize_icon.svg（浅色）
+    'baize-beast': {
+        name: '白泽神兽',
+        description: '紫粉渐变配白色神兽主题',
+        titleBarGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+        backgroundColor: '#f5f0fa',
+        cardBackground: '#faf8ff',
+        textColor: '#3d3d3d',
+        secondaryTextColor: '#6d6d6d',
+        borderColor: '#e0d8f0',
+        accentColor: '#764ba2',
+        buttonBackground: '#764ba2',
+        buttonTextColor: '#ffffff',
+        hoverBackground: '#f2e8f8'
+    },
+    // 白泽清晰主题 - 基于baize_clear_icon.svg（浅色）
+    'baize-clear': {
+        name: '白泽清晰',
+        description: '紫粉渐变配金色高对比主题',
+        titleBarGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+        backgroundColor: '#fffcf5',
+        cardBackground: '#fffaf0',
+        textColor: '#1a1a1a',
+        secondaryTextColor: '#4a4a4a',
+        borderColor: '#f0e8d8',
+        accentColor: '#ffed4e',
+        buttonBackground: '#764ba2',
+        buttonTextColor: '#ffffff',
+        hoverBackground: '#f5f0ff'
     }
 }
 
@@ -472,7 +533,7 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
         name: 'Birds of Paradise',
         description: 'Birds of Paradise 主题',
         isDark: true,
-        backgroundColor: '#2A1B1A',
+        backgroundColor: '#372725',
         foregroundColor: '#F8F8F2',
         cardBackground: '#3A2B2A',
         borderColor: '#4A3B3A'
@@ -490,7 +551,7 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
         name: 'Brilliance Black',
         description: 'Brilliance Black 主题',
         isDark: true,
-        backgroundColor: '#000000',
+        backgroundColor: '#0D0D0D',
         foregroundColor: '#FFFFFF',
         cardBackground: '#1A1A1A',
         borderColor: '#333333'
@@ -499,7 +560,7 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
         name: 'Brilliance Dull',
         description: 'Brilliance Dull 主题',
         isDark: true,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#050505',
         foregroundColor: '#FFFFFF',
         cardBackground: '#2A2A2A',
         borderColor: '#3A3A3A'
@@ -507,8 +568,8 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
     'Chrome DevTools': {
         name: 'Chrome DevTools',
         description: 'Chrome DevTools 主题',
-        isDark: true,
-        backgroundColor: '#1E1E1E',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
         foregroundColor: '#D4D4D4',
         cardBackground: '#2D2D2D',
         borderColor: '#404040'
@@ -579,8 +640,8 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
     'Dreamweaver': {
         name: 'Dreamweaver',
         description: 'Dreamweaver 主题',
-        isDark: true,
-        backgroundColor: '#1E1E1E',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
         foregroundColor: '#FFFFFF',
         cardBackground: '#2E2E2E',
         borderColor: '#3E3E3E'
@@ -588,8 +649,8 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
     'Eiffel': {
         name: 'Eiffel',
         description: 'Eiffel 主题',
-        isDark: true,
-        backgroundColor: '#2B2B2B',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
         foregroundColor: '#FFFFFF',
         cardBackground: '#3B3B3B',
         borderColor: '#4B4B4B'
@@ -598,7 +659,7 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
         name: 'Espresso Libre',
         description: 'Espresso Libre 主题',
         isDark: true,
-        backgroundColor: '#2A2A2A',
+        backgroundColor: '#2A211C',
         foregroundColor: '#FFFFFF',
         cardBackground: '#3A3A3A',
         borderColor: '#4A4A4A'
@@ -607,7 +668,7 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
         name: 'GitHub Dark',
         description: 'GitHub Dark 主题',
         isDark: true,
-        backgroundColor: '#0D1117',
+        backgroundColor: '#24292e',
         foregroundColor: '#C9D1D9',
         cardBackground: '#161B22',
         borderColor: '#30363D'
@@ -624,8 +685,8 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
     'GitHub': {
         name: 'GitHub',
         description: 'GitHub 主题',
-        isDark: true,
-        backgroundColor: '#0D1117',
+        isDark: false,
+        backgroundColor: '#F8F8FF',
         foregroundColor: '#C9D1D9',
         cardBackground: '#161B22',
         borderColor: '#30363D'
@@ -633,7 +694,7 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
     'IDLE': {
         name: 'IDLE',
         description: 'IDLE 主题',
-        isDark: true,
+        isDark: false,
         backgroundColor: '#FFFFFF',
         foregroundColor: '#000000',
         cardBackground: '#F0F0F0',
@@ -687,8 +748,8 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
     'LAZY': {
         name: 'LAZY',
         description: 'LAZY 主题',
-        isDark: true,
-        backgroundColor: '#1C1C1C',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
         foregroundColor: '#FFFFFF',
         cardBackground: '#2C2C2C',
         borderColor: '#3C3C3C'
@@ -696,8 +757,8 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
     'MagicWB (Amiga)': {
         name: 'MagicWB (Amiga)',
         description: 'MagicWB (Amiga) 主题',
-        isDark: true,
-        backgroundColor: '#000080',
+        isDark: false,
+        backgroundColor: '#969696',
         foregroundColor: '#FFFFFF',
         cardBackground: '#101090',
         borderColor: '#2020A0'
@@ -706,7 +767,7 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
         name: 'Merbivore Soft',
         description: 'Merbivore Soft 主题',
         isDark: true,
-        backgroundColor: '#262626',
+        backgroundColor: '#161616',
         foregroundColor: '#E0E0E0',
         cardBackground: '#363636',
         borderColor: '#464646'
@@ -786,8 +847,8 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
     'Slush and Poppies': {
         name: 'Slush and Poppies',
         description: 'Slush and Poppies 主题',
-        isDark: true,
-        backgroundColor: '#2C2C2C',
+        isDark: false,
+        backgroundColor: '#F1F1F1',
         foregroundColor: '#FFFFFF',
         cardBackground: '#3C3C3C',
         borderColor: '#4C4C4C'
@@ -895,7 +956,7 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
         name: 'Upstream Sunburst',
         description: 'Upstream Sunburst 主题',
         isDark: true,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#000000',
         foregroundColor: '#FFFFFF',
         cardBackground: '#2A2A2A',
         borderColor: '#3A3A3A'
@@ -904,7 +965,7 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
         name: 'Vibrant Ink',
         description: 'Vibrant Ink 主题',
         isDark: true,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#000000',
         foregroundColor: '#FFFFFF',
         cardBackground: '#2A2A2A',
         borderColor: '#3A3A3A'
@@ -912,8 +973,8 @@ export const monacoThemes: Record<MonacoThemeType, MonacoThemeConfig> = {
     'Xcode_default': {
         name: 'Xcode_default',
         description: 'Xcode_default 主题',
-        isDark: true,
-        backgroundColor: '#1E1E1E',
+        isDark: false,
+        backgroundColor: '#FFFFFF',
         foregroundColor: '#FFFFFF',
         cardBackground: '#2E2E2E',
         borderColor: '#3E3E3E'

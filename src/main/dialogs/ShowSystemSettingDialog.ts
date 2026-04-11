@@ -2,19 +2,20 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { getCurrentThemeStyles } from '../themes/theme-config'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
+import * as SystemSettingUtils from '../themes/system-setting'
 
 let systemSettingDialog: Electron.BrowserWindow | null
 
 // 创建一个自定义对话框的函数
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function ShowSystemSettingDialog() {
+export function ShowSystemSettingDialog (mainWindow: Electron.BrowserWindow) {
     if (systemSettingDialog) {
         digcom.ShowAlreadyExistDialog()
         return
     }
     systemSettingDialog = new BrowserWindow({
         width: 500,
-        height: 300,
+        height: 350,
         minimizable: false,
         maximizable: false,
         resizable: false,
@@ -40,6 +41,10 @@ export function ShowSystemSettingDialog() {
     const theme = getCurrentThemeStyles()
     systemSettingDialog?.webContents.send('baize-notes:init-theme-styles', theme)
 
+    // 发送已保存的设置
+    const savedSettings = SystemSettingUtils.getSystemSetting()
+    systemSettingDialog?.webContents.send('load-saved-settings', savedSettings)
+
     systemSettingDialog.on('closed', () => {
         systemSettingDialog = null
         ipcMain.removeListener('system-setting-apply', processApplySysSetting)
@@ -61,9 +66,18 @@ export function ShowSystemSettingDialog() {
             language: string
             resourceManager: string
             editorModel: string
+            pluginOpen: string
+            menuBarStyle: string
         }
     ) {
-        console.log('SysSetting', SysSetting)
+        console.log('[SystemSettingDialog] Applying settings:', SysSetting)
+        // 保存系统设置
+        SystemSettingUtils.saveSystemSetting(SysSetting)
+
+        // 发送设置更新信号
+        console.log('[SystemSettingDialog] Sending update signal to mainWindow')
+        mainWindow.webContents.send("baize-notes:system-setting-update", SysSetting);
+
         exitSystemSettingDialog()
     }
 
@@ -121,6 +135,16 @@ function createPluginOpenModel(doc: Document): HTMLElement {
     return divViewModel
 }
 
+function createMenuBarStyle(doc: Document): HTMLElement {
+    const options: digcom.Option[] = [
+        { value: 'default', text: 'Electron样式(默认)' }
+    ]
+    const divMenuBarStyle = digcom.NewSelect(doc, options)
+    divMenuBarStyle.id = 'system-menu-bar-style'
+    divMenuBarStyle.name = 'system-menu-bar-style'
+    return divMenuBarStyle
+}
+
 function createSettingInputs(doc: Document): HTMLElement {
     const divEle = doc.createElement('div')
     divEle.style.cssText = 'display: flex; flex-direction: column; gap: 0;'
@@ -176,6 +200,19 @@ function createSettingInputs(doc: Document): HTMLElement {
     )
     row4.appendChild(createPluginOpenModel(doc))
     divEle.appendChild(row4)
+
+    // 第五行：菜单栏样式
+    const row5 = doc.createElement('div')
+    row5.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
+    row5.appendChild(
+        digcom.NewLabelDiv(doc, {
+            divClass: 'label-style',
+            forHtml: 'system-menu-bar-style',
+            text: '菜单栏样式：'
+        })
+    )
+    row5.appendChild(createMenuBarStyle(doc))
+    divEle.appendChild(row5)
 
     return divEle
 }
@@ -363,11 +400,31 @@ function makeSystemSettingDialogHtml(): string {
         location.reload();
     });
 
+    // 加载已保存的设置
+    ipcRenderer.on('load-saved-settings', (event, savedSettings) => {
+        if (savedSettings.language) {
+            document.getElementById('system-language').value = savedSettings.language;
+        }
+        if (savedSettings.resourceManager) {
+            document.getElementById('system-resource-manager').value = savedSettings.resourceManager;
+        }
+        if (savedSettings.editorModel) {
+            document.getElementById('system-editor-view-model').value = savedSettings.editorModel;
+        }
+        if (savedSettings.pluginOpen) {
+            document.getElementById('system-plugin-open-model').value = savedSettings.pluginOpen;
+        }
+        if (savedSettings.menuBarStyle) {
+            document.getElementById('system-menu-bar-style').value = savedSettings.menuBarStyle;
+        }
+    });
+
     let SystemSetting = {
       language:"zh-cn",
       resourceManager: "default",
       editorModel: 'default',
-      pluginOpen: 'browser'
+      pluginOpen: 'browser',
+      menuBarStyle: 'electron'
     };
     document.getElementById('system-language').addEventListener('input', (event) => {
       SystemSetting.language = event.target.value
@@ -380,6 +437,9 @@ function makeSystemSettingDialogHtml(): string {
     })
     document.getElementById('system-plugin-open-model').addEventListener('input', (event) => {
       SystemSetting.pluginOpen = event.target.value
+    })
+    document.getElementById('system-menu-bar-style').addEventListener('input', (event) => {
+      SystemSetting.menuBarStyle = event.target.value
     })
     document.getElementById('system-setting-apply').onclick = function(e) {
       ipcRenderer.send('dialog-system-setting-apply', SystemSetting)

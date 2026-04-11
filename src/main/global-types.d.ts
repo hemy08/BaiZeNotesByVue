@@ -99,6 +99,15 @@ declare global {
     }
 }
 
+// 系统设置配置接口
+export interface SystemSetting {
+    language: string
+    resourceManager: string
+    editorModel: string
+    pluginOpen: string
+    menuBarStyle: string // 'electron' | 'windows-native'
+}
+
 export interface MenuContext {
     label: string
     context: string

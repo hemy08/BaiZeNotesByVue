@@ -1,8 +1,8 @@
 import * as monaco from 'monaco-editor'
-import { UpdateContextFormat, OnInsertAfterCursor, replaceSelection } from './hemy-editor-common'
+import { OnInsertAfterCursor, replaceSelection, UpdateContextFormat } from './hemy-editor-common'
 import { MdEditQuickAccess } from './hemy-editor-quick-access'
-import { MonacoEditorKeyMaps, MonacoEditorDidChange } from './hemy-editor-shortcut'
-import { MonacoEditorAddActions, LoadLocalScript } from './hemy-editor-actions'
+import { MonacoEditorDidChange, MonacoEditorKeyMaps } from './hemy-editor-shortcut'
+import { LoadLocalScript, MonacoEditorAddActions } from './hemy-editor-actions'
 import * as Render from './hemy-editor-render'
 
 // @ts-ignore
@@ -90,23 +90,16 @@ function UpdateLineNumber(editor: monaco.editor.IStandaloneCodeEditor) {
     }
 }
 
-function UpdateEditorTheme(editor: monaco.editor.IStandaloneCodeEditor, newTheme: string) {
-    const oldSize = editor.getOption(monaco.editor.EditorOption.tabIndex)
-    console.log('oldSize', oldSize)
+function UpdateEditorTheme(_, newTheme: string) {
     monaco.editor.setTheme(newTheme)
-    console.log('newSize', newTheme)
 }
 
-function UpdateTableSize(editor: monaco.editor.IStandaloneCodeEditor, newSize: string) {
-    const oldSize = editor.getOption(monaco.editor.EditorOption.tabIndex)
-    console.log('oldSize', oldSize)
-    console.log('newSize', newSize)
+function UpdateTableSize(editor: monaco.editor.IStandaloneCodeEditor, newSize: number) {
+    editor.updateOptions({ tabIndex: newSize })
 }
 
-function UpdateFontSize(editor: monaco.editor.IStandaloneCodeEditor, newSize: string) {
-    const oldSize = editor.getOption(monaco.editor.EditorOption.fontSize)
-    console.log('oldSize', oldSize)
-    console.log('newSize', newSize)
+function UpdateFontSize(editor: monaco.editor.IStandaloneCodeEditor, newSize: number) {
+    editor.updateOptions({ fontSize: newSize })
 }
 
 function UpdateRenderWhitespace(editor: monaco.editor.IStandaloneCodeEditor) {
@@ -125,6 +118,160 @@ const MonacoEditorOpMaps = {
     tabSize: UpdateTableSize,
     fontSize: UpdateFontSize,
     renderWhitespace: UpdateRenderWhitespace
+}
+
+// 编辑器配置项映射表
+export const EditorOptionMaps = {
+    // 基础配置
+    wordWrap: 'wordWrap',
+    minimap: 'minimap.enabled',
+    lineNumbers: 'lineNumbers',
+    fontSize: 'fontSize',
+    fontFamily: 'fontFamily',
+    tabSize: 'tabSize',
+
+    // 显示配置
+    renderWhitespace: 'renderWhitespace',
+    folding: 'folding',
+    renderLineHighlight: 'renderLineHighlight',
+
+    // 性能配置
+    largeFileOptimizations: 'largeFileOptimizations',
+    smoothScrolling: 'smoothScrolling',
+    cursorBlinking: 'cursorBlinking',
+    cursorSmoothCaretAnimation: 'cursorSmoothCaretAnimation',
+
+    // 其他配置
+    dragAndDrop: 'dragAndDrop',
+    scrollBeyondLastLine: 'scrollBeyondLastLine',
+    mouseWheelScrollSensitivity: 'mouseWheelScrollSensitivity',
+
+    // 字体配置
+    fontLigatures: 'fontLigatures',
+    letterSpacing: 'letterSpacing',
+    lineHeight: 'lineHeight',
+
+    // 光标配置
+    cursorStyle: 'cursorStyle',
+    cursorWidth: 'cursorWidth',
+
+    // 智能提示配置
+    quickSuggestions: 'quickSuggestions',
+    suggestOnTriggerCharacters: 'suggestOnTriggerCharacters',
+    acceptSuggestionOnEnter: 'acceptSuggestionOnEnter',
+    tabCompletion: 'tabCompletion',
+    snippetSuggestions: 'snippetSuggestions',
+
+    // 自动闭合配置
+    autoClosingBrackets: 'autoClosingBrackets',
+    autoClosingQuotes: 'autoClosingQuotes',
+    autoClosingOvertype: 'autoClosingOvertype',
+    autoSurround: 'autoSurround',
+
+    // 指南配置
+    renderIndentGuides: 'renderIndentGuides',
+    highlightActiveIndentGuide: 'highlightActiveIndentGuide',
+    rulers: 'rulers',
+    guides: 'guides',
+
+    // 滚动配置
+    fastScrollSensitivity: 'fastScrollSensitivity',
+
+    // 空白和折叠配置
+    showFoldingControls: 'showFoldingControls',
+    unfoldOnClick: 'unfoldOnClick',
+
+    // 高亮和装饰配置
+    renderValidationDecorations: 'renderValidationDecorations',
+    occurrencesHighlight: 'occurrencesHighlight',
+    selectionHighlight: 'selectionHighlight',
+
+    // 链接和装饰器
+    links: 'links',
+    colorDecorators: 'colorDecorators',
+    decorators: 'decorators'
+}
+
+/**
+ * 更新单个编辑器配置项
+ * @param editor Monaco编辑器实例
+ * @param key 配置项名称
+ * @param value 配置项值
+ */
+export function updateEditorOption(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    key: string,
+    value: any
+): void {
+    const optionKey = EditorOptionMaps[key]
+    if (!optionKey) {
+        console.warn(`未知的配置项: ${key}`)
+        return
+    }
+
+    // 处理特殊配置项
+    if (key === 'minimap') {
+        editor.updateOptions({ minimap: { enabled: value } })
+    } else if (key === 'rulers') {
+        // rulers是数组，需要解析逗号分隔的字符串
+        const rulersArray = value ? value.split(',').map((v: string) => parseInt(v.trim())).filter((v: number) => !isNaN(v)) : []
+        editor.updateOptions({ rulers: rulersArray })
+    } else if (key === 'guides') {
+        // guides配置项需要是对象类型
+        editor.updateOptions({
+            guides: {
+                indentation: value,
+                bracketPairs: false,
+                highlightActiveIndentation: false
+            }
+        })
+    } else {
+        // 普通配置项直接更新
+        editor.updateOptions({ [optionKey]: value })
+    }
+
+    console.log(`更新编辑器配置: ${key} = ${value}`)
+}
+
+/**
+ * 批量更新编辑器配置
+ * @param editor Monaco编辑器实例
+ * @param settings 配置对象
+ */
+export function updateEditorOptions(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    settings: any
+): void {
+    const options: any = {}
+
+    // 遍历所有配置项
+    for (const [key, value] of Object.entries(settings)) {
+        const optionKey = EditorOptionMaps[key]
+        if (!optionKey) {
+            console.warn(`未知的配置项: ${key}`)
+            continue
+        }
+
+        // 处理特殊配置项
+        if (key === 'minimap') {
+            options.minimap = { enabled: value }
+        } else if (key === 'rulers') {
+            options.rulers = value ? (value as string).split (',').map (v => parseInt (v.trim ())).filter (v => ! isNaN (v)) : []
+        } else if (key === 'guides') {
+            // guides配置项需要是对象类型
+            options.guides = {
+                indentation: value,
+                bracketPairs: false,
+                highlightIndentation: false
+            }
+        } else {
+            options[optionKey] = value
+        }
+    }
+
+    // 一次性更新所有配置
+    editor.updateOptions(options)
+    console.log('批量更新编辑器配置:', options)
 }
 
 const MonacoEditorOverride: monaco.editor.IEditorOverrideServices = {}
@@ -151,5 +298,10 @@ export {
     Override,
     QuickAccess,
     Render,
-    OptMaps
+    OptMaps,
+    UpdateLineNumber,
+    UpdateEditorTheme,
+    UpdateTableSize,
+    UpdateFontSize,
+    UpdateRenderWhitespace
 }

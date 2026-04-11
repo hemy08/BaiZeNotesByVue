@@ -5,10 +5,10 @@ export function getAppSettingMenuItem(
     mainWindow: Electron.BrowserWindow
 ): Electron.MenuItemConstructorOptions {
     const SettingMenuConfig: Array<{ label: string; click?: () => void }> = [
-        { label: '系统设置', click: () => dialogs.ShowSystemSettingDialog() },
+        { label: '系统设置', click: () => dialogs.ShowSystemSettingDialog (mainWindow)},
         { label: '主题设置', click: () => dialogs.ShowThemeSettingDialog() },
         { label: '快速链接设置', click: () => dialogs.ShowQuickLinkSettingDialog() },
-        { label: '编辑器设置', click: () => mainWindow.webContents.send('OpenFile', null) },
+        { label: '编辑器设置', click: () => dialogs.ShowEditorSettingDialog(mainWindow) },
         { label: 'Markdown解析器', click: () => mainWindow.webContents.send('OpenFile', null) },
         { label: 'xxxx ...待开发', click: () => mainWindow.webContents.send('OpenFile', null) }
     ]

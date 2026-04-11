@@ -12,6 +12,7 @@ import { ShowInsertImageDialog } from './ShowInsertImageDialog'
 import { ShowNewFileFolderDialog } from './ShowNewFileFolderDialog'
 import { ShowSystemSettingDialog } from './ShowSystemSettingDialog'
 import { ShowThemeSettingDialog } from './ShowThemeSettingDialog'
+import { ShowEditorSettingDialog } from './ShowEditorSettingDialog'
 import { ShowQuickLinkSettingDialog } from './ShowQuickLinkSettingDialog'
 import {ShowTechStackDialog} from './ShowTechStackDialog'
 import {ShowHelpAboutDialog} from  './ShowHelpAboutDialog'
@@ -58,6 +59,7 @@ export {
     ShowNewFileFolderDialog,
     ShowSystemSettingDialog,
     ShowThemeSettingDialog,
+    ShowEditorSettingDialog,
     ShowQuickLinkSettingDialog,
     ShowTechStackDialog,
     ShowHelpAboutDialog,

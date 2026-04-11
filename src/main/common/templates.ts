@@ -74,8 +74,8 @@ const TextBlock = [
 const Writing = [
     { label: '力扣题解模板', context: writing.leetcode_problem_solving, menu_action: 'baize:menu:insert:writing:leetcode' },
     { label: '问题处理模板', context: writing.problemResolving, menu_action: 'baize:menu:insert:writing:problem-resolving' },
-    { label: '文章封面', context: writing.thesisTemplates, menu_action: 'baize:menu:insert:writing:thesis-templates' },
-    { label: '论文模板', context: writing.thesisCoverPage, menu_action: 'baize:menu:insert:writing:thesis-cover-page' }
+    { label: '文章封面', context: writing.thesisCoverPage, menu_action: 'baize:menu:insert:writing:thesis-cover-page' },
+    { label: '论文模板', context: writing.thesisTemplates, menu_action: 'baize:menu:insert:writing:thesis-templates' }
 ]
 
 const InsertFromFiles = [
@@ -83,6 +83,8 @@ const InsertFromFiles = [
     { label: '*.txt;*.log', menu_action: 'baize:menu:insert:from-file:text' },
     { label: '*.ini', menu_action: 'baize:menu:insert:from-file:ini' },
     { label: '*.yaml;*.yml', menu_action: 'baize:menu:insert:from-file:yaml' },
+    { label: '*.xml', menu_action: 'baize:menu:insert:from-file:xml' },
+    { label: '*.html', menu_action: 'baize:menu:insert:from-file:html' },
     { label: '*.csv', menu_action: 'baize:menu:insert:from-file:csv' },
     { label: '*.xls;*.xlsx', menu_action: 'baize:menu:insert:from-file:excel' }
 ]

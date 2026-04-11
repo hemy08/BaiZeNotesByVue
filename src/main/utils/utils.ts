@@ -8,13 +8,7 @@ import { CreateHash, CreateHmac, CreateRsaKeyPair, CryptoDecrypt, CryptoEncrypt 
 import { ipcMain, shell } from 'electron'
 // @ts-ignore
 import { getQuickLinks } from './quick-link-config'
-import {
-    getAllThemes,
-    getCurrentTheme,
-    getCurrentThemeStyles,
-    getMonacoTheme,
-    getSeparateEditorTheme
-} from '../themes/theme-config'
+import { getCurrentTheme, getCurrentThemeStyles, getMonacoTheme, getSeparateEditorTheme } from '../themes/theme-config'
 
 export {
     globalInitialize,
@@ -117,27 +111,25 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
 
     // 快速链接配置相关IPC
     ipcMain.on('baize-notes:get-quick-links', (event) => {
-        const links = getQuickLinks()
-        event.returnValue = links
+        event.returnValue = getQuickLinks ()
     })
 
     // 主题配置相关IPC
-    ipcMain.on('get-current-theme', (event) => {
-        event.returnValue = getCurrentTheme ()
+    ipcMain.handle('get-current-theme', () => {
+        console.log('get-current-theme')
+        return getCurrentTheme()
     })
 
-    ipcMain.on('get-current-theme-styles', (event) => {
-        event.returnValue = getCurrentThemeStyles ()
+    ipcMain.handle('get-current-theme-styles', () => {
+        console.log('get-current-theme-styles')
+        return getCurrentThemeStyles()
     })
 
-    ipcMain.on('get-all-themes', (event) => {
     ipcMain.on('get-separate-editor-theme', (event) => {
         event.returnValue = getSeparateEditorTheme ()
     })
 
     ipcMain.on('get-monaco-theme', (event) => {
         event.returnValue = getMonacoTheme ()
-    })
-        event.returnValue = getAllThemes()
     })
 }

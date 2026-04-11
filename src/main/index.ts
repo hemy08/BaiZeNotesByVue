@@ -8,6 +8,10 @@ import * as dialogs from './dialogs/dialogs'
 import { restoreLastOpenedFile } from './utils/file-state'
 import { getCurrentThemeStyles } from './themes/theme-config'
 import {HandleBaiZeMenuAction} from "./menu/menu_ipc";
+import * as EditorSettingUtils from './utils/editor-setting'
+//import { SystemSetting } from "./global-types";
+//import { getApplicationMenu } from './menu/menu'
+//import * as SystemSettingUtils from './utils/system-setting'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -46,6 +50,10 @@ function createWindow(): void {
         // 发送初始主题样式到主窗口
         const theme = getCurrentThemeStyles()
         mainWindow.webContents.send('baize-notes:init-theme-styles', theme)
+
+        // 发送编辑器配置到主窗口
+        const editorSetting = EditorSettingUtils.getEditorSetting()
+        mainWindow.webContents.send('baize-notes:init-editor-setting', editorSetting)
 
         // 恢复上次打开的文件
         restoreLastOpenedFile()

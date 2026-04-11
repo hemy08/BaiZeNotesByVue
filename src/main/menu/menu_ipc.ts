@@ -1,4 +1,4 @@
-import { shell } from 'electron'
+import { app, shell } from 'electron'
 import * as fileUtils from "../utils/file-utils";
 import * as dialogs from "../dialogs/dialogs";
 
@@ -39,9 +39,16 @@ const fileMenuHandlers = {
     'new-folder': () => dialogs.ShowNewFileFolderDialog(false),
     'open-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.OpenFile(mainWindow),
     'open-folder': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.OpenDirectory(mainWindow),
+    'save': () => fileUtils.SaveActiveFile(),
     'save-as': () => fileUtils.SaveActiveFileAs(),
     'close-file': () => fileUtils.SaveActiveFile(),
-    
+    'reload': () => fileUtils.ReloadDirFromDisk(),
+    'relaunch': () => {
+        app.relaunch()
+        app.quit()
+    },
+    'exit': () => app.quit(),
+
     import: {
         'word': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'word', true),
         'html': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'html', true),
@@ -50,7 +57,7 @@ const fileMenuHandlers = {
         'xml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'xml', true),
         'text': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'text', true),
     },
-    
+
     export: {
         'word': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.ExportToFile(mainWindow, 'word'),
         'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.ExportToFile(mainWindow, 'json'),
@@ -72,10 +79,19 @@ const editMenuHandlers = {
     'cut': () => {},
     'copy': () => {},
     'paste': () => {},
-    'find': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+    'go-line': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('OpenFile', null)
     },
-    'replace': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+    'find-in-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+        mainWindow.webContents.send('OpenFile', null)
+    },
+    'replace-in-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+        mainWindow.webContents.send('OpenFile', null)
+    },
+    'find-in-dir': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+        mainWindow.webContents.send('OpenFile', null)
+    },
+    'replace-in-dir': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('OpenFile', null)
     },
 };
@@ -98,16 +114,22 @@ const viewMenuHandlers = {
         mainWindow.webContents.send('menu-view-hide-display-res-manager', null)
     },
     'toggle-line-number': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send('menu-view-update-monaco-editor-option', 'lineNumbers')
+        mainWindow.webContents.send('baize-notes:monaco-editor-update-options', 'lineNumbers')
     },
     'toggle-whitespace': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send('menu-view-update-monaco-editor-option', 'renderWhitespace')
+        mainWindow.webContents.send('baize-notes:monaco-editor-update-options', 'renderWhitespace')
     },
     'toggle-outline': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('menu-view-hide-display-res-manager', null)
     },
-    
+
     fold: {
+        'all-fold': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            mainWindow.webContents.send('OpenFile', null)
+        },
+        'all-expand': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            mainWindow.webContents.send('OpenFile', null)
+        },
         'level1': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
             mainWindow.webContents.send('OpenFile', null)
         },
@@ -121,6 +143,9 @@ const viewMenuHandlers = {
             mainWindow.webContents.send('OpenFile', null)
         },
         'level5': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            mainWindow.webContents.send('OpenFile', null)
+        },
+        'level6': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
             mainWindow.webContents.send('OpenFile', null)
         },
     }
@@ -177,15 +202,25 @@ const insertMenuHandlers = {
     'template-manager': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('OpenFile', null)
     },
+    'from-file': {
+        'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'json', true),
+        'text': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'text', true),
+        'ini': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'ini', true),
+        'yaml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'yaml', true),
+        'xml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'xml', true),
+        'html': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'html', true),
+        'csv': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'csv', true),
+        'excel': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'excel', true),
+    }
 };
 
 // ==================== 设置菜单处理器 ====================
 const settingMenuHandlers = {
     'theme': () => dialogs.ShowThemeSettingDialog(),
-    'system': () => dialogs.ShowSystemSettingDialog(),
+    'system': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => dialogs.ShowSystemSettingDialog(mainWindow),
     'quick-link': () => dialogs.ShowQuickLinkSettingDialog(),
     'monaco-editor': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send('OpenFile', null)
+        dialogs.ShowEditorSettingDialog(mainWindow)
     },
 };
 
@@ -439,7 +474,7 @@ export function HandleBaiZeMenuAction(
     mainWindow: Electron.CrossProcessExports.BrowserWindow
 ): void {
     const handler = findHandler(action);
-    
+
     if (handler) {
         try {
             handler(mainWindow);
@@ -456,12 +491,12 @@ export function HandleBaiZeMenuAction(
  */
 export function getAllMenuActions(): string[] {
     const actions: string[] = [];
-    
+
     function collectActions(obj: any, prefix: string = 'baize:menu') {
         for (const key in obj) {
             const value = obj[key];
             const action = prefix + ':' + key;
-            
+
             if (typeof value === 'function') {
                 actions.push(action);
             } else if (typeof value === 'object') {
@@ -469,7 +504,7 @@ export function getAllMenuActions(): string[] {
             }
         }
     }
-    
+
     collectActions(menuHandlers);
     return actions;
 }

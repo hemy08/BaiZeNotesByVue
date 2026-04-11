@@ -128,10 +128,10 @@ const thesisTemplates =
     '- [作者，文献(报告)题目，编号，保存单位，出版年：起止页码]()'
 
 const thesisCoverPage =
-    '![一个图片]()&nbsp;&nbsp;\n' +
-    '<span style="font-size: 60px; color: #000000; background-color: #FFFFFF; font-family=\'Arial\';"><u><b>文章标题</b></u></span>&nbsp;&nbsp;\n' +
-    '作者信息&nbsp;&nbsp;\n' +
-    '一句话简介&nbsp;&nbsp;\n'
+    '![一个图片]()\n\n' +
+    '<span style="font-size: 60px; color: #000000; background-color: #FFFFFF; font-family=\'Arial\';"><u><b>文章标题</b></u></span>\n\n' +
+    '作者信息\n\n' +
+    '一句话简介\n\n'
 
 
 // Export all

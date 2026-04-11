@@ -33,7 +33,7 @@ export function ShowThemeSettingDialog() {
 
     // 创建窗口
     themeSettingDialog = new BrowserWindow({
-        width: 900,
+        width: 1200,
         height: 600,
         frame: false,
         resizable: false,
@@ -332,7 +332,7 @@ function generateThemeSettingHTML(): string {
 
         .theme-grid, .editor-theme-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 16px;
         }
 
@@ -469,7 +469,7 @@ function generateThemeSettingHTML(): string {
     sidebarItems.forEach(item => {
         item.addEventListener('click', function() {
             const id = this.getAttribute('data-id');
-            
+
             // 更新侧边栏选中状态
             sidebarItems.forEach(i => i.classList.remove('active'));
             this.classList.add('active');

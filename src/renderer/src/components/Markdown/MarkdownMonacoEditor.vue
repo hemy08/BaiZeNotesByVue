@@ -56,10 +56,10 @@ onMounted(() => {
         editor.KeyMaps(editorInstance)
         editor.AddActions(editorInstance)
         editor.LoadScript()
-        
+
         // 初始化后立即布局，确保编辑器尺寸正确
         editorInstance.layout()
-        
+
         // 延迟再次布局，确保DOM完全渲染后尺寸正确
         setTimeout(() => {
             editorInstance.layout()
@@ -84,7 +84,7 @@ window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context
 })
 
 window.electron.ipcRenderer.on(
-    'monaco-editor-update-options',
+    'baize-notes:monaco-editor-update-options',
     (_, option: string, newValue: string) => {
         editor.OptMaps[option](editorInstance, newValue)
     }
@@ -136,11 +136,27 @@ onMounted(() => {
             monaco.editor.ScrollType.Smooth
         )
     })
-    
+
     // 监听视图切换后的重新布局事件
     EventBus.$on('monaco-editor-relayout', () => {
         if (editorInstance) {
             editorInstance.layout()
+        }
+    })
+
+    // 监听编辑器配置更新
+    window.electron.ipcRenderer.on('baize-notes:editor-setting-updated', (_, settings: any) => {
+        console.log('收到编辑器配置更新:', settings)
+        if (editorInstance) {
+            editor.updateEditorOptions(editorInstance, settings)
+        }
+    })
+
+    // 监听编辑器配置初始化
+    window.electron.ipcRenderer.on('baize-notes:init-editor-setting', (_, settings: any) => {
+        console.log('收到编辑器配置初始化:', settings)
+        if (editorInstance) {
+            editor.updateEditorOptions(editorInstance, settings)
         }
     })
 
@@ -182,6 +198,22 @@ onMounted(() => {
 
     // 销毁编辑器实例
     onBeforeUnmount(() => {
+        // 完整清理
+        if (editorInstance) {
+            const model = editorInstance.getModel()
+            if (model) {
+                model.dispose() // 清理模型
+            }
+            editorInstance.dispose() // 清理编辑器
+            // editorInstance = null
+        }
+
+        // 清理Monaco内部缓存
+        monaco.editor.getModels().forEach(model => {
+            if (!model.isAttachedToEditor()) {
+                model.dispose()
+            }
+        })
         window.removeEventListener('resize', handleEditCompResize)
     })
 })
