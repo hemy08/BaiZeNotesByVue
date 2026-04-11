@@ -40,7 +40,30 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    }
+    },
+    "extraResources": [
+      {
+        "from": "resources/config",
+        "to": "config",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/icon",
+        "to": "icon",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/themes",
+        "to": "themes",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
