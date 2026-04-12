@@ -111,9 +111,9 @@ function stopResizing() {
 }
 
 function handleMarkdownCodeUpdate(newValue: string) {
-    console.log('handleMarkdownCodeUpdate', newValue)
-  window.electron.ipcRenderer.send('update-select-file-content', newValue)
-  markdownEditorContent.value = newValue
+    //console.log('handleMarkdownCodeUpdate', newValue)
+    window.electron.ipcRenderer.send('update-select-file-content', newValue)
+    markdownEditorContent.value = newValue
 }
 
 function onHandleNewContent(content: string) {
@@ -190,6 +190,24 @@ const handleUseTemplate = (value: string) => {
     onHandleNewContent(value)
 }
 
+function handleKeyDownEvent(event) {
+    // console.log('keyDown', event)
+    if (event.ctrlKey && event.key === 's') {
+        window.electron.ipcRenderer.send(
+            'save-file-content-to-disk',
+            markdownEditorContent.value
+        )
+    }
+}
+
+// 监听窗口大小变化
+const handleResize = () => {
+    const parentElement = document.getElementById('md-edit-component')?.parentElement
+    if (parentElement) {
+        windowWidth.value = parentElement.clientWidth.toString()
+    }
+}
+
 onMounted(() => {
     // 初始化容器宽度
     const parentElement = document.getElementById('md-edit-component')?.parentElement
@@ -197,35 +215,19 @@ onMounted(() => {
         windowWidth.value = parentElement.clientWidth.toString()
     }
 
-    function handleKeyDownEvent(event) {
-        // console.log('keyDown', event)
-        if (event.ctrlKey && event.key === 's') {
-            window.electron.ipcRenderer.send(
-                'save-file-content-to-disk',
-                markdownEditorContent.value
-            )
-        }
-    }
-
     EventBus.$on('monaco-editor-save-file-content-to-disk', handleSaveFileContent)
     EventBus.$on('baize:monaco-editor-use-template', handleUseTemplate)
 
-    // 监听窗口大小变化
-    const handleResize = () => {
-        const parentElement = document.getElementById('md-edit-component')?.parentElement
-        if (parentElement) {
-            windowWidth.value = parentElement.clientWidth.toString()
-        }
-    }
-    window.addEventListener('resize', handleResize)
 
-    // 销毁编辑器实例
-    onBeforeUnmount(() => {
-        window.removeEventListener('keydown', handleKeyDownEvent)
-        window.removeEventListener('resize', handleResize)
-        EventBus.$off('monaco-editor-save-file-content-to-disk', handleSaveFileContent)
-        EventBus.$off('baize:monaco-editor-use-template', handleUseTemplate)
-    })
+    window.addEventListener('resize', handleResize)
+})
+
+// 销毁编辑器实例
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', handleKeyDownEvent)
+    window.removeEventListener('resize', handleResize)
+    EventBus.$off('monaco-editor-save-file-content-to-disk', handleSaveFileContent)
+    EventBus.$off('baize:monaco-editor-use-template', handleUseTemplate)
 })
 </script>
 

@@ -249,17 +249,33 @@ async function handleThemeUpdate(_event: any, data: ThemeUpdateData) {
     await updateMonacoEditorTheme(data.themeStyles, data.separateEditorTheme, data.monacoTheme)
 }
 
-window.electron.ipcRenderer.on('baize-notes:system-setting-update', (_, setting:SystemSetting) => {
+function handleOpenUrlInWebBrowserWindow(_event, link: string) {
+    window.open(link, '_blank', 'noopener, noreferrer');
+}
+
+function handleSystemSettingUpdate(_event: any, setting: SystemSetting) {
     electronMenu.value = setting.menuBarStyle === 'electron' || setting.menuBarStyle === 'default';
-})
+}
 
+// 窗口控制函数
+function minimizeWindow() {
+    window.electron.ipcRenderer.send('window-minimize');
+}
+
+function maximizeWindow() {
+    window.electron.ipcRenderer.send('window-maximize');
+}
+
+function closeWindow() {
+    window.electron.ipcRenderer.send('window-close');
+}
+
+window.electron.ipcRenderer.on('baize-notes:system-setting-update', handleSystemSettingUpdate);
 // 打开浏览器网页地址
-window.electron.ipcRenderer.on('open-url-in-web-browser-window', (_, link: string) => {
-    window.open(link, '_blank', 'noopener, noreferrer')
-})
-
+window.electron.ipcRenderer.on('open-url-in-web-browser-window', handleOpenUrlInWebBrowserWindow);
 // 监听主题更新
-window.electron.ipcRenderer.on('baize-notes:theme-updated', handleThemeUpdate)
+window.electron.ipcRenderer.on('baize-notes:theme-updated', handleThemeUpdate);
+
 
 onMounted(async () => {
     // 初始化时请求当前主题配置
@@ -279,21 +295,14 @@ onMounted(async () => {
     }
 })
 
-// 窗口控制函数
-function minimizeWindow() {
-    window.electron.ipcRenderer.send('window-minimize')
-}
-
-function maximizeWindow() {
-    window.electron.ipcRenderer.send('window-maximize')
-}
-
-function closeWindow() {
-    window.electron.ipcRenderer.send('window-close')
-}
 
 onBeforeUnmount(() => {
     window.electron.ipcRenderer.removeListener('baize-notes:theme-updated', handleThemeUpdate)
+    window.electron.ipcRenderer.removeListener('open-url-in-web-browser-window', handleOpenUrlInWebBrowserWindow)
+    window.electron.ipcRenderer.removeListener('window-minimize', minimizeWindow)
+    window.electron.ipcRenderer.removeListener('window-maximize', maximizeWindow)
+    window.electron.ipcRenderer.removeListener('window-close', closeWindow)
+    window.electron.ipcRenderer.removeListener('baize-notes:system-setting-update', handleSystemSettingUpdate)
 })
 </script>
 

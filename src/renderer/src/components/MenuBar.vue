@@ -251,13 +251,15 @@ function handleClickOutside(e: MouseEvent) {
     }
 }
 
+function handleResize() {
+    if (activeMenu.value !== null) {
+        updateSubmenuPosition(activeMenu.value)
+    }
+}
+
 onMounted(() => {
     document.addEventListener('click', handleClickOutside)
-    window.addEventListener('resize', () => {
-        if (activeMenu.value !== null) {
-            updateSubmenuPosition(activeMenu.value)
-        }
-    })
+    window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
@@ -265,6 +267,7 @@ onBeforeUnmount(() => {
     if (closeTimer.value) {
         clearTimeout(closeTimer.value)
     }
+    window.removeEventListener('resize', handleResize)
 })
 </script>
 

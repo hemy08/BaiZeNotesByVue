@@ -64,12 +64,15 @@ onMounted(() => {
     window.electron.ipcRenderer.on('file-saved-success', () => {
         isUnsaved.value = false
     })
+})
 
-    onBeforeUnmount(() => {
-        EventBus.$off('monaco-editor-statusbar-file-path', handleFilePathUpdate)
-        EventBus.$off('monaco-editor-statusbar-content-length', handleContentLengthUpdate)
-        EventBus.$off('monaco-editor-statusbar-cursor-position', handleCursorPositionUpdate)
-    })
+onBeforeUnmount(() => {
+    EventBus.$off('monaco-editor-statusbar-file-path', handleFilePathUpdate)
+    EventBus.$off('monaco-editor-statusbar-content-length', handleContentLengthUpdate)
+    EventBus.$off('monaco-editor-statusbar-cursor-position', handleCursorPositionUpdate)
+
+    window.electron.ipcRenderer.removeAllListeners('file-saved-success')
+    window.electron.ipcRenderer.removeAllListeners('monaco-editor-user-select-file')
 })
 </script>
 

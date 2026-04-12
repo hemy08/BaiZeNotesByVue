@@ -115,10 +115,10 @@ const handleChaptersUpdate = (toc: MarkdownTOC[]) => {
 
 onMounted(() => {
     EventBus.$on('monaco-editor-chapters', handleChaptersUpdate)
+})
 
-    onBeforeUnmount(() => {
-        EventBus.$off('monaco-editor-chapters', handleChaptersUpdate)
-    })
+onBeforeUnmount(() => {
+    EventBus.$off('monaco-editor-chapters', handleChaptersUpdate)
 })
 </script>
 

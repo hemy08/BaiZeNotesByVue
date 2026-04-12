@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, globalShortcut } from 'electron'
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 // @ts-ignore
@@ -11,6 +11,7 @@ import * as EditorSettingUtils from './utils/editor-setting'
 import * as fs from "node:fs";
 import { getSystemSetting } from './themes/system-setting'
 import { StartAutoSaveFileTime } from './utils/file-utils'
+import { RegisterShortKeys } from './utils/short-key-register'
 const timers: NodeJS.Timeout[] = []
 const watchers: fs.FSWatcher[] = []
 //import { SystemSetting } from "./global-types";
@@ -62,15 +63,8 @@ function createWindow(): void {
         // 恢复上次打开的文件
         restoreLastOpenedFile()
     })
-    // F12 切换 DevTools 打开/关闭
-    globalShortcut.register('F12', () => {
-        if (mainWindow.webContents.isDevToolsOpened()) {
-            mainWindow.webContents.closeDevTools()
-        } else {
-            mainWindow.webContents.openDevTools()
-        }
-    })
 
+    RegisterShortKeys(mainWindow)
     utils.globalInitialize(mainWindow)
 
     mainWindow.webContents.setWindowOpenHandler((details) => {

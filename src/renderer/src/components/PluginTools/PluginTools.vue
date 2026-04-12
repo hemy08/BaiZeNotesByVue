@@ -39,7 +39,7 @@ const visibleTool = computed(() => {
     return pluginTools.find((tool) => tool.id === activeToolId.value)
 })
 
-window.electron.ipcRenderer.on('plugin-tools-show', (_, context: string) => {
+window.electron.ipcRenderer.on('CHANNEL_PLUGIN_TOOL_SHOW', (_, context: string) => {
   console.log('context is ', context)
     if (!isShowPluginToolsContainer) {
         EventBus.$emit('plugin-tools-container-show', true)
@@ -66,7 +66,6 @@ watch(
 onMounted(() => {
     // 监听插件工具显示事件（来自 menu_actions.ts）
     EventBus.$on(CHANNEL_PLUGIN_TOOL_SHOW, handlePluginToolShow)
-    
     // 监听主题更新事件
     EventBus.$on('theme-updated', applyThemeStyles)
 })
@@ -75,6 +74,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
     EventBus.$off(CHANNEL_PLUGIN_TOOL_SHOW, handlePluginToolShow)
     EventBus.$off('theme-updated', applyThemeStyles)
+    window.electron.ipcRenderer.removeAllListeners('CHANNEL_PLUGIN_TOOL_SHOW')
 })
 
 // 处理插件工具显示事件

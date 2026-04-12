@@ -8,6 +8,7 @@
 
 <script setup lang="ts">
 // 引入 Monaco Editor
+import { registerCustomLanguages } from './register-languages'
 import * as monaco from 'monaco-editor'
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import EventBus from '../../event-bus'
@@ -70,7 +71,7 @@ watch(
             if (newCode.length === 0) {
                 newCode = '# '
             }
-            console.log('update code:', newCode)
+            //console.log('update code:', newCode)
             editorInstance.setValue(newCode)
         }
     }
@@ -140,6 +141,9 @@ onMounted(() => {
         monacoEditorContainer.value.style.height = '100%'
 
         // 创建模型
+
+        // 注册自定义语言支持
+        registerCustomLanguages()
         /*model = monaco.editor.createModel(
             props.code,
             'markdown',

@@ -4,6 +4,7 @@ import csv from 'csv-parser'
 import { detect } from 'jschardet'
 import { FileItem } from '../global-types'
 import { clipboard, dialog, shell } from 'electron'
+import { configStore } from './baize-store'
 // @ts-ignore
 import { ShowImportOptionDialog }  from'../dialogs/ShowImportOptionDialog'
 // @ts-ignore
@@ -46,7 +47,7 @@ export function StartAutoSaveFileTime(interval: number = 30000): void {
   global.SaveFileInterval = interval.toString()
   global.SavingFile = true
 
-  console.log(`auto save files: ${interval}ms`)
+  // console.log(`auto save files: ${interval}ms`)
 
   // 启动定时器
   autoSaveTimer = setInterval(() => {
@@ -66,7 +67,7 @@ export function StopAutoSaveFileTime(): void {
     clearInterval(autoSaveTimer)
     autoSaveTimer = null
     global.SavingFile = false
-    console.log('stop auto save timer')
+    //console.log('stop auto save timer')
   }
 }
 
@@ -193,35 +194,36 @@ export function TraverseDirectory(dir: string, callback: (fileItems: FileItem[])
 }
 
 export function CreateFileFolder(name: string, path: string, isFolder: boolean, extension: string) {
-  let fullName = path.replace('/', '\\') + '\\' + name
-  if (isFolder) {
-    if (!fs.existsSync(fullName)) {
-      fs.mkdirSync(fullName, { recursive: true })
+    let fullName = path.replace('/', '\\') + '\\' + name
+    if (isFolder) {
+        if (!fs.existsSync(fullName)) {
+            fs.mkdirSync(fullName, { recursive: true })
+        } else {
+            showErrorMessageBox(`${fullName} 已存在`)
+        }
     } else {
-      showErrorMessageBox(`${fullName} 已存在`)
-    }
-  } else {
-    fullName = fullName + extension
-    // 使用 fs.writeFile 创建并写入文件
-    fs.writeFileSync(fullName, '# ' + name + '\r\n')
-  }
+        fullName = fullName + extension
+        let lastIndex = name.lastIndexOf('.')
+        let fileHeader = name.substring(0, lastIndex)
+        let fileContent = '# ' + fileHeader + '\r\n'
+        // 使用 fs.writeFile 创建并写入文件
+        fs.writeFileSync(fullName, fileContent)
 
-  if (!isFolder) {
-    // 打开当前文件
-    global.current_active_file = {
-      name: name,
-      path: fullName,
-      type: 'file',
-      content: '# ' + name + '\r\n'
+        // 打开当前文件
+        global.current_active_file = {
+            name: name,
+            path: fullName,
+            type: 'file',
+            content: fileContent
+        }
+        //console.log('global.current_active_file', global.current_active_file)
+        global.MainWindow.webContents.send('show-selected-file-context', fileContent)
     }
-    //console.log('global.current_active_file', global.current_active_file)
-    global.MainWindow.webContents.send('show-selected-file-context', '# ' + name)
-  }
 
-  // 重新加载文件资源管理器
-  setTimeout(() => {
+    // 重新加载文件资源管理器
+    setTimeout(() => {
     ReloadDirFromDisk()
-  }, reloadFromDiskTime)
+    }, reloadFromDiskTime)
 }
 
 export function ReloadDirFromDisk() {
@@ -242,40 +244,65 @@ export function ReloadDirFromDisk() {
 export function OpenSelectFile(fileProperties: FileProperties) {
   // 发送文件内容到渲染进程
   StartAutoSaveFileTime()
-  fs.readFile(fileProperties.path, 'utf8', (err, data) => {
-    if (!err) {
-      fileProperties.content = data
-      global.current_active_file = fileProperties
-      if (data.length === 0) {
-        data = '\r\n'
-      }
-      console.log('OpenSelectFile', fileProperties.path)
-      global.MainWindow.webContents.send('show-selected-file-context', data)
-      global.MainWindow.webContents.send('monaco-editor-user-select-file', fileProperties.path)
 
-      // 保存上次打开的文件
-      saveLastOpenedFile(fileProperties.path)
-    } else {
-      console.log('openFile failed', fileProperties.path, err, data)
+  // 先尝试从缓存获取文件内容
+  let cachedContent = configStore.getFileContent(fileProperties.path)
+
+  if (cachedContent !== null) {
+    // 使用缓存的内容
+    fileProperties.content = cachedContent
+    global.current_active_file = fileProperties
+    if (cachedContent.length === 0) {
+      cachedContent = '\r\n'
     }
-  })
+    //console.log('OpenSelectFile (cached)', fileProperties.path)
+    global.MainWindow.webContents.send('show-selected-file-context', cachedContent)
+    global.MainWindow.webContents.send('monaco-editor-user-select-file', fileProperties.path)
+    saveLastOpenedFile(fileProperties.path)
+  } else {
+    // 从磁盘读取文件
+    fs.readFile(fileProperties.path, 'utf8', (err, data) => {
+      if (!err) {
+        fileProperties.content = data
+        global.current_active_file = fileProperties
+
+        // 缓存文件内容
+        configStore.setFileContent(fileProperties.path, data)
+
+        if (data.length === 0) {
+          data = '\r\n'
+        }
+        //console.log('OpenSelectFile', fileProperties.path)
+        global.MainWindow.webContents.send('show-selected-file-context', data)
+        global.MainWindow.webContents.send('monaco-editor-user-select-file', fileProperties.path)
+        saveLastOpenedFile(fileProperties.path)
+      } else {
+        console.error('openFile failed', fileProperties.path, err, data)
+      }
+    })
+  }
 }
 
-export function SaveActiveFile() {
-  const curFile = global.current_active_file
-  // 文件存在，直接写入
-  if (curFile != undefined) {
-    // console.log('curFile', curFile)
-    fs.writeFileSync(curFile.path, curFile.content)
-    // 通知渲染进程文件已保存
-    const { BrowserWindow } = require('electron')
-    BrowserWindow.getAllWindows().forEach((window: Electron.BrowserWindow) => {
-     window.webContents.send('file-saved-success')
-    })
-  } else {
-    // 文件不存在，新建文件，写入，指定文件路径和文件名
-    showErrorMessageBox('error File not exist')
-  }
+export async function SaveActiveFile() {
+    const curFile = global.current_active_file
+    if (!curFile) {
+        throw new Error('No active file')
+    }
+    try {
+        await fs.promises.writeFile(curFile.path, curFile.content, 'utf-8')
+
+        // 更新缓存
+        configStore.setFileContent(curFile.path, curFile.content)
+
+        // 通知所有窗口
+        const { BrowserWindow } = require('electron')
+        BrowserWindow.getAllWindows().forEach((window: Electron.BrowserWindow) => {
+            window.webContents.send('file-saved-success')
+        })
+    } catch (error: unknown) {
+        console.error('Save file failed:', error)
+        showErrorMessageBox(`保存失败: ${(error as Error).message}`)
+    }
 }
 
 export function SaveActiveFileAs() {

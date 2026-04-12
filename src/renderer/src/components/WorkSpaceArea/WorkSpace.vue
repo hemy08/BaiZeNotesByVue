@@ -143,18 +143,22 @@ window.electron.ipcRenderer.on('menu-view-hide-display-res-manager', () => {
     isShowResourceMgrArea.value = !isShowResourceMgrArea.value
 })
 
+function onWindowResized() {
+    // console.log('resize window.innerWidth', window.innerWidth)
+    windowWidth.value = window.innerWidth
+}
+
 onMounted(() => {
     windowWidth.value = window.innerWidth
-    function onWindowResized() {
-        // console.log('resize window.innerWidth', window.innerWidth)
-        windowWidth.value = window.innerWidth
-    }
     window.addEventListener('resize', onWindowResized)
+})
 
-    onBeforeUnmount(() => {
-        window.removeEventListener('resize', onWindowResized)
-        EventBus.$off('plugin-tools-container-show', handlePluginToolsContainerShow)
-    })
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', onWindowResized)
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+    window.electron.ipcRenderer.removeAllListeners('menu-view-hide-display-res-manager')
+    EventBus.$off('plugin-tools-container-show', handlePluginToolsContainerShow)
 })
 </script>
 

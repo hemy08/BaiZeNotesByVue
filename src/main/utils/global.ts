@@ -1,6 +1,5 @@
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.
-import { ipcMain } from 'electron'
 import * as fileUtils from './file-utils'
 import * as dialogs from '../dialogs/dialogs'
 
@@ -175,8 +174,3 @@ export function globalInitialize(mainWindow: Electron.BrowserWindow) {
         'yaml'
     ]
 }
-
-// 监听来自渲染进程的 IPC 消息，并返回全局数据
-ipcMain.on('get-global-file-manager-svg-data', async (event) => {
-    event.returnValue = global.FileMgrSvgs
-})

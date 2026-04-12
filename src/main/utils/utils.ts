@@ -140,7 +140,7 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         // 文件打开了
         if (curFile != undefined) {
             global.current_active_file.content = content
-            console.log('update file :', curFile.path, 'length:', content.length)
+            //console.log('update file :', curFile.path, 'length:', content.length)
         } else {
             // 没有打开文件，提示用户
             console.warn('not file opened, show save as')

@@ -102,8 +102,6 @@ export function removeRecentFile(filePath: string): void {
 export function restoreLastOpenedFile(): void {
     const lastFile = getLastOpenedFile()
     const lastDir = getLastOpenedDirectory()
-    console.log('try to restore last time opened file:', lastFile)
-    console.log('try to restore last time opened directory:', lastDir)
 
     // 先尝试恢复目录（如果存在）
     if (lastDir) {
