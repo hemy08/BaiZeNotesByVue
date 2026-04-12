@@ -36,24 +36,29 @@ function onUpdateEditorCursorPosition(position: Position) {
     element.textContent = `行 ${position.lineNumber} 列 ${position.column}`
 }
 
+// 定义事件处理函数
+const handleFilePathUpdate = (value: string) => {
+    onUpdateEditorFilePath(value)
+}
+
+const handleContentLengthUpdate = (value: string) => {
+    onUpdateEditorContentLength(value)
+    isUnsaved.value = true
+}
+
+const handleCursorPositionUpdate = (position: Position) => {
+    onUpdateEditorCursorPosition(position)
+}
+
 onMounted(() => {
     // 监听文件保存成功
     window.electron.ipcRenderer.on('monaco-editor-user-select-file', (_, value) => {
         onUpdateEditorFilePath(value)
     })
 
-    EventBus.$on('monaco-editor-statusbar-file-path', (value: string) => {
-        onUpdateEditorFilePath(value)
-    })
-
-    EventBus.$on('monaco-editor-statusbar-content-length', (value: string) => {
-        onUpdateEditorContentLength(value)
-        isUnsaved.value = true
-    })
-
-    EventBus.$on('monaco-editor-statusbar-cursor-position', (position: Position) => {
-        onUpdateEditorCursorPosition(position)
-    })
+    EventBus.$on('monaco-editor-statusbar-file-path', handleFilePathUpdate)
+    EventBus.$on('monaco-editor-statusbar-content-length', handleContentLengthUpdate)
+    EventBus.$on('monaco-editor-statusbar-cursor-position', handleCursorPositionUpdate)
 
     // 监听文件保存成功
     window.electron.ipcRenderer.on('file-saved-success', () => {
@@ -61,16 +66,9 @@ onMounted(() => {
     })
 
     onBeforeUnmount(() => {
-        EventBus.$off('monaco-editor-statusbar-file-path', (value: string) => {
-            onUpdateEditorFilePath(value)
-        })
-
-        EventBus.$off('monaco-editor-content-length', (value: string) => {
-            onUpdateEditorContentLength(value)
-        })
-        EventBus.$off('monaco-editor-cursor-position', (position: Position) => {
-            onUpdateEditorCursorPosition(position)
-        })
+        EventBus.$off('monaco-editor-statusbar-file-path', handleFilePathUpdate)
+        EventBus.$off('monaco-editor-statusbar-content-length', handleContentLengthUpdate)
+        EventBus.$off('monaco-editor-statusbar-cursor-position', handleCursorPositionUpdate)
     })
 })
 </script>

@@ -181,6 +181,15 @@ watch(
     }
 )
 
+// 定义事件处理函数
+const handleSaveFileContent = () => {
+    window.electron.ipcRenderer.send('save-file-content-to-disk', markdownEditorContent.value)
+}
+
+const handleUseTemplate = (value: string) => {
+    onHandleNewContent(value)
+}
+
 onMounted(() => {
     // 初始化容器宽度
     const parentElement = document.getElementById('md-edit-component')?.parentElement
@@ -198,13 +207,8 @@ onMounted(() => {
         }
     }
 
-    EventBus.$on('monaco-editor-save-file-content-to-disk', () => {
-        window.electron.ipcRenderer.send('save-file-content-to-disk', markdownEditorContent.value)
-    })
-
-    EventBus.$on('baize:monaco-editor-use-template', (value: string) => {
-      onHandleNewContent(value)
-    })
+    EventBus.$on('monaco-editor-save-file-content-to-disk', handleSaveFileContent)
+    EventBus.$on('baize:monaco-editor-use-template', handleUseTemplate)
 
     // 监听窗口大小变化
     const handleResize = () => {
@@ -219,6 +223,8 @@ onMounted(() => {
     onBeforeUnmount(() => {
         window.removeEventListener('keydown', handleKeyDownEvent)
         window.removeEventListener('resize', handleResize)
+        EventBus.$off('monaco-editor-save-file-content-to-disk', handleSaveFileContent)
+        EventBus.$off('baize:monaco-editor-use-template', handleUseTemplate)
     })
 })
 </script>

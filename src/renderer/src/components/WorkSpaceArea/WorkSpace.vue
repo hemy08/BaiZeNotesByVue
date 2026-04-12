@@ -84,7 +84,8 @@ const workAreaWidth = computed(() => {
     return containerWidth + 'px'
 })
 
-EventBus.$on('plugin-tools-container-show', (value: boolean) => {
+// 定义事件处理函数
+const handlePluginToolsContainerShow = (value: boolean) => {
     if (value) {
         isShowMdContainer.value = false
         isShowPluginsContainer.value = true
@@ -92,7 +93,9 @@ EventBus.$on('plugin-tools-container-show', (value: boolean) => {
         isShowMdContainer.value = true
         isShowPluginsContainer.value = false
     }
-})
+}
+
+EventBus.$on('plugin-tools-container-show', handlePluginToolsContainerShow)
 
 function onSwitchNaviTab(value: string) {
     if (value == 'switch-open-close') {
@@ -150,6 +153,7 @@ onMounted(() => {
 
     onBeforeUnmount(() => {
         window.removeEventListener('resize', onWindowResized)
+        EventBus.$off('plugin-tools-container-show', handlePluginToolsContainerShow)
     })
 })
 </script>

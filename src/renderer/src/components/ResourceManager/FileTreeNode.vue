@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, PropType, onMounted, onBeforeUnmount } from 'vue'
+import { ref, PropType, onMounted, onBeforeUnmount  } from 'vue'
 import { FileSysItem, getFileMgrSvg, handleContextMenu } from './resource-manager'
 import EventBus from '../../event-bus'
 

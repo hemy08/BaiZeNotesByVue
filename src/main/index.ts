@@ -91,7 +91,7 @@ function createWindow(): void {
 
     // 从系统设置读取自动保存间隔并启动自动保存
     const systemSetting = getSystemSetting()
-    const autoSaveInterval = (systemSetting.autoSaveInterval || 10) * 1000 // 转换为毫秒
+    const autoSaveInterval = (systemSetting.autoSaveInterval || 30) * 1000 // 转换为毫秒
     StartAutoSaveFileTime(autoSaveInterval)
     console.log('[Main] Auto save started with interval:', autoSaveInterval, 'ms')
 
@@ -104,6 +104,9 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+// 禁用 GPU 磁盘缓存以避免 Windows 权限错误
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
+
 app.whenReady().then(() => {
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.electron')

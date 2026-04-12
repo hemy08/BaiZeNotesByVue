@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, defineProps, watch } from 'vue'
+import { computed, ref, watch  } from 'vue'
 import { ASCIITable } from './Information'
 
 const props = defineProps({

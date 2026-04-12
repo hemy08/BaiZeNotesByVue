@@ -223,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineProps, ref, watch } from 'vue'
+import { computed, ref, watch  } from 'vue'
 import * as net from './NetWork'
 
 const props = defineProps({

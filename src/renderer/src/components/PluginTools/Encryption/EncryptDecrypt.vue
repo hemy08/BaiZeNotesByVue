@@ -85,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineProps, watch, ref } from 'vue'
+import { computed, watch, ref  } from 'vue'
 import CryptoJS from 'crypto-js'
 
 const props = defineProps({

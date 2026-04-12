@@ -43,11 +43,63 @@ async function waitAsyncRenderResult(text: string): Promise<string> {
 }
 
 async function MermaidRenderAllGraph(text: string): Promise<string> {
-    let renderResult = text
-    let match: RegExpExecArray | null = null
+    const matches: Array<{ full: string; code: string; index: number }> = []
     const regex = /```mermaid([\s\S]*?)```/g
+    let match: RegExpExecArray | null = null
+
+    // let renderResult = text
+    // let match: RegExpExecArray | null = null
+    // const regex = /```mermaid([\s\S]*?)```/g
     // 使用全局搜索来查找所有匹配项
+    // 第一步：收集所有图表
     while ((match = regex.exec(text)) !== null) {
+        matches.push({
+            full: match[0],
+            code: match[1],
+            index: match.index
+        })
+    }
+    if (matches.length === 0) return text
+
+    // 第二步：并行渲染（限制并发数）
+    const concurrencyLimit = 3
+    const results = new Map<number, string>()
+    for (let i = 0; i < matches.length; i += concurrencyLimit) {
+        const batch = matches.slice(i, i + concurrencyLimit)
+        const promises = batch.map(async (item) => {
+            // 检查缓存
+            const cached = querySvgByMermaidCode(item.code)
+            if (cached) {
+                results.set(item.index, cached)
+                return
+            }
+
+            try {
+                const svg = await waitAsyncRenderResult(item.code)
+                storeMermaidMapping(item.code, svg)
+                results.set(item.index, svg)
+            } catch (error) {
+                console.error('Mermaid render error:', error)
+                results.set(item.index, item.code)
+            }
+        })
+
+        await Promise.all(promises)
+    }
+
+    // 第三步：替换原文（从后往前，避免索引偏移）
+    let renderResult = text
+    const sortedMatches = [...results.entries()].sort((a, b) => b[0] - a[0])
+
+    for (const [index, svg] of sortedMatches) {
+        const originalMatch = matches.find(m => m.index === index)!
+        const replacement = `<pre class="mermaid"><code>${svg}</code></pre>`
+        renderResult =
+            renderResult.substring(0, index) +
+            replacement +
+            renderResult.substring(index + originalMatch.full.length)
+    }
+    /*while ((match = regex.exec(text)) !== null) {
         const graphDesc = match[1]
         let mermaidRenderSvgString = ''
         // 从已经存储的map中获取
@@ -67,7 +119,7 @@ async function MermaidRenderAllGraph(text: string): Promise<string> {
         mermaidRenderSvgString =
             '<pre class="mermaid"><code>' + mermaidRenderSvgString + '</code></pre>'
         renderResult = renderResult.replace(match[0], mermaidRenderSvgString)
-    }
+    }*/
 
     return renderResult
 }

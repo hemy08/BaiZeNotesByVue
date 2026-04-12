@@ -117,12 +117,12 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
 
     // 主题配置相关IPC
     ipcMain.handle('get-current-theme', () => {
-        console.log('get-current-theme')
+        //console.log('get-current-theme')
         return getCurrentTheme()
     })
 
     ipcMain.handle('get-current-theme-styles', () => {
-        console.log('get-current-theme-styles')
+        //console.log('get-current-theme-styles')
         return getCurrentThemeStyles()
     })
 
@@ -135,7 +135,7 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     })
 
     ipcMain.on('update-select-file-content', (_, content) => {
-        console.log('[ipcMain] update-select-file-content   ', content.length)
+        // console.log('[ipcMain] update-select-file-content   ', content.length)
         const curFile = global.current_active_file
         // 文件打开了
         if (curFile != undefined) {

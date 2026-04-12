@@ -108,13 +108,16 @@ function scrollToSection(item: MarkdownTOC) {
     EventBus.$emit('monaco-editor-locate-target-line', item)
 }
 
+// 定义事件处理函数
+const handleChaptersUpdate = (toc: MarkdownTOC[]) => {
+    tocArray.value = toc
+}
+
 onMounted(() => {
-    EventBus.$on('monaco-editor-chapters', (toc: MarkdownTOC[]) => {
-        tocArray.value = toc
-    })
+    EventBus.$on('monaco-editor-chapters', handleChaptersUpdate)
 
     onBeforeUnmount(() => {
-        EventBus.$off('monaco-editor-chapters', () => {})
+        EventBus.$off('monaco-editor-chapters', handleChaptersUpdate)
     })
 })
 </script>

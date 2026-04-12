@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, defineProps } from 'vue'
+import { computed, ref } from 'vue'
 import { HTMLMimeTypeTable, CompressedArray } from './Information'
 
 const props = defineProps({

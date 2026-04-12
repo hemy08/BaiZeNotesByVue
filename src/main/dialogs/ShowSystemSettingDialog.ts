@@ -77,7 +77,7 @@ export function ShowSystemSettingDialog (mainWindow: Electron.BrowserWindow) {
         SystemSettingUtils.saveSystemSetting(SysSetting)
 
         // 重新启动自动保存定时器
-        const autoSaveInterval = (SysSetting.autoSaveInterval || 10) * 1000 // 转换为毫秒
+        const autoSaveInterval = (SysSetting.autoSaveInterval || 30) * 1000 // 转换为毫秒
         StartAutoSaveFileTime(autoSaveInterval)
         console.log('[SystemSettingDialog] Auto save interval updated to:', autoSaveInterval, 'ms')
 

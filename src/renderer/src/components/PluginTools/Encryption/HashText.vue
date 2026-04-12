@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, defineProps, computed } from 'vue'
+import { ref, watch, computed  } from 'vue'
 
 const props = defineProps({
     // 编辑器宽度

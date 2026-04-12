@@ -36,7 +36,7 @@ let autoSaveTimer: NodeJS.Timeout | null = null
  * 启动文件自动保存
  * @param interval 保存间隔时间（毫秒），默认10秒
  */
-export function StartAutoSaveFileTime(interval: number = 10000): void {
+export function StartAutoSaveFileTime(interval: number = 30000): void {
   // 如果已经在运行，先停止
   if (autoSaveTimer) {
     StopAutoSaveFileTime()
@@ -52,7 +52,7 @@ export function StartAutoSaveFileTime(interval: number = 10000): void {
   autoSaveTimer = setInterval(() => {
     // 只有当文件有修改时才保存
     if (global.current_active_file && global.current_active_file.content) {
-      console.log('auto save files:', global.current_active_file.path)
+      // console.log('auto save files:', global.current_active_file.path)
       SaveActiveFile()
     }
   }, interval)
@@ -265,12 +265,12 @@ export function SaveActiveFile() {
   const curFile = global.current_active_file
   // 文件存在，直接写入
   if (curFile != undefined) {
-      console.log('curFile', curFile)
+    // console.log('curFile', curFile)
     fs.writeFileSync(curFile.path, curFile.content)
     // 通知渲染进程文件已保存
     const { BrowserWindow } = require('electron')
     BrowserWindow.getAllWindows().forEach((window: Electron.BrowserWindow) => {
-      window.webContents.send('file-saved-success')
+     window.webContents.send('file-saved-success')
     })
   } else {
     // 文件不存在，新建文件，写入，指定文件路径和文件名

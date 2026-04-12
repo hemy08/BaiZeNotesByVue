@@ -17,8 +17,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue'
-
 const props = defineProps({
     // 编辑器宽度
     workAreaWidth: {

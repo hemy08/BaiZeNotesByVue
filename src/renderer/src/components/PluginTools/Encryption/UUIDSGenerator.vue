@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineProps, ref, watch } from 'vue'
+import { computed, ref, watch  } from 'vue'
 import * as uuid from 'uuid'
 
 const props = defineProps({

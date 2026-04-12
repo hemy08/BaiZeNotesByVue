@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, ref, computed, watch } from 'vue'
+import { ref, computed, watch  } from 'vue'
 import { ulid } from 'ulid'
 
 const props = defineProps({
