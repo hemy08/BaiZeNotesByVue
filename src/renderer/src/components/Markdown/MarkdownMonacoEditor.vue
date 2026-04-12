@@ -37,56 +37,6 @@ let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
 //const registeredDecorations: string[] = []
 
 // 初始化编辑器
-onMounted(() => {
-    if (monacoEditorContainer.value) {
-        monacoEditorContainer.value.style.width = '100%'
-        monacoEditorContainer.value.style.height = '100%'
-
-        // 创建模型
-        /*model = monaco.editor.createModel(
-            props.code,
-            'markdown',
-            monaco.Uri.parse(`file://${props.filePath || 'untitled.md'}`)
-        )*/
-
-        editorInstance = monaco.editor.create(
-            monacoEditorContainer.value,
-            editor.Options,
-            editor.Override
-        )
-
-        editorInstance.onDidChangeModelContent(() => {
-            if (editorInstance != null) {
-                const context = editorInstance.getValue()
-                emit('update:code', context)
-                EventBus.$emit('monaco-editor-statusbar-content-length', context.length)
-            }
-        })
-
-        editor.DidChange(editorInstance)
-        editor.KeyMaps(editorInstance)
-        editor.AddActions(editorInstance)
-        editor.LoadScript()
-
-        // 初始化后立即布局，确保编辑器尺寸正确
-        editorInstance.layout()
-
-        // 延迟再次布局，确保DOM完全渲染后尺寸正确
-        setTimeout(() => {
-            if (editorInstance) {
-                editorInstance.layout ()
-            }
-        }, 100)
-    }
-
-    onBeforeUnmount(() => {
-        if (editorInstance) {
-            editorInstance.dispose()
-            editorInstance = null
-        }
-    })
-})
-
 window.electron.ipcRenderer.on('monaco-editor-insert-after-cursor', (_, context: string) => {
     if (context && editorInstance) {
         editor.InsertAfterCursor(editorInstance, context)
@@ -144,6 +94,19 @@ const handleUpdateContext = (value: string) => {
     }
 }
 
+const handleRelayout = () => {
+    if (editorInstance) {
+        editorInstance.layout()
+    }
+}
+
+function handleEditCompResize() {
+    if (editorInstance && monacoEditorContainer.value) {
+        // 使用 Monaco Editor 的 layout 方法来更新大小
+        editorInstance.layout()
+    }
+}
+
 const handleInsertAfterCursor = (value: string) => {
     if (editorInstance) {
         editor.InsertAfterCursor (editorInstance, value)
@@ -166,73 +129,107 @@ const handleLocateTargetLine = (item: MarkdownTOC) => {
     }
 }
 
-const handleRelayout = () => {
-    if (editorInstance) {
-        editorInstance.layout()
-    }
+function handleScrollEvent(event) {
+    console.log('handleScrollEvent', event)
+    EventBus.$emit('monaco-editor-scroll-event', null)
 }
 
 onMounted(() => {
+    if (monacoEditorContainer.value) {
+        monacoEditorContainer.value.style.width = '100%'
+        monacoEditorContainer.value.style.height = '100%'
+
+        // 创建模型
+        /*model = monaco.editor.createModel(
+            props.code,
+            'markdown',
+            monaco.Uri.parse(`file://${props.filePath || 'untitled.md'}`)
+        )*/
+
+        editorInstance = monaco.editor.create(
+            monacoEditorContainer.value,
+            editor.Options,
+            editor.Override
+        )
+
+        editorInstance.onDidChangeModelContent(() => {
+            if (editorInstance != null) {
+                const context = editorInstance.getValue()
+                emit('update:code', context)
+                EventBus.$emit('monaco-editor-statusbar-content-length', context.length)
+            }
+        })
+
+        editor.DidChange(editorInstance)
+        editor.KeyMaps(editorInstance)
+        editor.AddActions(editorInstance)
+        editor.LoadScript()
+
+        // 初始化后立即布局，确保编辑器尺寸正确
+        editorInstance.layout()
+
+        // 延迟再次布局，确保DOM完全渲染后尺寸正确
+        setTimeout(() => {
+            if (editorInstance) {
+                editorInstance.layout ()
+            }
+        }, 100)
+    }
+
+    // 注册 EventBus 监听器
     EventBus.$on('monaco-editor-update-header-format', handleUpdateContext)
     EventBus.$on('monaco-editor-update-font-format', handleUpdateContext)
     EventBus.$on('monaco-editor-insert-text', handleInsertAfterCursor)
     EventBus.$on('monaco-editor-locate-target-line', handleLocateTargetLine)
     EventBus.$on('monaco-editor-relayout', handleRelayout)
 
+    // 注册 IPC 监听器
     // 监听编辑器配置更新
     window.electron.ipcRenderer.on('baize-notes:editor-setting-updated', handleUpdateEditorOptions)
-
     // 监听编辑器配置初始化
     window.electron.ipcRenderer.on('baize-notes:init-editor-setting', handleUpdateEditorOptions)
 
-    onBeforeUnmount(() => {
-        EventBus.$off('monaco-editor-update-header-format', handleUpdateContext)
-        EventBus.$off('monaco-editor-update-font-format', handleUpdateContext)
-        EventBus.$off('monaco-editor-insert-text', handleInsertAfterCursor)
-        EventBus.$off('monaco-editor-locate-target-line', handleLocateTargetLine)
-        EventBus.$off('monaco-editor-relayout', handleRelayout)
-    })
-})
-
-onMounted(() => {
-    function handleEditCompResize() {
-        if (editorInstance && monacoEditorContainer.value) {
-            // 使用 Monaco Editor 的 layout 方法来更新大小
-            editorInstance.layout()
-        }
-    }
-
-    function handleScrollEvent(event) {
-        console.log('handleScrollEvent', event)
-        EventBus.$emit('monaco-editor-scroll-event', null)
-    }
-
+    // 窗口事件监听
     editorInstance?.getDomNode()?.addEventListener('scroll', function () {
         console.log('scroll')
     })
-
     window.addEventListener('resize', handleEditCompResize)
     window.addEventListener('scroll', handleScrollEvent)
+})
 
-    // 销毁编辑器实例
-    onBeforeUnmount(() => {
-        // 完整清理
-        if (editorInstance) {
-            const model = editorInstance.getModel()
-            if (model) {
-                model.dispose() // 清理模型
-            }
-            editorInstance.dispose() // 清理编辑器
-            // editorInstance = null
+onBeforeUnmount(() => {
+    // 1. 清理 EventBus 监听器
+    EventBus.$off('monaco-editor-update-header-format', handleUpdateContext)
+    EventBus.$off('monaco-editor-update-font-format', handleUpdateContext)
+    EventBus.$off('monaco-editor-insert-text', handleInsertAfterCursor)
+    EventBus.$off('monaco-editor-locate-target-line', handleLocateTargetLine)
+    EventBus.$off('monaco-editor-relayout', handleRelayout)
+
+    // 2. 清理 IPC 监听器
+    window.electron.ipcRenderer.removeAllListeners('monaco-editor-insert-after-cursor')
+    window.electron.ipcRenderer.removeAllListeners('monaco-insert-text-block-templates')
+    window.electron.ipcRenderer.removeAllListeners('baize-notes:monaco-editor-update-options')
+    window.electron.ipcRenderer.removeAllListeners('monaco-editor-trigger-undo-redo')
+    window.electron.ipcRenderer.removeAllListeners('baize-notes:editor-setting-updated')
+    window.electron.ipcRenderer.removeAllListeners('baize-notes:init-editor-setting')
+
+    // 3. 清理窗口事件监听器
+    window.removeEventListener('resize', handleEditCompResize)
+
+    //  4. 完整清理 Monaco Editor
+    if (editorInstance) {
+        const model = editorInstance.getModel()
+        if (model) {
+            model.dispose() // 清理模型
         }
-
-        // 清理Monaco内部缓存
-        monaco.editor.getModels().forEach(model => {
-            if (!model.isAttachedToEditor()) {
-                model.dispose()
-            }
-        })
-        window.removeEventListener('resize', handleEditCompResize)
+        editorInstance.dispose() // 清理编辑器
+        editorInstance = null
+    }
+    // 5. 清理 Monaco 内部缓存
+    monaco.editor.getModels().forEach(model => {
+        if (!model.isAttachedToEditor()) {
+            model.dispose()
+        }
     })
 })
 </script>
