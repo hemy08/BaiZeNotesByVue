@@ -16,7 +16,9 @@ const systemSettingStore = new Store<SystemSetting>({
         editorModel: 'default',
         pluginOpen: 'browser',
         menuBarStyle: 'electron', // 默认使用Electron样式
-        autoSaveInterval: 10 // 默认10秒
+        autoSaveInterval: 10, // 默认10秒
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif', // 默认系统字体
+        fontSize: 13 // 默认13px
     }
 })
 
@@ -51,93 +53,9 @@ export function getSystemSetting(): SystemSetting {
         editorModel: systemSettingStore.get('editorModel', 'default'),
         pluginOpen: systemSettingStore.get('pluginOpen', 'browser'),
         menuBarStyle: systemSettingStore.get('menuBarStyle', 'electron'),
-        autoSaveInterval: systemSettingStore.get('autoSaveInterval', 10)
+        autoSaveInterval: systemSettingStore.get('autoSaveInterval', 60),
+        fontFamily: systemSettingStore.get('fontFamily', '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif'),
+        fontSize: systemSettingStore.get('fontSize', 13)
     }
 }
 
-/**
- * 获取菜单栏样式
- */
-export function getMenuBarStyle(): string {
-    return systemSettingStore.get('menuBarStyle', 'electron')
-}
-
-/**
- * 设置菜单栏样式
- */
-export function setMenuBarStyle(style: string): void {
-    systemSettingStore.set('menuBarStyle', style)
-}
-
-/**
- * 获取语言设置
- */
-export function getLanguage(): string {
-    return systemSettingStore.get('language', 'zh-cn')
-}
-
-/**
- * 设置语言
- */
-export function setLanguage(language: string): void {
-    systemSettingStore.set('language', language)
-}
-
-/**
- * 获取资源管理器设置
- */
-export function getResourceManager(): string {
-    return systemSettingStore.get('resourceManager', 'default')
-}
-
-/**
- * 设置资源管理器
- */
-export function setResourceManager(setting: string): void {
-    systemSettingStore.set('resourceManager', setting)
-}
-
-/**
- * 获取编辑器视图模式
- */
-export function getEditorModel(): string {
-    return systemSettingStore.get('editorModel', 'default')
-}
-
-/**
- * 设置编辑器视图模式
- */
-export function setEditorModel(model: string): void {
-    systemSettingStore.set('editorModel', model)
-}
-
-/**
- * 获取插件打开方式
- */
-export function getPluginOpen(): string {
-    return systemSettingStore.get('pluginOpen', 'browser')
-}
-
-/**
- * 设置插件打开方式
- */
-export function setPluginOpen(mode: string): void {
-    systemSettingStore.set('pluginOpen', mode)
-}
-
-/**
- * 获取自动保存间隔（秒）
- */
-export function getAutoSaveInterval(): number {
-    return systemSettingStore.get('autoSaveInterval', 10)
-}
-
-/**
- * 设置自动保存间隔（秒）
- * @param interval 间隔时间（秒），范围：5-86400
- */
-export function setAutoSaveInterval(interval: number): void {
-    // 验证范围
-    const validInterval = Math.max(5, Math.min(86400, interval))
-    systemSettingStore.set('autoSaveInterval', validInterval)
-}

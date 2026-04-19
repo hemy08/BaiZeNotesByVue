@@ -150,6 +150,8 @@ export interface SystemSetting {
     pluginOpen: string
     menuBarStyle: string // 'electron' | 'windows-native'
     autoSaveInterval: number // 自动保存间隔（秒），最小5秒，最大86400秒（24小时）
+    fontFamily: string // 界面字体，如 'Microsoft YaHei', 'Segoe UI', 'PingFang SC'
+    fontSize: number // 界面字体大小(px)，范围 10-24，默认 13
 }
 
 export interface MenuContext {
@@ -174,4 +176,29 @@ export interface FileItem {
     isDirectory: boolean
     fileExtension: string
     children: FileItem[]
+}
+
+
+// 主题样式接口
+export interface ThemeStyles {
+    name: string
+    description: string
+    titleBarGradient: string
+    backgroundColor: string
+    cardBackground: string
+    textColor: string
+    secondaryTextColor: string
+    borderColor: string
+    accentColor: string
+    buttonBackground: string
+    buttonTextColor: string
+    hoverBackground: string
+}
+
+// 主题更新数据接口
+export interface ThemeUpdateData {
+    themeType: string
+    separateEditorTheme: boolean
+    monacoTheme: string
+    themeStyles: ThemeStyles
 }

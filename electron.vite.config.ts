@@ -3,14 +3,6 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 // import { copy } from 'vite-plugin-copy'
 // import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 import vue from '@vitejs/plugin-vue'
-/*
-function monacoConfig() {
-  return {
-    define: {
-      'process.env': process.env
-    }
-  }
-}*/
 
 export default defineConfig({
   main: {
@@ -23,8 +15,7 @@ export default defineConfig({
     resolve: {
       alias: {
         '@renderer': resolve('src/renderer/src'),
-        '@mainer': resolve('src/main'),
-        '@libs': resolve('src/renderer/src/lib')
+        '@mainer': resolve('src/main')
       }
     },
     plugins: [vue()]

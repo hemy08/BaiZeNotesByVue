@@ -1,8 +1,9 @@
 <template>
     <div id="navi-tab">
         <div class="navi-tab-item-btn">
-            <!-- 文件管理器按钮 - 保留 -->
+            <!-- 文件管理器按钮 - 仅左侧显示 -->
             <button
+                v-if="position === 'left'"
                 data-index="0"
                 title="文件管理器"
                 class="navi-tab-item file active"
@@ -20,8 +21,9 @@
                 </svg>
             </button>
 
-            <!-- 大纲按钮 - 保留 -->
+            <!-- 大纲按钮 - 仅左侧显示 -->
             <button
+                v-if="position === 'left'"
                 data-index="1"
                 title="大纲"
                 class="navi-tab-item outline"
@@ -34,8 +36,9 @@
                 </svg>
             </button>
 
-            <!-- HemyNotes按钮 - 保留 -->
+            <!-- HemyNotes按钮 - 仅左侧显示 -->
             <button
+                v-if="position === 'left'"
                 data-index="2"
                 title="HemyNotes"
                 class="navi-tab-item outline"
@@ -66,7 +69,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+// 接收 position prop: 'left' 或 'right'
+const props = defineProps<{
+    position: 'left' | 'right'
+}>()
 
 let currentNaviTal = 'file-explorer'
 
@@ -82,14 +90,20 @@ interface QuickLinkItem {
     iconContent: string
     enabled: boolean
     order: number
+    position: 'left' | 'right'
 }
 
-const quickLinks = ref<QuickLinkItem[]>([])
+const allQuickLinks = ref<QuickLinkItem[]>([])
+
+// 根据 position 过滤快速链接
+const quickLinks = computed(() => {
+    return allQuickLinks.value.filter((link) => link.position === props.position)
+})
 
 // 加载快速链接配置
 function loadQuickLinks() {
     const links = window.electron.ipcRenderer.sendSync('baize-notes:get-quick-links')
-    quickLinks.value = links.filter((link: QuickLinkItem) => link.enabled)
+    allQuickLinks.value = links.filter((link: QuickLinkItem) => link.enabled)
 }
 
 // 监听快速链接更新事件
@@ -151,6 +165,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+#navi-tab {
+    border-right: 1px solid var(--theme-border-color, #e0e0e0);
+}
+
 .navi-tab-item-btn {
     width: 100%;
     display: flex;

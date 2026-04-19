@@ -1,7 +1,9 @@
 <template>
     <div id="editor-container" :style="containerStyles">
-        <!-- 标题栏区域，高度24px，宽度与app一致 -->
-        <div v-show="electronMenu" id="title-bar" class="title-bar">
+        <!-- 标题栏区域，高度30px，宽度与app一致，支持拖动移动窗口 -->
+        <div v-show="electronMenu" id="title-bar" class="title-bar"
+            @mousedown="onTitleBarMouseDown"
+            @dblclick="onTitleBarDblClick">
             <div class="title-left">
                 <svg class="title-icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
                     <defs>
@@ -58,6 +60,15 @@
         <div id="workspace-area" class="workspace-area"><WorkSpace /></div>
         <!-- 状态栏区域，高度10px，宽度与app一致 -->
         <div id="status-bar" class="status-bar" :style="statusBarStyles"><StatusBar /></div>
+        <!-- 窗口大小调整边框 -->
+        <div class="resize-edge resize-top" @mousedown="onResizeMouseDown('top', $event)"></div>
+        <div class="resize-edge resize-bottom" @mousedown="onResizeMouseDown('bottom', $event)"></div>
+        <div class="resize-edge resize-left" @mousedown="onResizeMouseDown('left', $event)"></div>
+        <div class="resize-edge resize-right" @mousedown="onResizeMouseDown('right', $event)"></div>
+        <div class="resize-corner resize-top-left" @mousedown="onResizeMouseDown('top-left', $event)"></div>
+        <div class="resize-corner resize-top-right" @mousedown="onResizeMouseDown('top-right', $event)"></div>
+        <div class="resize-corner resize-bottom-left" @mousedown="onResizeMouseDown('bottom-left', $event)"></div>
+        <div class="resize-corner resize-bottom-right" @mousedown="onResizeMouseDown('bottom-right', $event)"></div>
     </div>
 </template>
 
@@ -68,32 +79,8 @@ import StatusBar from './components/StatusBar.vue'
 import MenuBar from './components/MenuBar.vue'
 import EventBus from './event-bus'
 import * as monaco from 'monaco-editor'
-import { SystemSetting } from "../../main/global-types";
+import { SystemSetting, ThemeStyles, ThemeUpdateData } from "../../main/global-types";
 const electronMenu = ref(true)
-
-// 主题样式接口
-interface ThemeStyles {
-    name: string
-    description: string
-    titleBarGradient: string
-    backgroundColor: string
-    cardBackground: string
-    textColor: string
-    secondaryTextColor: string
-    borderColor: string
-    accentColor: string
-    buttonBackground: string
-    buttonTextColor: string
-    hoverBackground: string
-}
-
-// 主题更新数据接口
-interface ThemeUpdateData {
-    themeType: string
-    separateEditorTheme: boolean
-    monacoTheme: string
-    themeStyles: ThemeStyles
-}
 
 // 当前主题样式
 const currentTheme = ref<ThemeStyles | null>(null)
@@ -215,12 +202,17 @@ async function loadMonacoTheme(themeName: string): Promise<string | null> {
         return themeName
     }
 
-    // 加载扩展主题
+    // 从主进程 resources/themes/monaco-themes/ 加载扩展主题
     try {
-        const themeData = await import(`@libs/monaco-themes/themes/${themeName}.json`)
-        monaco.editor.defineTheme(themeName, themeData.default || themeData)
-        monaco.editor.setTheme(themeName)
-        return themeName
+        const themeData = await window.electron.ipcRenderer.invoke('baize-notes:load-monaco-theme', themeName)
+        if (themeData) {
+            monaco.editor.defineTheme(themeName, themeData)
+            monaco.editor.setTheme(themeName)
+            return themeName
+        }
+        console.error(`Monaco theme not found: ${themeName}`)
+        monaco.editor.setTheme('vs')
+        return 'vs'
     } catch (error) {
         console.error(`Failed to load Monaco theme: ${themeName}`, error)
         // 失败时回退到默认主题
@@ -257,17 +249,162 @@ function handleSystemSettingUpdate(_event: any, setting: SystemSetting) {
     electronMenu.value = setting.menuBarStyle === 'electron' || setting.menuBarStyle === 'default';
 }
 
+function EditorReLayout() {
+    // 调整大小后通知编辑器重新布局
+    setTimeout(() => {
+        EventBus.$emit('monaco-editor-relayout')
+    }, 100)
+}
+
 // 窗口控制函数
 function minimizeWindow() {
     window.electron.ipcRenderer.send('window-minimize');
+    // 通知Monaco编辑器重新布局
+    EditorReLayout()
 }
 
 function maximizeWindow() {
     window.electron.ipcRenderer.send('window-maximize');
+    // 通知Monaco编辑器重新布局
+    EditorReLayout()
 }
 
 function closeWindow() {
     window.electron.ipcRenderer.send('window-close');
+}
+
+// ========== 标题栏拖动移动窗口 ==========
+const isDragging = ref(false)
+const dragOffset = ref({ x: 0, y: 0 })
+
+function onTitleBarMouseDown(e: MouseEvent) {
+    // 忽略窗口控制按钮区域的点击
+    if ((e.target as HTMLElement).closest('.window-controls')) return
+    // 仅响应左键
+    if (e.button !== 0) return
+
+    isDragging.value = true
+
+    // 通知主进程开始拖动（如果最大化则还原窗口）
+    window.electron.ipcRenderer.send('window-start-drag')
+
+    // 获取窗口当前位置
+    const bounds = window.electron.ipcRenderer.sendSync('window-get-bounds')
+    if (bounds) {
+        // 计算鼠标在窗口内的偏移比例，使窗口还原时鼠标位置合理
+        const isMaximized = window.electron.ipcRenderer.sendSync('window-is-maximized')
+        if (isMaximized) {
+            // 最大化还原后，将鼠标点击位置映射到还原窗口的对应位置
+            dragOffset.value = {
+                x: bounds.width * (e.screenX - bounds.x) / window.innerWidth,
+                y: e.clientY
+            }
+            // 立即移动窗口使鼠标在标题栏的正确位置
+            const newX = e.screenX - dragOffset.value.x
+            const newY = e.screenY - dragOffset.value.y
+            window.electron.ipcRenderer.send('window-move', newX, newY)
+        } else {
+            dragOffset.value = {
+                x: e.screenX - bounds.x,
+                y: e.screenY - bounds.y
+            }
+        }
+    }
+
+    document.addEventListener('mousemove', onDragMouseMove)
+    document.addEventListener('mouseup', onDragMouseUp)
+    e.preventDefault()
+    EditorReLayout()
+}
+
+function onDragMouseMove(e: MouseEvent) {
+    if (!isDragging.value) return
+    const newX = e.screenX - dragOffset.value.x
+    const newY = e.screenY - dragOffset.value.y
+    window.electron.ipcRenderer.send('window-move', newX, newY)
+}
+
+function onDragMouseUp() {
+    isDragging.value = false
+    document.removeEventListener('mousemove', onDragMouseMove)
+    document.removeEventListener('mouseup', onDragMouseUp)
+}
+
+// 双击标题栏切换最大化/还原
+function onTitleBarDblClick(e: MouseEvent) {
+    if ((e.target as HTMLElement).closest('.window-controls')) return
+
+    console.log('[Renderer] Double click on title bar')
+    window.electron.ipcRenderer.send('window-toggle-maximize')
+    // 通知Monaco编辑器重新布局
+    EditorReLayout()
+}
+
+// ========== 窗口大小调整 ==========
+type ResizeDirection = 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+const isResizing = ref(false)
+const resizeInfo = ref<{ direction: ResizeDirection; startX: number; startY: number; startBounds: { x: number; y: number; width: number; height: number } } | null>(null)
+const MIN_WIDTH = 800
+const MIN_HEIGHT = 600
+
+function onResizeMouseDown(direction: ResizeDirection, e: MouseEvent) {
+    if (e.button !== 0) return
+    // 最大化状态下不允许调整大小
+    const isMaximized = window.electron.ipcRenderer.sendSync('window-is-maximized')
+    if (isMaximized) return
+
+    isResizing.value = true
+    const bounds = window.electron.ipcRenderer.sendSync('window-get-bounds')
+    if (!bounds) return
+
+    resizeInfo.value = {
+        direction,
+        startX: e.screenX,
+        startY: e.screenY,
+        startBounds: { ...bounds }
+    }
+
+    document.addEventListener('mousemove', onResizeMouseMove)
+    document.addEventListener('mouseup', onResizeMouseUp)
+    e.preventDefault()
+}
+
+function onResizeMouseMove(e: MouseEvent) {
+    if (!isResizing.value || !resizeInfo.value) return
+    const { direction, startX, startY, startBounds } = resizeInfo.value
+    const dx = e.screenX - startX
+    const dy = e.screenY - startY
+
+    let { x, y, width, height } = startBounds
+
+    if (direction.includes('right')) {
+        width = Math.max(MIN_WIDTH, startBounds.width + dx)
+    }
+    if (direction.includes('left')) {
+        const newWidth = Math.max(MIN_WIDTH, startBounds.width - dx)
+        x = startBounds.x + (startBounds.width - newWidth)
+        width = newWidth
+    }
+    if (direction.includes('bottom')) {
+        height = Math.max(MIN_HEIGHT, startBounds.height + dy)
+    }
+    if (direction.includes('top')) {
+        const newHeight = Math.max(MIN_HEIGHT, startBounds.height - dy)
+        y = startBounds.y + (startBounds.height - newHeight)
+        height = newHeight
+    }
+
+    window.electron.ipcRenderer.send('window-move', x, y)
+    window.electron.ipcRenderer.send('window-set-size', width, height)
+}
+
+function onResizeMouseUp() {
+    isResizing.value = false
+    resizeInfo.value = null
+    document.removeEventListener('mousemove', onResizeMouseMove)
+    document.removeEventListener('mouseup', onResizeMouseUp)
+    // 调整大小后通知编辑器重新布局
+    EditorReLayout()
 }
 
 window.electron.ipcRenderer.on('baize-notes:system-setting-update', handleSystemSettingUpdate);
@@ -275,7 +412,8 @@ window.electron.ipcRenderer.on('baize-notes:system-setting-update', handleSystem
 window.electron.ipcRenderer.on('open-url-in-web-browser-window', handleOpenUrlInWebBrowserWindow);
 // 监听主题更新
 window.electron.ipcRenderer.on('baize-notes:theme-updated', handleThemeUpdate);
-
+// 监听系统设置更新
+window.electron.ipcRenderer.on('baize-notes:editor-relayout', EditorReLayout);
 
 onMounted(async () => {
     // 初始化时请求当前主题配置
@@ -293,6 +431,7 @@ onMounted(async () => {
     } catch (error) {
         console.error('Failed to get current theme:', error)
     }
+    EditorReLayout()
 })
 
 
@@ -303,6 +442,11 @@ onBeforeUnmount(() => {
     window.electron.ipcRenderer.removeListener('window-maximize', maximizeWindow)
     window.electron.ipcRenderer.removeListener('window-close', closeWindow)
     window.electron.ipcRenderer.removeListener('baize-notes:system-setting-update', handleSystemSettingUpdate)
+    // 清理拖动和调整大小的事件监听
+    document.removeEventListener('mousemove', onDragMouseMove)
+    document.removeEventListener('mouseup', onDragMouseUp)
+    document.removeEventListener('mousemove', onResizeMouseMove)
+    document.removeEventListener('mouseup', onResizeMouseUp)
 })
 </script>
 
@@ -318,11 +462,16 @@ onBeforeUnmount(() => {
     padding: 0 12px;
     color: #fff;
     font-size: 13px;
+    height: 30px;
+    user-select: none;
+    -webkit-app-region: drag;
+}
 
 .title-left {
     display: flex;
     align-items: center;
     flex: 1;
+    -webkit-app-region: drag;
 }
 
 .title-text {
@@ -333,6 +482,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     gap: 0;
+    -webkit-app-region: no-drag;
 }
 
 .window-btn {
@@ -345,6 +495,7 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: center;
     transition: background 0.2s;
+    -webkit-app-region: no-drag;
 }
 
 .window-btn:hover {
@@ -365,9 +516,6 @@ onBeforeUnmount(() => {
 
 .window-btn.close:hover svg {
     stroke: #fff;
-}
-    font-weight: 500;
-    height: 30px;
 }
 
 .title-icon {
@@ -410,5 +558,75 @@ onBeforeUnmount(() => {
     flex-direction: column;
     height: 100vh;
     overflow: hidden;
+    position: relative;
+}
+
+/* 窗口大小调整边框 */
+.resize-edge {
+    position: absolute;
+    z-index: 9999;
+}
+
+.resize-top {
+    top: -3px;
+    left: 6px;
+    right: 6px;
+    height: 6px;
+    cursor: n-resize;
+}
+
+.resize-bottom {
+    bottom: -3px;
+    left: 6px;
+    right: 6px;
+    height: 6px;
+    cursor: s-resize;
+}
+
+.resize-left {
+    left: -3px;
+    top: 6px;
+    bottom: 6px;
+    width: 6px;
+    cursor: w-resize;
+}
+
+.resize-right {
+    right: -3px;
+    top: 6px;
+    bottom: 6px;
+    width: 6px;
+    cursor: e-resize;
+}
+
+.resize-corner {
+    position: absolute;
+    z-index: 10000;
+    width: 12px;
+    height: 12px;
+}
+
+.resize-top-left {
+    top: -3px;
+    left: -3px;
+    cursor: nw-resize;
+}
+
+.resize-top-right {
+    top: -3px;
+    right: -3px;
+    cursor: ne-resize;
+}
+
+.resize-bottom-left {
+    bottom: -3px;
+    left: -3px;
+    cursor: sw-resize;
+}
+
+.resize-bottom-right {
+    bottom: -3px;
+    right: -3px;
+    cursor: se-resize;
 }
 </style>

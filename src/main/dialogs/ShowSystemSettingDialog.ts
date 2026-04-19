@@ -1,31 +1,28 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { getCurrentThemeStyles } from '../themes/theme-config'
 import { JSDOM } from 'jsdom'
-import * as digcom from './dialog_common'
 import * as SystemSettingUtils from '../themes/system-setting'
 import { StartAutoSaveFileTime } from '../utils/file-utils'
+import { SystemSetting } from '../global-types'
 
 let systemSettingDialog: Electron.BrowserWindow | null
 
-// 创建一个自定义对话框的函数
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function ShowSystemSettingDialog (mainWindow: Electron.BrowserWindow) {
+export function ShowSystemSettingDialog(mainWindow: Electron.BrowserWindow) {
     if (systemSettingDialog) {
-        digcom.ShowAlreadyExistDialog()
         return
     }
     systemSettingDialog = new BrowserWindow({
-        width: 500,
-        height: 400,
+        width: 800,
+        height: 520,
         minimizable: false,
         maximizable: false,
-        resizable: false,
+        resizable: true,
         title: '系统设置',
         autoHideMenuBar: true,
         frame: false,
         webPreferences: {
-            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
+            nodeIntegration: true,
+            contextIsolation: false,
             sandbox: false
         }
     })
@@ -33,272 +30,89 @@ export function ShowSystemSettingDialog (mainWindow: Electron.BrowserWindow) {
     systemSettingDialog.setMenu(null)
 
     const tempHtml = makeSystemSettingDialogHtml()
-    // 加载一个 HTML 文件作为对话框的内容
     systemSettingDialog.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(tempHtml)}`)
-
-    // 显示窗口
     systemSettingDialog.show()
-    // 发送主题样式
+
     const theme = getCurrentThemeStyles()
     systemSettingDialog?.webContents.send('baize-notes:init-theme-styles', theme)
 
-    // 发送已保存的设置
     const savedSettings = SystemSettingUtils.getSystemSetting()
     systemSettingDialog?.webContents.send('load-saved-settings', savedSettings)
 
     systemSettingDialog.on('closed', () => {
         systemSettingDialog = null
-        ipcMain.removeListener('system-setting-apply', processApplySysSetting)
-        ipcMain.removeListener('dialog-system-setting-cancel', () => {})
+        ipcMain.removeListener('dialog-system-setting-apply', processApplySysSetting)
+        ipcMain.removeListener('dialog-system-setting-confirm', processConfirmSysSetting)
     })
 
-    function exitSystemSettingDialog() {
+    function processApplySysSetting(_, SysSetting: SystemSetting) {
+        SystemSettingUtils.saveSystemSetting(SysSetting)
+
+        const autoSaveInterval = (SysSetting.autoSaveInterval || 10) * 1000
+        StartAutoSaveFileTime(autoSaveInterval)
+
+        // 注入字体设置到主窗口
+        const fontCss = `* { font-family: ${SysSetting.fontFamily} !important; font-size: ${SysSetting.fontSize}px !important; }`
+        mainWindow.webContents.insertCSS(fontCss)
+
+        mainWindow.webContents.send('baize-notes:system-setting-update', SysSetting)
+    }
+
+    function processConfirmSysSetting(_, SysSetting: SystemSetting) {
+        // 先保存，再关闭
+        processApplySysSetting(_, SysSetting)
         if (systemSettingDialog) {
-            ipcMain.removeListener('dialog-system-setting-apply', processApplySysSetting)
-            ipcMain.removeListener('dialog-system-setting-cancel', () => {})
             systemSettingDialog.close()
             systemSettingDialog = null
         }
     }
 
-    function processApplySysSetting(
-        _,
-        SysSetting: {
-            language: string
-            resourceManager: string
-            editorModel: string
-            pluginOpen: string
-            menuBarStyle: string
-            autoSaveInterval: number
-        }
-    ) {
-        console.log('[SystemSettingDialog] Applying settings:', SysSetting)
-        // 保存系统设置
-        SystemSettingUtils.saveSystemSetting(SysSetting)
-
-        // 重新启动自动保存定时器
-        const autoSaveInterval = (SysSetting.autoSaveInterval || 30) * 1000 // 转换为毫秒
-        StartAutoSaveFileTime(autoSaveInterval)
-        console.log('[SystemSettingDialog] Auto save interval updated to:', autoSaveInterval, 'ms')
-
-        // 发送设置更新信号
-        console.log('[SystemSettingDialog] Sending update signal to mainWindow')
-        mainWindow.webContents.send("baize-notes:system-setting-update", SysSetting);
-
-        exitSystemSettingDialog()
-    }
-
     ipcMain.on('dialog-system-setting-apply', processApplySysSetting)
+    ipcMain.on('dialog-system-setting-confirm', processConfirmSysSetting)
     ipcMain.on('dialog-system-setting-cancel', () => {
-        exitSystemSettingDialog()
+        if (systemSettingDialog) {
+            systemSettingDialog.close()
+            systemSettingDialog = null
+        }
     })
 }
 
-function createLanguageSelect(doc: Document): Element {
-    const options: digcom.Option[] = [
-        { value: 'zh-cn', text: '简体中文(默认)' },
-        { value: 'zh-tw', text: '繁體中文' },
-        { value: 'en-us', text: 'English(US)' }
-    ]
-    const divLanSelect = digcom.NewSelect(doc, options)
-    divLanSelect.id = 'system-language'
-    divLanSelect.name = 'system-language'
-    return divLanSelect
-}
-
-function createResourceManager(doc: Document): HTMLElement {
-    const options: digcom.Option[] = [
-        { value: 'default', text: '显示(默认)' },
-        { value: 'hide', text: '隐藏' }
-    ]
-    const divResManager = digcom.NewSelect(doc, options)
-    divResManager.id = 'system-resource-manager'
-    divResManager.name = 'system-resource-manager'
-    return divResManager
-}
-
-function createEditorViewModel(doc: Document): HTMLElement {
-    const options: digcom.Option[] = [
-        { value: 'default', text: '编辑/预览模式(默认)' },
-        { value: 'editor-preview-model', text: '编辑/预览模式' },
-        { value: 'editor-model', text: '编辑模式' },
-        { value: 'preview-model', text: '预览模式' }
-    ]
-    const divViewModel = digcom.NewSelect(doc, options)
-    divViewModel.id = 'system-editor-view-model'
-    divViewModel.name = 'system-editor-view-model'
-    return divViewModel
-}
-
-function createPluginOpenModel(doc: Document): HTMLElement {
-    const options: digcom.Option[] = [
-        { value: 'default', text: '浏览器网页(默认)' },
-        { value: 'browser', text: '浏览器网页' },
-        { value: 'local-dialog', text: 'app对话框' }
-    ]
-    const divViewModel = digcom.NewSelect(doc, options)
-    divViewModel.id = 'system-plugin-open-model'
-    divViewModel.name = 'system-plugin-open-model'
-    return divViewModel
-}
-
-function createMenuBarStyle(doc: Document): HTMLElement {
-    const options: digcom.Option[] = [
-        { value: 'default', text: 'Electron样式(默认)' }
-    ]
-    const divMenuBarStyle = digcom.NewSelect(doc, options)
-    divMenuBarStyle.id = 'system-menu-bar-style'
-    divMenuBarStyle.name = 'system-menu-bar-style'
-    return divMenuBarStyle
-}
-
-function createAutoSaveIntervalInput(doc: Document): HTMLElement {
-    const input = doc.createElement('input')
-    input.type = 'number'
-    input.id = 'system-auto-save-interval'
-    input.name = 'system-auto-save-interval'
-    input.min = '5'
-    input.max = '86400'
-    input.step = '1'
-    input.value = '10'
-    input.style.cssText = 'width: 100px; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); color: var(--text-color);'
-    return input
-}
-
-function createSettingInputs(doc: Document): HTMLElement {
-    const divEle = doc.createElement('div')
-    divEle.style.cssText = 'display: flex; flex-direction: column; gap: 0;'
-
-    // 第一行：系统语言
-    const row1 = doc.createElement('div')
-    row1.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
-    row1.appendChild(
-        digcom.NewLabelDiv(doc, {
-            divClass: 'label-style',
-            forHtml: 'system-language',
-            text: '系\u00A0\u00A0统\u00A0\u00A0语\u00A0\u00A0\u00A0言：'
-        })
-    )
-    row1.appendChild(createLanguageSelect(doc))
-    divEle.appendChild(row1)
-
-    // 第二行：资源管理器
-    const row2 = doc.createElement('div')
-    row2.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
-    row2.appendChild(
-        digcom.NewLabelDiv(doc, {
-            divClass: 'label-style',
-            forHtml: 'system-resource-manager',
-            text: '资\u00A0源\u00A0管\u00A0理\u00A0器：'
-        })
-    )
-    row2.appendChild(createResourceManager(doc))
-    divEle.appendChild(row2)
-
-    // 第三行：编辑器视图
-    const row3 = doc.createElement('div')
-    row3.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
-    row3.appendChild(
-        digcom.NewLabelDiv(doc, {
-            divClass: 'label-style',
-            forHtml: 'system-editor-view-model',
-            text: '编\u00A0辑\u00A0器\u00A0视\u00A0图：'
-        })
-    )
-    row3.appendChild(createEditorViewModel(doc))
-    divEle.appendChild(row3)
-
-    // 第四行：插件打开方式
-    const row4 = doc.createElement('div')
-    row4.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
-    row4.appendChild(
-        digcom.NewLabelDiv(doc, {
-            divClass: 'label-style',
-            forHtml: 'system-plugin-open-model',
-            text: '插件打开方式：'
-        })
-    )
-    row4.appendChild(createPluginOpenModel(doc))
-    divEle.appendChild(row4)
-
-    // 第五行：菜单栏样式
-    const row5 = doc.createElement('div')
-    row5.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
-    row5.appendChild(
-        digcom.NewLabelDiv(doc, {
-            divClass: 'label-style',
-            forHtml: 'system-menu-bar-style',
-            text: '菜单栏样式：'
-        })
-    )
-    row5.appendChild(createMenuBarStyle(doc))
-    divEle.appendChild(row5)
-
-    // 第六行：文件自动保存周期
-    const row6 = doc.createElement('div')
-    row6.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 8px;'
-    row6.appendChild(
-        digcom.NewLabelDiv(doc, {
-            divClass: 'label-style',
-            forHtml: 'system-auto-save-interval',
-            text: '文件自动保存周期（秒）：'
-        })
-    )
-    const autoSaveContainer = doc.createElement('div')
-    autoSaveContainer.style.cssText = 'display: flex; flex-direction: row; align-items: center; gap: 8px;'
-    autoSaveContainer.appendChild(createAutoSaveIntervalInput(doc))
-    const hint = doc.createElement('span')
-    hint.style.cssText = 'color: var(--secondary-text-color); font-size: 12px;'
-    hint.textContent = '最小5秒，最大24小时（86400秒）'
-    autoSaveContainer.appendChild(hint)
-    row6.appendChild(autoSaveContainer)
-    divEle.appendChild(row6)
-
-    return divEle
-}
-
-function createSettingButtons(doc: Document): HTMLElement {
-    const eleDiv = doc.createElement('div')
-    eleDiv.className = 'btn-list-style'
-    eleDiv.appendChild(digcom.NewButton(doc, { id: 'system-setting-apply', text: '应用' }))
-    eleDiv.appendChild(digcom.NewButton(doc, { id: 'system-setting-cancel', text: '取消' }))
-    return eleDiv
-}
-
 function makeSystemSettingDialogHtml(): string {
-    const theme = getCurrentThemeStyles()
-
-    // 创建一个空的HTML文档
     const { document } = new JSDOM(
-        `<!DOCTYPE html><html lang="zh"><head><title>系统设置</title></head><body></body></html>`
-    ).window
-
-    const webDivStyle = document.createElement('style')
-    webDivStyle.textContent = `
+        `<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>系统设置</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
+            font-size: 13px;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
         :root {
-            --bg-color: ${theme.backgroundColor};
-            --card-bg: ${theme.cardBackground};
-            --text-color: ${theme.textColor};
-            --secondary-text-color: ${theme.secondaryTextColor};
-            --border-color: ${theme.borderColor};
-            --accent-color: ${theme.accentColor};
-            --hover-bg: ${theme.hoverBackground};
-            --title-bar-gradient: ${theme.titleBarGradient};
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --secondary-text-color: #666666;
+            --border-color: #e0e0e0;
+            --accent-color: #764ba2;
+            --hover-bg: #f0e8ff;
+            --title-bar-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
-            background-color: var(--bg-color);
-            min-height: 100vh;
+        .app-layout {
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            height: 100vh;
         }
 
+        /* 标题栏 */
         .title-bar {
-            width: 100%;
             height: 32px;
             background: var(--title-bar-gradient);
             display: flex;
@@ -308,200 +122,383 @@ function makeSystemSettingDialogHtml(): string {
             -webkit-app-region: drag;
             flex-shrink: 0;
         }
-
-        .title-bar-title {
-            color: #fff;
-            font-size: 13px;
-            font-weight: 500;
-        }
-
+        .title-bar-title { color: #fff; font-size: 13px; font-weight: 500; }
         .close-btn {
-            width: 28px;
-            height: 28px;
-            border: none;
-            background: rgba(255,255,255,0.2);
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            color: #fff;
-            transition: all 0.2s;
+            width: 28px; height: 28px; border: none;
+            background: rgba(255,255,255,0.2); border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; color: #fff; transition: all 0.2s;
             -webkit-app-region: no-drag;
         }
-
         .close-btn:hover { background: rgba(255,100,100,0.9); }
 
-        .main-content {
+        /* 主容器：侧边栏 + 内容 */
+        .main-container {
             flex: 1;
-            padding: 15px 20px;
+            display: flex;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 160px;
+            flex-shrink: 0;
+            background: var(--bg-color);
+            border-right: 1px solid var(--border-color);
+            padding: 12px 0;
             display: flex;
             flex-direction: column;
+            gap: 4px;
         }
-
-        .label-style {
-            min-width: 80px;
-            color: var(--text-color);
-            font-size: 13px;
-            font-weight: 500;
-            text-align: right;
+        .sidebar-item {
+            padding: 10px 16px;
+            cursor: pointer;
             display: flex;
             align-items: center;
-            justify-content: flex-end;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-color);
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
         }
+        .sidebar-item:hover { background: var(--hover-bg); }
+        .sidebar-item.active {
+            background: var(--hover-bg);
+            border-left-color: var(--accent-color);
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+        .sidebar-icon { font-size: 16px; }
 
-        select {
+        /* 内容区域 */
+        .content-area {
             flex: 1;
-            padding: 8px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 13px;
+            padding: 20px;
+            overflow-y: auto;
             background: var(--card-bg);
+        }
+        .content-panel { display: none; }
+        .content-panel.active { display: block; }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
             color: var(--text-color);
-            cursor: pointer;
-            transition: all 0.2s;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        select:focus {
-            outline: none;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 3px rgba(100,150,255,0.1);
-        }
-
-        select:hover {
-            border-color: var(--accent-color);
-        }
-
-        .btn-list-style {
-            margin-top: 15px;
+        /* 设置行 */
+        .setting-row {
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 30px;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+        .setting-label {
+            width: 160px;
+            flex-shrink: 0;
+            font-size: 13px;
+            color: var(--text-color);
+            text-align: right;
+        }
+        .setting-value { flex: 1; }
+        .setting-hint {
+            font-size: 11px;
+            color: var(--secondary-text-color);
+            margin-top: 4px;
         }
 
-        button {
-            padding: 8px 24px;
+        select, input[type="number"], input[type="text"] {
+            padding: 6px 10px;
             border: 1px solid var(--border-color);
-            border-radius: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            outline: none;
+            width: 100%;
+            max-width: 300px;
+        }
+        select:focus, input:focus { border-color: var(--accent-color); }
+
+        /* 字体预览 */
+        .font-preview {
+            margin-top: 16px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-color);
+        }
+        .font-preview-title {
+            font-size: 12px;
+            color: var(--secondary-text-color);
+            margin-bottom: 8px;
+        }
+        .font-preview-content {
+            line-height: 1.6;
+        }
+
+        /* 底部按钮栏 */
+        .footer-bar {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 12px 20px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+        }
+        .footer-bar button {
+            padding: 8px 24px;
+            font-size: 13px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
             background: var(--card-bg);
             color: var(--text-color);
             cursor: pointer;
-            font-size: 13px;
             transition: all 0.2s;
-            font-weight: 500;
         }
-
-        button:hover {
+        .footer-bar button:hover {
             background: var(--hover-bg);
             border-color: var(--accent-color);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .footer-bar button.primary {
+            background: var(--accent-color);
+            color: var(--card-bg);
+            border-color: var(--accent-color);
+        }
+        .footer-bar button.primary:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <div class="title-bar">
+            <span class="title-bar-title">系统设置</span>
+            <button class="close-btn" onclick="cancelClose()">✕</button>
+        </div>
+        <div class="main-container">
+            <div class="sidebar">
+                <div class="sidebar-item active" data-panel="general" onclick="switchPanel('general')">
+                    <span class="sidebar-icon">⚙</span> 通用设置
+                </div>
+                <div class="sidebar-item" data-panel="font" onclick="switchPanel('font')">
+                    <span class="sidebar-icon">🔤</span> 字体设置
+                </div>
+            </div>
+            <div class="content-area">
+                <!-- 通用设置面板 -->
+                <div id="general-panel" class="content-panel active">
+                    <div class="panel-title">通用设置</div>
+                    <div class="setting-row">
+                        <span class="setting-label">系统语言：</span>
+                        <div class="setting-value">
+                            <select id="system-language">
+                                <option value="zh-cn">简体中文(默认)</option>
+                                <option value="zh-tw">繁體中文</option>
+                                <option value="en-us">English(US)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">资源管理器：</span>
+                        <div class="setting-value">
+                            <select id="system-resource-manager">
+                                <option value="default">显示(默认)</option>
+                                <option value="hide">隐藏</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">编辑器视图：</span>
+                        <div class="setting-value">
+                            <select id="system-editor-view-model">
+                                <option value="default">编辑/预览模式(默认)</option>
+                                <option value="editor-preview-model">编辑/预览模式</option>
+                                <option value="editor-model">编辑模式</option>
+                                <option value="preview-model">预览模式</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">插件打开方式：</span>
+                        <div class="setting-value">
+                            <select id="system-plugin-open-model">
+                                <option value="default">浏览器网页(默认)</option>
+                                <option value="browser">浏览器网页</option>
+                                <option value="local-dialog">app对话框</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">菜单栏样式：</span>
+                        <div class="setting-value">
+                            <select id="system-menu-bar-style">
+                                <option value="electron">Electron样式(默认)</option>
+                                <option value="windows-native">Windows原生样式</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">自动保存周期(秒)：</span>
+                        <div class="setting-value">
+                            <input type="number" id="system-auto-save-interval" min="5" max="86400" value="10">
+                            <div class="setting-hint">最小5秒，最大86400秒(24小时)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 字体设置面板 -->
+                <div id="font-panel" class="content-panel">
+                    <div class="panel-title">字体设置</div>
+                    <div class="setting-row">
+                        <span class="setting-label">界面字体：</span>
+                        <div class="setting-value">
+                            <select id="system-font-family" onchange="updateFontPreview()">
+                                <option value='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif'>系统默认</option>
+                                <option value='"Microsoft YaHei", sans-serif'>微软雅黑</option>
+                                <option value='"SimSun", serif'>宋体</option>
+                                <option value='"SimHei", sans-serif'>黑体</option>
+                                <option value='"KaiTi", serif'>楷体</option>
+                                <option value='"FangSong", serif'>仿宋</option>
+                                <option value='"Segoe UI", sans-serif'>Segoe UI</option>
+                                <option value='"PingFang SC", sans-serif'>苹方-简</option>
+                                <option value='"Noto Sans SC", sans-serif'>Noto Sans SC</option>
+                                <option value='"Source Han Sans SC", sans-serif'>思源黑体</option>
+                                <option value='monospace'>等宽字体</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">界面字体大小：</span>
+                        <div class="setting-value">
+                            <select id="system-font-size" onchange="updateFontPreview()">
+                                <option value="10">10px</option>
+                                <option value="11">11px</option>
+                                <option value="12">12px</option>
+                                <option value="13" selected>13px(默认)</option>
+                                <option value="14">14px</option>
+                                <option value="15">15px</option>
+                                <option value="16">16px</option>
+                                <option value="18">18px</option>
+                                <option value="20">20px</option>
+                                <option value="22">22px</option>
+                                <option value="24">24px</option>
+                            </select>
+                            <div class="setting-hint">范围 10-24px，影响所有对话框和界面文字</div>
+                        </div>
+                    </div>
+                    <div class="font-preview">
+                        <div class="font-preview-title">字体预览</div>
+                        <div class="font-preview-content" id="fontPreview">
+                            白泽笔记 - Markdown Editor<br>
+                            这是一段预览文字，用于展示当前字体设置效果。The quick brown fox jumps over the lazy dog.<br>
+                            0123456789 !@#$%^&*()
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bar">
+            <button onclick="cancelClose()">取消</button>
+            <button class="primary" onclick="applySettings()">应用</button>
+            <button class="primary" onclick="confirmSettings()">确定</button>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron')
+
+        function initThemeStyles(theme) {
+            document.documentElement.style.setProperty('--bg-color', theme.backgroundColor)
+            document.documentElement.style.setProperty('--card-bg', theme.cardBackground)
+            document.documentElement.style.setProperty('--text-color', theme.textColor)
+            document.documentElement.style.setProperty('--secondary-text-color', theme.secondaryTextColor)
+            document.documentElement.style.setProperty('--border-color', theme.borderColor)
+            document.documentElement.style.setProperty('--accent-color', theme.accentColor)
+            document.documentElement.style.setProperty('--hover-bg', theme.hoverBackground)
+            document.documentElement.style.setProperty('--title-bar-gradient', theme.titleBarGradient)
         }
 
-        button:active {
-            transform: translateY(0);
-        }`
-    document.head.appendChild(webDivStyle)
+        ipcRenderer.on('baize-notes:init-theme-styles', (event, theme) => { initThemeStyles(theme) })
+        ipcRenderer.on('baize-notes:theme-updated', () => { location.reload() })
 
-    // 创建标题栏
-    const titleBar = document.createElement('div')
-    titleBar.className = 'title-bar'
-    const title = document.createElement('span')
-    title.className = 'title-bar-title'
-    title.textContent = '系统设置'
-    const closeBtn = document.createElement('button')
-    closeBtn.className = 'close-btn'
-    closeBtn.textContent = 'x'
-    closeBtn.id = 'close-dialog-btn'
-    titleBar.appendChild(title)
-    titleBar.appendChild(closeBtn)
-    document.body.appendChild(titleBar)
-
-    // 创建主内容区域
-    const mainContent = document.createElement('div')
-    mainContent.className = 'main-content'
-
-    // 创建设置输入区域
-    mainContent.appendChild(createSettingInputs(document))
-
-    // 创建按钮
-    mainContent.appendChild(createSettingButtons(document))
-
-    document.body.appendChild(mainContent)
-
-    const eleScript = document.createElement('script')
-    eleScript.textContent = `
-    const { ipcRenderer } = require('electron');
-
-    // 监听主题更新
-    ipcRenderer.on('baize-notes:theme-updated', () => {
-        location.reload();
-    });
-
-    // 加载已保存的设置
-    ipcRenderer.on('load-saved-settings', (event, savedSettings) => {
-        if (savedSettings.language) {
-            document.getElementById('system-language').value = savedSettings.language;
+        // 切换面板
+        function switchPanel(panelId) {
+            document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'))
+            document.querySelectorAll('.content-panel').forEach(panel => panel.classList.remove('active'))
+            document.querySelector(\`.sidebar-item[data-panel="\${panelId}"]\`).classList.add('active')
+            document.getElementById(panelId + '-panel').classList.add('active')
         }
-        if (savedSettings.resourceManager) {
-            document.getElementById('system-resource-manager').value = savedSettings.resourceManager;
-        }
-        if (savedSettings.editorModel) {
-            document.getElementById('system-editor-view-model').value = savedSettings.editorModel;
-        }
-        if (savedSettings.pluginOpen) {
-            document.getElementById('system-plugin-open-model').value = savedSettings.pluginOpen;
-        }
-        if (savedSettings.menuBarStyle) {
-            document.getElementById('system-menu-bar-style').value = savedSettings.menuBarStyle;
-        }
-        if (savedSettings.autoSaveInterval) {
-            document.getElementById('system-auto-save-interval').value = savedSettings.autoSaveInterval;
-        }
-    });
 
-    let SystemSetting = {
-      language:"zh-cn",
-      resourceManager: "default",
-      editorModel: 'default',
-      pluginOpen: 'browser',
-      menuBarStyle: 'electron',
-      autoSaveInterval: 10
-    };
-    document.getElementById('system-language').addEventListener('input', (event) => {
-      SystemSetting.language = event.target.value
-    })
-    document.getElementById('system-resource-manager').addEventListener('input', (event) => {
-      SystemSetting.resourceManager = event.target.value
-    })
-    document.getElementById('system-editor-view-model').addEventListener('input', (event) => {
-      SystemSetting.editorModel = event.target.value
-    })
-    document.getElementById('system-plugin-open-model').addEventListener('input', (event) => {
-      SystemSetting.pluginOpen = event.target.value
-    })
-    document.getElementById('system-menu-bar-style').addEventListener('input', (event) => {
-      SystemSetting.menuBarStyle = event.target.value
-    })
-    document.getElementById('system-auto-save-interval').addEventListener('input', (event) => {
-      let value = parseInt(event.target.value)
-      // 验证范围
-      if (value < 5) value = 5
-      if (value > 86400) value = 86400
-      SystemSetting.autoSaveInterval = value
-    })
-    document.getElementById('system-setting-apply').onclick = function(e) {
-      ipcRenderer.send('dialog-system-setting-apply', SystemSetting)
-    }
-    document.getElementById('system-setting-cancel').onclick = function(e) {
-      ipcRenderer.send('dialog-system-setting-cancel')
-    }
-    document.getElementById('close-dialog-btn').onclick = function(e) {
-      ipcRenderer.send('dialog-system-setting-cancel')
-    }`
+        // 加载已保存的设置
+        ipcRenderer.on('load-saved-settings', (event, s) => {
+            if (s.language) document.getElementById('system-language').value = s.language
+            if (s.resourceManager) document.getElementById('system-resource-manager').value = s.resourceManager
+            if (s.editorModel) document.getElementById('system-editor-view-model').value = s.editorModel
+            if (s.pluginOpen) document.getElementById('system-plugin-open-model').value = s.pluginOpen
+            if (s.menuBarStyle) document.getElementById('system-menu-bar-style').value = s.menuBarStyle
+            if (s.autoSaveInterval) document.getElementById('system-auto-save-interval').value = s.autoSaveInterval
+            if (s.fontFamily) document.getElementById('system-font-family').value = s.fontFamily
+            if (s.fontSize) document.getElementById('system-font-size').value = s.fontSize
+            updateFontPreview()
+        })
 
-    document.body.appendChild(eleScript)
+        // 更新字体预览
+        function updateFontPreview() {
+            const fontFamily = document.getElementById('system-font-family').value
+            const fontSize = document.getElementById('system-font-size').value
+            const preview = document.getElementById('fontPreview')
+            if (preview) {
+                preview.style.fontFamily = fontFamily
+                preview.style.fontSize = fontSize + 'px'
+            }
+        }
+
+        // 应用设置（不关闭对话框）
+        function applySettings() {
+            const SysSetting = gatherSettings()
+            ipcRenderer.send('dialog-system-setting-apply', SysSetting)
+        }
+
+        // 确定设置（保存并关闭对话框）
+        function confirmSettings() {
+            const SysSetting = gatherSettings()
+            ipcRenderer.send('dialog-system-setting-confirm', SysSetting)
+        }
+
+        // 收集设置数据
+        function gatherSettings() {
+            let autoSaveInterval = parseInt(document.getElementById('system-auto-save-interval').value)
+            if (isNaN(autoSaveInterval) || autoSaveInterval < 5) autoSaveInterval = 5
+            if (autoSaveInterval > 86400) autoSaveInterval = 86400
+
+            let fontSize = parseInt(document.getElementById('system-font-size').value)
+            if (isNaN(fontSize) || fontSize < 10) fontSize = 10
+            if (fontSize > 24) fontSize = 24
+
+            return {
+                language: document.getElementById('system-language').value,
+                resourceManager: document.getElementById('system-resource-manager').value,
+                editorModel: document.getElementById('system-editor-view-model').value,
+                pluginOpen: document.getElementById('system-plugin-open-model').value,
+                menuBarStyle: document.getElementById('system-menu-bar-style').value,
+                autoSaveInterval: autoSaveInterval,
+                fontFamily: document.getElementById('system-font-family').value,
+                fontSize: fontSize
+            }
+        }
+
+        // 取消关闭
+        function cancelClose() {
+            ipcRenderer.send('dialog-system-setting-cancel')
+        }
+    </script>
+</body>
+</html>
+    `).window
+
     return document.documentElement.outerHTML
 }

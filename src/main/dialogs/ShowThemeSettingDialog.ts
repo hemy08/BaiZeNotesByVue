@@ -482,10 +482,16 @@ function generateThemeSettingHTML(): string {
 
     // 监听复选框变化
     separateEditorThemeCheckbox.addEventListener('change', function() {
+        // 获取当前选中的编辑器主题
+        var currentMonacoTheme = null;
+        var selectedCard = document.querySelector('.monaco-theme-card.selected');
+        if (selectedCard) {
+            currentMonacoTheme = selectedCard.getAttribute('data-theme');
+        }
         ipcRenderer.send("baize-notes:theme-update", {
             themeType: null,
             separateEditorTheme: this.checked,
-            monacoTheme: null
+            monacoTheme: this.checked ? (currentMonacoTheme || 'vs') : null
         });
     });
 
@@ -506,11 +512,19 @@ function generateThemeSettingHTML(): string {
     for (var i = 0; i < appThemeCards.length; i++) {
         appThemeCards[i].addEventListener('click', function() {
             var themeType = this.getAttribute('data-theme');
+            // 获取当前选中的编辑器主题
+            var currentMonacoTheme = null;
+            if (separateEditorThemeCheckbox.checked) {
+                var selectedCard = document.querySelector('.monaco-theme-card.selected');
+                if (selectedCard) {
+                    currentMonacoTheme = selectedCard.getAttribute('data-theme');
+                }
+            }
             // 发送主题更新请求到主进程，包含所有配置信息
             ipcRenderer.send("baize-notes:theme-update", {
                 themeType: themeType,
                 separateEditorTheme: separateEditorThemeCheckbox.checked,
-                monacoTheme: null
+                monacoTheme: currentMonacoTheme
             });
         });
     }

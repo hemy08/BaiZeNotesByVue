@@ -8,3 +8,7 @@
 
 .codeartsdoer
 .codemate
+/resources/mermaid/node_modules/
+/resources/katex/node_modules/
+/src/renderer/src/lib/katex/node_modules
+/src/renderer/src/lib/mermaid/node_modules

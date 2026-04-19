@@ -6,6 +6,7 @@ import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
 import { restoreLastOpenedFile } from './utils/file-state'
 import { getCurrentThemeStyles } from './themes/theme-config'
+import { getMonacoThemeData } from './themes/themeRegistry'
 import {HandleBaiZeMenuAction} from "./menu/menu_ipc";
 import * as EditorSettingUtils from './utils/editor-setting'
 import * as fs from "node:fs";
@@ -56,8 +57,14 @@ function createWindow(): void {
         const theme = getCurrentThemeStyles()
         mainWindow.webContents.send('baize-notes:init-theme-styles', theme)
 
+        // 注入系统字体设置到主窗口
+        const systemSetting = getSystemSetting()
+        const fontCss = `* { font-family: ${systemSetting.fontFamily} !important; font-size: ${systemSetting.fontSize}px !important; }`
+        mainWindow.webContents.insertCSS(fontCss)
+
         // 发送编辑器配置到主窗口
         const editorSetting = EditorSettingUtils.getEditorSetting()
+        console.log('[Main] Editor Setting:', editorSetting)
         mainWindow.webContents.send('baize-notes:init-editor-setting', editorSetting)
 
         // 恢复上次打开的文件
@@ -141,6 +148,59 @@ app.whenReady().then(() => {
             mainWindow.close()
         }
     })
+
+    // 窗口拖动：开始拖动时取消最大化，返回窗口位置
+    ipcMain.on('window-start-drag', (event) => {
+        if (mainWindow && mainWindow.isMaximized()) {
+            mainWindow.unmaximize()
+            // 返回还原后的窗口位置，供渲染进程计算偏移
+            const bounds = mainWindow.getBounds()
+            event.reply('window-drag-unmaximized', bounds)
+        }
+    })
+
+    // 窗口位置移动
+    ipcMain.on('window-move', (_, x: number, y: number) => {
+        if (mainWindow) {
+            mainWindow.setPosition(Math.round(x), Math.round(y))
+        }
+    })
+
+    // 获取窗口位置和大小
+    ipcMain.on('window-get-bounds', (event) => {
+        if (mainWindow) {
+            event.returnValue = mainWindow.getBounds()
+        } else {
+            event.returnValue = null
+        }
+    })
+
+    // 设置窗口大小
+    ipcMain.on('window-set-size', (_, width: number, height: number) => {
+        if (mainWindow) {
+            mainWindow.setSize(Math.round(width), Math.round(height))
+        }
+    })
+
+    // 获取窗口是否最大化
+    ipcMain.on('window-is-maximized', (event) => {
+        if (mainWindow) {
+            event.returnValue = mainWindow.isMaximized()
+        } else {
+            event.returnValue = false
+        }
+    })
+
+    // 双击标题栏切换最大化
+    ipcMain.on('window-toggle-maximize', () => {
+        if (mainWindow) {
+            if (mainWindow.isMaximized()) {
+                mainWindow.unmaximize()
+            } else {
+                mainWindow.maximize()
+            }
+        }
+    })
     ipcMain.on('baize-notes:update-theme', () => {
         const theme = getCurrentThemeStyles()
         console.log('[Main] Sending theme update:', theme)
@@ -156,6 +216,12 @@ app.whenReady().then(() => {
 
     ipcMain.on('baize-notes:menu-action', (_, action) => {
         HandleBaiZeMenuAction(action, mainWindow);
+    })
+
+    // 加载 Monaco 编辑器主题 JSON 文件
+    // 通过 themeRegistry 从 resources/themes/monaco-themes/ 目录读取
+    ipcMain.handle('baize-notes:load-monaco-theme', (_, themeName: string) => {
+        return getMonacoThemeData(themeName)
     })
 
     createWindow()

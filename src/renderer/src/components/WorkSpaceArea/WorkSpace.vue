@@ -1,7 +1,7 @@
 <template>
     <!-- 左侧区域导航，固定宽度，放置图标，鼠标悬停显示详细信息 -->
-    <div id="navi-tab" class="navi-tab" :style="{ width: naviTabWidth }">
-        <NaviTab @update:navi:tab="onSwitchNaviTab" />
+    <div id="left-navi" class="navi-tab" :style="{ width: naviTabWidth }">
+        <NaviTab position="left" @update:navi:tab="onSwitchRightNaviTab" />
     </div>
     <!-- 中间资源管理显示区域，宽度可以调节 -->
     <div
@@ -43,6 +43,10 @@
         :style="{ width: workAreaWidth }"
     >
         <HemyTools :plugins-area-width="workAreaWidth" />
+    </div>
+    <!-- 最右侧边框 -->
+    <div id="right-navi" class="navi-tab" :style="{ width: naviTabWidth }">
+        <NaviTab position="right" @update:navi:tab="onSwitchLeftNaviTab" />
     </div>
 </template>
 
@@ -97,7 +101,7 @@ const handlePluginToolsContainerShow = (value: boolean) => {
 
 EventBus.$on('plugin-tools-container-show', handlePluginToolsContainerShow)
 
-function onSwitchNaviTab(value: string) {
+function onSwitchRightNaviTab(value: string) {
     if (value == 'switch-open-close') {
         isShowResourceMgrArea.value = !isShowResourceMgrArea.value
     } else if (value == 'file-explorer') {
@@ -109,6 +113,12 @@ function onSwitchNaviTab(value: string) {
         isShowResourceMgrArea.value = true
     } else {
         naviResManagerShow.value = 'file-explorer'
+    }
+}
+
+function onSwitchLeftNaviTab(value: string) {
+    if (value == 'switch-open-close') {
+        isShowToolsContainer.value = !isShowToolsContainer.value
     }
 }
 

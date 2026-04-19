@@ -143,9 +143,36 @@ onUpdated(() => {
     width: 100%;
     height: 100%;
     margin-left: 15px;
-    overflow-y: auto; /* 允许垂直滚动条在需要时出现 */
+    overflow-y: scroll;
     overflow-x: auto;
     display: inline-block;
+}
+
+/* 自定义滚动条样式 */
+.markdown-preview-html::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.markdown-preview-html::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+}
+
+.markdown-preview-html::-webkit-scrollbar-thumb {
+    background-color: rgba(128, 128, 128, 0.3);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.markdown-preview-html::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(128, 128, 128, 0.5);
+    background-clip: content-box;
+}
+
+.markdown-preview-html::-webkit-scrollbar-corner {
+    background: transparent;
 }
 
 /* 代码块样式优化 */

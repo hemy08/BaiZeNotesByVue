@@ -16,6 +16,7 @@ export interface QuickLinkItem {
     iconContent: string // SVG代码、图片URL、emoji或文字(1-2个字符)
     enabled: boolean // 是否启用
     order: number // 排序
+    position: 'left' | 'right' // 显示位置: left=左侧NaviTab, right=右侧NaviTab
 }
 
 // 快速链接配置接口
@@ -33,7 +34,8 @@ const defaultQuickLinks: QuickLinkItem[] = [
         icon: 'text',
         iconContent: 'DS',
         enabled: true,
-        order: 1
+        order: 1,
+        position: 'left'
     },
     {
         id: 'wenxin',
@@ -43,7 +45,8 @@ const defaultQuickLinks: QuickLinkItem[] = [
         icon: 'text',
         iconContent: '文',
         enabled: true,
-        order: 2
+        order: 2,
+        position: 'left'
     },
     {
         id: 'chatgpt',
@@ -53,7 +56,8 @@ const defaultQuickLinks: QuickLinkItem[] = [
         icon: 'text',
         iconContent: 'AI',
         enabled: true,
-        order: 3
+        order: 3,
+        position: 'left'
     }
 ]
 
@@ -76,7 +80,12 @@ if (!store.has('quickLinks')) {
 export function getQuickLinks(): QuickLinkItem[] {
     // @ts-ignore
     const config = store.get('quickLinks') as QuickLinkConfig
-    return config.links.sort((a, b) => a.order - b.order)
+    // 兼容旧数据：为没有 position 字段的链接添加默认值
+    const links = config.links.map((link) => ({
+        ...link,
+        position: link.position || 'left'
+    }))
+    return links.sort((a, b) => a.order - b.order)
 }
 
 /**

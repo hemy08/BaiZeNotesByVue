@@ -243,7 +243,7 @@ export function updateEditorOptions(
     settings: any
 ): void {
     const options: any = {}
-
+    console.log('[hemy-editor] Editor Setting:', settings)
     // 遍历所有配置项
     for (const [key, value] of Object.entries(settings)) {
         const optionKey = EditorOptionMaps[key]

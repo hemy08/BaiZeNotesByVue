@@ -21,3 +21,11 @@ xcopy /S /E /Y /I "resources\icon" "out\icon"
 rmdir /S /Q "out\config" 2>nul
 mkdir "out\config"
 xcopy /S /E /Y /I "resources\config" "out\config"
+
+rmdir /S /Q "out\mermaid" 2>nul
+mkdir "out\mermaid"
+xcopy /S /E /Y /I "node_modules\mermaid\dist" "out\mermaid"
+
+rmdir /S /Q "out\katex" 2>nul
+mkdir "out\katex"
+xcopy /S /E /Y /I "node_modules\katex\dist" "out\katex"
