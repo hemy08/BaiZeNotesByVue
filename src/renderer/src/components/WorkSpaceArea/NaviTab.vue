@@ -167,6 +167,7 @@ onUnmounted(() => {
 <style scoped>
 #navi-tab {
     border-right: 1px solid var(--theme-border-color, #e0e0e0);
+    border-left: 1px solid var(--theme-border-color, #e0e0e0);
 }
 
 .navi-tab-item-btn {

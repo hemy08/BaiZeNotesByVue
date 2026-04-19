@@ -143,7 +143,7 @@ onUpdated(() => {
     width: 100%;
     height: 100%;
     margin-left: 15px;
-    overflow-y: scroll;
+    overflow-y: auto;
     overflow-x: auto;
     display: inline-block;
 }

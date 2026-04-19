@@ -47,6 +47,7 @@ export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
     ipcMain.on('dialog-editor-setting-apply', (_event, settings) => {
         EditorSettingUtils.saveEditorSetting(settings)
         // 通知主窗口更新编辑器设置
+        console.log('EditorSettingDialog: apply editor settings:', settings)
         mainWindow.webContents.send('baize-notes:editor-setting-updated', settings)
     })
 

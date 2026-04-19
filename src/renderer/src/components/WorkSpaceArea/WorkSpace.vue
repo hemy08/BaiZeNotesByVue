@@ -1,6 +1,6 @@
 <template>
     <!-- 左侧区域导航，固定宽度，放置图标，鼠标悬停显示详细信息 -->
-    <div id="left-navi" class="navi-tab" :style="{ width: naviTabWidth }">
+    <div id="left-navi" class="navi-tab" :style="{ width: naviTabWidth, float: 'left' }">
         <NaviTab position="left" @update:navi:tab="onSwitchRightNaviTab" />
     </div>
     <!-- 中间资源管理显示区域，宽度可以调节 -->
@@ -45,7 +45,7 @@
         <HemyTools :plugins-area-width="workAreaWidth" />
     </div>
     <!-- 最右侧边框 -->
-    <div id="right-navi" class="navi-tab" :style="{ width: naviTabWidth }">
+    <div id="right-navi" class="navi-tab" :style="{ width: naviTabWidth, float: 'right' }">
         <NaviTab position="right" @update:navi:tab="onSwitchLeftNaviTab" />
     </div>
 </template>

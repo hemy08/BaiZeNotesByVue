@@ -2,8 +2,8 @@
 
 ## 版本 1.1.2 (2026-04-10)
 
-### 🎉 主要更新
-
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
 #### 菜单系统重构
 - **Vue 组件化菜单**：使用 Vue 3 Composition API 重构菜单系统，支持主题样式跟随
 - **IPC 通信优化**：新增 menu_ipc.ts 统一处理菜单通信，提升响应速度
@@ -39,12 +39,15 @@
 ### 📦 依赖更新
 - 新增 renderer 依赖 (v0.1.5)
 - Monaco Editor 版本更新至 0.55.0
+</details>
 
 ---
 
 ## 版本 1.1.1 (2026-04-05)
 
-### 🎉 主要更新
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
 
 #### 主题系统重构
 - **双主题配置**：支持应用主题和编辑器主题分开设置，提供更灵活的个性化体验
@@ -94,16 +97,23 @@
 - 新增 CHANGELOG.md 文件，记录版本更新历史
 - 新增主题配置工具和对话框主题工具
 
+</code></pre></blockcode></details>
+
 ---
 
 ## 版本 1.0.1 (2026-03-08)
 
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
 ### ✨ 新增功能
 - 支持安装目录由用户自定义选中
 - 支持快速链接用户自定义：**设置->快速链接设置**
 - 更新项目说明 README.md
 - 补充项目设计文档，参考 `\doc` 目录
 - 更新工具图标（使用 `Codearts Agent` 生成）
+</code></pre></blockcode></details>
+
 
 ---
 

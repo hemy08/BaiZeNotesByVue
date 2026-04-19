@@ -10,10 +10,10 @@ import { getCurrentThemeStyles } from '../themes/theme-config'
 let aboutDialog: Electron.BrowserWindow | null
 
 // 版本信息
-const APP_VERSION = '1.0.2'
-const VUE_VERSION = '3.4.27'
-const VITE_VERSION = '5.2.11'
-const TYPESCRIPT_VERSION = '5.4.5'
+const APP_VERSION = '1.1.3-bate'
+const VUE_VERSION = '3.5.31'
+const VITE_VERSION = '5.4.21'
+const TYPESCRIPT_VERSION = '6.0.2'
 
 // 获取构建日期
 const BUILD_DATE = new Date().toLocaleDateString('zh-CN', {

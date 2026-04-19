@@ -13,7 +13,7 @@ import * as monaco from 'monaco-editor'
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import EventBus from '../../event-bus'
 import * as editor from './hemy-editor'
-import { MarkdownTOC } from '../hemy'
+import { MarkdownTOC } from '../../../../main/global-types'
 
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
@@ -91,7 +91,7 @@ watch(
 
 const handleUpdateContext = (value: string) => {
     if (editorInstance) {
-        editor.UpdateContext (editorInstance, value)
+        editor.UpdateContext(editorInstance, value)
     }
 }
 
@@ -114,7 +114,8 @@ const handleInsertAfterCursor = (value: string) => {
     }
 }
 
-const handleUpdateEditorOptions = (settings: any) => {
+const handleUpdateEditorOptions = (_event: any, settings: any) => {
+    //console.log('handleUpdateEditorOptions', settings)
     if (editorInstance) {
         editor.updateEditorOptions(editorInstance, settings)
     }
@@ -135,7 +136,7 @@ function handleScrollEvent(event) {
     EventBus.$emit('monaco-editor-scroll-event', null)
 }
 
-onMounted(() => {
+onMounted(async () => {
     if (monacoEditorContainer.value) {
         monacoEditorContainer.value.style.width = '100%'
         monacoEditorContainer.value.style.height = '100%'
@@ -175,9 +176,20 @@ onMounted(() => {
         // 延迟再次布局，确保DOM完全渲染后尺寸正确
         setTimeout(() => {
             if (editorInstance) {
-                editorInstance.layout ()
+                editorInstance.layout()
             }
         }, 100)
+
+        // 主动请求编辑器配置，解决初始化时序问题
+        // 主进程的 init-editor-setting 可能在 editorInstance 创建前就已发送
+        try {
+            const settings = await window.electron.ipcRenderer.invoke('baize-notes:get-editor-setting')
+            if (settings && editorInstance) {
+                editor.updateEditorOptions(editorInstance, settings)
+            }
+        } catch (e) {
+            console.warn('Failed to get editor setting on mount:', e)
+        }
     }
 
     // 注册 EventBus 监听器

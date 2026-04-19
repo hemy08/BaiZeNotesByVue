@@ -126,6 +126,10 @@ function onHandleNewContent(content: string) {
     if (isShowPreviewArea.value) {
       handleMarkdownCodeUpdate(content)
     }
+    // 文件加载后通知编辑器重新布局
+    setTimeout(() => {
+      EventBus.$emit('monaco-editor-relayout')
+    }, 150)
   } else {
     // console.log('content bull')
     handleMarkdownCodeUpdate('\r\n')

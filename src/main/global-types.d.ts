@@ -202,3 +202,10 @@ export interface ThemeUpdateData {
     monacoTheme: string
     themeStyles: ThemeStyles
 }
+
+export interface MarkdownTOC {
+    id: string
+    level: string
+    text: string
+    lineNumber: number
+}

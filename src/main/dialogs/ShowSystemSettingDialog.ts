@@ -52,7 +52,7 @@ export function ShowSystemSettingDialog(mainWindow: Electron.BrowserWindow) {
         StartAutoSaveFileTime(autoSaveInterval)
 
         // 注入字体设置到主窗口
-        const fontCss = `* { font-family: ${SysSetting.fontFamily} !important; font-size: ${SysSetting.fontSize}px !important; }`
+        const fontCss = `body, .title-bar, .menu-bar, .menu-label, .menu-item-label, .workspace-area, .status-bar, .navi-tab, .resource-manager, .md-edit-tools, .md-preview, .resizer-md, .resizer-main, #file-bar { font-family: ${SysSetting.fontFamily} !important; font-size: ${SysSetting.fontSize}px !important; }`
         mainWindow.webContents.insertCSS(fontCss)
 
         mainWindow.webContents.send('baize-notes:system-setting-update', SysSetting)

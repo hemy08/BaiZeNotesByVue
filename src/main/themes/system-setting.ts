@@ -16,7 +16,7 @@ const systemSettingStore = new Store<SystemSetting>({
         editorModel: 'default',
         pluginOpen: 'browser',
         menuBarStyle: 'electron', // 默认使用Electron样式
-        autoSaveInterval: 10, // 默认10秒
+        autoSaveInterval: 60, // 默认60秒
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif', // 默认系统字体
         fontSize: 13 // 默认13px
     }
@@ -41,6 +41,12 @@ export function saveSystemSetting(setting: Partial<SystemSetting>): void {
     if (setting.menuBarStyle !== undefined) {
         systemSettingStore.set('menuBarStyle', setting.menuBarStyle)
     }
+    if (setting.fontFamily !== undefined) {
+        systemSettingStore.set('fontFamily', setting.fontFamily)
+    }
+    if (setting.fontSize !== undefined) {
+        systemSettingStore.set('fontSize', setting.fontSize)
+    }
 }
 
 /**
@@ -55,7 +61,7 @@ export function getSystemSetting(): SystemSetting {
         menuBarStyle: systemSettingStore.get('menuBarStyle', 'electron'),
         autoSaveInterval: systemSettingStore.get('autoSaveInterval', 60),
         fontFamily: systemSettingStore.get('fontFamily', '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif'),
-        fontSize: systemSettingStore.get('fontSize', 13)
+        fontSize: systemSettingStore.get('fontSize', 16)
     }
 }
 

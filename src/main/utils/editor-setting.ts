@@ -112,7 +112,7 @@ const defaultEditorSetting: EditorSetting = {
     wordWrap: 'on',
     minimap: false,
     lineNumbers: 'on',
-    fontSize: 14,
+    fontSize: 60,
     fontFamily: 'Hack',
     fontWeight: 'normal',
     fontLigatures: false,

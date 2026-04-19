@@ -19,12 +19,12 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     },
     tabSize: 4,
     fontFamily: 'Hack',
-    fontSize: 14,
+    fontSize: 16,
     lineNumbers: 'on',
-    tabCompletion: 'on',
+    tabCompletion: 'off',
     renderWhitespace: 'all',
-    accessibilitySupport: 'off', // 启用或禁用辅助功能支持
-    snippetSuggestions: 'none', // 控制代码片段建议的显示方式
+    accessibilitySupport: 'auto', // 自动检测辅助功能支持
+    snippetSuggestions: 'inline', // 代码片段建议内联显示
     unicodeHighlight: {
         ambiguousCharacters: false,
         nonBasicASCII: false,
@@ -47,9 +47,9 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
 
     // 优化建议配置
     quickSuggestions: {
-        other: false, // 禁用其他建议
-        comments: false, // 禁用注释建议
-        strings: false // 禁用字符串建议
+        other: true,
+        comments: false,
+        strings: false
     },
 
     // 性能相关
@@ -65,19 +65,19 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     overviewRulerLanes: 1, // 减少概览标尺车道数
 
     // 禁用不需要的功能
-    links: false, // 禁用链接检测
-    colorDecorators: false, // 禁用颜色装饰器
+    links: true, // 启用链接检测
+    colorDecorators: true, // 启用颜色装饰器
     renderControlCharacters: false, // 不渲染控制字符
-    glyphMargin: false, // 禁用字形边距
+    glyphMargin: true, // 启用字形边距
 
     // 优化编辑器行为
     //readOnlyMessage: null, // 禁用只读消息
-    occurrencesHighlight: 'off', // 禁用出现高亮
-    selectionHighlight: false, // 禁用选择高亮
+    occurrencesHighlight: 'singleFile', // 单文件出现高亮
+    selectionHighlight: true, // 启用选择高亮
     //wordHighlight: 'off', // 禁用单词高亮
     //wordHighlightStrong: 'off', // 禁用强单词高亮
     bracketPairColorization: {
-        enabled: false // 禁用括号对颜色化，提升性能
+        enabled: true // 启用括号对颜色化
     }
 }
 
@@ -128,15 +128,24 @@ export const EditorOptionMaps = {
     lineNumbers: 'lineNumbers',
     fontSize: 'fontSize',
     fontFamily: 'fontFamily',
+    fontWeight: 'fontWeight',
     tabSize: 'tabSize',
+    insertSpaces: 'insertSpaces',
 
     // 显示配置
     renderWhitespace: 'renderWhitespace',
     folding: 'folding',
+    foldingStrategy: 'foldingStrategy',
+    showFoldingControls: 'showFoldingControls',
+    unfoldOnClickAfterEndOfLine: 'unfoldOnClickAfterEndOfLine',
     renderLineHighlight: 'renderLineHighlight',
+    renderLineHighlightOnlyWhenFocus: 'renderLineHighlightOnlyWhenFocus',
+    selectOnLineNumbers: 'selectOnLineNumbers',
+    glyphMargin: 'glyphMargin',
 
     // 性能配置
     largeFileOptimizations: 'largeFileOptimizations',
+    maxTokenizationLineLength: 'maxTokenizationLineLength',
     smoothScrolling: 'smoothScrolling',
     cursorBlinking: 'cursorBlinking',
     cursorSmoothCaretAnimation: 'cursorSmoothCaretAnimation',
@@ -145,6 +154,7 @@ export const EditorOptionMaps = {
     dragAndDrop: 'dragAndDrop',
     scrollBeyondLastLine: 'scrollBeyondLastLine',
     mouseWheelScrollSensitivity: 'mouseWheelScrollSensitivity',
+    readOnly: 'readOnly',
 
     // 字体配置
     fontLigatures: 'fontLigatures',
@@ -157,8 +167,11 @@ export const EditorOptionMaps = {
 
     // 智能提示配置
     quickSuggestions: 'quickSuggestions',
+    quickSuggestionsDelay: 'quickSuggestionsDelay',
     suggestOnTriggerCharacters: 'suggestOnTriggerCharacters',
     acceptSuggestionOnEnter: 'acceptSuggestionOnEnter',
+    acceptSuggestionOnCommitCharacter: 'acceptSuggestionOnCommitCharacter',
+    wordBasedSuggestions: 'wordBasedSuggestions',
     tabCompletion: 'tabCompletion',
     snippetSuggestions: 'snippetSuggestions',
 
@@ -167,6 +180,9 @@ export const EditorOptionMaps = {
     autoClosingQuotes: 'autoClosingQuotes',
     autoClosingOvertype: 'autoClosingOvertype',
     autoSurround: 'autoSurround',
+    autoClosingComments: 'autoClosingComments',
+    autoIndent: 'autoIndent',
+    autoIndentOnPaste: 'autoIndentOnPaste',
 
     // 指南配置
     renderIndentGuides: 'renderIndentGuides',
@@ -174,12 +190,14 @@ export const EditorOptionMaps = {
     rulers: 'rulers',
     guides: 'guides',
 
+    // 括号对颜色化配置
+    bracketPairColorization: 'bracketPairColorization',
+
     // 滚动配置
     fastScrollSensitivity: 'fastScrollSensitivity',
 
-    // 空白和折叠配置
-    showFoldingControls: 'showFoldingControls',
-    unfoldOnClick: 'unfoldOnClick',
+    // 对话框兼容配置
+    unfoldOnClick: 'unfoldOnClickAfterEndOfLine',
 
     // 高亮和装饰配置
     renderValidationDecorations: 'renderValidationDecorations',
@@ -188,8 +206,19 @@ export const EditorOptionMaps = {
 
     // 链接和装饰器
     links: 'links',
+    linkDetection: 'linkDetection',
     colorDecorators: 'colorDecorators',
-    decorators: 'decorators'
+    decorators: 'decorators',
+
+    // Unicode高亮配置
+    unicodeHighlight: 'unicodeHighlight',
+
+    // 粘性滚动配置
+    stickyScroll: 'stickyScroll',
+
+    // 辅助功能配置
+    accessibilitySupport: 'accessibilitySupport',
+    screenReaderAnnounceInlineSuggestions: 'screenReaderAnnounceInlineSuggestions'
 }
 
 /**
@@ -218,13 +247,17 @@ export function updateEditorOption(
         editor.updateOptions({ rulers: rulersArray })
     } else if (key === 'guides') {
         // guides配置项需要是对象类型
-        editor.updateOptions({
-            guides: {
-                indentation: value,
-                bracketPairs: false,
-                highlightActiveIndentation: false
-            }
-        })
+        if (typeof value === 'object' && value !== null) {
+            editor.updateOptions({ guides: value })
+        } else {
+            editor.updateOptions({
+                guides: {
+                    indentation: !!value,
+                    bracketPairs: false,
+                    highlightActiveIndentation: false
+                }
+            })
+        }
     } else {
         // 普通配置项直接更新
         editor.updateOptions({ [optionKey]: value })
@@ -243,8 +276,7 @@ export function updateEditorOptions(
     settings: any
 ): void {
     const options: any = {}
-    console.log('[hemy-editor] Editor Setting:', settings)
-    // 遍历所有配置项
+    //console.log('[hemy-editor] Editor Setting:', settings)
     for (const [key, value] of Object.entries(settings)) {
         const optionKey = EditorOptionMaps[key]
         if (!optionKey) {
@@ -252,27 +284,67 @@ export function updateEditorOptions(
             continue
         }
 
-        // 处理特殊配置项
         if (key === 'minimap') {
-            options.minimap = { enabled: value }
+            options.minimap = { enabled: !!value }
         } else if (key === 'rulers') {
-            options.rulers = value ? (value as string).split (',').map (v => parseInt (v.trim ())).filter (v => ! isNaN (v)) : []
+            options.rulers = value ? (value as string).split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v)) : []
         } else if (key === 'guides') {
-            // guides配置项需要是对象类型
-            options.guides = {
-                indentation: value,
-                bracketPairs: false,
-                highlightIndentation: false
+            if (typeof value === 'object' && value !== null) {
+                options.guides = value
+            } else {
+                options.guides = { indentation: !!value, bracketPairs: false, highlightActiveIndentation: !!value }
             }
+        } else if (key === 'bracketPairColorization') {
+            if (typeof value === 'object' && value !== null) {
+                options.bracketPairColorization = value
+            } else {
+                options.bracketPairColorization = { enabled: !!value }
+            }
+        } else if (key === 'unicodeHighlight') {
+            if (typeof value === 'object' && value !== null) {
+                options.unicodeHighlight = value
+            }
+        } else if (key === 'stickyScroll') {
+            if (typeof value === 'object' && value !== null) {
+                options.stickyScroll = value
+            } else {
+                options.stickyScroll = { enabled: !!value }
+            }
+        } else if (key === 'quickSuggestions') {
+            if (typeof value === 'boolean') {
+                options.quickSuggestions = { other: value, comments: value, strings: value }
+            } else if (typeof value === 'object' && value !== null) {
+                options.quickSuggestions = value
+            }
+        } else if (key === 'occurrencesHighlight') {
+            if (typeof value === 'boolean') {
+                options.occurrencesHighlight = value ? 'singleFile' : 'off'
+            } else {
+                options.occurrencesHighlight = value
+            }
+        } else if (key === 'selectionHighlight') {
+            if (typeof value === 'boolean') {
+                options.selectionHighlight = value ? 'always' : 'never'
+            } else {
+                options.selectionHighlight = value
+            }
+        } else if (key === 'renderIndentGuides') {
+            if (!options.guides) options.guides = {}
+            options.guides.indentation = !!value
+        } else if (key === 'highlightActiveIndentGuide') {
+            if (!options.guides) options.guides = {}
+            options.guides.highlightActiveIndentation = !!value
+        } else if (key === 'unfoldOnClick') {
+            options.unfoldOnClickAfterEndOfLine = !!value
         } else {
             options[optionKey] = value
         }
     }
 
-    // 一次性更新所有配置
     editor.updateOptions(options)
     console.log('batch update monaco editor options:', options)
 }
+
 
 const MonacoEditorOverride: monaco.editor.IEditorOverrideServices = {}
 const Options = MonacoEditorOptions

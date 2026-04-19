@@ -59,12 +59,12 @@ function createWindow(): void {
 
         // 注入系统字体设置到主窗口
         const systemSetting = getSystemSetting()
-        const fontCss = `* { font-family: ${systemSetting.fontFamily} !important; font-size: ${systemSetting.fontSize}px !important; }`
+        const fontCss = `body, .title-bar, .menu-bar, .menu-label, .menu-item-label, .workspace-area, .status-bar, .navi-tab, .resource-manager, .md-edit-tools, .md-preview, .resizer-md, .resizer-main, #file-bar { font-family: ${systemSetting.fontFamily} !important; font-size: ${systemSetting.fontSize}px !important; }`
         mainWindow.webContents.insertCSS(fontCss)
 
         // 发送编辑器配置到主窗口
         const editorSetting = EditorSettingUtils.getEditorSetting()
-        console.log('[Main] Editor Setting:', editorSetting)
+        //console.log('[Main] Editor Setting:', editorSetting)
         mainWindow.webContents.send('baize-notes:init-editor-setting', editorSetting)
 
         // 恢复上次打开的文件
@@ -222,6 +222,11 @@ app.whenReady().then(() => {
     // 通过 themeRegistry 从 resources/themes/monaco-themes/ 目录读取
     ipcMain.handle('baize-notes:load-monaco-theme', (_, themeName: string) => {
         return getMonacoThemeData(themeName)
+    })
+
+    // 获取编辑器配置（用于渲染进程主动请求）
+    ipcMain.handle('baize-notes:get-editor-setting', () => {
+        return EditorSettingUtils.getEditorSetting()
     })
 
     createWindow()

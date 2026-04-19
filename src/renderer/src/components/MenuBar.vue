@@ -299,7 +299,6 @@ onBeforeUnmount(() => {
 
 .menu-label {
     font-size: 14px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-weight: 500;
     color: var(--theme-text-color, #333);
     letter-spacing: 0.02em;
@@ -335,22 +334,22 @@ onBeforeUnmount(() => {
     max-width: 400px;
     background-color: var(--theme-card-background, #fff);
     border: 1px solid var(--theme-border-color, #e0e0e0);
-    border-radius: 8px;
+    border-radius: 4px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
     padding: 2px 0;
     backdrop-filter: blur(8px);
 }
 
 .menu-submenu-item {
-    display: flex;
-    align-items: center;
-    padding: 8px 16px;
-    cursor: pointer;
-    position: relative;
-    transition: all 0.15s ease;
-    margin: 0 2px;
-    border-radius: 4px;
-    white-space: nowrap;
+    display: flex;          /* 使用 Flex 布局，便于内部内容水平排列和垂直居中 */
+    align-items: center;    /* 垂直居中子元素（如文字、图标） */
+    padding: 6px 16px;      /* 上下内边距 4px，左右 16px，增加可点击区域 */
+    cursor: pointer;        /* 鼠标悬浮时显示手型，提示可点击 */
+    position: relative;     /* 相对定位，为伪元素（如 hover 下划线、涟漪效果）提供参考 */
+    transition: all 0.15s ease; /* 所有属性变化在 0.15 秒内缓动过渡，增强交互反馈 */
+    margin: 0;          /* 左右外边距 1px，避免项之间紧贴，但可能引起布局偏移 */
+    border-radius: 4px;     /* 圆角 4px，常见于现代 UI 设计 */
+    white-space: nowrap;    /* 文本不换行，适合水平菜单或下拉菜单项 */
 }
 
 .menu-submenu-item:hover:not(.disabled) {
@@ -369,7 +368,6 @@ onBeforeUnmount(() => {
 .menu-item-label {
     flex: 1;
     font-size: 14px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: var(--theme-text-color, #333);
 }
 
