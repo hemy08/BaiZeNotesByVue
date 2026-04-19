@@ -48,7 +48,7 @@ export function ShowSystemSettingDialog(mainWindow: Electron.BrowserWindow) {
     function processApplySysSetting(_, SysSetting: SystemSetting) {
         SystemSettingUtils.saveSystemSetting(SysSetting)
 
-        const autoSaveInterval = (SysSetting.autoSaveInterval || 10) * 1000
+        const autoSaveInterval = (SysSetting.autoSaveInterval || 60) * 1000
         StartAutoSaveFileTime(autoSaveInterval)
 
         // 注入字体设置到主窗口
@@ -344,7 +344,7 @@ function makeSystemSettingDialogHtml(): string {
                     <div class="setting-row">
                         <span class="setting-label">自动保存周期(秒)：</span>
                         <div class="setting-value">
-                            <input type="number" id="system-auto-save-interval" min="5" max="86400" value="10">
+                            <input type="number" id="system-auto-save-interval" min="5" max="86400" value="60">
                             <div class="setting-hint">最小5秒，最大86400秒(24小时)</div>
                         </div>
                     </div>
