@@ -19,7 +19,7 @@ export function ShowSuccessDialog(title: string, message: string) {
 
     successDialog = new BrowserWindow({
         width: 450,
-        height: 250,
+        height: 280,
         minimizable: false,
         maximizable: false,
         resizable: false,

@@ -24,7 +24,7 @@
         v-show="isShowMdContainer"
         id="md-container"
         class="md-container"
-        :style="{ width: workAreaWidth }"
+        :style="{ width: workAreaWidth, marginRight: naviTabWidth }"
     >
         <MdContainer :md-container-width="workAreaWidth" />
     </div>
@@ -42,7 +42,23 @@
         class="tool-containers"
         :style="{ width: workAreaWidth }"
     >
-        <HemyTools :plugins-area-width="workAreaWidth" />
+        <HemyTools :tools-area-width="workAreaWidth" />
+    </div>
+    <div
+        v-show="isShowHtmlContainer"
+        id="html-containers"
+        class="html-containers"
+        :style="{ width: workAreaWidth }"
+    >
+        <ShowHtmlView :html-area-width="workAreaWidth" />
+    </div>
+    <div
+        v-show="isShowPdfContainer"
+        id="pdf-containers"
+        class="pdf-containers"
+        :style="{ width: workAreaWidth }"
+    >
+        <ShowPdfEditor :pds-area-width="workAreaWidth" />
     </div>
     <!-- 最右侧边框 -->
     <div id="right-navi" class="navi-tab" :style="{ width: naviTabWidth, float: 'right' }">
@@ -52,12 +68,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import EventBus from '../../event-bus'
-import NaviTab from './NaviTab.vue'
-import ResManager from '../ResourceManager/ResourceManager.vue'
-import MdContainer from '../Markdown/MarkdownContainer.vue'
-import PluginTools from '../PluginTools/PluginTools.vue'
-import HemyTools from '../HemyTools/HemyTools.vue'
+import EventBus from "@renderer/event-bus"
+import NaviTab from "@renderer/components/WorkSpaceArea/NaviTab.vue"
+import ResManager from "@renderer/components/ResourceManager/ResourceManager.vue"
+import MdContainer from "@renderer/components/Markdown/MarkdownContainer.vue"
+import PluginTools from "@renderer/components/PluginTools/PluginTools.vue"
+import HemyTools from "@renderer/components/HemyTools/HemyTools.vue"
+import ShowHtmlView from "@renderer/components/HemyTools/ShowHtmlVIew.vue"
+import ShowPdfEditor from "@renderer/components/HemyTools/ShowPdfEditor.vue";
 
 // 使用 ref 来创建响应式引用
 const naviResManagerShow = ref('file-explorer')
@@ -68,6 +86,8 @@ const isShowResourceMgrArea = ref(true)
 const isShowMdContainer = ref(true)
 const isShowPluginsContainer = ref(false)
 const isShowToolsContainer = ref(false)
+const isShowHtmlContainer = ref(false)
+const isShowPdfContainer = ref(false)
 
 let mouseStartX = 0
 
@@ -79,11 +99,12 @@ const resizerLeft = computed(() => {
 const workAreaWidth = computed(() => {
     // 注意这里使用了 parseInt 移除 'px' 后缀，并且确保计算是有效的
     const naviTabWidthValue = parseInt(naviTabWidth.value.replace('px', ''), 10)
-    // 减去 resMgrWidth, naviTabWidth 以及可能的间隙（例如 2px）
-    let containerWidth = windowWidth.value - naviTabWidthValue - 2
+    // 减去左右两侧的 naviTabWidth, resMgrWidth 以及可能的间隙（例如 2px）
+    // 注意：左右两侧都有 NaviTab，所以需要减去 2 * naviTabWidthValue
+    let containerWidth = windowWidth.value - (naviTabWidthValue * 2) - 2
     if (isShowResourceMgrArea.value) {
         const resMgrWidthValue = parseInt(resMgrWidth.value.replace('px', ''), 10)
-        containerWidth = windowWidth.value - naviTabWidthValue - resMgrWidthValue - 2
+        containerWidth = windowWidth.value - (naviTabWidthValue * 2) - resMgrWidthValue - 2
     }
     return containerWidth + 'px'
 })
@@ -100,6 +121,24 @@ const handlePluginToolsContainerShow = (value: boolean) => {
 }
 
 EventBus.$on('plugin-tools-container-show', handlePluginToolsContainerShow)
+
+const handleWorkAreaContainerShow = (value: string) => {
+    console.log("handleWorkAreaContainerShow ", value)
+    isShowMdContainer.value = false
+    isShowPluginsContainer.value = false
+    isShowHtmlContainer.value = false
+    isShowPdfContainer.value = false
+    if (value === "plugins") {
+        isShowPluginsContainer.value = true
+    } else if (value === "html") {
+        isShowHtmlContainer.value = true
+    } else if (value === "pdf") {
+        isShowPdfContainer.value = true
+    } else {
+        isShowMdContainer.value = true
+    }
+}
+EventBus.$on('baize:notes:workspace:show', handleWorkAreaContainerShow)
 
 function onSwitchRightNaviTab(value: string) {
     if (value == 'switch-open-close') {

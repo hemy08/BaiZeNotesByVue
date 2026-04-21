@@ -38,7 +38,7 @@
                     <path :d="getSvg(false, fileExtension).path" />
                 </svg>
             </span>
-            <span id="file-manager-node" class="file-manager-node">{{ node.name }}</span>
+            <span id="file-manager-node" class="file-manager-node" :title="node.name">{{ node.name }}</span>
         </div>
         <!-- 如果当前是文件夹并且已经展开，递归显示子节点 -->
         <div v-if="node.type === 'folder' && isExpanded" id="file-subtree" class="file-subtree">
@@ -119,9 +119,17 @@ function handleFileSelect(node: FileSysItem) {
 }
 
 function handleClick(node: FileSysItem) {
-    if (node.type === 'file' && node.name.endsWith('.md')) {
-        handleFileSelect(node)
-        EventBus.$emit('monaco-editor-statusbar-file-path', node.path)
+    if (node.type === 'file') {
+        if (node.name.endsWith('.md')) {
+            handleFileSelect(node)
+            EventBus.$emit('monaco-editor-statusbar-file-path', node.path)
+        } else if (node.name.endsWith('.html')) {
+            EventBus.$emit('html-file-selected', node)
+            EventBus.$emit('baize:notes:workspace:show', "html")
+        } else if (node.name.endsWith('.pdf')) {
+            EventBus.$emit('pdf-file-selected', node)
+            EventBus.$emit('baize:notes:workspace:show', "pdf")
+        }
     }
 }
 

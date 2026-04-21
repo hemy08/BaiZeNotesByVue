@@ -165,4 +165,37 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         }
     })
 
+
+    // 读取 HTML 文件内容
+    ipcMain.handle('read-html-file', async (_, filePath: string) => {
+        try {
+            const fs = require('fs')
+            const content = await fs.promises.readFile(filePath, 'utf-8')
+            return content
+        } catch (error) {
+            console.error('读取 HTML 文件失败:', error)
+            throw error
+        }
+    })
+
+    // 在外部浏览器中打开链接
+    ipcMain.on('open-external-link', async (_, url: string) => {
+        try {
+            await shell.openExternal(url)
+        } catch (error) {
+            console.error('打开外部链接失败:', error)
+        }
+    })
+
+    // 检查文件是否存在
+    ipcMain.handle('check-file-exists', async (_, filePath: string) => {
+        try {
+            const fs = require('fs')
+            const exists = fs.existsSync(filePath)
+            return exists
+        } catch (error) {
+            console.error('检查文件存在失败:', error)
+            return false
+        }
+    })
 }

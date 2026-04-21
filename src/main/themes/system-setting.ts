@@ -47,6 +47,9 @@ export function saveSystemSetting(setting: Partial<SystemSetting>): void {
     if (setting.fontSize !== undefined) {
         systemSettingStore.set('fontSize', setting.fontSize)
     }
+    if (setting.autoSaveInterval !== undefined) {
+        systemSettingStore.set('autoSaveInterval', setting.autoSaveInterval)
+    }
 }
 
 /**

@@ -255,8 +255,5 @@ onBeforeUnmount(() => {
     height: 100%;
     width: 100%;
     overflow: auto;
-    /* 隐藏水平滚动条 */
-    overflow-x: hidden;
-    overflow-y: hidden;
 }
 </style>

@@ -42,7 +42,7 @@ const visibleTool = computed(() => {
 window.electron.ipcRenderer.on('CHANNEL_PLUGIN_TOOL_SHOW', (_, context: string) => {
   console.log('context is ', context)
     if (!isShowPluginToolsContainer) {
-        EventBus.$emit('plugin-tools-container-show', true)
+        EventBus.$emit('baize:notes:workspace:show', "plugins")
         isShowPluginToolsContainer = true
     }
     activeToolId.value = context
@@ -53,7 +53,7 @@ function handleClosePluginTools() {
         isShowPluginToolsContainer = false
     }
     activeToolId.value = ''
-    EventBus.$emit('plugin-tools-container-show', false)
+    EventBus.$emit('baize:notes:workspace:show', "md")
 }
 
 watch(
@@ -81,7 +81,7 @@ onBeforeUnmount(() => {
 function handlePluginToolShow(action: string) {
   // 显示插件工具容器
   if (!isShowPluginToolsContainer) {
-    EventBus.$emit('plugin-tools-container-show', true)
+    EventBus.$emit('baize:notes:workspace:show', "plugins")
     isShowPluginToolsContainer = true
   }
 

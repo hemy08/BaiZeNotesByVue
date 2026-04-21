@@ -137,7 +137,7 @@ function onHandleNewContent(content: string) {
 }
 
 window.electron.ipcRenderer.on('show-selected-file-context', (_, content) => {
-  EventBus.$emit('plugin-tools-container-show', false)
+  EventBus.$emit('baize:notes:workspace:show', "md")
   onHandleNewContent(content)
 })
 
@@ -261,7 +261,7 @@ onBeforeUnmount(() => {
     color: var(--theme-text-color);
     position: absolute;
     top: 0;
-    overflow: hidden;
+    overflow: visible;
     height: 100%;
 }
 </style>

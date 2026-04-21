@@ -148,7 +148,12 @@ export function TraverseDirectory(dir: string, callback: (fileItems: FileItem[])
               } else if (
                 path.extname(item.name) === '.md' ||
                 path.extname(item.name) === '.png' ||
-                path.extname(item.name) === '.jpg'
+                path.extname(item.name) === '.jpg' ||
+                path.extname(item.name) === '.jpeg' ||
+                path.extname(item.name) === '.svg' ||
+                path.extname(item.name) === '.pdf' ||
+                path.extname(item.name) === '.txt' ||
+                path.extname(item.name) === '.html'
               ) {
                 // 如果是 .md 文件，则直接解析
                 item.type = 'file'
