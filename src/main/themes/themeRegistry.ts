@@ -135,7 +135,7 @@ function initializeRegistry(): void {
 
     try {
         const resourcesPath = getResourcesPath()
-        const themesDir = join(resourcesPath, 'themes', 'monaco-themes')
+        const themesDir = join(resourcesPath, 'themes', 'monaco-themes', 'themes')
 
         // 读取目录中所有 .json 文件
         const files = fs.readdirSync(themesDir)
