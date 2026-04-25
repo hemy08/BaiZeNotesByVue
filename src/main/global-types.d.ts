@@ -149,6 +149,7 @@ export interface SystemSetting {
     editorModel: string
     pluginOpen: string
     menuBarStyle: string // 'electron' | 'windows-native'
+    autoSaveEnabled: boolean // 是否启用自动保存，默认true
     autoSaveInterval: number // 自动保存间隔（秒），最小5秒，最大86400秒（24小时）
     fontFamily: string // 界面字体，如 'Microsoft YaHei', 'Segoe UI', 'PingFang SC'
     fontSize: number // 界面字体大小(px)，范围 10-24，默认 13

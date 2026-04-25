@@ -28,6 +28,11 @@ const props = defineProps({
     editorAreaWidth: {
         type: String,
         default: '50%'
+    },
+    // 文件路径
+    filePath: {
+        type: String,
+        default: ''
     }
 })
 
@@ -73,6 +78,39 @@ watch(
             }
             //console.log('update code:', newCode)
             editorInstance.setValue(newCode)
+        }
+    }
+)
+
+// 监听文件路径变化,清理旧Model
+watch(
+    () => props.filePath,
+    (newPath, oldPath) => {
+        if (oldPath && editorInstance) {
+            // 清理旧文件的 model
+            const oldUri = monaco.Uri.parse(`file://${oldPath}`)
+            const oldModel = monaco.editor.getModel(oldUri)
+            if (oldModel) {
+                oldModel.dispose()
+                console.log(`[Monaco] Disposed model for: ${oldPath}`)
+            }
+        }
+        
+        if (newPath && editorInstance) {
+            // 创建或获取新文件的 model
+            const newUri = monaco.Uri.parse(`file://${newPath}`)
+            let newModel = monaco.editor.getModel(newUri)
+            
+            if (!newModel) {
+                newModel = monaco.editor.createModel(
+                    props.code,
+                    'markdown',
+                    newUri
+                )
+                console.log(`[Monaco] Created model for: ${newPath}`)
+            }
+            
+            editorInstance.setModel(newModel)
         }
     }
 )

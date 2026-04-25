@@ -3,6 +3,7 @@ import { getCurrentThemeStyles } from '../themes/theme-config'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
 import * as EditorSettingUtils from '../utils/editor-setting'
+import * as SystemSettingUtils from '../themes/system-setting'
 import { FontFamily } from '../utils/common'
 
 let editorSettingDialog: Electron.BrowserWindow | null
@@ -15,10 +16,12 @@ export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
     }
     editorSettingDialog = new BrowserWindow({
         width: 800,
-        height: 600,
+        height: 720,
+        minWidth: 800,
+        minHeight: 600,
         parent: mainWindow,
         modal: false,
-        resizable: false,
+        resizable: true,
         frame: false,
         webPreferences: {
             nodeIntegration: true,
@@ -27,7 +30,8 @@ export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
     })
 
     const themeStyles = getCurrentThemeStyles()
-    const htmlContent = generateEditorSettingHTML(themeStyles)
+    const systemSettings = SystemSettingUtils.getSystemSetting()
+    const htmlContent = generateEditorSettingHTML(themeStyles, systemSettings)
 
     editorSettingDialog.loadURL(
         `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`
@@ -72,7 +76,7 @@ export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
     })
 }
 
-function generateEditorSettingHTML(themeStyles: any): string {
+function generateEditorSettingHTML(themeStyles: any, systemSettings: any): string {
     const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>')
     const document = dom.window.document
 
@@ -88,12 +92,21 @@ function generateEditorSettingHTML(themeStyles: any): string {
             --accent-color: ${themeStyles.accentColor};
             --hover-bg: ${themeStyles.hoverBackground};
             --title-bar-gradient: ${themeStyles.titleBarGradient};
+            --system-font-family: ${systemSettings.fontFamily};
+            --system-font-size: ${systemSettings.fontSize}px;
+            --font-size-xs: calc(var(--system-font-size) - 2px);
+            --font-size-sm: calc(var(--system-font-size) - 1px);
+            --font-size-base: var(--system-font-size);
+            --font-size-lg: calc(var(--system-font-size) + 1px);
+            --font-size-xl: calc(var(--system-font-size) + 2px);
+            --font-size-2xl: calc(var(--system-font-size) + 4px);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+            font-family: var(--system-font-family);
+            font-size: var(--system-font-size);
             background: var(--bg-color);
             color: var(--text-color);
             height: 100vh;
@@ -104,8 +117,8 @@ function generateEditorSettingHTML(themeStyles: any): string {
 
         /* 标题栏 */
         .title-bar {
-            height: 44px;
-            padding: 0 20px;
+            height: 48px;
+            padding: 0 24px;
             background: var(--title-bar-gradient);
             color: white;
             display: flex;
@@ -113,31 +126,34 @@ function generateEditorSettingHTML(themeStyles: any): string {
             align-items: center;
             flex-shrink: 0;
             -webkit-app-region: drag;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .title-text {
-            font-size: 16px;
-            font-weight: 500;
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            letter-spacing: 0.3px;
         }
 
         .close-btn {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
             border: none;
             color: white;
-            font-size: 20px;
-            width: 28px;
-            height: 28px;
-            border-radius: 4px;
+            font-size: var(--font-size-xl);
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
             cursor: pointer;
             -webkit-app-region: no-drag;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .close-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
         }
 
         /* 主容器 */
@@ -149,24 +165,24 @@ function generateEditorSettingHTML(themeStyles: any): string {
 
         /* 侧边栏 */
         .sidebar {
-            width: 180px;
+            width: 25%;
             background: var(--card-bg);
             border-right: 1px solid var(--border-color);
             flex-shrink: 0;
             overflow-y: auto;
-            padding: 12px 0;
+            padding: 16px 0;
         }
 
         .sidebar-item {
-            padding: 10px 16px;
+            padding: 12px 24px;
             cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
+            font-size: var(--font-size-base);
+            transition: all 0.2s ease;
             color: var(--text-color);
             display: flex;
             align-items: center;
-            gap: 8px;
             border-left: 3px solid transparent;
+            margin: 2px 0;
         }
 
         .sidebar-item:hover {
@@ -177,17 +193,13 @@ function generateEditorSettingHTML(themeStyles: any): string {
             background: var(--hover-bg);
             border-left-color: var(--accent-color);
             color: var(--accent-color);
-            font-weight: 600;
-        }
-
-        .sidebar-icon {
-            font-size: 16px;
+            font-weight: 500;
         }
 
         /* 内容区域 */
         .content-area {
             flex: 1;
-            padding: 20px 24px;
+            padding: 16px 20px;
             overflow-y: auto;
             background: var(--card-bg);
         }
@@ -201,63 +213,99 @@ function generateEditorSettingHTML(themeStyles: any): string {
         }
 
         .section-title {
-            font-size: 16px;
+            font-size: var(--font-size-2xl);
             font-weight: 600;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-color);
             color: var(--text-color);
+            letter-spacing: 0.3px;
         }
 
-        /* 设置行 - 左右布局 */
+        /* 设置行 - 多列布局 */
         .setting-group {
-            display: flex;
+            display: grid;
+            grid-template-columns: 180px 1fr;
             align-items: center;
-            margin-bottom: 16px;
-            gap: 12px;
+            margin-bottom: 6px;
+            gap: 8px;
+            width: 100%;
+            padding: 2px 0;
         }
 
         .setting-label {
-            width: 160px;
-            flex-shrink: 0;
-            font-size: 13px;
+            font-size: var(--font-size-base);
             color: var(--text-color);
             text-align: right;
+            padding-right: 8px;
+            font-weight: 500;
         }
 
         .setting-value {
-            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 配置项容器 - 单列布局 */
+        .settings-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* 配置项分组 */
+        .settings-group-container {
+            margin-bottom: 12px;
+            padding: 10px;
+            background: var(--bg-color);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .settings-group-title {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-color);
+            letter-spacing: 0.2px;
         }
 
         .setting-input {
-            width: 100%;
+            width: 200px;
             padding: 6px 10px;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 6px;
             background: var(--bg-color);
             color: var(--text-color);
-            font-size: 13px;
+            font-size: var(--font-size-base);
+            transition: all 0.2s ease;
         }
 
         .setting-input:focus {
             outline: none;
             border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.1);
         }
 
         .setting-select {
-            width: 100%;
+            width: 200px;
             padding: 6px 10px;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 6px;
             background: var(--bg-color);
             color: var(--text-color);
-            font-size: 13px;
+            font-size: var(--font-size-base);
             cursor: pointer;
+            transition: all 0.2s ease;
         }
 
         .setting-select:focus {
             outline: none;
             border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.1);
         }
 
         .setting-checkbox {
@@ -271,27 +319,30 @@ function generateEditorSettingHTML(themeStyles: any): string {
             height: 16px;
             cursor: pointer;
             accent-color: var(--accent-color);
+            border-radius: 4px;
         }
 
         .setting-checkbox label {
-            font-size: 13px;
+            font-size: var(--font-size-base);
             cursor: pointer;
             color: var(--text-color);
         }
 
         .number-input {
-            width: 100%;
+            width: 100px;
             padding: 6px 10px;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 6px;
             background: var(--bg-color);
             color: var(--text-color);
-            font-size: 13px;
+            font-size: var(--font-size-base);
+            transition: all 0.2s ease;
         }
 
         .number-input:focus {
             outline: none;
             border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.1);
         }
 
         /* 底部按钮栏 */
@@ -306,19 +357,22 @@ function generateEditorSettingHTML(themeStyles: any): string {
         }
 
         .btn {
-            padding: 8px 24px;
-            font-size: 13px;
+            padding: 8px 20px;
+            font-size: var(--font-size-base);
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 6px;
             background: var(--card-bg);
             color: var(--text-color);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
+            font-weight: 500;
         }
 
         .btn:hover {
             background: var(--hover-bg);
             border-color: var(--accent-color);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .btn-secondary {
@@ -381,18 +435,18 @@ function generateEditorSettingHTML(themeStyles: any): string {
     const sidebar = document.createElement('div')
     sidebar.className = 'sidebar'
     sidebar.innerHTML = `
-        <div class="sidebar-item active" data-section="basic"><span class="sidebar-icon">⚙</span> 基础配置</div>
-        <div class="sidebar-item" data-section="display"><span class="sidebar-icon">🖥</span> 显示配置</div>
-        <div class="sidebar-item" data-section="performance"><span class="sidebar-icon">⚡</span> 性能配置</div>
-        <div class="sidebar-item" data-section="font"><span class="sidebar-icon">🔤</span> 字体配置</div>
-        <div class="sidebar-item" data-section="cursor"><span class="sidebar-icon">👆</span> 光标配置</div>
-        <div class="sidebar-item" data-section="suggestions"><span class="sidebar-icon">💡</span> 智能提示</div>
-        <div class="sidebar-item" data-section="autoClosing"><span class="sidebar-icon">🔗</span> 自动闭合</div>
-        <div class="sidebar-item" data-section="guides"><span class="sidebar-icon">📏</span> 指南配置</div>
-        <div class="sidebar-item" data-section="scroll"><span class="sidebar-icon">📜</span> 滚动配置</div>
-        <div class="sidebar-item" data-section="whitespace"><span class="sidebar-icon">📝</span> 空白折叠</div>
-        <div class="sidebar-item" data-section="highlight"><span class="sidebar-icon">✨</span> 高亮装饰</div>
-        <div class="sidebar-item" data-section="links"><span class="sidebar-icon">🔗</span> 链接装饰器</div>
+        <div class="sidebar-item active" data-section="basic">基础配置</div>
+        <div class="sidebar-item" data-section="display">显示与布局</div>
+        <div class="sidebar-item" data-section="cursor">光标与选择</div>
+        <div class="sidebar-item" data-section="scroll">滚动配置</div>
+        <div class="sidebar-item" data-section="folding">换行与缩进</div>
+        <div class="sidebar-item" data-section="whitespace">渲染选项</div>
+        <div class="sidebar-item" data-section="autoClosing">自动闭合与修饰</div>
+        <div class="sidebar-item" data-section="suggestions">智能提示与补全</div>
+        <div class="sidebar-item" data-section="hover">Hover与编码行为</div>
+        <div class="sidebar-item" data-section="find">查找与替换</div>
+        <div class="sidebar-item" data-section="unicode">差异编辑器配置</div>
+        <div class="sidebar-item" data-section="subobjects">子对象详细配置</div>
     `
     mainContent.appendChild(sidebar)
 
@@ -400,53 +454,53 @@ function generateEditorSettingHTML(themeStyles: any): string {
     const contentArea = document.createElement('div')
     contentArea.className = 'content-area'
 
-    // 基础配置
+    // 1. 基础配置
     const basicSection = createBasicSection(document)
     contentArea.appendChild(basicSection)
 
-    // 显示配置
+    // 2. 显示与布局
     const displaySection = createDisplaySection(document)
     contentArea.appendChild(displaySection)
 
-    // 性能配置
-    const performanceSection = createPerformanceSection(document)
-    contentArea.appendChild(performanceSection)
-
-    // 字体配置
-    const fontSection = createFontSection(document)
-    contentArea.appendChild(fontSection)
-
-    // 光标配置
+    // 3. 光标与选择
     const cursorSection = createCursorSection(document)
     contentArea.appendChild(cursorSection)
 
-    // 智能提示配置
-    const suggestionsSection = createSuggestionsSection(document)
-    contentArea.appendChild(suggestionsSection)
-
-    // 自动闭合配置
-    const autoClosingSection = createAutoClosingSection(document)
-    contentArea.appendChild(autoClosingSection)
-
-    // 指南配置
-    const guidesSection = createGuidesSection(document)
-    contentArea.appendChild(guidesSection)
-
-    // 滚动配置
+    // 4. 滚动配置
     const scrollSection = createScrollSection(document)
     contentArea.appendChild(scrollSection)
 
-    // 空白和折叠配置
+    // 5. 换行与缩进
+    const foldingSection = createFoldingSection(document)
+    contentArea.appendChild(foldingSection)
+
+    // 6. 渲染选项
     const whitespaceSection = createWhitespaceSection(document)
     contentArea.appendChild(whitespaceSection)
 
-    // 高亮和装饰配置
-    const highlightSection = createHighlightSection(document)
-    contentArea.appendChild(highlightSection)
+    // 7. 自动闭合与修饰
+    const autoClosingSection = createAutoClosingSection(document)
+    contentArea.appendChild(autoClosingSection)
 
-    // 链接和装饰器
-    const linksSection = createLinksSection(document)
-    contentArea.appendChild(linksSection)
+    // 8. 智能提示与补全
+    const suggestionsSection = createSuggestionsSection(document)
+    contentArea.appendChild(suggestionsSection)
+
+    // 9. Hover与编码行为
+    const hoverSection = createHoverSection(document)
+    contentArea.appendChild(hoverSection)
+
+    // 10. 查找与替换
+    const findSection = createFindSection(document)
+    contentArea.appendChild(findSection)
+
+    // 11. 差异编辑器配置
+    const unicodeSection = createUnicodeSection(document)
+    contentArea.appendChild(unicodeSection)
+
+    // 子对象详细配置
+    const subobjectsSection = createSubobjectsSection(document)
+    contentArea.appendChild(subobjectsSection)
 
     mainContent.appendChild(contentArea)
     document.body.appendChild(mainContent)
@@ -580,6 +634,14 @@ function generateEditorSettingHTML(themeStyles: any): string {
             setElementChecked('minimap', EditorSetting.minimap);
             setElementValue('line-numbers', EditorSetting.lineNumbers);
             setElementValue('tab-size', EditorSetting.tabSize);
+            setElementChecked('insert-spaces', EditorSetting.insertSpaces);
+            setElementChecked('detect-indentation', EditorSetting.detectIndentation || true);
+            setElementChecked('read-only', EditorSetting.readOnly);
+            setElementChecked('dom-read-only', EditorSetting.domReadOnly || false);
+            setElementChecked('editable', EditorSetting.editable);
+            setElementChecked('automatic-layout', EditorSetting.automaticLayout || false);
+            setElementChecked('drag-and-drop', EditorSetting.dragAndDrop);
+            setElementValue('accessibility-support', EditorSetting.accessibilitySupport);
 
             // 显示配置
             setElementValue('render-whitespace', EditorSetting.renderWhitespace);
@@ -651,6 +713,14 @@ function generateEditorSettingHTML(themeStyles: any): string {
             setElementChecked('links', EditorSetting.links);
             setElementChecked('color-decorators', EditorSetting.colorDecorators);
             setElementChecked('decorators', EditorSetting.decorators);
+            setElementChecked('show-adjust-setting-tip', EditorSetting.showAdjustSettingTip);
+
+            // Unicode高亮配置
+            if (EditorSetting.unicodeHighlight) {
+                setElementChecked('unicode-non-basic-ascii', EditorSetting.unicodeHighlight.nonBasicASCII);
+                setElementChecked('unicode-invisible-characters', EditorSetting.unicodeHighlight.invisibleCharacters);
+                setElementChecked('unicode-ambiguous-characters', EditorSetting.unicodeHighlight.ambiguousCharacters);
+            }
         });
 
         // 辅助函数：安全添加事件监听器
@@ -681,6 +751,30 @@ function generateEditorSettingHTML(themeStyles: any): string {
         });
         addSafeEventListener('tab-size', 'input', (e) => {
             EditorSetting.tabSize = parseInt(e.target.value);
+        });
+        addSafeEventListener('insert-spaces', 'change', (e) => {
+            EditorSetting.insertSpaces = e.target.checked;
+        });
+        addSafeEventListener('detect-indentation', 'change', (e) => {
+            EditorSetting.detectIndentation = e.target.checked;
+        });
+        addSafeEventListener('read-only', 'change', (e) => {
+            EditorSetting.readOnly = e.target.checked;
+        });
+        addSafeEventListener('dom-read-only', 'change', (e) => {
+            EditorSetting.domReadOnly = e.target.checked;
+        });
+        addSafeEventListener('editable', 'change', (e) => {
+            EditorSetting.editable = e.target.checked;
+        });
+        addSafeEventListener('automatic-layout', 'change', (e) => {
+            EditorSetting.automaticLayout = e.target.checked;
+        });
+        addSafeEventListener('drag-and-drop', 'change', (e) => {
+            EditorSetting.dragAndDrop = e.target.checked;
+        });
+        addSafeEventListener('accessibility-support', 'change', (e) => {
+            EditorSetting.accessibilitySupport = e.target.value;
         });
 
         // 显示配置事件监听
@@ -847,6 +941,30 @@ function generateEditorSettingHTML(themeStyles: any): string {
         addSafeEventListener('decorators', 'change', (e) => {
             EditorSetting.decorators = e.target.checked;
         });
+        addSafeEventListener('show-adjust-setting-tip', 'change', (e) => {
+            EditorSetting.showAdjustSettingTip = e.target.checked;
+        });
+
+        // Unicode高亮配置事件监听
+        addSafeEventListener('unicode-non-basic-ascii', 'change', (e) => {
+            if (!EditorSetting.unicodeHighlight) {
+                EditorSetting.unicodeHighlight = { nonBasicASCII: false, invisibleCharacters: true, ambiguousCharacters: false };
+            }
+            EditorSetting.unicodeHighlight.nonBasicASCII = e.target.checked;
+        });
+        addSafeEventListener('unicode-invisible-characters', 'change', (e) => {
+            if (!EditorSetting.unicodeHighlight) {
+                EditorSetting.unicodeHighlight = { nonBasicASCII: false, invisibleCharacters: true, ambiguousCharacters: false };
+            }
+            EditorSetting.unicodeHighlight.invisibleCharacters = e.target.checked;
+        });
+        addSafeEventListener('unicode-ambiguous-characters', 'change', (e) => {
+            if (!EditorSetting.unicodeHighlight) {
+                EditorSetting.unicodeHighlight = { nonBasicASCII: false, invisibleCharacters: true, ambiguousCharacters: false };
+            }
+            EditorSetting.unicodeHighlight.ambiguousCharacters = e.target.checked;
+        });
+
         // 按钮事件绑定（带错误处理）
         function bindButtonEvents() {
             try {
@@ -931,167 +1049,385 @@ function generateEditorSettingHTML(themeStyles: any): string {
     return document.documentElement.outerHTML
 }
 
-// 创建基础配置区域
+/**
+ * 创建基础配置区域
+ * 包含Tab、只读、自动布局等基础编辑器配置
+ */
 function createBasicSection(document: Document): HTMLElement {
     const section = document.createElement('div')
     section.id = 'section-basic'
-    section.className = 'setting-section active'
+    section.className = 'setting-section'
 
     section.innerHTML = `
         <h3 class="section-title">基础配置</h3>
+        <div class="settings-grid"><p style="color: var(--secondary-text-color); font-size: var(--font-size-xs); margin-bottom: 16px;">
+            编辑器的基础行为配置,包括Tab大小、只读模式、自动布局等核心设置
+        </p>
 
         <div class="setting-group">
-            <span class="setting-label">自动换行：</span>
+            <span class="setting-label">Tab大小：</span>
             <div class="setting-value">
-                <select class="setting-select" id="word-wrap">
-                    <option value="on">开启</option>
-                    <option value="off">关闭</option>
-                    <option value="bounded">受限</option>
-                </select>
+                <input type="number" class="number-input" id="tab-size" value="4" min="1" max="16">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">空格数</span>
             </div>
         </div>
 
         <div class="setting-group">
-            <span class="setting-label">显示缩略图：</span>
+            <span class="setting-label">插入空格：</span>
             <div class="setting-value">
                 <div class="setting-checkbox">
-                    <input type="checkbox" id="minimap">
-                    <label for="minimap">启用</label>
+                    <input type="checkbox" id="insert-spaces" checked>
+                    <label for="insert-spaces">按Tab键时插入空格而非制表符</label>
                 </div>
             </div>
         </div>
 
         <div class="setting-group">
-            <span class="setting-label">行号显示：</span>
+            <span class="setting-label">检测缩进：</span>
             <div class="setting-value">
-                <select class="setting-select" id="line-numbers">
-                    <option value="on">显示</option>
-                    <option value="off">隐藏</option>
-                    <option value="relative">相对行号</option>
-                    <option value="interval">间隔行号</option>
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="detect-indentation" checked>
+                    <label for="detect-indentation">自动检测文件缩进风格</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">只读模式：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="read-only">
+                    <label for="read-only">禁止编辑内容</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">DOM只读：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="dom-read-only">
+                    <label for="dom-read-only">DOM层面禁止输入(更严格的只读)</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">可编辑：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="editable" checked>
+                    <label for="editable">允许编辑器输入</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">自动布局：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="automatic-layout">
+                    <label for="automatic-layout">容器尺寸变化时自动重新布局</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">拖放功能：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="drag-and-drop">
+                    <label for="drag-and-drop">启用拖放文本功能</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">辅助功能：</span>
+            <div class="setting-value">
+                <select class="setting-select" id="accessibility-support">
+                    <option value="auto">自动检测</option>
+                    <option value="off">关闭</option>
+                    <option value="on">开启</option>
+                </select>
+            </div>
+        </div>
+    </div>`
+
+    return section
+}
+
+/**
+ * 创建折叠与缩进配置区域
+ * 包含代码折叠、缩进指南等配置
+ */
+function createFoldingSection(document: Document): HTMLElement {
+    const section = document.createElement('div')
+    section.id = 'section-folding'
+    section.className = 'setting-section'
+
+    section.innerHTML = `
+        <h3 class="section-title">折叠与缩进配置</h3>
+        <div class="settings-grid"><p style="color: var(--secondary-text-color); font-size: var(--font-size-xs); margin-bottom: 16px;">
+            代码折叠和缩进指南配置
+        </p>
+
+        <div class="setting-group">
+            <span class="setting-label">启用折叠：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="folding" checked>
+                    <label for="folding">启用代码折叠功能</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">折叠策略：</span>
+            <div class="setting-value">
+                <select class="setting-select" id="folding-strategy">
+                    <option value="auto">自动</option>
+                    <option value="indentation">基于缩进</option>
                 </select>
             </div>
         </div>
 
         <div class="setting-group">
-            <span class="setting-label">Tab大小 (1-8)：</span>
+            <span class="setting-label">显示折叠控件：</span>
             <div class="setting-value">
-                <input type="number" class="number-input" id="tab-size" min="1" max="8" value="4">
+                <select class="setting-select" id="show-folding-controls">
+                    <option value="always">始终显示</option>
+                    <option value="mouseover">鼠标悬停时显示</option>
+                </select>
             </div>
         </div>
-    `
+
+        <div class="setting-group">
+            <span class="setting-label">最大折叠区域：</span>
+            <div class="setting-value">
+                <input type="number" class="number-input" id="folding-maximum-regions" value="5000" min="100" max="10000">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">个</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">默认折叠导入：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="folding-imports-by-default">
+                    <label for="folding-imports-by-default">默认折叠导入语句</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">缩进指南：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="guides-indentation" checked>
+                    <label for="guides-indentation">显示缩进指南线</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">括号对指南：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="guides-bracket-pairs">
+                    <label for="guides-bracket-pairs">显示括号对指南</label>
+                </div>
+            </div>
+        </div>
+    </div>`
 
     return section
 }
 
-// 创建显示配置区域
+/**
+ * 创建悬停提示与编码行为配置区域
+ * 包含Hover提示、选择高亮、CodeLens等配置
+ */
+function createHoverSection(document: Document): HTMLElement {
+    const section = document.createElement('div')
+    section.id = 'section-hover'
+    section.className = 'setting-section'
+
+    section.innerHTML = `
+        <h3 class="section-title">Hover与编码行为配置</h3>
+        <div class="settings-grid"><p style="color: var(--secondary-text-color); font-size: var(--font-size-xs); margin-bottom: 16px;">
+            悬停提示和编码行为配置
+        </p>
+
+        <div class="setting-group">
+            <span class="setting-label">启用Hover：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="hover-enabled" checked>
+                    <label for="hover-enabled">鼠标悬停时显示提示</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">Hover延迟：</span>
+            <div class="setting-value">
+                <input type="number" class="number-input" id="hover-delay" value="300" min="0" max="2000">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">毫秒</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">选择高亮：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="selection-highlight" checked>
+                    <label for="selection-highlight">高亮相同内容</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">出现高亮：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="occurrences-highlight" checked>
+                    <label for="occurrences-highlight">高亮所有出现位置</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">CodeLens：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="code-lens">
+                    <label for="code-lens">显示CodeLens</label>
+                </div>
+            </div>
+        </div>
+    </div>`
+
+    return section
+}
+
+/**
+ * 创建查找与替换配置区域
+ * 包含查找行为、搜索选项等配置
+ */
+function createFindSection(document: Document): HTMLElement {
+    const section = document.createElement('div')
+    section.id = 'section-find'
+    section.className = 'setting-section'
+
+    section.innerHTML = `
+        <h3 class="section-title">查找与替换配置</h3>
+        <div class="settings-grid"><p style="color: var(--secondary-text-color); font-size: var(--font-size-xs); margin-bottom: 16px;">
+            查找和替换功能配置
+        </p>
+
+        <div class="setting-group">
+            <span class="setting-label">自动查找：</span>
+            <div class="setting-value">
+                <select class="setting-select" id="find-auto-find-in-selection">
+                    <option value="never">从不</option>
+                    <option value="always">始终</option>
+                    <option value="multiline">多行时</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">搜索词来源：</span>
+            <div class="setting-value">
+                <select class="setting-select" id="find-seed-search-string">
+                    <option value="never">从不</option>
+                    <option value="selection">选择内容</option>
+                    <option value="selectionOrCursor">选择或光标</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">循环搜索：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="find-loop" checked>
+                    <label for="find-loop">到达末尾时从头开始</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">高亮匹配：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="find-highlight-matches" checked>
+                    <label for="find-highlight-matches">高亮所有匹配项</label>
+                </div>
+            </div>
+        </div>
+    </div>`
+
+    return section
+}
+
+/**
+ * 创建Unicode高亮配置区域
+ * 包含非基本ASCII、不可见字符、歧义字符等检测配置
+ */
+function createUnicodeSection(document: Document): HTMLElement {
+    const section = document.createElement('div')
+    section.id = 'section-unicode'
+    section.className = 'setting-section'
+
+    section.innerHTML = `
+        <h3 class="section-title">Unicode高亮配置</h3>
+        <div class="settings-grid"><p style="color: var(--secondary-text-color); font-size: var(--font-size-xs); margin-bottom: 16px;">
+            控制编辑器如何高亮显示Unicode字符,帮助识别可能引起混淆的字符(如全角/半角字符)
+        </p>
+
+        <div class="setting-group">
+            <span class="setting-label">非基本ASCII字符：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="unicode-non-basic-ascii">
+                    <label for="unicode-non-basic-ascii">高亮非基本ASCII字符</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">不可见字符：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="unicode-invisible-characters" checked>
+                    <label for="unicode-invisible-characters">高亮不可见字符</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">易混淆字符：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="unicode-ambiguous-characters">
+                    <label for="unicode-ambiguous-characters">高亮易混淆字符(全角/半角等)</label>
+                </div>
+            </div>
+        </div>
+    </div>`
+
+    return section
+}
+
+/**
+ * 创建显示与布局配置区域
+ * 包含字体、文本样式、显示元素等配置
+ */
 function createDisplaySection(document: Document): HTMLElement {
     const section = document.createElement('div')
     section.id = 'section-display'
-    section.className = 'setting-section'
-
-    section.innerHTML = `
-        <h3 class="section-title">显示配置</h3>
-
-        <div class="setting-group">
-            <span class="setting-label">空白字符显示：</span>
-            <div class="setting-value">
-                <select class="setting-select" id="render-whitespace">
-                    <option value="none">不显示</option>
-                    <option value="boundary">边界</option>
-                    <option value="selection">选中时</option>
-                    <option value="all">全部</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">代码折叠：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="folding">
-                    <label for="folding">启用</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">当前行高亮：</span>
-            <div class="setting-value">
-                <select class="setting-select" id="render-line-highlight">
-                    <option value="none">不显示</option>
-                    <option value="line">行高亮</option>
-                    <option value="all">全部高亮</option>
-                    <option value="range">范围高亮</option>
-                </select>
-            </div>
-        </div>
-    `
-
-    return section
-}
-
-// 创建性能配置区域
-function createPerformanceSection(document: Document): HTMLElement {
-    const section = document.createElement('div')
-    section.id = 'section-performance'
-    section.className = 'setting-section'
-
-    section.innerHTML = `
-        <h3 class="section-title">性能配置</h3>
-
-        <div class="setting-group">
-            <span class="setting-label">大文件优化：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="large-file-optimizations">
-                    <label for="large-file-optimizations">启用</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">平滑滚动：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="smooth-scrolling">
-                    <label for="smooth-scrolling">启用</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">光标闪烁样式：</span>
-            <div class="setting-value">
-                <select class="setting-select" id="cursor-blinking">
-                    <option value="blink">闪烁</option>
-                    <option value="smooth">平滑</option>
-                    <option value="phase">相位</option>
-                    <option value="expand">扩展</option>
-                    <option value="solid">固定</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">光标平滑动画：</span>
-            <div class="setting-value">
-                <select class="setting-select" id="cursor-smooth-caret-animation">
-                    <option value="on">开启</option>
-                    <option value="off">关闭</option>
-                    <option value="explicit">显式</option>
-                </select>
-            </div>
-        </div>
-    `
-
-    return section
-}
-
-// 创建字体配置区域
-function createFontSection(document: Document): HTMLElement {
-    const section = document.createElement('div')
-    section.id = 'section-font'
     section.className = 'setting-section'
 
     // 生成字体选项
@@ -1100,21 +1436,46 @@ function createFontSection(document: Document): HTMLElement {
     ).join('')
 
     section.innerHTML = `
-        <h3 class="section-title">字体配置</h3>
+        <h3 class="section-title">显示与布局配置</h3>
+        <div class="settings-grid"><p style="color: var(--secondary-text-color); font-size: var(--font-size-xs); margin-bottom: 16px;">
+            编辑器显示、字体、布局相关配置
+        </p>
+
+        <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--accent-color);">字体设置</h4>
 
         <div class="setting-group">
             <span class="setting-label">字体族：</span>
             <div class="setting-value">
-                <select class="setting-select" id="font-family">
+                <select class="setting-select" id="font-family" style="width: 200px;">
                     ${fontOptions}
                 </select>
             </div>
         </div>
 
         <div class="setting-group">
-            <span class="setting-label">字体大小 (8-32)：</span>
+            <span class="setting-label">字体大小：</span>
             <div class="setting-value">
-                <input type="number" class="number-input" id="font-size" min="8" max="32" value="14">
+                <input type="number" class="number-input" id="font-size" value="16" min="8" max="72">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">像素</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">字体粗细：</span>
+            <div class="setting-value">
+                <select class="setting-select" id="font-weight" style="width: 200px;">
+                    <option value="normal">正常</option>
+                    <option value="bold">粗体</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                    <option value="300">300</option>
+                    <option value="400">400</option>
+                    <option value="500">500</option>
+                    <option value="600">600</option>
+                    <option value="700">700</option>
+                    <option value="800">800</option>
+                    <option value="900">900</option>
+                </select>
             </div>
         </div>
 
@@ -1123,89 +1484,253 @@ function createFontSection(document: Document): HTMLElement {
             <div class="setting-value">
                 <div class="setting-checkbox">
                     <input type="checkbox" id="font-ligatures">
-                    <label for="font-ligatures">启用</label>
+                    <label for="font-ligatures">启用字体连字</label>
+                </div>
+            </div>
+        </div>
+
+        <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--accent-color);">文本样式</h4>
+
+        <div class="setting-group">
+            <span class="setting-label">行高：</span>
+            <div class="setting-value">
+                <input type="number" class="number-input" id="line-height" value="0" min="0" max="5" step="0.1">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">0表示自动</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">字间距：</span>
+            <div class="setting-value">
+                <input type="number" class="number-input" id="letter-spacing" value="0" min="-5" max="20" step="0.5">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">像素</span>
+            </div>
+        </div>
+
+        <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--accent-color);">显示设置</h4>
+
+        <div class="setting-group">
+            <span class="setting-label">自动换行：</span>
+            <div class="setting-value">
+                <select class="setting-select" id="word-wrap" style="width: 200px;">
+                    <option value="on">启用</option>
+                    <option value="off">禁用</option>
+                    <option value="bounded">限制宽度</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">行号显示：</span>
+            <div class="setting-value">
+                <select class="setting-select" id="line-numbers" style="width: 200px;">
+                    <option value="on">显示</option>
+                    <option value="off">隐藏</option>
+                    <option value="relative">相对行号</option>
+                    <option value="interval">间隔显示</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">行号最小字符数：</span>
+            <div class="setting-value">
+                <input type="number" class="number-input" id="line-numbers-min-chars" value="1" min="1" max="10">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">字符</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">行装饰宽度：</span>
+            <div class="setting-value">
+                <input type="number" class="number-input" id="line-decorations-width" value="10" min="0" max="50">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">像素</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">标尺列：</span>
+            <div class="setting-value">
+                <input type="text" class="setting-input" id="rulers" placeholder="例如: 80,120">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">用逗号分隔</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">概览标尺轨道数：</span>
+            <div class="setting-value">
+                <input type="number" class="number-input" id="overview-ruler-lanes" value="3" min="0" max="10">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">条轨道</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">概览标尺隐藏光标：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="hide-cursor-in-overview-ruler">
+                    <label for="hide-cursor-in-overview-ruler">在概览标尺中隐藏光标</label>
                 </div>
             </div>
         </div>
 
         <div class="setting-group">
-            <span class="setting-label">字符间距 (-5~20)：</span>
+            <span class="setting-label">缩略图：</span>
             <div class="setting-value">
-                <input type="number" class="number-input" id="letter-spacing" min="-5" max="20" value="0">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="minimap">
+                    <label for="minimap">显示代码缩略图</label>
+                </div>
             </div>
         </div>
 
         <div class="setting-group">
-            <span class="setting-label">行高 (0~100, 0自动)：</span>
+            <span class="setting-label">空白字符显示：</span>
             <div class="setting-value">
-                <input type="number" class="number-input" id="line-height" min="0" max="100" value="0">
+                <select class="setting-select" id="render-whitespace" style="width: 200px;">
+                    <option value="none">不显示</option>
+                    <option value="boundary">边界</option>
+                    <option value="selection">选中时</option>
+                    <option value="all">全部显示</option>
+                </select>
             </div>
         </div>
-    `
 
+        <div class="setting-group">
+            <span class="setting-label">当前行高亮：</span>
+            <div class="setting-value">
+                <select class="setting-select" id="render-line-highlight" style="width: 200px;">
+                    <option value="none">不显示</option>
+                    <option value="line">行高亮</option>
+                    <option value="all">全部高亮</option>
+                    <option value="range">范围高亮</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">字形边距：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="glyph-margin" checked>
+                    <label for="glyph-margin">显示字形边距区域</label>
+                </div>
+            </div>
+        </div>
+    </div>`
     return section
 }
 
 
-// 创建光标配置区域
+/**
+ * 创建光标与选择配置区域
+ * 包含光标样式、动画、选择行为等配置
+ */
 function createCursorSection(document: Document): HTMLElement {
     const section = document.createElement('div')
     section.id = 'section-cursor'
     section.className = 'setting-section'
 
     section.innerHTML = `
-        <h3 class="section-title">光标配置</h3>
+        <h3 class="section-title">光标与选择配置</h3>
+        <div class="settings-grid"><p style="color: var(--secondary-text-color); font-size: var(--font-size-xs); margin-bottom: 16px;">
+            光标样式、动画、可见性等配置
+        </p>
+
+        <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--accent-color);">光标样式</h4>
 
         <div class="setting-group">
             <span class="setting-label">光标样式：</span>
             <div class="setting-value">
-                <select class="setting-select" id="cursor-style">
+                <select class="setting-select" id="cursor-style" style="width: 200px;">
                     <option value="line">线条</option>
                     <option value="block">块状</option>
                     <option value="underline">下划线</option>
                     <option value="line-thin">细线条</option>
-                    <option value="block-thin">细块状</option>
+                    <option value="block-outline">块状轮廓</option>
                     <option value="underline-thin">细下划线</option>
                 </select>
             </div>
         </div>
 
         <div class="setting-group">
-            <span class="setting-label">光标宽度 (1-10)：</span>
+            <span class="setting-label">光标宽度：</span>
             <div class="setting-value">
-                <input type="number" class="number-input" id="cursor-width" min="1" max="10" value="1">
+                <input type="number" class="number-input" id="cursor-width" value="0" min="0" max="20">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">像素(仅块状光标)</span>
             </div>
         </div>
 
         <div class="setting-group">
-            <span class="setting-label">光标闪烁样式：</span>
+            <span class="setting-label">光标闪烁：</span>
             <div class="setting-value">
-                <select class="setting-select" id="cursor-blinking-cursor">
+                <select class="setting-select" id="cursor-blinking" style="width: 200px;">
                     <option value="blink">闪烁</option>
                     <option value="smooth">平滑</option>
                     <option value="phase">相位</option>
                     <option value="expand">扩展</option>
-                    <option value="solid">固定</option>
+                    <option value="solid">固定(不闪烁)</option>
                 </select>
             </div>
         </div>
 
         <div class="setting-group">
-            <span class="setting-label">光标平滑动画：</span>
+            <span class="setting-label">平滑移动动画：</span>
             <div class="setting-value">
-                <select class="setting-select" id="cursor-smooth-caret-animation-cursor">
-                    <option value="on">开启</option>
+                <select class="setting-select" id="cursor-smooth-caret-animation" style="width: 200px;">
                     <option value="off">关闭</option>
                     <option value="explicit">显式</option>
+                    <option value="on">开启</option>
                 </select>
             </div>
         </div>
-    `
+
+        <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--accent-color);">光标可见性</h4>
+
+        <div class="setting-group">
+            <span class="setting-label">光标上下最小可见行数：</span>
+            <div class="setting-value">
+                <input type="number" class="number-input" id="cursor-surrounding-lines" value="0" min="0" max="20">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">行</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">周围行数样式：</span>
+            <div class="setting-value">
+                <select class="setting-select" id="cursor-surrounding-lines-style" style="width: 200px;">
+                    <option value="default">默认</option>
+                    <option value="all">全部</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <span class="setting-label">水平居中时两侧显示列数：</span>
+            <div class="setting-value">
+                <input type="number" class="number-input" id="cursor-surrounding-line-columns" value="15" min="0" max="100">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">列</span>
+            </div>
+        </div>
+
+        <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--accent-color);">渲染限制</h4>
+
+        <div class="setting-group">
+            <span class="setting-label">行尾最大渲染字符数：</span>
+            <div class="setting-value">
+                <input type="number" class="number-input" id="stop-rendering-line-after" value="-1" min="-1" max="100000">
+                <span style="margin-left: 8px; color: var(--secondary-text-color); font-size: var(--font-size-xs);">-1表示无限制</span>
+            </div>
+        </div>
+    </div>`
 
     return section
 }
 
-// 创建智能提示配置区域
+/**
+ * 创建智能提示与补全配置区域
+ * 包含快速建议、参数提示、内联建议等配置
+ */
 function createSuggestionsSection(document: Document): HTMLElement {
     const section = document.createElement('div')
     section.id = 'section-suggestions'
@@ -1214,7 +1739,7 @@ function createSuggestionsSection(document: Document): HTMLElement {
     section.innerHTML = `
         <h3 class="section-title">智能提示配置</h3>
 
-        <div class="setting-group">
+        <div class="settings-grid"><div class="setting-group">
             <span class="setting-label">快速建议：</span>
             <div class="setting-value">
                 <div class="setting-checkbox">
@@ -1267,12 +1792,15 @@ function createSuggestionsSection(document: Document): HTMLElement {
                 </select>
             </div>
         </div>
-    `
+    </div>`
 
     return section
 }
 
-// 创建自动闭合配置区域
+/**
+ * 创建自动闭合与修饰配置区域
+ * 包含括号、引号自动闭合、自动包围等配置
+ */
 function createAutoClosingSection(document: Document): HTMLElement {
     const section = document.createElement('div')
     section.id = 'section-autoClosing'
@@ -1281,7 +1809,7 @@ function createAutoClosingSection(document: Document): HTMLElement {
     section.innerHTML = `
         <h3 class="section-title">自动闭合配置</h3>
 
-        <div class="setting-group">
+        <div class="settings-grid"><div class="setting-group">
             <span class="setting-label">自动闭合括号：</span>
             <div class="setting-value">
                 <select class="setting-select" id="auto-closing-brackets">
@@ -1327,61 +1855,16 @@ function createAutoClosingSection(document: Document): HTMLElement {
                 </select>
             </div>
         </div>
-    `
+    </div>`
 
     return section
 }
 
-// 创建指南配置区域
-function createGuidesSection(document: Document): HTMLElement {
-    const section = document.createElement('div')
-    section.id = 'section-guides'
-    section.className = 'setting-section'
 
-    section.innerHTML = `
-        <h3 class="section-title">指南配置</h3>
-
-        <div class="setting-group">
-            <span class="setting-label">缩进指南：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="render-indent-guides" checked>
-                    <label for="render-indent-guides">显示</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">高亮活动缩进：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="highlight-active-indent-guide" checked>
-                    <label for="highlight-active-indent-guide">启用</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">标尺列 (逗号分隔)：</span>
-            <div class="setting-value">
-                <input type="text" class="setting-input" id="rulers" placeholder="例如: 80,120">
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">启用指南：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="guides" checked>
-                    <label for="guides">启用</label>
-                </div>
-            </div>
-        </div>
-    `
-    return section
-}
-
-// 创建滚动配置区域
+/**
+ * 创建滚动与视口配置区域
+ * 包含滚动行为、视口配置等
+ */
 function createScrollSection(document: Document): HTMLElement {
     const section = document.createElement('div')
     section.id = 'section-scroll'
@@ -1390,7 +1873,7 @@ function createScrollSection(document: Document): HTMLElement {
     section.innerHTML = `
         <h3 class="section-title">滚动配置</h3>
 
-        <div class="setting-group">
+        <div class="settings-grid"><div class="setting-group">
             <span class="setting-label">平滑滚动：</span>
             <div class="setting-value">
                 <div class="setting-checkbox">
@@ -1425,12 +1908,15 @@ function createScrollSection(document: Document): HTMLElement {
                        min="1" max="20" step="0.5" value="5">
             </div>
         </div>
-    `
+    </div>`
 
     return section
 }
 
-// 创建空白和折叠配置区域
+/**
+ * 创建空白与装饰配置区域
+ * 包含空白字符显示、装饰器等配置
+ */
 function createWhitespaceSection(document: Document): HTMLElement {
     const section = document.createElement('div')
     section.id = 'section-whitespace'
@@ -1439,7 +1925,7 @@ function createWhitespaceSection(document: Document): HTMLElement {
     section.innerHTML = `
         <h3 class="section-title">空白和折叠配置</h3>
 
-        <div class="setting-group">
+        <div class="settings-grid"><div class="setting-group">
             <span class="setting-label">空白字符显示：</span>
             <div class="setting-value">
                 <select class="setting-select" id="render-whitespace-whitespace">
@@ -1481,106 +1967,353 @@ function createWhitespaceSection(document: Document): HTMLElement {
                 </div>
             </div>
         </div>
-    `
+    </div>`
 
     return section
 }
 
-// 创建高亮和装饰配置区域
-function createHighlightSection(document: Document): HTMLElement {
+/**
+ * 创建子对象详细配置区域
+ * 包含minimap、scrollbar、suggest、gotoLocation等子对象配置
+ */
+function createSubobjectsSection(document: Document): HTMLElement {
     const section = document.createElement('div')
-    section.id = 'section-highlight'
+    section.id = 'section-subobjects'
     section.className = 'setting-section'
 
     section.innerHTML = `
-        <h3 class="section-title">高亮和装饰配置</h3>
+        <h3 class="section-title">子对象详细配置</h3>
+        <p style="color: var(--secondary-text-color); font-size: var(--font-size-xs); margin-bottom: 16px;">
+            配置Monaco Editor的子对象属性，包括minimap缩略图、scrollbar滚动条、suggest建议小部件等
+        </p>
 
-        <div class="setting-group">
-            <span class="setting-label">当前行高亮：</span>
-            <div class="setting-value">
-                <select class="setting-select" id="render-line-highlight-highlight">
-                    <option value="none">不显示</option>
-                    <option value="line">行高亮</option>
-                    <option value="all">全部高亮</option>
-                    <option value="range">范围高亮</option>
-                </select>
-            </div>
-        </div>
+        <div class="settings-group-container">
+            <div class="settings-group-title">minimap 缩略图</div>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <span class="setting-label">启用：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="minimap-enabled" checked>
+                            <label for="minimap-enabled">启用缩略图</label>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="setting-group">
-            <span class="setting-label">验证装饰显示：</span>
-            <div class="setting-value">
-                <select class="setting-select" id="render-validation-decorations">
-                    <option value="on">开启</option>
-                    <option value="off">关闭</option>
-                    <option value="editable">可编辑</option>
-                </select>
-            </div>
-        </div>
+                <div class="setting-group">
+                    <span class="setting-label">自动隐藏：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="minimap-autohide">
+                            <label for="minimap-autohide">自动隐藏</label>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="setting-group">
-            <span class="setting-label">出现位置高亮：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="occurrences-highlight" checked>
-                    <label for="occurrences-highlight">启用</label>
+                <div class="setting-group">
+                    <span class="setting-label">显示位置：</span>
+                    <div class="setting-value">
+                        <select class="setting-select" id="minimap-side">
+                            <option value="right">右侧</option>
+                            <option value="left">左侧</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">尺寸策略：</span>
+                    <div class="setting-value">
+                        <select class="setting-select" id="minimap-size">
+                            <option value="proportional">比例</option>
+                            <option value="fill">填充</option>
+                            <option value="fit">适应</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">滑块显示：</span>
+                    <div class="setting-value">
+                        <select class="setting-select" id="minimap-show-slider">
+                            <option value="mouseover">鼠标悬停</option>
+                            <option value="always">总是</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">渲染字符：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="minimap-render-characters" checked>
+                            <label for="minimap-render-characters">渲染字符</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">最大列数：</span>
+                    <div class="setting-value">
+                        <input type="number" class="number-input" id="minimap-max-column"
+                               min="1" max="200" value="120">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">缩放比例：</span>
+                    <div class="setting-value">
+                        <input type="number" class="number-input" id="minimap-scale"
+                               min="0.1" max="3" step="0.1" value="1">
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="setting-group">
-            <span class="setting-label">选择高亮：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="selection-highlight" checked>
-                    <label for="selection-highlight">启用</label>
+        <div class="settings-group-container">
+            <div class="settings-group-title">scrollbar 滚动条</div>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <span class="setting-label">垂直滚动条：</span>
+                    <div class="setting-value">
+                        <select class="setting-select" id="scrollbar-vertical">
+                            <option value="auto">自动</option>
+                            <option value="visible">可见</option>
+                            <option value="hidden">隐藏</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">水平滚动条：</span>
+                    <div class="setting-value">
+                        <select class="setting-select" id="scrollbar-horizontal">
+                            <option value="auto">自动</option>
+                            <option value="visible">可见</option>
+                            <option value="hidden">隐藏</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">垂直大小：</span>
+                    <div class="setting-value">
+                        <input type="number" class="number-input" id="scrollbar-vertical-size"
+                               min="1" max="30" value="14">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">水平大小：</span>
+                    <div class="setting-value">
+                        <input type="number" class="number-input" id="scrollbar-horizontal-size"
+                               min="1" max="30" value="12">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">箭头大小：</span>
+                    <div class="setting-value">
+                        <input type="number" class="number-input" id="scrollbar-arrow-size"
+                               min="1" max="20" value="11">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">阴影效果：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="scrollbar-use-shadows" checked>
+                            <label for="scrollbar-use-shadows">显示阴影</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-group-container">
+            <div class="settings-group-title">suggest 建议小部件</div>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <span class="setting-label">显示图标：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="suggest-show-icons" checked>
+                            <label for="suggest-show-icons">显示图标</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">显示状态栏：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="suggest-show-status-bar" checked>
+                            <label for="suggest-show-status-bar">显示状态栏</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">插入方式：</span>
+                    <div class="setting-value">
+                        <select class="setting-select" id="suggest-insert-mode">
+                            <option value="insert">插入</option>
+                            <option value="replace">替换</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">最大可见条目：</span>
+                    <div class="setting-value">
+                        <input type="number" class="number-input" id="suggest-max-visible"
+                               min="1" max="20" value="8">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">预览效果：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="suggest-preview">
+                            <label for="suggest-preview">预览选中效果</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-group-container">
+            <div class="settings-group-title">gotoLocation 跳转</div>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <span class="setting-label">多目标跳转：</span>
+                    <div class="setting-value">
+                        <select class="setting-select" id="goto-location-multiple">
+                            <option value="goto">跳转</option>
+                            <option value="gotoAndPeek">跳转并查看</option>
+                            <option value="peek">查看</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">多定义跳转：</span>
+                    <div class="setting-value">
+                        <select class="setting-select" id="goto-location-multiple-definitions">
+                            <option value="goto">跳转</option>
+                            <option value="gotoAndPeek">跳转并查看</option>
+                            <option value="peek">查看</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">多实现跳转：</span>
+                    <div class="setting-value">
+                        <select class="setting-select" id="goto-location-multiple-implementations">
+                            <option value="goto">跳转</option>
+                            <option value="gotoAndPeek">跳转并查看</option>
+                            <option value="peek">查看</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">多引用跳转：</span>
+                    <div class="setting-value">
+                        <select class="setting-select" id="goto-location-multiple-references">
+                            <option value="goto">跳转</option>
+                            <option value="gotoAndPeek">跳转并查看</option>
+                            <option value="peek">查看</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-group-container">
+            <div class="settings-group-title">hover 悬停提示</div>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <span class="setting-label">启用：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="hover-enabled" checked>
+                            <label for="hover-enabled">启用悬停提示</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">延迟时间：</span>
+                    <div class="setting-value">
+                        <input type="number" class="number-input" id="hover-delay"
+                               min="0" max="2000" step="50" value="300">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">粘性显示：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="hover-sticky">
+                            <label for="hover-sticky">粘性显示</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-group-container">
+            <div class="settings-group-title">parameterHints 参数提示</div>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <span class="setting-label">启用：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="parameter-hints-enabled" checked>
+                            <label for="parameter-hints-enabled">启用参数提示</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">循环：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="parameter-hints-cycle">
+                            <label for="parameter-hints-cycle">循环显示</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-group-container">
+            <div class="settings-group-title">bracketPairColorization 括号对颜色化</div>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <span class="setting-label">启用：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="bracket-pair-colorization-enabled" checked>
+                            <label for="bracket-pair-colorization-enabled">启用括号对颜色化</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <span class="setting-label">独立颜色池：</span>
+                    <div class="setting-value">
+                        <div class="setting-checkbox">
+                            <input type="checkbox" id="bracket-pair-independent-color-pool">
+                            <label for="bracket-pair-independent-color-pool">每种括号类型独立颜色池</label>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     `
-
-    return section
-}
-
-// 创建链接和装饰器配置区域
-function createLinksSection(document: Document): HTMLElement {
-    const section = document.createElement('div')
-    section.id = 'section-links'
-    section.className = 'setting-section'
-
-    section.innerHTML = `
-        <h3 class="section-title">链接和装饰器</h3>
-
-        <div class="setting-group">
-            <span class="setting-label">链接点击：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="links" checked>
-                    <label for="links">启用</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">颜色装饰器：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="color-decorators" checked>
-                    <label for="color-decorators">启用</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">装饰器：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="decorators" checked>
-                    <label for="decorators">启用</label>
-                </div>
-            </div>
-        </div>
-    `
-
     return section
 }

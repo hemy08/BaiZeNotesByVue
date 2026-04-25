@@ -21,6 +21,7 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     fontFamily: 'Hack',
     fontSize: 16,
     lineNumbers: 'on',
+    lineNumbersMinChars: 5, // 行号区域最小字符宽度
     tabCompletion: 'off',
     renderWhitespace: 'all',
     accessibilitySupport: 'auto', // 自动检测辅助功能支持
@@ -40,11 +41,35 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     // ========== 性能优化配置 ==========
     largeFileOptimizations: true, // 大文件优化，自动禁用某些功能
     maxTokenizationLineLength: 10000, // 限制语法高亮行数，提升大文件性能
-    renderLineHighlight: 'all', // 优化行高亮
+    renderLineHighlight: 'none', // 关闭行高亮，提升性能
     scrollBeyondLastLine: false, // 减少渲染区域
     foldingMaximumRegions: 5000, // 限制折叠区域数量，防止内存占用过高
+// ========== 查找与替换配置 ==========
+    find: {
+        addExtraSpaceOnTop: true,
+        autoFindInSelection: 'multiline',
+        seedSearchStringFromSelection: 'selection',
+        cursorMoveOnType: true,
+        loop: true,
+        globalFindClipboard: false,
+        highlightFindMatches: true,
+        highlightFindMatchColor: true,
+        highlightFindMatchSize: 1
+    }, // 查找部件配置
+// ========== 差异编辑器配置 ==========
+    originalEditable: false, // 原始内容是否可编辑
+    renderSideBySide: true, // 是否并排显示
+    renderMarginRevertIcon: true, // 是否显示还原图标
+    renderIndicators: true, // 是否显示差异指示器
+    ignoreTrimWhitespace: true, // 是否忽略行尾空白差异
+    maxComputationTime: 60000, // 最大差异计算时间（ms）
+    useInlineViewWhenSpaceIsLimited: false, // 空间不足时使用内联视图
+    compactMode: false, // 紧凑模式
     //stableMinimapScroll: true, // 稳定minimap滚动，提升性能
 
+    // 大文件额外优化
+    // viewportLineBuffer: 10, // 视口缓冲行数,减少渲染范围 (Monaco Editor不支持此属性)
+    // maxLineNumber: 1000000, // 最大行号限制 (Monaco Editor不支持此属性)
     // 优化建议配置
     quickSuggestions: {
         other: true,
@@ -53,11 +78,24 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     },
 
     // 性能相关
+    scrollbar: {
+        vertical: 'visible',
+        horizontal: 'visible',
+        verticalScrollbarSize: 14,
+        horizontalScrollbarSize: 12,
+        arrowSize: 11,
+        useShadows: true,
+        renderByPixels: true
+    }, // 滚动条配置对象
     smoothScrolling: true, // 平滑滚动
     cursorBlinking: 'smooth', // 光标闪烁动画
     cursorSmoothCaretAnimation: 'on', // 光标移动动画
     mouseWheelScrollSensitivity: 1, // 鼠标滚轮灵敏度
     fastScrollSensitivity: 5, // 快速滚动灵敏度
+    scrollBeyondLastColumn: 5, // 超出最后一列的列数
+    scrollPredominantAxis: true, // 锁定主导轴
+    alwaysConsumeMouseWheel: true, // 是否始终消耗滚轮事件
+    hideHorizontalScrollbar: false, // 是否隐藏水平滚动条
 
     // 减少不必要的渲染
     hideCursorInOverviewRuler: true, // 在概览标尺中隐藏光标
@@ -70,6 +108,26 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     renderControlCharacters: false, // 不渲染控制字符
     glyphMargin: true, // 启用字形边距
 
+    // Hover提示配置
+    hover: {
+        enabled: true, // 启用hover提示
+        delay: 300, // hover延迟
+        sticky: false // 不粘性显示
+    },
+// ========== Hover与编码行为配置补充 ==========
+    stickyTabStops: true, // Tab 按步长移动
+    gotoLocation: {
+        multiple: 'goto',
+        multipleDefinitions: 'goto',
+        multipleImplementations: 'goto',
+        multipleReferences: 'goto',
+        multipleTypeDefinitions: 'goto'
+    }, // 跳转位置配置
+    codeLens: false, // 是否显示 CodeLens
+    codeLensFontFamily: '', // CodeLens 字体
+    codeLensFontSize: 0, // CodeLens 字体大小
+    foldingImportsByDefault: false, // 默认折叠导入语句
+
     // 优化编辑器行为
     //readOnlyMessage: null, // 禁用只读消息
     occurrencesHighlight: 'singleFile', // 单文件出现高亮
@@ -77,8 +135,23 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     //wordHighlight: 'off', // 禁用单词高亮
     //wordHighlightStrong: 'off', // 禁用强单词高亮
     bracketPairColorization: {
+// ========== 渲染选项配置补充 ==========
+    matchBrackets: 'near', // 匹配括号高亮
+    renderFinalNewline: 'on', // 渲染最终换行符
+    rangeHighlight: true, // 范围高亮
         enabled: true // 启用括号对颜色化
-    }
+    },
+
+    // ========== 基础配置补充 ==========
+    readOnly: false, // 编辑器是否只读
+    domReadOnly: false, // DOM是否只读
+    emptySelectionClipboard: true, // 无选中文本时，复制操作是否作用于光标所在行
+    copyWithSyntaxHighlighting: true, // 复制时是否保留语法高亮样式
+    multiCursorModifier: 'alt', // 多光标修饰键 ('ctrlCmd' | 'alt')
+    multiCursorPaste: 'spread', // 多光标粘贴行为 ('spread' | 'full')
+    fixedOverflowWidgets: false, // 浮层是否固定显示（防止被容器裁剪）
+    ariaLabel: '白泽笔记编辑器', // ARIA 标签
+    ariaHeaderMessage: undefined, // ARIA 头信息
 }
 
 function UpdateLineNumber(editor: monaco.editor.IStandaloneCodeEditor) {
@@ -131,6 +204,16 @@ export const EditorOptionMaps = {
     fontWeight: 'fontWeight',
     tabSize: 'tabSize',
     insertSpaces: 'insertSpaces',
+// ========== 换行与缩进配置补充 ==========
+    wordWrapColumn: 80, // 换行列数
+    wordWrapBreakBeforeCharacters: false, // 是否在换行前字符处断行
+    wordWrapBreakAfterCharacters: true, // 是否在换行后字符处断行
+    wrappingIndent: 'same', // 换行缩进方式
+    wrappingStrategy: 'simple', // 换行断点计算策略
+    indentSize: 'tabSize', // 缩进大小
+    detectIndentation: true, // 是否自动检测缩进
+    trimAutoWhitespace: true, // 是否修剪行首尾空白
+    ignoreEmptyLines: true, // 插入行注释时是否忽略空行
 
     // 显示配置
     renderWhitespace: 'renderWhitespace',
@@ -158,12 +241,17 @@ export const EditorOptionMaps = {
 
     // 字体配置
     fontLigatures: 'fontLigatures',
+    fontVariations: false, // 是否启用 OpenType 字体变体
     letterSpacing: 'letterSpacing',
     lineHeight: 'lineHeight',
 
     // 光标配置
     cursorStyle: 'cursorStyle',
     cursorWidth: 'cursorWidth',
+cursorSurroundingLines: 0, // 光标上下最小可见行数
+    cursorSurroundingLinesStyle: 'default', // 周围行数样式
+    cursorSurroundingLineColumns: 15, // 水平居中时两侧显示的列数
+    stopRenderingLineAfter: -1, // 行尾最大渲染字符数
 
     // 智能提示配置
     quickSuggestions: 'quickSuggestions',
@@ -172,6 +260,13 @@ export const EditorOptionMaps = {
     acceptSuggestionOnEnter: 'acceptSuggestionOnEnter',
     acceptSuggestionOnCommitCharacter: 'acceptSuggestionOnCommitCharacter',
     wordBasedSuggestions: 'wordBasedSuggestions',
+// ========== 智能提示与补全配置补充 ==========
+    wordBasedSuggestionsOnlySameLanguage: true, // 仅限同语言文档
+    suggestSelection: 'recentlyUsedByPrefix', // 建议选中策略
+    parameterHints: {
+        enabled: true,
+        cycle: false
+    }, // 参数提示
     tabCompletion: 'tabCompletion',
     snippetSuggestions: 'snippetSuggestions',
 
@@ -180,6 +275,11 @@ export const EditorOptionMaps = {
     autoClosingQuotes: 'autoClosingQuotes',
     autoClosingOvertype: 'autoClosingOvertype',
     autoSurround: 'autoSurround',
+// ========== 自动闭合与修饰配置补充 ==========
+    commentMultiLine: true, // 是否使用多行注释
+    commentInline: true, // 是否使用行内注释
+    formatOnPaste: false, // 粘贴时格式化
+    formatOnType: false, // 输入时格式化
     autoClosingComments: 'autoClosingComments',
     autoIndent: 'autoIndent',
     autoIndentOnPaste: 'autoIndentOnPaste',
@@ -336,6 +436,10 @@ export function updateEditorOptions(
             options.guides.highlightActiveIndentation = !!value
         } else if (key === 'unfoldOnClick') {
             options.unfoldOnClickAfterEndOfLine = !!value
+        } else if (key === 'showAdjustSettingTip') {
+            // 控制hover提示显示
+            if (!options.hover) options.hover = {}
+            options.hover.enabled = !!value
         } else {
             options[optionKey] = value
         }

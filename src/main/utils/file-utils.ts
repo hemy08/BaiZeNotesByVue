@@ -10,6 +10,7 @@ import { ShowImportOptionDialog }  from'../dialogs/ShowImportOptionDialog'
 // @ts-ignore
 import { ShowSuccessDialog } from "../dialogs/ShowSuccessDialog";
 import { saveLastOpenedFile, saveLastOpenedDirectory } from './file-state'
+import { logger } from './logger'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
@@ -21,6 +22,9 @@ const TurndownService = require('turndown')
 const iconv = require('iconv-lite')
 
 const reloadFromDiskTime = 100
+
+// 大文件阈值 (1MB)
+const LARGE_FILE_THRESHOLD = 1024 * 1024
 
 function getMathRandom(maxLength: number): string {
   let result = ''
@@ -247,6 +251,44 @@ export function ReloadDirFromDisk() {
 }
 
 export function OpenSelectFile(fileProperties: FileProperties) {
+  // 在打开新文件前,保存当前文件
+  const currentFile = global.current_active_file
+  if (currentFile && currentFile.path && currentFile.path.endsWith('.md')) {
+    try {
+      fs.writeFileSync(currentFile.path, currentFile.content, 'utf-8')
+      configStore.setFileContent(currentFile.path, currentFile.content)
+      logger.info('文件已自动保存', currentFile.path)
+    } catch (err) {
+      logger.error('自动保存文件失败', currentFile.path, err)
+    }
+  }
+
+  // 检测文件大小
+  try {
+    const stats = fs.statSync(fileProperties.path)
+    const fileSize = stats.size
+    
+    if (fileSize > LARGE_FILE_THRESHOLD) {
+      logger.warn('打开大文件', `${(fileSize / 1024 / 1024).toFixed(2)}MB`, fileProperties.path)
+      const result = dialog.showMessageBoxSync(global.MainWindow, {
+        type: 'warning',
+        title: '大文件警告',
+        message: `文件大小为 ${(fileSize / 1024 / 1024).toFixed(2)}MB，可能影响性能`,
+        buttons: ['继续打开', '取消'],
+        defaultId: 0
+      })
+      
+      if (result === 1) {
+        logger.info('用户取消打开大文件', fileProperties.path)
+        return // 用户取消
+      }
+    }
+  } catch (err) {
+    logger.error('检测文件大小失败', fileProperties.path, err)
+  }
+
+  logger.info('正在加载文件', fileProperties.path)
+  
   // 发送文件内容到渲染进程
   StartAutoSaveFileTime()
 
@@ -260,7 +302,7 @@ export function OpenSelectFile(fileProperties: FileProperties) {
     if (cachedContent.length === 0) {
       cachedContent = '\r\n'
     }
-    //console.log('OpenSelectFile (cached)', fileProperties.path)
+    logger.info('文件加载完成(缓存)', fileProperties.path)
     global.MainWindow.webContents.send('show-selected-file-context', cachedContent)
     global.MainWindow.webContents.send('monaco-editor-user-select-file', fileProperties.path)
     saveLastOpenedFile(fileProperties.path)
@@ -277,12 +319,12 @@ export function OpenSelectFile(fileProperties: FileProperties) {
         if (data.length === 0) {
           data = '\r\n'
         }
-        //console.log('OpenSelectFile', fileProperties.path)
+        logger.info('文件加载完成', fileProperties.path)
         global.MainWindow.webContents.send('show-selected-file-context', data)
         global.MainWindow.webContents.send('monaco-editor-user-select-file', fileProperties.path)
         saveLastOpenedFile(fileProperties.path)
       } else {
-        console.error('openFile failed', fileProperties.path, err, data)
+        logger.error('文件加载失败', fileProperties.path, err)
       }
     })
   }
@@ -298,6 +340,8 @@ export async function SaveActiveFile() {
 
         // 更新缓存
         configStore.setFileContent(curFile.path, curFile.content)
+        
+        logger.info('文件保存成功', curFile.path)
 
         // 通知所有窗口
         const { BrowserWindow } = require('electron')
@@ -305,7 +349,7 @@ export async function SaveActiveFile() {
             window.webContents.send('file-saved-success')
         })
     } catch (error: unknown) {
-        console.error('Save file failed:', error)
+        logger.error('文件保存失败', curFile.path, error)
         showErrorMessageBox(`保存失败: ${(error as Error).message}`)
     }
 }
@@ -926,6 +970,16 @@ export async function InsertImportFormFile(
     const context = await readerFn(file)
     const content = model.argStart + context + model.argEnd
 
+    // 更新当前活动文件和状态栏
+    global.current_active_file = {
+      path: file,
+      type: 'file',
+      content: content
+    }
+    
+    // 发送文件路径更新事件到状态栏
+    mainWindow.webContents.send('monaco-editor-user-select-file', file)
+
     if (isImport) {
       // 显示导入选项对话框
       ShowImportOptionDialog(mainWindow, async (option: string, filePath?: string) => {
@@ -942,7 +996,12 @@ export async function InsertImportFormFile(
               fs.writeFileSync(filePath, content, 'utf-8')
               // 打开新文件
               const { OpenSelectFile } = require('./file-utils')
-              OpenSelectFile(mainWindow, filePath, path.basename(filePath))
+              OpenSelectFile({
+                path: filePath,
+                name: path.basename(filePath),
+                type: 'file',
+                content: content
+              })
             }
             break
 

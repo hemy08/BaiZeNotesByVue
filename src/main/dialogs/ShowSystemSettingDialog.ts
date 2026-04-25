@@ -48,8 +48,11 @@ export function ShowSystemSettingDialog(mainWindow: Electron.BrowserWindow) {
     function processApplySysSetting(_, SysSetting: SystemSetting) {
         SystemSettingUtils.saveSystemSetting(SysSetting)
 
-        const autoSaveInterval = (SysSetting.autoSaveInterval || 60) * 1000
-        StartAutoSaveFileTime(autoSaveInterval)
+        // 只有在启用自动保存时才启动定时器
+        if (SysSetting.autoSaveEnabled) {
+            const autoSaveInterval = (SysSetting.autoSaveInterval || 60) * 1000
+            StartAutoSaveFileTime(autoSaveInterval)
+        }
 
         // 注入字体设置到主窗口
         const fontCss = `body, .title-bar, .menu-bar, .menu-label, .menu-item-label, .workspace-area, .status-bar, .navi-tab, .resource-manager, .md-edit-tools, .md-preview, .resizer-md, .resizer-main, #file-bar { font-family: ${SysSetting.fontFamily} !important; font-size: ${SysSetting.fontSize}px !important; }`
@@ -78,6 +81,7 @@ export function ShowSystemSettingDialog(mainWindow: Electron.BrowserWindow) {
 }
 
 function makeSystemSettingDialogHtml(): string {
+    const systemSettings = SystemSettingUtils.getSystemSetting()
     const { document } = new JSDOM(
         `<!DOCTYPE html>
 <html lang="zh">
@@ -89,8 +93,8 @@ function makeSystemSettingDialogHtml(): string {
         html, body {
             height: 100%;
             overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
-            font-size: 13px;
+            font-family: ${systemSettings.fontFamily};
+            font-size: ${systemSettings.fontSize}px;
             background: var(--bg-color);
             color: var(--text-color);
         }
@@ -103,6 +107,8 @@ function makeSystemSettingDialogHtml(): string {
             --accent-color: #764ba2;
             --hover-bg: #f0e8ff;
             --title-bar-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --system-font-family: ${systemSettings.fontFamily};
+            --system-font-size: ${systemSettings.fontSize}px;
         }
 
         .app-layout {
@@ -113,24 +119,41 @@ function makeSystemSettingDialogHtml(): string {
 
         /* 标题栏 */
         .title-bar {
-            height: 32px;
+            height: 48px;
             background: var(--title-bar-gradient);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 10px;
+            padding: 0 24px;
             -webkit-app-region: drag;
             flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-        .title-bar-title { color: #fff; font-size: 13px; font-weight: 500; }
+        .title-bar-title {
+            color: #fff;
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
         .close-btn {
-            width: 28px; height: 28px; border: none;
-            background: rgba(255,255,255,0.2); border-radius: 50%;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 14px; color: #fff; transition: all 0.2s;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--font-size-xl);
+            color: #fff;
+            transition: all 0.2s ease;
             -webkit-app-region: no-drag;
         }
-        .close-btn:hover { background: rgba(255,100,100,0.9); }
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
 
         /* 主容器：侧边栏 + 内容 */
         .main-container {
@@ -142,39 +165,40 @@ function makeSystemSettingDialogHtml(): string {
 
         /* 侧边栏 */
         .sidebar {
-            width: 160px;
+            width: 35%;
             flex-shrink: 0;
-            background: var(--bg-color);
+            background: var(--card-bg);
             border-right: 1px solid var(--border-color);
-            padding: 12px 0;
+            padding: 16px 0;
             display: flex;
             flex-direction: column;
             gap: 4px;
+            overflow-y: auto;
         }
         .sidebar-item {
-            padding: 10px 16px;
+            padding: 12px 24px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 13px;
+            font-size: var(--font-size-base);
             color: var(--text-color);
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             border-left: 3px solid transparent;
+            margin: 2px 0;
         }
         .sidebar-item:hover { background: var(--hover-bg); }
         .sidebar-item.active {
             background: var(--hover-bg);
             border-left-color: var(--accent-color);
             color: var(--accent-color);
-            font-weight: 600;
+            font-weight: 500;
         }
-        .sidebar-icon { font-size: 16px; }
+        .sidebar-icon { font-size: var(--font-size-lg); opacity: 0.8; }
 
         /* 内容区域 */
         .content-area {
             flex: 1;
-            padding: 20px;
+            padding: 16px 20px;
             overflow-y: auto;
             background: var(--card-bg);
         }
@@ -182,58 +206,92 @@ function makeSystemSettingDialogHtml(): string {
         .content-panel.active { display: block; }
 
         .panel-title {
-            font-size: 16px;
+            font-size: var(--font-size-2xl);
             font-weight: 600;
             color: var(--text-color);
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-color);
+            letter-spacing: 0.3px;
         }
 
         /* 设置行 */
         .setting-row {
             display: flex;
             align-items: center;
-            margin-bottom: 16px;
-            gap: 12px;
+            margin-bottom: 10px;
+            gap: 8px;
         }
         .setting-label {
             width: 160px;
             flex-shrink: 0;
-            font-size: 13px;
+            font-size: var(--system-font-size);
             color: var(--text-color);
             text-align: right;
         }
         .setting-value { flex: 1; }
         .setting-hint {
-            font-size: 11px;
+            font-size: calc(var(--system-font-size) - 2px);
             color: var(--secondary-text-color);
             margin-top: 4px;
         }
 
-        select, input[type="number"], input[type="text"] {
+        select {
             padding: 6px 10px;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 13px;
+            border-radius: 6px;
+            font-size: var(--system-font-size);
             background: var(--card-bg);
             color: var(--text-color);
             outline: none;
-            width: 100%;
-            max-width: 300px;
+            width: 200px;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
-        select:focus, input:focus { border-color: var(--accent-color); }
+        select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1);
+        }
+
+        input[type="number"], input[type="text"] {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: var(--system-font-size);
+            background: var(--card-bg);
+            color: var(--text-color);
+            outline: none;
+            width: 100px;
+            transition: all 0.2s ease;
+        }
+        input[type="number"]:focus, input[type="text"]:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1);
+        }
+
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--accent-color);
+        }
+
+        label {
+            font-size: var(--system-font-size);
+            cursor: pointer;
+            color: var(--text-color);
+        }
 
         /* 字体预览 */
         .font-preview {
             margin-top: 16px;
-            padding: 16px;
+            padding: 12px;
             border: 1px solid var(--border-color);
-            border-radius: 6px;
+            border-radius: 8px;
             background: var(--bg-color);
         }
         .font-preview-title {
-            font-size: 12px;
+            font-size: var(--font-size-xs);
             color: var(--secondary-text-color);
             margin-bottom: 8px;
         }
@@ -252,25 +310,32 @@ function makeSystemSettingDialogHtml(): string {
             border-top: 1px solid var(--border-color);
         }
         .footer-bar button {
-            padding: 8px 24px;
-            font-size: 13px;
+            padding: 8px 20px;
+            font-size: var(--font-size-base);
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 6px;
             background: var(--card-bg);
             color: var(--text-color);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
+            font-weight: 500;
         }
         .footer-bar button:hover {
             background: var(--hover-bg);
             border-color: var(--accent-color);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         .footer-bar button.primary {
             background: var(--accent-color);
             color: var(--card-bg);
             border-color: var(--accent-color);
         }
-        .footer-bar button.primary:hover { opacity: 0.9; }
+        .footer-bar button.primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -339,6 +404,13 @@ function makeSystemSettingDialogHtml(): string {
                                 <option value="electron">Electron样式(默认)</option>
                                 <option value="windows-native">Windows原生样式</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">自动保存：</span>
+                        <div class="setting-value">
+                            <input type="checkbox" id="system-auto-save-enabled" onchange="toggleAutoSaveInterval()">
+                            <label for="system-auto-save-enabled">启用自动保存</label>
                         </div>
                     </div>
                     <div class="setting-row">
@@ -440,11 +512,22 @@ function makeSystemSettingDialogHtml(): string {
             if (s.editorModel) document.getElementById('system-editor-view-model').value = s.editorModel
             if (s.pluginOpen) document.getElementById('system-plugin-open-model').value = s.pluginOpen
             if (s.menuBarStyle) document.getElementById('system-menu-bar-style').value = s.menuBarStyle
+            if (s.autoSaveEnabled !== undefined) {
+                document.getElementById('system-auto-save-enabled').checked = s.autoSaveEnabled
+                toggleAutoSaveInterval()
+            }
             if (s.autoSaveInterval) document.getElementById('system-auto-save-interval').value = s.autoSaveInterval
             if (s.fontFamily) document.getElementById('system-font-family').value = s.fontFamily
             if (s.fontSize) document.getElementById('system-font-size').value = s.fontSize
             updateFontPreview()
         })
+
+        // 切换自动保存时间输入框的启用状态
+        function toggleAutoSaveInterval() {
+            const enabled = document.getElementById('system-auto-save-enabled').checked
+            const intervalInput = document.getElementById('system-auto-save-interval')
+            intervalInput.disabled = !enabled
+        }
 
         // 更新字体预览
         function updateFontPreview() {
@@ -485,6 +568,7 @@ function makeSystemSettingDialogHtml(): string {
                 editorModel: document.getElementById('system-editor-view-model').value,
                 pluginOpen: document.getElementById('system-plugin-open-model').value,
                 menuBarStyle: document.getElementById('system-menu-bar-style').value,
+                autoSaveEnabled: document.getElementById('system-auto-save-enabled').checked,
                 autoSaveInterval: autoSaveInterval,
                 fontFamily: document.getElementById('system-font-family').value,
                 fontSize: fontSize

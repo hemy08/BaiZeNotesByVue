@@ -3,6 +3,43 @@ import highlightjs from 'markdown-it-highlightjs'
 import hljs from 'highlight.js'
 import { katexRenderMathInText } from './KatexRender'
 
+// 注册 PlantUML 语言支持
+hljs.registerLanguage('plantuml', function(hljs) {
+    return {
+        name: 'PlantUML',
+        keywords: {
+            keyword: 'actor participant usecase class interface enum object component package node folder frame cloud database storage agent artifact file stack queue rectangle card circle hexagon entity agent boundary control participant actor',
+            built_in: 'extends implements returns trigger activate deactivate destroy create note left right center top bottom over of as hide show skinparam skinparamparam style stereotype abstract class interface enum annotation circle circle_short form param return field member method static abstract final private protected public package void int string boolean char byte short long float double true false null new this super if else switch case default for while do break continue return throw try catch finally synchronized volatile transient native strictfp assert goto const instanceof enum class interface extends implements import package public protected private static final abstract native synchronized volatile transient strictfp void boolean char byte short int long float double true false null new this super'
+        },
+        contains: [
+            hljs.COMMENT("'", '\n'),
+            hljs.COMMENT('/"', '/'),
+            {
+                className: 'string',
+                begin: '"',
+                end: '"',
+                relevance: 0
+            },
+            {
+                className: 'symbol',
+                begin: ':',
+                end: ':',
+                relevance: 10
+            },
+            {
+                className: 'title',
+                begin: '\\b(actor|participant|usecase|class|interface|enum|object|component|package|node|folder|frame|cloud|database|storage|agent|artifact|file|stack|queue|rectangle|card|circle|hexagon|entity|boundary|control)\\b',
+                relevance: 10
+            },
+            {
+                className: 'arrow',
+                begin: '(-|\\.|\\||<|>|\\*|o|x|\\)|\\(|\\\\|\\/|\\\\\\\\|\\/\\/)+',
+                relevance: 10
+            }
+        ]
+    }
+})
+
 const materialMd = MarkdownIt()
 materialMd.options.html = true
 materialMd.options.linkify = true
@@ -33,22 +70,36 @@ function matchCodeBlock(lines: string[]): string[] {
 // 对Admonitions块中的content进行渲染，支持行内公式、行内代码块
 function materialAdmonitionsContentRender(contents: string[]): string {
     let renderResult = ''
+    let normalTextLines: string[] = [] // 收集普通文本行
+
     // 遍历所有行
     for (let i = 0; i < contents.length; i++) {
         // 去掉行首的4个空格或者tab
-        const currentLine = contents[i].replace(/^t|^ {4}/, '')
+        const currentLine = contents[i].replace(/^\t|^ {4}/, '')
         // 代码块，单独渲染，找到代码库的起始和结束位置
         if (currentLine.trim().startsWith('```')) {
+            // 先渲染之前收集的普通文本
+            if (normalTextLines.length > 0) {
+                const combinedText = normalTextLines.join('\n')
+                const katexRenderResult = katexRenderMathInText(combinedText)
+                renderResult += materialMd.render(katexRenderResult)
+                normalTextLines = []
+            }
             // 从当前行的下一行开始，找到代码块全部内容，去掉行首的空格和tab
             const codeBlocks = matchCodeBlock(contents.slice(i))
             renderResult += '\n\n' + codeBlocks.join('\r\n') + '\n\n'
             i += codeBlocks.length - 1
         } else {
-            // 数学公式
-            const katexRenderResult = katexRenderMathInText(currentLine.trim())
-            // 其他的块，markdown语法
-            renderResult += materialMd.render(katexRenderResult)
+            // 收集普通文本行（包括标题、列表等）
+            normalTextLines.push(currentLine.trim())
         }
+    }
+
+    // 渲染剩余的普通文本
+    if (normalTextLines.length > 0) {
+        const combinedText = normalTextLines.join('\n')
+        const katexRenderResult = katexRenderMathInText(combinedText)
+        renderResult += materialMd.render(katexRenderResult)
     }
 
     return renderResult
@@ -101,22 +152,24 @@ export function materialAdmonitionsRender(text: string): string {
     // -、+（无序列表、行分隔符）、[（链接）、$(公式)、|（表格）、{（特殊块）、<（html语法）
     // :(icon，emojis)、*（加粗）、~（删除线）、>（引用）、\r?\n（空行）
     // 或者字符串的结尾）
-    const regex = /!!!([\s\S]*?)(?=\n[!#`=\-+[$|{<:*~>\S]|$)/g
+    const regex = /!!!([\s\S]*?)(?=\n[!#`=\-+\[$|{<:*~>\S]|$)/g
     // 使用全局搜索来查找所有匹配项，匹配到的字符串，已经去掉了前缀和后缀
     while ((match = regex.exec(renderResult)) !== null) {
-        //console.log('match[1]', match[1])
+        console.log('match[0]', match[0])
+        console.log('match[1]', match[1])
         const content = materialParserAdmonitions(match[1])
+        console.log('content', content)
         const renderHtml =
             `<div class="admonition ${content.type}">` +
             `<p class="admonition-title">${content.title}</p>` +
-            `${content.content}</div>`
+            `${content.content}</div>\n\n`
         renderResult = renderResult.replace(match[0], renderHtml)
-        //console.log('renderResult', renderResult)
+        console.log('renderHtml', renderHtml)
+        console.log('renderResult', renderResult)
     }
 
     return renderResult
 }
-
 export function materialAdmonitionsPostRender(text: string): string {
     return text
 }
