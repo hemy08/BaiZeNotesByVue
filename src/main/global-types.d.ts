@@ -153,6 +153,21 @@ export interface SystemSetting {
     autoSaveInterval: number // 自动保存间隔（秒），最小5秒，最大86400秒（24小时）
     fontFamily: string // 界面字体，如 'Microsoft YaHei', 'Segoe UI', 'PingFang SC'
     fontSize: number // 界面字体大小(px)，范围 10-24，默认 13
+    // 窗口浮动控制（模态/非模态）
+    editorSettingModal: boolean // 编辑器设置对话框是否模态，默认false
+    systemSettingModal: boolean // 系统设置对话框是否模态，默认false
+    themeSettingModal: boolean // 主题设置对话框是否模态，默认false
+    helpAboutModal: boolean // 帮助关于对话框是否模态，默认false
+    helpContactUsModal: boolean // 帮助联系我们对话框是否模态，默认false
+    admonitionsModal: boolean // Admonitions对话框是否模态，默认false
+    fontSelectModal: boolean // 字体选择对话框是否模态，默认false
+    mathTextModal: boolean // 数学文本对话框是否模态，默认false
+    mdSheetModal: boolean // Markdown速查表对话框是否模态，默认false
+    importOptionModal: boolean // 导入选项对话框是否模态，默认false
+    mermaidEditModal: boolean // Mermaid编辑对话框是否模态，默认false
+    quickLinkSettingModal: boolean // 快速链接设置对话框是否模态，默认false
+    techStackModal: boolean // 技术栈对话框是否模态，默认false
+    webUrlModal: boolean // Web URL对话框是否模态，默认false
 }
 
 export interface MenuContext {

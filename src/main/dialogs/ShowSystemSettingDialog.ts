@@ -13,7 +13,7 @@ export function ShowSystemSettingDialog(mainWindow: Electron.BrowserWindow) {
     }
     systemSettingDialog = new BrowserWindow({
         width: 800,
-        height: 520,
+        height: 700,
         minimizable: false,
         maximizable: false,
         resizable: true,
@@ -109,6 +109,12 @@ function makeSystemSettingDialogHtml(): string {
             --title-bar-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --system-font-family: ${systemSettings.fontFamily};
             --system-font-size: ${systemSettings.fontSize}px;
+            --font-size-xs: calc(var(--system-font-size) - 2px);
+            --font-size-sm: calc(var(--system-font-size) - 1px);
+            --font-size-base: var(--system-font-size);
+            --font-size-lg: calc(var(--system-font-size) + 1px);
+            --font-size-xl: calc(var(--system-font-size) + 2px);
+            --font-size-2xl: calc(var(--system-font-size) + 4px);
         }
 
         .app-layout {
@@ -165,7 +171,7 @@ function makeSystemSettingDialogHtml(): string {
 
         /* 侧边栏 */
         .sidebar {
-            width: 35%;
+            width: 30%;
             flex-shrink: 0;
             background: var(--card-bg);
             border-right: 1px solid var(--border-color);
@@ -209,39 +215,78 @@ function makeSystemSettingDialogHtml(): string {
             font-size: var(--font-size-2xl);
             font-weight: 600;
             color: var(--text-color);
-            margin-bottom: 16px;
+            margin-bottom: 8px;
             padding-bottom: 8px;
             border-bottom: 2px solid var(--border-color);
             letter-spacing: 0.3px;
         }
+        .panel-description {
+            font-size: var(--font-size-sm);
+            color: var(--secondary-text-color);
+            margin-bottom: 16px;
+            padding: 8px 12px;
+            background: var(--hover-bg);
+            border-radius: 4px;
+            border-left: 3px solid var(--accent-color);
+        }
 
-        /* 设置行 */
-        .setting-row {
+        /* 配置项容器 */
+        .settings-grid {
             display: flex;
-            align-items: center;
-            margin-bottom: 10px;
+            flex-direction: column;
             gap: 8px;
         }
+
+        /* 设置行 */
+        .setting-group {
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 2px 0;
+        }
         .setting-label {
-            width: 160px;
-            flex-shrink: 0;
-            font-size: var(--system-font-size);
+            font-size: var(--font-size-base);
             color: var(--text-color);
             text-align: right;
+            padding-right: 8px;
+            font-weight: 500;
         }
-        .setting-value { flex: 1; }
+        .setting-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         .setting-hint {
-            font-size: calc(var(--system-font-size) - 2px);
+            font-size: var(--font-size-xs);
             color: var(--secondary-text-color);
             margin-top: 4px;
+        }
+
+        /* 设置分组 */
+        .setting-section {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--card-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+        .section-title {
+            font-size: var(--font-size-base);
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
         }
 
         select {
             padding: 6px 10px;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            font-size: var(--system-font-size);
-            background: var(--card-bg);
+            font-size: var(--font-size-base);
+            background: var(--bg-color);
             color: var(--text-color);
             outline: none;
             width: 200px;
@@ -257,8 +302,8 @@ function makeSystemSettingDialogHtml(): string {
             padding: 6px 10px;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            font-size: var(--system-font-size);
-            background: var(--card-bg);
+            font-size: var(--font-size-base);
+            background: var(--bg-color);
             color: var(--text-color);
             outline: none;
             width: 100px;
@@ -277,7 +322,7 @@ function makeSystemSettingDialogHtml(): string {
         }
 
         label {
-            font-size: var(--system-font-size);
+            font-size: var(--font-size-base);
             cursor: pointer;
             color: var(--text-color);
         }
@@ -349,6 +394,9 @@ function makeSystemSettingDialogHtml(): string {
                 <div class="sidebar-item active" data-panel="general" onclick="switchPanel('general')">
                     <span class="sidebar-icon">⚙</span> 通用设置
                 </div>
+                <div class="sidebar-item" data-panel="window" onclick="switchPanel('window')">
+                    <span class="sidebar-icon">🪟</span> 窗口设置
+                </div>
                 <div class="sidebar-item" data-panel="font" onclick="switchPanel('font')">
                     <span class="sidebar-icon">🔤</span> 字体设置
                 </div>
@@ -357,67 +405,142 @@ function makeSystemSettingDialogHtml(): string {
                 <!-- 通用设置面板 -->
                 <div id="general-panel" class="content-panel active">
                     <div class="panel-title">通用设置</div>
-                    <div class="setting-row">
-                        <span class="setting-label">系统语言：</span>
-                        <div class="setting-value">
-                            <select id="system-language">
-                                <option value="zh-cn">简体中文(默认)</option>
-                                <option value="zh-tw">繁體中文</option>
-                                <option value="en-us">English(US)</option>
-                            </select>
+                    <div class="settings-grid">
+                        <div class="setting-group">
+                            <span class="setting-label">系统语言：</span>
+                            <div class="setting-value">
+                                <select id="system-language">
+                                    <option value="zh-cn">简体中文(默认)</option>
+                                    <option value="zh-tw">繁體中文</option>
+                                    <option value="en-us">English(US)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <span class="setting-label">资源管理器：</span>
+                            <div class="setting-value">
+                                <select id="system-resource-manager">
+                                    <option value="default">显示(默认)</option>
+                                    <option value="hide">隐藏</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <span class="setting-label">编辑器视图：</span>
+                            <div class="setting-value">
+                                <select id="system-editor-view-model">
+                                    <option value="default">编辑/预览模式(默认)</option>
+                                    <option value="editor-preview-model">编辑/预览模式</option>
+                                    <option value="editor-model">编辑模式</option>
+                                    <option value="preview-model">预览模式</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <span class="setting-label">插件打开方式：</span>
+                            <div class="setting-value">
+                                <select id="system-plugin-open-model">
+                                    <option value="default">浏览器网页(默认)</option>
+                                    <option value="browser">浏览器网页</option>
+                                    <option value="local-dialog">app对话框</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <span class="setting-label">菜单栏样式：</span>
+                            <div class="setting-value">
+                                <select id="system-menu-bar-style">
+                                    <option value="electron">Electron样式(默认)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <span class="setting-label">自动保存：</span>
+                            <div class="setting-value">
+                                <input type="checkbox" id="system-auto-save-enabled" onchange="toggleAutoSaveInterval()">
+                                <label for="system-auto-save-enabled">启用自动保存</label>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <span class="setting-label">自动保存周期(秒)：</span>
+                            <div class="setting-value">
+                                <input type="number" id="system-auto-save-interval" min="5" max="86400" value="60">
+                                <div class="setting-hint">最小5秒，最大86400秒(24小时)</div>
+                            </div>
                         </div>
                     </div>
-                    <div class="setting-row">
-                        <span class="setting-label">资源管理器：</span>
-                        <div class="setting-value">
-                            <select id="system-resource-manager">
-                                <option value="default">显示(默认)</option>
-                                <option value="hide">隐藏</option>
-                            </select>
+                </div>
+
+                <!-- 窗口设置面板 -->
+                <div id="window-panel" class="content-panel">
+                    <div class="panel-title">窗口设置</div>
+                    <div class="panel-description">配置各类对话框窗口的显示模式，勾选后窗口浮动在主窗口上方，无法操作主窗口。</div>
+                    <div class="settings-grid">
+                        <div class="setting-section">
+                            <div class="section-title">📝 编辑器相关</div>
+                            <div class="setting-group">
+                                <div class="setting-value">
+                                    <input type="checkbox" id="system-editor-setting-modal">
+                                    <span class="setting-label">编辑器设置窗口</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-label">编辑器视图：</span>
-                        <div class="setting-value">
-                            <select id="system-editor-view-model">
-                                <option value="default">编辑/预览模式(默认)</option>
-                                <option value="editor-preview-model">编辑/预览模式</option>
-                                <option value="editor-model">编辑模式</option>
-                                <option value="preview-model">预览模式</option>
-                            </select>
+                        <div class="setting-section">
+                            <div class="section-title">⚙️ 系统相关</div>
+                            <div class="setting-group">
+                                <div class="setting-value">
+                                    <input type="checkbox" id="system-system-setting-modal">
+                                    <span class="setting-label">系统设置窗口</span>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <div class="setting-value">
+                                    <input type="checkbox" id="system-theme-setting-modal">
+                                    <span class="setting-label">主题设置窗口</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-label">插件打开方式：</span>
-                        <div class="setting-value">
-                            <select id="system-plugin-open-model">
-                                <option value="default">浏览器网页(默认)</option>
-                                <option value="browser">浏览器网页</option>
-                                <option value="local-dialog">app对话框</option>
-                            </select>
+                        <div class="setting-section">
+                            <div class="section-title">➕ 插入相关</div>
+                            <div class="setting-group">
+                                <div class="setting-value">
+                                    <input type="checkbox" id="system-insert-image-modal">
+                                    <span class="setting-label">插入图片窗口</span>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <div class="setting-value">
+                                    <input type="checkbox" id="system-math-text-modal">
+                                    <span class="setting-label">数学公式窗口</span>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <div class="setting-value">
+                                    <input type="checkbox" id="system-web-url-modal">
+                                    <span class="setting-label">网页链接窗口</span>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <div class="setting-value">
+                                    <input type="checkbox" id="system-md-sheet-modal">
+                                    <span class="setting-label">Markdown速查表窗口</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-label">菜单栏样式：</span>
-                        <div class="setting-value">
-                            <select id="system-menu-bar-style">
-                                <option value="electron">Electron样式(默认)</option>
-                                <option value="windows-native">Windows原生样式</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-label">自动保存：</span>
-                        <div class="setting-value">
-                            <input type="checkbox" id="system-auto-save-enabled" onchange="toggleAutoSaveInterval()">
-                            <label for="system-auto-save-enabled">启用自动保存</label>
-                        </div>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-label">自动保存周期(秒)：</span>
-                        <div class="setting-value">
-                            <input type="number" id="system-auto-save-interval" min="5" max="86400" value="60">
-                            <div class="setting-hint">最小5秒，最大86400秒(24小时)</div>
+                        <div class="setting-section">
+                            <div class="section-title">❓ 帮助相关</div>
+                            <div class="setting-group">
+                                <div class="setting-value">
+                                    <input type="checkbox" id="system-help-about-modal">
+                                    <span class="setting-label">帮助关于窗口</span>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <div class="setting-value">
+                                    <input type="checkbox" id="system-help-contact-us-modal">
+                                    <span class="setting-label">帮助联系我们窗口</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -425,41 +548,43 @@ function makeSystemSettingDialogHtml(): string {
                 <!-- 字体设置面板 -->
                 <div id="font-panel" class="content-panel">
                     <div class="panel-title">字体设置</div>
-                    <div class="setting-row">
-                        <span class="setting-label">界面字体：</span>
-                        <div class="setting-value">
-                            <select id="system-font-family" onchange="updateFontPreview()">
-                                <option value='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif'>系统默认</option>
-                                <option value='"Microsoft YaHei", sans-serif'>微软雅黑</option>
-                                <option value='"SimSun", serif'>宋体</option>
-                                <option value='"SimHei", sans-serif'>黑体</option>
-                                <option value='"KaiTi", serif'>楷体</option>
-                                <option value='"FangSong", serif'>仿宋</option>
-                                <option value='"Segoe UI", sans-serif'>Segoe UI</option>
-                                <option value='"PingFang SC", sans-serif'>苹方-简</option>
-                                <option value='"Noto Sans SC", sans-serif'>Noto Sans SC</option>
-                                <option value='"Source Han Sans SC", sans-serif'>思源黑体</option>
-                                <option value='monospace'>等宽字体</option>
-                            </select>
+                    <div class="settings-grid">
+                        <div class="setting-group">
+                            <span class="setting-label">界面字体：</span>
+                            <div class="setting-value">
+                                <select id="system-font-family" onchange="updateFontPreview()">
+                                    <option value='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif'>系统默认</option>
+                                    <option value='"Microsoft YaHei", sans-serif'>微软雅黑</option>
+                                    <option value='"SimSun", serif'>宋体</option>
+                                    <option value='"SimHei", sans-serif'>黑体</option>
+                                    <option value='"KaiTi", serif'>楷体</option>
+                                    <option value='"FangSong", serif'>仿宋</option>
+                                    <option value='"Segoe UI", sans-serif'>Segoe UI</option>
+                                    <option value='"PingFang SC", sans-serif'>苹方-简</option>
+                                    <option value='"Noto Sans SC", sans-serif'>Noto Sans SC</option>
+                                    <option value='"Source Han Sans SC", sans-serif'>思源黑体</option>
+                                    <option value='monospace'>等宽字体</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-label">界面字体大小：</span>
-                        <div class="setting-value">
-                            <select id="system-font-size" onchange="updateFontPreview()">
-                                <option value="10">10px</option>
-                                <option value="11">11px</option>
-                                <option value="12">12px</option>
-                                <option value="13" selected>13px(默认)</option>
-                                <option value="14">14px</option>
-                                <option value="15">15px</option>
-                                <option value="16">16px</option>
-                                <option value="18">18px</option>
-                                <option value="20">20px</option>
-                                <option value="22">22px</option>
-                                <option value="24">24px</option>
-                            </select>
-                            <div class="setting-hint">范围 10-24px，影响所有对话框和界面文字</div>
+                        <div class="setting-group">
+                            <span class="setting-label">界面字体大小：</span>
+                            <div class="setting-value">
+                                <select id="system-font-size" onchange="updateFontPreview()">
+                                    <option value="10">10px</option>
+                                    <option value="11">11px</option>
+                                    <option value="12">12px</option>
+                                    <option value="13" selected>13px(默认)</option>
+                                    <option value="14">14px</option>
+                                    <option value="15">15px</option>
+                                    <option value="16">16px</option>
+                                    <option value="18">18px</option>
+                                    <option value="20">20px</option>
+                                    <option value="22">22px</option>
+                                    <option value="24">24px</option>
+                                </select>
+                                <div class="setting-hint">范围 10-24px，影响所有对话框和界面文字</div>
+                            </div>
                         </div>
                     </div>
                     <div class="font-preview">
@@ -519,6 +644,22 @@ function makeSystemSettingDialogHtml(): string {
             if (s.autoSaveInterval) document.getElementById('system-auto-save-interval').value = s.autoSaveInterval
             if (s.fontFamily) document.getElementById('system-font-family').value = s.fontFamily
             if (s.fontSize) document.getElementById('system-font-size').value = s.fontSize
+            // 窗口浮动控制
+            if (s.editorSettingModal !== undefined) {
+                document.getElementById('system-editor-setting-modal').checked = s.editorSettingModal
+            }
+            if (s.systemSettingModal !== undefined) {
+                document.getElementById('system-system-setting-modal').checked = s.systemSettingModal
+            }
+            if (s.themeSettingModal !== undefined) {
+                document.getElementById('system-theme-setting-modal').checked = s.themeSettingModal
+            }
+            if (s.helpAboutModal !== undefined) {
+                document.getElementById('system-help-about-modal').checked = s.helpAboutModal
+            }
+            if (s.helpContactUsModal !== undefined) {
+                document.getElementById('system-help-contact-us-modal').checked = s.helpContactUsModal
+            }
             updateFontPreview()
         })
 

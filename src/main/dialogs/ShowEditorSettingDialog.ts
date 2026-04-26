@@ -14,11 +14,12 @@ export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
         digcom.ShowAlreadyExistDialog()
         return
     }
+
     editorSettingDialog = new BrowserWindow({
         width: 800,
-        height: 720,
-        minWidth: 800,
-        minHeight: 600,
+        height: 1000,
+        minWidth: 700,
+        minHeight: 800,
         parent: mainWindow,
         modal: false,
         resizable: true,
@@ -51,7 +52,7 @@ export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
     ipcMain.on('dialog-editor-setting-apply', (_event, settings) => {
         EditorSettingUtils.saveEditorSetting(settings)
         // 通知主窗口更新编辑器设置
-        console.log('EditorSettingDialog: apply editor settings:', settings)
+        //console.log('EditorSettingDialog: apply editor settings:', settings)
         mainWindow.webContents.send('baize-notes:editor-setting-updated', settings)
     })
 
@@ -165,7 +166,7 @@ function generateEditorSettingHTML(themeStyles: any, systemSettings: any): strin
 
         /* 侧边栏 */
         .sidebar {
-            width: 25%;
+            width: 30%;
             background: var(--card-bg);
             border-right: 1px solid var(--border-color);
             flex-shrink: 0;

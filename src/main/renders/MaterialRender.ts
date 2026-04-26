@@ -155,17 +155,17 @@ export function materialAdmonitionsRender(text: string): string {
     const regex = /!!!([\s\S]*?)(?=\n[!#`=\-+\[$|{<:*~>\S]|$)/g
     // 使用全局搜索来查找所有匹配项，匹配到的字符串，已经去掉了前缀和后缀
     while ((match = regex.exec(renderResult)) !== null) {
-        console.log('match[0]', match[0])
-        console.log('match[1]', match[1])
+        // console.log('match[0]', match[0])
+        // console.log('match[1]', match[1])
         const content = materialParserAdmonitions(match[1])
-        console.log('content', content)
+        // console.log('content', content)
         const renderHtml =
             `<div class="admonition ${content.type}">` +
             `<p class="admonition-title">${content.title}</p>` +
             `${content.content}</div>\n\n`
         renderResult = renderResult.replace(match[0], renderHtml)
-        console.log('renderHtml', renderHtml)
-        console.log('renderResult', renderResult)
+        // console.log('renderHtml', renderHtml)
+        // console.log('renderResult', renderResult)
     }
 
     return renderResult

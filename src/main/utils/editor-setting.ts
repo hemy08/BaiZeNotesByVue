@@ -275,6 +275,13 @@ const defaultEditorSetting: EditorSetting = {
     letterSpacing: 0,
     tabSize: 4,
     insertSpaces: true,
+    wordWrapColumn: 80,
+    wordWrapBreakBeforeCharacters: false,
+    wordWrapBreakAfterCharacters: false,
+    wrappingIndent: 'none',
+    wrappingStrategy: 'simple',
+    indentSize: 'tabSize',
+    detectIndentation: true,
 
     // 空白和折叠配置
     renderControlCharacters: false,
@@ -283,6 +290,8 @@ const defaultEditorSetting: EditorSetting = {
     foldingStrategy: 'auto',
     showFoldingControls: 'mouseover',
     unfoldOnClickAfterEndOfLine: false,
+    foldingImportsByDefault: false,
+    foldingMaximumRegions: 5000,
 
     // 高亮和装饰配置
     renderLineHighlight: 'all',
@@ -291,18 +300,50 @@ const defaultEditorSetting: EditorSetting = {
     selectionHighlight: true,
     occurrencesHighlight: 'singleFile',
     glyphMargin: true,
+    rangeHighlight: true,
+    rulers: [],
+    hover: {
+        enabled: true,
+        delay: 300,
+        sticky: false
+    },
+    stickyTabStops: false,
+    gotoLocation: {
+        multiple: 'goto',
+        multipleDefinitions: 'goto',
+        multipleImplementations: 'goto',
+        multipleReferences: 'goto',
+        multipleTypeDefinitions: 'goto'
+    },
 
     // 光标配置
     cursorStyle: 'line',
     cursorBlinking: 'smooth',
     cursorSmoothCaretAnimation: 'on',
     cursorWidth: 0, // 0表示默认
+    cursorSurroundingLines: 0,
+    cursorSurroundingLinesStyle: 'default',
+    cursorSurroundingLineColumns: 15,
+    stopRenderingLineAfter: -1,
 
     // 滚动配置
     smoothScrolling: true,
     scrollBeyondLastLine: false,
     mouseWheelScrollSensitivity: 1,
     fastScrollSensitivity: 5,
+    scrollBeyondLastColumn: 0,
+    scrollPredominantAxis: true,
+    alwaysConsumeMouseWheel: true,
+    hideHorizontalScrollbar: false,
+    scrollbar: {
+        vertical: 'auto',
+        horizontal: 'auto',
+        verticalScrollbarSize: 14,
+        horizontalScrollbarSize: 14,
+        arrowSize: 11,
+        useShadows: true,
+        renderByPixels: true
+    },
 
     // 自动完成和智能提示配置
     quickSuggestions: true,
@@ -310,14 +351,24 @@ const defaultEditorSetting: EditorSetting = {
     acceptSuggestionOnEnter: 'on',
     acceptSuggestionOnCommitCharacter: true,
     wordBasedSuggestions: 'on',
+    wordBasedSuggestionsOnlySameLanguage: false,
+    horizontalScrollbarSize: 14,
+    verticalScrollbarSize: 14,
+    arrowSize: 11,
+    useShadows: true,
 
     // 括号和引号配置
     autoClosingBrackets: 'languageDefined',
     autoClosingQuotes: 'languageDefined',
     autoClosingComments: 'languageDefined',
     autoSurround: 'languageDefined',
+    autoClosingOvertype: 'auto',
     autoIndent: 'advanced',
     autoIndentOnPaste: true,
+    commentMultiLine: true,
+    commentInline: true,
+    matchBrackets: 'always',
+    matchingBrackets: 'always',
 
     // 缩进指南配置
     guides: {
@@ -418,7 +469,6 @@ const defaultEditorSetting: EditorSetting = {
     },
 
     // 括号配置
-    matchingBrackets: 'always',
     renderFinalNewline: 'on',
     trimAutoWhitespace: true,
 

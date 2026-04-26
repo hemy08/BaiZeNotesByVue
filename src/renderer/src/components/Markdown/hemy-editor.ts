@@ -50,22 +50,8 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
         autoFindInSelection: 'multiline',
         seedSearchStringFromSelection: 'selection',
         cursorMoveOnType: true,
-        loop: true,
-        globalFindClipboard: false,
-        highlightFindMatches: true,
-        highlightFindMatchColor: true,
-        highlightFindMatchSize: 1
+        loop: true
     }, // 查找部件配置
-// ========== 差异编辑器配置 ==========
-    originalEditable: false, // 原始内容是否可编辑
-    renderSideBySide: true, // 是否并排显示
-    renderMarginRevertIcon: true, // 是否显示还原图标
-    renderIndicators: true, // 是否显示差异指示器
-    ignoreTrimWhitespace: true, // 是否忽略行尾空白差异
-    maxComputationTime: 60000, // 最大差异计算时间（ms）
-    useInlineViewWhenSpaceIsLimited: false, // 空间不足时使用内联视图
-    compactMode: false, // 紧凑模式
-    //stableMinimapScroll: true, // 稳定minimap滚动，提升性能
 
     // 大文件额外优化
     // viewportLineBuffer: 10, // 视口缓冲行数,减少渲染范围 (Monaco Editor不支持此属性)
@@ -84,8 +70,7 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
         verticalScrollbarSize: 14,
         horizontalScrollbarSize: 12,
         arrowSize: 11,
-        useShadows: true,
-        renderByPixels: true
+        useShadows: true
     }, // 滚动条配置对象
     smoothScrolling: true, // 平滑滚动
     cursorBlinking: 'smooth', // 光标闪烁动画
@@ -94,8 +79,6 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     fastScrollSensitivity: 5, // 快速滚动灵敏度
     scrollBeyondLastColumn: 5, // 超出最后一列的列数
     scrollPredominantAxis: true, // 锁定主导轴
-    alwaysConsumeMouseWheel: true, // 是否始终消耗滚轮事件
-    hideHorizontalScrollbar: false, // 是否隐藏水平滚动条
 
     // 减少不必要的渲染
     hideCursorInOverviewRuler: true, // 在概览标尺中隐藏光标
@@ -135,12 +118,10 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     //wordHighlight: 'off', // 禁用单词高亮
     //wordHighlightStrong: 'off', // 禁用强单词高亮
     bracketPairColorization: {
-// ========== 渲染选项配置补充 ==========
-    matchBrackets: 'near', // 匹配括号高亮
-    renderFinalNewline: 'on', // 渲染最终换行符
-    rangeHighlight: true, // 范围高亮
         enabled: true // 启用括号对颜色化
     },
+// ========== 渲染选项配置补充 ==========
+    renderFinalNewline: 'on', // 渲染最终换行符
 
     // ========== 基础配置补充 ==========
     readOnly: false, // 编辑器是否只读
@@ -150,8 +131,7 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     multiCursorModifier: 'alt', // 多光标修饰键 ('ctrlCmd' | 'alt')
     multiCursorPaste: 'spread', // 多光标粘贴行为 ('spread' | 'full')
     fixedOverflowWidgets: false, // 浮层是否固定显示（防止被容器裁剪）
-    ariaLabel: '白泽笔记编辑器', // ARIA 标签
-    ariaHeaderMessage: undefined, // ARIA 头信息
+    ariaLabel: '白泽笔记编辑器' // ARIA 标签
 }
 
 function UpdateLineNumber(editor: monaco.editor.IStandaloneCodeEditor) {

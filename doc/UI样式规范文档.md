@@ -94,12 +94,12 @@
 ### 常用间距
 | 场景 | 间距值 | 说明 |
 |------|--------|------|
-| 配置项行间距 | 6px | 配置项之间的垂直间距 |
+| 配置项行间距 | 8px | 配置项之间的垂直间距 |
 | 配置项内边距 | 2px 0 | 配置项的上下内边距 |
 | 配置项容器间距 | 8px | 容器内元素间距 |
 | 配置项分组间距 | 12px | 分组之间的间距 |
 | 内容区域内边距 | 16px 20px | 内容区域的padding |
-| 侧边栏宽度 | 35% | 对话框宽度的35% |
+| 侧边栏宽度 | 30% | 对话框宽度的30% |
 
 ---
 
@@ -272,7 +272,7 @@
 ### 侧边栏
 ```css
 .sidebar {
-    width: 35%;                    /* 对话框宽度的35% */
+    width: 30%;                    /* 对话框宽度的30% */
     background: var(--card-bg);
     border-right: 1px solid var(--border-color);
     padding: 16px 0;
@@ -323,7 +323,6 @@
     display: grid;
     grid-template-columns: 180px 1fr;  /* 标签宽度180px */
     align-items: center;
-    margin-bottom: 6px;
     gap: 8px;
     width: 100%;
     padding: 2px 0;
@@ -412,8 +411,8 @@
 | 元素 | 宽度 | 说明 |
 |------|------|------|
 | 配置项标签 | 180px | grid布局的第一列 |
-| 侧边栏 | 35% | 对话框宽度的35% |
-| 内容区域 | 65% | 对话框宽度的65% |
+| 侧边栏 | 30% | 对话框宽度的30% |
+| 内容区域 | 70% | 对话框宽度的70% |
 
 ---
 
@@ -459,9 +458,21 @@ transition: all 0.2s ease;
 - 使用opacity代替visibility
 - 合理使用will-change
 
+### 5. 配置项布局规范
+- **必须使用 `settings-grid` 容器**包裹配置项，容器有 `gap: 8px` 的间距
+- **禁止使用 `setting-row`**，统一使用 `setting-group`
+- 所有标签、标题等字体必须使用 `var(--system-font-family)` 和 `var(--system-font-size)` 变量
+
 ---
 
 ## 更新日志
+
+### v1.1.0 (2024-01-XX)
+- 更新侧边栏宽度为30%
+- 更新配置项行间距为8px
+- 规范化配置项布局，使用settings-grid容器
+- 禁止使用setting-row，统一使用setting-group
+- 强制使用系统字体变量
 
 ### v1.0.0 (2024-01-XX)
 - 初始版本
