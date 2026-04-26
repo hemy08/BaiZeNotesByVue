@@ -246,6 +246,11 @@ function makeSystemSettingDialogHtml(): string {
             width: 100%;
             padding: 2px 0;
         }
+        /* 窗口设置面板中的setting-group使用单列布局 */
+        #window-panel .setting-group {
+            display: block;
+            padding: 8px 0;
+        }
         .setting-label {
             font-size: var(--font-size-base);
             color: var(--text-color);
@@ -257,6 +262,7 @@ function makeSystemSettingDialogHtml(): string {
             display: flex;
             align-items: center;
             gap: 8px;
+            width: 100%;
         }
         .setting-hint {
             font-size: var(--font-size-xs);
@@ -660,6 +666,18 @@ function makeSystemSettingDialogHtml(): string {
             if (s.helpContactUsModal !== undefined) {
                 document.getElementById('system-help-contact-us-modal').checked = s.helpContactUsModal
             }
+            if (s.insertImageModal !== undefined) {
+                document.getElementById('system-insert-image-modal').checked = s.insertImageModal
+            }
+            if (s.mathTextModal !== undefined) {
+                document.getElementById('system-math-text-modal').checked = s.mathTextModal
+            }
+            if (s.webUrlModal !== undefined) {
+                document.getElementById('system-web-url-modal').checked = s.webUrlModal
+            }
+            if (s.mdSheetModal !== undefined) {
+                document.getElementById('system-md-sheet-modal').checked = s.mdSheetModal
+            }
             updateFontPreview()
         })
 
@@ -712,7 +730,16 @@ function makeSystemSettingDialogHtml(): string {
                 autoSaveEnabled: document.getElementById('system-auto-save-enabled').checked,
                 autoSaveInterval: autoSaveInterval,
                 fontFamily: document.getElementById('system-font-family').value,
-                fontSize: fontSize
+                fontSize: fontSize,
+                editorSettingModal: document.getElementById('system-editor-setting-modal').checked,
+                systemSettingModal: document.getElementById('system-system-setting-modal').checked,
+                themeSettingModal: document.getElementById('system-theme-setting-modal').checked,
+                helpAboutModal: document.getElementById('system-help-about-modal').checked,
+                helpContactUsModal: document.getElementById('system-help-contact-us-modal').checked,
+                insertImageModal: document.getElementById('system-insert-image-modal').checked,
+                mathTextModal: document.getElementById('system-math-text-modal').checked,
+                webUrlModal: document.getElementById('system-web-url-modal').checked,
+                mdSheetModal: document.getElementById('system-md-sheet-modal').checked
             }
         }
 

@@ -266,7 +266,7 @@ const defaultEditorSetting: EditorSetting = {
     wordWrap: 'on',
     minimap: false,
     lineNumbers: 'on',
-    fontSize: 60,
+    fontSize: 15,
     fontFamily: 'Hack',
     fontWeight: 'normal',
     fontLigatures: false,
@@ -479,8 +479,8 @@ const defaultEditorSetting: EditorSetting = {
 
     // 行装饰配置
     lineDecorationsWidth: 10,
-    lineNumbersMinChars: 5,
-    revealHorizontalRightPadding: 30,
+    lineNumbersMinChars: 0, // 减小行号区域宽度，默认5改为3
+    revealHorizontalRightPadding: 10,
 
     // 概览标尺配置
     overviewRulerBorder: false,

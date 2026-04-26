@@ -26,6 +26,7 @@ const systemSettingStore = new Store<SystemSetting>({
         themeSettingModal: false,
         helpAboutModal: false,
         helpContactUsModal: false,
+        insertImageModal: false,
         admonitionsModal: false,
         fontSelectModal: false,
         mathTextModal: false,
@@ -85,6 +86,9 @@ export function saveSystemSetting(setting: Partial<SystemSetting>): void {
     if (setting.helpContactUsModal !== undefined) {
         systemSettingStore.set('helpContactUsModal', setting.helpContactUsModal)
     }
+    if (setting.insertImageModal !== undefined) {
+        systemSettingStore.set('insertImageModal', setting.insertImageModal)
+    }
     if (setting.admonitionsModal !== undefined) {
         systemSettingStore.set('admonitionsModal', setting.admonitionsModal)
     }
@@ -133,6 +137,7 @@ export function getSystemSetting(): SystemSetting {
         themeSettingModal: systemSettingStore.get('themeSettingModal', false),
         helpAboutModal: systemSettingStore.get('helpAboutModal', false),
         helpContactUsModal: systemSettingStore.get('helpContactUsModal', false),
+        insertImageModal: systemSettingStore.get('insertImageModal', false),
         admonitionsModal: systemSettingStore.get('admonitionsModal', false),
         fontSelectModal: systemSettingStore.get('fontSelectModal', false),
         mathTextModal: systemSettingStore.get('mathTextModal', false),

@@ -185,15 +185,15 @@ export const EditorOptionMaps = {
     tabSize: 'tabSize',
     insertSpaces: 'insertSpaces',
 // ========== 换行与缩进配置补充 ==========
-    wordWrapColumn: 80, // 换行列数
-    wordWrapBreakBeforeCharacters: false, // 是否在换行前字符处断行
-    wordWrapBreakAfterCharacters: true, // 是否在换行后字符处断行
-    wrappingIndent: 'same', // 换行缩进方式
-    wrappingStrategy: 'simple', // 换行断点计算策略
-    indentSize: 'tabSize', // 缩进大小
-    detectIndentation: true, // 是否自动检测缩进
-    trimAutoWhitespace: true, // 是否修剪行首尾空白
-    ignoreEmptyLines: true, // 插入行注释时是否忽略空行
+    wordWrapColumn: 'wordWrapColumn',
+    wordWrapBreakBeforeCharacters: 'wordWrapBreakBeforeCharacters',
+    wordWrapBreakAfterCharacters: 'wordWrapBreakAfterCharacters',
+    wrappingIndent: 'wrappingIndent',
+    wrappingStrategy: 'wrappingStrategy',
+    indentSize: 'indentSize',
+    detectIndentation: 'detectIndentation',
+    trimAutoWhitespace: 'trimAutoWhitespace',
+    ignoreEmptyLines: 'ignoreEmptyLines',
 
     // 显示配置
     renderWhitespace: 'renderWhitespace',
@@ -218,20 +218,27 @@ export const EditorOptionMaps = {
     scrollBeyondLastLine: 'scrollBeyondLastLine',
     mouseWheelScrollSensitivity: 'mouseWheelScrollSensitivity',
     readOnly: 'readOnly',
+    domReadOnly: 'domReadOnly',
+    emptySelectionClipboard: 'emptySelectionClipboard',
+    copyWithSyntaxHighlighting: 'copyWithSyntaxHighlighting',
+    multiCursorModifier: 'multiCursorModifier',
+    multiCursorPaste: 'multiCursorPaste',
+    fixedOverflowWidgets: 'fixedOverflowWidgets',
+    ariaLabel: 'ariaLabel',
 
     // 字体配置
     fontLigatures: 'fontLigatures',
-    fontVariations: false, // 是否启用 OpenType 字体变体
+    fontVariations: 'fontVariations',
     letterSpacing: 'letterSpacing',
     lineHeight: 'lineHeight',
 
     // 光标配置
     cursorStyle: 'cursorStyle',
     cursorWidth: 'cursorWidth',
-cursorSurroundingLines: 0, // 光标上下最小可见行数
-    cursorSurroundingLinesStyle: 'default', // 周围行数样式
-    cursorSurroundingLineColumns: 15, // 水平居中时两侧显示的列数
-    stopRenderingLineAfter: -1, // 行尾最大渲染字符数
+    cursorSurroundingLines: 'cursorSurroundingLines',
+    cursorSurroundingLinesStyle: 'cursorSurroundingLinesStyle',
+    cursorSurroundingLineColumns: 'cursorSurroundingLineColumns',
+    stopRenderingLineAfter: 'stopRenderingLineAfter',
 
     // 智能提示配置
     quickSuggestions: 'quickSuggestions',
@@ -240,13 +247,9 @@ cursorSurroundingLines: 0, // 光标上下最小可见行数
     acceptSuggestionOnEnter: 'acceptSuggestionOnEnter',
     acceptSuggestionOnCommitCharacter: 'acceptSuggestionOnCommitCharacter',
     wordBasedSuggestions: 'wordBasedSuggestions',
-// ========== 智能提示与补全配置补充 ==========
-    wordBasedSuggestionsOnlySameLanguage: true, // 仅限同语言文档
-    suggestSelection: 'recentlyUsedByPrefix', // 建议选中策略
-    parameterHints: {
-        enabled: true,
-        cycle: false
-    }, // 参数提示
+    wordBasedSuggestionsOnlySameLanguage: 'wordBasedSuggestionsOnlySameLanguage',
+    suggestSelection: 'suggestSelection',
+    parameterHints: 'parameterHints',
     tabCompletion: 'tabCompletion',
     snippetSuggestions: 'snippetSuggestions',
 
@@ -255,11 +258,10 @@ cursorSurroundingLines: 0, // 光标上下最小可见行数
     autoClosingQuotes: 'autoClosingQuotes',
     autoClosingOvertype: 'autoClosingOvertype',
     autoSurround: 'autoSurround',
-// ========== 自动闭合与修饰配置补充 ==========
-    commentMultiLine: true, // 是否使用多行注释
-    commentInline: true, // 是否使用行内注释
-    formatOnPaste: false, // 粘贴时格式化
-    formatOnType: false, // 输入时格式化
+    commentMultiLine: 'commentMultiLine',
+    commentInline: 'commentInline',
+    formatOnPaste: 'formatOnPaste',
+    formatOnType: 'formatOnType',
     autoClosingComments: 'autoClosingComments',
     autoIndent: 'autoIndent',
     autoIndentOnPaste: 'autoIndentOnPaste',
@@ -269,6 +271,51 @@ cursorSurroundingLines: 0, // 光标上下最小可见行数
     highlightActiveIndentGuide: 'highlightActiveIndentGuide',
     rulers: 'rulers',
     guides: 'guides',
+    renderControlCharacters: 'renderControlCharacters',
+    foldingImportsByDefault: 'foldingImportsByDefault',
+    foldingMaximumRegions: 'foldingMaximumRegions',
+    rangeHighlight: 'rangeHighlight',
+    hover: 'hover',
+    stickyTabStops: 'stickyTabStops',
+    gotoLocation: 'gotoLocation',
+    scrollBeyondLastColumn: 'scrollBeyondLastColumn',
+    scrollPredominantAxis: 'scrollPredominantAxis',
+    alwaysConsumeMouseWheel: 'alwaysConsumeMouseWheel',
+    hideHorizontalScrollbar: 'hideHorizontalScrollbar',
+    scrollbar: 'scrollbar',
+    horizontalScrollbarSize: 'horizontalScrollbarSize',
+    verticalScrollbarSize: 'verticalScrollbarSize',
+    arrowSize: 'arrowSize',
+    useShadows: 'useShadows',
+    matchBrackets: 'matchBrackets',
+    matchingBrackets: 'matchingBrackets',
+    showAdjustSettingTip: 'showAdjustSettingTip',
+    editable: 'editable',
+    suggestFontSize: 'suggestFontSize',
+    suggestLineHeight: 'suggestLineHeight',
+    suggestPreview: 'suggestPreview',
+    inlineSuggest: 'inlineSuggest',
+    find: 'find',
+    originalEditable: 'originalEditable',
+    renderSideBySide: 'renderSideBySide',
+    renderMarginRevertIcon: 'renderMarginRevertIcon',
+    renderIndicators: 'renderIndicators',
+    ignoreTrimWhitespace: 'ignoreTrimWhitespace',
+    maxComputationTime: 'maxComputationTime',
+    useInlineViewWhenSpaceIsLimited: 'useInlineViewWhenSpaceIsLimited',
+    compactMode: 'compactMode',
+    comments: 'comments',
+    renderFinalNewline: 'renderFinalNewline',
+    codeLens: 'codeLens',
+    codeLensFontFamily: 'codeLensFontFamily',
+    codeLensFontSize: 'codeLensFontSize',
+    lineDecorationsWidth: 'lineDecorationsWidth',
+    lineNumbersMinChars: 'lineNumbersMinChars',
+    revealHorizontalRightPadding: 'revealHorizontalRightPadding',
+    overviewRulerBorder: 'overviewRulerBorder',
+    overviewRulerLanes: 'overviewRulerLanes',
+    hideCursorInOverviewRuler: 'hideCursorInOverviewRuler',
+    maximizedScrollbar: 'maximizedScrollbar',
 
     // 括号对颜色化配置
     bracketPairColorization: 'bracketPairColorization',
@@ -367,7 +414,14 @@ export function updateEditorOptions(
         if (key === 'minimap') {
             options.minimap = { enabled: !!value }
         } else if (key === 'rulers') {
-            options.rulers = value ? (value as string).split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v)) : []
+            // 修复：检查 value 类型，避免 split 错误
+            if (typeof value === 'string') {
+                options.rulers = value ? value.split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v)) : []
+            } else if (Array.isArray(value)) {
+                options.rulers = value
+            } else {
+                options.rulers = []
+            }
         } else if (key === 'guides') {
             if (typeof value === 'object' && value !== null) {
                 options.guides = value

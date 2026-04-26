@@ -42,31 +42,34 @@ let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
 //const registeredActions: string[] = []
 //const registeredDecorations: string[] = []
 
-// 初始化编辑器
-window.electron.ipcRenderer.on('monaco-editor-insert-after-cursor', (_, context: string) => {
+// 定义 IPC 监听器处理函数（用于正确清理）
+const handleInsertAfterCursorIPC = (_: any, context: string) => {
     if (context && editorInstance) {
         editor.InsertAfterCursor(editorInstance, context)
     }
-})
+}
 
-window.electron.ipcRenderer.on('monaco-insert-text-block-templates', (_, context: string) => {
+const handleInsertTextBlockTemplates = (_: any, context: string) => {
     if (context && editorInstance) {
         editor.InsertAfterCursor(editorInstance, context)
     }
-})
+}
 
-window.electron.ipcRenderer.on(
-    'baize-notes:monaco-editor-update-options',
-    (_, option: string, newValue: string) => {
-        editor.OptMaps[option](editorInstance, newValue)
-    }
-)
+const handleUpdateOptions = (_: any, option: string, newValue: string) => {
+    editor.OptMaps[option](editorInstance, newValue)
+}
 
-window.electron.ipcRenderer.on('monaco-editor-trigger-undo-redo', (_, option: string) => {
+const handleTriggerUndoRedo = (_: any, option: string) => {
     if (editorInstance) {
-        editorInstance.trigger ('keyboard', option, {})
+        editorInstance.trigger('keyboard', option, {})
     }
-})
+}
+
+// 初始化编辑器 - 注册 IPC 监听器
+window.electron.ipcRenderer.on('monaco-editor-insert-after-cursor', handleInsertAfterCursorIPC)
+window.electron.ipcRenderer.on('monaco-insert-text-block-templates', handleInsertTextBlockTemplates)
+window.electron.ipcRenderer.on('baize-notes:monaco-editor-update-options', handleUpdateOptions)
+window.electron.ipcRenderer.on('monaco-editor-trigger-undo-redo', handleTriggerUndoRedo)
 
 // 监听代码内容变化
 watch(
@@ -259,27 +262,31 @@ onBeforeUnmount(() => {
     EventBus.$off('monaco-editor-locate-target-line', handleLocateTargetLine)
     EventBus.$off('monaco-editor-relayout', handleRelayout)
 
-    // 2. 清理 IPC 监听器
-    window.electron.ipcRenderer.removeAllListeners('monaco-editor-insert-after-cursor')
-    window.electron.ipcRenderer.removeAllListeners('monaco-insert-text-block-templates')
-    window.electron.ipcRenderer.removeAllListeners('baize-notes:monaco-editor-update-options')
-    window.electron.ipcRenderer.removeAllListeners('monaco-editor-trigger-undo-redo')
-    window.electron.ipcRenderer.removeAllListeners('baize-notes:editor-setting-updated')
-    window.electron.ipcRenderer.removeAllListeners('baize-notes:init-editor-setting')
+    // 2. 清理 IPC 监听器 - 使用具体的监听器函数引用
+    window.electron.ipcRenderer.removeListener('monaco-editor-insert-after-cursor', handleInsertAfterCursorIPC)
+    window.electron.ipcRenderer.removeListener('monaco-insert-text-block-templates', handleInsertTextBlockTemplates)
+    window.electron.ipcRenderer.removeListener('baize-notes:monaco-editor-update-options', handleUpdateOptions)
+    window.electron.ipcRenderer.removeListener('monaco-editor-trigger-undo-redo', handleTriggerUndoRedo)
+    window.electron.ipcRenderer.removeListener('baize-notes:editor-setting-updated', handleUpdateEditorOptions)
+    window.electron.ipcRenderer.removeListener('baize-notes:init-editor-setting', handleUpdateEditorOptions)
 
     // 3. 清理窗口事件监听器
     window.removeEventListener('resize', handleEditCompResize)
+    window.removeEventListener('scroll', handleScrollEvent)
 
-    //  4. 完整清理 Monaco Editor
+    // 4. 完整清理 Monaco Editor
     if (editorInstance) {
         const model = editorInstance.getModel()
         if (model) {
-            model.dispose() // 清理模型
+            // 先分离模型，再销毁
+            editorInstance.setModel(null)
+            model.dispose()
         }
-        editorInstance.dispose() // 清理编辑器
+        editorInstance.dispose()
         editorInstance = null
     }
-    // 5. 清理 Monaco 内部缓存
+
+    // 5. 清理 Monaco 内部缓存（只清理未附加到编辑器的模型）
     monaco.editor.getModels().forEach(model => {
         if (!model.isAttachedToEditor()) {
             model.dispose()

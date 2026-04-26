@@ -16,8 +16,9 @@ import { ShowEditorSettingDialog } from './ShowEditorSettingDialog'
 import { ShowQuickLinkSettingDialog } from './ShowQuickLinkSettingDialog'
 import {ShowTechStackDialog} from './ShowTechStackDialog'
 import {ShowHelpAboutDialog} from  './ShowHelpAboutDialog'
+import { ipcListenerManager } from '../utils/ipc-listener-manager'
 import {ShowHelpContactUsDialog} from  './ShowHelpContactUsDialog'
-import { dialog, ipcMain } from 'electron'
+import { dialog } from 'electron'
 import * as fileUtils from '../utils/file-utils'
 
 function ShowConfirmDeleteDialog(path: string, isFile: boolean) {
@@ -68,37 +69,46 @@ export {
 }
 
 export function MainWindowListenDialogsEvent(mainWindow: Electron.BrowserWindow) {
-    ipcMain.on('monaco-editor-tools-insert-table', () => {
+    const componentId = 'main-window-dialogs'
+
+    ipcListenerManager.register('monaco-editor-tools-insert-table', () => {
         ShowMarkdownSheetDialog(mainWindow)
-    })
+    }, componentId)
 
-    ipcMain.on('monaco-editor-tools-insert-web-links', () => {
+    ipcListenerManager.register('monaco-editor-tools-insert-web-links', () => {
         ShowWebUrlDialog(mainWindow)
-    })
+    }, componentId)
 
-    ipcMain.on('monaco-editor-tools-insert-image', () => {
+    ipcListenerManager.register('monaco-editor-tools-insert-image', () => {
         ShowInsertImageDialog(mainWindow)
-    })
+    }, componentId)
 
-    ipcMain.on('file-manager-context-menu-create-file', (_, dirPath, isFolder, fileExtension) => {
+    ipcListenerManager.register('file-manager-context-menu-create-file', (_, dirPath, isFolder, fileExtension) => {
         ShowCreateFileFolderDialog(dirPath, isFolder, fileExtension)
-    })
+    }, componentId)
 
-    ipcMain.on('file-manager-context-menu-import-from', (_, value) => {
+    ipcListenerManager.register('file-manager-context-menu-import-from', (_, value) => {
         console.log('file-manager-context-menu-import-from', value)
-    })
+    }, componentId)
 
-    ipcMain.on('file-manager-context-menu-delete', (_, value, isFile) => {
+    ipcListenerManager.register('file-manager-context-menu-delete', (_, value, isFile) => {
         // console.log('file-manager-context-menu-delete', value)
         ShowConfirmDeleteDialog(value, isFile)
-    })
+    }, componentId)
 
-    ipcMain.on('file-manager-context-menu-find-in', (_, value) => {
+    ipcListenerManager.register('file-manager-context-menu-find-in', (_, value) => {
         console.log('file-manager-context-menu-find-in', value)
-    })
+    }, componentId)
 
-    ipcMain.on('file-manager-context-menu-rename', (_, path, isFile) => {
+    ipcListenerManager.register('file-manager-context-menu-rename', (_, path, isFile) => {
         // console.log('file-manager-context-menu-rename', path, name)
         ShowFileFolderRenameDialog(path, isFile)
-    })
+    }, componentId)
+}
+
+/**
+ * 清理主窗口的对话框事件监听器
+ */
+export function CleanupMainWindowDialogsEvent() {
+    ipcListenerManager.cleanupComponent('main-window-dialogs')
 }

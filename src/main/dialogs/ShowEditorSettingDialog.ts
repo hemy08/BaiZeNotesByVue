@@ -1,34 +1,39 @@
-import { BrowserWindow, ipcMain } from 'electron'
 import { getCurrentThemeStyles } from '../themes/theme-config'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
 import * as EditorSettingUtils from '../utils/editor-setting'
 import * as SystemSettingUtils from '../themes/system-setting'
 import { FontFamily } from '../utils/common'
-
-let editorSettingDialog: Electron.BrowserWindow | null
+import { windowManager } from '../utils/window-manager'
+import { ipcListenerManager } from '../utils/ipc-listener-manager'
 
 // 创建编辑器设置对话框
 export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
-    if (editorSettingDialog) {
+    const existingWindow = windowManager.getWindowByType('editor-setting-dialog')
+    if (existingWindow) {
         digcom.ShowAlreadyExistDialog()
         return
     }
 
-    editorSettingDialog = new BrowserWindow({
-        width: 800,
-        height: 1000,
-        minWidth: 700,
-        minHeight: 800,
-        parent: mainWindow,
-        modal: false,
-        resizable: true,
-        frame: false,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
-        }
-    })
+    const editorSettingDialog = windowManager.createWindow(
+        'editor-setting-dialog',
+        {
+            width: 800,
+            height: 1000,
+            minWidth: 700,
+            minHeight: 800,
+            parent: mainWindow,
+            modal: false,
+            resizable: true,
+            frame: false,
+            webPreferences: {
+                nodeIntegration: true,
+                contextIsolation: false
+            }
+        },
+        'editor-setting-dialog',
+        true
+    )
 
     const themeStyles = getCurrentThemeStyles()
     const systemSettings = SystemSettingUtils.getSystemSetting()
@@ -38,43 +43,44 @@ export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
         `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`
     )
 
-    editorSettingDialog.on('closed', () => {
-        editorSettingDialog = null
-    })
-
     // 加载已保存的设置
     const savedSettings = EditorSettingUtils.getEditorSetting()
     editorSettingDialog.webContents.on('did-finish-load', () => {
         editorSettingDialog?.webContents.send('load-saved-editor-settings', savedSettings)
     })
 
+    const componentId = 'editor-setting-dialog'
+
     // 应用设置
-    ipcMain.on('dialog-editor-setting-apply', (_event, settings) => {
+    ipcListenerManager.register('dialog-editor-setting-apply', (_event, settings) => {
         EditorSettingUtils.saveEditorSetting(settings)
-        // 通知主窗口更新编辑器设置
-        //console.log('EditorSettingDialog: apply editor settings:', settings)
-        mainWindow.webContents.send('baize-notes:editor-setting-updated', settings)
-    })
+        // 通知主窗口更新编辑器设置（检查窗口是否已销毁）
+        if (!mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('baize-notes:editor-setting-updated', settings)
+        }
+    }, componentId)
 
     // 取消设置
-    ipcMain.on('dialog-editor-setting-cancel', () => {
+    ipcListenerManager.register('dialog-editor-setting-cancel', () => {
         editorSettingDialog?.close()
-    })
+    }, componentId)
 
     // 重置默认设置
-    ipcMain.on('dialog-editor-setting-reset', () => {
+    ipcListenerManager.register('dialog-editor-setting-reset', () => {
         EditorSettingUtils.resetEditorSetting()
         const defaultSettings = EditorSettingUtils.getDefaultEditorSetting()
         editorSettingDialog?.webContents.send('load-saved-editor-settings', defaultSettings)
-    })
+    }, componentId)
 
     // 确定按钮 - 保存并关闭
-    ipcMain.on('dialog-editor-setting-ok', (_event, settings) => {
+    ipcListenerManager.register('dialog-editor-setting-ok', (_event, settings) => {
         EditorSettingUtils.saveEditorSetting(settings)
-        // 通知主窗口更新编辑器设置
-        mainWindow.webContents.send('baize-notes:editor-setting-updated', settings)
+        // 通知主窗口更新编辑器设置（检查窗口是否已销毁）
+        if (!mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('baize-notes:editor-setting-updated', settings)
+        }
         editorSettingDialog?.close()
-    })
+    }, componentId)
 }
 
 function generateEditorSettingHTML(themeStyles: any, systemSettings: any): string {

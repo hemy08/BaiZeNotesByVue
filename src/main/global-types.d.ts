@@ -159,6 +159,7 @@ export interface SystemSetting {
     themeSettingModal: boolean // 主题设置对话框是否模态，默认false
     helpAboutModal: boolean // 帮助关于对话框是否模态，默认false
     helpContactUsModal: boolean // 帮助联系我们对话框是否模态，默认false
+    insertImageModal: boolean // 插入图片对话框是否模态，默认false
     admonitionsModal: boolean // Admonitions对话框是否模态，默认false
     fontSelectModal: boolean // 字体选择对话框是否模态，默认false
     mathTextModal: boolean // 数学文本对话框是否模态，默认false

@@ -14,6 +14,7 @@ import { getSystemSetting } from './themes/system-setting'
 import { StartAutoSaveFileTime } from './utils/file-utils'
 import { RegisterShortKeys } from './utils/short-key-register'
 import { logger } from './utils/logger'
+import { ipcListenerManager } from './utils/ipc-listener-manager'
 const timers: NodeJS.Timeout[] = []
 const watchers: fs.FSWatcher[] = []
 //import { SystemSetting } from "./global-types";
@@ -261,6 +262,14 @@ app.on('before-quit', () => {
     // 清理所有文件监听器
     watchers.forEach(watcher => watcher.close())
 
-    // 清理IPC监听器
-    ipcMain.removeAllListeners()
+    // 清理主窗口对话框事件监听器
+    dialogs.CleanupMainWindowDialogsEvent()
+
+    // 清理所有IPC监听器（使用管理器）
+    ipcListenerManager.cleanupAll()
+
+    // 打印监听器统计信息（调试用）
+    if (is.dev) {
+        ipcListenerManager.printStats()
+    }
 })
