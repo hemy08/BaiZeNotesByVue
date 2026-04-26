@@ -1,66 +1,121 @@
 # 发布说明 (Release Notes)
 
 ## 版本 1.1.3 (2026-04-26)
+
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
 
 
 `Bai Ze Notes 1.1.3 windows.x64.exe`   是免安装直接使用
 `Bai Ze Notes Setup 1.1.3 windows.x64.exe` 是`Windows`下的安装包，目前不提供`Linux、macOS、HarmonyOS`，可以自行下载编译
-
-
 <details>
 <summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+<h3>🚀 核心功能</h3>
+<ul>
+<li><strong>文件自动保存</strong>：实现自动保存机制，默认周期60秒，状态栏实时显示保存状态</li>
+<li><strong>HTML/PDF 支持</strong>：新增 HTML 查看和 PDF 编辑器组件，支持直接预览和编辑</li>
+<li><strong>日志系统</strong>：新增多级别日志模块，支持日志文件自动轮转和归档</li>
+<li><strong>窗口管理</strong>：新增窗口管理器，支持模态/非模态窗口控制和状态监控</li>
+<li><strong>IPC 管理</strong>：新增 IPC 监听器管理器，自动清理机制防止内存泄漏</li>
+<li><strong>快捷键系统</strong>：新增快捷键注册模块，支持全局快捷键绑定和冲突检测</li>
+</ul>
 
-### 🚀 核心功能
-- **文件自动保存**：实现自动保存机制，默认周期60秒，状态栏实时显示保存状态
-- **HTML/PDF 支持**：新增 HTML 查看和 PDF 编辑器组件，支持直接预览和编辑
-- **日志系统**：新增多级别日志模块，支持日志文件自动轮转和归档
-- **窗口管理**：新增窗口管理器，支持模态/非模态窗口控制和状态监控
-- **IPC 管理**：新增 IPC 监听器管理器，自动清理机制防止内存泄漏
-- **快捷键系统**：新增快捷键注册模块，支持全局快捷键绑定和冲突检测
+<h3>⚡ 性能优化</h3>
+<ul>
+<li><strong>编辑器性能</strong>：大文件加载速度提升 50%，内存使用减少 40%，实现 LRU 缓存算法</li>
+<li><strong>Mermaid 渲染</strong>：并行渲染速度提升 3倍，新增渲染缓存和按需渲染机制</li>
+<li><strong>EventBus 优化</strong>：组件卸载时自动清理事件监听器，修复内存泄漏问题</li>
+<li><strong>状态管理</strong>：使用 electron-store 持久化，分离持久化状态和运行时状态</li>
+</ul>
 
-### ⚡ 性能优化
-- **编辑器性能**：大文件加载速度提升 50%，内存使用减少 40%，实现 LRU 缓存算法
-- **Mermaid 渲染**：并行渲染速度提升 3倍，新增渲染缓存和按需渲染机制
-- **EventBus 优化**：组件卸载时自动清理事件监听器，修复内存泄漏问题
-- **状态管理**：使用 electron-store 持久化，分离持久化状态和运行时状态
+<h3>🎨 UI/UX 改进</h3>
+<ul>
+<li><strong>主题系统</strong>：新增 55 种 Monaco 编辑器主题，主题配置从 JSON 文件动态加载</li>
+<li><strong>预览区域</strong>：增加垂直滚动条显示，优化滚动流畅度</li>
+<li><strong>状态栏</strong>：实时显示文件保存状态，未保存/已保存状态可视化区分</li>
+<li><strong>右侧导航</strong>：新增 NaviTab 组件，提供快速访问常用功能</li>
+</ul>
 
-### 🎨 UI/UX 改进
-- **主题系统**：新增 55 种 Monaco 编辑器主题，主题配置从 JSON 文件动态加载
-- **预览区域**：增加垂直滚动条显示，优化滚动流畅度
-- **状态栏**：实时显示文件保存状态，未保存/已保存状态可视化区分
-- **右侧导航**：新增 NaviTab 组件，提供快速访问常用功能
+<h3>🐛 重要修复</h3>
+<ul>
+<li><strong>内存泄漏修复</strong>：修复 Vue 3 生命周期钩子嵌套调用问题，修复 Monaco Editor 实例未释放（30-50 MB/个）</li>
+<li><strong>EventBus 泄漏</strong>：修复事件监听器残留问题</li>
+<li><strong>IPC 泄漏</strong>：修复 IPC 监听器未清理问题</li>
+<li><strong>文件保存</strong>：修复文件保存失败 bug 和编码保存问题</li>
+<li><strong>渲染问题</strong>：修复 Mermaid 图表渲染失败问题</li>
+</ul>
 
-### 🐛 重要修复
-- **内存泄漏修复**：修复 Vue 3 生命周期钩子嵌套调用问题，修复 Monaco Editor 实例未释放（30-50 MB/个）
-- **EventBus 泄漏**：修复事件监听器残留问题
-- **IPC 泄漏**：修复 IPC 监听器未清理问题
-- **文件保存**：修复文件保存失败 bug 和编码保存问题
-- **渲染问题**：修复 Mermaid 图表渲染失败问题
+<h3>🔧 代码质量</h3>
+<ul>
+<li><strong>代码清理</strong>：删除未使用的文件、函数和接口，删除 <code>src/renderer/src/lib</code> 目录</li>
+<li><strong>配置优化</strong>：完善编辑器配置、系统配置、主题配置和快速链接配置</li>
+<li><strong>类型定义</strong>：新增全局类型定义，提供完整的 TypeScript 类型支持</li>
+</ul>
 
-### 🔧 代码质量
-- **代码清理**：删除未使用的文件、函数和接口，删除 `src/renderer/src/lib` 目录
-- **配置优化**：完善编辑器配置、系统配置、主题配置和快速链接配置
-- **类型定义**：新增全局类型定义，提供完整的 TypeScript 类型支持
+<h3>📚 文档更新</h3>
+<ul>
+<li>新增 UI 样式规范文档、Monaco Editor 全量配置文档</li>
+<li>新增性能分析与优化报告、全局状态管理优化总结</li>
+<li>更新主题设置详细方案、CHANGELOG 和 RELEASE-NOTES</li>
+</ul>
 
-### 📚 文档更新
-- 新增 UI 样式规范文档、Monaco Editor 全量配置文档
-- 新增性能分析与优化报告、全局状态管理优化总结
-- 更新主题设置详细方案、CHANGELOG 和 RELEASE-NOTES
+<h3>📊 性能对比</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>1.1.2</th>
+<th>1.1.3</th>
+<th>改进</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>大文件加载速度</td>
+<td>基准</td>
+<td>+50%</td>
+<td>⬆️</td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>基准</td>
+<td>-40%</td>
+<td>⬇️</td>
+</tr>
+<tr>
+<td>Mermaid 渲染速度</td>
+<td>基准</td>
+<td>+200%</td>
+<td>⬆️</td>
+</tr>
+<tr>
+<td>内存泄漏</td>
+<td>严重</td>
+<td>已修复</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>编辑器主题数量</td>
+<td>0</td>
+<td>55</td>
+<td>⬆️</td>
+</tr>
+</tbody>
+</table>
+</code></pre></blockcode></details>
 
-### 📊 性能对比
-
-| 指标 | 1.1.2 | 1.1.3 | 改进 |
-|------|-------|-------|------|
-| 大文件加载速度 | 基准 | +50% | ⬆️ |
-| 内存使用 | 基准 | -40% | ⬇️ |
-| Mermaid 渲染速度 | 基准 | +200% | ⬆️ |
-| 内存泄漏 | 严重 | 已修复 | ✅ |
-| 编辑器主题数量 | 0 | 55 | ⬆️ |
+---
 
 </code></pre></blockcode></details>
 
 ---
+
+## 版本 1.1.2 (2026-04-05)
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+
+`Bai Ze Notes 1.1.2 windows.x64.exe`   是免安装直接使用
+`Bai Ze Notes Setup 1.1.2 windows.x64.exe` 是`Windows`下的安装包，目前不提供`Linux、macOS、HarmonyOS`，可以自行下载编译
 
 <details>
 <summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
@@ -104,6 +159,11 @@
 ---
 
 ## 版本 1.1.1 (2026-04-05)
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+
+`Bai Ze Notes 1.1.1 windows.x64.exe`   是免安装直接使用
+`Bai Ze Notes Setup 1.1.1 windows.x64.exe` 是`Windows`下的安装包，目前不提供`Linux、macOS、HarmonyOS`，可以自行下载编译
 
 <details>
 <summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
@@ -162,6 +222,11 @@
 ---
 
 ## 版本 1.0.1 (2026-03-08)
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+
+`Bai Ze Notes 1.0.1 windows.x64.exe`   是免安装直接使用
+`Bai Ze Notes Setup 1.0.1 windows.x64.exe` 是`Windows`下的安装包，目前不提供`Linux、macOS、HarmonyOS`，可以自行下载编译
 
 <details>
 <summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
