@@ -1,6 +1,7 @@
 import { app, shell } from 'electron'
 import * as fileUtils from "../utils/file-utils";
 import * as dialogs from "../dialogs/dialogs";
+import { OpenOnlineWebPage } from "../dialogs/dialogs";
 
 /**
  * 菜单动作处理函数类型定义
@@ -152,28 +153,72 @@ const viewMenuHandlers = {
 };
 
 // ==================== 编码菜单处理器 ====================
+function FileEncoding(mainWindow: Electron.CrossProcessExports.BrowserWindow, encoding: string) {
+    mainWindow.webContents.send('open-with-encoding', encoding)
+}
+
+function FileConvertCoding(mainWindow: Electron.CrossProcessExports.BrowserWindow, encoding: string) {
+    mainWindow.webContents.send('convert-to-encoding', encoding)
+}
+
 const codingMenuHandlers = {
     encoding: {
-        'utf8': () => {},
-        'utf16-le': () => {},
-        'utf16-be': () => {},
-        'gbk': () => {},
-        'gb2312': () => {},
-        'gb18030': () => {},
-        'big5': () => {},
-        'big5-hkscs': () => {},
-        'hex': () => {},
+        'utf8': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileEncoding(mainWindow, 'utf8')
+        },
+        'utf16-le': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileEncoding(mainWindow, 'utf16-le')
+        },
+        'utf16-be': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileEncoding(mainWindow, 'utf16-be')
+        },
+        'gbk': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileEncoding(mainWindow, 'gbk')
+        },
+        'gb2312': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileEncoding(mainWindow, 'gb2312')
+        },
+        'gb18030': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileEncoding(mainWindow, 'gb18030')
+        },
+        'big5': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileEncoding(mainWindow, 'big5')
+        },
+        'big5-hkscs': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileEncoding(mainWindow, 'big5-hkscs')
+        },
+        'hex': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileEncoding(mainWindow, 'hex')
+        },
     },
     switch: {
-        'utf8': () => {},
-        'utf16-le': () => {},
-        'utf16-be': () => {},
-        'gbk': () => {},
-        'gb2312': () => {},
-        'gb18030': () => {},
-        'big5': () => {},
-        'big5-hkscs': () => {},
-        'hex': () => {},
+        'utf8': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileConvertCoding(mainWindow, 'utf8')
+        },
+        'utf16-le': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileConvertCoding(mainWindow, 'utf16-le')
+        },
+        'utf16-be': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileConvertCoding(mainWindow, 'utf16-be')
+        },
+        'gbk': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileConvertCoding(mainWindow, 'gbk')
+        },
+        'gb2312': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileConvertCoding(mainWindow, 'gb2312')
+        },
+        'gb18030': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileConvertCoding(mainWindow, 'gb18030')
+        },
+        'big5': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileConvertCoding(mainWindow, 'big5')
+        },
+        'big5-hkscs': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileConvertCoding(mainWindow, 'big5-hkscs')
+        },
+        'hex': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+            FileConvertCoding(mainWindow, 'hex')
+        },
     }
 };
 
@@ -332,73 +377,73 @@ const pluginsMenuHandlers = {
 // ==================== 在线工具菜单处理器 ====================
 const onlineMenuHandlers = {
     tools: {
-        'cainiao-tools': () => shell.openExternal('https://www.jyshare.com/'),
-        'w3cschool-tools': () => shell.openExternal('https://www.w3cschool.cn/tools/'),
-        'baibaoxiang': () => shell.openExternal('https://www.toolnb.com/'),
-        'toolfk': () => shell.openExternal('https://www.toolfk.com/'),
-        'json-bejson': () => shell.openExternal('https://www.bejson.com/'),
-        '67tool': () => shell.openExternal('http://www.67tool.com/'),
-        'toollu': () => shell.openExternal('http://www.toollu.com/'),
-        'sojson-parser': () => shell.openExternal('https://www.sojson.com/'),
-        'latex-editor': () => shell.openExternal('https://www.latex-project.org/'),
-        'mermaid-editor': () => shell.openExternal('https://mermaid.live/'),
-        'planttext-editor': () => shell.openExternal('https://www.planttext.com/'),
-        'mindmap-tool': () => shell.openExternal('https://www.mindmapmaker.com/'),
-        'diagrams-tool': () => shell.openExternal('https://www.diagrams.net/'),
-        'plantuml-server': () => shell.openExternal('https://www.plantuml.com/plantuml'),
-        'chuizi-tools': () => shell.openExternal('http://www.toolshi.com/'),
+        'cainiao-tools': () => OpenOnlineWebPage('https://www.jyshare.com/'),
+        'w3cschool-tools': () => OpenOnlineWebPage('https://www.w3cschool.cn/tools/'),
+        'baibaoxiang': () => OpenOnlineWebPage('https://www.toolnb.com/'),
+        'toolfk': () => OpenOnlineWebPage('https://www.toolfk.com/'),
+        'json-bejson': () => OpenOnlineWebPage('https://www.bejson.com/'),
+        '67tool': () => OpenOnlineWebPage('http://www.67tool.com/'),
+        'toollu': () => OpenOnlineWebPage('http://www.toollu.com/'),
+        'sojson-parser': () => OpenOnlineWebPage('https://www.sojson.com/'),
+        'latex-editor': () => OpenOnlineWebPage('https://www.latex-project.org/'),
+        'mermaid-editor': () => OpenOnlineWebPage('https://mermaid.live/'),
+        'planttext-editor': () => OpenOnlineWebPage('https://www.planttext.com/'),
+        'mindmap-tool': () => OpenOnlineWebPage('https://www.mindmapmaker.com/'),
+        'diagrams-tool': () => OpenOnlineWebPage('https://www.diagrams.net/'),
+        'plantuml-server': () => OpenOnlineWebPage('https://www.plantuml.com/plantuml'),
+        'chuizi-tools': () => OpenOnlineWebPage('http://www.toolshi.com/'),
     },
     cainiao: {
-        'svg-editor': () => shell.openExternal('https://www.jyshare.com/more/svgeditor/'),
-        'draw-tool': () => shell.openExternal('https://www.jyshare.com/more/shapefly-diagram/'),
-        'office-tools': () => shell.openExternal('https://www.jyshare.com/office/'),
-        'table-generator': () => shell.openExternal('https://www.jyshare.com/front-end/7688/'),
+        'svg-editor': () => OpenOnlineWebPage('https://www.jyshare.com/more/svgeditor/'),
+        'draw-tool': () => OpenOnlineWebPage('https://www.jyshare.com/more/shapefly-diagram/'),
+        'office-tools': () => OpenOnlineWebPage('https://www.jyshare.com/office/'),
+        'table-generator': () => OpenOnlineWebPage('https://www.jyshare.com/front-end/7688/'),
     },
     encode: {
-        'csv-to-html': () => shell.openExternal('https://www.w3cschool.cn/tools/index?name=csv2tb'),
-        'sql-formatter': () => shell.openExternal('https://www.w3cschool.cn/tools/index?name=sql_formatter'),
-        'fullwidth-halfwidth-converter': () => shell.openExternal('https://www.w3cschool.cn/tools/index?name=fullhalfcode'),
-        'qrcode-generator': () => shell.openExternal('https://cli.im/'),
-        'qrcode-decoder': () => shell.openExternal('https://www.box3.cn/tool/qrcode/decode.html'),
-        'encoding-converter': () => shell.openExternal('https://www.branah.com/encoding'),
+        'csv-to-html': () => OpenOnlineWebPage('https://www.w3cschool.cn/tools/index?name=csv2tb'),
+        'sql-formatter': () => OpenOnlineWebPage('https://www.w3cschool.cn/tools/index?name=sql_formatter'),
+        'fullwidth-halfwidth-converter': () => OpenOnlineWebPage('https://www.w3cschool.cn/tools/index?name=fullhalfcode'),
+        'qrcode-generator': () => OpenOnlineWebPage('https://cli.im/'),
+        'qrcode-decoder': () => OpenOnlineWebPage('https://www.box3.cn/tool/qrcode/decode.html'),
+        'encoding-converter': () => OpenOnlineWebPage('https://www.branah.com/encoding'),
     },
     ide: {
-        'webide-online': () => shell.openExternal('https://codepen.io/'),
-        'html-lang': () => shell.openExternal('https://codepen.io/pen/'),
-        'python-lang': () => shell.openExternal('https://www.mycompiler.io/new/python'),
-        'c-lang': () => shell.openExternal('https://www.mycompiler.io/new/c'),
-        'go-lang': () => shell.openExternal('https://www.mycompiler.io/new/go'),
+        'webide-online': () => OpenOnlineWebPage('https://codepen.io/'),
+        'html-lang': () => OpenOnlineWebPage('https://codepen.io/pen/'),
+        'python-lang': () => OpenOnlineWebPage('https://www.mycompiler.io/new/python'),
+        'c-lang': () => OpenOnlineWebPage('https://www.mycompiler.io/new/c'),
+        'go-lang': () => OpenOnlineWebPage('https://www.mycompiler.io/new/go'),
     },
     dev: {
-        'pretty-qrcode-generator': () => shell.openExternal('https://www.seventhqueen.com/product/qrdesigner'),
-        'qrcode-decoder-box3': () => shell.openExternal('https://www.box3.cn/tool/qrcode/decode.html'),
-        'image-format-converter': () => shell.openExternal('https://www.box3.cn/tool/img/convert.html'),
-        'linux-crontab': () => shell.openExternal('https://tool.box3.cn/crontab.html'),
-        'jwt-decoder': () => shell.openExternal('https://tool.box3.cn/jwt.html'),
+        'pretty-qrcode-generator': () => OpenOnlineWebPage('https://www.seventhqueen.com/product/qrdesigner'),
+        'qrcode-decoder-box3': () => OpenOnlineWebPage('https://www.box3.cn/tool/qrcode/decode.html'),
+        'image-format-converter': () => OpenOnlineWebPage('https://www.box3.cn/tool/img/convert.html'),
+        'linux-crontab': () => OpenOnlineWebPage('https://tool.box3.cn/crontab.html'),
+        'jwt-decoder': () => OpenOnlineWebPage('https://tool.box3.cn/jwt.html'),
     },
     team: {
-        'taobao-fed': () => shell.openExternal('https://fed.taobao.org/'),
-        'tmall-fe': () => shell.openExternal('https://tmallfe.github.io/'),
-        'thx-alimama-fe': () => shell.openExternal('https://thx.github.io/'),
-        'ali-nodejs-platform': () => shell.openExternal('https://www.aliyun.com/product/nodejs'),
-        'baidu-fex': () => shell.openExternal('https://fex-team.github.io/'),
+        'taobao-fed': () => OpenOnlineWebPage('https://fed.taobao.org/'),
+        'tmall-fe': () => OpenOnlineWebPage('https://tmallfe.github.io/'),
+        'thx-alimama-fe': () => OpenOnlineWebPage('https://thx.github.io/'),
+        'ali-nodejs-platform': () => OpenOnlineWebPage('https://www.aliyun.com/product/nodejs'),
+        'baidu-fex': () => OpenOnlineWebPage('https://fex-team.github.io/'),
     },
     cloud: {
-        'aliyun': () => shell.openExternal('https://www.aliyun.com/'),
-        'tencent-cloud': () => shell.openExternal('https://cloud.tencent.com/'),
-        'huawei-cloud': () => shell.openExternal('https://activity.huaweicloud.com/'),
-        'tianyi-cloud': () => shell.openExternal('https://www.ctyun.cn/'),
-        'jinshan-cloud': () => shell.openExternal('https://www.ksyun.com/'),
+        'aliyun': () => OpenOnlineWebPage('https://www.aliyun.com/'),
+        'tencent-cloud': () => OpenOnlineWebPage('https://cloud.tencent.com/'),
+        'huawei-cloud': () => OpenOnlineWebPage('https://activity.huaweicloud.com/'),
+        'tianyi-cloud': () => OpenOnlineWebPage('https://www.ctyun.cn/'),
+        'jinshan-cloud': () => OpenOnlineWebPage('https://www.ksyun.com/'),
     }
 };
 
 // ==================== GitHub菜单处理器 ====================
 const githubMenuHandlers = {
-    'it-tools': () => shell.openExternal('https://it-tools.tech/'),
-    'ghost-website': () => shell.openExternal('https://ghost.org/'),
-    'priospace': () => shell.openExternal('https://github.com/AnoyRC/priospace'),
-    'plane-project': () => shell.openExternal('https://github.com/makeplane/plane'),
-    'openproject': () => shell.openExternal('https://github.com/opf/openproject'),
+    'it-tools': () => OpenOnlineWebPage('https://it-tools.tech/'),
+    'ghost-website': () => OpenOnlineWebPage('https://ghost.org/'),
+    'priospace': () => OpenOnlineWebPage('https://github.com/AnoyRC/priospace'),
+    'plane-project': () => OpenOnlineWebPage('https://github.com/makeplane/plane'),
+    'openproject': () => OpenOnlineWebPage('https://github.com/opf/openproject'),
 };
 
 // ==================== 帮助菜单处理器 ====================

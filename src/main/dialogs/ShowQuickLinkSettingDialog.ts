@@ -10,7 +10,7 @@ import {
     saveQuickLinks,
     QuickLinkItem,
     resetToDefault
-} from '../utils/quick-link-config'
+} from '../settings/quick-link-config'
 import { getCurrentThemeStyles } from '../themes/theme-config'
 
 let quickLinkSettingDialog: Electron.BrowserWindow | null

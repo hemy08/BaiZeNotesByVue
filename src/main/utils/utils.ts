@@ -7,7 +7,7 @@ import { HemyRenderPost, HemyRenderPre } from '../renders/HemyRender'
 import { CreateHash, CreateHmac, CreateRsaKeyPair, CryptoDecrypt, CryptoEncrypt } from './encrypt_decrypt'
 import { ipcMain, shell } from 'electron'
 // @ts-ignore
-import { getQuickLinks } from './quick-link-config'
+import { getQuickLinks } from '../settings/quick-link-config'
 import { getCurrentTheme, getCurrentThemeStyles, getMonacoTheme, getSeparateEditorTheme } from '../themes/theme-config'
 import * as fileUtils from "./file-utils";
 

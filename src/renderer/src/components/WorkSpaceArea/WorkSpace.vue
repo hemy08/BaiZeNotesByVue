@@ -123,7 +123,7 @@ const handlePluginToolsContainerShow = (value: boolean) => {
 EventBus.$on('plugin-tools-container-show', handlePluginToolsContainerShow)
 
 const handleWorkAreaContainerShow = (value: string) => {
-    console.log("handleWorkAreaContainerShow ", value)
+    // console.log("handleWorkAreaContainerShow ", value)
     isShowMdContainer.value = false
     isShowPluginsContainer.value = false
     isShowHtmlContainer.value = false

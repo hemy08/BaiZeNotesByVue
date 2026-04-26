@@ -8,18 +8,15 @@ import { restoreLastOpenedFile } from './utils/file-state'
 import { getCurrentThemeStyles } from './themes/theme-config'
 import { getMonacoThemeData } from './themes/themeRegistry'
 import {HandleBaiZeMenuAction} from "./menu/menu_ipc";
-import * as EditorSettingUtils from './utils/editor-setting'
+import * as EditorSettingUtils from './settings/editor-setting'
 import * as fs from "node:fs";
 import { getSystemSetting } from './themes/system-setting'
 import { StartAutoSaveFileTime } from './utils/file-utils'
-import { RegisterShortKeys } from './utils/short-key-register'
+import { RegisterShortKeys } from './settings/short-key-register'
 import { logger } from './utils/logger'
-import { ipcListenerManager } from './utils/ipc-listener-manager'
+import { ipcListenerManager } from './settings/ipc-listener-manager'
 const timers: NodeJS.Timeout[] = []
 const watchers: fs.FSWatcher[] = []
-//import { SystemSetting } from "./global-types";
-//import { getApplicationMenu } from './menu/menu'
-//import * as SystemSettingUtils from './utils/system-setting'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
@@ -52,11 +49,11 @@ function createWindow(): void {
     mainWindow.on('ready-to-show', () => {
         mainWindow.maximize()
         mainWindow.show()
-        
+
         // 初始化logger,设置主窗口引用
         logger.setMainWindow(mainWindow)
         logger.info('白泽笔记启动成功')
-        
+
         // DevTools 默认不打开，通过 F12 切换
         // 加载一个子窗口，不对外显示
         dialogs.CreateMermaidRenderFrame('')

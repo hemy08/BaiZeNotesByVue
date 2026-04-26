@@ -1,11 +1,11 @@
 import { getCurrentThemeStyles } from '../themes/theme-config'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
-import * as EditorSettingUtils from '../utils/editor-setting'
+import * as EditorSettingUtils from '../settings/editor-setting'
 import * as SystemSettingUtils from '../themes/system-setting'
 import { FontFamily } from '../utils/common'
-import { windowManager } from '../utils/window-manager'
-import { ipcListenerManager } from '../utils/ipc-listener-manager'
+import { windowManager } from '../settings/window-manager'
+import { ipcListenerManager } from '../settings/ipc-listener-manager'
 
 // 创建编辑器设置对话框
 export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
@@ -446,8 +446,7 @@ function generateEditorSettingHTML(themeStyles: any, systemSettings: any): strin
         <div class="sidebar-item" data-section="display">显示与布局</div>
         <div class="sidebar-item" data-section="cursor">光标与选择</div>
         <div class="sidebar-item" data-section="scroll">滚动配置</div>
-        <div class="sidebar-item" data-section="folding">换行与缩进</div>
-        <div class="sidebar-item" data-section="whitespace">渲染选项</div>
+        <div class="sidebar-item" data-section="folding">换行、缩进与渲染</div>
         <div class="sidebar-item" data-section="autoClosing">自动闭合与修饰</div>
         <div class="sidebar-item" data-section="suggestions">智能提示与补全</div>
         <div class="sidebar-item" data-section="hover">Hover与编码行为</div>
@@ -477,15 +476,11 @@ function generateEditorSettingHTML(themeStyles: any, systemSettings: any): strin
     const scrollSection = createScrollSection(document)
     contentArea.appendChild(scrollSection)
 
-    // 5. 换行与缩进
+    // 5. 换行、缩进与渲染（合并了原来的换行与缩进和渲染选项）
     const foldingSection = createFoldingSection(document)
     contentArea.appendChild(foldingSection)
 
-    // 6. 渲染选项
-    const whitespaceSection = createWhitespaceSection(document)
-    contentArea.appendChild(whitespaceSection)
-
-    // 7. 自动闭合与修饰
+    // 6. 自动闭合与修饰
     const autoClosingSection = createAutoClosingSection(document)
     contentArea.appendChild(autoClosingSection)
 
@@ -1165,8 +1160,8 @@ function createBasicSection(document: Document): HTMLElement {
 }
 
 /**
- * 创建折叠与缩进配置区域
- * 包含代码折叠、缩进指南等配置
+ * 创建换行、缩进与渲染配置区域
+ * 包含代码折叠、缩进指南、空白字符显示等配置
  */
 function createFoldingSection(document: Document): HTMLElement {
     const section = document.createElement('div')
@@ -1174,9 +1169,9 @@ function createFoldingSection(document: Document): HTMLElement {
     section.className = 'setting-section'
 
     section.innerHTML = `
-        <h3 class="section-title">折叠与缩进配置</h3>
+        <h3 class="section-title">换行、缩进与渲染配置</h3>
         <div class="settings-grid"><p style="color: var(--secondary-text-color); font-size: var(--font-size-xs); margin-bottom: 16px;">
-            代码折叠和缩进指南配置
+            代码折叠、缩进指南和空白字符显示配置
         </p>
 
         <div class="setting-group">
@@ -1205,6 +1200,7 @@ function createFoldingSection(document: Document): HTMLElement {
                 <select class="setting-select" id="show-folding-controls">
                     <option value="always">始终显示</option>
                     <option value="mouseover">鼠标悬停时显示</option>
+                    <option value="never">从不显示</option>
                 </select>
             </div>
         </div>
@@ -1228,6 +1224,16 @@ function createFoldingSection(document: Document): HTMLElement {
         </div>
 
         <div class="setting-group">
+            <span class="setting-label">点击展开：</span>
+            <div class="setting-value">
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="unfold-on-click" checked>
+                    <label for="unfold-on-click">启用</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
             <span class="setting-label">缩进指南：</span>
             <div class="setting-value">
                 <div class="setting-checkbox">
@@ -1246,11 +1252,22 @@ function createFoldingSection(document: Document): HTMLElement {
                 </div>
             </div>
         </div>
+
+        <div class="setting-group">
+            <span class="setting-label">空白字符显示：</span>
+            <div class="setting-value">
+                <select class="setting-select" id="render-whitespace">
+                    <option value="none">不显示</option>
+                    <option value="boundary">边界</option>
+                    <option value="selection">选中时</option>
+                    <option value="all">全部</option>
+                </select>
+            </div>
+        </div>
     </div>`
 
     return section
 }
-
 /**
  * 创建悬停提示与编码行为配置区域
  * 包含Hover提示、选择高亮、CodeLens等配置
@@ -1913,65 +1930,6 @@ function createScrollSection(document: Document): HTMLElement {
             <div class="setting-value">
                 <input type="number" class="number-input" id="fast-scroll-sensitivity"
                        min="1" max="20" step="0.5" value="5">
-            </div>
-        </div>
-    </div>`
-
-    return section
-}
-
-/**
- * 创建空白与装饰配置区域
- * 包含空白字符显示、装饰器等配置
- */
-function createWhitespaceSection(document: Document): HTMLElement {
-    const section = document.createElement('div')
-    section.id = 'section-whitespace'
-    section.className = 'setting-section'
-
-    section.innerHTML = `
-        <h3 class="section-title">空白和折叠配置</h3>
-
-        <div class="settings-grid"><div class="setting-group">
-            <span class="setting-label">空白字符显示：</span>
-            <div class="setting-value">
-                <select class="setting-select" id="render-whitespace-whitespace">
-                    <option value="none">不显示</option>
-                    <option value="boundary">边界</option>
-                    <option value="selection">选中时</option>
-                    <option value="all">全部</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">代码折叠：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="folding-whitespace" checked>
-                    <label for="folding-whitespace">启用</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">折叠控件显示：</span>
-            <div class="setting-value">
-                <select class="setting-select" id="show-folding-controls">
-                    <option value="always">总是</option>
-                    <option value="mouseover">鼠标悬停</option>
-                    <option value="never">从不</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <span class="setting-label">点击展开：</span>
-            <div class="setting-value">
-                <div class="setting-checkbox">
-                    <input type="checkbox" id="unfold-on-click" checked>
-                    <label for="unfold-on-click">启用</label>
-                </div>
             </div>
         </div>
     </div>`

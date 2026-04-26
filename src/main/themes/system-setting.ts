@@ -150,3 +150,7 @@ export function getSystemSetting(): SystemSetting {
     }
 }
 
+export function getSystemSettingValString(key: string, defaultVal: string): string {
+    return systemSettingStore.get(key, defaultVal)
+}
+

@@ -1,10 +1,9 @@
 
 import {
     CHANNEL_PLUGIN_TOOL_SHOW,
-    GitHubUrlMaps,
     OnlineUrlMaps
 } from '../../../../main/common/menu_consts';
-import * as Templates from '../../../../main/common/templates'
+import * as Templates from '../../../../main/common/templates';
 import EventBus from "@renderer/event-bus";
 
 
@@ -24,13 +23,14 @@ export function HandleMenuAction(action: string) {
         return
     }
 
-    if (action.startsWith('baize:menu:github:')) {
+    /*if (action.startsWith('baize:menu:github:')) {
         const item = GitHubUrlMaps.find(item => item.id === action)
         if (item) {
+            //dialogs.OpenOnlineWebPage(item.url)
             window.open(item.url, '_blank', 'noopener, noreferrer')
         }
         return
-    }
+    }*/
 
     if (action.startsWith('baize:menu:insert:plantuml:')) {
         const item = Templates.PlantUML.find(item => item.menu_action === action)
