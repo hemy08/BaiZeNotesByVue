@@ -1,7 +1,6 @@
 
 import {
     CHANNEL_PLUGIN_TOOL_SHOW,
-    OnlineUrlMaps
 } from '../../../../main/common/menu_consts';
 import * as Templates from '../../../../main/common/templates';
 import EventBus from "@renderer/event-bus";
@@ -15,13 +14,13 @@ export function HandleMenuAction(action: string) {
     }
 
     // 在线工具
-    if (action.startsWith('baize:menu:online:')) {
+    /*if (action.startsWith('baize:menu:online:')) {
         const item = OnlineUrlMaps.find(item => item.id === action)
         if (item) {
             window.open(item.url, '_blank', 'noopener, noreferrer')
         }
         return
-    }
+    }*/
 
     /*if (action.startsWith('baize:menu:github:')) {
         const item = GitHubUrlMaps.find(item => item.id === action)
