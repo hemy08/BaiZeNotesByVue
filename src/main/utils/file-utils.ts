@@ -247,6 +247,21 @@ export function ReloadDirFromDisk() {
     StartAutoSaveFileTime()
     // 发送文件名列表到渲染进程
     global.MainWindow.webContents.send('file-system-data', JSON.stringify(fileTree))
+    
+    // 重新加载当前打开的文件内容
+    if (global.current_active_file && global.current_active_file.path) {
+      try {
+        const fileContent = fs.readFileSync(global.current_active_file.path, 'utf-8')
+        global.current_active_file.content = fileContent
+        // 发送文件内容到渲染进程
+        global.MainWindow.webContents.send('file-content-reloaded', {
+          path: global.current_active_file.path,
+          content: fileContent
+        })
+      } catch (err) {
+        console.error('Failed to reload file content:', err)
+      }
+    }
   })
 }
 
@@ -267,7 +282,7 @@ export function OpenSelectFile(fileProperties: FileProperties) {
   try {
     const stats = fs.statSync(fileProperties.path)
     const fileSize = stats.size
-    
+
     if (fileSize > LARGE_FILE_THRESHOLD) {
       logger.warn('打开大文件', `${(fileSize / 1024 / 1024).toFixed(2)}MB`, fileProperties.path)
       const result = dialog.showMessageBoxSync(global.MainWindow, {
@@ -277,7 +292,7 @@ export function OpenSelectFile(fileProperties: FileProperties) {
         buttons: ['继续打开', '取消'],
         defaultId: 0
       })
-      
+
       if (result === 1) {
         logger.info('用户取消打开大文件', fileProperties.path)
         return // 用户取消
@@ -288,46 +303,30 @@ export function OpenSelectFile(fileProperties: FileProperties) {
   }
 
   logger.info('正在加载文件', fileProperties.path)
-  
+
   // 发送文件内容到渲染进程
   StartAutoSaveFileTime()
 
-  // 先尝试从缓存获取文件内容
-  let cachedContent = configStore.getFileContent(fileProperties.path)
+  // 始终从磁盘读取文件内容，确保显示最新内容
+  fs.readFile(fileProperties.path, 'utf8', (err, data) => {
+    if (!err) {
+      fileProperties.content = data
+      global.current_active_file = fileProperties
 
-  if (cachedContent !== null) {
-    // 使用缓存的内容
-    fileProperties.content = cachedContent
-    global.current_active_file = fileProperties
-    if (cachedContent.length === 0) {
-      cachedContent = '\r\n'
-    }
-    logger.info('文件加载完成(缓存)', fileProperties.path)
-    global.MainWindow.webContents.send('show-selected-file-context', cachedContent)
-    global.MainWindow.webContents.send('monaco-editor-user-select-file', fileProperties.path)
-    saveLastOpenedFile(fileProperties.path)
-  } else {
-    // 从磁盘读取文件
-    fs.readFile(fileProperties.path, 'utf8', (err, data) => {
-      if (!err) {
-        fileProperties.content = data
-        global.current_active_file = fileProperties
+      // 更新缓存
+      configStore.setFileContent(fileProperties.path, data)
 
-        // 缓存文件内容
-        configStore.setFileContent(fileProperties.path, data)
-
-        if (data.length === 0) {
-          data = '\r\n'
-        }
-        logger.info('文件加载完成', fileProperties.path)
-        global.MainWindow.webContents.send('show-selected-file-context', data)
-        global.MainWindow.webContents.send('monaco-editor-user-select-file', fileProperties.path)
-        saveLastOpenedFile(fileProperties.path)
-      } else {
-        logger.error('文件加载失败', fileProperties.path, err)
+      if (data.length === 0) {
+        data = '\r\n'
       }
-    })
-  }
+      logger.info('文件加载完成', fileProperties.path)
+      global.MainWindow.webContents.send('show-selected-file-context', data)
+      global.MainWindow.webContents.send('monaco-editor-user-select-file', fileProperties.path)
+      saveLastOpenedFile(fileProperties.path)
+    } else {
+      logger.error('文件加载失败', fileProperties.path, err)
+    }
+  })
 }
 
 export async function SaveActiveFile() {
@@ -340,7 +339,7 @@ export async function SaveActiveFile() {
 
         // 更新缓存
         configStore.setFileContent(curFile.path, curFile.content)
-        
+
         logger.info('文件保存成功', curFile.path)
 
         // 通知所有窗口
@@ -980,7 +979,7 @@ export async function InsertImportFormFile(
       type: 'file',
       content: content
     }
-    
+
     // 发送文件路径更新事件到状态栏
     mainWindow.webContents.send('monaco-editor-user-select-file', file)
 

@@ -141,6 +141,12 @@ window.electron.ipcRenderer.on('show-selected-file-context', (_, content) => {
   onHandleNewContent(content)
 })
 
+// 监听文件内容重新加载事件（从磁盘重新加载）
+window.electron.ipcRenderer.on('file-content-reloaded', (_, data) => {
+  // console.log('file-content-reloaded', data.path, data.content)
+  onHandleNewContent(data.content)
+})
+
 window.electron.ipcRenderer.on('monaco-insert-writing-templates', (_, fileContent: string) => {
   onHandleNewContent(fileContent)
 })

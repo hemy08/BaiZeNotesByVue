@@ -101,3 +101,21 @@ function createMermaidRenderHtmlContent(mermaidGraphDesc: string): Document {
 }
 
 export { createMermaidRenderHtmlContent }
+
+/**
+ * 关闭 Mermaid 渲染窗口
+ */
+export function closeMermaidRenderWindow(): void {
+    if (mermaidRenderWindow && !mermaidRenderWindow.isDestroyed()) {
+        mermaidRenderWindow.close()
+        mermaidRenderWindow = null
+    }
+}
+
+/**
+ * 清理 Mermaid 渲染相关资源
+ */
+export function cleanupMermaidRender(): void {
+    closeMermaidRenderWindow()
+    ipcMain.removeAllListeners('dialog-mermaid-render-svg-result')
+}

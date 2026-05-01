@@ -1,3 +1,121 @@
+## 2026年5月1日 - 版本 1.1.5-beta
+
+### 🚀 新增功能
+
+#### 配置文件管理系统
+- 在用户目录创建 `.baizenotes` 文件夹存储配置
+- 新增路径管理工具 (`src/main/utils/app-paths.ts`)
+- 新增 Store 工厂函数 (`src/main/utils/store-factory.ts`)
+- 统一配置文件管理，支持多用户独立配置
+
+#### 卸载体验优化
+- 新增卸载问询脚本 (`build/uninstaller.nsh`)
+- 卸载时询问用户是否保留配置文件
+- 提供更友好的卸载体验
+
+#### TabbedSet 渲染支持
+- 新增 TabbedSet 渲染器 (`src/main/renders/TabbedSetRender.ts`)
+- 支持表格集渲染功能
+
+### ⚡ 性能优化
+
+#### 打包结构优化
+- 修复 `win-unpacked` 目录下 `resources\resources` 重复嵌套问题
+- 优化 `electron-builder.yml` 配置
+- 正确打包 config、icon、themes、katex、mermaid、plantuml 资源
+- 资源文件与 `app.asar` 同级，符合规范
+
+#### Store 初始化优化
+- 统一所有配置文件使用 `createStore` 工厂函数
+- 移除重复导入和冗余代码
+- 优化配置文件初始化流程
+
+### 🐛 Bug 修复
+
+#### Store 未定义错误修复
+- 修复打包后运行时 `ReferenceError: 对象处未定义存储` 错误
+- 修复 `theme-config.ts` 语法错误（多余括号）
+- 统一配置文件导入路径
+
+#### 构建错误修复
+- 修复 `build:win:all` 构建失败问题
+- 修复 TypeScript 编译错误
+- 优化构建配置
+
+### 🔧 代码质量改进
+
+#### 配置管理重构
+- 所有配置文件统一使用 `createStore` 工厂函数
+- 配置文件路径统一管理
+- 提高代码可维护性
+
+#### 文档完善
+- 新增《配置文件路径优化说明.md》
+- 新增《配置优化实施总结.md》
+- 新增《Store修复报告.md》
+- 新增《项目优化分析报告.md》
+- 新增《依赖包清理分析报告.md》
+- 新增《依赖包清理执行总结.md》
+- 新增《事件监听器优化总结.md》
+- 新增《OPTIMIZATION_GUIDE.md》
+
+### 📊 技术改进
+
+#### 配置管理统一化
+- 所有配置文件使用统一的 `createStore` 工厂函数
+- 配置文件统一存储在用户目录 `C:\Users\用户\.baizenotes\`
+- 便于维护和扩展
+
+#### 打包结构规范化
+- 资源文件正确放置在 `resources` 目录
+- 与 `app.asar` 同级，符合 electron-builder 规范
+- 避免目录嵌套问题
+
+#### 用户体验提升
+- 卸载时提供配置保留选项
+- 配置文件独立于应用，便于备份
+- 多用户支持，配置互不影响
+
+### 📁 文件变更
+
+#### 新增文件 (13个)
+- `src/main/utils/app-paths.ts` - 路径管理工具
+- `src/main/utils/store-factory.ts` - Store 工厂函数
+- `build/uninstaller.nsh` - 卸载问询脚本
+- `src/main/renders/TabbedSetRender.ts` - TabbedSet 渲染器
+- `src/renderer/src/composables/` - Vue Composition API
+- 8个优化和修复文档
+
+#### 修改文件 (28个)
+- `electron-builder.yml` - 打包配置优化
+- `src/main/index.ts` - 添加用户目录初始化
+- `src/main/themes/theme-config.ts` - 使用 createStore
+- `src/main/themes/system-setting.ts` - 使用 createStore
+- `src/main/settings/editor-setting.ts` - 使用 createStore
+- `src/main/settings/quick-link-config.ts` - 使用 createStore
+- `src/main/utils/baize-store.ts` - 配置路径优化
+- `package.json` - 版本更新至 1.1.5-beta
+- 其他文档和组件文件
+
+### 🧪 测试验证
+
+- ✅ 开发环境测试通过
+- ✅ 打包构建成功 (`build:win:all`)
+- ✅ 配置文件正确保存到用户目录
+- ✅ 资源文件正确打包
+- ✅ Store 初始化正常
+- ✅ 卸载问询功能正常
+
+### 📦 构建信息
+
+- **安装包**: `BaiZeNotes_Setup_1.1.5-bate_windows_x64.exe` (202 MB)
+- **便携版**: `BaiZeNotes_1.1.5-bate_windows_x64.exe` (167 MB)
+- **技术栈**: Electron 38.0.0 + Vue 3.4.27 + TypeScript 6.0.2
+- **构建日期**: 2026-05-01
+
+---
+
+
 ## 2026年4月26日 - 版本 1.1.3
 
 ### 🚀 新增功能

@@ -176,8 +176,8 @@ function materialParserAdmonitions(text: string): {
     let titleStr = ''
     if (startIndex != -1) {
         typeStr = firstLine.substring(0, startIndex).trim()
-        // 保留双引号在title中
-        titleStr = firstLine.substring(startIndex).trim()
+        // 去掉两侧双引号或单引号
+        titleStr = firstLine.substring(startIndex).trim().replace(/^["']|["']$/g, '')
     } else {
         // 只有类型，没有title
         typeStr = firstLine.trim()

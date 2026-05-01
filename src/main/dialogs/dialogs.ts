@@ -3,7 +3,7 @@ import { ShowFontSelectDialog } from './ShowFontSelectDialog'
 import { ShowMarkdownSheetDialog } from './ShowMdSheetDialog'
 import { ShowMathTextDialog } from './ShowMathTextDialog'
 import { ShowMermaidEditDialog } from './ShowMermaidEditDialog'
-import { HandleMermaidGetRenderResult, CreateMermaidRenderFrame } from './OpenMermaidRenderFrame'
+import { HandleMermaidGetRenderResult, CreateMermaidRenderFrame, closeMermaidRenderWindow, cleanupMermaidRender } from './OpenMermaidRenderFrame'
 import { ShowAdmonitionDialog } from './ShowAdmonitionsDialog'
 import { ShowCreateFileFolderDialog } from './ShowCreateFileFolderDialog'
 import { ShowFileFolderRenameDialog } from './ShowRemaneDialog'
@@ -45,6 +45,8 @@ function ShowConfirmDeleteDialog(path: string, isFile: boolean) {
 }
 
 export {
+    closeMermaidRenderWindow,
+    cleanupMermaidRender,
     OpenOnlineWebPage,
     ShowFontSelectDialog,
     ShowMarkdownSheetDialog,

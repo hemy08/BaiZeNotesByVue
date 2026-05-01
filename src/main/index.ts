@@ -51,6 +51,19 @@ function createWindow(): void {
     mainWindow.on('ready-to-show', () => {
         mainWindow.maximize()
         mainWindow.show()
+        
+    // 主窗口关闭时强制退出
+    mainWindow.on('closed', () => {
+        // 强制销毁所有其他窗口
+        const windows = BrowserWindow.getAllWindows()
+        windows.forEach(window => {
+            if (!window.isDestroyed()) {
+                window.destroy()
+            }
+        })
+        // 强制退出
+        app.quit()
+    })
 
         // 初始化logger,设置主窗口引用
         logger.setMainWindow(mainWindow)
@@ -190,6 +203,14 @@ app.whenReady().then(() => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+    // 清理所有资源
+    timers.forEach(timer => clearInterval(timer))
+    watchers.forEach(watcher => watcher.close())
+    dialogs.CleanupMainWindowDialogsEvent()
+    dialogs.closeMermaidRenderWindow()
+    dialogs.cleanupMermaidRender()
+    ipcListenerManager.cleanupAll()
+    
     if (process.platform !== 'darwin') {
         app.quit()
     }
@@ -206,6 +227,10 @@ app.on('before-quit', () => {
     // 清理主窗口对话框事件监听器
     dialogs.CleanupMainWindowDialogsEvent()
 
+    // 清理 Mermaid 渲染窗口
+    dialogs.closeMermaidRenderWindow()
+    dialogs.cleanupMermaidRender()
+
     // 清理所有IPC监听器（使用管理器）
     ipcListenerManager.cleanupAll()
 
@@ -213,4 +238,12 @@ app.on('before-quit', () => {
     if (is.dev) {
         ipcListenerManager.printStats()
     }
+    
+    // 强制销毁所有窗口
+    const windows = BrowserWindow.getAllWindows()
+    windows.forEach(window => {
+        if (!window.isDestroyed()) {
+            window.destroy()
+        }
+    })
 })

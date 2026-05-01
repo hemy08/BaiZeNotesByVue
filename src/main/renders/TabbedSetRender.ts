@@ -134,8 +134,8 @@ function generateTabbedSetHTML(tabs: TabContent[], setId: number): string {
         htmlParts.push('</div>\n <!-- tabbed-block -->')
     })
     htmlParts.push('</div> <!-- tabbed-content -->')
-    htmlParts.push('</div> <!-- tabbed-set tabbed-alternate -->')
-    return htmlParts.join('\n')
+    htmlParts.push('</div> <!-- tabbed-set tabbed-alternate -->\n')
+    return htmlParts.join('\r\n')
 }
 
 /**

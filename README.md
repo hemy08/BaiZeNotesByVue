@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.5--beta-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 ![Electron](https://img.shields.io/badge/Electron-38.0.0-blue.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.4.27-brightgreen.svg)
@@ -17,6 +17,20 @@
 ## 📖 项目简介
 
 白泽笔记是一款功能强大的桌面端 Markdown 编辑器，采用 Electron + Vue 3 + TypeScript 技术栈开发。以中国古代神话中的神兽"白泽"命名，寓意知识渊博、通晓万物。
+
+
+## 🆕 最新更新 (v1.1.5-beta)
+
+### 配置管理优化
+- ✨ 在用户目录创建 `.baizenotes` 文件夹统一管理配置
+- ✨ 新增卸载问询功能，可选择保留配置文件
+- 🚀 优化打包结构，修复资源文件嵌套问题
+- 🐛 修复打包后 Store 未定义错误
+
+### 详细更新日志
+查看 [CHANGELOG.md](./CHANGELOG.md) 了解所有更新详情。
+
+---
 
 ### ✨ 核心特性
 
