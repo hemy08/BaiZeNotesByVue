@@ -4,7 +4,7 @@
  */
 
 // @ts-ignore
-import Store from 'electron-store'
+import { createStore } from '../utils/store-factory'
 
 // 快速链接项接口
 export interface QuickLinkItem {
@@ -63,7 +63,7 @@ const defaultQuickLinks: QuickLinkItem[] = [
 
 // 创建存储实例
 // @ts-ignore
-const store = new Store()
+const store = createStore('quick-link-config', {})
 
 // 初始化默认配置
 // @ts-ignore

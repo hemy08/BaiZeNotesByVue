@@ -15,6 +15,8 @@ import { StartAutoSaveFileTime } from './utils/file-utils'
 import { RegisterShortKeys } from './settings/short-key-register'
 import { logger } from './utils/logger'
 import { ipcListenerManager } from './settings/ipc-listener-manager'
+import { initUserDataDirectory, getAppPathsInfo } from './utils/app-paths'
+
 const timers: NodeJS.Timeout[] = []
 const watchers: fs.FSWatcher[] = []
 
@@ -29,7 +31,7 @@ function createWindow(): void {
         title: '白泽笔记 -- Markdown Editor Powered By Electron and Vue',
         frame: false,
         autoHideMenuBar: false,
-        icon: join(__dirname, '../icon/baize_clear_icon.ico'),
+        icon: join(__dirname, '../resources/icon/baize_clear_icon.ico'),
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
             nodeIntegration: true,
@@ -53,6 +55,11 @@ function createWindow(): void {
         // 初始化logger,设置主窗口引用
         logger.setMainWindow(mainWindow)
         logger.info('白泽笔记启动成功')
+
+        // 打印应用路径信息（调试用）
+        if (is.dev) {
+            console.log('[Main] App Paths:', getAppPathsInfo())
+        }
 
         // DevTools 默认不打开，通过 F12 切换
         // 加载一个子窗口，不对外显示
@@ -98,103 +105,40 @@ function createWindow(): void {
     const systemSetting = getSystemSetting()
     const autoSaveInterval = (systemSetting.autoSaveInterval || 30) * 1000 // 转换为毫秒
     StartAutoSaveFileTime(autoSaveInterval)
-    console.log('[Main] Auto save started with interval:', autoSaveInterval, 'ms')
-
-    mainWindow.on('close', () => {
-        // mainWindow = null
-        app.quit()
-    })
 }
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-// 禁用 GPU 磁盘缓存以避免 Windows 权限错误
-app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
-
 app.whenReady().then(() => {
+    // 初始化用户数据目录
+    initUserDataDirectory()
+    
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.electron')
 
-    // 初始化主题管理器 - 在应用启动时预加载所有主题
-
     // Default open or close DevTools by F12 in development
-    // and ignore CommandOrControl + R in production.
-    // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+    // and ignore the related keyboard events in production
     app.on('browser-window-created', (_, window) => {
         optimizer.watchWindowShortcuts(window)
     })
 
-    // IPC test
+    // IPC 测试
     ipcMain.on('ping', () => console.log('pong'))
 
-    // 监听主题更新请求
-
-    // 窗口控制
+    // 窗口控制 IPC
     ipcMain.on('window-minimize', () => {
-        if (mainWindow) {
-            mainWindow.minimize()
-        }
+        if (mainWindow) mainWindow.minimize()
     })
-
     ipcMain.on('window-maximize', () => {
-        if (mainWindow) {
-            if (mainWindow.isMaximized()) {
-                mainWindow.unmaximize()
-            } else {
-                mainWindow.maximize()
-            }
-        }
+        if (mainWindow) mainWindow.maximize()
     })
-
+    ipcMain.on('window-unmaximize', () => {
+        if (mainWindow) mainWindow.unmaximize()
+    })
     ipcMain.on('window-close', () => {
-        if (mainWindow) {
-            mainWindow.close()
-        }
+        if (mainWindow) mainWindow.close()
     })
-
-    // 窗口拖动：开始拖动时取消最大化，返回窗口位置
-    ipcMain.on('window-start-drag', (event) => {
-        if (mainWindow && mainWindow.isMaximized()) {
-            mainWindow.unmaximize()
-            // 返回还原后的窗口位置，供渲染进程计算偏移
-            const bounds = mainWindow.getBounds()
-            event.reply('window-drag-unmaximized', bounds)
-        }
-    })
-
-    // 窗口位置移动
-    ipcMain.on('window-move', (_, x: number, y: number) => {
-        if (mainWindow) {
-            mainWindow.setPosition(Math.round(x), Math.round(y))
-        }
-    })
-
-    // 获取窗口位置和大小
-    ipcMain.on('window-get-bounds', (event) => {
-        if (mainWindow) {
-            event.returnValue = mainWindow.getBounds()
-        } else {
-            event.returnValue = null
-        }
-    })
-
-    // 设置窗口大小
-    ipcMain.on('window-set-size', (_, width: number, height: number) => {
-        if (mainWindow) {
-            mainWindow.setSize(Math.round(width), Math.round(height))
-        }
-    })
-
-    // 获取窗口是否最大化
-    ipcMain.on('window-is-maximized', (event) => {
-        if (mainWindow) {
-            event.returnValue = mainWindow.isMaximized()
-        } else {
-            event.returnValue = false
-        }
-    })
-
     // 双击标题栏切换最大化
     ipcMain.on('window-toggle-maximize', () => {
         if (mainWindow) {

@@ -478,6 +478,10 @@ export function OpenDirectory(mainWindow: Electron.BrowserWindow) {
     })
     .then((result) => {
       if (result.canceled) return
+
+      // 清理编辑区域和预览区域
+      mainWindow.webContents.send('clear-editor-and-preview')
+
       global.RootPath = result.filePaths[0]
       ReloadDirFromDisk()
 

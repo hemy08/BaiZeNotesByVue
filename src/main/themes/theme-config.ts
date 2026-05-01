@@ -4,7 +4,7 @@
  */
 
 // @ts-ignore
-import Store from 'electron-store'
+import { createStore } from '../utils/store-factory'
 
 // 主题类型
 export type ThemeType = 'baize' | 'warm' | 'light' | 'lavender' | 'coral' | 'mint' | 'sunset' | 'rose' | 'eyecare-green' | 'eyecare-beige' | 'eyecare-blue' | 'eyecare-pink' | 'eyecare-amber' | 'eyecare-teal' | 'eyecare-lilac' | 'baize-beast' | 'baize-clear' | 'dark' | 'deepdark' | 'icon' | 'ocean' | 'forest' | 'baize-text' | 'baize-starry'
@@ -407,18 +407,17 @@ export const themes: Record<ThemeType, ThemeStyles> = {
 
 // 创建存储实例
 // @ts-ignore
-const store = new Store()
-
-// 初始化默认配置
-// @ts-ignore
-if (!store.has('themeConfig')) {
-    // @ts-ignore
-    store.set('themeConfig', {
+const store = createStore('theme-config', {
+    themeConfig: {
         currentTheme: 'baize',
         separateEditorTheme: false,
         editorTheme: 'vs'
-    })
-}
+    }
+})
+
+// 初始化默认配置
+// @ts-ignore
+
 
 /**
  * 获取当前主题

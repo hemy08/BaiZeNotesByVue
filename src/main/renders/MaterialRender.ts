@@ -1,7 +1,6 @@
 import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
 import hljs from 'highlight.js'
-import { katexRenderMathInText } from './KatexRender'
 
 // 注册 PlantUML 语言支持
 hljs.registerLanguage('plantuml', function(hljs) {
@@ -22,74 +21,130 @@ hljs.registerLanguage('plantuml', function(hljs) {
             },
             {
                 className: 'symbol',
-                begin: ':',
-                end: ':',
-                relevance: 10
+                begin: '\\w+:',
+                relevance: 0
             },
             {
                 className: 'title',
                 begin: '\\b(actor|participant|usecase|class|interface|enum|object|component|package|node|folder|frame|cloud|database|storage|agent|artifact|file|stack|queue|rectangle|card|circle|hexagon|entity|boundary|control)\\b',
-                relevance: 10
-            },
-            {
-                className: 'arrow',
-                begin: '(-|\\.|\\||<|>|\\*|o|x|\\)|\\(|\\\\|\\/|\\\\\\\\|\\/\\/)+',
                 relevance: 10
             }
         ]
     }
 })
 
-const materialMd = MarkdownIt()
-materialMd.options.html = true
-materialMd.options.linkify = true
-materialMd.options.langPrefix = 'language-'
-materialMd.options.breaks = true
-materialMd.options.typographer = true
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-materialMd.use(highlightjs, { inline: true, hljs: hljs })
+const materialMd = new MarkdownIt().use(highlightjs)
 
-function matchCodeBlock(lines: string[]): string[] {
+// 匹配代码块
+function matchCodeBlock(contents: string[]): string[] {
     const codeBlocks: string[] = []
-    const lineStr: string = lines[0].trim().replace(/^(t| {4})/, '')
-    codeBlocks.push(lineStr)
-    // 找到块的结尾，跳过这部分，从下一行开始
-    for (let i = 1; i < lines.length; i++) {
-        const currentLine = lines[i]
-        // 以```作为代码块结束判断
-        if (currentLine.trim().startsWith('```')) {
-            codeBlocks.push(currentLine.trim())
-            return codeBlocks
-        }
-        // 代码块内容不做去除空行和空白字符处理
+    let codeBlockStart = false
+    for (let i = 0; i < contents.length; i++) {
+        const currentLine = contents[i].replace(/^\t|^ {4}/, '')
         codeBlocks.push(currentLine)
+        if (currentLine.trim().startsWith('```')) {
+            if (codeBlockStart) {
+                break
+            } else {
+                codeBlockStart = true
+            }
+        }
     }
     return codeBlocks
 }
 
-// 对Admonitions块中的content进行渲染，支持行内公式、行内代码块
+// 匹配 Tabbed Set 块（=== 开头）
+function matchTabbedSetBlock(contents: string[]): string[] {
+    const tabbedBlocks: string[] = []
+    let i = 0
+
+    while (i < contents.length) {
+        const currentLine = contents[i]
+        const trimmedLine = currentLine.trim()
+
+        // 如果是 === 开头的行，添加到结果中
+        if (trimmedLine.match(/^===\s+"/)) {
+            tabbedBlocks.push(trimmedLine)
+            i++
+            // 收集该标签下的所有缩进内容
+            while (i < contents.length) {
+                const nextLine = contents[i]
+                // 如果是空行，添加并继续
+                if (nextLine.trim() === '') {
+                    tabbedBlocks.push('')
+                    i++
+                }
+                // 如果是缩进行（以空格或tab开头），去除缩进后添加
+                else if (nextLine.startsWith(' ') || nextLine.startsWith('\t')) {
+                    const processedLine = nextLine.replace(/^\t|^ {4}/, '')
+                    tabbedBlocks.push(processedLine)
+                    i++
+                }
+                // 如果遇到下一个 === 标记，停止当前标签的收集
+                else if (nextLine.trim().match(/^===\s+"/)) {
+                    break
+                }
+                // 其他情况停止
+                else {
+                    break
+                }
+            }
+        }
+        // 如果是空行，跳过
+        else if (trimmedLine === '') {
+            i++
+        }
+        // 其他情况停止
+        else {
+            break
+        }
+    }
+
+    return tabbedBlocks
+}
+
 function materialAdmonitionsContentRender(contents: string[]): string {
     let renderResult = ''
     let normalTextLines: string[] = [] // 收集普通文本行
 
+    // 跳过开头的空行
+    let startIndex = 0
+    while (startIndex < contents.length && contents[startIndex].trim() === '') {
+        startIndex++
+    }
+
     // 遍历所有行
-    for (let i = 0; i < contents.length; i++) {
+    for (let i = startIndex; i < contents.length; i++) {
         // 去掉行首的4个空格或者tab
         const currentLine = contents[i].replace(/^\t|^ {4}/, '')
-        // 代码块，单独渲染，找到代码库的起始和结束位置
+
+        // 代码块，单独渲染
         if (currentLine.trim().startsWith('```')) {
             // 先渲染之前收集的普通文本
             if (normalTextLines.length > 0) {
                 const combinedText = normalTextLines.join('\n')
-                const katexRenderResult = katexRenderMathInText(combinedText)
-                renderResult += materialMd.render(katexRenderResult)
+                renderResult += materialMd.render(combinedText)
                 normalTextLines = []
             }
-            // 从当前行的下一行开始，找到代码块全部内容，去掉行首的空格和tab
+            // 从当前行的下一行开始，找到代码块全部内容
             const codeBlocks = matchCodeBlock(contents.slice(i))
             renderResult += '\n\n' + codeBlocks.join('\r\n') + '\n\n'
             i += codeBlocks.length - 1
-        } else {
+        }
+        // Tabbed Set 块（=== 开头），跳过渲染
+        else if (currentLine.trim().match(/^===\s+"/)) {
+            // 先渲染之前收集的普通文本
+            if (normalTextLines.length > 0) {
+                const combinedText = normalTextLines.join('\n')
+                renderResult += materialMd.render(combinedText)
+                normalTextLines = []
+            }
+            // 收集整个 tabbed set 块
+            const tabbedBlocks = matchTabbedSetBlock(contents.slice(i))
+            renderResult += '\n' + tabbedBlocks.join('\n') + '\n'
+            i += tabbedBlocks.length - 1
+        }
+        else {
             // 收集普通文本行（包括标题、列表等）
             normalTextLines.push(currentLine.trim())
         }
@@ -98,8 +153,7 @@ function materialAdmonitionsContentRender(contents: string[]): string {
     // 渲染剩余的普通文本
     if (normalTextLines.length > 0) {
         const combinedText = normalTextLines.join('\n')
-        const katexRenderResult = katexRenderMathInText(combinedText)
-        renderResult += materialMd.render(katexRenderResult)
+        renderResult += materialMd.render(combinedText)
     }
 
     return renderResult
@@ -113,23 +167,22 @@ function materialParserAdmonitions(text: string): {
 } {
     // 字符串按照行分割
     const lines = text.split(/\r?\n/)
-    //console.log('lines', lines)
     // 第一行是type和title
     // 去掉两边的空白
     const firstLine = lines[0].trim()
     // 找到字符串的第一个双引号，双引号之前的是type
-    const startIndex = text.indexOf('"')
+    const startIndex = firstLine.indexOf('"')
     let typeStr
     let titleStr = ''
     if (startIndex != -1) {
         typeStr = firstLine.substring(0, startIndex).trim()
-        // 去掉开头和结束的双引号
-        titleStr = firstLine.substring(startIndex, firstLine.length - 1).trim()
+        // 保留双引号在title中
+        titleStr = firstLine.substring(startIndex).trim()
     } else {
         // 只有类型，没有title
         typeStr = firstLine.trim()
     }
-    // 内容项从第二行开始，遍历所有内容，每行内容前后加上<p></p>
+    // 内容项从第二行开始
     let contentStr
     if (lines.length >= 2) {
         contentStr = materialAdmonitionsContentRender(lines.slice(1))
@@ -147,29 +200,20 @@ function materialParserAdmonitions(text: string): {
 export function materialAdmonitionsRender(text: string): string {
     let renderResult = text
     let match: RegExpExecArray | null = null
-    // 匹配字符串中所有以!!!开始的内容（直到遇到另一个
-    // !（图片、下一个块）、#（标题）、`（代码块）、=（内容选项卡）、
-    // -、+（无序列表、行分隔符）、[（链接）、$(公式)、|（表格）、{（特殊块）、<（html语法）
-    // :(icon，emojis)、*（加粗）、~（删除线）、>（引用）、\r?\n（空行）
-    // 或者字符串的结尾）
-    const regex = /!!!([\s\S]*?)(?=\n[!#`=\-+\[$|{<:*~>\S]|$)/g
-    // 使用全局搜索来查找所有匹配项，匹配到的字符串，已经去掉了前缀和后缀
+    // 匹配字符串中所有以!!!开始的内容
+    const regex = /!!!([\s\S]*?)(?=\n[!#`=\-+\[$|{<:*~>\S]|$)/
+    // 使用全局搜索来查找所有匹配项
     while ((match = regex.exec(renderResult)) !== null) {
-        // console.log('match[0]', match[0])
-        // console.log('match[1]', match[1])
         const content = materialParserAdmonitions(match[1])
-        // console.log('content', content)
         const renderHtml =
             `<div class="admonition ${content.type}">` +
             `<p class="admonition-title">${content.title}</p>` +
-            `${content.content}</div>\n\n`
+            `${content.content}</div>\n`
         renderResult = renderResult.replace(match[0], renderHtml)
-        // console.log('renderHtml', renderHtml)
-        // console.log('renderResult', renderResult)
     }
-
     return renderResult
 }
+
 export function materialAdmonitionsPostRender(text: string): string {
     return text
 }

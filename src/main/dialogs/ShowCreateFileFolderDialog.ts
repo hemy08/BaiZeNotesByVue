@@ -3,7 +3,7 @@
  */
 
 import { BrowserWindow, ipcMain } from 'electron'
-import { CreateFileFolder } from '../utils/file-utils'
+import { CreateFileFolder, ReloadDirFromDisk } from '../utils/file-utils'
 import { JSDOM } from 'jsdom'
 import { getCurrentThemeStyles } from '../themes/theme-config'
 import * as digcom from './dialog_common'
@@ -56,6 +56,8 @@ export function ShowCreateFileFolderDialog(
             name = name + '.md'
         }
         CreateFileFolder(name, dirPath, isFolder, fileExtension)
+        // 创建完成后重新加载资源管理器
+        ReloadDirFromDisk()
         if (customCreateDialog) {
             customCreateDialog.close()
         }

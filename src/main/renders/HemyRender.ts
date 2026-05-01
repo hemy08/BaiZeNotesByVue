@@ -1,5 +1,6 @@
 import { katexRenderMathInText } from './KatexRender'
 import { materialAdmonitionsRender, materialAdmonitionsPostRender } from './MaterialRender'
+import { tabbedSetRender } from './TabbedSetRender'
 import { ParseDirectoryPath } from '../utils/file-utils'
 // import { plantumlRender } from './PlantumlRender'
 
@@ -8,6 +9,7 @@ export async function HemyRenderPre(
     text: string
 ) {
     let renderResult = materialAdmonitionsRender(text)
+    renderResult = tabbedSetRender(renderResult)
     renderResult = preRenderImageUrlConvert(renderResult)
     renderResult = preRenderFileUrlConvert(renderResult)
     renderResult = katexRenderMathInText(renderResult)

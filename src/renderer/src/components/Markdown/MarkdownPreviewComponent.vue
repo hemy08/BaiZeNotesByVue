@@ -1,7 +1,7 @@
 <template>
     <div
         id="markdown-preview-html"
-        class="markdown-preview-html"
+        class="markdown-preview-html md-typeset"
         v-html="renderedMarkdownContent"
     ></div>
 </template>
@@ -25,6 +25,11 @@ const props = defineProps({
 })
 
 const renderedMarkdownContent = ref('')
+
+// ========== 防抖优化 ==========
+let renderDebounceTimer: ReturnType<typeof setTimeout> | null = null
+const RENDER_DEBOUNCE_DELAY = 150 // 防抖延迟150ms
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 //let isTocOpen = false
 
@@ -54,9 +59,20 @@ onMounted(() => {
     hljs.registerLanguage('actionscript', require('highlight.js/lib/languages/actionscript'))
 })
 
-// 监听 props.editorContent 的变化，并在变化时更新 Markdown
+// 监听 props.editorContent 的变化，并在变化时更新 Markdown（带防抖优化）
 watchEffect(() => {
-    updateMarkdownPreRender()
+    // 读取props.editorContent以建立响应式依赖
+    const content = props.editorContent
+    
+    // 清除之前的定时器
+    if (renderDebounceTimer) {
+        clearTimeout(renderDebounceTimer)
+    }
+    // 设置新的防抖定时器
+    renderDebounceTimer = setTimeout(() => {
+        updateMarkdownPreRender()
+        renderDebounceTimer = null
+    }, RENDER_DEBOUNCE_DELAY)
 })
 
 function UpdateMarkdownChapters() {
@@ -69,6 +85,12 @@ onMounted(() => {
 
     onBeforeUnmount(() => {
         EventBus.$off('monaco-editor-get-chapters', UpdateMarkdownChapters)
+        
+        // 清理防抖定时器
+        if (renderDebounceTimer) {
+            clearTimeout(renderDebounceTimer)
+            renderDebounceTimer = null
+        }
     })
 })
 

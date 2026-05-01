@@ -145,6 +145,11 @@ window.electron.ipcRenderer.on('monaco-insert-writing-templates', (_, fileConten
   onHandleNewContent(fileContent)
 })
 
+// 清理编辑区域和预览区域
+window.electron.ipcRenderer.on('clear-editor-and-preview', () => {
+  onHandleNewContent('# ')
+})
+
 function onHandleEditorShow(edit: boolean, preview: boolean) {
     isShowEditArea.value = edit
     isShowPreviewArea.value = preview

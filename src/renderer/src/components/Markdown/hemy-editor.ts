@@ -21,7 +21,7 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     fontFamily: 'Hack',
     fontSize: 16,
     lineNumbers: 'on',
-    lineNumbersMinChars: 5, // 行号区域最小字符宽度
+    lineNumbersMinChars: 3, // 行号区域最小字符宽度（优化：减少宽度提升性能）
     tabCompletion: 'off',
     renderWhitespace: 'all',
     accessibilitySupport: 'auto', // 自动检测辅助功能支持
@@ -37,6 +37,7 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     dragAndDrop: false, // 启用或禁用拖放功能
     renderValidationDecorations: 'off', // 启用或禁用验证装饰的渲染
     folding: true, // 启用或禁用代码折叠
+    foldingStrategy: 'indentation', // 使用缩进折叠策略（优化：性能更好）
 
     // ========== 性能优化配置 ==========
     largeFileOptimizations: true, // 大文件优化，自动禁用某些功能
@@ -44,7 +45,7 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     renderLineHighlight: 'none', // 关闭行高亮，提升性能
     scrollBeyondLastLine: false, // 减少渲染区域
     foldingMaximumRegions: 5000, // 限制折叠区域数量，防止内存占用过高
-// ========== 查找与替换配置 ==========
+  // ========== 查找与替换配置 ==========
     find: {
         addExtraSpaceOnTop: true,
         autoFindInSelection: 'multiline',
@@ -62,6 +63,9 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
         comments: false,
         strings: false
     },
+    // fastSuggest: true, // 快速建议（优化：提升建议响应速度）
+    suggestSelection: 'first', // 默认选择第一个建议（优化：减少用户操作）
+    wordBasedSuggestions: 'off', // 关闭基于单词的建议（优化：大文件性能提升显著）
 
     // 性能相关
     scrollbar: {
@@ -89,7 +93,8 @@ const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOptions = 
     links: true, // 启用链接检测
     colorDecorators: true, // 启用颜色装饰器
     renderControlCharacters: false, // 不渲染控制字符
-    glyphMargin: true, // 启用字形边距
+    glyphMargin: false, // 关闭字形边距（优化：减少渲染开销）
+    lineDecorationsWidth: 0, // 减少装饰宽度（优化：提升渲染性能）
 
     // Hover提示配置
     hover: {

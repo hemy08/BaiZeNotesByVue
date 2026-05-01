@@ -5,6 +5,8 @@
  */
 
 import Store from 'electron-store'
+import { getUserDataPath } from './app-paths'
+import * as path from 'path'
 
 // 文件内容缓存项
 interface FileContent {
@@ -17,70 +19,71 @@ interface FileContent {
 interface StoreSchema {
     lastOpenedFile: string | null
     lastOpenedDirectory: string | null
-    editorSettings: Record<string, unknown>
-    themeSettings: Record<string, unknown>
 }
 
-/**
- * 白泽状态管理类
- */
-export class BaiZeStore {
+class BaiZeStore {
     private store: Store<StoreSchema>
-    private fileCache: Map<string, FileContent> = new Map()
-    private readonly MAX_CACHE_SIZE = 50 // 最多缓存 50 个文件
+    private fileCache: Map<string, FileContent>
+    private readonly MAX_CACHE_SIZE = 50 // 最大缓存文件数
 
     constructor() {
+        // 获取用户数据目录
+        const userDataPath = getUserDataPath()
+        const configFilePath = path.join(userDataPath, 'config', 'baize-config.json')
+        
+        // 初始化 electron-store，指定配置文件路径
         this.store = new Store<StoreSchema>({
-            name: 'app-state',
+            name: 'baize-config',
+            cwd: path.join(userDataPath, 'config'),
             defaults: {
                 lastOpenedFile: null,
-                lastOpenedDirectory: null,
-                editorSettings: {},
-                themeSettings: {}
+                lastOpenedDirectory: null
             }
         })
+        
+        // 初始化文件缓存
+        this.fileCache = new Map()
+        
+        console.log(`[BaiZeStore] Store initialized at: ${configFilePath}`)
     }
 
-    // ========== 持久化状态管理 ==========
+    // ========== 持久化存储操作 ==========
 
+    /**
+     * 获取最后打开的文件路径
+     */
     getLastOpenedFile(): string | null {
         return this.store.get('lastOpenedFile')
     }
 
-    setLastOpenedFile(path: string | null): void {
+    /**
+     * 设置最后打开的文件路径
+     */
+    setLastOpenedFile(path: string): void {
         this.store.set('lastOpenedFile', path)
     }
 
+    /**
+     * 获取最后打开的目录路径
+     */
     getLastOpenedDirectory(): string | null {
         return this.store.get('lastOpenedDirectory')
     }
 
-    setLastOpenedDirectory(path: string | null): void {
+    /**
+     * 设置最后打开的目录路径
+     */
+    setLastOpenedDirectory(path: string): void {
         this.store.set('lastOpenedDirectory', path)
     }
 
-    getEditorSettings(): Record<string, unknown> {
-        return this.store.get('editorSettings')
-    }
-
-    setEditorSettings(settings: Record<string, unknown>): void {
-        this.store.set('editorSettings', settings)
-    }
-
-    getThemeSettings(): Record<string, unknown> {
-        return this.store.get('themeSettings')
-    }
-
-    setThemeSettings(settings: Record<string, unknown>): void {
-        this.store.set('themeSettings', settings)
-    }
-
-    // ========== 文件缓存管理 (LRU) ==========
+    // ========== 文件缓存操作 ==========
 
     /**
-     * 设置文件内容到缓存
+     * 缓存文件内容
      */
     setFileContent(path: string, content: string): void {
+        // 检查缓存是否已满
         if (this.fileCache.size >= this.MAX_CACHE_SIZE) {
             // 删除最旧的缓存
             const oldestKey = this.fileCache.keys().next().value!

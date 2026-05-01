@@ -72,7 +72,6 @@
   color: var(--md-default-fg-color--light);
   cursor: pointer;
   flex-shrink: 0;
-  font-size: .64rem;
   font-weight: 700;
   padding: .78125em 1.25em .625em;
   scroll-margin-inline-start: 1rem;

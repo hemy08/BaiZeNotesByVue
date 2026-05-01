@@ -153,6 +153,7 @@ export interface SystemSetting {
     autoSaveInterval: number // 自动保存间隔（秒），最小5秒，最大86400秒（24小时）
     fontFamily: string // 界面字体，如 'Microsoft YaHei', 'Segoe UI', 'PingFang SC'
     fontSize: number // 界面字体大小(px)，范围 10-24，默认 13
+    renderWhitespace: string // 渲染空白字符: 'none' | 'boundary' | 'all'
     // 窗口浮动控制（模态/非模态）
     editorSettingModal: boolean // 编辑器设置对话框是否模态，默认false
     systemSettingModal: boolean // 系统设置对话框是否模态，默认false

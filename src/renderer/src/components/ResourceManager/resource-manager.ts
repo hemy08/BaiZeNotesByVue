@@ -218,6 +218,48 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
                 ]
             },
             {
+                label: '导出到文件',
+                disabled: node.type !== 'file',
+                children: [
+                    {
+                        label: '导出为Word',
+                        onClick: () => {
+                            onHandleExport('word')
+                        }
+                    },
+                    {
+                        label: '导出为JSON',
+                        onClick: () => {
+                            onHandleExport('json')
+                        }
+                    },
+                    {
+                        label: '导出为XML',
+                        onClick: () => {
+                            onHandleExport('xml')
+                        }
+                    },
+                    {
+                        label: '导出为YAML',
+                        onClick: () => {
+                            onHandleExport('yaml')
+                        }
+                    },
+                    {
+                        label: '导出为HTML',
+                        onClick: () => {
+                            onHandleExport('html')
+                        }
+                    },
+                    {
+                        label: '导出为PDF',
+                        onClick: () => {
+                            onHandleExport('pdf')
+                        }
+                    }
+                ]
+            },
+            {
                 label: '重命名',
                 onClick: () => {
                     onHandleRename(node)
@@ -260,6 +302,10 @@ function onHandleCreateFolder(node: FileSysItem, isFolder: boolean, fileExtensio
 
 function onHandleImport(value: string) {
     window.electron.ipcRenderer.send('file-manager-context-menu-import-from', value)
+}
+
+function onHandleExport(value: string) {
+    window.electron.ipcRenderer.send('baize-notes:menu-action', 'baize:menu:file:export:' + value)
 }
 
 async function onHandleCopy(node: FileSysItem, value: string) {

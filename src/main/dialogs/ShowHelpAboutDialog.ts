@@ -10,7 +10,7 @@ import { getCurrentThemeStyles } from '../themes/theme-config'
 let aboutDialog: Electron.BrowserWindow | null
 
 // 版本信息
-const APP_VERSION = '1.1.3-bate'
+const APP_VERSION = '1.1.5-bate'
 const VUE_VERSION = '3.5.31'
 const VITE_VERSION = '5.4.21'
 const TYPESCRIPT_VERSION = '6.0.2'

@@ -5,7 +5,7 @@
  */
 
 // @ts-ignore
-import Store from 'electron-store'
+import { createStore } from '../utils/store-factory'
 
 // 编辑器配置接口 - 完整版
 export interface EditorSetting {
@@ -493,7 +493,7 @@ const defaultEditorSetting: EditorSetting = {
 
 // 创建存储实例
 // @ts-ignore
-const store = new Store()
+const store = createStore('editor-setting', {})
 
 /**
  * 获取编辑器设置

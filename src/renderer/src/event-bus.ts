@@ -7,6 +7,8 @@ interface EventListener {
 class EventBus {
     private callbacks: Map<string, Set<EventListener>> = new Map()
     private readonly MAX_LISTENERS_PER_EVENT = 200
+    // 组件监听器映射，用于快速清理
+    private componentListeners: Map<string, Set<{ eventName: string; listener: EventListener }>> = new Map()
 
     /**
      * 注册事件监听器
@@ -25,11 +27,21 @@ class EventBus {
             return
         }
 
-        listeners.add({
+        const listener: EventListener = {
             callback,
             once: options?.once,
             componentId: options?.componentId
-        })
+        }
+
+        listeners.add(listener)
+
+        // 如果有componentId，添加到组件映射中
+        if (options?.componentId) {
+            if (!this.componentListeners.has(options.componentId)) {
+                this.componentListeners.set(options.componentId, new Set())
+            }
+            this.componentListeners.get(options.componentId)!.add({ eventName, listener })
+        }
     }
 
     /**
@@ -49,6 +61,22 @@ class EventBus {
         for (const listener of listeners) {
             if (listener.callback === callback) {
                 listeners.delete(listener)
+                
+                // 从组件映射中移除
+                if (listener.componentId) {
+                    const componentSet = this.componentListeners.get(listener.componentId)
+                    if (componentSet) {
+                        for (const item of componentSet) {
+                            if (item.eventName === eventName && item.listener === listener) {
+                                componentSet.delete(item)
+                                break
+                            }
+                        }
+                        if (componentSet.size === 0) {
+                            this.componentListeners.delete(listener.componentId)
+                        }
+                    }
+                }
                 break
             }
         }
@@ -78,29 +106,51 @@ class EventBus {
             }
         })
 
-        toRemove.forEach(listener => listeners.delete(listener))
+        // 移除一次性监听器
+        toRemove.forEach(listener => {
+            listeners.delete(listener)
+            
+            // 从组件映射中移除
+            if (listener.componentId) {
+                const componentSet = this.componentListeners.get(listener.componentId)
+                if (componentSet) {
+                    for (const item of componentSet) {
+                        if (item.eventName === eventName && item.listener === listener) {
+                            componentSet.delete(item)
+                            break
+                        }
+                    }
+                    if (componentSet.size === 0) {
+                        this.componentListeners.delete(listener.componentId)
+                    }
+                }
+            }
+        })
+
+        if (listeners.size === 0) {
+            this.callbacks.delete(eventName)
+        }
     }
 
     /**
-     * 清理指定组件的所有监听器
+     * 清理指定组件的所有监听器（优化版本，使用映射快速清理）
      * @param componentId 组件ID
      */
     $cleanup(componentId: string): void {
-        this.callbacks.forEach((listeners, eventName) => {
-            const toRemove: EventListener[] = []
-            
-            listeners.forEach(listener => {
-                if (listener.componentId === componentId) {
-                    toRemove.push(listener)
+        const componentSet = this.componentListeners.get(componentId)
+        if (!componentSet) return
+
+        componentSet.forEach(({ eventName, listener }) => {
+            const listeners = this.callbacks.get(eventName)
+            if (listeners) {
+                listeners.delete(listener)
+                if (listeners.size === 0) {
+                    this.callbacks.delete(eventName)
                 }
-            })
-            
-            toRemove.forEach(listener => listeners.delete(listener))
-            
-            if (listeners.size === 0) {
-                this.callbacks.delete(eventName)
             }
         })
+
+        this.componentListeners.delete(componentId)
     }
 
     /**
@@ -108,12 +158,18 @@ class EventBus {
      */
     $offAll(): void {
         this.callbacks.clear()
+        this.componentListeners.clear()
     }
 
     /**
      * 获取事件监听器统计信息（用于调试）
      */
-    $stats(): { totalEvents: number; totalListeners: number; eventDetails: Map<string, number> } {
+    $stats(): { 
+        totalEvents: number
+        totalListeners: number
+        eventDetails: Map<string, number>
+        componentDetails: Map<string, number>
+    } {
         let totalListeners = 0
         const eventDetails = new Map<string, number>()
         
@@ -122,11 +178,43 @@ class EventBus {
             totalListeners += count
             eventDetails.set(eventName, count)
         })
+
+        const componentDetails = new Map<string, number>()
+        this.componentListeners.forEach((set, componentId) => {
+            componentDetails.set(componentId, set.size)
+        })
         
         return {
             totalEvents: this.callbacks.size,
             totalListeners,
-            eventDetails
+            eventDetails,
+            componentDetails
+        }
+    }
+
+    /**
+     * 检测潜在的内存泄漏（用于开发环境调试）
+     */
+    $checkLeaks(): { hasLeaks: boolean; warnings: string[] } {
+        const warnings: string[] = []
+        
+        // 检查事件监听器数量
+        this.callbacks.forEach((listeners, eventName) => {
+            if (listeners.size > 50) {
+                warnings.push(`Event "${eventName}" has ${listeners.size} listeners, potential memory leak`)
+            }
+        })
+
+        // 检查组件监听器数量
+        this.componentListeners.forEach((set, componentId) => {
+            if (set.size > 20) {
+                warnings.push(`Component "${componentId}" has ${set.size} listeners, may not be cleaned up properly`)
+            }
+        })
+
+        return {
+            hasLeaks: warnings.length > 0,
+            warnings
         }
     }
 }

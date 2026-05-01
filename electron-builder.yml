@@ -5,19 +5,31 @@ directories:
 files:
   - out/**/*
   - '!out/renderer/src/**'  # 排除渲染进程源码（已在asar中）
-  - resources/**/*
   - '!**/.vscode/*'
   - '!src/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
-  - '!{.eslint ignore,.eslintrc.cjs,.prettier ignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 extraResources:
-  - from: "resources"
-    to: "resources"
+  - from: "resources/config"
+    to: "config"
     filter: ["**/*"]
-asarUnpack:
-  - resources/**
+  - from: "resources/icon"
+    to: "icon"
+    filter: ["**/*"]
+  - from: "resources/katex"
+    to: "katex"
+    filter: ["**/*"]
+  - from: "resources/themes"
+    to: "themes"
+    filter: ["**/*"]
+  - from: "resources/mermaid"
+    to: "mermaid"
+    filter: ["**/*"]
+  - from: "resources/plantuml"
+    to: "plantuml"
+    filter: ["**/*"]
 win:
   executableName: BaiZeNotes
   icon: resources/icon/baize_clear_icon.ico
@@ -39,11 +51,11 @@ nsis:
   installerIcon: resources/icon/baize_clear_icon.ico
   uninstallerIcon: resources/icon/baize_clear_icon.ico
   installerHeaderIcon: resources/icon/baize_clear_icon.ico
-  createUninstallRegistryKey: true
   deleteAppDataOnUninstall: false
   runAfterFinish: true
+  include: build/uninstaller.nsh
 portable:
-  artifactName: ${productName}_Setup_${version}_windows_${arch}.${ext}
+  artifactName: ${productName}_${version}_windows_${arch}.${ext}
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:

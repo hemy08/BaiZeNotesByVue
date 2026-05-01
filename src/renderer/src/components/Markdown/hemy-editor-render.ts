@@ -38,18 +38,70 @@ async function mermaidRender(graphDefinition: string): Promise<string> {
   return ''
 }
 
-export async function preRenderMermaidProc(text: string): Promise<string> {
-  // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
-  let renderResult = text
-  let match: RegExpExecArray | null = null
-  const regex = /```mermaid([\s\S]*?)```/g
-  // 使用全局搜索来查找所有匹配项
-  while ((match = regex.exec(text)) !== null) {
-    const renderedSvg = await mermaidRender(match[1])
-    renderResult = renderResult.replace(match[0], renderedSvg)
+/**
+ * 并发限制的批量执行函数
+ * @param tasks 任务数组
+ * @param concurrency 并发限制数量
+ * @returns 结果数组
+ */
+async function limitConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number
+): Promise<T[]> {
+  const results: T[] = []
+  const executing: Promise<void>[] = []
+
+  for (let i = 0; i < tasks.length; i++) {
+    const task = tasks[i]
+    const promise = task().then((result) => {
+      results[i] = result
+      const index = executing.indexOf(promise)
+      if (index > -1) {
+        executing.splice(index, 1)
+      }
+    })
+
+    executing.push(promise)
+
+    if (executing.length >= concurrency) {
+      await Promise.race(executing)
+    }
   }
 
-  return renderResult
+  await Promise.all(executing)
+  return results
+}
+
+export async function preRenderMermaidProc(text: string): Promise<string> {
+  // 正则表达式匹配 mermaid 代码块
+  const regex = /```mermaid([\s\S]*?)```/g
+  const matches: { full: string; code: string }[] = []
+  let match: RegExpExecArray | null
+
+  // 收集所有匹配项
+  while ((match = regex.exec(text)) !== null) {
+    matches.push({ full: match[0], code: match[1] })
+  }
+
+  // 如果没有匹配项，直接返回原文
+  if (matches.length === 0) {
+    return text
+  }
+
+  // 并发限制的并行渲染（限制并发数为3，避免Mermaid内部全局状态竞争）
+  // Mermaid 11.x版本支持一定程度的并行，但需要限制并发数
+  const MERMAID_CONCURRENCY_LIMIT = 3
+
+  const renderTasks = matches.map((m) => () => mermaidRender(m.code))
+  const renderResults = await limitConcurrency(renderTasks, MERMAID_CONCURRENCY_LIMIT)
+
+  // 替换结果
+  let result = text
+  matches.forEach((m, i) => {
+    result = result.replace(m.full, renderResults[i])
+  })
+
+  return result
 }
 
 export function PreMarkdownRender(text: string): Promise<string> {

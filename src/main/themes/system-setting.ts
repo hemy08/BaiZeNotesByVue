@@ -4,13 +4,11 @@
  */
 
 // @ts-ignore
-import Store from 'electron-store'
+import { createStore } from '../utils/store-factory'
 import {SystemSetting} from '../global-types';
 
 // 创建系统设置存储实例
-const systemSettingStore = new Store<SystemSetting>({
-    name: 'systemSetting',
-    defaults: {
+const systemSettingStore = createStore<SystemSetting>('systemSetting', {
         language: 'zh-cn',
         resourceManager: 'default',
         editorModel: 'default',
@@ -35,9 +33,9 @@ const systemSettingStore = new Store<SystemSetting>({
         mermaidEditModal: false,
         quickLinkSettingModal: false,
         techStackModal: false,
-        webUrlModal: false
-    }
-})
+        webUrlModal: false,
+        renderWhitespace: 'all',
+    })
 
 /**
  * 保存系统设置
@@ -146,7 +144,8 @@ export function getSystemSetting(): SystemSetting {
         mermaidEditModal: systemSettingStore.get('mermaidEditModal', false),
         quickLinkSettingModal: systemSettingStore.get('quickLinkSettingModal', false),
         techStackModal: systemSettingStore.get('techStackModal', false),
-        webUrlModal: systemSettingStore.get('webUrlModal', false)
+        webUrlModal: systemSettingStore.get('webUrlModal', false),
+        renderWhitespace: systemSettingStore.get('renderWhitespace', 'none'),
     }
 }
 
