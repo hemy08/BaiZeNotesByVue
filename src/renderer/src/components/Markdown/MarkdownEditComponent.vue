@@ -33,7 +33,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import MdMonacoEdit from './MarkdownMonacoEditor.vue'
 import MdPreview from './MarkdownPreviewComponent.vue'
-import EventBus from '../../event-bus'
+import EventBus from '../../common/event_bus/event-bus'
 
 const props = defineProps({
     editorPreviewWidth: {
@@ -205,6 +205,10 @@ const handleUseTemplate = (value: string) => {
     onHandleNewContent(value)
 }
 
+const handleFileImportReplace = (value: string) => {
+    onHandleNewContent(value)
+}
+
 function handleKeyDownEvent(event) {
     // console.log('keyDown', event)
     if (event.ctrlKey && event.key === 's') {
@@ -232,6 +236,7 @@ onMounted(() => {
 
     EventBus.$on('monaco-editor-save-file-content-to-disk', handleSaveFileContent)
     EventBus.$on('baize:monaco-editor-use-template', handleUseTemplate)
+    EventBus.$on('monaco-editor-replace-text', handleFileImportReplace)
 
 
     window.addEventListener('resize', handleResize)
@@ -243,6 +248,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('resize', handleResize)
     EventBus.$off('monaco-editor-save-file-content-to-disk', handleSaveFileContent)
     EventBus.$off('baize:monaco-editor-use-template', handleUseTemplate)
+    EventBus.$off('monaco-editor-replace-text', handleFileImportReplace)
 })
 </script>
 

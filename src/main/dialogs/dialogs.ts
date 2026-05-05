@@ -1,15 +1,8 @@
 import { OpenOnlineWebPage } from './OpenOnlineWebPages'
 import { ShowFontSelectDialog } from './ShowFontSelectDialog'
-import { ShowMarkdownSheetDialog } from './ShowMdSheetDialog'
-import { ShowMathTextDialog } from './ShowMathTextDialog'
-import { ShowMermaidEditDialog } from './ShowMermaidEditDialog'
 import { HandleMermaidGetRenderResult, CreateMermaidRenderFrame, closeMermaidRenderWindow, cleanupMermaidRender } from './OpenMermaidRenderFrame'
-import { ShowAdmonitionDialog } from './ShowAdmonitionsDialog'
 import { ShowCreateFileFolderDialog } from './ShowCreateFileFolderDialog'
 import { ShowFileFolderRenameDialog } from './ShowRemaneDialog'
-import { ShowWebUrlDialog } from './ShowWebUrlDialog'
-import { ShowInsertImageDialog } from './ShowInsertImageDialog'
-import { ShowNewFileFolderDialog } from './ShowNewFileFolderDialog'
 import { ShowSystemSettingDialog } from './ShowSystemSettingDialog'
 import { ShowThemeSettingDialog } from './ShowThemeSettingDialog'
 import { ShowEditorSettingDialog } from './ShowEditorSettingDialog'
@@ -31,11 +24,8 @@ function ShowConfirmDeleteDialog(path: string, isFile: boolean) {
         })
         .then((result) => {
             if (result.response === 0) {
-                // console.log('用户点击了“是”')
-                // 在这里执行“是”的操作
                 fileUtils.DeleteFileFolder(path, isFile)
             } else {
-                // console.log('用户点击了“否”')
                 return
             }
         })
@@ -49,17 +39,9 @@ export {
     cleanupMermaidRender,
     OpenOnlineWebPage,
     ShowFontSelectDialog,
-    ShowMarkdownSheetDialog,
-    ShowMathTextDialog,
-    ShowMermaidEditDialog,
-    HandleMermaidGetRenderResult,
-    CreateMermaidRenderFrame,
     ShowCreateFileFolderDialog,
     ShowFileFolderRenameDialog,
     ShowConfirmDeleteDialog,
-    ShowWebUrlDialog,
-    ShowInsertImageDialog,
-    ShowNewFileFolderDialog,
     ShowSystemSettingDialog,
     ShowThemeSettingDialog,
     ShowEditorSettingDialog,
@@ -67,23 +49,12 @@ export {
     ShowTechStackDialog,
     ShowHelpAboutDialog,
     ShowHelpContactUsDialog,
-    ShowAdmonitionDialog
+    CreateMermaidRenderFrame,
+    HandleMermaidGetRenderResult
 }
 
 export function MainWindowListenDialogsEvent(mainWindow: Electron.BrowserWindow) {
     const componentId = 'main-window-dialogs'
-
-    ipcListenerManager.register('monaco-editor-tools-insert-table', () => {
-        ShowMarkdownSheetDialog(mainWindow)
-    }, componentId)
-
-    ipcListenerManager.register('monaco-editor-tools-insert-web-links', () => {
-        ShowWebUrlDialog(mainWindow)
-    }, componentId)
-
-    ipcListenerManager.register('monaco-editor-tools-insert-image', () => {
-        ShowInsertImageDialog(mainWindow)
-    }, componentId)
 
     ipcListenerManager.register('file-manager-context-menu-create-file', (_, dirPath, isFolder, fileExtension) => {
         ShowCreateFileFolderDialog(dirPath, isFolder, fileExtension)
@@ -94,7 +65,6 @@ export function MainWindowListenDialogsEvent(mainWindow: Electron.BrowserWindow)
     }, componentId)
 
     ipcListenerManager.register('file-manager-context-menu-delete', (_, value, isFile) => {
-        // console.log('file-manager-context-menu-delete', value)
         ShowConfirmDeleteDialog(value, isFile)
     }, componentId)
 
@@ -103,14 +73,10 @@ export function MainWindowListenDialogsEvent(mainWindow: Electron.BrowserWindow)
     }, componentId)
 
     ipcListenerManager.register('file-manager-context-menu-rename', (_, path, isFile) => {
-        // console.log('file-manager-context-menu-rename', path, name)
         ShowFileFolderRenameDialog(path, isFile)
     }, componentId)
 }
 
-/**
- * 清理主窗口的对话框事件监听器
- */
 export function CleanupMainWindowDialogsEvent() {
     ipcListenerManager.cleanupComponent('main-window-dialogs')
 }

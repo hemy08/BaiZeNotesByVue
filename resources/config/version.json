@@ -1,0 +1,9 @@
+{
+  "appVersion": "1.1.5-bate",
+  "electronVersion": "",
+  "chromeVersion": "",
+  "nodeVersion": "22.18.0",
+  "vueVersion": "3.4.27",
+  "viteVersion": "",
+  "typescriptVersion": "6.0.2"
+}

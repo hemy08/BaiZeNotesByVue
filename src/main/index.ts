@@ -11,7 +11,7 @@ import {HandleBaiZeMenuAction} from "./menu/menu_ipc";
 import * as EditorSettingUtils from './settings/editor-setting'
 import * as fs from "node:fs";
 import { getSystemSetting } from './themes/system-setting'
-import { StartAutoSaveFileTime } from './utils/file-utils'
+import { StartAutoSaveFileTime, ImportCreateNewFile } from './utils/file-utils'
 import { RegisterShortKeys } from './settings/short-key-register'
 import { logger } from './utils/logger'
 import { ipcListenerManager } from './settings/ipc-listener-manager'
@@ -51,7 +51,7 @@ function createWindow(): void {
     mainWindow.on('ready-to-show', () => {
         mainWindow.maximize()
         mainWindow.show()
-        
+
     // 主窗口关闭时强制退出
     mainWindow.on('closed', () => {
         // 强制销毁所有其他窗口
@@ -126,7 +126,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
     // 初始化用户数据目录
     initUserDataDirectory()
-    
+
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.electron')
 
@@ -179,6 +179,11 @@ app.whenReady().then(() => {
         HandleBaiZeMenuAction(action, mainWindow);
     })
 
+    // 新建导入文件：显示对话框 + 写入文件 + 打开文件
+    ipcMain.handle('baize-notes:import-new-file', async (_, content: string) => {
+        return await ImportCreateNewFile(mainWindow, content)
+    })
+
     // 加载 Monaco 编辑器主题 JSON 文件
     // 通过 themeRegistry 从 resources/themes/monaco-themes/ 目录读取
     ipcMain.handle('baize-notes:load-monaco-theme', (_, themeName: string) => {
@@ -210,7 +215,7 @@ app.on('window-all-closed', () => {
     dialogs.closeMermaidRenderWindow()
     dialogs.cleanupMermaidRender()
     ipcListenerManager.cleanupAll()
-    
+
     if (process.platform !== 'darwin') {
         app.quit()
     }
@@ -238,7 +243,7 @@ app.on('before-quit', () => {
     if (is.dev) {
         ipcListenerManager.printStats()
     }
-    
+
     // 强制销毁所有窗口
     const windows = BrowserWindow.getAllWindows()
     windows.forEach(window => {

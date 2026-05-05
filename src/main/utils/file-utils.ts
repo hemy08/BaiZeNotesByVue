@@ -247,7 +247,7 @@ export function ReloadDirFromDisk() {
     StartAutoSaveFileTime()
     // 发送文件名列表到渲染进程
     global.MainWindow.webContents.send('file-system-data', JSON.stringify(fileTree))
-    
+
     // 重新加载当前打开的文件内容
     if (global.current_active_file && global.current_active_file.path) {
       try {
@@ -958,7 +958,6 @@ export async function InsertImportFormFile(
     return
   }
 
-  // 选择要导入的文件
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
     filters: [{ name: model.name, extensions: model.extensions }]
@@ -973,54 +972,57 @@ export async function InsertImportFormFile(
     const context = await readerFn(file)
     const content = model.argStart + context + model.argEnd
 
-    // 更新当前活动文件和状态栏
-    global.current_active_file = {
-      path: file,
-      type: 'file',
-      content: content
-    }
-
-    // 发送文件路径更新事件到状态栏
-    mainWindow.webContents.send('monaco-editor-user-select-file', file)
-
     if (isImport) {
-      // 显示导入选项对话框
-      ShowImportOptionDialog(mainWindow, async (option: string, filePath?: string) => {
-        switch (option) {
-          case 'replace':
-            // 替换当前内容
-            mainWindow.webContents.send('show-selected-file-context', content)
-            break
-
-          case 'newfile':
-            // 新建文件
-            if (filePath) {
-              // 保存内容到新文件
-              fs.writeFileSync(filePath, content, 'utf-8')
-              // 打开新文件
-              const { OpenSelectFile } = require('./file-utils')
-              OpenSelectFile({
-                path: filePath,
-                name: path.basename(filePath),
-                type: 'file',
-                content: content
-              })
-            }
-            break
-
-          case 'insert':
-            // 插入到当前位置
-            mainWindow.webContents.send('monaco-editor-insert-after-cursor', content)
-            break
-        }
-      })
+      mainWindow.webContents.send('open-vue-dialog', 'importOption', { content })
     } else {
-      // 直接插入到当前位置
       mainWindow.webContents.send('monaco-editor-insert-after-cursor', content)
     }
   } catch (err) {
     showErrorMessageBox('导入文件失败: ' + err)
   }
+}
+
+export async function ImportCreateNewFile(mainWindow: Electron.BrowserWindow, content: string) {
+  // 获取当前激活文件的路径作为默认打开路径
+  const currentFilePath = global.current_active_file?.path
+  const defaultPath = currentFilePath
+    ? path.dirname(currentFilePath) + '/导入文件.md'
+    : '导入文件.md'
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: '保存导入文件',
+    defaultPath: defaultPath,
+    filters: [{ name: 'Markdown', extensions: ['md'] }]
+  })
+
+  if (result.canceled || !result.filePath) {
+    return { success: false }
+  }
+
+  let filePath = result.filePath
+  // 确保后缀为 .md
+  if (!filePath.endsWith('.md')) {
+    filePath += '.md'
+  }
+
+  // 写入文件
+  fs.writeFileSync(filePath, content, 'utf-8')
+
+  // 打开文件
+  OpenSelectFile({
+    name: path.basename(filePath),
+    path: filePath,
+    type: 'file',
+    content: content
+  })
+
+    // 重新加载文件资源管理器
+    setTimeout(() => {
+        ReloadDirFromDisk()
+    }, reloadFromDiskTime)
+
+
+  return { success: true, filePath }
 }
 
 export async function ExportToFile(mainWindow: Electron.BrowserWindow, fileType: string) {
@@ -1376,5 +1378,9 @@ ${htmlContent}
  * 显示信息对话框
  */
 function showInfoMessageBox(message: string) {
-    ShowSuccessDialog('导出成功', message)
+    dialog.showMessageBox({
+        type: 'info',
+        title: '导出成功',
+        message: message
+    })
 }

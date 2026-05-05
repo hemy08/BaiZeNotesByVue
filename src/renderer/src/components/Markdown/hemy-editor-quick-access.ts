@@ -1,8 +1,8 @@
 import { showEmojiQuickAccess } from './hemy-quick-access-emojis'
 import { showSymbolQuickAccess } from './hemy-quick-access-symbols'
-import * as Templates from '../../../../main/common/templates'
+import * as Templates from '../../common/templates'
 import ContextMenu, { MenuItem } from '@imengyu/vue3-context-menu'
-import EventBus from '../../event-bus'
+import EventBus from '../../common/event_bus/event-bus'
 
 
 const mermaidContextMenuItems = Object.keys(Templates.Mermaid).map((diagram) => {
@@ -60,15 +60,24 @@ function onFontFormat(_, context: string) {
 }
 
 function onInsertTable() {
-    window.electron.ipcRenderer.send('monaco-editor-tools-insert-table')
+    const configStore = (window as any).configStore
+    if (configStore) {
+        configStore.showDialog('mdSheet')
+    }
 }
 
 function onInsertWebLinks() {
-    window.electron.ipcRenderer.send('monaco-editor-tools-insert-web-links')
+    const configStore = (window as any).configStore
+    if (configStore) {
+        configStore.showDialog('insertLink')
+    }
 }
 
 function onInsertImage() {
-    window.electron.ipcRenderer.send('monaco-editor-tools-insert-image')
+    const configStore = (window as any).configStore
+    if (configStore) {
+        configStore.showDialog('insertImage')
+    }
 }
 
 function onShowEmojiMenu(e: Event) {

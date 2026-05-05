@@ -12,7 +12,7 @@ import highlightjs from 'markdown-it-highlightjs'
 import { full as emoji } from 'markdown-it-emoji'
 import hljs from 'highlight.js'
 import * as editor from './hemy-editor'
-import EventBus from '../../event-bus'
+import EventBus from '../../common/event_bus/event-bus'
 //import { marked } from 'marked'
 //import { Remarkable } from 'remarkable'
 import 'commonmark'
@@ -48,7 +48,20 @@ const md = MarkdownIt({
     // 还有 ['«\xA0', '\xA0»', '‹\xA0', '\xA0›'] 给法国人使用（包括 nbsp）。
     typographer: false
 })
-    .use(highlightjs, { inline: true, hljs: hljs })
+    .use(highlightjs, {
+        inline: true,
+        hljs: hljs,
+        highlight: function (str: string, lang: string): string {
+            if (lang && hljs.getLanguage(lang)) {
+                try {
+                    return hljs.highlight(str, { language: lang }).value
+                } catch (__) {
+                    console.warn(`Highlight.js error for language '${lang}':`, __)
+                }
+            }
+            return ''
+        }
+    })
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     .use(require('markdown-it-plantuml'))
     .use(emoji)
@@ -63,7 +76,7 @@ onMounted(() => {
 watchEffect(() => {
     // 读取props.editorContent以建立响应式依赖
     const content = props.editorContent
-    
+
     // 清除之前的定时器
     if (renderDebounceTimer) {
         clearTimeout(renderDebounceTimer)
@@ -85,7 +98,7 @@ onMounted(() => {
 
     onBeforeUnmount(() => {
         EventBus.$off('monaco-editor-get-chapters', UpdateMarkdownChapters)
-        
+
         // 清理防抖定时器
         if (renderDebounceTimer) {
             clearTimeout(renderDebounceTimer)

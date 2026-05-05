@@ -448,6 +448,13 @@ export function getCurrentThemeStyles(): ThemeStyles {
 }
 
 /**
+ * 根据主题类型获取主题样式
+ */
+export function getThemeStylesByType(themeType: ThemeType): ThemeStyles {
+    return themes[themeType]
+}
+
+/**
  * 设置主题
  */
 export function setTheme(theme: ThemeType): void {

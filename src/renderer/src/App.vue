@@ -69,6 +69,91 @@
         <div class="resize-corner resize-top-right" @mousedown="onResizeMouseDown('top-right', $event)"></div>
         <div class="resize-corner resize-bottom-left" @mousedown="onResizeMouseDown('bottom-left', $event)"></div>
         <div class="resize-corner resize-bottom-right" @mousedown="onResizeMouseDown('bottom-right', $event)"></div>
+
+        <!-- 对话框组件 -->
+        <BaiZeDialogs.SuccessDialog
+            :visible="configStore.dialogs.success.visible"
+            :title="configStore.dialogs.success.title"
+            :message="configStore.dialogs.success.message"
+            @close="configStore.hideDialog('success')"
+        />
+        <BaiZeDialogs.ThemeSettingDialog
+            :visible="configStore.dialogs.themeSettings.visible"
+            @close="configStore.hideDialog('themeSettings')"
+            @change="handleThemeChange"
+        />
+        <BaiZeDialogs.FontSelectDialog
+            :visible="configStore.dialogs.fontSelect.visible"
+            @close="configStore.hideDialog('fontSelect')"
+        />
+        <BaiZeDialogs.EditorSettingDialog
+            :visible="configStore.dialogs.editorSettings.visible"
+            @close="configStore.hideDialog('editorSettings')"
+        />
+        <BaiZeDialogs.SystemSettingDialog
+            :visible="configStore.dialogs.systemSettings.visible"
+            @close="configStore.hideDialog('systemSettings')"
+        />
+        <BaiZeDialogs.MermaidEditDialog
+            :visible="configStore.dialogs.mermaidEdit.visible"
+            @close="configStore.hideDialog('mermaidEdit')"
+            @insert="handleDialogInsert"
+        />
+        <BaiZeDialogs.AdmonitionDialog
+            :visible="configStore.dialogs.admonition.visible"
+            @close="configStore.hideDialog('admonition')"
+            @insert="handleDialogInsert"
+        />
+        <BaiZeDialogs.MathTextDialog
+            :visible="configStore.dialogs.mathText.visible"
+            @close="configStore.hideDialog('mathText')"
+            @insert="handleDialogInsert"
+        />
+        <BaiZeDialogs.InsertImageDialog
+            :visible="configStore.dialogs.insertImage.visible"
+            @close="configStore.hideDialog('insertImage')"
+            @insert="handleDialogInsert"
+        />
+        <BaiZeDialogs.MdSheetDialog
+            :visible="configStore.dialogs.mdSheet.visible"
+            @close="configStore.hideDialog('mdSheet')"
+            @insert="handleDialogInsert"
+        />
+        <BaiZeDialogs.WebUrlDialog
+            :visible="configStore.dialogs.insertLink.visible"
+            @close="configStore.hideDialog('insertLink')"
+            @insert="handleDialogInsert"
+        />
+        <BaiZeDialogs.CreateFileFolderDialog
+            :visible="configStore.dialogs.createFileFolder.visible"
+            @close="configStore.hideDialog('createFileFolder')"
+        />
+        <BaiZeDialogs.RenameDialog
+            :visible="configStore.dialogs.rename.visible"
+            :current-path="configStore.dialogs.rename.currentPath"
+            @close="configStore.hideDialog('rename')"
+        />
+        <BaiZeDialogs.HelpAboutDialog
+            :visible="configStore.dialogs.helpAbout.visible"
+            @close="configStore.hideDialog('helpAbout')"
+        />
+        <BaiZeDialogs.HelpContactUsDialog
+            :visible="configStore.dialogs.helpContact.visible"
+            @close="configStore.hideDialog('helpContact')"
+        />
+        <BaiZeDialogs.TechStackDialog
+            :visible="configStore.dialogs.techStack.visible"
+            @close="configStore.hideDialog('techStack')"
+        />
+        <BaiZeDialogs.QuickLinkSettingDialog
+            :visible="configStore.dialogs.quickLinks.visible"
+            @close="configStore.hideDialog('quickLinks')"
+        />
+        <BaiZeDialogs.ImportOptionDialog
+            :visible="configStore.dialogs.importOption.visible"
+            @close="configStore.hideDialog('importOption')"
+            @confirm="handleImportOptionConfirm"
+        />
     </div>
 </template>
 
@@ -77,9 +162,20 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import WorkSpace from './components/WorkSpaceArea/WorkSpace.vue'
 import StatusBar from './components/StatusBar.vue'
 import MenuBar from './components/MenuBar.vue'
-import EventBus from './event-bus'
+import EventBus from './common/event_bus/event-bus'
 import * as monaco from 'monaco-editor'
-import { SystemSetting, ThemeStyles, ThemeUpdateData } from "../../main/global-types";
+import { SystemSetting, ThemeStyles, ThemeUpdateData } from "../../main/global-types"
+
+// 对话框组件导入（统一命名空间导出）
+import * as BaiZeDialogs from './components/dialogs'
+
+// 配置 Store
+import { getConfigStore } from './common/useConfigStore'
+const configStore = getConfigStore()
+
+// 暴露 configStore 到 window 对象，供其他模块使用
+;(window as any).configStore = configStore
+
 const electronMenu = ref(true)
 
 // 当前主题样式
@@ -110,11 +206,45 @@ const statusBarStyles = computed(() => {
 })
 
 // 应用主题样式
+// 主题切换处理函数
+async function handleThemeChange(themeType?: string, monacoTheme?: string, separate?: boolean) {
+    try {
+        // 如果有参数，使用传入的值，否则使用当前配置
+        const targetTheme = themeType || configStore.themeConfig.value.currentTheme
+        const targetSeparate = separate !== undefined ? separate : configStore.themeConfig.value.separateEditorTheme
+        const targetMonacoTheme = monacoTheme || configStore.themeConfig.value.editorTheme || 'vs'
+
+        // 更新配置
+        configStore.updateThemeConfig({
+            currentTheme: targetTheme,
+            separateEditorTheme: targetSeparate,
+            editorTheme: targetMonacoTheme
+        })
+
+        // 获取新的主题样式
+        const themeStyles = await window.electron.ipcRenderer.invoke('get-current-theme-styles', targetTheme)
+
+        if (themeStyles) {
+            // 应用新主题
+            separateEditorTheme.value = targetSeparate
+            monacoEditorTheme.value = targetMonacoTheme
+            applyTheme(themeStyles)
+
+            // 更新 Monaco 编辑器主题
+            await updateMonacoEditorTheme(themeStyles, targetSeparate, targetMonacoTheme)
+        }
+    } catch (error) {
+        console.error('Failed to handle theme change:', error)
+    }
+}
+
 function applyTheme(theme: ThemeStyles) {
     currentTheme.value = theme
 
     // 应用CSS变量到根元素
     const root = document.documentElement
+
+    // 带前缀的变量（原始）
     root.style.setProperty('--theme-background-color', theme.backgroundColor)
     root.style.setProperty('--theme-card-background', theme.cardBackground)
     root.style.setProperty('--theme-text-color', theme.textColor)
@@ -125,6 +255,18 @@ function applyTheme(theme: ThemeStyles) {
     root.style.setProperty('--theme-button-text-color', theme.buttonTextColor)
     root.style.setProperty('--theme-hover-background', theme.hoverBackground)
     root.style.setProperty('--theme-title-bar-gradient', theme.titleBarGradient)
+
+    // 无前缀的别名（对话框组件使用）
+    root.style.setProperty('--bg-color', theme.backgroundColor)
+    root.style.setProperty('--card-bg', theme.cardBackground)
+    root.style.setProperty('--text-color', theme.textColor)
+    root.style.setProperty('--secondary-text-color', theme.secondaryTextColor)
+    root.style.setProperty('--border-color', theme.borderColor)
+    root.style.setProperty('--accent-color', theme.accentColor)
+    root.style.setProperty('--button-bg', theme.buttonBackground)
+    root.style.setProperty('--button-text-color', theme.buttonTextColor)
+    root.style.setProperty('--hover-bg', theme.hoverBackground)
+    root.style.setProperty('--title-bar-gradient', theme.titleBarGradient)
 
     // 更新标题栏样式
     const titleBar = document.querySelector('.title-bar') as HTMLElement
@@ -150,6 +292,31 @@ function applyTheme(theme: ThemeStyles) {
     document.querySelectorAll('[data-theme]').forEach(element => {
         (element as HTMLElement).setAttribute('data-theme', theme.name)
     })
+}
+
+// 对话框 insert 事件处理 - 将内容插入到编辑器
+function handleDialogInsert(markdown: string) {
+    EventBus.$emit('monaco-editor-insert-text', markdown)
+}
+
+// 导入选项确认处理
+async function handleImportOptionConfirm(option: 'replace' | 'newfile' | 'insert') {
+    const content = configStore.dialogs.importOption.content || ''
+    configStore.hideDialog('importOption')
+
+    switch (option) {
+        case 'replace':
+            EventBus.$emit('monaco-editor-replace-text', content)
+            break
+
+        case 'newfile':
+            await window.electron.ipcRenderer.invoke('baize-notes:import-new-file', content)
+            break
+
+        case 'insert':
+            EventBus.$emit('monaco-editor-insert-text', content)
+            break
+    }
 }
 
 // 更新Monaco编辑器主题
@@ -416,20 +583,32 @@ window.electron.ipcRenderer.on('baize-notes:theme-updated', handleThemeUpdate);
 window.electron.ipcRenderer.on('baize-notes:editor-relayout', EditorReLayout);
 
 onMounted(async () => {
-    // 初始化时请求当前主题配置
+    // 监听 Electron 菜单触发的 Vue 对话框
+    window.electron.ipcRenderer.on('open-vue-dialog', (_, dialogName: string, data?: any) => {
+        if (data) {
+            configStore.showDialog(dialogName as any, data)
+        } else {
+            configStore.showDialog(dialogName as any)
+        }
+    })
+
+    // 加载所有配置
     try {
-        const themeStyles = await window.electron.ipcRenderer.invoke('get-current-theme-styles')
-        const separate = window.electron.ipcRenderer.sendSync('get-separate-editor-theme')
-        const monacoTheme = window.electron.ipcRenderer.sendSync('get-monaco-theme')
+        await configStore.loadAllConfigs()
+
+        // 应用主题配置
+        const themeConfig = configStore.themeConfig.value
+        const themeStyles = await window.electron.ipcRenderer.invoke('get-current-theme-styles', themeConfig.currentTheme)
+
+        separateEditorTheme.value = themeConfig.separateEditorTheme
+        monacoEditorTheme.value = themeConfig.editorTheme || 'vs'
 
         if (themeStyles) {
-            separateEditorTheme.value = separate
-            monacoEditorTheme.value = monacoTheme
             applyTheme(themeStyles)
-            await updateMonacoEditorTheme(themeStyles, separate, monacoTheme)
+            await updateMonacoEditorTheme(themeStyles, separateEditorTheme.value, monacoEditorTheme.value)
         }
     } catch (error) {
-        console.error('Failed to get current theme:', error)
+        console.error('Failed to load configs:', error)
     }
     EditorReLayout()
 })
@@ -442,6 +621,7 @@ onBeforeUnmount(() => {
     window.electron.ipcRenderer.removeListener('window-maximize', maximizeWindow)
     window.electron.ipcRenderer.removeListener('window-close', closeWindow)
     window.electron.ipcRenderer.removeListener('baize-notes:system-setting-update', handleSystemSettingUpdate)
+    window.electron.ipcRenderer.removeListener('open-vue-dialog', () => {})
     // 清理拖动和调整大小的事件监听
     document.removeEventListener('mousemove', onDragMouseMove)
     document.removeEventListener('mouseup', onDragMouseUp)

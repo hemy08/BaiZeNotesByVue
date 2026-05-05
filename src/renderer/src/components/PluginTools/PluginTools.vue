@@ -14,8 +14,8 @@
 
 <script setup lang="ts">
 import { watch, computed, ref, onMounted, onBeforeUnmount } from 'vue'
-import EventBus from '../../event-bus'
-import { CHANNEL_PLUGIN_TOOL_SHOW } from '../../../../main/common/menu_consts'
+import EventBus from '../../common/event_bus/event-bus'
+import { CHANNEL_PLUGIN_TOOL_SHOW } from '../MenuBar/menu_consts'
 import {pluginTools} from './plugin_tools_const'
 
 const props = defineProps({

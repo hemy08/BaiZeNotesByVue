@@ -11,7 +11,7 @@
 import { registerCustomLanguages } from './register-languages'
 import * as monaco from 'monaco-editor'
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
-import EventBus from '../../event-bus'
+import EventBus from '../../common/event_bus/event-bus'
 import * as editor from './hemy-editor'
 import { MarkdownTOC } from '../../../../main/global-types'
 
@@ -98,12 +98,12 @@ watch(
                 console.log(`[Monaco] Disposed model for: ${oldPath}`)
             }
         }
-        
+
         if (newPath && editorInstance) {
             // 创建或获取新文件的 model
             const newUri = monaco.Uri.parse(`file://${newPath}`)
             let newModel = monaco.editor.getModel(newUri)
-            
+
             if (!newModel) {
                 newModel = monaco.editor.createModel(
                     props.code,
@@ -112,7 +112,7 @@ watch(
                 )
                 console.log(`[Monaco] Created model for: ${newPath}`)
             }
-            
+
             editorInstance.setModel(newModel)
         }
     }

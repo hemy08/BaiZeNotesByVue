@@ -1,9 +1,18 @@
+/**
+ * MaterialRender.ts
+ * Material Design 风格的 Markdown 渲染器
+ * 主要功能：
+ * 1. 支持 Admonitions（提示块）：!!! note/warning/tip/info 等语法
+ * 2. 支持代码块语法高亮
+ * 3. 支持 Tabbed Set（标签页）语法
+ */
+
 import MarkdownIt from 'markdown-it'
 import highlightjs from 'markdown-it-highlightjs'
 import hljs from 'highlight.js'
 
-// 注册 PlantUML 语言支持
-hljs.registerLanguage('plantuml', function(hljs) {
+// 注册 PlantUML 语言支持（用于代码块高亮）
+hljs.registerLanguage('plantuml', function (hljs) {
     return {
         name: 'PlantUML',
         keywords: {
@@ -33,9 +42,25 @@ hljs.registerLanguage('plantuml', function(hljs) {
     }
 })
 
-const materialMd = new MarkdownIt().use(highlightjs)
+const materialMd = new MarkdownIt().use(highlightjs, {
+    // 自定义语法高亮函数，支持的语言会正常高亮，不支持的返回空字符串
+    highlight: function (str: string, lang: string): string {
+        if (lang && hljs.getLanguage(lang)) {
+            try {
+                return hljs.highlight(str, { language: lang }).value
+            } catch (__) {
+                console.warn(`Highlight.js error for language '${lang}':`, __)
+            }
+        }
+        return ''  // 不支持的语言返回空字符串，代码块将显示为普通文本
+    }
+})
 
-// 匹配代码块
+/**
+ * 匹配代码块内容
+ * @param contents 文本行数组
+ * @returns 代码块的所有行
+ */
 function matchCodeBlock(contents: string[]): string[] {
     const codeBlocks: string[] = []
     let codeBlockStart = false
@@ -53,7 +78,12 @@ function matchCodeBlock(contents: string[]): string[] {
     return codeBlocks
 }
 
-// 匹配 Tabbed Set 块（=== 开头）
+/**
+ * 匹配 Tabbed Set 块
+ * Tabbed Set 是一种特殊的 Markdown 语法，以 === "标签名" 开头
+ * @param contents 文本行数组
+ * @returns Tabbed Set 块的所有行
+ */
 function matchTabbedSetBlock(contents: string[]): string[] {
     const tabbedBlocks: string[] = []
     let i = 0
@@ -103,6 +133,12 @@ function matchTabbedSetBlock(contents: string[]): string[] {
     return tabbedBlocks
 }
 
+/**
+ * 渲染 Admonitions 内容
+ * 处理普通文本行、代码块和 Tabbed Set 块
+ * @param contents 内容行数组
+ * @returns 渲染后的 HTML 字符串
+ */
 function materialAdmonitionsContentRender(contents: string[]): string {
     let renderResult = ''
     let normalTextLines: string[] = [] // 收集普通文本行
@@ -159,7 +195,12 @@ function materialAdmonitionsContentRender(contents: string[]): string {
     return renderResult
 }
 
-// 解析Admonitions块，得到type、title、content
+/**
+ * 解析 Admonitions 块
+ * 解析 !!!type "title" 格式，提取类型、标题和内容
+ * @param text Admonitions 块的文本内容
+ * @returns 解析后的 type、title 和 content
+ */
 function materialParserAdmonitions(text: string): {
     type: string
     title: string
@@ -197,6 +238,12 @@ function materialParserAdmonitions(text: string): {
     }
 }
 
+/**
+ * Material Admonitions 预渲染
+ * 将 !!!type "title" 格式转换为 HTML 的 admonition div
+ * @param text 原始 Markdown 文本
+ * @returns 渲染后的文本
+ */
 export function materialAdmonitionsRender(text: string): string {
     let renderResult = text
     let match: RegExpExecArray | null = null

@@ -1,5 +1,5 @@
 import ContextMenu, { MenuItem } from '@imengyu/vue3-context-menu'
-import EventBus from '../../event-bus'
+import EventBus from '../../common/event_bus/event-bus'
 import { h } from 'vue'
 
 const symbols = {

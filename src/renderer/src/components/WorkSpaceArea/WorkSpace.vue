@@ -68,7 +68,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import EventBus from "@renderer/event-bus"
+import EventBus from "@renderer/common/event_bus/event-bus"
 import NaviTab from "@renderer/components/WorkSpaceArea/NaviTab.vue"
 import ResManager from "@renderer/components/ResourceManager/ResourceManager.vue"
 import MdContainer from "@renderer/components/Markdown/MarkdownContainer.vue"

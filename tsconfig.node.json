@@ -6,7 +6,7 @@
         "src/main/global-types.d.ts",
         "src/preload/global.ts",
         "src/main/menu/*.ts",
-        "src/renderer/src/dialogs/**/*.ts",
+      "src/renderer/src/components/dialogs/**/*.ts",
         "resources/themes/**/*.ts",
         "resources/katex/types/**/*.ts",
         "resources/mermaid/**/*.ts",

@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import EventBus from '../../event-bus'
+import EventBus from '../../common/event_bus/event-bus'
 
 
 

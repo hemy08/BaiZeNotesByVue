@@ -1,5 +1,21 @@
+/**
+ * KatexRender.ts
+ * KaTeX 数学公式渲染器
+ * 支持渲染：
+ * 1. 行内公式：$...$
+ * 2. 块级公式：$$...$$
+ * 3. 代码块公式：```math...```、```katex...```、```latex...```
+ */
+
 import katex from 'katex'
 
+/**
+ * 使用正则表达式渲染文本中的数学公式
+ * @param text 原始文本
+ * @param regex 匹配公式的正则表达式
+ * @param isBlock 是否为块级公式
+ * @returns 渲染后的文本
+ */
 function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string {
   // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
   let result = text
@@ -37,6 +53,11 @@ function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string
   return result
 }
 
+/**
+ * 将 LaTeX 文本直接渲染为 HTML 字符串
+ * @param text LaTeX 文本
+ * @returns HTML 字符串
+ */
 function katexRenderToString(text: string): string {
   let html = ''
   try {

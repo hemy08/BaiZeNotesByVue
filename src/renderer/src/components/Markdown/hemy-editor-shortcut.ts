@@ -1,5 +1,5 @@
 import * as monaco from 'monaco-editor'
-import EventBus from '../../event-bus'
+import EventBus from '../../common/event_bus/event-bus'
 import { EventHandleMaps } from './hemy-editor-common'
 
 function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {

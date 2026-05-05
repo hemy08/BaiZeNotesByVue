@@ -59,7 +59,7 @@
 <script setup lang="ts">
 import { ref, PropType, onMounted, onBeforeUnmount  } from 'vue'
 import { FileSysItem, getFileMgrSvg, handleContextMenu } from './resource-manager'
-import EventBus from '../../event-bus'
+import EventBus from '../../common/event_bus/event-bus'
 
 // 定义 props 类型
 // @ts-ignore eslint-disable-next-line @typescript-eslint/no-unused-vars

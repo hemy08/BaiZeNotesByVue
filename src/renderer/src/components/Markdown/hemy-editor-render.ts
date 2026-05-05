@@ -1,6 +1,6 @@
 import mermaid from 'mermaid'
 import MarkdownIt from 'markdown-it'
-import EventBus from '../../event-bus'
+import EventBus from '../../common/event_bus/event-bus'
 import { MarkdownTOC } from '../../../../main/global-types'
 
 function genRandomNumString(length: number): string {

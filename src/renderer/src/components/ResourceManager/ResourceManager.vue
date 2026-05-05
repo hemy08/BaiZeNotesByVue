@@ -47,7 +47,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import FileTreeNode from './FileTreeNode.vue'
 import { FileSysItem } from './resource-manager'
-import EventBus from '../../event-bus'
+import EventBus from '../../common/event_bus/event-bus'
 import { MarkdownTOC } from '../../../../main/global-types'
 
 const showFileExplorer = ref(true)

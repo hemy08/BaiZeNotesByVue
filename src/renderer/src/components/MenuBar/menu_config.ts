@@ -1,8 +1,8 @@
 // 菜单数据结构
 import { ref } from "vue";
 import {BaiZeMenuItem} from "../../../../main/global-types";
-import * as MenuConst from '../../../../main/common/menu_consts';
-import * as Templates from '../../../../main/common/templates';
+import * as MenuConst from './menu_consts';
+import * as Templates from '../../common/templates';
 
 // 辅助函数：从UrlMaps生成菜单项
 function generateMenuItems(urlMaps: Array<{id: string, label: string, url: string}>): BaiZeMenuItem[] {

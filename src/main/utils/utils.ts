@@ -8,7 +8,7 @@ import { CreateHash, CreateHmac, CreateRsaKeyPair, CryptoDecrypt, CryptoEncrypt 
 import { ipcMain, shell } from 'electron'
 // @ts-ignore
 import { getQuickLinks } from '../settings/quick-link-config'
-import { getCurrentTheme, getCurrentThemeStyles, getMonacoTheme, getSeparateEditorTheme } from '../themes/theme-config'
+import { getCurrentTheme, getCurrentThemeStyles, getMonacoTheme, getSeparateEditorTheme, getAllThemes, getAllMonacoThemes, getThemeStylesByType } from '../themes/theme-config'
 import * as fileUtils from "./file-utils";
 
 export {
@@ -121,9 +121,20 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         return getCurrentTheme()
     })
 
-    ipcMain.handle('get-current-theme-styles', () => {
+    ipcMain.handle('get-current-theme-styles', (event, themeType?: string) => {
         //console.log('get-current-theme-styles')
+        if (themeType) {
+            return getThemeStylesByType(themeType as any)
+        }
         return getCurrentThemeStyles()
+    })
+
+    ipcMain.handle('get-all-themes', () => {
+        return getAllThemes()
+    })
+
+    ipcMain.handle('get-all-monaco-themes', () => {
+        return getAllMonacoThemes()
     })
 
     ipcMain.on('get-separate-editor-theme', (event) => {
@@ -196,6 +207,32 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         } catch (error) {
             console.error('检查文件存在失败:', error)
             return false
+        }
+    })
+
+    // 获取应用版本信息
+    ipcMain.handle('app:get-version', async () => {
+        try {
+            const { getAppResourcesPath } = require('./app-paths')
+            const fs = require('fs')
+            const path = require('path')
+            const versionFilePath = path.join(getAppResourcesPath(), 'config', 'version.json')
+            if (fs.existsSync(versionFilePath)) {
+                const versionData = JSON.parse(fs.readFileSync(versionFilePath, 'utf-8'))
+                return versionData
+            }
+        } catch (error) {
+            console.error('读取版本配置文件失败:', error)
+        }
+        console.log('默认版本信息',  process.versions)
+        return {
+            appVersion: '',
+            electronVersion: process.versions.electron || '',
+            chromeVersion: process.versions.chrome || '',
+            nodeVersion: process.versions.node || '',
+            vueVersion: '',
+            viteVersion: '',
+            typescriptVersion: ''
         }
     })
 }

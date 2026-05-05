@@ -36,8 +36,12 @@ class MenuActionParser {
 
 // ==================== 文件菜单处理器 ====================
 const fileMenuHandlers = {
-    'new-file': () => dialogs.ShowNewFileFolderDialog(true),
-    'new-folder': () => dialogs.ShowNewFileFolderDialog(false),
+    'new-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+        mainWindow.webContents.send('open-vue-dialog', 'createFileFolder', { isFolder: true })
+    },
+    'new-folder': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+        mainWindow.webContents.send('open-vue-dialog', 'createFileFolder', { isFolder: false })
+    },
     'open-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.OpenFile(mainWindow),
     'open-folder': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.OpenDirectory(mainWindow),
     'save': () => fileUtils.SaveActiveFile(),
@@ -226,20 +230,20 @@ const codingMenuHandlers = {
 const insertMenuHandlers = {
     material: {
         'admonition': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-            dialogs.ShowAdmonitionDialog(mainWindow)
+            mainWindow.webContents.send('open-vue-dialog', 'admonition')
         },
     },
     'special-text': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         dialogs.ShowFontSelectDialog(mainWindow)
     },
     'math': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        dialogs.ShowMathTextDialog(mainWindow)
+        mainWindow.webContents.send('open-vue-dialog', 'mathText')
     },
     'md-table': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        dialogs.ShowMarkdownSheetDialog(mainWindow)
+        mainWindow.webContents.send('open-vue-dialog', 'mdSheet')
     },
     'web-link': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        dialogs.ShowWebUrlDialog(mainWindow)
+        mainWindow.webContents.send('open-vue-dialog', 'insertLink')
     },
     'custom-template': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('OpenFile', null)
@@ -248,14 +252,14 @@ const insertMenuHandlers = {
         mainWindow.webContents.send('OpenFile', null)
     },
     'from-file': {
-        'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'json', true),
-        'text': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'text', true),
-        'ini': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'ini', true),
-        'yaml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'yaml', true),
-        'xml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'xml', true),
-        'html': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'html', true),
-        'csv': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'csv', true),
-        'excel': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'excel', true),
+        'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'json', false),
+        'text': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'text', false),
+        'ini': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'ini', false),
+        'yaml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'yaml', false),
+        'xml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'xml', false),
+        'html': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'html', false),
+        'csv': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'csv', false),
+        'excel': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'excel', false),
     }
 };
 
@@ -272,16 +276,16 @@ const settingMenuHandlers = {
 // ==================== 工具菜单处理器 ====================
 const toolsMenuHandlers = {
     'mermaid': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        dialogs.ShowMermaidEditDialog(mainWindow)
+        mainWindow.webContents.send('open-vue-dialog', 'mermaidEdit')
     },
     'katex': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('OpenFile', null)
     },
     'table': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('open-vue-dialog', 'mdSheet')
     },
     'images': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('open-vue-dialog', 'insertImage')
     },
     'drawing': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('OpenFile', null)

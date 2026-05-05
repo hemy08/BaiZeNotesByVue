@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import EventBus from '../event-bus'
+import EventBus from '../common/event_bus/event-bus'
 import { onBeforeUnmount, onMounted, ref, computed } from 'vue'
 import { Position } from 'monaco-editor'
 
@@ -44,7 +44,7 @@ const consoleIcon = computed(() => {
 const handleConsoleUpdate = (data: { message: string; type: string }) => {
     consoleMessage.value = data.message
     consoleType.value = data.type
-    
+
     // 如果是loading状态,不自动清除
     if (data.type !== 'loading') {
         // 5秒后自动清除消息
@@ -115,7 +115,7 @@ onMounted(() => {
     window.electron.ipcRenderer.on('file-saved-success', () => {
         isUnsaved.value = false
     })
-    
+
     // 监听console消息更新
     window.electron.ipcRenderer.on('status-bar-console-update', (_, data) => {
         handleConsoleUpdate(data)
