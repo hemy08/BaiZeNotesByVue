@@ -1,8 +1,8 @@
 import { BrowserWindow, ipcMain } from 'electron'
-import { getCurrentThemeStyles } from '../themes/theme-config'
+import { getCurrentThemeStyles } from '../config'
 import { JSDOM } from 'jsdom'
-import * as SystemSettingUtils from '../themes/system-setting'
-import { StartAutoSaveFileTime } from '../utils/file-utils'
+import * as SystemSettingUtils from '../config'
+import { StartAutoSaveFileTime } from '../utils/file-utils/auto-save'
 import { SystemSetting } from '../global-types'
 
 let systemSettingDialog: Electron.BrowserWindow | null

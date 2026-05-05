@@ -1,6 +1,4 @@
 import * as monaco from 'monaco-editor'
-import * as fileUtils from './utils/file-utils'
-import * as dialogs from '../dialogs/dialogs'
 import { Store } from 'electron-store'
 
 class BaiZeStore {
@@ -98,11 +96,6 @@ declare global {
         Font: string
     }
 
-    interface Hemy {
-        file: fileUtils
-        dialog: dialogs
-    }
-
     interface CryptoData {
         context: string
         secretKey: string
@@ -192,7 +185,7 @@ export interface FileItem {
     path: string
     type: 'file' | 'folder'
     isDirectory: boolean
-    fileExtension: string
+    fileExtension?: string
     children: FileItem[]
 }
 

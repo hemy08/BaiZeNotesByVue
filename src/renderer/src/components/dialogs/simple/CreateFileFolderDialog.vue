@@ -15,15 +15,16 @@
             </div>
 
             <div class="content">
-              <div class="options">
-                <div
-                  v-for="option in options"
-                  :key="option.value"
-                  :class="['option-item', { active: selectedType === option.value }]"
-                  @click="selectedType = option.value"
-                >
-                  <span class="option-icon">{{ option.icon }}</span>
-                  <span class="option-label">{{ option.label }}</span>
+              <div class="input-group">
+                <label class="input-label">目录</label>
+                <div class="path-input-wrapper">
+                  <input
+                    v-model="dirPath"
+                    type="text"
+                    class="path-input"
+                    readonly
+                  />
+                  <button class="btn-select-path" @click="handleSelectPath">选择</button>
                 </div>
               </div>
 
@@ -34,7 +35,7 @@
                   type="text"
                   class="name-input"
                   placeholder="请输入名称"
-                  @keyup.enter="handleConfirm"
+                  @keyup.enter="handleCreateFile"
                   autofocus
                 />
               </div>
@@ -42,7 +43,8 @@
 
             <div class="footer">
               <button class="btn btn-cancel" @click="handleCancel">取消</button>
-              <button class="btn btn-confirm" @click="handleConfirm" :disabled="!name.trim()">确定</button>
+              <button class="btn btn-create-file" @click="handleCreateFile" :disabled="!name.trim()">新建文件</button>
+              <button class="btn btn-create-folder" @click="handleCreateFolder" :disabled="!name.trim()">新建文件夹</button>
             </div>
           </div>
         </Transition>
@@ -58,30 +60,28 @@ import { useDialogDrag } from '../../../composables/useDialogDrag'
 interface Props {
   visible: boolean
   title?: string
+  dirPath?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  title: '新建文件/文件夹'
+  title: '新建文件/文件夹',
+  dirPath: ''
 })
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'confirm', data: { type: 'file' | 'folder'; name: string }): void
+  (e: 'create', data: { type: 'file' | 'folder'; name: string; dirPath: string }): void
 }>()
 
 const name = ref('')
-const selectedType = ref<'file' | 'folder'>('file')
-
-const options = [
-  { value: 'file' as const, label: '新建文件', icon: '📄' },
-  { value: 'folder' as const, label: '新建文件夹', icon: '📁' }
-]
+const dirPath = ref('')
 
 const { dialogRef, dialogStyle, onDialogMouseDown, resetPosition } = useDialogDrag({ initialPosition: 'center' })
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
     name.value = ''
+    dirPath.value = props.dirPath || ''
     resetPosition()
   }
 })
@@ -90,11 +90,33 @@ function handleCancel() {
   emit('close')
 }
 
-function handleConfirm() {
+async function handleSelectPath() {
+  try {
+    const selectedPath = await window.electron.ipcRenderer.invoke('baize-notes:select-directory')
+    if (selectedPath) {
+      dirPath.value = selectedPath
+    }
+  } catch (error) {
+    console.error('选择目录失败:', error)
+  }
+}
+
+function handleCreateFile() {
   if (name.value.trim()) {
-    emit('confirm', {
-      type: selectedType.value,
-      name: name.value.trim()
+    emit('create', {
+      type: 'file',
+      name: name.value.trim(),
+      dirPath: dirPath.value
+    })
+  }
+}
+
+function handleCreateFolder() {
+  if (name.value.trim()) {
+    emit('create', {
+      type: 'folder',
+      name: name.value.trim(),
+      dirPath: dirPath.value
     })
   }
 }
@@ -135,7 +157,7 @@ function handleConfirm() {
 }
 
 .dialog-container {
-  width: 420px;
+  width: 500px;
   background: var(--bg-color);
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
@@ -184,44 +206,6 @@ function handleConfirm() {
   padding: 20px;
 }
 
-.options {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.option-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 15px 10px;
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: var(--card-bg);
-}
-
-.option-item:hover {
-  border-color: var(--accent-color);
-}
-
-.option-item.active {
-  border-color: var(--accent-color);
-  background: rgba(102, 126, 234, 0.08);
-}
-
-.option-icon {
-  font-size: 32px;
-}
-
-.option-label {
-  font-size: 13px;
-  color: var(--text-color);
-}
-
 .input-group {
   display: flex;
   flex-direction: column;
@@ -232,6 +216,45 @@ function handleConfirm() {
   font-size: 13px;
   color: var(--text-color);
   font-weight: 500;
+}
+
+.path-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--secondary-text-color);
+  background: var(--card-bg);
+  outline: none;
+  box-sizing: border-box;
+  cursor: not-allowed;
+}
+
+.path-input-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+.path-input-wrapper .path-input {
+  flex: 1;
+}
+
+.btn-select-path {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--button-bg);
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-select-path:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
 }
 
 .name-input {
@@ -275,8 +298,13 @@ function handleConfirm() {
   color: var(--text-color);
 }
 
-.btn-confirm {
+.btn-create-file {
   background: var(--accent-color);
+  color: #fff;
+}
+
+.btn-create-folder {
+  background: var(--secondary-accent-color, #4caf50);
   color: #fff;
 }
 

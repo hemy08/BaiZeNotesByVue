@@ -1,12 +1,16 @@
-import {MenuContext} from '../global-types'
-import * as MenuConsts from '../common/menu_consts';
+/**
+ * IPC 菜单上下文模块
+ * 提供菜单上下文数据和辅助函数
+ */
 
-// 辅助函数：从UrlMaps生成菜单项
-function generateMenuContext(urlMaps: Array<{id: string, label: string, url: string}>): MenuContext[] {
+import { MenuContext } from '../global-types'
+import * as MenuConsts from '../../renderer/src/components/MenuBar/menu_consts'
+
+function generateMenuContext(urlMaps: Array<{ id: string; label: string; url: string }>): MenuContext[] {
     return urlMaps.map(item => ({
         label: item.label,
         context: item.url
-    }));
+    }))
 }
 
 export const JYShare: MenuContext[] = generateMenuContext(MenuConsts.CaiNiaoUrlMaps)
@@ -81,7 +85,7 @@ export function GenElectronMenuItem(
 ): Electron.MenuItemConstructorOptions[] {
     return items.map((item) => {
         return {
-            label: item.label, // 根据类别设置标签
+            label: item.label,
             click: () => {
                 mainWindow.webContents.send(channel, item.context)
             }
@@ -101,7 +105,7 @@ export function GenElectronSubMenuItem(
 ): Electron.MenuItemConstructorOptions[] {
     return items.map((item) => {
         return {
-            label: item.label, // 根据类别设置标签
+            label: item.label,
             submenu: GenElectronMenuItem(mainWindow, channel, item.MenuContext)
         }
     })

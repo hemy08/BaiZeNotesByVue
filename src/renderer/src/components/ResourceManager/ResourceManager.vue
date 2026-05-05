@@ -63,7 +63,7 @@ const props = defineProps({
     }
 })
 
-window.electron.ipcRenderer.on('file-system-data', (_, fileTree: string) => {
+window.electron.ipcRenderer.on('baize:notes:resource:manager:file-system-data', (_, fileTree: string) => {
     try {
         // 更新响应式数据
         fileNodes.value = JSON.parse(fileTree) as FileSysItem[]
@@ -77,11 +77,11 @@ function SwitchResourceManager(value: string) {
         // 保存当前tree信息
         showMarkdownToc.value = true
         showFileExplorer.value = false
-        EventBus.$emit('monaco-editor-get-chapters', true)
+        EventBus.$emit('baize:notes:monaco-editor:get-chapters', true)
     } else if (value == 'file-explorer') {
         showFileExplorer.value = true
         showMarkdownToc.value = false
-        EventBus.$emit('monaco-editor-switch-explorer', true)
+        EventBus.$emit('baize:notes:monaco-editor:switch:explorer', true)
     }
 }
 
@@ -144,6 +144,11 @@ onBeforeUnmount(() => {
     overflow: auto;
     height: 100%;
     width: calc(100% - 1px);
+}
+
+#file-tree {
+    width: 100%;
+    padding: 8px 0;
 }
 
 .markdown-toc-component {

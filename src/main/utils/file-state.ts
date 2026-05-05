@@ -7,7 +7,7 @@
 import Store from 'electron-store'
 import * as path from 'path'
 // @ts-ignore
-import * as FileUtils from './file-utils'
+import * as FileUtils from './file-utils/index'
 
 // 文件状态配置接口
 export interface FileState {

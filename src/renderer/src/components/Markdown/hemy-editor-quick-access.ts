@@ -9,7 +9,7 @@ const mermaidContextMenuItems = Object.keys(Templates.Mermaid).map((diagram) => 
     return {
         label: Templates.Mermaid[diagram].label, // 根据类别设置标签
         onClick: () => {
-            EventBus.$emit('monaco-editor-insert-text', Templates.Mermaid[diagram].context)
+            EventBus.$emit('baize:notes:monaco-editor:insert-text', Templates.Mermaid[diagram].context)
         }
     }
 })
@@ -19,7 +19,7 @@ const plantumlContextMenuItems = Object.keys(Templates.PlantUML).map((diagram) =
     return {
         label: Templates.PlantUML[diagram].label, // 根据类别设置标签
         onClick: () => {
-            EventBus.$emit('monaco-editor-insert-text', Templates.PlantUML[diagram].context)
+            EventBus.$emit('baize:notes:monaco-editor:insert-text', Templates.PlantUML[diagram].context)
         }
     }
 })

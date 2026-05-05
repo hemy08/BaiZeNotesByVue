@@ -92,8 +92,10 @@ export const defaultQuickLinksConfig: QuickLinksConfig = {
 }
 
 // 对话框状态接口
+type MessageType = 'success' | 'error' | 'warning' | 'info' | 'failed'
+
 export interface DialogState {
-  success: { visible: boolean; title: string; message: string }
+  messageDialog: { visible: boolean; type: MessageType; title: string; message: string }
   themeSettings: { visible: boolean }
   fontSelect: { visible: boolean }
   editorSettings: { visible: boolean }
@@ -104,7 +106,7 @@ export interface DialogState {
   insertImage: { visible: boolean }
   mdSheet: { visible: boolean }
   insertLink: { visible: boolean }
-  createFileFolder: { visible: boolean }
+  createFileFolder: { visible: boolean; dirPath?: string }
   rename: { visible: boolean; currentPath: string }
   helpAbout: { visible: boolean }
   helpContact: { visible: boolean }
@@ -115,7 +117,7 @@ export interface DialogState {
 
 // 对话框默认状态
 const defaultDialogState: DialogState = {
-  success: { visible: false, title: '', message: '' },
+  messageDialog: { visible: false, type: 'success', title: '', message: '' },
   themeSettings: { visible: false },
   fontSelect: { visible: false },
   editorSettings: { visible: false },
@@ -223,15 +225,37 @@ function updateSystemConfig(config: Partial<SystemConfig>) {
 
 // 对话框控制函数
 function showDialog(dialogName: keyof DialogState, data?: any) {
-  if (data !== undefined) {
-    Object.assign(dialogs[dialogName], data, { visible: true })
+  // 如果是消息对话框类型（'message' 或具体的消息类型），更新 messageDialog
+  const messageTypes = ['success', 'error', 'warning', 'info', 'failed', 'message'] as const
+  if (messageTypes.includes(dialogName as any)) {
+    // 如果 dialogName 是 'message'，从 data.type 读取具体类型
+    // 如果 dialogName 是具体类型（如 'success'），直接使用
+    const messageType = dialogName === 'message' ? (data?.type || 'success') : dialogName
+    dialogs.messageDialog = {
+      visible: true,
+      type: messageType as MessageType,
+      title: data?.title || '',
+      message: data?.message || ''
+    }
   } else {
-    dialogs[dialogName].visible = true
+    // 其他对话框类型，正常处理
+    if (data !== undefined) {
+      Object.assign(dialogs[dialogName], data, { visible: true })
+    } else {
+      dialogs[dialogName].visible = true
+    }
   }
 }
 
 function hideDialog(dialogName: keyof DialogState) {
-  dialogs[dialogName].visible = false
+  // 如果是消息对话框类型（'message' 或具体的消息类型），隐藏 messageDialog
+  const messageTypes = ['success', 'error', 'warning', 'info', 'failed', 'message'] as const
+  if (messageTypes.includes(dialogName as any)) {
+    dialogs.messageDialog.visible = false
+  } else {
+    // 其他对话框类型，正常处理
+    dialogs[dialogName].visible = false
+  }
 }
 
 function toggleDialog(dialogName: keyof DialogState) {
@@ -241,6 +265,22 @@ function toggleDialog(dialogName: keyof DialogState) {
 // 显示成功消息
 function showSuccess(title: string, message: string) {
   showDialog('success', { title, message })
+}
+
+function showError(title: string, message: string) {
+  showDialog('error', { title, message })
+}
+
+function showWarning(title: string, message: string) {
+  showDialog('warning', { title, message })
+}
+
+function showInfo(title: string, message: string) {
+  showDialog('info', { title, message })
+}
+
+function showFailed(title: string, message: string) {
+  showDialog('failed', { title, message })
 }
 
 // 显示重命名对话框
@@ -278,6 +318,10 @@ export const useConfigStore = () => ({
   hideDialog,
   toggleDialog,
   showSuccess,
+  showError,
+  showWarning,
+  showInfo,
+  showFailed,
   showRename
 })
 

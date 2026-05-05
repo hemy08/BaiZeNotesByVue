@@ -79,8 +79,11 @@ export function HandleMenuAction(action: string) {
     }
 
     // 新建文件/文件夹
-    if (action === 'baize:menu:file:new-file' || action === 'baize:menu:file:new-folder') {
-        configStore.showDialog('createFileFolder')
+    if (action === 'baize:menu:file:new') {
+        // 获取当前打开文件的路径作为默认目录
+        window.electron.ipcRenderer.invoke('baize-notes:get-current-file-path').then((dirPath: string) => {
+            configStore.showDialog('createFileFolder', { dirPath })
+        })
         return
     }
 
@@ -119,14 +122,14 @@ export function HandleMenuAction(action: string) {
     // 插入 Mermaid 模板
     if (action.startsWith('baize:menu:insert:mermaid:')) {
         const item = Templates.Mermaid.find(item => item.menu_action === action)
-        EventBus.$emit('monaco-editor-insert-text', item?.context)
+        EventBus.$emit('baize:notes:monaco-editor:insert-text', item?.context)
         return
     }
 
     // 插入文本块模板
     if (action.startsWith('baize:menu:insert:textblock:')) {
         const item = Templates.TextBlock.find(item => item.menu_action === action)
-        EventBus.$emit('monaco-editor-insert-text', item?.context)
+        EventBus.$emit('baize:notes:monaco-editor:insert-text', item?.context)
         return
     }
 
@@ -140,7 +143,7 @@ export function HandleMenuAction(action: string) {
     // PlantUML 模板
     if (action.startsWith('baize:menu:insert:plantuml:')) {
         const item = Templates.PlantUML.find(item => item.menu_action === action)
-        EventBus.$emit('monaco-editor-insert-text', item?.context)
+        EventBus.$emit('baize:notes:monaco-editor:insert-text', item?.context)
         return
     }
 

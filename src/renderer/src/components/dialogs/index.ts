@@ -8,7 +8,7 @@ export { default as TitleBar } from './common/TitleBar.vue'
 export { default as CreateFileFolderDialog } from './simple/CreateFileFolderDialog.vue'
 export { default as NewFileFolderDialog } from './simple/NewFileFolderDialog.vue'
 export { default as RenameDialog } from './simple/RenameDialog.vue'
-export { default as SuccessDialog } from './simple/SuccessDialog.vue'
+export { default as MessageDialog } from './simple/MessageDialog.vue'
 export { default as WebUrlDialog } from './simple/WebUrlDialog.vue'
 
 export { default as AdmonitionDialog } from './medium/AdmonitionDialog.vue'

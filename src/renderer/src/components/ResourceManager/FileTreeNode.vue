@@ -90,10 +90,10 @@ onMounted(() => {
     const handleEditorSwitchExplorer = () => {
         // console.log('curActiveNode', curActiveNode)
     }
-    EventBus.$on('monaco-editor-switch-explorer', handleEditorSwitchExplorer)
+    EventBus.$on('baize:notes:monaco-editor:switch:explorer', handleEditorSwitchExplorer)
 
     onBeforeUnmount(() => {
-        EventBus.$off('monaco-editor-switch-explorer', handleEditorSwitchExplorer)
+        EventBus.$off('baize:notes:monaco-editor:switch:explorer', handleEditorSwitchExplorer)
     })
 })
 
@@ -114,7 +114,7 @@ function handleFileSelect(node: FileSysItem) {
         type: 'file',
         content: ''
     }
-    window.electron.ipcRenderer.send('open-select-file', fileInfo)
+    window.electron.ipcRenderer.send('baize:notes:open-select-file', fileInfo)
     EventBus.$emit('plugin-tools-container-show', false)
 }
 
@@ -145,21 +145,22 @@ function onContextMenu(e: MouseEvent, node: FileSysItem) {
 
 .file-tree-node {
     overflow: hidden;
-    height: 100%;
     line-height: 1.6;
     white-space: nowrap;
 }
 
 .node-content {
     overflow: hidden;
+    display: flex;
+    align-items: center;
 }
 
 .file-manager-node {
     font-size: 12pt;
     margin-left: 4px;
-    width: 100%;
     white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .file-manager-node:hover {

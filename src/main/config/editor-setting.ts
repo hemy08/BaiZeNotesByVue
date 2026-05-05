@@ -491,37 +491,47 @@ const defaultEditorSetting: EditorSetting = {
     maximizedScrollbar: false
 }
 
-// 创建存储实例
-// @ts-ignore
-const store = createStore('editor-setting', {})
+// 存储实例（延迟初始化）
+let store: ReturnType<typeof createStore> | null = null
+
+// 获取存储实例
+function getStore() {
+    if (!store) {
+        store = createStore('editor-setting', {})
+    }
+    return store
+}
 
 /**
  * 获取编辑器设置
  */
 export function getEditorSetting(): EditorSetting {
+    const s = getStore()
     // @ts-ignore
-    if (!store.has('editorSetting')) {
+    if (!s.has('editorSetting')) {
         // @ts-ignore
-        store.set('editorSetting', defaultEditorSetting)
+        s.set('editorSetting', defaultEditorSetting)
     }
     // @ts-ignore
-    return store.get('editorSetting') as EditorSetting
+    return s.get('editorSetting') as EditorSetting
 }
 
 /**
  * 保存编辑器设置
  */
 export function saveEditorSetting(setting: EditorSetting): void {
+    const s = getStore()
     // @ts-ignore
-    store.set('editorSetting', setting)
+    s.set('editorSetting', setting)
 }
 
 /**
  * 重置为默认设置
  */
 export function resetEditorSetting(): void {
+    const s = getStore()
     // @ts-ignore
-    store.set('editorSetting', defaultEditorSetting)
+    s.set('editorSetting', defaultEditorSetting)
 }
 
 /**

@@ -1002,7 +1002,7 @@ function createSymbolButtons(
                         style: phoneticButtonStyle,
                         title: text.substring(2, text.length - 1),
                         onClick: () => {
-                            EventBus.$emit('monaco-editor-insert-text', text[0])
+                            EventBus.$emit('baize:notes:monaco-editor:insert-text', text[0])
                         }
                     },
                     text[0]
@@ -1014,7 +1014,7 @@ function createSymbolButtons(
                     style: symbol === 'chinesePhonetic' ? phoneticButtonStyle : buttonStyle,
                     onClick: () => {
                         EventBus.$emit(
-                            'monaco-editor-insert-text',
+                            'baize:notes:monaco-editor:insert-text',
                             symbol === 'chinesePhonetic' ? text[0] : text
                         )
                     }

@@ -71,11 +71,12 @@
         <div class="resize-corner resize-bottom-right" @mousedown="onResizeMouseDown('bottom-right', $event)"></div>
 
         <!-- 对话框组件 -->
-        <BaiZeDialogs.SuccessDialog
-            :visible="configStore.dialogs.success.visible"
-            :title="configStore.dialogs.success.title"
-            :message="configStore.dialogs.success.message"
-            @close="configStore.hideDialog('success')"
+        <BaiZeDialogs.MessageDialog
+            :visible="configStore.dialogs.messageDialog.visible"
+            :type="configStore.dialogs.messageDialog.type"
+            :title="configStore.dialogs.messageDialog.title"
+            :message="configStore.dialogs.messageDialog.message"
+            @close="configStore.hideDialog('message')"
         />
         <BaiZeDialogs.ThemeSettingDialog
             :visible="configStore.dialogs.themeSettings.visible"
@@ -126,7 +127,9 @@
         />
         <BaiZeDialogs.CreateFileFolderDialog
             :visible="configStore.dialogs.createFileFolder.visible"
+            :dir-path="configStore.dialogs.createFileFolder.dirPath || ''"
             @close="configStore.hideDialog('createFileFolder')"
+            @create="handleCreateFileFolder"
         />
         <BaiZeDialogs.RenameDialog
             :visible="configStore.dialogs.rename.visible"
@@ -296,7 +299,7 @@ function applyTheme(theme: ThemeStyles) {
 
 // 对话框 insert 事件处理 - 将内容插入到编辑器
 function handleDialogInsert(markdown: string) {
-    EventBus.$emit('monaco-editor-insert-text', markdown)
+    EventBus.$emit('baize:notes:monaco-editor:insert-text', markdown)
 }
 
 // 导入选项确认处理
@@ -314,8 +317,22 @@ async function handleImportOptionConfirm(option: 'replace' | 'newfile' | 'insert
             break
 
         case 'insert':
-            EventBus.$emit('monaco-editor-insert-text', content)
+            EventBus.$emit('baize:notes:monaco-editor:insert-text', content)
             break
+    }
+}
+
+// 创建文件/文件夹处理
+async function handleCreateFileFolder(data: { type: 'file' | 'folder'; name: string; dirPath: string }) {
+    const { type, name, dirPath } = data
+    const extension = '.md'
+
+    configStore.hideDialog('createFileFolder')
+
+    try {
+        await window.electron.ipcRenderer.invoke('baize-notes:create-file-folder', name, dirPath, type === 'folder', extension)
+    } catch (error) {
+        console.error('创建文件/文件夹失败:', error)
     }
 }
 

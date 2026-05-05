@@ -61,25 +61,32 @@ const defaultQuickLinks: QuickLinkItem[] = [
     }
 ]
 
-// 创建存储实例
-// @ts-ignore
-const store = createStore('quick-link-config', {})
+// 存储实例（延迟初始化）
+let store: ReturnType<typeof createStore> | null = null
 
-// 初始化默认配置
-// @ts-ignore
-if (!store.has('quickLinks')) {
-    // @ts-ignore
-    store.set('quickLinks', {
-        links: defaultQuickLinks
-    })
+// 获取存储实例
+function getStore() {
+    if (!store) {
+        store = createStore('quick-link-config', {})
+        // 初始化默认配置
+        // @ts-ignore
+        if (!store.has('quickLinks')) {
+            // @ts-ignore
+            store.set('quickLinks', {
+                links: defaultQuickLinks
+            })
+        }
+    }
+    return store
 }
 
 /**
  * 获取快速链接配置
  */
 export function getQuickLinks(): QuickLinkItem[] {
+    const s = getStore()
     // @ts-ignore
-    const config = store.get('quickLinks') as QuickLinkConfig
+    const config = s.get('quickLinks') as QuickLinkConfig
     // 兼容旧数据：为没有 position 字段的链接添加默认值
     const links = config.links.map((link) => ({
         ...link,
@@ -92,8 +99,9 @@ export function getQuickLinks(): QuickLinkItem[] {
  * 保存快速链接配置
  */
 export function saveQuickLinks(links: QuickLinkItem[]): void {
+    const s = getStore()
     // @ts-ignore
-    store.set('quickLinks', { links })
+    s.set('quickLinks', { links })
 }
 
 /**

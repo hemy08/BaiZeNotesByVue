@@ -39,7 +39,7 @@ import TitleBar from './common/TitleBar.vue'
 import CreateFileFolderDialog from './simple/CreateFileFolderDialog.vue'
 import NewFileFolderDialog from './simple/NewFileFolderDialog.vue'
 import RenameDialog from './simple/RenameDialog.vue'
-import SuccessDialog from './simple/SuccessDialog.vue'
+import MessageDialog from './simple/MessageDialog.vue'
 import WebUrlDialog from './simple/WebUrlDialog.vue'
 
 import AdmonitionDialog from './medium/AdmonitionDialog.vue'
@@ -65,7 +65,7 @@ export type DialogType =
   | 'CreateFileFolderDialog'
   | 'NewFileFolderDialog'
   | 'RenameDialog'
-  | 'SuccessDialog'
+  | 'MessageDialog'
   | 'WebUrlDialog'
   | 'AdmonitionDialog'
   | 'ImportOptionDialog'
@@ -117,7 +117,7 @@ const components: Record<DialogType, unknown> = {
   CreateFileFolderDialog,
   NewFileFolderDialog,
   RenameDialog,
-  SuccessDialog,
+  MessageDialog,
   WebUrlDialog,
   AdmonitionDialog,
   ImportOptionDialog,

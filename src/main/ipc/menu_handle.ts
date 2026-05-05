@@ -1,40 +1,39 @@
+/**
+ * IPC 菜单处理器模块
+ * 集中管理所有菜单动作的处理逻辑
+ */
+
 import { app, shell } from 'electron'
-import * as fileUtils from "../utils/file-utils";
-import * as dialogs from "../dialogs/dialogs";
-import { OpenOnlineWebPage } from "../dialogs/dialogs";
+import { OpenFile, OpenDirectory, SaveActiveFile, SaveActiveFileAs, ReloadDirFromDisk } from '../utils/file-utils/file-operations'
+import { InsertImportFormFile } from '../utils/file-utils/import'
+import { ExportToFile } from '../utils/file-utils/export'
+import * as dialogs from '../dialogs/dialogs'
+import { OpenOnlineWebPage } from '../dialogs/dialogs'
 
-/**
- * 菜单动作处理函数类型定义
- */
-type MenuActionHandler = (mainWindow: Electron.CrossProcessExports.BrowserWindow) => void;
+type MenuActionHandler = (mainWindow: Electron.CrossProcessExports.BrowserWindow) => void
 
-/**
- * 菜单动作解析器
- * 解析格式: baize:menu:主菜单:子菜单:动作
- */
 class MenuActionParser {
     static parse(action: string): string[] {
         if (!action.startsWith('baize:menu:')) {
-            return [];
+            return []
         }
-        return action.split(':').slice(2);
+        return action.split(':').slice(2)
     }
 
     static getMainMenu(action: string): string {
-        return this.parse(action)[0] || '';
+        return this.parse(action)[0] || ''
     }
 
     static getSubMenu(action: string): string {
-        return this.parse(action)[1] || '';
+        return this.parse(action)[1] || ''
     }
 
     static getActionName(action: string): string {
-        const parts = this.parse(action);
-        return parts[parts.length - 1] || '';
+        const parts = this.parse(action)
+        return parts[parts.length - 1] || ''
     }
 }
 
-// ==================== 文件菜单处理器 ====================
 const fileMenuHandlers = {
     'new-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('open-vue-dialog', 'createFileFolder', { isFolder: true })
@@ -42,12 +41,12 @@ const fileMenuHandlers = {
     'new-folder': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('open-vue-dialog', 'createFileFolder', { isFolder: false })
     },
-    'open-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.OpenFile(mainWindow),
-    'open-folder': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.OpenDirectory(mainWindow),
-    'save': () => fileUtils.SaveActiveFile(),
-    'save-as': () => fileUtils.SaveActiveFileAs(),
-    'close-file': () => fileUtils.SaveActiveFile(),
-    'reload': () => fileUtils.ReloadDirFromDisk(),
+    'open-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => OpenFile(mainWindow),
+    'open-folder': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => OpenDirectory(mainWindow),
+    'save': () => SaveActiveFile(),
+    'save-as': () => SaveActiveFileAs(),
+    'close-file': () => SaveActiveFile(),
+    'reload': () => ReloadDirFromDisk(),
     'relaunch': () => {
         app.relaunch()
         app.quit()
@@ -55,25 +54,24 @@ const fileMenuHandlers = {
     'exit': () => app.quit(),
 
     import: {
-        'word': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'word', true),
-        'html': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'html', true),
-        'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'json', true),
-        'yaml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'yaml', true),
-        'xml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'xml', true),
-        'text': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'text', true),
+        'word': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'word', true),
+        'html': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'html', true),
+        'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'json', true),
+        'yaml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'yaml', true),
+        'xml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'xml', true),
+        'text': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'text', true),
     },
 
     export: {
-        'word': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.ExportToFile(mainWindow, 'word'),
-        'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.ExportToFile(mainWindow, 'json'),
-        'xml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.ExportToFile(mainWindow, 'xml'),
-        'yaml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.ExportToFile(mainWindow, 'yaml'),
-        'html': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.ExportToFile(mainWindow, 'html'),
-        'pdf': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.ExportToFile(mainWindow, 'pdf'),
+        'word': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => ExportToFile(mainWindow, 'word'),
+        'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => ExportToFile(mainWindow, 'json'),
+        'xml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => ExportToFile(mainWindow, 'xml'),
+        'yaml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => ExportToFile(mainWindow, 'yaml'),
+        'html': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => ExportToFile(mainWindow, 'html'),
+        'pdf': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => ExportToFile(mainWindow, 'pdf'),
     }
-};
+}
 
-// ==================== 编辑菜单处理器 ====================
 const editMenuHandlers = {
     'undo': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('monaco-editor-trigger-undo-redo', 'undo')
@@ -99,9 +97,8 @@ const editMenuHandlers = {
     'replace-in-dir': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('OpenFile', null)
     },
-};
+}
 
-// ==================== 视图菜单处理器 ====================
 const viewMenuHandlers = {
     'edit-mode': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('markdown-edit-model', null)
@@ -154,9 +151,8 @@ const viewMenuHandlers = {
             mainWindow.webContents.send('OpenFile', null)
         },
     }
-};
+}
 
-// ==================== 编码菜单处理器 ====================
 function FileEncoding(mainWindow: Electron.CrossProcessExports.BrowserWindow, encoding: string) {
     mainWindow.webContents.send('open-with-encoding', encoding)
 }
@@ -224,9 +220,8 @@ const codingMenuHandlers = {
             FileConvertCoding(mainWindow, 'hex')
         },
     }
-};
+}
 
-// ==================== 插入菜单处理器 ====================
 const insertMenuHandlers = {
     material: {
         'admonition': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
@@ -252,18 +247,17 @@ const insertMenuHandlers = {
         mainWindow.webContents.send('OpenFile', null)
     },
     'from-file': {
-        'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'json', false),
-        'text': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'text', false),
-        'ini': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'ini', false),
-        'yaml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'yaml', false),
-        'xml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'xml', false),
-        'html': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'html', false),
-        'csv': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'csv', false),
-        'excel': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => fileUtils.InsertImportFormFile(mainWindow, 'excel', false),
+        'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'json', false),
+        'text': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'text', false),
+        'ini': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'ini', false),
+        'yaml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'yaml', false),
+        'xml': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'xml', false),
+        'html': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'html', false),
+        'csv': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'csv', false),
+        'excel': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'excel', false),
     }
-};
+}
 
-// ==================== 设置菜单处理器 ====================
 const settingMenuHandlers = {
     'theme': () => dialogs.ShowThemeSettingDialog(),
     'system': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => dialogs.ShowSystemSettingDialog(mainWindow),
@@ -271,9 +265,8 @@ const settingMenuHandlers = {
     'monaco-editor': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         dialogs.ShowEditorSettingDialog(mainWindow)
     },
-};
+}
 
-// ==================== 工具菜单处理器 ====================
 const toolsMenuHandlers = {
     'mermaid': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('open-vue-dialog', 'mermaidEdit')
@@ -290,9 +283,8 @@ const toolsMenuHandlers = {
     'drawing': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('OpenFile', null)
     },
-};
+}
 
-// ==================== 插件菜单处理器 ====================
 const pluginsMenuHandlers = {
     encrypt: {
         'token-generator': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
@@ -376,9 +368,8 @@ const pluginsMenuHandlers = {
             mainWindow.webContents.send('open-plugin-tool', 'ascii-table')
         },
     }
-};
+}
 
-// ==================== 在线工具菜单处理器 ====================
 const onlineMenuHandlers = {
     tools: {
         'cainiao-tools': () => OpenOnlineWebPage('https://www.jyshare.com/'),
@@ -439,18 +430,16 @@ const onlineMenuHandlers = {
         'tianyi-cloud': () => OpenOnlineWebPage('https://www.ctyun.cn/'),
         'jinshan-cloud': () => OpenOnlineWebPage('https://www.ksyun.com/'),
     }
-};
+}
 
-// ==================== GitHub菜单处理器 ====================
 const githubMenuHandlers = {
     'it-tools': () => OpenOnlineWebPage('https://it-tools.tech/'),
     'ghost-website': () => OpenOnlineWebPage('https://ghost.org/'),
     'priospace': () => OpenOnlineWebPage('https://github.com/AnoyRC/priospace'),
     'plane-project': () => OpenOnlineWebPage('https://github.com/makeplane/plane'),
     'openproject': () => OpenOnlineWebPage('https://github.com/opf/openproject'),
-};
+}
 
-// ==================== 帮助菜单处理器 ====================
 const helpMenuHandlers = {
     'release-notes': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('OpenFile', null)
@@ -470,9 +459,8 @@ const helpMenuHandlers = {
         mainWindow.webContents.send('OpenFile', null)
     },
     'contact-us': () => dialogs.ShowHelpContactUsDialog(),
-};
+}
 
-// ==================== 统一合并所有菜单处理器 ====================
 const menuHandlers = {
     file: fileMenuHandlers,
     edit: editMenuHandlers,
@@ -485,75 +473,67 @@ const menuHandlers = {
     online: onlineMenuHandlers,
     github: githubMenuHandlers,
     help: helpMenuHandlers,
-};
+}
 
-/**
- * 查找菜单动作处理器
- */
 function findHandler(action: string): MenuActionHandler | undefined {
-    const parts = MenuActionParser.parse(action);
+    const parts = MenuActionParser.parse(action)
     if (parts.length === 0) {
-        return undefined;
+        return undefined
     }
 
-    let current: any = menuHandlers;
+    let current: any = menuHandlers
+    console.log('parts: ', parts);
     for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
+        const part = parts[i]
         if (current[part]) {
             if (i === parts.length - 1) {
                 if (typeof current[part] === 'function') {
-                    return current[part];
+                    return current[part]
                 }
             } else {
-                current = current[part];
+                current = current[part]
             }
         } else {
-            return undefined;
+            return undefined
         }
     }
 
-    return undefined;
+    return undefined
 }
 
-/**
- * 处理菜单动作
- */
 export function HandleBaiZeMenuAction(
     action: string,
     mainWindow: Electron.CrossProcessExports.BrowserWindow
 ): void {
-    const handler = findHandler(action);
+    const handler = findHandler(action)
 
     if (handler) {
         try {
-            handler(mainWindow);
+            handler(mainWindow)
         } catch (error) {
-            console.error('Error executing menu action: ', action, ', error: ', error);
+            console.error('Error executing menu action: ', action, ', error: ', error)
         }
     } else {
-        console.warn('Unknown menu action: ', action);
+        console.warn('Unknown menu action: ', action)
     }
 }
 
-/**
- * 获取所有已注册的菜单动作
- */
 export function getAllMenuActions(): string[] {
-    const actions: string[] = [];
+    const actions: string[] = []
 
     function collectActions(obj: any, prefix: string = 'baize:menu') {
         for (const key in obj) {
-            const value = obj[key];
-            const action = prefix + ':' + key;
+            const value = obj[key]
+            const action = prefix + ':' + key
 
             if (typeof value === 'function') {
-                actions.push(action);
+                actions.push(action)
             } else if (typeof value === 'object') {
-                collectActions(value, action);
+                collectActions(value, action)
             }
         }
     }
 
-    collectActions(menuHandlers);
-    return actions;
+    collectActions(menuHandlers)
+    return actions
 }

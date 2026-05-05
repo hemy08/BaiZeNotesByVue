@@ -174,7 +174,7 @@ const handleLocateTargetLine = (item: MarkdownTOC) => {
 
 function handleScrollEvent(event) {
     console.log('handleScrollEvent', event)
-    EventBus.$emit('monaco-editor-scroll-event', null)
+    EventBus.$emit('baize:notes:monaco-editor:scroll-event', null)
 }
 
 onMounted(async () => {
@@ -202,7 +202,7 @@ onMounted(async () => {
             if (editorInstance != null) {
                 const context = editorInstance.getValue()
                 emit('update:code', context)
-                EventBus.$emit('monaco-editor-statusbar-content-length', context.length)
+                EventBus.$emit('baize:notes:status-bar:context-length', context.length)
             }
         })
 
@@ -236,7 +236,7 @@ onMounted(async () => {
     // 注册 EventBus 监听器
     EventBus.$on('monaco-editor-update-header-format', handleUpdateContext)
     EventBus.$on('monaco-editor-update-font-format', handleUpdateContext)
-    EventBus.$on('monaco-editor-insert-text', handleInsertAfterCursor)
+    EventBus.$on('baize:notes:monaco-editor:insert-text', handleInsertAfterCursor)
     EventBus.$on('monaco-editor-locate-target-line', handleLocateTargetLine)
     EventBus.$on('monaco-editor-relayout', handleRelayout)
 
@@ -258,7 +258,7 @@ onBeforeUnmount(() => {
     // 1. 清理 EventBus 监听器
     EventBus.$off('monaco-editor-update-header-format', handleUpdateContext)
     EventBus.$off('monaco-editor-update-font-format', handleUpdateContext)
-    EventBus.$off('monaco-editor-insert-text', handleInsertAfterCursor)
+    EventBus.$off('baize:notes:monaco-editor:insert-text', handleInsertAfterCursor)
     EventBus.$off('monaco-editor-locate-target-line', handleLocateTargetLine)
     EventBus.$off('monaco-editor-relayout', handleRelayout)
 

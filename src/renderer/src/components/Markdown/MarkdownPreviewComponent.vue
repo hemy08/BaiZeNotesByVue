@@ -94,10 +94,10 @@ function UpdateMarkdownChapters() {
 }
 
 onMounted(() => {
-    EventBus.$on('monaco-editor-get-chapters', UpdateMarkdownChapters)
+    EventBus.$on('baize:notes:monaco-editor:get-chapters', UpdateMarkdownChapters)
 
     onBeforeUnmount(() => {
-        EventBus.$off('monaco-editor-get-chapters', UpdateMarkdownChapters)
+        EventBus.$off('baize:notes:monaco-editor:get-chapters', UpdateMarkdownChapters)
 
         // 清理防抖定时器
         if (renderDebounceTimer) {
@@ -162,7 +162,7 @@ onUpdated(() => {
                     type: 'file',
                     content: ''
                 }
-                window.electron.ipcRenderer.send('open-select-file', fileInfo)
+                window.electron.ipcRenderer.send('baize:notes:open-select-file', fileInfo)
             } else if (href.startsWith('http')) {
                 window.open(href, '_blank', 'noopener, noreferrer')
             }

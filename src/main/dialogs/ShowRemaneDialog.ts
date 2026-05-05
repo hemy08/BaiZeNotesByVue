@@ -3,9 +3,9 @@
  */
 
 import { BrowserWindow, ipcMain } from 'electron'
-import { RenameFileFolder } from '../utils/file-utils'
+import { RenameFileFolder } from '../utils/file-utils/file-operations'
 import { JSDOM } from 'jsdom'
-import { getCurrentThemeStyles } from '../themes/theme-config'
+import { getCurrentThemeStyles } from '../config'
 
 let customRenameDialog: Electron.BrowserWindow | null
 

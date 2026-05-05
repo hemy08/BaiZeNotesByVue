@@ -136,7 +136,7 @@ function onHandleNewContent(content: string) {
   }
 }
 
-window.electron.ipcRenderer.on('show-selected-file-context', (_, content) => {
+window.electron.ipcRenderer.on('baize:notes:show-selected-file-context', (_, content) => {
   EventBus.$emit('baize:notes:workspace:show', "md")
   onHandleNewContent(content)
 })

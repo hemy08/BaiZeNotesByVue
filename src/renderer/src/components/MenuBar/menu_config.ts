@@ -40,8 +40,7 @@ const fileMenu: BaiZeMenuItem = {
     label: '文件',
     accelerator: 'Alt+N',
     submenu: [
-        { label: '新建文件(N)', accelerator: 'Ctrl+N', menu_action: 'baize:menu:file:new-file' },
-        { label: '新建文件夹(D)', accelerator: 'Ctrl+D', menu_action: 'baize:menu:file:new-folder' },
+        { label: '新建', accelerator: 'Ctrl+N', menu_action: 'baize:menu:file:new' },
         { label: '打开文件', menu_action: 'baize:menu:file:open-file' },
         { label: '打开文件夹', accelerator: 'Ctrl+O', menu_action: 'baize:menu:file:open-folder' },
         { type: 'separator'},

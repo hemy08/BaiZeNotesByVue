@@ -1,5 +1,5 @@
 import { BrowserWindow, shell } from 'electron'
-import * as SystemSettingUtils from "../themes/system-setting";
+import * as SystemSettingUtils from "../config";
 import { logger } from "../utils/logger";
 function OpenOnlineWebPageWithDialog(url: string) {
     const localOpenWebPageDialog = new BrowserWindow({

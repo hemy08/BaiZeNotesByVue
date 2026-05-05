@@ -6,15 +6,8 @@
 // @ts-ignore
 import { createStore } from '../utils/store-factory'
 
-// 主题类型
 export type ThemeType = 'baize' | 'warm' | 'light' | 'lavender' | 'coral' | 'mint' | 'sunset' | 'rose' | 'eyecare-green' | 'eyecare-beige' | 'eyecare-blue' | 'eyecare-pink' | 'eyecare-amber' | 'eyecare-teal' | 'eyecare-lilac' | 'baize-beast' | 'baize-clear' | 'dark' | 'deepdark' | 'icon' | 'ocean' | 'forest' | 'baize-text' | 'baize-starry'
 
-// 主题配置接口
-export interface ThemeConfig {
-    currentTheme: ThemeType
-}
-
-// 主题样式定义
 export interface ThemeStyles {
     name: string
     description: string
@@ -32,15 +25,11 @@ export interface ThemeStyles {
 
 export interface ThemeConfig {
     currentTheme: ThemeType
-    separateEditorTheme: boolean // 是否单独配置编辑器主题
-    editorTheme?: MonacoThemeType // Monaco 编辑器主题
+    separateEditorTheme: boolean
+    editorTheme?: MonacoThemeType
 }
 
-
-// 预定义主题
 export const themes: Record<ThemeType, ThemeStyles> = {
-    // ========== 浅色主题 ==========
-    // 白泽紫主题（默认）
     baize: {
         name: '白泽紫韵',
         description: '优雅的紫色渐变主题',
@@ -55,7 +44,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f0e8ff'
     },
-    // 暖白主题
     warm: {
         name: '暖白温馨',
         description: '温暖的米白色主题',
@@ -70,7 +58,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5f0eb'
     },
-    // 浅色主题
     light: {
         name: '清新简约',
         description: '简洁明亮的浅色主题',
@@ -85,7 +72,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f0f0f0'
     },
-    // 浅蓝浅紫渐变主题
     lavender: {
         name: '薰衣草梦',
         description: '浅蓝浅紫渐变护眼主题',
@@ -100,7 +86,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#ebe8f5'
     },
-    // 珊瑚主题
     coral: {
         name: '珊瑚暖阳',
         description: '温暖的珊瑚色主题',
@@ -115,7 +100,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5e8e5'
     },
-    // 薄荷主题
     mint: {
         name: '薄荷清风',
         description: '清新的薄荷绿主题',
@@ -130,7 +114,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#e0f5ea'
     },
-    // 日落主题
     sunset: {
         name: '日落余晖',
         description: '温暖的橙红渐变主题',
@@ -145,7 +128,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5f0e8'
     },
-    // 玫瑰主题
     rose: {
         name: '玫瑰花园',
         description: '浪漫的玫瑰粉主题',
@@ -160,8 +142,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f8e8e8'
     },
-    // ========== 深色主题 ==========
-    // 深色主题
     dark: {
         name: '深邃夜空',
         description: '护眼深色主题',
@@ -176,7 +156,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#1e1e1e',
         hoverBackground: '#252540'
     },
-    // 深黑主题
     deepdark: {
         name: '极简深黑',
         description: '纯黑背景深色主题',
@@ -191,7 +170,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#000000',
         hoverBackground: '#1f1f1f'
     },
-    // 图标主题
     icon: {
         name: '白泽图标',
         description: '与白泽图标一致的紫粉渐变主题',
@@ -206,7 +184,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#1a1625',
         hoverBackground: '#352d50',
     },
-    // 海洋主题
     ocean: {
         name: '深海蔚蓝',
         description: '深邃的海洋蓝主题',
@@ -221,7 +198,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#0a1a20',
         hoverBackground: '#203540'
     },
-    // 森林主题
     forest: {
         name: '森林秘境',
         description: '深邃的森林绿主题',
@@ -236,8 +212,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#0a150a',
         hoverBackground: '#e8f5e9'
     },
-    // ========== 护眼主题 ==========
-    // 护眼绿色主题
     'eyecare-green': {
         name: '护眼绿洲',
         description: '柔和的绿色护眼主题',
@@ -252,7 +226,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#d4edda'
     },
-    // 护眼米黄主题
     'eyecare-beige': {
         name: '护眼米黄',
         description: '温和的米黄色护眼主题',
@@ -267,7 +240,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5efe5'
     },
-    // 护眼淡蓝主题
     'eyecare-blue': {
         name: '护眼淡蓝',
         description: '舒适的淡蓝色护眼主题',
@@ -282,7 +254,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#e0eff8'
     },
-    // 护眼粉色主题
     'eyecare-pink': {
         name: '护眼樱粉',
         description: '柔和的樱花粉护眼主题',
@@ -297,7 +268,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f8e8ec'
     },
-    // 护眼琥珀主题
     'eyecare-amber': {
         name: '护眼琥珀',
         description: '温暖的琥珀色护眼主题',
@@ -312,7 +282,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f8f0e0'
     },
-    // 护眼青色主题
     'eyecare-teal': {
         name: '护眼青瓷',
         description: '清雅的青瓷色护眼主题',
@@ -327,7 +296,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#e0f5f0'
     },
-    // 护眼丁香主题
     'eyecare-lilac': {
         name: '护眼丁香',
         description: '淡雅的丁香紫护眼主题',
@@ -342,8 +310,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5e8f5'
     },
-    // ========== 图标样式主题 ==========
-    // 白泽文字主题 - 基于baize_text_icon.svg（深色）
     'baize-text': {
         name: '白泽文字',
         description: '紫粉渐变配金色文字深色主题',
@@ -358,7 +324,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#352d50'
     },
-    // 白泽星空主题 - 基于baize_spaced_icon.svg（深色）
     'baize-starry': {
         name: '白泽星空',
         description: '深蓝星空配金色主题',
@@ -373,7 +338,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#0a1929',
         hoverBackground: '#252e5e'
     },
-    // 白泽神兽主题 - 基于baize_icon.svg（浅色）
     'baize-beast': {
         name: '白泽神兽',
         description: '紫粉渐变配白色神兽主题',
@@ -388,7 +352,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonTextColor: '#ffffff',
         hoverBackground: '#f2e8f8'
     },
-    // 白泽清晰主题 - 基于baize_clear_icon.svg（浅色）
     'baize-clear': {
         name: '白泽清晰',
         description: '紫粉渐变配金色高对比主题',
@@ -405,27 +368,23 @@ export const themes: Record<ThemeType, ThemeStyles> = {
     }
 }
 
-// 创建存储实例
-// @ts-ignore
-const store = createStore('theme-config', {
-    themeConfig: {
-        currentTheme: 'baize',
-        separateEditorTheme: false,
-        editorTheme: 'vs'
+// 存储实例（延迟初始化）
+let store: ReturnType<typeof createStore> | null = null
+
+// 获取存储实例
+function getStore() {
+    if (!store) {
+        store = createStore('theme-config', {
+            themeConfig: {
+                currentTheme: 'baize',
+                separateEditorTheme: false,
+                editorTheme: 'vs'
+            }
+        })
     }
-})
+    return store
+}
 
-// 初始化默认配置
-// @ts-ignore
-
-
-/**
- * 获取当前主题
- */
-
-/**
- * 获取所有应用主题
- */
 export function getAllThemes(): { type: ThemeType; styles: ThemeStyles }[] {
     return Object.entries(themes).map(([type, styles]) => ({
         type: type as ThemeType,
@@ -434,87 +393,63 @@ export function getAllThemes(): { type: ThemeType; styles: ThemeStyles }[] {
 }
 
 export function getCurrentTheme(): ThemeType {
+    const s = getStore()
     // @ts-ignore
-    const config = store.get('themeConfig') as ThemeConfig
+    const config = s.get('themeConfig') as ThemeConfig
     return config.currentTheme
 }
 
-/**
- * 获取当前主题样式
- */
 export function getCurrentThemeStyles(): ThemeStyles {
     const themeType = getCurrentTheme()
     return themes[themeType]
 }
 
-/**
- * 根据主题类型获取主题样式
- */
 export function getThemeStylesByType(themeType: ThemeType): ThemeStyles {
     return themes[themeType]
 }
 
-/**
- * 设置主题
- */
 export function setTheme(theme: ThemeType): void {
+    const s = getStore()
     // @ts-ignore
-    store.set('themeConfig', { currentTheme: theme })
+    s.set('themeConfig', { currentTheme: theme })
 }
 
-// Monaco 主题类型 - 动态从文件系统读取，使用 string 类型
 export type MonacoThemeType = string
 
-// Monaco 编辑器主题配置接口 - 从 themeRegistry 导入
-import { getAllMonacoThemes as registryGetAllMonacoThemes, MonacoThemeConfig } from './themeRegistry'
+import { getAllMonacoThemes as registryGetAllMonacoThemes, MonacoThemeConfig } from './theme-registry'
 
-// 重新导出 MonacoThemeConfig 供外部使用
 export type { MonacoThemeConfig }
 
-/**
- * 获取所有 Monaco 编辑器主题
- * 从 themeRegistry 动态获取（启动时从 resources/themes/monaco-themes/ 扫描）
- */
 export function getAllMonacoThemes(): { type: MonacoThemeType; config: MonacoThemeConfig }[] {
     return registryGetAllMonacoThemes()
 }
 
-/**
- * 获取是否单独配置编辑器主题
- */
 export function getSeparateEditorTheme(): boolean {
+    const s = getStore()
     // @ts-ignore
-    const config = store.get('themeConfig') as ThemeConfig
+    const config = s.get('themeConfig') as ThemeConfig
     return config.separateEditorTheme || false
 }
 
-/**
- * 设置是否单独配置编辑器主题
- */
 export function setSeparateEditorTheme(separate: boolean): void {
+    const s = getStore()
     // @ts-ignore
-    const config = store.get('themeConfig') as ThemeConfig
+    const config = s.get('themeConfig') as ThemeConfig
     // @ts-ignore
-    store.set('themeConfig', { ...config, separateEditorTheme: separate })
+    s.set('themeConfig', { ...config, separateEditorTheme: separate })
 }
 
-/**
- * 获取 Monaco 编辑器主题
- */
 export function getMonacoTheme(): MonacoThemeType {
+    const s = getStore()
     // @ts-ignore
-    const config = store.get('themeConfig') as ThemeConfig
+    const config = s.get('themeConfig') as ThemeConfig
     return config.editorTheme || 'vs'
 }
 
-/**
- * 设置 Monaco 编辑器主题
- */
 export function setMonacoTheme(theme: MonacoThemeType): void {
+    const s = getStore()
     // @ts-ignore
-    const config = store.get('themeConfig') as ThemeConfig
+    const config = s.get('themeConfig') as ThemeConfig
     // @ts-ignore
-    store.set('themeConfig', { ...config, editorTheme: theme })
+    s.set('themeConfig', { ...config, editorTheme: theme })
 }
-
-

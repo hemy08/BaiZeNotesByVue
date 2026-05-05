@@ -3,9 +3,9 @@
  */
 
 import { BrowserWindow, ipcMain } from 'electron'
-import { CreateFileFolder, ReloadDirFromDisk } from '../utils/file-utils'
+import { CreateFileFolder, ReloadDirFromDisk } from '../utils/file-utils/file-operations'
 import { JSDOM } from 'jsdom'
-import { getCurrentThemeStyles } from '../themes/theme-config'
+import { getCurrentThemeStyles } from '../config'
 import * as digcom from './dialog_common'
 
 let customCreateDialog: Electron.BrowserWindow | null

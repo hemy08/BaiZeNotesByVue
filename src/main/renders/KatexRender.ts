@@ -25,6 +25,14 @@ function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string
   while ((match = regex.exec(text)) !== null) {
     // 获取匹配到的 LaTeX 字符串（去掉 $ 符号）
     const latex = match[1]
+    
+    // 检查公式前后是否有反引号，有则跳过渲染
+    const beforeChar = text[match.index - 1]
+    const afterChar = text[match.index + match[0].length]
+    if (beforeChar === '`' || afterChar === '`') {
+      continue
+    }
+    
     if (!isBlock) {
       // 行内公式，如果有换行符，则不渲染，放在有些代码内部有单个的$
       if (match[1].lastIndexOf('\n') !== -1) {

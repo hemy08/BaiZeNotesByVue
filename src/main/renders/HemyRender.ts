@@ -37,7 +37,7 @@ function collectProtectedBlock(lines: string[], startIndex: number): {
     nextIndex: number
 } {
     const blockLines: string[] = [lines[startIndex]]
-    let i = startIndex
+    let i = startIndex + 1
     let depth = 1
 
     while (i < lines.length) {
@@ -49,9 +49,10 @@ function collectProtectedBlock(lines: string[], startIndex: number): {
                 depth++
             } else {
                 depth--
-            }
-            if (depth === 0) {
-                break
+
+                if (depth === 0) {
+                    break
+                }
             }
         }
 
@@ -66,7 +67,7 @@ function collectProtectedBlock(lines: string[], startIndex: number): {
 
 /**
  * 将文本按照 ```text 和 ```markdown 块进行分割
- * 被这些代码块包围的内容标记为 isProtected，不会被渲染
+ * 这些代码块包围的内容标记为 isProtected，不会被渲染
  */
 function splitByTextMarkdownBlocks(text: string): TextSegment[] {
     const segments: TextSegment[] = []

@@ -18,7 +18,7 @@ import {
     setMonacoTheme,
     MonacoThemeType,
     getCurrentThemeStyles
-} from '../themes/theme-config'
+} from '../config'
 
 let themeSettingDialog: Electron.BrowserWindow | null
 

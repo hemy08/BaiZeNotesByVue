@@ -108,7 +108,7 @@ onMounted(() => {
     })
 
     EventBus.$on('monaco-editor-statusbar-file-path', handleFilePathUpdate)
-    EventBus.$on('monaco-editor-statusbar-content-length', handleContentLengthUpdate)
+    EventBus.$on('baize:notes:status-bar:context-length', handleContentLengthUpdate)
     EventBus.$on('monaco-editor-statusbar-cursor-position', handleCursorPositionUpdate)
 
     // 监听文件保存成功
@@ -124,7 +124,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     EventBus.$off('monaco-editor-statusbar-file-path', handleFilePathUpdate)
-    EventBus.$off('monaco-editor-statusbar-content-length', handleContentLengthUpdate)
+    EventBus.$off('baize:notes:status-bar:context-length', handleContentLengthUpdate)
     EventBus.$off('monaco-editor-statusbar-cursor-position', handleCursorPositionUpdate)
 
     window.electron.ipcRenderer.removeAllListeners('file-saved-success')

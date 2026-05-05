@@ -1,15 +1,15 @@
 // @ts-ignore
 import { globalInitialize } from './global'
-import * as FileUtils from './file-utils'
+import * as FileUtils from './file-utils/index'
 // @ts-ignore
-import { HemyRenderPost, HemyRenderPre } from '../renders/HemyRender'
+import { HemyRenderPre, HemyRenderPost } from '../renders/HemyRender'
 // @ts-ignore
 import { CreateHash, CreateHmac, CreateRsaKeyPair, CryptoDecrypt, CryptoEncrypt } from './encrypt_decrypt'
 import { ipcMain, shell } from 'electron'
 // @ts-ignore
-import { getQuickLinks } from '../settings/quick-link-config'
-import { getCurrentTheme, getCurrentThemeStyles, getMonacoTheme, getSeparateEditorTheme, getAllThemes, getAllMonacoThemes, getThemeStylesByType } from '../themes/theme-config'
-import * as fileUtils from "./file-utils";
+import { getQuickLinks } from '../config/quick-link-config'
+import { getCurrentTheme, getCurrentThemeStyles, getMonacoTheme, getSeparateEditorTheme, getAllThemes, getAllMonacoThemes, getThemeStylesByType } from '../config'
+import * as fileUtils from './file-utils/index';
 
 export {
     globalInitialize,
@@ -24,8 +24,8 @@ export {
 }
 
 export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
-    ipcMain.on('open-select-file', (_, message) => {
-        // console.log('open-select-file', message)
+    ipcMain.on('baize:notes:open-select-file', (_, message) => {
+        // console.log('baize:notes:open-select-file', message)
         FileUtils.OpenSelectFile(message)
     })
 

@@ -965,7 +965,7 @@ function createEmojiButtons(
                 {
                     style: buttonStyle,
                     onClick: () => {
-                        EventBus.$emit('monaco-editor-insert-text', text)
+                        EventBus.$emit('baize:notes:monaco-editor:insert-text', text)
                     }
                 },
                 text

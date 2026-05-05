@@ -1,7 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
-import { getCurrentThemeStyles } from '../themes/theme-config'
+import { getCurrentThemeStyles } from '../config'
 import { FontFamily } from '../utils/common'
 
 let fontSelectDialog: Electron.BrowserWindow | null

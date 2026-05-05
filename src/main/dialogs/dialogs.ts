@@ -9,10 +9,10 @@ import { ShowEditorSettingDialog } from './ShowEditorSettingDialog'
 import { ShowQuickLinkSettingDialog } from './ShowQuickLinkSettingDialog'
 import {ShowTechStackDialog} from './ShowTechStackDialog'
 import {ShowHelpAboutDialog} from  './ShowHelpAboutDialog'
-import { ipcListenerManager } from '../settings/ipc-listener-manager'
+import { ipcListenerManager } from '../ipc/ipc-listener-manager'
 import {ShowHelpContactUsDialog} from  './ShowHelpContactUsDialog'
 import { dialog } from 'electron'
-import * as fileUtils from '../utils/file-utils'
+import { DeleteFileFolder } from '../utils/file-utils'
 
 function ShowConfirmDeleteDialog(path: string, isFile: boolean) {
     dialog
@@ -24,7 +24,7 @@ function ShowConfirmDeleteDialog(path: string, isFile: boolean) {
         })
         .then((result) => {
             if (result.response === 0) {
-                fileUtils.DeleteFileFolder(path, isFile)
+                DeleteFileFolder(path, isFile)
             } else {
                 return
             }

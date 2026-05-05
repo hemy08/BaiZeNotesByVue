@@ -5,20 +5,18 @@
 
 // @ts-ignore
 import { createStore } from '../utils/store-factory'
-import {SystemSetting} from '../global-types';
+import {SystemSetting} from './global-types';
 
-// 创建系统设置存储实例
 const systemSettingStore = createStore<SystemSetting>('systemSetting', {
         language: 'zh-cn',
         resourceManager: 'default',
         editorModel: 'default',
         pluginOpen: 'browser',
-        menuBarStyle: 'electron', // 默认使用Electron样式
-        autoSaveEnabled: true, // 默认启用自动保存
-        autoSaveInterval: 60, // 默认60秒
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif', // 默认系统字体
-        fontSize: 13, // 默认13px
-        // 窗口浮动控制（默认都是非模态）
+        menuBarStyle: 'electron',
+        autoSaveEnabled: true,
+        autoSaveInterval: 60,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif',
+        fontSize: 13,
         editorSettingModal: false,
         systemSettingModal: false,
         themeSettingModal: false,
@@ -37,9 +35,6 @@ const systemSettingStore = createStore<SystemSetting>('systemSetting', {
         renderWhitespace: 'all',
     })
 
-/**
- * 保存系统设置
- */
 export function saveSystemSetting(setting: Partial<SystemSetting>): void {
     if (setting.language !== undefined) {
         systemSettingStore.set('language', setting.language)
@@ -68,7 +63,6 @@ export function saveSystemSetting(setting: Partial<SystemSetting>): void {
     if (setting.fontSize !== undefined) {
         systemSettingStore.set('fontSize', setting.fontSize)
     }
-    // 窗口浮动控制
     if (setting.editorSettingModal !== undefined) {
         systemSettingStore.set('editorSettingModal', setting.editorSettingModal)
     }
@@ -116,9 +110,6 @@ export function saveSystemSetting(setting: Partial<SystemSetting>): void {
     }
 }
 
-/**
- * 获取系统设置
- */
 export function getSystemSetting(): SystemSetting {
     return {
         language: systemSettingStore.get('language', 'zh-cn'),
@@ -152,4 +143,3 @@ export function getSystemSetting(): SystemSetting {
 export function getSystemSettingValString(key: string, defaultVal: string): string {
     return systemSettingStore.get(key, defaultVal)
 }
-

@@ -1,11 +1,11 @@
-import { getCurrentThemeStyles } from '../themes/theme-config'
+import { getCurrentThemeStyles } from '../config'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
-import * as EditorSettingUtils from '../settings/editor-setting'
-import * as SystemSettingUtils from '../themes/system-setting'
+import * as EditorSettingUtils from '../config/editor-setting'
+import * as SystemSettingUtils from '../config'
 import { FontFamily } from '../utils/common'
-import { windowManager } from '../settings/window-manager'
-import { ipcListenerManager } from '../settings/ipc-listener-manager'
+import { windowManager } from '../config/window-manager'
+import { ipcListenerManager } from '../ipc/ipc-listener-manager'
 
 // 创建编辑器设置对话框
 export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
