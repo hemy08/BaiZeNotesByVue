@@ -32,7 +32,7 @@ extraResources:
     filter: ["**/*"]
 win:
   executableName: BaiZeNotes
-  icon: resources/icon/baize_clear_icon.ico
+  icon: resources/icon/baize_data.ico
   target:
     - target: nsis
       arch:
@@ -48,9 +48,9 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   allowElevation: true
-  installerIcon: resources/icon/baize_clear_icon.ico
-  uninstallerIcon: resources/icon/baize_clear_icon.ico
-  installerHeaderIcon: resources/icon/baize_clear_icon.ico
+  installerIcon: resources/icon/baize_data.ico
+  uninstallerIcon: resources/icon/baize_data.ico
+  installerHeaderIcon: resources/icon/baize_data.ico
   deleteAppDataOnUninstall: false
   runAfterFinish: true
   include: build/uninstaller.nsh

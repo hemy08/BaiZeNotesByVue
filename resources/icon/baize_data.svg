@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#020617"/>
+      <stop offset="100%" style="stop-color:#0F172A"/>
+    </linearGradient>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="40%" style="stop-color:#00E0FF;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#6C5CE7;stop-opacity:0"/>
+    </radialGradient>
+    <filter id="neon"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="url(#bg2)"/>
+  <!-- 三个数据弧（象征多源知识整合） -->
+  <path d="M180 180 A 160 160 0 0 1 332 180" fill="none" stroke="#00E0FF" stroke-width="8" stroke-linecap="round" filter="url(#neon)"/>
+  <path d="M120 280 A 200 200 0 0 0 392 280" fill="none" stroke="#6C5CE7" stroke-width="8" stroke-linecap="round" filter="url(#neon)"/>
+  <path d="M200 380 A 140 140 0 0 0 312 380" fill="none" stroke="#00E0FF" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+  <!-- 中心能量核 -->
+  <circle cx="256" cy="256" r="100" fill="url(#core)"/>
+  <circle cx="256" cy="256" r="24" fill="#FFFFFF" filter="url(#neon)"/>
+  <!-- 品牌文字 -->
+  <text x="256" y="460" font-family="'Inter','Segoe UI',sans-serif" font-size="34" font-weight="600" fill="#E2E8F0" text-anchor="middle" letter-spacing="8">白泽笔记</text>
+  <text x="256" y="490" font-family="monospace" font-size="14" fill="#00E0FF" text-anchor="middle" letter-spacing="4">BAIZE NOTES</text>
+</svg>
