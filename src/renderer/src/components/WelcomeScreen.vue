@@ -61,7 +61,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 // 固定使用深色图标
-import logoDarkUltra from '../assets/icons/dark/logo-baize-dark-A-ultra.svg'
+import logoDarkUltra from '../assets/icons/dark/baize_mirror_dark.svg'
 
 const emit = defineEmits(['openFile', 'openFolder', 'openRecentFolder'])
 

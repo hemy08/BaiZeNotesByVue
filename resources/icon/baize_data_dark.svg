@@ -12,13 +12,13 @@
     <filter id="neon"><feGaussianBlur stdDeviation="6"/></filter>
   </defs>
   <rect width="512" height="512" rx="100" fill="url(#bg2)"/>
-  <!-- 三个数据弧（象征多源知识整合） -->
-  <path d="M180 180 A 160 160 0 0 1 332 180" fill="none" stroke="#00E0FF" stroke-width="8" stroke-linecap="round" filter="url(#neon)"/>
-  <path d="M120 280 A 200 200 0 0 0 392 280" fill="none" stroke="#6C5CE7" stroke-width="8" stroke-linecap="round" filter="url(#neon)"/>
-  <path d="M200 380 A 140 140 0 0 0 312 380" fill="none" stroke="#00E0FF" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
-  <!-- 中心能量核 -->
-  <circle cx="256" cy="256" r="100" fill="url(#core)"/>
-  <circle cx="256" cy="256" r="24" fill="#FFFFFF" filter="url(#neon)"/>
+  <!-- 三个数据弧（象征多源知识整合）- 放大30%并上移 -->
+  <path d="M154.8 154.8 A 208 208 0 0 1 357.2 154.8" fill="none" stroke="#00E0FF" stroke-width="10.4" stroke-linecap="round" filter="url(#neon)"/>
+  <path d="M76.4 236 A 260 260 0 0 0 435.6 236" fill="none" stroke="#6C5CE7" stroke-width="10.4" stroke-linecap="round" filter="url(#neon)"/>
+  <path d="M180.4 317.2 A 182 182 0 0 0 331.6 317.2" fill="none" stroke="#00E0FF" stroke-width="6.5" stroke-linecap="round" opacity="0.7"/>
+  <!-- 中心能量核 - 放大30%并上移 -->
+  <circle cx="256" cy="236" r="130" fill="url(#core)"/>
+  <circle cx="256" cy="236" r="31.2" fill="#FFFFFF" filter="url(#neon)"/>
   <!-- 品牌文字 -->
   <text x="256" y="460" font-family="'Inter','Segoe UI',sans-serif" font-size="34" font-weight="600" fill="#E2E8F0" text-anchor="middle" letter-spacing="8">白泽笔记</text>
   <text x="256" y="490" font-family="monospace" font-size="14" fill="#00E0FF" text-anchor="middle" letter-spacing="4">BAIZE NOTES</text>

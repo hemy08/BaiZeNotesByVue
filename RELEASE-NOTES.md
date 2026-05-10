@@ -1,5 +1,127 @@
 # 发布说明 (Release Notes)
 
+## 版本 1.1.5 (2026-05-01)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+
+`Bai Ze Notes 1.1.5 windows.x64.exe`   是免安装直接使用
+`Bai Ze Notes Setup 1.1.5 windows.x64.exe` 是`Windows`下的安装包，目前不提供`Linux、macOS、HarmonyOS`，可以自行下载编译
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🚀 核心功能
+
+**配置管理系统**
+- 新增用户配置目录 `.baizenotes`，支持多用户独立配置
+- 统一配置文件管理，提供类型安全的 API
+
+**卸载体验优化**
+- 卸载时询问是否保留配置文件，提供更友好的卸载体验
+
+**文件状态管理**
+- 自动保存文件和目录状态，应用重启后自动恢复工作状态
+- 状态栏实时显示文件保存状态（已保存/未保存）
+
+**HTML/PDF 支持**
+- 新增 HTML 查看和 PDF 编辑器组件，支持直接预览和编辑
+
+**日志系统**
+- 新增多级别日志模块（DEBUG, INFO, WARN, ERROR）
+- 支持日志文件自动轮转和归档
+
+**窗口管理**
+- 新增窗口管理器，支持模态/非模态窗口控制和状态监控
+
+**IPC 监听器管理**
+- 新增 IPC 监听器管理器，自动清理机制防止内存泄漏
+
+**快捷键系统**
+- 新增快捷键注册模块，支持全局快捷键绑定和冲突检测
+
+### ⚡ 性能优化
+
+**编辑器性能**
+- 大文件加载速度提升 50%+
+- 内存使用减少 40%
+- Monaco Editor 实例管理优化，防止内存泄漏
+
+**Mermaid 渲染**
+- 多图表并行渲染，速度提升 3倍
+- 图表渲染结果缓存，按需渲染
+
+**EventBus 优化**
+- 组件卸载时自动清理事件监听器
+- 修复事件监听器残留导致的内存泄漏
+
+**状态管理**
+- 使用 electron-store 进行状态持久化
+- 分离持久化状态和运行时状态
+
+### 🎨 UI/UX 改进
+
+**主题系统**
+- 新增 55 种 Monaco 编辑器主题
+- 主题文件移至 `resources/themes/monaco-themes/themes/`
+- 从 JSON 文件动态加载主题配置
+
+**预览区域**
+- 增加垂直滚动条显示
+- 优化滚动流畅度
+
+**状态栏**
+- 实时显示文件保存状态
+- 未保存/已保存状态可视化区分
+
+**右侧导航**
+- 新增 NaviTab 组件，提供快速访问常用功能
+
+### 🐛 重要修复
+
+**内存泄漏修复（严重）**
+- 修复 Vue 3 生命周期钩子嵌套调用问题
+- 修复 Monaco Editor 实例未释放问题（30-50 MB/个）
+- 修复 EventBus 事件监听器残留问题
+- 修复窗口事件监听器残留问题
+- 修复 IPC 监听器未清理问题
+
+**文件保存修复**
+- 修复文件保存失败 bug
+- 修复文件编码保存问题
+
+**渲染问题修复**
+- 修复 Mermaid 图表渲染失败问题
+- 优化 Material 图标渲染
+
+**其他修复**
+- 修复文件新增时默认插入内容问题
+- 修复主题样式不正确应用问题
+- 修复主题切换后菜单栏颜色不同步问题
+- 修复编辑器布局错位问题
+- 修复文件无法保存问题
+
+### 🔧 代码质量
+
+**TypeScript 改进**
+- 新增多个类型定义文件
+- 提供完整的类型安全 API
+
+**代码重构**
+- 优化组件生命周期管理
+- 改进错误处理机制
+- 统一代码风格
+
+### 📦 依赖更新
+
+- 新增 renderer 依赖 (v0.1.5)
+- Monaco Editor 更新至 0.55.0
+
+</code></pre></blockcode></details>
+
+---
+
 ## 版本 1.1.3 (2026-04-26)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
@@ -16,207 +138,7 @@
 <li><strong>HTML/PDF 支持</strong>：新增 HTML 查看和 PDF 编辑器组件，支持直接预览和编辑</li>
 <li><strong>日志系统</strong>：新增多级别日志模块，支持日志文件自动轮转和归档</li>
 <li><strong>窗口管理</strong>：新增窗口管理器，支持模态/非模态窗口控制和状态监控</li>
-<li><strong>IPC 管理</strong>：新增 IPC 监听器管理器，自动清理机制防止内存泄漏</li>
-<li><strong>快捷键系统</strong>：新增快捷键注册模块，支持全局快捷键绑定和冲突检测</li>
 </ul>
-
-<h3>⚡ 性能优化</h3>
-<ul>
-<li><strong>编辑器性能</strong>：大文件加载速度提升 50%，内存使用减少 40%，实现 LRU 缓存算法</li>
-<li><strong>Mermaid 渲染</strong>：并行渲染速度提升 3倍，新增渲染缓存和按需渲染机制</li>
-<li><strong>EventBus 优化</strong>：组件卸载时自动清理事件监听器，修复内存泄漏问题</li>
-<li><strong>状态管理</strong>：使用 electron-store 持久化，分离持久化状态和运行时状态</li>
-</ul>
-
-<h3>🎨 UI/UX 改进</h3>
-<ul>
-<li><strong>主题系统</strong>：新增 55 种 Monaco 编辑器主题，主题配置从 JSON 文件动态加载</li>
-<li><strong>预览区域</strong>：增加垂直滚动条显示，优化滚动流畅度</li>
-<li><strong>状态栏</strong>：实时显示文件保存状态，未保存/已保存状态可视化区分</li>
-<li><strong>右侧导航</strong>：新增 NaviTab 组件，提供快速访问常用功能</li>
-</ul>
-
-<h3>🐛 重要修复</h3>
-<ul>
-<li><strong>内存泄漏修复</strong>：修复 Vue 3 生命周期钩子嵌套调用问题，修复 Monaco Editor 实例未释放（30-50 MB/个）</li>
-<li><strong>EventBus 泄漏</strong>：修复事件监听器残留问题</li>
-<li><strong>IPC 泄漏</strong>：修复 IPC 监听器未清理问题</li>
-<li><strong>文件保存</strong>：修复文件保存失败 bug 和编码保存问题</li>
-<li><strong>渲染问题</strong>：修复 Mermaid 图表渲染失败问题</li>
-</ul>
-
-<h3>🔧 代码质量</h3>
-<ul>
-<li><strong>代码清理</strong>：删除未使用的文件、函数和接口，删除 <code>src/renderer/src/lib</code> 目录</li>
-<li><strong>配置优化</strong>：完善编辑器配置、系统配置、主题配置和快速链接配置</li>
-<li><strong>类型定义</strong>：新增全局类型定义，提供完整的 TypeScript 类型支持</li>
-</ul>
-
-<h3>📚 文档更新</h3>
-<ul>
-<li>新增 UI 样式规范文档、Monaco Editor 全量配置文档</li>
-<li>新增性能分析与优化报告、全局状态管理优化总结</li>
-<li>更新主题设置详细方案、CHANGELOG 和 RELEASE-NOTES</li>
-</ul>
-
-<h3>📊 性能对比</h3>
-<table>
-<thead>
-<tr>
-<th>指标</th>
-<th>1.1.2</th>
-<th>1.1.3</th>
-<th>改进</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>大文件加载速度</td>
-<td>基准</td>
-<td>+50%</td>
-<td>⬆️</td>
-</tr>
-<tr>
-<td>内存使用</td>
-<td>基准</td>
-<td>-40%</td>
-<td>⬇️</td>
-</tr>
-<tr>
-<td>Mermaid 渲染速度</td>
-<td>基准</td>
-<td>+200%</td>
-<td>⬆️</td>
-</tr>
-<tr>
-<td>内存泄漏</td>
-<td>严重</td>
-<td>已修复</td>
-<td>✅</td>
-</tr>
-<tr>
-<td>编辑器主题数量</td>
-<td>0</td>
-<td>55</td>
-<td>⬆️</td>
-</tr>
-</tbody>
-</table>
-</code></pre></blockcode></details>
-
----
-
-</code></pre></blockcode></details>
-
----
-
-## 版本 1.1.2 (2026-04-05)
-[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
-
-
-`Bai Ze Notes 1.1.2 windows.x64.exe`   是免安装直接使用
-`Bai Ze Notes Setup 1.1.2 windows.x64.exe` 是`Windows`下的安装包，目前不提供`Linux、macOS、HarmonyOS`，可以自行下载编译
-
-<details>
-<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
-#### 菜单系统重构
-- **Vue 组件化菜单**：使用 Vue 3 Composition API 重构菜单系统，支持主题样式跟随
-- **IPC 通信优化**：新增 menu_ipc.ts 统一处理菜单通信，提升响应速度
-- **配置分离**：菜单配置和动作处理分离，提升代码可维护性
-
-#### 模板系统迁移
-- **统一管理**：合并 Mermaid 和 PlantUML 模板到独立文件
-- **代码优化**：删除分散的模板文件，减少文件数量，提升加载性能
-
-#### 编辑器性能优化
-- **性能提升**：优化 Monaco Editor 配置，大文件编辑更流畅
-- **内存优化**：限制撤销历史和折叠区域数量，减少内存占用
-- **渲染优化**：禁用不必要的功能，提升渲染性能
-
-### 🔧 优化改进
-
-#### 安全性增强
-- **WebSecurity 配置**：生产环境启用安全策略，防止潜在安全风险
-- **DevTools 交互**：F12 快捷键切换 DevTools，不再自动打开
-
-#### 布局优化
-- **编辑器宽度调整**：修复布局错位问题，支持动态调整
-- **主题同步**：修复主题切换后菜单栏颜色不同步问题
-- **状态栏**：状态栏增加文件路径显示，增加文件保存状态显示
-
-### 🐛 Bug修复
-- 修复主题样式在某些情况下不正确应用的问题
-- 修复编辑器宽度调整时的布局错位问题
-- 修复窗口大小变化时编辑器不自动调整的问题
-- 优化 ResourceManager 组件的布局逻辑
-- 修复文件无法保存问题
-
-### 📦 依赖更新
-- 新增 renderer 依赖 (v0.1.5)
-- Monaco Editor 版本更新至 0.55.0
-</details>
-
----
-
-## 版本 1.1.1 (2026-04-05)
-[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
-
-
-`Bai Ze Notes 1.1.1 windows.x64.exe`   是免安装直接使用
-`Bai Ze Notes Setup 1.1.1 windows.x64.exe` 是`Windows`下的安装包，目前不提供`Linux、macOS、HarmonyOS`，可以自行下载编译
-
-<details>
-<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
-<blockcode><pre><code>
-
-#### 主题系统重构
-- **双主题配置**：支持应用主题和编辑器主题分开设置，提供更灵活的个性化体验
-- **29+ 精美主题**：新增18种主题配置文件，涵盖浅色、深色、护眼三大类
-- **主题预览**：提供主题预览功能，支持可视化选择主题
-- **实时切换**：主题实时切换，所有窗口同步更新
-
-#### 文件状态管理
-- **自动保存工作状态**：应用关闭时自动保存当前打开的文件和目录结构
-- **状态恢复**：应用重新打开后自动加载上次的工作状态，无需手动重新打开文件
-
-#### 项目结构优化
-- **新增专业目录**：themes/、icon/、config/、renders/ 等专业目录
-- **代码组织优化**：按功能模块划分目录结构，提升代码可维护性
-
-### 🎨 主题系统
-- **18种新主题**：薰衣草梦、珊瑚暖阳、薄荷清风、日落余晖、玫瑰晨曦、深邃夜空、深空黑曜、科技蓝、海洋之心、森林绿意、护眼绿、护眼米、护眼蓝、护眼粉、护眼琥珀、护眼青、护眼紫、温暖
-- **主题分类**：浅色主题、深色主题、护眼主题三大类
-- **主题配置**：支持自定义主题颜色、字体、背景等
-
-### 📦 文件导入导出
-- **多格式支持**：支持 MD、TXT、HTML、JSON 等多种文件格式导入
-- **导入选项**：新增导入选项对话框，提供更灵活的导入配置
-- **导出优化**：优化导出流程，提升导出效率
-
-### 🔧 快速链接优化
-- **快速链接设置**：调整快速链接设置页面布局，窗口大小调整为 1100x750
-- **立即生效**：快速链接保存后立即生效，无需重启应用
-- **主题支持**：添加主题样式支持，快速链接设置窗口跟随主题变化
-- 优化 IPC 通信机制，统一使用 `baize-notes:` 前缀
-
-### 💬 对话框优化
-- **关于页面**：补充编译发布日期和详细版本信息，优化页面布局
-- **联系我们页面**：重新设计页面布局，添加白泽图标 SVG
-- **系统设置对话框**：调整窗口大小为 500x300，添加无边框设计
-- **统一对话框样式**：添加标题栏渐变效果，实现主题样式跟随
-
-### 🐛 Bug修复
-- 修复 Mermaid 编辑器实时预览功能
-- 修复 updateGraph 函数中错误的数据获取方式
-- 修复预览区域清空方式
-- 修复 mermaid.render() 调用方式，正确处理 Promise 返回结果
-- 添加完善的错误处理机制，显示渲染错误信息
-
-### 🆕 新增功能
-- Mermaid 编辑器拖动分隔条功能，支持动态调整编辑区域和预览区域的显示占比
-- 新增 CHANGELOG.md 文件，记录版本更新历史
-- 新增主题配置工具和对话框主题工具
-
 </code></pre></blockcode></details>
 
 ---
@@ -280,6 +202,6 @@
 
 ---
 
-**最后更新时间**: 2026-04-26
-**当前版本**: 1.1.3
+**最后更新时间**: 2026-05-01
+**当前版本**: 1.1.5
 **维护者**: hemy08
