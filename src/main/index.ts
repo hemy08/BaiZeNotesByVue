@@ -19,8 +19,8 @@ let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
 function createWindow(): void {
     mainWindow = new BrowserWindow({
-        width: 1280,
-        height: 800,
+        width: 900,
+        height: 650,
         show: false,
         title: '白泽笔记 -- Markdown Editor Powered By Electron and Vue',
         frame: false,
@@ -42,7 +42,7 @@ function createWindow(): void {
     setMainWindow(mainWindow)
 
     mainWindow.on('ready-to-show', () => {
-        mainWindow.maximize()
+        // mainWindow.maximize() // 欢迎界面不自动最大化
         mainWindow.show()
 
         mainWindow.on('closed', () => {

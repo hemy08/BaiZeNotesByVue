@@ -6,7 +6,7 @@
 // @ts-ignore
 import { createStore } from '../utils/store-factory'
 
-export type ThemeType = 'baize' | 'warm' | 'light' | 'lavender' | 'coral' | 'mint' | 'sunset' | 'rose' | 'eyecare-green' | 'eyecare-beige' | 'eyecare-blue' | 'eyecare-pink' | 'eyecare-amber' | 'eyecare-teal' | 'eyecare-lilac' | 'baize-beast' | 'baize-clear' | 'dark' | 'deepdark' | 'icon' | 'ocean' | 'forest' | 'baize-text' | 'baize-starry'
+export type ThemeType = 'baize' | 'warm' | 'light' | 'lavender' | 'coral' | 'mint' | 'sunset' | 'rose' | 'eyecare-green' | 'eyecare-beige' | 'eyecare-blue' | 'eyecare-pink' | 'eyecare-amber' | 'eyecare-teal' | 'eyecare-lilac' | 'baize-beast' | 'baize-clear' | 'dark' | 'deepdark' | 'icon' | 'ocean' | 'forest' | 'baize-text' | 'baize-starry' | 'baize-data-light' | 'baize-mirror-light' | 'baize-data-dark' | 'baize-mirror-dark'
 
 export interface ThemeStyles {
     name: string
@@ -365,6 +365,62 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         buttonBackground: '#764ba2',
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5f0ff'
+    },
+    'baize-data-light': {
+        name: '白泽数据浅色',
+        description: '清新数据主题，青紫渐变，浅色背景',
+        titleBarGradient: 'linear-gradient(135deg, #0EA5E9 0%, #8B5CF6 100%)',
+        backgroundColor: '#F8FAFC',
+        cardBackground: '#FFFFFF',
+        textColor: '#1E293B',
+        secondaryTextColor: '#64748B',
+        borderColor: '#E2E8F0',
+        accentColor: '#0EA5E9',
+        buttonBackground: '#0EA5E9',
+        buttonTextColor: '#FFFFFF',
+        hoverBackground: '#F0F9FF'
+    },
+    'baize-mirror-light': {
+        name: '白泽镜像浅色',
+        description: '科技镜像主题，透镜设计，纯净白色',
+        titleBarGradient: 'linear-gradient(135deg, #8B5CF6 0%, #0EA5E9 100%)',
+        backgroundColor: '#FFFFFF',
+        cardBackground: '#F8FAFC',
+        textColor: '#0F172A',
+        secondaryTextColor: '#475569',
+        borderColor: '#CBD5E1',
+        accentColor: '#8B5CF6',
+        buttonBackground: '#8B5CF6',
+        buttonTextColor: '#FFFFFF',
+        hoverBackground: '#F5F3FF'
+    },
+    'baize-data-dark': {
+        name: '白泽数据深色',
+        description: '数据科技主题，青紫光晕，深色背景',
+        titleBarGradient: 'linear-gradient(135deg, #00E0FF 0%, #6C5CE7 100%)',
+        backgroundColor: '#020617',
+        cardBackground: '#0F172A',
+        textColor: '#E2E8F0',
+        secondaryTextColor: '#94A3B8',
+        borderColor: '#1E293B',
+        accentColor: '#00E0FF',
+        buttonBackground: '#00E0FF',
+        buttonTextColor: '#020617',
+        hoverBackground: '#1E293B'
+    },
+    'baize-mirror-dark': {
+        name: '白泽镜像深色',
+        description: '科技洞察主题，透镜光效，深邃夜空',
+        titleBarGradient: 'linear-gradient(135deg, #6C5CE7 0%, #00E0FF 100%)',
+        backgroundColor: '#0B1120',
+        cardBackground: '#111B33',
+        textColor: '#F8FAFC',
+        secondaryTextColor: '#CBD5E1',
+        borderColor: '#1E3A5F',
+        accentColor: '#6C5CE7',
+        buttonBackground: '#6C5CE7',
+        buttonTextColor: '#FFFFFF',
+        hoverBackground: '#1E293B'
     }
 }
 

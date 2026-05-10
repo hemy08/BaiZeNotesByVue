@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGradLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8FAFF"/>
+      <stop offset="50%" style="stop-color:#EBF0FA"/>
+      <stop offset="100%" style="stop-color:#E3EAF5"/>
+    </linearGradient>
+    <linearGradient id="lineGradLight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1E88E5;stop-opacity:0"/>
+      <stop offset="50%" style="stop-color:#1E88E5;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#8E24AA;stop-opacity:0"/>
+    </linearGradient>
+    <radialGradient id="glowLightBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#1E88E5;stop-opacity:0.06"/>
+      <stop offset="100%" style="stop-color:#1E88E5;stop-opacity:0"/>
+    </radialGradient>
+    <filter id="blurLight"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#bgGradLight)"/>
+  <!-- 光晕 -->
+  <circle cx="30%" cy="30%" r="500" fill="url(#glowLightBg)"/>
+  <circle cx="80%" cy="60%" r="600" fill="#8E24AA" opacity="0.04" filter="url(#blurLight)"/>
+  <!-- 科技网格（浅色） -->
+  <g stroke="url(#lineGradLight)" stroke-width="1">
+    <line x1="10%" y1="0" x2="10%" y2="100%"/><line x1="20%" y1="0" x2="20%" y2="100%"/>
+    <line x1="30%" y1="0" x2="30%" y2="100%"/><line x1="40%" y1="0" x2="40%" y2="100%"/>
+    <line x1="50%" y1="0" x2="50%" y2="100%"/><line x1="60%" y1="0" x2="60%" y2="100%"/>
+    <line x1="70%" y1="0" x2="70%" y2="100%"/><line x1="80%" y1="0" x2="80%" y2="100%"/>
+    <line x1="90%" y1="0" x2="90%" y2="100%"/>
+  </g>
+  <g stroke="url(#lineGradLight)" stroke-width="0.8">
+    <line x1="0" y1="15%" x2="100%" y2="15%"/><line x1="0" y1="30%" x2="100%" y2="30%"/>
+    <line x1="0" y1="45%" x2="100%" y2="45%"/><line x1="0" y1="60%" x2="100%" y2="60%"/>
+    <line x1="0" y1="75%" x2="100%" y2="75%"/><line x1="0" y1="90%" x2="100%" y2="90%"/>
+  </g>
+  <!-- 粒子 -->
+  <circle cx="15%" cy="25%" r="2.5" fill="#1E88E5" opacity="0.3" filter="url(#blurLight)"/>
+  <circle cx="85%" cy="35%" r="2" fill="#8E24AA" opacity="0.25"/>
+  <circle cx="70%" cy="80%" r="3" fill="#1E88E5" opacity="0.2"/>
+  <circle cx="8%" cy="70%" r="2" fill="#1E88E5" opacity="0.2"/>
+  <circle cx="92%" cy="15%" r="2.5" fill="#8E24AA" opacity="0.25"/>
+  <circle cx="45%" cy="90%" r="1.5" fill="#1E88E5" opacity="0.3"/>
+</svg>

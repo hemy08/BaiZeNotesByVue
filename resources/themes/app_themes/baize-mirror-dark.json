@@ -1,0 +1,15 @@
+{
+  "id": "baize-mirror-dark",
+  "name": "白泽镜像深色",
+  "description": "科技洞察主题，透镜光效，深邃夜空",
+  "backgroundColor": "#0B1120",
+  "cardBackground": "#111B33",
+  "textColor": "#F8FAFC",
+  "secondaryTextColor": "#CBD5E1",
+  "borderColor": "#1E3A5F",
+  "accentColor": "#6C5CE7",
+  "buttonBackground": "#6C5CE7",
+  "buttonTextColor": "#FFFFFF",
+  "hoverBackground": "#1E293B",
+  "titleBarGradient": "linear-gradient(135deg, #6C5CE7 0%, #00E0FF 100%)"
+}

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgDark2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#020617"/>
+      <stop offset="100%" style="stop-color:#0F172A"/>
+    </linearGradient>
+    <radialGradient id="coreDark" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#00E0FF;stop-opacity:0.35"/>
+      <stop offset="100%" style="stop-color:#6C5CE7;stop-opacity:0"/>
+    </radialGradient>
+    <filter id="glowDarkCore" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="dropShadowDark" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="8" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="url(#bgDark2)" filter="url(#dropShadowDark)"/>
+  
+  <!-- 外弧再放大（控制点从 160/352 扩展至 140/372） -->
+  <path d="M140 140 A 220 220 0 0 1 372 140" fill="none" stroke="#00E0FF" stroke-width="12" stroke-linecap="round" filter="url(#glowDarkCore)"/>
+  <!-- 中弧再放大（控制点从 88/424 扩展至 60/452） -->
+  <path d="M60 280 A 260 260 0 0 0 452 280" fill="none" stroke="#6C5CE7" stroke-width="12" stroke-linecap="round" filter="url(#glowDarkCore)"/>
+  <!-- 内弧再放大（控制点从 184/328 扩展至 160/352） -->
+  <path d="M160 384 A 180 180 0 0 0 352 384" fill="none" stroke="#00E0FF" stroke-width="7" stroke-linecap="round" opacity="0.6"/>
+  
+  <!-- 中心高亮核放大 -->
+  <circle cx="256" cy="256" r="160" fill="url(#coreDark)"/>
+  <circle cx="256" cy="256" r="40" fill="#00E0FF" filter="url(#glowDarkCore)"/>
+  <circle cx="256" cy="256" r="18" fill="#FFFFFF"/>
+  
+  <!-- 品牌文字下移并缩小 -->
+  <text x="256" y="480" font-family="'Inter','Segoe UI',sans-serif" font-size="28" font-weight="700" fill="#E2E8F0" text-anchor="middle" letter-spacing="8">白泽笔记</text>
+  <text x="256" y="506" font-family="monospace" font-size="10" font-weight="500" fill="#6C5CE7" text-anchor="middle" letter-spacing="5">BAIZE NOTES</text>
+</svg>

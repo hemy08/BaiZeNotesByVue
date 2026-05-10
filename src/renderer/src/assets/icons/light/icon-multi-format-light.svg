@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none">
+  <path d="M5 4H13L18 9V19C18 19.5 17.5 20 17 20H5C4.5 20 4 19.5 4 19V5C4 4.5 4.5 4 5 4Z" stroke="#2C3E50" stroke-width="1.5"/>
+  <path d="M13 4V9H18" stroke="#2C3E50" stroke-width="1.5"/>
+  <text x="7" y="16" font-family="monospace" font-size="5" fill="#1E88E5">.MD</text>
+  <text x="7" y="12" font-family="monospace" font-size="5" fill="#8E24AA">.JSON</text>
+</svg>

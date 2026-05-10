@@ -8,6 +8,12 @@
             @click="toggleMenu(index)"
             @mouseenter="handleMenuEnter(index)"
         >
+            <img
+                v-if="menu.icon"
+                :src="getIconPath(menu.icon)"
+                class="menu-icon"
+                :alt="menu.label"
+            />
             <span class="menu-label">{{ menu.label }}</span>
         </div>
 
@@ -33,10 +39,61 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { menuMap } from './MenuBar/menu_config'
 import {HandleMenuAction} from './MenuBar/menu_actions';
 import {BaiZeMenuItem} from '../../../main/global-types';
+import { useThemeIcons } from '../composables/useThemeIcons'
+
+// 获取当前主题
+const currentTheme = ref('baize')
+
+// 加载当前主题
+async function loadCurrentTheme() {
+    try {
+        const themeConfig = await window.api.config.read('theme')
+        if (themeConfig && themeConfig.currentTheme) {
+            currentTheme.value = themeConfig.currentTheme
+        }
+    } catch (error) {
+        console.error('Failed to load theme:', error)
+    }
+}
+
+// 监听主题变化
+onMounted(() => {
+    loadCurrentTheme()
+
+    // 监听主题更新事件
+    window.electron.ipcRenderer.on('baize-notes:theme-updated', (_, theme) => {
+        if (theme && theme.currentTheme) {
+            currentTheme.value = theme.currentTheme
+        }
+    })
+})
+
+// 使用主题图标组合式函数
+const { getIcon } = useThemeIcons(currentTheme)
+
+// 获取图标路径
+function getIconPath(iconName: string): string {
+    try {
+        const isDark = currentTheme.value.includes('dark') || currentTheme.value.includes('Dark')
+        const folder = isDark ? 'dark' : 'light'
+        
+        // 根据主题确定文件名
+        let fileName = iconName
+        if (!iconName.includes('.svg')) {
+            fileName = iconName + (isDark ? '.svg' : '-light.svg')
+        }
+        
+        // 动态导入图标
+        return new URL(`../assets/icons/${folder}/${fileName}`, import.meta.url).href
+    } catch (error) {
+        console.warn(`Failed to load icon: ${iconName}`, error)
+        return ''
+    }
+}
 
 const activeMenu = ref<number | null>(null)
 const submenuPosition = ref({ x: 0, y: 0 })
@@ -287,6 +344,21 @@ onBeforeUnmount(() => {
     cursor: pointer;
     border-radius: 4px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.menu-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    opacity: 0.9;
+    transition: opacity 0.2s;
+}
+
+.menu-item:hover .menu-icon {
+    opacity: 1;
 }
 
 .menu-item:hover {

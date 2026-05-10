@@ -1,0 +1,15 @@
+{
+  "id": "baize-data-light",
+  "name": "白泽数据浅色",
+  "description": "清新数据主题，青紫渐变，浅色背景",
+  "backgroundColor": "#F8FAFC",
+  "cardBackground": "#FFFFFF",
+  "textColor": "#1E293B",
+  "secondaryTextColor": "#64748B",
+  "borderColor": "#E2E8F0",
+  "accentColor": "#0EA5E9",
+  "buttonBackground": "#0EA5E9",
+  "buttonTextColor": "#FFFFFF",
+  "hoverBackground": "#F0F9FF",
+  "titleBarGradient": "linear-gradient(135deg, #0EA5E9 0%, #8B5CF6 100%)"
+}

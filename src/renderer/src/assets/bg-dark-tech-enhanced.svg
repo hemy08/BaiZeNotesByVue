@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%">
+  <defs>
+    <!-- 深色基底（更纯粹的科技黑） -->
+    <linearGradient id="spaceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#050A14"/>
+      <stop offset="50%" style="stop-color:#0A1128"/>
+      <stop offset="100%" style="stop-color:#0D1B3E"/>
+    </linearGradient>
+
+    <!-- 透镜渐变（高亮版本） -->
+    <linearGradient id="lensGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00FFFF"/>
+      <stop offset="100%" style="stop-color:#A855F7"/>
+    </linearGradient>
+
+    <!-- 亮色网格线（更高亮度） -->
+    <linearGradient id="gridGradBright" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00FFFF;stop-opacity:0"/>
+      <stop offset="30%" style="stop-color:#00FFFF;stop-opacity:0.3"/>
+      <stop offset="70%" style="stop-color:#A855F7;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#A855F7;stop-opacity:0"/>
+    </linearGradient>
+
+    <!-- 更强发光滤镜 -->
+    <filter id="glowBright" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="glowStandard" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- 基础深色背景 -->
+  <rect width="100%" height="100%" fill="url(#spaceGrad)"/>
+
+  <!-- 背景光晕（更明显） -->
+  <circle cx="25%" cy="30%" r="600" fill="#00FFFF" opacity="0.04" filter="url(#glowStandard)"/>
+  <circle cx="75%" cy="60%" r="700" fill="#A855F7" opacity="0.05" filter="url(#glowStandard)"/>
+  <circle cx="50%" cy="80%" r="500" fill="#00FFFF" opacity="0.03" filter="url(#glowStandard)"/>
+
+  <!-- ========== 高亮科技网格（更密、更亮） ========== -->
+  <g stroke="url(#gridGradBright)" stroke-width="1.2" opacity="0.8">
+    <line x1="5%" y1="0" x2="5%" y2="100%"/>
+    <line x1="10%" y1="0" x2="10%" y2="100%"/>
+    <line x1="15%" y1="0" x2="15%" y2="100%"/>
+    <line x1="20%" y1="0" x2="20%" y2="100%"/>
+    <line x1="25%" y1="0" x2="25%" y2="100%"/>
+    <line x1="30%" y1="0" x2="30%" y2="100%"/>
+    <line x1="35%" y1="0" x2="35%" y2="100%"/>
+    <line x1="40%" y1="0" x2="40%" y2="100%"/>
+    <line x1="45%" y1="0" x2="45%" y2="100%"/>
+    <line x1="50%" y1="0" x2="50%" y2="100%"/>
+    <line x1="55%" y1="0" x2="55%" y2="100%"/>
+    <line x1="60%" y1="0" x2="60%" y2="100%"/>
+    <line x1="65%" y1="0" x2="65%" y2="100%"/>
+    <line x1="70%" y1="0" x2="70%" y2="100%"/>
+    <line x1="75%" y1="0" x2="75%" y2="100%"/>
+    <line x1="80%" y1="0" x2="80%" y2="100%"/>
+    <line x1="85%" y1="0" x2="85%" y2="100%"/>
+    <line x1="90%" y1="0" x2="90%" y2="100%"/>
+    <line x1="95%" y1="0" x2="95%" y2="100%"/>
+  </g>
+  <g stroke="url(#gridGradBright)" stroke-width="0.8" opacity="0.6">
+    <line x1="0" y1="8%" x2="100%" y2="8%"/>
+    <line x1="0" y1="16%" x2="100%" y2="16%"/>
+    <line x1="0" y1="24%" x2="100%" y2="24%"/>
+    <line x1="0" y1="32%" x2="100%" y2="32%"/>
+    <line x1="0" y1="40%" x2="100%" y2="40%"/>
+    <line x1="0" y1="48%" x2="100%" y2="48%"/>
+    <line x1="0" y1="56%" x2="100%" y2="56%"/>
+    <line x1="0" y1="64%" x2="100%" y2="64%"/>
+    <line x1="0" y1="72%" x2="100%" y2="72%"/>
+    <line x1="0" y1="80%" x2="100%" y2="80%"/>
+    <line x1="0" y1="88%" x2="100%" y2="88%"/>
+    <line x1="0" y1="96%" x2="100%" y2="96%"/>
+  </g>
+
+  <!-- ========== 大型数据流弧线（更高亮度、更多层次） ========== -->
+  <g opacity="0.25" filter="url(#glowStandard)">
+    <!-- 上方弧线（青） -->
+    <path d="M 100 200 A 900 300 0 0 1 1820 200" fill="none" stroke="#00FFFF" stroke-width="2.5" stroke-dasharray="15 30 5 20"/>
+    <!-- 中上方弧线（紫） -->
+    <path d="M -50 450 A 1000 400 0 0 0 1970 450" fill="none" stroke="#A855F7" stroke-width="2" stroke-dasharray="25 40 10 25"/>
+    <!-- 中央弧线（青） -->
+    <path d="M 200 650 A 800 350 0 0 1 1720 650" fill="none" stroke="#00FFFF" stroke-width="2" stroke-dasharray="10 20"/>
+    <!-- 下方弧线（紫） -->
+    <path d="M 50 900 A 900 300 0 0 0 1870 900" fill="none" stroke="#A855F7" stroke-width="2" stroke-dasharray="20 35 8 18"/>
+  </g>
+
+  <!-- 额外加亮实线弧（强调） -->
+  <g opacity="0.12" filter="url(#glowBright)">
+    <path d="M 150 280 A 850 280 0 0 1 1770 280" fill="none" stroke="#00FFFF" stroke-width="3"/>
+    <path d="M 80 720 A 880 400 0 0 0 1840 720" fill="none" stroke="#A855F7" stroke-width="3"/>
+  </g>
+
+  <!-- ========== Logo 透镜符号（融入背景，更密集） ========== -->
+  <!-- 主透镜（中心偏右上，较大） -->
+  <g transform="translate(1400, 450) scale(2.5)" opacity="0.25">
+    <path d="M0 -120 L160 0 L0 120 L-160 0 Z" fill="none" stroke="url(#lensGrad)" stroke-width="5" stroke-linejoin="round" filter="url(#glowBright)"/>
+    <circle cx="0" cy="0" r="16" fill="#00FFFF" filter="url(#glowBright)"/>
+    <circle cx="0" cy="0" r="6" fill="#FFFFFF"/>
+    <ellipse cx="0" cy="0" rx="110" ry="35" fill="none" stroke="#A855F7" stroke-width="2" stroke-dasharray="8 12" transform="rotate(45)"/>
+  </g>
+
+  <!-- 副透镜（左侧下方，中等） -->
+  <g transform="translate(350, 750) scale(1.6)" opacity="0.2">
+    <path d="M0 -120 L160 0 L0 120 L-160 0 Z" fill="none" stroke="url(#lensGrad)" stroke-width="4" stroke-linejoin="round" filter="url(#glowStandard)"/>
+    <circle cx="0" cy="0" r="14" fill="#00FFFF" filter="url(#glowStandard)"/>
+    <circle cx="0" cy="0" r="5" fill="#FFFFFF"/>
+    <ellipse cx="0" cy="0" rx="100" ry="32" fill="none" stroke="#A855F7" stroke-width="1.5" stroke-dasharray="6 10" transform="rotate(-30)"/>
+  </g>
+
+  <!-- 第三透镜（顶部中央，更小） -->
+  <g transform="translate(960, 180) scale(1.0)" opacity="0.15">
+    <path d="M0 -120 L160 0 L0 120 L-160 0 Z" fill="none" stroke="url(#lensGrad)" stroke-width="3" stroke-linejoin="round" filter="url(#glowStandard)"/>
+    <circle cx="0" cy="0" r="12" fill="#00FFFF" filter="url(#glowStandard)"/>
+    <ellipse cx="0" cy="0" rx="90" ry="28" fill="none" stroke="#A855F7" stroke-width="1.5" stroke-dasharray="5 8" transform="rotate(15)"/>
+  </g>
+
+  <!-- ========== 高亮科技粒子（更多、更亮） ========== -->
+  <g opacity="0.6">
+    <circle cx="10%" cy="15%" r="2.5" fill="#00FFFF" filter="url(#glowStandard)"/>
+    <circle cx="85%" cy="25%" r="3" fill="#A855F7" filter="url(#glowStandard)"/>
+    <circle cx="70%" cy="88%" r="3.5" fill="#00FFFF" filter="url(#glowStandard)"/>
+    <circle cx="5%" cy="60%" r="2" fill="#FFFFFF" opacity="0.8" filter="url(#glowStandard)"/>
+    <circle cx="50%" cy="10%" r="2" fill="#00FFFF" filter="url(#glowStandard)"/>
+    <circle cx="95%" cy="70%" r="2.5" fill="#A855F7" filter="url(#glowStandard)"/>
+    <circle cx="30%" cy="85%" r="2" fill="#00FFFF" filter="url(#glowStandard)"/>
+    <circle cx="80%" cy="45%" r="1.8" fill="#FFFFFF" opacity="0.7" filter="url(#glowStandard)"/>
+    <circle cx="42%" cy="40%" r="1.5" fill="#00FFFF" filter="url(#glowStandard)"/>
+    <circle cx="18%" cy="92%" r="2.2" fill="#A855F7" filter="url(#glowStandard)"/>
+    <circle cx="92%" cy="5%" r="2.8" fill="#00FFFF" filter="url(#glowStandard)"/>
+    <circle cx="65%" cy="30%" r="1.2" fill="#FFFFFF" opacity="0.6"/>
+    <circle cx="35%" cy="68%" r="1.8" fill="#00FFFF" filter="url(#glowStandard)"/>
+  </g>
+
+  <!-- ========== 动态数据流线条（横向贯穿） ========== -->
+  <g opacity="0.15" stroke="#00FFFF" stroke-width="1.5">
+    <path d="M 0 350 Q 500 340 1000 350 T 1920 350" fill="none" stroke-dasharray="8 12 20 8"/>
+    <path d="M 0 550 Q 600 560 1200 550 T 1920 550" fill="none" stroke-dasharray="15 20 5 15"/>
+    <path d="M 0 780 Q 400 770 1100 780 T 1920 780" fill="none" stroke="#A855F7" stroke-dasharray="10 15 25 10"/>
+  </g>
+
+  <!-- 极细装饰网格背景（星点） -->
+  <g fill="#FFFFFF" opacity="0.03">
+    <circle cx="12%" cy="8%" r="0.5"/><circle cx="38%" cy="22%" r="0.5"/><circle cx="67%" cy="14%" r="0.5"/>
+    <circle cx="85%" cy="47%" r="0.5"/><circle cx="23%" cy="65%" r="0.5"/><circle cx="56%" cy="79%" r="0.5"/>
+    <circle cx="91%" cy="83%" r="0.5"/><circle cx="44%" cy="95%" r="0.5"/><circle cx="72%" cy="55%" r="0.5"/>
+    <circle cx="98%" cy="31%" r="0.5"/><circle cx="3%" cy="44%" r="0.5"/><circle cx="49%" cy="48%" r="0.5"/>
+  </g>
+</svg>

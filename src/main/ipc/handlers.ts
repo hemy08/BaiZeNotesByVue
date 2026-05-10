@@ -42,6 +42,77 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         HandleBaiZeMenuAction(action, mainWindow)
     })
 
+    // 打开特定文件夹
+    ipcMain.on('baize:notes:open-specific-folder', (_, folderPath: string) => {
+        const { ReloadDirFromDisk } = require('../utils/file-utils/file-operations')
+        const { saveLastOpenedDirectory } = require('../utils/file-state')
+        
+        // 清理编辑区域和预览区域
+        mainWindow.webContents.send('clear-editor-and-preview')
+        
+        // 设置根路径并重新加载
+        global.RootPath = folderPath
+        ReloadDirFromDisk()
+        
+        // 保存上次打开的目录
+        saveLastOpenedDirectory(folderPath)
+    })
+
+    // 欢迎界面 - 打开文件夹
+    ipcMain.on('baize:notes:welcome:open-directory', async () => {
+        const { dialog } = require('electron')
+        const { ReloadDirFromDisk } = require('../utils/file-utils/file-operations')
+        const { saveLastOpenedDirectory } = require('../utils/file-state')
+        
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openDirectory']
+        })
+        
+        if (!result.canceled && result.filePaths.length > 0) {
+            const dirPath = result.filePaths[0]
+            
+            // 清理编辑区域和预览区域
+            mainWindow.webContents.send('clear-editor-and-preview')
+            
+            // 设置根路径并重新加载
+            global.RootPath = dirPath
+            ReloadDirFromDisk()
+            
+            // 保存上次打开的目录
+            saveLastOpenedDirectory(dirPath)
+            
+            // 通知渲染进程进入主界面
+            mainWindow.webContents.send('baize:notes:welcome:enter-main', { type: 'directory', path: dirPath })
+        }
+    })
+
+    // 欢迎界面 - 打开文件
+    ipcMain.on('baize:notes:welcome:open-file', async () => {
+        const { dialog } = require('electron')
+        const { OpenSelectFile, ParserFileName } = require('../utils/file-utils/file-operations')
+        
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openFile'],
+            filters: [{ name: 'Markdown Files', extensions: ['md'] }]
+        })
+        
+        if (!result.canceled && result.filePaths.length > 0) {
+            const filePath = result.filePaths[0]
+            
+            // 打开选中的文件
+            const fileProperties = {
+                name: ParserFileName(filePath),
+                path: filePath,
+                type: 'file',
+                content: ''
+            }
+            OpenSelectFile(fileProperties)
+            
+            // 通知渲染进程进入主界面
+            mainWindow.webContents.send('baize:notes:welcome:enter-main', { type: 'file', path: filePath })
+        }
+    })
+
     ipcMain.handle('baize-notes:import-new-file', async (_, content: string) => {
         return await ImportCreateNewFile(mainWindow, content)
     })

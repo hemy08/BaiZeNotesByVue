@@ -1,0 +1,15 @@
+{
+  "id": "baize-mirror-light",
+  "name": "白泽镜像浅色",
+  "description": "科技镜像主题，透镜设计，纯净白色",
+  "backgroundColor": "#FFFFFF",
+  "cardBackground": "#F8FAFC",
+  "textColor": "#0F172A",
+  "secondaryTextColor": "#475569",
+  "borderColor": "#CBD5E1",
+  "accentColor": "#8B5CF6",
+  "buttonBackground": "#8B5CF6",
+  "buttonTextColor": "#FFFFFF",
+  "hoverBackground": "#F5F3FF",
+  "titleBarGradient": "linear-gradient(135deg, #8B5CF6 0%, #0EA5E9 100%)"
+}

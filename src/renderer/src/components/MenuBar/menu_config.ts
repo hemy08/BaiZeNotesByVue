@@ -39,6 +39,7 @@ const exportMenu: BaiZeMenuItem = {
 const fileMenu: BaiZeMenuItem = {
     label: '文件',
     accelerator: 'Alt+N',
+    icon: 'file',
     submenu: [
         { label: '新建', accelerator: 'Ctrl+N', menu_action: 'baize:menu:file:new' },
         { label: '打开文件', menu_action: 'baize:menu:file:open-file' },
@@ -59,6 +60,7 @@ const fileMenu: BaiZeMenuItem = {
 
 const editMenu: BaiZeMenuItem = {
     label: '编辑',
+    icon: 'edit',
     submenu: [
         { label: '撤销', accelerator: 'Ctrl+Z', menu_action: 'baize:menu:edit:undo' },
         { label: '重做', accelerator: 'Ctrl+Y', menu_action: 'baize:menu:edit:redo' },
@@ -77,6 +79,7 @@ const editMenu: BaiZeMenuItem = {
 
 const viewMenu: BaiZeMenuItem = {
     label: '视图',
+    icon: 'view',
     submenu: [
         { label: '编辑模式', accelerator: 'F9', menu_action: 'baize:menu:view:edit-mode' },
         { label: '预览模式', accelerator: 'F10', menu_action: 'baize:menu:view:preview-mode' },
@@ -139,6 +142,7 @@ const switchEncodingMenu: BaiZeMenuItem = {
 }
 const codingMenu: BaiZeMenuItem = {
     label: '编码',
+    icon: 'coding',
     submenu: [
         opeFileEncoding, // 编码
         switchEncodingMenu, // 切换编码
@@ -170,6 +174,7 @@ const insertPlantUML: BaiZeMenuItem = {
 
 const insertMenu: BaiZeMenuItem = {
     label: '插入',
+    icon: 'insert',
     submenu: [
         { label: '特殊字体', menu_action: 'baize:menu:insert:special-text' },
         { label: '数学公式', menu_action: 'baize:menu:insert:math' },
@@ -191,6 +196,7 @@ const insertMenu: BaiZeMenuItem = {
 
 const settingMenu: BaiZeMenuItem = {
     label: '设置',
+    icon: 'setting',
     submenu: [
         { label: '系统设置', menu_action: 'baize:menu:setting:system' },
         { label: '主题设置', menu_action: 'baize:menu:setting:theme' },
@@ -202,6 +208,7 @@ const settingMenu: BaiZeMenuItem = {
 
 const toolsMenu: BaiZeMenuItem = {
     label: '工具',
+    icon: 'tools',
     submenu: [
         { label: 'mermaid绘图', menu_action: 'baize:menu:tools:mermaid' },
         { label: '公式编辑器', menu_action: 'baize:menu:tools:katex' },
@@ -213,6 +220,7 @@ const toolsMenu: BaiZeMenuItem = {
 
 const pluginsMenu: BaiZeMenuItem = {
     label: '插件',
+    icon: 'plugins',
     submenu: [
         {
             label: '语言语法关键字对照表',
@@ -282,15 +290,9 @@ const pluginsMenu: BaiZeMenuItem = {
 // 在线工具菜单
 // 工具网站菜单
 const onlineMenu: BaiZeMenuItem = {
-    label: '工具网站',
-    submenu: generateMenuItems(MenuConst.OnlineToolMaps)
-}
-
-// 快速链接菜单
-const quickLinkMenu: BaiZeMenuItem = {
-    label: '快速链接',
-    submenu: [
-        {
+    label: '在线',
+    icon: 'online',
+    submenu: [        {
             label: '菜鸟在线工具',
             submenu: generateMenuItems(MenuConst.CaiNiaoUrlMaps)
         },
@@ -323,12 +325,14 @@ const quickLinkMenu: BaiZeMenuItem = {
 
 const gitHubMenu: BaiZeMenuItem = {
     label: 'GitHub',
+    icon: 'github',
     submenu: generateMenuItems(MenuConst.GitHubUrlMaps)
 }
 
 
 const helpMenu: BaiZeMenuItem = {
     label: '帮助',
+    icon: 'help',
     submenu: [
         { label: '版本发布', menu_action: 'baize:menu:help:release-notes' },
         { label: '修改日志', menu_action: 'baize:menu:help:change-log' },
@@ -356,7 +360,7 @@ export const menuMap = ref<BaiZeMenuItem[]>([
     toolsMenu,
     pluginsMenu,
     onlineMenu,
-    quickLinkMenu,
+    //quickLinkMenu,
     gitHubMenu,
     helpMenu
 ])

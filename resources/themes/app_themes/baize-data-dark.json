@@ -1,0 +1,15 @@
+{
+  "id": "baize-data-dark",
+  "name": "白泽数据深色",
+  "description": "数据科技主题，青紫光晕，深色背景",
+  "backgroundColor": "#020617",
+  "cardBackground": "#0F172A",
+  "textColor": "#E2E8F0",
+  "secondaryTextColor": "#94A3B8",
+  "borderColor": "#1E293B",
+  "accentColor": "#00E0FF",
+  "buttonBackground": "#00E0FF",
+  "buttonTextColor": "#020617",
+  "hoverBackground": "#1E293B",
+  "titleBarGradient": "linear-gradient(135deg, #00E0FF 0%, #6C5CE7 100%)"
+}

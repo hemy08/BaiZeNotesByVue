@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgLight2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#F0F4FA"/>
+    </linearGradient>
+    <radialGradient id="coreLight" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#1E88E5;stop-opacity:0.25"/>
+      <stop offset="100%" style="stop-color:#8E24AA;stop-opacity:0"/>
+    </radialGradient>
+    <filter id="glowLight">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#90A4AE" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="url(#bgLight2)" filter="url(#dropShadow)"/>
+  
+  <!-- 外弧放大（原 180 160 → 200 180，即半径增加约 20~25） -->
+  <path d="M160 160 A 200 200 0 0 1 352 160" fill="none" stroke="#1E88E5" stroke-width="10" stroke-linecap="round" filter="url(#glowLight)"/>
+  <!-- 中弧放大（原 120 280 参数整体外扩） -->
+  <path d="M88 280 A 240 240 0 0 0 424 280" fill="none" stroke="#8E24AA" stroke-width="10" stroke-linecap="round" filter="url(#glowLight)"/>
+  <!-- 内弧放大 -->
+  <path d="M184 384 A 160 160 0 0 0 328 384" fill="none" stroke="#1E88E5" stroke-width="6" stroke-linecap="round" opacity="0.6"/>
+  
+  <!-- 中心高亮核放大 -->
+  <circle cx="256" cy="256" r="140" fill="url(#coreLight)"/>
+  <circle cx="256" cy="256" r="32" fill="#1E88E5" filter="url(#glowLight)"/>
+  <circle cx="256" cy="256" r="14" fill="#FFFFFF"/>
+  
+  <!-- 品牌文字下移并调整 -->
+  <text x="256" y="470" font-family="'Inter','Segoe UI',sans-serif" font-size="34" font-weight="700" fill="#0F172A" text-anchor="middle" letter-spacing="8">白泽笔记</text>
+  <text x="256" y="502" font-family="monospace" font-size="12" font-weight="500" fill="#8E24AA" text-anchor="middle" letter-spacing="6">BAIZE NOTES</text>
+</svg>

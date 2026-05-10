@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg_light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#F1F5F9"/>
+    </linearGradient>
+    <linearGradient id="accent_light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0EA5E9"/>
+      <stop offset="100%" style="stop-color:#8B5CF6"/>
+    </linearGradient>
+    <filter id="shadow_light">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#475569" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="url(#bg_light)"/>
+  <!-- 抽象透镜（科技洞察）- 浅色版本 -->
+  <path d="M256 128 L384 256 L256 384 L128 256 Z" fill="none" stroke="url(#accent_light)" stroke-width="12" stroke-linejoin="round" filter="url(#shadow_light)"/>
+  <!-- 内核数据点 -->
+  <circle cx="256" cy="256" r="16" fill="#0EA5E9" filter="url(#shadow_light)"/>
+  <circle cx="256" cy="256" r="6" fill="#FFFFFF"/>
+  <!-- 数据轨迹环 -->
+  <ellipse cx="256" cy="256" rx="140" ry="50" fill="none" stroke="#8B5CF6" stroke-width="3" stroke-dasharray="8 12" opacity="0.7" transform="rotate(45 256 256)"/>
+  <!-- 品牌字 -->
+  <text x="256" y="460" font-family="'Inter','Segoe UI',sans-serif" font-size="36" font-weight="700" fill="#1E293B" text-anchor="middle" letter-spacing="10">白泽笔记</text>
+  <text x="256" y="492" font-family="'Inter','Segoe UI',sans-serif" font-size="14" font-weight="300" fill="#0EA5E9" text-anchor="middle" letter-spacing="6">BAIZE NOTES</text>
+</svg>

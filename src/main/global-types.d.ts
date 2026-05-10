@@ -178,6 +178,7 @@ export interface BaiZeMenuItem {
     type?: string
     enabled?: boolean
     usl?:string
+    icon?: string  // 图标名称，用于根据主题自动切换图标
 } // 白泽编辑器菜单项
 
 export interface FileItem {
