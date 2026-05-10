@@ -84,7 +84,7 @@ function getIconPath(iconName: string): string {
         // 根据主题确定文件名
         let fileName = iconName
         if (!iconName.includes('.svg')) {
-            fileName = iconName + (isDark ? '.svg' : '-light.svg')
+            fileName = 'icon-' + iconName + (isDark ? '.svg' : '-light.svg')
         }
         
         // 动态导入图标

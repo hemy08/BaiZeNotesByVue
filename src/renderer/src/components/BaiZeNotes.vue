@@ -54,6 +54,7 @@
         <BaiZeDialogs.FontSelectDialog
             :visible="configStore.dialogs.fontSelect.visible"
             @close="configStore.hideDialog('fontSelect')"
+            @apply="handleFontApply"
         />
         <BaiZeDialogs.EditorSettingDialog
             :visible="configStore.dialogs.editorSettings.visible"
@@ -276,6 +277,11 @@ function applyTheme(theme: ThemeStyles) {
 }
 
 // 对话框 insert 事件处理 - 将内容插入到编辑器
+function handleFontApply(htmlContent: string) {
+  // 应用字体设置到编辑器
+  window.electron.ipcRenderer.send('baize-notes:update-editor-font', htmlContent)
+}
+
 function handleDialogInsert(markdown: string) {
     EventBus.$emit('baize:notes:monaco-editor:insert-text', markdown)
 }

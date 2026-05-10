@@ -269,6 +269,8 @@ function selectTheme(themeType: string) {
 
 function selectMonacoTheme(monacoTheme: string) {
   currentMonacoTheme.value = monacoTheme
+  // 立即应用编辑器主题
+  window.electron.ipcRenderer.send('baize-notes:update-monaco-theme', monacoTheme)
 }
 
 function handleCancel() {

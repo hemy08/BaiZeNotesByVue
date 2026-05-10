@@ -35,15 +35,13 @@ function handleOpenFolder() {
 
 // 处理打开最近的文件夹
 async function handleOpenRecentFolder(folder: string) {
-    // 直接打开指定文件夹
+    // 立即隐藏欢迎界面和最大化窗口
+    showWelcome.value = false
+    window.electron.ipcRenderer.send('window-maximize')
+    // 打开指定文件夹
     window.electron.ipcRenderer.send('baize:notes:open-specific-folder', folder)
-    // 延迟隐藏欢迎界面和最大化窗口
-    setTimeout(async () => {
-        showWelcome.value = false
-        window.electron.ipcRenderer.send('window-maximize')
-        // 保存到最近打开列表
-        await saveToRecentFolders(folder)
-    }, 500)
+    // 保存到最近打开列表
+    await saveToRecentFolders(folder)
 }
 
 // 保存到最近打开的文件夹列表
