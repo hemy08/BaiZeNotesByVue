@@ -8,12 +8,6 @@
             @click="toggleMenu(index)"
             @mouseenter="handleMenuEnter(index)"
         >
-            <img
-                v-if="menu.icon"
-                :src="getIconPath(menu.icon)"
-                class="menu-icon"
-                :alt="menu.label"
-            />
             <span class="menu-label">{{ menu.label }}</span>
         </div>
 
@@ -80,13 +74,13 @@ function getIconPath(iconName: string): string {
     try {
         const isDark = currentTheme.value.includes('dark') || currentTheme.value.includes('Dark')
         const folder = isDark ? 'dark' : 'light'
-        
+
         // 根据主题确定文件名
         let fileName = iconName
         if (!iconName.includes('.svg')) {
             fileName = 'icon-' + iconName + (isDark ? '.svg' : '-light.svg')
         }
-        
+
         // 动态导入图标
         return new URL(`../assets/icons/${folder}/${fileName}`, import.meta.url).href
     } catch (error) {

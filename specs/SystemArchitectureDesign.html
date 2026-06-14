@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统架构设计</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        p {
+            line-height: 1.6;
+        }
+        ul {
+            list-style-type: disc;
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>系统架构设计</h1>
+    <p>本文档详细描述了 BaiZeNotes 应用的系统架构，包括主进程、预加载脚本和渲染器进程。</p>
+
+    <h2>1. 主进程 (src/main)</h2>
+    <ul>
+        <li><strong>功能:</strong> 管理应用窗口的创建和生命周期。</li>
+        <li><strong>通信:</strong> 启动预加载脚本并传递必要的上下文信息给渲染器进程。</li>
+    </ul>
+
+    <h2>2. 预加载脚本 (src/preload)</h2>
+    <ul>
+        <li><strong>功能:</strong> 提供安全的 API 给渲染器进程使用，例如文件系统访问、主进程通信等。</li>
+        <li><strong>安全性:</strong> 确保渲染器进程只能访问必要的权限。</li>
+    </ul>
+
+    <h2>3. 渲染器进程 (src/renderer)</h2>
+    <ul>
+        <li><strong>功能:</strong> 处理用户界面逻辑、事件处理等。</li>
+        <li><strong>组件:</strong> 包含导航栏、状态栏、欢迎页面等子组件。</li>
+    </ul>
+
+    <!-- 如果有架构图，请放置在这里 -->
+    <!-- <img src="architecture_diagram.png" alt="系统架构图"> -->
+</body>
+</html>

@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>白泽笔记系统架构文档（合辑）</title>
+<style>
+:root{--p:#3498db;--s:#2ecc71;--a:#e74c3c;--bg:#f8f9fa;--cb:#fff;--t:#2c3e50;--ts:#7f8c8d;--b:#dee2e6;--cbg:#f1f3f5}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--t);line-height:1.8;font-size:15px}
+.wrapper{display:flex;min-height:100vh}
+.sidebar{position:fixed;top:0;left:0;width:250px;height:100vh;background:#1a1a2e;color:#fff;overflow-y:auto;z-index:200}
+.sidebar-brand{padding:18px 14px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-bottom:1px solid rgba(255,255,255,.1);text-align:center}
+.sidebar-brand h2{font-size:1em;font-weight:700;border:none;display:block;margin:0}
+.sidebar-brand .sub{font-size:.72em;opacity:.6;margin-top:3px}
+.sidebar-brand .ver{font-size:.65em;opacity:.4;margin-top:2px}
+.sidebar-group{padding:6px 0}
+.sidebar-group-label{padding:4px 14px 1px;font-size:.7em;text-transform:uppercase;opacity:.5;letter-spacing:1px;font-weight:600}
+.sidebar a{display:block;padding:4px 14px 4px 18px;color:rgba(255,255,255,.7);text-decoration:none;font-size:.8em;transition:.2s;border-left:3px solid transparent}
+.sidebar a:hover{background:rgba(255,255,255,.08);color:#fff;border-left-color:var(--p)}
+.sidebar a.indent{padding-left:26px;font-size:.76em}
+.main{margin-left:250px;flex:1;min-width:0}
+.container{max-width:1100px;margin:0 auto;padding:0 24px}
+.header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);color:#fff;padding:44px 0 28px;text-align:center}
+.header h1{font-size:1.8em;margin-bottom:4px;letter-spacing:1px}
+.header .subtitle{font-size:.95em;opacity:.8}
+.header .meta{margin-top:10px;font-size:.82em;opacity:.6}
+section{padding:32px 0;border-bottom:1px solid var(--b)}
+h2{font-size:1.4em;margin-bottom:16px;padding-bottom:6px;border-bottom:3px solid var(--p);display:inline-block}
+h3{font-size:1.1em;margin:18px 0 8px;color:var(--p)}
+h4{font-size:.98em;margin:12px 0 5px}
+p{margin-bottom:8px}
+ul,ol{margin:5px 0 12px 18px}
+li{margin-bottom:2px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0}
+.card{background:var(--cb);border-radius:8px;padding:16px;border:1px solid var(--b);box-shadow:0 2px 6px rgba(0,0,0,.04)}
+.card h4{margin-top:0}
+.card .badge{display:inline-block;padding:2px 9px;border-radius:12px;font-size:.74em;font-weight:600;margin-bottom:5px}
+.badge-main{background:#e8f4fd;color:#2980b9}
+.badge-preload{background:#fef3e2;color:#e67e22}
+.badge-renderer{background:#e8f8f0;color:#27ae60}
+.badge-blue{background:#e8f4fd;color:#2980b9}
+.badge-green{background:#e8f8f0;color:#27ae60}
+.badge-orange{background:#fef3e2;color:#e67e22}
+.badge-red{background:#fde8e8;color:#e74c3c}
+.arch-diagram{margin:16px 0;text-align:center}
+.arch-diagram svg{max-width:100%;height:auto}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.88em}
+th,td{border:1px solid var(--b);padding:7px 10px;text-align:left}
+th{background:#f1f3f5;font-weight:600;white-space:nowrap}
+tr:hover td{background:#f8f9fa}
+code{background:var(--cbg);padding:2px 6px;border-radius:4px;font-family:'SF Mono','Cascadia Code',monospace;font-size:.86em}
+pre{background:#1e1e2e;color:#cdd6f4;padding:12px 16px;border-radius:8px;overflow-x:auto;font-size:.82em;line-height:1.4;margin:8px 0}
+pre code{background:none;padding:0;color:inherit}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.76em;font-weight:500;margin:1px}
+.tag-electron{background:#9b59b6;color:#fff}
+.tag-vue{background:#42b883;color:#fff}
+.tag-ts{background:#3178c6;color:#fff}
+.tag-mona{background:#e74c3c;color:#fff}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:12px 0;padding:12px;background:var(--cb);border-radius:8px;border:1px solid var(--b)}
+.flow-step{padding:4px 11px;background:var(--p);color:#fff;border-radius:5px;font-size:.8em;white-space:nowrap}
+.flow-step.main{background:#2980b9}
+.flow-step.renderer{background:#27ae60}
+.flow-step.preload{background:#e67e22}
+.flow-arrow{color:var(--ts);font-size:1em}
+.footer{text-align:center;padding:24px 0;color:var(--ts);font-size:.82em}
+.adr{background:var(--cb);border-radius:10px;padding:20px;border:1px solid var(--b);box-shadow:0 2px 8px rgba(0,0,0,.04);margin:12px 0}
+.adr-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.adr-id{font-size:1.05em;font-weight:700;color:var(--p)}
+.adr-status{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.74em;font-weight:600}
+.status-accepted{background:#e8f8f0;color:#27ae60}
+.status-proposed{background:#fef3e2;color:#e67e22}
+.status-deprecated{background:#fde8e8;color:#e74c3c}
+.adr h4{margin:12px 0 3px;color:var(--p)}
+.adr p{margin-bottom:5px}
+.adr ul{margin:2px 0 6px 16px}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
+@media(max-width:860px){.sidebar{width:200px}.main{margin-left:200px}.container{padding:0 14px}}
+@media(max-width:680px){.sidebar{display:none}.main{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="wrapper">
+<nav class="sidebar">
+<div class="sidebar-brand">
+<h2>白泽笔记</h2><div class="sub">系统架构文档</div><div class="ver">v1.2.0-beta</div>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-label">概览</div>
+<a href="#overview">一、项目概览</a>
+<a href="#architecture">二、系统架构</a>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-label">进程模块</div>
+<a href="#main">三、主进程</a>
+<a href="#preload">四、预加载</a>
+<a href="#renderer">五、渲染进程</a>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-label">核心设计</div>
+<a href="#dataflow">六、数据流</a>
+<a href="#theme">七、主题系统</a>
+<a href="#state">八、状态管理</a>
+<a href="#build">九、构建部署</a>
+<a href="#modules">十、模块一览</a>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-label">4+1 视图</div>
+<a href="#logical" class="indent">逻辑视图</a>
+<a href="#process" class="indent">进程视图</a>
+<a href="#development" class="indent">开发视图</a>
+<a href="#deployment" class="indent">部署视图</a>
+<a href="#usecase" class="indent">用例视图</a>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-label">3A 视图</div>
+<a href="#arch3a" class="indent">Architecture</a>
+<a href="#aspects" class="indent">Aspects</a>
+<a href="#assets" class="indent">Assets</a>
+<a href="#c4" class="indent">C4 模型</a>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-label">ADR</div>
+<a href="#adr-list" class="indent">ADR 索引</a>
+<a href="#adr001" class="indent" style="font-size:.72em">001 Electron</a>
+<a href="#adr002" class="indent" style="font-size:.72em">002 Monaco</a>
+<a href="#adr003" class="indent" style="font-size:.72em">003 IPC</a>
+<a href="#adr004" class="indent" style="font-size:.72em">004 主题</a>
+<a href="#adr005" class="indent" style="font-size:.72em">005 自动保存</a>
+<a href="#adr006" class="indent" style="font-size:.72em">006 Store</a>
+<a href="#adr007" class="indent" style="font-size:.72em">007 状态</a>
+<a href="#adr008" class="indent" style="font-size:.72em">008 安全</a>
+<a href="#adr-summary" class="indent" style="font-size:.72em">汇总</a>
+</div>
+</nav>
+<div class="main">
+<header class="header">
+<h1>白泽笔记 系统架构文档</h1>
+<p class="subtitle">BaiZeNotes — Architecture Document (合辑)</p>
+<p class="meta">v1.2.0-beta · 2026-06-06 · 含 4+1/3A/C4 视图 + ADR</p>
+</header>
+<div class="container">
+<section id="overview"><h2>一、项目概览</h2>
+<div class="cards"><div class="card"><span class="badge badge-blue">定位</span><h4>本地优先 Markdown 笔记</h4><p>基于 Electron + Vue 3 的桌面端 Markdown 编辑器，以本地文件为基础，不依赖云端服务。</p></div>
+<div class="card"><span class="badge badge-green">技术栈</span><h4>Electron 28 + Vue 3 + TypeScript</h4><p>主进程 Electron 28，渲染进程 Vue 3.4 + TypeScript 5.3，预加载层安全桥接。</p></div>
+<div class="card"><span class="badge badge-orange">编辑器</span><h4>Monaco Editor 集成</h4><p>基于 Monaco Editor 0.45，内置多种主题，支持代码高亮和编辑增强。</p></div>
+<div class="card"><span class="badge badge-red">架构</span><h4>多进程架构</h4><p>Electron 的 Main / Preload / Renderer 三进程模型，IPC 通信，安全沙箱。</p></div></div>
+<div style="margin:12px 0;padding:14px;background:var(--cb);border-radius:8px;border:1px solid var(--b);font-size:.9em;display:flex;flex-wrap:wrap;gap:8px">
+<span class="tag tag-electron">Electron 28</span><span class="tag tag-vue">Vue 3.4</span><span class="tag tag-ts">TypeScript 5.3</span><span class="tag tag-mona">Monaco 0.45</span>
+<code>pnpm</code><code>Vite 5</code><code>electron-builder</code><code>Pinia</code>
+</div>
+<h3>项目结构</h3>
+<pre><code>baizenotes/
+├── package.json
+├── electron/               # 主进程 + 预加载
+│   ├── main.ts             # 主进程入口
+│   └── preload.ts          # 预加载脚本
+├── src/                    # 渲染进程
+│   ├── App.vue
+│   ├── main.ts
+│   ├── components/
+│   ├── views/
+│   └── stores/
+├── public/
+├── resources/
+└── .electron-builder.yml</code></pre>
+</section>
+<section id="architecture"><h2>二、系统架构</h2>
+<p>采用 Electron 经典三进程架构：<strong>Main Process</strong> 负责系统集成与文件 I/O，<strong>Preload</strong> 提供安全上下文桥接，<strong>Renderer</strong> 运行 Vue 3 应用。</p>
+<div class="arch-diagram">
+<svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="10" width="720" height="60" rx="8" fill="#9b59b6" opacity=".15"/><rect x="30" y="20" width="700" height="40" rx="6" fill="#9b59b6"/><text x="380" y="46" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">Main Process — Node.js 环境</text><rect x="20" y="90" width="720" height="60" rx="8" fill="#e67e22" opacity=".15"/><rect x="30" y="100" width="700" height="40" rx="6" fill="#e67e22"/><text x="380" y="126" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">Preload Script — 上下文桥接</text><rect x="20" y="170" width="720" height="60" rx="8" fill="#2980b9" opacity=".15"/><rect x="30" y="180" width="700" height="40" rx="6" fill="#2980b9"/><text x="380" y="206" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">Renderer Process — Vue 3 应用</text><line x1="380" y1="60" x2="380" y2="100" stroke="#999" stroke-width="2" stroke-dasharray="5,3"/><text x="395" y="83" fill="#666" font-size="11">contextBridge</text><line x1="380" y1="140" x2="380" y2="180" stroke="#999" stroke-width="2" stroke-dasharray="5,3"/><text x="395" y="163" fill="#666" font-size="11">contextIsolation</text></svg>
+</div>
+<h3>关键技术决策</h3>
+<ul><li><strong>类型安全</strong>：全栈 TypeScript，主进程到渲染进程共享接口定义</li>
+<li><strong>安全通信</strong>：通过 <code>contextBridge</code> 暴露受限 API，遵循最小权限原则</li>
+<li><strong>构建统一</strong>：Vite 5 构建主进程和渲染进程，electron-builder 打包</li>
+<li><strong>状态管理</strong>：Pinia 管理前端状态，主进程状态通过 IPC 同步</li></ul>
+</section>
+<section id="main"><h2>三、主进程 Main Process</h2>
+<p>主进程是 Electron 应用的入口，负责窗口管理、系统菜单、文件 I/O、自动更新等。</p>
+<h3>核心职责</h3>
+<ul><li><strong>窗口管理</strong>：创建/管理 BrowserWindow，窗口大小记忆</li>
+<li><strong>文件系统</strong>：文件的打开/读取/写入/保存，目录遍历</li>
+<li><strong>IPC 通信</strong>：响应渲染进程的上下文菜单、对话框、原生功能调用</li>
+<li><strong>应用生命周期</strong>：启动、激活、退出等事件处理</li></ul>
+<h3>IPC 通道概览</h3>
+<table><tr><th>通道</th><th>方向</th><th>说明</th></tr>
+<tr><td><code>file:open</code></td><td>Renderer → Main</td><td>打开文件对话框</td></tr>
+<tr><td><code>file:save</code></td><td>Renderer → Main</td><td>保存文件</td></tr>
+<tr><td><code>context-menu</code></td><td>Renderer → Main</td><td>触发右键菜单</td></tr>
+<tr><td><code>menu:action</code></td><td>Main → Renderer</td><td>菜单动作通知</td></tr>
+<tr><td><code>app:info</code></td><td>Renderer → Main</td><td>获取应用信息</td></tr></table>
+</section>
+<section id="preload"><h2>四、预加载层 Preload</h2>
+<p>预加载脚本在渲染进程创建前执行，通过 <code>contextBridge</code> 向渲染进程暴露安全的 API。</p>
+<h3>安全策略</h3>
+<ul><li><code>contextIsolation: true</code> — 隔离渲染进程上下文</li>
+<li><code>nodeIntegration: false</code> — 禁用 Node.js 集成</li>
+<li><code>sandbox: true</code> — 启用沙箱</li>
+<li>仅暴露白名单 API，每个方法都有类型定义</li></ul>
+<h3>暴露 API</h3>
+<table><tr><th>API</th><th>类型</th><th>说明</th></tr>
+<tr><td><code>window.api.openFile()</code></td><td>异步</td><td>打开文件对话框</td></tr>
+<tr><td><code>window.api.saveFile()</code></td><td>异步</td><td>保存文件</td></tr>
+<tr><td><code>window.api.getAppInfo()</code></td><td>同步</td><td>获取版本/平台信息</td></tr>
+<tr><td><code>window.api.onMenuAction()</code></td><td>事件</td><td>菜单动作监听</td></tr></table>
+</section>
+<section id="renderer"><h2>五、渲染进程 Renderer</h2>
+<p>渲染进程运行标准的 Vue 3 单页应用，采用 Composition API + TypeScript。</p>
+<h3>核心依赖</h3>
+<div class="cards"><div class="card"><h4>Vue 3.4</h4><p>Composition API + `&lt;script setup&gt;`，ref/reactive 响应式，SFC 单文件组件。</p></div>
+<div class="card"><h4>Monaco Editor</h4><p>基于 <code>monaco-editor</code> 0.45，支持多种语言和主题。</p></div>
+<div class="card"><h4>Pinia</h4><p>状态管理，支持模块化 store 和持久化。</p></div>
+<div class="card"><h4>Vite 5</h4><p>开发服务器 HMR，构建打包优化。</p></div></div>
+<h3>组件树</h3>
+<pre><code>App.vue
+└── AppLayout.vue          # 整体布局
+    ├── Sidebar.vue         # 侧边栏
+    │   ├── FileTree.vue    # 文件树
+    │   └── SearchBar.vue   # 搜索
+    └── EditorArea.vue      # 编辑区
+        ├── EditorTabs.vue  # 标签页
+        ├── MonacoEditor.vue# 编辑器
+        └── Preview.vue     # 预览</code></pre>
+</section>
+<section id="dataflow"><h2>六、数据流</h2>
+<p>用户操作在渲染进程触发，通过 Preload API 经 IPC 传达至主进程；主进程执行文件 I/O 后返回结果。</p>
+<div class="flow"><span class="flow-step renderer">Renderer</span><span class="flow-arrow">→</span><span class="flow-step preload">Preload API</span><span class="flow-arrow">→</span><span class="flow-step main">Main Process</span><span class="flow-arrow">→</span><span class="flow-step">File System</span></div>
+<h3>典型流程：打开文件</h3>
+<ul><li>Renderer 调用 <code>window.api.openFile()</code></li>
+<li>Preload 通过 <code>ipcRenderer.invoke</code> 发送到主进程</li>
+<li>Main 显示原生对话框，读取文件内容</li>
+<li>内容经 IPC 返回 Renderer，更新编辑器内容</li></ul>
+<div class="flow"><span class="flow-step renderer">点击打开</span><span class="flow-arrow">→</span><span class="flow-step preload">ipcRenderer.invoke</span><span class="flow-arrow">→</span><span class="flow-step main">dialog.showOpenDialog</span><span class="flow-arrow">→</span><span class="flow-step main">fs.readFile</span><span class="flow-arrow">→</span><span class="flow-step renderer">Monaco 显示</span></div>
+</section>
+<section id="theme"><h2>七、主题系统</h2>
+<p>支持多主题切换，编辑器主题和 UI 主题可独立设置。</p>
+<h3>主题类型</h3>
+<table><tr><th>类型</th><th>说明</th><th>预置</th></tr>
+<tr><td>编辑器主题</td><td>Monaco Editor 配色</td><td>vs / vs-dark / hc-black / monokai / github 等</td></tr>
+<tr><td>UI 主题</td><td>Vue 界面 CSS 变量</td><td>light / dark</td></tr></table>
+<h3>主题存储</h3>
+<ul><li>使用 <code>localStorage</code> 持久化用户偏好</li>
+<li>CSS 变量方案实现 UI 主题切换</li>
+<li>Monaco 的 <code>defineTheme</code> 注册自定义编辑器主题</li></ul>
+</section>
+<section id="state"><h2>八、状态管理</h2>
+<p>采用 Pinia 管理前端状态，模块化设计。</p>
+<table><tr><th>Store</th><th>状态</th><th>说明</th></tr>
+<tr><td><code>useEditorStore</code></td><td>currentFile, content, tabs</td><td>编辑器状态</td></tr>
+<tr><td><code>useFileStore</code></td><td>fileTree, currentPath</td><td>文件系统状态</td></tr>
+<tr><td><code>useThemeStore</code></td><td>editorTheme, uiTheme</td><td>主题配置</td></tr>
+<tr><td><code>useAppStore</code></td><td>version, platform</td><td>应用信息</td></tr></table>
+</section>
+<section id="build"><h2>九、构建与部署</h2>
+<h3>构建流程</h3>
+<div class="flow"><span class="flow-step">Vite build Renderer</span><span class="flow-arrow">→</span><span class="flow-step">Vite build Main</span><span class="flow-arrow">→</span><span class="flow-step">electron-builder</span><span class="flow-arrow">→</span><span class="flow-step">Installer</span></div>
+<h3>脚本</h3>
+<table><tr><th>命令</th><th>说明</th></tr>
+<tr><td><code>pnpm dev</code></td><td>开发模式，Vite HMR + Electron</td></tr>
+<tr><td><code>pnpm build</code></td><td>构建渲染进程和主进程</td></tr>
+<tr><td><code>pnpm package</code></td><td>打包为可分发的安装包</td></tr>
+<tr><td><code>pnpm lint</code></td><td>ESLint 检查</td></tr>
+<tr><td><code>pnpm typecheck</code></td><td>TypeScript 类型检查</td></tr></table>
+</section>
+<section id="modules"><h2>十、模块一览</h2>
+<table><tr><th>模块</th><th>位置</th><th>技术</th><th>说明</th></tr>
+<tr><td>主进程</td><td><code>electron/main.ts</code></td><td>Electron 28</td><td>窗口、菜单、IPC、文件系统</td></tr>
+<tr><td>预加载</td><td><code>electron/preload.ts</code></td><td>contextBridge</td><td>安全桥接</td></tr>
+<tr><td>应用入口</td><td><code>src/main.ts</code></td><td>Vue 3.4</td><td>Vue 应用挂载</td></tr>
+<tr><td>布局</td><td><code>src/App.vue</code></td><td>Vue SFC</td><td>根组件</td></tr>
+<tr><td>编辑器</td><td><code>src/components/</code></td><td>Monaco</td><td>编辑器核心</td></tr>
+<tr><td>状态</td><td><code>src/stores/</code></td><td>Pinia</td><td>4 个 Store 模块</td></tr></table>
+</section>
+<section id="logical"><h2>十一、4+1 视图 — 逻辑视图 (Logical View)</h2>
+<p>描述系统的功能需求和静态结构，从最终用户角度展示系统功能模块划分与核心类关系。</p>
+<h3>功能模块划分</h3>
+<div class="arch-diagram">
+<svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:780px"><defs><linearGradient id="lCore" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2980b9"/><stop offset="100%" stop-color="#1a5276"/></linearGradient><linearGradient id="lExt" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#27ae60"/><stop offset="100%" stop-color="#1e8449"/></linearGradient><linearGradient id="lAux" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e67e22"/><stop offset="100%" stop-color="#ca6f1e"/></linearGradient><filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".12"/></filter></defs>
+<rect x="30" y="10" width="740" height="105" rx="8" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.5"/><text x="400" y="35" text-anchor="middle" fill="#1a5276" font-size="14" font-weight="bold">核心功能</text>
+<rect x="50" y="48" width="160" height="52" rx="6" fill="url(#lCore)" filter="url(#sh)"/><text x="130" y="70" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">Markdown 编辑器</text><text x="130" y="88" text-anchor="middle" fill="#b3d9f2" font-size="10">Monaco Editor</text>
+<rect x="230" y="48" width="160" height="52" rx="6" fill="url(#lCore)" filter="url(#sh)"/><text x="310" y="70" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">实时预览</text><text x="310" y="88" text-anchor="middle" fill="#b3d9f2" font-size="10">KaTeX / Mermaid</text>
+<rect x="410" y="48" width="160" height="52" rx="6" fill="url(#lCore)" filter="url(#sh)"/><text x="490" y="70" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">文件管理</text><text x="490" y="88" text-anchor="middle" fill="#b3d9f2" font-size="10">打开/保存/树状浏览</text>
+<rect x="590" y="48" width="160" height="52" rx="6" fill="url(#lCore)" filter="url(#sh)"/><text x="670" y="70" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">智能排版</text><text x="670" y="88" text-anchor="middle" fill="#b3d9f2" font-size="10">格式化/对齐</text>
+<rect x="30" y="128" width="740" height="105" rx="8" fill="#e8f8f0" stroke="#27ae60" stroke-width="1.5"/><text x="400" y="153" text-anchor="middle" fill="#1e8449" font-size="14" font-weight="bold">扩展功能</text>
+<rect x="50" y="166" width="160" height="52" rx="6" fill="url(#lExt)" filter="url(#sh)"/><text x="130" y="188" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">主题系统</text><text x="130" y="206" text-anchor="middle" fill="#a9dfbf" font-size="10">23 应用 + 55 Monaco</text>
+<rect x="230" y="166" width="160" height="52" rx="6" fill="url(#lExt)" filter="url(#sh)"/><text x="310" y="188" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">插件工具</text><text x="310" y="206" text-anchor="middle" fill="#a9dfbf" font-size="10">40+ 实用工具</text>
+<rect x="410" y="166" width="160" height="52" rx="6" fill="url(#lExt)" filter="url(#sh)"/><text x="490" y="188" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">导入/导出</text><text x="490" y="206" text-anchor="middle" fill="#a9dfbf" font-size="10">PDF / HTML / 编码转换</text>
+<rect x="590" y="166" width="160" height="52" rx="6" fill="url(#lExt)" filter="url(#sh)"/><text x="670" y="188" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">加密工具</text><text x="670" y="206" text-anchor="middle" fill="#a9dfbf" font-size="10">AES / RSA / Hash</text>
+<rect x="30" y="246" width="740" height="105" rx="8" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/><text x="400" y="271" text-anchor="middle" fill="#ca6f1e" font-size="14" font-weight="bold">辅助功能</text>
+<rect x="50" y="284" width="160" height="52" rx="6" fill="url(#lAux)" filter="url(#sh)"/><text x="130" y="306" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">设置管理</text><text x="130" y="324" text-anchor="middle" fill="#fce5cd" font-size="10">编辑器/系统/主题</text>
+<rect x="230" y="284" width="160" height="52" rx="6" fill="url(#lAux)" filter="url(#sh)"/><text x="310" y="306" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">快捷键系统</text><text x="310" y="324" text-anchor="middle" fill="#fce5cd" font-size="10">自定义快捷键</text>
+<rect x="410" y="284" width="160" height="52" rx="6" fill="url(#lAux)" filter="url(#sh)"/><text x="490" y="306" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">自动保存</text><text x="490" y="324" text-anchor="middle" fill="#fce5cd" font-size="10">定时器 + 脏检查</text>
+<rect x="590" y="284" width="160" height="52" rx="6" fill="url(#lAux)" filter="url(#sh)"/><text x="670" y="306" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">窗口管理</text><text x="670" y="324" text-anchor="middle" fill="#fce5cd" font-size="10">多窗口 / 布局记忆</text>
+</svg></div>
+<h3>核心类关系</h3>
+<div class="arch-diagram">
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:780px"><defs><filter id="sh2"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".1"/></filter></defs>
+<rect x="50" y="10" width="220" height="130" rx="6" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.5" filter="url(#sh2)"/><text x="160" y="32" text-anchor="middle" fill="#1a5276" font-size="13" font-weight="bold">HemyEditor</text><line x1="60" y1="40" x2="260" y2="40" stroke="#2980b9" stroke-width="1"/><text x="65" y="58" fill="#2c3e50" font-size="11">- monacoEditor: ICodeEditor</text><text x="65" y="74" fill="#2c3e50" font-size="11">- options: EditorOptions</text><text x="65" y="94" fill="#7f8c8d" font-size="11">+ initialize()</text><text x="65" y="110" fill="#7f8c8d" font-size="11">+ getContent(): string</text><text x="65" y="126" fill="#7f8c8d" font-size="11">+ insertText(text)</text>
+<rect x="530" y="10" width="220" height="130" rx="6" fill="#e8f8f0" stroke="#27ae60" stroke-width="1.5" filter="url(#sh2)"/><text x="640" y="32" text-anchor="middle" fill="#1e8449" font-size="13" font-weight="bold">ThemeManager</text><line x1="540" y1="40" x2="740" y2="40" stroke="#27ae60" stroke-width="1"/><text x="545" y="58" fill="#2c3e50" font-size="11">- themes: Map&lt;ThemeType, ThemeStyles&gt;</text><text x="545" y="74" fill="#2c3e50" font-size="11">- current: ThemeType</text><text x="545" y="94" fill="#7f8c8d" font-size="11">+ getCurrentTheme(): ThemeStyles</text><text x="545" y="110" fill="#7f8c8d" font-size="11">+ setTheme(theme)</text><text x="545" y="126" fill="#7f8c8d" font-size="11">+ getMonacoTheme()</text>
+<rect x="50" y="160" width="220" height="130" rx="6" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5" filter="url(#sh2)"/><text x="160" y="182" text-anchor="middle" fill="#ca6f1e" font-size="13" font-weight="bold">FileManager</text><line x1="60" y1="190" x2="260" y2="190" stroke="#e67e22" stroke-width="1"/><text x="65" y="208" fill="#2c3e50" font-size="11">- currentFile: FileItem</text><text x="65" y="224" fill="#2c3e50" font-size="11">- fileTree: FileItem[]</text><text x="65" y="244" fill="#7f8c8d" font-size="11">+ openFile(path)</text><text x="65" y="260" fill="#7f8c8d" font-size="11">+ saveFile()</text><text x="65" y="276" fill="#7f8c8d" font-size="11">+ createFile(name)</text>
+<rect x="530" y="160" width="220" height="130" rx="6" fill="#fde8e8" stroke="#e74c3c" stroke-width="1.5" filter="url(#sh2)"/><text x="640" y="182" text-anchor="middle" fill="#c0392b" font-size="13" font-weight="bold">PluginManager</text><line x1="540" y1="190" x2="740" y2="190" stroke="#e74c3c" stroke-width="1"/><text x="545" y="208" fill="#2c3e50" font-size="11">- plugins: Plugin[]</text><text x="545" y="228" fill="#7f8c8d" font-size="11">+ registerPlugin(p)</text>
+<line x1="270" y1="75" x2="520" y2="75" stroke="#95a5a6" stroke-width="1.5" stroke-dasharray="6,3"/><polygon points="520,75 510,70 510,80" fill="#95a5a6"/><text x="395" y="68" text-anchor="middle" fill="#7f8c8d" font-size="11">使用</text>
+<line x1="160" y1="140" x2="160" y2="155" stroke="#95a5a6" stroke-width="1.5"/><polygon points="160,155 155,148 165,148" fill="#95a5a6"/><text x="175" y="150" fill="#7f8c8d" font-size="11">管理</text>
+<line x1="640" y1="140" x2="640" y2="155" stroke="#95a5a6" stroke-width="1.5"/><polygon points="640,155 635,148 645,148" fill="#95a5a6"/><text x="655" y="150" fill="#7f8c8d" font-size="11">管理</text>
+</svg></div>
+</section>
+<section id="process"><h2>十二、进程视图 (Process View)</h2>
+<p>描述系统的运行时架构、进程通信和并发处理。</p>
+<h3>运行时架构</h3>
+<div class="arch-diagram">
+<svg viewBox="0 0 800 350" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:780px"><defs><linearGradient id="pMain" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2980b9"/><stop offset="100%" stop-color="#1a5276"/></linearGradient><linearGradient id="pPre" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e67e22"/><stop offset="100%" stop-color="#ca6f1e"/></linearGradient><linearGradient id="pRen" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#27ae60"/><stop offset="100%" stop-color="#1e8449"/></linearGradient><filter id="sh3"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".12"/></filter></defs>
+<rect x="30" y="10" width="740" height="120" rx="8" fill="url(#pMain)" filter="url(#sh3)"/><text x="400" y="38" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold">主进程 (Main Process) — Node.js</text><text x="400" y="58" text-anchor="middle" fill="#b3d9f2" font-size="11">窗口管理 · 文件 I/O · 原生对话框 · 菜单系统 · IPC 服务端</text>
+<rect x="50" y="74" width="130" height="44" rx="5" fill="#fff" opacity=".15"/><text x="115" y="94" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">文件系统 fs</text>
+<rect x="200" y="74" width="130" height="44" rx="5" fill="#fff" opacity=".15"/><text x="265" y="94" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">对话框 dialog</text>
+<rect x="350" y="74" width="130" height="44" rx="5" fill="#fff" opacity=".15"/><text x="415" y="94" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">剪贴板 clipboard</text>
+<rect x="500" y="74" width="130" height="44" rx="5" fill="#fff" opacity=".15"/><text x="565" y="94" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">系统 shell</text>
+<rect x="650" y="74" width="100" height="44" rx="5" fill="#fff" opacity=".15"/><text x="700" y="94" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">Store</text>
+<line x1="400" y1="130" x2="400" y2="155" stroke="#95a5a6" stroke-width="2" stroke-dasharray="5,3"/><polygon points="400,161 394,152 406,152" fill="#95a5a6"/><text x="410" y="148" fill="#7f8c8d" font-size="10">IPC</text>
+<rect x="150" y="165" width="500" height="80" rx="8" fill="url(#pPre)" filter="url(#sh3)"/><text x="400" y="190" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">预加载脚本 (Preload)</text><text x="400" y="210" text-anchor="middle" fill="#fce5cd" font-size="11">contextBridge · 安全隔离层 · 暴露 IPC + config API</text><text x="400" y="232" text-anchor="middle" fill="#fce5cd" font-size="10">window.electron · window.api</text>
+<line x1="400" y1="245" x2="400" y2="270" stroke="#95a5a6" stroke-width="2" stroke-dasharray="5,3"/><polygon points="400,276 394,267 406,267" fill="#95a5a6"/><text x="410" y="264" fill="#7f8c8d" font-size="10">IPC</text>
+<rect x="30" y="280" width="740" height="65" rx="8" fill="url(#pRen)" filter="url(#sh3)"/><text x="400" y="305" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">渲染进程 (Renderer Process) — Chromium</text><text x="400" y="326" text-anchor="middle" fill="#a9dfbf" font-size="11">Vue 3 SPA · 89 组件 · Monaco Editor · 40+ 插件 · EventBus</text>
+</svg></div>
+<h3>IPC 通信时序</h3>
+<div class="arch-diagram">
+<svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:780px"><defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-auto"><path d="M0,0 L10,5 L0,10" fill="#e74c3c"/></marker><marker id="arrowBlue" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-auto"><path d="M0,0 L10,5 L0,10" fill="#2980b9"/></marker></defs>
+<text x="80" y="25" text-anchor="middle" fill="#27ae60" font-size="12" font-weight="bold">渲染进程</text><text x="310" y="25" text-anchor="middle" fill="#e67e22" font-size="12" font-weight="bold">预加载</text><text x="540" y="25" text-anchor="middle" fill="#2980b9" font-size="12" font-weight="bold">主进程</text><text x="720" y="25" text-anchor="middle" fill="#7f8c8d" font-size="12" font-weight="bold">文件系统</text>
+<line x1="80" y1="35" x2="80" y2="290" stroke="#95a5a6" stroke-width="1.5" stroke-dasharray="4,4"/><line x1="310" y1="35" x2="310" y2="290" stroke="#95a5a6" stroke-width="1.5" stroke-dasharray="4,4"/><line x1="540" y1="35" x2="540" y2="290" stroke="#95a5a6" stroke-width="1.5" stroke-dasharray="4,4"/><line x1="720" y1="35" x2="720" y2="290" stroke="#95a5a6" stroke-width="1.5" stroke-dasharray="4,4"/>
+<rect x="5" y="45" width="150" height="18" rx="4" fill="#eaf2f8"/><text x="80" y="58" text-anchor="middle" fill="#1a5276" font-size="10">open-file (invoke)</text><line x1="80" y1="63" x2="540" y2="63" stroke="#e74c3c" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="465" y="72" width="150" height="18" rx="4" fill="#eaf2f8"/><text x="540" y="85" text-anchor="middle" fill="#1a5276" font-size="10">fs.readFile()</text><line x1="540" y1="90" x2="720" y2="90" stroke="#2980b9" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+<rect x="645" y="100" width="150" height="18" rx="4" fill="#eaf2f8"/><text x="720" y="113" text-anchor="middle" fill="#1a5276" font-size="10">File Content</text><line x1="720" y1="118" x2="540" y2="118" stroke="#2980b9" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+<rect x="465" y="130" width="150" height="18" rx="4" fill="#eaf2f8"/><text x="540" y="143" text-anchor="middle" fill="#1a5276" font-size="10">invoke 返回</text><line x1="540" y1="148" x2="80" y2="148" stroke="#2980b9" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+<rect x="5" y="165" width="150" height="18" rx="4" fill="#fef9e7"/><text x="80" y="178" text-anchor="middle" fill="#ca6f1e" font-size="10">主题切换 (send)</text><line x1="80" y1="183" x2="540" y2="183" stroke="#e74c3c" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="465" y="195" width="150" height="18" rx="4" fill="#fef9e7"/><text x="540" y="208" text-anchor="middle" fill="#ca6f1e" font-size="10">theme-styles (send)</text><line x1="540" y1="213" x2="80" y2="213" stroke="#e74c3c" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="5" y="235" width="150" height="18" rx="4" fill="#e8f8f0"/><text x="80" y="248" text-anchor="middle" fill="#1e8449" font-size="10">菜单动作 (invoke)</text><line x1="80" y1="253" x2="540" y2="253" stroke="#e74c3c" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="465" y="265" width="150" height="18" rx="4" fill="#e8f8f0"/><text x="540" y="278" text-anchor="middle" fill="#1e8449" font-size="10">save-file (invoke)</text><line x1="540" y1="283" x2="720" y2="283" stroke="#2980b9" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+</svg></div>
+<h3>并发处理模型</h3>
+<table><tr><th>并发任务</th><th>所在进程</th><th>触发方式</th><th>说明</th></tr>
+<tr><td>自动保存</td><td>主进程</td><td>定时器（默认 30s）</td><td>脏检查后自动写入文件</td></tr>
+<tr><td>文件监听</td><td>主进程</td><td>fs.watch</td><td>外部文件变更通知</td></tr>
+<tr><td>主题监听</td><td>渲染进程</td><td>EventBus 事件</td><td>主题切换即时响应</td></tr>
+<tr><td>编码检测</td><td>主进程</td><td>文件打开时</td><td>jschardet 异步检测</td></tr>
+<tr><td>LRU 缓存</td><td>主进程</td><td>文件读取时</td><td>最近 50 文件内存缓存</td></tr>
+</table>
+</section>
+<section id="development"><h2>十三、开发视图 (Development View)</h2>
+<p>描述系统的模块结构、组件组织和依赖关系。</p>
+<h3>模块组织</h3>
+<div class="arch-diagram">
+<svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:780px"><defs><linearGradient id="dMain" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2980b9"/><stop offset="100%" stop-color="#1a5276"/></linearGradient><linearGradient id="dRen" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#27ae60"/><stop offset="100%" stop-color="#1e8449"/></linearGradient><linearGradient id="dPre" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e67e22"/><stop offset="100%" stop-color="#ca6f1e"/></linearGradient><filter id="sh4"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".1"/></filter></defs>
+<rect x="10" y="10" width="780" height="300" rx="10" fill="none" stroke="#7f8c8d" stroke-width="1.5" stroke-dasharray="4,2"/><text x="400" y="30" text-anchor="middle" fill="#7f8c8d" font-size="13" font-weight="600">src/</text>
+<rect x="30" y="45" width="240" height="250" rx="8" fill="url(#dMain)" filter="url(#sh4)"/><text x="150" y="70" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">main/ (主进程)</text><text x="150" y="90" text-anchor="middle" fill="#b3d9f2" font-size="10">35+ 源文件</text>
+<rect x="45" y="104" width="210" height="30" rx="4" fill="#fff" opacity=".15"/><text x="150" y="123" text-anchor="middle" fill="#fff" font-size="11">index.ts — 入口</text>
+<rect x="45" y="142" width="100" height="26" rx="4" fill="#fff" opacity=".12"/><text x="95" y="159" text-anchor="middle" fill="#b3d9f2" font-size="10">config/</text>
+<rect x="155" y="142" width="100" height="26" rx="4" fill="#fff" opacity=".12"/><text x="205" y="159" text-anchor="middle" fill="#b3d9f2" font-size="10">dialogs/</text>
+<rect x="45" y="176" width="100" height="26" rx="4" fill="#fff" opacity=".12"/><text x="95" y="193" text-anchor="middle" fill="#b3d9f2" font-size="10">ipc/</text>
+<rect x="155" y="176" width="100" height="26" rx="4" fill="#fff" opacity=".12"/><text x="205" y="193" text-anchor="middle" fill="#b3d9f2" font-size="10">renders/</text>
+<rect x="45" y="210" width="100" height="26" rx="4" fill="#fff" opacity=".12"/><text x="95" y="227" text-anchor="middle" fill="#b3d9f2" font-size="10">utils/</text>
+<rect x="155" y="210" width="100" height="26" rx="4" fill="#fff" opacity=".12"/><text x="205" y="227" text-anchor="middle" fill="#b3d9f2" font-size="10">menu/</text>
+<rect x="290" y="45" width="200" height="100" rx="8" fill="url(#dPre)" filter="url(#sh4)"/><text x="390" y="70" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">preload/</text><text x="390" y="90" text-anchor="middle" fill="#fce5cd" font-size="10">2 源文件</text>
+<rect x="305" y="102" width="170" height="26" rx="4" fill="#fff" opacity=".12"/><text x="390" y="119" text-anchor="middle" fill="#fce5cd" font-size="10">index.ts + types.d.ts</text>
+<rect x="290" y="160" width="480" height="135" rx="8" fill="url(#dRen)" filter="url(#sh4)"/><text x="530" y="185" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">renderer/ (渲染进程)</text><text x="530" y="205" text-anchor="middle" fill="#a9dfbf" font-size="10">100+ 源文件</text>
+<rect x="305" y="218" width="110" height="26" rx="4" fill="#fff" opacity=".12"/><text x="360" y="235" text-anchor="middle" fill="#a9dfbf" font-size="10">components/</text>
+<rect x="425" y="218" width="110" height="26" rx="4" fill="#fff" opacity=".12"/><text x="480" y="235" text-anchor="middle" fill="#a9dfbf" font-size="10">dialogs/</text>
+<rect x="545" y="218" width="110" height="26" rx="4" fill="#fff" opacity=".12"/><text x="600" y="235" text-anchor="middle" fill="#a9dfbf" font-size="10">PluginTools/</text>
+<rect x="665" y="218" width="90" height="26" rx="4" fill="#fff" opacity=".12"/><text x="710" y="235" text-anchor="middle" fill="#a9dfbf" font-size="10">styles/</text>
+<rect x="305" y="252" width="210" height="26" rx="4" fill="#fff" opacity=".12"/><text x="410" y="269" text-anchor="middle" fill="#a9dfbf" font-size="10">composables/ + common/</text>
+<line x1="270" y1="95" x2="285" y2="95" stroke="#95a5a6" stroke-width="1.5"/><polygon points="285,95 279,91 279,99" fill="#95a5a6"/>
+<line x1="270" y1="175" x2="285" y2="175" stroke="#95a5a6" stroke-width="1.5"/><polygon points="285,175 279,171 279,179" fill="#95a5a6"/>
+</svg></div>
+<h3>组件依赖图（渲染进程）</h3>
+<div class="arch-diagram">
+<svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:780px"><defs><filter id="sh5"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".1"/></filter></defs>
+<rect x="300" y="5" width="200" height="40" rx="6" fill="#2c3e50" filter="url(#sh5)"/><text x="400" y="29" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">App.vue (根组件)</text>
+<rect x="30" y="70" width="150" height="36" rx="5" fill="#2980b9" filter="url(#sh5)"/><text x="105" y="92" text-anchor="middle" fill="#fff" font-size="11">MenuBar.vue</text>
+<rect x="205" y="70" width="170" height="36" rx="5" fill="#2980b9" filter="url(#sh5)"/><text x="290" y="92" text-anchor="middle" fill="#fff" font-size="11">BaiZeNotes.vue</text>
+<rect x="400" y="70" width="150" height="36" rx="5" fill="#2980b9" filter="url(#sh5)"/><text x="475" y="92" text-anchor="middle" fill="#fff" font-size="11">StatusBar.vue</text>
+<rect x="575" y="70" width="150" height="36" rx="5" fill="#2980b9" filter="url(#sh5)"/><text x="650" y="92" text-anchor="middle" fill="#fff" font-size="11">WelcomeScreen.vue</text>
+<rect x="30" y="140" width="150" height="36" rx="5" fill="#27ae60" filter="url(#sh5)"/><text x="105" y="162" text-anchor="middle" fill="#fff" font-size="11">Markdown/MonacoEditor</text>
+<rect x="205" y="140" width="170" height="36" rx="5" fill="#27ae60" filter="url(#sh5)"/><text x="290" y="162" text-anchor="middle" fill="#fff" font-size="11">Markdown/Preview</text>
+<rect x="400" y="140" width="150" height="36" rx="5" fill="#27ae60" filter="url(#sh5)"/><text x="475" y="162" text-anchor="middle" fill="#fff" font-size="11">ResourceManager/</text>
+<rect x="575" y="140" width="150" height="36" rx="5" fill="#27ae60" filter="url(#sh5)"/><text x="650" y="162" text-anchor="middle" fill="#fff" font-size="11">PluginTools/</text>
+<rect x="30" y="210" width="150" height="36" rx="5" fill="#e67e22" filter="url(#sh5)"/><text x="105" y="232" text-anchor="middle" fill="#fff" font-size="11">dialogs/ (32个)</text>
+<rect x="205" y="210" width="170" height="36" rx="5" fill="#e67e22" filter="url(#sh5)"/><text x="290" y="232" text-anchor="middle" fill="#fff" font-size="11">HemyTools/ (工具面板)</text>
+<rect x="400" y="210" width="150" height="36" rx="5" fill="#e67e22" filter="url(#sh5)"/><text x="475" y="232" text-anchor="middle" fill="#fff" font-size="11">WorkSpaceArea/</text>
+<line x1="400" y1="45" x2="105" y2="66" stroke="#95a5a6" stroke-width="1"/><polygon points="105,66 95,62 113,69" fill="#95a5a6"/>
+<line x1="400" y1="45" x2="290" y2="66" stroke="#95a5a6" stroke-width="1"/><polygon points="290,66 280,62 298,69" fill="#95a5a6"/>
+<line x1="400" y1="45" x2="475" y2="66" stroke="#95a5a6" stroke-width="1"/><polygon points="475,66 465,62 483,69" fill="#95a5a6"/>
+<line x1="400" y1="45" x2="650" y2="66" stroke="#95a5a6" stroke-width="1"/><polygon points="650,66 640,62 658,69" fill="#95a5a6"/>
+<line x1="290" y1="106" x2="105" y2="136" stroke="#95a5a6" stroke-width="1"/><line x1="290" y1="106" x2="290" y2="136" stroke="#95a5a6" stroke-width="1"/><line x1="290" y1="106" x2="475" y2="136" stroke="#95a5a6" stroke-width="1"/><line x1="290" y1="106" x2="650" y2="136" stroke="#95a5a6" stroke-width="1"/>
+<line x1="105" y1="176" x2="105" y2="206" stroke="#95a5a6" stroke-width="1"/><line x1="290" y1="176" x2="290" y2="206" stroke="#95a5a6" stroke-width="1"/><line x1="650" y1="176" x2="475" y2="206" stroke="#95a5a6" stroke-width="1"/>
+</svg></div>
+</section>
+<section id="deployment"><h2>十四、部署视图 (Deployment View)</h2>
+<p>描述系统的物理部署和构建产物。</p>
+<div class="arch-diagram">
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:780px"><defs><linearGradient id="dev" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3498db"/><stop offset="100%" stop-color="#2471a3"/></linearGradient><linearGradient id="build" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e74c3c"/><stop offset="100%" stop-color="#c0392b"/></linearGradient><linearGradient id="pkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#27ae60"/><stop offset="100%" stop-color="#1e8449"/></linearGradient><filter id="sh6"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".12"/></filter></defs>
+<rect x="30" y="10" width="220" height="130" rx="8" fill="url(#dev)" filter="url(#sh6)"/><text x="140" y="35" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">开发环境</text>
+<rect x="45" y="50" width="190" height="24" rx="4" fill="#fff" opacity=".15"/><text x="140" y="66" text-anchor="middle" fill="#fff" font-size="11">npm/pnpm 包管理器</text>
+<rect x="45" y="80" width="190" height="24" rx="4" fill="#fff" opacity=".15"/><text x="140" y="96" text-anchor="middle" fill="#fff" font-size="11">electron-vite (Vite HMR)</text>
+<rect x="45" y="110" width="190" height="24" rx="4" fill="#fff" opacity=".15"/><text x="140" y="126" text-anchor="middle" fill="#fff" font-size="11">Electron 38 开发模式</text>
+<line x1="250" y1="75" x2="280" y2="75" stroke="#95a5a6" stroke-width="2"/><polygon points="280,75 272,70 272,80" fill="#95a5a6"/><text x="265" y="68" fill="#7f8c8d" font-size="10">build</text>
+<rect x="290" y="10" width="220" height="130" rx="8" fill="url(#build)" filter="url(#sh6)"/><text x="400" y="35" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">构建产物</text>
+<rect x="305" y="50" width="190" height="24" rx="4" fill="#fff" opacity=".15"/><text x="400" y="66" text-anchor="middle" fill="#fff" font-size="11">out/main/index.js</text>
+<rect x="305" y="80" width="190" height="24" rx="4" fill="#fff" opacity=".15"/><text x="400" y="96" text-anchor="middle" fill="#fff" font-size="11">dist/ + 资源打包</text>
+<rect x="305" y="110" width="190" height="24" rx="4" fill="#fff" opacity=".15"/><text x="400" y="126" text-anchor="middle" fill="#fff" font-size="11">electron-builder 24.13.3</text>
+<line x1="510" y1="75" x2="540" y2="75" stroke="#95a5a6" stroke-width="2"/><polygon points="540,75 532,70 532,80" fill="#95a5a6"/><text x="525" y="68" fill="#7f8c8d" font-size="10">package</text>
+<rect x="550" y="10" width="220" height="130" rx="8" fill="url(#pkg)" filter="url(#sh6)"/><text x="660" y="35" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">分发格式</text>
+<rect x="565" y="50" width="190" height="24" rx="4" fill="#fff" opacity=".15"/><text x="660" y="66" text-anchor="middle" fill="#fff" font-size="11">Windows: NSIS + Portable</text>
+<rect x="565" y="80" width="190" height="24" rx="4" fill="#fff" opacity=".15"/><text x="660" y="96" text-anchor="middle" fill="#fff" font-size="11">macOS: DMG</text>
+<rect x="565" y="110" width="190" height="24" rx="4" fill="#fff" opacity=".15"/><text x="660" y="126" text-anchor="middle" fill="#fff" font-size="11">Linux: AppImage+snap+deb</text>
+</svg></div>
+<h3>运行环境要求</h3>
+<table><tr><th>平台</th><th>最低要求</th><th>推荐配置</th></tr>
+<tr><td>Windows</td><td>Windows 7, 4GB RAM</td><td>Windows 10/11, 8GB RAM</td></tr>
+<tr><td>macOS</td><td>macOS 10.13, 4GB RAM</td><td>macOS 12+, 8GB RAM</td></tr>
+<tr><td>Linux</td><td>glibc 2.17, 4GB RAM</td><td>Ubuntu 20.04+, 8GB RAM</td></tr>
+</table>
+<h3>资源打包清单</h3>
+<table><tr><th>资源目录</th><th>用途</th></tr>
+<tr><td>resources/config/</td><td>运行时默认配置</td></tr>
+<tr><td>resources/icon/</td><td>应用图标（多尺寸）</td></tr>
+<tr><td>resources/katex/</td><td>KaTeX 数学公式引擎</td></tr>
+<tr><td>resources/themes/</td><td>55 种 Monaco 编辑器主题</td></tr>
+<tr><td>resources/mermaid/</td><td>Mermaid 图表引擎</td></tr>
+<tr><td>resources/plantuml/</td><td>PlantUML 引擎</td></tr>
+</table>
+</section>
+<section id="usecase"><h2>十五、用例视图 (Use Case View)</h2>
+<p>描述系统的用户场景和功能用例。</p>
+<div class="arch-diagram">
+<svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:780px"><defs><filter id="sh7"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".1"/></filter></defs>
+<ellipse cx="60" cy="160" rx="45" ry="28" fill="#ecf0f1" stroke="#2c3e50" stroke-width="2"/><text x="60" y="165" text-anchor="middle" fill="#2c3e50" font-size="13" font-weight="bold">用户</text>
+<ellipse cx="260" cy="40" rx="95" ry="30" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.5"/><text x="260" y="43" text-anchor="middle" fill="#1a5276" font-size="11" font-weight="600">编辑 MD 文档</text>
+<ellipse cx="260" cy="90" rx="95" ry="30" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.5"/><text x="260" y="93" text-anchor="middle" fill="#1a5276" font-size="11" font-weight="600">实时预览</text>
+<ellipse cx="260" cy="140" rx="95" ry="30" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.5"/><text x="260" y="143" text-anchor="middle" fill="#1a5276" font-size="11" font-weight="600">语法高亮</text>
+<ellipse cx="500" cy="40" rx="95" ry="30" fill="#e8f8f0" stroke="#27ae60" stroke-width="1.5"/><text x="500" y="43" text-anchor="middle" fill="#1e8449" font-size="11" font-weight="600">创建/打开文件</text>
+<ellipse cx="500" cy="90" rx="95" ry="30" fill="#e8f8f0" stroke="#27ae60" stroke-width="1.5"/><text x="500" y="93" text-anchor="middle" fill="#1e8449" font-size="11" font-weight="600">保存/导出</text>
+<ellipse cx="260" cy="210" rx="95" ry="30" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/><text x="260" y="213" text-anchor="middle" fill="#ca6f1e" font-size="11" font-weight="600">切换主题</text>
+<ellipse cx="260" cy="260" rx="95" ry="30" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/><text x="260" y="263" text-anchor="middle" fill="#ca6f1e" font-size="11" font-weight="600">配置编辑器</text>
+<ellipse cx="500" cy="210" rx="95" ry="30" fill="#fde8e8" stroke="#e74c3c" stroke-width="1.5"/><text x="500" y="213" text-anchor="middle" fill="#c0392b" font-size="11" font-weight="600">插件工具</text>
+<ellipse cx="500" cy="260" rx="95" ry="30" fill="#fde8e8" stroke="#e74c3c" stroke-width="1.5"/><text x="500" y="263" text-anchor="middle" fill="#c0392b" font-size="11" font-weight="600">加密/格式转换</text>
+<line x1="105" y1="145" x2="170" y2="60" stroke="#95a5a6" stroke-width="1.2"/><line x1="105" y1="155" x2="170" y2="100" stroke="#95a5a6" stroke-width="1.2"/><line x1="105" y1="165" x2="170" y2="140" stroke="#95a5a6" stroke-width="1.2"/><line x1="105" y1="175" x2="170" y2="200" stroke="#95a5a6" stroke-width="1.2"/><line x1="105" y1="185" x2="170" y2="260" stroke="#95a5a6" stroke-width="1.2"/><line x1="105" y1="155" x2="405" y2="55" stroke="#95a5a6" stroke-width="1.2"/><line x1="105" y1="175" x2="405" y2="100" stroke="#95a5a6" stroke-width="1.2"/><line x1="105" y1="185" x2="405" y2="210" stroke="#95a5a6" stroke-width="1.2"/><line x1="105" y1="195" x2="405" y2="260" stroke="#95a5a6" stroke-width="1.2"/>
+<path d="M310,60 Q380,60 380,75 Q380,85 405,85" fill="none" stroke="#95a5a6" stroke-width="1" stroke-dasharray="4,2"/><path d="M310,110 Q380,110 380,100 Q380,95 405,95" fill="none" stroke="#95a5a6" stroke-width="1" stroke-dasharray="4,2"/>
+</svg></div>
+<h3>关键用户场景</h3>
+<table><tr><th>场景</th><th>触发动作</th><th>流程</th><th>预期结果</th></tr>
+<tr><td>编辑 Markdown</td><td>打开/新建文件</td><td>Monaco 加载 → 编辑 → 实时预览 ↔ 预览面板</td><td>所见即所得编辑</td></tr>
+<tr><td>切换主题</td><td>主题设置对话框</td><td>选择主题 → IPC 获取样式 → CSS 变量更新 → EventBus 通知</td><td>UI 即时切换</td></tr>
+<tr><td>文件管理</td><td>ResourceManager</td><td>浏览目录树 → 打开文件 → 多标签页编辑 → 保存</td><td>类似 IDE 的文件管理</td></tr>
+<tr><td>使用插件</td><td>插件工具面板</td><td>选择工具类别 → 输入参数 → 执行 → 显示结果/插入编辑器</td><td>内置工具箱</td></tr>
+ </table>
+</section>
+<section id="arch3a"><h2>十六、3A 视图 — Architecture</h2>
+<p>核心架构决策和技术选型。</p>
+<h3>架构分层</h3>
+<div class="arch-diagram">
+<svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:580px"><defs><linearGradient id="aPre" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#9b59b6"/><stop offset="100%" stop-color="#7d3c98"/></linearGradient><linearGradient id="aApp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2980b9"/><stop offset="100%" stop-color="#1a5276"/></linearGradient><linearGradient id="aDom" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#27ae60"/><stop offset="100%" stop-color="#1e8449"/></linearGradient><linearGradient id="aInf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e67e22"/><stop offset="100%" stop-color="#ca6f1e"/></linearGradient><filter id="sh8"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".12"/></filter></defs>
+<rect x="20" y="15" width="560" height="55" rx="6" fill="url(#aPre)" filter="url(#sh8)"/><text x="300" y="38" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">表现层 (Presentation)</text><text x="300" y="58" text-anchor="middle" fill="#d7bde2" font-size="11">Vue 组件 · 样式系统 · 主题系统</text>
+<rect x="20" y="80" width="560" height="55" rx="6" fill="url(#aApp)" filter="url(#sh8)"/><text x="300" y="103" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">应用层 (Application)</text><text x="300" y="123" text-anchor="middle" fill="#b3d9f2" font-size="11">编辑器控制 · 文件管理 · 插件管理 · 菜单分发</text>
+<rect x="20" y="145" width="560" height="55" rx="6" fill="url(#aDom)" filter="url(#sh8)"/><text x="300" y="168" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">领域层 (Domain)</text><text x="300" y="188" text-anchor="middle" fill="#a9dfbf" font-size="11">Markdown 解析 · 语法高亮 · KaTeX/Mermaid 渲染</text>
+<rect x="20" y="210" width="560" height="55" rx="6" fill="url(#aInf)" filter="url(#sh8)"/><text x="300" y="233" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">基础层 (Infrastructure)</text><text x="300" y="253" text-anchor="middle" fill="#fce5cd" font-size="11">Electron API · 文件系统 · IPC 通信 · 持久化存储</text>
+</svg></div>
+<h3>核心技术选型</h3>
+<table><tr><th>技术领域</th><th>选型方案</th><th>备选方案</th><th>选型理由</th></tr>
+<tr><td>桌面框架</td><td>Electron 38</td><td>Tauri, NW.js</td><td>生态成熟，Vue 集成良好</td></tr>
+<tr><td>前端框架</td><td>Vue 3.4</td><td>React, Svelte</td><td>Composition API, 响应式性能优异</td></tr>
+<tr><td>编辑器</td><td>Monaco Editor 0.55</td><td>CodeMirror, Ace</td><td>VS Code 同款，功能强大</td></tr>
+<tr><td>构建工具</td><td>electron-vite</td><td>webpack, rollup</td><td>专为 Electron 优化, HMR 快速</td></tr>
+<tr><td>状态管理</td><td>Vuex + reactive</td><td>Pinia</td><td>渐进式，适配项目复杂度</td></tr>
+<tr><td>持久化</td><td>electron-store</td><td>lowdb, sqlite3</td><td>简单可靠，满足配置存储需求</td></tr>
+<tr><td>Markdown 渲染</td><td>markdown-it 14</td><td>marked</td><td>插件生态丰富</td></tr>
+</table>
+</section>
+<section id="aspects"><h2>十七、3A 视图 — Aspects</h2>
+<p>横切关注点（日志、安全、性能、错误处理）。</p>
+<div class="arch-diagram">
+<svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:740px"><defs><linearGradient id="aspect" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8e44ad"/><stop offset="100%" stop-color="#6c3483"/></linearGradient><filter id="sh9"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".12"/></filter></defs>
+<rect x="280" y="95" width="200" height="80" rx="10" fill="#2c3e50" filter="url(#sh9)"/><text x="380" y="130" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold">核心业务逻辑</text><text x="380" y="155" text-anchor="middle" fill="#95a5a6" font-size="11">编辑器 · 文件 · 插件</text>
+<rect x="30" y="20" width="160" height="60" rx="8" fill="url(#aspect)" filter="url(#sh9)"/><text x="110" y="50" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">日志系统</text><text x="110" y="68" text-anchor="middle" fill="#d7bde2" font-size="10">logger.ts · 分级输出</text><line x1="110" y1="80" x2="280" y2="115" stroke="#8e44ad" stroke-width="1" stroke-dasharray="5,3"/>
+<rect x="30" y="100" width="160" height="60" rx="8" fill="url(#aspect)" filter="url(#sh9)"/><text x="110" y="130" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">错误处理</text><text x="110" y="148" text-anchor="middle" fill="#d7bde2" font-size="10">分类捕获 · 降级策略</text><line x1="190" y1="130" x2="275" y2="130" stroke="#8e44ad" stroke-width="1" stroke-dasharray="5,3"/>
+<rect x="30" y="180" width="160" height="60" rx="8" fill="url(#aspect)" filter="url(#sh9)"/><text x="110" y="210" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">安全控制</text><text x="110" y="228" text-anchor="middle" fill="#d7bde2" font-size="10">上下文隔离 · IPC 校验</text><line x1="190" y1="210" x2="280" y2="150" stroke="#8e44ad" stroke-width="1" stroke-dasharray="5,3"/>
+<rect x="570" y="20" width="160" height="60" rx="8" fill="url(#aspect)" filter="url(#sh9)"/><text x="650" y="50" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">性能监控</text><text x="650" y="68" text-anchor="middle" fill="#d7bde2" font-size="10">延迟加载 · LRU 缓存</text><line x1="650" y1="80" x2="480" y2="115" stroke="#8e44ad" stroke-width="1" stroke-dasharray="5,3"/>
+<rect x="570" y="100" width="160" height="60" rx="8" fill="url(#aspect)" filter="url(#sh9)"/><text x="650" y="130" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">主题管理</text><text x="650" y="148" text-anchor="middle" fill="#d7bde2" font-size="10">CSS 变量 · 事件驱动</text><line x1="570" y1="130" x2="485" y2="130" stroke="#8e44ad" stroke-width="1" stroke-dasharray="5,3"/>
+<rect x="570" y="180" width="160" height="60" rx="8" fill="url(#aspect)" filter="url(#sh9)"/><text x="650" y="210" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">持久化</text><text x="650" y="228" text-anchor="middle" fill="#d7bde2" font-size="10">electron-store + LRU</text><line x1="570" y1="210" x2="480" y2="150" stroke="#8e44ad" stroke-width="1" stroke-dasharray="5,3"/>
+</svg></div>
+<h3>安全机制</h3>
+<table><tr><th>安全策略</th><th>实现方式</th><th>保护目标</th></tr>
+<tr><td>上下文隔离</td><td>contextIsolation: true</td><td>防止渲染进程直接访问 Node.js</td></tr>
+<tr><td>禁用 Node 集成</td><td>nodeIntegration: false</td><td>防止恶意脚本执行系统命令</td></tr>
+<tr><td>预加载桥接</td><td>contextBridge.exposeInMainWorld</td><td>只暴露受控 API</td></tr>
+<tr><td>IPC 校验</td><td>ipcListenerManager 统一管理</td><td>通道注册/注销生命周期</td></tr>
+<tr><td>加密存储</td><td>AES/DES 可选加密</td><td>用户敏感数据保护</td></tr>
+</table>
+<h3>性能优化策略</h3>
+<table><tr><th>优化点</th><th>策略</th><th>效果</th></tr>
+<tr><td>编辑器初始化</td><td>延迟加载 Monaco</td><td>减少启动时间 30%</td></tr>
+<tr><td>大文件处理</td><td>内存映射 + 分块加载</td><td>支持 MB 级文件</td></tr>
+<tr><td>预览渲染</td><td>防抖处理 (300ms)</td><td>减少渲染次数</td></tr>
+<tr><td>主题切换</td><td>CSS 变量注入</td><td>无闪烁即时切换</td></tr>
+<tr><td>自动保存</td><td>定时器 + 脏标志检查</td><td>减少不必要 IO</td></tr>
+<tr><td>文件缓存</td><td>LRU 缓存 (max 50 文件)</td><td>频繁文件秒开</td></tr>
+</table>
+</section>
+<section id="assets"><h2>十八、3A 视图 — Assets</h2>
+<p>可复用资产、组件库和工具集。</p>
+<h3>组件资产清单</h3>
+<table><tr><th>类别</th><th>组件</th><th>文件数</th><th>可复用场景</th></tr>
+<tr><td>基础对话框</td><td>BaseDialog, DialogButton, DraggableTitleBar, TitleBar</td><td>4</td><td>所有弹窗的基础壳</td></tr>
+<tr><td>核心编辑器</td><td>MarkdownMonacoEditor, PreviewComponent, EditTools</td><td>16</td><td>Markdown 编辑/预览</td></tr>
+<tr><td>文件管理</td><td>ResourceManager, WorkSpaceArea</td><td>5</td><td>文件树 + 工作区</td></tr>
+<tr><td>工具面板</td><td>HemyTools (Mermaid/HTML/PDF 预览)</td><td>4</td><td>工具类 UI 框架</td></tr>
+<tr><td>菜单栏</td><td>MenuBar (动作 + 配置 + 常量)</td><td>3</td><td>通用菜单布局</td></tr>
+<tr><td>状态栏</td><td>StatusBar</td><td>1</td><td>底部状态信息</td></tr>
+<tr><td>组合式函数</td><td>useDialogDrag, useDialogResize, useThemeIcons</td><td>3</td><td>拖拽/缩放/图标</td></tr>
+</table>
+<h3>工具资产清单</h3>
+<table><tr><th>工具模块</th><th>功能</th><th>复用场景</th></tr>
+<tr><td>file-utils/</td><td>文件 CRUD、导入导出、编码检测</td><td>任何文件操作场景</td></tr>
+<tr><td>baize-store</td><td>electron-store + LRU 缓存封装</td><td>配置持久化、缓存管理</td></tr>
+<tr><td>logger</td><td>分级日志（DEBUG/INFO/WARN/ERROR）</td><td>全局日志记录</td></tr>
+<tr><td>encrypt_decrypt</td><td>AES/DES/RSA 加解密、Hash/HMAC</td><td>安全存储、文件加密</td></tr>
+<tr><td>theme-config</td><td>23 应用主题 + 55 Monaco 主题</td><td>主题管理、样式切换</td></tr>
+<tr><td>event-bus</td><td>发布-订阅 EventBus（含泄漏检测）</td><td>组件间通信</td></tr>
+<tr><td>useConfigStore</td><td>Vue reactive 状态管理</td><td>运行时配置状态</td></tr>
+</table>
+</section>
+<section id="c4"><h2>十九、C4 模型</h2>
+<p>C4 模型从四个层次描述系统架构：上下文、容器、组件、代码。</p>
+<h3>C1: 系统上下文图</h3>
+<div class="arch-diagram">
+<svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:680px"><defs><filter id="sh10"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".12"/></filter></defs>
+<rect x="250" y="55" width="200" height="80" rx="10" fill="#2980b9" filter="url(#sh10)"/><text x="350" y="93" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">白泽笔记</text><text x="350" y="115" text-anchor="middle" fill="#b3d9f2" font-size="11">[桌面应用]</text>
+<ellipse cx="80" cy="95" rx="60" ry="35" fill="#ecf0f1" stroke="#2c3e50" stroke-width="2"/><text x="80" y="100" text-anchor="middle" fill="#2c3e50" font-size="13" font-weight="bold">用户</text>
+<rect x="540" y="20" width="140" height="60" rx="8" fill="#e8f8f0" stroke="#27ae60" stroke-width="1.5" filter="url(#sh10)"/><text x="610" y="52" text-anchor="middle" fill="#1e8449" font-size="12" font-weight="bold">文件系统</text><text x="610" y="68" text-anchor="middle" fill="#1e8449" font-size="10">[外部系统]</text>
+<rect x="540" y="100" width="140" height="60" rx="8" fill="#fde8e8" stroke="#e74c3c" stroke-width="1.5" filter="url(#sh10)"/><text x="610" y="132" text-anchor="middle" fill="#c0392b" font-size="12" font-weight="bold">网络资源</text><text x="610" y="148" text-anchor="middle" fill="#c0392b" font-size="10">[外部系统]</text>
+<line x1="140" y1="85" x2="245" y2="80" stroke="#2c3e50" stroke-width="1.5"/><polygon points="245,80 235,76 235,84" fill="#2c3e50"/><text x="190" y="73" fill="#7f8c8d" font-size="10">编辑/查看</text>
+<line x1="450" y1="75" x2="535" y2="50" stroke="#27ae60" stroke-width="1.5"/><polygon points="535,50 526,47 532,56" fill="#27ae60"/><text x="490" y="48" fill="#7f8c8d" font-size="10">读写文件</text>
+<line x1="450" y1="110" x2="530" y2="130" stroke="#e74c3c" stroke-width="1.5"/><polygon points="530,130 523,124 525,134" fill="#e74c3c"/><text x="490" y="128" fill="#7f8c8d" font-size="10">获取资源</text>
+</svg></div>
+<h3>C2: 容器图</h3>
+<div class="arch-diagram">
+<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:740px"><defs><filter id="sh11"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".12"/></filter></defs>
+<rect x="30" y="10" width="700" height="240" rx="10" fill="#f8f9fa" stroke="#2c3e50" stroke-width="1.5"/><text x="380" y="35" text-anchor="middle" fill="#2c3e50" font-size="14" font-weight="bold">白泽笔记 — Electron 应用容器</text>
+<rect x="50" y="50" width="300" height="80" rx="8" fill="url(#dMain)" filter="url(#sh11)"/><text x="200" y="78" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">主进程</text><text x="200" y="100" text-anchor="middle" fill="#b3d9f2" font-size="11">Node.js 运行时</text><text x="200" y="118" text-anchor="middle" fill="#b3d9f2" font-size="10">窗口 · 文件 · IPC · 配置</text>
+<rect x="380" y="50" width="180" height="80" rx="8" fill="url(#dPre)" filter="url(#sh11)"/><text x="470" y="78" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">预加载脚本</text><text x="470" y="100" text-anchor="middle" fill="#fce5cd" font-size="11">contextBridge</text><text x="470" y="118" text-anchor="middle" fill="#fce5cd" font-size="10">安全桥接层</text>
+<rect x="50" y="150" width="660" height="80" rx="8" fill="url(#dRen)" filter="url(#sh11)"/><text x="380" y="178" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">渲染进程</text><text x="380" y="200" text-anchor="middle" fill="#a9dfbf" font-size="11">Chromium 浏览器环境</text><text x="380" y="218" text-anchor="middle" fill="#a9dfbf" font-size="10">Vue 3 SPA · 89 组件 · Monaco Editor · 40+ 工具</text>
+<line x1="350" y1="80" x2="375" y2="80" stroke="#95a5a6" stroke-width="1.5"/><polygon points="375,80 369,76 369,84" fill="#95a5a6"/>
+<line x1="560" y1="85" x2="560" y2="145" stroke="#95a5a6" stroke-width="1.5"/><polygon points="560,145 555,138 565,138" fill="#95a5a6"/>
+</svg></div>
+<h3>C3: 组件图</h3>
+<div class="arch-diagram">
+<svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui,sans-serif;max-width:740px"><defs><filter id="sh12"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".1"/></filter></defs>
+<rect x="10" y="10" width="360" height="220" rx="8" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.5"/><text x="190" y="35" text-anchor="middle" fill="#1a5276" font-size="13" font-weight="bold">主进程组件</text>
+<rect x="25" y="50" width="150" height="36" rx="5" fill="#2980b9" filter="url(#sh12)"/><text x="100" y="73" text-anchor="middle" fill="#fff" font-size="11">窗口管理器</text>
+<rect x="190" y="50" width="160" height="36" rx="5" fill="#2980b9" filter="url(#sh12)"/><text x="270" y="73" text-anchor="middle" fill="#fff" font-size="11">IPC 处理器</text>
+<rect x="25" y="100" width="150" height="36" rx="5" fill="#2980b9" filter="url(#sh12)"/><text x="100" y="123" text-anchor="middle" fill="#fff" font-size="11">文件管理器</text>
+<rect x="190" y="100" width="160" height="36" rx="5" fill="#2980b9" filter="url(#sh12)"/><text x="270" y="123" text-anchor="middle" fill="#fff" font-size="11">主题管理器</text>
+<rect x="25" y="150" width="150" height="36" rx="5" fill="#2980b9" filter="url(#sh12)"/><text x="100" y="173" text-anchor="middle" fill="#fff" font-size="11">菜单管理器</text>
+<rect x="190" y="150" width="160" height="36" rx="5" fill="#2980b9" filter="url(#sh12)"/><text x="270" y="173" text-anchor="middle" fill="#fff" font-size="11">设置管理器</text>
+<rect x="25" y="196" width="325" height="26" rx="5" fill="#2980b9" filter="url(#sh12)"/><text x="188" y="214" text-anchor="middle" fill="#fff" font-size="11">工具: baize-store / logger / encrypt / file-utils</text>
+<rect x="390" y="10" width="360" height="220" rx="8" fill="#e8f8f0" stroke="#27ae60" stroke-width="1.5"/><text x="570" y="35" text-anchor="middle" fill="#1e8449" font-size="13" font-weight="bold">渲染进程组件</text>
+<rect x="405" y="50" width="150" height="36" rx="5" fill="#27ae60" filter="url(#sh12)"/><text x="480" y="73" text-anchor="middle" fill="#fff" font-size="11">Vue 根组件</text>
+<rect x="570" y="50" width="160" height="36" rx="5" fill="#27ae60" filter="url(#sh12)"/><text x="650" y="73" text-anchor="middle" fill="#fff" font-size="11">菜单栏组件</text>
+<rect x="405" y="100" width="150" height="36" rx="5" fill="#27ae60" filter="url(#sh12)"/><text x="480" y="123" text-anchor="middle" fill="#fff" font-size="11">Monaco 编辑器</text>
+<rect x="570" y="100" width="160" height="36" rx="5" fill="#27ae60" filter="url(#sh12)"/><text x="650" y="123" text-anchor="middle" fill="#fff" font-size="11">Markdown 预览</text>
+<rect x="405" y="150" width="150" height="36" rx="5" fill="#27ae60" filter="url(#sh12)"/><text x="480" y="173" text-anchor="middle" fill="#fff" font-size="11">文件树组件</text>
+<rect x="570" y="150" width="160" height="36" rx="5" fill="#27ae60" filter="url(#sh12)"/><text x="650" y="173" text-anchor="middle" fill="#fff" font-size="11">插件工具组件</text>
+<rect x="405" y="196" width="325" height="26" rx="5" fill="#27ae60" filter="url(#sh12)"/><text x="568" y="214" text-anchor="middle" fill="#fff" font-size="11">32 对话框 + 45 插件工具 + 3 composables</text>
+</svg></div>
+<p>C4 第 4 层（代码层）请参见架构文档主进程/渲染进程详细目录结构和类图。</p>
+</section>
+<section id="adr-list"><h2>二十、架构决策记录 (ADR)</h2>
+<table><tr><th>编号</th><th>标题</th><th>状态</th><th>领域</th></tr>
+<tr><td><a href="#adr001">ADR-001</a></td><td>Electron 技术栈选型</td><td><span class="adr-status status-accepted">已采纳</span></td><td>技术栈</td></tr>
+<tr><td><a href="#adr002">ADR-002</a></td><td>Monaco Editor 选型</td><td><span class="adr-status status-accepted">已采纳</span></td><td>编辑器</td></tr>
+<tr><td><a href="#adr003">ADR-003</a></td><td>IPC 通信架构（禁用 remote）</td><td><span class="adr-status status-accepted">已采纳</span></td><td>通信</td></tr>
+<tr><td><a href="#adr004">ADR-004</a></td><td>CSS 变量主题系统</td><td><span class="adr-status status-accepted">已采纳</span></td><td>主题</td></tr>
+<tr><td><a href="#adr005">ADR-005</a></td><td>定时器 + 脏检查自动保存</td><td><span class="adr-status status-accepted">已采纳</span></td><td>持久化</td></tr>
+<tr><td><a href="#adr006">ADR-006</a></td><td>electron-store 持久化方案</td><td><span class="adr-status status-accepted">已采纳</span></td><td>存储</td></tr>
+<tr><td><a href="#adr007">ADR-007</a></td><td>Vuex + reactive 分层状态管理</td><td><span class="adr-status status-accepted">已采纳</span></td><td>状态管理</td></tr>
+<tr><td><a href="#adr008">ADR-008</a></td><td>预加载脚本安全隔离策略</td><td><span class="adr-status status-accepted">已采纳</span></td><td>安全</td></tr>
+</table>
+</section>
+<section id="adr001"><div class="adr"><div class="adr-header"><span class="adr-id">ADR-001: Electron 技术栈选型</span><span class="adr-status status-accepted">已采纳</span></div>
+<p><strong>日期：</strong>2024-01 · <strong>决策者：</strong>hemy08</p><h4>背景</h4><p>需要开发一款跨平台桌面笔记应用，支持 Windows、macOS、Linux 三个主流操作系统，要求具备原生桌面能力和 Web 前端开发效率。</p>
+<h4>决策</h4><p>选择 <span class="tag tag-electron">Electron 38</span> + <span class="tag tag-vue">Vue 3.4</span> + <span class="tag tag-ts">TypeScript 6</span> 作为核心技术栈。</p>
+<h4>理由</h4><ul><li><strong>Electron</strong>：跨平台支持最成熟，文档丰富，社区庞大，可访问全部 Node.js 和原生 API</li><li><strong>Vue 3</strong>：Composition API 提供更好的逻辑复用，响应式系统性能优异，TypeScript 支持完善</li><li><strong>TypeScript</strong>：强类型保障代码质量，IDE 支持完善，重构安全</li></ul>
+<h4>备选方案</h4><ul><li><strong>Tauri</strong>：包体积更小，但 Rust 后端增加团队学习成本，且原生 API 覆盖不及 Electron</li><li><strong>NW.js</strong>：生态不如 Electron，社区活跃度较低</li></ul>
+<h4>影响</h4><ul><li>安装包体积 ~150MB（含 Chromium）— 可接受</li><li>内存占用 ~200MB — 在当前硬件水平下合理</li><li>开发效率显著提升，Vue HMR + TypeScript 类型检查</li></ul>
+</div></section>
+<section id="adr002"><div class="adr"><div class="adr-header"><span class="adr-id">ADR-002: Monaco Editor 选型</span><span class="adr-status status-accepted">已采纳</span></div>
+<p><strong>日期：</strong>2024-01 · <strong>决策者：</strong>hemy08</p><h4>背景</h4><p>需要为用户提供专业的 Markdown 编辑体验，包括语法高亮、智能提示、快捷键、多光标编辑等功能。</p>
+<h4>决策</h4><p>采用 <span class="tag tag-mona">Monaco Editor 0.55</span> 作为核心编辑器组件。</p>
+<h4>理由</h4><ul><li>VS Code 同款编辑器，用户熟悉度高，开箱即用体验优秀</li><li>原生 TypeScript 支持，与代码库语言一致</li><li>语法高亮覆盖 100+ 语言，Markdown 编辑体验极佳</li><li>快捷键系统与 VS Code 一致</li><li>支持自定义语言和主题，扩展性强</li><li>大文件处理性能优于 CodeMirror</li></ul>
+<h4>影响</h4><ul><li>包体积增加 ~2MB — 可接受</li><li>首次初始化时间略长（~1-2s）— 已通过延迟加载优化</li></ul>
+</div></section>
+<section id="adr003"><div class="adr"><div class="adr-header"><span class="adr-id">ADR-003: IPC 通信架构（禁用 remote）</span><span class="adr-status status-accepted">已采纳</span></div>
+<p><strong>日期：</strong>2024-01 · <strong>决策者：</strong>hemy08</p><h4>背景</h4><p>Electron 渲染进程需访问主进程能力（文件操作、原生对话框、配置存取），需选择安全的通信方式。</p>
+<h4>决策</h4><p>采用 IPC 通信模式（<code>ipcMain.handle/ipcRenderer.invoke</code> + <code>ipcMain.on/ipcRenderer.send</code>），禁用 <code>@electron/remote</code> 模块。使用 <code>ipcListenerManager</code> 统一管理监听器生命周期。</p>
+<h4>理由</h4><ul><li><strong>安全性</strong>：remote 模块存在严重安全风险</li><li><strong>性能</strong>：IPC 异步非阻塞，不影响 UI 线程</li><li><strong>最佳实践</strong>：Electron 官方推荐 IPC 而非 remote</li><li><strong>可控性</strong>：ipcListenerManager 提供注册/注销/统计能力</li></ul>
+<h4>影响</h4><ul><li>需手动定义和维护 IPC 通道清单（20+ 通道）</li><li>代码量略增，但安全性和可维护性提升</li></ul>
+</div></section>
+<section id="adr004"><div class="adr"><div class="adr-header"><span class="adr-id">ADR-004: CSS 变量主题系统</span><span class="adr-status status-accepted">已采纳</span></div>
+<p><strong>日期：</strong>2024-02 · <strong>决策者：</strong>hemy08</p><h4>背景</h4><p>应用需要支持多主题（23 种应用主题 + 55 种编辑器主题），且要求在运行时即时切换，无需重启应用。</p>
+<h4>决策</h4><p>应用主题使用 <strong>CSS 变量</strong> 方案（<code>:root { --bg: #fff }</code> → JS 修改 <code>documentElement.style.setProperty()</code>）。编辑器主题通过 <code>monaco.editor.defineTheme()</code> 动态注册。</p>
+<h4>理由</h4><ul><li>运行时即时切换，无闪烁，无需重新加载</li><li>CSS 变量传播到所有子元素，一改全改</li><li>添加新主题只需定义变量值集合，无需改逻辑</li><li>性能优异（GPU 加速的 CSS 重绘）</li></ul>
+<h4>影响</h4><ul><li>主题切换零延迟，用户体验流畅</li><li>主题配置集中管理（theme-config.ts 中约 60+ CSS 变量）</li></ul>
+</div></section>
+<section id="adr005"><div class="adr"><div class="adr-header"><span class="adr-id">ADR-005: 定时器 + 脏检查自动保存</span><span class="adr-status status-accepted">已采纳</span></div>
+<p><strong>日期：</strong>2024-02 · <strong>决策者：</strong>hemy08</p><h4>背景</h4><p>需要防止用户因忘记保存或意外崩溃导致数据丢失，同时避免频繁磁盘 I/O 影响性能。</p>
+<h4>决策</h4><p>采用 <strong>定时器轮询 + 脏标志检查</strong> 策略：每 30s（用户可配置）检查 <code>global.current_active_file.content</code> 是否有修改，有修改则调用 <code>SaveActiveFile()</code>。</p>
+<h4>理由</h4><ul><li>仅在内容真正变化时写盘，减少不必要 IO</li><li>保存间隔用户可配（10s/30s/60s/关闭）</li><li>实现简单可靠，不引入复杂的数据流追踪</li></ul>
+<h4>影响</h4><ul><li>数据安全性大幅提升，崩溃最多丢失 30s 内容</li><li>性能影响极小（仅内存比较 + 条件写盘）</li></ul>
+</div></section>
+<section id="adr006"><div class="adr"><div class="adr-header"><span class="adr-id">ADR-006: electron-store 持久化方案</span><span class="adr-status status-accepted">已采纳</span></div>
+<p><strong>日期：</strong>2024-01 · <strong>决策者：</strong>hemy08</p><h4>背景</h4><p>需要持久化存储应用配置（主题选择、窗口位置、编辑器设置、最近文件列表等），要求简单可靠。</p>
+<h4>决策</h4><p>采用 <code>electron-store 8.2.0</code> 作为持久化存储方案，并进行封装（<code>baize-store.ts</code>）添加类型安全 <code>StoreFactory</code> 和 LRU 缓存层。</p>
+<h4>理由</h4><ul><li>API 简洁：<code>store.get(key)/set(key)</code>，零学习成本</li><li>默认使用 JSON 文件存储，人类可读</li><li>自动处理文件同步，无需手动管理</li><li>封装后提供类型安全接口 + LRU 缓存热点数据</li></ul>
+<h4>影响</h4><ul><li>配置读写性能优异（JSON 文件 + 内存 LRU）</li><li>数据存储在 <code>~/.baizenotes/</code>，用户可手动查看和修改</li><li>LRU 缓存 max 50 文件，防止内存膨胀</li></ul>
+</div></section>
+<section id="adr007"><div class="adr"><div class="adr-header"><span class="adr-id">ADR-007: Vuex + reactive 分层状态管理</span><span class="adr-status status-accepted">已采纳</span></div>
+<p><strong>日期：</strong>2024-02 · <strong>决策者：</strong>hemy08</p><h4>背景</h4><p>应用包含持久化状态（配置）和运行时状态（编辑器内容、UI 状态），需要清晰的分层管理策略。</p>
+<h4>决策</h4><p>采用分层策略：<strong>持久化层</strong>（electron-store 存储配置）+ <strong>运行时层</strong>（Vue reactive + Vuex 管理 UI 状态）+ <strong>通信层</strong>（EventBus 组件间通信）。</p>
+<h4>理由</h4><ul><li>分离持久/运行时状态，减少不必要的磁盘写入</li><li>Vuex 管理跨组件共享的全局状态</li><li>Vue reactive 管理局部运行时状态</li><li>EventBus 处理组件间松耦合通信（含自动清理 + 泄漏检测）</li></ul>
+<h4>影响</h4><ul><li>状态流向清晰：reactive → watch → IPC → store</li><li>EventBus 泄漏检测工具化，避免内存泄漏</li></ul>
+</div></section>
+<section id="adr008"><div class="adr"><div class="adr-header"><span class="adr-id">ADR-008: 预加载脚本安全隔离策略</span><span class="adr-status status-accepted">已采纳</span></div>
+<p><strong>日期：</strong>2024-01 · <strong>决策者：</strong>hemy08</p><h4>背景</h4><p>Electron 应用中，渲染进程运行在浏览器环境，需安全可控地访问主进程能力，防止 XSS 攻击升级为 RCE。</p>
+<h4>决策</h4><p>启用 <code>contextIsolation: true</code> + <code>nodeIntegration: false</code>，使用 <code>contextBridge.exposeInMainWorld()</code> 精确暴露 <code>window.electron</code>（IPC 通信）和 <code>window.api</code>（配置 + 版本信息）。</p>
+<h4>理由</h4><ul><li>最严格的 Electron 安全配置组合</li><li>最小权限原则：只暴露渲染进程真正需要的 API</li><li>明确的安全边界：渲染进程无法直接 require Node.js 模块</li></ul>
+<h4>影响</h4><ul><li>渲染进程无法直接操作文件系统（需通过 IPC 桥接）</li><li>类型声明文件扩展 Window 接口，保持类型安全</li><li>安全攻击面大幅缩减</li></ul>
+</div></section>
+<section id="adr-summary"><h2>ADR 汇总</h2>
+<table><tr><th>状态</th><th>数量</th></tr>
+<tr><td><span class="adr-status status-accepted">已采纳</span></td><td>8</td></tr>
+<tr><td><span class="adr-status status-proposed">提案中</span></td><td>0</td></tr>
+<tr><td><span class="adr-status status-deprecated">已弃用</span></td><td>0</td></tr>
+<tr><td><strong>总计</strong></td><td><strong>8</strong></td></tr>
+</table>
+<h3>按领域统计</h3>
+<table><tr><th>领域</th><th>ADR 编号</th><th>数量</th></tr>
+<tr><td>技术栈</td><td>ADR-001</td><td>1</td></tr>
+<tr><td>编辑器</td><td>ADR-002</td><td>1</td></tr>
+<tr><td>通信</td><td>ADR-003</td><td>1</td></tr>
+<tr><td>主题</td><td>ADR-004</td><td>1</td></tr>
+<tr><td>持久化</td><td>ADR-005, ADR-006</td><td>2</td></tr>
+<tr><td>状态管理</td><td>ADR-007</td><td>1</td></tr>
+<tr><td>安全</td><td>ADR-008</td><td>1</td></tr>
+</table>
+</section>
+<footer class="footer"><p>白泽笔记 (BaiZeNotes) v1.2.0-beta · MIT License · hemy08</p><p>本文档由 opencode 自动分析生成 · 2026-06-06 · 含 4+1/3A/C4 视图模型 + 8 条 ADR</p></footer>
+</div></div></div></body></html>

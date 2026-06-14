@@ -2,7 +2,7 @@
   "appVersion": "1.2.0-bate",
   "electronVersion": "",
   "chromeVersion": "",
-  "nodeVersion": "22.18.0",
+  "nodeVersion": "24.6.0",
   "vueVersion": "3.4.27",
   "viteVersion": "",
   "typescriptVersion": "6.0.2"
