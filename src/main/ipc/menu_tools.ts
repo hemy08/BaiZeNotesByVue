@@ -5,7 +5,7 @@ export const toolsMenuHandlers = {
         mainWindow.webContents.send('open-vue-dialog', 'mermaidEdit')
     },
     'katex': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send('OpenFile', null)
+        mainWindow.webContents.send('open-vue-dialog', 'mathText')
     },
     'table': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('open-vue-dialog', 'mdSheet')

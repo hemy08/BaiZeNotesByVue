@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch, computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import EventBus from '../../common/event_bus/event-bus'
 import { CHANNEL_PLUGIN_TOOL_SHOW } from '../MenuBar/menu_consts'
 import {pluginTools} from './plugin_tools_const'
@@ -25,11 +25,10 @@ const props = defineProps({
     }
 })
 
-const toolWidth = ref(props.pluginsAreaWidth)
 let isShowPluginToolsContainer = false
 
 const toolsViewWidth = computed(() => {
-    const toolWidthValue = parseInt(toolWidth.value.replace('px', ''), 10)
+    const toolWidthValue = parseInt(props.pluginsAreaWidth.replace('px', ''), 10)
     const conWidthValue = toolWidthValue - 100
     return conWidthValue + 'px'
 })
@@ -40,7 +39,6 @@ const visibleTool = computed(() => {
 })
 
 window.electron.ipcRenderer.on('CHANNEL_PLUGIN_TOOL_SHOW', (_, context: string) => {
-  console.log('context is ', context)
     if (!isShowPluginToolsContainer) {
         EventBus.$emit('baize:notes:workspace:show', "plugins")
         isShowPluginToolsContainer = true
@@ -55,13 +53,6 @@ function handleClosePluginTools() {
     activeToolId.value = ''
     EventBus.$emit('baize:notes:workspace:show', "md")
 }
-
-watch(
-    () => props.pluginsAreaWidth,
-    (width) => {
-        toolWidth.value = width
-    }
-)
 
 onMounted(() => {
     // 监听插件工具显示事件（来自 menu_actions.ts）

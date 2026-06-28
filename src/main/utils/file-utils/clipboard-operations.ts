@@ -3,11 +3,12 @@
  * 提供文件/文件夹的复制、剪切、粘贴等功能
  */
 
-import * as fs from 'fs'
+import { promises as fs } from 'fs'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const fsExtra = require('fs-extra')
 import { showErrorMessageBox } from './dialog-helpers'
 import { ReloadDirFromDisk } from './file-operations'
+import { appState } from '../app-state'
 
 const reloadFromDiskTime = 100
 
@@ -16,10 +17,10 @@ const reloadFromDiskTime = 100
  * @param fromPath 源路径
  * @param isFile 是否为文件
  */
-export function FileManagerContextMenuCopy(fromPath: string, isFile: boolean): void {
-    global.srcDirCopyCut = fromPath
-    global.isCopyOrCut = 'copy'
-    global.isCopyCutFile = isFile
+export function FileManagerContextMenuCopy(fromPath: string, _isFile: boolean): void {
+    appState.srcDirCopyCut = fromPath
+    appState.isCopyOrCut = 'copy'
+    global.isCopyCutFile = _isFile
 }
 
 /**
@@ -27,10 +28,10 @@ export function FileManagerContextMenuCopy(fromPath: string, isFile: boolean): v
  * @param fromPath 源路径
  * @param isFile 是否为文件
  */
-export function FileManagerContextMenuCut(fromPath: string, isFile: boolean): void {
-    global.srcDirCopyCut = fromPath
-    global.isCopyOrCut = 'cut'
-    global.isCopyCutFile = isFile
+export function FileManagerContextMenuCut(fromPath: string, _isFile: boolean): void {
+    appState.srcDirCopyCut = fromPath
+    appState.isCopyOrCut = 'cut'
+    global.isCopyCutFile = _isFile
 }
 
 /**
@@ -44,7 +45,7 @@ export async function FileManagerContextMenuPaste(toPath: string, isFile: string
         return
     }
 
-    const src = global.srcDirCopyCut
+    const src = appState.srcDirCopyCut
     if (src.length === 0) {
         showErrorMessageBox(`未拷贝/剪切源文件！`)
         return
@@ -59,9 +60,12 @@ export async function FileManagerContextMenuPaste(toPath: string, isFile: string
     const lastIndex = Math.max(src.lastIndexOf('\\'), src.lastIndexOf('//'))
     const srcName = src.substring(lastIndex)
     const destPath = require('path').join(toPath, srcName)
-    if (fs.existsSync(destPath)) {
+    try {
+        await fs.access(destPath)
         showErrorMessageBox(`文件/文件夹已经存在！\r\n` + destPath)
         return
+    } catch {
+        // destPath doesn't exist, proceed
     }
 
     try {
@@ -72,7 +76,7 @@ export async function FileManagerContextMenuPaste(toPath: string, isFile: string
     }
 
     // 如果是剪切动作，需要删除原目录
-    if (global.isCopyOrCut === 'cut') {
+    if (appState.isCopyOrCut === 'cut') {
         try {
             await fsExtra.remove(src)
         } catch (err) {
@@ -81,19 +85,27 @@ export async function FileManagerContextMenuPaste(toPath: string, isFile: string
         }
     }
 
-    setTimeout(() => {
-        global.srcDirCopyCut = ''
-        global.isCopyOrCut = ''
-        ReloadDirFromDisk()
+    setTimeout(async () => {
+        appState.srcDirCopyCut = ''
+        appState.isCopyOrCut = ''
+        try {
+            await ReloadDirFromDisk()
+        } catch (err) {
+            console.error('Failed to reload from disk:', err)
+        }
     }, reloadFromDiskTime)
 
     // 防止重新加载时，前面操作还没有完成，这里设置100ms的定时器处理
-    setTimeout(() => {
-        if (global.isCopyOrCut === 'cut') {
+    setTimeout(async () => {
+        if (appState.isCopyOrCut === 'cut') {
             fsExtra.remove(src)
         }
-        global.srcDirCopyCut = ''
-        global.isCopyOrCut = ''
-        ReloadDirFromDisk()
+        appState.srcDirCopyCut = ''
+        appState.isCopyOrCut = ''
+        try {
+            await ReloadDirFromDisk()
+        } catch (err) {
+            console.error('Failed to reload from disk:', err)
+        }
     }, reloadFromDiskTime)
 }

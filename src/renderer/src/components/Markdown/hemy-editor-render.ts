@@ -32,7 +32,7 @@ async function mermaidRender(graphDefinition: string): Promise<string> {
         '</code></pre></div>'
     )
   } catch (error) {
-    console.log('mermaidRender error', error)
+        console.error('mermaidRender error', error)
   }
   removeMermaidDiv(mermaidId)
   return ''
@@ -55,6 +55,12 @@ async function limitConcurrency<T>(
     const task = tasks[i]
     const promise = task().then((result) => {
       results[i] = result
+      const index = executing.indexOf(promise)
+      if (index > -1) {
+        executing.splice(index, 1)
+      }
+    }).catch((err) => {
+      results[i] = err as T
       const index = executing.indexOf(promise)
       if (index > -1) {
         executing.splice(index, 1)

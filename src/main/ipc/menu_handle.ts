@@ -49,7 +49,6 @@ function findHandler(action: string): MenuActionHandler | undefined {
     }
 
     let current: any = menuHandlers
-    console.log('parts: ', parts);
     for (let i = 0; i < parts.length; i++) {
         const part = parts[i]
         if (current[part]) {

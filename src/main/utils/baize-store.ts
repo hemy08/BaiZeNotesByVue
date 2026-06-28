@@ -44,7 +44,6 @@ class BaiZeStore {
         // 初始化文件缓存
         this.fileCache = new Map()
         
-        console.log(`[BaiZeStore] Store initialized at: ${configFilePath}`)
     }
 
     // ========== 持久化存储操作 ==========
@@ -129,7 +128,6 @@ class BaiZeStore {
      */
     clearCache(): void {
         this.fileCache.clear()
-        console.log('[BaiZeStore] Cache cleared')
     }
 
     /**

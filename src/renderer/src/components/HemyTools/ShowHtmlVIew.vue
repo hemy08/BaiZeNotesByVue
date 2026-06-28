@@ -119,8 +119,6 @@ function openInBrowser() {
  * iframe 加载完成
  */
 function onIframeLoad() {
-    // 可以在这里添加一些加载完成后的处理
-    console.log('HTML 内容加载完成')
 }
 
 /**

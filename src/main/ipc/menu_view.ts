@@ -29,28 +29,28 @@ export const viewMenuHandlers = {
 
     fold: {
         'all-fold': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-            mainWindow.webContents.send('OpenFile', null)
+            mainWindow.webContents.send('editor-fold-all')
         },
         'all-expand': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-            mainWindow.webContents.send('OpenFile', null)
+            mainWindow.webContents.send('editor-expand-all')
         },
         'level1': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-            mainWindow.webContents.send('OpenFile', null)
+            mainWindow.webContents.send('editor-fold-level', 1)
         },
         'level2': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-            mainWindow.webContents.send('OpenFile', null)
+            mainWindow.webContents.send('editor-fold-level', 2)
         },
         'level3': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-            mainWindow.webContents.send('OpenFile', null)
+            mainWindow.webContents.send('editor-fold-level', 3)
         },
         'level4': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-            mainWindow.webContents.send('OpenFile', null)
+            mainWindow.webContents.send('editor-fold-level', 4)
         },
         'level5': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-            mainWindow.webContents.send('OpenFile', null)
+            mainWindow.webContents.send('editor-fold-level', 5)
         },
         'level6': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-            mainWindow.webContents.send('OpenFile', null)
+            mainWindow.webContents.send('editor-fold-level', 6)
         },
     }
 }
@@ -74,10 +74,10 @@ export const insertMenuHandlers = {
         mainWindow.webContents.send('open-vue-dialog', 'insertLink')
     },
     'custom-template': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send('OpenFile', null)
+        console.warn('[Menu] Custom template not implemented yet')
     },
     'template-manager': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send('OpenFile', null)
+        console.warn('[Menu] Template manager not implemented yet')
     },
     'from-file': {
         'json': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => InsertImportFormFile(mainWindow, 'json', false),

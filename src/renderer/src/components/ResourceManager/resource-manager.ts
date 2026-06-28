@@ -1,7 +1,8 @@
+import { markRaw } from 'vue'
 import ContextMenu from '@imengyu/vue3-context-menu'
 
 export interface FileSysItem {
-    id: never
+    id?: string
     name: string
     path: string
     type: 'file' | 'folder'
@@ -9,17 +10,7 @@ export interface FileSysItem {
     isDirectory?: boolean
     isIndented?: boolean
     isExpanded?: boolean
-    children?: {
-        id: never
-        name: string
-        path: string
-        fileExtension: string
-        type: 'folder' | 'file'
-        isDirectory: boolean
-        isIndented: boolean
-        isExpanded: boolean
-        children?: never[]
-    }[]
+    children?: FileSysItem[]
 }
 
 type MappingTable = {
@@ -31,7 +22,7 @@ type MappingTable = {
     } // 键是字符串，值是数字
 }
 
-export const FileMgrSvgs: MappingTable = {
+export const FileMgrSvgs: MappingTable = markRaw({
     '.md': {
         className: 'file-icon',
         style: 'fill: #ff9100;',
@@ -80,7 +71,7 @@ export const FileMgrSvgs: MappingTable = {
         viewBox: '0 0 24 24',
         path: 'm10 17 5-5-5-5v10Z'
     }
-}
+})
 
 export function getFileMgrSvg(isExpanded: boolean, extension: string) {
     if (extension == 'folder') {

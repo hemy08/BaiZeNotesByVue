@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const crypto = require('crypto')
+import { appState } from './app-state'
 
 // 生成RSA密钥对
 function generateRsaKeyPair(
@@ -34,7 +35,7 @@ function generateRsaKeyPair(
 export function CreateRsaKeyPair(bits: number) {
     generateRsaKeyPair(bits)
         .then(({ publicKey, privateKey }) => {
-            global.MainWindow.webContents.send(
+            appState.mainWindow!.webContents.send(
                 'plugin-tools-generator-rsa-result',
                 publicKey,
                 privateKey
@@ -88,7 +89,7 @@ export function CreateHash(context: string, encType: string): HashResult {
                 result[item.text] = hash.digest(encoding)
             }
         } catch (error) {
-            console.log(error)
+            console.error(error)
         }
     })
     return result
@@ -110,7 +111,7 @@ export function CreateHmac(context: string, secKey: string, encType: string) {
                 result[item.text] = hmac.digest(encoding)
             }
         } catch (error) {
-            console.log(error)
+            console.error(error)
         }
     })
     return result
@@ -144,7 +145,7 @@ export function CryptoEncrypt(data: CryptoData): CryptoResult {
         encrypted += cipher.final(outputEncoding)
         result = encrypted
     } catch (error) {
-        console.log(error)
+        console.error(error)
         result = error as string
     }
     return {
@@ -171,7 +172,7 @@ export function CryptoDecrypt(data: CryptoData) {
         decrypted += decipher.final(outputEncoding)
         return decrypted
     } catch (error) {
-        console.log(error)
+        console.error(error)
         return error
     }
 }

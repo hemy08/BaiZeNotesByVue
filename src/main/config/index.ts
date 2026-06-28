@@ -1,18 +1,54 @@
 /**
  * 配置文件模块导出
  */
-export * from './config-manager'
-export * from './default-configs'
-export * from './theme-config'
-// 从 theme-registry 单独导出需要的函数（避免与 theme-config 冲突）
+export {
+    configManager,
+    registerConfigIpcHandlers
+} from './config-manager'
+
+// NOTE: default-configs.ts 已废弃，各配置模块有各自的硬编码默认值
+
+export type { ThemeType, MonacoThemeType, ThemeStyles, ThemeConfig } from './theme-config'
+export {
+    themes,
+    getAllThemes,
+    getCurrentTheme,
+    getCurrentThemeStyles,
+    getThemeStylesByType,
+    setTheme,
+    getAllMonacoThemes,
+    getSeparateEditorTheme,
+    setSeparateEditorTheme,
+    getMonacoTheme,
+    setMonacoTheme
+} from './theme-config'
+
 export { getMonacoThemeData } from './theme-registry'
 export type { MonacoThemeConfig } from './theme-registry'
-export * from './system-setting'
-export * from './editor-setting'
-export * from './quick-link-config'
-export * from '../ipc/ipc-listener-manager'
-export * from './short-key-register'
-export * from './window-manager'
 
-// 导出配置 IPC 处理器注册函数
-export { registerConfigIpcHandlers } from './config-manager'
+export {
+    getSystemSetting,
+    saveSystemSetting,
+    getSystemSettingValString
+} from './system-setting'
+
+export {
+    getEditorSetting,
+    saveEditorSetting,
+    getDefaultEditorSetting,
+    resetEditorSetting
+} from './editor-setting'
+
+export {
+    getQuickLinks,
+    saveQuickLinks,
+    resetToDefault
+} from './quick-link-config'
+
+export { ipcListenerManager } from '../ipc/ipc-listener-manager'
+
+export {
+    RegisterShortKeys
+} from './short-key-register'
+
+export { windowManager } from './window-manager'

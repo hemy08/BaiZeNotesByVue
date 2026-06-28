@@ -35,10 +35,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch  } from 'vue'
+import { computed, onMounted, onUnmounted, ref  } from 'vue'
 
 const props = defineProps({
-    // 编辑器宽度
     workAreaWidth: {
         type: String,
         default: '100%'
@@ -47,25 +46,28 @@ const props = defineProps({
 const RsaPublicKey = ref('')
 const RsaPrivateKey = ref('')
 const inputBits = ref(2048)
-const rsaViewWidth = ref(props.workAreaWidth)
 
-watch(
-    () => props.workAreaWidth,
-    (newWidth) => {
-        rsaViewWidth.value = newWidth
-    }
-)
+const rsaKeyTextWidth = computed(() => parseInt(props.workAreaWidth.replace('px', ''), 10) - 200)
 
-watch(
-    () => inputBits.value,
-    () => {
-        refreshKeyPair()
-    }
-)
+function openUrl(link) {
+    window.open(link, '_blank', 'noopener, noreferrer')
+}
 
-const rsaKeyTextWidth = computed(() => {
-    const workWidthVal = parseInt(rsaViewWidth.value.replace('px', ''), 10)
-    return workWidthVal - 200
+function refreshKeyPair() {
+    window.electron.ipcRenderer.send('plugin-tools-generator-rsa-key-pairs', inputBits.value)
+}
+
+function onRsaResult(_, publicKey: string, privateKey: string) {
+    RsaPublicKey.value = publicKey
+    RsaPrivateKey.value = privateKey
+}
+
+onMounted(() => {
+    window.electron.ipcRenderer.on('plugin-tools-generator-rsa-result', onRsaResult)
+})
+
+onUnmounted(() => {
+    window.electron.ipcRenderer.removeListener('plugin-tools-generator-rsa-result', onRsaResult)
 })
 
 const rsaPublicKeyStyle = computed(() => {
@@ -91,22 +93,6 @@ const rsaPrivateKeyStyle = computed(() => {
         height: '500px'
     }
 })
-
-function openUrl(link) {
-    window.open(link, '_blank', 'noopener, noreferrer')
-}
-
-function refreshKeyPair() {
-    window.electron.ipcRenderer.send('plugin-tools-generator-rsa-key-pairs', inputBits.value)
-}
-
-window.electron.ipcRenderer.on(
-    'plugin-tools-generator-rsa-result',
-    (_, publicKey: string, privateKey: string) => {
-        RsaPublicKey.value = publicKey
-        RsaPrivateKey.value = privateKey
-    }
-)
 </script>
 
 <style scoped>

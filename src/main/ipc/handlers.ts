@@ -3,12 +3,15 @@
  * 集中管理主进程的所有 IPC 处理函数
  */
 
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, dialog } from 'electron'
+import * as os from 'os'
 import { HandleBaiZeMenuAction } from './menu_handle'
 import { getMonacoThemeData } from '../config'
 import { getEditorSetting } from '../config'
-import { CreateFileFolder, GetCurrentFileDirectory, SelectDirectory, StopAutoSaveFileTime } from '../utils/file-utils'
+import { CreateFileFolder, GetCurrentFileDirectory, SelectDirectory, StopAutoSaveFileTime, ReloadDirFromDisk, OpenSelectFile, ParserFileName } from '../utils/file-utils'
 import { ImportCreateNewFile } from '../utils/file-utils'
+import { saveLastOpenedDirectory } from '../utils/file-state'
+import { appState } from '../utils/app-state'
 
 /**
  * 注册所有 IPC 处理器
@@ -37,60 +40,64 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
             }
         }
     })
+    ipcMain.handle('window-get-bounds', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            return mainWindow.getBounds()
+        }
+        return null
+    })
+    ipcMain.handle('window-is-maximized', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            return mainWindow.isMaximized()
+        }
+        return false
+    })
+    ipcMain.on('window-start-drag', () => {
+        // 窗口拖动由 renderer 端的 mousemove 事件通过 window-move 处理
+    })
+    ipcMain.on('window-move', (_, x: number, y: number) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            const [currentWidth, currentHeight] = mainWindow.getSize()
+            mainWindow.setBounds({ x, y, width: currentWidth, height: currentHeight })
+        }
+    })
+    ipcMain.on('window-set-size', (_, width: number, height: number) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            const [x, y] = mainWindow.getPosition()
+            mainWindow.setBounds({ x, y, width, height })
+        }
+    })
 
     ipcMain.on('baize-notes:menu-action', (_, action) => {
         HandleBaiZeMenuAction(action, mainWindow)
     })
 
     // 打开特定文件夹
-    ipcMain.on('baize:notes:open-specific-folder', (_, folderPath: string) => {
-        const { ReloadDirFromDisk } = require('../utils/file-utils/file-operations')
-        const { saveLastOpenedDirectory } = require('../utils/file-state')
-        
-        // 清理编辑区域和预览区域
+    ipcMain.on('baize:notes:open-specific-folder', async (_, folderPath: string) => {
         mainWindow.webContents.send('clear-editor-and-preview')
-        
-        // 设置根路径并重新加载
-        global.RootPath = folderPath
-        ReloadDirFromDisk()
-        
-        // 保存上次打开的目录
+        appState.rootPath = folderPath
+        await ReloadDirFromDisk()
         saveLastOpenedDirectory(folderPath)
     })
 
     // 欢迎界面 - 打开文件夹
     ipcMain.on('baize:notes:welcome:open-directory', async () => {
-        const { dialog } = require('electron')
-        const { ReloadDirFromDisk } = require('../utils/file-utils/file-operations')
-        const { saveLastOpenedDirectory } = require('../utils/file-state')
-        
         const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openDirectory']
         })
         
         if (!result.canceled && result.filePaths.length > 0) {
             const dirPath = result.filePaths[0]
-            
-            // 清理编辑区域和预览区域
             mainWindow.webContents.send('clear-editor-and-preview')
-            
-            // 设置根路径并重新加载
-            global.RootPath = dirPath
-            ReloadDirFromDisk()
-            
-            // 保存上次打开的目录
+            appState.rootPath = dirPath
+            await ReloadDirFromDisk()
             saveLastOpenedDirectory(dirPath)
-            
-            // 通知渲染进程进入主界面
             mainWindow.webContents.send('baize:notes:welcome:enter-main', { type: 'directory', path: dirPath })
         }
     })
 
     // 欢迎界面 - 打开文件
     ipcMain.on('baize:notes:welcome:open-file', async () => {
-        const { dialog } = require('electron')
-        const { OpenSelectFile, ParserFileName } = require('../utils/file-utils/file-operations')
-        
         const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openFile'],
             filters: [{ name: 'Markdown Files', extensions: ['md'] }]
@@ -98,17 +105,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         
         if (!result.canceled && result.filePaths.length > 0) {
             const filePath = result.filePaths[0]
-            
-            // 打开选中的文件
             const fileProperties = {
                 name: ParserFileName(filePath),
                 path: filePath,
                 type: 'file',
                 content: ''
             }
-            OpenSelectFile(fileProperties)
-            
-            // 通知渲染进程进入主界面
+            await OpenSelectFile(fileProperties)
             mainWindow.webContents.send('baize:notes:welcome:enter-main', { type: 'file', path: filePath })
         }
     })
@@ -117,8 +120,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         return await ImportCreateNewFile(mainWindow, content)
     })
 
-    ipcMain.handle('baize-notes:create-file-folder', (_, name: string, dirPath: string, isFolder: boolean, extension: string) => {
-        CreateFileFolder(name, dirPath, isFolder, extension)
+    ipcMain.handle('baize-notes:create-file-folder', async (_, name: string, dirPath: string, isFolder: boolean, extension: string) => {
+        await CreateFileFolder(name, dirPath, isFolder, extension)
         return { success: true }
     })
 
@@ -128,6 +131,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
     ipcMain.handle('baize-notes:select-directory', async () => {
         return await SelectDirectory(mainWindow)
+    })
+
+    ipcMain.handle('get-system-info', () => {
+        return `${os.type()} ${os.arch()} ${os.release()}`
     })
 
     ipcMain.handle('baize-notes:load-monaco-theme', (_, themeName: string) => {
@@ -142,6 +149,15 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         StopAutoSaveFileTime()
     })
 }
+
+// 对话框广播主题到所有窗口
+ipcMain.on('dialog-broadcast-theme', (_event, themeData) => {
+    BrowserWindow.getAllWindows().forEach((window) => {
+        if (!window.isDestroyed()) {
+            window.webContents.send('baize-notes:theme-updated', themeData)
+        }
+    })
+})
 
 /**
  * 获取当前主窗口实例

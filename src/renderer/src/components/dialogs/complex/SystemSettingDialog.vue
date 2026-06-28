@@ -230,7 +230,6 @@ const initialSettings = ref({
 const settings = ref({ ...initialSettings.value })
 
 function browseDefaultPath() {
-  console.log('Browse for default path')
 }
 
 function handleAutoSaveChange() {
@@ -242,11 +241,9 @@ function handleAutoSaveChange() {
 }
 
 function handleBackupNow() {
-  console.log('Backup now')
 }
 
 function handleRestore() {
-  console.log('Restore from backup')
 }
 
 function handleClose() {

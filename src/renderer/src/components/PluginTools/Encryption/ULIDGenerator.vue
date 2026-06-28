@@ -53,17 +53,9 @@ const props = defineProps({
 })
 
 const ulidList = ref('')
-const ulidsViewWidth = ref(props.workAreaWidth)
 const ulidNumber = ref(1)
 const activeFormatterStyle = ref('RAW')
 const formatterStyle = ['RAW', 'JSON']
-
-watch(
-    () => props.workAreaWidth,
-    (newWidth) => {
-        ulidsViewWidth.value = newWidth
-    }
-)
 
 watch(
     () => ulidNumber.value,
@@ -72,7 +64,7 @@ watch(
     }
 )
 const ulidTextWidth = computed(() => {
-    const workWidthVal = parseInt(ulidsViewWidth.value.replace('px', ''), 10)
+    const workWidthVal = parseInt(props.workAreaWidth.replace('px', ''), 10)
     const textWidthVal = workWidthVal - 50
     const textMarginLeft = 170
     return textWidthVal - textMarginLeft

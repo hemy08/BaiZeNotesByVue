@@ -12,28 +12,27 @@ import {
     resetToDefault
 } from '../config/quick-link-config'
 import { getCurrentThemeStyles } from '../config'
-
-let quickLinkSettingDialog: Electron.BrowserWindow | null
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 
 /**
  * 显示快速链接设置对话框
  */
 export function ShowQuickLinkSettingDialog() {
-    quickLinkSettingDialog = new BrowserWindow({
+    const existing = windowManager.getWindowByType('quick-link-setting-dialog')
+    if (existing) {
+        existing.focus()
+        return
+    }
+
+    const quickLinkSettingDialog = windowManager.createWindow('quick-link-setting-dialog', createDialogOptions({
         width: 900,
         height: 600,
         minimizable: false,
         maximizable: false,
         resizable: true,
-        title: '快速链接设置',
-        autoHideMenuBar: true,
-        frame: false,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            sandbox: false
-        }
-    })
+        title: '快速链接设置'
+    }), 'quick-link-setting-dialog', true)
 
     quickLinkSettingDialog.setMenu(null)
 
@@ -50,18 +49,12 @@ export function ShowQuickLinkSettingDialog() {
         quickLinkSettingDialog?.webContents.send('baize-notes:init-theme-styles', theme)
     })
 
-    quickLinkSettingDialog.on('closed', () => {
-        quickLinkSettingDialog = null
-        ipcMain.removeListener('baize-notes:save-quick-links', handleSaveQuickLinks)
-        ipcMain.removeListener('baize-notes:reset-quick-links', handleResetQuickLinks)
-    })
-
     // 保存配置
     function handleSaveQuickLinks(_, links: QuickLinkItem[]) {
         saveQuickLinks(links)
         quickLinkSettingDialog?.webContents.send('baize-notes:save-success')
         BrowserWindow.getAllWindows().forEach(win => {
-            if (win !== quickLinkSettingDialog) {
+            if (win !== windowManager.getWindowByType('quick-link-setting-dialog')) {
                 win.webContents.send('baize-notes:quick-links-updated')
             }
         })
@@ -73,7 +66,7 @@ export function ShowQuickLinkSettingDialog() {
         const links = getQuickLinks()
         quickLinkSettingDialog?.webContents.send('baize-notes:init-quick-links', links)
         BrowserWindow.getAllWindows().forEach(win => {
-            if (win !== quickLinkSettingDialog) {
+            if (win !== windowManager.getWindowByType('quick-link-setting-dialog')) {
                 win.webContents.send('baize-notes:quick-links-updated')
             }
         })
@@ -573,7 +566,7 @@ function makeQuickLinkSettingDialogHtml(): string {
     <div class="toast" id="toast">保存成功!</div>
 
     <script>
-        const { ipcRenderer } = require('electron')
+        const ipcRenderer = window.electronAPI.ipcRenderer
 
         function initThemeStyles(theme) {
             document.documentElement.style.setProperty('--bg-color', theme.backgroundColor)

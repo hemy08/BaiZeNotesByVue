@@ -143,8 +143,8 @@ onMounted(async () => {
 
   if (typeof require !== 'undefined') {
     try {
-      const os = require('os')
-      systemInfo.value = os.type() + ' ' + os.arch() + ' ' + os.release()
+      const osInfo = await window.electron.ipcRenderer.invoke('get-system-info')
+      systemInfo.value = osInfo
     } catch (e) {
       systemInfo.value = 'Unknown'
     }

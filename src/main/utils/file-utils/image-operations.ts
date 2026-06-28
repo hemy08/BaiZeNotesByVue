@@ -3,10 +3,11 @@
  * 提供图片保存、复制链接等功能
  */
 
-import * as fs from 'fs'
+import { promises as fs } from 'fs'
 import { clipboard } from 'electron'
 import { ParseDirectoryPath } from './path-utils'
 import { showErrorMessageBox } from './dialog-helpers'
+import { appState } from '../app-state'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
@@ -46,12 +47,14 @@ function ParserImageBuffer(content: string): Buffer | null {
  * 创建 images 目录
  * @returns images 目录路径
  */
-function CreateImagesDir(): string {
-    const curDir = ParseDirectoryPath(global.current_active_file.path)
+async function CreateImagesDir(): Promise<string> {
+    const curDir = ParseDirectoryPath(appState.currentActiveFile!.path)
     const outDir = path.join(curDir, 'images')
-    if (!fs.existsSync(outDir)) {
+    try {
+        await fs.access(outDir)
+    } catch {
         try {
-            fs.mkdirSync(outDir, { recursive: true })
+            await fs.mkdir(outDir, { recursive: true })
         } catch (err) {
             showErrorMessageBox(`${outDir} 不存在，创建目录失败，${err}`)
             return ''
@@ -67,7 +70,7 @@ function CreateImagesDir(): string {
  * @param base64Image Base64 图片内容
  * @returns 是否保存成功
  */
-function SaveImagesFile(outFilePath: string, base64Image: string): boolean {
+async function SaveImagesFile(outFilePath: string, base64Image: string): Promise<boolean> {
     const imgBuffer = ParserImageBuffer(base64Image)
     if (imgBuffer === null) {
         showErrorMessageBox(`解析文件格式失败，当前只支持*.png;*.jpg;*.jpeg;*.bmp;*gif;*.ico;`)
@@ -75,7 +78,7 @@ function SaveImagesFile(outFilePath: string, base64Image: string): boolean {
     }
 
     try {
-        fs.writeFileSync(outFilePath, imgBuffer, 'binary')
+        await fs.writeFile(outFilePath, imgBuffer)
     } catch (err) {
         showErrorMessageBox(`保存图像时出错: ${err}`)
         return false
@@ -90,23 +93,25 @@ function SaveImagesFile(outFilePath: string, base64Image: string): boolean {
  * @param base64Image Base64 图片内容
  * @returns 是否保存成功
  */
-export function SaveImageDataToFile(name: string, base64Image: string): boolean {
-    if (!global.current_active_file) {
+export async function SaveImageDataToFile(name: string, base64Image: string): Promise<boolean> {
+    if (!appState.currentActiveFile) {
         showErrorMessageBox(`未打开任何文件，请先打开一个文件`)
         return false
     }
 
-    const outDir = CreateImagesDir()
+    const outDir = await CreateImagesDir()
     if (outDir.length === 0) {
         return false
     }
 
     const outFilePath = path.join(outDir, name)
-    if (fs.existsSync(outFilePath)) {
+    try {
+        await fs.access(outFilePath)
         showErrorMessageBox(`文件已经存在 ${name}`)
         return true
+    } catch {
+        return await SaveImagesFile(outFilePath, base64Image)
     }
-    return SaveImagesFile(outFilePath, base64Image)
 }
 
 /**
@@ -114,28 +119,29 @@ export function SaveImageDataToFile(name: string, base64Image: string): boolean 
  * @param base64Image Base64 图片内容
  * @returns 保存的文件名
  */
-export function InsertImagesToFile(base64Image: string): string {
-    if (!global.current_active_file) {
+export async function InsertImagesToFile(base64Image: string): Promise<string> {
+    if (!appState.currentActiveFile) {
         showErrorMessageBox(`未打开任何文件，请先打开一个文件`)
         return ''
     }
 
-    const outDir = CreateImagesDir()
+    const outDir = await CreateImagesDir()
     if (outDir.length === 0) {
         return ''
     }
 
     const fileName = getMathRandom(16) + '.png'
     const outFilePath = path.join(outDir, fileName)
-    if (fs.existsSync(outFilePath)) {
+    try {
+        await fs.access(outFilePath)
         showErrorMessageBox(`文件已经存在 ${fileName}`)
         return ''
+    } catch {
+        if ((await SaveImagesFile(outFilePath, base64Image)) === false) {
+            return ''
+        }
+        return fileName
     }
-
-    if (SaveImagesFile(outFilePath, base64Image) === false) {
-        return ''
-    }
-    return fileName
 }
 
 /**
@@ -143,11 +149,11 @@ export function InsertImagesToFile(base64Image: string): string {
  * @param toPath 目标路径
  */
 export function CopyRelativePath(toPath: string): void {
-    if (!global.current_active_file) {
+    if (!appState.currentActiveFile) {
         showErrorMessageBox(`请先打开一个文件！`)
         return
     }
-    let relative = path.relative(global.current_active_file.path, toPath)
+    let relative = path.relative(appState.currentActiveFile.path, toPath)
     if (relative.startsWith('../') || relative.startsWith('..\\')) {
         relative = relative.substring(3)
     }
@@ -160,11 +166,11 @@ export function CopyRelativePath(toPath: string): void {
  * @param toPath 目标路径
  */
 export function CopyFileLink(toPath: string): void {
-    if (!global.current_active_file) {
+    if (!appState.currentActiveFile) {
         showErrorMessageBox(`请先打开一个文件！`)
         return
     }
-    let relative = path.relative(global.current_active_file.path, toPath)
+    let relative = path.relative(appState.currentActiveFile.path, toPath)
     if (relative.startsWith('../') || relative.startsWith('..\\')) {
         relative = relative.substring(3)
     }
@@ -178,11 +184,11 @@ export function CopyFileLink(toPath: string): void {
  * @param toPath 目标路径
  */
 export function CopyImageLink(toPath: string): void {
-    if (!global.current_active_file) {
+    if (!appState.currentActiveFile) {
         showErrorMessageBox(`请先打开一个文件！`)
         return
     }
-    let relative = path.relative(global.current_active_file.path, toPath)
+    let relative = path.relative(appState.currentActiveFile.path, toPath)
     if (relative.startsWith('../') || relative.startsWith('..\\')) {
         relative = relative.substring(3)
     }

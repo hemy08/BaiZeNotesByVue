@@ -120,8 +120,6 @@ const handlePluginToolsContainerShow = (value: boolean) => {
     }
 }
 
-EventBus.$on('plugin-tools-container-show', handlePluginToolsContainerShow)
-
 const handleWorkAreaContainerShow = (value: string) => {
     // console.log("handleWorkAreaContainerShow ", value)
     isShowMdContainer.value = false
@@ -138,8 +136,6 @@ const handleWorkAreaContainerShow = (value: string) => {
         isShowMdContainer.value = true
     }
 }
-EventBus.$on('baize:notes:workspace:show', handleWorkAreaContainerShow)
-
 function onSwitchRightNaviTab(value: string) {
     if (value == 'switch-open-close') {
         isShowResourceMgrArea.value = !isShowResourceMgrArea.value
@@ -188,9 +184,9 @@ function onMouseUp() {
     window.removeEventListener('mouseup', onMouseUp)
 }
 
-window.electron.ipcRenderer.on('menu-view-hide-display-res-manager', () => {
+const handleHideDisplayResManager = () => {
     isShowResourceMgrArea.value = !isShowResourceMgrArea.value
-})
+}
 
 function onWindowResized() {
     // console.log('resize window.innerWidth', window.innerWidth)
@@ -200,14 +196,19 @@ function onWindowResized() {
 onMounted(() => {
     windowWidth.value = window.innerWidth
     window.addEventListener('resize', onWindowResized)
+
+    EventBus.$on('plugin-tools-container-show', handlePluginToolsContainerShow)
+    EventBus.$on('baize:notes:workspace:show', handleWorkAreaContainerShow)
+    window.electron.ipcRenderer.on('menu-view-hide-display-res-manager', handleHideDisplayResManager)
 })
 
 onBeforeUnmount(() => {
     window.removeEventListener('resize', onWindowResized)
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)
-    window.electron.ipcRenderer.removeAllListeners('menu-view-hide-display-res-manager')
+    window.electron.ipcRenderer.removeListener('menu-view-hide-display-res-manager', handleHideDisplayResManager)
     EventBus.$off('plugin-tools-container-show', handlePluginToolsContainerShow)
+    EventBus.$off('baize:notes:workspace:show', handleWorkAreaContainerShow)
 })
 </script>
 

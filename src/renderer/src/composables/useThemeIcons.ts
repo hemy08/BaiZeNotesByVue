@@ -1,7 +1,7 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, markRaw } from 'vue'
 
 // 图标映射配置
-const iconMap: Record<string, { light: string; dark: string }> = {
+const iconMap: Record<string, { light: string; dark: string }> = markRaw({
   'file': { light: 'icon-file-light.svg', dark: 'icon-file.svg' },
   'edit': { light: 'icon-edit-light.svg', dark: 'icon-edit.svg' },
   'view': { light: 'icon-view-light.svg', dark: 'icon-view.svg' },
@@ -29,7 +29,7 @@ const iconMap: Record<string, { light: string; dark: string }> = {
   'html-convert': { light: 'icon-html-convert-light.svg', dark: 'icon-html-convert.svg' },
   'multi-format': { light: 'icon-multi-format-light.svg', dark: 'icon-multi-format.svg' },
   'import-export': { light: 'icon-import-export-light.svg', dark: 'icon-import-export.svg' }
-}
+})
 
 // 判断主题是否为深色主题
 function isDarkTheme(themeType: string): boolean {

@@ -3,36 +3,29 @@
  * 显示项目使用的技术栈信息
  */
 
-import { BrowserWindow } from 'electron'
 import { JSDOM } from 'jsdom'
 import { getCurrentThemeStyles } from '../config'
-
-let techStackDialog: Electron.BrowserWindow | null
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 
 /**
  * 显示技术栈对话框
  */
 export function ShowTechStackDialog() {
-    if (techStackDialog) {
-        techStackDialog.focus()
+    const existing = windowManager.getWindowByType('tech-stack-dialog')
+    if (existing) {
+        existing.focus()
         return
     }
 
-    techStackDialog = new BrowserWindow({
+    const techStackDialog = windowManager.createWindow('tech-stack-dialog', createDialogOptions({
         width: 900,
         height: 700,
         minimizable: false,
         maximizable: false,
         resizable: true,
-        title: '技术栈 - 白泽笔记',
-        autoHideMenuBar: true,
-        frame: false,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            sandbox: false
-        }
-    })
+        title: '技术栈 - 白泽笔记'
+    }), 'tech-stack-dialog', true)
 
     techStackDialog.setMenu(null)
 
@@ -45,10 +38,6 @@ export function ShowTechStackDialog() {
     techStackDialog.webContents.on('did-finish-load', () => {
         const theme = getCurrentThemeStyles()
         techStackDialog?.webContents.send('baize-notes:init-theme-styles', theme)
-    })
-
-    techStackDialog.on('closed', () => {
-        techStackDialog = null
     })
 }
 
@@ -398,10 +387,10 @@ function makeTechStackHtml(): string {
     </div>
 
     <script>
-        const { shell, ipcRenderer } = require('electron')
+        const ipcRenderer = window.electronAPI.ipcRenderer
 
         function openLink(url) {
-            shell.openExternal(url)
+            window.electronAPI.shell.openExternal(url)
         }
 
         // 监听主题更新

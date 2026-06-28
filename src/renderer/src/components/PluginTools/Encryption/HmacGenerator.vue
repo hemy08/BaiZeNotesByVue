@@ -76,7 +76,6 @@ const encodeType = ref('Hexadecimal')
 const secretKey = ref('12345678')
 const hmacLabelWidth = ref('150px')
 const hashButtonWidth = ref('100px')
-const hashViewWidth = ref(props.workAreaWidth)
 const hmacTextInput = [
     { id: 'hmac-text-md4', text: 'MD4', result: '' },
     { id: 'hmac-text-md5', text: 'MD5', result: '' },
@@ -90,7 +89,7 @@ const hmacTextInput = [
 ]
 
 const hmacResultStyle = computed(() => {
-    const hashViewWidthValue = parseInt(hashViewWidth.value.replace('px', ''), 10)
+    const hashViewWidthValue = parseInt(props.workAreaWidth.replace('px', ''), 10)
     const hmacLabelWidthValue = parseInt(hmacLabelWidth.value.replace('px', ''), 10)
     const hashButtonWidthValue = parseInt(hashButtonWidth.value.replace('px', ''), 10)
     const hashResultWidthValue = hashViewWidthValue - hmacLabelWidthValue - hashButtonWidthValue
@@ -144,12 +143,6 @@ watch(
     }
 )
 
-watch(
-    () => props.workAreaWidth,
-    (width) => {
-        hashViewWidth.value = width
-    }
-)
 </script>
 
 <style scoped>

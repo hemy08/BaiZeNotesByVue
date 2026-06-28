@@ -1,15 +1,16 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import * as fs from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
 import { restoreLastOpenedFile } from './utils/file-state'
-import { getCurrentThemeStyles, getMonacoThemeData, getSystemSetting, registerConfigIpcHandlers, getEditorSetting } from './config'
+import { getCurrentThemeStyles, getSystemSetting, registerConfigIpcHandlers, getEditorSetting } from './config'
 import { StartAutoSaveFileTime } from './utils/file-utils'
 import { RegisterShortKeys } from './config'
 import { logger } from './utils/logger'
 import { ipcListenerManager } from './ipc/ipc-listener-manager'
-import { initUserDataDirectory, getAppPathsInfo } from './utils/app-paths'
+import { initUserDataDirectory } from './utils/app-paths'
 import { registerIpcHandlers, setMainWindow } from './ipc'
 
 const timers: NodeJS.Timeout[] = []
@@ -28,39 +29,22 @@ function createWindow(): void {
         icon: join(__dirname, '../resources/icon/baize_mirror_dark_512x512.ico'),
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
-            nodeIntegration: true,
-            contextIsolation: false,
-            sandbox: false,
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true,
             webSecurity: !is.dev,
             allowRunningInsecureContent: is.dev ? true : false
         }
     })
 
-    require('@electron/remote/main').initialize()
-    require('@electron/remote/main').enable(mainWindow.webContents)
-
     setMainWindow(mainWindow)
 
-    mainWindow.on('ready-to-show', () => {
+    mainWindow.on('ready-to-show', async () => {
         // mainWindow.maximize() // 欢迎界面不自动最大化
         mainWindow.show()
 
-        mainWindow.on('closed', () => {
-            const windows = BrowserWindow.getAllWindows()
-            windows.forEach(window => {
-                if (!window.isDestroyed()) {
-                    window.destroy()
-                }
-            })
-            app.quit()
-        })
-
         logger.setMainWindow(mainWindow)
         logger.info('白泽笔记启动成功')
-
-        if (is.dev) {
-            console.log('[Main] App Paths:', getAppPathsInfo())
-        }
 
         dialogs.CreateMermaidRenderFrame('')
         const theme = getCurrentThemeStyles()
@@ -73,14 +57,14 @@ function createWindow(): void {
         const editorSetting = getEditorSetting()
         mainWindow.webContents.send('baize-notes:init-editor-setting', editorSetting)
 
-        restoreLastOpenedFile()
+        await restoreLastOpenedFile()
     })
 
     RegisterShortKeys(mainWindow)
     utils.globalInitialize(mainWindow)
 
     mainWindow.webContents.setWindowOpenHandler((details) => {
-        shell.openExternal(details.url).then((r) => console.log(r))
+        shell.openExternal(details.url)
         return { action: 'deny' }
     })
 
@@ -112,11 +96,8 @@ app.whenReady().then(() => {
         optimizer.watchWindowShortcuts(window)
     })
 
-    ipcMain.on('ping', () => console.log('pong'))
-
     ipcMain.on('baize-notes:update-theme', () => {
         const theme = getCurrentThemeStyles()
-        console.log('[Main] Sending theme update:', theme)
         if (!theme) {
             console.error('[Main] Failed to get current theme styles')
             return
@@ -133,30 +114,15 @@ app.whenReady().then(() => {
     })
 })
 
-app.on('window-all-closed', () => {
+function cleanupApp(): void {
     timers.forEach(timer => clearInterval(timer))
+    timers.length = 0
     watchers.forEach(watcher => watcher.close())
+    watchers.length = 0
     dialogs.CleanupMainWindowDialogsEvent()
     dialogs.closeMermaidRenderWindow()
     dialogs.cleanupMermaidRender()
     ipcListenerManager.cleanupAll()
-
-    if (process.platform !== 'darwin') {
-        app.quit()
-    }
-})
-
-app.on('before-quit', () => {
-    timers.forEach(timer => clearInterval(timer))
-    watchers.forEach(watcher => watcher.close())
-    dialogs.CleanupMainWindowDialogsEvent()
-    dialogs.closeMermaidRenderWindow()
-    dialogs.cleanupMermaidRender()
-    ipcListenerManager.cleanupAll()
-
-    if (is.dev) {
-        ipcListenerManager.printStats()
-    }
 
     const windows = BrowserWindow.getAllWindows()
     windows.forEach(window => {
@@ -164,4 +130,18 @@ app.on('before-quit', () => {
             window.destroy()
         }
     })
+}
+
+app.on('window-all-closed', () => {
+    cleanupApp()
+    if (process.platform !== 'darwin') {
+        app.quit()
+    }
+})
+
+app.on('before-quit', () => {
+    cleanupApp()
+    if (is.dev) {
+        ipcListenerManager.printStats()
+    }
 })

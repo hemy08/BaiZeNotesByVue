@@ -88,11 +88,9 @@ function navigateToUrl() {
 }
 
 function goBack() {
-  console.log('Go back')
 }
 
 function goForward() {
-  console.log('Go forward')
 }
 
 function refreshPage() {

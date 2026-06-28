@@ -27,8 +27,8 @@ export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
             resizable: true,
             frame: false,
             webPreferences: {
-                nodeIntegration: true,
-                contextIsolation: false
+                nodeIntegration: false,
+                contextIsolation: true
             }
         },
         'editor-setting-dialog',
@@ -521,7 +521,7 @@ function generateEditorSettingHTML(themeStyles: any, systemSettings: any): strin
     // 添加脚本
     const script = document.createElement('script')
     script.textContent = `
-        const { ipcRenderer } = require('electron');
+        const ipcRenderer = window.electronAPI.ipcRenderer;
 
         // 监听主题更新
         ipcRenderer.on('baize-notes:theme-updated', (event, themeData) => {
@@ -970,16 +970,12 @@ function generateEditorSettingHTML(themeStyles: any, systemSettings: any): strin
         // 按钮事件绑定（带错误处理）
         function bindButtonEvents() {
             try {
-                console.log('开始绑定按钮事件...');
-
                 // 应用按钮
                 const applyBtn = document.getElementById('editor-setting-apply');
                 if (applyBtn) {
                     applyBtn.addEventListener('click', function() {
-                        console.log('应用按钮被点击');
                         ipcRenderer.send('dialog-editor-setting-apply', EditorSetting);
                     });
-                    console.log('应用按钮事件绑定成功');
                 } else {
                     console.error('找不到应用按钮: editor-setting-apply');
                 }
@@ -988,10 +984,8 @@ function generateEditorSettingHTML(themeStyles: any, systemSettings: any): strin
                 const cancelBtn = document.getElementById('editor-setting-cancel');
                 if (cancelBtn) {
                     cancelBtn.addEventListener('click', function() {
-                        console.log('取消按钮被点击');
                         ipcRenderer.send('dialog-editor-setting-cancel');
                     });
-                    console.log('取消按钮事件绑定成功');
                 } else {
                     console.error('找不到取消按钮: editor-setting-cancel');
                 }
@@ -1000,10 +994,8 @@ function generateEditorSettingHTML(themeStyles: any, systemSettings: any): strin
                 const resetBtn = document.getElementById('editor-setting-reset');
                 if (resetBtn) {
                     resetBtn.addEventListener('click', function() {
-                        console.log('重置按钮被点击');
                         ipcRenderer.send('dialog-editor-setting-reset');
                     });
-                    console.log('重置按钮事件绑定成功');
                 } else {
                     console.error('找不到重置按钮: editor-setting-reset');
                 }
@@ -1012,10 +1004,8 @@ function generateEditorSettingHTML(themeStyles: any, systemSettings: any): strin
                 const okBtn = document.getElementById('editor-setting-ok');
                 if (okBtn) {
                     okBtn.addEventListener('click', function() {
-                        console.log('确定按钮被点击');
                         ipcRenderer.send('dialog-editor-setting-ok', EditorSetting);
                     });
-                    console.log('确定按钮事件绑定成功');
                 } else {
                     console.error('找不到确定按钮: editor-setting-ok');
                 }
@@ -1024,15 +1014,11 @@ function generateEditorSettingHTML(themeStyles: any, systemSettings: any): strin
                 const closeBtn = document.getElementById('close-dialog-btn');
                 if (closeBtn) {
                     closeBtn.addEventListener('click', function() {
-                        console.log('关闭按钮被点击');
                         ipcRenderer.send('dialog-editor-setting-cancel');
                     });
-                    console.log('关闭按钮事件绑定成功');
                 } else {
                     console.error('找不到关闭按钮: close-dialog-btn');
                 }
-
-                console.log('所有按钮事件绑定完成');
             } catch (error) {
                 console.error('按钮事件绑定出错:', error);
             }

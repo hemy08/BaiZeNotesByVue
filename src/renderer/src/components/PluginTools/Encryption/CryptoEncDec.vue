@@ -115,33 +115,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch  } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
-    // 编辑器宽度
     workAreaWidth: {
         type: String,
         default: '100%'
     }
 })
-let workWidthVal: number
 
-watch(
-    () => props.workAreaWidth,
-    (width) => {
-        workWidthVal = parseInt(width.replace('px', ''), 10)
-    }
-)
+const workWidth = computed(() => parseInt(props.workAreaWidth.replace('px', ''), 10))
 
-const cryptoWidth = computed(() => {
-    const cryptoWidthVal = workWidthVal - 30
-    return cryptoWidthVal + 'px'
-})
+const cryptoWidth = computed(() => workWidth.value - 30 + 'px')
 
-const secretWidth = computed(() => {
-    const cryptoWidthVal = workWidthVal - 400
-    return cryptoWidthVal + 'px'
-})
+const secretWidth = computed(() => workWidth.value - 400 + 'px')
 
 const cryptoInput = ref('')
 const cryptoSecretKey = ref('')

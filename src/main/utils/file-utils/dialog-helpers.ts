@@ -4,6 +4,7 @@
  */
 
 import { dialog, BrowserWindow, SaveDialogOptions, OpenDialogOptions, MessageBoxOptions } from 'electron'
+import { appState } from '../app-state'
 
 /**
  * 显示错误消息对话框
@@ -11,7 +12,7 @@ import { dialog, BrowserWindow, SaveDialogOptions, OpenDialogOptions, MessageBox
  * @param title
  */
 export function showErrorMessageBox(message: string, title: string = '错误!'): void {
-    global.MainWindow.webContents.send('open-vue-dialog', 'message', {
+    appState.mainWindow!.webContents.send('open-vue-dialog', 'message', {
         title: title,
         type: 'error',
         message: message
@@ -24,7 +25,7 @@ export function showErrorMessageBox(message: string, title: string = '错误!'):
  * @param title 标题（可选）
  */
 export function showInfoMessageBox(message: string, title: string = '提示'): void {
-    global.MainWindow.webContents.send('open-vue-dialog', 'message', {
+    appState.mainWindow!.webContents.send('open-vue-dialog', 'message', {
         title: title,
         type: 'info',
         message: message
@@ -41,7 +42,7 @@ export function showWarningMessageBox(
     message: string,
     title: string = '警告'
 ): void {
-    global.MainWindow.webContents.send('open-vue-dialog', 'message', {
+    appState.mainWindow!.webContents.send('open-vue-dialog', 'message', {
         title: title,
         type: 'warning',
         message: message

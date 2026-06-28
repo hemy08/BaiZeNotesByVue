@@ -3,11 +3,11 @@
  * 让用户选择导入方式：替换当前内容、新建文件、插入到当前位置
  */
 
-import { BrowserWindow, dialog } from 'electron'
+import { dialog, ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 import { getCurrentThemeStyles } from '../config'
-
-let importOptionDialog: Electron.BrowserWindow | null
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 
 export type ImportOption = 'replace' | 'newfile' | 'insert'
 
@@ -15,31 +15,25 @@ export type ImportOption = 'replace' | 'newfile' | 'insert'
  * 显示导入选项对话框
  */
 export function ShowImportOptionDialog(
-    mainWindow: BrowserWindow,
+    mainWindow: Electron.BrowserWindow,
     onConfirm: (option: ImportOption, filePath?: string) => void
 ) {
-    if (importOptionDialog) {
-        importOptionDialog.focus()
+    const existing = windowManager.getWindowByType('import-option-dialog')
+    if (existing) {
+        existing.focus()
         return
     }
 
-    importOptionDialog = new BrowserWindow({
+    const importOptionDialog = windowManager.createWindow('import-option-dialog', createDialogOptions({
         width: 500,
         height: 400,
         minimizable: false,
         maximizable: false,
         resizable: false,
         title: '导入选项',
-        autoHideMenuBar: true,
-        frame: false,
         parent: mainWindow,
-        modal: true,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            sandbox: false
-        }
-    })
+        modal: true
+    }), 'import-option-dialog', true)
 
     importOptionDialog.setMenu(null)
 
@@ -59,17 +53,15 @@ export function ShowImportOptionDialog(
         // 导入选项确认
         importOptionDialog?.webContents.executeJavaScript(`
             window.confirmImport = function(option) {
-                require('electron').ipcRenderer.send('import-option-confirm', option);
+                window.electronAPI.ipcRenderer.send('import-option-confirm', option);
             };
         `)
     })
 
     // 处理用户选择
-    const { ipcMain } = require('electron')
     ipcMain.once('import-option-confirm', async (_event: any, option: ImportOption) => {
         let filePath: string | undefined
 
-        console.log('user choose :', option)
         if (option === 'newfile') {
             // 如果选择新建文件，弹出保存对话框
             const result = await dialog.showSaveDialog(mainWindow, {
@@ -80,7 +72,7 @@ export function ShowImportOptionDialog(
 
             if (result.canceled) {
                 // 用户取消，关闭对话框
-                importOptionDialog?.close()
+                windowManager.getWindowByType('import-option-dialog')?.close()
                 return
             }
 
@@ -88,14 +80,10 @@ export function ShowImportOptionDialog(
         }
 
         // 关闭对话框
-        importOptionDialog?.close()
+        windowManager.getWindowByType('import-option-dialog')?.close()
 
         // 调用回调函数
         onConfirm(option, filePath)
-    })
-
-    importOptionDialog.on('closed', () => {
-        importOptionDialog = null
     })
 }
 
@@ -334,7 +322,7 @@ function makeImportOptionHtml(): string {
     </div>
 
     <script>
-        const { ipcRenderer } = require('electron')
+        const ipcRenderer = window.electronAPI.ipcRenderer
         let selectedOption = null
 
         function selectOption(option) {

@@ -1,4 +1,4 @@
-import * as myEditor from './hemy-editor'
+import { OnInsertAfterCursor, replaceSelection } from './hemy-editor-common'
 import * as monaco from 'monaco-editor'
 
 function matchStartWith(
@@ -15,7 +15,7 @@ function EnterAction(editor: monaco.editor.IStandaloneCodeEditor) {
     if (!position) return
 
     if (position.lineNumber <= 2) {
-        myEditor.InsertAfterCursor(editor, '\r\n')
+        OnInsertAfterCursor(editor, '\r\n')
         return
     }
 
@@ -42,9 +42,9 @@ function EnterAction(editor: monaco.editor.IStandaloneCodeEditor) {
     //console.log('insertText', insertText, content.length)
 
     if (insertText != '\r\n') {
-        myEditor.InsertAfterCursor(editor, insertText)
+        OnInsertAfterCursor(editor, insertText)
     } else {
-        myEditor.replaceSelection(
+        replaceSelection(
             editor,
             '\r\n',
             true,
@@ -71,8 +71,7 @@ export function MonacoEditorAddActions(editor: monaco.editor.IStandaloneCodeEdit
         label: 'Hemy Custom ContextMenu',
         contextMenuGroupId: 'navigation',
         // 回调函数
-        run: (editor, ...args) => {
-            console.log(editor.getModel()?.getLanguageId())
+        run: (_editor, ...args) => {
             alert('args' + args)
         }
     })

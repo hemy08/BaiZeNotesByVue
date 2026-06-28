@@ -87,7 +87,6 @@ const props = defineProps({
 
 const activeUUIDVersion = ref('v1')
 const activeNameSpace = ref('DNS')
-const uuidsViewWidth = ref(props.workAreaWidth)
 const isShowNamespace = ref(false)
 const uuidNumber = ref(1)
 const uuidNameSpace = ref('6ba7b810-9dad-11d1-80b4-00c04fd430c8')
@@ -110,13 +109,6 @@ const uuidNameSpaces = {
 const uuidNameSpaceKeys = Object.keys(uuidNameSpaces)
 
 watch(
-    () => props.workAreaWidth,
-    (newWidth) => {
-        uuidsViewWidth.value = newWidth
-    }
-)
-
-watch(
     () => uuidNumber.value,
     () => {
         selectVersion(activeUUIDVersion.value)
@@ -131,7 +123,7 @@ watch(
 )
 
 const uuidTextWidth = computed(() => {
-    const workWidthVal = parseInt(uuidsViewWidth.value.replace('px', ''), 10)
+    const workWidthVal = parseInt(props.workAreaWidth.replace('px', ''), 10)
     const textWidthVal = workWidthVal - 50
     const textMarginLeft = 170
     return textWidthVal - textMarginLeft

@@ -85,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, ref  } from 'vue'
+import { computed, ref } from 'vue'
 import CryptoJS from 'crypto-js'
 
 const props = defineProps({
@@ -95,17 +95,8 @@ const props = defineProps({
         default: '100%'
     }
 })
-const hashViewWidth = ref(props.workAreaWidth)
-
-watch(
-    () => props.workAreaWidth,
-    (width) => {
-        hashViewWidth.value = width
-    }
-)
-
 const encDecWidth = computed(() => {
-    const workWidthVal = parseInt(hashViewWidth.value.replace('px', ''), 10)
+    const workWidthVal = parseInt(props.workAreaWidth.replace('px', ''), 10)
     const encDecWidthVal = workWidthVal - 30
     return encDecWidthVal + 'px'
 })
@@ -131,7 +122,7 @@ const EncryptAlg = [
         value: 'RC4Drop',
         text: 'RC4Drop (Modified RC4 stream cipher algorithm)'
     },
-    { id: 'encrypt-by-DES', value: 'DES', text: 'Rabbit (Rabbit stream cipher algorithm)' },
+    { id: 'encrypt-by-Rabbit', value: 'Rabbit', text: 'Rabbit (Rabbit stream cipher algorithm)' },
     {
         id: 'encrypt-by-RabbitLegacy',
         value: 'RabbitLegacy',

@@ -229,13 +229,11 @@ function editorOnFontQuote(editor: monaco.editor.IStandaloneCodeEditor) {
     if (!model) return
 
     // 有选择，每行行首增加 >
-    console.log('selection', selection)
     let newText = ''
     for (let line = selection.startLineNumber; line < selection.endLineNumber; line++) {
         const context = model.getLineContent(line)
         newText = newText + '> ' + context + '\r\n'
     }
-    console.log('newText', newText)
     replaceSelection(editor, newText, false, selection as monaco.Range)
 }
 

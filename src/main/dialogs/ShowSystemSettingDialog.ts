@@ -1,31 +1,26 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import { getCurrentThemeStyles } from '../config'
 import { JSDOM } from 'jsdom'
 import * as SystemSettingUtils from '../config'
 import { StartAutoSaveFileTime } from '../utils/file-utils/auto-save'
 import { SystemSetting } from '../global-types'
-
-let systemSettingDialog: Electron.BrowserWindow | null
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 
 export function ShowSystemSettingDialog(mainWindow: Electron.BrowserWindow) {
-    if (systemSettingDialog) {
+    const existing = windowManager.getWindowByType('system-setting-dialog')
+    if (existing) {
         return
     }
-    systemSettingDialog = new BrowserWindow({
+
+    const systemSettingDialog = windowManager.createWindow('system-setting-dialog', createDialogOptions({
         width: 800,
         height: 700,
         minimizable: false,
         maximizable: false,
         resizable: true,
-        title: '系统设置',
-        autoHideMenuBar: true,
-        frame: false,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            sandbox: false
-        }
-    })
+        title: '系统设置'
+    }), 'system-setting-dialog', true)
 
     systemSettingDialog.setMenu(null)
 
@@ -38,12 +33,6 @@ export function ShowSystemSettingDialog(mainWindow: Electron.BrowserWindow) {
 
     const savedSettings = SystemSettingUtils.getSystemSetting()
     systemSettingDialog?.webContents.send('load-saved-settings', savedSettings)
-
-    systemSettingDialog.on('closed', () => {
-        systemSettingDialog = null
-        ipcMain.removeListener('dialog-system-setting-apply', processApplySysSetting)
-        ipcMain.removeListener('dialog-system-setting-confirm', processConfirmSysSetting)
-    })
 
     function processApplySysSetting(_, SysSetting: SystemSetting) {
         SystemSettingUtils.saveSystemSetting(SysSetting)
@@ -64,19 +53,13 @@ export function ShowSystemSettingDialog(mainWindow: Electron.BrowserWindow) {
     function processConfirmSysSetting(_, SysSetting: SystemSetting) {
         // 先保存，再关闭
         processApplySysSetting(_, SysSetting)
-        if (systemSettingDialog) {
-            systemSettingDialog.close()
-            systemSettingDialog = null
-        }
+        windowManager.getWindowByType('system-setting-dialog')?.close()
     }
 
     ipcMain.on('dialog-system-setting-apply', processApplySysSetting)
     ipcMain.on('dialog-system-setting-confirm', processConfirmSysSetting)
     ipcMain.on('dialog-system-setting-cancel', () => {
-        if (systemSettingDialog) {
-            systemSettingDialog.close()
-            systemSettingDialog = null
-        }
+        windowManager.getWindowByType('system-setting-dialog')?.close()
     })
 }
 
@@ -612,7 +595,7 @@ function makeSystemSettingDialogHtml(): string {
     </div>
 
     <script>
-        const { ipcRenderer } = require('electron')
+        const ipcRenderer = window.electronAPI.ipcRenderer
 
         function initThemeStyles(theme) {
             document.documentElement.style.setProperty('--bg-color', theme.backgroundColor)

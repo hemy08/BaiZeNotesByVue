@@ -134,7 +134,6 @@ function initializeRegistry(): void {
         ]
 
         initialized = true
-        console.log()
     } catch (error) {
         console.error('[Main] Failed to initialize monaco theme registry', error)
         allThemeNames = Object.keys(builtinThemes)

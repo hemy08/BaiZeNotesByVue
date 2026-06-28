@@ -3,6 +3,7 @@ import { showSymbolQuickAccess } from './hemy-quick-access-symbols'
 import * as Templates from '../../common/templates'
 import ContextMenu, { MenuItem } from '@imengyu/vue3-context-menu'
 import EventBus from '../../common/event_bus/event-bus'
+import { getConfigStore } from '../../common/useConfigStore'
 import {
     SVG_HEADER_1, SVG_HEADER_2, SVG_HEADER_3, SVG_HEADER_4, SVG_HEADER_5, SVG_HEADER_6,
     SVG_FONT_FAMILY, SVG_FONT_SIZE, SVG_FONT_BOLD, SVG_FONT_ITALIC, SVG_FONT_DELETE, SVG_FONT_UNDER,
@@ -71,24 +72,18 @@ function onFontFormat(_, context: string) {
 }
 
 function onInsertTable() {
-    const configStore = (window as any).configStore
-    if (configStore) {
-        configStore.showDialog('mdSheet')
-    }
+    const configStore = getConfigStore()
+    configStore.showDialog('mdSheet')
 }
 
 function onInsertWebLinks() {
-    const configStore = (window as any).configStore
-    if (configStore) {
-        configStore.showDialog('insertLink')
-    }
+    const configStore = getConfigStore()
+    configStore.showDialog('insertLink')
 }
 
 function onInsertImage() {
-    const configStore = (window as any).configStore
-    if (configStore) {
-        configStore.showDialog('insertImage')
-    }
+    const configStore = getConfigStore()
+    configStore.showDialog('insertImage')
 }
 
 function onShowEmojiMenu(e: Event) {

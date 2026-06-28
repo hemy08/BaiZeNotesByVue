@@ -77,7 +77,6 @@ const textInput = ref('')
 const encodeType = ref('Hexadecimal')
 const hashLabelWidth = ref('150px')
 const hashButtonWidth = ref('100px')
-const hashViewWidth = ref(props.workAreaWidth)
 const hashTextInput = [
     { id: 'hash-text-md4', text: 'MD4', result: '' },
     { id: 'hash-text-md5', text: 'MD5', result: '' },
@@ -91,7 +90,7 @@ const hashTextInput = [
 ]
 
 const hashResultStyle = computed(() => {
-    const hashViewWidthValue = parseInt(hashViewWidth.value.replace('px', ''), 10)
+    const hashViewWidthValue = parseInt(props.workAreaWidth.replace('px', ''), 10)
     const hashLabelWidthValue = parseInt(hashLabelWidth.value.replace('px', ''), 10)
     const hashButtonWidthValue = parseInt(hashButtonWidth.value.replace('px', ''), 10)
     const hashResultWidthValue = hashViewWidthValue - hashLabelWidthValue - hashButtonWidthValue
@@ -99,13 +98,6 @@ const hashResultStyle = computed(() => {
         width: hashResultWidthValue + 'px'
     }
 })
-
-watch(
-    () => props.workAreaWidth,
-    (width) => {
-        hashViewWidth.value = width
-    }
-)
 
 function openUrl(link) {
     window.open(link, '_blank', 'noopener, noreferrer')

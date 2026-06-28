@@ -64,7 +64,6 @@ async function saveToRecentFolders(folderPath: string) {
 
 // 监听主进程的进入主界面通知
 function handleEnterMain(_: any, data: { type: string; path: string }) {
-    console.log('Enter main interface:', data)
     // 隐藏欢迎界面
     showWelcome.value = false
     // 最大化窗口

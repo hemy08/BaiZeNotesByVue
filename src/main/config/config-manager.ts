@@ -22,11 +22,9 @@ async function readConfig(configName: string): Promise<any> {
     
     if (await fs.pathExists(configPath)) {
       const data = await fs.readJson(configPath)
-      console.log(`[ConfigManager] Read config: ${configName}`)
       return data
     }
     
-    console.log(`[ConfigManager] Config file not found: ${configName}, using defaults`)
     return null
   } catch (error) {
     console.error(`[ConfigManager] Error reading config ${configName}:`, error)
@@ -40,7 +38,6 @@ async function writeConfig(configName: string, data: any): Promise<boolean> {
     await ensureConfigDir()
     const configPath = path.join(CONFIG_DIR, `${configName}.json`)
     await fs.writeJson(configPath, data, { spaces: 2 })
-    console.log(`[ConfigManager] Write config: ${configName}`)
     return true
   } catch (error) {
     console.error(`[ConfigManager] Error writing config ${configName}:`, error)
@@ -54,7 +51,6 @@ async function deleteConfig(configName: string): Promise<boolean> {
     const configPath = path.join(CONFIG_DIR, `${configName}.json`)
     if (await fs.pathExists(configPath)) {
       await fs.remove(configPath)
-      console.log(`[ConfigManager] Deleted config: ${configName}`)
     }
     return true
   } catch (error) {
@@ -105,7 +101,6 @@ export function registerConfigIpcHandlers() {
     return true
   })
 
-  console.log('[ConfigManager] IPC handlers registered')
 }
 
 // 导出配置管理器实例

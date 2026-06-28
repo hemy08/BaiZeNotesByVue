@@ -3,8 +3,10 @@
  * 用于管理应用的主题设置
  */
 
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 // @ts-ignore
 import {
     getCurrentTheme,
@@ -20,28 +22,22 @@ import {
     getCurrentThemeStyles
 } from '../config'
 
-let themeSettingDialog: Electron.BrowserWindow | null
-
 /**
  * 显示主题设置对话框
  */
 export function ShowThemeSettingDialog() {
-    if (themeSettingDialog) {
-        themeSettingDialog.focus()
+    const existing = windowManager.getWindowByType('theme-setting-dialog')
+    if (existing) {
+        existing.focus()
         return
     }
 
     // 创建窗口
-    themeSettingDialog = new BrowserWindow({
+    const themeSettingDialog = windowManager.createWindow('theme-setting-dialog', createDialogOptions({
         width: 1200,
         height: 600,
-        frame: false,
-        resizable: false,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
-        }
-    })
+        resizable: false
+    }), 'theme-setting-dialog', true)
 
     // 生成 HTML 内容
     const html = generateThemeSettingHTML()
@@ -59,11 +55,6 @@ export function ShowThemeSettingDialog() {
             separateEditorTheme,
             monacoTheme
         })
-    })
-
-    // 窗口关闭时清理
-    themeSettingDialog.on('closed', () => {
-        themeSettingDialog = null
     })
 }
 
@@ -769,13 +760,10 @@ ipcMain.on('baize-notes:theme-update', (_, data: { themeType: ThemeType | null, 
     const currentThemeStyles = getCurrentThemeStyles()
 
     // 发送主题更新到所有窗口，包含所有配置信息
-    const { BrowserWindow } = require('electron')
-    BrowserWindow.getAllWindows().forEach(window => {
-        window.webContents.send('baize-notes:theme-updated', {
-            themeType: currentThemeType,
-            separateEditorTheme: currentSeparateEditorTheme,
-            monacoTheme: currentMonacoTheme,
-            themeStyles: currentThemeStyles
-        })
+    window.electronAPI.broadcastTheme({
+        themeType: currentThemeType,
+        separateEditorTheme: currentSeparateEditorTheme,
+        monacoTheme: currentMonacoTheme,
+        themeStyles: currentThemeStyles
     })
 })

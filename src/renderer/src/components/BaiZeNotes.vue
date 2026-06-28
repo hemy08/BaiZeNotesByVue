@@ -136,7 +136,7 @@ import StatusBar from './StatusBar.vue'
 import MenuBar from './MenuBar.vue'
 import EventBus from '../common/event_bus/event-bus'
 import * as monaco from 'monaco-editor'
-import { SystemSetting, ThemeStyles, ThemeUpdateData } from "../../../main/global-types"
+import type { SystemSetting, ThemeStyles, ThemeUpdateData } from '@mainer/global-types'
 // 对话框组件导入（统一命名空间导出）
 import * as BaiZeDialogs from './dialogs'
 // 配置 Store
@@ -144,22 +144,33 @@ import { getConfigStore } from '../common/useConfigStore'
 // 导入 logo SVG 图标
 import logoDarkUltra from '../assets/icons/dark/logo-baize-dark-A-ultra.svg'
 import logoLightLarge from '../assets/icons/light/logo-baize-light-A-large.svg'
+// 窗口管理 composable
+import { useWindowManagement } from '../composables/useWindowManagement'
 
 const configStore = getConfigStore()
 
-// 暴露 configStore 到 window 对象，供其他模块使用
-;(window as any).configStore = configStore
+const {
+  minimizeWindow,
+  maximizeWindow,
+  closeWindow,
+  onTitleBarMouseDown,
+  onTitleBarDblClick,
+  onResizeMouseDown,
+  cleanupWindowEvents
+} = useWindowManagement({
+  onReLayout: EditorReLayout
+})
 
 const electronMenu = ref(true)
 
 // 当前主题样式
 const currentTheme = ref<ThemeStyles | null>(null)
 
-// 计算 logo 路径
+const darkThemeTypes = ['dark', 'deepdark', 'icon', 'ocean', 'baize-text', 'baize-starry', 'baize-data-dark', 'baize-mirror-dark']
+
 const logoSrc = computed(() => {
-    // 使用主题类型判断,而不是主题名称
     const themeType = configStore.themeConfig.value.currentTheme
-    const isDark = themeType.includes('dark') || themeType.includes('Dark')
+    const isDark = darkThemeTypes.includes(themeType)
     return isDark ? logoLightLarge : logoDarkUltra
 })
 
@@ -334,7 +345,7 @@ async function updateMonacoEditorTheme(theme: ThemeStyles, separate: boolean, mo
         }
     } else {
         // 否则根据应用主题自动选择
-        const themeName = theme.name.includes('dark') || theme.name.includes('深') ? 'vs-dark' : 'vs'
+        const themeName = theme.name.includes('dark') || theme.name.includes('深') || theme.name.includes('Dark') || theme.name.includes('黑') ? 'vs-dark' : 'vs'
 
         // 动态定义自定义主题
         monaco.editor.defineTheme('custom-theme', {
@@ -391,8 +402,6 @@ async function loadMonacoTheme(themeName: string): Promise<string | null> {
 
 // 监听主题更新事件
 async function handleThemeUpdate(_event: any, data: ThemeUpdateData) {
-    console.log('[Renderer] Received theme update:', data)
-
     if (!data || !data.themeStyles) {
         console.error('[Renderer] Received invalid theme data')
         return
@@ -418,180 +427,26 @@ function handleSystemSettingUpdate(_event: any, setting: SystemSetting) {
 }
 
 function EditorReLayout() {
-    // 调整大小后通知编辑器重新布局
     setTimeout(() => {
         EventBus.$emit('monaco-editor-relayout')
     }, 100)
 }
 
-// 窗口控制函数
-function minimizeWindow() {
-    window.electron.ipcRenderer.send('window-minimize');
-    // 通知Monaco编辑器重新布局
-    EditorReLayout()
-}
-
-function maximizeWindow() {
-    window.electron.ipcRenderer.send('window-maximize');
-    // 通知Monaco编辑器重新布局
-    EditorReLayout()
-}
-
-function closeWindow() {
-    window.electron.ipcRenderer.send('window-close');
-}
-
-// ========== 标题栏拖动移动窗口 ==========
-const isDragging = ref(false)
-const dragOffset = ref({ x: 0, y: 0 })
-
-function onTitleBarMouseDown(e: MouseEvent) {
-    // 忽略窗口控制按钮区域的点击
-    if ((e.target as HTMLElement).closest('.window-controls')) return
-    // 仅响应左键
-    if (e.button !== 0) return
-
-    isDragging.value = true
-
-    // 通知主进程开始拖动（如果最大化则还原窗口）
-    window.electron.ipcRenderer.send('window-start-drag')
-
-    // 获取窗口当前位置
-    const bounds = window.electron.ipcRenderer.sendSync('window-get-bounds')
-    if (bounds) {
-        // 计算鼠标在窗口内的偏移比例，使窗口还原时鼠标位置合理
-        const isMaximized = window.electron.ipcRenderer.sendSync('window-is-maximized')
-        if (isMaximized) {
-            // 最大化还原后，将鼠标点击位置映射到还原窗口的对应位置
-            dragOffset.value = {
-                x: bounds.width * (e.screenX - bounds.x) / window.innerWidth,
-                y: e.clientY
-            }
-            // 立即移动窗口使鼠标在标题栏的正确位置
-            const newX = e.screenX - dragOffset.value.x
-            const newY = e.screenY - dragOffset.value.y
-            window.electron.ipcRenderer.send('window-move', newX, newY)
-        } else {
-            dragOffset.value = {
-                x: e.screenX - bounds.x,
-                y: e.screenY - bounds.y
-            }
-        }
+// 打开 Vue 对话框
+const handleOpenVueDialog = (_: any, dialogName: string, data?: any) => {
+    if (data) {
+        configStore.showDialog(dialogName as any, data)
+    } else {
+        configStore.showDialog(dialogName as any)
     }
-
-    document.addEventListener('mousemove', onDragMouseMove)
-    document.addEventListener('mouseup', onDragMouseUp)
-    e.preventDefault()
-    EditorReLayout()
 }
-
-function onDragMouseMove(e: MouseEvent) {
-    if (!isDragging.value) return
-    const newX = e.screenX - dragOffset.value.x
-    const newY = e.screenY - dragOffset.value.y
-    window.electron.ipcRenderer.send('window-move', newX, newY)
-}
-
-function onDragMouseUp() {
-    isDragging.value = false
-    document.removeEventListener('mousemove', onDragMouseMove)
-    document.removeEventListener('mouseup', onDragMouseUp)
-}
-
-// 双击标题栏切换最大化/还原
-function onTitleBarDblClick(e: MouseEvent) {
-    if ((e.target as HTMLElement).closest('.window-controls')) return
-
-    console.log('[Renderer] Double click on title bar')
-    window.electron.ipcRenderer.send('window-toggle-maximize')
-    // 通知Monaco编辑器重新布局
-    EditorReLayout()
-}
-
-// ========== 窗口大小调整 ==========
-type ResizeDirection = 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-const isResizing = ref(false)
-const resizeInfo = ref<{ direction: ResizeDirection; startX: number; startY: number; startBounds: { x: number; y: number; width: number; height: number } } | null>(null)
-const MIN_WIDTH = 800
-const MIN_HEIGHT = 600
-
-function onResizeMouseDown(direction: ResizeDirection, e: MouseEvent) {
-    if (e.button !== 0) return
-    // 最大化状态下不允许调整大小
-    const isMaximized = window.electron.ipcRenderer.sendSync('window-is-maximized')
-    if (isMaximized) return
-
-    isResizing.value = true
-    const bounds = window.electron.ipcRenderer.sendSync('window-get-bounds')
-    if (!bounds) return
-
-    resizeInfo.value = {
-        direction,
-        startX: e.screenX,
-        startY: e.screenY,
-        startBounds: { ...bounds }
-    }
-
-    document.addEventListener('mousemove', onResizeMouseMove)
-    document.addEventListener('mouseup', onResizeMouseUp)
-    e.preventDefault()
-}
-
-function onResizeMouseMove(e: MouseEvent) {
-    if (!isResizing.value || !resizeInfo.value) return
-    const { direction, startX, startY, startBounds } = resizeInfo.value
-    const dx = e.screenX - startX
-    const dy = e.screenY - startY
-
-    let { x, y, width, height } = startBounds
-
-    if (direction.includes('right')) {
-        width = Math.max(MIN_WIDTH, startBounds.width + dx)
-    }
-    if (direction.includes('left')) {
-        const newWidth = Math.max(MIN_WIDTH, startBounds.width - dx)
-        x = startBounds.x + (startBounds.width - newWidth)
-        width = newWidth
-    }
-    if (direction.includes('bottom')) {
-        height = Math.max(MIN_HEIGHT, startBounds.height + dy)
-    }
-    if (direction.includes('top')) {
-        const newHeight = Math.max(MIN_HEIGHT, startBounds.height - dy)
-        y = startBounds.y + (startBounds.height - newHeight)
-        height = newHeight
-    }
-
-    window.electron.ipcRenderer.send('window-move', x, y)
-    window.electron.ipcRenderer.send('window-set-size', width, height)
-}
-
-function onResizeMouseUp() {
-    isResizing.value = false
-    resizeInfo.value = null
-    document.removeEventListener('mousemove', onResizeMouseMove)
-    document.removeEventListener('mouseup', onResizeMouseUp)
-    // 调整大小后通知编辑器重新布局
-    EditorReLayout()
-}
-
-window.electron.ipcRenderer.on('baize-notes:system-setting-update', handleSystemSettingUpdate);
-// 打开浏览器网页地址
-window.electron.ipcRenderer.on('open-url-in-web-browser-window', handleOpenUrlInWebBrowserWindow);
-// 监听主题更新
-window.electron.ipcRenderer.on('baize-notes:theme-updated', handleThemeUpdate);
-// 监听系统设置更新
-window.electron.ipcRenderer.on('baize-notes:editor-relayout', EditorReLayout);
 
 onMounted(async () => {
-    // 监听 Electron 菜单触发的 Vue 对话框
-    window.electron.ipcRenderer.on('open-vue-dialog', (_, dialogName: string, data?: any) => {
-        if (data) {
-            configStore.showDialog(dialogName as any, data)
-        } else {
-            configStore.showDialog(dialogName as any)
-        }
-    })
+    window.electron.ipcRenderer.on('baize-notes:system-setting-update', handleSystemSettingUpdate)
+    window.electron.ipcRenderer.on('open-url-in-web-browser-window', handleOpenUrlInWebBrowserWindow)
+    window.electron.ipcRenderer.on('baize-notes:theme-updated', handleThemeUpdate)
+    window.electron.ipcRenderer.on('baize-notes:editor-relayout', EditorReLayout)
+    window.electron.ipcRenderer.on('open-vue-dialog', handleOpenVueDialog)
 
     // 加载所有配置
     try {
@@ -616,18 +471,12 @@ onMounted(async () => {
 
 
 onBeforeUnmount(() => {
-    window.electron.ipcRenderer.removeListener('baize-notes:theme-updated', handleThemeUpdate)
-    window.electron.ipcRenderer.removeListener('open-url-in-web-browser-window', handleOpenUrlInWebBrowserWindow)
-    window.electron.ipcRenderer.removeListener('window-minimize', minimizeWindow)
-    window.electron.ipcRenderer.removeListener('window-maximize', maximizeWindow)
-    window.electron.ipcRenderer.removeListener('window-close', closeWindow)
     window.electron.ipcRenderer.removeListener('baize-notes:system-setting-update', handleSystemSettingUpdate)
-    window.electron.ipcRenderer.removeListener('open-vue-dialog', () => {})
-    // 清理拖动和调整大小的事件监听
-    document.removeEventListener('mousemove', onDragMouseMove)
-    document.removeEventListener('mouseup', onDragMouseUp)
-    document.removeEventListener('mousemove', onResizeMouseMove)
-    document.removeEventListener('mouseup', onResizeMouseUp)
+    window.electron.ipcRenderer.removeListener('open-url-in-web-browser-window', handleOpenUrlInWebBrowserWindow)
+    window.electron.ipcRenderer.removeListener('baize-notes:theme-updated', handleThemeUpdate)
+    window.electron.ipcRenderer.removeListener('baize-notes:editor-relayout', EditorReLayout)
+    window.electron.ipcRenderer.removeListener('open-vue-dialog', handleOpenVueDialog)
+    cleanupWindowEvents()
 })
 </script>
 

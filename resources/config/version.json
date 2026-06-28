@@ -4,6 +4,6 @@
   "chromeVersion": "",
   "nodeVersion": "24.6.0",
   "vueVersion": "3.4.27",
-  "viteVersion": "",
+  "viteVersion": "8.0.5",
   "typescriptVersion": "6.0.2"
 }

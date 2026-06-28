@@ -29,6 +29,7 @@ import Ipv6UlaGenerator from './NetWork/Ipv6UlaGenerator.vue'
 import MacAddrGenerator from './NetWork/MacAddrGenerator.vue'
 import MacAddrLookup from './NetWork/MacAddrLookup.vue'
 import QrcodeGenerator from './NetWork/QrcodeGenerator.vue'
+import { markRaw } from 'vue'
 import WifiQrcodeGenerator from './NetWork/WifiQrcodeGenerator.vue'
 import ASCIIComparison from './Informations/ASCIIComparison.vue'
 import FileNameExtension from './Informations/FileNameExtension.vue'
@@ -41,7 +42,7 @@ import NumericCase from './Informations/NumericCase.vue'
 import PhysicalSymbolic from './Informations/PhysicalSymbolic.vue'
 import SubnetMaskMapTable from './Informations/SubnetMaskMapTable.vue'
 
-export const pluginTools = [
+export const pluginTools = markRaw([
     // ==================== 加解密插件 ====================
     { id: 'baize:menu:plugins:encrypt:token-generator', component: TokenGenerator },
     { id: 'baize:menu:plugins:encrypt:hash-text', component: HashText },
@@ -53,91 +54,43 @@ export const pluginTools = [
     { id: 'baize:menu:plugins:encrypt:rsa-generator', component: RSAGenerator },
 
     // ==================== 编解码转换 ====================
-    { id: 'baize:menu:plugins:convert:date-converter', component: DateConvert },
-    { id: 'baize:menu:plugins:convert:base-converter', component: BaseConvert },
-    { id: 'baize:menu:plugins:convert:roman-numeral-converter', component: RomanNumber },
-    { id: 'baize:menu:plugins:convert:color-converter', component: ColorConvert },
-    // { id: 'baize:menu:plugins:convert:number-converter', component: NumberConverter },
-    // { id: 'baize:menu:plugins:convert:unit-converter', component: UnitConverter },
-    // { id: 'baize:menu:plugins:convert:string-converter', component: StringConverter },
-    // { id: 'baize:menu:plugins:convert:url-encode-decode', component: UrlEncodeDecode },
-    // { id: 'baize:menu:plugins:convert:html-entity-encode-decode', component: HtmlEntityEncodeDecode },
-    // { id: 'baize:menu:plugins:convert:base64-string-encode-decode', component: Base64StringEncodeDecode },
-    // { id: 'baize:menu:plugins:convert:base64-file-encode-decode', component: Base64FileEncodeDecode },
-    // { id: 'baize:menu:plugins:convert:jwt-decoder', component: JwtDecoder },
-    // { id: 'baize:menu:plugins:convert:gzip-compress-decompress', component: GzipCompressDecompress },
+    // { id: 'baize:menu:plugins:convert:date-converter', component: DateConvert },
+    // { id: 'baize:menu:plugins:convert:base-converter', component: BaseConvert },
+    // { id: 'baize:menu:plugins:convert:roman-numeral-converter', component: RomanNumber },
+    // { id: 'baize:menu:plugins:convert:color-converter', component: ColorConvert },
 
     // ==================== 格式化工具 ====================
-    { id: 'baize:menu:plugins:convert:json-formater', component: JsonFormatter },
-    { id: 'baize:menu:plugins:convert:yaml-formatter', component: YamlFormatter },
-    // { id: 'baize:menu:plugins:convert:toml-formatter', component: TomlFormatter },
-    // { id: 'baize:menu:plugins:convert:csv-formatter', component: CsvFormatter },
-    { id: 'baize:menu:plugins:convert:xml-formatter', component: XmlFormatter },
-    { id: 'baize:menu:plugins:convert:sql-formatter', component: SqlFormatter },
-    { id: 'baize:menu:plugins:convert:html-formatter', component: HtmlFormatter },
+    // { id: 'baize:menu:plugins:convert:json-formater', component: JsonFormatter },
+    // { id: 'baize:menu:plugins:convert:yaml-formatter', component: YamlFormatter },
+    // { id: 'baize:menu:plugins:convert:xml-formatter', component: XmlFormatter },
+    // { id: 'baize:menu:plugins:convert:sql-formatter', component: SqlFormatter },
+    // { id: 'baize:menu:plugins:convert:html-formatter', component: HtmlFormatter },
 
     // ==================== 格式转换器 ====================
-    { id: 'baize:menu:plugins:convert:json-to-csv', component: JsonCsvConvert },
-    // { id: 'baize:menu:plugins:convert:json-to-yaml', component: JsonToYaml },
-    { id: 'baize:menu:plugins:convert:json-to-toml', component: JsonTomlConvert },
-    { id: 'baize:menu:plugins:convert:yaml-to-json', component: YamlJsonConvert },
-    { id: 'baize:menu:plugins:convert:yaml-to-toml', component: YamlTomlConvert },
-    // { id: 'baize:menu:plugins:convert:toml-to-json', component: TomlToJson },
-    // { id: 'baize:menu:plugins:convert:toml-to-yaml', component: TomlToYaml },
-    { id: 'baize:menu:plugins:convert:text-to-binary', component: TextToBinary },
-    { id: 'baize:menu:plugins:convert:text-to-unicode', component: TextToUnicode },
+    // { id: 'baize:menu:plugins:convert:json-to-csv', component: JsonCsvConvert },
+    // { id: 'baize:menu:plugins:convert:json-to-toml', component: JsonTomlConvert },
+    // { id: 'baize:menu:plugins:convert:yaml-to-json', component: YamlJsonConvert },
+    // { id: 'baize:menu:plugins:convert:yaml-to-toml', component: YamlTomlConvert },
+    // { id: 'baize:menu:plugins:convert:text-to-binary', component: TextToBinary },
+    // { id: 'baize:menu:plugins:convert:text-to-unicode', component: TextToUnicode },
 
     // ==================== 大小写转换 ====================
-    // { id: 'baize:menu:plugins:convert:pascal-case', component: PascalCase },
-    // { id: 'baize:menu:plugins:convert:camel-case', component: CamelCase },
-    // { id: 'baize:menu:plugins:convert:snake-case', component: SnakeCase },
-    // { id: 'baize:menu:plugins:convert:kebab-case', component: KebabCase },
-    // { id: 'baize:menu:plugins:convert:constant-case', component: ConstantCase },
-    // { id: 'baize:menu:plugins:convert:dot-case', component: DotCase },
-    // { id: 'baize:menu:plugins:convert:path-case', component: PathCase },
-    // { id: 'baize:menu:plugins:convert:space-case', component: SpaceCase },
-    // { id: 'baize:menu:plugins:convert:capital-case', component: CapitalCase },
-    // { id: 'baize:menu:plugins:convert:header-case', component: HeaderCase },
-    // { id: 'baize:menu:plugins:convert:lower-case', component: LowerCase },
-    // { id: 'baize:menu:plugins:convert:upper-case', component: UpperCase },
-    { id: 'baize:menu:plugins:convert:case-converter', component: CaseConvert },
-    { id: 'baize:menu:plugins:convert:list-converter', component: ListConvert },
+    // { id: 'baize:menu:plugins:convert:case-converter', component: CaseConvert },
+    // { id: 'baize:menu:plugins:convert:list-converter', component: ListConvert },
 
     // ==================== 网络计算插件 - 地址转换器 ====================
     { id: 'baize:menu:plugins:net:ipv4-subnet-calculator', component: Ipv4SubnetCalc },
-    { id: 'baize:menu:plugins:net:ipv4-address-converter', component: Ipv4AddrConvert },
-    // { id: 'baize:menu:plugins:net:ipv6-subnet-calculator', component: Ipv6SubnetCalc },
-    // { id: 'baize:menu:plugins:net:ipv6-address-converter', component: Ipv6AddressConverter },
-    // { id: 'baize:menu:plugins:net:ip-range-expand', component: IpRangeExpand },
-    { id: 'baize:menu:plugins:net:mac-address-lookup', component: MacAddrLookup },
-    { id: 'baize:menu:plugins:net:mac-address-generator', component: MacAddrGenerator },
-    // { id: 'baize:menu:plugins:net:device-information', component: DeviceInformation },
-    // { id: 'baize:menu:plugins:net:browser-information', component: BrowserInformation },
-    // { id: 'baize:menu:plugins:net:network-configuration', component: NetworkConfiguration },
+    // { id: 'baize:menu:plugins:net:ipv4-address-converter', component: Ipv4AddrConvert },
+    // { id: 'baize:menu:plugins:net:mac-address-lookup', component: MacAddrLookup },
+    // { id: 'baize:menu:plugins:net:mac-address-generator', component: MacAddrGenerator },
 
     // ==================== 网络计算插件 - 解析器 ====================
-    // { id: 'baize:menu:plugins:net:user-agent-parser', component: UserAgentParser },
-    // { id: 'baize:menu:plugins:net:url-parser', component: UrlParser },
-    // { id: 'baize:menu:plugins:net:ssl-certificate-parser', component: SslCertificateParser },
-    // { id: 'baize:menu:plugins:net:hash-text', component: HashTextNet },
-    // { id: 'baize:menu:plugins:net:bcrypt', component: Bcrypt },
-    { id: 'baize:menu:plugins:net:qr-code-generator', component: QrcodeGenerator },
-    { id: 'baize:menu:plugins:net:wifi-qr-code-generator', component: WifiQrcodeGenerator },
-    // { id: 'baize:menu:plugins:net:eui-64-calculator', component: Eui64Calculator },
+    // { id: 'baize:menu:plugins:net:qr-code-generator', component: QrcodeGenerator },
+    // { id: 'baize:menu:plugins:net:wifi-qr-code-generator', component: WifiQrcodeGenerator },
 
     // ==================== 网络计算插件 - 其他 ====================
     { id: 'baize:menu:plugins:net:http-status-codes', component: HttpStatusCode },
-    // { id: 'baize:menu:plugins:net:mime-types', component: MimeTypes },
-    // { id: 'baize:menu:plugins:net:dns-lookup', component: DnsLookup },
-    // { id: 'baize:menu:plugins:net:ping', component: Ping },
-    // { id: 'baize:menu:plugins:net:port-scanner', component: PortScanner },
-    // { id: 'baize:menu:plugins:net:whois-lookup', component: WhoisLookup },
-    // { id: 'baize:menu:plugins:net:color-converter', component: ColorConverterNet },
-    // { id: 'baize:menu:plugins:net:ip-geolocation', component: IpGeolocation },
-    // { id: 'baize:menu:plugins:net:unicode-converter', component: UnicodeConverter },
-    // { id: 'baize:menu:plugins:net:slugify-string', component: SlugifyString },
-    // { id: 'baize:menu:plugins:net:http-request-builder', component: HttpRequestBuilder },
-    { id: 'baize:menu:plugins:net:ipv6-ula-generator', component: Ipv6UlaGenerator },
+    // { id: 'baize:menu:plugins:net:ipv6-ula-generator', component: Ipv6UlaGenerator },
     { id: 'baize:menu:plugins:net:subnet-mask-map-table', component: SubnetMaskMapTable },
 
     // ==================== 语言语法关键字对照表 ====================
@@ -177,7 +130,6 @@ export const pluginTools = [
     // { id: 'baize:menu:plugins:info:network-port-table', component: NetworkPortTable },
     { id: 'baize:menu:plugins:info:numeric-case-table', component: NumericCase },
     { id: 'baize:menu:plugins:info:normal-font-style-table', component: NormalFontStyle },
-    { id: 'baize:menu:plugins:info:file-name-extension-table', component: FileNameExtension },
     { id: 'baize:menu:plugins:info:greece-letter-table', component: GreeceLetter },
     { id: 'baize:menu:plugins:info:html-entity-table', component: HTMLSpecialChar },
 
@@ -202,4 +154,4 @@ export const pluginTools = [
     // { id: 'baize:menu:plugins:info:unicode-table', component: UnicodeTable },
     // { id: 'baize:menu:plugins:info:mime-type-table', component: MimeTypeTable },
 
-]
+])

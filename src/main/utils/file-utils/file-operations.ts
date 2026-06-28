@@ -3,7 +3,7 @@
  * 提供文件保存、打开、创建、重命名、删除等基础功能
  */
 
-import * as fs from 'fs'
+import { promises as fs } from 'fs'
 import { shell, dialog, BrowserWindow } from 'electron'
 import { FileItem } from '../../global-types'
 import { configStore } from '../baize-store'
@@ -12,6 +12,7 @@ import { logger } from '../logger'
 import { ParserFileName, ParseDirectoryPath, BuildFileTree, GetCurrentFileDirectory, SelectDirectory } from './path-utils'
 import * as fileExport from './export'
 import { showErrorMessageBox } from './dialog-helpers'
+import { appState } from '../app-state'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
@@ -57,15 +58,15 @@ export function getMathRandom(maxLength: number): string {
  * 保存当前激活的文件
  */
 export async function SaveActiveFile(): Promise<void> {
-    const curFile = global.current_active_file
+    const curFile = appState.currentActiveFile
     if (!curFile) {
         throw new Error('No active file')
     }
     try {
-        await fs.promises.writeFile(curFile.path, curFile.content, 'utf-8')
+        await fs.writeFile(curFile.path, curFile.content!, 'utf-8')
 
         // 更新缓存
-        configStore.setFileContent(curFile.path, curFile.content)
+        configStore.setFileContent(curFile.path, curFile.content!)
 
         logger.info('The file has been saved successfully', curFile.path)
 
@@ -88,15 +89,15 @@ export async function SaveActiveFile(): Promise<void> {
  * 支持多种格式：md、txt、word、html、json、pdf
  */
 export async function SaveActiveFileAs(): Promise<void> {
-    const curFile = global.current_active_file
+    const curFile = appState.currentActiveFile
     if (!curFile || !curFile.content) {
         showErrorMessageBox('当前没有活动文件可另存为')
         return
     }
-    const currentContent = global.current_active_file?.content || ''
+    const currentContent = appState.currentActiveFile?.content || ''
 
     // 显示另存为对话框
-    const result = await dialog.showSaveDialog(global.MainWindow, {
+    const result = await dialog.showSaveDialog(appState.mainWindow!, {
         title: '另存为',
         defaultPath: curFile.name || 'untitled',
         filters: [
@@ -122,7 +123,7 @@ export async function SaveActiveFileAs(): Promise<void> {
             case '.md':
             case '.txt':
                 // 直接保存为文本文件
-                fs.writeFileSync(filePath, content, 'utf-8')
+                await fs.writeFile(filePath, content, 'utf-8')
                 break
 
             case '.docx':
@@ -152,7 +153,7 @@ export async function SaveActiveFileAs(): Promise<void> {
         }
 
         // 更新当前文件信息（仅对 md 和 txt）
-        global.current_active_file = {
+        appState.currentActiveFile = {
             name: path.basename(filePath),
             path: filePath,
             type: 'file',
@@ -160,14 +161,14 @@ export async function SaveActiveFileAs(): Promise<void> {
         }
 
         // 通知渲染进程
-        global.MainWindow.webContents.send('open-vue-dialog', 'message', {
+        appState.mainWindow!.webContents.send('open-vue-dialog', 'message', {
             title: '另存为成功',
             type: 'success',
             message: `文件已保存到: ${filePath}`
         })
     } catch (err) {
         logger.error('文件另存为失败', filePath, err)
-        global.MainWindow.webContents.send('open-vue-dialog', 'message', {
+        appState.mainWindow!.webContents.send('open-vue-dialog', 'message', {
             title: '另存为成功',
             type: 'error',
             message: `另存为失败: ${err}`
@@ -181,93 +182,84 @@ export async function SaveActiveFileAs(): Promise<void> {
  * @param dirPath 目录路径
  * @param callback 回调函数，返回文件树结构
  */
-export function TraverseDirectory(dirPath: string, callback: (fileItems: FileItem[]) => void): void {
-    fs.readdir(dirPath, (err, files) => {
-        if (err) {
-            showErrorMessageBox('Failed to obtain directory list！')
-            return
-        }
+export async function TraverseDirectory(dirPath: string, callback: (fileItems: FileItem[]) => void): Promise<void> {
+    let files: string[]
+    try {
+        files = await fs.readdir(dirPath)
+    } catch (err) {
+        showErrorMessageBox('Failed to obtain directory list！')
+        return
+    }
 
-        const items = files.map((file) => {
-            const fullPath = path.join(dirPath, file)
-            return {
-                id: getMathRandom(8),
-                name: file,
-                path: fullPath,
-                type: 'file',
-                fileExtension: '',
-                isDirectory: false,
-                children: []
-            } as FileItem
-        })
+    const items = files.map((file) => {
+        const fullPath = path.join(dirPath, file)
+        return {
+            id: getMathRandom(8),
+            name: file,
+            path: fullPath,
+            type: 'file',
+            fileExtension: '',
+            isDirectory: false,
+            children: []
+        } as FileItem
+    })
 
-        Promise.all(
-            items.map((item: FileItem) => {
-                return new Promise((resolve, reject) => {
-                    fs.lstat(item.path, (err, stats) => {
-                        if (err) {
-                            reject(err)
-                        } else {
-                            item.isDirectory = stats.isDirectory()
+    try {
+        const resolvedItems = await Promise.all(
+            items.map(async (item: FileItem) => {
+                try {
+                    const stats = await fs.lstat(item.path)
+                    item.isDirectory = stats.isDirectory()
 
-                            if (item.isDirectory) {
-                                // 如果是目录，则递归调用
-                                TraverseDirectory(item.path, (subItems: FileItem[]) => {
-                                    item.children = subItems
-                                    item.type = 'folder'
-                                    resolve(item)
-                                })
-                            } else if (
-                                path.extname(item.name) === '.md' ||
-                                path.extname(item.name) === '.png' ||
-                                path.extname(item.name) === '.jpg' ||
-                                path.extname(item.name) === '.jpeg' ||
-                                path.extname(item.name) === '.svg' ||
-                                path.extname(item.name) === '.pdf' ||
-                                path.extname(item.name) === '.txt' ||
-                                path.extname(item.name) === '.html'
-                            ) {
-                                // 如果是支持的文件类型
-                                item.type = 'file'
-                                item.fileExtension = path.extname(item.name)
-                                resolve(item)
-                            } else {
-                                // 对于不支持的文件类型，返回 null
-                                resolve(null)
-                            }
-                        }
-                    })
-                })
+                    if (item.isDirectory) {
+                        const subItems = await new Promise<FileItem[]>((resolve) => {
+                            TraverseDirectory(item.path, resolve)
+                        })
+                        item.children = subItems
+                        item.type = 'folder'
+                        return item
+                    } else if (
+                        path.extname(item.name) === '.md' ||
+                        path.extname(item.name) === '.png' ||
+                        path.extname(item.name) === '.jpg' ||
+                        path.extname(item.name) === '.jpeg' ||
+                        path.extname(item.name) === '.svg' ||
+                        path.extname(item.name) === '.pdf' ||
+                        path.extname(item.name) === '.txt' ||
+                        path.extname(item.name) === '.html'
+                    ) {
+                        item.type = 'file'
+                        item.fileExtension = path.extname(item.name)
+                        return item
+                    } else {
+                        return null
+                    }
+                } catch (err) {
+                    return null
+                }
             })
         )
-            .then((resolvedItems) => {
-                // 过滤掉不支持的文件类型（它们为 null）
-                const filteredItems: FileItem[] = resolvedItems.filter(Boolean) as FileItem[]
 
-                // 构建完整的目录树
-                const tree: FileItem[] = filteredItems.reduce((acc: FileItem[], item: FileItem) => {
-                    if (item.isDirectory) {
-                        // 如果目录已经在树中，则添加其子项
-                        const existingDir = acc.find((dir) => dir.path === item.path)
-                        if (existingDir) {
-                            existingDir.children = existingDir.children.concat(item.children)
-                        } else {
-                            acc.push(item)
-                        }
-                    } else {
-                        // 对于文件，直接添加到树中
-                        acc.push(item)
-                    }
-                    return acc
-                }, []) as FileItem[]
+        const filteredItems: FileItem[] = resolvedItems.filter(Boolean) as FileItem[]
 
-                // 调用回调并传入目录树
-                callback(tree)
-            })
-            .catch((err) => {
-                console.error(err)
-            })
-    })
+        const tree: FileItem[] = filteredItems.reduce((acc: FileItem[], item: FileItem) => {
+            if (item.isDirectory) {
+                const existingDir = acc.find((dir) => dir.path === item.path)
+                if (existingDir) {
+                    existingDir.children = existingDir.children.concat(item.children)
+                } else {
+                    acc.push(item)
+                }
+            } else {
+                acc.push(item)
+            }
+            return acc
+        }, []) as FileItem[]
+
+        callback(tree)
+    } catch (err) {
+        console.error(err)
+    }
 }
 
 /**
@@ -277,13 +269,14 @@ export function TraverseDirectory(dirPath: string, callback: (fileItems: FileIte
  * @param isFolder 是否为文件夹
  * @param extension 文件扩展名
  */
-export function CreateFileFolder(name: string, dirPath: string, isFolder: boolean, extension: string): void {
+export async function CreateFileFolder(name: string, dirPath: string, isFolder: boolean, extension: string): Promise<void> {
     let fullName = dirPath.replace('/', '\\') + '\\' + name
     if (isFolder) {
-        if (!fs.existsSync(fullName)) {
-            fs.mkdirSync(fullName, { recursive: true })
-        } else {
+        try {
+            await fs.access(fullName)
             showErrorMessageBox(`${fullName} 已存在`)
+        } catch {
+            await fs.mkdir(fullName, { recursive: true })
         }
     } else {
         fullName = fullName + extension
@@ -295,67 +288,72 @@ export function CreateFileFolder(name: string, dirPath: string, isFolder: boolea
             const fileHeader = name.substring(0, lastIndex)
             fileContent = '# ' + fileHeader + '\r\n'
         }
-        fs.writeFileSync(fullName, fileContent)
+        await fs.writeFile(fullName, fileContent)
 
         // 打开当前文件
-        global.current_active_file = {
+        appState.currentActiveFile = {
             name: name,
             path: fullName,
             type: 'file',
             content: fileContent
         }
-        global.MainWindow.webContents.send('baize:notes:show-selected-file-context', fileContent)
+        appState.mainWindow!.webContents.send('baize:notes:show-selected-file-context', fileContent)
     }
 
     // 重新加载文件资源管理器
-    setTimeout(() => {
+    setTimeout(async () => {
         const { StartAutoSaveFileTime } = getAutoSaveFunctions()
         StartAutoSaveFileTime()
-        ReloadDirFromDisk()
+        try {
+            await ReloadDirFromDisk()
+        } catch (err) {
+            console.error('Failed to reload from disk:', err)
+        }
     }, reloadFromDiskTime)
 }
 
 /**
  * 从磁盘重新加载目录
  */
-export function ReloadDirFromDisk(): void {
-    if (!global.RootPath) {
+export async function ReloadDirFromDisk(): Promise<void> {
+    if (!appState.rootPath) {
         return
     }
-    TraverseDirectory(global.RootPath, (mdFiles) => {
-        const fileTree = BuildFileTree(global.RootPath, mdFiles)
-        global.mdFileTree = fileTree
-        const { StartAutoSaveFileTime } = getAutoSaveFunctions()
-        StartAutoSaveFileTime()
-        global.MainWindow.webContents.send('baize:notes:resource:manager:file-system-data', JSON.stringify(fileTree))
-
-        // 重新加载当前打开的文件内容
-        if (global.current_active_file && global.current_active_file.path) {
-            try {
-                const fileContent = fs.readFileSync(global.current_active_file.path, 'utf-8')
-                global.current_active_file.content = fileContent
-                global.MainWindow.webContents.send('file-content-reloaded', {
-                    path: global.current_active_file.path,
-                    content: fileContent
-                })
-            } catch (err) {
-                console.error('Failed to reload file content:', err)
-            }
-        }
+    const mdFiles = await new Promise<FileItem[]>((resolve) => {
+        TraverseDirectory(appState.rootPath, resolve)
     })
+    const fileTree = BuildFileTree(appState.rootPath, mdFiles)
+    appState.mdFileTree = fileTree
+    const { StartAutoSaveFileTime } = getAutoSaveFunctions()
+    StartAutoSaveFileTime()
+    appState.mainWindow!.webContents.send('baize:notes:resource:manager:file-system-data', JSON.stringify(fileTree))
+
+    // 重新加载当前打开的文件内容
+    if (appState.currentActiveFile && appState.currentActiveFile.path) {
+        try {
+            const fileContent = await fs.readFile(appState.currentActiveFile.path, 'utf-8')
+            appState.currentActiveFile.content = fileContent
+            appState.mainWindow!.webContents.send('file-content-reloaded', {
+                path: appState.currentActiveFile.path,
+                content: fileContent
+            })
+        } catch (err) {
+            console.error('Failed to reload file content:', err)
+        }
+    }
 }
 
 /**
  * 打开选定的文件
  * @param fileProperties 文件属性
  */
-export function OpenSelectFile(fileProperties: FileProperties): void {
+export async function OpenSelectFile(fileProperties: FileProperties): Promise<void> {
     // 在打开新文件前,保存当前文件
-    const currentFile = global.current_active_file
+    const currentFile = appState.currentActiveFile
     if (currentFile && currentFile.path && currentFile.path.endsWith('.md')) {
         try {
-            fs.writeFileSync(currentFile.path, currentFile.content, 'utf-8')
-            configStore.setFileContent(currentFile.path, currentFile.content)
+            await fs.writeFile(currentFile.path, currentFile.content!, 'utf-8')
+            configStore.setFileContent(currentFile.path, currentFile.content!)
             logger.info('The file has been saved automatically', currentFile.path)
         } catch (err) {
             logger.error('Failed to automatically save the file', currentFile.path, err)
@@ -364,12 +362,12 @@ export function OpenSelectFile(fileProperties: FileProperties): void {
 
     // 检测文件大小
     try {
-        const stats = fs.statSync(fileProperties.path)
+        const stats = await fs.stat(fileProperties.path)
         const fileSize = stats.size
 
         if (fileSize > LARGE_FILE_THRESHOLD) {
             logger.warn('Open Large File ', `${(fileSize / 1024 / 1024).toFixed(2)}MB`, fileProperties.path)
-            const result = dialog.showMessageBoxSync(global.MainWindow, {
+            const result = dialog.showMessageBoxSync(appState.mainWindow!, {
                 type: 'warning',
                 title: 'Large File Warning',
                 message: `file size is  ${(fileSize / 1024 / 1024).toFixed(2)}MB, May affect performance `,
@@ -391,51 +389,47 @@ export function OpenSelectFile(fileProperties: FileProperties): void {
     const { StartAutoSaveFileTime } = getAutoSaveFunctions()
     StartAutoSaveFileTime()
 
-    // 始终从磁盘读取文件内容，确保显示最新内容
-    fs.readFile(fileProperties.path, 'utf8', (err, data) => {
-        if (!err) {
-            fileProperties.content = data
-            global.current_active_file = fileProperties
+    try {
+        let data = await fs.readFile(fileProperties.path, 'utf8')
+        fileProperties.content = data
+        appState.currentActiveFile = fileProperties
 
-            // 更新缓存
-            configStore.setFileContent(fileProperties.path, data)
+        // 更新缓存
+        configStore.setFileContent(fileProperties.path, data)
 
-            if (data.length === 0) {
-                data = '\r\n'
-            }
-            logger.info('File loaded successfully', fileProperties.path)
-            global.MainWindow.webContents.send('baize:notes:show-selected-file-context', data)
-            global.MainWindow.webContents.send('monaco-editor-user-select-file', fileProperties.path)
-            saveLastOpenedFile(fileProperties.path)
-        } else {
-            logger.error('File loading failed', fileProperties.path, err)
+        if (data.length === 0) {
+            data = '\r\n'
         }
-    })
+        logger.info('File loaded successfully', fileProperties.path)
+        appState.mainWindow!.webContents.send('baize:notes:show-selected-file-context', data)
+        appState.mainWindow!.webContents.send('monaco-editor-user-select-file', fileProperties.path)
+        saveLastOpenedFile(fileProperties.path)
+    } catch (err) {
+        logger.error('File loading failed', fileProperties.path, err)
+    }
 }
 
 /**
  * 打开文件对话框
  * @param mainWindow 主窗口
  */
-export function OpenFile(mainWindow: BrowserWindow): void {
-    dialog
-        .showOpenDialog(mainWindow, {
+export async function OpenFile(mainWindow: BrowserWindow): Promise<void> {
+    try {
+        const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openFile'],
             filters: [{ name: 'Markdown Files', extensions: ['md'] }]
         })
-        .then((result) => {
-            if (result.canceled) return
-            const fileProperties: FileProperties = {
-                name: ParserFileName(result.filePaths[0]),
-                path: result.filePaths[0],
-                type: 'file',
-                content: ''
-            }
-            OpenSelectFile(fileProperties)
-        })
-        .catch((err) => {
-            console.error('Error reading file:', err)
-        })
+        if (result.canceled) return
+        const fileProperties: FileProperties = {
+            name: ParserFileName(result.filePaths[0]),
+            path: result.filePaths[0],
+            type: 'file',
+            content: ''
+        }
+        await OpenSelectFile(fileProperties)
+    } catch (err) {
+        console.error('Error reading file:', err)
+    }
 }
 
 /**
@@ -444,48 +438,48 @@ export function OpenFile(mainWindow: BrowserWindow): void {
  * @param name 文件名
  * @param extension 扩展名
  */
-export function CreateFile(dirPath: string, name: string, extension: string): void {
+export async function CreateFile(dirPath: string, name: string, extension: string): Promise<void> {
     const fullName = dirPath.replace('/', '\\') + '\\' + name + extension
-    fs.writeFileSync(fullName, '')
+    await fs.writeFile(fullName, '')
 
-    setTimeout(() => {
-        ReloadDirFromDisk()
+    setTimeout(async () => {
+        try {
+            await ReloadDirFromDisk()
+        } catch (err) {
+            console.error('Failed to reload from disk:', err)
+        }
     }, reloadFromDiskTime)
 
-    global.current_active_file = {
+    appState.currentActiveFile = {
         name: name,
         path: fullName,
         type: 'file',
         content: '# ' + name
     }
-    global.MainWindow.webContents.send('baize:notes:show-selected-file-context', '# ' + name)
+    appState.mainWindow!.webContents.send('baize:notes:show-selected-file-context', '# ' + name)
 }
 
 /**
  * 打开目录对话框
  * @param mainWindow 主窗口
  */
-export function OpenDirectory(mainWindow: BrowserWindow): void {
-    dialog
-        .showOpenDialog(mainWindow, {
+export async function OpenDirectory(mainWindow: BrowserWindow): Promise<void> {
+    try {
+        const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openDirectory']
         })
-        .then((result) => {
-            if (result.canceled) return
+        if (result.canceled) return
 
-            // 清理编辑区域和预览区域
-            mainWindow.webContents.send('clear-editor-and-preview')
+        mainWindow.webContents.send('clear-editor-and-preview')
 
-            global.RootPath = result.filePaths[0]
-            ReloadDirFromDisk()
+        appState.rootPath = result.filePaths[0]
+        await ReloadDirFromDisk()
 
-            // 保存上次打开的目录
-            const { saveLastOpenedDirectory } = require('../file-state')
-            saveLastOpenedDirectory(result.filePaths[0])
-        })
-        .catch((err) => {
-            showErrorMessageBox('Error opening directory dialog:' + err)
-        })
+        const { saveLastOpenedDirectory } = require('../file-state')
+        saveLastOpenedDirectory(result.filePaths[0])
+    } catch (err) {
+        showErrorMessageBox('Error opening directory dialog:' + err)
+    }
 }
 
 /**
@@ -516,16 +510,21 @@ export function GetSelectDir(mainWindow: BrowserWindow, cb: (path: string | null
  * @param dirPath 目录路径
  * @param name 目录名
  */
-export function CreateDirectory(dirPath: string, name: string): void {
+export async function CreateDirectory(dirPath: string, name: string): Promise<void> {
     const fullName = dirPath.replace('/', '\\') + '\\' + name
-    if (!fs.existsSync(fullName)) {
-        fs.mkdirSync(fullName, { recursive: true })
-    } else {
+    try {
+        await fs.access(fullName)
         showErrorMessageBox(`${fullName} 已存在`)
+    } catch {
+        await fs.mkdir(fullName, { recursive: true })
     }
 
-    setTimeout(() => {
-        ReloadDirFromDisk()
+    setTimeout(async () => {
+        try {
+            await ReloadDirFromDisk()
+        } catch (err) {
+            console.error('Failed to reload from disk:', err)
+        }
     }, reloadFromDiskTime)
 }
 
@@ -535,8 +534,8 @@ export function CreateDirectory(dirPath: string, name: string): void {
  * @param newName 新名称
  * @param isFile 是否为文件
  */
-export function Rename(name: string, newName: string, isFile: boolean): void {
-    RenameFileFolder(name, newName, isFile)
+export async function Rename(name: string, newName: string, isFile: boolean): Promise<void> {
+    await RenameFileFolder(name, newName, isFile)
 }
 
 /**
@@ -544,8 +543,8 @@ export function Rename(name: string, newName: string, isFile: boolean): void {
  * @param name 名称
  * @param isFile 是否为文件
  */
-export function Delete(name: string, isFile: boolean): void {
-    DeleteFileFolder(name, isFile)
+export async function Delete(name: string, isFile: boolean): Promise<void> {
+    await DeleteFileFolder(name, isFile)
 }
 
 /**
@@ -554,7 +553,7 @@ export function Delete(name: string, isFile: boolean): void {
  * @param newName 新名称
  * @param isFile 是否为文件
  */
-function RenameFileFolder(name: string, newName: string, isFile: boolean): void {
+async function RenameFileFolder(name: string, newName: string, isFile: boolean): Promise<void> {
     const dirPath = ParseDirectoryPath(name)
     let newFullPath = ''
     if (!isFile) {
@@ -564,10 +563,14 @@ function RenameFileFolder(name: string, newName: string, isFile: boolean): void 
         newFullPath = dirPath.replace('/', '\\') + '\\' + newName + extension
     }
 
-    fs.renameSync(name, newFullPath)
+    await fs.rename(name, newFullPath)
 
-    setTimeout(() => {
-        ReloadDirFromDisk()
+    setTimeout(async () => {
+        try {
+            await ReloadDirFromDisk()
+        } catch (err) {
+            console.error('Failed to reload from disk:', err)
+        }
     }, reloadFromDiskTime)
 
     if (isFile) {
@@ -577,7 +580,7 @@ function RenameFileFolder(name: string, newName: string, isFile: boolean): void 
             type: 'file',
             content: ''
         }
-        OpenSelectFile(fileProperties)
+        await OpenSelectFile(fileProperties)
     }
 }
 
@@ -586,19 +589,27 @@ function RenameFileFolder(name: string, newName: string, isFile: boolean): void 
  * @param name 名称
  * @param isFile 是否为文件
  */
-function DeleteFileFolder(name: string, isFile: boolean): void {
+async function DeleteFileFolder(name: string, isFile: boolean): Promise<void> {
     if (!isFile) {
-        fs.rm(name, { recursive: true }, (err) => {
-            if (err) {
-                showErrorMessageBox(err.message)
-            }
-        })
+        try {
+            await fs.rm(name, { recursive: true })
+        } catch (err) {
+            showErrorMessageBox((err as Error).message)
+        }
     } else {
-        fs.unlinkSync(name)
+        try {
+            await fs.unlink(name)
+        } catch (err) {
+            showErrorMessageBox((err as Error).message)
+        }
     }
 
-    setTimeout(() => {
-        ReloadDirFromDisk()
+    setTimeout(async () => {
+        try {
+            await ReloadDirFromDisk()
+        } catch (err) {
+            console.error('Failed to reload from disk:', err)
+        }
     }, reloadFromDiskTime)
 }
 

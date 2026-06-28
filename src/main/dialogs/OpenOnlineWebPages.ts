@@ -1,17 +1,13 @@
-import { BrowserWindow, shell } from 'electron'
+import { shell } from 'electron'
 import * as SystemSettingUtils from "../config";
 import { logger } from "../utils/logger";
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 function OpenOnlineWebPageWithDialog(url: string) {
-    const localOpenWebPageDialog = new BrowserWindow({
+    const localOpenWebPageDialog = windowManager.createWindow('online-web-page', createDialogOptions({
         width: 1280,
-        height: 960,
-        autoHideMenuBar: true,
-        webPreferences: {
-            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
-            sandbox: false
-        }
-    })
+        height: 960
+    }), 'online-web-page', false)
 
     localOpenWebPageDialog.loadURL(url)
 }
@@ -22,7 +18,6 @@ function OpenOnlineWebPageWithBrowser(url: string) {
 
 export function OpenOnlineWebPage(url: string) {
     const pluginOpenType = SystemSettingUtils.getSystemSettingValString('pluginOpen', 'browser')
-    console.log('systemSettings.pluginOpen',pluginOpenType)
     logger.info('网页打开方式： ', pluginOpenType)
     if (pluginOpenType === 'local-dialog') {
         OpenOnlineWebPageWithDialog(url)

@@ -10,32 +10,32 @@
             <span v-if="node.type === 'folder'">
                 <button style="border: none; background-color: transparent" @click="toggleFolder">
                     <svg
-                        v-if="getSvg(isExpanded, 'collapse')"
-                        :class="['folder-collapse', getSvg(isExpanded, 'collapse').className]"
-                        :style="getSvg(isExpanded, 'collapse').style"
-                        :viewBox="getSvg(isExpanded, 'collapse').viewBox"
+                        v-if="collapseSvg"
+                        :class="['folder-collapse', collapseSvg.className]"
+                        :style="collapseSvg.style"
+                        :viewBox="collapseSvg.viewBox"
                     >
-                        <path :d="getSvg(isExpanded, 'collapse').path" />
+                        <path :d="collapseSvg.path" />
                     </svg>
                 </button>
                 <svg
-                    v-if="getSvg(isExpanded, 'folder')"
-                    :class="['folder-icon', getSvg(isExpanded, 'folder').className]"
-                    :style="getSvg(isExpanded, 'folder').style"
-                    :viewBox="getSvg(isExpanded, 'folder').viewBox"
+                    v-if="folderSvg"
+                    :class="['folder-icon', folderSvg.className]"
+                    :style="folderSvg.style"
+                    :viewBox="folderSvg.viewBox"
                 >
-                    <path :d="getSvg(isExpanded, 'folder').path" />
+                    <path :d="folderSvg.path" />
                 </svg>
             </span>
             <!-- 如果是文件，只显示文件图标和名称 -->
             <span v-else>
                 <svg
-                    v-if="fileExtension && getSvg(false, fileExtension)"
-                    :class="['file-icon', getSvg(false, fileExtension).className]"
-                    :style="getSvg(false, fileExtension).style"
-                    :viewBox="getSvg(false, fileExtension).viewBox"
+                    v-if="fileExtension && fileSvg"
+                    :class="['file-icon', fileSvg.className]"
+                    :style="fileSvg.style"
+                    :viewBox="fileSvg.viewBox"
                 >
-                    <path :d="getSvg(false, fileExtension).path" />
+                    <path :d="fileSvg.path" />
                 </svg>
             </span>
             <span id="file-manager-node" class="file-manager-node" :title="node.name">{{ node.name }}</span>
@@ -44,8 +44,8 @@
         <div v-if="node.type === 'folder' && isExpanded" id="file-subtree" class="file-subtree">
             <FileTreeNode
                 v-for="child in node.children"
-                :key="child.id"
-                :ref="`node-${child.id}`"
+                :key="child.path"
+                v-memo="[child.path, child.fileExtension, child.isExpanded]"
                 v-model:is-expanded="child.isExpanded"
                 v-model:file-extension="child.fileExtension"
                 :node="child"
@@ -57,12 +57,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, PropType, onMounted, onBeforeUnmount  } from 'vue'
+import { computed, PropType } from 'vue'
 import { FileSysItem, getFileMgrSvg, handleContextMenu } from './resource-manager'
 import EventBus from '../../common/event_bus/event-bus'
 
-// 定义 props 类型
-// @ts-ignore eslint-disable-next-line @typescript-eslint/no-unused-vars
 const props = defineProps({
     node: {
         type: Object as PropType<FileSysItem>,
@@ -70,7 +68,7 @@ const props = defineProps({
     },
     isIndented: {
         type: Boolean,
-        default: false // 根据你的需求设置默认值
+        default: false
     },
     isExpanded: {
         type: Boolean,
@@ -86,26 +84,19 @@ const props = defineProps({
     }
 })
 
-onMounted(() => {
-    const handleEditorSwitchExplorer = () => {
-        // console.log('curActiveNode', curActiveNode)
-    }
-    EventBus.$on('baize:notes:monaco-editor:switch:explorer', handleEditorSwitchExplorer)
+const emit = defineEmits<{
+    (e: 'update:isExpanded', value: boolean): void
+    (e: 'update:fileExtension', value: string): void
+    (e: 'contextmenu:node', event: MouseEvent, node: FileSysItem): void
+}>()
 
-    onBeforeUnmount(() => {
-        EventBus.$off('baize:notes:monaco-editor:switch:explorer', handleEditorSwitchExplorer)
-    })
-})
-
-function getSvg(isExpanded: boolean, extension: string) {
-    return getFileMgrSvg(isExpanded, extension)
-}
-
-// eslint-disable-next-line vue/no-dupe-keys
-const isExpanded = ref(false) // 控制文件夹是否展开
 const toggleFolder = () => {
-    isExpanded.value = !isExpanded.value
+    emit('update:isExpanded', !props.isExpanded)
 }
+
+const collapseSvg = computed(() => getFileMgrSvg(props.isExpanded, 'collapse'))
+const folderSvg = computed(() => getFileMgrSvg(props.isExpanded, 'folder'))
+const fileSvg = computed(() => getFileMgrSvg(false, props.fileExtension))
 
 function handleFileSelect(node: FileSysItem) {
     const fileInfo: FileProperties = {

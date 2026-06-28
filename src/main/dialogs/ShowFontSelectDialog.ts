@@ -1,10 +1,10 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
 import { getCurrentThemeStyles } from '../config'
 import { FontFamily } from '../utils/common'
-
-let fontSelectDialog: Electron.BrowserWindow | null
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 
 interface FontSelect {
     fontFamily: string
@@ -20,7 +20,8 @@ interface FontSelect {
 }
 
 export function ShowFontSelectDialog(mainWindow: Electron.BrowserWindow) {
-    if (fontSelectDialog) {
+    const existing = windowManager.getWindowByType('font-select-dialog')
+    if (existing) {
         digcom.ShowAlreadyExistDialog()
         return
     }
@@ -28,7 +29,13 @@ export function ShowFontSelectDialog(mainWindow: Electron.BrowserWindow) {
 }
 // 创建一个自定义对话框的函数
 function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
-    fontSelectDialog = new BrowserWindow({
+    const existing = windowManager.getWindowByType('font-select-dialog')
+    if (existing) {
+        digcom.ShowAlreadyExistDialog()
+        return
+    }
+
+    const fontSelectDialog = windowManager.createWindow('font-select-dialog', createDialogOptions({
         width: 1280,
         height: 800,
         minWidth: 1000,
@@ -36,15 +43,8 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
         minimizable: false,
         maximizable: true,
         resizable: true,
-        title: '文字样式选择',
-        autoHideMenuBar: true,
-        frame: false,
-        webPreferences: {
-            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
-            sandbox: false
-        }
-    })
+        title: '文字样式选择'
+    }), 'font-select-dialog', true)
 
     if (!fontSelectDialog) {
         return
@@ -57,25 +57,18 @@ function createFontSelectDialog(mainWindow: Electron.BrowserWindow) {
         `data:text/html;charset=utf-8,${encodeURIComponent(makeFontDialogHtml())}`
     )
 
-    // 当窗口关闭时，清除引用
-    fontSelectDialog.on('closed', () => {
-        fontSelectDialog = null
-        ipcMain.removeListener('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
-        ipcMain.removeListener('dialog-user-font-select-btn-cancel', () => {})
-    })
-
     // 显示窗口
     fontSelectDialog.show()
 
     function exitFontSelectDialog() {
-        if (fontSelectDialog) {
+        const win = windowManager.getWindowByType('font-select-dialog')
+        if (win) {
             ipcMain.removeListener(
                 'dialog-user-font-select-btn-insert',
                 processCustomFontDialogApply
             )
             ipcMain.removeListener('dialog-user-font-select-btn-cancel', () => {})
-            fontSelectDialog.close()
-            fontSelectDialog = null
+            win.close()
         }
     }
 
@@ -513,7 +506,7 @@ function makeFontDialogHtml(): string {
 
     const eleScript = document.createElement('script')
     eleScript.textContent = `
-    const { ipcRenderer } = require('electron')
+    const ipcRenderer = window.electronAPI.ipcRenderer
     let fontStyle = {
       fontFamily:"Arial",
       fontSize: "15pt",

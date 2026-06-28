@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch  } from 'vue'
+import { computed, ref } from 'vue'
 import { ASCIITable } from './Information'
 
 const props = defineProps({
@@ -52,18 +52,10 @@ const props = defineProps({
     }
 })
 
-const asciiViewWidth = ref(props.workAreaWidth)
 const searchQuery = ref('')
 
-watch(
-    () => props.workAreaWidth,
-    (newWidth) => {
-        asciiViewWidth.value = newWidth
-    }
-)
-
 const asciiTableWidth = computed(() => {
-    const workWidthVal = parseInt(asciiViewWidth.value.replace('px', ''), 10)
+    const workWidthVal = parseInt(props.workAreaWidth.replace('px', ''), 10)
     const tableWidthVal = workWidthVal - 50
     return tableWidthVal + 'px'
 })

@@ -3,9 +3,10 @@
  * 使用配置驱动的方式统一处理各种格式的导出
  */
 
-import * as fs from 'fs'
+import { promises as fs, createWriteStream } from 'fs'
 import { dialog, BrowserWindow } from 'electron'
 import { showErrorMessageBox, showInfoMessageBox } from './dialog-helpers'
+import { appState } from '../app-state'
 
 /**
  * 导出配置接口
@@ -65,7 +66,7 @@ const exportConfigs: Record<string, ExportConfig> = {
  * @param fileType 文件类型（word, json, xml, yaml, html, pdf）
  */
 export async function ExportToFile(mainWindow: BrowserWindow, fileType: string): Promise<void> {
-    const currentContent = global.current_active_file?.content || ''
+    const currentContent = appState.currentActiveFile?.content || ''
 
     if (!currentContent) {
         showErrorMessageBox('Currently, there is no content to export')
@@ -134,7 +135,7 @@ export async function ToWord(content: string, filePath: string): Promise<void> {
     })
 
     return new Promise((resolve, reject) => {
-        const stream = fs.createWriteStream(filePath)
+        const stream = createWriteStream(filePath)
         docx.generate(stream)
         stream.on('close', resolve)
         stream.on('error', reject)
@@ -154,7 +155,7 @@ export async function ToJson(content: string, filePath: string): Promise<void> {
             app: 'BaiZeNotes'
         }
     }
-    fs.writeFileSync(filePath, JSON.stringify(jsonContent, null, 2), 'utf-8')
+    await fs.writeFile(filePath, JSON.stringify(jsonContent, null, 2), 'utf-8')
 }
 
 /**
@@ -171,7 +172,7 @@ export async function ToXml(content: string, filePath: string): Promise<void> {
   </metadata>
   <content><![CDATA[${content}]]></content>
 </document>`
-    fs.writeFileSync(filePath, xmlContent, 'utf-8')
+    await fs.writeFile(filePath, xmlContent, 'utf-8')
 }
 
 /**
@@ -185,7 +186,7 @@ metadata:
   version: 1.1.5-beta
   type: markdown
   app: BaiZeNotes`
-    fs.writeFileSync(filePath, yamlContent, 'utf-8')
+    await fs.writeFile(filePath, yamlContent, 'utf-8')
 }
 
 /**
@@ -249,7 +250,7 @@ ${md.render(content)}
 </body>
 </html>`
 
-    fs.writeFileSync(filePath, htmlContent, 'utf-8')
+    await fs.writeFile(filePath, htmlContent, 'utf-8')
 }
 
 /**
@@ -300,6 +301,6 @@ ${md.render(content)}
         }
     })
 
-    fs.writeFileSync(filePath, pdfData)
+    await fs.writeFile(filePath, pdfData)
     win.close()
 }

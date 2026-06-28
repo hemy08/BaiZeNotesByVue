@@ -6,6 +6,7 @@
 // @ts-ignore
 import Store from 'electron-store'
 import * as path from 'path'
+import { appState } from './app-state'
 // @ts-ignore
 import * as FileUtils from './file-utils/index'
 
@@ -99,7 +100,7 @@ export function removeRecentFile(filePath: string): void {
 /**
  * 恢复上次打开的目录和文件
  */
-export function restoreLastOpenedFile(): void {
+export async function restoreLastOpenedFile(): Promise<void> {
     const lastFile = getLastOpenedFile()
     const lastDir = getLastOpenedDirectory()
 
@@ -108,18 +109,15 @@ export function restoreLastOpenedFile(): void {
         try {
             const fs = require('fs')
             if (fs.existsSync(lastDir)) {
-                console.log('open last directory:', lastDir)
-
                 // 设置全局根路径
-                global.RootPath = lastDir
+                appState.rootPath = lastDir
 
                 // 重新加载目录
-                FileUtils.ReloadDirFromDisk()
+                await FileUtils.ReloadDirFromDisk()
 
                 // 保存上次打开的目录
                 saveLastOpenedDirectory(lastDir)
             } else {
-                console.log('last directory not exist :', lastDir)
                 clearLastOpenedDirectory()
             }
         } catch (error) {
@@ -133,8 +131,6 @@ export function restoreLastOpenedFile(): void {
         try {
             const fs = require('fs')
             if (fs.existsSync(lastFile)) {
-                console.log('restore lastest open file :', lastFile)
-
                 // 创建FileProperties对象
                 const fileProperties = {
                     name: path.basename(lastFile),
@@ -144,9 +140,8 @@ export function restoreLastOpenedFile(): void {
                 }
 
                 // 调用OpenSelectFile
-                FileUtils.OpenSelectFile(fileProperties)
+                await FileUtils.OpenSelectFile(fileProperties)
             } else {
-                console.log('lastest open file not exist:', lastFile)
                 clearLastOpenedFile()
             }
         } catch (error) {

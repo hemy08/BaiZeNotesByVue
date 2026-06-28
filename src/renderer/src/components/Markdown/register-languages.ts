@@ -78,7 +78,6 @@ export function registerPlantUMLLanguage() {
         ]
     })
 
-    console.log('[Monaco] PlantUML language registered')
 }
 
 /**
@@ -116,7 +115,6 @@ export function registerMermaidLanguage() {
         }
     })
 
-    console.log('[Monaco] Mermaid language registered')
 }
 
 /**

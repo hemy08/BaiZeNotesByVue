@@ -1,9 +1,8 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import { JSDOM } from 'jsdom'
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// let mainWin: Electron.CrossProcessExports.BrowserWindow
-let mermaidRenderWindow: Electron.CrossProcessExports.BrowserWindow
 let mermaidRenderResult: string | PromiseLike<string> // 假设这是一个全局变量
 
 export async function HandleMermaidGetRenderResult(text: string): Promise<string> {
@@ -22,28 +21,25 @@ export async function HandleMermaidGetRenderResult(text: string): Promise<string
 }
 
 export function CreateMermaidRenderFrame(graphDesc: string) {
-    mermaidRenderWindow = new BrowserWindow({
+    const existing = windowManager.getWindowByType('mermaid-render-frame')
+    if (existing) {
+        existing.close()
+    }
+
+    const mermaidRenderWindow = windowManager.createWindow('mermaid-render-frame', createDialogOptions({
         width: 800,
         height: 600,
-        title: '文字样式选择',
         show: false,
         resizable: false,
-        autoHideMenuBar: true,
-        webPreferences: {
-            nodeIntegration: true, // 允许在渲染器进程中使用 Node.js 功能（注意：出于安全考虑，新版本 Electron 默认禁用）
-            contextIsolation: false, // 禁用上下文隔离（同样出于安全考虑，新版本 Electron 默认启用）
-            sandbox: false
-        }
-    })
-    // let mermaidSvgData = ''
-    // mainWin = mainWindow
+        title: 'Mermaid Render'
+    }), 'mermaid-render-frame', false)
+
     const mermaidFrame = createMermaidRenderHtmlContent(graphDesc)
     const tempHtml = mermaidFrame.documentElement.outerHTML
 
     // 加载一个 HTML 文件作为对话框的内容
     mermaidRenderWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(tempHtml)}`)
     mermaidFrame.close()
-    // mermaidRenderWindow.show()
 
     function processMermaidRenderResult(_, result: string) {
         mermaidRenderResult = result
@@ -52,15 +48,16 @@ export function CreateMermaidRenderFrame(graphDesc: string) {
 
     ipcMain.on('dialog-mermaid-render-svg-result', processMermaidRenderResult)
 
-    // 当窗口关闭时，清除引用
     mermaidRenderWindow.on('closed', () => {
         ipcMain.removeListener('dialog-mermaid-render-svg-result', processMermaidRenderResult)
     })
 }
 
 export function updateMermaidWindowHtml(graphDesc: string) {
-    //console.log('updateMermaidWindowHtml ', graphDesc)
-    mermaidRenderWindow.webContents.send('update-mermaid-render-graph', graphDesc)
+    const win = windowManager.getWindowByType('mermaid-render-frame')
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('update-mermaid-render-graph', graphDesc)
+    }
 }
 
 function createMermaidRenderHtmlContent(mermaidGraphDesc: string): Document {
@@ -83,7 +80,7 @@ function createMermaidRenderHtmlContent(mermaidGraphDesc: string): Document {
 
     const ele_body_script = document.createElement('script')
     ele_body_script.textContent =
-        "    const { ipcRenderer, ipcMain } = require('electron');\n" +
+        "    const ipcRenderer = window.electronAPI.ipcRenderer;\n" +
         '    mermaid.initialize({ startOnLoad: true });\n' +
         "    var graphDefinition = document.getElementById('mermaidGraph').textContent;\n" +
         "    mermaid.render('mermaidGraph', graphDefinition, svgObject => document.appendChild(svgObject));\n" +
@@ -106,9 +103,9 @@ export { createMermaidRenderHtmlContent }
  * 关闭 Mermaid 渲染窗口
  */
 export function closeMermaidRenderWindow(): void {
-    if (mermaidRenderWindow && !mermaidRenderWindow.isDestroyed()) {
-        mermaidRenderWindow.close()
-        mermaidRenderWindow = null
+    const win = windowManager.getWindowByType('mermaid-render-frame')
+    if (win && !win.isDestroyed()) {
+        win.close()
     }
 }
 

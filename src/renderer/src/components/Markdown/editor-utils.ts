@@ -23,7 +23,6 @@ export function UpdateFontSize(editor: monaco.editor.IStandaloneCodeEditor, newS
 
 export function UpdateRenderWhitespace(editor: monaco.editor.IStandaloneCodeEditor) {
     const whiteSpace = editor.getOption(monaco.editor.EditorOption.renderWhitespace)
-    console.log('renderWhitespace', whiteSpace)
     if (whiteSpace === 'all') {
         editor.updateOptions({ renderWhitespace: 'none' })
     } else {

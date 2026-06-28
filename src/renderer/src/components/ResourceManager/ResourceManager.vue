@@ -63,15 +63,6 @@ const props = defineProps({
     }
 })
 
-window.electron.ipcRenderer.on('baize:notes:resource:manager:file-system-data', (_, fileTree: string) => {
-    try {
-        // 更新响应式数据
-        fileNodes.value = JSON.parse(fileTree) as FileSysItem[]
-    } catch (error) {
-        console.error('Error parsing file system data:', error)
-    }
-})
-
 function SwitchResourceManager(value: string) {
     if (value == 'markdown-toc') {
         // 保存当前tree信息
@@ -113,12 +104,22 @@ const handleChaptersUpdate = (toc: MarkdownTOC[]) => {
     tocArray.value = toc
 }
 
+const handleFileSystemData = (_: any, fileTree: string) => {
+    try {
+        fileNodes.value = JSON.parse(fileTree) as FileSysItem[]
+    } catch (error) {
+        console.error('Error parsing file system data:', error)
+    }
+}
+
 onMounted(() => {
     EventBus.$on('monaco-editor-chapters', handleChaptersUpdate)
+    window.electron.ipcRenderer.on('baize:notes:resource:manager:file-system-data', handleFileSystemData)
 })
 
 onBeforeUnmount(() => {
     EventBus.$off('monaco-editor-chapters', handleChaptersUpdate)
+    window.electron.ipcRenderer.removeListener('baize:notes:resource:manager:file-system-data', handleFileSystemData)
 })
 </script>
 

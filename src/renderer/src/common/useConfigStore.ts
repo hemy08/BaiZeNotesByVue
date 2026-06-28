@@ -164,7 +164,6 @@ async function loadAllConfigs() {
     if (system) systemConfig.value = system
     if (links) quickLinksConfig.value = links
 
-    console.log('[ConfigStore] All configs loaded')
   } catch (error) {
     console.error('[ConfigStore] Error loading configs:', error)
   } finally {
@@ -178,7 +177,6 @@ async function saveConfig(name: string, data: any) {
   saveTimeout = setTimeout(async () => {
     try {
       await window.api.config.write(name, data)
-      console.log(`[ConfigStore] Config saved: ${name}`)
     } catch (error) {
       console.error(`[ConfigStore] Error saving config ${name}:`, error)
     }

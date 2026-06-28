@@ -2,11 +2,10 @@
  * 联系我们对话框
  */
 
-import { BrowserWindow } from 'electron'
 import { JSDOM } from 'jsdom'
 import { getCurrentThemeStyles } from '../config'
-
-let contactUsDialog: Electron.BrowserWindow | null
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 
 // 白泽图标SVG
 const BAI_ZE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
@@ -56,26 +55,20 @@ const BAI_ZE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 51
  * 显示联系我们对话框
  */
 export function ShowHelpContactUsDialog() {
-    if (contactUsDialog) {
-        contactUsDialog.focus()
+    const existing = windowManager.getWindowByType('help-contact-us-dialog')
+    if (existing) {
+        existing.focus()
         return
     }
 
-    contactUsDialog = new BrowserWindow({
+    const contactUsDialog = windowManager.createWindow('help-contact-us-dialog', createDialogOptions({
         width: 600,
         height: 400,
         minimizable: false,
         maximizable: false,
         resizable: true,
-        title: '联系我们',
-        autoHideMenuBar: true,
-        frame: false,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            sandbox: false
-        }
-    })
+        title: '联系我们'
+    }), 'help-contact-us-dialog', true)
 
     contactUsDialog.setMenu(null)
 
@@ -88,10 +81,6 @@ export function ShowHelpContactUsDialog() {
     contactUsDialog.webContents.on('did-finish-load', () => {
         const theme = getCurrentThemeStyles()
         contactUsDialog?.webContents.send('baize-notes:init-theme-styles', theme)
-    })
-
-    contactUsDialog.on('closed', () => {
-        contactUsDialog = null
     })
 }
 
@@ -323,10 +312,10 @@ function makeContactUsHtml(): string {
     </div>
 
     <script>
-        const { shell, ipcRenderer } = require('electron')
+        const ipcRenderer = window.electronAPI.ipcRenderer
 
         function openLink(url) {
-            shell.openExternal(url)
+            window.electronAPI.shell.openExternal(url)
         }
 
         // 监听主题更新

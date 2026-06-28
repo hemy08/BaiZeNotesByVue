@@ -14,24 +14,20 @@ import {ShowHelpContactUsDialog} from  './ShowHelpContactUsDialog'
 import { dialog } from 'electron'
 import { DeleteFileFolder } from '../utils/file-utils'
 
-function ShowConfirmDeleteDialog(path: string, isFile: boolean) {
-    dialog
-        .showMessageBox({
+async function ShowConfirmDeleteDialog(path: string, isFile: boolean) {
+    try {
+        const result = await dialog.showMessageBox({
             type: 'question',
             buttons: ['是', '否'],
             title: '确认',
             message: '确定要删除[' + path + ']吗？'
         })
-        .then((result) => {
-            if (result.response === 0) {
-                DeleteFileFolder(path, isFile)
-            } else {
-                return
-            }
-        })
-        .catch((err) => {
-            console.error('显示对话框时出错:', err)
-        })
+        if (result.response === 0) {
+            await DeleteFileFolder(path, isFile)
+        }
+    } catch (err) {
+        console.error('显示对话框时出错:', err)
+    }
 }
 
 export {
@@ -60,16 +56,14 @@ export function MainWindowListenDialogsEvent(mainWindow: Electron.BrowserWindow)
         ShowCreateFileFolderDialog(dirPath, isFolder, fileExtension)
     }, componentId)
 
-    ipcListenerManager.register('file-manager-context-menu-import-from', (_, value) => {
-        console.log('file-manager-context-menu-import-from', value)
+    ipcListenerManager.register('file-manager-context-menu-import-from', (_, _value) => {
     }, componentId)
 
     ipcListenerManager.register('file-manager-context-menu-delete', (_, value, isFile) => {
         ShowConfirmDeleteDialog(value, isFile)
     }, componentId)
 
-    ipcListenerManager.register('file-manager-context-menu-find-in', (_, value) => {
-        console.log('file-manager-context-menu-find-in', value)
+    ipcListenerManager.register('file-manager-context-menu-find-in', (_, _value) => {
     }, componentId)
 
     ipcListenerManager.register('file-manager-context-menu-rename', (_, path, isFile) => {

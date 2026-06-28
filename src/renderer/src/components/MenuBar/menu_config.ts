@@ -1,5 +1,5 @@
 // 菜单数据结构
-import { ref } from "vue";
+import { ref, markRaw } from "vue";
 import {BaiZeMenuItem} from "../../../../main/global-types";
 import * as MenuConst from './menu_consts';
 import * as Templates from '../../common/templates';
@@ -350,7 +350,7 @@ const helpMenu: BaiZeMenuItem = {
     ]
 }
 
-export const menuMap = ref<BaiZeMenuItem[]>([
+export const menuMap = ref<BaiZeMenuItem[]>(markRaw([
     fileMenu, // 文件
     editMenu, // 编辑
     viewMenu, // 视图
@@ -363,4 +363,4 @@ export const menuMap = ref<BaiZeMenuItem[]>([
     //quickLinkMenu,
     gitHubMenu,
     helpMenu
-])
+]))

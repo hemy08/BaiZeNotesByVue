@@ -71,7 +71,6 @@ const displayFilePath = computed(() => {
 })
 
 function onUpdateEditorFilePath(value: string) {
-    console.log('文件路径:', value)
     filePath.value = value
 }
 
@@ -101,35 +100,36 @@ const handleCursorPositionUpdate = (position: Position) => {
     onUpdateEditorCursorPosition(position)
 }
 
+const handleUserSelectFile = (_: any, value: string) => {
+    onUpdateEditorFilePath(value)
+}
+
+const handleFileSaved = () => {
+    isUnsaved.value = false
+}
+
+const handleConsoleUpdateEvent = (_: any, data: { message: string; type: string }) => {
+    handleConsoleUpdate(data)
+}
+
 onMounted(() => {
-    // 监听文件保存成功
-    window.electron.ipcRenderer.on('monaco-editor-user-select-file', (_, value) => {
-        onUpdateEditorFilePath(value)
-    })
+    window.electron.ipcRenderer.on('monaco-editor-user-select-file', handleUserSelectFile)
+    window.electron.ipcRenderer.on('file-saved-success', handleFileSaved)
+    window.electron.ipcRenderer.on('status-bar-console-update', handleConsoleUpdateEvent)
 
     EventBus.$on('monaco-editor-statusbar-file-path', handleFilePathUpdate)
     EventBus.$on('baize:notes:status-bar:context-length', handleContentLengthUpdate)
     EventBus.$on('monaco-editor-statusbar-cursor-position', handleCursorPositionUpdate)
-
-    // 监听文件保存成功
-    window.electron.ipcRenderer.on('file-saved-success', () => {
-        isUnsaved.value = false
-    })
-
-    // 监听console消息更新
-    window.electron.ipcRenderer.on('status-bar-console-update', (_, data) => {
-        handleConsoleUpdate(data)
-    })
 })
 
 onBeforeUnmount(() => {
+    window.electron.ipcRenderer.removeListener('monaco-editor-user-select-file', handleUserSelectFile)
+    window.electron.ipcRenderer.removeListener('file-saved-success', handleFileSaved)
+    window.electron.ipcRenderer.removeListener('status-bar-console-update', handleConsoleUpdateEvent)
+
     EventBus.$off('monaco-editor-statusbar-file-path', handleFilePathUpdate)
     EventBus.$off('baize:notes:status-bar:context-length', handleContentLengthUpdate)
     EventBus.$off('monaco-editor-statusbar-cursor-position', handleCursorPositionUpdate)
-
-    window.electron.ipcRenderer.removeAllListeners('file-saved-success')
-    window.electron.ipcRenderer.removeAllListeners('monaco-editor-user-select-file')
-    window.electron.ipcRenderer.removeAllListeners('status-bar-console-update')
 })
 </script>
 

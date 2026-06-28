@@ -136,26 +136,6 @@ function onHandleNewContent(content: string) {
   }
 }
 
-window.electron.ipcRenderer.on('baize:notes:show-selected-file-context', (_, content) => {
-  EventBus.$emit('baize:notes:workspace:show', "md")
-  onHandleNewContent(content)
-})
-
-// 监听文件内容重新加载事件（从磁盘重新加载）
-window.electron.ipcRenderer.on('file-content-reloaded', (_, data) => {
-  // console.log('file-content-reloaded', data.path, data.content)
-  onHandleNewContent(data.content)
-})
-
-window.electron.ipcRenderer.on('monaco-insert-writing-templates', (_, fileContent: string) => {
-  onHandleNewContent(fileContent)
-})
-
-// 清理编辑区域和预览区域
-window.electron.ipcRenderer.on('clear-editor-and-preview', () => {
-  onHandleNewContent('# ')
-})
-
 function onHandleEditorShow(edit: boolean, preview: boolean) {
     isShowEditArea.value = edit
     isShowPreviewArea.value = preview
@@ -177,17 +157,34 @@ function onHandleEditorShow(edit: boolean, preview: boolean) {
     }, 100)
 }
 
-window.electron.ipcRenderer.on('markdown-edit-model', () => {
+const handleShowFileContext = (_: any, content: string) => {
+  EventBus.$emit('baize:notes:workspace:show', "md")
+  onHandleNewContent(content)
+}
+
+const handleFileReloaded = (_: any, data: { path: string; content: string }) => {
+  onHandleNewContent(data.content)
+}
+
+const handleInsertTemplate = (_: any, fileContent: string) => {
+  onHandleNewContent(fileContent)
+}
+
+const handleClearEditor = () => {
+  onHandleNewContent('# ')
+}
+
+const handleEditModel = () => {
     onHandleEditorShow(true, false)
-})
+}
 
-window.electron.ipcRenderer.on('markdown-preview-model', () => {
+const handlePreviewModel = () => {
     onHandleEditorShow(false, true)
-})
+}
 
-window.electron.ipcRenderer.on('markdown-edit-preview-model', () => {
+const handleEditPreviewModel = () => {
     onHandleEditorShow(true, true)
-})
+}
 
 watch(
     () => props.editorPreviewWidth,
@@ -238,8 +235,16 @@ onMounted(() => {
     EventBus.$on('baize:monaco-editor-use-template', handleUseTemplate)
     EventBus.$on('monaco-editor-replace-text', handleFileImportReplace)
 
+    window.electron.ipcRenderer.on('baize:notes:show-selected-file-context', handleShowFileContext)
+    window.electron.ipcRenderer.on('file-content-reloaded', handleFileReloaded)
+    window.electron.ipcRenderer.on('monaco-insert-writing-templates', handleInsertTemplate)
+    window.electron.ipcRenderer.on('clear-editor-and-preview', handleClearEditor)
+    window.electron.ipcRenderer.on('markdown-edit-model', handleEditModel)
+    window.electron.ipcRenderer.on('markdown-preview-model', handlePreviewModel)
+    window.electron.ipcRenderer.on('markdown-edit-preview-model', handleEditPreviewModel)
 
     window.addEventListener('resize', handleResize)
+    window.addEventListener('keydown', handleKeyDownEvent)
 })
 
 // 销毁编辑器实例
@@ -249,6 +254,14 @@ onBeforeUnmount(() => {
     EventBus.$off('monaco-editor-save-file-content-to-disk', handleSaveFileContent)
     EventBus.$off('baize:monaco-editor-use-template', handleUseTemplate)
     EventBus.$off('monaco-editor-replace-text', handleFileImportReplace)
+
+    window.electron.ipcRenderer.removeListener('baize:notes:show-selected-file-context', handleShowFileContext)
+    window.electron.ipcRenderer.removeListener('file-content-reloaded', handleFileReloaded)
+    window.electron.ipcRenderer.removeListener('monaco-insert-writing-templates', handleInsertTemplate)
+    window.electron.ipcRenderer.removeListener('clear-editor-and-preview', handleClearEditor)
+    window.electron.ipcRenderer.removeListener('markdown-edit-model', handleEditModel)
+    window.electron.ipcRenderer.removeListener('markdown-preview-model', handlePreviewModel)
+    window.electron.ipcRenderer.removeListener('markdown-edit-preview-model', handleEditPreviewModel)
 })
 </script>
 

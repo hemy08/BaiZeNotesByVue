@@ -2,39 +2,33 @@
  * 新建文件/文件夹对话框
  */
 
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import { CreateFileFolder, ReloadDirFromDisk } from '../utils/file-utils/file-operations'
 import { JSDOM } from 'jsdom'
 import { getCurrentThemeStyles } from '../config'
 import * as digcom from './dialog_common'
-
-let customCreateDialog: Electron.BrowserWindow | null
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 
 export function ShowCreateFileFolderDialog(
     dirPath: string,
     isFolder: boolean,
     fileExtension: string
 ) {
-    if (customCreateDialog) {
+    const existing = windowManager.getWindowByType('create-file-folder')
+    if (existing) {
         digcom.ShowAlreadyExistDialog()
         return
     }
     
-    customCreateDialog = new BrowserWindow({
+    const customCreateDialog = windowManager.createWindow('create-file-folder', createDialogOptions({
         width: 450,
         height: 150,
         minimizable: false,
         maximizable: false,
         resizable: false,
-        title: '新建',
-        autoHideMenuBar: true,
-        frame: false,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            sandbox: false
-        }
-    })
+        title: '新建'
+    }), 'create-file-folder', true)
 
     customCreateDialog.setMenu(null)
 
@@ -46,24 +40,21 @@ export function ShowCreateFileFolderDialog(
     const theme = getCurrentThemeStyles()
     customCreateDialog.webContents.send('baize-notes:init-theme-styles', theme)
 
-    customCreateDialog.on('closed', () => {
-        customCreateDialog = null
-        ipcMain.removeListener('dialog-create-file-folder-enter', processCreateFileFolder)
-    })
-
-    function processCreateFileFolder(_, name: string) {
+    async function processCreateFileFolder(_, name: string) {
         if (!isFolder && fileExtension.length == 0 && name.indexOf('.') === -1) {
             name = name + '.md'
         }
-        CreateFileFolder(name, dirPath, isFolder, fileExtension)
+        await CreateFileFolder(name, dirPath, isFolder, fileExtension)
         // 创建完成后重新加载资源管理器
-        ReloadDirFromDisk()
-        if (customCreateDialog) {
-            customCreateDialog.close()
-        }
+        await ReloadDirFromDisk()
+        windowManager.getWindowByType('create-file-folder')?.close()
     }
 
     ipcMain.on('dialog-create-file-folder-enter', processCreateFileFolder)
+
+    customCreateDialog.on('closed', () => {
+        ipcMain.removeListener('dialog-create-file-folder-enter', processCreateFileFolder)
+    })
 }
 
 function makeCreateFileFolderDialogHtml(): string {

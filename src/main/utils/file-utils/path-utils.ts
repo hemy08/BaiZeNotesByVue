@@ -5,18 +5,20 @@
 
 import { dialog } from 'electron'
 import { FileItem } from '../../global-types'
+import { appState } from '../app-state'
 
 /**
  * 获取当前打开文件的目录路径
  * @returns 当前文件的目录路径，如果没有打开的文件则返回项目根路径
  */
 export function GetCurrentFileDirectory(): string {
-    if (global.current_active_file && global.current_active_file.path) {
-        const filePath = global.current_active_file.path
+    const activeFile = appState.currentActiveFile
+    if (activeFile && activeFile.path) {
+        const filePath = activeFile.path
         const lastIndex = Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/'))
         return filePath.substring(0, lastIndex)
     }
-    return global.RootPath || ''
+    return appState.rootPath || ''
 }
 
 /**

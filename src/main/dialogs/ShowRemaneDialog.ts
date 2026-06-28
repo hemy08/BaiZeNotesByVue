@@ -2,29 +2,28 @@
  * 重命名对话框
  */
 
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import { RenameFileFolder } from '../utils/file-utils/file-operations'
 import { JSDOM } from 'jsdom'
 import { getCurrentThemeStyles } from '../config'
-
-let customRenameDialog: Electron.BrowserWindow | null
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 
 export function ShowFileFolderRenameDialog(fullName: string, isFile: boolean) {
-    customRenameDialog = new BrowserWindow({
+    const existing = windowManager.getWindowByType('rename-file-folder')
+    if (existing) {
+        existing.focus()
+        return
+    }
+
+    const customRenameDialog = windowManager.createWindow('rename-file-folder', createDialogOptions({
         width: 500,
         height: 160,
         minimizable: false,
         maximizable: false,
         resizable: false,
-        title: '重命名',
-        autoHideMenuBar: true,
-        frame: false,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            sandbox: false
-        }
-    })
+        title: '重命名'
+    }), 'rename-file-folder', true)
 
     customRenameDialog.setMenu(null)
 
@@ -36,19 +35,16 @@ export function ShowFileFolderRenameDialog(fullName: string, isFile: boolean) {
     const theme = getCurrentThemeStyles()
     customRenameDialog.webContents.send('baize-notes:init-theme-styles', theme)
 
-    customRenameDialog.on('closed', () => {
-        customRenameDialog = null
-        ipcMain.removeListener('dialog-rename-file-folder-enter', processRenameFileFolder)
-    })
-
-    function processRenameFileFolder(_, newName: string) {
-        RenameFileFolder(fullName, newName, isFile)
-        if (customRenameDialog) {
-            customRenameDialog.close()
-        }
+    async function processRenameFileFolder(_, newName: string) {
+        await RenameFileFolder(fullName, newName, isFile)
+        windowManager.getWindowByType('rename-file-folder')?.close()
     }
 
     ipcMain.on('dialog-rename-file-folder-enter', processRenameFileFolder)
+
+    customRenameDialog.on('closed', () => {
+        ipcMain.removeListener('dialog-rename-file-folder-enter', processRenameFileFolder)
+    })
 }
 
 function makeRenameDialogHtml(path: string): string {

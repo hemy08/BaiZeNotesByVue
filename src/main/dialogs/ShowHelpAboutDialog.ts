@@ -3,11 +3,10 @@
  * 显示应用程序信息
  */
 
-import { BrowserWindow } from 'electron'
 import { JSDOM } from 'jsdom'
 import { getCurrentThemeStyles } from '../config'
-
-let aboutDialog: Electron.BrowserWindow | null
+import { windowManager } from '../config/window-manager'
+import { createDialogOptions } from './dialog-defaults'
 
 // 版本信息
 const APP_VERSION = '1.1.5-bate'
@@ -70,26 +69,20 @@ const BAI_ZE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 51
  * 显示关于对话框
  */
 export function ShowHelpAboutDialog() {
-    if (aboutDialog) {
-        aboutDialog.focus()
+    const existing = windowManager.getWindowByType('help-about-dialog')
+    if (existing) {
+        existing.focus()
         return
     }
 
-    aboutDialog = new BrowserWindow({
+    const aboutDialog = windowManager.createWindow('help-about-dialog', createDialogOptions({
         width: 750,
         height: 600,
         minimizable: false,
         maximizable: false,
         resizable: true,
-        title: '关于 白泽笔记',
-        autoHideMenuBar: true,
-        frame: false,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            sandbox: false
-        }
-    })
+        title: '关于 白泽笔记'
+    }), 'help-about-dialog', true)
 
     aboutDialog.setMenu(null)
 
@@ -102,10 +95,6 @@ export function ShowHelpAboutDialog() {
     aboutDialog.webContents.on('did-finish-load', () => {
         const theme = getCurrentThemeStyles()
         aboutDialog?.webContents.send('baize-notes:init-theme-styles', theme)
-    })
-
-    aboutDialog.on('closed', () => {
-        aboutDialog = null
     })
 }
 
@@ -370,10 +359,10 @@ function makeAboutHtml(): string {
     </div>
 
     <script>
-        const { shell, ipcRenderer } = require('electron')
+        const ipcRenderer = window.electronAPI.ipcRenderer
 
         function openLink(url) {
-            shell.openExternal(url)
+            window.electronAPI.shell.openExternal(url)
         }
 
         // 监听主题更新

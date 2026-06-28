@@ -1,50 +1,24 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
   "include": [
-    "src/renderer/src/env.d.ts",
-    "src/renderer/src/**/*",
+    "src/renderer/src/**/*.ts",
     "src/renderer/src/**/*.vue",
-    "src/main/**/*.ts",
+    "src/renderer/src/env.d.ts",
     "src/main/global-types.d.ts",
-    "src/main/themes/*.ts",
-    "src/main/templates/*.ts",
-    "src/main/templates/writing/*.ts",
-    "src/main/templates/textblock/*.ts",
-    "src/main/templates/plantuml/*.ts",
-    "src/main/templates/mermaid/*.ts",
-    "src/main/scripts/mermaid.js",
-    "src/main/plugins/**/*.ts",
-    "src/main/plugins/*.ts",
-    "src/main/utils/**/*.ts",
-    "src/main/utils/*.js",
-    "src/renderer/src/components/dialogs/**/*.ts",
-    "resources/themes/**/*.ts",
-    "resources/katex/types/**/*.ts",
-    "resources/mermaid/**/*.ts",
-    "resources/monaco-editor/**/*.ts",
-    "resources/themes/*.ts",
-    "resources/katex/*.js",
-    "resources/katex/*.mjs",
-    "resources/mermaid/**/*.ts",
-    "resources/mermaid/**/*.js",
-    "resources/mermaid/**/*.mjs",
-    "resources/monaco-editor/**/*.nls.js",
-    "resources/monaco-editor/**/*.js",
-    "resources/monaco-editor/**/*.ts",
-    "resources/monaco-editor/min/vs/editor/*.nls.js",
-    "resources/themes/monaco-themes/**/*.ts",
-    "resources/themes/monaco-themes/**/*.js",
     "src/preload/*.d.ts"
   ],
   "compilerOptions": {
     "composite": true,
     "baseUrl": ".",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "ignoreDeprecations": "6.0",
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"
+      ],
+      "@mainer/*": [
+        "src/main/*"
       ]
     }
   }

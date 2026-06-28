@@ -134,16 +134,6 @@ export class WindowManager {
     }
 
     printStats() {
-        const stats = this.getStats()
-        console.log('[Window Manager] Stats:')
-        console.log(`  Total windows: ${stats.totalWindows}`)
-
-        if (Object.keys(stats.typeStats).length > 0) {
-            console.log('  By type:')
-            Object.entries(stats.typeStats).forEach(([type, count]) => {
-                console.log(`    ${type}: ${count}`)
-            })
-        }
     }
 }
 

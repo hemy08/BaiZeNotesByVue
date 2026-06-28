@@ -2,6 +2,7 @@ import { katexRenderMathInText } from './KatexRender'
 import { materialAdmonitionsRender, materialAdmonitionsPostRender } from './MaterialRender'
 import { tabbedSetRender } from './TabbedSetRender'
 import { ParseDirectoryPath } from '../utils/file-utils'
+import { appState } from '../utils/app-state'
 
 /**
  * 文本片段接口
@@ -163,7 +164,7 @@ export async function HemyRenderPost(
  * 转换文件URL为绝对路径
  */
 function covertFileUrl(url: string): string {
-    const file = global.current_active_file
+    const file = appState.currentActiveFile
     if (!file) {
         return url
     }
@@ -177,7 +178,7 @@ function covertFileUrl(url: string): string {
     }
 
     const fullPath = ParseDirectoryPath(file.path) + '\\' + url
-    return fullPath.replace('\\', '/')
+    return fullPath.replace(/\\/g, '/')
 }
 
 /**
@@ -198,23 +199,12 @@ function parseAltText(text: string): string {
  * 将相对路径的图片URL转换为绝对路径
  */
 function preRenderImageUrlConvert(text: string): string {
-    let renderResult = text
-    let match: RegExpExecArray | null = null
     const regex = /!\[[^\]]*\]\(([^)]*)\)/g
-
-    while ((match = regex.exec(renderResult)) !== null) {
-        const imgSrc = covertFileUrl(match[1])
-        const altText = parseAltText(match[0])
-        const htmlContent =
-            '<p><img style="width: auto; max-width: 900px; height: auto" src="' +
-            imgSrc +
-            '" alt="' +
-            altText +
-            '"></p>'
-        renderResult = renderResult.replace(match[0], htmlContent)
-    }
-
-    return renderResult
+    return text.replace(regex, (match, src) => {
+        const imgSrc = covertFileUrl(src)
+        const altText = parseAltText(match)
+        return '<p><img style="width: auto; max-width: 900px; height: auto" src="' + imgSrc + '" alt="' + altText + '"></p>'
+    })
 }
 
 /**
@@ -222,18 +212,13 @@ function preRenderImageUrlConvert(text: string): string {
  * 将非 http 开头的相对路径文件URL转换为绝对路径
  */
 function preRenderFileUrlConvert(text: string): string {
-    let renderResult = text
-    let match: RegExpExecArray | null = null
     const regex = /\[[^\]]*\]\(([^)]*)\)/g
-
-    while ((match = regex.exec(renderResult)) !== null) {
-        if (!match[1].startsWith('http')) {
-            const fileSrc = covertFileUrl(match[1])
-            const altText = parseAltText(match[0])
-            const htmlContent = '<a href="' + fileSrc + '">' + altText + '</a>'
-            renderResult = renderResult.replace(match[0], htmlContent)
+    return text.replace(regex, (match, url) => {
+        if (!url.startsWith('http')) {
+            const fileSrc = covertFileUrl(url)
+            const altText = parseAltText(match)
+            return '<a href="' + fileSrc + '">' + altText + '</a>'
         }
-    }
-
-    return renderResult
+        return match
+    })
 }

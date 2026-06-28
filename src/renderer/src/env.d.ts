@@ -7,6 +7,4 @@ declare module '*.vue' {
     export default component
 }
 
-interface Window {
-    configStore?: ReturnType<typeof import('./common/useConfigStore').getConfigStore>
-}
+

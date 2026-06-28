@@ -19,7 +19,6 @@ export function getUserDataPath(): string {
     // 确保目录存在
     if (!fs.existsSync(userDataPath)) {
         fs.ensureDirSync(userDataPath)
-        console.log(`[AppPaths] Created user data directory: ${userDataPath}`)
     }
     
     return userDataPath
@@ -118,11 +117,8 @@ export function initUserDataDirectory(): void {
         const dirPath = path.join(userDataPath, dir)
         if (!fs.existsSync(dirPath)) {
             fs.ensureDirSync(dirPath)
-            console.log(`[AppPaths] Created directory: ${dirPath}`)
         }
     })
-    
-    console.log(`[AppPaths] User data directory initialized: ${userDataPath}`)
 }
 
 /**

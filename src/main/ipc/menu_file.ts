@@ -18,12 +18,12 @@ export const fileMenuHandlers = {
     'new-folder': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('open-vue-dialog', 'createFileFolder', { isFolder: false })
     },
-    'open-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => OpenFile(mainWindow),
-    'open-folder': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => OpenDirectory(mainWindow),
-    'save': () => SaveActiveFile(),
-    'save-as': () => SaveActiveFileAs(),
-    'close-file': () => SaveActiveFile(),
-    'reload': () => ReloadDirFromDisk(),
+    'open-file': async (mainWindow: Electron.CrossProcessExports.BrowserWindow) => await OpenFile(mainWindow),
+    'open-folder': async (mainWindow: Electron.CrossProcessExports.BrowserWindow) => await OpenDirectory(mainWindow),
+    'save': async () => await SaveActiveFile(),
+    'save-as': async () => await SaveActiveFileAs(),
+    'close-file': async () => await SaveActiveFile(),
+    'reload': async () => await ReloadDirFromDisk(),
     'relaunch': () => {
         app.relaunch()
         app.quit()

@@ -69,7 +69,6 @@ function handleResetZoom() {
 }
 
 function handleDownload() {
-  console.log('Download mermaid image')
 }
 
 function handleClose() {

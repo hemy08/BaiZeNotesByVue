@@ -101,19 +101,18 @@ const quickLinks = computed(() => {
 })
 
 // 加载快速链接配置
-function loadQuickLinks() {
-    const links = window.electron.ipcRenderer.sendSync('baize-notes:get-quick-links')
+async function loadQuickLinks() {
+    const links = await window.electron.ipcRenderer.invoke('baize-notes:get-quick-links')
     allQuickLinks.value = links.filter((link: QuickLinkItem) => link.enabled)
 }
 
 // 监听快速链接更新事件
-function handleQuickLinksUpdated() {
-    loadQuickLinks()
+async function handleQuickLinksUpdated() {
+    await loadQuickLinks()
 }
 
 // 快速链接点击事件
 function onQuickLinkClick(link: QuickLinkItem) {
-    console.log('Quick link clicked:', link.name)
     if (link.type === 'url') {
         window.open(link.path, '_blank', 'noopener, noreferrer')
     } else {
@@ -147,13 +146,12 @@ function onShowMarkdownTOC() {
 
 // 打开HemyNotes
 function onOpenHemyNotes() {
-    console.log('navi-tab-open-exe')
     window.open('https://hemy08.github.io/hemynotes/', '_blank', 'noopener, noreferrer')
 }
 
 // 组件挂载时加载配置
-onMounted(() => {
-    loadQuickLinks()
+onMounted(async () => {
+    await loadQuickLinks()
     // 监听快速链接更新事件，实现立即生效
     window.electron.ipcRenderer.on('baize-notes:quick-links-updated', handleQuickLinksUpdated)
 })

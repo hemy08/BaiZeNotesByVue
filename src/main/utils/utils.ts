@@ -1,15 +1,14 @@
-// @ts-ignore
 import { globalInitialize } from './global'
 import * as FileUtils from './file-utils/index'
-// @ts-ignore
 import { HemyRenderPre, HemyRenderPost } from '../renders/HemyRender'
-// @ts-ignore
 import { CreateHash, CreateHmac, CreateRsaKeyPair, CryptoDecrypt, CryptoEncrypt } from './encrypt_decrypt'
 import { ipcMain, shell } from 'electron'
-// @ts-ignore
 import { getQuickLinks } from '../config/quick-link-config'
 import { getCurrentTheme, getCurrentThemeStyles, getMonacoTheme, getSeparateEditorTheme, getAllThemes, getAllMonacoThemes, getThemeStylesByType } from '../config'
-import * as fileUtils from './file-utils/index';
+import { appState } from './app-state'
+import { getAppResourcesPath } from './app-paths'
+import * as fs from 'fs'
+import * as path from 'path'
 
 export {
     globalInitialize,
@@ -24,9 +23,8 @@ export {
 }
 
 export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
-    ipcMain.on('baize:notes:open-select-file', (_, message) => {
-        // console.log('baize:notes:open-select-file', message)
-        FileUtils.OpenSelectFile(message)
+    ipcMain.on('baize:notes:open-select-file', async (_, message) => {
+        await FileUtils.OpenSelectFile(message)
     })
 
     ipcMain.on('pre-render-monaco-editor-content', (_, message) => {
@@ -67,14 +65,12 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     })
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    ipcMain.on('file-manager-context-menu-reload-from-disk', (_) => {
-        // console.log('file-manager-context-menu-reload-from-disk')
-        FileUtils.ReloadDirFromDisk()
+    ipcMain.on('file-manager-context-menu-reload-from-disk', async (_) => {
+        await FileUtils.ReloadDirFromDisk()
     })
 
-    ipcMain.on('monaco-editor-container-insert-image', (_, context: string) => {
-        const imageName = FileUtils.InsertImagesToFile(context)
-        console.log('imageName', imageName)
+    ipcMain.on('monaco-editor-container-insert-image', async (_, context: string) => {
+        const imageName = await FileUtils.InsertImagesToFile(context)
         if (imageName.length !== 0) {
             mainWindow.webContents.send(
                 'monaco-insert-text-block-templates',
@@ -111,8 +107,8 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     })
 
     // 快速链接配置相关IPC
-    ipcMain.on('baize-notes:get-quick-links', (event) => {
-        event.returnValue = getQuickLinks ()
+    ipcMain.handle('baize-notes:get-quick-links', () => {
+        return getQuickLinks()
     })
 
     // 主题配置相关IPC
@@ -145,34 +141,27 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         event.returnValue = getMonacoTheme ()
     })
 
-    ipcMain.on('update-select-file-content', (_, content) => {
-        // console.log('[ipcMain] update-select-file-content   ', content.length)
-        const curFile = global.current_active_file
-        // 文件打开了
-        if (curFile != undefined) {
-            global.current_active_file.content = content
-            //console.log('update file :', curFile.path, 'length:', content.length)
+    ipcMain.on('update-select-file-content', async (_, content) => {
+        if (appState.currentActiveFile != null) {
+            appState.currentActiveFile.content = content
         } else {
-            // 没有打开文件，提示用户
-            console.warn('not file opened, show save as')
-            fileUtils.SaveActiveFileAs()
+            await FileUtils.SaveActiveFileAs()
         }
     })
 
     // 监听键盘事件
-    function handleKeyDown(event) {
+    async function handleKeyDown(event) {
         if (event.ctrlKey && event.key === 's') {
-            fileUtils.SaveActiveFile()
+            await FileUtils.SaveActiveFile()
         }
     }
 
     ipcMain.on('keydown', handleKeyDown)
 
-    ipcMain.on('save-file-content-to-disk', (_, content) => {
-        const curFile = global.current_active_file
-        if (curFile != undefined) {
-            global.current_active_file.content = content
-            fileUtils.SaveActiveFile()
+    ipcMain.on('save-file-content-to-disk', async (_, content) => {
+        if (appState.currentActiveFile != null) {
+            appState.currentActiveFile.content = content
+            await FileUtils.SaveActiveFile()
         }
     })
 
@@ -180,7 +169,6 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     // 读取 HTML 文件内容
     ipcMain.handle('read-html-file', async (_, filePath: string) => {
         try {
-            const fs = require('fs')
             const content = await fs.promises.readFile(filePath, 'utf-8')
             return content
         } catch (error) {
@@ -201,7 +189,6 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     // 检查文件是否存在
     ipcMain.handle('check-file-exists', async (_, filePath: string) => {
         try {
-            const fs = require('fs')
             const exists = fs.existsSync(filePath)
             return exists
         } catch (error) {
@@ -213,9 +200,6 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     // 获取应用版本信息
     ipcMain.handle('app:get-version', async () => {
         try {
-            const { getAppResourcesPath } = require('./app-paths')
-            const fs = require('fs')
-            const path = require('path')
             const versionFilePath = path.join(getAppResourcesPath(), 'config', 'version.json')
             if (fs.existsSync(versionFilePath)) {
                 const versionData = JSON.parse(fs.readFileSync(versionFilePath, 'utf-8'))
@@ -224,7 +208,6 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         } catch (error) {
             console.error('读取版本配置文件失败:', error)
         }
-        console.log('默认版本信息',  process.versions)
         return {
             appVersion: '',
             electronVersion: process.versions.electron || '',

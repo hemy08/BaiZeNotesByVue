@@ -152,18 +152,6 @@ export class IPCListenerManager {
     }
 
     printStats() {
-        const stats = this.getStats()
-        console.log('[IPC Listener Manager] Stats:')
-        console.log(`  Total channels: ${stats.totalChannels}`)
-        console.log(`  Total listeners: ${stats.totalListeners}`)
-        console.log(`  Total components: ${stats.totalComponents}`)
-        
-        if (stats.details.length > 0) {
-            console.log('  Details:')
-            stats.details.forEach(detail => {
-                console.log(`    ${detail.channel}: ${detail.count} listeners (${detail.components.join(', ')})`)
-            })
-        }
     }
 }
 

@@ -174,7 +174,6 @@ export function updateEditorOption(
         editor.updateOptions({ [optionKey]: value })
     }
 
-    console.log(`update editor option: ${key} = ${value}`)
 }
 
 export function updateEditorOptions(
@@ -258,5 +257,4 @@ export function updateEditorOptions(
     }
 
     editor.updateOptions(options)
-    console.log('batch update monaco editor options:', options)
 }

@@ -3,12 +3,13 @@
  * 提供从外部格式导入内容到Markdown的功能
  */
 
-import * as fs from 'fs'
+import { promises as fs } from 'fs'
 import csv from 'csv-parser'
 import { detect } from 'jschardet'
 import { dialog, BrowserWindow } from 'electron'
 import { showErrorMessageBox } from './dialog-helpers'
 import { OpenSelectFile } from './file-operations'
+import { appState } from '../app-state'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path')
@@ -83,15 +84,7 @@ export const InsertImportFrom = {
 }
 
 async function ReadFile(filePath: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        fs.readFile(filePath, 'utf8', (err, data) => {
-            if (err) {
-                reject(err)
-            } else {
-                resolve(data)
-            }
-        })
-    })
+    return await fs.readFile(filePath, 'utf8')
 }
 
 async function convertDocxToMarkdown(file: string): Promise<string> {
@@ -147,17 +140,10 @@ function csvStringParser(csvData: string): Promise<string> {
 }
 
 async function convertCsvToMarkdown(csvFile: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        fs.readFile(csvFile, (err, buffer) => {
-            if (err) {
-                reject(err)
-                return
-            }
-            const detectCode = detect(buffer)
-            const utf8String = iconv.decode(buffer, detectCode.encoding)
-            csvStringParser(utf8String).then(resolve).catch(reject)
-        })
-    })
+    const buffer = await fs.readFile(csvFile)
+    const detectCode = detect(buffer)
+    const utf8String = iconv.decode(buffer, detectCode.encoding)
+    return await csvStringParser(utf8String)
 }
 
 function formatterJson(obj: unknown, indentLevel = 0, indent = 2): string {
@@ -235,7 +221,7 @@ export async function InsertImportFormFile(
 }
 
 export async function ImportCreateNewFile(mainWindow: BrowserWindow, content: string): Promise<{ success: boolean; filePath?: string }> {
-    const currentFilePath = global.current_active_file?.path
+    const currentFilePath = appState.currentActiveFile?.path
     const defaultPath = currentFilePath
         ? path.dirname(currentFilePath) + '/导入文件.md'
         : '导入文件.md'
@@ -255,18 +241,22 @@ export async function ImportCreateNewFile(mainWindow: BrowserWindow, content: st
         filePath += '.md'
     }
 
-    fs.writeFileSync(filePath, content, 'utf-8')
+    await fs.writeFile(filePath, content, 'utf-8')
 
-    OpenSelectFile({
+    await OpenSelectFile({
         name: path.basename(filePath),
         path: filePath,
         type: 'file',
         content: content
     })
 
-    setTimeout(() => {
+    setTimeout(async () => {
         const { ReloadDirFromDisk } = require('./file-operations')
-        ReloadDirFromDisk()
+        try {
+            await ReloadDirFromDisk()
+        } catch (err) {
+            console.error('Failed to reload from disk:', err)
+        }
     }, 100)
 
     return { success: true, filePath }

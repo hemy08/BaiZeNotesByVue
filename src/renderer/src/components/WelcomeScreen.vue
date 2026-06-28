@@ -75,10 +75,8 @@ const logoSrc = logoDarkUltra
 async function loadRecentFolders() {
     try {
         const history = await window.api.config.read('recent-folders')
-        console.log('Loaded recent folders:', history)
         if (history && Array.isArray(history)) {
             recentFolders.value = history.slice(0, 10)
-            console.log('Recent folders to display:', recentFolders.value)
         }
     } catch (error) {
         console.error('Failed to load recent folders:', error)

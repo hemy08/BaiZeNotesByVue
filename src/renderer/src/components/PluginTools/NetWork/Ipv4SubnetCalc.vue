@@ -223,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch  } from 'vue'
+import { computed, ref } from 'vue'
 import * as net from './NetWork'
 
 const props = defineProps({
@@ -234,7 +234,7 @@ const props = defineProps({
     }
 })
 
-const workWidthVal = ref(props.workAreaWidth)
+
 const inputIpv4Addr = ref([192, 168, 16, 0])
 const inputNetworkMask = ref([255, 255, 255, 0])
 const outNetworkMaskBits = ref('24')
@@ -285,15 +285,8 @@ const ipNumberOutPut = ref<CombinedIPNET>({
     hex: { id: 'ip-number-mask-output-hex', label: 'Hex 十六进制：', ip: ['0', '0', '0', '0'] }
 })
 
-watch(
-    () => props.workAreaWidth,
-    (width) => {
-        workWidthVal.value = width
-    }
-)
-
 const subnetAddrWidth = computed(() => {
-    const WorkWidth = parseInt(workWidthVal.value.replace('px', ''), 10)
+    const WorkWidth = parseInt(props.workAreaWidth.replace('px', ''), 10)
     return WorkWidth / 10 - 20
 })
 

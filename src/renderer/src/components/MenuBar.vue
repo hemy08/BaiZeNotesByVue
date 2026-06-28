@@ -54,16 +54,20 @@ async function loadCurrentTheme() {
     }
 }
 
+const handleThemeUpdated = (_: any, theme: { currentTheme?: string }) => {
+    if (theme && theme.currentTheme) {
+        currentTheme.value = theme.currentTheme
+    }
+}
+
 // 监听主题变化
 onMounted(() => {
     loadCurrentTheme()
+    window.electron.ipcRenderer.on('baize-notes:theme-updated', handleThemeUpdated)
+})
 
-    // 监听主题更新事件
-    window.electron.ipcRenderer.on('baize-notes:theme-updated', (_, theme) => {
-        if (theme && theme.currentTheme) {
-            currentTheme.value = theme.currentTheme
-        }
-    })
+onBeforeUnmount(() => {
+    window.electron.ipcRenderer.removeListener('baize-notes:theme-updated', handleThemeUpdated)
 })
 
 // 使用主题图标组合式函数

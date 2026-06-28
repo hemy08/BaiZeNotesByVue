@@ -83,6 +83,8 @@ export function HandleMenuAction(action: string) {
         // 获取当前打开文件的路径作为默认目录
         window.electron.ipcRenderer.invoke('baize-notes:get-current-file-path').then((dirPath: string) => {
             configStore.showDialog('createFileFolder', { dirPath })
+        }).catch(() => {
+            configStore.showDialog('createFileFolder', { dirPath: '' })
         })
         return
     }

@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import mermaid from 'mermaid'
 
 // 使用 ref 来获取 DOM 元素
@@ -19,37 +19,55 @@ const props = defineProps({
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const emit = defineEmits(['mermaid-render-result'])
 
-onMounted(() => {
-    mermaid.initialize({ startOnLoad: false })
-})
-
-// 监听代码内容变化
-watch(
-    () => props.graphCode,
-    async (newCode) => {
-        try {
-            const renderSvg = await mermaid.render('mermaidContainer', newCode)
-            emit(
-                'mermaid-render-result',
-                '<pre class="mermaid"><code>' + renderSvg.svg + '</code></pre>'
-            )
-        } catch (error) {
-            console.log('waitAsyncRenderResult error', error)
-        }
-    }
-)
-
-emit('mermaid-render-result', 'mermaid-render-result mermaid-render-result mermaid-render-result')
-
-window.electron.ipcRenderer.on('mermaid-graph-definition', async (_, graphData: string) => {
+const handleMermaidGraphDef = async (_: any, graphData: string) => {
     let renderSvg
     try {
         renderSvg = await mermaid.render('mermaidContainer', graphData)
     } catch (error) {
-        console.log('waitAsyncRenderResult error', error)
+        console.error('waitAsyncRenderResult error', error)
     }
-    console.log('renderSvg', renderSvg.svg)
+}
+
+onMounted(() => {
+    mermaid.initialize({ startOnLoad: false })
+    window.electron.ipcRenderer.on('mermaid-graph-definition', handleMermaidGraphDef)
 })
+
+onBeforeUnmount(() => {
+    window.electron.ipcRenderer.removeListener('mermaid-graph-definition', handleMermaidGraphDef)
+})
+
+let mermaidDebounceTimer: ReturnType<typeof setTimeout> | null = null
+const MERMAID_DEBOUNCE_DELAY = 300
+
+// 监听代码内容变化（带防抖）
+watch(
+    () => props.graphCode,
+    async (newCode) => {
+        if (mermaidDebounceTimer) {
+            clearTimeout(mermaidDebounceTimer)
+        }
+        mermaidDebounceTimer = setTimeout(async () => {
+            try {
+                const renderSvg = await mermaid.render('mermaidContainer', newCode)
+                emit(
+                    'mermaid-render-result',
+                    '<pre class="mermaid"><code>' + renderSvg.svg + '</code></pre>'
+                )
+            } catch (error) {
+                console.error('waitAsyncRenderResult error', error)
+            }
+        }, MERMAID_DEBOUNCE_DELAY)
+    }
+)
+
+onBeforeUnmount(() => {
+    if (mermaidDebounceTimer) {
+        clearTimeout(mermaidDebounceTimer)
+    }
+})
+
+emit('mermaid-render-result', 'mermaid-render-result mermaid-render-result mermaid-render-result')
 </script>
 
 <style scoped>

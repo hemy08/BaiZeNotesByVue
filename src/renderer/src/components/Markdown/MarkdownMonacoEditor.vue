@@ -71,7 +71,7 @@ window.electron.ipcRenderer.on('monaco-insert-text-block-templates', handleInser
 window.electron.ipcRenderer.on('baize-notes:monaco-editor-update-options', handleUpdateOptions)
 window.electron.ipcRenderer.on('monaco-editor-trigger-undo-redo', handleTriggerUndoRedo)
 
-// 监听代码内容变化
+// 监听代码内容变化（带值变化守卫，避免更新循环）
 watch(
     () => props.code,
     (newCode) => {
@@ -79,8 +79,9 @@ watch(
             if (newCode.length === 0) {
                 newCode = '# '
             }
-            //console.log('update code:', newCode)
-            editorInstance.setValue(newCode)
+            if (editorInstance.getValue() !== newCode) {
+                editorInstance.setValue(newCode)
+            }
         }
     }
 )
@@ -95,7 +96,6 @@ watch(
             const oldModel = monaco.editor.getModel(oldUri)
             if (oldModel) {
                 oldModel.dispose()
-                console.log(`[Monaco] Disposed model for: ${oldPath}`)
             }
         }
 
@@ -110,7 +110,6 @@ watch(
                     'markdown',
                     newUri
                 )
-                console.log(`[Monaco] Created model for: ${newPath}`)
             }
 
             editorInstance.setModel(newModel)
@@ -172,8 +171,7 @@ const handleLocateTargetLine = (item: MarkdownTOC) => {
     }
 }
 
-function handleScrollEvent(event) {
-    console.log('handleScrollEvent', event)
+function handleScrollEvent(_event: any) {
     EventBus.$emit('baize:notes:monaco-editor:scroll-event', null)
 }
 
@@ -247,9 +245,6 @@ onMounted(async () => {
     window.electron.ipcRenderer.on('baize-notes:init-editor-setting', handleUpdateEditorOptions)
 
     // 窗口事件监听
-    editorInstance?.getDomNode()?.addEventListener('scroll', function () {
-        console.log('scroll')
-    })
     window.addEventListener('resize', handleEditCompResize)
     window.addEventListener('scroll', handleScrollEvent)
 })

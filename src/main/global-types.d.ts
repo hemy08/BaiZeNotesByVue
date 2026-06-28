@@ -1,47 +1,4 @@
 import * as monaco from 'monaco-editor'
-import { Store } from 'electron-store'
-
-class BaiZeStore {
-    private store: Store
-    private fileCache: Map<string, FileContent> = new Map()
-    private readonly MAX_CACHE_SIZE = 50 // 最多缓存 50 个文件
-
-    constructor() {
-        this.store = new Store({
-            name: 'app-state',
-            defaults: {
-                lastOpenedFile: null,
-                lastOpenedDirectory: null,
-                editorSettings: {},
-                themeSettings: {}
-            }
-        })
-    }
-
-    // LRU 缓存策略
-    setFileContent(path: string, content: string): void {
-        if (this.fileCache.size >= this.MAX_CACHE_SIZE) {
-            // 删除最旧的缓存
-            const oldestKey = this.fileCache.keys().next().value
-            this.fileCache.delete(oldestKey)
-        }
-        this.fileCache.set(path, {
-            content,
-            timestamp: Date.now(),
-            size: content.length
-        })
-    }
-
-    getFileContent(path: string): string | null {
-        return this.fileCache.get(path)?.content || null
-    }
-
-    clearCache(): void {
-        this.fileCache.clear()
-    }
-}
-
-export const configStore = new BaiZeStore()
 
 // global-types.d.ts
 declare global {
