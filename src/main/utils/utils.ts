@@ -5,6 +5,7 @@ import { CreateHash, CreateHmac, CreateRsaKeyPair, CryptoDecrypt, CryptoEncrypt 
 import { ipcMain, shell } from 'electron'
 import { getQuickLinks } from '../config/quick-link-config'
 import { getCurrentTheme, getCurrentThemeStyles, getMonacoTheme, getSeparateEditorTheme, getAllThemes, getAllMonacoThemes, getThemeStylesByType } from '../config'
+import type { ThemeType } from '../config'
 import { appState } from './app-state'
 import { getAppResourcesPath } from './app-paths'
 import * as fs from 'fs'
@@ -117,7 +118,7 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
 
     ipcMain.handle('get-current-theme-styles', (_event: Electron.IpcMainInvokeEvent, themeType?: string) => {
         if (themeType) {
-            return getThemeStylesByType(themeType as any)
+            return getThemeStylesByType(themeType as ThemeType)
         }
         return getCurrentThemeStyles()
     })

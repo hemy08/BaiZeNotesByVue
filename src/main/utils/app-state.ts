@@ -82,6 +82,18 @@ class AppState {
   set mdFileTree(val: FileSysItem[] | null) {
     this._mdFileTree = val
   }
+
+  _resetForTesting(): void {
+    this._mainWindow = null
+    this._rootPath = ''
+    this._currentActiveFile = null
+    this._savingFile = false
+    this._saveFileInterval = '5000'
+    this._srcDirCopyCut = ''
+    this._isCopyOrCut = ''
+    this._mdFileTree = null
+  }
 }
 
+export { AppState }
 export const appState = new AppState()

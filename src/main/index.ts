@@ -51,7 +51,13 @@ function createWindow(): void {
         mainWindow.webContents.send('baize-notes:init-theme-styles', theme)
 
         const systemSetting = getSystemSetting()
-        const fontCss = `body, .title-bar, .menu-bar, .menu-label, .menu-item-label, .workspace-area, .status-bar, .navi-tab, .resource-manager, .md-edit-tools, .md-preview, .resizer-md, .resizer-main, #file-bar { font-family: ${systemSetting.fontFamily} !important; font-size: ${systemSetting.fontSize}px !important; }`
+        const fontCss = [
+            'body, .title-bar, .menu-bar, .menu-label, .menu-item-label,',
+            ' .workspace-area, .status-bar, .navi-tab, .resource-manager,',
+            ' .md-edit-tools, .md-preview, .resizer-md, .resizer-main, #file-bar',
+            ` { font-family: ${systemSetting.fontFamily} !important;`,
+            ` font-size: ${systemSetting.fontSize}px !important; }`
+        ].join('')
         mainWindow.webContents.insertCSS(fontCss)
 
         const editorSetting = getEditorSetting()

@@ -204,7 +204,7 @@ function preRenderImageUrlConvert(text: string): string {
         return text.replace(regex, (match, src) => {
             const imgSrc = covertFileUrl(src)
             const altText = parseAltText(match)
-            return '<p><img style="width: auto; max-width: 900px; height: auto" src="' + imgSrc + '" alt="' + altText + '"></p>'
+            return `<p><img style="width: auto; max-width: 900px; height: auto" src="${imgSrc}" alt="${altText}"></p>`
         })
     } catch {
         return text
@@ -222,7 +222,7 @@ function preRenderFileUrlConvert(text: string): string {
             if (!url.startsWith('http')) {
                 const fileSrc = covertFileUrl(url)
                 const altText = parseAltText(match)
-                return '<a href="' + fileSrc + '">' + altText + '</a>'
+                return `<a href="${fileSrc}">${altText}</a>`
             }
             return match
         })
