@@ -23,6 +23,14 @@ export interface MonacoThemeConfig {
     borderColor?: string
 }
 
+export interface MonacoThemeData {
+    base: string
+    inherit?: boolean
+    rules?: Array<{ token: string; foreground?: string; background?: string; fontStyle?: string }>
+    colors?: Record<string, string>
+    encodedTokensColors?: string[]
+}
+
 const builtinThemes: Record<string, MonacoThemeConfig> = {
     'vs': {
         name: 'Visual Studio Light',
@@ -55,10 +63,10 @@ const builtinThemes: Record<string, MonacoThemeConfig> = {
 
 let allThemeNames: string[] = []
 let allThemeConfigs: Record<string, MonacoThemeConfig> = { ...builtinThemes }
-const themeDataCache: Record<string, any> = {}
+const themeDataCache: Record<string, MonacoThemeData> = {}
 let initialized = false
 
-function extractThemeConfig(themeName: string, themeData: any): MonacoThemeConfig {
+function extractThemeConfig(themeName: string, themeData: MonacoThemeData): MonacoThemeConfig {
     const colors = themeData.colors || {}
     const base = themeData.base || 'vs'
     const isDark = base === 'vs-dark' || base === 'hc-black'
@@ -149,7 +157,7 @@ export function getAllMonacoThemes(): { type: string; config: MonacoThemeConfig 
     })).filter(item => item.config !== undefined)
 }
 
-export function getMonacoThemeData(themeName: string): any | null {
+export function getMonacoThemeData(themeName: string): MonacoThemeData | null {
     initializeRegistry()
     return themeDataCache[themeName] || null
 }

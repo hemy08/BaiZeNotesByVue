@@ -199,12 +199,16 @@ function parseAltText(text: string): string {
  * 将相对路径的图片URL转换为绝对路径
  */
 function preRenderImageUrlConvert(text: string): string {
-    const regex = /!\[[^\]]*\]\(([^)]*)\)/g
-    return text.replace(regex, (match, src) => {
-        const imgSrc = covertFileUrl(src)
-        const altText = parseAltText(match)
-        return '<p><img style="width: auto; max-width: 900px; height: auto" src="' + imgSrc + '" alt="' + altText + '"></p>'
-    })
+    try {
+        const regex = /!\[[^\]]*\]\(([^)]*)\)/g
+        return text.replace(regex, (match, src) => {
+            const imgSrc = covertFileUrl(src)
+            const altText = parseAltText(match)
+            return '<p><img style="width: auto; max-width: 900px; height: auto" src="' + imgSrc + '" alt="' + altText + '"></p>'
+        })
+    } catch {
+        return text
+    }
 }
 
 /**
@@ -212,13 +216,17 @@ function preRenderImageUrlConvert(text: string): string {
  * 将非 http 开头的相对路径文件URL转换为绝对路径
  */
 function preRenderFileUrlConvert(text: string): string {
-    const regex = /\[[^\]]*\]\(([^)]*)\)/g
-    return text.replace(regex, (match, url) => {
-        if (!url.startsWith('http')) {
-            const fileSrc = covertFileUrl(url)
-            const altText = parseAltText(match)
-            return '<a href="' + fileSrc + '">' + altText + '</a>'
-        }
-        return match
-    })
+    try {
+        const regex = /\[[^\]]*\]\(([^)]*)\)/g
+        return text.replace(regex, (match, url) => {
+            if (!url.startsWith('http')) {
+                const fileSrc = covertFileUrl(url)
+                const altText = parseAltText(match)
+                return '<a href="' + fileSrc + '">' + altText + '</a>'
+            }
+            return match
+        })
+    } catch {
+        return text
+    }
 }

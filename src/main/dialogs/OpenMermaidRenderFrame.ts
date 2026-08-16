@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import { MERMAID_CSS, MERMAID_JS } from '../constants/urls'
 import { JSDOM } from 'jsdom'
 import { windowManager } from '../config/window-manager'
 import { createDialogOptions } from './dialog-defaults'
@@ -9,9 +10,7 @@ export async function HandleMermaidGetRenderResult(text: string): Promise<string
     CreateMermaidRenderFrame(text)
     return new Promise((resolve, reject) => {
         setTimeout(() => {
-            //console.log('mermaidHandleGetRenderResult setTimeout 11111')
             if (mermaidRenderResult != '') {
-                // console.log('mermaidHandleGetRenderResult setTimeout 22222', mermaidRenderResult)
                 resolve(mermaidRenderResult)
             } else {
                 reject(new Error('Wait mermaid render result time out'))
@@ -68,10 +67,10 @@ function createMermaidRenderHtmlContent(mermaidGraphDesc: string): Document {
 
     const ele_head_link = document.createElement('link')
     ele_head_link.rel = 'stylesheet'
-    ele_head_link.href = 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.css'
+    ele_head_link.href = MERMAID_CSS
 
     const ele_head_script = document.createElement('script')
-    ele_head_script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js'
+    ele_head_script.src = MERMAID_JS
 
     const ele_body_mermaidGraph = document.createElement('div')
     ele_body_mermaidGraph.id = 'mermaidGraph'

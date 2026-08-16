@@ -87,14 +87,12 @@ class BaiZeStore {
             // 删除最旧的缓存
             const oldestKey = this.fileCache.keys().next().value!
             this.fileCache.delete(oldestKey)
-            //console.log(`[BaiZeStore] Cache full, removed: ${oldestKey}`)
         }
         this.fileCache.set(path, {
             content,
             timestamp: Date.now(),
             size: content.length
         })
-        //console.log(`[BaiZeStore] Cached file: ${path}, size: ${content.length}, cache size: ${this.fileCache.size}`)
     }
 
     /**
@@ -103,7 +101,6 @@ class BaiZeStore {
     getFileContent(path: string): string | null {
         const cached = this.fileCache.get(path)
         if (cached) {
-            //console.log(`[BaiZeStore] Cache hit: ${path}`)
             return cached.content
         }
         return null

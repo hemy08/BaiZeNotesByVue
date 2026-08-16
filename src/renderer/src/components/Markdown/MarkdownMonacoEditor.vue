@@ -155,7 +155,6 @@ const handleInsertAfterCursor = (value: string) => {
 }
 
 const handleUpdateEditorOptions = (_event: any, settings: any) => {
-    //console.log('handleUpdateEditorOptions', settings)
     if (editorInstance) {
         editor.updateEditorOptions(editorInstance, settings)
     }

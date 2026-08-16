@@ -3,19 +3,18 @@
  * 提供文件保存、打开、创建、重命名、删除等基础功能
  */
 
+import path from 'path'
 import { promises as fs } from 'fs'
 import { shell, dialog, BrowserWindow } from 'electron'
 import { FileItem } from '../../global-types'
 import { configStore } from '../baize-store'
-import { saveLastOpenedFile } from '../file-state'
+import { saveLastOpenedFile, saveLastOpenedDirectory } from '../file-state'
 import { logger } from '../logger'
 import { ParserFileName, ParseDirectoryPath, BuildFileTree, GetCurrentFileDirectory, SelectDirectory } from './path-utils'
 import * as fileExport from './export'
 import { showErrorMessageBox } from './dialog-helpers'
 import { appState } from '../app-state'
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const path = require('path')
+import { StartAutoSaveFileTime } from './auto-save'
 
 // 大文件阈值 (5MB)
 const LARGE_FILE_THRESHOLD = 5 * 1024 * 1024
@@ -31,13 +30,6 @@ export interface FileProperties {
     path: string
     type: string
     content?: string
-}
-
-/**
- * 获取自动保存函数
- */
-function getAutoSaveFunctions() {
-    return require('./auto-save')
 }
 
 /**
@@ -71,7 +63,6 @@ export async function SaveActiveFile(): Promise<void> {
         logger.info('The file has been saved successfully', curFile.path)
 
         // 通知所有窗口
-        const { BrowserWindow } = require('electron')
         BrowserWindow.getAllWindows().forEach((window: Electron.BrowserWindow) => {
             window.webContents.send('file-saved-success')
         })
@@ -302,7 +293,6 @@ export async function CreateFileFolder(name: string, dirPath: string, isFolder: 
 
     // 重新加载文件资源管理器
     setTimeout(async () => {
-        const { StartAutoSaveFileTime } = getAutoSaveFunctions()
         StartAutoSaveFileTime()
         try {
             await ReloadDirFromDisk()
@@ -324,7 +314,6 @@ export async function ReloadDirFromDisk(): Promise<void> {
     })
     const fileTree = BuildFileTree(appState.rootPath, mdFiles)
     appState.mdFileTree = fileTree
-    const { StartAutoSaveFileTime } = getAutoSaveFunctions()
     StartAutoSaveFileTime()
     appState.mainWindow!.webContents.send('baize:notes:resource:manager:file-system-data', JSON.stringify(fileTree))
 
@@ -386,7 +375,6 @@ export async function OpenSelectFile(fileProperties: FileProperties): Promise<vo
 
     logger.info('loading file ', fileProperties.path)
 
-    const { StartAutoSaveFileTime } = getAutoSaveFunctions()
     StartAutoSaveFileTime()
 
     try {
@@ -475,7 +463,6 @@ export async function OpenDirectory(mainWindow: BrowserWindow): Promise<void> {
         appState.rootPath = result.filePaths[0]
         await ReloadDirFromDisk()
 
-        const { saveLastOpenedDirectory } = require('../file-state')
         saveLastOpenedDirectory(result.filePaths[0])
     } catch (err) {
         showErrorMessageBox('Error opening directory dialog:' + err)

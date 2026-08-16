@@ -446,7 +446,7 @@ function generateThemeSettingHTML(): string {
     // 创建脚本
     const scriptElement = document.createElement('script')
     scriptElement.textContent = `
-    const { ipcRenderer } = require("electron");
+    const ipcRenderer = window.electronAPI.ipcRenderer;
 
     // 初始化
     const separateEditorThemeCheckbox = document.getElementById('separate-editor-theme-checkbox');

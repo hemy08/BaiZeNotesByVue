@@ -27,8 +27,6 @@ function EnterAction(editor: monaco.editor.IStandaloneCodeEditor) {
     // 获取上一行内容，如果是- 开头，插入\r\n-
     const start_list = matchStartWith(content, /^\s*- /)
     const start_link = matchStartWith(content, /^\s*- \[/)
-    //console.log('start_list', start_list, start_list?.length)
-    //console.log('start_link', start_link, start_link?.length)
     let insertText = '\r\n'
     if (start_link != null) {
         if (start_link.length != content.length) {
@@ -39,7 +37,6 @@ function EnterAction(editor: monaco.editor.IStandaloneCodeEditor) {
     } else {
         insertText = '\r\n'
     }
-    //console.log('insertText', insertText, content.length)
 
     if (insertText != '\r\n') {
         OnInsertAfterCursor(editor, insertText)

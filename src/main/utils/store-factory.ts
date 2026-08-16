@@ -12,7 +12,7 @@ import * as path from 'path'
  * @param name 存储文件名称
  * @param defaults 默认值
  */
-export function createStore<T extends Record<string, any>>(
+export function createStore<T extends Record<string, unknown>>(
     name: string,
     defaults: T
 ): Store<T> {

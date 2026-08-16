@@ -151,6 +151,17 @@ onBeforeUnmount(() => {
 })
 </script>
 
+<style>
+.katex-math-block {
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.katex-code-block {
+    text-align: center;
+}
+</style>
+
 <style scoped>
 @import 'katex/dist/katex.min.css';
 

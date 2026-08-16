@@ -39,7 +39,7 @@ export function FileManagerContextMenuCut(fromPath: string, _isFile: boolean): v
  * @param toPath 目标路径
  * @param isFile 是否为文件
  */
-export async function FileManagerContextMenuPaste(toPath: string, isFile: string): Promise<void> {
+export async function FileManagerContextMenuPaste(toPath: string, isFile: boolean): Promise<void> {
     if (isFile) {
         showErrorMessageBox(`目标不是一个目录！`)
         return

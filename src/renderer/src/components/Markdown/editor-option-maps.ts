@@ -143,7 +143,7 @@ export const EditorOptionMaps: Record<string, string> = {
 export function updateEditorOption(
     editor: monaco.editor.IStandaloneCodeEditor,
     key: string,
-    value: any
+    value: unknown
 ): void {
     const optionKey = EditorOptionMaps[key]
     if (!optionKey) {
@@ -152,10 +152,10 @@ export function updateEditorOption(
     }
 
     if (key === 'minimap') {
-        editor.updateOptions({ minimap: { enabled: value } })
+        editor.updateOptions({ minimap: { enabled: !!value } })
     } else if (key === 'rulers') {
         const rulersArray = value
-            ? value.split(',').map((v: string) => parseInt(v.trim())).filter((v: number) => !isNaN(v))
+            ? (value as string).split(',').map((v: string) => parseInt(v.trim())).filter((v: number) => !isNaN(v))
             : []
         editor.updateOptions({ rulers: rulersArray })
     } else if (key === 'guides') {
@@ -178,9 +178,9 @@ export function updateEditorOption(
 
 export function updateEditorOptions(
     editor: monaco.editor.IStandaloneCodeEditor,
-    settings: any
+    settings: Record<string, unknown>
 ): void {
-    const options: any = {}
+    const options: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(settings)) {
         const optionKey = EditorOptionMaps[key]
         if (!optionKey) {
@@ -241,16 +241,14 @@ export function updateEditorOptions(
                 options.selectionHighlight = value
             }
         } else if (key === 'renderIndentGuides') {
-            if (!options.guides) options.guides = {}
-            options.guides.indentation = !!value
+            if (!options.guides) options.guides = {} as Record<string, unknown>
+            ;(options.guides as Record<string, unknown>).indentation = !!value
         } else if (key === 'highlightActiveIndentGuide') {
-            if (!options.guides) options.guides = {}
-            options.guides.highlightActiveIndentation = !!value
-        } else if (key === 'unfoldOnClick') {
-            options.unfoldOnClickAfterEndOfLine = !!value
+            if (!options.guides) options.guides = {} as Record<string, unknown>
+            ;(options.guides as Record<string, unknown>).highlightActiveIndentation = !!value
         } else if (key === 'showAdjustSettingTip') {
-            if (!options.hover) options.hover = {}
-            options.hover.enabled = !!value
+            if (!options.hover) options.hover = {} as Record<string, unknown>
+            ;(options.hover as Record<string, unknown>).enabled = !!value
         } else {
             options[optionKey] = value
         }

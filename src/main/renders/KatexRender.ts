@@ -33,7 +33,7 @@ function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string
       html = latex
     }
     if (isBlock) {
-      html = '<div style="text-align: center;margin-top: 20px;margin-bottom: 20px"><p>' + html + '</p></div>'
+      html = '<div class="katex-math-block"><p>' + html + '</p></div>'
     }
     return html
   })
@@ -58,7 +58,7 @@ function katexRenderToString(text: string): string {
 function renderMathCodeBlock(text: string, regex: RegExp): string {
   return text.replace(regex, (_, code) => {
     const mathBlocks = katex.renderToString(code)
-    return '<div style="text-align: center;"><p>' + mathBlocks + '</p></div>'
+    return '<div class="katex-code-block"><p>' + mathBlocks + '</p></div>'
   })
 }
 

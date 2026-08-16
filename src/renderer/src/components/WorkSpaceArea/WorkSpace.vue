@@ -121,7 +121,6 @@ const handlePluginToolsContainerShow = (value: boolean) => {
 }
 
 const handleWorkAreaContainerShow = (value: string) => {
-    // console.log("handleWorkAreaContainerShow ", value)
     isShowMdContainer.value = false
     isShowPluginsContainer.value = false
     isShowHtmlContainer.value = false
@@ -189,7 +188,6 @@ const handleHideDisplayResManager = () => {
 }
 
 function onWindowResized() {
-    // console.log('resize window.innerWidth', window.innerWidth)
     windowWidth.value = window.innerWidth
 }
 

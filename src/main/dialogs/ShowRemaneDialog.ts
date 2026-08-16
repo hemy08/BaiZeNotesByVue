@@ -125,7 +125,7 @@ function makeRenameDialogHtml(path: string): string {
     // 创建脚本
     const scriptElement = document.createElement('script')
     scriptElement.textContent = `
-    const { ipcRenderer } = require("electron");
+    const ipcRenderer = window.electronAPI.ipcRenderer;
     const inputElement = document.getElementById("file-folder-name");
     inputElement.focus();
     inputElement.addEventListener("keyup", function(event) {

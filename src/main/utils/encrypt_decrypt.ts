@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const crypto = require('crypto')
+import crypto from 'crypto'
 import { appState } from './app-state'
 
 // 生成RSA密钥对

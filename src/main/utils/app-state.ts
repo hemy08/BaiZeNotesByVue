@@ -17,7 +17,7 @@ class AppState {
   private _saveFileInterval = '5000'
   private _srcDirCopyCut = ''
   private _isCopyOrCut = ''
-  private _mdFileTree: any = null
+  private _mdFileTree: FileSysItem[] | null = null
 
   get mainWindow(): BrowserWindow | null {
     return this._mainWindow
@@ -75,11 +75,11 @@ class AppState {
     this._isCopyOrCut = val
   }
 
-  get mdFileTree(): any {
+  get mdFileTree(): FileSysItem[] | null {
     return this._mdFileTree
   }
 
-  set mdFileTree(val: any) {
+  set mdFileTree(val: FileSysItem[] | null) {
     this._mdFileTree = val
   }
 }

@@ -47,7 +47,6 @@ function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
         let isImage = false
         for (const item of items) {
             // 检查项目类型是否为图片
-            // console.log('item.types', item.types)
             let context: Blob
             if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
                 context = await item.getType('image/png') // 或者使用其他 MIME 类型
@@ -66,7 +65,6 @@ function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
 
         if (!isImage) {
             const text = await navigator.clipboard.readText()
-            // console.log('text', text)
             EventHandleMaps['paste'](editor, text)
         }
     })
@@ -82,13 +80,6 @@ function onDidChange(editor: monaco.editor.IStandaloneCodeEditor) {
         }
     })
 
-    /*console.log('onDidChange getScrollTop', editor.getScrollTop())
-  console.log('onDidChange getScrollHeight', editor.getScrollHeight())
-  console.log('onDidChange getScrollHeight', editor.getScrollHeight())
-  console.log('onDidChange getScrollLeft', editor.getScrollLeft())
-  console.log('onDidChange editor.getLayoutInfo().contentLeft', editor.getLayoutInfo().contentLeft)
-  console.log('onDidChange editor.getLayoutInfo().height', editor.getLayoutInfo().height)
-  console.log('onDidChange editor.getLayoutInfo()', editor.getLayoutInfo())*/
 }
 
 export const MonacoEditorKeyMaps = registerEditorKeyMaps

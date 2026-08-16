@@ -1,4 +1,6 @@
 import { getCurrentThemeStyles } from '../config'
+import type { ThemeStyles } from '../config'
+import { SystemSetting } from '../global-types'
 import { JSDOM } from 'jsdom'
 import * as digcom from './dialog_common'
 import * as EditorSettingUtils from '../config/editor-setting'
@@ -83,7 +85,7 @@ export function ShowEditorSettingDialog(mainWindow: Electron.BrowserWindow) {
     }, componentId)
 }
 
-function generateEditorSettingHTML(themeStyles: any, systemSettings: any): string {
+function generateEditorSettingHTML(themeStyles: ThemeStyles, systemSettings: SystemSetting): string {
     const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>')
     const document = dom.window.document
 

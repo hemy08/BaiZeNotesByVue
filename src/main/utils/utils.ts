@@ -23,49 +23,48 @@ export {
 }
 
 export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
-    ipcMain.on('baize:notes:open-select-file', async (_, message) => {
+    ipcMain.on('baize:notes:open-select-file', async (_: Electron.IpcMainEvent, message: FileProperties) => {
         await FileUtils.OpenSelectFile(message)
     })
 
-    ipcMain.on('pre-render-monaco-editor-content', (_, message) => {
+    ipcMain.on('pre-render-monaco-editor-content', (_: Electron.IpcMainEvent, message: string) => {
         HemyRenderPre(mainWindow, message)
     })
 
-    ipcMain.on('post-render-monaco-editor-content', (_, message) => {
+    ipcMain.on('post-render-monaco-editor-content', (_: Electron.IpcMainEvent, message: string) => {
         HemyRenderPost(mainWindow, message)
     })
 
-    ipcMain.on('file-manager-context-menu-copy-relative-path', (_, path) => {
+    ipcMain.on('file-manager-context-menu-copy-relative-path', (_: Electron.IpcMainEvent, path: string) => {
         FileUtils.CopyRelativePath(path)
     })
 
-    ipcMain.on('file-manager-context-menu-copy-imagelink', (_, path) => {
+    ipcMain.on('file-manager-context-menu-copy-imagelink', (_: Electron.IpcMainEvent, path: string) => {
         FileUtils.CopyImageLink(path)
     })
 
-    ipcMain.on('file-manager-context-menu-copy-filelink', (_, path) => {
+    ipcMain.on('file-manager-context-menu-copy-filelink', (_: Electron.IpcMainEvent, path: string) => {
         FileUtils.CopyFileLink(path)
     })
 
-    ipcMain.on('file-manager-context-menu-copy-file', (_, path, isFile) => {
+    ipcMain.on('file-manager-context-menu-copy-file', (_: Electron.IpcMainEvent, path: string, isFile: boolean) => {
         FileUtils.FileManagerContextMenuCopy(path, isFile)
     })
 
-    ipcMain.on('file-manager-context-menu-cut', (_, path, isFile) => {
+    ipcMain.on('file-manager-context-menu-cut', (_: Electron.IpcMainEvent, path: string, isFile: boolean) => {
         FileUtils.FileManagerContextMenuCut(path, isFile)
     })
 
-    ipcMain.on('file-manager-context-menu-paste', (_, value, isFile) => {
+    ipcMain.on('file-manager-context-menu-paste', (_: Electron.IpcMainEvent, value: string, isFile: boolean) => {
         FileUtils.FileManagerContextMenuPaste(value, isFile)
     })
 
-    ipcMain.on('file-manager-context-menu-open-in-explorer', (_, path) => {
-        // console.log('file-manager-context-menu-rename', path, name)
+    ipcMain.on('file-manager-context-menu-open-in-explorer', (_: Electron.IpcMainEvent, path: string) => {
         FileUtils.OpenFolderExplorer(path)
     })
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    ipcMain.on('file-manager-context-menu-reload-from-disk', async (_) => {
+    ipcMain.on('file-manager-context-menu-reload-from-disk', async (_: Electron.IpcMainEvent) => {
         await FileUtils.ReloadDirFromDisk()
     })
 
@@ -113,12 +112,10 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
 
     // 主题配置相关IPC
     ipcMain.handle('get-current-theme', () => {
-        //console.log('get-current-theme')
         return getCurrentTheme()
     })
 
-    ipcMain.handle('get-current-theme-styles', (event, themeType?: string) => {
-        //console.log('get-current-theme-styles')
+    ipcMain.handle('get-current-theme-styles', (_event: Electron.IpcMainInvokeEvent, themeType?: string) => {
         if (themeType) {
             return getThemeStylesByType(themeType as any)
         }
@@ -133,15 +130,15 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         return getAllMonacoThemes()
     })
 
-    ipcMain.on('get-separate-editor-theme', (event) => {
+    ipcMain.on('get-separate-editor-theme', (event: Electron.IpcMainEvent) => {
         event.returnValue = getSeparateEditorTheme ()
     })
 
-    ipcMain.on('get-monaco-theme', (event) => {
+    ipcMain.on('get-monaco-theme', (event: Electron.IpcMainEvent) => {
         event.returnValue = getMonacoTheme ()
     })
 
-    ipcMain.on('update-select-file-content', async (_, content) => {
+    ipcMain.on('update-select-file-content', async (_: Electron.IpcMainEvent, content: string) => {
         if (appState.currentActiveFile != null) {
             appState.currentActiveFile.content = content
         } else {
@@ -150,15 +147,13 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     })
 
     // 监听键盘事件
-    async function handleKeyDown(event) {
-        if (event.ctrlKey && event.key === 's') {
-            await FileUtils.SaveActiveFile()
+    ipcMain.on('keydown', (_event: Electron.IpcMainEvent, keyboardEvent: { ctrlKey: boolean; key: string }) => {
+        if (keyboardEvent.ctrlKey && keyboardEvent.key === 's') {
+            FileUtils.SaveActiveFile()
         }
-    }
+    })
 
-    ipcMain.on('keydown', handleKeyDown)
-
-    ipcMain.on('save-file-content-to-disk', async (_, content) => {
+    ipcMain.on('save-file-content-to-disk', async (_: Electron.IpcMainEvent, content: string) => {
         if (appState.currentActiveFile != null) {
             appState.currentActiveFile.content = content
             await FileUtils.SaveActiveFile()

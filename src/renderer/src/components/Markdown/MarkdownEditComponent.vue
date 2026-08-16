@@ -111,7 +111,6 @@ function stopResizing() {
 }
 
 function handleMarkdownCodeUpdate(newValue: string) {
-    //console.log('handleMarkdownCodeUpdate', newValue)
     window.electron.ipcRenderer.send('update-select-file-content', newValue)
     markdownEditorContent.value = newValue
 }
@@ -131,7 +130,6 @@ function onHandleNewContent(content: string) {
       EventBus.$emit('monaco-editor-relayout')
     }, 150)
   } else {
-    // console.log('content bull')
     handleMarkdownCodeUpdate('\r\n')
   }
 }
@@ -207,7 +205,6 @@ const handleFileImportReplace = (value: string) => {
 }
 
 function handleKeyDownEvent(event) {
-    // console.log('keyDown', event)
     if (event.ctrlKey && event.key === 's') {
         window.electron.ipcRenderer.send(
             'save-file-content-to-disk',

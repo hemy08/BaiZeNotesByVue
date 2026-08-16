@@ -15,7 +15,7 @@ async function ensureConfigDir() {
 }
 
 // 读取配置文件
-async function readConfig(configName: string): Promise<any> {
+async function readConfig(configName: string): Promise<Record<string, unknown> | null> {
   try {
     await ensureConfigDir()
     const configPath = path.join(CONFIG_DIR, `${configName}.json`)
@@ -33,7 +33,7 @@ async function readConfig(configName: string): Promise<any> {
 }
 
 // 写入配置文件
-async function writeConfig(configName: string, data: any): Promise<boolean> {
+async function writeConfig(configName: string, data: Record<string, unknown>): Promise<boolean> {
   try {
     await ensureConfigDir()
     const configPath = path.join(CONFIG_DIR, `${configName}.json`)
@@ -81,7 +81,7 @@ export function registerConfigIpcHandlers() {
   })
 
   // 写入配置
-  ipcMain.handle('config:write', async (_, configName: string, data: any) => {
+  ipcMain.handle('config:write', async (_, configName: string, data: Record<string, unknown>) => {
     return await writeConfig(configName, data)
   })
 

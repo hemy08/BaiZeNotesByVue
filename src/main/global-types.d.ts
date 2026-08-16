@@ -11,7 +11,7 @@ declare global {
     }
 
     interface FileSysItem {
-        id: never
+        id: string
         name: string
         path: string
         type: 'file' | 'folder'
@@ -19,17 +19,7 @@ declare global {
         isDirectory?: boolean
         isIndented?: boolean
         isExpanded?: boolean
-        children?: {
-            id: never
-            name: string
-            path: string
-            fileExtension: string
-            type: 'folder' | 'file'
-            isDirectory: boolean
-            isIndented: boolean
-            isExpanded: boolean
-            children?: never[]
-        }[]
+        children?: FileSysItem[]
     }
 
     interface GlobalEmoji {

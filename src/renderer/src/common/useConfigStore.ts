@@ -3,6 +3,7 @@
  * 使用 Vue 3 Composition API 管理配置状态
  */
 import { ref, reactive, watch, computed } from 'vue'
+import { DEFAULT_GITHUB, DEFAULT_GOOGLE, DEFAULT_STACKOVERFLOW } from '../../../main/constants/urls'
 
 // 类型定义
 export interface ThemeConfig {
@@ -85,9 +86,9 @@ export const defaultSystemConfig: SystemConfig = {
 
 export const defaultQuickLinksConfig: QuickLinksConfig = {
   links: [
-    { name: 'GitHub', url: 'https://github.com', icon: '🐙', description: '代码托管平台' },
-    { name: 'Google', url: 'https://google.com', icon: '🔍', description: '搜索引擎' },
-    { name: 'Stack Overflow', url: 'https://stackoverflow.com', icon: '📚', description: '程序员问答社区' }
+    { name: 'GitHub', url: DEFAULT_GITHUB, icon: '🐙', description: '代码托管平台' },
+    { name: 'Google', url: DEFAULT_GOOGLE, icon: '🔍', description: '搜索引擎' },
+    { name: 'Stack Overflow', url: DEFAULT_STACKOVERFLOW, icon: '📚', description: '程序员问答社区' }
   ]
 }
 
@@ -101,7 +102,7 @@ export interface DialogState {
   editorSettings: { visible: boolean }
   systemSettings: { visible: boolean }
   mermaidEdit: { visible: boolean }
-  admonition: { visible: boolean; data?: any }
+  admonition: { visible: boolean; data?: Record<string, unknown> }
   mathText: { visible: boolean }
   insertImage: { visible: boolean }
   mdSheet: { visible: boolean }
@@ -172,7 +173,7 @@ async function loadAllConfigs() {
 }
 
 // 保存配置（防抖）
-async function saveConfig(name: string, data: any) {
+async function saveConfig(name: string, data: Record<string, unknown>) {
   if (saveTimeout) clearTimeout(saveTimeout)
   saveTimeout = setTimeout(async () => {
     try {
@@ -222,7 +223,7 @@ function updateSystemConfig(config: Partial<SystemConfig>) {
 }
 
 // 对话框控制函数
-function showDialog(dialogName: keyof DialogState, data?: any) {
+function showDialog(dialogName: keyof DialogState, data?: Record<string, unknown>) {
   // 如果是消息对话框类型（'message' 或具体的消息类型），更新 messageDialog
   const messageTypes = ['success', 'error', 'warning', 'info', 'failed', 'message'] as const
   if (messageTypes.includes(dialogName as any)) {
@@ -232,8 +233,8 @@ function showDialog(dialogName: keyof DialogState, data?: any) {
     dialogs.messageDialog = {
       visible: true,
       type: messageType as MessageType,
-      title: data?.title || '',
-      message: data?.message || ''
+      title: (data?.title as string) || '',
+      message: (data?.message as string) || ''
     }
   } else {
     // 其他对话框类型，正常处理

@@ -118,7 +118,6 @@ export function ParserMarkdownChapters(md: MarkdownIt, text: string) {
   // 提取大纲
   const headings: MarkdownTOC[] = []
   const mdTokens = md.parse(text, [])
-  // console.log('markdown-it tokens', mdTokens)
   mdTokens.forEach((token) => {
     if (token.type === 'heading_open') {
       const healing: MarkdownTOC = {

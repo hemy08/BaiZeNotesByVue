@@ -154,7 +154,7 @@ class Logger {
     /**
      * 格式化日志消息
      */
-    private formatMessage(level: LogLevel, message: string, ...args: any[]): string {
+    private formatMessage(level: LogLevel, message: string, ...args: unknown[]): string {
         const timestamp = new Date().toISOString()
         const argsStr = args.length > 0 ? ' ' + args.map(arg => {
             if (typeof arg === 'object') {
@@ -173,7 +173,7 @@ class Logger {
     /**
      * 写入日志
      */
-    private writeLog(level: LogLevel, message: string, ...args: any[]): void {
+    private writeLog(level: LogLevel, message: string, ...args: unknown[]): void {
         const formattedMessage = this.formatMessage(level, message, ...args)
         
         // 输出到控制台
@@ -200,7 +200,7 @@ class Logger {
     /**
      * 发送日志到状态栏console
      */
-    private sendToStatusBar(level: LogLevel, message: string, ...args: any[]): void {
+    private sendToStatusBar(level: LogLevel, message: string, ...args: unknown[]): void {
         if (!this.mainWindow || this.mainWindow.isDestroyed()) {
             return
         }
@@ -235,28 +235,28 @@ class Logger {
     /**
      * 调试日志
      */
-    debug(message: string, ...args: any[]): void {
+    debug(message: string, ...args: unknown[]): void {
         this.writeLog(LogLevel.DEBUG, message, ...args)
     }
 
     /**
      * 信息日志
      */
-    info(message: string, ...args: any[]): void {
+    info(message: string, ...args: unknown[]): void {
         this.writeLog(LogLevel.INFO, message, ...args)
     }
 
     /**
      * 警告日志
      */
-    warn(message: string, ...args: any[]): void {
+    warn(message: string, ...args: unknown[]): void {
         this.writeLog(LogLevel.WARN, message, ...args)
     }
 
     /**
      * 错误日志
      */
-    error(message: string, ...args: any[]): void {
+    error(message: string, ...args: unknown[]): void {
         this.writeLog(LogLevel.ERROR, message, ...args)
     }
 

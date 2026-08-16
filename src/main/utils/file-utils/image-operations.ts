@@ -9,8 +9,7 @@ import { ParseDirectoryPath } from './path-utils'
 import { showErrorMessageBox } from './dialog-helpers'
 import { appState } from '../app-state'
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const path = require('path')
+import path from 'path'
 
 function getMathRandom(maxLength: number): string {
     let result = ''
