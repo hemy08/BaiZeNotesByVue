@@ -5,8 +5,11 @@
 *.log*
 .vscode
 .idea
-
+.arts
+.ai
+.codegraph
 .codeartsdoer
+.npm-cache
 .codemate
 /resources/mermaid/node_modules/
 /resources/katex/node_modules/
