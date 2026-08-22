@@ -15,7 +15,7 @@
 
 </div>
 
-![img.png](img.png)
+![欢迎界面](docs/images/welcome.png)
 
 ---
 
