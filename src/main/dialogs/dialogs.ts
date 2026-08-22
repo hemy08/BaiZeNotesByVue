@@ -11,6 +11,8 @@ import {ShowTechStackDialog} from './ShowTechStackDialog'
 import {ShowHelpAboutDialog} from  './ShowHelpAboutDialog'
 import { ipcListenerManager } from '../ipc/ipc-listener-manager'
 import {ShowHelpContactUsDialog} from  './ShowHelpContactUsDialog'
+import {ShowUpdateLogDialog} from  './ShowUpdateLogDialog'
+import {ShowReleaseNotesDialog} from  './ShowReleaseNotesDialog'
 import { dialog } from 'electron'
 import { DeleteFileFolder } from '../utils/file-utils'
 
@@ -45,11 +47,13 @@ export {
     ShowTechStackDialog,
     ShowHelpAboutDialog,
     ShowHelpContactUsDialog,
+    ShowUpdateLogDialog,
+    ShowReleaseNotesDialog,
     CreateMermaidRenderFrame,
     HandleMermaidGetRenderResult
 }
 
-export function MainWindowListenDialogsEvent(mainWindow: Electron.BrowserWindow) {
+export function MainWindowListenDialogsEvent(_mainWindow: Electron.BrowserWindow) {
     const componentId = 'main-window-dialogs'
 
     ipcListenerManager.register('file-manager-context-menu-create-file', (_, dirPath, isFolder, fileExtension) => {

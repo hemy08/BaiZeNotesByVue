@@ -41,7 +41,7 @@
               <div class="preview-section">
                 <label class="preview-label">预览</label>
                 <div class="preview-card" :style="{ backgroundColor: previewColor + '15', borderLeftColor: previewColor }">
-                  <div class="preview-title" v-if="title" :style="{ color: previewColor }">{{ title || selectedType.name }}</div>
+                  <div class="preview-title" v-if="title" :style="{ color: previewColor }">{{ title || selectedTypeName }}</div>
                   <div class="preview-content">{{ content || 'Admonition 内容' }}</div>
                 </div>
               </div>
@@ -66,7 +66,7 @@ interface Props {
   visible: boolean
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'insert', markdown: string): void
@@ -75,6 +75,10 @@ const emit = defineEmits<{
 const selectedType = ref('note')
 const title = ref('')
 const content = ref('')
+
+const selectedTypeName = computed(() =>
+  admonitionTypes.find(t => t.id === selectedType.value)?.name || ''
+)
 
 const { dialogRef, dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
 

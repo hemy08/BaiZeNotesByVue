@@ -26,6 +26,6 @@ export default defineConfig({
         '@mainer': resolve('src/main')
       }
     },
-    plugins: [vue()]
+    plugins: [vue({})]
   }
 })

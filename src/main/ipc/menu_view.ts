@@ -73,10 +73,10 @@ export const insertMenuHandlers = {
     'web-link': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('open-vue-dialog', 'insertLink')
     },
-    'custom-template': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+    'custom-template': (_mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         console.warn('[Menu] Custom template not implemented yet')
     },
-    'template-manager': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+    'template-manager': (_mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         console.warn('[Menu] Template manager not implemented yet')
     },
     'from-file': {

@@ -7,7 +7,6 @@ import { appState } from '../app-state'
 
 // 自动保存定时器
 let autoSaveTimer: NodeJS.Timeout | null = null
-let saveInterval = 30000 // 默认30秒
 
 /**
  * 启动文件自动保存
@@ -19,7 +18,6 @@ export function StartAutoSaveFileTime(interval: number = 30000): void {
         StopAutoSaveFileTime()
     }
 
-    saveInterval = interval
     appState.saveFileInterval = interval.toString()
     appState.savingFile = true
 

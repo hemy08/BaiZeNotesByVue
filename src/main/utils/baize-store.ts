@@ -29,7 +29,7 @@ class BaiZeStore {
     constructor() {
         // 获取用户数据目录
         const userDataPath = getUserDataPath()
-        const configFilePath = path.join(userDataPath, 'config', 'baize-config.json')
+
         
         // 初始化 electron-store，指定配置文件路径
         this.store = new Store<StoreSchema>({

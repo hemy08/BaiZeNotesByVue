@@ -60,6 +60,14 @@
                     <span class="label">TypeScript</span>
                     <span class="value">v{{ typescriptVersion }}</span>
                   </div>
+                  <div class="info-row">
+                    <span class="label">Monaco Editor</span>
+                    <span class="value">v{{ monacoEditorVersion }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">markdown-it</span>
+                    <span class="value">v{{ markdownItVersion }}</span>
+                  </div>
                 </div>
 
                 <div class="info-card">
@@ -110,6 +118,8 @@ const typescriptVersion = ref('')
 const electronVersion = ref('')
 const chromeVersion = ref('')
 const nodeVersion = ref('')
+const monacoEditorVersion = ref('')
+const markdownItVersion = ref('')
 const systemInfo = ref('')
 const platform = ref('')
 
@@ -123,12 +133,16 @@ onMounted(async () => {
     vueVersion.value = versionInfo.vueVersion
     viteVersion.value = versionInfo.viteVersion
     typescriptVersion.value = versionInfo.typescriptVersion
+    monacoEditorVersion.value = versionInfo.monacoEditorVersion
+    markdownItVersion.value = versionInfo.markdownItVersion
   } catch (error) {
     console.error('Failed to get version info:', error)
-    appVersion.value = '1.1.5-bate'
-    vueVersion.value = '3.4.27'
-    viteVersion.value = '5.4.21'
+    appVersion.value = '1.2.1'
+    vueVersion.value = '3.5.41'
+    viteVersion.value = '8.2.2'
     typescriptVersion.value = '6.0.2'
+    monacoEditorVersion.value = '0.56.0'
+    markdownItVersion.value = '15.0.0'
   }
 
   buildDate.value = new Date().toLocaleDateString('zh-CN', {

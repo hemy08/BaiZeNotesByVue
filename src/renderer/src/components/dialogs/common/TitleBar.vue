@@ -63,7 +63,7 @@ function onDragMove(e: MouseEvent) {
   const deltaX = e.clientX - dragStartPos.value.x
   const deltaY = e.clientY - dragStartPos.value.y
 
-  const dialogContainer = document.querySelector('.dialog-container.dragging')
+  const dialogContainer = document.querySelector('.dialog-container.dragging') as HTMLElement | null
   if (dialogContainer) {
     const newLeft = dialogStartPos.value.x + deltaX
     const newTop = dialogStartPos.value.y + deltaY

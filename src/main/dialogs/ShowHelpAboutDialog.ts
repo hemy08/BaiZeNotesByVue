@@ -9,10 +9,12 @@ import { windowManager } from '../config/window-manager'
 import { createDialogOptions } from './dialog-defaults'
 
 // 版本信息
-const APP_VERSION = '1.1.5-bate'
-const VUE_VERSION = '3.5.31'
-const VITE_VERSION = '5.4.21'
+const APP_VERSION = '1.2.1'
+const VUE_VERSION = '3.5.41'
+const VITE_VERSION = '8.2.2'
 const TYPESCRIPT_VERSION = '6.0.2'
+const MONACO_EDITOR_VERSION = '0.56.0'
+const MARKDOWN_IT_VERSION = '15.0.0'
 
 // 获取构建日期
 const BUILD_DATE = new Date().toLocaleDateString('zh-CN', {
@@ -333,6 +335,14 @@ function makeAboutHtml(): string {
                 <div class="info-row">
                     <span class="label">TypeScript</span>
                     <span class="value">v${TYPESCRIPT_VERSION}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Monaco Editor</span>
+                    <span class="value">v${MONACO_EDITOR_VERSION}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">markdown-it</span>
+                    <span class="value">v${MARKDOWN_IT_VERSION}</span>
                 </div>
             </div>
 

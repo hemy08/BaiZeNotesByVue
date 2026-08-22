@@ -98,7 +98,7 @@ interface Props {
   visible: boolean
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
@@ -106,29 +106,29 @@ const emit = defineEmits<{
 const { dialogRef, dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
 
 const coreFrameworks = [
-  { name: 'Electron', version: '^31.0.1', desc: '跨平台桌面应用框架', url: 'https://www.electronjs.org/' },
-  { name: 'Vue 3', version: '^3.4.27', desc: '渐进式 JavaScript 框架', url: 'https://vuejs.org/' },
-  { name: 'TypeScript', version: '^5.4.5', desc: 'JavaScript 的超集', url: 'https://www.typescriptlang.org/' },
-  { name: 'Vite', version: '^5.2.11', desc: '下一代前端构建工具', url: 'https://vitejs.dev/' },
-  { name: 'electron-vite', version: '^2.2.0', desc: 'Electron 专用 Vite 构建工具', url: 'https://electron-vite.org/' }
+  { name: 'Electron', version: '^43.0.0', desc: '跨平台桌面应用框架', url: 'https://www.electronjs.org/' },
+  { name: 'Vue 3', version: '^3.5.41', desc: '渐进式 JavaScript 框架', url: 'https://vuejs.org/' },
+  { name: 'TypeScript', version: '^6.0.2', desc: 'JavaScript 的超集', url: 'https://www.typescriptlang.org/' },
+  { name: 'Vite', version: '^8.2.2', desc: '下一代前端构建工具', url: 'https://vitejs.dev/' },
+  { name: 'electron-vite', version: '^6.0.0-beta.1', desc: 'Electron 专用 Vite 构建工具', url: 'https://electron-vite.org/' }
 ]
 
 const editors = [
-  { name: 'Monaco Editor', version: '^0.49.0', desc: 'VS Code 同款代码编辑器', url: 'https://microsoft.github.io/monaco-editor/' },
-  { name: 'markdown-it', version: '^14.1.0', desc: 'Markdown 解析器', url: 'https://markdown-it.github.io/' },
-  { name: 'Mermaid', version: '^10.9.1', desc: '流程图/时序图渲染', url: 'https://mermaid-js.github.io/mermaid/' },
-  { name: 'KaTeX', version: '^0.16.10', desc: '数学公式渲染', url: 'https://katex.org/' },
-  { name: 'highlight.js', version: '^11.9.0', desc: '代码语法高亮', url: 'https://highlightjs.org/' }
+  { name: 'Monaco Editor', version: '^0.56.0', desc: 'VS Code 同款代码编辑器', url: 'https://microsoft.github.io/monaco-editor/' },
+  { name: 'markdown-it', version: '^15.0.0', desc: 'Markdown 解析器', url: 'https://markdown-it.github.io/' },
+  { name: 'Mermaid', version: '^11.17.0', desc: '流程图/时序图渲染', url: 'https://mermaid-js.github.io/mermaid/' },
+  { name: 'KaTeX', version: '^0.18.4', desc: '数学公式渲染', url: 'https://katex.org/' },
+  { name: 'highlight.js', version: '^11.12.0', desc: '代码语法高亮', url: 'https://highlightjs.org/' }
 ]
 
 const dataStorage = [
-  { name: 'electron-store', version: '^8.2.0', desc: 'Electron 数据持久化', url: 'https://github.com/sindresorhus/electron-store' },
-  { name: 'electron-updater', version: '^6.1.8', desc: '应用自动更新', url: 'https://www.electron.build/auto-update' }
+  { name: 'electron-store', version: '^11.0.2', desc: 'Electron 数据持久化', url: 'https://github.com/sindresorhus/electron-store' },
+  { name: 'electron-updater', version: '^6.8.9', desc: '应用自动更新', url: 'https://www.electron.build/auto-update' }
 ]
 
 const utilities = [
   { name: 'crypto-js', version: '^4.2.0', desc: 'JavaScript 加密库', url: 'https://cryptojs.gitbook.io/docs/' },
-  { name: 'mammoth', version: '^1.8.0', desc: 'Word 文档解析', url: 'https://github.com/mwilliamson/mammoth.js' },
+  { name: 'mammoth', version: '^1.12.1', desc: 'Word 文档解析', url: 'https://github.com/mwilliamson/mammoth.js' },
   { name: 'turndown', version: '^7.2.0', desc: 'HTML 转 Markdown', url: 'https://github.com/mixmark-io/turndown' }
 ]
 

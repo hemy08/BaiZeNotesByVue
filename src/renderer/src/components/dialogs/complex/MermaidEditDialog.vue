@@ -52,7 +52,7 @@
             </div>
 
             <div class="footer">
-              <button class="btn btn-cancel" @click="handleCancel">取消</button>
+              <button class="btn btn-cancel" @click="handleClose">取消</button>
               <button class="btn btn-primary" @click="handleInsert">插入图表</button>
             </div>
           </div>
@@ -70,7 +70,7 @@ interface Props {
   visible: boolean
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'insert', data: string): void
@@ -89,17 +89,6 @@ const mermaidCode = ref(`mermaid
 const chartType = ref('graph')
 const previewHtml = ref('<p class="placeholder">预览区域</p>')
 
-const chartTypeMap: Record<string, string> = {
-  graph: 'graph TD',
-  flowchart: 'flowchart TD',
-  sequence: 'sequenceDiagram',
-  class: 'classDiagram',
-  state: 'stateDiagram-v2',
-  er: 'erDiagram',
-  pie: 'pie title Sample',
-  gantt: 'gantt'
-}
-
 function updatePreview() {
   previewHtml.value = `<div class="mermaid">${mermaidCode.value}</div>`
 }
@@ -116,7 +105,7 @@ function handleClear() {
   previewHtml.value = '<p class="placeholder">预览区域</p>'
 }
 
-function handleCancel() {
+function handleClose() {
   emit('close')
 }
 

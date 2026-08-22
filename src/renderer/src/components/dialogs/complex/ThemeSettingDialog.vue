@@ -142,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { useDialogResize } from '../../../composables/useDialogResize'
 
@@ -183,7 +183,7 @@ const themeCategories = ref<Array<{
   themes: Array<{ type: string; styles: any }>
 }>>([])
 
-const allMonacoThemes = ref<Array<{ type: string; name: string; colors: any }>>([])
+const allMonacoThemes = ref<Array<{ type: string; name: string; colors: any; config?: { accentColor?: string; name?: string; description?: string } }>>([])
 
 const editorFonts = [
   'Consolas', 'Monaco', 'Courier New', 'Fira Code', 'Source Code Pro',

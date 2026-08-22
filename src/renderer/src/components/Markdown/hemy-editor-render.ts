@@ -114,10 +114,10 @@ export function PreMarkdownRender(text: string): Promise<string> {
   return preRenderMermaidProc(text)
 }
 
-export function ParserMarkdownChapters(md: MarkdownIt, text: string) {
+export function ParserMarkdownChapters(md: InstanceType<typeof MarkdownIt>, text: string) {
   // 提取大纲
   const headings: MarkdownTOC[] = []
-  const mdTokens = md.parse(text, [])
+  const mdTokens = md.parse(text, {})
   mdTokens.forEach((token) => {
     if (token.type === 'heading_open') {
       const healing: MarkdownTOC = {

@@ -20,9 +20,8 @@ const props = defineProps({
 const emit = defineEmits(['mermaid-render-result'])
 
 const handleMermaidGraphDef = async (_: any, graphData: string) => {
-    let renderSvg
     try {
-        renderSvg = await mermaid.render('mermaidContainer', graphData)
+        await mermaid.render('mermaidContainer', graphData)
     } catch (error) {
         console.error('waitAsyncRenderResult error', error)
     }

@@ -425,7 +425,7 @@ export const themes: Record<ThemeType, ThemeStyles> = {
 }
 
 // 存储实例（延迟初始化）
-let store: ReturnType<typeof createStore> | null = null
+let store: ReturnType<typeof createStore<any>> | null = null
 
 // 获取存储实例
 function getStore() {

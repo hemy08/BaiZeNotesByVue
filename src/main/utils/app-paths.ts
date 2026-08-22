@@ -26,13 +26,13 @@ export function getUserDataPath(): string {
 
 /**
  * 获取应用资源目录路径
- * 打包后资源文件在安装目录下，与 resources.asar 同级
+ * 打包后资源文件在 process.resourcesPath 目录下（extraResources 复制目标）
  */
 export function getAppResourcesPath(): string {
     if (app.isPackaged) {
-        // 打包后，资源文件在安装目录下
-        // 例如：C:\Program Files\BaiZeNotes\config
-        return path.dirname(app.getPath('exe'))
+        // 打包后，extraResources 复制到 process.resourcesPath 目录下
+        // 例如：C:\Program Files\BaiZeNotes\resources\
+        return process.resourcesPath
     } else {
         // 开发环境，使用项目目录下的 resources
         return path.join(app.getAppPath(), 'resources')

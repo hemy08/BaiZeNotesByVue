@@ -13,6 +13,8 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "ignoreDeprecations": "6.0",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"

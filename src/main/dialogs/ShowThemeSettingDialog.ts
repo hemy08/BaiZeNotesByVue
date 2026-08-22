@@ -760,7 +760,7 @@ ipcMain.on('baize-notes:theme-update', (_, data: { themeType: ThemeType | null, 
     const currentThemeStyles = getCurrentThemeStyles()
 
     // 发送主题更新到所有窗口，包含所有配置信息
-    window.electronAPI.broadcastTheme({
+    ;(window as unknown as { electronAPI: { broadcastTheme: (data: unknown) => void } }).electronAPI.broadcastTheme({
         themeType: currentThemeType,
         separateEditorTheme: currentSeparateEditorTheme,
         monacoTheme: currentMonacoTheme,

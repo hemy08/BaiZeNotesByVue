@@ -227,7 +227,7 @@ function makeTechStackHtml(): string {
             <div class="tech-grid">
                 <div class="tech-card" onclick="openLink('https://www.electronjs.org/')">
                     <div class="tech-name">Electron</div>
-                    <div class="tech-version">版本: ^31.0.1</div>
+                    <div class="tech-version">版本: ^43.0.0</div>
                     <div class="tech-desc">跨平台桌面应用框架</div>
                     <div class="tech-url">
                         <span>https://www.electronjs.org/</span>
@@ -236,7 +236,7 @@ function makeTechStackHtml(): string {
                 </div>
                 <div class="tech-card" onclick="openLink('https://vuejs.org/')">
                     <div class="tech-name">Vue 3</div>
-                    <div class="tech-version">版本: ^3.4.27</div>
+                    <div class="tech-version">版本: ^3.5.41</div>
                     <div class="tech-desc">渐进式 JavaScript 框架</div>
                     <div class="tech-url">
                         <span>https://vuejs.org/</span>
@@ -245,7 +245,7 @@ function makeTechStackHtml(): string {
                 </div>
                 <div class="tech-card" onclick="openLink('https://www.typescriptlang.org/')">
                     <div class="tech-name">TypeScript</div>
-                    <div class="tech-version">版本: ^5.4.5</div>
+                    <div class="tech-version">版本: ^6.0.2</div>
                     <div class="tech-desc">JavaScript 的超集</div>
                     <div class="tech-url">
                         <span>https://www.typescriptlang.org/</span>
@@ -254,7 +254,7 @@ function makeTechStackHtml(): string {
                 </div>
                 <div class="tech-card" onclick="openLink('https://vitejs.dev/')">
                     <div class="tech-name">Vite</div>
-                    <div class="tech-version">版本: ^5.2.11</div>
+                    <div class="tech-version">版本: ^8.2.2</div>
                     <div class="tech-desc">下一代前端构建工具</div>
                     <div class="tech-url">
                         <span>https://vitejs.dev/</span>
@@ -263,7 +263,7 @@ function makeTechStackHtml(): string {
                 </div>
                 <div class="tech-card" onclick="openLink('https://electron-vite.org/')">
                     <div class="tech-name">electron-vite</div>
-                    <div class="tech-version">版本: ^2.2.0</div>
+                    <div class="tech-version">版本: ^6.0.0-beta.1</div>
                     <div class="tech-desc">Electron 专用 Vite 构建工具</div>
                     <div class="tech-url">
                         <span>https://electron-vite.org/</span>
@@ -278,7 +278,7 @@ function makeTechStackHtml(): string {
             <div class="tech-grid">
                 <div class="tech-card" onclick="openLink('https://microsoft.github.io/monaco-editor/')">
                     <div class="tech-name">Monaco Editor</div>
-                    <div class="tech-version">版本: ^0.49.0</div>
+                    <div class="tech-version">版本: ^0.56.0</div>
                     <div class="tech-desc">VS Code 同款代码编辑器</div>
                     <div class="tech-url">
                         <span>https://microsoft.github.io/monaco-editor/</span>
@@ -287,7 +287,7 @@ function makeTechStackHtml(): string {
                 </div>
                 <div class="tech-card" onclick="openLink('https://markdown-it.github.io/')">
                     <div class="tech-name">markdown-it</div>
-                    <div class="tech-version">版本: ^14.1.0</div>
+                    <div class="tech-version">版本: ^15.0.0</div>
                     <div class="tech-desc">Markdown 解析器</div>
                     <div class="tech-url">
                         <span>https://markdown-it.github.io/</span>
@@ -296,7 +296,7 @@ function makeTechStackHtml(): string {
                 </div>
                 <div class="tech-card" onclick="openLink('https://mermaid-js.github.io/mermaid/')">
                     <div class="tech-name">Mermaid</div>
-                    <div class="tech-version">版本: ^10.9.1</div>
+                    <div class="tech-version">版本: ^11.17.0</div>
                     <div class="tech-desc">流程图/时序图渲染</div>
                     <div class="tech-url">
                         <span>https://mermaid-js.github.io/mermaid/</span>
@@ -305,7 +305,7 @@ function makeTechStackHtml(): string {
                 </div>
                 <div class="tech-card" onclick="openLink('https://katex.org/')">
                     <div class="tech-name">KaTeX</div>
-                    <div class="tech-version">版本: ^0.16.10</div>
+                    <div class="tech-version">版本: ^0.18.4</div>
                     <div class="tech-desc">数学公式渲染</div>
                     <div class="tech-url">
                         <span>https://katex.org/</span>
@@ -314,7 +314,7 @@ function makeTechStackHtml(): string {
                 </div>
                 <div class="tech-card" onclick="openLink('https://highlightjs.org/')">
                     <div class="tech-name">highlight.js</div>
-                    <div class="tech-version">版本: ^11.9.0</div>
+                    <div class="tech-version">版本: ^11.12.0</div>
                     <div class="tech-desc">代码语法高亮</div>
                     <div class="tech-url">
                         <span>https://highlightjs.org/</span>
@@ -329,7 +329,7 @@ function makeTechStackHtml(): string {
             <div class="tech-grid">
                 <div class="tech-card" onclick="openLink('https://github.com/sindresorhus/electron-store')">
                     <div class="tech-name">electron-store</div>
-                    <div class="tech-version">版本: ^8.2.0</div>
+                    <div class="tech-version">版本: ^11.0.2</div>
                     <div class="tech-desc">Electron 数据持久化</div>
                     <div class="tech-url">
                         <span>https://github.com/sindresorhus/electron-store</span>
@@ -338,7 +338,7 @@ function makeTechStackHtml(): string {
                 </div>
                 <div class="tech-card" onclick="openLink('https://www.electron.build/auto-update')">
                     <div class="tech-name">electron-updater</div>
-                    <div class="tech-version">版本: ^6.1.8</div>
+                    <div class="tech-version">版本: ^6.8.9</div>
                     <div class="tech-desc">应用自动更新</div>
                     <div class="tech-url">
                         <span>https://www.electron.build/auto-update</span>
@@ -362,7 +362,7 @@ function makeTechStackHtml(): string {
                 </div>
                 <div class="tech-card" onclick="openLink('https://github.com/mwilliamson/mammoth.js')">
                     <div class="tech-name">mammoth</div>
-                    <div class="tech-version">版本: ^1.8.0</div>
+                    <div class="tech-version">版本: ^1.12.1</div>
                     <div class="tech-desc">Word 文档解析</div>
                     <div class="tech-url">
                         <span>https://github.com/mwilliamson/mammoth.js</span>

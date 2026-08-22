@@ -4,11 +4,11 @@ import { appState } from './app-state'
 // 生成RSA密钥对
 function generateRsaKeyPair(
     bits = 2048,
-    publicKeyEncoding = {
+    publicKeyEncoding: { type: 'spki'; format: 'pem' } = {
         type: 'spki',
         format: 'pem'
     },
-    privateKeyEncoding = {
+    privateKeyEncoding: { type: 'pkcs8'; format: 'pem' } = {
         type: 'pkcs8',
         format: 'pem'
     }
@@ -18,8 +18,8 @@ function generateRsaKeyPair(
             'rsa',
             {
                 modulusLength: bits,
-                publicKeyEncoding: publicKeyEncoding,
-                privateKeyEncoding: privateKeyEncoding
+                publicKeyEncoding: publicKeyEncoding as any,
+                privateKeyEncoding: privateKeyEncoding as any
             },
             (err, publicKey, privateKey) => {
                 if (err) {
@@ -73,9 +73,9 @@ function DigestBufferToBinaryString(hexString: Buffer) {
 }
 
 export function CreateHash(context: string, encType: string): HashResult {
-    let encoding = 'hex'
+    let encoding: 'hex' | 'base64' | 'base64url' | 'binary' = 'hex'
     if (['binary', 'base64', 'base64url'].includes(encType.toLowerCase())) {
-        encoding = encType.toLowerCase()
+        encoding = encType.toLowerCase() as 'binary' | 'base64' | 'base64url'
     }
     const result: HashResult = {}
     hashTextInput.forEach((item) => {
@@ -95,9 +95,9 @@ export function CreateHash(context: string, encType: string): HashResult {
 }
 
 export function CreateHmac(context: string, secKey: string, encType: string) {
-    let encoding = 'hex'
+    let encoding: 'hex' | 'base64' | 'base64url' | 'binary' = 'hex'
     if (['binary', 'base64', 'base64url'].includes(encType.toLowerCase())) {
-        encoding = encType.toLowerCase()
+        encoding = encType.toLowerCase() as 'binary' | 'base64' | 'base64url'
     }
     const result: HashResult = {}
     hashTextInput.forEach((item) => {
@@ -118,11 +118,14 @@ export function CreateHmac(context: string, secKey: string, encType: string) {
 
 export function CryptoEncrypt(data: CryptoData): CryptoResult {
     const cipherInfo = crypto.getCipherInfo(data.algorithm)
+    if (!cipherInfo) {
+        throw new Error(`Unsupported cipher algorithm: ${data.algorithm}`)
+    }
     let bufIv: Buffer
     if (!data.iv) {
         // 如果未提供IV，则生成一个（这取决于算法是否需要IV）
         // 注意：对于某些算法（如AES-GCM），IV是必需的
-        bufIv = crypto.randomBytes(cipherInfo.ivLength)
+        bufIv = crypto.randomBytes(cipherInfo.ivLength ?? 16)
         data.iv = bufIv.toString()
     } else {
         bufIv = Buffer.from(data.iv, 'hex')
@@ -130,7 +133,7 @@ export function CryptoEncrypt(data: CryptoData): CryptoResult {
     let secretKey: Buffer
     if (!data.secretKey) {
         data.secretKeyEncoding = 'hex'
-        secretKey = crypto.randomBytes(cipherInfo.keyLength)
+        secretKey = crypto.randomBytes(cipherInfo.keyLength ?? 32)
     } else {
         secretKey = Buffer.from(data.secretKey, data.secretKeyEncoding)
     }
@@ -158,9 +161,13 @@ export function CryptoEncrypt(data: CryptoData): CryptoResult {
 export function CryptoDecrypt(data: CryptoData) {
     let bufIv: Buffer
     if (data.iv) {
-        bufIv = Buffer.from(data.iv, 'hex' as BufferEncoding)
+        bufIv = Buffer.from(data.iv, 'hex')
     } else {
-        bufIv = crypto.randomBytes(crypto.getCipherInfo(data.algorithm).ivLength)
+        const cipherInfo = crypto.getCipherInfo(data.algorithm)
+        if (!cipherInfo) {
+            throw new Error(`Unsupported cipher algorithm: ${data.algorithm}`)
+        }
+        bufIv = crypto.randomBytes(cipherInfo.ivLength ?? 16)
     }
     const bufKey = Buffer.from(data.secretKey, data.secretKeyEncoding)
     const inputEncoding = data.inputEncoding || 'hex'

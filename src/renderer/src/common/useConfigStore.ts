@@ -2,7 +2,7 @@
  * 配置状态管理
  * 使用 Vue 3 Composition API 管理配置状态
  */
-import { ref, reactive, watch, computed } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { DEFAULT_GITHUB, DEFAULT_GOOGLE, DEFAULT_STACKOVERFLOW } from '../../../main/constants/urls'
 
 // 类型定义
@@ -222,11 +222,16 @@ function updateSystemConfig(config: Partial<SystemConfig>) {
   saveSystemConfig()
 }
 
+// 消息对话框类型
+type MessageDialogType = 'message' | MessageType
+// 对话框名称类型（包括消息对话框的伪名称）
+type DialogName = keyof DialogState | MessageDialogType
+
 // 对话框控制函数
-function showDialog(dialogName: keyof DialogState, data?: Record<string, unknown>) {
+function showDialog(dialogName: DialogName, data?: Record<string, unknown>) {
   // 如果是消息对话框类型（'message' 或具体的消息类型），更新 messageDialog
-  const messageTypes = ['success', 'error', 'warning', 'info', 'failed', 'message'] as const
-  if (messageTypes.includes(dialogName as any)) {
+  const messageTypes: readonly MessageDialogType[] = ['success', 'error', 'warning', 'info', 'failed', 'message']
+  if (messageTypes.includes(dialogName as MessageDialogType)) {
     // 如果 dialogName 是 'message'，从 data.type 读取具体类型
     // 如果 dialogName 是具体类型（如 'success'），直接使用
     const messageType = dialogName === 'message' ? (data?.type || 'success') : dialogName
@@ -238,27 +243,34 @@ function showDialog(dialogName: keyof DialogState, data?: Record<string, unknown
     }
   } else {
     // 其他对话框类型，正常处理
+    const name = dialogName as keyof DialogState
     if (data !== undefined) {
-      Object.assign(dialogs[dialogName], data, { visible: true })
+      Object.assign(dialogs[name], data, { visible: true })
     } else {
-      dialogs[dialogName].visible = true
+      dialogs[name].visible = true
     }
   }
 }
 
-function hideDialog(dialogName: keyof DialogState) {
+function hideDialog(dialogName: DialogName) {
   // 如果是消息对话框类型（'message' 或具体的消息类型），隐藏 messageDialog
-  const messageTypes = ['success', 'error', 'warning', 'info', 'failed', 'message'] as const
-  if (messageTypes.includes(dialogName as any)) {
+  const messageTypes: readonly MessageDialogType[] = ['success', 'error', 'warning', 'info', 'failed', 'message']
+  if (messageTypes.includes(dialogName as MessageDialogType)) {
     dialogs.messageDialog.visible = false
   } else {
     // 其他对话框类型，正常处理
-    dialogs[dialogName].visible = false
+    dialogs[dialogName as keyof DialogState].visible = false
   }
 }
 
-function toggleDialog(dialogName: keyof DialogState) {
-  dialogs[dialogName].visible = !dialogs[dialogName].visible
+function toggleDialog(dialogName: DialogName) {
+  const messageTypes: readonly MessageDialogType[] = ['success', 'error', 'warning', 'info', 'failed', 'message']
+  if (messageTypes.includes(dialogName as MessageDialogType)) {
+    dialogs.messageDialog.visible = !dialogs.messageDialog.visible
+  } else {
+    const name = dialogName as keyof DialogState
+    dialogs[name].visible = !dialogs[name].visible
+  }
 }
 
 // 显示成功消息

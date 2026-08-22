@@ -42,8 +42,7 @@ hljs.registerLanguage('plantuml', function (hljs) {
     }
 })
 
-const materialMd = new MarkdownIt().use(highlightjs, {
-    // 自定义语法高亮函数，支持的语言会正常高亮，不支持的返回空字符串
+const materialMd = new MarkdownIt({
     highlight: function (str: string, lang: string): string {
         if (lang && hljs.getLanguage(lang)) {
             try {
@@ -54,7 +53,7 @@ const materialMd = new MarkdownIt().use(highlightjs, {
         }
         return ''  // 不支持的语言返回空字符串，代码块将显示为普通文本
     }
-})
+}).use(highlightjs)
 
 /**
  * 匹配代码块内容

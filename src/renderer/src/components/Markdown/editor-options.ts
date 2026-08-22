@@ -76,7 +76,7 @@ export const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOpt
     glyphMargin: false,
     lineDecorationsWidth: 0,
     hover: {
-        enabled: true,
+        enabled: 'on',
         delay: 300,
         sticky: false
     },

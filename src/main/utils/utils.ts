@@ -199,6 +199,17 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
             const versionFilePath = path.join(getAppResourcesPath(), 'config', 'version.json')
             if (fs.existsSync(versionFilePath)) {
                 const versionData = JSON.parse(fs.readFileSync(versionFilePath, 'utf-8'))
+                // version.json 在构建时由 Node.js 生成，electron/chrome 版本可能为空
+                // 在 Electron 主进程中补充运行时版本
+                if (!versionData.electronVersion) {
+                    versionData.electronVersion = process.versions.electron || ''
+                }
+                if (!versionData.chromeVersion) {
+                    versionData.chromeVersion = process.versions.chrome || ''
+                }
+                if (!versionData.nodeVersion) {
+                    versionData.nodeVersion = process.versions.node || ''
+                }
                 return versionData
             }
         } catch (error) {
@@ -211,7 +222,9 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
             nodeVersion: process.versions.node || '',
             vueVersion: '',
             viteVersion: '',
-            typescriptVersion: ''
+            typescriptVersion: '',
+            monacoEditorVersion: '',
+            markdownItVersion: ''
         }
     })
 }

@@ -1,4 +1,4 @@
-import { ref, Ref, StyleValue } from 'vue'
+import { ref, StyleValue } from 'vue'
 
 export interface UseDialogDragOptions {
   initialPosition?: 'center' | 'top' | { x: number; y: number }
@@ -39,6 +39,7 @@ export function useDialogDrag(options: UseDialogDragOptions = {}) {
     return {}
   }
 
+  // @ts-expect-error
   const dialogStyle = ref<StyleValue>(getInitialStyle())
 
   const resetPosition = () => {

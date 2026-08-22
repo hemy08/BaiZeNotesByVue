@@ -33,11 +33,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { menuMap } from './MenuBar/menu_config'
 import {HandleMenuAction} from './MenuBar/menu_actions';
 import {BaiZeMenuItem} from '../../../main/global-types';
-import { useThemeIcons } from '../composables/useThemeIcons'
+
 
 // 获取当前主题
 const currentTheme = ref('baize')
@@ -70,28 +70,6 @@ onBeforeUnmount(() => {
     window.electron.ipcRenderer.removeListener('baize-notes:theme-updated', handleThemeUpdated)
 })
 
-// 使用主题图标组合式函数
-const { getIcon } = useThemeIcons(currentTheme)
-
-// 获取图标路径
-function getIconPath(iconName: string): string {
-    try {
-        const isDark = currentTheme.value.includes('dark') || currentTheme.value.includes('Dark')
-        const folder = isDark ? 'dark' : 'light'
-
-        // 根据主题确定文件名
-        let fileName = iconName
-        if (!iconName.includes('.svg')) {
-            fileName = 'icon-' + iconName + (isDark ? '.svg' : '-light.svg')
-        }
-
-        // 动态导入图标
-        return new URL(`../assets/icons/${folder}/${fileName}`, import.meta.url).href
-    } catch (error) {
-        console.warn(`Failed to load icon: ${iconName}`, error)
-        return ''
-    }
-}
 
 const activeMenu = ref<number | null>(null)
 const submenuPosition = ref({ x: 0, y: 0 })

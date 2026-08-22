@@ -17,10 +17,10 @@ export const editMenuHandlers = {
     'replace-in-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         mainWindow.webContents.send('editor-replace')
     },
-    'find-in-dir': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+    'find-in-dir': (_mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         console.warn('[Menu] Find in directory not implemented yet')
     },
-    'replace-in-dir': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+    'replace-in-dir': (_mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
         console.warn('[Menu] Replace in directory not implemented yet')
     },
 }

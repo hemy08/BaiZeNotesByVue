@@ -5,7 +5,7 @@
 
 // @ts-ignore
 import { createStore } from '../utils/store-factory'
-import {SystemSetting} from './global-types';
+import {SystemSetting} from '../global-types'
 
 const systemSettingStore = createStore<SystemSetting>('systemSetting', {
         language: 'zh-cn',

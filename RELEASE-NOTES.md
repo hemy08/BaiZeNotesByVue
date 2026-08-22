@@ -1,5 +1,88 @@
 # 发布说明 (Release Notes)
 
+## 版本 1.2.1 (2026-08-16)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+
+`Bai Ze Notes 1.2.1 windows.x64.exe`   是免安装直接使用
+`Bai Ze Notes Setup 1.2.1 windows.x64.exe` 是`Windows`下的安装包，目前不提供`Linux、macOS、HarmonyOS`，可以自行下载编译
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🚀 核心功能
+
+**全量代码扫描与优化**
+- 使用 Deepseek 对项目进行全量代码扫描
+- 修复多个 bug 和缺陷
+- 代码质量全面提升
+
+**架构优化**
+- 文档更新，架构优化
+- 优化项目结构和代码组织
+
+### 🐛 Bug 修复
+- 修复多个编译和运行时缺陷
+- 修复进程残留问题
+- 修复文件重新打开后未加载最新内容问题
+- 修复从磁盘重新加载后文件内容未更新问题
+
+### 🔧 代码质量改进
+- 全量代码扫描优化
+- 统一代码风格
+- 提升代码可维护性
+
+</code></pre></blockcode></details>
+
+---
+
+## 版本 1.2.0 (2026-05-10)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+
+`Bai Ze Notes 1.2.0 windows.x64.exe`   是免安装直接使用
+`Bai Ze Notes Setup 1.2.0 windows.x64.exe` 是`Windows`下的安装包，目前不提供`Linux、macOS、HarmonyOS`，可以自行下载编译
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🚀 核心功能
+
+**对话框架构重大更新**
+- 将部分对话框从 JSDOM 转换为 Vue 对话框
+- 项目架构变更，消息处理逻辑重构
+- IPC 通信优化，对话框组件更新
+
+**主题与图标**
+- 新增四个主题
+- 应用图标全面更新
+- 主题设置支持选择后立即更新，无需重启
+
+**配置管理优化**
+- 优化配置文件管理和打包结构
+- 删除不使用的文件，清理项目
+
+### 🐛 Bug 修复
+
+**进程与文件修复**
+- 修复进程残留问题
+- 修复文件重新打开后，未加载最新内容问题
+- 修复从磁盘重新加载后，文件内容未更新问题
+
+### 🔧 代码质量改进
+- 对话框组件从 JSDOM 迁移到 Vue 组件
+- 消息处理逻辑重构
+- IPC 通信机制优化
+- 项目架构整体变更
+
+</code></pre></blockcode></details>
+
+---
+
 ## 版本 1.1.5 (2026-05-01)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
@@ -202,6 +285,6 @@
 
 ---
 
-**最后更新时间**: 2026-05-01
-**当前版本**: 1.1.5
+**最后更新时间**: 2026-08-16
+**当前版本**: 1.2.1
 **维护者**: hemy08

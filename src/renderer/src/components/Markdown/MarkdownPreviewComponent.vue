@@ -60,8 +60,6 @@ onMounted(() => {
 
 // 监听 props.editorContent 的变化，并在变化时更新 Markdown（带防抖优化）
 watchEffect(() => {
-    // 读取props.editorContent以建立响应式依赖
-    const content = props.editorContent
 
     // 清除之前的定时器
     if (renderDebounceTimer) {

@@ -1,4 +1,5 @@
 import { BrowserWindow } from 'electron'
+import { FileItem } from '../global-types'
 
 interface StoreFileProperties {
   name: string
@@ -17,7 +18,7 @@ class AppState {
   private _saveFileInterval = '5000'
   private _srcDirCopyCut = ''
   private _isCopyOrCut = ''
-  private _mdFileTree: FileSysItem[] | null = null
+  private _mdFileTree: FileItem[] | null = null
 
   get mainWindow(): BrowserWindow | null {
     return this._mainWindow
@@ -75,11 +76,11 @@ class AppState {
     this._isCopyOrCut = val
   }
 
-  get mdFileTree(): FileSysItem[] | null {
+  get mdFileTree(): FileItem[] | null {
     return this._mdFileTree
   }
 
-  set mdFileTree(val: FileSysItem[] | null) {
+  set mdFileTree(val: FileItem[] | null) {
     this._mdFileTree = val
   }
 

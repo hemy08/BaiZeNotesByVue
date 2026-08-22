@@ -34,6 +34,8 @@ const api = {
       vueVersion: string
       viteVersion: string
       typescriptVersion: string
+      monacoEditorVersion: string
+      markdownItVersion: string
     }> => {
       return ipcRenderer.invoke('app:get-version')
     }

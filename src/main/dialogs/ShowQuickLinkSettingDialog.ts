@@ -637,16 +637,16 @@ function makeQuickLinkSettingDialogHtml(): string {
 
         function renderIcon(link) {
             if (link.icon === 'svg') {
-                return link.iconContent
+                return escapeHtml(link.iconContent)
             } else if (link.icon === 'img') {
-                return \`<img src="\${link.iconContent}" alt="\${link.name}">\`
+                return \`<img src="\${escapeHtml(link.iconContent)}" alt="\${escapeHtml(link.name)}">\`
             } else {
-                return \`<span style="font-size: 20px;">\${link.iconContent}</span>\`
+                return \`<span style="font-size: 20px;">\${escapeHtml(link.iconContent)}</span>\`
             }
         }
 
         function escapeHtml(str) {
-            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
         }
 
         // 列表内快速配置：位置
