@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import highlightjs from 'markdown-it-highlightjs'
 import { full as emoji } from 'markdown-it-emoji'
 import hljs from 'highlight.js'
@@ -59,18 +59,21 @@ onMounted(() => {
 })
 
 // 监听 props.editorContent 的变化，并在变化时更新 Markdown（带防抖优化）
-watchEffect(() => {
-
-    // 清除之前的定时器
-    if (renderDebounceTimer) {
-        clearTimeout(renderDebounceTimer)
-    }
-    // 设置新的防抖定时器
-    renderDebounceTimer = setTimeout(() => {
-        updateMarkdownPreRender()
-        renderDebounceTimer = null
-    }, RENDER_DEBOUNCE_DELAY)
-})
+watch(
+    () => props.editorContent,
+    () => {
+        // 清除之前的定时器
+        if (renderDebounceTimer) {
+            clearTimeout(renderDebounceTimer)
+        }
+        // 设置新的防抖定时器
+        renderDebounceTimer = setTimeout(() => {
+            updateMarkdownPreRender()
+            renderDebounceTimer = null
+        }, RENDER_DEBOUNCE_DELAY)
+    },
+    { immediate: true }
+)
 
 function UpdateMarkdownChapters() {
     // isTocOpen = tocOpen

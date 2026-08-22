@@ -2,10 +2,10 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.2.0--beta-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.2-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
-![Electron](https://img.shields.io/badge/Electron-38.0.0-blue.svg)
-![Vue](https://img.shields.io/badge/Vue-3.4.27-brightgreen.svg)
+![Electron](https://img.shields.io/badge/Electron-43.4.1-blue.svg)
+![Vue](https://img.shields.io/badge/Vue-3.5.41-brightgreen.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0.2-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -14,6 +14,8 @@
 [快速开始](#-快速开始) · [功能特性](#-功能特性) · [下载安装](#-下载安装) · [开发文档](#-开发文档)
 
 </div>
+
+![img.png](img.png)
 
 ---
 
@@ -103,6 +105,14 @@
 - **UUID 生成**：UUID/GUID 生成工具
 - **二维码生成**：二维码生成工具
 
+### ℹ️ 帮助系统
+
+#### 版本信息
+- **版本发布说明**：查看各版本（v1.0.0 ~ v1.2.2）的发布说明
+- **更新日志**：展示依赖升级详情和代码适配修复
+- **技术栈信息**：显示项目技术栈详细信息
+- **关于页面**：显示应用版本、开发框架、系统环境信息
+
 ### 📂 文件管理
 
 #### 文件操作
@@ -145,13 +155,9 @@
 
 <div align="center">
 
-| 主界面 | 主题设置 |
-|:---:|:---:|
-| ![主界面](./screenshots/main-interface.png) | ![主题设置](./screenshots/theme-settings.png) |
-
-| Markdown 编辑 | 工具集成 |
-|:---:|:---:|
-| ![Markdown 编辑](./screenshots/markdown-edit.png) | ![工具集成](./screenshots/tools.png) |
+|            主界面             |                      主题设置                       |
+|:-----------------------------:|:---------------------------------------------------:|
+| ![主界面](docs/images/main-interface.png) | ![主题设置](/docs/images/theme-settings.png) |
 
 </div>
 
@@ -161,7 +167,7 @@
 
 ### 环境要求
 
-- **Node.js**: >= 18.0.0
+- **Node.js**: >= 20.0.0
 - **npm**: >= 9.0.0
 - **Git**: 最新版本
 
@@ -214,12 +220,12 @@ npm run build:linux
 
 #### 方式一：GitHub Releases（推荐）
 
-[![GitHub Release](https://img.shields.io/badge/GitHub-Releases-blue.svg)](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.1.5)
+[![GitHub Release](https://img.shields.io/badge/GitHub-Releases-blue.svg)](https://github.com/hemy08/BaiZeNotesByVue/releases)
 
 | 版本 | 说明 | 下载链接 |
 |:---:|:---:|:---:|
-| 安装版 | NSIS 安装包，支持自定义安装路径 | [下载](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.1.5) |
-| 便携版 | 免安装，解压即用 | [下载](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.1.5) |
+| 安装版 | NSIS 安装包，支持自定义安装路径 | [下载](https://github.com/hemy08/BaiZeNotesByVue/releases) |
+| 便携版 | 免安装，解压即用 | [下载](https://github.com/hemy08/BaiZeNotesByVue/releases) |
 
 #### 方式二：华为云 DevCloud
 
@@ -340,7 +346,7 @@ BaiZeNotesByVue/
 │   ├── plantuml/                 # PlantUML资源
 │   └── config/                   # 配置文件
 │       └── version.json          # 版本信息
-├── doc/                          # 项目文档（10+文档）
+├── docs/                          # 项目文档（10+文档）
 │   ├── 架构文档.md               # 系统架构说明（38,084行）
 │   ├── 设计文档.md               # UI设计规范（68,722行）
 │   ├── 性能与优化综合报告.md     # 性能优化报告（79,270行）
@@ -378,35 +384,35 @@ BaiZeNotesByVue/
 
 | 技术 | 版本 | 说明 | 官网 |
 |:---:|:---:|:---|:---|
-| Electron | 38.0.0 | 跨平台桌面应用框架 | [官网](https://www.electronjs.org/) |
-| Vue | 3.4.27 | 渐进式 JavaScript 框架 | [官网](https://vuejs.org/) |
+| Electron | 43.4.1 | 跨平台桌面应用框架 | [官网](https://www.electronjs.org/) |
+| Vue | 3.5.41 | 渐进式 JavaScript 框架 | [官网](https://vuejs.org/) |
 | TypeScript | 6.0.2 | JavaScript 的类型超集 | [官网](https://www.typescriptlang.org/) |
-| Vite | 8.0.5 | 下一代前端构建工具 | [官网](https://vitejs.dev/) |
+| Vite | 8.2.2 | 下一代前端构建工具 | [官网](https://vitejs.dev/) |
 
 ### 编辑器核心
 
 | 技术 | 版本 | 说明 | 官网 |
 |:---:|:---:|:---|:---|
-| Monaco Editor | 0.55.0 | VS Code 同款代码编辑器 | [官网](https://microsoft.github.io/monaco-editor/) |
-| markdown-it | 14.1.0 | Markdown 解析器，支持插件扩展 | [官网](https://markdown-it.github.io/) |
-| highlight.js | 11.9.0 | 代码语法高亮，支持 100+ 语言 | [官网](https://highlightjs.org/) |
-| KaTeX | 0.16.10 | 快速数学公式渲染 | [官网](https://katex.org/) |
-| Mermaid | 11.14.0 | 流程图、时序图、甘特图等 | [官网](https://mermaid-js.github.io/) |
+| Monaco Editor | 0.56.0 | VS Code 同款代码编辑器 | [官网](https://microsoft.github.io/monaco-editor/) |
+| markdown-it | 15.0.0 | Markdown 解析器，支持插件扩展 | [官网](https://markdown-it.github.io/) |
+| highlight.js | 11.12.0 | 代码语法高亮，支持 100+ 语言 | [官网](https://highlightjs.org/) |
+| KaTeX | 0.18.4 | 快速数学公式渲染 | [官网](https://katex.org/) |
+| Mermaid | 11.17.0 | 流程图、时序图、甘特图等 | [官网](https://mermaid-js.github.io/) |
 
 ### 状态管理与数据
 
 | 技术 | 版本 | 说明 | 官网 |
 |:---:|:---:|:---|:---|
-| Vuex | 4.1.0 | Vue 状态管理模式 | [官网](https://vuex.vuejs.org/) |
-| electron-store | 8.2.0 | Electron 持久化存储 | [GitHub](https://github.com/sindresorhus/electron-store) |
-| fs-extra | 11.2.0 | 文件系统增强，Promise 支持 | [GitHub](https://github.com/jprichardson/node-fs-extra) |
+| Vue Composables | - | Vue 3 组合式函数状态管理 | [官网](https://vuejs.org/) |
+| electron-store | 11.0.2 | Electron 持久化存储 | [GitHub](https://github.com/sindresorhus/electron-store) |
+| fs-extra | 11.4.0 | 文件系统增强，Promise 支持 | [GitHub](https://github.com/jprichardson/node-fs-extra) |
 
 ### 工具库
 
 | 技术 | 版本 | 说明 | 官网 |
 |:---:|:---:|:---|:---|
 | crypto-js | 4.2.0 | JavaScript 加密库 | [文档](https://cryptojs.gitbook.io/) |
-| uuid | 10.0.0 | UUID 生成工具 | [GitHub](https://github.com/uuidjs/uuid) |
+| uuid | 14.0.2 | UUID 生成工具 | [GitHub](https://github.com/uuidjs/uuid) |
 | lodash | 4.17.21 | 实用工具库 | [官网](https://lodash.com/) |
 | dayjs | 1.11.10 | 轻量级日期处理库 | [官网](https://day.js.org/) |
 
@@ -421,11 +427,11 @@ BaiZeNotesByVue/
 | 技术 | 版本 | 说明 | 官网 |
 |:---:|:---:|:---|:---|
 | electron-vite | 6.0.0-beta.1 | Electron + Vite 集成 | [官网](https://electron-vite.org/) |
-| electron-builder | 24.13.3 | Electron 应用打包工具 | [官网](https://www.electron.build/) |
-| ESLint | 9.26.0 | JavaScript 代码检查工具 | [官网](https://eslint.org/) |
-| Prettier | 3.2.5 | 代码格式化工具 | [官网](https://prettier.io/) |
-| @electron-toolkit/eslint-config | 1.0.2 | Electron ESLint 配置 | [GitHub](https://github.com/alex8088/electron-toolkit) |
-| @electron-toolkit/eslint-config-ts | 2.0.0 | Electron TypeScript ESLint 配置 | [GitHub](https://github.com/alex8088/electron-toolkit) |
+| electron-builder | 26.0.0 | Electron 应用打包工具 | [官网](https://www.electron.build/) |
+| ESLint | 9.39.4 | JavaScript 代码检查工具 | [官网](https://eslint.org/) |
+| Prettier | 3.9.6 | 代码格式化工具 | [官网](https://prettier.io/) |
+| @electron-toolkit/eslint-config | 2.1.0 | Electron ESLint 配置 | [GitHub](https://github.com/alex8088/electron-toolkit) |
+| @electron-toolkit/eslint-config-ts | 3.1.0 | Electron TypeScript ESLint 配置 | [GitHub](https://github.com/alex8088/electron-toolkit) |
 
 ### 构建工具
 
@@ -564,24 +570,38 @@ npm run clean
 
 ## 🗺️ 开发路线图
 
-### v1.2.0 (计划中)
+### v1.3.0 (计划中)
 - [ ] macOS 和 Linux 版本支持
 - [ ] 协作编辑功能
 - [ ] 插件系统
 - [ ] 云同步功能
 
-### v1.1.5 (当前版本)
+### v1.2.2 (当前版本)
+- [x] Electron 43 重大升级（38 → 43）
+- [x] 40+ 依赖包全量升级
+- [x] 78 个 TypeScript 类型错误修复
+- [x] 3 个 XSS 安全风险修复
+- [x] 版本发布说明页面（11 个版本）
+- [x] 更新日志对话框
+- [x] 关于页面新增 Monaco Editor 和 markdown-it 版本显示
+
+### v1.2.1
+- [x] 全量代码扫描与优化
+- [x] 架构优化
+- [x] Bug 修复
+
+### v1.2.0
+- [x] 对话框架构重大更新（JSDOM → Vue）
+- [x] 新增四个主题
+- [x] 主题设置即时更新
+- [x] 进程残留修复
+
+### v1.1.5
 - [x] 配置文件管理系统
 - [x] 卸载体验优化
 - [x] 性能优化（加载速度提升50%+）
 - [x] 内存泄漏修复
 - [x] 55种编辑器主题
-
-### v1.1.3
-- [x] 文件自动保存
-- [x] HTML/PDF 支持
-- [x] 日志系统
-- [x] 窗口管理器
 
 ---
 
@@ -592,7 +612,7 @@ npm run clean
 ```
 MIT License
 
-Copyright (c) 2024 hemy08
+Copyright (c) 2026 hemy08
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
