@@ -1,5 +1,27 @@
 # 发布说明 (Release Notes)
 
+## 版本 1.3.6 (2026-11-15)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🔧 审查修复批次（本版核心）
+
+- 对 1.3.0~1.3.5 新增内容（插件工具 / mkdocs-material 扩展 / 系统设置补充实现）全量代码审查，32 项问题修复 25 项（P1/P2 全部 + 12 项 P3）：
+  - **稳定性**：正则测试回归后台线程（Worker + 3s 超时自动中止），极端正则不再冻结应用；自动备份改为异步执行，不再阻塞主进程
+  - **插件工具**：人民币大写超长金额精度修复；繁简转换/进制转换/字数统计性能优化；剪贴板操作失败有提示
+  - **系统设置**：自动备份与托盘最小化默认关闭（可选开启）；新增单实例保护；启动恢复更可靠；备份文件冲突与超大文件保护
+  - **性能**：图标数据拆出首屏主包
+- 门禁：typecheck 0 错误、ESLint 0/0、153 文件 / 2781 用例全通过
+- 详情见 [新增内容审查报告](docs/reports/md/2026-11-15-新增内容审查报告.md)
+
+</code></pre></blockcode></details>
+
+---
+
 ## 版本 1.3.5 (2026-11-15)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)

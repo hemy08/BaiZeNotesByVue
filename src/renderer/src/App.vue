@@ -134,6 +134,11 @@ onMounted(async () => {
     } catch (error) {
         console.error('Failed to load welcome config:', error)
     }
+    // P2-5：渲染层就绪握手——主进程（main/index.ts）收到后才执行启动恢复
+    // （autoOpenLastFile / autoOpenLastFolder / 后台恢复）。监听器（WELCOME_ENTER_MAIN 等）
+    // 已在上方注册完成，主进程此时再发恢复消息不会再被丢弃；握手发送放在 try 之外，
+    // 保证配置读取失败时监听器已就位仍能通知主进程。
+    window.api.app.notifyRendererReady()
 })
 
 onBeforeUnmount(() => {

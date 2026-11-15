@@ -33,5 +33,8 @@ export default {
     redo: 'Redo',
     loading: 'Loading…',
     noData: 'No data',
-    unknown: 'Unknown'
+    unknown: 'Unknown',
+    clipboard: {
+        writeFailed: 'Failed to write to the clipboard. Please check clipboard permissions and retry.'
+    }
 }

@@ -47,6 +47,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { t } from '../../../common/i18n'
+import { copyTextToClipboard } from '../../../common/clipboard'
 import { decodeHtml, encodeHtml } from './html-lib'
 
 const props = defineProps({
@@ -79,7 +80,7 @@ function handleDecode() {
 
 function handleCopy() {
     if (!outputText.value) return
-    navigator.clipboard.writeText(outputText.value)
+    void copyTextToClipboard(outputText.value)
 }
 
 function handleClear() {

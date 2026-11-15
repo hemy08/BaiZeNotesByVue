@@ -81,8 +81,9 @@ export function decodeHtml(text: string): string {
 
 /**
  * 数字实体码点转字符；非法码点（越界/非有限数）时原样保留实体文本。
+ * 导出供 unicode-lib.ts 复用（P3 修复：unicode-lib 的 &#nn; 解码不再按 2^16 取模）。
  */
-function codePointToChar(code: number, fallback: string): string {
+export function codePointToChar(code: number, fallback: string): string {
     if (!Number.isFinite(code) || code < 0 || code > 0x10ffff) return fallback
     return String.fromCodePoint(code)
 }

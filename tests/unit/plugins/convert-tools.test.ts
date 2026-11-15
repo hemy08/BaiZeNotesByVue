@@ -19,7 +19,11 @@ import {
     localToTimestamp,
     timestampToLocal
 } from '@renderer/components/PluginTools/Convert/timestamp-lib'
-import { convertBase, isValidForBase } from '@renderer/components/PluginTools/Convert/base-lib'
+import {
+    convertBase,
+    isValidForBase,
+    MAX_BASE_INPUT_LENGTH
+} from '@renderer/components/PluginTools/Convert/base-lib'
 
 /** 断言 RGB 分量逐项在容差内 */
 function expectRgbClose(actual: RgbColor, expected: RgbColor, tolerance = 1): void {
@@ -218,6 +222,44 @@ describe('rmb-lib 人民币大写', () => {
         expect(rmbToUpper('1,000.5')).toBe('壹仟元伍角')
     })
 
+    it('P2 边界：>2^53 整数按字符串精确转换（不再浮点舍入出错）', () => {
+        // 2^53 + 1：Number 无法精确表示（会舍入为 9007199254740992），字符串输入必须精确
+        expect(rmbToUpper('9007199254740993')).toBe(
+            '玖仟零柒兆壹仟玖佰玖拾贰亿伍仟肆佰柒拾肆万玖佰玖拾叁元整'
+        )
+        // number 字面量在解析期已损失精度（9007199254740992），结果与 String(num) 一致，
+        // 保证「字符串走精确路径、数字走 String 语义」两条路径行为自洽
+        // （BigInt → Number 转换与数字字面量解析期的舍入一致，避免直接写字面量触发 lint 精度告警）
+        const roundedAsNumber = Number(9007199254740993n)
+        expect(roundedAsNumber).toBe(9007199254740992)
+        expect(rmbToUpper(roundedAsNumber)).toBe(rmbToUpper(String(roundedAsNumber)))
+        expect(rmbToUpper('9007199254740992')).toBe(
+            '玖仟零柒兆壹仟玖佰玖拾贰亿伍仟肆佰柒拾肆万玖佰玖拾贰元整'
+        )
+        // 超大整数（>10^21，历史实现会因 toFixed 指数形式直接拒绝）
+        expect(rmbToUpper('12345678901234567890123')).toBe(
+            '壹佰贰拾叁垓肆仟伍佰陆拾柒京捌仟玖佰零壹兆贰仟叁佰肆拾伍亿陆仟柒佰捌拾玖万壹佰贰拾叁元整'
+        )
+    })
+
+    it('P2 边界：小数四舍五入走字符串十进制运算（含进位到整数部分）', () => {
+        expect(rmbToUpper('100.999')).toBe('壹佰零壹元整')
+        expect(rmbToUpper('100.994')).toBe('壹佰元玖角玖分')
+        expect(rmbToUpper('0.005')).toBe('零元壹分')
+        expect(rmbToUpper('0.004')).toBe('零元整')
+        // 进位作用于超长整数（2^53+1 的整数部分 + 0.999 进位）
+        expect(rmbToUpper('9007199254740993.999')).toBe(
+            '玖仟零柒兆壹仟玖佰玖拾贰亿伍仟肆佰柒拾肆万玖佰玖拾肆元整'
+        )
+        // 前导零整数按历史 Number 语义解析
+        expect(rmbToUpper('007')).toBe('柒元整')
+    })
+
+    it('超出 9 组大单位支持范围抛错', () => {
+        // 37 位数字 → 10 个 4 位组，超过 BIG_UNITS 的 9 组上限
+        expect(() => rmbToUpper('1' + '0'.repeat(36))).toThrow()
+    })
+
     it('非法输入抛错', () => {
         expect(() => rmbToUpper('abc')).toThrow()
         expect(() => rmbToUpper(NaN)).toThrow()
@@ -344,5 +386,14 @@ describe('base-lib 进制转换', () => {
         expect(() => convertBase('abc', 10, 16)).toThrow()
         expect(() => convertBase('10', 1, 10)).toThrow()
         expect(() => convertBase('10', 10, 37)).toThrow()
+    })
+
+    it('P2 边界：超过 10000 字符上限拒绝转换（防巨大指数运算冻结 UI）', () => {
+        const oversized = '1'.repeat(MAX_BASE_INPUT_LENGTH + 1)
+        expect(isValidForBase(oversized, 10)).toBe(false)
+        expect(() => convertBase(oversized, 10, 2)).toThrow()
+        // 上限内仍可正常转换
+        const withinLimit = '1'.repeat(MAX_BASE_INPUT_LENGTH)
+        expect(isValidForBase(withinLimit, 2)).toBe(true)
     })
 })

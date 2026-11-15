@@ -53,7 +53,8 @@ import { getRendererQuickLinks, saveRendererQuickLinks } from './quick-link-conf
 import { isAllowedConfigName, validateConfigData } from './config-schema'
 // P1-FE-06：配置目录备份/恢复（系统设置对话框「立即备份 / 从备份恢复」）
 import { getBackupState, handleConfigBackupCommand } from './config-backup'
-// 批次 C #8/#9：自动备份——enableAutoBackup/backupInterval 保存后同步定时器（保存即生效）
+// 批次 C #8/#9：自动备份——enableAutoBackup/backupInterval 保存后同步定时器
+// （仅重启调度，不立即执行备份：首次备份发生在下一个间隔到点）
 import { syncAutoBackupTimer } from '../utils/auto-backup'
 import { StartAutoSaveFileTime, StopAutoSaveFileTime } from '../utils/file-utils/auto-save'
 import { appState } from '../utils/app-state'
@@ -177,7 +178,8 @@ function applySystemSettings(data: Record<string, unknown>): void {
     }
 
     // 批次 C #8/#9：自动备份——开关或间隔变更时按最新设置同步定时器（保存即生效）：
-    // enableAutoBackup===true 启动（先立即执行一次），===false 停止，间隔变更重启。
+    // 仅重启定时器（enableAutoBackup===true 时从下一个间隔到点开始调度、===false 停止），
+    // 不立即执行备份（P1-2：避免保存动作在大工作区下同步触发全量备份冻结主进程）。
     if (typeof data.enableAutoBackup === 'boolean' || typeof data.backupInterval === 'number') {
         syncAutoBackupTimer()
     }

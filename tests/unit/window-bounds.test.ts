@@ -234,4 +234,35 @@ describe('attachWindowBoundsPersistence', () => {
         vi.advanceTimersByTime(600)
         expect(save).not.toHaveBeenCalled()
     })
+
+    // P2-9：托盘「退出」等路径不触发 close 事件（cleanupApp 直接 dispose + destroy），
+    // dispose 前若有未落盘的防抖计时器必须先立即落盘一次
+    it('should flush pending bounds on dispose (P2-9 tray quit path)', () => {
+        const { win, trigger } = createFakeWin()
+        const dispose = attachWindowBoundsPersistence(win as never, {
+            isEnabled: () => true,
+            save
+        })
+        trigger('move')
+        expect(save).not.toHaveBeenCalled()
+
+        dispose()
+        expect(save).toHaveBeenCalledTimes(1)
+        expect(save).toHaveBeenCalledWith({ x: 40, y: 30, width: 1024, height: 768 })
+
+        // 防抖计时器已随 dispose 清除：推进时间不再重复写回
+        vi.advanceTimersByTime(600)
+        expect(save).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not save on dispose when the setting is disabled', () => {
+        const { win, trigger } = createFakeWin()
+        const dispose = attachWindowBoundsPersistence(win as never, {
+            isEnabled: () => false,
+            save
+        })
+        trigger('move')
+        dispose()
+        expect(save).not.toHaveBeenCalled()
+    })
 })

@@ -38,6 +38,8 @@ interface IpcHarness {
     invoke: ReturnType<typeof vi.fn>
     on: ReturnType<typeof vi.fn>
     removeListener: ReturnType<typeof vi.fn>
+    // P2-5：渲染层就绪握手（window.api.app.notifyRendererReady 的桩）
+    notifyRendererReady: ReturnType<typeof vi.fn>
     trigger: (channel: string, payload?: unknown) => void
 }
 
@@ -60,11 +62,14 @@ function installIpcHarness(welcomeConfig: unknown = undefined): IpcHarness {
     vi.stubGlobal('electron', {
         ipcRenderer: { on, removeListener, send, invoke }
     })
+    // P2-5：渲染层就绪握手（onMounted 末尾经 window.api.app.notifyRendererReady 发送）
+    const notifyRendererReady = vi.fn()
     vi.stubGlobal('api', {
         config: {
             read: vi.fn().mockResolvedValue(welcomeConfig),
             write: vi.fn().mockResolvedValue(true)
-        }
+        },
+        app: { notifyRendererReady }
     })
     return {
         listeners,
@@ -72,6 +77,7 @@ function installIpcHarness(welcomeConfig: unknown = undefined): IpcHarness {
         invoke,
         on,
         removeListener,
+        notifyRendererReady,
         trigger(channel: string, payload?: unknown) {
             for (const listener of listeners.get(channel) ?? []) {
                 listener({}, payload)
@@ -120,6 +126,9 @@ describe('App.vue 欢迎页启动行为', () => {
 
         expect(app.find('.welcome-stub').exists()).toBe(true)
         expect(app.find('.main-stub').exists()).toBe(false)
+
+        // P2-5：onMounted 完成后发出渲染层就绪握手（经 window.api，不走 electron.ipcRenderer.send）
+        expect(ipc.notifyRendererReady).toHaveBeenCalledTimes(1)
 
         vi.advanceTimersByTime(500)
         expect(ipc.send).not.toHaveBeenCalled()

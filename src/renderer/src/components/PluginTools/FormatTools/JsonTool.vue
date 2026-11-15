@@ -66,6 +66,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { t } from '../../../common/i18n'
+import { copyTextToClipboard } from '../../../common/clipboard'
 import { formatJson, minifyJson, escapeJson, unescapeJson } from './json-tool-lib'
 
 // 编辑器宽度（由宿主 PluginTools 传入）
@@ -122,7 +123,7 @@ function runUnescape() {
 
 /** 复制输出结果 */
 function copyOutput() {
-    navigator.clipboard.writeText(outputText.value)
+    void copyTextToClipboard(outputText.value)
 }
 </script>
 

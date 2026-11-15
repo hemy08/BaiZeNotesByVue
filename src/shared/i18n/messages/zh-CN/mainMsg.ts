@@ -59,6 +59,9 @@ export default {
             '上次打开的文件已不存在（可能已被移动或删除），本次未自动恢复：{path}',
         startupRestoreFolderMissing:
             '上次打开的工作目录已不存在（可能已被移动或删除），本次未自动恢复：{path}',
+        // P2-6：启动恢复的目录未通过 AS-2 工作区根校验（主目录/系统目录/磁盘根等）
+        startupRestoreFolderInvalid:
+            '上次打开的工作目录未通过安全检查（{reason}），本次未自动恢复：{path}',
         startupRestoreFailed: '启动时自动恢复上次打开的内容失败：{message}',
         // 系统设置补充实现批次 C：自动备份结果状态栏提示
         autoBackupSuccess: '自动备份完成：{name}（{count} 个文件）',

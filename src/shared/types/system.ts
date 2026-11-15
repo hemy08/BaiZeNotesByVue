@@ -60,14 +60,14 @@ export interface SystemSetting {
     autoOpenLastFile?: boolean // 启动时自动打开上次文件
     autoOpenLastFolder?: boolean // 启动时自动打开上次工作目录
     autoStart?: boolean // 开机自启动
-    minimizeToTray?: boolean // 关闭时最小化到托盘
+    minimizeToTray?: boolean // 关闭时最小化到托盘（默认 false，opt-in；P2-10）
     rememberWindowSize?: boolean // 记住窗口位置和大小
     // 「记住窗口位置和大小」：上次关闭时的主窗口边界（主进程写入，渲染层对话框不读写）
     windowBounds?: WindowBounds | null
     defaultFilePath?: string // 默认文件保存路径
     recentFilesCount?: number // 最近文件列表数量
     checkUpdateOnStart?: boolean // 启动时检查更新
-    enableAutoBackup?: boolean // 启用自动备份
+    enableAutoBackup?: boolean // 启用自动备份（默认 false，opt-in；P2-11）
     backupInterval?: number // 备份间隔（小时）
     backupCount?: number // 保留备份数量
     appTheme?: string // 应用主题（对话框下拉值）

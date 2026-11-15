@@ -634,7 +634,9 @@ describe('config-manager', () => {
                     fontSize: 999,
                     autoSaveInterval: 1,
                     recentFilesCount: 10_000,
-                    backupCount: 0
+                    // P3 对齐：schema 上限与 UI（1~72 / 1~10）一致
+                    backupInterval: 720,
+                    backupCount: 50
                 })
             ).resolves.toBe(true)
 
@@ -642,7 +644,8 @@ describe('config-manager', () => {
             expect(stored.fontSize).toBeLessThanOrEqual(72)
             expect(stored.autoSaveInterval).toBeGreaterThanOrEqual(5)
             expect(stored.recentFilesCount).toBeLessThanOrEqual(100)
-            expect(stored.backupCount).toBeGreaterThanOrEqual(1)
+            expect(stored.backupInterval).toBeLessThanOrEqual(72)
+            expect(stored.backupCount).toBeLessThanOrEqual(10)
         })
 
         it('drops unknown system fields (no arbitrary key pollution)', async () => {
@@ -831,7 +834,9 @@ describe('config-manager', () => {
     })
 
     describe('系统设置补充实现批次 C（自动备份）', () => {
-        it('enableAutoBackup=true 写入后同步定时器（保存即生效）', async () => {
+        // P1-2：保存动作只调用 syncAutoBackupTimer 重启定时器，不立即执行备份
+        // （"不立即执行"由 auto-backup 模块保证，见 auto-backup.test.ts）
+        it('enableAutoBackup=true 写入后同步定时器（仅重启调度，不立即执行）', async () => {
             await configManager.writeConfig('system', { enableAutoBackup: true })
             expect(vi.mocked(syncAutoBackupTimer)).toHaveBeenCalledTimes(1)
         })

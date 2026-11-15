@@ -23,6 +23,16 @@ import {
     MDI_ICON_PATHS,
     OCTICON_ICON_PATHS
 } from '../../src/renderer/src/components/Markdown/mdi-icons-data'
+import {
+    MDI_ICON_CORE_COUNT,
+    MDI_ICON_PATHS_CORE
+} from '../../src/renderer/src/components/Markdown/mdi-icons-core'
+import {
+    getMdiIconNames,
+    getMdiIconPath,
+    isMdiIconDataLoaded,
+    loadMdiIconData
+} from '../../src/renderer/src/components/Markdown/mdi-icons-loader'
 
 /** 与 MarkdownPreviewComponent.vue 完全一致的 DOMPurify 配置（CMP-15） */
 const DOMPURIFY_CONFIG = {
@@ -610,7 +620,6 @@ describe('MDI 图标数据子集', () => {
     it('should contain at least 100 icons and the required common icons', () => {
         expect(MDI_ICON_COUNT).toBeGreaterThanOrEqual(100)
         expect(Object.keys(MDI_ICON_PATHS).length).toBe(MDI_ICON_COUNT)
-
         const required = [
             'account',
             'account-outline',
@@ -709,6 +718,51 @@ describe('MDI 图标数据子集', () => {
         )
         const dataBytes = fs.statSync(dataPath).size
         expect(dataBytes).toBeLessThan(100 * 1024)
+    })
+})
+
+/* ============================== 五-b、核心子集与懒加载（P2-4） ============================== */
+
+describe('MDI 核心子集与全量懒加载（P2-4）', () => {
+    it('核心子集是全量数据的真子集，且同名 path 完全一致', () => {
+        expect(MDI_ICON_CORE_COUNT).toBe(Object.keys(MDI_ICON_PATHS_CORE).length)
+        // 确实只拆出了一部分（核心 < 全量，首屏体积减少）
+        expect(MDI_ICON_CORE_COUNT).toBeLessThan(MDI_ICON_COUNT)
+        for (const [name, pathData] of Object.entries(MDI_ICON_PATHS_CORE)) {
+            expect(MDI_ICON_PATHS[name], `core icon ${name} should exist in full data`).toBe(
+                pathData
+            )
+        }
+        // 渲染测试用到的图标都在核心子集中（保证预览首屏渲染零异步等待）
+        for (const name of ['account', 'account-outline', 'cog', 'star', 'book', 'check', 'github']) {
+            expect(MDI_ICON_PATHS_CORE[name]).toBeDefined()
+        }
+    })
+
+    it('核心图标同步可取；全量加载前非核心图标降级、加载后可用（Promise 缓存）', async () => {
+        // 核心图标无需等待全量加载即可同步取得
+        expect(getMdiIconPath('account')).toBe(MDI_ICON_PATHS.account)
+
+        // 非核心图标（如 android 不在核心清单）在加载完成前降级为 undefined
+        if (!isMdiIconDataLoaded()) {
+            expect(getMdiIconPath('android')).toBeUndefined()
+        }
+        // 动态 import 缓存：多次调用返回同一 Promise/结果
+        const first = loadMdiIconData()
+        const second = loadMdiIconData()
+        expect(second).toBe(first)
+        await first
+        expect(isMdiIconDataLoaded()).toBe(true)
+        expect(getMdiIconPath('android')).toBe(MDI_ICON_PATHS.android)
+        // 图标名列表从核心集扩展到全量
+        const names = getMdiIconNames()
+        expect(names.length).toBe(MDI_ICON_COUNT)
+        expect(names).toContain('android')
+        expect(names).toContain('account')
+    })
+
+    it('octicons 扩展点仍为空对象，渲染走降级路径', () => {
+        expect(OCTICON_ICON_PATHS).toEqual({})
     })
 })
 

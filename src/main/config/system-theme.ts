@@ -16,6 +16,7 @@ import { nativeTheme } from 'electron'
 import { getSystemSetting } from './system-setting'
 import {
     DEFAULT_THEME_TYPE,
+    getCurrentTheme,
     getCurrentThemeStyles,
     getMonacoTheme,
     getSeparateEditorTheme,
@@ -48,6 +49,12 @@ export function applySystemThemeNow(): void {
         return
     }
     const target = resolveSystemTheme()
+    // P3（审查）：脏检查——系统主题事件在深浅色未变化时也会重复触发（如系统
+    // 亮度微调），当前主题与目标一致时跳过写盘与广播，避免无意义的 store 写入
+    // 与渲染层换肤。
+    if (getCurrentTheme() === target) {
+        return
+    }
     setThemeConfig({ currentTheme: target })
     broadcastThemeToAllWindows({
         themeStyles: getCurrentThemeStyles(),

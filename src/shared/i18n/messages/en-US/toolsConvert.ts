@@ -1,6 +1,7 @@
 /**
  * Plugin tools (convert & encryption) messages (en)
- * Covers PluginTools/Convert and PluginTools/Encryption.
+ * Covers 7 PluginTools directories: Convert, Encryption, Codec, TextTools,
+ * MiscTools, FormatTools and NetWork (regexTester).
  */
 export default {
     // ==================== Convert tools ====================
@@ -15,7 +16,9 @@ export default {
         resultLabel: 'Result:',
         swapButton: 'Swap bases',
         copyButton: 'Copy',
-        invalidInput: 'Input contains characters not valid in base {base}'
+        invalidInput: 'Input contains characters not valid in base {base}',
+        inputTooLong:
+            'Input exceeds the {limit} character limit; conversion stopped. Please shorten the input and retry.'
     },
     case: {
         title: 'Case converter',
@@ -384,7 +387,8 @@ export default {
         localTimeLabel: 'Local time:',
         localToTsTitle: 'Local time → Timestamp',
         dateTimeLabel: 'Date-time:',
-        dateTimePlaceholder: 'YYYY-MM-DD HH:mm:ss'
+        dateTimePlaceholder: 'YYYY-MM-DD HH:mm:ss',
+        emptyInput: 'Please enter a timestamp'
     },
     random: {
         title: 'Random Generator',
@@ -499,7 +503,7 @@ export default {
     regexTester: {
         title: 'Regex tester',
         description:
-            'Test regex matching and replacement on the main thread (d/g/i/m/s/u/v/y; u and v are exclusive).',
+            'Test regex matching and replacement in a background Web Worker with automatic timeout (d/g/i/m/s/u/v/y; u and v are exclusive).',
         patternLabel: 'Pattern',
         flagsLabel: 'Flags',
         inputLabel: 'Test text',
@@ -508,6 +512,9 @@ export default {
         replaceButton: 'Replace',
         matchCount: 'Matches',
         emptyMatch: '(empty)',
+        running: 'Matching…',
+        timeout:
+            'Timed out: the match was aborted. The pattern may trigger catastrophic backtracking; simplify it or shorten the test text.',
         truncated: 'Match count reached the limit of 5000; results were truncated.',
         uvExclusive:
             'Flags u and v are exclusive and cannot be enabled together (the other one was unchecked).',

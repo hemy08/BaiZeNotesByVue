@@ -4,12 +4,12 @@
         <div class="divider-tool"></div>
         <p>{{ t('toolsConvert.wordCount.description') }}</p>
 
-        <!-- 输入区：输入即统计 -->
+        <!-- 输入区：输入即统计（150ms 防抖） -->
         <textarea
             v-model="inputText"
             class="tool-textarea"
             :placeholder="t('toolsConvert.wordCount.inputPlaceholder')"
-            @input="recount"
+            @input="scheduleRecount"
         ></textarea>
 
         <!-- 统计结果网格 -->
@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onUnmounted, ref } from 'vue'
 import { t } from '../../../common/i18n'
 import { countText, type WordCountStats } from './word-count-lib'
 
@@ -72,6 +72,22 @@ const props = defineProps({
 const inputText = ref('')
 const stats = ref<WordCountStats>(countText(''))
 
+// P3 修复：输入防抖 150ms——避免每次击键都对全文做一次统计重算
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+
+/** 防抖调度重算（输入框 @input 使用；清空按钮仍即时执行） */
+function scheduleRecount() {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        debounceTimer = undefined
+        recount()
+    }, 150)
+}
+
+onUnmounted(() => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+})
+
 /** 重新统计（输入即触发） */
 function recount() {
     stats.value = countText(inputText.value)
@@ -79,6 +95,8 @@ function recount() {
 
 /** 清空输入与统计 */
 function clearText() {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = undefined
     inputText.value = ''
     recount()
 }

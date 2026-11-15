@@ -36,6 +36,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { t } from '../../../common/i18n'
+import { copyTextToClipboard } from '../../../common/clipboard'
 import { rmbToUpper } from './rmb-lib'
 
 const props = defineProps({
@@ -64,7 +65,7 @@ function convert(): void {
 /** 复制结果到剪贴板 */
 function copyResult(): void {
     if (upperResult.value) {
-        navigator.clipboard.writeText(upperResult.value)
+        void copyTextToClipboard(upperResult.value)
     }
 }
 

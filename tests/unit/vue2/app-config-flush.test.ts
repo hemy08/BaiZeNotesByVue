@@ -64,7 +64,9 @@ function installIpcHarness(): IpcHarness {
         config: {
             read: vi.fn().mockResolvedValue(undefined),
             write: configWrite
-        }
+        },
+        // P2-5：渲染层就绪握手（App.vue onMounted 末尾调用，本测试不关心其去向）
+        app: { notifyRendererReady: vi.fn() }
     })
     return {
         trigger(channel: string, payload?: unknown) {

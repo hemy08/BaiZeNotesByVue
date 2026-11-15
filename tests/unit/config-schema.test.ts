@@ -178,6 +178,22 @@ describe('AS-4 validateSystemConfig', () => {
         expect((ok.value as Record<string, unknown>).recentFilesCount).toBe(15)
     })
 
+    // P3 对齐：backupInterval/backupCount 上限与 UI 输入框（1~72 / 1~10）
+    // 及 auto-backup 运行时钳制一致（越界钳制而非拒绝）
+    it('should clamp backupInterval to 1~72 and backupCount to 1~10', () => {
+        const low = validateSystemConfig({ backupInterval: 0, backupCount: 0 })
+        expect((low.value as Record<string, unknown>).backupInterval).toBe(1)
+        expect((low.value as Record<string, unknown>).backupCount).toBe(1)
+
+        const high = validateSystemConfig({ backupInterval: 720, backupCount: 50 })
+        expect((high.value as Record<string, unknown>).backupInterval).toBe(72)
+        expect((high.value as Record<string, unknown>).backupCount).toBe(10)
+
+        const ok = validateSystemConfig({ backupInterval: 24, backupCount: 5 })
+        expect((ok.value as Record<string, unknown>).backupInterval).toBe(24)
+        expect((ok.value as Record<string, unknown>).backupCount).toBe(5)
+    })
+
     // 批次 A：#5 记住窗口位置和大小——windowBounds 为 null 或合法整数边界对象
     it('should accept null or valid windowBounds objects', () => {
         const cleared = validateSystemConfig({ windowBounds: null })

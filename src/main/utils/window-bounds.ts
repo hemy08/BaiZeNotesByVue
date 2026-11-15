@@ -179,6 +179,12 @@ export function attachWindowBoundsPersistence(
     win.on('close', persist)
 
     return () => {
+        // P2-9：托盘「退出」等路径不触发 close 事件（cleanupApp 直接 dispose + destroy），
+        // 若防抖计时器仍挂起则先立即落盘一次（persist 内部清计时器并做开关/销毁/
+        // 最大化等状态检查），避免丢失最后 500ms 防抖窗口内的窗口位置。
+        if (timer !== null) {
+            persist()
+        }
         clearTimer()
         win.removeListener('resize', schedule)
         win.removeListener('move', schedule)

@@ -6,14 +6,23 @@
  * - 按 backupInterval（小时，1~72）定时把「活动文件（含内存中未保存修改，按原编码写出）」
  *   与「已打开工作区目录（appState.rootPath）下全部 .md 文件」备份到
  *   userData/backups/<YYYYMMDD-HHmmss>/（工作区文件保留相对目录结构）；
- * - 单文件超过 20MB 跳过并记日志（防大文件备份卡顿与无界磁盘占用）；
+ * - 单文件超过 20MB 跳过并记日志（防大文件备份卡顿与无界磁盘占用），
+ *   活动文件内存内容同样受该上限约束；
  * - 遍历跳过 node_modules / .git 等目录与备份根自身（防备份套娃）；
  * - 备份完成后按 backupCount（1~10，默认 5）滚动清理最旧备份目录
  *   （仅删除通过名称校验的目录，绝不触碰其它文件）；
- * - 定时器用「立即执行 + 递归 setTimeout」调度并带 running 防重叠标志；
- *   enableAutoBackup=false 或 backupInterval 变更时经 syncAutoBackupTimer 重启
- *   （config-manager 保存路径调用，保存即生效）；退出时由 cleanupApp →
- *   stopAutoBackupTimer 停止（main/index.ts 挂载）。
+ * - 全部 IO 走异步（fs-extra 的 Promise 化 readdir/stat/copyFile/writeFile/rm，
+ *   递归遍历用 readdir({ withFileTypes: true }) 异步实现，P1-2 修复主进程
+ *   同步 IO 冻结）；encodeFileContent 为纯内存编码（活动文件内容已在内存中），
+ *   保持同步调用并受 20MB 上限约束；
+ * - 备份中途失败（磁盘满/权限）时回滚删除本次半成品目录，再交由调度方记录/提示；
+ * - 工作区外活动文件回退 basename 作 dest 时，若与工作区文件同名（大小写不敏感）
+ *   则改放 _active/ 子目录，仍冲突追加序号，避免静默替换备份内容；
+ * - 定时器用「仅调度 + 递归 setTimeout」驱动并带 running 防重叠标志，
+ *   首次备份发生在第一个间隔到点（P1-2：保存设置/应用启动不再同步触发
+ *   一次全量备份）；enableAutoBackup=false 或 backupInterval 变更时经
+ *   syncAutoBackupTimer 重启（config-manager 保存路径调用，保存即生效）；
+ *   退出时由 cleanupApp → stopAutoBackupTimer 停止（main/index.ts 挂载）。
  *
  * 备份结果经状态栏提示（成功/失败走 mainMsg.status.autoBackupSuccess /
  * autoBackupFailed i18n 词条，失败含原因）；备份期间失败只记录日志与状态栏
@@ -60,6 +69,9 @@ export const AUTO_BACKUP_MAX_FILE_BYTES = 20 * 1024 * 1024
 
 /** 遍历工作区时跳过的目录名（含备份根自身，防把旧备份再拷进新备份） */
 const SKIP_DIR_NAMES = new Set(['node_modules', '.git', '.svn', '.hg'])
+
+/** 工作区外活动文件回退 basename 冲突时的子目录名（P2-8：防静默替换） */
+const ACTIVE_FALLBACK_DIR_NAME = '_active'
 
 /** 一次自动备份的结果元信息 */
 export interface AutoBackupResult {
@@ -132,7 +144,7 @@ function parseAutoBackupCreatedAt(name: string): string {
 }
 
 /** 统计备份目录内文件数（递归 .md 拷贝可能带子目录，统计递归文件数） */
-function countFilesRecursively(dir: string): number {
+async function countFilesRecursively(dir: string): Promise<number> {
     let count = 0
     const stack = [dir]
     while (stack.length > 0) {
@@ -141,7 +153,8 @@ function countFilesRecursively(dir: string): number {
             continue
         }
         try {
-            for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+            const entries = await fs.readdir(current, { withFileTypes: true })
+            for (const entry of entries) {
                 if (entry.isDirectory()) {
                     stack.push(path.join(current, entry.name))
                 } else if (entry.isFile()) {
@@ -155,33 +168,35 @@ function countFilesRecursively(dir: string): number {
     return count
 }
 
-function buildAutoBackupInfo(name: string): AutoBackupInfo {
+async function buildAutoBackupInfo(name: string): Promise<AutoBackupInfo> {
     const dir = path.join(getAutoBackupRoot(), name)
     return {
         name,
         path: dir,
         createdAt: parseAutoBackupCreatedAt(name),
-        fileCount: countFilesRecursively(dir)
+        fileCount: await countFilesRecursively(dir)
     }
 }
 
 /** 列出全部备份（按目录名倒序，最新在前；只认通过名称校验的目录） */
-export function listAutoBackups(): AutoBackupInfo[] {
+export async function listAutoBackups(): Promise<AutoBackupInfo[]> {
     const root = getAutoBackupRoot()
-    if (!fs.existsSync(root)) {
+    if (!(await fs.pathExists(root))) {
         return []
     }
     let entries: fs.Dirent[] = []
     try {
-        entries = fs.readdirSync(root, { withFileTypes: true })
+        entries = await fs.readdir(root, { withFileTypes: true })
     } catch (error) {
         logger.warn('[AutoBackup] 读取备份根目录失败', error)
         return []
     }
-    return entries
-        .filter((entry) => entry.isDirectory() && isValidAutoBackupName(entry.name))
-        .map((entry) => buildAutoBackupInfo(entry.name))
-        .sort((left, right) => right.name.localeCompare(left.name))
+    const infos = await Promise.all(
+        entries
+            .filter((entry) => entry.isDirectory() && isValidAutoBackupName(entry.name))
+            .map((entry) => buildAutoBackupInfo(entry.name))
+    )
+    return infos.sort((left, right) => right.name.localeCompare(left.name))
 }
 
 /** 归一化保留数量：非法值回落默认，范围夹取到 [1, MAX_AUTO_BACKUP_KEEP] */
@@ -197,15 +212,15 @@ function normalizeAutoBackupKeep(): number {
  * 删除超出保留数量的最旧备份（按目录名排序，命名含时间戳故字典序即时间序）。
  * 仅删除通过名称校验的备份目录，绝不触碰其它文件。
  */
-function pruneOldAutoBackups(keep: number): void {
-    const backups = listAutoBackups()
+async function pruneOldAutoBackups(keep: number): Promise<void> {
+    const backups = await listAutoBackups()
     for (const backup of backups.slice(keep)) {
         const dir = resolveAutoBackupDirSafe(backup.name)
         if (!dir) {
             continue
         }
         try {
-            fs.rmSync(dir, { recursive: true, force: true })
+            await fs.rm(dir, { recursive: true, force: true })
             logger.info(`[AutoBackup] 已清理超出保留数量的旧备份: ${backup.name}`)
         } catch (error) {
             logger.warn(`[AutoBackup] 清理旧备份失败: ${backup.name}`, error)
@@ -213,15 +228,46 @@ function pruneOldAutoBackups(keep: number): void {
     }
 }
 
-/** 活动文件在工作区内时返回相对路径（保留目录结构）；否则退回文件名 */
-function resolveActiveFileRelativePath(filePath: string, rootPath: string | null): string {
+/**
+ * 活动文件在工作区内时返回相对路径（保留目录结构）；否则退回文件名。
+ * inWorkspace 供调用方区分「工作区外的 basename 回退」（需做冲突处理）。
+ */
+function resolveActiveFileDest(
+    filePath: string,
+    rootPath: string | null
+): { dest: string; inWorkspace: boolean } {
     if (rootPath) {
         const relative = path.relative(path.resolve(rootPath), path.resolve(filePath))
         if (relative && !relative.startsWith('..') && !path.isAbsolute(relative)) {
-            return relative
+            return { dest: relative, inWorkspace: true }
         }
     }
-    return path.basename(filePath)
+    return { dest: path.basename(filePath), inWorkspace: false }
+}
+
+/** dest 是否与已有条目冲突（大小写不敏感，与 Windows/macOS 文件系统语义一致） */
+function hasDestConflict(dest: string, items: BackupCopyItem[]): boolean {
+    const normalized = dest.toLowerCase()
+    return items.some((item) => item.dest.toLowerCase() === normalized)
+}
+
+/**
+ * 工作区外活动文件回退 basename 与工作区文件同名时（大小写不敏感）：
+ * 先试 _active/<name>，仍冲突则追加 -N 序号（P2-8：避免静默替换备份内容）。
+ */
+function resolveActiveFallbackDest(basename: string, items: BackupCopyItem[]): string {
+    const inActive = path.join(ACTIVE_FALLBACK_DIR_NAME, basename)
+    if (!hasDestConflict(inActive, items)) {
+        return inActive
+    }
+    const ext = path.extname(basename)
+    const stem = path.basename(basename, ext)
+    for (let index = 1; ; index += 1) {
+        const candidate = path.join(ACTIVE_FALLBACK_DIR_NAME, `${stem}-${index}${ext}`)
+        if (!hasDestConflict(candidate, items)) {
+            return candidate
+        }
+    }
 }
 
 /** 单次备份的待写条目：source 为磁盘拷贝，content 为内存内容按编码写出 */
@@ -237,15 +283,16 @@ interface BackupCopyItem {
 /**
  * 递归收集工作区目录下的 .md 文件（跳过 node_modules/.git 等目录与备份根自身）。
  * 遍历失败（无权限等）仅跳过对应目录，不中断整体备份。
+ * P1-2：readdirSync 递归改为 readdir({ withFileTypes: true }) 异步递归。
  */
-function collectWorkspaceMarkdownFiles(root: string): BackupCopyItem[] {
+async function collectWorkspaceMarkdownFiles(root: string): Promise<BackupCopyItem[]> {
     const items: BackupCopyItem[] = []
     const backupRoot = path.resolve(getAutoBackupRoot())
 
-    const walk = (dir: string): void => {
+    const walk = async (dir: string): Promise<void> => {
         let entries: fs.Dirent[] = []
         try {
-            entries = fs.readdirSync(dir, { withFileTypes: true })
+            entries = await fs.readdir(dir, { withFileTypes: true })
         } catch (error) {
             logger.warn(`[AutoBackup] 读取工作区目录失败: ${dir}`, error)
             return
@@ -259,10 +306,10 @@ function collectWorkspaceMarkdownFiles(root: string): BackupCopyItem[] {
                 if (path.resolve(absolute) === backupRoot) {
                     continue
                 }
-                walk(absolute)
+                await walk(absolute)
             } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
                 try {
-                    const size = fs.statSync(absolute).size
+                    const size = (await fs.stat(absolute)).size
                     if (size > AUTO_BACKUP_MAX_FILE_BYTES) {
                         logger.warn(
                             `[AutoBackup] 文件超过 ${AUTO_BACKUP_MAX_FILE_BYTES} 字节上限，已跳过: ${absolute}`
@@ -277,23 +324,24 @@ function collectWorkspaceMarkdownFiles(root: string): BackupCopyItem[] {
         }
     }
 
-    walk(root)
+    await walk(root)
     return items
 }
 
 /**
- * 执行一次自动备份（同步，与手动备份 config-backup.ts 的同步风格一致）。
+ * 执行一次自动备份（异步：全链路 fs.promises 风格 IO，避免阻塞主进程）。
  * @returns 备份结果；无任何内容可备份（无活动文件且工作区无 .md）时返回 null
- * @throws 备份目录创建/写入失败时抛错（由调度方捕获并提示用户）
+ * @throws 备份目录创建/写入失败时抛错（由调度方捕获并提示用户）；
+ *         写入中途失败会先回滚删除本次半成品目录再抛出（P3 失败残留清理）
  */
-export function performAutoBackup(): AutoBackupResult | null {
+export async function performAutoBackup(): Promise<AutoBackupResult | null> {
     const activeFile = appState.currentActiveFile
     const rootPath = appState.rootPath || null
 
     // 1. 收集备份条目：先工作区 .md（磁盘内容），后活动文件（内存内容按编码写出）
     const copies: BackupCopyItem[] = []
-    if (rootPath && fs.existsSync(rootPath)) {
-        copies.push(...collectWorkspaceMarkdownFiles(rootPath))
+    if (rootPath && (await fs.pathExists(rootPath))) {
+        copies.push(...(await collectWorkspaceMarkdownFiles(rootPath)))
     }
     if (
         activeFile &&
@@ -301,17 +349,32 @@ export function performAutoBackup(): AutoBackupResult | null {
         typeof activeFile.content === 'string'
     ) {
         // 活动文件携带编码：经 encodeFileContent 按原编码写出（GBK 等非 UTF-8 内容
-        // 不会在备份中被错误转成 UTF-8）；若与工作区条目同路径则替换原条目，
+        // 不会在备份中被错误转成 UTF-8）；若与工作区条目同 dest 则替换原条目，
         // 以内存内容（含未保存修改）覆盖磁盘旧内容，并保证 fileCount 与实际文件数一致
-        const dest = resolveActiveFileRelativePath(activeFile.path, rootPath)
-        const existingIndex = copies.findIndex((item) => item.dest === dest)
-        if (existingIndex >= 0) {
-            copies.splice(existingIndex, 1)
+        const resolved = resolveActiveFileDest(activeFile.path, rootPath)
+        let dest = resolved.dest
+        if (!resolved.inWorkspace && hasDestConflict(dest, copies)) {
+            // P2-8：工作区外活动文件回退 basename 与工作区文件同名（大小写不敏感）时
+            // 改放 _active/ 子目录（仍冲突追加序号），避免静默替换工作区文件的备份内容
+            dest = resolveActiveFallbackDest(dest, copies)
         }
-        copies.push({
-            dest,
-            content: encodeFileContent(activeFile.content, activeFile.encoding ?? 'utf-8')
-        })
+
+        // P2-7：活动文件内存内容同样受 20MB 上限约束（与工作区文件一致），
+        // 超过则跳过并记日志，防止大文件备份卡顿与无界磁盘占用
+        const content = encodeFileContent(activeFile.content, activeFile.encoding ?? 'utf-8')
+        if (content.byteLength > AUTO_BACKUP_MAX_FILE_BYTES) {
+            logger.warn(
+                `[AutoBackup] 活动文件内容超过 ${AUTO_BACKUP_MAX_FILE_BYTES} 字节上限，已跳过: ${activeFile.path}`
+            )
+        } else {
+            const existingIndex = copies.findIndex(
+                (item) => item.dest.toLowerCase() === dest.toLowerCase()
+            )
+            if (existingIndex >= 0) {
+                copies.splice(existingIndex, 1)
+            }
+            copies.push({ dest, content })
+        }
     }
     if (copies.length === 0) {
         return null
@@ -319,30 +382,40 @@ export function performAutoBackup(): AutoBackupResult | null {
 
     // 2. 创建带时间戳的备份目录（同一秒内重名追加 -N 序号）
     const root = getAutoBackupRoot()
-    fs.ensureDirSync(root)
+    await fs.ensureDir(root)
     const stamp = formatAutoBackupStamp(new Date())
     let name = stamp
     let suffix = 1
-    while (fs.existsSync(path.join(root, name))) {
+    while (await fs.pathExists(path.join(root, name))) {
         name = `${stamp}-${suffix}`
         suffix += 1
     }
     const destDir = path.join(root, name)
-    fs.ensureDirSync(destDir)
+    await fs.ensureDir(destDir)
 
-    // 3. 逐条写入（保留相对目录结构）
-    for (const copy of copies) {
-        const destPath = path.join(destDir, copy.dest)
-        fs.ensureDirSync(path.dirname(destPath))
-        if (copy.content) {
-            fs.writeFileSync(destPath, copy.content)
-        } else if (copy.source) {
-            fs.copyFileSync(copy.source, destPath)
+    // 3. 逐条写入（保留相对目录结构）；P3：中途失败（磁盘满/权限）时
+    // 先回滚删除本次半成品目录，再抛出交由调度方记录/提示，不残留废目录
+    try {
+        for (const copy of copies) {
+            const destPath = path.join(destDir, copy.dest)
+            await fs.ensureDir(path.dirname(destPath))
+            if (copy.content) {
+                await fs.writeFile(destPath, copy.content)
+            } else if (copy.source) {
+                await fs.copyFile(copy.source, destPath)
+            }
         }
+    } catch (error) {
+        try {
+            await fs.rm(destDir, { recursive: true, force: true })
+        } catch (cleanupError) {
+            logger.warn(`[AutoBackup] 清理半成品备份目录失败: ${name}`, cleanupError)
+        }
+        throw error
     }
 
     // 4. 按保留数量滚动清理旧备份
-    pruneOldAutoBackups(normalizeAutoBackupKeep())
+    await pruneOldAutoBackups(normalizeAutoBackupKeep())
 
     logger.info(`[AutoBackup] 自动备份完成: ${name}（${copies.length} 个文件）`)
     return { name, fileCount: copies.length }
@@ -366,9 +439,9 @@ export function getAutoBackupIntervalMs(): number {
  * - 无内容 → 仅日志，不打扰用户（启动时活动文件/工作区尚未恢复属正常）；
  * - 失败 → 日志 + 状态栏错误提示（含原因），不抛出、不阻断主流程。
  */
-export function runAutoBackupOnce(): void {
+export async function runAutoBackupOnce(): Promise<void> {
     try {
-        const result = performAutoBackup()
+        const result = await performAutoBackup()
         if (result) {
             sendToMainWindow(IPC.EVENTS.STATUS_BAR_UPDATE, {
                 message: tMain('mainMsg.status.autoBackupSuccess', {
@@ -421,7 +494,7 @@ async function runAutoBackupCycle(): Promise<void> {
     }
     autoBackupRunning = true
     try {
-        runAutoBackupOnce()
+        await runAutoBackupOnce()
     } finally {
         autoBackupRunning = false
         if (getSystemSetting().enableAutoBackup === true) {
@@ -431,7 +504,8 @@ async function runAutoBackupCycle(): Promise<void> {
 }
 
 /**
- * 启动自动备份定时器：先立即执行一次，再按 backupInterval 调度后续。
+ * 启动自动备份定时器（P1-2：仅调度，不立即执行——首次备份发生在第一个间隔到点，
+ * 避免保存设置/应用启动时在主进程同步触发全量备份冻结 UI）。
  * 已存在定时器时先停止（重启语义，供间隔变更后调用）。
  */
 export function startAutoBackupTimer(): void {
@@ -439,12 +513,12 @@ export function startAutoBackupTimer(): void {
     if (getSystemSetting().enableAutoBackup !== true) {
         return
     }
-    void runAutoBackupCycle()
+    scheduleNextAutoBackup(getAutoBackupIntervalMs())
 }
 
 /**
  * 按最新设置同步定时器（config-manager 保存路径调用，保存即生效）：
- * enableAutoBackup===true 时启动（先立即执行一次），===false 时停止；
+ * enableAutoBackup===true 时重启调度（不立即执行），===false 时停止；
  * backupInterval 变更经 startAutoBackupTimer 的重启语义自动生效。
  */
 export function syncAutoBackupTimer(): void {

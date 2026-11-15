@@ -1,6 +1,7 @@
 /**
  * 插件工具（转换与加密）词条（中）
- * 覆盖 PluginTools/Convert 与 PluginTools/Encryption 两个目录；
+ * 覆盖 PluginTools 下 7 个目录：Convert、Encryption、Codec、TextTools、
+ * MiscTools、FormatTools、NetWork（regexTester）；
  * 技术名词（JSON/YAML/Base64/AES…）、格式名与示例数据不翻译，仍保留在组件中。
  */
 export default {
@@ -15,7 +16,8 @@ export default {
         resultLabel: '结果：',
         swapButton: '交换进制',
         copyButton: '复制',
-        invalidInput: '输入包含非 {base} 进制的字符'
+        invalidInput: '输入包含非 {base} 进制的字符',
+        inputTooLong: '输入超过 {limit} 字符上限，已停止转换，请精简后重试。'
     },
     case: {
         title: '大小写转换',
@@ -374,7 +376,8 @@ export default {
         localTimeLabel: '本地时间：',
         localToTsTitle: '本地时间 → 时间戳',
         dateTimeLabel: '日期时间：',
-        dateTimePlaceholder: 'YYYY-MM-DD HH:mm:ss'
+        dateTimePlaceholder: 'YYYY-MM-DD HH:mm:ss',
+        emptyInput: '请输入时间戳'
     },
     random: {
         title: '随机生成器',
@@ -484,7 +487,8 @@ export default {
     },
     regexTester: {
         title: '正则表达式测试',
-        description: '在主线程测试正则匹配与替换（d/g/i/m/s/u/v/y，u 与 v 互斥）。',
+        description:
+            '在后台线程（Web Worker）测试正则匹配与替换，超时自动中止（d/g/i/m/s/u/v/y，u 与 v 互斥）。',
         patternLabel: '正则表达式',
         flagsLabel: '标志',
         inputLabel: '测试文本',
@@ -493,6 +497,8 @@ export default {
         replaceButton: '执行替换',
         matchCount: '匹配数',
         emptyMatch: '(空)',
+        running: '匹配中…',
+        timeout: '执行超时：匹配已中止。该正则可能触发灾难性回溯，请简化表达式或缩短测试文本。',
         truncated: '匹配数已达 5000 项上限，结果已截断。',
         uvExclusive: 'u 与 v 标志互斥，不能同时启用（已自动取消另一项）。',
         errorPrefix: '错误：',

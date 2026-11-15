@@ -94,6 +94,24 @@ describe('system-setting', () => {
         it('should default allowRemoteImages to false (AS-9)', () => {
             expect(getSystemSetting().allowRemoteImages).toBe(false)
         })
+
+        // P2-10：关闭时最小化到托盘默认关闭（opt-in）——存量用户「关闭即退出」语义不突变
+        it('should default minimizeToTray to false (P2-10 opt-in)', () => {
+            expect(getSystemSetting().minimizeToTray).toBe(false)
+        })
+
+        // P2-11：自动备份默认关闭（opt-in）——升级不静默把工作区 .md 复制到备份目录
+        it('should default enableAutoBackup to false (P2-11 opt-in)', () => {
+            expect(getSystemSetting().enableAutoBackup).toBe(false)
+        })
+
+        // P2-10/P2-11：默认值仅影响新配置；用户已存的 true 值保留（不迁移）
+        it('should keep an explicitly saved true value for opt-in switches', () => {
+            saveSystemSetting({ minimizeToTray: true, enableAutoBackup: true })
+            const setting = getSystemSetting()
+            expect(setting.minimizeToTray).toBe(true)
+            expect(setting.enableAutoBackup).toBe(true)
+        })
     })
 
     describe('saveSystemSetting', () => {

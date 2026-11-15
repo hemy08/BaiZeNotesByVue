@@ -12,6 +12,13 @@
 /** 2-36 进制数字表 */
 const DIGITS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
+/**
+ * P2 修复：输入长度上限（字符数）。
+ * 此前无上限，超长小数会执行 fromBig ** BigInt(n) 的巨大指数运算冻结 UI；
+ * 10000 字符的解析与指数运算为毫秒级（配合组件侧 200ms 防抖）。
+ */
+export const MAX_BASE_INPUT_LENGTH = 10000
+
 /** 单字符转数值（0-9 / A-Z，大小写均可），非法字符返回 -1 */
 function charToValue(char: string): number {
     const value = DIGITS.indexOf(char.toUpperCase())
@@ -28,11 +35,13 @@ function assertBase(base: number): void {
 /**
  * 校验输入字符串是否为指定进制的合法数字。
  * 允许：开头一个 "-"、至多一个小数点、字母大小写；不允许空串与孤立符号。
+ * 超过长度上限直接判非法（避免超长输入进入转换管线）。
  */
 export function isValidForBase(input: string, base: number): boolean {
     if (!Number.isInteger(base) || base < 2 || base > 36) return false
     const text = String(input).trim()
     if (text === '' || text === '-' || text === '.' || text === '-.') return false
+    if (text.length > MAX_BASE_INPUT_LENGTH) return false
     const rest = text.startsWith('-') ? text.slice(1) : text
     if (rest === '') return false
     const dotCount = (rest.match(/\./g) ?? []).length
@@ -83,6 +92,10 @@ export function convertBase(input: string, from: number, to: number): string {
     assertBase(from)
     assertBase(to)
     const text = String(input).trim()
+    // 防御性上限检查（组件侧已先拦截并提示；直接调用库时同样生效）
+    if (text.length > MAX_BASE_INPUT_LENGTH) {
+        throw new Error('输入超过 ' + MAX_BASE_INPUT_LENGTH + ' 字符上限：' + text.length)
+    }
     if (!isValidForBase(text, from)) {
         throw new Error('输入不是合法的 ' + from + ' 进制数字：' + input)
     }

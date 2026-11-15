@@ -63,7 +63,9 @@ const electronMocks = vi.hoisted(() => {
                 appHandlers[event] = arr
             }),
             whenReady: vi.fn(() => Promise.resolve()),
-            quit: vi.fn()
+            quit: vi.fn(),
+            // P2-10：单实例锁（index.ts 模块加载时即申请）
+            requestSingleInstanceLock: vi.fn(() => true)
         },
         ipcMain: {
             on: vi.fn(),
@@ -224,7 +226,9 @@ vi.mock('../../src/main/utils/app-paths', () => ({
 // system-theme.test.ts 覆盖），避免拉起 theme-config → app-paths/electron-store 依赖链
 vi.mock('../../src/main/utils/tray', () => ({
     ensureTrayCreated: vi.fn(),
-    disposeTray: vi.fn()
+    disposeTray: vi.fn(),
+    // P2-10：单实例锁 second-instance 回调复用的窗口恢复路径
+    showMainWindow: vi.fn()
 }))
 
 vi.mock('../../src/main/config/system-theme', () => ({

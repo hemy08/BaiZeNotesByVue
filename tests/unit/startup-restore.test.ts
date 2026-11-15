@@ -6,6 +6,8 @@
  * - autoOpenLastFolder 且目录存在：先 WELCOME_ENTER_MAIN（directory）再经
  *   runAfterMainViewEntered 时序执行 CLEAR_EDITOR_PREVIEW + ReloadDirFromDisk；
  * - 目录不存在：清除持久化记录、不进入主界面、状态栏 warning 提示（i18n）；
+ * - P2-6：目录未通过 AS-2 工作区根校验（用户主目录等危险路径）：与「目录缺失」
+ *   同分支——清除记录 + 状态栏 warning；
  * - autoOpenLastFile 且文件存在：先 WELCOME_ENTER_MAIN（file）再 OpenSelectFile；
  * - 文件不存在：清除记录 + 状态栏 warning；
  * - 目录缺失但文件存在时仍恢复文件（进入主界面一次）。
@@ -13,6 +15,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as path from 'path'
 import * as fs from 'fs'
+import * as os from 'os'
 
 const hoisted = vi.hoisted(() => {
     const base = process.env.TEMP || process.env.TMP || '/tmp'
@@ -159,6 +162,31 @@ describe('restoreLastOpenedAtStartup', () => {
     it('should clear a missing folder, stay on welcome and show a status hint', async () => {
         const gone = path.join(hoisted.userData, 'gone')
         saveLastOpenedDirectory(gone)
+        hoisted.setting.autoOpenLastFolder = true
+        const { win, send } = mainWindowStub()
+        appState.mainWindow = win
+
+        await restoreLastOpenedAtStartup(win, hoisted.setting as unknown as SystemSetting)
+
+        expect(getLastOpenedDirectory()).toBeNull()
+        expect(fileUtilsMocks.ReloadDirFromDisk).not.toHaveBeenCalled()
+        expect(send).not.toHaveBeenCalledWith(IPC.FILE.WELCOME_ENTER_MAIN, expect.anything())
+        const statusCall = send.mock.calls.find((call) => call[0] === IPC.EVENTS.STATUS_BAR_UPDATE)
+        expect(statusCall).toBeDefined()
+        expect(statusCall![1]).toEqual(
+            expect.objectContaining({
+                type: 'warning',
+                message: expect.stringContaining('工作目录')
+            })
+        )
+        appState.mainWindow = null
+    })
+
+    // P2-6：历史遗留 lastOpenedDirectory 若为主目录等危险路径，启动恢复前必须拦截
+    // （复用 OPEN_SPECIFIC_FOLDER 的 AS-2 校验），走「目录缺失」分支而非全量遍历
+    it('should clear a folder rejected by the workspace root check (P2-6)', async () => {
+        const dangerousDir = os.homedir()
+        saveLastOpenedDirectory(dangerousDir)
         hoisted.setting.autoOpenLastFolder = true
         const { win, send } = mainWindowStub()
         appState.mainWindow = win

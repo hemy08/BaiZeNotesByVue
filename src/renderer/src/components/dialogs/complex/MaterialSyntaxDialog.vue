@@ -124,10 +124,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { t } from '../../../common/i18n'
-import { MDI_ICON_PATHS } from '../../Markdown/mdi-icons-data'
+import { getMdiIconNames, loadMdiIconData } from '../../Markdown/mdi-icons-loader'
 
 /**
  * Material 语法插入对话框（覆盖 15 项 mkdocs-material 扩展语法）。
@@ -667,8 +667,21 @@ const materialFeatures: readonly MaterialFeatureDefinition[] = [
 ]
 
 const ICON_DATALIST_ID = 'material-syntax-icon-list'
-/** 图标名候选：复用预览渲染的 MDI 图标表（键即 `:material-<name>:` 中的 <name>） */
-const iconNames = Object.keys(MDI_ICON_PATHS)
+/**
+ * 图标名候选：复用预览渲染的 MDI 图标表（键即 `:material-<name>:` 中的 <name>）。
+ * P2-4 修复：全量数据动态 import 懒加载——初始为同步内嵌的核心子集名，
+ * 全量数据到达后刷新（挂载时触发加载并更新，datalist 从核心集平滑扩展到全量）。
+ */
+const iconNames = ref<string[]>(getMdiIconNames())
+
+onMounted(async () => {
+    try {
+        await loadMdiIconData()
+        iconNames.value = getMdiIconNames()
+    } catch {
+        // 全量数据加载失败时保留核心子集名，对话框功能不受影响
+    }
+})
 
 /** 各功能项默认值：保证打开对话框直接点「插入」也能产出合法片段 */
 function createDefaultForm(): MaterialSyntaxForm {

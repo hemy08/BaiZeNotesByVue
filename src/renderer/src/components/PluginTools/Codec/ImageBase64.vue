@@ -54,6 +54,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { t } from '../../../common/i18n'
+import { copyTextToClipboard } from '../../../common/clipboard'
 import { base64ToBytes, bytesToBase64 } from './image-base64-lib'
 
 const props = defineProps({
@@ -66,6 +67,12 @@ const props = defineProps({
 
 /** 图片大小上限：20MB（与 jyshare 原版一致） */
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024
+/**
+ * P3 修复：粘贴 Base64 的输入长度预检上限（≈20MB×4/3，另加少量余量容纳
+ * DataURL 前缀/空白字符）。先按长度拦截再 atob 解码，避免 20MB+ 数据先解码
+ * 产生内存峰值后再校验。
+ */
+const MAX_BASE64_TEXT_LENGTH = Math.ceil((MAX_IMAGE_BYTES / 3) * 4) + 1024
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const fileName = ref('')
@@ -106,7 +113,13 @@ async function handleFileChange(event: Event) {
 // Base64/DataURL → 字节 → Blob → objectURL 预览
 function handleDecode() {
     try {
-        const bytes = base64ToBytes(base64Text.value)
+        const text = base64Text.value
+        // P3 修复：先按长度预检（20MB 上限对应约 26.7M 字符的 Base64），超限不进入 atob
+        if (text.length > MAX_BASE64_TEXT_LENGTH) {
+            alert(t('toolsConvert.imageBase64.sizeLimitAlert'))
+            return
+        }
+        const bytes = base64ToBytes(text)
         if (bytes.length === 0) {
             alert(t('toolsConvert.imageBase64.emptyInputAlert'))
             return
@@ -115,7 +128,7 @@ function handleDecode() {
             alert(t('toolsConvert.imageBase64.sizeLimitAlert'))
             return
         }
-        const mime = detectMime(base64Text.value)
+        const mime = detectMime(text)
         showImageFromBytes(bytes, mime)
     } catch (error) {
         alert(t('toolsConvert.imageBase64.decodeFailedAlert', { error: String(error) }))
@@ -144,7 +157,7 @@ function openFilePicker() {
 
 function handleCopy() {
     if (!base64Text.value) return
-    navigator.clipboard.writeText(base64Text.value)
+    void copyTextToClipboard(base64Text.value)
 }
 
 function handleClear() {

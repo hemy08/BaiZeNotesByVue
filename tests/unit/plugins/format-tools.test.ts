@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
- * 格式化工具插件纯函数单测（FormatTools：JSON 工具 / XML 格式化）
- * 与网络工具（NetWork：正则测试）—— 只测 .ts 纯函数，不 import .vue。
+ * 格式化工具插件纯函数单测（FormatTools：JSON 工具 / XML 格式化）—— 只测 .ts 纯函数，不 import .vue。
+ * 网络工具正则测试（NetWork：regex-lib 异步 API / regex-worker 协议 / RegexTester 组件）
+ * 已拆分至同目录 regex-lib.test.ts（P1-1：Web Worker 化 + 时间预算）。
  */
 import { describe, it, expect } from 'vitest'
 
@@ -12,11 +13,6 @@ import {
     unescapeJson
 } from '@renderer/components/PluginTools/FormatTools/json-tool-lib'
 import { formatXml, minifyXml } from '@renderer/components/PluginTools/FormatTools/xml-format-lib'
-import {
-    runRegex,
-    substituteReplace,
-    MAX_MATCHES
-} from '@renderer/components/PluginTools/NetWork/regex-lib'
 
 describe('JSON 工具（json-tool-lib）', () => {
     it('格式化：2 空格缩进的嵌套 JSON', () => {
@@ -111,73 +107,5 @@ describe('XML 格式化（xml-format-lib）', () => {
         const input = '<a>line1\nline2</a>'
         expect(minifyXml(input)).toBe(input)
         expect(formatXml(input)).toBe(input)
-    })
-})
-
-describe('正则测试（regex-lib）', () => {
-    it('g 全局多匹配：返回每条匹配的文本与位置', () => {
-        const result = runRegex('\\w+', 'g', 'hello world')
-        expect(result).toHaveLength(2)
-        expect(result[0]).toMatchObject({ match: 'hello', index: 0 })
-        expect(result[1]).toMatchObject({ match: 'world', index: 6 })
-    })
-
-    it('捕获组内容正确（数字组与命名组）', () => {
-        const result = runRegex('(\\w)(\\d)', 'g', 'a1b2')
-        expect(result).toHaveLength(2)
-        expect(result[0].match).toBe('a1')
-        expect(result[0].groups).toEqual(['a', '1'])
-        expect(result[0].index).toBe(0)
-        expect(result[1].groups).toEqual(['b', '2'])
-
-        const named = runRegex('(?<word>\\w+)', 'g', 'hi you')
-        expect(named[0].namedGroups).toEqual({ word: 'hi' })
-    })
-
-    it('零宽匹配不卡死：lastIndex 手动推进', () => {
-        const result = runRegex('', 'g', 'abc')
-        expect(result).toHaveLength(4) // 位置 0/1/2/3 各一个空匹配
-        expect(result.map((m) => m.index)).toEqual([0, 1, 2, 3])
-    })
-
-    it('unicode 模式下零宽匹配跳过代理对', () => {
-        // '𝄞' 为代理对（2 个 UTF-16 码元），u 下空匹配只在码元 0 与 2
-        const result = runRegex('', 'gu', '𝄞')
-        expect(result).toHaveLength(2)
-        expect(result.map((m) => m.index)).toEqual([0, 2])
-    })
-
-    it('非法 pattern 报错（中文提示）', () => {
-        expect(() => runRegex('(', 'g', 'abc')).toThrow(/括号|分组|语法/)
-        expect(() => runRegex('[a-', 'g', 'abc')).toThrow(/字符类/)
-    })
-
-    it('u/v 互斥与非法标志报错', () => {
-        expect(() => runRegex('a', 'uv', 'a')).toThrow(/互斥|不能同时/)
-        expect(() => runRegex('a', 'gg', 'a')).toThrow(/修饰符/)
-    })
-
-    it('输入超 20 万字符报错', () => {
-        expect(() => runRegex('a', 'g', 'a'.repeat(200_001))).toThrow(/超出限制|最长/)
-    })
-
-    it('匹配数超 5000 截断并置 truncated 标志', () => {
-        const result = runRegex('', 'g', 'x'.repeat(MAX_MATCHES + 10))
-        expect(result.length).toBe(MAX_MATCHES)
-        expect(result.truncated).toBe(true)
-    })
-
-    it('替换：$1 捕获组展开', () => {
-        const matches = runRegex('(\\w+)', 'g', 'hello world')
-        expect(substituteReplace('hello world', '[$1]', matches)).toBe('[hello] [world]')
-    })
-
-    it('替换：$$ 输出字面 $，$& 输出完整匹配', () => {
-        expect(substituteReplace('a', '$$', runRegex('a', 'g', 'a'))).toBe('$')
-        expect(substituteReplace('ab', '<$&>', runRegex('a', 'g', 'ab'))).toBe('<a>b')
-    })
-
-    it('替换：零宽匹配逐位置插入且不吞字符', () => {
-        expect(substituteReplace('abc', 'x', runRegex('', 'g', 'abc'))).toBe('xaxbxcx')
     })
 })

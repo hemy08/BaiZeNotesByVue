@@ -8,6 +8,8 @@ interface ApiConfig {
 
 /** 渲染进程暴露的应用信息 API */
 interface ApiApp {
+    /** P2-5：渲染层就绪握手（App.vue onMounted 完成后调用，通知主进程执行启动恢复） */
+    notifyRendererReady: () => void
     getVersion: () => Promise<{
         appVersion: string
         electronVersion: string

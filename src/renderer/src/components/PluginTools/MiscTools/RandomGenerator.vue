@@ -176,6 +176,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { t } from '../../../common/i18n'
+import { copyTextToClipboard } from '../../../common/clipboard'
 import {
     generatePassword as libGeneratePassword,
     generateRandomNumbers as libGenerateRandomNumbers,
@@ -297,16 +298,16 @@ function generateColor(): void {
 
 /** 各复制按钮 */
 function copyPassword(): void {
-    if (passwordOutput.value) navigator.clipboard.writeText(passwordOutput.value)
+    if (passwordOutput.value) void copyTextToClipboard(passwordOutput.value)
 }
 function copyString(): void {
-    if (stringOutput.value) navigator.clipboard.writeText(stringOutput.value)
+    if (stringOutput.value) void copyTextToClipboard(stringOutput.value)
 }
 function copyNumbers(): void {
-    if (numbersOutput.value) navigator.clipboard.writeText(numbersOutput.value)
+    if (numbersOutput.value) void copyTextToClipboard(numbersOutput.value)
 }
 function copyColor(): void {
-    navigator.clipboard.writeText(colorResult.hex + ' / rgb(' + colorResult.rgb + ')')
+    void copyTextToClipboard(colorResult.hex + ' / rgb(' + colorResult.rgb + ')')
 }
 
 // 初始生成

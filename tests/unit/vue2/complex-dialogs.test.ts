@@ -656,7 +656,8 @@ describe('SystemSettingDialog', () => {
     })
 
     // 批次 C #8/#9：自动备份组已实现——「暂未实现」提示替换为行为说明，
-    // 启用开关与间隔输入可编辑（保留数量原有可编辑行为不变）
+    // 启用开关与间隔输入可编辑（保留数量原有可编辑行为不变）；
+    // P2-11：启用开关默认关闭（opt-in），配置未返回该字段时回退默认 false
     it('renders the auto backup group hint and editable inputs', async () => {
         const wrapper = mount(SystemSettingDialog, {
             ...dialogMountOptions,
@@ -667,6 +668,9 @@ describe('SystemSettingDialog', () => {
         expect(backupPanel.text()).toContain('按设定间隔')
 
         const enableCheckbox = backupPanel.find('.setting-checkbox')
+        // P2-11：默认关闭（opt-in）
+        expect((enableCheckbox.element as HTMLInputElement).checked).toBe(false)
+        await enableCheckbox.setValue(true)
         expect((enableCheckbox.element as HTMLInputElement).checked).toBe(true)
         await enableCheckbox.setValue(false)
         expect((enableCheckbox.element as HTMLInputElement).checked).toBe(false)

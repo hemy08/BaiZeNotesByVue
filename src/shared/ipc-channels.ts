@@ -126,7 +126,10 @@ export const IPC = {
     RENDER: {
         INSERT_IMAGE: 'baize:render:insert-image',
         // PF-08：PlantUML 本地离线渲染（主进程隐藏窗口），渲染层 invoke 调用
-        PLANTUML_LOCAL: 'baize:render:plantuml-local'
+        PLANTUML_LOCAL: 'baize:render:plantuml-local',
+        // P2-5：渲染层就绪握手（App.vue onMounted 完成后经 preload 发送，
+        // 主进程收到后才执行启动恢复，避免恢复消息早于渲染层监听器注册被丢弃）
+        READY: 'baize:render:ready'
     } as const,
 
     // ============ 对话框 ============

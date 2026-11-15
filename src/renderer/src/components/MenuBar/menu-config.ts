@@ -480,7 +480,7 @@ const pluginsMenu: BaiZeMenuEntry = {
                 },
                 // FE-17：2 个已注册网络对照表工具（HTTP 状态码 / 子网掩码）补入口。
                 ...pluginNetExtraEntries,
-                // FE-16：解析器组（PluginNetGenerators）当前为空数据，将被自动剪除。
+                // FE-17：解析器组已补齐正则表达式测试入口（PluginNetGenerators 含 1 项，正常渲染）。
                 {
                     labelKey: 'menu.plugins.group.parsers',
                     submenu: MenuConst.PluginNetGenerators

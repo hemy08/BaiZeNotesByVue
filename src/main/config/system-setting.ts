@@ -56,14 +56,20 @@ const systemSettingDefaults: SystemSetting = {
     autoOpenLastFile: false,
     autoOpenLastFolder: false,
     autoStart: false,
-    minimizeToTray: true,
+    // P2-10：默认关闭（opt-in）——存量用户「关闭即退出」语义不突变（Windows 溢出区
+    // 托盘图标易被隐藏导致找不到退出入口）；用户显式开启后才隐藏到托盘。
+    // 升级用户已存的 true 值保留（不迁移，仅影响新默认值）。
+    minimizeToTray: false,
     rememberWindowSize: true,
     // 「记住窗口位置和大小」：上次关闭时的窗口边界（主进程写入；null 表示尚未记录）
     windowBounds: null,
     defaultFilePath: '',
     recentFilesCount: 10,
     checkUpdateOnStart: true,
-    enableAutoBackup: true,
+    // P2-11：默认关闭（opt-in）——升级不静默把工作区全部 .md（含未保存修改）明文
+    // 复制到备份目录（隐私面 + 磁盘占用）；用户显式开启后才启动自动备份定时器。
+    // 升级用户已存的 true 值保留（不迁移，仅影响新默认值）。
+    enableAutoBackup: false,
     backupInterval: 24,
     backupCount: 5,
     appTheme: 'baize',

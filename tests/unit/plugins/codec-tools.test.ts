@@ -174,6 +174,21 @@ describe('unicode-lib（Unicode 与实体互转）', () => {
         expect(asciiToEntity('中')).toBe('&#20013;')
     })
 
+    it('P3 边界：emoji 按 Unicode 码点输出/还原单个实体（不再按 2^16 取模）', () => {
+        // 😀 码点 U+1F600 = 128512：按码点编码输出单个实体
+        expect(asciiToEntity('😀')).toBe('&#128512;')
+        // 码点实体还原为 emoji（历史实现 String.fromCharCode 会取模产出私有区字符）
+        expect(entityToAscii('&#128512;')).toBe('😀')
+        expect(entityToAscii('&#x1F600;')).toBe('😀')
+        // 增补平面字符占两个码元：跳过低代理位后输出数量 = 码点数而非码元数
+        expect(asciiToEntity('a😀b')).toBe('&#97;&#128512;&#98;')
+    })
+
+    it('P3 边界：越界码点实体原样保留（与 html-lib 语义一致）', () => {
+        expect(entityToAscii('&#x110000;')).toBe('&#x110000;')
+        expect(entityToAscii('&#999999999999999999999;')).toBe('&#999999999999999999999;')
+    })
+
     it('数字实体转文本（十进制与十六进制）', () => {
         expect(entityToAscii('&#97;&#98;&#99;')).toBe('abc')
         expect(entityToAscii('&#20013;')).toBe('中')

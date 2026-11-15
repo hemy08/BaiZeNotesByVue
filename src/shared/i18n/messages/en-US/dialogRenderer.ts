@@ -245,11 +245,11 @@ const dialogRenderer = {
         // Batch C #10: button label that opens the theme settings dialog
         labelOpenThemeSetting: 'Open theme settings',
         // Batch C #8/#9: behavior description of the auto backup group (replaces the
-        // former "not implemented" hint)
+        // former "not implemented" hint); P2-11: off by default (opt-in)
         hintAutoBackupGroup:
-            'Backs up the active file (including unsaved changes) and every .md file in the open workspace folder to the user data directory at the configured interval, pruning old backups by "Backups to keep"',
+            'Off by default; when enabled, backs up the active file (including unsaved changes) and every .md file in the open workspace folder to the user data directory at the configured interval, pruning old backups by "Backups to keep"',
         hintBackupInterval:
-            'Auto backup interval (1~72 hours, default 24); takes effect immediately after saving',
+            'Auto backup interval (1~72 hours, default 24); saving restarts the timer and the first backup runs when the next interval elapses',
         hintDefaultFilePath: 'Default starting folder for the "Open folder" dialog',
         hintBackupRetention: 'Number of recent backups kept when using "Back up now"',
         backupStatusSuccess: 'Backup created: {name} ({count} config files)',

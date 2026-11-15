@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3.3-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.6-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Electron](https://img.shields.io/badge/Electron-43.8.10-blue.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5.45-brightgreen.svg)
@@ -127,7 +127,7 @@
 
 #### 版本信息
 
-- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.3）的发布说明
+- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.6）的发布说明
 - **更新日志**：展示依赖升级详情和代码适配修复
 - **技术栈信息**：显示项目技术栈详细信息
 - **关于页面**：显示应用版本、开发框架、系统环境信息
@@ -660,10 +660,13 @@ npm run clean
 
 ## 🗺️ 开发路线图
 
-### v1.3.0 (当前版本)
+### v1.3.6 (当前版本)
 
-- [x] 2026-11-15 全面治理：安全加固（P0 攻击链闭环）、国际化（i18n）、预览本地单跳渲染、IPC 架构收口、质量门禁全绿
-- [x] 127 项检查清单中 105 项完全修复、22 项部分修复（详见 CHANGELOG.md / 复扫报告）
+- [x] 2026-11-15 全面治理与迭代：安全加固（P0 攻击链闭环）、国际化（i18n）、预览本地单跳渲染、IPC 架构收口
+- [x] 127 项检查清单 105 项完全修复、22 项部分修复；新增内容审查 32 项问题修复 25 项
+- [x] 系统设置 9 项禁用项全部补充实现（启动恢复/自启动/托盘/窗口记忆/跟随系统主题/自动备份等）
+- [x] 菜鸟工具插件集成（18 个离线工具，插件总数 37）；mkdocs-material 扩展语法 15 项
+- [x] 正则工具 Worker 化、自动备份异步化等审查修复批次
 
 ### v1.4.0 (计划中)
 

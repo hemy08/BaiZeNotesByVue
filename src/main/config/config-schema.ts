@@ -176,8 +176,9 @@ const SYSTEM_NUMBER_LIMITS: Readonly<Record<string, { min: number; max: number }
     fontSize: { min: FONT_SIZE_MIN, max: FONT_SIZE_MAX },
     // 「最近文件列表数量」：5~20（与 SystemSettingDialog 输入框与 shared 常量一致）
     recentFilesCount: { min: 5, max: 20 },
-    backupInterval: { min: 1, max: 720 },
-    backupCount: { min: 1, max: 50 }
+    // P3 对齐：与 UI 输入框（1~72 / 1~10）及 auto-backup 运行时钳制一致
+    backupInterval: { min: 1, max: 72 },
+    backupCount: { min: 1, max: 10 }
 }
 
 /** 系统设置中的枚举字段（未知值丢弃） */

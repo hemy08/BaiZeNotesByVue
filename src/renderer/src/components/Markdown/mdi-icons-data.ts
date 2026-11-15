@@ -13,7 +13,10 @@
  * - 按图标名字母序插入，便于检索；
  * - `code` / `terminal` / `windows` 是 MDI 7.x 改名后的兼容别名（指向 code-tags / console /
  *   microsoft-windows）；
- * - **未收录的图标名由 preview-md-media.ts 降级为可见文本，不报错、不吞后续文本**。
+ * - **未收录的图标名由 preview-md-media.ts 降级为可见文本，不报错、不吞后续文本**；
+ * - P2-4：本文件为全量数据，经 mdi-icons-loader.ts 动态 import 懒加载（不进主 chunk）；
+ *   常用图标的核心子集见 mdi-icons-core.ts（由 out/tmp/gen-mdi-icons-core.mjs 生成，
+ *   调整核心清单后需重新运行生成器，并保持核心子集与本文件同名校验通过）。
  */
 
 /** 图标名（不含 `material-` 前缀）→ SVG path 数据（24x24 viewBox） */

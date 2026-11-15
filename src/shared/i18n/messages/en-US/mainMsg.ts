@@ -57,6 +57,10 @@ export default {
             'The last opened file no longer exists (it may have been moved or deleted), so it was not restored: {path}',
         startupRestoreFolderMissing:
             'The last opened folder no longer exists (it may have been moved or deleted), so it was not restored: {path}',
+        // P2-6: the startup restore folder failed the AS-2 workspace root check
+        // (home directory / system directory / drive root etc.)
+        startupRestoreFolderInvalid:
+            'The last opened folder failed the safety check ({reason}), so it was not restored: {path}',
         startupRestoreFailed: 'Failed to restore the last opened content at startup: {message}',
         // System settings supplement batch C: auto backup result status bar messages
         autoBackupSuccess: 'Auto backup created: {name} ({count} files)',

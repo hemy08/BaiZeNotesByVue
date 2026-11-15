@@ -53,6 +53,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { t } from '../../../common/i18n'
+import { copyTextToClipboard } from '../../../common/clipboard'
 import { asciiToEntity, entityToAscii, textToUnicode, unicodeToText } from './unicode-lib'
 
 const props = defineProps({
@@ -95,7 +96,7 @@ function handleEntityToText() {
 
 function handleCopy() {
     if (!outputText.value) return
-    navigator.clipboard.writeText(outputText.value)
+    void copyTextToClipboard(outputText.value)
 }
 
 function handleClear() {

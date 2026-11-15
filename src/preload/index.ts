@@ -36,6 +36,11 @@ const api = {
 
     // ========== 应用信息 API ==========
     app: {
+        // P2-5：渲染层就绪握手——App.vue onMounted 注册完监听器后调用，
+        // 主进程（main/index.ts）收到后才执行启动恢复（autoOpenLastFile/Folder）
+        notifyRendererReady: (): void => {
+            ipcRenderer.send(IPC.RENDER.READY)
+        },
         // 获取应用版本信息
         getVersion: (): Promise<{
             appVersion: string

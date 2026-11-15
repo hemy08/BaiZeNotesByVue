@@ -556,12 +556,13 @@ const sidebarItems = [
     { id: 'backup', nameKey: 'dialogRenderer.systemSetting.sidebarBackup', icon: '💾' }
 ]
 
-// 保存初始状态，用于取消时恢复
+// 保存初始状态，用于取消时恢复（与主进程 system-setting.ts 的新默认值一致：
+// P2-10 minimizeToTray / P2-11 enableAutoBackup 均默认关闭，opt-in）
 const initialSettings = ref({
     autoOpenLastFile: false,
     autoOpenLastFolder: false,
     autoStart: false,
-    minimizeToTray: true,
+    minimizeToTray: false,
     rememberWindowSize: true,
     language: 'zh-CN',
     defaultFilePath: '',
@@ -572,7 +573,7 @@ const initialSettings = ref({
     useSystemTheme: false,
     fontFamily: 'Microsoft YaHei',
     fontSize: 14,
-    enableAutoBackup: true,
+    enableAutoBackup: false,
     backupInterval: 24,
     backupCount: 5,
     // AS-9（P3 隐私）：安全默认——不加载远程图片

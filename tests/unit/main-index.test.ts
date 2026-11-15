@@ -27,7 +27,9 @@ const electronMocks = vi.hoisted(() => {
         // 「记住窗口位置和大小」：screen.getAllDisplays 返回的显示器工作区
         screenDisplays: [{ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }],
         // 批次 B #4：appState 退出标志（before-quit 置位后 close 不再被托盘拦截）
-        quitFlag: { value: false }
+        quitFlag: { value: false },
+        // P2-10：单实例锁申请结果（requestSingleInstanceLock 返回值）
+        lockFlag: { value: true }
     }
     const win = {
         on: vi.fn((event: string, handler: (...args: never[]) => void) => {
@@ -74,6 +76,7 @@ const electronMocks = vi.hoisted(() => {
         webRequestOnBeforeRequest: vi.fn(),
         screenDisplays: state.screenDisplays,
         quitFlag: state.quitFlag,
+        singleInstanceLock: state.lockFlag,
         screen: {
             getAllDisplays: vi.fn(() => state.screenDisplays)
         },
@@ -84,7 +87,9 @@ const electronMocks = vi.hoisted(() => {
                 appHandlers[event] = arr
             }),
             whenReady: vi.fn(() => Promise.resolve()),
-            quit: vi.fn()
+            quit: vi.fn(),
+            // P2-10：单实例锁申请（默认成功；失败用例改 lockFlag.value=false）
+            requestSingleInstanceLock: vi.fn(() => state.lockFlag.value)
         },
         ipcMain: {
             on: vi.fn((channel: string, handler: (...args: never[]) => void) => {
@@ -154,9 +159,11 @@ const internalMocks = vi.hoisted(() => ({
     saveActiveFile: vi.fn(),
     // PF-05：目录 fs.watch 监听的退出清理（index.ts 直接依赖 file-operations 单文件导出）
     cleanupDirectoryWatch: vi.fn(),
-    // 批次 B #4：托盘创建/销毁（细节由 tray.test.ts 覆盖）
+    // 批次 B #4：托盘创建/销毁（细节由 tray.test.ts 覆盖）；
+    // P2-10：showMainWindow 复用为单实例锁 second-instance 的窗口恢复路径
     ensureTrayCreated: vi.fn(),
     disposeTray: vi.fn(),
+    showMainWindow: vi.fn(),
     // 批次 B #7：跟随系统主题的启动/退出清理（细节由 system-theme.test.ts 覆盖）
     startSystemThemeWatcher: vi.fn(),
     stopSystemThemeWatcher: vi.fn(),
@@ -263,7 +270,9 @@ vi.mock('../../src/main/utils/app-paths', () => ({
 // system-theme.test.ts 覆盖），index.ts 只验证生命周期挂接点
 vi.mock('../../src/main/utils/tray', () => ({
     ensureTrayCreated: internalMocks.ensureTrayCreated,
-    disposeTray: internalMocks.disposeTray
+    disposeTray: internalMocks.disposeTray,
+    // P2-10：单实例锁 second-instance 回调复用的窗口恢复路径
+    showMainWindow: internalMocks.showMainWindow
 }))
 
 vi.mock('../../src/main/config/system-theme', () => ({
@@ -348,6 +357,8 @@ beforeEach(() => {
     electronMocks.appHandlers['activate'] = []
     electronMocks.appHandlers['window-all-closed'] = []
     electronMocks.appHandlers['before-quit'] = []
+    // P2-10：单实例锁 second-instance 回调注册记录复位
+    electronMocks.appHandlers['second-instance'] = []
     for (const key of Object.keys(electronMocks.winHandlers)) {
         delete electronMocks.winHandlers[key]
     }
@@ -360,6 +371,8 @@ beforeEach(() => {
     electronMocks.capturedBrowserWindowOptions = null
     // 批次 B #4：退出标志复位（before-quit 置位后需恢复，避免污染后续用例）
     electronMocks.quitFlag.value = false
+    // P2-10：单实例锁申请结果复位为成功
+    electronMocks.singleInstanceLock.value = true
     electronMocks.screenDisplays.length = 0
     electronMocks.screenDisplays.push({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } })
     electronMocks.win.isDestroyed.mockReset()
@@ -376,6 +389,7 @@ beforeEach(() => {
     }
     electronMocks.app.on.mockClear()
     electronMocks.app.quit.mockClear()
+    electronMocks.app.requestSingleInstanceLock.mockClear()
     electronMocks.ipcMain.on.mockClear()
     electronMocks.ipcMain.removeListener.mockClear()
     electronMocks.openExternal.mockClear()
@@ -411,7 +425,7 @@ describe('app whenReady startup flow', () => {
         expect(toolkitMocks.setAppUserModelId).toHaveBeenCalledWith('com.electron')
         // 批次 B #7：whenReady 启动系统主题跟随监听
         expect(internalMocks.startSystemThemeWatcher).toHaveBeenCalled()
-        // 批次 C #8/#9：whenReady 同步自动备份定时器（开启时立即执行一次）
+        // 批次 C #8/#9：whenReady 同步自动备份定时器（P1-2：仅启动调度，不立即执行备份）
         expect(internalMocks.syncAutoBackupTimer).toHaveBeenCalled()
     })
 
@@ -488,6 +502,9 @@ describe('ready-to-show flow', () => {
     it('should show the window, init theme, font CSS and editor settings', async () => {
         await loadMainIndex()
         triggerWindowHandler('ready-to-show')
+        // P2-5：恢复等待渲染层就绪握手，握手到达前不执行
+        expect(internalMocks.restoreLastOpenedFile).not.toHaveBeenCalled()
+        triggerIpcHandler('baize:render:ready')
         await settle()
         expect(electronMocks.win.show).toHaveBeenCalled()
         expect(internalMocks.loggerSetMainWindow).toHaveBeenCalledWith(electronMocks.win)
@@ -506,6 +523,27 @@ describe('ready-to-show flow', () => {
         expect(internalMocks.restoreLastOpenedAtStartup).not.toHaveBeenCalled()
     })
 
+    // P2-5：握手早于 ready-to-show（渲染层先挂载、窗口后显示）时立即恢复
+    it('should restore immediately on ready-to-show when the renderer handshake arrived first', async () => {
+        await loadMainIndex()
+        triggerIpcHandler('baize:render:ready')
+        triggerWindowHandler('ready-to-show')
+        await settle()
+        expect(internalMocks.restoreLastOpenedFile).toHaveBeenCalled()
+    })
+
+    // P2-5：渲染层异常未发握手时，3s 超时兜底仍执行恢复（仅推迟，不改变历史行为）
+    it('should fall back to restoring 3s after ready-to-show when no handshake arrives', async () => {
+        await loadMainIndex()
+        vi.useFakeTimers()
+        triggerWindowHandler('ready-to-show')
+        vi.advanceTimersByTime(2999)
+        expect(internalMocks.restoreLastOpenedFile).not.toHaveBeenCalled()
+        vi.advanceTimersByTime(1)
+        expect(internalMocks.restoreLastOpenedFile).toHaveBeenCalled()
+        vi.useRealTimers()
+    })
+
     // 批次 A：#1/#2 autoOpenLastFile / autoOpenLastFolder 开启时走「先 WELCOME_ENTER_MAIN
     // 再投递数据事件」的启动恢复流程，不再走旧的后台恢复
     it('should use the startup restore flow when autoOpenLastFile is enabled', async () => {
@@ -519,6 +557,7 @@ describe('ready-to-show flow', () => {
         })
         await loadMainIndex()
         triggerWindowHandler('ready-to-show')
+        triggerIpcHandler('baize:render:ready')
         await settle()
         expect(internalMocks.restoreLastOpenedAtStartup).toHaveBeenCalledWith(
             electronMocks.win,
@@ -538,6 +577,7 @@ describe('ready-to-show flow', () => {
         })
         await loadMainIndex()
         triggerWindowHandler('ready-to-show')
+        triggerIpcHandler('baize:render:ready')
         await settle()
         expect(internalMocks.restoreLastOpenedAtStartup).toHaveBeenCalledWith(
             electronMocks.win,
@@ -886,6 +926,27 @@ describe('app lifecycle cleanup', () => {
     })
 })
 
+describe('single instance lock (P2-10)', () => {
+    it('should quit without creating a window when the lock is not acquired', async () => {
+        electronMocks.singleInstanceLock.value = false
+        await loadMainIndex()
+        expect(electronMocks.app.requestSingleInstanceLock).toHaveBeenCalled()
+        expect(electronMocks.app.quit).toHaveBeenCalled()
+        // 未获得锁：不创建窗口、不注册配置 IPC、不注册 second-instance 回调
+        expect(electronMocks.capturedBrowserWindowOptions).toBeNull()
+        expect(internalMocks.registerConfigIpcHandlers).not.toHaveBeenCalled()
+        expect(electronMocks.appHandlers['second-instance']).toHaveLength(0)
+    })
+
+    it('should register the second-instance handler and restore the window', async () => {
+        await loadMainIndex()
+        expect(electronMocks.appHandlers['second-instance']).toHaveLength(1)
+        triggerAppHandler('second-instance')
+        // 复用托盘 showMainWindow（getLiveMainWindow + show/restore/focus）
+        expect(internalMocks.showMainWindow).toHaveBeenCalled()
+    })
+})
+
 describe('activate recreation', () => {
     it('should recreate the window without re-registering IPC handlers (ARC-06)', async () => {
         await loadMainIndex()
@@ -896,5 +957,18 @@ describe('activate recreation', () => {
         expect(electronMocks.win.loadFile.mock.calls.length).toBeGreaterThanOrEqual(2)
         // IPC 注册保持一次性，不随窗口重建重复执行
         expect(internalMocks.registerIpcHandlers).not.toHaveBeenCalled()
+        // P3（审查）：activate 重建窗口后重启系统主题跟随监听与自动备份定时器
+        // （window-all-closed 的 cleanupApp 已停止两者；与 createWindow 内
+        // auto-save 重启模式一致）
+        expect(internalMocks.startSystemThemeWatcher).toHaveBeenCalledTimes(2)
+        expect(internalMocks.syncAutoBackupTimer).toHaveBeenCalledTimes(2)
+    })
+
+    it('should not restart the theme watcher or backup timer when windows still exist', async () => {
+        await loadMainIndex()
+        electronMocks.windows.push(electronMocks.win as never)
+        triggerAppHandler('activate')
+        expect(internalMocks.startSystemThemeWatcher).toHaveBeenCalledTimes(1)
+        expect(internalMocks.syncAutoBackupTimer).toHaveBeenCalledTimes(1)
     })
 })

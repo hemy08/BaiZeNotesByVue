@@ -37,16 +37,17 @@
 
         <!-- 操作按钮 -->
         <div class="div-style-display-row btn-row">
-            <button class="tool-btn" @click="runTest">
+            <button class="tool-btn" :disabled="running" @click="runTest">
                 {{ t('toolsConvert.regexTester.testButton') }}
             </button>
-            <button class="tool-btn" @click="runReplace">
+            <button class="tool-btn" :disabled="running" @click="runReplace">
                 {{ t('toolsConvert.regexTester.replaceButton') }}
             </button>
         </div>
 
         <!-- 提示与错误 -->
-        <div v-if="noticeMessage" class="notice-box">{{ noticeMessage }}</div>
+        <div v-if="running" class="notice-box">{{ t('toolsConvert.regexTester.running') }}</div>
+        <div v-else-if="noticeMessage" class="notice-box">{{ noticeMessage }}</div>
         <div v-if="errorMessage" class="error-box">
             {{ t('toolsConvert.regexTester.errorPrefix') }} {{ errorMessage }}
         </div>
@@ -83,9 +84,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onUnmounted, ref } from 'vue'
 import { t } from '../../../common/i18n'
-import { runRegex, substituteReplace, MAX_MATCHES, type RegexMatch } from './regex-lib'
+import {
+    runRegex,
+    substituteReplace,
+    disposeRegexRunner,
+    MAX_MATCHES,
+    RegexTimeoutError,
+    type RegexMatch
+} from './regex-lib'
 
 // 编辑器宽度（由宿主 PluginTools 传入）
 const props = defineProps({
@@ -106,6 +114,8 @@ const matches = ref<RegexMatch[]>([])
 const replaceOutput = ref('')
 const errorMessage = ref('')
 const noticeMessage = ref('')
+/** 匹配执行中（Worker 在途）：显示「匹配中」并禁用操作按钮 */
+const running = ref(false)
 
 /** u/v 互斥：另一标志已启用时禁用当前项 */
 function isFlagDisabled(flag: string): boolean {
@@ -135,27 +145,34 @@ function buildFlags(): string {
     return selectedFlags.value.join('')
 }
 
-/** 执行匹配：捕获错误与截断提示 */
-function runTest() {
+/** 执行匹配：后台 Worker 运行，捕获错误 / 超时与截断提示 */
+async function runTest() {
+    if (running.value) return
     clearMessages()
+    matches.value = []
+    running.value = true
     try {
-        const result = runRegex(patternText.value, buildFlags(), inputText.value)
+        const result = await runRegex(patternText.value, buildFlags(), inputText.value)
         matches.value = result
         if (result.truncated || result.length >= MAX_MATCHES) {
             noticeMessage.value = t('toolsConvert.regexTester.truncated')
         }
     } catch (error) {
         matches.value = []
-        errorMessage.value = error instanceof Error ? error.message : String(error)
+        errorMessage.value = describeRunError(error)
+    } finally {
+        running.value = false
     }
 }
 
-/** 执行替换：先匹配再用自写 substitute 展开替换模板 */
-function runReplace() {
+/** 执行替换：后台 Worker 匹配，再用自写 substitute 展开替换模板 */
+async function runReplace() {
+    if (running.value) return
     clearMessages()
     replaceOutput.value = ''
+    running.value = true
     try {
-        const result = runRegex(patternText.value, buildFlags(), inputText.value)
+        const result = await runRegex(patternText.value, buildFlags(), inputText.value)
         matches.value = result
         replaceOutput.value = substituteReplace(inputText.value, replacementText.value, result)
         if (result.truncated || result.length >= MAX_MATCHES) {
@@ -163,8 +180,18 @@ function runReplace() {
         }
     } catch (error) {
         matches.value = []
-        errorMessage.value = error instanceof Error ? error.message : String(error)
+        errorMessage.value = describeRunError(error)
+    } finally {
+        running.value = false
     }
+}
+
+/** 运行错误转用户提示：超时走 i18n 词条，其余显示原始中文信息 */
+function describeRunError(error: unknown): string {
+    if (error instanceof RegexTimeoutError) {
+        return t('toolsConvert.regexTester.timeout')
+    }
+    return error instanceof Error ? error.message : String(error)
 }
 
 /** 清空提示与错误 */
@@ -172,6 +199,11 @@ function clearMessages() {
     errorMessage.value = ''
     noticeMessage.value = ''
 }
+
+// 卸载时释放常驻 Worker（避免后台线程随路由切换而常驻）
+onUnmounted(() => {
+    disposeRegexRunner()
+})
 </script>
 
 <style scoped>

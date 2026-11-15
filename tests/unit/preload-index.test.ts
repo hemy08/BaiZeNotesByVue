@@ -9,12 +9,13 @@ import { reactive, isProxy } from 'vue'
 
 const preloadMocks = vi.hoisted(() => ({
     exposeInMainWorld: vi.fn(),
-    invoke: vi.fn()
+    invoke: vi.fn(),
+    send: vi.fn()
 }))
 
 vi.mock('electron', () => ({
     contextBridge: { exposeInMainWorld: preloadMocks.exposeInMainWorld },
-    ipcRenderer: { invoke: preloadMocks.invoke }
+    ipcRenderer: { invoke: preloadMocks.invoke, send: preloadMocks.send }
 }))
 
 // mock @electron-toolkit/preload 的 electronAPI
@@ -30,7 +31,7 @@ function getExposedApi(): {
         read: (name: string) => Promise<unknown>
         write: (name: string, data: unknown) => Promise<boolean>
     }
-    app: { getVersion: () => Promise<unknown> }
+    app: { getVersion: () => Promise<unknown>; notifyRendererReady: () => void }
 } {
     const call = preloadMocks.exposeInMainWorld.mock.calls.find(([key]) => key === 'api')
     expect(call, '应存在 exposeInMainWorld("api", ...) 调用').toBeDefined()
@@ -100,6 +101,11 @@ describe('preload/index', () => {
         preloadMocks.invoke.mockResolvedValueOnce(version)
         await expect(getExposedApi().app.getVersion()).resolves.toEqual(version)
         expect(preloadMocks.invoke).toHaveBeenCalledWith('baize:system:app-version')
+    })
+
+    it('should send the renderer-ready handshake via the ready channel (P2-5)', () => {
+        getExposedApi().app.notifyRendererReady()
+        expect(preloadMocks.send).toHaveBeenCalledWith('baize:render:ready')
     })
 
     it('should expose exactly two entries via contextBridge', () => {

@@ -33,7 +33,7 @@
                     class="value-area"
                     rows="2"
                     :placeholder="t('toolsConvert.base.inputPlaceholder')"
-                    @input="convert"
+                    @input="scheduleConvert"
                 ></textarea>
             </div>
 
@@ -80,9 +80,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onUnmounted, ref } from 'vue'
 import { t } from '../../../common/i18n'
-import { convertBase, isValidForBase } from './base-lib'
+import { convertBase, isValidForBase, MAX_BASE_INPUT_LENGTH } from './base-lib'
+import { copyTextToClipboard } from '../../../common/clipboard'
 
 const props = defineProps({
     // 编辑器宽度
@@ -101,12 +102,34 @@ const inputValue = ref('255')
 const resultValue = ref('')
 const errorMessage = ref('')
 
+// P2 修复：输入防抖 200ms——避免每次击键都执行进制转换（超长小数会做巨大指数运算冻结 UI）
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+
+/** 防抖调度转换（输入框 @input 使用；按钮/交换操作仍即时执行） */
+function scheduleConvert(): void {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        debounceTimer = undefined
+        convert()
+    }, 200)
+}
+
+onUnmounted(() => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+})
+
 /** 执行转换（实时联动） */
 function convert(): void {
     const text = inputValue.value.trim()
     if (text === '') {
         resultValue.value = ''
         errorMessage.value = ''
+        return
+    }
+    // P2 修复：输入长度上限（10000 字符），超限提示并停止转换
+    if (text.length > MAX_BASE_INPUT_LENGTH) {
+        resultValue.value = ''
+        errorMessage.value = t('toolsConvert.base.inputTooLong', { limit: MAX_BASE_INPUT_LENGTH })
         return
     }
     if (!isValidForBase(text, fromBase.value)) {
@@ -154,7 +177,7 @@ function swapBases(): void {
 /** 复制转换结果 */
 function copyResult(): void {
     if (resultValue.value) {
-        navigator.clipboard.writeText(resultValue.value)
+        void copyTextToClipboard(resultValue.value)
     }
 }
 

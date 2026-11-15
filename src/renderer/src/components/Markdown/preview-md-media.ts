@@ -17,7 +17,9 @@
  * 3. **Material 图标**（`:material-account:`）：
  *    inline 规则只匹配 `:material-*:` / `:octicons-*:` 短代码（emoji 由 markdown-it-emoji 的
  *    core 规则处理，本规则正则带前缀约束，不会抢 emoji 的 `:smile:`）；
- *    图标 path 数据内嵌于 `mdi-icons-data.ts`；未知图标降级为可见文本，不报错、不吞后续文本。
+ *    图标 path 经 mdi-icons-loader 查询：核心子集（mdi-icons-core.ts）同步内嵌，
+ *    全量数据（mdi-icons-data.ts，95KB）动态 import 懒加载（P2-4 修复）；
+ *    未知图标降级为可见文本，不报错、不吞后续文本。
  *
  * 安全 / 健壮性约定：
  * - 所有文本 / 属性输出经 `md.utils.escapeHtml` 转义；
@@ -28,7 +30,9 @@
  */
 import MarkdownIt from 'markdown-it'
 import type { Env, MarkdownItOptions, Renderer, StateBlock, StateInline, Token } from 'markdown-it'
-import { MDI_ICON_PATHS, OCTICON_ICON_PATHS } from './mdi-icons-data'
+// P2-4 修复：图标数据经统一加载器查询（核心子集同步内嵌 + 全量 95KB 动态 import 懒加载，
+// 首次使用时缓存 Promise/结果；渲染规则保持同步语义，见 mdi-icons-loader.ts 的方案说明）
+import { getMdiIconPath, getOcticonIconPath } from './mdi-icons-loader'
 
 /** markdown-it 实例类型（`MarkdownIt` 默认导出是构造器值，实例类型用 InstanceType 表达） */
 type MarkdownItInstance = InstanceType<typeof MarkdownIt>
@@ -699,9 +703,9 @@ function renderIcon(md: MarkdownItInstance, token: Token): string {
     const shortcode = `${prefix}-${name}`
     let pathData: string | undefined
     if (prefix === 'material') {
-        pathData = MDI_ICON_PATHS[name]
+        pathData = getMdiIconPath(name)
     } else if (prefix === 'octicons') {
-        pathData = OCTICON_ICON_PATHS[name]
+        pathData = getOcticonIconPath(name)
     }
     if (typeof pathData !== 'string' || pathData.length === 0) {
         return (

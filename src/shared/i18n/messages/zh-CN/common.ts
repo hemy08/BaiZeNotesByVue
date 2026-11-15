@@ -34,5 +34,8 @@ export default {
     redo: '重做',
     loading: '加载中…',
     noData: '暂无数据',
-    unknown: '未知'
+    unknown: '未知',
+    clipboard: {
+        writeFailed: '复制到剪贴板失败，请检查剪贴板权限后重试。'
+    }
 }

@@ -89,6 +89,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { t } from '../../../common/i18n'
+import { copyTextToClipboard } from '../../../common/clipboard'
 import { localToTimestamp, timestampToLocal } from './timestamp-lib'
 
 const props = defineProps({
@@ -122,8 +123,15 @@ function switchUnit(next: 's' | 'ms'): void {
 
 /** 时间戳 → 本地时间 */
 function convertTsToLocal(): void {
+    const text = tsInput.value.trim()
+    // P3 修复：空输入不再静默产出 1970-01-01（Number('') === 0 的坑），改为提示
+    if (text === '') {
+        localTimeResult.value = ''
+        errorMessage.value = t('toolsConvert.timestamp.emptyInput')
+        return
+    }
     try {
-        const value = Number(tsInput.value.trim())
+        const value = Number(text)
         localTimeResult.value = timestampToLocal(value, unit.value === 'ms')
         errorMessage.value = ''
     } catch (error) {
@@ -146,7 +154,7 @@ function convertLocalToTs(): void {
 /** 复制当前时间戳 */
 function copyCurrent(): void {
     if (currentTimestamp.value) {
-        navigator.clipboard.writeText(currentTimestamp.value)
+        void copyTextToClipboard(currentTimestamp.value)
     }
 }
 

@@ -45,6 +45,7 @@ vi.mock('../../src/main/config/system-setting', () => ({
 const themeConfigMocks = vi.hoisted(() => ({
     isKnown: true,
     setThemeConfig: vi.fn(),
+    getCurrentTheme: vi.fn(() => 'baize'),
     getCurrentThemeStyles: vi.fn(() => ({ name: '当前样式' })),
     getMonacoTheme: vi.fn(() => 'vs-dark'),
     getSeparateEditorTheme: vi.fn(() => false)
@@ -55,6 +56,7 @@ vi.mock('../../src/main/config/theme-config', () => ({
     isKnownThemeType: (value: string) =>
         themeConfigMocks.isKnown && (value === 'dark' || value === 'light'),
     setThemeConfig: themeConfigMocks.setThemeConfig,
+    getCurrentTheme: themeConfigMocks.getCurrentTheme,
     getCurrentThemeStyles: themeConfigMocks.getCurrentThemeStyles,
     getMonacoTheme: themeConfigMocks.getMonacoTheme,
     getSeparateEditorTheme: themeConfigMocks.getSeparateEditorTheme
@@ -92,6 +94,8 @@ beforeEach(() => {
     systemSettingMocks.setting = { useSystemTheme: true }
     themeConfigMocks.isKnown = true
     themeConfigMocks.setThemeConfig.mockClear()
+    themeConfigMocks.getCurrentTheme.mockClear()
+    themeConfigMocks.getCurrentTheme.mockReturnValue('baize')
     themeConfigMocks.getCurrentThemeStyles.mockClear()
     themeConfigMocks.getMonacoTheme.mockClear()
     themeConfigMocks.getSeparateEditorTheme.mockClear()
@@ -129,9 +133,33 @@ describe('system-theme (批次 B #7)', () => {
 
     it('should fall back to the default theme when dark/light are not in the registry', () => {
         themeConfigMocks.isKnown = false
+        // 当前主题与兜底目标不同（P3 脏检查），才会写盘与广播
+        themeConfigMocks.getCurrentTheme.mockReturnValue('light')
         applySystemThemeNow()
 
         expect(themeConfigMocks.setThemeConfig).toHaveBeenCalledWith({ currentTheme: 'baize' })
+    })
+
+    // P3（审查）：脏检查——系统主题事件在深浅色未变化时也重复触发（系统亮度微调等），
+    // 目标主题与当前主题一致时跳过写盘与广播，避免无意义的 store 写入与渲染层换肤
+    it('should skip writing and broadcasting when the target theme equals the current theme (P3)', () => {
+        themeConfigMocks.getCurrentTheme.mockReturnValue('dark')
+        applySystemThemeNow()
+
+        expect(themeConfigMocks.setThemeConfig).not.toHaveBeenCalled()
+        expect(broadcastMocks.broadcast).not.toHaveBeenCalled()
+    })
+
+    it('should skip a duplicate nativeTheme update when the resolved theme is unchanged', () => {
+        startSystemThemeWatcher()
+        themeConfigMocks.setThemeConfig.mockClear()
+        broadcastMocks.broadcast.mockClear()
+        // 启动对齐已应用 dark；重复的 updated 事件（深浅色未变）不再写盘广播
+        themeConfigMocks.getCurrentTheme.mockReturnValue('dark')
+        triggerNativeThemeUpdate()
+
+        expect(themeConfigMocks.setThemeConfig).not.toHaveBeenCalled()
+        expect(broadcastMocks.broadcast).not.toHaveBeenCalled()
     })
 
     it('should register the nativeTheme listener once and apply immediately at start', () => {

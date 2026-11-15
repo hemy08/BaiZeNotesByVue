@@ -47,7 +47,8 @@ import { restoreLastOpenedAtStartup } from './utils/startup-restore'
 import { attachWindowBoundsPersistence, resolveInitialWindowOptions } from './utils/window-bounds'
 // 系统设置补充实现批次 B：
 // - 关闭时最小化到系统托盘（minimizeToTray）
-import { disposeTray, ensureTrayCreated } from './utils/tray'
+//   （showMainWindow 复用为单实例锁 second-instance 的窗口恢复路径）
+import { disposeTray, ensureTrayCreated, showMainWindow } from './utils/tray'
 // - 跟随系统主题（useSystemTheme）：nativeTheme 监听 + 应用/广播
 import { startSystemThemeWatcher, stopSystemThemeWatcher } from './config/system-theme'
 // 系统设置补充实现批次 C：
@@ -116,6 +117,11 @@ function flushEditorContent(win: BrowserWindow): Promise<void> {
 function createWindow(): void {
     // 当前窗口是否已完成"关闭前落盘"，用于放行第二次 close（D-3）
     let flushedForClose = false
+
+    // P2-5：新窗口（含 macOS activate 重建）重置渲染层就绪握手状态，
+    // 并清掉上一窗口残留的启动恢复等待
+    rendererReadyReceived = false
+    clearStartupRestorePending()
 
     // 记住窗口位置和大小（批次 A）：开关开启时恢复上次持久化的窗口边界，
     // 与任一显示器工作区不相交（如外接显示器已拔掉）或非法时回退默认 1280×800 居中。
@@ -193,7 +199,7 @@ function createWindow(): void {
         save: (bounds) => saveSystemSetting({ windowBounds: bounds })
     })
 
-    mainWindow.on('ready-to-show', async () => {
+    mainWindow.on('ready-to-show', () => {
         // mainWindow.maximize() // 欢迎界面不自动最大化
         mainWindow.show()
 
@@ -214,11 +220,10 @@ function createWindow(): void {
         // 系统设置补充实现批次 A（#1/#2）：autoOpenLastFile / autoOpenLastFolder 开启时
         // 自动执行与欢迎页入口相同的恢复动作（先 WELCOME_ENTER_MAIN 再投递数据事件）；
         // 均未开启时保持历史行为（后台恢复，show-welcome=false 用户仍能恢复上次会话）。
-        if (systemSetting.autoOpenLastFile || systemSetting.autoOpenLastFolder) {
-            await restoreLastOpenedAtStartup(mainWindow, systemSetting)
-        } else {
-            await restoreLastOpenedFile()
-        }
+        // P2-5：触发时机由 ready-to-show 改为等待渲染层就绪握手（IPC.RENDER.READY，
+        // 见 armStartupRestore / runStartupRestore）：握手晚于 ready-to-show 时以握手
+        // 为准，3s 未收到则超时兜底恢复。
+        armStartupRestore(mainWindow)
     })
 
     RegisterShortKeys(mainWindow)
@@ -276,7 +281,77 @@ function createWindow(): void {
 // D-3/FUN-03：应用退出（before-quit）同样走"flush → 脏则保存"路径
 let flushedForQuit = false
 
+// P2-10：单实例锁（必须在 app ready 之前申请，否则无效）。
+// 未获得锁说明已有实例在运行：本实例立即退出（whenReady 内短路，不创建窗口、
+// 不注册监听），由既有实例的 second-instance 回调恢复并聚焦主窗口——
+// 防止二次启动造成双实例双写配置、双份自动保存/备份定时器。
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+    app.quit()
+} else {
+    // 复用托盘「显示主窗口」的恢复路径（getLiveMainWindow + show/restore/focus）：
+    // 主窗口可能隐藏到托盘或最小化，先恢复再聚焦
+    app.on('second-instance', () => {
+        showMainWindow()
+    })
+}
+
+// P2-5：渲染层就绪握手（App.vue onMounted 完成后经 IPC.RENDER.READY 发送）。
+// 启动恢复（restoreLastOpenedAtStartup / restoreLastOpenedFile）不再在
+// ready-to-show 直接触发：主进程繁忙时恢复消息可能早于渲染层监听器注册被丢弃
+// （自动恢复间歇性静默失效）。ready-to-show 后 armStartupRestore 挂起等待握手，
+// STARTUP_RESTORE_FALLBACK_MS 内未收到则兜底恢复（渲染层异常时仅推迟最多 3s，
+// 不改变历史行为）。
+const STARTUP_RESTORE_FALLBACK_MS = 3000
+// 单主窗口场景的握手状态；macOS activate 重建窗口时随 createWindow 重置
+let rendererReadyReceived = false
+let startupRestorePendingWindow: BrowserWindow | null = null
+let startupRestoreFallbackTimer: NodeJS.Timeout | null = null
+
+/** 清空启动恢复等待状态（新窗口挂接前与 cleanupApp 退出清理复用） */
+function clearStartupRestorePending(): void {
+    if (startupRestoreFallbackTimer !== null) {
+        clearTimeout(startupRestoreFallbackTimer)
+        startupRestoreFallbackTimer = null
+    }
+    startupRestorePendingWindow = null
+}
+
+/** 执行启动恢复（原 ready-to-show 内联逻辑迁出，握手与超时兜底两个入口共用） */
+async function runStartupRestore(win: BrowserWindow): Promise<void> {
+    const systemSetting = getSystemSetting()
+    if (systemSetting.autoOpenLastFile || systemSetting.autoOpenLastFolder) {
+        await restoreLastOpenedAtStartup(win, systemSetting)
+    } else {
+        await restoreLastOpenedFile()
+    }
+}
+
+/** ready-to-show 后挂接启动恢复：握手已到则立即执行，否则等握手 + 3s 超时兜底 */
+function armStartupRestore(win: BrowserWindow): void {
+    clearStartupRestorePending()
+    startupRestorePendingWindow = win
+    if (rendererReadyReceived) {
+        // 握手早于 ready-to-show（渲染层先完成挂载、窗口后显示）：立即恢复
+        startupRestorePendingWindow = null
+        void runStartupRestore(win)
+        return
+    }
+    startupRestoreFallbackTimer = setTimeout(() => {
+        startupRestoreFallbackTimer = null
+        const pending = startupRestorePendingWindow
+        startupRestorePendingWindow = null
+        if (pending && !pending.isDestroyed() && !pending.webContents.isDestroyed()) {
+            void runStartupRestore(pending)
+        }
+    }, STARTUP_RESTORE_FALLBACK_MS)
+}
+
 app.whenReady().then(() => {
+    // P2-10：未获得单实例锁的实例只负责退出，不创建窗口、不注册监听
+    if (!gotSingleInstanceLock) {
+        return
+    }
     initUserDataDirectory()
 
     // AS-9：注册远程图表外发阻断（PlantUML 本地渲染不可用时不再把图表源码发往
@@ -296,7 +371,7 @@ app.whenReady().then(() => {
     startSystemThemeWatcher()
 
     // 批次 C #8/#9：自动备份——按 system store 的 enableAutoBackup/backupInterval
-    // 启动定时器（开启时先立即执行一次，无活动文件/工作区时静默跳过）；
+    // 启动定时器（P1-2：仅调度、不立即执行，首次备份在第一个间隔到点）；
     // 保存设置时的重启由 config-manager 的 syncAutoBackupTimer 处理。
     syncAutoBackupTimer()
 
@@ -345,6 +420,28 @@ app.whenReady().then(() => {
         GLOBAL_MAIN_INDEX_COMPONENT_ID
     )
 
+    // P2-5：渲染层就绪握手——App.vue onMounted 注册完监听器后经 preload 发送
+    // IPC.RENDER.READY。主进程收到后执行启动恢复（armStartupRestore 挂起的窗口）；
+    // registerOnce 为 persistent 注册，macOS window-all-closed → cleanupAll 后
+    // activate 重建窗口仍可接收新窗口的握手。
+    // P1/N-05：仅受信主窗口可触发（防其他窗口/被注入页面伪造握手提前恢复）。
+    ipcListenerManager.registerOnce(
+        IPC.RENDER.READY,
+        withSenderCheck(IPC.RENDER.READY, () => {
+            rendererReadyReceived = true
+            const pending = startupRestorePendingWindow
+            if (pending !== null) {
+                startupRestorePendingWindow = null
+                if (startupRestoreFallbackTimer !== null) {
+                    clearTimeout(startupRestoreFallbackTimer)
+                    startupRestoreFallbackTimer = null
+                }
+                void runStartupRestore(pending)
+            }
+        }),
+        GLOBAL_MAIN_INDEX_COMPONENT_ID
+    )
+
     createWindow()
 
     // A-1/ARC-06：IPC 注册一次性化——注册移出 createWindow，
@@ -359,13 +456,24 @@ app.whenReady().then(() => {
     registerPlantumlLocalRenderIpc()
 
     app.on('activate', function () {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow()
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow()
+            // P3（审查）：macOS window-all-closed 时 cleanupApp 已停止系统主题跟随
+            // 监听与自动备份定时器，activate 重建窗口后需与窗口生命周期一并重启
+            // （与 createWindow 内 auto-save 的 StartAutoSaveFileTime 重启模式一致；
+            // 两者均幂等：startSystemThemeWatcher 单例注册防重复，syncAutoBackupTimer
+            // 按当前设置同步启动/停止）。
+            startSystemThemeWatcher()
+            syncAutoBackupTimer()
+        }
     })
 })
 
 function cleanupApp(): void {
     // MEM-11：退出时停止自动保存定时器，避免残留 interval 继续写盘
     StopAutoSaveFileTime()
+    // P2-5：清理启动恢复握手等待（防退出后 3s 兜底定时器再触发恢复）
+    clearStartupRestorePending()
     // PF-05：退出/关闭窗口时关闭目录 fs.watch 监听并清理防抖计时器，
     // 避免 watcher 回调在窗口销毁后继续触发（异常安全：内部 try/finally 关闭）
     CleanupDirectoryWatch()
