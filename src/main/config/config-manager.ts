@@ -44,17 +44,26 @@ import {
     getRendererEditorConfig,
     migrateRendererEditorConfig
 } from './editor-setting'
+// 批次 B #7：跟随系统主题——useSystemTheme 开启时立即按当前系统深浅色应用一次主题
+import { applySystemThemeNow } from './system-theme'
+// 批次 B #4：关闭时最小化到托盘——minimizeToTray 开启时确保托盘已创建（单例防护在 tray.ts）
+import { ensureTrayCreated } from '../utils/tray'
 import { getRendererQuickLinks, saveRendererQuickLinks } from './quick-link-config'
 // AS-4：配置写入白名单 + 字段级 schema 校验（fontFamily CSS 注入 / 非法主题 / 未知配置名）
 import { isAllowedConfigName, validateConfigData } from './config-schema'
 // P1-FE-06：配置目录备份/恢复（系统设置对话框「立即备份 / 从备份恢复」）
 import { getBackupState, handleConfigBackupCommand } from './config-backup'
+// 批次 C #8/#9：自动备份——enableAutoBackup/backupInterval 保存后同步定时器（保存即生效）
+import { syncAutoBackupTimer } from '../utils/auto-backup'
 import { StartAutoSaveFileTime, StopAutoSaveFileTime } from '../utils/file-utils/auto-save'
 import { appState } from '../utils/app-state'
 // CQ-10：主进程统一日志出口（本文件旧配置迁移曾用 console.log，改为 logger 才落盘/可见）
 import { logger } from '../utils/logger'
 // ARC-13：SystemSetting 已收敛到 src/shared/types/system.ts（唯一真源）
 import type { SystemSetting } from '../../shared/types'
+// 「最近文件列表数量」：存量裁剪（file-state 最近文件）与 recent-folders 写入侧截断
+import { trimRecentFiles } from '../utils/file-state-store'
+import { clampRecentFilesLimit } from '../../shared/constants/recent-files'
 
 // MEM-10：本模块所有注册均归属的组件 ID（进程级全局注册）
 const GLOBAL_CONFIG_IPC_COMPONENT_ID = 'global-config-ipc'
@@ -75,8 +84,53 @@ function isPlainObject(data: unknown): data is Record<string, unknown> {
 }
 
 /**
+ * 开机自启动：把 OS 实际状态校正进 system 配置的读取结果。
+ * 用户可能在系统设置（Windows 启动项）中手动改过，或上次 setLoginItemSettings
+ * 因权限失败未生效——对话框显示值以 OS 为准，保存时再同步回 store。
+ * 开发模式（未打包 electron）下该 API 读取的是开发用 electron 的启动项，
+ * 读取失败时回退 store 中的值。
+ */
+function getLoginItemOpenAtLogin(): boolean {
+    try {
+        return app.getLoginItemSettings().openAtLogin
+    } catch (error) {
+        logger.warn('[ConfigManager] 读取开机自启动状态失败（开发模式无效属预期）:', error)
+        return getSystemSetting().autoStart === true
+    }
+}
+
+/**
+ * 「最近文件列表数量」变更后的存量裁剪：
+ * 1. fileState.recentFiles（最近文件，file-state-store 内部按提供者截断）；
+ * 2. recent-folders.json（欢迎页「最近文件夹」裸 JSON 配置）就地裁剪。
+ * 同步 fs 仅处理小 JSON 文件，异常时记日志不阻断保存流程。
+ */
+function trimRecentListsToLimit(): void {
+    trimRecentFiles()
+    try {
+        const recentFoldersPath = path.join(CONFIG_DIR, 'recent-folders.json')
+        if (!fs.existsSync(recentFoldersPath)) {
+            return
+        }
+        const folders = fs.readJsonSync(recentFoldersPath) as unknown
+        if (!Array.isArray(folders)) {
+            return
+        }
+        const limit = clampRecentFilesLimit(getSystemSetting().recentFilesCount)
+        if (folders.length > limit) {
+            fs.writeJsonSync(recentFoldersPath, folders.slice(0, limit), { spaces: 2 })
+        }
+    } catch (error) {
+        logger.warn('[ConfigManager] 裁剪最近文件夹列表失败:', error)
+    }
+}
+
+/**
  * ARC-04：系统设置写入后的副作用应用——自动保存定时器按新值重启，
  * 界面字体 CSS 重新注入，并向渲染层广播最新系统设置（FUN-04 收口）。
+ * 补充（系统设置补充实现批次 A）：
+ * - autoStart 变更时调用 app.setLoginItemSettings 同步系统登录项；
+ * - recentFilesCount 变更时即时裁剪最近文件/最近文件夹存量列表。
  */
 function applySystemSettings(data: Record<string, unknown>): void {
     const partial: Partial<SystemSetting> = {}
@@ -93,6 +147,40 @@ function applySystemSettings(data: Record<string, unknown>): void {
     saveSystemSetting({ ...partial, ...(rest as Partial<SystemSetting>) })
     // CMP-30：language 变更后使主进程 i18n 缓存失效（HTML 对话框模板随即使用新语言）
     refreshMainLocale()
+
+    // 开机自启动：同步系统登录项（开发模式/未打包时 API 无效，属预期，仅记日志）
+    if (typeof data.autoStart === 'boolean') {
+        try {
+            app.setLoginItemSettings({ openAtLogin: data.autoStart })
+        } catch (error) {
+            logger.warn('[ConfigManager] 应用开机自启动设置失败（开发模式无效属预期）:', error)
+        }
+    }
+
+    // 「最近文件列表数量」变更：即时裁剪最近文件与最近文件夹的存量列表
+    if (typeof data.recentFilesCount === 'number') {
+        trimRecentListsToLimit()
+    }
+
+    // 批次 B #4：关闭时最小化到托盘——开启后立即确保托盘已创建（即时生效，无需重启）；
+    // 关闭开关时不销毁已有托盘：托盘常驻开销可忽略，保留可避免反复创建/销毁带来的
+    // 系统通知闪烁，且用户可能只是临时关闭；托盘由 cleanupApp 在进程退出时统一销毁。
+    if (data.minimizeToTray === true) {
+        ensureTrayCreated()
+    }
+
+    // 批次 B #7：跟随系统主题——开启后立即按当前系统深浅色应用一次主题并广播
+    // （nativeTheme 的持续监听在 main/index.ts whenReady 时由 startSystemThemeWatcher 启动）；
+    // 关闭时仅停止跟随，不自动改回手动主题（保持用户最后看到的样式）。
+    if (data.useSystemTheme === true) {
+        applySystemThemeNow()
+    }
+
+    // 批次 C #8/#9：自动备份——开关或间隔变更时按最新设置同步定时器（保存即生效）：
+    // enableAutoBackup===true 启动（先立即执行一次），===false 停止，间隔变更重启。
+    if (typeof data.enableAutoBackup === 'boolean' || typeof data.backupInterval === 'number') {
+        syncAutoBackupTimer()
+    }
 
     // 自动保存定时器：与 handlers.ts 的 AUTO_SAVE_CHANGED 逻辑一致
     if (typeof data.autoSaveEnabled === 'boolean') {
@@ -132,6 +220,13 @@ function applyThemeConfig(data: Record<string, unknown>): void {
     if (typeof data.separateEditorTheme === 'boolean')
         partial.separateEditorTheme = data.separateEditorTheme
     if (typeof data.editorTheme === 'string') partial.editorTheme = data.editorTheme
+    // 批次 B #7：手动切换主题与「跟随系统主题」互斥——本次写入携带 currentTheme
+    // （主题设置对话框保存路径）即视为用户手动选择主题，自动关闭跟随开关，
+    // 避免下次系统深浅色变化时把用户刚选的手动主题覆盖掉；仅写 editorTheme /
+    // separateEditorTheme（不携带 currentTheme）时不关闭跟随。
+    if (typeof data.currentTheme === 'string') {
+        saveSystemSetting({ useSystemTheme: false })
+    }
     setThemeConfig(partial)
     broadcastThemeConfig()
 }
@@ -192,7 +287,9 @@ const STORE_BACKED_CONFIGS: Record<
     { read: () => unknown; write: (data: unknown) => void }
 > = {
     system: {
-        read: () => getSystemSetting(),
+        // 开机自启动：读取时用 OS 实际状态校正显示值（用户可能在系统设置中手动改过），
+        // 其余字段返回 store 原值。
+        read: () => ({ ...getSystemSetting(), autoStart: getLoginItemOpenAtLogin() }),
         write: (data) => {
             if (isPlainObject(data)) {
                 applySystemSettings(data)
@@ -292,7 +389,8 @@ async function writeConfig(configName: string, data: unknown): Promise<boolean> 
             validation.adjusted.join('；')
         )
     }
-    const sanitizedData = validation.value
+    // 「最近文件列表数量」截断前需要原地改写 sanitizedData，故用 let
+    let sanitizedData = validation.value
     // ARC-04：store 支撑的配置名路由到主进程 store
     const storeBacked = STORE_BACKED_CONFIGS[configName]
     if (storeBacked) {
@@ -316,6 +414,12 @@ async function writeConfig(configName: string, data: unknown): Promise<boolean> 
     try {
         await ensureConfigDir()
         const configPath = path.join(CONFIG_DIR, `${configName}.json`)
+        // 「最近文件列表数量」：recent-folders 写入侧按当前设置截断（渲染层先去重置顶，
+        // 主进程保证落盘条数不超过 recentFilesCount）。
+        if (configName === 'recent-folders' && Array.isArray(sanitizedData)) {
+            const limit = clampRecentFilesLimit(getSystemSetting().recentFilesCount)
+            sanitizedData = sanitizedData.slice(0, limit)
+        }
         await fs.writeJson(configPath, sanitizedData, { spaces: 2 })
         return true
     } catch (error) {

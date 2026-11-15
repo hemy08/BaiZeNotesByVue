@@ -46,11 +46,6 @@
                                         <div class="group-title">
                                             {{ t('dialogRenderer.systemSetting.groupStartup') }}
                                         </div>
-                                        <p class="group-hint">
-                                            {{
-                                                t('dialogRenderer.systemSetting.hintNotImplemented')
-                                            }}
-                                        </p>
                                         <div class="setting-row">
                                             <label class="setting-label">{{
                                                 t(
@@ -61,12 +56,6 @@
                                                 v-model="settings.autoOpenLastFile"
                                                 type="checkbox"
                                                 class="setting-checkbox"
-                                                disabled
-                                                :title="
-                                                    t(
-                                                        'dialogRenderer.systemSetting.hintNotImplemented'
-                                                    )
-                                                "
                                             />
                                         </div>
                                         <div class="setting-row">
@@ -79,12 +68,6 @@
                                                 v-model="settings.autoOpenLastFolder"
                                                 type="checkbox"
                                                 class="setting-checkbox"
-                                                disabled
-                                                :title="
-                                                    t(
-                                                        'dialogRenderer.systemSetting.hintNotImplemented'
-                                                    )
-                                                "
                                             />
                                         </div>
                                         <div class="setting-row">
@@ -95,11 +78,8 @@
                                                 v-model="settings.autoStart"
                                                 type="checkbox"
                                                 class="setting-checkbox"
-                                                disabled
                                                 :title="
-                                                    t(
-                                                        'dialogRenderer.systemSetting.hintNotImplemented'
-                                                    )
+                                                    t('dialogRenderer.systemSetting.hintAutoStart')
                                                 "
                                             />
                                         </div>
@@ -109,11 +89,6 @@
                                         <div class="group-title">
                                             {{ t('dialogRenderer.systemSetting.groupWindow') }}
                                         </div>
-                                        <p class="group-hint">
-                                            {{
-                                                t('dialogRenderer.systemSetting.hintNotImplemented')
-                                            }}
-                                        </p>
                                         <div class="setting-row">
                                             <label class="setting-label">{{
                                                 t(
@@ -124,12 +99,6 @@
                                                 v-model="settings.minimizeToTray"
                                                 type="checkbox"
                                                 class="setting-checkbox"
-                                                disabled
-                                                :title="
-                                                    t(
-                                                        'dialogRenderer.systemSetting.hintNotImplemented'
-                                                    )
-                                                "
                                             />
                                         </div>
                                         <div class="setting-row">
@@ -142,12 +111,6 @@
                                                 v-model="settings.rememberWindowSize"
                                                 type="checkbox"
                                                 class="setting-checkbox"
-                                                disabled
-                                                :title="
-                                                    t(
-                                                        'dialogRenderer.systemSetting.hintNotImplemented'
-                                                    )
-                                                "
                                             />
                                         </div>
                                     </div>
@@ -297,10 +260,9 @@
                                                 class="setting-input"
                                                 min="5"
                                                 max="20"
-                                                disabled
                                                 :title="
                                                     t(
-                                                        'dialogRenderer.systemSetting.hintNotImplemented'
+                                                        'dialogRenderer.systemSetting.hintRecentFilesCount'
                                                     )
                                                 "
                                             />
@@ -330,35 +292,36 @@
                                         <div class="group-title">
                                             {{ t('dialogRenderer.systemSetting.groupTheme') }}
                                         </div>
-                                        <p class="group-hint">
-                                            {{ t('dialogRenderer.systemSetting.hintThemeManaged') }}
-                                        </p>
+                                        <!-- 批次 C #10：应用主题收口到主题设置对话框（方案 A）——
+                                        下拉替换为只读显示当前主题 + 「打开主题设置」按钮，
+                                        复用菜单动作同款调用链（configStore.showDialog('themeSettings')），
+                                        不新增 IPC；主题切换路径唯一（主题设置对话框）。 -->
                                         <div class="setting-row">
                                             <label class="setting-label">{{
                                                 t('dialogRenderer.systemSetting.labelAppTheme')
                                             }}</label>
-                                            <select
-                                                v-model="settings.appTheme"
-                                                class="setting-select"
-                                                disabled
-                                                :title="
-                                                    t(
-                                                        'dialogRenderer.systemSetting.hintThemeManaged'
-                                                    )
-                                                "
-                                            >
-                                                <option value="baize">白泽</option>
-                                                <option value="dark">
+                                            <div class="theme-current-group">
+                                                <span
+                                                    class="theme-current-name"
+                                                    :title="
+                                                        t(
+                                                            'dialogRenderer.systemSetting.hintThemeManaged'
+                                                        )
+                                                    "
+                                                >
+                                                    {{ appThemeDisplay }}
+                                                </span>
+                                                <button
+                                                    class="browse-btn"
+                                                    @click="handleOpenThemeSetting"
+                                                >
                                                     {{
-                                                        t('dialogRenderer.systemSetting.themeDark')
+                                                        t(
+                                                            'dialogRenderer.systemSetting.labelOpenThemeSetting'
+                                                        )
                                                     }}
-                                                </option>
-                                                <option value="light">
-                                                    {{
-                                                        t('dialogRenderer.systemSetting.themeLight')
-                                                    }}
-                                                </option>
-                                            </select>
+                                                </button>
+                                            </div>
                                         </div>
                                         <div class="setting-row">
                                             <label class="setting-label">{{
@@ -370,10 +333,9 @@
                                                 v-model="settings.useSystemTheme"
                                                 type="checkbox"
                                                 class="setting-checkbox"
-                                                disabled
                                                 :title="
                                                     t(
-                                                        'dialogRenderer.systemSetting.hintNotImplemented'
+                                                        'dialogRenderer.systemSetting.hintUseSystemTheme'
                                                     )
                                                 "
                                             />
@@ -439,9 +401,13 @@
                                         <div class="group-title">
                                             {{ t('dialogRenderer.systemSetting.groupAutoBackup') }}
                                         </div>
+                                        <!-- 批次 C #8/#9：自动备份已实现（主进程 auto-backup.ts），
+                                        「暂未实现」提示替换为行为说明 -->
                                         <p class="group-hint">
                                             {{
-                                                t('dialogRenderer.systemSetting.hintNotImplemented')
+                                                t(
+                                                    'dialogRenderer.systemSetting.hintAutoBackupGroup'
+                                                )
                                             }}
                                         </p>
                                         <div class="setting-row">
@@ -454,12 +420,6 @@
                                                 v-model="settings.enableAutoBackup"
                                                 type="checkbox"
                                                 class="setting-checkbox"
-                                                disabled
-                                                :title="
-                                                    t(
-                                                        'dialogRenderer.systemSetting.hintNotImplemented'
-                                                    )
-                                                "
                                             />
                                         </div>
                                         <div class="setting-row">
@@ -474,10 +434,9 @@
                                                 class="setting-input"
                                                 min="1"
                                                 max="72"
-                                                disabled
                                                 :title="
                                                     t(
-                                                        'dialogRenderer.systemSetting.hintNotImplemented'
+                                                        'dialogRenderer.systemSetting.hintBackupInterval'
                                                     )
                                                 "
                                             />
@@ -549,6 +508,9 @@ import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { IPC } from '../../../../../shared/ipc-channels'
 import { t } from '../../../common/i18n'
 import { logger } from '../../../common/logger'
+// 批次 C #10：「打开主题设置」复用菜单动作同款调用链（menu-actions.ts 的
+// configStore.showDialog('themeSettings')），不新增 IPC 通道
+import { getConfigStore } from '../../../common/useConfigStore'
 
 interface Props {
     visible: boolean
@@ -619,6 +581,60 @@ const initialSettings = ref({
 
 const settings = ref<SystemDialogSettings>({ ...initialSettings.value })
 
+/**
+ * 批次 C #10：应用主题收口（方案 A）——只读展示当前主题显示名，
+ * 数据来自 config:read('theme')（主进程 theme-config 真源）经既有
+ * IPC.THEME.GET_ALL_THEMES 通道映射 i18n 显示名；两个通道均为既有通道，
+ * 不新增 IPC。读取失败时回退显示主题 type。
+ */
+const appThemeDisplay = ref('baize')
+
+/** 主进程 getAllThemes() 返回的主题列表项结构（仅取显示名所需字段） */
+interface ThemeListItem {
+    type: string
+    styles?: {
+        name?: string
+        /** CMP-30：主题名称 i18n key（缺省时回退 name 原文字段） */
+        nameKey?: string
+    }
+}
+
+/** 读取当前主题显示名（打开对话框时随 loadSettings 一并刷新） */
+async function loadThemeDisplay(): Promise<void> {
+    try {
+        const themeConfig = await window.api.config.read<{ currentTheme?: string }>('theme')
+        const current = themeConfig?.currentTheme || 'baize'
+        const allThemes: unknown = await window.electron.ipcRenderer.invoke(
+            IPC.THEME.GET_ALL_THEMES
+        )
+        if (Array.isArray(allThemes)) {
+            const found = (allThemes as ThemeListItem[]).find((item) => item?.type === current)
+            const styles = found?.styles
+            if (styles?.nameKey) {
+                appThemeDisplay.value = t(styles.nameKey)
+                return
+            }
+            if (typeof styles?.name === 'string' && styles.name) {
+                appThemeDisplay.value = styles.name
+                return
+            }
+        }
+        appThemeDisplay.value = current
+    } catch (error) {
+        logger.error('读取当前主题显示名失败:', error)
+    }
+}
+
+/**
+ * 批次 C #10：「打开主题设置」——先关闭本对话框（避免两个模态叠加），
+ * 再经 configStore.showDialog('themeSettings') 打开主题设置对话框
+ * （与菜单动作 baize:menu:setting:theme 同一调用链，不新增 IPC）。
+ */
+function handleOpenThemeSetting(): void {
+    emit('close')
+    getConfigStore().showDialog('themeSettings')
+}
+
 /** P1-FE-06：备份/恢复操作结果提示（成功后展示备份名与文件数） */
 const backupStatus = ref('')
 
@@ -660,6 +676,8 @@ async function loadSettings(): Promise<void> {
     } catch (error) {
         logger.error('加载系统设置失败:', error)
     }
+    // 批次 C #10：应用主题只读显示——读取当前主题显示名（独立 try/catch，失败不影响设置加载）
+    await loadThemeDisplay()
 }
 
 watch(
@@ -1034,6 +1052,24 @@ function handleCancel() {
 .path-input-group {
     display: flex;
     gap: 8px;
+}
+
+/* 批次 C #10：应用主题只读显示 + 「打开主题设置」按钮 */
+.theme-current-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.theme-current-name {
+    min-width: 96px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--secondary-text-color);
+    background: var(--bg-color);
+    text-align: center;
 }
 
 .browse-btn {

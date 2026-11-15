@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 
 import { setLocale } from '@renderer/common/i18n'
+import { getConfigStore } from '@renderer/common/useConfigStore'
 import EditorSettingDialog from '@renderer/components/dialogs/complex/EditorSettingDialog.vue'
 import ThemeSettingDialog from '@renderer/components/dialogs/complex/ThemeSettingDialog.vue'
 import SystemSettingDialog from '@renderer/components/dialogs/complex/SystemSettingDialog.vue'
@@ -554,45 +555,122 @@ describe('SystemSettingDialog', () => {
         )
     })
 
-    // P1-FE-06：无消费方的设置项禁用 + tooltip 标注「暂未实现」，不再以假开关误导用户
-    it('disables settings without main-process consumers', async () => {
+    // 批次 A/B/C：启动恢复/开机自启动/窗口记忆/最近列表数量/托盘/跟随系统主题/
+    // 自动备份已全部实现；应用主题收口为只读显示 + 「打开主题设置」按钮，
+    // 不再存在「暂未实现」禁用项
+    it('enables every setting after batches A/B/C', async () => {
         const wrapper = mount(SystemSettingDialog, {
             ...dialogMountOptions,
             props: { visible: true }
         })
-        // 通用面板：启动 3 项 + 窗口行为 2 项全部禁用并带「暂未实现」tooltip；
-        // AS-9 新增的远程图片隐私开关（第 6 项）是可用开关，单独断言
+        // 通用面板复选框顺序：自动打开上次文件 / 自动打开上次目录 / 开机自启动 /
+        // 最小化到托盘 / 记住窗口位置和大小 / 允许加载远程图片
         const generalCheckboxes = wrapper.findAll('.setting-panel')[0].findAll('.setting-checkbox')
         expect(generalCheckboxes).toHaveLength(6)
-        for (const checkbox of generalCheckboxes.slice(0, 5)) {
-            expect(checkbox.attributes('disabled')).toBeDefined()
-            expect(checkbox.attributes('title')).toContain('暂无')
+
+        // 批次 A + B 已实现：全部 5 项窗口/启动复选框可用（开机自启动带「安装后生效」提示）
+        for (const index of [0, 1, 2, 3, 4]) {
+            expect(generalCheckboxes[index].attributes('disabled')).toBeUndefined()
         }
+        expect(generalCheckboxes[2].attributes('title')).toContain('安装应用后生效')
+        expect(generalCheckboxes[0].attributes('title')).toBeUndefined()
+        // 批次 B #4：最小化到托盘已实现，不再带「暂未实现」tooltip
+        expect(generalCheckboxes[3].attributes('title')).toBeUndefined()
+        expect(generalCheckboxes[4].attributes('title')).toBeUndefined()
+
         const remoteImageCheckbox = generalCheckboxes[5]
         expect(remoteImageCheckbox.attributes('disabled')).toBeUndefined()
         expect((remoteImageCheckbox.element as HTMLInputElement).checked).toBe(false)
 
-        // 文件面板：最近文件数量禁用；自动保存仍可用
+        // 文件面板：最近文件数量已实现（不再禁用，带范围提示 tooltip）；自动保存仍可用
         await wrapper.findAll('.sidebar-item')[1].trigger('click')
         const filePanel = wrapper.findAll('.setting-panel')[1]
         expect(filePanel.findAll('.setting-checkbox')).toHaveLength(1)
-        expect(filePanel.findAll('input[type="number"]:disabled')).toHaveLength(1)
+        expect(filePanel.findAll('input[type="number"]:disabled')).toHaveLength(0)
+        const recentCountInput = filePanel.find('input[min="5"]')
+        expect(recentCountInput.exists()).toBe(true)
+        expect(recentCountInput.attributes('disabled')).toBeUndefined()
+        expect(recentCountInput.attributes('title')).toContain('最近')
 
-        // 外观面板：应用主题下拉与「使用系统主题」禁用；字体设置仍可编辑
+        // 外观面板（批次 C #10）：应用主题下拉已替换为只读显示名 + 「打开主题设置」
+        // 按钮（无禁用下拉）；「使用系统主题」已实现（批次 B #7，带互斥说明 tooltip）
         await wrapper.findAll('.sidebar-item')[2].trigger('click')
         const appearancePanel = wrapper.findAll('.setting-panel')[2]
         const selects = appearancePanel.findAll('select.setting-select')
-        expect(selects[0].attributes('disabled')).toBeDefined()
-        expect(selects[1].attributes('disabled')).toBeUndefined()
-        expect(appearancePanel.find('.setting-checkbox').attributes('disabled')).toBeDefined()
+        expect(selects).toHaveLength(1)
+        expect(selects[0].attributes('disabled')).toBeUndefined()
+        expect(appearancePanel.find('.theme-current-name').exists()).toBe(true)
+        const themeButtons = appearancePanel.findAll('.browse-btn')
+        expect(themeButtons).toHaveLength(1)
+        expect(themeButtons[0].text()).toContain('打开主题设置')
+        const useSystemThemeCheckbox = appearancePanel.find('.setting-checkbox')
+        expect(useSystemThemeCheckbox.attributes('disabled')).toBeUndefined()
+        expect(useSystemThemeCheckbox.attributes('title')).toContain('跟随系统')
         expect(appearancePanel.find('input[type="number"]').attributes('disabled')).toBeUndefined()
 
-        // 备份面板：自动备份/间隔禁用，保留数量可用
+        // 备份面板（批次 C #8/#9）：自动备份/间隔已启用（不再禁用），保留数量仍可用
         await wrapper.findAll('.sidebar-item')[3].trigger('click')
         const backupPanel = wrapper.findAll('.setting-panel')[3]
-        expect(backupPanel.findAll('.setting-checkbox:disabled')).toHaveLength(1)
-        expect(backupPanel.findAll('input[type="number"]:disabled')).toHaveLength(1)
-        expect(backupPanel.findAll('input[type="number"]:not([disabled])')).toHaveLength(1)
+        expect(backupPanel.findAll('.setting-checkbox:disabled')).toHaveLength(0)
+        expect(backupPanel.findAll('input[type="number"]:disabled')).toHaveLength(0)
+        expect(backupPanel.findAll('input[type="number"]')).toHaveLength(2)
+        expect(backupPanel.find('input[min="1"]').attributes('title')).toContain('间隔')
+    })
+
+    // 批次 C #10：应用主题收口（方案 A）——只读显示当前主题名（config:read('theme')
+    // + 既有 GET_ALL_THEMES 通道映射显示名），「打开主题设置」复用菜单动作同款调用链
+    // （configStore.showDialog('themeSettings')）并先关闭本对话框，不新增 IPC
+    it('renders the current theme name read-only and opens the theme settings dialog', async () => {
+        configRead.mockImplementation((name: string) =>
+            Promise.resolve(
+                name === 'backup'
+                    ? { backups: [], latest: null }
+                    : name === 'theme'
+                      ? { currentTheme: 'dark' }
+                      : {}
+            )
+        )
+        invoke.mockImplementation((channel: string) =>
+            Promise.resolve(
+                channel === 'baize:theme:get-all'
+                    ? [{ type: 'dark', styles: { name: '深邃夜空' } }]
+                    : { ok: true }
+            )
+        )
+        const wrapper = mount(SystemSettingDialog, {
+            ...dialogMountOptions,
+            props: { visible: false }
+        })
+        await wrapper.setProps({ visible: true })
+        await flushPromises()
+        await wrapper.findAll('.sidebar-item')[2].trigger('click')
+
+        const appearancePanel = wrapper.findAll('.setting-panel')[2]
+        expect(appearancePanel.find('.theme-current-name').text()).toBe('深邃夜空')
+
+        await appearancePanel.find('.browse-btn').trigger('click')
+        expect(wrapper.emitted('close')).toHaveLength(1)
+        expect(getConfigStore().dialogs.themeSettings.visible).toBe(true)
+        // 清理：重置主题设置对话框状态，避免污染后续用例
+        getConfigStore().hideDialog('themeSettings')
+    })
+
+    // 批次 C #8/#9：自动备份组已实现——「暂未实现」提示替换为行为说明，
+    // 启用开关与间隔输入可编辑（保留数量原有可编辑行为不变）
+    it('renders the auto backup group hint and editable inputs', async () => {
+        const wrapper = mount(SystemSettingDialog, {
+            ...dialogMountOptions,
+            props: { visible: true }
+        })
+        await wrapper.findAll('.sidebar-item')[3].trigger('click')
+        const backupPanel = wrapper.findAll('.setting-panel')[3]
+        expect(backupPanel.text()).toContain('按设定间隔')
+
+        const enableCheckbox = backupPanel.find('.setting-checkbox')
+        expect((enableCheckbox.element as HTMLInputElement).checked).toBe(true)
+        await enableCheckbox.setValue(false)
+        expect((enableCheckbox.element as HTMLInputElement).checked).toBe(false)
+        expect(backupPanel.text()).not.toContain('暂无对应功能实现')
     })
 
     // P1-FE-06：「浏览」默认路径经 IPC.FILE.SELECT_DIRECTORY 实现（原 void 0 空实现）
@@ -753,6 +831,14 @@ describe('SystemSettingDialog i18n', () => {
         expect(wrapper.findAll('.setting-panel')[0].text()).toContain('Interface language')
         // AS-9：隐私开关文案同步英文
         expect(wrapper.findAll('.setting-panel')[0].text()).toContain('Allow loading remote images')
+        // 批次 C：主题按钮与自动备份组说明同步英文
+        await wrapper.findAll('.sidebar-item')[2].trigger('click')
+        expect(wrapper.findAll('.setting-panel')[2].text()).toContain('Open theme settings')
+        await wrapper.findAll('.sidebar-item')[3].trigger('click')
+        expect(wrapper.findAll('.setting-panel')[3].text()).toContain('Enable auto backup')
+        expect(
+            wrapper.findAll('.setting-panel')[3].find('input[min="1"]').attributes('title')
+        ).toContain('1~72 hours')
         wrapper.unmount()
     })
 })

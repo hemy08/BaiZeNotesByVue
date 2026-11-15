@@ -54,7 +54,7 @@ const urlMaps: Array<{ name: string; table: Array<MenuLabelLike & { id: string; 
 // 插件菜单项最小结构（label/labelKey 见 MenuLabelLike）
 type PluginMenuItem = MenuLabelLike & { menuAction: string }
 
-/** src 中被清空但仍导出的 8 个插件映射表（元素类型由测试侧断言） */
+/** src 中被清空但仍导出的 8 个插件映射表 + 1.3.5 新增的两个映射表（元素类型由测试侧断言） */
 interface EmptyPluginMenuMapExports {
     PluginCodeConvertMaps: PluginMenuItem[]
     PluginFormatMaps: PluginMenuItem[]
@@ -64,6 +64,8 @@ interface EmptyPluginMenuMapExports {
     PluginNetWork: PluginMenuItem[]
     PluginInfoCmd: PluginMenuItem[]
     PluginCodeDef: PluginMenuItem[]
+    PluginMiscToolsMaps: PluginMenuItem[]
+    PluginTextToolsMaps: PluginMenuItem[]
 }
 
 const {
@@ -74,7 +76,9 @@ const {
     PluginNetGenerators,
     PluginNetWork,
     PluginInfoCmd,
-    PluginCodeDef
+    PluginCodeDef,
+    PluginMiscToolsMaps,
+    PluginTextToolsMaps
 } = MenuConstsModule as unknown as EmptyPluginMenuMapExports
 
 // 汇总各插件菜单映射表
@@ -90,7 +94,9 @@ const pluginMenuMaps: Array<{ name: string; table: PluginMenuItem[] }> = [
     { name: 'PluginInfoNormal', table: PluginInfoNormal },
     { name: 'PluginInfoScience', table: PluginInfoScience },
     { name: 'PluginInfoCmd', table: PluginInfoCmd },
-    { name: 'PluginCodeDef', table: PluginCodeDef }
+    { name: 'PluginCodeDef', table: PluginCodeDef },
+    { name: 'PluginMiscToolsMaps', table: PluginMiscToolsMaps },
+    { name: 'PluginTextToolsMaps', table: PluginTextToolsMaps }
 ]
 
 describe('menu-consts', () => {
@@ -171,18 +177,21 @@ describe('menu-consts', () => {
             // A-4/ARC-09：无注册组件的插件菜单项已从渲染中隐藏；
             // CMP-29：原以注释形式滞留的未实现条目已清理并归档至
             // out/tool-results/r2-completeness-changes.md，因此仅统计仍展示的条目。
+            // 1.3.5：jyshare 常用工具集成补齐 codec/convert/format/net(text)/misc/text 组。
             expect(PluginGeneratorMaps).toHaveLength(8)
-            expect(PluginCodeConvertMaps).toHaveLength(0)
-            expect(PluginFormatMaps).toHaveLength(0)
-            expect(PluginConvertMaps).toHaveLength(0)
+            expect(PluginCodeConvertMaps).toHaveLength(5)
+            expect(PluginFormatMaps).toHaveLength(2)
+            expect(PluginConvertMaps).toHaveLength(5)
             expect(PluginUpLowerMaps).toHaveLength(0)
             expect(PluginNetAddrs).toHaveLength(1)
-            expect(PluginNetGenerators).toHaveLength(0)
+            expect(PluginNetGenerators).toHaveLength(1)
             expect(PluginNetWork).toHaveLength(0)
             expect(PluginInfoNormal).toHaveLength(4)
             expect(PluginInfoScience).toHaveLength(2)
             expect(PluginInfoCmd).toHaveLength(0)
             expect(PluginCodeDef).toHaveLength(0)
+            expect(PluginMiscToolsMaps).toHaveLength(2)
+            expect(PluginTextToolsMaps).toHaveLength(3)
         })
 
         it('should sample key menu entries', () => {

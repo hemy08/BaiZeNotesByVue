@@ -8,6 +8,12 @@ export default {
     app: {
         windowTitle: 'BaiZe Notes -- Markdown Editor Powered By Electron and Vue'
     },
+    // Batch B #4: system tray menu and tooltip copy (minimize to tray on close)
+    tray: {
+        showMainWindow: 'Show main window',
+        quit: 'Quit',
+        tooltip: 'BaiZe Notes'
+    },
     editor: {
         ariaLabel: 'Baize Notes editor'
     },
@@ -45,7 +51,16 @@ export default {
         convertedEncoding: 'Converted to {encoding} encoding and saved',
         noActiveFileUnsaved: 'No active file; the content has not been saved yet',
         noActiveFileSave: 'No active file to save',
-        menuActionFailed: 'Menu action failed: {message}'
+        menuActionFailed: 'Menu action failed: {message}',
+        // System settings supplement batch A: startup restore of last file/folder
+        startupRestoreFileMissing:
+            'The last opened file no longer exists (it may have been moved or deleted), so it was not restored: {path}',
+        startupRestoreFolderMissing:
+            'The last opened folder no longer exists (it may have been moved or deleted), so it was not restored: {path}',
+        startupRestoreFailed: 'Failed to restore the last opened content at startup: {message}',
+        // System settings supplement batch C: auto backup result status bar messages
+        autoBackupSuccess: 'Auto backup created: {name} ({count} files)',
+        autoBackupFailed: 'Auto backup failed: {message}'
     },
     file: {
         saveFailed: 'Failed to save file: {message}',

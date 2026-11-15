@@ -17,6 +17,7 @@ const menuMocks = vi.hoisted(() => ({
     insertFromFileJson: vi.fn(),
     toolsMermaid: vi.fn(),
     onlineCainiaoTools: vi.fn(),
+    aiChatgpt: vi.fn(),
     githubItTools: vi.fn(),
     helpAbout: vi.fn(),
     helpReleaseNotesV130: vi.fn(),
@@ -55,6 +56,7 @@ vi.mock('../../src/main/ipc/menu-view', () => ({
 vi.mock('../../src/main/ipc/menu-tools', () => ({
     toolsMenuHandlers: { mermaid: menuMocks.toolsMermaid },
     onlineMenuHandlers: { tools: { 'cainiao-tools': menuMocks.onlineCainiaoTools } },
+    aiMenuHandlers: { hot: { chatgpt: menuMocks.aiChatgpt } },
     githubMenuHandlers: { 'it-tools': menuMocks.githubItTools }
 }))
 
@@ -124,6 +126,13 @@ describe('HandleBaiZeMenuAction routing', () => {
         HandleBaiZeMenuAction('baize:menu:github:it-tools', {} as never)
         expect(menuMocks.onlineCainiaoTools).toHaveBeenCalled()
         expect(menuMocks.githubItTools).toHaveBeenCalled()
+    })
+
+    // task-50：AI 导航域深度为 3（ai:<group>:<tool-id>），复用同一 IPC.MENU.ACTION 通道，
+    // menu-handle 的 ai 子树按路径命中（未新增通道/未改解析器）。
+    it('should route ai domain actions', () => {
+        HandleBaiZeMenuAction('baize:menu:ai:hot:chatgpt', {} as never)
+        expect(menuMocks.aiChatgpt).toHaveBeenCalled()
     })
 
     it('should route view toggle and from-file nested actions', () => {

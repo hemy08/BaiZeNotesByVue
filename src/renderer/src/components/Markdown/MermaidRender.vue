@@ -6,6 +6,7 @@
 import { onMounted, onBeforeUnmount, watch } from 'vue'
 import mermaid from 'mermaid'
 import { t } from '../../common/i18n'
+import { MERMAID_INIT_CONFIG } from './hemy-editor-render'
 
 // P2 死通道清理：原 mermaidContainer 模板 ref 仅服务已删除的 OVERLAY.MERMAID_GRAPH_DEF
 // 监听（把主进程推送的图定义直接写入容器）；渲染结果现统一经 emit 交给父组件预览链路。
@@ -62,7 +63,9 @@ function buildErrorHtml(graphCode: string, error: unknown): string {
 }
 
 onMounted(() => {
-    mermaid.initialize({ startOnLoad: false })
+    // 2026-11-15：与 hemy-editor-render 共用同一初始化配置——htmlLabels: false 保证标签用
+    // SVG <text> 渲染，避免被预览管线的 DOMPurify svg 白名单移除 foreignObject 后文字丢失。
+    mermaid.initialize(MERMAID_INIT_CONFIG)
 })
 
 // P2 死通道清理：原 OVERLAY.MERMAID_GRAPH_DEF 监听 + handleMermaidGraphDef 已删除

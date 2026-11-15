@@ -348,15 +348,60 @@ const PluginGeneratorMaps = [
 // PluginTools.vue 的"开发中"空白占位，已从渲染中隐藏。
 // CMP-29：原以注释形式滞留的未实现菜单项（date/base/roman/color 等 13 项）已清理并归档至
 // out/tool-results/r2-completeness-changes.md，组件补齐注册后可从归档恢复。
-const PluginCodeConvertMaps = []
+// 1.3.5：jyshare 常用工具集成——编解码组（Base64/URL/HTML/Unicode/图片转Base64）补齐。
+const PluginCodeConvertMaps = [
+    {
+        labelKey: 'menu.plugins.codec.base64Codec',
+        menuAction: 'baize:menu:plugins:codec:base64-codec'
+    },
+    {
+        labelKey: 'menu.plugins.codec.urlCodec',
+        menuAction: 'baize:menu:plugins:codec:url-codec'
+    },
+    {
+        labelKey: 'menu.plugins.codec.htmlCodec',
+        menuAction: 'baize:menu:plugins:codec:html-codec'
+    },
+    { labelKey: 'menu.plugins.codec.unicode', menuAction: 'baize:menu:plugins:codec:unicode' },
+    {
+        labelKey: 'menu.plugins.codec.imageBase64',
+        menuAction: 'baize:menu:plugins:codec:image-base64'
+    }
+]
 
 // A-4/ARC-09/FUN-19：JSON/YAML/TOML/CSV/XML/SQL/HTML 格式化 7 项无注册组件，已隐藏；
 // CMP-29：注释条目已归档（见 out/tool-results/r2-completeness-changes.md）。
-const PluginFormatMaps = []
+// 1.3.5：jyshare 常用工具集成——格式化工具组（JSON 工具/XML 格式化）补齐。
+const PluginFormatMaps = [
+    { labelKey: 'menu.plugins.format.jsonTool', menuAction: 'baize:menu:plugins:format:json-tool' },
+    {
+        labelKey: 'menu.plugins.format.xmlFormatter',
+        menuAction: 'baize:menu:plugins:format:xml-format'
+    }
+]
 
 // A-4/ARC-09/FUN-19：JSON/YAML/TOML 互转、文本转二进制/Unicode 等 9 项无注册组件，已隐藏；
 // CMP-29：注释条目已归档（见 out/tool-results/r2-completeness-changes.md）。
-const PluginConvertMaps = []
+// 1.3.5：jyshare 常用工具集成——格式转换组（颜色/单位/人民币/时间戳/进制）补齐。
+const PluginConvertMaps = [
+    {
+        labelKey: 'menu.plugins.convert.colorConvert',
+        menuAction: 'baize:menu:plugins:convert:color-convert'
+    },
+    {
+        labelKey: 'menu.plugins.convert.unitConvert',
+        menuAction: 'baize:menu:plugins:convert:unit-convert'
+    },
+    { labelKey: 'menu.plugins.convert.rmbCase', menuAction: 'baize:menu:plugins:convert:rmb-case' },
+    {
+        labelKey: 'menu.plugins.convert.timestampConvert',
+        menuAction: 'baize:menu:plugins:convert:timestamp-convert'
+    },
+    {
+        labelKey: 'menu.plugins.convert.baseConvert',
+        menuAction: 'baize:menu:plugins:convert:base-convert'
+    }
+]
 
 // A-4/ARC-09/FUN-19：大小写转换全家族 12 项无注册组件，已隐藏；
 // CMP-29：注释条目已归档（见 out/tool-results/r2-completeness-changes.md）。
@@ -375,7 +420,13 @@ const PluginNetAddrs = [
 
 // A-4/ARC-09/FUN-19：二维码生成器两项等无注册组件，已隐藏；
 // CMP-29：注释条目已归档（见 out/tool-results/r2-completeness-changes.md）。
-const PluginNetGenerators = []
+// 1.3.5：jyshare 常用工具集成——解析器组（正则表达式测试）补齐。
+const PluginNetGenerators = [
+    {
+        labelKey: 'menu.plugins.net.regexTester',
+        menuAction: 'baize:menu:plugins:net:regex-tester'
+    }
+]
 
 // A-4/ARC-09/FUN-19：HTTP状态码/子网掩码对照表两项已注册（见 plugin_tools_const.ts），
 // 但本组的 DNS/Ping/端口扫描等 14 项无注册组件，整组注释已清理；
@@ -418,6 +469,34 @@ const PluginInfoScience = [
 // out/tool-results/r2-completeness-changes.md），本组暂无可展示条目。
 const PluginInfoCmd = []
 
+// 1.3.5：jyshare 常用工具集成——常用小工具组（随机生成器/在线计算器）。
+const PluginMiscToolsMaps = [
+    {
+        labelKey: 'menu.plugins.misc.randomGenerator',
+        menuAction: 'baize:menu:plugins:misc:random-generator'
+    },
+    {
+        labelKey: 'menu.plugins.misc.calculator',
+        menuAction: 'baize:menu:plugins:misc:calculator'
+    }
+]
+
+// 1.3.5：jyshare 常用工具集成——文本转换组（繁简/拼音/字数统计/文本比对）。
+const PluginTextToolsMaps = [
+    {
+        labelKey: 'menu.plugins.text.chineseText',
+        menuAction: 'baize:menu:plugins:text:chinese-text'
+    },
+    {
+        labelKey: 'menu.plugins.text.wordCount',
+        menuAction: 'baize:menu:plugins:text:word-count'
+    },
+    {
+        labelKey: 'menu.plugins.text.textDiff',
+        menuAction: 'baize:menu:plugins:text:text-diff'
+    }
+]
+
 // CMP-29：正则/Markdown/LaTeX 语法、各语言关键字对照表等 23 项注释已归档（见
 // out/tool-results/r2-completeness-changes.md），本组暂无可展示条目。
 const PluginCodeDef = []
@@ -444,5 +523,7 @@ export {
     PluginInfoNormal,
     PluginInfoScience,
     PluginInfoCmd,
-    PluginCodeDef
+    PluginCodeDef,
+    PluginMiscToolsMaps,
+    PluginTextToolsMaps
 }

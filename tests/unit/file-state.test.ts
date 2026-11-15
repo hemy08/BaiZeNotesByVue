@@ -48,6 +48,11 @@ import {
     restoreLastOpenedFile,
     resetFileState
 } from '../../src/main/utils/file-state'
+import { setRecentFilesLimitProvider, trimRecentFiles } from '../../src/main/utils/file-state-store'
+import {
+    clampRecentFilesLimit,
+    DEFAULT_RECENT_FILES_LIMIT
+} from '../../src/shared/constants/recent-files'
 
 const USER_DATA = electronState.paths.userData
 
@@ -61,6 +66,8 @@ describe('file-state', () => {
         fileUtilsMocks.OpenSelectFile.mockResolvedValue(undefined)
         fs.rmSync(USER_DATA, { recursive: true, force: true })
         fs.mkdirSync(USER_DATA, { recursive: true })
+        // 批次 A：恢复默认保留条数（system-setting 未加载时提供者保持默认）
+        setRecentFilesLimitProvider(() => DEFAULT_RECENT_FILES_LIMIT)
     })
 
     describe('last opened file', () => {
@@ -98,6 +105,18 @@ describe('file-state', () => {
     })
 
     describe('recent files', () => {
+        // 批次 A：#4 共享钳制函数（recentFilesCount 5~20，非法值回落默认 10）
+        it('should clamp recentFilesCount values into 5~20 with default fallback', () => {
+            expect(clampRecentFilesLimit(10)).toBe(10)
+            expect(clampRecentFilesLimit(3)).toBe(5)
+            expect(clampRecentFilesLimit(21)).toBe(20)
+            expect(clampRecentFilesLimit(99)).toBe(20)
+            expect(clampRecentFilesLimit(5.6)).toBe(6)
+            expect(clampRecentFilesLimit(undefined)).toBe(DEFAULT_RECENT_FILES_LIMIT)
+            expect(clampRecentFilesLimit('15')).toBe(DEFAULT_RECENT_FILES_LIMIT)
+            expect(clampRecentFilesLimit(Number.NaN)).toBe(DEFAULT_RECENT_FILES_LIMIT)
+        })
+
         it('should default to an empty list', () => {
             expect(getRecentFiles()).toEqual([])
         })
@@ -120,6 +139,39 @@ describe('file-state', () => {
             // 最旧的 f0/f1 被淘汰
             expect(recent).not.toContain('/f0.md')
             expect(recent).not.toContain('/f1.md')
+        })
+
+        // 批次 A：#4 最近文件列表数量（recentFilesCount）——写入侧按提供者截断去重
+        it('should respect the recent files limit provider when appending', () => {
+            setRecentFilesLimitProvider(() => 5)
+            for (let i = 0; i < 8; i++) {
+                saveLastOpenedFile(`/f${i}.md`)
+            }
+            const recent = getRecentFiles()
+            expect(recent).toHaveLength(5)
+            expect(recent[0]).toBe('/f7.md')
+            expect(recent).not.toContain('/f0.md')
+            expect(recent).not.toContain('/f1.md')
+            expect(recent).not.toContain('/f2.md')
+        })
+
+        it('should trim the existing list immediately via trimRecentFiles', () => {
+            for (let i = 0; i < 10; i++) {
+                saveLastOpenedFile(`/f${i}.md`)
+            }
+            setRecentFilesLimitProvider(() => 6)
+            trimRecentFiles()
+            const recent = getRecentFiles()
+            expect(recent).toHaveLength(6)
+            expect(recent[0]).toBe('/f9.md')
+            expect(recent[5]).toBe('/f4.md')
+        })
+
+        it('should keep the list unchanged when it is already within the limit', () => {
+            saveLastOpenedFile('/a.md')
+            setRecentFilesLimitProvider(() => 5)
+            trimRecentFiles()
+            expect(getRecentFiles()).toEqual(['/a.md'])
         })
 
         it('should remove a specific recent file', () => {

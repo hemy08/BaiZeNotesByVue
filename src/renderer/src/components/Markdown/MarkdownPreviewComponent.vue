@@ -18,6 +18,7 @@ import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import {
     ApplyRemoteImagePolicy,
+    getPreviewActiveFilePath,
     getPreviewAllowRemoteImages,
     HemyRenderPostLocal,
     HemyRenderPreLocal,
@@ -26,6 +27,9 @@ import {
     setPreviewAllowRemoteImages
 } from './preview-local-render'
 import { createPreviewMarkdownIt } from './preview-markdown-it'
+// 批次 C：snippets（--8<--）异步展开 + tab 深链（#__tabbed_N_i）
+import { expandSnippetIncludes } from './preview-md-blocks'
+import { createTabDeepLinkEnv, getTabTargetByHash } from './preview-mkdocs-material'
 import { ComputeChaptersFingerprint } from './preview-chapters'
 import { getLocale, t } from '../../common/i18n'
 import { logger } from '../../common/logger'
@@ -201,7 +205,17 @@ async function updateMarkdownPreview() {
         } else if (!degraded) {
             degradedWarned = false
         }
-        const preRenderText = HemyRenderPreLocal(sourceContent, { skipKatex: degraded })
+        // 批次 C：snippets（--8<-- "file.md"）异步展开——读取当前笔记同目录文本文件；
+        // 无活动文件/读取失败/非法路径时保留原文（占位由同步 rule 渲染为普通文本，不中断预览）。
+        const snippetExpanded = await expandSnippetIncludes(
+            sourceContent,
+            getPreviewActiveFilePath(),
+            readSnippetFile
+        )
+        if (sequence !== renderSequence || props.editorContent !== sourceContent) {
+            return
+        }
+        const preRenderText = HemyRenderPreLocal(snippetExpanded, { skipKatex: degraded })
         const renderedText = await editor.Render.PreMarkdownRender(preRenderText, {
             skipDiagrams: degraded
         })
@@ -216,7 +230,8 @@ async function updateMarkdownPreview() {
             UpdateMarkdownChapters()
             lastChaptersFingerprint = chaptersFingerprint
         }
-        const renderedHtml = md.render(renderedText)
+        // 批次 C：tab 深链属性由 env 开关控制（不传 env 时 HTML 与历史版本一致）
+        const renderedHtml = md.render(renderedText, createTabDeepLinkEnv())
         const postRenderText = editor.Render.PostMarkdownRender(HemyRenderPostLocal(renderedHtml))
         if (sequence !== renderSequence || props.editorContent !== sourceContent) {
             return
@@ -240,6 +255,17 @@ async function updateMarkdownPreview() {
     } catch (error) {
         // 单轮渲染异常时保留上一轮预览内容，避免整块预览白屏
         logger.warn('[MarkdownPreview] 本地渲染失败，已保留上一轮预览:', error)
+    }
+}
+
+/** 批次 C：snippets 文件读取注入点（复用主进程 READ_HTML 通道：sender 校验 + 路径守卫 + UTF-8 读取） */
+async function readSnippetFile(absPath: string): Promise<string | null> {
+    try {
+        const content = await window.electron.ipcRenderer.invoke(IPC.FILE.READ_HTML, absPath)
+        return typeof content === 'string' ? content : null
+    } catch (error) {
+        logger.warn('[MarkdownPreview] snippets 文件读取失败:', error)
+        return null
     }
 }
 
@@ -312,6 +338,21 @@ function handlePreviewClick(event: MouseEvent) {
     if (!target) return
     const href = target.getAttribute('href')
     if (!href) return
+    // 批次 C：标签页深链（#__tabbed_<setId>_<n> / _label / _panel）→ 选中对应 radio 并滚动
+    if (href.startsWith('#__tabbed_')) {
+        const tabTarget = getTabTargetByHash(href)
+        const previewRoot = document.getElementById('markdown-preview-html')
+        const radio =
+            tabTarget && previewRoot
+                ? (previewRoot.querySelector(`#${tabTarget.radioId}`) as HTMLInputElement | null)
+                : null
+        if (tabTarget && radio) {
+            event.preventDefault()
+            radio.checked = true
+            radio.closest('.tabbed-set')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }
+        return
+    }
     event.preventDefault()
     if (href.endsWith('.md')) {
         const fileInfo: FileProperties = {

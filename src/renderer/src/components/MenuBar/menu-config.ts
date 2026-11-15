@@ -228,12 +228,80 @@ const codingMenu: BaiZeMenuEntry = {
 
 // FE-28：下列模板分组标签原为硬编码 label（Material/Mermaid/PlantUML/Part1/Part2），
 // 现统一存 menu 命名空间 labelKey，由 MenuBar.vue 渲染时 t(labelKey) 输出。
+// Material 语法插入扩展（15 项 mkdocs-material 语法入口，排在 Admonition 之后）。
+// 动作 id 契约：baize:menu:insert:material:<featureId>，由 menu-actions.ts 统一拦截并
+// 打开 materialSyntax 对话框（configStore 名为 'materialSyntax'，第二参 preset 指定语法
+// 类型，见 useConfigStore 的 DialogState）。labelKey 采用 menu.insert.material.<camelCase>，
+// 中英文案见 shared/i18n/messages/{zh-CN,en-US}/menu.ts。
+// 顺序即菜单展示顺序：折叠提示块/任务列表/高亮/插入删除/上下标/键盘按键/属性列表/脚注/
+// 定义列表/网格卡片/代码块增强/Material 图标/块语法/文件片段/标签页深链。
+// 现有 material:admonition 保持原有链路（主进程 Vue 对话框）不变。
 const insertMaterial: BaiZeMenuEntry = {
     labelKey: 'menu.insert.material.label',
     submenu: [
         {
             labelKey: 'menu.insert.material.admonition',
             menuAction: 'baize:menu:insert:material:admonition'
+        },
+        {
+            labelKey: 'menu.insert.material.collapsible',
+            menuAction: 'baize:menu:insert:material:collapsible'
+        },
+        {
+            labelKey: 'menu.insert.material.taskList',
+            menuAction: 'baize:menu:insert:material:task-list'
+        },
+        {
+            labelKey: 'menu.insert.material.highlight',
+            menuAction: 'baize:menu:insert:material:highlight'
+        },
+        {
+            labelKey: 'menu.insert.material.insertDelete',
+            menuAction: 'baize:menu:insert:material:insert-delete'
+        },
+        {
+            labelKey: 'menu.insert.material.supSub',
+            menuAction: 'baize:menu:insert:material:sup-sub'
+        },
+        {
+            labelKey: 'menu.insert.material.keys',
+            menuAction: 'baize:menu:insert:material:keys'
+        },
+        {
+            labelKey: 'menu.insert.material.attrList',
+            menuAction: 'baize:menu:insert:material:attr-list'
+        },
+        {
+            labelKey: 'menu.insert.material.footnote',
+            menuAction: 'baize:menu:insert:material:footnote'
+        },
+        {
+            labelKey: 'menu.insert.material.definitionList',
+            menuAction: 'baize:menu:insert:material:definition-list'
+        },
+        {
+            labelKey: 'menu.insert.material.gridCards',
+            menuAction: 'baize:menu:insert:material:grid-cards'
+        },
+        {
+            labelKey: 'menu.insert.material.codeBlock',
+            menuAction: 'baize:menu:insert:material:code-block'
+        },
+        {
+            labelKey: 'menu.insert.material.icon',
+            menuAction: 'baize:menu:insert:material:icon'
+        },
+        {
+            labelKey: 'menu.insert.material.blocks',
+            menuAction: 'baize:menu:insert:material:blocks'
+        },
+        {
+            labelKey: 'menu.insert.material.snippet',
+            menuAction: 'baize:menu:insert:material:snippet'
+        },
+        {
+            labelKey: 'menu.insert.material.tabLink',
+            menuAction: 'baize:menu:insert:material:tab-link'
         }
     ]
 }
@@ -390,8 +458,18 @@ const pluginsMenu: BaiZeMenuEntry = {
                 {
                     labelKey: 'menu.plugins.group.formatTools',
                     submenu: MenuConst.PluginFormatMaps
+                },
+                {
+                    // 1.3.5：文本转换组（繁简/拼音/字数统计/文本比对）。
+                    labelKey: 'menu.plugins.group.textConvert',
+                    submenu: MenuConst.PluginTextToolsMaps
                 }
             ]
+        },
+        {
+            // 1.3.5：常用小工具组（随机生成器/在线计算器）。
+            labelKey: 'menu.plugins.group.miscTools',
+            submenu: MenuConst.PluginMiscToolsMaps
         },
         {
             labelKey: 'menu.plugins.group.network',
@@ -510,6 +588,166 @@ const onlineMenu: BaiZeMenuEntry = {
     ]
 }
 
+// ---------------------------------------------------------------------------------------------
+// AI 导航菜单（task-50）
+//
+// 数据源：菜鸟 AI 导航（https://www.jyshare.com/ai/）精选核心条目，按 9 组归类（70 个叶子）。
+// 与「在线」菜单的差异：在线菜单的条目 id/URL 数据源在 menu-consts.ts，而 AI 导航是独立新增
+// 菜单域，按任务约定只改 menu-config.ts（菜单树）与 menu-tools.ts（主进程 handler），故菜单数据
+// 内联本文件；URL 只存主进程（渲染层不需要 URL），保证 URL 单一真源、避免两份漂移。
+// 动作 id 契约：baize:menu:ai:<group>:<tool-id>，主进程 menu-tools.ts 的 aiMenuHandlers 按同
+// 路径命中（menu-handle.ts 的 ai 域分发），复用既有 IPC.MENU.ACTION 通道，未新增 IPC 通道。
+// ---------------------------------------------------------------------------------------------
+interface AiMenuLeafDef {
+    id: string
+    labelKey: string
+}
+
+interface AiMenuGroupDef {
+    group: string
+    labelKey: string
+    items: AiMenuLeafDef[]
+}
+
+// 9 组 70 个叶子；组名即动作 id 的 <group> 段，id 即 <tool-id> 段，两者共同决定主进程可路由路径。
+const aiMenuGroups: AiMenuGroupDef[] = [
+    {
+        group: 'hot',
+        labelKey: 'menu.ai.group.hot',
+        items: [
+            { id: 'chatgpt', labelKey: 'menu.ai.hot.chatgpt' },
+            { id: 'deepseek', labelKey: 'menu.ai.hot.deepseek' },
+            { id: 'doubao', labelKey: 'menu.ai.hot.doubao' },
+            { id: 'kimi', labelKey: 'menu.ai.hot.kimi' },
+            { id: 'tongyi', labelKey: 'menu.ai.hot.tongyi' },
+            { id: 'wenxin', labelKey: 'menu.ai.hot.wenxin' },
+            { id: 'yuanbao', labelKey: 'menu.ai.hot.yuanbao' },
+            { id: 'claude', labelKey: 'menu.ai.hot.claude' },
+            { id: 'gemini', labelKey: 'menu.ai.hot.gemini' },
+            { id: 'grok', labelKey: 'menu.ai.hot.grok' },
+            { id: 'copilot', labelKey: 'menu.ai.hot.copilot' },
+            { id: 'perplexity', labelKey: 'menu.ai.hot.perplexity' },
+            { id: 'chatglm', labelKey: 'menu.ai.hot.chatglm' },
+            { id: 'tiangong', labelKey: 'menu.ai.hot.tiangong' }
+        ]
+    },
+    {
+        group: 'coding',
+        labelKey: 'menu.ai.group.coding',
+        items: [
+            { id: 'cursor', labelKey: 'menu.ai.coding.cursor' },
+            { id: 'trae', labelKey: 'menu.ai.coding.trae' },
+            { id: 'qoder', labelKey: 'menu.ai.coding.qoder' },
+            { id: 'github-copilot', labelKey: 'menu.ai.coding.githubCopilot' },
+            { id: 'opencode', labelKey: 'menu.ai.coding.opencode' },
+            { id: 'google-ai-studio', labelKey: 'menu.ai.coding.googleAiStudio' },
+            { id: 'coding-plan', labelKey: 'menu.ai.coding.codingPlan' },
+            { id: 'zcode', labelKey: 'menu.ai.coding.zcode' },
+            { id: 'deepseek-harness', labelKey: 'menu.ai.coding.deepseekHarness' }
+        ]
+    },
+    {
+        group: 'image',
+        labelKey: 'menu.ai.group.image',
+        items: [
+            { id: 'midjourney', labelKey: 'menu.ai.image.midjourney' },
+            { id: 'stable-diffusion', labelKey: 'menu.ai.image.stableDiffusion' },
+            { id: 'leonardo', labelKey: 'menu.ai.image.leonardo' },
+            { id: 'adobe-firefly', labelKey: 'menu.ai.image.adobeFirefly' },
+            { id: 'runway', labelKey: 'menu.ai.image.runway' },
+            { id: 'canva', labelKey: 'menu.ai.image.canva' },
+            { id: 'figma', labelKey: 'menu.ai.image.figma' },
+            { id: 'remove-bg', labelKey: 'menu.ai.image.removeBg' },
+            { id: 'clipdrop', labelKey: 'menu.ai.image.clipdrop' },
+            { id: 'civitai', labelKey: 'menu.ai.image.civitai' }
+        ]
+    },
+    {
+        group: 'writing',
+        labelKey: 'menu.ai.group.writing',
+        items: [
+            { id: 'notion-ai', labelKey: 'menu.ai.writing.notionAi' },
+            { id: 'grammarly', labelKey: 'menu.ai.writing.grammarly' },
+            { id: 'quillbot', labelKey: 'menu.ai.writing.quillbot' },
+            { id: 'gamma', labelKey: 'menu.ai.writing.gamma' },
+            { id: 'notebooklm', labelKey: 'menu.ai.writing.notebooklm' },
+            { id: 'metaso', labelKey: 'menu.ai.writing.metaso' },
+            { id: 'poe', labelKey: 'menu.ai.writing.poe' }
+        ]
+    },
+    {
+        group: 'office',
+        labelKey: 'menu.ai.group.office',
+        items: [
+            { id: 'miro', labelKey: 'menu.ai.office.miro' },
+            { id: 'ima-copilot', labelKey: 'menu.ai.office.imaCopilot' },
+            { id: 'manus', labelKey: 'menu.ai.office.manus' }
+        ]
+    },
+    {
+        group: 'media',
+        labelKey: 'menu.ai.group.media',
+        items: [
+            { id: 'suno', labelKey: 'menu.ai.media.suno' },
+            { id: 'elevenlabs', labelKey: 'menu.ai.media.elevenlabs' },
+            { id: 'veed', labelKey: 'menu.ai.media.veed' },
+            { id: 'reccloud', labelKey: 'menu.ai.media.reccloud' },
+            { id: 'turboscribe', labelKey: 'menu.ai.media.turboscribe' },
+            { id: 'genmo', labelKey: 'menu.ai.media.genmo' },
+            { id: 'kling', labelKey: 'menu.ai.media.kling' },
+            { id: 'hailuo', labelKey: 'menu.ai.media.hailuo' }
+        ]
+    },
+    {
+        group: 'agent',
+        labelKey: 'menu.ai.group.agent',
+        items: [
+            { id: 'openclaw', labelKey: 'menu.ai.agent.openclaw' },
+            { id: 'kimiclaw', labelKey: 'menu.ai.agent.kimiclaw' },
+            { id: 'autoclaw', labelKey: 'menu.ai.agent.autoclaw' },
+            { id: 'maxclaw', labelKey: 'menu.ai.agent.maxclaw' },
+            { id: 'arkclaw', labelKey: 'menu.ai.agent.arkclaw' },
+            { id: 'easyclaw', labelKey: 'menu.ai.agent.easyclaw' },
+            { id: 'qoderwork', labelKey: 'menu.ai.agent.qoderwork' },
+            { id: 'miaoda', labelKey: 'menu.ai.agent.miaoda' },
+            { id: 'agent-skills', labelKey: 'menu.ai.agent.agentSkills' },
+            { id: 'skillhub-qq', labelKey: 'menu.ai.agent.skillhubQq' }
+        ]
+    },
+    {
+        group: 'model',
+        labelKey: 'menu.ai.group.model',
+        items: [
+            { id: 'hugging-face', labelKey: 'menu.ai.model.huggingFace' },
+            { id: 'openrouter', labelKey: 'menu.ai.model.openrouter' },
+            { id: 'arena', labelKey: 'menu.ai.model.arena' },
+            { id: 'artificial-analysis', labelKey: 'menu.ai.model.artificialAnalysis' },
+            { id: 'swe-bench', labelKey: 'menu.ai.model.sweBench' }
+        ]
+    },
+    {
+        group: 'more',
+        labelKey: 'menu.ai.group.more',
+        items: [
+            { id: 'jyshare-ai', labelKey: 'menu.ai.more.jyshareAi' },
+            { id: 'google-labs', labelKey: 'menu.ai.more.googleLabs' },
+            { id: 'skillsmp', labelKey: 'menu.ai.more.skillsmp' },
+            { id: 'character-ai', labelKey: 'menu.ai.more.characterAi' }
+        ]
+    }
+]
+
+const aiMenu: BaiZeMenuEntry = {
+    labelKey: 'menu.ai.label',
+    submenu: aiMenuGroups.map((group) => ({
+        labelKey: group.labelKey,
+        submenu: group.items.map((item) => ({
+            labelKey: item.labelKey,
+            menuAction: `baize:menu:ai:${group.group}:${item.id}`
+        }))
+    }))
+}
+
 // FE-28：GitHub 为品牌名，按 i18n 约定保留原文 label（不翻译，故不设 menu key）。
 const gitHubMenu: BaiZeMenuEntry = {
     label: 'GitHub',
@@ -522,6 +760,7 @@ const helpMenu: BaiZeMenuEntry = {
         {
             labelKey: 'menu.help.release',
             submenu: [
+                { label: 'v1.3.5', menuAction: 'baize:menu:help:release-notes:v1.3.5' },
                 { label: 'v1.3.0', menuAction: 'baize:menu:help:release-notes:v1.3.0' },
                 { label: 'v1.2.2', menuAction: 'baize:menu:help:release-notes:v1.2.2' },
                 { label: 'v1.2.1', menuAction: 'baize:menu:help:release-notes:v1.2.1' },
@@ -570,6 +809,7 @@ export const menuMap = ref<BaiZeMenuEntry[]>(
             toolsMenu,
             pluginsMenu,
             onlineMenu,
+            aiMenu, // AI 导航（task-50，位于「在线」之后、「GitHub」之前）
             // CMP-29：被注释的死菜单项 'quickLinkMenu'（从未定义）已删除。
             gitHubMenu,
             helpMenu

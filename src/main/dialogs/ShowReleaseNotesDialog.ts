@@ -26,6 +26,23 @@ const RELEASE_NOTES_KEY_PREFIX = 'dialogMain.releaseNotes.'
 
 const releaseNotes: ReleaseNoteEntry[] = [
     {
+        version: '1.3.5',
+        date: '2026-11-15',
+        key: 'v135',
+        highlightKeys: ['highlights.h1', 'highlights.h2', 'highlights.h3'],
+        featureKeys: ['features.f1', 'features.f2', 'features.f3', 'features.f4', 'features.f5'],
+        improvementKeys: ['improvements.i1', 'improvements.i2'],
+        fixKeys: ['fixes.x1', 'fixes.x2'],
+        techStack: [
+            { name: 'Electron', value: '43.8.10' },
+            { name: 'Vue', value: '3.5.45' },
+            { name: 'Vite', value: '8.3.8' },
+            { name: 'TypeScript', value: '6.0.3' },
+            { name: 'Monaco Editor', value: '0.57.0' },
+            { name: 'markdown-it', value: '15.0.3' }
+        ]
+    },
+    {
         version: '1.3.0',
         date: '2026-11-15',
         key: 'v130',

@@ -101,6 +101,7 @@ export const MdSheetDialog = lazyDialog(() => import('./medium/MdSheetDialog.vue
 
 export const EditorSettingDialog = lazyDialog(() => import('./complex/EditorSettingDialog.vue'))
 export const FontSelectDialog = lazyDialog(() => import('./complex/FontSelectDialog.vue'))
+export const MaterialSyntaxDialog = lazyDialog(() => import('./complex/MaterialSyntaxDialog.vue'))
 export const MermaidEditDialog = lazyDialog(() => import('./complex/MermaidEditDialog.vue'))
 export const SystemSettingDialog = lazyDialog(() => import('./complex/SystemSettingDialog.vue'))
 export const ThemeSettingDialog = lazyDialog(() => import('./complex/ThemeSettingDialog.vue'))

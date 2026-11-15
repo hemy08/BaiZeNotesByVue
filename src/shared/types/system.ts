@@ -14,6 +14,17 @@
  *
  * 字段名 / 类型 / 可选性与收敛前主进程版本完全一致（渲染层扩展字段保持可选）。
  */
+/**
+ * 主窗口边界（「记住窗口位置和大小」持久化字段，由主进程写入 system store）。
+ * 坐标与尺寸均为屏幕坐标整数（与 electron-screen 的 Display.workArea 同坐标系）。
+ */
+export interface WindowBounds {
+    x: number
+    y: number
+    width: number
+    height: number
+}
+
 export interface SystemSetting {
     language: string
     resourceManager: string
@@ -51,6 +62,8 @@ export interface SystemSetting {
     autoStart?: boolean // 开机自启动
     minimizeToTray?: boolean // 关闭时最小化到托盘
     rememberWindowSize?: boolean // 记住窗口位置和大小
+    // 「记住窗口位置和大小」：上次关闭时的主窗口边界（主进程写入，渲染层对话框不读写）
+    windowBounds?: WindowBounds | null
     defaultFilePath?: string // 默认文件保存路径
     recentFilesCount?: number // 最近文件列表数量
     checkUpdateOnStart?: boolean // 启动时检查更新

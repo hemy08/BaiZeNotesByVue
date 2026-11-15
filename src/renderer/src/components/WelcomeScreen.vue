@@ -84,6 +84,7 @@ import logoDarkUltra from '../assets/icons/dark/baize_mirror_dark.svg'
 import { IPC } from '../../../shared/ipc-channels'
 import { t } from '../common/i18n'
 import { logger } from '../common/logger'
+import { clampRecentFilesLimit } from '../../../shared/constants/recent-files'
 
 const emit = defineEmits(['openFile', 'openFolder', 'openRecentFolder'])
 
@@ -93,12 +94,16 @@ const recentFolders = ref<string[]>([])
 // 固定使用深色 logo
 const logoSrc = logoDarkUltra
 
-// 加载最近打开的文件夹
+// 加载最近打开的文件夹（展示条数遵循系统设置「最近文件列表数量」）
 async function loadRecentFolders() {
     try {
-        const history = await window.api.config.read<string[]>('recent-folders')
+        const [history, systemSetting] = await Promise.all([
+            window.api.config.read<string[]>('recent-folders'),
+            window.api.config.read<{ recentFilesCount?: number }>('system')
+        ])
+        const limit = clampRecentFilesLimit(systemSetting?.recentFilesCount)
         if (history && Array.isArray(history)) {
-            recentFolders.value = history.slice(0, 10)
+            recentFolders.value = history.slice(0, limit)
         }
     } catch (error) {
         logger.error('Failed to load recent folders:', error)

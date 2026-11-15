@@ -248,10 +248,20 @@ const handleFileReloaded = (_event: unknown, data: { path: string; content: stri
 }
 
 const handleClearEditor = () => {
+    // 2026-11-15 数据安全修复：CLEAR_EDITOR_PREVIEW 只清空编辑器显示，**绝不把占位内容
+    // 同步到主进程**。原实现把编辑器内容设为 '# ' 并调用 handleMarkdownCodeUpdate('# ')，
+    // 会把 '# ' 同步进主进程的 currentActiveFile.content 并置脏：
+    // 用户停留在欢迎页时主进程已在后台恢复上次打开的文件（currentActiveFile 已存在），
+    // 此时点「打开文件夹 / 最近文件夹」会先进入主界面再发本事件，'# ' 同步后该文件变脏，
+    // 之后打开新文件前的自动保存 / 关闭保存会把旧文档写成 '# '（数据被清空）。
+    clearContentSyncTimer()
+    // 先更新基准，再改内容：即使后续编辑器回传 change 事件，newValue 与 lastSyncedContent
+    // 相同也会被跳过，不会产生 UPDATE_SELECT_FILE_CONTENT IPC。
+    lastSyncedContent = ''
+    markdownEditorContent.value = ''
     if (isShowEditArea.value) {
-        initialCodeContent.value = '# '
+        initialCodeContent.value = ''
     }
-    handleMarkdownCodeUpdate('# ')
 }
 
 const handleEditModel = () => {

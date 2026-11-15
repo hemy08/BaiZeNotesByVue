@@ -88,7 +88,24 @@ export default {
         fromFile: 'From File',
         material: {
             label: 'Material',
-            admonition: 'Admonition'
+            admonition: 'Admonition',
+            // mkdocs-material syntax insert entries (15 items, keys mirror menu-config.ts
+            // Material submenu and menu-actions.ts MATERIAL_SYNTAX_FEATURE_IDS)
+            collapsible: 'Collapsible admonition',
+            taskList: 'Task list',
+            highlight: 'Highlight',
+            insertDelete: 'Insert/Delete',
+            supSub: 'Superscript/Subscript',
+            keys: 'Keyboard keys',
+            attrList: 'Attribute list',
+            footnote: 'Footnote',
+            definitionList: 'Definition list',
+            gridCards: 'Grid cards',
+            codeBlock: 'Enhanced code block',
+            icon: 'Material icons',
+            blocks: 'Block syntax (///)',
+            snippet: 'Snippets',
+            tabLink: 'Tab deep link'
         },
         mermaid: {
             label: 'Mermaid',
@@ -130,6 +147,8 @@ export default {
             formatConvert: 'Format Converters',
             caseConvert: 'Case Conversion',
             formatTools: 'Formatters',
+            textConvert: 'Text Conversion',
+            miscTools: 'Common Tools',
             network: 'Network Calculators',
             addressConverter: 'Address Converters',
             parsers: 'Parsers',
@@ -152,7 +171,35 @@ export default {
             ipv4SubnetCalculator: 'IPv4 Subnet Calculator',
             // FE-17：网络对照表工具菜单项（task-23 补齐）
             httpStatusCodes: 'HTTP Status Code Table',
-            subnetMaskMapTable: 'Subnet Mask Table'
+            subnetMaskMapTable: 'Subnet Mask Table',
+            regexTester: 'Regex tester'
+        },
+        codec: {
+            base64Codec: 'Base64 Encode/Decode',
+            urlCodec: 'URL Encode/Decode',
+            htmlCodec: 'HTML Entity Encode/Decode',
+            unicode: 'Unicode & Chinese Converter',
+            imageBase64: 'Image to Base64'
+        },
+        convert: {
+            colorConvert: 'Color Converter',
+            unitConvert: 'Unit Converter',
+            rmbCase: 'RMB Uppercase',
+            timestampConvert: 'Timestamp Converter',
+            baseConvert: 'Base Converter'
+        },
+        misc: {
+            randomGenerator: 'Random Generator',
+            calculator: 'Calculator'
+        },
+        text: {
+            chineseText: 'Chinese text tool',
+            wordCount: 'Word count',
+            textDiff: 'Text diff'
+        },
+        format: {
+            jsonTool: 'JSON tool',
+            xmlFormatter: 'XML formatter'
         },
         info: {
             asciiTable: 'ASCII Table',
@@ -235,6 +282,117 @@ export default {
             huawei: 'Huawei Cloud',
             tianyi: 'Tianyi Cloud',
             jinshan: 'Kingsoft Cloud'
+        }
+    },
+    ai: {
+        label: 'AI Navigation',
+        group: {
+            hot: 'Popular AI',
+            coding: 'AI Coding',
+            image: 'AI Image',
+            writing: 'AI Writing',
+            office: 'AI Office',
+            media: 'AI Media',
+            agent: 'AI Agents',
+            model: 'AI Models & Leaderboards',
+            more: 'More AI Tools'
+        },
+        // Popular AI (mainstream as of 2026)
+        hot: {
+            chatgpt: 'ChatGPT',
+            deepseek: 'DeepSeek',
+            doubao: 'Doubao',
+            kimi: 'Kimi',
+            tongyi: 'Qwen (Tongyi)',
+            wenxin: 'ERNIE Bot (Wenxin)',
+            yuanbao: 'Tencent Yuanbao',
+            claude: 'Claude',
+            gemini: 'Gemini',
+            grok: 'Grok',
+            copilot: 'Microsoft Copilot',
+            perplexity: 'Perplexity',
+            chatglm: 'Zhipu ChatGLM',
+            tiangong: 'Tiangong AI'
+        },
+        // AI Coding
+        coding: {
+            cursor: 'Cursor',
+            trae: 'TRAE',
+            qoder: 'Qoder',
+            githubCopilot: 'GitHub Copilot',
+            opencode: 'OpenCode',
+            googleAiStudio: 'Google AI Studio',
+            codingPlan: 'ByteDance Coding Plan',
+            zcode: 'ZCode',
+            deepseekHarness: 'DeepSeek Harness'
+        },
+        // AI Image
+        image: {
+            midjourney: 'Midjourney',
+            stableDiffusion: 'Stable Diffusion',
+            leonardo: 'Leonardo',
+            adobeFirefly: 'Adobe Firefly',
+            runway: 'Runway',
+            canva: 'Canva',
+            figma: 'Figma',
+            removeBg: 'RemoveBG',
+            clipdrop: 'Clipdrop',
+            civitai: 'Civitai'
+        },
+        // AI Writing
+        writing: {
+            notionAi: 'Notion AI',
+            grammarly: 'Grammarly',
+            quillbot: 'QuillBot',
+            gamma: 'Gamma',
+            notebooklm: 'NotebookLM',
+            metaso: 'Metaso AI Search',
+            poe: 'Poe'
+        },
+        // AI Office
+        office: {
+            miro: 'Miro',
+            imaCopilot: 'ima copilot',
+            manus: 'Manus'
+        },
+        // AI Media
+        media: {
+            suno: 'Suno',
+            elevenlabs: 'ElevenLabs',
+            veed: 'VEED',
+            reccloud: 'RecCloud',
+            turboscribe: 'TurboScribe',
+            genmo: 'Genmo',
+            kling: 'Kling AI',
+            hailuo: 'Hailuo AI'
+        },
+        // AI Agents
+        agent: {
+            openclaw: 'OpenClaw',
+            kimiclaw: 'KimiClaw',
+            autoclaw: 'AutoClaw',
+            maxclaw: 'MaxClaw',
+            arkclaw: 'ArkClaw',
+            easyclaw: 'EasyClaw',
+            qoderwork: 'QoderWork',
+            miaoda: 'Baidu Miaoda',
+            agentSkills: 'Agent Skills Directory',
+            skillhubQq: 'Tencent SkillHub'
+        },
+        // AI Models & Leaderboards
+        model: {
+            huggingFace: 'Hugging Face',
+            openrouter: 'OpenRouter',
+            arena: 'Arena Leaderboard',
+            artificialAnalysis: 'Artificial Analysis',
+            sweBench: 'SWE-bench'
+        },
+        // More AI tools (Jyshare AI navigation homepage / AI communities and labs)
+        more: {
+            jyshareAi: 'Jyshare AI Navigation',
+            googleLabs: 'Google Labs',
+            skillsmp: 'SkillsMP',
+            characterAi: 'Character AI'
         }
     },
     github: {

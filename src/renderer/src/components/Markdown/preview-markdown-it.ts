@@ -25,6 +25,7 @@ import hljs from 'highlight.js'
 import plantuml from 'markdown-it-plantuml'
 import { full as emoji } from 'markdown-it-emoji'
 import { logger } from '../../common/logger'
+import { installPreviewExtensions } from './preview-markdown-extensions'
 import { mkdocsMaterialPlugin } from './preview-mkdocs-material'
 
 /**
@@ -74,6 +75,8 @@ export function createPreviewMarkdownIt(): InstanceType<typeof MarkdownIt> {
         // 原生 block 插件解析：内容由 markdown-it 递归解析，天然支持嵌套 tab/代码围栏/列表。
         // 只新增 block rule 与 token 渲染规则，不触碰 options.highlight（PF-1 顺序保持不变）。
         .use(mkdocsMaterialPlugin)
+        // 2026-11-15：mkdocs-material / pymdownx 扩展统一装配（批次 A/B/C 插件）
+        .use(installPreviewExtensions)
 
     // 关键顺序：必须在 .use(highlightjs) 之后重新赋值，否则会被插件 core 覆盖（PF-1）
     md.options.highlight = safeHighlight

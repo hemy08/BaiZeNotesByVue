@@ -1,5 +1,103 @@
 # 发布说明 (Release Notes)
 
+## 版本 1.3.5 (2026-11-15)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🧩 菜鸟常用工具插件集成
+
+- 阅读菜鸟工具镜像站（www.jyshare.com）前端工具区源码，将 18 个适合离线使用的常用工具移植为本地插件（插件工具总数 19 → 37，全部按需懒加载）：
+    - **编解码**：Base64 / URL / HTML 实体 / Unicode 与中文互转 / 图片转 Base64
+    - **格式转换**：颜色转换（RGB/HEX/HSL/HSV/CMYK 互转）/ 单位换算（长度 + 存储）/ 人民币大写 / 时间戳 / 进制转换
+    - **文本工具**：繁简互转 / 汉字转拼音 / 字数统计 / 文本比对
+    - **格式化与解析**：JSON 工具（格式化/压缩/转义）/ XML 格式化 / 正则表达式测试
+    - **常用小工具**：随机生成器（密码/字符串/数字/颜色）/ 在线计算器
+- 全部零第三方依赖、纯前端离线可用；修复原站 CMYK→RGB 与 JSON 去转义缺陷，随机数改用 crypto 无偏采样
+- 新增 154 个单元测试用例；SQL 格式化（原站服务端实现）、中国日历等依赖在线服务或大体积库的工具未集成（见实施报告）
+
+</code></pre></blockcode></details>
+
+---
+
+## 版本 1.3.3 (2026-11-15)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### ✨ mkdocs-material 扩展语法（15 项）
+
+- 折叠提示块 `??? note` / `???+`（details，默认展开可配置）
+- 任务列表、高亮 `==`、插入 `^^`、删除 `~~`、critic 标记、上标/下标、键盘按键 `<kbd>`
+- 属性列表（按钮 `.md-button`、对齐、标题 id）、脚注、定义列表
+- Grid cards（`<div class="grid cards" markdown>`，内部 Markdown 递归解析）
+- 代码块增强（`linenums` 行号 / `hl_lines` 高亮行 / `title` 文件名 / 行内高亮）
+- Material 图标 `:material-*:`（内置 264 个常用图标子集）
+- pymdownx.blocks（`/// note` / `/// tabbed` / `/// details`）
+- snippets 文件片段 `--8<-- "file.md"`（相对活动文件、行号区间、安全边界限制）
+- 标签页深链 `#__tabbed_<set>_<n>`（点击自动切换）
+- **插入 → Material 菜单**：15 个语法插入入口 + 统一插入对话框（左侧功能列表 + 数据驱动表单 + 实时 Markdown 预览，点击菜单自动定位对应语法）
+
+### 🧩 工程
+
+- 扩展插件化：3 个独立插件模块 + 统一注册入口，markdown-it 原生 rule 实现
+- 与 DOMPurify 消毒配置完全兼容；snippets 复用既有 IPC 读取通道，无新增通道
+- 扩展相关 270 个测试用例通过；可视化样例：`out/tool-results/mdx-features-preview.html`
+
+</code></pre></blockcode></details>
+
+---
+
+## 版本 1.3.2 (2026-11-15)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### ✨ AI 导航菜单
+
+- 菜单栏新增「AI 导航」顶层菜单（位于「在线」之后、「GitHub」之前）
+- 按 9 个分类收录 **70 个主流 AI 工具入口**，链接整理自菜鸟工具 AI 导航，全部为官方干净地址（https、已去除推广/返利参数）：
+    - 热门 AI（ChatGPT、DeepSeek、豆包、Kimi、通义千问、Claude、Gemini 等 14 项）
+    - AI 编程（Cursor、TRAE、Qoder、GitHub Copilot、OpenCode 等 9 项）
+    - AI 作图（Midjourney、Stable Diffusion、Leonardo、Canva 等 10 项）
+    - AI 写作 / 办公 / 影音 / 智能体 / 模型与榜单 / 更多工具 共 47 项
+- 复用既有安全外开链路，未新增 IPC 通道；菜单相关 205 个用例通过
+
+</code></pre></blockcode></details>
+
+---
+
+## 版本 1.3.1 (2026-11-15)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🔧 系统设置项补充实现
+
+- 系统设置对话框中 9 项「暂无对应功能实现」的禁用设置项已全部实现并启用：
+    - 启动恢复上次文件/目录、开机自启动、记住窗口位置大小、最近文件列表数量
+    - 关闭时最小化到系统托盘（托盘菜单可恢复/退出）
+    - 跟随系统主题（切换系统深浅色即时生效，手动切换主题自动关闭跟随）
+    - 自动备份（按间隔备份活动文件与工作区 .md，按保留数量滚动清理）
+    - 应用主题下拉改为当前主题只读显示 + 「打开主题设置」入口
+- 实现方案与验收见 [17-系统设置补充实现计划](docs/reports/md/17-系统设置补充实现计划.md)
+
+</code></pre></blockcode></details>
+
+---
+
 ## 版本 1.3.0 (2026-11-15)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)

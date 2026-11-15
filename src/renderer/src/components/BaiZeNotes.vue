@@ -103,6 +103,13 @@
             @close="configStore.hideDialog('admonition')"
             @insert="handleDialogInsert"
         />
+        <!-- Material 语法插入：15 项 mkdocs-material 扩展语法，preset 指定打开时选中的语法项 -->
+        <BaiZeDialogs.MaterialSyntaxDialog
+            :visible="configStore.dialogs.materialSyntax.visible"
+            :preset="configStore.dialogs.materialSyntax.preset"
+            @close="configStore.hideDialog('materialSyntax')"
+            @insert="handleDialogInsert"
+        />
         <BaiZeDialogs.MathTextDialog
             :visible="configStore.dialogs.mathText.visible"
             @close="configStore.hideDialog('mathText')"

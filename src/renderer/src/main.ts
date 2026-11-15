@@ -12,6 +12,9 @@ import 'katex/dist/katex.css'
 import '@renderer/styles/material/admonition.css'
 import '@renderer/styles/material/gridcards.css'
 import '@renderer/styles/material/tableset.css'
+import '@renderer/styles/material/md-basic.css'
+import '@renderer/styles/material/md-media.css'
+import '@renderer/styles/material/md-blocks.css'
 import '@imengyu/vue3-context-menu/lib/vue3-context-menu.css'
 
 // 引入 Vue 组件和依赖

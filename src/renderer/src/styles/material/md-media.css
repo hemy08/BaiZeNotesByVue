@@ -1,0 +1,209 @@
+/**
+ * md-media.css
+ * 批次 B：媒体 / 代码块扩展样式（与 preview-md-media.ts 配套）。
+ *
+ * 覆盖：
+ * 1. Grid cards 补充样式（网格骨架复用 styles/material/gridcards.css，这里只补主题色、
+ *    卡片内排版、分隔线、卡片图标尺寸）；
+ * 2. Material 图标（`.mkdocs-icon` / `.md-icon` / 未知图标降级占位）；
+ * 3. 代码块增强（`.highlight` 容器、`.filename` 标题栏、`.line` / `.lineno` 行号、
+ *    `.line.hll` 高亮行）与行内高亮 `code.highlight`。
+ *
+ * 约定：
+ * - 颜色优先走主题变量 `--theme-*`（随 28 套应用主题切换、兼容深浅主题），
+ *   再回退到 mkdocs `--md-*` 变量（admonition.css 已定义）与硬编码浅色兜底；
+ * - 代码块配色沿用既有 `styles/preview_font/atom-one-light.css`（固定浅色代码主题），
+ *   因此代码 chrome（filename / 行号）跟随其浅色配色，不随深色主题反转；
+ * - 行号 `user-select: none`：复制代码时不会把行号混入文本；
+ * - 不引入任何新依赖 / 远程资源。
+ */
+
+.md-typeset {
+    /* 卡片主题色（无主题变量时的 mkdocs 浅色兜底） */
+    --mdx-media-card-border: var(
+        --theme-border-color,
+        var(--md-default-fg-color--lightest, rgba(0, 0, 0, 0.12))
+    );
+    --mdx-media-card-bg: var(--theme-card-background, var(--md-default-bg-color, #ffffff));
+    --mdx-media-text-color: var(--theme-text-color, var(--md-default-fg-color, #2d2d2d));
+    --mdx-media-muted-color: var(
+        --theme-secondary-text-color,
+        var(--md-default-fg-color--light, rgba(0, 0, 0, 0.54))
+    );
+    --mdx-media-code-font:
+        var(--md-code-font-family), 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+/* ============================== 一、Grid cards 补充 ============================== */
+
+/* gridcards.css 的 .grid 使用了固定蓝色文字，这里恢复为主题正文色（可读性） */
+.md-typeset .grid,
+.md-typeset .grid.cards {
+    color: var(--mdx-media-text-color);
+    gap: 0.6rem;
+}
+
+/* 卡片本体：border / radius / hover 阴影使用主题变量，覆盖 gridcards.css 的浅色硬编码 */
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid.cards > ol > li,
+.md-typeset .grid > .card {
+    background-color: var(--mdx-media-card-bg);
+    border: 1px solid var(--mdx-media-card-border);
+    border-radius: 0.4rem;
+    box-shadow: var(--md-shadow-z1, 0 0.2rem 0.5rem rgba(0, 0, 0, 0.05));
+    line-height: 1.6;
+    padding: 0.9rem 1rem;
+}
+
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid.cards > ol > li:hover,
+.md-typeset .grid > .card:hover {
+    border-color: var(--md-primary-fg-color, rgba(0, 0, 0, 0.12));
+    box-shadow: var(--md-shadow-z2, 0 0.2rem 0.5rem rgba(0, 0, 0, 0.12));
+}
+
+/* 卡片内段落 / 列表间距收紧（gridcards.css 已处理首尾元素边距） */
+.md-typeset .grid.cards > ul > li > p,
+.md-typeset .grid.cards > ol > li > p {
+    margin: 0.4em 0;
+}
+
+/* 分隔线：卡片内 hr 走主题边框色，宽度与 gridcards.css 的上下 margin 配合 */
+.md-typeset .grid.cards > ul > li > hr,
+.md-typeset .grid.cards > ol > li > hr,
+.md-typeset .grid > .card > hr {
+    border: 0;
+    border-top: 1px solid var(--mdx-media-card-border);
+    height: 0;
+    margin-bottom: 0.8em;
+    margin-top: 0.8em;
+}
+
+/* 卡片首行里的图标略大，作为卡片视觉锚点 */
+.md-typeset .grid.cards > ul > li > p:first-child .md-icon,
+.md-typeset .grid.cards > ol > li > p:first-child .md-icon,
+.md-typeset .grid > .card > *:first-child .md-icon {
+    height: 1.5em;
+    width: 1.5em;
+}
+
+/* 卡片内链接颜色（沿用主题强调色） */
+.md-typeset .grid.cards a {
+    color: var(--md-typeset-a-color, var(--md-primary-fg-color, #4051b5));
+}
+
+/* ============================== 二、Material 图标 ============================== */
+
+.md-typeset .mkdocs-icon {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    line-height: 1;
+    margin: 0 0.1em;
+    vertical-align: -0.18em;
+}
+
+.md-typeset .md-icon {
+    display: inline-block;
+    fill: currentColor;
+    height: 1.2em;
+    vertical-align: middle;
+    width: 1.2em;
+}
+
+/* 未知图标优雅降级：可见短代码文本 + 虚线提示（不报错、不吞后续文本） */
+.md-typeset .mkdocs-icon--missing {
+    border-bottom: 1px dashed var(--mdx-media-muted-color);
+    color: var(--mdx-media-muted-color);
+    display: inline;
+    font-family: var(--mdx-media-code-font);
+    font-size: 0.85em;
+    margin: 0 0.1em;
+    vertical-align: baseline;
+    white-space: nowrap;
+}
+
+/* ============================== 三、代码块增强 ============================== */
+
+.md-typeset .highlight {
+    border-radius: 0.2rem;
+    margin: 1em 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.md-typeset .highlight .filename {
+    background-color: var(--md-code-bg-color, #f5f5f5);
+    border-bottom: 1px solid var(--md-code-bg-color--light, rgba(0, 0, 0, 0.06));
+    color: var(--md-code-fg-color, #36464e);
+    display: block;
+    font-family: var(--mdx-media-code-font);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.5em 1em;
+    user-select: none;
+}
+
+.md-typeset .highlight .filename + pre {
+    margin-top: 0;
+}
+
+.md-typeset .highlight pre {
+    margin: 0;
+}
+
+.md-typeset .highlight pre > code {
+    display: block;
+    overflow-x: auto;
+    padding: 1em;
+}
+
+/* 行号：固定宽度、右对齐、不参与复制（user-select: none） */
+.md-typeset .highlight .lineno {
+    box-sizing: border-box;
+    color: var(--md-code-hl-comment-color, var(--md-default-fg-color--lighter, #a0a1a7));
+    display: inline-block;
+    min-width: 2.75em;
+    padding-right: 0.75em;
+    text-align: right;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* 每一行都是块级 span：保证 hll 背景铺满整行、块级复制时按行换行 */
+.md-typeset .highlight .line {
+    display: block;
+    line-height: 1.5;
+    min-height: 1.5em;
+}
+
+/* hl_lines 高亮行 */
+.md-typeset .highlight .line.hll {
+    background-color: var(--md-code-hl-color--light, rgba(66, 135, 255, 0.1));
+    box-shadow: inset 2px 0 0 var(--md-code-hl-color, #4287ff);
+}
+
+/* ============================== 四、行内高亮（inlinehilite） ============================== */
+
+.md-typeset code.highlight {
+    background-color: var(--md-code-bg-color, #f5f5f5);
+    border-radius: 0.1rem;
+    color: var(--md-code-fg-color, #36464e);
+    padding: 0.1em 0.35em;
+}
+
+/* ============================== 五、窄屏适配 ============================== */
+
+@media screen and (max-width: 44.9375em) {
+    .md-typeset .grid.cards > ul > li,
+    .md-typeset .grid.cards > ol > li,
+    .md-typeset .grid > .card {
+        padding: 0.7rem 0.8rem;
+    }
+
+    .md-typeset .highlight .lineno {
+        min-width: 2.25em;
+        padding-right: 0.5em;
+    }
+}

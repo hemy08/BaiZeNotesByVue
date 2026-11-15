@@ -56,8 +56,8 @@ function collectLabelKeys(items: BaiZeMenuEntry[]): string[] {
 }
 
 describe('menu-config', () => {
-    it('should expose menuMap as a vue ref with 11 top-level menus', () => {
-        expect(menuMap.value.length).toBe(11)
+    it('should expose menuMap as a vue ref with 12 top-level menus', () => {
+        expect(menuMap.value.length).toBe(12)
     })
 
     it('should declare the expected top-level labels in order (zh-CN renders verbatim)', () => {
@@ -72,6 +72,7 @@ describe('menu-config', () => {
             '工具',
             '插件',
             '在线',
+            'AI 导航',
             'GitHub',
             '帮助'
         ])
@@ -89,6 +90,7 @@ describe('menu-config', () => {
             'Tools',
             'Plugins',
             'Online',
+            'AI Navigation',
             'GitHub',
             'Help'
         ])
@@ -281,12 +283,14 @@ describe('menu-config', () => {
     it('should declare plugins menu with encrypt/network/info groups (FE-16：空组已剔除)', () => {
         const pluginsMenu = menuMap.value.find((item) => displayText(item) === '插件')!
         const labels = pluginsMenu.submenu!.map((item) => displayText(item))
-        // FE-16：语言语法关键字对照表 / 各类转换器（4 个空子组）等空组不再渲染
+        // FE-16：无数据的空组（语言关键字 / 数据和命令 / 大小写转换）不再渲染
         expect(labels).not.toContain('语言语法关键字对照表')
-        expect(labels).not.toContain('各类转换器')
         expect(labels).not.toContain('数据和命令对照表')
-        // 仍有数据的组保留
+        expect(labels).not.toContain('大小写转换')
+        // 仍有数据的组保留；1.3.5 jyshare 集成后转换器组与常用小工具组恢复展示
         expect(labels).toContain('加解密插件')
+        expect(labels).toContain('各类转换器')
+        expect(labels).toContain('常用小工具')
         expect(labels).toContain('网络计算插件')
         expect(labels).toContain('常用对照表')
         const encrypt = pluginsMenu.submenu!.find((item) => displayText(item) === '加解密插件')
@@ -370,6 +374,73 @@ describe('menu-config', () => {
         })
     })
 
+    // task-50：AI 导航菜单——数据源为菜鸟 AI 导航（https://www.jyshare.com/ai/）的 70 条精选链接，
+    // 放在「在线」之后、「GitHub」之前；9 组 + 70 个叶子全部使用 baize:menu:ai:<group>:<id> 动作 id。
+    it('should declare ai menu after online with nine groups and seventy action leaves (task-50)', () => {
+        const aiMenu = menuMap.value.find((item) => item.labelKey === 'menu.ai.label')!
+        expect(aiMenu).toBeDefined()
+        expect(aiMenu.submenu).toHaveLength(9)
+
+        const groupLabels = aiMenu.submenu!.map((item) => displayText(item))
+        expect(groupLabels).toEqual([
+            '热门 AI',
+            'AI 编程',
+            'AI 作图',
+            'AI 写作',
+            'AI 办公',
+            'AI 影音',
+            'AI 智能体',
+            'AI 模型与榜单',
+            '更多 AI 工具'
+        ])
+        const groupLabelsEn = aiMenu.submenu!.map((item) => displayText(item, 'en-US'))
+        expect(groupLabelsEn).toEqual([
+            'Popular AI',
+            'AI Coding',
+            'AI Image',
+            'AI Writing',
+            'AI Office',
+            'AI Media',
+            'AI Agents',
+            'AI Models & Leaderboards',
+            'More AI Tools'
+        ])
+
+        // 叶子数与分组分布固定（14 / 9 / 10 / 7 / 3 / 8 / 10 / 5 / 4 = 70）
+        expect(aiMenu.submenu!.map((group) => group.submenu!.length)).toEqual([
+            14, 9, 10, 7, 3, 8, 10, 5, 4
+        ])
+        const actions = collectActions(aiMenu.submenu!)
+        expect(actions).toHaveLength(70)
+        expect(actions.every((action) => action.startsWith('baize:menu:ai:'))).toBe(true)
+        expect(new Set(actions).size).toBe(70)
+
+        // 首末条目抽检 labelKey → 中英文案 + 动作 id 契约
+        const hot = aiMenu.submenu![0]
+        expect(resolved(hot.submenu![0])).toEqual({
+            label: 'ChatGPT',
+            menuAction: 'baize:menu:ai:hot:chatgpt'
+        })
+        expect(resolved(hot.submenu![0], 'en-US')).toEqual({
+            label: 'ChatGPT',
+            menuAction: 'baize:menu:ai:hot:chatgpt'
+        })
+        const more = aiMenu.submenu![8]
+        expect(resolved(more.submenu![0])).toEqual({
+            label: '菜鸟 AI 导航',
+            menuAction: 'baize:menu:ai:more:jyshare-ai'
+        })
+        expect(resolved(more.submenu![0], 'en-US')).toEqual({
+            label: 'Jyshare AI Navigation',
+            menuAction: 'baize:menu:ai:more:jyshare-ai'
+        })
+
+        // 顺序：紧跟在「在线」之后、「GitHub」之前
+        const topLabels = menuMap.value.map((item) => displayText(item))
+        expect(topLabels.indexOf('AI 导航')).toBe(topLabels.indexOf('在线') + 1)
+        expect(topLabels.indexOf('AI 导航')).toBe(topLabels.indexOf('GitHub') - 1)
+    })
+
     it('should declare github menu with five project entries', () => {
         const gitHubMenu = menuMap.value.find((item) => displayText(item) === 'GitHub')!
         expect(gitHubMenu.submenu).toHaveLength(5)
@@ -382,16 +453,16 @@ describe('menu-config', () => {
     it('should declare help menu with release notes ordered newest first', () => {
         const helpMenu = menuMap.value.find((item) => displayText(item) === '帮助')!
         const releases = helpMenu.submenu!.find((item) => displayText(item) === '版本发布')
-        expect(releases?.submenu).toHaveLength(12)
+        expect(releases?.submenu).toHaveLength(13)
         expect(resolved(releases!.submenu![0])).toEqual({
+            label: 'v1.3.5',
+            menuAction: 'baize:menu:help:release-notes:v1.3.5'
+        })
+        expect(resolved(releases!.submenu![1])).toEqual({
             label: 'v1.3.0',
             menuAction: 'baize:menu:help:release-notes:v1.3.0'
         })
-        expect(resolved(releases!.submenu![1])).toEqual({
-            label: 'v1.2.2',
-            menuAction: 'baize:menu:help:release-notes:v1.2.2'
-        })
-        expect(resolved(releases!.submenu![11])).toEqual({
+        expect(resolved(releases!.submenu![12])).toEqual({
             label: 'v1.0.0',
             menuAction: 'baize:menu:help:release-notes:v1.0.0'
         })
@@ -445,8 +516,74 @@ describe('menu-config', () => {
             (item) => item.labelKey === 'menu.insert.material.label'
         )!
         expect(materialGroup.submenu!.map((item) => item.labelKey)).toEqual([
-            'menu.insert.material.admonition'
+            'menu.insert.material.admonition',
+            'menu.insert.material.collapsible',
+            'menu.insert.material.taskList',
+            'menu.insert.material.highlight',
+            'menu.insert.material.insertDelete',
+            'menu.insert.material.supSub',
+            'menu.insert.material.keys',
+            'menu.insert.material.attrList',
+            'menu.insert.material.footnote',
+            'menu.insert.material.definitionList',
+            'menu.insert.material.gridCards',
+            'menu.insert.material.codeBlock',
+            'menu.insert.material.icon',
+            'menu.insert.material.blocks',
+            'menu.insert.material.snippet',
+            'menu.insert.material.tabLink'
         ])
+    })
+
+    // mkdocs-material 扩展语法插入入口（15 项）：Material 子组共 16 项（Admonition + 15 项语法）。
+    // 数据契约：labelKey 为 menu.insert.material.<camelCase>；menuAction 为
+    // baize:menu:insert:material:<featureId>（featureId 顺序即菜单顺序）。
+    it('should declare 16 material entries in feature order with resolvable zh/en labels', () => {
+        const insertMenu = menuMap.value.find((item) => item.labelKey === 'menu.insert.label')!
+        const materialGroup = insertMenu.submenu!.find(
+            (item) => item.labelKey === 'menu.insert.material.label'
+        )!
+        const items = materialGroup.submenu!
+
+        // 顺序契约：admonition 保持首位，其后为 15 项新语法（与任务约定顺序一致）
+        expect(items).toHaveLength(16)
+        expect(items.map((item) => item.menuAction)).toEqual([
+            'baize:menu:insert:material:admonition',
+            'baize:menu:insert:material:collapsible',
+            'baize:menu:insert:material:task-list',
+            'baize:menu:insert:material:highlight',
+            'baize:menu:insert:material:insert-delete',
+            'baize:menu:insert:material:sup-sub',
+            'baize:menu:insert:material:keys',
+            'baize:menu:insert:material:attr-list',
+            'baize:menu:insert:material:footnote',
+            'baize:menu:insert:material:definition-list',
+            'baize:menu:insert:material:grid-cards',
+            'baize:menu:insert:material:code-block',
+            'baize:menu:insert:material:icon',
+            'baize:menu:insert:material:blocks',
+            'baize:menu:insert:material:snippet',
+            'baize:menu:insert:material:tab-link'
+        ])
+
+        // labelKey 全部可在中英词典解析（i18n-dict 用例覆盖键存在性，这里做菜单渲染态显式断言）
+        for (const item of items) {
+            expect(item.labelKey).toBeDefined()
+            expect(translate(item.labelKey!, 'zh-CN')).not.toBe(item.labelKey)
+            expect(translate(item.labelKey!, 'en-US')).not.toBe(item.labelKey)
+        }
+        // 首末项抽检中英文案
+        expect(displayText(items[1])).toBe('折叠提示块')
+        expect(displayText(items[15])).toBe('标签页深链')
+        expect(displayText(items[1], 'en-US')).toBe('Collapsible admonition')
+        expect(displayText(items[15], 'en-US')).toBe('Tab deep link')
+
+        // 15 个新动作 id 全局唯一且以 material: 前缀（全树唯一性另由通用用例守护）
+        const materialActions = collectActions(menuMap.value).filter((action) =>
+            action.startsWith('baize:menu:insert:material:')
+        )
+        expect(materialActions).toHaveLength(16)
+        expect(new Set(materialActions).size).toBe(16)
     })
 
     // FE-28：菜单树中不允许残留「结构性」硬编码中文/英文标签——

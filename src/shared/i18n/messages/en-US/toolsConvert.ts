@@ -5,17 +5,40 @@
 export default {
     // ==================== Convert tools ====================
     base: {
-        title: 'Integer base converter',
+        title: 'Base Converter',
         description:
-            'Convert numbers between different bases (decimal, hexadecimal, binary, octal, base64…)'
+            'Convert numbers between bases 2-36, supporting integers, fractions (20-digit precision) and negative values.',
+        fromBaseLabel: 'From base',
+        toBaseLabel: 'To base',
+        customPlaceholder: 'Custom 2-36',
+        inputPlaceholder: 'Enter a number to convert...',
+        resultLabel: 'Result:',
+        swapButton: 'Swap bases',
+        copyButton: 'Copy',
+        invalidInput: 'Input contains characters not valid in base {base}'
     },
     case: {
         title: 'Case converter',
         description: 'Change the case of a string and choose between different case styles'
     },
     color: {
-        title: 'Color picker',
-        description: 'Convert colors between different formats (hex, rgb, hsl, and CSS names)'
+        title: 'Color Converter',
+        description:
+            'Convert colors between HEX, RGB, HSL, HSV and CMYK formats; editing any format updates all the others.',
+        hex: 'HEX',
+        rgb: 'RGB',
+        hsl: 'HSL',
+        hsv: 'HSV',
+        cmyk: 'CMYK',
+        hue: 'Hue H (0-360)',
+        saturation: 'Saturation S (0-100)',
+        lightness: 'Lightness L (0-100)',
+        value: 'Value V (0-100)',
+        cyan: 'Cyan C (0-100)',
+        magenta: 'Magenta M (0-100)',
+        yellow: 'Yellow Y (0-100)',
+        black: 'Black K (0-100)',
+        invalidInput: 'Invalid color input value'
     },
     date: {
         title: 'Date & time converter',
@@ -220,5 +243,275 @@ export default {
         nameLabel: 'Name:',
         copyButton: 'Copy',
         refreshButton: 'Refresh'
+    },
+    base64: {
+        title: 'Base64 Encode/Decode',
+        description:
+            'Encode text into Base64 (UTF-8 first), or decode Base64 back into text; invalid characters are ignored when decoding.',
+        inputLabel: 'Plain text:',
+        inputPlaceholder: 'Enter the text to encode/decode...',
+        outputLabel: 'Result:',
+        outputPlaceholder: 'Encode/decode result...',
+        encodeButton: 'Encode',
+        decodeButton: 'Decode',
+        copyButton: 'Copy',
+        clearButton: 'Clear'
+    },
+    urlCodec: {
+        title: 'URL Encode/Decode',
+        description:
+            'Encode and decode text with URL percent-encoding (UTF-8) via encodeURIComponent/decodeURIComponent.',
+        inputLabel: 'Plain text:',
+        inputPlaceholder: 'Enter the text to encode/decode...',
+        outputLabel: 'Result:',
+        outputPlaceholder: 'Encode/decode result...',
+        encodeButton: 'Encode',
+        decodeButton: 'Decode',
+        copyButton: 'Copy',
+        clearButton: 'Clear',
+        decodeErrorAlert: 'Decode failed, the input contains an invalid URL encoding: {error}'
+    },
+    htmlCodec: {
+        title: 'HTML Entity Encode/Decode',
+        description:
+            'Encoding escapes & < > " \'; decoding supports common named entities (&amp; &lt; &gt; &quot; &#39; &nbsp; …) and numeric entities &#nn; / &#xhh;.',
+        inputLabel: 'Plain text:',
+        inputPlaceholder: 'Enter the text to encode/decode...',
+        outputLabel: 'Result:',
+        outputPlaceholder: 'Encode/decode result...',
+        encodeButton: 'Encode',
+        decodeButton: 'Decode',
+        copyButton: 'Copy',
+        clearButton: 'Clear'
+    },
+    unicode: {
+        title: 'Unicode & Chinese Converter',
+        description:
+            'Convert between Chinese text and \\uXXXX Unicode escapes, and between ASCII and &#nnn; numeric entities.',
+        inputLabel: 'Plain text:',
+        inputPlaceholder: 'Enter the text to convert...',
+        outputLabel: 'Result:',
+        outputPlaceholder: 'Conversion result...',
+        toUnicodeButton: 'Text to \\uXXXX',
+        toTextButton: '\\uXXXX to Text',
+        toEntityButton: 'Text to &#Entities',
+        entityToTextButton: '&#Entities to Text',
+        copyButton: 'Copy',
+        clearButton: 'Clear'
+    },
+    imageBase64: {
+        title: 'Image to Base64',
+        description:
+            'Choose an image (up to 20MB) to convert it into Base64/DataURL; you can also decode Base64 back into an image preview.',
+        chooseFileLabel: 'Choose image:',
+        chooseFileButton: 'Choose File',
+        base64Label: 'Base64 content:',
+        base64Placeholder:
+            'Base64 is generated after choosing an image, or paste Base64/DataURL to preview...',
+        decodeButton: 'Base64 to Image',
+        copyButton: 'Copy',
+        clearButton: 'Clear',
+        previewLabel: 'Image Preview',
+        sizeLimitAlert: 'The image exceeds the 20MB limit, please choose a smaller one.',
+        emptyInputAlert: 'Please choose an image or enter Base64 content first.',
+        readFailedAlert: 'Failed to read the image: {error}',
+        decodeFailedAlert: 'Base64 decode failed: {error}'
+    },
+    unit: {
+        title: 'Unit Converter',
+        description:
+            'Convert length units (metric/imperial/astronomical/Chinese/typographic) and storage units (binary 1024 / SI decimal).',
+        lengthTab: 'Length',
+        storageTab: 'Storage',
+        valueLabel: 'Value:',
+        fromLabel: 'From:',
+        toLabel: 'To:',
+        resultLabel: 'Result:',
+        modeLabel: 'System:',
+        binary: 'Binary (1024)',
+        si: 'SI decimal (1000)',
+        invalidValue: 'Please enter a valid number',
+        units: {
+            mm: 'Millimeter (mm)',
+            cm: 'Centimeter (cm)',
+            dm: 'Decimeter (dm)',
+            m: 'Meter (m)',
+            km: 'Kilometer (km)',
+            um: 'Micrometer (μm)',
+            nm: 'Nanometer (nm)',
+            pm: 'Picometer (pm)',
+            inch: 'Inch (in)',
+            foot: 'Foot (ft)',
+            yard: 'Yard (yd)',
+            mile: 'Mile (mi)',
+            nmi: 'Nautical mile (nmi)',
+            ly: 'Light year (ly)',
+            au: 'Astronomical unit (au)',
+            pc: 'Parsec (pc)',
+            pt: 'Point (pt)',
+            px: 'Pixel (px)',
+            zhang: 'Zhang',
+            chi: 'Chi',
+            cun: 'Cun',
+            fen: 'Fen',
+            li2: 'Li (1/3000 m)',
+            li3: 'Li (Chinese mile)'
+        }
+    },
+    rmb: {
+        title: 'RMB Uppercase Converter',
+        description:
+            'Convert RMB numeric amounts into Chinese uppercase (supports negative and decimal values, precise to cents).',
+        inputLabel: 'Amount:',
+        placeholder: 'Enter an amount, e.g. 100.5',
+        resultLabel: 'Uppercase:',
+        convertButton: 'Convert',
+        copyButton: 'Copy'
+    },
+    timestamp: {
+        title: 'Timestamp Converter',
+        description:
+            'Convert between Unix timestamps and local date-time, with second/millisecond toggle and live current timestamp (local time zone).',
+        unitLabel: 'Unit:',
+        seconds: 'Seconds',
+        milliseconds: 'Milliseconds',
+        currentLabel: 'Current timestamp:',
+        copyButton: 'Copy',
+        tsToLocalTitle: 'Timestamp → Local time',
+        timestampLabel: 'Timestamp:',
+        tsPlaceholder: 'e.g. 1700000000',
+        convertButton: 'Convert',
+        localTimeLabel: 'Local time:',
+        localToTsTitle: 'Local time → Timestamp',
+        dateTimeLabel: 'Date-time:',
+        dateTimePlaceholder: 'YYYY-MM-DD HH:mm:ss'
+    },
+    random: {
+        title: 'Random Generator',
+        description:
+            'Generate passwords, random strings, random numbers and random colors using unbiased crypto.getRandomValues sampling.',
+        tabs: {
+            password: 'Password',
+            string: 'String',
+            number: 'Numbers',
+            color: 'Color'
+        },
+        passwordLength: 'Length (4-128):',
+        uppercase: 'Uppercase (A-Z)',
+        lowercase: 'Lowercase (a-z)',
+        numbers: 'Numbers (0-9)',
+        symbols: 'Symbols (!@#$...)',
+        generateButton: 'Generate',
+        copyButton: 'Copy',
+        stringLength: 'Length:',
+        charsetLabel: 'Charset:',
+        charsets: {
+            alnum: 'Letters + digits',
+            alpha: 'Letters',
+            lower: 'Lowercase letters',
+            upper: 'Uppercase letters',
+            digits: 'Digits'
+        },
+        customCharset: 'Custom charset:',
+        minLabel: 'Min:',
+        maxLabel: 'Max:',
+        countLabel: 'Count (≤100):',
+        colorModeLabel: 'Mode:',
+        vividColor: 'Vivid (fixed S/V)',
+        randomBrightness: 'Random brightness'
+    },
+    calculator: {
+        title: 'Calculator',
+        description:
+            'Standard calculator: addition, subtraction, multiplication, division, modulo, power and parentheses, evaluated with a dual-stack algorithm without eval.',
+        clear: 'Clear',
+        backspace: 'Backspace',
+        equal: '='
+    },
+    chineseText: {
+        title: 'Chinese text tool',
+        description:
+            'Convert between Traditional and Simplified Chinese; convert Han characters to pinyin (no tones, first reading for polyphones).',
+        tabConvert: 'Traditional ⇄ Simplified',
+        tabPinyin: 'Hanzi to Pinyin',
+        inputPlaceholder: 'Enter text...',
+        outputPlaceholder: 'Conversion result...',
+        toTraditional: 'To Traditional',
+        toSimplified: 'To Simplified',
+        toPinyin: 'To Pinyin',
+        toFirstLetter: 'To First Letters',
+        copyButton: 'Copy'
+    },
+    wordCount: {
+        title: 'Word count',
+        description:
+            'Count Chinese characters, punctuation, letters, digits and paragraphs in real time.',
+        inputPlaceholder: 'Type or paste text here...',
+        chineseChars: 'Chinese characters',
+        chinesePunctuation: 'Chinese punctuation',
+        letters: 'Letters',
+        digits: 'Digits',
+        englishPunctuation: 'English punctuation',
+        totalChars: 'Total characters',
+        noSpaceChars: 'Chars without spaces',
+        paragraphs: 'Paragraphs',
+        clearButton: 'Clear'
+    },
+    textDiff: {
+        title: 'Text diff',
+        description:
+            'Compare two texts line by line: added lines are marked with +, removed lines with -.',
+        originalLabel: 'Original text',
+        modifiedLabel: 'Modified text',
+        originalPlaceholder: 'Enter the original text...',
+        modifiedPlaceholder: 'Enter the modified text...',
+        compareButton: 'Compare',
+        tooLarge: 'Text too large (total lines × characters > 4M): the two sides differ.'
+    },
+    jsonTool: {
+        title: 'JSON tool',
+        description: 'Format, minify, escape and unescape JSON.',
+        tabFormat: 'Format',
+        tabMinify: 'Minify',
+        tabEscape: 'Escape / Unescape',
+        inputPlaceholder: 'Enter JSON text...',
+        outputPlaceholder: 'Result...',
+        formatButton: 'Format',
+        minifyButton: 'Minify',
+        escapeButton: 'Escape',
+        unescapeButton: 'Unescape',
+        copyButton: 'Copy',
+        errorPrefix: 'Error: '
+    },
+    xmlFormatter: {
+        title: 'XML formatter',
+        description: 'Format and minify XML (comments, CDATA and text content preserved).',
+        tabFormat: 'Format',
+        tabMinify: 'Minify',
+        indentLabel: 'Indent spaces: ',
+        inputPlaceholder: 'Enter XML text...',
+        outputPlaceholder: 'Result...',
+        formatButton: 'Format',
+        minifyButton: 'Minify',
+        copyButton: 'Copy',
+        errorPrefix: 'Error: '
+    },
+    regexTester: {
+        title: 'Regex tester',
+        description:
+            'Test regex matching and replacement on the main thread (d/g/i/m/s/u/v/y; u and v are exclusive).',
+        patternLabel: 'Pattern',
+        flagsLabel: 'Flags',
+        inputLabel: 'Test text',
+        replacementLabel: 'Replacement',
+        testButton: 'Test',
+        replaceButton: 'Replace',
+        matchCount: 'Matches',
+        emptyMatch: '(empty)',
+        truncated: 'Match count reached the limit of 5000; results were truncated.',
+        uvExclusive:
+            'Flags u and v are exclusive and cannot be enabled together (the other one was unchecked).',
+        errorPrefix: 'Error: ',
+        replaceOutputLabel: 'Replacement result'
     }
 }

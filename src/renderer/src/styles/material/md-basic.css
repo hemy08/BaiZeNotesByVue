@@ -1,0 +1,238 @@
+/**
+ * mkdocs-material 扩展样式（md-basic.css）
+ * 批次 A「标准 Markdown 扩展」视觉样式：折叠提示块 ???、任务列表、mark/ins/del、
+ * kbd 键盘按键、上下标、脚注、定义列表、attr_list 按钮（.md-button）。
+ *
+ * 约定：
+ * - 颜色一律走 mkdocs-material CSS 变量（由 styles/material/admonition.css 的 :root 提供），
+ *   不硬编码单一主题色，深浅色主题切换时自动跟随；
+ * - 折叠提示块复用 admonition.css 已有的 details/summary 图标与类型配色，这里只做
+ *   details 容器尺寸归一化与交互（summary 可点击、隐藏浏览器默认三角标记）；
+ * - 选择器统一以 `.md-typeset` 作用域前缀（预览容器 class），避免影响应用其它区域。
+ */
+
+/* ============================== 一、折叠提示块 ??? ============================== */
+
+/* admonition.css 把 details 与 summary 合并进了同一条 padding/margin 规则，
+ * 这里对 details.admonition 做尺寸归一化（更高优先级覆盖），恢复卡片的正常外边距。 */
+.md-typeset details.admonition {
+    margin: 1.5625em 0;
+    padding: 0 0.6rem;
+    font-size: 0.94rem;
+    font-weight: 400;
+}
+
+.md-typeset details.admonition > summary.admonition-title {
+    cursor: pointer;
+    font-weight: 700;
+    list-style: none;
+    margin: 0 -0.6rem;
+}
+
+/* 隐藏浏览器默认的折叠三角，统一使用 admonition 的类型图标 */
+.md-typeset details.admonition > summary.admonition-title::-webkit-details-marker {
+    display: none;
+}
+
+.md-typeset details.admonition > summary.admonition-title::marker {
+    content: '';
+}
+
+.md-typeset details.admonition > summary.admonition-title:focus-visible {
+    outline: 0.1rem solid var(--md-accent-fg-color);
+    outline-offset: -0.1rem;
+}
+
+.md-typeset details.admonition[open] > summary.admonition-title {
+    margin-bottom: 0.6rem;
+}
+
+.md-typeset details.admonition > :last-child {
+    margin-bottom: 0.6rem;
+}
+
+/* ============================== 二、任务列表 ============================== */
+
+/** 任务列表项去掉项目符号（checkbox 本身即项目标记） */
+.md-typeset li.task-list-item {
+    list-style: none;
+}
+
+.md-typeset li.task-list-item > input[type='checkbox'],
+.md-typeset li.task-list-item > p > input[type='checkbox'] {
+    width: 1em;
+    height: 1em;
+    margin: 0 0.45em 0 0;
+    vertical-align: -0.1em;
+    accent-color: var(--md-primary-fg-color);
+    cursor: default;
+}
+
+/* 松列表（多段落任务项）首段 checkbox 与文本首行对齐 */
+.md-typeset li.task-list-item > p {
+    margin-bottom: 0.3rem;
+}
+
+.md-typeset li.task-list-item > p:last-child {
+    margin-bottom: 0;
+}
+
+/* ============================== 三、高亮 / 插入 / 删除 ============================== */
+
+.md-typeset mark {
+    background-color: var(--md-typeset-mark-color);
+    color: inherit;
+}
+
+.md-typeset ins {
+    background-color: var(--md-typeset-ins-color);
+    text-decoration: none;
+}
+
+.md-typeset del {
+    background-color: var(--md-typeset-del-color);
+}
+
+/* critic 评论标记：隐藏不显示（hidden 属性兜底，便于其它主题/环境同样不可见） */
+.md-typeset .critic.comment {
+    display: none;
+}
+
+/* ============================== 四、上标 / 下标 ============================== */
+
+.md-typeset sub,
+.md-typeset sup {
+    font-size: 0.75em;
+    line-height: 0;
+    margin-left: 0.1em;
+    position: relative;
+    vertical-align: baseline;
+}
+
+.md-typeset sub {
+    bottom: -0.25em;
+}
+
+.md-typeset sup {
+    top: -0.5em;
+}
+
+/* ============================== 五、键盘按键 kbd ============================== */
+
+.md-typeset kbd {
+    background-color: var(--md-typeset-kbd-color);
+    border-radius: 0.1rem;
+    box-shadow:
+        0 0.1rem 0 0.05rem var(--md-typeset-kbd-border-color),
+        0 0.1rem 0 var(--md-typeset-kbd-border-color),
+        0 -0.1rem 0 0.05rem var(--md-typeset-kbd-accent-color) inset;
+    color: var(--md-default-fg-color);
+    display: inline-block;
+    font-size: 0.75em;
+    padding: 0 0.4rem;
+    vertical-align: text-top;
+}
+
+/* ============================== 六、脚注 ============================== */
+
+.md-typeset sup.footnote-ref {
+    font-size: 0.75em;
+    font-weight: 700;
+    margin-left: 0;
+    position: relative;
+    top: -0.5em;
+    vertical-align: baseline;
+}
+
+.md-typeset sup.footnote-ref a {
+    text-decoration: none;
+}
+
+.md-typeset .footnotes {
+    border-top: 0.05rem solid var(--md-default-fg-color--lightest);
+    color: var(--md-default-fg-color--light);
+    font-size: 0.64rem;
+    margin-top: 2rem;
+    padding-top: 0.6rem;
+}
+
+.md-typeset .footnotes ol {
+    margin: 0;
+    padding-left: 1.2rem;
+}
+
+.md-typeset .footnotes li {
+    margin: 0.3rem 0;
+    transition: color 125ms;
+}
+
+.md-typeset .footnotes li:target {
+    color: var(--md-default-fg-color);
+}
+
+.md-typeset .footnotes a[href^='#fnref'] {
+    margin-left: 0.25em;
+    text-decoration: none;
+}
+
+.md-typeset .footnotes a[href^='#fnref']:hover {
+    color: var(--md-accent-fg-color);
+}
+
+/* ============================== 七、定义列表 ============================== */
+
+.md-typeset dl {
+    margin: 1em 0;
+}
+
+.md-typeset dt {
+    font-weight: 700;
+    margin-top: 0.6em;
+}
+
+.md-typeset dd {
+    margin: 0.2em 0 0.6em 1.5em;
+}
+
+.md-typeset dd > :last-child {
+    margin-bottom: 0.3em;
+}
+
+/* ============================== 八、按钮 .md-button（attr_list） ============================== */
+
+.md-typeset .md-button {
+    border: 0.1rem solid var(--md-primary-fg-color);
+    border-radius: 0.2rem;
+    color: var(--md-primary-fg-color);
+    cursor: pointer;
+    display: inline-block;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 0.625em 2em;
+    text-decoration: none;
+    transition:
+        color 125ms,
+        background-color 125ms,
+        border-color 125ms;
+}
+
+.md-typeset .md-button:focus,
+.md-typeset .md-button:hover {
+    background-color: var(--md-primary-fg-color);
+    border-color: var(--md-primary-fg-color);
+    color: var(--md-primary-bg-color);
+    text-decoration: none;
+}
+
+.md-typeset .md-button--primary {
+    background-color: var(--md-primary-fg-color);
+    border-color: var(--md-primary-fg-color);
+    color: var(--md-primary-bg-color);
+}
+
+.md-typeset .md-button--primary:focus,
+.md-typeset .md-button--primary:hover {
+    background-color: var(--md-accent-fg-color);
+    border-color: var(--md-accent-fg-color);
+    color: var(--md-accent-bg-color);
+}

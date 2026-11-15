@@ -145,3 +145,118 @@ export const githubMenuHandlers = {
     'plane-project': () => OpenOnlineWebPage(GITHUB_PLANE),
     openproject: () => OpenOnlineWebPage(GITHUB_OPENPROJECT)
 }
+
+// ============ AI 导航（task-50） ============
+// 数据源：菜鸟 AI 导航（https://www.jyshare.com/ai/）精选 70 条核心条目（2026-11-15 核对页面）。
+// 约定：
+// 1) 统一官方干净地址：去掉 utm_* / cps_key / invitecode / redirect 等推广或返利参数；
+// 2) 全部使用 https（菜单末跳统一 OpenOnlineWebPage 打开内置在线网页窗口）；
+// 3) 全菜单 URL 唯一（tests/unit/menu-ipc-trees.test.ts 守护）；
+// 4) URL 单一真源在主进程：渲染层菜单树（menu-config.ts 的 aiMenuGroups）只存 labelKey 与
+//    menuAction，不重复存 URL，避免两进程两份 URL 漂移。
+// 动作 id 契约：baize:menu:ai:<group>:<tool-id>，与 menu-config.ts 的 aiMenuGroups 一一对应，
+// 由 menu-handle.ts 的 ai 域按路径命中，复用既有 IPC.MENU.ACTION 通道（未新增 IPC 通道）。
+export const aiMenuUrlMaps: Record<string, Record<string, string>> = {
+    hot: {
+        chatgpt: 'https://chat.openai.com/',
+        deepseek: 'https://www.deepseek.com/',
+        doubao: 'https://www.doubao.com/',
+        kimi: 'https://www.kimi.com/',
+        tongyi: 'https://www.tongyi.com/',
+        wenxin: 'https://yiyan.baidu.com/',
+        yuanbao: 'https://yuanbao.tencent.com/',
+        claude: 'https://claude.ai/',
+        gemini: 'https://gemini.google.com/',
+        grok: 'https://grok.com/',
+        copilot: 'https://copilot.microsoft.com/',
+        perplexity: 'https://www.perplexity.ai/',
+        chatglm: 'https://chatglm.cn/',
+        tiangong: 'https://www.tiangong.cn/'
+    },
+    coding: {
+        cursor: 'https://www.cursor.so/',
+        trae: 'https://www.trae.cn/',
+        qoder: 'https://qoder.com/',
+        'github-copilot': 'https://github.com/features/copilot',
+        opencode: 'https://opencode.ai/',
+        'google-ai-studio': 'https://aistudio.google.com/',
+        'coding-plan': 'https://www.volcengine.com/activity/codingplan',
+        zcode: 'https://zcode.z.ai/',
+        'deepseek-harness': 'https://www.deepseek.com/harness'
+    },
+    image: {
+        midjourney: 'https://www.midjourney.com/home',
+        'stable-diffusion': 'https://stability.ai/',
+        leonardo: 'https://leonardo.ai/',
+        'adobe-firefly': 'https://firefly.adobe.com/',
+        runway: 'https://runwayml.com/',
+        canva: 'https://www.canva.com/',
+        figma: 'https://www.figma.com/',
+        'remove-bg': 'https://www.remove.bg/',
+        clipdrop: 'https://clipdrop.co/',
+        civitai: 'https://civitai.com/'
+    },
+    writing: {
+        'notion-ai': 'https://www.notion.so/',
+        grammarly: 'https://www.grammarly.com/',
+        quillbot: 'https://quillbot.com/',
+        gamma: 'https://gamma.app/',
+        notebooklm: 'https://notebooklm.google.com/',
+        metaso: 'https://metaso.cn/',
+        poe: 'https://poe.com/'
+    },
+    office: {
+        miro: 'https://miro.com/',
+        'ima-copilot': 'https://ima.qq.com/',
+        manus: 'https://manus.im/'
+    },
+    media: {
+        suno: 'https://suno.com/',
+        elevenlabs: 'https://elevenlabs.io/',
+        veed: 'https://www.veed.io/',
+        reccloud: 'https://reccloud.com/',
+        turboscribe: 'https://turboscribe.ai/',
+        genmo: 'https://www.genmo.ai/',
+        kling: 'https://klingai.kuaishou.com/',
+        hailuo: 'https://hailuoai.com/'
+    },
+    agent: {
+        openclaw: 'https://openclaw.ai/',
+        kimiclaw: 'https://www.kimi.com/bot',
+        autoclaw: 'https://autoglm.zhipuai.cn/autoclaw/',
+        maxclaw: 'https://agent.minimaxi.com/max-claw',
+        arkclaw: 'https://www.volcengine.com/product/arkclaw',
+        easyclaw: 'https://easyclaw.cn/',
+        qoderwork: 'https://qwenwork.cn/',
+        miaoda: 'https://www.miaoda.cn/',
+        'agent-skills': 'https://skills.sh/',
+        'skillhub-qq': 'https://skillhub.tencent.com/'
+    },
+    model: {
+        'hugging-face': 'https://huggingface.co/',
+        openrouter: 'https://openrouter.ai/',
+        arena: 'https://arena.ai/leaderboard/agent',
+        'artificial-analysis': 'https://artificialanalysis.ai/',
+        'swe-bench': 'https://www.swebench.com/'
+    },
+    more: {
+        'jyshare-ai': 'https://www.jyshare.com/ai/',
+        'google-labs': 'https://labs.google/',
+        skillsmp: 'https://skillsmp.com/zh',
+        'character-ai': 'https://character.ai/'
+    }
+}
+
+/**
+ * 由「分组 → 工具 id → URL」映射表生成主进程 handler 树：
+ * 每个叶子统一为 `() => OpenOnlineWebPage(url)`（与 onlineMenuHandlers 同构）。
+ * 用生成函数而不是 70 行手写对象，保证「菜单 id ↔ URL」只有一处维护点。
+ */
+export const aiMenuHandlers: Record<string, Record<string, () => void>> = Object.fromEntries(
+    Object.entries(aiMenuUrlMaps).map(([group, tools]) => [
+        group,
+        Object.fromEntries(
+            Object.entries(tools).map(([toolId, url]) => [toolId, () => OpenOnlineWebPage(url)])
+        )
+    ])
+)

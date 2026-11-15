@@ -23,16 +23,31 @@ const electronMocks = vi.hoisted(() => {
     // P0 安全：webContents.on（will-navigate / will-redirect）注册记录
     const webContentHandlers: Record<string, Array<(...args: never[]) => void>> = {}
     const ipcOnMap = new Map<string, Array<(...args: never[]) => void>>()
+    const state = {
+        // 「记住窗口位置和大小」：screen.getAllDisplays 返回的显示器工作区
+        screenDisplays: [{ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }],
+        // 批次 B #4：appState 退出标志（before-quit 置位后 close 不再被托盘拦截）
+        quitFlag: { value: false }
+    }
     const win = {
         on: vi.fn((event: string, handler: (...args: never[]) => void) => {
             const arr = winHandlers[event] ?? []
             arr.push(handler)
             winHandlers[event] = arr
         }),
+        // 批次 A：窗口边界持久化监听的移除（dispose 挂入 cleanupApp）
+        removeListener: vi.fn(),
         show: vi.fn(),
+        // 批次 B #4：托盘隐藏分支（minimizeToTray 开启时 close → hide）
+        hide: vi.fn(),
         close: vi.fn(),
         isDestroyed: vi.fn(() => false),
         destroy: vi.fn(),
+        // 批次 A：窗口边界写回需要的几何 API
+        getBounds: vi.fn(() => ({ x: 40, y: 30, width: 1024, height: 768 })),
+        isMaximized: vi.fn(() => false),
+        isMinimized: vi.fn(() => false),
+        isFullScreen: vi.fn(() => false),
         webContents: {
             send: vi.fn(),
             insertCSS: vi.fn(),
@@ -57,6 +72,11 @@ const electronMocks = vi.hoisted(() => {
         capturedBrowserWindowOptions: null as unknown,
         openExternal: vi.fn(),
         webRequestOnBeforeRequest: vi.fn(),
+        screenDisplays: state.screenDisplays,
+        quitFlag: state.quitFlag,
+        screen: {
+            getAllDisplays: vi.fn(() => state.screenDisplays)
+        },
         app: {
             on: vi.fn((event: string, handler: (...args: never[]) => void) => {
                 const arr = appHandlers[event] ?? []
@@ -84,6 +104,7 @@ vi.mock('electron', () => ({
     app: electronMocks.app,
     shell: { openExternal: electronMocks.openExternal },
     ipcMain: electronMocks.ipcMain,
+    screen: electronMocks.screen,
     // AS-9：index.ts 在 whenReady 注册远程资源外发阻断（session.defaultSession.webRequest）
     session: {
         defaultSession: { webRequest: { onBeforeRequest: electronMocks.webRequestOnBeforeRequest } }
@@ -116,11 +137,15 @@ const internalMocks = vi.hoisted(() => ({
     mainWindowListenDialogsEvent: vi.fn(),
     cleanupMainWindowDialogsEvent: vi.fn(),
     restoreLastOpenedFile: vi.fn(),
+    // 批次 A：#1/#2 启动恢复（autoOpenLastFile / autoOpenLastFolder 开启时走新流程）
+    restoreLastOpenedAtStartup: vi.fn(),
     getCurrentThemeStyles: vi.fn(),
     getThemeStylesByType: vi.fn(),
     getMonacoTheme: vi.fn(),
     getSeparateEditorTheme: vi.fn(),
     getSystemSetting: vi.fn(),
+    // 批次 A：#5 记住窗口位置和大小（resize/move 防抖后写回 windowBounds）
+    saveSystemSetting: vi.fn(),
     registerConfigIpcHandlers: vi.fn(),
     getEditorSetting: vi.fn(),
     registerShortKeys: vi.fn(),
@@ -129,6 +154,15 @@ const internalMocks = vi.hoisted(() => ({
     saveActiveFile: vi.fn(),
     // PF-05：目录 fs.watch 监听的退出清理（index.ts 直接依赖 file-operations 单文件导出）
     cleanupDirectoryWatch: vi.fn(),
+    // 批次 B #4：托盘创建/销毁（细节由 tray.test.ts 覆盖）
+    ensureTrayCreated: vi.fn(),
+    disposeTray: vi.fn(),
+    // 批次 B #7：跟随系统主题的启动/退出清理（细节由 system-theme.test.ts 覆盖）
+    startSystemThemeWatcher: vi.fn(),
+    stopSystemThemeWatcher: vi.fn(),
+    // 批次 C #8/#9：自动备份定时器的启动/退出清理（细节由 auto-backup.test.ts 覆盖）
+    syncAutoBackupTimer: vi.fn(),
+    stopAutoBackupTimer: vi.fn(),
     loggerError: vi.fn(),
     loggerInfo: vi.fn(),
     loggerSetMainWindow: vi.fn(),
@@ -155,12 +189,19 @@ vi.mock('../../src/main/utils/file-state', () => ({
     restoreLastOpenedFile: internalMocks.restoreLastOpenedFile
 }))
 
+// 批次 A：启动恢复流程单独 mock（其内部依赖 file-utils/handlers 等，由 startup-restore.test.ts 覆盖）
+vi.mock('../../src/main/utils/startup-restore', () => ({
+    restoreLastOpenedAtStartup: internalMocks.restoreLastOpenedAtStartup
+}))
+
 vi.mock('../../src/main/config', () => ({
     getCurrentThemeStyles: internalMocks.getCurrentThemeStyles,
     getThemeStylesByType: internalMocks.getThemeStylesByType,
     getMonacoTheme: internalMocks.getMonacoTheme,
     getSeparateEditorTheme: internalMocks.getSeparateEditorTheme,
     getSystemSetting: internalMocks.getSystemSetting,
+    // 批次 A：窗口边界写回 system store
+    saveSystemSetting: internalMocks.saveSystemSetting,
     registerConfigIpcHandlers: internalMocks.registerConfigIpcHandlers,
     getEditorSetting: internalMocks.getEditorSetting,
     RegisterShortKeys: internalMocks.registerShortKeys,
@@ -218,8 +259,38 @@ vi.mock('../../src/main/utils/app-paths', () => ({
     initUserDataDirectory: internalMocks.initUserDataDirectory
 }))
 
+// 批次 B：托盘与系统主题跟随模块单独 mock（其内部行为由 tray.test.ts /
+// system-theme.test.ts 覆盖），index.ts 只验证生命周期挂接点
+vi.mock('../../src/main/utils/tray', () => ({
+    ensureTrayCreated: internalMocks.ensureTrayCreated,
+    disposeTray: internalMocks.disposeTray
+}))
+
+vi.mock('../../src/main/config/system-theme', () => ({
+    startSystemThemeWatcher: internalMocks.startSystemThemeWatcher,
+    stopSystemThemeWatcher: internalMocks.stopSystemThemeWatcher
+}))
+
+// 批次 C #8/#9：自动备份定时器模块单独 mock（其内部行为由 auto-backup.test.ts 覆盖），
+// index.ts 只验证 whenReady 启动与 cleanupApp 停止两个生命周期挂接点
+vi.mock('../../src/main/utils/auto-backup', () => ({
+    syncAutoBackupTimer: internalMocks.syncAutoBackupTimer,
+    stopAutoBackupTimer: internalMocks.stopAutoBackupTimer
+}))
+
 vi.mock('../../src/main/utils/app-state', () => ({
-    appState: { isDirty: internalMocks.isDirty }
+    appState: {
+        isDirty: internalMocks.isDirty,
+        // 批次 B #4：显式退出标志——before-quit 置位，close 拦截判断读取。
+        // 真实 AppState 是 getter 属性，mock 以对象 getter 镜像（非函数），
+        // 否则 index.ts 的 `appState.isQuitting` 真值判断恒为 true。
+        get isQuitting() {
+            return electronMocks.quitFlag.value
+        },
+        setQuitting: (value: boolean) => {
+            electronMocks.quitFlag.value = value
+        }
+    }
 }))
 
 vi.mock('../../src/main/ipc', () => ({
@@ -287,6 +358,10 @@ beforeEach(() => {
     electronMocks.ipcOnMap.clear()
     electronMocks.windows.length = 0
     electronMocks.capturedBrowserWindowOptions = null
+    // 批次 B #4：退出标志复位（before-quit 置位后需恢复，避免污染后续用例）
+    electronMocks.quitFlag.value = false
+    electronMocks.screenDisplays.length = 0
+    electronMocks.screenDisplays.push({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } })
     electronMocks.win.isDestroyed.mockReset()
     electronMocks.win.isDestroyed.mockReturnValue(false)
     electronMocks.win.webContents.isDestroyed.mockReset()
@@ -322,6 +397,7 @@ beforeEach(() => {
     internalMocks.getSeparateEditorTheme.mockReturnValue(false)
     internalMocks.getEditorSetting.mockReturnValue({ fontSize: 14 })
     internalMocks.restoreLastOpenedFile.mockResolvedValue(undefined)
+    internalMocks.restoreLastOpenedAtStartup.mockResolvedValue(undefined)
     internalMocks.saveActiveFile.mockResolvedValue(undefined)
     delete process.env.ELECTRON_RENDERER_URL
 })
@@ -333,6 +409,10 @@ describe('app whenReady startup flow', () => {
         expect(internalMocks.initUserDataDirectory).toHaveBeenCalled()
         expect(internalMocks.registerConfigIpcHandlers).toHaveBeenCalled()
         expect(toolkitMocks.setAppUserModelId).toHaveBeenCalledWith('com.electron')
+        // 批次 B #7：whenReady 启动系统主题跟随监听
+        expect(internalMocks.startSystemThemeWatcher).toHaveBeenCalled()
+        // 批次 C #8/#9：whenReady 同步自动备份定时器（开启时立即执行一次）
+        expect(internalMocks.syncAutoBackupTimer).toHaveBeenCalled()
     })
 
     // AS-9：启动时注册远程图表外发阻断（防止 PlantUML 源码绕道 plantuml.com 外发）
@@ -421,7 +501,138 @@ describe('ready-to-show flow', () => {
             'baize:editor:init-setting',
             { fontSize: 14 }
         )
+        // 自动打开开关默认关闭：保持历史后台恢复行为
         expect(internalMocks.restoreLastOpenedFile).toHaveBeenCalled()
+        expect(internalMocks.restoreLastOpenedAtStartup).not.toHaveBeenCalled()
+    })
+
+    // 批次 A：#1/#2 autoOpenLastFile / autoOpenLastFolder 开启时走「先 WELCOME_ENTER_MAIN
+    // 再投递数据事件」的启动恢复流程，不再走旧的后台恢复
+    it('should use the startup restore flow when autoOpenLastFile is enabled', async () => {
+        internalMocks.getSystemSetting.mockReturnValue({
+            fontFamily: 'A',
+            fontSize: 12,
+            autoSaveEnabled: false,
+            autoSaveInterval: 60,
+            autoOpenLastFile: true,
+            autoOpenLastFolder: false
+        })
+        await loadMainIndex()
+        triggerWindowHandler('ready-to-show')
+        await settle()
+        expect(internalMocks.restoreLastOpenedAtStartup).toHaveBeenCalledWith(
+            electronMocks.win,
+            expect.objectContaining({ autoOpenLastFile: true })
+        )
+        expect(internalMocks.restoreLastOpenedFile).not.toHaveBeenCalled()
+    })
+
+    it('should use the startup restore flow when autoOpenLastFolder is enabled', async () => {
+        internalMocks.getSystemSetting.mockReturnValue({
+            fontFamily: 'A',
+            fontSize: 12,
+            autoSaveEnabled: false,
+            autoSaveInterval: 60,
+            autoOpenLastFile: false,
+            autoOpenLastFolder: true
+        })
+        await loadMainIndex()
+        triggerWindowHandler('ready-to-show')
+        await settle()
+        expect(internalMocks.restoreLastOpenedAtStartup).toHaveBeenCalledWith(
+            electronMocks.win,
+            expect.objectContaining({ autoOpenLastFolder: true })
+        )
+        expect(internalMocks.restoreLastOpenedFile).not.toHaveBeenCalled()
+    })
+})
+
+describe('remember window size (批次 A #5)', () => {
+    it('should keep the historical 900x650 default when rememberWindowSize is off', async () => {
+        await loadMainIndex()
+        const options = electronMocks.capturedBrowserWindowOptions as {
+            width: number
+            height: number
+            x?: number
+            y?: number
+        }
+        expect(options.width).toBe(900)
+        expect(options.height).toBe(650)
+        expect(options.x).toBeUndefined()
+        expect(options.y).toBeUndefined()
+    })
+
+    it('should restore persisted window bounds when rememberWindowSize is enabled', async () => {
+        internalMocks.getSystemSetting.mockReturnValue({
+            fontFamily: 'A',
+            fontSize: 12,
+            autoSaveEnabled: false,
+            autoSaveInterval: 60,
+            rememberWindowSize: true,
+            windowBounds: { x: 120, y: 80, width: 1366, height: 768 }
+        })
+        await loadMainIndex()
+        const options = electronMocks.capturedBrowserWindowOptions as {
+            width: number
+            height: number
+            x?: number
+            y?: number
+        }
+        expect(options.x).toBe(120)
+        expect(options.y).toBe(80)
+        expect(options.width).toBe(1366)
+        expect(options.height).toBe(768)
+    })
+
+    it('should fall back to centered 1280x800 when stored bounds are offscreen', async () => {
+        internalMocks.getSystemSetting.mockReturnValue({
+            fontFamily: 'A',
+            fontSize: 12,
+            autoSaveEnabled: false,
+            autoSaveInterval: 60,
+            rememberWindowSize: true,
+            windowBounds: { x: 9000, y: 9000, width: 1366, height: 768 }
+        })
+        await loadMainIndex()
+        const options = electronMocks.capturedBrowserWindowOptions as {
+            width: number
+            height: number
+            x?: number
+            y?: number
+        }
+        expect(options.width).toBe(1280)
+        expect(options.height).toBe(800)
+        expect(options.x).toBeUndefined()
+        expect(options.y).toBeUndefined()
+    })
+
+    it('should debounce-save window bounds on resize when enabled', async () => {
+        internalMocks.getSystemSetting.mockReturnValue({
+            fontFamily: 'A',
+            fontSize: 12,
+            autoSaveEnabled: false,
+            autoSaveInterval: 60,
+            rememberWindowSize: true
+        })
+        await loadMainIndex()
+        vi.useFakeTimers()
+        triggerWindowHandler('resize')
+        vi.advanceTimersByTime(499)
+        expect(internalMocks.saveSystemSetting).not.toHaveBeenCalled()
+        vi.advanceTimersByTime(1)
+        expect(internalMocks.saveSystemSetting).toHaveBeenCalledWith({
+            windowBounds: { x: 40, y: 30, width: 1024, height: 768 }
+        })
+        vi.useRealTimers()
+    })
+
+    it('should not save window bounds when rememberWindowSize is off', async () => {
+        await loadMainIndex()
+        vi.useFakeTimers()
+        triggerWindowHandler('resize')
+        vi.advanceTimersByTime(600)
+        expect(internalMocks.saveSystemSetting).not.toHaveBeenCalled()
+        vi.useRealTimers()
     })
 })
 
@@ -558,6 +769,75 @@ describe('close flush protocol (D-3)', () => {
     })
 })
 
+describe('minimize to tray on close (批次 B #4)', () => {
+    beforeEach(() => {
+        internalMocks.getSystemSetting.mockReturnValue({
+            fontFamily: 'A',
+            fontSize: 12,
+            autoSaveEnabled: false,
+            autoSaveInterval: 60,
+            minimizeToTray: true
+        })
+    })
+
+    it('should hide the window instead of closing when minimizeToTray is enabled', async () => {
+        await loadMainIndex()
+        const preventDefault = vi.fn()
+        triggerWindowHandler('close', { preventDefault })
+        // flush 落盘协议先行
+        expect(electronMocks.win.webContents.send).toHaveBeenCalledWith(
+            'baize:editor:flush-content'
+        )
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+
+        expect(preventDefault).toHaveBeenCalled()
+        expect(internalMocks.ensureTrayCreated).toHaveBeenCalled()
+        expect(electronMocks.win.hide).toHaveBeenCalled()
+        expect(electronMocks.win.close).not.toHaveBeenCalled()
+    })
+
+    it('should flush again on the next close after hiding (hide keeps the flush protocol active)', async () => {
+        await loadMainIndex()
+        triggerWindowHandler('close', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(electronMocks.win.hide).toHaveBeenCalledTimes(1)
+
+        // 再次点关闭：重新走 flush（隐藏分支不置 flushedForClose）
+        electronMocks.win.webContents.send.mockClear()
+        triggerWindowHandler('close', { preventDefault: vi.fn() })
+        expect(electronMocks.win.webContents.send).toHaveBeenCalledWith(
+            'baize:editor:flush-content'
+        )
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(electronMocks.win.hide).toHaveBeenCalledTimes(2)
+        expect(electronMocks.win.close).not.toHaveBeenCalled()
+    })
+
+    it('should not intercept close during explicit quit (isQuitting set)', async () => {
+        await loadMainIndex()
+        electronMocks.quitFlag.value = true
+        const preventDefault = vi.fn()
+        triggerWindowHandler('close', { preventDefault })
+
+        expect(preventDefault).not.toHaveBeenCalled()
+        expect(electronMocks.win.hide).not.toHaveBeenCalled()
+        expect(electronMocks.win.webContents.send).not.toHaveBeenCalledWith(
+            'baize:editor:flush-content'
+        )
+    })
+
+    it('should set the quitting flag on before-quit', async () => {
+        await loadMainIndex()
+        const preventDefault = vi.fn()
+        triggerAppHandler('before-quit', { preventDefault })
+        expect(electronMocks.quitFlag.value).toBe(true)
+        expect(preventDefault).toHaveBeenCalled()
+    })
+})
+
 describe('app lifecycle cleanup', () => {
     it('should stop auto save and clean up on window-all-closed', async () => {
         await loadMainIndex()
@@ -569,6 +849,11 @@ describe('app lifecycle cleanup', () => {
         expect(internalMocks.cleanupMainWindowDialogsEvent).toHaveBeenCalled()
         expect(internalMocks.cleanupAll).toHaveBeenCalled()
         expect(electronMocks.win.destroy).toHaveBeenCalled()
+        // 批次 B：退出清理系统主题监听与托盘
+        expect(internalMocks.stopSystemThemeWatcher).toHaveBeenCalled()
+        expect(internalMocks.disposeTray).toHaveBeenCalled()
+        // 批次 C #8/#9：退出停止自动备份定时器
+        expect(internalMocks.stopAutoBackupTimer).toHaveBeenCalled()
         // 非 darwin 平台退出应用
         expect(electronMocks.app.quit).toHaveBeenCalled()
     })

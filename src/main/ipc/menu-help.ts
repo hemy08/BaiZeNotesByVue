@@ -3,6 +3,7 @@ import { openExternalSafely } from '../utils/security'
 
 export const helpMenuHandlers = {
     'release-notes': {
+        'v1.3.5': () => dialogs.ShowReleaseNotesDialog('1.3.5'),
         'v1.3.0': () => dialogs.ShowReleaseNotesDialog('1.3.0'),
         'v1.2.2': () => dialogs.ShowReleaseNotesDialog('1.2.2'),
         'v1.2.1': () => dialogs.ShowReleaseNotesDialog('1.2.1'),

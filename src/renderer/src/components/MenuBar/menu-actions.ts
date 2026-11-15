@@ -6,6 +6,35 @@ import { t } from '../../common/i18n'
 // ARC-14：插件工具显示事件名收敛至 EventBus 集中常量（menu-consts 仅保留兼容 re-export）
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 
+/**
+ * mkdocs-material 扩展语法插入入口（15 项，对应 menu-config.ts 的 Material 子菜单，
+ * 除既有的 material:admonition 外的 15 项新语法）。
+ *
+ * 动作 id 契约：`baize:menu:insert:material:<featureId>`，命中后打开
+ * configStore.showDialog('materialSyntax', { preset: <featureId> })，
+ * 由 MaterialSyntaxDialog 按 preset 展示对应语法的说明与插入操作。
+ *
+ * 顺序与菜单展示顺序一致（collapsible → tab-link）。新增语法时需三处同步：
+ * 本数组、menu-config.ts 的 insertMaterial.submenu、menu 命名空间 i18n（zh-CN/en-US）。
+ */
+const MATERIAL_SYNTAX_FEATURE_IDS = [
+    'collapsible',
+    'task-list',
+    'highlight',
+    'insert-delete',
+    'sup-sub',
+    'keys',
+    'attr-list',
+    'footnote',
+    'definition-list',
+    'grid-cards',
+    'code-block',
+    'icon',
+    'blocks',
+    'snippet',
+    'tab-link'
+] as const
+
 export function HandleMenuAction(action: string) {
     // 获取配置 store
     const configStore = getConfigStore()
@@ -56,6 +85,16 @@ export function HandleMenuAction(action: string) {
     if (action === 'baize:menu:insert:admonition') {
         configStore.showDialog('admonition')
         return
+    }
+
+    // 插入 Material 扩展语法（15 项 mkdocs-material 语法，见 MATERIAL_SYNTAX_FEATURE_IDS）
+    // 动作 id 精确匹配 baize:menu:insert:material:<featureId>，打开 materialSyntax 对话框并
+    // 通过 preset 指明语法类型；既有 material:admonition 不在此表内，保持原主进程对话框链路。
+    for (const featureId of MATERIAL_SYNTAX_FEATURE_IDS) {
+        if (action === `baize:menu:insert:material:${featureId}`) {
+            configStore.showDialog('materialSyntax', { preset: featureId })
+            return
+        }
     }
 
     // 插入数学公式

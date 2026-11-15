@@ -54,6 +54,8 @@ const electronMocks = vi.hoisted(() => {
         openExternal,
         windows: [] as never[],
         capturedBrowserWindowOptions: null as unknown,
+        // 批次 B #4：appState 退出标志（before-quit 置位后 close 不再被托盘拦截）
+        quitFlag: { value: false },
         app: {
             on: vi.fn((event: string, handler: (...args: never[]) => void) => {
                 const arr = appHandlers[event] ?? []
@@ -76,6 +78,8 @@ vi.mock('electron', () => ({
     app: electronMocks.app,
     shell: { openExternal: electronMocks.openExternal },
     ipcMain: electronMocks.ipcMain,
+    // 批次 A：记住窗口位置和大小——createWindow 读取显示器工作区
+    screen: { getAllDisplays: vi.fn(() => []) },
     // AS-9：index.ts 在 whenReady 注册远程资源外发阻断（session.defaultSession.webRequest）
     session: { defaultSession: { webRequest: { onBeforeRequest: vi.fn() } } },
     BrowserWindow: class {
@@ -116,11 +120,15 @@ const internalMocks = vi.hoisted(() => ({
     closeMermaidRenderWindow: vi.fn(),
     cleanupMermaidRender: vi.fn(),
     restoreLastOpenedFile: vi.fn(),
+    // 批次 A：#1/#2 启动恢复（隔离其内部 handlers/file-utils 依赖链）
+    restoreLastOpenedAtStartup: vi.fn(),
     getCurrentThemeStyles: vi.fn(),
     getThemeStylesByType: vi.fn(),
     getMonacoTheme: vi.fn(),
     getSeparateEditorTheme: vi.fn(),
     getSystemSetting: vi.fn(),
+    // 批次 A：#5 窗口边界写回 system store
+    saveSystemSetting: vi.fn(),
     getSystemSettingValString: vi.fn(),
     registerConfigIpcHandlers: vi.fn(),
     getEditorSetting: vi.fn(),
@@ -157,12 +165,19 @@ vi.mock('../../src/main/utils/file-state', () => ({
     restoreLastOpenedFile: internalMocks.restoreLastOpenedFile
 }))
 
+// 批次 A：启动恢复流程单独 mock（其内部依赖 file-utils/handlers 等，由 startup-restore.test.ts 覆盖）
+vi.mock('../../src/main/utils/startup-restore', () => ({
+    restoreLastOpenedAtStartup: internalMocks.restoreLastOpenedAtStartup
+}))
+
 vi.mock('../../src/main/config', () => ({
     getCurrentThemeStyles: internalMocks.getCurrentThemeStyles,
     getThemeStylesByType: internalMocks.getThemeStylesByType,
     getMonacoTheme: internalMocks.getMonacoTheme,
     getSeparateEditorTheme: internalMocks.getSeparateEditorTheme,
     getSystemSetting: internalMocks.getSystemSetting,
+    // 批次 A：窗口边界写回 system store
+    saveSystemSetting: internalMocks.saveSystemSetting,
     // C-08：OpenOnlineWebPages 读取网页打开方式
     getSystemSettingValString: internalMocks.getSystemSettingValString,
     registerConfigIpcHandlers: internalMocks.registerConfigIpcHandlers,
@@ -205,8 +220,29 @@ vi.mock('../../src/main/utils/app-paths', () => ({
     initUserDataDirectory: internalMocks.initUserDataDirectory
 }))
 
+// 批次 B：托盘与系统主题跟随模块单独 mock（其内部行为由 tray.test.ts /
+// system-theme.test.ts 覆盖），避免拉起 theme-config → app-paths/electron-store 依赖链
+vi.mock('../../src/main/utils/tray', () => ({
+    ensureTrayCreated: vi.fn(),
+    disposeTray: vi.fn()
+}))
+
+vi.mock('../../src/main/config/system-theme', () => ({
+    startSystemThemeWatcher: vi.fn(),
+    stopSystemThemeWatcher: vi.fn()
+}))
+
 vi.mock('../../src/main/utils/app-state', () => ({
-    appState: { isDirty: internalMocks.isDirty }
+    appState: {
+        isDirty: internalMocks.isDirty,
+        // 批次 B #4：显式退出标志（与 main-index.test.ts 一致，getter 镜像真实 AppState）
+        get isQuitting() {
+            return electronMocks.quitFlag.value
+        },
+        setQuitting: (value: boolean) => {
+            electronMocks.quitFlag.value = value
+        }
+    }
 }))
 
 vi.mock('../../src/main/ipc', () => ({
@@ -300,6 +336,8 @@ beforeEach(() => {
     }
     electronMocks.windows.length = 0
     electronMocks.capturedBrowserWindowOptions = null
+    // 批次 B #4：退出标志复位
+    electronMocks.quitFlag.value = false
     electronMocks.openExternal.mockReset()
     electronMocks.openExternal.mockResolvedValue(undefined)
     electronMocks.app.on.mockClear()
@@ -331,6 +369,7 @@ beforeEach(() => {
     internalMocks.getSeparateEditorTheme.mockReturnValue(false)
     internalMocks.getEditorSetting.mockReturnValue({ fontSize: 14 })
     internalMocks.restoreLastOpenedFile.mockResolvedValue(undefined)
+    internalMocks.restoreLastOpenedAtStartup.mockResolvedValue(undefined)
     internalMocks.saveActiveFile.mockResolvedValue(undefined)
     // security / C-08 默认实现
     securityMocks.openExternalSafely.mockReset()

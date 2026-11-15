@@ -14,10 +14,37 @@ let mermaidModulePromise: Promise<typeof import('mermaid').default> | null = nul
 
 type MermaidApi = typeof import('mermaid').default
 
-/** PF-6：按需加载 mermaid 实例（并发调用共享同一个 import Promise） */
+/**
+ * Mermaid 初始化配置（2026-11-15 修复：图表文字全部丢失、只剩空矩形与连线）。
+ *
+ * 根因：预览管线用 DOMPurify 消毒（`USE_PROFILES: { svg: true }`），其 svg 白名单
+ * **不包含 `<foreignObject>`**；而 Mermaid 默认 `htmlLabels: true` 会把节点标签、
+ * 子图标题、连线标签渲染进 `<foreignObject><div>…</div></foreignObject>`，
+ * 消毒时整块被移除 → 图上只剩空矩形。
+ *
+ * 修复：改用 SVG 原生文本渲染（根级 `htmlLabels: false`，Mermaid 11 推荐写法），
+ * 标签落在白名单内的 `<text>` 元素上，消毒后文字保留。`securityLevel: 'strict'`
+ * 与 MermaidEditDialog 的 XSS 防护策略一致。
+ */
+export const MERMAID_INIT_CONFIG = {
+    startOnLoad: false,
+    securityLevel: 'strict',
+    htmlLabels: false
+} as const
+
+/** PF-6：按需加载 mermaid 实例（并发调用共享同一个 import Promise，仅初始化一次） */
 async function getMermaidInstance(): Promise<MermaidApi> {
     if (!mermaidModulePromise) {
-        mermaidModulePromise = import('mermaid').then((module) => module.default)
+        mermaidModulePromise = import('mermaid').then((module) => {
+            const instance = module.default
+            try {
+                instance.initialize(MERMAID_INIT_CONFIG)
+            } catch (error) {
+                // 初始化失败不阻断渲染：退回 Mermaid 默认配置（文字可能因消毒丢失，但不崩溃）
+                logger.warn('[Mermaid] 初始化配置失败，使用默认配置:', error)
+            }
+            return instance
+        })
     }
     return mermaidModulePromise
 }

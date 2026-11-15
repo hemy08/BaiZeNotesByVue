@@ -92,7 +92,24 @@ export default {
         // Material/Mermaid/PlantUML 为框架/格式专名，中文界面同样保留原文。
         material: {
             label: 'Material',
-            admonition: 'Admonition'
+            admonition: 'Admonition',
+            // mkdocs-material 扩展语法插入入口（15 项，与 menu-config.ts 的 Material 子菜单
+            // 以及 menu-actions.ts 的 MATERIAL_SYNTAX_FEATURE_IDS 一一对应，键名 camelCase）
+            collapsible: '折叠提示块',
+            taskList: '任务列表',
+            highlight: '高亮',
+            insertDelete: '插入/删除',
+            supSub: '上标/下标',
+            keys: '键盘按键',
+            attrList: '属性列表',
+            footnote: '脚注',
+            definitionList: '定义列表',
+            gridCards: '网格卡片',
+            codeBlock: '代码块增强',
+            icon: 'Material 图标',
+            blocks: '块语法（///）',
+            snippet: '文件片段（snippets）',
+            tabLink: '标签页深链'
         },
         mermaid: {
             label: 'Mermaid',
@@ -134,6 +151,8 @@ export default {
             formatConvert: '格式转换器',
             caseConvert: '大小写转换',
             formatTools: '格式化工具',
+            textConvert: '文本转换',
+            miscTools: '常用小工具',
             network: '网络计算插件',
             addressConverter: '地址转换器',
             parsers: '解析器',
@@ -157,7 +176,35 @@ export default {
             ipv4SubnetCalculator: 'IPv4子网计算器',
             // FE-17：已注册但此前无菜单入口的网络对照表工具（task-23 补齐菜单项）
             httpStatusCodes: 'HTTP状态码对照表',
-            subnetMaskMapTable: '子网掩码对照表'
+            subnetMaskMapTable: '子网掩码对照表',
+            regexTester: '正则表达式测试'
+        },
+        codec: {
+            base64Codec: 'Base64 编码/解码',
+            urlCodec: 'URL 编码/解码',
+            htmlCodec: 'HTML 实体编码/解码',
+            unicode: 'Unicode 与中文互转',
+            imageBase64: '图片转 Base64'
+        },
+        convert: {
+            colorConvert: '颜色转换',
+            unitConvert: '单位换算',
+            rmbCase: '人民币大写',
+            timestampConvert: '时间戳转换',
+            baseConvert: '进制转换'
+        },
+        misc: {
+            randomGenerator: '随机生成器',
+            calculator: '在线计算器'
+        },
+        text: {
+            chineseText: '中文文本工具',
+            wordCount: '字数统计',
+            textDiff: '文本比对'
+        },
+        format: {
+            jsonTool: 'JSON 工具',
+            xmlFormatter: 'XML 格式化'
         },
         info: {
             asciiTable: 'ASCII码对照表',
@@ -242,6 +289,117 @@ export default {
             huawei: '华为云',
             tianyi: '天翼云',
             jinshan: '金山云'
+        }
+    },
+    ai: {
+        label: 'AI 导航',
+        group: {
+            hot: '热门 AI',
+            coding: 'AI 编程',
+            image: 'AI 作图',
+            writing: 'AI 写作',
+            office: 'AI 办公',
+            media: 'AI 影音',
+            agent: 'AI 智能体',
+            model: 'AI 模型与榜单',
+            more: '更多 AI 工具'
+        },
+        // 热门 AI（2026 当前主流）
+        hot: {
+            chatgpt: 'ChatGPT',
+            deepseek: 'DeepSeek',
+            doubao: '豆包',
+            kimi: 'Kimi',
+            tongyi: '通义千问',
+            wenxin: '文心一言',
+            yuanbao: '腾讯元宝',
+            claude: 'Claude',
+            gemini: 'Gemini',
+            grok: 'Grok',
+            copilot: 'Copilot',
+            perplexity: 'Perplexity',
+            chatglm: '智谱清言',
+            tiangong: '天工 AI'
+        },
+        // AI 编程
+        coding: {
+            cursor: 'Cursor',
+            trae: 'TRAE',
+            qoder: 'Qoder',
+            githubCopilot: 'GitHub Copilot',
+            opencode: 'OpenCode',
+            googleAiStudio: 'Google AI Studio',
+            codingPlan: '字节 Coding Plan',
+            zcode: 'ZCode',
+            deepseekHarness: 'DeepSeek Harness'
+        },
+        // AI 作图
+        image: {
+            midjourney: 'Midjourney',
+            stableDiffusion: 'Stable Diffusion',
+            leonardo: 'Leonardo',
+            adobeFirefly: 'Adobe Firefly',
+            runway: 'Runway',
+            canva: 'Canva',
+            figma: 'Figma',
+            removeBg: 'RemoveBG',
+            clipdrop: 'Clipdrop',
+            civitai: 'Civitai'
+        },
+        // AI 写作
+        writing: {
+            notionAi: 'Notion AI',
+            grammarly: 'Grammarly',
+            quillbot: 'QuillBot',
+            gamma: 'Gamma',
+            notebooklm: 'NotebookLM',
+            metaso: '秘塔 AI 搜索',
+            poe: 'Poe'
+        },
+        // AI 办公
+        office: {
+            miro: 'Miro',
+            imaCopilot: 'ima copilot',
+            manus: 'Manus'
+        },
+        // AI 影音
+        media: {
+            suno: 'Suno',
+            elevenlabs: 'ElevenLabs',
+            veed: 'VEED',
+            reccloud: 'RecCloud',
+            turboscribe: 'TurboScribe',
+            genmo: 'Genmo',
+            kling: '可灵 AI',
+            hailuo: '海螺 AI'
+        },
+        // AI 智能体
+        agent: {
+            openclaw: 'OpenClaw',
+            kimiclaw: 'KimiClaw',
+            autoclaw: 'AutoClaw',
+            maxclaw: 'MaxClaw',
+            arkclaw: 'ArkClaw',
+            easyclaw: 'EasyClaw',
+            qoderwork: 'QoderWork',
+            miaoda: '百度秒哒',
+            agentSkills: 'Agent Skills 目录',
+            skillhubQq: '腾讯 SkillHub'
+        },
+        // AI 模型与榜单
+        model: {
+            huggingFace: 'Hugging Face',
+            openrouter: 'OpenRouter',
+            arena: 'Arena 排行榜',
+            artificialAnalysis: 'Artificial Analysis',
+            sweBench: 'SWE-bench'
+        },
+        // 更多 AI 工具（菜鸟 AI 导航主页 / AI 社区与实验平台）
+        more: {
+            jyshareAi: '菜鸟 AI 导航',
+            googleLabs: 'Google Labs',
+            skillsmp: 'SkillsMP',
+            characterAi: 'Character AI'
         }
     },
     github: {

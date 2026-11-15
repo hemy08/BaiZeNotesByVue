@@ -167,6 +167,43 @@ describe('AS-4 validateSystemConfig', () => {
         expect((rejected.value as Record<string, unknown>).allowRemoteImages).toBeUndefined()
         expect(rejected.adjusted).toEqual([expect.stringContaining('allowRemoteImages')])
     })
+
+    // 批次 A：#4 最近文件列表数量范围收紧为 5~20（越界钳制而非拒绝）
+    it('should clamp recentFilesCount into the 5~20 range', () => {
+        const low = validateSystemConfig({ recentFilesCount: 2 })
+        expect((low.value as Record<string, unknown>).recentFilesCount).toBe(5)
+        const high = validateSystemConfig({ recentFilesCount: 99 })
+        expect((high.value as Record<string, unknown>).recentFilesCount).toBe(20)
+        const ok = validateSystemConfig({ recentFilesCount: 15 })
+        expect((ok.value as Record<string, unknown>).recentFilesCount).toBe(15)
+    })
+
+    // 批次 A：#5 记住窗口位置和大小——windowBounds 为 null 或合法整数边界对象
+    it('should accept null or valid windowBounds objects', () => {
+        const cleared = validateSystemConfig({ windowBounds: null })
+        expect((cleared.value as Record<string, unknown>).windowBounds).toBeNull()
+
+        const bounds = { x: 10, y: 20, width: 1280, height: 800 }
+        const accepted = validateSystemConfig({ windowBounds: bounds })
+        expect((accepted.value as Record<string, unknown>).windowBounds).toEqual(bounds)
+    })
+
+    it('should drop invalid windowBounds payloads', () => {
+        const invalid = validateSystemConfig({
+            windowBounds: { x: 'a', y: 2, width: 100, height: 100 }
+        })
+        expect(invalid.ok).toBe(true)
+        expect((invalid.value as Record<string, unknown>).windowBounds).toBeUndefined()
+        expect(invalid.adjusted).toEqual([expect.stringContaining('windowBounds')])
+
+        const outOfRange = validateSystemConfig({
+            windowBounds: { x: 1e9, y: 2, width: 100, height: 100 }
+        })
+        expect((outOfRange.value as Record<string, unknown>).windowBounds).toBeUndefined()
+
+        const wrongShape = validateSystemConfig({ windowBounds: '1280x800' })
+        expect((wrongShape.value as Record<string, unknown>).windowBounds).toBeUndefined()
+    })
 })
 
 describe('AS-4 validateThemeConfig', () => {

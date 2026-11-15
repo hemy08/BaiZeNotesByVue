@@ -196,6 +196,8 @@ const dialogRenderer = {
         labelAutoOpenLastFile: '启动时自动打开上次文件',
         labelAutoOpenLastFolder: '启动时自动打开上次工作目录',
         labelAutoStart: '开机自启动',
+        // 开机自启动：开发模式（未打包）系统 API 无效，安装后生效
+        hintAutoStart: '开机自启动需安装应用后生效（开发模式下系统接口不可用）',
         groupWindow: '窗口行为',
         labelMinimizeToTray: '关闭时最小化到托盘',
         labelRememberWindowSize: '记住窗口位置和大小',
@@ -207,6 +209,7 @@ const dialogRenderer = {
         labelEnableAutoSave: '启用自动保存',
         labelAutoSaveInterval: '自动保存间隔（秒）',
         labelRecentFilesCount: '最近文件列表数量',
+        hintRecentFilesCount: '「最近打开」列表的保留条数（5~20，默认 10），保存后立即裁剪存量列表',
         panelAppearanceTitle: '外观设置',
         panelAppearanceDesc: '应用程序的视觉配置',
         groupTheme: '主题',
@@ -214,6 +217,10 @@ const dialogRenderer = {
         themeDark: '深色',
         themeLight: '浅色',
         labelUseSystemTheme: '使用系统主题',
+        // 批次 B #7：跟随系统主题——与手动切换主题互斥（主题设置对话框选择主题会
+        // 自动关闭本开关），通过 tooltip 向用户说明该语义
+        hintUseSystemTheme:
+            '开启后应用主题跟随系统深浅色自动切换；在「主题设置」对话框中手动选择主题会自动关闭本开关',
         groupFont: '字体',
         labelSystemFont: '系统字体',
         fontMicrosoftYaHei: '微软雅黑',
@@ -228,10 +235,18 @@ const dialogRenderer = {
         groupOperations: '操作',
         backupNow: '立即备份',
         restoreFromBackup: '从备份恢复',
-        // P1-FE-06：暂无消费方的设置项统一禁用并标注「暂未实现」；
-        // 浏览默认路径 / 立即备份 / 从备份恢复 三个原空实现按钮已接通实际逻辑
+        // 批次 C：#8/#9 自动备份已实现（enableAutoBackup/backupInterval 已启用），
+        // 本词条暂无代码引用，保留以备后续新增未实现设置项复用
         hintNotImplemented: '该设置暂无对应功能实现，保存后不会产生效果，后续版本支持',
+        // 批次 C #10：应用主题收口为「只读显示 + 打开主题设置」按钮，
+        // 本词条现仅作只读主题名的 tooltip 说明
         hintThemeManaged: '应用主题请使用「主题设置」对话框调整',
+        // 批次 C #10：打开主题设置对话框的按钮文案
+        labelOpenThemeSetting: '打开主题设置',
+        // 批次 C #8/#9：自动备份组的行为说明（替换原「暂未实现」提示）
+        hintAutoBackupGroup:
+            '按设定间隔把活动文件（含未保存修改）与已打开工作区的 .md 文件备份到用户数据目录，并按「保留备份数量」滚动清理旧备份',
+        hintBackupInterval: '自动备份间隔（1~72 小时，默认 24），保存后立即生效',
         hintDefaultFilePath: '用于「打开文件夹」对话框的默认起始位置',
         hintBackupRetention: '「立即备份」时按此数量保留最近的备份',
         backupStatusSuccess: '备份完成：{name}（{count} 个配置文件）',
@@ -324,6 +339,132 @@ const dialogRenderer = {
         descCryptoJs: 'JavaScript 加密库',
         descMammoth: 'Word 文档解析',
         descTurndown: 'HTML 转 Markdown'
+    },
+    // Material 语法插入对话框：覆盖 15 项 mkdocs-material 扩展语法。
+    // features.* 为左侧功能列表名称；labels/placeholders/types 等供右侧表单与下拉复用；
+    // defaults.* 为各表单的预填示例值（打开即点「插入」也能产出合法片段）。
+    materialSyntax: {
+        title: 'Material 语法插入',
+        previewEmptyHint: '填写上方内容后，此处实时预览将要插入的 Markdown',
+        iconNameRequired: '请先填写图标名（如 pencil、github）',
+        features: {
+            collapsible: '折叠提示块',
+            taskList: '任务列表',
+            highlight: '文本高亮',
+            insertDelete: '插入/删除标记',
+            supSub: '上标/下标',
+            keys: '键盘按键',
+            attrList: '属性列表',
+            footnote: '脚注',
+            definitionList: '定义列表',
+            gridCards: '网格卡片',
+            codeBlock: '代码块增强',
+            icon: 'Material 图标',
+            blocks: '块语法',
+            snippet: '文件片段',
+            tabLink: '标签页深链'
+        },
+        labels: {
+            type: '类型',
+            expanded: '默认展开',
+            completed: '已完成',
+            mode: '模式',
+            text: '文本',
+            url: 'URL',
+            className: 'class',
+            align: '对齐',
+            keys: '按键',
+            refText: '引用处文本',
+            footnoteContent: '脚注内容',
+            term: '术语',
+            definition: '定义',
+            cards: '卡片列表',
+            language: '语言',
+            codeTitle: '代码块标题',
+            code: '代码',
+            linenums: '显示行号',
+            hlLines: '高亮行号',
+            iconName: '图标名',
+            iconText: '文本（可选）',
+            tabLabel: 'Tab 标签',
+            path: '文件路径',
+            startLine: '起始行',
+            endLine: '结束行',
+            linkText: '链接文本',
+            setId: 'Set 序号',
+            tabIndex: 'Tab 序号'
+        },
+        placeholders: {
+            title: '可选的标题',
+            content: '内容（支持多行）',
+            text: '要包裹的文本',
+            taskContent: '每行一项待办事项',
+            keys: '如 ctrl+alt+del',
+            url: '如 https://example.com',
+            className: '如 highlight',
+            footnoteContent: '脚注的具体说明',
+            definition: '术语的解释说明',
+            cards: '每行一项：图标名|标题|描述（图标可留空）',
+            language: '如 python',
+            code: '代码内容',
+            hlLines: '如 2 3',
+            iconName: '如 pencil',
+            tabLabel: '如 标签一',
+            path: '如 snippets/example.md',
+            linkText: '显示在链接上的文本'
+        },
+        types: {
+            note: '提示（note）',
+            tip: '技巧（tip）',
+            warning: '警告（warning）',
+            danger: '危险（danger）',
+            info: '信息（info）',
+            success: '成功（success）',
+            example: '示例（example）',
+            question: '疑问（question）',
+            quote: '引用（quote）',
+            details: '折叠详情（details）',
+            tabbed: '标签页（tabbed）'
+        },
+        insertDeleteModes: {
+            insert: '插入（^^）',
+            delete: '删除（~~）',
+            criticInsert: 'Critic 插入（{++ ++}）',
+            criticDelete: 'Critic 删除（{-- --}）',
+            criticHighlight: 'Critic 高亮（{== ==}）',
+            criticComment: 'Critic 注释（{>> <<}）'
+        },
+        scriptModes: {
+            superscript: '上标（^ ^）',
+            subscript: '下标（~ ~）'
+        },
+        attrModes: {
+            button: '按钮（{ .md-button }）',
+            inline: '行内 class（{ .class }）',
+            align: '段落/图片对齐（{ align=center }）'
+        },
+        alignOptions: {
+            left: '左对齐',
+            center: '居中',
+            right: '右对齐'
+        },
+        defaults: {
+            collapsibleContent: '这里是折叠内容，展开后可见。',
+            taskContent: '待办事项一\n待办事项二',
+            highlightText: '需要高亮的文本',
+            insertDeleteText: '需要标记的文本',
+            attrText: '按钮文本',
+            footnoteText: '需要注释的文本',
+            footnoteContent: '脚注的具体说明。',
+            definitionTerm: '术语',
+            definitionText: '对术语的解释说明。',
+            cards: 'pencil|快速开始|几分钟内完成安装与配置。\nrocket|开箱即用|无需额外依赖，可直接用 Markdown 书写。',
+            codeTitle: '示例代码',
+            blocksTitle: '块标题',
+            blocksContent: '块内容，内部支持 Markdown。',
+            blocksTabLabel: '标签一',
+            tabLinkText: '查看标签页'
+        }
     }
 }
 

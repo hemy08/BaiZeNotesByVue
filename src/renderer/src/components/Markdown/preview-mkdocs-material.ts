@@ -54,6 +54,101 @@ const ENV_NESTING_DEPTH = '__mkdocsMaterialNestingDepth'
 /** 深度保护兜底阈值（markdown-it 的 maxNesting 默认值同样是 100） */
 const DEFAULT_MAX_NESTING = 100
 
+/* ============================== 一.五、tab 深链（#tab-id） ==============================
+ * 目标：让 `#__tabbed_<setId>_<tabNumber>`（panel/radio 锚点）或
+ * `#__tabbed_<setId>_<tabNumber>_label`（label 锚点）这类深链可以定位到具体 tab：
+ * - 渲染时为 tabbed-set / label / panel 产出稳定的 id（见下方 id 生成函数），
+ *   label 另带 data-tab-target 指向对应 panel id，供预览组件做点击委托；
+ * - 路径两端（渲染器与 getTabTargetByHash）共用同一组 id 生成函数，避免约定漂移。
+ *
+ * 兼容性：新增 id/data 属性会改变既有 tabbed HTML（既有单元测试断言了 label 的精确
+ * 字符串），因此由 markdown-it env 开关控制：`createTabDeepLinkEnv()` 产出的 env
+ * 传给 `md.render(src, env)` 时才输出深链属性；不传 env 时 HTML 与历史版本逐字节一致。
+ */
+export const MDX_TAB_DEEP_LINK_ENV_KEY = '__mdxTabDeepLinks'
+
+/** tab 深链解析结果（radioId 即 radio input 的 id，可直接赋值 checked 切换 tab） */
+export interface TabDeepLinkTarget {
+    /** 形如 `__tabbed_12_2` 的 radio id */
+    radioId: string
+}
+
+/** 生成 tabbed-set 容器锚点 id：`__tabbed_set_<setId>` */
+export function getTabbedSetAnchorId(setId: number): string {
+    return `__tabbed_set_${setId}`
+}
+
+/** 生成第 tabNumber（1-based）个 radio 与 panel 共用的稳定 id：`__tabbed_<setId>_<tabNumber>` */
+export function getTabbedRadioId(setId: number, tabNumber: number): string {
+    return `__tabbed_${setId}_${tabNumber}`
+}
+
+/**
+ * 生成第 tabNumber（1-based）个 panel 的稳定 id：`__tabbed_<setId>_<tabNumber>_panel`。
+ *
+ * 为什么 panel 带 `_panel` 后缀：radio input 已占用 `__tabbed_<setId>_<tabNumber>`（既有
+ * mkdocs-material 约定，基线测试断言了该 id），HTML id 必须全局唯一，panel 不能复用。
+ * `getTabTargetByHash` 仍按任务约定把 `#__tabbed_<setId>_<n>` 解析为 radioId。
+ */
+export function getTabbedPanelId(setId: number, tabNumber: number): string {
+    return `__tabbed_${setId}_${tabNumber}_panel`
+}
+
+/** 生成第 tabNumber（1-based）个 label 的稳定 id：`__tabbed_<setId>_<tabNumber>_label` */
+export function getTabbedLabelId(setId: number, tabNumber: number): string {
+    return `__tabbed_${setId}_${tabNumber}_label`
+}
+
+/**
+ * 构造启用 tab 深链属性的渲染 env。
+ * 使用方式：`md.render(source, createTabDeepLinkEnv())`（预览组件接线时统一传入）。
+ */
+export function createTabDeepLinkEnv(): Env {
+    return { [MDX_TAB_DEEP_LINK_ENV_KEY]: true }
+}
+
+/** 当前渲染是否启用 tab 深链属性（env 未提供/未开启时返回 false，保持历史 HTML 不变） */
+export function isTabDeepLinkEnabled(env: Env | undefined): boolean {
+    return env?.[MDX_TAB_DEEP_LINK_ENV_KEY] === true
+}
+
+/** tab 深链 hash 的合法形态：`#__tabbed_<setId>_<n>`、`#__tabbed_<setId>_<n>_label`、`#__tabbed_<setId>_<n>_panel` */
+const TAB_DEEP_LINK_HASH_PATTERN = /^__tabbed_(\d+)_(\d+)(?:_(?:label|panel))?$/
+
+/**
+ * 把 URL hash 解析为需要选中的 radio id（纯函数，供预览组件接入点击/hashchange 事件）。
+ *
+ * 支持：
+ * - `#__tabbed_12_2`（panel / radio 锚点）
+ * - `#__tabbed_12_2_label`（label 锚点）
+ * - `#__tabbed_12_2_panel`（panel 锚点，兼容 root 代理按 panel id 拼链接）
+ * - 省略前导 `#`、或传入完整 URL（取最后一个 `#` 之后的部分）
+ *
+ * 不合法（不是 tab 深链、set/序号非正整数、`#__tabbed_set_12` 容器锚点）返回 null。
+ */
+export function getTabTargetByHash(hash: string): TabDeepLinkTarget | null {
+    if (typeof hash !== 'string') {
+        return null
+    }
+    const hashIndex = hash.lastIndexOf('#')
+    let value = (hashIndex >= 0 ? hash.slice(hashIndex + 1) : hash).trim()
+    try {
+        value = decodeURIComponent(value)
+    } catch {
+        // 非法百分号编码：保留原值继续做严格匹配（不抛异常）
+    }
+    const match = TAB_DEEP_LINK_HASH_PATTERN.exec(value)
+    if (!match) {
+        return null
+    }
+    const setId = Number(match[1])
+    const tabNumber = Number(match[2])
+    if (!Number.isSafeInteger(setId) || !Number.isSafeInteger(tabNumber) || tabNumber < 1) {
+        return null
+    }
+    return { radioId: getTabbedRadioId(setId, tabNumber) }
+}
+
 /* ============================== 二、行级工具函数 ============================== */
 
 /** 读取某一行的原始文本（已去除行首缩进，markdown-it 的 state.src 已把 CRLF 归一化为 LF） */
@@ -310,7 +405,8 @@ function tabbedSetBlockRule(
         const tabOpenToken = state.push(MKDOCS_TAB_OPEN, 'div', 1)
         tabOpenToken.block = true
         tabOpenToken.map = [segment.contentStartLine - 1, segment.contentStartLine - 1]
-        tabOpenToken.meta = { index }
+        // setId 供渲染器生成深链 panel id（panel 与第 index+1 个 radio 共用同一 id）
+        tabOpenToken.meta = { index, setId }
         parseNestedContent(state, segment.content, segment.contentStartLine, env)
         const tabCloseToken = state.push(MKDOCS_TAB_CLOSE, 'div', -1)
         tabCloseToken.block = true
@@ -349,29 +445,50 @@ function registerRenderers(md: MarkdownItInstance): void {
     }
     md.renderer.rules[MKDOCS_ADMONITION_CLOSE] = () => '</div>\n'
 
-    md.renderer.rules[MKDOCS_TABS_OPEN] = (tokens, idx) => {
+    md.renderer.rules[MKDOCS_TABS_OPEN] = (tokens, idx, _options, env) => {
         const meta = tokens[idx].meta ?? {}
         const setId = typeof meta.setId === 'number' ? meta.setId : 1
         const labels = Array.isArray(meta.labels) ? meta.labels.map((label) => String(label)) : []
+        // 深链属性受 env 开关控制：未开启时输出与历史版本逐字节一致（既有测试基线依赖）
+        const deepLinks = isTabDeepLinkEnabled(env)
+        const setAnchor = deepLinks ? ` id="${getTabbedSetAnchorId(setId)}"` : ''
         const parts: string[] = [
-            `<div class="tabbed-set tabbed-alternate" data-tabs="${setId}:${labels.length}">\n`
+            `<div${setAnchor} class="tabbed-set tabbed-alternate" data-tabs="${setId}:${labels.length}">\n`
         ]
         labels.forEach((_label, index) => {
             const tabNumber = index + 1
             const checked = index === 0 ? ' checked' : ''
             parts.push(
                 `<input type="radio" name="__tabbed_${setId}" ` +
-                    `id="__tabbed_${setId}_${tabNumber}"${checked}>\n`
+                    `id="${getTabbedRadioId(setId, tabNumber)}"${checked}>\n`
             )
         })
         parts.push('<div class="tabbed-labels">')
         labels.forEach((label, index) => {
-            parts.push(`<label for="__tabbed_${setId}_${index + 1}">${escapeHtml(label)}</label>`)
+            const tabNumber = index + 1
+            // label 深链属性：id 供 #__tabbed_x_y_label 直接锚定，data-tab-target 指向对应 panel
+            const deepLinkAttrs = deepLinks
+                ? ` id="${getTabbedLabelId(setId, tabNumber)}"` +
+                  ` data-tab-target="${getTabbedPanelId(setId, tabNumber)}"`
+                : ''
+            parts.push(
+                `<label for="${getTabbedRadioId(setId, tabNumber)}"${deepLinkAttrs}>${escapeHtml(label)}</label>`
+            )
         })
         parts.push('</div>\n<div class="tabbed-content">')
         return parts.join('')
     }
-    md.renderer.rules[MKDOCS_TAB_OPEN] = () => '<div class="tabbed-block">'
+    md.renderer.rules[MKDOCS_TAB_OPEN] = (tokens, idx, _options, env) => {
+        if (!isTabDeepLinkEnabled(env)) {
+            return '<div class="tabbed-block">'
+        }
+        const meta = tokens[idx].meta ?? {}
+        const setId = typeof meta.setId === 'number' ? meta.setId : 1
+        const index = typeof meta.index === 'number' ? meta.index : 0
+        // panel id 带 _panel 后缀（radio 已占用 __tabbed_<set>_<n>，HTML id 必须唯一）；
+        // 既有 input:checked ~ .tabbed-block 兄弟选择器不依赖 id，结构与交互保持不变
+        return `<div id="${getTabbedPanelId(setId, index + 1)}" class="tabbed-block">`
+    }
     md.renderer.rules[MKDOCS_TAB_CLOSE] = () => '</div>'
     md.renderer.rules[MKDOCS_TABS_CLOSE] = () => '</div>\n</div>\n'
 }

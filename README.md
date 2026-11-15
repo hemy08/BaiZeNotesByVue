@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.3-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Electron](https://img.shields.io/badge/Electron-43.8.10-blue.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5.45-brightgreen.svg)
@@ -119,11 +119,15 @@
 - **UUID 生成**：UUID/GUID 生成工具
 - **二维码生成**：二维码生成工具
 
+#### 在线资源导航
+
+- **AI 导航**：ChatGPT / DeepSeek / Claude / Midjourney / Suno 等 9 组 70 个主流 AI 工具官方入口，菜单一键直达（2026-11 新增）
+
 ### ℹ️ 帮助系统
 
 #### 版本信息
 
-- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.0）的发布说明
+- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.3）的发布说明
 - **更新日志**：展示依赖升级详情和代码适配修复
 - **技术栈信息**：显示项目技术栈详细信息
 - **关于页面**：显示应用版本、开发框架、系统环境信息

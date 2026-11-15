@@ -140,7 +140,11 @@ export function isValidWindowSize(value: unknown): value is number {
  * WELCOME_ENTER_MAIN 已投递后再发数据；不使用固定 sleep，额外延迟通常 < 1 ms，
  * 远低于 500 ms 上限。
  */
-function runAfterMainViewEntered(task: () => Promise<void> | void): Promise<void> {
+/**
+ * 启动恢复流程（src/main/utils/startup-restore.ts）复用的同一投递时序：
+ * 先 send WELCOME_ENTER_MAIN，再在下一个事件循环 tick 发送数据事件。
+ */
+export function runAfterMainViewEntered(task: () => Promise<void> | void): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         setImmediate(() => {
             void (async () => {

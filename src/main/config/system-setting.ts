@@ -19,6 +19,10 @@ import { createSafeConfigModule } from './theme-config'
 import type { SystemSetting } from '../../shared/types'
 // AS-4：字体族/字号渲染兜底（即便存储中被写入非法值，也不得拼进 CSS 造成注入）
 import { clampFontSize, DEFAULT_FONT_FAMILY, sanitizeFontFamily } from './config-schema'
+// 最近文件列表数量：把本 store 的 recentFilesCount 注入 file-state-store 的保留条数提供者
+// （file-state-store 是叶子模块，不能反向 import 本模块，故采用注入方向）
+import { setRecentFilesLimitProvider } from '../utils/file-state-store'
+import { clampRecentFilesLimit } from '../../shared/constants/recent-files'
 
 // D-6/FUN-11：Store 读取损坏时备份原文件并重建默认值
 const systemSettingDefaults: SystemSetting = {
@@ -54,6 +58,8 @@ const systemSettingDefaults: SystemSetting = {
     autoStart: false,
     minimizeToTray: true,
     rememberWindowSize: true,
+    // 「记住窗口位置和大小」：上次关闭时的窗口边界（主进程写入；null 表示尚未记录）
+    windowBounds: null,
     defaultFilePath: '',
     recentFilesCount: 10,
     checkUpdateOnStart: true,
@@ -77,6 +83,13 @@ const systemSettingModule = createSafeConfigModule<SystemSetting>({
 })
 
 const systemSettingStore: Store<SystemSetting> = systemSettingModule.getStore()
+
+// 「最近文件列表数量」：file-state-store 写入/裁剪最近文件列表时按此设置截断。
+// 提供者在模块加载时注册一次，读取走惰性 getConfig()（每次调用取最新值，
+// 设置变更后立即生效，无需重新注册）。
+setRecentFilesLimitProvider(() =>
+    clampRecentFilesLimit(systemSettingModule.getConfig().recentFilesCount)
+)
 
 /**
  * 保存系统设置（部分更新）

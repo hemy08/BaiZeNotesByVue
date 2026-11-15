@@ -1,3 +1,133 @@
+## 2026年11月15日 - 版本 1.3.5（菜鸟常用工具插件集成）
+
+> 阅读菜鸟工具镜像站（www.jyshare.com）前端工具区工具源码，将其中适合离线使用的常用工具能力移植为本项目插件。源码调研报告见 [jyshare 前端工具源码调研](docs/reports/md/2026-11-15-jyshare-前端工具源码调研.md)，实施与验证细节见 [jyshare 插件集成实施报告](docs/reports/md/2026-11-15-jyshare-插件集成实施报告.md)。
+
+### 🧩 新增插件工具（18 个组件 / 19 个菜单项，插件工具总数 19 → 37）
+
+- **编解码（codec）**：Base64 编解码（先 UTF-8 再编码）、URL 编解码、HTML 实体编解码（命名+数字实体）、Unicode 与中文互转（\uXXXX / &#nnn;）、图片转 Base64（≤20MB，DataURL 与预览）
+- **格式转换（convert）**：颜色转换（RGB/HEX/HSL/HSV/CMYK 任意互转）、单位换算（长度 24 单位 + 存储 1024/1000 制）、人民币大写、时间戳转换（秒/毫秒切换）、进制转换（2-36 进制，支持小数与负数，BigInt 无浮点误差）
+- **文本转换（text）**：繁简互转（4792 字等长映射）、汉字转拼音（20902 字字库，无调/首字母）、字数统计（8 项分类）、文本比对（行级 LCS，大文本保护）
+- **格式化（format）**：JSON 工具（格式化/压缩/转义·去转义）、XML 格式化（自研词法解析器移植，注释/CDATA/文本原样保留）
+- **解析器（net）**：正则表达式测试（主线程，d/g/i/m/s/u/v/y 标志，替换 $1/$$/$<name>，匹配数与字符数防护上限）
+- **常用小工具（misc）**：随机生成器（密码/字符串/数字/颜色，crypto.getRandomValues 无偏采样）、在线计算器（双栈求值，显式运算零 eval）
+
+### 🔧 移植改进与修复
+
+- 修正原站 CMYK 转 RGB 分支缺陷（四分量统一 /100，往返自洽）
+- 修正原站 JSON 去转义缺陷（`\/` → `/`、`\\"` 正确还原、兼容 `\uXXXX`）
+- 随机数弃用 Math.random，改 crypto.getRandomValues 拒绝采样（消除模偏差）
+- 时间戳转换弃用 moment 栈（约 700KB），改原生 Date 手工解析（含日期存在性回验）
+- 正则测试改主线程实现（原站 Web Worker），按项目打包策略免 worker 路径处理
+
+### ⏸️ 本期未集成（记入 Roadmap）
+
+- SQL 格式化（原站为服务端实现，离线需引入 sql-formatter 库）
+- 中国日历（农历核心 344KB + 节假日需逐年外部数据）
+- JS 压缩/混淆、HTML 转 JS（依赖 js-beautifier/obfuscator 大体积库）
+- 文本比对采用自写 LCS（原站 Mergely 为 LGPL 且约 500KB）
+
+### ✅ 质量门禁
+
+- 新增 154 个单元测试用例（编解码 39 / 格式转换 45 / 常用小工具 27 / 文本 16 / 格式化 27）
+- 插件注册表 ↔ 菜单双向一致性守护同步更新（总数/分类计数/id 命名规范）
+- 全量单测、typecheck（三工程）、ESLint 全部通过（实测数据见实施报告）
+
+---
+
+## 2026年11月15日 - 版本 1.3.3（mkdocs-material 扩展语法）
+
+> 本版本新增 **15 项 mkdocs-material / pymdownx 扩展语法**支持，配合既有的 admonition（`!!!` 提示块）与标签页（`===`）渲染，白泽笔记可直接渲染 mkdocs-material 笔记的绝大多数高频写法。实施报告见 [mkdocs-material 扩展语法实施报告](docs/reports/md/2026-11-15-mkdocs-material扩展语法实施报告.md)，可视化样例见 `out/tool-results/mdx-features-preview.html`。
+
+### ✨ 新增语法支持（15 项）
+
+- **折叠提示块** `??? note "标题"` / `???+`（`<details>`，`+` 默认展开）
+- **任务列表** `- [x]` / `- [ ]`（禁用复选框）
+- **高亮 / 插入 / 删除**：`==高亮==`、`^^插入^^`、`~~删除~~`，以及 critic 标记 `{++ins++}` / `{--del--}` / `{~~旧~>新~~}` / `{==高亮==}` / `{>>隐藏注释<<}`
+- **上标 / 下标**：`^上标^` / `~下标~`
+- **键盘按键**：`++ctrl+alt+del++` → `<kbd>`
+- **属性列表**：`[按钮](url){ .md-button }`、`{ align=center }`、标题 `{ #custom-id }`
+- **脚注**：`[^1]` 引用 + `[^1]: 说明`（文末脚注区、回链、多引用）
+- **定义列表**：`术语` + `: 定义`
+- **Grid cards**：`<div class="grid cards" markdown>`（内部 Markdown 递归解析，支持图标/列表/分隔线）
+- **代码块增强**：`linenums` 行号、`hl_lines="2 3"` 高亮行、`title="main.py"` 文件名、行内高亮 `` `#!python …` ``
+- **Material 图标**：`:material-account:` / `:octicons-…:`（内置 264 个常用 MDI 子集，未知图标降级文本）
+- **pymdownx.blocks**：`/// note`、`/// tip | 标题`、`/// tabbed` + `/// tab | 标签`、`/// details`
+- **snippets 文件片段**：`--8<-- "relative/file.md"`、`--8<-- "file.md:10:20"`（相对活动文件目录、行号区间、递归深度/大小/扩展名白名单/目录边界限制）
+- **标签页深链**：`#__tabbed_<set>_<n>` 锚点点击自动切换到对应 tab
+
+### 🧭 插入菜单：插入 → Material
+
+- **菜单入口**：`插入 → Material` 子菜单在原有 Admonition 之后新增 **15 个插入入口**（折叠提示块 / 任务列表 / 高亮 / 插入删除 / 上下标 / 键盘按键 / 属性列表 / 脚注 / 定义列表 / Grid cards / 代码块增强 / Material 图标 / `///` blocks / snippets / 标签页深链），动作 id 统一为 `baize:menu:insert:material:<featureId>`
+- **统一插入对话框** `MaterialSyntaxDialog`：左侧 15 项功能列表 + 右侧数据驱动表单 + **实时 Markdown 预览**；点击菜单项自动定位到对应语法（preset），「插入」经既有编辑器插入链路写入光标处；中文/英文界面完整适配（`dialogRenderer.materialSyntax` 命名空间 103 键）
+- **测试**：对话框 25 用例（15 项精确 markdown 生成、preset、条件字段、预览、事件）+ 菜单 16 项/动作映射一致性用例；全仓 150 文件 2737 用例通过
+### 🧩 实现与安全
+
+- 新增统一扩展注册 `src/renderer/src/components/Markdown/preview-markdown-extensions.ts`，扩展拆分为 `preview-md-basic` / `preview-md-media` / `preview-md-blocks` 三个插件模块 + 3 个样式文件；全部为 markdown-it 原生 rule（解析阶段 token），不使用"渲染后字符串替换"
+- snippets 复用主进程既有 `IPC.FILE.READ_HTML` 通道（sender 校验 + 路径守卫 + UTF-8 读取），**不新增 IPC 通道**
+- 与预览 DOMPurify 消毒配置（`USE_PROFILES: html/svg/svgFilters/mathMl`）兼容，新增标签/属性全部保留，无需放宽安全策略
+
+### 📚 文档与测试
+
+- 新增 [mkdocs-material 扩展语法实施报告](docs/reports/md/2026-11-15-mkdocs-material扩展语法实施报告.md)（含 15 项语法速查、实现细节、DOMPurify 结论、限制说明）
+- 扩展相关 8 个测试文件 **270 用例全过**（178 新增批次用例 + 5 端到端集成 + 既有回归）；端到端样例覆盖 15 项组合渲染与安全消毒
+
+---
+
+## 2026年11月15日 - 版本 1.3.2（AI 导航菜单）
+
+> 菜单栏新增第 12 个顶层菜单「AI 导航」：按 9 个分类收录 70 个主流 AI 工具入口，链接整理自 [菜鸟工具 - AI 导航](https://www.jyshare.com/ai/)，全部为官方干净地址（https、已去除推广/返利参数）。
+
+### ✨ 新增功能
+
+- **AI 导航菜单**：位于「在线」之后、「GitHub」之前，按分类收录主流 AI 工具，点击经既有安全外开链路打开（`IPC.MENU.ACTION` → 主进程 `aiMenuHandlers` → `OpenOnlineWebPage`，未新增 IPC 通道）
+
+| 分组          | 条目数 | 代表工具                                                                                                               |
+| ------------- | ------ | ---------------------------------------------------------------------------------------------------------------------- |
+| 热门 AI       | 14     | ChatGPT、DeepSeek、豆包、Kimi、通义千问、文心一言、腾讯元宝、Claude、Gemini、Grok、Copilot、Perplexity、智谱清言、天工 |
+| AI 编程       | 9      | Cursor、TRAE、Qoder、GitHub Copilot、OpenCode、Google AI Studio、字节 Coding Plan、ZCode、DeepSeek Harness             |
+| AI 作图       | 10     | Midjourney、Stable Diffusion、Leonardo、Adobe Firefly、Runway、Canva、Figma、RemoveBG、Clipdrop、Civitai               |
+| AI 写作       | 7      | Notion AI、Grammarly、QuillBot、Gamma、NotebookLM、秘塔 AI 搜索、Poe                                                   |
+| AI 办公       | 3      | Miro、ima copilot、Manus                                                                                               |
+| AI 影音       | 8      | Suno、ElevenLabs、VEED、RecCloud、TurboScribe、Genmo、可灵、海螺                                                       |
+| AI 智能体     | 10     | OpenClaw、KimiClaw、AutoClaw、MaxClaw、ArkClaw、EasyClaw、QoderWork、秒哒、Agent Skills、腾讯 skillHub                 |
+| AI 模型与榜单 | 5      | Hugging Face、OpenRouter、Arena 排行榜、Artificial Analysis、SWE-bench                                                 |
+| 更多 AI 工具  | 4      | 菜鸟 AI 导航主页、Google Labs、SkillsMP、Character AI                                                                  |
+
+### 📚 文档与测试
+
+- [菜单配置详细文档](docs/wiki/03-功能说明/菜单配置详细文档.md) 新增 7.10「AI 导航」章节（含 70 条链接清单与动作链路）
+- 菜单相关测试（menu_config / menu-tools / menu-ipc-trees / menu-handle / menu_actions / i18n-dict）共 6 文件 205 用例通过；URL 契约断言：全部 https、无推广参数、全菜单唯一
+
+---
+
+## 2026年11月15日 - 版本 1.3.1（系统设置项补充实现）
+
+> 系统设置对话框中 9 项「该设置暂无对应功能实现」的禁用设置项已全部补充实现。整理清单与逐项实现方案见 [17-系统设置补充实现计划](docs/reports/md/17-系统设置补充实现计划.md)。
+
+### ✅ 已实现设置项（9 项）
+
+- **启动恢复**（autoOpenLastFile / autoOpenLastFolder）：新增 `startup-restore.ts`，主窗口 ready-to-show 后按开关自动恢复上次文件/目录（复用 WELCOME_ENTER_MAIN 时序，先进入主界面再投递数据事件）；文件/目录不存在时回退欢迎页并提示
+- **开机自启动**（autoStart）：config-manager 保存时联动 `app.setLoginItemSettings`，读取侧用 `getLoginItemSettings().openAtLogin` 校正显示；开发模式无效属预期（UI 提示「需安装应用后生效」）
+- **记住窗口位置大小**（rememberWindowSize）：新增 `window-bounds.ts`，启动按持久化 bounds 恢复（多显示器越界回退 1280×800 居中），resize/move 500ms 防抖写回，最大化/全屏跳过，close 立即落盘
+- **最近文件数量**（recentFilesCount，5~20）：新增共享 `clampRecentFilesLimit`，最近文件与最近文件夹写入侧按设置截断去重，改设置后即时裁剪存量
+- **最小化到托盘**（minimizeToTray）：新增 `tray.ts`（单例 Tray + 显示主窗口/退出菜单 + 单击恢复）；主窗口 close 拦截：落盘后按开关 hide 到托盘，显式退出（托盘退出/before-quit 的 isQuitting 标志）放行真实退出，进程可完全结束
+- **跟随系统主题**（useSystemTheme）：新增 `system-theme.ts`，nativeTheme updated 按 shouldUseDarkColors 自动应用 dark/light 主题并广播；手动切换主题自动关闭跟随（互斥语义，UI 有说明）
+- **自动备份**（enableAutoBackup + backupInterval）：新增 `auto-backup.ts`，按间隔定时备份活动文件（按原编码写出）+ 工作区 .md 文件到 `userData/backups/<时间戳>/`（保留目录结构、跳过 node_modules/.git、单文件 >20MB 跳过），按 backupCount（1~10）滚动清理；递归 setTimeout 防重叠；成功/失败状态栏提示；whenReady 启动、cleanupApp 停止
+- **应用主题下拉收口**（appTheme）：禁用下拉替换为只读显示当前主题名 + 「打开主题设置」按钮（复用主题设置对话框调用链），消除"暂无实现"提示
+
+### 🧪 测试与验证
+
+- 新增测试：startup-restore（6）、window-bounds（15）、tray（9）、system-theme（10）、auto-backup（12），并扩充 main-index / config-manager / file-state / config-schema / complex-dialogs 等既有测试
+- 验证：typecheck 三工程 0 错误、ESLint 0/0、vitest 全量 149 文件 / 2691 用例全通过
+
+### ⚠️ 已知注意
+
+- 托盘菜单文案按创建时语言固化（语言切换不热更新）；Linux 部分桌面托盘 click 不保证（目标平台 Windows）
+- 自动备份为同步 IO，超大工作区首次备份可能短暂阻塞（20MB/文件上限与目录跳过已缓解）
+- 开机自启动仅打包环境可验证
+
+---
+
 ## 2026年11月15日 - 版本 1.3.0（全面治理正式版）
 
 > 首个包含完整安全加固、国际化、预览本地渲染与架构收口的正式版本。基于 2026-11-14 全量检查（127 项）与 2026-11-15 复扫（94 项）执行多轮修复，复扫结论：**✅ 已修复 105 项 / 🟡 部分修复 22 项 / 未处理 0 项**。门禁实测：typecheck 三工程 0 错误（noImplicitAny 已开启、tests 已纳入）、ESLint 0 error / 0 warning、全量与生产依赖 audit 均 0 漏洞、**133 测试文件 2243 用例全通过**（复扫期的 2 例断言不同步已修复）。复扫详情见 [2026-11-15-晚-全量复扫结果](docs/reports/md/2026-11-15-晚-全量复扫结果.md)。

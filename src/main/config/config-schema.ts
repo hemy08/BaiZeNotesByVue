@@ -174,7 +174,8 @@ const SYSTEM_BOOLEAN_FIELDS: ReadonlySet<string> = new Set([
 const SYSTEM_NUMBER_LIMITS: Readonly<Record<string, { min: number; max: number }>> = {
     autoSaveInterval: { min: 5, max: 86400 },
     fontSize: { min: FONT_SIZE_MIN, max: FONT_SIZE_MAX },
-    recentFilesCount: { min: 1, max: 100 },
+    // 「最近文件列表数量」：5~20（与 SystemSettingDialog 输入框与 shared 常量一致）
+    recentFilesCount: { min: 5, max: 20 },
     backupInterval: { min: 1, max: 720 },
     backupCount: { min: 1, max: 50 }
 }
@@ -199,6 +200,13 @@ const LANGUAGE_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/
 const SHORT_ID_PATTERN = /^[A-Za-z0-9_./-]{1,64}$/
 /** 路径类字符串最大长度（防异常超长 payload 落盘） */
 const MAX_PATH_STRING_LENGTH = 4096
+
+// 「记住窗口位置和大小」持久化边界校验范围（与 handlers.ts 的 AS-6 常量一致，
+// 见 AS-6 注释的同步点说明；handlers 依赖 config 反向不可 import，故就地复制）。
+/** 窗口坐标绝对值上限（覆盖多显示器/超宽屏，同时挡住 1e9 级异常值） */
+const WINDOW_BOUNDS_COORDINATE_LIMIT = 100000
+/** 窗口尺寸上限（下限 1：真正的可用尺寸由系统窗口管理器决定） */
+const WINDOW_BOUNDS_SIZE_LIMIT = 32768
 
 /** 校验 system 配置写入（对话框 17 字段 + 主进程 SystemSetting 全字段） */
 export function validateSystemConfig(data: unknown): ConfigValidationResult {
@@ -277,6 +285,48 @@ export function validateSystemConfig(data: unknown): ConfigValidationResult {
                 value.defaultFilePath = raw
             } else {
                 adjusted.push('defaultFilePath: 非法路径字符串，已丢弃')
+            }
+            continue
+        }
+        if (field === 'windowBounds') {
+            // 「记住窗口位置和大小」的持久化边界（主进程写入，此处防御渲染层传入）。
+            // 坐标/尺寸合法范围与 handlers.ts 的 AS-6 校验一致（该模块不可被本文件
+            // import——handlers 反向依赖 config，故常量就地复制并注明同步点）。
+            if (raw === null) {
+                value.windowBounds = null
+                continue
+            }
+            if (isPlainObject(raw)) {
+                const bounds = raw as Record<string, unknown>
+                const coords = [bounds.x, bounds.y]
+                const sizes = [bounds.width, bounds.height]
+                const coordsValid = coords.every(
+                    (v) =>
+                        typeof v === 'number' &&
+                        Number.isFinite(v) &&
+                        Number.isInteger(v) &&
+                        Math.abs(v) <= WINDOW_BOUNDS_COORDINATE_LIMIT
+                )
+                const sizesValid = sizes.every(
+                    (v) =>
+                        typeof v === 'number' &&
+                        Number.isFinite(v) &&
+                        Number.isInteger(v) &&
+                        v >= 1 &&
+                        v <= WINDOW_BOUNDS_SIZE_LIMIT
+                )
+                if (coordsValid && sizesValid) {
+                    value.windowBounds = {
+                        x: bounds.x,
+                        y: bounds.y,
+                        width: bounds.width,
+                        height: bounds.height
+                    }
+                } else {
+                    adjusted.push('windowBounds: 坐标/尺寸非法，已丢弃')
+                }
+            } else {
+                adjusted.push('windowBounds: 必须是 null 或 {x,y,width,height} 对象，已丢弃')
             }
             continue
         }

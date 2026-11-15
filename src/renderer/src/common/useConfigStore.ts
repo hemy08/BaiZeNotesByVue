@@ -142,6 +142,10 @@ export interface DialogState {
     techStack: { visible: boolean }
     quickLinks: { visible: boolean }
     importOption: { visible: boolean; content?: string }
+    // Material 语法插入对话框（15 项 mkdocs-material 扩展语法）：
+    // preset 为 featureId（collapsible/task-list/.../tab-link），由菜单动作 showDialog 第二参传入，
+    // 对话框打开时据此选中左侧对应语法项；无 preset 时默认第一项。
+    materialSyntax: { visible: boolean; preset?: string }
 }
 
 // 对话框默认状态
@@ -162,7 +166,8 @@ const defaultDialogState: DialogState = {
     helpContact: { visible: false },
     techStack: { visible: false },
     quickLinks: { visible: false },
-    importOption: { visible: false }
+    importOption: { visible: false },
+    materialSyntax: { visible: false }
 }
 
 // 全局状态

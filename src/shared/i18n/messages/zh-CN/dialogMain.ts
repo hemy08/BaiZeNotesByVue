@@ -126,9 +126,12 @@ export default {
         },
         codeFixesTitle: '代码适配修复',
         codeFixes: {
-            materialRender: 'mkdocs-material：admonition/tabbed set 重构为 markdown-it 原生 block 插件',
-            editorOptions: 'preview-markdown-it.ts：关闭 highlightAuto 全语言探测（auto:false）+ 高亮守卫',
-            hemyEditorRender: 'preview-local-render.ts：本地图片 file:// URL 转换（toFileUrl + encodeURI）',
+            materialRender:
+                'mkdocs-material：admonition/tabbed set 重构为 markdown-it 原生 block 插件',
+            editorOptions:
+                'preview-markdown-it.ts：关闭 highlightAuto 全语言探测（auto:false）+ 高亮守卫',
+            hemyEditorRender:
+                'preview-local-render.ts：本地图片 file:// URL 转换（toFileUrl + encodeURI）',
             tsconfigWeb: 'tsconfig.*：开启 noImplicitAny 并修复 46 处隐式 any 诊断',
             vitest: 'tsconfig.test.json：测试目录纳入类型检查（235 处诊断修复）',
             encryptDecrypt: 'DOMPurify 配置：URI 白名单追加 file: 协议（本地图片 src 不再被剥离）',
@@ -157,6 +160,29 @@ export default {
         fixesTitle: '问题修复',
         improvementsTitle: '优化改进',
         techStackTitle: '技术栈',
+        v135: {
+            title: '1.3.5 菜鸟常用工具插件集成',
+            highlights: {
+                h1: '集成菜鸟工具站（jyshare.com）18 个离线常用工具',
+                h2: '编解码 / 转换 / 文本 / 格式化 / 常用小工具五大类',
+                h3: '全部零第三方依赖，纯前端离线可用'
+            },
+            features: {
+                f1: '编解码：Base64 / URL / HTML 实体 / Unicode / 图片转 Base64',
+                f2: '格式转换：颜色 / 单位 / 人民币大写 / 时间戳 / 进制转换',
+                f3: '文本工具：繁简互转 / 汉字转拼音 / 字数统计 / 文本比对',
+                f4: '格式化与解析：JSON 工具 / XML 格式化 / 正则表达式测试',
+                f5: '常用小工具：随机生成器 / 在线计算器'
+            },
+            improvements: {
+                i1: '插件工具总数 19 → 37，全部按需懒加载不占首屏',
+                i2: '新增 154 个单元测试用例'
+            },
+            fixes: {
+                x1: '修正菜鸟原站 CMYK 转 RGB 计算缺陷',
+                x2: '修正菜鸟原站 JSON 去转义处理缺陷'
+            }
+        },
         v130: {
             title: '1.3.0 全面治理版',
             highlights: {

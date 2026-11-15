@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session } from 'electron'
+import { app, BrowserWindow, session, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import * as utils from './utils/utils'
@@ -10,6 +10,7 @@ import {
     getMonacoTheme,
     getSeparateEditorTheme,
     getSystemSetting,
+    saveSystemSetting,
     registerConfigIpcHandlers,
     getEditorSetting,
     buildFontCss
@@ -39,6 +40,19 @@ import { tMain } from './utils/i18n'
 import { isAllowedAppNavigation, isSafeExternalUrl, openExternalSafely } from './utils/security'
 // AS-9：远程图表外发阻断（PlantUML 本地渲染不可用时的 plantuml.com 远程降级请求）
 import { registerRemoteResourceGuard } from './utils/remote-resource-guard'
+// 系统设置补充实现批次 A：
+// - 启动恢复上次文件/目录（autoOpenLastFile / autoOpenLastFolder）
+import { restoreLastOpenedAtStartup } from './utils/startup-restore'
+// - 记住窗口位置和大小（rememberWindowSize / windowBounds）
+import { attachWindowBoundsPersistence, resolveInitialWindowOptions } from './utils/window-bounds'
+// 系统设置补充实现批次 B：
+// - 关闭时最小化到系统托盘（minimizeToTray）
+import { disposeTray, ensureTrayCreated } from './utils/tray'
+// - 跟随系统主题（useSystemTheme）：nativeTheme 监听 + 应用/广播
+import { startSystemThemeWatcher, stopSystemThemeWatcher } from './config/system-theme'
+// 系统设置补充实现批次 C：
+// - 自动备份（enableAutoBackup + backupInterval）：启动定时器（whenReady）+ 退出清理
+import { stopAutoBackupTimer, syncAutoBackupTimer } from './utils/auto-backup'
 
 // D-3/FUN-03：关闭/退出落盘协议通道名（ARC-03：收口到共享 IPC 常量）
 const EDITOR_FLUSH_CHANNEL = IPC.EDITOR.FLUSH_CONTENT
@@ -52,6 +66,10 @@ const GLOBAL_MAIN_INDEX_COMPONENT_ID = 'global-main-index'
 const MAIN_WINDOW_FLUSH_COMPONENT_ID = 'main-window-flush'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
+
+// 「记住窗口位置和大小」的持久化监听清理函数（挂入 cleanupApp；activate 重建窗口时随
+// createWindow 重新挂接，旧窗口的监听随窗口销毁失效、dispose 函数仅负责清计时器）
+let disposeWindowBoundsPersistence: (() => void) | null = null
 
 /**
  * 通知渲染层立即 flush 编辑器内容（取消防抖并把当前内容发到既有内容同步通道）。
@@ -99,9 +117,20 @@ function createWindow(): void {
     // 当前窗口是否已完成"关闭前落盘"，用于放行第二次 close（D-3）
     let flushedForClose = false
 
+    // 记住窗口位置和大小（批次 A）：开关开启时恢复上次持久化的窗口边界，
+    // 与任一显示器工作区不相交（如外接显示器已拔掉）或非法时回退默认 1280×800 居中。
+    const initialSystemSetting = getSystemSetting()
+    const initialBounds = resolveInitialWindowOptions(
+        initialSystemSetting.rememberWindowSize,
+        initialSystemSetting.windowBounds,
+        screen.getAllDisplays().map((display) => display.workArea)
+    )
+
     mainWindow = new BrowserWindow({
-        width: 900,
-        height: 650,
+        width: initialBounds.width,
+        height: initialBounds.height,
+        x: initialBounds.x,
+        y: initialBounds.y,
         show: false,
         title: tMain('mainMsg.app.windowTitle'),
         frame: false,
@@ -124,8 +153,14 @@ function createWindow(): void {
 
     // D-3/FUN-03：拦截窗口关闭——先让渲染层 flush 编辑器内容，
     // 若当前文件仍有未保存修改则落盘，再真正关闭。
+    // 批次 B #4：显式退出（托盘「退出」/before-quit 已置 appState 退出标志）时直接放行
+    // close（flush 落盘已在 before-quit 完成）；否则拦截并在 flush 完成后按
+    // minimizeToTray 决定「隐藏到托盘」还是「真实关闭」。
     mainWindow.on('close', async (event) => {
         if (flushedForClose) {
+            return
+        }
+        if (appState.isQuitting) {
             return
         }
         event.preventDefault()
@@ -137,8 +172,25 @@ function createWindow(): void {
         } catch (err) {
             logger.error('关闭窗口前落盘失败', err)
         }
+        // 批次 B #4：flush 落盘完成后，minimizeToTray 开启且非显式退出 → 隐藏窗口
+        // （托盘常驻）；隐藏分支不置 flushedForClose，下次点关闭重新走 flush 协议
+        // （保证每次隐藏前都完成落盘）。
+        if (getSystemSetting().minimizeToTray && !appState.isQuitting) {
+            ensureTrayCreated()
+            mainWindow.hide()
+            return
+        }
         flushedForClose = true
         mainWindow.close()
+    })
+
+    // 记住窗口位置和大小（批次 A）：resize/move 500ms 防抖写回 system store，
+    // close 时立即落盘（与上方关闭落盘协议同为 close 监听，互不影响）；
+    // dispose 挂入 cleanupApp（窗口销毁与退出清理）。
+    disposeWindowBoundsPersistence?.()
+    disposeWindowBoundsPersistence = attachWindowBoundsPersistence(mainWindow, {
+        isEnabled: () => getSystemSetting().rememberWindowSize === true,
+        save: (bounds) => saveSystemSetting({ windowBounds: bounds })
     })
 
     mainWindow.on('ready-to-show', async () => {
@@ -159,7 +211,14 @@ function createWindow(): void {
         const editorSetting = getEditorSetting()
         mainWindow.webContents.send(IPC.EDITOR.INIT_SETTING, editorSetting)
 
-        await restoreLastOpenedFile()
+        // 系统设置补充实现批次 A（#1/#2）：autoOpenLastFile / autoOpenLastFolder 开启时
+        // 自动执行与欢迎页入口相同的恢复动作（先 WELCOME_ENTER_MAIN 再投递数据事件）；
+        // 均未开启时保持历史行为（后台恢复，show-welcome=false 用户仍能恢复上次会话）。
+        if (systemSetting.autoOpenLastFile || systemSetting.autoOpenLastFolder) {
+            await restoreLastOpenedAtStartup(mainWindow, systemSetting)
+        } else {
+            await restoreLastOpenedFile()
+        }
     })
 
     RegisterShortKeys(mainWindow)
@@ -231,6 +290,15 @@ app.whenReady().then(() => {
 
     // 注册配置 IPC 处理器
     registerConfigIpcHandlers()
+
+    // 批次 B #7：跟随系统主题——启动 nativeTheme 监听并立即对齐一次当前系统深浅色
+    // （创建窗口前应用，ready-to-show 时 INIT_THEME_STYLES 取到的即是最新主题）
+    startSystemThemeWatcher()
+
+    // 批次 C #8/#9：自动备份——按 system store 的 enableAutoBackup/backupInterval
+    // 启动定时器（开启时先立即执行一次，无活动文件/工作区时静默跳过）；
+    // 保存设置时的重启由 config-manager 的 syncAutoBackupTimer 处理。
+    syncAutoBackupTimer()
 
     electronApp.setAppUserModelId('com.electron')
 
@@ -304,6 +372,15 @@ function cleanupApp(): void {
     dialogs.CleanupMainWindowDialogsEvent()
     // PF-08：销毁 PlantUML 本地渲染隐藏窗口（不阻塞应用退出）
     disposePlantumlLocalWindows()
+    // 记住窗口位置和大小（批次 A）：清理 bounds 防抖计时器与窗口监听
+    disposeWindowBoundsPersistence?.()
+    disposeWindowBoundsPersistence = null
+    // 批次 B #7：清理 nativeTheme 跟随监听（随应用退出）
+    stopSystemThemeWatcher()
+    // 批次 C #8/#9：退出时停止自动备份定时器，避免残留定时器继续写盘
+    stopAutoBackupTimer()
+    // 批次 B #4：销毁托盘（进程退出时清理系统资源；设置开关关闭不触发此处）
+    disposeTray()
     ipcListenerManager.cleanupAll()
 
     const windows = BrowserWindow.getAllWindows()
@@ -322,6 +399,9 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', (event) => {
+    // 批次 B #4：进入退出流程即置显式退出标志——随后窗口 close 事件不再被
+    // 「最小化到托盘」拦截（否则 hide 会阻止窗口关闭、进程无法完全退出）。
+    appState.setQuitting(true)
     if (flushedForQuit) {
         cleanupApp()
         return

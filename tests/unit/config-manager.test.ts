@@ -12,7 +12,10 @@ import * as fs from 'fs-extra'
 // 测试临时目录（与 electron mock 中保持一致，需放入 vi.hoisted 供 mock 工厂访问）
 const hoisted = vi.hoisted(() => {
     return {
-        tmpRoot: `${process.env.TEMP || process.env.TMP || '/tmp'}/baize-vitest-config-manager`
+        tmpRoot: `${process.env.TEMP || process.env.TMP || '/tmp'}/baize-vitest-config-manager`,
+        // 批次 A：#3 开机自启动——OS 登录项实际状态（读取时校正 system.autoStart 显示值）
+        loginItem: { openAtLogin: false },
+        setLoginItemSettings: vi.fn()
     }
 })
 
@@ -27,7 +30,10 @@ vi.mock('electron', () => ({
         })
     },
     app: {
-        getPath: vi.fn(() => hoisted.tmpRoot)
+        getPath: vi.fn(() => hoisted.tmpRoot),
+        // 批次 A：#3 开机自启动的系统登录项 API
+        setLoginItemSettings: hoisted.setLoginItemSettings,
+        getLoginItemSettings: vi.fn(() => hoisted.loginItem)
     },
     BrowserWindow: { getAllWindows: vi.fn(() => []) }
 }))
@@ -48,11 +54,33 @@ vi.mock('../../src/main/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }))
 
+// 批次 B：minimizeToTray / useSystemTheme 的主进程副作用模块单独 mock——
+// 托盘创建细节由 tray.test.ts 覆盖，系统主题跟随细节由 system-theme.test.ts 覆盖，
+// 本文件只验证 config-manager 的调用触发关系（互斥语义落在真实 system store 上）。
+vi.mock('../../src/main/utils/tray', () => ({
+    ensureTrayCreated: vi.fn()
+}))
+
+vi.mock('../../src/main/config/system-theme', () => ({
+    applySystemThemeNow: vi.fn()
+}))
+
+// 批次 C #8/#9：自动备份定时器同步单独 mock——备份细节由 auto-backup.test.ts 覆盖，
+// 本文件只验证 config-manager 保存路径的调用触发关系
+vi.mock('../../src/main/utils/auto-backup', () => ({
+    syncAutoBackupTimer: vi.fn()
+}))
+
 import { configManager, registerConfigIpcHandlers } from '../../src/main/config/config-manager'
+import { ensureTrayCreated } from '../../src/main/utils/tray'
+import { applySystemThemeNow } from '../../src/main/config/system-theme'
+import { syncAutoBackupTimer } from '../../src/main/utils/auto-backup'
 import { setTrustedMainWindow, resetTrustedSenderRegistry } from '../../src/main/utils/ipc-security'
 import { appState } from '../../src/main/utils/app-state'
 import { IPC } from '../../src/shared/ipc-channels'
 import { FakeStore } from './helpers/fake-store'
+// 批次 A：#4 最近文件列表数量——file-state-store 的最近文件存取
+import { getRecentFiles, saveLastOpenedFile } from '../../src/main/utils/file-state-store'
 
 // P1/N-05：config:read / config:write 统一校验发送方，测试桩提供受信主窗口与事件
 const trustedMainWindow = { webContents: { id: 1 }, isDestroyed: () => false }
@@ -65,11 +93,18 @@ describe('config-manager', () => {
     beforeEach(() => {
         fs.rmSync(hoisted.tmpRoot, { recursive: true, force: true })
         ipcHandlers.map.clear()
+        hoisted.loginItem.openAtLogin = false
+        hoisted.setLoginItemSettings.mockClear()
         resetTrustedSenderRegistry()
         setTrustedMainWindow(trustedMainWindow as never)
         appState._resetForTesting()
         // 清空内存 store，保证 ARC-04 路由测试之间互不影响
         FakeStore.resetAll()
+        // 批次 B：清理托盘/系统主题副作用 mock 的调用记录
+        vi.mocked(ensureTrayCreated).mockClear()
+        vi.mocked(applySystemThemeNow).mockClear()
+        // 批次 C：清理自动备份定时器同步 mock 的调用记录
+        vi.mocked(syncAutoBackupTimer).mockClear()
     })
 
     describe('CONFIG_DIR', () => {
@@ -682,6 +717,139 @@ describe('config-manager', () => {
             ).resolves.toBe(true)
             const stored = (await readChannel()(trustedEvent, 'recent-folders')) as unknown[]
             expect(stored).toEqual(['C:\\notes', 'D:\\work'])
+        })
+    })
+
+    describe('系统设置补充实现批次 A', () => {
+        it('autoStart=true 写入后调用 setLoginItemSettings({ openAtLogin: true })', async () => {
+            await configManager.writeConfig('system', { autoStart: true })
+            expect(hoisted.setLoginItemSettings).toHaveBeenCalledWith({ openAtLogin: true })
+        })
+
+        it('autoStart=false 写入后调用 setLoginItemSettings({ openAtLogin: false })', async () => {
+            await configManager.writeConfig('system', { autoStart: false })
+            expect(hoisted.setLoginItemSettings).toHaveBeenCalledWith({ openAtLogin: false })
+        })
+
+        it('读取 system 时用 OS 实际登录项状态校正 autoStart 显示值', async () => {
+            // store 中保存 true，但 OS 实际是 false（如用户手动取消/API 未生效）
+            await configManager.writeConfig('system', { autoStart: true })
+            hoisted.loginItem.openAtLogin = false
+            const stored = (await configManager.readConfig('system')) as Record<string, unknown>
+            expect(stored.autoStart).toBe(false)
+
+            hoisted.loginItem.openAtLogin = true
+            const stored2 = (await configManager.readConfig('system')) as Record<string, unknown>
+            expect(stored2.autoStart).toBe(true)
+        })
+
+        it('recentFilesCount 变更后即时裁剪 fileState 最近文件存量列表', async () => {
+            // 默认保留 10 条：先写入 12 条 → 10 条
+            for (let i = 0; i < 12; i++) {
+                saveLastOpenedFile(`/f${i}.md`)
+            }
+            expect(getRecentFiles()).toHaveLength(10)
+
+            // 改为 5 条：保存系统设置后立即裁剪存量
+            await configManager.writeConfig('system', { recentFilesCount: 5 })
+            const recent = getRecentFiles()
+            expect(recent).toHaveLength(5)
+            expect(recent[0]).toBe('/f11.md')
+        })
+
+        it('recentFilesCount 变更后即时裁剪 recent-folders.json 存量', async () => {
+            const folders = Array.from({ length: 12 }, (_, i) => `C:\\notes\\dir${i}`)
+            await configManager.writeConfig('recent-folders', folders)
+            expect(await configManager.readConfig('recent-folders')).toHaveLength(10)
+
+            await configManager.writeConfig('system', { recentFilesCount: 5 })
+            const stored = (await configManager.readConfig('recent-folders')) as unknown as string[]
+            expect(stored).toHaveLength(5)
+            expect(stored[0]).toBe('C:\\notes\\dir0')
+        })
+
+        it('recent-folders 写入侧按 recentFilesCount 截断', async () => {
+            await configManager.writeConfig('system', { recentFilesCount: 6 })
+            const folders = Array.from({ length: 12 }, (_, i) => `D:\\work\\dir${i}`)
+            await configManager.writeConfig('recent-folders', folders)
+            const stored = (await configManager.readConfig('recent-folders')) as unknown as string[]
+            expect(stored).toHaveLength(6)
+        })
+    })
+
+    describe('系统设置补充实现批次 B', () => {
+        it('minimizeToTray=true 写入后立即确保托盘已创建（即时生效）', async () => {
+            await configManager.writeConfig('system', { minimizeToTray: true })
+            expect(vi.mocked(ensureTrayCreated)).toHaveBeenCalledTimes(1)
+
+            // 再次保存（如对话框每次点「确定」全量写）不重复触发非幂等问题——
+            // tray.ts 内部单例防护，此处仅保证调用关系稳定
+            await configManager.writeConfig('system', { minimizeToTray: true })
+            expect(vi.mocked(ensureTrayCreated)).toHaveBeenCalledTimes(2)
+        })
+
+        it('minimizeToTray=false 写入不创建托盘（关闭时不销毁已有托盘）', async () => {
+            await configManager.writeConfig('system', { minimizeToTray: false })
+            expect(vi.mocked(ensureTrayCreated)).not.toHaveBeenCalled()
+        })
+
+        it('useSystemTheme=true 写入后立即按系统主题应用一次', async () => {
+            await configManager.writeConfig('system', { useSystemTheme: true })
+            expect(vi.mocked(applySystemThemeNow)).toHaveBeenCalledTimes(1)
+        })
+
+        it('useSystemTheme=false 写入不触发系统主题应用', async () => {
+            await configManager.writeConfig('system', { useSystemTheme: false })
+            expect(vi.mocked(applySystemThemeNow)).not.toHaveBeenCalled()
+        })
+
+        it('手动切换主题（theme 写入携带 currentTheme）自动关闭 useSystemTheme（互斥）', async () => {
+            await configManager.writeConfig('system', { useSystemTheme: true })
+            const storedBefore = (await configManager.readConfig('system')) as Record<
+                string,
+                unknown
+            >
+            expect(storedBefore.useSystemTheme).toBe(true)
+
+            await configManager.writeConfig('theme', { currentTheme: 'rose' })
+
+            const storedAfter = (await configManager.readConfig('system')) as Record<
+                string,
+                unknown
+            >
+            expect(storedAfter.useSystemTheme).toBe(false)
+        })
+
+        it('仅写 editorTheme / separateEditorTheme 不关闭 useSystemTheme', async () => {
+            await configManager.writeConfig('system', { useSystemTheme: true })
+            await configManager.writeConfig('theme', { editorTheme: 'vs-light' })
+            await configManager.writeConfig('theme', { separateEditorTheme: true })
+
+            const stored = (await configManager.readConfig('system')) as Record<string, unknown>
+            expect(stored.useSystemTheme).toBe(true)
+        })
+    })
+
+    describe('系统设置补充实现批次 C（自动备份）', () => {
+        it('enableAutoBackup=true 写入后同步定时器（保存即生效）', async () => {
+            await configManager.writeConfig('system', { enableAutoBackup: true })
+            expect(vi.mocked(syncAutoBackupTimer)).toHaveBeenCalledTimes(1)
+        })
+
+        it('enableAutoBackup=false 写入后同步定时器（停止调度）', async () => {
+            await configManager.writeConfig('system', { enableAutoBackup: false })
+            expect(vi.mocked(syncAutoBackupTimer)).toHaveBeenCalledTimes(1)
+        })
+
+        it('backupInterval 变更后同步定时器（按新间隔重启）', async () => {
+            await configManager.writeConfig('system', { backupInterval: 48 })
+            expect(vi.mocked(syncAutoBackupTimer)).toHaveBeenCalledTimes(1)
+        })
+
+        it('写入与自动备份无关的字段不触发定时器同步', async () => {
+            await configManager.writeConfig('system', { fontSize: 14 })
+            await configManager.writeConfig('system', { autoSaveEnabled: true })
+            expect(vi.mocked(syncAutoBackupTimer)).not.toHaveBeenCalled()
         })
     })
 })

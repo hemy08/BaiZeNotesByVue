@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026-11-15-jyshare-前端工具源码调研</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">一、逐个工具分析</a>
+    <a class="toc-l3" href="#sub-1">1. JSON 格式化（/front-end/53/）</a>
+    <a class="toc-l3" href="#sub-2">2. JSON 解析（/front-end/7438/）</a>
+    <a class="toc-l3" href="#sub-3">3. JSON 转义/去除转义（/front-end/7683/）</a>
+    <a class="toc-l3" href="#sub-4">4. Base64 编码/解码（/front-end/693/）</a>
+    <a class="toc-l3" href="#sub-5">5. URL 编码/解码（/front-end/695/）</a>
+    <a class="toc-l3" href="#sub-6">6. HTML 编码/解码（/front-end/691/）</a>
+    <a class="toc-l3" href="#sub-7">7. Unicode 编码转换（/front-end/3602/）</a>
+    <a class="toc-l3" href="#sub-8">8. 时间戳转换器（/front-end/852/）</a>
+    <a class="toc-l3" href="#sub-9">9. 进制转换器（/front-end/58/）</a>
+    <a class="toc-l3" href="#sub-10">10. 字数统计（/front-end/5580/）</a>
+    <a class="toc-l3" href="#sub-11">11. 繁简转换（/front-end/5579/）</a>
+    <a class="toc-l3" href="#sub-12">12. 文本比对（/front-end/8006/）</a>
+    <a class="toc-l3" href="#sub-13">13. 汉字转拼音（/front-end/5523/）</a>
+    <a class="toc-l3" href="#sub-14">14. HTML 转 JavaScript（/front-end/846/）</a>
+    <a class="toc-l3" href="#sub-15">15. 今日日期（中国日历）（/front-end/5672/）</a>
+    <a class="toc-l2" href="#sec-2">二、第三方库清单汇总</a>
+    <a class="toc-l2" href="#sec-3">三、适合作为离线桌面插件实现的优先级排序</a>
+    <a class="toc-l2" href="#sec-4">四、附：原始抓取产物清单</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>2026-11-15-jyshare-前端工具源码调研</h1>
+    
+  </header>
+
+
+<ul>
+<li>调研日期：2026-11-15</li>
+<li>调研方式：完整下载各工具页面 HTML（<code>Invoke-WebRequest</code>，含内联 <code>&lt;script&gt;</code>）并下载所有外部 JS 依赖后静态分析</li>
+<li>原始抓取产物：<code>out/jyshare-src/html/*.html</code>（15 个页面）与 <code>out/jyshare-src/js/*.js</code>（9 个外部脚本）</li>
+<li>抓取状态：15/15 全部成功，无&quot;未获取&quot;</li>
+<li>说明：以下所有代码均来自菜鸟工具页面公开源码，仅作技术资料参考</li>
+</ul>
+<hr>
+<h2 id="sec-1">一、逐个工具分析</h2>
+<h3 id="sub-1">1. JSON 格式化（/front-end/53/）</h3>
+<ul>
+<li><strong>核心算法</strong>：
+<ul>
+<li>输入 → 自写<strong>递归下降解析器 <code>strictParse</code></strong>（严格 JSON 校验）→ 内部 JS 对象 → 按模式输出。</li>
+<li>校验边界：去 BOM；UTF-8 字节数 &gt; 2 MB 拒绝；嵌套深度 ≤ 80；节点数 ≤ 12000；对象字段名必须双引号；<strong>重复 key 报错</strong>；<strong>尾随逗号报错</strong>；数值经 <code>canonical()</code> 归一化比对，超出 <code>Number</code> 安全精度拒绝（提示改字符串）；报错带行列号。</li>
+<li>输出模式：格式化/压缩 = <code>JSON.stringify(data, null, spacing|undefined)</code>；树形 = jsoneditor 10.4.3 树编辑器（可改值回写）；XML = 自写 <code>jsonXML</code> 递归生成（非法 key 归入 <code>&lt;entry key=…&gt;</code>，数组项为 <code>&lt;item&gt;</code>，带 type 属性）；CSV = 自写 <code>jsonCSV</code>（先选&quot;数据位置&quot;路径，对象数组并集取列，RFC4180 双引号转义，<strong>公式防护</strong>：<code>=+-@</code> 开头单元格前缀 <code>'</code>，输出 <code>\r\n</code> + BOM）；YAML = js-yaml 4.1.1 <code>yaml.dump</code>（JSON_SCHEMA，保留类型）。</li>
+</ul>
+</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">function strictParse(input){
+ const text=String(input).replace(/^\uFEFF/,''); ...
+ let pos=0,count=0;const fail=msg=&gt;{...throw e},ws=()=&gt;{while(/[\x20\t\r\n]/.test(text[pos]||'\0'))pos++};
+ function string(){const start=pos++;while(pos&lt;text.length){const c=text[pos++];
+   if(c==='&quot;'){try{return JSON.parse(text.slice(start,pos))}catch(_){fail('字符串转义不正确')}}
+   if(c==='\\')pos++;else if(c.charCodeAt(0)&lt;32)fail('字符串中不能包含未转义的控制字符')}fail('字符串缺少结束引号')}
+ function value(depth){ws();if(depth&gt;LIMITS.depth)fail('嵌套层数不能超过 80 层');if(++count&gt;LIMITS.nodes)fail('数据节点过多…');
+   const c=text[pos];if(c==='&quot;')return string();if(c==='{'||c==='['){pos++;const array=c==='[',out=array?[]:{},seen=new Set(),end=array?']':'}';
+   ws();if(text[pos]===end){pos++;return out}while(pos&lt;text.length){ws();let key;
+   if(!array){if(text[pos]!=='&quot;')fail('对象字段名必须使用双引号');key=string();
+   if(seen.has(key))fail('字段名重复：'+key.slice(0,60));seen.add(key);ws();if(text[pos++]!==':')fail('字段名后缺少冒号')}
+   const v=value(depth+1);if(array)out.push(v);else Object.defineProperty(out,key,{value:v,enumerable:true,configurable:true,writable:true});
+   ws();if(text[pos]===end){pos++;return out}if(text[pos++]!==',')fail('字段之间缺少逗号或括号不匹配');
+   ws();if(text[pos]===end)fail('最后一项后不能添加逗号')}fail('缺少结束括号')}
+ for(const[raw,v]of [['true',true],['false',false],['null',null]])if(text.slice(pos,pos+raw.length)===raw){pos+=raw.length;return v}
+ const match=text.slice(pos).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);if(match){const raw=match[0],n=Number(raw);
+   if(!Number.isFinite(n)||Number.isInteger(n)&amp;&amp;!Number.isSafeInteger(n)||canonical(raw)!==canonical(String(n)))
+     fail('数值超出可安全处理的精度，请改为带双引号的字符串');pos+=raw.length;return n}fail('此处不是有效的 JSON 值')}
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：纯前端无后端。需打包 jsoneditor 10.4.3（约 1.06 MB）与 js-yaml 4.1.1（约 39 KB）；若只要&quot;格式化/压缩/XML/CSV/YAML&quot;，两个库都可裁剪（核心解析器自写、XML/CSV 自写，仅 YAML 需 js-yaml）。</li>
+<li><strong>页面源码位置</strong>：核心解析/转换全部<strong>内联</strong>于页面底部 <code>&lt;script&gt;</code>（strictParse/jsonXML/jsonCSV 等）；运行时经 <code>loadScript</code> 从 <code>https://www.jyshare.com/wp-content/themes/toolrunoob2/assets/tool-json-parser/</code> 动态加载 <code>jsoneditor-10.4.3.min.js</code>、<code>js-yaml-4.1.1.min.js</code>（均已验证存在）。</li>
+</ul>
+<h3 id="sub-2">2. JSON 解析（/front-end/7438/）</h3>
+<ul>
+<li><strong>核心算法</strong>：
+<ul>
+<li>输入 → <code>lenientParse</code>（<strong>宽松解析</strong>：先 <code>JSON.parse</code>，失败后正则修复两处——去尾随逗号、给无引号 key 补引号，再 parse）→ <code>json2html</code> <strong>递归生成可折叠树</strong>（字符串 HTML 转义；http/ftp 链接化；对象/数组子节点可折叠；显示 <code>N items</code> 占位）→ 结果区渲染；同时 <code>countNodes</code> 统计节点数。格式化 = <code>JSON.stringify(parsed,null,2)</code>，压缩 = <code>JSON.stringify(parsed)</code>。</li>
+</ul>
+</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">function lenientParse(str) {
+  try { return JSON.parse(str); } catch (_) {}
+  var fixed = str
+    .replace(/,\s*([\]}])/g, '$1')                       // 去尾随逗号
+    .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*:)/g, '$1&quot;$2&quot;$3'); // 无引号 key 补引号
+  return JSON.parse(fixed);
+}
+function countNodes(obj) { if (obj === null || typeof obj !== 'object') return 1;
+  var n = 1; if (obj instanceof Array) { for (var i = 0; i &lt; obj.length; i++) n += countNodes(obj[i]); }
+  else { for (var k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) n += countNodes(obj[k]); } return n; }
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：核心逻辑全内联，零数据表；仅编辑器依赖 CodeMirror 5（可替换为 textarea/Monaco，项目已自带 Monaco）。最易离线化的工具之一。</li>
+<li><strong>页面源码位置</strong>：<strong>内联</strong> <code>&lt;script&gt;</code>（页面第 789–1004 行）；引用的 <code>format.js</code> 是主题通用类库（base2），与解析算法无关；编辑器用 static.jyshare.com 的 CodeMirror。</li>
+</ul>
+<h3 id="sub-3">3. JSON 转义/去除转义（/front-end/7683/）</h3>
+<ul>
+<li><strong>核心算法</strong>：纯字符串 <code>replace</code> 链。<strong>转义</strong>顺序：<code>\</code>→<code>\\</code> → <code>&quot;</code>→<code>\&quot;</code> → <code>/</code>→<code>\/</code> → <code>\b</code> → <code>\f</code> → <code>\n</code>→<code>\r\n</code> → <code>\t</code>（注意换行转成 <code>\r\n</code> 转义对而非 <code>\n</code>）；<strong>去转义</strong>逆序还原。注意去转义实现有缺陷：<code>replaceAll('\\\\&quot;', /\\/)</code> 把正则对象当替换值（实际得到字符串 &quot;//&quot;），且 <code>\/</code> 被还原成空格而非 <code>/</code>，照实摘录。</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">// 转义
+.replace(/[\\]/g, &quot;\\\\&quot;).replace(/[\&quot;]/g, '\\&quot;').replace(/[\/]/g, &quot;\\/&quot;)
+.replace(/[\b]/g, &quot;\\b&quot;).replace(/[\f]/g, &quot;\\f&quot;).replace(/[\n]/g, &quot;\\r\\n&quot;).replace(/[\t]/g, &quot;\\t&quot;);
+// 去转义
+.replaceAll('\\\\&quot;', /\\/).replaceAll('\\&quot;', '&quot;').replaceAll(&quot;\\/&quot;, &quot; &quot;)
+.replaceAll(&quot;\\b&quot;, &quot;\b&quot;).replaceAll(&quot;\\f&quot;, &quot;\f&quot;).replaceAll(&quot;\\r\\n&quot;, &quot;\n&quot;).replaceAll(&quot;\\t&quot;, &quot;\t&quot;);
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：零依赖零数据表，纯内联。复制时可直接修正其缺陷（<code>\n</code> 用 <code>\n</code>、<code>\/</code>→<code>/</code>）。</li>
+<li><strong>页面源码位置</strong>：<strong>内联</strong> <code>&lt;script&gt;</code>（页面 311–340 行）；页面另引 <code>json-format.js</code>（内容为 json2.js 变体，属历史残留，非本工具核心）。</li>
+</ul>
+<h3 id="sub-4">4. Base64 编码/解码（/front-end/693/）</h3>
+<ul>
+<li><strong>核心算法</strong>：自写 <code>Base64</code> 对象，<strong>中文先 UTF-8 再编码、解码后 UTF-8 还原</strong>。编码：<code>_utf8_encode</code>（按 charCodeAt 分 &lt;128 / &lt;2048 / 其余三档生成 1/2/3 字节 UTF-8）→ 每 3 字节切成 4 个 6 位 → 查表 <code>_keyStr</code>（<code>A-Za-z0-9+/=</code>，<code>=</code> 用于填充，余 1/2 字节时对应 64 号索引输出 <code>=</code>）→ 拼接。解码：先滤除非 Base64 字符 → 查表还原 6 位 → 拼 8 位字节（跳过 <code>=</code>）→ <code>_utf8_decode</code> 三档还原。边界：BMP 外字符（&gt;0xFFFF）按 charCodeAt 单码元处理（代理对被拆成两个 3 字节组，UTF-16 层面往返自洽，但非标准 UTF-8 码点编码）；解码容忍输入中的非法字符。</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">var Base64={_keyStr:&quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=&quot;,
+ encode:function(input){var output=&quot;&quot;;var chr1,chr2,chr3,enc1,enc2,enc3,enc4;var i=0;
+  input=Base64._utf8_encode(input);
+  while(i&lt;input.length){chr1=input.charCodeAt(i++);chr2=input.charCodeAt(i++);chr3=input.charCodeAt(i++);
+   enc1=chr1&gt;&gt;2;enc2=((chr1&amp;3)&lt;&lt;4)|(chr2&gt;&gt;4);enc3=((chr2&amp;15)&lt;&lt;2)|(chr3&gt;&gt;6);enc4=chr3&amp;63;
+   if(isNaN(chr2)){enc3=enc4=64;}else if(isNaN(chr3)){enc4=64;}
+   output=output+this._keyStr.charAt(enc1)+this._keyStr.charAt(enc2)+this._keyStr.charAt(enc3)+this._keyStr.charAt(enc4);}
+  return output;},
+ _utf8_encode:function(string){string=string.replace(/\r\n/g,&quot;\n&quot;);var utftext=&quot;&quot;;
+  for(var n=0;n&lt;string.length;n++){var c=string.charCodeAt(n);
+   if(c&lt;128){utftext+=String.fromCharCode(c);}
+   else if((c&gt;127)&amp;&amp;(c&lt;2048)){utftext+=String.fromCharCode((c&gt;&gt;6)|192);utftext+=String.fromCharCode((c&amp;63)|128);}
+   else{utftext+=String.fromCharCode((c&gt;&gt;12)|224);utftext+=String.fromCharCode(((c&gt;&gt;6)&amp;63)|128);utftext+=String.fromCharCode((c&amp;63)|128);}}
+  return utftext;},
+ decode:function(input){var output=&quot;&quot;;var chr1,chr2,chr3;var enc1,enc2,enc3,enc4;var i=0;
+  input=input.replace(/[^A-Za-z0-9\+\/\=]/g,&quot;&quot;);
+  while(i&lt;input.length){enc1=this._keyStr.indexOf(input.charAt(i++));enc2=this._keyStr.indexOf(input.charAt(i++));
+   enc3=this._keyStr.indexOf(input.charAt(i++));enc4=this._keyStr.indexOf(input.charAt(i++));
+   chr1=(enc1&lt;&lt;2)|(enc2&gt;&gt;4);chr2=((enc2&amp;15)&lt;&lt;4)|(enc3&gt;&gt;2);chr3=((enc3&amp;3)&lt;&lt;6)|enc4;
+   output=output+String.fromCharCode(chr1);if(enc3!=64){output=output+String.fromCharCode(chr2);}
+   if(enc4!=64){output=output+String.fromCharCode(chr3);}}
+  output=Base64._utf8_decode(output);return output;}}
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：纯内联零依赖零数据表；现代环境可直接 <code>btoa(unescape(encodeURIComponent(s)))</code> 或 <code>TextEncoder</code> 等价替代。</li>
+<li><strong>页面源码位置</strong>：<strong>内联</strong> <code>&lt;script&gt;</code>（页面 580–592 行为完整 Base64 对象；613–623 行绑定按钮）。页面另引 CodeMirror 与主题 format.js（非算法）。</li>
+</ul>
+<h3 id="sub-5">5. URL 编码/解码（/front-end/695/）</h3>
+<ul>
+<li><strong>核心算法</strong>：单行内置 API。编码 = <code>encodeURIComponent(str)</code>（中文按 UTF-8 百分号编码，保留 <code>A-Za-z0-9-_.!~*'()</code>）；解码 = <code>decodeURIComponent(str)</code>（含 <code>%E4%B8%AD</code> 等还原为 UTF-8 字符；非法序列抛 URIError）。无自定义处理，无字符集选项。</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">$(&quot;#submitBTN&quot;).click(function() { var str = editor1.getValue();
+  var data = encodeURIComponent(str); editor2.getDoc().setValue(data); });
+$(&quot;#submitBTN2&quot;).click(function() { var str = editor1.getValue();
+  var data = decodeURIComponent(str); editor2.getDoc().setValue(data); });
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：零依赖零数据表，纯内联，浏览器/Node 原生支持。</li>
+<li><strong>页面源码位置</strong>：<strong>内联</strong> <code>&lt;script&gt;</code>（页面 318–328 行）。</li>
+</ul>
+<h3 id="sub-6">6. HTML 编码/解码（/front-end/691/）</h3>
+<ul>
+<li><strong>核心算法</strong>：利用 DOM 文本节点序列化/解析实现，非手工映射表。<strong>编码</strong> = <code>$('&lt;div/&gt;').text(str).html()</code>（把输入当文本节点写进 DOM，再取 innerHTML，<code>&amp; &lt; &gt;</code> 等被转义为实体，如 <code>&amp;amp;</code>）；<strong>解码</strong> = <code>$('&lt;div/&gt;').html(str).text()</code>（浏览器 HTML 解析器还原所有命名/数字实体，如 <code>&amp;amp;</code>→<code>&amp;</code>、<code>&amp;#x4E2D;</code>→中）。边界：编码仅覆盖 XML 预定义五字符语义所需的 <code>&amp;&lt;&gt;</code>（引号视浏览器序列化而定）；解码委托浏览器实体解析，<code>&lt;script&gt;</code> 等标签不会渲染执行（仅取回文本）。</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">$(&quot;#submitBTN&quot;).click(function() { var str  = editor1.getValue();
+  var data=$('&lt;div/&gt;').text(str).html();  editor2.getDoc().setValue(data); });
+$(&quot;#submitBTN2&quot;).click(function() { var str = editor1.getValue();
+  var data=$('&lt;div/&gt;').html(str).text();  editor2.getDoc().setValue(data); });
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：零数据表；仅依赖 jQuery（可换成原生 <code>textarea</code> 赋值/<code>DOMParser</code>，实现成本极低）。</li>
+<li><strong>页面源码位置</strong>：<strong>内联</strong> <code>&lt;script&gt;</code>（页面 308–318 行）。</li>
+</ul>
+<h3 id="sub-7">7. Unicode 编码转换（/front-end/3602/）</h3>
+<ul>
+<li><strong>核心算法</strong>：四个正则/循环转换器。① <code>u2h</code>：<code>\uXXXX</code> → 字符（<code>/\u([0-9a-fA-F]{4})/g</code> + <code>String.fromCharCode(parseInt(hex,16))</code>）；② <code>h2u</code>：逐字符 <code>charCodeAt()&gt;127</code> 则输出 <code>\u</code> + 4 位十六进制（<code>padStart(4,'0')</code>），ASCII 原样；③ ASCII→HTML 实体：逐字符拼 <code>&amp;#</code>+<code>charCodeAt</code>+<code>;</code>（十进制）；④ 实体→字符：<code>/&amp;#(x?)([0-9a-fA-F]+);/g</code> 支持十进制与 <code>&amp;#x…;</code>。边界：② 用 charCodeAt 按 UTF-16 码元处理，&gt;0xFFFF 字符（emoji）被拆成代理对两个 <code>\uXXXX</code>（往返可逆）；③④ 无实体名（如 <code>&amp;nbsp;</code>）支持。</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">function u2h(){var text=editor1.getValue();
+  var res=text.replace(/\\u([0-9a-fA-F]{4})/g,function(match,hex){return String.fromCharCode(parseInt(hex,16));});
+  editor2.setValue(res);}
+function h2u(){var text=editor1.getValue();
+  var res=text.split('').map(function(c){return c.charCodeAt(0)&gt;127?&quot;\\u&quot;+c.charCodeAt(0).toString(16).padStart(4,'0'):c;}).join('');
+  editor2.setValue(res);}
+// ASCII -&gt; &amp;#xx;：for(var i=0;i&lt;src.length;i++)res+='&amp;#'+src.charCodeAt(i)+';';
+// &amp;#xx; -&gt; ASCII：res=editor1.getValue().replace(/&amp;#(x?)([0-9a-fA-F]+);/g,function(match,hex,num){
+//   return String.fromCharCode(parseInt(num,hex?16:10));});
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：零依赖零数据表，纯内联。</li>
+<li><strong>页面源码位置</strong>：<strong>内联</strong> <code>&lt;script&gt;</code>（页面 432–454 行）。</li>
+</ul>
+<h3 id="sub-8">8. 时间戳转换器（/front-end/852/）</h3>
+<ul>
+<li><strong>核心算法</strong>：基于 <strong>moment 2.x + moment-timezone（带 1970–2030 时区数据）+ zh-cn locale + flatpickr 4.6.13</strong>。
+<ul>
+<li>时间戳→日期 <code>unix2human</code>：输入<strong>仅接受整数秒</strong>（<code>Number(raw)</code>、<code>isFinite</code>、<code>Math.floor(n)!==n</code> 校验，提示&quot;请输入整数时间戳（秒）&quot;）；<code>moment.unix(n)</code> 按<strong>本地时区</strong>解析，输出：中文年月日 + 星期（<code>dddd</code>）、短日期（<code>L</code>）、时刻（<code>LTS</code>）、自动检测的时区名（<code>moment.tz.guess()</code>）、UTC 时间。</li>
+<li>日期→时间戳 <code>human2unix</code>：flatpickr 选择日期 + 时间 → 拼接 <code>YYYY-MM-DD HH:mm:ss</code> → <code>moment(s,'YYYY-MM-DD HH:mm:ss',true)</code> 严格解析 → <code>m.unix()</code>（秒），同时显示<strong>毫秒 = 秒 × 1000</strong>。</li>
+<li>当前时间戳每秒刷新（<code>Math.round(Date.now()/1000)</code>）。</li>
+<li>边界：<strong>无毫秒输入切换</strong>（输入固定按秒解释，毫秒仅作为输出展示）；依赖本地时区（浏览器时区），无手动时区选择。</li>
+</ul>
+</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">function unix2human(){
+  var raw=input1.value.trim(),n=Number(raw);
+  if(!raw||!isFinite(n)||Math.floor(n)!==n||raw===''){renderError(out1,'请输入整数时间戳（秒），例如 1700000000。');return;}
+  var m=moment.unix(n);
+  if(!m.isValid()){renderError(out1,'时间戳超出可表示范围。');return;}
+  out1.innerHTML=row(true,'日期时间',esc(m.format('YYYY 年 MM 月 DD 日 ')+' '+m.format('LTS')+' '+m.format('dddd a')))
+    +row(false,'UTC',esc(m.utc().format('YYYY-MM-DD HH:mm:ss')));
+}
+function human2unix(){
+  var s=($('#event-time2').value||'')+' '+($('#event-time').value||'');
+  var m=moment(s,'YYYY-MM-DD HH:mm:ss',true);
+  if(!m.isValid()){renderError(out2,'请选择有效的日期和时间。');return;}
+  var ts=m.unix(); lastTs=ts;
+  out2.innerHTML=row(true,'Unix 时间戳',ts+' …')+row(false,'毫秒',ts*1000)
+    +row(false,'时区',esc(moment.tz.guess()))+row(false,'UTC',esc(m.utc().format('YYYY-MM-DD HH:mm:ss')));
+}
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：纯前端。需打包 moment.min.js、zh-cn.min.js、moment-timezone-with-data（三件共约 700 KB，可裁剪）与 flatpickr（可换原生 <code>&lt;input type=datetime-local&gt;</code>）。也可用原生 <code>Date</code> + <code>Intl.DateTimeFormat</code> 重写（秒/毫秒、本地/UTC 均为原生能力）。</li>
+<li><strong>页面源码位置</strong>：转换逻辑<strong>内联</strong> <code>&lt;script&gt;</code>（页面 465–499 行）；库引用 <code>static.jyshare.com/assets/libs/moment/*</code> 与 <code>flatpickr-4.6.13/*</code>（页面 374–378 行）。</li>
+</ul>
+<h3 id="sub-9">9. 进制转换器（/front-end/58/）</h3>
+<ul>
+<li><strong>核心算法</strong>：<strong>BigNumber.js v9.1.1</strong>（jsDelivr 压缩版整库内联，页面 882–889 行）做任意进制大数转换。流程：输入校验 <code>isValidForBase</code>（合法字符集 = <code>0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ</code> 前 base 个，大小写不敏感，小数点至多 1 个）→ <code>new BigNumber(inputVal, sourceBase)</code> 按源进制解析 → <code>decimalVal.toString(targetBase).toUpperCase()</code> 输出。配置 <code>DECIMAL_PLACES:20</code>、<code>ROUNDING_MODE:ROUND_HALF_UP</code>（支持小数）。边界：预设源/目标进制 <strong>2/8/10/16</strong>，自定义输入 <strong>2–36</strong>；支持负数、小数、任意大整数（BigNumber 十进制精度 20 位）；<code>generateExplanation</code> 生成&quot;按权展开求和&quot;与&quot;除基取余&quot;步骤演示。</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">BigNumber.config({ DECIMAL_PLACES: 20, ROUNDING_MODE: BigNumber.ROUND_HALF_UP });
+let sourceBase = 10, targetBase = 2;
+function convert() {
+  const inputVal = $('#inputNumber').val().trim();
+  if (!inputVal) { $('#resultValue').text('--'); return; }
+  if (!isValidForBase(inputVal, sourceBase)) throw new Error(`输入包含非 ${sourceBase} 进制字符`);
+  const decimalVal = new BigNumber(inputVal, sourceBase);      // 源进制 -&gt; 10 进制
+  if (decimalVal.isNaN()) throw new Error(&quot;无效的数字格式&quot;);
+  const resultVal = decimalVal.toString(targetBase).toUpperCase(); // 10 进制 -&gt; 目标进制
+  $('#resultValue').text(resultVal);
+}
+function isValidForBase(val, base) {
+  const validChars = &quot;0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ&quot;.substring(0, base);
+  const regex = new RegExp(`^[${validChars}.]+$`, 'i');
+  if ((val.match(/\./g) || []).length &gt; 1) return false;
+  return regex.test(val);
+}
+// 自定义进制输入：if (val &gt;= 2 &amp;&amp; val &lt;= 36) { sourceBase = val; convert(); }
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：纯前端。依赖 bignumber.js（单文件、MIT，也可内联如原站）；若限定 2–36 大整数/小数，Node/浏览器原生 <code>BigInt</code> + 手写小数展开可替代。</li>
+<li><strong>页面源码位置</strong>：BigNumber 库与转换逻辑均<strong>内联</strong> <code>&lt;script&gt;</code>（页面 881–1140 行区间）；无运行时外部 JS 依赖。</li>
+</ul>
+<h3 id="sub-10">10. 字数统计（/front-end/5580/）</h3>
+<ul>
+<li><strong>核心算法</strong>：正则分类统计，无分词。① 汉字数 <code>[\u4e00-\u9fa5]</code>（仅基本区，不含扩展区与汉字标点）；② 中文标点数 = 显式全角符号表（<code>。？！，、；：“”‘’（）《》〈〉【】『』「』〔〕…—～￥</code> 等 <code>[\u3002\uff1f…\uffe5]</code> 字符类）；③ 英文字母数 <code>[a-zA-Z]</code>（<strong>按字符计，非单词数</strong>）；④ 数字 <code>[0-9]</code>；⑤ 英文标点/半角符号 <code>[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]</code>；⑥ 总字符数 = <code>val.length</code>（UTF-16 码元数）；⑦ 去空格字符数 = <code>replace(/\s+/g,'')</code> 后长度；⑧ 段落数 = 空串为 0，否则按 <code>\n+</code> 切分后过滤空白段计数。</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">function calculateStats() {
+  const val = document.getElementById('mainInput').value;
+  const cnChar  = (val.match(/[\u4e00-\u9fa5]/g) || []).length;   // 汉字（不含标点）
+  const cnPunc  = (val.match(/[\u3002\uff1f\uff01\uff0c\u3001\uff1b\uff1a\u201c\u201d\u2018\u2019\uff08\uff09\u300a\u300b\u3008\u3009\u3010\u3011\u300e\u300f\u300c\u300d\ufe43\ufe44\u3014\u3015\u2026\u2014\uff5e\uffe5]/g) || []).length;
+  const enChar  = (val.match(/[a-zA-Z]/g) || []).length;         // 字母（字符数，非单词）
+  const numChar = (val.match(/[0-9]/g) || []).length;
+  const enPunc  = (val.match(/[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]/g) || []).length;
+  const total = val.length; const noSpace = val.replace(/\s+/g, '').length;
+  const para = val.trim() === &quot;&quot; ? 0 : val.split(/\n+/).filter(p =&gt; p.trim() !== &quot;&quot;).length;
+  // …写入 DOM
+}
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：零依赖零数据表，纯内联，可即时移植。</li>
+<li><strong>页面源码位置</strong>：<strong>内联</strong> <code>&lt;script&gt;</code>（页面 335–370 行）。</li>
+</ul>
+<h3 id="sub-11">11. 繁简转换（/front-end/5579/）</h3>
+<ul>
+<li><strong>核心算法</strong>：<strong>两串等长映射表逐字替换</strong>。<code>charPYStr()</code> 返回 4792 字简体串，<code>ftPYStr()</code> 返回对应位置的 4792 字繁体串。<code>traditionalized</code>：逐字符在简体串 <code>indexOf</code> 找位置，命中则取繁体串同位字符，否则原样输出（简→繁）；<code>simplized</code> 反向（繁→简）。<strong>无词级转换</strong>（如&quot;发&quot;一律映射单个繁体字形，不区分&quot;發/髮&quot;），混合文本无需区分源语言。映射表覆盖 GB2312 一级常用字集规模（4792 字），生僻字不转换。</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">function traditionalized(cc){ var str='';
+  for(var i=0;i&lt;cc.length;i++){
+    if(charPYStr().indexOf(cc.charAt(i))!=-1)
+      str+=ftPYStr().charAt(charPYStr().indexOf(cc.charAt(i)));
+    else str+=cc.charAt(i); }
+  return str; }
+function simplized(cc){ var str='';
+  for(var i=0;i&lt;cc.length;i++){
+    if(ftPYStr().indexOf(cc.charAt(i))!=-1)
+      str+=charPYStr().charAt(ftPYStr().indexOf(cc.charAt(i)));
+    else str+=cc.charAt(i); }
+  return str; }
+function convert(nOption){ /* nOption==0 简; else 繁 */
+  resArea.value = nOption==0 ? simplized(txtArea.value) : traditionalized(txtArea.value); }
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：纯前端零第三方库。数据表即两条 4792 字字符串（页面源码约 30 KB，可提取为 JSON）。逐字 indexOf 为 O(n·m)，大文本可优化为 Map。</li>
+<li><strong>页面源码位置</strong>：映射表与转换函数全部<strong>内联</strong> <code>&lt;script&gt;</code>（页面 339–377 行）。</li>
+</ul>
+<h3 id="sub-12">12. 文本比对（/front-end/8006/）</h3>
+<ul>
+<li><strong>核心算法</strong>：第三方 <strong>Mergely 4.x</strong>（页面打包于 <code>assets/tool-text-diff/app-1.1.0.js</code>，257 KB，内含 CodeMirror 5.65）。
+<ul>
+<li>行级 diff：Mergely 内置 <code>diff._lcs</code>（<strong>递归分治 LCS</strong>）+ <code>_sms</code>（<strong>中间蛇 middle-snake，Myers O(ND) 二分变体</strong>），在 <strong>Web Worker</strong> 中后台计算，15 秒超时保护；结果按&quot;新增/删除/修改&quot;块着色，支持上一处/下一处跳转。</li>
+<li>字符级高亮：<code>lcs:true</code> 时对变更块内部再做字符级 LCS；两侧总字符 &gt; 262144 时自动关闭字符级与自动换行（大文本模式）。</li>
+<li>选项：实时对比（350 ms 防抖）、忽略空白 <code>ignorews</code>、忽略大小写 <code>ignorecase</code>、忽略重音 <code>ignoreaccents</code>；单侧文本 &gt; 30 MB 拒绝。</li>
+<li>导入编码：UTF-8 / GB18030（<code>TextDecoder('gb18030')</code>）；支持交换、合并块、CSV/文本报告导出。</li>
+</ul>
+</li>
+<li><strong>关键代码摘录</strong>（app-1.1.0.js 内 Mergely 部分）：</li>
+</ul>
+<pre><code class="language-js">diff.prototype._lcs = function(lhs_ctx, lhs_lower, lhs_upper, rhs_ctx, rhs_lower, rhs_upper, vector_u, vector_d) {
+  for(; lhs_lower&lt;lhs_upper &amp;&amp; rhs_lower&lt;rhs_upper &amp;&amp; lhs_ctx.codes[lhs_lower]===rhs_ctx.codes[rhs_lower];) ++lhs_lower, ++rhs_lower; // 剪掉公共前缀
+  for(; lhs_lower&lt;lhs_upper &amp;&amp; rhs_lower&lt;rhs_upper &amp;&amp; lhs_ctx.codes[lhs_upper-1]===rhs_ctx.codes[rhs_upper-1];) --lhs_upper, --rhs_upper; // 剪掉公共后缀
+  if(lhs_lower===lhs_upper) for(; rhs_lower&lt;rhs_upper;) rhs_ctx.modified[rhs_lower++]=true;         // 纯新增
+  else if(rhs_lower===rhs_upper) for(; lhs_lower&lt;lhs_upper;) lhs_ctx.modified[lhs_lower++]=true;    // 纯删除
+  else { let sms = this._sms(lhs_ctx, lhs_lower, lhs_upper, rhs_ctx, rhs_lower, rhs_upper, vector_u, vector_d);
+    this._lcs(lhs_ctx, lhs_lower, sms.x, rhs_ctx, rhs_lower, sms.y, vector_u, vector_d);  // 中间蛇二分递归
+    this._lcs(lhs_ctx, sms.x, lhs_upper, rhs_ctx, sms.y, rhs_upper, vector_u, vector_d); }
+};
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：纯前端（Worker 本地计算），无后端。需打包 Mergely + CodeMirror 5（约 500 KB）；<strong>许可证为 LGPL</strong>（页面明确保留&quot;第三方许可&quot;链接与 splash 提示），商用/闭源需注意。可改用更轻的 jsdiff/diff-match-patch 自行渲染。</li>
+<li><strong>页面源码位置</strong>：页面仅内联启动器（<code>import(root.dataset.base+'app-1.1.0.js')</code>，804 行）；核心在外部文件 <code>https://www.jyshare.com/wp-content/themes/toolrunoob2/assets/tool-text-diff/app-1.1.0.js</code>（含 Mergely + CodeMirror 打包，vendor 目录另有 mergely 资源）。</li>
+</ul>
+<h3 id="sub-13">13. 汉字转拼音（/front-end/5523/）</h3>
+<ul>
+<li><strong>核心算法</strong>：<strong>按码位连续索引的字库 + 自研 pinyinUtil</strong>。
+<ul>
+<li>字库 <code>pinyin_dict_withtone.js</code>：<code>var pinyin_dict_withtone = &quot;yī,dīng zhēng,…&quot;</code>，逗号分隔 <strong>20902 项</strong>（与 U+4E00–U+9FFF 一一对应），多音字拼音以空格分隔（第一读音为最常用读音）。文件 124,752 字节（GBK 编码）。</li>
+<li><code>pinyinUtil.parseDict</code>：<code>split(',')</code> 后 <code>dict.withtone[String.fromCharCode(i + 19968)] = temp[i]</code>（一次建表，注释称约 28 ms）。</li>
+<li><code>getPinyin(chinese, splitter, withtone, polyphone)</code>：逐字查表，非汉字原样保留并归组；<code>polyphone=false</code> 时多音字只取第一读音（<code>pinyin.replace(/ .*$/g,'')</code>）；<code>withtone=false</code> 时 <code>removeTone</code>（正则把 āáǎà 等 27 个声调元音映射回无调字母）。<code>getFirstLetter</code>：复用无调拼音取每音节首字母大写。多音词支持 <code>handlePolyphone</code>（笛卡尔组合）与可选词库 <code>pinyin_dict_polyphone</code>（页面未加载，固定 <code>polyphone=false</code>）。</li>
+<li>页面选项：全拼带调/不带调、首字母、分隔符（空格/无/自定义）、大小写/首字母大写、去换行。</li>
+</ul>
+</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">// pinyinUtil.js（GBK 编码源，toneMap 为 27 个带调元音 → 如 &quot;ǎ&quot;→&quot;a3&quot;）
+parseDict: function() {
+  if(window.pinyin_dict_withtone) {
+    dict.withtone = {};
+    var temp = pinyin_dict_withtone.split(',');
+    for(var i=0, len = temp.length; i&lt;len; i++)
+      dict.withtone[String.fromCharCode(i + 19968)] = temp[i]; // 按码位连续映射
+  }
+},
+getPinyin: function(chinese, splitter, withtone, polyphone) {
+  // …逐字 dict.withtone[chinese[i]] 查表；非汉字累积后原样输出；
+  // if(!polyphone) pinyin = pinyin.replace(/ .*$/g, '');   // 取第一读音
+  // if(!withtone)  pinyin = this.removeTone(pinyin);
+  return result.join(splitter);
+},
+removeTone: function(pinyin) {
+  return pinyin.replace(/[āáǎàōóǒòēéěèīíǐìūúǔùüǖǘǚǜńňḿ]/g, function(m){ return toneMap[m][0]; });
+}
+// 页面调用：pinyinUtil.getPinyin(inputVal, spaceStyle, true/false, false)
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：纯前端。数据表 = 拼音字库 124 KB（20902 字，含多音）+ pinyinUtil 11 KB；无需第三方库。更佳替代：pinyin-pro（NPM，约 3 MB 词库）可提升多音字准确率。</li>
+<li><strong>页面源码位置</strong>：算法在外部文件 <code>/wp-content/themes/toolrunoob/assets/js/pinyinUtil.js</code> 与字库 <code>/wp-content/themes/toolrunoob/assets/js/dict/pinyin_dict_withtone.js</code>（页面 336–337 行引用）；页面内联仅选项编排 <code>getPinyin()</code>（340–381 行）。</li>
+</ul>
+<h3 id="sub-14">14. HTML 转 JavaScript（/front-end/846/）</h3>
+<ul>
+<li><strong>核心算法</strong>：四种输出模式。前三种为<strong>逐行字符串转义</strong>：按 <code>\n</code> 拆行，每行 <code>replace(/\&quot;/g,'\\&quot;').replace(/\//g,&quot;\\/&quot;)</code>（转义双引号与 <code>/</code>），分别拼成 <code>document.write(&quot;…&quot;);</code>、包进 <code>function writeHTMLasJS(){…}</code>、变量累加 <code>var strVar=&quot;&quot;; strVar += &quot;…&quot;;</code>。第四种（默认）：<strong>内联 html2js 微型库</strong>——<code>document.createElement('div').innerHTML=html; normalize()</code> 解析为 DOM → 递归遍历 childNodes 生成 <code>createNode()</code> 函数源码（TEXT→<code>createTextNode(&quot;…&quot;)</code>、ELEMENT→<code>createElement(&quot;tag&quot;)+setAttribute+appendChild</code>、COMMENT→<code>createComment</code>，多根节点时用 <code>createDocumentFragment</code> 容器），文本转义 <code>replace(/\r?\n\s*/gm,&quot;\\n&quot;).replace(/&quot;/g,'\\&quot;')</code>；输出再经 <strong>js-beautifier</strong>（<code>js_beautify(g,1,'\t')</code>）格式化。</li>
+<li><strong>关键代码摘录</strong>：</li>
+</ul>
+<pre><code class="language-js">$(&quot;#cmdGenerate&quot;).click(function(){
+  var r=editor1.getValue(); var strVar=$(&quot;#varname&quot;).val(); if(strVar==&quot;&quot;){strVar=&quot;strVar&quot;}
+  var g=&quot;&quot;; var arr=r.split(&quot;\n&quot;); var opt=$(&quot;input[name='outputOptions']:checked&quot;).attr(&quot;id&quot;);
+  if(opt==&quot;outputOpt2&quot;){g+=&quot;function writeHTMLasJS(){\n&quot;}
+  if(opt==&quot;outputOpt3&quot;){g+=&quot;var &quot;+strVar+'=&quot;&quot;;\n'}
+  for(i=0;i&lt;arr.length;i++){ var l=&quot;&quot;;
+    if(opt==&quot;outputOpt1&quot;){l+='document.write(&quot;'}
+    if(opt==&quot;outputOpt2&quot;){l+='    document.write(&quot;'}
+    if(opt==&quot;outputOpt3&quot;){l+=strVar+' += &quot;'}
+    l+=arr[i].replace(/\&quot;/g,'\\&quot;').replace(/\//g,&quot;\\/&quot;);
+    if((opt==&quot;outputOpt1&quot;)||(opt==&quot;outputOpt2&quot;)){l+='&quot;);'}
+    if(opt==&quot;outputOpt3&quot;){l+='&quot;;'} l+=&quot;\n&quot;; g+=l }
+  if(opt==&quot;outputOpt2&quot;){g+=&quot;}\n&quot;}
+  if(opt==&quot;outputOpt4&quot;){g=window.html2js.parse(r); g=js_beautify(g,1,'\t')}  // DOM 生成器 + 美化
+  editor2.getDoc().setValue(g)});
+// html2js 核心（内联 webpack 模块）：div.innerHTML 解析 → normalize →
+// 递归：TEXT_NODE→document.createTextNode(转义文本)；ELEMENT_NODE→createElement/setAttribute/appendChild
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：纯前端。html2js 为内联小库（可原样提取）；唯一第三方库 js-beautifier（<code>beautify.min.js</code>，74 KB，MIT）。</li>
+<li><strong>页面源码位置</strong>：转换逻辑与 html2js 全部<strong>内联</strong> <code>&lt;script&gt;</code>（页面 341–342 行）；外部引用 <code>/wp-content/themes/toolrunoob/assets/js/beautify.min.js</code>（js-beautifier）。</li>
+</ul>
+<h3 id="sub-15">15. 今日日期（中国日历）（/front-end/5672/）</h3>
+<ul>
+<li><strong>核心算法</strong>：打包 <strong>lunar-javascript（6tail，344 KB app-1.0.0.js）</strong> 做农历/干支/节气/黄历计算：
+<ul>
+<li>公历↔儒略日（JD）：标准天文公式（<code>floor((JD-1867216.25)/36524.25)</code> 修正等，日历有效范围 <strong>1900-01-01 ~ 2100-12-31</strong>）；农历为<strong>查表法</strong>（库内置农历月数据），派生 <code>getYearInChinese()/getMonthInChinese()/getDayInChinese()</code>、干支 <code>getYearInGanZhi()</code>、生肖、节气 <code>getJieQi()</code>（含精确到时刻的节气表 <code>getJieQiTable()</code>，用于八字排盘）。</li>
+<li><strong>节假日/调休</strong>：从 base 目录 <strong>fetch <code>holidays.json</code></strong>（网络加载，失败时降级无放假标注），标注&quot;休/班&quot;与全年放假安排。</li>
+<li>时间统一按<strong>北京时间</strong>（<code>Date.UTC(...) + 8*3600*1000</code>），与浏览器时区无关；月历渲染 + 复制日期文本 + 当月 CSV 导出（BOM + 引号转义）。</li>
+</ul>
+</li>
+<li><strong>关键代码摘录</strong>（app-1.0.0.js 片段，含转义后的中文）：</li>
+</ul>
+<pre><code class="language-js">var x0=N0(d0()), {Solar:c0}=x0.default, a0=&quot;1900-01-01&quot;, r0=&quot;2100-12-31&quot;;
+P=v=&gt;Date.UTC(...v.split(&quot;-&quot;).map((I,N)=&gt;Number(I)-(N===1?1:0)));   // 公历-&gt;UTC
+F0=(v,I)=&gt;D0(new Date(P(v)+I*8*3600*1000));                           // +8 小时北京时间
+// 单日详情：c0.fromYmd(I,N,w).getLunar() →
+//   lunarYear: Z.getYearInChinese(), lunarMonth: Z.getMonthInChinese()+&quot;月&quot;,
+//   lunarDay: Z.getDayInChinese(), ganzhi: Z.getYearInGanZhi()+&quot;年 &quot;+Z.getMonthInGanZhi()+&quot;月 &quot;+Z.getDayInGanZhi()+&quot;日&quot;,
+//   zodiac: Z.getYearShengXiao(), term: Z.getJieQi(), festivals: G
+// 节假日：fetch(w+&quot;holidays.json&quot;).then(s=&gt;s.json()).then(s=&gt;{G=l0(s); …})
+</code></pre>
+<ul>
+<li><strong>离线可实现性</strong>：农历/干支/节气/黄历全部由内置数据+算法本地计算（库 344 KB）；<strong>唯一网络依赖是 <code>holidays.json</code>（国务院放假/调休安排）</strong>，离线实现须将该 JSON 一并打包并按年更新（当前 2025/2026 数据）。库内农历数据覆盖 1900–2100，超出范围报错。</li>
+<li><strong>页面源码位置</strong>：页面仅内联启动器（251 行，<code>import(root.dataset.base+'app-1.0.0.js')</code>）；核心在外部文件 <code>https://www.jyshare.com/wp-content/themes/toolrunoob2/assets/tool-chinese-calendar/app-1.0.0.js</code>，运行时 fetch 同目录 <code>holidays.json</code>。</li>
+</ul>
+<hr>
+<h2 id="sec-2">二、第三方库清单汇总</h2>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>第三方库</th>
+<th>体积</th>
+<th>许可证</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JSON 格式化 53</td>
+<td>jsoneditor 10.4.3 + js-yaml 4.1.1</td>
+<td>~1.06 MB + 39 KB</td>
+<td>Apache-2.0 / MIT</td>
+</tr>
+<tr>
+<td>时间戳 852</td>
+<td>moment 2.x + moment-timezone(+data) + flatpickr 4.6.13</td>
+<td>~700 KB</td>
+<td>MIT</td>
+</tr>
+<tr>
+<td>进制转换 58</td>
+<td>bignumber.js 9.1.1（内联）</td>
+<td>~200 KB 源码段</td>
+<td>MIT</td>
+</tr>
+<tr>
+<td>文本比对 8006</td>
+<td>Mergely 4.x + CodeMirror 5.65</td>
+<td>~500 KB</td>
+<td>LGPL</td>
+</tr>
+<tr>
+<td>拼音 5523</td>
+<td>无（自研 pinyinUtil + 自备字库）</td>
+<td>字库 124 KB</td>
+<td>—</td>
+</tr>
+<tr>
+<td>HTML 转 JS 846</td>
+<td>js-beautifier</td>
+<td>74 KB</td>
+<td>MIT</td>
+</tr>
+<tr>
+<td>中国日历 5672</td>
+<td>lunar-javascript（6tail）</td>
+<td>344 KB</td>
+<td>MIT</td>
+</tr>
+<tr>
+<td>其余 7 款</td>
+<td>无（纯内联/浏览器原生）</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-3">三、适合作为离线桌面插件实现的优先级排序</h2>
+<ol>
+<li><strong>Base64 / URL 编码 / HTML 编码 / Unicode / JSON 转义（693、695、691、3602、7683）</strong>——全部内联零依赖，几十行即可复刻，无需任何数据表；是最快落地的插件组。</li>
+<li><strong>字数统计（5580）</strong>——纯正则，零依赖，即时可用。</li>
+<li><strong>进制转换（58）</strong>——仅需 bignumber.js（或原生 BigInt 自实现），支持 2–36 进制+小数，算法简单。</li>
+<li><strong>JSON 解析 / 格式化（7438、53）</strong>——宽松解析+格式化仅用原生 <code>JSON.parse/stringify</code>；7438 可直接复刻；53 若只保留格式化/压缩/XML/CSV 也可自写（树编辑器才需要 jsoneditor 1 MB）。</li>
+<li><strong>繁简转换（5579）</strong>——30 KB 映射表（4792 字对），提取为 JSON 即可，无库依赖。</li>
+<li><strong>汉字转拼音（5523）</strong>——125 KB 字库 + 11 KB 工具脚本，离线友好；多音字准确率可用 pinyin-pro 进一步提升。</li>
+<li><strong>时间戳转换（852）</strong>——moment 栈偏重，可改用原生 Date + Intl 实现秒/毫秒、本地/UTC，更轻。</li>
+<li><strong>HTML 转 JavaScript（846）</strong>——html2js 逻辑小，js-beautifier 单库即可。</li>
+<li><strong>文本比对（8006）</strong>——功能最强但最重（Mergely+CodeMirror ~500 KB、LGPL 许可、Worker 架构）；如降低 UI 要求可换 jsdiff（~15 KB）。</li>
+<li><strong>今日日期/中国日历（5672）</strong>——lunar-javascript 344 KB 尚可，但 holidays.json 属<strong>外部网络数据</strong>且需逐年维护，离线化成本最高，建议最后做或只做农历/干支/节气部分。</li>
+</ol>
+<h2 id="sec-4">四、附：原始抓取产物清单</h2>
+<ul>
+<li>HTML：<code>out/jyshare-src/html/{53,7438,7683,693,695,691,3602,852,58,5580,5579,8006,5523,846,5672}.html</code></li>
+<li>JS：<code>out/jyshare-src/js/{format.js,json-format.js,pinyin_dict_withtone.js,pinyinUtil.js,beautify.min.js,diff-app.js,calendar-app.js,jsoneditor-10.4.3.min.js,js-yaml-4.1.1.min.js}</code></li>
+</ul>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

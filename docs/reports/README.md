@@ -49,7 +49,7 @@
 - `html/`：全部 HTML 版报告（23 篇，带固定悬浮导航）
 - 本 README：目录索引与口径说明
 
-## 四、报告列表（25 篇，与 `md/`、`html/` 实际文件一一对应）
+## 四、报告列表（30 篇，与 `md/`、`html/` 实际文件一一对应）
 
 | 报告 | 时点 / 口径 | Markdown | HTML |
 | --- | --- | --- | --- |
@@ -78,6 +78,8 @@
 | 2026-11-15 CQ-10 主进程 console 迁移报告 | 2026-11-15 19:13 技术债收尾 | [2026-11-15-CQ-10主进程console迁移报告.md](md/2026-11-15-CQ-10主进程console迁移报告.md) | [2026-11-15-CQ-10主进程console迁移报告.html](html/2026-11-15-CQ-10主进程console迁移报告.html) |
 | 2026-11-15 NSIS 打包失败与运行崩溃修复报告 | 2026-11-15 19:50；构建目录 Low 完整性 → Medium（含自动防护脚本）+ 对话框 closed 后访问销毁对象崩溃修复 | [2026-11-15-NSIS打包与运行崩溃修复报告.md](md/2026-11-15-NSIS打包与运行崩溃修复报告.md) | [2026-11-15-NSIS打包与运行崩溃修复报告.html](html/2026-11-15-NSIS打包与运行崩溃修复报告.html) |
 | 2026-11-15 mkdocs-material 语法渲染修复报告 | 2026-11-15 20:30；admonition + tabbed 渲染改为 markdown-it 插件（样例笔记 7 卡片/4 组 tab/11 代码块） | [2026-11-15-mkdocs-material渲染修复报告.md](md/2026-11-15-mkdocs-material渲染修复报告.md) | [2026-11-15-mkdocs-material渲染修复报告.html](html/2026-11-15-mkdocs-material渲染修复报告.html) |
+| 2026-11-15 mkdocs-material 语法支持清单与扩展建议 | 2026-11-15 20:55；盘点可扩展 15 项（批次 A/B/C 建议） | [2026-11-15-mkdocs-material语法支持清单与建议.md](md/2026-11-15-mkdocs-material语法支持清单与建议.md) | [2026-11-15-mkdocs-material语法支持清单与建议.html](html/2026-11-15-mkdocs-material语法支持清单与建议.html) |
+| 2026-11-15 mkdocs-material 扩展语法实施报告（15 项） | 2026-11-15 21:30；3 批插件 + 统一装配；270 扩展用例 + 5 端到端集成；随 v1.3.3 发布 | [2026-11-15-mkdocs-material扩展语法实施报告.md](md/2026-11-15-mkdocs-material扩展语法实施报告.md) | [2026-11-15-mkdocs-material扩展语法实施报告.html](html/2026-11-15-mkdocs-material扩展语法实施报告.html) |
 
 ## 五、推荐阅读路径（按目的）
 

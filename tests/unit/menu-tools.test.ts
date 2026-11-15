@@ -18,7 +18,9 @@ import * as menuToolsModule from '../../src/main/ipc/menu-tools'
 import {
     toolsMenuHandlers,
     onlineMenuHandlers,
-    githubMenuHandlers
+    githubMenuHandlers,
+    aiMenuHandlers,
+    aiMenuUrlMaps
 } from '../../src/main/ipc/menu-tools'
 import {
     TOOLS_JYSHARE,
@@ -158,6 +160,44 @@ describe('onlineMenuHandlers', () => {
     })
 })
 
+describe('aiMenuHandlers（AI 导航，task-50）', () => {
+    // 数据真源：菜单树（menu-config.ts aiMenuGroups，9 组 70 叶子）↔ URL 映射表（aiMenuUrlMaps）
+    // ↔ handler 树（aiMenuHandlers，叶子统一 OpenOnlineWebPage(url)）。
+    it('should expose nine groups and seventy executable handler leaves', () => {
+        expect(Object.keys(aiMenuUrlMaps)).toHaveLength(9)
+        const leaves: Array<(...args: unknown[]) => unknown> = []
+        collectLeafHandlers(aiMenuHandlers, leaves)
+        expect(leaves).toHaveLength(70)
+        for (const leaf of leaves) {
+            expect(typeof leaf).toBe('function')
+            leaf()
+        }
+        expect(toolsMocks.openOnlineWebPage).toHaveBeenCalledTimes(70)
+    })
+
+    it('should open only unique https URLs without promo params', () => {
+        const leaves: Array<(...args: unknown[]) => unknown> = []
+        collectLeafHandlers(aiMenuHandlers, leaves)
+        for (const leaf of leaves) {
+            leaf()
+        }
+        const urls = toolsMocks.openOnlineWebPage.mock.calls.map((call) => call[0] as string)
+        for (const url of urls) {
+            expect(url).toMatch(/^https:\/\/[^\s?#]+$/)
+        }
+        expect(new Set(urls).size).toBe(urls.length)
+    })
+
+    it('should route key AI entries to their official clean URLs', () => {
+        expect(aiMenuUrlMaps.hot.chatgpt).toBe('https://chat.openai.com/')
+        expect(aiMenuUrlMaps.coding['deepseek-harness']).toBe('https://www.deepseek.com/harness')
+        expect(aiMenuUrlMaps.more['jyshare-ai']).toBe('https://www.jyshare.com/ai/')
+        const handler = (aiMenuHandlers.hot as Record<string, unknown>)['chatgpt'] as () => void
+        handler()
+        expect(toolsMocks.openOnlineWebPage).toHaveBeenCalledWith('https://chat.openai.com/')
+    })
+})
+
 describe('githubMenuHandlers', () => {
     // ET-7：github 子菜单 5 个入口全量执行（同 online 树口径）。
     it('should execute every github handler and open a non-empty https URL', () => {
@@ -183,12 +223,13 @@ describe('githubMenuHandlers', () => {
 })
 
 describe('menu handler tree integrity', () => {
-    it('should only contain function leaves across all three trees', () => {
+    it('should only contain function leaves across all four trees', () => {
         const leaves: Array<(...args: unknown[]) => unknown> = []
         collectLeafHandlers(toolsMenuHandlers, leaves)
         collectLeafHandlers(onlineMenuHandlers, leaves)
         collectLeafHandlers(githubMenuHandlers, leaves)
-        expect(leaves.length).toBeGreaterThan(40)
+        collectLeafHandlers(aiMenuHandlers, leaves)
+        expect(leaves.length).toBeGreaterThan(100)
         for (const leaf of leaves) {
             expect(typeof leaf).toBe('function')
         }

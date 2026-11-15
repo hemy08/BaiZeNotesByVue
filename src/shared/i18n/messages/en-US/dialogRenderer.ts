@@ -193,6 +193,9 @@ const dialogRenderer = {
         labelAutoOpenLastFile: 'Open the last file on startup',
         labelAutoOpenLastFolder: 'Open the last folder on startup',
         labelAutoStart: 'Launch at system startup',
+        // Launch at startup: the system API has no effect until the app is installed
+        hintAutoStart:
+            'Launch at startup only takes effect after installation (the system API is unavailable in development mode)',
         groupWindow: 'Window behavior',
         labelMinimizeToTray: 'Minimize to tray on close',
         labelRememberWindowSize: 'Remember window position and size',
@@ -204,6 +207,8 @@ const dialogRenderer = {
         labelEnableAutoSave: 'Enable auto save',
         labelAutoSaveInterval: 'Auto save interval (seconds)',
         labelRecentFilesCount: 'Recent file list size',
+        hintRecentFilesCount:
+            'Number of entries kept in the recent lists (5~20, default 10); existing entries are trimmed immediately after saving',
         panelAppearanceTitle: 'Appearance settings',
         panelAppearanceDesc: 'Application visual settings',
         groupTheme: 'Theme',
@@ -211,6 +216,10 @@ const dialogRenderer = {
         themeDark: 'Dark',
         themeLight: 'Light',
         labelUseSystemTheme: 'Use system theme',
+        // Batch B #7: follow the system theme — mutually exclusive with manual theme
+        // selection (choosing a theme in the Theme settings dialog turns this off)
+        hintUseSystemTheme:
+            'When enabled, the app theme follows the system light/dark mode; manually choosing a theme in the Theme settings dialog turns this off automatically',
         groupFont: 'Font',
         labelSystemFont: 'System font',
         fontMicrosoftYaHei: 'Microsoft YaHei',
@@ -225,10 +234,22 @@ const dialogRenderer = {
         groupOperations: 'Actions',
         backupNow: 'Back up now',
         restoreFromBackup: 'Restore from backup',
-        // P1-FE-06: settings without consumers are disabled and labelled
+        // Batch C: #8/#9 auto backup is implemented (enableAutoBackup/backupInterval
+        // are enabled); this entry has no code reference anymore and is kept for
+        // future not-yet-implemented settings
         hintNotImplemented:
             'This setting is not wired to any feature yet and will have no effect after saving.',
+        // Batch C #10: the app theme is now a read-only display plus an "Open theme
+        // settings" button; this entry is only used as the tooltip of the read-only name
         hintThemeManaged: 'Use the Theme settings dialog to change the app theme',
+        // Batch C #10: button label that opens the theme settings dialog
+        labelOpenThemeSetting: 'Open theme settings',
+        // Batch C #8/#9: behavior description of the auto backup group (replaces the
+        // former "not implemented" hint)
+        hintAutoBackupGroup:
+            'Backs up the active file (including unsaved changes) and every .md file in the open workspace folder to the user data directory at the configured interval, pruning old backups by "Backups to keep"',
+        hintBackupInterval:
+            'Auto backup interval (1~72 hours, default 24); takes effect immediately after saving',
         hintDefaultFilePath: 'Default starting folder for the "Open folder" dialog',
         hintBackupRetention: 'Number of recent backups kept when using "Back up now"',
         backupStatusSuccess: 'Backup created: {name} ({count} config files)',
@@ -321,6 +342,131 @@ const dialogRenderer = {
         descCryptoJs: 'JavaScript crypto library',
         descMammoth: 'Word document parsing',
         descTurndown: 'HTML to Markdown'
+    },
+    // Material syntax insertion dialog: 15 mkdocs-material extension syntaxes.
+    // Keep the leaf key set in sync with zh-CN/dialogRenderer.ts materialSyntax.
+    materialSyntax: {
+        title: 'Insert Material syntax',
+        previewEmptyHint: 'Fill in the form above to preview the Markdown that will be inserted',
+        iconNameRequired: 'Enter an icon name first (e.g. pencil, github)',
+        features: {
+            collapsible: 'Collapsible block',
+            taskList: 'Task list',
+            highlight: 'Text highlight',
+            insertDelete: 'Insert/delete marks',
+            supSub: 'Superscript/subscript',
+            keys: 'Keyboard keys',
+            attrList: 'Attribute list',
+            footnote: 'Footnote',
+            definitionList: 'Definition list',
+            gridCards: 'Grid cards',
+            codeBlock: 'Code block extras',
+            icon: 'Material icon',
+            blocks: 'Block syntax',
+            snippet: 'File snippet',
+            tabLink: 'Tabbed deep link'
+        },
+        labels: {
+            type: 'Type',
+            expanded: 'Expanded by default',
+            completed: 'Completed',
+            mode: 'Mode',
+            text: 'Text',
+            url: 'URL',
+            className: 'class',
+            align: 'Align',
+            keys: 'Keys',
+            refText: 'Referencing text',
+            footnoteContent: 'Footnote content',
+            term: 'Term',
+            definition: 'Definition',
+            cards: 'Cards',
+            language: 'Language',
+            codeTitle: 'Code block title',
+            code: 'Code',
+            linenums: 'Show line numbers',
+            hlLines: 'Highlighted lines',
+            iconName: 'Icon name',
+            iconText: 'Text (optional)',
+            tabLabel: 'Tab label',
+            path: 'File path',
+            startLine: 'Start line',
+            endLine: 'End line',
+            linkText: 'Link text',
+            setId: 'Set index',
+            tabIndex: 'Tab index'
+        },
+        placeholders: {
+            title: 'Optional title',
+            content: 'Content (multi-line supported)',
+            text: 'Text to wrap',
+            taskContent: 'One task per line',
+            keys: 'e.g. ctrl+alt+del',
+            url: 'e.g. https://example.com',
+            className: 'e.g. highlight',
+            footnoteContent: 'Footnote details',
+            definition: 'Explanation of the term',
+            cards: 'One card per line: icon|title|description (icon optional)',
+            language: 'e.g. python',
+            code: 'Code content',
+            hlLines: 'e.g. 2 3',
+            iconName: 'e.g. pencil',
+            tabLabel: 'e.g. Tab one',
+            path: 'e.g. snippets/example.md',
+            linkText: 'Text shown on the link'
+        },
+        types: {
+            note: 'Note',
+            tip: 'Tip',
+            warning: 'Warning',
+            danger: 'Danger',
+            info: 'Info',
+            success: 'Success',
+            example: 'Example',
+            question: 'Question',
+            quote: 'Quote',
+            details: 'Details',
+            tabbed: 'Tabbed'
+        },
+        insertDeleteModes: {
+            insert: 'Insert (^^)',
+            delete: 'Delete (~~)',
+            criticInsert: 'Critic insert ({++ ++})',
+            criticDelete: 'Critic delete ({-- --})',
+            criticHighlight: 'Critic highlight ({== ==})',
+            criticComment: 'Critic comment ({>> <<})'
+        },
+        scriptModes: {
+            superscript: 'Superscript (^ ^)',
+            subscript: 'Subscript (~ ~)'
+        },
+        attrModes: {
+            button: 'Button ({ .md-button })',
+            inline: 'Inline class ({ .class })',
+            align: 'Paragraph/image align ({ align=center })'
+        },
+        alignOptions: {
+            left: 'Left',
+            center: 'Center',
+            right: 'Right'
+        },
+        defaults: {
+            collapsibleContent: 'Collapsible content shown when expanded.',
+            taskContent: 'First task\nSecond task',
+            highlightText: 'Highlighted text',
+            insertDeleteText: 'Marked text',
+            attrText: 'Button text',
+            footnoteText: 'Annotated text',
+            footnoteContent: 'Footnote details.',
+            definitionTerm: 'Term',
+            definitionText: 'Explanation of the term.',
+            cards: 'pencil|Quick start|Install and configure in minutes.\nrocket|Batteries included|No extra dependencies, just Markdown.',
+            codeTitle: 'Example code',
+            blocksTitle: 'Block title',
+            blocksContent: 'Block content, Markdown inside is supported.',
+            blocksTabLabel: 'Tab one',
+            tabLinkText: 'Go to tab'
+        }
     }
 }
 

@@ -234,4 +234,42 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
         await nextTick()
         expect(preview.props('active')).toBe(true)
     })
+
+    // 数据安全回归（2026-11-15）：CLEAR_EDITOR_PREVIEW 曾把编辑器内容设为 '# ' 并同步主进程，
+    // 在「欢迎页后台已恢复上次文件 → 点打开文件夹/最近文件夹 → 再打开新文件」链路上
+    // 把旧文档内容污染成 '# '，切换/关闭时的自动保存会把旧文件写空（数据丢失）。
+    it('should not sync placeholder content when clearing the editor (CLEAR_EDITOR_PREVIEW)', async () => {
+        const mounted = mountEditor()
+        const monaco = mounted.findComponent(MdMonacoEdit)
+
+        // 主进程后台恢复的文件内容已加载
+        getIpcListener(IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT)({}, '文档原文')
+        await nextTick()
+        expect(monaco.props('code')).toBe('文档原文')
+        ipcRenderer.send.mockClear()
+
+        // 点「打开文件夹 / 最近文件夹」：主进程先进入主界面再发 CLEAR_EDITOR_PREVIEW
+        getIpcListener(IPC.FILE.CLEAR_EDITOR_PREVIEW)()
+        await nextTick()
+        vi.advanceTimersByTime(1000)
+
+        // 编辑器显示被清空，但不得把占位内容（'# ' 或空串）同步给主进程
+        expect(monaco.props('code')).toBe('')
+        expect(sentPayloads(IPC.FILE.UPDATE_SELECT_FILE_CONTENT)).toEqual([])
+    })
+
+    it('should not flush stale content after the editor was cleared (数据安全)', async () => {
+        mountEditor()
+
+        getIpcListener(IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT)({}, '文档原文')
+        await nextTick()
+        getIpcListener(IPC.FILE.CLEAR_EDITOR_PREVIEW)()
+        await nextTick()
+        ipcRenderer.send.mockClear()
+
+        // 关闭前 flush：编辑器已完成清空且无新输入，不得回传旧内容或占位内容
+        getIpcListener(IPC.EDITOR.FLUSH_CONTENT)()
+        expect(sentPayloads(IPC.FILE.UPDATE_SELECT_FILE_CONTENT)).toEqual([])
+        expect(ipcRenderer.send).toHaveBeenLastCalledWith(IPC.EDITOR.FLUSH_CONTENT_DONE)
+    })
 })

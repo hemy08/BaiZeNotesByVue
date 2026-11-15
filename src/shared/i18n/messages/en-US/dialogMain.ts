@@ -160,6 +160,29 @@ export default {
         fixesTitle: 'Bug fixes',
         improvementsTitle: 'Improvements',
         techStackTitle: 'Tech stack',
+        v135: {
+            title: '1.3.5 Jyshare Common Tools Plugins',
+            highlights: {
+                h1: 'Integrated 18 offline tools from the Jyshare tool site',
+                h2: 'Five categories: codec / convert / text / format / misc',
+                h3: 'Zero third-party dependencies, fully offline'
+            },
+            features: {
+                f1: 'Codec: Base64 / URL / HTML entities / Unicode / image to Base64',
+                f2: 'Convert: color / unit / RMB uppercase / timestamp / base',
+                f3: 'Text: traditional-simplified / pinyin / word count / text diff',
+                f4: 'Format & parse: JSON tool / XML formatter / regex tester',
+                f5: 'Misc: random generator / calculator'
+            },
+            improvements: {
+                i1: 'Plugin tools 19 → 37, all lazy-loaded on demand',
+                i2: '154 new unit test cases'
+            },
+            fixes: {
+                x1: 'Fixed the CMYK-to-RGB calculation flaw of the original site',
+                x2: 'Fixed the JSON unescape flaw of the original site'
+            }
+        },
         v130: {
             title: '1.3.0 Comprehensive Governance',
             highlights: {

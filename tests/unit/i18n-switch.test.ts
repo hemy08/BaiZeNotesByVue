@@ -37,7 +37,7 @@ describe('CMP-30 语言切换冒烟', () => {
         expect(t('menu.file.new')).toBe('新建')
         expect(t('dialogRenderer.techStack.title')).toBe('技术栈')
         expect(t('toolsConvert.base.description')).toBe(
-            '在不同的基数（十进制、十六进制、二进制、八进制、base64…）之间转换数字'
+            '2~36 进制任意互转，支持整数、小数（20 位精度）与负数。'
         )
         expect(t('status.filePathLabel')).toBe('文件路径:')
 
@@ -52,7 +52,7 @@ describe('CMP-30 语言切换冒烟', () => {
         expect(t('menu.file.new')).toBe('New')
         expect(t('dialogRenderer.techStack.title')).toBe('Tech stack')
         expect(t('toolsConvert.base.description')).toBe(
-            'Convert numbers between different bases (decimal, hexadecimal, binary, octal, base64…)'
+            'Convert numbers between bases 2-36, supporting integers, fractions (20-digit precision) and negative values.'
         )
         expect(t('status.filePathLabel')).toBe('File path:')
         expect(okText.value).toBe('OK')

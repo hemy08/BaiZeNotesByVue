@@ -99,24 +99,26 @@
     <a class="toc-l3" href="#sub-16">9.9 实机回归修复（19:35~19:45）：启动总是显示欢迎页（产品决策调整）</a>
     <a class="toc-l3" href="#sub-17">9.10 实机回归修复（20:15~20:25）：主题设置保存报「An object could not be cloned」</a>
     <a class="toc-l3" href="#sub-18">9.11 代码问题修复（20:20~20:40，文档核对发现的 6 项）</a>
+    <a class="toc-l3" href="#sub-19">9.12 实机回归修复（21:20~21:30）：Mermaid 图表文字全部丢失</a>
+    <a class="toc-l3" href="#sub-20">9.13 数据安全修复（21:45~21:55）：无修改关闭后文档被清空</a>
     <a class="toc-l2" href="#sec-10">十、附录：维度报告索引</a>
-    <a class="toc-l3" href="#sub-19">复现命令</a>
+    <a class="toc-l3" href="#sub-21">复现命令</a>
   </nav>
 
 <div class="wrap">
   <header>
     <h1>BaiZeNotes 全量扫描与修复报告</h1>
-    <p>项目：白泽笔记（BaiZe Notes）v1.3.0 ｜ Electron 43 + Vue 3.5.45 + TypeScript 6.0.3 ｜ 扫描 16:40~17:00，修复 17:00~20:40</p>
-    <p>方式：5 维度并行扫描（106 项原始/94 项去重）+ 两轮并行修复 + 实机回归修复 + 代码问题修复</p>
+    <p>项目：白泽笔记（BaiZe Notes）v1.3.2 ｜ Electron 43 + Vue 3.5.45 + TypeScript 6.0.3 ｜ 扫描 16:40~17:00，修复 17:00~21:55</p>
+    <p>方式：5 维度并行扫描（106 项原始/94 项去重）+ 两轮并行修复 + 五项实机回归修复</p>
   </header>
 
   <div class="cards">
     <div class="card"><b>94</b><span>扫描问题</span></div>
     <div class="card"><b>111</b><span>已修复</span></div>
-    <div class="card"><b>3</b><span>实机回归修复</span></div>
+    <div class="card"><b>5</b><span>实机回归修复</span></div>
     <div class="card"><b>6</b><span>代码问题修复</span></div>
-    <div class="card"><b>134</b><span>测试文件</span></div>
-    <div class="card"><b>2252</b><span>用例全通过</span></div>
+    <div class="card"><b>149</b><span>测试文件</span></div>
+    <div class="card"><b>2693</b><span>用例全通过</span></div>
     <div class="card"><b>0</b><span>ESLint error</span></div>
   </div>
 
@@ -1377,6 +1379,50 @@
 </table>
 <p><strong>同步的文档更新</strong>：<code>文件导入功能说明</code>（CSV 已修复）、<code>菜单配置详细文档</code>（icon 字段已删除）、<code>单元测试补充报告</code>（CSV 缺陷已修复标注）、<code>README</code>（主题 24→28 种、app_themes 目录移除、测试 133/2,205→134/2,252）。</p>
 <p><strong>最终门禁</strong>：134 测试文件 / <strong>2,252 用例全通过</strong>、typecheck 全链 0 错误、ESLint 0/0、Prettier 通过、<code>build:unpack</code> 成功。</p>
+<h3 id="sub-19">9.12 实机回归修复（21:20~21:30）：Mermaid 图表文字全部丢失</h3>
+<p><strong>现象（用户实机反馈）</strong>：flowchart 渲染后只剩空矩形与连线——节点标签（<code>c1</code>/<code>a2</code>/<code>a1</code>/<code>b1</code>/<code>b2</code>/<code>c2</code>）与子图标题（<code>one</code>/<code>two</code>/<code>three</code>）全部不显示；矩形、子图底色、连线位置正确。</p>
+<p><strong>根因</strong>：预览管线消毒用 <code>DOMPurify.sanitize(..., { USE_PROFILES: { svg: true } })</code>，其 svg 白名单<strong>不包含 <code>&lt;foreignObject&gt;</code></strong>；而 Mermaid 默认 <code>htmlLabels: true</code> 会把所有标签渲染进 <code>&lt;foreignObject&gt;&lt;div&gt;…&lt;/div&gt;&lt;/foreignObject&gt;</code>，消毒时整块被移除 → 图上只剩图形骨架。</p>
+<p><strong>修复</strong>（两处初始化统一）：</p>
+<ul>
+<li><code>hemy-editor-render.ts</code> 新增导出常量 <code>MERMAID_INIT_CONFIG</code>（<code>htmlLabels: false</code>、<code>securityLevel: 'strict'</code>、<code>startOnLoad: false</code>，Mermaid 11 推荐根级写法），<code>getMermaidInstance()</code> 首次动态加载后执行 <code>initialize</code>；</li>
+<li><code>MermaidRender.vue</code> 改为同一配置初始化。</li>
+</ul>
+<p><strong>真实渲染验证</strong>（Playwright Chromium + 真实 mermaid.min.js + DOMPurify 消毒，用户原始代码）：</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>原始 SVG</th>
+<th>消毒后可见文字</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>默认 <code>htmlLabels: true</code></td>
+<td>无 <code>&lt;text&gt;</code>，标签在 foreignObject</td>
+<td><strong>0 个</strong>（复现截图问题）</td>
+</tr>
+<tr>
+<td>修复 <code>htmlLabels: false</code></td>
+<td>有 <code>&lt;text&gt;</code> 元素</td>
+<td><strong>9 个</strong>：three / two / one / c1 / a2 / a1 / b1 / b2 / c2</td>
+</tr>
+</tbody>
+</table>
+<p><strong>回归测试</strong>：新增 <code>tests/unit/mermaid-render-labels.test.ts</code>（3 用例）——初始化配置断言、DOMPurify 对 foreignObject 移除 vs text 保留的行为证明、<code>MermaidRender.vue</code> 挂载初始化参数断言。</p>
+<p><strong>门禁</strong>：Mermaid 相关定向 26 用例通过、改动文件 ESLint 0 / Prettier 通过；全量测试与 typecheck 受另一并行开发会话中间态影响（<code>calculator-lib.ts</code>、<code>main-index</code>、<code>config-manager</code>、<code>i18n-dict</code> 等，与本修复无关）。</p>
+<h3 id="sub-20">9.13 数据安全修复（21:45~21:55）：无修改关闭后文档被清空</h3>
+<p><strong>现象（用户实机反馈）</strong>：自动保存默认关闭；打开应用 → 打开 markdown 文档 → 未做任何修改 → 关闭应用 → 再次打开后文档内容被清空。</p>
+<p><strong>根因链（渲染层占位内容污染主进程活动文件）</strong>：</p>
+<ol>
+<li>渲染层处理 <code>CLEAR_EDITOR_PREVIEW</code>（切换目录/打开文件夹时主进程发送）的实现 <code>handleClearEditor</code> 把编辑器内容设为 <code>'# '</code> 并<strong>调用 <code>handleMarkdownCodeUpdate('# ')</code> 同步到主进程</strong>；</li>
+<li>应用启动时主进程已在后台恢复上次打开的文件（<code>currentActiveFile</code> 已存在且内容非空）；</li>
+<li>用户点「打开文件夹 / 最近文件夹」时 FE-01 先发 <code>WELCOME_ENTER_MAIN</code> 再发 <code>CLEAR_EDITOR_PREVIEW</code>，此时主界面已挂载、监听器已注册 → <code>'# '</code> 被同步进 <code>currentActiveFile.content</code>，<code>isDirty()</code> 变 true；</li>
+<li>用户随后打开新文件时，<code>OpenSelectFile</code> 的「打开新文件前保存当前文件」把旧文件写成 <code>'# '</code>（即被清空）；关闭时 <code>close</code> 流程的 <code>isDirty() → SaveActiveFile()</code> 同样会写入被污染内容。</li>
+</ol>
+<p><strong>修复</strong>：<code>handleClearEditor</code> 改为<strong>只清空编辑器显示</strong>——取消防抖计时器、先更新同步基准 <code>lastSyncedContent = ''</code>、清空 <code>markdownEditorContent</code> / <code>initialCodeContent</code>，<strong>不再触发 <code>UPDATE_SELECT_FILE_CONTENT</code></strong>（清空后的首次用户输入仍按正常防抖同步）。</p>
+<p><strong>回归测试</strong>：<code>markdown-edit-save-path.test.ts</code> 新增 2 用例——CLEAR_EDITOR_PREVIEW 后不回传占位内容；CLEAR 后关闭前 flush 不回传旧内容/占位内容（只回执 DONE）。</p>
+<p><strong>门禁（外部并行开发已收尾，全量恢复全绿）</strong>：<strong>149 测试文件 / 2,693 用例全通过</strong>、<code>npm run typecheck</code> 全链 <strong>exit 0</strong>、ESLint 0/0、Prettier 通过。</p>
 <h2 id="sec-10">十、附录：维度报告索引</h2>
 <table>
 <thead>
@@ -1422,7 +1468,7 @@
 <blockquote>
 <p>去重说明：CQ-2/AS-3（Mermaid v-html）、FE-21/C-02、FE-22/C-09 等跨维度重复项合并计数；通信层 32 项已知问题按「19 已修复 / 8 部分 / 5 仍存在」复查，仅引用不重列。</p>
 </blockquote>
-<h3 id="sub-19">复现命令</h3>
+<h3 id="sub-21">复现命令</h3>
 <pre><code class="language-powershell">npm run typecheck                      # 0 错误（16.48s）
 npx vitest run                         # 110 文件 / 1787 用例
 npx vitest run --coverage              # Lines 77.67% / Branch 72.56%

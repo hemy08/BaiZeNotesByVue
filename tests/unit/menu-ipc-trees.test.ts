@@ -2,6 +2,7 @@
  * menu_file / menu_edit / menu_view / menu_help 菜单 handler 树单元测试
  * 覆盖：send 通道与参数、app.relaunch/quit、shell.openExternal、
  * 文件操作与对话框函数委托、编码切换、折叠级别参数
+ * task-50 追加：AI 导航菜单动作 ↔ aiMenuHandlers 双向一致 + 末跳 URL 契约（https / 唯一 / 无推广参数）
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
@@ -9,6 +10,7 @@ const treeMocks = vi.hoisted(() => ({
     relaunch: vi.fn(),
     quit: vi.fn(),
     openExternal: vi.fn(),
+    openOnlineWebPage: vi.fn(),
     openFile: vi.fn(),
     openDirectory: vi.fn(),
     saveActiveFile: vi.fn(),
@@ -63,7 +65,9 @@ vi.mock('../../src/main/utils/file-utils/export', () => ({
 vi.mock('../../src/main/dialogs/dialogs', () => ({
     ShowReleaseNotesDialog: treeMocks.showReleaseNotesDialog,
     ShowUpdateLogDialog: treeMocks.showUpdateLogDialog,
-    ShowShortcutKeysDialog: treeMocks.showShortcutKeysDialog
+    ShowShortcutKeysDialog: treeMocks.showShortcutKeysDialog,
+    // task-50：AI 导航 handler 树叶子的末跳统一为 OpenOnlineWebPage(url)
+    OpenOnlineWebPage: treeMocks.openOnlineWebPage
 }))
 
 vi.mock('../../src/main/utils/auto-updater.js', () => ({
@@ -75,6 +79,8 @@ import { fileMenuHandlers, codingMenuHandlers } from '../../src/main/ipc/menu-fi
 import { editMenuHandlers } from '../../src/main/ipc/menu-edit'
 import { viewMenuHandlers, insertMenuHandlers } from '../../src/main/ipc/menu-view'
 import { helpMenuHandlers } from '../../src/main/ipc/menu-help'
+import { aiMenuHandlers, aiMenuUrlMaps } from '../../src/main/ipc/menu-tools'
+import { menuMap } from '../../src/renderer/src/components/MenuBar/menu-config'
 
 // 构造最小主窗口 mock
 function makeWindow(): {
@@ -524,5 +530,87 @@ describe('helpMenuHandlers 全量 handler（ET-7）', () => {
         })
         warnSpy.mockRestore()
         treeMocks.checkForUpdatesAndNotify.mockReset()
+    })
+})
+
+/**
+ * task-50：AI 导航菜单（9 组 70 个叶子）双跳一致性。
+ * 数据真源：渲染层 `menu-config.ts` 的 aiMenuGroups（labelKey + menuAction）
+ *          主进程 `menu-tools.ts` 的 aiMenuUrlMaps（URL 单一真源）→ aiMenuHandlers
+ * 断言：① 菜单动作与 handler 叶子一一对应（不多不少）；② 每个叶子可执行；
+ *      ③ URL 全部 https、AI 菜单内部唯一、无推广/返利参数；④ URL 映射表 ↔ handler 无孤儿条目。
+ */
+describe('aiMenuHandlers（AI 导航，task-50）', () => {
+    /** 递归收集 handler 树叶子函数 */
+    function collectAiLeaves(tree: unknown, out: Array<() => unknown> = []): Array<() => unknown> {
+        if (typeof tree === 'function') {
+            out.push(tree as () => unknown)
+            return out
+        }
+        if (tree && typeof tree === 'object') {
+            for (const value of Object.values(tree)) {
+                collectAiLeaves(value, out)
+            }
+        }
+        return out
+    }
+
+    /** 递归收集菜单树中指定前缀的 menuAction */
+    function collectAiActions(items: unknown[], prefix: string): string[] {
+        const actions: string[] = []
+        for (const item of items as Array<{ menuAction?: string; submenu?: unknown[] }>) {
+            if (item.menuAction?.startsWith(prefix)) {
+                actions.push(item.menuAction)
+            }
+            if (item.submenu) {
+                actions.push(...collectAiActions(item.submenu, prefix))
+            }
+        }
+        return actions
+    }
+
+    it('should keep every AI menu action reachable in the main-process handler tree', () => {
+        const actions = collectAiActions(menuMap.value, 'baize:menu:ai:')
+        expect(actions).toHaveLength(70)
+        for (const action of actions) {
+            const [, group, toolId] = action.split(':').slice(2)
+            expect(typeof pickHandler(aiMenuHandlers, group, toolId)).toBe('function')
+        }
+        // handler 叶子数与菜单叶子数一致（无多余/遗漏条目）
+        expect(collectAiLeaves(aiMenuHandlers)).toHaveLength(actions.length)
+    })
+
+    it('should execute every AI handler and open a unique https URL without promo params', () => {
+        const leaves = collectAiLeaves(aiMenuHandlers)
+        expect(leaves).toHaveLength(70)
+        for (const leaf of leaves) {
+            leaf()
+        }
+
+        expect(treeMocks.openOnlineWebPage).toHaveBeenCalledTimes(70)
+        const urls = treeMocks.openOnlineWebPage.mock.calls.map((call) => call[0] as string)
+        for (const url of urls) {
+            expect(typeof url).toBe('string')
+            // https + 无 query/hash（官方干净地址，不带任何推广或跟踪参数）
+            expect(url).toMatch(/^https:\/\/[^\s?#]+$/)
+            expect(url).not.toMatch(/utm_|cps_key|invitecode|redirect|spm_|userCode/i)
+        }
+        // 全菜单 URL 唯一（AI 导航内部无重复）
+        expect(new Set(urls).size).toBe(urls.length)
+    })
+
+    it('should keep aiMenuUrlMaps and aiMenuHandlers in one-to-one correspondence', () => {
+        const urlMapPaths = Object.entries(aiMenuUrlMaps).flatMap(([group, tools]) =>
+            Object.keys(tools).map((toolId) => `${group}:${toolId}`)
+        )
+        const handlerPaths: string[] = []
+        for (const [group, tools] of Object.entries(aiMenuHandlers)) {
+            for (const toolId of Object.keys(tools)) {
+                handlerPaths.push(`${group}:${toolId}`)
+            }
+        }
+        expect(handlerPaths.sort()).toEqual(urlMapPaths.sort())
+        // 9 个分组与渲染层菜单分组名一致
+        expect(Object.keys(aiMenuHandlers).sort()).toEqual(Object.keys(aiMenuUrlMaps).sort())
     })
 })

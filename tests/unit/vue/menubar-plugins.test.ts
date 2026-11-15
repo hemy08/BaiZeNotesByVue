@@ -90,12 +90,13 @@ describe('MenuBar 插件菜单（FE-16/FE-17）', () => {
         await openPluginsMenu()
         const labels = submenuLabels()
 
-        // 空数据组：不应出现在渲染结果中
+        // 空数据组：不应出现在渲染结果中（1.3.5 jyshare 集成后转换器组/常用小工具组已有数据保留）
         expect(labels).not.toContain('语言语法关键字对照表')
-        expect(labels).not.toContain('各类转换器')
         expect(labels).not.toContain('数据和命令对照表')
         // 有数据的组保留
         expect(labels).toContain('加解密插件')
+        expect(labels).toContain('各类转换器')
+        expect(labels).toContain('常用小工具')
         expect(labels).toContain('网络计算插件')
         expect(labels).toContain('常用对照表')
     })

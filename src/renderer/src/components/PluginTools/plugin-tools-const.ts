@@ -90,6 +90,88 @@ export const pluginTools = markRaw([
         id: 'baize:menu:plugins:net:subnet-mask-map-table',
         component: lazyTool(() => import('./Informations/SubnetMaskMapTable.vue'))
     },
+    {
+        id: 'baize:menu:plugins:net:regex-tester',
+        component: lazyTool(() => import('./NetWork/RegexTester.vue'))
+    },
+
+    // ==================== 编解码转换（1.3.5 jyshare 常用工具集成） ====================
+    {
+        id: 'baize:menu:plugins:codec:base64-codec',
+        component: lazyTool(() => import('./Codec/Base64Codec.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:codec:url-codec',
+        component: lazyTool(() => import('./Codec/UrlCodec.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:codec:html-codec',
+        component: lazyTool(() => import('./Codec/HtmlCodec.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:codec:unicode',
+        component: lazyTool(() => import('./Codec/UnicodeConvert.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:codec:image-base64',
+        component: lazyTool(() => import('./Codec/ImageBase64.vue'))
+    },
+
+    // ==================== 格式转换（1.3.5 jyshare 常用工具集成） ====================
+    {
+        id: 'baize:menu:plugins:convert:color-convert',
+        component: lazyTool(() => import('./Convert/ColorConvert.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:convert:unit-convert',
+        component: lazyTool(() => import('./Convert/UnitConvert.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:convert:rmb-case',
+        component: lazyTool(() => import('./Convert/RmbCase.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:convert:timestamp-convert',
+        component: lazyTool(() => import('./Convert/TimestampConvert.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:convert:base-convert',
+        component: lazyTool(() => import('./Convert/BaseConvert.vue'))
+    },
+
+    // ==================== 常用小工具（1.3.5 jyshare 常用工具集成） ====================
+    {
+        id: 'baize:menu:plugins:misc:random-generator',
+        component: lazyTool(() => import('./MiscTools/RandomGenerator.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:misc:calculator',
+        component: lazyTool(() => import('./MiscTools/Calculator.vue'))
+    },
+
+    // ==================== 文本转换（1.3.5 jyshare 常用工具集成） ====================
+    {
+        id: 'baize:menu:plugins:text:chinese-text',
+        component: lazyTool(() => import('./TextTools/ChineseTextTool.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:text:word-count',
+        component: lazyTool(() => import('./TextTools/WordCount.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:text:text-diff',
+        component: lazyTool(() => import('./TextTools/TextDiff.vue'))
+    },
+
+    // ==================== 格式化工具（1.3.5 jyshare 常用工具集成） ====================
+    {
+        id: 'baize:menu:plugins:format:json-tool',
+        component: lazyTool(() => import('./FormatTools/JsonTool.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:format:xml-format',
+        component: lazyTool(() => import('./FormatTools/XmlFormatter.vue'))
+    },
 
     // ==================== 常用对照表 - 对照表一 ====================
     {

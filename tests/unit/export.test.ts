@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import path from 'path'
 import os from 'os'
-import { promises as fs } from 'fs'
+import { readFileSync, promises as fs } from 'fs'
+
+// 导出元数据版本号来自 package.json（FUN-15）。测试动态读取当前版本，
+// 避免每次发版升级后测试断言与实际版本不一致（1.3.3 → 1.3.5 曾因此失败）。
+const PKG_VERSION = (
+    JSON.parse(readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf-8')) as {
+        version: string
+    }
+).version
 
 // CMP-30：导出提示经 tMain 读取词典（语言来自系统设置）。
 // 测试固定中文词条并 mock 掉 config/system-setting，隔离 electron-store 等主进程存储依赖链。
@@ -37,8 +45,8 @@ vi.mock('electron', () => {
         },
         shell: { showItemInFolder: vi.fn() },
         clipboard: { writeText: vi.fn() },
-        // FUN-15：getAppPath 指向项目根目录（package.json 版本 1.3.0）
-        app: { getAppPath: () => process.cwd(), getVersion: () => '1.3.0' }
+        // FUN-15：getAppPath 指向项目根目录，版本号从 package.json 动态读取
+        app: { getAppPath: () => process.cwd(), getVersion: () => PKG_VERSION }
     }
 })
 
@@ -91,8 +99,8 @@ describe('ToJson', () => {
 
         const parsed = JSON.parse(await fs.readFile(filePath, 'utf8'))
         expect(parsed.content).toBe('# 导出内容')
-        // FUN-15：版本号从 package.json 读取（当前 1.3.0），不再硬编码 1.1.5-beta
-        expect(parsed.metadata.version).toBe('1.3.0')
+        // FUN-15：版本号从 package.json 读取（动态，不硬编码）
+        expect(parsed.metadata.version).toBe(PKG_VERSION)
         expect(parsed.metadata.type).toBe('markdown')
         expect(parsed.metadata.app).toBe('BaiZeNotes')
         expect(typeof parsed.metadata.exportedAt).toBe('string')

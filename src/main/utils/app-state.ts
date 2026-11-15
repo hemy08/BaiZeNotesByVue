@@ -117,6 +117,17 @@ class AppState {
     private _lastSavedContentHash: string | null = null
     // PF-17：当前活动文件的磁盘签名（mtime + size），null 表示未知（下次刷新按需重读并重建签名）
     private _activeFileDiskStamp: ActiveFileDiskStamp | null = null
+    // 批次 B #4：显式退出标志——before-quit / 托盘「退出」置位后，窗口 close 事件
+    // 不再被「最小化到托盘」拦截，保证真实退出路径能关闭窗口并完全结束进程。
+    private _isQuitting = false
+
+    get isQuitting(): boolean {
+        return this._isQuitting
+    }
+
+    setQuitting(quitting: boolean): void {
+        this._isQuitting = quitting
+    }
 
     get mainWindow(): BrowserWindow | null {
         return this._mainWindow
@@ -281,6 +292,7 @@ class AppState {
         this._lastSavedContentLength = 0
         this._lastSavedContentHash = null
         this._activeFileDiskStamp = null
+        this._isQuitting = false
     }
 }
 

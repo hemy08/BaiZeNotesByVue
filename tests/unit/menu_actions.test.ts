@@ -127,6 +127,94 @@ describe('HandleMenuAction', () => {
         })
     })
 
+    // mkdocs-material 扩展语法插入（15 项）：menu-config 的 Material 子组中除既有
+    // material:admonition（继续走主进程 Vue 对话框链路）外的 15 个动作，均应由渲染层
+    // 精确拦截并打开 materialSyntax 对话框，第二参 { preset: featureId } 指明语法类型。
+    describe('material syntax actions', () => {
+        const MATERIAL_FEATURE_IDS = [
+            'collapsible',
+            'task-list',
+            'highlight',
+            'insert-delete',
+            'sup-sub',
+            'keys',
+            'attr-list',
+            'footnote',
+            'definition-list',
+            'grid-cards',
+            'code-block',
+            'icon',
+            'blocks',
+            'snippet',
+            'tab-link'
+        ]
+
+        it.each(MATERIAL_FEATURE_IDS)(
+            'should open materialSyntax dialog with preset %s',
+            (featureId) => {
+                HandleMenuAction(`baize:menu:insert:material:${featureId}`)
+                expect(showDialogMock).toHaveBeenCalledTimes(1)
+                expect(showDialogMock).toHaveBeenCalledWith('materialSyntax', { preset: featureId })
+                expect(emitMock).not.toHaveBeenCalled()
+                expect(ipcSend).not.toHaveBeenCalled()
+            }
+        )
+
+        it('should keep the legacy material admonition action on the main-process path', () => {
+            HandleMenuAction('baize:menu:insert:material:admonition')
+            expect(showDialogMock).not.toHaveBeenCalled()
+            expect(emitMock).not.toHaveBeenCalled()
+            expect(ipcSend).toHaveBeenCalledWith(
+                'baize:menu:action',
+                'baize:menu:insert:material:admonition'
+            )
+        })
+
+        // 精确匹配：仅前缀相同但 featureId 带后缀的动作不得被拦截（防止误吞未来新增动作）
+        it('should only intercept exact material syntax action ids', () => {
+            HandleMenuAction('baize:menu:insert:material:collapsible:extra')
+            expect(showDialogMock).not.toHaveBeenCalled()
+            expect(ipcSend).toHaveBeenCalledWith(
+                'baize:menu:action',
+                'baize:menu:insert:material:collapsible:extra'
+            )
+        })
+
+        // 三处一致性：menu-config 下发的每个 material 动作（除 admonition）都被渲染层接管，
+        // 且 preset 与动作 id 的 <featureId> 段一致。
+        it('should intercept every material action declared in menu-config', () => {
+            const actions: string[] = []
+            const walk = (items: unknown[]): void => {
+                for (const item of items as Array<{ menuAction?: string; submenu?: unknown[] }>) {
+                    if (item.menuAction) {
+                        actions.push(item.menuAction)
+                    }
+                    if (item.submenu) {
+                        walk(item.submenu)
+                    }
+                }
+            }
+            walk(menuMap.value)
+
+            const materialActions = actions.filter(
+                (action) =>
+                    action.startsWith('baize:menu:insert:material:') &&
+                    action !== 'baize:menu:insert:material:admonition'
+            )
+            expect(materialActions).toHaveLength(15)
+            for (const action of materialActions) {
+                ipcSend.mockReset()
+                showDialogMock.mockReset()
+                emitMock.mockReset()
+                HandleMenuAction(action)
+                expect(showDialogMock).toHaveBeenCalledWith('materialSyntax', {
+                    preset: action.slice('baize:menu:insert:material:'.length)
+                })
+                expect(ipcSend).not.toHaveBeenCalled()
+            }
+        })
+    })
+
     describe('file new action', () => {
         it('should pass current file path as default directory on success', async () => {
             ipcInvoke.mockResolvedValue('C:\\docs\\note.md')
@@ -226,6 +314,34 @@ describe('HandleMenuAction', () => {
             expect(ipcSend).toHaveBeenCalledWith('baize:menu:action', 'baize:menu:file:save')
             expect(showDialogMock).not.toHaveBeenCalled()
             expect(emitMock).not.toHaveBeenCalled()
+        })
+
+        // task-50：AI 导航动作与 online:* 一致——渲染层没有任何 ai:* 前缀拦截分支，
+        // 必须原样经 IPC.MENU.ACTION 交主进程 menu-handle.ts 的 ai 子树处理（未新增 IPC 通道）。
+        it('should forward every AI navigation action to the main process (not intercepted)', () => {
+            const actions: string[] = []
+            const walk = (items: unknown[]): void => {
+                for (const item of items as Array<{ menuAction?: string; submenu?: unknown[] }>) {
+                    if (item.menuAction?.startsWith('baize:menu:ai:')) {
+                        actions.push(item.menuAction)
+                    }
+                    if (item.submenu) {
+                        walk(item.submenu)
+                    }
+                }
+            }
+            walk(menuMap.value)
+
+            expect(actions).toHaveLength(70)
+            for (const action of actions) {
+                ipcSend.mockReset()
+                showDialogMock.mockReset()
+                emitMock.mockReset()
+                HandleMenuAction(action)
+                expect(showDialogMock).not.toHaveBeenCalled()
+                expect(emitMock).not.toHaveBeenCalled()
+                expect(ipcSend).toHaveBeenCalledWith('baize:menu:action', action)
+            }
         })
     })
 

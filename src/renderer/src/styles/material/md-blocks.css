@@ -1,0 +1,139 @@
+/**
+ * md-blocks.css
+ * mkdocs-material 扩展样式（批次 C）：pymdownx.blocks（`///`）details 折叠块 /
+ * snippets（`--8<--`）未展开占位 / tab 深链（#__tabbed_<setId>_<tabNumber>）。
+ *
+ * 引入位置：src/renderer/src/main.ts（在 material/tableset.css 之后引入，
+ * 因此本文件里与 tableset.css 同特异度的 :target 兜底规则可覆盖默认选中态）。
+ * 颜色统一走 mkdocs-material / 主题 CSS 变量（var(--md-*, fallback)），不硬编码主题色。
+ */
+
+/* ============================== 一、pymdownx.blocks：details 折叠块 ==============================
+ * 结构：<details class="admonition details"><summary>标题</summary>…内容…</details>
+ * 边框/配色/标题图标等主体样式复用 admonition.css 对 .admonition 与 details/summary 的既有
+ * 约定（admonition.css 已含 `details`、`summary` 的通用样式），这里只补「可点击折叠」的交互样式。
+ */
+.md-typeset details.admonition.details > summary {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+/* 隐藏 Chromium 默认的 summary 三角标记（标题左侧已有 admonition 图标） */
+.md-typeset details.admonition.details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.md-typeset details.admonition.details > summary:focus-visible {
+    outline: 2px solid var(--md-accent-fg-color, #526cfe);
+    outline-offset: 2px;
+}
+
+/* 展开时留出标题与内容的间距（admonition.css 最后一条 :last-child 规则会把间距压掉） */
+.md-typeset details.admonition.details[open] > summary {
+    margin-bottom: 0.6rem;
+}
+
+/* ============================== 二、snippets：未展开指令的同步占位 ==============================
+ * 结构：<p class="mdx-snippet-placeholder" data-snippet-target="relative/path.md">--8&lt;-- "…"</p>
+ * 正常预览链路会先经 expandSnippetIncludes 异步展开；仅当无活动文件 / 读取失败 / 直接
+ * md.render 时才会出现占位。可见文本与原文一致（已转义），此处只做轻量等宽提示，不改变文本。
+ */
+.md-typeset .mdx-snippet-placeholder {
+    color: var(--md-default-fg-color--light, #0000008a);
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ============================== 三、tab 深链（#__tabbed_<setId>_<tabNumber>） ==============================
+ * id 约定（渲染器与 getTabTargetByHash 共用同一组生成函数，见 preview-mkdocs-material.ts）：
+ * - tabbed-set 容器：__tabbed_set_<setId>
+ * - 第 n 个 radio input：__tabbed_<setId>_<n>（既有约定，深链 hash 解析目标 radioId）
+ * - 第 n 个 label：__tabbed_<setId>_<n>_label（data-tab-target 指向同 n 的 panel id）
+ * - 第 n 个 panel：__tabbed_<setId>_<n>_panel（radio 已占用无后缀 id，panel 加 _panel 保证唯一）
+ *
+ * :target 兜底：浏览器把 hash 指向的元素设为 :target。tab 深链的 hash 通常落在 radio input
+ * （__tabbed_x_y，绝对定位隐藏）上，此时用既有的「input 是 tabbed-set 第 n 个直接子元素」结构，
+ * 通过兄弟选择器把第 n 个 panel 显示出来并高亮第 n 个 label；无需 JS 也能看到对应内容。
+ * 若 hash 直接落在 label/panel 自身的 id 上，下面单独的 label:target / panel:target 规则生效。
+ */
+
+/* --- 3.1 hash 指向 radio 时：显示对应 panel（与 tableset.css 的 checked 规则同构，1~20 个） --- */
+.md-typeset .tabbed-set > input:first-child:target ~ .tabbed-content > :first-child,
+.md-typeset .tabbed-set > input:nth-child(2):target ~ .tabbed-content > :nth-child(2),
+.md-typeset .tabbed-set > input:nth-child(3):target ~ .tabbed-content > :nth-child(3),
+.md-typeset .tabbed-set > input:nth-child(4):target ~ .tabbed-content > :nth-child(4),
+.md-typeset .tabbed-set > input:nth-child(5):target ~ .tabbed-content > :nth-child(5),
+.md-typeset .tabbed-set > input:nth-child(6):target ~ .tabbed-content > :nth-child(6),
+.md-typeset .tabbed-set > input:nth-child(7):target ~ .tabbed-content > :nth-child(7),
+.md-typeset .tabbed-set > input:nth-child(8):target ~ .tabbed-content > :nth-child(8),
+.md-typeset .tabbed-set > input:nth-child(9):target ~ .tabbed-content > :nth-child(9),
+.md-typeset .tabbed-set > input:nth-child(10):target ~ .tabbed-content > :nth-child(10),
+.md-typeset .tabbed-set > input:nth-child(11):target ~ .tabbed-content > :nth-child(11),
+.md-typeset .tabbed-set > input:nth-child(12):target ~ .tabbed-content > :nth-child(12),
+.md-typeset .tabbed-set > input:nth-child(13):target ~ .tabbed-content > :nth-child(13),
+.md-typeset .tabbed-set > input:nth-child(14):target ~ .tabbed-content > :nth-child(14),
+.md-typeset .tabbed-set > input:nth-child(15):target ~ .tabbed-content > :nth-child(15),
+.md-typeset .tabbed-set > input:nth-child(16):target ~ .tabbed-content > :nth-child(16),
+.md-typeset .tabbed-set > input:nth-child(17):target ~ .tabbed-content > :nth-child(17),
+.md-typeset .tabbed-set > input:nth-child(18):target ~ .tabbed-content > :nth-child(18),
+.md-typeset .tabbed-set > input:nth-child(19):target ~ .tabbed-content > :nth-child(19),
+.md-typeset .tabbed-set > input:nth-child(20):target ~ .tabbed-content > :nth-child(20) {
+    display: block;
+}
+
+/* --- 3.2 hash 指向 radio 时：高亮对应 label（与 tableset.css 选中态样式一致） --- */
+.md-typeset .tabbed-set > input:first-child:target ~ .tabbed-labels > :first-child,
+.md-typeset .tabbed-set > input:nth-child(2):target ~ .tabbed-labels > :nth-child(2),
+.md-typeset .tabbed-set > input:nth-child(3):target ~ .tabbed-labels > :nth-child(3),
+.md-typeset .tabbed-set > input:nth-child(4):target ~ .tabbed-labels > :nth-child(4),
+.md-typeset .tabbed-set > input:nth-child(5):target ~ .tabbed-labels > :nth-child(5),
+.md-typeset .tabbed-set > input:nth-child(6):target ~ .tabbed-labels > :nth-child(6),
+.md-typeset .tabbed-set > input:nth-child(7):target ~ .tabbed-labels > :nth-child(7),
+.md-typeset .tabbed-set > input:nth-child(8):target ~ .tabbed-labels > :nth-child(8),
+.md-typeset .tabbed-set > input:nth-child(9):target ~ .tabbed-labels > :nth-child(9),
+.md-typeset .tabbed-set > input:nth-child(10):target ~ .tabbed-labels > :nth-child(10),
+.md-typeset .tabbed-set > input:nth-child(11):target ~ .tabbed-labels > :nth-child(11),
+.md-typeset .tabbed-set > input:nth-child(12):target ~ .tabbed-labels > :nth-child(12),
+.md-typeset .tabbed-set > input:nth-child(13):target ~ .tabbed-labels > :nth-child(13),
+.md-typeset .tabbed-set > input:nth-child(14):target ~ .tabbed-labels > :nth-child(14),
+.md-typeset .tabbed-set > input:nth-child(15):target ~ .tabbed-labels > :nth-child(15),
+.md-typeset .tabbed-set > input:nth-child(16):target ~ .tabbed-labels > :nth-child(16),
+.md-typeset .tabbed-set > input:nth-child(17):target ~ .tabbed-labels > :nth-child(17),
+.md-typeset .tabbed-set > input:nth-child(18):target ~ .tabbed-labels > :nth-child(18),
+.md-typeset .tabbed-set > input:nth-child(19):target ~ .tabbed-labels > :nth-child(19),
+.md-typeset .tabbed-set > input:nth-child(20):target ~ .tabbed-labels > :nth-child(20) {
+    color: var(--md-default-fg-color);
+    border-color: var(--md-primary-fg-color, #1976d2);
+    background-color: var(--md-primary-fg-color--transparent, rgba(25, 118, 210, 0.08));
+}
+
+/* --- 3.3 hash 直接指向 label id（#__tabbed_x_y_label）：高亮该 label --- */
+.md-typeset .tabbed-labels > label:target {
+    color: var(--md-default-fg-color);
+    border-color: var(--md-primary-fg-color, #1976d2);
+    background-color: var(--md-primary-fg-color--transparent, rgba(25, 118, 210, 0.08));
+    outline: 2px solid var(--md-primary-fg-color, #1976d2);
+    outline-offset: -2px;
+}
+
+/* --- 3.4 hash 直接指向 panel id（#__tabbed_x_y_panel）：兜底显示 + 滚动定位留白 --- */
+.md-typeset .tabbed-set > .tabbed-content > .tabbed-block:target {
+    /* tableset.css 的选中态规则特异度更高（(0,6,1)），这里用 !important 才能兜底显示 */
+    display: block !important;
+    scroll-margin-top: 1rem;
+}
+
+/* --- 3.5 预览组件点击委托选中 label 后追加的高亮 class（与 :target 视觉一致） --- */
+.md-typeset .tabbed-labels > label.mdx-tab-deep-link-active {
+    color: var(--md-default-fg-color);
+    border-color: var(--md-primary-fg-color, #1976d2);
+    background-color: var(--md-primary-fg-color--transparent, rgba(25, 118, 210, 0.08));
+}
+
+/* --- 3.6 深链目标 panel 的滚动留白（预览组件 JS 调用 scrollIntoView 时生效） --- */
+.md-typeset .tabbed-set > .tabbed-content > .tabbed-block {
+    scroll-margin-top: 1rem;
+}

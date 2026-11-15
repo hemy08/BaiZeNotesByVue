@@ -40,8 +40,8 @@ describe('pluginTools', () => {
         expect(pluginTools.length).toBeGreaterThan(0)
     })
 
-    it('should contain 19 plugin tool entries', () => {
-        expect(pluginTools.length).toBe(19)
+    it('should contain 37 plugin tool entries', () => {
+        expect(pluginTools.length).toBe(37)
     })
 
     it('should keep id and component fields complete', () => {
@@ -58,18 +58,31 @@ describe('pluginTools', () => {
 
     it('should follow the baize plugin id naming convention', () => {
         for (const tool of pluginTools) {
-            expect(tool.id).toMatch(/^baize:menu:plugins:(encrypt|net|info):[a-z0-9-]+$/)
+            expect(tool.id).toMatch(
+                /^baize:menu:plugins:(encrypt|net|info|codec|convert|misc|text|format):[a-z0-9-]+$/
+            )
         }
     })
 
     it('should register the expected number of entries per category', () => {
-        // 加解密类：8 个；网络计算类：3 个；常用对照表类：8 个
+        // 加解密类：8；网络计算类：4（含正则测试）；常用对照表类：8；
+        // 编解码类：5；格式转换类：5；常用小工具类：2；文本转换类：3；格式化类：2（1.3.5 jyshare 集成）
         const encrypt = pluginTools.filter((tool) => tool.id.includes(':encrypt:'))
         const net = pluginTools.filter((tool) => tool.id.includes(':net:'))
         const info = pluginTools.filter((tool) => tool.id.includes(':info:'))
+        const codec = pluginTools.filter((tool) => tool.id.includes(':codec:'))
+        const convert = pluginTools.filter((tool) => tool.id.includes(':convert:'))
+        const misc = pluginTools.filter((tool) => tool.id.includes(':misc:'))
+        const text = pluginTools.filter((tool) => tool.id.includes(':text:'))
+        const format = pluginTools.filter((tool) => tool.id.includes(':format:'))
         expect(encrypt).toHaveLength(8)
-        expect(net).toHaveLength(3)
+        expect(net).toHaveLength(4)
         expect(info).toHaveLength(8)
+        expect(codec).toHaveLength(5)
+        expect(convert).toHaveLength(5)
+        expect(misc).toHaveLength(2)
+        expect(text).toHaveLength(3)
+        expect(format).toHaveLength(2)
     })
 
     it('should sample key plugin ids', () => {
@@ -79,6 +92,12 @@ describe('pluginTools', () => {
         expect(ids).toContain('baize:menu:plugins:net:ipv4-subnet-calculator')
         expect(ids).toContain('baize:menu:plugins:info:ascii-table')
         expect(ids).toContain('baize:menu:plugins:info:physical-constant-table')
+        expect(ids).toContain('baize:menu:plugins:codec:base64-codec')
+        expect(ids).toContain('baize:menu:plugins:convert:color-convert')
+        expect(ids).toContain('baize:menu:plugins:misc:calculator')
+        expect(ids).toContain('baize:menu:plugins:text:chinese-text')
+        expect(ids).toContain('baize:menu:plugins:format:json-tool')
+        expect(ids).toContain('baize:menu:plugins:net:regex-tester')
     })
 })
 

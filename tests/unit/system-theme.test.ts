@@ -1,0 +1,191 @@
+/**
+ * 批次 B #7：src/main/config/system-theme.ts 单元测试（vitest node 环境）
+ * 覆盖：useSystemTheme 开启时按 nativeTheme.shouldUseDarkColors 选择 dark/light 主题、
+ * setThemeConfig 应用 + theme-broadcast 唯一广播、关闭时不动作、注册表缺失回退默认主题、
+ * 监听注册单例与随退出清理（stopSystemThemeWatcher 移除监听）
+ */
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+
+const nativeThemeMocks = vi.hoisted(() => {
+    return {
+        shouldUseDarkColors: true,
+        listeners: new Set<() => void>(),
+        on: vi.fn((event: string, listener: () => void) => {
+            if (event === 'updated') {
+                nativeThemeMocks.listeners.add(listener)
+            }
+        }),
+        removeListener: vi.fn((event: string, listener: () => void) => {
+            if (event === 'updated') {
+                nativeThemeMocks.listeners.delete(listener)
+            }
+        })
+    }
+})
+
+vi.mock('electron', () => ({
+    nativeTheme: {
+        get shouldUseDarkColors() {
+            return nativeThemeMocks.shouldUseDarkColors
+        },
+        on: nativeThemeMocks.on,
+        removeListener: nativeThemeMocks.removeListener
+    }
+}))
+
+const systemSettingMocks = vi.hoisted(() => ({
+    setting: {} as Record<string, unknown>
+}))
+
+vi.mock('../../src/main/config/system-setting', () => ({
+    getSystemSetting: () => systemSettingMocks.setting,
+    saveSystemSetting: vi.fn()
+}))
+
+const themeConfigMocks = vi.hoisted(() => ({
+    isKnown: true,
+    setThemeConfig: vi.fn(),
+    getCurrentThemeStyles: vi.fn(() => ({ name: '当前样式' })),
+    getMonacoTheme: vi.fn(() => 'vs-dark'),
+    getSeparateEditorTheme: vi.fn(() => false)
+}))
+
+vi.mock('../../src/main/config/theme-config', () => ({
+    DEFAULT_THEME_TYPE: 'baize',
+    isKnownThemeType: (value: string) =>
+        themeConfigMocks.isKnown && (value === 'dark' || value === 'light'),
+    setThemeConfig: themeConfigMocks.setThemeConfig,
+    getCurrentThemeStyles: themeConfigMocks.getCurrentThemeStyles,
+    getMonacoTheme: themeConfigMocks.getMonacoTheme,
+    getSeparateEditorTheme: themeConfigMocks.getSeparateEditorTheme
+}))
+
+const broadcastMocks = vi.hoisted(() => ({
+    broadcast: vi.fn(() => 1)
+}))
+
+vi.mock('../../src/main/ipc/theme-broadcast', () => ({
+    broadcastThemeToAllWindows: broadcastMocks.broadcast
+}))
+
+vi.mock('../../src/main/utils/logger', () => ({
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+}))
+
+import {
+    applySystemThemeNow,
+    startSystemThemeWatcher,
+    stopSystemThemeWatcher
+} from '../../src/main/config/system-theme'
+
+function triggerNativeThemeUpdate(): void {
+    nativeThemeMocks.listeners.forEach((listener) => listener())
+}
+
+beforeEach(() => {
+    // 清理上一用例可能残留的监听（模块级单例状态），保证各用例独立
+    stopSystemThemeWatcher()
+    nativeThemeMocks.listeners.clear()
+    nativeThemeMocks.shouldUseDarkColors = true
+    nativeThemeMocks.on.mockClear()
+    nativeThemeMocks.removeListener.mockClear()
+    systemSettingMocks.setting = { useSystemTheme: true }
+    themeConfigMocks.isKnown = true
+    themeConfigMocks.setThemeConfig.mockClear()
+    themeConfigMocks.getCurrentThemeStyles.mockClear()
+    themeConfigMocks.getMonacoTheme.mockClear()
+    themeConfigMocks.getSeparateEditorTheme.mockClear()
+    broadcastMocks.broadcast.mockClear()
+})
+
+describe('system-theme (批次 B #7)', () => {
+    it('should apply the dark theme and broadcast when the system is dark', () => {
+        nativeThemeMocks.shouldUseDarkColors = true
+        applySystemThemeNow()
+
+        expect(themeConfigMocks.setThemeConfig).toHaveBeenCalledWith({ currentTheme: 'dark' })
+        expect(broadcastMocks.broadcast).toHaveBeenCalledWith({
+            themeStyles: { name: '当前样式' },
+            monacoTheme: 'vs-dark',
+            separateEditorTheme: false
+        })
+    })
+
+    it('should apply the light theme and broadcast when the system is light', () => {
+        nativeThemeMocks.shouldUseDarkColors = false
+        applySystemThemeNow()
+
+        expect(themeConfigMocks.setThemeConfig).toHaveBeenCalledWith({ currentTheme: 'light' })
+        expect(broadcastMocks.broadcast).toHaveBeenCalledTimes(1)
+    })
+
+    it('should do nothing when useSystemTheme is disabled', () => {
+        systemSettingMocks.setting = { useSystemTheme: false }
+        applySystemThemeNow()
+
+        expect(themeConfigMocks.setThemeConfig).not.toHaveBeenCalled()
+        expect(broadcastMocks.broadcast).not.toHaveBeenCalled()
+    })
+
+    it('should fall back to the default theme when dark/light are not in the registry', () => {
+        themeConfigMocks.isKnown = false
+        applySystemThemeNow()
+
+        expect(themeConfigMocks.setThemeConfig).toHaveBeenCalledWith({ currentTheme: 'baize' })
+    })
+
+    it('should register the nativeTheme listener once and apply immediately at start', () => {
+        startSystemThemeWatcher()
+        startSystemThemeWatcher()
+
+        expect(nativeThemeMocks.on).toHaveBeenCalledTimes(1)
+        expect(nativeThemeMocks.on).toHaveBeenCalledWith('updated', expect.any(Function))
+        expect(nativeThemeMocks.listeners.size).toBe(1)
+        // 启动即对齐一次当前系统深浅色
+        expect(themeConfigMocks.setThemeConfig).toHaveBeenCalledWith({ currentTheme: 'dark' })
+    })
+
+    it('should apply the theme again when nativeTheme fires updated', () => {
+        startSystemThemeWatcher()
+        themeConfigMocks.setThemeConfig.mockClear()
+        broadcastMocks.broadcast.mockClear()
+
+        nativeThemeMocks.shouldUseDarkColors = false
+        triggerNativeThemeUpdate()
+
+        expect(themeConfigMocks.setThemeConfig).toHaveBeenCalledWith({ currentTheme: 'light' })
+        expect(broadcastMocks.broadcast).toHaveBeenCalledTimes(1)
+    })
+
+    it('should ignore the update event when useSystemTheme is disabled', () => {
+        startSystemThemeWatcher()
+        systemSettingMocks.setting = { useSystemTheme: false }
+        themeConfigMocks.setThemeConfig.mockClear()
+
+        triggerNativeThemeUpdate()
+
+        expect(themeConfigMocks.setThemeConfig).not.toHaveBeenCalled()
+    })
+
+    it('should remove the listener on stop and allow restarting the watcher', () => {
+        startSystemThemeWatcher()
+        stopSystemThemeWatcher()
+
+        expect(nativeThemeMocks.removeListener).toHaveBeenCalledWith(
+            'updated',
+            expect.any(Function)
+        )
+        expect(nativeThemeMocks.listeners.size).toBe(0)
+
+        // 退出清理后重新启动：再次注册且立即应用
+        themeConfigMocks.setThemeConfig.mockClear()
+        startSystemThemeWatcher()
+        expect(nativeThemeMocks.listeners.size).toBe(1)
+        expect(themeConfigMocks.setThemeConfig).toHaveBeenCalledWith({ currentTheme: 'dark' })
+    })
+
+    it('should be a no-op when stopping without a started watcher', () => {
+        stopSystemThemeWatcher()
+        expect(nativeThemeMocks.removeListener).not.toHaveBeenCalled()
+    })
+})

@@ -8,6 +8,12 @@ export default {
     app: {
         windowTitle: '白泽笔记 -- Markdown Editor Powered By Electron and Vue'
     },
+    // 批次 B #4：系统托盘（关闭时最小化到托盘）菜单与提示文案
+    tray: {
+        showMainWindow: '显示主窗口',
+        quit: '退出',
+        tooltip: '白泽笔记'
+    },
     editor: {
         ariaLabel: '白泽笔记编辑器'
     },
@@ -47,7 +53,16 @@ export default {
         // FE-08：无活动文件时执行保存的明确提示（原 SaveActiveFile 直接 throw，菜单路径产生未捕获拒绝）
         noActiveFileSave: '当前没有活动文件，无法保存',
         // FE-08：菜单动作执行失败的统一状态栏提示（ASLA）
-        menuActionFailed: '菜单操作执行失败：{message}'
+        menuActionFailed: '菜单操作执行失败：{message}',
+        // 系统设置补充实现批次 A：启动恢复上次文件/目录失败时的状态栏提示
+        startupRestoreFileMissing:
+            '上次打开的文件已不存在（可能已被移动或删除），本次未自动恢复：{path}',
+        startupRestoreFolderMissing:
+            '上次打开的工作目录已不存在（可能已被移动或删除），本次未自动恢复：{path}',
+        startupRestoreFailed: '启动时自动恢复上次打开的内容失败：{message}',
+        // 系统设置补充实现批次 C：自动备份结果状态栏提示
+        autoBackupSuccess: '自动备份完成：{name}（{count} 个文件）',
+        autoBackupFailed: '自动备份失败：{message}'
     },
     file: {
         saveFailed: '保存文件失败: {message}',

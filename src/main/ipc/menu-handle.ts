@@ -1,7 +1,12 @@
 import { fileMenuHandlers, codingMenuHandlers } from './menu-file'
 import { editMenuHandlers } from './menu-edit'
 import { viewMenuHandlers, insertMenuHandlers } from './menu-view'
-import { toolsMenuHandlers, onlineMenuHandlers, githubMenuHandlers } from './menu-tools'
+import {
+    toolsMenuHandlers,
+    onlineMenuHandlers,
+    githubMenuHandlers,
+    aiMenuHandlers
+} from './menu-tools'
 import { helpMenuHandlers } from './menu-help'
 import { IPC } from '../../shared/ipc-channels'
 // CQ-10：主进程统一日志出口。注意本文件另有 3 处 console.error/warn 被
@@ -57,6 +62,7 @@ const menuHandlers = {
     insert: insertHandlers,
     tools: toolsMenuHandlers,
     online: onlineMenuHandlers,
+    ai: aiMenuHandlers,
     github: githubMenuHandlers,
     help: helpMenuHandlers
 }

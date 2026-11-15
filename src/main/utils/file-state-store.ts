@@ -18,6 +18,10 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { app } from 'electron'
 import { logger } from './logger'
+import {
+    clampRecentFilesLimit,
+    DEFAULT_RECENT_FILES_LIMIT
+} from '../../shared/constants/recent-files'
 
 // 文件状态配置接口
 export interface FileState {
@@ -70,15 +74,55 @@ function getFileStateStore(): Store<FileState> {
 }
 
 /**
+ * 最近文件列表保留条数的提供者（「最近文件列表数量」设置）。
+ *
+ * 默认 10；system-setting 模块加载时注入读取 SystemSetting.recentFilesCount 的实现。
+ * 用注入而非直接 import system-setting，是为了保持本模块的叶子依赖位置
+ * （file-state-store 被 file-utils/security 等底层模块引用，直接 import 会把
+ * theme-config/@electron-toolkit/utils 整条依赖链拉进来，破坏单测隔离）。
+ */
+let recentFilesLimitProvider: () => number = () => DEFAULT_RECENT_FILES_LIMIT
+
+/** 注册最近文件列表保留条数的提供者（由 system-setting 在模块加载时调用） */
+export function setRecentFilesLimitProvider(provider: () => number): void {
+    recentFilesLimitProvider = provider
+}
+
+/** 当前生效的保留条数（已钳制到 5~20） */
+export function getRecentFilesLimit(): number {
+    try {
+        return clampRecentFilesLimit(recentFilesLimitProvider())
+    } catch (error) {
+        logger.warn('[FileState] 读取最近文件列表数量失败，使用默认值:', error)
+        return DEFAULT_RECENT_FILES_LIMIT
+    }
+}
+
+/**
+ * 把存量最近文件列表立即裁剪到当前保留条数（设置变更后由 config-manager 调用）。
+ */
+export function trimRecentFiles(): void {
+    const store = getFileStateStore()
+    const recentFiles = store.get('recentFiles', []) as string[]
+    const limit = getRecentFilesLimit()
+    if (recentFiles.length > limit) {
+        store.set('recentFiles', recentFiles.slice(0, limit))
+    }
+}
+
+/**
  * 保存上次打开的文件
  */
 export function saveLastOpenedFile(filePath: string): void {
     const store = getFileStateStore()
     store.set('lastOpenedFile', filePath)
 
-    // 同时添加到最近文件列表
+    // 同时添加到最近文件列表（去重置顶，按「最近文件列表数量」设置截断，默认最多 10 个）
     const recentFiles = store.get('recentFiles', []) as string[]
-    const updatedRecentFiles = [filePath, ...recentFiles.filter((f) => f !== filePath)].slice(0, 10) // 最多保留10个
+    const updatedRecentFiles = [filePath, ...recentFiles.filter((f) => f !== filePath)].slice(
+        0,
+        getRecentFilesLimit()
+    )
     store.set('recentFiles', updatedRecentFiles)
 }
 
