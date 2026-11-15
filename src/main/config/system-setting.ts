@@ -78,7 +78,13 @@ const systemSettingDefaults: SystemSetting = {
     // 写入路径：渲染层 SystemSettingDialog → config:write('system') → 本模块，
     // 读取方：MarkdownPreviewComponent（经 config:read('system') 与 SYSTEM_SETTING_UPDATE 广播）。
     allowRemoteImages: false
+    // 注意：settingsSchemaVersion 刻意不放入 defaults——electron-store 构造时会把
+    // defaults 合并写入存储，若默认写入 2 则旧用户数据无法区分（迁移永远跳过）。
+    // 该键仅在 migrateLegacyOptInSettings 迁移完成时写入（原始 store 无此键 = 旧数据）。
 }
+
+/** 当前系统设置结构版本（迁移判断用） */
+export const SYSTEM_SETTINGS_SCHEMA_VERSION = 2
 
 // ARC-12：平铺模式（不传 storageKey），并保持"模块加载即建 store"的历史行为
 // （system-setting.test.ts 断言模块导入后 store 实例已存在）。
@@ -108,6 +114,36 @@ export function saveSystemSetting(setting: Partial<SystemSetting>): void {
 
 export function getSystemSetting(): SystemSetting {
     return systemSettingModule.getConfig()
+}
+
+/**
+ * 一次性迁移（1.3.6+）：修复「关闭窗口后进程仍在后台」的存量数据根因。
+ *
+ * 背景：1.3.1~1.3.5 期间 minimizeToTray / enableAutoBackup 默认为 true，
+ * 用户只要在系统设置里点过一次「应用」，true 就会落盘。1.3.6 已把两项默认改为
+ * false（opt-in），但存量 true 值仍会让「关闭窗口」退化为「隐藏到托盘」——
+ * 用户以为已退出，任务管理器里却还有 electron 进程（Windows 托盘图标又可能在
+ * 任务栏溢出区，难以找到退出入口）。
+ *
+ * 迁移策略：无 settingsSchemaVersion 标记的旧数据（< 2），把这两个开关重置为
+ * false 并写入版本标记，只执行一次；用户确需托盘/自动备份可在系统设置中重新开启
+ * （此后版本标记已存在，不会再被迁移覆盖）。
+ *
+ * 注意：判断必须读**原始 store**（systemSettingStore.get），不能用 getSystemSetting()——
+ * 后者会按默认值补齐缺失键，永远返回 settingsSchemaVersion: 2。
+ * @returns 是否执行了迁移
+ */
+export function migrateLegacyOptInSettings(): boolean {
+    const storedVersion = systemSettingStore.get('settingsSchemaVersion')
+    if (typeof storedVersion === 'number' && storedVersion >= SYSTEM_SETTINGS_SCHEMA_VERSION) {
+        return false
+    }
+    systemSettingModule.updateConfig({
+        minimizeToTray: false,
+        enableAutoBackup: false,
+        settingsSchemaVersion: SYSTEM_SETTINGS_SCHEMA_VERSION
+    } as Partial<SystemSetting>)
+    return true
 }
 
 export function getSystemSettingValString(key: string, defaultVal: string): string {

@@ -13,7 +13,9 @@ import {
     saveSystemSetting,
     registerConfigIpcHandlers,
     getEditorSetting,
-    buildFontCss
+    buildFontCss,
+    // 1.3.6：存量设置迁移（旧默认 minimizeToTray/enableAutoBackup=true → false）
+    migrateLegacyOptInSettings
 } from './config'
 import type { ThemeType } from './config'
 import { StartAutoSaveFileTime, StopAutoSaveFileTime, SaveActiveFile } from './utils/file-utils'
@@ -48,7 +50,7 @@ import { attachWindowBoundsPersistence, resolveInitialWindowOptions } from './ut
 // 系统设置补充实现批次 B：
 // - 关闭时最小化到系统托盘（minimizeToTray）
 //   （showMainWindow 复用为单实例锁 second-instance 的窗口恢复路径）
-import { disposeTray, ensureTrayCreated, showMainWindow } from './utils/tray'
+import { disposeTray, ensureTrayCreated, notifyMinimizedToTray, showMainWindow } from './utils/tray'
 // - 跟随系统主题（useSystemTheme）：nativeTheme 监听 + 应用/广播
 import { startSystemThemeWatcher, stopSystemThemeWatcher } from './config/system-theme'
 // 系统设置补充实现批次 C：
@@ -183,6 +185,9 @@ function createWindow(): void {
         // （保证每次隐藏前都完成落盘）。
         if (getSystemSetting().minimizeToTray && !appState.isQuitting) {
             ensureTrayCreated()
+            // 1.3.6：首次隐藏到托盘时给系统通知——Windows 托盘图标可能位于任务栏
+            // 溢出区，用户容易误以为应用已退出（进程仍在后台）
+            notifyMinimizedToTray()
             mainWindow.hide()
             return
         }
@@ -351,6 +356,18 @@ app.whenReady().then(() => {
     // P2-10：未获得单实例锁的实例只负责退出，不创建窗口、不注册监听
     if (!gotSingleInstanceLock) {
         return
+    }
+
+    // 1.3.6：存量设置迁移——1.3.1~1.3.5 期间 minimizeToTray / enableAutoBackup 默认 true，
+    // 用户保存过系统设置即把 true 落盘，导致升级后「关闭窗口」退化为「隐藏到托盘」
+    // （进程名仍出现在任务管理器）。此处在建窗/建定时器之前把旧默认值重置为 false
+    // 并写一次性版本标记；用户确需托盘/自动备份可在系统设置中重新开启。
+    try {
+        if (migrateLegacyOptInSettings()) {
+            logger.info('[Config] 已迁移存量系统设置：minimizeToTray / enableAutoBackup → false')
+        }
+    } catch (err) {
+        logger.error('[Config] 存量系统设置迁移失败', err)
     }
     initUserDataDirectory()
 

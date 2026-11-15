@@ -12,7 +12,7 @@
  * - 设置开关关闭时不销毁托盘（见 config-manager.applySystemSettings 注释），
  *   仅在进程退出时由 cleanupApp → disposeTray 统一销毁。
  */
-import { app, Menu, Tray } from 'electron'
+import { app, Menu, Notification, Tray } from 'electron'
 import { join } from 'path'
 import { getIconPath } from './app-paths'
 import { appState, getLiveMainWindow } from './app-state'
@@ -49,6 +49,33 @@ function quitFromTray(): void {
 
 let tray: Tray | null = null
 
+/** 1.3.6：隐藏到托盘的提示是否已发送（每进程一次，避免每次关闭都弹通知） */
+let trayHideNotified = false
+
+/**
+ * 1.3.6：首次因「最小化到托盘」隐藏窗口时发送系统通知。
+ * 背景：Windows 托盘图标可能位于任务栏溢出区（用户默认看不到），关闭窗口后
+ * 任务管理器仍有 electron 进程，用户会误判为「进程残留」。此提示告知用户应用
+ * 仍在托盘运行、可右键托盘图标退出。Notification 不受支持或发送失败时静默降级。
+ */
+export function notifyMinimizedToTray(): void {
+    if (trayHideNotified) {
+        return
+    }
+    trayHideNotified = true
+    try {
+        if (!Notification.isSupported()) {
+            return
+        }
+        new Notification({
+            title: tMain('mainMsg.tray.minimizedTitle'),
+            body: tMain('mainMsg.tray.minimizedBody')
+        }).show()
+    } catch (err) {
+        logger.warn('[Tray] 隐藏到托盘提示发送失败', err)
+    }
+}
+
 /**
  * 创建系统托盘（单例：已存在且未销毁时直接返回，防重复创建）。
  * 菜单文案取当前主进程语言（语言切换后 refreshMainLocale 失效缓存，下次创建时生效；
@@ -78,4 +105,6 @@ export function disposeTray(): void {
         tray.destroy()
         tray = null
     }
+    // 销毁后允许下次按需重新创建时再次提示（进程退出场景无影响；测试据此复位）
+    trayHideNotified = false
 }

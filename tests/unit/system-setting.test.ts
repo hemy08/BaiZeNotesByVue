@@ -41,7 +41,8 @@ import { FakeStore } from './helpers/fake-store'
 import {
     getSystemSetting,
     saveSystemSetting,
-    getSystemSettingValString
+    getSystemSettingValString,
+    migrateLegacyOptInSettings
 } from '../../src/main/config/system-setting'
 
 // 全部模态开关键
@@ -111,6 +112,34 @@ describe('system-setting', () => {
             const setting = getSystemSetting()
             expect(setting.minimizeToTray).toBe(true)
             expect(setting.enableAutoBackup).toBe(true)
+        })
+    })
+
+    // 1.3.6：存量设置迁移——修复「关闭后进程仍在」的旧默认值残留
+    // （1.3.1~1.3.5 期间两项默认 true，用户保存过设置即落盘 true）
+    describe('migrateLegacyOptInSettings (1.3.6)', () => {
+        it('should reset legacy default opt-ins on first migration', () => {
+            saveSystemSetting({ minimizeToTray: true, enableAutoBackup: true })
+            expect(migrateLegacyOptInSettings()).toBe(true)
+            const setting = getSystemSetting()
+            expect(setting.minimizeToTray).toBe(false)
+            expect(setting.enableAutoBackup).toBe(false)
+        })
+
+        it('should not migrate twice and should keep user re-enabled values', () => {
+            saveSystemSetting({ minimizeToTray: true })
+            expect(migrateLegacyOptInSettings()).toBe(true)
+            // 迁移后用户主动重新开启：版本标记已存在，不再被重置
+            saveSystemSetting({ minimizeToTray: true })
+            expect(migrateLegacyOptInSettings()).toBe(false)
+            expect(getSystemSetting().minimizeToTray).toBe(true)
+        })
+
+        it('should keep already-false values untouched', () => {
+            saveSystemSetting({ minimizeToTray: false, enableAutoBackup: false })
+            expect(migrateLegacyOptInSettings()).toBe(true)
+            expect(getSystemSetting().minimizeToTray).toBe(false)
+            expect(getSystemSetting().enableAutoBackup).toBe(false)
         })
     })
 

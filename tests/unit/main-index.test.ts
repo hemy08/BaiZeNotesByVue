@@ -149,6 +149,10 @@ const internalMocks = vi.hoisted(() => ({
     getMonacoTheme: vi.fn(),
     getSeparateEditorTheme: vi.fn(),
     getSystemSetting: vi.fn(),
+    // 1.3.6：存量设置迁移（旧默认 minimizeToTray/enableAutoBackup=true → false）
+    migrateLegacyOptInSettings: vi.fn(() => false),
+    // 1.3.6：首次隐藏到托盘的通知
+    notifyMinimizedToTray: vi.fn(),
     // 批次 A：#5 记住窗口位置和大小（resize/move 防抖后写回 windowBounds）
     saveSystemSetting: vi.fn(),
     registerConfigIpcHandlers: vi.fn(),
@@ -207,6 +211,8 @@ vi.mock('../../src/main/config', () => ({
     getMonacoTheme: internalMocks.getMonacoTheme,
     getSeparateEditorTheme: internalMocks.getSeparateEditorTheme,
     getSystemSetting: internalMocks.getSystemSetting,
+    // 1.3.6：存量设置迁移
+    migrateLegacyOptInSettings: internalMocks.migrateLegacyOptInSettings,
     // 批次 A：窗口边界写回 system store
     saveSystemSetting: internalMocks.saveSystemSetting,
     registerConfigIpcHandlers: internalMocks.registerConfigIpcHandlers,
@@ -271,6 +277,8 @@ vi.mock('../../src/main/utils/app-paths', () => ({
 vi.mock('../../src/main/utils/tray', () => ({
     ensureTrayCreated: internalMocks.ensureTrayCreated,
     disposeTray: internalMocks.disposeTray,
+    // 1.3.6：首次隐藏到托盘的提示（细节由 tray.test.ts 覆盖）
+    notifyMinimizedToTray: internalMocks.notifyMinimizedToTray,
     // P2-10：单实例锁 second-instance 回调复用的窗口恢复路径
     showMainWindow: internalMocks.showMainWindow
 }))
@@ -833,6 +841,8 @@ describe('minimize to tray on close (批次 B #4)', () => {
 
         expect(preventDefault).toHaveBeenCalled()
         expect(internalMocks.ensureTrayCreated).toHaveBeenCalled()
+        // 1.3.6：首次隐藏到托盘时发系统通知（避免用户误判进程残留）
+        expect(internalMocks.notifyMinimizedToTray).toHaveBeenCalled()
         expect(electronMocks.win.hide).toHaveBeenCalled()
         expect(electronMocks.win.close).not.toHaveBeenCalled()
     })
@@ -875,6 +885,13 @@ describe('minimize to tray on close (批次 B #4)', () => {
         triggerAppHandler('before-quit', { preventDefault })
         expect(electronMocks.quitFlag.value).toBe(true)
         expect(preventDefault).toHaveBeenCalled()
+    })
+
+    // 1.3.6：whenReady 时必须先执行存量设置迁移（旧默认 true → false），
+    // 否则升级用户仍会「关闭窗口 = 隐藏到托盘」（进程残留感）
+    it('should run legacy opt-in migration on whenReady', async () => {
+        await loadMainIndex()
+        expect(internalMocks.migrateLegacyOptInSettings).toHaveBeenCalled()
     })
 })
 

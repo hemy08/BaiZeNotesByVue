@@ -25,9 +25,17 @@
 - snippets 每轮读取缓存；grid 扫描排除缩进代码块；KaTeX 降级路径标记保护
 - schema 范围对齐（backupInterval 1~72 / backupCount 1~10）；macOS activate 重启主题 watcher 与备份定时器；跟随系统主题脏检查
 
+### 🛠️ 关闭后进程残留修复（2026-11-15 晚追加）
+
+> 现象：点关闭后任务管理器仍有 4 个 BaiZeNotes 进程。根因：1.3.1~1.3.5 期间 `minimizeToTray` 默认 true，用户保存过系统设置即把 `true` 落盘；升级后默认虽改 false，存量值仍让「关闭窗口」退化为「隐藏到托盘」（Windows 托盘图标位于任务栏溢出区，用户难以找到退出入口）。
+
+- **存量配置一次性迁移**：新增 `settingsSchemaVersion`（不入 defaults，避免 electron-store 构造时写入导致迁移失效）；whenReady 在建窗前执行 `migrateLegacyOptInSettings()`——无版本标记的旧数据把 `minimizeToTray` / `enableAutoBackup` 重置为 false 并写入版本标记，只执行一次（用户此后主动开启不受影响）
+- **首次隐藏到托盘系统通知**：托盘隐藏分支调用 `notifyMinimizedToTray()`（Notification 不可用时静默降级），告知用户应用仍在后台、右键托盘图标可退出
+- **验证**：新增迁移 3 例、通知 4 例、index 生命周期断言；typecheck 三工程 0 错误、ESLint 0/0、vitest 153 文件 / 2789 用例全通过
+
 ### ✅ 门禁
 
-- typecheck 三工程 0 错误、ESLint 0/0、vitest **153 文件 / 2781 用例全通过**、electron-vite build 通过
+- typecheck 三工程 0 错误、ESLint 0/0、vitest **153 文件 / 2789 用例全通过**、electron-vite build 通过
 
 ---
 

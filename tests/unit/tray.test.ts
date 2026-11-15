@@ -27,6 +27,9 @@ const electronMocks = vi.hoisted(() => {
     return {
         MockTray,
         trayInstances: [] as InstanceType<typeof MockTray>[],
+        // 1.3.6：隐藏到托盘提示用的 Notification 替身
+        notificationInstances: [] as Array<{ title: string; body: string; show: ReturnType<typeof vi.fn> }>,
+        notificationSupported: { value: true },
         menuTemplates: [] as Array<Array<Record<string, unknown>>>,
         appQuit: vi.fn()
     }
@@ -47,6 +50,25 @@ vi.mock('electron', () => ({
             electronMocks.trayInstances.push(this)
         }
     },
+    // 1.3.6：系统通知替身（notifyMinimizedToTray）
+    Notification: Object.assign(
+        class {
+            title: string
+            body: string
+            show = vi.fn()
+
+            constructor(options: { title: string; body: string }) {
+                this.title = options.title
+                this.body = options.body
+                electronMocks.notificationInstances.push(this)
+            }
+
+            // 显式类型注解：isSupported 引用 vi.hoisted 的 electronMocks，
+            // 不加注解会与 Object.assign 的结果形成循环类型推断（TS7022）
+            static isSupported: () => boolean = () => electronMocks.notificationSupported.value
+        },
+        {}
+    ),
     BrowserWindow: class {}
 }))
 
@@ -67,6 +89,7 @@ import {
     disposeTray,
     ensureTrayCreated,
     getTrayIconPath,
+    notifyMinimizedToTray,
     showMainWindow
 } from '../../src/main/utils/tray'
 
@@ -90,6 +113,8 @@ function makeMainWindowStub(): {
 
 beforeEach(() => {
     electronMocks.trayInstances.length = 0
+    electronMocks.notificationInstances.length = 0
+    electronMocks.notificationSupported.value = true
     electronMocks.menuTemplates.length = 0
     electronMocks.appQuit.mockClear()
     appState._resetForTesting()
@@ -176,5 +201,38 @@ describe('tray (批次 B #4)', () => {
         const second = ensureTrayCreated()
         expect(second).not.toBe(first)
         expect(electronMocks.trayInstances).toHaveLength(2)
+    })
+
+    // 1.3.6：「关闭后进程仍在」修复——首次隐藏到托盘时发系统通知，
+    // 告知用户应用仍在后台运行、可从托盘退出；每进程仅提示一次。
+    describe('notifyMinimizedToTray (1.3.6)', () => {
+        it('should show a notification on first hide to tray', () => {
+            notifyMinimizedToTray()
+            expect(electronMocks.notificationInstances).toHaveLength(1)
+            expect(electronMocks.notificationInstances[0].title).toBe(
+                'mainMsg.tray.minimizedTitle'
+            )
+            expect(electronMocks.notificationInstances[0].body).toBe('mainMsg.tray.minimizedBody')
+            expect(electronMocks.notificationInstances[0].show).toHaveBeenCalled()
+        })
+
+        it('should only notify once per process', () => {
+            notifyMinimizedToTray()
+            notifyMinimizedToTray()
+            expect(electronMocks.notificationInstances).toHaveLength(1)
+        })
+
+        it('should silently skip when notifications are unsupported', () => {
+            electronMocks.notificationSupported.value = false
+            expect(() => notifyMinimizedToTray()).not.toThrow()
+            expect(electronMocks.notificationInstances).toHaveLength(0)
+        })
+
+        it('should notify again after tray dispose (test-isolated state reset)', () => {
+            notifyMinimizedToTray()
+            disposeTray()
+            notifyMinimizedToTray()
+            expect(electronMocks.notificationInstances).toHaveLength(2)
+        })
     })
 })

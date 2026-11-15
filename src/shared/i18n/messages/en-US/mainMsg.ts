@@ -12,7 +12,11 @@ export default {
     tray: {
         showMainWindow: 'Show main window',
         quit: 'Quit',
-        tooltip: 'BaiZe Notes'
+        tooltip: 'BaiZe Notes',
+        // 1.3.6: first-time notification when hidden to tray (Windows tray icon may be in the overflow area)
+        minimizedTitle: 'BaiZe Notes minimized to system tray',
+        minimizedBody:
+            'The app is still running in the background. Right-click the tray icon (possibly in the overflow area) and choose "Quit" to close it completely.'
     },
     editor: {
         ariaLabel: 'Baize Notes editor'

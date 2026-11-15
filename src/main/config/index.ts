@@ -25,7 +25,9 @@ export {
     getSystemSetting,
     saveSystemSetting,
     getSystemSettingValString,
-    buildFontCss
+    buildFontCss,
+    migrateLegacyOptInSettings,
+    SYSTEM_SETTINGS_SCHEMA_VERSION
 } from './system-setting'
 
 export {

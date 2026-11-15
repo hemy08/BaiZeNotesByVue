@@ -12,7 +12,11 @@ export default {
     tray: {
         showMainWindow: '显示主窗口',
         quit: '退出',
-        tooltip: '白泽笔记'
+        tooltip: '白泽笔记',
+        // 1.3.6：首次隐藏到托盘时的系统通知（Windows 托盘图标可能位于任务栏溢出区）
+        minimizedTitle: '白泽笔记已最小化到系统托盘',
+        minimizedBody:
+            '应用仍在后台运行。右键点击系统托盘图标（可能位于任务栏溢出区）可选择「退出」完全关闭。'
     },
     editor: {
         ariaLabel: '白泽笔记编辑器'
