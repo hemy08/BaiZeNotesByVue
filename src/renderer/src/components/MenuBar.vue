@@ -8,7 +8,7 @@
             @click="toggleMenu(index)"
             @mouseenter="handleMenuEnter(index)"
         >
-            <span class="menu-label">{{ menu.label }}</span>
+            <span class="menu-label">{{ menu.labelKey ? t(menu.labelKey) : menu.label }}</span>
         </div>
 
         <!-- 子菜单容器 -->
@@ -34,10 +34,13 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { menuMap } from './MenuBar/menu_config'
-import {HandleMenuAction} from './MenuBar/menu_actions';
-import {BaiZeMenuItem} from '../../../main/global-types';
-
+import type { VNode } from 'vue'
+import { menuMap } from './MenuBar/menu-config'
+import type { BaiZeMenuEntry } from './MenuBar/menu-config'
+import { HandleMenuAction } from './MenuBar/menu-actions'
+import { t } from '../common/i18n'
+import { IPC } from '../../../shared/ipc-channels'
+import { logger } from '../common/logger'
 
 // 获取当前主题
 const currentTheme = ref('baize')
@@ -45,16 +48,16 @@ const currentTheme = ref('baize')
 // 加载当前主题
 async function loadCurrentTheme() {
     try {
-        const themeConfig = await window.api.config.read('theme')
+        const themeConfig = await window.api.config.read<{ currentTheme?: string }>('theme')
         if (themeConfig && themeConfig.currentTheme) {
             currentTheme.value = themeConfig.currentTheme
         }
     } catch (error) {
-        console.error('Failed to load theme:', error)
+        logger.error('Failed to load theme:', error)
     }
 }
 
-const handleThemeUpdated = (_: any, theme: { currentTheme?: string }) => {
+const handleThemeUpdated = (_event: unknown, theme: { currentTheme?: string }) => {
     if (theme && theme.currentTheme) {
         currentTheme.value = theme.currentTheme
     }
@@ -63,13 +66,12 @@ const handleThemeUpdated = (_: any, theme: { currentTheme?: string }) => {
 // 监听主题变化
 onMounted(() => {
     loadCurrentTheme()
-    window.electron.ipcRenderer.on('baize-notes:theme-updated', handleThemeUpdated)
+    window.electron.ipcRenderer.on(IPC.THEME.THEME_UPDATED, handleThemeUpdated)
 })
 
 onBeforeUnmount(() => {
-    window.electron.ipcRenderer.removeListener('baize-notes:theme-updated', handleThemeUpdated)
+    window.electron.ipcRenderer.removeListener(IPC.THEME.THEME_UPDATED, handleThemeUpdated)
 })
-
 
 const activeMenu = ref<number | null>(null)
 const submenuPosition = ref({ x: 0, y: 0 })
@@ -109,7 +111,7 @@ const BaiZeSubMenuItem = defineComponent({
     name: 'BaiZeSubMenuItem',
     props: {
         items: {
-            type: Array as () => BaiZeMenuItem[],
+            type: Array as () => BaiZeMenuEntry[],
             required: true
         },
         level: {
@@ -121,14 +123,14 @@ const BaiZeSubMenuItem = defineComponent({
     setup(props, { emit }) {
         const activeSubmenu = ref<number | null>(null)
 
-        const handleItemClick = (item: BaiZeMenuItem) => {
-            if (item.menu_action && !item.submenu) {
-              HandleMenuAction(item.menu_action)
-              emit('close')
+        const handleItemClick = (item: BaiZeMenuEntry) => {
+            if (item.menuAction && !item.submenu) {
+                HandleMenuAction(item.menuAction)
+                emit('close')
             }
         }
 
-        const handleItemEnter = (index: number, item: BaiZeMenuItem) => {
+        const handleItemEnter = (index: number, item: BaiZeMenuEntry) => {
             if (item.submenu) {
                 activeSubmenu.value = index
             } else {
@@ -137,9 +139,9 @@ const BaiZeSubMenuItem = defineComponent({
         }
 
         return () => {
-            const children: any[] = []
+            const children: VNode[] = []
 
-            props.items.forEach((item: BaiZeMenuItem, index: number) => {
+            props.items.forEach((item: BaiZeMenuEntry, index: number) => {
                 if (item.type === 'separator') {
                     children.push(h('div', { class: 'menu-separator', key: `sep-${index}` }))
                     return
@@ -149,28 +151,37 @@ const BaiZeSubMenuItem = defineComponent({
                 const isActive = activeSubmenu.value === index
 
                 const itemChildren = [
-                    h('span', { class: 'menu-item-label' }, item.label),
+                    h(
+                        'span',
+                        { class: 'menu-item-label' },
+                        item.labelKey ? t(item.labelKey) : item.label
+                    ),
                     item.accelerator
                         ? h('span', { class: 'menu-item-accelerator' }, item.accelerator)
                         : null,
-                    hasSubmenu
-                        ? h('span', { class: 'menu-item-arrow' }, '▶')
-                        : null
+                    hasSubmenu ? h('span', { class: 'menu-item-arrow' }, '▶') : null
                 ]
 
-                const itemElement = h('div', {
-                    class: ['menu-submenu-item', {
-                        'disabled': item.enabled === false,
-                        'has-submenu': hasSubmenu,
-                        'active': isActive
-                    }],
-                    key: index,
-                    onClick: (e: Event) => {
-                        e.stopPropagation()
-                        handleItemClick(item)
+                const itemElement = h(
+                    'div',
+                    {
+                        class: [
+                            'menu-submenu-item',
+                            {
+                                disabled: item.enabled === false,
+                                'has-submenu': hasSubmenu,
+                                active: isActive
+                            }
+                        ],
+                        key: index,
+                        onClick: (e: Event) => {
+                            e.stopPropagation()
+                            handleItemClick(item)
+                        },
+                        onMouseenter: () => handleItemEnter(index, item)
                     },
-                    onMouseenter: () => handleItemEnter(index, item)
-                }, itemChildren)
+                    itemChildren
+                )
 
                 if (hasSubmenu && isActive) {
                     const nestedSubmenu = h('div', { class: 'nested-submenu' }, [
@@ -180,10 +191,12 @@ const BaiZeSubMenuItem = defineComponent({
                             onClose: () => emit('close')
                         })
                     ])
-                    children.push(h('div', { class: 'submenu-item-wrapper', key: `wrapper-${index}` }, [
-                        itemElement,
-                        nestedSubmenu
-                    ]))
+                    children.push(
+                        h('div', { class: 'submenu-item-wrapper', key: `wrapper-${index}` }, [
+                            itemElement,
+                            nestedSubmenu
+                        ])
+                    )
                 } else {
                     children.push(itemElement)
                 }
@@ -355,7 +368,9 @@ onBeforeUnmount(() => {
 /* 子菜单动画 */
 .submenu-fade-enter-active,
 .submenu-fade-leave-active {
-    transition: opacity 0.15s ease, transform 0.15s ease;
+    transition:
+        opacity 0.15s ease,
+        transform 0.15s ease;
 }
 
 .submenu-fade-enter-from {
@@ -383,21 +398,23 @@ onBeforeUnmount(() => {
     background-color: var(--theme-card-background, #fff);
     border: 1px solid var(--theme-border-color, #e0e0e0);
     border-radius: 4px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.15),
+        0 2px 8px rgba(0, 0, 0, 0.1);
     padding: 2px 0;
     backdrop-filter: blur(8px);
 }
 
 .menu-submenu-item {
-    display: flex;          /* 使用 Flex 布局，便于内部内容水平排列和垂直居中 */
-    align-items: center;    /* 垂直居中子元素（如文字、图标） */
-    padding: 6px 16px;      /* 上下内边距 4px，左右 16px，增加可点击区域 */
-    cursor: pointer;        /* 鼠标悬浮时显示手型，提示可点击 */
-    position: relative;     /* 相对定位，为伪元素（如 hover 下划线、涟漪效果）提供参考 */
+    display: flex; /* 使用 Flex 布局，便于内部内容水平排列和垂直居中 */
+    align-items: center; /* 垂直居中子元素（如文字、图标） */
+    padding: 6px 16px; /* 上下内边距 4px，左右 16px，增加可点击区域 */
+    cursor: pointer; /* 鼠标悬浮时显示手型，提示可点击 */
+    position: relative; /* 相对定位，为伪元素（如 hover 下划线、涟漪效果）提供参考 */
     transition: all 0.15s ease; /* 所有属性变化在 0.15 秒内缓动过渡，增强交互反馈 */
-    margin: 0;          /* 左右外边距 1px，避免项之间紧贴，但可能引起布局偏移 */
-    border-radius: 4px;     /* 圆角 4px，常见于现代 UI 设计 */
-    white-space: nowrap;    /* 文本不换行，适合水平菜单或下拉菜单项 */
+    margin: 0; /* 左右外边距 1px，避免项之间紧贴，但可能引起布局偏移 */
+    border-radius: 4px; /* 圆角 4px，常见于现代 UI 设计 */
+    white-space: nowrap; /* 文本不换行，适合水平菜单或下拉菜单项 */
 }
 
 .menu-submenu-item:hover:not(.disabled) {
@@ -471,7 +488,9 @@ onBeforeUnmount(() => {
 /* 深色主题适配 */
 @media (prefers-color-scheme: dark) {
     .submenu-list {
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+        box-shadow:
+            0 8px 24px rgba(0, 0, 0, 0.4),
+            0 2px 8px rgba(0, 0, 0, 0.3);
     }
 }
 </style>

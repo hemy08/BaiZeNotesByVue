@@ -4,13 +4,17 @@
         "electron.vite.config.*",
         "src/main/**/*.ts",
         "src/main/**/*.js",
-        "src/preload/**/*"
+        "src/preload/**/*",
+        "src/shared/**/*.ts"
     ],
     "compilerOptions": {
         "composite": true,
         "target": "ES2022",
         "module": "NodeNext",
         "strict": true,
+        "noImplicitAny": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
         "esModuleInterop": true,
         "allowJs": true,
         "moduleResolution": "NodeNext",

@@ -7,6 +7,10 @@ import { app } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs-extra'
 
+// CQ-11：配置目录名统一常量 —— config-manager.ts 与 config-backup.ts 等
+// 均引用此处，避免 'config' 段在多处散落（存储行为不变：目录名仍为 config）。
+export const CONFIG_DIR_NAME = 'config'
+
 /**
  * 获取用户配置目录路径
  * 在用户目录下创建 .baizenotes 目录
@@ -15,12 +19,12 @@ export function getUserDataPath(): string {
     // 在用户目录下创建 .baizenotes 目录
     const userHome = app.getPath('home') // 用户主目录
     const userDataPath = path.join(userHome, '.baizenotes')
-    
+
     // 确保目录存在
     if (!fs.existsSync(userDataPath)) {
         fs.ensureDirSync(userDataPath)
     }
-    
+
     return userDataPath
 }
 
@@ -43,7 +47,7 @@ export function getAppResourcesPath(): string {
  * 获取配置文件路径
  */
 export function getConfigPath(): string {
-    return path.join(getUserDataPath(), 'config')
+    return path.join(getUserDataPath(), CONFIG_DIR_NAME)
 }
 
 /**
@@ -110,10 +114,10 @@ export function getPlantumlPath(): string {
  */
 export function initUserDataDirectory(): void {
     const userDataPath = getUserDataPath()
-    
+
     // 创建必要的子目录
-    const subDirs = ['config', 'cache', 'logs']
-    subDirs.forEach(dir => {
+    const subDirs = [CONFIG_DIR_NAME, 'cache', 'logs']
+    subDirs.forEach((dir) => {
         const dirPath = path.join(userDataPath, dir)
         if (!fs.existsSync(dirPath)) {
             fs.ensureDirSync(dirPath)

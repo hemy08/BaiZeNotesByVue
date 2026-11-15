@@ -1,8 +1,10 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 style="display: flex; align-items: center; justify-content: center">密钥对生成器</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 style="display: flex; align-items: center; justify-content: center">
+            {{ t('toolsConvert.rsa.title') }}
+        </h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">生成新的随机RSA或者ed25519私钥和公钥pem证书。</p>
+        <p style="color: grey">{{ t('toolsConvert.rsa.description') }}</p>
         <a
             class="plugin-tools-openurl"
             role="button"
@@ -20,7 +22,7 @@
                 placeholder="2048"
             />
             <button id="rsa-key-pair-refresh" class="rsa-tools-btn" @click="refreshKeyPair()">
-                刷新密钥对
+                {{ t('toolsConvert.rsa.refreshButton') }}
             </button>
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
@@ -35,7 +37,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref  } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { t } from '../../../common/i18n'
+import { IPC } from '../../../../../shared/ipc-channels'
 
 const props = defineProps({
     workAreaWidth: {
@@ -49,25 +53,25 @@ const inputBits = ref(2048)
 
 const rsaKeyTextWidth = computed(() => parseInt(props.workAreaWidth.replace('px', ''), 10) - 200)
 
-function openUrl(link) {
+function openUrl(link: string) {
     window.open(link, '_blank', 'noopener, noreferrer')
 }
 
 function refreshKeyPair() {
-    window.electron.ipcRenderer.send('plugin-tools-generator-rsa-key-pairs', inputBits.value)
+    window.electron.ipcRenderer.send(IPC.PLUGIN.RSA_GENERATE, inputBits.value)
 }
 
-function onRsaResult(_, publicKey: string, privateKey: string) {
+function onRsaResult(_event: unknown, publicKey: string, privateKey: string) {
     RsaPublicKey.value = publicKey
     RsaPrivateKey.value = privateKey
 }
 
 onMounted(() => {
-    window.electron.ipcRenderer.on('plugin-tools-generator-rsa-result', onRsaResult)
+    window.electron.ipcRenderer.on(IPC.PLUGIN.RSA_RESULT, onRsaResult)
 })
 
 onUnmounted(() => {
-    window.electron.ipcRenderer.removeListener('plugin-tools-generator-rsa-result', onRsaResult)
+    window.electron.ipcRenderer.removeListener(IPC.PLUGIN.RSA_RESULT, onRsaResult)
 })
 
 const rsaPublicKeyStyle = computed(() => {

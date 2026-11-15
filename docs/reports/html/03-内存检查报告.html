@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白泽笔记 · 内存维度深度检查报告</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 20px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 8px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .9; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 36px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 14px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .finding { background: var(--card); border: 1px solid var(--border);
+             border-radius: 10px; padding: 16px 20px; margin: 14px 0; }
+  .finding h3 { margin: 0 0 8px; font-size: 16px; }
+  .meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 13px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px;
+        border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  .ok { color: #15803d; font-weight: 600; }
+  footer { margin-top: 40px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 210px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.5; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  @media (min-width: 1150px) { .wrap { margin: 0 auto 0 272px; } }
+  @media (max-width: 1149px) { .toc { display: none; } }</style>
+</head>
+<body>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a href="#sec-1">1. 检查范围与方法</a>
+    <a href="#sec-2">2. 结果总览</a>
+    <a href="#sec-3">3. 逐项发现</a>
+    <a href="#sec-4">4. 与历史基线对照</a>
+    <a href="#sec-5">5. 值得肯定的实践（简要）</a>
+    <a href="#sec-6">6. 修复优先级路线图</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>白泽笔记 · 内存维度深度检查报告</h1>
+    <p>检查维度：内存（EventBus / IPC 监听器 / BrowserWindow / 定时器 / 状态存储 / Monaco / 大文件缓存 / 闭包持有） ｜ 项目：白泽笔记（BaiZe Notes）v1.2.2</p>
+    <p>生成日期：2026-11-14 ｜ 检查方式：静态代码审查（grep/read 深读源码，只读验证），并与 2026-05-02 泄漏分析报告、2026-04-30 优化总结基线逐条交叉验证</p>
+  </header>
+
+  <div class="cards">
+    <div class="card"><b>15</b><span>发现问题总数</span></div>
+    <div class="card"><b style="color:var(--p0)">0</b><span>P0 严重</span></div>
+    <div class="card"><b style="color:var(--p1)">4</b><span>P1 高</span></div>
+    <div class="card"><b style="color:var(--p2)">5</b><span>P2 中</span></div>
+    <div class="card"><b style="color:var(--p3)">6</b><span>P3 低</span></div>
+  </div>
+
+  <h2 id="sec-1">1. 检查范围与方法</h2>
+  <p>检查覆盖主进程 <code>src/main/</code>（index、ipc、dialogs 20 文件、renders 4 文件、utils/file-utils 9 文件、config 10 文件）与渲染进程 <code>src/renderer/src/</code>（App、BaiZeNotes、Markdown 组件、HemyTools、PluginTools、composables、common/event_bus、common/useConfigStore），共深读 40+ 个关键文件。grep 验证：<code>EventBus.$on/$off/$cleanup</code> 配对与 200 阈值；<code>ipcMain.on/once/handle/removeListener</code> 配对；<code>new BrowserWindow</code> 与 close/destroy 配对；<code>setInterval/setTimeout</code> 与 clear 配对；Vue 组件 <code>onMounted/onBeforeUnmount</code> 中 DOM/IPC 监听器配对；状态容器（app-state、baize-store、useConfigStore、config 单例）增长边界。未运行任何修改文件的命令，不确定结论标注"待验证"。</p>
+
+  <h2 id="sec-2">2. 结果总览</h2>
+  <table>
+    <tr><th>编号</th><th>严重度</th><th>问题</th><th>位置</th><th>建议</th><th>状态</th></tr>
+    <tr><td>MEM-01</td><td><span class="badge p1">P1</span></td><td>字体选择对话框 cancel 监听器无效移除，系统关闭按钮关窗时监听器残留</td><td>ShowFontSelectDialog.ts:66-70,110-114</td><td>命名函数 + closed 事件清理</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-02</td><td><span class="badge p1">P1</span></td><td>系统设置对话框 3 个 IPC 监听器窗口关闭不清理，重复注册并重复 insertCSS</td><td>ShowSystemSettingDialog.ts:59-63</td><td>接入 manager 或 closed 清理</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-03</td><td><span class="badge p1">P1</span></td><td>快速链接设置对话框 2 个 IPC 监听器窗口关闭不清理</td><td>ShowQuickLinkSettingDialog.ts:75-76</td><td>同上</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-04</td><td><span class="badge p1">P1</span></td><td>导入选项对话框 ipcMain.once 直接关窗后残留，多次取消后一次性全部触发</td><td>ShowImportOptionDialog.ts:62</td><td>closed 时 removeListener 兜底</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-05</td><td><span class="badge p2">P2</span></td><td>文件内容缓存 50 项上限"只写不读"，大文件内容纯驻留</td><td>baize-store.ts:84-96</td><td>接入读取路径或删除缓存</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-06</td><td><span class="badge p2">P2</span></td><td>全局 store 的 importOption.content 关闭后不清空，大导入内容常驻</td><td>useConfigStore.ts:255-264</td><td>hideDialog 时清空 content</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-07</td><td><span class="badge p2">P2</span></td><td>PDF 导出隐藏 BrowserWindow 无 try/finally，异常路径泄漏</td><td>export.ts:263-305</td><td>try/finally 保证 close</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-08</td><td><span class="badge p2">P2</span></td><td>cleanupComponent 用 split(':') 截取 channel，带冒号通道清理失败（待验证）</td><td>ipc-listener-manager.ts:36,84</td><td>存储 channel 引用而非拆分</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-09</td><td><span class="badge p2">P2</span></td><td>EventBus 丢失 $checkLeaks/$stats 泄漏检测能力（疑似回归）</td><td>event-bus.ts:7-130</td><td>恢复检测/统计接口</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-10</td><td><span class="badge p3">P3</span></td><td>handlers/utils/config-manager 约 40 个 IPC 直连未纳入统一管理</td><td>handlers.ts:22-72 等</td><td>一次性注册，迁移 manager</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-11</td><td><span class="badge p3">P3</span></td><td>cleanupApp 未停止自动保存定时器；timers/watchers 空数组死代码</td><td>index.ts:16-17,123-139</td><td>调用 StopAutoSaveFileTime</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-12</td><td><span class="badge p3">P3</span></td><td>9 处对话框 JSDOM 实例未调用 window.close()</td><td>ShowFontSelectDialog.ts:441-443 等</td><td>用完 close() 释放</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-13</td><td><span class="badge p3">P3</span></td><td>TitleBar/useDialogDrag 拖拽 document 监听器无卸载兜底</td><td>TitleBar.vue:54-55</td><td>补 onBeforeUnmount 兜底</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-14</td><td><span class="badge p3">P3</span></td><td>vuex 为死依赖（0 处使用），Store 无界增长风险不存在</td><td>package.json:70</td><td>移除依赖并文档化</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>MEM-15</td><td><span class="badge p3">P3</span></td><td>四种配置共享同一防抖定时器，连续保存互相覆盖</td><td>useConfigStore.ts:150,176-185</td><td>按 config 名分定时器</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+  </table>
+
+  <h2>修复状态（2026-11-15 更新）</h2>
+  <p>本维度 <strong>15</strong> 项发现中：<span class="badge" style="background:#15803d">✅ 已修复 15 项</span>　<span class="badge" style="background:#ea580c">🟡 部分修复 0 项</span>　<span class="badge" style="background:#6b7280">⏭ 未处理 0 项</span>（各条状态已同步标注在总览表与明细标题上）。修复记录与遗留说明见 <a href="08-修复实施报告.html">08-修复实施报告</a>、<a href="09-第二轮修复实施报告.html">09-第二轮修复实施报告</a> 与 <a href="10-第三轮修复实施报告.html">10-第三轮修复实施报告</a>。</p>
+
+  <h2 id="sec-3">3. 逐项发现</h2>
+
+  <div class="finding">
+    <h3>MEM-01 字体选择对话框监听器无效移除与残留 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/dialogs/ShowFontSelectDialog.ts:66-70,110-114</code> ｜ 影响：每次打开泄漏 1-2 个监听器，闭包持有主窗口 ｜ 工作量：0.5 小时</div>
+    <p>移除 cancel 监听器时传入"新的空匿名函数"，与注册时的引用不同，移除无效；cancel 监听器本身即为匿名函数，永远无法按引用移除；用户点系统标题栏关闭按钮（而非对话框内按钮）时 <code>exitFontSelectDialog</code> 不执行，insert 监听器同样残留。</p>
+    <pre><code>// L66-70
+ipcMain.removeListener('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
+ipcMain.removeListener('dialog-user-font-select-btn-cancel', () => {})   // ❌ 无效移除
+win.close()
+// L110-114
+ipcMain.on('dialog-user-font-select-btn-insert', processCustomFontDialogApply)
+ipcMain.on('dialog-user-font-select-btn-cancel', () => { exitFontSelectDialog() })</code></pre>
+    <p><strong>修复建议：</strong>cancel 改为命名函数；清理逻辑挂到窗口 <code>closed</code> 事件；或改用 <code>ipcListenerManager.register</code>。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-02 系统设置对话框监听器无清理 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/dialogs/ShowSystemSettingDialog.ts:59-63</code> ｜ 影响：每次打开累积 3 个监听器，重复 saveSystemSetting 与 insertCSS ｜ 工作量：0.5 小时</div>
+    <p>3 个监听器直接注册，全文件无 removeListener、未接入 manager；窗口关闭时 <code>windowManager.cleanupWindow</code> 只清理注册进 manager 的监听器，这 3 个不受影响。</p>
+    <pre><code>ipcMain.on('dialog-system-setting-apply', processApplySysSetting)
+ipcMain.on('dialog-system-setting-confirm', processConfirmSysSetting)
+ipcMain.on('dialog-system-setting-cancel', () =&gt; {
+    windowManager.getWindowByType('system-setting-dialog')?.close()
+})</code></pre>
+    <p><strong>修复建议：</strong>与 MEM-01 相同方案（closed 清理或 manager 接入），cancel 改命名函数。注意多次触发会重复 <code>mainWindow.webContents.insertCSS(fontCss)</code>（L48），属功能缺陷。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-03 快速链接设置对话框监听器无清理 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/dialogs/ShowQuickLinkSettingDialog.ts:75-76</code> ｜ 影响：每次打开累积 2 个监听器，重复写盘与全窗口广播 ｜ 工作量：0.5 小时</div>
+    <p>两个监听器直接注册且无任何清理；闭包捕获已销毁的 <code>quickLinkSettingDialog</code> 引用。</p>
+    <pre><code>ipcMain.on('baize-notes:save-quick-links', handleSaveQuickLinks)
+ipcMain.on('baize-notes:reset-quick-links', handleResetQuickLinks)</code></pre>
+    <p><strong>修复建议：</strong>窗口 <code>closed</code> 事件清理或接入 manager。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-04 导入选项对话框 ipcMain.once 残留与多重触发 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/dialogs/ShowImportOptionDialog.ts:62</code>（HTML 关闭按钮 :283、:320） ｜ 影响：多次取消后残留 once 一次性全触发，重复 onConfirm 且持有大 content ｜ 工作量：0.5 小时</div>
+    <p><code>ipcMain.once</code> 仅在事件触发时自动移除；对话框的"×"与"取消"按钮直接 <code>window.close()</code>，事件从不触发 → 监听器残留（闭包捕获 mainWindow 与 onConfirm，后者可能持有导入的大文件内容）。多次"打开→取消"后，下一次确认时所有残留 once 一次性全部触发，旧回调会关闭新对话框并重复执行导入。</p>
+    <pre><code>// L62
+ipcMain.once('import-option-confirm', async (_event: any, option: ImportOption) =&gt; {
+    ...
+    windowManager.getWindowByType('import-option-dialog')?.close()
+    onConfirm(option, filePath)
+})
+// HTML L283 &lt;button class="close-btn" onclick="window.close()"&gt;x&lt;/button&gt;
+// HTML L320 &lt;button class="btn btn-cancel" onclick="window.close()"&gt;取消&lt;/button&gt;</code></pre>
+    <p><strong>修复建议：</strong>改为 <code>ipcMain.on</code> + 窗口 <code>closed</code> 事件 <code>removeListener</code>。注意：主进程 <code>ShowImportOptionDialog</code> 目前无调用方（渲染进程已改用 ImportOptionDialog.vue），可考虑整体下线。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-05 文件内容缓存"只写不读" <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/utils/baize-store.ts:26-27,84-96</code>；写入方 <code>file-operations.ts:61,345,386</code> ｜ 影响：最多 50 个大文件内容纯驻留且无收益 ｜ 工作量：1 小时</div>
+    <p><code>setFileContent</code> 在保存/自动保存/打开文件三处被调用，而 grep 全项目确认 <code>getFileContent</code> 没有任何调用方。缓存上限 50 只按文件数计算（近似 FIFO），单个文件可达 5MB+，可能纯驻留数十至数百 MB。</p>
+    <pre><code>// baize-store.ts:84-96
+setFileContent(path: string, content: string): void {
+    if (this.fileCache.size &gt;= this.MAX_CACHE_SIZE) {
+        const oldestKey = this.fileCache.keys().next().value!
+        this.fileCache.delete(oldestKey)
+    }
+    this.fileCache.set(path, { content, timestamp: Date.now(), size: content.length })
+}</code></pre>
+    <p><strong>修复建议：</strong>删除缓存及 3 处写入；或接入读取路径并增加字节预算淘汰。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-06 渲染进程导入内容常驻全局 store <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/renderer/src/common/useConfigStore.ts:116,138,255-264</code>；来源 <code>import.ts:214</code> ｜ 影响：大导入内容经 IPC 克隆后常驻渲染进程 ｜ 工作量：15 分钟</div>
+    <p>主进程 <code>open-vue-dialog 'importOption' { content }</code> 把完整导入内容写入 <code>dialogs.importOption.content</code>；<code>hideDialog</code> 仅置 <code>visible = false</code>，不清空 content。</p>
+    <pre><code>function hideDialog(dialogName: DialogName) {
+    ...
+    dialogs[dialogName as keyof DialogState].visible = false   // content 保留
+}</code></pre>
+    <p><strong>修复建议：</strong><code>hideDialog('importOption')</code> 时清空 content，或在 BaiZeNotes.vue:302-303 读取后立即清空。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-07 PDF 导出隐藏窗口异常路径泄漏 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/utils/file-utils/export.ts:263-305</code> ｜ 影响：导出失败/取消时隐藏 BrowserWindow 及 webContents 残留 ｜ 工作量：0.5 小时</div>
+    <p><code>new BrowserWindow({ show: false })</code> 不经过 windowManager；<code>win.close()</code>（L305）仅在成功路径执行，loadURL/printToPDF 抛异常时窗口泄漏，且不受 <code>windowManager.closeAll()</code> 兜底。</p>
+    <pre><code>const win = new BrowserWindow({ width: 800, height: 600, show: false, ... })  // L263
+...
+await fs.writeFile(filePath, pdfData)
+win.close()   // L305：仅成功路径执行</code></pre>
+    <p><strong>修复建议：</strong><code>try { ... } finally { if (!win.isDestroyed()) win.close() }</code>。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-08 ipcListenerManager.cleanupComponent 通道名拆分缺陷 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/ipc/ipc-listener-manager.ts:36,84</code> ｜ 影响：带冒号通道清理静默失败（待验证） ｜ 工作量：1 小时（含单测）</div>
+    <p><code>listenerId = `${channel}:${Date.now()}:${random}`</code>（L36），清理时 <code>const [channel] = listenerId.split(':')</code>（L84）。若通道名含冒号（如 <code>baize-notes:xxx</code>），拆分所得通道名被截断，查不到监听器 → removeListener 不执行。当前通过 manager 注册的通道均不含冒号，缺陷暂未触发（待验证）。</p>
+    <pre><code>const listenerId = `${channel}:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`  // L36
+...
+listenerIds.forEach(listenerId =&gt; {
+    const [channel] = listenerId.split(':')   // L84 ❌ 冒号通道被截断</code></pre>
+    <p><strong>修复建议：</strong><code>ListenerInfo</code> 直接存 channel 字段，componentListeners 映射到 <code>{ channel, listener }</code>。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-09 EventBus 泄漏检测能力缺失（疑似回归） <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/renderer/src/common/event_bus/event-bus.ts:7-130</code> ｜ 影响：泄漏从"可发现"退回"不可见" ｜ 工作量：1 小时</div>
+    <p>基线《事件监听器优化总结》(2026-04-30 §2.1/§4.2) 记载 EventBus 已实现 <code>$checkLeaks()</code> 与 <code>$stats()</code>；当前版本仅 <code>$on/$off/$emit/$cleanup</code> 四个方法，检测/统计接口与 <code>useEventBusStats</code> 全部消失。200 阈值（L9、L18-21）是仅剩防线。</p>
+    <p><strong>修复建议：</strong>恢复 <code>$stats()</code>/<code>$checkLeaks()</code> 或在 dev 环境挂载诊断入口。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-10 主进程约 40 个 IPC 直连未纳入统一管理 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/ipc/handlers.ts:22-72,76-150</code>、<code>src/main/utils/utils.ts:27-197</code>、<code>src/main/config/config-manager.ts:79-99</code>、<code>src/main/index.ts:105</code>、<code>src/main/dialogs/ShowThemeSettingDialog.ts:744</code> ｜ 影响：进程级常驻，不随窗口开合累积，实际影响小 ｜ 工作量：2 小时</div>
+    <p>以上均为启动期一次性注册（registerIpcHandlers / MainWindowListenUtilsEvent / whenReady / 模块级副作用），grep 显示 <code>ipcListenerManager</code> 全项目仅 4 个文件使用。未纳入管理导致 <code>cleanupAll()</code> 无法覆盖（macOS window-all-closed 后 activate 重建窗口时残留），并延续基线报告的规范问题。</p>
+    <p><strong>修复建议：</strong>逐步迁移至 <code>ipcListenerManager.register(..., 'global-xxx')</code>；模块级副作用注册改为显式初始化调用。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-11 退出清理遗漏与死代码 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/index.ts:16-17,123-139</code>、<code>auto-save.ts:9</code> ｜ 影响：进程退出时 OS 回收，实际影响小 ｜ 工作量：15 分钟</div>
+    <p><code>timers</code>/<code>watchers</code> 数组从未被 push，cleanupApp 中的遍历为死代码；自动保存定时器存于 auto-save.ts 模块级变量，cleanupApp 未调用 <code>StopAutoSaveFileTime()</code>。</p>
+    <pre><code>const timers: NodeJS.Timeout[] = []        // L16：从未使用
+const watchers: fs.FSWatcher[] = []        // L17：从未使用
+// cleanupApp (L123-139) 中无 StopAutoSaveFileTime()</code></pre>
+    <p><strong>修复建议：</strong>cleanupApp 中调用 <code>StopAutoSaveFileTime()</code>；删除死代码或真正接入。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-12 对话框 JSDOM 实例未 close <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>ShowFontSelectDialog.ts:441-443</code>、<code>ShowImportOptionDialog.ts:97-98</code>、<code>ShowSystemSettingDialog.ts:68-70</code>、<code>ShowQuickLinkSettingDialog.ts:83-84</code>、<code>ShowThemeSettingDialog.ts:65-66</code>、<code>ShowEditorSettingDialog.ts:91-92</code>、<code>ShowCreateFileFolderDialog.ts:62-64</code>、<code>ShowRemaneDialog.ts:54-56</code>、<code>OpenMermaidRenderFrame.ts:64-66</code> ｜ 影响：无 runScripts 时通常可被 GC，属防御性改进 ｜ 工作量：1 小时</div>
+    <p>9 处 <code>new JSDOM(...)</code> 均只取 <code>window.document</code> 生成 HTML 字符串，未调用 <code>dom.window.close()</code>。</p>
+    <p><strong>修复建议：</strong>统一封装 <code>buildDialogDom(html): string</code> 工具，内部 try/finally 调 <code>window.close()</code>。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-13 对话框拖拽监听器无卸载兜底 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/renderer/src/components/dialogs/common/TitleBar.vue:54-55,76-79</code>、<code>DraggableTitleBar.vue:54-55,80-81</code>、<code>src/renderer/src/composables/useDialogDrag.ts:62-63,84-88</code> ｜ 影响：拖拽中卸载时 document 监听残留，概率低 ｜ 工作量：0.5 小时</div>
+    <p>document 级 mousemove/mouseup 仅在 <code>onDragEnd</code> 中移除，无 <code>onBeforeUnmount</code> 兜底（对比 <code>useWindowManagement.ts:143-148</code> 已有兜底）。对话框以 v-if 开关，拖拽中卸载会残留监听器并持有组件闭包。</p>
+    <p><strong>修复建议：</strong>补 <code>onBeforeUnmount</code> 移除两个 document 监听器。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-14 vuex 死依赖 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>package.json:70</code> ｜ 影响：无运行时内存影响；附带结论——Vuex store 无界增长风险在本项目不存在 ｜ 工作量：15 分钟</div>
+    <p>grep 全项目 <code>vuex</code> 仅 package.json 一处命中；渲染进程无 createStore/useStore 调用，状态管理实际由 useConfigStore（ref/reactive 单例）+ EventBus + 主进程 app-state/baize-store 承担。</p>
+    <p><strong>修复建议：</strong>从 dependencies 移除 vuex；文档明确实际状态管理架构。</p>
+  </div>
+
+  <div class="finding">
+    <h3>MEM-15 配置防抖保存共用单一计时器 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/renderer/src/common/useConfigStore.ts:150,176-185</code> ｜ 影响：连续保存两类配置时前者写盘被取消，属功能缺陷 ｜ 工作量：0.5 小时</div>
+    <p><code>let saveTimeout</code> 为模块级单变量，theme/editor/system/quick-links 四类配置共用；连续修改不同配置时前者的写盘请求被后者 clearTimeout 取消。</p>
+    <pre><code>let saveTimeout: NodeJS.Timeout | null = null   // L150
+async function saveConfig(name: string, data: Record&lt;string, unknown&gt;) {
+  if (saveTimeout) clearTimeout(saveTimeout)   // L177：四类配置互相覆盖
+  saveTimeout = setTimeout(async () =&gt; { ... }, 500)
+}</code></pre>
+    <p><strong>修复建议：</strong>改为 <code>Map&lt;string, Timeout&gt;</code> 按 configName 独立防抖。</p>
+  </div>
+
+  <h2 id="sec-4">4. 与历史基线对照</h2>
+  <table>
+    <tr><th>基线问题（2026-05-02 / 2026-04-30）</th><th>当前状态</th><th>说明</th></tr>
+    <tr><td>对话框模块 IPC 监听器重复注册（13 个文件）</td><td>部分修复</td><td>ShowCreateFileFolderDialog(:53-57)、ShowRemaneDialog(:43-47)、OpenMermaidRenderFrame(:43-52,116)、ShowEditorSettingDialog(:59-87) 已修复；ShowFontSelectDialog、ShowSystemSettingDialog、ShowQuickLinkSettingDialog、ShowImportOptionDialog 仍存在（MEM-01~04）</td></tr>
+    <tr><td>Monaco 编辑器匿名 scroll 监听器无法清理</td><td><span class="ok">已修复</span></td><td>MarkdownMonacoEditor.vue:247-269 全部命名函数并配对移除</td></tr>
+    <tr><td>utils.ts IPC 直连未规范管理（~15 个）</td><td>仍存在</td><td>utils.ts:27-197 约 30 个直连；均为启动期一次性注册，风险由"中"降为"低"（MEM-10）</td></tr>
+    <tr><td>EventBus ShowHtmlVIew / ShowPdfEditor 未清理</td><td><span class="ok">已修复</span></td><td>ShowHtmlVIew.vue:146-149、ShowPdfEditor.vue:165-168 均调用 $cleanup(componentId)</td></tr>
+    <tr><td>主窗口控制监听器未纳入管理器</td><td>仍存在</td><td>handlers.ts:22-72 窗口控制直连（MEM-10，P3）</td></tr>
+    <tr><td>渲染进程缺少统一 IPC 管理器</td><td>仍存在</td><td>未建统一管理器；但渲染进程 20 处 ipcRenderer.on 全部有 removeListener 配对，实际泄漏面已收敛</td></tr>
+    <tr><td>EventBus 已提供 $checkLeaks/$stats 泄漏检测</td><td>疑似回归</td><td>当前 event-bus.ts 仅 $on/$off/$emit/$cleanup，检测/统计接口消失（MEM-09）</td></tr>
+    <tr><td>定时器管理（自动保存）</td><td><span class="ok">保持良好</span></td><td>auto-save.ts:15-48 Start/Stop 成对；但退出清理遗漏（MEM-11，P3）</td></tr>
+  </table>
+
+  <h2 id="sec-5">5. 值得肯定的实践（简要）</h2>
+  <p>① EventBus 200 监听器阈值（event-bus.ts:9,18-21）；② WindowManager 统一窗口生命周期与 closed 自动清理（window-manager.ts:30-64,94-106）；③ Monaco 完整 dispose 与文件切换模型释放（MarkdownMonacoEditor.vue:89-118,272-288）；④ 渲染进程监听器全量配对（20 处 IPC + 14 处 DOM 均有移除）；⑤ 大文件 5MB 打开阈值（file-operations.ts:20,352-371）；⑥ 历史列表有界（recentFiles≤10、recent-folders≤20）；⑦ 自动保存定时器成对管理（auto-save.ts:15-48）。</p>
+
+  <h2 id="sec-6">6. 修复优先级路线图</h2>
+  <table>
+    <tr><th>阶段</th><th>范围</th><th>对应发现</th><th>说明</th></tr>
+    <tr><td>立即（本周）</td><td>4 个对话框监听器清理</td><td>MEM-01、MEM-02、MEM-03、MEM-04</td><td>统一模式：命名函数 + closed 清理或 manager 接入；合计约 2 小时，消除唯一高频累积泄漏源</td></tr>
+    <tr><td>短期（本月）</td><td>缓存与导出收口</td><td>MEM-05、MEM-06、MEM-07、MEM-08</td><td>消除只写不读驻留、导入内容驻留、PDF 异常泄漏与 manager 拆分缺陷；合计约 3 小时</td></tr>
+    <tr><td>中期（本季度）</td><td>检测能力与规范</td><td>MEM-09、MEM-10、MEM-12、MEM-13</td><td>恢复 EventBus 诊断接口；直连 IPC 迁移 manager；JSDOM/拖拽兜底；合计约 5 小时</td></tr>
+    <tr><td>长期</td><td>清理与文档</td><td>MEM-11、MEM-14、MEM-15</td><td>退出清理补全、移除 vuex 死依赖、防抖按 key 隔离；合计约 1.5 小时</td></tr>
+  </table>
+
+  <footer>白泽笔记全量检查报告 · 内存 · 由 AI 检查子代理生成</footer>
+</div>
+</body>
+</html>

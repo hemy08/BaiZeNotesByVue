@@ -2,36 +2,73 @@
     <div class="pdf-view-container">
         <div v-if="isLoading" class="loading-container">
             <div class="loading-spinner"></div>
-            <p>正在加载 PDF 文件...</p>
+            <p>{{ t('toolsNetwork.hemyTools.pdfView.loading') }}</p>
         </div>
         <div v-else-if="errorMessage" class="error-container">
             <div class="error-icon">⚠️</div>
             <p>{{ errorMessage }}</p>
-            <button @click="retryLoad" class="retry-button">重试</button>
+            <button class="retry-button" @click="retryLoad">
+                {{ t('toolsNetwork.common.retry') }}
+            </button>
         </div>
         <div v-else-if="pdfPath" class="pdf-content-wrapper">
             <div class="pdf-toolbar">
                 <span class="file-name">{{ pdfPath }}</span>
                 <div class="toolbar-actions">
-                    <button @click="zoomIn" class="toolbar-btn" title="放大">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button
+                        class="toolbar-btn"
+                        :title="t('toolsNetwork.hemyTools.pdfView.zoomIn')"
+                        @click="zoomIn"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                             <line x1="11" y1="8" x2="11" y2="14"></line>
                             <line x1="8" y1="11" x2="14" y2="11"></line>
                         </svg>
                     </button>
-                    <button @click="zoomOut" class="toolbar-btn" title="缩小">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button
+                        class="toolbar-btn"
+                        :title="t('toolsNetwork.hemyTools.pdfView.zoomOut')"
+                        @click="zoomOut"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                             <line x1="8" y1="11" x2="14" y2="11"></line>
                         </svg>
                     </button>
                     <span class="zoom-level">{{ Math.round(zoomLevel * 100) }}%</span>
-                    <button @click="openInBrowser" class="toolbar-btn" title="在浏览器中打开">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <button
+                        class="toolbar-btn"
+                        :title="t('workspace.resourceContext.openInExplorer')"
+                        @click="revealInExplorer"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                            ></path>
                             <polyline points="15 3 21 3 21 9"></polyline>
                             <line x1="10" y1="14" x2="21" y2="3"></line>
                         </svg>
@@ -45,34 +82,52 @@
                     </button-->
                 </div>
             </div>
-            <webview
-                ref="pdfWebview"
-                :src="pdfPath"
-                class="pdf-webview"
+            <!-- FE-11：原 <webview :src="pdfPath"> 依赖主窗口 webPreferences.webviewTag（未开启）
+                 → 容器永远空白。改用 <iframe> 加载本地 file:// URL：Electron 内置 PDFium
+                 查看器（Electron 9+ 默认启用）会在 iframe 中渲染 PDF，无需 webviewTag，
+                 也不引入 webview 的攻击面。CSP 已在 renderer/index.html 放行 frame-src file:。 -->
+            <iframe
+                :src="pdfUrl"
+                class="pdf-frame"
+                :title="fileName || pdfPath"
                 :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }"
-            ></webview>
+            ></iframe>
         </div>
         <div v-else class="empty-container">
             <div class="empty-icon">📄</div>
-            <p>请选择一个 PDF 文件进行预览</p>
+            <p>{{ t('toolsNetwork.hemyTools.pdfView.empty') }}</p>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import EventBus from '../../common/event_bus/event-bus'
+import EventBus from '../../common/event-bus/event-bus'
+import { t } from '../../common/i18n'
+import { IPC } from '../../../../shared/ipc-channels'
+import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import { logger } from '../../common/logger'
 
 // 响应式数据
 const pdfPath = ref<string>('')
+const pdfUrl = ref<string>('')
 const fileName = ref<string>('')
 const isLoading = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const zoomLevel = ref<number>(1)
-const pdfWebview = ref<any>(null)
 
 // 组件ID用于事件清理
 const componentId = 'ShowPdfEditor'
+
+/**
+ * FE-11：把本地绝对路径转成合法的 file:// URL（百分号编码空格/中文/# 等）。
+ * 原实现直接拼 `file://${path}`，Windows 反斜杠与特殊字符会得到非法 URL。
+ */
+function toFileUrl(filePath: string): string {
+    const normalized = filePath.replace(/\\/g, '/')
+    const withLeadingSlash = normalized.startsWith('/') ? normalized : '/' + normalized
+    return 'file://' + encodeURI(withLeadingSlash)
+}
 
 /**
  * 加载 PDF 文件
@@ -81,21 +136,25 @@ async function loadPdfFile(path: string, name: string) {
     isLoading.value = true
     errorMessage.value = ''
     pdfPath.value = ''
+    pdfUrl.value = ''
     fileName.value = name
 
     try {
         // 验证文件是否存在
-        const exists = await window.electron.ipcRenderer.invoke('check-file-exists', path)
+        const exists = await window.electron.ipcRenderer.invoke(IPC.FILE.CHECK_EXISTS, path)
 
         if (exists) {
-            // 使用 file:// 协议加载 PDF
-            pdfPath.value = `file://${path}`
+            // FE-11：iframe 使用 file:// URL 交给 Electron 内置 PDF 查看器渲染
+            pdfPath.value = path
+            pdfUrl.value = toFileUrl(path)
         } else {
-            errorMessage.value = '文件不存在'
+            errorMessage.value = t('toolsNetwork.hemyTools.pdfView.fileNotFound')
         }
     } catch (error) {
-        console.error('加载 PDF 文件失败:', error)
-        errorMessage.value = `加载失败: ${error}`
+        logger.error('加载 PDF 文件失败:', error)
+        errorMessage.value = t('toolsNetwork.hemyTools.pdfView.loadFailed', {
+            error: String(error)
+        })
     } finally {
         isLoading.value = false
     }
@@ -106,7 +165,7 @@ async function loadPdfFile(path: string, name: string) {
  */
 function retryLoad() {
     if (pdfPath.value) {
-        loadPdfFile(pdfPath.value.replace('file://', ''), fileName.value)
+        loadPdfFile(pdfPath.value, fileName.value)
     }
 }
 
@@ -129,28 +188,20 @@ function zoomOut() {
 }
 
 /**
- * 在浏览器中打开
+ * 在资源管理器中定位 PDF 文件
+ * （原「在浏览器中打开」发送 file 路径到 OPEN_EXTERNAL_LINK，主进程只放行 http/https
+ *   协议，本地文件路径被静默拒绝——改为既有 FILE_MANAGER.OPEN_IN_EXPLORER 通道）
  */
-function openInBrowser() {
+function revealInExplorer() {
     if (pdfPath.value) {
-        const filePath = pdfPath.value.replace('file://', '')
-        window.electron.ipcRenderer.send('open-external-link', filePath)
+        window.electron.ipcRenderer.send(IPC.FILE_MANAGER.OPEN_IN_EXPLORER, pdfPath.value)
     }
 }
 
 /**
- * 打印 PDF
- */
-/*function printPdf() {
-    if (pdfWebview.value) {
-        pdfWebview.value.executeJavaScript('window.print()')
-    }
-}*/
-
-/**
  * 处理文件选择事件
  */
-function handleFileSelect(node: any) {
+function handleFileSelect(node: { path?: string; name?: string }) {
     if (node && node.path && node.name && node.name.endsWith('.pdf')) {
         loadPdfFile(node.path, node.name)
     }
@@ -159,7 +210,7 @@ function handleFileSelect(node: any) {
 // 生命周期
 onMounted(() => {
     // 监听文件选择事件
-    EventBus.$on('pdf-file-selected', handleFileSelect, { componentId })
+    EventBus.$on(EVENT_BUS.PDF_FILE_SELECTED, handleFileSelect, { componentId })
 })
 
 onBeforeUnmount(() => {
@@ -200,8 +251,12 @@ onBeforeUnmount(() => {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .error-icon,
@@ -288,7 +343,7 @@ onBeforeUnmount(() => {
     color: var(--theme-text-secondary, #757575);
 }
 
-.pdf-webview {
+.pdf-frame {
     flex: 1;
     width: 100%;
     height: 100%;

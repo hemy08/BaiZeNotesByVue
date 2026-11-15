@@ -1,8 +1,10 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">文件类型（MIME头）</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">
+            {{ t('toolsNetwork.infoTables.fileNameExtension.title') }}
+        </h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">文件类型（MIME头）</p>
+        <p style="color: grey">{{ t('toolsNetwork.infoTables.fileNameExtension.desc') }}</p>
         <div>
             <input
                 v-model="searchQuery"
@@ -18,10 +20,18 @@
         >
             <thead>
                 <tr>
-                    <th class="file-name-ext-th">文件扩展名</th>
-                    <th class="file-name-ext-th">Content-Type(Mime-Type)</th>
-                    <th class="file-name-ext-th">文件扩展名</th>
-                    <th class="file-name-ext-th">Content-Type(Mime-Type)</th>
+                    <th class="file-name-ext-th">
+                        {{ t('toolsNetwork.infoTables.fileNameExtension.extension') }}
+                    </th>
+                    <th class="file-name-ext-th">
+                        {{ t('toolsNetwork.infoTables.fileNameExtension.mimeType') }}
+                    </th>
+                    <th class="file-name-ext-th">
+                        {{ t('toolsNetwork.infoTables.fileNameExtension.extension') }}
+                    </th>
+                    <th class="file-name-ext-th">
+                        {{ t('toolsNetwork.infoTables.fileNameExtension.mimeType') }}
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -42,6 +52,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import { HTMLMimeTypeTable, CompressedArray } from './Information'
 
 const props = defineProps({

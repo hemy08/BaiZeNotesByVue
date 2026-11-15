@@ -1,0 +1,687 @@
+/**
+ * config-manager.ts 单元测试
+ * 覆盖：CONFIG_DIR、读写行为、非法配置名防护（路径逃逸）、
+ * 损坏 JSON 容错、目录不可写容错、IPC 处理器注册与路由
+ * （P2：CONFIG.DELETE / CONFIG.LIST / CONFIG.ENSURE_DIR 三个死通道及其
+ * deleteConfig/listConfigs 实现已删除，对应用例同步移除）
+ */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import * as path from 'path'
+import * as fs from 'fs-extra'
+
+// 测试临时目录（与 electron mock 中保持一致，需放入 vi.hoisted 供 mock 工厂访问）
+const hoisted = vi.hoisted(() => {
+    return {
+        tmpRoot: `${process.env.TEMP || process.env.TMP || '/tmp'}/baize-vitest-config-manager`
+    }
+})
+
+const ipcHandlers = vi.hoisted(() => ({
+    map: new Map<string, (...args: unknown[]) => unknown>()
+}))
+
+vi.mock('electron', () => ({
+    ipcMain: {
+        handle: vi.fn((channel: string, fn: (...args: unknown[]) => unknown) => {
+            ipcHandlers.map.set(channel, fn)
+        })
+    },
+    app: {
+        getPath: vi.fn(() => hoisted.tmpRoot)
+    },
+    BrowserWindow: { getAllWindows: vi.fn(() => []) }
+}))
+
+// ARC-04：config-manager 现在导入 theme-config → theme-registry →
+// @electron-toolkit/utils（ESM），未 mock 会真实加载 electron 导致测试崩溃
+vi.mock('@electron-toolkit/utils', () => ({ is: { dev: true } }))
+
+// 配置 store 模块使用内存替身（真实 electron-store 为 ESM 且外部化加载真实 electron）
+vi.mock('electron-store', async () => {
+    const { FakeStore } = await import('./helpers/fake-store')
+    return { default: FakeStore }
+})
+
+// config-manager 的 system/theme 路由导入 file-utils/auto-save 与 logger，
+// 两者在模块加载时创建定时器/日志目录，用桩替换保证测试环境干净
+vi.mock('../../src/main/utils/logger', () => ({
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+}))
+
+import { configManager, registerConfigIpcHandlers } from '../../src/main/config/config-manager'
+import { setTrustedMainWindow, resetTrustedSenderRegistry } from '../../src/main/utils/ipc-security'
+import { appState } from '../../src/main/utils/app-state'
+import { IPC } from '../../src/shared/ipc-channels'
+import { FakeStore } from './helpers/fake-store'
+
+// P1/N-05：config:read / config:write 统一校验发送方，测试桩提供受信主窗口与事件
+const trustedMainWindow = { webContents: { id: 1 }, isDestroyed: () => false }
+const trustedEvent = { sender: trustedMainWindow.webContents }
+const foreignEvent = { sender: { id: 999 } }
+
+const CONFIG_DIR = path.join(hoisted.tmpRoot, 'config')
+
+describe('config-manager', () => {
+    beforeEach(() => {
+        fs.rmSync(hoisted.tmpRoot, { recursive: true, force: true })
+        ipcHandlers.map.clear()
+        resetTrustedSenderRegistry()
+        setTrustedMainWindow(trustedMainWindow as never)
+        appState._resetForTesting()
+        // 清空内存 store，保证 ARC-04 路由测试之间互不影响
+        FakeStore.resetAll()
+    })
+
+    describe('CONFIG_DIR', () => {
+        it('should be the config subdirectory of userData', () => {
+            expect(configManager.CONFIG_DIR).toBe(CONFIG_DIR)
+        })
+    })
+
+    describe('readConfig / writeConfig roundtrip', () => {
+        it('should return null for a missing config', async () => {
+            await expect(configManager.readConfig('missing')).resolves.toBeNull()
+        })
+
+        it('should roundtrip whitelisted bare-JSON data including unicode', async () => {
+            // AS-4：裸 JSON 配置名收敛到白名单（recent-folders / show-welcome 为渲染层在用）
+            const data = ['白泽笔记', 'another-folder']
+            await expect(configManager.writeConfig('recent-folders', data)).resolves.toBe(true)
+            await expect(configManager.readConfig('recent-folders')).resolves.toEqual(data)
+        })
+
+        it('should overwrite an existing config', async () => {
+            await configManager.writeConfig('show-welcome', true)
+            await configManager.writeConfig('show-welcome', false)
+            await expect(configManager.readConfig('show-welcome')).resolves.toBe(false)
+        })
+
+        it('should return null when the JSON file is corrupted', async () => {
+            await fs.ensureDir(CONFIG_DIR)
+            await fs.writeFile(path.join(CONFIG_DIR, 'bad.json'), '{ not valid json', 'utf-8')
+            await expect(configManager.readConfig('bad')).resolves.toBeNull()
+        })
+
+        it('should return false when the config directory cannot be created', async () => {
+            // 让 config 目录位置被普通文件占用，ensureDir 必然失败
+            await fs.ensureDir(hoisted.tmpRoot)
+            await fs.writeFile(CONFIG_DIR, 'i am a file', 'utf-8')
+            await expect(configManager.writeConfig('show-welcome', true)).resolves.toBe(false)
+            await expect(configManager.readConfig('show-welcome')).resolves.toBeNull()
+        })
+    })
+
+    describe('config name validation (path traversal guard)', () => {
+        const invalidNames = ['../evil', 'a/b', 'a\\b', '', 'a.b', 'my config', '.hidden']
+
+        it('should reject invalid names for read/write', async () => {
+            for (const name of invalidNames) {
+                await expect(
+                    configManager.readConfig(name),
+                    `read ${JSON.stringify(name)}`
+                ).resolves.toBeNull()
+                await expect(
+                    configManager.writeConfig(name, { a: 1 }),
+                    `write ${JSON.stringify(name)}`
+                ).resolves.toBe(false)
+            }
+        })
+
+        it('should not create files outside the config directory for traversal names', async () => {
+            await configManager.writeConfig('../evil', { a: 1 })
+            expect(await fs.pathExists(path.join(hoisted.tmpRoot, 'evil.json'))).toBe(false)
+            expect(await fs.pathExists(path.join(CONFIG_DIR, 'evil.json'))).toBe(false)
+        })
+    })
+
+    describe('IPC handler registration', () => {
+        it('should register the two expected channels (P2：删除 3 个死通道)', () => {
+            registerConfigIpcHandlers()
+            for (const channel of ['baize:config:read', 'baize:config:write']) {
+                expect(ipcHandlers.map.has(channel), channel).toBe(true)
+            }
+            for (const removed of [
+                'baize:config:delete',
+                'baize:config:list',
+                'baize:config:ensure-dir'
+            ]) {
+                expect(ipcHandlers.map.has(removed), removed).toBe(false)
+            }
+        })
+
+        it('should route write/read through the registered handlers', async () => {
+            registerConfigIpcHandlers()
+            const write = ipcHandlers.map.get('baize:config:write')!
+            const read = ipcHandlers.map.get('baize:config:read')!
+
+            await expect(write(trustedEvent, 'show-welcome', true)).resolves.toBe(true)
+            await expect(read(trustedEvent, 'show-welcome')).resolves.toBe(true)
+        })
+
+        it('P1/N-05：非主窗口 sender 的配置读写被拒绝且不执行读写', async () => {
+            registerConfigIpcHandlers()
+            const write = ipcHandlers.map.get('baize:config:write')!
+            const read = ipcHandlers.map.get('baize:config:read')!
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const writeResult = await write(foreignEvent, 'ipc-config', { hello: 'world' })
+            const readResult = await read(foreignEvent, 'ipc-config')
+            expect(writeResult).toEqual(
+                expect.objectContaining({ ok: false, code: 'untrusted-sender' })
+            )
+            expect(readResult).toEqual(
+                expect.objectContaining({ ok: false, code: 'untrusted-sender' })
+            )
+            expect(consoleWarn).toHaveBeenCalled()
+            consoleWarn.mockRestore()
+        })
+
+        it('should reject invalid names through the IPC handlers', async () => {
+            registerConfigIpcHandlers()
+            const write = ipcHandlers.map.get('baize:config:write')!
+            const read = ipcHandlers.map.get('baize:config:read')!
+            await expect(write(trustedEvent, '../escape', { a: 1 })).resolves.toBe(false)
+            await expect(read(trustedEvent, '../escape')).resolves.toBeNull()
+        })
+    })
+
+    describe('ARC-04 store-backed config routing', () => {
+        it('should route system config to the main store instead of a bare system.json', async () => {
+            registerConfigIpcHandlers()
+            const write = ipcHandlers.map.get('baize:config:write')!
+            const read = ipcHandlers.map.get('baize:config:read')!
+
+            await expect(
+                write(trustedEvent, 'system', {
+                    autoSaveEnabled: false,
+                    autoSaveInterval: 120,
+                    fontFamily: 'Consolas',
+                    language: 'en',
+                    recentFilesCount: 15
+                })
+            ).resolves.toBe(true)
+
+            const stored = (await read(trustedEvent, 'system')) as Record<string, unknown>
+            expect(stored).toBeTruthy()
+            expect(stored.autoSaveEnabled).toBe(false)
+            expect(stored.autoSaveInterval).toBe(120)
+            expect(stored.fontFamily).toBe('Consolas')
+            expect(stored.language).toBe('en')
+            // ARC-04：渲染层扩展字段一并持久化到主 store
+            expect(stored.recentFilesCount).toBe(15)
+            // 不再产生裸 JSON system.json
+            expect(await fs.pathExists(path.join(CONFIG_DIR, 'system.json'))).toBe(false)
+        })
+
+        it('should read system defaults from the main store when nothing saved yet', async () => {
+            registerConfigIpcHandlers()
+            const read = ipcHandlers.map.get('baize:config:read')!
+            const stored = (await read(trustedEvent, 'system')) as Record<string, unknown>
+            expect(stored.autoSaveEnabled).toBe(true)
+            expect(stored.autoSaveInterval).toBe(60)
+            expect(stored.fontFamily).toContain('Microsoft YaHei')
+            // AS-9：远程图片隐私开关默认关闭（安全默认）
+            expect(stored.allowRemoteImages).toBe(false)
+        })
+
+        // P1-FE-06：已接通消费方的设置（语言/菜单栏形态）在写 system 配置后必须广播，
+        // 渲染层 i18n（setLocale）与菜单形态（menuBarStyle）才能即时生效。
+        it('broadcasts system settings to the main window after writing (language/menuBarStyle live apply)', async () => {
+            registerConfigIpcHandlers()
+            const write = ipcHandlers.map.get('baize:config:write')!
+            const send = vi.fn()
+            appState.mainWindow = {
+                isDestroyed: () => false,
+                webContents: { send }
+            } as never
+
+            await expect(
+                write(trustedEvent, 'system', { language: 'en-US', menuBarStyle: 'windows-native' })
+            ).resolves.toBe(true)
+
+            expect(send).toHaveBeenCalledWith(
+                IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+                expect.objectContaining({ language: 'en-US', menuBarStyle: 'windows-native' })
+            )
+            appState.mainWindow = null
+        })
+
+        // AS-9：远程图片隐私开关保存后立即落盘并随 system-setting-update 广播，
+        // 预览层（MarkdownPreviewComponent）据此即时拦截/放行远程图片（无需重启）。
+        it('persists allowRemoteImages and broadcasts it after writing (AS-9)', async () => {
+            registerConfigIpcHandlers()
+            const write = ipcHandlers.map.get('baize:config:write')!
+            const read = ipcHandlers.map.get('baize:config:read')!
+            const send = vi.fn()
+            appState.mainWindow = {
+                isDestroyed: () => false,
+                webContents: { send }
+            } as never
+
+            await expect(write(trustedEvent, 'system', { allowRemoteImages: true })).resolves.toBe(
+                true
+            )
+
+            const stored = (await read(trustedEvent, 'system')) as Record<string, unknown>
+            expect(stored.allowRemoteImages).toBe(true)
+            expect(send).toHaveBeenCalledWith(
+                IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+                expect.objectContaining({ allowRemoteImages: true })
+            )
+
+            // 关闭同样即时生效（广播 false）
+            send.mockClear()
+            await expect(write(trustedEvent, 'system', { allowRemoteImages: false })).resolves.toBe(
+                true
+            )
+            expect(send).toHaveBeenCalledWith(
+                IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+                expect.objectContaining({ allowRemoteImages: false })
+            )
+            appState.mainWindow = null
+        })
+
+        it('should route theme config to the main store and keep unset fields (ARC-05)', async () => {
+            registerConfigIpcHandlers()
+            const write = ipcHandlers.map.get('baize:config:write')!
+            const read = ipcHandlers.map.get('baize:config:read')!
+
+            await expect(write(trustedEvent, 'theme', { currentTheme: 'dark' })).resolves.toBe(true)
+            const stored = (await read(trustedEvent, 'theme')) as Record<string, unknown>
+            expect(stored.currentTheme).toBe('dark')
+            // 未传字段保留默认值（浅合并，不丢字段）
+            expect(stored.separateEditorTheme).toBe(false)
+            expect(stored.editorTheme).toBe('vs')
+            // 不再产生裸 JSON theme.json
+            expect(await fs.pathExists(path.join(CONFIG_DIR, 'theme.json'))).toBe(false)
+        })
+    })
+
+    describe('migrateLegacyConfigFiles (ARC-04)', () => {
+        it('should merge legacy system.json into the main store once and mark it migrated', async () => {
+            await fs.ensureDir(CONFIG_DIR)
+            await fs.writeFile(
+                path.join(CONFIG_DIR, 'system.json'),
+                JSON.stringify({ autoSaveEnabled: false, autoSaveInterval: 90, language: 'en' }),
+                'utf-8'
+            )
+
+            // 注册 IPC 时自动执行迁移
+            registerConfigIpcHandlers()
+
+            // 旧文件被改名标记（保留数据、只迁移一次）
+            expect(await fs.pathExists(path.join(CONFIG_DIR, 'system.json'))).toBe(false)
+            expect(await fs.pathExists(path.join(CONFIG_DIR, 'system.json.legacy-migrated'))).toBe(
+                true
+            )
+
+            const read = ipcHandlers.map.get('baize:config:read')!
+            const stored = (await read(trustedEvent, 'system')) as Record<string, unknown>
+            expect(stored.autoSaveEnabled).toBe(false)
+            expect(stored.autoSaveInterval).toBe(90)
+            expect(stored.language).toBe('en')
+        })
+
+        it('should not re-migrate after the legacy file has been marked', async () => {
+            await fs.ensureDir(CONFIG_DIR)
+            // 只放已标记文件，无 system.json → 迁移为无操作，且不破坏已标记文件
+            await fs.writeFile(
+                path.join(CONFIG_DIR, 'system.json.legacy-migrated'),
+                JSON.stringify({ autoSaveEnabled: false }),
+                'utf-8'
+            )
+            registerConfigIpcHandlers()
+            expect(await fs.pathExists(path.join(CONFIG_DIR, 'system.json.legacy-migrated'))).toBe(
+                true
+            )
+            expect(
+                await fs.pathExists(
+                    path.join(CONFIG_DIR, 'system.json.legacy-migrated.legacy-migrated')
+                )
+            ).toBe(false)
+        })
+
+        it('P1-FE-05：旧裸 editor.json 映射合并进主进程 editorSetting（不再双轨）', async () => {
+            await fs.ensureDir(CONFIG_DIR)
+            await fs.writeFile(
+                path.join(CONFIG_DIR, 'editor.json'),
+                JSON.stringify({
+                    fontSize: 19,
+                    lineHeight: 1.5,
+                    showLineNumbers: false,
+                    enableFolding: false
+                }),
+                'utf-8'
+            )
+
+            registerConfigIpcHandlers()
+
+            expect(await fs.pathExists(path.join(CONFIG_DIR, 'editor.json'))).toBe(false)
+            expect(await fs.pathExists(path.join(CONFIG_DIR, 'editor.json.legacy-migrated'))).toBe(
+                true
+            )
+
+            const read = ipcHandlers.map.get('baize:config:read')!
+            const stored = (await read(trustedEvent, 'editor')) as Record<string, unknown>
+            expect(stored.fontSize).toBe(19)
+            expect(stored.lineHeight).toBe(1.5)
+            expect(stored.showLineNumbers).toBe(false)
+            expect(stored.enableFolding).toBe(false)
+        })
+    })
+
+    // P1-FE-05：'editor' 配置读写与 Monaco 唯一真源 editorSetting 同源，保存后广播刷新
+    describe('P1-FE-05 editor config single-source routing', () => {
+        function readChannel() {
+            return ipcHandlers.map.get('baize:config:read')!
+        }
+        function writeChannel() {
+            return ipcHandlers.map.get('baize:config:write')!
+        }
+
+        it('routes editor writes into the main editorSetting and reads back the dialog shape', async () => {
+            registerConfigIpcHandlers()
+
+            await expect(
+                writeChannel()(trustedEvent, 'editor', {
+                    fontSize: 18,
+                    lineHeight: 1.5,
+                    showLineNumbers: false,
+                    enableFolding: false,
+                    enableAutoComplete: false,
+                    cursorStyle: 'block',
+                    cursorWidth: 3,
+                    autoSave: false,
+                    autoSaveInterval: 120
+                })
+            ).resolves.toBe(true)
+
+            const stored = (await readChannel()(trustedEvent, 'editor')) as Record<string, unknown>
+            expect(stored.fontSize).toBe(18)
+            expect(stored.lineHeight).toBe(1.5)
+            expect(stored.showLineNumbers).toBe(false)
+            expect(stored.enableFolding).toBe(false)
+            expect(stored.enableAutoComplete).toBe(false)
+            expect(stored.cursorStyle).toBe('block')
+            expect(stored.cursorWidth).toBe(3)
+
+            // 对话框中的自动保存字段并入系统设置（主进程自动保存定时器的唯一来源）
+            const system = (await readChannel()(trustedEvent, 'system')) as Record<string, unknown>
+            expect(system.autoSaveEnabled).toBe(false)
+            expect(system.autoSaveInterval).toBe(120)
+
+            // 唯一真源：不再产生 rendererEditorConfig 双轨键
+            expect(FakeStore.data.get('editor-setting')?.has('rendererEditorConfig')).toBe(false)
+        })
+
+        it('broadcasts the latest editor setting to the main window after saving', async () => {
+            registerConfigIpcHandlers()
+            const send = vi.fn()
+            appState.mainWindow = {
+                isDestroyed: () => false,
+                webContents: { send }
+            } as never
+
+            await expect(
+                writeChannel()(trustedEvent, 'editor', { fontSize: 22, cursorWidth: 4 })
+            ).resolves.toBe(true)
+
+            expect(send).toHaveBeenCalledWith(
+                IPC.EDITOR.INIT_SETTING,
+                expect.objectContaining({ fontSize: 22, cursorWidth: 4 })
+            )
+            appState.mainWindow = null
+        })
+    })
+
+    // P1-FE-06：'backup' 配置名承载备份/恢复命令（复用既有 CONFIG 通道，不新增 IPC 通道）
+    describe('P1-FE-06 config backup command routing', () => {
+        const STORE_CONFIG_DIR = path.join(hoisted.tmpRoot, '.baizenotes', 'config')
+
+        function readChannel() {
+            return ipcHandlers.map.get('baize:config:read')!
+        }
+        function writeChannel() {
+            return ipcHandlers.map.get('baize:config:write')!
+        }
+
+        async function seedConfigFiles(): Promise<void> {
+            await fs.ensureDir(STORE_CONFIG_DIR)
+            await fs.writeJson(path.join(STORE_CONFIG_DIR, 'systemSetting.json'), {
+                autoSaveEnabled: false,
+                autoSaveInterval: 120
+            })
+            await fs.writeJson(path.join(STORE_CONFIG_DIR, 'editor-setting.json'), {
+                editorSetting: { fontSize: 21, cursorWidth: 3 }
+            })
+        }
+
+        it('creates a backup and lists it through config:read', async () => {
+            await seedConfigFiles()
+            registerConfigIpcHandlers()
+
+            await expect(
+                writeChannel()(trustedEvent, 'backup', { action: 'create', keep: 5 })
+            ).resolves.toBe(true)
+
+            const state = (await readChannel()(trustedEvent, 'backup')) as {
+                backups: { name: string; fileCount: number }[]
+                latest: string | null
+            }
+            expect(state.backups).toHaveLength(1)
+            expect(state.latest).toBe(state.backups[0].name)
+            expect(state.backups[0].fileCount).toBe(2)
+            expect(
+                await fs.pathExists(
+                    path.join(hoisted.tmpRoot, '.baizenotes', 'config-backups', state.latest!)
+                )
+            ).toBe(true)
+        })
+
+        it('restores a backup and re-applies the values into the stores', async () => {
+            await seedConfigFiles()
+            registerConfigIpcHandlers()
+            await writeChannel()(trustedEvent, 'backup', { action: 'create', keep: 5 })
+            const state = (await readChannel()(trustedEvent, 'backup')) as { latest: string }
+
+            // 恢复前把配置目录改坏：恢复后应回到备份内容
+            await fs.writeJson(path.join(STORE_CONFIG_DIR, 'systemSetting.json'), {
+                autoSaveEnabled: true,
+                autoSaveInterval: 30
+            })
+            await fs.writeJson(path.join(STORE_CONFIG_DIR, 'editor-setting.json'), {
+                editorSetting: { fontSize: 99 }
+            })
+
+            await expect(
+                writeChannel()(trustedEvent, 'backup', { action: 'restore', name: state.latest })
+            ).resolves.toBe(true)
+
+            const system = (await readChannel()(trustedEvent, 'system')) as Record<string, unknown>
+            expect(system.autoSaveEnabled).toBe(false)
+            expect(system.autoSaveInterval).toBe(120)
+
+            const editor = (await readChannel()(trustedEvent, 'editor')) as Record<string, unknown>
+            expect(editor.fontSize).toBe(21)
+            expect(editor.cursorWidth).toBe(3)
+        })
+
+        it('rejects path-traversal / unknown / missing backup names', async () => {
+            registerConfigIpcHandlers()
+            await expect(
+                writeChannel()(trustedEvent, 'backup', { action: 'restore', name: '../evil' })
+            ).resolves.toBe(false)
+            await expect(
+                writeChannel()(trustedEvent, 'backup', {
+                    action: 'restore',
+                    name: 'config-backup-20990101-000000'
+                })
+            ).resolves.toBe(false)
+            await expect(
+                writeChannel()(trustedEvent, 'backup', { action: 'drop-everything' })
+            ).resolves.toBe(false)
+            await expect(writeChannel()(trustedEvent, 'backup', null)).resolves.toBe(false)
+        })
+
+        it('prunes old backups down to the requested keep count', async () => {
+            await seedConfigFiles()
+            registerConfigIpcHandlers()
+            await writeChannel()(trustedEvent, 'backup', { action: 'create', keep: 1 })
+            await writeChannel()(trustedEvent, 'backup', { action: 'create', keep: 1 })
+
+            const state = (await readChannel()(trustedEvent, 'backup')) as {
+                backups: { name: string }[]
+            }
+            expect(state.backups).toHaveLength(1)
+        })
+    })
+
+    // AS-4：配置写入白名单 + 字段级 schema 校验
+    describe('AS-4 config write whitelist and schema validation', () => {
+        let consoleWarn: ReturnType<typeof vi.spyOn>
+
+        beforeEach(() => {
+            consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            registerConfigIpcHandlers()
+        })
+
+        afterEach(() => {
+            consoleWarn.mockRestore()
+        })
+
+        function readChannel() {
+            return ipcHandlers.map.get('baize:config:read')!
+        }
+        function writeChannel() {
+            return ipcHandlers.map.get('baize:config:write')!
+        }
+
+        it('rejects unknown config names (write whitelist)', async () => {
+            registerConfigIpcHandlers()
+            await expect(writeChannel()(trustedEvent, 'evil-config', { a: 1 })).resolves.toBe(false)
+            await expect(writeChannel()(trustedEvent, 'roundtrip', { title: 'x' })).resolves.toBe(
+                false
+            )
+            // 未知名称不落盘
+            expect(await fs.pathExists(path.join(CONFIG_DIR, 'evil-config.json'))).toBe(false)
+        })
+
+        it('rejects non-object system payloads without throwing', async () => {
+            registerConfigIpcHandlers()
+            for (const payload of ['string', 42, null, undefined, [1, 2]]) {
+                await expect(writeChannel()(trustedEvent, 'system', payload)).resolves.toBe(false)
+            }
+        })
+
+        it('rejects a CSS-injection fontFamily and keeps the stored value unchanged', async () => {
+            await writeChannel()(trustedEvent, 'system', { fontFamily: 'Consolas' })
+            const injected = 'x; } body { background: url("https://attacker/t.png") } /*'
+            await expect(
+                writeChannel()(trustedEvent, 'system', { fontFamily: injected })
+            ).resolves.toBe(false)
+
+            const stored = (await readChannel()(trustedEvent, 'system')) as Record<string, unknown>
+            expect(stored.fontFamily).toBe('Consolas')
+        })
+
+        it('accepts a safe font family list and drops control characters', async () => {
+            await expect(
+                writeChannel()(trustedEvent, 'system', {
+                    fontFamily: '"Microsoft YaHei", -apple-system, "Segoe UI", sans-serif'
+                })
+            ).resolves.toBe(true)
+            const stored = (await readChannel()(trustedEvent, 'system')) as Record<string, unknown>
+            expect(stored.fontFamily).toContain('Microsoft YaHei')
+        })
+
+        it('clamps out-of-range numeric system settings instead of rejecting', async () => {
+            await expect(
+                writeChannel()(trustedEvent, 'system', {
+                    fontSize: 999,
+                    autoSaveInterval: 1,
+                    recentFilesCount: 10_000,
+                    backupCount: 0
+                })
+            ).resolves.toBe(true)
+
+            const stored = (await readChannel()(trustedEvent, 'system')) as Record<string, unknown>
+            expect(stored.fontSize).toBeLessThanOrEqual(72)
+            expect(stored.autoSaveInterval).toBeGreaterThanOrEqual(5)
+            expect(stored.recentFilesCount).toBeLessThanOrEqual(100)
+            expect(stored.backupCount).toBeGreaterThanOrEqual(1)
+        })
+
+        it('drops unknown system fields (no arbitrary key pollution)', async () => {
+            await expect(
+                writeChannel()(trustedEvent, 'system', { language: 'zh-CN', evilKey: 'payload' })
+            ).resolves.toBe(true)
+            const stored = (await readChannel()(trustedEvent, 'system')) as Record<string, unknown>
+            expect(stored.evilKey).toBeUndefined()
+            expect(stored.language).toBe('zh-CN')
+        })
+
+        it('rejects an unknown currentTheme and keeps the previous theme', async () => {
+            await writeChannel()(trustedEvent, 'theme', { currentTheme: 'dark' })
+            await expect(
+                writeChannel()(trustedEvent, 'theme', { currentTheme: 'no-such-theme' })
+            ).resolves.toBe(false)
+            const stored = (await readChannel()(trustedEvent, 'theme')) as Record<string, unknown>
+            expect(stored.currentTheme).toBe('dark')
+        })
+
+        it('rejects an unsafe editorTheme but accepts a safe monaco theme id', async () => {
+            await expect(
+                writeChannel()(trustedEvent, 'theme', { editorTheme: 'vs-dark' })
+            ).resolves.toBe(true)
+            await expect(
+                writeChannel()(trustedEvent, 'theme', { editorTheme: '../../evil' })
+            ).resolves.toBe(false)
+        })
+
+        it('clamps editor numeric fields and drops unknown editor fields', async () => {
+            await expect(
+                writeChannel()(trustedEvent, 'editor', {
+                    fontSize: 500,
+                    cursorWidth: 99,
+                    lineHeight: 0.01,
+                    unknownEditorField: true
+                })
+            ).resolves.toBe(true)
+            const stored = (await readChannel()(trustedEvent, 'editor')) as Record<string, unknown>
+            expect(stored.fontSize).toBeLessThanOrEqual(72)
+            expect(stored.cursorWidth).toBeLessThanOrEqual(10)
+            expect(stored.lineHeight).toBeGreaterThanOrEqual(0.5)
+            expect(stored.unknownEditorField).toBeUndefined()
+        })
+
+        it('rejects malformed quick-links payloads and drops invalid entries', async () => {
+            await expect(writeChannel()(trustedEvent, 'quickLinks', 'not-an-array')).resolves.toBe(
+                false
+            )
+            await expect(
+                writeChannel()(trustedEvent, 'quickLinks', {
+                    links: [
+                        { name: 'GitHub', url: 'https://github.com', icon: '🐙', description: '' },
+                        { name: '', url: 'https://evil.test' },
+                        { name: 'NoUrl', url: '' }
+                    ]
+                })
+            ).resolves.toBe(true)
+            const stored = (await readChannel()(trustedEvent, 'quickLinks')) as Array<{
+                name: string
+            }>
+            expect(stored).toHaveLength(1)
+            expect(stored[0].name).toBe('GitHub')
+        })
+
+        it('rejects non-array recent-folders and filters non-string entries', async () => {
+            await expect(
+                writeChannel()(trustedEvent, 'recent-folders', { folders: [] })
+            ).resolves.toBe(false)
+            await expect(
+                writeChannel()(trustedEvent, 'recent-folders', ['C:\\notes', 42, '', 'D:\\work'])
+            ).resolves.toBe(true)
+            const stored = (await readChannel()(trustedEvent, 'recent-folders')) as unknown[]
+            expect(stored).toEqual(['C:\\notes', 'D:\\work'])
+        })
+    })
+})

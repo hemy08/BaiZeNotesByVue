@@ -1,7 +1,7 @@
 import { OnInsertAfterCursor, replaceSelection, UpdateContextFormat } from './hemy-editor-common'
 import { MdEditQuickAccess } from './hemy-editor-quick-access'
 import { MonacoEditorDidChange, MonacoEditorKeyMaps } from './hemy-editor-shortcut'
-import { LoadLocalScript, MonacoEditorAddActions } from './hemy-editor-actions'
+import { MonacoEditorAddActions } from './hemy-editor-actions'
 import * as Render from './hemy-editor-render'
 import { MonacoEditorOptions, MonacoEditorOverride } from './editor-options'
 import { updateEditorOptions } from './editor-option-maps'
@@ -25,7 +25,6 @@ const UpdateContext = UpdateContextFormat
 export { updateEditorOptions }
 
 const AddActions = MonacoEditorAddActions
-const LoadScript = LoadLocalScript
 
 export {
     UpdateContext,
@@ -34,7 +33,6 @@ export {
     DidChange,
     AddActions,
     replaceSelection,
-    LoadScript,
     Options,
     Override,
     QuickAccess,

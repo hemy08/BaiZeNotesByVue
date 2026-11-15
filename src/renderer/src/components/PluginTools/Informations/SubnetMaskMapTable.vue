@@ -1,8 +1,8 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">子网掩码对照表</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">{{ t('toolsNetwork.infoTables.subnetMask.title') }}</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">IP地址 子网掩码对照表</p>
+        <p style="color: grey">{{ t('toolsNetwork.infoTables.subnetMask.desc') }}</p>
         <div>
             <input
                 v-model="searchQuery"
@@ -18,9 +18,15 @@
         >
             <thead>
                 <tr>
-                    <th class="subnet-mask-map-table-th">掩码</th>
-                    <th class="subnet-mask-map-table-th">位</th>
-                    <th class="subnet-mask-map-table-th">IP数</th>
+                    <th class="subnet-mask-map-table-th">
+                        {{ t('toolsNetwork.infoTables.subnetMask.mask') }}
+                    </th>
+                    <th class="subnet-mask-map-table-th">
+                        {{ t('toolsNetwork.infoTables.subnetMask.bits') }}
+                    </th>
+                    <th class="subnet-mask-map-table-th">
+                        {{ t('toolsNetwork.infoTables.subnetMask.ipCount') }}
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -36,6 +42,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import { SubnetMaskBitsTable } from './Information'
 
 const props = defineProps({

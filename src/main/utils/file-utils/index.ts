@@ -23,11 +23,7 @@ export {
 } from './dialog-helpers'
 
 // 自动保存
-export {
-    StartAutoSaveFileTime,
-    StopAutoSaveFileTime,
-    IsAutoSaveRunning
-} from './auto-save'
+export { StartAutoSaveFileTime, StopAutoSaveFileTime, IsAutoSaveRunning } from './auto-save'
 
 // 基础文件操作
 export {
@@ -47,7 +43,12 @@ export {
     OpenFolderExplorer,
     getMathRandom,
     RenameFileFolder,
-    DeleteFileFolder
+    DeleteFileFolder,
+    ReopenActiveFileWithEncoding,
+    ConvertActiveFileEncoding,
+    normalizeEncoding,
+    decodeFileContent,
+    encodeFileContent
 } from './file-operations'
 
 // 图片操作
@@ -67,13 +68,7 @@ export {
 } from './clipboard-operations'
 
 // 导入模块
-export {
-    InsertImportFormFile,
-    InsertImportFrom,
-    ImportCreateNewFile
-} from './import'
+export { InsertImportFormFile, InsertImportFrom, ImportCreateNewFile } from './import'
 
 // 导出模块
-export {
-    ExportToFile
-} from './export'
+export { ExportToFile } from './export'

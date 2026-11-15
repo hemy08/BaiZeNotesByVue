@@ -1,8 +1,10 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">常见字体对照</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">
+            {{ t('toolsNetwork.infoTables.normalFontStyle.title') }}
+        </h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">常见字体对照查询</p>
+        <p style="color: grey">{{ t('toolsNetwork.infoTables.normalFontStyle.desc') }}</p>
         <div>
             <input
                 v-model="searchQuery"
@@ -18,9 +20,15 @@
         >
             <thead>
                 <tr>
-                    <th class="normal-font-style-th">字体名称</th>
-                    <th class="normal-font-style-th">CSS样式</th>
-                    <th class="normal-font-style-th">页面展现</th>
+                    <th class="normal-font-style-th">
+                        {{ t('toolsNetwork.infoTables.normalFontStyle.fontName') }}
+                    </th>
+                    <th class="normal-font-style-th">
+                        {{ t('toolsNetwork.infoTables.normalFontStyle.cssStyle') }}
+                    </th>
+                    <th class="normal-font-style-th">
+                        {{ t('toolsNetwork.infoTables.normalFontStyle.preview') }}
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -38,6 +46,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import { NormalFontTable } from './Information'
 
 const props = defineProps({

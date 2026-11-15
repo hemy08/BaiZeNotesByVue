@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor'
+import { IPC } from '../../../../shared/ipc-channels'
 
 export function replaceSelection(
     editor: monaco.editor.IStandaloneCodeEditor,
@@ -357,13 +358,25 @@ export const EventHandleMaps = {
         editorOnPasteHandle(editor, context)
     },
     insertimage(context: string) {
-        window.electron.ipcRenderer.send('monaco-editor-container-insert-image', context)
+        window.electron.ipcRenderer.send(IPC.RENDER.INSERT_IMAGE, context)
     }
 }
 
+/**
+ * 上下文格式化处理器统一签名（CQ-1：EventHandleMaps 的键随样式名字符串动态变化，
+ * 需要按字符串索引分发；其中 `insertimage` 为历史不一致签名，且该键不由本入口分发）。
+ */
+type ContextFormatHandler = (editor: monaco.editor.IStandaloneCodeEditor, context: string) => void
+
 // 假设 editor 是您已经初始化的 Monaco Editor 实例
 export function UpdateContextFormat(editor: monaco.editor.IStandaloneCodeEditor, style: string) {
-    const handler = EventHandleMaps[style.toLowerCase()]
+    // CQ-1：字符串键索引需显式声明分发契约，避免隐式 any（TS7053）。
+    // insertimage 不参与本分发（工具栏经 onInsertImage 直接打开对话框），断言不影响其调用语义。
+    const contextFormatHandlers = EventHandleMaps as unknown as Record<
+        string,
+        ContextFormatHandler | undefined
+    >
+    const handler = contextFormatHandlers[style.toLowerCase()]
     if (handler) {
         handler(editor, style.toLowerCase())
     }

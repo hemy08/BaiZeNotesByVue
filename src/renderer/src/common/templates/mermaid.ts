@@ -569,7 +569,6 @@ const zenuml =
     '    }\n' +
     '```\n\n'
 
-
 // Export all
 export {
     C4Context,

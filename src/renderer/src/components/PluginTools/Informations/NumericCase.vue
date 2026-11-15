@@ -1,8 +1,8 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">数字大小写单位</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">{{ t('toolsNetwork.infoTables.numericCase.title') }}</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">数字大小写单位</p>
+        <p style="color: grey">{{ t('toolsNetwork.infoTables.numericCase.desc') }}</p>
         <div>
             <input
                 v-model="searchQuery"
@@ -18,9 +18,15 @@
         >
             <thead>
                 <tr>
-                    <th class="numeric-case-table-th">数码</th>
-                    <th class="numeric-case-table-th">小写数字</th>
-                    <th class="numeric-case-table-th">大写数字</th>
+                    <th class="numeric-case-table-th">
+                        {{ t('toolsNetwork.infoTables.numericCase.digit') }}
+                    </th>
+                    <th class="numeric-case-table-th">
+                        {{ t('toolsNetwork.infoTables.numericCase.lower') }}
+                    </th>
+                    <th class="numeric-case-table-th">
+                        {{ t('toolsNetwork.infoTables.numericCase.upper') }}
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -36,6 +42,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import { NumericCaseTable } from './Information'
 
 const props = defineProps({

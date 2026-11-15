@@ -1,8 +1,10 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">物理符号常量</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">
+            {{ t('toolsNetwork.infoTables.physicalSymbol.title') }}
+        </h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">物理符号常量查询</p>
+        <p style="color: grey">{{ t('toolsNetwork.infoTables.physicalSymbol.desc') }}</p>
         <div>
             <input
                 v-model="searchQuery"
@@ -18,9 +20,15 @@
         >
             <thead>
                 <tr>
-                    <th class="physical-symbol-table-th">符号</th>
-                    <th class="physical-symbol-table-th">名称</th>
-                    <th class="physical-symbol-table-th">说明</th>
+                    <th class="physical-symbol-table-th">
+                        {{ t('toolsNetwork.infoTables.physicalSymbol.symbol') }}
+                    </th>
+                    <th class="physical-symbol-table-th">
+                        {{ t('toolsNetwork.infoTables.physicalSymbol.name') }}
+                    </th>
+                    <th class="physical-symbol-table-th">
+                        {{ t('toolsNetwork.infoTables.physicalSymbol.explanation') }}
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -36,6 +44,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import { PhysicalTable } from './Information'
 
 const props = defineProps({

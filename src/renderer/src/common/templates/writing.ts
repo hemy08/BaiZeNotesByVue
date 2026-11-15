@@ -1,7 +1,7 @@
 // writing templates merged
 
 // ========== leetcode-problem-solving.ts ==========
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 const leetcode_problem_solving =
     '# 标题\n' +
     '\n' +
@@ -133,11 +133,5 @@ const thesisCoverPage =
     '作者信息\n\n' +
     '一句话简介\n\n'
 
-
 // Export all
-export {
-    leetcode_problem_solving,
-    problemResolving,
-    thesisTemplates,
-    thesisCoverPage
-}
+export { leetcode_problem_solving, problemResolving, thesisTemplates, thesisCoverPage }

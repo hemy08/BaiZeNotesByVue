@@ -1,0 +1,46 @@
+{
+    // 单元测试专项类型检查配置（P1-CQ-3）。
+    //
+    // 背景：tests/unit 下的 116 个测试文件此前从未进入任何 tsconfig 的 include，
+    // 因而 mock 类型漂移、私有成员访问、可能为 undefined 的返回值等错误完全不可见。
+    // 本配置只覆盖测试代码（含其 import 进来的 src 模块），不污染 tsconfig.node/web。
+    //
+    // 严格基线：strict + noImplicitAny（与 tsconfig.node/web 本轮修复后的基线一致）。
+    // 刻意不继承 @electron-toolkit/tsconfig 基座：其 noUnusedLocals/noUnusedParameters
+    // 对测试代码（mock 桩、unused fixture 等）噪音过大，纳入后会把类型检查变成 lint 检查。
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "strict": true,
+        "noImplicitAny": true,
+        "noEmit": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "resolveJsonModule": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
+        "noErrorTruncation": true,
+        "types": ["vitest/globals", "node"],
+        // 与 vitest.config.ts 的 resolve.alias 保持一致，测试里混用相对路径与别名均可解析。
+        "paths": {
+            "@renderer/*": ["./src/renderer/src/*"],
+            "@mainer/*": ["./src/main/*"]
+        }
+    },
+    // 测试通过 import 拉进来的 src 模块会用到 src 侧的环境声明（*.vue / vite 资源、
+    // Window.api/electron、monaco esm 子路径、无类型第三方库），但这些 .d.ts 不在
+    // tests/unit 下、也不会被 import，必须显式列入 include，否则测试程序里会报
+    // “Property 'api' does not exist” / TS2882 / TS7016 等假阳性。
+    "include": [
+        "tests/unit/**/*.ts",
+        "src/renderer/src/env.d.ts",
+        "src/preload/index.d.ts",
+        "src/main/global-types.d.ts",
+        "src/renderer/src/components/Markdown/monaco-worker-types.ts",
+        "src/renderer/src/components/Markdown/markdown-it-plantuml.d.ts",
+        "src/renderer/src/components/PluginTools/Encryption/crypto-js.d.ts"
+    ],
+    "exclude": ["node_modules", "out", "dist"]
+}

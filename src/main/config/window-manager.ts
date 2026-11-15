@@ -18,7 +18,10 @@ export class WindowManager {
     private windows: Map<string, WindowInfo> = new Map()
     private typeCounters: Map<string, number> = new Map()
 
-    private constructor() {}
+    private constructor() {
+        // 单例模式：私有构造函数，禁止外部实例化
+        void 0
+    }
 
     static getInstance(): WindowManager {
         if (!this.instance) {
@@ -84,7 +87,7 @@ export class WindowManager {
 
     closeWindowsByType(type: string) {
         const windows = this.getWindowsByType(type)
-        windows.forEach(window => {
+        windows.forEach((window) => {
             if (!window.isDestroyed()) {
                 window.close()
             }
@@ -115,26 +118,9 @@ export class WindowManager {
         this.typeCounters.clear()
     }
 
-    getStats() {
-        const typeStats: { [key: string]: number } = {}
-        this.typeCounters.forEach((count, type) => {
-            typeStats[type] = count
-        })
-
-        return {
-            totalWindows: this.windows.size,
-            typeStats,
-            details: Array.from(this.windows.entries()).map(([id, info]) => ({
-                id,
-                type: info.type,
-                createdAt: info.createdAt,
-                isDestroyed: info.window.isDestroyed()
-            }))
-        }
-    }
-
-    printStats() {
-    }
+    // A-5/ARC-15：已删除 getStats()/printStats() 死代码。
+    // 二者为仅供调试的窗口统计链（printStats 是 getStats 的唯一调用方），
+    // 全库（含测试）grep 零调用；窗口生命周期治理已在 cleanupWindow/closeAll 内完成。
 }
 
 export const windowManager = WindowManager.getInstance()

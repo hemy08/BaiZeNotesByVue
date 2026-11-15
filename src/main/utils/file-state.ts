@@ -1,113 +1,42 @@
 /**
- * 文件状态管理模块
- * 用于管理文件的打开状态、最近文件列表等
+ * 文件状态模块（ARC-11 重构后）
+ * 存储层已下沉至 file-state-store.ts（打破 file-state ↔ file-utils 循环依赖），
+ * 本文件仅保留「恢复上次打开的目录与文件」流程，并 re-export 存储 API
+ * 保持外部调用兼容（handlers.ts / index.ts / 各测试仍从本模块导入）。
  */
 
-// @ts-ignore
-import Store from 'electron-store'
 import * as path from 'path'
+import * as fs from 'fs'
 import { appState } from './app-state'
-// @ts-ignore
+import { logger } from './logger'
 import * as FileUtils from './file-utils/index'
+import * as FileStateStore from './file-state-store'
 
-// 文件状态配置接口
-export interface FileState {
-    lastOpenedFile: string | null
-    lastOpenedDirectory: string | null
-    recentFiles: string[]
-}
-
-// 创建文件状态存储实例
-const fileStateStore = new Store<FileState>({
-    name: 'fileState',
-    defaults: {
-        lastOpenedFile: null,
-        lastOpenedDirectory: null,
-        recentFiles: []
-    }
-})
-
-/**
- * 保存上次打开的文件
- */
-export function saveLastOpenedFile(filePath: string): void {
-    fileStateStore.set('lastOpenedFile', filePath)
-
-    // 同时添加到最近文件列表
-    const recentFiles = fileStateStore.get('recentFiles', []) as string[]
-    const updatedRecentFiles = [filePath, ...recentFiles.filter(f => f !== filePath)].slice(0, 10) // 最多保留10个
-    fileStateStore.set('recentFiles', updatedRecentFiles)
-}
-
-/**
- * 获取上次打开的文件
- */
-export function getLastOpenedFile(): string | null {
-    return fileStateStore.get('lastOpenedFile', null)
-}
-
-/**
- * 清除上次打开的文件
- */
-export function clearLastOpenedFile(): void {
-    fileStateStore.set('lastOpenedFile', null)
-}
-
-/**
- * 保存上次打开的目录
- */
-export function saveLastOpenedDirectory(dirPath: string): void {
-    fileStateStore.set('lastOpenedDirectory', dirPath)
-}
-
-/**
- * 获取上次打开的目录
- */
-export function getLastOpenedDirectory(): string | null {
-    return fileStateStore.get('lastOpenedDirectory', null)
-}
-
-/**
- * 清除上次打开的目录
- */
-export function clearLastOpenedDirectory(): void {
-    fileStateStore.set('lastOpenedDirectory', null)
-}
-
-/**
- * 获取最近文件列表
- */
-export function getRecentFiles(): string[] {
-    return fileStateStore.get('recentFiles', []) as string[]
-}
-
-/**
- * 清除最近文件列表
- */
-export function clearRecentFiles(): void {
-    fileStateStore.set('recentFiles', [])
-}
-
-/**
- * 从最近文件列表中移除指定文件
- */
-export function removeRecentFile(filePath: string): void {
-    const recentFiles = fileStateStore.get('recentFiles', []) as string[]
-    const updatedRecentFiles = recentFiles.filter(f => f !== filePath)
-    fileStateStore.set('recentFiles', updatedRecentFiles)
-}
+// ARC-11：re-export 存储 API（file-operations 等新引用请直接 import './file-state-store'）
+export type { FileState } from './file-state-store'
+export {
+    saveLastOpenedFile,
+    getLastOpenedFile,
+    clearLastOpenedFile,
+    saveLastOpenedDirectory,
+    getLastOpenedDirectory,
+    clearLastOpenedDirectory,
+    getRecentFiles,
+    clearRecentFiles,
+    removeRecentFile,
+    resetFileState
+} from './file-state-store'
 
 /**
  * 恢复上次打开的目录和文件
  */
 export async function restoreLastOpenedFile(): Promise<void> {
-    const lastFile = getLastOpenedFile()
-    const lastDir = getLastOpenedDirectory()
+    const lastFile = FileStateStore.getLastOpenedFile()
+    const lastDir = FileStateStore.getLastOpenedDirectory()
 
     // 先尝试恢复目录（如果存在）
     if (lastDir) {
         try {
-            const fs = require('fs')
             if (fs.existsSync(lastDir)) {
                 // 设置全局根路径
                 appState.rootPath = lastDir
@@ -116,20 +45,19 @@ export async function restoreLastOpenedFile(): Promise<void> {
                 await FileUtils.ReloadDirFromDisk()
 
                 // 保存上次打开的目录
-                saveLastOpenedDirectory(lastDir)
+                FileStateStore.saveLastOpenedDirectory(lastDir)
             } else {
-                clearLastOpenedDirectory()
+                FileStateStore.clearLastOpenedDirectory()
             }
         } catch (error) {
-            console.error('restore last time opened directory failed:', error)
-            clearLastOpenedDirectory()
+            logger.error('restore last time opened directory failed:', error)
+            FileStateStore.clearLastOpenedDirectory()
         }
     }
 
     // 然后尝试恢复文件（如果存在）
     if (lastFile) {
         try {
-            const fs = require('fs')
             if (fs.existsSync(lastFile)) {
                 // 创建FileProperties对象
                 const fileProperties = {
@@ -142,18 +70,11 @@ export async function restoreLastOpenedFile(): Promise<void> {
                 // 调用OpenSelectFile
                 await FileUtils.OpenSelectFile(fileProperties)
             } else {
-                clearLastOpenedFile()
+                FileStateStore.clearLastOpenedFile()
             }
         } catch (error) {
-            console.error('restore lastest open file failed:', error)
-            clearLastOpenedFile()
+            logger.error('restore lastest open file failed:', error)
+            FileStateStore.clearLastOpenedFile()
         }
     }
-}
-
-/**
- * 重置所有文件状态
- */
-export function resetFileState(): void {
-    fileStateStore.clear()
 }

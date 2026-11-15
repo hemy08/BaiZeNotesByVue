@@ -63,17 +63,6 @@ export function MonacoEditorAddActions(editor: monaco.editor.IStandaloneCodeEdit
         // 回调函数
         run: EnterAction
     })
-    editor.addAction({
-        id: 'hemy-custom-contextmenu',
-        label: 'Hemy Custom ContextMenu',
-        contextMenuGroupId: 'navigation',
-        // 回调函数
-        run: (_editor, ...args) => {
-            alert('args' + args)
-        }
-    })
-}
-
-export function LoadLocalScript() {
-    // Monaco editor is loaded via ESM import, no need for dynamic script loading
+    // FUN-30：已删除调试用的 "Hemy Custom ContextMenu" 右键菜单动作（原实现为
+    // alert('args' + args)），属调试残留且暴露在用户编辑器右键菜单中，无功能意义。
 }

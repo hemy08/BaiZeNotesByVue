@@ -68,14 +68,16 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import EventBus from "@renderer/common/event_bus/event-bus"
-import NaviTab from "@renderer/components/WorkSpaceArea/NaviTab.vue"
-import ResManager from "@renderer/components/ResourceManager/ResourceManager.vue"
-import MdContainer from "@renderer/components/Markdown/MarkdownContainer.vue"
-import PluginTools from "@renderer/components/PluginTools/PluginTools.vue"
-import HemyTools from "@renderer/components/HemyTools/HemyTools.vue"
-import ShowHtmlView from "@renderer/components/HemyTools/ShowHtmlVIew.vue"
-import ShowPdfEditor from "@renderer/components/HemyTools/ShowPdfEditor.vue";
+import EventBus from '@renderer/common/event-bus/event-bus'
+import NaviTab from '@renderer/components/WorkSpaceArea/NaviTab.vue'
+import ResManager from '@renderer/components/ResourceManager/ResourceManager.vue'
+import MdContainer from '@renderer/components/Markdown/MarkdownContainer.vue'
+import PluginTools from '@renderer/components/PluginTools/PluginTools.vue'
+import HemyTools from '@renderer/components/HemyTools/HemyTools.vue'
+import ShowHtmlView from '@renderer/components/HemyTools/ShowHtmlView.vue'
+import ShowPdfEditor from '@renderer/components/HemyTools/ShowPdfEditor.vue'
+import { IPC } from '../../../../shared/ipc-channels'
+import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 
 // 使用 ref 来创建响应式引用
 const naviResManagerShow = ref('file-explorer')
@@ -101,10 +103,10 @@ const workAreaWidth = computed(() => {
     const naviTabWidthValue = parseInt(naviTabWidth.value.replace('px', ''), 10)
     // 减去左右两侧的 naviTabWidth, resMgrWidth 以及可能的间隙（例如 2px）
     // 注意：左右两侧都有 NaviTab，所以需要减去 2 * naviTabWidthValue
-    let containerWidth = windowWidth.value - (naviTabWidthValue * 2) - 2
+    let containerWidth = windowWidth.value - naviTabWidthValue * 2 - 2
     if (isShowResourceMgrArea.value) {
         const resMgrWidthValue = parseInt(resMgrWidth.value.replace('px', ''), 10)
-        containerWidth = windowWidth.value - (naviTabWidthValue * 2) - resMgrWidthValue - 2
+        containerWidth = windowWidth.value - naviTabWidthValue * 2 - resMgrWidthValue - 2
     }
     return containerWidth + 'px'
 })
@@ -123,14 +125,20 @@ const handlePluginToolsContainerShow = (value: boolean) => {
 const handleWorkAreaContainerShow = (value: string) => {
     isShowMdContainer.value = false
     isShowPluginsContainer.value = false
+    isShowToolsContainer.value = false
     isShowHtmlContainer.value = false
     isShowPdfContainer.value = false
-    if (value === "plugins") {
+    if (value === 'plugins') {
         isShowPluginsContainer.value = true
-    } else if (value === "html") {
+    } else if (value === 'html') {
         isShowHtmlContainer.value = true
-    } else if (value === "pdf") {
+    } else if (value === 'pdf') {
         isShowPdfContainer.value = true
+    } else if (value === 'tools') {
+        // FE-26：工具面板（HemyTools 容器）此前没有对应分支——只能靠左侧导航直接
+        // 翻转 isShowToolsContainer，且不会隐藏编辑器容器（两个容器叠加显示）。
+        // 现纳入统一切换逻辑：显示工具面板时隐藏其他容器，'md' 可正常切回。
+        isShowToolsContainer.value = true
     } else {
         isShowMdContainer.value = true
     }
@@ -152,7 +160,12 @@ function onSwitchRightNaviTab(value: string) {
 
 function onSwitchLeftNaviTab(value: string) {
     if (value == 'switch-open-close') {
-        isShowToolsContainer.value = !isShowToolsContainer.value
+        // FE-26：左侧导航「当前项再次点击」= 工具面板开/关。原实现直接翻转
+        // isShowToolsContainer，不经过容器切换逻辑：工具面板打开时编辑器容器仍显示，
+        // 布局叠加且返回按钮无响应。现统一走 handleWorkAreaContainerShow，
+        // 保证各容器互斥，HemyTools.vue 的「返回编辑器」按钮（发 WORKSPACE_SHOW('md')）
+        // 也能正确隐藏工具面板。
+        handleWorkAreaContainerShow(isShowToolsContainer.value ? 'md' : 'tools')
     }
 }
 
@@ -195,18 +208,21 @@ onMounted(() => {
     windowWidth.value = window.innerWidth
     window.addEventListener('resize', onWindowResized)
 
-    EventBus.$on('plugin-tools-container-show', handlePluginToolsContainerShow)
-    EventBus.$on('baize:notes:workspace:show', handleWorkAreaContainerShow)
-    window.electron.ipcRenderer.on('menu-view-hide-display-res-manager', handleHideDisplayResManager)
+    EventBus.$on(EVENT_BUS.PLUGIN_TOOLS_CONTAINER_SHOW, handlePluginToolsContainerShow)
+    EventBus.$on(EVENT_BUS.WORKSPACE_SHOW, handleWorkAreaContainerShow)
+    window.electron.ipcRenderer.on(IPC.VIEW.TOGGLE_RES_MANAGER, handleHideDisplayResManager)
 })
 
 onBeforeUnmount(() => {
     window.removeEventListener('resize', onWindowResized)
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)
-    window.electron.ipcRenderer.removeListener('menu-view-hide-display-res-manager', handleHideDisplayResManager)
-    EventBus.$off('plugin-tools-container-show', handlePluginToolsContainerShow)
-    EventBus.$off('baize:notes:workspace:show', handleWorkAreaContainerShow)
+    window.electron.ipcRenderer.removeListener(
+        IPC.VIEW.TOGGLE_RES_MANAGER,
+        handleHideDisplayResManager
+    )
+    EventBus.$off(EVENT_BUS.PLUGIN_TOOLS_CONTAINER_SHOW, handlePluginToolsContainerShow)
+    EventBus.$off(EVENT_BUS.WORKSPACE_SHOW, handleWorkAreaContainerShow)
 })
 </script>
 

@@ -9,7 +9,6 @@ const blockcode =
     '```\n\n' +
     '</code></pre></blockcode></details>\n'
 
-
 const image_links = '![]()\n'
 const linksList =
     '- []()\n' + '- []()\n' + '- []()\n' + '- []()\n' + '- []()\n' + '- []()\n' + '- []()\n'
@@ -27,11 +26,5 @@ function getFmtData(): string {
     return `<span style="color:rgb(100,180,246);font-size:11pt">最后更新：${fmt_date}</span>\n`
 }
 
-
 // Export all
-export {
-    blockcode,
-    linksList,
-    image_links,
-    getFmtData
-}
+export { blockcode, linksList, image_links, getFmtData }

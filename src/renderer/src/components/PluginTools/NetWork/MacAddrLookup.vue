@@ -1,8 +1,10 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 style="display: flex; align-items: center; justify-content: center">MAC地址查找</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 style="display: flex; align-items: center; justify-content: center">
+            {{ t('toolsNetwork.network.macAddrLookup.title') }}
+        </h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">通过设备的MAC地址查找设备的供应商和制造商。</p>
+        <p style="color: grey">{{ t('toolsNetwork.network.macAddrLookup.desc') }}</p>
         <a
             class="plugin-tools-openurl"
             role="button"
@@ -10,11 +12,12 @@
         >
             https://tools.w3cschool.cn/mac-address-lookup
         </a>
-        <div :style="{ width: props.workAreaWidth }">TEST</div>
     </div>
 </template>
 
 <script setup lang="ts">
+import { t } from '../../../common/i18n'
+
 const props = defineProps({
     // 编辑器宽度
     workAreaWidth: {
@@ -23,10 +26,11 @@ const props = defineProps({
     }
 })
 
-function openUrl(link) {
+function openUrl(link: string) {
     window.open(link, '_blank', 'noopener, noreferrer')
 }
 </script>
 
 <style scoped>
-@import '../plugin-tools-theme.css';</style>
+@import '../plugin-tools-theme.css';
+</style>

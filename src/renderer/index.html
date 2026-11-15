@@ -1,15 +1,27 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="./src/styles/preview_font/atom-one-light.css">
-    <link rel="stylesheet" href="./src/styles/material/admonition.css">
-    <link rel="stylesheet" href="./src/styles/material/gridcards.css">
-    <link rel="stylesheet" href="./src/styles/sheet_dialog/normalize.css">
-  </head>
+    <head>
+        <meta charset="UTF-8" />
+        <!-- CMP-17：内容安全策略（纵深防御，XSS 后效阻断内联脚本执行）。
+         - script-src 'unsafe-eval'：Monaco/Vite 开发链路需要；
+         - style-src 'unsafe-inline'：Vue/Monaco/KaTeX 内联样式需要；
+         - img-src data: https: file:：Markdown 远程图片、base64 内嵌图与本地
+           相对路径图片（预览层将相对路径转换为 file:// 绝对 URL，FE-12）；
+         - frame-src 'self' file:：FE-11 PDF 预览改用 <iframe src="file://...">，
+           由 Electron 内置 PDF 查看器渲染；仅放行本地 file 协议（不放行远程 http(s) 帧）；
+         - connect-src localhost:：保留 Vite dev HMR（http/ws）。 -->
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: file:; font-src 'self' data:; frame-src 'self' file:; connect-src 'self' http://localhost:* ws://localhost:*; worker-src 'self' blob:"
+        />
+        <link rel="stylesheet" href="./src/styles/preview_font/atom-one-light.css" />
+        <link rel="stylesheet" href="./src/styles/material/admonition.css" />
+        <link rel="stylesheet" href="./src/styles/material/gridcards.css" />
+        <link rel="stylesheet" href="./src/styles/sheet_dialog/normalize.css" />
+    </head>
 
-  <body style="overflow: hidden">
-    <div id="app"></div>
-    <script type="module" src="./src/main.ts"></script>
-  </body>
+    <body style="overflow: hidden">
+        <div id="app"></div>
+        <script type="module" src="./src/main.ts"></script>
+    </body>
 </html>

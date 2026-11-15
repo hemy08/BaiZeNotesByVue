@@ -1,10 +1,12 @@
 /**
  * Monaco 编辑器主题注册表
- * 启动时从 resources/themes/monaco-themes/ 目录扫描所有主题 JSON 文件
+ * P-5（PF-15）：主题 JSON 按需读取——全量列表首次访问时构建并缓存，
+ * 单个主题数据（getMonacoThemeData）仅在首次访问该主题时异步读取对应 JSON
  */
 import { join } from 'path'
 import * as fs from 'node:fs'
 import { is } from '@electron-toolkit/utils'
+import { logger } from '../utils/logger'
 
 function getResourcesPath(): string {
     if (is.dev) {
@@ -16,6 +18,10 @@ function getResourcesPath(): string {
 export interface MonacoThemeConfig {
     name: string
     description: string
+    /** CMP-30：主题名称 i18n key（themeNames.monaco.<id>.name）；磁盘动态主题无此键，回退 name */
+    nameKey?: string
+    /** CMP-30：主题描述 i18n key；动态主题用 themeNames.monaco.dynamicDescription 模板（{name}） */
+    descKey?: string
     isDark: boolean
     backgroundColor?: string
     foregroundColor?: string
@@ -32,9 +38,11 @@ export interface MonacoThemeData {
 }
 
 const builtinThemes: Record<string, MonacoThemeConfig> = {
-    'vs': {
+    vs: {
         name: 'Visual Studio Light',
+        nameKey: 'themeNames.monaco.vs.name',
         description: 'Visual Studio 浅色主题',
+        descKey: 'themeNames.monaco.vs.description',
         isDark: false,
         backgroundColor: '#FFFFFF',
         foregroundColor: '#000000',
@@ -43,7 +51,9 @@ const builtinThemes: Record<string, MonacoThemeConfig> = {
     },
     'vs-dark': {
         name: 'Visual Studio Dark',
+        nameKey: 'themeNames.monaco.vs-dark.name',
         description: 'Visual Studio 深色主题',
+        descKey: 'themeNames.monaco.vs-dark.description',
         isDark: true,
         backgroundColor: '#1E1E1E',
         foregroundColor: '#D4D4D4',
@@ -52,7 +62,9 @@ const builtinThemes: Record<string, MonacoThemeConfig> = {
     },
     'hc-black': {
         name: 'High Contrast',
+        nameKey: 'themeNames.monaco.hc-black.name',
         description: '高对比度主题',
+        descKey: 'themeNames.monaco.hc-black.description',
         isDark: true,
         backgroundColor: '#000000',
         foregroundColor: '#FFFFFF',
@@ -62,9 +74,49 @@ const builtinThemes: Record<string, MonacoThemeConfig> = {
 }
 
 let allThemeNames: string[] = []
-let allThemeConfigs: Record<string, MonacoThemeConfig> = { ...builtinThemes }
+const allThemeConfigs: Record<string, MonacoThemeConfig> = { ...builtinThemes }
 const themeDataCache: Record<string, MonacoThemeData> = {}
-let initialized = false
+// P-5（PF-15）：主题目录文件名清单缓存（首次扫描后复用，避免重复 readdirSync）
+let themeFileNames: string[] | null = null
+// 全量主题列表是否已构建（已有缓存则保持）
+let allThemesLoaded = false
+
+function getThemesDir(): string {
+    const resourcesPath = getResourcesPath()
+    return join(resourcesPath, 'themes', 'monaco-themes', 'themes')
+}
+
+/** 扫描主题目录中的 JSON 文件名（结果缓存） */
+function scanThemeFiles(): string[] {
+    if (themeFileNames === null) {
+        try {
+            themeFileNames = fs
+                .readdirSync(getThemesDir())
+                .filter((f) => f.endsWith('.json') && f !== 'themelist.json')
+        } catch (error) {
+            logger.error('[Main] Failed to scan monaco theme directory', error)
+            themeFileNames = []
+        }
+    }
+    return themeFileNames
+}
+
+/** 同步读取并解析单个主题 JSON（供全量列表构建使用，结果缓存） */
+function loadThemeDataSync(themeName: string): MonacoThemeData | null {
+    if (themeDataCache[themeName]) {
+        return themeDataCache[themeName]
+    }
+    try {
+        const filePath = join(getThemesDir(), `${themeName}.json`)
+        const content = fs.readFileSync(filePath, 'utf-8')
+        const themeData = JSON.parse(content) as MonacoThemeData
+        themeDataCache[themeName] = themeData
+        return themeData
+    } catch (err) {
+        logger.error(`[Main] Failed to load monaco theme "${themeName}"`, err)
+        return null
+    }
+}
 
 function extractThemeConfig(themeName: string, themeData: MonacoThemeData): MonacoThemeConfig {
     const colors = themeData.colors || {}
@@ -77,7 +129,10 @@ function extractThemeConfig(themeName: string, themeData: MonacoThemeData): Mona
     let cardBg: string
     let borderClr: string
     if (isDark) {
-        cardBg = colors['editorWidget.background'] || colors['editor.lineHighlightBackground'] || lightenColor(bgColor, 15)
+        cardBg =
+            colors['editorWidget.background'] ||
+            colors['editor.lineHighlightBackground'] ||
+            lightenColor(bgColor, 15)
         borderClr = colors['editorWidget.border'] || lightenColor(bgColor, 30)
     } else {
         cardBg = colors['editorWidget.background'] || darkenColor(bgColor, 3)
@@ -87,6 +142,8 @@ function extractThemeConfig(themeName: string, themeData: MonacoThemeData): Mona
     return {
         name: themeName,
         description: themeName + ' 主题',
+        // CMP-30：磁盘动态主题名称不翻译（文件名即主题名），描述用「{name} 主题/theme」词典模板
+        descKey: 'themeNames.monaco.dynamicDescription',
         isDark,
         backgroundColor: bgColor,
         foregroundColor: fgColor,
@@ -97,67 +154,87 @@ function extractThemeConfig(themeName: string, themeData: MonacoThemeData): Mona
 
 function lightenColor(hex: string, amount: number): string {
     const num = parseInt(hex.replace('#', ''), 16)
-    const r = Math.min(255, ((num >> 16) & 0xFF) + amount)
-    const g = Math.min(255, ((num >> 8) & 0xFF) + amount)
-    const b = Math.min(255, (num & 0xFF) + amount)
+    const r = Math.min(255, ((num >> 16) & 0xff) + amount)
+    const g = Math.min(255, ((num >> 8) & 0xff) + amount)
+    const b = Math.min(255, (num & 0xff) + amount)
     return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')
 }
 
 function darkenColor(hex: string, amount: number): string {
     const num = parseInt(hex.replace('#', ''), 16)
-    const r = Math.max(0, ((num >> 16) & 0xFF) - amount)
-    const g = Math.max(0, ((num >> 8) & 0xFF) - amount)
-    const b = Math.max(0, (num & 0xFF) - amount)
+    const r = Math.max(0, ((num >> 16) & 0xff) - amount)
+    const g = Math.max(0, ((num >> 8) & 0xff) - amount)
+    const b = Math.max(0, (num & 0xff) - amount)
     return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')
 }
 
 function initializeRegistry(): void {
-    if (initialized) return
+    if (allThemesLoaded) return
 
     try {
-        const resourcesPath = getResourcesPath()
-        const themesDir = join(resourcesPath, 'themes', 'monaco-themes', 'themes')
-
-        const files = fs.readdirSync(themesDir)
-            .filter(f => f.endsWith('.json') && f !== 'themelist.json')
+        const files = scanThemeFiles()
 
         for (const file of files) {
             const themeName = file.replace(/\.json$/, '')
 
-            try {
-                const filePath = join(themesDir, file)
-                const content = fs.readFileSync(filePath, 'utf-8')
-                const themeData = JSON.parse(content)
-
-                themeDataCache[themeName] = themeData
+            const themeData = loadThemeDataSync(themeName)
+            if (themeData) {
                 allThemeConfigs[themeName] = extractThemeConfig(themeName, themeData)
-            } catch (err) {
-                console.error("", err)
             }
         }
 
         allThemeNames = [
             ...Object.keys(builtinThemes),
-            ...files.map(f => f.replace(/\.json$/, '')).sort((a, b) => a.localeCompare(b))
+            ...files.map((f) => f.replace(/\.json$/, '')).sort((a, b) => a.localeCompare(b))
         ]
 
-        initialized = true
+        allThemesLoaded = true
     } catch (error) {
-        console.error('[Main] Failed to initialize monaco theme registry', error)
+        logger.error('[Main] Failed to initialize monaco theme registry', error)
         allThemeNames = Object.keys(builtinThemes)
-        initialized = true
+        allThemesLoaded = true
     }
 }
 
 export function getAllMonacoThemes(): { type: string; config: MonacoThemeConfig }[] {
+    // P-5（PF-15）：仅在首次访问时读取全部主题 JSON，之后命中缓存
     initializeRegistry()
-    return allThemeNames.map(type => ({
-        type,
-        config: allThemeConfigs[type]
-    })).filter(item => item.config !== undefined)
+    return allThemeNames
+        .map((type) => ({
+            type,
+            config: allThemeConfigs[type]
+        }))
+        .filter((item) => item.config !== undefined)
 }
 
-export function getMonacoThemeData(themeName: string): MonacoThemeData | null {
-    initializeRegistry()
-    return themeDataCache[themeName] || null
+export async function getMonacoThemeData(themeName: string): Promise<MonacoThemeData | null> {
+    // 内置主题没有对应 JSON 文件
+    if (!themeName || builtinThemes[themeName]) {
+        return null
+    }
+    // 拒绝含路径分隔符/上级目录的主题名与清单文件，防路径逃逸
+    if (
+        themeName.includes('/') ||
+        themeName.includes('\\') ||
+        themeName.includes('..') ||
+        themeName === 'themelist'
+    ) {
+        return null
+    }
+    // P-5（PF-15）：命中缓存直接返回；未命中才按需读取该主题对应的 JSON，
+    // 不再为单个主题触发 55 个文件的读取
+    if (themeDataCache[themeName]) {
+        return themeDataCache[themeName]
+    }
+
+    const filePath = join(getThemesDir(), `${themeName}.json`)
+    try {
+        const content = await fs.promises.readFile(filePath, 'utf-8')
+        const themeData = JSON.parse(content) as MonacoThemeData
+        themeDataCache[themeName] = themeData
+        return themeData
+    } catch (err) {
+        logger.error(`[Main] Failed to load monaco theme "${themeName}"`, err)
+        return null
+    }
 }

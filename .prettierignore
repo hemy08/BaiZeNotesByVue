@@ -1,6 +1,23 @@
+# Prettier 忽略清单（ET-12）
+# 生成产物与依赖
+node_modules
 out
 dist
+coverage/
+package-lock.json
 pnpm-lock.yaml
+
+# 历史报告与文档快照（保持历史原貌，不做格式化）
+docs/reports/
+docs/wiki/
+docs/images/
+
+# 第三方资源（原样引入，不格式化）
+resources/plantuml/
+resources/themes/
+resources/_unused-assets/
+
+# 许可证与生成的 tsconfig
 LICENSE.md
 tsconfig.json
 tsconfig.*.json

@@ -1,11 +1,12 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">Hash 哈希文本生成，非对称加密</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">{{ t('toolsConvert.hash.title') }}</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">
-            使用所需的函数哈希文本字符串：MD5、SHA1、SHA256、SHA224、SHA512、SHA384、SHA3或RIPEMD160
-            <br />先将输入进行encode，然后根据算法获取对应的哈希值，最后在进行响应的编码，得到最终的结果，文中使用的是CryptoJS
-            <br />二进制的编码，是将对应的16进制编码转换为二进制进行显示，不是直接对哈希结果array进行处理
+            {{ t('toolsConvert.hash.descriptionLine1') }}
+            <br />{{ t('toolsConvert.hash.descriptionLine2') }} <br />{{
+                t('toolsConvert.hash.descriptionLine3')
+            }}
         </p>
         <a
             class="plugin-tools-openurl"
@@ -14,16 +15,20 @@
         >
             https://tools.w3cschool.cn/hash-text
         </a>
-        <div style="margin-top: 5px"><label>需要进行HASH的文本：</label></div>
+        <div style="margin-top: 5px">
+            <label>{{ t('toolsConvert.hash.inputLabel') }}</label>
+        </div>
         <div>
             <textarea
                 id="hash-text-input"
                 v-model="textInput"
-                placeholder="请输入你的文本..."
+                :placeholder="t('toolsConvert.hash.inputPlaceholder')"
                 :style="{ width: props.workAreaWidth, height: '100px' }"
             ></textarea>
         </div>
-        <div style="margin-top: 5px"><label>摘要编码：</label></div>
+        <div style="margin-top: 5px">
+            <label>{{ t('toolsConvert.hash.encodeLabel') }}</label>
+        </div>
         <select
             id="hash-text-encode-type"
             v-model="encodeType"
@@ -47,7 +52,7 @@
                 type="text"
                 class="hash-text-result-output"
                 :style="hashResultStyle"
-                :placeholder="item.text + '哈希结果...'"
+                :placeholder="t('toolsConvert.hash.resultPlaceholder', { algorithm: item.text })"
                 :value="item.result"
                 readonly
             />
@@ -56,14 +61,17 @@
                 :style="{ width: hashButtonWidth }"
                 @click="onCopyToClipboard(item.result)"
             >
-                复制
+                {{ t('common.copy') }}
             </button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed  } from 'vue'
+import { ref, watch, computed, reactive } from 'vue'
+import { t } from '../../../common/i18n'
+import { IPC } from '../../../../../shared/ipc-channels'
+import { logger } from '../../../common/logger'
 
 const props = defineProps({
     // 编辑器宽度
@@ -77,7 +85,8 @@ const textInput = ref('')
 const encodeType = ref('Hexadecimal')
 const hashLabelWidth = ref('150px')
 const hashButtonWidth = ref('100px')
-const hashTextInput = [
+// CQ-10：结果改为异步 invoke 后，必须使用响应式数组，否则结果回填不会触发视图更新
+const hashTextInput = reactive([
     { id: 'hash-text-md4', text: 'MD4', result: '' },
     { id: 'hash-text-md5', text: 'MD5', result: '' },
     { id: 'hash-text-sha1', text: 'SHA1', result: '' },
@@ -87,7 +96,7 @@ const hashTextInput = [
     { id: 'hash-text-sha512', text: 'SHA512', result: '' },
     { id: 'hash-text-sha512-256', text: 'SHA512-256', result: '' },
     { id: 'hash-text-ripemd160', text: 'RIPEMD160', result: '' }
-]
+])
 
 const hashResultStyle = computed(() => {
     const hashViewWidthValue = parseInt(props.workAreaWidth.replace('px', ''), 10)
@@ -99,7 +108,7 @@ const hashResultStyle = computed(() => {
     }
 })
 
-function openUrl(link) {
+function openUrl(link: string) {
     window.open(link, '_blank', 'noopener, noreferrer')
 }
 
@@ -118,22 +127,43 @@ watch(
     () => encodeType.value,
     () => {
         if (!textInput.value) {
-            alert('请先输入要进行Hash的文本....')
+            alert(t('toolsConvert.hash.emptyInputAlert'))
             return
         }
         getHashTextResult()
     }
 )
 
-function getHashTextResult() {
-    const result = window.electron.ipcRenderer.sendSync(
-        'plugin-tools-generator-hash-text',
-        textInput.value,
-        encodeType.value
-    )
-    hashTextInput.forEach((item) => {
-        item.result = result[item.text] // 使用方括号语法来动态访问属性
-    })
+// CQ-10/PF-11/ARC-21：sendSync 同步 IPC 改为 invoke 异步，快速输入时用序号丢弃过期响应
+let hashRequestSeq = 0
+
+async function getHashTextResult(): Promise<void> {
+    const requestSeq = ++hashRequestSeq
+    try {
+        const result = (await window.electron.ipcRenderer.invoke(
+            IPC.PLUGIN.HASH_TEXT,
+            textInput.value,
+            encodeType.value
+        )) as Record<string, string>
+        // 过期响应直接丢弃，避免先发后至的旧结果覆盖新结果
+        if (requestSeq !== hashRequestSeq) {
+            return
+        }
+        hashTextInput.forEach((item) => {
+            item.result = result[item.text] ?? '' // 使用方括号语法来动态访问属性
+        })
+    } catch (error) {
+        if (requestSeq !== hashRequestSeq) {
+            return
+        }
+        // CQ-05：异步调用必须 catch，失败时提示用户而不是静默
+        logger.error('计算哈希失败:', error)
+        alert(
+            t('toolsConvert.hash.failedAlert', {
+                error: error instanceof Error ? error.message : String(error)
+            })
+        )
+    }
 }
 </script>
 

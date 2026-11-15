@@ -1,168 +1,193 @@
+/**
+ * IPC 通道常量（ARC-03：全项目唯一真源）
+ *
+ * 规则：
+ * - 主进程 / preload / 渲染层的 ipcMain、ipcRenderer、webContents.send、
+ *   ipcListenerManager 注册一律引用本文件常量，禁止再写通道字符串字面量；
+ * - 通道字符串统一为 `baize:<domain>:<name>`（2026-11-15 命名统一后，本文件 89 个
+ *   通道 100% 带 `baize:` 前缀，domain 限定 18 个白名单，见
+ *   tests/unit/ipc-channel-naming.test.ts；历史前缀 baize-notes:* / baize:notes:*
+ *   与无前缀通道已全部清理）；
+ * - 常量分组沿用历史归属：个别常量所在组与通道 domain 不一致（CQ-13 的 5 处域错配，
+ *   已在各组内就地注明）。为避免 IPC.X.Y 全仓引用大改，只补注释、不移动常量；
+ * - 同名通道只定义一份（如 get-quick-links 统一放 QUICK_LINKS 组）。
+ *
+ * 防回归：tests/unit/ipc-channel-constants.test.ts 用 fs 解析本文件与
+ * src 下全部 IPC 调用点做交叉核对。
+ */
 export const IPC = {
-  WINDOW: {
-    MINIMIZE: 'window-minimize',
-    MAXIMIZE: 'window-maximize',
-    UNMAXIMIZE: 'window-unmaximize',
-    CLOSE: 'window-close',
-    TOGGLE_MAXIMIZE: 'window-toggle-maximize',
-    GET_BOUNDS: 'window-get-bounds',
-    IS_MAXIMIZED: 'window-is-maximized',
-    START_DRAG: 'window-start-drag',
-    MOVE: 'window-move',
-    SET_SIZE: 'window-set-size',
-  } as const,
+    // ============ 窗口控制 ============
+    WINDOW: {
+        MINIMIZE: 'baize:window:minimize',
+        MAXIMIZE: 'baize:window:maximize',
+        CLOSE: 'baize:window:close',
+        TOGGLE_MAXIMIZE: 'baize:window:toggle-maximize',
+        GET_BOUNDS: 'baize:window:get-bounds',
+        IS_MAXIMIZED: 'baize:window:is-maximized',
+        START_DRAG: 'baize:window:start-drag',
+        MOVE: 'baize:window:move',
+        SET_SIZE: 'baize:window:set-size'
+    } as const,
 
-  CONFIG: {
-    READ: 'config:read',
-    WRITE: 'config:write',
-    DELETE: 'config:delete',
-    LIST: 'config:list',
-    ENSURE_DIR: 'config:ensure-dir',
-  } as const,
+    // ============ 配置文件 API（config-manager，渲染层经 window.api.config.*） ============
+    CONFIG: {
+        READ: 'baize:config:read',
+        WRITE: 'baize:config:write'
+    } as const,
 
-  THEME: {
-    UPDATE_THEME: 'baize-notes:update-theme',
-    THEME_UPDATED: 'baize-notes:theme-updated',
-    THEME_UPDATE: 'baize-notes:theme-update',
-    INIT_THEME_STYLES: 'baize-notes:init-theme-styles',
-    INIT_EDITOR_SETTING: 'baize-notes:init-editor-setting',
-    LOAD_MONACO_THEME: 'baize-notes:load-monaco-theme',
-    GET_CURRENT_THEME: 'get-current-theme',
-    GET_CURRENT_THEME_STYLES: 'get-current-theme-styles',
-    GET_ALL_THEMES: 'get-all-themes',
-    GET_ALL_MONACO_THEMES: 'get-all-monaco-themes',
-    GET_SEPARATE_EDITOR_THEME: 'get-separate-editor-theme',
-    GET_MONACO_THEME: 'get-monaco-theme',
-    DIALOG_BROADCAST_THEME: 'dialog-broadcast-theme',
-  } as const,
+    // ============ 主题 ============
+    THEME: {
+        UPDATE_THEME: 'baize:theme:update',
+        THEME_UPDATED: 'baize:theme:updated',
+        INIT_THEME_STYLES: 'baize:theme:init-styles',
+        LOAD_MONACO_THEME: 'baize:theme:load-monaco',
+        GET_CURRENT_THEME_STYLES: 'baize:theme:get-current-styles',
+        GET_ALL_THEMES: 'baize:theme:get-all',
+        GET_ALL_MONACO_THEMES: 'baize:theme:get-all-monaco'
+    } as const,
 
-  MENU: {
-    ACTION: 'baize-notes:menu-action',
-  } as const,
+    // ============ 菜单 ============
+    MENU: {
+        ACTION: 'baize:menu:action'
+    } as const,
 
-  EDITOR: {
-    GET_SETTING: 'baize-notes:get-editor-setting',
-    SETTING_UPDATED: 'baize-notes:editor-setting-updated',
-    RELAYOUT: 'baize-notes:editor-relayout',
-    UPDATE_OPTIONS: 'baize-notes:monaco-editor-update-options',
-    UPDATE_FONT: 'baize-notes:update-editor-font',
-    SYSTEM_SETTING_UPDATE: 'baize-notes:system-setting-update',
-  } as const,
+    // ============ 编辑器 ============
+    EDITOR: {
+        GET_SETTING: 'baize:editor:get-setting',
+        INIT_SETTING: 'baize:editor:init-setting',
+        UPDATE_OPTIONS: 'baize:editor:update-options',
+        // CQ-13 域错配：通道 domain 是 setting（系统设置变更广播），历史放在 EDITOR 组；
+        // 引用点为 IPC.EDITOR.SYSTEM_SETTING_UPDATE，移动需全仓改引用，故仅注明保留原位。
+        SYSTEM_SETTING_UPDATE: 'baize:setting:updated',
+        // D-3/FUN-03：关闭/退出落盘协议（主进程 → 渲染层 → 回执）
+        FLUSH_CONTENT: 'baize:editor:flush-content',
+        FLUSH_CONTENT_DONE: 'baize:editor:flush-content-done'
+    } as const,
 
-  FILE: {
-    OPEN_SPECIFIC_FOLDER: 'baize:notes:open-specific-folder',
-    WELCOME_OPEN_DIRECTORY: 'baize:notes:welcome:open-directory',
-    WELCOME_OPEN_FILE: 'baize:notes:welcome:open-file',
-    WELCOME_ENTER_MAIN: 'baize:notes:welcome:enter-main',
-    OPEN_SELECT_FILE: 'baize:notes:open-select-file',
-    IMPORT_NEW_FILE: 'baize-notes:import-new-file',
-    CREATE_FILE_FOLDER: 'baize-notes:create-file-folder',
-    GET_CURRENT_FILE_PATH: 'baize-notes:get-current-file-path',
-    SELECT_DIRECTORY: 'baize-notes:select-directory',
-    CLEAR_EDITOR_PREVIEW: 'clear-editor-and-preview',
-    SAVE_TO_DISK: 'save-file-content-to-disk',
-    UPDATE_SELECT_FILE_CONTENT: 'update-select-file-content',
-    CHECK_EXISTS: 'check-file-exists',
-    READ_HTML: 'read-html-file',
-    OPEN_EXTERNAL_LINK: 'open-external-link',
-    SYSTEM_INFO: 'get-system-info',
-    APP_VERSION: 'app:get-version',
-  } as const,
+    // ============ 文件 ============
+    FILE: {
+        OPEN_SPECIFIC_FOLDER: 'baize:file:open-specific-folder',
+        WELCOME_OPEN_DIRECTORY: 'baize:file:welcome-open-directory',
+        WELCOME_OPEN_FILE: 'baize:file:welcome-open-file',
+        WELCOME_ENTER_MAIN: 'baize:file:welcome-enter-main',
+        OPEN_SELECT_FILE: 'baize:file:open-select-file',
+        IMPORT_NEW_FILE: 'baize:file:import',
+        CREATE_FILE_FOLDER: 'baize:file:create-entry',
+        GET_CURRENT_FILE_PATH: 'baize:file:get-current-path',
+        SELECT_DIRECTORY: 'baize:file:select-directory',
+        // P1-FE-03：插入图片对话框「本地文件」浏览——主进程弹出系统图片选择框，
+        // 返回选中文件绝对路径，并尽力复制到当前文档同目录的 images/ 下，
+        // 返回可直接写入 Markdown 的相对引用（无活动文件/复制失败时回退绝对路径）。
+        SELECT_IMAGE: 'baize:file:select-image',
+        CLEAR_EDITOR_PREVIEW: 'baize:file:clear-editor-preview',
+        SAVE_TO_DISK: 'baize:file:save-content-to-disk',
+        UPDATE_SELECT_FILE_CONTENT: 'baize:file:update-content',
+        CHECK_EXISTS: 'baize:file:check-exists',
+        READ_HTML: 'baize:file:read-html',
+        // CQ-13 域错配：以下 3 个通道的 domain 是 system（系统信息/外链），历史放在 FILE 组；
+        // 引用点为 IPC.FILE.*，移动需全仓改引用，故仅注明保留原位。
+        OPEN_EXTERNAL_LINK: 'baize:system:open-external-link',
+        SYSTEM_INFO: 'baize:system:get-info',
+        APP_VERSION: 'baize:system:app-version',
+        USER_SELECT_FILE: 'baize:file:user-select-file'
+    } as const,
 
-  FILE_MANAGER: {
-    COPY_RELATIVE_PATH: 'file-manager-context-menu-copy-relative-path',
-    COPY_IMAGELINK: 'file-manager-context-menu-copy-imagelink',
-    COPY_FILELINK: 'file-manager-context-menu-copy-filelink',
-    COPY_FILE: 'file-manager-context-menu-copy-file',
-    CUT: 'file-manager-context-menu-cut',
-    PASTE: 'file-manager-context-menu-paste',
-    OPEN_IN_EXPLORER: 'file-manager-context-menu-open-in-explorer',
-    RELOAD_FROM_DISK: 'file-manager-context-menu-reload-from-disk',
-    FILE_SYSTEM_DATA: 'baize:notes:resource:manager:file-system-data',
-  } as const,
+    // ============ 文件管理器右键菜单 ============
+    FILE_MANAGER: {
+        COPY_RELATIVE_PATH: 'baize:fs:copy-relative-path',
+        COPY_IMAGELINK: 'baize:fs:copy-image-link',
+        COPY_FILELINK: 'baize:fs:copy-file-link',
+        COPY_FILE: 'baize:fs:copy-file',
+        CUT: 'baize:fs:cut',
+        PASTE: 'baize:fs:paste',
+        OPEN_IN_EXPLORER: 'baize:fs:open-in-explorer',
+        RELOAD_FROM_DISK: 'baize:fs:reload-from-disk',
+        CREATE_FILE: 'baize:fs:create-file',
+        RENAME: 'baize:fs:rename',
+        DELETE: 'baize:fs:delete',
+        IMPORT_FROM: 'baize:fs:import-from',
+        FIND_IN: 'baize:fs:find-in',
+        FILE_SYSTEM_DATA: 'baize:fs:file-system-data'
+    } as const,
 
-  PLUGIN: {
-    RSA_GENERATE: 'plugin-tools-generator-rsa-key-pairs',
-    RSA_RESULT: 'plugin-tools-generator-rsa-result',
-    HASH_TEXT: 'plugin-tools-generator-hash-text',
-    HMAC_TEXT: 'plugin-tools-generator-hmac-text',
-    CRYPTO_ENCRYPT: 'plugin-tools-crypto-encrypt',
-    CRYPTO_DECRYPT: 'plugin-tools-crypto-decrypt',
-    SHOW: 'CHANNEL_PLUGIN_TOOL_SHOW',
-  } as const,
+    // ============ 插件工具（加解密/生成器） ============
+    PLUGIN: {
+        RSA_GENERATE: 'baize:plugin:rsa-generate',
+        RSA_RESULT: 'baize:plugin:rsa-result',
+        HASH_TEXT: 'baize:plugin:hash-text',
+        HMAC_TEXT: 'baize:plugin:hmac-text',
+        CRYPTO_ENCRYPT: 'baize:plugin:crypto-encrypt',
+        CRYPTO_DECRYPT: 'baize:plugin:crypto-decrypt'
+    } as const,
 
-  RENDER: {
-    PRE_RENDER: 'pre-render-monaco-editor-content',
-    POST_RENDER: 'post-render-monaco-editor-content',
-    PRE_RENDER_RESULT: 'pre-render-monaco-editor-content-result',
-    POST_RENDER_RESULT: 'post-render-monaco-editor-content-result',
-    INSERT_IMAGE: 'monaco-editor-container-insert-image',
-  } as const,
+    // ============ 渲染（Markdown 预览本地渲染与图片插入） ============
+    // PF-02：原 PRE_RENDER / POST_RENDER / PRE_RENDER_RESULT / POST_RENDER_RESULT 四个
+    // 主进程渲染通道已随"预览本地单跳渲染"重构移除（渲染层 preview-local-render.ts 完成）。
+    RENDER: {
+        INSERT_IMAGE: 'baize:render:insert-image',
+        // PF-08：PlantUML 本地离线渲染（主进程隐藏窗口），渲染层 invoke 调用
+        PLANTUML_LOCAL: 'baize:render:plantuml-local'
+    } as const,
 
-  DIALOG: {
-    CREATE_FILE_FOLDER_ENTER: 'dialog-create-file-folder-enter',
-    RENAME_FILE_FOLDER_ENTER: 'dialog-rename-file-folder-enter',
-    SYSTEM_SETTING_APPLY: 'dialog-system-setting-apply',
-    SYSTEM_SETTING_CONFIRM: 'dialog-system-setting-confirm',
-    SYSTEM_SETTING_CANCEL: 'dialog-system-setting-cancel',
-    SAVE_QUICK_LINKS: 'baize-notes:save-quick-links',
-    RESET_QUICK_LINKS: 'baize-notes:reset-quick-links',
-    FONT_SELECT_INSERT: 'dialog-user-font-select-btn-insert',
-    FONT_SELECT_CANCEL: 'dialog-user-font-select-btn-cancel',
-    MERMAID_RENDER_RESULT: 'dialog-mermaid-render-svg-result',
-    OPEN_VUE_DIALOG: 'open-vue-dialog',
-    OPEN_PLUGIN_TOOL: 'open-plugin-tool',
-    QUICK_LINKS_UPDATED: 'baize-notes:quick-links-updated',
-    INIT_QUICK_LINKS: 'baize-notes:init-quick-links',
-    AUTO_SAVE_CHANGED: 'system-setting-auto-save-changed',
-  } as const,
+    // ============ 对话框 ============
+    DIALOG: {
+        CREATE_FILE_FOLDER_ENTER: 'baize:dialog:create-file-folder-enter',
+        RENAME_FILE_FOLDER_ENTER: 'baize:dialog:rename-file-folder-enter',
+        OPEN_VUE_DIALOG: 'baize:dialog:open-vue',
+        // CQ-13 域错配：通道 domain 是 setting（自动保存开关变更通知），历史放在 DIALOG 组；
+        // 引用点为 IPC.DIALOG.AUTO_SAVE_CHANGED，故仅注明保留原位。
+        AUTO_SAVE_CHANGED: 'baize:setting:auto-save-changed'
+    } as const,
 
-  NAVIGATION: {
-    OPEN_EXE: 'navi-tab-open-exe',
-    GET_QUICK_LINKS: 'baize-notes:get-quick-links',
-    KEYDOWN: 'keydown',
-  } as const,
+    // ============ 导航 ============
+    NAVIGATION: {
+        OPEN_EXE: 'baize:navigation:open-exe'
+    } as const,
 
-  VIEW: {
-    EDIT_MODE: 'markdown-edit-model',
-    PREVIEW_MODE: 'markdown-preview-model',
-    EDIT_PREVIEW_MODE: 'markdown-edit-preview-model',
-    TOGGLE_RES_MANAGER: 'menu-view-hide-display-res-manager',
-    GO_TO_LINE: 'editor-go-to-line',
-    FIND: 'editor-find',
-    REPLACE: 'editor-replace',
-    FOLD_ALL: 'editor-fold-all',
-    EXPAND_ALL: 'editor-expand-all',
-    FOLD_LEVEL: 'editor-fold-level',
-    UNDO_REDO: 'monaco-editor-trigger-undo-redo',
-  } as const,
+    // ============ 视图 ============
+    VIEW: {
+        EDIT_MODE: 'baize:view:edit-mode',
+        PREVIEW_MODE: 'baize:view:preview-mode',
+        EDIT_PREVIEW_MODE: 'baize:view:edit-preview-mode',
+        TOGGLE_RES_MANAGER: 'baize:view:toggle-resource-manager',
+        // CQ-13 域错配：通道 domain 是 monaco（撤销/重做由编辑器执行），历史放在 VIEW 组；
+        // 引用点为 IPC.VIEW.UNDO_REDO，故仅注明保留原位。
+        UNDO_REDO: 'baize:monaco:undo-redo'
+    } as const,
 
-  MONACO_INSERT: {
-    WRITING_TEMPLATES: 'monaco-insert-writing-templates',
-    TEXT_BLOCK_TEMPLATES: 'monaco-insert-text-block-templates',
-    AFTER_CURSOR: 'monaco-editor-insert-after-cursor',
-  } as const,
+    // ============ Monaco 插入 ============
+    MONACO_INSERT: {
+        TEXT_BLOCK_TEMPLATES: 'baize:monaco:insert-text-block',
+        AFTER_CURSOR: 'baize:monaco:insert-after-cursor'
+    } as const,
 
-  QUICK_LINKS: {
-    GET: 'baize-notes:get-quick-links',
-    SAVE: 'baize-notes:save-quick-links',
-    RESET: 'baize-notes:reset-quick-links',
-    UPDATED: 'baize-notes:quick-links-updated',
-    INIT: 'baize-notes:init-quick-links',
-  } as const,
+    // ============ 快速链接（get 收口到本组） ============
+    QUICK_LINKS: {
+        GET: 'baize:quick-links:get',
+        // P1-FE-04：设置对话框保存（渲染层 invoke → 主进程快速链接 store）；
+        // 主进程归一化为 QuickLinkItem[] 后写入 quickLinks 键，并向主窗口广播
+        // UPDATED，NaviTab 监听后刷新——设置对话框与导航栏共用同一数据源。
+        SAVE: 'baize:quick-links:save',
+        UPDATED: 'baize:quick-links:updated'
+    } as const,
 
-  OVERLAY: {
-    UPDATE_MERMAID_GRAPH: 'update-mermaid-render-graph',
-    MERMAID_GRAPH_DEF: 'mermaid-graph-definition',
-    OPEN_URL: 'open-url-in-web-browser-window',
-    OPEN_WITH_ENCODING: 'open-with-encoding',
-    CONVERT_TO_ENCODING: 'convert-to-encoding',
-  } as const,
+    // ============ 覆盖层窗口（Mermaid / 编码 / 在线页面） ============
+    OVERLAY: {
+        // CQ-13 域错配：以下 4 个通道的 domain 是 file（编码转换/重开），历史放在 OVERLAY 组；
+        // 引用点为 IPC.OVERLAY.*，移动需全仓改引用，故仅注明保留原位。
+        OPEN_WITH_ENCODING: 'baize:file:open-with-encoding',
+        CONVERT_TO_ENCODING: 'baize:file:convert-to-encoding',
+        // FUN-02：渲染层收到编码菜单事件（open-with-encoding/convert-to-encoding）
+        // 后 invoke 本通道，请求主进程按指定编码重新打开 / 转码保存当前文件
+        REOPEN_WITH_ENCODING: 'baize:file:reopen-with-encoding',
+        CONVERT_SAVE_ENCODING: 'baize:file:convert-encoding'
+    } as const,
 
-  EVENTS: {
-    STATUS_BAR_UPDATE: 'status-bar-console-update',
-    FILE_SAVED_SUCCESS: 'file-saved-success',
-    FILE_CONTENT_RELOADED: 'file-content-reloaded',
-    SHOW_SELECTED_FILE_CONTEXT: 'baize:notes:show-selected-file-context',
-  } as const,
+    // ============ 主进程 → 渲染层广播事件 ============
+    EVENTS: {
+        STATUS_BAR_UPDATE: 'baize:status-bar:update',
+        FILE_SAVED_SUCCESS: 'baize:file:saved',
+        FILE_CONTENT_RELOADED: 'baize:file:content-reloaded',
+        SHOW_SELECTED_FILE_CONTEXT: 'baize:fs:show-selected-file-context'
+    } as const
 } as const

@@ -2,53 +2,89 @@
     <div class="html-view-container">
         <div v-if="isLoading" class="loading-container">
             <div class="loading-spinner"></div>
-            <p>正在加载 HTML 文件...</p>
+            <p>{{ t('toolsNetwork.hemyTools.htmlView.loading') }}</p>
         </div>
         <div v-else-if="errorMessage" class="error-container">
             <div class="error-icon">⚠️</div>
             <p>{{ errorMessage }}</p>
-            <button @click="retryLoad" class="retry-button">重试</button>
+            <button class="retry-button" @click="retryLoad">
+                {{ t('toolsNetwork.common.retry') }}
+            </button>
         </div>
         <div v-else-if="htmlContent" class="html-content-wrapper">
             <div class="html-toolbar">
                 <span class="file-name">{{ filePath }}</span>
                 <div class="toolbar-actions">
-                    <button @click="openInBrowser" class="toolbar-btn" title="在浏览器中打开">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <button
+                        class="toolbar-btn"
+                        :title="t('toolsNetwork.common.openInBrowser')"
+                        @click="openInBrowser"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                            ></path>
                             <polyline points="15 3 21 3 21 9"></polyline>
                             <line x1="10" y1="14" x2="21" y2="3"></line>
                         </svg>
                     </button>
-                    <button @click="refreshContent" class="toolbar-btn" title="刷新">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button
+                        class="toolbar-btn"
+                        :title="t('toolsNetwork.hemyTools.htmlView.refresh')"
+                        @click="refreshContent"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
                             <polyline points="23 4 23 10 17 10"></polyline>
                             <polyline points="1 20 1 14 7 14"></polyline>
-                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            <path
+                                d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                            ></path>
                         </svg>
                     </button>
                 </div>
             </div>
+            <!-- P1 安全修复（N-04）：iframe sandbox 收紧为纯展示。
+                 1. 移除 allow-scripts：HTML 查看器中的脚本不再执行（行为变化）；
+                 2. 移除 allow-forms / allow-popups：查看器无需提交表单或弹窗，避免
+                    恶意 HTML 借表单外发数据、或诱导打开新窗口；
+                 3. 保留 allow-same-origin：维持本地 HTML 的相对资源（图片/样式）加载。
+                 安全约束：allow-scripts 与 allow-same-origin 绝不可同时出现——该组合
+                 可让 srcdoc 内容以父窗口同源身份执行脚本并直接访问父窗口 Electron API。 -->
             <iframe
-                ref="htmlIframe"
                 :srcdoc="htmlContent"
                 class="html-iframe"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                sandbox="allow-same-origin"
                 @load="onIframeLoad"
             ></iframe>
         </div>
         <div v-else class="empty-container">
             <div class="empty-icon">📄</div>
-            <p>请选择一个 HTML 文件进行预览</p>
+            <p>{{ t('toolsNetwork.hemyTools.htmlView.empty') }}</p>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import EventBus from '../../common/event_bus/event-bus'
-
-
+import EventBus from '../../common/event-bus/event-bus'
+import { t } from '../../common/i18n'
+import { IPC } from '../../../../shared/ipc-channels'
+import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import { logger } from '../../common/logger'
 
 // 响应式数据
 const htmlContent = ref<string>('')
@@ -56,7 +92,6 @@ const fileName = ref<string>('')
 const filePath = ref<string>('')
 const isLoading = ref<boolean>(false)
 const errorMessage = ref<string>('')
-const htmlIframe = ref<HTMLIFrameElement | null>(null)
 
 // 组件ID用于事件清理
 const componentId = 'ShowHtmlView'
@@ -73,16 +108,18 @@ async function loadHtmlFile(path: string, name: string) {
 
     try {
         // 通过 IPC 读取文件内容
-        const content = await window.electron.ipcRenderer.invoke('read-html-file', path)
+        const content = await window.electron.ipcRenderer.invoke(IPC.FILE.READ_HTML, path)
 
         if (content) {
             htmlContent.value = content
         } else {
-            errorMessage.value = '无法读取文件内容'
+            errorMessage.value = t('toolsNetwork.hemyTools.htmlView.unreadable')
         }
     } catch (error) {
-        console.error('加载 HTML 文件失败:', error)
-        errorMessage.value = `加载失败: ${error}`
+        logger.error('加载 HTML 文件失败:', error)
+        errorMessage.value = t('toolsNetwork.hemyTools.htmlView.loadFailed', {
+            error: String(error)
+        })
     } finally {
         isLoading.value = false
     }
@@ -111,7 +148,7 @@ function refreshContent() {
  */
 function openInBrowser() {
     if (filePath.value) {
-        window.electron.ipcRenderer.send('open-external-link', filePath.value)
+        window.electron.ipcRenderer.send(IPC.FILE.OPEN_EXTERNAL_LINK, filePath.value)
     }
 }
 
@@ -119,12 +156,14 @@ function openInBrowser() {
  * iframe 加载完成
  */
 function onIframeLoad() {
+    // iframe 内容渲染完成，兜底结束加载状态
+    isLoading.value = false
 }
 
 /**
  * 处理文件选择事件
  */
-function handleFileSelect(node: any) {
+function handleFileSelect(node: { path?: string; name?: string }) {
     if (node && node.path && node.name && node.name.endsWith('.html')) {
         loadHtmlFile(node.path, node.name)
     }
@@ -133,14 +172,18 @@ function handleFileSelect(node: any) {
 // 生命周期
 onMounted(() => {
     // 监听文件选择事件
-    EventBus.$on('html-file-selected', handleFileSelect, { componentId })
+    EventBus.$on(EVENT_BUS.HTML_FILE_SELECTED, handleFileSelect, { componentId })
 
     // 同时监听文件树节点的点击事件
-    EventBus.$on('file-tree-node-clicked', (node: any) => {
-        if (node && node.type === 'file' && node.name && node.name.endsWith('.html')) {
-            loadHtmlFile(node.path, node.name)
-        }
-    }, { componentId })
+    EventBus.$on(
+        EVENT_BUS.FILE_TREE_NODE_CLICKED,
+        (node: { type?: string; name?: string; path?: string }) => {
+            if (node && node.type === 'file' && node.name && node.name.endsWith('.html')) {
+                loadHtmlFile(node.path ?? '', node.name)
+            }
+        },
+        { componentId }
+    )
 })
 
 onBeforeUnmount(() => {
@@ -181,8 +224,12 @@ onBeforeUnmount(() => {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .error-icon,

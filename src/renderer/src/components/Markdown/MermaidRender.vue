@@ -1,13 +1,14 @@
 <template>
-    <div ref="mermaidContainer" class="mermaid"></div>
+    <div class="mermaid"></div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { onMounted, onBeforeUnmount, watch } from 'vue'
 import mermaid from 'mermaid'
+import { t } from '../../common/i18n'
 
-// 使用 ref 来获取 DOM 元素
-const mermaidContainer = ref(null)
+// P2 死通道清理：原 mermaidContainer 模板 ref 仅服务已删除的 OVERLAY.MERMAID_GRAPH_DEF
+// 监听（把主进程推送的图定义直接写入容器）；渲染结果现统一经 emit 交给父组件预览链路。
 
 const props = defineProps({
     graphCode: {
@@ -16,25 +17,56 @@ const props = defineProps({
     }
 })
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const emit = defineEmits(['mermaid-render-result'])
 
-const handleMermaidGraphDef = async (_: any, graphData: string) => {
-    try {
-        await mermaid.render('mermaidContainer', graphData)
-    } catch (error) {
-        console.error('waitAsyncRenderResult error', error)
+// FUN-21：mermaid.render 要求传入 id 全局唯一，固定 id 第二次渲染会报错。
+// 每次渲染生成唯一 id，渲染结束后清理 mermaid 遗留的临时节点
+function generateUniqueMermaidId(): string {
+    return 'mermaidContainer-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)
+}
+
+function removeMermaidTempDiv(mermaidId: string): void {
+    const tempElement = document.getElementById('d' + mermaidId)
+    if (tempElement) {
+        tempElement.remove()
     }
+}
+
+// HTML 转义（FUN-21：错误回显中的图表源码/错误信息避免注入）
+function escapeHtml(text: string): string {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+}
+
+// FUN-21：渲染失败降级为"源码回显 + 错误提示"，不再静默空白
+function buildErrorHtml(graphCode: string, error: unknown): string {
+    const errMessage = error instanceof Error ? error.message : String(error)
+    return (
+        '<div class="mermaid-render-error" style="border:1px solid #d97706;border-radius:4px;' +
+        'padding:8px 12px;background:#fff7ed;color:#9a3412;">' +
+        '<p style="margin:0 0 6px;font-weight:600;">' +
+        t('editorUi.render.mermaidFailed') +
+        '</p>' +
+        '<pre style="margin:0 0 6px;white-space:pre-wrap;"><code>' +
+        escapeHtml(graphCode) +
+        '</code></pre>' +
+        '<p style="margin:0;font-size:12px;">' +
+        t('editorUi.render.errorInfo') +
+        escapeHtml(errMessage) +
+        '</p></div>'
+    )
 }
 
 onMounted(() => {
     mermaid.initialize({ startOnLoad: false })
-    window.electron.ipcRenderer.on('mermaid-graph-definition', handleMermaidGraphDef)
 })
 
-onBeforeUnmount(() => {
-    window.electron.ipcRenderer.removeListener('mermaid-graph-definition', handleMermaidGraphDef)
-})
+// P2 死通道清理：原 OVERLAY.MERMAID_GRAPH_DEF 监听 + handleMermaidGraphDef 已删除
+// ——主进程零发送方；Mermaid 渲染唯一路径为下方 watch 中的 npm mermaid 包本地渲染。
 
 let mermaidDebounceTimer: ReturnType<typeof setTimeout> | null = null
 const MERMAID_DEBOUNCE_DELAY = 300
@@ -47,14 +79,19 @@ watch(
             clearTimeout(mermaidDebounceTimer)
         }
         mermaidDebounceTimer = setTimeout(async () => {
+            // FUN-21：使用唯一 id 渲染，避免固定 id 导致的重复渲染报错
+            const uniqueId = generateUniqueMermaidId()
             try {
-                const renderSvg = await mermaid.render('mermaidContainer', newCode)
+                const renderSvg = await mermaid.render(uniqueId, newCode)
+                removeMermaidTempDiv(uniqueId)
                 emit(
                     'mermaid-render-result',
                     '<pre class="mermaid"><code>' + renderSvg.svg + '</code></pre>'
                 )
             } catch (error) {
-                console.error('waitAsyncRenderResult error', error)
+                // FUN-21：渲染失败回显源码 + 错误提示（降级显示）
+                removeMermaidTempDiv(uniqueId)
+                emit('mermaid-render-result', buildErrorHtml(newCode, error))
             }
         }, MERMAID_DEBOUNCE_DELAY)
     }
@@ -65,8 +102,6 @@ onBeforeUnmount(() => {
         clearTimeout(mermaidDebounceTimer)
     }
 })
-
-emit('mermaid-render-result', 'mermaid-render-result mermaid-render-result mermaid-render-result')
 </script>
 
 <style scoped>

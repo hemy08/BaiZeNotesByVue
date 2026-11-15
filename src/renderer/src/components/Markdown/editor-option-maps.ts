@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor'
+import { logger } from '../../common/logger'
 
 export const EditorOptionMaps: Record<string, string> = {
     wordWrap: 'wordWrap',
@@ -147,7 +148,7 @@ export function updateEditorOption(
 ): void {
     const optionKey = EditorOptionMaps[key]
     if (!optionKey) {
-        console.warn(`未知的配置项: ${key}`)
+        logger.warn(`未知的配置项: ${key}`)
         return
     }
 
@@ -155,7 +156,10 @@ export function updateEditorOption(
         editor.updateOptions({ minimap: { enabled: !!value } })
     } else if (key === 'rulers') {
         const rulersArray = value
-            ? (value as string).split(',').map((v: string) => parseInt(v.trim())).filter((v: number) => !isNaN(v))
+            ? (value as string)
+                  .split(',')
+                  .map((v: string) => parseInt(v.trim()))
+                  .filter((v: number) => !isNaN(v))
             : []
         editor.updateOptions({ rulers: rulersArray })
     } else if (key === 'guides') {
@@ -173,7 +177,6 @@ export function updateEditorOption(
     } else {
         editor.updateOptions({ [optionKey]: value })
     }
-
 }
 
 export function updateEditorOptions(
@@ -184,7 +187,7 @@ export function updateEditorOptions(
     for (const [key, value] of Object.entries(settings)) {
         const optionKey = EditorOptionMaps[key]
         if (!optionKey) {
-            console.warn(`未知的配置项: ${key}`)
+            logger.warn(`未知的配置项: ${key}`)
             continue
         }
 
@@ -193,7 +196,10 @@ export function updateEditorOptions(
         } else if (key === 'rulers') {
             if (typeof value === 'string') {
                 options.rulers = value
-                    ? value.split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v))
+                    ? value
+                          .split(',')
+                          .map((v) => parseInt(v.trim()))
+                          .filter((v) => !isNaN(v))
                     : []
             } else if (Array.isArray(value)) {
                 options.rulers = value
@@ -204,7 +210,11 @@ export function updateEditorOptions(
             if (typeof value === 'object' && value !== null) {
                 options.guides = value
             } else {
-                options.guides = { indentation: !!value, bracketPairs: false, highlightActiveIndentation: !!value }
+                options.guides = {
+                    indentation: !!value,
+                    bracketPairs: false,
+                    highlightActiveIndentation: !!value
+                }
             }
         } else if (key === 'bracketPairColorization') {
             if (typeof value === 'object' && value !== null) {

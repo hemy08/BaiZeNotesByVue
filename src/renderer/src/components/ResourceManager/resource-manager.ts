@@ -1,5 +1,10 @@
 import { markRaw } from 'vue'
 import ContextMenu from '@imengyu/vue3-context-menu'
+import { IPC } from '../../../../shared/ipc-channels'
+import type { MarkdownTOC } from '../../../../shared/types'
+import { t } from '../../common/i18n'
+import { getConfigStore } from '../../common/useConfigStore'
+import { logger } from '../../common/logger'
 
 export interface FileSysItem {
     id?: string
@@ -11,6 +16,91 @@ export interface FileSysItem {
     isIndented?: boolean
     isExpanded?: boolean
     children?: FileSysItem[]
+}
+
+/* ==================== PF-8：TOC 指纹去重 + 文件树展开态合并 ==================== */
+
+/** FNV-1a 32 位哈希参数（仅作指纹，无需密码学强度） */
+const FNV_OFFSET_BASIS = 0x811c9dc5
+const FNV_PRIME = 0x01000193
+
+/**
+ * PF-8：计算目录（TOC）内容指纹。
+ *
+ * 背景：markdown 预览每轮渲染都会（经 MONACO_CHAPTERS）广播一次完整大纲数组，
+ * ResourceManager 侧无条件 `tocArray.value = toc` → 隐藏的 TOC 面板也会做整表 v-for diff
+ * （1708 标题样本每轮全量替换）。这里用「标题数 + 每项 id/level/text」的 FNV 指纹判断内容是否变化，
+ * 相同则跳过整表替换；指纹相同的判定只与真正影响渲染的字段有关（lineNumber 参与 id 派生，
+ * 标题平移/改名都会改变 id → 指纹变化，不会漏更新）。
+ */
+export function ComputeTocSignature(toc: ReadonlyArray<MarkdownTOC> | null | undefined): number {
+    if (!Array.isArray(toc)) {
+        return FNV_OFFSET_BASIS
+    }
+    let hash = FNV_OFFSET_BASIS
+    const mixString = (value: string): void => {
+        for (let index = 0; index < value.length; index += 1) {
+            hash ^= value.charCodeAt(index)
+            hash = Math.imul(hash, FNV_PRIME)
+        }
+    }
+    mixString(String(toc.length))
+    for (const item of toc) {
+        mixString('\u0000')
+        mixString(item.id ?? '')
+        mixString('\u0001')
+        mixString(item.level ?? '')
+        mixString('\u0002')
+        mixString(item.text ?? '')
+    }
+    return hash >>> 0
+}
+
+/**
+ * PF-4/PF-8：文件树整树刷新时按路径合并「展开态」。
+ *
+ * 主进程每次刷新都会下发全新的树对象（节点 isExpanded 均为 undefined），
+ * 直接替换会让所有已展开目录折叠。这里把上一棵树中 isExpanded 为 true 的目录路径
+ * 迁移到新树对应节点，目录刷新后用户展开状态保持不变（路径稳定，DOM key 复用）。
+ *
+ * @param previousTree 刷新前的树（渲染层当前展示）
+ * @param nextTree 刷新后的新树（就地写入 isExpanded）
+ * @returns 被恢复展开态的目录数量（诊断/测试用）
+ */
+export function MergeExpandedState(
+    previousTree: FileSysItem[] | null,
+    nextTree: FileSysItem[]
+): number {
+    if (!Array.isArray(previousTree) || !Array.isArray(nextTree) || previousTree.length === 0) {
+        return 0
+    }
+    const expandedPaths = new Set<string>()
+    const collectStack: FileSysItem[] = [...previousTree]
+    while (collectStack.length > 0) {
+        const node = collectStack.pop() as FileSysItem
+        if (node.isExpanded && node.type === 'folder') {
+            expandedPaths.add(node.path)
+        }
+        for (const child of node.children ?? []) {
+            collectStack.push(child)
+        }
+    }
+    if (expandedPaths.size === 0) {
+        return 0
+    }
+    let restored = 0
+    const applyStack: FileSysItem[] = [...nextTree]
+    while (applyStack.length > 0) {
+        const node = applyStack.pop() as FileSysItem
+        if (node.type === 'folder' && node.isExpanded !== true && expandedPaths.has(node.path)) {
+            node.isExpanded = true
+            restored += 1
+        }
+        for (const child of node.children ?? []) {
+            applyStack.push(child)
+        }
+    }
+    return restored
 }
 
 type MappingTable = {
@@ -86,41 +176,43 @@ export function getFileMgrSvg(isExpanded: boolean, extension: string) {
 }
 
 export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
+    // FE-12：右键时补注册活动文件跟踪（模块加载期窗口不可用的兜底）
+    ensureActiveFileTracker()
     ContextMenu.showContextMenu({
         x: e.x,
         y: e.y,
         zIndex: 3,
         items: [
             {
-                label: '新建',
+                label: t('workspace.resourceContext.new'),
                 children: [
                     {
-                        label: '文件',
+                        label: t('common.file'),
                         onClick: () => {
                             onHandleCreateFolder(node, false, '')
                         }
                     },
                     {
-                        label: '文件夹',
+                        label: t('common.folder'),
                         divided: true,
                         onClick: () => {
                             onHandleCreateFolder(node, true, '')
                         }
                     },
                     {
-                        label: 'Markdown文件',
+                        label: t('workspace.resourceContext.markdownFile'),
                         onClick: () => {
                             onHandleCreateFolder(node, false, '.md')
                         }
                     },
                     {
-                        label: '从Word文档导入',
+                        label: t('workspace.resourceContext.importWord'),
                         onClick: () => {
                             onHandleImport('word')
                         }
                     },
                     {
-                        label: '从HTML文档导入',
+                        label: t('workspace.resourceContext.importHtml'),
                         onClick: () => {
                             onHandleImport('html')
                         }
@@ -129,42 +221,42 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
                 divided: true
             },
             {
-                label: '复制',
+                label: t('common.copy'),
                 children: [
                     {
-                        label: '文件/文件夹',
+                        label: t('workspace.resourceContext.copyFile'),
                         divided: true,
                         onClick: () => {
                             onHandleCopy(node, 'file')
                         }
                     },
                     {
-                        label: '文件/文件夹名称',
+                        label: t('workspace.resourceContext.copyName'),
                         onClick: () => {
                             onHandleCopy(node, 'fullname')
                         }
                     },
                     {
-                        label: '文件夹绝对路径',
+                        label: t('workspace.resourceContext.copyRealPath'),
                         onClick: () => {
                             onHandleCopy(node, 'realpath')
                         }
                     },
                     {
-                        label: '相对于当前打开文件路径',
+                        label: t('workspace.resourceContext.copyRelativePath'),
                         onClick: () => {
                             onHandleCopy(node, 'relativepath')
                         }
                     },
                     {
-                        label: '复制为本地图片链接',
+                        label: t('workspace.resourceContext.copyImageLink'),
                         disabled: node.type !== 'file',
                         onClick: () => {
                             onHandleCopy(node, 'imagelink')
                         }
                     },
                     {
-                        label: '复制为本地文件链接',
+                        label: t('workspace.resourceContext.copyFileLink'),
                         disabled: node.type !== 'file',
                         onClick: () => {
                             onHandleCopy(node, 'filelink')
@@ -173,97 +265,88 @@ export function handleContextMenu(e: MouseEvent, node: FileSysItem) {
                 ]
             },
             {
-                label: '剪切',
+                label: t('common.cut'),
                 onClick: () => {
                     onHandleCut(node)
                 }
             },
             {
-                label: '粘贴',
+                label: t('common.paste'),
                 onClick: () => {
                     onHandlePaste(node)
                 }
             },
             {
-                label: '删除',
+                label: t('common.delete'),
                 onClick: () => {
                     onHandleDelete(node)
                 },
                 divided: true
             },
             {
-                label: '查找',
-                children: [
-                    {
-                        label: '在文件中查找',
-                        onClick: () => {
-                            onHandleFind('file')
-                        }
-                    },
-                    {
-                        label: '在文件夹中查找',
-                        onClick: () => {
-                            onHandleFind('folder')
-                        }
-                    }
-                ]
+                // FUN-24：原"查找（在文件中查找/在文件夹中查找）"为空实现；
+                // 改为"在文件夹中显示"，接主进程 shell.showItemInFolder
+                label: t('workspace.resourceContext.revealInFolder'),
+                onClick: () => {
+                    onHandleFind(node)
+                }
             },
             {
-                label: '导出到文件',
+                label: t('workspace.resourceContext.exportToFile'),
                 disabled: node.type !== 'file',
                 children: [
                     {
-                        label: '导出为Word',
+                        label: t('menu.file.export.word'),
                         onClick: () => {
-                            onHandleExport('word')
+                            void onHandleExport(node, 'word')
                         }
                     },
                     {
-                        label: '导出为JSON',
+                        label: t('menu.file.export.json'),
                         onClick: () => {
-                            onHandleExport('json')
+                            void onHandleExport(node, 'json')
                         }
                     },
                     {
-                        label: '导出为XML',
+                        label: t('menu.file.export.xml'),
                         onClick: () => {
-                            onHandleExport('xml')
+                            void onHandleExport(node, 'xml')
                         }
                     },
                     {
-                        label: '导出为YAML',
+                        label: t('menu.file.export.yaml'),
                         onClick: () => {
-                            onHandleExport('yaml')
+                            void onHandleExport(node, 'yaml')
                         }
                     },
                     {
-                        label: '导出为HTML',
+                        label: t('menu.file.export.html'),
                         onClick: () => {
-                            onHandleExport('html')
+                            void onHandleExport(node, 'html')
                         }
                     },
                     {
-                        label: '导出为PDF',
+                        label: t('menu.file.export.pdf'),
                         onClick: () => {
-                            onHandleExport('pdf')
+                            void onHandleExport(node, 'pdf')
                         }
                     }
                 ]
             },
             {
-                label: '重命名',
+                label: t('common.rename'),
                 onClick: () => {
                     onHandleRename(node)
                 }
             },
             {
-                label: '在资源管理器打开',
+                label: t('workspace.resourceContext.openInExplorer'),
                 onClick: () => {
                     onHandleOpenExplorer(node)
                 }
             },
             {
-                label: '从磁盘重新加载',
+                label: t('workspace.resourceContext.reloadFromDisk'),
                 onClick: () => {
                     onHandleReloadFromDisk()
                 }
@@ -284,7 +367,7 @@ function onHandleCreateFolder(node: FileSysItem, isFolder: boolean, fileExtensio
     }
 
     window.electron.ipcRenderer.send(
-        'file-manager-context-menu-create-file',
+        IPC.FILE_MANAGER.CREATE_FILE,
         directoryPath,
         isFolder,
         fileExtension
@@ -292,11 +375,125 @@ function onHandleCreateFolder(node: FileSysItem, isFolder: boolean, fileExtensio
 }
 
 function onHandleImport(value: string) {
-    window.electron.ipcRenderer.send('file-manager-context-menu-import-from', value)
+    window.electron.ipcRenderer.send(IPC.FILE_MANAGER.IMPORT_FROM, value)
 }
 
-function onHandleExport(value: string) {
-    window.electron.ipcRenderer.send('baize-notes:menu-action', 'baize:menu:file:export:' + value)
+// ==================== FE-12：右键导出以右键节点为数据源 ====================
+// 原实现直接 send MENU.ACTION，主进程 ExportToFile 固定取 appState.currentActiveFile.content
+// → 右键 A 文件导出的是当前打开的 B 文件内容（数据错导）。
+// MENU.ACTION 通道只透传动作 id（handlers.ts 注册点不在本轮写作用域），因此改为：
+// 先经既有 IPC.FILE.OPEN_SELECT_FILE 打开右键节点文件，等主进程回发 IPC.FILE.USER_SELECT_FILE
+// 确认活动文件已切换后再触发导出；若打不开则取消导出（绝不继续导出错误的当前文件）。
+const EXPORT_OPEN_TIMEOUT_MS = 5000
+
+/** 已跟踪的当前活动文件路径（正斜杠归一化，跨平台比较） */
+let trackedActiveFilePath = ''
+let activeFileTrackerRegistered = false
+
+function normalizeFsPath(targetPath: string): string {
+    return targetPath.replace(/\\/g, '/')
+}
+
+/** 跟踪主进程下发的活动文件切换事件（幂等；窗口/IPC 不可用时静默降级） */
+function ensureActiveFileTracker(): void {
+    if (activeFileTrackerRegistered) {
+        return
+    }
+    try {
+        if (typeof window === 'undefined' || !window.electron?.ipcRenderer) {
+            return
+        }
+        const ipc = window.electron.ipcRenderer
+        if (typeof ipc.on !== 'function') {
+            return
+        }
+        ipc.on(IPC.FILE.USER_SELECT_FILE, (_event: unknown, filePath: string) => {
+            if (typeof filePath === 'string' && filePath.length > 0) {
+                trackedActiveFilePath = normalizeFsPath(filePath)
+            }
+        })
+        activeFileTrackerRegistered = true
+    } catch (error) {
+        logger.warn('[FE-12] 无法跟踪活动文件切换，右键导出将先重新打开节点文件：', error)
+    }
+}
+
+/**
+ * 仅供单元测试重置 FE-12 的活动文件跟踪状态（生产代码不要调用）。
+ */
+export function resetExportTrackingForTesting(): void {
+    trackedActiveFilePath = ''
+    activeFileTrackerRegistered = false
+}
+
+try {
+    ensureActiveFileTracker()
+} catch {
+    // 模块加载期 window 尚不可用（单测/极端启动时序）时忽略，首次右键时再注册
+}
+
+/** 打开节点文件并等待主进程确认活动文件已切换 */
+function openNodeAndWaitActive(node: FileSysItem): Promise<boolean> {
+    return new Promise((resolve) => {
+        const ipc = window.electron?.ipcRenderer
+        if (!ipc || typeof ipc.on !== 'function' || typeof ipc.removeListener !== 'function') {
+            resolve(false)
+            return
+        }
+        const targetPath = normalizeFsPath(node.path)
+        let settled = false
+        const finish = (result: boolean): void => {
+            if (settled) {
+                return
+            }
+            settled = true
+            clearTimeout(timer)
+            try {
+                ipc.removeListener(IPC.FILE.USER_SELECT_FILE, listener)
+            } catch {
+                // 窗口销毁时 IPC 不可用，忽略
+            }
+            resolve(result)
+        }
+        const listener = (_event: unknown, filePath: string): void => {
+            if (typeof filePath === 'string' && normalizeFsPath(filePath) === targetPath) {
+                trackedActiveFilePath = targetPath
+                finish(true)
+            }
+        }
+        const timer = setTimeout(() => finish(false), EXPORT_OPEN_TIMEOUT_MS)
+        ipc.on(IPC.FILE.USER_SELECT_FILE, listener)
+        ipc.send(IPC.FILE.OPEN_SELECT_FILE, {
+            name: node.name,
+            path: node.path,
+            type: 'file',
+            content: ''
+        })
+    })
+}
+
+async function onHandleExport(node: FileSysItem, value: string) {
+    const action = 'baize:menu:file:export:' + value
+    const ipc = window.electron?.ipcRenderer
+    if (!ipc) {
+        return
+    }
+    ensureActiveFileTracker()
+
+    const targetPath = normalizeFsPath(node.path)
+    if (trackedActiveFilePath !== targetPath) {
+        // 右键节点不是当前活动文件：先打开它（主进程会先保存当前文件），确认切换后再导出
+        const switched = await openNodeAndWaitActive(node)
+        if (!switched) {
+            // 打开失败（路径失效/无权限等）：取消导出，避免继续导出错误的当前文件
+            getConfigStore().showError(
+                t('workspace.resourceContext.exportSourceFailedTitle'),
+                t('workspace.resourceContext.exportSourceFailedMessage', { name: node.name })
+            )
+            return
+        }
+    }
+    ipc.send(IPC.MENU.ACTION, action)
 }
 
 async function onHandleCopy(node: FileSysItem, value: string) {
@@ -305,14 +502,14 @@ async function onHandleCopy(node: FileSysItem, value: string) {
     } else if (value === 'realpath') {
         await navigator.clipboard.writeText(node.path)
     } else if (value === 'relativepath') {
-        window.electron.ipcRenderer.send('file-manager-context-menu-copy-relative-path', node.path)
+        window.electron.ipcRenderer.send(IPC.FILE_MANAGER.COPY_RELATIVE_PATH, node.path)
     } else if (value === 'imagelink') {
-        window.electron.ipcRenderer.send('file-manager-context-menu-copy-imagelink', node.path)
+        window.electron.ipcRenderer.send(IPC.FILE_MANAGER.COPY_IMAGELINK, node.path)
     } else if (value === 'filelink') {
-        window.electron.ipcRenderer.send('file-manager-context-menu-copy-filelink', node.path)
+        window.electron.ipcRenderer.send(IPC.FILE_MANAGER.COPY_FILELINK, node.path)
     } else {
         window.electron.ipcRenderer.send(
-            'file-manager-context-menu-copy-file',
+            IPC.FILE_MANAGER.COPY_FILE,
             node.path,
             node.type === 'file'
         )
@@ -320,45 +517,30 @@ async function onHandleCopy(node: FileSysItem, value: string) {
 }
 
 function onHandleCut(node: FileSysItem) {
-    window.electron.ipcRenderer.send(
-        'file-manager-context-menu-cut',
-        node.path,
-        node.type === 'file'
-    )
+    window.electron.ipcRenderer.send(IPC.FILE_MANAGER.CUT, node.path, node.type === 'file')
 }
 
 function onHandlePaste(node: FileSysItem) {
-    window.electron.ipcRenderer.send(
-        'file-manager-context-menu-paste',
-        node.path,
-        node.type === 'file'
-    )
+    window.electron.ipcRenderer.send(IPC.FILE_MANAGER.PASTE, node.path, node.type === 'file')
 }
 
 function onHandleDelete(node: FileSysItem) {
-    window.electron.ipcRenderer.send(
-        'file-manager-context-menu-delete',
-        node.path,
-        node.type === 'file'
-    )
+    window.electron.ipcRenderer.send(IPC.FILE_MANAGER.DELETE, node.path, node.type === 'file')
 }
 
-function onHandleFind(value: string) {
-    window.electron.ipcRenderer.send('file-manager-context-menu-find-in', value)
+function onHandleFind(node: FileSysItem) {
+    // FUN-24：发送节点路径，主进程 dialogs.ts 经 shell.showItemInFolder 在文件夹中显示
+    window.electron.ipcRenderer.send(IPC.FILE_MANAGER.FIND_IN, node.path)
 }
 
 function onHandleRename(node: FileSysItem) {
-    window.electron.ipcRenderer.send(
-        'file-manager-context-menu-rename',
-        node.path,
-        node.type === 'file'
-    )
+    window.electron.ipcRenderer.send(IPC.FILE_MANAGER.RENAME, node.path, node.type === 'file')
 }
 
 function onHandleOpenExplorer(node: FileSysItem) {
-    window.electron.ipcRenderer.send('file-manager-context-menu-open-in-explorer', node.path)
+    window.electron.ipcRenderer.send(IPC.FILE_MANAGER.OPEN_IN_EXPLORER, node.path)
 }
 
 function onHandleReloadFromDisk() {
-    window.electron.ipcRenderer.send('file-manager-context-menu-reload-from-disk', '')
+    window.electron.ipcRenderer.send(IPC.FILE_MANAGER.RELOAD_FROM_DISK, '')
 }

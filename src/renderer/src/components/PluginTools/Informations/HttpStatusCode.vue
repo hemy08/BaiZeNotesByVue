@@ -1,8 +1,10 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">HTTP 消息状态码</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">
+            {{ t('toolsNetwork.infoTables.httpStatusCode.title') }}
+        </h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">HTTP 消息状态码和对应的解释</p>
+        <p style="color: grey">{{ t('toolsNetwork.infoTables.httpStatusCode.desc') }}</p>
         <div>
             <input
                 v-model="searchQuery"
@@ -18,13 +20,18 @@
         >
             <thead>
                 <tr>
-                    <th class="http-code-table-th">状态码</th>
-                    <th class="http-code-table-th">说明</th>
+                    <th class="http-code-table-th">
+                        {{ t('toolsNetwork.infoTables.httpStatusCode.code') }}
+                    </th>
+                    <th class="http-code-table-th">
+                        {{ t('toolsNetwork.infoTables.httpStatusCode.explanation') }}
+                    </th>
                 </tr>
             </thead>
             <tbody>
                 <tr v-for="(item, index) in filterHttpStatusCode" :key="index">
                     <td class="http-code-table-id">{{ item.code }}</td>
+                    <!-- eslint-disable-next-line vue/no-v-html -- 描述文本来自仓库内静态状态码表，cleanHtml 仅把 \r\n 换成 <br />，无外部输入 -->
                     <td class="http-code-table-td" v-html="cleanHtml(item.desc)"></td>
                 </tr>
             </tbody>
@@ -34,6 +41,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import { HTTPStatusCodeTable } from './Information'
 
 const props = defineProps({
@@ -65,7 +73,7 @@ const filterHttpStatusCode = computed(() => {
     })
 })
 
-function cleanHtml(desc) {
+function cleanHtml(desc: string) {
     // 替换 \r\n 为 <br />
     return desc.replace(/\r\n/g, '<br />')
 }

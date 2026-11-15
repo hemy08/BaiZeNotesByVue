@@ -4,8 +4,11 @@
  */
 
 import { dialog } from 'electron'
-import { FileItem } from '../../global-types'
+// ARC-13：FileItem 已收敛到 src/shared/types/file.ts（唯一真源）
+import type { FileItem } from '../../../shared/types'
 import { appState } from '../app-state'
+// P1-FE-06：目录选择对话框以系统设置的默认文件路径为起始位置
+import { getSystemSetting } from '../../config/system-setting'
 
 /**
  * 获取当前打开文件的目录路径
@@ -22,14 +25,34 @@ export function GetCurrentFileDirectory(): string {
 }
 
 /**
+ * P1-FE-06：读取系统设置中的「默认文件保存路径」（defaultFilePath）。
+ * 该设置项此前无任何消费方，现作为目录选择对话框的起始位置。
+ * 读取失败（配置损坏等）不阻塞选择目录主流程，按未设置处理。
+ */
+function readDefaultFilePath(): string {
+    try {
+        const value = getSystemSetting().defaultFilePath
+        return typeof value === 'string' ? value : ''
+    } catch {
+        return ''
+    }
+}
+
+/**
  * 显示选择目录对话框
  * @param mainWindow 主窗口实例
  * @returns 选择的目录路径，如果取消则返回空字符串
  */
 export async function SelectDirectory(mainWindow: Electron.BrowserWindow): Promise<string> {
-    const result = await dialog.showOpenDialog(mainWindow, {
+    const options: Electron.OpenDialogOptions = {
         properties: ['openDirectory']
-    })
+    }
+    // P1-FE-06：优先从系统设置的默认文件路径开始浏览
+    const defaultPath = readDefaultFilePath()
+    if (defaultPath) {
+        options.defaultPath = defaultPath
+    }
+    const result = await dialog.showOpenDialog(mainWindow, options)
     if (result.canceled || result.filePaths.length === 0) {
         return ''
     }

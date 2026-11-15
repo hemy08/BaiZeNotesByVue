@@ -1,8 +1,8 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">加密/解密文本，对称加密算法</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">{{ t('toolsConvert.encryptDecrypt.title') }}</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">使用加密算法(如AES、TripleDES、Rabbit或RC4)加密和解密文本明文。</p>
+        <p style="color: grey">{{ t('toolsConvert.encryptDecrypt.description') }}</p>
         <a
             class="plugin-tools-openurl"
             role="button"
@@ -11,25 +11,27 @@
             https://tools.w3cschool.cn/encryption
         </a>
         <div id="encrypt-area" class="div-style-display-column" :style="{ width: encDecWidth }">
-            <label for="input-text">请输入你需要加密的文本: </label>
+            <label for="input-text">{{ t('toolsConvert.encryptDecrypt.inputLabel') }}</label>
             <textarea
                 id="input-enc-dec-text"
                 v-model="encDecInput"
-                placeholder="解密结果，或请输入你需要加密的文本..."
+                :placeholder="t('toolsConvert.encryptDecrypt.inputPlaceholder')"
                 :style="{ width: encDecWidth, height: '80px' }"
             ></textarea>
             <div style="margin-top: 5px">
-                <label for="input-secret-key">请输入你的秘钥</label>
+                <label for="input-secret-key">{{
+                    t('toolsConvert.encryptDecrypt.secretKeyLabel')
+                }}</label>
                 <input
                     id="input-secret-key"
                     v-model="encDecSecKey"
                     style="margin-left: 10px"
                     type="text"
-                    placeholder="请输入你的秘钥..."
+                    :placeholder="t('toolsConvert.encryptDecrypt.secretKeyPlaceholder')"
                 />
             </div>
             <div style="margin-top: 5px">
-                <label>请选择加密算法</label>
+                <label>{{ t('toolsConvert.encryptDecrypt.algorithmLabel') }}</label>
                 <select v-model="encDecAlg" style="margin-left: 10px">
                     <option
                         v-for="item in EncryptAlg"
@@ -37,12 +39,12 @@
                         :key="item.id"
                         :value="item.value"
                     >
-                        {{ item.text }}
+                        {{ optionText(item) }}
                     </option>
                 </select>
             </div>
             <div style="margin-top: 5px">
-                <label>请选择加密模式</label>
+                <label>{{ t('toolsConvert.encryptDecrypt.modeLabel') }}</label>
                 <select v-model="encDecMod" style="margin-left: 10px">
                     <option
                         v-for="item in EncryptMode"
@@ -50,12 +52,12 @@
                         :key="item.id"
                         :value="item.value"
                     >
-                        {{ item.text }}
+                        {{ optionText(item) }}
                     </option>
                 </select>
             </div>
             <div style="margin-top: 5px">
-                <label>请选择填充方式</label>
+                <label>{{ t('toolsConvert.encryptDecrypt.paddingLabel') }}</label>
                 <select v-model="encDecPad" style="margin-left: 10px">
                     <option
                         v-for="item in EncryptPad"
@@ -63,30 +65,40 @@
                         :key="item.id"
                         :value="item.value"
                     >
-                        {{ item.text }}
+                        {{ optionText(item) }}
                     </option>
                 </select>
             </div>
             <div class="div-style-display-column" style="margin-top: 5px">
-                <label for="encrypt-result">加密结果: </label>
+                <label for="encrypt-result">
+                    {{ t('toolsConvert.encryptDecrypt.resultLabel') }}
+                </label>
                 <textarea
                     id="encrypt-result"
                     v-model="EncryptResult"
-                    placeholder="加密结果，或输入要进行解密的密文..."
+                    :placeholder="t('toolsConvert.encryptDecrypt.resultPlaceholder')"
                     :style="{ width: encDecWidth, height: '150px' }"
                 ></textarea>
             </div>
+            <div style="margin-top: 5px; color: grey; font-size: 12px">
+                {{ t('toolsConvert.encryptDecrypt.note') }}
+            </div>
         </div>
         <div class="plugin-tools-btn-list" :style="{ width: encDecWidth }">
-            <button id="text-encrypt" class="plugin-tools-btn" @click="handleEncrypt">加密</button>
-            <button id="text-decrypt" class="plugin-tools-btn" @click="handleDecrypt">解密</button>
+            <button id="text-encrypt" class="plugin-tools-btn" @click="handleEncrypt">
+                {{ t('toolsConvert.encryptDecrypt.encryptButton') }}
+            </button>
+            <button id="text-decrypt" class="plugin-tools-btn" @click="handleDecrypt">
+                {{ t('toolsConvert.encryptDecrypt.decryptButton') }}
+            </button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import CryptoJS from 'crypto-js'
+import CryptoJS, { type CipherHelper, type Mode, type Padding, type WordArray } from 'crypto-js'
+import { t } from '../../../common/i18n'
 
 const props = defineProps({
     // 编辑器宽度
@@ -108,8 +120,21 @@ const encDecMod = ref('CBC')
 const encDecPad = ref('Pkcs7')
 const EncryptResult = ref('')
 
-const EncryptAlg = [
-    { id: 'encrypt-by-AES', value: 'AES', text: 'AES (默认，AES block cipher algorithm)' },
+interface EncryptOption {
+    id: string
+    value: string
+    /** 英文技术描述：中英一致，原样展示 */
+    text?: string
+    /** 含中文“默认”说明的条目：展示时按界面语言翻译 */
+    textKey?: string
+}
+
+const EncryptAlg: EncryptOption[] = [
+    {
+        id: 'encrypt-by-AES',
+        value: 'AES',
+        textKey: 'toolsConvert.encryptDecrypt.algorithmDefaultAes'
+    },
     { id: 'encrypt-by-DES', value: 'DES', text: 'DES (DES block cipher algorithm)' },
     {
         id: 'encrypt-by-TripleDES',
@@ -130,8 +155,12 @@ const EncryptAlg = [
     }
 ]
 
-const EncryptMode = [
-    { id: 'encrypt-mod-CBC', value: 'CBC', text: 'CBC (默认，Cipher Block Chaining mode)' },
+const EncryptMode: EncryptOption[] = [
+    {
+        id: 'encrypt-mod-CBC',
+        value: 'CBC',
+        textKey: 'toolsConvert.encryptDecrypt.modeDefaultCbc'
+    },
     { id: 'encrypt-mod-CFB', value: 'CFB', text: 'CFB (Cipher Feedback block mode)' },
     { id: 'encrypt-mod-CTR', value: 'CTR', text: 'CTR (Counter block mode)' },
     {
@@ -143,8 +172,12 @@ const EncryptMode = [
     { id: 'encrypt-mod-ECB', value: 'ECB', text: 'ECB (Electronic Codebook block mode)' }
 ]
 
-const EncryptPad = [
-    { id: 'encrypt-pad-Pkcs7', value: 'Pkcs7', text: 'Pkcs7 (默认，PKCS #5/7 padding strategy)' },
+const EncryptPad: EncryptOption[] = [
+    {
+        id: 'encrypt-pad-Pkcs7',
+        value: 'Pkcs7',
+        textKey: 'toolsConvert.encryptDecrypt.paddingDefaultPkcs7'
+    },
     {
         id: 'encrypt-pad-AnsiX923',
         value: 'AnsiX923',
@@ -168,7 +201,12 @@ const EncryptPad = [
     { id: 'encrypt-pad-NoPadding', value: 'NoPadding', text: 'NoPadding (A noop padding strategy)' }
 ]
 
-const cryptoAlg = {
+/** 选项文案：英文技术描述原样展示，含中文的默认项走词典（切换语言时随渲染更新） */
+function optionText(item: EncryptOption): string {
+    return item.textKey ? t(item.textKey) : (item.text ?? '')
+}
+
+const cryptoAlg: Record<string, CipherHelper> = {
     AES: CryptoJS.AES,
     DES: CryptoJS.DES,
     TripleDES: CryptoJS.TripleDES,
@@ -178,7 +216,7 @@ const cryptoAlg = {
     RabbitLegacy: CryptoJS.RabbitLegacy
 }
 
-const cryptoMode = {
+const cryptoMode: Record<string, Mode> = {
     CBC: CryptoJS.mode.CBC,
     CFB: CryptoJS.mode.CFB,
     CTR: CryptoJS.mode.CTR,
@@ -187,7 +225,7 @@ const cryptoMode = {
     ECB: CryptoJS.mode.ECB
 }
 
-const cryptoPad = {
+const cryptoPad: Record<string, Padding> = {
     Pkcs7: CryptoJS.pad.Pkcs7,
     AnsiX923: CryptoJS.pad.AnsiX923,
     Iso10126: CryptoJS.pad.Iso10126,
@@ -196,18 +234,20 @@ const cryptoPad = {
     NoPadding: CryptoJS.pad.NoPadding
 }
 
-const iv = CryptoJS.lib.WordArray.random(128 / 8)
-
-function openUrl(link) {
+function openUrl(link: string) {
     window.open(link, '_blank', 'noopener, noreferrer')
 }
 
 function handleEncrypt() {
     if (!encDecInput.value) {
-        alert('请输入要加密的文本...')
+        alert(t('toolsConvert.encryptDecrypt.emptyInputAlert'))
         return
     }
     const secretKey = CryptoJS.enc.Utf8.parse(encDecSecKey.value)
+
+    // CMP-20：IV 改为每次加密时随机生成（原实现为模块级一次性 IV，多次加密复用同一 IV），
+    // 并随密文以 "IV十六进制:密文Base64" 前缀形式输出，解密时可自包含还原、无需手工填写 IV。
+    const iv = CryptoJS.lib.WordArray.random(128 / 8)
 
     try {
         const encrypted = cryptoAlg[encDecAlg.value].encrypt(encDecInput.value, secretKey, {
@@ -215,18 +255,35 @@ function handleEncrypt() {
             mode: cryptoMode[encDecMod.value],
             padding: cryptoPad[encDecPad.value]
         })
-        EncryptResult.value = encrypted.toString()
+        EncryptResult.value = CryptoJS.enc.Hex.stringify(iv) + ':' + encrypted.toString()
     } catch (error) {
-        alert('加密失败：' + error)
+        alert(
+            t('toolsConvert.encryptDecrypt.encryptFailed', {
+                error: error instanceof Error ? error.message : String(error)
+            })
+        )
     }
 }
 
 function handleDecrypt() {
     if (!EncryptResult.value) {
-        alert('请输入要解密的文本...')
+        alert(t('toolsConvert.encryptDecrypt.emptyCipherAlert'))
         return
     }
     const secretKey = CryptoJS.enc.Utf8.parse(encDecSecKey.value)
+
+    // CMP-20：支持解析新格式 "<IV十六进制>:<密文Base64>" 前缀；
+    // 无前缀时按旧格式兼容（不注入 IV，交由 crypto-js 按默认方式解密——
+    // 注意旧格式密文未携带 IV，仅不依赖 IV 的算法/模式（如 ECB、RC4 系列）可还原，
+    // CBC 等模式的旧密文缺少 IV 会提示解密失败）。
+    let iv: WordArray | undefined = undefined
+    let cipherText = EncryptResult.value
+    const ivMatch = EncryptResult.value.match(/^([0-9a-fA-F]+):/)
+    if (ivMatch && ivMatch[1].length >= 16 && ivMatch[1].length % 2 === 0) {
+        iv = CryptoJS.enc.Hex.parse(ivMatch[1])
+        cipherText = EncryptResult.value.slice(ivMatch[0].length)
+    }
+
     // 配置对象，包含 IV、模式和填充方式
     const options = {
         iv: iv,
@@ -235,17 +292,18 @@ function handleDecrypt() {
     }
 
     try {
-        const decrypted = cryptoAlg[encDecAlg.value].decrypt(
-            EncryptResult.value,
-            secretKey,
-            options
-        )
+        const decrypted = cryptoAlg[encDecAlg.value].decrypt(cipherText, secretKey, options)
         encDecInput.value = decrypted.toString(CryptoJS.enc.Utf8)
     } catch (error) {
-        alert('解密失败：' + error)
+        alert(
+            t('toolsConvert.encryptDecrypt.decryptFailed', {
+                error: error instanceof Error ? error.message : String(error)
+            })
+        )
     }
 }
 </script>
 
 <style scoped>
-@import '../plugin-tools-theme.css';</style>
+@import '../plugin-tools-theme.css';
+</style>

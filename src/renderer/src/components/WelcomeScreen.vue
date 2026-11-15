@@ -2,44 +2,60 @@
     <div class="welcome-screen">
         <!-- 窗口控制按钮 -->
         <div class="window-controls">
-            <button class="window-btn minimize" @click="minimizeWindow" title="最小化">
-                <svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg>
+            <button
+                class="window-btn minimize"
+                :title="t('workspace.window.minimize')"
+                @click="minimizeWindow"
+            >
+                <svg viewBox="0 0 12 12"><path d="M2 6h8" /></svg>
             </button>
-            <button class="window-btn maximize" @click="maximizeWindow" title="最大化">
-                <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" fill="none"/></svg>
+            <button
+                class="window-btn maximize"
+                :title="t('workspace.window.maximize')"
+                @click="maximizeWindow"
+            >
+                <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" fill="none" /></svg>
             </button>
-            <button class="window-btn close" @click="closeWindow" title="关闭">
-                <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+            <button class="window-btn close" :title="t('common.close')" @click="closeWindow">
+                <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" /></svg>
             </button>
         </div>
 
         <div class="welcome-content">
             <!-- Logo 和标题 -->
             <div class="welcome-header">
-                <img :src="logoSrc" alt="Baize Logo" width="80" height="80">
-                <h1 class="welcome-title">白泽笔记</h1>
-                <p class="welcome-subtitle">Markdown Editor Powered By Electron + Vue + TypeScript</p>
+                <img :src="logoSrc" alt="Baize Logo" width="80" height="80" />
+                <h1 class="welcome-title">{{ t('workspace.welcome.title') }}</h1>
+                <p class="welcome-subtitle">
+                    Markdown Editor Powered By Electron + Vue + TypeScript
+                </p>
             </div>
 
             <!-- 主要操作按钮 -->
             <div class="welcome-actions">
                 <button class="welcome-btn primary" @click="openFile">
                     <svg viewBox="0 0 24 24" width="32" height="32">
-                        <path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M12,12L16,16H13.5V19H10.5V16H8L12,12Z"/>
+                        <path
+                            fill="currentColor"
+                            d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M12,12L16,16H13.5V19H10.5V16H8L12,12Z"
+                        />
                     </svg>
-                    <span>打开文件</span>
+                    <span>{{ t('workspace.welcome.openFile') }}</span>
                 </button>
                 <button class="welcome-btn primary" @click="openFolder">
                     <svg viewBox="0 0 24 24" width="32" height="32">
-                        <path fill="currentColor" d="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"/>
+                        <path
+                            fill="currentColor"
+                            d="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
+                        />
                     </svg>
-                    <span>打开文件夹</span>
+                    <span>{{ t('workspace.welcome.openFolder') }}</span>
                 </button>
             </div>
 
             <!-- 历史记录 -->
-            <div class="welcome-history" v-if="recentFolders.length > 0">
-                <h3 class="history-title">最近打开的文件夹</h3>
+            <div v-if="recentFolders.length > 0" class="welcome-history">
+                <h3 class="history-title">{{ t('workspace.welcome.recentFolders') }}</h3>
                 <div class="history-list">
                     <div
                         v-for="(folder, index) in recentFolders"
@@ -48,7 +64,10 @@
                         @click="openRecentFolder(folder)"
                     >
                         <svg viewBox="0 0 24 24" width="20" height="20">
-                            <path fill="currentColor" d="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"/>
+                            <path
+                                fill="currentColor"
+                                d="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
+                            />
                         </svg>
                         <span class="history-path">{{ folder }}</span>
                     </div>
@@ -62,6 +81,9 @@
 import { ref, onMounted } from 'vue'
 // 固定使用深色图标
 import logoDarkUltra from '../assets/icons/dark/baize_mirror_dark.svg'
+import { IPC } from '../../../shared/ipc-channels'
+import { t } from '../common/i18n'
+import { logger } from '../common/logger'
 
 const emit = defineEmits(['openFile', 'openFolder', 'openRecentFolder'])
 
@@ -74,12 +96,12 @@ const logoSrc = logoDarkUltra
 // 加载最近打开的文件夹
 async function loadRecentFolders() {
     try {
-        const history = await window.api.config.read('recent-folders')
+        const history = await window.api.config.read<string[]>('recent-folders')
         if (history && Array.isArray(history)) {
             recentFolders.value = history.slice(0, 10)
         }
     } catch (error) {
-        console.error('Failed to load recent folders:', error)
+        logger.error('Failed to load recent folders:', error)
     }
 }
 
@@ -100,15 +122,15 @@ function openRecentFolder(folder: string) {
 
 // 窗口控制
 function minimizeWindow() {
-    window.electron.ipcRenderer.send('window-minimize')
+    window.electron.ipcRenderer.send(IPC.WINDOW.MINIMIZE)
 }
 
 function maximizeWindow() {
-    window.electron.ipcRenderer.send('window-maximize')
+    window.electron.ipcRenderer.send(IPC.WINDOW.MAXIMIZE)
 }
 
 function closeWindow() {
-    window.electron.ipcRenderer.send('window-close')
+    window.electron.ipcRenderer.send(IPC.WINDOW.CLOSE)
 }
 
 onMounted(() => {

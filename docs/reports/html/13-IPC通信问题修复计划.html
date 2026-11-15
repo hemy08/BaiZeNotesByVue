@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPC 通信问题修复计划</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --text:#1f2328; --muted:#6b7280; --border:#e5e7eb; --accent:#2563eb; --p0:#dc2626; --p1:#ea580c; --p2:#ca8a04; --p3:#6b7280; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",sans-serif; line-height:1.7; }
+  .wrap { max-width:1000px; margin:0 auto; padding:32px 20px 60px; }
+  header { background:linear-gradient(135deg,#1e3a8a,#2563eb); color:#fff; border-radius:12px; padding:28px 32px; margin-bottom:24px; }
+  header h1 { margin:0 0 8px; font-size:26px; }
+  header p { margin:2px 0; opacity:.9; font-size:14px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; text-align:center; }
+  .card b { display:block; font-size:26px; }
+  .card span { font-size:12px; color:var(--muted); }
+  h2 { border-left:4px solid var(--accent); padding-left:10px; margin-top:36px; }
+  h3 { margin-top:22px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; font-size:14px; }
+  th,td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { background:#f3f4f6; white-space:nowrap; }
+  tr:last-child td { border-bottom:none; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:999px; color:#fff; font-size:12px; font-weight:600; white-space:nowrap; }
+  .p0{background:var(--p0)} .p1{background:var(--p1)} .p2{background:var(--p2)} .p3{background:var(--p3)}
+  code { background:#eef1f5; padding:1px 6px; border-radius:4px; font-family:Consolas,monospace; font-size:13px; }
+  ul,ol { padding-left:24px; }
+  li { margin:4px 0; }
+  .toc { position:fixed; top:24px; left:24px; width:210px; max-height:calc(100vh - 48px); overflow-y:auto;
+         background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 10px; z-index:100;
+         box-shadow:0 4px 12px rgba(0,0,0,.08); font-size:13px; }
+  .toc h4 { margin:0 0 8px; font-size:13px; color:var(--muted); padding-left:8px; }
+  .toc a { display:block; color:var(--text); text-decoration:none; padding:4px 8px; border-radius:6px; line-height:1.5; }
+  .toc a:hover { background:#eef1f5; color:var(--accent); }
+  @media (min-width:1150px) { .wrap { margin:0 auto 0 272px; } }
+  @media (max-width:1149px) { .toc { display:none; } }
+  footer { margin-top:40px; font-size:12px; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a href="#sec-1">1. 修复原则与验收</a>
+    <a href="#sec-2">2. 阶段划分与分工</a>
+    <a href="#sec-3">3. 逐项修复方案</a>
+    <a href="#sec-4">4. 回归测试建设</a>
+    <a href="#sec-5">5. 风险与回滚</a>
+    <a href="#sec-6">6. 排期建议</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>IPC 通信问题修复计划</h1>
+    <p>制定日期：2026-11-15 ｜ 依据：2026-11-15-通信检查报告（32 项：P0×2、P1×5、P2×19、P3×6）与 IPC 通信矩阵</p>
+    <p>执行方式：4 个阶段 / 7 个子智能体任务（并行 2 → 3 → 1 → 1）+ 统一复核</p>
+  </header>
+
+  <div class="cards">
+    <div class="card"><b style="color:var(--p0)">2</b><span>P0 安全/功能</span></div>
+    <div class="card"><b style="color:var(--p1)">5</b><span>P1 一致性</span></div>
+    <div class="card"><b style="color:var(--p2)">19</b><span>P2 清理</span></div>
+    <div class="card"><b style="color:var(--p3)">6</b><span>P3 加固</span></div>
+    <div class="card"><b>123 → ~107</b><span>通道数收敛</span></div>
+  </div>
+
+  <h2 id="sec-1">1. 修复原则与验收标准</h2>
+  <ul>
+    <li><strong>原则</strong>：安全/功能问题优先；行为变化最小化（不改线上通道字符串语义）；每项修复配回归测试；删除类改动先 grep 确认双端零引用。</li>
+    <li><strong>全局验收</strong>：typecheck 双绿、npm run test 全过、eslint 0 error、electron-vite build 通过；新增防回归测试（通道两端模式一致性、死通道零存在、preload 白名单覆盖）；按通信矩阵逐通道重扫输出"修复后矩阵"。</li>
+  </ul>
+
+  <h2 id="sec-2">2. 阶段划分与代理分工</h2>
+  <table>
+    <tr><th>阶段</th><th>子代理</th><th>负责问题</th><th>依赖</th></tr>
+    <tr><td>阶段 1 安全与功能（并行）</td><td>A1 ipc-sec</td><td>C-08 远程页边界、shell 协议白名单</td><td>无</td></tr>
+    <tr><td></td><td>A2 ipc-autosave</td><td>P0-2.2 自动保存通道模式、双实现统一</td><td>无</td></tr>
+    <tr><td>阶段 2 一致性（并行）</td><td>B1 ipc-listeners</td><td>C-03 主题广播异常、C-04 监听台账统一</td><td>阶段 1</td></tr>
+    <tr><td></td><td>B2 ipc-dialogs</td><td>C-01 编辑器设置 HTML 对话框、C-05 双轨去留、C-06 菜单 id</td><td>阶段 1</td></tr>
+    <tr><td></td><td>B3 ipc-preload</td><td>C-02 removeListener 语义、测试补齐</td><td>阶段 1</td></tr>
+    <tr><td>阶段 3 清理（串行）</td><td>C1 ipc-cleanup</td><td>16 死通道、C-07 Mermaid 半死链路、广播面收窄、字面量绕过</td><td>阶段 2</td></tr>
+    <tr><td>阶段 4 加固（串行）</td><td>D1 ipc-hardening</td><td>C-09 preload 暴露面裁剪、P3 余项</td><td>阶段 3</td></tr>
+    <tr><td>收尾</td><td>根代理 + 复核代理</td><td>重扫矩阵、更新报告、门禁复核</td><td>全部</td></tr>
+  </table>
+
+  <h2 id="sec-3">3. 逐项修复方案</h2>
+
+  <h3>3.1 阶段 1：安全与功能（P0）</h3>
+  <table>
+    <tr><th>编号</th><th>修复动作</th><th>验证</th><th>风险</th></tr>
+    <tr><td><span class="badge p0">C-08</span></td>
+      <td>① online-web-page：will-navigate preventDefault + setWindowOpenHandler deny（对齐 plantuml-local.ts）；② 远程窗口移除 preload（如需主题广播改主进程代发）；③ 浏览器打开校验协议白名单（http/https）；④ 显式 sandbox:true</td>
+      <td>单测：窗口 options 断言（无 preload、sandbox、拦截器）；非法协议拒绝用例；手动冒烟</td>
+      <td>低：仅 windows 路径；移除 preload 需确认远程页无依赖</td></tr>
+    <tr><td><span class="badge p0">P0-2.2</span></td>
+      <td>① SystemSettingDialog.handleAutoSaveChange 改 invoke（推荐统一 invoke+handle）；② 移除不可达 HTML 版系统设置对话框，消除双实现</td>
+      <td>回归测试：切换开关 → 断言主进程 Start/Stop 定时器调用；通道模式一致性用例</td>
+      <td>低：单一调用点</td></tr>
+    <tr><td><span class="badge p3">P3-5</span></td>
+      <td>抽公共 openExternalSafely(url) 供各调用点复用（含既有 navi-tab-open-exe 校验）</td>
+      <td>单测：非法协议拒绝、合法放行</td>
+      <td>低</td></tr>
+  </table>
+
+  <h3>3.2 阶段 2：一致性（P1）</h3>
+  <table>
+    <tr><th>编号</th><th>修复动作</th><th>验证</th></tr>
+    <tr><td><span class="badge p1">C-01</span></td><td>优先删除 ShowEditorSettingDialog HTML 对话框及脚本/CSS 引用（Vue 版为实际路径）；若保留则补 preload 并加入 DIALOG_WEB_PREFERENCES</td><td>grep 零引用；入口核对；测试更新</td></tr>
+    <tr><td><span class="badge p1">C-03</span></td><td>抽主进程 broadcastThemeToAllWindows() 替换 window.electronAPI 引用</td><td>单测无需 stubGlobal('window')；广播断言</td></tr>
+    <tr><td><span class="badge p1">C-04</span></td><td>6 个对话框 + index.ts 监听器统一迁移 ipcListenerManager；对话框挂 componentId 随窗口 closed 清理</td><td>台账测试：getInventory 覆盖；cleanupAll 无残留</td></tr>
+    <tr><td><span class="badge p1">C-05</span></td><td>输出「对话框去留清单」：逐项核对可达性，仅执行删除无入口项；保留项补 i18n/接线</td><td>清单评审 + grep；build/test 通过</td></tr>
+    <tr><td><span class="badge p1">C-06</span></td><td>统一 action id 为 baize:menu:help:contact-us；HTML 版去留按 C-05 决策</td><td>菜单路由单测</td></tr>
+    <tr><td><span class="badge p2">C-02</span></td><td>dialog.ts on 包装与 removeListener 引用一致（维护 channel→handler 映射）</td><td>preload 单测：注册→退订→不再触发</td></tr>
+  </table>
+
+  <h3>3.3 阶段 3：清理（P2）</h3>
+  <ul>
+    <li><strong>死通道 ×16</strong>：window-unmaximize、config:delete/list/ensure-dir、update-monaco-theme、get-current-theme、get-separate-editor-theme、get-monaco-theme、editor-relayout、update-editor-font、open-plugin-tool（待菜单树退役）、keydown、monaco-insert-writing-templates、mermaid-graph-definition、open-url-in-web-browser-window、update-mermaid-render-graph —— 逐通道删除常量+收发端+测试；死通道零存在测试兜底。</li>
+    <li><strong>C-07 Mermaid 半死链路</strong>：删除隐藏窗口创建/OpenMermaidRenderFrame/相关 3 通道，确认渲染层 npm 渲染为唯一路径。</li>
+    <li><strong>广播面收窄</strong>：FILE_SAVED_SUCCESS、QUICK_LINKS.UPDATED 改定向发送。</li>
+    <li><strong>载荷不一致 ×3</strong>：THEME.UPDATED 补 currentTheme 或改读取；INIT_THEME_STYLES 统一载荷；TEXT_BLOCK_TEMPLATES 重命名/标注。</li>
+    <li><strong>P3-1/P3-2</strong>：删除 UPDATE_OPTIONS 空转分支；templates.ts 改常量引用。</li>
+  </ul>
+
+  <h3>3.4 阶段 4：加固（P3 余项）</h3>
+  <table>
+    <tr><th>编号</th><th>修复动作</th></tr>
+    <tr><td><span class="badge p3">C-09</span></td><td>评估主窗口 electronAPI 裁剪为白名单 API（与 dialog preload 同模式）；或明确风险接受并记录——先出评估结论，风险可控则实施</td></tr>
+    <tr><td><span class="badge p3">P3-6</span></td><td>&lt;webview&gt; PDF 预览不可用：仅记录（入口已隐藏，不新增通信面）</td></tr>
+    <tr><td><span class="badge p3">命名复用</span></td><td>WRITING_TEMPLATES 重命名/标注（实际走 EventBus）</td></tr>
+  </table>
+
+  <h2 id="sec-4">4. 回归测试建设（随阶段落地）</h2>
+  <table>
+    <tr><th>测试</th><th>内容</th></tr>
+    <tr><td>ipc-channel-modes.test.ts（新增）</td><td>遍历通道常量：save 类通道断言 both send↔on 或 invoke↔handle 两端模式一致</td></tr>
+    <tr><td>ipc-dead-channels.test.ts（新增）</td><td>常量↔调用点双向核对，死通道数为 0（白名单除外）</td></tr>
+    <tr><td>dialog-window-security.test.ts（新增）</td><td>远程窗口无 preload/导航拦截/协议白名单；对话框 webPreferences 统一来源</td></tr>
+    <tr><td>台账测试（扩展）</td><td>ipcListenerManager.getInventory() 覆盖全部注册；cleanupAll 无残留</td></tr>
+    <tr><td>preload 测试（扩展）</td><td>白名单放行/拒绝、on 剥离、removeListener 真实退订</td></tr>
+  </table>
+
+  <h2 id="sec-5">5. 风险与回滚</h2>
+  <ul>
+    <li><strong>删除死通道</strong>：先 grep 双端 + 动态拼接检查（IPC.X[${var}]），再删代码、最后删常量；单通道独立 commit 便于回滚；</li>
+    <li><strong>C-08 移除远程窗口 preload</strong>：若远程页面依赖主题广播，改主进程代发；不影响本地功能；</li>
+    <li><strong>C-05 删除 HTML 对话框</strong>：仅删除确认无入口的项；保留项不动；</li>
+    <li><strong>C-09 preload 裁剪</strong>：改动面大，先出评估报告，经评审后再实施；未评审前保持现状（DOMPurify + CSP 已降低风险）。</li>
+  </ul>
+
+  <h2 id="sec-6">6. 排期建议</h2>
+  <table>
+    <tr><th>批次</th><th>内容</th><th>预估</th></tr>
+    <tr><td>批次 1</td><td>C-08、P0-2.2、P3-5（2 个并行代理）</td><td>1 轮</td></tr>
+    <tr><td>批次 2</td><td>C-01/03/04/05/06、C-02（3 个并行代理）</td><td>1~2 轮</td></tr>
+    <tr><td>批次 3</td><td>16 死通道 + C-07 + 广播面 + 载荷修正（1 个代理）</td><td>1~2 轮</td></tr>
+    <tr><td>批次 4</td><td>C-09 评估（1 个代理）+ 余项</td><td>1 轮</td></tr>
+    <tr><td>收尾</td><td>重扫矩阵 + 报告状态标注 + 门禁</td><td>1 轮</td></tr>
+  </table>
+  <p>每批次完成后由根代理统一跑门禁（typecheck/test/eslint/build），更新《通信检查报告》状态列与通信矩阵，最终产出《IPC 通信问题修复实施报告》。</p>
+
+  <h2>8. 执行状态（2026-11-15 批次后）</h2>
+  <ul>
+    <li>✅ <strong>已闭环</strong>：C-08、P0-2.2、C-03、C-04、C-06、N-05（37 高风险通道 sender 校验）、16 死通道删除（123→86）、C-07、P3-2；</li>
+    <li>🟡 <strong>部分处理</strong>：C-05/C-01（不可达 JSDOM 对话框已批量删除，仅余 contact-us 待确认）、广播面收窄、载荷一致性；</li>
+    <li>⏭ <strong>未处理</strong>：C-09、C-10、24 个低风险通道校验、plantuml-local IPC、config-manager 内联广播；</li>
+    <li>详见 <a href="16-修复批次实施报告.html">16-修复批次实施报告</a>。</li>
+  </ul>
+  <footer>IPC 通信问题修复计划 · 依据 2026-11-15 通信检查报告（32 项）</footer>
+</div>
+</body>
+</html>

@@ -1,8 +1,10 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">数学公式符号</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">
+            {{ t('toolsNetwork.infoTables.formulaSymbol.title') }}
+        </h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">数学公式符号查询</p>
+        <p style="color: grey">{{ t('toolsNetwork.infoTables.formulaSymbol.desc') }}</p>
         <div>
             <input
                 v-model="searchQuery"
@@ -18,12 +20,24 @@
         >
             <thead>
                 <tr>
-                    <th class="formula-symbol-table-th">符号</th>
-                    <th class="formula-symbol-table-th">说明</th>
-                    <th class="formula-symbol-table-th">符号</th>
-                    <th class="formula-symbol-table-th">说明</th>
-                    <th class="formula-symbol-table-th">符号</th>
-                    <th class="formula-symbol-table-th">说明</th>
+                    <th class="formula-symbol-table-th">
+                        {{ t('toolsNetwork.infoTables.formulaSymbol.symbol') }}
+                    </th>
+                    <th class="formula-symbol-table-th">
+                        {{ t('toolsNetwork.infoTables.formulaSymbol.explanation') }}
+                    </th>
+                    <th class="formula-symbol-table-th">
+                        {{ t('toolsNetwork.infoTables.formulaSymbol.symbol') }}
+                    </th>
+                    <th class="formula-symbol-table-th">
+                        {{ t('toolsNetwork.infoTables.formulaSymbol.explanation') }}
+                    </th>
+                    <th class="formula-symbol-table-th">
+                        {{ t('toolsNetwork.infoTables.formulaSymbol.symbol') }}
+                    </th>
+                    <th class="formula-symbol-table-th">
+                        {{ t('toolsNetwork.infoTables.formulaSymbol.explanation') }}
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -44,6 +58,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import { FormulaSymbolTable, CompressedArray } from './Information'
 
 const props = defineProps({

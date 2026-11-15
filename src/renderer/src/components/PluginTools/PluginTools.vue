@@ -1,22 +1,25 @@
 <template>
     <div id="plugin-tools-container" class="plugin-tools-container">
         <div id="plugin-tool-close" class="close-button" @click="handleClosePluginTools">
-            <button>返回编辑器</button>
+            <button>{{ t('toolsNetwork.common.backToEditor') }}</button>
         </div>
         <div v-if="visibleTool" :id="`plugin-tool-${visibleTool.id}`" class="plugin-tool-content">
             <component :is="visibleTool.component" :work-area-width="toolsViewWidth"></component>
         </div>
         <div v-else class="plugin-tool-placeholder">
-            <p>请选择其他工具，当前工具正在开发中，敬请期待。。。</p>
+            <p>{{ t('toolsNetwork.pluginTools.placeholder') }}</p>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
-import EventBus from '../../common/event_bus/event-bus'
-import { CHANNEL_PLUGIN_TOOL_SHOW } from '../MenuBar/menu_consts'
-import {pluginTools} from './plugin_tools_const'
+import EventBus from '../../common/event-bus/event-bus'
+// ARC-14：插件工具显示事件走进程内 EventBus（集中常量），
+// 原 IPC 通道 'CHANNEL_PLUGIN_TOOL_SHOW' 无任何发送方（死监听）已删除。
+import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import { t } from '../../common/i18n'
+import { pluginTools } from './plugin-tools-const'
 
 const props = defineProps({
     pluginsAreaWidth: {
@@ -38,46 +41,37 @@ const visibleTool = computed(() => {
     return pluginTools.find((tool) => tool.id === activeToolId.value)
 })
 
-window.electron.ipcRenderer.on('CHANNEL_PLUGIN_TOOL_SHOW', (_, context: string) => {
-    if (!isShowPluginToolsContainer) {
-        EventBus.$emit('baize:notes:workspace:show', "plugins")
-        isShowPluginToolsContainer = true
-    }
-    activeToolId.value = context
-})
-
 function handleClosePluginTools() {
     if (isShowPluginToolsContainer) {
         isShowPluginToolsContainer = false
     }
     activeToolId.value = ''
-    EventBus.$emit('baize:notes:workspace:show', "md")
+    EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'md')
 }
 
 onMounted(() => {
-    // 监听插件工具显示事件（来自 menu_actions.ts）
-    EventBus.$on(CHANNEL_PLUGIN_TOOL_SHOW, handlePluginToolShow)
+    // 监听插件工具显示事件（来自 menu-actions.ts）
+    EventBus.$on(EVENT_BUS.PLUGIN_TOOL_SHOW, handlePluginToolShow)
     // 监听主题更新事件
-    EventBus.$on('theme-updated', applyThemeStyles)
+    EventBus.$on(EVENT_BUS.THEME_UPDATED, applyThemeStyles)
 })
 
 // 组件卸载时清理监听器
 onBeforeUnmount(() => {
-    EventBus.$off(CHANNEL_PLUGIN_TOOL_SHOW, handlePluginToolShow)
-    EventBus.$off('theme-updated', applyThemeStyles)
-    window.electron.ipcRenderer.removeAllListeners('CHANNEL_PLUGIN_TOOL_SHOW')
+    EventBus.$off(EVENT_BUS.PLUGIN_TOOL_SHOW, handlePluginToolShow)
+    EventBus.$off(EVENT_BUS.THEME_UPDATED, applyThemeStyles)
 })
 
 // 处理插件工具显示事件
 function handlePluginToolShow(action: string) {
-  // 显示插件工具容器
-  if (!isShowPluginToolsContainer) {
-    EventBus.$emit('baize:notes:workspace:show', "plugins")
-    isShowPluginToolsContainer = true
-  }
+    // 显示插件工具容器
+    if (!isShowPluginToolsContainer) {
+        EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'plugins')
+        isShowPluginToolsContainer = true
+    }
 
-  // 设置当前激活的工具
-  activeToolId.value = action
+    // 设置当前激活的工具
+    activeToolId.value = action
 }
 
 function applyThemeStyles() {

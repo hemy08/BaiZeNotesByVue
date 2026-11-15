@@ -1,0 +1,135 @@
+// PF-6（首屏 eager JS 10.36 MiB）：插件工具注册表从「静态 import 20 个工具组件」
+// 改为「defineAsyncComponent + 动态 import」：
+// 1. 每个工具（及其专属依赖，如加解密/Qrcode/Latex 相关库）拆为独立 chunk，不进入首屏主 chunk；
+// 2. PluginTools.vue 仅渲染当前激活工具（`<component :is="visibleTool.component">`），
+//    未点击过的工具不会请求模块，实现真正的按需加载；
+// 3. 首次打开工具时显示 i18n 文案「加载中…」占位，避免点击菜单后无反馈；
+// 4. 工具组件内部实现与外部调用方式（id/component 字段、work-area-width prop）保持不变。
+import { defineAsyncComponent, defineComponent, h, markRaw } from 'vue'
+import type { Component } from 'vue'
+import { t } from '../../common/i18n'
+
+/** PF-6：工具分块加载中的占位（轻量，无额外依赖） */
+const ToolLoading = defineComponent({
+    name: 'PluginToolLoading',
+    setup() {
+        return () =>
+            h(
+                'div',
+                {
+                    class: 'plugin-tool-async-loading',
+                    style: 'display:flex;align-items:center;justify-content:center;width:100%;min-height:120px;padding:16px;color:var(--theme-secondary-text-color,#888);font-size:14px;'
+                },
+                t('common.loading')
+            )
+    }
+})
+
+/** Vue SFC 动态导入模块形态（只有 default 导出） */
+type VueModule = { default: Component }
+
+/**
+ * PF-6：把一个插件工具 SFC 转为按需加载的异步组件。
+ * 首次渲染（即用户点击对应菜单）时才请求并加载该工具模块。
+ */
+function lazyTool(loader: () => Promise<VueModule>) {
+    return defineAsyncComponent({
+        loader,
+        loadingComponent: ToolLoading,
+        delay: 120,
+        timeout: 30000,
+        suspensible: false
+    })
+}
+
+export const pluginTools = markRaw([
+    // ==================== 加解密插件 ====================
+    {
+        id: 'baize:menu:plugins:encrypt:token-generator',
+        component: lazyTool(() => import('./Encryption/TokenGenerator.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:encrypt:hash-text',
+        component: lazyTool(() => import('./Encryption/HashText.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:encrypt:uuids-generator',
+        component: lazyTool(() => import('./Encryption/UUIDSGenerator.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:encrypt:ulid-generator',
+        component: lazyTool(() => import('./Encryption/ULIDGenerator.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:encrypt:encrypt-decrypt',
+        component: lazyTool(() => import('./Encryption/EncryptDecrypt.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:encrypt:crypto-encrypt-decrypt',
+        component: lazyTool(() => import('./Encryption/CryptoEncDec.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:encrypt:hmac-generator',
+        component: lazyTool(() => import('./Encryption/HmacGenerator.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:encrypt:rsa-generator',
+        component: lazyTool(() => import('./Encryption/RSAGenerator.vue'))
+    },
+
+    // ==================== 网络计算插件 ====================
+    {
+        id: 'baize:menu:plugins:net:ipv4-subnet-calculator',
+        component: lazyTool(() => import('./NetWork/Ipv4SubnetCalc.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:net:http-status-codes',
+        component: lazyTool(() => import('./Informations/HttpStatusCode.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:net:subnet-mask-map-table',
+        component: lazyTool(() => import('./Informations/SubnetMaskMapTable.vue'))
+    },
+
+    // ==================== 常用对照表 - 对照表一 ====================
+    {
+        id: 'baize:menu:plugins:info:ascii-table',
+        component: lazyTool(() => import('./Informations/ASCIIComparison.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:info:file-extension-table',
+        component: lazyTool(() => import('./Informations/FileNameExtension.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:info:numeric-case-table',
+        component: lazyTool(() => import('./Informations/NumericCase.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:info:normal-font-style-table',
+        component: lazyTool(() => import('./Informations/NormalFontStyle.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:info:greece-letter-table',
+        component: lazyTool(() => import('./Informations/GreeceLetter.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:info:html-entity-table',
+        component: lazyTool(() => import('./Informations/HTMLSpecialChar.vue'))
+    },
+
+    // ==================== 常用对照表 - 科学符号对照表 ====================
+    {
+        id: 'baize:menu:plugins:info:math-symbol-table',
+        component: lazyTool(() => import('./Informations/FormulaSymbol.vue'))
+    },
+    {
+        id: 'baize:menu:plugins:info:physical-constant-table',
+        component: lazyTool(() => import('./Informations/PhysicalSymbolic.vue'))
+    }
+
+    // CMP-19/CMP-27：以下两项故意不注册为插件工具（沿用第一轮 A-4 模式，不展示入口）：
+    // 1. PDF 预览（ShowPdfEditor.vue）：使用已废弃的 <webview> 标签，且全项目未开启
+    //    webviewTag（默认 false），预览必然空白——待改用 pdf.js 方案后再注册；
+    // 2. HemyTools（工具面板）：模板仅一个"返回编辑器"按钮，属未完成空壳——补齐功能后再注册。
+    // 两者容器开关由 WorkSpace.vue 的事件控制，本注册表与 menu_consts.ts 均不为其生成菜单入口。
+])

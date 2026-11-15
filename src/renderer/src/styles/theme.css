@@ -16,7 +16,9 @@
 body {
     background-color: var(--theme-background-color);
     color: var(--theme-text-color);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition:
+        background-color 0.3s ease,
+        color 0.3s ease;
 }
 
 /* 预览区域主题 */
@@ -142,7 +144,7 @@ textarea:focus,
 select:focus {
     outline: none;
     border-color: var(--theme-accent-color);
-    box-shadow: 0 0 0 2px var(--theme-accent-color)20;
+    box-shadow: 0 0 0 2px var(--theme-accent-color) 20;
 }
 
 /* 按钮主题 */

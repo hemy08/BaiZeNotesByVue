@@ -1,170 +1,33 @@
-import * as monaco from 'monaco-editor'
+/**
+ * 主进程全局类型声明（ARC-13 收敛后）
+ *
+ * ## 来源约定
+ * 跨进程共享的领域类型一律在 src/shared/types/ 下定义（按领域拆分，index.ts 统一出口），
+ * 主进程 / 渲染层均以 `import type` 引用；本文件不再重复定义任何共享结构。
+ *
+ * ## 本文件保留内容
+ * 仅保留「渲染层以全局类型方式使用、且收敛前已存在」的兼容别名：
+ * - FileProperties：渲染层 FileTreeNode.vue / MarkdownPreviewComponent.vue 以全局类型
+ *   直接使用（tsconfig.web.json 将本文件列入 include）。为不破坏现有全局用法，
+ *   采用「shared 定义 + declare global 转发」方式保留同一份结构，避免第三处重复定义。
+ *   主进程 utils.ts 等已改为显式 import type，不再依赖该全局声明。
+ *
+ * ## 已删除内容（收敛去向见 out/tool-results/r3-types-changes.md）
+ * - Global 命名空间（ARC-22 已删除，20 个旧全局字段零引用）；
+ * - FileSysItem：全库零引用，渲染层 ResourceManager/resource-manager.ts 已有自己的
+ *   前端文件树结构（含展开态扩展字段），故直接删除；
+ * - SystemSetting / MenuContext / BaiZeMenuItem / FileItem / ThemeStyles /
+ *   ThemeUpdateData / MarkdownTOC：已迁入 src/shared/types/，主进程各引用点改为
+ *   显式 import type；
+ * - CryptoData / CryptoResult：已迁入 src/shared/types/crypto.ts，主进程与单测改为
+ *   显式 import type。
+ */
+import type { FileProperties as SharedFileProperties } from '../shared/types'
 
-// global-types.d.ts
 declare global {
-    interface FileProperties {
-        name: string
-        path: string
-        type: 'file' | 'folder'
-        content: string
-        children?: []
-    }
-
-    interface FileSysItem {
-        id: string
-        name: string
-        path: string
-        type: 'file' | 'folder'
-        fileExtension: string
-        isDirectory?: boolean
-        isIndented?: boolean
-        isExpanded?: boolean
-        children?: FileSysItem[]
-    }
-
-    interface GlobalEmoji {
-        file_icon: string
-        folder_open: string
-        folder_close: string
-    }
-
-    interface GlobalSvg {
-        file_icon: string
-        folder_collapse_close: string
-        folder_collapse_open: string
-        folder_open: string
-        folder_close: string
-        md_file_svg: string
-        png_file_svg: string
-        jpg_file_svg: string
-    }
-
-    interface GlobalEditToolBar {
-        Font: string
-    }
-
-    interface CryptoData {
-        context: string
-        secretKey: string
-        secretKeyEncoding: BufferEncoding
-        algorithm: string
-        inputEncoding?: BufferEncoding
-        outputEncoding?: BufferEncoding
-        iv?: string
-    }
-
-    interface CryptoResult {
-        context: string
-        secretKey: string
-        secretKeyEncoding: BufferEncoding
-        iv: string
-    }
-
-    interface Global extends NodeJS.Global {
-        current_active_file?: FileProperties // 使用 ? 表示它可能是 undefined
-        ImagePath: string
-        hemy: Hemy
-        MainWindow: Electron.BrowserWindow
-        MainShowWarn: string
-        RootPath: string
-        SavingFile: boolean
-        SaveFileInterval: string
-        srcDirCopyCut: string
-        isCopyOrCut: 'copy' | 'cut'
-        isCopyCutFile: boolean
-        Emoji: GlobalEmoji
-        FileMgrSvgs: GlobalSvg
-        EditorToolBar: GlobalEditToolBar
-        mdFileTree: ''
-        MonacoEditorConfig: monaco.editor.IStandaloneEditorConstructionOptions
-        KatexConfig: NonNullable<unknown>
-        SupportLanguage: []
-    }
-}
-
-// 系统设置配置接口
-export interface SystemSetting {
-    language: string
-    resourceManager: string
-    editorModel: string
-    pluginOpen: string
-    menuBarStyle: string // 'electron' | 'windows-native'
-    autoSaveEnabled: boolean // 是否启用自动保存，默认true
-    autoSaveInterval: number // 自动保存间隔（秒），最小5秒，最大86400秒（24小时）
-    fontFamily: string // 界面字体，如 'Microsoft YaHei', 'Segoe UI', 'PingFang SC'
-    fontSize: number // 界面字体大小(px)，范围 10-24，默认 13
-    renderWhitespace: string // 渲染空白字符: 'none' | 'boundary' | 'all'
-    // 窗口浮动控制（模态/非模态）
-    editorSettingModal: boolean // 编辑器设置对话框是否模态，默认false
-    systemSettingModal: boolean // 系统设置对话框是否模态，默认false
-    themeSettingModal: boolean // 主题设置对话框是否模态，默认false
-    helpAboutModal: boolean // 帮助关于对话框是否模态，默认false
-    helpContactUsModal: boolean // 帮助联系我们对话框是否模态，默认false
-    insertImageModal: boolean // 插入图片对话框是否模态，默认false
-    admonitionsModal: boolean // Admonitions对话框是否模态，默认false
-    fontSelectModal: boolean // 字体选择对话框是否模态，默认false
-    mathTextModal: boolean // 数学文本对话框是否模态，默认false
-    mdSheetModal: boolean // Markdown速查表对话框是否模态，默认false
-    importOptionModal: boolean // 导入选项对话框是否模态，默认false
-    mermaidEditModal: boolean // Mermaid编辑对话框是否模态，默认false
-    quickLinkSettingModal: boolean // 快速链接设置对话框是否模态，默认false
-    techStackModal: boolean // 技术栈对话框是否模态，默认false
-    webUrlModal: boolean // Web URL对话框是否模态，默认false
-}
-
-export interface MenuContext {
-    label: string
-    context: string
-}
-
-export interface BaiZeMenuItem {
-    label?: string
-    accelerator?: string
-    menu_action?: string
-    submenu?: BaiZeMenuItem[]
-    type?: string
-    enabled?: boolean
-    usl?:string
-    icon?: string  // 图标名称，用于根据主题自动切换图标
-} // 白泽编辑器菜单项
-
-export interface FileItem {
-    name: string
-    path: string
-    type: 'file' | 'folder'
-    isDirectory: boolean
-    fileExtension?: string
-    children: FileItem[]
-}
-
-
-// 主题样式接口
-export interface ThemeStyles {
-    name: string
-    description: string
-    titleBarGradient: string
-    backgroundColor: string
-    cardBackground: string
-    textColor: string
-    secondaryTextColor: string
-    borderColor: string
-    accentColor: string
-    buttonBackground: string
-    buttonTextColor: string
-    hoverBackground: string
-}
-
-// 主题更新数据接口
-export interface ThemeUpdateData {
-    themeType: string
-    separateEditorTheme: boolean
-    monacoTheme: string
-    themeStyles: ThemeStyles
-}
-
-export interface MarkdownTOC {
-    id: string
-    level: string
-    text: string
-    lineNumber: number
+    /**
+     * 文件属性（跨进程：渲染层 → 主进程 IPC.FILE.OPEN_SELECT_FILE）
+     * 结构唯一来源：src/shared/types/file.ts 的 FileProperties。
+     */
+    type FileProperties = SharedFileProperties
 }

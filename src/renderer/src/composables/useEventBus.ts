@@ -1,5 +1,5 @@
 import { getCurrentInstance, onUnmounted } from 'vue'
-import eventBus from '../common/event_bus/event-bus'
+import eventBus from '../common/event-bus/event-bus'
 
 let componentIdCounter = 0
 
@@ -10,11 +10,13 @@ function generateComponentId(): string {
 
 export function useEventBus() {
     const instance = getCurrentInstance()
-    const componentId = instance
-        ? `vm-${instance.uid}`
-        : generateComponentId()
+    const componentId = instance ? `vm-${instance.uid}` : generateComponentId()
 
-    function on(eventName: string, callback: (...args: unknown[]) => void, options?: { once?: boolean }): void {
+    function on(
+        eventName: string,
+        callback: (...args: unknown[]) => void,
+        options?: { once?: boolean }
+    ): void {
         eventBus.$on(eventName, callback, { ...options, componentId })
     }
 

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白泽笔记 架构检查报告（04-架构）</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 20px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 8px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .9; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 36px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 14px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .finding { background: var(--card); border: 1px solid var(--border);
+             border-radius: 10px; padding: 16px 20px; margin: 14px 0; }
+  .finding h3 { margin: 0 0 8px; font-size: 16px; }
+  .meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 13px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px;
+        border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  .ok { color: #15803d; font-weight: 600; }
+  footer { margin-top: 40px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 210px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.5; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  @media (min-width: 1150px) { .wrap { margin: 0 auto 0 272px; } }
+  @media (max-width: 1149px) { .toc { display: none; } }</style>
+</head>
+<body>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a href="#sec-1">1. 检查范围与方法</a>
+    <a href="#sec-2">2. 结果总览</a>
+    <a href="#sec-3">3. 逐项发现</a>
+    <a href="#sec-4">4. 值得肯定的实践（简要）</a>
+    <a href="#sec-5">5. 修复优先级路线图</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>白泽笔记 架构检查报告（04-架构）</h1>
+    <p>检查维度：架构 ｜ 项目：白泽笔记（BaiZe Notes）v1.2.2</p>
+    <p>生成日期：2026-11-14 ｜ 检查方式：源码静态审查（read/grep）、目录盘点、构建/测试配置核对（仅只读）</p>
+  </header>
+
+  <div class="cards">
+    <div class="card"><b>22</b><span>发现问题总数</span></div>
+    <div class="card"><b style="color:var(--p0)">1</b><span>P0 严重</span></div>
+    <div class="card"><b style="color:var(--p1)">9</b><span>P1 高</span></div>
+    <div class="card"><b style="color:var(--p2)">8</b><span>P2 中</span></div>
+    <div class="card"><b style="color:var(--p3)">4</b><span>P3 低</span></div>
+  </div>
+
+  <h2 id="sec-1">1. 检查范围与方法</h2>
+  <p>检查范围：<code>src/main</code>（进程边界、窗口、IPC、config、dialogs、utils、renders）、<code>src/preload</code>（暴露面）、<code>src/renderer/src</code>（组件、状态、EventBus、PluginTools、MenuBar）、<code>src/shared</code>（收敛度）、构建与部署（electron.vite.config.ts、electron-builder.yml、build/、resources/）、测试（vitest.config.ts、tests/unit）。方法：以架构文档声称的设计为对照，逐一核对 10 个检查重点（进程边界与安全 / IPC 架构 / 状态管理 / 模块耦合与边界泄漏 / 循环依赖 / 插件架构 / EventBus 与 IPC 职责 / 构建与部署 / 测试架构 / 常量与魔法值）。所有发现均给出真实 <code>文件:行号</code> 证据；无法静态确认的运行时行为标注"待验证"。</p>
+  <table>
+    <tr><th>目录</th><th>实际职责</th><th>与架构文档对比</th></tr>
+    <tr><td>src/main/index.ts</td><td>应用入口、主窗口创建、启动初始化</td><td>一致；但窗口创建过程非幂等（ARC-06）</td></tr>
+    <tr><td>src/main/config/（10）</td><td>配置单例（electron-store）、窗口管理器、快捷键；config-manager 为第二套裸 JSON 配置系统</td><td>文档称 settings/，未提及双配置系统</td></tr>
+    <tr><td>src/main/dialogs/（19）</td><td>JSDOM 生成 HTML 的"原生"对话框窗口，多数已成死路径</td><td>文档未区分与渲染层 Vue 对话框的关系</td></tr>
+    <tr><td>src/main/ipc/（10）</td><td>IPC handler 注册、菜单动作处理器树</td><td>文档称 ipc-listener-manager 统一管理，实际仅 3 个文件使用</td></tr>
+    <tr><td>src/main/renders/（4）</td><td>Markdown/KaTeX/Material/TabbedSet 渲染</td><td>一致</td></tr>
+    <tr><td>src/main/utils/ + file-utils/（19）</td><td>文件操作、自动保存、AppState、store-factory、logger</td><td>file-state 与 file-utils 存在循环依赖（ARC-11）</td></tr>
+    <tr><td>src/main/constants/（1）</td><td>外链 URL 常量</td><td>与 shared/constants/urls.ts 完全重复</td></tr>
+    <tr><td>src/preload/（3）</td><td>contextBridge 暴露 electron + api；dialog.ts 暴露无校验 IPC</td><td>文档仅描述单入口，实际为双入口（index+dialog）</td></tr>
+    <tr><td>src/renderer/src/（约 170 文件）</td><td>Vue 组件、MenuBar、PluginTools、dialogs、EventBus、useConfigStore</td><td>文档称有 Vuex store，实际不存在 store 目录、无 Vuex 使用</td></tr>
+    <tr><td>src/shared/（3）</td><td>ipc-channels.ts、types、constants/urls</td><td>声称的共享收敛层实际 2/3 为零引用死代码</td></tr>
+    <tr><td>resources/（4 目录）</td><td>config/icon/plantuml/themes（app_themes 24 + monaco-themes 55）</td><td>文档称含 katex/mermaid，实际不存在（ARC-20）</td></tr>
+    <tr><td>tests/unit/（3）</td><td>event-bus、app-state、katex-render 共 21 用例</td><td>仅覆盖 main 工具函数，组件层无测试能力</td></tr>
+  </table>
+  <p><strong>现状小结：</strong>项目在进程安全基线（contextIsolation+sandbox+禁用 nodeIntegration）上做得正确，EventBus/AppState/WindowManager 等基础设施有单例与清理意识。但架构处于<b>双轨演进</b>状态：主进程"JSDOM 生成 HTML 对话框 + 反射式菜单处理器树"旧架构与渲染层"Vue 对话框 + useConfigStore + EventBus"新架构并存且互相抢占路由；配置持久化存在两套系统、三个目录；IPC 通道常量文件零引用；主进程与渲染进程存在双向运行时 import。整体呈"新旧架构未完成迁移"的中间态。</p>
+
+  <h2 id="sec-2">2. 结果总览</h2>
+  <table>
+    <tr><th>编号</th><th>严重度</th><th>问题</th><th>位置</th><th>建议</th><th>状态</th></tr>
+    <tr><td>ARC-01</td><td><span class="badge p0">P0</span></td><td>远程网页内容加载进带特权 preload 的窗口，配合未校验 IPC 通道形成远程→主进程任意能力调用链</td><td>src/main/dialogs/OpenOnlineWebPages.ts:6-13；src/preload/dialog.ts:4-13；src/main/utils/utils.ts:105-107</td><td>远程窗口禁用 preload；主进程校验路径/协议白名单</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-02</td><td><span class="badge p1">P1</span></td><td>主进程↔渲染进程双向运行时 import 边界泄漏</td><td>src/main/ipc/menu_context.ts:7；src/renderer/src/common/useConfigStore.ts:6 等 7 处</td><td>收敛到 src/shared；废除 @mainer 别名</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-03</td><td><span class="badge p1">P1</span></td><td>IPC 通道常量文件（168 行）零引用，全链路硬编码字符串、命名混乱</td><td>src/shared/ipc-channels.ts:1-168；渲染层 72+ 处字面量</td><td>以共享常量为准重构</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-04</td><td><span class="badge p1">P1</span></td><td>配置持久化双系统三目录，渲染层写的主进程不读</td><td>src/main/utils/app-paths.ts:14-24；store-factory.ts:19-26；config-manager.ts:10</td><td>统一为单一 config 服务</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-05</td><td><span class="badge p1">P1</span></td><td>主题/系统设置"真源"分裂，主进程 store 不被活动 UI 更新</td><td>src/main/config/theme-config.ts:467；ShowThemeSettingDialog.ts:747（唯一 setTheme 调用者，死路径）</td><td>所有变更经 IPC 落主进程单一 store</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-06</td><td><span class="badge p1">P1</span></td><td>IPC 注册随 createWindow 重复执行，macOS activate 再建窗将重复注册 ipcMain.handle 抛错</td><td>src/main/index.ts:83-86,116-120</td><td>注册移到 app.whenReady 一次性执行</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-07</td><td><span class="badge p1">P1</span></td><td>菜单动作双注册表，id 错位导致路由错乱与大量死代码</td><td>src/renderer/src/components/MenuBar/menu_actions.ts:16-153；src/main/ipc/menu_handle.ts:31-43</td><td>单一注册表 + 统一 id 常量</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-08</td><td><span class="badge p1">P1</span></td><td>编辑器设置对话框窗口未挂 preload，其 HTML 依赖 window.electronAPI → 打开即报错（待验证）</td><td>src/main/dialogs/ShowEditorSettingDialog.ts:33-36；editor-setting-script.ts:3</td><td>统一走渲染层 Vue 对话框</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-09</td><td><span class="badge p1">P1</span></td><td>插件注册表仅覆盖 20/50 组件，约 24 个菜单条目点击落入"开发中"占位符</td><td>src/renderer/src/components/PluginTools/plugin_tools_const.ts:22-50；menu_consts.ts:134-144</td><td>补齐注册表或下线菜单项</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-10</td><td><span class="badge p1">P1</span></td><td>Mermaid 渲染隐藏窗口从 CDN 加载远程 JS 到带特权 preload 的窗口 + 全局变量竞态</td><td>src/main/dialogs/OpenMermaidRenderFrame.ts:7-19,68-73</td><td>本地打包 mermaid；Promise 化结果传递</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-11</td><td><span class="badge p2">P2</span></td><td>循环依赖 file-state ↔ file-utils（@ts-ignore 压制 + require 延迟规避）</td><td>src/main/utils/file-state.ts:10-11；file-operations.ts:11</td><td>抽出独立 file-state 存储模块</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-12</td><td><span class="badge p2">P2</span></td><td>四个 config 模块非同构；setTheme 整体覆盖丢字段</td><td>theme-config.ts:428-441,467-471；system-setting.ts:38-111</td><td>抽象 ConfigModule 基类</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-13</td><td><span class="badge p2">P2</span></td><td>共享类型 2/3 文件零引用，SystemSetting/ThemeStyles 等在 main/shared 重复定义</td><td>src/shared/ipc-channels.ts；types/index.ts:1-27 与 main/global-types.d.ts:86-113</td><td>单一来源 + 全量迁移引用</td><td style="white-space:nowrap">🟡 部分修复</td></tr>
+    <tr><td>ARC-14</td><td><span class="badge p2">P2</span></td><td>EventBus 与 IPC 对同一事件双轨承载，事件名无集中常量</td><td>PluginTools.vue:41,59；BaiZeNotes.vue:371,447</td><td>跨进程走 IPC，进程内走 EventBus</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-15</td><td><span class="badge p2">P2</span></td><td>主进程死代码群：无原生 Menu、open-plugin-tool 无人监听、空 printStats、失效脚本</td><td>menu_context.ts:81-112；ipc-listener-manager.ts:154-155；build/copyfile.bat</td><td>删除或改造为单一真实实现</td><td style="white-space:nowrap">🟡 部分修复</td></tr>
+    <tr><td>ARC-16</td><td><span class="badge p2">P2</span></td><td>自动更新配置为占位符 URL，electron-updater 零使用</td><td>electron-builder.yml:79-81</td><td>配置真实发布源并接入 updater</td><td style="white-space:nowrap">🟡 部分修复</td></tr>
+    <tr><td>ARC-17</td><td><span class="badge p2">P2</span></td><td>无 CSP；dev 关闭 webSecurity；config API 文件名无校验（路径拼接可逃逸）</td><td>src/renderer/index.html:1-15；src/main/index.ts:35-36；config-manager.ts:21,39</td><td>加 CSP、configName 白名单/消毒</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-18</td><td><span class="badge p2">P2</span></td><td>测试架构仅 node 环境，90 个 Vue 组件与渲染层逻辑不可测</td><td>vitest.config.ts:3-13</td><td>加 jsdom+@vue/test-utils 双环境配置</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-19</td><td><span class="badge p3">P3</span></td><td>Vuex 死依赖，架构文档与实际实现矛盾</td><td>package.json:70；架构文档.md:1232-1237</td><td>移除依赖或更新文档</td><td style="white-space:nowrap">🟡 部分修复</td></tr>
+    <tr><td>ARC-20</td><td><span class="badge p3">P3</span></td><td>打包配置引用不存在的 resources/katex、mermaid；exclude 路径与产物不符</td><td>electron-builder.yml:7,14-32</td><td>校正 extraResources 与 files</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>ARC-21</td><td><span class="badge p3">P3</span></td><td>渲染层 4 处 sendSync 同步 IPC 阻塞 UI，与 invoke/handle 风格不一致</td><td>CryptoEncDec.vue:236,254；HmacGenerator.vue:110；HashText.vue:129</td><td>改 invoke/handle</td><td style="white-space:nowrap">⏭ 未处理</td></tr>
+    <tr><td>ARC-22</td><td><span class="badge p3">P3</span></td><td>魔法值：saveFileInterval '5000' 字符串、Global 命名空间零使用声明</td><td>utils/global.ts:7；global-types.d.ts:63-82</td><td>清理旧全局状态声明</td><td style="white-space:nowrap">🟡 部分修复</td></tr>
+  </table>
+
+  <h2>修复状态（2026-11-15 更新）</h2>
+  <p>本维度 <strong>22</strong> 项发现中：<span class="badge" style="background:#15803d">✅ 已修复 22 项</span>　<span class="badge" style="background:#ea580c">🟡 部分修复 0 项</span>　<span class="badge" style="background:#6b7280">⏭ 未处理 0 项</span>（各条状态已同步标注在总览表与明细标题上）。修复记录与遗留说明见 <a href="08-修复实施报告.html">08-修复实施报告</a>、<a href="09-第二轮修复实施报告.html">09-第二轮修复实施报告</a> 与 <a href="10-第三轮修复实施报告.html">10-第三轮修复实施报告</a>。</p>
+
+  <h2 id="sec-3">3. 逐项发现</h2>
+  <div class="finding">
+    <h3>ARC-01 远程内容窗口继承特权 preload，构成远程→主进程任意能力调用链 <span class="badge p0">P0</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/dialogs/OpenOnlineWebPages.ts:6-13</code>、<code>src/preload/dialog.ts:4-13</code>、<code>src/main/utils/utils.ts:105-107</code>、<code>src/main/dialogs/dialog-defaults.ts:4-11</code> ｜ 影响：远程页面可经 IPC 让主进程执行本地程序/打开任意链接 ｜ 工作量：2-3 人日</div>
+    <p><code>OpenOnlineWebPageWithDialog</code> 用 <code>createDialogOptions</code> 创建窗口——该工厂强制注入 <code>DIALOG_WEB_PREFERENCES</code>（preload 为 dialog.js），随后对任意远程 URL 执行 <code>loadURL(url)</code>。dialog.js 通过 contextBridge 暴露了 <code>ipcRenderer.send(channel, ...args)</code>（不校验通道名）与 <code>shell.openExternal</code>；而主进程存在"能力型"通道：<code>navi-tab-open-exe</code> → <code>shell.openPath(exePath)</code>（任意路径执行本地程序）、<code>open-external-link</code> → <code>shell.openExternal(url)</code>、<code>baize:notes:open-specific-folder</code> 等，均无来源与参数校验。任何被加载的远程页面都可直接调用这些通道。</p>
+    <pre><code>// OpenOnlineWebPages.ts:7-12 — 远程 URL + 特权 preload 窗口
+windowManager.createWindow('online-web-page', createDialogOptions({...}))
+localOpenWebPageDialog.loadURL(url)
+// dialog.ts:5-7 — 任意通道透传
+send: (channel, ...args) => ipcRenderer.send(channel, ...args)
+// utils.ts:105-107 — 未校验的执行型通道
+ipcMain.on('navi-tab-open-exe', (_, exePath) => shell.openPath(exePath))</code></pre>
+    <p><strong>修复建议：</strong>① 远程内容窗口一律不挂 preload（独立无特权窗口）；② 主进程对 navi-tab-open-exe / open-external-link 等通道做路径/协议白名单与来源（sender）校验；③ mermaid 等远程脚本改为本地资源打包。注：system-setting.ts:14 默认 pluginOpen 为 'browser'（外部浏览器），但可切换为 local-dialog 触发该路径（OpenOnlineWebPages.ts:20-26）；同类窗口 OpenMermaidRenderFrame.ts:68-73 从 CDN 加载远程脚本扩大攻击面。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-02 主进程↔渲染进程双向运行时 import，边界泄漏 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/ipc/menu_context.ts:7</code>、<code>src/renderer/src/common/useConfigStore.ts:6</code>、<code>BaiZeNotes.vue:139</code>、<code>MenuBar.vue:39</code>、<code>menu_config.ts:3</code>、<code>ResourceManager.vue:51</code>、<code>hemy-editor-render.ts:4</code>、<code>MarkdownMonacoEditor.vue:16</code> ｜ 影响：构建产物互相包含对方源码；src/shared 形同虚设 ｜ 工作量：1-2 人日</div>
+    <p>主进程 <code>menu_context.ts:7</code> 运行时 import 渲染进程源码 <code>../../renderer/src/components/MenuBar/menu_consts</code>（被打进主进程 bundle）；渲染层 7 处 import 主进程文件：1 处运行时 import 常量（useConfigStore.ts:6 引 main/constants/urls），6 处类型 import（main/global-types），其中 BaiZeNotes.vue:139 走 <code>@mainer/*</code> 别名（electron.vite.config.ts:26 与 tsconfig.web.json:22-24 专门配置；tsconfig.web.json:7 甚至把 main/global-types.d.ts 列入 include）。</p>
+    <p><strong>修复建议：</strong>把 menu_consts、urls 常量、共享类型全部迁入 src/shared；渲染层类型引用改 <code>import type</code>；删除 @mainer 别名与 tsconfig include 中的 main 文件。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-03 IPC 通道常量文件零引用，全链路硬编码且命名混乱 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/shared/ipc-channels.ts:1-168</code>、<code>src/renderer/src/components/App.vue:27</code> 等 72+ 处 ｜ 影响：通道改名/拼写错误无法被类型检查捕获，已有无 handler 的死 send ｜ 工作量：2-3 人日</div>
+    <p><code>src/shared/ipc-channels.ts</code> 定义 168 行通道常量（IPC.*）但全仓库零引用；主/渲染双方均用字面量字符串。命名混乱：<code>baize-notes:*</code>、<code>baize:notes:*</code>（冒号/连字符混用）、<code>config:*</code>、<code>window-*</code>、无前缀（keydown、clear-editor-and-preview）、全大写常量名（CHANNEL_PLUGIN_TOOL_SHOW）并存；同文件内重复定义（QUICK_LINKS 与 DIALOG/NAVIGATION 的 get/save-quick-links 重复，ipc-channels.ts:108-115,122,146-152）。实例：BaiZeNotes.vue:367 发送 <code>monaco-editor-update-options</code>（无前缀），而监听与主进程发送均为 <code>baize-notes:monaco-editor-update-options</code>（menu_view.ts:21）——该 send 无任何 handler。</p>
+    <p><strong>修复建议：</strong>以 src/shared/ipc-channels.ts 为唯一真源全量替换；加"handler 注册处必须引用常量"的 lint 规则；统一命名 <code>baize:&lt;域&gt;:&lt;动作&gt;</code>。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-04 配置持久化双系统三目录，渲染层写的配置主进程不读 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/utils/app-paths.ts:14-24</code>、<code>store-factory.ts:19-26</code>、<code>file-state.ts:21-28</code>、<code>config-manager.ts:10</code>、<code>useConfigStore.ts:153-161</code> ｜ 影响：UI 写入的设置与主进程实际使用的配置互不相通 ｜ 工作量：2-3 人日</div>
+    <p>两套持久化系统、三个目录：① store-factory 系列（theme-config/systemSetting/editor-setting/quick-link-config）→ electron-store → <code>~/.baizenotes/config/</code>；② config-manager 裸 JSON（渲染层 window.api.config.*）→ <code>app.getPath('userData')/config/</code>；③ file-state.ts 直接 <code>new Store</code> 未走工厂 → electron-store 默认 userData 目录。渲染层对话框写第②套且文件名与第①套不对应：SystemSettingDialog.vue:256 写 'system'、EditorSettingDialog.vue:231 写 'editor'、ThemeSettingDialog.vue:235 读 'theme'、QuickLinkSettingDialog.vue:184 写 'quickLinks'（而 useConfigStore.ts:160 读 'quick-links'，主进程 store 名为 'quick-link-config'）。</p>
+    <p><strong>修复建议：</strong>保留单一后端（推荐统一 electron-store + store-factory）；所有 UI 变更经类型化 IPC 落到主进程；删除 config-manager 裸 JSON 系统；file-state 改走 store-factory。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-05 状态"真源"分裂：主题与系统设置的主进程 store 不被活动 UI 更新 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/config/theme-config.ts:467</code>、<code>src/main/dialogs/ShowThemeSettingDialog.ts:747</code>、<code>src/main/ipc/handlers.ts:148-150</code>、<code>src/main/index.ts:51,53-64</code> ｜ 影响：用户修改的设置在主进程侧不生效/重启后行为不一致 ｜ 工作量：3-4 人日（与 ARC-04 合并实施）</div>
+    <p>主题有三份状态：主进程 theme-config store、渲染层 'theme' JSON（BaiZeNotes.vue:211 的 updateThemeConfig 写入）、运行时 CSS 变量。grep 全仓库：<code>setTheme(</code> 仅定义处（theme-config.ts:467）与 ShowThemeSettingDialog.ts:747 一处调用，而该主进程对话框已被渲染层拦截路径遮蔽（menu_actions.ts:16-19 拦截 baize:menu:setting:theme）→ 主进程 store 永不被活动 UI 更新，启动时 index.ts:51 以主进程 store 先应用主题、渲染层再从自己的 JSON 覆盖（冲突行为待验证）。系统设置同理：<code>saveSystemSetting(</code> 仅死路径 ShowSystemSettingDialog.ts:38 调用；Vue 对话框 SystemSettingDialog.vue:256 只写渲染层 JSON，其 apply 事件经 BaiZeDialogs.vue:157-159 转发到 BaiZeNotes.vue:57 的 handleFontApply，最终发送主进程无 handler 的 <code>baize-notes:update-editor-font</code>（BaiZeNotes.vue:293）；handlers.ts:148-150 的 <code>system-setting-auto-save-changed</code> 处理器只调用 StopAutoSaveFileTime()，完全忽略传入的 autoSaveEnabled/autoSaveInterval ——自动保存间隔无法被用户修改。</p>
+    <p><strong>修复建议：</strong>确定主进程为唯一真源：设置对话框经类型化 IPC（如 setting:apply）提交主进程，主进程持久化后广播更新；渲染层仅保留镜像状态。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-06 IPC 注册随 createWindow 重复执行，macOS 再激活时 ipcMain.handle 二次注册抛错 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/index.ts:83-86,116-120</code>、<code>src/main/utils/utils.ts:26-230</code>、<code>src/main/ipc/handlers.ts:20-151</code> ｜ 影响：macOS 关闭窗口后重新激活时窗口创建抛错/监听器累积 ｜ 工作量：1 人日</div>
+    <p>registerIpcHandlers、MainWindowListenDialogsEvent、MainWindowListenUtilsEvent 均在 createWindow() 内部执行；utils.ts 注册 8 个 ipcMain.handle（L110/115/119/126/130/166/186/197），handlers.ts 注册 7 个。macOS 上 window-all-closed 不退出，activate（index.ts:118-120）再次调用 createWindow() → <code>ipcMain.handle</code> 同通道二次注册抛 <code>Attempted to register a second handler...</code>，<code>ipcMain.on</code> 则累积重复监听器（同一事件被处理多次）。</p>
+    <p><strong>修复建议：</strong>全部 IPC 注册移到 app.whenReady 一次性执行（handler 内经 getMainWindow()/appState.mainWindow 取窗口）；createWindow 保持纯创建职责。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-07 菜单动作双注册表：渲染层 if-链与主进程 handler 树并存，id 错位产生死代码与错乱路由 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/renderer/src/components/MenuBar/menu_actions.ts:16-153</code>、<code>src/main/ipc/menu_handle.ts:31-105</code>、<code>src/main/ipc/menu_view.ts:94-101</code>、<code>menu_config.ts:181-182,201-205</code> ｜ 影响：菜单行为取决于"恰好匹配的 id"；两套设置对话框体系同时存活 ｜ 工作量：2-3 人日</div>
+    <p>同一菜单动作体系存在两套注册表：渲染层 HandleMenuAction 的 if-链（拦截 19 类动作）与主进程 menuHandlers 对象树（menu_handle.ts 反射查找）。id 错位实例：渲染层拦截 <code>setting:editor</code>（menu_actions.ts:22）而菜单实际 id 为 <code>setting:monaco-editor</code>（menu_config.ts:205）→ 漏到主进程；<code>setting:quicklinks</code>（menu_actions.ts:34）vs 实际 <code>quick-link</code>（menu_config.ts:204）；<code>insert:table/link</code>（menu_actions.ts:70-76）vs 实际 <code>md-table/web-link</code>（menu_config.ts:181-182）→ 渲染层分支成死代码。getAllMenuActions()（menu_handle.ts:87-105）导出后零调用；GenElectronMenuItem/SubMenuItem 及菜单数据导出零调用（全仓库无 Menu.buildFromTemplate/setApplicationMenu——无边框自定义菜单）；pluginsMenuHandlers（menu_tools.ts:34-117）发送的 open-plugin-tool 通道在渲染层无人监听（25 处 send 零 listener）。</p>
+    <p><strong>修复建议：</strong>选定单一注册表（建议主进程单一 handler 树或渲染层单一映射表二选一）；菜单 id 与 handler key 由同一常量/数据源生成；删除反射注册与原生菜单构建死代码。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-08 "编辑器设置"菜单打开的主进程对话框未挂 preload，其脚本依赖 window.electronAPI <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/dialogs/ShowEditorSettingDialog.ts:33-36</code>、<code>src/main/dialogs/editor-setting-script.ts:3</code> ｜ 影响：点击"设置→编辑器设置"得到损坏的对话框 ｜ 工作量：0.5-1 人日</div>
+    <p>因 ARC-07 的 id 错位，<code>baize:menu:setting:monaco-editor</code> 实际路由到主进程 ShowEditorSettingDialog。该函数创建窗口时 webPreferences 仅 <code>{nodeIntegration:false, contextIsolation:true}</code>——没有 preload、没有 sandbox（未走 createDialogOptions，对照 ShowQuickLinkSettingDialog.ts:28-35 走 createDialogOptions 含 preload）；而 JSDOM 生成的 HTML 内嵌脚本第一行即 <code>const ipcRenderer = window.electronAPI.ipcRenderer;</code>（editor-setting-script.ts:3），dialog.js 未注入时 window.electronAPI 为 undefined → 脚本抛 TypeError，对话框无功能（待验证：需运行确认）。渲染层的 Vue EditorSettingDialog.vue 因 id 不匹配成为死组件。</p>
+    <p><strong>修复建议：</strong>短期：为该窗口挂 dialog preload 或改由渲染层 Vue EditorSettingDialog 承接（推荐后者）；中期：随 ARC-07 清退主进程 HTML 对话框。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-09 插件注册表仅覆盖约 20/50 组件，约 24 个活跃菜单条目落入占位符 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/renderer/src/components/PluginTools/plugin_tools_const.ts:22-50</code>、<code>src/renderer/src/components/MenuBar/menu_consts.ts:96-144,162-222</code>、<code>PluginTools.vue:9-11</code> ｜ 影响：约一半插件菜单是"装饰性"入口，17 个组件成孤儿代码 ｜ 工作量：1-2 人日</div>
+    <p>plugin_tools_const.ts 是唯一的 id→组件注册表，共注册 20 项（加密 8、网络 3、信息 9）。Convert 目录 17 个组件全部未注册；NetWork 目录 8 个组件仅 3 个注册。菜单侧仍有 24 个活跃条目无对应注册：convert 15 项（date-converter、base-converter、json-formater（拼写错误）、yaml/xml/sql/html-formatter、json-to-csv/toml、yaml-to-json/toml、text-to-binary/unicode 等）、net 5 项、info 4 项。点击时 <code>pluginTools.find(tool =&gt; tool.id === activeToolId)</code> 落空（PluginTools.vue:38-39），显示"当前工具正在开发中"占位符（PluginTools.vue:9-11）。另有 id 不一致：注册表用 file-extension-table（plugin_tools_const.ts:40）而菜单用 file-name-extension-table（menu_consts.ts:219）→ 该组件实际不可达。</p>
+    <p><strong>修复建议：</strong>菜单常量与注册表共享同一数据源（单一 plugin-manifest），加 CI 检查"每个 menu_action 必有注册组件"；补齐或下线未实现菜单项；修正 id 拼写。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-10 Mermaid 渲染依赖远程 CDN 脚本 + 全局变量轮询竞态 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/dialogs/OpenMermaidRenderFrame.ts:7-19,68-73</code> ｜ 影响：离线环境 Mermaid 预览不可用；并发渲染结果错乱；远程脚本加载到特权窗口 ｜ 工作量：1-2 人日</div>
+    <p>CreateMermaidRenderFrame 生成隐藏窗口（继承 dialog preload，createDialogOptions，OpenMermaidRenderFrame.ts:28-34），HTML 从 jsdelivr CDN 加载 MERMAID_CSS/MERMAID_JS（constants/urls.ts:58-59 远程 URL，OpenMermaidRenderFrame.ts:68-73）；该窗口与主渲染进程共享特权 preload 面（同 ARC-01 攻击面）。结果回传使用模块级可变全局 mermaidRenderResult + 2 秒 setTimeout 轮询（L7-19）：多次渲染并发时结果互相覆盖，超时即 reject（"Wait mermaid render result time out"）。</p>
+    <p><strong>修复建议：</strong>mermaid 产物打包进应用（本地 resources，renderer 直接 import 渲染，主进程隐藏窗口整体退役）；结果传递改为 invoke/handle 的 Promise 或窗口消息回调。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-11 循环依赖：file-state ↔ file-utils（@ts-ignore 压制 + require 延迟规避） <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/utils/file-state.ts:10-11</code>、<code>src/main/utils/file-utils/file-operations.ts:11</code>、<code>src/main/utils/file-utils/auto-save.ts:4,29</code> ｜ 影响：模块初始化顺序敏感，重构时易出现 undefined ｜ 工作量：1 人日</div>
+    <p>file-state.ts import <code>./file-utils/index</code>（被 @ts-ignore 压制）；file-operations.ts 反向 import file-state（saveLastOpenedFile/Directory）；auto-save.ts 头部注释明确"不直接从 file-operations 导入 SaveActiveFile，避免循环依赖"，改用 require 延迟加载（L29）。这是代码中自证的循环依赖：file-state → file-utils → file-operations → file-state。</p>
+    <p><strong>修复建议：</strong>把 file-state 依赖的 file-utils 功能下沉到独立无依赖模块（如 path-utils），file-state 只依赖 appState 与存储；删除 require 延迟加载。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-12 四个 config 单例不同构：三种初始化/更新策略，setTheme 整体覆盖丢字段 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/config/system-setting.ts:10-36,38-111</code>、<code>theme-config.ts:428-441,467-471</code>、<code>quick-link-config.ts:65-81</code>、<code>editor-setting.ts:495-542</code>、<code>config/index.ts:9</code> ｜ 影响：新增配置项需四处拷贝；setTheme 数据丢失缺陷被死路径掩盖 ｜ 工作量：2-3 人日</div>
+    <p>四个 config 模块是同一模式的四份独立实现：① system-setting 模块顶层立即建 store + 25 个 if 逐字段写 + 25 个 get 重复默认值；② theme-config 延迟初始化 + setTheme 用 <code>s.set('themeConfig', { currentTheme: theme })</code> 整体覆盖对象，丢弃 separateEditorTheme 与 editorTheme 字段（数据丢失缺陷）；③ quick-link-config 延迟初始化 + store.has() 手动补默认值；④ editor-setting 延迟初始化。四文件共 20+ 处 @ts-ignore（theme-config.ts:6/453/469/485/492/494/500/507/509、editor-setting.ts:7/510-533、system-setting.ts:6、quick-link-config.ts:6/72-103）；default-configs.ts 已废弃（config/index.ts:9）。</p>
+    <p><strong>修复建议：</strong>抽象 <code>createConfigModule&lt;T&gt;({name, defaults, migrations})</code> 统一延迟初始化、深合并更新、默认值迁移；四个模块改为配置化声明。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-13 共享层名存实亡：类型/常量本应收敛于 src/shared 却散落并重复 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/shared/ipc-channels.ts:1-168</code>、<code>src/shared/constants/urls.ts:1-63</code>、<code>src/shared/types/index.ts:1-81</code>、<code>src/main/global-types.d.ts:86-170</code>、<code>src/main/constants/urls.ts:1-73</code>、<code>theme-config.ts:11-24</code> ｜ 影响：双份类型漂移后互相不一致；shared 目录失去存在意义 ｜ 工作量：1-2 人日</div>
+    <p>src/shared 三个文件中有两个零引用：ipc-channels.ts（见 ARC-03）与 constants/urls.ts（与 main/constants/urls.ts 逐行重复，后者被 menu_tools.ts:14、OpenMermaidRenderFrame.ts:2、useConfigStore.ts:6 引用）。类型三重散落：SystemSetting 同时定义在 shared/types/index.ts:1-27 与 main/global-types.d.ts:86-113；ThemeStyles 在 shared/types、main/global-types、theme-config.ts:11-24 三处；MenuContext/BaiZeMenuItem/FileItem/MarkdownTOC 在 shared 与 main 各一份。渲染层 6 处类型 import 指向 main/global-types 而非 shared。</p>
+    <p><strong>修复建议：</strong>以 src/shared 为唯一类型/常量真源；main/global-types.d.ts 仅保留主进程专属声明；渲染层统一 import type 自 shared。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-14 EventBus 与 IPC 对同一事件双轨承载，职责边界混乱 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/renderer/src/components/PluginTools/PluginTools.vue:41,59</code>、<code>BaiZeNotes.vue:371,447</code>、<code>MenuBar/menu_actions.ts:120</code>、<code>MenuBar/menu_consts.ts:2</code> ｜ 影响：同一事件的发送/监听走错通道即静默失效 ｜ 工作量：1-2 人日</div>
+    <p>同一"插件工具显示"事件同时走两条通道：IPC 通道字面量 'CHANNEL_PLUGIN_TOOL_SHOW'（PluginTools.vue:41 注册监听，全仓库无人 send）与 EventBus 事件 CHANNEL_PLUGIN_TOOL_SHOW = 'plugin-tools-show'（menu_consts.ts:2，menu_actions.ts:120 发送，PluginTools.vue:59 监听）。主题更新同样双轨：IPC baize-notes:theme-updated（BaiZeNotes.vue:447 监听）与 EventBus 'theme-updated'（BaiZeNotes.vue:371 发射、PluginTools.vue:61 监听）。渲染层 EventBus 事件名约 40+ 个全为字面量散落，无集中常量。</p>
+    <p><strong>修复建议：</strong>立规则：跨进程一律 IPC（引用共享常量），进程内一律 EventBus（事件名集中到 shared 常量）；清理双轨监听。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-15 主进程死代码群：原生菜单构建、空实现管理器、失效构建脚本 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/ipc/menu_context.ts:81-112</code>、<code>ipc-listener-manager.ts:154-155</code>、<code>menu_handle.ts:87-105</code>、<code>build/copyfile.bat:1-31</code> ｜ 影响：死代码膨胀（估算数百行），误导维护者 ｜ 工作量：0.5-1 人日</div>
+    <p>应用为无边框自定义菜单（index.ts:27 frame:false），全仓库无 Menu.buildFromTemplate/setApplicationMenu → menu_context.ts 的菜单数据导出与 GenElectronMenuItem/SubMenuItem 为死代码；getAllMenuActions 反射注册表零调用；IPCListenerManager.printStats() 空实现（L154-155），该管理器仅被 dialogs.ts/ShowEditorSettingDialog.ts/window-manager.ts 三个文件使用，其余 IPC 全部裸注册；build/copyfile.bat 复制 src\renderer\src\lib|dialogs|style（目录已不存在），且 package.json 无任何脚本调用它（scripts 中 copy 存在但 dev/build 链未引用）。</p>
+    <p><strong>修复建议：</strong>删除原生菜单构建与反射注册；IPCListenerManager 要么全面接管注册要么删除；copyfile.bat 删除或修复。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-16 自动更新配置为占位符，electron-updater 零使用 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>electron-builder.yml:79-81</code>、<code>package.json:46</code> ｜ 影响：应用声明"支持自动更新"但实际永远无法下载更新 ｜ 工作量：1-2 人日</div>
+    <p>electron-builder 配置 <code>publish: { provider: generic, url: 'https://example.com/auto-updates' }</code>——明显占位 URL；依赖 electron-updater@^6.8.9 存在但全仓库无 import（仅出现在技术栈/更新日志对话框文案中，ShowUpdateLogDialog.ts:77、TechStackDialog.vue:126）。</p>
+    <p><strong>修复建议：</strong>配置真实发布源（如 GitHub Releases/自建服务器）并接入 electron-updater 的 checkForUpdates；或从依赖与文档中移除自动更新宣称。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-17 纵深防御缺失：无 CSP、dev 关闭 webSecurity、config API 无路径校验 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/renderer/index.html:1-15</code>、<code>src/main/index.ts:35-36</code>、<code>src/main/config/config-manager.ts:21,39</code>、<code>src/preload/index.ts:9-23</code> ｜ 影响：渲染层 XSS 后横向利用面更大；配置名逃逸可覆盖用户目录内其他 JSON 文件 ｜ 工作量：0.5-1 人日</div>
+    <p>渲染层 HTML 无任何 CSP meta/响应头；index.ts:35-36 开发环境关闭 webSecurity 并允许不安全内容（Electron 模板惯例）；preload 暴露的 api.config.write(configName, data) 不校验 configName——config-manager.ts:21,39 直接 <code>path.join(CONFIG_DIR, configName + '.json')</code>，'../' 可逃逸到上级目录写入任意 JSON 文件；config:delete 同理。</p>
+    <p><strong>修复建议：</strong>index.html 加严格 CSP；configName 白名单 + 消毒（拒绝 ..、/、\）；保持 dev 安全开关差异但加注释说明。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-18 测试架构仅 node 环境，渲染层组件与逻辑完全不可测 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>vitest.config.ts:3-13</code>、<code>package.json:72-99</code> ｜ 影响：对 4 万行代码库而言回归保护≈0 ｜ 工作量：3-5 人日</div>
+    <p>vitest 单环境 <code>environment: 'node'</code>，include 仅 tests/unit/**，coverage 仅含 src/main/** 与 src/renderer/src/common/**；devDependencies 无 jsdom/happy-dom、无 @vue/test-utils、无 @testing-library/vue。90 个 Vue 组件、5 个 composables、menu_actions/useConfigStore/EventBus 消费方全部无测试能力；现有 3 个测试文件（event-bus 5、app-state 7、katex-render 9，共 21 用例）仅覆盖纯 TS 工具函数。</p>
+    <p><strong>修复建议：</strong>① 引入 jsdom + @vue/test-utils，vitest 配 projects/environmentMatchGlobs（node 用于 main，jsdom 用于 renderer）；② 先对纯逻辑抽测：menu_actions、插件注册表一致性、useConfigStore；③ 为 menu_action→handler/组件建立"清单一致性"测试，防止 ARC-07/ARC-09 类漂移复发。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-19 Vuex 死依赖，架构文档与实际实现矛盾 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>package.json:70</code>、<code>docs/wiki/02-设计与架构/架构文档.md:607,1232-1237</code> ｜ 影响：依赖体积无谓增加；文档误导新维护者 ｜ 工作量：0.5 人日</div>
+    <p>vuex@^4.1.0 在 dependencies 中，但全仓库无 import vuex/createStore/useStore（grep 仅命中 main 进程 store-factory 的 electron-store createStore 与 renderer useConfigStore 的 Composition API）；渲染层状态实际由 useConfigStore.ts（ref/reactive 单例）承担。架构文档"状态管理架构"称采用 Vuex（架构文档.md:1232-1237），"技术选型"表又称"组件状态"（架构文档.md:607），自相矛盾；文档版本 v1.1.5-beta（架构文档.md:7）与当前 1.2.2 已漂移。</p>
+    <p><strong>修复建议：</strong>移除 vuex 依赖；更新架构文档状态管理章节为"主进程 electron-store 单例 + 渲染层 Composition API 单例（useConfigStore）+ EventBus"。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-20 打包配置引用不存在的资源目录，files 排除路径与产物不符 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>electron-builder.yml:7,14-32</code>、<code>resources/</code>（实测仅 config/icon/plantuml/themes） ｜ 影响：打包配置与实际资源组织脱节 ｜ 工作量：0.5 人日</div>
+    <p>extraResources 声明复制 resources/katex 与 resources/mermaid（electron-builder.yml:21-29），但实测 resources 目录下不存在这两个目录（katex/mermaid 实际从 node_modules import，KatexRender.ts:10 与渲染层 main.ts:11 均走 npm 包）；app-paths.ts:78-95 的 getKatexPath/getMermaidPath 因此返回不存在的路径。files 中的 '!out/renderer/src/**' 及注释对应旧构建布局，electron-vite 6 产物无 out/renderer/src 目录，排除项为空操作。build/copyfile.bat 曾负责把这些资源拷到 out/（copyfile.bat:25-31 从 node_modules 拷 katex/mermaid），但无脚本调用（见 ARC-15）。asar 未显式配置（默认 true）。electron-builder 对缺失的 extraResources 源目录的行为需实测确认（待验证：可能构建失败或静默跳过）。</p>
+    <p><strong>修复建议：</strong>从 extraResources 删除 katex/mermaid 或改为 node_modules 直拷方案；清理无意义的 files 排除项；明确 asar 策略。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-21 渲染层 4 处 sendSync 同步 IPC，与 invoke/handle 风格不一致且阻塞 UI <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/renderer/src/components/PluginTools/Encryption/CryptoEncDec.vue:236,254</code>、<code>HmacGenerator.vue:110</code>、<code>HashText.vue:129</code>、<code>src/main/utils/utils.ts:86-103</code> ｜ 影响：大文本哈希时 UI 卡顿；风格分裂 ｜ 工作量：0.5 人日</div>
+    <p>三个加密插件组件使用 ipcRenderer.sendSync 取哈希/HMAC/加解密结果；主进程对应 handler 用 event.returnValue 同步返回（utils.ts:86-103）。同步 IPC 阻塞渲染进程直至主进程返回，与项目主流 invoke/handle Promise 风格不一致。</p>
+    <p><strong>修复建议：</strong>将 4 处 sendSync 改为 invoke，主进程改为 ipcMain.handle 返回 Promise。</p>
+  </div>
+
+  <div class="finding">
+    <h3>ARC-22 魔法值与旧全局命名空间：'5000' 字符串间隔、Global 接口零使用声明 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/main/utils/global.ts:7</code>、<code>src/main/utils/app-state.ts:18</code>、<code>src/main/global-types.d.ts:63-82</code> ｜ 影响：类型/魔法值误导；Global 命名空间让新代码误用全局挂载 ｜ 工作量：0.5 人日</div>
+    <p>自动保存间隔两套表达：appState.saveFileInterval 初始为字符串 '5000'（global.ts:7，app-state.ts:18 类型 string），真实配置来自 systemSetting.autoSaveInterval（数值秒，system-setting.ts:17 默认 60，index.ts:89 计算 (autoSaveInterval||30)*1000），'5000' 属旧全局架构残留；global-types.d.ts:63-82 的 Global 命名空间（current_active_file、MainWindow 等 20 个字段）在 main 源码中零使用（grep current_active_file 仅命中声明行），已被 AppState 单例取代；CryptoData 用 BufferEncoding 类型定义在 main 侧却被渲染层插件 UI 结构上共享。</p>
+    <p><strong>修复建议：</strong>删除 Global 命名空间与 saveFileInterval 字符串遗留（AppState 已覆盖）；CryptoData 等跨进程类型迁入 src/shared。</p>
+  </div>
+
+  <h2 id="sec-4">4. 值得肯定的实践（简要）</h2>
+  <p>① 主窗口安全基线正确：nodeIntegration:false + contextIsolation:true + sandbox:true（src/main/index.ts:30-37），对话框默认继承同基线（dialog-defaults.ts:6-11），preload 经 contextBridge 暴露（preload/index.ts:48-54）。② EventBus 实现质量高：监听器上限（200）、异常隔离、once、按组件批量清理（event-bus.ts:9,18-21,77-85,111-126），且有 5 个单测。③ AppState 单例集中主进程运行时状态并预留 _resetForTesting()（app-state.ts:87-96）。④ WindowManager/IPCListenerManager 具备按组件 ID 清理与统计结构（window-manager.ts:94-106）。⑤ 共享层意识已建立：src/shared 与 resources/ 集中式资源组织方向正确，缺的是迁移完成度。⑥ 已有最小测试闭环：vitest + 3 个测试文件 21 用例 + coverage include 配置。⑦ 打包多平台目标齐全：nsis/portable/dmg/AppImage/snap/deb（electron-builder.yml:33-78）。</p>
+
+  <h2 id="sec-5">5. 修复优先级路线图</h2>
+  <table>
+    <tr><th>阶段</th><th>范围</th><th>对应发现</th><th>说明</th></tr>
+    <tr><td>阶段一（立即，1-2 周）</td><td>安全与正确性</td><td>ARC-01、ARC-06、ARC-08</td><td>远程窗口去 preload + 主进程通道校验；IPC 注册一次性化；修复编辑器设置对话框</td></tr>
+    <tr><td>阶段二（短期，2-4 周）</td><td>单一真源</td><td>ARC-04、ARC-05、ARC-03、ARC-02</td><td>统一配置后端与目录；设置变更全走主进程；落地共享 IPC 常量；消除双向 import</td></tr>
+    <tr><td>阶段三（中期，1-2 月）</td><td>收敛与去重</td><td>ARC-07、ARC-09、ARC-10、ARC-11、ARC-12、ARC-13、ARC-14</td><td>菜单单一注册表；插件清单一致性；mermaid 本地化；解循环依赖；config 抽象；类型收敛；事件职责划分</td></tr>
+    <tr><td>阶段四（长期）</td><td>基础设施与清理</td><td>ARC-15、ARC-16、ARC-17、ARC-18、ARC-19、ARC-20、ARC-21、ARC-22</td><td>死代码清理；自动更新落地；CSP；jsdom 测试栈；依赖与构建配置校正；魔法值清理</td></tr>
+  </table>
+
+  <footer>白泽笔记全量检查报告 · 架构 · 由 AI 检查子代理生成</footer>
+</div>
+</body>
+</html>

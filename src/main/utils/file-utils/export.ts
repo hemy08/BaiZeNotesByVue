@@ -4,56 +4,75 @@
  */
 
 import { promises as fs, createWriteStream } from 'fs'
-import { dialog, BrowserWindow } from 'electron'
+import * as path from 'path'
+import { dialog, BrowserWindow, app } from 'electron'
+import MarkdownIt from 'markdown-it'
 import { showErrorMessageBox, showInfoMessageBox } from './dialog-helpers'
 import { appState } from '../app-state'
+import { tMain } from '../i18n'
+// P1-AS-1：导出目标来自系统保存对话框（用户显式选择），返回后登记为受信精确文件；
+// 导出器只写该路径，避免渲染层通过其它入口驱动任意写
+import { registerTrustedPath } from '../security'
 
 /**
  * 导出配置接口
  */
 interface ExportConfig {
-    name: string           // 格式名称
-    extensions: string[]   // 文件扩展名
-    defaultName: string    // 默认文件名
-    exporter: (content: string, filePath: string) => Promise<void>  // 导出函数
+    name: string // 格式名称
+    extensions: string[] // 文件扩展名
+    defaultName: string // 默认文件名
+    exporter: (content: string, filePath: string) => Promise<void> // 导出函数
 }
 
 /**
  * 导出配置表
+ * CMP-30：内置格式名称经 getter 按当前语言实时翻译（自定义注册格式仍直接使用 name 字面量）
  */
 const exportConfigs: Record<string, ExportConfig> = {
     word: {
-        name: 'Word 文档',
+        get name() {
+            return tMain('mainMsg.filters.word')
+        },
         extensions: ['docx'],
         defaultName: 'untitled.docx',
         exporter: ToWord
     },
     json: {
-        name: 'JSON 文件',
+        get name() {
+            return tMain('mainMsg.filters.json')
+        },
         extensions: ['json'],
         defaultName: 'untitled.json',
         exporter: ToJson
     },
     xml: {
-        name: 'XML 文件',
+        get name() {
+            return tMain('mainMsg.filters.xml')
+        },
         extensions: ['xml'],
         defaultName: 'untitled.xml',
         exporter: ToXml
     },
     yaml: {
-        name: 'YAML 文件',
+        get name() {
+            return tMain('mainMsg.filters.yaml')
+        },
         extensions: ['yaml', 'yml'],
         defaultName: 'untitled.yaml',
         exporter: ToYaml
     },
     html: {
-        name: 'HTML 文件',
+        get name() {
+            return tMain('mainMsg.filters.html')
+        },
         extensions: ['html', 'htm'],
         defaultName: 'untitled.html',
         exporter: ToHtml
     },
     pdf: {
-        name: 'PDF 文件',
+        get name() {
+            return tMain('mainMsg.filters.pdf')
+        },
         extensions: ['pdf'],
         defaultName: 'untitled.pdf',
         exporter: ToPdf
@@ -69,30 +88,64 @@ export async function ExportToFile(mainWindow: BrowserWindow, fileType: string):
     const currentContent = appState.currentActiveFile?.content || ''
 
     if (!currentContent) {
-        showErrorMessageBox('Currently, there is no content to export')
+        // FUN-27：用户可见提示统一中文
+        showErrorMessageBox(tMain('mainMsg.file.noExportContent'))
         return
     }
 
     const config = exportConfigs[fileType]
 
     if (!config) {
-        showErrorMessageBox(`Currently, exporting to ${fileType} format is not supported`)
+        showErrorMessageBox(tMain('mainMsg.file.unsupportedExportFormat', { format: fileType }))
         return
     }
 
     const result = await dialog.showSaveDialog(mainWindow, {
-        title: `导出为 ${config.name}`,
+        title: tMain('mainMsg.dialog.exportTitle', { name: config.name }),
         defaultPath: config.defaultName,
         filters: [{ name: config.name, extensions: config.extensions }]
     })
 
     if (result.canceled || !result.filePath) return
 
+    // P1-AS-1：登记用户选择的导出目标为受信路径（放行「导出到用户选择的位置」）
+    registerTrustedPath(result.filePath)
+
     try {
         await config.exporter(currentContent, result.filePath)
-        showInfoMessageBox(`Export successful: ${result.filePath}`)
+        showInfoMessageBox(tMain('mainMsg.dialog.exportSuccess', { path: result.filePath }))
     } catch (error) {
-        showErrorMessageBox(`Exporting file failed: ${error}`)
+        showErrorMessageBox(tMain('mainMsg.dialog.exportFailed', { error: String(error) }))
+    }
+}
+
+/**
+ * 应用版本号缓存（FUN-15：导出元数据版本与 package.json 保持一致）
+ */
+let cachedAppVersion: string | null = null
+
+/**
+ * FUN-15：从 package.json 读取应用版本，作为导出元数据版本号。
+ * 开发模式 app.getAppPath() 指向项目根目录；打包后指向 asar，package.json 随包发布。
+ * 读取失败时依次回退 electron 的 app.getVersion()（打包后即 package.json 版本）与 'unknown'。
+ */
+export async function getAppVersionForExport(): Promise<string> {
+    if (cachedAppVersion) {
+        return cachedAppVersion
+    }
+    try {
+        const pkgPath = path.join(app.getAppPath(), 'package.json')
+        const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf-8')) as { version?: string }
+        cachedAppVersion = pkg.version || ''
+        return cachedAppVersion
+    } catch {
+        // 读取 package.json 失败（如测试环境无 app 对象）时回退
+        try {
+            cachedAppVersion = app.getVersion()
+        } catch {
+            cachedAppVersion = 'unknown'
+        }
+        return cachedAppVersion
     }
 }
 
@@ -118,6 +171,7 @@ export function registerExportFormat(formatKey: string, config: ExportConfig): v
  * 导出为 Word 文档
  */
 export async function ToWord(content: string, filePath: string): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- officegen 无 TypeScript 类型声明，require 返回 any 是当前唯一无类型错误的加载方式
     const officeGen = require('officegen')
     const docx = officeGen('docx')
 
@@ -146,11 +200,13 @@ export async function ToWord(content: string, filePath: string): Promise<void> {
  * 导出为 JSON 文件
  */
 export async function ToJson(content: string, filePath: string): Promise<void> {
+    // FUN-15：元数据版本号从 package.json 读取，与应用实际版本保持一致
+    const version = await getAppVersionForExport()
     const jsonContent = {
         content: content,
         metadata: {
             exportedAt: new Date().toISOString(),
-            version: '1.1.5-beta',
+            version: version,
             type: 'markdown',
             app: 'BaiZeNotes'
         }
@@ -162,15 +218,20 @@ export async function ToJson(content: string, filePath: string): Promise<void> {
  * 导出为 XML 文件
  */
 export async function ToXml(content: string, filePath: string): Promise<void> {
+    // FUN-15：正文中的 ]]> 会提前终结 CDATA 段，必须先拆开（标准写法：
+    // 替换为 ]]]]><![CDATA[>），否则生成非法 XML
+    const safeContent = content.replace(/]]>/g, ']]]]><![CDATA[>')
+    // FUN-15：元数据版本号从 package.json 读取
+    const version = await getAppVersionForExport()
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <document>
   <metadata>
     <exportedAt>${new Date().toISOString()}</exportedAt>
-    <version>1.1.5-beta</version>
+    <version>${version}</version>
     <type>markdown</type>
     <app>BaiZeNotes</app>
   </metadata>
-  <content><![CDATA[${content}]]></content>
+  <content><![CDATA[${safeContent}]]></content>
 </document>`
     await fs.writeFile(filePath, xmlContent, 'utf-8')
 }
@@ -179,11 +240,16 @@ export async function ToXml(content: string, filePath: string): Promise<void> {
  * 导出为 YAML 文件
  */
 export async function ToYaml(content: string, filePath: string): Promise<void> {
+    // FUN-15：元数据版本号从 package.json 读取
+    const version = await getAppVersionForExport()
     const yamlContent = `content: |
-${content.split('\n').map(line => `  ${line}`).join('\n')}
+${content
+    .split('\n')
+    .map((line) => `  ${line}`)
+    .join('\n')}
 metadata:
   exportedAt: ${new Date().toISOString()}
-  version: 1.1.5-beta
+  version: ${version}
   type: markdown
   app: BaiZeNotes`
     await fs.writeFile(filePath, yamlContent, 'utf-8')
@@ -193,8 +259,7 @@ metadata:
  * 导出为 HTML 文件
  */
 export async function ToHtml(content: string, filePath: string): Promise<void> {
-    const markdownIt = require('markdown-it')
-    const md = new markdownIt()
+    const md = new MarkdownIt()
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -257,8 +322,7 @@ ${md.render(content)}
  * 导出为 PDF 文件
  */
 export async function ToPdf(content: string, filePath: string): Promise<void> {
-    const markdownIt = require('markdown-it')
-    const md = new markdownIt()
+    const md = new MarkdownIt()
 
     const win = new BrowserWindow({
         width: 800,
@@ -270,7 +334,8 @@ export async function ToPdf(content: string, filePath: string): Promise<void> {
         }
     })
 
-    const htmlContent = `
+    try {
+        const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -288,19 +353,25 @@ ${md.render(content)}
 </body>
 </html>`
 
-    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`)
+        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`)
 
-    const pdfData = await win.webContents.printToPDF({
-        printBackground: true,
-        pageSize: 'A4',
-        margins: {
-            top: 1,
-            bottom: 1,
-            left: 1,
-            right: 1
+        const pdfData = await win.webContents.printToPDF({
+            printBackground: true,
+            pageSize: 'A4',
+            margins: {
+                top: 1,
+                bottom: 1,
+                left: 1,
+                right: 1
+            }
+        })
+
+        await fs.writeFile(filePath, pdfData)
+    } finally {
+        // FUN-15/MEM-07：加载、打印或写盘任一步失败都必须关闭隐藏窗口，
+        // 避免导出失败时窗口泄漏累积
+        if (!win.isDestroyed()) {
+            win.close()
         }
-    })
-
-    await fs.writeFile(filePath, pdfData)
-    win.close()
+    }
 }

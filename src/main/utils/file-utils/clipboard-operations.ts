@@ -1,16 +1,40 @@
 /**
  * 剪贴板操作模块
  * 提供文件/文件夹的复制、剪切、粘贴等功能
+ *
+ * P1-AS-1：复制/剪切只允许记录受信范围内的源路径，粘贴的源与目标都必须位于
+ * 受信范围（工作区根、系统临时目录、用户经对话框选择过的路径、当前活动文件目录），
+ * 越界时状态栏提示并中止，不再对渲染层传入的任意路径执行 fs-extra.copy/remove。
  */
 
 import { promises as fs } from 'fs'
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const fsExtra = require('fs-extra')
+import { join } from 'path'
+import * as fsExtra from 'fs-extra'
 import { showErrorMessageBox } from './dialog-helpers'
-import { ReloadDirFromDisk } from './file-operations'
+import {
+    notifyPathAccessDenied,
+    ReloadDirFromDisk,
+    DescribeFileSystemError
+} from './file-operations'
 import { appState } from '../app-state'
+import { logger } from '../logger'
+import { tMain } from '../i18n'
+import { isPathAllowed, isSafeFileName } from '../security'
 
 const reloadFromDiskTime = 100
+
+/**
+ * 兼容旧行为的全局标记：记录上次复制/剪切的是否为文件。
+ * 原实现直接写 `global.isCopyCutFile`，在 noImplicitAny 下 TS7017；改为显式
+ * globalThis 类型断言，运行时挂载位置不变（仍可被外部以 globalThis.isCopyCutFile 读取）。
+ */
+interface ClipboardGlobalScope {
+    isCopyCutFile?: boolean
+}
+
+function setCopyCutFileFlag(isFile: boolean): void {
+    ;(globalThis as ClipboardGlobalScope).isCopyCutFile = isFile
+}
 
 /**
  * 复制文件或文件夹到剪贴板
@@ -18,9 +42,14 @@ const reloadFromDiskTime = 100
  * @param isFile 是否为文件
  */
 export function FileManagerContextMenuCopy(fromPath: string, _isFile: boolean): void {
+    // P1-AS-1：源路径必须在受信范围内，避免把任意路径带入后续粘贴流程
+    if (!isPathAllowed(fromPath)) {
+        notifyPathAccessDenied(fromPath, 'mainMsg.status.operationFailed')
+        return
+    }
     appState.srcDirCopyCut = fromPath
     appState.isCopyOrCut = 'copy'
-    global.isCopyCutFile = _isFile
+    setCopyCutFileFlag(_isFile)
 }
 
 /**
@@ -29,9 +58,14 @@ export function FileManagerContextMenuCopy(fromPath: string, _isFile: boolean): 
  * @param isFile 是否为文件
  */
 export function FileManagerContextMenuCut(fromPath: string, _isFile: boolean): void {
+    // P1-AS-1：剪切会删除源路径（fsExtra.remove），源路径必须受信
+    if (!isPathAllowed(fromPath)) {
+        notifyPathAccessDenied(fromPath, 'mainMsg.status.operationFailed')
+        return
+    }
     appState.srcDirCopyCut = fromPath
     appState.isCopyOrCut = 'cut'
-    global.isCopyCutFile = _isFile
+    setCopyCutFileFlag(_isFile)
 }
 
 /**
@@ -41,37 +75,61 @@ export function FileManagerContextMenuCut(fromPath: string, _isFile: boolean): v
  */
 export async function FileManagerContextMenuPaste(toPath: string, isFile: boolean): Promise<void> {
     if (isFile) {
-        showErrorMessageBox(`目标不是一个目录！`)
+        showErrorMessageBox(tMain('mainMsg.file.pasteTargetNotDirectory'))
         return
     }
 
     const src = appState.srcDirCopyCut
     if (src.length === 0) {
-        showErrorMessageBox(`未拷贝/剪切源文件！`)
+        showErrorMessageBox(tMain('mainMsg.file.noCopyCutSource'))
+        return
+    }
+
+    // P1-AS-1：源路径与目标目录都必须受信（源在复制/剪切时已校验，这里防御状态被外部改写）
+    if (!isPathAllowed(src)) {
+        notifyPathAccessDenied(src, 'mainMsg.status.operationFailed')
+        return
+    }
+    if (!isPathAllowed(toPath)) {
+        notifyPathAccessDenied(toPath, 'mainMsg.status.operationFailed')
         return
     }
 
     if (src === toPath) {
-        showErrorMessageBox(`源路径和目标路径相同！`)
+        showErrorMessageBox(tMain('mainMsg.file.sameSourceAndTarget'))
         return
     }
 
     // 先在目标目录中创建一个与原目录同名文件夹，返回进行拷贝
     const lastIndex = Math.max(src.lastIndexOf('\\'), src.lastIndexOf('//'))
     const srcName = src.substring(lastIndex)
-    const destPath = require('path').join(toPath, srcName)
+    // 源名可能带前导分隔符（历史实现），取纯文件名并做白名单校验，杜绝 ../ 拼出目标目录外路径
+    const srcBaseName = srcName.replace(/^[\\/]+/, '')
+    if (!isSafeFileName(srcBaseName)) {
+        notifyPathAccessDenied(src, 'mainMsg.status.operationFailed')
+        return
+    }
+    const destPath = join(toPath, srcBaseName)
+    if (!isPathAllowed(destPath)) {
+        notifyPathAccessDenied(destPath, 'mainMsg.status.operationFailed')
+        return
+    }
     try {
         await fs.access(destPath)
-        showErrorMessageBox(`文件/文件夹已经存在！\r\n` + destPath)
+        showErrorMessageBox(tMain('mainMsg.file.fileOrFolderAlreadyExists', { path: destPath }))
         return
     } catch {
         // destPath doesn't exist, proceed
     }
 
     try {
-        await fsExtra.copy(src, destPath, { recursive: true })
+        // fs-extra 的 copy 默认递归复制目录，无需 recursive 选项
+        await fsExtra.copy(src, destPath)
     } catch (err) {
-        showErrorMessageBox((err as Error).message)
+        // FE-32：复制失败把常见错误码映射为中文原因（未知错误保留原文+错误码），不再直出英文原始错误
+        showErrorMessageBox(
+            tMain('mainMsg.file.copyFailed', { message: DescribeFileSystemError(err) })
+        )
         return
     }
 
@@ -80,7 +138,10 @@ export async function FileManagerContextMenuPaste(toPath: string, isFile: boolea
         try {
             await fsExtra.remove(src)
         } catch (err) {
-            showErrorMessageBox((err as Error).message)
+            // FE-32：剪切源删除失败同样映射中文原因
+            showErrorMessageBox(
+                tMain('mainMsg.file.deleteFailed', { message: DescribeFileSystemError(err) })
+            )
             return
         }
     }
@@ -91,7 +152,7 @@ export async function FileManagerContextMenuPaste(toPath: string, isFile: boolea
         try {
             await ReloadDirFromDisk()
         } catch (err) {
-            console.error('Failed to reload from disk:', err)
+            logger.error('Failed to reload from disk:', err)
         }
     }, reloadFromDiskTime)
 
@@ -105,7 +166,7 @@ export async function FileManagerContextMenuPaste(toPath: string, isFile: boolea
         try {
             await ReloadDirFromDisk()
         } catch (err) {
-            console.error('Failed to reload from disk:', err)
+            logger.error('Failed to reload from disk:', err)
         }
     }, reloadFromDiskTime)
 }

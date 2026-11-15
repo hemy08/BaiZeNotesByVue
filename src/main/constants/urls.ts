@@ -63,9 +63,7 @@ export const GITHUB_PRIOSPACE = 'https://github.com/AnoyRC/priospace'
 export const GITHUB_PLANE = 'https://github.com/makeplane/plane'
 export const GITHUB_OPENPROJECT = 'https://github.com/opf/openproject'
 
-// ============ Mermaid CDN ============
-export const MERMAID_CSS = 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.css'
-export const MERMAID_JS = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js'
+// MERMAID_CSS/MERMAID_JS 已删除（ARC-10 修复后 Mermaid 改为本地打包，全仓库零引用，grep 验证）
 
 // ============ Default Quick Links ============
 export const DEFAULT_GITHUB = 'https://github.com'

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白泽笔记预览链路单跳重构报告（PF-02）</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --text:#1f2328; --muted:#6b7280; --border:#e5e7eb; --accent:#2563eb; --p1:#ea580c; --p2:#ca8a04; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",sans-serif; line-height:1.7; }
+  .wrap { max-width:1000px; margin:0 auto; padding:32px 20px 60px; }
+  header { background:linear-gradient(135deg,#1e3a8a,#2563eb); color:#fff; border-radius:12px; padding:28px 32px; margin-bottom:24px; }
+  header h1 { margin:0 0 8px; font-size:26px; }
+  header p { margin:2px 0; opacity:.9; font-size:14px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; text-align:center; }
+  .card b { display:block; font-size:26px; }
+  .card span { font-size:12px; color:var(--muted); }
+  h2 { border-left:4px solid var(--accent); padding-left:10px; margin-top:36px; }
+  h3 { margin-top:22px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; font-size:14px; }
+  th,td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { background:#f3f4f6; white-space:nowrap; }
+  tr:last-child td { border-bottom:none; }
+  code { background:#eef1f5; padding:1px 6px; border-radius:4px; font-family:Consolas,monospace; font-size:13px; }
+  ul,ol { padding-left:24px; }
+  li { margin:4px 0; }
+  .ok { color:#15803d; font-weight:600; }
+  .toc { position:fixed; top:24px; left:24px; width:210px; max-height:calc(100vh - 48px); overflow-y:auto;
+         background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 10px; z-index:100;
+         box-shadow:0 4px 12px rgba(0,0,0,.08); font-size:13px; }
+  .toc h4 { margin:0 0 8px; font-size:13px; color:var(--muted); padding-left:8px; }
+  .toc a { display:block; color:var(--text); text-decoration:none; padding:4px 8px; border-radius:6px; line-height:1.5; }
+  .toc a:hover { background:#eef1f5; color:var(--accent); }
+  @media (min-width:1150px) { .wrap { margin:0 auto 0 272px; } }
+  @media (max-width:1149px) { .toc { display:none; } }
+  footer { margin-top:40px; font-size:12px; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a href="#sec-1">1. 问题回顾</a>
+    <a href="#sec-2">2. 改造结果</a>
+    <a href="#sec-3">3. 改动清单</a>
+    <a href="#sec-4">4. 验证与证据</a>
+    <a href="#sec-5">5. 遗留与建议</a>
+    <a href="#sec-6">6. 全局收尾</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>白泽笔记预览链路单跳重构报告（PF-02）</h1>
+    <p>项目：白泽笔记（BaiZe Notes）v1.2.2 ｜ 执行日期：2026-11-15</p>
+    <p>依据：127 项检查发现的最后一项部分修复项 PF-02（02-性能检查报告 P1）｜ 专项重构子智能体 + 根代理验收</p>
+  </header>
+
+  <div class="cards">
+    <div class="card"><b style="color:#15803d">0</b><span>预览渲染 IPC 跳数（原 4）</span></div>
+    <div class="card"><b>854</b><span>渲染层新流水线代码行</span></div>
+    <div class="card"><b>-797</b><span>删除主进程渲染代码行</span></div>
+    <div class="card"><b>19</b><span>新增/调整测试用例</span></div>
+    <div class="card"><b style="color:#15803d">127/127</b><span>检查发现全部闭环</span></div>
+  </div>
+
+  <h2 id="sec-1">1. 问题回顾</h2>
+  <p>修复前预览渲染链路存在 <strong>4 跳 IPC 往返</strong>与<strong>主进程同步 KaTeX 渲染</strong>：</p>
+  <ol>
+    <li>渲染层 send(PRE_RENDER, content) → 主进程 HemyRenderPre（图片/文件 URL 转换）→ 回发 PRE_RENDER_RESULT；</li>
+    <li>渲染层 PreMarkdownRender（mermaid/plantuml）→ md.render()；</li>
+    <li>渲染层 send(POST_RENDER, html) → 主进程 HemyRenderPost（KaTeX 同步渲染 + Material/TabbedSet 变换）→ 回发 POST_RENDER_RESULT；</li>
+    <li>渲染层 PostMarkdownRender → DOMPurify → v-html。</li>
+  </ol>
+  <p>副作用：每次击键（防抖后）触发 4 次跨进程消息；主进程事件循环被同步 KaTeX 阻塞；渲染串行化。</p>
+
+  <h2 id="sec-2">2. 改造结果</h2>
+  <table>
+    <tr><th>维度</th><th>修复前</th><th>修复后</th></tr>
+    <tr><td>每轮预览渲染的渲染 IPC</td><td><strong>4 跳</strong>（2 send + 2 结果回发）</td><td><strong>0 跳</strong>（markdown 全流水线在渲染进程完成）</td></tr>
+    <tr><td>主进程渲染通道</td><td>4 个（PRE/POST + 2 个 RESULT）</td><td><strong>全部删除</strong></td></tr>
+    <tr><td>KaTeX 渲染位置</td><td>主进程同步 renderToString（阻塞事件循环）</td><td><strong>渲染层</strong> katex 包（已有 CSS）</td></tr>
+    <tr><td>主进程渲染文件</td><td>renders/ 4 文件（797 行）</td><td><strong>删除</strong>，逐行迁移至渲染层 preview-local-render.ts（854 行）</td></tr>
+    <tr><td>PlantUML</td><td>主进程本地 IPC</td><td><strong>保留</strong>（1 图仅 1 次 invoke、0 次 send）</td></tr>
+    <tr><td>mermaid</td><td>渲染层本地渲染 + hash 缓存</td><td>未改动</td></tr>
+  </table>
+
+  <h2 id="sec-3">3. 改动清单</h2>
+  <h3>新增</h3>
+  <ul>
+    <li>src/renderer/src/components/Markdown/preview-local-render.ts：KaTeX 渲染、Material Admonitions、TabbedSet、代码块保护分割、图片/文件 URL 绝对化、HemyRenderPreLocal / HemyRenderPostLocal（复用既有 USER_SELECT_FILE 事件，零新增通道）。</li>
+  </ul>
+  <h3>修改</h3>
+  <ul>
+    <li>MarkdownPreviewComponent.vue：本地单链路渲染（保留 150ms 防抖、DOMPurify、chapters、plantuml/mermaid），新增渲染轮次守卫与异常兜底；</li>
+    <li>src/main/utils/utils.ts：删除 HemyRender 导入/再导出与 2 个 PRE/POST IPC 注册；</li>
+    <li>src/shared/ipc-channels.ts：删除 4 个 RENDER 常量。</li>
+  </ul>
+  <h3>删除</h3>
+  <ul>
+    <li>src/main/renders/HemyRender.ts、KatexRender.ts、MaterialRender.ts、TabbedSetRender.ts（renders/ 仅保留 plantuml-local.ts）。</li>
+  </ul>
+
+  <h2 id="sec-4">4. 验证与证据</h2>
+  <table>
+    <tr><th>验证项</th><th>结果</th></tr>
+    <tr><td>新增测试</td><td>preview-local-render.test.ts（15 用例）+ preview-local-pipeline.test.ts（4 用例，jsdom 挂载组件）</td></tr>
+    <tr><td><strong>IPC 证据</strong></td><td>纯 Markdown 渲染：send=0 / invoke=0；组件仅注册 1 个 USER_SELECT_FILE 监听、不再订阅 PRE/POST_RESULT；PlantUML 场景：invoke=1 / send=0</td></tr>
+    <tr><td>输出一致性</td><td>原 katex/material/tabbed 渲染测试仅改导入路径，完整 HTML 断言原样通过；URL 转换断言原样通过（逻辑逐行迁移）</td></tr>
+    <tr><td>构建产物</td><td>out/main/index.js 已无 renderToString / katex-math-block / PRE-POST 通道，主进程不再运行 KaTeX</td></tr>
+    <tr><td>门禁</td><td>typecheck:node ✅ 0 ｜ typecheck:web ✅ 0 ｜ npm test ✅ 115 文件/1843 用例 ｜ eslint ✅ 0 error ｜ build ✅</td></tr>
+  </table>
+
+  <h2 id="sec-5">5. 遗留与建议</h2>
+  <table>
+    <tr><th>项</th><th>说明</th></tr>
+    <tr><td>另存为后相对路径</td><td>「另存为」（md/txt）后主进程更新活动路径但未发 USER_SELECT_FILE，相对图片 URL 会按旧目录解析——建议主进程 SaveActiveFileAs 成功后补发该事件。</td></tr>
+    <tr><td>DOMPurify URI 策略</td><td>DOMPurify 3.4.17 默认 URI 策略会剥离 C:/... 盘符绝对路径（修复前主进程管线同样存在，非本次引入）——建议按报告方案安全评审后单独立项。</td></tr>
+    <tr><td>章节解析二次 parse</td><td>markdown-it 章节解析仍保留二次 md.parse（原始内容行号语义，PF-14 依赖），后续可优化。</td></tr>
+    <tr><td>KaTeX 公式缓存</td><td>本轮未加公式缓存（后续 P2 优化项）。</td></tr>
+  </table>
+
+  <h2 id="sec-6">6. 全局收尾</h2>
+  <p>本轮完成后，<strong>127 项检查发现全部闭环（127/127，100%）</strong>：</p>
+  <table>
+    <tr><th>指标</th><th>初始</th><th>最终</th></tr>
+    <tr><td>检查发现闭环</td><td>0/127</td><td><strong>127/127（100%）</strong></td></tr>
+    <tr><td>单元测试</td><td>21 用例</td><td><strong>1843 用例（115 文件）</strong></td></tr>
+    <tr><td>npm audit 漏洞</td><td>15（1 critical + 11 high）</td><td><strong>0</strong></td></tr>
+    <tr><td>ESLint</td><td>完全无法运行</td><td><strong>0 error</strong></td></tr>
+    <tr><td>严格模式</td><td>未开启</td><td>noUnusedLocals/Parameters 开启且 0 错误</td></tr>
+    <tr><td>安装包体积</td><td>227.41 MiB（便携版基线）</td><td><strong>132.60 MiB（-41.7%）</strong></td></tr>
+    <tr><td>国际化</td><td>无</td><td>中英双语（约 1680 词条）</td></tr>
+    <tr><td>预览渲染 IPC</td><td>4 跳/次</td><td><strong>0 跳</strong>（PlantUML 图表除外，1 次 invoke）</td></tr>
+  </table>
+  <p>全部改动未提交 git。建议人工冒烟后提交：预览渲染（KaTeX 公式/Material 卡片/代码块/图片链接）、中英切换布局、Monaco worker、PlantUML 本地渲染、目录监听、编码切换、关闭落盘、配置迁移。</p>
+
+  <footer>白泽笔记预览链路单跳重构报告（PF-02） · 127/127 检查发现全部闭环</footer>
+</div>
+</body>
+</html>

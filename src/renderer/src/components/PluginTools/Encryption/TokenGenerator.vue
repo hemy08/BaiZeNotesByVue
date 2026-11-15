@@ -1,8 +1,8 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
         <h1 style="display: flex; align-items: center; justify-content: center">Token Generator</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">使用您想要的字符、大写或小写字母、数字和/或符号生成随机字符串。</p>
+        <p style="color: grey">{{ t('toolsConvert.token.description') }}</p>
         <a
             class="plugin-tools-openurl"
             role="button"
@@ -19,12 +19,12 @@
                     :value="type.value"
                 />
                 <label :for="`char-${type.value}`" style="font-size: 20px; margin: 8px">
-                    {{ type.label }}
+                    {{ t(type.labelKey) }}
                 </label>
             </div>
         </div>
         <div style="margin-top: 15px; display: flex">
-            <label for="text-token-length">长度</label>
+            <label for="text-token-length">{{ t('toolsConvert.token.lengthLabel') }}</label>
             <input
                 id="text-token-length"
                 v-model.number="tokenLength"
@@ -36,22 +36,27 @@
             <textarea
                 id="token-output"
                 :style="{ width: props.workAreaWidth }"
-                placeholder="生成的令牌......"
+                :placeholder="t('toolsConvert.token.outputPlaceholder')"
                 readonly
             ></textarea>
         </div>
         <div class="plugin-tools-btn-list" :style="{ width: props.workAreaWidth }">
             <button id="token-generator" class="plugin-tools-btn" @click="GeneratorToken">
-                生成
+                {{ t('toolsConvert.token.generateButton') }}
             </button>
-            <button id="token-refresh" class="plugin-tools-btn" @click="RefreshToken">刷新</button>
-            <button id="token-clear" class="plugin-tools-btn" @click="ClearToken">清空</button>
+            <button id="token-refresh" class="plugin-tools-btn" @click="RefreshToken">
+                {{ t('toolsConvert.token.refreshButton') }}
+            </button>
+            <button id="token-clear" class="plugin-tools-btn" @click="ClearToken">
+                {{ t('toolsConvert.token.clearButton') }}
+            </button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { t } from '../../../common/i18n'
 const selectedTypes = ref<string[]>(['uppercase', 'lowercase', 'number'])
 const tokenLength = ref<number>(64)
 const generatorTokenStr = ref<string>('')
@@ -65,13 +70,13 @@ const props = defineProps({
 })
 
 const boxTypes = [
-    { value: 'uppercase', label: '大写(ABCDEFGHIJKLMNOPQRSTUVWXYZ)' },
-    { value: 'lowercase', label: '小写(abcdefghijklmnopqrstuvwxyz)' },
-    { value: 'number', label: '数字(0123456789)' },
-    { value: 'symbols', label: '符号(!@#$%^&*()_+{}:<>?[]\\|~)' }
+    { value: 'uppercase', labelKey: 'toolsConvert.token.uppercaseLabel' },
+    { value: 'lowercase', labelKey: 'toolsConvert.token.lowercaseLabel' },
+    { value: 'number', labelKey: 'toolsConvert.token.numberLabel' },
+    { value: 'symbols', labelKey: 'toolsConvert.token.symbolLabel' }
 ]
 
-function openUrl(link) {
+function openUrl(link: string) {
     window.open(link, '_blank', 'noopener, noreferrer')
 }
 

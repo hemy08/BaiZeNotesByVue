@@ -38,18 +38,21 @@
                     <path :d="fileSvg.path" />
                 </svg>
             </span>
-            <span id="file-manager-node" class="file-manager-node" :title="node.name">{{ node.name }}</span>
+            <span id="file-manager-node" class="file-manager-node" :title="node.name">{{
+                node.name
+            }}</span>
         </div>
         <!-- 如果当前是文件夹并且已经展开，递归显示子节点 -->
         <div v-if="node.type === 'folder' && isExpanded" id="file-subtree" class="file-subtree">
             <FileTreeNode
                 v-for="child in node.children"
                 :key="child.path"
-                v-memo="[child.path, child.fileExtension, child.isExpanded]"
                 v-model:is-expanded="child.isExpanded"
                 v-model:file-extension="child.fileExtension"
+                v-memo="[treeRevision, child.path, child.fileExtension, child.isExpanded]"
                 :node="child"
                 :is-indented="true"
+                :tree-revision="treeRevision"
                 @contextmenu:node="onContextMenu($event, node)"
             />
         </div>
@@ -59,7 +62,11 @@
 <script setup lang="ts">
 import { computed, PropType } from 'vue'
 import { FileSysItem, getFileMgrSvg, handleContextMenu } from './resource-manager'
-import EventBus from '../../common/event_bus/event-bus'
+import EventBus from '../../common/event-bus/event-bus'
+import { IPC } from '../../../../shared/ipc-channels'
+import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+// 全局类型 FileProperties 由 src/main/global-types.d.ts 的 declare global 提供（tsconfig.web 已 include）
+/* global FileProperties */
 
 const props = defineProps({
     node: {
@@ -81,6 +88,13 @@ const props = defineProps({
     hasContextMenu: {
         type: Boolean,
         default: false
+    },
+    // PF-4：整树刷新版本号（ResourceManager 每次收到 FILE_SYSTEM_DATA 递增）。
+    // 携带到 v-memo 依赖中：整树替换时强制失效缓存，保证深层新增/删除/重命名可见；
+    // 仅展开/收起时版本号不变，仍只重渲被切换的子树。
+    treeRevision: {
+        type: Number,
+        default: 0
     }
 })
 
@@ -105,21 +119,21 @@ function handleFileSelect(node: FileSysItem) {
         type: 'file',
         content: ''
     }
-    window.electron.ipcRenderer.send('baize:notes:open-select-file', fileInfo)
-    EventBus.$emit('plugin-tools-container-show', false)
+    window.electron.ipcRenderer.send(IPC.FILE.OPEN_SELECT_FILE, fileInfo)
+    EventBus.$emit(EVENT_BUS.PLUGIN_TOOLS_CONTAINER_SHOW, false)
 }
 
 function handleClick(node: FileSysItem) {
     if (node.type === 'file') {
         if (node.name.endsWith('.md')) {
             handleFileSelect(node)
-            EventBus.$emit('monaco-editor-statusbar-file-path', node.path)
+            EventBus.$emit(EVENT_BUS.STATUS_BAR_FILE_PATH, node.path)
         } else if (node.name.endsWith('.html')) {
-            EventBus.$emit('html-file-selected', node)
-            EventBus.$emit('baize:notes:workspace:show', "html")
+            EventBus.$emit(EVENT_BUS.HTML_FILE_SELECTED, node)
+            EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'html')
         } else if (node.name.endsWith('.pdf')) {
-            EventBus.$emit('pdf-file-selected', node)
-            EventBus.$emit('baize:notes:workspace:show', "pdf")
+            EventBus.$emit(EVENT_BUS.PDF_FILE_SELECTED, node)
+            EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'pdf')
         }
     }
 }

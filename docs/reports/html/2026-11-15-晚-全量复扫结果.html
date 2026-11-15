@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白泽笔记全量复扫结果（2026-11-15 晚）</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">一、工具链实测（复扫）</a>
+    <a class="toc-l2" href="#sec-2">二、六维度核实汇总</a>
+    <a class="toc-l2" href="#sec-3">三、P0 攻击链结论</a>
+    <a class="toc-l2" href="#sec-4">四、22 项部分修复清单（按维度）</a>
+    <a class="toc-l2" href="#sec-5">五、复扫新发现要点（NEW）</a>
+    <a class="toc-l2" href="#sec-6">六、建议下一批次（按优先级）</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>白泽笔记全量复扫结果（2026-11-15 晚）</h1>
+    <p>复扫时间：2026-11-15 18:45 ~ 19:00 ｜ 对象：2026-11-14 全量检查 127 项优化清单</p>
+    <p>方式：6 维度并行静态深读（grep/glob/read 逐项取证）+ 根代理工具链实测（typecheck / ESLint / vitest / npm audit）</p>
+  </header>
+
+  <div class="cards">
+    <div class="card"><b>105</b><span>已修复</span></div>
+    <div class="card"><b>22</b><span>部分修复</span></div>
+    <div class="card"><b>0</b><span>未处理</span></div>
+    <div class="card"><b>127</b><span>复扫总数</span></div>
+    <div class="card"><b>0</b><span>门禁错误</span></div>
+  </div>
+
+<ul>
+<li><strong>复扫时间</strong>：2026-11-15 18:45 ~ 19:00</li>
+<li><strong>复扫方式</strong>：6 个维度核实子智能体并行静态深读（grep/glob/read，逐项取证）+ 根代理工具链实测（typecheck / ESLint / vitest / npm audit）</li>
+<li><strong>复扫对象</strong>：2026-11-14 全量检查的 127 项优化清单（P0×3、P1×37、P2×52、P3×35）在当前代码中的真实修复状态</li>
+<li><strong>结论</strong>：✅ 已修复 <strong>105 项</strong>（82.7%）、🟡 部分修复 <strong>22 项</strong>（17.3%）、⏭ 未处理 0 项。此前报告声称&quot;127/127 全部闭环&quot;与代码实况不符，已按本复扫口径回写 <a href="00-%E6%80%BB%E4%BD%93%E4%BC%98%E5%8C%96%E9%A1%B9%E6%8A%A5%E5%91%8A.html">00-总体优化项报告</a>（HTML/MD）。</li>
+</ul>
+<h2 id="sec-1">一、工具链实测（复扫）</h2>
+<table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>typecheck（node+web+test 三工程）</td>
+<td>✅ 0 错误（noImplicitAny 已开启，tests 已纳入）</td>
+</tr>
+<tr>
+<td>ESLint</td>
+<td>✅ 0 error / 0 warning（flat config，无 --fix）</td>
+</tr>
+<tr>
+<td>npm audit（生产依赖）</td>
+<td>✅ 0 漏洞</td>
+</tr>
+<tr>
+<td>vitest run</td>
+<td>⚠️ 130 文件 / 2080 用例，<strong>2 失败</strong>（clipboard-operations.test.ts：断言期望 <code>复制失败：</code> 文案与&quot;cut 后源文件已删&quot;，实现走的是入口存在性检查分支返回 <code>未拷贝/剪切源文件！</code>——测试与实现不同步，非功能回归），129 文件全通过</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-2">二、六维度核实汇总</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>✅ 已修复</th>
+<th>🟡 部分修复</th>
+<th>合计</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>代码质量（CQ）</td>
+<td>6</td>
+<td>6</td>
+<td>12</td>
+</tr>
+<tr>
+<td>性能（PF）</td>
+<td>12</td>
+<td>4</td>
+<td>16</td>
+</tr>
+<tr>
+<td>内存（MEM）</td>
+<td>15</td>
+<td>0</td>
+<td>15</td>
+</tr>
+<tr>
+<td>架构（ARC）</td>
+<td>18</td>
+<td>4</td>
+<td>22</td>
+</tr>
+<tr>
+<td>功能（FUN）</td>
+<td>28</td>
+<td>2</td>
+<td>30</td>
+</tr>
+<tr>
+<td>完整性（CMP）</td>
+<td>26</td>
+<td>6</td>
+<td>32</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>105</strong></td>
+<td><strong>22</strong></td>
+<td><strong>127</strong></td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-3">三、P0 攻击链结论</h2>
+<p>恶意 Markdown → 预览 XSS → 未校验 IPC → 执行任意本地程序，四环现状：</p>
+<table>
+<thead>
+<tr>
+<th>环节</th>
+<th>状态</th>
+<th>证据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 预览无消毒</td>
+<td>✅ 已修复</td>
+<td>MarkdownPreviewComponent.vue:212 DOMPurify.sanitize 接入渲染末端</td>
+</tr>
+<tr>
+<td>② 渲染进程持完整 IPC</td>
+<td>❌ 未收窄</td>
+<td>preload/index.ts:42 仍 exposeInMainWorld 完整 electronAPI/ipcRenderer（无通道白名单），由主进程 sender 校验（ipc-security.ts）兜底</td>
+</tr>
+<tr>
+<td>③ 主进程无校验执行</td>
+<td>✅ 已修复</td>
+<td>utils.ts:394-465 OPEN_EXE 三重校验 + Path Guard（security.ts:474-567）55+ 调用点</td>
+</tr>
+<tr>
+<td>④ 远程网页特权 preload</td>
+<td>✅ 已修复</td>
+<td>OpenOnlineWebPages.ts 远程窗口去 preload；dialog preload 白名单仅 2 通道</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-4">四、22 项部分修复清单（按维度）</h2>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>核心已解决</th>
+<th>残留</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CQ-03</td>
+<td>大量死代码已删</td>
+<td>configManager 死导出、vite-plugin-copy 注释残留、PostMarkdownRender 恒等函数</td>
+</tr>
+<tr>
+<td>CQ-05</td>
+<td>统一错误包裹已落地</td>
+<td>readConfig null 混淆、shell.openPath 返回值未检查、no-floating-promises 未启用</td>
+</tr>
+<tr>
+<td>CQ-06</td>
+<td>对话框/CSS 收敛</td>
+<td>encrypt-decrypt、editor-option-maps 重复分支</td>
+</tr>
+<tr>
+<td>CQ-08</td>
+<td>noUnusedLocals 等已开</td>
+<td>4 条 ESLint 规则仍 off；typecheck 仍 --composite false</td>
+</tr>
+<tr>
+<td>CQ-09</td>
+<td>snake_case 全部重命名</td>
+<td>theme-config.ts:673 中部 import</td>
+</tr>
+<tr>
+<td>CQ-11</td>
+<td>五配置单真源路由</td>
+<td>baize-store.ts 死单例；fileState.json 仍落 userData 根</td>
+</tr>
+<tr>
+<td>PF-05</td>
+<td>fs.watch 已建</td>
+<td>自身操作仍全量重扫 + 整树 JSON，无增量 patch</td>
+</tr>
+<tr>
+<td>PF-06</td>
+<td>自动保存脏检查</td>
+<td>切文件前仍无条件整篇写盘</td>
+</tr>
+<tr>
+<td>PF-10</td>
+<td>异步确认 + 流式解码</td>
+<td>内容仍单次全文 IPC</td>
+</tr>
+<tr>
+<td>PF-15</td>
+<td>单主题读取异步化</td>
+<td>55 个主题列表构建仍同步 readFileSync</td>
+</tr>
+<tr>
+<td>ARC-04</td>
+<td>读写路由统一</td>
+<td>三目录未收敛（fileState / recent-folders 仍分散）</td>
+</tr>
+<tr>
+<td>ARC-13</td>
+<td>shared 类型收敛</td>
+<td>urls 常量 main/shared 仍双份</td>
+</tr>
+<tr>
+<td>ARC-16</td>
+<td>electron-updater 接入</td>
+<td>electron-builder.yml publish 仍 example.com</td>
+</tr>
+<tr>
+<td>ARC-22</td>
+<td>Global 命名空间已删</td>
+<td>saveFileInterval 死字段仍在</td>
+</tr>
+<tr>
+<td>FUN-10</td>
+<td>检查更新可用（占位源诚实提示）</td>
+<td>真实更新源未配置（update.json 未提供）</td>
+</tr>
+<tr>
+<td>FUN-14</td>
+<td>ini/文本类编码探测</td>
+<td>Excel 改为明确拒绝引导转 CSV（未实现解析）</td>
+</tr>
+<tr>
+<td>CMP-05</td>
+<td>README 行数已修正</td>
+<td>组件数 81 vs 62、文件数 245 vs 297、ts 154 vs 163 仍漂移</td>
+</tr>
+<tr>
+<td>CMP-15</td>
+<td>预览 XSS 已修</td>
+<td>preload 全量 IPC 未收窄（P0 链第 2 环）</td>
+</tr>
+<tr>
+<td>CMP-21</td>
+<td>更新链路可用</td>
+<td>更新源占位（同 FUN-10/ARC-16）</td>
+</tr>
+<tr>
+<td>CMP-23</td>
+<td>lint/clean 已修</td>
+<td>build/build:unpack/verify:pack 三脚本仍重复</td>
+</tr>
+<tr>
+<td>CMP-24</td>
+<td>asar 已显式声明</td>
+<td>compression 仍未声明</td>
+</tr>
+<tr>
+<td>CMP-27</td>
+<td>PDF 已改 iframe</td>
+<td>HemyTools 空壳仍可从左导航到达</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-5">五、复扫新发现要点（NEW）</h2>
+<ol>
+<li><strong>每击键仍全文 getValue + emit</strong>（MarkdownMonacoEditor.vue:584-585）：1MiB 文档每键 ≥1MiB 字符串拷贝，热路径成本仍在；</li>
+<li><strong>首屏主 chunk 9.66MB</strong>：Monaco editor.api + 45 语言仍经静态导入 eager 进首屏；</li>
+<li><strong>PlantUML 隐藏窗口常驻</strong>（plantuml-local.ts:264-277）：<code>backgroundThrottling:false</code> 无空闲回收；</li>
+<li><strong>file-operations.ts 达 2,151 行</strong>：超 800 行阈值且持续增长；</li>
+<li><strong>baize-store.ts 死模块</strong>（83 行）：与 file-state-store 职责重复，无损坏容错；</li>
+<li><strong>CSP 含弱项</strong>：<code>unsafe-eval</code>（Monaco/Vite 需要）、<code>img-src https:</code>（远程图片跟踪面）；</li>
+<li><strong>CI audit 门禁为信息性</strong>（ci.yml:97-99 continue-on-error）；</li>
+<li><strong>git 未提交变更 705 个路径</strong>：整批修复仍未入库；</li>
+<li><strong>vitest 2 失败</strong>：clipboard-operations.test.ts 断言与实现不同步（见第一节）；</li>
+<li>其余：@mainer 死别名残留、getKatexPath/getMermaidPath 死函数、Convert 目录 17 组件孤儿、MermaidRender.vue 死文件内静态 import mermaid、jsdom 仍在生产依赖等。</li>
+</ol>
+<h2 id="sec-6">六、建议下一批次（按优先级）</h2>
+<ol>
+<li><strong>P0 收尾</strong>：preload 收窄为显式白名单 API（消除第 2 环纵深缺口）+ 修复 2 个 vitest 失败断言 + 实机冒烟；</li>
+<li><strong>配置收口</strong>：三目录收敛（fileState/recent-folders 并入 store-factory 目录）、删 baize-store.ts；</li>
+<li><strong>性能热路径</strong>：击键增量 diff（替换 getValueLength+脏窗口为 delta）、目录增量 patch、Monaco 按需语言；</li>
+<li><strong>发布链</strong>：配置真实更新源或下线宣称、README 数字按实测修正、git 分批提交（705 项变更）。</li>
+</ol>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

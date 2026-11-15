@@ -1,9 +1,9 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">Hmac 生成器</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">{{ t('toolsConvert.hmac.title') }}</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">
-            使用密钥和您喜欢的哈希函数计算基于哈希的消息身份验证代码（HMAC）。
+            {{ t('toolsConvert.hmac.description') }}
         </p>
         <a
             class="plugin-tools-openurl"
@@ -12,25 +12,35 @@
         >
             https://tools.w3cschool.cn/hmac-generator
         </a>
-        <div style="margin-top: 5px"><label>需要进行Hmac的文本：</label></div>
+        <div style="margin-top: 5px">
+            <label>{{ t('toolsConvert.hmac.inputLabel') }}</label>
+        </div>
         <div>
             <textarea
                 id="hmac-text-input"
                 v-model="textInput"
-                placeholder="请输入你的文本..."
+                :placeholder="t('toolsConvert.hmac.inputPlaceholder')"
                 :style="{ width: props.workAreaWidth, height: '100px' }"
             ></textarea>
         </div>
         <div class="div-style-display-row">
-            <div style="margin-top: 5px"><label>摘要编码：</label></div>
+            <div style="margin-top: 5px">
+                <label>{{ t('toolsConvert.hmac.encodeLabel') }}</label>
+            </div>
             <select id="hmac-text-encode-type" v-model="encodeType">
                 <option value="Binary">Binary（base2）</option>
                 <option value="Hexadecimal" selected>Hexadecimal（base16）</option>
                 <option value="base64">Base64（base64）</option>
                 <option value="Base64url">Base64url（base64 with url safe chars）</option>
             </select>
-            <div style="margin-top: 5px"><label>密钥：</label></div>
-            <input v-model="secretKey" type="text" placeholder="请输入密钥，默认123456" />
+            <div style="margin-top: 5px">
+                <label>{{ t('toolsConvert.hmac.secretLabel') }}</label>
+            </div>
+            <input
+                v-model="secretKey"
+                type="text"
+                :placeholder="t('toolsConvert.hmac.secretPlaceholder')"
+            />
         </div>
         <div
             v-for="item in hmacTextInput"
@@ -45,7 +55,7 @@
                 type="text"
                 class="hash-text-result-output"
                 :style="hmacResultStyle"
-                :placeholder="item.text + '哈希结果...'"
+                :placeholder="t('toolsConvert.hmac.resultPlaceholder', { algorithm: item.text })"
                 :value="item.result"
                 readonly
             />
@@ -54,14 +64,17 @@
                 :style="{ width: hashButtonWidth }"
                 @click="onCopyToClipboard(item.result)"
             >
-                复制
+                {{ t('common.copy') }}
             </button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed  } from 'vue'
+import { ref, watch, computed, reactive } from 'vue'
+import { t } from '../../../common/i18n'
+import { IPC } from '../../../../../shared/ipc-channels'
+import { logger } from '../../../common/logger'
 
 const props = defineProps({
     // 编辑器宽度
@@ -76,7 +89,8 @@ const encodeType = ref('Hexadecimal')
 const secretKey = ref('12345678')
 const hmacLabelWidth = ref('150px')
 const hashButtonWidth = ref('100px')
-const hmacTextInput = [
+// CQ-10：结果改为异步 invoke 后，必须使用响应式数组，否则结果回填不会触发视图更新
+const hmacTextInput = reactive([
     { id: 'hmac-text-md4', text: 'MD4', result: '' },
     { id: 'hmac-text-md5', text: 'MD5', result: '' },
     { id: 'hmac-text-sha1', text: 'SHA1', result: '' },
@@ -86,7 +100,7 @@ const hmacTextInput = [
     { id: 'hmac-text-sha512', text: 'SHA512', result: '' },
     { id: 'hmac-text-sha512-256', text: 'SHA512-256', result: '' },
     { id: 'hmac-text-ripemd160', text: 'RIPEMD160', result: '' }
-]
+])
 
 const hmacResultStyle = computed(() => {
     const hashViewWidthValue = parseInt(props.workAreaWidth.replace('px', ''), 10)
@@ -98,7 +112,7 @@ const hmacResultStyle = computed(() => {
     }
 })
 
-function openUrl(link) {
+function openUrl(link: string) {
     window.open(link, '_blank', 'noopener, noreferrer')
 }
 
@@ -106,16 +120,37 @@ function onCopyToClipboard(context: string) {
     navigator.clipboard.writeText(context)
 }
 
-function getHmacTextResult() {
-    const result = window.electron.ipcRenderer.sendSync(
-        'plugin-tools-generator-hmac-text',
-        textInput.value,
-        secretKey.value,
-        encodeType.value
-    )
-    hmacTextInput.forEach((item) => {
-        item.result = result[item.text] // 使用方括号语法来动态访问属性
-    })
+// CQ-10/PF-11/ARC-21：sendSync 同步 IPC 改为 invoke 异步，快速输入时用序号丢弃过期响应
+let hmacRequestSeq = 0
+
+async function getHmacTextResult(): Promise<void> {
+    const requestSeq = ++hmacRequestSeq
+    try {
+        const result = (await window.electron.ipcRenderer.invoke(
+            IPC.PLUGIN.HMAC_TEXT,
+            textInput.value,
+            secretKey.value,
+            encodeType.value
+        )) as Record<string, string>
+        // 过期响应直接丢弃，避免先发后至的旧结果覆盖新结果
+        if (requestSeq !== hmacRequestSeq) {
+            return
+        }
+        hmacTextInput.forEach((item) => {
+            item.result = result[item.text] ?? '' // 使用方括号语法来动态访问属性
+        })
+    } catch (error) {
+        if (requestSeq !== hmacRequestSeq) {
+            return
+        }
+        // CQ-05：异步调用必须 catch，失败时提示用户而不是静默
+        logger.error('计算 HMAC 失败:', error)
+        alert(
+            t('toolsConvert.hmac.failedAlert', {
+                error: error instanceof Error ? error.message : String(error)
+            })
+        )
+    }
 }
 
 watch(
@@ -136,13 +171,12 @@ watch(
     () => encodeType.value,
     () => {
         if (!textInput.value) {
-            alert('请先输入要进行Hmac的文本....')
+            alert(t('toolsConvert.hmac.emptyInputAlert'))
             return
         }
         getHmacTextResult()
     }
 )
-
 </script>
 
 <style scoped>

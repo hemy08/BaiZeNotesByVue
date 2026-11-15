@@ -1,8 +1,8 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">希腊字母对照</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">{{ t('toolsNetwork.infoTables.greeceLetter.title') }}</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">希腊字母大小写对照</p>
+        <p style="color: grey">{{ t('toolsNetwork.infoTables.greeceLetter.desc') }}</p>
         <div>
             <input
                 v-model="searchQuery"
@@ -18,17 +18,30 @@
         >
             <thead>
                 <tr>
-                    <th class="greece-letter-table-th-preview">特殊符号</th>
-                    <th class="greece-letter-table-th">命名实体</th>
-                    <th class="greece-letter-table-th">十进制编码</th>
-                    <th class="greece-letter-table-th-preview">特殊符号</th>
-                    <th class="greece-letter-table-th">命名实体</th>
-                    <th class="greece-letter-table-th">十进制编码</th>
+                    <th class="greece-letter-table-th-preview">
+                        {{ t('toolsNetwork.infoTables.greeceLetter.symbol') }}
+                    </th>
+                    <th class="greece-letter-table-th">
+                        {{ t('toolsNetwork.infoTables.greeceLetter.entity') }}
+                    </th>
+                    <th class="greece-letter-table-th">
+                        {{ t('toolsNetwork.infoTables.greeceLetter.decimal') }}
+                    </th>
+                    <th class="greece-letter-table-th-preview">
+                        {{ t('toolsNetwork.infoTables.greeceLetter.symbol') }}
+                    </th>
+                    <th class="greece-letter-table-th">
+                        {{ t('toolsNetwork.infoTables.greeceLetter.entity') }}
+                    </th>
+                    <th class="greece-letter-table-th">
+                        {{ t('toolsNetwork.infoTables.greeceLetter.decimal') }}
+                    </th>
                 </tr>
             </thead>
             <tbody>
                 <tr v-for="(item, index) in filterGreeceLetter" :key="index">
                     <template v-for="(symbol, idx) in item" :key="idx">
+                        <!-- eslint-disable-next-line vue/no-v-html -- 希腊字母表为仓库内静态常量（码点实体如 &#945;），无外部输入 -->
                         <td class="greece-letter-table-preview" v-html="symbol.code"></td>
                         <td class="greece-letter-table-td">
                             {{ symbol.char }}
@@ -45,6 +58,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import { GreeceLetterTable, CompressedArray } from './Information'
 
 const props = defineProps({

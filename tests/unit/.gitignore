@@ -1,0 +1,4 @@
+# ET-17：测试运行产生的临时目录（如 .window-security.test.ts.<pid>.<uuid>.tmpdir）
+# 由 vitest globalSetup（tests/unit/helpers/tmpdir-global-setup.ts）兜底清理，
+# 这里同时纳入 git 忽略，避免异常中断时污染工作区。
+*.tmpdir/

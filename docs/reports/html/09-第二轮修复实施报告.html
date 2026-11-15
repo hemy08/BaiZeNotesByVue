@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白泽笔记第二轮修复与优化实施报告</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 20px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 8px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .9; font-size: 14px; }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 36px; }
+  h3 { margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 14px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 13px; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  .ok { color: #15803d; font-weight: 600; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 210px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.5; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  @media (min-width: 1150px) { .wrap { margin: 0 auto 0 272px; } }
+  @media (max-width: 1149px) { .toc { display: none; } }
+  footer { margin-top: 40px; font-size: 12px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a href="#sec-1">1. 执行概览</a>
+    <a href="#sec-2">2. 关键成果数据</a>
+    <a href="#sec-3">3. 第一波修复明细</a>
+    <a href="#sec-4">4. 第二波重构明细</a>
+    <a href="#sec-5">5. 最终验收记录</a>
+    <a href="#sec-6">6. 剩余遗留项</a>
+    <a href="#sec-7">7. 附录</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>白泽笔记第二轮修复与优化实施报告</h1>
+    <p>项目：白泽笔记（BaiZe Notes）v1.2.2 ｜ 执行日期：2026-11-14（第二轮）</p>
+    <p>依据：08-修复实施报告第 9 节遗留清单 ｜ 8 个修复子智能体（6 并行 + 2 串行）</p>
+  </header>
+
+  <h2 id="sec-1">1. 执行概览</h2>
+  <table>
+    <tr><th>子智能体</th><th>波次</th><th>范围</th><th>结果</th></tr>
+    <tr><td>r2-monaco</td><td>A</td><td>PF-03 Monaco worker、FUN-09 编辑器动作</td><td>✅ worker 启用、折叠/查找/替换/跳行/大纲落地</td></tr>
+    <tr><td>r2-func-menu</td><td>A</td><td>FUN-09/26/30、CMP-29</td><td>✅ 菜单/快捷键/绘图链路打通</td></tr>
+    <tr><td>r2-func-io</td><td>A</td><td>FUN-10/14/15/21/22/24/27/30、PF-10/14、MEM-07</td><td>✅ 更新优雅化、导入导出修复、渲染降级</td></tr>
+    <tr><td>r2-mem</td><td>A</td><td>MEM-09/10/12/13、FUN-18</td><td>✅ EventBus 检测恢复、59 处 IPC 统一管理</td></tr>
+    <tr><td>r2-quality</td><td>A</td><td>CQ-06/07、FUN-12</td><td>✅ 超长文件拆分、CSS 合并、54 处控件修复</td></tr>
+    <tr><td>r2-completeness</td><td>A</td><td>CMP-02/03/04/08/11/13/14/19/20/27/29</td><td>✅ 覆盖率 75.68%、287 资产归档、IV 随机化</td></tr>
+    <tr><td>r2-arch-ipc</td><td>B</td><td>ARC-02/03/11/14、CQ-09/11</td><td>✅ 465 处通道常量迁移、循环依赖解除</td></tr>
+    <tr><td>r2-arch-config</td><td>B</td><td>ARC-04/05/12、CQ-08、FUN-02/29、any 清理</td><td>✅ 配置单真源、strict 模式、any 清零</td></tr>
+  </table>
+  <p>验收结论：<span class="ok">✅ 全部门禁通过</span>（typecheck 0 错误、测试 102 文件/1662 用例、ESLint 0 error、electron-vite build 通过、npm audit 0 漏洞）。</p>
+
+  <h2 id="sec-2">2. 关键成果数据（第一轮 → 第二轮）</h2>
+  <table>
+    <tr><th>指标</th><th>第一轮后</th><th>第二轮后</th></tr>
+    <tr><td>单元测试</td><td>61 文件 / 1067 用例</td><td><strong>102 文件 / 1662 用例</strong></td></tr>
+    <tr><td>测试覆盖率（lines）</td><td>无统计</td><td><strong>75.68%</strong>（main 89.28 / common 98.8）</td></tr>
+    <tr><td>ESLint</td><td>0 error / 453 warning</td><td>0 error / <strong>121 warning</strong></td></tr>
+    <tr><td>no-explicit-any</td><td>315 处</td><td><strong>0 处</strong></td></tr>
+    <tr><td>严格模式（noUnusedLocals/Parameters）</td><td>关闭</td><td><strong>开启且 0 错误</strong></td></tr>
+    <tr><td>IPC 通道硬编码</td><td>72+ 处字面量</td><td><strong>0 处</strong>（125 个常量统一）</td></tr>
+    <tr><td>配置存储</td><td>三目录双系统</td><td><strong>单真源</strong></td></tr>
+    <tr><td>Monaco 编辑器</td><td>主线程回退</td><td><strong>独立 worker</strong></td></tr>
+    <tr><td>零引用资产</td><td>287 个</td><td>归档 resources/_unused-assets/（可回退）</td></tr>
+  </table>
+
+  <h2 id="sec-3">3. 第一波修复明细</h2>
+  <h3>r2-monaco（PF-03 / CMP-28 / FUN-09）</h3>
+  <ul>
+    <li>弃用 vite-plugin-monaco-editor（vite 2.x 产物），改手动 getWorker + ?worker 导入，包名精确重定向 editor.api + 45 精选语言；</li>
+    <li>editor.worker 0.57MB 运行时加载，主 chunk 10.31 → 10.18MB；</li>
+    <li>折叠（含 markdown 折叠提供器）、查找/替换、跳行（钳制校验）、大纲下拉（点击跳转）全部实现。</li>
+  </ul>
+  <h3>r2-func-menu（FUN-09/26/30、CMP-29）</h3>
+  <ul>
+    <li>菜单 → EventBus 契约事件与 Monaco 侧对齐；剪切/复制/粘贴走既有 Monaco IPC；绘图改模板插入链路；</li>
+    <li>快捷键真实绑定 Ctrl+N/O/R、Ctrl+Shift+R、F4；Monaco 原生键标注如实保留；</li>
+    <li>跨文件检索/模板管理按 A-4 隐藏；删除右键 alert 调试项。</li>
+  </ul>
+  <h3>r2-func-io（FUN-10/14/15/21/22/24/27/30、PF-10/14、MEM-07）</h3>
+  <ul>
+    <li>自动更新优雅化（占位 URL 诚实提示，绝不假装更新）；</li>
+    <li>导入：ini 可用、文本类统一编码探测、xls/xlsx 引导转 CSV；导出：PDF try/finally、CDATA 转义、版本号实读；</li>
+    <li>渲染：代码块全保护、危险协议不生成链接、mermaid 失败回显、TOC 稳定 id；右键"在文件夹中显示"可用；大文件异步确认。</li>
+  </ul>
+  <h3>r2-mem（MEM-09/10/12/13、FUN-18）</h3>
+  <ul>
+    <li>EventBus 恢复 $checkLeaks/$stats；59 处直连 IPC 统一管理（registerOnce + inventory）；</li>
+    <li>12 个对话框 JSDOM close；拖拽监听兜底卸载；无活动文件保存只提示不弹框。</li>
+  </ul>
+  <h3>r2-quality（CQ-06/07、FUN-12）</h3>
+  <ul>
+    <li>ShowEditorSettingDialog 1403→211、Information 1375→29（+12 数据文件）等 5 个超长文件拆分；</li>
+    <li>editor-setting-css 与 dialog-shared-css 合并；FUN-12 控件修复 54 处（去重 3/清引用 17/补映射 37/隐藏 14）。</li>
+  </ul>
+  <h3>r2-completeness（CMP-02/03/04/08/11/13/14/19/20/27/29）</h3>
+  <ul>
+    <li>覆盖率基建落地（实测 75.68%，lines 40 阈值通过）；</li>
+    <li>287 个零引用资产归档（未删除可回退）；加密 IV 随机化 + 前缀兼容；PDF/HemyTools 入口治理；死注释清理。</li>
+  </ul>
+
+  <h2 id="sec-4">4. 第二波重构明细</h2>
+  <h3>r2-arch-ipc（ARC-02/03/11/14、CQ-09/11）</h3>
+  <ul>
+    <li>ipc-channels.ts 重写为 125 个常量单真源，465 处 IPC 字面量迁移，防回归测试交叉核对；</li>
+    <li>EventBus 26 个事件常量收口 60 处引用；渲染层 import 主进程 7 处收敛 shared；</li>
+    <li>file-state 循环依赖解除（file-state-store.ts）；13 个 snake_case 文件重命名。</li>
+  </ul>
+  <h3>r2-arch-config（ARC-04/05/12、CQ-08、FUN-02/29）</h3>
+  <ul>
+    <li>配置单真源：STORE_BACKED_CONFIGS 路由表，渲染层读写全落主进程 electron-store；旧 system.json 一次性合并迁移（幂等可回滚）；</li>
+    <li>双 tsconfig 开启 noUnusedLocals/noUnusedParameters；</li>
+    <li>any 消除 306 处、豁免 9 处（中文说明）；warning 453→121；</li>
+    <li>编码菜单四段链路打通；状态栏显示实际编码；空文件不注入 \r\n。</li>
+  </ul>
+
+  <h2 id="sec-5">5. 最终验收记录（2026-11-14 23:48）</h2>
+  <table>
+    <tr><th>门禁</th><th>命令</th><th>结果</th></tr>
+    <tr><td>主进程类型检查</td><td>tsc --noEmit -p tsconfig.node.json（strict + noUnused*）</td><td>✅ 0 错误</td></tr>
+    <tr><td>渲染层类型检查</td><td>vue-tsc --noEmit -p tsconfig.web.json（strict + noUnused*）</td><td>✅ 0 错误</td></tr>
+    <tr><td>单元测试</td><td>npm run test</td><td>✅ 102 文件 / 1662 用例全过</td></tr>
+    <tr><td>代码检查</td><td>npx eslint .</td><td>✅ 0 error（121 warning）</td></tr>
+    <tr><td>构建验证</td><td>generate-version + electron-vite build</td><td>✅ exit 0</td></tr>
+    <tr><td>安全审计</td><td>npm audit（官方 registry）</td><td>✅ 0 漏洞</td></tr>
+    <tr><td>测试覆盖率</td><td>npm run test:coverage</td><td>✅ lines 75.68%，阈值通过</td></tr>
+  </table>
+
+  <h2 id="sec-6">6. 剩余遗留项（下轮候选）</h2>
+  <table>
+    <tr><th>类别</th><th>项</th><th>说明</th></tr>
+    <tr><td>性能</td><td>PF-02 预览单跳、PF-05 fs.watch、PF-08 plantuml 本地、PF-10 分块传输</td><td>需专项设计 + 实机验证</td></tr>
+    <tr><td>质量</td><td>121 条 warning（约 106 条 vue/attributes-order）</td><td>可一次性 --fix 收敛（需评审）</td></tr>
+    <tr><td>架构</td><td>quick-link/editor 对话框字段映射、存储目录基址统一、ARC-15 死通道</td><td>行为兼容性逐项确认</td></tr>
+    <tr><td>功能</td><td>跨文件检索、模板管理、xlsx 真解析</td><td>新功能开发</td></tr>
+    <tr><td>运行时验证</td><td>Monaco worker 实机加载、CSP/HMR、关闭落盘、配置迁移</td><td>需人工启动应用冒烟</td></tr>
+    <tr><td>决策项</td><td>LICENSE（CMP-07）、自动更新发布源（CMP-21）、i18n（CMP-30）</td><td>需用户决策</td></tr>
+  </table>
+
+  <h2 id="sec-7">7. 附录：改动清单</h2>
+  <ul>
+    <li>out\tool-results\r2-{monaco,func-menu,func-io,mem,quality,completeness,arch-ipc,arch-config}-changes.md</li>
+    <li>out\tool-results\r2-arch-ipc-verify.txt / r2-arch-config-verify.txt / r2-coverage-raw.txt / build-verify-r2.txt</li>
+    <li>resources\_unused-assets\：287 个零引用资产归档（清单 out\tool-results\r2-asset-moved.txt）</li>
+  </ul>
+  <p>两轮合计：127 项检查发现中约 90+ 项闭环或部分闭环（P0 全部、P1 约 32/37），测试 21 → 1662 用例，安全审计 15 漏洞清零，ESLint 门禁从完全失效到 0 error。全部改动未提交 git，建议人工冒烟（HMR、Monaco worker、预览渲染、编码切换、关闭落盘、配置迁移）后提交。</p>
+
+  <footer>白泽笔记第二轮修复与优化实施报告 · 8 个修复子智能体执行 · 根代理统一验收</footer>
+</div>
+</body>
+</html>

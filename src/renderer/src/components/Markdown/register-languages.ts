@@ -15,16 +15,45 @@ export function registerPlantUMLLanguage() {
     // 设置语言配置
     monaco.languages.setMonarchTokensProvider('plantuml', {
         keywords: [
-            'abstract', 'as', 'class', 'color', 'create', 'end', 'enum', 'extends', 'final',
-            'float', 'hide', 'implements', 'interface', 'internal', 'left', 'namespace',
-            'new', 'nonvirtual', 'of', 'package', 'packageifce', 'private', 'protected',
-            'public', 'return', 'right', 'static', 'stereotype', 'struct', 'super', 'this',
-            'to', 'typedef', 'up', 'virtual', 'void'
+            'abstract',
+            'as',
+            'class',
+            'color',
+            'create',
+            'end',
+            'enum',
+            'extends',
+            'final',
+            'float',
+            'hide',
+            'implements',
+            'interface',
+            'internal',
+            'left',
+            'namespace',
+            'new',
+            'nonvirtual',
+            'of',
+            'package',
+            'packageifce',
+            'private',
+            'protected',
+            'public',
+            'return',
+            'right',
+            'static',
+            'stereotype',
+            'struct',
+            'super',
+            'this',
+            'to',
+            'typedef',
+            'up',
+            'virtual',
+            'void'
         ],
 
-        operators: [
-            '=', '>', '<', '~', ':', '..'
-        ],
+        operators: ['=', '>', '<', '~', ':', '..'],
 
         symbols: /[=><~:]+/,
 
@@ -35,18 +64,24 @@ export function registerPlantUMLLanguage() {
                 [/"/, { token: 'string.quote', bracket: '@open', next: '@string' }],
                 [/#.*$/, 'comment'],
                 [/\/\//, 'comment'],
-                [/\w+/, {
-                    cases: {
-                        '@keywords': 'keyword',
-                        '@default': 'identifier'
+                [
+                    /\w+/,
+                    {
+                        cases: {
+                            '@keywords': 'keyword',
+                            '@default': 'identifier'
+                        }
                     }
-                }],
-                [/@symbols/, {
-                    cases: {
-                        '@operators': 'operator',
-                        '@default': ''
+                ],
+                [
+                    /@symbols/,
+                    {
+                        cases: {
+                            '@operators': 'operator',
+                            '@default': ''
+                        }
                     }
-                }],
+                ]
             ],
             string: [
                 [/[^\\"]+/, 'string'],
@@ -77,7 +112,6 @@ export function registerPlantUMLLanguage() {
             { open: "'", close: "'" }
         ]
     })
-
 }
 
 /**
@@ -90,9 +124,26 @@ export function registerMermaidLanguage() {
     // 设置简单的语法高亮
     monaco.languages.setMonarchTokensProvider('mermaid', {
         keywords: [
-            'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram',
-            'erDiagram', 'gantt', 'pie', 'journey', 'gitGraph', 'mindmap', 'timeline',
-            'subgraph', 'end', 'direction', 'TB', 'BT', 'RL', 'LR', 'TD'
+            'graph',
+            'flowchart',
+            'sequenceDiagram',
+            'classDiagram',
+            'stateDiagram',
+            'erDiagram',
+            'gantt',
+            'pie',
+            'journey',
+            'gitGraph',
+            'mindmap',
+            'timeline',
+            'subgraph',
+            'end',
+            'direction',
+            'TB',
+            'BT',
+            'RL',
+            'LR',
+            'TD'
         ],
 
         tokenizer: {
@@ -100,21 +151,26 @@ export function registerMermaidLanguage() {
                 [/@\w+/, 'keyword'],
                 [/#.*$/, 'comment'],
                 [/%%.*$/, 'comment'],
-                [/\w+/, {
-                    cases: {
-                        '@keywords': 'keyword',
-                        '@default': 'identifier'
+                [
+                    /\w+/,
+                    {
+                        cases: {
+                            '@keywords': 'keyword',
+                            '@default': 'identifier'
+                        }
                     }
-                }],
-                [/->>|-->|--|->|-\.|\.->|\.->\.|-\.->|-\.->\.|<->|<-->|x--|x--x|x-|x-x|-x|-x-/, 'operator'],
+                ],
+                [
+                    /->>|-->|--|->|-\.|\.->|\.->\.|-\.->|-\.->\.|<->|<-->|x--|x--x|x-|x-x|-x|-x-/,
+                    'operator'
+                ],
                 [/---|--/, 'operator'],
                 [/\[.*?\]/, 'string'],
                 [/\(.*?\)/, 'string'],
-                [/\{.*?\}/, 'string'],
+                [/\{.*?\}/, 'string']
             ]
         }
     })
-
 }
 
 /**

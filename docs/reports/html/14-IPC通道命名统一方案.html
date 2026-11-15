@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPC 通道命名统一方案（含完整通道清单）</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --text:#1f2328; --muted:#6b7280; --border:#e5e7eb; --accent:#2563eb; --p2:#ca8a04; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",sans-serif; line-height:1.7; }
+  .wrap { max-width:1150px; margin:0 auto; padding:32px 20px 60px; }
+  header { background:linear-gradient(135deg,#1e3a8a,#2563eb); color:#fff; border-radius:12px; padding:28px 32px; margin-bottom:24px; }
+  header h1 { margin:0 0 8px; font-size:26px; }
+  header p { margin:2px 0; opacity:.9; font-size:14px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; text-align:center; }
+  .card b { display:block; font-size:24px; }
+  .card span { font-size:12px; color:var(--muted); }
+  h2 { border-left:4px solid var(--accent); padding-left:10px; margin-top:36px; }
+  h3 { margin-top:22px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; font-size:13.5px; }
+  th,td { padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { background:#f3f4f6; white-space:nowrap; position:sticky; top:0; }
+  tr:last-child td { border-bottom:none; }
+  code { background:#eef1f5; padding:1px 5px; border-radius:4px; font-family:Consolas,monospace; font-size:12.5px; word-break:break-all; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:999px; color:#fff; font-size:12px; font-weight:600; white-space:nowrap; }
+  .p2 { background:var(--p2); }
+  ul,ol { padding-left:24px; }
+  li { margin:4px 0; }
+  .toc { position:fixed; top:24px; left:24px; width:210px; max-height:calc(100vh - 48px); overflow-y:auto;
+         background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 10px; z-index:100;
+         box-shadow:0 4px 12px rgba(0,0,0,.08); font-size:13px; }
+  .toc h4 { margin:0 0 8px; font-size:13px; color:var(--muted); padding-left:8px; }
+  .toc a { display:block; color:var(--text); text-decoration:none; padding:4px 8px; border-radius:6px; line-height:1.5; }
+  .toc a:hover { background:#eef1f5; color:var(--accent); }
+  @media (min-width:1280px) { .wrap { margin:0 auto 0 272px; } }
+  @media (max-width:1279px) { .toc { display:none; } }
+  footer { margin-top:40px; font-size:12px; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a href="#sec-1">1. 现状盘点</a>
+    <a href="#sec-2">2. 统一命名规范</a>
+    <a href="#sec-3">3. 完整通道清单（123）</a>
+    <a href="#sec-4">4. 迁移方案</a>
+    <a href="#sec-5">5. 验证方案</a>
+    <a href="#sec-6">6. 风险与决策点</a>
+    <a href="#sec-7">7. 结论与下一步</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>IPC 通道命名统一方案（含完整通道清单）</h1>
+    <p>制定日期：2026-11-15 ｜ 依据：ipc-channels.ts（123 通道 · 16 分组）+ IPC 通信矩阵 + 通信检查报告</p>
+    <p>建议：统一为 baize:&lt;domain&gt;:&lt;name&gt; 三段式；通道引用 100% 走常量真源，改名仅需改 1 个文件的 123 个字符串值</p>
+  </header>
+
+  <div class="cards">
+    <div class="card"><b>123</b><span>通道总数</span></div>
+    <div class="card"><b style="color:#ca8a04">101</b><span>前缀不规范（25+7+91 无序）</span></div>
+    <div class="card"><b>18</b><span>统一后领域数</span></div>
+    <div class="card"><b>16</b><span>计划删除死通道</span></div>
+    <div class="card"><b>1 个文件</b><span>改名影响面</span></div>
+  </div>
+
+  <h2 id="sec-1">1. 现状盘点</h2>
+  <h3>1.1 规模</h3>
+  <table>
+    <tr><th>指标</th><th>数量</th></tr>
+    <tr><td>通道常量</td><td><strong>123</strong>（16 分组：WINDOW 10 / CONFIG 5 / THEME 13 / MENU 1 / EDITOR 14 / FILE 18 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 2 / DIALOG 14 / NAVIGATION 2 / VIEW 5 / MONACO_INSERT 3 / QUICK_LINKS 5 / OVERLAY 7 / EVENTS 4）</td></tr>
+    <tr><td>前缀分布</td><td>baize-notes: <strong>25</strong> · baize:notes: <strong>7</strong> · 其他/无前缀 <strong>91</strong></td></tr>
+    <tr><td>已知方向数据</td><td>113/123（来自通信矩阵）</td></tr>
+    <tr><td>计划删除死通道</td><td>16</td></tr>
+  </table>
+  <h3>1.2 发现的六类命名问题</h3>
+  <table>
+    <tr><th>#</th><th>问题</th><th>典型例子</th></tr>
+    <tr><td>A</td><td>前缀四套并存</td><td>baize-notes:update-theme、baize:notes:welcome:open-file、config:read、window-minimize、get-current-theme</td></tr>
+    <tr><td>B</td><td>分隔符/层级混用</td><td>baize:notes:welcome:open-file（4 段）vs baize-notes:update-theme（2 段）；file-manager-context-menu-* 13 个超长前缀</td></tr>
+    <tr><td>C</td><td>动词/事件语义不统一</td><td>命令式 window-minimize、get-current-theme、update-*、dialog-*-enter 混用；事件型 *-updated、*-changed、*-result 未统一</td></tr>
+    <tr><td>D</td><td>拼写/语义错误</td><td>markdown-edit-model（应为 mode，2 处）；monaco-insert-text-block-templates 实为通用文本插入；open-plugin-tool 为死通道</td></tr>
+    <tr><td>E</td><td>方向不可辨</td><td>同一前缀下混有 R→M send/on、invoke/handle、M→R 推送</td></tr>
+    <tr><td>F</td><td>通道名与常量名不一致</td><td>常量 TEXT_BLOCK_TEMPLATES ↔ 通道 monaco-insert-text-block-templates；COPY_IMAGELINK ↔ copy-imagelink（缺连字符）</td></tr>
+  </table>
+
+  <h2 id="sec-2">2. 统一命名规范</h2>
+  <h3>2.1 格式</h3>
+  <p><code>baize:&lt;domain&gt;:&lt;name&gt;</code> —— 固定三段，全小写 kebab-case；domain 取白名单；示例：<code>baize:window:minimize</code>、<code>baize:config:read</code>、<code>baize:theme:updated</code>、<code>baize:fs:copy-relative-path</code>、<code>baize:file:open-with-encoding</code>。</p>
+  <h3>2.2 领域白名单（18）</h3>
+  <p><code>window</code> · <code>config</code> · <code>setting</code> · <code>theme</code> · <code>editor</code> · <code>monaco</code> · <code>view</code> · <code>menu</code> · <code>file</code> · <code>fs</code> · <code>navigation</code> · <code>dialog</code> · <code>plugin</code> · <code>render</code> · <code>quick-links</code> · <code>overlay</code> · <code>status-bar</code> · <code>system</code></p>
+  <h3>2.3 命名细则（5 条）</h3>
+  <table>
+    <tr><th>规则</th><th>内容</th><th>示例</th></tr>
+    <tr><td>R1 动作语义</td><td>请求-响应（invoke/handle）与 R→M 命令用动词原形开头</td><td>baize:window:minimize、baize:config:read</td></tr>
+    <tr><td>R2 事件语义</td><td>主进程→渲染层推送/结果事件用过去式或结果后缀</td><td>baize:theme:updated、baize:setting:auto-save-changed</td></tr>
+    <tr><td>R3 单数实体</td><td>实体一律单数，冗余词删除</td><td>file-manager-context-menu-rename → baize:fs:rename</td></tr>
+    <tr><td>R4 拼写与语义</td><td>修正 model→mode 等拼写；名称须与用途一致</td><td>markdown-edit-model → baize:view:edit-mode</td></tr>
+    <tr><td>R5 常量命名不变</td><td>不改 IPC.&lt;GROUP&gt;.&lt;KEY&gt; 常量名与分组，仅统一通道字符串值，用测试锁定格式</td><td>IPC.WINDOW.MINIMIZE 值改为 baize:window:minimize</td></tr>
+  </table>
+  <p>格式校验正则：<code>^baize:[a-z][a-z-]*:[a-z][a-z0-9-]*$</code>，并断言 domain ∈ 18 个白名单（建议新增 <code>tests/unit/ipc-channel-naming.test.ts</code>）。</p>
+
+  <h2 id="sec-3">3. 完整通道清单（123 个）</h2>
+  <table>
+    <tr><th>分组</th><th>常量</th><th>当前通道</th><th>方向/模式</th><th>建议通道</th><th>标记</th></tr>
+    <tr><td>CONFIG</td><td><code>DELETE</code></td><td><code>config:delete</code></td><td>R→M invoke ❌</td><td><code>baize:config:delete</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>CONFIG</td><td><code>ENSURE_DIR</code></td><td><code>config:ensure-dir</code></td><td>R→M invoke ❌</td><td><code>baize:config:ensure-dir</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>CONFIG</td><td><code>LIST</code></td><td><code>config:list</code></td><td>R→M invoke ❌</td><td><code>baize:config:list</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>CONFIG</td><td><code>READ</code></td><td><code>config:read</code></td><td>R→M invoke</td><td><code>baize:config:read</code></td><td></td></tr>
+    <tr><td>CONFIG</td><td><code>WRITE</code></td><td><code>config:write</code></td><td>R→M invoke</td><td><code>baize:config:write</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>AUTO_SAVE_CHANGED</code></td><td><code>system-setting-auto-save-changed</code></td><td>R→M ⚠️</td><td><code>baize:setting:auto-save-changed</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>CREATE_FILE_FOLDER_ENTER</code></td><td><code>dialog-create-file-folder-enter</code></td><td>D→M send</td><td><code>baize:dialog:create-file-folder-enter</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>FONT_SELECT_CANCEL</code></td><td><code>dialog-user-font-select-btn-cancel</code></td><td>D→M send</td><td><code>baize:dialog:font-select-cancel</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>FONT_SELECT_INSERT</code></td><td><code>dialog-user-font-select-btn-insert</code></td><td>D→M send</td><td><code>baize:dialog:font-select-insert</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>IMPORT_OPTION_CONFIRM</code></td><td><code>import-option-confirm</code></td><td>D→M send</td><td><code>baize:dialog:import-option-confirm</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>LOAD_SAVED_SETTINGS</code></td><td><code>load-saved-settings</code></td><td>M→D send</td><td><code>baize:dialog:load-saved-settings</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>MERMAID_RENDER_RESULT</code></td><td><code>dialog-mermaid-render-svg-result</code></td><td>D→M send</td><td><code>baize:dialog:mermaid-render-result</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>OPEN_PLUGIN_TOOL</code></td><td><code>open-plugin-tool</code></td><td>M→R send ❌</td><td><code>baize:dialog:open-plugin-tool</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>DIALOG</td><td><code>OPEN_VUE_DIALOG</code></td><td><code>open-vue-dialog</code></td><td>M→R send</td><td><code>baize:dialog:open-vue</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>RENAME_FILE_FOLDER_ENTER</code></td><td><code>dialog-rename-file-folder-enter</code></td><td>D→M send</td><td><code>baize:dialog:rename-file-folder-enter</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>SAVE_SUCCESS</code></td><td><code>baize-notes:save-success</code></td><td>M→D send</td><td><code>baize:file:save-success</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>SYSTEM_SETTING_APPLY</code></td><td><code>dialog-system-setting-apply</code></td><td>D→M send</td><td><code>baize:dialog:system-setting-apply</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>SYSTEM_SETTING_CANCEL</code></td><td><code>dialog-system-setting-cancel</code></td><td>D→M send</td><td><code>baize:dialog:system-setting-cancel</code></td><td></td></tr>
+    <tr><td>DIALOG</td><td><code>SYSTEM_SETTING_CONFIRM</code></td><td><code>dialog-system-setting-confirm</code></td><td>D→M send</td><td><code>baize:dialog:system-setting-confirm</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>DIALOG_SETTING_APPLY</code></td><td><code>dialog-editor-setting-apply</code></td><td>D→M send</td><td><code>baize:dialog:editor-setting-apply</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>DIALOG_SETTING_CANCEL</code></td><td><code>dialog-editor-setting-cancel</code></td><td>D→M send</td><td><code>baize:dialog:editor-setting-cancel</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>DIALOG_SETTING_OK</code></td><td><code>dialog-editor-setting-ok</code></td><td>D→M send</td><td><code>baize:dialog:editor-setting-ok</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>DIALOG_SETTING_RESET</code></td><td><code>dialog-editor-setting-reset</code></td><td>D→M send</td><td><code>baize:dialog:editor-setting-reset</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>FLUSH_CONTENT</code></td><td><code>editor:flush-content</code></td><td>M→R send</td><td><code>baize:editor:flush-content</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>FLUSH_CONTENT_DONE</code></td><td><code>editor:flush-content-done</code></td><td>R→M send</td><td><code>baize:editor:flush-content-done</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>GET_SETTING</code></td><td><code>baize-notes:get-editor-setting</code></td><td>R→M invoke</td><td><code>baize:editor:get-setting</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>INIT_SETTING</code></td><td><code>baize-notes:init-editor-setting</code></td><td>M→R send</td><td><code>baize:editor:init-setting</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>LOAD_SAVED_SETTINGS</code></td><td><code>load-saved-editor-settings</code></td><td>M→D send</td><td><code>baize:editor:load-saved-settings</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>RELAYOUT</code></td><td><code>baize-notes:editor-relayout</code></td><td>M→R send ❌</td><td><code>baize:editor:relayout</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>EDITOR</td><td><code>SETTING_UPDATED</code></td><td><code>baize-notes:editor-setting-updated</code></td><td>M→R send</td><td><code>baize:editor:setting-updated</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>SYSTEM_SETTING_UPDATE</code></td><td><code>baize-notes:system-setting-update</code></td><td>M→R send</td><td><code>baize:setting:updated</code></td><td></td></tr>
+    <tr><td>EDITOR</td><td><code>UPDATE_FONT</code></td><td><code>baize-notes:update-editor-font</code></td><td>R→M send ❌</td><td><code>baize:editor:update-font</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>EDITOR</td><td><code>UPDATE_OPTIONS</code></td><td><code>baize-notes:monaco-editor-update-options</code></td><td>M→R send（另有无接收的 R→M 分支）</td><td><code>baize:editor:update-options</code></td><td></td></tr>
+    <tr><td>EVENTS</td><td><code>FILE_CONTENT_RELOADED</code></td><td><code>file-content-reloaded</code></td><td>M→R send</td><td><code>baize:file:content-reloaded</code></td><td></td></tr>
+    <tr><td>EVENTS</td><td><code>FILE_SAVED_SUCCESS</code></td><td><code>file-saved-success</code></td><td>M→R send</td><td><code>baize:file:saved</code></td><td></td></tr>
+    <tr><td>EVENTS</td><td><code>SHOW_SELECTED_FILE_CONTEXT</code></td><td><code>baize:notes:show-selected-file-context</code></td><td>M→R send</td><td><code>baize:fs:show-selected-file-context</code></td><td></td></tr>
+    <tr><td>EVENTS</td><td><code>STATUS_BAR_UPDATE</code></td><td><code>status-bar-console-update</code></td><td>M→R send</td><td><code>baize:status-bar:update</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>APP_VERSION</code></td><td><code>app:get-version</code></td><td>R→M invoke</td><td><code>baize:system:app-version</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>CHECK_EXISTS</code></td><td><code>check-file-exists</code></td><td>R→M invoke</td><td><code>baize:file:check-exists</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>CLEAR_EDITOR_PREVIEW</code></td><td><code>clear-editor-and-preview</code></td><td>M→R send</td><td><code>baize:file:clear-editor-preview</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>CREATE_FILE_FOLDER</code></td><td><code>baize-notes:create-file-folder</code></td><td>R→M invoke</td><td><code>baize:file:create-entry</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>GET_CURRENT_FILE_PATH</code></td><td><code>baize-notes:get-current-file-path</code></td><td>R→M invoke</td><td><code>baize:file:get-current-path</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>IMPORT_NEW_FILE</code></td><td><code>baize-notes:import-new-file</code></td><td>R→M invoke</td><td><code>baize:file:import</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>OPEN_EXTERNAL_LINK</code></td><td><code>open-external-link</code></td><td>R→M send</td><td><code>baize:system:open-external-link</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>OPEN_SELECT_FILE</code></td><td><code>baize:notes:open-select-file</code></td><td>R→M send</td><td><code>baize:file:open-select-file</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>OPEN_SPECIFIC_FOLDER</code></td><td><code>baize:notes:open-specific-folder</code></td><td>R→M send</td><td><code>baize:file:open-specific-folder</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>READ_HTML</code></td><td><code>read-html-file</code></td><td>R→M invoke</td><td><code>baize:file:read-html</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>SAVE_TO_DISK</code></td><td><code>save-file-content-to-disk</code></td><td>R→M send</td><td><code>baize:file:save-content-to-disk</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>SELECT_DIRECTORY</code></td><td><code>baize-notes:select-directory</code></td><td>R→M invoke</td><td><code>baize:file:select-directory</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>SYSTEM_INFO</code></td><td><code>get-system-info</code></td><td>R→M invoke</td><td><code>baize:system:get-info</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>UPDATE_SELECT_FILE_CONTENT</code></td><td><code>update-select-file-content</code></td><td>R→M send</td><td><code>baize:file:update-content</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>USER_SELECT_FILE</code></td><td><code>monaco-editor-user-select-file</code></td><td>M→R send</td><td><code>baize:file:user-select-file</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>WELCOME_ENTER_MAIN</code></td><td><code>baize:notes:welcome:enter-main</code></td><td>M→R send</td><td><code>baize:file:welcome-enter-main</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>WELCOME_OPEN_DIRECTORY</code></td><td><code>baize:notes:welcome:open-directory</code></td><td>R→M send</td><td><code>baize:file:welcome-open-directory</code></td><td></td></tr>
+    <tr><td>FILE</td><td><code>WELCOME_OPEN_FILE</code></td><td><code>baize:notes:welcome:open-file</code></td><td>R→M send</td><td><code>baize:file:welcome-open-file</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>COPY_FILE</code></td><td><code>file-manager-context-menu-copy-file</code></td><td>R→M send</td><td><code>baize:fs:copy-file</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>COPY_FILELINK</code></td><td><code>file-manager-context-menu-copy-filelink</code></td><td>R→M send</td><td><code>baize:fs:copy-file-link</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>COPY_IMAGELINK</code></td><td><code>file-manager-context-menu-copy-imagelink</code></td><td>R→M send</td><td><code>baize:fs:copy-image-link</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>COPY_RELATIVE_PATH</code></td><td><code>file-manager-context-menu-copy-relative-path</code></td><td>R→M send</td><td><code>baize:fs:copy-relative-path</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>CREATE_FILE</code></td><td><code>file-manager-context-menu-create-file</code></td><td>R→M send</td><td><code>baize:fs:create-file</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>CUT</code></td><td><code>file-manager-context-menu-cut</code></td><td>R→M send</td><td><code>baize:fs:cut</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>DELETE</code></td><td><code>file-manager-context-menu-delete</code></td><td>R→M invoke ❌</td><td><code>baize:fs:delete</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>FILE_SYSTEM_DATA</code></td><td><code>baize:notes:resource:manager:file-system-data</code></td><td>M→R send</td><td><code>baize:fs:file-system-data</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>FIND_IN</code></td><td><code>file-manager-context-menu-find-in</code></td><td>R→M send</td><td><code>baize:fs:find-in</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>IMPORT_FROM</code></td><td><code>file-manager-context-menu-import-from</code></td><td>R→M send</td><td><code>baize:fs:import-from</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>OPEN_IN_EXPLORER</code></td><td><code>file-manager-context-menu-open-in-explorer</code></td><td>R→M send</td><td><code>baize:fs:open-in-explorer</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>PASTE</code></td><td><code>file-manager-context-menu-paste</code></td><td>R→M send</td><td><code>baize:fs:paste</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>RELOAD_FROM_DISK</code></td><td><code>file-manager-context-menu-reload-from-disk</code></td><td>R→M send</td><td><code>baize:fs:reload-from-disk</code></td><td></td></tr>
+    <tr><td>FILE_MANAGER</td><td><code>RENAME</code></td><td><code>file-manager-context-menu-rename</code></td><td>R→M send</td><td><code>baize:fs:rename</code></td><td></td></tr>
+    <tr><td>MENU</td><td><code>ACTION</code></td><td><code>baize-notes:menu-action</code></td><td>R→M send</td><td><code>baize:menu:action</code></td><td></td></tr>
+    <tr><td>MONACO_INSERT</td><td><code>AFTER_CURSOR</code></td><td><code>monaco-editor-insert-after-cursor</code></td><td>—</td><td><code>baize:monaco:insert-after-cursor</code></td><td></td></tr>
+    <tr><td>MONACO_INSERT</td><td><code>TEXT_BLOCK_TEMPLATES</code></td><td><code>monaco-insert-text-block-templates</code></td><td>—</td><td><code>baize:monaco:insert-text-block</code></td><td></td></tr>
+    <tr><td>MONACO_INSERT</td><td><code>WRITING_TEMPLATES</code></td><td><code>monaco-insert-writing-templates</code></td><td>—</td><td><code>baize:monaco:insert-writing-templates</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>NAVIGATION</td><td><code>KEYDOWN</code></td><td><code>keydown</code></td><td>—</td><td><code>baize:navigation:keydown</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>NAVIGATION</td><td><code>OPEN_EXE</code></td><td><code>navi-tab-open-exe</code></td><td>—</td><td><code>baize:navigation:open-exe</code></td><td></td></tr>
+    <tr><td>OVERLAY</td><td><code>CONVERT_SAVE_ENCODING</code></td><td><code>file-convert-encoding</code></td><td>R→M invoke</td><td><code>baize:file:convert-encoding</code></td><td></td></tr>
+    <tr><td>OVERLAY</td><td><code>CONVERT_TO_ENCODING</code></td><td><code>convert-to-encoding</code></td><td>M→R send</td><td><code>baize:file:convert-to-encoding</code></td><td></td></tr>
+    <tr><td>OVERLAY</td><td><code>MERMAID_GRAPH_DEF</code></td><td><code>mermaid-graph-definition</code></td><td>M→R send ❌</td><td><code>baize:overlay:mermaid-graph-definition</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>OVERLAY</td><td><code>OPEN_URL</code></td><td><code>open-url-in-web-browser-window</code></td><td>M→R send ❌</td><td><code>baize:overlay:open-url</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>OVERLAY</td><td><code>OPEN_WITH_ENCODING</code></td><td><code>open-with-encoding</code></td><td>M→R send</td><td><code>baize:file:open-with-encoding</code></td><td></td></tr>
+    <tr><td>OVERLAY</td><td><code>REOPEN_WITH_ENCODING</code></td><td><code>file-reopen-with-encoding</code></td><td>R→M invoke</td><td><code>baize:file:reopen-with-encoding</code></td><td></td></tr>
+    <tr><td>OVERLAY</td><td><code>UPDATE_MERMAID_GRAPH</code></td><td><code>update-mermaid-render-graph</code></td><td>M→D send ❌</td><td><code>baize:overlay:update-mermaid-graph</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>PLUGIN</td><td><code>CRYPTO_DECRYPT</code></td><td><code>plugin-tools-crypto-decrypt</code></td><td>R→M invoke</td><td><code>baize:plugin:crypto-decrypt</code></td><td></td></tr>
+    <tr><td>PLUGIN</td><td><code>CRYPTO_ENCRYPT</code></td><td><code>plugin-tools-crypto-encrypt</code></td><td>R→M invoke</td><td><code>baize:plugin:crypto-encrypt</code></td><td></td></tr>
+    <tr><td>PLUGIN</td><td><code>HASH_TEXT</code></td><td><code>plugin-tools-generator-hash-text</code></td><td>R→M invoke</td><td><code>baize:plugin:hash-text</code></td><td></td></tr>
+    <tr><td>PLUGIN</td><td><code>HMAC_TEXT</code></td><td><code>plugin-tools-generator-hmac-text</code></td><td>R→M invoke</td><td><code>baize:plugin:hmac-text</code></td><td></td></tr>
+    <tr><td>PLUGIN</td><td><code>RSA_GENERATE</code></td><td><code>plugin-tools-generator-rsa-key-pairs</code></td><td>R→M send</td><td><code>baize:plugin:rsa-generate</code></td><td></td></tr>
+    <tr><td>PLUGIN</td><td><code>RSA_RESULT</code></td><td><code>plugin-tools-generator-rsa-result</code></td><td>M→R send</td><td><code>baize:plugin:rsa-result</code></td><td></td></tr>
+    <tr><td>QUICK_LINKS</td><td><code>GET</code></td><td><code>baize-notes:get-quick-links</code></td><td>R→M invoke</td><td><code>baize:quick-links:get</code></td><td></td></tr>
+    <tr><td>QUICK_LINKS</td><td><code>INIT</code></td><td><code>baize-notes:init-quick-links</code></td><td>M→D send</td><td><code>baize:quick-links:init</code></td><td></td></tr>
+    <tr><td>QUICK_LINKS</td><td><code>RESET</code></td><td><code>baize-notes:reset-quick-links</code></td><td>D→M send</td><td><code>baize:quick-links:reset</code></td><td></td></tr>
+    <tr><td>QUICK_LINKS</td><td><code>SAVE</code></td><td><code>baize-notes:save-quick-links</code></td><td>D→M send</td><td><code>baize:quick-links:save</code></td><td></td></tr>
+    <tr><td>QUICK_LINKS</td><td><code>UPDATED</code></td><td><code>baize-notes:quick-links-updated</code></td><td>M→R send</td><td><code>baize:quick-links:updated</code></td><td></td></tr>
+    <tr><td>RENDER</td><td><code>INSERT_IMAGE</code></td><td><code>monaco-editor-container-insert-image</code></td><td>R→M send</td><td><code>baize:render:insert-image</code></td><td></td></tr>
+    <tr><td>RENDER</td><td><code>PLANTUML_LOCAL</code></td><td><code>baize-notes:plantuml-local-render</code></td><td>R→M invoke</td><td><code>baize:render:plantuml-local</code></td><td></td></tr>
+    <tr><td>THEME</td><td><code>DIALOG_BROADCAST_THEME</code></td><td><code>dialog-broadcast-theme</code></td><td>D→M send</td><td><code>baize:theme:dialog-broadcast</code></td><td></td></tr>
+    <tr><td>THEME</td><td><code>GET_ALL_MONACO_THEMES</code></td><td><code>get-all-monaco-themes</code></td><td>R→M invoke</td><td><code>baize:theme:get-all-monaco</code></td><td></td></tr>
+    <tr><td>THEME</td><td><code>GET_ALL_THEMES</code></td><td><code>get-all-themes</code></td><td>R→M invoke</td><td><code>baize:theme:get-all</code></td><td></td></tr>
+    <tr><td>THEME</td><td><code>GET_CURRENT_THEME</code></td><td><code>get-current-theme</code></td><td>R→M invoke ❌</td><td><code>baize:theme:get-current</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>THEME</td><td><code>GET_CURRENT_THEME_STYLES</code></td><td><code>get-current-theme-styles</code></td><td>R→M invoke</td><td><code>baize:theme:get-current-styles</code></td><td></td></tr>
+    <tr><td>THEME</td><td><code>GET_MONACO_THEME</code></td><td><code>get-monaco-theme</code></td><td>R→M sendSync ❌</td><td><code>baize:theme:get-monaco</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>THEME</td><td><code>GET_SEPARATE_EDITOR_THEME</code></td><td><code>get-separate-editor-theme</code></td><td>R→M sendSync ❌</td><td><code>baize:theme:get-separate-editor</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>THEME</td><td><code>INIT_THEME_STYLES</code></td><td><code>baize-notes:init-theme-styles</code></td><td>M→D（另有 M→R 空转）</td><td><code>baize:theme:init-styles</code></td><td></td></tr>
+    <tr><td>THEME</td><td><code>LOAD_MONACO_THEME</code></td><td><code>baize-notes:load-monaco-theme</code></td><td>R→M invoke</td><td><code>baize:theme:load-monaco</code></td><td></td></tr>
+    <tr><td>THEME</td><td><code>THEME_UPDATE</code></td><td><code>baize-notes:theme-update</code></td><td>D→M send</td><td><code>baize:theme:update-from-dialog</code></td><td></td></tr>
+    <tr><td>THEME</td><td><code>THEME_UPDATED</code></td><td><code>baize-notes:theme-updated</code></td><td>M→R / M→D send</td><td><code>baize:theme:updated</code></td><td></td></tr>
+    <tr><td>THEME</td><td><code>UPDATE_MONACO_THEME</code></td><td><code>baize-notes:update-monaco-theme</code></td><td>R→M send ❌</td><td><code>baize:theme:update-monaco</code></td><td><span class="badge p2">计划删除</span></td></tr>
+    <tr><td>THEME</td><td><code>UPDATE_THEME</code></td><td><code>baize-notes:update-theme</code></td><td>R→M send</td><td><code>baize:theme:update</code></td><td></td></tr>
+    <tr><td>VIEW</td><td><code>EDIT_MODE</code></td><td><code>markdown-edit-model</code></td><td>—</td><td><code>baize:view:edit-mode</code></td><td></td></tr>
+    <tr><td>VIEW</td><td><code>EDIT_PREVIEW_MODE</code></td><td><code>markdown-edit-preview-model</code></td><td>—</td><td><code>baize:view:edit-preview-mode</code></td><td></td></tr>
+    <tr><td>VIEW</td><td><code>PREVIEW_MODE</code></td><td><code>markdown-preview-model</code></td><td>—</td><td><code>baize:view:preview-mode</code></td><td></td></tr>
+    <tr><td>VIEW</td><td><code>TOGGLE_RES_MANAGER</code></td><td><code>menu-view-hide-display-res-manager</code></td><td>—</td><td><code>baize:view:toggle-resource-manager</code></td><td></td></tr>
+    <tr><td>VIEW</td><td><code>UNDO_REDO</code></td><td><code>monaco-editor-trigger-undo-redo</code></td><td>—</td><td><code>baize:monaco:undo-redo</code></td><td></td></tr>
+    <tr><td>WINDOW</td><td><code>CLOSE</code></td><td><code>window-close</code></td><td>R→M send</td><td><code>baize:window:close</code></td><td></td></tr>
+    <tr><td>WINDOW</td><td><code>GET_BOUNDS</code></td><td><code>window-get-bounds</code></td><td>R→M invoke</td><td><code>baize:window:get-bounds</code></td><td></td></tr>
+    <tr><td>WINDOW</td><td><code>IS_MAXIMIZED</code></td><td><code>window-is-maximized</code></td><td>R→M invoke</td><td><code>baize:window:is-maximized</code></td><td></td></tr>
+    <tr><td>WINDOW</td><td><code>MAXIMIZE</code></td><td><code>window-maximize</code></td><td>R→M send</td><td><code>baize:window:maximize</code></td><td></td></tr>
+    <tr><td>WINDOW</td><td><code>MINIMIZE</code></td><td><code>window-minimize</code></td><td>R→M send</td><td><code>baize:window:minimize</code></td><td></td></tr>
+    <tr><td>WINDOW</td><td><code>MOVE</code></td><td><code>window-move</code></td><td>R→M send</td><td><code>baize:window:move</code></td><td></td></tr>
+    <tr><td>WINDOW</td><td><code>SET_SIZE</code></td><td><code>window-set-size</code></td><td>R→M send</td><td><code>baize:window:set-size</code></td><td></td></tr>
+    <tr><td>WINDOW</td><td><code>START_DRAG</code></td><td><code>window-start-drag</code></td><td>R→M send</td><td><code>baize:window:start-drag</code></td><td></td></tr>
+    <tr><td>WINDOW</td><td><code>TOGGLE_MAXIMIZE</code></td><td><code>window-toggle-maximize</code></td><td>R→M send</td><td><code>baize:window:toggle-maximize</code></td><td></td></tr>
+    <tr><td>WINDOW</td><td><code>UNMAXIMIZE</code></td><td><code>window-unmaximize</code></td><td>R→M send ❌</td><td><code>baize:window:unmaximize</code></td><td><span class="badge p2">计划删除</span></td></tr>
+  </table>
+  <p>方向数据来自通信矩阵（113/123 命中，其余以「—」表示）；「计划删除」为通信检查报告判定的 16 个死通道。机器可读映射见 out\tool-results\ipc-channel-rename-map.json。</p>
+
+  <h2 id="sec-4">4. 迁移方案（成本极低）</h2>
+  <h3>4.1 关键前提（已核实）</h3>
+  <ul>
+    <li>通道引用 100% 走常量：main/preload/renderer 均 <code>IPC.*</code> 引用；HTML 对话框内联脚本通过模板插值注入常量；preload 对话框 send 白名单也引用常量；</li>
+    <li>因此无需逐个改调用点，只改常量值即可全局生效。</li>
+  </ul>
+  <h3>4.2 改动清单</h3>
+  <table>
+    <tr><th>#</th><th>文件/对象</th><th>改动</th></tr>
+    <tr><td>1</td><td>src/shared/ipc-channels.ts</td><td>123 个字符串值替换为建议值（唯一真源）</td></tr>
+    <tr><td>2</td><td>tests/unit/ipc-channel-constants.test.ts 等</td><td>硬编码旧值断言同步</td></tr>
+    <tr><td>3</td><td>tests/unit/ipc-channel-naming.test.ts（新增）</td><td>格式正则 + domain 白名单 + 唯一性</td></tr>
+    <tr><td>4</td><td>docs/reports 通信矩阵</td><td>重生成同步</td></tr>
+    <tr><td>5</td><td>out/tool-results/ipc-channel-rename-map.json</td><td>执行依据（已生成）</td></tr>
+  </table>
+  <h3>4.3 与死通道清理合并（推荐）</h3>
+  <ol>
+    <li>先删除 16 个死通道（常量 + 收发端 + 测试）；</li>
+    <li>对剩余 107 个通道一次性套用新命名（改常量值）；</li>
+    <li>重生成通信矩阵，更新检查报告中的通道名；</li>
+    <li>跑门禁 + 新增命名测试。</li>
+  </ol>
+  <h3>4.4 不建议的做法</h3>
+  <ul>
+    <li>❌ 保留旧值别名（内部闭环，无外部消费者，会产生双轨认知负担）；</li>
+    <li>❌ 逐个调用点改名（徒增风险，失去常量真源意义）；</li>
+    <li>❌ 在通道名中加方向后缀（噪音；方向由调用位置与矩阵区分，测试校验两端模式）。</li>
+  </ul>
+
+  <h2 id="sec-5">5. 验证方案</h2>
+  <table>
+    <tr><th>验证</th><th>方法</th><th>通过标准</th></tr>
+    <tr><td>格式</td><td>新增命名测试</td><td>100% 匹配正则且 domain 在白名单</td></tr>
+    <tr><td>唯一性</td><td>现有 ipc-channel-constants.test.ts</td><td>无重复值</td></tr>
+    <tr><td>无字面量绕过</td><td>现有测试</td><td>src 内无通道字符串直接调用</td></tr>
+    <tr><td>旧值零残留</td><td>grep 旧通道值（src/tests）</td><td>0 命中</td></tr>
+    <tr><td>功能回归</td><td>typecheck + npm test + eslint + build</td><td>全部通过</td></tr>
+    <tr><td>报告一致</td><td>重生成通信矩阵</td><td>与常量文件一致</td></tr>
+  </table>
+
+  <h2 id="sec-6">6. 风险与决策点</h2>
+  <table>
+    <tr><th>项</th><th>说明</th><th>建议</th></tr>
+    <tr><td>常量名是否同步改域名</td><td>需改 1341 处调用点，收益低</td><td>不改，仅统一字符串值</td></tr>
+    <tr><td>是否本轮同时删死通道</td><td>与命名改动叠加在同一文件</td><td>推荐合并（批次 3），一次验证</td></tr>
+    <tr><td>历史报告旧通道名</td><td>属历史存档</td><td>保留历史，仅更新当前状态版矩阵/报告</td></tr>
+    <tr><td>HTML 对话框耦合</td><td>已确认常量注入</td><td>无额外风险</td></tr>
+  </table>
+
+  <h2 id="sec-7">7. 结论与下一步</h2>
+  <ol>
+    <li>通道清单：见第三节 123 行明细（机器可读版 out\tool-results\ipc-channel-rename-map.json）；</li>
+    <li>建议方案：baize:&lt;domain&gt;:&lt;name&gt; 三段式 + 18 个 domain 白名单 + 5 条命名细则；</li>
+    <li>实施路径：并入 13 号修复计划批次 3（先删 16 死通道 → 改名 → 重生成矩阵 → 新增命名测试 → 门禁）；</li>
+    <li>若需立即执行命名统一，可单列"批次 0"，预计 1 个子智能体一轮完成 + 验证。</li>
+  </ol>
+
+  <h2>8. 执行状态（2026-11-15 已完成）</h2>
+  <ul>
+    <li>✅ <strong>通道值统一</strong>：src/shared/ipc-channels.ts 123 个通道全部改为 baize:&lt;domain&gt;:&lt;name&gt;（旧值零残留）；</li>
+    <li>✅ <strong>测试用例更新</strong>：46 个测试文件共 216 处硬编码旧通道名同步为新值（keydown 歧义单独处理），全部通过；</li>
+    <li>✅ <strong>顺带收口</strong>：renderer/common/templates.ts 的通道字面量副本改为引用 IPC 常量（通信检查报告 P3-2 / ARC-03 收口）；</li>
+    <li>✅ <strong>新增防回归测试</strong>：tests/unit/ipc-channel-naming.test.ts（格式正则/domain 白名单/唯一性/历史前缀 6 用例）；</li>
+    <li>✅ <strong>文档同步</strong>：IPC 通信矩阵与通信检查报告的通道名已更新并加注记；</li>
+    <li>✅ <strong>门禁</strong>：typecheck 双绿 · 测试 116 文件 / 1849 用例全过 · ESLint 0 error · electron-vite build 通过。</li>
+  </ul>
+  <p>说明：死通道（16 个）本轮仅统一命名、未删除（删除属 13-IPC通信问题修复计划 批次 3 范围）。</p>
+  <footer>IPC 通道命名统一方案 · 123 通道清单 · 建议格式 baize:&lt;domain&gt;:&lt;name&gt;</footer>
+</div>
+</body>
+</html>

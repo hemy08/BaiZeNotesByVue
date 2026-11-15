@@ -1,5 +1,12 @@
+/**
+ * KaTeX 渲染单元测试（PF-02：已迁移至渲染层 preview-local-render.ts）
+ * 覆盖：LaTeX → HTML、非法公式降级、行内/块级/数学代码块、反引号内公式不渲染、无公式透传
+ */
 import { describe, it, expect } from 'vitest'
-import { katexRenderToString, katexRenderMathInText } from '../../src/main/renders/KatexRender'
+import {
+    katexRenderToString,
+    katexRenderMathInText
+} from '../../src/renderer/src/components/Markdown/preview-local-render'
 
 describe('KatexRender', () => {
     describe('katexRenderToString', () => {

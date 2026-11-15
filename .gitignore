@@ -1,6 +1,8 @@
 /node_modules
 /dist
 /out
+/coverage
+/resources/_unused-assets/
 .DS_Store
 *.log*
 .vscode
@@ -15,3 +17,19 @@
 /resources/katex/node_modules/
 /src/renderer/src/lib/katex/node_modules
 /src/renderer/src/lib/mermaid/node_modules
+
+# ET-17：测试运行产生的临时目录（tests/unit/.window-security.test.ts.<pid>.<uuid>.tmpdir 等）。
+# 由 vitest globalSetup（tests/unit/helpers/tmpdir-global-setup.ts）兜底清理，
+# 这里同时忽略，避免异常中断时未跟踪目录污染工作区。
+*.tmpdir/
+
+# ET-14：构建期生成物（build/generate-version-config.js 从实际安装依赖读取版本后写入）。
+# 所有打包脚本均先执行 `npm run generate-version` 再 electron-vite build/electron-builder，
+# 因此无需入库；避免每次构建产生未提交变更、以及入库版本值与实际安装版本漂移。
+/resources/config/version.json
+
+# ET-11：Playwright E2E 运行产物（trace/截图/HTML 报告）
+/test-results/
+/playwright-report/
+
+# 说明：/.github（CI 工作流）应纳入版本控制，不要忽略；.git 目录天然不受 Git 管理。

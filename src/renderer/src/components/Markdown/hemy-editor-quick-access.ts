@@ -1,46 +1,77 @@
 import { showEmojiQuickAccess } from './hemy-quick-access-emojis'
 import { showSymbolQuickAccess } from './hemy-quick-access-symbols'
+import { t } from '../../common/i18n'
 import * as Templates from '../../common/templates'
 import ContextMenu, { MenuItem } from '@imengyu/vue3-context-menu'
-import EventBus from '../../common/event_bus/event-bus'
+import EventBus from '../../common/event-bus/event-bus'
 import { getConfigStore } from '../../common/useConfigStore'
 import {
-    SVG_HEADER_1, SVG_HEADER_2, SVG_HEADER_3, SVG_HEADER_4, SVG_HEADER_5, SVG_HEADER_6,
-    SVG_FONT_FAMILY, SVG_FONT_SIZE, SVG_FONT_BOLD, SVG_FONT_ITALIC, SVG_FONT_DELETE, SVG_FONT_UNDER,
-    SVG_FONT_QUOTE, SVG_FONT_SUPER, SVG_FONT_SUB,
-    SVG_ALIGN_LEFT, SVG_ALIGN_CENTER, SVG_ALIGN_JUSTIFY, SVG_ALIGN_RIGHT,
-    SVG_LIST_NUMBERED, SVG_LIST_BULLETED, SVG_LINE_SCAN, SVG_LINE_ENTER,
-    SVG_CODE_LINE, SVG_CODE_BLOCK, SVG_MATH_LINE, SVG_MATH_BLOCK,
-    SVG_WEB_LINKS, SVG_TASK_LISTS,
-    SVG_INSERT_IMAGES, SVG_INSERT_TABLE, SVG_INSERT_EMOJI, SVG_INSERT_SYMBOL,
-    SVG_INSERT_MERMAID, SVG_INSERT_PLANTUML
+    SVG_HEADER_1,
+    SVG_HEADER_2,
+    SVG_HEADER_3,
+    SVG_HEADER_4,
+    SVG_HEADER_5,
+    SVG_HEADER_6,
+    SVG_FONT_FAMILY,
+    SVG_FONT_SIZE,
+    SVG_FONT_BOLD,
+    SVG_FONT_ITALIC,
+    SVG_FONT_DELETE,
+    SVG_FONT_UNDER,
+    SVG_FONT_QUOTE,
+    SVG_FONT_SUPER,
+    SVG_FONT_SUB,
+    SVG_ALIGN_LEFT,
+    SVG_ALIGN_CENTER,
+    SVG_ALIGN_JUSTIFY,
+    SVG_ALIGN_RIGHT,
+    SVG_LIST_NUMBERED,
+    SVG_LIST_BULLETED,
+    SVG_LINE_SCAN,
+    SVG_LINE_ENTER,
+    SVG_CODE_LINE,
+    SVG_CODE_BLOCK,
+    SVG_MATH_LINE,
+    SVG_MATH_BLOCK,
+    SVG_WEB_LINKS,
+    SVG_TASK_LISTS,
+    SVG_INSERT_IMAGES,
+    SVG_INSERT_TABLE,
+    SVG_INSERT_EMOJI,
+    SVG_INSERT_SYMBOL,
+    SVG_INSERT_MERMAID,
+    SVG_INSERT_PLANTUML
 } from './hemy-editor-quick-access-svgs'
+import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 
+interface TemplateMenuEntry {
+    labelKey?: string
+    label?: string
+    context: string
+}
 
-const mermaidContextMenuItems = Object.keys(Templates.Mermaid).map((diagram) => {
-    return {
-        label: Templates.Mermaid[diagram].label,
+/**
+ * 模板菜单项文案：优先使用 templates.ts 的 labelKey（由壳层菜单代理维护），
+ * 兼容历史 label 字段；在菜单打开时取词，切换语言后新开菜单即时生效。
+ */
+function templateMenuLabel(template: TemplateMenuEntry): string {
+    return template.labelKey ? t(template.labelKey) : (template.label ?? '')
+}
+
+function buildTemplateMenuItems(templates: readonly TemplateMenuEntry[]): MenuItem[] {
+    return templates.map((template) => ({
+        label: templateMenuLabel(template),
         onClick: () => {
-            EventBus.$emit('baize:notes:monaco-editor:insert-text', Templates.Mermaid[diagram].context)
+            EventBus.$emit(EVENT_BUS.MONACO_INSERT_TEXT, template.context)
         }
-    }
-})
-
-
-const plantumlContextMenuItems = Object.keys(Templates.PlantUML).map((diagram) => {
-    return {
-        label: Templates.PlantUML[diagram].label, // 根据类别设置标签
-        onClick: () => {
-            EventBus.$emit('baize:notes:monaco-editor:insert-text', Templates.PlantUML[diagram].context)
-        }
-    }
-})
+    })) as MenuItem[]
+}
 
 function showMermaidQuickAccess(e: MouseEvent) {
     ContextMenu.showContextMenu({
         x: e.x,
         y: e.y + 10,
-        items: mermaidContextMenuItems as MenuItem[]
+        items: buildTemplateMenuItems(Templates.Mermaid)
     })
 }
 
@@ -48,14 +79,14 @@ function showPlantUmlQuickAccess(e: MouseEvent) {
     ContextMenu.showContextMenu({
         x: e.x,
         y: e.y + 10,
-        items: plantumlContextMenuItems as MenuItem[]
+        items: buildTemplateMenuItems(Templates.PlantUML)
     })
 }
 
 type MarkdownEditQuickAccess = {
     [key: string]: {
         id: string
-        title: string
+        titleKey: string
         class: string
         clickFn: (event: Event, context: string, ...args: never[]) => void
         param: string
@@ -63,12 +94,12 @@ type MarkdownEditQuickAccess = {
     } // 键是字符串，值是数字
 }
 
-function onFontHeaderFormat(_, context: string) {
-    EventBus.$emit('monaco-editor-update-header-format', context)
+function onFontHeaderFormat(_event: Event, context: string) {
+    EventBus.$emit(EVENT_BUS.MONACO_UPDATE_HEADER_FORMAT, context)
 }
 
-function onFontFormat(_, context: string) {
-    EventBus.$emit('monaco-editor-update-font-format', context)
+function onFontFormat(_event: Event, context: string) {
+    EventBus.$emit(EVENT_BUS.MONACO_UPDATE_FONT_FORMAT, context)
 }
 
 function onInsertTable() {
@@ -105,7 +136,7 @@ function onShowPlantUmlMenu(e: Event) {
 export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     'header-1': {
         id: 'header-1',
-        title: '一级标题',
+        titleKey: 'editorUi.toolbar.h1',
         class: 'tool-btn',
         clickFn: onFontHeaderFormat,
         param: 'h1',
@@ -113,7 +144,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'header-2': {
         id: 'header-2',
-        title: '二级标题',
+        titleKey: 'editorUi.toolbar.h2',
         class: 'tool-btn',
         clickFn: onFontHeaderFormat,
         param: 'h2',
@@ -121,7 +152,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'header-3': {
         id: 'header-3',
-        title: '三级标题',
+        titleKey: 'editorUi.toolbar.h3',
         class: 'tool-btn',
         clickFn: onFontHeaderFormat,
         param: 'H3',
@@ -129,7 +160,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'header-4': {
         id: 'header-4',
-        title: '四级标题',
+        titleKey: 'editorUi.toolbar.h4',
         class: 'tool-btn',
         clickFn: onFontHeaderFormat,
         param: 'H4',
@@ -137,7 +168,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'header-5': {
         id: 'header-5',
-        title: '五级标题',
+        titleKey: 'editorUi.toolbar.h5',
         class: 'tool-btn',
         clickFn: onFontHeaderFormat,
         param: 'H5',
@@ -145,7 +176,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'header-6': {
         id: 'header-6',
-        title: '六级标题',
+        titleKey: 'editorUi.toolbar.h6',
         class: 'tool-btn',
         clickFn: onFontHeaderFormat,
         param: 'H6',
@@ -153,7 +184,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'font-family': {
         id: 'font-family',
-        title: '字体样式',
+        titleKey: 'editorUi.toolbar.fontFamily',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'fontfamily',
@@ -161,7 +192,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'font-size': {
         id: 'font-size',
-        title: '字体大小',
+        titleKey: 'editorUi.toolbar.fontSize',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'fontsize',
@@ -169,7 +200,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'font-bold': {
         id: 'font-bold',
-        title: '加粗',
+        titleKey: 'editorUi.toolbar.bold',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'bold',
@@ -177,7 +208,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'font-italic': {
         id: 'font-italic',
-        title: '倾斜',
+        titleKey: 'editorUi.toolbar.italic',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'italic',
@@ -185,7 +216,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'font-delete': {
         id: 'font-delete',
-        title: '删除线',
+        titleKey: 'editorUi.toolbar.deleteLine',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'deleteline',
@@ -193,7 +224,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'font-under': {
         id: 'font-under',
-        title: '下划线',
+        titleKey: 'editorUi.toolbar.underline',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'underline',
@@ -209,7 +240,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
   },*/
     'font-quote': {
         id: 'font-quote',
-        title: '引用',
+        titleKey: 'editorUi.toolbar.quote',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'fontquote',
@@ -217,7 +248,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'font-super': {
         id: 'font-super',
-        title: '上标',
+        titleKey: 'editorUi.toolbar.superscript',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'fontsuper',
@@ -225,7 +256,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'font-sub': {
         id: 'font-sub',
-        title: '下标',
+        titleKey: 'editorUi.toolbar.subscript',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'fontsub',
@@ -233,7 +264,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'align-left': {
         id: 'align-left',
-        title: '左对齐',
+        titleKey: 'editorUi.toolbar.alignLeft',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'alignleft',
@@ -241,7 +272,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'align-center': {
         id: 'align-center',
-        title: '文字居中',
+        titleKey: 'editorUi.toolbar.alignCenter',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'aligncenter',
@@ -249,7 +280,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'align-justify': {
         id: 'align-justify',
-        title: '两边对齐',
+        titleKey: 'editorUi.toolbar.alignJustify',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'alignjustify',
@@ -257,7 +288,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'align-right': {
         id: 'align-right',
-        title: '右对齐',
+        titleKey: 'editorUi.toolbar.alignRight',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'alignright',
@@ -265,7 +296,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'list-numbered': {
         id: 'list-numbered',
-        title: '有序列表',
+        titleKey: 'editorUi.toolbar.listNumbered',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'listnumbered',
@@ -273,7 +304,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'list-bulleted': {
         id: 'list-bulleted',
-        title: '无序列表',
+        titleKey: 'editorUi.toolbar.listBulleted',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'listbulleted',
@@ -281,7 +312,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'line-scan': {
         id: 'line-scan',
-        title: '水平线',
+        titleKey: 'editorUi.toolbar.lineScan',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'linescan',
@@ -289,7 +320,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'line-enter': {
         id: 'line-enter',
-        title: '段内换行',
+        titleKey: 'editorUi.toolbar.lineEnter',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'lineenter',
@@ -297,7 +328,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'code-line': {
         id: 'code-line',
-        title: '行内代码',
+        titleKey: 'editorUi.toolbar.codeLine',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'codeline',
@@ -305,7 +336,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'code-block': {
         id: 'code-block',
-        title: '代码块',
+        titleKey: 'editorUi.toolbar.codeBlock',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'codeblock',
@@ -313,7 +344,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'math-line': {
         id: 'math-line',
-        title: '行内公式',
+        titleKey: 'editorUi.toolbar.mathLine',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'mathline',
@@ -321,7 +352,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'math-block': {
         id: 'math-block',
-        title: '公式块',
+        titleKey: 'editorUi.toolbar.mathBlock',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'mathblock',
@@ -329,7 +360,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'web-links': {
         id: 'web-links',
-        title: '网站链接',
+        titleKey: 'editorUi.toolbar.webLinks',
         class: 'tool-btn',
         clickFn: onInsertWebLinks,
         param: 'weblinks',
@@ -337,7 +368,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'task-lists': {
         id: 'task-lists',
-        title: '任务列表',
+        titleKey: 'editorUi.toolbar.taskLists',
         class: 'tool-btn',
         clickFn: onFontFormat,
         param: 'tasklists',
@@ -345,7 +376,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'insert-images': {
         id: 'insert-images',
-        title: '插入图片',
+        titleKey: 'editorUi.toolbar.insertImages',
         class: 'tool-btn',
         clickFn: onInsertImage,
         param: 'insertimage',
@@ -353,7 +384,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'insert-table': {
         id: 'insert-table',
-        title: '表格',
+        titleKey: 'editorUi.toolbar.insertTable',
         class: 'tool-btn',
         clickFn: onInsertTable,
         param: 'insertable',
@@ -361,7 +392,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'insert-emoji': {
         id: 'insert-emoji',
-        title: 'Emoji',
+        titleKey: 'editorUi.toolbar.insertEmoji',
         class: 'tool-btn',
         clickFn: onShowEmojiMenu,
         param: '',
@@ -369,7 +400,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'insert-symbol': {
         id: 'insert-symbol',
-        title: '特殊符号',
+        titleKey: 'editorUi.toolbar.insertSymbol',
         class: 'tool-btn',
         clickFn: onShowSymbolsMenu,
         param: '',
@@ -377,7 +408,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'insert-mermaid': {
         id: 'insert-mermaid',
-        title: 'mermaid',
+        titleKey: 'editorUi.toolbar.insertMermaid',
         class: 'tool-btn',
         clickFn: onShowMermaidMenu,
         param: '',
@@ -385,7 +416,7 @@ export const MdEditQuickAccess: MarkdownEditQuickAccess = {
     },
     'insert-plantuml': {
         id: 'insert-plantuml',
-        title: 'plantuml',
+        titleKey: 'editorUi.toolbar.insertPlantuml',
         class: 'tool-btn',
         clickFn: onShowPlantUmlMenu,
         param: '',

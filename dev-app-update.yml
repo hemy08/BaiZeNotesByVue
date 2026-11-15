@@ -1,3 +1,11 @@
+# FUN-10/CMP-21/ARC-16：自动更新源配置（开发模式回退源）
+# 优先级：resources/config/update.json（运行时可配置，见 update.json.example 与
+# update.config.md）> 本文件（开发环境）/ app-update.yml（打包时由 electron-builder 生成）。
+# 注意：example.com 为占位地址，应用"检查更新"将提示"未配置更新源"。
+# 部署真实更新服务器后，推荐在 resources/config/update.json 中配置（无需重新打包）；
+# 也可把此处 url 替换为真实地址（如 GitHub Releases 的 latest.yml 所在目录，
+# 或自建 generic 静态文件服务器），替换后开发模式即可用 electron-updater 联调
+# （src/main/utils/auto-updater.ts 已开启 forceDevUpdateConfig）。
 provider: generic
 url: https://example.com/auto-updates
 updaterCacheDirName: BaiZeNotes-updater

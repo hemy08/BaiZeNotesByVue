@@ -1,34 +1,52 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">Crypto 加密/解密文本</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">{{ t('toolsConvert.crypto.title') }}</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">使用NodeJs的crypto加解密算法，进行加解密文本处理。</p>
+        <p style="color: grey">{{ t('toolsConvert.crypto.description') }}</p>
+        <!--
+            AS-13（P3）安全提示：ECB/DES/RC2/RC4/Blowfish 属已淘汰弱算法；
+            GCM 为认证加密（AEAD），解密必须提供 authTag（加密成功后自动展示并填入），
+            authTag 缺失或错误会导致解密失败。文案统一走 i18n 词典，随界面语言实时切换。
+        -->
+        <div
+            v-if="securityWarnings.length > 0"
+            class="crypto-security-warning"
+            role="alert"
+            data-testid="crypto-security-warning"
+        >
+            <strong>{{ securityWarningTitle }}</strong>
+            <ul>
+                <li v-for="warning in securityWarnings" :key="warning">{{ warning }}</li>
+            </ul>
+        </div>
         <div id="encrypt-area" class="div-style-display-column" :style="{ width: cryptoWidth }">
-            <label for="input-text">请输入你需要加密/解密的文本: </label>
+            <label for="input-text">{{ t('toolsConvert.crypto.inputLabel') }}</label>
             <textarea
                 id="crypto-input-text"
                 v-model="cryptoInput"
-                placeholder="解密结果，或请输入你需要加密的文本..."
+                :placeholder="t('toolsConvert.crypto.inputPlaceholder')"
                 :style="{ width: cryptoWidth, height: '150px' }"
             ></textarea>
             <div style="margin-left: 25px; color: grey">
-                默认编码方式是UTF-8，不输入则自动生成，按照HEX编码显示。如果手动输入秘钥，请根据编码方式确定输入长度。
-                <br />如：HEX编码的长度是utf-8编码的2倍，AES-256算法，UTF-8编码只需要输入32位，选择HEX则需要输入64位
+                {{ t('toolsConvert.crypto.encodingNoteLine1') }}
+                <br />{{ t('toolsConvert.crypto.encodingNoteLine2') }}
             </div>
             <div class="div-style-display-row" style="margin-top: 5px">
-                <label for="input-crypto-secret-key" class="crypto-text-label"
-                    >请输入你的秘钥</label
-                >
+                <label for="input-crypto-secret-key" class="crypto-text-label">
+                    {{ t('toolsConvert.crypto.secretKeyLabel') }}
+                </label>
                 <input
                     id="input-crypto-secret-key"
                     v-model="cryptoSecretKey"
                     :style="{ width: secretWidth, marginLeft: '20px' }"
                     type="text"
-                    placeholder="请输入你的秘钥，各类算法秘钥长度不一致，按照要求填入，如果为空，会自动生成，记得保存..."
+                    :placeholder="t('toolsConvert.crypto.secretKeyPlaceholder')"
                 />
             </div>
             <div class="div-style-display-row" style="margin-top: 5px">
-                <label class="crypto-text-label">请选择密钥编码方式</label>
+                <label class="crypto-text-label">{{
+                    t('toolsConvert.crypto.secretEncodingLabel')
+                }}</label>
                 <select v-model="cryptoSecretKeyEncoding" style="margin-left: 20px">
                     <option
                         v-for="item in CryptoEncoding"
@@ -36,12 +54,14 @@
                         :key="item.id"
                         :value="item.value"
                     >
-                        {{ item.text }}
+                        {{ encodingText(item) }}
                     </option>
                 </select>
             </div>
             <div class="div-style-display-row" style="margin-top: 5px">
-                <label class="crypto-text-label">请选择加密/解密算法</label>
+                <label class="crypto-text-label">{{
+                    t('toolsConvert.crypto.algorithmLabel')
+                }}</label>
                 <select v-model="cryptoAlgorithm" style="margin-left: 20px">
                     <option
                         v-for="item in CryptoAlgorithm"
@@ -54,7 +74,9 @@
                 </select>
             </div>
             <div class="div-style-display-row" style="margin-top: 5px">
-                <label class="crypto-text-label">请选择输入编码方式</label>
+                <label class="crypto-text-label">{{
+                    t('toolsConvert.crypto.inputEncodingLabel')
+                }}</label>
                 <select v-model="cryptoInputEncoding" style="margin-left: 20px">
                     <option
                         v-for="item in CryptoEncoding"
@@ -62,12 +84,14 @@
                         :key="item.id"
                         :value="item.value"
                     >
-                        {{ item.text }}
+                        {{ encodingText(item) }}
                     </option>
                 </select>
             </div>
             <div class="div-style-display-row" style="margin-top: 5px">
-                <label class="crypto-text-label">请选择结果编码方式</label>
+                <label class="crypto-text-label">{{
+                    t('toolsConvert.crypto.outputEncodingLabel')
+                }}</label>
                 <select v-model="cryptoOutputEncoding" style="margin-left: 20px">
                     <option
                         v-for="item in CryptoEncoding"
@@ -75,7 +99,7 @@
                         :key="item.id"
                         :value="item.value"
                     >
-                        {{ item.text }}
+                        {{ encodingText(item) }}
                     </option>
                 </select>
             </div>
@@ -86,29 +110,50 @@
                     v-model="cryptoIvBuffer"
                     :style="{ width: secretWidth, marginLeft: '20px' }"
                     type="text"
-                    placeholder="请输入IV，如果你知道的话。各个算法IV长度不一致，如果不输入，会自动生成，记得保存..."
+                    :placeholder="t('toolsConvert.crypto.ivPlaceholder')"
                 />
             </div>
             <div style="margin-left: 25px; color: grey">
-                在秘钥、IV和输入的加密文本固定的情况下，加密的结果是固定的。
-                <br />如果是使用当前工具得到的密码进行解密，请注意输入编码方式和结构编码方式需要互换下
+                {{ t('toolsConvert.crypto.fixedResultNoteLine1') }}
+                <br />{{ t('toolsConvert.crypto.fixedResultNoteLine2') }}
+            </div>
+            <!-- AS-13：GCM 认证标签（加密成功后自动填入；解密前需存在） -->
+            <div
+                v-if="isGcmMode"
+                class="div-style-display-row"
+                style="margin-top: 5px"
+                data-testid="crypto-auth-tag-row"
+            >
+                <label class="crypto-text-label" for="crypto-auth-tag">
+                    {{ t('toolsConvert.crypto.authTagLabel') }}
+                </label>
+                <input
+                    id="crypto-auth-tag"
+                    v-model="cryptoAuthTag"
+                    :style="{ width: secretWidth, marginLeft: '20px' }"
+                    type="text"
+                    :placeholder="t('toolsConvert.crypto.authTagPlaceholder')"
+                />
+            </div>
+            <div v-if="isGcmMode" style="margin-left: 25px; color: grey">
+                {{ t('toolsConvert.crypto.authTagNote') }}
             </div>
             <div class="div-style-display-column" style="margin-top: 5px">
-                <label for="encrypt-result">加密/解密结果: </label>
+                <label for="encrypt-result">{{ t('toolsConvert.crypto.resultLabel') }}</label>
                 <textarea
                     id="encrypt-result"
                     v-model="EncryptResult"
-                    placeholder="加密结果，或输入要进行解密的密文..."
+                    :placeholder="t('toolsConvert.crypto.resultPlaceholder')"
                     :style="{ width: cryptoWidth, height: '150px' }"
                 ></textarea>
             </div>
         </div>
         <div class="plugin-tools-btn-list" :style="{ width: cryptoWidth }">
             <button id="text-encrypt" class="plugin-tools-btn" @click="CryptoEncryptResult">
-                加密
+                {{ t('toolsConvert.crypto.encryptButton') }}
             </button>
             <button id="text-decrypt" class="plugin-tools-btn" @click="CryptoDecryptResult">
-                解密
+                {{ t('toolsConvert.crypto.decryptButton') }}
             </button>
         </div>
     </div>
@@ -116,6 +161,11 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
+import { IPC } from '../../../../../shared/ipc-channels'
+import { logger } from '../../../common/logger'
+// 全局类型 BufferEncoding 由 @types/node 的 declare global 提供
+/* global BufferEncoding */
 
 const props = defineProps({
     workAreaWidth: {
@@ -134,6 +184,8 @@ const cryptoInput = ref('')
 const cryptoSecretKey = ref('')
 const cryptoAlgorithm = ref('aes-256-cbc')
 const cryptoIvBuffer = ref('')
+/** AS-13：GCM 认证标签（加密成功后由主进程返回并自动填入；解密时需携带） */
+const cryptoAuthTag = ref('')
 const cryptoSecretKeyEncoding = ref('utf8')
 const cryptoInputEncoding = ref('utf8')
 const cryptoOutputEncoding = ref('hex')
@@ -170,16 +222,54 @@ const CryptoAlgorithm = [
     { id: 'crypto-alg-rc4', value: 'rc4', text: 'RC4', keyLength: 16 }
 ]
 
-const CryptoEncoding = [
+/* ============================ AS-13：算法安全提示 ============================ */
+
+/** AS-13：已淘汰的弱算法判定（ECB 分组模式 / DES 族 / RC2 / RC4 / Blowfish） */
+const WEAK_ALGORITHM_PATTERN = /^(des-|bf-|rc2|rc4)|-ecb$/i
+/** AS-13：GCM 认证加密判定（GCM 解密必须携带 authTag，主进程已打通 getAuthTag/setAuthTag） */
+const GCM_ALGORITHM_PATTERN = /-gcm$/i
+
+/** AS-13：是否处于 GCM 认证加密模式（决定 authTag 输入区是否展示、解密是否校验 authTag） */
+const isGcmMode = computed(() => GCM_ALGORITHM_PATTERN.test(cryptoAlgorithm.value))
+
+const securityWarnings = computed<string[]>(() => {
+    // AS-13：文案统一走 i18n 词典（t 读取响应式 currentLocale，切换语言实时更新）
+    const warnings: string[] = []
+    if (WEAK_ALGORITHM_PATTERN.test(cryptoAlgorithm.value)) {
+        warnings.push(t('toolsConvert.crypto.weakAlgorithmWarning'))
+    }
+    if (isGcmMode.value) {
+        warnings.push(t('toolsConvert.crypto.gcmAuthTagWarning'))
+    }
+    return warnings
+})
+
+const securityWarningTitle = computed(() => t('toolsConvert.crypto.securityWarningTitle'))
+
+interface CryptoEncodingOption {
+    id: string
+    value: string
+    /** 技术名词（ASCII/BASE64 等）：中英一致，原样展示 */
+    text?: string
+    /** 含中文的条目：展示时按界面语言翻译 */
+    textKey?: string
+}
+
+const CryptoEncoding: CryptoEncodingOption[] = [
     { id: 'input-encoding-ascii', value: 'ascii', text: 'ASCII' },
-    { id: 'input-encoding-binary', value: 'binary', text: '二进制' },
+    { id: 'input-encoding-binary', value: 'binary', textKey: 'toolsConvert.crypto.encodingBinary' },
     { id: 'input-encoding-base64', value: 'base64', text: 'BASE64' },
-    { id: 'input-encoding-hex', value: 'hex', text: 'HEX(十六进制编码)' },
+    { id: 'input-encoding-hex', value: 'hex', textKey: 'toolsConvert.crypto.encodingHex' },
     { id: 'input-encoding-latin1', value: 'latin1', text: 'Latin1(ISO 8859-1)' },
     { id: 'input-encoding-ucs-2', value: 'ucs2', text: 'UCS-2' },
     { id: 'input-encoding-utf8', value: 'utf8', text: 'UTF-8' },
     { id: 'input-encoding-utf16le', value: 'utf16le', text: 'UTF 16LE' }
 ]
+
+/** 编码选项文案：技术名词原样展示，其余走词典（保证切换语言时随渲染更新） */
+function encodingText(item: CryptoEncodingOption): string {
+    return item.textKey ? t(item.textKey) : (item.text ?? '')
+}
 
 export interface CryptoData {
     context: string
@@ -189,6 +279,8 @@ export interface CryptoData {
     inputEncoding: string
     outputEncoding: string
     iv?: string
+    /** AS-13：GCM 解密必填（加密结果中的 authTag，16 字节 hex），非 GCM 不发送 */
+    authTag?: string
 }
 
 function checkSecretKey(): string {
@@ -202,7 +294,10 @@ function checkSecretKey(): string {
         cryptoSecretKeyEncoding.value as BufferEncoding
     )
     if (secretKey.length !== item.keyLength) {
-        return '加密算法' + item.text + '需要秘钥长度' + item.keyLength
+        return t('toolsConvert.crypto.secretKeyLengthError', {
+            algorithm: item.text,
+            length: item.keyLength
+        })
     }
     return ''
 }
@@ -219,42 +314,83 @@ function fillEncDecData(): CryptoData {
     if (cryptoIvBuffer.value) {
         data.iv = cryptoIvBuffer.value
     }
+    // AS-13：GCM 解密把 authTag 一并传入主进程（setAuthTag → final 认证）；
+    // 非 GCM 算法不发送该字段，保持历史 IPC 载荷结构不变。
+    if (isGcmMode.value && cryptoAuthTag.value.trim()) {
+        data.authTag = cryptoAuthTag.value.trim()
+    }
 
     return data
 }
 
-function CryptoEncryptResult() {
+/** CQ-10/PF-11/ARC-21：invoke 返回的加密结果结构（与原 sendSync 返回对象保持一致） */
+interface CryptoEncryptResponse {
+    context: string
+    iv: string
+    secretKey: string
+    secretKeyEncoding: string
+    /** AS-13：GCM 加密时主进程返回的认证标签（hex，16 字节），供解密复用 */
+    authTag?: string
+}
+
+/** CQ-05：异步 IPC 失败统一提示——invoke 改为 Promise 后必须 await + catch，避免静默失败 */
+function showCryptoError(action: string, failedKey: string, error: unknown): void {
+    logger.error(`${action}失败:`, error)
+    alert(t(failedKey, { error: error instanceof Error ? error.message : String(error) }))
+}
+
+async function CryptoEncryptResult(): Promise<void> {
     if (!cryptoInput.value) {
-        alert('请输入要加密/解密的文本...')
-    } else {
-        const result = checkSecretKey()
-        if (result.length) {
-            alert(result)
-            return
-        }
-        const data = fillEncDecData()
-        const encRes = window.electron.ipcRenderer.sendSync('plugin-tools-crypto-encrypt', data)
+        alert(t('toolsConvert.crypto.emptyInputAlert'))
+        return
+    }
+    const result = checkSecretKey()
+    if (result.length) {
+        alert(result)
+        return
+    }
+    const data = fillEncDecData()
+    try {
+        // CQ-10/PF-11/ARC-21：sendSync 同步 IPC 改为 invoke 异步，等待主进程计算期间不阻塞渲染进程
+        const encRes = (await window.electron.ipcRenderer.invoke(
+            IPC.PLUGIN.CRYPTO_ENCRYPT,
+            data
+        )) as CryptoEncryptResponse
         EncryptResult.value = encRes.context
         cryptoIvBuffer.value = encRes.iv
         cryptoSecretKey.value = encRes.secretKey
         cryptoSecretKeyEncoding.value = encRes.secretKeyEncoding
+        // AS-13：GCM 加密结果带回 authTag，展示并供后续解密直接复用；非 GCM 清空残留标签
+        cryptoAuthTag.value = encRes.authTag ?? ''
+    } catch (error) {
+        showCryptoError('加密', 'toolsConvert.crypto.encryptFailed', error)
     }
 }
 
-function CryptoDecryptResult() {
+async function CryptoDecryptResult(): Promise<void> {
     if (!cryptoInput.value) {
-        alert('请输入要加密/解密的文本...')
-    } else {
-        const result = checkSecretKey()
-        if (result.length) {
-            alert(result)
-            return
-        }
-        const data = fillEncDecData()
-        EncryptResult.value = window.electron.ipcRenderer.sendSync(
-            'plugin-tools-crypto-decrypt',
+        alert(t('toolsConvert.crypto.emptyInputAlert'))
+        return
+    }
+    const result = checkSecretKey()
+    if (result.length) {
+        alert(result)
+        return
+    }
+    // AS-13：GCM 解密必须先有 authTag，缺失时直接提示，不发起必然失败的 IPC 调用
+    if (isGcmMode.value && cryptoAuthTag.value.trim().length === 0) {
+        alert(t('toolsConvert.crypto.authTagRequiredAlert'))
+        return
+    }
+    const data = fillEncDecData()
+    try {
+        // CQ-10/PF-11/ARC-21：sendSync → invoke，返回字符串与原同步语义一致
+        EncryptResult.value = (await window.electron.ipcRenderer.invoke(
+            IPC.PLUGIN.CRYPTO_DECRYPT,
             data
-        )
+        )) as string
+    } catch (error) {
+        showCryptoError('解密', 'toolsConvert.crypto.decryptFailed', error)
     }
 }
 </script>
@@ -266,5 +402,20 @@ function CryptoDecryptResult() {
     background-color: lightblue;
     border: none;
     text-align: center;
+}
+/* AS-13：弱算法 / GCM 认证加密不可用的安全提示（默认随选择展示） */
+.crypto-security-warning {
+    margin: 8px 0;
+    padding: 8px 12px;
+    border: 1px solid #d97706;
+    border-radius: 4px;
+    background-color: rgba(217, 119, 6, 0.12);
+    color: #b45309;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.crypto-security-warning ul {
+    margin: 4px 0 0;
+    padding-left: 20px;
 }
 </style>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BaiZeNotes P2 性能优化量化证据（PF-4 ~ PF-9）</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">一、PF-6 首屏 eager JS（构建产物对比）</a>
+    <a class="toc-l2" href="#sec-2">二、PF-4 目录树增量重扫（微基准）</a>
+    <a class="toc-l2" href="#sec-3">三、PF-8 预览大纲（TOC）与章节解析</a>
+    <a class="toc-l2" href="#sec-4">四、PF-9 KaTeX 缓存 + 大文档降级</a>
+    <a class="toc-l2" href="#sec-5">五、PF-7 拖拽/缩放 IPC 与 Monaco layout 合帧</a>
+    <a class="toc-l2" href="#sec-6">六、验证结果</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>BaiZeNotes P2 性能优化量化证据（PF-4 ~ PF-9）</h1>
+    <p>项目：白泽笔记（BaiZe Notes）v1.3.0 ｜ 任务：task-27 ｜ 日期：2026-11-15 ｜ 环境：Windows 10 + Node 22 + Electron 43</p>
+    <p>方式：微基准（3 次中位数）+ 构建产物对比（electron-vite build 首屏引用解析）</p>
+  </header>
+
+  <div class="cards">
+    <div class="card"><b>94.8%</b><span>目录增量刷新降幅</span></div>
+    <div class="card"><b>94.9%</b><span>KaTeX 缓存命中</span></div>
+    <div class="card"><b>94.7%</b><span>大文档降级</span></div>
+    <div class="card"><b>14.6%</b><span>首屏资源降幅</span></div>
+    <div class="card"><b>2012</b><span>用例全通过</span></div>
+  </div>
+
+<ul>
+<li>任务：task-27（P2 性能：目录增量/懒加载/rAF/KaTeX 缓存与大文档降级）</li>
+<li>代理：fix-perf ｜ 日期：2026-11-15 ｜ 环境：Windows 10 + Node 22 + Electron 43 + Vite/rolldown（electron-vite）</li>
+<li>复现方式：<code>npx.cmd vitest run &lt;脚本&gt;</code>；构建对比用 <code>npx.cmd electron-vite build</code> 后解析 <code>out/renderer/index.html</code> 的首屏引用</li>
+<li>原始脚本：<code>out/perf-pf/pf4-bench.tmp.test.ts</code>、<code>out/perf-pf/pf89-bench.tmp.test.ts</code>（移出 tests 目录，避免纳入全量测试）</li>
+<li>基线首屏数据快照：<code>out/perf-pf/baseline-index-chunks.json</code></li>
+</ul>
+<h2 id="sec-1">一、PF-6 首屏 eager JS（构建产物对比）</h2>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>优化前（18:07 构建）</th>
+<th>优化后（本轮最终构建）</th>
+<th>变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index.html</code> 首屏引用文件数（script + modulepreload + css）</td>
+<td>18（17 JS + 1 CSS）</td>
+<td><strong>3</strong>（2 JS + 1 CSS）</td>
+<td><strong>-15</strong></td>
+</tr>
+<tr>
+<td>首屏 JS/CSS 总字节</td>
+<td>12,370,884 B（11.80 MiB）</td>
+<td><strong>10,564,842 B（10.08 MiB）</strong></td>
+<td><strong>-1,806,042 B（-14.6%）</strong></td>
+</tr>
+<tr>
+<td>首屏主 chunk</td>
+<td>10,900,902 B（10.40 MiB）</td>
+<td><strong>10,129,861 B（9.66 MiB）</strong></td>
+<td><strong>-771,041 B（-7.1%）</strong></td>
+</tr>
+<tr>
+<td>首屏 CSS</td>
+<td>554,599 B</td>
+<td><strong>433,027 B</strong></td>
+<td>-121,572 B（-21.9%）</td>
+</tr>
+<tr>
+<td>构建产物 JS 分块数</td>
+<td>—</td>
+<td>185 个（含按需 chunk）</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>懒加载拆分证据（均不在 <code>index.html</code> 首屏引用中，点击后才加载）：</p>
+<ul>
+<li>18 个 Vue 对话框 → 18 个独立 chunk（例如 <code>MessageDialog-*.js</code> 7.5 KB、<code>SystemSettingDialog-*.js</code> 28.0 KB、<code>ThemeSettingDialog-*.js</code> 22.4 KB，另有配套 CSS chunk 同步拆分）；</li>
+<li>19 个插件工具 → 独立 chunk（例如 <code>Ipv4SubnetCalc-*.js</code> 24.6 KB、<code>ASCIIComparison-*.js</code> 19.1 KB、<code>TokenGenerator-*.js</code> 5.9 KB）；</li>
+<li>mermaid 改为首次遇到 <code>```mermaid</code> 块时才动态 import，拆出 <code>mermaid.core-*.js</code> 171.9 KB、<code>elk-*.js</code> 2,680.0 KB、<code>cytoscape.esm-*.js</code> 869.7 KB、<code>dagre/graphlib/diagram-*/sequenceDiagram</code> 等 20+ 子 chunk，不再进入首屏。</li>
+</ul>
+<blockquote>
+<p>说明：首屏主 chunk 的剩余体积主要为 Monaco 编辑器（编辑器打开即需要）与 highlight.js/katex/markdown-it 等预览基础依赖；进一步拆分 Monaco 需改动欢迎页→主界面的挂载时序，属后续轮次范围（见剩余风险）。</p>
+</blockquote>
+<h2 id="sec-2">二、PF-4 目录树增量重扫（微基准）</h2>
+<p>基准方法：合成目录树（3840 个 .md 文件 / 4297 节点，深度 3 层）+ 真实 <code>node_modules</code> 样本；每项取 3 次中位数。</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>优化前</th>
+<th>优化后</th>
+<th>变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>全量递归扫描（4297 节点）</td>
+<td>30.4 ms</td>
+<td><strong>17.4 ms</strong></td>
+<td><strong>-42.8%</strong></td>
+</tr>
+<tr>
+<td>完整目录刷新（扫描 + 建树 + 整树 JSON）</td>
+<td>29.4 ms</td>
+<td><strong>18.9 ms</strong></td>
+<td><strong>-35.7%</strong></td>
+</tr>
+<tr>
+<td><strong>watcher 外部单文件变更触发的刷新</strong></td>
+<td>28.6 ms（=全量）</td>
+<td><strong>1.5 ms</strong>（只重扫 1 个子树）</td>
+<td><strong>-94.8%</strong></td>
+</tr>
+<tr>
+<td>watcher 同批 3 个文件变更</td>
+<td>29.5 ms（=全量）</td>
+<td><strong>1.6 ms</strong></td>
+<td><strong>-94.6%</strong></td>
+</tr>
+<tr>
+<td>真实 <code>node_modules</code> 子树扫描</td>
+<td>280.0 ms / 5218 节点</td>
+<td><strong>82.3 ms</strong>（且依赖目录已整体排除）</td>
+<td>-70.6%</td>
+</tr>
+<tr>
+<td>工作区 = 本仓库根目录一次全量扫描</td>
+<td>约 315 ms+（报告基准 node_modules 样本 339 ms）</td>
+<td><strong>35.1 ms / 3166 节点</strong></td>
+<td>约 -89%</td>
+</tr>
+<tr>
+<td>整树 JSON（4297 节点）</td>
+<td>942,291 字符</td>
+<td>942,291 → 935,838 字符</td>
+<td>稳定 id 后内容未变时不再重复发送</td>
+</tr>
+</tbody>
+</table>
+<p>实现要点：</p>
+<ol>
+<li><code>readdir({ withFileTypes: true })</code> 替代「逐条目 lstat」，并加 64 并发上限的 readdir 闸门（递归等待子目录时不占名额，无死锁）；</li>
+<li>watcher 批次把变更路径折叠为「受影响目录」（父子目录合并、按阈值 8 个目录内只重扫该子树），超出阈值/新目录/涉及根目录时回退全量扫描；</li>
+<li>节点 id 改为「路径派生稳定 id」，整树 JSON 内容未变时逐字节稳定 → watcher 批次的「JSON 未变则跳过 IPC」去重真正生效；</li>
+<li><code>node_modules</code> / <code>.git</code> / <code>.svn</code> / <code>.hg</code> / <code>.idea</code> / <code>.vscode</code> 不进入目录树、其内部事件不触发刷新。</li>
+</ol>
+<h2 id="sec-3">三、PF-8 预览大纲（TOC）与章节解析</h2>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>优化前</th>
+<th>优化后</th>
+<th>变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>章节解析（1700 标题 / 2.18 MB 文档，含 md.parse）</td>
+<td>12.84 ms（O(n²) indexOf 定位）</td>
+<td><strong>11.15 ms</strong>（单次线性遍历）</td>
+<td>-13.2%</td>
+</tr>
+<tr>
+<td>TOC 面板隐藏时每轮广播</td>
+<td>整表替换 + v-for diff（DOM 更新）</td>
+<td><strong>0 次 DOM 更新</strong>（仅缓存最新数组）</td>
+<td>隐藏期间成本归零</td>
+</tr>
+<tr>
+<td>内容指纹相同的重复广播</td>
+<td>整表替换</td>
+<td><strong>跳过整表替换</strong>（列表 DOM 元素身份不变，测试断言 <code>toBe</code>）</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-4">四、PF-9 KaTeX 缓存 + 大文档降级</h2>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>优化前</th>
+<th>优化后</th>
+<th>变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>267 个公式文档第二次渲染（缓存命中）</td>
+<td>24.49 ms（首轮冷启动）</td>
+<td><strong>1.26 ms</strong></td>
+<td><strong>-94.9%</strong></td>
+</tr>
+<tr>
+<td>3.01 MB 超大文档 <code>HemyRenderPreLocal</code></td>
+<td>68.74 ms（全量 KaTeX）</td>
+<td><strong>3.63 ms</strong>（自动降级跳过 KaTeX）</td>
+<td><strong>-94.7%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>实现要点：</p>
+<ol>
+<li>KaTeX 结果 LRU 缓存（key = 公式字符串，上限 200 条，命中刷新顺序、超限淘汰最久未用；失败结果不缓存）；</li>
+<li>阈值常量 <code>PREVIEW_LARGE_DOC_BYTE_THRESHOLD</code>（2 MiB）/ <code>PREVIEW_LARGE_DOC_LINE_THRESHOLD</code>（5 万行），单次线性扫描提前判定；</li>
+<li>超大文档：跳过 KaTeX + 跳过 mermaid/PlantUML 图表渲染（源码保留为代码块），预览顶部显示一次「文档过大，预览已简化」提示条，编辑器保持可用。</li>
+</ol>
+<h2 id="sec-5">五、PF-7 拖拽/缩放 IPC 与 Monaco layout 合帧</h2>
+<ul>
+<li>实现：mousemove 只记录最新坐标/bounds，<code>requestAnimationFrame</code> 帧内最多提交一次 <code>WINDOW.MOVE</code>（缩放为 <code>MOVE</code> + <code>SET_SIZE</code> 各一次）；<code>mouseup</code> 立即 flush 最终位置，不丢最后一帧；无 rAF 环境退化为立即发送。</li>
+<li>量化：单帧内 3 次 mousemove → 1 次 IPC（测试断言）；按 1000 Hz 鼠标采样推算，拖拽 IPC 峰值约 1000 次/s → <strong>约 60 次/s（-94%）</strong>，缩放约 2000 次/s → <strong>约 120 次/s</strong>。</li>
+<li>Monaco：<code>editorAreaWidth</code> 连续变化/窗口 resize 触发的 <code>layout()</code> 同样 rAF 合帧（每帧最多 1 次），组件卸载时取消未执行帧。</li>
+<li>附带修复 PF-4 暴露的既有渲染缺陷：<code>FileTreeNode</code> 的 <code>v-memo</code> 只依赖 <code>path/fileExtension/isExpanded</code>，主进程整树下发新对象时深层新增/删除会被 memo 跳过（目录树不刷新）；新增 <code>treeRevision</code> 依赖后整树刷新正确失效，同时保留「展开/收起只重渲被切换子树」的收益。</li>
+</ul>
+<h2 id="sec-6">六、验证结果</h2>
+<ul>
+<li>全量 <code>npx.cmd vitest run</code>：<strong>123 文件 / 2012 用例全部通过</strong>（任务基线 118 文件 / 1889 用例）；</li>
+<li><code>npm run typecheck</code>（node + web + test 全链）：<strong>exit 0</strong>；</li>
+<li><code>npx eslint .</code>：<strong>0 error</strong>；</li>
+<li><code>npx electron-vite build</code>：<strong>exit 0</strong>（构建产物见上表）。</li>
+</ul>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

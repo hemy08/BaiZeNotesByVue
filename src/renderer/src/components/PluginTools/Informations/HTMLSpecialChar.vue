@@ -1,8 +1,10 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">HTML特殊字符对照表</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">
+            {{ t('toolsNetwork.infoTables.htmlSpecialChar.title') }}
+        </h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">HTML特殊字符对照表，支持查询</p>
+        <p style="color: grey">{{ t('toolsNetwork.infoTables.htmlSpecialChar.desc') }}</p>
         <div>
             <input
                 v-model="searchQuery"
@@ -18,20 +20,39 @@
         >
             <thead>
                 <tr>
-                    <th class="html-spec-char-table-th">预览</th>
-                    <th class="html-spec-char-table-th">写法</th>
-                    <th class="html-spec-char-table-th">说明</th>
-                    <th class="html-spec-char-table-th">预览</th>
-                    <th class="html-spec-char-table-th">写法</th>
-                    <th class="html-spec-char-table-th">说明</th>
-                    <th class="html-spec-char-table-th">预览</th>
-                    <th class="html-spec-char-table-th">写法</th>
-                    <th class="html-spec-char-table-th">说明</th>
+                    <th class="html-spec-char-table-th">
+                        {{ t('toolsNetwork.infoTables.htmlSpecialChar.preview') }}
+                    </th>
+                    <th class="html-spec-char-table-th">
+                        {{ t('toolsNetwork.infoTables.htmlSpecialChar.code') }}
+                    </th>
+                    <th class="html-spec-char-table-th">
+                        {{ t('toolsNetwork.infoTables.htmlSpecialChar.explanation') }}
+                    </th>
+                    <th class="html-spec-char-table-th">
+                        {{ t('toolsNetwork.infoTables.htmlSpecialChar.preview') }}
+                    </th>
+                    <th class="html-spec-char-table-th">
+                        {{ t('toolsNetwork.infoTables.htmlSpecialChar.code') }}
+                    </th>
+                    <th class="html-spec-char-table-th">
+                        {{ t('toolsNetwork.infoTables.htmlSpecialChar.explanation') }}
+                    </th>
+                    <th class="html-spec-char-table-th">
+                        {{ t('toolsNetwork.infoTables.htmlSpecialChar.preview') }}
+                    </th>
+                    <th class="html-spec-char-table-th">
+                        {{ t('toolsNetwork.infoTables.htmlSpecialChar.code') }}
+                    </th>
+                    <th class="html-spec-char-table-th">
+                        {{ t('toolsNetwork.infoTables.htmlSpecialChar.explanation') }}
+                    </th>
                 </tr>
             </thead>
             <tbody>
                 <tr v-for="(item, index) in filterHtmlSpecChar" :key="index">
                     <template v-for="(symbol, idx) in item" :key="idx">
+                        <!-- eslint-disable-next-line vue/no-v-html -- HTML 特殊字符表为仓库内静态常量（实体字符串），无外部输入 -->
                         <td class="html-spec-char-table-preview" v-html="symbol.id"></td>
                         <td class="html-spec-char-table-td">
                             {{ symbol.id }}
@@ -48,6 +69,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import { HTMLSpecCharTable, CompressedArray } from './Information'
 
 const props = defineProps({

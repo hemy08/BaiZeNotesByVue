@@ -1,0 +1,66 @@
+/**
+ * 系统设置类型（ARC-13：主进程 / 渲染层唯一真源）
+ *
+ * 收敛前该接口同时定义在 src/main/global-types.d.ts（带注释版）与
+ * src/shared/types/index.ts（精简版）两处，主进程 5 个引用点与渲染层
+ * BaiZeNotes.vue / SystemSettingDialog 各自取用其中一份，改一处漏一处。
+ * 现以主进程版本为基准收敛到本文件：
+ * - 主进程：src/main/config/system-setting.ts 的 electron-store 泛型、
+ *   config-manager、dialog-shared-css 等（P2 起主进程 HTML 系统设置对话框
+ *   ShowSystemSettingDialog / 编辑器设置对话框 ShowEditorSettingDialog 已删除）；
+ * - 渲染层：BaiZeNotes.vue 的 system-setting-update 广播回调；渲染层
+ *   SystemSettingDialog.vue / EditorSettingDialog.vue 经 config:read /
+ *   config:write('system') 读写的字段即其子集。
+ *
+ * 字段名 / 类型 / 可选性与收敛前主进程版本完全一致（渲染层扩展字段保持可选）。
+ */
+export interface SystemSetting {
+    language: string
+    resourceManager: string
+    editorModel: string
+    pluginOpen: string
+    menuBarStyle: string // 'electron' | 'windows-native'
+    autoSaveEnabled: boolean // 是否启用自动保存，默认true
+    autoSaveInterval: number // 自动保存间隔（秒），最小5秒，最大86400秒（24小时）
+    fontFamily: string // 界面字体，如 'Microsoft YaHei', 'Segoe UI', 'PingFang SC'
+    fontSize: number // 界面字体大小(px)，范围 10-24，默认 13
+    renderWhitespace: string // 渲染空白字符: 'none' | 'boundary' | 'all'
+    // 窗口浮动控制（模态/非模态）
+    editorSettingModal: boolean // 编辑器设置对话框是否模态，默认false
+    systemSettingModal: boolean // 系统设置对话框是否模态，默认false
+    themeSettingModal: boolean // 主题设置对话框是否模态，默认false
+    helpAboutModal: boolean // 帮助关于对话框是否模态，默认false
+    helpContactUsModal: boolean // 帮助联系我们对话框是否模态，默认false
+    insertImageModal: boolean // 插入图片对话框是否模态，默认false
+    admonitionsModal: boolean // Admonitions对话框是否模态，默认false
+    fontSelectModal: boolean // 字体选择对话框是否模态，默认false
+    mathTextModal: boolean // 数学文本对话框是否模态，默认false
+    mdSheetModal: boolean // Markdown速查表对话框是否模态，默认false
+    importOptionModal: boolean // 导入选项对话框是否模态，默认false
+    mermaidEditModal: boolean // Mermaid编辑对话框是否模态，默认false
+    quickLinkSettingModal: boolean // 快速链接设置对话框是否模态，默认false
+    techStackModal: boolean // 技术栈对话框是否模态，默认false
+    webUrlModal: boolean // Web URL对话框是否模态，默认false
+
+    // ========== 渲染层系统设置扩展字段（ARC-04） ==========
+    // 原渲染层 SystemSettingDialog 经 config:write('system') 写入裸 JSON 的字段，
+    // 主进程从不读取。配置单真源收口后统一持久化到本 store，
+    // 保证对话框全部字段往返不丢、行为与历史版本兼容。
+    autoOpenLastFile?: boolean // 启动时自动打开上次文件
+    autoOpenLastFolder?: boolean // 启动时自动打开上次工作目录
+    autoStart?: boolean // 开机自启动
+    minimizeToTray?: boolean // 关闭时最小化到托盘
+    rememberWindowSize?: boolean // 记住窗口位置和大小
+    defaultFilePath?: string // 默认文件保存路径
+    recentFilesCount?: number // 最近文件列表数量
+    checkUpdateOnStart?: boolean // 启动时检查更新
+    enableAutoBackup?: boolean // 启用自动备份
+    backupInterval?: number // 备份间隔（小时）
+    backupCount?: number // 保留备份数量
+    appTheme?: string // 应用主题（对话框下拉值）
+    useSystemTheme?: boolean // 使用系统主题
+    // AS-9（P3 隐私）：是否允许 Markdown 预览加载文档中的远程（http/https/协议相对）图片。
+    // 默认 false：渲染层把远程图片替换为占位块，不发起任何网络请求（防跟踪像素/IP 泄露）；
+    // 本地相对路径、绝对路径与 data:/blob: 图片不受影响。
+    allowRemoteImages?: boolean
+}

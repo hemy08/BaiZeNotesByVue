@@ -1,8 +1,8 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">IPv4子网计算器</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">{{ t('toolsNetwork.network.ipv4SubnetCalc.title') }}</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">解析IPv4 CIDR块，并获取有关子网络的所有所需信息。</p>
+        <p style="color: grey">{{ t('toolsNetwork.network.ipv4SubnetCalc.desc') }}</p>
         <a
             class="plugin-tools-openurl"
             role="button"
@@ -17,10 +17,14 @@
         >
             https://ipv4calc.bmcx.com/
         </a>
-        <h3>网络和IP地址计算器</h3>
-        <div style="color: grey">显示网络，广播，第一次和最后一个给定的网络地址:</div>
+        <h3>{{ t('toolsNetwork.network.ipv4SubnetCalc.networkCalcTitle') }}</h3>
+        <div style="color: grey">
+            {{ t('toolsNetwork.network.ipv4SubnetCalc.networkCalcDesc') }}
+        </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="subnet-label">IP/掩码位:</div>
+            <div class="subnet-label">
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.ipMaskBits') }}
+            </div>
             <input
                 v-for="(_, index) in inputIpv4Addr"
                 :key="index"
@@ -36,18 +40,20 @@
                 class="plugin-tools-btn"
                 @click="NetWorkCalc('subnet')"
             >
-                计算
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.calculate') }}
             </button>
             <button
                 style="margin-left: 10px"
                 class="plugin-tools-btn"
                 @click="NetWorkReset('subnet')"
             >
-                重置
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.reset') }}
             </button>
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="subnet-label">可用地址：</div>
+            <div class="subnet-label">
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.availableAddresses') }}
+            </div>
             <input v-model="validAddrNumber" class="subnet-out-number" :style="addrText" readonly />
         </div>
         <div
@@ -56,7 +62,7 @@
             class="div-style-display-row"
             style="margin-top: 10px"
         >
-            <div class="subnet-label">{{ item.label }}</div>
+            <div class="subnet-label">{{ t(item.label) }}</div>
             <input
                 v-for="(_, index) in item.ip"
                 :key="index"
@@ -67,12 +73,12 @@
             />
         </div>
         <div style="color: grey">
-            在网络掩码“位格式”也被称为CIDR格式（CIDR=无类别域间路由选择）。
+            {{ t('toolsNetwork.network.ipv4SubnetCalc.cidrNote') }}
         </div>
-        <h3>子网掩码转换器（对位点分十进制格式）</h3>
-        <div style="color: grey">根据网络掩码，计算掩码位。掩码不合法，返回无效。</div>
+        <h3>{{ t('toolsNetwork.network.ipv4SubnetCalc.maskToBitsTitle') }}</h3>
+        <div style="color: grey">{{ t('toolsNetwork.network.ipv4SubnetCalc.maskToBitsDesc') }}</div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="subnet-label">设置：</div>
+            <div class="subnet-label">{{ t('toolsNetwork.network.ipv4SubnetCalc.settings') }}</div>
             <input
                 v-for="(_, index) in inputNetworkMask"
                 :key="index"
@@ -81,7 +87,9 @@
                 class="ipv4-addr-text"
                 :style="addrText"
             />
-            <div style="margin-left: 5px; margin-right: 5px">结果/</div>
+            <div style="margin-left: 5px; margin-right: 5px">
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.result') }}
+            </div>
             <input
                 v-model="outNetworkMaskBits"
                 type="text"
@@ -90,19 +98,19 @@
                 readonly
             />
             <button style="margin-left: 10px" class="plugin-tools-btn" @click="NetWorkCalc('mask')">
-                计算
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.calculate') }}
             </button>
             <button
                 style="margin-left: 10px"
                 class="plugin-tools-btn"
                 @click="NetWorkReset('mask')"
             >
-                重置
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.reset') }}
             </button>
         </div>
-        <h3>子网掩码转换器（位点分十进制格式）</h3>
+        <h3>{{ t('toolsNetwork.network.ipv4SubnetCalc.bitsToMaskTitle') }}</h3>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="subnet-label">设置：</div>
+            <div class="subnet-label">{{ t('toolsNetwork.network.ipv4SubnetCalc.settings') }}</div>
             <div style="margin-left: 5px; margin-right: 5px">/</div>
             <input
                 v-model="inputNetMaskBits"
@@ -115,14 +123,14 @@
                 class="plugin-tools-btn"
                 @click="NetWorkCalc('maskBit')"
             >
-                计算
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.calculate') }}
             </button>
             <button
                 style="margin-left: 10px"
                 class="plugin-tools-btn"
                 @click="NetWorkReset('maskBit')"
             >
-                重置
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.reset') }}
             </button>
         </div>
         <div
@@ -131,7 +139,7 @@
             class="div-style-display-row"
             style="margin-top: 10px"
         >
-            <div class="subnet-label">{{ item.label }}</div>
+            <div class="subnet-label">{{ t(item.label) }}</div>
             <input
                 v-for="(_, index) in item.ip"
                 :key="index"
@@ -142,7 +150,9 @@
             />
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="subnet-label">可用地址数：</div>
+            <div class="subnet-label">
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.availableCount') }}
+            </div>
             <input
                 v-model="maskBitValidNumber"
                 class="subnet-out-number"
@@ -151,7 +161,9 @@
             />
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="subnet-label">地址总数量：</div>
+            <div class="subnet-label">
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.totalCount') }}
+            </div>
             <input
                 v-model="maskBitTotalNumber"
                 class="subnet-out-number"
@@ -159,34 +171,36 @@
                 readonly
             />
         </div>
-        <h3>所需IP数量掩码地址转换器</h3>
+        <h3>{{ t('toolsNetwork.network.ipv4SubnetCalc.ipNumberTitle') }}</h3>
         <div style="color: grey">
-            根据所需的IP地址数量，计算相应的掩码Bit数、十进制、十六进制掩码
+            {{ t('toolsNetwork.network.ipv4SubnetCalc.ipNumberDesc') }}
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="subnet-label">设置：</div>
+            <div class="subnet-label">{{ t('toolsNetwork.network.ipv4SubnetCalc.settings') }}</div>
             <input v-model="inputIpNumber" type="number" class="ipv4-addr-text" :style="addrText" />
             <button
                 style="margin-left: 10px"
                 class="plugin-tools-btn"
                 @click="NetWorkCalc('number')"
             >
-                计算
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.calculate') }}
             </button>
             <button
                 style="margin-left: 10px"
                 class="plugin-tools-btn"
                 @click="NetWorkReset('number')"
             >
-                重置
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.reset') }}
             </button>
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="subnet-label">掩码位数：</div>
+            <div class="subnet-label">{{ t('toolsNetwork.network.ipv4SubnetCalc.maskBits') }}</div>
             <input v-model="ipNumberBits" class="subnet-out-number" :style="addrText" readonly />
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="subnet-label">可用地址数：</div>
+            <div class="subnet-label">
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.availableCount') }}
+            </div>
             <input
                 v-model="ipNumberBitsValid"
                 class="subnet-out-number"
@@ -195,7 +209,9 @@
             />
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="subnet-label">地址总数量：</div>
+            <div class="subnet-label">
+                {{ t('toolsNetwork.network.ipv4SubnetCalc.totalCount') }}
+            </div>
             <input
                 v-model="ipNumberBitsTotal"
                 class="subnet-out-number"
@@ -209,7 +225,7 @@
             class="div-style-display-row"
             style="margin-top: 10px"
         >
-            <div class="subnet-label">{{ item.label }}</div>
+            <div class="subnet-label">{{ t(item.label) }}</div>
             <input
                 v-for="(_, index) in item.ip"
                 :key="index"
@@ -224,6 +240,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import * as net from './NetWork'
 
 const props = defineProps({
@@ -233,7 +250,6 @@ const props = defineProps({
         default: '100%'
     }
 })
-
 
 const inputIpv4Addr = ref([192, 168, 16, 0])
 const inputNetworkMask = ref([255, 255, 255, 0])
@@ -263,11 +279,31 @@ interface CombSubNet {
 }
 
 const subnetOutPut = ref<CombSubNet>({
-    mask: { id: 'subnet-addr-input-mask', label: '网络掩码：', ip: ['0', '0', '0', '0'] },
-    network: { id: 'subnet-addr-input-network', label: '网络地址：', ip: ['0', '0', '0', '0'] },
-    first: { id: 'subnet-addr-input-first', label: '第一个可用：', ip: ['0', '0', '0', '0'] },
-    last: { id: 'subnet-addr-input-last', label: '最后可用：', ip: ['0', '0', '0', '0'] },
-    broadcasts: { id: 'subnet-addr-input-broadcasts', label: '广播：', ip: ['0', '0', '0', '0'] }
+    mask: {
+        id: 'subnet-addr-input-mask',
+        label: 'toolsNetwork.network.ipv4SubnetCalc.netmask',
+        ip: ['0', '0', '0', '0']
+    },
+    network: {
+        id: 'subnet-addr-input-network',
+        label: 'toolsNetwork.network.ipv4SubnetCalc.networkAddress',
+        ip: ['0', '0', '0', '0']
+    },
+    first: {
+        id: 'subnet-addr-input-first',
+        label: 'toolsNetwork.network.ipv4SubnetCalc.firstUsable',
+        ip: ['0', '0', '0', '0']
+    },
+    last: {
+        id: 'subnet-addr-input-last',
+        label: 'toolsNetwork.network.ipv4SubnetCalc.lastUsable',
+        ip: ['0', '0', '0', '0']
+    },
+    broadcasts: {
+        id: 'subnet-addr-input-broadcasts',
+        label: 'toolsNetwork.network.ipv4SubnetCalc.broadcast',
+        ip: ['0', '0', '0', '0']
+    }
 })
 
 interface CombinedIPNET {
@@ -276,13 +312,29 @@ interface CombinedIPNET {
 }
 
 const bitsMaskOutPut = ref<CombinedIPNET>({
-    dec: { id: 'mask-output-dec', label: 'Dec 十进制：', ip: ['0', '0', '0', '0'] },
-    hex: { id: 'mask-output-hex', label: 'Hex 十六进制：', ip: ['0', '0', '0', '0'] }
+    dec: {
+        id: 'mask-output-dec',
+        label: 'toolsNetwork.network.ipv4SubnetCalc.dec',
+        ip: ['0', '0', '0', '0']
+    },
+    hex: {
+        id: 'mask-output-hex',
+        label: 'toolsNetwork.network.ipv4SubnetCalc.hex',
+        ip: ['0', '0', '0', '0']
+    }
 })
 
 const ipNumberOutPut = ref<CombinedIPNET>({
-    dec: { id: 'ip-number-mask-output-dec', label: 'Dec 十进制：', ip: ['0', '0', '0', '0'] },
-    hex: { id: 'ip-number-mask-output-hex', label: 'Hex 十六进制：', ip: ['0', '0', '0', '0'] }
+    dec: {
+        id: 'ip-number-mask-output-dec',
+        label: 'toolsNetwork.network.ipv4SubnetCalc.dec',
+        ip: ['0', '0', '0', '0']
+    },
+    hex: {
+        id: 'ip-number-mask-output-hex',
+        label: 'toolsNetwork.network.ipv4SubnetCalc.hex',
+        ip: ['0', '0', '0', '0']
+    }
 })
 
 const subnetAddrWidth = computed(() => {
@@ -296,13 +348,13 @@ const addrText = computed(() => {
     }
 })
 
-function openUrl(link) {
+function openUrl(link: string) {
     window.open(link, '_blank', 'noopener, noreferrer')
 }
 
 function SubnetCalc() {
     if (!net.isValidIPV4(inputIpv4Addr.value)) {
-        alert('输入IP地址无效')
+        alert(t('toolsNetwork.network.ipv4SubnetCalc.invalidIp'))
         return
     }
     const netIpv4 = new net.IPV4(inputIpv4Addr.value.join('.'), inputIpv4Cidr.value)
@@ -320,9 +372,12 @@ function SubnetCalc() {
 
 function SubnetReset() {
     validAddrNumber.value = 0
-    Object.keys(subnetOutPut.value).forEach((key) => {
-        subnetOutPut.value[key].ip = [0, 0, 0, 0]
-    })
+    // 显式列出输出项 key（等价于原 Object.keys(subnetOutPut.value) 的遍历顺序），
+    // 使 key 具有 keyof CombSubNet 类型而不是 string，避免下标隐式 any。
+    const subnetKeys: (keyof CombSubNet)[] = ['mask', 'network', 'first', 'last', 'broadcasts']
+    for (const key of subnetKeys) {
+        subnetOutPut.value[key].ip = ['0', '0', '0', '0']
+    }
 }
 
 function getBitsByMask() {
@@ -371,12 +426,12 @@ const netWork = {
     number: { calc: getMaskByIPNumber, reset: getMaskByIPNumberReset }
 }
 
-function NetWorkCalc(name: string) {
+function NetWorkCalc(name: keyof typeof netWork) {
     const handler = netWork[name]
     handler.calc()
 }
 
-function NetWorkReset(name: string) {
+function NetWorkReset(name: keyof typeof netWork) {
     const handler = netWork[name]
     handler.reset()
 }

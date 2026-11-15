@@ -4,6 +4,7 @@
     "src/renderer/src/**/*.ts",
     "src/renderer/src/**/*.vue",
     "src/renderer/src/env.d.ts",
+    "src/shared/**/*.ts",
     "src/main/global-types.d.ts",
     "src/preload/*.d.ts"
   ],
@@ -13,8 +14,9 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "ignoreDeprecations": "6.0",
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"

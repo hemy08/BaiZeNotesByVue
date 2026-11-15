@@ -1,9 +1,9 @@
 <template>
     <div id="status-bar-container">
-        <div id="status-bar-file-path" :class="{ 'unsaved': isUnsaved, 'saved': !isUnsaved }">
+        <div id="status-bar-file-path" :class="{ unsaved: isUnsaved, saved: !isUnsaved }">
             <span v-if="isUnsaved" class="unsaved-indicator">●</span>
             <span v-else class="saved-indicator">●</span>
-            <div class="file-path-label">文件路径:</div>
+            <div class="file-path-label">{{ t('status.filePathLabel') }}</div>
             <span class="file-path-text">{{ displayFilePath }}</span>
         </div>
         <div class="status-bar-divider"></div>
@@ -14,55 +14,87 @@
         <div class="status-bar-divider"></div>
         <div id="status-bar-info">
             <div id="status-bar-file-type">Markdown</div>
-            <div id="status-bar-encoding">utf-8</div>
-            <div id="status-bar-cursor-position">行</div>
-            <div id="status-bar-file-size">0字节</div>
+            <div id="status-bar-encoding">{{ encodingDisplay }}</div>
+            <div id="status-bar-cursor-position">{{ cursorDisplay }}</div>
+            <div id="status-bar-file-size">{{ fileSizeDisplay }}</div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import EventBus from '../common/event_bus/event-bus'
+import EventBus from '../common/event-bus/event-bus'
 import { onBeforeUnmount, onMounted, ref, computed } from 'vue'
 import { Position } from 'monaco-editor'
+import { IPC } from '../../../shared/ipc-channels'
+import type { StatusBarUpdatePayload } from '../../../shared/types'
+import { EVENT_BUS } from '../common/event-bus/event-bus-events'
+import { t } from '../common/i18n'
 
-// Console 相关
-const consoleMessage = ref('就绪')
-const consoleType = ref('info') // 'info' | 'success' | 'warning' | 'error' | 'loading'
+// CMP-30：状态栏消息由主进程发送「已本地化」的译文（mainMsg 命名空间），渲染层原样展示；
+// 未收到消息或消息自动清除后显示「就绪」，静态标签与动态模板均走 t()，切换语言即时刷新。
+const consolePayload = ref<StatusBarUpdatePayload | null>(null)
+const consoleType = computed(() => consolePayload.value?.type ?? 'info')
+const consoleMessage = computed(() => consolePayload.value?.message ?? t('status.ready'))
+
+// FUN-29：状态栏编码显示当前文件实际编码（主进程经状态栏通道下发），默认 utf-8
+const encodingDisplay = ref('utf-8')
 
 const consoleIcon = computed(() => {
     switch (consoleType.value) {
-        case 'success': return '✓'
-        case 'warning': return '⚠'
-        case 'error': return '✗'
-        case 'loading': return '⋯'
-        default: return 'ℹ'
+        case 'success':
+            return '✓'
+        case 'warning':
+            return '⚠'
+        case 'error':
+            return '✗'
+        case 'loading':
+            return '⋯'
+        default:
+            return 'ℹ'
     }
 })
 
-// 处理console消息更新
-const handleConsoleUpdate = (data: { message: string; type: string }) => {
-    consoleMessage.value = data.message
-    consoleType.value = data.type
+// PF-13：自动复位定时器句柄。状态栏消息每次更新都会创建 5s 定时器，
+// 此前未保存句柄 → 新消息到达时旧 timer 仍会触发、组件卸载后 timer 仍持有组件闭包。
+// 策略：全局只保留最新一个 timer（loading 消息不建 timer），新消息/卸载时清理旧 timer。
+let consoleResetTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearConsoleResetTimer(): void {
+    if (consoleResetTimer !== null) {
+        clearTimeout(consoleResetTimer)
+        consoleResetTimer = null
+    }
+}
+
+// 处理console消息更新（FUN-29：负载可携带当前文件编码，同步状态栏编码显示）
+const handleConsoleUpdate = (data: StatusBarUpdatePayload) => {
+    consolePayload.value = data
+    if (data.encoding) {
+        encodingDisplay.value = data.encoding
+    }
+
+    // PF-13：任何新消息先取消上一条消息的自动复位，避免旧 timer 提前清掉新消息
+    clearConsoleResetTimer()
 
     // 如果是loading状态,不自动清除
     if (data.type !== 'loading') {
         // 5秒后自动清除消息
-        setTimeout(() => {
-            if (consoleMessage.value === data.message) {
-                consoleMessage.value = '就绪'
-                consoleType.value = 'info'
+        consoleResetTimer = setTimeout(() => {
+            consoleResetTimer = null
+            if (consolePayload.value?.message === data.message) {
+                consolePayload.value = null
             }
         }, 5000)
     }
 }
 
-const filePath = ref('白泽笔记')
+// 未打开文件时显示产品名（t() 响应语言切换）
+const filePath = ref('')
 const isUnsaved = ref(false)
 
 // 计算显示的文件路径(保留后面的内容)
 const displayFilePath = computed(() => {
-    const path = filePath.value
+    const path = filePath.value || t('status.defaultFilePath')
     // 如果路径长度超过40个字符,保留后面的内容
     if (path.length > 40) {
         return '...' + path.slice(-37)
@@ -74,16 +106,29 @@ function onUpdateEditorFilePath(value: string) {
     filePath.value = value
 }
 
+// 文件大小与光标位置改为响应式状态，模板经 t() 输出，语言切换后同步刷新
+const fileSize = ref<string | null>(null)
+const cursorPosition = ref<{ line: number; column: number } | null>(null)
+
+const fileSizeDisplay = computed(() =>
+    fileSize.value === null ? t('status.bytesZero') : t('status.bytes', { value: fileSize.value })
+)
+
+const cursorDisplay = computed(() =>
+    cursorPosition.value === null
+        ? t('status.cursorLabel')
+        : t('status.cursorPosition', {
+              line: cursorPosition.value.line,
+              column: cursorPosition.value.column
+          })
+)
+
 function onUpdateEditorContentLength(value: string) {
-    const element = document.getElementById('status-bar-file-size')
-    if (!element) return
-    element.textContent = `${value} 字节`
+    fileSize.value = value
 }
 
 function onUpdateEditorCursorPosition(position: Position) {
-    const element = document.getElementById('status-bar-cursor-position')
-    if (!element) return
-    element.textContent = `行 ${position.lineNumber} 列 ${position.column}`
+    cursorPosition.value = { line: position.lineNumber, column: position.column }
 }
 
 // 定义事件处理函数
@@ -100,7 +145,7 @@ const handleCursorPositionUpdate = (position: Position) => {
     onUpdateEditorCursorPosition(position)
 }
 
-const handleUserSelectFile = (_: any, value: string) => {
+const handleUserSelectFile = (_event: unknown, value: string) => {
     onUpdateEditorFilePath(value)
 }
 
@@ -108,28 +153,34 @@ const handleFileSaved = () => {
     isUnsaved.value = false
 }
 
-const handleConsoleUpdateEvent = (_: any, data: { message: string; type: string }) => {
+const handleConsoleUpdateEvent = (_event: unknown, data: StatusBarUpdatePayload) => {
     handleConsoleUpdate(data)
 }
 
 onMounted(() => {
-    window.electron.ipcRenderer.on('monaco-editor-user-select-file', handleUserSelectFile)
-    window.electron.ipcRenderer.on('file-saved-success', handleFileSaved)
-    window.electron.ipcRenderer.on('status-bar-console-update', handleConsoleUpdateEvent)
+    window.electron.ipcRenderer.on(IPC.FILE.USER_SELECT_FILE, handleUserSelectFile)
+    window.electron.ipcRenderer.on(IPC.EVENTS.FILE_SAVED_SUCCESS, handleFileSaved)
+    window.electron.ipcRenderer.on(IPC.EVENTS.STATUS_BAR_UPDATE, handleConsoleUpdateEvent)
 
-    EventBus.$on('monaco-editor-statusbar-file-path', handleFilePathUpdate)
-    EventBus.$on('baize:notes:status-bar:context-length', handleContentLengthUpdate)
-    EventBus.$on('monaco-editor-statusbar-cursor-position', handleCursorPositionUpdate)
+    EventBus.$on(EVENT_BUS.STATUS_BAR_FILE_PATH, handleFilePathUpdate)
+    EventBus.$on(EVENT_BUS.STATUS_BAR_CONTEXT_LENGTH, handleContentLengthUpdate)
+    EventBus.$on(EVENT_BUS.STATUS_BAR_CURSOR_POSITION, handleCursorPositionUpdate)
 })
 
 onBeforeUnmount(() => {
-    window.electron.ipcRenderer.removeListener('monaco-editor-user-select-file', handleUserSelectFile)
-    window.electron.ipcRenderer.removeListener('file-saved-success', handleFileSaved)
-    window.electron.ipcRenderer.removeListener('status-bar-console-update', handleConsoleUpdateEvent)
+    // PF-13：清理未触发的自动复位定时器，避免卸载后 timer 仍持有组件闭包
+    clearConsoleResetTimer()
 
-    EventBus.$off('monaco-editor-statusbar-file-path', handleFilePathUpdate)
-    EventBus.$off('baize:notes:status-bar:context-length', handleContentLengthUpdate)
-    EventBus.$off('monaco-editor-statusbar-cursor-position', handleCursorPositionUpdate)
+    window.electron.ipcRenderer.removeListener(IPC.FILE.USER_SELECT_FILE, handleUserSelectFile)
+    window.electron.ipcRenderer.removeListener(IPC.EVENTS.FILE_SAVED_SUCCESS, handleFileSaved)
+    window.electron.ipcRenderer.removeListener(
+        IPC.EVENTS.STATUS_BAR_UPDATE,
+        handleConsoleUpdateEvent
+    )
+
+    EventBus.$off(EVENT_BUS.STATUS_BAR_FILE_PATH, handleFilePathUpdate)
+    EventBus.$off(EVENT_BUS.STATUS_BAR_CONTEXT_LENGTH, handleContentLengthUpdate)
+    EventBus.$off(EVENT_BUS.STATUS_BAR_CURSOR_POSITION, handleCursorPositionUpdate)
 })
 </script>
 
@@ -261,7 +312,8 @@ onBeforeUnmount(() => {
 }
 
 @keyframes pulse {
-    0%, 100% {
+    0%,
+    100% {
         opacity: 1;
     }
     50% {

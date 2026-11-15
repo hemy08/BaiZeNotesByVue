@@ -5,7 +5,7 @@
             <button
                 v-if="position === 'left'"
                 data-index="0"
-                title="文件管理器"
+                :title="t('workspace.navi.fileManager')"
                 class="navi-tab-item file active"
                 @click="onShowFileExplorer"
             >
@@ -25,7 +25,7 @@
             <button
                 v-if="position === 'left'"
                 data-index="1"
-                title="大纲"
+                :title="t('workspace.navi.outline')"
                 class="navi-tab-item outline"
                 @click="onShowMarkdownTOC"
             >
@@ -59,17 +59,32 @@
                 class="navi-tab-item outline"
                 @click="onQuickLinkClick(link)"
             >
-                <div v-if="link.icon === 'svg'" v-html="link.iconContent"></div>
-                <img v-else-if="link.icon === 'img'" :src="link.iconContent" :alt="link.name" style="width: 35px; height: 35px" />
-                <span v-else-if="link.icon === 'text'" class="text-icon">{{ link.iconContent }}</span>
-                <span v-else style="font-size: 24px;">{{ link.iconContent }}</span>
+                <!-- P1 安全修复（N-06）：svg 图标内容来自可编辑配置，写入 v-html 前必须消毒 -->
+                <!-- eslint-disable-next-line vue/no-v-html -- 图标内容来自可编辑配置，已先经 sanitizeSvgIcon（DOMPurify）白名单消毒 -->
+                <div v-if="link.icon === 'svg'" v-html="sanitizeSvgIcon(link.iconContent)"></div>
+                <img
+                    v-else-if="link.icon === 'img'"
+                    :src="link.iconContent"
+                    :alt="link.name"
+                    style="width: 35px; height: 35px"
+                />
+                <span v-else-if="link.icon === 'text'" class="text-icon">{{
+                    link.iconContent
+                }}</span>
+                <span v-else style="font-size: 24px">{{ link.iconContent }}</span>
             </button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import DOMPurify from 'dompurify'
+import { IPC } from '../../../../shared/ipc-channels'
+import { t } from '../../common/i18n'
+// ARC-13：QuickLinkItem 已收敛到 src/shared/types/quick-link.ts（唯一真源，主进程同源）
+import type { QuickLinkItem } from '../../../../shared/types'
+import { logger } from '../../common/logger'
 
 // 接收 position prop: 'left' 或 'right'
 const props = defineProps<{
@@ -81,18 +96,6 @@ let currentNaviTal = 'file-explorer'
 // 定义 emit 函数
 const emit = defineEmits(['update:navi:tab'])
 
-interface QuickLinkItem {
-    id: string
-    name: string
-    type: 'url' | 'exe'
-    path: string
-    icon: string
-    iconContent: string
-    enabled: boolean
-    order: number
-    position: 'left' | 'right'
-}
-
 const allQuickLinks = ref<QuickLinkItem[]>([])
 
 // 根据 position 过滤快速链接
@@ -100,15 +103,42 @@ const quickLinks = computed(() => {
     return allQuickLinks.value.filter((link) => link.position === props.position)
 })
 
-// 加载快速链接配置
-async function loadQuickLinks() {
-    const links = await window.electron.ipcRenderer.invoke('baize-notes:get-quick-links')
-    allQuickLinks.value = links.filter((link: QuickLinkItem) => link.enabled)
+// P1 安全修复（N-06）：iconContent 来自可编辑的快速链接配置并直接进入 v-html，
+// 原样注入时可执行 HTML 注入（持久化 XSS）。改为 DOMPurify 白名单消毒：
+// 仅启用 svg + svgFilters profile（保留图标所需的 SVG 标签/属性，如 viewBox/path/fill），
+// 剥离 <script>、on* 事件处理器、javascript: 协议、foreignObject 等注入面。
+const ICON_SVG_SANITIZE_CONFIG = {
+    USE_PROFILES: { svg: true, svgFilters: true }
 }
 
-// 监听快速链接更新事件
-async function handleQuickLinksUpdated() {
-    await loadQuickLinks()
+/** 消毒 svg 类型的图标内容（img/text/emoji 分支走属性绑定/文本插值，本就不经 v-html） */
+function sanitizeSvgIcon(content: string): string {
+    return DOMPurify.sanitize(content, ICON_SVG_SANITIZE_CONFIG)
+}
+
+// 加载快速链接配置
+async function loadQuickLinks() {
+    try {
+        const links = await window.electron.ipcRenderer.invoke(IPC.QUICK_LINKS.GET)
+        if (!Array.isArray(links)) {
+            return
+        }
+        allQuickLinks.value = links.filter((link: QuickLinkItem) => link.enabled)
+    } catch (error) {
+        logger.error('[NaviTab] 加载快速链接配置失败:', error)
+    }
+}
+
+// P1-FE-04：快捷链接设置数据源统一——设置对话框保存成功后主进程广播
+// QUICK_LINKS.UPDATED（载荷即归一化后的 QuickLinkItem[]），此处直接应用载荷刷新，
+// 保证「设置 → 确定」后导航栏立即生效（原实现仅在挂载时读取一次，需重挂载才刷新）。
+// 载荷异常时回退为重新 invoke(GET) 拉取，保证与主进程数据源一致。
+function handleQuickLinksUpdated(_event: unknown, updated: unknown) {
+    if (Array.isArray(updated)) {
+        allQuickLinks.value = updated.filter((link: QuickLinkItem) => link.enabled)
+        return
+    }
+    void loadQuickLinks()
 }
 
 // 快速链接点击事件
@@ -116,7 +146,7 @@ function onQuickLinkClick(link: QuickLinkItem) {
     if (link.type === 'url') {
         window.open(link.path, '_blank', 'noopener, noreferrer')
     } else {
-        window.electron.ipcRenderer.send('navi-tab-open-exe', link.path)
+        window.electron.ipcRenderer.send(IPC.NAVIGATION.OPEN_EXE, link.path)
     }
 }
 
@@ -149,16 +179,15 @@ function onOpenHemyNotes() {
     window.open('https://hemy08.github.io/hemynotes/', '_blank', 'noopener, noreferrer')
 }
 
-// 组件挂载时加载配置
+// 组件挂载时注册刷新监听并加载配置
 onMounted(async () => {
+    window.electron.ipcRenderer.on(IPC.QUICK_LINKS.UPDATED, handleQuickLinksUpdated)
     await loadQuickLinks()
-    // 监听快速链接更新事件，实现立即生效
-    window.electron.ipcRenderer.on('baize-notes:quick-links-updated', handleQuickLinksUpdated)
 })
 
-// 组件卸载时移除监听
-onUnmounted(() => {
-    window.electron.ipcRenderer.removeListener('baize-notes:quick-links-updated', handleQuickLinksUpdated)
+// 卸载时移除监听（与项目其他组件 IPC 监听注册/清理成对约定一致）
+onBeforeUnmount(() => {
+    window.electron.ipcRenderer.removeListener(IPC.QUICK_LINKS.UPDATED, handleQuickLinksUpdated)
 })
 </script>
 
@@ -199,6 +228,6 @@ onUnmounted(() => {
     height: 30px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 6px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 </style>

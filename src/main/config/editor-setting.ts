@@ -2,257 +2,27 @@
  * 编辑器设置管理模块
  * 用于管理Monaco编辑器的配置
  * 基于 monaco.editor.IStandaloneEditorConstructionOptions 接口
+ *
+ * ARC-12：经 theme-config 导出的 createSafeConfigModule 工厂创建
+ * （storageKey 模式：配置承载于 editor-setting.json 的 editorSetting 键下）。
  */
 
-// @ts-ignore
-import { createStore } from '../utils/store-factory'
+import * as path from 'path'
+import { createSafeConfigModule } from './theme-config'
+import { getUserDataPath } from '../utils/app-paths'
+// ARC-13：EditorSetting 已收敛到 src/shared/types/editor.ts（唯一真源），此处仅 import type
+import type { EditorSetting } from '../../shared/types'
+import { tMain } from '../utils/i18n'
 
-// 编辑器配置接口 - 完整版
-export interface EditorSetting {
-    // ========== 基础显示配置 ==========
-    wordWrap: 'on' | 'off' | 'bounded'
-    minimap: boolean
-    lineNumbers: 'on' | 'off' | 'relative' | 'interval'
-    fontSize: number
-    fontFamily: string
-    fontWeight: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900'
-    fontLigatures: boolean
-    fontVariations: boolean | string
-    lineHeight: number
-    letterSpacing: number
-    tabSize: number
-    insertSpaces: boolean
-    wordWrapColumn: number
-    wordWrapBreakBeforeCharacters: boolean
-    wordWrapBreakAfterCharacters: boolean
-    wrappingIndent: 'none' | 'same' | 'indent' | 'deepIndent'
-    wrappingStrategy: 'simple' | 'advanced'
-    indentSize: number | 'tabSize'
-    detectIndentation: boolean
-
-    // ========== 基础编辑配置 ==========
-    readOnly: boolean
-    domReadOnly: boolean
-    emptySelectionClipboard: boolean
-    copyWithSyntaxHighlighting: boolean
-    multiCursorModifier: 'ctrlCmd' | 'alt'
-    multiCursorPaste: 'spread' | 'full'
-    fixedOverflowWidgets: boolean
-    ariaLabel: string
-    ariaHeaderMessage: string | undefined
-
-    // ========== 空白和折叠配置 ==========
-    renderControlCharacters: boolean,
-    renderWhitespace: 'none' | 'boundary' | 'selection' | 'all'
-    folding: boolean
-    foldingStrategy: 'auto' | 'indentation'
-    showFoldingControls: 'always' | 'mouseover'
-    unfoldOnClickAfterEndOfLine: boolean
-
-    // ========== 高亮和装饰配置 ==========
-    renderLineHighlight: 'none' | 'line' | 'all' | 'range'
-    renderLineHighlightOnlyWhenFocus: boolean
-    selectOnLineNumbers: boolean
-    selectionHighlight: boolean
-    occurrencesHighlight: 'off' | 'singleFile' | 'multiFile'
-    hover: {
-        enabled: boolean
-        delay: number
-        sticky: boolean
-    }
-    stickyTabStops: boolean
-    gotoLocation: {
-        multiple: 'goto' | 'gotoAndPeek' | 'peek'
-        multipleDefinitions: 'goto' | 'gotoAndPeek' | 'peek'
-        multipleImplementations: 'goto' | 'gotoAndPeek' | 'peek'
-        multipleReferences: 'goto' | 'gotoAndPeek' | 'peek'
-        multipleTypeDefinitions: 'goto' | 'gotoAndPeek' | 'peek'
-    }
-    foldingImportsByDefault: boolean
-    foldingMaximumRegions: number
-    glyphMargin: boolean
-
-    // ========== 光标配置 ==========
-    cursorStyle: 'line' | 'block' | 'underline' | 'line-thin' | 'block-outline' | 'underline-thin'
-    cursorBlinking: 'blink' | 'smooth' | 'phase' | 'expand' | 'solid'
-    cursorSmoothCaretAnimation: 'on' | 'off' | 'explicit'
-    cursorWidth: number
-    cursorSurroundingLines: number
-    cursorSurroundingLinesStyle: 'default' | 'all'
-    cursorSurroundingLineColumns: number
-    stopRenderingLineAfter: number
-
-    // ========== 滚动配置 ==========
-    scrollbar: {
-        vertical: 'auto' | 'visible' | 'hidden'
-        horizontal: 'auto' | 'visible' | 'hidden'
-        verticalScrollbarSize: number
-        horizontalScrollbarSize: number
-        arrowSize: number
-        useShadows: boolean
-        renderByPixels: boolean
-    }
-    smoothScrolling: boolean
-    scrollBeyondLastLine: boolean
-    mouseWheelScrollSensitivity: number
-    fastScrollSensitivity: number
-    scrollBeyondLastColumn: number
-    scrollPredominantAxis: boolean
-    horizontalScrollbarSize: number
-    verticalScrollbarSize: number
-    alwaysConsumeMouseWheel: boolean
-    arrowSize: number
-    useShadows: boolean
-    hideHorizontalScrollbar: boolean
-
-    // ========== 自动完成和智能提示配置 ==========
-    quickSuggestions: boolean
-    quickSuggestionsDelay: number
-    acceptSuggestionOnEnter: 'on' | 'off' | 'smart'
-    acceptSuggestionOnCommitCharacter: boolean
-    wordBasedSuggestions: 'off' | 'on' | 'allDocuments'
-    wordBasedSuggestionsOnlySameLanguage: boolean
-
-    // ========== 括号和引号配置 ==========
-    autoClosingBrackets: 'never' | 'languageDefined' | 'beforeWhitespace' | 'always'
-    autoClosingQuotes: 'never' | 'languageDefined' | 'beforeWhitespace' | 'always'
-    autoClosingComments: 'never' | 'languageDefined' | 'beforeWhitespace' | 'always'
-    autoSurround: 'never' | 'languageDefined' | 'quotes' | 'brackets' | 'all'
-    autoClosingOvertype: 'always' | 'auto' | 'never'
-    commentMultiLine: boolean
-    commentInline: boolean
-    autoIndent: 'none' | 'keep' | 'brackets' | 'advanced' | 'full'
-    autoIndentOnPaste: boolean
-
-    // ========== 缩进指南配置 ==========
-    guides: {
-        indentation: boolean
-        bracketPairs: boolean
-        highlightActiveIndentation: boolean
-    }
-
-    // ========== 括号对颜色化配置 ==========
-    bracketPairColorization: {
-        enabled: boolean
-    }
-    matchBrackets: 'never' | 'near' | 'always'
-    rangeHighlight: boolean
-
-    // ========== 链接配置 ==========
-    links: boolean
-    linkDetection: boolean
-
-    // ========== 提示配置 ==========
-    showAdjustSettingTip: boolean // 是否显示"Adjust Setting"提示
-
-    // ========== 颜色装饰器配置 ==========
-    colorDecorators: boolean
-
-    // ========== Unicode高亮配置 ==========
-    unicodeHighlight: {
-        nonBasicASCII: boolean
-        invisibleCharacters: boolean
-        ambiguousCharacters: boolean
-    }
-
-    // ========== 粘性滚动配置 ==========
-    stickyScroll: {
-        enabled: boolean
-        maxLineCount: number
-    }
-
-    // ========== 性能配置 ==========
-    largeFileOptimizations: boolean
-    maxTokenizationLineLength: number
-
-    // ========== 其他配置 ==========
-    dragAndDrop: boolean
-    editable: boolean
-    accessibilitySupport: 'auto' | 'off' | 'on'
-    screenReaderAnnounceInlineSuggestions: boolean
-
-    // ========== 编辑行为配置 ==========
-    tabCompletion: 'on' | 'off' | 'onlySnippets'
-    snippetSuggestions: 'top' | 'bottom' | 'inline' | 'none'
-    suggestOnTriggerCharacters: boolean
-    suggestSelection: 'first' | 'recentlyUsed' | 'recentlyUsedByPrefix'
-    suggestFontSize: number
-    suggestLineHeight: number
-    suggestPreview: boolean
-
-    // ========== 内联提示配置 ==========
-    inlineSuggest: {
-        enabled: boolean
-    }
-
-    // ========== 参数提示配置 ==========
-    parameterHints: {
-        enabled: boolean
-        cycle: boolean
-    }
-
-    // ========== 格式化配置 ==========
-    formatOnPaste: boolean
-    formatOnType: boolean
-
-    // ========== 查找配置 ==========
-    find: {
-        addExtraSpaceOnTop: boolean
-        autoFindInSelection: 'never' | 'always' | 'multiline'
-        seedSearchStringFromSelection: 'never' | 'selection' | 'selectionOrCursor'
-        cursorMoveOnType: boolean
-        loop: boolean
-        globalFindClipboard: boolean
-        highlightFindMatches: boolean
-        highlightFindMatchColor: boolean
-        highlightFindMatchSize: number
-    }
-
-    // ========== 差异编辑器配置 ==========
-    originalEditable: boolean
-    renderSideBySide: boolean
-    renderMarginRevertIcon: boolean
-    renderIndicators: boolean
-    ignoreTrimWhitespace: boolean
-    maxComputationTime: number
-    useInlineViewWhenSpaceIsLimited: boolean
-    compactMode: boolean
-
-    // ========== 注释配置 ==========
-    comments: {
-        insertSpace: boolean
-        ignoreEmptyLines: boolean
-    }
-
-    // ========== 括号配置 ==========
-    matchingBrackets: 'always' | 'never' | 'near'
-    renderFinalNewline: 'on' | 'off' | 'dimmed'
-    trimAutoWhitespace: boolean
-
-    // ========== 代码透镜配置 ==========
-    codeLens: boolean
-    codeLensFontFamily: string
-    codeLensFontSize: number
-
-    // ========== 行装饰配置 ==========
-    lineDecorationsWidth: number | string
-    lineNumbersMinChars: number
-    revealHorizontalRightPadding: number
-
-    // ========== 概览标尺配置 ==========
-    overviewRulerBorder: boolean
-    overviewRulerLanes: number
-    rulers: number[]
-    hideCursorInOverviewRuler: boolean
-
-    // ========== 固定宽度配置 ==========
-    maximizedScrollbar: boolean
-}
+// ARC-13：re-export 保持既有引用路径（config/index.ts、单测等）不变
+// （P2：主进程 HTML 编辑器设置对话框 ShowEditorSettingDialog 已删除，渲染层
+// EditorSettingDialog.vue 经 IPC.EDITOR.GET_SETTING 读取本模块产出）
+export type { EditorSetting }
 
 // 默认编辑器配置
 const defaultEditorSetting: EditorSetting = {
     // 基础显示配置
-        // ========== 基础编辑配置 ==========
+    // ========== 基础编辑配置 ==========
     readOnly: false,
     domReadOnly: false,
     emptySelectionClipboard: true,
@@ -260,7 +30,7 @@ const defaultEditorSetting: EditorSetting = {
     multiCursorModifier: 'alt',
     multiCursorPaste: 'spread',
     fixedOverflowWidgets: false,
-    ariaLabel: '白泽笔记编辑器',
+    ariaLabel: tMain('mainMsg.editor.ariaLabel'),
     ariaHeaderMessage: undefined,
 
     wordWrap: 'on',
@@ -491,29 +261,43 @@ const defaultEditorSetting: EditorSetting = {
     maximizedScrollbar: false
 }
 
-// 存储实例（延迟初始化）
-let store: ReturnType<typeof createStore> | null = null
+// 存储结构类型：editor-setting.json 的键映射
+// CQ-02：通过 createStore<T> 显式传泛型，替代此前的 6 处 @ts-ignore
+// P1-FE-05：editorSetting 为唯一真源——渲染层 EditorSettingDialog 的配置经
+// config:write('editor') 路由到本模块的映射函数，换算后写入同一 editorSetting 键，
+// Monaco（EDITOR.GET_SETTING / INIT_SETTING）立即读到最新值。
+// rendererEditorConfig 仅为历史版本（ARC-04 双轨时期）残留键，启动迁移时一次性
+// 合并进 editorSetting 后删除，不再写入。
+type EditorSettingSchema = {
+    editorSetting?: EditorSetting
+    rendererEditorConfig?: Record<string, unknown>
+}
 
-// 获取存储实例
-function getStore() {
-    if (!store) {
-        store = createStore('editor-setting', {})
-    }
-    return store
+// ARC-12：经共享工厂创建（延迟初始化 + 浅合并更新 + 损坏容错）。
+// 注意：defaults 保持空对象——与历史行为一致，默认值在首次访问时
+// 由 getEditorSetting 写入存储（editor-setting.test 依赖该语义）。
+const editorModule = createSafeConfigModule<EditorSettingSchema>({
+    name: 'editor-setting',
+    filePath: path.join(getUserDataPath(), 'config', 'editor-setting.json'),
+    defaults: {},
+    storageKey: 'editorSetting'
+})
+
+// 存储实例（延迟初始化）
+function getStore(): ReturnType<typeof editorModule.getStore> {
+    return editorModule.getStore()
 }
 
 /**
  * 获取编辑器设置
+ * 首次访问时把默认值落盘（与历史行为一致，测试依赖"首次访问后存储中已存在该键"）。
  */
 export function getEditorSetting(): EditorSetting {
     const s = getStore()
-    // @ts-ignore
     if (!s.has('editorSetting')) {
-        // @ts-ignore
         s.set('editorSetting', defaultEditorSetting)
     }
-    // @ts-ignore
-    return s.get('editorSetting') as EditorSetting
+    return s.get('editorSetting') ?? defaultEditorSetting
 }
 
 /**
@@ -521,7 +305,6 @@ export function getEditorSetting(): EditorSetting {
  */
 export function saveEditorSetting(setting: EditorSetting): void {
     const s = getStore()
-    // @ts-ignore
     s.set('editorSetting', setting)
 }
 
@@ -530,7 +313,6 @@ export function saveEditorSetting(setting: EditorSetting): void {
  */
 export function resetEditorSetting(): void {
     const s = getStore()
-    // @ts-ignore
     s.set('editorSetting', defaultEditorSetting)
 }
 
@@ -539,4 +321,142 @@ export function resetEditorSetting(): void {
  */
 export function getDefaultEditorSetting(): EditorSetting {
     return defaultEditorSetting
+}
+
+// ============ P1-FE-05：渲染层编辑器设置对话框 ↔ Monaco 配置映射 ============
+
+/**
+ * 渲染层 EditorSettingDialog 字段 → 主进程 Monaco EditorSetting 的映射。
+ *
+ * 对话框字段是历史版本遗留的渲染层私有形状，与 Monaco 选项并非同名同义，
+ * 这里只换算对话框真正可调且 Monaco 有对应项的字段：
+ * - showLineNumbers(bool)      → lineNumbers('on'/'off')
+ * - enableFolding(bool)        → folding
+ * - enableAutoComplete(bool)   → quickSuggestions
+ * - cursorStyle('blink')       → cursorBlinking；其余 cursorStyle 同名直传
+ * - cursorWidth(1~5)           → cursorWidth
+ * - fontSize                   → fontSize
+ * - lineHeight（倍数，如 1.6） → lineHeight（像素 = fontSize × 倍数，四舍五入）
+ *
+ * 无 Monaco 对应项的对话框字段（实时预览/预览延迟/代码高亮/链接高亮/最大文件
+ * 大小/渲染延迟/实验特性）不写入 EditorSetting——它们在 UI 上已标注「暂未实现」
+ * 并禁用，避免「假开关」误导。
+ *
+ * 纯函数：不读写存储，便于单测。
+ */
+export function mapRendererSettingsToEditorSetting(
+    data: Record<string, unknown>,
+    base: EditorSetting
+): EditorSetting {
+    const next: EditorSetting = { ...base }
+
+    // 字体大小：正数才覆盖（主进程不强行夹取，避免吞掉其它调用方的取值）
+    const fontSize =
+        typeof data.fontSize === 'number' && Number.isFinite(data.fontSize) && data.fontSize > 0
+            ? Math.round(data.fontSize)
+            : next.fontSize
+    next.fontSize = fontSize
+
+    // 行高：对话框以「倍数」表示，Monaco 需要像素；倍数非正时保持原值
+    if (
+        typeof data.lineHeight === 'number' &&
+        Number.isFinite(data.lineHeight) &&
+        data.lineHeight > 0
+    ) {
+        next.lineHeight = Math.max(1, Math.round(fontSize * data.lineHeight))
+    }
+
+    if (typeof data.showLineNumbers === 'boolean') {
+        next.lineNumbers = data.showLineNumbers ? 'on' : 'off'
+    }
+    if (typeof data.enableFolding === 'boolean') {
+        next.folding = data.enableFolding
+    }
+    if (typeof data.enableAutoComplete === 'boolean') {
+        next.quickSuggestions = data.enableAutoComplete
+    }
+    if (data.cursorStyle === 'blink') {
+        next.cursorBlinking = 'blink'
+    } else if (
+        data.cursorStyle === 'line' ||
+        data.cursorStyle === 'block' ||
+        data.cursorStyle === 'underline'
+    ) {
+        next.cursorStyle = data.cursorStyle
+    }
+    if (
+        typeof data.cursorWidth === 'number' &&
+        Number.isFinite(data.cursorWidth) &&
+        data.cursorWidth >= 1
+    ) {
+        next.cursorWidth = Math.round(data.cursorWidth)
+    }
+
+    return next
+}
+
+/** 对话框行高倍数默认值（Monaco lineHeight=0 表示自动，此时回填该倍数） */
+const DEFAULT_RENDERER_LINE_HEIGHT = 1.6
+/** 对话框光标宽度默认值（Monaco cursorWidth=0 表示默认宽度） */
+const DEFAULT_RENDERER_CURSOR_WIDTH = 2
+
+/**
+ * P1-FE-05：把主进程 EditorSetting 反算成渲染层对话框可回填的字段
+ * （'editor' 配置经 config:read 路由到本函数，与 Monaco 读取同源）。
+ * 与 mapRendererSettingsToEditorSetting 互逆（含默认值兜底）。
+ */
+export function getRendererEditorConfig(): Record<string, unknown> {
+    const setting = getEditorSetting()
+    const fontSize =
+        typeof setting.fontSize === 'number' && setting.fontSize > 0 ? setting.fontSize : 15
+    const lineHeight =
+        typeof setting.lineHeight === 'number' && setting.lineHeight > 0
+            ? Math.round((setting.lineHeight / fontSize) * 10) / 10
+            : DEFAULT_RENDERER_LINE_HEIGHT
+    const normalizedCursorStyle =
+        setting.cursorStyle === 'line-thin'
+            ? 'line'
+            : setting.cursorStyle === 'block-outline'
+              ? 'block'
+              : setting.cursorStyle === 'underline-thin'
+                ? 'underline'
+                : setting.cursorStyle
+
+    return {
+        fontSize,
+        lineHeight,
+        showLineNumbers: setting.lineNumbers !== 'off',
+        enableFolding: setting.folding !== false,
+        enableAutoComplete:
+            typeof setting.quickSuggestions === 'boolean' ? setting.quickSuggestions : true,
+        cursorStyle: setting.cursorBlinking === 'blink' ? 'blink' : normalizedCursorStyle,
+        cursorWidth:
+            typeof setting.cursorWidth === 'number' && setting.cursorWidth >= 1
+                ? setting.cursorWidth
+                : DEFAULT_RENDERER_CURSOR_WIDTH
+    }
+}
+
+/**
+ * P1-FE-05：渲染层 EditorSettingDialog 保存入口（'editor' 配置经 config:write 路由到本函数）。
+ * 映射后写回唯一真源 editorSetting，返回最新完整设置供调用方广播刷新 Monaco。
+ */
+export function applyRendererEditorConfig(data: Record<string, unknown>): EditorSetting {
+    const next = mapRendererSettingsToEditorSetting(data, getEditorSetting())
+    saveEditorSetting(next)
+    return next
+}
+
+/**
+ * P1-FE-05：历史遗留 rendererEditorConfig 键的一次性迁移——
+ * 旧版本（ARC-04 双轨期）把对话框配置写到该键，Monaco 从未读取。
+ * 启动迁移时若发现该键：映射合并进 editorSetting 后删除，避免旧数据丢失。
+ */
+export function migrateRendererEditorConfig(): void {
+    const s = getStore()
+    const legacy = s.get('rendererEditorConfig')
+    if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+        applyRendererEditorConfig(legacy as Record<string, unknown>)
+        s.delete('rendererEditorConfig')
+    }
 }

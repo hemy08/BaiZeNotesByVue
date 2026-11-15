@@ -2,13 +2,28 @@
  * 新建文件/文件夹对话框
  */
 
-import { ipcMain } from 'electron'
-import { CreateFileFolder, ReloadDirFromDisk } from '../utils/file-utils/file-operations'
-import { JSDOM } from 'jsdom'
+import { CreateFileFolder } from '../utils/file-utils/file-operations'
+import { showErrorMessageBox } from '../utils/file-utils/dialog-helpers'
 import { getCurrentThemeStyles } from '../config'
-import * as digcom from './dialog_common'
+import * as digcom from './dialog-common'
 import { windowManager } from '../config/window-manager'
-import { createDialogOptions } from './dialog-defaults'
+import {
+    createDialogOptions,
+    createJSDOM,
+    loadDialogHtml,
+    notifyReloadDirFromDisk
+} from './dialog-defaults'
+import { getInlineDialogThemeVariables } from './shared/dialog-shared-css'
+import { IPC } from '../../shared/ipc-channels'
+import { ipcListenerManager } from '../ipc/ipc-listener-manager'
+// P1/C-04：对话框 IPC 直连 ipcMain.on 迁移到监听台账；
+// P1/N-05：对话框通道按"窗口归属"校验 sender（仅本对话框窗口可信）
+import { registerTrustedDialogWindow, withSenderCheck } from '../utils/ipc-security'
+import { tMain } from '../utils/i18n'
+
+// P1/C-04：与 windowManager.createWindow 的 componentId 保持一致——
+// 对话框窗口 closed 时 windowManager.cleanupWindow 会按该 componentId 自动清理监听器。
+const CREATE_FILE_FOLDER_DIALOG_COMPONENT_ID = 'create-file-folder'
 
 export function ShowCreateFileFolderDialog(
     dirPath: string,
@@ -20,62 +35,87 @@ export function ShowCreateFileFolderDialog(
         digcom.ShowAlreadyExistDialog()
         return
     }
-    
-    const customCreateDialog = windowManager.createWindow('create-file-folder', createDialogOptions({
-        width: 450,
-        height: 150,
-        minimizable: false,
-        maximizable: false,
-        resizable: false,
-        title: '新建'
-    }), 'create-file-folder', true)
+
+    const customCreateDialog = windowManager.createWindow(
+        'create-file-folder',
+        createDialogOptions({
+            width: 450,
+            height: 230,
+            minimizable: false,
+            maximizable: false,
+            resizable: false,
+            title: tMain('dialogMain.createFileFolder.windowTitle')
+        }),
+        CREATE_FILE_FOLDER_DIALOG_COMPONENT_ID,
+        true
+    )
 
     customCreateDialog.setMenu(null)
 
+    // P1/N-05：登记本对话框窗口为受信 dialog sender（窗口 closed 自动注销）
+    registerTrustedDialogWindow(customCreateDialog)
+
     const temphtml = makeCreateFileFolderDialogHtml()
-    customCreateDialog.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(temphtml))
+    loadDialogHtml(customCreateDialog, temphtml)
 
     customCreateDialog.show()
 
     const theme = getCurrentThemeStyles()
-    customCreateDialog.webContents.send('baize-notes:init-theme-styles', theme)
+    customCreateDialog.webContents.send(IPC.THEME.INIT_THEME_STYLES, theme)
 
-    async function processCreateFileFolder(_, name: string) {
+    async function processCreateFileFolder(_: Electron.IpcMainEvent, name: string) {
+        const submittedName = name
         if (!isFolder && fileExtension.length == 0 && name.indexOf('.') === -1) {
             name = name + '.md'
         }
-        await CreateFileFolder(name, dirPath, isFolder, fileExtension)
-        // 创建完成后重新加载资源管理器
-        await ReloadDirFromDisk()
-        windowManager.getWindowByType('create-file-folder')?.close()
+        try {
+            await CreateFileFolder(name, dirPath, isFolder, fileExtension)
+            // 创建完成后重新加载资源管理器
+            await notifyReloadDirFromDisk()
+            windowManager.getWindowByType('create-file-folder')?.close()
+        } catch (error) {
+            // FE-09：创建失败不再静默（原实现 async 回调无 try/catch，异常无人捕获、
+            // 对话框停留在原样且用户看不到任何提示）。失败时弹错误提示并保留对话框，
+            // 用户可改名重试。
+            showErrorMessageBox(
+                tMain('dialogMain.createFileFolder.createFailed', {
+                    name: submittedName,
+                    error: (error as Error)?.message || String(error)
+                })
+            )
+        }
     }
 
-    ipcMain.on('dialog-create-file-folder-enter', processCreateFileFolder)
-
-    customCreateDialog.on('closed', () => {
-        ipcMain.removeListener('dialog-create-file-folder-enter', processCreateFileFolder)
-    })
+    // P1/C-04：经 ipcListenerManager 注册（台账可见）；窗口 closed 时由 windowManager
+    // 按 componentId 统一 cleanupComponent，无需再手工 removeListener。
+    // P1/N-05：仅登记过的本对话框窗口 sender 可信，主窗口/其他窗口一律拒绝。
+    ipcListenerManager.register(
+        IPC.DIALOG.CREATE_FILE_FOLDER_ENTER,
+        withSenderCheck(
+            IPC.DIALOG.CREATE_FILE_FOLDER_ENTER,
+            async (event: Electron.IpcMainEvent, name: string) => {
+                await processCreateFileFolder(event, name)
+            },
+            { scope: 'dialog' }
+        ),
+        CREATE_FILE_FOLDER_DIALOG_COMPONENT_ID
+    )
 }
 
 function makeCreateFileFolderDialogHtml(): string {
     const theme = getCurrentThemeStyles()
-    const { document } = new JSDOM(
-        `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>新建</title></head><body></body></html>`
-    ).window
+    // MEM-12：显式持有 JSDOM 实例，流程结束（正常返回与异常路径）调用 window.close() 释放内部资源
+    const dom = createJSDOM(
+        `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>${tMain('dialogMain.createFileFolder.title')}</title></head><body></body></html>`
+    )
+    try {
+        const document = dom.window.document
 
-    // 创建样式
-    const styleElement = document.createElement('style')
-    styleElement.textContent = `
-        :root {
-            --bg-color: ${theme.backgroundColor};
-            --card-bg: ${theme.cardBackground};
-            --text-color: ${theme.textColor};
-            --secondary-text-color: ${theme.secondaryTextColor};
-            --border-color: ${theme.borderColor};
-            --accent-color: ${theme.accentColor};
-            --hover-bg: ${theme.hoverBackground};
-            --title-bar-gradient: ${theme.titleBarGradient};
-        }
+        // 创建样式
+        const styleElement = document.createElement('style')
+        // CQ-06：主题变量块统一来自 dialog-shared-css 单一来源（按原缩进输出，保持 HTML 逐字不变）
+        styleElement.textContent = `
+${getInlineDialogThemeVariables(theme, '        ')}
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -162,76 +202,164 @@ function makeCreateFileFolderDialogHtml(): string {
             font-size: 11px;
             color: var(--secondary-text-color);
             margin-left: 90px;
-        }`
-    document.head.appendChild(styleElement)
+        }
 
-    // 创建标题栏
-    const titleBar = document.createElement('div')
-    titleBar.className = 'title-bar'
+        /* FE-09：错误提示（保留对话框内反馈，用户可改名重试） */
+        .error-tip {
+            display: none;
+            font-size: 11px;
+            color: #ff4757;
+            margin-left: 90px;
+        }
 
-    const titleSpan = document.createElement('span')
-    titleSpan.className = 'title-bar-title'
-    titleSpan.textContent = '新建'
+        .error-tip.visible { display: block; }
 
-    const closeBtn = document.createElement('button')
-    closeBtn.className = 'close-btn'
-    closeBtn.textContent = 'x'
-    closeBtn.id = 'close-dialog-btn'
+        /* FE-09：底部「取消 / 确定」按钮（此前只有回车可提交、界面无按钮） */
+        .footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 0 20px 15px;
+        }
 
-    titleBar.appendChild(titleSpan)
-    titleBar.appendChild(closeBtn)
+        .btn {
+            min-width: 78px;
+            height: 30px;
+            padding: 0 16px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-color);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
 
-    // 创建主内容区域
-    const mainContent = document.createElement('div')
-    mainContent.className = 'main-content'
+        .btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
 
-    // 创建输入组
-    const inputGroup = document.createElement('div')
-    inputGroup.className = 'input-group'
+        .btn-primary {
+            border: none;
+            background: var(--accent-color);
+            color: #fff;
+        }
 
-    const label = document.createElement('label')
-    label.textContent = '名称：'
+        .btn-primary:hover { opacity: 0.9; color: #fff; }`
+        document.head.appendChild(styleElement)
 
-    const input = document.createElement('input')
-    input.type = 'text'
-    input.id = 'file-folder-name'
-    input.placeholder = '请输入名称'
+        // 创建标题栏
+        const titleBar = document.createElement('div')
+        titleBar.className = 'title-bar'
 
-    inputGroup.appendChild(label)
-    inputGroup.appendChild(input)
+        const titleSpan = document.createElement('span')
+        titleSpan.className = 'title-bar-title'
+        titleSpan.textContent = tMain('dialogMain.createFileFolder.title')
 
-    // 创建提示
-    const hint = document.createElement('div')
-    hint.className = 'hint'
-    hint.textContent = '文件默认后缀 .md'
+        const closeBtn = document.createElement('button')
+        closeBtn.className = 'close-btn'
+        closeBtn.textContent = 'x'
+        closeBtn.id = 'close-dialog-btn'
 
-    mainContent.appendChild(inputGroup)
-    mainContent.appendChild(hint)
+        titleBar.appendChild(titleSpan)
+        titleBar.appendChild(closeBtn)
 
-    // 组装页面
-    document.body.appendChild(titleBar)
-    document.body.appendChild(mainContent)
+        // 创建主内容区域
+        const mainContent = document.createElement('div')
+        mainContent.className = 'main-content'
 
-    // 创建脚本
-    const scriptElement = document.createElement('script')
-    scriptElement.textContent = `
+        // 创建输入组
+        const inputGroup = document.createElement('div')
+        inputGroup.className = 'input-group'
+
+        const label = document.createElement('label')
+        label.textContent = tMain('dialogMain.createFileFolder.nameLabel')
+
+        const input = document.createElement('input')
+        input.type = 'text'
+        input.id = 'file-folder-name'
+        input.placeholder = tMain('dialogMain.createFileFolder.namePlaceholder')
+
+        inputGroup.appendChild(label)
+        inputGroup.appendChild(input)
+
+        // 创建提示
+        const hint = document.createElement('div')
+        hint.className = 'hint'
+        hint.textContent = tMain('dialogMain.createFileFolder.fileSuffixHint')
+
+        // FE-09：空名称提示（提交时做一次最小校验，避免只关闭对话框无反馈）
+        const errorTip = document.createElement('div')
+        errorTip.className = 'error-tip'
+        errorTip.id = 'create-error-tip'
+        errorTip.textContent = tMain('dialogMain.createFileFolder.nameRequired')
+
+        // FE-09：底部按钮（确定/取消）——此前界面只有回车可提交，无任何可点击按钮
+        const footer = document.createElement('div')
+        footer.className = 'footer'
+
+        const cancelBtn = document.createElement('button')
+        cancelBtn.className = 'btn'
+        cancelBtn.id = 'cancel-dialog-btn'
+        cancelBtn.textContent = tMain('mainMsg.dialog.cancel')
+
+        const confirmBtn = document.createElement('button')
+        confirmBtn.className = 'btn btn-primary'
+        confirmBtn.id = 'confirm-dialog-btn'
+        confirmBtn.textContent = tMain('mainMsg.dialog.confirm')
+
+        footer.appendChild(cancelBtn)
+        footer.appendChild(confirmBtn)
+
+        mainContent.appendChild(inputGroup)
+        mainContent.appendChild(hint)
+        mainContent.appendChild(errorTip)
+
+        // 组装页面
+        document.body.appendChild(titleBar)
+        document.body.appendChild(mainContent)
+        document.body.appendChild(footer)
+
+        // 创建脚本
+        const scriptElement = document.createElement('script')
+        scriptElement.textContent = `
     const ipcRenderer = window.electronAPI.ipcRenderer;
     const inputElement = document.getElementById("file-folder-name");
+    const errorTipElement = document.getElementById("create-error-tip");
     inputElement.focus();
+    function submitCreate() {
+        const value = inputElement.value.trim();
+        if (value.length === 0) {
+            errorTipElement.classList.add("visible");
+            inputElement.focus();
+            return;
+        }
+        errorTipElement.classList.remove("visible");
+        ipcRenderer.send('${IPC.DIALOG.CREATE_FILE_FOLDER_ENTER}', value);
+    }
     inputElement.addEventListener("keyup", function(event) {
         if (event.key === "Enter") {
-            ipcRenderer.send("dialog-create-file-folder-enter", inputElement.value);
+            submitCreate();
         }
     });
+    inputElement.addEventListener("input", function() {
+        errorTipElement.classList.remove("visible");
+    });
+    document.getElementById("confirm-dialog-btn").onclick = submitCreate;
+    document.getElementById("cancel-dialog-btn").onclick = function() {
+        window.close();
+    };
     document.getElementById("close-dialog-btn").onclick = function() {
         window.close();
     };
 
-    ipcRenderer.on("baize-notes:theme-updated", function() {
+    ipcRenderer.on('${IPC.THEME.THEME_UPDATED}', function() {
         location.reload();
     });`
 
-    document.body.appendChild(scriptElement)
+        document.body.appendChild(scriptElement)
 
-    return document.documentElement.outerHTML
+        return document.documentElement.outerHTML
+    } finally {
+        // MEM-12：无论正常返回还是异常，关闭 JSDOM 窗口释放内部资源
+        dom.window.close()
+    }
 }

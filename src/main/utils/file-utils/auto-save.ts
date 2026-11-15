@@ -1,9 +1,14 @@
 /**
  * 自动保存模块
  * 提供文件自动保存定时器功能
- * 注意：不直接从 file-operations 导入 SaveActiveFile，避免循环依赖
+ * ARC-11：循环依赖已解除（file-operations 改依赖 file-state-store），
+ * 此处恢复静态 import，不再使用 require 延迟加载。
  */
 import { appState } from '../app-state'
+import { SaveActiveFile } from './file-operations'
+import { logger } from '../logger'
+import { IPC } from '../../../shared/ipc-channels'
+import { tMain } from '../i18n'
 
 // 自动保存定时器
 let autoSaveTimer: NodeJS.Timeout | null = null
@@ -23,14 +28,20 @@ export function StartAutoSaveFileTime(interval: number = 30000): void {
 
     // 启动定时器
     autoSaveTimer = setInterval(async () => {
-        // 只有当文件有修改时才保存
-        if (appState.currentActiveFile && appState.currentActiveFile.content) {
-            // 延迟导入避免循环依赖
-            const { SaveActiveFile } = require('./file-operations')
+        // D-1/FUN-05：仅当文件脏（与上次保存内容不同）时才写盘；
+        // 空内容（content === ''）同样需要保存（用户清空文件也要落盘）。
+        if (appState.currentActiveFile && appState.isDirty()) {
             try {
                 await SaveActiveFile()
             } catch (err) {
-                console.error('Auto-save failed:', err)
+                logger.error('Auto-save failed:', err)
+                // D-1/FUN-05：保存失败通过现有状态栏事件通知渲染层，用户可见
+                appState.mainWindow?.webContents.send(IPC.EVENTS.STATUS_BAR_UPDATE, {
+                    message: tMain('mainMsg.status.autoSaveFailed', {
+                        message: (err as Error).message
+                    }),
+                    type: 'error'
+                })
             }
         }
     }, interval)

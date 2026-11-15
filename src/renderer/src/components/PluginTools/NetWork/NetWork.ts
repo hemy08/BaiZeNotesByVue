@@ -1,11 +1,16 @@
+import { t } from '../../../common/i18n'
+
 // 计算地址是否有效
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function isValidIPV4(ip: number[]): boolean {
-    if (ip.length !== 4) {
+// A-6/FUN-25：文本框 v-model 写入后数组元素为字符串，直接与 0/255 比较会按
+// 字典序误判（'99'、'128'、'192' 等 > '255'）；统一转 Number 后做数值比较，
+// 并对 NaN/非整数输入一并判无效。
+export function isValidIPV4(ip: Array<number | string>): boolean {
+    if (!Array.isArray(ip) || ip.length !== 4) {
         return false // IP地址应该有4个八位字节
     }
     for (let i = 0; i < 4; i++) {
-        if (ip[i] < 0 || ip[i] > 255) {
+        const segment = Number(ip[i])
+        if (!Number.isInteger(segment) || segment < 0 || segment > 255) {
             return false // 任何一个八位字节不在0-255范围内都无效
         }
     }
@@ -62,7 +67,7 @@ export function GetBitsWithMask(ip: string, radix: number = 10): string {
         return count.toString()
     }
 
-    return '无效'
+    return t('toolsNetwork.network.ipv4SubnetCalc.invalidMask')
 }
 
 export function GetMaskWithBits(maskBits: number, radix: number = 10): string {

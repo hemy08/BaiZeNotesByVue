@@ -1,243 +1,248 @@
 @import './base.css';
 
 body {
-  height: 100vh;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
+    height: 100vh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
 }
 
 #app {
-  width: 100%;
-  height: 100vh;
-  margin: 0;
+    width: 100%;
+    height: 100vh;
+    margin: 0;
 }
 
-
 .logo {
-  margin-bottom: 20px;
-  -webkit-user-drag: none;
-  height: 128px;
-  width: 128px;
-  will-change: filter;
-  transition: filter 300ms;
+    margin-bottom: 20px;
+    -webkit-user-drag: none;
+    height: 128px;
+    width: 128px;
+    will-change: filter;
+    transition: filter 300ms;
 }
 
 .logo:hover {
-  filter: drop-shadow(0 0 1.2em #6988e6aa);
+    filter: drop-shadow(0 0 1.2em #6988e6aa);
 }
 
 .creator {
-  font-size: 14px;
-  line-height: 16px;
-  color: var(--ev-c-text-2);
-  font-weight: 600;
-  margin-bottom: 10px;
+    font-size: 14px;
+    line-height: 16px;
+    color: var(--ev-c-text-2);
+    font-weight: 600;
+    margin-bottom: 10px;
 }
 
 .text {
-  font-size: 28px;
-  color: var(--ev-c-text-1);
-  font-weight: 700;
-  line-height: 32px;
-  text-align: center;
-  margin: 0 10px;
-  padding: 16px 0;
+    font-size: 28px;
+    color: var(--ev-c-text-1);
+    font-weight: 700;
+    line-height: 32px;
+    text-align: center;
+    margin: 0 10px;
+    padding: 16px 0;
 }
 
 .tip {
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 600;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 600;
 }
 
 .vue {
-  background: -webkit-linear-gradient(315deg, #42d392 25%, #647eff);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
+    background: -webkit-linear-gradient(315deg, #42d392 25%, #647eff);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 700;
 }
 
 .ts {
-  background: -webkit-linear-gradient(315deg, #3178c6 45%, #f0dc4e);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
+    background: -webkit-linear-gradient(315deg, #3178c6 45%, #f0dc4e);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 700;
 }
 
 .actions {
-  display: flex;
-  padding-top: 32px;
-  margin: -6px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
+    display: flex;
+    padding-top: 32px;
+    margin: -6px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
 }
 
 .action {
-  flex-shrink: 0;
-  padding: 6px;
+    flex-shrink: 0;
+    padding: 6px;
 }
 
 .action a {
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  border: 1px solid transparent;
-  text-align: center;
-  font-weight: 600;
-  white-space: nowrap;
-  border-radius: 20px;
-  padding: 0 20px;
-  line-height: 38px;
-  font-size: 14px;
-  border-color: var(--ev-button-alt-border);
-  color: var(--ev-button-alt-text);
-  background-color: var(--ev-button-alt-bg);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    border: 1px solid transparent;
+    text-align: center;
+    font-weight: 600;
+    white-space: nowrap;
+    border-radius: 20px;
+    padding: 0 20px;
+    line-height: 38px;
+    font-size: 14px;
+    border-color: var(--ev-button-alt-border);
+    color: var(--ev-button-alt-text);
+    background-color: var(--ev-button-alt-bg);
 }
 
 .action a:hover {
-  border-color: var(--ev-button-alt-hover-border);
-  color: var(--ev-button-alt-hover-text);
-  background-color: var(--ev-button-alt-hover-bg);
+    border-color: var(--ev-button-alt-hover-border);
+    color: var(--ev-button-alt-hover-text);
+    background-color: var(--ev-button-alt-hover-bg);
 }
 
 .versions {
-  position: absolute;
-  bottom: 30px;
-  margin: 0 auto;
-  padding: 15px 0;
-  font-family: 'Menlo', 'Lucida Console', monospace;
-  display: inline-flex;
-  overflow: hidden;
-  align-items: center;
-  border-radius: 22px;
-  background-color: #202127;
-  backdrop-filter: blur(24px);
+    position: absolute;
+    bottom: 30px;
+    margin: 0 auto;
+    padding: 15px 0;
+    font-family: 'Menlo', 'Lucida Console', monospace;
+    display: inline-flex;
+    overflow: hidden;
+    align-items: center;
+    border-radius: 22px;
+    background-color: #202127;
+    backdrop-filter: blur(24px);
 }
 
 .versions li {
-  display: block;
-  float: left;
-  border-right: 1px solid var(--ev-c-gray-1);
-  padding: 0 20px;
-  font-size: 14px;
-  line-height: 14px;
-  opacity: 0.8;
-  &:last-child {
-    border: none;
-  }
+    display: block;
+    float: left;
+    border-right: 1px solid var(--ev-c-gray-1);
+    padding: 0 20px;
+    font-size: 14px;
+    line-height: 14px;
+    opacity: 0.8;
+    &:last-child {
+        border: none;
+    }
 }
 
 .status-bar {
-  font-size: 13px;
-  height: 20px;
-  background-color: red;
-  color: #ffffff;
-  padding: 0;
-  display: flex;
-  justify-content: space-between;
-  cursor: default;
-  user-select: none;
-  align-items: center;
+    font-size: 13px;
+    height: 20px;
+    background-color: red;
+    color: #ffffff;
+    padding: 0;
+    display: flex;
+    justify-content: space-between;
+    cursor: default;
+    user-select: none;
+    align-items: center;
 }
 
 .emoji-submenu-style {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
 }
 
 .md-preview blockquote {
-  font-style: italic;
-  font-size: 1em;
-  text-align: justify;
-  color: #5f5f5f;
-  border-left: 4px solid #007acc;
-  padding-left: 20px;
-  background-color: #f0f0f0;
+    font-style: italic;
+    font-size: 1em;
+    text-align: justify;
+    color: #5f5f5f;
+    border-left: 4px solid #007acc;
+    padding-left: 20px;
+    background-color: #f0f0f0;
 }
 
 table {
-  border-collapse: collapse; /* 合并相邻的边框 */
-  border: 1px solid black; /* 设置外部边框为1px宽，实线，黑色 */
+    border-collapse: collapse; /* 合并相邻的边框 */
+    border: 1px solid black; /* 设置外部边框为1px宽，实线，黑色 */
 }
 
-table th {background-color:#2195f3;font-size:13pt}
+table th {
+    background-color: #2195f3;
+    font-size: 13pt;
+}
 
-td, th {
-  border: 1px solid black;
-  padding: 5px;
+td,
+th {
+    border: 1px solid black;
+    padding: 5px;
 }
 
 .div-style-display-column {
-  display: flex; flex-direction: column
+    display: flex;
+    flex-direction: column;
 }
 
 .div-style-display-row {
-  display: flex; flex-direction: row;
+    display: flex;
+    flex-direction: row;
 }
 
 .header-display-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .plugin-tools-openurl {
-  display: flex;
-  color: blue;
-  background-color: #eeeeee;
-  font-size: large;
-  font-style: italic;
+    display: flex;
+    color: blue;
+    background-color: #eeeeee;
+    font-size: large;
+    font-style: italic;
 }
 
 .plugin-tools-openurl:hover {
-  display: flex;
-  color: red;
-  background-color: lightyellow;
-  font-size: large;
-  font-style: normal;
+    display: flex;
+    color: red;
+    background-color: lightyellow;
+    font-size: large;
+    font-style: normal;
 }
 
 .plugin-tools-btn-list {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10vw;
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10vw;
 }
 
 .plugin-tools-btn {
-  padding: 5px 20px;
-  font-size: 18px;
-  color: black; /* 白色文字 */
-  background-color: deepskyblue; /* 深蓝色背景 */
-  border: none; /* 无边框 */
-  border-radius: 5px; /* 圆角 */
-  cursor: pointer; /* 重复设置，确保按钮样式 */
+    padding: 5px 20px;
+    font-size: 18px;
+    color: black; /* 白色文字 */
+    background-color: deepskyblue; /* 深蓝色背景 */
+    border: none; /* 无边框 */
+    border-radius: 5px; /* 圆角 */
+    cursor: pointer; /* 重复设置，确保按钮样式 */
 }
 
 .plugin-tools-btn:hover {
-  background-color: #ff9100; /* 深蓝色背景 */
+    background-color: #ff9100; /* 深蓝色背景 */
 }
 
 @media (max-width: 720px) {
-  .text {
-    font-size: 20px;
-  }
+    .text {
+        font-size: 20px;
+    }
 }
 
 @media (max-width: 620px) {
-  .versions {
-    display: none;
-  }
+    .versions {
+        display: none;
+    }
 }
 
 @media (max-width: 350px) {
-  .tip,
-  .actions {
-    display: none;
-  }
+    .tip,
+    .actions {
+        display: none;
+    }
 }

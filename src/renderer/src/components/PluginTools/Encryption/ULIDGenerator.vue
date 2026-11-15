@@ -1,8 +1,10 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 style="display: flex; align-items: center; justify-content: center">ULID 生成器</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 style="display: flex; align-items: center; justify-content: center">
+            {{ t('toolsConvert.ulid.title') }}
+        </h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">生成随机的通用唯一词典可排序标识符（ULID）。</p>
+        <p style="color: grey">{{ t('toolsConvert.ulid.description') }}</p>
         <a
             class="plugin-tools-openurl"
             role="button"
@@ -11,11 +13,15 @@
             https://tools.w3cschool.cn/ulid-generator
         </a>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="ulid-label-style"><label>生成数量：</label></div>
+            <div class="ulid-label-style">
+                <label>{{ t('toolsConvert.ulid.countLabel') }}</label>
+            </div>
             <input v-model="ulidNumber" type="number" value="1" style="margin-left: 20px" />
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="ulid-label-style"><label>格式：</label></div>
+            <div class="ulid-label-style">
+                <label>{{ t('toolsConvert.ulid.formatLabel') }}</label>
+            </div>
             <div v-for="(formatter, index) in formatterStyle" :key="index">
                 <button
                     class="ulid-btn-style"
@@ -34,15 +40,20 @@
             class="plugin-tools-btn-list"
             :style="{ width: props.workAreaWidth, textAlign: 'center' }"
         >
-            <button id="ulids-copy" class="plugin-tools-btn" @click="ulidsCopy">拷贝</button>
-            <button id="ulids-refresh" class="plugin-tools-btn" @click="ulidsRefresh">刷新</button>
+            <button id="ulids-copy" class="plugin-tools-btn" @click="ulidsCopy">
+                {{ t('toolsConvert.ulid.copyButton') }}
+            </button>
+            <button id="ulids-refresh" class="plugin-tools-btn" @click="ulidsRefresh">
+                {{ t('toolsConvert.ulid.refreshButton') }}
+            </button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch  } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ulid } from 'ulid'
+import { t } from '../../../common/i18n'
 
 const props = defineProps({
     // 编辑器宽度
@@ -85,7 +96,7 @@ const ulidTextStyle = computed(() => {
     }
 })
 
-function openUrl(link) {
+function openUrl(link: string) {
     window.open(link, '_blank', 'noopener, noreferrer')
 }
 

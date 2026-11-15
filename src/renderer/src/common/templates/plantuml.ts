@@ -709,7 +709,6 @@ const salt =
     '@enduml\n' +
     '```\n\n'
 
-
 // Export all
 export {
     ActivityDiagram,

@@ -1,6 +1,7 @@
 import * as monaco from 'monaco-editor'
-import EventBus from '../../common/event_bus/event-bus'
+import EventBus from '../../common/event-bus/event-bus'
 import { EventHandleMaps } from './hemy-editor-common'
+import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 
 function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Digit1, function () {
@@ -40,7 +41,7 @@ function registerEditorKeyMaps(editor: monaco.editor.IStandaloneCodeEditor) {
         EventHandleMaps['link'](editor)
     })
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
-        EventBus.$emit('monaco-editor-save-file-content-to-disk', true)
+        EventBus.$emit(EVENT_BUS.MONACO_SAVE_FILE_CONTENT_TO_DISK, true)
     })
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, async function () {
         const items = await navigator.clipboard.read()
@@ -76,10 +77,9 @@ function onDidChange(editor: monaco.editor.IStandaloneCodeEditor) {
     // 监听光标位置
     editor.onDidChangeCursorPosition((e) => {
         if (editor != null) {
-            EventBus.$emit('monaco-editor-statusbar-cursor-position', e.position)
+            EventBus.$emit(EVENT_BUS.STATUS_BAR_CURSOR_POSITION, e.position)
         }
     })
-
 }
 
 export const MonacoEditorKeyMaps = registerEditorKeyMaps

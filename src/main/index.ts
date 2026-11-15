@@ -1,29 +1,109 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, session } from 'electron'
 import { join } from 'path'
-import * as fs from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
 import { restoreLastOpenedFile } from './utils/file-state'
-import { getCurrentThemeStyles, getSystemSetting, registerConfigIpcHandlers, getEditorSetting } from './config'
-import { StartAutoSaveFileTime } from './utils/file-utils'
+import {
+    getCurrentThemeStyles,
+    getThemeStylesByType,
+    getMonacoTheme,
+    getSeparateEditorTheme,
+    getSystemSetting,
+    registerConfigIpcHandlers,
+    getEditorSetting,
+    buildFontCss
+} from './config'
+import type { ThemeType } from './config'
+import { StartAutoSaveFileTime, StopAutoSaveFileTime, SaveActiveFile } from './utils/file-utils'
+// PF-05：目录树 fs.watch 监听的退出清理（仅新增生命周期管理，不改变原有落盘/清理逻辑）
+import { CleanupDirectoryWatch } from './utils/file-utils/file-operations'
 import { RegisterShortKeys } from './config'
 import { logger } from './utils/logger'
 import { ipcListenerManager } from './ipc/ipc-listener-manager'
+// P1/C-03：主进程主题广播唯一实现（禁止再出现渲染层 window.electronAPI.broadcastTheme）
+import { broadcastThemeToAllWindows } from './ipc/theme-broadcast'
+// P1/N-05：IPC 发送方授权校验（主窗口登记 + 监听器包装）
+import { setTrustedMainWindow, withSenderCheck } from './utils/ipc-security'
 import { initUserDataDirectory } from './utils/app-paths'
 import { registerIpcHandlers, setMainWindow } from './ipc'
+import { appState } from './utils/app-state'
+import { IPC } from '../shared/ipc-channels'
+// PF-08：PlantUML 本地离线渲染的注册与隐藏窗口清理
+import {
+    registerPlantumlLocalRenderIpc,
+    disposePlantumlLocalWindows
+} from './renders/plantuml-local'
+import { tMain } from './utils/i18n'
+// P0 安全（导航边界 + shell 协议白名单）：窗口导航与外部链接打开统一走安全封装
+import { isAllowedAppNavigation, isSafeExternalUrl, openExternalSafely } from './utils/security'
+// AS-9：远程图表外发阻断（PlantUML 本地渲染不可用时的 plantuml.com 远程降级请求）
+import { registerRemoteResourceGuard } from './utils/remote-resource-guard'
 
-const timers: NodeJS.Timeout[] = []
-const watchers: fs.FSWatcher[] = []
+// D-3/FUN-03：关闭/退出落盘协议通道名（ARC-03：收口到共享 IPC 常量）
+const EDITOR_FLUSH_CHANNEL = IPC.EDITOR.FLUSH_CONTENT
+const EDITOR_FLUSH_DONE_CHANNEL = IPC.EDITOR.FLUSH_CONTENT_DONE
+// 等待渲染层回执的超时时间（毫秒），超时后兜底继续关闭流程
+const EDITOR_FLUSH_TIMEOUT_MS = 2000
+
+// P1/C-04：监听台账组件 ID——进程级主题更新监听为 palette 级（persistent）注册；
+// 关闭前 flush 回执为"主窗口一次关闭流程"级（随 finish/cleanupAll 清理）
+const GLOBAL_MAIN_INDEX_COMPONENT_ID = 'global-main-index'
+const MAIN_WINDOW_FLUSH_COMPONENT_ID = 'main-window-flush'
 
 let mainWindow: Electron.CrossProcessExports.BrowserWindow
 
+/**
+ * 通知渲染层立即 flush 编辑器内容（取消防抖并把当前内容发到既有内容同步通道）。
+ * 等待渲染层回发 'baize:editor:flush-content-done'，2 秒超时兜底（D-3）。
+ *
+ * P1/C-04：回执监听由直连 ipcMain.on 迁移到 ipcListenerManager（组件级注册，
+ * finish 时 unregister 精确移除；异常/退出场景由 cleanupAll 清理非 persistent 残留）。
+ * P1/N-05：回执通道同样校验发送方——非主窗口发送的伪造回执直接忽略。
+ */
+function flushEditorContent(win: BrowserWindow): Promise<void> {
+    return new Promise((resolve) => {
+        if (!win || win.isDestroyed() || win.webContents.isDestroyed()) {
+            resolve()
+            return
+        }
+        let settled = false
+        const finish = (): void => {
+            if (settled) {
+                return
+            }
+            settled = true
+            clearTimeout(timeout)
+            ipcListenerManager.unregister(EDITOR_FLUSH_DONE_CHANNEL, onDone)
+            resolve()
+        }
+        const onDone = withSenderCheck(EDITOR_FLUSH_DONE_CHANNEL, (): void => finish(), {
+            kind: 'on'
+        })
+        const timeout = setTimeout(finish, EDITOR_FLUSH_TIMEOUT_MS)
+        ipcListenerManager.register(
+            EDITOR_FLUSH_DONE_CHANNEL,
+            onDone,
+            MAIN_WINDOW_FLUSH_COMPONENT_ID
+        )
+        try {
+            win.webContents.send(EDITOR_FLUSH_CHANNEL)
+        } catch (err) {
+            logger.error('发送编辑器内容 flush 请求失败', err)
+            finish()
+        }
+    })
+}
+
 function createWindow(): void {
+    // 当前窗口是否已完成"关闭前落盘"，用于放行第二次 close（D-3）
+    let flushedForClose = false
+
     mainWindow = new BrowserWindow({
         width: 900,
         height: 650,
         show: false,
-        title: '白泽笔记 -- Markdown Editor Powered By Electron and Vue',
+        title: tMain('mainMsg.app.windowTitle'),
         frame: false,
         autoHideMenuBar: false,
         icon: join(__dirname, '../resources/icon/baize_mirror_dark_512x512.ico'),
@@ -38,6 +118,28 @@ function createWindow(): void {
     })
 
     setMainWindow(mainWindow)
+    // P1/N-05：同步受信主窗口引用（index.ts 直连注册的通道——主题更新、关闭回执——
+    // 同样依赖该登记；macOS activate 重建窗口时随 createWindow 一并刷新）
+    setTrustedMainWindow(mainWindow)
+
+    // D-3/FUN-03：拦截窗口关闭——先让渲染层 flush 编辑器内容，
+    // 若当前文件仍有未保存修改则落盘，再真正关闭。
+    mainWindow.on('close', async (event) => {
+        if (flushedForClose) {
+            return
+        }
+        event.preventDefault()
+        try {
+            await flushEditorContent(mainWindow)
+            if (appState.isDirty()) {
+                await SaveActiveFile()
+            }
+        } catch (err) {
+            logger.error('关闭窗口前落盘失败', err)
+        }
+        flushedForClose = true
+        mainWindow.close()
+    })
 
     mainWindow.on('ready-to-show', async () => {
         // mainWindow.maximize() // 欢迎界面不自动最大化
@@ -46,22 +148,16 @@ function createWindow(): void {
         logger.setMainWindow(mainWindow)
         logger.info('白泽笔记启动成功')
 
-        dialogs.CreateMermaidRenderFrame('')
         const theme = getCurrentThemeStyles()
-        mainWindow.webContents.send('baize-notes:init-theme-styles', theme)
+        mainWindow.webContents.send(IPC.THEME.INIT_THEME_STYLES, theme)
 
         const systemSetting = getSystemSetting()
-        const fontCss = [
-            'body, .title-bar, .menu-bar, .menu-label, .menu-item-label,',
-            ' .workspace-area, .status-bar, .navi-tab, .resource-manager,',
-            ' .md-edit-tools, .md-preview, .resizer-md, .resizer-main, #file-bar',
-            ` { font-family: ${systemSetting.fontFamily} !important;`,
-            ` font-size: ${systemSetting.fontSize}px !important; }`
-        ].join('')
-        mainWindow.webContents.insertCSS(fontCss)
+        // ARC-04：字体 CSS 组装收敛到 system-setting.buildFontCss（与设置变更时
+        // config-manager 的重新注入共用同一实现）
+        mainWindow.webContents.insertCSS(buildFontCss(systemSetting))
 
         const editorSetting = getEditorSetting()
-        mainWindow.webContents.send('baize-notes:init-editor-setting', editorSetting)
+        mainWindow.webContents.send(IPC.EDITOR.INIT_SETTING, editorSetting)
 
         await restoreLastOpenedFile()
     })
@@ -69,29 +165,69 @@ function createWindow(): void {
     RegisterShortKeys(mainWindow)
     utils.globalInitialize(mainWindow)
 
+    // P0 安全（导航边界）：主窗口只允许导航到受信来源——
+    // 1) 开发模式下的 ELECTRON_RENDERER_URL（Vite dev server）；
+    // 2) 打包/构建后的本地 renderer/index.html（file:）。
+    // 其余目标（渲染层被拖入远程链接、页面 location 跳转、远程重定向、file:/javascript:/
+    // data:/自定义协议等）一律拦截，防止不可信页面替换应用界面后接触 IPC 与本地文件。
+    const rendererIndexPath = join(__dirname, '../renderer/index.html')
+    const devServerUrl =
+        is.dev && process.env['ELECTRON_RENDERER_URL']
+            ? process.env['ELECTRON_RENDERER_URL']
+            : undefined
+    const blockIllegalNavigation = (event: Electron.Event, url: string): void => {
+        if (isAllowedAppNavigation(url, { devUrl: devServerUrl, rendererIndexPath })) {
+            return
+        }
+        console.warn(`[Security] 已拦截主窗口非法导航：${url}`)
+        event.preventDefault()
+    }
+    mainWindow.webContents.on('will-navigate', blockIllegalNavigation)
+    mainWindow.webContents.on('will-redirect', blockIllegalNavigation)
+
+    // P0 安全（shell 协议白名单）：主窗口内 window.open / 中键新窗口一律不创建新窗口；
+    // 仅 http/https 交给系统浏览器打开，其余协议（file:/javascript:/data:/自定义协议）拒绝并告警。
     mainWindow.webContents.setWindowOpenHandler((details) => {
-        shell.openExternal(details.url)
+        if (isSafeExternalUrl(details.url)) {
+            void openExternalSafely(details.url)
+        } else {
+            console.warn(`[Security] 已拦截主窗口打开非 http/https 链接：${details.url}`)
+        }
         return { action: 'deny' }
     })
 
-    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-        mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    if (devServerUrl) {
+        mainWindow.loadURL(devServerUrl)
     } else {
-        mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+        mainWindow.loadFile(rendererIndexPath)
     }
 
-    dialogs.MainWindowListenDialogsEvent(mainWindow)
-    utils.MainWindowListenUtilsEvent(mainWindow)
+    // A-1/ARC-06：IPC 注册已移出 createWindow，改在 app.whenReady 后一次性执行，
+    // 避免 macOS activate 重建窗口时重复注册 ipcMain.handle（抛错）与
+    // ipcMain.on（累积重复监听器）。
 
-    registerIpcHandlers(mainWindow)
-
+    // D-2/FUN-04：启动时尊重自动保存开关，仅启用时启动定时器
     const systemSetting = getSystemSetting()
-    const autoSaveInterval = (systemSetting.autoSaveInterval || 30) * 1000
-    StartAutoSaveFileTime(autoSaveInterval)
+    if (systemSetting.autoSaveEnabled) {
+        const autoSaveInterval = (systemSetting.autoSaveInterval || 60) * 1000
+        StartAutoSaveFileTime(autoSaveInterval)
+    }
 }
+
+// D-3/FUN-03：应用退出（before-quit）同样走"flush → 脏则保存"路径
+let flushedForQuit = false
 
 app.whenReady().then(() => {
     initUserDataDirectory()
+
+    // AS-9：注册远程图表外发阻断（PlantUML 本地渲染不可用时不再把图表源码发往
+    // plantuml.com）。session 在单测桩中可能缺失：registerRemoteResourceGuard 自身
+    // try/catch + 空 session 安全跳过，不阻断启动。
+    try {
+        registerRemoteResourceGuard(session?.defaultSession ?? null)
+    } catch (error) {
+        console.warn('[Security] 远程资源外发阻断注册失败（AS-9）：', error)
+    }
 
     // 注册配置 IPC 处理器
     registerConfigIpcHandlers()
@@ -102,18 +238,57 @@ app.whenReady().then(() => {
         optimizer.watchWindowShortcuts(window)
     })
 
-    ipcMain.on('baize-notes:update-theme', () => {
-        const theme = getCurrentThemeStyles()
-        if (!theme) {
-            console.error('[Main] Failed to get current theme styles')
-            return
-        }
-        BrowserWindow.getAllWindows().forEach(window => {
-            window.webContents.send('baize-notes:theme-updated', theme)
-        })
-    })
+    // A-3/FUN-20：主题广播 payload 修正——渲染端 handleThemeUpdate 期望
+    // { themeStyles, monacoTheme, separateEditorTheme } 形态（原直接广播
+    // ThemeStyles 对象本体，会被渲染端丢弃并报 "Received invalid theme data"）。
+    // 渲染层可传入最新选择的主题类型/编辑器主题参数，避免与主进程 store
+    // 双轨不同步（ARC-05 遗留）时向所有窗口广播旧值。
+    //
+    // P1/C-03/C-04：监听注册迁移到 ipcListenerManager（台账可见、防重复注册），
+    // 广播收敛到 broadcastThemeToAllWindows（主进程唯一实现，替换历史上
+    // ShowThemeSettingDialog 里误用 window.electronAPI.broadcastTheme 的跨进程调用）。
+    // P1/N-05：主题更新会改写渲染层外观并广播到所有窗口，仅主窗口可信。
+    ipcListenerManager.registerOnce(
+        IPC.THEME.UPDATE_THEME,
+        withSenderCheck(
+            IPC.THEME.UPDATE_THEME,
+            (
+                _event: Electron.IpcMainEvent,
+                themeType?: string,
+                monacoTheme?: string,
+                separate?: boolean
+            ) => {
+                const theme =
+                    typeof themeType === 'string'
+                        ? getThemeStylesByType(themeType as ThemeType)
+                        : getCurrentThemeStyles()
+                if (!theme) {
+                    logger.error('[Main] Failed to get current theme styles')
+                    return
+                }
+                broadcastThemeToAllWindows({
+                    themeStyles: theme,
+                    monacoTheme: typeof monacoTheme === 'string' ? monacoTheme : getMonacoTheme(),
+                    separateEditorTheme:
+                        typeof separate === 'boolean' ? separate : getSeparateEditorTheme()
+                })
+            }
+        ),
+        GLOBAL_MAIN_INDEX_COMPONENT_ID
+    )
 
     createWindow()
+
+    // A-1/ARC-06：IPC 注册一次性化——注册移出 createWindow，
+    // 在 app.whenReady 后仅执行一次；macOS activate 重建窗口不再重复注册。
+    // AS-12 复核：createWindow 内的窗口级监听（close / ready-to-show / 导航拦截）
+    // 绑定在新建窗口实例上，不随重建累积；全局 IPC 监听在此一次性注册；
+    // globalShortcut 由 short-key-register 内部幂等控制（重建窗口只更新目标窗口引用）。
+    dialogs.MainWindowListenDialogsEvent(mainWindow)
+    utils.MainWindowListenUtilsEvent(mainWindow)
+    registerIpcHandlers(mainWindow)
+    // PF-08：PlantUML 本地离线渲染 IPC（隐藏窗口 + 串行队列 + LRU 缓存）
+    registerPlantumlLocalRenderIpc()
 
     app.on('activate', function () {
         if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -121,17 +296,18 @@ app.whenReady().then(() => {
 })
 
 function cleanupApp(): void {
-    timers.forEach(timer => clearInterval(timer))
-    timers.length = 0
-    watchers.forEach(watcher => watcher.close())
-    watchers.length = 0
+    // MEM-11：退出时停止自动保存定时器，避免残留 interval 继续写盘
+    StopAutoSaveFileTime()
+    // PF-05：退出/关闭窗口时关闭目录 fs.watch 监听并清理防抖计时器，
+    // 避免 watcher 回调在窗口销毁后继续触发（异常安全：内部 try/finally 关闭）
+    CleanupDirectoryWatch()
     dialogs.CleanupMainWindowDialogsEvent()
-    dialogs.closeMermaidRenderWindow()
-    dialogs.cleanupMermaidRender()
+    // PF-08：销毁 PlantUML 本地渲染隐藏窗口（不阻塞应用退出）
+    disposePlantumlLocalWindows()
     ipcListenerManager.cleanupAll()
 
     const windows = BrowserWindow.getAllWindows()
-    windows.forEach(window => {
+    windows.forEach((window) => {
         if (!window.isDestroyed()) {
             window.destroy()
         }
@@ -145,9 +321,27 @@ app.on('window-all-closed', () => {
     }
 })
 
-app.on('before-quit', () => {
-    cleanupApp()
-    if (is.dev) {
-        ipcListenerManager.printStats()
+app.on('before-quit', (event) => {
+    if (flushedForQuit) {
+        cleanupApp()
+        return
     }
+    // D-3/FUN-03：退出前先 flush 编辑器内容并落盘未保存修改
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        event.preventDefault()
+        void (async () => {
+            try {
+                await flushEditorContent(mainWindow)
+                if (appState.isDirty()) {
+                    await SaveActiveFile()
+                }
+            } catch (err) {
+                logger.error('退出前落盘失败', err)
+            }
+            flushedForQuit = true
+            app.quit()
+        })()
+        return
+    }
+    cleanupApp()
 })

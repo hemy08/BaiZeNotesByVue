@@ -1,9 +1,9 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">UUIDs 生成器</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">{{ t('toolsConvert.uuid.title') }}</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">
-            通用唯一标识符（UUID）是一个128位数字，用于标识计算机系统中的信息。可能的UUID数量为16^32，即2^128或约3.4x10^38（这是一个很大的数字！）。
+            {{ t('toolsConvert.uuid.description') }}
         </p>
         <a
             class="plugin-tools-openurl"
@@ -25,12 +25,16 @@
             </div>
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="uuid-label-style"><label>生成数量：</label></div>
+            <div class="uuid-label-style">
+                <label>{{ t('toolsConvert.uuid.countLabel') }}</label>
+            </div>
             <input v-model="uuidNumber" type="number" value="1" style="margin-left: 20px" />
         </div>
         <div v-show="isShowNamespace">
             <div class="div-style-display-row" style="margin-top: 10px">
-                <div class="uuid-label-style"><label>命名空间：</label></div>
+                <div class="uuid-label-style">
+                    <label>{{ t('toolsConvert.uuid.namespaceLabel') }}</label>
+                </div>
                 <div v-for="(namespace, index) in uuidNameSpaceKeys" :key="index">
                     <button
                         class="uuid-btn-style"
@@ -50,7 +54,9 @@
                 />
             </div>
             <div class="div-style-display-row" style="margin-top: 10px">
-                <div class="uuid-label-style"><label>名称：</label></div>
+                <div class="uuid-label-style">
+                    <label>{{ t('toolsConvert.uuid.nameLabel') }}</label>
+                </div>
                 <input v-model="uuidName" type="text" :style="uuidNameStyle" placeholder="name" />
             </div>
         </div>
@@ -67,15 +73,20 @@
             class="plugin-tools-btn-list"
             :style="{ width: props.workAreaWidth, textAlign: 'center' }"
         >
-            <button id="uuids-copy" class="plugin-tools-btn" @click="UuidsCopy">拷贝</button>
-            <button id="uuids-refresh" class="plugin-tools-btn" @click="RefreshUuids">刷新</button>
+            <button id="uuids-copy" class="plugin-tools-btn" @click="UuidsCopy">
+                {{ t('toolsConvert.uuid.copyButton') }}
+            </button>
+            <button id="uuids-refresh" class="plugin-tools-btn" @click="RefreshUuids">
+                {{ t('toolsConvert.uuid.refreshButton') }}
+            </button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch  } from 'vue'
+import { computed, ref, watch } from 'vue'
 import * as uuid from 'uuid'
+import { t } from '../../../common/i18n'
 
 const props = defineProps({
     // 编辑器宽度
@@ -106,7 +117,7 @@ const uuidNameSpaces = {
     OID: '6ba7b812-9dad-11d1-80b4-00c04fd430c8',
     X500: '6ba7b814-9dad-11d1-80b4-00c04fd430c9'
 }
-const uuidNameSpaceKeys = Object.keys(uuidNameSpaces)
+const uuidNameSpaceKeys = Object.keys(uuidNameSpaces) as (keyof typeof uuidNameSpaces)[]
 
 watch(
     () => uuidNumber.value,
@@ -154,7 +165,7 @@ const uuidNameStyle = computed(() => {
     }
 })
 
-function openUrl(link) {
+function openUrl(link: string) {
     window.open(link, '_blank', 'noopener, noreferrer')
 }
 
@@ -187,7 +198,7 @@ function selectVersion(version: string) {
     uuidList.value = genUUIDList(version, uuidNumber.value)
 }
 
-function selectNameSpace(namespace: string) {
+function selectNameSpace(namespace: keyof typeof uuidNameSpaces) {
     activeNameSpace.value = namespace
     uuidNameSpace.value = uuidNameSpaces[namespace]
     selectVersion(activeUUIDVersion.value)

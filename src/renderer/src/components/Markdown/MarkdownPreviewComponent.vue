@@ -1,4 +1,5 @@
 <template>
+    <!-- eslint-disable vue/no-v-html -- 预览 HTML 为本地渲染管线产物，已经 DOMPurify.sanitize 消毒（见 render 流程 sanitizedHtml），v-html 是 Markdown 富文本预览的唯一渲染方式（文件级 disable，格式化后行号稳定） -->
     <div
         id="markdown-preview-html"
         class="markdown-preview-html md-typeset"
@@ -8,19 +9,57 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import highlightjs from 'markdown-it-highlightjs'
-import { full as emoji } from 'markdown-it-emoji'
 import hljs from 'highlight.js'
+import DOMPurify from 'dompurify'
 import * as editor from './hemy-editor'
-import EventBus from '../../common/event_bus/event-bus'
-import MarkdownIt from 'markdown-it'
-import plantuml from 'markdown-it-plantuml'
+import EventBus from '../../common/event-bus/event-bus'
 import actionscript from 'highlight.js/lib/languages/actionscript'
+import { IPC } from '../../../../shared/ipc-channels'
+import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import {
+    ApplyRemoteImagePolicy,
+    getPreviewAllowRemoteImages,
+    HemyRenderPostLocal,
+    HemyRenderPreLocal,
+    IsLargePreviewDocument,
+    setPreviewActiveFilePath,
+    setPreviewAllowRemoteImages
+} from './preview-local-render'
+import { createPreviewMarkdownIt } from './preview-markdown-it'
+import { ComputeChaptersFingerprint } from './preview-chapters'
+import { getLocale, t } from '../../common/i18n'
+import { logger } from '../../common/logger'
+// AS-9：系统设置契约（远程图片隐私开关 allowRemoteImages 的真源类型）
+import type { SystemSetting } from '../../../../shared/types'
+// 全局类型 FileProperties 由 src/main/global-types.d.ts 的 declare global 提供（tsconfig.web 已 include）
+/* global FileProperties */
+
+// CMP-15：XSS 防护 —— markdown-it 以 html:true 渲染，产物经 v-html 注入前必须消毒。
+// 使用 DOMPurify 的 svg + mathMl 配置：
+// - svg/svgFilters：保留 mermaid 渲染的 SVG 图表（含 foreignObject/marker/style 等）；
+// - mathMl：保留 KaTeX 公式输出的 MathML（可访问性层）；
+// - highlight.js 高亮仅使用 class 属性，不受消毒影响。
+// FE-12：默认 URI 白名单不允许 file: 协议，本地相对路径图片（预览管线已转换为
+// file:// 绝对 URL）的 src 会被剥离导致图片不显示。此处基于 DOMPurify 默认白名单
+// 追加 file:（file: 仅作为 img 等资源 URL 使用，不承载脚本执行能力，见 sanitize 语义）。
+const DOMPURIFY_ALLOWED_URI_REGEXP =
+    /^(?:(?:(?:f|ht)tps?|file|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i
+const DOMPURIFY_CONFIG = {
+    USE_PROFILES: { html: true, svg: true, svgFilters: true, mathMl: true },
+    ALLOWED_URI_REGEXP: DOMPURIFY_ALLOWED_URI_REGEXP
+}
 
 const props = defineProps({
     editorContent: {
         type: String,
         default: ''
+    },
+    // P1/PF-2：预览是否可见（父组件仅在"预览分区"显示时为 true）。
+    // 不可见时跳过整条渲染管线（含 HemyRenderPreLocal / md.render / DOMPurify / v-html），
+    // 可见时由 active 的 watch 一次性补渲；默认 true 保持既有调用方行为不变。
+    active: {
+        type: Boolean,
+        default: true
     }
 })
 
@@ -29,75 +68,235 @@ const renderedMarkdownContent = ref('')
 let renderDebounceTimer: ReturnType<typeof setTimeout> | null = null
 const RENDER_DEBOUNCE_DELAY = 150
 
-const md = MarkdownIt({
-    html: true,
-    xhtmlOut: true,
-    linkify: true,
-    langPrefix: 'language-',
-    breaks: true,
-    typographer: false
-})
-    .use(highlightjs, {
-        inline: true,
-        hljs: hljs,
-        highlight: function (str: string, lang: string): string {
-            if (lang && hljs.getLanguage(lang)) {
-                try {
-                    return hljs.highlight(str, { language: lang }).value
-                } catch (__) {
-                    console.warn(`Highlight.js error for language '${lang}':`, __)
-                }
-            }
-            return ''
-        }
-    })
-    .use(plantuml)
-    .use(emoji)
+// P0/PF-1：预览 markdown-it 实例统一由 preview-markdown-it.ts 构建
+//（关闭 highlightAuto 全语言探测 + 重新赋回带 getLanguage 守卫的 highlight 回调）
+const md = createPreviewMarkdownIt()
+
+// P1/PF-2：最近一次成功写入 v-html 的**原始内容**（引用同一字符串，不产生副本）。
+// 内容未变化时整轮渲染直接跳过；隐藏期间的变化也以此为准判断是否需要补渲。
+let lastRenderedContent: string | null = null
+// P1/PF-2：最近一次大纲解析时的「标题候选行」指纹；无标题结构变化时跳过第二次全文解析
+let lastChaptersFingerprint: number | null = null
 
 onMounted(() => {
     hljs.registerLanguage('actionscript', actionscript)
 })
 
+/** 清除待执行的预览渲染定时器 */
+function clearRenderDebounceTimer(): void {
+    if (renderDebounceTimer) {
+        clearTimeout(renderDebounceTimer)
+        renderDebounceTimer = null
+    }
+}
+
+/**
+ * P1/PF-2：排期一次防抖渲染。
+ * 预览不可见（纯编辑模式）时**不启动定时器**——隐藏期间的任何内容变化都不产生渲染成本，
+ * 由 active 的 watch 在重新可见时一次性补渲。
+ */
+function schedulePreviewRender(): void {
+    if (!props.active) {
+        clearRenderDebounceTimer()
+        return
+    }
+    clearRenderDebounceTimer()
+    renderDebounceTimer = setTimeout(() => {
+        renderDebounceTimer = null
+        void updateMarkdownPreview()
+    }, RENDER_DEBOUNCE_DELAY)
+}
+
 // 监听 props.editorContent 的变化，并在变化时更新 Markdown（带防抖优化）
 watch(
     () => props.editorContent,
-    () => {
-        // 清除之前的定时器
-        if (renderDebounceTimer) {
-            clearTimeout(renderDebounceTimer)
+    (content) => {
+        // P1/PF-2：内容回退到「已渲染内容」（如撤销/快速改回）时取消待执行渲染，整轮跳过
+        if (content === lastRenderedContent) {
+            clearRenderDebounceTimer()
+            return
         }
-        // 设置新的防抖定时器
-        renderDebounceTimer = setTimeout(() => {
-            updateMarkdownPreRender()
-            renderDebounceTimer = null
-        }, RENDER_DEBOUNCE_DELAY)
+        schedulePreviewRender()
     },
     { immediate: true }
 )
 
+// P1/PF-2：预览分区显示状态切换——从纯编辑模式切回时立即补渲隐藏期间累积的最新内容
+watch(
+    () => props.active,
+    (isActive) => {
+        if (!isActive) {
+            // 预览被隐藏：取消尚未执行的渲染，隐藏期间变更不占用主线程
+            clearRenderDebounceTimer()
+            return
+        }
+        if (props.editorContent !== lastRenderedContent) {
+            // 补渲无需再等 150 ms 防抖（用户正在等待预览出现）
+            clearRenderDebounceTimer()
+            void updateMarkdownPreview()
+        }
+    }
+)
+
+/**
+ * 基于编辑器原始内容提取大纲（行号与编辑器一致，PF-14 目录定位依赖）。
+ * 供 MONACO_GET_CHAPTERS 主动请求使用；渲染轮次内由指纹判定后再调用。
+ */
 function UpdateMarkdownChapters() {
-    // isTocOpen = tocOpen
     editor.Render.ParserMarkdownChapters(md, props.editorContent)
+    // 主动解析后同步指纹基准，避免紧接着的渲染轮次重复解析
+    lastChaptersFingerprint = ComputeChaptersFingerprint(props.editorContent)
 }
 
-// 定义一个函数来更新 Markdown 的渲染，预处理
-async function updateMarkdownPreRender() {
-    window.electron.ipcRenderer.send('pre-render-monaco-editor-content', props.editorContent)
+// PF-02：渲染轮次序号——本地链路含 mermaid/PlantUML 异步渲染，快速连续输入时
+// 只允许最新一轮的结果写入 v-html，避免旧轮次结果晚到覆盖新内容。
+let renderSequence = 0
+
+// PF-9：超大文档降级提示（每个文档只提示一次到控制台；预览顶部常驻一条可见提示，
+// 说明公式/图表渲染已跳过，避免用户误以为渲染出错）
+let degradedWarned = false
+
+/** PF-9：超大文档降级提示条 HTML（中英双语，随当前语言切换） */
+function buildDegradedNoticeHtml(): string {
+    const message =
+        getLocale() === 'en-US'
+            ? 'Document is large: preview simplified (formula and diagram rendering skipped to keep editing responsive).'
+            : '文档过大，预览已简化（已跳过公式与图表渲染，以保证编辑器流畅可用）。'
+    return `<div class="preview-degraded-notice" role="status" style="margin:0 0 12px;padding:8px 12px;border:1px solid #d97706;border-radius:4px;background:#fffbeb;color:#92400e;font-size:13px;">${message}</div>`
 }
 
-// 定义一个函数来更新 Markdown 的渲染，渲染后处理
-function updateMarkdownPostRender(text: string) {
-    UpdateMarkdownChapters()
-    window.electron.ipcRenderer.send('post-render-monaco-editor-content', text)
+/**
+ * PF-02：预览本地单跳渲染链路（全部在渲染进程内完成，无 PRE_RENDER/POST_RENDER IPC 往返）
+ * 1. HemyRenderPreLocal：admonition / tabbed / KaTeX / 图片与文件 URL 变换（原主进程 PRE 变换）；
+ * 2. PreMarkdownRender：PlantUML 本地渲染 + mermaid 渲染（保持原有渲染层逻辑）；
+ * 3. md.render：markdown-it 全量解析 + highlight.js；
+ * 4. HemyRenderPostLocal + PostMarkdownRender：渲染层后处理（原主进程 POST 变换，当前为恒等）；
+ * 5. DOMPurify 消毒后写入 v-html。
+ *
+ * 前置优化（PF-2）：
+ * - 预览不可见 / 内容与已渲染内容一致 → 直接返回，不执行任何渲染步骤；
+ * - 大纲解析改为「标题候选行指纹变化时才做第二次全文解析」，正常正文编辑不再重复解析；
+ * - 异步等待后再次校验内容版本，内容已变化则丢弃本轮结果（连 md.render 都不执行）。
+ * PF-9：超大文档（>2 MiB / >5 万行）降级为「跳过 KaTeX 与 mermaid/PlantUML 渲染」，
+ * 并在预览顶部显示提示条；正文/代码高亮仍正常渲染，编辑器保持可用。
+ */
+async function updateMarkdownPreview() {
+    if (!props.active) {
+        return
+    }
+    const sourceContent = props.editorContent
+    if (sourceContent === lastRenderedContent) {
+        return
+    }
+    const sequence = ++renderSequence
+    try {
+        // PF-9：先判定是否超大文档（单次线性扫描），再决定是否降级渲染
+        const degraded = IsLargePreviewDocument(sourceContent)
+        if (degraded && !degradedWarned) {
+            degradedWarned = true
+            logger.warn(
+                '[MarkdownPreview] 文档超过降级阈值，已跳过 KaTeX 与 mermaid/PlantUML 渲染（PF-9）',
+                `${sourceContent.length} chars`
+            )
+        } else if (!degraded) {
+            degradedWarned = false
+        }
+        const preRenderText = HemyRenderPreLocal(sourceContent, { skipKatex: degraded })
+        const renderedText = await editor.Render.PreMarkdownRender(preRenderText, {
+            skipDiagrams: degraded
+        })
+        // 渲染期间内容已变化（或有更新轮次）：丢弃本轮结果，避免旧结果覆盖新内容/白耗 CPU
+        if (sequence !== renderSequence || props.editorContent !== sourceContent) {
+            return
+        }
+        // P1/PF-2：大纲基于编辑器原始内容（行号准确），仅当标题候选行指纹变化时才全文解析
+        //（复用渲染 tokens 会因 HemyRenderPreLocal 合并换行导致行号漂移，见 preview-chapters.ts）
+        const chaptersFingerprint = ComputeChaptersFingerprint(sourceContent)
+        if (chaptersFingerprint !== lastChaptersFingerprint) {
+            UpdateMarkdownChapters()
+            lastChaptersFingerprint = chaptersFingerprint
+        }
+        const renderedHtml = md.render(renderedText)
+        const postRenderText = editor.Render.PostMarkdownRender(HemyRenderPostLocal(renderedHtml))
+        if (sequence !== renderSequence || props.editorContent !== sourceContent) {
+            return
+        }
+        // CMP-15：渲染结果先经 DOMPurify 消毒（剥离 script/事件处理器/javascript: 等），
+        // 再写入 v-html，阻断恶意 Markdown/HTML 注入的 XSS 链。
+        const sanitizedHtml = DOMPurify.sanitize(postRenderText, DOMPURIFY_CONFIG)
+        // AS-9（P3 隐私）：远程图片策略在消毒之后执行——此时属性已由浏览器解析器归一化，
+        // 拦截结果稳定；被拦截的远程 URL 不写入任何可被请求的属性（src/srcset/data-*），
+        // 因此默认（allowRemoteImages=false）不会发起任何远程请求。
+        const policyHtml = ApplyRemoteImagePolicy(sanitizedHtml, {
+            allowRemoteImages: getPreviewAllowRemoteImages(),
+            blockedLabel: t('dialogRenderer.systemSetting.remoteImageBlocked')
+        })
+        // PF-9：降级时在预览顶部插入一次可见提示条（随渲染结果一起消毒，无注入面）
+        renderedMarkdownContent.value = degraded
+            ? buildDegradedNoticeHtml() + policyHtml
+            : policyHtml
+        // 记录本轮已渲染的原始内容（仅在同一引用上赋值，不复制全文）
+        lastRenderedContent = sourceContent
+    } catch (error) {
+        // 单轮渲染异常时保留上一轮预览内容，避免整块预览白屏
+        logger.warn('[MarkdownPreview] 本地渲染失败，已保留上一轮预览:', error)
+    }
 }
 
-const handlePreRenderResult = async (_: any, context: string) => {
-    const result = await editor.Render.PreMarkdownRender(context)
-    updateMarkdownPostRender(md.render(result))
+/* ==================== AS-9（P3）：远程图片隐私开关同步 ====================
+ * 数据流：SystemSettingDialog → config:write('system') → 主进程 config-manager 持久化
+ * 并广播 IPC.EDITOR.SYSTEM_SETTING_UPDATE（含 allowRemoteImages）→ 本组件更新模块级策略
+ * 并强制重渲一轮（内容未变时 updateMarkdownPreview 会命中 lastRenderedContent 跳过，
+ * 所以必须先清空该基准）。
+ * 初始值：挂载后经 config:read('system') 读取；读取失败/环境不完整（如单测未 mock
+ * window.api）时保持安全默认——不加载远程图片。
+ */
+
+/** 应用一次最新的 allowRemoteImages 设置；返回策略是否发生变化 */
+function refreshRemoteImagePolicy(allowRemoteImages: unknown): boolean {
+    if (typeof allowRemoteImages !== 'boolean') {
+        return false
+    }
+    const changed = allowRemoteImages !== getPreviewAllowRemoteImages()
+    setPreviewAllowRemoteImages(allowRemoteImages)
+    if (!changed) {
+        return false
+    }
+    // 开关变化：内容本身没变，需显式清空「已渲染内容」基准并立即重渲，让预览按新策略出图
+    lastRenderedContent = null
+    clearRenderDebounceTimer()
+    void updateMarkdownPreview()
+    return true
 }
 
-const handlePostRenderResult = async (_: any, context: string) => {
-    renderedMarkdownContent.value = editor.Render.PostMarkdownRender(context)
+/** AS-9：读取系统设置中的远程图片策略（主进程 systemSetting 为唯一真源） */
+async function loadRemoteImagePolicy(): Promise<void> {
+    try {
+        const stored =
+            await window.api.config.read<Pick<SystemSetting, 'allowRemoteImages'>>('system')
+        if (stored) {
+            refreshRemoteImagePolicy(stored.allowRemoteImages)
+        }
+    } catch (error) {
+        logger.warn(
+            '[MarkdownPreview] 读取远程图片隐私设置失败，按默认（不加载远程图片）处理（AS-9）',
+            error
+        )
+    }
+}
+
+/** AS-9：系统设置变更广播（主进程 config-manager 写入 system 配置后发送） */
+const handleSystemSettingUpdate = (
+    _event: unknown,
+    setting?: Pick<SystemSetting, 'allowRemoteImages'>
+): void => {
+    refreshRemoteImagePolicy(setting?.allowRemoteImages)
+}
+
+// PF-02：当前活动文件路径经既有 USER_SELECT_FILE 事件下发，
+// 供本地 URL 绝对化转换（相对图片/文件链接）使用，避免为此新增 IPC 往返。
+const handleActiveFileChange = (_event: unknown, filePath: string) => {
+    setPreviewActiveFilePath(typeof filePath === 'string' && filePath.length > 0 ? filePath : null)
 }
 
 function parserFileName(filePath: string): string {
@@ -121,34 +320,37 @@ function handlePreviewClick(event: MouseEvent) {
             type: 'file',
             content: ''
         }
-        window.electron.ipcRenderer.send('baize:notes:open-select-file', fileInfo)
+        window.electron.ipcRenderer.send(IPC.FILE.OPEN_SELECT_FILE, fileInfo)
     } else if (href.startsWith('http')) {
         window.open(href, '_blank', 'noopener, noreferrer')
     }
 }
 
 onMounted(() => {
-    EventBus.$on('baize:notes:monaco-editor:get-chapters', UpdateMarkdownChapters)
-    window.electron.ipcRenderer.on('pre-render-monaco-editor-content-result', handlePreRenderResult)
-    window.electron.ipcRenderer.on('post-render-monaco-editor-content-result', handlePostRenderResult)
+    EventBus.$on(EVENT_BUS.MONACO_GET_CHAPTERS, UpdateMarkdownChapters)
+    // PF-02：订阅既有活动文件路径事件（主进程打开/新建文件时下发），供本地 URL 转换使用
+    window.electron.ipcRenderer.on(IPC.FILE.USER_SELECT_FILE, handleActiveFileChange)
+    // AS-9：远程图片隐私开关——系统设置变更广播 + 初始值读取（默认不加载远程图片）
+    window.electron.ipcRenderer.on(IPC.EDITOR.SYSTEM_SETTING_UPDATE, handleSystemSettingUpdate)
+    void loadRemoteImagePolicy()
 
     const container = document.getElementById('markdown-preview-html')
     container?.addEventListener('click', handlePreviewClick)
 })
 
 onBeforeUnmount(() => {
-    EventBus.$off('baize:notes:monaco-editor:get-chapters', UpdateMarkdownChapters)
-    window.electron.ipcRenderer.removeListener('pre-render-monaco-editor-content-result', handlePreRenderResult)
-    window.electron.ipcRenderer.removeListener('post-render-monaco-editor-content-result', handlePostRenderResult)
+    EventBus.$off(EVENT_BUS.MONACO_GET_CHAPTERS, UpdateMarkdownChapters)
+    window.electron.ipcRenderer.removeListener(IPC.FILE.USER_SELECT_FILE, handleActiveFileChange)
+    window.electron.ipcRenderer.removeListener(
+        IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+        handleSystemSettingUpdate
+    )
 
     const container = document.getElementById('markdown-preview-html')
     container?.removeEventListener('click', handlePreviewClick)
 
     // 清理防抖定时器
-    if (renderDebounceTimer) {
-        clearTimeout(renderDebounceTimer)
-        renderDebounceTimer = null
-    }
+    clearRenderDebounceTimer()
 })
 </script>
 

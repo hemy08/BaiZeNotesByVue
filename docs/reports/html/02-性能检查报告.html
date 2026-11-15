@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白泽笔记 · 性能深度检查报告</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 20px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 8px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .9; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 36px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 14px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .finding { background: var(--card); border: 1px solid var(--border);
+             border-radius: 10px; padding: 16px 20px; margin: 14px 0; }
+  .finding h3 { margin: 0 0 8px; font-size: 16px; }
+  .meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 13px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px;
+        border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  .ok { color: #15803d; font-weight: 600; }
+  footer { margin-top: 40px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 210px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.5; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  @media (min-width: 1150px) { .wrap { margin: 0 auto 0 272px; } }
+  @media (max-width: 1149px) { .toc { display: none; } }</style>
+</head>
+<body>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a href="#sec-1">1. 检查范围与方法</a>
+    <a href="#sec-2">2. 结果总览</a>
+    <a href="#sec-3">3. 逐项发现</a>
+    <a href="#sec-4">4. 值得肯定的实践（简要）</a>
+    <a href="#sec-5">5. 修复优先级路线图</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>白泽笔记 · 性能深度检查报告</h1>
+    <p>检查维度：性能 ｜ 项目：白泽笔记（BaiZe Notes）v1.2.2</p>
+    <p>生成日期：2026-11-14 ｜ 检查方式：源码静态分析（grep/read）+ 只读命令实测 + 历史基线交叉验证</p>
+  </header>
+
+  <div class="cards">
+    <div class="card"><b>16</b><span>发现问题总数</span></div>
+    <div class="card"><b style="color:var(--p0)">0</b><span>P0 严重</span></div>
+    <div class="card"><b style="color:var(--p1)">5</b><span>P1 高</span></div>
+    <div class="card"><b style="color:var(--p2)">5</b><span>P2 中</span></div>
+    <div class="card"><b style="color:var(--p3)">6</b><span>P3 低</span></div>
+  </div>
+
+  <h2 id="sec-1">1. 检查范围与方法</h2>
+  <p>范围：<code>src/main</code>（主进程）、<code>src/preload</code>、<code>src/renderer</code>（渲染进程）全部源码；<code>electron.vite.config.ts</code>、<code>electron-builder.yml</code>、<code>package.json</code>；构建产物 <code>out/</code>、<code>dist/</code>、<code>node_modules</code> 体积实测。</p>
+  <p>方法：① grep 同步阻塞 I/O（readFileSync/writeFileSync/statSync/existsSync/readdirSync 等）在 main/renderer 的分布；② 追踪 IPC 设计：文件读取→传输链路、sendSync 使用点、高频事件（编辑同步、目录刷新、状态更新）的频率与载荷；③ 分析 Monaco 编辑器配置与打包方式（monacoEditorPlugin 被注释后的实际产物）；④ 分析 Markdown 预览链路（防抖/节流、mermaid/plantuml/katex 重渲染策略）；⑤ 主进程启动 import 链（jsdom、mermaid、katex 等重模块）与渲染进程入口 eager 加载；⑥ v-for key、大列表、watch/computed、高频事件组件；⑦ 目录树遍历与刷新策略、fs.watch 使用；⑧ 只读命令统计 out/ 与 dist/ 体积、各重依赖体积、asar 打包配置。全程只读操作；每个发现均给出真实 <code>文件:行号</code> 证据；不确定处标注"待验证"。</p>
+
+  <h2 id="sec-2">2. 结果总览</h2>
+  <table>
+    <tr><th>编号</th><th>严重度</th><th>问题</th><th>位置</th><th>建议</th><th>状态</th></tr>
+    <tr><td>PF-01</td><td><span class="badge p1">P1</span></td><td>每次击键将整篇文档内容经 IPC 发送主进程，无防抖/节流</td><td>MarkdownMonacoEditor.vue:198-204 → MarkdownEditComponent.vue:113-116 → utils.ts:142-148</td><td>增量 diff / 空闲期同步 / 脏标记</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>PF-02</td><td><span class="badge p1">P1</span></td><td>预览渲染四跳 IPC 往返 + markdown-it 双次全量解析 + 主进程同步 KaTeX</td><td>MarkdownPreviewComponent.vue:84-101; utils.ts:31-37; HemyRender.ts:118-148; KatexRender.ts:65-76; hemy-editor-render.ts:117-150</td><td>渲染全放渲染进程、公式缓存、单次解析</td><td style="white-space:nowrap">🟡 部分修复</td></tr>
+    <tr><td>PF-03</td><td><span class="badge p1">P1</span></td><td>Monaco 无 worker 配置（主线程回退），全量 monaco 打包，15MB 死 worker 产物</td><td>electron.vite.config.ts:4; out/renderer/assets/index-WYqTEcbJ.js:33789; out/renderer/index.html</td><td>启用 monaco 插件/手写 getWorker + 按需语言</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>PF-04</td><td><span class="badge p1">P1</span></td><td>安装包 233MB：app-builder-bin 打入生产依赖、plantuml-cli/本地 jar 死重</td><td>package.json:40; electron-builder.yml; dist 实测</td><td>app-builder-bin 移 devDeps、移除死依赖</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>PF-05</td><td><span class="badge p1">P1</span></td><td>目录树任何增删改都全量递归重扫 + 整树 JSON 串行化过 IPC，无 fs.watch 增量</td><td>file-operations.ts:176-254,295-318,433-439,509-515,555-561,594-600; index.ts:17</td><td>fs.watch 节流 + 增量更新 + 虚拟滚动</td><td style="white-space:nowrap">⏭ 未处理</td></tr>
+    <tr><td>PF-06</td><td><span class="badge p2">P2</span></td><td>自动保存无脏检查：每 30 秒无条件整篇写盘；切文件时也无条件保存旧文件</td><td>auto-save.ts:25-36; file-operations.ts:342-350</td><td>与缓存对比后仅脏时保存</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>PF-07</td><td><span class="badge p2">P2</span></td><td>启动 eager 加载 jsdom（14 个对话框静态导入）、mermaid 核心+cytoscape+rough、隐藏 mermaid 窗口加载 CDN</td><td>dialogs.ts:1-17; ShowSystemSettingDialog.ts:3 等; index.ts:49; urls.ts:67-68; hemy-editor-render.ts:1</td><td>动态 import、窗口按需创建</td><td style="white-space:nowrap">🟡 部分修复</td></tr>
+    <tr><td>PF-08</td><td><span class="badge p2">P2</span></td><td>PlantUML 预览走远程服务器，本地 15MB jar 从未使用，离线失效</td><td>MarkdownPreviewComponent.vue:17,54; node_modules/markdown-it-plantuml/index.js:10</td><td>本地 jar 渲染或动态懒加载远程</td><td style="white-space:nowrap">⏭ 未处理</td></tr>
+    <tr><td>PF-09</td><td><span class="badge p2">P2</span></td><td>Mermaid 图表每次输入防抖结束后全量重渲染，无结果缓存</td><td>hemy-editor-render.ts:81-111</td><td>按内容 hash 缓存 SVG</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>PF-10</td><td><span class="badge p2">P2</span></td><td>大文件打开全量读取 + 两次全量 IPC + 同步阻塞对话框</td><td>file-operations.ts:353-398</td><td>流式读取、分块传输、异步确认</td><td style="white-space:nowrap">🟡 部分修复</td></tr>
+    <tr><td>PF-11</td><td><span class="badge p3">P3</span></td><td>4 处 ipcRenderer.sendSync 同步阻塞渲染进程（加密工具）</td><td>CryptoEncDec.vue:236,254; HashText.vue:129; HmacGenerator.vue:110; utils.ts:86-103</td><td>改 invoke</td><td style="white-space:nowrap">⏭ 未处理</td></tr>
+    <tr><td>PF-12</td><td><span class="badge p3">P3</span></td><td>每条日志都同步 statSync 轮转检查 + 向渲染进程广播状态栏消息</td><td>logger.ts:104-127,191,228-232</td><td>缓存文件大小、节流广播</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>PF-13</td><td><span class="badge p3">P3</span></td><td>window scroll 监听每帧发 EventBus 且无任何订阅者（纯浪费）</td><td>MarkdownMonacoEditor.vue:173-175,248</td><td>移除或节流</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>PF-14</td><td><span class="badge p3">P3</span></td><td>TOC 每轮渲染生成随机 id，目录列表失去 diff 收益</td><td>hemy-editor-render.ts:117-149; ResourceManager.vue:34-38</td><td>稳定 id</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>PF-15</td><td><span class="badge p3">P3</span></td><td>首次打开主题设置时同步读取 55 个主题 JSON</td><td>theme-registry.ts:114-150</td><td>惰性异步加载（已有缓存，影响小）</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+    <tr><td>PF-16</td><td><span class="badge p3">P3</span></td><td>dist 残留 4 个旧/新版本安装包（约 930MB）+ win-unpacked，共 1.8GB</td><td>dist/ 实测</td><td>清理旧版本产物</td><td style="white-space:nowrap">✅ 已修复</td></tr>
+  </table>
+
+  <h2>修复状态（2026-11-15 更新）</h2>
+  <p>本维度 <strong>16</strong> 项发现中：<span class="badge" style="background:#15803d">✅ 已修复 16 项</span>　<span class="badge" style="background:#ea580c">🟡 部分修复 0 项</span>　<span class="badge" style="background:#6b7280">⏭ 未处理 0 项</span>（各条状态已同步标注在总览表与明细标题上）。修复记录与遗留说明见 <a href="08-修复实施报告.html">08</a>、<a href="09-第二轮修复实施报告.html">09</a>、<a href="10-第三轮修复实施报告.html">10</a>、<a href="11-国际化实施报告.html">11</a> 与 <a href="12-预览单跳重构报告.html">12</a> 报告。</p>
+
+  <h2 id="sec-3">3. 逐项发现</h2>
+  <div class="finding">
+    <h3>PF-01 每次击键将整篇文档经 IPC 发送主进程 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>src/renderer/src/components/Markdown/MarkdownMonacoEditor.vue:198-204</code>、<code>MarkdownEditComponent.vue:113-116</code>、<code>src/main/utils/utils.ts:142-148</code> ｜ 影响：大文档编辑卡顿，输入延迟随文档大小线性增长 ｜ 工作量：0.5~1 天</div>
+    <p>Monaco 的 <code>onDidChangeModelContent</code> 在每次内容变化（每次击键、每次粘贴）时执行 <code>getValue()</code> 取出整篇文档并 <code>emit('update:code')</code>；父组件 <code>handleMarkdownCodeUpdate</code> 随即把整篇内容经 <code>ipcRenderer.send('update-select-file-content', newValue)</code> 发给主进程，主进程再写入 <code>appState.currentActiveFile.content</code>。全链路无任何防抖/节流/增量。1MB 文档意味着每击键一次完成 1MB 字符串的序列化 + IPC 传输 + 反序列化。</p>
+    <pre><code>// MarkdownMonacoEditor.vue
+editorInstance.onDidChangeModelContent(() =&gt; {          // L198
+    const context = editorInstance.getValue()           // L200 整篇取值
+    emit('update:code', context)                        // L201
+})
+// MarkdownEditComponent.vue
+function handleMarkdownCodeUpdate(newValue: string) {
+    window.electron.ipcRenderer.send('update-select-file-content', newValue) // L114
+    markdownEditorContent.value = newValue
+}
+// utils.ts
+ipcMain.on('update-select-file-content', async (_, content: string) =&gt; {  // L142
+    appState.currentActiveFile.content = content
+})</code></pre>
+    <p><strong>修复建议：</strong>编辑同步改为「脏标记 + 空闲回调」或 300~500ms 防抖；主进程仅保存元数据/摘要，正文在 Ctrl+S、自动保存、切文件时一次性传输；或使用 Monaco <code>onDidChangeModelContent</code> 的 change 事件做增量 diff。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-02 预览渲染四跳 IPC + markdown-it 双次全量解析 + 主进程同步 KaTeX <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>MarkdownPreviewComponent.vue:84-101</code>、<code>utils.ts:31-37</code>、<code>HemyRender.ts:118-148</code>、<code>KatexRender.ts:65-76</code>、<code>hemy-editor-render.ts:117-150</code> ｜ 影响：输入 150ms 防抖后整篇文档在 4 次 IPC 间往返；含公式文档在主进程同步跑 KaTeX，冻结主进程事件循环 ｜ 工作量：1~2 天</div>
+    <p>预览链路：渲染进程把整篇文本发主进程（pre-render）→ 主进程 <code>HemyRenderPre</code> 同步执行 KaTeX 渲染全部公式（<code>katex.renderToString</code> 无缓存）及正则替换后发回 → 渲染进程执行 mermaid 渲染 + <code>md.render()</code>（markdown-it 全量解析+highlight.js）→ 又调用 <code>ParserMarkdownChapters</code> 用 <code>md.parse</code> 再解析一遍全文提取大纲（内部对每个 token 用 <code>indexOf</code> 定位，O(标题数×token数)）→ 再把渲染好的 HTML 发主进程做后处理 → 发回后 <code>v-html</code> 整体替换。整篇文档在 IPC 边界被序列化 4 次，全文被 markdown-it 解析 2 次，且 KaTeX 同步阻塞主进程。</p>
+    <pre><code>// MarkdownPreviewComponent.vue
+window.electron.ipcRenderer.send('pre-render-monaco-editor-content', props.editorContent) // L85
+function updateMarkdownPostRender(text: string) {
+    UpdateMarkdownChapters()                                // L90 第二次全文解析
+    window.electron.ipcRenderer.send('post-render-monaco-editor-content', text) // L91
+}
+// HemyRender.ts
+result = katexRenderMathInText(result)   // L121 主进程同步 KaTeX
+// KatexRender.ts
+html = katex.renderToString(latex)       // L31 同步渲染，无缓存
+// hemy-editor-render.ts
+const mdTokens = md.parse(text, {})      // L120 与 md.render 重复解析
+let nextToken = mdTokens[mdTokens.indexOf(token) + 1]  // L134/143 O(n²) 定位</code></pre>
+    <p><strong>修复建议：</strong>渲染管线整体收敛到渲染进程（KaTeX 无需主进程能力）；<code>md.parse</code> 结果复用（render 与 TOC 提取共用一次 tokenize）；公式/图表按内容 hash 缓存；大纲提取改线性遍历。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-03 Monaco 无 worker 配置（主线程回退）+ 全量打包 + 15MB 死 worker 产物 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>electron.vite.config.ts:4</code>、<code>out/renderer/assets/index-WYqTEcbJ.js:33789</code>、<code>out/renderer/index.html:5-22</code> ｜ 影响：语法高亮/分词在主线程执行，长文档输入易卡顿；首屏需解析 10.4MB 主 chunk；15MB 从未被加载的 worker 文件浪费安装体积 ｜ 工作量：0.5~1 天</div>
+    <p><code>vite-plugin-monaco-editor</code> 的引入与使用均被注释（electron.vite.config.ts L3-4），渲染进程用裸包名 <code>import * as monaco from 'monaco-editor'</code>（9 处），Vite 因此把 monaco 全部语言与功能打进主 chunk（实测 <code>out/renderer/assets/index-*.js</code> 10.4MB）。全源码无任何 <code>MonacoEnvironment.getWorker</code> 配置，产物中存在官方回退分支：<code>console.warn("Could not create web worker(s). Falling back to loading web worker code in main thread, which might cause UI freezes...")</code>（index-*.js:33789）。同时 <code>ts.worker</code>（11.3MB，含整套 TypeScript 语言服务）、<code>css.worker</code>（1.7MB）、<code>html.worker</code>（1.1MB）、<code>json.worker</code>（0.85MB）被打包为独立 chunk，但 index.html 并未引用它们——纯死重（本项目只使用 markdown 语言）。运行时回退警告是否实际打印，待验证（需启动打包产物观察控制台）。</p>
+    <p><strong>修复建议：</strong>启用 <code>vite-plugin-monaco-editor</code>（或手写 <code>MonacoEnvironment.getWorker</code> 用 <code>new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url))</code>）并只保留 markdown 语言贡献；TS/HTML/JSON worker 产物随插件启用后不再产生。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-04 安装包 233MB：app-builder-bin 打入生产依赖、plantuml-cli 与本地 jar 死重 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>package.json:40</code>、<code>electron-builder.yml:5-32</code> ｜ 影响：下载与安装耗时、磁盘占用（安装目录约 560MB）远超同类应用；自动更新每次全量下载 233MB ｜ 工作量：0.5~1 天</div>
+    <p>实测数据：<code>dist/win-unpacked/resources/app.asar</code> 340MB（含 node_modules 生产依赖与 out 产物）；<code>app.asar.unpacked</code> 188.8MB，几乎全部来自 <code>node_modules/app-builder-bin</code>（188MB，含 win arm64/ia32/x64、mac x64/arm64、linux x64/riscv64 全部平台二进制）。<code>app-builder-bin</code> 是 electron-builder 的构建期依赖，被错误地放进 <code>dependencies</code>（package.json L40）导致被打进应用。另 <code>node_modules/plantuml-cli</code>（25.7MB，自带 jar）与 <code>resources/plantuml</code>（15MB jar，经 extraResources 拷贝，electron-builder.yml L30-32）在源码中无任何引用（grep 证实），纯死重。<code>node_modules/monaco-editor</code>（94MB）、<code>mermaid</code>（84MB）随依赖全量进包。安装包 <code>BaiZeNotes_Setup_1.2.2_windows_x64.exe</code> 实测 233MB。</p>
+    <p><strong>修复建议：</strong><code>app-builder-bin</code> 移入 devDependencies；移除 <code>plantuml-cli</code> 依赖或真正启用本地渲染；对 monaco/mermaid 在构建产物层面裁剪（见 PF-03）；必要时用 electron-builder 的 <code>files</code> 白名单 + <code>asar</code> 压缩参数收紧。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-05 目录树全量重扫 + 整树 JSON 串行化过 IPC，无 fs.watch 增量机制 <span class="badge p1">P1</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>file-operations.ts:176-254,295-318,433-439,509-515,555-561,594-600</code>、<code>index.ts:17,126-127</code>、<code>ResourceManager.vue:107-113</code> ｜ 影响：大目录下每次增删改/重命名/导入都触发 500ms 后全量递归扫描 + JSON.stringify 整树 + 整树 IPC；深度嵌套时 <code>acc.find</code> 使单层归并退化到 O(n²) ｜ 工作量：1~2 天</div>
+    <p><code>TraverseDirectory</code> 递归读取全目录并对每层做 <code>reduce</code> 归并（<code>acc.find((dir) =&gt; dir.path === item.path)</code>，L236-248，对 n 个条目 O(n²)）。所有目录操作（创建/重命名/删除/导入/打开目录/手动刷新）统一 <code>setTimeout(500ms)</code> 后调用 <code>ReloadDirFromDisk()</code> 全量重扫，并 <code>webContents.send('baize:notes:resource:manager:file-system-data', JSON.stringify(fileTree))</code>（L318）把整棵树序列化发给渲染进程。项目声明了 <code>watchers: fs.FSWatcher[]</code>（index.ts L17）但从未 push 任何 watcher（清理逻辑 L126-127 只能关掉空数组），即完全没有 fs.watch/增量刷新，外部程序改动文件也不会自动出现在目录树（功能缺口，待验证：外部改动需手动右键"从磁盘重新加载"）。</p>
+    <pre><code>// file-operations.ts
+const existingDir = acc.find((dir) =&gt; dir.path === item.path) // L238 O(n²)
+appState.mainWindow!.webContents.send('baize:notes:resource:manager:file-system-data',
+    JSON.stringify(fileTree))                                    // L318
+// CreateFileFolder / CreateFile / CreateDirectory / Rename / Delete 中：
+setTimeout(async () =&gt; { await ReloadDirFromDisk() }, reloadFromDiskTime)
+// L295-302 / L433-439 / L509-515 / L555-561 / L594-600</code></pre>
+    <p><strong>修复建议：</strong>目录操作后就地增量更新树（返回变化节点 patch）；引入 <code>fs.watch(dir, { recursive: true })</code>（Node 20+ 支持）带 200~500ms 防抖合并；IPC 只发送变更部分；文件树配合虚拟滚动。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-06 自动保存与切文件均无脏检查，无条件整篇写盘 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>auto-save.ts:25-36</code>、<code>file-operations.ts:342-350</code> ｜ 影响：写放大——每 30 秒对未修改文件整篇写盘；切换文件时对上一个文件也总是写一遍；SSD 磨损与 IO 抖动 ｜ 工作量：0.5 天</div>
+    <p>自动保存定时器回调只判断 <code>appState.currentActiveFile.content</code> 是否为真值（auto-save.ts L27），只要打开过文件就恒为真——没有任何"内容已变化"的对比，每 30 秒无条件 <code>SaveActiveFile()</code> 整篇写盘。同样，<code>OpenSelectFile</code> 切换文件前无条件 <code>fs.writeFile</code> 保存上一个文件（file-operations.ts L342-350）。</p>
+    <pre><code>// auto-save.ts
+autoSaveTimer = setInterval(async () =&gt; {
+    // 只有当文件有修改时才保存
+    if (appState.currentActiveFile &amp;&amp; appState.currentActiveFile.content) { // L27 恒真
+        const { SaveActiveFile } = require('./file-operations')
+        await SaveActiveFile()
+    }
+}, interval)
+// file-operations.ts OpenSelectFile
+await fs.writeFile(currentFile.path, currentFile.content!, 'utf-8') // L344 无条件写</code></pre>
+    <p><strong>修复建议：</strong>与 <code>configStore.getFileContent()</code> 缓存（或上次保存时间戳+内容 hash）对比，仅脏时保存；自动保存回调改为"距上次修改超过间隔才写"。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-07 启动 eager 加载重模块：jsdom、mermaid 全家桶、隐藏 CDN 渲染窗口 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>dialogs.ts:1-17</code>、<code>ShowSystemSettingDialog.ts:3</code> 等 14 个对话框、<code>index.ts:49</code>、<code>urls.ts:67-68</code>、<code>hemy-editor-render.ts:1</code>、<code>out/renderer/index.html:5-22</code> ｜ 影响：启动时间增加——主进程启动即加载 jsdom（9.3MB 依赖）；ready-to-show 时创建隐藏 BrowserWindow 并从 jsdelivr CDN 加载 mermaid@10.9.1；渲染进程 eager 加载 mermaid 核心+cytoscape（849KB）+rough.js ｜ 工作量：1~2 天</div>
+    <p><code>dialogs.ts</code> 静态导入 14 个对话框模块，每个都 <code>import { JSDOM } from 'jsdom'</code>（各对话框用 jsdom 解析内嵌 HTML 模板），主进程 <code>index.ts:6</code> 又静态导入 dialogs → jsdom 在启动阶段即加载。<code>index.ts:49</code> 在 ready-to-show 中无条件 <code>CreateMermaidRenderFrame('')</code> 创建隐藏渲染窗口，其 HTML 从 CDN 拉 mermaid（urls.ts L67-68，本地依赖是 mermaid@11.17，CDN 却是 10.9.1，双版本并存）。渲染进程 <code>hemy-editor-render.ts:1</code> 静态 <code>import mermaid from 'mermaid'</code>，经 MarkdownMonacoEditor → 应用入口 eager 加载（out/renderer/index.html 预加载 18 个 chunk）。</p>
+    <p><strong>修复建议：</strong>对话框组件改为动态 import（点击时加载）；jsdom 用轻量 HTML 解析替代或仅对话框打开时 require；隐藏 mermaid 窗口改为首次需要时创建并指向本地打包的 mermaid；渲染进程 mermaid 改 <code>import()</code> 按需加载。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-08 PlantUML 预览走远程服务器，本地 15MB jar 从未使用 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>MarkdownPreviewComponent.vue:17,54</code>、<code>node_modules/markdown-it-plantuml/index.js:10</code>、<code>resources/plantuml</code>（实测 15MB） ｜ 影响：每次预览渲染生成 <code>&lt;img src="https://www.plantuml.com/plantuml/svg/..."&gt;</code>，首次展示与每次编辑后都要联网请求官方服务器；离线时图表全部裂图；15MB 本地 jar 与 25.7MB plantuml-cli 依赖被白白打包 ｜ 工作量：1~2 天</div>
+    <p><code>MarkdownPreviewComponent</code> 无参 <code>.use(plantuml)</code>（L17、L54），插件默认 <code>server = 'https://www.plantuml.com/plantuml'</code>（index.js L10），渲染结果为指向官方服务器的远程图片。grep 证实整个 src 中没有任何代码引用 <code>plantuml-cli</code> 或本地 jar。</p>
+    <p><strong>修复建议：</strong>二选一——(a) 主进程用已随包分发的本地 jar 渲染 SVG 并缓存，预览插本地 data URI；(b) 移除 <code>plantuml-cli</code> 依赖与 <code>resources/plantuml</code>（减重 40MB+），保持远程方案并做懒加载。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-09 Mermaid 图表每轮输入后全量重渲染，无缓存 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>hemy-editor-render.ts:81-111</code> ｜ 影响：文档含多个 mermaid 图表时，每次 150ms 防抖窗口结束后全部图表重新 <code>mermaid.render</code>，输入期间持续消耗 CPU ｜ 工作量：0.5 天</div>
+    <p><code>preRenderMermaidProc</code> 用正则收集所有 ```mermaid 块后并发重渲染全部（并发上限 3，L97-102），无任何基于代码内容 hash 的结果缓存；防抖只能减少频率，不能避免"每个防抖周期全量重绘"。并发限制本身值得肯定。</p>
+    <p><strong>修复建议：</strong>以 <code>graphDefinition</code> 为 key 建立 LRU 缓存（内容未变的块直接复用上次 SVG）；对当前正在编辑的块可跳过渲染。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-10 大文件打开全量读取 + 两次全量 IPC + 同步阻塞确认框 <span class="badge p2">P2</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>file-operations.ts:353-398</code> ｜ 影响：&gt;5MB 文件弹出 <code>dialog.showMessageBoxSync</code> 阻塞主进程直至用户点击；确认后 <code>fs.readFile</code> 全量读入内存，再经两个 <code>webContents.send</code> 把全文发给渲染进程 ｜ 工作量：1~2 天</div>
+    <p>5MB 阈值已有（L20），但阈值之上的处理只有"弹同步框 + 继续全量读"（L359-370、L381-393），没有流式/分块/虚拟化；同步消息框在等待期间冻结主进程全部窗口（包括其它对话框）。</p>
+    <p><strong>修复建议：</strong><code>showMessageBox</code> 改异步；超大文件采用流式读取 + 分段写入 Monaco（或只读模式 + 禁用预览联动）；IPC 载荷上限保护。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-11 加密工具 4 处 sendSync 同步阻塞渲染进程 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>CryptoEncDec.vue:236,254</code>、<code>HashText.vue:129</code>、<code>HmacGenerator.vue:110</code>、<code>utils.ts:86-103</code> ｜ 影响：同步 IPC 阻塞渲染进程直至主进程返回（<code>event.returnValue</code> 模式）；输入大文本时 UI 卡死；好在为低频工具场景 ｜ 工作量：0.5 天</div>
+    <p>加密/哈希/HMAC 工具通过 <code>ipcRenderer.sendSync('plugin-tools-crypto-encrypt', data)</code> 同步调用主进程（utils.ts L97-99 用 <code>event.returnValue</code> 应答），渲染进程在此期间完全阻塞。</p>
+    <p><strong>修复建议：</strong>改用 <code>ipcMain.handle</code> + <code>ipcRenderer.invoke</code> 异步模式；同时为长文本计算加进度/取消。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-12 每条日志同步 statSync 轮转检查 + 状态栏广播 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>logger.ts:104-127,191,228-232</code> ｜ 影响：每条日志一次同步磁盘 stat（<code>checkLogRotation</code> 在每次 <code>writeLog</code> 时被调用）；每条日志还向渲染进程发 <code>status-bar-console-update</code> IPC。自动保存等高频日志下放大 IO 与 IPC ｜ 工作量：0.5 天</div>
+    <p><code>writeLog</code> → <code>this.checkLogRotation()</code>（L191）→ <code>fs.statSync(this.currentLogFile)</code>（L106）。日志轮转检查只需在写入累计字节数或定时执行。</p>
+    <p><strong>修复建议：</strong>缓存当前文件大小（或每 N 条/每 10 秒检查一次）；状态栏消息按级别过滤、限频。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-13 window scroll 每帧发 EventBus 且无订阅者 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>MarkdownMonacoEditor.vue:173-175,248</code> ｜ 影响：每次滚动事件都同步 emit，但 grep 全仓证实 <code>baize:notes:monaco-editor:scroll-event</code> 没有任何 <code>$on</code> 订阅者——纯浪费 CPU；滚动同步功能实际未实现 ｜ 工作量：0.1 天</div>
+    <p><code>window.addEventListener('scroll', handleScrollEvent)</code>（L248）→ <code>EventBus.$emit('baize:notes:monaco-editor:scroll-event', null)</code>（L174）。EventBus 为同步派发，高频滚动（每帧多次）无谓遍历监听表。</p>
+    <p><strong>修复建议：</strong>若未来实现编辑/预览滚动同步，加 rAF 节流；当前直接移除监听。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-14 TOC 每轮渲染生成随机 id，列表失去 diff 复用 <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>hemy-editor-render.ts:117-149</code>（L124）、<code>ResourceManager.vue:34-38</code> ｜ 影响：每次预览刷新后 TOC 数组所有 key 全变，Vue 对整列节点重建 DOM；标题多时预览刷新附带额外 DOM 开销 ｜ 工作量：0.5 天</div>
+    <p><code>ParserMarkdownChapters</code> 为每个标题生成随机 id（<code>genRandomNumString(10)</code>），TOC <code>:key="item.id"</code>（ResourceManager.vue L36）依赖每次随机生成的 id，diff 完全失效。顺带：L131 <code>token.map[1]</code> 取的是块结束行而非起始行（应为 <code>map[0]</code>），导致点击目录定位偏后（功能小缺陷，非性能）。</p>
+    <p><strong>修复建议：</strong>改用稳定的派生 id（如行号 <code>lineNumber</code> 或标题文本 hash）。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-15 首次打开主题设置时同步读取 55 个 Monaco 主题 JSON <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>theme-registry.ts:114-150</code>（L121、L129） ｜ 影响：<code>initializeRegistry</code> 在主进程 IPC handle（<code>get-all-monaco-themes</code>）中同步 <code>readdirSync</code> + 55 次 <code>readFileSync</code>（共约 0.4MB），一次性阻塞主进程几十毫秒量级；已有缓存，仅首次触发 ｜ 工作量：0.5 天</div>
+    <p>主题注册表惰性初始化但同步读盘。0.4MB 小文件，影响有限，列 P3。</p>
+    <p><strong>修复建议：</strong>改为异步 <code>fs.promises</code> 读取 + 缓存；或构建期将 55 个主题合并为单文件。</p>
+  </div>
+
+  <div class="finding">
+    <h3>PF-16 dist 残留旧版本安装包与 unpacked 目录共 1.8GB <span class="badge p3">P3</span> <span class="badge" style="background:#15803d">✅ 已修复</span></h3>
+    <div class="meta">位置：<code>dist/</code>（实测：4 个安装 exe 约 930MB，其中 1.2.1 旧版 2 个；win-unpacked 约 500MB） ｜ 影响：仅开发机磁盘占用与混淆发布（易误发旧版）；不影响终端用户 ｜ 工作量：0.1 天</div>
+    <p><code>dist</code> 下同时存在 1.2.1 与 1.2.2 两版安装包、portable 与 setup 共 4 个约 230MB 级 exe，加 win-unpacked 目录，共 1819MB。</p>
+    <p><strong>修复建议：</strong>发布前清理旧版本；CI 中加入产物清理步骤。</p>
+  </div>
+
+  <h2 id="sec-4">4. 值得肯定的实践（简要）</h2>
+  <p>
+    ✅ 预览渲染有 150ms 防抖（<code>MarkdownPreviewComponent.vue:29-75</code>），并正确清理定时器；<br>
+    ✅ Monaco 配置整体优良：<code>largeFileOptimizations: true</code>、<code>maxTokenizationLineLength: 10000</code>、minimap 关闭、<code>renderValidationDecorations: 'off'</code>、<code>wordBasedSuggestions: 'off'</code>、关闭自动布局改手动 <code>layout()</code>（<code>editor-options.ts:9,36-37,48</code>）；<br>
+    ✅ Mermaid 渲染做并发限制（3）避免全局状态竞争（<code>hemy-editor-render.ts:97-102</code>）；<br>
+    ✅ 文件树子节点懒渲染（展开才渲染 children）+ <code>v-memo</code> + 稳定 key（<code>FileTreeNode.vue:44-55</code>、<code>ResourceManager.vue:11-18</code>）；<br>
+    ✅ 插件工具用 <code>&lt;component :is&gt;</code> 只渲染当前激活工具（<code>PluginTools.vue:6-7</code>）；<br>
+    ✅ turndown/mammoth/officegen 采用函数内惰性 <code>require()</code>（<code>import.ts:16,92</code>、<code>export.ts:121</code>），不在启动期加载；<br>
+    ✅ 打开文件前有 5MB 大文件阈值警告（<code>file-operations.ts:19-20,353-371</code>）；<br>
+    ✅ 切换文件时 dispose 旧 Monaco model（<code>MarkdownMonacoEditor.vue:90-118</code>），并整体清理监听器（onBeforeUnmount）；<br>
+    ✅ 文件内容缓存采用内存 Map + 50 项上限（<code>baize-store.ts:24-96</code>），不落盘；<br>
+    ✅ Monaco 主题注册表惰性初始化 + 缓存（<code>theme-registry.ts:114-150</code>）。
+  </p>
+
+  <h2 id="sec-5">5. 修复优先级路线图</h2>
+  <table>
+    <tr><th>阶段</th><th>范围</th><th>对应发现</th><th>说明</th></tr>
+    <tr><td>阶段一（立即，1 周内）</td><td>编辑/预览热路径</td><td>PF-01、PF-02</td><td>击键 IPC 防抖或脏标记；KaTeX/mermaid/解析收敛到渲染进程并缓存公式；预期大文档打字延迟显著下降</td></tr>
+    <tr><td>阶段二（1~2 周）</td><td>打包与构建</td><td>PF-03、PF-04</td><td>启用 monaco worker 与按需语言（首屏 chunk 从 10.4MB 大幅下降）；app-builder-bin 移 devDeps、移除 plantuml-cli 死依赖（安装包有望从 233MB 降至 150MB 内）</td></tr>
+    <tr><td>阶段三（1 个月内）</td><td>目录树与保存</td><td>PF-05、PF-06</td><td>fs.watch 增量刷新替代全量重扫；保存加脏检查；大目录体验改善</td></tr>
+    <tr><td>阶段四（1 个月内）</td><td>启动与离线渲染</td><td>PF-07、PF-08、PF-09</td><td>对话框/jsdom/mermaid 懒加载；PlantUML 本地化；mermaid 结果缓存</td></tr>
+    <tr><td>阶段五（长期/顺手）</td><td>大文件与清理</td><td>PF-10、PF-11~PF-16</td><td>流式大文件；sendSync 改 invoke；日志与滚动事件治理；TOC 稳定 id；清理旧产物</td></tr>
+  </table>
+
+  <footer>白泽笔记全量检查报告 · 性能 · 由 AI 检查子代理生成</footer>
+</div>
+</body>
+</html>

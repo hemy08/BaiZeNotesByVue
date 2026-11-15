@@ -1,8 +1,8 @@
 <template>
-    <div  class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">ASCII 对照表</h1>
+    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
+        <h1 class="header-display-center">{{ t('toolsNetwork.infoTables.ascii.title') }}</h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p style="color: grey">ASCII 对照表，支持查询</p>
+        <p style="color: grey">{{ t('toolsNetwork.infoTables.ascii.desc') }}</p>
         <div>
             <input
                 v-model="searchQuery"
@@ -18,12 +18,14 @@
         >
             <thead>
                 <tr>
-                    <th class="ascii-table-th">Bin(二进制)</th>
-                    <th class="ascii-table-th">Oct(八进制)</th>
-                    <th class="ascii-table-th">Dec(十进制)</th>
-                    <th class="ascii-table-th">Hex(十六进制)</th>
-                    <th class="ascii-table-th">缩写/字符</th>
-                    <th class="ascii-table-th">解释</th>
+                    <th class="ascii-table-th">{{ t('toolsNetwork.infoTables.ascii.bin') }}</th>
+                    <th class="ascii-table-th">{{ t('toolsNetwork.infoTables.ascii.oct') }}</th>
+                    <th class="ascii-table-th">{{ t('toolsNetwork.infoTables.ascii.dec') }}</th>
+                    <th class="ascii-table-th">{{ t('toolsNetwork.infoTables.ascii.hex') }}</th>
+                    <th class="ascii-table-th">{{ t('toolsNetwork.infoTables.ascii.char') }}</th>
+                    <th class="ascii-table-th">
+                        {{ t('toolsNetwork.infoTables.ascii.explanation') }}
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -42,6 +44,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { t } from '../../../common/i18n'
 import { ASCIITable } from './Information'
 
 const props = defineProps({

@@ -1,83 +1,108 @@
 appId: hemye.BaiZeNotes
 productName: BaiZeNotes
+# ARC-20：显式声明 asar 打包策略，避免依赖 electron-builder 未来默认值变化
+asar: true
 directories:
-  buildResources: build
+    buildResources: build
 files:
-  - out/**/*
-  - '!out/renderer/src/**'  # 排除渲染进程源码（已在asar中）
-  - '!**/.vscode/*'
-  - '!src/*'
-  - '!electron.vite.config.{js,ts,mjs,cjs}'
-  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
-  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
-  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+    # CMP-25：白名单化打包产物，避免 out/**/* 把 out/tool-results 等临时分析产物
+    # （约 24MB）误打入 app.asar，并消除打包期并发写文件导致的构建不稳定
+    - out/main/**/*
+    - out/preload/**/*
+    - out/renderer/**/*
+    # ARC-20：electron-vite 6 产物为 out/main、out/preload、out/renderer，
+    # 不存在旧构建布局的 out/renderer/src 目录，空操作的排除项已移除
+    # ET-3：排除 source map（运行时不需要；基线打包前 node_modules 内 *.map 约 100MB）
+    - '!**/*.map'
+    - '!**/.vscode/*'
+    - '!src/*'
+    - '!electron.vite.config.{js,ts,mjs,cjs}'
+    - '!{.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+    - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+    - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 extraResources:
-  - from: "resources/config"
-    to: "config"
-    filter: ["**/*"]
-  - from: "resources/icon"
-    to: "icon"
-    filter: ["**/*"]
-  - from: "resources/katex"
-    to: "katex"
-    filter: ["**/*"]
-  - from: "resources/themes"
-    to: "themes"
-    filter: ["**/*"]
-  - from: "resources/mermaid"
-    to: "mermaid"
-    filter: ["**/*"]
-  - from: "resources/plantuml"
-    to: "plantuml"
-    filter: ["**/*"]
+    # 运行时配置文件（主进程经 getAppResourcesPath()/config/version.json 读取，见 src/main/utils/utils.ts）
+    - from: 'resources/config'
+      to: 'config'
+      filter: ['**/*']
+    # 应用图标（安装器与运行时引用，保留）
+    - from: 'resources/icon'
+      to: 'icon'
+      filter: ['**/*']
+    # Monaco 编辑器主题（monaco-themes/themes 55 个，theme-registry 动态扫描，保留）
+    # 应用主题（原 resources/themes/app_themes 下 24 个 json）为死资产，已随 2026-11-15 死资产清理删除；
+    # 应用主题真源是 src/main/config/theme-config.ts 的 28 套（编译进主进程产物），无需打包资源文件。
+    - from: 'resources/themes/monaco-themes'
+      to: 'themes/monaco-themes'
+      filter: ['**/*']
+    # PlantUML Web 资源（src/main/utils/app-paths.ts getPlantumlPath 仍引用，目录实测存在，保留）
+    - from: 'resources/plantuml'
+      to: 'plantuml'
+      filter: ['**/*']
+    # ARC-20 说明：resources/katex、resources/mermaid 目录实测不存在，对应条目已删除；
+    # KaTeX/Mermaid 均从 node_modules 导入（KatexRender.ts 与渲染层入口），无需作为 extraResources 打包
 win:
-  executableName: BaiZeNotes
-  icon: resources/icon/baize_mirror_dark_256x256.ico
-  target:
-    - target: nsis
-      arch:
-        - x64
-    - target: portable
-      arch:
-        - x64
+    executableName: BaiZeNotes
+    icon: resources/icon/baize_mirror_dark_256x256.ico
+    target:
+        - target: nsis
+          arch:
+              - x64
+        - target: portable
+          arch:
+              - x64
 nsis:
-  artifactName: ${productName}_Setup_${version}_windows_${arch}.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
-  createDesktopShortcut: always
-  oneClick: false
-  allowToChangeInstallationDirectory: true
-  allowElevation: true
-  installerIcon: resources/icon/baize_mirror_dark_256x256.ico
-  uninstallerIcon: resources/icon/baize_mirror_dark_256x256.ico
-  installerHeaderIcon: resources/icon/baize_mirror_dark_256x256.ico
-  deleteAppDataOnUninstall: false
-  runAfterFinish: true
-  include: build/uninstaller.nsh
+    artifactName: ${productName}_Setup_${version}_windows_${arch}.${ext}
+    shortcutName: ${productName}
+    uninstallDisplayName: ${productName}
+    createDesktopShortcut: always
+    oneClick: false
+    allowToChangeInstallationDirectory: true
+    allowElevation: true
+    installerIcon: resources/icon/baize_mirror_dark_256x256.ico
+    uninstallerIcon: resources/icon/baize_mirror_dark_256x256.ico
+    installerHeaderIcon: resources/icon/baize_mirror_dark_256x256.ico
+    deleteAppDataOnUninstall: false
+    runAfterFinish: true
+    include: build/uninstaller.nsh
 portable:
-  artifactName: ${productName}_${version}_windows_${arch}.${ext}
+    artifactName: ${productName}_${version}_windows_${arch}.${ext}
 mac:
-  entitlementsInherit: build/entitlements.mac.plist
-  extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
+    # TODO(ET-16)：build/entitlements.mac.plist 当前不存在，mac 目标打包会因缺少该文件失败。
+    # 项目目前只发布 Windows 产物（win 目标），mac/linux 段保留为后续扩展占位；
+    # 启用 mac 构建前需补：entitlements + entitlementsInherit 文件、开发者签名
+    # （CSC_LINK/CSC_KEY_PASSWORD）与公证（notarize，当前 false）。
+    entitlementsInherit: build/entitlements.mac.plist
+    extendInfo:
+        - NSCameraUsageDescription: Application requests access to the device's camera.
+        - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+        - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+        - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    notarize: false
 dmg:
-  artifactName: ${productName}_Setup_${version}_MacOS_${arch}.${ext}
+    artifactName: ${productName}_Setup_${version}_MacOS_${arch}.${ext}
 linux:
-  target:
-    - AppImage
-    - snap
-    - deb
-  maintainer: electronjs.org
-  category: Utility
+    target:
+        - AppImage
+        - snap
+        - deb
+    # TODO(ET-16)：占位值，发布 Linux 包前改为真实维护者邮箱（electron-builder 的 maintainer 字段）。
+    maintainer: electronjs.org
+    category: Utility
 appImage:
-  artifactName: ${productName}_Setup_${version}_Linux_${arch}.${ext}
+    artifactName: ${productName}_Setup_${version}_Linux_${arch}.${ext}
 npmRebuild: false
+# FUN-10/CMP-21：发布源配置（构建时生成 app-update.yml 供 electron-updater 使用）
+# TODO(ET-16)：example.com 为占位地址，当前"检查更新"会提示"未配置更新源"（见
+# src/main/utils/auto-updater.ts 的占位检测逻辑）。
+# 部署真实更新服务器后，请将 url 替换为真实地址：
+#   - GitHub Releases 发布场景可直接换用 provider: github，或
+#   - 自建 generic 静态文件服务器，url 指向存放 latest.yml 的目录。
+# 替换后重新打包，发布产物即携带可用的更新源。
+# 注：本项目当前无代码签名配置（Windows 签名需 CSC_LINK 证书或自建签名链），
+# 发布前需单独接入，否则 SmartScreen 会提示未知发布者。
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+    provider: generic
+    url: https://example.com/auto-updates
 electronDownload:
-  mirror: https://npmmirror.com/mirrors/electron/
+    mirror: https://npmmirror.com/mirrors/electron/

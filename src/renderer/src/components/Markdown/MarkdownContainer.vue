@@ -1,5 +1,5 @@
 <template>
-    <div id="md-edit-tools-bar" ref="toolsBarRef" class="md-edit-tools-bar">
+    <div id="md-edit-tools-bar" class="md-edit-tools-bar">
         <MdEditTools :tool-bar-width="props.mdContainerWidth" />
     </div>
     <div id="md-edit-component" class="md-edit-component">
@@ -10,9 +10,6 @@
 <script setup lang="ts">
 import MdEditTools from './MarkdownEditToolsComponent.vue'
 import MdEditComp from './MarkdownEditComponent.vue'
-import { ref } from 'vue'
-
-const toolsBarRef = ref(null)
 
 const props = defineProps({
     // 编辑器宽度
