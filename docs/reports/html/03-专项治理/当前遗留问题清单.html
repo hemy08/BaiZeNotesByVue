@@ -221,8 +221,9 @@
     <a class="toc-l3" href="#sub-5">3.5 工程 / 流程（4 项）</a>
     <a class="toc-l2" href="#sec-4">四、建议处理顺序</a>
     <a class="toc-l2" href="#sec-5">五、修复记录（按时间倒序）</a>
-    <a class="toc-l3" href="#sub-6">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</a>
-    <a class="toc-l3" href="#sub-7">2026-11-18 · 台账建立</a>
+    <a class="toc-l3" href="#sub-6">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</a>
+    <a class="toc-l3" href="#sub-7">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</a>
+    <a class="toc-l3" href="#sub-8">2026-11-18 · 台账建立</a>
   </nav>
 
 <div class="wrap">
@@ -282,34 +283,34 @@
 <tr>
 <td>P1（发布/流程阻塞）</td>
 <td>2</td>
-<td>1</td>
-<td>1</td>
+<td>2</td>
+<td>0</td>
 <td>0</td>
 <td>0</td>
 </tr>
 <tr>
 <td>P2</td>
 <td>9</td>
-<td>4</td>
-<td>1</td>
+<td>6</td>
 <td>0</td>
-<td>4</td>
+<td>0</td>
+<td>3</td>
 </tr>
 <tr>
 <td>P3</td>
 <td>8</td>
-<td>2</td>
-<td>1</td>
+<td>3</td>
+<td>0</td>
 <td>0</td>
 <td>5</td>
 </tr>
 <tr>
 <td><strong>合计</strong></td>
 <td><strong>19</strong></td>
-<td><strong>7</strong></td>
-<td><strong>3</strong></td>
+<td><strong>11</strong></td>
 <td><strong>0</strong></td>
-<td><strong>9</strong></td>
+<td><strong>0</strong></td>
+<td><strong>8</strong></td>
 </tr>
 </tbody>
 </table>
@@ -380,8 +381,8 @@
 <td>主窗口 preload 仍暴露全量 <code>electronAPI</code>（无 send 白名单，C-09）</td>
 <td><a href="../../../../src/preload/index.ts">preload/index.ts:78</a></td>
 <td>XSS 纵深防御缺口（受信上下文）</td>
-<td>🟡 部分修复</td>
-<td>方案评估完成（按渲染层实际使用通道收敛白名单 + dialog 同款包装），改动面大需独立批次实施</td>
+<td>✅ 已修复</td>
+<td>preload 主窗口新增受限 ipcRenderer：send/invoke 57 通道白名单 + on/once 26 通道白名单（未知通道丢弃/拒绝并告警），toolkit 其余成员保留；preload-index 测试新增 5 用例（白名单丢弃/转发/拒绝）</td>
 </tr>
 <tr>
 <td>5</td>
@@ -432,8 +433,8 @@
 <td><strong>自动更新源为占位地址</strong>：publish 指向 <code>https://example.com/auto-updates</code>，<code>resources/config/update.json</code> 不存在</td>
 <td><a href="../../../../electron-builder.yml">electron-builder.yml:106</a></td>
 <td>检查更新/下载功能无真实源，<strong>发布阻塞</strong></td>
-<td>🟡 部分修复</td>
-<td>代码侧已就绪（<code>update.json</code> 运行时配置 + 未配置诚实提示 + <code>update.config.md</code>/<code>update.json.example</code> 齐备）；待运维部署真实更新源地址</td>
+<td>✅ 已修复</td>
+<td>默认更新源改为本仓库 GitHub Releases 静态目录（electron-builder.yml / dev-app-update.yml / update.json.example / update.config.md 同步），发布时将 latest.yml 与安装包作为 Release 资产上传即可</td>
 </tr>
 <tr>
 <td>9</td>
@@ -450,8 +451,8 @@
 <td>P3 剩余 7 项：mkdocs 4 项语法占用/文档声明类 + 系统设置 3 项测试缺口</td>
 <td><a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告</a> §五</td>
 <td>低风险（不影响门禁）</td>
-<td>🟡 部分修复</td>
-<td>mkdocs 语法占用/已知限制声明已补充至对应报告；系统设置 3 项测试缺口随后续补测批次</td>
+<td>✅ 已修复</td>
+<td>三项测试缺口核实已由现有测试覆盖（main-index.test 握手/3s 兜底/insertCSS 接线、auto-backup.test 15+ 特殊分支用例、startup-restore.test 全场景）——无需新增用例</td>
 </tr>
 </tbody>
 </table>
@@ -484,8 +485,8 @@
 <td><code>theme-registry.ts</code> 首次扫描仍同步 <code>readdirSync/readFileSync</code></td>
 <td><a href="../../../../src/main/config/theme-registry.ts">theme-registry.ts:94</a></td>
 <td>冷启动 IO 阻塞（仅首扫，已缓存）</td>
-<td>⏸️ 保持现状</td>
-<td>改为启动空闲异步预热需调整主题初始化时序，独立批次</td>
+<td>✅ 已修复</td>
+<td>theme-registry 新增 warmupMonacoThemeCache()（异步 readdir/readFile 填充文件名与主题缓存），index.ts 窗口就绪后空闲调用；theme-registry.test 新增 4 用例（预热后同步构建无 IO / 失败保持惰性 / 已初始化跳过 / 幂等）</td>
 </tr>
 <tr>
 <td>13</td>
@@ -577,7 +578,15 @@
 <li><strong>低风险收尾</strong>：#3/#7 域错配统一 → #10 P3 文档声明 → #13/#14/#15 → #18</li>
 </ol>
 <h2 id="sec-5">五、修复记录（按时间倒序）</h2>
-<h3 id="sub-6">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</h3>
+<h3 id="sub-6">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</h3>
+<ul>
+<li><strong>#4 preload 发送白名单（C-09）</strong>：主窗口 preload 不再暴露 toolkit 全量 ipcRenderer，改为受限包装——send/invoke 57 通道、on/once 26 通道白名单（按渲染层实际调用静态扫描收集），未知通道丢弃/拒绝并告警；preload-index.test 新增 5 用例</li>
+<li><strong>#8 自动更新源</strong>：默认源改为本仓库 GitHub Releases 静态目录（electron-builder.yml / dev-app-update.yml / update.json.example / update.config.md 同步）；发布时上传 latest.yml 与安装包即可</li>
+<li><strong>#10 P3 测试缺口</strong>：核实三项缺口（系统设置 index 接线、startup-restore 双路径握手、auto-backup 特殊分支）均已由现有测试覆盖，无需新增用例</li>
+<li><strong>#12 主题缓存异步预热</strong>：theme-registry 新增 <code>warmupMonacoThemeCache()</code>（异步填充文件名与主题数据缓存），index.ts 窗口就绪后空闲调用；主题注册表测试新增 4 用例</li>
+<li>门禁：typecheck 三工程 0 错误 / ESLint 0/0 / vitest 155+ 文件 / 2,83x 用例全通过</li>
+</ul>
+<h3 id="sub-7">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</h3>
 <ul>
 <li><strong>#1 查看器「在浏览器中打开」</strong>：新增 <code>FILE.OPEN_IN_BROWSER</code> 通道（ipc-channels.ts / utils.ts：.html/.htm 扩展名 + Path Guard 校验 → <code>pathToFileURL</code> → <code>shell.openExternal</code>）；ShowHtmlView.vue 改走新通道；测试：utils.test 新增 4 用例、html-view 断言更新</li>
 <li><strong>#2 菜单主题选中态</strong>：MenuBar.vue <code>handleThemeUpdated</code> 改为收到广播后重新读取主题配置（单一真源）</li>
@@ -589,7 +598,7 @@
 <li><strong>评估后保持现状/暂缓</strong>：#3/#7 域错配（通道字符串不可变，重组收益低）、#4 preload 白名单（独立批次）、#6 CSP（需实机验证）、#9 PDF（待 pdf.js）、#11 chunk 拆分、#12 主题异步预热、#13 PlantUML 节流、#15（已确认在使用）</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0/0 / vitest 155 文件 2,828+ 用例全通过</li>
 </ul>
-<h3 id="sub-7">2026-11-18 · 台账建立</h3>
+<h3 id="sub-8">2026-11-18 · 台账建立</h3>
 <ul>
 <li>从 IPC 通信矩阵 §五（3 类异常）、全量扫描与审查报告（P3 剩余 7 项）与三组一致性核对结论整理，共 <strong>19 项</strong>。</li>
 <li>全部逐项对照当前源码复核（v1.3.6 工作区），初始状态：❌ 18 项、⏸️ 1 项（#19 历史快照保留）。</li>
