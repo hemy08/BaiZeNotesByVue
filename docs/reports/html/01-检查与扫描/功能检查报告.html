@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>功能检查报告</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">1. 检查范围与方法</a>
+    <a class="toc-l2" href="#sec-2">2. 结果总览</a>
+    <a class="toc-l2" href="#sec-3">修复状态（2026-11-15 更新）</a>
+    <a class="toc-l2" href="#sec-4">3. 逐项发现</a>
+    <a class="toc-l3" href="#sub-1">FUN-01 预览渲染无 HTML 消毒，恶意 Markdown 可触发任意 IPC/启动本地程序 P0</a>
+    <a class="toc-l3" href="#sub-2">FUN-02 编码体系整体失效：乱码回写覆盖 + 编码菜单无监听 P1</a>
+    <a class="toc-l3" href="#sub-3">FUN-03 关闭窗口不保存、无未保存确认 P1</a>
+    <a class="toc-l3" href="#sub-4">FUN-04 自动保存开关反向失效 + 设置双轨存储 P1</a>
+    <a class="toc-l3" href="#sub-5">FUN-05 自动保存不检查脏标记、空内容跳过、失败静默 P1</a>
+    <a class="toc-l3" href="#sub-6">FUN-06 磁盘重载/文件操作静默覆盖未保存修改 P1</a>
+    <a class="toc-l3" href="#sub-7">FUN-07 写作模板点击即全文替换当前文档 P1</a>
+    <a class="toc-l3" href="#sub-8">FUN-08 非法 ```math 代码块使整个预览停止更新 P1</a>
+    <a class="toc-l3" href="#sub-9">FUN-09 菜单动作大面积失效 P1</a>
+    <a class="toc-l3" href="#sub-10">FUN-10 自动更新完全未实现 P1</a>
+    <a class="toc-l3" href="#sub-11">FUN-11 electron-store 损坏配置无容错 P1</a>
+    <a class="toc-l3" href="#sub-12">FUN-12 编辑器设置对话框控件大面积不生效/映射错乱 P2</a>
+    <a class="toc-l3" href="#sub-13">FUN-13 HTML 导入失败把字面量 'convert failed' 插入文档 P2</a>
+    <a class="toc-l3" href="#sub-14">FUN-14 Excel 导入按 UTF-8 读二进制；ini 导入恒报&amp;quot;暂不支持&amp;quot; P2</a>
+    <a class="toc-l3" href="#sub-15">FUN-15 导出 PDF 失败窗口泄漏；XML CDATA 未转义；导出元数据版本硬编码 P2</a>
+    <a class="toc-l3" href="#sub-16">FUN-16 另存为失败提示标题误写&amp;quot;另存为成功&amp;quot; P2</a>
+    <a class="toc-l3" href="#sub-17">FUN-17 新建文件与已有文件同名时静默覆盖 P2</a>
+    <a class="toc-l3" href="#sub-18">FUN-18 无活动文件时每次按键触发&amp;quot;另存为&amp;quot;错误弹窗（待验证） P2</a>
+    <a class="toc-l3" href="#sub-19">FUN-19 插件菜单大量条目无对应组件 P2</a>
+    <a class="toc-l3" href="#sub-20">FUN-20 主题双轨存储 + update-theme 广播 payload 错误 P2</a>
+    <a class="toc-l3" href="#sub-21">FUN-21 mermaid 渲染失败无降级提示、重复 id、遗留调试 emit P2</a>
+    <a class="toc-l3" href="#sub-22">FUN-22 预渲染改写代码块内容、锚点失效、javascript: URL 未拦截 P2</a>
+    <a class="toc-l3" href="#sub-23">FUN-23 文件内容缓存只写不读 P2</a>
+    <a class="toc-l3" href="#sub-24">FUN-24 资源管理器右键&amp;quot;导入/在…中查找&amp;quot;为空实现 P2</a>
+    <a class="toc-l3" href="#sub-25">FUN-25 IPv4 子网计算器把合法值判为无效 P2</a>
+    <a class="toc-l3" href="#sub-26">FUN-26 菜单快捷键多数仅展示未绑定 P3</a>
+    <a class="toc-l3" href="#sub-27">FUN-27 用户可见提示中英文混杂 P3</a>
+    <a class="toc-l3" href="#sub-28">FUN-28 编辑器默认值双份不一致 + tabIndex 笔误 + 频道名缺前缀 P3</a>
+    <a class="toc-l3" href="#sub-29">FUN-29 状态栏编码硬编码 utf-8；空文件注入换行 P3</a>
+    <a class="toc-l3" href="#sub-30">FUN-30 调试残留 P3</a>
+    <a class="toc-l2" href="#sec-5">4. 值得肯定的实践（简要）</a>
+    <a class="toc-l2" href="#sec-6">5. 修复优先级路线图</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>功能检查报告</h1>
+    <p>报告归档 · 01-检查与扫描</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>白泽笔记 功能维度深度检查报告</h1>
+<blockquote>
+<p>📦 <strong>归档报告（原文：05-功能检查报告.md）</strong>——历史快照，数字与结论以报告时点为准；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="../03-专项治理/IPC通信矩阵.html">IPC通信矩阵</a>。</p>
+</blockquote>
+<blockquote>
+<p>检查维度：功能 ｜ 项目：白泽笔记（BaiZe Notes）v1.2.2 ｜ 生成日期：2026-11-14 ｜ 检查方式：纯静态代码走查（grep/read + 只读命令验证），未做运行时实测</p>
+</blockquote>
+<h2 id="sec-1">1. 检查范围与方法</h2>
+<ul>
+<li>检查对象：<code>src/main/</code>（文件操作、IPC、菜单、配置、对话框、渲染管线）、<code>src/renderer/src/</code>（编辑器、预览、对话框、插件工具、菜单栏）、<code>src/preload/</code>、<code>src/shared/</code>、<code>dev-app-update.yml</code>、<code>electron-builder.yml</code>、<code>package.json</code>。</li>
+<li>检查重点（按任务书 12 项）：①文件导入链路 ②文件导出链路 ③保存机制 ④编辑器功能与设置映射 ⑤预览渲染（katex/mermaid/plantuml）降级 ⑥主题系统 ⑦菜单系统 ⑧插件工具 ⑨设置持久化 ⑩自动更新 ⑪边界情况 ⑫对话框配对。</li>
+<li>方法：逐文件深读 + 全库 grep 交叉验证事件收发配对（send/on 成对检查）、配置读写链路配对（electron-store 与 config-manager 双轨比对）、菜单动作（menu_config → menu_actions → 主进程 handler → 渲染端监听）四段链路完整性核对。</li>
+<li>证据规范：每条发现均标注真实 <code>文件:行号</code>；无法静态确认运行行为的标注&quot;待验证&quot;。</li>
+<li>严重度定义：P0=严重（安全漏洞/数据丢失/崩溃）、P1=高（明显缺陷/性能/内存风险）、P2=中（改进项/潜在风险）、P3=低（风格/建议）。</li>
+</ul>
+<h2 id="sec-2">2. 结果总览</h2>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>严重度</th>
+<th>问题</th>
+<th>位置</th>
+<th>建议</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FUN-01</td>
+<td>P0</td>
+<td>预览无 HTML 消毒，恶意 Markdown 可触发任意 IPC/启动本地程序</td>
+<td>MarkdownPreviewComponent.vue:32-39,5；hemy-editor-render.ts:152-154；preload/index.ts:50；utils.ts:105-107</td>
+<td>引入 DOMPurify 消毒、preload 收窄 API、IPC 增加白名单校验</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-02</td>
+<td>P1</td>
+<td>编码体系整体失效：打开一律按 UTF-8 读、乱码会被自动保存覆盖原文件、编码菜单无任何渲染端监听</td>
+<td>file-operations.ts:381,344；auto-save.ts:27；menu_file.ts:6-12</td>
+<td>打开时编码探测、回写前确认、补全 open-with-encoding/convert-to-encoding 监听</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-03</td>
+<td>P1</td>
+<td>关闭窗口不保存、无未保存确认，30 秒自动保存窗口期内的修改直接丢失</td>
+<td>handlers.ts:31-33；main/index.ts:141-146</td>
+<td>window close 拦截 + 未保存提示 + 退出前落盘</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-04</td>
+<td>P1</td>
+<td>自动保存开关反向失效：开启自动保存反而被停掉；间隔修改不重启定时器；系统设置写 system.json 而主进程读 systemSetting.json</td>
+<td>handlers.ts:148-150；SystemSettingDialog.vue:235-256；main/index.ts:88-90</td>
+<td>按 payload 重启定时器、统一配置存储、动态应用间隔</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-05</td>
+<td>P1</td>
+<td>自动保存不检查脏标记、空内容文件永不自动保存、失败仅 console 无用户反馈</td>
+<td>auto-save.ts:25-36</td>
+<td>增加 dirty 标志；空内容也需保存；失败提示用户</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-06</td>
+<td>P1</td>
+<td>磁盘重载/任意文件操作会静默用磁盘旧内容覆盖未保存的编辑器修改</td>
+<td>file-operations.ts:321-332；MarkdownEditComponent.vue:163-165</td>
+<td>重载前检测未保存状态，弹确认</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-07</td>
+<td>P1</td>
+<td>点击&quot;写作模板&quot;菜单项会全文替换当前文档，随后自动保存覆盖原文件</td>
+<td>menu_actions.ts:139-141；MarkdownEditComponent.vue:199-201,114</td>
+<td>改为插入模式或增加确认对话框</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-08</td>
+<td>P1</td>
+<td>一个非法 ```math 代码块使整个预览停止更新（主进程抛异常，渲染端收不到结果）</td>
+<td>KatexRender.ts:58-63；HemyRender.ts:133-149；utils.ts:31-33</td>
+<td>renderMathCodeBlock 加 try/catch 降级</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-09</td>
+<td>P1</td>
+<td>菜单动作大面积失效：折叠/大纲/剪切复制粘贴/查找替换/跳转行/绘图等点击无效</td>
+<td>menu_view.ts:26-28,31-54；menu_edit.ts:8-25；menu_tools.ts:29-31</td>
+<td>逐个补齐实现或从菜单隐藏未实现项</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-10</td>
+<td>P1</td>
+<td>自动更新完全未实现：菜单&quot;检查更新&quot;为空操作，更新源是 example.com 占位地址</td>
+<td>menu_help.ts:30-32；dev-app-update.yml:2；electron-builder.yml:79-81；package.json:46</td>
+<td>接入 autoUpdater 或移除入口；配置真实发布源</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-11</td>
+<td>P1</td>
+<td>electron-store 配置文件损坏无容错，应用启动即崩溃</td>
+<td>file-state.ts:21-28；theme-config.ts:431-441；main/index.ts:63</td>
+<td>读取加 try/catch，损坏时备份并重建默认值</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-12</td>
+<td>P2</td>
+<td>编辑器设置对话框大量控件不生效/映射错乱/重复 id</td>
+<td>ShowEditorSettingDialog.ts:335,356,385,404,435,759,1352；editor-setting-script.ts:114-205,218-447</td>
+<td>逐一核对 id 与监听器、去重 id、未实现控件先隐藏</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-13</td>
+<td>P2</td>
+<td>HTML 导入失败时把字面量 'convert failed' 当作正文插入文档</td>
+<td>import.ts:104-113,211</td>
+<td>失败时抛出错误由外层提示，不返回伪内容</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-14</td>
+<td>P2</td>
+<td>Excel(.xls/.xlsx) 按 UTF-8 读二进制成乱码；ini 导入入口恒报&quot;暂不支持&quot;；文本类导入无编码检测</td>
+<td>import.ts:39-42,86-88；menu_view.ts:85；templates.ts:84</td>
+<td>引入 sheet 解析库、修正 ini 注册、文本导入做编码探测</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-15</td>
+<td>P2</td>
+<td>导出 PDF 失败时隐藏窗口泄漏；XML 导出 CDATA 未处理 <code>]]&gt;</code>；导出元数据版本硬编码 1.1.5-beta</td>
+<td>export.ts:263-305,165-174,153/169/186</td>
+<td>try/finally 关闭窗口、转义 CDATA、版本读取 package.json</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-16</td>
+<td>P2</td>
+<td>另存为失败提示框标题误写&quot;另存为成功&quot;</td>
+<td>file-operations.ts:160-167</td>
+<td>修正 title</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-17</td>
+<td>P2</td>
+<td>新建文件与已有文件同名时静默覆盖（无存在性检查）</td>
+<td>file-operations.ts:263-282</td>
+<td>与文件夹分支一样加 fs.access 检查</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-18</td>
+<td>P2</td>
+<td>无活动文件时每次按键触发&quot;另存为&quot;错误弹窗（待验证触发场景）</td>
+<td>utils.ts:142-148；file-operations.ts:84-87</td>
+<td>无活动文件时忽略或提示一次</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-19</td>
+<td>P2</td>
+<td>插件菜单大量条目无对应组件，点击仅显示&quot;正在开发&quot;占位</td>
+<td>plugin_tools_const.ts:22-50；menu_consts.ts:109-143,163-182</td>
+<td>补齐组件或隐藏菜单项</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-20</td>
+<td>P2</td>
+<td>主题双轨存储易分叉；'baize-notes:update-theme' 广播 payload 格式错误导致主窗口不刷新主题</td>
+<td>config-manager.ts:21,39；theme-config.ts:433；main/index.ts:105-114；BaiZeNotes.vue:404-408</td>
+<td>统一主题存储；修正广播 payload 为 {themeStyles}</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-21</td>
+<td>P2</td>
+<td>mermaid 渲染失败仅 console、无可见降级；同 id 重复渲染报错；遗留调试 emit</td>
+<td>hemy-editor-render.ts:23-39；MermaidRender.vue:24,51,69</td>
+<td>渲染失败回显源码+错误提示；随机 id；删除调试代码</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-22</td>
+<td>P2</td>
+<td>预渲染改写代码块内的图片/链接语法、<code>#锚点</code> 被转成文件路径、javascript: URL 未拦截</td>
+<td>HemyRender.ts:201-231,166-182</td>
+<td>渲染前保护所有代码块；锚点/协议过滤</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-23</td>
+<td>P2</td>
+<td>文件内容缓存只写不读，最多 50 个全量文件内容常驻内存</td>
+<td>baize-store.ts:84-121；file-operations.ts:61,345,386</td>
+<td>删除或改为按需缓存并限制总字节数</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-24</td>
+<td>P2</td>
+<td>资源管理器右键&quot;导入/在…中查找&quot;为空实现</td>
+<td>dialogs.ts:63-64,70-71</td>
+<td>实现或从菜单移除</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-25</td>
+<td>P2</td>
+<td>IPv4 子网计算器把合法值（99/128/192 等）判为无效（字符串比较）</td>
+<td>NetWork.ts:3-13；Ipv4SubnetCalc.vue:24-33,304</td>
+<td>入参转 Number 后比较并做范围校验</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-26</td>
+<td>P3</td>
+<td>菜单快捷键多数仅展示未绑定（Ctrl+N/Ctrl+O/F4/Ctrl+G 等无效）</td>
+<td>menu_config.ts:44-76；short-key-register.ts:8-27</td>
+<td>统一注册快捷键或去掉展示</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-27</td>
+<td>P3</td>
+<td>用户可见提示中英文混杂</td>
+<td>export.ts:72,79,93；file-operations.ts:181,361-363</td>
+<td>统一为中文</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-28</td>
+<td>P3</td>
+<td>编辑器默认值双份不一致；UpdateTableSize 误设 tabIndex；主题 IPC 频道名缺前缀</td>
+<td>editor-options.ts:15-22；editor-setting.ts:269,297,301；editor-utils.ts:16-18；BaiZeNotes.vue:367</td>
+<td>单一默认值来源、修正笔误与频道名</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-29</td>
+<td>P3</td>
+<td>状态栏编码硬编码 utf-8；打开空文件注入 \r\n；新建文件内存内容与磁盘不一致</td>
+<td>StatusBar.vue:17；file-operations.ts:388-390,441-447</td>
+<td>显示实际编码；保持空文件为空</td>
+<td>✅ 已修复</td>
+</tr>
+<tr>
+<td>FUN-30</td>
+<td>P3</td>
+<td>调试残留：编辑器右键菜单含 alert 调试项；大文件提示英文且用同步对话框阻塞主进程</td>
+<td>hemy-editor-actions.ts:66-74；file-operations.ts:357-365</td>
+<td>删除调试动作；改异步+中文</td>
+<td>✅ 已修复</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-3">修复状态（2026-11-15 更新）</h2>
+<p>本维度 <strong>30</strong> 项发现中：✅ 已修复 <strong>30</strong> 项、🟡 部分修复 <strong>0</strong> 项、⏭ 未处理 <strong>0</strong> 项（各条状态已同步标注在总览表与明细标题上）。修复记录与遗留说明见 <a href="../02-修复与实施/127项基线修复实施汇总.html">08-修复实施报告</a>、<a href="../02-修复与实施/127项基线修复实施汇总.html">09-第二轮修复实施报告</a> 与 <a href="../02-修复与实施/127项基线修复实施汇总.html">10-第三轮修复实施报告</a>。</p>
+<h2 id="sec-4">3. 逐项发现</h2>
+<h3 id="sub-1">FUN-01 预览渲染无 HTML 消毒，恶意 Markdown 可触发任意 IPC/启动本地程序 <span>P0</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/renderer/src/components/Markdown/MarkdownPreviewComponent.vue:32-39</code>、<code>:5</code>；<code>src/renderer/src/components/Markdown/hemy-editor-render.ts:152-154</code>；<code>src/preload/index.ts:48-51</code>；<code>src/main/utils/utils.ts:105-107</code></li>
+<li><strong>描述</strong>：MarkdownIt 以 <code>html: true</code> 初始化且未挂任何消毒插件；<code>PostMarkdownRender</code> 对 HTML 原样返回；模板直接 <code>v-html=&quot;renderedMarkdownContent&quot;</code>。渲染进程 webPreferences 虽为 <code>nodeIntegration:false, contextIsolation:true, sandbox:true</code>（main/index.ts:30-37，做得好），但 preload 通过 <code>contextBridge.exposeInMainWorld('electron', electronAPI)</code> 把 <code>@electron-toolkit/preload</code> 的完整 <code>ipcRenderer</code>（send/invoke/on）暴露给页面上下文。</li>
+<li><strong>证据</strong>：
+<ul>
+<li><code>MarkdownPreviewComponent.vue:32</code> <code>const md = MarkdownIt({ html: true, ... })</code>；<code>:5</code> <code>&lt;div ... v-html=&quot;renderedMarkdownContent&quot;&gt;</code></li>
+<li><code>hemy-editor-render.ts:152</code> <code>export function PostMarkdownRender(text: string): string { return text }</code></li>
+<li><code>utils.ts:105-107</code> <code>ipcMain.on('navi-tab-open-exe', async (_, exePath: string) =&gt; { await shell.openPath(exePath) })</code></li>
+</ul>
+</li>
+<li><strong>影响</strong>：打开恶意 .md 文件即可在预览中执行任意脚本，可调用 <code>window.electron.ipcRenderer.send('navi-tab-open-exe', ...)</code> 启动任意本地程序（shell.openPath），或 <code>open-external-link</code> 打开任意 URL、<code>config:write</code> 篡改配置——XSS 升级为本地任意程序启动。</li>
+<li><strong>修复建议</strong>：渲染管线末端接入 DOMPurify（生产依赖中已存在该库）；preload 只暴露白名单式窄 API（不暴露通用 ipcRenderer）；主进程对 <code>navi-tab-open-exe</code>/<code>open-external-link</code>/<code>config:*</code> 等渠道做调用来源与参数校验。</li>
+<li><strong>工作量</strong>：2-3 人日（含回归）</li>
+</ul>
+<h3 id="sub-2">FUN-02 编码体系整体失效：乱码回写覆盖 + 编码菜单无监听 <span>P1</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/file-utils/file-operations.ts:381</code>、<code>:344</code>；<code>src/main/utils/file-utils/auto-save.ts:27</code>；<code>src/main/ipc/menu_file.ts:6-12</code></li>
+<li><strong>描述</strong>：打开文件一律 <code>fs.readFile(path,'utf8')</code>，无任何编码探测（仅 CSV 导入做了 jschardet，import.ts:143-146）；GBK/GB2312 文件打开即乱码（替换字符）。更严重的是：自动保存不查脏标记，30 秒内会把乱码内容以 UTF-8 回写，<strong>破坏原文件</strong>。而菜单提供的&quot;重新用…编码打开 / 转为…编码&quot;（menu_config.ts:108-150）由主进程 <code>send('open-with-encoding'/'convert-to-encoding')</code>（menu_file.ts:6-12），全渲染端没有任何 <code>ipcRenderer.on</code> 监听这两个频道（全库 grep 仅命中 menu_file.ts 与 ipc-channels.ts），即编码菜单全部无效，用户连&quot;重新用 GBK 打开&quot;的补救手段都没有。</li>
+<li><strong>证据</strong>：
+<ul>
+<li><code>file-operations.ts:381</code> <code>let data = await fs.readFile(fileProperties.path, 'utf8')</code></li>
+<li><code>auto-save.ts:27</code> <code>if (appState.currentActiveFile &amp;&amp; appState.currentActiveFile.content) {</code> → 每 30s <code>SaveActiveFile()</code> 以 utf-8 写回（file-operations.ts:58）</li>
+<li><code>menu_file.ts:7</code> <code>mainWindow.webContents.send('open-with-encoding', encoding)</code>，渲染端无监听</li>
+</ul>
+</li>
+<li><strong>影响</strong>：非 UTF-8 文件打开乱码，且静默损坏原文件（数据丢失）；编码切换功能整体是空壳。</li>
+<li><strong>修复建议</strong>：打开时用 jschardet/iconv 探测编码并保留&quot;当前编码&quot;状态；自动保存前若编码与磁盘不一致则要求用户确认；在 MarkdownEditComponent/独立组件中实现 open-with-encoding / convert-to-encoding 监听（主进程重读文件按指定编码解码并更新 appState 与编辑器）。</li>
+<li><strong>工作量</strong>：2 人日</li>
+</ul>
+<h3 id="sub-3">FUN-03 关闭窗口不保存、无未保存确认 <span>P1</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/ipc/handlers.ts:31-33</code>；<code>src/main/index.ts:141-146</code>；<code>src/renderer/src/components/StatusBar.vue:96</code></li>
+<li><strong>描述</strong>：标题栏关闭按钮发送 <code>window-close</code> → <code>mainWindow.close()</code>，主窗口无任何 <code>close</code>/<code>before-quit</code> 拦截保存逻辑；渲染端也未监听 <code>beforeunload</code>。未保存标记（isUnsaved）只用于状态栏红点展示，没有任何流程消费它。自动保存间隔默认 60 秒（system-setting.ts:17），用户在最后一次修改后 60 秒内点关闭（或退出、或&quot;重启应用&quot;菜单 menu_file.ts:27-30），修改静默丢失。</li>
+<li><strong>证据</strong>：
+<ul>
+<li><code>handlers.ts:31-33</code> <code>ipcMain.on('window-close', () =&gt; { if (mainWindow) mainWindow.close() })</code></li>
+<li><code>StatusBar.vue:96</code> <code>isUnsaved.value = true</code>（仅显示用途）</li>
+<li><code>main/index.ts:141-146</code> <code>window-all-closed → app.quit()</code>，无保存逻辑</li>
+</ul>
+</li>
+<li><strong>影响</strong>：高频数据丢失风险；与&quot;自动保存&quot;形成 60 秒数据丢失窗口。</li>
+<li><strong>修复建议</strong>：mainWindow.on('close') 中先同步待保存内容并落盘（或弹未保存确认）；退出/重启前同样处理。</li>
+<li><strong>工作量</strong>：1 人日</li>
+</ul>
+<h3 id="sub-4">FUN-04 自动保存开关反向失效 + 设置双轨存储 <span>P1</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/ipc/handlers.ts:148-150</code>；<code>src/renderer/src/components/dialogs/complex/SystemSettingDialog.vue:235-256</code>；<code>src/main/index.ts:88-90</code>；<code>src/main/config/system-setting.ts:10</code>；<code>src/main/config/config-manager.ts:39</code></li>
+<li><strong>描述</strong>：系统设置对话框修改自动保存后发送 <code>system-setting-auto-save-changed</code>，主进程处理器<strong>无条件</strong> <code>StopAutoSaveFileTime()</code> 且忽略 payload、从不按新参数重启；因此&quot;打开自动保存&quot;操作实际效果是停掉自动保存，修改间隔也不生效（间隔只在启动时读一次：index.ts:88-90）。同时渲染端把设置写入 <code>system.json</code>（config-manager，L256 <code>window.api.config.write('system', ...)</code>），而主进程读的是 electron-store 的 <code>systemSetting.json</code>（system-setting.ts:10）——两套存储互不同步。</li>
+<li><strong>证据</strong>：
+<ul>
+<li><code>handlers.ts:148-150</code> <code>ipcMain.handle('system-setting-auto-save-changed', () =&gt; { StopAutoSaveFileTime() })</code></li>
+<li><code>SystemSettingDialog.vue:237</code> send(...) / <code>:256</code> <code>window.api.config.write('system', ...)</code></li>
+<li><code>main/index.ts:89</code> <code>const autoSaveInterval = (systemSetting.autoSaveInterval || 30) * 1000</code></li>
+</ul>
+</li>
+<li><strong>影响</strong>：用户关掉再打开自动保存后自动保存实际处于关闭状态；间隔设置无效；&quot;系统设置&quot;与主进程实际行为脱节。</li>
+<li><strong>修复建议</strong>：处理器按 payload 的 autoSaveEnabled/autoSaveInterval 调 StartAutoSaveFileTime(newInterval)；统一系统设置为单一存储（建议以 electron-store 为准，删除 system.json 写入路径）。</li>
+<li><strong>工作量</strong>：1 人日</li>
+</ul>
+<h3 id="sub-5">FUN-05 自动保存不检查脏标记、空内容跳过、失败静默 <span>P1</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/file-utils/auto-save.ts:25-36</code></li>
+<li><strong>描述</strong>：注释宣称&quot;只有当文件有修改时才保存&quot;，但条件 <code>if (appState.currentActiveFile &amp;&amp; appState.currentActiveFile.content)</code> 检查的是&quot;内容非空&quot;，而非脏标记。后果：①每 30/60 秒无条件重写文件（无修改也写，mtime 抖动、干扰外部同步工具与&quot;文件被外部修改&quot;判断）；②用户清空文件内容后（content===''）自动保存永不触发，空文档不会落盘；③<code>SaveActiveFile</code> 内部已 catch 并弹窗（file-operations.ts:69-72），此处再 catch 仅 console.error，实际失败时用户未必看到（SaveActiveFile 弹窗后吞掉错误）。</li>
+<li><strong>证据</strong>：<code>auto-save.ts:27</code> <code>if (appState.currentActiveFile &amp;&amp; appState.currentActiveFile.content) { ... await SaveActiveFile() }</code>；<code>auto-save.ts:31-34</code> catch 仅 console</li>
+<li><strong>影响</strong>：文件无谓重写；空文件修改丢失；自动保存失败反馈不可靠。</li>
+<li><strong>修复建议</strong>：在 appState 增加 dirty 标志（由 update-select-file-content 置位、SaveActiveFile 成功后清除），仅 dirty 时保存；空内容同样允许保存；失败状态回传渲染端状态栏。</li>
+<li><strong>工作量</strong>：0.5-1 人日</li>
+</ul>
+<h3 id="sub-6">FUN-06 磁盘重载/文件操作静默覆盖未保存修改 <span>P1</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/file-utils/file-operations.ts:321-332</code>、<code>:294-302</code>；<code>src/renderer/src/components/Markdown/MarkdownEditComponent.vue:163-165</code></li>
+<li><strong>描述</strong>：<code>ReloadDirFromDisk</code> 每次执行都会用磁盘内容覆盖 <code>appState.currentActiveFile.content</code> 并向编辑器广播 <code>file-content-reloaded</code>；渲染端 <code>handleFileReloaded</code> 直接 <code>onHandleNewContent(data.content)</code> 替换编辑器内容，<strong>不检查未保存状态</strong>。而 <code>ReloadDirFromDisk</code> 在新建文件/文件夹、重命名、删除、导入新文件后 500ms 自动触发（file-operations.ts:295-302/433-439/555-561/594-600）。即：用户有未保存修改时，只要做了任一文件操作（甚至菜单&quot;从磁盘重新加载&quot;），未保存内容被静默丢弃。</li>
+<li><strong>证据</strong>：<code>file-operations.ts:323</code> <code>const fileContent = await fs.readFile(appState.currentActiveFile.path, 'utf-8')</code>；<code>:325</code> <code>send('file-content-reloaded', { path, content })</code>；<code>MarkdownEditComponent.vue:163-165</code> 无任何 unsaved 判断</li>
+<li><strong>影响</strong>：未保存修改静默丢失（数据丢失）。</li>
+<li><strong>修复建议</strong>：重载前比较 appState 内容与磁盘内容，不一致时先询问用户（保留/覆盖）；或在渲染端维护 dirty 状态并拒绝覆盖。</li>
+<li><strong>工作量</strong>：1 人日</li>
+</ul>
+<h3 id="sub-7">FUN-07 写作模板点击即全文替换当前文档 <span>P1</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/renderer/src/components/MenuBar/menu_actions.ts:139-141</code>；<code>src/renderer/src/components/Markdown/MarkdownEditComponent.vue:199-201</code>、<code>:113-116</code></li>
+<li><strong>描述</strong>：&quot;插入 → 写作模板 → 力扣题解模板/论文模板等&quot;点击后，模板内容经 EventBus <code>baize:monaco-editor-use-template</code> 送达 <code>handleUseTemplate</code>，其实现是 <code>onHandleNewContent(value)</code>——设置 initialCodeContent 并 <code>update-select-file-content</code> 上报主进程，<strong>整体替换</strong>当前文档；随后 30/60 秒自动保存把模板写回磁盘，原文档内容被覆盖。</li>
+<li><strong>证据</strong>：
+<ul>
+<li><code>menu_actions.ts:141</code> <code>EventBus.$emit('baize:monaco-editor-use-template', item?.context)</code></li>
+<li><code>MarkdownEditComponent.vue:199-201</code> <code>function handleUseTemplate(value) { onHandleNewContent(value) }</code></li>
+<li><code>MarkdownEditComponent.vue:114</code> <code>window.electron.ipcRenderer.send('update-select-file-content', newValue)</code>（utils.ts:142-148 更新 appState → 自动保存写盘）</li>
+</ul>
+</li>
+<li><strong>影响</strong>：用户点击菜单项即丢失当前文档内容（数据丢失）。</li>
+<li><strong>修复建议</strong>：模板走 <code>InsertAfterCursor</code> 插入路径；确需替换时先弹确认。</li>
+<li><strong>工作量</strong>：0.5 人日</li>
+</ul>
+<h3 id="sub-8">FUN-08 非法 ```math 代码块使整个预览停止更新 <span>P1</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/renders/KatexRender.ts:58-63</code>；<code>src/main/renders/HemyRender.ts:133-149</code>；<code>src/main/utils/utils.ts:31-33</code></li>
+<li><strong>描述</strong>：行内公式渲染 <code>renderMathInText</code> 有 try/catch（失败回退原文，L30-34），但代码块公式 <code>renderMathCodeBlock</code> 直接 <code>katex.renderToString(code)</code> <strong>无 try/catch</strong>。一个语法错误的 <code> ```math</code> 块使异常沿 <code>HemyRenderPre → segments.map(renderContent)</code> 向上抛到 IPC 处理器（<code>ipcMain.on('pre-render-monaco-editor-content', ...)</code> 未 catch），渲染端 <code>handlePreRenderResult</code> 永远收不到结果，<code>renderedMarkdownContent</code> 停在上一次内容——整个预览&quot;卡死&quot;且无任何提示。</li>
+<li><strong>证据</strong>：
+<ul>
+<li><code>KatexRender.ts:60</code> <code>const mathBlocks = katex.renderToString(code)</code>（无 try/catch）</li>
+<li><code>HemyRender.ts:139-146</code> <code>segments.map(...).join('')</code>，异常直接穿透</li>
+<li><code>utils.ts:31-33</code> 处理器无 catch</li>
+</ul>
+</li>
+<li><strong>影响</strong>：单个非法公式让预览功能整体失效直至重启编辑器内容，用户无法感知原因。</li>
+<li><strong>修复建议</strong>：<code>renderMathCodeBlock</code> 与 <code>HemyRenderPre</code> 加 try/catch，失败时原样输出代码块并在预览中显示错误提示。</li>
+<li><strong>工作量</strong>：0.5 人日</li>
+</ul>
+<h3 id="sub-9">FUN-09 菜单动作大面积失效 <span>P1</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/ipc/menu_view.ts:26-28</code>、<code>:31-54</code>；<code>src/main/ipc/menu_edit.ts:8-25</code>；<code>src/main/ipc/menu_tools.ts:29-31</code></li>
+<li><strong>描述</strong>：
+<ul>
+<li>&quot;显示/隐藏文章大纲&quot;发送的却是资源管理器切换事件：<code>toggle-outline</code> 与 <code>toggle-resource-manager</code> 都 send <code>'menu-view-hide-display-res-manager'</code>（menu_view.ts:17-19 与 26-28），大纲开关实际切换资源管理器，且渲染端只有 WorkSpace.vue:200 监听该事件；</li>
+<li>&quot;折叠/展开标题&quot;8 个子项 send 的 <code>editor-fold-all/editor-expand-all/editor-fold-level</code> 在渲染端无任何监听（全库 grep 零命中）——全部无效；</li>
+<li>编辑菜单&quot;剪切/复制/粘贴/在文件中查找/在文件中替换&quot;为 console.warn 空实现（menu_edit.ts:8-10、20-25）；&quot;跳转到行/查找/替换&quot;send 的 <code>editor-go-to-line/editor-find/editor-replace</code> 渲染端无监听（grep 零命中），点击菜单项无效（Ctrl+F/H 依赖 Monaco 内建快捷键尚可用，但 Ctrl+G 无绑定）；</li>
+<li>工具菜单&quot;绘图工具&quot;send 的频道 <code>'OpenFile'</code> 不存在任何监听（menu_tools.ts:29-31），点击无反应。</li>
+</ul>
+</li>
+<li><strong>证据</strong>：见上述行号；渲染端监听核对：<code>WorkSpace.vue:200</code> 仅监听 res-manager 事件；<code>editor-go-to-line/editor-find/editor-replace/editor-fold-*/OpenFile</code> 全库无 <code>on(</code> 监听。</li>
+<li><strong>影响</strong>：约 15 个菜单项点击无效或行为错乱，占菜单条目相当比例。</li>
+<li><strong>修复建议</strong>：逐个补齐渲染端监听与实现；未实现项从菜单配置中隐藏；修复 outline 与 resource-manager 事件串线。</li>
+<li><strong>工作量</strong>：2-3 人日</li>
+</ul>
+<h3 id="sub-10">FUN-10 自动更新完全未实现 <span>P1</span></h3>
+<p>→ 🟡 部分修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/ipc/menu_help.ts:30-32</code>；<code>dev-app-update.yml:1-3</code>；<code>electron-builder.yml:79-81</code>；<code>package.json:46</code></li>
+<li><strong>描述</strong>：<code>electron-updater@^6.8.9</code> 已列入 dependencies，但全 src 无任何 <code>autoUpdater</code>/<code>checkForUpdates</code> 调用（grep 仅命中两个展示对话框）。&quot;帮助 → 检查更新&quot;菜单项的处理函数仅 <code>console.warn('[Menu] Update check not implemented yet')</code>。<code>dev-app-update.yml</code> 与 <code>electron-builder.yml</code> 的 publish 配置均为 <code>https://example.com/auto-updates</code> 占位地址，即便接入也无法下载。</li>
+<li><strong>证据</strong>：<code>menu_help.ts:30-32</code>；<code>dev-app-update.yml:2</code> <code>url: https://example.com/auto-updates</code>；<code>electron-builder.yml:79-81</code></li>
+<li><strong>影响</strong>：用户看到&quot;检查更新&quot;入口却无任何功能；无发布源配置。</li>
+<li><strong>修复建议</strong>：实现 autoUpdater 检查/下载/安装流程（含进度与错误提示），配置真实发布源；或暂时移除菜单项。</li>
+<li><strong>工作量</strong>：1-2 人日</li>
+</ul>
+<h3 id="sub-11">FUN-11 electron-store 损坏配置无容错 <span>P1</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/file-state.ts:21-28</code>；<code>src/main/config/theme-config.ts:431-441</code>；<code>src/main/config/system-setting.ts:10</code>；<code>src/main/index.ts:63</code></li>
+<li><strong>描述</strong>：多处 <code>new Store(...)</code> 直接在模块顶层/启动路径执行，electron-store 读取损坏 JSON 时抛 SyntaxError 且无任何 try/catch：<code>fileState</code>（模块导入期构造）、<code>systemSetting</code>（模块顶层）、<code>theme-config</code>（首次 getStore）、<code>editor-setting</code>（ready-to-show 中 getEditorSetting，index.ts:63）。任一配置 JSON 损坏 → 主进程异常 → 窗口不显示/应用启动失败，用户只能手工删文件。对比：config-manager（config-manager.ts:19-32）有 try/catch 容错，但主配置链路不走它。</li>
+<li><strong>证据</strong>：<code>file-state.ts:21</code> <code>const fileStateStore = new Store&lt;FileState&gt;({...})</code>（模块顶层、无 cwd 参数，文件落在 userData 根目录，与其他 config 目录不一致）；<code>main/index.ts:63</code> <code>const editorSetting = getEditorSetting()</code>（ready-to-show 内无保护）</li>
+<li><strong>影响</strong>：配置损坏即启动失败，无自动恢复（P1，崩溃级）。</li>
+<li><strong>修复建议</strong>：所有 Store 构造与读取包 try/catch；损坏时重命名备份并重建默认值；统一 fileState 的 cwd。</li>
+<li><strong>工作量</strong>：1 人日</li>
+</ul>
+<h3 id="sub-12">FUN-12 编辑器设置对话框控件大面积不生效/映射错乱 <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/dialogs/ShowEditorSettingDialog.ts:335,356,365,385,395,404,435,444,473,501-534,635,707-740,759,784,862-890,1107-1175,1188-1235,1250-1288,1302-1335,1352,1361,1370,1385-1395,1410-1420</code>；<code>src/main/dialogs/editor-setting-script.ts:114-205</code>、<code>:218-447</code></li>
+<li><strong>描述</strong>：①HTML 中存在但脚本无事件监听（用户改动被丢弃）：<code>folding-strategy</code>、<code>folding-maximum-regions</code>、<code>folding-imports-by-default</code>、<code>guides-indentation</code>、<code>guides-bracket-pairs</code>、<code>hover-enabled</code>、<code>hover-delay</code>、<code>code-lens</code>、全部 <code>find-*</code>、<code>font-weight</code>、<code>line-numbers-min-chars</code>、<code>line-decorations-width</code>、<code>overview-ruler-lanes</code>、<code>hide-cursor-in-overview-ruler</code>、<code>glyph-margin</code>、<code>cursor-surrounding-*</code>、全部 <code>minimap-*</code>、<code>scrollbar-*</code>、<code>suggest-*</code>、<code>goto-location-*</code>、<code>parameter-hints-*</code>、<code>bracket-pair-*</code> 等；②脚本引用 17 个 HTML 中不存在的 id（<code>large-file-optimizations</code>、<code>smooth-scrolling</code>、<code>scroll-beyond-last-line</code>、<code>mouse-wheel-scroll-sensitivity</code>、<code>cursor-blinking-cursor</code>、<code>cursor-smooth-caret-animation-cursor</code>、<code>render-indent-guides</code>、<code>highlight-active-indent-guide</code>、<code>guides</code>、<code>render-whitespace-whitespace</code>、<code>folding-whitespace</code>、<code>render-line-highlight-highlight</code>、<code>render-validation-decorations</code>、<code>links</code>、<code>color-decorators</code>、<code>decorators</code>、<code>show-adjust-setting-tip</code>），每次加载/应用都 console.warn&quot;找不到元素&quot;；③重复 id：<code>render-whitespace</code>（L404 与 L759）、<code>hover-enabled</code>（L435 与 L1352）、<code>hover-delay</code>（L444 与 L1361），getElementById 只命中第一个；④<code>automatic-layout</code> 写入 EditorSetting 但 EditorOptionMaps（editor-option-maps.ts:3-141）无该键 → &quot;自动布局&quot;开关无任何效果。</li>
+<li><strong>证据</strong>：对比 <code>ShowEditorSettingDialog.ts</code> 的 <code>id=&quot;...&quot;</code> 清单（grep 共 103 处）与 <code>editor-setting-script.ts</code> 的 <code>addSafeEventListener/setElementValue</code> id 清单。</li>
+<li><strong>影响</strong>：用户在此对话框中看到的相当一部分控件是&quot;假开关&quot;，修改被静默丢弃或写入后不被应用。</li>
+<li><strong>修复建议</strong>：以 EditorOptionMaps 键名为准生成表单（配置驱动），删除重复 section 或 id 去重，未实现项先隐藏；补充&quot;应用后实际生效&quot;的校验清单。</li>
+<li><strong>工作量</strong>：2 人日</li>
+</ul>
+<h3 id="sub-13">FUN-13 HTML 导入失败把字面量 'convert failed' 插入文档 <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/file-utils/import.ts:104-113</code>、<code>:211</code></li>
+<li><strong>描述</strong>：<code>convertHtmlToMarkdown</code> catch 后弹错误框并 <code>return 'convert failed'</code>；调用方 <code>InsertImportFormFile</code> 把返回值当正常内容拼接（argStart + context + argEnd）插入编辑器，用户会在文档里看到一段 &quot;convert failed&quot; 文本。</li>
+<li><strong>证据</strong>：<code>import.ts:111</code> <code>return 'convert failed'</code>；<code>import.ts:211</code> <code>const content = model.argStart + context + model.argEnd</code></li>
+<li><strong>影响</strong>：错误内容混入用户文档；错误语义被吞掉。</li>
+<li><strong>修复建议</strong>：失败时 throw，由外层 catch（import.ts:218-220）统一提示并中止插入。</li>
+<li><strong>工作量</strong>：0.5 小时</li>
+</ul>
+<h3 id="sub-14">FUN-14 Excel 导入按 UTF-8 读二进制；ini 导入恒报&quot;暂不支持&quot; <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/file-utils/import.ts:36-43</code>、<code>:86-88</code>；<code>src/main/ipc/menu_view.ts:82-91</code>；<code>src/renderer/src/common/templates.ts:81-90</code></li>
+<li><strong>描述</strong>：①<code>excel</code>（xls/xlsx）的 <code>importReader = ReadFile</code>，即对二进制文件执行 utf8 字符串读取，得到乱码后被 ```text 包裹插入（xls 是 OLE 二进制，xlsx 是 zip）；②&quot;插入 → 来自文件&quot;菜单含 <code>*.ini</code>（templates.ts:84），但 <code>InsertImportFrom</code> 无 <code>ini</code> 键（只有 text/yaml/xml 等），<code>InsertImportFrom['ini']</code> 为 undefined → 永远弹&quot;暂不支持当前格式&quot;；③除 csv 外，txt/log/ini/xml/yaml/json 导入均无编码检测（ReadFile 固定 utf8），GBK 文本导入即乱码。</li>
+<li><strong>证据</strong>：<code>import.ts:39-42</code> <code>excel: { ... importReader: ReadFile ... }</code>；<code>import.ts:86-88</code>；<code>menu_view.ts:85</code> <code>'ini': ... InsertImportFormFile(mainWindow, 'ini', false)</code>；<code>templates.ts:84</code></li>
+<li><strong>影响</strong>：Excel 导入功能形同虚设；ini 菜单项必失败；中文文本文件（GBK 存量文件）导入乱码。</li>
+<li><strong>修复建议</strong>：xlsx 引入 SheetJS/officegen 家族已有库解析；将 ini 归入 text 组（InsertImportFrom 增补 ini 键）；文本类导入统一走 jschardet+iconv。</li>
+<li><strong>工作量</strong>：1 人日</li>
+</ul>
+<h3 id="sub-15">FUN-15 导出 PDF 失败窗口泄漏；XML CDATA 未转义；导出元数据版本硬编码 <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/file-utils/export.ts:259-305</code>、<code>:164-174</code>、<code>:153/169/186</code></li>
+<li><strong>描述</strong>：①<code>ToPdf</code> 创建隐藏 BrowserWindow，<code>loadURL → printToPDF → writeFile → win.close()</code> 顺序执行，任一环节抛错则 <code>win.close()</code> 不执行（无 try/finally），隐藏窗口泄漏；且大文档经 data URL 加载有 2MB 导航上限风险（待验证）；②<code>ToXml</code> 将内容包在 <code>&lt;![CDATA[</code> 中，若正文含 <code>]]&gt;</code> 则生成非法 XML；③<code>ToJson/ToXml/ToYaml</code> 的 metadata.version 硬编码 <code>1.1.5-beta</code>，与应用版本 1.2.2 不符；④导出仅 UTF-8，无 GBK 选项（功能限制）。</li>
+<li><strong>证据</strong>：<code>export.ts:304-305</code> <code>await fs.writeFile(filePath, pdfData); win.close()</code>；<code>export.ts:173</code> <code>&lt;content&gt;&lt;![CDATA[${content}]]&gt;&lt;/content&gt;</code>；<code>export.ts:153</code> <code>version: '1.1.5-beta'</code></li>
+<li><strong>影响</strong>：隐藏窗口泄漏累积；特殊正文导出损坏；元数据误导。</li>
+<li><strong>修复建议</strong>：try/finally 确保窗口关闭；CDATA 前替换 <code>]]&gt;</code> 为 <code>]]]]&gt;&lt;![CDATA[&gt;</code>；版本从 package.json/version.json 读取。</li>
+<li><strong>工作量</strong>：0.5 人日</li>
+</ul>
+<h3 id="sub-16">FUN-16 另存为失败提示标题误写&quot;另存为成功&quot; <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/file-utils/file-operations.ts:160-167</code></li>
+<li><strong>描述</strong>：<code>SaveActiveFileAs</code> 的 catch 分支发送的 message 对话框 <code>title: '另存为成功'</code>、<code>type: 'error'</code>——标题与内容（&quot;另存为失败&quot;）自相矛盾，明显复制粘贴笔误。</li>
+<li><strong>证据</strong>：<code>file-operations.ts:163</code> <code>title: '另存为成功',</code> / <code>:164</code> <code>type: 'error',</code> / <code>:165</code> <code>message: \</code>另存为失败: ${err}``</li>
+<li><strong>影响</strong>：错误场景下用户看到&quot;成功&quot;标题，误导。</li>
+<li><strong>修复建议</strong>：title 改为&quot;另存为失败&quot;。</li>
+<li><strong>工作量</strong>：5 分钟</li>
+</ul>
+<h3 id="sub-17">FUN-17 新建文件与已有文件同名时静默覆盖 <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/file-utils/file-operations.ts:263-282</code></li>
+<li><strong>描述</strong>：<code>CreateFileFolder</code> 的文件夹分支先 <code>fs.access</code> 查重并提示&quot;已存在&quot;（L267-268），文件分支却直接 <code>fs.writeFile(fullName, fileContent)</code>（L282），同名文件被截断覆盖，无任何提示。渲染端 CreateFileFolderDialog 亦未见查重逻辑。</li>
+<li><strong>证据</strong>：<code>file-operations.ts:267-268</code>（文件夹有查重）对比 <code>:282</code>（文件无查重直接写）</li>
+<li><strong>影响</strong>：用户新建&quot;与已有文件同名&quot;的文件时，旧文件内容被覆盖（数据丢失）。</li>
+<li><strong>修复建议</strong>：文件分支同样 <code>fs.access</code> 查重并提示；对话框层再校验一次。</li>
+<li><strong>工作量</strong>：0.5 小时</li>
+</ul>
+<h3 id="sub-18">FUN-18 无活动文件时每次按键触发&quot;另存为&quot;错误弹窗（待验证） <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/utils.ts:142-148</code>；<code>src/main/utils/file-utils/file-operations.ts:82-87</code></li>
+<li><strong>描述</strong>：编辑器每次内容变化发送 <code>update-select-file-content</code>；主进程在 <code>appState.currentActiveFile == null</code> 时调用 <code>SaveActiveFileAs()</code>，而 <code>SaveActiveFileAs</code> 在无活动文件时立即 <code>showErrorMessageBox('当前没有活动文件可另存为')</code> 并返回——即&quot;每次按键弹一个错误框&quot;。触发条件取决于启动后是否存在无活动文件但可输入的界面（欢迎页进入主界面流程 <code>clear-editor-and-preview</code> 后 currentActiveFile 可能仍指向旧文件或为 null），<strong>待验证</strong>实际必现路径。</li>
+<li><strong>证据</strong>：<code>utils.ts:142-146</code>；<code>file-operations.ts:84-87</code></li>
+<li><strong>影响</strong>：特定流程下错误弹窗风暴，体验灾难。</li>
+<li><strong>修复建议</strong>：无活动文件时静默缓存内容或只提示一次。</li>
+<li><strong>工作量</strong>：0.5 小时</li>
+</ul>
+<h3 id="sub-19">FUN-19 插件菜单大量条目无对应组件 <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/renderer/src/components/PluginTools/plugin_tools_const.ts:22-50</code>；<code>src/renderer/src/components/MenuBar/menu_consts.ts:109-143,163-182</code></li>
+<li><strong>描述</strong>：插件工具注册表仅 19 个组件（8 加密 + 3 网络 + 8 对照表），而菜单启用的条目远多于此：全部&quot;格式转换器&quot;（date-converter/base-converter/roman-numeral-converter/color-converter/json-formater/yaml-formatter/xml-formatter/sql-formatter/html-formatter/json-to-csv/json-to-toml/yaml-to-json/yaml-to-toml/text-to-binary/text-to-unicode）、网络类（ipv4-address-converter/mac-address-lookup/mac-address-generator/qr-code-generator/wifi-qr-code-generator）、对照表（file-name-extension-table/linux-command-table/cpp-keyword-table/go-keyword-table）等均不在注册表 → 点击后 <code>visibleTool</code> 为 undefined，只显示&quot;当前工具正在开发中&quot;占位。另注意菜单 id <code>json-formater</code>（拼写错误）与主进程 <code>json-to-yaml</code> 等 handler 也无对应组件。</li>
+<li><strong>证据</strong>：<code>plugin_tools_const.ts:22-50</code> 完整清单 vs <code>menu_consts.ts:109-143</code> 启用清单对比</li>
+<li><strong>影响</strong>：插件菜单约半数条目为&quot;假入口&quot;。</li>
+<li><strong>修复建议</strong>：菜单数据只启用注册表内存在的 id（配置驱动过滤），未完成组件移除或加&quot;开发中&quot;标注。</li>
+<li><strong>工作量</strong>：0.5 人日（含数据整理）</li>
+</ul>
+<h3 id="sub-20">FUN-20 主题双轨存储 + update-theme 广播 payload 错误 <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/config/config-manager.ts:21,39</code>；<code>src/main/config/theme-config.ts:431-441</code>；<code>src/main/index.ts:105-114</code>；<code>src/renderer/src/components/BaiZeNotes.vue:404-408</code></li>
+<li><strong>描述</strong>：①渲染端主题对话框经 <code>config:write('theme', ...)</code> 写 <code>theme.json</code>（useConfigStore.ts:188-189），主进程读 <code>theme-config.json</code>（theme-config.ts:433）——两套存储可长期分叉，主进程各 HTML 对话框（编辑器设置等）取色用 <code>getCurrentThemeStyles()</code> 可能与主窗口主题不一致；②<code>ipcMain.on('baize-notes:update-theme')</code> 广播的是 <code>ThemeStyles</code> 对象本体（index.ts:105-114），而渲染端 <code>handleThemeUpdate</code> 期望 <code>data.themeStyles</code>（BaiZeNotes.vue:404-408），payload 不符 → 该广播被丢弃（console.error 'Received invalid theme data'），跨窗口主题热同步失效；主进程对话框走 <code>dialog-broadcast-theme</code>（handlers.ts:154-160）格式正确，说明同一语义存在两个不一致的实现。</li>
+<li><strong>证据</strong>：<code>useConfigStore.ts:189</code> <code>saveConfig('theme', themeConfig.value)</code>；<code>index.ts:112</code> <code>window.webContents.send('baize-notes:theme-updated', theme)</code>；<code>BaiZeNotes.vue:405</code> <code>if (!data || !data.themeStyles) { ... return }</code></li>
+<li><strong>影响</strong>：主题热切换链路部分失效；多窗口/对话框主题可能不一致。</li>
+<li><strong>修复建议</strong>：统一主题存储与广播格式（<code>{ themeStyles, monacoTheme, separateEditorTheme }</code>）；删除重复实现。</li>
+<li><strong>工作量</strong>：1 人日</li>
+</ul>
+<h3 id="sub-21">FUN-21 mermaid 渲染失败无降级提示、重复 id、遗留调试 emit <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/renderer/src/components/Markdown/hemy-editor-render.ts:23-39</code>；<code>src/renderer/src/components/Markdown/MermaidRender.vue:24,51,69</code></li>
+<li><strong>描述</strong>：①<code>mermaidRender</code> 失败仅 console.error 并返回空串——预览中图表区域空白，无任何&quot;渲染失败&quot;提示或源码回显；②<code>MermaidRender.vue</code> 每次用固定 id <code>'mermaidContainer'</code> 调 <code>mermaid.render</code>，mermaid 要求 id 全局唯一，第二次渲染即报错（此组件路径与预览路径并存）；③<code>MermaidRender.vue:69</code> 在 setup 中遗留调试代码 <code>emit('mermaid-render-result', 'mermaid-render-result mermaid-render-result mermaid-render-result')</code>，向父组件发射垃圾字符串。</li>
+<li><strong>证据</strong>：<code>hemy-editor-render.ts:34-38</code>；<code>MermaidRender.vue:24</code> <code>mermaid.render('mermaidContainer', graphData)</code>；<code>:69</code> 调试 emit</li>
+<li><strong>影响</strong>：图表错误不可见、不可诊断；重复渲染失效；父组件可能收到脏数据。</li>
+<li><strong>修复建议</strong>：失败时输出带错误信息的占位块；使用随机 id（预览路径已这么做）；删除调试 emit。</li>
+<li><strong>工作量</strong>：0.5 人日</li>
+</ul>
+<h3 id="sub-22">FUN-22 预渲染改写代码块内容、锚点失效、javascript: URL 未拦截 <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/renders/HemyRender.ts:201-231</code>、<code>:166-182</code></li>
+<li><strong>描述</strong>：预渲染仅保护 <code>text/</code>markdown 块（splitByTextMarkdownBlocks，HemyRender.ts:73-112），其他代码块（```js 等）内的 <code>![alt](url)</code>、<code>[text](url)</code> 同样被正则改写成 <code>&lt;img&gt;</code>/<code>&lt;a&gt;</code> HTML，代码示例被破坏；<code>covertFileUrl</code> 把不含 <code>:</code> 的相对链接一律拼成绝对文件路径，<code>[跳转](#anchor)</code> 这类页内锚点被改成 <code>E:\...#anchor</code> 而失效；含 <code>:</code> 的链接原样放行，<code>javascript:</code> 伪协议链接进入 v-html 后可点击执行。</li>
+<li><strong>证据</strong>：<code>HemyRender.ts:203</code> 图片正则、<code>:220</code> 链接正则无代码块排除；<code>:172</code> <code>if (url.indexOf(':') !== -1) return url</code>；<code>:180</code> <code>ParseDirectoryPath(file.path) + '\\' + url</code></li>
+<li><strong>影响</strong>：代码块展示损坏；锚点导航失效；伪协议注入面扩大（与 FUN-01 叠加）。</li>
+<li><strong>修复建议</strong>：保护所有围栏代码块；仅对 <code>#</code>、<code>.</code>、<code>/</code> 开头的链接做相对路径解析并排除 <code>#</code> 锚点与危险协议。</li>
+<li><strong>工作量</strong>：0.5 人日</li>
+</ul>
+<h3 id="sub-23">FUN-23 文件内容缓存只写不读 <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/baize-store.ts:84-121</code>；<code>src/main/utils/file-utils/file-operations.ts:61,345,386</code></li>
+<li><strong>描述</strong>：<code>setFileContent</code> 在保存/打开时被调用（3 处），但 <code>getFileContent/hasFileContent/deleteFileContent</code> 全库零调用（grep 验证），即缓存是纯写入负担：最多 50 个文件的完整内容常驻主进程内存（单个文件可达数 MB，上限 ~250MB），无任何读取收益；且&quot;LRU&quot;淘汰按 Map 插入序而非访问序（Map.set 已存在键不改变顺序）。</li>
+<li><strong>证据</strong>：<code>baize-store.ts:84-96</code>；grep <code>getFileContent</code> 仅命中定义处</li>
+<li><strong>影响</strong>：内存浪费与误导性维护成本。</li>
+<li><strong>修复建议</strong>：删除缓存或改为真正按需使用（如崩溃恢复），并限制总字节数。</li>
+<li><strong>工作量</strong>：0.5 人日</li>
+</ul>
+<h3 id="sub-24">FUN-24 资源管理器右键&quot;导入/在…中查找&quot;为空实现 <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/dialogs/dialogs.ts:63-64</code>、<code>:70-71</code></li>
+<li><strong>描述</strong>：<code>file-manager-context-menu-import-from</code> 与 <code>file-manager-context-menu-find-in</code> 两个 IPC 处理器的函数体为空（<code>(_, _value) =&gt; {}</code>）。右键菜单展示这两个入口（渲染端 ResourceManager 发送），点击无任何反应。</li>
+<li><strong>证据</strong>：<code>dialogs.ts:63-64</code> <code>ipcListenerManager.register('file-manager-context-menu-import-from', (_, _value) =&gt; { }, componentId)</code></li>
+<li><strong>影响</strong>：右键&quot;导入/查找&quot;为死入口。</li>
+<li><strong>修复建议</strong>：实现（复用 InsertImportFormFile / 目录查找）或从右键菜单移除。</li>
+<li><strong>工作量</strong>：0.5 人日</li>
+</ul>
+<h3 id="sub-25">FUN-25 IPv4 子网计算器把合法值判为无效 <span>P2</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/renderer/src/components/PluginTools/NetWork/NetWork.ts:3-13</code>；<code>src/renderer/src/components/PluginTools/NetWork/Ipv4SubnetCalc.vue:24-33</code>、<code>:304</code></li>
+<li><strong>描述</strong>：<code>inputIpv4Addr</code> 初始为 number[]，但 4 个 <code>v-model</code> 文本框输入后元素变为字符串；<code>isValidIPV4(ip: number[])</code> 内 <code>ip[i] &lt; 0 || ip[i] &gt; 255</code> 对字符串做<strong>字典序</strong>比较：任何以 '3'~'9' 开头的值（如 '99'、'128'、'192'、'3'）都 <code>&gt; '255'</code>，被判&quot;输入IP地址无效&quot;。常用地址段（128/192/99 等）无法计算。</li>
+<li><strong>证据</strong>：<code>NetWork.ts:8</code> <code>if (ip[i] &lt; 0 || ip[i] &gt; 255)</code>；<code>Ipv4SubnetCalc.vue:27</code> <code>v-model=&quot;inputIpv4Addr[index]&quot;</code>；<code>:304</code> <code>if (!net.isValidIPV4(inputIpv4Addr.value))</code></li>
+<li><strong>影响</strong>：子网计算器对大量合法输入误报无效，核心功能受损。</li>
+<li><strong>修复建议</strong>：入参统一 <code>Number()</code> 转换后比较，并对 NaN/空输入给明确提示；cidr 做 0-32 范围校验（GetHostNumber 对 /32 会得到 -2 的荒谬值，NetWork.ts:37-42）。</li>
+<li><strong>工作量</strong>：0.5 小时</li>
+</ul>
+<h3 id="sub-26">FUN-26 菜单快捷键多数仅展示未绑定 <span>P3</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/renderer/src/components/MenuBar/menu_config.ts:44-76</code>；<code>src/main/config/short-key-register.ts:8-27</code></li>
+<li><strong>描述</strong>：菜单标注的 Ctrl+N、Ctrl+O、Ctrl+R、Ctrl+G、Ctrl+Shift+F/H、F4 等 accelerator 仅是展示文本：全局快捷键仅注册 F9-F12（short-key-register.ts），应用内仅 Monaco 绑定 Ctrl+S（hemy-editor-shortcut.ts:42）与窗口级 Ctrl+S（MarkdownEditComponent.vue:207-214），其余快捷键无任何绑定。&quot;退出 F4&quot;实际无效。</li>
+<li><strong>证据</strong>：<code>menu_config.ts:44-76</code>；<code>short-key-register.ts:9-27</code> 仅 F9/F10/F11/F12</li>
+<li><strong>影响</strong>：用户按菜单提示操作无响应，可信度受损。</li>
+<li><strong>修复建议</strong>：建立统一的快捷键注册表（渲染端 keydown 或主进程 globalShortcut），未绑定的 accelerator 不展示。</li>
+<li><strong>工作量</strong>：1 人日</li>
+</ul>
+<h3 id="sub-27">FUN-27 用户可见提示中英文混杂 <span>P3</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/main/utils/file-utils/export.ts:72,79,93</code>；<code>src/main/utils/file-utils/file-operations.ts:181,361-363</code></li>
+<li><strong>描述</strong>：导出相关提示为英文（&quot;Currently, there is no content to export&quot;、&quot;Export successful&quot;、<code>Exporting file failed</code>），大文件警告为英文（&quot;file size is 5.00MB, May affect performance&quot;），与中文 UI 混用；另导入错误文案&quot;暂不支持当前格式&quot;列表遗漏 mhtml/xml/log（import.ts:193-195）。</li>
+<li><strong>证据</strong>：<code>export.ts:72</code>；<code>file-operations.ts:361-363</code></li>
+<li><strong>影响</strong>：体验割裂，国际化工作半途。</li>
+<li><strong>修复建议</strong>：统一中文文案并走 i18n 常量。</li>
+<li><strong>工作量</strong>：0.5 人日</li>
+</ul>
+<h3 id="sub-28">FUN-28 编辑器默认值双份不一致 + tabIndex 笔误 + 频道名缺前缀 <span>P3</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/renderer/src/components/Markdown/editor-options.ts:15-22</code>；<code>src/main/config/editor-setting.ts:269,297,301</code>；<code>src/renderer/src/components/Markdown/editor-utils.ts:16-18</code>；<code>src/renderer/src/components/BaiZeNotes.vue:367</code></li>
+<li><strong>描述</strong>：①Monaco 初始 options 与 editor-setting 默认值多处不一致（fontSize 16 vs 15、renderLineHighlight 'none' vs 'all'、glyphMargin false vs true、stickyTabStops true vs false、foldingStrategy 'indentation' vs 'auto' 等），启动后虽被 init-editor-setting 覆盖，但闪烁与维护风险存在；②<code>UpdateTableSize</code> 实现为 <code>updateOptions({ tabIndex: newSize })</code>——把 Tab 大小设成了 DOM tabIndex，应为 tabSize（当前该 OptMap 无调用方，潜在雷）；③<code>BaiZeNotes.vue:367</code> 发送频道 <code>&quot;monaco-editor-update-options&quot;</code> 缺 <code>baize-notes:</code> 前缀，监听侧（MarkdownMonacoEditor.vue:71）永不收到（该处主题已由同文件直接 setTheme 兜底，故功能未坏但事件无效）。</li>
+<li><strong>证据</strong>：<code>editor-utils.ts:17</code> <code>editor.updateOptions({ tabIndex: newSize })</code>；<code>BaiZeNotes.vue:367</code></li>
+<li><strong>影响</strong>：默认值漂移、潜在配置 bug、死事件。</li>
+<li><strong>修复建议</strong>：默认值收敛到 editor-setting.ts 单一来源；修正 tabSize；统一频道常量（ipc-channels.ts 已有定义应全面使用）。</li>
+<li><strong>工作量</strong>：0.5 人日</li>
+</ul>
+<h3 id="sub-29">FUN-29 状态栏编码硬编码 utf-8；空文件注入换行 <span>P3</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/renderer/src/components/StatusBar.vue:17</code>；<code>src/main/utils/file-utils/file-operations.ts:388-390</code>、<code>:429-447</code></li>
+<li><strong>描述</strong>：①状态栏编码恒显示 &quot;utf-8&quot;，与实际文件编码无关；②打开空文件时把编辑器内容替换为 <code>'\r\n'</code>（appState 仍是 ''，但自动保存跳过空内容），用户保存后空文件被写入换行；③<code>CreateFile</code> 创建空文件却在 appState 写入 <code>'# ' + name</code>，与磁盘内容（空）不一致，自动保存会在用户未输入时把标题写进文件。</li>
+<li><strong>证据</strong>：<code>StatusBar.vue:17</code> <code>&lt;div id=&quot;status-bar-encoding&quot;&gt;utf-8&lt;/div&gt;</code>；<code>file-operations.ts:389</code> <code>data = '\r\n'</code>；<code>file-operations.ts:441-447</code></li>
+<li><strong>影响</strong>：信息误导；空文件被&quot;污染&quot;。</li>
+<li><strong>修复建议</strong>：状态栏显示实际编码；空文件保持空内容展示；新建文件统一磁盘与内存内容。</li>
+<li><strong>工作量</strong>：0.5 人日</li>
+</ul>
+<h3 id="sub-30">FUN-30 调试残留 <span>P3</span></h3>
+<p>→ ✅ 已修复</p>
+<ul>
+<li><strong>位置</strong>：<code>src/renderer/src/components/Markdown/hemy-editor-actions.ts:66-74</code>；<code>src/main/utils/file-utils/file-operations.ts:357-365</code></li>
+<li><strong>描述</strong>：①编辑器注册了名为 &quot;Hemy Custom ContextMenu&quot; 的右键菜单动作，点击 <code>alert('args' + args)</code>——调试代码暴露在用户界面；②大文件确认用 <code>dialog.showMessageBoxSync</code>（阻塞主进程）且文案英文。</li>
+<li><strong>证据</strong>：<code>hemy-editor-actions.ts:71-73</code>；<code>file-operations.ts:359-365</code></li>
+<li><strong>影响</strong>：观感差；同步对话框阻塞风险。</li>
+<li><strong>修复建议</strong>：删除调试动作；改用异步对话框与中文文案。</li>
+<li><strong>工作量</strong>：0.5 小时</li>
+</ul>
+<h2 id="sec-5">4. 值得肯定的实践（简要）</h2>
+<ol>
+<li><strong>窗口安全基线正确</strong>：主窗口 <code>nodeIntegration:false + contextIsolation:true + sandbox:true</code>（main/index.ts:30-37），<code>setWindowOpenHandler → shell.openExternal</code> 统一外链出口（main/index.ts:72-75）。</li>
+<li><strong>大文件打开有 5MB 阈值确认</strong>（file-operations.ts:352-371），删除文件/文件夹有确认对话框（dialogs.ts:19-33）。</li>
+<li><strong>IPC 监听集中管理</strong>：<code>ipcListenerManager</code> 按 componentId 注册/清理，对话框窗口销毁时解绑（dialogs.ts:56-80）。</li>
+<li><strong>配置驱动设计</strong>：导出格式表（export.ts:24-61）、编辑器选项映射表（editor-option-maps.ts:3-141）、插件工具注册表（plugin_tools_const.ts）思路正确，扩展成本低。</li>
+<li><strong>渲染管线有工程化意识</strong>：预览 150ms 防抖（MarkdownPreviewComponent.vue:29-30）、mermaid 并发限制 3（hemy-editor-render.ts:97-102）、<code>text/</code>markdown 块保护（HemyRender.ts:73-112）。</li>
+<li><strong>CSV 导入做了编码检测</strong>（import.ts:143-146），是全部导入格式中唯一正确处理的编码分支。</li>
+<li><strong>导入取消路径处理正确</strong>（import.ts:204 <code>if (result.canceled) return</code>）；最近文件去重且限量 10（file-state.ts:37-39）。</li>
+<li><strong>状态栏有未保存红点指示</strong>（StatusBar.vue:3-8,96-109），说明脏状态概念已存在（缺的是消费它的流程）。</li>
+<li><strong>config-manager 读写有 try/catch 容错</strong>（config-manager.ts:19-45），为统一配置访问提供了可复用的正确范式。</li>
+<li><strong>日志体系统一</strong>（logger 模块），保存/加载/自动保存均有日志记录。</li>
+</ol>
+<h2 id="sec-6">5. 修复优先级路线图</h2>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>范围</th>
+<th>对应发现</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>阶段 0（立即）</td>
+<td>安全</td>
+<td>FUN-01</td>
+<td>预览消毒 + preload 收窄 + IPC 白名单，先封死任意程序启动面</td>
+</tr>
+<tr>
+<td>阶段 1（1-2 周）</td>
+<td>数据安全</td>
+<td>FUN-02、FUN-03、FUN-04、FUN-05、FUN-06、FUN-07、FUN-11</td>
+<td>关闭前落盘与未保存确认、编码探测与回写保护、自动保存开关/脏标记修复、重载覆盖保护、模板改插入、配置损坏容错</td>
+</tr>
+<tr>
+<td>阶段 1（1-2 周）</td>
+<td>功能正确性</td>
+<td>FUN-08、FUN-09、FUN-10</td>
+<td>预览容错、失效菜单项补齐或隐藏、自动更新接入或移除入口</td>
+</tr>
+<tr>
+<td>阶段 2（1 个月）</td>
+<td>功能完善</td>
+<td>FUN-12~FUN-25</td>
+<td>编辑器设置表单映射修正、导入导出修复、插件菜单数据清洗、主题存储统一、缓存清理、右键菜单补齐</td>
+</tr>
+<tr>
+<td>阶段 3（持续）</td>
+<td>体验与卫生</td>
+<td>FUN-26~FUN-30</td>
+<td>快捷键统一、文案统一、默认值收敛、调试残留清理</td>
+</tr>
+</tbody>
+</table>
+<p><strong>总体结论</strong>：该应用框架正确（安全基线、分层、配置驱动思路好），但功能层存在系统性&quot;链路断裂&quot;——大量事件有发送无监听、有菜单无实现、有 UI 无映射、有存储无统一，以及若干真实的数据丢失/安全风险（预览无消毒、关闭不保存、模板全文替换、编码回写破坏）。建议优先按阶段 0/1 修复，并将&quot;菜单动作→处理函数→渲染端监听→用户反馈&quot;四段链路纳入回归测试清单。</p>
+<hr>
+<p><em>白泽笔记全量检查报告 · 功能维度 · 由 AI 检查子代理生成</em></p>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

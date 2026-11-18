@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>预览单跳重构报告</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">1. 问题回顾</a>
+    <a class="toc-l2" href="#sec-2">2. 改造结果</a>
+    <a class="toc-l2" href="#sec-3">3. 改动清单</a>
+    <a class="toc-l2" href="#sec-4">4. 验证与证据</a>
+    <a class="toc-l2" href="#sec-5">5. 遗留与建议</a>
+    <a class="toc-l2" href="#sec-6">6. 全局收尾</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>预览单跳重构报告</h1>
+    <p>报告归档 · 02-修复与实施</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>白泽笔记预览链路单跳重构报告（PF-02）</h1>
+<blockquote>
+<p>📦 <strong>归档报告（原文：12-预览单跳重构报告.md）</strong>——历史快照，数字与结论以报告时点为准；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="../03-专项治理/IPC通信矩阵.html">IPC通信矩阵</a>。</p>
+</blockquote>
+<ul>
+<li><strong>项目</strong>：白泽笔记（BaiZe Notes）v1.2.2 ｜ <strong>执行日期</strong>：2026-11-15</li>
+<li><strong>依据</strong>：127 项检查发现的最后一项部分修复项 PF-02（<a href="../01-检查与扫描/性能检查报告.html">02-性能检查报告</a> P1）</li>
+<li><strong>执行方式</strong>：1 个专项重构子智能体 + 根代理验收</li>
+<li><strong>验收结论</strong>：✅ 全部门禁通过（typecheck 0 错误、测试 115 文件/1843 用例、ESLint 0 error、electron-vite build 通过）</li>
+</ul>
+<h2 id="sec-1">1. 问题回顾</h2>
+<p>修复前预览渲染链路存在 <strong>4 跳 IPC 往返</strong> 与 <strong>主进程同步 KaTeX 渲染</strong>：</p>
+<ol>
+<li>渲染层 <code>ipcRenderer.send(PRE_RENDER, content)</code> → 主进程 <code>HemyRenderPre</code>（图片/文件 URL 转换）→ 回发 PRE_RENDER_RESULT；</li>
+<li>渲染层收到后执行 <code>PreMarkdownRender</code>（mermaid/plantuml）→ <code>md.render()</code>；</li>
+<li>渲染层 <code>ipcRenderer.send(POST_RENDER, html)</code> → 主进程 <code>HemyRenderPost</code>（KaTeX 同步渲染 + Material/TabbedSet 变换）→ 回发 POST_RENDER_RESULT；</li>
+<li>渲染层收到后 <code>PostMarkdownRender</code> → DOMPurify → v-html。</li>
+</ol>
+<p>副作用：每次击键（防抖后）触发 4 次跨进程消息；主进程事件循环被同步 KaTeX 阻塞；渲染串行化。</p>
+<h2 id="sec-2">2. 改造结果</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>修复前</th>
+<th>修复后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>每轮预览渲染的渲染 IPC</td>
+<td><strong>4 跳</strong>（2 send + 2 结果回发）</td>
+<td><strong>0 跳</strong>（markdown 全流水线在渲染进程完成）</td>
+</tr>
+<tr>
+<td>主进程渲染通道</td>
+<td>4 个（PRE/POST + 2 个 RESULT）</td>
+<td><strong>全部删除</strong>（常量/注册/监听/白名单清理）</td>
+</tr>
+<tr>
+<td>KaTeX 渲染位置</td>
+<td>主进程同步 <code>renderToString</code>（阻塞事件循环）</td>
+<td><strong>渲染层</strong> katex 包（已有 CSS），不再阻塞主进程</td>
+</tr>
+<tr>
+<td>主进程渲染文件</td>
+<td><code>renders/</code> 4 文件（HemyRender/KatexRender/MaterialRender/TabbedSetRender，797 行）</td>
+<td><strong>删除</strong>，逻辑逐行迁移至渲染层 <code>preview-local-render.ts</code>（854 行）</td>
+</tr>
+<tr>
+<td>PlantUML</td>
+<td>主进程本地 IPC</td>
+<td><strong>保留</strong>（离线图表资源依赖，测试证明 1 图仅 1 次 invoke、0 次 send）</td>
+</tr>
+<tr>
+<td>mermaid</td>
+<td>渲染层本地渲染 + hash 缓存</td>
+<td>未改动</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-3">3. 改动清单</h2>
+<p><strong>新增</strong></p>
+<ul>
+<li><code>src/renderer/src/components/Markdown/preview-local-render.ts</code>：KaTeX 渲染、Material Admonitions、TabbedSet、代码块保护分割、图片/文件 URL 绝对化、<code>HemyRenderPreLocal</code> / <code>HemyRenderPostLocal</code>（活动文件路径复用既有 <code>IPC.FILE.USER_SELECT_FILE</code> 事件，零新增通道）。</li>
+</ul>
+<p><strong>修改</strong></p>
+<ul>
+<li><code>MarkdownPreviewComponent.vue</code>：本地单链路渲染（保留 150ms 防抖、DOMPurify 消毒、chapters 解析、plantuml/mermaid 逻辑），新增渲染轮次守卫与异常兜底，避免旧轮次结果覆盖新内容。</li>
+<li><code>src/main/utils/utils.ts</code>：删除 HemyRender 导入/再导出与 2 个 PRE/POST IPC 注册。</li>
+<li><code>src/shared/ipc-channels.ts</code>：删除 4 个 RENDER 常量。</li>
+<li>preload 通道白名单：无改动（无需改）。</li>
+</ul>
+<p><strong>删除</strong></p>
+<ul>
+<li><code>src/main/renders/HemyRender.ts</code>、<code>KatexRender.ts</code>、<code>MaterialRender.ts</code>、<code>TabbedSetRender.ts</code>（<code>renders/</code> 仅保留 <code>plantuml-local.ts</code>）。</li>
+</ul>
+<h2 id="sec-4">4. 验证与证据</h2>
+<table>
+<thead>
+<tr>
+<th>验证项</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>新增测试</td>
+<td><code>preview-local-render.test.ts</code>（15 用例）+ <code>preview-local-pipeline.test.ts</code>（4 用例，jsdom 挂载组件）</td>
+</tr>
+<tr>
+<td><strong>IPC 证据</strong></td>
+<td>纯 Markdown 渲染：<code>send=0 / invoke=0</code>；组件仅注册 1 个 <code>USER_SELECT_FILE</code> 监听、不再订阅 PRE/POST_RESULT；PlantUML 场景：<code>invoke=1（仅 plantuml-local-render）/ send=0</code></td>
+</tr>
+<tr>
+<td>输出一致性</td>
+<td>原 katex/material/tabbed 渲染测试仅改导入路径，<strong>完整 HTML 断言全部原样通过</strong>；URL 转换断言原样通过（逻辑逐行迁移）</td>
+</tr>
+<tr>
+<td>构建产物</td>
+<td><code>out/main/index.js</code> 已无 <code>renderToString</code> / <code>katex-math-block</code> / PRE-POST 通道，主进程不再运行 KaTeX</td>
+</tr>
+<tr>
+<td>门禁</td>
+<td>typecheck:node ✅ 0 ｜ typecheck:web ✅ 0 ｜ npm test ✅ <strong>115 文件 / 1843 用例</strong> ｜ eslint ✅ 0 error ｜ electron-vite build ✅</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-5">5. 遗留与建议</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>另存为后相对路径</td>
+<td>「另存为」（md/txt）后主进程更新活动路径但未发 <code>USER_SELECT_FILE</code>，相对图片 URL 会按旧目录解析——建议主进程 <code>SaveActiveFileAs</code> 成功后补发该事件（1 行改动，需确认事件契约）。</td>
+</tr>
+<tr>
+<td>DOMPurify URI 策略</td>
+<td>DOMPurify 3.4.17 默认 URI 策略会剥离 <code>C:/...</code> 盘符绝对路径（jsdom 实测；修复前主进程管线同样存在，非本次引入）——建议按报告给出的 <code>ALLOWED_URI_REGEXP</code> 方案安全评审后单独立项。</td>
+</tr>
+<tr>
+<td>章节解析二次 parse</td>
+<td>markdown-it 章节解析仍保留二次 <code>md.parse</code>（原始内容行号语义，PF-14 依赖），后续可优化。</td>
+</tr>
+<tr>
+<td>KaTeX 公式缓存</td>
+<td>本轮未加公式缓存（P2 优化项）。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-6">6. 全局收尾</h2>
+<p>本轮完成后，<strong>127 项检查发现全部闭环（127/127，100%）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>初始</th>
+<th>最终</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>检查发现闭环</td>
+<td>0/127</td>
+<td><strong>127/127（100%）</strong></td>
+</tr>
+<tr>
+<td>单元测试</td>
+<td>21 用例</td>
+<td><strong>1843 用例（115 文件）</strong></td>
+</tr>
+<tr>
+<td>npm audit 漏洞</td>
+<td>15（1 critical + 11 high）</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>ESLint</td>
+<td>完全无法运行</td>
+<td><strong>0 error</strong></td>
+</tr>
+<tr>
+<td>严格模式</td>
+<td>未开启</td>
+<td>noUnusedLocals/Parameters 开启且 0 错误</td>
+</tr>
+<tr>
+<td>安装包体积</td>
+<td>227.41 MiB（便携版基线）</td>
+<td><strong>132.60 MiB（-41.7%）</strong></td>
+</tr>
+<tr>
+<td>国际化</td>
+<td>无</td>
+<td>中英双语（约 1680 词条）</td>
+</tr>
+<tr>
+<td>预览渲染 IPC</td>
+<td>4 跳/次</td>
+<td><strong>0 跳</strong>（PlantUML 图表除外，1 次 invoke）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>全部改动未提交 git。建议人工冒烟后提交：预览渲染（KaTeX 公式/Material 卡片/代码块/图片链接）、中英切换布局、Monaco worker、PlantUML 本地渲染、目录监听、编码切换、关闭落盘、配置迁移。</p>
+</blockquote>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

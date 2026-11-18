@@ -69,6 +69,6 @@
 
 ### 智能体落地约束（必读）
 
-- 主窗口与对话框均 `sandbox: true`：preload 产物必须是**单文件**（`electron.vite.config.ts` 的 preload 需保持 `isolatedEntries: true` + `externalizeDeps: false`），否则 `contextBridge` 不会注入、渲染层所有按钮失效（事故记录见 [全量扫描报告 9.8 节](docs/reports/md/2026-11-15-全量扫描报告.md)）。
+- 主窗口与对话框均 `sandbox: true`：preload 产物必须是**单文件**（`electron.vite.config.ts` 的 preload 需保持 `isolatedEntries: true` + `externalizeDeps: false`），否则 `contextBridge` 不会注入、渲染层所有按钮失效（事故记录见 [全量扫描报告 9.8 节](docs/reports/md/01-检查与扫描/全量扫描与审查报告.md)）。
 - 性能敏感路径（预览渲染、击键同步、目录刷新）改动前先查 `docs/reports/` 最新一轮扫描报告的量化基线。
-- 安全边界、死通道与遗留问题清单见 `docs/reports/md/2026-11-15-全量扫描报告.md` 与通信检查报告。
+- 安全边界、死通道与遗留问题清单见 `docs/reports/md/01-检查与扫描/全量扫描与审查报告.md` 与通信检查报告。

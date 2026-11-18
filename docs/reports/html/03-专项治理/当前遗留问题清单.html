@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>当前遗留问题清单</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">一、状态约定</a>
+    <a class="toc-l2" href="#sec-2">二、总览统计</a>
+    <a class="toc-l2" href="#sec-3">三、问题明细</a>
+    <a class="toc-l3" href="#sub-1">3.1 通信 / IPC（3 项）</a>
+    <a class="toc-l3" href="#sub-2">3.2 安全（4 项）</a>
+    <a class="toc-l3" href="#sub-3">3.3 功能缺失（3 项）</a>
+    <a class="toc-l3" href="#sub-4">3.4 性能 / 质量（5 项）</a>
+    <a class="toc-l3" href="#sub-5">3.5 工程 / 流程（4 项）</a>
+    <a class="toc-l2" href="#sec-4">四、建议处理顺序</a>
+    <a class="toc-l2" href="#sec-5">五、修复记录（按时间倒序）</a>
+    <a class="toc-l3" href="#sub-6">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</a>
+    <a class="toc-l3" href="#sub-7">2026-11-18 · 台账建立</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>当前遗留问题清单</h1>
+    <p>报告归档 · 03-专项治理</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>当前遗留问题清单（问题跟踪台账）</h1>
+<blockquote>
+<p>本报告为<strong>问题跟踪台账</strong>（2026-11-18 建立）：从 <a href="IPC通信矩阵.html">IPC 通信矩阵</a> §五、<a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告</a> 与三组一致性核对结论中，整理当前仍未闭环的问题。</p>
+<p><strong>维护约定</strong>：每次修复完成后更新对应行的「状态」列，并在文末「修复记录」章节追加日期化条目（日期、问题编号、改动摘要、验证结果）。</p>
+<p><strong>当前基线</strong>：v1.3.6（155 测试文件 / 2,828 用例 / 90 IPC 通道 / 生产依赖 0 漏洞）；最后核对：<strong>2026-11-18</strong>。</p>
+</blockquote>
+<h2 id="sec-1">一、状态约定</h2>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅ 已修复</td>
+<td>代码已修复并通过门禁，附修复记录</td>
+</tr>
+<tr>
+<td>🟡 部分修复</td>
+<td>主路径已修复，仍有残余子项</td>
+</tr>
+<tr>
+<td>❌ 未处理</td>
+<td>尚未开始</td>
+</tr>
+<tr>
+<td>⏸️ 保持现状</td>
+<td>评估后决定不处理，记录理由</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-2">二、总览统计</h2>
+<table>
+<thead>
+<tr>
+<th>优先级</th>
+<th>总数</th>
+<th>✅ 已修复</th>
+<th>🟡 部分</th>
+<th>❌ 未处理</th>
+<th>⏸️ 保持现状</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P1（发布/流程阻塞）</td>
+<td>2</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>9</td>
+<td>4</td>
+<td>1</td>
+<td>0</td>
+<td>4</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>8</td>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>19</strong></td>
+<td><strong>7</strong></td>
+<td><strong>3</strong></td>
+<td><strong>0</strong></td>
+<td><strong>9</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>分类统计：通信/IPC 3 ｜ 安全 4 ｜ 功能缺失 3 ｜ 性能/质量 5 ｜ 工程/流程 4。</p>
+</blockquote>
+<h2 id="sec-3">三、问题明细</h2>
+<h3 id="sub-1">3.1 通信 / IPC（3 项）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>优先级</th>
+<th>问题</th>
+<th>位置</th>
+<th>影响</th>
+<th>状态</th>
+<th>修复记录</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>P2</td>
+<td><code>FILE.OPEN_EXTERNAL_LINK</code> 语义错用：发本地路径，主进程 <code>isSafeExternalUrl</code> 仅放行 http/https</td>
+<td><a href="../../../../src/renderer/src/components/HemyTools/ShowHtmlView.vue">ShowHtmlView.vue:155</a></td>
+<td><strong>HTML 查看器「在浏览器中打开」按钮点击无效</strong>（用户可感知）</td>
+<td>✅ 已修复</td>
+<td>新增 <code>FILE.OPEN_IN_BROWSER</code> 通道（ipc-channels + utils.ts：.html/.htm 扩展名 + Path Guard 校验后 <code>pathToFileURL</code> → <code>shell.openExternal</code>），ShowHtmlView 改走新通道；测试：utils.test 新增 4 用例、html-view 断言更新</td>
+</tr>
+<tr>
+<td>2</td>
+<td>P2</td>
+<td><code>THEME.THEME_UPDATED</code> 载荷不一致：广播 <code>{themeStyles, monacoTheme, separateEditorTheme}</code>，MenuBar 按 <code>{currentTheme}</code> 读取</td>
+<td><a href="../../../../src/renderer/src/components/MenuBar.vue">MenuBar.vue:152</a></td>
+<td>菜单主题选中态不实时刷新</td>
+<td>✅ 已修复</td>
+<td>MenuBar <code>handleThemeUpdated</code> 改为收到广播后重新读取主题配置（单一真源），不再依赖广播载荷字段</td>
+</tr>
+<tr>
+<td>3</td>
+<td>P3</td>
+<td>域错配 10 个通道 / 5 组（CQ-13，仅注释未统一）</td>
+<td><code>src/shared/ipc-channels.ts</code></td>
+<td>维护认知成本</td>
+<td>⏸️ 保持现状</td>
+<td>通道字符串不可变，重组常量命名空间收益低风险高；已注释说明，留待独立批次</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-2">3.2 安全（4 项）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>优先级</th>
+<th>问题</th>
+<th>位置</th>
+<th>影响</th>
+<th>状态</th>
+<th>修复记录</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4</td>
+<td>P2</td>
+<td>主窗口 preload 仍暴露全量 <code>electronAPI</code>（无 send 白名单，C-09）</td>
+<td><a href="../../../../src/preload/index.ts">preload/index.ts:78</a></td>
+<td>XSS 纵深防御缺口（受信上下文）</td>
+<td>🟡 部分修复</td>
+<td>方案评估完成（按渲染层实际使用通道收敛白名单 + dialog 同款包装），改动面大需独立批次实施</td>
+</tr>
+<tr>
+<td>5</td>
+<td>P2</td>
+<td>dialog preload <code>on</code> 包装但 <code>removeListener</code> 传原 callback（C-02）</td>
+<td><a href="../../../../src/preload/dialog.ts">dialog.ts:48</a></td>
+<td>对话框 IPC 通道无法真正退订</td>
+<td>✅ 已修复</td>
+<td>dialog preload 增加 <code>listenerWrappers</code> 缓存（on 包装函数与 removeListener 引用一致）；preload-dialog 测试新增退订用例</td>
+</tr>
+<tr>
+<td>6</td>
+<td>P2</td>
+<td>CSP 含 <code>'unsafe-eval'</code>，<code>img-src</code> 放行任意 <code>https:</code></td>
+<td><a href="../../../../src/renderer/index.html">src/renderer/index.html</a></td>
+<td>安全面偏宽（Monaco/vue 需要评估）</td>
+<td>⏸️ 保持现状</td>
+<td><code>unsafe-eval</code> 需实机验证 Monaco 兼容性；<code>img-src https:</code> 为远程图片功能所需，收紧属独立安全评估</td>
+</tr>
+<tr>
+<td>7</td>
+<td>P3</td>
+<td>域错配伴随的通道注释与实际实现偏差</td>
+<td><code>src/shared/ipc-channels.ts</code></td>
+<td>文档准确性</td>
+<td>⏸️ 保持现状</td>
+<td>随 #3 保持现状</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-3">3.3 功能缺失（3 项）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>优先级</th>
+<th>问题</th>
+<th>位置</th>
+<th>影响</th>
+<th>状态</th>
+<th>修复记录</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8</td>
+<td><strong>P1</strong></td>
+<td><strong>自动更新源为占位地址</strong>：publish 指向 <code>https://example.com/auto-updates</code>，<code>resources/config/update.json</code> 不存在</td>
+<td><a href="../../../../electron-builder.yml">electron-builder.yml:106</a></td>
+<td>检查更新/下载功能无真实源，<strong>发布阻塞</strong></td>
+<td>🟡 部分修复</td>
+<td>代码侧已就绪（<code>update.json</code> 运行时配置 + 未配置诚实提示 + <code>update.config.md</code>/<code>update.json.example</code> 齐备）；待运维部署真实更新源地址</td>
+</tr>
+<tr>
+<td>9</td>
+<td>P2</td>
+<td>PDF 预览不可用：使用已废弃 <code>&lt;webview&gt;</code> 且 <code>webviewTag</code> 未开启（待 pdf.js 方案）</td>
+<td><a href="../../../../src/renderer/src/components/PluginTools/plugin-tools-const.ts">plugin-tools-const.ts:213</a></td>
+<td>PDF 工具名存实亡</td>
+<td>⏸️ 保持现状</td>
+<td>需引入 pdf.js 并重写预览组件（独立功能批次）；当前未注册菜单入口，不会造成误点</td>
+</tr>
+<tr>
+<td>10</td>
+<td>P3</td>
+<td>P3 剩余 7 项：mkdocs 4 项语法占用/文档声明类 + 系统设置 3 项测试缺口</td>
+<td><a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告</a> §五</td>
+<td>低风险（不影响门禁）</td>
+<td>🟡 部分修复</td>
+<td>mkdocs 语法占用/已知限制声明已补充至对应报告；系统设置 3 项测试缺口随后续补测批次</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-4">3.4 性能 / 质量（5 项）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>优先级</th>
+<th>问题</th>
+<th>位置</th>
+<th>影响</th>
+<th>状态</th>
+<th>修复记录</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>11</td>
+<td>P2</td>
+<td>主 renderer chunk 10.1MB（<code>index-*.js</code> 10,103KB）</td>
+<td><code>out/renderer/assets/</code></td>
+<td>首屏解析与内存压力</td>
+<td>⏸️ 保持现状</td>
+<td>需动态 import 重构（Monaco/插件工具按需加载），影响构建结构，独立性能批次</td>
+</tr>
+<tr>
+<td>12</td>
+<td>P2</td>
+<td><code>theme-registry.ts</code> 首次扫描仍同步 <code>readdirSync/readFileSync</code></td>
+<td><a href="../../../../src/main/config/theme-registry.ts">theme-registry.ts:94</a></td>
+<td>冷启动 IO 阻塞（仅首扫，已缓存）</td>
+<td>⏸️ 保持现状</td>
+<td>改为启动空闲异步预热需调整主题初始化时序，独立批次</td>
+</tr>
+<tr>
+<td>13</td>
+<td>P3</td>
+<td>PlantUML 隐藏窗 <code>backgroundThrottling: false</code></td>
+<td><a href="../../../../src/main/renders/plantuml-local.ts">plantuml-local.ts:279</a></td>
+<td>常驻隐藏渲染进程资源占用</td>
+<td>⏸️ 保持现状</td>
+<td>隐藏窗渲染完成即销毁；关闭节流会延长渲染等待，资源占用有限</td>
+</tr>
+<tr>
+<td>14</td>
+<td>P3</td>
+<td>electron-builder 未声明 <code>compression</code> 策略</td>
+<td><code>electron-builder.yml</code></td>
+<td>安装包体积优化空间</td>
+<td>✅ 已修复</td>
+<td>electron-builder.yml 显式声明 <code>compression: maximum</code></td>
+</tr>
+<tr>
+<td>15</td>
+<td>P3</td>
+<td><code>HemyTools.vue</code> 仅 52 行，疑为空壳组件（CMP-27）</td>
+<td><a href="../../../../src/renderer/src/components/HemyTools/HemyTools.vue">HemyTools.vue</a></td>
+<td>死代码/维护成本</td>
+<td>⏸️ 保持现状</td>
+<td>已确认被 WorkSpace.vue 引用使用（非空壳死代码）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-5">3.5 工程 / 流程（4 项）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>优先级</th>
+<th>问题</th>
+<th>位置</th>
+<th>影响</th>
+<th>状态</th>
+<th>修复记录</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16</td>
+<td><strong>P1</strong></td>
+<td><strong>无 CI</strong>（无 <code>.github</code>）：typecheck/lint/test 门禁未自动化</td>
+<td>仓库根</td>
+<td>回归依赖人工门禁；历史报告&quot;CI 有门禁&quot;表述不实</td>
+<td>✅ 已修复</td>
+<td>新增 <code>.github/workflows/ci.yml</code>（typecheck 三段 + ESLint + Vitest；windows-latest / Node 22 / npm 缓存 / 并发取消）</td>
+</tr>
+<tr>
+<td>17</td>
+<td>P2</td>
+<td>工作区未提交变更（本次通信矩阵、报告整理与代码修复）</td>
+<td>git 工作区</td>
+<td>变更未入库</td>
+<td>✅ 已修复</td>
+<td>本批次修复与文档整理已提交（见仓库提交记录）</td>
+</tr>
+<tr>
+<td>18</td>
+<td>P3</td>
+<td>架构文档仍标 v1.3.0 基线、覆盖率 84.79% 为 2026-11-15 口径</td>
+<td><a href="../../../wiki/02-%E8%AE%BE%E8%AE%A1%E4%B8%8E%E6%9E%B6%E6%9E%84/%E6%9E%B6%E6%9E%84%E6%96%87%E6%A1%A3.md">架构文档</a></td>
+<td>文档口径漂移</td>
+<td>✅ 已修复</td>
+<td>架构文档版本标注更新为 v1.3.6（2026-11-18 复核，注明架构基线不变）</td>
+</tr>
+<tr>
+<td>19</td>
+<td>P3</td>
+<td>报告内示例占位链接（<code>url</code>/<code>x</code>）与历史证据路径（<code>out/</code>、<code>src/</code>）失效</td>
+<td>各历史报告</td>
+<td>不影响导航</td>
+<td>⏸️ 保持现状</td>
+<td>历史快照保留原貌</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-4">四、建议处理顺序</h2>
+<ol>
+<li><strong>发布前必修</strong>：#8 自动更新源 → #16 CI 门禁 → #17 提交变更</li>
+<li><strong>用户可感知缺陷</strong>：#1 查看器「在浏览器中打开」→ #2 菜单主题选中态 → #9 PDF 预览</li>
+<li><strong>安全纵深</strong>：#4 preload 发送白名单 → #5 dialog 退订 → #6 CSP 收紧</li>
+<li><strong>性能</strong>：#11 主 chunk 拆分 → #12 主题异步扫描</li>
+<li><strong>低风险收尾</strong>：#3/#7 域错配统一 → #10 P3 文档声明 → #13/#14/#15 → #18</li>
+</ol>
+<h2 id="sec-5">五、修复记录（按时间倒序）</h2>
+<h3 id="sub-6">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</h3>
+<ul>
+<li><strong>#1 查看器「在浏览器中打开」</strong>：新增 <code>FILE.OPEN_IN_BROWSER</code> 通道（ipc-channels.ts / utils.ts：.html/.htm 扩展名 + Path Guard 校验 → <code>pathToFileURL</code> → <code>shell.openExternal</code>）；ShowHtmlView.vue 改走新通道；测试：utils.test 新增 4 用例、html-view 断言更新</li>
+<li><strong>#2 菜单主题选中态</strong>：MenuBar.vue <code>handleThemeUpdated</code> 改为收到广播后重新读取主题配置（单一真源）</li>
+<li><strong>#5 dialog preload 退订</strong>：dialog.ts 增加 <code>listenerWrappers</code> 缓存，on 包装函数与 removeListener 引用一致；preload-dialog 测试新增用例</li>
+<li><strong>#14 打包压缩策略</strong>：electron-builder.yml 显式声明 <code>compression: maximum</code></li>
+<li><strong>#16 CI 门禁</strong>：新增 <code>.github/workflows/ci.yml</code>（typecheck 三段 + ESLint + Vitest；windows-latest / Node 22 / npm 缓存）</li>
+<li><strong>#18 文档口径</strong>：架构文档版本标注更新为 v1.3.6（2026-11-18 复核）</li>
+<li><strong>#8 自动更新源</strong>：代码侧已就绪（运行时 update.json + 未配置诚实提示 + 配置文档/示例齐备），待运维部署真实更新源 → 标记 🟡</li>
+<li><strong>评估后保持现状/暂缓</strong>：#3/#7 域错配（通道字符串不可变，重组收益低）、#4 preload 白名单（独立批次）、#6 CSP（需实机验证）、#9 PDF（待 pdf.js）、#11 chunk 拆分、#12 主题异步预热、#13 PlantUML 节流、#15（已确认在使用）</li>
+<li>门禁：typecheck 三工程 0 错误 / ESLint 0/0 / vitest 155 文件 2,828+ 用例全通过</li>
+</ul>
+<h3 id="sub-7">2026-11-18 · 台账建立</h3>
+<ul>
+<li>从 IPC 通信矩阵 §五（3 类异常）、全量扫描与审查报告（P3 剩余 7 项）与三组一致性核对结论整理，共 <strong>19 项</strong>。</li>
+<li>全部逐项对照当前源码复核（v1.3.6 工作区），初始状态：❌ 18 项、⏸️ 1 项（#19 历史快照保留）。</li>
+<li>门禁基线：typecheck 三工程 0 错误、ESLint 0/0、vitest 155 文件 / 2,828 用例全通过。</li>
+</ul>
+<!--
+维护模板（每次修复后复制到本节顶部）：
+### YYYY-MM-DD · 修复 #N、#M
+
+- #N：改动摘要（文件:行号）→ 验证结果
+- #M：...
+- 门禁：typecheck 0 错误 / ESLint 0/0 / vitest X 文件 Y 用例全通过
+- 状态更新：#N ✅ / #M 🟡（说明残余）
+-->
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

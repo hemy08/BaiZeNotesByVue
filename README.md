@@ -343,7 +343,7 @@ BaiZeNotesByVue/
 │   │   ├── dialog.ts                     # 对话框 preload（send 通道白名单）
 │   │   └── index.d.ts                    # 类型声明
 │   ├── shared/                           # 主进程 / 渲染层共享代码（38 个 .ts）
-│   │   ├── ipc-channels.ts               # IPC 通道常量唯一真源（89 个通道）
+│   │   ├── ipc-channels.ts               # IPC 通道常量唯一真源（90 个通道）
 │   │   ├── i18n/                         # 中英词典（12 个命名空间 + translate 函数）
 │   │   ├── types/                        # 共享类型定义（10 个模块）
 │   │   └── constants/                    # 共享常量
@@ -371,19 +371,19 @@ BaiZeNotesByVue/
 │   ├── icon/                             # 应用图标（ico/svg）
 │   ├── config/                           # 配置文件（version.json 构建时生成）
 │   └── _unused-assets/                   # 未使用资产暂存（已加入 .gitignore）
-├── tests/                                # 单元测试（134 个 .test.ts / 2,252 个用例）
+├── tests/                                # 单元测试（155 个 .test.ts / 2,823 个用例）
 ├── docs/                                 # 项目文档
-│   ├── wiki/                             # 知识库文档（分类结构，27 篇）
+│   ├── wiki/                             # 知识库文档（分类结构）
 │   │   ├── README.md                     # 文档索引
 │   │   ├── 01-项目分析报告/               # 项目分析（9 篇）
 │   │   ├── 02-设计与架构/                 # 架构文档、设计文档、规格文档、项目详细文档
 │   │   ├── 03-功能说明/                   # 导入/导出/菜单配置等功能说明（5 篇）
 │   │   ├── 04-优化与专项报告/             # 优化专项报告（7 篇）
 │   │   └── 05-版本与历史/                 # 版本更新历史
-│   ├── reports/                          # 全量检查报告
-│   │   ├── README.md                     # 报告索引（含口径说明）
-│   │   ├── md/                           # Markdown 报告（23 篇）
-│   │   └── html/                         # HTML 报告（23 篇，带悬浮导航）
+│   ├── reports/                          # 报告归档（Markdown 版 + 独立 HTML Wiki）
+│   │   ├── README.md                     # 报告总索引（含口径说明与合并记录）
+│   │   ├── md/                           # Markdown 报告（19 篇，按三类分类）
+│   │   └── html/                         # HTML 报告 Wiki（README+_sidebar 导航 + 19 份带悬浮目录页面）
 │   ├── 架构文档.html                     # 历史版架构文档（最新见 docs/wiki/02-设计与架构/架构文档.md）
 │   ├── images/                           # 文档配图
 │   └── md/                               # 其他 Markdown 文档
@@ -456,7 +456,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成            | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.0 | Electron 应用打包工具           | [官网](https://www.electron.build/)                    |
-|               Vitest               | 4.1.12  | 单元测试框架（134 个测试文件）  | [官网](https://vitest.dev/)                            |
+|               Vitest               | 4.1.12  | 单元测试框架（155 个测试文件）  | [官网](https://vitest.dev/)                            |
 |               ESLint               | 9.39.4  | JavaScript 代码检查工具         | [官网](https://eslint.org/)                            |
 |              Prettier              |  3.9.6  | 代码格式化工具                  | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  2.1.0  | Electron ESLint 配置            | [GitHub](https://github.com/alex8088/electron-toolkit) |
@@ -473,7 +473,7 @@ BaiZeNotesByVue/
 
 ## 📊 项目统计
 
-> 以下数据为 2026-11-15 只读命令实测（v1.3.0 升级复扫基线；口径说明见 [docs/reports/README.md](docs/reports/README.md)）。
+> 以下数据为 2026-11-18 实测（v1.3.6 基线；口径说明见 [报告总索引](docs/reports/README.md)）。
 
 |     指标     |     数量     | 说明                                                                                             |
 | :----------: | :----------: | :----------------------------------------------------------------------------------------------- |
@@ -485,7 +485,7 @@ BaiZeNotesByVue/
 |   应用主题   |    28 种     | src/main/config/theme-config.ts（编译进主进程，无资源 JSON；旧 app_themes 已删除）               |
 |  编辑器主题  |    55 种     | Monaco 主题（沿用界面/历史口径；themes 目录含 54 个主题 json + themelist 索引）                  |
 |   IPC 通道   |    89 个     | `baize:<domain>:<name>`（89 个 / 16 组常量），唯一真源 `src/shared/ipc-channels.ts`              |
-|   单元测试   | 2,252 个用例 | 134 个测试文件（vitest，全通过）                                                                 |
+|   单元测试   | 2,823 个用例 | 155 个测试文件（vitest，全通过）                                                                 |
 |   声明依赖   |    49 个     | 生产依赖 12 + 开发依赖 37                                                                        |
 |   依赖审计   |    0 漏洞    | 生产与全量依赖均为 0 漏洞（2026-11-15 晚；minimatch override 11.0.8 + electron-builder 26.18.0） |
 |  安装包体积  |  ≈111.8 MB   | NSIS 安装包（app.asar 51.96 MB；2026-11-15 实测）                                                |
@@ -513,21 +513,22 @@ BaiZeNotesByVue/
 | MarkdownMonacoEditor.vue |  690  | Monaco 编辑器组件                 |
 |     theme-config.ts      |  678  | 应用主题配置（28 种）             |
 |    plantuml-local.ts     |  473  | PlantUML 本地 teaVM 渲染          |
-|     ipc-channels.ts      |  157  | IPC 通道常量唯一真源（89 个通道） |
+|     ipc-channels.ts      |  162  | IPC 通道常量唯一真源（90 个通道） |
 
 ---
 
 ## 📚 开发文档
 
-项目文档分两类：**知识库文档**（[docs/wiki](docs/wiki/README.md)）与**全量检查报告**（[docs/reports](docs/reports/README.md)）。
+项目文档分三类：**知识库文档**（[docs/wiki](docs/wiki/README.md)）、**报告归档**（[docs/reports](docs/reports/README.md)）与**报告 HTML Wiki**（[docs/reports/html](docs/reports/html/README.md)）。
 
 ### 文档索引
 
-- [知识库文档索引](docs/wiki/README.md) - docs/wiki 全部文档导航（27 篇）
-- [检查报告索引](docs/reports/README.md) - 全量检查与修复报告（23 对 md/html，含口径说明）
-- [项目问题复查报告](docs/reports/md/15-项目问题复查报告.md) - 2026-11-15 复查（32 项新发现问题，当前健康度口径）
-- [通信检查报告](docs/reports/md/2026-11-15-通信检查报告.md) - IPC 通信专项 32 项问题
-- [IPC 通信矩阵](docs/reports/md/2026-11-15-IPC通信矩阵.md) - 通道/窗口/preload/EventBus 全量矩阵
+- [知识库文档索引](docs/wiki/README.md) - docs/wiki 全部文档导航（5 类 27 篇）
+- [报告总索引](docs/reports/README.md) - 检查/修复/专项报告（20 篇，已去日期并按主题合并，含口径说明）
+- [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md) - **问题跟踪台账**（19 项待办，修复后更新状态）
+- [报告 HTML Wiki](docs/reports/html/README.html) - HTML 版报告（首页 + 侧边栏 + 每页顶部整体导航 + 19 份带悬浮目录页面）
+- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（90 通道 / 16 组 + 窗口/preload 结构）
+- [IPC 通信治理报告](docs/reports/md/03-专项治理/IPC通信治理报告.md) - 通信检查 + 修复计划 + 命名方案（历史）
 
 ### 项目分析与架构
 
@@ -554,9 +555,9 @@ BaiZeNotesByVue/
 
 ### 2026-11 架构治理报告
 
-- [国际化（i18n）实施报告](docs/reports/md/11-国际化实施报告.md) - 中英双语词典与 t()/tMain() 架构
-- [预览单跳重构报告](docs/reports/md/12-预览单跳重构报告.md) - PF-02：预览本地渲染，IPC 4 跳 → 0 跳
-- [IPC 通道命名统一方案](docs/reports/md/14-IPC通道命名统一方案.md) - `baize:<domain>:<name>` 命名规范与 123 通道清单
+- [国际化（i18n）实施报告](docs/reports/md/02-修复与实施/国际化实施报告.md) - 中英双语词典与 t()/tMain() 架构
+- [预览单跳重构报告](docs/reports/md/02-修复与实施/预览单跳重构报告.md) - PF-02：预览本地渲染，IPC 4 跳 → 0 跳
+- [IPC 通道命名统一方案](docs/reports/md/03-专项治理/IPC通信治理报告.md) - `baize:<domain>:<name>` 命名规范（历史 123 通道清单，已并入治理报告）
 - [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.3.0 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
 - 说明：`docs/架构文档.html` 为 **历史版本合辑**，仅保留旧版版式与 ADR，最新架构以 wiki Markdown 为准
 
@@ -581,7 +582,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层）
 npm run typecheck
 
-# 运行单元测试（134 个测试文件 / 2,252 个用例）
+# 运行单元测试（155 个测试文件 / 2,823 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告

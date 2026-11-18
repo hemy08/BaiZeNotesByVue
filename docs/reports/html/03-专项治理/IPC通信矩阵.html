@@ -1,0 +1,4014 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPC通信矩阵</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">一、当前通信矩阵（2026-11-18 复核，90 通道）</a>
+    <a class="toc-l2" href="#sec-2">二、历史快照（2026-11-15，123 通道口径）</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>IPC通信矩阵</h1>
+    <p>报告归档 · 03-专项治理</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>IPC 通信矩阵（当前口径 + 历史快照）</h1>
+<blockquote>
+<p><strong>合并归档报告</strong>：由以下历史报告合并而成（保留原文，按时间顺序成章）：<code>2026-11-18-IPC通信矩阵.md</code>、<code>2026-11-15-IPC通信矩阵.md</code>。
+内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.6 基线：155 测试文件 / 2,823 用例 / 90 IPC 通道）。</p>
+</blockquote>
+<h2 id="sec-1">一、当前通信矩阵（2026-11-18 复核，90 通道）</h2>
+<ul>
+<li><strong>编制日期</strong>：2026-11-18（基于当前工作区源码；取代 <code>2026-11-15-IPC通信矩阵.md</code> 历史快照）</li>
+<li><strong>唯一真源</strong>：<code>src/shared/ipc-channels.ts</code>（<strong>90 个通道常量 / 16 个分组</strong>，全部以 <code>baize:&lt;domain&gt;:&lt;name&gt;</code> 命名；2026-11-18 晚清理 2 个死通道：<code>WINDOW.START_DRAG</code>、<code>THEME.INIT_THEME_STYLES</code>）</li>
+<li><strong>方法</strong>：对每个通道常量在 <code>src/main/**</code>、<code>src/preload/**</code>、<code>src/renderer/**</code> 全量 grep 实际发送点/接收点，只按源码事实填写；行号均为当前源码行号</li>
+<li><strong>统计摘要</strong>：90 通道 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 发现 3 类异常（见 §五）</li>
+</ul>
+<h4>一、方向记号</h4>
+<table>
+<thead>
+<tr>
+<th>记号</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M</td>
+<td>主进程 <code>src/main/**</code></td>
+</tr>
+<tr>
+<td>R</td>
+<td>主窗口渲染进程 <code>src/renderer/**</code></td>
+</tr>
+<tr>
+<td>D</td>
+<td>HTML 对话框窗口（主进程 JSDOM 生成 data:URL 页面，独立渲染进程）</td>
+</tr>
+<tr>
+<td>H</td>
+<td>隐藏窗口（PlantUML 渲染窗、PDF 导出窗）</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R→M send</td>
+<td><code>ipcRenderer.send</code> → 主进程 <code>ipcListenerManager.register/registerOnce</code>（ipcMain.on）</td>
+</tr>
+<tr>
+<td>R→M invoke</td>
+<td><code>ipcRenderer.invoke</code> → 主进程 <code>registerHandleOnce</code>（ipcMain.handle）</td>
+</tr>
+<tr>
+<td>M→R send</td>
+<td>主进程 <code>webContents.send</code> → 渲染层 <code>ipcRenderer.on</code></td>
+</tr>
+<tr>
+<td>M→D send</td>
+<td>主进程向 HTML 对话框窗口 send</td>
+</tr>
+<tr>
+<td>D→M send</td>
+<td>HTML 对话框窗口经 dialog preload 白名单 send</td>
+</tr>
+<tr>
+<td>M→M</td>
+<td>主进程内部事件（当前无）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>全仓已无 <code>ipcMain.on/handle</code> 直连：所有注册经 <code>ipcListenerManager</code>（仅 <code>ipc-listener-manager.ts:75/125/166</code> 为封装处）。R→M 高风险通道统一 <code>withSenderCheck</code>（或 <code>assertTrustedSender</code>）。</p>
+</blockquote>
+<h4>二、统计摘要</h4>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数量</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IPC 通道常量</td>
+<td><strong>90</strong></td>
+<td>WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 6 / FILE 21 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 4 / NAVIGATION 1 / VIEW 5 / MONACO_INSERT 2 / QUICK_LINKS 3 / OVERLAY 4 / EVENTS 4</td>
+</tr>
+<tr>
+<td>BrowserWindow 创建点</td>
+<td><strong>4</strong></td>
+<td>主窗口、windowManager 通用容器（5 个 JSDOM 对话框 + 在线网页窗口）、PDF 导出隐藏窗、PlantUML 渲染隐藏窗</td>
+</tr>
+<tr>
+<td>preload 入口</td>
+<td><strong>2</strong></td>
+<td><code>src/preload/index.ts</code>（主窗口）、<code>src/preload/dialog.ts</code>（对话框/隐藏窗）</td>
+</tr>
+<tr>
+<td><code>window.electron</code> 成员</td>
+<td><strong>1 对象</strong></td>
+<td><code>@electron-toolkit/preload</code> 原样暴露：ipcRenderer{send,sendTo,sendSync,sendToHost,postMessage,invoke,on,once,removeListener,removeAllListeners}、webFrame{insertCSS,setZoomFactor,setZoomLevel}、webUtils{getPathForFile}、process{platform,versions,env}</td>
+</tr>
+<tr>
+<td><code>window.api</code> 成员</td>
+<td><strong>6 方法 / 3 组</strong></td>
+<td><code>config.read/write</code>、<code>app.notifyRendererReady/getVersion</code>、<code>file.recentList/openRecent</code></td>
+</tr>
+<tr>
+<td>对话框 send 白名单</td>
+<td><strong>2</strong></td>
+<td><code>baize:dialog:create-file-folder-enter</code>、<code>baize:dialog:rename-file-folder-enter</code></td>
+</tr>
+<tr>
+<td>发现异常</td>
+<td><strong>3 类</strong></td>
+<td>语义错用 1、载荷不一致 1、域错配 10 个通道 / 5 组（详见 §五）</td>
+</tr>
+<tr>
+<td>死通道（双端全无）</td>
+<td><strong>0</strong></td>
+<td>90 个通道均有至少一端引用；2026-11-18 已清理 2 个空转/空实现通道（START_DRAG、INIT_THEME_STYLES）与 2 处死分支</td>
+</tr>
+</tbody>
+</table>
+<h4>三、进程模型与通信拓扑</h4>
+<pre><code class="language-text">                 ┌──────────────────────────── 主进程 M ────────────────────────────┐
+                 │ index.ts（窗口/生命周期/单实例锁/退出 flush 协议）                │
+                 │ ipc/handlers.ts（全局 register/handle）                            │
+                 │ ipc/menu-*.ts（菜单动作树：file/edit/view/tools/online/help…）     │
+                 │ ipc/ipc-listener-manager.ts（监听台账）                            │
+                 │ config/*（config-manager / theme / system / editor / quick-link）  │
+                 │ dialogs/*（JSDOM 对话框 HTML 生成）                                │
+                 │ renders/plantuml-local.ts（隐藏窗渲染）                            │
+                 │ utils/*（file-utils、security、auto-backup、tray、startup-restore）│
+                 └───┬──────────────────────┬────────────────────┬──────────────────┘
+         preload/index.js        preload/dialog.js                      无 preload
+         （electron + api）      （electronAPI 受限）                   （executeJavaScript/loadFile）
+          ┌────────────▼──┐    ┌────────▼──────────┐        ┌───────────────▼────────┐
+          │ 主窗口 R      │    │ D: 5 个 JSDOM 对话框│        │ H: PlantUML 渲染窗        │
+          │ Vue 应用      │    │ + 在线网页窗口      │        │    PDF 导出窗             │
+          │ Monaco/预览/  │    │ data:URL / 远程 URL │        │    （隐藏，show:false）   │
+          │ 自绘菜单/状态栏│    │ send 白名单 2 通道  │        │                          │
+          └───────────────┘    └────────────────────┘        └──────────────────────────┘
+</code></pre>
+<ul>
+<li><strong>单主进程</strong>，每个 BrowserWindow 一个渲染进程；未使用 utilityProcess / MessageChannelMain / MessagePort / BrowserView / WebContentsView。</li>
+<li><strong>preload 单文件约束</strong>：<code>electron.vite.config.ts</code> 的 <code>isolatedEntries: true</code> + <code>externalizeDeps: false</code>，产物 <code>out/preload/index.js</code> / <code>dialog.js</code>（主窗口与对话框均 <code>sandbox:true</code>，preload 必须自包含）。</li>
+</ul>
+<h4>四、通道矩阵（90 通道 / 16 组）</h4>
+<h5>4.1 WINDOW（8）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MINIMIZE</td>
+<td><code>baize:window:minimize</code></td>
+<td>R→M send</td>
+<td>最小化主窗口</td>
+<td>handlers.ts:420 registerOnce</td>
+<td>useWindowManagement.ts:128、WelcomeScreen.vue:130</td>
+</tr>
+<tr>
+<td>MAXIMIZE</td>
+<td><code>baize:window:maximize</code></td>
+<td>R→M send</td>
+<td>最大化主窗口</td>
+<td>handlers.ts:427 registerOnce</td>
+<td>App.vue:59/87、useWindowManagement.ts:133、WelcomeScreen.vue:134</td>
+</tr>
+<tr>
+<td>CLOSE</td>
+<td><code>baize:window:close</code></td>
+<td>R→M send</td>
+<td>请求关闭主窗口（触发 close 拦截→flush 协议；无活动文件时快速关闭）</td>
+<td>handlers.ts:434 registerOnce</td>
+<td>useWindowManagement.ts:138、WelcomeScreen.vue:138</td>
+</tr>
+<tr>
+<td>TOGGLE_MAXIMIZE</td>
+<td><code>baize:window:toggle-maximize</code></td>
+<td>R→M send</td>
+<td>双击标题栏切换最大化/还原</td>
+<td>handlers.ts:441 registerOnce</td>
+<td>useWindowManagement.ts:191</td>
+</tr>
+<tr>
+<td>GET_BOUNDS</td>
+<td><code>baize:window:get-bounds</code></td>
+<td>R→M invoke</td>
+<td>取窗口边界（拖动/缩放起点）</td>
+<td>handlers.ts:453 registerHandleOnce</td>
+<td>useWindowManagement.ts:148/201</td>
+</tr>
+<tr>
+<td>IS_MAXIMIZED</td>
+<td><code>baize:window:is-maximized</code></td>
+<td>R→M invoke</td>
+<td>查询是否最大化</td>
+<td>handlers.ts:467 registerHandleOnce</td>
+<td>useWindowManagement.ts:150/197</td>
+</tr>
+<tr>
+<td>MOVE</td>
+<td><code>baize:window:move</code></td>
+<td>R→M send</td>
+<td>设置窗口位置（AS-6 范围校验）</td>
+<td>handlers.ts:494 registerOnce</td>
+<td>useWindowManagement.ts:58/87/158（rAF 合帧）</td>
+</tr>
+<tr>
+<td>SET_SIZE</td>
+<td><code>baize:window:set-size</code></td>
+<td>R→M send</td>
+<td>设置窗口尺寸（AS-6 校验）</td>
+<td>handlers.ts:511 registerOnce</td>
+<td>useWindowManagement.ts:88</td>
+</tr>
+</tbody>
+</table>
+<h5>4.2 CONFIG（2）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>READ</td>
+<td><code>baize:config:read</code></td>
+<td>R→M invoke</td>
+<td>按名读配置（system/theme/editor/quick-links 路由到 electron-store 真源，其余读裸 JSON；backup 返回备份状态）</td>
+<td>config-manager.ts:522 registerHandleOnce</td>
+<td>preload <code>api.config.read</code>（preload/index.ts:30）；useConfigStore.ts:307-312、WelcomeScreen.vue:101-102、App.vue:69/130、i18n.ts:46、MenuBar.vue:143、ThemeSettingDialog.vue:541、SystemSettingDialog.vue:606/660/745/766、MarkdownPreviewComponent.vue:302</td>
+</tr>
+<tr>
+<td>WRITE</td>
+<td><code>baize:config:write</code></td>
+<td>R→M invoke</td>
+<td>按名写配置并触发副作用（theme 广播 THEME_UPDATED；system 应用副作用+广播 SYSTEM_SETTING_UPDATE；editor 广播 INIT_SETTING；backup 备份/恢复命令）</td>
+<td>config-manager.ts:536 registerHandleOnce</td>
+<td>preload <code>api.config.write</code>（index.ts:34）；useConfigStore.ts:272、App.vue:78、EditorSettingDialog.vue:570、SystemSettingDialog.vue:737/772/792</td>
+</tr>
+</tbody>
+</table>
+<h5>4.3 THEME（6）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UPDATE_THEME</td>
+<td><code>baize:theme:update</code></td>
+<td>R→M send</td>
+<td>主题变更后请求主进程向所有窗口广播</td>
+<td>index.ts:411 registerOnce</td>
+<td>BaiZeNotes.vue:286-291</td>
+</tr>
+<tr>
+<td>THEME_UPDATED</td>
+<td><code>baize:theme:updated</code></td>
+<td>M→R send</td>
+<td>主题热更新广播（样式 + Monaco 主题）</td>
+<td>theme-broadcast.ts:44（被 index.ts:429、system-theme.ts:59 调用）、config-manager.ts:245</td>
+<td>BaiZeNotes.vue:588、MenuBar.vue:161；对话框内联脚本 ShowCreateFileFolderDialog.ts:354、ShowRenameDialog.ts:226</td>
+</tr>
+<tr>
+<td>LOAD_MONACO_THEME</td>
+<td><code>baize:theme:load-monaco</code></td>
+<td>R→M invoke</td>
+<td>按主题名读 Monaco 主题定义</td>
+<td>handlers.ts:767 registerHandleOnce</td>
+<td>BaiZeNotes.vue:521-524</td>
+</tr>
+<tr>
+<td>GET_CURRENT_THEME_STYLES</td>
+<td><code>baize:theme:get-current-styles</code></td>
+<td>R→M invoke</td>
+<td>取当前/指定主题 ThemeStyles</td>
+<td>utils.ts:576 registerHandleOnce</td>
+<td>BaiZeNotes.vue:269/597</td>
+</tr>
+<tr>
+<td>GET_ALL_THEMES</td>
+<td><code>baize:theme:get-all</code></td>
+<td>R→M invoke</td>
+<td>全部应用主题列表</td>
+<td>utils.ts:591 registerHandleOnce</td>
+<td>ThemeSettingDialog.vue:476、SystemSettingDialog.vue:608</td>
+</tr>
+<tr>
+<td>GET_ALL_MONACO_THEMES</td>
+<td><code>baize:theme:get-all-monaco</code></td>
+<td>R→M invoke</td>
+<td>全部 Monaco 主题列表</td>
+<td>utils.ts:597 registerHandleOnce</td>
+<td>ThemeSettingDialog.vue:527</td>
+</tr>
+</tbody>
+</table>
+<h5>4.4 MENU（1）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACTION</td>
+<td><code>baize:menu:action</code></td>
+<td>R→M send</td>
+<td>菜单/右键动作字符串 → 主进程动作树分发（<code>HandleBaiZeMenuAction</code>，要求 <code>baize:menu:</code> 前缀且命中菜单树）</td>
+<td>handlers.ts:530 registerOnce（withSenderCheck）</td>
+<td>menu-actions.ts:370、resource-manager.ts:496</td>
+</tr>
+</tbody>
+</table>
+<h5>4.5 EDITOR（6）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET_SETTING</td>
+<td><code>baize:editor:get-setting</code></td>
+<td>R→M invoke</td>
+<td>读编辑器配置真源</td>
+<td>handlers.ts:777 registerHandleOnce</td>
+<td>MarkdownMonacoEditor.vue:602</td>
+</tr>
+<tr>
+<td>INIT_SETTING</td>
+<td><code>baize:editor:init-setting</code></td>
+<td>M→R send</td>
+<td>下发完整 EditorSetting（启动/保存/视图开关）</td>
+<td>index.ts:223、config-manager.ts:258、menu-view.ts:53</td>
+<td>MarkdownMonacoEditor.vue:632</td>
+</tr>
+<tr>
+<td>UPDATE_OPTIONS</td>
+<td><code>baize:editor:update-options</code></td>
+<td>M→R send（另有 R→M 死分支）</td>
+<td>主进程通知 Monaco 单项选项（lineNumbers/renderWhitespace）</td>
+<td>menu-view.ts:85/89</td>
+<td>MarkdownMonacoEditor.vue:106/663；BaiZeNotes.vue:476 的 R→M 发送无接收（§五-2）</td>
+</tr>
+<tr>
+<td>SYSTEM_SETTING_UPDATE</td>
+<td><code>baize:setting:updated</code></td>
+<td>M→R send（域错配：domain=setting）</td>
+<td>系统设置变更广播（菜单形态/语言/远程图片等）</td>
+<td>config-manager.ts:211</td>
+<td>BaiZeNotes.vue:587、MarkdownPreviewComponent.vue:375、i18n.ts:56</td>
+</tr>
+<tr>
+<td>FLUSH_CONTENT</td>
+<td><code>baize:editor:flush-content</code></td>
+<td>M→R send</td>
+<td>关闭/退出落盘协议第 1 步（请求 flush 全文）</td>
+<td>index.ts:111（close 拦截 :176、before-quit :539 调用），2s 超时兜底</td>
+<td>MarkdownEditComponent.vue:359/393、App.vue:126/148</td>
+</tr>
+<tr>
+<td>FLUSH_CONTENT_DONE</td>
+<td><code>baize:editor:flush-content-done</code></td>
+<td>R→M send</td>
+<td>渲染层回执（主进程收到后才继续关闭）</td>
+<td>index.ts:101 register（组件 main-window-flush，finish 时注销）</td>
+<td>MarkdownEditComponent.vue:195</td>
+</tr>
+</tbody>
+</table>
+<h5>4.6 FILE（21）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OPEN_SPECIFIC_FOLDER</td>
+<td><code>baize:file:open-specific-folder</code></td>
+<td>R→M send</td>
+<td>打开指定工作区目录（AS-2 根校验 → 清空编辑器 → 重扫目录 → 存最近目录）</td>
+<td>handlers.ts:543 registerOnce</td>
+<td>App.vue:61</td>
+</tr>
+<tr>
+<td>WELCOME_OPEN_DIRECTORY</td>
+<td><code>baize:file:welcome-open-directory</code></td>
+<td>R→M send</td>
+<td>欢迎页「打开文件夹」→系统选择→进主界面</td>
+<td>handlers.ts:616 registerOnce</td>
+<td>App.vue:52</td>
+</tr>
+<tr>
+<td>WELCOME_OPEN_FILE</td>
+<td><code>baize:file:welcome-open-file</code></td>
+<td>R→M send</td>
+<td>欢迎页「打开文件」→系统选择（仅 md）→进主界面</td>
+<td>handlers.ts:650 registerOnce</td>
+<td>App.vue:46</td>
+</tr>
+<tr>
+<td>WELCOME_ENTER_MAIN</td>
+<td><code>baize:file:welcome-enter-main</code></td>
+<td>M→R send</td>
+<td>通知渲染层离开欢迎页进入主界面（FE-01 先发本通道再下一 tick 发数据事件）</td>
+<td>handlers.ts:632/674、startup-restore.ts:55</td>
+<td>App.vue:124/146</td>
+</tr>
+<tr>
+<td>OPEN_SELECT_FILE</td>
+<td><code>baize:file:open-select-file</code></td>
+<td>R→M send</td>
+<td>请求打开/切换文件（Path Guard → 读盘 → 回发内容/路径事件；切换前保存旧文件）</td>
+<td>utils.ts:270 registerOnce</td>
+<td>FileTreeNode.vue:122、MarkdownPreviewComponent.vue:364、resource-manager.ts:466</td>
+</tr>
+<tr>
+<td>IMPORT_NEW_FILE</td>
+<td><code>baize:file:import</code></td>
+<td>R→M invoke</td>
+<td>导入内容另存为新文件</td>
+<td>handlers.ts:692 registerHandleOnce</td>
+<td>BaiZeNotes.vue:420</td>
+</tr>
+<tr>
+<td>CREATE_FILE_FOLDER</td>
+<td><code>baize:file:create-entry</code></td>
+<td>R→M invoke</td>
+<td>新建文件/文件夹（Vue 对话框提交）</td>
+<td>handlers.ts:705 registerHandleOnce</td>
+<td>BaiZeNotes.vue:441</td>
+</tr>
+<tr>
+<td>GET_CURRENT_FILE_PATH</td>
+<td><code>baize:file:get-current-path</code></td>
+<td>R→M invoke</td>
+<td>取当前活动文件目录（新建默认目录）</td>
+<td>handlers.ts:722 registerHandleOnce</td>
+<td>menu-actions.ts:205</td>
+</tr>
+<tr>
+<td>SELECT_DIRECTORY</td>
+<td><code>baize:file:select-directory</code></td>
+<td>R→M invoke</td>
+<td>系统目录选择框返回绝对路径</td>
+<td>handlers.ts:731 registerHandleOnce</td>
+<td>CreateFileFolderDialog.vue:128、SystemSettingDialog.vue:698</td>
+</tr>
+<tr>
+<td>SELECT_IMAGE</td>
+<td><code>baize:file:select-image</code></td>
+<td>R→M invoke</td>
+<td>插入图片「浏览」：系统图片框→受信登记→复制到 images/→返回引用</td>
+<td>handlers.ts:745 registerHandleOnce</td>
+<td>BaiZeNotes.vue:386</td>
+</tr>
+<tr>
+<td>CLEAR_EDITOR_PREVIEW</td>
+<td><code>baize:file:clear-editor-preview</code></td>
+<td>M→R send</td>
+<td>清空编辑器/预览（切目录/进入主界面前）</td>
+<td>handlers.ts:557/637、startup-restore.ts:85、file-operations.ts:682</td>
+<td>MarkdownEditComponent.vue:354/389</td>
+</tr>
+<tr>
+<td>SAVE_TO_DISK</td>
+<td><code>baize:file:save-content-to-disk</code></td>
+<td>R→M send</td>
+<td>保存编辑器全文（菜单/Ctrl+S）</td>
+<td>utils.ts:675 registerOnce</td>
+<td>MarkdownEditComponent.vue:184</td>
+</tr>
+<tr>
+<td>UPDATE_SELECT_FILE_CONTENT</td>
+<td><code>baize:file:update-content</code></td>
+<td>R→M send</td>
+<td>编辑内容 500ms 防抖同步到主进程（不落盘）</td>
+<td>utils.ts:612 registerOnce</td>
+<td>MarkdownEditComponent.vue:161</td>
+</tr>
+<tr>
+<td>CHECK_EXISTS</td>
+<td><code>baize:file:check-exists</code></td>
+<td>R→M invoke</td>
+<td>探测文件是否存在（PDF 加载前）</td>
+<td>utils.ts:752 registerHandleOnce</td>
+<td>ShowPdfEditor.vue:144</td>
+</tr>
+<tr>
+<td>READ_HTML</td>
+<td><code>baize:file:read-html</code></td>
+<td>R→M invoke</td>
+<td>读文本/HTML 内容（Path Guard）</td>
+<td>utils.ts:697 registerHandleOnce</td>
+<td>ShowHtmlView.vue:111、MarkdownPreviewComponent.vue:264（snippets）</td>
+</tr>
+<tr>
+<td>OPEN_EXTERNAL_LINK</td>
+<td><code>baize:system:open-external-link</code></td>
+<td>R→M send（域错配：system）</td>
+<td>系统浏览器打开链接（仅 http/https）</td>
+<td>utils.ts:728 registerOnce</td>
+<td>ShowHtmlView.vue:151（实际发本地路径→必被拒，§五-3）</td>
+</tr>
+<tr>
+<td>SYSTEM_INFO</td>
+<td><code>baize:system:get-info</code></td>
+<td>R→M invoke（域错配）</td>
+<td>系统描述（OS/架构/版本）</td>
+<td>handlers.ts:759 registerHandleOnce</td>
+<td>HelpAboutDialog.vue:187</td>
+</tr>
+<tr>
+<td>APP_VERSION</td>
+<td><code>baize:system:app-version</code></td>
+<td>R→M invoke（域错配）</td>
+<td>版本信息（version.json + 运行时 electron/chrome/node）</td>
+<td>utils.ts:778 registerHandleOnce</td>
+<td>preload <code>api.app.getVersion</code>（index.ts:57）→ HelpAboutDialog.vue:155</td>
+</tr>
+<tr>
+<td>USER_SELECT_FILE</td>
+<td><code>baize:file:user-select-file</code></td>
+<td>M→R send</td>
+<td>当前活动文件切换广播（打开/新建/另存为/重命名后）</td>
+<td>file-operations.ts:343/490/658</td>
+<td>StatusBar.vue:161、resource-manager.ts:410/465、MarkdownPreviewComponent.vue:373</td>
+</tr>
+<tr>
+<td>RECENT_LIST</td>
+<td><code>baize:file:recent-list</code></td>
+<td>R→M invoke</td>
+<td>「文件」菜单拉取最近文件/最近文件夹（各≤20）</td>
+<td>handlers.ts:570 registerHandleOnce（2026-11-18 新增）</td>
+<td>preload <code>api.file.recentList</code>（index.ts:65）→ MenuBar.vue:107/112</td>
+</tr>
+<tr>
+<td>OPEN_RECENT</td>
+<td><code>baize:file:open-recent</code></td>
+<td>R→M invoke</td>
+<td>打开最近项（最近列表严格白名单 → 文件走 OpenSelectFile / 目录走 openDirectoryInMainView）</td>
+<td>handlers.ts:586 registerHandleOnce（2026-11-18 新增）</td>
+<td>preload <code>api.file.openRecent</code>（index.ts:69）→ menu-actions.ts:81/87</td>
+</tr>
+</tbody>
+</table>
+<h5>4.7 FILE_MANAGER（14，右键菜单）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>COPY_RELATIVE_PATH</td>
+<td><code>baize:fs:copy-relative-path</code></td>
+<td>R→M send</td>
+<td>复制相对路径（反斜杠→正斜杠）</td>
+<td>utils.ts:290 registerOnce</td>
+<td>resource-manager.ts:505</td>
+</tr>
+<tr>
+<td>COPY_IMAGELINK</td>
+<td><code>baize:fs:copy-image-link</code></td>
+<td>R→M send</td>
+<td>复制 Markdown 图片链接</td>
+<td>utils.ts:301 registerOnce</td>
+<td>resource-manager.ts:507</td>
+</tr>
+<tr>
+<td>COPY_FILELINK</td>
+<td><code>baize:fs:copy-file-link</code></td>
+<td>R→M send</td>
+<td>复制 Markdown 文件链接</td>
+<td>utils.ts:312 registerOnce</td>
+<td>resource-manager.ts:509</td>
+</tr>
+<tr>
+<td>COPY_FILE</td>
+<td><code>baize:fs:copy-file</code></td>
+<td>R→M send</td>
+<td>记录复制源（供粘贴）</td>
+<td>utils.ts:323 registerOnce</td>
+<td>resource-manager.ts:511</td>
+</tr>
+<tr>
+<td>CUT</td>
+<td><code>baize:fs:cut</code></td>
+<td>R→M send</td>
+<td>记录剪切源</td>
+<td>utils.ts:334 registerOnce</td>
+<td>resource-manager.ts:520</td>
+</tr>
+<tr>
+<td>PASTE</td>
+<td><code>baize:fs:paste</code></td>
+<td>R→M send</td>
+<td>粘贴（同名提示；cut 复制后删源）</td>
+<td>utils.ts:345 registerOnce</td>
+<td>resource-manager.ts:524</td>
+</tr>
+<tr>
+<td>OPEN_IN_EXPLORER</td>
+<td><code>baize:fs:open-in-explorer</code></td>
+<td>R→M send</td>
+<td>在资源管理器中定位</td>
+<td>utils.ts:356 registerOnce</td>
+<td>resource-manager.ts:541、ShowPdfEditor.vue:197</td>
+</tr>
+<tr>
+<td>RELOAD_FROM_DISK</td>
+<td><code>baize:fs:reload-from-disk</code></td>
+<td>R→M send</td>
+<td>从磁盘重扫目录树（→ FILE_SYSTEM_DATA）</td>
+<td>utils.ts:367 registerOnce</td>
+<td>resource-manager.ts:545</td>
+</tr>
+<tr>
+<td>CREATE_FILE</td>
+<td><code>baize:fs:create-file</code></td>
+<td>R→M send</td>
+<td>右键新建 → 打开主进程 JSDOM 新建对话框</td>
+<td>dialogs.ts:50 register</td>
+<td>resource-manager.ts:369</td>
+</tr>
+<tr>
+<td>RENAME</td>
+<td><code>baize:fs:rename</code></td>
+<td>R→M send</td>
+<td>右键重命名 → 打开 JSDOM 重命名对话框</td>
+<td>dialogs.ts:94 register</td>
+<td>resource-manager.ts:537</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>baize:fs:delete</code></td>
+<td>R→M send</td>
+<td>右键删除（确认框 → 递归/单文件删除）</td>
+<td>dialogs.ts:71 register</td>
+<td>resource-manager.ts:528</td>
+</tr>
+<tr>
+<td>IMPORT_FROM</td>
+<td><code>baize:fs:import-from</code></td>
+<td>R→M send</td>
+<td>右键导入（复用文本导入流程）</td>
+<td>dialogs.ts:58 register</td>
+<td>resource-manager.ts:378</td>
+</tr>
+<tr>
+<td>FIND_IN</td>
+<td><code>baize:fs:find-in</code></td>
+<td>R→M send</td>
+<td>在文件夹中显示（AS-8 校验）</td>
+<td>dialogs.ts:79 register</td>
+<td>resource-manager.ts:533</td>
+</tr>
+<tr>
+<td>FILE_SYSTEM_DATA</td>
+<td><code>baize:fs:file-system-data</code></td>
+<td>M→R send</td>
+<td>推送整棵目录树（sha256 去重）</td>
+<td>directory-tree.ts:927</td>
+<td>ResourceManager.vue:181/186</td>
+</tr>
+</tbody>
+</table>
+<h5>4.8 PLUGIN（6）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RSA_GENERATE</td>
+<td><code>baize:plugin:rsa-generate</code></td>
+<td>R→M send</td>
+<td>生成 RSA 密钥对（bits 白名单 1024/2048/3072/4096）</td>
+<td>utils.ts:400 registerOnce</td>
+<td>RSAGenerator.vue:61</td>
+</tr>
+<tr>
+<td>RSA_RESULT</td>
+<td><code>baize:plugin:rsa-result</code></td>
+<td>M→R send</td>
+<td>回投生成的公私钥</td>
+<td>encrypt-decrypt.ts:44（sendToMainWindow）</td>
+<td>RSAGenerator.vue:70/74</td>
+</tr>
+<tr>
+<td>HASH_TEXT</td>
+<td><code>baize:plugin:hash-text</code></td>
+<td>R→M invoke</td>
+<td>计算 9 种摘要</td>
+<td>utils.ts:413 registerHandleOnce</td>
+<td>HashText.vue:143</td>
+</tr>
+<tr>
+<td>HMAC_TEXT</td>
+<td><code>baize:plugin:hmac-text</code></td>
+<td>R→M invoke</td>
+<td>计算 HMAC</td>
+<td>utils.ts:427 registerHandleOnce</td>
+<td>HmacGenerator.vue:129</td>
+</tr>
+<tr>
+<td>CRYPTO_ENCRYPT</td>
+<td><code>baize:plugin:crypto-encrypt</code></td>
+<td>R→M invoke</td>
+<td>对称加密</td>
+<td>utils.ts:450 registerHandleOnce</td>
+<td>CryptoEncDec.vue:355</td>
+</tr>
+<tr>
+<td>CRYPTO_DECRYPT</td>
+<td><code>baize:plugin:crypto-decrypt</code></td>
+<td>R→M invoke</td>
+<td>对称解密</td>
+<td>utils.ts:464 registerHandleOnce</td>
+<td>CryptoEncDec.vue:388</td>
+</tr>
+</tbody>
+</table>
+<h5>4.9 RENDER（3）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INSERT_IMAGE</td>
+<td><code>baize:render:insert-image</code></td>
+<td>R→M send</td>
+<td>粘贴图片请求落盘 images/（结果经 MONACO_INSERT.TEXT_BLOCK_TEMPLATES 回投）</td>
+<td>utils.ts:380 registerOnce</td>
+<td>hemy-editor-common.ts:361</td>
+</tr>
+<tr>
+<td>PLANTUML_LOCAL</td>
+<td><code>baize:render:plantuml-local</code></td>
+<td>R→M invoke</td>
+<td>PlantUML 本地离线渲染（隐藏窗，10s/12s 超时，LRU 50）</td>
+<td>plantuml-local.ts:520 registerHandleOnce（index.ts:473 调用）</td>
+<td>hemy-editor-render.ts:475（常量 :230）</td>
+</tr>
+<tr>
+<td>READY</td>
+<td><code>baize:render:ready</code></td>
+<td>R→M send</td>
+<td>渲染层就绪握手（主进程收到后才执行启动恢复；3s 超时兜底）</td>
+<td>index.ts:445 registerOnce（withSenderCheck）</td>
+<td>preload <code>api.app.notifyRendererReady</code>（index.ts:43）→ App.vue:141</td>
+</tr>
+</tbody>
+</table>
+<h5>4.10 DIALOG（4）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CREATE_FILE_FOLDER_ENTER</td>
+<td><code>baize:dialog:create-file-folder-enter</code></td>
+<td>D→M send</td>
+<td>新建对话框提交名称</td>
+<td>ShowCreateFileFolderDialog.ts:92 register（scope=dialog）；dialog preload 白名单</td>
+<td>内联脚本 ShowCreateFileFolderDialog.ts:336</td>
+</tr>
+<tr>
+<td>RENAME_FILE_FOLDER_ENTER</td>
+<td><code>baize:dialog:rename-file-folder-enter</code></td>
+<td>D→M send</td>
+<td>重命名对话框提交新名</td>
+<td>ShowRenameDialog.ts:75 register（scope=dialog）；dialog preload 白名单</td>
+<td>内联脚本 ShowRenameDialog.ts:207</td>
+</tr>
+<tr>
+<td>OPEN_VUE_DIALOG</td>
+<td><code>baize:dialog:open-vue</code></td>
+<td>M→R send</td>
+<td>主进程请求渲染层打开 Vue 对话框（17 个发送点：菜单/快捷键/导入/另存为/消息框等）</td>
+<td>menu-file.ts:26/31、menu-tools.ts:57-66、menu-view.ts:103-113、short-key-register.ts:124、import.ts:313、file-operations.ts:241/248、dialog-helpers.ts:28/44/61</td>
+<td>BaiZeNotes.vue:589（handleOpenVueDialog）/625</td>
+</tr>
+<tr>
+<td>AUTO_SAVE_CHANGED</td>
+<td><code>baize:setting:auto-save-changed</code></td>
+<td>R→M invoke（域错配：setting）</td>
+<td>自动保存开关/间隔变更（启停定时器，返回状态）</td>
+<td>handlers.ts:788 registerHandleOnce</td>
+<td>SystemSettingDialog.vue:714-720</td>
+</tr>
+</tbody>
+</table>
+<h5>4.11 NAVIGATION（1）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OPEN_EXE</td>
+<td><code>baize:navigation:open-exe</code></td>
+<td>R→M send</td>
+<td>快速链接启动本地程序（sender/绝对路径/isFile/扩展名白名单/受信目录/用户确认多层校验）</td>
+<td>utils.ts:484 registerOnce（assertTrustedSender）</td>
+<td>NaviTab.vue:149</td>
+</tr>
+</tbody>
+</table>
+<h5>4.12 VIEW（5）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EDIT_MODE</td>
+<td><code>baize:view:edit-mode</code></td>
+<td>M→R send</td>
+<td>切换纯编辑视图</td>
+<td>menu-view.ts:63、short-key-register.ts:91（F9）</td>
+<td>MarkdownEditComponent.vue:355/390</td>
+</tr>
+<tr>
+<td>PREVIEW_MODE</td>
+<td><code>baize:view:preview-mode</code></td>
+<td>M→R send</td>
+<td>切换纯预览视图</td>
+<td>menu-view.ts:66、short-key-register.ts:95（F10）</td>
+<td>MarkdownEditComponent.vue:356</td>
+</tr>
+<tr>
+<td>EDIT_PREVIEW_MODE</td>
+<td><code>baize:view:edit-preview-mode</code></td>
+<td>M→R send</td>
+<td>切换编辑+预览分栏</td>
+<td>menu-view.ts:69、short-key-register.ts:99（F11）</td>
+<td>MarkdownEditComponent.vue:357</td>
+</tr>
+<tr>
+<td>TOGGLE_RES_MANAGER</td>
+<td><code>baize:view:toggle-resource-manager</code></td>
+<td>M→R send</td>
+<td>切换资源管理器显隐</td>
+<td>menu-view.ts:81</td>
+<td>WorkSpace.vue:213/220</td>
+</tr>
+<tr>
+<td>UNDO_REDO</td>
+<td><code>baize:monaco:undo-redo</code></td>
+<td>M→R send（域错配：monaco）</td>
+<td>触发 Monaco 命令（undo/redo/cut/copy/paste，payload=action id）</td>
+<td>menu-edit.ts:4/7/15/18/21</td>
+<td>MarkdownMonacoEditor.vue:107/664</td>
+</tr>
+</tbody>
+</table>
+<h5>4.13 MONACO_INSERT（2）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TEXT_BLOCK_TEMPLATES</td>
+<td><code>baize:monaco:insert-text-block</code></td>
+<td>M→R send</td>
+<td>下发给编辑器插入的文本块（如插入图片后的 markdown）</td>
+<td>utils.ts:386-389</td>
+<td>MarkdownMonacoEditor.vue:102/659</td>
+</tr>
+<tr>
+<td>AFTER_CURSOR</td>
+<td><code>baize:monaco:insert-after-cursor</code></td>
+<td>M→R send</td>
+<td>在光标后插入内容（导入文件非新建模式）</td>
+<td>import.ts:315</td>
+<td>MarkdownMonacoEditor.vue:101/655</td>
+</tr>
+</tbody>
+</table>
+<h5>4.14 QUICK_LINKS（3）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>baize:quick-links:get</code></td>
+<td>R→M invoke</td>
+<td>读快速链接列表（主进程唯一数据源）</td>
+<td>utils.ts:568 registerHandleOnce</td>
+<td>NaviTab.vue:122、QuickLinkSettingDialog.vue:239</td>
+</tr>
+<tr>
+<td>SAVE</td>
+<td><code>baize:quick-links:save</code></td>
+<td>R→M invoke</td>
+<td>保存快速链接（归一化校验，≤50 条；广播 UPDATED）</td>
+<td>handlers.ts:823 registerHandleOnce</td>
+<td>QuickLinkSettingDialog.vue:281</td>
+</tr>
+<tr>
+<td>UPDATED</td>
+<td><code>baize:quick-links:updated</code></td>
+<td>M→R send</td>
+<td>广播保存后的列表（导航栏即时刷新）</td>
+<td>handlers.ts:835</td>
+<td>NaviTab.vue:184/190</td>
+</tr>
+</tbody>
+</table>
+<h5>4.15 OVERLAY（4，域错配：domain=file）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OPEN_WITH_ENCODING</td>
+<td><code>baize:file:open-with-encoding</code></td>
+<td>M→R send</td>
+<td>编码菜单「以指定编码打开」下发编码名</td>
+<td>menu-file.ts:14（9 种编码）</td>
+<td>MarkdownEditComponent.vue:361/395</td>
+</tr>
+<tr>
+<td>CONVERT_TO_ENCODING</td>
+<td><code>baize:file:convert-to-encoding</code></td>
+<td>M→R send</td>
+<td>编码菜单「转换编码」下发编码名</td>
+<td>menu-file.ts:21（9 种）</td>
+<td>MarkdownEditComponent.vue:362/399</td>
+</tr>
+<tr>
+<td>REOPEN_WITH_ENCODING</td>
+<td><code>baize:file:reopen-with-encoding</code></td>
+<td>R→M invoke</td>
+<td>按指定编码重读活动文件</td>
+<td>utils.ts:640 registerHandleOnce</td>
+<td>MarkdownEditComponent.vue:324</td>
+</tr>
+<tr>
+<td>CONVERT_SAVE_ENCODING</td>
+<td><code>baize:file:convert-encoding</code></td>
+<td>R→M invoke</td>
+<td>按指定编码转码写盘（广播 FILE_SAVED_SUCCESS）</td>
+<td>utils.ts:655 registerHandleOnce</td>
+<td>MarkdownEditComponent.vue:333</td>
+</tr>
+</tbody>
+</table>
+<h5>4.16 EVENTS（4，M→R 广播集合）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>STATUS_BAR_UPDATE</td>
+<td><code>baize:status-bar:update</code></td>
+<td>M→R send（30 处）</td>
+<td>状态栏消息（成功/警告/错误、日志镜像、启动恢复、备份/菜单/保存提示）</td>
+<td>handlers.ts:80/161/233、menu-handle.ts:122、auto-backup.ts:446/458、auto-save.ts:39、logger.ts:420、directory-tree.ts:828/984/1029/1039、startup-restore.ts:114/127/141/162、file-operations.ts:89/130/345/492/504/539/578/659、utils.ts:60/245/623、image-operations.ts:23、shared.ts:115/130</td>
+<td>StatusBar.vue:163/176</td>
+</tr>
+<tr>
+<td>FILE_SAVED_SUCCESS</td>
+<td><code>baize:file:saved</code></td>
+<td>M→R send</td>
+<td>保存成功通知（清除未保存标记，全窗口广播）</td>
+<td>file-operations.ts:122/575</td>
+<td>StatusBar.vue:162/175</td>
+</tr>
+<tr>
+<td>FILE_CONTENT_RELOADED</td>
+<td><code>baize:file:content-reloaded</code></td>
+<td>M→R send</td>
+<td>磁盘内容变化且非脏时重载编辑器</td>
+<td>directory-tree.ts:1024</td>
+<td>MarkdownEditComponent.vue:351/388</td>
+</tr>
+<tr>
+<td>SHOW_SELECTED_FILE_CONTEXT</td>
+<td><code>baize:fs:show-selected-file-context</code></td>
+<td>M→R send</td>
+<td>推送当前活动文件内容（新建/打开/重载/清空）</td>
+<td>file-operations.ts:342/489/538/657</td>
+<td>MarkdownEditComponent.vue:350/384</td>
+</tr>
+</tbody>
+</table>
+<h4>五、异常与风险清单（3 类）</h4>
+<blockquote>
+<p>2026-11-18 晚已处理 4 项空转/死分支：<code>WINDOW.START_DRAG</code>（空实现）、<code>THEME.INIT_THEME_STYLES</code>（半死：6 发送 0 接收）、<code>EDITOR.UPDATE_OPTIONS</code> 的 R→M 死分支、<code>EVENTS.STATUS_BAR_UPDATE</code> 的渲染层反向 send。以下为剩余项。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>类型</th>
+<th>通道/位置</th>
+<th>事实</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>语义错用</td>
+<td><code>FILE.OPEN_EXTERNAL_LINK</code></td>
+<td>唯一发送点 ShowHtmlView.vue:151 发本地 html 绝对路径；主进程 <code>isSafeExternalUrl</code> 仅放行 http/https → 该调用必被拒（实测无效）；PDF 已改走 FILE_MANAGER.OPEN_IN_EXPLORER</td>
+<td>ShowHtmlView 改用 <code>OPEN_IN_EXPLORER</code>（或删除该调用）</td>
+</tr>
+<tr>
+<td>2</td>
+<td>载荷不一致</td>
+<td><code>THEME.THEME_UPDATED</code></td>
+<td>广播 <code>{themeStyles, monacoTheme, separateEditorTheme}</code>，但 MenuBar.vue:152-156 按 <code>theme.currentTheme</code> 读取 → 该监听取不到值</td>
+<td>MenuBar 改读 <code>themeStyles</code> 或广播补 <code>currentTheme</code> 字段</td>
+</tr>
+<tr>
+<td>3</td>
+<td>域错配（CQ-13，已注明保留）</td>
+<td>10 个通道 / 5 组</td>
+<td><code>EDITOR.SYSTEM_SETTING_UPDATE</code>(setting)、<code>DIALOG.AUTO_SAVE_CHANGED</code>(setting)、<code>VIEW.UNDO_REDO</code>(monaco)、<code>OVERLAY.*</code> 4 个(file)、<code>FILE</code> 组 3 个 system 通道 —— 常量分组与通道 domain 不一致，仅注释未移动</td>
+<td>后续统一（需全仓改引用）</td>
+</tr>
+</tbody>
+</table>
+<h4>六、窗口容器与 preload 矩阵</h4>
+<h5>6.1 BrowserWindow 容器（4 个创建点）</h5>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>窗口</th>
+<th>创建位置</th>
+<th>加载方式</th>
+<th>preload</th>
+<th>webPreferences 关键项</th>
+<th>生命周期</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>主窗口</td>
+<td><code>index.ts:137-155</code></td>
+<td>dev <code>loadURL(devServerUrl)</code> / prod <code>loadFile(../renderer/index.html)</code></td>
+<td><code>index.js</code></td>
+<td>nodeIntegration:false、contextIsolation:true、sandbox:true、webSecurity:!is.dev</td>
+<td>单例锁 + 模块级单例；ready-to-show 注入主题/字体/编辑器设置并 armStartupRestore；close 拦截 flush→保存→minimizeToTray 隐藏或真关；bounds 持久化；导航/新窗口安全拦截；window-all-closed/cleanupApp/before-quit 统一清理</td>
+</tr>
+<tr>
+<td>2</td>
+<td>windowManager 通用容器</td>
+<td><code>window-manager.ts:47 createWindow</code></td>
+<td>JSDOM HTML → <code>data:text/html</code>；在线网页 <code>loadURL(远程 http/https)</code></td>
+<td><code>dialog.js</code>（对话框）；在线网页<strong>无 preload</strong></td>
+<td>nodeIntegration:false、contextIsolation:true、sandbox:true、frame:false</td>
+<td>单例参数控制（对话框 true / 在线网页 false）；closed → cleanupComponent + 删除映射；<code>closeAll</code> 全仓零调用</td>
+</tr>
+<tr>
+<td>3</td>
+<td>PDF 导出隐藏窗</td>
+<td><code>export.ts:327-335</code></td>
+<td><code>loadURL(data:text/html)</code></td>
+<td>无</td>
+<td>nodeIntegration:false、contextIsolation:true（sandbox 默认）</td>
+<td>每次导出新建；printToPDF 后 finally close（防泄漏）</td>
+</tr>
+<tr>
+<td>4</td>
+<td>PlantUML 渲染隐藏窗</td>
+<td><code>plantuml-local.ts:268-281</code></td>
+<td><code>loadFile(resources/plantuml/index.html)</code></td>
+<td>无</td>
+<td>nodeIntegration:false、contextIsolation:true、sandbox:true、webSecurity:true、backgroundThrottling:false</td>
+<td>单例复用 + 并发去重 + 串行队列 + SVG LRU 50；20s 加载超时 / did-fail-load / render-process-gone 销毁；主窗口 closed 与 cleanupApp 释放</td>
+</tr>
+</tbody>
+</table>
+<p><strong>5 个 JSDOM 对话框</strong>（均单例、<code>frame:false</code>、<code>dialog.js</code> preload）：<code>create-file-folder</code>（ShowCreateFileFolderDialog，450×230）、<code>rename-file-folder</code>（ShowRenameDialog，500×220）、<code>release-notes-dialog-&lt;version&gt;</code>（ShowReleaseNotesDialog，800×650）、<code>shortcut-keys-dialog</code>（ShowShortcutKeysDialog，620×640）、<code>update-log-dialog</code>（ShowUpdateLogDialog，900×700）。在线网页窗口 <code>online-web-page</code>（1280×960，可多开，无 IPC 桥）。</p>
+<h5>6.2 preload 暴露成员</h5>
+<table>
+<thead>
+<tr>
+<th>入口</th>
+<th>全局对象</th>
+<th>成员</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/preload/index.ts</code></td>
+<td><code>window.electron</code></td>
+<td>electronAPI（@electron-toolkit/preload 原样）：ipcRenderer / webFrame / webUtils / process</td>
+</tr>
+<tr>
+<td><code>src/preload/index.ts</code></td>
+<td><code>window.api</code></td>
+<td>config{read,write}、app{notifyRendererReady,getVersion}、file{recentList,openRecent}</td>
+</tr>
+<tr>
+<td><code>src/preload/dialog.ts</code></td>
+<td><code>window.electronAPI</code></td>
+<td>ipcRenderer{send(白名单),on,removeListener}、shell{openExternal(仅 http/https)}</td>
+</tr>
+</tbody>
+</table>
+<h5>6.3 dialog preload send 白名单（2）</h5>
+<ol>
+<li><code>baize:dialog:create-file-folder-enter</code></li>
+<li><code>baize:dialog:rename-file-folder-enter</code></li>
+</ol>
+<blockquote>
+<p>白名单外 send 被丢弃并告警；<code>on</code>/<code>removeListener</code> 不做通道白名单；<code>shell.openExternal</code> 协议白名单仅 http/https。</p>
+</blockquote>
+<h4>七、校验覆盖汇总</h4>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>覆盖</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sender 校验</td>
+<td>全部 R→M 通道（含 D→M 对话框通道，scope=dialog）经 <code>withSenderCheck</code> / <code>assertTrustedSender</code>；仅 <code>OPEN_EXE</code> 为手写 <code>assertTrustedSender</code>（多层路径校验）</td>
+</tr>
+<tr>
+<td>Path Guard</td>
+<td>OPEN_SELECT_FILE、IMPORT_NEW_FILE、CREATE_FILE_FOLDER、CHECK_EXISTS、READ_HTML、REOPEN_WITH_ENCODING、CONVERT_SAVE_ENCODING、RECENT 目标；FILE_MANAGER 复制/剪切/粘贴/删除/定位/重命名全链路</td>
+</tr>
+<tr>
+<td>配置 schema</td>
+<td>CONFIG.READ/WRITE：配置名正则白名单 + <code>isAllowedConfigName</code> + <code>validateConfigData</code> 字段级校验（AS-4）</td>
+</tr>
+<tr>
+<td>数值范围</td>
+<td>WINDOW.MOVE/SET_SIZE（AS-6 坐标/尺寸上限）、RSA bits 白名单、AUTO_SAVE_CHANGED interval 校验</td>
+</tr>
+<tr>
+<td>最近项白名单</td>
+<td>OPEN_RECENT：payload 结构校验 + 当前最近列表严格相等白名单 + recentMenuLimit=20</td>
+</tr>
+<tr>
+<td>对话框白名单</td>
+<td>dialog preload 仅 2 个 send 通道；shell 仅 http/https</td>
+</tr>
+</tbody>
+</table>
+<h4>八、与历史报告的差异</h4>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>2026-11-15 快照</th>
+<th>当前（本报告）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>通道数</td>
+<td>123</td>
+<td><strong>90</strong>（死通道清理 + PF-02 渲染通道移除 + HTML 对话框大量下线）</td>
+</tr>
+<tr>
+<td>HTML 对话框</td>
+<td>14 个可见</td>
+<td>5 个（新建/重命名/发布说明/快捷键/更新日志）+ 在线网页窗口</td>
+</tr>
+<tr>
+<td>隐藏窗口</td>
+<td>3（Mermaid/PlantUML/PDF）</td>
+<td>2（PlantUML/PDF；Mermaid 隐藏窗链路已删）</td>
+</tr>
+<tr>
+<td>渲染通道</td>
+<td>4 个 PRE/POST</td>
+<td>0（预览本地单跳渲染）</td>
+</tr>
+<tr>
+<td>新增通道</td>
+<td>—</td>
+<td><code>RENDER.READY</code>、<code>FILE.RECENT_LIST</code>、<code>FILE.OPEN_RECENT</code>、<code>QUICK_LINKS.SAVE/UPDATED</code>、<code>FILE.SELECT_IMAGE</code>、<code>EDITOR.SYSTEM_SETTING_UPDATE</code> 等</td>
+</tr>
+<tr>
+<td>2026-11-18 死通道清理</td>
+<td>—</td>
+<td>删除 <code>WINDOW.START_DRAG</code>、<code>THEME.INIT_THEME_STYLES</code>（常量+发送+注册+测试断言）；删除 <code>EDITOR.UPDATE_OPTIONS</code> 的 R→M 死分支与 <code>STATUS_BAR_UPDATE</code> 反向 send；历史报告 16 个死通道此前已全部清理（当前 0 个零引用常量）</td>
+</tr>
+<tr>
+<td>preload 暴露</td>
+<td>27 成员</td>
+<td>electron 全量 electronAPI + api 6 方法 + dialog 受限 API</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>本报告基于当前工作区源码（含未提交的最近文件菜单改动）；历史快照 <code>2026-11-15-IPC通信矩阵.md</code> 保留作归档。</p>
+</blockquote>
+<h2 id="sec-2">二、历史快照（2026-11-15，123 通道口径）</h2>
+<ul>
+<li>编制日期：2026-11-15</li>
+<li>扫描依据：<code>src/shared/ipc-channels.ts</code>（通道常量唯一真源，ARC-03）+ <code>src/main/**</code>、<code>src/preload/**</code>、<code>src/renderer/src/**</code> 全量交叉检索</li>
+<li>覆盖范围：<strong>123 个 IPC 通道</strong>（16 个分组）、<strong>18 类 BrowserWindow 容器</strong>、<strong>27 个 preload 暴露成员</strong>、<strong>17 个对话框 send 白名单通道</strong>、<strong>25 个 EventBus 事件</strong></li>
+<li>方法：对每个通道常量 grep 实际发送点/接收点，只按源码事实填写，不按命名猜测</li>
+</ul>
+<h4>一、方向记号</h4>
+<table>
+<thead>
+<tr>
+<th>记号</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M</td>
+<td>主进程（<code>src/main/**</code>）</td>
+</tr>
+<tr>
+<td>R</td>
+<td>主窗口渲染进程（<code>src/renderer/**</code>）</td>
+</tr>
+<tr>
+<td>D</td>
+<td>HTML 对话框窗口渲染进程（<code>src/main/dialogs/**</code> 生成的 HTML）</td>
+</tr>
+<tr>
+<td>H</td>
+<td>隐藏渲染/工具窗口（Mermaid 隐藏窗、PlantUML 渲染窗、PDF 导出窗）</td>
+</tr>
+<tr>
+<td>sys</td>
+<td>Electron 系统级对话框 / 外部系统（浏览器、资源管理器、全局快捷键）</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>方向/模式</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R→M send</td>
+<td>渲染层单向通知主进程（<code>ipcRenderer.send</code> → <code>ipcMain.on</code>）</td>
+</tr>
+<tr>
+<td>R→M invoke</td>
+<td>渲染层请求-响应（<code>ipcRenderer.invoke</code> → <code>ipcMain.handle</code>）</td>
+</tr>
+<tr>
+<td>M→R send</td>
+<td>主进程向主窗口广播/推送（<code>webContents.send</code>）</td>
+</tr>
+<tr>
+<td>M→D send</td>
+<td>主进程向 HTML 对话框窗口推送</td>
+</tr>
+<tr>
+<td>D→M send</td>
+<td>HTML 对话框窗口向主进程发送（经 preload 白名单）</td>
+</tr>
+<tr>
+<td>M→R sendSync</td>
+<td>主进程同步应答（<code>event.returnValue</code>，全项目已无调用点）</td>
+</tr>
+</tbody>
+</table>
+<h4>二、统计摘要</h4>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数量</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IPC 通道常量</td>
+<td><strong>123</strong></td>
+<td>WINDOW 10 / CONFIG 5 / THEME 13 / MENU 1 / EDITOR 14 / FILE 18 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 2 / DIALOG 14 / NAVIGATION 2 / VIEW 5 / MONACO_INSERT 3 / QUICK_LINKS 5 / OVERLAY 7 / EVENTS 4（PF-02 重构后原 RENDER 组 4 个 pre/post 渲染通道已移除）</td>
+</tr>
+<tr>
+<td>BrowserWindow 容器类型</td>
+<td><strong>18</strong></td>
+<td>主窗口 1 + 可见 HTML 对话框 14 + 隐藏窗口 3</td>
+</tr>
+<tr>
+<td>preload 构建入口</td>
+<td><strong>2</strong></td>
+<td><code>preload/index.ts</code>（主窗口）、<code>preload/dialog.ts</code>（对话框/隐藏窗）</td>
+</tr>
+<tr>
+<td>preload 暴露成员</td>
+<td><strong>27</strong></td>
+<td><code>window.electron</code> 17 + <code>window.api</code> 5 + <code>window.electronAPI</code> 5</td>
+</tr>
+<tr>
+<td>对话框 send 白名单</td>
+<td><strong>17</strong></td>
+<td><code>src/preload/dialog.ts</code>（ARC-01）</td>
+</tr>
+<tr>
+<td>EventBus 事件</td>
+<td><strong>25</strong></td>
+<td>23 个正常、1 个有发无收、1 个有收无发</td>
+</tr>
+<tr>
+<td><code>ipcListenerManager</code> 公共成员</td>
+<td><strong>10</strong></td>
+<td>注册 3 + 注销/清理 4 + 统计 2 + 单例入口 1</td>
+</tr>
+<tr>
+<td>疑似死通道</td>
+<td><strong>16</strong></td>
+<td>A 组 10 + B 组 6（详见第八节）</td>
+</tr>
+<tr>
+<td>机制层风险</td>
+<td><strong>10 条</strong></td>
+<td>C-01 ～ C-10（详见第八节）</td>
+</tr>
+</tbody>
+</table>
+<h4>三、进程模型与通信拓扑</h4>
+<h5>3.1 进程模型</h5>
+<ul>
+<li><strong>单主进程</strong>：窗口创建、菜单动作分发、文件/配置读写、Markdown 预/后渲染、隐藏渲染（PlantUML）、快捷键。</li>
+<li><strong>多渲染进程</strong>：每个 <code>BrowserWindow</code> 一个渲染进程；主窗口与 HTML 对话框彼此隔离。</li>
+<li><strong>无额外进程形态</strong>：全仓库未使用 <code>utilityProcess</code>、<code>MessageChannelMain</code>、<code>MessagePort</code>、<code>BrowserView</code>、<code>WebContentsView</code>。</li>
+<li><strong>preload 两套</strong>（<code>electron.vite.config.ts:13-23</code>）：
+<ul>
+<li><code>src/preload/index.ts</code> → 主窗口：完整 <code>electronAPI</code> + 自定义 <code>api</code>（配置/版本）</li>
+<li><code>src/preload/dialog.ts</code> → HTML 对话框与 Mermaid 隐藏窗：受限 <code>electronAPI</code>（send 白名单 17 通道）</li>
+</ul>
+</li>
+</ul>
+<!-- SVG:topology -->
+<h5>3.2 通信拓扑（图形视图与文字图）</h5>
+<pre><code class="language-text">                            ┌──────────────────────────────────────────────┐
+                            │                 主进程 M                      │
+                            │  src/main/index.ts                           │
+                            │  ├─ ipc/handlers.ts      全局 send/handle     │
+                            │  ├─ ipc/menu-*.ts        菜单动作树           │
+                            │  ├─ config/*             配置/主题/快捷键      │
+                            │  ├─ dialogs/*            JSDOM→data:URL 对话框 │
+                            │  ├─ renders/*            预/后渲染、PlantUML   │
+                            │  └─ ipc/ipc-listener-manager.ts（监听器台账） │
+                            └───┬───────────┬──────────────┬───────────────┘
+              preload/index.js  │           │ preload/dialog.js              │ 无 preload
+              ipcMain.handle/on │           │ webContents.send / ipcMain.on  │ executeJavaScript
+                    ┌───────────▼──┐   ┌────▼─────────────┐        ┌────────▼─────────┐
+                    │ 主窗口 R     │   │ 14 个 HTML 对话框 │        │ 隐藏窗口 H        │
+                    │ renderer/    │   │ D（独立渲染进程）  │        │ plantuml/pdf     │
+                    │ index.html   │   │ data:URL HTML     │        │ （渲染即可见性无关）│
+                    └───┬──────────┘   └────▲─────────────┘        └──────────────────┘
+                        │                   │
+      Vue 组件对话框     │  window.open ──► setWindowOpenHandler ──► shell.openExternal（外部浏览器）
+      （同进程容器）     │
+      EventBus（进程内） │◄── IPC 往返：MENU.ACTION / OPEN_VUE_DIALOG / THEME.* / EDITOR.* / FILE.* / EVENTS.*
+                        │
+   iframe HTML 预览（srcdoc，sandbox）   &lt;webview&gt; PDF 预览（webviewTag 未启用，不可用）
+</code></pre>
+<h5>3.3 分层职责</h5>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>主要文件</th>
+<th>职责</th>
+<th>通信手段</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主进程</td>
+<td><code>src/main/index.ts</code>、<code>ipc/**</code>、<code>dialogs/**</code>、<code>renders/**</code>、<code>utils/**</code></td>
+<td>窗口、配置与文件状态、菜单动作树、JSDOM 生成对话框 HTML、渲染管线、隐藏窗口托管</td>
+<td><code>ipcMain.on/handle</code>、<code>webContents.send</code>、<code>executeJavaScript</code>、直接调用</td>
+</tr>
+<tr>
+<td>主窗口渲染进程</td>
+<td><code>src/renderer/src/**</code></td>
+<td>Vue 应用：Monaco 编辑器、预览、资源管理器、自绘菜单栏、Vue 组件对话框</td>
+<td><code>window.electron.ipcRenderer.*</code>、<code>window.api.*</code>、EventBus（进程内）</td>
+</tr>
+<tr>
+<td>HTML 对话框渲染进程</td>
+<td><code>src/main/dialogs/*.ts</code> 内 HTML/脚本字符串</td>
+<td>主进程拼 HTML → <code>data:</code> URL 加载；脚本经 <code>window.electronAPI</code> 收发</td>
+<td><code>ipcRenderer.send/on</code>、<code>shell.openExternal</code>、<code>broadcastTheme</code></td>
+</tr>
+<tr>
+<td>隐藏渲染窗口</td>
+<td><code>plantuml-local.ts</code>、<code>OpenMermaidRenderFrame.ts</code>、<code>export.ts:ToPdf</code></td>
+<td>PlantUML 出 SVG、Mermaid 出 SVG（遗留）、PDF 导出打印</td>
+<td><code>executeJavaScript</code> / dialog preload / <code>printToPDF</code></td>
+</tr>
+</tbody>
+</table>
+<h5>3.4 BrowserWindow 容器全表（18 个）</h5>
+<blockquote>
+<p>全部窗口 <code>contextIsolation: true</code>、<code>nodeIntegration: false</code>；<code>webviewTag</code> 全项目未开启（<code>&lt;webview&gt;</code> 均不可用）。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>容器类型</th>
+<th>创建文件</th>
+<th>加载方式</th>
+<th>preload</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>主窗口</td>
+<td><code>src/main/index.ts:createWindow</code></td>
+<td>dev <code>loadURL</code> / prod <code>loadFile</code></td>
+<td><code>index.js</code></td>
+<td>无框 900×650；关闭前 flush→保存；唯一</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>create-file-folder</code></td>
+<td><code>ShowCreateFileFolderDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>450×150 单例</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>rename-file-folder</code></td>
+<td><code>ShowRemaneDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>500×160 单例</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>import-option-dialog</code></td>
+<td><code>ShowImportOptionDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>500×400 模态；主进程零调用（不可达）</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>font-select-dialog</code></td>
+<td><code>ShowFontSelectDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>1280×800 可缩放</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>system-setting-dialog</code></td>
+<td><code>ShowSystemSettingDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>800×700；与 Vue 版双轨</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>theme-setting-dialog</code></td>
+<td><code>ShowThemeSettingDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>1200×600；模块级 ipcMain.on 未随窗口清理</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>editor-setting-dialog</code></td>
+<td><code>ShowEditorSettingDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><strong>无 preload</strong></td>
+<td>风险 C-01；单例</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>quick-link-setting-dialog</code></td>
+<td><code>ShowQuickLinkSettingDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>900×600</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>help-about-dialog</code></td>
+<td><code>ShowHelpAboutDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>750×600</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>help-contact-us-dialog</code></td>
+<td><code>ShowHelpContactUsDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>600×400</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>tech-stack-dialog</code></td>
+<td><code>ShowTechStackDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>900×700</td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>update-log-dialog</code></td>
+<td><code>ShowUpdateLogDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>900×700</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>release-notes-dialog-&lt;version&gt;</code></td>
+<td><code>ShowReleaseNotesDialog.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td>按版本单例</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>online-web-page</code></td>
+<td><code>OpenOnlineWebPages.ts</code></td>
+<td><strong><code>loadURL(远程 URL)</code></strong></td>
+<td><code>dialog.js</code></td>
+<td>非单例；风险 C-08</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>mermaid-render-frame</code>（隐藏）</td>
+<td><code>OpenMermaidRenderFrame.ts</code></td>
+<td>HTML 字符串</td>
+<td><code>dialog.js</code></td>
+<td><code>show:false</code>；链路半死（C-07）</td>
+</tr>
+<tr>
+<td>17</td>
+<td>PlantUML 渲染窗（隐藏）</td>
+<td><code>src/main/renders/plantuml-local.ts</code></td>
+<td><code>loadFile(resources/plantuml/index.html)</code></td>
+<td>无</td>
+<td>导航全拦截；进程内单例复用</td>
+</tr>
+<tr>
+<td>18</td>
+<td>PDF 导出窗（隐藏）</td>
+<td><code>export.ts:ToPdf</code></td>
+<td><code>loadURL(data:text/html)</code></td>
+<td>无</td>
+<td>每次导出临时创建，<code>finally</code> 关闭</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>HTML 对话框可达性</strong>：14 个可见 HTML 对话框中，实际有 UI 入口的约 5–6 个（release-notes、update-log、help-contact-us、create/rename-file-folder、online-web-page）；其余与 Vue 组件对话框双轨并存，主进程菜单树中已不可达（C-05/C-06）。运行期应以&quot;Vue 组件对话框为主路径&quot;理解。</p>
+</blockquote>
+<h4>四、preload API 矩阵</h4>
+<table>
+<thead>
+<tr>
+<th>全局对象</th>
+<th>注入窗口</th>
+<th>暴露文件</th>
+<th>成员数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>window.electron</code></td>
+<td>主窗口</td>
+<td><code>src/preload/index.ts</code></td>
+<td>17（ipcRenderer 10 + webFrame 3 + webUtils 1 + process 3）</td>
+</tr>
+<tr>
+<td><code>window.api</code></td>
+<td>主窗口</td>
+<td><code>src/preload/index.ts</code></td>
+<td>5（config 4 + app 1）</td>
+</tr>
+<tr>
+<td><code>window.electronAPI</code></td>
+<td>HTML 对话框 / Mermaid 隐藏窗</td>
+<td><code>src/preload/dialog.ts</code></td>
+<td>5（ipcRenderer 3 + shell 1 + broadcastTheme 1）</td>
+</tr>
+</tbody>
+</table>
+<h5>4.1 <code>window.api</code>（业务 API）</h5>
+<table>
+<thead>
+<tr>
+<th>成员</th>
+<th>底层通道</th>
+<th>预览/响应</th>
+<th>实际使用点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config.read&lt;T&gt;(name)</code></td>
+<td><code>baize:config:read</code>（invoke）</td>
+<td>配置对象 / <code>null</code></td>
+<td>App.vue、useConfigStore、i18n、MenuBar、各 Vue 对话框</td>
+</tr>
+<tr>
+<td><code>config.write&lt;T&gt;(name, data)</code></td>
+<td><code>baize:config:write</code>（invoke）</td>
+<td><code>boolean</code></td>
+<td>App.vue、useConfigStore、EditorSettingDialog、SystemSettingDialog、QuickLinkSettingDialog</td>
+</tr>
+<tr>
+<td><code>config.delete(name)</code></td>
+<td><code>baize:config:delete</code>（invoke）</td>
+<td><code>boolean</code></td>
+<td>渲染层<strong>未使用</strong>（死通道）</td>
+</tr>
+<tr>
+<td><code>config.list()</code></td>
+<td><code>baize:config:list</code>（invoke）</td>
+<td><code>string[]</code></td>
+<td>渲染层<strong>未使用</strong>（死通道）</td>
+</tr>
+<tr>
+<td><code>app.getVersion()</code></td>
+<td><code>baize:system:app-version</code>（invoke）</td>
+<td>版本信息对象</td>
+<td>HelpAboutDialog</td>
+</tr>
+</tbody>
+</table>
+<h5>4.2 <code>window.electron</code>（<code>@electron-toolkit/preload</code> electronAPI）</h5>
+<table>
+<thead>
+<tr>
+<th>成员</th>
+<th>使用情况</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ipcRenderer.send</code> / <code>invoke</code> / <code>on</code> / <code>removeListener</code></td>
+<td>✅ 高频使用（窗口控制、主题、文件、渲染结果、状态栏等）</td>
+</tr>
+<tr>
+<td><code>ipcRenderer.once</code> / <code>removeAllListeners</code> / <code>postMessage</code> / <code>sendToHost</code></td>
+<td>⬜ 暴露但未使用</td>
+</tr>
+<tr>
+<td><code>ipcRenderer.sendSync</code> / <code>sendTo</code></td>
+<td>⛔ 未使用且测试禁止（<code>ipc-channel-constants.test.ts</code>）</td>
+</tr>
+<tr>
+<td><code>webFrame.insertCSS</code> / <code>setZoomFactor</code> / <code>setZoomLevel</code></td>
+<td>⬜ 暴露但未使用</td>
+</tr>
+<tr>
+<td><code>webUtils.getPathForFile</code></td>
+<td>⬜ 暴露但未使用</td>
+</tr>
+<tr>
+<td><code>process.versions</code></td>
+<td>✅ <code>Versions.vue</code> 展示技术栈版本</td>
+</tr>
+<tr>
+<td><code>process.platform</code> / <code>process.env</code></td>
+<td>⬜ 暴露但未使用</td>
+</tr>
+</tbody>
+</table>
+<h5>4.3 <code>window.electronAPI</code>（对话框受限 API）</h5>
+<table>
+<thead>
+<tr>
+<th>成员</th>
+<th>实现细节</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ipcRenderer.send(channel, ...args)</code></td>
+<td><strong>ARC-01 白名单</strong>：17 个通道内放行，否则 <code>console.warn</code> 丢弃</td>
+</tr>
+<tr>
+<td><code>ipcRenderer.on(channel, cb)</code></td>
+<td>剥离 <code>IpcRendererEvent</code> 首参；无白名单；<strong>无退订返回值</strong></td>
+</tr>
+<tr>
+<td><code>ipcRenderer.removeListener(channel, cb)</code></td>
+<td>引用不一致，实际无法移除（C-02）</td>
+</tr>
+<tr>
+<td><code>shell.openExternal(url)</code></td>
+<td>直接转发</td>
+</tr>
+<tr>
+<td><code>broadcastTheme(themeData)</code></td>
+<td><code>send('baize:theme:dialog-broadcast', themeData)</code></td>
+</tr>
+</tbody>
+</table>
+<h5>4.4 对话框 send 白名单（17 个，按源码顺序）</h5>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>通道</th>
+<th>发送者</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1-4</td>
+<td><code>baize:dialog:editor-setting-apply/cancel/reset/ok</code></td>
+<td>editor-setting 对话框脚本</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>baize:dialog:mermaid-render-result</code></td>
+<td>Mermaid 隐藏窗脚本</td>
+</tr>
+<tr>
+<td>6-7</td>
+<td><code>baize:dialog:create-file-folder-enter</code>、<code>baize:dialog:rename-file-folder-enter</code></td>
+<td>新建/重命名对话框</td>
+</tr>
+<tr>
+<td>8-9</td>
+<td><code>baize:dialog:font-select-insert/cancel</code></td>
+<td>字体选择对话框</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>baize:dialog:import-option-confirm</code></td>
+<td>导入选项对话框</td>
+</tr>
+<tr>
+<td>11-12</td>
+<td><code>baize:quick-links:save</code>、<code>baize:quick-links:reset</code></td>
+<td>快捷链接对话框</td>
+</tr>
+<tr>
+<td>13-15</td>
+<td><code>baize:dialog:system-setting-apply/confirm/cancel</code></td>
+<td>系统设置对话框</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>baize:theme:update-from-dialog</code></td>
+<td>主题设置对话框</td>
+</tr>
+<tr>
+<td>17</td>
+<td><code>baize:theme:dialog-broadcast</code></td>
+<td><code>broadcastTheme()</code> 辅助函数</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>白名单<strong>仅约束 send</strong>，不约束 on；远程页（online-web-page）也持有该 preload，白名单是其主要能力闸门。暴露面使用率：<strong>12/27 被实际调用</strong>，15 个暴露未使用。</p>
+</blockquote>
+<h4>五、通信安全与生命周期</h4>
+<table>
+<thead>
+<tr>
+<th>机制</th>
+<th>实现</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>contextIsolation</td>
+<td>全窗口 <code>true</code>、<code>nodeIntegration:false</code></td>
+<td><code>preload/dialog.ts</code> 额外 <code>if (process.contextIsolated)</code> 守卫，非隔离时不暴露 API</td>
+</tr>
+<tr>
+<td>send 白名单</td>
+<td><code>src/preload/dialog.ts</code></td>
+<td>17 通道；未知通道丢弃并告警（ARC-01）</td>
+</tr>
+<tr>
+<td>导航拦截</td>
+<td>主窗口 <code>setWindowOpenHandler → shell.openExternal + deny</code>；PlantUML 窗口全拦截</td>
+<td><code>online-web-page</code> 未设置（C-08）</td>
+</tr>
+<tr>
+<td>监听器台账</td>
+<td><code>ipcListenerManager</code></td>
+<td><code>register/registerOnce/registerHandleOnce</code>、<code>unregister/cleanupComponent/cleanupChannel/cleanupAll</code>、<code>getStats/getInventory</code>；防重复注册（ARC-06）</td>
+</tr>
+<tr>
+<td>窗口生命周期</td>
+<td><code>WindowManager</code> 单例</td>
+<td>窗口 <code>closed</code> → <code>cleanupComponent(componentId)</code> 自动清理该窗口注册的监听器</td>
+</tr>
+<tr>
+<td>关闭落盘协议</td>
+<td><code>baize:editor:flush-content</code> → <code>baize:baize:editor:flush-content-done</code></td>
+<td>主进程等待渲染层回执（2s 超时兜底）后关闭窗口/退出</td>
+</tr>
+<tr>
+<td>防回归</td>
+<td><code>tests/unit/ipc-channel-constants.test.ts</code>、<code>preload-dialog.test.ts</code>、<code>main-index.test.ts</code></td>
+<td>常量唯一性、无字面量绕过、无死常量、白名单放行/丢弃</td>
+</tr>
+</tbody>
+</table>
+<h4>六、通道矩阵 A 组（WINDOW / CONFIG / THEME / MENU / EDITOR / FILE，61 个）</h4>
+<blockquote>
+<p>路径缩写：<code>main/</code> = <code>src/main/</code>；<code>renderer/</code> = <code>src/renderer/src/</code>；<code>preload/</code> = <code>src/preload/</code>。<code>(R)</code> 主窗口渲染层，<code>(D)</code> 对话框窗口。</p>
+</blockquote>
+<h5>6.1 WINDOW（窗口控制，10 个）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MINIMIZE</td>
+<td>baize:window:minimize</td>
+<td>R→M send</td>
+<td>useWindowManagement.ts:minimizeWindow；WelcomeScreen.vue</td>
+<td>main/ipc/handlers.ts</td>
+<td>无</td>
+<td>最小化主窗口</td>
+</tr>
+<tr>
+<td>MAXIMIZE</td>
+<td>baize:window:maximize</td>
+<td>R→M send</td>
+<td>App.vue:handleOpenRecentFolder；useWindowManagement.ts；WelcomeScreen.vue</td>
+<td>main/ipc/handlers.ts</td>
+<td>无</td>
+<td>最大化主窗口</td>
+</tr>
+<tr>
+<td>UNMAXIMIZE</td>
+<td>baize:window:unmaximize</td>
+<td>R→M send ❌</td>
+<td>无发送点（死通道）</td>
+<td>main/ipc/handlers.ts</td>
+<td>无</td>
+<td>还原窗口（实际由 TOGGLE_MAXIMIZE 分支完成）</td>
+</tr>
+<tr>
+<td>CLOSE</td>
+<td>baize:window:close</td>
+<td>R→M send</td>
+<td>useWindowManagement.ts:closeWindow；WelcomeScreen.vue</td>
+<td>main/ipc/handlers.ts</td>
+<td>无</td>
+<td>关闭主窗口（走 flush 落盘协议）</td>
+</tr>
+<tr>
+<td>TOGGLE_MAXIMIZE</td>
+<td>baize:window:toggle-maximize</td>
+<td>R→M send</td>
+<td>useWindowManagement.ts:onTitleBarDblClick</td>
+<td>main/ipc/handlers.ts</td>
+<td>无</td>
+<td>双击标题栏切换最大化/还原</td>
+</tr>
+<tr>
+<td>GET_BOUNDS</td>
+<td>baize:window:get-bounds</td>
+<td>R→M invoke</td>
+<td>useWindowManagement.ts:onTitleBarMouseDown/onResizeMouseDown</td>
+<td>main/ipc/handlers.ts</td>
+<td>返回 <code>{x,y,width,height}</code></td>
+<td>拖动/缩放前取窗口边界</td>
+</tr>
+<tr>
+<td>IS_MAXIMIZED</td>
+<td>baize:window:is-maximized</td>
+<td>R→M invoke</td>
+<td>useWindowManagement.ts</td>
+<td>main/ipc/handlers.ts</td>
+<td>返回 <code>boolean</code></td>
+<td>判断最大化状态</td>
+</tr>
+<tr>
+<td>START_DRAG</td>
+<td>baize:window:start-drag</td>
+<td>R→M send</td>
+<td>useWindowManagement.ts:onTitleBarMouseDown</td>
+<td>main/ipc/handlers.ts</td>
+<td>无</td>
+<td>拖动开始标记（主进程空实现）</td>
+</tr>
+<tr>
+<td>MOVE</td>
+<td>baize:window:move</td>
+<td>R→M send</td>
+<td>useWindowManagement.ts:onDragMouseMove/onResizeMouseMove</td>
+<td>main/ipc/handlers.ts</td>
+<td><code>x, y</code></td>
+<td>移动窗口（保持尺寸）</td>
+</tr>
+<tr>
+<td>SET_SIZE</td>
+<td>baize:window:set-size</td>
+<td>R→M send</td>
+<td>useWindowManagement.ts:onResizeMouseMove</td>
+<td>main/ipc/handlers.ts</td>
+<td><code>width, height</code></td>
+<td>调整窗口尺寸（保持位置）</td>
+</tr>
+</tbody>
+</table>
+<h5>6.2 CONFIG（配置 API，5 个，经 <code>window.api.config.*</code> 代理）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>READ</td>
+<td>baize:config:read</td>
+<td>R→M invoke</td>
+<td>preload/index.ts:api.config.read（调用方：App.vue、useConfigStore、i18n、MenuBar、ThemeSettingDialog 等）</td>
+<td>main/config/config-manager.ts</td>
+<td><code>configName</code>；返回配置或 null</td>
+<td>读取配置（system/theme/editor/quick-links 走 electron-store，其余走 userData/config）</td>
+</tr>
+<tr>
+<td>WRITE</td>
+<td>baize:config:write</td>
+<td>R→M invoke</td>
+<td>preload/index.ts:api.config.write（App.vue、useConfigStore 防抖、EditorSettingDialog、SystemSettingDialog、QuickLinkSettingDialog）</td>
+<td>main/config/config-manager.ts</td>
+<td><code>configName, data</code>；返回 boolean</td>
+<td>写入配置；写 theme 触发全窗口广播，写 system 触发自动保存/字体/设置广播</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td>baize:config:delete</td>
+<td>R→M invoke ❌</td>
+<td>无渲染层调用（死通道）</td>
+<td>main/config/config-manager.ts</td>
+<td><code>configName</code>；返回 boolean</td>
+<td>删除配置文件</td>
+</tr>
+<tr>
+<td>LIST</td>
+<td>baize:config:list</td>
+<td>R→M invoke ❌</td>
+<td>无渲染层调用（死通道）</td>
+<td>main/config/config-manager.ts</td>
+<td>返回 <code>string[]</code></td>
+<td>列出配置名</td>
+</tr>
+<tr>
+<td>ENSURE_DIR</td>
+<td>baize:config:ensure-dir</td>
+<td>R→M invoke ❌</td>
+<td>无调用（preload 未暴露，死通道）</td>
+<td>main/config/config-manager.ts</td>
+<td>返回 true</td>
+<td>确保配置目录（内部已各自 ensure）</td>
+</tr>
+</tbody>
+</table>
+<h5>6.3 THEME（主题，13 个）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UPDATE_THEME</td>
+<td>baize:theme:update</td>
+<td>R→M send</td>
+<td>BaiZeNotes.vue:handleThemeChange</td>
+<td>main/index.ts</td>
+<td><code>{themeType?, monacoTheme?, separate?}</code></td>
+<td>请求向所有窗口广播 THEME_UPDATED</td>
+</tr>
+<tr>
+<td>THEME_UPDATED</td>
+<td>baize:theme:update-from-dialogd</td>
+<td>M→R / M→D send</td>
+<td>main/index.ts、config-manager.ts、handlers.ts（DIALOG_BROADCAST_THEME 回调）</td>
+<td>(R) BaiZeNotes.vue、MenuBar.vue；(D) 11 个对话框脚本</td>
+<td><code>{themeStyles, monacoTheme, separateEditorTheme}</code>；对话框路径多 <code>themeType</code></td>
+<td>全窗口主题热同步</td>
+</tr>
+<tr>
+<td>THEME_UPDATE</td>
+<td>baize:theme:update-from-dialog</td>
+<td>D→M send</td>
+<td>ShowThemeSettingDialog.ts 内联脚本（3 处，经白名单）</td>
+<td>ShowThemeSettingDialog.ts 模块级 ipcMain.on</td>
+<td><code>{themeType, separateEditorTheme, monacoTheme}</code></td>
+<td>主题对话框即时写 store 并触发广播</td>
+</tr>
+<tr>
+<td>INIT_THEME_STYLES</td>
+<td>baize:theme:init-styles</td>
+<td>M→D（另有 M→R 空转）</td>
+<td>11 个 Show*Dialog；main/index.ts:ready-to-show</td>
+<td>4 个对话框内联脚本</td>
+<td>多为裸 ThemeStyles；主题对话框为 <code>{theme, separateEditorTheme, monacoTheme}</code></td>
+<td>对话框/主窗口初始主题注入</td>
+</tr>
+<tr>
+<td>LOAD_MONACO_THEME</td>
+<td>baize:theme:load-monaco</td>
+<td>R→M invoke</td>
+<td>BaiZeNotes.vue:loadMonacoTheme</td>
+<td>main/ipc/handlers.ts</td>
+<td><code>themeName</code>；返回主题定义</td>
+<td>读取并 defineTheme 扩展 Monaco 主题</td>
+</tr>
+<tr>
+<td>UPDATE_MONACO_THEME</td>
+<td>baize:theme:update-monaco</td>
+<td>R→M send ❌</td>
+<td>ThemeSettingDialog.vue:selectMonacoTheme</td>
+<td>无接收点（死通道）</td>
+<td><code>monacoTheme</code></td>
+<td>立即应用编辑器主题（实际走 emit change 链）</td>
+</tr>
+<tr>
+<td>GET_CURRENT_THEME</td>
+<td>baize:theme:get-current</td>
+<td>R→M invoke ❌</td>
+<td>无调用（死通道）</td>
+<td>main/utils/utils.ts</td>
+<td>返回 ThemeType</td>
+<td>取当前主题类型（改走 baize:config:read）</td>
+</tr>
+<tr>
+<td>GET_CURRENT_THEME_STYLES</td>
+<td>baize:theme:get-current-styles</td>
+<td>R→M invoke</td>
+<td>BaiZeNotes.vue:handleThemeChange/onMounted</td>
+<td>main/utils/utils.ts</td>
+<td><code>themeType?</code>；返回 ThemeStyles</td>
+<td>取主题样式并入 CSS 变量</td>
+</tr>
+<tr>
+<td>GET_ALL_THEMES</td>
+<td>baize:theme:get-all</td>
+<td>R→M invoke</td>
+<td>ThemeSettingDialog.vue:loadThemes</td>
+<td>main/utils/utils.ts</td>
+<td>返回主题列表</td>
+<td>渲染应用主题卡片</td>
+</tr>
+<tr>
+<td>GET_ALL_MONACO_THEMES</td>
+<td>baize:theme:get-all-monaco</td>
+<td>R→M invoke</td>
+<td>ThemeSettingDialog.vue:loadThemes</td>
+<td>main/utils/utils.ts</td>
+<td>返回 Monaco 主题列表</td>
+<td>渲染编辑器主题卡片</td>
+</tr>
+<tr>
+<td>GET_SEPARATE_EDITOR_THEME</td>
+<td>baize:theme:get-separate-editor</td>
+<td>R→M sendSync ❌</td>
+<td>无 sendSync 调用（死通道）</td>
+<td>main/utils/utils.ts（event.returnValue）</td>
+<td>返回 boolean</td>
+<td>是否启用独立编辑器主题（遗留）</td>
+</tr>
+<tr>
+<td>GET_MONACO_THEME</td>
+<td>baize:theme:get-monaco</td>
+<td>R→M sendSync ❌</td>
+<td>无 sendSync 调用（死通道）</td>
+<td>main/utils/utils.ts（event.returnValue）</td>
+<td>返回 MonacoThemeType</td>
+<td>当前 Monaco 主题（遗留）</td>
+</tr>
+<tr>
+<td>DIALOG_BROADCAST_THEME</td>
+<td>baize:theme:dialog-broadcast</td>
+<td>D→M send</td>
+<td>ShowThemeSettingDialog.ts 内联脚本 → preload broadcastTheme</td>
+<td>main/ipc/handlers.ts</td>
+<td>themeData 透传</td>
+<td>对话框发起主题变更广播</td>
+</tr>
+</tbody>
+</table>
+<h5>6.4 MENU（菜单，1 个）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACTION</td>
+<td>baize:menu:action</td>
+<td>R→M send</td>
+<td>menu-actions.ts:HandleMenuAction；resource-manager.ts:onHandleExport</td>
+<td>main/ipc/handlers.ts → menu-handle.ts</td>
+<td><code>action</code>：<code>baize:menu:&lt;主&gt;:&lt;子&gt;:&lt;动作&gt;</code></td>
+<td>渲染层菜单/右键动作路由到主进程动作树</td>
+</tr>
+</tbody>
+</table>
+<h5>6.5 EDITOR（编辑器，14 个）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET_SETTING</td>
+<td>baize:editor:get-setting</td>
+<td>R→M invoke</td>
+<td>MarkdownMonacoEditor.vue:onMounted</td>
+<td>main/ipc/handlers.ts</td>
+<td>返回 EditorSetting</td>
+<td>编辑器挂载后拉取配置（兜底时序）</td>
+</tr>
+<tr>
+<td>SETTING_UPDATED</td>
+<td>baize:editor:setting-updated</td>
+<td>M→R send</td>
+<td>ShowEditorSettingDialog.ts（APPLY/OK 回调）</td>
+<td>MarkdownMonacoEditor.vue</td>
+<td><code>settings</code></td>
+<td>设置保存后 Monaco 立即套用</td>
+</tr>
+<tr>
+<td>INIT_SETTING</td>
+<td>baize:editor:init-setting</td>
+<td>M→R send</td>
+<td>main/index.ts:ready-to-show</td>
+<td>MarkdownMonacoEditor.vue</td>
+<td><code>editorSetting</code></td>
+<td>启动下发初始设置</td>
+</tr>
+<tr>
+<td>RELAYOUT</td>
+<td>baize:editor:relayout</td>
+<td>M→R send ❌</td>
+<td>无发送点（死通道）</td>
+<td>BaiZeNotes.vue:EditorReLayout</td>
+<td>无</td>
+<td>重排布局（改走 EventBus MONACO_RELAYOUT）</td>
+</tr>
+<tr>
+<td>UPDATE_OPTIONS</td>
+<td>baize:editor:update-options</td>
+<td>M→R send（另有无接收的 R→M 分支）</td>
+<td>menu-view.ts:viewMenuHandlers；BaiZeNotes.vue:updateMonacoEditorTheme（R→M 分支）</td>
+<td>MarkdownMonacoEditor.vue:handleUpdateOptions</td>
+<td><code>option: 'lineNumbers'|'renderWhitespace'</code></td>
+<td>菜单切换行号/空白字符</td>
+</tr>
+<tr>
+<td>UPDATE_FONT</td>
+<td>baize:editor:update-font</td>
+<td>R→M send ❌</td>
+<td>BaiZeNotes.vue:handleFontApply</td>
+<td>无接收点（死通道）</td>
+<td><code>htmlContent</code></td>
+<td>应用编辑器字体（实际走配置写入）</td>
+</tr>
+<tr>
+<td>SYSTEM_SETTING_UPDATE</td>
+<td>baize:setting:updated</td>
+<td>M→R send</td>
+<td>config-manager.ts:applySystemSettings；ShowSystemSettingDialog.ts</td>
+<td>BaiZeNotes.vue；i18n.ts</td>
+<td><code>setting: SystemSetting</code></td>
+<td>系统设置广播（菜单栏形态/语言）</td>
+</tr>
+<tr>
+<td>FLUSH_CONTENT</td>
+<td>baize:editor:flush-content</td>
+<td>M→R send</td>
+<td>main/index.ts:flushEditorContent（close/before-quit）</td>
+<td>MarkdownEditComponent.vue</td>
+<td>无</td>
+<td>关闭前请求同步编辑器内容（D-3）</td>
+</tr>
+<tr>
+<td>FLUSH_CONTENT_DONE</td>
+<td>baize:baize:editor:flush-content-done</td>
+<td>R→M send</td>
+<td>MarkdownEditComponent.vue</td>
+<td>main/index.ts（2s 超时兜底）</td>
+<td>无</td>
+<td>flush 完成回执</td>
+</tr>
+<tr>
+<td>DIALOG_SETTING_APPLY</td>
+<td>baize:dialog:editor-setting-apply</td>
+<td>D→M send</td>
+<td>editor-setting-script.ts（&quot;应用&quot;）</td>
+<td>ShowEditorSettingDialog.ts</td>
+<td><code>settings</code></td>
+<td>应用（不关窗）+ 通知主窗口</td>
+</tr>
+<tr>
+<td>DIALOG_SETTING_CANCEL</td>
+<td>baize:dialog:editor-setting-cancel</td>
+<td>D→M send</td>
+<td>editor-setting-script.ts（&quot;取消&quot;/关闭）</td>
+<td>ShowEditorSettingDialog.ts</td>
+<td>无</td>
+<td>关闭对话框</td>
+</tr>
+<tr>
+<td>DIALOG_SETTING_RESET</td>
+<td>baize:dialog:editor-setting-reset</td>
+<td>D→M send</td>
+<td>editor-setting-script.ts（&quot;重置&quot;）</td>
+<td>ShowEditorSettingDialog.ts</td>
+<td>无</td>
+<td>重置默认并回推设置</td>
+</tr>
+<tr>
+<td>DIALOG_SETTING_OK</td>
+<td>baize:dialog:editor-setting-ok</td>
+<td>D→M send</td>
+<td>editor-setting-script.ts（&quot;确定&quot;）</td>
+<td>ShowEditorSettingDialog.ts</td>
+<td><code>settings</code></td>
+<td>保存并关闭</td>
+</tr>
+<tr>
+<td>LOAD_SAVED_SETTINGS</td>
+<td>baize:editor:load-saved-settings</td>
+<td>M→D send</td>
+<td>ShowEditorSettingDialog.ts（did-finish-load / RESET 回调）</td>
+<td>editor-setting-script.ts</td>
+<td><code>savedSettings / defaultSettings</code></td>
+<td>回填表单</td>
+</tr>
+</tbody>
+</table>
+<h5>6.6 FILE（文件，18 个）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OPEN_SPECIFIC_FOLDER</td>
+<td>baize:file:open-specific-folder</td>
+<td>R→M send</td>
+<td>App.vue:handleOpenRecentFolder</td>
+<td>main/ipc/handlers.ts</td>
+<td><code>folderPath</code></td>
+<td>打开最近目录</td>
+</tr>
+<tr>
+<td>WELCOME_OPEN_DIRECTORY</td>
+<td>baize:file:welcome-open-directory</td>
+<td>R→M send</td>
+<td>App.vue:handleOpenFolder</td>
+<td>main/ipc/handlers.ts</td>
+<td>无</td>
+<td>欢迎页打开文件夹 → 发 WELCOME_ENTER_MAIN</td>
+</tr>
+<tr>
+<td>WELCOME_OPEN_FILE</td>
+<td>baize:file:welcome-open-file</td>
+<td>R→M send</td>
+<td>App.vue:handleOpenFile</td>
+<td>main/ipc/handlers.ts</td>
+<td>无</td>
+<td>欢迎页打开文件 → 发 WELCOME_ENTER_MAIN</td>
+</tr>
+<tr>
+<td>WELCOME_ENTER_MAIN</td>
+<td>baize:file:welcome-enter-main</td>
+<td>M→R send</td>
+<td>main/ipc/handlers.ts</td>
+<td>App.vue:handleEnterMain</td>
+<td><code>{type, path}</code></td>
+<td>通知退出欢迎界面</td>
+</tr>
+<tr>
+<td>OPEN_SELECT_FILE</td>
+<td>baize:file:open-select-file</td>
+<td>R→M send</td>
+<td>FileTreeNode.vue；MarkdownPreviewComponent.vue</td>
+<td>main/utils/utils.ts</td>
+<td><code>fileInfo</code></td>
+<td>打开选中的 md 文件</td>
+</tr>
+<tr>
+<td>IMPORT_NEW_FILE</td>
+<td>baize:file:import</td>
+<td>R→M invoke</td>
+<td>BaiZeNotes.vue:handleImportOptionConfirm</td>
+<td>main/ipc/handlers.ts</td>
+<td><code>content</code></td>
+<td>导入内容建新文件</td>
+</tr>
+<tr>
+<td>CREATE_FILE_FOLDER</td>
+<td>baize:file:create-entry</td>
+<td>R→M invoke</td>
+<td>BaiZeNotes.vue:handleCreateFileFolder</td>
+<td>main/ipc/handlers.ts</td>
+<td><code>name, dirPath, isFolder, extension</code>；返回 <code>{success}</code></td>
+<td>新建文件/文件夹</td>
+</tr>
+<tr>
+<td>GET_CURRENT_FILE_PATH</td>
+<td>baize:file:get-current-path</td>
+<td>R→M invoke</td>
+<td>menu-actions.ts（file:new）</td>
+<td>main/ipc/handlers.ts</td>
+<td>返回当前文件目录</td>
+<td>新建对话框默认目录</td>
+</tr>
+<tr>
+<td>SELECT_DIRECTORY</td>
+<td>baize:file:select-directory</td>
+<td>R→M invoke</td>
+<td>CreateFileFolderDialog.vue</td>
+<td>main/ipc/handlers.ts</td>
+<td>返回选中目录</td>
+<td>选择目录</td>
+</tr>
+<tr>
+<td>CLEAR_EDITOR_PREVIEW</td>
+<td>baize:file:clear-editor-preview</td>
+<td>M→R send</td>
+<td>handlers.ts；file-operations.ts:OpenDirectory</td>
+<td>MarkdownEditComponent.vue</td>
+<td>无</td>
+<td>切换目录时清空编辑器/预览</td>
+</tr>
+<tr>
+<td>SAVE_TO_DISK</td>
+<td>baize:file:save-content-to-disk</td>
+<td>R→M send</td>
+<td>MarkdownEditComponent.vue（Ctrl+S）</td>
+<td>main/utils/utils.ts</td>
+<td><code>content</code></td>
+<td>保存当前文件到磁盘</td>
+</tr>
+<tr>
+<td>UPDATE_SELECT_FILE_CONTENT</td>
+<td>baize:file:update-content</td>
+<td>R→M send</td>
+<td>MarkdownEditComponent.vue:syncContentToMain（500ms 防抖）</td>
+<td>main/utils/utils.ts</td>
+<td><code>content</code></td>
+<td>仅同步内存内容（不落盘）</td>
+</tr>
+<tr>
+<td>CHECK_EXISTS</td>
+<td>baize:file:check-exists</td>
+<td>R→M invoke</td>
+<td>ShowPdfEditor.vue:loadPdfFile</td>
+<td>main/utils/utils.ts</td>
+<td><code>filePath</code>；返回 boolean</td>
+<td>判断文件是否存在</td>
+</tr>
+<tr>
+<td>READ_HTML</td>
+<td>baize:file:read-html</td>
+<td>R→M invoke</td>
+<td>ShowHtmlVIew.vue:loadHtmlFile</td>
+<td>main/utils/utils.ts</td>
+<td><code>filePath</code>；返回 HTML 文本</td>
+<td>HTML 查看器读文件</td>
+</tr>
+<tr>
+<td>OPEN_EXTERNAL_LINK</td>
+<td>baize:system:open-external-link</td>
+<td>R→M send</td>
+<td>ShowHtmlVIew.vue；ShowPdfEditor.vue（openInBrowser）</td>
+<td>main/utils/utils.ts</td>
+<td><code>url</code></td>
+<td><code>shell.openExternal</code> 外开</td>
+</tr>
+<tr>
+<td>SYSTEM_INFO</td>
+<td>baize:system:get-info</td>
+<td>R→M invoke</td>
+<td>HelpAboutDialog.vue:onMounted</td>
+<td>main/ipc/handlers.ts</td>
+<td>返回 <code>os.type + arch + release</code></td>
+<td>关于对话框系统信息</td>
+</tr>
+<tr>
+<td>APP_VERSION</td>
+<td>baize:system:app-version</td>
+<td>R→M invoke</td>
+<td>preload api.app.getVersion；HelpAboutDialog</td>
+<td>main/utils/utils.ts</td>
+<td>返回版本信息对象</td>
+<td>版本信息</td>
+</tr>
+<tr>
+<td>USER_SELECT_FILE</td>
+<td>baize:file:user-select-file</td>
+<td>M→R send</td>
+<td>file-operations.ts:CreateFileFolder/OpenSelectFile/CreateFile</td>
+<td>StatusBar.vue:handleUserSelectFile</td>
+<td><code>filePath</code></td>
+<td>状态栏路径更新</td>
+</tr>
+</tbody>
+</table>
+<h5>6.7 A 组统计</h5>
+<table>
+<thead>
+<tr>
+<th>分组</th>
+<th>通道数</th>
+<th>正常接线</th>
+<th>疑似死通道</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WINDOW</td>
+<td>10</td>
+<td>9</td>
+<td>1（UNMAXIMIZE）</td>
+</tr>
+<tr>
+<td>CONFIG</td>
+<td>5</td>
+<td>2</td>
+<td>3（DELETE/LIST/ENSURE_DIR）</td>
+</tr>
+<tr>
+<td>THEME</td>
+<td>13</td>
+<td>9</td>
+<td>4（UPDATE_MONACO_THEME、GET_CURRENT_THEME、GET_SEPARATE_EDITOR_THEME、GET_MONACO_THEME）</td>
+</tr>
+<tr>
+<td>MENU</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td>14</td>
+<td>12</td>
+<td>2（RELAYOUT、UPDATE_FONT）</td>
+</tr>
+<tr>
+<td>FILE</td>
+<td>18</td>
+<td>18</td>
+<td>0</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>61</strong></td>
+<td><strong>51</strong></td>
+<td><strong>10</strong></td>
+</tr>
+</tbody>
+</table>
+<h4>七、通道矩阵 B 组（其余 10 组，62 个）</h4>
+<h5>7.1 FILE_MANAGER（文件管理器右键菜单，14 个）</h5>
+<blockquote>
+<p>全部由 <code>resource-manager.ts</code> 右键菜单发起；主进程分两处接收：<code>utils.ts:MainWindowListenUtilsEvent</code>（剪贴板/打开/重载）与 <code>dialogs.ts:MainWindowListenDialogsEvent</code>（新建/重命名/删除/导入/定位）。<code>FILE_SYSTEM_DATA</code> 反向推送文件树。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>COPY_RELATIVE_PATH</td>
+<td>baize:fs:copy-relative-path</td>
+<td>R→M send</td>
+<td>resource-manager.ts:onHandleCopy</td>
+<td>utils.ts → CopyRelativePath</td>
+<td><code>path</code></td>
+<td>复制相对当前文件路径</td>
+</tr>
+<tr>
+<td>COPY_IMAGELINK</td>
+<td>baize:fs:copy-image-link</td>
+<td>R→M send</td>
+<td>同上</td>
+<td>utils.ts → CopyImageLink</td>
+<td><code>path</code></td>
+<td>复制 Markdown 图片链接</td>
+</tr>
+<tr>
+<td>COPY_FILELINK</td>
+<td>baize:fs:copy-filelink</td>
+<td>R→M send</td>
+<td>同上</td>
+<td>utils.ts → CopyFileLink</td>
+<td><code>path</code></td>
+<td>复制 Markdown 文件链接</td>
+</tr>
+<tr>
+<td>COPY_FILE</td>
+<td>baize:fs:copy-file</td>
+<td>R→M send</td>
+<td>同上</td>
+<td>utils.ts → FileManagerContextMenuCopy</td>
+<td><code>path, isFile</code></td>
+<td>记录复制源</td>
+</tr>
+<tr>
+<td>CUT</td>
+<td>baize:fs:cut</td>
+<td>R→M send</td>
+<td>resource-manager.ts:onHandleCut</td>
+<td>utils.ts → FileManagerContextMenuCut</td>
+<td><code>path, isFile</code></td>
+<td>记录剪切源</td>
+</tr>
+<tr>
+<td>PASTE</td>
+<td>baize:fs:paste</td>
+<td>R→M send</td>
+<td>resource-manager.ts:onHandlePaste</td>
+<td>utils.ts → FileManagerContextMenuPaste</td>
+<td><code>toPath, isFile</code></td>
+<td>复制/移动到目标目录</td>
+</tr>
+<tr>
+<td>OPEN_IN_EXPLORER</td>
+<td>baize:fs:open-in-explorer</td>
+<td>R→M send</td>
+<td>resource-manager.ts:onHandleOpenExplorer</td>
+<td>utils.ts → OpenFolderExplorer</td>
+<td><code>path</code></td>
+<td>在资源管理器中定位</td>
+</tr>
+<tr>
+<td>RELOAD_FROM_DISK</td>
+<td>baize:fs:reload-from-disk</td>
+<td>R→M send</td>
+<td>resource-manager.ts:onHandleReloadFromDisk</td>
+<td>utils.ts → ReloadDirFromDisk</td>
+<td><code>''</code> 占位</td>
+<td>重载目录树</td>
+</tr>
+<tr>
+<td>CREATE_FILE</td>
+<td>baize:fs:create-file</td>
+<td>R→M send</td>
+<td>resource-manager.ts:onHandleCreateFolder</td>
+<td>dialogs.ts → ShowCreateFileFolderDialog</td>
+<td><code>dirPath, isFolder, fileExtension</code></td>
+<td>打开新建对话框</td>
+</tr>
+<tr>
+<td>RENAME</td>
+<td>baize:fs:rename</td>
+<td>R→M send</td>
+<td>resource-manager.ts:onHandleRename</td>
+<td>dialogs.ts → ShowFileFolderRenameDialog</td>
+<td><code>path, isFile</code></td>
+<td>打开重命名对话框</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td>baize:fs:delete</td>
+<td>R→M send</td>
+<td>resource-manager.ts:onHandleDelete</td>
+<td>dialogs.ts → ShowConfirmDeleteDialog</td>
+<td><code>value, isFile</code></td>
+<td>确认后删除</td>
+</tr>
+<tr>
+<td>IMPORT_FROM</td>
+<td>baize:fs:import-from</td>
+<td>R→M send</td>
+<td>resource-manager.ts:onHandleImport</td>
+<td>dialogs.ts → InsertImportFormFile</td>
+<td><code>fileType</code></td>
+<td>导入 Word/HTML</td>
+</tr>
+<tr>
+<td>FIND_IN</td>
+<td>baize:fs:find-in</td>
+<td>R→M send</td>
+<td>resource-manager.ts:onHandleFind</td>
+<td>dialogs.ts → shell.showItemInFolder</td>
+<td><code>targetPath</code></td>
+<td>在文件夹中显示</td>
+</tr>
+<tr>
+<td>FILE_SYSTEM_DATA</td>
+<td>baize:fs:file-system-data</td>
+<td>M→R send</td>
+<td>file-operations.ts:ReloadDirFromDisk</td>
+<td>ResourceManager.vue</td>
+<td><code>treeJson</code></td>
+<td>推送文件树刷新资源管理器</td>
+</tr>
+</tbody>
+</table>
+<h5>7.2 PLUGIN（插件工具，6 个）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RSA_GENERATE</td>
+<td>baize:plugin:rsa-generate</td>
+<td>R→M send</td>
+<td>RSAGenerator.vue:refreshKeyPair</td>
+<td>utils.ts → CreateRsaKeyPair</td>
+<td><code>bits</code></td>
+<td>请求生成 RSA 密钥对</td>
+</tr>
+<tr>
+<td>RSA_RESULT</td>
+<td>baize:plugin:rsa-result</td>
+<td>M→R send</td>
+<td>encrypt-decrypt.ts:CreateRsaKeyPair</td>
+<td>RSAGenerator.vue:onRsaResult</td>
+<td><code>(publicKey, privateKey)</code></td>
+<td>回传 PEM 公私钥</td>
+</tr>
+<tr>
+<td>HASH_TEXT</td>
+<td>baize:plugin:hash-text</td>
+<td>R→M invoke</td>
+<td>HashText.vue:getHashTextResult</td>
+<td>utils.ts → CreateHash</td>
+<td><code>(context, encType)</code></td>
+<td>计算多种哈希</td>
+</tr>
+<tr>
+<td>HMAC_TEXT</td>
+<td>baize:plugin:hmac-text</td>
+<td>R→M invoke</td>
+<td>HmacGenerator.vue:getHmacTextResult</td>
+<td>utils.ts → CreateHmac</td>
+<td><code>(context, secKey, encType)</code></td>
+<td>计算多种 HMAC</td>
+</tr>
+<tr>
+<td>CRYPTO_ENCRYPT</td>
+<td>baize:plugin:crypto-encrypt</td>
+<td>R→M invoke</td>
+<td>CryptoEncDec.vue:CryptoEncryptResult</td>
+<td>utils.ts → CryptoEncrypt</td>
+<td><code>CryptoData</code></td>
+<td>对称加密</td>
+</tr>
+<tr>
+<td>CRYPTO_DECRYPT</td>
+<td>baize:plugin:crypto-decrypt</td>
+<td>R→M invoke</td>
+<td>CryptoEncDec.vue:CryptoDecryptResult</td>
+<td>utils.ts → CryptoDecrypt</td>
+<td><code>CryptoData</code></td>
+<td>对称解密</td>
+</tr>
+</tbody>
+</table>
+<h5>7.3 RENDER（图片插入与 PlantUML 本地渲染，2 个）</h5>
+<blockquote>
+<p>PF-02 重构：原 <code>PRE_RENDER</code> / <code>POST_RENDER</code> / <code>PRE_RENDER_RESULT</code> / <code>POST_RENDER_RESULT</code> 四个通道已移除，Markdown 预览改为渲染层本地单跳渲染（<code>preview-local-render.ts</code>），不再经主进程中转。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INSERT_IMAGE</td>
+<td>baize:render:insert-image</td>
+<td>R→M send</td>
+<td>hemy-editor-common.ts（Ctrl+V 粘贴图片）</td>
+<td>utils.ts → InsertImagesToFile</td>
+<td><code>context</code>（DataURL）</td>
+<td>粘贴图片存 <code>./images</code> 并回插 Markdown</td>
+</tr>
+<tr>
+<td>PLANTUML_LOCAL</td>
+<td>baize:render:plantuml-local</td>
+<td>R→M invoke</td>
+<td>hemy-editor-render.ts:invokePlantumlLocalRender</td>
+<td>renders/plantuml-local.ts</td>
+<td><code>source</code>；返回 <code>{status, svg?/message?}</code></td>
+<td>PlantUML 本地离线渲染（隐藏窗口）</td>
+</tr>
+</tbody>
+</table>
+<h5>7.4 DIALOG（对话框，14 个）</h5>
+<blockquote>
+<p>组内多为 HTML 对话框通路：D→M 全走 <code>ipcRenderer.send</code> 且逐个命中 <code>dialog.ts</code> 白名单；M→D 用 <code>webContents.send</code>。<code>OPEN_VUE_DIALOG</code> 是主进程→<strong>主窗口</strong>渲染层。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CREATE_FILE_FOLDER_ENTER</td>
+<td>baize:dialog:create-file-folder-enter</td>
+<td>D→M send</td>
+<td>ShowCreateFileFolderDialog.ts 脚本（Enter）</td>
+<td>同文件 processCreateFileFolder</td>
+<td><code>name</code></td>
+<td>新建文件/文件夹</td>
+</tr>
+<tr>
+<td>RENAME_FILE_FOLDER_ENTER</td>
+<td>baize:dialog:rename-file-folder-enter</td>
+<td>D→M send</td>
+<td>ShowRemaneDialog.ts 脚本</td>
+<td>同文件 processRenameFileFolder</td>
+<td><code>newName</code></td>
+<td>重命名</td>
+</tr>
+<tr>
+<td>SYSTEM_SETTING_APPLY</td>
+<td>baize:dialog:system-setting-apply</td>
+<td>D→M send</td>
+<td>ShowSystemSettingDialog.ts 脚本</td>
+<td>同文件 processApplySysSetting</td>
+<td><code>SystemSetting</code></td>
+<td>应用系统设置（不关窗）</td>
+</tr>
+<tr>
+<td>SYSTEM_SETTING_CONFIRM</td>
+<td>baize:dialog:system-setting-confirm</td>
+<td>D→M send</td>
+<td>同上</td>
+<td>processConfirmSysSetting</td>
+<td><code>SystemSetting</code></td>
+<td>保存并关闭</td>
+</tr>
+<tr>
+<td>SYSTEM_SETTING_CANCEL</td>
+<td>baize:dialog:system-setting-cancel</td>
+<td>D→M send</td>
+<td>同上</td>
+<td>processCancelSysSetting</td>
+<td>无</td>
+<td>取消关闭</td>
+</tr>
+<tr>
+<td>FONT_SELECT_INSERT</td>
+<td>baize:dialog:font-select-insert</td>
+<td>D→M send</td>
+<td>ShowFontSelectDialog.ts 脚本</td>
+<td>processCustomFontDialogApply</td>
+<td><code>fontStyle</code></td>
+<td>拼字体样式 HTML 插入编辑器</td>
+</tr>
+<tr>
+<td>FONT_SELECT_CANCEL</td>
+<td>baize:dialog:font-select-cancel</td>
+<td>D→M send</td>
+<td>同上</td>
+<td>processCustomFontDialogCancel</td>
+<td>无</td>
+<td>取消关闭</td>
+</tr>
+<tr>
+<td>MERMAID_RENDER_RESULT</td>
+<td>baize:dialog:mermaid-render-result</td>
+<td>D→M send</td>
+<td>OpenMermaidRenderFrame.ts 隐藏窗脚本</td>
+<td>processMermaidRenderResult（临时监听）</td>
+<td><code>chartHtml</code></td>
+<td>回传 Mermaid SVG</td>
+</tr>
+<tr>
+<td>OPEN_VUE_DIALOG</td>
+<td>baize:dialog:open-vue</td>
+<td>M→R send</td>
+<td>menu-file.ts、menu-view.ts、menu-tools.ts、short-key-register.ts、dialog-helpers.ts、file-operations.ts、import.ts</td>
+<td>BaiZeNotes.vue:handleOpenVueDialog</td>
+<td><code>(dialogName, data?)</code></td>
+<td>主进程 → 渲染层打开 Vue 对话框</td>
+</tr>
+<tr>
+<td>OPEN_PLUGIN_TOOL</td>
+<td>baize:dialog:open-plugin-tool</td>
+<td>M→R send ❌</td>
+<td>menu-tools.ts:pluginsMenuHandlers（26 处）</td>
+<td>无监听（死通道，插件菜单改走 EventBus）</td>
+<td><code>toolId</code></td>
+<td>打开插件工具（遗留）</td>
+</tr>
+<tr>
+<td>AUTO_SAVE_CHANGED</td>
+<td>baize:setting:auto-save-changed</td>
+<td>R→M ⚠️</td>
+<td>SystemSettingDialog.vue:handleAutoSaveChange（send）</td>
+<td>handlers.ts（registerHandleOnce → handle，仅 invoke 可达）</td>
+<td><code>{autoSaveEnabled, autoSaveInterval}</code></td>
+<td>启停自动保存；<strong>send 打不到 handle，实际不生效</strong></td>
+</tr>
+<tr>
+<td>IMPORT_OPTION_CONFIRM</td>
+<td>baize:dialog:import-option-confirm</td>
+<td>D→M send</td>
+<td>ShowImportOptionDialog.ts 脚本</td>
+<td>同文件 handleImportOptionConfirm</td>
+<td><code>option: 'replace'|'newfile'|'insert'</code></td>
+<td>导入方式确认</td>
+</tr>
+<tr>
+<td>LOAD_SAVED_SETTINGS</td>
+<td>baize:dialog:load-saved-settings</td>
+<td>M→D send</td>
+<td>ShowSystemSettingDialog.ts</td>
+<td>同文件 HTML 脚本</td>
+<td><code>savedSettings</code></td>
+<td>对话框回填设置</td>
+</tr>
+<tr>
+<td>SAVE_SUCCESS</td>
+<td>baize:file:save-success</td>
+<td>M→D send</td>
+<td>ShowQuickLinkSettingDialog.ts:handleSaveQuickLinks</td>
+<td>同文件 HTML 脚本</td>
+<td>无</td>
+<td>保存成功 toast</td>
+</tr>
+</tbody>
+</table>
+<h5>7.5 NAVIGATION / VIEW / MONACO_INSERT（10 个）</h5>
+<table>
+<thead>
+<tr>
+<th>分组</th>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NAVIGATION</td>
+<td>OPEN_EXE</td>
+<td>baize:navigation:open-exe</td>
+<td>R→M send</td>
+<td>NaviTab.vue:onQuickLinkClick</td>
+<td>utils.ts → shell.openPath</td>
+<td><code>exePath</code></td>
+<td>启动本地程序（三重校验）</td>
+</tr>
+<tr>
+<td>NAVIGATION</td>
+<td>KEYDOWN</td>
+<td>baize:navigation:keydown</td>
+<td>R→M send ❌</td>
+<td>无发送方（死通道）</td>
+<td>utils.ts（Ctrl+S 保存）</td>
+<td><code>{ctrlKey, key}</code></td>
+<td>主进程兜底保存（已被 SAVE_TO_DISK 取代）</td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td>EDIT_MODE</td>
+<td>baize:view:edit-mode</td>
+<td>M→R send</td>
+<td>menu-view.ts；short-key-register.ts（F9）</td>
+<td>MarkdownEditComponent.vue</td>
+<td>null</td>
+<td>仅编辑视图</td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td>PREVIEW_MODE</td>
+<td>baize:view:preview-mode</td>
+<td>M→R send</td>
+<td>menu-view.ts；short-key-register.ts（F10）</td>
+<td>MarkdownEditComponent.vue</td>
+<td>null</td>
+<td>仅预览视图</td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td>EDIT_PREVIEW_MODE</td>
+<td>baize:view:edit-preview-mode</td>
+<td>M→R send</td>
+<td>menu-view.ts；short-key-register.ts（F11）</td>
+<td>MarkdownEditComponent.vue</td>
+<td>null</td>
+<td>双栏视图</td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td>TOGGLE_RES_MANAGER</td>
+<td>baize:view:toggle-resource-manager</td>
+<td>M→R send</td>
+<td>menu-view.ts</td>
+<td>WorkSpace.vue</td>
+<td>null</td>
+<td>显示/隐藏资源管理器</td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td>UNDO_REDO</td>
+<td>baize:monaco:undo-redo</td>
+<td>M→R send</td>
+<td>menu-edit.ts（undo/redo/cut/copy/paste）</td>
+<td>MarkdownMonacoEditor.vue</td>
+<td><code>action</code></td>
+<td>触发 Monaco 撤销/重做/剪贴板动作</td>
+</tr>
+<tr>
+<td>MONACO_INSERT</td>
+<td>WRITING_TEMPLATES</td>
+<td>baize:monaco:insert-writing-templates</td>
+<td>M→R send ❌</td>
+<td>无发送方（死通道）</td>
+<td>MarkdownEditComponent.vue:handleInsertTemplate</td>
+<td><code>fileContent</code></td>
+<td>插入写作模板（实际走 EventBus）</td>
+</tr>
+<tr>
+<td>MONACO_INSERT</td>
+<td>TEXT_BLOCK_TEMPLATES</td>
+<td>baize:monaco:insert-text-block</td>
+<td>M→R send</td>
+<td>utils.ts（图片回插）；ShowFontSelectDialog.ts（字体 HTML）</td>
+<td>MarkdownMonacoEditor.vue</td>
+<td><code>context</code></td>
+<td>光标处插入任意文本片段</td>
+</tr>
+<tr>
+<td>MONACO_INSERT</td>
+<td>AFTER_CURSOR</td>
+<td>baize:monaco:insert-after-cursor</td>
+<td>M→R send</td>
+<td>import.ts:InsertImportFormFile</td>
+<td>MarkdownMonacoEditor.vue</td>
+<td><code>content</code></td>
+<td>光标处插入导入内容</td>
+</tr>
+</tbody>
+</table>
+<h5>7.6 QUICK_LINKS（快速链接，5 个）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td>baize:quick-links:get</td>
+<td>R→M invoke</td>
+<td>NaviTab.vue:loadQuickLinks</td>
+<td>utils.ts → getQuickLinks</td>
+<td>返回 <code>QuickLinkItem[]</code></td>
+<td>读取快速链接</td>
+</tr>
+<tr>
+<td>SAVE</td>
+<td>baize:quick-links:save</td>
+<td>D→M send</td>
+<td>ShowQuickLinkSettingDialog.ts 脚本</td>
+<td>同文件 handleSaveQuickLinks</td>
+<td><code>links</code></td>
+<td>保存配置</td>
+</tr>
+<tr>
+<td>RESET</td>
+<td>baize:quick-links:reset</td>
+<td>D→M send</td>
+<td>同文件 resetToDefault</td>
+<td>handleResetQuickLinks</td>
+<td>无</td>
+<td>重置默认</td>
+</tr>
+<tr>
+<td>UPDATED</td>
+<td>baize:quick-links:updated</td>
+<td>M→R send</td>
+<td>ShowQuickLinkSettingDialog.ts（广播）</td>
+<td>NaviTab.vue:handleQuickLinksUpdated</td>
+<td>无</td>
+<td>通知重拉</td>
+</tr>
+<tr>
+<td>INIT</td>
+<td>baize:quick-links:init</td>
+<td>M→D send</td>
+<td>ShowQuickLinkSettingDialog.ts（did-finish-load/重置）</td>
+<td>同文件脚本</td>
+<td><code>links</code></td>
+<td>对话框回填</td>
+</tr>
+</tbody>
+</table>
+<h5>7.7 OVERLAY（覆盖层窗口，7 个）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UPDATE_MERMAID_GRAPH</td>
+<td>baize:overlay:update-mermaid-graph</td>
+<td>M→D send ❌</td>
+<td>OpenMermaidRenderFrame.ts:updateMermaidWindowHtml（零调用）</td>
+<td>无监听</td>
+<td><code>graphDesc</code></td>
+<td>更新隐藏 Mermaid 窗口（双重断链）</td>
+</tr>
+<tr>
+<td>MERMAID_GRAPH_DEF</td>
+<td>baize:overlay:mermaid-graph-definition</td>
+<td>M→R send ❌</td>
+<td>无发送方（死通道）</td>
+<td>MermaidRender.vue</td>
+<td><code>graphData</code></td>
+<td>预览侧接收图定义</td>
+</tr>
+<tr>
+<td>OPEN_URL</td>
+<td>baize:overlay:open-url</td>
+<td>M→R send ❌</td>
+<td>无发送方（死通道；实际走 OpenOnlineWebPages/window.open）</td>
+<td>BaiZeNotes.vue</td>
+<td><code>link</code></td>
+<td>浏览器窗口打开 URL</td>
+</tr>
+<tr>
+<td>OPEN_WITH_ENCODING</td>
+<td>baize:file:open-with-encoding</td>
+<td>M→R send</td>
+<td>menu-file.ts:codingMenuHandlers</td>
+<td>MarkdownEditComponent.vue</td>
+<td><code>encoding</code>（9 种）</td>
+<td>&quot;以指定编码打开&quot;下发</td>
+</tr>
+<tr>
+<td>CONVERT_TO_ENCODING</td>
+<td>baize:file:convert-to-encoding</td>
+<td>M→R send</td>
+<td>menu-file.ts:codingMenuHandlers</td>
+<td>MarkdownEditComponent.vue</td>
+<td><code>encoding</code></td>
+<td>&quot;转换编码&quot;下发</td>
+</tr>
+<tr>
+<td>REOPEN_WITH_ENCODING</td>
+<td>file-rebaize:file:open-with-encoding</td>
+<td>R→M invoke</td>
+<td>MarkdownEditComponent.vue</td>
+<td>utils.ts → ReopenActiveFileWithEncoding</td>
+<td><code>encoding</code>；返回 Promise</td>
+<td>按编码重新读取当前文件</td>
+</tr>
+<tr>
+<td>CONVERT_SAVE_ENCODING</td>
+<td>baize:file:convert-encoding</td>
+<td>R→M invoke</td>
+<td>MarkdownEditComponent.vue</td>
+<td>utils.ts → ConvertActiveFileEncoding</td>
+<td><code>encoding</code>；返回 Promise</td>
+<td>按编码转码保存</td>
+</tr>
+</tbody>
+</table>
+<h5>7.8 EVENTS（主进程→渲染层广播，4 个）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>通道</th>
+<th>方向/模式</th>
+<th>发起方</th>
+<th>接收方</th>
+<th>载荷</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>STATUS_BAR_UPDATE</td>
+<td>baize:status-bar:update</td>
+<td>M→R send</td>
+<td>utils.ts、handlers.ts、logger.ts、auto-save.ts、file-operations.ts（10 处）</td>
+<td>StatusBar.vue</td>
+<td><code>{message, type, encoding?}</code></td>
+<td>状态栏消息/编码提示</td>
+</tr>
+<tr>
+<td>FILE_SAVED_SUCCESS</td>
+<td>baize:file:saved</td>
+<td>M→R send</td>
+<td>file-operations.ts:SaveActiveFile/ConvertActiveFileEncoding（全窗口广播）</td>
+<td>StatusBar.vue</td>
+<td>无</td>
+<td>清除未保存标记</td>
+</tr>
+<tr>
+<td>FILE_CONTENT_RELOADED</td>
+<td>baize:file:content-reloaded</td>
+<td>M→R send</td>
+<td>file-operations.ts:ReloadDirFromDisk</td>
+<td>MarkdownEditComponent.vue</td>
+<td><code>{path, content}</code></td>
+<td>磁盘变化后重载编辑器</td>
+</tr>
+<tr>
+<td>SHOW_SELECTED_FILE_CONTEXT</td>
+<td>baize:fs:show-selected-file-context</td>
+<td>M→R send</td>
+<td>file-operations.ts（打开/新建/按编码重开）</td>
+<td>MarkdownEditComponent.vue</td>
+<td><code>content</code></td>
+<td>内容灌入编辑器</td>
+</tr>
+</tbody>
+</table>
+<h5>7.9 B 组统计</h5>
+<table>
+<thead>
+<tr>
+<th>方向/模式</th>
+<th>数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R→M send</td>
+<td>18</td>
+</tr>
+<tr>
+<td>R→M invoke</td>
+<td>8</td>
+</tr>
+<tr>
+<td>M→R send</td>
+<td>21</td>
+</tr>
+<tr>
+<td>M→D send</td>
+<td>4</td>
+</tr>
+<tr>
+<td>D→M send</td>
+<td>11</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>62</strong>（正常接线 55、模式不一致 1、疑似死通道 6）</td>
+</tr>
+</tbody>
+</table>
+<h4>八、跨窗口通信路径</h4>
+<h5>8.1 主窗口 → HTML 对话框（全部经主进程中转）</h5>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>通道</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主题注入</td>
+<td><code>baize:theme:init-styles</code></td>
+<td>11 个对话框创建后由主进程推送主题</td>
+</tr>
+<tr>
+<td>主题热更新</td>
+<td><code>baize:theme:update-from-dialogd</code></td>
+<td>全窗口广播</td>
+</tr>
+<tr>
+<td>编辑器设置回填</td>
+<td><code>baize:editor:load-saved-settings</code></td>
+<td>设置对话框</td>
+</tr>
+<tr>
+<td>系统设置回填</td>
+<td><code>baize:dialog:load-saved-settings</code></td>
+<td>系统设置对话框</td>
+</tr>
+<tr>
+<td>快捷链接回填</td>
+<td><code>baize:quick-links:init</code></td>
+<td>快捷链接对话框</td>
+</tr>
+<tr>
+<td>保存成功提示</td>
+<td><code>baize:file:save-success</code></td>
+<td>快捷链接对话框</td>
+</tr>
+</tbody>
+</table>
+<h5>8.2 HTML 对话框 → 主窗口（D→M send，主进程转发/落盘）</h5>
+<p>共 16 条链路，核心为：编辑器设置 4 通道、系统设置 3 通道、字体选择 2 通道、新建/重命名 2 通道、导入确认 1 通道、快捷链接 2 通道、主题 2 通道（THEME_UPDATE / DIALOG_BROADCAST_THEME）。全部命中 <code>dialog.ts</code> 的 17 项 send 白名单，无静默丢弃。</p>
+<h5>8.3 主进程 → 主窗口（M→R 推送）</h5>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>通道示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>编辑器</td>
+<td><code>INIT_SETTING</code>、<code>SETTING_UPDATED</code>、<code>UPDATE_OPTIONS</code>、<code>FLUSH_CONTENT</code>、<code>SYSTEM_SETTING_UPDATE</code></td>
+</tr>
+<tr>
+<td>文件</td>
+<td><code>WELCOME_ENTER_MAIN</code>、<code>CLEAR_EDITOR_PREVIEW</code>、<code>USER_SELECT_FILE</code>、<code>SHOW_SELECTED_FILE_CONTEXT</code>、<code>FILE_CONTENT_RELOADED</code></td>
+</tr>
+<tr>
+<td>渲染</td>
+<td><code>TEXT_BLOCK_TEMPLATES</code>、<code>AFTER_CURSOR</code>（PF-02 后预览渲染已本地化，无 IPC 往返）</td>
+</tr>
+<tr>
+<td>菜单/视图</td>
+<td><code>VIEW.EDIT/PREVIEW/EDIT_PREVIEW_MODE</code>、<code>UNDO_REDO</code>、<code>TOGGLE_RES_MANAGER</code></td>
+</tr>
+<tr>
+<td>主题</td>
+<td><code>THEME_UPDATED</code>、<code>INIT_THEME_STYLES</code>（M→R 分支空转）</td>
+</tr>
+<tr>
+<td>状态</td>
+<td><code>STATUS_BAR_UPDATE</code>、<code>FILE_SAVED_SUCCESS</code></td>
+</tr>
+<tr>
+<td>对话框</td>
+<td><code>OPEN_VUE_DIALOG</code>、<code>OPEN_PLUGIN_TOOL</code>（死通道）</td>
+</tr>
+<tr>
+<td>编码</td>
+<td><code>OPEN_WITH_ENCODING</code>、<code>CONVERT_TO_ENCODING</code></td>
+</tr>
+<tr>
+<td>快捷链接</td>
+<td><code>QUICK_LINKS.UPDATED</code></td>
+</tr>
+</tbody>
+</table>
+<h5>8.4 主进程 → 隐藏窗口</h5>
+<table>
+<thead>
+<tr>
+<th>窗口</th>
+<th>通信方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PlantUML 渲染窗</td>
+<td>无 preload；<code>executeJavaScript</code> 传参 + 轮询/超时回收</td>
+</tr>
+<tr>
+<td>Mermaid 隐藏窗</td>
+<td>dialog preload；result 经 <code>MERMAID_RENDER_RESULT</code> 回传（链路半死）</td>
+</tr>
+<tr>
+<td>PDF 导出窗</td>
+<td>无 IPC，<code>loadURL</code> + <code>printToPDF</code></td>
+</tr>
+</tbody>
+</table>
+<h5>8.5 渲染器内部 EventBus（不跨进程，25 个事件）</h5>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>事件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>插件/工作区</td>
+<td><code>PLUGIN_TOOL_SHOW</code>、<code>PLUGIN_TOOLS_CONTAINER_SHOW</code>、<code>WORKSPACE_SHOW</code></td>
+</tr>
+<tr>
+<td>Monaco 插入/替换</td>
+<td><code>MONACO_INSERT_TEXT</code>、<code>MONACO_REPLACE_TEXT</code>、<code>MONACO_USE_TEMPLATE</code>、<code>MONACO_UPDATE_HEADER_FORMAT</code>、<code>MONACO_UPDATE_FONT_FORMAT</code></td>
+</tr>
+<tr>
+<td>布局/大纲</td>
+<td><code>MONACO_RELAYOUT</code>、<code>EDITOR_TOGGLE_FOLD</code>、<code>EDITOR_TOGGLE_OUTLINE</code>、<code>EDITOR_TRIGGER_FIND</code>、<code>EDITOR_JUMP_LINE</code>、<code>MONACO_GET_CHAPTERS</code>、<code>MONACO_CHAPTERS</code>、<code>MONACO_LOCATE_TARGET_LINE</code></td>
+</tr>
+<tr>
+<td>状态栏</td>
+<td><code>STATUS_BAR_FILE_PATH</code>、<code>STATUS_BAR_CONTEXT_LENGTH</code>、<code>STATUS_BAR_CURSOR_POSITION</code></td>
+</tr>
+<tr>
+<td>文件/预览</td>
+<td><code>HTML_FILE_SELECTED</code>、<code>PDF_FILE_SELECTED</code>、<code>FILE_TREE_NODE_CLICKED</code>、<code>MONACO_SAVE_FILE_CONTENT_TO_DISK</code></td>
+</tr>
+<tr>
+<td>主题/切换</td>
+<td><code>THEME_UPDATED</code>、<code>MONACO_SWITCH_EXPLORER</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>异常项：<code>MONACO_SWITCH_EXPLORER</code> <strong>有发无收</strong>；<code>FILE_TREE_NODE_CLICKED</code> <strong>有收无发</strong>。
+<strong>分工结论</strong>：主窗口渲染进程内组件间一律 EventBus；跨进程一律 IPC；HTML 对话框不 import EventBus，必须经主进程中转。</p>
+</blockquote>
+<h4>九、问题清单</h4>
+<h5>9.1 疑似死通道（16 个）</h5>
+<blockquote>
+<p><strong>处理状态（2026-11-18 复核）</strong>：以下 16 个死通道已于此前的 P2 死代码清理批次（123→86 通道）<strong>全部删除</strong>；当前 <code>src/shared/ipc-channels.ts</code> 零引用常量扫描 = 0。2026-11-18 晚另清理了 2 个空转/空实现通道（<code>WINDOW.START_DRAG</code>、<code>THEME.INIT_THEME_STYLES</code>）与 2 处死分支，通道总数 92 → 90，详见 <a href="IPC通信矩阵.html">2026-11-18-IPC通信矩阵</a>。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>通道</th>
+<th>现象</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>baize:window:unmaximize</code></td>
+<td>无发送点，仅主进程注册</td>
+<td>删除或补调用方</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>baize:config:delete</code></td>
+<td>preload 已暴露，渲染层零调用</td>
+<td>删除 API 或补管理界面</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>baize:config:list</code></td>
+<td>同上</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>baize:config:ensure-dir</code></td>
+<td>preload 未暴露，零调用</td>
+<td>删除</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>baize:theme:update-monaco</code></td>
+<td>有发送，主进程零接收</td>
+<td>删除发送或补接收</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>baize:theme:get-current</code></td>
+<td>仅主进程 handle，零 invoke</td>
+<td>删除</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>baize:theme:get-separate-editor</code></td>
+<td>仅 sendSync 应答注册，零 sendSync</td>
+<td>删除（源码注释已自认）</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>baize:theme:get-monaco</code></td>
+<td>同上</td>
+<td>删除</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>baize:editor:relayout</code></td>
+<td>仅渲染层监听，零发送</td>
+<td>删除（已由 EventBus 接管）</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>baize:editor:update-font</code></td>
+<td>有发送，主进程零接收</td>
+<td>删除或补接收</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>baize:dialog:open-plugin-tool</code></td>
+<td>有发送（26 处），零监听</td>
+<td>待插件菜单主进程树退役时删除</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>baize:navigation:keydown</code></td>
+<td>仅主进程接收，零发送</td>
+<td>删除（Ctrl+S 已走 SAVE_TO_DISK）</td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>baize:monaco:insert-writing-templates</code></td>
+<td>仅渲染层监听，零发送</td>
+<td>删除监听+常量</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>baize:overlay:mermaid-graph-definition</code></td>
+<td>仅渲染层监听，零发送</td>
+<td>确认 Mermaid 链路规划后删除</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>baize:overlay:open-url</code></td>
+<td>仅主窗口监听，零发送</td>
+<td>删除</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>baize:overlay:update-mermaid-graph</code></td>
+<td>发送函数零调用 + 窗口零监听</td>
+<td>与 #14 一并评估</td>
+</tr>
+</tbody>
+</table>
+<h5>9.2 模式/语义不一致</h5>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>通道</th>
+<th>问题</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>baize:setting:auto-save-changed</code></td>
+<td>渲染层 <code>send</code>，主进程用 <code>ipcMain.handle</code> 注册</td>
+<td><strong>Vue 系统设置对话框的自动保存开关变更实际不生效</strong>；HTML 版直接在主进程内启停定时器，同一功能双实现行为分叉</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>THEME.INIT_THEME_STYLES</code></td>
+<td>M→R 分支无监听（空转）；载荷双轨（裸 ThemeStyles vs <code>{theme, separateEditorTheme, monacoTheme}</code>）；ShowFontSelectDialog 有监听无发送</td>
+<td>主窗口初始主题改由 invoke 完成；同名通道两种载荷</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>EDITOR.UPDATE_OPTIONS</code></td>
+<td>方向混用：M→R 推送 lineNumbers/renderWhitespace 正常；BaiZeNotes.vue 的 R→M <code>('theme', ...)</code> 分支无接收</td>
+<td>主题选项发送空转</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>THEME.THEME_UPDATED</code></td>
+<td>MenuBar.vue 按 <code>{currentTheme}</code> 读取，实际载荷无该字段</td>
+<td>菜单主题选中态不被推送刷新</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>ARC-03</code> 绕过</td>
+<td><code>common/templates.ts</code> 用字面量重复定义两个 MONACO_INSERT 通道常量（零消费）</td>
+<td>后续启用存在漂移风险</td>
+</tr>
+<tr>
+<td>6</td>
+<td>命名与用途不符</td>
+<td><code>TEXT_BLOCK_TEMPLATES</code> 被复用为通用&quot;光标插入文本&quot;；<code>WRITING_TEMPLATES</code> 对应功能实际不走 IPC</td>
+<td>维护认知成本</td>
+</tr>
+<tr>
+<td>7</td>
+<td>监听未入台账</td>
+<td>6 个对话框 + Mermaid 通道直连 <code>ipcMain</code>，未走 <code>ipcListenerManager</code></td>
+<td><code>cleanupAll()/getInventory()</code> 台账不完整</td>
+</tr>
+</tbody>
+</table>
+<h5>9.3 机制层风险（C-01 ～ C-10）</h5>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>问题</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C-01</td>
+<td><code>editor-setting-dialog</code> 未注入 preload（<code>ShowEditorSettingDialog.ts</code>），但脚本首行即用 <code>window.electronAPI</code></td>
+<td>该对话框脚本抛错、设置逻辑失效（窗口已不可达，属遗留）</td>
+</tr>
+<tr>
+<td>C-02</td>
+<td>对话框 preload 的 <code>removeListener</code> 与 <code>on</code> 包装函数引用不一致</td>
+<td>无法真正退订，API 语义失真</td>
+</tr>
+<tr>
+<td>C-03</td>
+<td><code>ShowThemeSettingDialog.ts</code> 模块级 <code>ipcMain.on</code> 回调中引用渲染层 <code>window</code></td>
+<td>主进程执行到广播处抛 <code>ReferenceError</code>，主题广播中断</td>
+</tr>
+<tr>
+<td>C-04</td>
+<td>部分监听器直连 <code>ipcMain</code>（<code>main/index.ts</code>、6 个对话框、Mermaid）</td>
+<td>台账不完整，泄漏治理有盲区（MEM-10 未彻底）</td>
+</tr>
+<tr>
+<td>C-05</td>
+<td>HTML 对话框与 Vue 组件对话框双轨并存，多数 HTML 版不可达</td>
+<td>维护成本；14 个可见 HTML 对话框实际可达约 5–6 个</td>
+</tr>
+<tr>
+<td>C-06</td>
+<td>菜单 id 错位：<code>help:contact-us</code> vs <code>help:contact</code></td>
+<td>点&quot;联系我们&quot;实际打开 HTML 对话框而非 Vue 版</td>
+</tr>
+<tr>
+<td>C-07</td>
+<td>Mermaid 隐藏窗链路半死（启动空图、结果无消费、更新函数零调用）</td>
+<td>占用一个隐藏渲染进程，实际渲染由渲染层 mermaid 包完成</td>
+</tr>
+<tr>
+<td>C-08</td>
+<td><code>online-web-page</code> 加载远程 URL 且持有 dialog preload，无导航拦截</td>
+<td>远程页可 <code>shell.openExternal</code> 任意协议、监听任意通道（写被白名单阻断）</td>
+</tr>
+<tr>
+<td>C-09</td>
+<td>主窗口 preload 暴露全量 electronAPI（无 send 白名单）</td>
+<td>受信上下文；若出现 XSS 将直达全量 IPC（纵深防御缺口）</td>
+</tr>
+<tr>
+<td>C-10</td>
+<td><code>&lt;webview&gt;</code> PDF 预览不可用（<code>webviewTag:false</code>）；Vue 版 OnlineWebPage/MermaidRenderFrame 为占位</td>
+<td>功能空白，不新增通信面</td>
+</tr>
+</tbody>
+</table>
+<h4>十、维护与防回归建议</h4>
+<ol>
+<li><strong>新增通道流程</strong>：先在 <code>src/shared/ipc-channels.ts</code> 按分组登记常量 → preload/主进程/渲染层全部引用常量（禁止字面量）→ 若为对话框 send 通道需同步加入 <code>dialog.ts</code> 白名单 → 运行 <code>npm test</code> 校验。</li>
+<li><strong>防回归测试已覆盖</strong>：<code>ipc-channel-constants.test.ts</code>（常量唯一性、无字面量绕过、无死常量）、<code>preload-dialog.test.ts</code>（白名单放行/丢弃）、<code>main-index.test.ts</code>（启动注册与清理）、<code>dialog-defaults.test.ts</code>（对话框公共配置）。</li>
+<li><strong>治理优先级建议</strong>：HTML/Vue 对话框双轨收敛（C-05/C-06）→ 监听器台账补全（C-04）→ 主题广播修复（C-03）→ preload 缺口修复（C-01/C-02）→ 死通道清理（16 个）。</li>
+<li><strong>远程内容安全</strong>：为 <code>online-web-page</code> 补充 <code>will-navigate</code> / <code>setWindowOpenHandler</code> 拦截与协议白名单（C-08）。</li>
+<li><strong>文档同步</strong>：通道增删改后同步更新本矩阵；本矩阵依据工作区当前源码（2026-11-15）静态扫描，若运行态行为有差异以实测为准。</li>
+</ol>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

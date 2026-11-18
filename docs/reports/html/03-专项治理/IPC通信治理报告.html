@@ -1,0 +1,2375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPC通信治理报告</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">一、通信检查报告（2026-11-15）</a>
+    <a class="toc-l2" href="#sec-2">二、IPC 通信问题修复计划</a>
+    <a class="toc-l2" href="#sec-3">三、IPC 通道命名统一方案</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>IPC通信治理报告</h1>
+    <p>报告归档 · 03-专项治理</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>IPC 通信治理报告（合并归档）</h1>
+<blockquote>
+<p><strong>合并归档报告</strong>：由以下历史报告合并而成（保留原文，按时间顺序成章）：<code>2026-11-15-通信检查报告.md</code>、<code>13-IPC通信问题修复计划.md</code>、<code>14-IPC通道命名统一方案.md</code>。
+内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.6 基线：155 测试文件 / 2,823 用例 / 90 IPC 通道）。</p>
+</blockquote>
+<h2 id="sec-1">一、通信检查报告（2026-11-15）</h2>
+<ul>
+<li>检查日期：2026-11-15</li>
+<li>检查对象：IPC 通道 123 个（16 分组）、BrowserWindow 容器 18 类、preload 暴露 API 27 个、EventBus 事件 25 个</li>
+<li>检查依据：<code>src/shared/ipc-channels.ts</code>（通道常量唯一真源）+ <code>src/main/**</code>、<code>src/preload/**</code>、<code>src/renderer/src/**</code> 全量交叉检索</li>
+<li>检查方法：常量 ↔ 调用点双向 grep 检索（正向：每个常量找发送/接收点；反向：每个 IPC 调用点核对常量来源），逐通道判定方向、模式、载荷与两端接线状态</li>
+</ul>
+<h4>一、检查摘要</h4>
+<p><strong>结论：通信骨架健康，接线存在 32 处问题。</strong> 通道常量治理（ARC-03 唯一真源）与防回归测试到位，未发现绕过常量硬编码通道字符串的违规调用；但存在 2 项 P0 级安全问题/功能失效、5 项 P1 高优先级缺陷，以及 16 个疑似死通道与部分模式不一致。</p>
+<h5>1.1 检查项与结果</h5>
+<table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>结果</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>常量唯一性</td>
+<td>✅ 通过</td>
+<td>123 个通道无重复值</td>
+</tr>
+<tr>
+<td>常量引用完整性（正向）</td>
+<td>✅ 通过</td>
+<td><code>src/</code> 内无通道字符串字面量直接调用（常量定义与 EventBus 事件名除外）</td>
+</tr>
+<tr>
+<td>调用点有效性（反向）</td>
+<td>⚠️ 16 个死通道</td>
+<td>每个常量至少被引用一次，但部分仅单端存在</td>
+</tr>
+<tr>
+<td>收发两端接线</td>
+<td>⚠️ 1 个模式不匹配</td>
+<td><code>baize:setting:auto-save-changed</code> 用 send 发送、handle 注册</td>
+</tr>
+<tr>
+<td>sendSync 使用</td>
+<td>✅ 通过</td>
+<td>全项目已无 <code>ipcRenderer.sendSync</code> 调用点</td>
+</tr>
+<tr>
+<td>对话框 send 白名单</td>
+<td>✅ 通过</td>
+<td>17 通道白名单覆盖全部 D→M send，无缺漏</td>
+</tr>
+<tr>
+<td>preload 暴露面</td>
+<td>⚠️ 15/27 未使用</td>
+<td>暴露但无调用方（含 config.delete/list）</td>
+</tr>
+<tr>
+<td>窗口安全基线</td>
+<td>✅ 通过</td>
+<td>全窗口 <code>contextIsolation:true</code>、<code>nodeIntegration:false</code></td>
+</tr>
+<tr>
+<td>远程内容边界</td>
+<td>❌ 不通过</td>
+<td><code>online-web-page</code> 持有 preload 且无导航拦截（C-08）</td>
+</tr>
+<tr>
+<td>监听器台账</td>
+<td>⚠️ 不完整</td>
+<td>6 个对话框 + Mermaid 通道绕过 <code>ipcListenerManager</code>（C-04）</td>
+</tr>
+<tr>
+<td>防回归测试</td>
+<td>✅ 覆盖</td>
+<td><code>ipc-channel-constants.test.ts</code>、<code>preload-dialog.test.ts</code> 等</td>
+</tr>
+</tbody>
+</table>
+<h5>1.2 问题统计</h5>
+<table>
+<thead>
+<tr>
+<th>严重度</th>
+<th>数量</th>
+<th>判定标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>P0 严重</strong></td>
+<td><strong>2</strong></td>
+<td>安全边界缺失或用户可见功能失效</td>
+</tr>
+<tr>
+<td><strong>P1 高</strong></td>
+<td><strong>5</strong></td>
+<td>功能缺陷、运行时异常、治理盲区</td>
+</tr>
+<tr>
+<td><strong>P2 中</strong></td>
+<td><strong>19</strong></td>
+<td>死通道、载荷/语义不一致、双轨并存</td>
+</tr>
+<tr>
+<td><strong>P3 低</strong></td>
+<td><strong>6</strong></td>
+<td>命名复用、字面量绕过、遗留清理项</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>32</strong></td>
+<td>死通道 16 + 模式不一致 6 + 机制风险 10（去重后；原 PRE/POST 渲染两段式问题已随 PF-02 重构消除）</td>
+</tr>
+</tbody>
+</table>
+<h5>1.3 检查范围说明</h5>
+<ul>
+<li>只做<strong>静态扫描</strong>：除 C-03/C-04 有单测佐证外，问题未在运行态复现。</li>
+<li>跨进程形态：单主进程 + 多渲染进程（每窗口一个）；未使用 <code>utilityProcess</code>、<code>MessageChannelMain</code>、<code>MessagePort</code>、<code>BrowserView</code>。</li>
+<li>扫描基线为用户工作区当前代码（含在途重构），源码变更后需重新核对。</li>
+</ul>
+<h4>二、P0 严重问题（2 项）</h4>
+<h5>2.1 C-08：<code>online-web-page</code> 加载远程页面且持有 dialog preload</h5>
+<ul>
+<li><strong>现象</strong>：<code>OpenOnlineWebPages.ts</code> 以 <code>loadURL(远程URL)</code> 打开任意网页，窗口使用 <code>dialog.js</code> preload；未设置 <code>will-navigate</code> 拦截、无 URL scheme 白名单。</li>
+<li><strong>能力面</strong>：远程页面可调用 <code>window.electronAPI.ipcRenderer.send</code>（受 17 项白名单约束）与 <code>ipcRenderer.on</code>（<strong>无白名单限制</strong>）、<code>shell.openExternal</code>（未校验协议，可外开 <code>file://</code>、自定义协议等）。</li>
+<li><strong>对比</strong>：PlantUML 隐藏窗（<code>plantuml-local.ts</code>）正确设置了 <code>setWindowOpenHandler→deny</code> 与 <code>will-navigate</code> 全拦截。</li>
+<li><strong>影响</strong>：远程内容可向主进程发送主题变更、保存快捷链接等 17 类消息，可监听任意主进程广播（含文件内容、路径）；<code>shell.openExternal</code> 可作跳板打开本地程序/协议。</li>
+<li><strong>建议</strong>：① 为 <code>online-web-page</code> 增加导航与 <code>setWindowOpenHandler</code> 拦截；② <code>shell.openExternal</code> 加协议白名单（仅 http/https）；③ 评估该窗口是否需要 preload（若仅展示远程页可去掉）。</li>
+</ul>
+<h5>2.2 「自动保存开关」收发模式不匹配</h5>
+<ul>
+<li><strong>通道</strong>：<code>baize:setting:auto-save-changed</code></li>
+<li><strong>现象</strong>：渲染层 <code>SystemSettingDialog.vue:handleAutoSaveChange</code> 用 <code>window.electron.ipcRenderer.send</code> 发送；主进程 <code>handlers.ts:registerIpcHandlers</code> 用 <code>ipcListenerManager.registerHandleOnce</code>（即 <code>ipcMain.handle</code>，<strong>仅 invoke 可触发</strong>）注册；全 src 无第二个 <code>ipcMain.on</code> 注册。</li>
+<li><strong>影响</strong>：Vue 系统设置对话框中切换&quot;自动保存&quot;开关<strong>不会触发主进程启停定时器</strong>，功能静默失效；HTML 版系统设置对话框则在主进程内直接 <code>StartAutoSaveFileTime</code>，同一功能双实现、行为分叉。</li>
+<li><strong>建议</strong>：统一为 <code>invoke + handle</code>（推荐），或主进程补 <code>ipcMain.on</code>；补齐回归测试覆盖该通道两端模式。</li>
+</ul>
+<h4>三、P1 高优先级问题（5 项）</h4>
+<h5>3.1 C-01：<code>editor-setting-dialog</code> 未注入 preload 却使用 <code>window.electronAPI</code></h5>
+<ul>
+<li><strong>现象</strong>：<code>ShowEditorSettingDialog.ts</code> 的 <code>webPreferences</code> 未设置 <code>preload</code>；但注入脚本 <code>editor-setting-script.ts</code> 第一行即访问 <code>window.electronAPI.ipcRenderer</code>。</li>
+<li><strong>影响</strong>：脚本在 <code>window.electronAPI</code> 处抛错，设置回填/应用/取消逻辑全部失效。该对话框在菜单树中已被移除（不可达），属遗留缺陷；同时偏离 <code>DIALOG_WEB_PREFERENCES</code> 单一配置源。</li>
+<li><strong>建议</strong>：若保留则补 <code>preload: dialog.js</code>；更优是删除该 HTML 对话框（Vue 版 <code>EditorSettingDialog.vue</code> 已为实际路径）。</li>
+</ul>
+<h5>3.2 C-03：主题设置对话框主进程回调引用渲染层 <code>window</code></h5>
+<ul>
+<li><strong>现象</strong>：<code>ShowThemeSettingDialog.ts</code> 模块顶层 <code>ipcMain.on(THEME.THEME_UPDATE)</code> 回调中执行 <code>(window as ...).electronAPI.broadcastTheme(...)</code>。</li>
+<li><strong>影响</strong>：主进程无 <code>window</code> 全局 → 回调执行到广播处抛 <code>ReferenceError</code>；主题配置可能已写入 store，但广播中断，主进程存在未捕获异常。</li>
+<li><strong>证据</strong>：单测 <code>dialogs.test.ts</code> 必须 <code>vi.stubGlobal('window', …)</code> 才能通过。</li>
+<li><strong>建议</strong>：改为直接调用 <code>ipcMain.emit(IPC.THEME.DIALOG_BROADCAST_THEME, …)</code> 或抽公共 <code>broadcastThemeToAllWindows()</code> 主进程函数。</li>
+</ul>
+<h5>3.3 C-04：部分监听器绕过 <code>ipcListenerManager</code> 台账</h5>
+<ul>
+<li><strong>现象</strong>：<code>main/index.ts</code>（THEME.UPDATE_THEME、EDITOR.FLUSH_CONTENT*）、6 个对话框、Mermaid 结果通道直连 <code>ipcMain.on</code>，未走 <code>ipcListenerManager.register*</code>。</li>
+<li><strong>影响</strong>：<code>cleanupAll()</code> / <code>getInventory()</code> 台账不完整，MEM-10 治理承诺未兑现，泄漏诊断存在盲区。</li>
+<li><strong>建议</strong>：统一迁移至 <code>ipcListenerManager</code>，对话框监听器挂 <code>componentId</code> 随窗口 <code>closed</code> 自动清理。</li>
+</ul>
+<h5>3.4 C-06：菜单 action id 错位</h5>
+<ul>
+<li><strong>现象</strong>：<code>menu-config.ts</code> 发出 <code>baize:menu:help:contact-us</code>，<code>menu-actions.ts</code> 拦截的是 <code>baize:menu:help:contact</code>。</li>
+<li><strong>影响</strong>：点击&quot;联系我们&quot;实际落到主进程 HTML 对话框（<code>ShowHelpContactUsDialog</code>），而非渲染层 <code>HelpContactUsDialog.vue</code>；两套实现并存。</li>
+<li><strong>建议</strong>：统一 id，删除未使用的 HTML 版或明确保留策略。</li>
+</ul>
+<h5>3.5 C-07：Mermaid 隐藏窗链路半死</h5>
+<ul>
+<li><strong>现象</strong>：主窗口 <code>ready-to-show</code> 即创建隐藏 Mermaid 窗口并渲染空图；<code>HandleMermaidGetRenderResult</code>、<code>updateMermaidWindowHtml</code> 全库零调用；<code>OVERLAY.MERMAID_GRAPH_DEF</code> 有监听无发送；<code>MERMAID_RENDER_RESULT</code> 结果仅存入模块变量无消费方。</li>
+<li><strong>影响</strong>：占用一个隐藏渲染进程；实际 Mermaid 渲染由渲染层 npm 包完成，隐藏窗为遗留机制。</li>
+<li><strong>建议</strong>：确认无后路需求后删除该窗口与 3 个相关通道，或补齐&quot;主进程渲染 Mermaid&quot;链路。</li>
+</ul>
+<h4>四、P2 中优先级问题（去重后 19 项）</h4>
+<h5>4.1 疑似死通道（16 个）</h5>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>通道</th>
+<th>现象</th>
+<th>清理建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>baize:window:unmaximize</code></td>
+<td>无发送点，仅主进程注册</td>
+<td>删除常量与 handler；还原能力由 TOGGLE_MAXIMIZE 覆盖</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>baize:config:delete</code></td>
+<td>preload 已暴露，渲染层零调用</td>
+<td>删除 API 或补配置管理界面</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>baize:config:list</code></td>
+<td>同上</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>baize:config:ensure-dir</code></td>
+<td>preload 未暴露，零调用</td>
+<td>删除（read/write/list 内部已 ensure）</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>baize:theme:update-monaco</code></td>
+<td>有发送，主进程零接收</td>
+<td>删除发送方（主题改走 saveConfig→THEME_UPDATED）</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>baize:theme:get-current</code></td>
+<td>仅 handle，零 invoke</td>
+<td>删除</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>baize:theme:get-separate-editor</code></td>
+<td>仅 sendSync 应答注册，零 sendSync</td>
+<td>删除（源码注释已自认遗留）</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>baize:theme:get-monaco</code></td>
+<td>同上</td>
+<td>删除</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>baize:editor:relayout</code></td>
+<td>仅渲染层监听，零发送</td>
+<td>删除（布局已走 EventBus MONACO_RELAYOUT）</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>baize:editor:update-font</code></td>
+<td>有发送，主进程零接收</td>
+<td>删除发送方（字体走配置写入）</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>baize:dialog:open-plugin-tool</code></td>
+<td>有发送（26 处），零监听</td>
+<td>待插件菜单主进程树退役时连同删除</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>baize:navigation:keydown</code></td>
+<td>仅主进程接收，零发送</td>
+<td>删除（Ctrl+S 已走 SAVE_TO_DISK）</td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>baize:monaco:insert-writing-templates</code></td>
+<td>仅渲染层监听，零发送</td>
+<td>删除监听+常量，并清理 templates.ts 字面量副本</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>baize:overlay:mermaid-graph-definition</code></td>
+<td>仅渲染层监听，零发送</td>
+<td>与 C-07 一并评估</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>baize:overlay:open-url</code></td>
+<td>仅主窗口监听，零发送</td>
+<td>删除</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>baize:overlay:update-mermaid-graph</code></td>
+<td>发送函数零调用 + 窗口零监听</td>
+<td>与 C-07 一并评估</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>补充：<code>EVENTS.FILE_SAVED_SUCCESS</code>、<code>QUICK_LINKS.UPDATED</code> 采用 <code>BrowserWindow.getAllWindows()</code> 广播，会发给无监听的窗口，属可收窄的广播面（P3）。</p>
+<p><strong>计数口径说明</strong>：本节列出 16 个死通道，其中 <code>baize:overlay:mermaid-graph-definition</code> 与 <code>baize:overlay:update-mermaid-graph</code> 的处置已随 C-07（P1-3.5）一并评估，不重复计入 P2；因此 P2 实际计数为 16 − 2（归入 C-07）+ 4.2 的 3 项 + 4.3 的 2 项 = <strong>19 项</strong>。</p>
+</blockquote>
+<h5>4.2 载荷/语义不一致（3 项）</h5>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>通道</th>
+<th>问题</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>baize:theme:update-from-dialogd</code>（THEME.UPDATED）</td>
+<td><code>MenuBar.vue:handleThemeUpdated</code> 按 <code>{ currentTheme }</code> 读取，但实际广播载荷为 <code>{themeStyles, monacoTheme, separateEditorTheme}</code> 与 <code>{themeType, ...}</code>，均无 <code>currentTheme</code></td>
+<td>菜单主题选中态不会被推送刷新</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>baize:theme:init-styles</code>（INIT_THEME_STYLES）</td>
+<td>M→R 分支无监听（空转）；载荷双轨：10 个发送方发裸 <code>ThemeStyles</code>，主题对话框发 <code>{theme, separateEditorTheme, monacoTheme}</code></td>
+<td>主窗口初始主题改由 invoke 完成；同名通道两种载荷，维护易错</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>baize:monaco:insert-text-block</code>（TEXT_BLOCK_TEMPLATES）</td>
+<td>通道名与实际用途不符：被复用为&quot;通用文本片段插入&quot;（图片引用、字体 HTML、导入文本）</td>
+<td>命名认知成本，易误用</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>原&quot;PRE/POST 渲染两段式无请求 ID&quot;问题已随 PF-02 重构（预览改为渲染层本地单跳渲染）消除，不再计入。</p>
+</blockquote>
+<h5>4.3 机制层（2 项）</h5>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>问题</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>C-02：对话框 preload 的 <code>removeListener</code> 与 <code>on</code> 包装函数引用不一致</td>
+<td>无法真正退订；当前脚本未调用 removeListener，属 API 语义失真</td>
+</tr>
+<tr>
+<td>2</td>
+<td>C-05：HTML 对话框与 Vue 组件对话框双轨并存，14 个可见 HTML 对话框实际仅约 5–6 个可达</td>
+<td>维护成本与认知负担；逐通道矩阵需按两种实现分别理解</td>
+</tr>
+</tbody>
+</table>
+<h4>五、P3 低优先级问题（6 项）</h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>问题</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>EDITOR.UPDATE_OPTIONS</code> 方向混用</td>
+<td><code>BaiZeNotes.vue</code> 的 <code>('theme', loadedTheme)</code> R→M 分支无接收方（空转）；M→R 分支正常</td>
+</tr>
+<tr>
+<td>2</td>
+<td>ARC-03 唯一真源被绕过</td>
+<td><code>common/templates.ts</code> 用字面量重复定义 <code>baize:monaco:insert-writing-templates</code> / <code>baize:monaco:insert-text-block</code>（零消费）</td>
+</tr>
+<tr>
+<td>3</td>
+<td>命名与用途不符</td>
+<td><code>WRITING_TEMPLATES</code> 对应功能实际走 EventBus，不走 IPC</td>
+</tr>
+<tr>
+<td>4</td>
+<td>监听台账证据补充</td>
+<td>与 C-04 同源，作为补齐清单使用</td>
+</tr>
+<tr>
+<td>5</td>
+<td>C-09 主窗口暴露全量 electronAPI</td>
+<td>本地受信上下文；若出现 XSS 将直达全量 IPC（纵深防御缺口）</td>
+</tr>
+<tr>
+<td>6</td>
+<td>C-10 <code>&lt;webview&gt;</code> PDF 预览不可用 / Vue Overlay 占位</td>
+<td><code>webviewTag:false</code> 导致预览空白；不新增通信面</td>
+</tr>
+</tbody>
+</table>
+<h4>六、检查方法与复现</h4>
+<h5>6.1 扫描方法</h5>
+<ol>
+<li><strong>常量盘点</strong>：解析 <code>ipc-channels.ts</code> 得到 16 组 123 个常量（组 → 键 → 通道字符串）。</li>
+<li><strong>正向检索</strong>：对每个常量 grep <code>IPC.&lt;组&gt;.&lt;键&gt;</code>，记录全部发送点与接收点。</li>
+<li><strong>反向检索</strong>：grep <code>ipcMain.(on|handle|once)</code>、<code>webContents.send</code>、<code>ipcRenderer.(invoke|send|on)</code>，确认首参均为常量（无字面量绕过）。</li>
+<li><strong>方向判定</strong>：send+on ⇒ 单向；invoke+handle ⇒ 请求-响应；webContents.send ⇒ 主进程推送；结合窗口归属判定 R/D/H。</li>
+<li><strong>接线判定</strong>：两端均存在 ⇒ 正常；单端存在或发送函数零调用 ⇒ 死通道/半死。</li>
+</ol>
+<h5>6.2 复现命令</h5>
+<pre><code class="language-powershell">### 通道常量统计
+node -e &quot;const fs=require('fs');const s=fs.readFileSync('src/shared/ipc-channels.ts','utf8');const g={};let cur=null;for(const l of s.split('\n')){const m=l.match(/^\s{4}([A-Z_]+): \{$/);if(m){cur=m[1];g[cur]=0;continue}if(/^\s{4}\} as const/.test(l)){cur=null;continue}if(cur&amp;&amp;/^\s+[A-Z_]+: '/.test(l))g[cur]++}console.log(g)&quot;
+
+### 死通道抽查（示例：baize:window:unmaximize）
+Select-String -Path (Get-ChildItem src -Recurse -Include *.ts,*.vue | % FullName) -Pattern &quot;WINDOW.UNMAXIMIZE&quot;
+
+### 自动保存通道两端模式
+Select-String -Path (Get-ChildItem src -Recurse -Include *.ts,*.vue | % FullName) -Pattern &quot;AUTO_SAVE_CHANGED&quot;
+</code></pre>
+<h5>6.3 防回归现状</h5>
+<table>
+<thead>
+<tr>
+<th>测试文件</th>
+<th>覆盖内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tests/unit/ipc-channel-constants.test.ts</code></td>
+<td>常量唯一性、无字面量绕过、无死常量、EventBus 事件同规则</td>
+</tr>
+<tr>
+<td><code>tests/unit/preload-dialog.test.ts</code></td>
+<td>对话框 send 白名单放行/丢弃、on 事件剥离、broadcastTheme</td>
+</tr>
+<tr>
+<td><code>tests/unit/main-index.test.ts</code></td>
+<td>启动注册流程、close 前 flush 协议、清理</td>
+</tr>
+<tr>
+<td><code>tests/unit/dialog-defaults.test.ts</code></td>
+<td>对话框公共 webPreferences 配置</td>
+</tr>
+</tbody>
+</table>
+<h4>七、修复路线图</h4>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>内容</th>
+<th>关联问题</th>
+<th>预期收益</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 1 阶段（安全/功能）</td>
+<td>修复远程页 preload 边界与 shell 协议白名单；修复自动保存通道模式</td>
+<td>C-08、P0-2.2</td>
+<td>消除安全跳板面，恢复自动保存开关</td>
+</tr>
+<tr>
+<td>第 2 阶段（一致性）</td>
+<td>统一监听器台账；修复主题广播异常与菜单 id 错位；明确双轨对话框去留</td>
+<td>C-01、C-03、C-04、C-06、C-05</td>
+<td>治理盲区清零，主题/联系入口行为一致</td>
+</tr>
+<tr>
+<td>第 3 阶段（清理）</td>
+<td>删除 16 个死通道及其发送/监听代码；收敛广播面</td>
+<td>P2 死通道、广播面</td>
+<td>通道数从 123 收敛至约 107，减少维护面</td>
+</tr>
+<tr>
+<td>第 4 阶段（加固）</td>
+<td>Mermaid 隐藏窗链路决策；preload 暴露面裁剪；字面量绕过清理</td>
+<td>C-07、C-09、ARC-03</td>
+<td>进程/API 面精简，防漂移</td>
+</tr>
+</tbody>
+</table>
+<h4>八、附录：问题证据索引</h4>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>关键证据位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0-2.1（C-08）</td>
+<td><code>src/main/dialogs/OpenOnlineWebPages.ts:6-13</code>、<code>src/preload/dialog.ts:56-58</code></td>
+</tr>
+<tr>
+<td>P0-2.2</td>
+<td><code>SystemSettingDialog.vue:handleAutoSaveChange</code>、<code>src/main/ipc/handlers.ts:registerIpcHandlers</code></td>
+</tr>
+<tr>
+<td>P1-3.1（C-01）</td>
+<td><code>src/main/dialogs/ShowEditorSettingDialog.ts:39-57</code>、<code>editor-setting-script.ts:4</code></td>
+</tr>
+<tr>
+<td>P1-3.2（C-03）</td>
+<td><code>src/main/dialogs/ShowThemeSettingDialog.ts:744-770</code></td>
+</tr>
+<tr>
+<td>P1-3.3（C-04）</td>
+<td><code>src/main/index.ts:48-53,174</code>、6 个对话框的 <code>ipcMain.on</code></td>
+</tr>
+<tr>
+<td>P1-3.4（C-06）</td>
+<td><code>menu-config.ts:395</code>、<code>menu-actions.ts:114</code></td>
+</tr>
+<tr>
+<td>P1-3.5（C-07）</td>
+<td><code>src/main/index.ts:113</code>、<code>OpenMermaidRenderFrame.ts:24-75</code></td>
+</tr>
+<tr>
+<td>P2-4.1</td>
+<td>逐通道证据见通信矩阵报告第六、七节</td>
+</tr>
+<tr>
+<td>P2-4.2 #1</td>
+<td><code>MenuBar.vue:handleThemeUpdated</code>、<code>main/index.ts</code> 广播载荷</td>
+</tr>
+<tr>
+<td>P2-4.2 #2</td>
+<td>11 个 <code>Show*Dialog</code> 的 INIT_THEME_STYLES 发送点、<code>ShowThemeSettingDialog.ts:56</code></td>
+</tr>
+<tr>
+<td>P3 #2</td>
+<td><code>src/renderer/src/common/templates.ts:6-7</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>完整逐通道矩阵（123 行、含发起方/接收方/载荷/用途）见《2026-11-15-IPC通信矩阵》报告。</p>
+</blockquote>
+<h2 id="sec-2">二、IPC 通信问题修复计划</h2>
+<ul>
+<li><strong>制定日期</strong>：2026-11-15</li>
+<li><strong>依据</strong>：<a href="IPC通信治理报告.html">2026-11-15-通信检查报告</a>（32 项问题：P0×2、P1×5、P2×19、P3×6）与 <a href="IPC通信矩阵.html">IPC 通信矩阵</a></li>
+<li><strong>现状</strong>：检查结论「通信骨架健康，接线存在 32 处问题」；已复核关键项（自动保存模式不匹配、online-web-page 无导航拦截、主进程引用渲染层 window、菜单 action id 错位均属实）</li>
+<li><strong>执行方式</strong>：按 4 个阶段拆分为 7 个子智能体任务（并行 2 → 3 → 1 → 1），最后统一复核</li>
+<li><strong>目标</strong>：32 项闭环；通道数 123 → 约 107（死通道清理后）；全部门禁通过</li>
+</ul>
+<h4>1. 修复原则与验收标准</h4>
+<ul>
+<li><strong>原则</strong>：安全/功能问题优先；行为变化最小化（不改线上通道字符串语义）；每项修复配回归测试；删除类改动先 grep 确认双端零引用。</li>
+<li><strong>全局验收</strong>：
+<ul>
+<li>typecheck 双绿、<code>npm run test</code> 全过、<code>npx eslint . --quiet</code> 0 error、<code>npx electron-vite build</code> 通过；</li>
+<li>新增防回归测试：①通道两端模式一致性（send↔on / invoke↔handle）；②死通道零存在（常量与调用点双向核对）；③preload 暴露面与白名单覆盖；</li>
+<li>复核方式：按通信矩阵逐通道重扫，输出&quot;修复后矩阵&quot;与检查报告状态标注。</li>
+</ul>
+</li>
+</ul>
+<h4>2. 阶段划分与代理分工</h4>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>子代理</th>
+<th>负责问题</th>
+<th>主要文件</th>
+<th>依赖</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>阶段 1 安全与功能（并行）</td>
+<td>A1 <code>ipc-sec</code></td>
+<td>C-08 远程页边界、P3-5 相关协议白名单</td>
+<td>OpenOnlineWebPages.ts、utils.ts、dialog-defaults.ts、相关测试</td>
+<td>无</td>
+</tr>
+<tr>
+<td></td>
+<td>A2 <code>ipc-autosave</code></td>
+<td>P0-2.2 自动保存通道模式、双实现统一</td>
+<td>SystemSettingDialog.vue、handlers.ts、ShowSystemSettingDialog.ts</td>
+<td>无</td>
+</tr>
+<tr>
+<td>阶段 2 一致性（并行）</td>
+<td>B1 <code>ipc-listeners</code></td>
+<td>C-03 主题广播异常、C-04 监听台账统一</td>
+<td>main/index.ts、6 个 Show*.ts、theme-config/ShowThemeSettingDialog.ts</td>
+<td>阶段 1 完成（避免 index.ts 冲突）</td>
+</tr>
+<tr>
+<td></td>
+<td>B2 <code>ipc-dialogs</code></td>
+<td>C-01 编辑器设置 HTML 对话框、C-05 双轨去留、C-06 菜单 id</td>
+<td>ShowEditorSettingDialog.ts、editor-setting-script.ts、menu-config.ts、menu-actions.ts、dialogs 清单</td>
+<td>阶段 1 完成</td>
+</tr>
+<tr>
+<td></td>
+<td>B3 <code>ipc-preload</code></td>
+<td>C-02 removeListener 语义、白名单/台账测试补齐</td>
+<td>preload/dialog.ts、tests/unit/preload-*.ts</td>
+<td>阶段 1 完成</td>
+</tr>
+<tr>
+<td>阶段 3 清理（串行，依赖 B1 释放 index.ts）</td>
+<td>C1 <code>ipc-cleanup</code></td>
+<td>16 个死通道、C-07 Mermaid 半死链路、广播面收窄、templates.ts 字面量、UPDATE_OPTIONS 空转分支（注：通道命名统一已单独完成，见 <a href="IPC通信治理报告.html">14-IPC通道命名统一方案</a>）</td>
+<td>index.ts、ipc-channels.ts、OpenMermaidRenderFrame.ts、templates.ts、各发送/监听点</td>
+<td>阶段 2 完成</td>
+</tr>
+<tr>
+<td>阶段 4 加固（串行）</td>
+<td>D1 <code>ipc-hardening</code></td>
+<td>C-09 preload 暴露面裁剪、P3 余项复核、C-10 记录</td>
+<td>preload/index.ts、renderer 调用点、文档记录</td>
+<td>阶段 3 完成</td>
+</tr>
+<tr>
+<td>收尾</td>
+<td>根代理 + 复核代理</td>
+<td>重扫矩阵、更新报告、门禁复核</td>
+<td>../../**</td>
+<td>全部完成</td>
+</tr>
+</tbody>
+</table>
+<h4>3. 逐项修复方案</h4>
+<h5>3.1 阶段 1：安全与功能（P0）</h5>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>问题</th>
+<th>修复动作</th>
+<th>验证</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>C-08</strong></td>
+<td><code>online-web-page</code> 加载远程页且持有 dialog preload，无导航拦截；<code>shell.openExternal</code> 无协议白名单</td>
+<td>① <code>OpenOnlineWebPages.ts</code>：<code>webContents.on('will-navigate', e =&gt; e.preventDefault())</code> + <code>setWindowOpenHandler(() =&gt; ({ action: 'deny' }))</code>（与 plantuml-local.ts 一致）；② 远程窗口移除 preload（若确需主题广播等能力，改为主进程代发）；③ <code>OpenOnlineWebPage</code> 打开浏览器时校验 URL 协议白名单（仅 http/https，必要时加 mailto）；④ 窗口 <code>webPreferences</code> 显式 <code>sandbox:true</code></td>
+<td>单测：远程窗口 options 断言（无 preload、sandbox、拦截器注册）；<code>shell.openExternal</code> 非法协议拒绝用例；手动冒烟远程页可正常显示、无法跳转</td>
+<td>低：仅限 windows 打开路径；移除 preload 后需确认远程页无依赖</td>
+</tr>
+<tr>
+<td><strong>P0-2.2</strong></td>
+<td>自动保存通道：渲染层 send、主进程 handle（仅 invoke 生效）→ 开关静默失效；HTML/Vue 双实现分叉</td>
+<td>① 渲染层 <code>SystemSettingDialog.vue::handleAutoSaveChange</code> 改 <code>invoke</code>（或显式 <code>send</code> 并主进程补 <code>ipcMain.on</code>）；② 推荐统一 <code>invoke + handle</code>，保留主进程现有 <code>registerHandleOnce</code>；③ 评估移除 HTML 版系统设置对话框（不可达时删除，避免双实现）</td>
+<td>回归测试：模拟渲染端切换开关 → 断言主进程定时器启停（Start/Stop mock 调用）；通道两端模式一致性测试用例</td>
+<td>低：仅一处调用点</td>
+</tr>
+<tr>
+<td><strong>P3-5（配套）</strong></td>
+<td><code>shell.openExternal</code> 协议校验收口</td>
+<td>抽公共 <code>openExternalSafely(url)</code> 供各调用点复用（含 navi-tab-open-exe 附近已有校验）</td>
+<td>单测：非法协议拒绝、合法放行</td>
+<td>低</td>
+</tr>
+</tbody>
+</table>
+<h5>3.2 阶段 2：一致性（P1）</h5>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>问题</th>
+<th>修复动作</th>
+<th>验证</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>C-01</strong></td>
+<td><code>ShowEditorSettingDialog</code> 未注入 preload 却用 <code>window.electronAPI</code>（对话框已不可达）</td>
+<td>优先<strong>删除</strong>该 HTML 对话框及其脚本/CSS 引用（Vue 版 <code>EditorSettingDialog.vue</code> 为实际路径）；若需保留则补 <code>preload: dialog.js</code> 并加入 <code>DIALOG_WEB_PREFERENCES</code></td>
+<td>单测更新；grep 确认零引用；菜单/入口确认</td>
+</tr>
+<tr>
+<td><strong>C-03</strong></td>
+<td><code>ShowThemeSettingDialog</code> 主进程回调引用渲染层 <code>window.electronAPI</code></td>
+<td>抽主进程 <code>broadcastThemeToAllWindows()</code>（<code>BrowserWindow.getAllWindows().forEach(w =&gt; w.webContents.send(IPC.THEME.THEME_UPDATED, payload))</code>）替换；删除对 <code>window.electronAPI</code> 的引用</td>
+<td>单测：不再需要 <code>vi.stubGlobal('window')</code>；广播调用断言</td>
+</tr>
+<tr>
+<td><strong>C-04</strong></td>
+<td>6 个对话框 + <code>main/index.ts</code> 监听器绕过 <code>ipcListenerManager</code> 台账</td>
+<td>统一迁移至 <code>ipcListenerManager.registerOnce/registerHandleOnce</code>：对话框用 <code>componentId</code> + 窗口 <code>closed</code> 清理；index.ts 两类通道归入全局注册</td>
+<td>台账测试：<code>getInventory()</code> 覆盖全部注册；<code>cleanupAll</code> 后无残留</td>
+</tr>
+<tr>
+<td><strong>C-05</strong></td>
+<td>HTML 对话框与 Vue 对话框双轨并存（14 个 HTML 仅 5–6 可达）</td>
+<td>输出「对话框去留清单」：逐项核对菜单/入口可达性，列出保留（补 i18n/接线）与删除（含代码/常量/测试）两类；本轮只执行删除清单内无入口项</td>
+<td>清单评审 + grep 零引用；删除后 build/test 通过</td>
+</tr>
+<tr>
+<td><strong>C-06</strong></td>
+<td>菜单 action id 错位（<code>contact-us</code> vs <code>contact</code>）</td>
+<td>统一为 <code>baize:menu:help:contact-us</code>；删除/保留 HTML 版按 C-05 清单决策；补菜单路由单测</td>
+<td>菜单路由测试：点击映射到预期对话框实现</td>
+</tr>
+<tr>
+<td><strong>C-02</strong></td>
+<td>对话框 preload <code>removeListener</code> 与 <code>on</code> 包装函数引用不一致</td>
+<td><code>dialog.ts</code> 的 <code>on</code> 存原始包装或维护 <code>channel→handler</code> 映射，<code>removeListener</code> 可真正退订；补 preload 单测</td>
+<td>单测：注册→退订→事件不再触发</td>
+</tr>
+</tbody>
+</table>
+<h5>3.3 阶段 3：清理（P2）</h5>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>内容</th>
+<th>修复动作</th>
+<th>验证</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>死通道 ×16</td>
+<td><code>window-unmaximize</code>、<code>config:delete/list/ensure-dir</code>、<code>update-monaco-theme</code>、<code>get-current-theme</code>、<code>get-separate-editor-theme</code>、<code>get-monaco-theme</code>、<code>editor-relayout</code>、<code>update-editor-font</code>、<code>open-plugin-tool</code>（待菜单树退役）、<code>keydown</code>、<code>monaco-insert-writing-templates</code>、<code>mermaid-graph-definition</code>、<code>open-url-in-web-browser-window</code>、<code>update-mermaid-render-graph</code></td>
+<td>逐通道：删除常量 + 发送/监听代码 + 测试断言；<code>open-plugin-tool</code> 视菜单树保留状态决定（本轮删除 26 处发送或注明保留策略）</td>
+<td>死通道零存在测试（常量↔调用点双向）</td>
+</tr>
+<tr>
+<td><strong>C-07</strong></td>
+<td>Mermaid 隐藏窗链路半死（窗口空转 + 3 通道无消费）</td>
+<td>删除隐藏窗口创建/<code>OpenMermaidRenderFrame</code>/<code>MERMAID_RENDER_RESULT</code> 等通道；确认渲染层 mermaid npm 包渲染为唯一路径</td>
+<td>build/test；内存冒烟（无隐藏窗口）</td>
+</tr>
+<tr>
+<td>广播面收窄</td>
+<td><code>FILE_SAVED_SUCCESS</code>、<code>QUICK_LINKS.UPDATED</code> 全窗口广播</td>
+<td>改为定向发送（记录目标窗口引用）或确认无监听窗口后删除</td>
+<td>广播目标断言</td>
+</tr>
+<tr>
+<td>4.2 载荷不一致 ×3</td>
+<td>THEME.UPDATED 载荷无 <code>currentTheme</code>；INIT_THEME_STYLES 双载荷/空转；TEXT_BLOCK_TEMPLATES 命名不符</td>
+<td>① 修正 MenuBar 读取或广播补字段（统一 <code>{themeStyles, monacoTheme, separateEditorTheme}</code> + 必要字段）；② INIT_THEME_STYLES 统一单一载荷并补齐监听或删除空转分支；③ 重命名通道（保留旧值兼容一次）或加注释标记语义</td>
+<td>载荷一致性单测</td>
+</tr>
+<tr>
+<td>P3-1/P3-2</td>
+<td>UPDATE_OPTIONS 方向混用空转；templates.ts 字面量绕过</td>
+<td>删除空转分支；templates.ts 改用 <code>IPC</code> 常量引用</td>
+<td>常量唯一性测试</td>
+</tr>
+</tbody>
+</table>
+<h5>3.4 阶段 4：加固（P3 余项）</h5>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>内容</th>
+<th>修复动作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C-09</td>
+<td>主窗口暴露全量 <code>electronAPI</code>（含任意通道）</td>
+<td>评估裁剪：保留 <code>ipcRenderer.on/invoke/send</code> 收窄为白名单 API（与 dialog preload 同模式）；或明确风险接受并记录（本地受信上下文 + DOMPurify 已封 XSS）——本轮输出评估结论与最小化方案，若风险可控则实施白名单</td>
+</tr>
+<tr>
+<td>P3-6</td>
+<td><code>&lt;webview&gt;</code> PDF 预览不可用</td>
+<td>仅记录（不新增通信面）；入口已在 CMP-19 治理中隐藏</td>
+</tr>
+<tr>
+<td>命名复用</td>
+<td><code>WRITING_TEMPLATES</code> 实际走 EventBus</td>
+<td>重命名/标注，避免认知混淆</td>
+</tr>
+</tbody>
+</table>
+<h4>4. 回归测试建设（随阶段落地）</h4>
+<table>
+<thead>
+<tr>
+<th>测试</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ipc-channel-modes.test.ts</code>（新增）</td>
+<td>遍历通道常量：save 类通道断言 send↔on 或 invoke↔handle 两端模式一致</td>
+</tr>
+<tr>
+<td><code>ipc-dead-channels.test.ts</code>（新增）</td>
+<td>常量↔调用点双向核对，死通道数为 0（白名单机制除外）</td>
+</tr>
+<tr>
+<td><code>dialog-window-security.test.ts</code>（新增）</td>
+<td>远程窗口无 preload/导航拦截/协议白名单；对话框 webPreferences 统一来源</td>
+</tr>
+<tr>
+<td>台账测试（扩展）</td>
+<td><code>ipcListenerManager.getInventory()</code> 覆盖全部注册；<code>cleanupAll</code> 无残留</td>
+</tr>
+<tr>
+<td>preload 测试（扩展）</td>
+<td>白名单放行/拒绝、on 事件剥离、removeListener 真实退订</td>
+</tr>
+</tbody>
+</table>
+<h4>5. 风险与回滚</h4>
+<ul>
+<li><strong>删除死通道</strong>：先 grep 双端 + 动态拼接检查（<code>IPC.X[${var}]</code>），再删代码，最后删常量；单通道独立 commit 便于回滚；</li>
+<li><strong>C-08 移除远程窗口 preload</strong>：若远程页面依赖主题广播，改主进程代发；不影响本地功能；</li>
+<li><strong>C-05 删除 HTML 对话框</strong>：仅删除确认无入口的项；保留项不动；</li>
+<li><strong>C-09 preload 裁剪</strong>：改动面大，先出评估报告，经评审后再实施；未评审前保持现状（现有 DOMPurify + CSP 已降低风险）。</li>
+</ul>
+<h4>6. 排期建议</h4>
+<table>
+<thead>
+<tr>
+<th>批次</th>
+<th>内容</th>
+<th>预估</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>批次 1</td>
+<td>C-08、P0-2.2、P3-5（2 个并行代理）</td>
+<td>1 轮</td>
+</tr>
+<tr>
+<td>批次 2</td>
+<td>C-01/03/04/05/06、C-02（3 个并行代理）</td>
+<td>1~2 轮</td>
+</tr>
+<tr>
+<td>批次 3</td>
+<td>16 死通道 + C-07 + 广播面 + 载荷修正（1 个代理）</td>
+<td>1~2 轮</td>
+</tr>
+<tr>
+<td>批次 4</td>
+<td>C-09 评估（1 个代理）+ 余项</td>
+<td>1 轮</td>
+</tr>
+<tr>
+<td>收尾</td>
+<td>重扫矩阵 + 报告状态标注 + 门禁</td>
+<td>1 轮</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>执行时每批次完成后由根代理统一跑门禁（typecheck/test/eslint/build），并更新《2026-11-15-通信检查报告》状态列与通信矩阵，最终产出《IPC 通信问题修复实施报告》。</p>
+</blockquote>
+<h4>八、执行状态（2026-11-15 批次后）</h4>
+<ul>
+<li>✅ <strong>已闭环</strong>：C-08（在线网页窗口去 preload + 导航拦截 + 协议白名单）、P0-2.2（自动保存 invoke/handle）、C-03（主进程统一主题广播）、C-04（ipcMain 直连清零，全部迁移台账）、C-06（菜单 contact id 统一）、N-05（37 个高风险通道 sender 校验）、16 个死通道删除（通道 123→86）、C-07（Mermaid 隐藏窗链路删除）、P3-2（templates.ts 字面量收口）；</li>
+<li>🟡 <strong>部分处理</strong>：C-05/C-01（不可达 JSDOM 对话框已批量删除，仅余 contact-us 待确认）、广播面收窄（随死通道清理部分完成）、载荷一致性（随通道删除缩减）；</li>
+<li>⏭ <strong>未处理</strong>：C-09（主窗口 preload 全量 electronAPI 收敛）、C-10（webview PDF）、24 个低风险只读通道 sender 校验、plantuml-local IPC 校验、config-manager 内联广播收口；</li>
+<li>详见 <a href="../02-修复与实施/修复批次实施记录.html">16-修复批次实施报告</a>。</li>
+</ul>
+<h2 id="sec-3">三、IPC 通道命名统一方案</h2>
+<ul>
+<li><strong>制定日期</strong>：2026-11-15</li>
+<li><strong>依据</strong>：<code>src/shared/ipc-channels.ts</code>（123 个通道 · 16 分组）+ <a href="IPC通信矩阵.html">IPC 通信矩阵</a> + <a href="IPC通信治理报告.html">通信检查报告</a></li>
+<li><strong>配套产物</strong>：机器可读映射 <code>out\tool-results\ipc-channel-rename-map.json</code>（group/key/old/new/direction/dead）</li>
+<li><strong>一句话建议</strong>：统一为 <strong><code>baize:&lt;domain&gt;:&lt;name&gt;</code></strong> 三段式；由于通道引用已 100% 走常量真源，<strong>改名只需修改 <code>ipc-channels.ts</code> 的 123 个字符串值，1341 个调用点零改动</strong>，成本极低。</li>
+</ul>
+<h4>一、现状盘点</h4>
+<h5>1.1 规模</h5>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>通道常量</td>
+<td><strong>123</strong>（16 分组：WINDOW 10 / CONFIG 5 / THEME 13 / MENU 1 / EDITOR 14 / FILE 18 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 2 / DIALOG 14 / NAVIGATION 2 / VIEW 5 / MONACO_INSERT 3 / QUICK_LINKS 5 / OVERLAY 7 / EVENTS 4）</td>
+</tr>
+<tr>
+<td>前缀分布</td>
+<td><code>baize-notes:</code> <strong>25</strong> · <code>baize:notes:</code> <strong>7</strong> · 其他/无前缀 <strong>91</strong>（如 <code>window-*</code>、<code>config:*</code>、<code>file-manager-*</code>、<code>dialog-*</code>、<code>get-*</code>）</td>
+</tr>
+<tr>
+<td>已知方向数据</td>
+<td>113/123（来自通信矩阵）</td>
+</tr>
+<tr>
+<td>计划删除的死通道</td>
+<td>16（见明细表「计划删除」标记）</td>
+</tr>
+</tbody>
+</table>
+<h5>1.2 发现的六类命名问题</h5>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>问题</th>
+<th>典型例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td><strong>前缀四套并存</strong></td>
+<td><code>baize-notes:update-theme</code>、<code>baize:notes:welcome:open-file</code>、<code>config:read</code>、<code>window-minimize</code>、<code>get-current-theme</code></td>
+</tr>
+<tr>
+<td>B</td>
+<td><strong>分隔符/层级混用</strong></td>
+<td><code>baize:notes:welcome:open-file</code>（4 段）vs <code>baize-notes:update-theme</code>（2 段）；<code>file-manager-context-menu-*</code> 13 个超长前缀</td>
+</tr>
+<tr>
+<td>C</td>
+<td><strong>动词/事件语义不统一</strong></td>
+<td>命令式 <code>window-minimize</code>、<code>get-current-theme</code>、<code>update-*</code>、<code>dialog-*-enter</code> 混用；事件型 <code>*-updated</code>、<code>*-changed</code>、<code>*-result</code> 未统一</td>
+</tr>
+<tr>
+<td>D</td>
+<td><strong>拼写/语义错误</strong></td>
+<td><code>markdown-edit-model</code> / <code>markdown-preview-model</code>（model→<strong>mode</strong>）；<code>monaco-insert-text-block-templates</code> 实为通用文本插入；<code>open-plugin-tool</code> 为死通道</td>
+</tr>
+<tr>
+<td>E</td>
+<td><strong>方向不可辨</strong></td>
+<td>同一前缀下混有 R→M send/on、invoke/handle、M→R 推送，仅看名称无法区分</td>
+</tr>
+<tr>
+<td>F</td>
+<td><strong>通道名与常量名不一致</strong></td>
+<td>常量 <code>TEXT_BLOCK_TEMPLATES</code> ↔ 通道 <code>monaco-insert-text-block-templates</code>；<code>COPY_IMAGELINK</code> ↔ <code>...copy-imagelink</code>（缺连字符）</td>
+</tr>
+</tbody>
+</table>
+<h4>二、统一命名规范（建议）</h4>
+<h5>2.1 格式</h5>
+<pre><code>baize:&lt;domain&gt;:&lt;name&gt;
+</code></pre>
+<ul>
+<li>固定三段，全小写 kebab-case；<code>&lt;domain&gt;</code> 取白名单（18 个）；<code>&lt;name&gt;</code> 为动作/实体 + 可选细节；</li>
+<li>示例：<code>baize:window:minimize</code>、<code>baize:config:read</code>、<code>baize:theme:updated</code>、<code>baize:fs:copy-relative-path</code>、<code>baize:file:open-with-encoding</code>。</li>
+</ul>
+<h5>2.2 领域白名单（18）</h5>
+<p><code>window</code> · <code>config</code> · <code>setting</code> · <code>theme</code> · <code>editor</code> · <code>monaco</code> · <code>view</code> · <code>menu</code> · <code>file</code> · <code>fs</code> · <code>navigation</code> · <code>dialog</code> · <code>plugin</code> · <code>render</code> · <code>quick-links</code> · <code>overlay</code> · <code>status-bar</code> · <code>system</code></p>
+<h5>2.3 命名细则（5 条）</h5>
+<table>
+<thead>
+<tr>
+<th>规则</th>
+<th>内容</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R1 动作语义</td>
+<td>请求-响应（invoke/handle）与 R→M 命令用<strong>动词原形</strong>开头</td>
+<td><code>baize:window:minimize</code>、<code>baize:config:read</code></td>
+</tr>
+<tr>
+<td>R2 事件语义</td>
+<td>主进程→渲染层推送/结果事件用<strong>过去式或结果后缀</strong>（<code>-updated</code>/<code>-changed</code>/<code>-reloaded</code>/<code>-result</code>）</td>
+<td><code>baize:theme:updated</code>、<code>baize:setting:auto-save-changed</code></td>
+</tr>
+<tr>
+<td>R3 单数实体</td>
+<td>实体一律单数，冗余词删除（<code>file-manager-context-menu-</code> → <code>fs:</code>）</td>
+<td><code>file-manager-context-menu-rename</code> → <code>baize:fs:rename</code></td>
+</tr>
+<tr>
+<td>R4 拼写与语义</td>
+<td>修正 <code>model</code>→<code>mode</code> 等拼写；名称须与用途一致</td>
+<td><code>markdown-edit-model</code> → <code>baize:view:edit-mode</code></td>
+</tr>
+<tr>
+<td>R5 常量命名不变</td>
+<td><strong>不改 <code>IPC.&lt;GROUP&gt;.&lt;KEY&gt;</code> 常量名与分组</strong>（改动 1341 个调用点不经济）；仅统一通道字符串值，并用测试锁定格式</td>
+<td><code>IPC.WINDOW.MINIMIZE</code> 值改为 <code>baize:window:minimize</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>可选增强：在 <code>ipc-channels.ts</code> 增加 <code>CHANNEL_DOMAINS</code> 常量与通道方向元数据（<code>CHANNEL_META</code>），供测试与矩阵自动生成使用；不影响调用点。</p>
+</blockquote>
+<h5>2.4 格式校验正则</h5>
+<pre><code class="language-regex">^baize:[a-z][a-z-]*:[a-z][a-z0-9-]*$
+</code></pre>
+<p>并断言 domain ∈ 18 个白名单。建议新增 <code>tests/unit/ipc-channel-naming.test.ts</code> 固化。</p>
+<h4>三、完整通道清单（123 个）</h4>
+<table>
+<thead>
+<tr>
+<th>分组</th>
+<th>常量</th>
+<th>当前通道</th>
+<th>方向/模式</th>
+<th>建议通道</th>
+<th>标记</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CONFIG</td>
+<td><code>DELETE</code></td>
+<td><code>config:delete</code></td>
+<td>R→M invoke ❌</td>
+<td><code>baize:config:delete</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>CONFIG</td>
+<td><code>ENSURE_DIR</code></td>
+<td><code>config:ensure-dir</code></td>
+<td>R→M invoke ❌</td>
+<td><code>baize:config:ensure-dir</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>CONFIG</td>
+<td><code>LIST</code></td>
+<td><code>config:list</code></td>
+<td>R→M invoke ❌</td>
+<td><code>baize:config:list</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>CONFIG</td>
+<td><code>READ</code></td>
+<td><code>config:read</code></td>
+<td>R→M invoke</td>
+<td><code>baize:config:read</code></td>
+<td></td>
+</tr>
+<tr>
+<td>CONFIG</td>
+<td><code>WRITE</code></td>
+<td><code>config:write</code></td>
+<td>R→M invoke</td>
+<td><code>baize:config:write</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>AUTO_SAVE_CHANGED</code></td>
+<td><code>system-setting-auto-save-changed</code></td>
+<td>R→M ⚠️</td>
+<td><code>baize:setting:auto-save-changed</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>CREATE_FILE_FOLDER_ENTER</code></td>
+<td><code>dialog-create-file-folder-enter</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:create-file-folder-enter</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>FONT_SELECT_CANCEL</code></td>
+<td><code>dialog-user-font-select-btn-cancel</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:font-select-cancel</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>FONT_SELECT_INSERT</code></td>
+<td><code>dialog-user-font-select-btn-insert</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:font-select-insert</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>IMPORT_OPTION_CONFIRM</code></td>
+<td><code>import-option-confirm</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:import-option-confirm</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>LOAD_SAVED_SETTINGS</code></td>
+<td><code>load-saved-settings</code></td>
+<td>M→D send</td>
+<td><code>baize:dialog:load-saved-settings</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>MERMAID_RENDER_RESULT</code></td>
+<td><code>dialog-mermaid-render-svg-result</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:mermaid-render-result</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>OPEN_PLUGIN_TOOL</code></td>
+<td><code>open-plugin-tool</code></td>
+<td>M→R send ❌</td>
+<td><code>baize:dialog:open-plugin-tool</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>OPEN_VUE_DIALOG</code></td>
+<td><code>open-vue-dialog</code></td>
+<td>M→R send</td>
+<td><code>baize:dialog:open-vue</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>RENAME_FILE_FOLDER_ENTER</code></td>
+<td><code>dialog-rename-file-folder-enter</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:rename-file-folder-enter</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>SAVE_SUCCESS</code></td>
+<td><code>baize-notes:save-success</code></td>
+<td>M→D send</td>
+<td><code>baize:file:save-success</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>SYSTEM_SETTING_APPLY</code></td>
+<td><code>dialog-system-setting-apply</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:system-setting-apply</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>SYSTEM_SETTING_CANCEL</code></td>
+<td><code>dialog-system-setting-cancel</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:system-setting-cancel</code></td>
+<td></td>
+</tr>
+<tr>
+<td>DIALOG</td>
+<td><code>SYSTEM_SETTING_CONFIRM</code></td>
+<td><code>dialog-system-setting-confirm</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:system-setting-confirm</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>DIALOG_SETTING_APPLY</code></td>
+<td><code>dialog-editor-setting-apply</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:editor-setting-apply</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>DIALOG_SETTING_CANCEL</code></td>
+<td><code>dialog-editor-setting-cancel</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:editor-setting-cancel</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>DIALOG_SETTING_OK</code></td>
+<td><code>dialog-editor-setting-ok</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:editor-setting-ok</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>DIALOG_SETTING_RESET</code></td>
+<td><code>dialog-editor-setting-reset</code></td>
+<td>D→M send</td>
+<td><code>baize:dialog:editor-setting-reset</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>FLUSH_CONTENT</code></td>
+<td><code>editor:flush-content</code></td>
+<td>M→R send</td>
+<td><code>baize:editor:flush-content</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>FLUSH_CONTENT_DONE</code></td>
+<td><code>editor:flush-content-done</code></td>
+<td>R→M send</td>
+<td><code>baize:editor:flush-content-done</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>GET_SETTING</code></td>
+<td><code>baize-notes:get-editor-setting</code></td>
+<td>R→M invoke</td>
+<td><code>baize:editor:get-setting</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>INIT_SETTING</code></td>
+<td><code>baize-notes:init-editor-setting</code></td>
+<td>M→R send</td>
+<td><code>baize:editor:init-setting</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>LOAD_SAVED_SETTINGS</code></td>
+<td><code>load-saved-editor-settings</code></td>
+<td>M→D send</td>
+<td><code>baize:editor:load-saved-settings</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>RELAYOUT</code></td>
+<td><code>baize-notes:editor-relayout</code></td>
+<td>M→R send ❌</td>
+<td><code>baize:editor:relayout</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>SETTING_UPDATED</code></td>
+<td><code>baize-notes:editor-setting-updated</code></td>
+<td>M→R send</td>
+<td><code>baize:editor:setting-updated</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>SYSTEM_SETTING_UPDATE</code></td>
+<td><code>baize-notes:system-setting-update</code></td>
+<td>M→R send</td>
+<td><code>baize:setting:updated</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>UPDATE_FONT</code></td>
+<td><code>baize-notes:update-editor-font</code></td>
+<td>R→M send ❌</td>
+<td><code>baize:editor:update-font</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>EDITOR</td>
+<td><code>UPDATE_OPTIONS</code></td>
+<td><code>baize-notes:monaco-editor-update-options</code></td>
+<td>M→R send（另有无接收的 R→M 分支）</td>
+<td><code>baize:editor:update-options</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EVENTS</td>
+<td><code>FILE_CONTENT_RELOADED</code></td>
+<td><code>file-content-reloaded</code></td>
+<td>M→R send</td>
+<td><code>baize:file:content-reloaded</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EVENTS</td>
+<td><code>FILE_SAVED_SUCCESS</code></td>
+<td><code>file-saved-success</code></td>
+<td>M→R send</td>
+<td><code>baize:file:saved</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EVENTS</td>
+<td><code>SHOW_SELECTED_FILE_CONTEXT</code></td>
+<td><code>baize:notes:show-selected-file-context</code></td>
+<td>M→R send</td>
+<td><code>baize:fs:show-selected-file-context</code></td>
+<td></td>
+</tr>
+<tr>
+<td>EVENTS</td>
+<td><code>STATUS_BAR_UPDATE</code></td>
+<td><code>status-bar-console-update</code></td>
+<td>M→R send</td>
+<td><code>baize:status-bar:update</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>APP_VERSION</code></td>
+<td><code>app:get-version</code></td>
+<td>R→M invoke</td>
+<td><code>baize:system:app-version</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>CHECK_EXISTS</code></td>
+<td><code>check-file-exists</code></td>
+<td>R→M invoke</td>
+<td><code>baize:file:check-exists</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>CLEAR_EDITOR_PREVIEW</code></td>
+<td><code>clear-editor-and-preview</code></td>
+<td>M→R send</td>
+<td><code>baize:file:clear-editor-preview</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>CREATE_FILE_FOLDER</code></td>
+<td><code>baize-notes:create-file-folder</code></td>
+<td>R→M invoke</td>
+<td><code>baize:file:create-entry</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>GET_CURRENT_FILE_PATH</code></td>
+<td><code>baize-notes:get-current-file-path</code></td>
+<td>R→M invoke</td>
+<td><code>baize:file:get-current-path</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>IMPORT_NEW_FILE</code></td>
+<td><code>baize-notes:import-new-file</code></td>
+<td>R→M invoke</td>
+<td><code>baize:file:import</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>OPEN_EXTERNAL_LINK</code></td>
+<td><code>open-external-link</code></td>
+<td>R→M send</td>
+<td><code>baize:system:open-external-link</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>OPEN_SELECT_FILE</code></td>
+<td><code>baize:notes:open-select-file</code></td>
+<td>R→M send</td>
+<td><code>baize:file:open-select-file</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>OPEN_SPECIFIC_FOLDER</code></td>
+<td><code>baize:notes:open-specific-folder</code></td>
+<td>R→M send</td>
+<td><code>baize:file:open-specific-folder</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>READ_HTML</code></td>
+<td><code>read-html-file</code></td>
+<td>R→M invoke</td>
+<td><code>baize:file:read-html</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>SAVE_TO_DISK</code></td>
+<td><code>save-file-content-to-disk</code></td>
+<td>R→M send</td>
+<td><code>baize:file:save-content-to-disk</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>SELECT_DIRECTORY</code></td>
+<td><code>baize-notes:select-directory</code></td>
+<td>R→M invoke</td>
+<td><code>baize:file:select-directory</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>SYSTEM_INFO</code></td>
+<td><code>get-system-info</code></td>
+<td>R→M invoke</td>
+<td><code>baize:system:get-info</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>UPDATE_SELECT_FILE_CONTENT</code></td>
+<td><code>update-select-file-content</code></td>
+<td>R→M send</td>
+<td><code>baize:file:update-content</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>USER_SELECT_FILE</code></td>
+<td><code>monaco-editor-user-select-file</code></td>
+<td>M→R send</td>
+<td><code>baize:file:user-select-file</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>WELCOME_ENTER_MAIN</code></td>
+<td><code>baize:notes:welcome:enter-main</code></td>
+<td>M→R send</td>
+<td><code>baize:file:welcome-enter-main</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>WELCOME_OPEN_DIRECTORY</code></td>
+<td><code>baize:notes:welcome:open-directory</code></td>
+<td>R→M send</td>
+<td><code>baize:file:welcome-open-directory</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE</td>
+<td><code>WELCOME_OPEN_FILE</code></td>
+<td><code>baize:notes:welcome:open-file</code></td>
+<td>R→M send</td>
+<td><code>baize:file:welcome-open-file</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>COPY_FILE</code></td>
+<td><code>file-manager-context-menu-copy-file</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:copy-file</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>COPY_FILELINK</code></td>
+<td><code>file-manager-context-menu-copy-filelink</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:copy-file-link</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>COPY_IMAGELINK</code></td>
+<td><code>file-manager-context-menu-copy-imagelink</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:copy-image-link</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>COPY_RELATIVE_PATH</code></td>
+<td><code>file-manager-context-menu-copy-relative-path</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:copy-relative-path</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>CREATE_FILE</code></td>
+<td><code>file-manager-context-menu-create-file</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:create-file</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>CUT</code></td>
+<td><code>file-manager-context-menu-cut</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:cut</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>DELETE</code></td>
+<td><code>file-manager-context-menu-delete</code></td>
+<td>R→M invoke ❌</td>
+<td><code>baize:fs:delete</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>FILE_SYSTEM_DATA</code></td>
+<td><code>baize:notes:resource:manager:file-system-data</code></td>
+<td>M→R send</td>
+<td><code>baize:fs:file-system-data</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>FIND_IN</code></td>
+<td><code>file-manager-context-menu-find-in</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:find-in</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>IMPORT_FROM</code></td>
+<td><code>file-manager-context-menu-import-from</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:import-from</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>OPEN_IN_EXPLORER</code></td>
+<td><code>file-manager-context-menu-open-in-explorer</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:open-in-explorer</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>PASTE</code></td>
+<td><code>file-manager-context-menu-paste</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:paste</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>RELOAD_FROM_DISK</code></td>
+<td><code>file-manager-context-menu-reload-from-disk</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:reload-from-disk</code></td>
+<td></td>
+</tr>
+<tr>
+<td>FILE_MANAGER</td>
+<td><code>RENAME</code></td>
+<td><code>file-manager-context-menu-rename</code></td>
+<td>R→M send</td>
+<td><code>baize:fs:rename</code></td>
+<td></td>
+</tr>
+<tr>
+<td>MENU</td>
+<td><code>ACTION</code></td>
+<td><code>baize-notes:menu-action</code></td>
+<td>R→M send</td>
+<td><code>baize:menu:action</code></td>
+<td></td>
+</tr>
+<tr>
+<td>MONACO_INSERT</td>
+<td><code>AFTER_CURSOR</code></td>
+<td><code>monaco-editor-insert-after-cursor</code></td>
+<td>—</td>
+<td><code>baize:monaco:insert-after-cursor</code></td>
+<td></td>
+</tr>
+<tr>
+<td>MONACO_INSERT</td>
+<td><code>TEXT_BLOCK_TEMPLATES</code></td>
+<td><code>monaco-insert-text-block-templates</code></td>
+<td>—</td>
+<td><code>baize:monaco:insert-text-block</code></td>
+<td></td>
+</tr>
+<tr>
+<td>MONACO_INSERT</td>
+<td><code>WRITING_TEMPLATES</code></td>
+<td><code>monaco-insert-writing-templates</code></td>
+<td>—</td>
+<td><code>baize:monaco:insert-writing-templates</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>NAVIGATION</td>
+<td><code>KEYDOWN</code></td>
+<td><code>keydown</code></td>
+<td>—</td>
+<td><code>baize:navigation:keydown</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>NAVIGATION</td>
+<td><code>OPEN_EXE</code></td>
+<td><code>navi-tab-open-exe</code></td>
+<td>—</td>
+<td><code>baize:navigation:open-exe</code></td>
+<td></td>
+</tr>
+<tr>
+<td>OVERLAY</td>
+<td><code>CONVERT_SAVE_ENCODING</code></td>
+<td><code>file-convert-encoding</code></td>
+<td>R→M invoke</td>
+<td><code>baize:file:convert-encoding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>OVERLAY</td>
+<td><code>CONVERT_TO_ENCODING</code></td>
+<td><code>convert-to-encoding</code></td>
+<td>M→R send</td>
+<td><code>baize:file:convert-to-encoding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>OVERLAY</td>
+<td><code>MERMAID_GRAPH_DEF</code></td>
+<td><code>mermaid-graph-definition</code></td>
+<td>M→R send ❌</td>
+<td><code>baize:overlay:mermaid-graph-definition</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>OVERLAY</td>
+<td><code>OPEN_URL</code></td>
+<td><code>open-url-in-web-browser-window</code></td>
+<td>M→R send ❌</td>
+<td><code>baize:overlay:open-url</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>OVERLAY</td>
+<td><code>OPEN_WITH_ENCODING</code></td>
+<td><code>open-with-encoding</code></td>
+<td>M→R send</td>
+<td><code>baize:file:open-with-encoding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>OVERLAY</td>
+<td><code>REOPEN_WITH_ENCODING</code></td>
+<td><code>file-reopen-with-encoding</code></td>
+<td>R→M invoke</td>
+<td><code>baize:file:reopen-with-encoding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>OVERLAY</td>
+<td><code>UPDATE_MERMAID_GRAPH</code></td>
+<td><code>update-mermaid-render-graph</code></td>
+<td>M→D send ❌</td>
+<td><code>baize:overlay:update-mermaid-graph</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>PLUGIN</td>
+<td><code>CRYPTO_DECRYPT</code></td>
+<td><code>plugin-tools-crypto-decrypt</code></td>
+<td>R→M invoke</td>
+<td><code>baize:plugin:crypto-decrypt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>PLUGIN</td>
+<td><code>CRYPTO_ENCRYPT</code></td>
+<td><code>plugin-tools-crypto-encrypt</code></td>
+<td>R→M invoke</td>
+<td><code>baize:plugin:crypto-encrypt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>PLUGIN</td>
+<td><code>HASH_TEXT</code></td>
+<td><code>plugin-tools-generator-hash-text</code></td>
+<td>R→M invoke</td>
+<td><code>baize:plugin:hash-text</code></td>
+<td></td>
+</tr>
+<tr>
+<td>PLUGIN</td>
+<td><code>HMAC_TEXT</code></td>
+<td><code>plugin-tools-generator-hmac-text</code></td>
+<td>R→M invoke</td>
+<td><code>baize:plugin:hmac-text</code></td>
+<td></td>
+</tr>
+<tr>
+<td>PLUGIN</td>
+<td><code>RSA_GENERATE</code></td>
+<td><code>plugin-tools-generator-rsa-key-pairs</code></td>
+<td>R→M send</td>
+<td><code>baize:plugin:rsa-generate</code></td>
+<td></td>
+</tr>
+<tr>
+<td>PLUGIN</td>
+<td><code>RSA_RESULT</code></td>
+<td><code>plugin-tools-generator-rsa-result</code></td>
+<td>M→R send</td>
+<td><code>baize:plugin:rsa-result</code></td>
+<td></td>
+</tr>
+<tr>
+<td>QUICK_LINKS</td>
+<td><code>GET</code></td>
+<td><code>baize-notes:get-quick-links</code></td>
+<td>R→M invoke</td>
+<td><code>baize:quick-links:get</code></td>
+<td></td>
+</tr>
+<tr>
+<td>QUICK_LINKS</td>
+<td><code>INIT</code></td>
+<td><code>baize-notes:init-quick-links</code></td>
+<td>M→D send</td>
+<td><code>baize:quick-links:init</code></td>
+<td></td>
+</tr>
+<tr>
+<td>QUICK_LINKS</td>
+<td><code>RESET</code></td>
+<td><code>baize-notes:reset-quick-links</code></td>
+<td>D→M send</td>
+<td><code>baize:quick-links:reset</code></td>
+<td></td>
+</tr>
+<tr>
+<td>QUICK_LINKS</td>
+<td><code>SAVE</code></td>
+<td><code>baize-notes:save-quick-links</code></td>
+<td>D→M send</td>
+<td><code>baize:quick-links:save</code></td>
+<td></td>
+</tr>
+<tr>
+<td>QUICK_LINKS</td>
+<td><code>UPDATED</code></td>
+<td><code>baize-notes:quick-links-updated</code></td>
+<td>M→R send</td>
+<td><code>baize:quick-links:updated</code></td>
+<td></td>
+</tr>
+<tr>
+<td>RENDER</td>
+<td><code>INSERT_IMAGE</code></td>
+<td><code>monaco-editor-container-insert-image</code></td>
+<td>R→M send</td>
+<td><code>baize:render:insert-image</code></td>
+<td></td>
+</tr>
+<tr>
+<td>RENDER</td>
+<td><code>PLANTUML_LOCAL</code></td>
+<td><code>baize-notes:plantuml-local-render</code></td>
+<td>R→M invoke</td>
+<td><code>baize:render:plantuml-local</code></td>
+<td></td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>DIALOG_BROADCAST_THEME</code></td>
+<td><code>dialog-broadcast-theme</code></td>
+<td>D→M send</td>
+<td><code>baize:theme:dialog-broadcast</code></td>
+<td></td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>GET_ALL_MONACO_THEMES</code></td>
+<td><code>get-all-monaco-themes</code></td>
+<td>R→M invoke</td>
+<td><code>baize:theme:get-all-monaco</code></td>
+<td></td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>GET_ALL_THEMES</code></td>
+<td><code>get-all-themes</code></td>
+<td>R→M invoke</td>
+<td><code>baize:theme:get-all</code></td>
+<td></td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>GET_CURRENT_THEME</code></td>
+<td><code>get-current-theme</code></td>
+<td>R→M invoke ❌</td>
+<td><code>baize:theme:get-current</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>GET_CURRENT_THEME_STYLES</code></td>
+<td><code>get-current-theme-styles</code></td>
+<td>R→M invoke</td>
+<td><code>baize:theme:get-current-styles</code></td>
+<td></td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>GET_MONACO_THEME</code></td>
+<td><code>get-monaco-theme</code></td>
+<td>R→M sendSync ❌</td>
+<td><code>baize:theme:get-monaco</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>GET_SEPARATE_EDITOR_THEME</code></td>
+<td><code>get-separate-editor-theme</code></td>
+<td>R→M sendSync ❌</td>
+<td><code>baize:theme:get-separate-editor</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>INIT_THEME_STYLES</code></td>
+<td><code>baize-notes:init-theme-styles</code></td>
+<td>M→D（另有 M→R 空转）</td>
+<td><code>baize:theme:init-styles</code></td>
+<td></td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>LOAD_MONACO_THEME</code></td>
+<td><code>baize-notes:load-monaco-theme</code></td>
+<td>R→M invoke</td>
+<td><code>baize:theme:load-monaco</code></td>
+<td></td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>THEME_UPDATE</code></td>
+<td><code>baize-notes:theme-update</code></td>
+<td>D→M send</td>
+<td><code>baize:theme:update-from-dialog</code></td>
+<td></td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>THEME_UPDATED</code></td>
+<td><code>baize-notes:theme-updated</code></td>
+<td>M→R / M→D send</td>
+<td><code>baize:theme:updated</code></td>
+<td></td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>UPDATE_MONACO_THEME</code></td>
+<td><code>baize-notes:update-monaco-theme</code></td>
+<td>R→M send ❌</td>
+<td><code>baize:theme:update-monaco</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+<tr>
+<td>THEME</td>
+<td><code>UPDATE_THEME</code></td>
+<td><code>baize-notes:update-theme</code></td>
+<td>R→M send</td>
+<td><code>baize:theme:update</code></td>
+<td></td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td><code>EDIT_MODE</code></td>
+<td><code>markdown-edit-model</code></td>
+<td>—</td>
+<td><code>baize:view:edit-mode</code></td>
+<td></td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td><code>EDIT_PREVIEW_MODE</code></td>
+<td><code>markdown-edit-preview-model</code></td>
+<td>—</td>
+<td><code>baize:view:edit-preview-mode</code></td>
+<td></td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td><code>PREVIEW_MODE</code></td>
+<td><code>markdown-preview-model</code></td>
+<td>—</td>
+<td><code>baize:view:preview-mode</code></td>
+<td></td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td><code>TOGGLE_RES_MANAGER</code></td>
+<td><code>menu-view-hide-display-res-manager</code></td>
+<td>—</td>
+<td><code>baize:view:toggle-resource-manager</code></td>
+<td></td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td><code>UNDO_REDO</code></td>
+<td><code>monaco-editor-trigger-undo-redo</code></td>
+<td>—</td>
+<td><code>baize:monaco:undo-redo</code></td>
+<td></td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td><code>CLOSE</code></td>
+<td><code>window-close</code></td>
+<td>R→M send</td>
+<td><code>baize:window:close</code></td>
+<td></td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td><code>GET_BOUNDS</code></td>
+<td><code>window-get-bounds</code></td>
+<td>R→M invoke</td>
+<td><code>baize:window:get-bounds</code></td>
+<td></td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td><code>IS_MAXIMIZED</code></td>
+<td><code>window-is-maximized</code></td>
+<td>R→M invoke</td>
+<td><code>baize:window:is-maximized</code></td>
+<td></td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td><code>MAXIMIZE</code></td>
+<td><code>window-maximize</code></td>
+<td>R→M send</td>
+<td><code>baize:window:maximize</code></td>
+<td></td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td><code>MINIMIZE</code></td>
+<td><code>window-minimize</code></td>
+<td>R→M send</td>
+<td><code>baize:window:minimize</code></td>
+<td></td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td><code>MOVE</code></td>
+<td><code>window-move</code></td>
+<td>R→M send</td>
+<td><code>baize:window:move</code></td>
+<td></td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td><code>SET_SIZE</code></td>
+<td><code>window-set-size</code></td>
+<td>R→M send</td>
+<td><code>baize:window:set-size</code></td>
+<td></td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td><code>START_DRAG</code></td>
+<td><code>window-start-drag</code></td>
+<td>R→M send</td>
+<td><code>baize:window:start-drag</code></td>
+<td></td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td><code>TOGGLE_MAXIMIZE</code></td>
+<td><code>window-toggle-maximize</code></td>
+<td>R→M send</td>
+<td><code>baize:window:toggle-maximize</code></td>
+<td></td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td><code>UNMAXIMIZE</code></td>
+<td><code>window-unmaximize</code></td>
+<td>R→M send ❌</td>
+<td><code>baize:window:unmaximize</code></td>
+<td>🗑️ 计划删除</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>方向数据来自通信矩阵（113/123 命中，其余未解析到的以「—」表示，实施前以重新扫描为准）；「计划删除」为通信检查报告判定的 16 个死通道。</p>
+</blockquote>
+<h4>四、迁移方案（成本极低）</h4>
+<h5>4.1 关键前提（已核实）</h5>
+<ul>
+<li>通道引用 100% 走常量：<code>src/main</code>、<code>src/preload</code>、<code>src/renderer</code> 均 <code>IPC.*</code> 引用；<strong>HTML 对话框内联脚本通过模板插值注入常量</strong>（如 <code>ipcRenderer.send('${IPC.EDITOR.DIALOG_SETTING_APPLY}', …)</code>）；preload 对话框 send 白名单也引用常量；</li>
+<li>因此<strong>无需逐个改调用点</strong>，只改常量值即可全局生效。</li>
+</ul>
+<h5>4.2 改动清单</h5>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>文件/对象</th>
+<th>改动</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>src/shared/ipc-channels.ts</code></td>
+<td>123 个字符串值替换为建议值</td>
+<td>唯一真源，风险集中一处</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>tests/unit/ipc-channel-constants.test.ts</code> 等</td>
+<td>若有硬编码旧值断言则同步</td>
+<td>预计少量</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>tests/unit/ipc-channel-naming.test.ts</code>（新增）</td>
+<td>格式正则 + domain 白名单 + 唯一性</td>
+<td>防回归</td>
+</tr>
+<tr>
+<td>4</td>
+<td>`../../md</td>
+<td>html/2026-11-15-IPC通信矩阵.md/html`</td>
+<td>重生成（脚本或人工）</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>out/tool-results/ipc-channel-rename-map.json</code></td>
+<td>作为执行依据</td>
+<td>已生成</td>
+</tr>
+</tbody>
+</table>
+<h5>4.3 与死通道清理合并执行（推荐）</h5>
+<p>建议把本方案并入 <a href="IPC通信治理报告.html">13-IPC通信问题修复计划</a> 的**批次 3（清理）**一起执行：</p>
+<ol>
+<li>先删除 16 个死通道（常量 + 收发端 + 测试）；</li>
+<li>对剩余 107 个通道一次性套用新命名（改常量值）；</li>
+<li>重生成通信矩阵，更新检查报告中的通道名；</li>
+<li>跑门禁 + 新增命名测试。</li>
+</ol>
+<p>预期收益：通道数 123 → 107，命名 100% 符合 <code>baize:&lt;domain&gt;:&lt;name&gt;</code>，报告/日志/排障 grep 一致。</p>
+<h5>4.4 不建议的做法</h5>
+<ul>
+<li>❌ <strong>保留旧值别名</strong>：内部闭环应用无外部消费者，别名会增加&quot;双轨&quot;认知负担（与 CMP-30 双轨问题同类）；</li>
+<li>❌ <strong>逐个调用点改名</strong>：徒增风险，且失去常量真源的意义；</li>
+<li>❌ <strong>在通道名中加入方向后缀</strong>（如 <code>:req</code>/<code>:evt</code>）：徒增噪音，方向由调用位置与矩阵文档区分，测试可校验两端模式一致性（见修复计划回归测试建设）。</li>
+</ul>
+<h4>五、验证方案</h4>
+<table>
+<thead>
+<tr>
+<th>验证</th>
+<th>方法</th>
+<th>通过标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>格式</td>
+<td>新增命名测试</td>
+<td>100% 匹配 <code>^baize:[a-z][a-z-]*:[a-z][a-z0-9-]*$</code> 且 domain 白名单</td>
+</tr>
+<tr>
+<td>唯一性</td>
+<td>现有 <code>ipc-channel-constants.test.ts</code></td>
+<td>无重复值</td>
+</tr>
+<tr>
+<td>无字面量绕过</td>
+<td>现有测试</td>
+<td>src 内无通道字符串直接调用</td>
+</tr>
+<tr>
+<td>旧值零残留</td>
+<td><code>grep</code> 旧通道值（src/tests）</td>
+<td>0 命中</td>
+</tr>
+<tr>
+<td>功能回归</td>
+<td>typecheck + npm test + eslint + build</td>
+<td>全部通过</td>
+</tr>
+<tr>
+<td>报告一致</td>
+<td>重生成通信矩阵</td>
+<td>与常量文件一致</td>
+</tr>
+</tbody>
+</table>
+<h4>六、风险与决策点</h4>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>常量名是否同步改为英文域名（如 <code>FILE_MANAGER</code>→<code>FS</code>）</td>
+<td>需改 1341 处调用点，收益低</td>
+<td><strong>不改</strong>，仅统一字符串值</td>
+</tr>
+<tr>
+<td>是否本轮同时删除死通道</td>
+<td>与命名改动叠加在同一文件</td>
+<td>推荐合并（批次 3），一次验证</td>
+</tr>
+<tr>
+<td>历史报告中的旧通道名</td>
+<td>已发布报告属历史存档</td>
+<td>保留历史，仅更新&quot;当前状态&quot;版矩阵/报告</td>
+</tr>
+<tr>
+<td>与主进程 HTML 对话框的耦合</td>
+<td>已确认常量注入</td>
+<td>无额外风险</td>
+</tr>
+</tbody>
+</table>
+<h4>七、结论与下一步</h4>
+<ol>
+<li><strong>通道清单</strong>：见第三节 123 行明细（最新版以 <code>out\tool-results\ipc-channel-rename-map.json</code> 为准）；</li>
+<li><strong>建议方案</strong>：<code>baize:&lt;domain&gt;:&lt;name&gt;</code> 三段式 + 18 个 domain 白名单 + 5 条命名细则；</li>
+<li><strong>实施路径</strong>：并入 13 号修复计划批次 3（先删 16 死通道 → 改名 → 重生成矩阵 → 新增命名测试 → 门禁）；</li>
+<li>若需立即执行命名统一（不等待其余 IPC 修复），可单列&quot;批次 0&quot;，预计 1 个子智能体一轮完成 + 验证。</li>
+</ol>
+<h4>八、执行状态（2026-11-15 已完成）</h4>
+<ul>
+<li>✅ <strong>通道值统一</strong>：<code>src/shared/ipc-channels.ts</code> 123 个通道全部改为 <code>baize:&lt;domain&gt;:&lt;name&gt;</code>（旧值零残留）；</li>
+<li>✅ <strong>测试用例更新</strong>：46 个测试文件共 216 处硬编码旧通道名同步为新值（<code>keydown</code> 歧义单独处理），全部通过；</li>
+<li>✅ <strong>顺带收口</strong>：<code>src/renderer/src/common/templates.ts</code> 的通道字面量副本改为引用 <code>IPC</code> 常量（通信检查报告 P3-2 / ARC-03 收口）；</li>
+<li>✅ <strong>新增防回归测试</strong>：<code>tests/unit/ipc-channel-naming.test.ts</code>（格式正则/domain 白名单/唯一性/历史前缀 6 用例）；</li>
+<li>✅ <strong>文档同步</strong>：IPC 通信矩阵与通信检查报告的通道名已更新，并加统一说明注记；</li>
+<li>✅ <strong>门禁</strong>：typecheck 双绿 · 测试 <strong>116 文件 / 1849 用例</strong>全过 · ESLint 0 error · electron-vite build 通过。</li>
+</ul>
+<blockquote>
+<p>说明：死通道（16 个）本轮仅统一命名、未删除（删除属 <a href="IPC通信治理报告.html">13-IPC通信问题修复计划</a> 批次 3 范围）。</p>
+</blockquote>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

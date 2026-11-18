@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>专项验证记录</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">一、CQ-10 主进程 console 迁移</a>
+    <a class="toc-l2" href="#sec-2">二、PF-4~PF-9 性能优化量化证据</a>
+    <a class="toc-l2" href="#sec-3">三、NSIS 打包与运行崩溃修复</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>专项验证记录</h1>
+    <p>报告归档 · 03-专项治理</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>专项验证记录（合并归档）</h1>
+<blockquote>
+<p><strong>合并归档报告</strong>：由以下历史报告合并而成（保留原文，按时间顺序成章）：<code>2026-11-15-CQ-10主进程console迁移报告.md</code>、<code>2026-11-15-PF4-9性能优化量化证据.md</code>、<code>2026-11-15-NSIS打包与运行崩溃修复报告.md</code>。
+内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.6 基线：155 测试文件 / 2,823 用例 / 90 IPC 通道）。</p>
+</blockquote>
+<h2 id="sec-1">一、CQ-10 主进程 console 迁移</h2>
+<ul>
+<li>日期：2026-11-15</li>
+<li>任务：task-40（CQ-10 收尾）</li>
+<li>写作用域：<code>src/main/**</code>（排除 <code>src/main/ipc/ipc-listener-manager.ts</code>）、<code>src/main/utils/logger.ts</code>、<code>tests/unit/logger.test.ts</code></li>
+<li>结论：可执行 <code>console.error/warn</code> 由 71 处降为 23 处（其中 3 处为另一任务负责的 <code>ipc-listener-manager.ts</code>，20 处按测试断言/模块设计约束保留）；logger 双写（文件 + console 镜像）已具备，并补充 Error 信息保真；全量验证通过。</li>
+</ul>
+<h4>一、统计总览</h4>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数量</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>迁移前 <code>src/main</code> 下 <code>console.error/warn</code> 匹配</td>
+<td>89</td>
+<td>含注释/文档字符串引用</td>
+</tr>
+<tr>
+<td>其中可执行调用</td>
+<td>71</td>
+<td>其余 18 处为注释/历史说明</td>
+</tr>
+<tr>
+<td>迁移到 <code>logger.error/warn</code></td>
+<td>48</td>
+<td>保留同等信息量（消息 + 实参原样传递）</td>
+</tr>
+<tr>
+<td>保留 console（被测试精确断言）</td>
+<td>15</td>
+<td>见第三节，迁移会导致 <code>toHaveBeenCalledWith(精确实参)</code> 断言失败</td>
+</tr>
+<tr>
+<td>保留 console（模块设计约束）</td>
+<td>2</td>
+<td><code>ipc-security.ts</code> 刻意不引入 electron 运行时依赖</td>
+</tr>
+<tr>
+<td>保留 console（logger 自身）</td>
+<td>5</td>
+<td><code>logger.ts</code> 内部错误日志，避免递归/流未就绪时丢失</td>
+</tr>
+<tr>
+<td>保留但不在本任务范围</td>
+<td>3</td>
+<td><code>ipc-listener-manager.ts</code>（另一任务负责）</td>
+</tr>
+<tr>
+<td>迁移后剩余可执行 console</td>
+<td>23</td>
+<td>20（本任务保留）+ 3（排除文件）</td>
+</tr>
+</tbody>
+</table>
+<h4>二、迁移清单（48 处，文件:迁移前行号 → 现均为 <code>logger.error/warn</code>）</h4>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>数量</th>
+<th>迁移前行号</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/main/utils/utils.ts</code></td>
+<td>15</td>
+<td>44, 56, 72, 225, 236, 410, 417, 421, 428, 440, 588, 601, 623, 630, 662</td>
+</tr>
+<tr>
+<td><code>src/main/ipc/handlers.ts</code></td>
+<td>12</td>
+<td>52, 64, 80, 262, 274, 341, 350, 438, 445, 451, 458, 690</td>
+</tr>
+<tr>
+<td><code>src/main/config/config-manager.ts</code></td>
+<td>8</td>
+<td>228, 254, 262, 267, 274, 278, 307, 385</td>
+</tr>
+<tr>
+<td><code>src/main/dialogs/dialogs.ts</code></td>
+<td>3</td>
+<td>30, 58, 71</td>
+</tr>
+<tr>
+<td><code>src/main/utils/remote-resource-guard.ts</code></td>
+<td>3</td>
+<td>89, 97, 107</td>
+</tr>
+<tr>
+<td><code>src/main/utils/security.ts</code></td>
+<td>1</td>
+<td>378</td>
+</tr>
+<tr>
+<td><code>src/main/ipc/menu-handle.ts</code></td>
+<td>1</td>
+<td>150</td>
+</tr>
+<tr>
+<td><code>src/main/ipc/theme-broadcast.ts</code></td>
+<td>1</td>
+<td>46</td>
+</tr>
+<tr>
+<td><code>src/main/utils/i18n.ts</code></td>
+<td>1</td>
+<td>25</td>
+</tr>
+<tr>
+<td><code>src/main/index.ts</code></td>
+<td>1</td>
+<td>242</td>
+</tr>
+<tr>
+<td><code>src/main/dialogs/dialog-defaults.ts</code></td>
+<td>1</td>
+<td>86</td>
+</tr>
+<tr>
+<td><code>src/main/dialogs/OpenOnlineWebPages.ts</code></td>
+<td>1</td>
+<td>21</td>
+</tr>
+</tbody>
+</table>
+<p>迁移方式：<code>console.error(msg, ...args)</code> → <code>logger.error(msg, ...args)</code>，实参原样保留（含 Error 对象、对象参数、路径参数），不改变调用时机、控制流与用户可见提示；对应文件补充 <code>import { logger } from '.../utils/logger'</code>，并同步更新行为描述注释（如 handlers.ts 文件头 CQ-05 说明）。</p>
+<h4>三、保留清单（20 处，当前行号 + 原因）</h4>
+<table>
+<thead>
+<tr>
+<th>文件:行号</th>
+<th>调用</th>
+<th>保留原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/main/utils/logger.ts:209,237,242,313,421</code></td>
+<td><code>console.error</code></td>
+<td>logger 自身故障兜底（目录/写入流/清理/状态栏发送失败）。若改走 logger 会递归自调用，且在写文件失败链条中丢失输出，必须保留</td>
+</tr>
+<tr>
+<td><code>src/main/ipc/menu-handle.ts:117,148,178</code></td>
+<td><code>console.error/warn</code></td>
+<td><code>tests/unit/menu-handle.test.ts</code> 以<strong>精确实参</strong>断言：<code>('Error executing menu action: ', action, ', error: ', err)</code>、<code>('Unknown menu action: ', action)</code>、<code>('Failed to report menu action error to status bar: ', err)</code>。logger 镜像为单行格式化文本，改为 logger 会使 7 处断言全红</td>
+</tr>
+<tr>
+<td><code>src/main/ipc/menu-help.ts:19,49</code></td>
+<td><code>console.warn</code></td>
+<td><code>tests/unit/menu-ipc-trees.test.ts</code> 精确实参断言（<code>('[Menu] Change log not implemented yet')</code>、<code>('[Menu] 检查更新模块加载失败:', err)</code>）</td>
+</tr>
+<tr>
+<td><code>src/main/utils/security.ts:145,152</code></td>
+<td><code>console.warn</code></td>
+<td><code>tests/unit/window-security.test.ts</code> 断言 console.warn（其中 152 为 <code>(msg, expect.any(Error))</code> 双实参精确断言）；且该测试 mock 了 logger 模块（无 warn，仅有 error/info/setMainWindow），迁移会既改变实参形态又调用未 mock 方法</td>
+</tr>
+<tr>
+<td><code>src/main/index.ts:166,178,213</code></td>
+<td><code>console.warn</code></td>
+<td><code>tests/unit/window-security.test.ts</code> 断言 console.warn 被调用；<code>main-index.test.ts</code>/<code>window-security.test.ts</code> 均 mock logger 且 mock 未提供 <code>warn</code> 方法</td>
+</tr>
+<tr>
+<td><code>src/main/dialogs/OpenOnlineWebPages.ts:40,47,63</code></td>
+<td><code>console.warn</code></td>
+<td><code>window-security.test.ts</code>（40/63）与 <code>open-online-web-pages.test.ts</code>（47 经 handler 触发）断言 console.warn；两测试文件均 mock 了 logger</td>
+</tr>
+<tr>
+<td><code>src/main/utils/ipc-security.ts:152,271</code></td>
+<td><code>console.warn</code></td>
+<td>模块头设计约束「本模块不 import electron 运行时（仅 type import），单测无需 electron mock」；logger 会引入 electron <code>app</code> 运行时依赖。同时 <code>config-manager.test.ts</code> 以 console.warn 断言发送方拒绝日志。保留 <code>:271</code> 即发送方拒绝审计仍走控制台（不落文件），见剩余风险</td>
+</tr>
+<tr>
+<td><code>src/main/ipc/ipc-listener-manager.ts:69,120,167</code></td>
+<td><code>console.warn</code></td>
+<td><strong>写作用域排除</strong>：另一任务（task-38）正在修改该文件</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>说明：任务背景提到「测试中约 100 处 console 断言」，实际盘点为绝大多数为 <code>expect(console.error/warn).toHaveBeenCalled()</code>（无实参敏感）。logger 的双写镜像满足这类断言，因此迁移后测试全绿；仅上表 15 处「精确实参/logger 被 mock」场景需要保留 console。</p>
+</blockquote>
+<h4>四、logger 双写设计（<code>src/main/utils/logger.ts</code>）</h4>
+<p>现状确认：logger 的 <code>writeLog()</code> 早已是「文件 + 控制台」双写，本次未改变其契约，只做两点强化：</p>
+<ol>
+<li><strong>双写镜像（迁移兼容前提）</strong>：<code>WARN/ERROR</code> 在写入文件流的同时调用 <code>console.warn/console.error</code>（单行格式化文本，含时间戳/级别/脱敏后消息），<code>DEBUG/INFO</code> 同样镜像控制台但不进状态栏（AS-11）。因此原 <code>expect(console.error/warn).toHaveBeenCalled()</code> 类断言在迁移后仍然成立。
+<ul>
+<li>已在 <code>writeLog()</code> 增加「CQ-10 双写契约」注释，明确该镜像为迁移兼容/诊断可见性设计，不允许后续随意删除。</li>
+</ul>
+</li>
+<li><strong>Error 实参保真（新增）</strong>：原 <code>formatMessage</code> 对 Error 对象执行 <code>JSON.stringify</code> 会得到 <code>{}</code>，迁移 <code>console.error('xxx', err)</code> 后会丢失错误信息。新增 <code>formatLogArg()</code>：
+<ul>
+<li>文件/控制台：Error 优先输出完整 <code>stack</code>（含 message），无 stack 时输出 <code>Name: message</code>；</li>
+<li>状态栏镜像：<code>includeStack: false</code>，只输出单行 <code>Name: message</code>，避免堆栈刷进 UI；</li>
+<li>普通对象仍 <code>JSON.stringify</code>（失败 String 兜底），与历史日志格式兼容；用户主目录脱敏在最终整行统一执行（AS-11 不变）。</li>
+</ul>
+</li>
+<li><strong>补充单元测试</strong>（<code>tests/unit/logger.test.ts</code>，+2 用例）：
+<ul>
+<li>文件日志保留 Error message/stack，不出现 <code>{}</code>；控制台镜像同样保留错误信息；</li>
+<li>状态栏镜像 Error 参数为单行 <code>保存失败 Error: disk full</code>（无堆栈）。</li>
+</ul>
+</li>
+</ol>
+<h4>五、验证结果（2026-11-15 19:13，工作区其他 agent 已完成改动后复跑）</h4>
+<table>
+<thead>
+<tr>
+<th>验证项</th>
+<th>命令</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>全量测试</td>
+<td><code>vitest run</code></td>
+<td><strong>131 文件 / 2195 用例全部通过</strong>，exit 0</td>
+</tr>
+<tr>
+<td>类型检查（全链）</td>
+<td><code>tsc -p tsconfig.node.json</code> / <code>vue-tsc -p tsconfig.web.json</code> / <code>tsc -p tsconfig.test.json</code></td>
+<td>三段均 <strong>exit 0</strong></td>
+</tr>
+<tr>
+<td>ESLint</td>
+<td><code>eslint . --max-warnings 0</code></td>
+<td><strong>0 error / 0 warning</strong>，exit 0</td>
+</tr>
+<tr>
+<td>覆盖率阈值</td>
+<td><code>vitest run --coverage</code>（阈值 80/75/73/80）</td>
+<td>exit 0 通过；All files statements <strong>84.77%</strong> / branches <strong>77.96%</strong> / functions <strong>80.67%</strong> / lines <strong>85.11%</strong></td>
+</tr>
+<tr>
+<td>定向回归</td>
+<td>受影响 21 个测试文件（utils/ipc-handlers/config-manager/dialogs/window-security/main-index/menu-*/open-online/logger 等）</td>
+<td>469 用例通过（logger 变更后 174 用例复跑通过）</td>
+</tr>
+</tbody>
+</table>
+<h4>六、剩余风险</h4>
+<ol>
+<li><strong>发送方拒绝审计不落文件</strong>：<code>ipc-security.ts:271</code> 保留 console.warn（设计约束+测试断言），打包后该安全事件只进控制台、不进日志文件。若后续要落盘，需先解除该模块的「无 electron 运行时依赖」约束（或抽象轻量日志注入），并更新 <code>config-manager.test.ts</code> 断言。</li>
+<li><strong>状态栏镜像可能重复提示</strong>：logger 对 WARN/ERROR 会镜像到状态栏；部分迁移点（如 <code>utils.ts</code> 的路径越界/异步错误）原本已显式发送 <code>STATUS_BAR_UPDATE</code>。既有已迁移模块（file-operations 等）本就是该模式，本次保持一致；用户可能看到相邻两条同义提示。若需收敛，建议后续统一为「logger 落盘 + 单一显式状态栏提示」并给 logger 增加「仅文件」级别/开关。</li>
+<li><strong>测试 mock 面收窄风险</strong>：<code>main-index.test.ts</code>/<code>window-security.test.ts</code> 的 logger mock 未提供 <code>warn</code>，若将来把 index.ts/security.ts 的保留点迁到 logger，这两个测试会先报「logger.warn is not a function」，需要同步补 mock（本次按任务约定未改这两个测试）。</li>
+<li><strong>注释与历史快照</strong>：<code>dialog-defaults.ts:73</code>、<code>ShowShortcutKeysDialog.ts:6</code> 保留的是「历史实现」注释（描述已被替换的旧 console 写法），不影响运行；历史扫描报告（历史报告归档内的旧快照）未改动。</li>
+</ol>
+<h2 id="sec-2">二、PF-4~PF-9 性能优化量化证据</h2>
+<ul>
+<li>任务：task-27（P2 性能：目录增量/懒加载/rAF/KaTeX 缓存与大文档降级）</li>
+<li>代理：fix-perf ｜ 日期：2026-11-15 ｜ 环境：Windows 10 + Node 22 + Electron 43 + Vite/rolldown（electron-vite）</li>
+<li>复现方式：<code>npx.cmd vitest run &lt;脚本&gt;</code>；构建对比用 <code>npx.cmd electron-vite build</code> 后解析 <code>out/renderer/index.html</code> 的首屏引用</li>
+<li>原始脚本：<code>out/perf-pf/pf4-bench.tmp.test.ts</code>、<code>out/perf-pf/pf89-bench.tmp.test.ts</code>（移出 tests 目录，避免纳入全量测试）</li>
+<li>基线首屏数据快照：<code>out/perf-pf/baseline-index-chunks.json</code></li>
+</ul>
+<h4>一、PF-6 首屏 eager JS（构建产物对比）</h4>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>优化前（18:07 构建）</th>
+<th>优化后（本轮最终构建）</th>
+<th>变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index.html</code> 首屏引用文件数（script + modulepreload + css）</td>
+<td>18（17 JS + 1 CSS）</td>
+<td><strong>3</strong>（2 JS + 1 CSS）</td>
+<td><strong>-15</strong></td>
+</tr>
+<tr>
+<td>首屏 JS/CSS 总字节</td>
+<td>12,370,884 B（11.80 MiB）</td>
+<td><strong>10,564,842 B（10.08 MiB）</strong></td>
+<td><strong>-1,806,042 B（-14.6%）</strong></td>
+</tr>
+<tr>
+<td>首屏主 chunk</td>
+<td>10,900,902 B（10.40 MiB）</td>
+<td><strong>10,129,861 B（9.66 MiB）</strong></td>
+<td><strong>-771,041 B（-7.1%）</strong></td>
+</tr>
+<tr>
+<td>首屏 CSS</td>
+<td>554,599 B</td>
+<td><strong>433,027 B</strong></td>
+<td>-121,572 B（-21.9%）</td>
+</tr>
+<tr>
+<td>构建产物 JS 分块数</td>
+<td>—</td>
+<td>185 个（含按需 chunk）</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>懒加载拆分证据（均不在 <code>index.html</code> 首屏引用中，点击后才加载）：</p>
+<ul>
+<li>18 个 Vue 对话框 → 18 个独立 chunk（例如 <code>MessageDialog-*.js</code> 7.5 KB、<code>SystemSettingDialog-*.js</code> 28.0 KB、<code>ThemeSettingDialog-*.js</code> 22.4 KB，另有配套 CSS chunk 同步拆分）；</li>
+<li>19 个插件工具 → 独立 chunk（例如 <code>Ipv4SubnetCalc-*.js</code> 24.6 KB、<code>ASCIIComparison-*.js</code> 19.1 KB、<code>TokenGenerator-*.js</code> 5.9 KB）；</li>
+<li>mermaid 改为首次遇到 <code>```mermaid</code> 块时才动态 import，拆出 <code>mermaid.core-*.js</code> 171.9 KB、<code>elk-*.js</code> 2,680.0 KB、<code>cytoscape.esm-*.js</code> 869.7 KB、<code>dagre/graphlib/diagram-*/sequenceDiagram</code> 等 20+ 子 chunk，不再进入首屏。</li>
+</ul>
+<blockquote>
+<p>说明：首屏主 chunk 的剩余体积主要为 Monaco 编辑器（编辑器打开即需要）与 highlight.js/katex/markdown-it 等预览基础依赖；进一步拆分 Monaco 需改动欢迎页→主界面的挂载时序，属后续轮次范围（见剩余风险）。</p>
+</blockquote>
+<h4>二、PF-4 目录树增量重扫（微基准）</h4>
+<p>基准方法：合成目录树（3840 个 .md 文件 / 4297 节点，深度 3 层）+ 真实 <code>node_modules</code> 样本；每项取 3 次中位数。</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>优化前</th>
+<th>优化后</th>
+<th>变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>全量递归扫描（4297 节点）</td>
+<td>30.4 ms</td>
+<td><strong>17.4 ms</strong></td>
+<td><strong>-42.8%</strong></td>
+</tr>
+<tr>
+<td>完整目录刷新（扫描 + 建树 + 整树 JSON）</td>
+<td>29.4 ms</td>
+<td><strong>18.9 ms</strong></td>
+<td><strong>-35.7%</strong></td>
+</tr>
+<tr>
+<td><strong>watcher 外部单文件变更触发的刷新</strong></td>
+<td>28.6 ms（=全量）</td>
+<td><strong>1.5 ms</strong>（只重扫 1 个子树）</td>
+<td><strong>-94.8%</strong></td>
+</tr>
+<tr>
+<td>watcher 同批 3 个文件变更</td>
+<td>29.5 ms（=全量）</td>
+<td><strong>1.6 ms</strong></td>
+<td><strong>-94.6%</strong></td>
+</tr>
+<tr>
+<td>真实 <code>node_modules</code> 子树扫描</td>
+<td>280.0 ms / 5218 节点</td>
+<td><strong>82.3 ms</strong>（且依赖目录已整体排除）</td>
+<td>-70.6%</td>
+</tr>
+<tr>
+<td>工作区 = 本仓库根目录一次全量扫描</td>
+<td>约 315 ms+（报告基准 node_modules 样本 339 ms）</td>
+<td><strong>35.1 ms / 3166 节点</strong></td>
+<td>约 -89%</td>
+</tr>
+<tr>
+<td>整树 JSON（4297 节点）</td>
+<td>942,291 字符</td>
+<td>942,291 → 935,838 字符</td>
+<td>稳定 id 后内容未变时不再重复发送</td>
+</tr>
+</tbody>
+</table>
+<p>实现要点：</p>
+<ol>
+<li><code>readdir({ withFileTypes: true })</code> 替代「逐条目 lstat」，并加 64 并发上限的 readdir 闸门（递归等待子目录时不占名额，无死锁）；</li>
+<li>watcher 批次把变更路径折叠为「受影响目录」（父子目录合并、按阈值 8 个目录内只重扫该子树），超出阈值/新目录/涉及根目录时回退全量扫描；</li>
+<li>节点 id 改为「路径派生稳定 id」，整树 JSON 内容未变时逐字节稳定 → watcher 批次的「JSON 未变则跳过 IPC」去重真正生效；</li>
+<li><code>node_modules</code> / <code>.git</code> / <code>.svn</code> / <code>.hg</code> / <code>.idea</code> / <code>.vscode</code> 不进入目录树、其内部事件不触发刷新。</li>
+</ol>
+<h4>三、PF-8 预览大纲（TOC）与章节解析</h4>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>优化前</th>
+<th>优化后</th>
+<th>变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>章节解析（1700 标题 / 2.18 MB 文档，含 md.parse）</td>
+<td>12.84 ms（O(n²) indexOf 定位）</td>
+<td><strong>11.15 ms</strong>（单次线性遍历）</td>
+<td>-13.2%</td>
+</tr>
+<tr>
+<td>TOC 面板隐藏时每轮广播</td>
+<td>整表替换 + v-for diff（DOM 更新）</td>
+<td><strong>0 次 DOM 更新</strong>（仅缓存最新数组）</td>
+<td>隐藏期间成本归零</td>
+</tr>
+<tr>
+<td>内容指纹相同的重复广播</td>
+<td>整表替换</td>
+<td><strong>跳过整表替换</strong>（列表 DOM 元素身份不变，测试断言 <code>toBe</code>）</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h4>四、PF-9 KaTeX 缓存 + 大文档降级</h4>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>优化前</th>
+<th>优化后</th>
+<th>变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>267 个公式文档第二次渲染（缓存命中）</td>
+<td>24.49 ms（首轮冷启动）</td>
+<td><strong>1.26 ms</strong></td>
+<td><strong>-94.9%</strong></td>
+</tr>
+<tr>
+<td>3.01 MB 超大文档 <code>HemyRenderPreLocal</code></td>
+<td>68.74 ms（全量 KaTeX）</td>
+<td><strong>3.63 ms</strong>（自动降级跳过 KaTeX）</td>
+<td><strong>-94.7%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>实现要点：</p>
+<ol>
+<li>KaTeX 结果 LRU 缓存（key = 公式字符串，上限 200 条，命中刷新顺序、超限淘汰最久未用；失败结果不缓存）；</li>
+<li>阈值常量 <code>PREVIEW_LARGE_DOC_BYTE_THRESHOLD</code>（2 MiB）/ <code>PREVIEW_LARGE_DOC_LINE_THRESHOLD</code>（5 万行），单次线性扫描提前判定；</li>
+<li>超大文档：跳过 KaTeX + 跳过 mermaid/PlantUML 图表渲染（源码保留为代码块），预览顶部显示一次「文档过大，预览已简化」提示条，编辑器保持可用。</li>
+</ol>
+<h4>五、PF-7 拖拽/缩放 IPC 与 Monaco layout 合帧</h4>
+<ul>
+<li>实现：mousemove 只记录最新坐标/bounds，<code>requestAnimationFrame</code> 帧内最多提交一次 <code>WINDOW.MOVE</code>（缩放为 <code>MOVE</code> + <code>SET_SIZE</code> 各一次）；<code>mouseup</code> 立即 flush 最终位置，不丢最后一帧；无 rAF 环境退化为立即发送。</li>
+<li>量化：单帧内 3 次 mousemove → 1 次 IPC（测试断言）；按 1000 Hz 鼠标采样推算，拖拽 IPC 峰值约 1000 次/s → <strong>约 60 次/s（-94%）</strong>，缩放约 2000 次/s → <strong>约 120 次/s</strong>。</li>
+<li>Monaco：<code>editorAreaWidth</code> 连续变化/窗口 resize 触发的 <code>layout()</code> 同样 rAF 合帧（每帧最多 1 次），组件卸载时取消未执行帧。</li>
+<li>附带修复 PF-4 暴露的既有渲染缺陷：<code>FileTreeNode</code> 的 <code>v-memo</code> 只依赖 <code>path/fileExtension/isExpanded</code>，主进程整树下发新对象时深层新增/删除会被 memo 跳过（目录树不刷新）；新增 <code>treeRevision</code> 依赖后整树刷新正确失效，同时保留「展开/收起只重渲被切换子树」的收益。</li>
+</ul>
+<h4>六、验证结果</h4>
+<ul>
+<li>全量 <code>npx.cmd vitest run</code>：<strong>123 文件 / 2012 用例全部通过</strong>（任务基线 118 文件 / 1889 用例）；</li>
+<li><code>npm run typecheck</code>（node + web + test 全链）：<strong>exit 0</strong>；</li>
+<li><code>npx eslint .</code>：<strong>0 error</strong>；</li>
+<li><code>npx electron-vite build</code>：<strong>exit 0</strong>（构建产物见上表）。</li>
+</ul>
+<h2 id="sec-3">三、NSIS 打包与运行崩溃修复</h2>
+<ul>
+<li><strong>日期</strong>：2026-11-15</li>
+<li><strong>范围</strong>：<code>npm run build:win</code> NSIS 打包失败 + 打包版运行后「新建文件」主进程崩溃</li>
+<li><strong>结论</strong>：两处均已修复并重新打包验证（v1.3.0 安装包 / 便携版）</li>
+<li><strong>验证</strong>：typecheck 三工程 0 错误、测试 <strong>133 文件 / 2211 用例全过</strong>、ESLint 0 error、<code>electron-vite build</code> 通过、打包 exit 0</li>
+</ul>
+<h4>1. 问题一：NSIS 打包失败</h4>
+<h5>1.1 现象</h5>
+<ul>
+<li>执行 <code>npm run build:win</code> 时弹出 NSIS 错误框：<strong>&quot;Error writing temporary file. Make sure your temp folder is valid.&quot;</strong></li>
+<li>electron-builder 日志：编译出卸载器生成器后执行该 exe，<strong>process failed, exit code 2</strong>；<code>dist</code> 中只留下 400KB 左右的残缺 Setup.exe。</li>
+</ul>
+<h5>1.2 根因（已用对照实验证实）</h5>
+<table>
+<thead>
+<tr>
+<th>实验</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>同一 NSIS 生成器 exe 放在 <code>%TEMP%</code>、<code>E:\github.com\...</code> 外部目录运行</td>
+<td><strong>exit 0，成功生成卸载器</strong></td>
+</tr>
+<tr>
+<td>同一 exe 放在工作区内（<code>dist\</code>、项目根、工作区任意新子目录）运行</td>
+<td><strong>exit 2，报临时文件错误</strong></td>
+</tr>
+<tr>
+<td>检查路径完整性标签</td>
+<td>工作区根目录带显式 <strong>Low Mandatory Level</strong> 完整性标签，且未标记不继承 → 所有子目录/新文件继承 Low</td>
+</tr>
+<tr>
+<td>把工作区内 exe 的完整性标签改为 Medium 后运行</td>
+<td><strong>exit 0，成功</strong></td>
+</tr>
+<tr>
+<td>把外部 exe 的完整性标签改为 Low 后运行</td>
+<td><strong>exit 2，复现失败</strong></td>
+</tr>
+</tbody>
+</table>
+<p>结论：<strong>受管沙箱工作区被标记为 Low 完整性级别</strong>。从 Low 完整性目录启动的进程同样以低完整性运行，无法写入 Medium 完整性的 <code>%TEMP%</code>，NSIS 因此报&quot;临时文件夹无效&quot;并退出。与 electron-builder 版本、NSIS 脚本、TEMP 路径均无关。</p>
+<h5>1.3 修复</h5>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一次性修复</td>
+<td><code>icacls dist /setintegritylevel Medium</code>（<code>out/</code>、<code>resources/</code> 同步处理）</td>
+</tr>
+<tr>
+<td>仓库级防护</td>
+<td>新增 <code>build/prepare-build-dirs.js</code>：在 electron-builder 运行前检查 <code>dist</code>/<code>out</code> 完整性级别，非 Medium 时自动提升（幂等、跨平台 no-op、失败仅告警不阻塞）</td>
+</tr>
+<tr>
+<td>接线</td>
+<td><code>package.json</code> 全部 <code>build:*</code> / <code>build:unpack</code> / <code>verify:pack</code> 脚本在 electron-builder 前调用该脚本（8 处）</td>
+</tr>
+<tr>
+<td>效果</td>
+<td>即使 <code>npm run clean</code> 后重建目录再次继承 Low 标签，也会在打包前自动校正</td>
+</tr>
+</tbody>
+</table>
+<h5>1.4 验证</h5>
+<ul>
+<li><code>npm run build:win</code> <strong>exit 0</strong>：成功产出 <code>dist\BaiZeNotes_Setup_1.3.0_windows_x64.exe</code>（118.18 MB）、<code>dist\BaiZeNotes_1.3.0_windows_x64.exe</code>（便携版 107.28 MB）及 blockmap；</li>
+<li><code>node build/prepare-build-dirs.js</code> 输出&quot;构建目录完整性级别正常（Medium）&quot;。</li>
+</ul>
+<h4>2. 问题二：新建文件时主进程崩溃</h4>
+<h5>2.1 现象</h5>
+<p>打包版运行后点击新建文件，弹出：</p>
+<pre><code>A JavaScript error occurred in the main process
+TypeError: Object has been destroyed
+    at unregisterTrustedDialogWindow
+    at BrowserWindow.unregister
+    at BrowserWindow.wrapper (node:events)
+    at BrowserWindow.emit
+</code></pre>
+<h5>2.2 根因</h5>
+<ul>
+<li><code>src/main/utils/ipc-security.ts</code>（本日 N-05 IPC 授权改造新增）在登记对话框窗口时监听 <code>closed</code> 事件，处理函数仍通过 <code>window.webContents</code> 读取引用做注销；</li>
+<li>Electron 的 <code>closed</code> 事件在<strong>窗口已销毁后</strong>触发，此时访问 <code>window.webContents</code> 抛 <code>TypeError: Object has been destroyed</code>；</li>
+<li>新建文件 / 重命名对话框关闭时触发该路径 → 主进程未捕获异常弹窗。</li>
+</ul>
+<h5>2.3 修复（<code>src/main/utils/ipc-security.ts</code>）</h5>
+<table>
+<thead>
+<tr>
+<th>改动</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>注册时捕获引用</td>
+<td><code>registerTrustedDialogWindow</code> 在登记时一次性捕获 <code>webContents</code> 引用与 id，<code>closed</code> 清理函数只使用捕获值，<strong>不再访问窗口属性</strong></td>
+</tr>
+<tr>
+<td>显式注销防御</td>
+<td><code>unregisterTrustedDialogWindow</code> 读取 <code>webContents</code> 加 <code>try/catch</code>，窗口已销毁时静默返回（清理由 <code>closed</code> 监听器负责）</td>
+</tr>
+<tr>
+<td>主窗口判定加固</td>
+<td><code>isTrustedSender</code> 读取主窗口 <code>webContents</code> 同样加 <code>try/catch</code>，销毁竞态按&quot;非受信发送方&quot;处理，异常不会冒泡到 IPC 事件循环</td>
+</tr>
+</tbody>
+</table>
+<h5>2.4 回归测试（<code>tests/unit/ipc-security.test.ts</code> 新增 2 例，共 19 例）</h5>
+<ol>
+<li><code>closed</code> 监听器触发时窗口已销毁（<code>webContents</code> getter 抛错）→ 不抛异常且登记表正确清理；</li>
+<li>对已销毁窗口显式注销 → 不抛异常。</li>
+</ol>
+<h5>2.5 验证</h5>
+<ul>
+<li>目标测试 41 例全过；全量 <strong>133 文件 / 2211 用例全过</strong>；</li>
+<li>重新打包后从 <code>dist\win-unpacked\resources\app.asar</code> 提取 <code>out/main/index.js</code> 确认：<code>registerTrustedDialogWindow</code> 已是&quot;捕获引用 + 仅用捕获值注销&quot;的实现。</li>
+</ul>
+<h4>3. 产物与后续</h4>
+<table>
+<thead>
+<tr>
+<th>产物</th>
+<th>路径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NSIS 安装包</td>
+<td><code>dist\BaiZeNotes_Setup_1.3.0_windows_x64.exe</code>（118.18 MB）</td>
+</tr>
+<tr>
+<td>便携版</td>
+<td><code>dist\BaiZeNotes_1.3.0_windows_x64.exe</code>（107.28 MB）</td>
+</tr>
+<tr>
+<td>解包目录</td>
+<td><code>dist\win-unpacked\</code>（可直接运行验证）</td>
+</tr>
+<tr>
+<td>构建防护脚本</td>
+<td><code>build/prepare-build-dirs.js</code></td>
+</tr>
+<tr>
+<td>修复证据</td>
+<td><code>out\tool-results\build-win-crashfix2.log</code>、<code>out\tool-results\packed-main-index.js</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>建议人工冒烟</strong>：运行 <code>dist\win-unpacked\BaiZeNotes.exe</code> → 新建文件/文件夹、重命名、关闭对话框，确认无主进程异常弹窗；如仍出现请提供新的错误堆栈。</p>
+<blockquote>
+<p>说明：修复期间关闭了正在运行的 <code>dist\win-unpacked\BaiZeNotes.exe</code> 实例（占用 app.asar 导致无法重新打包），验证后可在解包目录重新启动。</p>
+</blockquote>
+<h4>4. 补充：特殊字体对话框插入行为修正（同日追加）</h4>
+<h5>4.1 问题</h5>
+<p>「插入 → 特殊字体」对话框中：点击「应用」插入一次，点击「确定」又插入一次 → 重复插入。</p>
+<h5>4.2 修改（<code>src/renderer/src/components/dialogs/complex/FontSelectDialog.vue</code>）</h5>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>修改</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>按钮文案</td>
+<td>「应用」→「插入」（新增 <code>common.insert</code> 中英词条：插入 / Insert）</td>
+</tr>
+<tr>
+<td>「插入」按钮</td>
+<td>执行插入（<code>emit('apply')</code>），窗口<strong>保持打开</strong>，便于调整后多次插入</td>
+</tr>
+<tr>
+<td>「确定」按钮</td>
+<td><strong>仅关闭窗口</strong>（<code>emit('close')</code>），不再插入</td>
+</tr>
+<tr>
+<td>按钮层级</td>
+<td>「插入」为主按钮（实心强调色），「确定」「取消」为次按钮（描边）</td>
+</tr>
+</tbody>
+</table>
+<h5>4.3 测试与验证</h5>
+<ul>
+<li><code>tests/unit/vue2/complex-dialogs.test.ts</code>：更新 2 例——插入按钮 emit apply 且不 close；确定按钮只 close、不 emit apply；</li>
+<li><code>tests/unit/vue2/baize-notes-dialog-wiring.test.ts</code>：断言按钮文案为「取消/插入/确定」、点击插入触发一次 <code>MONACO_INSERT_TEXT</code> 且窗口保持、点击确定仅关闭且不产生第二次插入；</li>
+<li>全量 <strong>133 文件 / 2211 用例全过</strong>、typecheck 三工程 0 错误、ESLint 0 error；</li>
+<li>打包产物验证：<code>dist\win-unpacked\resources\app.asar</code> 内 <code>FontSelectDialog</code> 资源已无 <code>btn-apply</code>，<code>handleInsert</code> 发射 apply、<code>handleConfirm</code> 仅发射 close；<code>dist</code> 最新安装包（20:02）与便携版（20:04）均包含该修复。</li>
+</ul>
+<p><strong>人工验证路径</strong>：插入 → 特殊字体 → 输入文字 → 点「插入」（插入一次、窗口不关）→ 再点「确定」（仅关闭，不再插入）。</p>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

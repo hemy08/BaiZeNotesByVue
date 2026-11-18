@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系统设置补充实现</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">一、禁用设置项清单</a>
+    <a class="toc-l2" href="#sec-2">二、字段与基础设施现状（已具备，无需新建）</a>
+    <a class="toc-l2" href="#sec-3">三、逐项实现方案</a>
+    <a class="toc-l3" href="#sub-1">1~2. 启动恢复上次文件/目录（autoOpenLastFile / autoOpenLastFolder）</a>
+    <a class="toc-l3" href="#sub-2">3. 开机自启动（autoStart）</a>
+    <a class="toc-l3" href="#sub-3">4. 关闭时最小化到托盘（minimizeToTray）</a>
+    <a class="toc-l3" href="#sub-4">5. 记住窗口位置和大小（rememberWindowSize）</a>
+    <a class="toc-l3" href="#sub-5">6. 最近文件列表数量（recentFilesCount）</a>
+    <a class="toc-l3" href="#sub-6">7. 跟随系统主题（useSystemTheme）</a>
+    <a class="toc-l3" href="#sub-7">8~9. 自动备份（enableAutoBackup + backupInterval）</a>
+    <a class="toc-l3" href="#sub-8">10. 应用主题下拉（appTheme，非无实现）</a>
+    <a class="toc-l2" href="#sec-4">四、实施顺序建议</a>
+    <a class="toc-l2" href="#sec-5">五、风险与注意事项</a>
+    <a class="toc-l2" href="#sec-6">六、验证基线（本计划启动时）</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>系统设置补充实现</h1>
+    <p>报告归档 · 02-修复与实施</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>17-系统设置补充实现计划（1.3.1）</h1>
+<blockquote>
+<p>📦 <strong>归档报告（原文：17-系统设置补充实现计划.md）</strong>——历史快照，数字与结论以报告时点为准；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="../03-专项治理/IPC通信矩阵.html">IPC通信矩阵</a>。</p>
+</blockquote>
+<ul>
+<li><strong>日期</strong>：2026-11-15 晚</li>
+<li><strong>背景</strong>：系统设置对话框（<code>SystemSettingDialog.vue</code>）中部分设置项因无对应功能实现而被禁用，并提示「该设置暂无对应功能实现，保存后不会产生效果，后续版本支持」。本文档整理全部禁用项，给出实现方案与实施顺序，作为 1.3.1 版本的补充实现依据。</li>
+<li><strong>目标版本</strong>：1.3.1</li>
+<li><strong>实施状态（2026-11-15 晚更新）</strong>：✅ 9 项已全部实现并验证通过（批次 A：启动恢复×2 / 自启动 / 窗口记忆 / 最近文件数；批次 B：托盘 / 跟随系统主题；批次 C：自动备份+间隔 / appTheme 下拉收口）。全量验证：typecheck 三工程 0 错误、ESLint 0/0、vitest 149 文件 / 2691 用例全通过。</li>
+</ul>
+<h2 id="sec-1">一、禁用设置项清单</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>设置项</th>
+<th>字段（SystemSetting）</th>
+<th>所属面板</th>
+<th>当前状态</th>
+<th>实现难度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>启动时恢复上次打开的文件</td>
+<td><code>autoOpenLastFile</code></td>
+<td>通用-启动</td>
+<td>禁用（无实现）</td>
+<td>低</td>
+</tr>
+<tr>
+<td>2</td>
+<td>启动时恢复上次打开的目录</td>
+<td><code>autoOpenLastFolder</code></td>
+<td>通用-启动</td>
+<td>禁用（无实现）</td>
+<td>低</td>
+</tr>
+<tr>
+<td>3</td>
+<td>开机自启动</td>
+<td><code>autoStart</code></td>
+<td>通用-启动</td>
+<td>禁用（无实现）</td>
+<td>低</td>
+</tr>
+<tr>
+<td>4</td>
+<td>关闭时最小化到系统托盘</td>
+<td><code>minimizeToTray</code></td>
+<td>通用-窗口</td>
+<td>禁用（无实现）</td>
+<td>中</td>
+</tr>
+<tr>
+<td>5</td>
+<td>记住窗口位置和大小</td>
+<td><code>rememberWindowSize</code></td>
+<td>通用-窗口</td>
+<td>禁用（无实现）</td>
+<td>低</td>
+</tr>
+<tr>
+<td>6</td>
+<td>最近文件列表数量（5~20）</td>
+<td><code>recentFilesCount</code></td>
+<td>通用-编辑</td>
+<td>禁用（无实现）</td>
+<td>低</td>
+</tr>
+<tr>
+<td>7</td>
+<td>跟随系统主题</td>
+<td><code>useSystemTheme</code></td>
+<td>外观-主题</td>
+<td>禁用（无实现）</td>
+<td>中</td>
+</tr>
+<tr>
+<td>8</td>
+<td>启用自动备份</td>
+<td><code>enableAutoBackup</code></td>
+<td>备份-自动备份</td>
+<td>禁用（无实现）</td>
+<td>中</td>
+</tr>
+<tr>
+<td>9</td>
+<td>备份间隔（1~72 小时）</td>
+<td><code>backupInterval</code></td>
+<td>备份-自动备份</td>
+<td>禁用（无实现）</td>
+<td>中</td>
+</tr>
+<tr>
+<td>10</td>
+<td>应用主题（下拉）</td>
+<td><code>appTheme</code></td>
+<td>外观-主题</td>
+<td>禁用（由主题设置对话框统一管理，<strong>非无实现</strong>）</td>
+<td>低</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>说明：第 10 项 <code>appTheme</code> 的禁用提示为「主题由主题设置对话框统一管理」，与&quot;无实现&quot;性质不同，建议改为&quot;打开主题设置&quot;按钮或移除冗余下拉，见 §三-10。备份面板的「保留备份数量」（<code>backupCount</code>，1~10）输入框未禁用，已随手动备份/恢复功能生效。</p>
+</blockquote>
+<h2 id="sec-2">二、字段与基础设施现状（已具备，无需新建）</h2>
+<ul>
+<li>全部字段已存在于 <code>src/shared/types/system.ts</code> 的 <code>SystemSetting</code> 接口（可选字段），配置单真源路由已打通（<code>config-manager.ts</code> 的 <code>STORE_BACKED_CONFIGS</code>），对话框读写往返不丢字段；</li>
+<li>上次文件/目录恢复链路已存在：<code>file-state-store</code> 持久化 <code>lastOpenedFile/lastOpenedDirectory</code>，欢迎页恢复与 <code>runAfterMainViewEntered</code>（先 <code>WELCOME_ENTER_MAIN</code> 后投递数据事件）已修复时序（FE-01/FE-15）；</li>
+<li>主题广播唯一实现 <code>theme-broadcast.ts</code>、主题配置 <code>theme-config.ts</code>（24 应用主题）可复用；</li>
+<li>托盘图标资源已具备（<code>resources/icon</code> 256/512 ico，electron-builder 已打包）；</li>
+<li>主进程 <code>cleanupApp</code> 已有定时器/监听器清理入口，自动备份定时器可挂入；</li>
+<li>i18n 双语词典基础设施完备，新增文案走 <code>dialogRenderer.systemSetting.*</code> 与 <code>mainMsg.*</code> 命名空间。</li>
+</ul>
+<h2 id="sec-3">三、逐项实现方案</h2>
+<h3 id="sub-1">1~2. 启动恢复上次文件/目录（autoOpenLastFile / autoOpenLastFolder）</h3>
+<ul>
+<li><strong>方案</strong>：主进程主窗口 <code>did-finish-load</code> 后（或欢迎页就绪后）读取 <code>system</code> store 的这两个开关；开启时依次：隐藏欢迎页 → 复用 <code>runAfterMainViewEntered</code> 的投递顺序发送 <code>WELCOME_ENTER_MAIN</code> 与数据事件（文件经 <code>OpenSelectFile</code> 链路、目录经 <code>ReloadDirFromDisk</code> 链路），全部复用既有通道，不新增 IPC。</li>
+<li><strong>渲染层</strong>：移除两处 <code>disabled</code> 与提示；无需新组件。</li>
+<li><strong>验收</strong>：勾选后重启自动进入上次文件/目录且编辑器与目录树有数据；未勾选显示欢迎页；打开失败（文件已删）回退欢迎页并提示。</li>
+</ul>
+<h3 id="sub-2">3. 开机自启动（autoStart）</h3>
+<ul>
+<li><strong>方案</strong>：主进程新增 <code>system-settings.ts</code> 工具或直接在保存路径处理：<code>app.setLoginItemSettings({ openAtLogin: enabled })</code>；对话框打开时用 <code>app.getLoginItemSettings().openAtLogin</code> 初始化显示值。</li>
+<li><strong>注意</strong>：开发模式（未打包 electron）该 API 无效，UI 标注「需安装后生效」；macOS 需在 entitlements 允许（当前未支持 macOS 发布，不阻塞）。</li>
+<li><strong>验收</strong>：打包环境勾选后登录自启；取消后不再自启。</li>
+</ul>
+<h3 id="sub-3">4. 关闭时最小化到托盘（minimizeToTray）</h3>
+<ul>
+<li><strong>方案</strong>：
+<ul>
+<li>新增 <code>src/main/utils/tray.ts</code>：创建 <code>Tray</code>（256 ico），菜单含「显示主窗口」「退出」；<code>tray.on('click')</code> 恢复窗口；</li>
+<li>主窗口 <code>close</code> 事件（<code>index.ts</code> 现有 close 拦截处）：flush 落盘后，若 <code>minimizeToTray</code> 开启且非显式退出（<code>app.isQuitting</code> 标志）→ <code>event.preventDefault()</code> + <code>win.hide()</code>；「退出」菜单与 <code>before-quit</code> 设置退出标志走真实退出；</li>
+<li>设置开关即时生效（保存后广播，无需重启）。</li>
+</ul>
+</li>
+<li><strong>验收</strong>：点关闭按钮窗口隐藏到托盘；托盘图标可恢复/退出；退出后进程完全结束（复用 MEM-11 的 cleanupApp）。</li>
+</ul>
+<h3 id="sub-4">5. 记住窗口位置和大小（rememberWindowSize）</h3>
+<ul>
+<li><strong>方案</strong>：<code>createWindow</code> 读取 <code>system</code> store 持久化 bounds（新增 <code>windowBounds</code> 字段）；<code>resize</code>/<code>move</code> 事件 500ms 防抖写回；恢复时校验 bounds 落在可见屏幕内（<code>screen.getAllDisplays()</code> 求交），否则回退默认 1280×800 居中。</li>
+<li><strong>验收</strong>：调整窗口后重启恢复位置大小；拔掉外接显示器后启动不出现窗口跑出屏幕。</li>
+</ul>
+<h3 id="sub-5">6. 最近文件列表数量（recentFilesCount）</h3>
+<ul>
+<li><strong>方案</strong>：定位最近文件列表维护处（欢迎页「最近文件」与菜单「最近打开」数据源），写入侧按 <code>recentFilesCount</code>（默认 10，范围 5~20）截断去重。</li>
+<li><strong>验收</strong>：修改数量保存后，最近列表不超过 N 条；旧数据即时裁剪。</li>
+</ul>
+<h3 id="sub-6">7. 跟随系统主题（useSystemTheme）</h3>
+<ul>
+<li><strong>方案</strong>：主进程 <code>nativeTheme.on('updated')</code> → 若开启，按 <code>nativeTheme.shouldUseDarkColors</code> 选择 dark/light 应用主题（映射现有 24 主题中的对应主题或动态配色），经 <code>theme-broadcast</code> 广播；手动切换主题时自动关闭该开关（互斥语义在 UI 标注）。</li>
+<li><strong>验收</strong>：切换系统深浅色后应用主题即时跟随；关闭后保持手动主题。</li>
+</ul>
+<h3 id="sub-7">8~9. 自动备份（enableAutoBackup + backupInterval）</h3>
+<ul>
+<li><strong>方案</strong>：新增 <code>src/main/utils/auto-backup.ts</code>：按 <code>backupInterval</code>（小时）定时（<code>setInterval</code>，挂入 <code>cleanupApp</code> 清理）：把活动文件（或当前工作区全部 .md，避开 node_modules/.git）复制到 <code>userData/backups/&lt;YYYYMMDD-HHmmss&gt;/</code>，按 <code>backupCount</code> 滚动清理旧备份；手动备份按钮复用同一拷贝函数；备份结果状态栏提示（复用 i18n 错误映射）。</li>
+<li><strong>验收</strong>：开启后按间隔生成备份；备份数不超过保留上限；磁盘写失败有用户可见提示。</li>
+</ul>
+<h3 id="sub-8">10. 应用主题下拉（appTheme，非无实现）</h3>
+<ul>
+<li><strong>方案（二选一）</strong>：
+<ul>
+<li>A（推荐）：下拉替换为只读显示当前主题 + 「打开主题设置」按钮（触发既有主题设置对话框）；</li>
+<li>B：直接绑定主进程 <code>currentTheme</code> 并可切换（与主题对话框同源，<code>theme-config.setThemeConfig</code>）。</li>
+</ul>
+</li>
+<li><strong>验收</strong>：不再出现&quot;暂无实现&quot;提示；主题切换路径唯一。</li>
+</ul>
+<h2 id="sec-4">四、实施顺序建议</h2>
+<table>
+<thead>
+<tr>
+<th>批次</th>
+<th>设置项</th>
+<th>预估</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A（0.5~1 天）</strong></td>
+<td>#1/#2 启动恢复、#3 自启动、#5 窗口记忆、#6 最近文件数</td>
+<td>各 0.25 天</td>
+<td>复用现有链路，改动面小、用户价值直接</td>
+</tr>
+<tr>
+<td><strong>B（1~1.5 天）</strong></td>
+<td>#4 托盘、#7 跟随系统主题</td>
+<td>各 0.5~0.75 天</td>
+<td>涉及窗口生命周期与主题链路，需回归验证</td>
+</tr>
+<tr>
+<td><strong>C（1~1.5 天）</strong></td>
+<td>#8/#9 自动备份 + #10 主题下拉收口</td>
+<td>1~1.5 天</td>
+<td>备份策略细节需确认（目录范围/去重/配额）</td>
+</tr>
+</tbody>
+</table>
+<p>合计约 3~4 人天。每批完成后：typecheck / eslint / vitest 全绿 + 相关设置项的新增单测（配置读写、定时器清理、窗口 bounds 校验等）。</p>
+<h2 id="sec-5">五、风险与注意事项</h2>
+<ul>
+<li><strong>托盘与关闭语义</strong>：minimizeToTray 会改变&quot;关闭即退出&quot;的用户预期，需要清晰的托盘菜单与提示；与现有 close 拦截 flush 落盘顺序整合，避免数据丢失回归（FUN-03）；</li>
+<li><strong>自动备份体积</strong>：大工作区全量拷贝的磁盘占用与耗时，建议默认只备份活动文件 + 已打开目录的 .md，并在文档说明；</li>
+<li><strong>开机自启</strong>：仅打包环境可验证；<code>electron-vite dev</code> 下 API 无效果，测试用 mock；</li>
+<li><strong>跟随系统主题</strong>：与手动主题互斥语义需 i18n 文案说明，避免&quot;切换后又被系统覆盖&quot;的困惑；</li>
+<li><strong>并行开发注意</strong>：<code>SystemSettingDialog.vue</code> 与 <code>system.ts</code> 是多方改动热点，实施时保持写作用域隔离（AGENTS.md 约束）。</li>
+</ul>
+<h2 id="sec-6">六、验证基线（本计划启动时）</h2>
+<ul>
+<li>typecheck 三工程 0 错误；ESLint 0/0；vitest 134 文件 / 2252 用例全通过；审计 0 漏洞。</li>
+</ul>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

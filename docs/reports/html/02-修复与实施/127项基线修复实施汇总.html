@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>127项基线修复实施汇总</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">一、修复与优化计划（2026-11-14）</a>
+    <a class="toc-l2" href="#sec-2">二、第一轮修复实施（2026-11-14）</a>
+    <a class="toc-l2" href="#sec-3">三、第二轮修复实施（2026-11-14）</a>
+    <a class="toc-l2" href="#sec-4">四、第三轮修复实施（2026-11-15）</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>127项基线修复实施汇总</h1>
+    <p>报告归档 · 02-修复与实施</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>127 项基线修复实施汇总（合并归档）</h1>
+<blockquote>
+<p><strong>合并归档报告</strong>：由以下历史报告合并而成（保留原文，按时间顺序成章）：<code>07-修复与优化计划.md</code>、<code>08-修复实施报告.md</code>、<code>09-第二轮修复实施报告.md</code>、<code>10-第三轮修复实施报告.md</code>。
+内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="../03-专项治理/IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.6 基线：155 测试文件 / 2,823 用例 / 90 IPC 通道）。</p>
+</blockquote>
+<h2 id="sec-1">一、修复与优化计划（2026-11-14）</h2>
+<ul>
+<li><strong>制定日期</strong>：2026-11-14 ｜ <strong>依据</strong>：<a href="../01-检查与扫描/总体优化项报告.html">00-总体优化项报告</a> 及各维度检查报告</li>
+<li><strong>执行方式</strong>：6 个修复子智能体分两波并行执行，根代理统一验收</li>
+<li><strong>验收标准</strong>：typecheck 0 错误；vitest 全部通过（含新增）；ESLint 可运行且通过；electron-vite build 通过；npm audit 无 critical/high</li>
+</ul>
+<h4>1. 本轮执行范围总览</h4>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>负责子智能体</th>
+<th>波次</th>
+<th>核心内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0 安全止血</td>
+<td>fix-security</td>
+<td>A</td>
+<td>P0 XSS 链、依赖漏洞、CSP、IPC 校验、mermaid CDN 本地化</td>
+</tr>
+<tr>
+<td>1 数据安全</td>
+<td>fix-data</td>
+<td>A</td>
+<td>dirty 标记、自动保存、关闭落盘、编码、对话框 IPC 清理</td>
+</tr>
+<tr>
+<td>2 质量门禁</td>
+<td>fix-quality</td>
+<td>A</td>
+<td>ESLint flat config、@ts-ignore、错误处理、死代码</td>
+</tr>
+<tr>
+<td>4 性能（部分）</td>
+<td>fix-perf</td>
+<td>A</td>
+<td>击键防抖、滚动监听、mermaid 缓存、logger 优化</td>
+</tr>
+<tr>
+<td>3 架构收口（部分）</td>
+<td>fix-arch</td>
+<td>B</td>
+<td>IPC 注册一次性化、菜单 id 对齐、插件菜单治理</td>
+</tr>
+<tr>
+<td>5 完整性与发布</td>
+<td>fix-release</td>
+<td>B</td>
+<td>README 数据修正、CHANGELOG、打包配置、版本配置</td>
+</tr>
+</tbody>
+</table>
+<h4>2. 阶段 0：安全止血（fix-security）</h4>
+<ul>
+<li><strong>S-1</strong> P0 XSS 链（FUN-01/CMP-15/ARC-01）：
+<ul>
+<li>预览链路加 DOMPurify 消毒（<code>MarkdownPreviewComponent.vue</code>，svg/mathMl profile，保留 mermaid/katex 渲染）；</li>
+<li><code>src/renderer/index.html</code> 加 CSP meta（<code>default-src 'self'</code> + 必要放宽）；</li>
+<li><code>navi-tab-open-exe</code> 加 sender 校验与路径白名单（<code>utils.ts:105-107</code>）；</li>
+<li><code>src/preload/dialog.ts</code> 的 <code>send</code> 改通道白名单；</li>
+<li><code>config:read/write/delete/list</code> 加 configName 校验（<code>config-manager.ts</code>，防路径逃逸 ARC-17）。</li>
+</ul>
+</li>
+<li><strong>S-2</strong> 依赖安全（CMP-16/18/31、PF-04）：
+<ul>
+<li>升级：electron ≥43.8.1、markdown-it ≥15.0.3、vue ≥3.5.42、monaco-editor 0.57.0；</li>
+<li>mermaid 仅当代码调用兼容时才升 12.3（否则留 11.x 最新并记录残留 low）；</li>
+<li>移除死依赖（先 grep 验证零引用）：commonmark、encoding、detect-file-encoding-and-language、markdown-it-anchor、monaco-themes、plantuml-cli、vuex、node-forge（若有引用则升级 ^1.4.3）、uuid/ulid 保留被使用者；</li>
+<li><code>app-builder-bin</code> 移到 devDependencies；</li>
+<li><code>.npmrc</code> 清理 8 个废弃键、<code>audit=false</code> 改 true；运行 npm install + audit 复测。</li>
+</ul>
+</li>
+<li><strong>S-3</strong> mermaid CDN 本地化（ARC-10）：<code>OpenMermaidRenderFrame.ts</code> 内联 node_modules 的 mermaid.min.js，去除远程 CDN 依赖。</li>
+<li><strong>S-4</strong> 死分支清理：<code>src/preload/index.ts</code> 非 contextIsolated 死分支。</li>
+</ul>
+<h4>3. 阶段 1：数据安全（fix-data）</h4>
+<ul>
+<li><strong>D-1</strong> 统一 dirty 标记：<code>auto-save.ts</code> 只保存脏内容；空内容也保存；保存失败用户可见（FUN-04/05、PF-06）；</li>
+<li><strong>D-2</strong> 自动保存开关修复：<code>handlers.ts:148-150</code> 反转逻辑改正，间隔变更重启定时器（FUN-04）；</li>
+<li><strong>D-3</strong> 关闭/退出前落盘 + 未保存确认（FUN-03）：<code>index.ts</code> close 事件拦截；</li>
+<li><strong>D-4</strong> 打开编码探测与回写（FUN-02）：jschardet 探测 + iconv-lite 转换，按原编码写回；</li>
+<li><strong>D-5</strong> 磁盘重载保护：重载前检测脏状态（FUN-06）；</li>
+<li><strong>D-6</strong> 配置损坏容错：electron-store 读取 try/catch + 备份重建（FUN-11，theme-config/system-setting/quick-link-config/file-state）；</li>
+<li><strong>D-7</strong> 新建文件同名覆盖检查（FUN-17）；</li>
+<li><strong>D-8</strong> 对话框 IPC 监听器清理（MEM-01～04）：命名函数 + closed 兜底；</li>
+<li><strong>D-9</strong> 只写不读缓存移除（MEM-05：baize-store + file-operations）；useConfigStore 关闭清 content（MEM-06）+ 按配置名分防抖定时器（MEM-15）；</li>
+<li><strong>D-10</strong> 新增单元测试：dirty 标记、编码探测、configName 校验、监听器清理。</li>
+</ul>
+<h4>4. 阶段 2：质量门禁（fix-quality）</h4>
+<ul>
+<li><strong>Q-1</strong> ESLint flat config（<code>eslint.config.js</code>）+ 删除 <code>.eslintrc.cjs</code>/<code>.eslintignore</code>；lint 脚本去 <code>--fix</code>，新增 <code>lint:fix</code>（package.json 由 fix-security 统一改）；</li>
+<li><strong>Q-2</strong> <code>@ts-ignore</code>/<code>any</code> 清理：editor-setting.ts、preload 等（theme-config 由 fix-data 顺带处理，避免冲突）；</li>
+<li><strong>Q-3</strong> 错误处理：<code>encrypt_decrypt.ts</code> 不再把 Error 塞返回值、async IPC 加 catch（CQ-05 范围内可安全改动的部分）；</li>
+<li><strong>Q-4</strong> 死代码删除：<code>default-configs.ts</code>、<code>ipc-listener-manager</code> 空方法、未使用 renders 文件（先验证零引用）。</li>
+</ul>
+<h4>5. 阶段 4：性能（部分，fix-perf）</h4>
+<ul>
+<li><strong>P-1</strong> 击键同步防抖 + 脏标记（PF-01）：<code>MarkdownMonacoEditor.vue</code>/<code>MarkdownEditComponent.vue</code> 空闲期同步，保存前 flush；</li>
+<li><strong>P-2</strong> 无订阅者滚动监听移除（PF-13）；</li>
+<li><strong>P-3</strong> mermaid 按内容 hash 缓存（PF-09）+ 非法 math 块 try/catch 降级（FUN-08）；</li>
+<li><strong>P-4</strong> logger 文件大小缓存替代每次 statSync（PF-12）；</li>
+<li><strong>P-5</strong> 主题注册表惰性加载（PF-15）；</li>
+<li><strong>P-6</strong> 模板插入改插入模式（FUN-07，<code>MarkdownEditComponent.vue</code> 处理侧）。</li>
+<li>推迟：Monaco worker、fs.watch 增量、预览单跳重构（需专项设计）。</li>
+</ul>
+<h4>6. 阶段 3：架构收口（部分，fix-arch，B 波）</h4>
+<ul>
+<li><strong>A-1</strong> IPC 注册移出 createWindow，一次性注册（ARC-06，<code>index.ts</code>，在 fix-data 完成后执行）；</li>
+<li><strong>A-2</strong> 菜单动作双注册表 id 对齐（ARC-07：menu_handle.ts ↔ menu_actions.ts）；</li>
+<li><strong>A-3</strong> 主题广播 payload 修正（FUN-20）+ 死通道清理（BaiZeNotes.vue:367）；</li>
+<li><strong>A-4</strong> 插件菜单未实现项隐藏（CMP-26/ARC-09/FUN-19：menu_consts/plugin_tools_const）；</li>
+<li><strong>A-5</strong> <code>ipc-listener-manager</code> 按 channel 引用清理（MEM-08）+ 死代码（ARC-15）；</li>
+<li><strong>A-6</strong> 小修：IPv4 子网比较（FUN-25）、编辑器默认值统一（FUN-28）、提示标题（FUN-16）。</li>
+<li>推迟：通道常量全量迁移、配置单真源、双向 import 全量收敛、sendSync→invoke。</li>
+</ul>
+<h4>7. 阶段 5：完整性与发布（fix-release，B 波）</h4>
+<ul>
+<li><strong>R-1</strong> README 关键数据实测修正（CMP-05/09）：40,065 行代码、文件数、主题数、目录树、失效链接；</li>
+<li><strong>R-2</strong> CHANGELOG/RELEASE-NOTES 补记本轮修复（不升版本号，记入 1.2.2 补丁条目）；</li>
+<li><strong>R-3</strong> package.json homepage 修正（CMP-10）；</li>
+<li><strong>R-4</strong> electron-builder.yml extraResources 校正（ARC-20）；</li>
+<li><strong>R-5</strong> generate-version-config 修复 chromeVersion 空值问题（CMP-22）；</li>
+<li><strong>R-6</strong> dist 旧安装包清理（PF-16）。</li>
+<li>推迟：自动更新落地（需真实服务器）、LICENSE（需用户决定）、i18n、覆盖率补齐。</li>
+</ul>
+<h4>8. 执行纪律（所有子智能体）</h4>
+<ul>
+<li>禁止运行 <code>npm install</code>（仅 fix-security 允许）；允许 typecheck / vitest / eslint / 只读统计；</li>
+<li>每次改动后必须保证 <code>typecheck:node</code>、<code>typecheck:web</code> 0 错误、vitest 通过；</li>
+<li>保守修改，改动与报告编号一一对应，中文注释；不确定处标注并跳过，禁止猜测式重构；</li>
+<li>不得改动：docs/wiki、docs/reports、AGENTS.md、README.md（README 仅 fix-release）；</li>
+<li>完成后把改动清单写入 <code>out\tool-results\&lt;agent&gt;-changes.md</code>，回复中文摘要（改动数、验证结果、遗留项）。</li>
+</ul>
+<h2 id="sec-2">二、第一轮修复实施（2026-11-14）</h2>
+<blockquote>
+<p>📌 第二轮修复（Monaco worker、配置单真源、通道常量迁移、strict 模式等）已完成，见 <a href="127项基线修复实施汇总.html">09-第二轮修复实施报告</a>。</p>
+</blockquote>
+<ul>
+<li><strong>项目</strong>：白泽笔记（BaiZe Notes）v1.2.2 ｜ <strong>执行日期</strong>：2026-11-14（第一轮）</li>
+<li><strong>依据</strong>：<a href="../01-检查与扫描/总体优化项报告.html">00-总体优化项报告</a>（127 项检查发现）与 <a href="127项基线修复实施汇总.html">07-修复与优化计划</a></li>
+<li><strong>执行方式</strong>：7 个修复子智能体两波并行（安全/数据/质量/性能 → 架构/发布 → lint 收官），根代理统一验收</li>
+<li><strong>验收结论</strong>：✅ 全部门禁通过（typecheck 0 错误、测试 1067/1067、ESLint 0 error、electron-vite build 通过、npm audit 0 漏洞）</li>
+</ul>
+<h4>1. 执行概览</h4>
+<table>
+<thead>
+<tr>
+<th>子智能体</th>
+<th>阶段</th>
+<th>修复项数</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fix-security</td>
+<td>0 安全止血</td>
+<td>S-1～S-4（11 项发现）</td>
+<td>✅ 含 3 项 P0 全闭环、audit 15→0</td>
+</tr>
+<tr>
+<td>fix-data</td>
+<td>1 数据安全</td>
+<td>D-1～D-10（17 项发现）</td>
+<td>✅ 新增 25 个测试</td>
+</tr>
+<tr>
+<td>fix-quality</td>
+<td>2 质量门禁</td>
+<td>Q-1～Q-4（6 项发现）</td>
+<td>✅ ESLint 门禁恢复可运行</td>
+</tr>
+<tr>
+<td>fix-perf</td>
+<td>4 性能（部分）</td>
+<td>P-1～P-6（7 项发现）</td>
+<td>✅ 击键防抖等落地</td>
+</tr>
+<tr>
+<td>fix-arch</td>
+<td>3 架构收口（部分）</td>
+<td>A-1～A-6（11 项发现）</td>
+<td>✅ 含测试体系升级（61 文件/1067 用例）</td>
+</tr>
+<tr>
+<td>fix-release</td>
+<td>5 完整性与发布</td>
+<td>R-1～R-6（8 项发现）</td>
+<td>✅ README 重写、dist 清理 455MB</td>
+</tr>
+<tr>
+<td>fix-lint</td>
+<td>ESLint 收官</td>
+<td>71 个存量 error</td>
+<td>✅ 门禁 0 error</td>
+</tr>
+</tbody>
+</table>
+<h4>2. 关键成果数据</h4>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>修复前</th>
+<th>修复后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>严重漏洞（P0 攻击链）</td>
+<td>1 条（XSS→任意 IPC→执行本地程序）</td>
+<td>0（消毒+CSP+IPC 校验+preload 白名单四重防护）</td>
+</tr>
+<tr>
+<td>npm audit 生产依赖漏洞</td>
+<td>15（1 critical + 11 high）</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>生产依赖数量</td>
+<td>37</td>
+<td>26（移除 11 个死/冗余依赖）</td>
+</tr>
+<tr>
+<td>ESLint 门禁</td>
+<td>完全无法运行（exit 2）</td>
+<td>可运行且 0 error（199 warn 持续收敛）</td>
+</tr>
+<tr>
+<td>单元测试</td>
+<td>3 文件 / 21 用例</td>
+<td><strong>61 文件 / 1067 用例</strong></td>
+</tr>
+<tr>
+<td>类型检查</td>
+<td>0 错误</td>
+<td>0 错误（保持）</td>
+</tr>
+<tr>
+<td>@ts-ignore 数量</td>
+<td>28</td>
+<td>个位数（消除 20+）</td>
+</tr>
+<tr>
+<td>dist 目录</td>
+<td>含 1.2.1 旧安装包（约 1.8GB 残留）</td>
+<td>清理旧产物，释放 455MB</td>
+</tr>
+<tr>
+<td>数据安全路径</td>
+<td>6 条静默覆盖/丢失用户文件路径</td>
+<td>0（dirty 标记贯穿保存/关闭/重载/退出）</td>
+</tr>
+</tbody>
+</table>
+<h4>3. 阶段 0 安全止血（fix-security，11 项）</h4>
+<ul>
+<li><strong>P0 XSS 链闭环</strong>（FUN-01/CMP-15/ARC-01，已复核）：预览 <code>v-html</code> 前 DOMPurify 消毒（svg/mathMl profile，保留 mermaid/KaTeX/高亮）；<code>index.html</code> 加 CSP meta；<code>navi-tab-open-exe</code> 三重校验（sender 白名单 + 绝对路径存在性 + 受信目录确认框）；<code>dialog.ts</code> 预加载 <code>send</code> 改 18 通道白名单。</li>
+<li><strong>路径逃逸</strong>（ARC-17）：config 读写 configName 强制 <code>^[A-Za-z0-9_-]+$</code> 白名单。</li>
+<li><strong>mermaid CDN 本地化</strong>（ARC-10）：隐藏窗口内联 <code>node_modules/mermaid/dist/mermaid.min.js</code>（5.5MB），去除远程 CDN 依赖。</li>
+<li><strong>依赖治理</strong>（CMP-16/18/31、PF-04）：electron 43.8.10、markdown-it 15.0.3、vue 3.5.45、monaco-editor 0.57.0、mermaid 12.3.0（API 兼容已验证）；移除 commonmark、encoding、detect-file-encoding-and-language、markdown-it-anchor、monaco-themes、plantuml-cli、vuex、node-forge；app-builder-bin 移 devDeps；7 组 overrides 修复传递依赖；.npmrc 清理 9 个废弃键、audit 恢复启用。</li>
+<li><strong>死分支清理</strong>（S-4）：preload 非 contextIsolated 死分支及 @ts-ignore 删除。</li>
+</ul>
+<h4>4. 阶段 1 数据安全（fix-data，17 项）</h4>
+<ul>
+<li><strong>统一 dirty 标记</strong>（FUN-05/PF-06）：app-state 保存快照 + 惰性比较，自动保存仅脏时写盘、空内容也保存、失败经状态栏提示。</li>
+<li><strong>自动保存开关修复</strong>（FUN-04）：按 payload 启停并重启定时器（间隔≥5s），启动时尊重开关。</li>
+<li><strong>关闭/退出落盘</strong>（FUN-03）：close/before-quit 拦截 → <code>editor:flush-content</code> 契约（渲染层取消防抖立即同步，2 秒超时兜底）→ 脏则保存 → 真正关闭。</li>
+<li><strong>编码体系</strong>（FUN-02）：打开时 BOM 检测 + jschardet 探测 + iconv-lite 转码，记录编码并按原编码写回（UTF-8 无 BOM / GBK 往返测试通过）。</li>
+<li><strong>重载保护</strong>（FUN-06）：磁盘重载前检查脏状态，脏则跳过并提示。</li>
+<li><strong>配置损坏容错</strong>（FUN-11）：electron-store 统一 <code>createConfigStoreSafely</code>，损坏时备份 <code>.corrupt-时间戳</code> 重建；顺带清理 13 处 @ts-ignore。</li>
+<li><strong>其余</strong>：新建同名文件不再静默覆盖（FUN-17）；导入失败不再插入 'convert failed' 伪内容（FUN-13）；4 个对话框 IPC 监听器命名函数 + closed 兜底（MEM-01～04）；只写不读的 50 项文件缓存移除（MEM-05）；importOption 关闭清空 + 按配置名分防抖定时器（MEM-06/15）；cleanupApp 停止自动保存（MEM-11）。</li>
+</ul>
+<h4>5. 阶段 2 质量门禁（fix-quality + fix-lint）</h4>
+<ul>
+<li><strong>ESLint flat config</strong>（CQ-01）：<code>eslint.config.js</code> 落地，删除 <code>.eslintrc.cjs</code>/<code>.eslintignore</code>；规则收敛回旧策略语义（<code>explicit-function-return-type</code> off；<code>no-explicit-any</code>、<code>vue/require-toggle-inside-transition</code> warn 待专项清理）；lint 脚本由 <code>--fix</code> 改为纯检查。</li>
+<li><strong>@ts-ignore 消除</strong>（CQ-02）：editor-setting（6 处）、encrypt_decrypt（2 处 any）、theme-config/system-setting/quick-link-config（数据代理顺带 13 处）等 20+ 处清零。</li>
+<li><strong>错误处理</strong>（CQ-05）：CryptoEncrypt/Decrypt 不再把 Error 塞入返回值，改抛错。</li>
+<li><strong>死代码</strong>（CQ-03/04）：default-configs.ts 删除。</li>
+<li><strong>lint 收官</strong>：fix-lint 修复 71 个存量 error（未用变量 23、require 混用 17、空函数 11、Versions.vue 真实模板 bug 等），门禁 0 error。</li>
+</ul>
+<h4>6. 阶段 4 性能（fix-perf，7 项）</h4>
+<ul>
+<li><strong>击键同步防抖</strong>（PF-01）：500ms 空闲防抖 + lastSyncedContent 去重，保存前 flush，卸载兜底同步。</li>
+<li><strong>滚动监听移除</strong>（PF-13）：无订阅者的 window scroll 监听删除。</li>
+<li><strong>mermaid 缓存</strong>（PF-09）：按内容 FNV-1a hash 缓存 50 条 LRU，命中时重写 SVG 内部 id 避免 DOM 冲突。</li>
+<li><strong>math 块降级</strong>（FUN-08）：非法 math 块 try/catch 降级为源码显示，预览不再整体冻结。</li>
+<li><strong>logger 优化</strong>（PF-12）：文件大小缓存，不再每条日志 statSync。</li>
+<li><strong>主题注册表惰性加载</strong>（PF-15）：单主题按需读取，55 主题全量构建仅首次。</li>
+<li><strong>模板插入</strong>（FUN-07）：写作模板改光标处插入，不再全文替换。</li>
+</ul>
+<h4>7. 阶段 3 架构收口（fix-arch，11 项）</h4>
+<ul>
+<li><strong>IPC 注册一次性化</strong>（ARC-06）：三个注册函数移出 createWindow，macOS activate 重建窗口不再重复注册。</li>
+<li><strong>菜单双注册表对齐</strong>（ARC-07）：渲染层分支 id 对齐实际菜单 id，主进程树剔除死路径 handler；顺带修复编辑器设置对话框路由（ARC-08）。</li>
+<li><strong>主题广播修正</strong>（FUN-20）：payload 改为 <code>{themeStyles, monacoTheme, separateEditorTheme}</code>，死 send 清理。</li>
+<li><strong>插件菜单治理</strong>（ARC-09/CMP-26/FUN-19）：23 个无组件菜单项隐藏（保留数据），点击不再空白。</li>
+<li><strong>监听器管理修复</strong>（MEM-08）：按引用清理，不再 split(':') 截断通道；menu_context 死代码全删（ARC-15）。</li>
+<li><strong>小修</strong>：IPv4 子网数值比较（FUN-25）、编辑器默认值统一（FUN-28）、另存为标题（FUN-16）。</li>
+<li><strong>测试架构升级</strong>（ARC-18 部分）：vitest 配置加 vue 插件与别名，新增 jsdom 组件测试（@vue/test-utils 真挂载），测试文件从 3 → 61、用例 21 → 1067。</li>
+</ul>
+<h4>8. 阶段 5 完整性与发布（fix-release，8 项）</h4>
+<ul>
+<li><strong>README 重写</strong>（CMP-05/09）：12 项修正——实测代码规模 40,065 行（ts 23,150/vue 15,133/css 1,675）、主题 24、结构树与文档链接全部对齐 wiki/reports 新结构，失真数字清零，22/22 链接有效。</li>
+<li><strong>CHANGELOG/RELEASE-NOTES</strong>（CMP-06）：补记本轮六类修复（版本号未变）。</li>
+<li><strong>打包配置</strong>（ARC-20）：electron-builder.yml 删除不存在的 katex/mermaid 条目、显式 <code>asar: true</code>。</li>
+<li><strong>版本生成</strong>（CMP-22）：electronVersion 从 require('electron/package.json') 读取，chromeVersion 运行时兜底，generate-version 验证通过。</li>
+<li><strong>dist 清理</strong>（PF-16）：删除 1.2.1 旧安装包与 blockmap，释放 455.27MB。</li>
+<li><strong>homepage 修正</strong>（CMP-10）。</li>
+</ul>
+<h4>9. 遗留与推迟项（按计划明确推迟，供下轮排期）</h4>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>项</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>性能</td>
+<td>PF-03 Monaco worker、PF-05 fs.watch 增量、PF-02 预览单跳重构、PF-08 plantuml 本地渲染、PF-10 大文件流式</td>
+<td>需专项设计与运行时验证</td>
+</tr>
+<tr>
+<td>架构</td>
+<td>ARC-03 通道常量全量迁移、ARC-04/05 配置单真源、ARC-02 双向 import 全量收敛、ARC-11 循环依赖</td>
+<td>大型重构，需单独里程碑</td>
+</tr>
+<tr>
+<td>功能</td>
+<td>FUN-10/CMP-21 自动更新、FUN-09 菜单动作补齐、FUN-12 编辑器设置对话框、FUN-14 Excel/ini 导入</td>
+<td>自动更新需真实服务器；其余工作量大</td>
+</tr>
+<tr>
+<td>内存</td>
+<td>MEM-07 PDF 导出窗口 try/finally、MEM-09 EventBus 检测接口恢复、MEM-10 直连纳入管理、MEM-12/13 兜底</td>
+<td>低危，随架构收口一并处理</td>
+</tr>
+<tr>
+<td>质量</td>
+<td>CQ-06 重复代码抽取、CQ-07 超长文件拆分、CQ-08 规则收紧（noUnusedLocals）、no-explicit-any 199 warn 专项清理</td>
+<td>逐步推进，warn 已可见</td>
+</tr>
+<tr>
+<td>完整性</td>
+<td>CMP-07 LICENSE（需用户决定）、CMP-08 架构文档 html 同步、CMP-11～14 资产清理、CMP-30 i18n</td>
+<td>依赖用户决策或低优先</td>
+</tr>
+<tr>
+<td>运行时验证</td>
+<td>CSP 对 dev HMR/Monaco worker 的实际影响、mermaid 12.3 渲染效果、关闭落盘交互</td>
+<td>需人工启动应用确认</td>
+</tr>
+</tbody>
+</table>
+<h4>10. 验收记录（最终一次全量跑，2026-11-14 21:53）</h4>
+<table>
+<thead>
+<tr>
+<th>门禁</th>
+<th>命令</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主进程类型检查</td>
+<td>tsc --noEmit -p tsconfig.node.json</td>
+<td>✅ 0 错误</td>
+</tr>
+<tr>
+<td>渲染层类型检查</td>
+<td>vue-tsc --noEmit -p tsconfig.web.json</td>
+<td>✅ 0 错误</td>
+</tr>
+<tr>
+<td>单元测试</td>
+<td>npm run test</td>
+<td>✅ 61 文件 / 1067 用例全过</td>
+</tr>
+<tr>
+<td>代码检查</td>
+<td>npx eslint .</td>
+<td>✅ 0 error（105 warn 可自动修复项持续收敛）</td>
+</tr>
+<tr>
+<td>构建验证</td>
+<td>npm run generate-version &amp;&amp; electron-vite build</td>
+<td>✅ exit 0（main 441.99kB / preload 2.76kB+1.51kB / renderer 完整产出）</td>
+</tr>
+<tr>
+<td>安全审计</td>
+<td>npm audit --omit=dev（官方 registry）</td>
+<td>✅ 0 漏洞</td>
+</tr>
+</tbody>
+</table>
+<h4>11. 附录：各代理改动清单</h4>
+<ul>
+<li><code>out\tool-results\fix-security-changes.md</code>（含 audit 前后对比）</li>
+<li><code>out\tool-results\fix-data-changes.md</code>（含跨代理 flush 契约说明）</li>
+<li><code>out\tool-results\fix-quality-changes.md</code></li>
+<li><code>out\tool-results\fix-perf-changes.md</code></li>
+<li><code>out\tool-results\fix-arch-changes.md</code>（含测试体系升级说明）</li>
+<li><code>out\tool-results\fix-release-changes.md</code>（含 dist 清理清单）</li>
+<li><code>out\tool-results\fix-lint-changes.md</code>（含 71 个 error 分类）</li>
+<li><code>out\tool-results\audit-after.json</code>、<code>eslint-final.txt</code>、<code>build-verify.txt</code>：验收原始证据</li>
+</ul>
+<blockquote>
+<p>本轮共修复/闭环约 60 项检查发现（P0 3 项全闭环、P1 37 项中 27 项闭环或部分闭环），其余按计划推迟并已列明。全部改动未提交 git，建议人工启动应用做一次运行时冒烟（HMR、Monaco worker、预览渲染、关闭落盘）后提交。</p>
+</blockquote>
+<h2 id="sec-3">三、第二轮修复实施（2026-11-14）</h2>
+<ul>
+<li><strong>项目</strong>：白泽笔记（BaiZe Notes）v1.2.2 ｜ <strong>执行日期</strong>：2026-11-14（第二轮）</li>
+<li><strong>依据</strong>：<a href="127项基线修复实施汇总.html">08-修复实施报告</a> 第 9 节遗留清单</li>
+<li><strong>执行方式</strong>：第一波 6 个并行子智能体 + 第二波 2 个串行重构子智能体，根代理统一验收</li>
+<li><strong>验收结论</strong>：✅ 全部门禁通过（typecheck 0 错误、测试 102 文件/1662 用例、ESLint 0 error、electron-vite build 通过、npm audit 0 漏洞）</li>
+</ul>
+<h4>1. 执行概览</h4>
+<table>
+<thead>
+<tr>
+<th>子智能体</th>
+<th>波次</th>
+<th>范围</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>r2-monaco</td>
+<td>A</td>
+<td>PF-03 Monaco worker、FUN-09 编辑器动作</td>
+<td>✅ worker 启用，主 chunk 减重，折叠/查找/替换/跳行/大纲落地</td>
+</tr>
+<tr>
+<td>r2-func-menu</td>
+<td>A</td>
+<td>FUN-09 菜单动作、FUN-26 快捷键、FUN-30、CMP-29</td>
+<td>✅ 菜单/快捷键/绘图链路打通</td>
+</tr>
+<tr>
+<td>r2-func-io</td>
+<td>A</td>
+<td>FUN-10/14/15/21/22/24/27/30、PF-10/14、MEM-07</td>
+<td>✅ 自动更新优雅化、导入导出修复、渲染降级</td>
+</tr>
+<tr>
+<td>r2-mem</td>
+<td>A</td>
+<td>MEM-09/10/12/13、FUN-18</td>
+<td>✅ EventBus 检测恢复、59 处 IPC 统一管理</td>
+</tr>
+<tr>
+<td>r2-quality</td>
+<td>A</td>
+<td>CQ-06/07、FUN-12</td>
+<td>✅ 5 个超长文件拆分、CSS 合并、54 处控件修复</td>
+</tr>
+<tr>
+<td>r2-completeness</td>
+<td>A</td>
+<td>CMP-02/03/04/08/11/13/14/19/20/27/29</td>
+<td>✅ 覆盖率 75.68%、287 个零引用资产归档、IV 随机化</td>
+</tr>
+<tr>
+<td>r2-arch-ipc</td>
+<td>B</td>
+<td>ARC-02/03/11/14、CQ-09/11</td>
+<td>✅ 465 处通道常量迁移、循环依赖解除、13 文件重命名</td>
+</tr>
+<tr>
+<td>r2-arch-config</td>
+<td>B</td>
+<td>ARC-04/05/12、CQ-08、FUN-02/29、any 清理</td>
+<td>✅ 配置单真源、strict 模式、any 清零、编码菜单打通</td>
+</tr>
+</tbody>
+</table>
+<h4>2. 关键成果数据（第一轮 → 第二轮）</h4>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>第一轮后</th>
+<th>第二轮后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>单元测试</td>
+<td>61 文件 / 1067 用例</td>
+<td><strong>102 文件 / 1662 用例</strong></td>
+</tr>
+<tr>
+<td>测试覆盖率（lines）</td>
+<td>无统计</td>
+<td><strong>75.68%</strong>（main 89.28 / common 98.8）</td>
+</tr>
+<tr>
+<td>ESLint</td>
+<td>0 error / 453 warning</td>
+<td>0 error / <strong>121 warning</strong></td>
+</tr>
+<tr>
+<td>no-explicit-any</td>
+<td>315 处</td>
+<td><strong>0 处</strong></td>
+</tr>
+<tr>
+<td>严格模式（noUnusedLocals/Parameters）</td>
+<td>关闭</td>
+<td><strong>开启且 0 错误</strong></td>
+</tr>
+<tr>
+<td>IPC 通道硬编码</td>
+<td>72+ 处字面量</td>
+<td><strong>0 处</strong>（125 个常量统一）</td>
+</tr>
+<tr>
+<td>配置存储</td>
+<td>三目录双系统</td>
+<td><strong>单真源</strong>（渲染层写主进程 store）</td>
+</tr>
+<tr>
+<td>Monaco 编辑器</td>
+<td>主线程回退</td>
+<td><strong>独立 worker（0.57MB editor.worker）</strong></td>
+</tr>
+<tr>
+<td>零引用资产</td>
+<td>287 个</td>
+<td>已归档 <code>resources/_unused-assets/</code>（可回退）</td>
+</tr>
+</tbody>
+</table>
+<h4>3. 第一波修复明细</h4>
+<h5>r2-monaco（PF-03 / CMP-28 / FUN-09）</h5>
+<ul>
+<li>弃用不兼容的 vite-plugin-monaco-editor（vite 2.x 时代产物），改 Monaco 官方手动方案：<code>?worker</code> 导入 + <code>MonacoEnvironment.getWorker</code>，裸包名精确重定向到 editor.api + 45 个精选语言 + 全部 contributions；</li>
+<li>产物：editor.worker 0.57MB 运行时加载，ts/css/html/json worker 按需；主 chunk 10.31 → 10.18MB；</li>
+<li>编辑器动作：折叠（foldAll/unfoldAll/foldLevelN + markdown 折叠提供器）、查找/替换（actions.find/startFindReplaceAction）、跳行（钳制校验）、大纲下拉（ATX 标题提取 + 点击跳转）。</li>
+</ul>
+<h5>r2-func-menu（FUN-09/26/30、CMP-29）</h5>
+<ul>
+<li>菜单 → EventBus 契约事件（与 r2-monaco 对齐）：折叠 8 项、查找、替换、跳行、大纲；</li>
+<li>剪切/复制/粘贴走既有 Monaco IPC；绘图改 Mermaid/PlantUML 子菜单走模板插入链路；</li>
+<li>快捷键真实绑定：Ctrl+N/O/R、Ctrl+Shift+R、F4（沿用 globalShortcut 机制）；Monaco 原生键标注如实保留；</li>
+<li>无法低成本实现的（跨文件检索、模板管理）按 A-4 隐藏并注释；删除右键 alert 调试项。</li>
+</ul>
+<h5>r2-func-io（FUN-10/14/15/21/22/24/27/30、PF-10/14、MEM-07）</h5>
+<ul>
+<li>自动更新优雅化：electron-updater 封装 + 占位 URL 时诚实提示&quot;未配置更新源&quot;（CMP-21 收口）；</li>
+<li>导入：ini 入口可用、文本类统一编码探测、xls/xlsx 明确引导转 CSV（不再乱码）；</li>
+<li>导出：PDF 窗口 try/finally（MEM-07）、XML CDATA 转义、版本号从 package.json 读取；</li>
+<li>渲染：围栏代码块全保护、危险协议链接不生成可点击 HTML、mermaid 失败回显源码、TOC 稳定 id；</li>
+<li>右键&quot;在文件夹中显示&quot;可用；大文件确认改异步对话框；用户提示统一中文。</li>
+</ul>
+<h5>r2-mem（MEM-09/10/12/13、FUN-18）</h5>
+<ul>
+<li>EventBus 恢复 $checkLeaks()/$stats() 泄漏检测（+5 用例）；</li>
+<li>59 处直连 IPC 统一经 ipc-listener-manager（registerOnce 防重复 + inventory 库存）；</li>
+<li>12 个对话框 JSDOM 显式 close；TitleBar/useDialogDrag 拖拽监听兜底卸载；</li>
+<li>无活动文件时保存请求只提示一次、不弹错误框。</li>
+</ul>
+<h5>r2-quality（CQ-06/07、FUN-12）</h5>
+<ul>
+<li>超长文件拆分：ShowEditorSettingDialog 1403→211、Information 1375→29（+12 数据文件）、快捷符号/表情数据文件分离，全部 &lt;800 行、对外 API 不变；</li>
+<li>editor-setting-css 与 dialog-shared-css 合并为单一来源；</li>
+<li>FUN-12：重复 id 去重 3、失效脚本引用清除 17、无监听器控件补齐 37、无对应字段控件隐藏 14、默认值对齐。</li>
+</ul>
+<h5>r2-completeness（CMP-02/03/04/08/11/13/14/19/20/27/29）</h5>
+<ul>
+<li>覆盖率基建：@vitest/coverage-v8 + include 扩大 + lines 40 阈值；实测 75.68%；</li>
+<li>资产治理：346 个资产逐个上下文校验，287 个零引用归档到 <code>resources/_unused-assets/</code>（未删除，可整体回退）；</li>
+<li>加密 IV 每次随机并前缀输出（兼容旧格式）；PDF/HemyTools 空壳入口治理；menu_consts 122 行死注释清理；删除 2 个失效 shell 脚本；架构文档 HTML 头同步。</li>
+</ul>
+<h4>4. 第二波重构明细</h4>
+<h5>r2-arch-ipc（ARC-02/03/11/14、CQ-09/11）</h5>
+<ul>
+<li><strong>通道常量单真源</strong>：ipc-channels.ts 重写为 16 组 125 个常量（补缺 17、删死 7），全项目 465 处 IPC 字面量替换为常量，线上字符串不变，新增防回归测试（8 用例）双向交叉核对；</li>
+<li><strong>事件双轨收口</strong>：EventBus 26 个事件名常量集中，60 处引用收口，插件工具事件收敛单轨；</li>
+<li><strong>边界收敛</strong>：渲染层 import 主进程源码 7 处全部收敛到 shared；<strong>循环依赖解除</strong>（新增 file-state-store.ts，删除 @ts-ignore/延迟 require）；</li>
+<li><strong>重命名</strong>：13 个 snake_case 文件 + event_bus 目录改 kebab-case，63 处路径同步。</li>
+</ul>
+<h5>r2-arch-config（ARC-04/05/12、CQ-08、FUN-02/29）</h5>
+<ul>
+<li><strong>配置单真源</strong>：config-manager 增加 STORE_BACKED_CONFIGS 路由表，渲染层读写 system/theme/editor/quick-links 全部落主进程 electron-store（单文件、单目录）；system 写入后联动重启自动保存定时器/注入字体 CSS/广播（FUN-04 存储半边收口）；旧 system.json 一次性合并迁移并改名备份（幂等，可回滚）；</li>
+<li><strong>ARC-12</strong>：四 config 模块收敛共享安全工厂，setTheme 合并策略防丢字段；</li>
+<li><strong>CQ-08</strong>：双 tsconfig 开启 noUnusedLocals/noUnusedParameters，修复 20 处未用变量，typecheck 0 错误；</li>
+<li><strong>any 清零</strong>：消除 306 处（改具体类型/unknown/泛型），豁免 9 个（带中文说明），no-explicit-any 315→0，warning 453→121；</li>
+<li><strong>编码菜单打通</strong>（FUN-02）：file-reopen-with-encoding / file-convert-encoding 通道四段链路完成；<strong>FUN-29</strong>：状态栏显示实际编码、空文件不注入 \r\n、新建文件内存/磁盘一致。</li>
+</ul>
+<h4>5. 最终验收记录（2026-11-14 23:48）</h4>
+<table>
+<thead>
+<tr>
+<th>门禁</th>
+<th>命令</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主进程类型检查</td>
+<td>tsc --noEmit -p tsconfig.node.json（strict + noUnused*）</td>
+<td>✅ 0 错误</td>
+</tr>
+<tr>
+<td>渲染层类型检查</td>
+<td>vue-tsc --noEmit -p tsconfig.web.json（strict + noUnused*）</td>
+<td>✅ 0 错误</td>
+</tr>
+<tr>
+<td>单元测试</td>
+<td>npm run test</td>
+<td>✅ 102 文件 / 1662 用例全过</td>
+</tr>
+<tr>
+<td>代码检查</td>
+<td>npx eslint .</td>
+<td>✅ 0 error（121 warning）</td>
+</tr>
+<tr>
+<td>构建验证</td>
+<td>npm run generate-version + electron-vite build</td>
+<td>✅ exit 0</td>
+</tr>
+<tr>
+<td>安全审计</td>
+<td>npm audit（官方 registry）</td>
+<td>✅ 0 漏洞</td>
+</tr>
+<tr>
+<td>测试覆盖率</td>
+<td>npm run test:coverage</td>
+<td>✅ lines 75.68%，阈值通过</td>
+</tr>
+</tbody>
+</table>
+<h4>6. 剩余遗留项（下轮候选）</h4>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>性能</td>
+<td>PF-02 预览单跳渲染重构、PF-05 fs.watch 增量、PF-08 plantuml 本地渲染、PF-10 分块传输</td>
+<td>需专项设计 + 实机验证</td>
+</tr>
+<tr>
+<td>质量</td>
+<td>121 条 warning 中约 106 条 vue/attributes-order 模板风格</td>
+<td>可一次性 --fix 收敛（需评审 diff）</td>
+</tr>
+<tr>
+<td>架构</td>
+<td>quick-link/editor 对话框形状与主进程字段映射、存储目录基址统一、ARC-15 残留死通道</td>
+<td>行为兼容性需逐项确认</td>
+</tr>
+<tr>
+<td>功能</td>
+<td>跨文件检索（Ctrl+Shift+F/H）、模板管理、xlsx 真解析</td>
+<td>新功能开发</td>
+</tr>
+<tr>
+<td>运行时验证</td>
+<td>Monaco worker 实机加载、CSP 对 HMR 影响、关闭落盘交互、配置迁移实机确认</td>
+<td>需人工启动应用冒烟</td>
+</tr>
+<tr>
+<td>决策项</td>
+<td>LICENSE 文件（CMP-07）、自动更新真实发布源（CMP-21）、i18n（CMP-30）</td>
+<td>需用户决策</td>
+</tr>
+</tbody>
+</table>
+<h4>7. 附录：改动清单</h4>
+<ul>
+<li><code>out\tool-results\r2-monaco-changes.md</code>、<code>r2-func-menu-changes.md</code>、<code>r2-func-io-changes.md</code></li>
+<li><code>out\tool-results\r2-mem-changes.md</code>、<code>r2-quality-changes.md</code>、<code>r2-completeness-changes.md</code></li>
+<li><code>out\tool-results\r2-arch-ipc-changes.md</code>（含重命名对照表与 465 处迁移统计）</li>
+<li><code>out\tool-results\r2-arch-config-changes.md</code>（含 any 豁免清单与迁移策略）</li>
+<li><code>out\tool-results\r2-arch-ipc-verify.txt</code>、<code>r2-arch-config-verify.txt</code>、<code>r2-coverage-raw.txt</code>、<code>build-verify-r2.txt</code>：验收原始证据</li>
+<li><code>resources\_unused-assets\</code>：287 个零引用资产归档（含移动清单 <code>out\tool-results\r2-asset-moved.txt</code>）</li>
+</ul>
+<blockquote>
+<p>两轮合计：127 项检查发现中约 90+ 项闭环或部分闭环（P0 全部、P1 约 32/37），测试从 21 用例增长到 1662 用例，安全审计 15 漏洞清零，ESLint 门禁从完全失效到 0 error。全部改动未提交 git，建议人工冒烟（HMR、Monaco worker、预览渲染、编码切换、关闭落盘、配置迁移）后提交。</p>
+</blockquote>
+<h2 id="sec-4">四、第三轮修复实施（2026-11-15）</h2>
+<ul>
+<li><strong>项目</strong>：白泽笔记（BaiZe Notes）v1.2.2 ｜ <strong>执行日期</strong>：2026-11-15（第三轮）</li>
+<li><strong>依据</strong>：<a href="127项基线修复实施汇总.html">09-第二轮修复实施报告</a> 第 6 节遗留清单（7 项未处理 + 13 项部分修复）</li>
+<li><strong>执行方式</strong>：6 个修复子智能体（5 个并行 + 1 个类型收敛）+ 根代理统一接线与验收</li>
+<li><strong>验收结论</strong>：✅ 全部门禁通过（typecheck 0 错误、测试 110 文件/1808 用例、ESLint 0 error、electron-vite build 通过、npm audit 0 漏洞）</li>
+</ul>
+<h4>1. 执行前后状态变化</h4>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>第三轮前</th>
+<th>第三轮后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅ 已修复</td>
+<td>107 项</td>
+<td><strong>125 项</strong></td>
+</tr>
+<tr>
+<td>🟡 部分修复</td>
+<td>13 项</td>
+<td><strong>1 项</strong>（仅 PF-02 预览单跳重构）</td>
+</tr>
+<tr>
+<td>⏭ 未处理</td>
+<td>7 项</td>
+<td><strong>1 项</strong>（仅 CMP-30 i18n，需产品决策）</td>
+</tr>
+<tr>
+<td>合计</td>
+<td>127 项</td>
+<td>127 项</td>
+</tr>
+</tbody>
+</table>
+<h4>2. 各子智能体交付明细</h4>
+<h5>r3-ipc（CQ-05 / CQ-10 / PF-11 / ARC-21）</h5>
+<ul>
+<li><strong>sendSync → invoke 改造</strong>：4 个调用点（HashText.vue、HmacGenerator.vue、CryptoEncDec.vue×2）与 4 个主进程通道改为 <code>ipcMain.handle</code> + <code>await invoke</code>，加密算法与输出格式零改动；结果数组改 reactive + 请求序号防乱序。</li>
+<li><strong>异步 IPC 兜底（CQ-05）</strong>：async <code>ipcMain.on</code> 回调补 try/catch 13 处（console.error + 状态栏中文提示）；handle 补日志 9 处；修正 2 处浮动 Promise。</li>
+<li><strong>同步校验</strong>：src 全目录 <code>ipcRenderer.sendSync(</code> 零残留（新增防回归测试）。</li>
+</ul>
+<h5>r3-dialogs（CQ-06 / PF-07）</h5>
+<ul>
+<li><strong>PF-07 jsdom 惰性化</strong>：14 个文件移除顶层 jsdom 静态导入，统一经 <code>dialog-defaults.ts</code> 缓存 getter 按需加载；<code>src/main</code> 内仅剩 1 处懒加载 getter。</li>
+<li><strong>CQ-06 样板治理</strong>：14 个对话框迁移到 <code>loadDialogHtml</code> 公共函数；新增 4 个公共函数（getJSDOM/createJSDOM/notifyReloadDirFromDisk/getInlineDialogThemeVariables）；4 处内联主题 CSS 收敛到 <code>dialog-shared-css.ts</code>；<strong>15/15 对话框渲染 HTML 逐字节一致（SHA-256 相同）</strong>。</li>
+<li>目录操作的 reload 定时器样板由 r3-watch 的 <code>ScheduleReloadFromDisk()</code> 统一收敛（5 处调用）。</li>
+</ul>
+<h5>r3-watch（PF-05 / PF-10）</h5>
+<ul>
+<li><strong>PF-05 目录增量监听</strong>：<code>fs.watch(rootPath, { recursive: true })</code> 单例监听当前目录；事件 500ms 合并窗口（N 次事件只刷新 1 次）；自写抑制窗口 1.5s 防回环；整树未变则跳过 IPC；目录切换/退出清理 watcher；不支持 recursive 的平台降级为根目录监听，失败再降级为原全量模式；<strong>与脏状态保护（FUN-06）完全兼容</strong>。</li>
+<li><strong>PF-10 大文件流式读取</strong>：5MB 阈值自适应；超阈值走 <code>createReadStream</code> 64KB 分块 + 流式解码（多字节字符跨块不截断）；编码探测抽取 <code>ProbeFileEncoding()</code>；IPC 仍单次传输（分块协议注释留后续）。</li>
+</ul>
+<h5>r3-plantuml（PF-08）</h5>
+<ul>
+<li><strong>本地离线渲染</strong>：新增 <code>src/main/renders/plantuml-local.ts</code>（隐藏 BrowserWindow 加载 <code>resources/plantuml/index.html</code> teaVM 离线环境，<code>executeJavaScript</code> 取回 SVG）；窗口复用 + 串行队列 + sha1 LRU 缓存 50 + 单图 10s/窗口加载 20s 超时 + 渲染进程崩溃重建 + 主窗口关闭时销毁。</li>
+<li><strong>渲染层接入</strong>：<code>hemy-editor-render.ts</code> 新增 <code>preRenderPlantumlProc</code>（<code>plantuml/</code>puml 围栏 + 裸 <code>@startuml…@enduml</code> 两种图块，12s 兜底 + hash LRU + 同批去重）；保留 markdown-it-plantuml 仅作资源缺失时的远程降级；DOMPurify 消毒层不变。</li>
+<li><strong>根代理接线 3 点</strong>：<code>src/shared/ipc-channels.ts</code> 新增 <code>IPC.RENDER.PLANTUML_LOCAL</code>（两侧改为引用同一常量）；<code>index.ts</code> 在 <code>app.whenReady</code> 注册、<code>cleanupApp</code> 销毁隐藏窗口；<code>main-index.test.ts</code> 补 ipcMain mock。</li>
+<li>无 GUI 环境用 jsdom+teaVM 替代验证：成功渲染 2205 字符 SVG（含节点文本），DOMPurify 消毒后 svg 元素保留。</li>
+</ul>
+<h5>r3-misc（ARC-15 / ARC-19 / ARC-22 / ARC-16 / FUN-10 / CMP-07 / CMP-21 / CMP-25）</h5>
+<ul>
+<li><strong>ARC-15</strong>：window-manager <code>getStats/printStats</code> 死链删除；注释型空模块 <code>menu-context.ts</code> 删除；<code>ipc/index.ts</code> 死 re-export 清理；<code>open-plugin-tool</code> 有发送方（25 处 send）零监听 → 按规则保留并在代码注明。</li>
+<li><strong>ARC-19</strong>：<code>docs/wiki/02-设计与架构/架构文档.md</code> 3 处 Vuex 矛盾表述同步为&quot;已移除 Vuex，采用 Vuex 兼容 API 的轻量 store&quot;。</li>
+<li><strong>ARC-22</strong>：<code>global-types.d.ts</code> 删除零引用 Global 命名空间（20 字段）及 3 个类型（188→149 行）；<code>global.ts</code> 删除 <code>saveFileInterval</code> 魔法值。</li>
+<li><strong>ARC-16 / FUN-10 / CMP-21</strong>：自动更新支持 <code>resources/config/update.json</code> 配置真实更新源（打包/开发路径均可解析，缺失或占位仍诚实提示&quot;未配置&quot;）；新增 <code>update.json.example</code> + 字段说明文档 + 14 个测试用例。</li>
+<li><strong>CMP-07</strong>：新建仓库根 <code>LICENSE</code>（MIT，© 2026 hemy08，与 README 全文逐字一致）；README 许可证链接恢复为 <a href="../../../../LICENSE">MIT</a>。</li>
+<li><strong>CMP-25 打包实测</strong>：electron-vite build exit 0；<code>build:unpack</code> exit 0；<strong>便携版安装包 132.60 MiB（对比基线 227.41 MiB，-41.7%）</strong>；解包体积 762.79 MiB（对比旧 dist 908.69 MiB，-16.1%）；app.asar 385.94 MiB；NSIS Setup 两次构建失败已记录原因（卸载器阶段 + 并发文件问题）。</li>
+<li><strong>顺带发现并修复</strong>：<code>electron-builder.yml</code> 的 <code>files: out/**/*</code> 会把 <code>out/tool-results</code>（约 24MB 分析产物）打入安装包 → 已改为 <code>out/main|preload|renderer</code> 白名单（根代理执行）。</li>
+</ul>
+<h5>r3-types（ARC-13）</h5>
+<ul>
+<li><strong>共享类型单真源</strong>：盘点 14 个类型 / 24 处定义点，收敛为 <code>src/shared/types/</code> 9 个领域文件（system/theme/editor/file/quick-link/menu/markdown/crypto/status-bar），<code>index.ts</code> 改为纯 re-export（既有 import 路径不变）。</li>
+<li><strong>global-types.d.ts</strong>：149 → 33 行，删除 8 个模块导出类型 + 3 个全局声明，仅保留 FileProperties 兼容别名（import type + declare global 转发）。</li>
+<li>严格等价核验：以 git 逐行比对 EditorSetting 210/210 条类型行一致；FileProperties 冲突按实际使用方取舍并记录。</li>
+</ul>
+<h4>3. 根代理接线与修正</h4>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PlantUML 通道常量</td>
+<td><code>src/shared/ipc-channels.ts</code> 新增 <code>IPC.RENDER.PLANTUML_LOCAL</code>，主/渲染两侧引用</td>
+</tr>
+<tr>
+<td>PlantUML 生命周期</td>
+<td><code>index.ts</code> whenReady 注册 + cleanupApp 销毁</td>
+</tr>
+<tr>
+<td>测试 mock</td>
+<td><code>main-index.test.ts</code> 补 <code>registerHandleOnce</code>/<code>ipcMain.handle</code>/<code>removeHandler</code></td>
+</tr>
+<tr>
+<td>打包配置</td>
+<td><code>electron-builder.yml</code> files 白名单化，排除 out/tool-results</td>
+</tr>
+<tr>
+<td>报告状态刷新</td>
+<td>00–06 报告 18 项状态更新 + 统计表重生成（当前 125/1/1）</td>
+</tr>
+</tbody>
+</table>
+<h4>4. 最终验收记录（2026-11-15 11:05）</h4>
+<table>
+<thead>
+<tr>
+<th>门禁</th>
+<th>命令</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主进程类型检查</td>
+<td>tsc --noEmit -p tsconfig.node.json（strict + noUnused*）</td>
+<td>✅ 0 错误</td>
+</tr>
+<tr>
+<td>渲染层类型检查</td>
+<td>vue-tsc --noEmit -p tsconfig.web.json（strict + noUnused*）</td>
+<td>✅ 0 错误</td>
+</tr>
+<tr>
+<td>单元测试</td>
+<td>npm run test</td>
+<td>✅ 110 文件 / 1808 用例全过</td>
+</tr>
+<tr>
+<td>代码检查</td>
+<td>npx eslint .</td>
+<td>✅ 0 error（121 warning 为存量模板风格类）</td>
+</tr>
+<tr>
+<td>构建验证</td>
+<td>npm run generate-version + electron-vite build</td>
+<td>✅ exit 0</td>
+</tr>
+<tr>
+<td>安全审计</td>
+<td>npm audit（生产依赖，官方 registry）</td>
+<td>✅ 0 漏洞</td>
+</tr>
+<tr>
+<td>打包体积</td>
+<td>build:unpack + 便携版安装包</td>
+<td>✅ 132.60 MiB（-41.7%）</td>
+</tr>
+</tbody>
+</table>
+<h4>5. 三轮累计成果</h4>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>初始</th>
+<th>第三轮后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>问题发现/闭环</td>
+<td>127 项发现</td>
+<td><strong>125 项已修复（98.4%）+ 1 项部分修复</strong></td>
+</tr>
+<tr>
+<td>单元测试</td>
+<td>21 用例</td>
+<td><strong>1808 用例（110 文件）</strong></td>
+</tr>
+<tr>
+<td>测试覆盖率（lines）</td>
+<td>无</td>
+<td>75.68%（第二轮实测）</td>
+</tr>
+<tr>
+<td>npm audit 漏洞</td>
+<td>15（1 critical + 11 high）</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>ESLint</td>
+<td>完全无法运行</td>
+<td><strong>0 error</strong>（121 存量 warning）</td>
+</tr>
+<tr>
+<td>严格模式</td>
+<td>未开启</td>
+<td>noUnusedLocals/Parameters 开启且 0 错误</td>
+</tr>
+<tr>
+<td>安装包体积</td>
+<td>227.41 MiB（基线便携版）</td>
+<td><strong>132.60 MiB（-41.7%）</strong></td>
+</tr>
+<tr>
+<td>数据丢失路径</td>
+<td>6 条</td>
+<td>0 条</td>
+</tr>
+</tbody>
+</table>
+<h4>6. 剩余遗留（已明确标注）</h4>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>状态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PF-02 预览单跳重构</td>
+<td>🟡 部分修复</td>
+<td>当前为&quot;主进程渲染 + 缓存/降级&quot;优化；彻底单跳（渲染全放渲染层）需专项设计，风险较高</td>
+</tr>
+<tr>
+<td>CMP-30 i18n 国际化</td>
+<td>✅ 后续完成</td>
+<td>已于第四轮完成中英双语（见 <a href="国际化实施报告.html">11-国际化实施报告</a>）</td>
+</tr>
+<tr>
+<td>NSIS Setup 包</td>
+<td>记录</td>
+<td>两次构建失败（卸载器阶段/并发文件），便携版已实测；Setup 体积待复测</td>
+</tr>
+<tr>
+<td>类型残余冲突</td>
+<td>记录</td>
+<td>渲染层 CryptoData / ThemeConfig 与 shared 形状冲突（改实现非纯声明层），已列 r3-types 报告 R1/R2</td>
+</tr>
+<tr>
+<td>其他</td>
+<td>记录</td>
+<td>open-plugin-tool 保留待插件菜单退役时清理；Linux 无 recursive 仅根目录监听；分块 IPC 传输留后续；Monaco worker/CSP/关闭落盘等运行时行为仍需人工冒烟</td>
+</tr>
+</tbody>
+</table>
+<h4>7. 附录：改动清单与证据</h4>
+<ul>
+<li><code>out\tool-results\r3-ipc-changes.md</code>、<code>r3-dialogs-changes.md</code>、<code>r3-watch-changes.md</code>、<code>r3-plantuml-changes.md</code>、<code>r3-misc-changes.md</code>、<code>r3-types-changes.md</code></li>
+<li><code>out\tool-results\r3-watch-verify.txt</code>、<code>build-verify-r3.txt</code>、<code>r3-test-final*.txt</code>：验证原始输出</li>
+<li><code>out\tool-results\refresh-status-r3b.ps1</code>、<code>gen-status-summary.ps1</code>：报告状态与汇总表生成脚本</li>
+<li>打包实测：便携版安装包 SHA256 <code>5B52ED35…F03F7D254</code>；解包目录 <code>dist/win-unpacked</code></li>
+</ul>
+<blockquote>
+<p>三轮合计：127 项检查发现闭环 125 项（98.4%），测试从 21 用例增长到 1808 用例，安全审计清零，安装包缩小 41.7%。全部改动未提交 git，建议人工冒烟（Monaco worker、CSP/HMR、PlantUML 本地渲染、目录监听、编码切换、关闭落盘、配置迁移、自动更新提示）后提交。</p>
+</blockquote>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>
