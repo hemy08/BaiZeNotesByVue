@@ -13,10 +13,16 @@
             <button
                 type="button"
                 class="window-btn maximize"
-                :title="t('workspace.window.maximize')"
+                :title="isMaximized ? t('workspace.window.restore') : t('workspace.window.maximize')"
                 @click="maximizeWindow"
             >
-                <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" fill="none" /></svg>
+                <svg v-if="!isMaximized" viewBox="0 0 12 12">
+                    <rect x="2" y="2" width="8" height="8" fill="none" />
+                </svg>
+                <svg v-else viewBox="0 0 12 12">
+                    <rect x="2" y="4" width="6" height="6" fill="none" />
+                    <path d="M4 4V2h6v6H8" fill="none" />
+                </svg>
             </button>
             <button type="button" class="window-btn close" :title="t('common.close')" @click="closeWindow">
                 <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" /></svg>
@@ -128,12 +134,31 @@ function openRecentFolder(folder: string) {
 }
 
 // 窗口控制
+// 2026-11-18（用户反馈）：最大化按钮需支持「再次点击还原」——原实现只发送 MAXIMIZE
+// （进入主界面自动最大化专用语义），二次点击无效。改为发送 TOGGLE_MAXIMIZE 并刷新
+// 当前最大化状态以切换「最大化/还原」图标。
+const isMaximized = ref(false)
+
+async function refreshMaximizedState(): Promise<void> {
+    try {
+        isMaximized.value = (await window.electron.ipcRenderer.invoke(
+            IPC.WINDOW.IS_MAXIMIZED
+        )) as boolean
+    } catch {
+        // 查询失败保持现有状态（不影响按钮操作）
+    }
+}
+
 function minimizeWindow() {
     window.electron.ipcRenderer.send(IPC.WINDOW.MINIMIZE)
 }
 
 function maximizeWindow() {
-    window.electron.ipcRenderer.send(IPC.WINDOW.MAXIMIZE)
+    window.electron.ipcRenderer.send(IPC.WINDOW.TOGGLE_MAXIMIZE)
+    // 主进程切换完成后刷新图标（下一轮事件循环查询）
+    setTimeout(() => {
+        void refreshMaximizedState()
+    }, 0)
 }
 
 function closeWindow() {
@@ -142,6 +167,8 @@ function closeWindow() {
 
 onMounted(() => {
     loadRecentFolders()
+    // 2026-11-18：初始化最大化图标状态（欢迎页期间窗口可能已被最大化）
+    void refreshMaximizedState()
 })
 </script>
 

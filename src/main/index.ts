@@ -26,6 +26,7 @@ import { CleanupDirectoryWatch } from './utils/file-utils/file-operations'
 import { RegisterShortKeys } from './config'
 import { logger } from './utils/logger'
 import { ipcListenerManager } from './ipc/ipc-listener-manager'
+import { resetWelcomeState } from './ipc/welcome-state'
 // P1/C-03：主进程主题广播唯一实现（禁止再出现渲染层 window.electronAPI.broadcastTheme）
 import { broadcastThemeToAllWindows } from './ipc/theme-broadcast'
 // P1/N-05：IPC 发送方授权校验（主窗口登记 + 监听器包装）
@@ -156,6 +157,8 @@ function createWindow(): void {
         }
     })
 
+    // 2026-11-18（用户反馈）：新窗口创建即显示欢迎页，复位主界面状态（macOS activate 重建同样生效）
+    resetWelcomeState()
     setMainWindow(mainWindow)
     // P1/N-05：同步受信主窗口引用（index.ts 直连注册的通道——主题更新、关闭回执——
     // 同样依赖该登记；macOS activate 重建窗口时随 createWindow 一并刷新）

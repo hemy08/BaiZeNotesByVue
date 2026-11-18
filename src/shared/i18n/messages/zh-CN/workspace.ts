@@ -8,7 +8,8 @@ export default {
     appTitle: '白泽笔记 - Markdown Editor Powered By Election + Vue',
     window: {
         minimize: '最小化',
-        maximize: '最大化'
+        maximize: '最大化',
+        restore: '还原'
     },
     navi: {
         fileManager: '文件管理器',

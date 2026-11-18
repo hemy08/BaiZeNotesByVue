@@ -8,7 +8,8 @@ export default {
     appTitle: 'BaiZeNotes - Markdown Editor Powered By Election + Vue',
     window: {
         minimize: 'Minimize',
-        maximize: 'Maximize'
+        maximize: 'Maximize',
+        restore: 'Restore'
     },
     navi: {
         fileManager: 'File Explorer',

@@ -59,11 +59,39 @@ describe('WelcomeScreen 窗口控制按钮', () => {
         expect(sendMock).toHaveBeenCalledWith(IPC.WINDOW.MINIMIZE)
     })
 
-    it('sends WINDOW.MAXIMIZE when the maximize button is clicked', async () => {
+    it('sends WINDOW.TOGGLE_MAXIMIZE when the maximize button is clicked (二次点击还原)', async () => {
         wrapper = mount(WelcomeScreen)
         await flushPromises()
         await wrapper.find('.window-btn.maximize').trigger('click')
-        expect(sendMock).toHaveBeenCalledWith(IPC.WINDOW.MAXIMIZE)
+        // 2026-11-18（用户反馈）：最大化按钮需支持再次点击还原——
+        // 原实现发 MAXIMIZE（仅最大化，二次点击无效），改为发送 TOGGLE_MAXIMIZE。
+        expect(sendMock).toHaveBeenCalledWith(IPC.WINDOW.TOGGLE_MAXIMIZE)
+    })
+
+    it('shows the restore icon/title when the window is maximized', async () => {
+        const invokeMock = window.electron.ipcRenderer.invoke as unknown as ReturnType<
+            typeof vi.fn
+        >
+        invokeMock.mockResolvedValue(true)
+        wrapper = mount(WelcomeScreen)
+        await flushPromises()
+
+        expect(invokeMock).toHaveBeenCalledWith(IPC.WINDOW.IS_MAXIMIZED)
+        const maximizeBtn = wrapper.find('.window-btn.maximize')
+        expect(maximizeBtn.attributes('title')).toBe('还原')
+        // 最大化时按钮含两个 svg 子元素（还原图标：两层矩形）
+        expect(maximizeBtn.findAll('svg').length).toBe(1)
+        expect(maximizeBtn.find('svg rect').exists()).toBe(true)
+    })
+
+    it('shows the maximize icon/title when the window is not maximized', async () => {
+        const invokeMock = window.electron.ipcRenderer.invoke as unknown as ReturnType<
+            typeof vi.fn
+        >
+        invokeMock.mockResolvedValue(false)
+        wrapper = mount(WelcomeScreen)
+        await flushPromises()
+        expect(wrapper.find('.window-btn.maximize').attributes('title')).toBe('最大化')
     })
 
     it('sends WINDOW.CLOSE when the close button is clicked', async () => {

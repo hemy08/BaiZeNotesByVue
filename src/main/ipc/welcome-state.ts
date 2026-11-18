@@ -1,0 +1,29 @@
+/**
+ * 欢迎页 / 主界面可见状态（主进程侧）
+ *
+ * 背景（2026-11-18 用户反馈「欢迎界面关闭按钮有延迟」）：
+ * 主窗口 CLOSE 通道在无活动文件时走快速关闭路径（跳过 FLUSH_CONTENT 落盘协议的 2s 超时），
+ * 但启动恢复可能已在后台把上次文件恢复到 appState.currentActiveFile——此时欢迎页点击关闭
+ * 仍会进入 flush 等待，表现为「关闭按钮有延迟」。
+ *
+ * 本模块记录「主界面是否已进入」：默认欢迎页（false），主进程发送 WELCOME_ENTER_MAIN
+ * （进入主界面）时置 true；新窗口创建（macOS activate 重建）时复位。
+ * CLOSE handler 依据 isWelcomeScreenVisible() 判定欢迎页 → 跳过 flush 直接关闭。
+ */
+
+let mainViewEntered = false
+
+/** 标记已进入主界面（发送 WELCOME_ENTER_MAIN 时调用） */
+export function markMainViewEntered(): void {
+    mainViewEntered = true
+}
+
+/** 新窗口创建（显示欢迎页）时复位状态 */
+export function resetWelcomeState(): void {
+    mainViewEntered = false
+}
+
+/** 当前是否仍显示欢迎页（未进入主界面） */
+export function isWelcomeScreenVisible(): boolean {
+    return !mainViewEntered
+}

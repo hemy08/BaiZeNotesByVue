@@ -182,7 +182,8 @@ describe('WelcomeScreen', () => {
         await wrapper.find('.window-btn.close').trigger('click')
 
         expect(ipcRenderer.send).toHaveBeenCalledWith('baize:window:minimize')
-        expect(ipcRenderer.send).toHaveBeenCalledWith('baize:window:maximize')
+        // 2026-11-18（用户反馈）：最大化按钮改为切换语义（二次点击还原）
+        expect(ipcRenderer.send).toHaveBeenCalledWith('baize:window:toggle-maximize')
         expect(ipcRenderer.send).toHaveBeenCalledWith('baize:window:close')
     })
 

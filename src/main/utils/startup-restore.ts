@@ -25,6 +25,7 @@ import { IPC } from '../../shared/ipc-channels'
 // ARC-13：FileProperties 已收敛到 src/shared/types/file.ts（唯一真源）
 import type { FileProperties, SystemSetting } from '../../shared/types'
 import { appState, sendToMainWindow } from './app-state'
+import { markMainViewEntered } from '../ipc/welcome-state'
 import { tMain } from './i18n'
 import { logger } from './logger'
 import { OpenSelectFile, ParserFileName, ReloadDirFromDisk } from './file-utils'
@@ -52,6 +53,7 @@ function enterMainAndRun(
     payload: { type: 'file' | 'directory'; path: string },
     task: () => Promise<void> | void
 ): Promise<void> {
+    markMainViewEntered()
     mainWindow.webContents.send(IPC.FILE.WELCOME_ENTER_MAIN, payload)
     return runAfterMainViewEntered(() => {
         if (mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) {

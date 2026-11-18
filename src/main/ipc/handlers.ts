@@ -33,6 +33,7 @@ import {
 import { ImportCreateNewFile } from '../utils/file-utils'
 import { getRecentFiles, saveLastOpenedDirectory } from '../utils/file-state'
 import { appState } from '../utils/app-state'
+import { isWelcomeScreenVisible, markMainViewEntered } from './welcome-state'
 import { ipcListenerManager } from './ipc-listener-manager'
 // P1/N-05：IPC 发送方授权校验（主窗口 webContents 归属判定）
 import { setTrustedMainWindow, withSenderCheck } from '../utils/ipc-security'
@@ -438,7 +439,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
             // 欢迎页/无活动文件场景没有编辑器内容需要 flush：置显式退出标志后直接关闭，
             // 避免 close 拦截进入 FLUSH_CONTENT 的 2s 超时等待（点击关闭后窗口 2 秒不动，
             // 用户会误以为关闭按钮无效）。有活动文件时保持既有 flush → 脏则保存协议。
-            if (!appState.currentActiveFile) {
+            if (!appState.currentActiveFile || isWelcomeScreenVisible()) {
                 appState.setQuitting(true)
             }
             mainWindow.close()
@@ -628,6 +629,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
                     // FE-01：先通知渲染层进入主界面（触发主界面组件挂载并注册 IPC 监听），
                     // 再在下一 tick 发送 CLEAR_EDITOR_PREVIEW / FILE_SYSTEM_DATA 等数据事件，
                     // 避免数据事件早于监听器注册而丢失（空白目录树/编辑器）。
+                    markMainViewEntered()
                     mainWindow.webContents.send(IPC.FILE.WELCOME_ENTER_MAIN, {
                         type: 'directory',
                         path: dirPath
@@ -670,6 +672,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
                     // FE-01：先通知渲染层进入主界面，再在下一 tick 读取并推送文件内容/路径
                     // （SHOW_SELECTED_FILE_CONTEXT / USER_SELECT_FILE），避免数据事件早于
                     // 主界面编辑器监听器注册而丢失（空白编辑器 + 空内容覆盖原文件风险）。
+                    markMainViewEntered()
                     mainWindow.webContents.send(IPC.FILE.WELCOME_ENTER_MAIN, {
                         type: 'file',
                         path: filePath
