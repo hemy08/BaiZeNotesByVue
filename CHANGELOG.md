@@ -38,6 +38,14 @@
 - **HTML 查看器相对链接修复**：`srcdoc` 文档基准 URL 为父页面，本地 HTML（报告 Wiki 导航等）相对链接会解析到 app 目录导致点击无响应；读取 HTML 后注入 `<base href="file:///<文件目录>/">`（新增 `html-view-utils.ts`，不改 sandbox 脚本策略），app 内查看报告可正常点击导航
 - **构建工具**：新增 `build/generate-report-wiki.js`（批量生成 + 自动注入导航 + 正文 md→html 链接规范化）与 `build/report-nav.html` 导航片段；`build-html-report.js` 支持 `--nav` / `--navHtml`
 
+### 📄 PDF 预览与安全收紧（2026-11-18）
+
+- **PDF 预览（pdf.js）**：新增 `pdfjs-dist` 依赖；新增 `FILE.READ_BINARY` 二进制读取通道（Path Guard 校验 → Uint8Array）；[ShowPdfEditor.vue](src/renderer/src/components/HemyTools/ShowPdfEditor.vue) 重写为 pdf.js canvas 渲染（翻页/缩放/错误提示/卸载销毁），恢复插件注册与「工具→常用小工具→PDF 预览」菜单入口（新增 2 个 i18n 词条）
+- **按需异步加载**：HTML 查看器与 PDF 预览改为异步组件，pdf.js 独立 chunk **802KB**；主 renderer chunk 11,142KB → **10,333KB（-809KB）**，消除 `INEFFECTIVE_DYNAMIC_IMPORT` 警告
+- **CSP 收紧**：补充 `object-src 'none'`、`base-uri 'self'`、`form-action 'none'`；新增 `renderer-csp.test.ts` 契约测试（6 用例）锁定关键指令；`unsafe-eval` 经 grep 确认渲染层无 eval/new Function 使用（移除需实机验证）
+- 测试：新增 PDF 组件测试 6 用例、READ_BINARY 通道测试 3 用例；插件/菜单/词典断言同步（插件工具 37 → 38）
+- 验证：typecheck 0 错误、ESLint 0/0、vitest **156 文件 / 2,847 用例全通过**、`electron-vite build` 成功
+
 ### 🟡 P2 修复（11）
 
 - 人民币大写整数部分 BigInt 化（>2^53 不再浮点舍入，小数纯字符串十进制四舍五入）
