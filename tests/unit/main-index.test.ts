@@ -180,6 +180,8 @@ const internalMocks = vi.hoisted(() => ({
     cleanupAll: vi.fn(),
     // PF-08：PlantUML 本地渲染注册（index.ts → plantuml-local → ipcListenerManager）
     registerHandleOnce: vi.fn(),
+    // 2026-11-18（#12）：窗口就绪后的 Monaco 主题缓存异步预热
+    warmupMonacoThemeCache: vi.fn(),
     initUserDataDirectory: vi.fn(),
     registerIpcHandlers: vi.fn(),
     setMainWindow: vi.fn(),
@@ -218,6 +220,8 @@ vi.mock('../../src/main/config', () => ({
     registerConfigIpcHandlers: internalMocks.registerConfigIpcHandlers,
     getEditorSetting: internalMocks.getEditorSetting,
     RegisterShortKeys: internalMocks.registerShortKeys,
+    // 2026-11-18（#12）：Monaco 主题缓存异步预热（细节由 theme-registry.test.ts 覆盖）
+    warmupMonacoThemeCache: internalMocks.warmupMonacoThemeCache,
     // ARC-04：启动字体 CSS 组装（拼出与真实实现一致的选择器与字体系列）
     buildFontCss: (setting: { fontFamily: string; fontSize: number }) =>
         `body, .title-bar, .menu-bar { font-family: ${setting.fontFamily} !important; font-size: ${setting.fontSize}px !important; }`

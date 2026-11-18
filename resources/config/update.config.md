@@ -2,6 +2,12 @@
 
 > 对应发现：ARC-16 / FUN-10 / CMP-21 ｜ 实现：`src/main/utils/auto-updater.ts`
 > 说明：JSON 文件不支持注释，故字段说明集中写在本文件中；示例见同目录 `update.json.example`。
+>
+> **默认更新源（2026-11-18，遗留清单 #8）**：`electron-builder.yml` 的 `publish` 与
+> `dev-app-update.yml` 已指向本仓库 GitHub Releases 静态目录
+> `https://github.com/hemy08/BaiZeNotesByVue/releases/latest/download`——发布时将
+> `latest.yml` 与安装包作为 Release 资产上传即可启用检查更新；如需自建服务器，用
+> `resources/config/update.json` 覆盖即可（无需重新打包）。
 
 ## 1. 用途与优先级
 
@@ -46,7 +52,8 @@
 ## 4. 注意事项
 
 - 更新目录需放置 electron-builder 生成的 `latest.yml` 与对应安装包（`build:win:all` 等命令产物），否则检查更新会失败并提示网络/服务器错误。
-- 占位域名 `example.com` 会被视为"未配置"，便于默认发行包保持诚实提示。
+- 默认发行包使用 GitHub Releases 静态目录；上传 Release 资产时务必包含 `latest.yml`（electron-builder 自动生成）。
+- 占位域名 `example.com` 会被视为"未配置"，便于自定义发行包保持诚实提示。
 - 修改 `update.json` 后无需重新打包，重新执行"检查更新"即可读取最新配置。
 - 开发模式联调：`src/main/utils/auto-updater.ts` 已设置 `forceDevUpdateConfig = true`，
   配置真实地址后即可在 `npm run dev` 下验证检查/下载流程。

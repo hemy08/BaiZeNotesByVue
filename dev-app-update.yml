@@ -7,5 +7,7 @@
 # 或自建 generic 静态文件服务器），替换后开发模式即可用 electron-updater 联调
 # （src/main/utils/auto-updater.ts 已开启 forceDevUpdateConfig）。
 provider: generic
-url: https://example.com/auto-updates
+# 2026-11-18（遗留清单 #8）：与 electron-builder.yml publish 保持一致，默认为本仓库
+# GitHub Releases 静态下载目录（需要 latest.yml 与安装包作为 Release 资产上传）。
+url: https://github.com/hemy08/BaiZeNotesByVue/releases/latest/download
 updaterCacheDirName: BaiZeNotes-updater

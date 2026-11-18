@@ -196,8 +196,47 @@ function initializeRegistry(): void {
     }
 }
 
-export function getAllMonacoThemes(): { type: string; config: MonacoThemeConfig }[] {
-    // P-5（PF-15）：仅在首次访问时读取全部主题 JSON，之后命中缓存
+/**
+ * 2026-11-18（遗留清单 #12）：启动空闲时异步预热 Monaco 主题缓存。
+ *
+ * 首次 getAllMonacoThemes 会在主线程同步 readdir/readFile 全量主题 JSON（冷启动 IO 阻塞）；
+ * 本函数在窗口就绪后以异步 IO 填充「文件名清单 + 主题数据缓存」，使首次真实调用只做内存构建。
+ * 预热失败时保持惰性加载（themeFileNames 仍为 null，后续走原同步路径并记录错误）。
+ */
+export async function warmupMonacoThemeCache(): Promise<void> {
+    if (allThemesLoaded || themeFileNames !== null) {
+        return
+    }
+    const dir = getThemesDir()
+    try {
+        const entries = await fs.promises.readdir(dir)
+        const files = entries.filter((f) => f.endsWith('.json') && f !== 'themelist.json')
+        await Promise.all(
+            files.map(async (file) => {
+                const themeName = file.replace(/\.json$/, '')
+                if (themeDataCache[themeName]) {
+                    return
+                }
+                try {
+                    const content = await fs.promises.readFile(join(dir, file), 'utf-8')
+                    themeDataCache[themeName] = JSON.parse(content) as MonacoThemeData
+                } catch (error) {
+                    // 单个主题失败不影响其余；后续同步路径仍会重试并记录错误
+                    logger.warn(`[Main] 预热 Monaco 主题 "${themeName}" 失败（保持惰性加载）`, error)
+                }
+            })
+        )
+        // 仅在未与同步初始化竞争时落文件名缓存（同步初始化已优先完成则保持其结果）
+        if (!allThemesLoaded && themeFileNames === null) {
+            themeFileNames = files
+        }
+    } catch (error) {
+        // 目录不可读：保持 null，让首次同步调用按原路径处理并记录错误
+        logger.warn('[Main] 预热 Monaco 主题缓存失败（保持惰性加载）:', error)
+    }
+}
+
+export function getAllMonacoThemes(): { type: string; config: MonacoThemeConfig }[] {    // P-5（PF-15）：仅在首次访问时读取全部主题 JSON，之后命中缓存
     initializeRegistry()
     return allThemeNames
         .map((type) => ({

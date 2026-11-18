@@ -106,6 +106,10 @@ npmRebuild: false
 # 发布前需单独接入，否则 SmartScreen 会提示未知发布者。
 publish:
     provider: generic
-    url: https://example.com/auto-updates
+    # 2026-11-18（遗留清单 #8）：默认更新源指向本仓库 GitHub Releases 的静态下载目录。
+    # 发布时执行 `build:win:all` 后将 latest.yml 与安装包作为 Release 资产上传，
+    # electron-updater 即可通过 releases/latest/download/ 访问（generic provider 直链）。
+    # 如需自建服务器，可在 resources/config/update.json 中覆盖此默认值（无需重新打包）。
+    url: https://github.com/hemy08/BaiZeNotesByVue/releases/latest/download
 electronDownload:
     mirror: https://npmmirror.com/mirrors/electron/

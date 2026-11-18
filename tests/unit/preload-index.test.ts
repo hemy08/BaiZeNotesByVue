@@ -11,7 +11,11 @@ import { reactive, isProxy } from 'vue'
 const preloadMocks = vi.hoisted(() => ({
     exposeInMainWorld: vi.fn(),
     invoke: vi.fn(),
-    send: vi.fn()
+    send: vi.fn(),
+    on: vi.fn(),
+    once: vi.fn(),
+    removeListener: vi.fn(),
+    removeAllListeners: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -19,9 +23,19 @@ vi.mock('electron', () => ({
     ipcRenderer: { invoke: preloadMocks.invoke, send: preloadMocks.send }
 }))
 
-// mock @electron-toolkit/preload 的 electronAPI
+// mock @electron-toolkit/preload 的 electronAPI（含 ipcRenderer，供受限包装使用）
 vi.mock('@electron-toolkit/preload', () => ({
-    electronAPI: { toolkitApi: true }
+    electronAPI: {
+        toolkitApi: true,
+        ipcRenderer: {
+            send: preloadMocks.send,
+            invoke: preloadMocks.invoke,
+            on: preloadMocks.on,
+            once: preloadMocks.once,
+            removeListener: preloadMocks.removeListener,
+            removeAllListeners: preloadMocks.removeAllListeners
+        }
+    }
 }))
 
 import '../../src/preload/index'
@@ -43,11 +57,76 @@ function getExposedApi(): {
     return call![1]
 }
 
+// 从 exposeInMainWorld 调用记录中取出暴露的 electron 对象（#4 起为受限包装）
+function getExposedElectron(): {
+    toolkitApi?: boolean
+    ipcRenderer: {
+        send: (channel: string, ...args: unknown[]) => void
+        invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
+        on: (channel: string, listener: (...args: unknown[]) => void) => void
+        once: (channel: string, listener: (...args: unknown[]) => void) => void
+        removeListener: (channel: string, listener: (...args: unknown[]) => void) => void
+        removeAllListeners: (channel?: string) => void
+    }
+} {
+    const call = preloadMocks.exposeInMainWorld.mock.calls.find(([key]) => key === 'electron')
+    expect(call, '应存在 exposeInMainWorld("electron", ...) 调用').toBeDefined()
+    return call![1]
+}
+
 describe('preload/index', () => {
-    it('should expose the toolkit electronAPI under the electron key', () => {
-        expect(preloadMocks.exposeInMainWorld).toHaveBeenCalledWith('electron', {
-            toolkitApi: true
-        })
+    it('should expose the toolkit electronAPI (with restricted ipcRenderer) under the electron key', () => {
+        const exposed = getExposedElectron()
+        expect(exposed.toolkitApi).toBe(true)
+        // 2026-11-18（#4）：ipcRenderer 为白名单受限包装（send/invoke/on 均为函数）
+        expect(typeof exposed.ipcRenderer.send).toBe('function')
+        expect(typeof exposed.ipcRenderer.invoke).toBe('function')
+        expect(typeof exposed.ipcRenderer.on).toBe('function')
+    })
+
+    it('should drop unregistered renderer send channels (C-09)', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        const exposed = getExposedElectron()
+        exposed.ipcRenderer.send('baize:not-registered:evil')
+        expect(preloadMocks.send).not.toHaveBeenCalled()
+        expect(warnSpy).toHaveBeenCalled()
+        warnSpy.mockRestore()
+    })
+
+    it('should forward registered renderer send channels', () => {
+        const exposed = getExposedElectron()
+        exposed.ipcRenderer.send('baize:window:minimize')
+        expect(preloadMocks.send).toHaveBeenCalledWith('baize:window:minimize')
+    })
+
+    it('should reject unregistered invoke channels', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        const exposed = getExposedElectron()
+        await expect(exposed.ipcRenderer.invoke('baize:not-registered:evil')).rejects.toThrow(
+            /未登记的 IPC 通道/
+        )
+        expect(preloadMocks.invoke).not.toHaveBeenCalled()
+        warnSpy.mockRestore()
+    })
+
+    it('should forward registered invoke channels (e.g. open-in-browser)', async () => {
+        const exposed = getExposedElectron()
+        preloadMocks.invoke.mockResolvedValueOnce(true)
+        await exposed.ipcRenderer.invoke('baize:file:open-in-browser', 'C:\\a.html')
+        expect(preloadMocks.invoke).toHaveBeenCalledWith('baize:file:open-in-browser', 'C:\\a.html')
+    })
+
+    it('should only register listeners for registered receive channels', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        const exposed = getExposedElectron()
+        const listener = (): void => {}
+        exposed.ipcRenderer.on('baize:not-registered:evil', listener)
+        expect(preloadMocks.on).not.toHaveBeenCalled()
+        exposed.ipcRenderer.on('baize:theme:updated', listener)
+        expect(preloadMocks.on).toHaveBeenCalledWith('baize:theme:updated', listener)
+        exposed.ipcRenderer.once('baize:file:saved', listener)
+        expect(preloadMocks.once).toHaveBeenCalledWith('baize:file:saved', listener)
+        warnSpy.mockRestore()
     })
 
     it('should expose api with config, app and file groups only', () => {

@@ -14,6 +14,8 @@ import {
     registerConfigIpcHandlers,
     getEditorSetting,
     buildFontCss,
+    // 2026-11-18（遗留清单 #12）：窗口就绪后异步预热 Monaco 主题缓存
+    warmupMonacoThemeCache,
     // 1.3.6：存量设置迁移（旧默认 minimizeToTray/enableAutoBackup=true → false）
     migrateLegacyOptInSettings
 } from './config'
@@ -229,6 +231,10 @@ function createWindow(): void {
         // 见 armStartupRestore / runStartupRestore）：握手晚于 ready-to-show 时以握手
         // 为准，3s 未收到则超时兜底恢复。
         armStartupRestore(mainWindow)
+
+        // 2026-11-18（遗留清单 #12）：窗口就绪后异步预热 Monaco 主题缓存，
+        // 避免首次打开主题相关界面时在主线程同步读取全部主题 JSON（冷启动 IO 阻塞）。
+        void warmupMonacoThemeCache()
     })
 
     RegisterShortKeys(mainWindow)

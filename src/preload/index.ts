@@ -71,11 +71,161 @@ const api = {
     }
 }
 
+// ============================================================
+// 渲染层 IPC 通道白名单（2026-11-18，遗留清单 #4 / C-09）
+//
+// 背景：主窗口 preload 此前直接暴露 @electron-toolkit/preload 的全量 electronAPI，
+// 渲染层可调用任意通道——若渲染层出现 XSS，将直达全量 IPC 能力（纵深防御缺口）。
+// 本白名单按「渲染层实际调用」收集（src/renderer 全量扫描：send/invoke 与 on/once
+// 两类方向），未知通道的 send/invoke/on 一律丢弃并告警。
+//
+// 维护约定：渲染层新增 IPC 调用时，必须同步登记到对应白名单，否则调用被丢弃；
+// 白名单变更后运行 `npx vitest run tests/unit/preload-index.test.ts` 校验。
+// ============================================================
+
+/** 渲染层 → 主进程（send / invoke）允许通道：57 个 */
+const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
+    IPC.DIALOG.AUTO_SAVE_CHANGED,
+    IPC.EDITOR.FLUSH_CONTENT_DONE,
+    IPC.EDITOR.GET_SETTING,
+    IPC.FILE.CHECK_EXISTS,
+    IPC.FILE.CREATE_FILE_FOLDER,
+    IPC.FILE.GET_CURRENT_FILE_PATH,
+    IPC.FILE.IMPORT_NEW_FILE,
+    IPC.FILE.OPEN_IN_BROWSER,
+    IPC.FILE.OPEN_SELECT_FILE,
+    IPC.FILE.OPEN_SPECIFIC_FOLDER,
+    IPC.FILE.READ_HTML,
+    IPC.FILE.SAVE_TO_DISK,
+    IPC.FILE.SELECT_DIRECTORY,
+    IPC.FILE.SELECT_IMAGE,
+    IPC.FILE.SYSTEM_INFO,
+    IPC.FILE.UPDATE_SELECT_FILE_CONTENT,
+    IPC.FILE.WELCOME_OPEN_DIRECTORY,
+    IPC.FILE.WELCOME_OPEN_FILE,
+    IPC.FILE_MANAGER.COPY_FILE,
+    IPC.FILE_MANAGER.COPY_FILELINK,
+    IPC.FILE_MANAGER.COPY_IMAGELINK,
+    IPC.FILE_MANAGER.COPY_RELATIVE_PATH,
+    IPC.FILE_MANAGER.CREATE_FILE,
+    IPC.FILE_MANAGER.CUT,
+    IPC.FILE_MANAGER.DELETE,
+    IPC.FILE_MANAGER.FIND_IN,
+    IPC.FILE_MANAGER.IMPORT_FROM,
+    IPC.FILE_MANAGER.OPEN_IN_EXPLORER,
+    IPC.FILE_MANAGER.PASTE,
+    IPC.FILE_MANAGER.RELOAD_FROM_DISK,
+    IPC.FILE_MANAGER.RENAME,
+    IPC.MENU.ACTION,
+    IPC.NAVIGATION.OPEN_EXE,
+    IPC.OVERLAY.CONVERT_SAVE_ENCODING,
+    IPC.OVERLAY.REOPEN_WITH_ENCODING,
+    IPC.PLUGIN.CRYPTO_DECRYPT,
+    IPC.PLUGIN.CRYPTO_ENCRYPT,
+    IPC.PLUGIN.HASH_TEXT,
+    IPC.PLUGIN.HMAC_TEXT,
+    IPC.PLUGIN.RSA_GENERATE,
+    IPC.QUICK_LINKS.GET,
+    IPC.QUICK_LINKS.SAVE,
+    IPC.RENDER.INSERT_IMAGE,
+    IPC.RENDER.PLANTUML_LOCAL,
+    IPC.THEME.GET_ALL_MONACO_THEMES,
+    IPC.THEME.GET_ALL_THEMES,
+    IPC.THEME.GET_CURRENT_THEME_STYLES,
+    IPC.THEME.LOAD_MONACO_THEME,
+    IPC.THEME.UPDATE_THEME,
+    IPC.WINDOW.CLOSE,
+    IPC.WINDOW.GET_BOUNDS,
+    IPC.WINDOW.IS_MAXIMIZED,
+    IPC.WINDOW.MAXIMIZE,
+    IPC.WINDOW.MINIMIZE,
+    IPC.WINDOW.MOVE,
+    IPC.WINDOW.SET_SIZE,
+    IPC.WINDOW.TOGGLE_MAXIMIZE
+])
+
+/** 主进程 → 渲染层（on / once）允许通道：26 个 */
+const ALLOWED_RENDERER_RECEIVE_CHANNELS = new Set<string>([
+    IPC.DIALOG.OPEN_VUE_DIALOG,
+    IPC.EDITOR.FLUSH_CONTENT,
+    IPC.EDITOR.INIT_SETTING,
+    IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+    IPC.EDITOR.UPDATE_OPTIONS,
+    IPC.EVENTS.FILE_CONTENT_RELOADED,
+    IPC.EVENTS.FILE_SAVED_SUCCESS,
+    IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT,
+    IPC.EVENTS.STATUS_BAR_UPDATE,
+    IPC.FILE.CLEAR_EDITOR_PREVIEW,
+    IPC.FILE.USER_SELECT_FILE,
+    IPC.FILE.WELCOME_ENTER_MAIN,
+    IPC.FILE_MANAGER.FILE_SYSTEM_DATA,
+    IPC.MONACO_INSERT.AFTER_CURSOR,
+    IPC.MONACO_INSERT.TEXT_BLOCK_TEMPLATES,
+    IPC.OVERLAY.CONVERT_TO_ENCODING,
+    IPC.OVERLAY.OPEN_WITH_ENCODING,
+    IPC.PLUGIN.RSA_RESULT,
+    IPC.QUICK_LINKS.UPDATED,
+    IPC.THEME.THEME_UPDATED,
+    IPC.VIEW.EDIT_MODE,
+    IPC.VIEW.EDIT_PREVIEW_MODE,
+    IPC.VIEW.PREVIEW_MODE,
+    IPC.VIEW.TOGGLE_RES_MANAGER,
+    IPC.VIEW.UNDO_REDO
+])
+
+/** 渲染层可用的受限 ipcRenderer（send/invoke/on/once 校验白名单，退订不做限制） */
+function createRestrictedIpcRenderer(): typeof electronAPI.ipcRenderer {
+    const raw = electronAPI.ipcRenderer
+    const restricted = {
+        send: (channel: string, ...args: unknown[]): void => {
+            if (!ALLOWED_RENDERER_SEND_CHANNELS.has(channel)) {
+                console.warn(`[Preload] 已丢弃未登记的 IPC send 调用: ${channel}`)
+                return
+            }
+            raw.send(channel, ...args)
+        },
+        invoke: (channel: string, ...args: unknown[]): Promise<unknown> => {
+            if (!ALLOWED_RENDERER_SEND_CHANNELS.has(channel)) {
+                console.warn(`[Preload] 已拒绝未登记的 IPC invoke 调用: ${channel}`)
+                return Promise.reject(new Error(`[Preload] 未登记的 IPC 通道: ${channel}`))
+            }
+            return raw.invoke(channel, ...args)
+        },
+        on: (channel: string, listener: (...args: unknown[]) => void): void => {
+            if (!ALLOWED_RENDERER_RECEIVE_CHANNELS.has(channel)) {
+                console.warn(`[Preload] 已拒绝监听未登记的 IPC 通道: ${channel}`)
+                return
+            }
+            raw.on(channel, listener)
+        },
+        once: (channel: string, listener: (...args: unknown[]) => void): void => {
+            if (!ALLOWED_RENDERER_RECEIVE_CHANNELS.has(channel)) {
+                console.warn(`[Preload] 已拒绝监听未登记的 IPC 通道: ${channel}`)
+                return
+            }
+            raw.once(channel, listener)
+        },
+        removeListener: (channel: string, listener: (...args: unknown[]) => void): void => {
+            raw.removeListener(channel, listener)
+        },
+        removeAllListeners: (channel: string): void => {
+            raw.removeAllListeners(channel)
+        }
+    }
+    // 受限对象只覆盖渲染层实际需要的同步/异步方法；sendTo/sendSync/postMessage 等不暴露
+    return restricted as unknown as typeof electronAPI.ipcRenderer
+}
+
 // S-4：使用 contextBridge 暴露 Electron API 到渲染进程。
 // 本项目所有窗口均启用 contextIsolation（src/main/index.ts 与 dialog-defaults.ts），
 // 原“非 contextIsolated 直接挂 window”分支为死代码，已删除（原含 2 处 @ts-ignore）。
 try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
+    // 2026-11-18（#4）：暴露受限 ipcRenderer（其余 toolkit 成员 webFrame/webUtils/process 原样保留）
+    const exposedElectronAPI = {
+        ...electronAPI,
+        ipcRenderer: createRestrictedIpcRenderer()
+    }
+    contextBridge.exposeInMainWorld('electron', exposedElectronAPI)
     contextBridge.exposeInMainWorld('api', api)
 } catch (error) {
     console.error(error)

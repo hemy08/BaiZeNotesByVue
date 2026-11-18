@@ -18,7 +18,7 @@ export {
     setMonacoTheme
 } from './theme-config'
 
-export { getMonacoThemeData } from './theme-registry'
+export { getMonacoThemeData, warmupMonacoThemeCache } from './theme-registry'
 export type { MonacoThemeConfig } from './theme-registry'
 
 export {

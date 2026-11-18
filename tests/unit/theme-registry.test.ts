@@ -19,7 +19,8 @@ vi.mock('../../src/main/utils/logger', () => ({
 const fsMocks = vi.hoisted(() => ({
     readdirSync: vi.fn(),
     readFileSync: vi.fn(),
-    readFile: vi.fn()
+    readFile: vi.fn(),
+    readdir: vi.fn()
 }))
 
 vi.mock('fs', async (importOriginal) => {
@@ -28,7 +29,7 @@ vi.mock('fs', async (importOriginal) => {
         ...actual,
         readdirSync: fsMocks.readdirSync,
         readFileSync: fsMocks.readFileSync,
-        promises: { ...actual.promises, readFile: fsMocks.readFile }
+        promises: { ...actual.promises, readFile: fsMocks.readFile, readdir: fsMocks.readdir }
     }
 })
 
@@ -38,7 +39,7 @@ vi.mock('node:fs', async (importOriginal) => {
         ...actual,
         readdirSync: fsMocks.readdirSync,
         readFileSync: fsMocks.readFileSync,
-        promises: { ...actual.promises, readFile: fsMocks.readFile }
+        promises: { ...actual.promises, readFile: fsMocks.readFile, readdir: fsMocks.readdir }
     }
 })
 
@@ -83,6 +84,7 @@ describe('theme-registry', () => {
         fsMocks.readdirSync.mockReset()
         fsMocks.readFileSync.mockReset()
         fsMocks.readFile.mockReset()
+        fsMocks.readdir.mockReset()
     })
 
     describe('built-in themes', () => {
@@ -283,6 +285,57 @@ describe('theme-registry', () => {
             fsMocks.readFile.mockRejectedValueOnce(new Error('ENOENT'))
             const { getMonacoThemeData } = await loadRegistry()
             await expect(getMonacoThemeData('Alpha')).resolves.toBeNull()
+        })
+    })
+
+    // 2026-11-18（遗留清单 #12）：启动空闲异步预热——首次同步构建不再做文件 IO
+    describe('warmupMonacoThemeCache', () => {
+        it('should warm up caches asynchronously so the first sync build performs no file IO', async () => {
+            fsMocks.readdir.mockResolvedValue(['Alpha.json'])
+            fsMocks.readFile.mockResolvedValue(JSON.stringify(darkThemeData))
+            const { warmupMonacoThemeCache, getAllMonacoThemes } = await loadRegistry()
+
+            await warmupMonacoThemeCache()
+            expect(fsMocks.readdir).toHaveBeenCalledTimes(1)
+            expect(fsMocks.readFile).toHaveBeenCalledTimes(1)
+
+            const result = getAllMonacoThemes()
+            expect(result.map((t) => t.type)).toEqual(['vs', 'vs-dark', 'hc-black', 'Alpha'])
+            // 预热后首次同步构建只做内存构建：不再同步扫描目录/读取 JSON
+            expect(fsMocks.readdirSync).not.toHaveBeenCalled()
+            expect(fsMocks.readFileSync).not.toHaveBeenCalled()
+        })
+
+        it('should keep lazy loading when the directory scan fails', async () => {
+            fsMocks.readdir.mockRejectedValue(new Error('EACCES'))
+            fsMocks.readdirSync.mockReturnValue([])
+            const { warmupMonacoThemeCache, getAllMonacoThemes } = await loadRegistry()
+
+            // 预热失败不抛错，也不落空缓存
+            await expect(warmupMonacoThemeCache()).resolves.toBeUndefined()
+            const result = getAllMonacoThemes()
+            expect(result.map((t) => t.type)).toEqual(['vs', 'vs-dark', 'hc-black'])
+            // 惰性路径仍按原逻辑同步扫描
+            expect(fsMocks.readdirSync).toHaveBeenCalled()
+        })
+
+        it('should skip warmup when the registry is already initialized', async () => {
+            fsMocks.readdirSync.mockReturnValue([])
+            fsMocks.readdir.mockResolvedValue([])
+            const { warmupMonacoThemeCache, getAllMonacoThemes } = await loadRegistry()
+
+            getAllMonacoThemes()
+            await warmupMonacoThemeCache()
+            expect(fsMocks.readdir).not.toHaveBeenCalled()
+        })
+
+        it('should be idempotent when called twice', async () => {
+            fsMocks.readdir.mockResolvedValue([])
+            const { warmupMonacoThemeCache } = await loadRegistry()
+
+            await warmupMonacoThemeCache()
+            await warmupMonacoThemeCache()
+            expect(fsMocks.readdir).toHaveBeenCalledTimes(1)
         })
     })
 })
