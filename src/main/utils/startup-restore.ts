@@ -35,7 +35,9 @@ import {
     getLastOpenedFile,
     saveLastOpenedDirectory
 } from './file-state-store'
-import { runAfterMainViewEntered } from '../ipc/handlers'
+// FE-01 时序已下沉到 main-view-timing（无依赖叶子模块）：startup-restore 被
+// handlers.ts 的 OPEN_RECENT「最近文件夹」复用，若继续从 handlers 导入会形成循环依赖。
+import { runAfterMainViewEntered } from './main-view-timing'
 // P2-6：恢复目录前复用 OPEN_SPECIFIC_FOLDER 的工作区根校验（AS-2，utils/workspace-root），
 // 拦截主目录/系统目录/磁盘根等危险路径——历史遗留的 lastOpenedDirectory 若指向此类
 // 目录，启动即全量遍历 + 自动备份全量收集
@@ -56,6 +58,34 @@ function enterMainAndRun(
             return
         }
         return task()
+    })
+}
+
+/**
+ * 目录打开的可复用实现（主界面已确认进入 / 从欢迎页或菜单切换目录时使用）。
+ *
+ * 时序与既有 OPEN_SPECIFIC_FOLDER / WELCOME_OPEN_DIRECTORY / 启动恢复目录分支完全一致：
+ *   1. 先 send WELCOME_ENTER_MAIN（directory），触发渲染层主界面组件挂载并注册监听器；
+ *   2. 再在下一事件循环 tick（FE-01：runAfterMainViewEntered）发送 CLEAR_EDITOR_PREVIEW、
+ *      设置工作区根并 ReloadDirFromDisk 推送目录树数据事件；
+ *   3. 保存 lastOpenedDirectory（供下次启动恢复/自动打开使用）。
+ *
+ * 调用方负责先经 validateWorkspaceRoot 校验目录合法性（本函数只执行打开动作）。
+ * 说明：「文件」菜单 → 最近文件夹（handlers.ts 的 OPEN_RECENT）直接复用本函数，
+ * 避免把同一目录打开/时序逻辑复制到第三处。
+ *
+ * @param mainWindow 主窗口（调用时窗口存活；内部再做 isDestroyed 兜底）
+ * @param directoryPath 已通过 AS-2 工作区根校验的目录绝对路径
+ */
+export async function openDirectoryInMainView(
+    mainWindow: BrowserWindow,
+    directoryPath: string
+): Promise<void> {
+    await enterMainAndRun(mainWindow, { type: 'directory', path: directoryPath }, async () => {
+        mainWindow.webContents.send(IPC.FILE.CLEAR_EDITOR_PREVIEW)
+        appState.rootPath = directoryPath
+        await ReloadDirFromDisk()
+        saveLastOpenedDirectory(directoryPath)
     })
 }
 
@@ -90,16 +120,7 @@ export async function restoreLastOpenedAtStartup(
             })
         } else {
             try {
-                await enterMainAndRun(
-                    mainWindow,
-                    { type: 'directory', path: validation.path },
-                    async () => {
-                        mainWindow.webContents.send(IPC.FILE.CLEAR_EDITOR_PREVIEW)
-                        appState.rootPath = validation.path
-                        await ReloadDirFromDisk()
-                        saveLastOpenedDirectory(validation.path)
-                    }
-                )
+                await openDirectoryInMainView(mainWindow, validation.path)
             } catch (error) {
                 logger.error('[StartupRestore] 自动恢复上次打开的目录失败:', error)
                 clearLastOpenedDirectory()

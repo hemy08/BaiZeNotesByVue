@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as path from 'path'
 import * as os from 'os'
 import * as fs from 'fs'
+import { pathToFileURL } from 'url'
 import { appState } from '../../src/main/utils/app-state'
 
 // CMP-30：安全确认框与状态栏提示经 tMain 读取词典（语言来自系统设置）。
@@ -405,6 +406,68 @@ describe('MainWindowListenUtilsEvent', () => {
                 type: 'error'
             })
             consoleError.mockRestore()
+        })
+    })
+
+    describe('open local html in browser (遗留清单 #1)', () => {
+        function trustedEvent() {
+            return makeEvent(mainWindow.webContents)
+        }
+
+        function inTempDir(fileName: string, content = '<html></html>'): string {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'baize-open-browser-'))
+            const file = path.join(dir, fileName)
+            fs.writeFileSync(file, content)
+            return file
+        }
+
+        it('should open a trusted local html file through shell.openExternal', async () => {
+            const htmlFile = inTempDir('report.html')
+            try {
+                ipcMocks.shellOpenExternal.mockResolvedValueOnce(undefined)
+                const handler = ipcMocks.on.get('baize:file:open-in-browser')!
+                await handler(trustedEvent(), htmlFile)
+                expect(ipcMocks.shellOpenExternal).toHaveBeenCalledTimes(1)
+                expect(ipcMocks.shellOpenExternal).toHaveBeenCalledWith(
+                    pathToFileURL(htmlFile).href
+                )
+            } finally {
+                fs.rmSync(path.dirname(htmlFile), { recursive: true, force: true })
+            }
+        })
+
+        it('should reject non-html files', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const txtFile = inTempDir('notes.txt', 'plain')
+            try {
+                const handler = ipcMocks.on.get('baize:file:open-in-browser')!
+                await handler(trustedEvent(), txtFile)
+                expect(ipcMocks.shellOpenExternal).not.toHaveBeenCalled()
+                expect(consoleWarn).toHaveBeenCalled()
+            } finally {
+                consoleWarn.mockRestore()
+                fs.rmSync(path.dirname(txtFile), { recursive: true, force: true })
+            }
+        })
+
+        it('should reject paths outside trusted roots (path guard)', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            // 规范化后逃逸出受信根（os.tmpdir 的父目录）的路径
+            const escaped = path.join(os.tmpdir(), '..', 'baize-escape.html')
+            try {
+                const handler = ipcMocks.on.get('baize:file:open-in-browser')!
+                await handler(trustedEvent(), escaped)
+                expect(ipcMocks.shellOpenExternal).not.toHaveBeenCalled()
+            } finally {
+                consoleWarn.mockRestore()
+            }
+        })
+
+        it('should ignore empty payloads', async () => {
+            const handler = ipcMocks.on.get('baize:file:open-in-browser')!
+            await handler(trustedEvent(), '')
+            await handler(trustedEvent(), undefined)
+            expect(ipcMocks.shellOpenExternal).not.toHaveBeenCalled()
         })
     })
 

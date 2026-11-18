@@ -35,6 +35,42 @@ function normalizeAllowedExternalUrl(url: string): string | null {
     }
 }
 
+/**
+ * P2 修复（2026-11-18，遗留清单 #5/C-02）：on 的包装函数与 removeListener 必须引用同一实例。
+ * 原实现 `on` 内部包装 callback、`removeListener` 却传原始 callback 给 ipcRenderer，
+ * 导致退订永远无效（内存泄漏/重复回调）。这里按 (channel, callback) 缓存包装函数。
+ */
+const listenerWrappers = new Map<
+    string,
+    Map<(...args: unknown[]) => void, (event: unknown, ...args: unknown[]) => void>
+>()
+
+function addWrappedListener(channel: string, callback: (...args: unknown[]) => void): void {
+    const wrapped = (_event: unknown, ...args: unknown[]): void => callback(...args)
+    let perChannel = listenerWrappers.get(channel)
+    if (!perChannel) {
+        perChannel = new Map()
+        listenerWrappers.set(channel, perChannel)
+    }
+    perChannel.set(callback, wrapped)
+    ipcRenderer.on(channel, wrapped)
+}
+
+function removeWrappedListener(channel: string, callback: (...args: unknown[]) => void): void {
+    const perChannel = listenerWrappers.get(channel)
+    const wrapped = perChannel?.get(callback)
+    if (wrapped) {
+        ipcRenderer.removeListener(channel, wrapped)
+        perChannel?.delete(callback)
+        if (perChannel?.size === 0) {
+            listenerWrappers.delete(channel)
+        }
+        return
+    }
+    // 兼容直接以原始函数退订的历史调用（未经过 on 包装时按原样委托）
+    ipcRenderer.removeListener(channel, callback)
+}
+
 const dialogApi = {
     ipcRenderer: {
         send: (channel: string, ...args: unknown[]): void => {
@@ -46,10 +82,10 @@ const dialogApi = {
             ipcRenderer.send(channel, ...args)
         },
         on: (channel: string, callback: (...args: unknown[]) => void): void => {
-            ipcRenderer.on(channel, (_event, ...args) => callback(...args))
+            addWrappedListener(channel, callback)
         },
         removeListener: (channel: string, callback: (...args: unknown[]) => void): void => {
-            ipcRenderer.removeListener(channel, callback)
+            removeWrappedListener(channel, callback)
         }
     },
     shell: {

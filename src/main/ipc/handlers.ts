@@ -31,13 +31,20 @@ import {
     ParserFileName
 } from '../utils/file-utils'
 import { ImportCreateNewFile } from '../utils/file-utils'
-import { saveLastOpenedDirectory } from '../utils/file-state'
+import { getRecentFiles, saveLastOpenedDirectory } from '../utils/file-state'
 import { appState } from '../utils/app-state'
 import { ipcListenerManager } from './ipc-listener-manager'
 // P1/N-05：IPC 发送方授权校验（主窗口 webContents 归属判定）
 import { setTrustedMainWindow, withSenderCheck } from '../utils/ipc-security'
 // AS-2：工作区根目录校验公共实现（P2-6：提取到 utils/workspace-root 供启动恢复复用）
 import { validateWorkspaceRoot } from '../utils/workspace-root'
+// FE-01：主界面数据事件投递时序（send WELCOME_ENTER_MAIN 后再于下一 tick 发数据事件）
+import { runAfterMainViewEntered } from '../utils/main-view-timing'
+// 「文件」菜单 → 最近文件夹：复用启动恢复的目录打开实现（WELCOME_ENTER_MAIN →
+// runAfterMainViewEntered → CLEAR_EDITOR_PREVIEW + ReloadDirFromDisk + 保存工作区记录）
+import { openDirectoryInMainView } from '../utils/startup-restore'
+// 「文件」菜单 → 最近列表：最近文件夹存于 recent-folders 裸 JSON 配置（configManager 读取）
+import { configManager } from '../config/config-manager'
 // P1-AS-1：对话框选择路径登记（受信来源）——欢迎页打开的单文件/目录可能在工作区外，
 // 登记后 file-operations 的路径守卫（security.ts）才会允许读取（task-13/task-15 交接）。
 import {
@@ -48,7 +55,12 @@ import {
 } from '../utils/security'
 import { IPC } from '../../shared/ipc-channels'
 // ARC-13：FileProperties 已收敛到 src/shared/types/file.ts（唯一真源）
-import type { FileProperties } from '../../shared/types'
+import type {
+    FileProperties,
+    OpenRecentPayload,
+    OpenRecentResult,
+    RecentListResult
+} from '../../shared/types'
 import { tMain } from '../utils/i18n'
 import { logger } from '../utils/logger'
 
@@ -127,39 +139,13 @@ export function isValidWindowSize(value: unknown): value is number {
 }
 
 /**
- * FE-01：欢迎页 → 主界面的数据事件时序修复。
+ * FE-01：欢迎页 → 主界面的数据事件时序。
  *
- * 渲染层 App.vue 用 `v-if="showWelcome"` 切换界面，主界面组件（编辑器、资源管理器、
- * 状态栏）只有在收到 WELCOME_ENTER_MAIN 之后才会在 Vue 挂载周期里注册 IPC 监听器。
- * 旧实现先发送 CLEAR_EDITOR_PREVIEW / FILE_SYSTEM_DATA / SHOW_SELECTED_FILE_CONTEXT
- * 等数据事件、最后才发送 WELCOME_ENTER_MAIN：数据事件在监听器注册前到达而被丢弃，
- * 表现为首次从欢迎页打开文件/文件夹后编辑器与目录树空白，并存在用空内容覆盖原文件的
- * 数据丢失风险（P0-FE-01）。
- *
- * 修复策略（主进程最小改动）：先 send WELCOME_ENTER_MAIN，再在下一个事件循环 tick
- * （setImmediate）发送数据事件。Vue 挂载在渲染层处理 WELCOME_ENTER_MAIN 后的微任务中
- * 完成（onMounted 注册监听器），setImmediate 只让出主进程一个 tick，确保
- * WELCOME_ENTER_MAIN 已投递后再发数据；不使用固定 sleep，额外延迟通常 < 1 ms，
- * 远低于 500 ms 上限。
+ * 详细背景与实现说明见 `src/main/utils/main-view-timing.ts`（本函数已下沉到该叶子模块，
+ * 供 handlers.ts 与 startup-restore.ts 共用，避免 handlers ↔ startup-restore 循环依赖）。
+ * 此处保留 re-export 以兼容既有引用/文档中的 handlers.runAfterMainViewEntered 说法。
  */
-/**
- * 启动恢复流程（src/main/utils/startup-restore.ts）复用的同一投递时序：
- * 先 send WELCOME_ENTER_MAIN，再在下一个事件循环 tick 发送数据事件。
- */
-export function runAfterMainViewEntered(task: () => Promise<void> | void): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-        setImmediate(() => {
-            void (async () => {
-                try {
-                    await task()
-                    resolve()
-                } catch (error) {
-                    reject(error)
-                }
-            })()
-        })
-    })
-}
+export { runAfterMainViewEntered }
 
 /** AS-2：拒绝非法工作区根目录时记录安全日志并经状态栏提示，不执行目录遍历 */
 function notifyWorkspaceRootRejected(
@@ -182,6 +168,142 @@ function notifyWorkspaceRootRejected(
     } catch (error) {
         logger.error('[Security] 工作区根目录拒绝提示发送失败:', error)
     }
+}
+
+/* ============================================================================
+ * 「文件」菜单 → 最近文件 / 最近文件夹（RECENT_LIST / OPEN_RECENT）
+ *
+ * 数据来源：
+ * - 最近文件：file-state-store 的 recentFiles（打开文件时由 saveLastOpenedFile 去重置顶，
+ *   条数受「最近文件列表数量」设置钳制，默认 10、范围 5~20）；
+ * - 最近文件夹：configManager 的 recent-folders 裸 JSON 配置（欢迎页与 App.vue
+ *   saveToRecentFolders 写入，主进程写入侧按同一设置截断）。
+ *
+ * 菜单侧统一最多展示 20 项（再 slice 一次兜底，避免历史配置文件超长）。
+ * 打开动作必须重新做白名单校验：渲染层只拿到路径字符串，菜单树是渲染层可改的普通
+ * 数据，不能把「点击最近项」当成任意路径打开能力（窗口内被注入的脚本可伪造 invoke）。
+ * ========================================================================== */
+
+/** 最近列表展示/白名单校验的条数上限（与 recentFilesCount 设置上限 20 对齐） */
+const RECENT_MENU_LIMIT = 20
+
+/** OPEN_RECENT 入参路径长度上限（防御异常超长字符串） */
+const RECENT_PATH_MAX_LENGTH = 4096
+
+/** 最近文件夹配置原始值收窄为标准字符串数组（空串/非字符串条目丢弃） */
+function normalizeRecentFolders(raw: unknown): string[] {
+    if (!Array.isArray(raw)) {
+        return []
+    }
+    return raw.filter((item): item is string => typeof item === 'string' && item.length > 0)
+}
+
+/** 读取最近文件夹列表（读取失败返回空数组，不向 invoke 调用方抛错） */
+async function readRecentFolders(): Promise<string[]> {
+    try {
+        const raw: unknown = await configManager.readConfig('recent-folders')
+        return normalizeRecentFolders(raw).slice(0, RECENT_MENU_LIMIT)
+    } catch (error) {
+        logger.warn('[IPC] 读取最近文件夹列表失败（按空列表处理）:', error)
+        return []
+    }
+}
+
+/** 读取最近文件列表（存储异常时返回空数组，不向 invoke 调用方抛错） */
+function readRecentFiles(): string[] {
+    try {
+        return getRecentFiles().slice(0, RECENT_MENU_LIMIT)
+    } catch (error) {
+        logger.warn('[IPC] 读取最近文件列表失败（按空列表处理）:', error)
+        return []
+    }
+}
+
+/**
+ * OPEN_RECENT 失败提示：主进程写状态栏（与 menu-handle.ts 的菜单动作失败提示一致）。
+ * 渲染层侧由 invoke 返回值兜底（message 已按主进程语言本地化），窗口销毁时静默跳过。
+ */
+function failRecentOpen(
+    mainWindow: BrowserWindow,
+    message: string
+): { ok: false; message: string } {
+    logger.warn('[IPC] 打开最近项失败：', message)
+    try {
+        if (typeof mainWindow.isDestroyed === 'function' && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send(IPC.EVENTS.STATUS_BAR_UPDATE, {
+                message,
+                type: 'error'
+            })
+        }
+    } catch (error) {
+        logger.error('[IPC] 打开最近项失败提示发送失败:', error)
+    }
+    return { ok: false, message }
+}
+
+/** OPEN_RECENT 入参收窄（kind 必须为 file/folder，path 为非空且长度受限的字符串） */
+function parseRecentOpenPayload(payload: unknown): OpenRecentPayload | null {
+    if (!payload || typeof payload !== 'object') {
+        return null
+    }
+    const { kind, path: targetPath } = payload as { kind?: unknown; path?: unknown }
+    if (kind !== 'file' && kind !== 'folder') {
+        return null
+    }
+    if (
+        typeof targetPath !== 'string' ||
+        targetPath.length === 0 ||
+        targetPath.length > RECENT_PATH_MAX_LENGTH
+    ) {
+        return null
+    }
+    return { kind, path: targetPath }
+}
+
+/**
+ * 打开最近项：先按「当前最近列表」做严格相等白名单校验（防止渲染层伪造任意路径），
+ * 再复用既有打开链路——文件走 OpenSelectFile，文件夹复用启动恢复的目录打开实现
+ * （AS-2 工作区根校验 → WELCOME_ENTER_MAIN → 下一 tick CLEAR_EDITOR_PREVIEW +
+ * ReloadDirFromDisk + saveLastOpenedDirectory）。
+ */
+async function openRecentTarget(
+    mainWindow: BrowserWindow,
+    payload: OpenRecentPayload
+): Promise<OpenRecentResult> {
+    const target = payload.path
+
+    if (payload.kind === 'file') {
+        if (!readRecentFiles().includes(target)) {
+            return failRecentOpen(mainWindow, tMain('mainMsg.status.recentTargetMissing'))
+        }
+        if (!fs.existsSync(target)) {
+            return failRecentOpen(mainWindow, tMain('mainMsg.status.recentTargetMissing'))
+        }
+        const fileProperties: FileProperties = {
+            name: ParserFileName(target),
+            path: target,
+            type: 'file',
+            content: ''
+        }
+        await OpenSelectFile(fileProperties)
+        return { ok: true }
+    }
+
+    if (!(await readRecentFolders()).includes(target)) {
+        return failRecentOpen(mainWindow, tMain('mainMsg.status.recentTargetMissing'))
+    }
+    const validation = await validateWorkspaceRoot(target)
+    if (!validation.ok) {
+        return failRecentOpen(
+            mainWindow,
+            tMain('mainMsg.status.startupRestoreFolderInvalid', {
+                path: target,
+                reason: validation.reason
+            })
+        )
+    }
+    await openDirectoryInMainView(mainWindow, validation.path)
+    return { ok: true }
 }
 
 /* ============================================================================
@@ -312,7 +434,14 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcListenerManager.registerOnce(
         IPC.WINDOW.CLOSE,
         withSenderCheck(IPC.WINDOW.CLOSE, () => {
-            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close()
+            if (!mainWindow || mainWindow.isDestroyed()) return
+            // 欢迎页/无活动文件场景没有编辑器内容需要 flush：置显式退出标志后直接关闭，
+            // 避免 close 拦截进入 FLUSH_CONTENT 的 2s 超时等待（点击关闭后窗口 2 秒不动，
+            // 用户会误以为关闭按钮无效）。有活动文件时保持既有 flush → 脏则保存协议。
+            if (!appState.currentActiveFile) {
+                appState.setQuitting(true)
+            }
+            mainWindow.close()
         }),
         GLOBAL_IPC_COMPONENT_ID
     )
@@ -356,17 +485,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         ),
         GLOBAL_IPC_COMPONENT_ID
     )
-    // CQ-14：START_DRAG 是"拖动开始"的历史握手通道，主进程无需处理——窗口拖动由
-    // 渲染层 useWindowManagement.ts 在 mousedown 后自行计算坐标，经 WINDOW.MOVE
-    // 下发 setBounds 完成。渲染层仍在发送本通道，故保留空 handler 消费频道；
-    // 若删除发送点，可连同本注册一并移除。
-    ipcListenerManager.registerOnce(
-        IPC.WINDOW.START_DRAG,
-        withSenderCheck(IPC.WINDOW.START_DRAG, () => {
-            void 0
-        }),
-        GLOBAL_IPC_COMPONENT_ID
-    )
+    // CQ-14：START_DRAG（拖动开始握手）已于 2026-11-18 随死通道清理删除——
+    // 窗口拖动由渲染层 useWindowManagement.ts 在 mousedown 后自行计算坐标，
+    // 经 WINDOW.MOVE 下发 setBounds 完成，无需握手通道。
     // AS-6：MOVE/SET_SIZE 增加数值类型/范围校验 + setBounds 异常兜底——
     // 渲染层传 NaN/字符串/超大值时不再抛未捕获异常，也不会把窗口移出屏幕外无法恢复。
     ipcListenerManager.registerOnce(
@@ -440,6 +561,53 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
                 notifyIpcAsyncError(mainWindow, IPC.FILE.OPEN_SPECIFIC_FOLDER, error)
             }
         }),
+        GLOBAL_IPC_COMPONENT_ID
+    )
+
+    // 「文件」菜单 → 最近文件/最近文件夹：拉取两个列表（各最多 20 项；读取失败按空列表，
+    // 不向 invoke 调用方抛错——菜单打开必须不被存储读取异常打断）。
+    ipcListenerManager.registerHandleOnce(
+        IPC.FILE.RECENT_LIST,
+        withSenderCheck(
+            IPC.FILE.RECENT_LIST,
+            async (): Promise<RecentListResult> => ({
+                files: readRecentFiles(),
+                folders: await readRecentFolders()
+            }),
+            { kind: 'handle' }
+        ),
+        GLOBAL_IPC_COMPONENT_ID
+    )
+
+    // 「文件」菜单 → 打开最近项：参数校验（kind/path）→ 当前最近列表严格相等白名单 →
+    // 文件走 OpenSelectFile、文件夹复用启动恢复的目录打开实现（AS-2 校验 + FE-01 时序）。
+    // 失败统一返回 { ok: false, message }（主进程同时写状态栏，渲染层不抛未捕获拒绝）。
+    ipcListenerManager.registerHandleOnce(
+        IPC.FILE.OPEN_RECENT,
+        withSenderCheck(
+            IPC.FILE.OPEN_RECENT,
+            async (_event, payload: unknown): Promise<OpenRecentResult> => {
+                try {
+                    const parsed = parseRecentOpenPayload(payload)
+                    if (!parsed) {
+                        return failRecentOpen(
+                            mainWindow,
+                            tMain('mainMsg.status.recentTargetMissing')
+                        )
+                    }
+                    return await openRecentTarget(mainWindow, parsed)
+                } catch (error) {
+                    logger.error(`[IPC] 通道 "${IPC.FILE.OPEN_RECENT}" 处理失败:`, error)
+                    return failRecentOpen(
+                        mainWindow,
+                        tMain('mainMsg.status.operationFailed', {
+                            message: error instanceof Error ? error.message : String(error)
+                        })
+                    )
+                }
+            },
+            { kind: 'handle' }
+        ),
         GLOBAL_IPC_COMPONENT_ID
     )
 

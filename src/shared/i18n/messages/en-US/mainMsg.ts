@@ -56,6 +56,8 @@ export default {
         noActiveFileUnsaved: 'No active file; the content has not been saved yet',
         noActiveFileSave: 'No active file to save',
         menuActionFailed: 'Menu action failed: {message}',
+        // File menu recent files/folders: the target is no longer in the current recent list
+        recentTargetMissing: 'The recent item no longer exists.',
         // System settings supplement batch A: startup restore of last file/folder
         startupRestoreFileMissing:
             'The last opened file no longer exists (it may have been moved or deleted), so it was not restored: {path}',

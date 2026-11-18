@@ -154,13 +154,6 @@ describe('ShowShortcutKeysDialog（FE-07）', () => {
         expect(win.show).toHaveBeenCalledTimes(1)
     })
 
-    it('should send the current theme styles after did-finish-load', () => {
-        ShowShortcutKeysDialog()
-        const win = eState.windows[0]
-        win.emitWeb('did-finish-load')
-        expect(win.webContents.send).toHaveBeenCalledWith('baize:theme:init-styles', themeStyles)
-    })
-
     it('should focus the existing dialog instead of opening a second one', () => {
         ShowShortcutKeysDialog()
         const first = eState.windows[0]

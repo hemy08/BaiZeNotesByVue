@@ -185,7 +185,6 @@ describe('ShowFileFolderRenameDialog', () => {
         expect(win.setMenu).toHaveBeenCalledWith(null)
         expect(win.loadURL.mock.calls[0][0]).toMatch(/^data:text\/html;charset=utf-8,/)
         expect(win.show).toHaveBeenCalledTimes(1)
-        expect(win.webContents.send).toHaveBeenCalledWith('baize:theme:init-styles', themeStyles)
     })
 
     it('should generate html containing old path and input', () => {

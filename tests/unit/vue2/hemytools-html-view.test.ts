@@ -17,12 +17,31 @@ import { nextTick } from 'vue'
 import type { VueWrapper } from '@vue/test-utils'
 
 import ShowHtmlView from '@renderer/components/HemyTools/ShowHtmlView.vue'
+import { withBaseHref } from '@renderer/components/HemyTools/html-view-utils'
 import EventBus from '@renderer/common/event-bus/event-bus'
 import { EVENT_BUS } from '@renderer/common/event-bus/event-bus-events'
 import { IPC } from '../../../src/shared/ipc-channels'
 
 /** 组件内部硬编码的 componentId，用于清理 EventBus 监听 */
 const COMPONENT_ID = 'ShowHtmlView'
+
+/** 由文件路径计算期望注入的 base URL（与 html-view-utils.withBaseHref 实现口径一致） */
+function baseOf(filePath: string): string {
+    const normalized = filePath.replace(/\\/g, '/')
+    const slash = normalized.lastIndexOf('/')
+    const dir = slash >= 0 ? normalized.slice(0, slash + 1) : normalized
+    return dir.startsWith('/') ? `file://${encodeURI(dir)}` : `file:///${encodeURI(dir)}`
+}
+
+/** 断言 srcdoc = 注入 base 后的 HTML（包含 base 标签与原内容） */
+function expectSrcdoc(
+    srcdoc: string | undefined,
+    filePath: string,
+    content: string
+): void {
+    expect(srcdoc).toContain(`<base href="${baseOf(filePath)}">`)
+    expect(srcdoc).toContain(content)
+}
 
 let invoke: ReturnType<typeof vi.fn>
 let send: ReturnType<typeof vi.fn>
@@ -112,8 +131,9 @@ describe('ShowHtmlView 文件选择与内容渲染', () => {
 
         const iframe = wrapper.find('iframe')
         expect(iframe.exists()).toBe(true)
-        // iframe 通过 srcdoc 内联渲染 HTML 内容
-        expect(iframe.attributes('srcdoc')).toBe('<h1>Hello BaiZe</h1>')
+        // iframe 通过 srcdoc 内联渲染 HTML 内容；注入 base 使报告 HTML Wiki 等
+        // 本地页面的相对链接（顶部导航）在 app 内可正确定位
+        expectSrcdoc(iframe.attributes('srcdoc'), '/notes/index.html', '<h1>Hello BaiZe</h1>')
         // P1 安全修复（N-04）：sandbox 收紧为纯展示——脚本不再执行，
         // 仅保留 allow-same-origin 以加载本地相对资源（详见下方专项断言）。
         expect(iframe.attributes('sandbox')).toBe('allow-same-origin')
@@ -148,7 +168,7 @@ describe('ShowHtmlView 文件选择与内容渲染', () => {
         await clickTreeNode({ type: 'file', name: 'page.html', path: '/notes/page.html' })
 
         expect(invoke).toHaveBeenCalledWith(IPC.FILE.READ_HTML, '/notes/page.html')
-        expect(wrapper.find('iframe').attributes('srcdoc')).toBe('<p>tree</p>')
+        expectSrcdoc(wrapper.find('iframe').attributes('srcdoc'), '/notes/page.html', '<p>tree</p>')
     })
 
     it('ignores non-html files selected from the event bus', async () => {
@@ -178,14 +198,14 @@ describe('ShowHtmlView 文件选择与内容渲染', () => {
         const wrapper = mountView()
 
         await selectHtmlFile('/notes/a.html', 'a.html')
-        expect(wrapper.find('iframe').attributes('srcdoc')).toBe('<p>first</p>')
+        expectSrcdoc(wrapper.find('iframe').attributes('srcdoc'), '/notes/a.html', '<p>first</p>')
 
         await selectHtmlFile('/notes/b.html', 'b.html')
 
         expect(invoke).toHaveBeenCalledTimes(2)
         expect(invoke).toHaveBeenNthCalledWith(1, IPC.FILE.READ_HTML, '/notes/a.html')
         expect(invoke).toHaveBeenNthCalledWith(2, IPC.FILE.READ_HTML, '/notes/b.html')
-        expect(wrapper.find('iframe').attributes('srcdoc')).toBe('<p>second</p>')
+        expectSrcdoc(wrapper.find('iframe').attributes('srcdoc'), '/notes/b.html', '<p>second</p>')
         expect(wrapper.find('.file-name').text()).toBe('/notes/b.html')
     })
 })
@@ -235,7 +255,7 @@ describe('ShowHtmlView 错误处理与重试', () => {
         expect(invoke).toHaveBeenNthCalledWith(1, IPC.FILE.READ_HTML, '/notes/retry.html')
         expect(invoke).toHaveBeenNthCalledWith(2, IPC.FILE.READ_HTML, '/notes/retry.html')
         expect(wrapper.find('.error-container').exists()).toBe(false)
-        expect(wrapper.find('iframe').attributes('srcdoc')).toBe('<p>recovered</p>')
+        expectSrcdoc(wrapper.find('iframe').attributes('srcdoc'), '/notes/retry.html', '<p>recovered</p>')
     })
 
     it('reloads the current file through the toolbar refresh button', async () => {
@@ -249,7 +269,7 @@ describe('ShowHtmlView 错误处理与重试', () => {
         const wrapper = mountView()
 
         await selectHtmlFile('/notes/refresh.html', 'refresh.html')
-        expect(wrapper.find('iframe').attributes('srcdoc')).toBe('<p>old</p>')
+        expectSrcdoc(wrapper.find('iframe').attributes('srcdoc'), '/notes/refresh.html', '<p>old</p>')
 
         await wrapper.find('button[title="刷新"]').trigger('click')
         await nextTick()
@@ -263,7 +283,7 @@ describe('ShowHtmlView 错误处理与重试', () => {
 
         expect(invoke).toHaveBeenCalledTimes(2)
         expect(invoke).toHaveBeenLastCalledWith(IPC.FILE.READ_HTML, '/notes/refresh.html')
-        expect(wrapper.find('iframe').attributes('srcdoc')).toBe('<p>new</p>')
+        expectSrcdoc(wrapper.find('iframe').attributes('srcdoc'), '/notes/refresh.html', '<p>new</p>')
     })
 })
 
@@ -275,8 +295,10 @@ describe('ShowHtmlView 工具栏与生命周期', () => {
 
         await wrapper.find('button[title="在浏览器中打开"]').trigger('click')
 
+        // 2026-11-18（遗留清单 #1）：本地 HTML 改走专用通道
+        // （OPEN_EXTERNAL_LINK 仅放行 http/https，原实现点击无效）
         expect(send).toHaveBeenCalledTimes(1)
-        expect(send).toHaveBeenCalledWith(IPC.FILE.OPEN_EXTERNAL_LINK, '/notes/index.html')
+        expect(send).toHaveBeenCalledWith(IPC.FILE.OPEN_IN_BROWSER, '/notes/index.html')
         // 打开外部浏览器不应重新读取文件
         expect(invoke).toHaveBeenCalledTimes(1)
     })
@@ -298,5 +320,36 @@ describe('ShowHtmlView 工具栏与生命周期', () => {
         await flushPromises()
 
         expect(invoke).not.toHaveBeenCalled()
+    })
+})
+
+describe('withBaseHref（srcdoc 相对链接基准修复）', () => {
+    it('injects base into an existing <head>', () => {
+        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>x</body></html>'
+        const out = withBaseHref(html, '/notes/index.html')
+        expect(out).toContain('<base href="file:///notes/">')
+        expect(out).toContain('<meta charset="utf-8">')
+        // base 必须位于 head 内（紧跟 <head> 之后）
+        expect(out.indexOf('<base href=')).toBeLessThan(out.indexOf('</head>'))
+    })
+
+    it('creates a <head> when only <html> exists', () => {
+        const out = withBaseHref('<html><body>x</body></html>', '/notes/index.html')
+        expect(out).toBe('<html>\n<head><base href="file:///notes/"></head><body>x</body></html>')
+    })
+
+    it('prepends base for fragments without html/head', () => {
+        const out = withBaseHref('<h1>Hello</h1>', '/notes/index.html')
+        expect(out).toBe('<base href="file:///notes/">\n<h1>Hello</h1>')
+    })
+
+    it('builds a Windows drive-letter file url', () => {
+        const out = withBaseHref('<body>x</body>', 'E:\\github.com\\BaiZeNotesByVue\\docs\\reports\\html\\README.html')
+        expect(out).toContain('<base href="file:///E:/github.com/BaiZeNotesByVue/docs/reports/html/">')
+    })
+
+    it('encodes non-ascii directory segments', () => {
+        const out = withBaseHref('<body>x</body>', 'D:\\文档\\报告\\index.html')
+        expect(out).toContain(`<base href="file:///D:/${encodeURI('文档/报告/')}">`)
     })
 })

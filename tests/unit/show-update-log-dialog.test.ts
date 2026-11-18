@@ -161,13 +161,6 @@ describe('ShowUpdateLogDialog', () => {
         )
     })
 
-    it('should send theme styles after did-finish-load', () => {
-        ShowUpdateLogDialog()
-        const win = eState.windows[0]
-        win.emitWeb('did-finish-load')
-        expect(win.webContents.send).toHaveBeenCalledWith('baize:theme:init-styles', themeStyles)
-    })
-
     it('should render upgrade groups with dependency rows', () => {
         ShowUpdateLogDialog()
         const html = getLoadedHtml(eState.windows[0])

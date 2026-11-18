@@ -130,7 +130,7 @@ describe('useWindowManagement', () => {
             mouseEvent({ screenX: 400, screenY: 500, clientY: 300, preventDefault }) as MouseEvent
         )
 
-        expect(ipcSend).toHaveBeenCalledWith('baize:window:start-drag')
+        expect(ipcSend).not.toHaveBeenCalledWith('baize:window:start-drag')
         expect(mgr.isDragging.value).toBe(true)
         expect(preventDefault).toHaveBeenCalled()
         expect(onReLayout).toHaveBeenCalled()
@@ -167,7 +167,7 @@ describe('useWindowManagement', () => {
         ipcInvoke.mockResolvedValue(null)
         const mgr = useWindowManagement()
         await mgr.onTitleBarMouseDown(mouseEvent() as MouseEvent)
-        expect(ipcSend).toHaveBeenCalledWith('baize:window:start-drag')
+        expect(ipcSend).not.toHaveBeenCalledWith('baize:window:start-drag')
         expect(mgr.isDragging.value).toBe(true)
         expect(addEventListenerMock).toHaveBeenCalledWith('mousemove', expect.any(Function))
     })

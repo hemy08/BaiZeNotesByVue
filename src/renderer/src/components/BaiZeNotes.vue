@@ -469,12 +469,10 @@ async function updateMonacoEditorTheme(
 
     // 如果单独配置了编辑器主题，使用配置的主题
     if (separate) {
-        // 加载 Monaco 主题
-        const loadedTheme = await loadMonacoTheme(monacoThemeName)
-        if (loadedTheme) {
-            // 通过 IPC 发送主题更新事件
-            window.electron.ipcRenderer.send(IPC.EDITOR.UPDATE_OPTIONS, 'theme', loadedTheme)
-        }
+        // 加载 Monaco 主题（loadMonacoTheme 内部已完成 defineTheme + setTheme）
+        // 2026-11-18：删除无接收方的 UPDATE_OPTIONS R→M 发送（主进程无该通道监听，
+        // 主题实际已由 loadMonacoTheme 本地应用，属空转死分支）
+        await loadMonacoTheme(monacoThemeName)
     } else {
         // 否则根据应用主题自动选择
         const themeName =

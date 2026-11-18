@@ -160,13 +160,6 @@ describe('ShowReleaseNotesDialog', () => {
         expect(win.show).toHaveBeenCalledTimes(1)
     })
 
-    it('should send theme styles after did-finish-load', () => {
-        ShowReleaseNotesDialog('1.2.2')
-        const win = eState.windows[0]
-        win.emitWeb('did-finish-load')
-        expect(win.webContents.send).toHaveBeenCalledWith('baize:theme:init-styles', themeStyles)
-    })
-
     it('should render known release note content', () => {
         ShowReleaseNotesDialog('1.2.2')
         const html = getLoadedHtml(eState.windows[0])

@@ -3,6 +3,7 @@
         <!-- 窗口控制按钮 -->
         <div class="window-controls">
             <button
+                type="button"
                 class="window-btn minimize"
                 :title="t('workspace.window.minimize')"
                 @click="minimizeWindow"
@@ -10,13 +11,14 @@
                 <svg viewBox="0 0 12 12"><path d="M2 6h8" /></svg>
             </button>
             <button
+                type="button"
                 class="window-btn maximize"
                 :title="t('workspace.window.maximize')"
                 @click="maximizeWindow"
             >
                 <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" fill="none" /></svg>
             </button>
-            <button class="window-btn close" :title="t('common.close')" @click="closeWindow">
+            <button type="button" class="window-btn close" :title="t('common.close')" @click="closeWindow">
                 <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" /></svg>
             </button>
         </div>
@@ -165,6 +167,7 @@ onMounted(() => {
     height: 30px;
     display: flex;
     justify-content: flex-end;
+    /* 控制条整体可拖动窗口（无框窗口）；按钮区域经下方 no-drag 恢复交互 */
     -webkit-app-region: drag;
     flex-shrink: 0;
     z-index: 10000;
@@ -181,10 +184,20 @@ onMounted(() => {
     justify-content: center;
     transition: background 0.2s;
     -webkit-app-region: no-drag;
+    /* 修复「欢迎页右上角按钮不生效」：drag 区域内的 SVG 子元素默认仍被当作拖动
+       热区（-webkit-app-region 非继承、子元素未显式声明 no-drag 时命中祖先 drag），
+       导致点击图标本身开始拖动窗口而非触发 click。按钮及其全部子元素显式声明
+       no-drag，保证按钮任意位置都可点击。 */
+}
+
+.window-btn,
+.window-btn svg,
+.window-btn svg * {
+    -webkit-app-region: no-drag;
 }
 
 .window-btn:hover {
-    background: #e81123;
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .window-btn.close:hover {

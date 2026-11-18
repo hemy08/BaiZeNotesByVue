@@ -2,6 +2,9 @@ appId: hemye.BaiZeNotes
 productName: BaiZeNotes
 # ARC-20：显式声明 asar 打包策略，避免依赖 electron-builder 未来默认值变化
 asar: true
+# 2026-11-18（遗留清单 #14）：显式声明压缩策略（默认 normal；maximum 进一步压缩安装包，
+# 首次解压稍慢但体积更小；如需更快安装可改为 normal/store）
+compression: maximum
 directories:
     buildResources: build
 files:

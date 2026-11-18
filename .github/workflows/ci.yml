@@ -1,0 +1,43 @@
+name: CI
+
+# 2026-11-18（遗留清单 #16）：最小质量门禁流水线
+# - 与本地门禁一致：typecheck（node/web/test 三段）→ ESLint → Vitest
+# - 平台选用 windows-latest：仓库为 Windows 桌面应用，路径/编码相关用例与本地环境一致
+# - 不执行打包（electron-builder 需要签名/发布配置，发布流水线另行配置）
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    name: Typecheck / Lint / Test
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (node / web / test)
+        run: npm run typecheck
+
+      - name: ESLint
+        run: npx --no-install eslint .
+
+      - name: Vitest
+        run: npx --no-install vitest run

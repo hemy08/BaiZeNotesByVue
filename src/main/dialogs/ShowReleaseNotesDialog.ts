@@ -6,7 +6,6 @@
 import { getCurrentThemeStyles } from '../config'
 import { windowManager } from '../config/window-manager'
 import { createDialogOptions, createJSDOM, loadDialogHtml } from './dialog-defaults'
-import { IPC } from '../../shared/ipc-channels'
 import { tMain } from '../utils/i18n'
 
 interface ReleaseNoteEntry {
@@ -213,11 +212,8 @@ export function ShowReleaseNotesDialog(version: string) {
     loadDialogHtml(releaseDialog, html)
 
     releaseDialog.show()
-
-    releaseDialog.webContents.on('did-finish-load', () => {
-        const theme = getCurrentThemeStyles()
-        releaseDialog?.webContents.send(IPC.THEME.INIT_THEME_STYLES, theme)
-    })
+    // 2026-11-18：删除 INIT_THEME_STYLES 发送（全仓无监听的空转通道；
+    // 对话框主题由 makeReleaseNotesHtml 内联主题变量注入 + THEME_UPDATED 后重载覆盖）
 }
 
 function findReleaseNote(version: string): ReleaseNoteEntry | undefined {

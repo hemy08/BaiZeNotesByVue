@@ -516,9 +516,6 @@ describe('ready-to-show flow', () => {
         await settle()
         expect(electronMocks.win.show).toHaveBeenCalled()
         expect(internalMocks.loggerSetMainWindow).toHaveBeenCalledWith(electronMocks.win)
-        expect(electronMocks.win.webContents.send).toHaveBeenCalledWith('baize:theme:init-styles', {
-            dark: false
-        })
         expect(electronMocks.win.webContents.insertCSS).toHaveBeenCalledWith(
             expect.stringContaining('font-family: Microsoft YaHei')
         )

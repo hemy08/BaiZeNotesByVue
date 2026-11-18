@@ -60,9 +60,6 @@ export function ShowCreateFileFolderDialog(
 
     customCreateDialog.show()
 
-    const theme = getCurrentThemeStyles()
-    customCreateDialog.webContents.send(IPC.THEME.INIT_THEME_STYLES, theme)
-
     async function processCreateFileFolder(_: Electron.IpcMainEvent, name: string) {
         const submittedName = name
         if (!isFolder && fileExtension.length == 0 && name.indexOf('.') === -1) {

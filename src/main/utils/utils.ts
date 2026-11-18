@@ -24,6 +24,7 @@ import { ipcListenerManager } from '../ipc/ipc-listener-manager'
 import { assertTrustedSender, setTrustedMainWindow, withSenderCheck } from './ipc-security'
 import * as fs from 'fs'
 import * as path from 'path'
+import { pathToFileURL } from 'url'
 import { IPC } from '../../shared/ipc-channels'
 // ARC-13：CryptoData / FileProperties 已收敛到 src/shared/types（唯一真源）
 import type { CryptoData, FileProperties } from '../../shared/types'
@@ -741,6 +742,40 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
             } catch (error) {
                 // CQ-05：打开失败时主进程留日志并经状态栏提示，不再只打 console.error
                 notifyIpcAsyncError(mainWindow, IPC.FILE.OPEN_EXTERNAL_LINK, error)
+            }
+        }),
+        GLOBAL_IPC_COMPONENT_ID
+    )
+
+    // 在外部浏览器中打开本地 HTML 文件（2026-11-18，遗留清单 #1）
+    // 背景：HTML 查看器「在浏览器中打开」此前复用 OPEN_EXTERNAL_LINK，该通道按设计
+    // 仅放行 http/https，本地路径必被拒绝（按钮点击无效）。本通道专门处理本地文件：
+    // ① 仅允许 .html/.htm；② 必须命中 Path Guard（工作区/受信目录，防任意文件外带）；
+    // ③ 通过后经 pathToFileURL 交给系统默认浏览器打开。
+    ipcListenerManager.registerOnce(
+        IPC.FILE.OPEN_IN_BROWSER,
+        withSenderCheck(IPC.FILE.OPEN_IN_BROWSER, async (_, filePath: string) => {
+            if (typeof filePath !== 'string' || filePath.trim() === '') {
+                return
+            }
+            const resolved = path.resolve(filePath)
+            if (!/\.html?$/i.test(resolved)) {
+                logger.warn(`[Security] 已拒绝在浏览器打开非 HTML 文件：${resolved}`)
+                return
+            }
+            if (!isPathAllowed(resolved)) {
+                notifyFilePathDenied(
+                    mainWindow,
+                    IPC.FILE.OPEN_IN_BROWSER,
+                    resolved,
+                    'mainMsg.status.openFileFailed'
+                )
+                return
+            }
+            try {
+                await shell.openExternal(pathToFileURL(resolved).href)
+            } catch (error) {
+                notifyIpcAsyncError(mainWindow, IPC.FILE.OPEN_IN_BROWSER, error)
             }
         }),
         GLOBAL_IPC_COMPONENT_ID

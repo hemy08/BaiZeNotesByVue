@@ -211,8 +211,8 @@ function createWindow(): void {
         logger.setMainWindow(mainWindow)
         logger.info('白泽笔记启动成功')
 
-        const theme = getCurrentThemeStyles()
-        mainWindow.webContents.send(IPC.THEME.INIT_THEME_STYLES, theme)
+        // 主题初始样式由渲染层 onMounted 经 THEME.GET_CURRENT_THEME_STYLES invoke 拉取
+        // （原 THEME.INIT_THEME_STYLES 广播全仓无监听，属空转通道，2026-11-18 清理）
 
         const systemSetting = getSystemSetting()
         // ARC-04：字体 CSS 组装收敛到 system-setting.buildFontCss（与设置变更时

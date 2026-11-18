@@ -21,6 +21,8 @@ import * as Templates from '@renderer/common/templates'
 const ipcSend = vi.fn()
 const ipcInvoke = vi.fn()
 const promptMock = vi.fn()
+// 「文件」菜单 → 最近文件/最近文件夹：打开最近项经 window.api.file.openRecent（invoke 主进程）
+const openRecentMock = vi.fn()
 
 beforeEach(() => {
     showDialogMock.mockReset()
@@ -28,8 +30,11 @@ beforeEach(() => {
     ipcSend.mockReset()
     ipcInvoke.mockReset()
     promptMock.mockReset()
+    openRecentMock.mockReset()
+    openRecentMock.mockResolvedValue({ ok: true })
     vi.stubGlobal('window', {
         electron: { ipcRenderer: { send: ipcSend, invoke: ipcInvoke } },
+        api: { file: { recentList: vi.fn(), openRecent: openRecentMock } },
         prompt: promptMock
     })
 })
@@ -304,6 +309,77 @@ describe('HandleMenuAction', () => {
             expect(emitMock).toHaveBeenCalledWith(
                 'baize:notes:monaco-editor:insert-text',
                 template?.context
+            )
+        })
+    })
+
+    // 「文件」菜单 → 最近文件/最近文件夹（MenuBar.vue 打开菜单时按最近列表动态生成动作）
+    // 动作 id：baize:menu:file:recent-file:<encodeURIComponent(path)> / recent-folder:...
+    describe('recent files/folders actions', () => {
+        const recentFile = 'C:\\docs\\最近笔记 a.md'
+        const recentFolder = 'D:\\工作区\\项目'
+
+        it('should invoke openRecent with the decoded file path (not forward to MENU.ACTION)', async () => {
+            HandleMenuAction(`baize:menu:file:recent-file:${encodeURIComponent(recentFile)}`)
+            expect(openRecentMock).toHaveBeenCalledWith({ kind: 'file', path: recentFile })
+            await flushMicrotasks()
+            expect(ipcSend).not.toHaveBeenCalled()
+        })
+
+        it('should invoke openRecent with the decoded folder path', async () => {
+            HandleMenuAction(`baize:menu:file:recent-folder:${encodeURIComponent(recentFolder)}`)
+            expect(openRecentMock).toHaveBeenCalledWith({ kind: 'folder', path: recentFolder })
+            await flushMicrotasks()
+            expect(ipcSend).not.toHaveBeenCalled()
+        })
+
+        it('should not send a renderer→main status bar message on open failure (main process reports)', async () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            openRecentMock.mockResolvedValue({
+                ok: false,
+                message: '最近列表已变化，目标不存在'
+            })
+            HandleMenuAction(`baize:menu:file:recent-file:${encodeURIComponent(recentFile)}`)
+            await flushMicrotasks()
+            // 用户可见提示由主进程 failRecentOpen 经 STATUS_BAR_UPDATE（M→R）下发；
+            // 渲染层不再反向 send（该方向无主进程监听，2026-11-18 随死通道清理删除）
+            expect(ipcSend).not.toHaveBeenCalled()
+            expect(warnSpy).toHaveBeenCalled()
+            warnSpy.mockRestore()
+        })
+
+        it('should not report anything when opening succeeds', async () => {
+            openRecentMock.mockResolvedValue({ ok: true })
+            HandleMenuAction(`baize:menu:file:recent-folder:${encodeURIComponent(recentFolder)}`)
+            await flushMicrotasks()
+            expect(ipcSend).not.toHaveBeenCalled()
+        })
+
+        it('should swallow invoke rejections without throwing', async () => {
+            const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+            openRecentMock.mockRejectedValue(new Error('ipc broken'))
+            expect(() =>
+                HandleMenuAction(`baize:menu:file:recent-file:${encodeURIComponent(recentFile)}`)
+            ).not.toThrow()
+            await flushMicrotasks()
+            expect(consoleError).toHaveBeenCalled()
+            consoleError.mockRestore()
+        })
+
+        it('should ignore malformed encoded paths', () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            HandleMenuAction('baize:menu:file:recent-file:%E0%A4%A')
+            expect(openRecentMock).not.toHaveBeenCalled()
+            expect(consoleWarn).toHaveBeenCalled()
+            consoleWarn.mockRestore()
+        })
+
+        it('should not intercept lookalike actions (prefix must be exact)', () => {
+            HandleMenuAction('baize:menu:file:recent-other:abc')
+            expect(openRecentMock).not.toHaveBeenCalled()
+            expect(ipcSend).toHaveBeenCalledWith(
+                'baize:menu:action',
+                'baize:menu:file:recent-other:abc'
             )
         })
     })

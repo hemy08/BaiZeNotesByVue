@@ -72,7 +72,18 @@ vi.mock('../../src/main/utils/file-utils', () => ({
     ParserFileName: vi.fn(),
     ImportCreateNewFile: vi.fn()
 }))
-vi.mock('../../src/main/utils/file-state', () => ({ saveLastOpenedDirectory: vi.fn() }))
+vi.mock('../../src/main/utils/file-state', () => ({
+    saveLastOpenedDirectory: vi.fn(),
+    getRecentFiles: vi.fn(() => [])
+}))
+// handlers.ts 还注册了「文件」菜单最近文件/最近文件夹通道：mock 掉其配置读取与目录打开
+// 依赖，避免拉起 electron app.getPath / electron-store / 文件存储依赖链（与上方隔离策略一致）。
+vi.mock('../../src/main/config/config-manager', () => ({
+    configManager: { readConfig: vi.fn() }
+}))
+vi.mock('../../src/main/utils/startup-restore', () => ({
+    openDirectoryInMainView: vi.fn()
+}))
 vi.mock('electron', () => ({
     BrowserWindow: { getAllWindows: vi.fn(() => []) },
     dialog: { showOpenDialog: vi.fn() }

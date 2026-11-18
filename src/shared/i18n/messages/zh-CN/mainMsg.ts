@@ -58,6 +58,8 @@ export default {
         noActiveFileSave: '当前没有活动文件，无法保存',
         // FE-08：菜单动作执行失败的统一状态栏提示（ASLA）
         menuActionFailed: '菜单操作执行失败：{message}',
+        // 「文件」菜单最近文件/最近文件夹：目标已不在当前最近列表中（列表变化/文件被移动）
+        recentTargetMissing: '最近列表已变化，目标不存在',
         // 系统设置补充实现批次 A：启动恢复上次文件/目录失败时的状态栏提示
         startupRestoreFileMissing:
             '上次打开的文件已不存在（可能已被移动或删除），本次未自动恢复：{path}',

@@ -46,7 +46,7 @@ import {
 const reloadFromDiskTime = 500
 
 // ==================== PF-05：目录树 fs.watch 增量监听 ====================
-// 背景（docs/reports/md/02-性能检查报告.md PF-05）：此前目录树任何增删改都依赖
+// 背景（../../../../docs/wiki/06-历史报告/md/01-检查与扫描/性能检查报告.md PF-05）：此前目录树任何增删改都依赖
 // 500ms 后的全量 ReloadDirFromDisk 重扫，外部程序改动文件也不会自动出现在目录树。
 // 本轮为主进程当前打开的目录建立 fs.watch 监听：
 //   1. 事件按 500ms 固定窗口合并，每批只触发一次刷新（复用 ReloadDirFromDisk 全量重扫；

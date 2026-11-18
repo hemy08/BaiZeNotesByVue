@@ -16,6 +16,17 @@ import * as Templates from '../../common/templates'
 export interface BaiZeMenuEntry extends BaiZeMenuItem {
     labelKey?: string
     submenu?: BaiZeMenuEntry[]
+    /**
+     * 菜单项稳定标识（可选）。用于 MenuBar.vue 在运行时定位并注入动态子菜单
+     * （当前为「最近文件」/「最近文件夹」两个占位项）。
+     */
+    id?: string
+    /**
+     * 「动态子菜单占位项」标记：初始 submenu 为空数组，由 MenuBar.vue 打开「文件」
+     * 菜单时按最近列表注入真实子项（无记录时注入禁用占位项）。
+     * pruneEmptySubmenus 对该标记项豁免空组剪枝，避免占位项在导出前被剪掉。
+     */
+    recentMenuPlaceholder?: boolean
 }
 
 // 辅助函数：从UrlMaps生成菜单项
@@ -64,6 +75,23 @@ const fileMenu: BaiZeMenuEntry = {
             labelKey: 'menu.file.openFolder',
             accelerator: 'Ctrl+O',
             menuAction: 'baize:menu:file:open-folder'
+        },
+        { type: 'separator' },
+        // 「最近文件 / 最近文件夹」：占位子菜单，子项由 MenuBar.vue 打开「文件」菜单时
+        // 经 window.api.file.recentList() 动态注入（各最多 20 项；无记录时注入禁用占位项）。
+        // id 用于 MenuBar 运行时定位；recentMenuPlaceholder 使 pruneEmptySubmenus 跳过
+        // 空组剪枝（否则导出前会被当作 FE-16 的空组剔除）。
+        {
+            id: 'recent-files',
+            labelKey: 'menu.file.recentFiles',
+            submenu: [],
+            recentMenuPlaceholder: true
+        },
+        {
+            id: 'recent-folders',
+            labelKey: 'menu.file.recentFolders',
+            submenu: [],
+            recentMenuPlaceholder: true
         },
         { type: 'separator' },
         importMenu,
@@ -533,7 +561,9 @@ export function pruneEmptySubmenus(items: BaiZeMenuEntry[]): BaiZeMenuEntry[] {
     for (const item of items) {
         if (item.submenu) {
             const children = pruneEmptySubmenus(item.submenu)
-            if (children.length === 0) {
+            // 最近文件/最近文件夹为「运行时注入」占位项：初始 submenu 为空属预期，
+            // 由 MenuBar.vue 打开菜单时填充，不能被当作空组剪掉。
+            if (children.length === 0 && item.recentMenuPlaceholder !== true) {
                 continue
             }
             pruned.push({ ...item, submenu: children })

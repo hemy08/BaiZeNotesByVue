@@ -6,7 +6,6 @@
 import { getCurrentThemeStyles } from '../config'
 import { windowManager } from '../config/window-manager'
 import { createDialogOptions, createJSDOM, loadDialogHtml } from './dialog-defaults'
-import { IPC } from '../../shared/ipc-channels'
 import { tMain } from '../utils/i18n'
 
 /**
@@ -39,11 +38,8 @@ export function ShowUpdateLogDialog() {
     loadDialogHtml(updateLogDialog, html)
 
     updateLogDialog.show()
-
-    updateLogDialog.webContents.on('did-finish-load', () => {
-        const theme = getCurrentThemeStyles()
-        updateLogDialog?.webContents.send(IPC.THEME.INIT_THEME_STYLES, theme)
-    })
+    // 2026-11-18：删除 INIT_THEME_STYLES 发送（全仓无监听的空转通道，已随死通道清理移除；
+    // 对话框主题由 makeUpdateLogHtml 内联主题变量注入 + THEME_UPDATED 广播后重载覆盖）
 }
 
 interface UpgradeItem {

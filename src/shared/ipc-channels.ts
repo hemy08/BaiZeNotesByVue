@@ -24,7 +24,6 @@ export const IPC = {
         TOGGLE_MAXIMIZE: 'baize:window:toggle-maximize',
         GET_BOUNDS: 'baize:window:get-bounds',
         IS_MAXIMIZED: 'baize:window:is-maximized',
-        START_DRAG: 'baize:window:start-drag',
         MOVE: 'baize:window:move',
         SET_SIZE: 'baize:window:set-size'
     } as const,
@@ -39,7 +38,6 @@ export const IPC = {
     THEME: {
         UPDATE_THEME: 'baize:theme:update',
         THEME_UPDATED: 'baize:theme:updated',
-        INIT_THEME_STYLES: 'baize:theme:init-styles',
         LOAD_MONACO_THEME: 'baize:theme:load-monaco',
         GET_CURRENT_THEME_STYLES: 'baize:theme:get-current-styles',
         GET_ALL_THEMES: 'baize:theme:get-all',
@@ -84,12 +82,21 @@ export const IPC = {
         UPDATE_SELECT_FILE_CONTENT: 'baize:file:update-content',
         CHECK_EXISTS: 'baize:file:check-exists',
         READ_HTML: 'baize:file:read-html',
+        // 2026-11-18（遗留清单 #1）：HTML 查看器「在浏览器中打开」本地 .html 文件专用通道。
+        // OPEN_EXTERNAL_LINK 设计上仅放行 http/https，本地文件需走本通道；
+        // 主进程做「扩展名 + Path Guard」校验后再交给系统默认浏览器。
+        OPEN_IN_BROWSER: 'baize:file:open-in-browser',
         // CQ-13 域错配：以下 3 个通道的 domain 是 system（系统信息/外链），历史放在 FILE 组；
         // 引用点为 IPC.FILE.*，移动需全仓改引用，故仅注明保留原位。
         OPEN_EXTERNAL_LINK: 'baize:system:open-external-link',
         SYSTEM_INFO: 'baize:system:get-info',
         APP_VERSION: 'baize:system:app-version',
-        USER_SELECT_FILE: 'baize:file:user-select-file'
+        USER_SELECT_FILE: 'baize:file:user-select-file',
+        // 「文件」菜单 → 最近文件/最近文件夹：渲染层 invoke 拉取两个列表（各最多 20 项）
+        RECENT_LIST: 'baize:file:recent-list',
+        // 「文件」菜单 → 点击最近项：渲染层 invoke 请求主进程打开（主进程做最近列表白名单
+        // 校验后复用 OpenSelectFile / 目录打开链路；渲染层不直接持有打开文件能力）
+        OPEN_RECENT: 'baize:file:open-recent'
     } as const,
 
     // ============ 文件管理器右键菜单 ============

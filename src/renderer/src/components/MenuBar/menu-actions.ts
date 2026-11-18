@@ -35,7 +35,77 @@ const MATERIAL_SYNTAX_FEATURE_IDS = [
     'tab-link'
 ] as const
 
+/**
+ * 「文件」菜单 → 最近文件/最近文件夹 的动作前缀。
+ *
+ * 动作 id 契约：`baize:menu:file:recent-file:<encodeURIComponent(绝对路径)>` /
+ * `baize:menu:file:recent-folder:<encodeURIComponent(绝对路径)>`，由 MenuBar.vue
+ * 打开「文件」菜单时按 window.api.file.recentList() 结果动态生成。
+ *
+ * 拦截理由：最近项数量与路径都是运行时数据，不进入静态 menuMap；本前缀动作不转发
+ * 主进程 MENU.ACTION，而是直接 invoke OPEN_RECENT（主进程按当前最近列表重新做
+ * 白名单校验后复用既有打开链路），避免把「最近项」变成任意路径打开后门。
+ */
+const RECENT_FILE_ACTION_PREFIX = 'baize:menu:file:recent-file:'
+const RECENT_FOLDER_ACTION_PREFIX = 'baize:menu:file:recent-folder:'
+
+/** 是否「最近项」菜单动作（文件/文件夹两种前缀） */
+function isRecentMenuAction(action: string): boolean {
+    return (
+        action.startsWith(RECENT_FILE_ACTION_PREFIX) ||
+        action.startsWith(RECENT_FOLDER_ACTION_PREFIX)
+    )
+}
+
+/**
+ * 打开最近项：解码路径 → invoke 主进程 openRecent → 失败经状态栏通道上报。
+ * 失败不抛异常、不转发 MENU.ACTION（主进程失败时也会直接下发同一状态栏消息，
+ * 渲染层 send 与主进程下发互不影响，不会重复打开任何文件）。
+ */
+function handleRecentMenuAction(action: string): void {
+    const isFile = action.startsWith(RECENT_FILE_ACTION_PREFIX)
+    const prefix = isFile ? RECENT_FILE_ACTION_PREFIX : RECENT_FOLDER_ACTION_PREFIX
+
+    let target: string
+    try {
+        target = decodeURIComponent(action.slice(prefix.length))
+    } catch (error) {
+        console.warn('[Menu] 最近项路径解码失败：', action, error)
+        return
+    }
+    if (target.length === 0) {
+        return
+    }
+
+    // 防御：测试桩/旧 preload 未暴露 file.openRecent 时静默降级（仅记录日志）
+    const openRecent = window.api?.file?.openRecent
+    if (typeof openRecent !== 'function') {
+        console.warn('[Menu] window.api.file.openRecent 不可用，无法打开最近项')
+        return
+    }
+
+    void openRecent({ kind: isFile ? 'file' : 'folder', path: target })
+        .then((result) => {
+            if (!result?.ok && result?.message) {
+                // 用户可见的失败提示由主进程 OPEN_RECENT 的 failRecentOpen 直接经
+                // STATUS_BAR_UPDATE 下发；2026-11-18 删除原渲染层反向 send 空转分支
+                // （主进程无该通道的 renderer→main 监听）。
+                console.warn('[Menu] 打开最近项失败：', result.message)
+            }
+        })
+        .catch((error: unknown) => {
+            console.error('[Menu] 打开最近项失败：', error)
+        })
+}
+
 export function HandleMenuAction(action: string) {
+    // 「文件」菜单 → 最近文件/最近文件夹：最早拦截（运行时动态动作，不进入静态 menuMap，
+    // 也不转发主进程 MENU.ACTION；主进程侧仅暴露受白名单约束的 OPEN_RECENT 通道）。
+    if (isRecentMenuAction(action)) {
+        handleRecentMenuAction(action)
+        return
+    }
+
     // 获取配置 store
     const configStore = getConfigStore()
 

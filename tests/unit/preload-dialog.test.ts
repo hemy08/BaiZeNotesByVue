@@ -126,6 +126,18 @@ describe('preload/dialog ipcRenderer delegation', () => {
         api.ipcRenderer.removeListener('some-channel', callback)
         expect(dialogMocks.removeListener).toHaveBeenCalledWith('some-channel', callback)
     })
+
+    it('should unsubscribe the exact wrapped listener after on() (P2/C-02)', async () => {
+        await loadDialog()
+        const api = getExposedDialogApi()
+        const callback = vi.fn()
+        api.ipcRenderer.on('baize:theme:updated', callback)
+        // on 传给 ipcRenderer 的是包装函数，removeListener 必须用同一引用退订
+        const wrapped = dialogMocks.on.mock.calls[0][1]
+        api.ipcRenderer.removeListener('baize:theme:updated', callback)
+        expect(dialogMocks.removeListener).toHaveBeenCalledTimes(1)
+        expect(dialogMocks.removeListener).toHaveBeenCalledWith('baize:theme:updated', wrapped)
+    })
 })
 
 describe('preload/dialog shell', () => {

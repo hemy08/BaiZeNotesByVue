@@ -12,6 +12,11 @@ export default {
         new: '新建',
         openFile: '打开文件',
         openFolder: '打开文件夹',
+        // 「文件」菜单 → 最近文件/最近文件夹（子菜单内容由 MenuBar.vue 打开菜单时动态注入，
+        // 各最多 20 项；无记录时显示 recentEmpty 禁用占位项）
+        recentFiles: '最近文件',
+        recentFolders: '最近文件夹',
+        recentEmpty: '（暂无记录）',
         import: {
             label: '从文件导入',
             word: '从 Word 导入',

@@ -74,7 +74,10 @@ vi.mock('../../src/main/utils/file-utils', () => fileUtilsMocks)
 import { FakeStore } from './helpers/fake-store'
 import { appState } from '../../src/main/utils/app-state'
 import { IPC } from '../../src/shared/ipc-channels'
-import { restoreLastOpenedAtStartup } from '../../src/main/utils/startup-restore'
+import {
+    openDirectoryInMainView,
+    restoreLastOpenedAtStartup
+} from '../../src/main/utils/startup-restore'
 import {
     getLastOpenedDirectory,
     getLastOpenedFile,
@@ -114,6 +117,47 @@ beforeEach(() => {
     fileUtilsMocks.ReloadDirFromDisk.mockResolvedValue(undefined)
     fs.rmSync(hoisted.userData, { recursive: true, force: true })
     fs.mkdirSync(hoisted.userData, { recursive: true })
+})
+
+// 「文件」菜单 → 最近文件夹复用的目录打开实现：验证 WELCOME_ENTER_MAIN 先投递、
+// 数据事件（CLEAR_EDITOR_PREVIEW / ReloadDirFromDisk）在下一 tick 执行、工作区记录落盘。
+describe('openDirectoryInMainView（可复用目录打开实现）', () => {
+    it('should send WELCOME_ENTER_MAIN first, then clear preview and reload the tree', async () => {
+        const dir = path.join(hoisted.userData, 'recent-folder')
+        fs.mkdirSync(dir, { recursive: true })
+        const { win, send } = mainWindowStub()
+        appState.mainWindow = win
+
+        await openDirectoryInMainView(win, dir)
+
+        expect(send).toHaveBeenCalledWith(IPC.FILE.WELCOME_ENTER_MAIN, {
+            type: 'directory',
+            path: dir
+        })
+        const enterMainIndex = send.mock.calls.findIndex(
+            (call) => call[0] === IPC.FILE.WELCOME_ENTER_MAIN
+        )
+        const clearPreviewIndex = send.mock.calls.findIndex(
+            (call) => call[0] === IPC.FILE.CLEAR_EDITOR_PREVIEW
+        )
+        expect(enterMainIndex).toBeGreaterThanOrEqual(0)
+        expect(clearPreviewIndex).toBeGreaterThan(enterMainIndex)
+        expect(appState.rootPath).toBe(dir)
+        expect(fileUtilsMocks.ReloadDirFromDisk).toHaveBeenCalledTimes(1)
+        expect(getLastOpenedDirectory()).toBe(dir)
+        appState.mainWindow = null
+    })
+
+    it('should skip data events when the main window is destroyed', async () => {
+        const destroyedWin = {
+            isDestroyed: () => true,
+            webContents: { send: vi.fn(), isDestroyed: () => true }
+        } as never
+
+        await openDirectoryInMainView(destroyedWin, path.join(hoisted.userData, 'gone'))
+
+        expect(fileUtilsMocks.ReloadDirFromDisk).not.toHaveBeenCalled()
+    })
 })
 
 describe('restoreLastOpenedAtStartup', () => {

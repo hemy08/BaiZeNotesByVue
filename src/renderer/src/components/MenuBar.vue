@@ -1,7 +1,7 @@
 <template>
     <div class="menu-bar" @mouseleave="handleMenuBarLeave">
         <div
-            v-for="(menu, index) in menuMap"
+            v-for="(menu, index) in menuData"
             :key="index"
             class="menu-item"
             :class="{ active: activeMenu === index }"
@@ -15,14 +15,14 @@
         <teleport to="body">
             <transition name="submenu-fade">
                 <div
-                    v-if="activeMenu !== null && menuMap[activeMenu].submenu"
+                    v-if="activeMenu !== null && menuData[activeMenu].submenu"
                     class="submenu-container"
                     :style="submenuStyle"
                     @mouseleave="handleSubmenuLeave"
                     @mouseenter="handleSubmenuEnter"
                 >
                     <BaiZeSubMenuItem
-                        :items="menuMap[activeMenu].submenu || []"
+                        :items="menuData[activeMenu].submenu || []"
                         :level="0"
                         @close="closeMenu"
                     />
@@ -42,6 +42,98 @@ import { t } from '../common/i18n'
 import { IPC } from '../../../shared/ipc-channels'
 import { logger } from '../common/logger'
 
+// ---------------------------------------------------------------------------------------------
+// 菜单数据响应式副本
+//
+// menuMap 是静态导出（markRaw，避免被 Vue 代理）；「文件」菜单的「最近文件 / 最近文件夹」
+// 两个占位子菜单需要在运行时按最近列表动态注入子项，故 MenuBar 挂载时做一次
+// structuredClone 得到可响应的独立副本，模板与子菜单组件统一改用 menuData，
+// 静态 menuMap 保持只读真源（单测/其他组件不受运行时注入影响）。
+// ---------------------------------------------------------------------------------------------
+const menuData = ref<BaiZeMenuEntry[]>(structuredClone(menuMap.value))
+
+/** 「文件」顶层菜单的 i18n key（用于定位并动态刷新最近文件/最近文件夹子菜单） */
+const FILE_MENU_LABEL_KEY = 'menu.file.label'
+/** 两个动态子菜单的占位项 id（与 menu-config.ts 保持一致） */
+const RECENT_FILES_MENU_ID = 'recent-files'
+const RECENT_FOLDERS_MENU_ID = 'recent-folders'
+/** 最近列表展示上限（主进程返回侧已截断到 20，渲染层再兜底一次） */
+const RECENT_MENU_LIMIT = 20
+/** 最近项标签最大长度（超出截断，避免菜单被超长路径撑破） */
+const RECENT_LABEL_MAX_LENGTH = 60
+
+/** 截断最近项标签（保留前 N-3 字符 + ...） */
+function truncateRecentLabel(label: string): string {
+    return label.length > RECENT_LABEL_MAX_LENGTH
+        ? `${label.slice(0, RECENT_LABEL_MAX_LENGTH - 3)}...`
+        : label
+}
+
+/** 最近文件菜单项：标签取文件名（basename），动作携带 encodeURIComponent 后的完整路径 */
+function toRecentFileEntry(filePath: string): BaiZeMenuEntry {
+    const normalized = filePath.replace(/\\/g, '/')
+    const baseName = normalized.slice(normalized.lastIndexOf('/') + 1) || filePath
+    return {
+        label: truncateRecentLabel(baseName),
+        menuAction: `baize:menu:file:recent-file:${encodeURIComponent(filePath)}`
+    }
+}
+
+/** 最近文件夹菜单项：标签取完整路径（正斜杠归一化），动作携带编码后的完整路径 */
+function toRecentFolderEntry(folderPath: string): BaiZeMenuEntry {
+    return {
+        label: truncateRecentLabel(folderPath.replace(/\\/g, '/')),
+        menuAction: `baize:menu:file:recent-folder:${encodeURIComponent(folderPath)}`
+    }
+}
+
+/** 把最近列表注入指定占位子菜单；空列表时注入禁用占位项（labelKey recentEmpty） */
+function injectRecentEntries(menuId: string, entries: BaiZeMenuEntry[]): void {
+    const fileMenu = menuData.value.find((item) => item.labelKey === FILE_MENU_LABEL_KEY)
+    const placeholder = fileMenu?.submenu?.find((item) => item.id === menuId)
+    if (!placeholder) {
+        return
+    }
+    placeholder.submenu =
+        entries.length > 0 ? entries : [{ labelKey: 'menu.file.recentEmpty', enabled: false }]
+}
+
+/**
+ * 刷新「最近文件 / 最近文件夹」子菜单（主进程经 window.api.file.recentList() 读取）。
+ * 失败静默：保留上次已注入的数据（首次失败保持空占位），不影响菜单打开。
+ */
+async function refreshRecentMenus(): Promise<void> {
+    // 防御：测试桩/旧 preload 可能未暴露 file 组；缺失时静默跳过
+    const recentListApi = window.api?.file?.recentList
+    if (typeof recentListApi !== 'function') {
+        return
+    }
+    try {
+        const result = await recentListApi()
+        const files = Array.isArray(result?.files)
+            ? result.files
+                  .filter((item): item is string => typeof item === 'string')
+                  .slice(0, RECENT_MENU_LIMIT)
+            : []
+        const folders = Array.isArray(result?.folders)
+            ? result.folders
+                  .filter((item): item is string => typeof item === 'string')
+                  .slice(0, RECENT_MENU_LIMIT)
+            : []
+        injectRecentEntries(RECENT_FILES_MENU_ID, files.map(toRecentFileEntry))
+        injectRecentEntries(RECENT_FOLDERS_MENU_ID, folders.map(toRecentFolderEntry))
+    } catch (error) {
+        logger.warn('[MenuBar] 刷新最近文件/最近文件夹菜单失败（保留上次数据）:', error)
+    }
+}
+
+/** 打开的菜单是「文件」时刷新最近列表（点击/悬停切换均触发） */
+function refreshRecentMenusIfFileMenu(index: number): void {
+    if (menuData.value[index]?.labelKey === FILE_MENU_LABEL_KEY) {
+        void refreshRecentMenus()
+    }
+}
+
 // 获取当前主题
 const currentTheme = ref('baize')
 
@@ -57,10 +149,12 @@ async function loadCurrentTheme() {
     }
 }
 
-const handleThemeUpdated = (_event: unknown, theme: { currentTheme?: string }) => {
-    if (theme && theme.currentTheme) {
-        currentTheme.value = theme.currentTheme
-    }
+// 2026-11-18（遗留清单 #2）：THEME_UPDATED 广播载荷为
+// { themeStyles, monacoTheme, separateEditorTheme }，不含主题名；原实现按
+// theme.currentTheme 读取导致菜单主题选中态不刷新。改为收到广播后重新读取配置
+// （配置为单一真源），不再依赖广播载荷字段。
+const handleThemeUpdated = (): void => {
+    void loadCurrentTheme()
 }
 
 // 监听主题变化
@@ -216,6 +310,8 @@ function toggleMenu(index: number) {
     if (activeMenu.value === index) {
         closeMenu()
     } else {
+        // 「文件」菜单：打开时异步刷新最近文件/最近文件夹子菜单（失败静默，不阻塞打开）
+        refreshRecentMenusIfFileMenu(index)
         activeMenu.value = index
         nextTick(() => {
             updateSubmenuPosition(index)
@@ -231,6 +327,8 @@ function handleMenuEnter(index: number) {
     }
 
     if (activeMenu.value !== null && activeMenu.value !== index) {
+        // 已打开菜单间悬停切换时同样刷新（最近列表可能在两次打开之间发生变化）
+        refreshRecentMenusIfFileMenu(index)
         activeMenu.value = index
         nextTick(() => {
             updateSubmenuPosition(index)

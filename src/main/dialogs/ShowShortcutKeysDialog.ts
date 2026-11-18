@@ -15,7 +15,6 @@
 import { getCurrentThemeStyles } from '../config'
 import { windowManager } from '../config/window-manager'
 import { createDialogOptions, loadDialogHtml } from './dialog-defaults'
-import { IPC } from '../../shared/ipc-channels'
 import { tMain } from '../utils/i18n'
 
 interface ShortcutItem {
@@ -109,11 +108,8 @@ export function ShowShortcutKeysDialog(): void {
     shortcutDialog.setMenu(null)
     loadDialogHtml(shortcutDialog, makeShortcutKeysHtml())
     shortcutDialog.show()
-
-    shortcutDialog.webContents.on('did-finish-load', () => {
-        const theme = getCurrentThemeStyles()
-        shortcutDialog?.webContents.send(IPC.THEME.INIT_THEME_STYLES, theme)
-    })
+    // 2026-11-18：删除 INIT_THEME_STYLES 发送（全仓无监听的空转通道；
+    // 对话框主题由 makeShortcutKeysHtml 内联主题变量注入 + THEME_UPDATED 后重载覆盖）
 }
 
 /** 生成只读快捷键说明 HTML */

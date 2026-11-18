@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/no-require-imports -- 本脚本为 CommonJS 构建脚本（package.json 无 type:module，由 node 直接运行），保持 require 写法 */
 /**
- * Markdown → HTML 报告生成器（复用 docs/reports/html 既有报告视觉风格）
+ * Markdown → HTML 报告生成器（复用 ../docs/wiki/06-历史报告/html 既有报告视觉风格）
  *
  * 用法：
- *   node build/build-html-report.js --input docs/md/x.md --output docs/html/x.html \
+ *   node build/build-html-report.js --input docs/wiki/06-历史报告/md/x.md --output docs/wiki/06-历史报告/html/x.html \
  *     --title "报告标题" --l1 "副标题一" --l2 "副标题二" --cards "127|通道总数;16|死通道;10|机制风险" \
  * --svg doc=path/to/topology.svg --svg-at "<!-- SVG:topology -->"
  *
@@ -180,7 +180,9 @@ function buildHtml(args) {
 
     const mdit = new MarkdownIt({ html: true, linkify: false, typographer: false })
     // 报告标题由 <header> 呈现：跳过 md 开头的首个一级标题，避免页面中出现重复标题
-    const mdBody = md.replace(/^\s*#\s+[^\n]*(?:\r?\n)+/, '')
+    let mdBody = md.replace(/^\s*#\s+[^\n]*(?:\r?\n)+/, '')
+    // 剥离 Markdown 报告顶部的「报告导航」一行（HTML 页面改由 --nav 顶部固定导航承担）
+    mdBody = mdBody.replace(/<!-- report-nav:start -->[\s\S]*?<!-- report-nav:end -->\s*/, '')
     let body = mdit.render(mdBody)
     body = addHeadingIds(body)
     body = injectSvg(body, args.svg || [])
@@ -189,6 +191,15 @@ function buildHtml(args) {
     const cards = renderCards(args.cards)
     const title = args.title || '报告'
     const subtitleLines = [args.l1, args.l2, args.l3].filter(Boolean)
+    // 可选整体导航条：读取 HTML 片段并注入 <body> 顶部（见 build/report-nav.html）
+    // 支持 --nav <文件路径> 或 --navHtml <片段字符串>（后者用于按页面深度做路径适配）
+    let navHtml = ''
+    if (args.nav) {
+        const navPath = path.resolve(args.nav)
+        if (!fs.existsSync(navPath)) throw new Error(`导航片段文件不存在：${navPath}`)
+        navHtml = fs.readFileSync(navPath, 'utf-8')
+    }
+    if (args.navHtml) navHtml = args.navHtml
 
     const html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -199,6 +210,7 @@ function buildHtml(args) {
 <style>${CSS}</style>
 </head>
 <body>
+${navHtml}
   <nav class="toc">
     <h4>目录</h4>
 ${renderToc(toc)}
@@ -229,7 +241,7 @@ if (require.main === module) {
     const args = parseArgs(process.argv)
     if (!args.input || !args.output) {
         console.error(
-            '用法：node build/build-html-report.js --input <md> --output <html> [--title ...] [--l1 ...] [--cards ...] [--svg name=file]'
+            '用法：node build/build-html-report.js --input <md> --output <html> [--title ...] [--l1 ...] [--cards ...] [--nav <导航片段 html>] [--svg name=file]'
         )
         process.exit(1)
     }

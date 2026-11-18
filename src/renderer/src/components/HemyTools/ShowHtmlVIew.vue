@@ -85,6 +85,7 @@ import { t } from '../../common/i18n'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { logger } from '../../common/logger'
+import { withBaseHref } from './html-view-utils'
 
 // 响应式数据
 const htmlContent = ref<string>('')
@@ -111,7 +112,10 @@ async function loadHtmlFile(path: string, name: string) {
         const content = await window.electron.ipcRenderer.invoke(IPC.FILE.READ_HTML, path)
 
         if (content) {
-            htmlContent.value = content
+            // 2026-11-18 修复「HTML 查看器内相对链接点击无反应」：
+            // srcdoc 文档基准 URL 是父页面，注入 <base href="file:///<文件目录>/"> 后，
+            // 报告 HTML Wiki 顶部导航、图片等相对资源可正确定位（详见 html-view-utils.ts）。
+            htmlContent.value = withBaseHref(content, path)
         } else {
             errorMessage.value = t('toolsNetwork.hemyTools.htmlView.unreadable')
         }
@@ -148,7 +152,10 @@ function refreshContent() {
  */
 function openInBrowser() {
     if (filePath.value) {
-        window.electron.ipcRenderer.send(IPC.FILE.OPEN_EXTERNAL_LINK, filePath.value)
+        // 2026-11-18（遗留清单 #1）：本地 HTML 走专用通道（OPEN_EXTERNAL_LINK 仅放行
+        // http/https，原实现点击无效）；主进程校验 .html 扩展名 + Path Guard 后
+        // 交给系统默认浏览器打开。
+        window.electron.ipcRenderer.send(IPC.FILE.OPEN_IN_BROWSER, filePath.value)
     }
 }
 

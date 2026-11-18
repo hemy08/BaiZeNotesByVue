@@ -50,9 +50,6 @@ export function ShowFileFolderRenameDialog(fullName: string, isFile: boolean) {
 
     customRenameDialog.show()
 
-    const theme = getCurrentThemeStyles()
-    customRenameDialog.webContents.send(IPC.THEME.INIT_THEME_STYLES, theme)
-
     async function processRenameFileFolder(_: Electron.IpcMainEvent, newName: string) {
         try {
             await RenameFileFolder(fullName, newName, isFile)

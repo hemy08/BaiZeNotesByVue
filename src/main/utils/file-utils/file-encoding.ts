@@ -118,7 +118,7 @@ export function decodeFileContent(
 }
 
 // ==================== PF-10：大文件流式读取 ====================
-// 背景（docs/reports/md/02-性能检查报告.md PF-10）：大文件打开全量 readFile 后
+// 背景（../../../../docs/wiki/06-历史报告/md/01-检查与扫描/性能检查报告.md PF-10）：大文件打开全量 readFile 后
 // 一次性过 IPC，存在整块 Buffer 峰值。本轮改为：超过 LARGE_FILE_THRESHOLD（5MB）
 // 时用 fs.createReadStream 分块读取 + 流式解码（多字节字符跨块不截断），
 // 解码后的字符串分片累积、最后 join，避免一次性 Buffer 峰值。

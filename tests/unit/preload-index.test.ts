@@ -1,7 +1,8 @@
 /**
  * preload/index.ts 单元测试
  * 覆盖：contextBridge 暴露的 API 名称集合（electron/api）、
- * config 组 invoke 通道（read/write）、app.getVersion 通道
+ * config 组 invoke 通道（read/write）、app.getVersion 通道、
+ * 「文件」菜单最近文件/最近文件夹通道（file.recentList / file.openRecent）
  * （P2：CONFIG.DELETE / CONFIG.LIST 死通道及 config.delete/list 方法已删除）
  */
 import { describe, it, expect, vi } from 'vitest'
@@ -32,6 +33,10 @@ function getExposedApi(): {
         write: (name: string, data: unknown) => Promise<boolean>
     }
     app: { getVersion: () => Promise<unknown>; notifyRendererReady: () => void }
+    file: {
+        recentList: () => Promise<unknown>
+        openRecent: (payload: { kind: 'file' | 'folder'; path: string }) => Promise<unknown>
+    }
 } {
     const call = preloadMocks.exposeInMainWorld.mock.calls.find(([key]) => key === 'api')
     expect(call, '应存在 exposeInMainWorld("api", ...) 调用').toBeDefined()
@@ -45,9 +50,27 @@ describe('preload/index', () => {
         })
     })
 
-    it('should expose api with config and app groups only', () => {
+    it('should expose api with config, app and file groups only', () => {
         const api = getExposedApi()
-        expect(Object.keys(api).sort()).toEqual(['app', 'config'])
+        expect(Object.keys(api).sort()).toEqual(['app', 'config', 'file'])
+    })
+
+    it('should invoke file:recent-list for the recent files/folders menu', async () => {
+        const recentList = { files: ['C:\\a.md'], folders: ['C:\\docs'] }
+        preloadMocks.invoke.mockResolvedValueOnce(recentList)
+        await expect(getExposedApi().file.recentList()).resolves.toEqual(recentList)
+        expect(preloadMocks.invoke).toHaveBeenCalledWith('baize:file:recent-list')
+    })
+
+    it('should invoke file:open-recent with the kind/path payload', async () => {
+        preloadMocks.invoke.mockResolvedValueOnce({ ok: true })
+        await expect(
+            getExposedApi().file.openRecent({ kind: 'folder', path: 'C:\\docs' })
+        ).resolves.toEqual({ ok: true })
+        expect(preloadMocks.invoke).toHaveBeenCalledWith('baize:file:open-recent', {
+            kind: 'folder',
+            path: 'C:\\docs'
+        })
     })
 
     it('should invoke config:read with the config name', async () => {

@@ -10,6 +10,11 @@ export default {
         new: 'New',
         openFile: 'Open File',
         openFolder: 'Open Folder',
+        // File menu → recent files/folders (submenu injected dynamically when opened,
+        // max 20 each; shows a disabled recentEmpty placeholder when the list is empty)
+        recentFiles: 'Recent Files',
+        recentFolders: 'Recent Folders',
+        recentEmpty: '(No recent items)',
         import: {
             label: 'Import from File',
             word: 'Import from Word',

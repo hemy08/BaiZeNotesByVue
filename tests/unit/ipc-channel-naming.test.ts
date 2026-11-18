@@ -1,7 +1,7 @@
 /**
  * IPC 通道命名规范防回归测试（2026-11-15 通道命名统一后新增）
  *
- * 规则（见 docs/reports/md/14-IPC通道命名统一方案.md）：
+ * 规则（见 ../../docs/wiki/06-历史报告/md/14-IPC通道命名统一方案.md）：
  * 1. 统一格式 `baize:<domain>:<name>`（三段、全小写 kebab-case）；
  * 2. domain 必须属于白名单（18 个）；
  * 3. 禁止历史前缀（`baize-notes:` / `baize:notes:`）与无前缀通道；

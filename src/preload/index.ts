@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { IPC } from '../shared/ipc-channels'
+import type { OpenRecentPayload, OpenRecentResult, RecentListResult } from '../shared/types'
 
 /**
  * 将渲染层传入的值归一化为「可结构化克隆」的纯 JSON 值。
@@ -54,6 +55,18 @@ const api = {
             markdownItVersion: string
         }> => {
             return ipcRenderer.invoke(IPC.FILE.APP_VERSION)
+        }
+    },
+
+    // ========== 文件 API（「文件」菜单 → 最近文件/最近文件夹） ==========
+    file: {
+        /** 拉取最近文件与最近文件夹列表（各最多 20 项，最近的在前） */
+        recentList: (): Promise<RecentListResult> => {
+            return ipcRenderer.invoke(IPC.FILE.RECENT_LIST)
+        },
+        /** 打开最近文件/最近文件夹（主进程按当前最近列表做白名单校验后执行打开链路） */
+        openRecent: (payload: OpenRecentPayload): Promise<OpenRecentResult> => {
+            return ipcRenderer.invoke(IPC.FILE.OPEN_RECENT, payload)
         }
     }
 }

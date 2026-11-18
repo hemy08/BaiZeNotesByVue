@@ -60,7 +60,9 @@ const handlerDeps = vi.hoisted(() => ({
     openSelectFile: vi.fn(),
     parserFileName: vi.fn(),
     importCreateNewFile: vi.fn(),
-    saveLastOpenedDirectory: vi.fn()
+    saveLastOpenedDirectory: vi.fn(),
+    // 「文件」菜单最近文件：主进程 file-state 存储读取（异常容错分支单独 mock 抛错）
+    getRecentFiles: vi.fn()
 }))
 
 vi.mock('../../src/main/ipc/menu-handle', () => ({
@@ -85,8 +87,25 @@ vi.mock('../../src/main/utils/file-utils', () => ({
 }))
 
 vi.mock('../../src/main/utils/file-state', () => ({
-    saveLastOpenedDirectory: handlerDeps.saveLastOpenedDirectory
+    saveLastOpenedDirectory: handlerDeps.saveLastOpenedDirectory,
+    getRecentFiles: handlerDeps.getRecentFiles
 }))
+
+// 「文件」菜单最近文件夹：主进程读取 recent-folders 裸 JSON 配置（configManager.readConfig）；
+// mock 掉避免拉起 electron app.getPath/electron-store 依赖链。
+const configManagerDeps = vi.hoisted(() => ({
+    readConfig: vi.fn()
+}))
+vi.mock('../../src/main/config/config-manager', () => ({
+    configManager: { readConfig: configManagerDeps.readConfig }
+}))
+
+// 「文件」菜单最近文件夹：打开动作复用 startup-restore 的目录打开实现（WELCOME_ENTER_MAIN
+// 时序在 startup-restore.test.ts 覆盖），此处只断言委托关系，mock 掉避免加载文件存储依赖链。
+const startupRestoreDeps = vi.hoisted(() => ({
+    openDirectoryInMainView: vi.fn()
+}))
+vi.mock('../../src/main/utils/startup-restore', () => startupRestoreDeps)
 
 // P1-FE-04：快捷链接保存 handler 依赖的主进程配置模块（归一化 + 落盘）
 const quickLinkDeps = vi.hoisted(() => ({
@@ -214,6 +233,10 @@ beforeEach(() => {
     quickLinkDeps.normalizeQuickLinkItems.mockClear()
     quickLinkDeps.normalizeQuickLinkItems.mockImplementation((value: unknown) => value)
     quickLinkDeps.saveQuickLinks.mockClear()
+    configManagerDeps.readConfig.mockReset()
+    configManagerDeps.readConfig.mockResolvedValue(null)
+    startupRestoreDeps.openDirectoryInMainView.mockReset()
+    startupRestoreDeps.openDirectoryInMainView.mockResolvedValue(undefined)
     appState._resetForTesting()
     // P1-AS-1 交接：清空运行期受信路径登记，避免用例间相互污染
     clearTrustedPathsForTesting()
@@ -234,7 +257,6 @@ describe('registerIpcHandlers channel registration', () => {
                 'baize:window:minimize',
                 'baize:window:move',
                 'baize:window:set-size',
-                'baize:window:start-drag',
                 'baize:window:toggle-maximize'
             ].sort()
         )
@@ -249,6 +271,8 @@ describe('registerIpcHandlers channel registration', () => {
                 'baize:editor:get-setting',
                 'baize:file:import',
                 'baize:theme:load-monaco',
+                'baize:file:open-recent',
+                'baize:file:recent-list',
                 'baize:file:select-directory',
                 'baize:file:select-image',
                 'baize:system:get-info',
@@ -718,6 +742,236 @@ describe('file operation handlers', () => {
             'D:\\picked'
         )
         expect(handlerDeps.selectDirectory).toHaveBeenCalledWith(win)
+    })
+})
+
+// 「文件」菜单 → 最近文件 / 最近文件夹（RECENT_LIST / OPEN_RECENT）
+// 覆盖：列表读取与 20 项截断、异常容错、参数校验、最近列表白名单拒绝、
+// 文件走 OpenSelectFile、文件夹走 AS-2 校验 + 复用目录打开实现、异常转失败结果。
+describe('recent files/folders menu handlers', () => {
+    function recentListHandler(): AnyFn {
+        return getHandleHandler('baize:file:recent-list')
+    }
+
+    function openRecentHandler(): AnyFn {
+        return getHandleHandler('baize:file:open-recent')
+    }
+
+    function makeRecentFiles(count: number): string[] {
+        return Array.from({ length: count }, (_, index) => `C:\\notes\\recent-${index}.md`)
+    }
+
+    function makeRecentFolders(count: number): string[] {
+        return Array.from({ length: count }, (_, index) => `C:\\workspace\\recent-${index}`)
+    }
+
+    describe('RECENT_LIST', () => {
+        it('should return recent files and folders capped at 20 entries', async () => {
+            handlerDeps.getRecentFiles.mockReturnValue(makeRecentFiles(25))
+            configManagerDeps.readConfig.mockResolvedValue(makeRecentFolders(25))
+
+            const result = await recentListHandler()(makeEvent())
+
+            expect(configManagerDeps.readConfig).toHaveBeenCalledWith('recent-folders')
+            expect(result).toEqual({
+                files: makeRecentFiles(25).slice(0, 20),
+                folders: makeRecentFolders(25).slice(0, 20)
+            })
+        })
+
+        it('should ignore non-string entries in the recent-folders config', async () => {
+            handlerDeps.getRecentFiles.mockReturnValue([])
+            configManagerDeps.readConfig.mockResolvedValue([validWorkspace, 42, null, '', 'D:\\x'])
+
+            const result = await recentListHandler()(makeEvent())
+
+            expect(result).toEqual({ files: [], folders: [validWorkspace, 'D:\\x'] })
+        })
+
+        it('should tolerate broken recent storage (empty lists, no throw)', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            handlerDeps.getRecentFiles.mockImplementation(() => {
+                throw new Error('fileState store broken')
+            })
+            configManagerDeps.readConfig.mockRejectedValue(new Error('recent-folders read failed'))
+
+            await expect(recentListHandler()(makeEvent())).resolves.toEqual({
+                files: [],
+                folders: []
+            })
+            expect(consoleWarn).toHaveBeenCalled()
+            consoleWarn.mockRestore()
+        })
+
+        it('should reject untrusted senders', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const result = await recentListHandler()({ sender: { id: 999 } })
+            expect(result).toEqual(expect.objectContaining({ ok: false, code: 'untrusted-sender' }))
+            consoleWarn.mockRestore()
+        })
+    })
+
+    describe('OPEN_RECENT', () => {
+        it('should reject malformed payloads (kind/path validation)', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const handler = openRecentHandler()
+            const invalidPayloads: unknown[] = [
+                undefined,
+                null,
+                'not-an-object',
+                { kind: 'directory', path: existingFilePath },
+                { kind: 'file', path: '' },
+                { kind: 'file', path: 42 },
+                { kind: 'file', path: `C:\\${'x'.repeat(4096)}` },
+                { kind: 'folder' }
+            ]
+
+            for (const payload of invalidPayloads) {
+                const result = await handler(makeEvent(), payload)
+                expect(result, `payload=${JSON.stringify(payload)}`).toEqual(
+                    expect.objectContaining({ ok: false })
+                )
+            }
+            expect(handlerDeps.openSelectFile).not.toHaveBeenCalled()
+            expect(startupRestoreDeps.openDirectoryInMainView).not.toHaveBeenCalled()
+            consoleWarn.mockRestore()
+        })
+
+        it('should reject a file path that is not in the current recent list (whitelist)', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            handlerDeps.getRecentFiles.mockReturnValue([existingFilePath])
+
+            const result = await openRecentHandler()(makeEvent(), {
+                kind: 'file',
+                path: path.join(tempBase, 'not-in-recent-list.md')
+            })
+
+            expect(result).toEqual(expect.objectContaining({ ok: false }))
+            expect((result as { message?: string }).message).toContain('最近列表已变化')
+            expect(handlerDeps.openSelectFile).not.toHaveBeenCalled()
+            consoleWarn.mockRestore()
+        })
+
+        it('should open a recent file through OpenSelectFile with parsed name', async () => {
+            handlerDeps.getRecentFiles.mockReturnValue([existingFilePath])
+            handlerDeps.parserFileName.mockReturnValue('note.md')
+            handlerDeps.openSelectFile.mockResolvedValue(undefined)
+
+            const result = await openRecentHandler()(makeEvent(), {
+                kind: 'file',
+                path: existingFilePath
+            })
+
+            expect(result).toEqual({ ok: true })
+            expect(handlerDeps.openSelectFile).toHaveBeenCalledWith({
+                name: 'note.md',
+                path: existingFilePath,
+                type: 'file',
+                content: ''
+            })
+        })
+
+        it('should reject a recent file that no longer exists on disk', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const goneFile = path.join(tempBase, 'gone.md')
+            handlerDeps.getRecentFiles.mockReturnValue([goneFile])
+
+            const result = await openRecentHandler()(makeEvent(), {
+                kind: 'file',
+                path: goneFile
+            })
+
+            expect(result).toEqual(expect.objectContaining({ ok: false }))
+            expect(handlerDeps.openSelectFile).not.toHaveBeenCalled()
+            consoleWarn.mockRestore()
+        })
+
+        it('should validate the workspace root and reuse the directory open chain for folders', async () => {
+            configManagerDeps.readConfig.mockResolvedValue([validWorkspace])
+            startupRestoreDeps.openDirectoryInMainView.mockResolvedValue(undefined)
+
+            const result = await openRecentHandler()(makeEvent(), {
+                kind: 'folder',
+                path: validWorkspace
+            })
+
+            expect(result).toEqual({ ok: true })
+            // 「最近文件夹」复用启动恢复的目录打开实现（WELCOME_ENTER_MAIN 时序由该模块负责）
+            expect(startupRestoreDeps.openDirectoryInMainView).toHaveBeenCalledWith(
+                win,
+                validWorkspace
+            )
+        })
+
+        it('should reject a recent folder that fails the workspace root check', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const goneFolder = path.join(tempBase, 'gone-folder')
+            configManagerDeps.readConfig.mockResolvedValue([goneFolder])
+
+            const result = await openRecentHandler()(makeEvent(), {
+                kind: 'folder',
+                path: goneFolder
+            })
+
+            expect(result).toEqual(expect.objectContaining({ ok: false }))
+            expect((result as { message?: string }).message).toContain('工作目录')
+            expect(startupRestoreDeps.openDirectoryInMainView).not.toHaveBeenCalled()
+            consoleWarn.mockRestore()
+        })
+
+        it('should reject a folder that is not in the current recent list (whitelist)', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            configManagerDeps.readConfig.mockResolvedValue([validWorkspace])
+
+            const result = await openRecentHandler()(makeEvent(), {
+                kind: 'folder',
+                path: path.join(tempBase, 'other-workspace')
+            })
+
+            expect(result).toEqual(expect.objectContaining({ ok: false }))
+            expect(startupRestoreDeps.openDirectoryInMainView).not.toHaveBeenCalled()
+            consoleWarn.mockRestore()
+        })
+
+        it('should convert unexpected errors into a failure result with status bar hint', async () => {
+            handlerDeps.getRecentFiles.mockReturnValue([existingFilePath])
+            handlerDeps.parserFileName.mockReturnValue('note.md')
+            handlerDeps.openSelectFile.mockRejectedValue(new Error('open exploded'))
+            const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+            const result = await openRecentHandler()(makeEvent(), {
+                kind: 'file',
+                path: existingFilePath
+            })
+
+            expect(result).toEqual(
+                expect.objectContaining({
+                    ok: false,
+                    message: expect.stringContaining('open exploded')
+                })
+            )
+            expect(win.webContents.send).toHaveBeenCalledWith(
+                'baize:status-bar:update',
+                expect.objectContaining({ type: 'error' })
+            )
+            consoleError.mockRestore()
+            consoleWarn.mockRestore()
+        })
+
+        it('should reject untrusted senders without opening anything', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            handlerDeps.getRecentFiles.mockReturnValue([existingFilePath])
+
+            const result = await openRecentHandler()(
+                { sender: { id: 999 } },
+                { kind: 'file', path: existingFilePath }
+            )
+
+            expect(result).toEqual(expect.objectContaining({ ok: false, code: 'untrusted-sender' }))
+            expect(handlerDeps.openSelectFile).not.toHaveBeenCalled()
+            consoleWarn.mockRestore()
+        })
     })
 })
 

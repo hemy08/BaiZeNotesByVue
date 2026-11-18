@@ -169,6 +169,40 @@ describe('menu-config', () => {
         })
     })
 
+    // 「文件」菜单 → 最近文件 / 最近文件夹：占位子菜单（运行时由 MenuBar.vue 注入，
+    // 初始 submenu 为空，pruneEmptySubmenus 必须豁免 recentMenuPlaceholder 项）。
+    it('should declare recent-files/recent-folders placeholders after open-folder', () => {
+        const fileMenu = menuMap.value.find((item) => item.labelKey === 'menu.file.label')!
+        const labels = fileMenu.submenu!.map((item) => displayText(item))
+        const openFolderIndex = labels.indexOf('打开文件夹')
+        expect(openFolderIndex).toBeGreaterThanOrEqual(0)
+
+        const recentFiles = fileMenu.submenu!.find((item) => item.id === 'recent-files')
+        const recentFolders = fileMenu.submenu!.find((item) => item.id === 'recent-folders')
+        expect(recentFiles).toMatchObject({
+            id: 'recent-files',
+            labelKey: 'menu.file.recentFiles',
+            submenu: [],
+            recentMenuPlaceholder: true
+        })
+        expect(recentFolders).toMatchObject({
+            id: 'recent-folders',
+            labelKey: 'menu.file.recentFolders',
+            submenu: [],
+            recentMenuPlaceholder: true
+        })
+        expect(displayText(recentFiles!)).toBe('最近文件')
+        expect(displayText(recentFolders!)).toBe('最近文件夹')
+        expect(displayText(recentFiles!, 'en-US')).toBe('Recent Files')
+        expect(displayText(recentFolders!, 'en-US')).toBe('Recent Folders')
+
+        // 顺序契约：打开文件夹之后、从文件导入之前，且前面紧跟一个分隔符
+        const recentFilesIndex = fileMenu.submenu!.indexOf(recentFiles!)
+        expect(recentFilesIndex).toBe(openFolderIndex + 2)
+        expect(fileMenu.submenu![openFolderIndex + 1].type).toBe('separator')
+        expect(fileMenu.submenu![recentFilesIndex + 1]).toBe(recentFolders)
+    })
+
     it('should declare import and export submenus inside file menu', () => {
         const fileMenu = menuMap.value.find((item) => displayText(item) === '文件')!
         const importMenu = fileMenu.submenu!.find((item) => displayText(item) === '从文件导入')
@@ -334,13 +368,16 @@ describe('menu-config', () => {
 
     it('should not render any empty submenu group (FE-16 回归防护)', () => {
         // 空组既没有箭头也没有 menuAction，点击永远无反应；剪枝后菜单树中不允许存在
+        // 例外：最近文件/最近文件夹为运行时注入占位项（recentMenuPlaceholder），初始为空属预期。
         const walk = (list: BaiZeMenuEntry[], path: string): void => {
             for (const item of list) {
                 if (item.submenu) {
-                    expect(
-                        item.submenu.length,
-                        `空子菜单组: ${path} > ${displayText(item)}`
-                    ).toBeGreaterThan(0)
+                    if (item.recentMenuPlaceholder !== true) {
+                        expect(
+                            item.submenu.length,
+                            `空子菜单组: ${path} > ${displayText(item)}`
+                        ).toBeGreaterThan(0)
+                    }
                     walk(item.submenu, `${path} > ${displayText(item)}`)
                 } else if (item.type !== 'separator') {
                     // 叶子项必须有可触发的动作（或为纯展示文案）
@@ -677,6 +714,25 @@ describe('pruneEmptySubmenus（FE-16）', () => {
             { type: 'separator' }
         ])
         expect(pruned.map((item) => item.type ?? item.menuAction)).toEqual(['a', 'b'])
+    })
+
+    it('should keep recent-menu placeholders even when their submenu is empty', () => {
+        // 最近文件/最近文件夹占位项：初始 submenu 为空，由 MenuBar.vue 打开菜单时注入。
+        const pruned = pruneEmptySubmenus([
+            {
+                id: 'recent-files',
+                labelKey: 'menu.file.recentFiles',
+                submenu: [],
+                recentMenuPlaceholder: true
+            },
+            { label: 'empty-group', submenu: [] },
+            action('baize:menu:file:new')
+        ])
+        expect(pruned.map((item) => item.id ?? item.menuAction)).toEqual([
+            'recent-files',
+            'baize:menu:file:new'
+        ])
+        expect(pruned[0].submenu).toEqual([])
     })
 
     it('should not mutate the input tree', () => {

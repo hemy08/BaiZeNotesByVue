@@ -143,7 +143,7 @@ export function useWindowManagement(options: UseWindowManagementOptions = {}) {
         if (e.button !== 0) return
 
         isDragging.value = true
-        window.electron.ipcRenderer.send(IPC.WINDOW.START_DRAG)
+        // 2026-11-18：删除 START_DRAG 空转发送（主进程空 handler，已随死通道清理移除）
 
         const bounds = await window.electron.ipcRenderer.invoke(IPC.WINDOW.GET_BOUNDS)
         if (bounds) {
