@@ -321,7 +321,7 @@ const handleResize = () => {
 // invoke 主进程 handler 按指定编码重新读取当前文件并刷新编辑器
 const handleOpenWithEncoding = async (_event: unknown, encoding: string) => {
     try {
-        await window.electron.ipcRenderer.invoke(IPC.OVERLAY.REOPEN_WITH_ENCODING, encoding)
+        await window.electron.ipcRenderer.invoke(IPC.FILE.REOPEN_WITH_ENCODING, encoding)
     } catch (error) {
         logger.error('按指定编码重新打开失败:', error)
     }
@@ -330,7 +330,7 @@ const handleOpenWithEncoding = async (_event: unknown, encoding: string) => {
 // FUN-02：编码菜单"转换编码"——按指定编码转码当前内容并写盘
 const handleConvertToEncoding = async (_event: unknown, encoding: string) => {
     try {
-        await window.electron.ipcRenderer.invoke(IPC.OVERLAY.CONVERT_SAVE_ENCODING, encoding)
+        await window.electron.ipcRenderer.invoke(IPC.FILE.CONVERT_SAVE_ENCODING, encoding)
     } catch (error) {
         logger.error('转换编码保存失败:', error)
     }
@@ -358,8 +358,8 @@ onMounted(() => {
     // P-1（PF-01）：渲染层 flush 契约——监听主进程的立即同步请求
     window.electron.ipcRenderer.on(IPC.EDITOR.FLUSH_CONTENT, handleFlushContent)
     // FUN-02：编码菜单事件监听（主进程菜单 → 渲染层 → 主进程 handler）
-    window.electron.ipcRenderer.on(IPC.OVERLAY.OPEN_WITH_ENCODING, handleOpenWithEncoding)
-    window.electron.ipcRenderer.on(IPC.OVERLAY.CONVERT_TO_ENCODING, handleConvertToEncoding)
+    window.electron.ipcRenderer.on(IPC.FILE.OPEN_WITH_ENCODING, handleOpenWithEncoding)
+    window.electron.ipcRenderer.on(IPC.FILE.CONVERT_TO_ENCODING, handleConvertToEncoding)
 
     window.addEventListener('resize', handleResize)
     window.addEventListener('keydown', handleKeyDownEvent)
@@ -393,11 +393,11 @@ onBeforeUnmount(() => {
     window.electron.ipcRenderer.removeListener(IPC.EDITOR.FLUSH_CONTENT, handleFlushContent)
     // FUN-02：卸载时移除编码菜单监听
     window.electron.ipcRenderer.removeListener(
-        IPC.OVERLAY.OPEN_WITH_ENCODING,
+        IPC.FILE.OPEN_WITH_ENCODING,
         handleOpenWithEncoding
     )
     window.electron.ipcRenderer.removeListener(
-        IPC.OVERLAY.CONVERT_TO_ENCODING,
+        IPC.FILE.CONVERT_TO_ENCODING,
         handleConvertToEncoding
     )
 })

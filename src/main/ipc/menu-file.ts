@@ -11,14 +11,14 @@ import { ExportToFile } from '../utils/file-utils/export'
 import { IPC } from '../../shared/ipc-channels'
 
 function FileEncoding(mainWindow: Electron.CrossProcessExports.BrowserWindow, encoding: string) {
-    mainWindow.webContents.send(IPC.OVERLAY.OPEN_WITH_ENCODING, encoding)
+    mainWindow.webContents.send(IPC.FILE.OPEN_WITH_ENCODING, encoding)
 }
 
 function FileConvertCoding(
     mainWindow: Electron.CrossProcessExports.BrowserWindow,
     encoding: string
 ) {
-    mainWindow.webContents.send(IPC.OVERLAY.CONVERT_TO_ENCODING, encoding)
+    mainWindow.webContents.send(IPC.FILE.CONVERT_TO_ENCODING, encoding)
 }
 
 export const fileMenuHandlers = {

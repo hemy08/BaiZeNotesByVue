@@ -321,6 +321,56 @@ describe('renderPlantumlDiagram', () => {
         expect(win.loadFile).toHaveBeenCalledTimes(1)
     })
 
+    it('should dispose the hidden window after the idle timeout (遗留清单 #13)', async () => {
+        vi.useFakeTimers()
+        try {
+            const renderPromise = renderPlantumlDiagram(SAMPLE_SOURCE)
+            await flushMicrotasks()
+            const win = state.windows[0]
+            win.executeJavaScript
+                .mockResolvedValueOnce(true)
+                .mockResolvedValueOnce({ status: 'ok', svg: '<svg>IDLE</svg>' })
+            win.emitWebContents('did-finish-load')
+            await expect(renderPromise).resolves.toEqual({
+                status: 'ok',
+                svg: '<svg>IDLE</svg>'
+            })
+
+            // 空闲超时前不销毁；60s 后销毁隐藏窗释放渲染进程资源
+            await vi.advanceTimersByTimeAsync(59_000)
+            expect(win.destroyed).toBe(false)
+            await vi.advanceTimersByTimeAsync(1_000)
+            expect(win.destroyed).toBe(true)
+        } finally {
+            vi.useRealTimers()
+        }
+    })
+
+    it('should cancel the idle disposal when a new render arrives', async () => {
+        vi.useFakeTimers()
+        try {
+            const firstPromise = renderPlantumlDiagram(SAMPLE_SOURCE)
+            await flushMicrotasks()
+            const win = state.windows[0]
+            win.executeJavaScript
+                .mockResolvedValueOnce(true)
+                .mockResolvedValueOnce({ status: 'ok', svg: '<svg>FIRST</svg>' })
+            win.emitWebContents('did-finish-load')
+            await firstPromise
+
+            // 空闲计时进行中发起新渲染：取消销毁并复用窗口
+            await vi.advanceTimersByTimeAsync(30_000)
+            const secondPromise = renderPlantumlDiagram('@startuml\nA -> C\n@enduml')
+            win.executeJavaScript.mockResolvedValueOnce({ status: 'ok', svg: '<svg>SECOND</svg>' })
+            await expect(secondPromise).resolves.toEqual({ status: 'ok', svg: '<svg>SECOND</svg>' })
+            // 第二次渲染完成后重新计时：30s 尚未到期
+            await vi.advanceTimersByTimeAsync(30_000)
+            expect(win.destroyed).toBe(false)
+        } finally {
+            vi.useRealTimers()
+        }
+    })
+
     it('should return unavailable and skip window creation when resources are missing', async () => {
         fs.rmSync(path.join(tempRoot, 'resources', 'plantuml', 'plantuml.js'))
 

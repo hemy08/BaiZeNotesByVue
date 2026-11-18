@@ -4,12 +4,11 @@
  * 规则：
  * - 主进程 / preload / 渲染层的 ipcMain、ipcRenderer、webContents.send、
  *   ipcListenerManager 注册一律引用本文件常量，禁止再写通道字符串字面量；
- * - 通道字符串统一为 `baize:<domain>:<name>`（2026-11-15 命名统一后，本文件 89 个
- *   通道 100% 带 `baize:` 前缀，domain 限定 18 个白名单，见
- *   tests/unit/ipc-channel-naming.test.ts；历史前缀 baize-notes:* / baize:notes:*
- *   与无前缀通道已全部清理）；
- * - 常量分组沿用历史归属：个别常量所在组与通道 domain 不一致（CQ-13 的 5 处域错配，
- *   已在各组内就地注明）。为避免 IPC.X.Y 全仓引用大改，只补注释、不移动常量；
+ * - 通道字符串统一为 `baize:<domain>:<name>`（2026-11-15 命名统一后 100% 带 `baize:`
+ *   前缀，domain 限定 18 个白名单，见 tests/unit/ipc-channel-naming.test.ts）；
+ * - 常量分组与通道 domain 一一对应（2026-11-18 遗留清单 #3/#7 修复：原 CQ-13 的
+ *   10 个「域错配」通道已归位——编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、
+ *   设置类 2 通道新建 SETTING 组、Monaco 类 2 通道并入 MONACO 组）；
  * - 同名通道只定义一份（如 get-quick-links 统一放 QUICK_LINKS 组）。
  *
  * 防回归：tests/unit/ipc-channel-constants.test.ts 用 fs 解析本文件与
@@ -54,9 +53,6 @@ export const IPC = {
         GET_SETTING: 'baize:editor:get-setting',
         INIT_SETTING: 'baize:editor:init-setting',
         UPDATE_OPTIONS: 'baize:editor:update-options',
-        // CQ-13 域错配：通道 domain 是 setting（系统设置变更广播），历史放在 EDITOR 组；
-        // 引用点为 IPC.EDITOR.SYSTEM_SETTING_UPDATE，移动需全仓改引用，故仅注明保留原位。
-        SYSTEM_SETTING_UPDATE: 'baize:setting:updated',
         // D-3/FUN-03：关闭/退出落盘协议（主进程 → 渲染层 → 回执）
         FLUSH_CONTENT: 'baize:editor:flush-content',
         FLUSH_CONTENT_DONE: 'baize:editor:flush-content-done'
@@ -86,17 +82,18 @@ export const IPC = {
         // OPEN_EXTERNAL_LINK 设计上仅放行 http/https，本地文件需走本通道；
         // 主进程做「扩展名 + Path Guard」校验后再交给系统默认浏览器。
         OPEN_IN_BROWSER: 'baize:file:open-in-browser',
-        // CQ-13 域错配：以下 3 个通道的 domain 是 system（系统信息/外链），历史放在 FILE 组；
-        // 引用点为 IPC.FILE.*，移动需全仓改引用，故仅注明保留原位。
-        OPEN_EXTERNAL_LINK: 'baize:system:open-external-link',
-        SYSTEM_INFO: 'baize:system:get-info',
-        APP_VERSION: 'baize:system:app-version',
         USER_SELECT_FILE: 'baize:file:user-select-file',
         // 「文件」菜单 → 最近文件/最近文件夹：渲染层 invoke 拉取两个列表（各最多 20 项）
         RECENT_LIST: 'baize:file:recent-list',
         // 「文件」菜单 → 点击最近项：渲染层 invoke 请求主进程打开（主进程做最近列表白名单
         // 校验后复用 OpenSelectFile / 目录打开链路；渲染层不直接持有打开文件能力）
-        OPEN_RECENT: 'baize:file:open-recent'
+        OPEN_RECENT: 'baize:file:open-recent',
+        // FUN-02：编码菜单链路——主进程下发编码名（open/convert）与渲染层请求
+        // 按指定编码重开/转码保存（reopen/convert-save）
+        OPEN_WITH_ENCODING: 'baize:file:open-with-encoding',
+        CONVERT_TO_ENCODING: 'baize:file:convert-to-encoding',
+        REOPEN_WITH_ENCODING: 'baize:file:reopen-with-encoding',
+        CONVERT_SAVE_ENCODING: 'baize:file:convert-encoding'
     } as const,
 
     // ============ 文件管理器右键菜单 ============
@@ -143,10 +140,7 @@ export const IPC = {
     DIALOG: {
         CREATE_FILE_FOLDER_ENTER: 'baize:dialog:create-file-folder-enter',
         RENAME_FILE_FOLDER_ENTER: 'baize:dialog:rename-file-folder-enter',
-        OPEN_VUE_DIALOG: 'baize:dialog:open-vue',
-        // CQ-13 域错配：通道 domain 是 setting（自动保存开关变更通知），历史放在 DIALOG 组；
-        // 引用点为 IPC.DIALOG.AUTO_SAVE_CHANGED，故仅注明保留原位。
-        AUTO_SAVE_CHANGED: 'baize:setting:auto-save-changed'
+        OPEN_VUE_DIALOG: 'baize:dialog:open-vue'
     } as const,
 
     // ============ 导航 ============
@@ -159,16 +153,38 @@ export const IPC = {
         EDIT_MODE: 'baize:view:edit-mode',
         PREVIEW_MODE: 'baize:view:preview-mode',
         EDIT_PREVIEW_MODE: 'baize:view:edit-preview-mode',
-        TOGGLE_RES_MANAGER: 'baize:view:toggle-resource-manager',
-        // CQ-13 域错配：通道 domain 是 monaco（撤销/重做由编辑器执行），历史放在 VIEW 组；
-        // 引用点为 IPC.VIEW.UNDO_REDO，故仅注明保留原位。
+        TOGGLE_RES_MANAGER: 'baize:view:toggle-resource-manager'
+    } as const,
+
+    // ============ Monaco 编辑器命令（插入文本块/光标插入/撤销重做） ============
+    // 2026-11-18（遗留清单 #3/#7）：原 MONACO_INSERT 组并入本组；
+    // UNDO_REDO 原域错配在 VIEW 组（domain=monaco），一并归位。
+    MONACO: {
+        TEXT_BLOCK_TEMPLATES: 'baize:monaco:insert-text-block',
+        AFTER_CURSOR: 'baize:monaco:insert-after-cursor',
+        // FUN-09：编辑菜单撤销/重做/剪切/复制/粘贴由主进程下发 Monaco action id
         UNDO_REDO: 'baize:monaco:undo-redo'
     } as const,
 
-    // ============ Monaco 插入 ============
-    MONACO_INSERT: {
-        TEXT_BLOCK_TEMPLATES: 'baize:monaco:insert-text-block',
-        AFTER_CURSOR: 'baize:monaco:insert-after-cursor'
+    // ============ 系统设置变更（domain=setting） ============
+    // 2026-11-18（遗留清单 #3/#7）：原 SYSTEM_SETTING_UPDATE 域错配在 EDITOR 组、
+    // AUTO_SAVE_CHANGED 域错配在 DIALOG 组，均归位到本组。
+    SETTING: {
+        // 系统设置变更广播（菜单形态/语言/远程图片等）
+        SYSTEM_SETTING_UPDATE: 'baize:setting:updated',
+        // 自动保存开关/间隔变更通知（渲染层 invoke → 主进程启停定时器）
+        AUTO_SAVE_CHANGED: 'baize:setting:auto-save-changed'
+    } as const,
+
+    // ============ 系统级能力（domain=system） ============
+    // 2026-11-18（遗留清单 #3/#7）：原 3 个域错配在 FILE 组，归位到本组。
+    SYSTEM: {
+        // 系统浏览器打开外部链接（仅 http/https）
+        OPEN_EXTERNAL_LINK: 'baize:system:open-external-link',
+        // 系统信息（OS/架构/版本，关于对话框）
+        SYSTEM_INFO: 'baize:system:get-info',
+        // 应用版本信息（version.json + 运行时 electron/chrome/node 版本）
+        APP_VERSION: 'baize:system:app-version'
     } as const,
 
     // ============ 快速链接（get 收口到本组） ============
@@ -179,18 +195,6 @@ export const IPC = {
         // UPDATED，NaviTab 监听后刷新——设置对话框与导航栏共用同一数据源。
         SAVE: 'baize:quick-links:save',
         UPDATED: 'baize:quick-links:updated'
-    } as const,
-
-    // ============ 覆盖层窗口（Mermaid / 编码 / 在线页面） ============
-    OVERLAY: {
-        // CQ-13 域错配：以下 4 个通道的 domain 是 file（编码转换/重开），历史放在 OVERLAY 组；
-        // 引用点为 IPC.OVERLAY.*，移动需全仓改引用，故仅注明保留原位。
-        OPEN_WITH_ENCODING: 'baize:file:open-with-encoding',
-        CONVERT_TO_ENCODING: 'baize:file:convert-to-encoding',
-        // FUN-02：渲染层收到编码菜单事件（open-with-encoding/convert-to-encoding）
-        // 后 invoke 本通道，请求主进程按指定编码重新打开 / 转码保存当前文件
-        REOPEN_WITH_ENCODING: 'baize:file:reopen-with-encoding',
-        CONVERT_SAVE_ENCODING: 'baize:file:convert-encoding'
     } as const,
 
     // ============ 主进程 → 渲染层广播事件 ============

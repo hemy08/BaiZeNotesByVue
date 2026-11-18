@@ -98,13 +98,13 @@ const handleTriggerUndoRedo = (_event: unknown, option: string) => {
 }
 
 // 初始化编辑器 - 注册 IPC 监听器
-window.electron.ipcRenderer.on(IPC.MONACO_INSERT.AFTER_CURSOR, handleInsertAfterCursorIPC)
+window.electron.ipcRenderer.on(IPC.MONACO.AFTER_CURSOR, handleInsertAfterCursorIPC)
 window.electron.ipcRenderer.on(
-    IPC.MONACO_INSERT.TEXT_BLOCK_TEMPLATES,
+    IPC.MONACO.TEXT_BLOCK_TEMPLATES,
     handleInsertTextBlockTemplates
 )
 window.electron.ipcRenderer.on(IPC.EDITOR.UPDATE_OPTIONS, handleUpdateOptions)
-window.electron.ipcRenderer.on(IPC.VIEW.UNDO_REDO, handleTriggerUndoRedo)
+window.electron.ipcRenderer.on(IPC.MONACO.UNDO_REDO, handleTriggerUndoRedo)
 
 // 监听代码内容变化（带值变化守卫，避免更新循环）
 watch(
@@ -653,15 +653,15 @@ onBeforeUnmount(() => {
 
     // 2. 清理 IPC 监听器 - 使用具体的监听器函数引用
     window.electron.ipcRenderer.removeListener(
-        IPC.MONACO_INSERT.AFTER_CURSOR,
+        IPC.MONACO.AFTER_CURSOR,
         handleInsertAfterCursorIPC
     )
     window.electron.ipcRenderer.removeListener(
-        IPC.MONACO_INSERT.TEXT_BLOCK_TEMPLATES,
+        IPC.MONACO.TEXT_BLOCK_TEMPLATES,
         handleInsertTextBlockTemplates
     )
     window.electron.ipcRenderer.removeListener(IPC.EDITOR.UPDATE_OPTIONS, handleUpdateOptions)
-    window.electron.ipcRenderer.removeListener(IPC.VIEW.UNDO_REDO, handleTriggerUndoRedo)
+    window.electron.ipcRenderer.removeListener(IPC.MONACO.UNDO_REDO, handleTriggerUndoRedo)
     window.electron.ipcRenderer.removeListener(IPC.EDITOR.INIT_SETTING, handleUpdateEditorOptions)
 
     // 3. 清理窗口事件监听器（P-2/PF-13：scroll 监听已移除）

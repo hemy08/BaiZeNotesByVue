@@ -453,13 +453,13 @@ describe('fileMenuHandlers 全量 handler（ET-7）', () => {
     it.each(FILE_ENCODINGS)('should request reopening with encoding %s', (encoding) => {
         const win = makeWindow()
         pickHandler(codingMenuHandlers, 'encoding', encoding)(win as never)
-        expect(win.webContents.send).toHaveBeenCalledWith(IPC.OVERLAY.OPEN_WITH_ENCODING, encoding)
+        expect(win.webContents.send).toHaveBeenCalledWith(IPC.FILE.OPEN_WITH_ENCODING, encoding)
     })
 
     it.each(FILE_ENCODINGS)('should request converting to encoding %s', (encoding) => {
         const win = makeWindow()
         pickHandler(codingMenuHandlers, 'switch', encoding)(win as never)
-        expect(win.webContents.send).toHaveBeenCalledWith(IPC.OVERLAY.CONVERT_TO_ENCODING, encoding)
+        expect(win.webContents.send).toHaveBeenCalledWith(IPC.FILE.CONVERT_TO_ENCODING, encoding)
     })
 })
 

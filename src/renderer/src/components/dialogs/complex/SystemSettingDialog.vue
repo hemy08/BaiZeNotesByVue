@@ -712,7 +712,7 @@ async function browseDefaultPath(): Promise<void> {
 async function handleAutoSaveChange(): Promise<void> {
     try {
         const result: unknown = await window.electron.ipcRenderer.invoke(
-            IPC.DIALOG.AUTO_SAVE_CHANGED,
+            IPC.SETTING.AUTO_SAVE_CHANGED,
             {
                 autoSaveEnabled: settings.value.autoSaveEnabled,
                 autoSaveInterval: settings.value.autoSaveInterval

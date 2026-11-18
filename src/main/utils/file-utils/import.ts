@@ -312,7 +312,7 @@ export async function InsertImportFormFile(
         if (isImport) {
             mainWindow.webContents.send(IPC.DIALOG.OPEN_VUE_DIALOG, 'importOption', { content })
         } else {
-            mainWindow.webContents.send(IPC.MONACO_INSERT.AFTER_CURSOR, content)
+            mainWindow.webContents.send(IPC.MONACO.AFTER_CURSOR, content)
         }
     } catch (err) {
         showErrorMessageBox(tMain('mainMsg.file.importFailed', { error: String(err) }))

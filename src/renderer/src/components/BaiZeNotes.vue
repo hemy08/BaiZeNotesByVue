@@ -582,7 +582,7 @@ const handleOpenVueDialog = (
 }
 
 onMounted(async () => {
-    window.electron.ipcRenderer.on(IPC.EDITOR.SYSTEM_SETTING_UPDATE, handleSystemSettingUpdate)
+    window.electron.ipcRenderer.on(IPC.SETTING.SYSTEM_SETTING_UPDATE, handleSystemSettingUpdate)
     window.electron.ipcRenderer.on(IPC.THEME.THEME_UPDATED, handleThemeUpdate)
     window.electron.ipcRenderer.on(IPC.DIALOG.OPEN_VUE_DIALOG, handleOpenVueDialog)
 
@@ -616,7 +616,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
     window.electron.ipcRenderer.removeListener(
-        IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+        IPC.SETTING.SYSTEM_SETTING_UPDATE,
         handleSystemSettingUpdate
     )
     window.electron.ipcRenderer.removeListener(IPC.THEME.THEME_UPDATED, handleThemeUpdate)

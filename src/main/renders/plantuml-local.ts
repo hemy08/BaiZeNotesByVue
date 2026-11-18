@@ -98,6 +98,40 @@ let renderQueueTail: Promise<void> = Promise.resolve()
 /** 主窗口 closed 清理是否已挂接（防重复挂接） */
 let ownerWindowCleanupHooked = false
 
+/**
+ * 2026-11-18（遗留清单 #13）：隐藏渲染窗空闲销毁定时器。
+ * 渲染完成后启动计时，超时无新渲染请求则销毁隐藏窗口释放渲染进程资源；
+ * SVG 结果仍由 LRU 缓存保留，下次渲染按需重建窗口。
+ */
+let idleDisposeTimer: NodeJS.Timeout | null = null
+
+/** 空闲销毁超时（60s；渲染完成后的空闲期） */
+const PLANTUML_IDLE_DISPOSE_MS = 60_000
+
+/** 清除空闲销毁定时器（销毁/重建/新任务时调用） */
+function cancelIdleDispose(): void {
+    if (idleDisposeTimer !== null) {
+        clearTimeout(idleDisposeTimer)
+        idleDisposeTimer = null
+    }
+}
+
+/** 渲染完成后启动空闲销毁计时（超时销毁隐藏窗；unref 不阻塞进程退出） */
+function scheduleIdleDispose(): void {
+    cancelIdleDispose()
+    idleDisposeTimer = setTimeout(() => {
+        idleDisposeTimer = null
+        if (pendingRenderWindow !== null) {
+            // 正在创建窗口：交由创建流程结束后重新计时
+            return
+        }
+        logger.info('[PlantUML] 隐藏渲染窗口空闲超时，销毁以释放渲染进程资源（下次渲染时重建）')
+        disposePlantumlLocalWindows()
+    }, PLANTUML_IDLE_DISPOSE_MS)
+    idleDisposeTimer.unref?.()
+}
+
+
 /** 隐藏窗口初始化失败原因（仅用于诊断日志，不缓存失败状态，允许后续重试） */
 let lastWindowError: string | null = null
 
@@ -381,6 +415,8 @@ function createRenderWindow(): Promise<BrowserWindow> {
 
 /** 获取（必要时创建）复用的隐藏渲染窗口 */
 async function ensureRenderWindow(): Promise<BrowserWindow> {
+    // 新渲染任务：取消空闲销毁计时
+    cancelIdleDispose()
     if (renderWindow && !renderWindow.isDestroyed()) {
         return renderWindow
     }
@@ -439,6 +475,8 @@ async function renderSingleDiagram(source: string): Promise<PlantumlRenderRespon
         if (timeoutTimer) {
             clearTimeout(timeoutTimer)
         }
+        // 2026-11-18（遗留清单 #13）：渲染结束进入空闲期，超时后销毁隐藏窗释放资源
+        scheduleIdleDispose()
     }
 }
 
@@ -543,6 +581,7 @@ export function registerPlantumlLocalRenderIpc(): void {
  * 注意：不清理 SVG 缓存（进程退出即回收），也不影响已注册的 IPC 处理器。
  */
 export function disposePlantumlLocalWindows(): void {
+    cancelIdleDispose()
     pendingRenderWindow = null
     ownerWindowCleanupHooked = false
     if (renderWindow && !renderWindow.isDestroyed()) {

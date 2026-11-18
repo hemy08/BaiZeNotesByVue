@@ -274,7 +274,7 @@ describe('config-manager', () => {
             ).resolves.toBe(true)
 
             expect(send).toHaveBeenCalledWith(
-                IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+                IPC.SETTING.SYSTEM_SETTING_UPDATE,
                 expect.objectContaining({ language: 'en-US', menuBarStyle: 'windows-native' })
             )
             appState.mainWindow = null
@@ -299,7 +299,7 @@ describe('config-manager', () => {
             const stored = (await read(trustedEvent, 'system')) as Record<string, unknown>
             expect(stored.allowRemoteImages).toBe(true)
             expect(send).toHaveBeenCalledWith(
-                IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+                IPC.SETTING.SYSTEM_SETTING_UPDATE,
                 expect.objectContaining({ allowRemoteImages: true })
             )
 
@@ -309,7 +309,7 @@ describe('config-manager', () => {
                 true
             )
             expect(send).toHaveBeenCalledWith(
-                IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+                IPC.SETTING.SYSTEM_SETTING_UPDATE,
                 expect.objectContaining({ allowRemoteImages: false })
             )
             appState.mainWindow = null

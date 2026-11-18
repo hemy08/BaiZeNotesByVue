@@ -196,8 +196,11 @@ describe('DIALOG.AUTO_SAVE_CHANGED 渲染层调用模式契约（源码级防回
     )
 
     it('渲染层 handleAutoSaveChange 使用 invoke 且通道正确', () => {
-        expect(rendererSource).toMatch(/ipcRenderer\.invoke\(\s*IPC\.DIALOG\.AUTO_SAVE_CHANGED/)
+        // 2026-11-18（遗留清单 #3/#7）：通道常量已归位到 SETTING 组（原 DIALOG 组域错配）
+        expect(rendererSource).toMatch(/ipcRenderer\.invoke\(\s*IPC\.SETTING\.AUTO_SAVE_CHANGED/)
         // 防回归：不得再退回 send（send 消息进不了 ipcMain.handle 处理器）
-        expect(rendererSource).not.toMatch(/ipcRenderer\.send\(\s*IPC\.DIALOG\.AUTO_SAVE_CHANGED/)
+        expect(rendererSource).not.toMatch(
+            /ipcRenderer\.send\(\s*IPC\.SETTING\.AUTO_SAVE_CHANGED/
+        )
     })
 })

@@ -756,8 +756,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
     // AS-6：系统信息/主题/编辑器设置查询通道补发送方校验
     ipcListenerManager.registerHandleOnce(
-        IPC.FILE.SYSTEM_INFO,
-        withSenderCheck(IPC.FILE.SYSTEM_INFO, () => `${os.type()} ${os.arch()} ${os.release()}`, {
+        IPC.SYSTEM.SYSTEM_INFO,
+        withSenderCheck(IPC.SYSTEM.SYSTEM_INFO, () => `${os.type()} ${os.arch()} ${os.release()}`, {
             kind: 'handle'
         }),
         GLOBAL_IPC_COMPONENT_ID
@@ -785,9 +785,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     // 返回 { ok } 成功标志供渲染层判断，间隔参数校验逻辑保持不变。
     // P1/N-05：自动保存开关影响落盘策略，按配置写类高风险通道处理，仅主窗口可信。
     ipcListenerManager.registerHandleOnce(
-        IPC.DIALOG.AUTO_SAVE_CHANGED,
+        IPC.SETTING.AUTO_SAVE_CHANGED,
         withSenderCheck(
-            IPC.DIALOG.AUTO_SAVE_CHANGED,
+            IPC.SETTING.AUTO_SAVE_CHANGED,
             (_event, payload?: { autoSaveEnabled?: boolean; autoSaveInterval?: number }) => {
                 if (!payload || typeof payload !== 'object') {
                     return { ok: false, reason: 'invalid-payload' }

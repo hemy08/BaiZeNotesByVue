@@ -184,7 +184,7 @@ onMounted(async () => {
 
     if (typeof require !== 'undefined') {
         try {
-            const osInfo = await window.electron.ipcRenderer.invoke(IPC.FILE.SYSTEM_INFO)
+            const osInfo = await window.electron.ipcRenderer.invoke(IPC.SYSTEM.SYSTEM_INFO)
             systemInfo.value = osInfo
         } catch {
             systemInfo.value = 'Unknown'

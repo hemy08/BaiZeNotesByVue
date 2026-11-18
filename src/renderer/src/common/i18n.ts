@@ -54,7 +54,7 @@ export async function initI18n(): Promise<void> {
 
     try {
         window.electron.ipcRenderer.on(
-            IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+            IPC.SETTING.SYSTEM_SETTING_UPDATE,
             (_event: unknown, setting: { language?: string } | undefined) => {
                 if (setting && typeof setting.language === 'string') {
                     setLocale(setting.language)

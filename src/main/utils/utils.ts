@@ -385,7 +385,7 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
                 const imageName = await FileUtils.InsertImagesToFile(context)
                 if (imageName.length !== 0) {
                     mainWindow.webContents.send(
-                        IPC.MONACO_INSERT.TEXT_BLOCK_TEMPLATES,
+                        IPC.MONACO.TEXT_BLOCK_TEMPLATES,
                         '\r\n\r\n![](./images/' + imageName + ')\r\n\r\n'
                     )
                 }
@@ -639,11 +639,11 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     // （复用 file-operations 的 normalizeEncoding / decodeFileContent / encodeFileContent）。
     // P1/N-05：重新打开（读盘）与转码保存（写盘）均为文件系统高风险通道，仅主窗口可信。
     ipcListenerManager.registerHandleOnce(
-        IPC.OVERLAY.REOPEN_WITH_ENCODING,
+        IPC.FILE.REOPEN_WITH_ENCODING,
         withSenderCheck(
-            IPC.OVERLAY.REOPEN_WITH_ENCODING,
+            IPC.FILE.REOPEN_WITH_ENCODING,
             withHandleErrorLog(
-                IPC.OVERLAY.REOPEN_WITH_ENCODING,
+                IPC.FILE.REOPEN_WITH_ENCODING,
                 async (_event: Electron.IpcMainInvokeEvent, encoding: string) => {
                     await FileUtils.ReopenActiveFileWithEncoding(encoding)
                 }
@@ -654,11 +654,11 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     )
 
     ipcListenerManager.registerHandleOnce(
-        IPC.OVERLAY.CONVERT_SAVE_ENCODING,
+        IPC.FILE.CONVERT_SAVE_ENCODING,
         withSenderCheck(
-            IPC.OVERLAY.CONVERT_SAVE_ENCODING,
+            IPC.FILE.CONVERT_SAVE_ENCODING,
             withHandleErrorLog(
-                IPC.OVERLAY.CONVERT_SAVE_ENCODING,
+                IPC.FILE.CONVERT_SAVE_ENCODING,
                 async (_event: Electron.IpcMainInvokeEvent, encoding: string) => {
                     await FileUtils.ConvertActiveFileEncoding(encoding)
                 }
@@ -727,8 +727,8 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     // 非白名单协议直接拒绝（console.warn），打开失败仍按 CQ-05 经状态栏提示。
     // P1/N-05：外部链接打开属高风险通道（钓鱼/协议利用），仅主窗口可信。
     ipcListenerManager.registerOnce(
-        IPC.FILE.OPEN_EXTERNAL_LINK,
-        withSenderCheck(IPC.FILE.OPEN_EXTERNAL_LINK, async (_, url: string) => {
+        IPC.SYSTEM.OPEN_EXTERNAL_LINK,
+        withSenderCheck(IPC.SYSTEM.OPEN_EXTERNAL_LINK, async (_, url: string) => {
             if (!isSafeExternalUrl(url)) {
                 logger.warn(`[Security] 已拒绝打开非 http/https 协议的外部链接：${url}`)
                 return
@@ -741,7 +741,7 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
                 }
             } catch (error) {
                 // CQ-05：打开失败时主进程留日志并经状态栏提示，不再只打 console.error
-                notifyIpcAsyncError(mainWindow, IPC.FILE.OPEN_EXTERNAL_LINK, error)
+                notifyIpcAsyncError(mainWindow, IPC.SYSTEM.OPEN_EXTERNAL_LINK, error)
             }
         }),
         GLOBAL_IPC_COMPONENT_ID
@@ -811,9 +811,9 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     // 获取应用版本信息
     // AS-6：版本信息读取（含 resources/config/version.json 内容）补发送方校验
     ipcListenerManager.registerHandleOnce(
-        IPC.FILE.APP_VERSION,
+        IPC.SYSTEM.APP_VERSION,
         withSenderCheck(
-            IPC.FILE.APP_VERSION,
+            IPC.SYSTEM.APP_VERSION,
             async () => {
                 try {
                     const versionFilePath = path.join(

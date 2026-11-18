@@ -1,10 +1,10 @@
 import { IPC } from '../../shared/ipc-channels'
 export const editMenuHandlers = {
     undo: (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send(IPC.VIEW.UNDO_REDO, 'undo')
+        mainWindow.webContents.send(IPC.MONACO.UNDO_REDO, 'undo')
     },
     redo: (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send(IPC.VIEW.UNDO_REDO, 'redo')
+        mainWindow.webContents.send(IPC.MONACO.UNDO_REDO, 'redo')
     },
     // FUN-09：剪切/复制/粘贴复用既有 Monaco IPC 通道
     // （'baize:monaco:undo-redo'，渲染端 MarkdownMonacoEditor.vue 的
@@ -12,13 +12,13 @@ export const editMenuHandlers = {
     // （clipboard-operations.ts，仅面向文件树复制/剪切/粘贴、不触碰系统文本剪贴板）
     // 互不冲突。
     cut: (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send(IPC.VIEW.UNDO_REDO, 'editor.action.clipboardCutAction')
+        mainWindow.webContents.send(IPC.MONACO.UNDO_REDO, 'editor.action.clipboardCutAction')
     },
     copy: (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send(IPC.VIEW.UNDO_REDO, 'editor.action.clipboardCopyAction')
+        mainWindow.webContents.send(IPC.MONACO.UNDO_REDO, 'editor.action.clipboardCopyAction')
     },
     paste: (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send(IPC.VIEW.UNDO_REDO, 'editor.action.clipboardPasteAction')
+        mainWindow.webContents.send(IPC.MONACO.UNDO_REDO, 'editor.action.clipboardPasteAction')
     }
     // FUN-09：以下 handler 已删除，动作由渲染层 menu_actions.ts 接管并 emit EventBus 事件
     // （事件名契约由 Monaco 代理实现监听）：

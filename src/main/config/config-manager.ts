@@ -208,7 +208,7 @@ function applySystemSettings(data: Record<string, unknown>): void {
     // 广播系统设置变更（渲染层 handleSystemSettingUpdate 依据 menuBarStyle 更新菜单形态）
     const mainWindow = appState.mainWindow
     if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send(IPC.EDITOR.SYSTEM_SETTING_UPDATE, getSystemSetting())
+        mainWindow.webContents.send(IPC.SETTING.SYSTEM_SETTING_UPDATE, getSystemSetting())
     }
 }
 

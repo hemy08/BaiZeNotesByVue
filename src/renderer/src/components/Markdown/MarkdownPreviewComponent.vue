@@ -271,7 +271,7 @@ async function readSnippetFile(absPath: string): Promise<string | null> {
 
 /* ==================== AS-9（P3）：远程图片隐私开关同步 ====================
  * 数据流：SystemSettingDialog → config:write('system') → 主进程 config-manager 持久化
- * 并广播 IPC.EDITOR.SYSTEM_SETTING_UPDATE（含 allowRemoteImages）→ 本组件更新模块级策略
+ * 并广播 IPC.SETTING.SYSTEM_SETTING_UPDATE（含 allowRemoteImages）→ 本组件更新模块级策略
  * 并强制重渲一轮（内容未变时 updateMarkdownPreview 会命中 lastRenderedContent 跳过，
  * 所以必须先清空该基准）。
  * 初始值：挂载后经 config:read('system') 读取；读取失败/环境不完整（如单测未 mock
@@ -372,7 +372,7 @@ onMounted(() => {
     // PF-02：订阅既有活动文件路径事件（主进程打开/新建文件时下发），供本地 URL 转换使用
     window.electron.ipcRenderer.on(IPC.FILE.USER_SELECT_FILE, handleActiveFileChange)
     // AS-9：远程图片隐私开关——系统设置变更广播 + 初始值读取（默认不加载远程图片）
-    window.electron.ipcRenderer.on(IPC.EDITOR.SYSTEM_SETTING_UPDATE, handleSystemSettingUpdate)
+    window.electron.ipcRenderer.on(IPC.SETTING.SYSTEM_SETTING_UPDATE, handleSystemSettingUpdate)
     void loadRemoteImagePolicy()
 
     const container = document.getElementById('markdown-preview-html')
@@ -383,7 +383,7 @@ onBeforeUnmount(() => {
     EventBus.$off(EVENT_BUS.MONACO_GET_CHAPTERS, UpdateMarkdownChapters)
     window.electron.ipcRenderer.removeListener(IPC.FILE.USER_SELECT_FILE, handleActiveFileChange)
     window.electron.ipcRenderer.removeListener(
-        IPC.EDITOR.SYSTEM_SETTING_UPDATE,
+        IPC.SETTING.SYSTEM_SETTING_UPDATE,
         handleSystemSettingUpdate
     )
 
