@@ -175,7 +175,10 @@ export default {
             fileNotFound: 'File not found',
             empty: 'Select a PDF file to preview',
             zoomIn: 'Zoom in',
-            zoomOut: 'Zoom out'
+            zoomOut: 'Zoom out',
+            prevPage: 'Previous page',
+            nextPage: 'Next page',
+            unreadable: 'Unable to read the PDF file'
         },
         htmlView: {
             loading: 'Loading HTML file...',

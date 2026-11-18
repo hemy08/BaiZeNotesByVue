@@ -40,8 +40,8 @@ describe('pluginTools', () => {
         expect(pluginTools.length).toBeGreaterThan(0)
     })
 
-    it('should contain 37 plugin tool entries', () => {
-        expect(pluginTools.length).toBe(37)
+    it('should contain 38 plugin tool entries', () => {
+        expect(pluginTools.length).toBe(38)
     })
 
     it('should keep id and component fields complete', () => {
@@ -80,7 +80,7 @@ describe('pluginTools', () => {
         expect(info).toHaveLength(8)
         expect(codec).toHaveLength(5)
         expect(convert).toHaveLength(5)
-        expect(misc).toHaveLength(2)
+        expect(misc).toHaveLength(3)
         expect(text).toHaveLength(3)
         expect(format).toHaveLength(2)
     })
@@ -95,6 +95,8 @@ describe('pluginTools', () => {
         expect(ids).toContain('baize:menu:plugins:codec:base64-codec')
         expect(ids).toContain('baize:menu:plugins:convert:color-convert')
         expect(ids).toContain('baize:menu:plugins:misc:calculator')
+        // 2026-11-18（遗留清单 #9）：PDF 预览改走 pdf.js 后恢复注册
+        expect(ids).toContain('baize:menu:plugins:misc:pdf-preview')
         expect(ids).toContain('baize:menu:plugins:text:chinese-text')
         expect(ids).toContain('baize:menu:plugins:format:json-tool')
         expect(ids).toContain('baize:menu:plugins:net:regex-tester')

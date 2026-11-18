@@ -67,15 +67,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import EventBus from '@renderer/common/event-bus/event-bus'
 import NaviTab from '@renderer/components/WorkSpaceArea/NaviTab.vue'
 import ResManager from '@renderer/components/ResourceManager/ResourceManager.vue'
 import MdContainer from '@renderer/components/Markdown/MarkdownContainer.vue'
 import PluginTools from '@renderer/components/PluginTools/PluginTools.vue'
 import HemyTools from '@renderer/components/HemyTools/HemyTools.vue'
-import ShowHtmlView from '@renderer/components/HemyTools/ShowHtmlView.vue'
-import ShowPdfEditor from '@renderer/components/HemyTools/ShowPdfEditor.vue'
+// 2026-11-18（遗留清单 #9/#11）：HTML 查看器与 PDF 预览按需加载——
+// PDF 预览内含 pdfjs-dist（较大），静态导入会打进入口 chunk；改为异步组件后
+// 仅在首次切换到对应工作区时加载，消除 INEFFECTIVE_DYNAMIC_IMPORT 并减小首屏 chunk。
+const ShowHtmlView = defineAsyncComponent(
+    () => import('@renderer/components/HemyTools/ShowHtmlView.vue')
+)
+const ShowPdfEditor = defineAsyncComponent(
+    () => import('@renderer/components/HemyTools/ShowPdfEditor.vue')
+)
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 

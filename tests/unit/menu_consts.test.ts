@@ -190,7 +190,7 @@ describe('menu-consts', () => {
             expect(PluginInfoScience).toHaveLength(2)
             expect(PluginInfoCmd).toHaveLength(0)
             expect(PluginCodeDef).toHaveLength(0)
-            expect(PluginMiscToolsMaps).toHaveLength(2)
+            expect(PluginMiscToolsMaps).toHaveLength(3)
             expect(PluginTextToolsMaps).toHaveLength(3)
         })
 

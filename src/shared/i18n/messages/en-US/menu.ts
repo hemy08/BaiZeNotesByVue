@@ -195,7 +195,8 @@ export default {
         },
         misc: {
             randomGenerator: 'Random Generator',
-            calculator: 'Calculator'
+            calculator: 'Calculator',
+            pdfPreview: 'PDF Preview'
         },
         text: {
             chineseText: 'Chinese text tool',

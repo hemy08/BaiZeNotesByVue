@@ -200,7 +200,8 @@ export default {
         },
         misc: {
             randomGenerator: '随机生成器',
-            calculator: '在线计算器'
+            calculator: '在线计算器',
+            pdfPreview: 'PDF 预览'
         },
         text: {
             chineseText: '中文文本工具',

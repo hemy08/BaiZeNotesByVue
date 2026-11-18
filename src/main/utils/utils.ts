@@ -722,6 +722,39 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         GLOBAL_IPC_COMPONENT_ID
     )
 
+    // 读取本地二进制文件（2026-11-18，遗留清单 #9：PDF 预览改走 pdf.js 需要原始字节）
+    // P1-AS-1：仅允许受信范围路径（Path Guard），越界拒绝并提示。
+    ipcListenerManager.registerHandleOnce(
+        IPC.FILE.READ_BINARY,
+        withSenderCheck(
+            IPC.FILE.READ_BINARY,
+            async (_, filePath: string) => {
+                if (typeof filePath !== 'string' || filePath.trim() === '') {
+                    throw new Error(tMain('mainMsg.file.readError.eacces'))
+                }
+                if (!isPathAllowed(filePath)) {
+                    notifyFilePathDenied(
+                        mainWindow,
+                        IPC.FILE.READ_BINARY,
+                        filePath,
+                        'mainMsg.status.openFileFailed'
+                    )
+                    throw new Error(tMain('mainMsg.file.readError.eacces'))
+                }
+                try {
+                    const buffer = await fs.promises.readFile(filePath)
+                    // Uint8Array 可被 IPC 结构化克隆，避免 Buffer 在渲染层缺失原型
+                    return new Uint8Array(buffer)
+                } catch (error) {
+                    logger.error('读取二进制文件失败:', error)
+                    throw error
+                }
+            },
+            { kind: 'handle' }
+        ),
+        GLOBAL_IPC_COMPONENT_ID
+    )
+
     // 在外部浏览器中打开链接
     // P0 安全：统一走 shell 协议白名单封装，仅允许 http/https；
     // 非白名单协议直接拒绝（console.warn），打开失败仍按 CQ-05 经状态栏提示。

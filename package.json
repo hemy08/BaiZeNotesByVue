@@ -55,6 +55,7 @@
         "mammoth": "^1.12.1",
         "markdown-it": "^15.0.3",
         "officegen": "^0.6.5",
+        "pdfjs-dist": "^6.5.438",
         "turndown": "^7.2.0"
     },
     "devDependencies": {

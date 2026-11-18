@@ -78,6 +78,10 @@ export const IPC = {
         UPDATE_SELECT_FILE_CONTENT: 'baize:file:update-content',
         CHECK_EXISTS: 'baize:file:check-exists',
         READ_HTML: 'baize:file:read-html',
+        // 2026-11-18（遗留清单 #9）：PDF 预览改走 pdf.js 方案，需要读取原始二进制。
+        // 主进程经 Path Guard 校验后返回 Uint8Array（IPC 结构化克隆支持），
+        // 渲染层交给 pdf.js 解析渲染（不再依赖 Electron 内置 PDF 查看器/iframe）。
+        READ_BINARY: 'baize:file:read-binary',
         // 2026-11-18（遗留清单 #1）：HTML 查看器「在浏览器中打开」本地 .html 文件专用通道。
         // OPEN_EXTERNAL_LINK 设计上仅放行 http/https，本地文件需走本通道；
         // 主进程做「扩展名 + Path Guard」校验后再交给系统默认浏览器。

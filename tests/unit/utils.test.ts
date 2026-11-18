@@ -471,6 +471,49 @@ describe('MainWindowListenUtilsEvent', () => {
         })
     })
 
+    describe('read binary file (遗留清单 #9: PDF 预览)', () => {
+        function trustedEvent() {
+            return makeEvent(mainWindow.webContents)
+        }
+
+        it('should read a trusted binary file as Uint8Array', async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'baize-read-binary-'))
+            const pdfFile = path.join(dir, 'sample.pdf')
+            // %PDF 魔数
+            fs.writeFileSync(pdfFile, Buffer.from([0x25, 0x50, 0x44, 0x46]))
+            try {
+                const handler = ipcMocks.handle.get('baize:file:read-binary')!
+                const result = (await handler(trustedEvent(), pdfFile)) as Uint8Array
+                expect(result).toBeInstanceOf(Uint8Array)
+                expect(Array.from(result)).toEqual([0x25, 0x50, 0x44, 0x46])
+            } finally {
+                fs.rmSync(dir, { recursive: true, force: true })
+            }
+        })
+
+        it('should reject paths outside trusted roots (path guard)', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            try {
+                const handler = ipcMocks.handle.get('baize:file:read-binary')!
+                await expect(
+                    handler(trustedEvent(), path.join(os.tmpdir(), '..', 'baize-escape.pdf'))
+                ).rejects.toThrow()
+            } finally {
+                consoleWarn.mockRestore()
+            }
+        })
+
+        it('should reject empty path payloads', async () => {
+            const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+            try {
+                const handler = ipcMocks.handle.get('baize:file:read-binary')!
+                await expect(handler(trustedEvent(), '')).rejects.toThrow()
+            } finally {
+                consoleError.mockRestore()
+            }
+        })
+    })
+
     describe('theme and quick-link query channels', () => {
         function trustedEvent() {
             return makeEvent(mainWindow.webContents)

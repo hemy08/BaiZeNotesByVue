@@ -170,7 +170,10 @@ export default {
             fileNotFound: '文件不存在',
             empty: '请选择一个 PDF 文件进行预览',
             zoomIn: '放大',
-            zoomOut: '缩小'
+            zoomOut: '缩小',
+            prevPage: '上一页',
+            nextPage: '下一页',
+            unreadable: '无法读取 PDF 文件内容'
         },
         htmlView: {
             loading: '正在加载 HTML 文件...',

@@ -148,6 +148,12 @@ export const pluginTools = markRaw([
         id: 'baize:menu:plugins:misc:calculator',
         component: lazyTool(() => import('./MiscTools/Calculator.vue'))
     },
+    // 2026-11-18（遗留清单 #9）：PDF 预览改走 pdf.js（pdfjs-dist）渲染后恢复注册，
+    // 同时资源管理器点击 .pdf 会经 PDF_FILE_SELECTED + WORKSPACE_SHOW('pdf') 直接打开本组件
+    {
+        id: 'baize:menu:plugins:misc:pdf-preview',
+        component: lazyTool(() => import('@renderer/components/HemyTools/ShowPdfEditor.vue'))
+    },
 
     // ==================== 文本转换（1.3.5 jyshare 常用工具集成） ====================
     {
@@ -209,9 +215,8 @@ export const pluginTools = markRaw([
         component: lazyTool(() => import('./Informations/PhysicalSymbolic.vue'))
     }
 
-    // CMP-19/CMP-27：以下两项故意不注册为插件工具（沿用第一轮 A-4 模式，不展示入口）：
-    // 1. PDF 预览（ShowPdfEditor.vue）：使用已废弃的 <webview> 标签，且全项目未开启
-    //    webviewTag（默认 false），预览必然空白——待改用 pdf.js 方案后再注册；
-    // 2. HemyTools（工具面板）：模板仅一个"返回编辑器"按钮，属未完成空壳——补齐功能后再注册。
-    // 两者容器开关由 WorkSpace.vue 的事件控制，本注册表与 menu_consts.ts 均不为其生成菜单入口。
+    // CMP-19/CMP-27：以下一项故意不注册为插件工具（沿用第一轮 A-4 模式，不展示入口）：
+    // HemyTools（工具面板）：模板仅一个"返回编辑器"按钮，属未完成空壳——补齐功能后再注册。
+    // 容器开关由 WorkSpace.vue 的事件控制，本注册表与 menu_consts.ts 均不为其生成菜单入口。
+    // （注：PDF 预览已于 2026-11-18 改为 pdf.js 方案并恢复注册，见上方 misc:pdf-preview。）
 ])

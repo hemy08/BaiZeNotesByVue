@@ -478,6 +478,11 @@ const PluginMiscToolsMaps = [
     {
         labelKey: 'menu.plugins.misc.calculator',
         menuAction: 'baize:menu:plugins:misc:calculator'
+    },
+    // 2026-11-18（遗留清单 #9）：PDF 预览改走 pdf.js 后恢复菜单入口
+    {
+        labelKey: 'menu.plugins.misc.pdfPreview',
+        menuAction: 'baize:menu:plugins:misc:pdf-preview'
     }
 ]
 
