@@ -231,9 +231,9 @@
 <h2 id="sec-1">一、当前通信矩阵（2026-11-18 复核，90 通道）</h2>
 <ul>
 <li><strong>编制日期</strong>：2026-11-18（基于当前工作区源码；取代 <code>2026-11-15-IPC通信矩阵.md</code> 历史快照）</li>
-<li><strong>唯一真源</strong>：<code>src/shared/ipc-channels.ts</code>（<strong>90 个通道常量 / 16 个分组</strong>，全部以 <code>baize:&lt;domain&gt;:&lt;name&gt;</code> 命名；2026-11-18 晚清理 2 个死通道：<code>WINDOW.START_DRAG</code>、<code>THEME.INIT_THEME_STYLES</code>）</li>
+<li><strong>唯一真源</strong>：<code>src/shared/ipc-channels.ts</code>（<strong>90 个通道常量 / 17 个分组</strong>，全部以 <code>baize:&lt;domain&gt;:&lt;name&gt;</code> 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）</li>
 <li><strong>方法</strong>：对每个通道常量在 <code>src/main/**</code>、<code>src/preload/**</code>、<code>src/renderer/**</code> 全量 grep 实际发送点/接收点，只按源码事实填写；行号均为当前源码行号</li>
-<li><strong>统计摘要</strong>：90 通道 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 发现 3 类异常（见 §五）</li>
+<li><strong>统计摘要</strong>：90 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）</li>
 </ul>
 <h4>一、方向记号</h4>
 <table>
@@ -312,7 +312,7 @@
 <tr>
 <td>IPC 通道常量</td>
 <td><strong>90</strong></td>
-<td>WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 6 / FILE 21 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 4 / NAVIGATION 1 / VIEW 5 / MONACO_INSERT 2 / QUICK_LINKS 3 / OVERLAY 4 / EVENTS 4</td>
+<td>WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 22 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 3 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 3 / QUICK_LINKS 3 / EVENTS 4</td>
 </tr>
 <tr>
 <td>BrowserWindow 创建点</td>
@@ -341,8 +341,8 @@
 </tr>
 <tr>
 <td>发现异常</td>
-<td><strong>3 类</strong></td>
-<td>语义错用 1、载荷不一致 1、域错配 10 个通道 / 5 组（详见 §五）</td>
+<td><strong>0 类</strong></td>
+<td>语义错用（#1）、载荷不一致（#2）、域错配 10 通道（#3/#7）均已修复，见 §五修复记录</td>
 </tr>
 <tr>
 <td>死通道（双端全无）</td>
@@ -375,7 +375,7 @@
 <li><strong>单主进程</strong>，每个 BrowserWindow 一个渲染进程；未使用 utilityProcess / MessageChannelMain / MessagePort / BrowserView / WebContentsView。</li>
 <li><strong>preload 单文件约束</strong>：<code>electron.vite.config.ts</code> 的 <code>isolatedEntries: true</code> + <code>externalizeDeps: false</code>，产物 <code>out/preload/index.js</code> / <code>dialog.js</code>（主窗口与对话框均 <code>sandbox:true</code>，preload 必须自包含）。</li>
 </ul>
-<h4>四、通道矩阵（90 通道 / 16 组）</h4>
+<h4>四、通道矩阵（90 通道 / 17 组）</h4>
 <h5>4.1 WINDOW（8）</h5>
 <table>
 <thead>
@@ -572,7 +572,7 @@
 </tr>
 </tbody>
 </table>
-<h5>4.5 EDITOR（6）</h5>
+<h5>4.5 EDITOR（5）</h5>
 <table>
 <thead>
 <tr>
@@ -610,14 +610,6 @@
 <td>MarkdownMonacoEditor.vue:106/663；BaiZeNotes.vue:476 的 R→M 发送无接收（§五-2）</td>
 </tr>
 <tr>
-<td>SYSTEM_SETTING_UPDATE</td>
-<td><code>baize:setting:updated</code></td>
-<td>M→R send（域错配：domain=setting）</td>
-<td>系统设置变更广播（菜单形态/语言/远程图片等）</td>
-<td>config-manager.ts:211</td>
-<td>BaiZeNotes.vue:587、MarkdownPreviewComponent.vue:375、i18n.ts:56</td>
-</tr>
-<tr>
 <td>FLUSH_CONTENT</td>
 <td><code>baize:editor:flush-content</code></td>
 <td>M→R send</td>
@@ -635,7 +627,7 @@
 </tr>
 </tbody>
 </table>
-<h5>4.6 FILE（21）</h5>
+<h5>4.6 FILE（22）</h5>
 <table>
 <thead>
 <tr>
@@ -769,30 +761,6 @@
 <td>ShowHtmlView.vue:111、MarkdownPreviewComponent.vue:264（snippets）</td>
 </tr>
 <tr>
-<td>OPEN_EXTERNAL_LINK</td>
-<td><code>baize:system:open-external-link</code></td>
-<td>R→M send（域错配：system）</td>
-<td>系统浏览器打开链接（仅 http/https）</td>
-<td>utils.ts:728 registerOnce</td>
-<td>ShowHtmlView.vue:151（实际发本地路径→必被拒，§五-3）</td>
-</tr>
-<tr>
-<td>SYSTEM_INFO</td>
-<td><code>baize:system:get-info</code></td>
-<td>R→M invoke（域错配）</td>
-<td>系统描述（OS/架构/版本）</td>
-<td>handlers.ts:759 registerHandleOnce</td>
-<td>HelpAboutDialog.vue:187</td>
-</tr>
-<tr>
-<td>APP_VERSION</td>
-<td><code>baize:system:app-version</code></td>
-<td>R→M invoke（域错配）</td>
-<td>版本信息（version.json + 运行时 electron/chrome/node）</td>
-<td>utils.ts:778 registerHandleOnce</td>
-<td>preload <code>api.app.getVersion</code>（index.ts:57）→ HelpAboutDialog.vue:155</td>
-</tr>
-<tr>
 <td>USER_SELECT_FILE</td>
 <td><code>baize:file:user-select-file</code></td>
 <td>M→R send</td>
@@ -815,6 +783,38 @@
 <td>打开最近项（最近列表严格白名单 → 文件走 OpenSelectFile / 目录走 openDirectoryInMainView）</td>
 <td>handlers.ts:586 registerHandleOnce（2026-11-18 新增）</td>
 <td>preload <code>api.file.openRecent</code>（index.ts:69）→ menu-actions.ts:81/87</td>
+</tr>
+<tr>
+<td>OPEN_WITH_ENCODING</td>
+<td><code>baize:file:open-with-encoding</code></td>
+<td>M→R send</td>
+<td>编码菜单「以指定编码打开」下发编码名</td>
+<td>menu-file.ts:14（9 种编码）</td>
+<td>MarkdownEditComponent.vue:361/395</td>
+</tr>
+<tr>
+<td>CONVERT_TO_ENCODING</td>
+<td><code>baize:file:convert-to-encoding</code></td>
+<td>M→R send</td>
+<td>编码菜单「转换编码」下发编码名</td>
+<td>menu-file.ts:21（9 种）</td>
+<td>MarkdownEditComponent.vue:362/399</td>
+</tr>
+<tr>
+<td>REOPEN_WITH_ENCODING</td>
+<td><code>baize:file:reopen-with-encoding</code></td>
+<td>R→M invoke</td>
+<td>按指定编码重读活动文件</td>
+<td>utils.ts:640 registerHandleOnce</td>
+<td>MarkdownEditComponent.vue:324</td>
+</tr>
+<tr>
+<td>CONVERT_SAVE_ENCODING</td>
+<td><code>baize:file:convert-encoding</code></td>
+<td>R→M invoke</td>
+<td>按指定编码转码写盘（广播 FILE_SAVED_SUCCESS）</td>
+<td>utils.ts:655 registerHandleOnce</td>
+<td>MarkdownEditComponent.vue:333</td>
 </tr>
 </tbody>
 </table>
@@ -1047,7 +1047,7 @@
 </tr>
 </tbody>
 </table>
-<h5>4.10 DIALOG（4）</h5>
+<h5>4.10 DIALOG（3）</h5>
 <table>
 <thead>
 <tr>
@@ -1084,14 +1084,6 @@
 <td>menu-file.ts:26/31、menu-tools.ts:57-66、menu-view.ts:103-113、short-key-register.ts:124、import.ts:313、file-operations.ts:241/248、dialog-helpers.ts:28/44/61</td>
 <td>BaiZeNotes.vue:589（handleOpenVueDialog）/625</td>
 </tr>
-<tr>
-<td>AUTO_SAVE_CHANGED</td>
-<td><code>baize:setting:auto-save-changed</code></td>
-<td>R→M invoke（域错配：setting）</td>
-<td>自动保存开关/间隔变更（启停定时器，返回状态）</td>
-<td>handlers.ts:788 registerHandleOnce</td>
-<td>SystemSettingDialog.vue:714-720</td>
-</tr>
 </tbody>
 </table>
 <h5>4.11 NAVIGATION（1）</h5>
@@ -1117,7 +1109,7 @@
 </tr>
 </tbody>
 </table>
-<h5>4.12 VIEW（5）</h5>
+<h5>4.12 VIEW（4）</h5>
 <table>
 <thead>
 <tr>
@@ -1162,17 +1154,9 @@
 <td>menu-view.ts:81</td>
 <td>WorkSpace.vue:213/220</td>
 </tr>
-<tr>
-<td>UNDO_REDO</td>
-<td><code>baize:monaco:undo-redo</code></td>
-<td>M→R send（域错配：monaco）</td>
-<td>触发 Monaco 命令（undo/redo/cut/copy/paste，payload=action id）</td>
-<td>menu-edit.ts:4/7/15/18/21</td>
-<td>MarkdownMonacoEditor.vue:107/664</td>
-</tr>
 </tbody>
 </table>
-<h5>4.13 MONACO_INSERT（2）</h5>
+<h5>4.13 MONACO（3）</h5>
 <table>
 <thead>
 <tr>
@@ -1203,7 +1187,78 @@
 </tr>
 </tbody>
 </table>
-<h5>4.14 QUICK_LINKS（3）</h5>
+<p>| UNDO_REDO | <code>baize:monaco:undo-redo</code> | M→R send | 触发 Monaco 命令（undo/redo/cut/copy/paste，payload=action id） | menu-edit.ts:4/7/15/18/21 | MarkdownMonacoEditor.vue:107/664 |</p>
+<h5>4.14 SETTING（2）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SYSTEM_SETTING_UPDATE</td>
+<td><code>baize:setting:updated</code></td>
+<td>M→R send</td>
+<td>系统设置变更广播（菜单形态/语言/远程图片等）</td>
+<td>config-manager.ts:211</td>
+<td>BaiZeNotes.vue:587、MarkdownPreviewComponent.vue:375、i18n.ts:56</td>
+</tr>
+<tr>
+<td>AUTO_SAVE_CHANGED</td>
+<td><code>baize:setting:auto-save-changed</code></td>
+<td>R→M invoke</td>
+<td>自动保存开关/间隔变更（启停定时器，返回状态）</td>
+<td>handlers.ts:788 registerHandleOnce</td>
+<td>SystemSettingDialog.vue:714-720</td>
+</tr>
+</tbody>
+</table>
+<h5>4.15 SYSTEM（3）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OPEN_EXTERNAL_LINK</td>
+<td><code>baize:system:open-external-link</code></td>
+<td>R→M send</td>
+<td>系统浏览器打开外部链接（仅 http/https；本地 HTML 走 FILE.OPEN_IN_BROWSER）</td>
+<td>utils.ts:728 registerOnce</td>
+<td>主窗口 window.open 兜底（index.ts）；dialog preload 白名单</td>
+</tr>
+<tr>
+<td>SYSTEM_INFO</td>
+<td><code>baize:system:get-info</code></td>
+<td>R→M invoke</td>
+<td>系统描述（OS/架构/版本）</td>
+<td>handlers.ts:759 registerHandleOnce</td>
+<td>HelpAboutDialog.vue:187</td>
+</tr>
+<tr>
+<td>APP_VERSION</td>
+<td><code>baize:system:app-version</code></td>
+<td>R→M invoke</td>
+<td>版本信息（version.json + 运行时 electron/chrome/node）</td>
+<td>utils.ts:778 registerHandleOnce</td>
+<td>preload <code>api.app.getVersion</code>（index.ts:57）→ HelpAboutDialog.vue:155</td>
+</tr>
+</tbody>
+</table>
+<h5>4.16 QUICK_LINKS（3）</h5>
 <table>
 <thead>
 <tr>
@@ -1242,54 +1297,7 @@
 </tr>
 </tbody>
 </table>
-<h5>4.15 OVERLAY（4，域错配：domain=file）</h5>
-<table>
-<thead>
-<tr>
-<th>常量</th>
-<th>字符串</th>
-<th>方向</th>
-<th>作用</th>
-<th>主进程侧</th>
-<th>渲染层侧</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>OPEN_WITH_ENCODING</td>
-<td><code>baize:file:open-with-encoding</code></td>
-<td>M→R send</td>
-<td>编码菜单「以指定编码打开」下发编码名</td>
-<td>menu-file.ts:14（9 种编码）</td>
-<td>MarkdownEditComponent.vue:361/395</td>
-</tr>
-<tr>
-<td>CONVERT_TO_ENCODING</td>
-<td><code>baize:file:convert-to-encoding</code></td>
-<td>M→R send</td>
-<td>编码菜单「转换编码」下发编码名</td>
-<td>menu-file.ts:21（9 种）</td>
-<td>MarkdownEditComponent.vue:362/399</td>
-</tr>
-<tr>
-<td>REOPEN_WITH_ENCODING</td>
-<td><code>baize:file:reopen-with-encoding</code></td>
-<td>R→M invoke</td>
-<td>按指定编码重读活动文件</td>
-<td>utils.ts:640 registerHandleOnce</td>
-<td>MarkdownEditComponent.vue:324</td>
-</tr>
-<tr>
-<td>CONVERT_SAVE_ENCODING</td>
-<td><code>baize:file:convert-encoding</code></td>
-<td>R→M invoke</td>
-<td>按指定编码转码写盘（广播 FILE_SAVED_SUCCESS）</td>
-<td>utils.ts:655 registerHandleOnce</td>
-<td>MarkdownEditComponent.vue:333</td>
-</tr>
-</tbody>
-</table>
-<h5>4.16 EVENTS（4，M→R 广播集合）</h5>
+<h5>4.17 EVENTS（4，M→R 广播集合）</h5>
 <table>
 <thead>
 <tr>
@@ -1336,44 +1344,10 @@
 </tr>
 </tbody>
 </table>
-<h4>五、异常与风险清单（3 类）</h4>
+<h4>五、异常与风险清单（已清零）</h4>
 <blockquote>
-<p>2026-11-18 晚已处理 4 项空转/死分支：<code>WINDOW.START_DRAG</code>（空实现）、<code>THEME.INIT_THEME_STYLES</code>（半死：6 发送 0 接收）、<code>EDITOR.UPDATE_OPTIONS</code> 的 R→M 死分支、<code>EVENTS.STATUS_BAR_UPDATE</code> 的渲染层反向 send。以下为剩余项。</p>
+<p><strong>2026-11-18 复核：异常清单已清零</strong>。历史已处理项：① 空转/死分支 4 项（<code>WINDOW.START_DRAG</code> 空实现、<code>THEME.INIT_THEME_STYLES</code> 半死、<code>EDITOR.UPDATE_OPTIONS</code> R→M 死分支、<code>EVENTS.STATUS_BAR_UPDATE</code> 反向 send）；② 语义错用 1 项（<code>SYSTEM.OPEN_EXTERNAL_LINK</code> 的本地文件调用已改走 <code>FILE.OPEN_IN_BROWSER</code>，遗留清单 #1）；③ 载荷不一致 1 项（<code>THEME.THEME_UPDATED</code>，MenuBar 改读配置，遗留清单 #2）；④ 域错配 10 通道 / 5 组（分组与 domain 已统一为 17 组，遗留清单 #3/#7）。详见 <a href="当前遗留问题清单.html">当前遗留问题清单</a>。</p>
 </blockquote>
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>类型</th>
-<th>通道/位置</th>
-<th>事实</th>
-<th>建议</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>语义错用</td>
-<td><code>FILE.OPEN_EXTERNAL_LINK</code></td>
-<td>唯一发送点 ShowHtmlView.vue:151 发本地 html 绝对路径；主进程 <code>isSafeExternalUrl</code> 仅放行 http/https → 该调用必被拒（实测无效）；PDF 已改走 FILE_MANAGER.OPEN_IN_EXPLORER</td>
-<td>ShowHtmlView 改用 <code>OPEN_IN_EXPLORER</code>（或删除该调用）</td>
-</tr>
-<tr>
-<td>2</td>
-<td>载荷不一致</td>
-<td><code>THEME.THEME_UPDATED</code></td>
-<td>广播 <code>{themeStyles, monacoTheme, separateEditorTheme}</code>，但 MenuBar.vue:152-156 按 <code>theme.currentTheme</code> 读取 → 该监听取不到值</td>
-<td>MenuBar 改读 <code>themeStyles</code> 或广播补 <code>currentTheme</code> 字段</td>
-</tr>
-<tr>
-<td>3</td>
-<td>域错配（CQ-13，已注明保留）</td>
-<td>10 个通道 / 5 组</td>
-<td><code>EDITOR.SYSTEM_SETTING_UPDATE</code>(setting)、<code>DIALOG.AUTO_SAVE_CHANGED</code>(setting)、<code>VIEW.UNDO_REDO</code>(monaco)、<code>OVERLAY.*</code> 4 个(file)、<code>FILE</code> 组 3 个 system 通道 —— 常量分组与通道 domain 不一致，仅注释未移动</td>
-<td>后续统一（需全仓改引用）</td>
-</tr>
-</tbody>
-</table>
 <h4>六、窗口容器与 preload 矩阵</h4>
 <h5>6.1 BrowserWindow 容器（4 个创建点）</h5>
 <table>

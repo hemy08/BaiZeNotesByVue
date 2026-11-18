@@ -221,9 +221,10 @@
     <a class="toc-l3" href="#sub-5">3.5 工程 / 流程（4 项）</a>
     <a class="toc-l2" href="#sec-4">四、建议处理顺序</a>
     <a class="toc-l2" href="#sec-5">五、修复记录（按时间倒序）</a>
-    <a class="toc-l3" href="#sub-6">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</a>
-    <a class="toc-l3" href="#sub-7">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</a>
-    <a class="toc-l3" href="#sub-8">2026-11-18 · 台账建立</a>
+    <a class="toc-l3" href="#sub-6">2026-11-18 · 修复批次 3（IPC 分组统一 / 资源优化）</a>
+    <a class="toc-l3" href="#sub-7">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</a>
+    <a class="toc-l3" href="#sub-8">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</a>
+    <a class="toc-l3" href="#sub-9">2026-11-18 · 台账建立</a>
   </nav>
 
 <div class="wrap">
@@ -299,18 +300,18 @@
 <tr>
 <td>P3</td>
 <td>8</td>
-<td>3</td>
+<td>6</td>
 <td>0</td>
 <td>0</td>
-<td>5</td>
+<td>2</td>
 </tr>
 <tr>
 <td><strong>合计</strong></td>
 <td><strong>19</strong></td>
-<td><strong>11</strong></td>
+<td><strong>14</strong></td>
 <td><strong>0</strong></td>
 <td><strong>0</strong></td>
-<td><strong>8</strong></td>
+<td><strong>5</strong></td>
 </tr>
 </tbody>
 </table>
@@ -356,8 +357,8 @@
 <td>域错配 10 个通道 / 5 组（CQ-13，仅注释未统一）</td>
 <td><code>src/shared/ipc-channels.ts</code></td>
 <td>维护认知成本</td>
-<td>⏸️ 保持现状</td>
-<td>通道字符串不可变，重组常量命名空间收益低风险高；已注释说明，留待独立批次</td>
+<td>✅ 已修复</td>
+<td>IPC 常量分组与 domain 统一：编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、设置类 2 通道新建 SETTING 组、Monaco 类并入 MONACO 组（17 组 / 90 通道）；全仓引用已批量替换并通过 typecheck/vitest</td>
 </tr>
 </tbody>
 </table>
@@ -400,7 +401,7 @@
 <td><a href="../../../../src/renderer/index.html">src/renderer/index.html</a></td>
 <td>安全面偏宽（Monaco/vue 需要评估）</td>
 <td>⏸️ 保持现状</td>
-<td><code>unsafe-eval</code> 需实机验证 Monaco 兼容性；<code>img-src https:</code> 为远程图片功能所需，收紧属独立安全评估</td>
+<td>评估结论：当前渲染层源码无 new Function/eval 使用（grep 确认），<code>unsafe-eval</code> 可在实机验证后移除；<code>img-src https:</code> 为远程图片功能所需——CSP 收紧需实机回归，暂保持</td>
 </tr>
 <tr>
 <td>7</td>
@@ -408,8 +409,8 @@
 <td>域错配伴随的通道注释与实际实现偏差</td>
 <td><code>src/shared/ipc-channels.ts</code></td>
 <td>文档准确性</td>
-<td>⏸️ 保持现状</td>
-<td>随 #3 保持现状</td>
+<td>✅ 已修复</td>
+<td>随 #3 一并完成：原 CQ-13 注释删除，分组与 domain 一一对应</td>
 </tr>
 </tbody>
 </table>
@@ -494,8 +495,8 @@
 <td>PlantUML 隐藏窗 <code>backgroundThrottling: false</code></td>
 <td><a href="../../../../src/main/renders/plantuml-local.ts">plantuml-local.ts:279</a></td>
 <td>常驻隐藏渲染进程资源占用</td>
-<td>⏸️ 保持现状</td>
-<td>隐藏窗渲染完成即销毁；关闭节流会延长渲染等待，资源占用有限</td>
+<td>✅ 已修复</td>
+<td>PlantUML 隐藏渲染窗增加空闲销毁：渲染完成后 60s 无新任务即销毁释放渲染进程资源（SVG LRU 缓存保留、下次渲染按需重建；unref 不阻塞退出）；新增 2 个测试用例（空闲销毁/新请求取消销毁）</td>
 </tr>
 <tr>
 <td>14</td>
@@ -513,7 +514,7 @@
 <td><a href="../../../../src/renderer/src/components/HemyTools/HemyTools.vue">HemyTools.vue</a></td>
 <td>死代码/维护成本</td>
 <td>⏸️ 保持现状</td>
-<td>已确认被 WorkSpace.vue 引用使用（非空壳死代码）</td>
+<td>核实结论：HemyTools.vue 被 WorkSpace.vue 引用且含实际实现，非空壳死代码——无需处理</td>
 </tr>
 </tbody>
 </table>
@@ -578,7 +579,15 @@
 <li><strong>低风险收尾</strong>：#3/#7 域错配统一 → #10 P3 文档声明 → #13/#14/#15 → #18</li>
 </ol>
 <h2 id="sec-5">五、修复记录（按时间倒序）</h2>
-<h3 id="sub-6">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</h3>
+<h3 id="sub-6">2026-11-18 · 修复批次 3（IPC 分组统一 / 资源优化）</h3>
+<ul>
+<li><strong>#3/#7 IPC 域错配统一</strong>：常量分组与通道 domain 一一对应——编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、设置类 2 通道新建 SETTING 组、Monaco 类并入 MONACO 组（原 MONACO_INSERT 组）；共 12 个符号引用全仓批量替换（16 文件），分组由 16 → 17 组、通道仍 90 个</li>
+<li><strong>#13 PlantUML 隐藏窗空闲销毁</strong>：渲染完成后 60s 无新渲染即销毁隐藏窗口释放渲染进程资源（SVG LRU 缓存保留，下次渲染按需重建；timer unref 不阻塞退出）；新增 2 个测试用例</li>
+<li><strong>#6 CSP 评估</strong>：渲染层源码无 new Function/eval（grep 确认），unsafe-eval 可实机验证后移除；img-src https: 为远程图片功能所需 → 保持现状并记录</li>
+<li><strong>#15 HemyTools.vue 核实</strong>：被 WorkSpace.vue 引用且含实际实现，非空壳死代码 → 无需处理</li>
+<li>门禁：typecheck 三工程 0 错误 / ESLint 0-0 / vitest 全量通过</li>
+</ul>
+<h3 id="sub-7">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</h3>
 <ul>
 <li><strong>#4 preload 发送白名单（C-09）</strong>：主窗口 preload 不再暴露 toolkit 全量 ipcRenderer，改为受限包装——send/invoke 57 通道、on/once 26 通道白名单（按渲染层实际调用静态扫描收集），未知通道丢弃/拒绝并告警；preload-index.test 新增 5 用例</li>
 <li><strong>#8 自动更新源</strong>：默认源改为本仓库 GitHub Releases 静态目录（electron-builder.yml / dev-app-update.yml / update.json.example / update.config.md 同步）；发布时上传 latest.yml 与安装包即可</li>
@@ -586,7 +595,7 @@
 <li><strong>#12 主题缓存异步预热</strong>：theme-registry 新增 <code>warmupMonacoThemeCache()</code>（异步填充文件名与主题数据缓存），index.ts 窗口就绪后空闲调用；主题注册表测试新增 4 用例</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0/0 / vitest 155+ 文件 / 2,83x 用例全通过</li>
 </ul>
-<h3 id="sub-7">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</h3>
+<h3 id="sub-8">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</h3>
 <ul>
 <li><strong>#1 查看器「在浏览器中打开」</strong>：新增 <code>FILE.OPEN_IN_BROWSER</code> 通道（ipc-channels.ts / utils.ts：.html/.htm 扩展名 + Path Guard 校验 → <code>pathToFileURL</code> → <code>shell.openExternal</code>）；ShowHtmlView.vue 改走新通道；测试：utils.test 新增 4 用例、html-view 断言更新</li>
 <li><strong>#2 菜单主题选中态</strong>：MenuBar.vue <code>handleThemeUpdated</code> 改为收到广播后重新读取主题配置（单一真源）</li>
@@ -598,7 +607,7 @@
 <li><strong>评估后保持现状/暂缓</strong>：#3/#7 域错配（通道字符串不可变，重组收益低）、#4 preload 白名单（独立批次）、#6 CSP（需实机验证）、#9 PDF（待 pdf.js）、#11 chunk 拆分、#12 主题异步预热、#13 PlantUML 节流、#15（已确认在使用）</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0/0 / vitest 155 文件 2,828+ 用例全通过</li>
 </ul>
-<h3 id="sub-8">2026-11-18 · 台账建立</h3>
+<h3 id="sub-9">2026-11-18 · 台账建立</h3>
 <ul>
 <li>从 IPC 通信矩阵 §五（3 类异常）、全量扫描与审查报告（P3 剩余 7 项）与三组一致性核对结论整理，共 <strong>19 项</strong>。</li>
 <li>全部逐项对照当前源码复核（v1.3.6 工作区），初始状态：❌ 18 项、⏸️ 1 项（#19 历史快照保留）。</li>
