@@ -46,6 +46,13 @@
 - 测试：新增 PDF 组件测试 6 用例、READ_BINARY 通道测试 3 用例；插件/菜单/词典断言同步（插件工具 37 → 38）
 - 验证：typecheck 0 错误、ESLint 0/0、vitest **156 文件 / 2,847 用例全通过**、`electron-vite build` 成功
 
+### 🪟 欢迎页窗口控制修复（2026-11-18，用户反馈）
+
+- **关闭按钮延迟**：CLOSE 通道原以「无活动文件」判断跳过 FLUSH_CONTENT 的 2s 超时，但启动恢复可能已在后台恢复上次文件到 appState → 欢迎页点击关闭仍进入 flush 等待。新增主进程 `welcome-state` 状态模块（发送 WELCOME_ENTER_MAIN 时标记进入主界面、新窗口创建时复位），欢迎页时直接快速关闭
+- **最大化二次点击无效**：欢迎页最大化按钮原发送 `MAXIMIZE`（仅最大化，二次点击无效果），改为 `TOGGLE_MAXIMIZE` 切换最大化/还原；按 `IS_MAXIMIZED` 动态切换「最大化/还原」图标与 title（新增 i18n 词条 `workspace.window.restore`）
+- 测试：新增 welcome-state 4 用例；欢迎页窗口控制测试更新（TOGGLE 断言 + 图标状态 2 用例）；basic-components 窗口按钮断言同步
+- 门禁：typecheck 0 错误、ESLint 0/0、vitest **157 文件 / 2,853 用例全通过**、`electron-vite build` 成功
+
 ### 🟡 P2 修复（11）
 
 - 人民币大写整数部分 BigInt 化（>2^53 不再浮点舍入，小数纯字符串十进制四舍五入）
