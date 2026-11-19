@@ -209,11 +209,6 @@ onUnmounted(() => {
 <style scoped>
 @import '../plugin-tools-theme.css';
 
-.divider-tool {
-    background-color: var(--theme-border-color);
-    height: 2px;
-}
-
 .field-row {
     margin-top: 10px;
     align-items: center;
@@ -224,7 +219,6 @@ onUnmounted(() => {
 .field-label {
     flex: none;
     width: 110px;
-    color: var(--theme-secondary-text-color);
 }
 
 .field-input {
@@ -255,12 +249,6 @@ onUnmounted(() => {
 .btn-row {
     margin-top: 12px;
     gap: 12px;
-}
-
-.tool-btn {
-    padding: 6px 20px;
-    border-radius: 4px;
-    cursor: pointer;
 }
 
 .notice-box {

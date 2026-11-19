@@ -104,51 +104,29 @@ function copyOutput() {
 <style scoped>
 @import '../plugin-tools-theme.css';
 
-.divider-tool {
-    background-color: var(--theme-border-color);
-    height: 2px;
-}
-
 .tab-row {
     margin-top: 12px;
     gap: 8px;
 }
 
 .tab-btn {
-    padding: 6px 18px;
     background-color: var(--theme-card-background);
     color: var(--theme-text-color);
     border: 1px solid var(--theme-border-color);
-    border-radius: 4px;
-    cursor: pointer;
 }
 
 .tab-btn:hover {
     background-color: var(--theme-hover-background);
 }
 
-.tab-btn-active {
-    background-color: var(--theme-accent-color);
-    color: var(--theme-button-text-color);
-    border-color: var(--theme-accent-color);
-}
-
 .tool-textarea {
-    width: 100%;
     margin-top: 12px;
     min-height: 120px;
-    resize: vertical;
     font-family: inherit;
 }
 
 .btn-row {
     margin-top: 10px;
     gap: 12px;
-}
-
-.tool-btn {
-    padding: 6px 20px;
-    border-radius: 4px;
-    cursor: pointer;
 }
 </style>

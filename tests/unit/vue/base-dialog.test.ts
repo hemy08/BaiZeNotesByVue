@@ -11,7 +11,11 @@
  * 4. 变体：titleBarVariant / closeButtonVariant / footerAlign / animation 生成对应 class，
  *    width 写入容器内联样式，containerClass 合并到容器 class；
  * 5. 拖拽：默认按标题栏拖拽会改写容器定位样式；draggable=false 不绑定 document 监听；
- *    resetPositionOnOpen 打开时重置位置，默认（false）沿用上次拖拽位置。
+ *    resetPositionOnOpen 打开时重置位置，默认（false）沿用上次拖拽位置；
+ * 6. 扩展能力（C-3/C-4 迁移支撑）：titleTextStyle / closeButtonStyle 内联覆盖生效且不污染
+ *    title 插槽；prepend 插槽渲染在 .dialog-container 内、.title-bar 之前；默认（不传新
+ *    props/插槽）不产生额外 DOM 与内联样式；Electron app-region 键可经样式 prop 透传
+ *    （jsdom 未实现该 CSS 属性，安全忽略，此处以 CSSStyleDeclaration 扩展键读取验证）。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
@@ -26,6 +30,13 @@ let wrappers: VueWrapper[] = []
 function track<T extends VueWrapper>(wrapper: T): T {
     wrappers.push(wrapper)
     return wrapper
+}
+
+/** jsdom 未实现 -webkit-app-region：以 CSSStyleDeclaration 扩展键读取 Vue 的透传结果 */
+type StyleWithAppRegion = CSSStyleDeclaration & { WebkitAppRegion?: string }
+
+function findStyleWithAppRegion(wrapper: VueWrapper, selector: string): StyleWithAppRegion {
+    return (wrapper.find(selector).element as HTMLElement).style as StyleWithAppRegion
 }
 
 afterEach(() => {
@@ -184,6 +195,125 @@ describe('BaseDialog 变体与覆盖钩子', () => {
             'background: var(--card-bg)'
         )
         expect(wrapper.find('.title-bar').attributes('style')).toContain('linear-gradient')
+    })
+})
+
+describe('BaseDialog 扩展能力（C-3/C-4 迁移支撑）', () => {
+    it('titleTextStyle 覆盖标题文字内联样式（字距/字号/字重）', () => {
+        const wrapper = track(
+            mount(BaseDialog, {
+                ...teleportStub,
+                props: {
+                    visible: true,
+                    title: '标题',
+                    titleTextStyle: { letterSpacing: '0.5px', fontSize: '16px', fontWeight: 600 }
+                }
+            })
+        )
+        const style = wrapper.find('.title-text').attributes('style')
+        expect(style).toContain('letter-spacing: 0.5px')
+        expect(style).toContain('font-size: 16px')
+        expect(style).toContain('font-weight: 600')
+    })
+
+    it('titleTextStyle 不影响 title 插槽的自定义标题', () => {
+        const wrapper = track(
+            mount(BaseDialog, {
+                ...teleportStub,
+                props: {
+                    visible: true,
+                    title: '默认标题',
+                    titleTextStyle: { letterSpacing: '1px' }
+                },
+                slots: { title: '<span class="custom-title">自定义</span>' }
+            })
+        )
+        expect(wrapper.find('.custom-title').text()).toBe('自定义')
+        expect(wrapper.find('.custom-title').attributes('style')).toBeUndefined()
+        expect(wrapper.find('.title-text').exists()).toBe(false)
+    })
+
+    it('closeButtonStyle 覆盖关闭按钮内联样式（18px 图标等）', () => {
+        const wrapper = track(
+            mount(BaseDialog, {
+                ...teleportStub,
+                props: {
+                    visible: true,
+                    closeButtonStyle: { fontSize: '18px', borderRadius: '4px' }
+                }
+            })
+        )
+        const style = wrapper.find('.close-btn').attributes('style')
+        expect(style).toContain('font-size: 18px')
+        expect(style).toContain('border-radius: 4px')
+    })
+
+    it('titleBarStyle / closeButtonStyle 透传 Electron app-region（jsdom 安全忽略，不抛错）', () => {
+        // HelpAboutDialog 场景：标题栏仅关闭按钮 + flex-end + padding 0 10 + drag/no-drag
+        const wrapper = track(
+            mount(BaseDialog, {
+                ...teleportStub,
+                props: {
+                    visible: true,
+                    draggable: false,
+                    titleBarStyle: {
+                        justifyContent: 'flex-end',
+                        padding: '0 10px',
+                        WebkitAppRegion: 'drag'
+                    },
+                    closeButtonStyle: { WebkitAppRegion: 'no-drag' }
+                }
+            })
+        )
+        const titleBarStyle = wrapper.find('.title-bar').attributes('style')
+        expect(titleBarStyle).toContain('justify-content: flex-end')
+        // jsdom 会把 padding 的 0 归一化成 0px，因此用正则兼容 0 / 0px 两种序列化
+        expect(titleBarStyle).toMatch(/padding: 0(px)? 10px/)
+        // 仅标题栏自身与关闭按钮两个子节点，无需 titleBarChildren 新 prop
+        expect(wrapper.find('.title-bar').element.children).toHaveLength(2)
+        expect(wrapper.find('.title-text').text()).toBe('')
+        // app-region 键已由 Vue 写入 CSSStyleDeclaration：jsdom 不实现该 CSS 属性，
+        // 因此以扩展键读取验证透传（真实 Electron 环境会作为 -webkit-app-region 生效）。
+        expect(findStyleWithAppRegion(wrapper, '.title-bar').WebkitAppRegion).toBe('drag')
+        expect(findStyleWithAppRegion(wrapper, '.close-btn').WebkitAppRegion).toBe('no-drag')
+    })
+
+    it('prepend 插槽渲染在 .dialog-container 内、.title-bar 之前', () => {
+        const wrapper = track(
+            mount(BaseDialog, {
+                ...teleportStub,
+                props: { visible: true, title: '标题' },
+                slots: {
+                    prepend: '<div class="prepend-handle">resize</div>',
+                    default: '<div class="body-slot">正文</div>',
+                    footer: '<button class="footer-btn">确定</button>'
+                }
+            })
+        )
+        const container = wrapper.find('.dialog-container').element
+        // 子节点顺序：prepend → title-bar → 正文 → footer
+        expect(container.children[0].className).toBe('prepend-handle')
+        expect(container.children[1].className).toContain('title-bar')
+        expect(container.children[2].className).toBe('body-slot')
+        expect(container.children[3].className).toContain('footer')
+        // prepend 不在标题栏内部，且是容器直接子节点
+        expect(wrapper.find('.title-bar .prepend-handle').exists()).toBe(false)
+        expect(wrapper.find('.prepend-handle').element.closest('.dialog-container')).toBe(container)
+    })
+
+    it('默认不渲染 prepend，且缺省样式 prop 不产生额外内联样式（既有迁移不受影响）', () => {
+        const wrapper = track(
+            mount(BaseDialog, {
+                ...teleportStub,
+                props: { visible: true, title: '标题' },
+                slots: { footer: '<button>确定</button>' }
+            })
+        )
+        const container = wrapper.find('.dialog-container').element
+        expect(container.children[0].className).toContain('title-bar')
+        expect(wrapper.find('.prepend-handle').exists()).toBe(false)
+        expect(wrapper.find('.title-text').attributes('style')).toBeUndefined()
+        expect(wrapper.find('.close-btn').attributes('style')).toBeUndefined()
     })
 })
 

@@ -298,9 +298,7 @@ function validNumber(value: unknown): boolean {
 }
 
 .row-line {
-    display: flex;
     gap: 8px;
-    align-items: center;
 }
 
 .row-line input {
@@ -311,7 +309,6 @@ function validNumber(value: unknown): boolean {
 }
 
 .error-text {
-    color: var(--theme-accent-color);
     margin: 0;
 }
 </style>

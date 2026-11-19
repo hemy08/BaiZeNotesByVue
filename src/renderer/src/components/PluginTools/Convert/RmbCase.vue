@@ -78,20 +78,7 @@ convert()
 
 .panel-card {
     padding: 14px;
-    display: flex;
-    flex-direction: column;
     gap: 12px;
-}
-
-.row-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.field-label {
-    min-width: 90px;
-    color: var(--theme-secondary-text-color);
 }
 
 .value-input {
@@ -108,13 +95,7 @@ convert()
 }
 
 .btn-row {
-    display: flex;
     gap: 10px;
     justify-content: center;
-}
-
-.error-text {
-    color: var(--theme-accent-color);
-    margin: 8px 0 0;
 }
 </style>

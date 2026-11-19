@@ -1,113 +1,114 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleClose">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <div class="title-bar">
-                            <span class="title-text">{{
-                                t('dialogRenderer.mermaidEdit.title')
-                            }}</span>
-                            <button class="close-btn" @click.stop="handleClose">×</button>
-                        </div>
+    <!--
+        C-4 迁移：large（48px 标题栏 / 16px 标题）+ rounded（32px 圆角关闭按钮）+ 1400×900 容器；
+        标题文字 16px/600、关闭按钮 18px 图标、标题栏与底栏不随内容压缩（flex-shrink:0）、
+        底栏内边距 15px 24px 与 12px 间距经样式 prop 覆盖还原；遮罩、容器底色/圆角/阴影、
+        标题栏渐变、右对齐底栏与 0.2s 动画均与默认壳逐项一致。
+        说明：迁移前标题栏/关闭按钮均未声明 -webkit-app-region（对话框整体靠自定义拖拽，
+        非 Electron 原生拖拽区），因此这里不额外注入 app-region 覆盖。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.mermaidEdit.title')"
+        title-bar-variant="large"
+        close-button-variant="rounded"
+        width="1400px"
+        :container-style="containerStyle"
+        :title-bar-style="titleBarStyle"
+        :title-text-style="titleTextStyle"
+        :close-button-style="closeButtonStyle"
+        :footer-style="footerStyle"
+        @close="handleClose"
+    >
+        <div class="main-container">
+            <div class="editor-section">
+                <div class="section-header">
+                    <h3>{{ t('dialogRenderer.mermaidEdit.definition') }}</h3>
+                    <div class="toolbar">
+                        <button class="tool-btn" @click="handleFormat">
+                            {{ t('dialogRenderer.common.format') }}
+                        </button>
+                        <button class="tool-btn" @click="handleClear">
+                            {{ t('dialogRenderer.common.clear') }}
+                        </button>
+                    </div>
+                </div>
+                <textarea
+                    v-model="mermaidCode"
+                    class="code-editor"
+                    :placeholder="t('dialogRenderer.mermaidEdit.codePlaceholder')"
+                    @input="updatePreview"
+                ></textarea>
+            </div>
 
-                        <div class="main-container">
-                            <div class="editor-section">
-                                <div class="section-header">
-                                    <h3>{{ t('dialogRenderer.mermaidEdit.definition') }}</h3>
-                                    <div class="toolbar">
-                                        <button class="tool-btn" @click="handleFormat">
-                                            {{ t('dialogRenderer.common.format') }}
-                                        </button>
-                                        <button class="tool-btn" @click="handleClear">
-                                            {{ t('dialogRenderer.common.clear') }}
-                                        </button>
-                                    </div>
-                                </div>
-                                <textarea
-                                    v-model="mermaidCode"
-                                    class="code-editor"
-                                    :placeholder="t('dialogRenderer.mermaidEdit.codePlaceholder')"
-                                    @input="updatePreview"
-                                ></textarea>
-                            </div>
-
-                            <div class="preview-section">
-                                <div class="section-header">
-                                    <!-- FE-15：原「预览」文案会让用户误以为此处应渲染图形，实际本对话框是
+            <div class="preview-section">
+                <div class="section-header">
+                    <!-- FE-15：原「预览」文案会让用户误以为此处应渲染图形，实际本对话框是
                        源码预览（渲染在插入后由编辑器完成）。文案改为「源码预览」并附说明。
                        安全约束（task-17 / P1-CQ-2 / AS-3）：预览区保持 <pre> 文本插值，
                        严禁恢复 v-html；若未来要改为 SVG 渲染，必须 DOMPurify.sanitize
                        + mermaid.initialize({ securityLevel: 'strict' }) 并保留 XSS 回归测试。 -->
-                                    <h3>{{ t('dialogRenderer.mermaidEdit.sourcePreview') }}</h3>
-                                    <div class="toolbar">
-                                        <select v-model="chartType" class="chart-select">
-                                            <option value="graph">
-                                                {{ t('dialogRenderer.mermaidEdit.chartGraph') }}
-                                            </option>
-                                            <option value="flowchart">flowchart</option>
-                                            <option value="sequence">
-                                                {{ t('dialogRenderer.mermaidEdit.chartSequence') }}
-                                            </option>
-                                            <option value="class">
-                                                {{ t('dialogRenderer.mermaidEdit.chartClass') }}
-                                            </option>
-                                            <option value="state">
-                                                {{ t('dialogRenderer.mermaidEdit.chartState') }}
-                                            </option>
-                                            <option value="er">
-                                                {{ t('dialogRenderer.mermaidEdit.chartEr') }}
-                                            </option>
-                                            <option value="pie">
-                                                {{ t('dialogRenderer.mermaidEdit.chartPie') }}
-                                            </option>
-                                            <option value="gantt">
-                                                {{ t('dialogRenderer.mermaidEdit.chartGantt') }}
-                                            </option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <!-- P1-CQ-2 / AS-3：预览区改为纯文本渲染。
+                    <h3>{{ t('dialogRenderer.mermaidEdit.sourcePreview') }}</h3>
+                    <div class="toolbar">
+                        <select v-model="chartType" class="chart-select">
+                            <option value="graph">
+                                {{ t('dialogRenderer.mermaidEdit.chartGraph') }}
+                            </option>
+                            <option value="flowchart">flowchart</option>
+                            <option value="sequence">
+                                {{ t('dialogRenderer.mermaidEdit.chartSequence') }}
+                            </option>
+                            <option value="class">
+                                {{ t('dialogRenderer.mermaidEdit.chartClass') }}
+                            </option>
+                            <option value="state">
+                                {{ t('dialogRenderer.mermaidEdit.chartState') }}
+                            </option>
+                            <option value="er">
+                                {{ t('dialogRenderer.mermaidEdit.chartEr') }}
+                            </option>
+                            <option value="pie">
+                                {{ t('dialogRenderer.mermaidEdit.chartPie') }}
+                            </option>
+                            <option value="gantt">
+                                {{ t('dialogRenderer.mermaidEdit.chartGantt') }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <!-- P1-CQ-2 / AS-3：预览区改为纯文本渲染。
                      Mermaid 源码本身是纯文本而非 HTML，用文本插值（Vue 自动转义）
                      放入 <pre> 展示，从根上消除「用户输入拼 HTML 再注入 DOM」的 XSS 面。
                      注意：保留 .mermaid 类名以维持既有 DOM 选择器契约。 -->
-                                <div class="preview-area">
-                                    <!-- FE-15：UI 明确标注「仅源码预览」，避免用户误判预览功能损坏。 -->
-                                    <p class="preview-hint">
-                                        {{ t('dialogRenderer.mermaidEdit.sourcePreviewHint') }}
-                                    </p>
-                                    <p v-if="!previewCode" class="placeholder">
-                                        {{ t('dialogRenderer.common.previewPlaceholder') }}
-                                    </p>
-                                    <pre v-else class="mermaid preview-code">{{ previewCode }}</pre>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="footer">
-                            <button class="btn btn-cancel" @click="handleClose">
-                                {{ t('common.cancel') }}
-                            </button>
-                            <button class="btn btn-primary" @click="handleInsert">
-                                {{ t('dialogRenderer.common.insertChart') }}
-                            </button>
-                        </div>
-                    </div>
-                </Transition>
+                <div class="preview-area">
+                    <!-- FE-15：UI 明确标注「仅源码预览」，避免用户误判预览功能损坏。 -->
+                    <p class="preview-hint">
+                        {{ t('dialogRenderer.mermaidEdit.sourcePreviewHint') }}
+                    </p>
+                    <p v-if="!previewCode" class="placeholder">
+                        {{ t('dialogRenderer.common.previewPlaceholder') }}
+                    </p>
+                    <pre v-else class="mermaid preview-code">{{ previewCode }}</pre>
+                </div>
             </div>
-        </Transition>
-    </Teleport>
+        </div>
+
+        <template #footer>
+            <button class="btn btn-cancel" @click="handleClose">
+                {{ t('common.cancel') }}
+            </button>
+            <button class="btn btn-primary" @click="handleInsert">
+                {{ t('dialogRenderer.common.insertChart') }}
+            </button>
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
+import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
 
 interface Props {
     visible: boolean
@@ -119,7 +120,19 @@ const emit = defineEmits<{
     (e: 'insert', data: string): void
 }>()
 
-const { dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
+/**
+ * C-4 迁移：外壳覆盖（其余外壳声明与 BaseDialog 默认壳逐项一致）。
+ * - 容器：宽度 1400px 由 width 属性承载，固定高 900px 经 containerStyle 覆盖；
+ * - 标题栏：48px 高 / 0 24px 内边距由 large 变体提供，旧外壳另声明 flex-shrink: 0；
+ * - 标题文字：16px / 600（large 变体同值，显式传入以固定契约）；
+ * - 关闭按钮：rounded 变体提供 32px 圆角按钮，旧外壳字号 18px（无 app-region 声明）；
+ * - 底栏：旧外壳 15px 24px 内边距、12px 间距、flex-shrink: 0（默认壳为 15px 20px / gap 10px）。
+ */
+const containerStyle: CSSProperties = { height: '900px' }
+const titleBarStyle: CSSProperties = { flexShrink: 0 }
+const titleTextStyle: CSSProperties = { fontSize: '16px', fontWeight: 600 }
+const closeButtonStyle: CSSProperties = { fontSize: '18px' }
+const footerStyle: CSSProperties = { padding: '15px 24px', gap: '12px', flexShrink: 0 }
 
 const mermaidCode = ref(`mermaid
     graph TD
@@ -163,87 +176,8 @@ function handleInsert() {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 1400px;
-    height: 900px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 48px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 24px;
-    cursor: move;
-    user-select: none;
-    flex-shrink: 0;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.close-btn {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 80, 80, 0.95);
-}
-
+/* 外壳（overlay/container/title-bar/title-text/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留正文（编辑区 / 源码预览区 / 底栏按钮）样式。 */
 .main-container {
     flex: 1;
     display: flex;
@@ -356,16 +290,6 @@ function handleInsert() {
     font-style: italic;
     text-align: center;
     margin-top: 100px;
-}
-
-.footer {
-    padding: 15px 24px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
-    flex-shrink: 0;
 }
 
 .btn {

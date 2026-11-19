@@ -173,10 +173,6 @@ onUnmounted(() => {
 @import '../plugin-tools-theme.css';
 
 .panel-card {
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
     margin-top: 10px;
 }
 
@@ -186,15 +182,11 @@ onUnmounted(() => {
 }
 
 .row-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
     flex-wrap: wrap;
 }
 
 .field-label {
     min-width: 110px;
-    color: var(--theme-secondary-text-color);
 }
 
 .value-input {
@@ -207,25 +199,10 @@ onUnmounted(() => {
 
 .tab-btn {
     padding: 5px 18px;
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.tab-active {
-    background-color: var(--theme-accent-color);
-    color: var(--theme-button-text-color);
-    border-color: var(--theme-accent-color);
 }
 
 .result-text {
     font-weight: bold;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-}
-
-.error-text {
-    color: var(--theme-accent-color);
-    margin: 8px 0 0;
 }
 </style>

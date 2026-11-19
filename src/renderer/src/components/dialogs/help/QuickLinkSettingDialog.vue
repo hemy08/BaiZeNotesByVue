@@ -1,149 +1,148 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleClose">
-                <Transition name="dialog-scale">
-                    <div v-if="visible" class="dialog-container">
-                        <div class="title-bar">
-                            <span class="title-text">{{
-                                t('dialogRenderer.quickLink.title')
-                            }}</span>
-                            <button class="close-btn" @click="handleClose">×</button>
-                        </div>
+    <!--
+        C-3 迁移：large（48px 标题栏 / 16px 标题）+ rounded（32px 圆角关闭按钮）+ 800×600 容器。
+        迁移前后的外壳差异全部用 BaseDialog 现有能力等价表达：
+        - 标题 16px（large 变体默认 16px/600，显式锁定字号防变体后续调整）；
+        - 关闭按钮 18px 图标 + Electron no-drag → closeButtonStyle；
+        - 标题栏迁移前是 Electron 原生拖拽区（-webkit-app-region: drag，无 JS 拖拽 /
+          cursor: move / user-select: none）→ draggable=false + titleBarStyle 还原
+          （app-region drag、flex-shrink:0，cursor/user-select 显式恢复初始值）；
+        - 底栏内边距 15px 20px（与默认壳一致）、按钮间距 12px 且不随内容压缩 → footerStyle；
+        - 容器固定高 600px → containerStyle（宽度由 width 属性承载）。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.quickLink.title')"
+        title-bar-variant="large"
+        close-button-variant="rounded"
+        width="800px"
+        :draggable="false"
+        :container-style="containerStyle"
+        :title-bar-style="titleBarStyle"
+        :title-text-style="titleTextStyle"
+        :close-button-style="closeButtonStyle"
+        :footer-style="footerStyle"
+        @close="handleClose"
+    >
+        <div class="main-content">
+            <div class="content-wrapper">
+                <div class="link-list">
+                    <div class="list-header">
+                        <h3>{{ t('dialogRenderer.quickLink.listTitle') }}</h3>
+                        <button class="add-btn" @click="handleAdd">+ {{ t('common.add') }}</button>
+                    </div>
 
-                        <div class="main-content">
-                            <div class="content-wrapper">
-                                <div class="link-list">
-                                    <div class="list-header">
-                                        <h3>{{ t('dialogRenderer.quickLink.listTitle') }}</h3>
-                                        <button class="add-btn" @click="handleAdd">
-                                            + {{ t('common.add') }}
-                                        </button>
-                                    </div>
-
-                                    <div class="link-items">
-                                        <div
-                                            v-for="(link, index) in links"
-                                            :key="index"
-                                            class="link-item"
-                                            :class="{ selected: selectedIndex === index }"
-                                            @click="selectedIndex = index"
-                                        >
-                                            <div class="link-info">
-                                                <span class="link-icon">{{ link.icon }}</span>
-                                                <span class="link-name">{{ link.name }}</span>
-                                            </div>
-                                            <div class="link-actions">
-                                                <button
-                                                    class="action-btn"
-                                                    @click.stop="handleEdit(index)"
-                                                >
-                                                    {{ t('dialogRenderer.common.edit') }}
-                                                </button>
-                                                <button
-                                                    class="action-btn delete"
-                                                    @click.stop="handleDelete(index)"
-                                                >
-                                                    {{ t('common.delete') }}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div v-if="showForm" class="link-form">
-                                    <h3>
-                                        {{
-                                            isEditing
-                                                ? t('dialogRenderer.quickLink.editLink')
-                                                : t('dialogRenderer.quickLink.addLink')
-                                        }}
-                                    </h3>
-
-                                    <div class="form-group">
-                                        <label>{{ t('dialogRenderer.common.name') }}</label>
-                                        <input
-                                            v-model="formData.name"
-                                            type="text"
-                                            class="form-input"
-                                            :placeholder="
-                                                t('dialogRenderer.quickLink.namePlaceholder')
-                                            "
-                                        />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>URL</label>
-                                        <input
-                                            v-model="formData.url"
-                                            type="text"
-                                            class="form-input"
-                                            placeholder="https://..."
-                                        />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>{{ t('dialogRenderer.quickLink.iconLabel') }}</label>
-                                        <input
-                                            v-model="formData.icon"
-                                            type="text"
-                                            class="form-input"
-                                            placeholder="🌐"
-                                            maxlength="2"
-                                        />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>{{ t('dialogRenderer.quickLink.descLabel') }}</label>
-                                        <textarea
-                                            v-model="formData.description"
-                                            class="form-textarea"
-                                            :placeholder="
-                                                t('dialogRenderer.quickLink.descPlaceholder')
-                                            "
-                                        ></textarea>
-                                    </div>
-
-                                    <div class="form-actions">
-                                        <button class="btn btn-cancel" @click="handleCancelForm">
-                                            {{ t('common.cancel') }}
-                                        </button>
-                                        <button class="btn btn-primary" @click="handleSaveForm">
-                                            {{ t('common.save') }}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div v-else-if="links.length === 0" class="empty-state">
-                                    <p>{{ t('dialogRenderer.quickLink.emptyState') }}</p>
-                                    <button class="add-btn" @click="handleAdd">
-                                        {{ t('dialogRenderer.quickLink.addFirst') }}
-                                    </button>
-                                </div>
+                    <div class="link-items">
+                        <div
+                            v-for="(link, index) in links"
+                            :key="index"
+                            class="link-item"
+                            :class="{ selected: selectedIndex === index }"
+                            @click="selectedIndex = index"
+                        >
+                            <div class="link-info">
+                                <span class="link-icon">{{ link.icon }}</span>
+                                <span class="link-name">{{ link.name }}</span>
+                            </div>
+                            <div class="link-actions">
+                                <button class="action-btn" @click.stop="handleEdit(index)">
+                                    {{ t('dialogRenderer.common.edit') }}
+                                </button>
+                                <button class="action-btn delete" @click.stop="handleDelete(index)">
+                                    {{ t('common.delete') }}
+                                </button>
                             </div>
                         </div>
-
-                        <div class="footer">
-                            <button class="btn btn-cancel" @click="handleCancel">
-                                {{ t('common.cancel') }}
-                            </button>
-                            <button class="btn btn-apply" @click="handleApply">
-                                {{ t('common.apply') }}
-                            </button>
-                            <button class="btn btn-confirm" @click="handleConfirm">
-                                {{ t('common.ok') }}
-                            </button>
-                        </div>
                     </div>
-                </Transition>
+                </div>
+
+                <div v-if="showForm" class="link-form">
+                    <h3>
+                        {{
+                            isEditing
+                                ? t('dialogRenderer.quickLink.editLink')
+                                : t('dialogRenderer.quickLink.addLink')
+                        }}
+                    </h3>
+
+                    <div class="form-group">
+                        <label>{{ t('dialogRenderer.common.name') }}</label>
+                        <input
+                            v-model="formData.name"
+                            type="text"
+                            class="form-input"
+                            :placeholder="t('dialogRenderer.quickLink.namePlaceholder')"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label>URL</label>
+                        <input
+                            v-model="formData.url"
+                            type="text"
+                            class="form-input"
+                            placeholder="https://..."
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label>{{ t('dialogRenderer.quickLink.iconLabel') }}</label>
+                        <input
+                            v-model="formData.icon"
+                            type="text"
+                            class="form-input"
+                            placeholder="🌐"
+                            maxlength="2"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label>{{ t('dialogRenderer.quickLink.descLabel') }}</label>
+                        <textarea
+                            v-model="formData.description"
+                            class="form-textarea"
+                            :placeholder="t('dialogRenderer.quickLink.descPlaceholder')"
+                        ></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-cancel" @click="handleCancelForm">
+                            {{ t('common.cancel') }}
+                        </button>
+                        <button class="btn btn-primary" @click="handleSaveForm">
+                            {{ t('common.save') }}
+                        </button>
+                    </div>
+                </div>
+
+                <div v-else-if="links.length === 0" class="empty-state">
+                    <p>{{ t('dialogRenderer.quickLink.emptyState') }}</p>
+                    <button class="add-btn" @click="handleAdd">
+                        {{ t('dialogRenderer.quickLink.addFirst') }}
+                    </button>
+                </div>
             </div>
-        </Transition>
-    </Teleport>
+        </div>
+
+        <template #footer>
+            <button class="btn btn-cancel" @click="handleCancel">
+                {{ t('common.cancel') }}
+            </button>
+            <button class="btn btn-apply" @click="handleApply">
+                {{ t('common.apply') }}
+            </button>
+            <button class="btn btn-confirm" @click="handleConfirm">
+                {{ t('common.ok') }}
+            </button>
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
+import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
 // P1-FE-04：快捷链接设置数据源统一——读写统一走主进程 quickLinks（与 NaviTab 同源）
 import { IPC } from '../../../../../shared/ipc-channels'
 import type { QuickLinkItem } from '../../../../../shared/types'
@@ -170,6 +169,37 @@ const emit = defineEmits<{
     (e: 'close'): void
     (e: 'apply', links: Link[]): void
 }>()
+
+/**
+ * C-3 迁移：外壳覆盖（其余外壳声明与 BaseDialog 默认壳一致）。
+ *
+ * Electron 专有内联样式：BaseDialog 内部的 DialogStyleProperties 未导出，
+ * 这里按同构方式在 Vue CSSProperties 上补充 -webkit-app-region（不引入 any）。
+ */
+interface DialogStyleOverrides extends CSSProperties {
+    WebkitAppRegion?: 'drag' | 'no-drag'
+}
+
+// 迁移前容器固定高 600px（宽度由 width 属性承载 800px）。
+const containerStyle: CSSProperties = { height: '600px' }
+// 迁移前标题栏是 Electron 原生拖拽区（-webkit-app-region: drag），且没有 JS 拖拽、
+// 未声明 cursor / user-select / flex-shrink：BaseDialog 默认标题栏带 cursor:move /
+// user-select:none / 可压缩，这里逐项还原（cursor/user-select 显式恢复初始值 auto）。
+const titleBarStyle: DialogStyleOverrides = {
+    WebkitAppRegion: 'drag',
+    flexShrink: 0,
+    cursor: 'auto',
+    userSelect: 'auto'
+}
+// 迁移前标题为 16px（large 变体默认 16px/600，显式锁定字号防变体调整造成偏差）。
+const titleTextStyle: CSSProperties = { fontSize: '16px' }
+// 迁移前关闭按钮为 18px 图标（rounded 变体默认 16px），并保留 no-drag 使按钮在拖拽区内可点击。
+const closeButtonStyle: DialogStyleOverrides = {
+    fontSize: '18px',
+    WebkitAppRegion: 'no-drag'
+}
+// 迁移前底栏按钮间距 12px 且不随内容压缩（默认壳 gap 10px / 可压缩；内边距 15px 20px 与默认一致）。
+const footerStyle: CSSProperties = { gap: '12px', flexShrink: 0 }
 
 // 主进程读取失败时的兜底展示（正常情况下会被主进程 quickLinks 覆盖）
 const DEFAULT_LINKS: Link[] = [
@@ -398,87 +428,8 @@ function handleCancel() {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 800px;
-    height: 600px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 48px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 24px;
-    -webkit-app-region: drag;
-    flex-shrink: 0;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.close-btn {
-    -webkit-app-region: no-drag;
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 80, 80, 0.95);
-}
-
+/* 外壳（overlay/container/title-bar/title-text/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留正文（链接列表/编辑表单）与按钮样式。 */
 .main-content {
     flex: 1;
     padding: 20px;
@@ -665,16 +616,6 @@ function handleCancel() {
     justify-content: center;
     gap: 16px;
     color: var(--secondary-text-color);
-}
-
-.footer {
-    padding: 15px 20px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
-    flex-shrink: 0;
 }
 
 .btn {

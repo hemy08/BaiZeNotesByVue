@@ -1,344 +1,295 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleCancel">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="{ ...dialogStyle, width: width + 'px', height: height + 'px' }"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <!-- 调整大小的边框 -->
-                        <div class="resize-handle resize-n" @mousedown="startResize('n')"></div>
-                        <div class="resize-handle resize-s" @mousedown="startResize('s')"></div>
-                        <div class="resize-handle resize-e" @mousedown="startResize('e')"></div>
-                        <div class="resize-handle resize-w" @mousedown="startResize('w')"></div>
-                        <div class="resize-handle resize-ne" @mousedown="startResize('ne')"></div>
-                        <div class="resize-handle resize-nw" @mousedown="startResize('nw')"></div>
-                        <div class="resize-handle resize-se" @mousedown="startResize('se')"></div>
-                        <div class="resize-handle resize-sw" @mousedown="startResize('sw')"></div>
-                        <div class="title-bar">
-                            <span class="title-text">{{
-                                t('dialogRenderer.themeSetting.title')
-                            }}</span>
-                            <button class="close-btn" @click.stop="handleCancel">×</button>
-                        </div>
+    <!--
+        C-4 迁移：regular（40px 标题栏 / 14px 标题）+ rounded（32px 圆角关闭按钮）+ 900×600 容器；
+        容器宽高由 useDialogResize 动态维护（初始 900×600，拖动 8 个 resize-handle 可调整），
+        因此经 containerStyle 内联覆盖；8 个 resize-handle 放进 BaseDialog 的 #prepend 插槽
+        （容器内、title-bar 之前，与迁移前 DOM 位置一致；容器由 useDialogDrag 内联 position:fixed
+        定位，绝对定位的 resize-handle 仍以容器为基准）；标题栏/底栏 flex-shrink: 0、
+        底栏 15px 24px 内边距与 12px 间距经样式 prop 覆盖还原；遮罩、容器底色/圆角/阴影、
+        标题栏渐变、关闭按钮样式与 0.2s 动画均与默认壳逐项一致。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.themeSetting.title')"
+        title-bar-variant="regular"
+        close-button-variant="rounded"
+        width="900px"
+        :container-style="containerStyle"
+        :title-bar-style="titleBarStyle"
+        :footer-style="footerStyle"
+        @close="handleCancel"
+    >
+        <template #prepend>
+            <!-- 调整大小的边框：class 与指针事件处理与迁移前一致，且仍位于 title-bar 之前 -->
+            <div class="resize-handle resize-n" @mousedown="startResize('n')"></div>
+            <div class="resize-handle resize-s" @mousedown="startResize('s')"></div>
+            <div class="resize-handle resize-e" @mousedown="startResize('e')"></div>
+            <div class="resize-handle resize-w" @mousedown="startResize('w')"></div>
+            <div class="resize-handle resize-ne" @mousedown="startResize('ne')"></div>
+            <div class="resize-handle resize-nw" @mousedown="startResize('nw')"></div>
+            <div class="resize-handle resize-se" @mousedown="startResize('se')"></div>
+            <div class="resize-handle resize-sw" @mousedown="startResize('sw')"></div>
+        </template>
 
-                        <div class="main-container">
-                            <div class="sidebar">
+        <div class="main-container">
+            <div class="sidebar">
+                <div
+                    v-for="item in sidebarItems"
+                    :key="item.id"
+                    :class="['sidebar-item', { active: activePanel === item.id }]"
+                    @click="activePanel = item.id"
+                >
+                    <span class="sidebar-icon">{{ item.icon }}</span>
+                    <span class="sidebar-name">{{ t(item.nameKey) }}</span>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div v-if="activePanel === 'app-theme'" class="panel">
+                    <div class="theme-list">
+                        <div
+                            v-for="category in themeCategories"
+                            :key="category.nameKey"
+                            class="theme-category"
+                        >
+                            <h3 class="category-title">
+                                {{ t(category.nameKey) }}
+                            </h3>
+                            <div class="theme-grid">
                                 <div
-                                    v-for="item in sidebarItems"
-                                    :key="item.id"
-                                    :class="['sidebar-item', { active: activePanel === item.id }]"
-                                    @click="activePanel = item.id"
+                                    v-for="theme in category.themes"
+                                    :key="theme.type"
+                                    :class="[
+                                        'theme-card',
+                                        { selected: currentTheme === theme.type }
+                                    ]"
+                                    @click="selectTheme(theme.type)"
                                 >
-                                    <span class="sidebar-icon">{{ item.icon }}</span>
-                                    <span class="sidebar-name">{{ t(item.nameKey) }}</span>
-                                </div>
-                            </div>
-
-                            <div class="content-area">
-                                <div v-if="activePanel === 'app-theme'" class="panel">
-                                    <div class="theme-list">
+                                    <div class="theme-preview" :style="getThemePreviewStyle(theme)">
                                         <div
-                                            v-for="category in themeCategories"
-                                            :key="category.nameKey"
-                                            class="theme-category"
-                                        >
-                                            <h3 class="category-title">
-                                                {{ t(category.nameKey) }}
-                                            </h3>
-                                            <div class="theme-grid">
-                                                <div
-                                                    v-for="theme in category.themes"
-                                                    :key="theme.type"
-                                                    :class="[
-                                                        'theme-card',
-                                                        { selected: currentTheme === theme.type }
-                                                    ]"
-                                                    @click="selectTheme(theme.type)"
-                                                >
-                                                    <div
-                                                        class="theme-preview"
-                                                        :style="getThemePreviewStyle(theme)"
-                                                    >
-                                                        <div
-                                                            class="preview-title-bar"
-                                                            :style="{
-                                                                background:
-                                                                    theme.styles
-                                                                        ?.titleBarGradient ||
-                                                                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                                                            }"
-                                                        ></div>
-                                                        <div class="preview-content">
-                                                            <div
-                                                                class="preview-sidebar"
-                                                                :style="{
-                                                                    background:
-                                                                        theme.styles
-                                                                            ?.cardBackground ||
-                                                                        '#f5f5f5'
-                                                                }"
-                                                            ></div>
-                                                            <div class="preview-main">
-                                                                <div
-                                                                    class="preview-line"
-                                                                    :style="{
-                                                                        background:
-                                                                            theme.styles
-                                                                                ?.textColor ||
-                                                                            '#333',
-                                                                        opacity: 0.8
-                                                                    }"
-                                                                ></div>
-                                                                <div
-                                                                    class="preview-line"
-                                                                    :style="{
-                                                                        background:
-                                                                            theme.styles
-                                                                                ?.textColor ||
-                                                                            '#333',
-                                                                        opacity: 0.5,
-                                                                        width: '70%'
-                                                                    }"
-                                                                ></div>
-                                                                <div
-                                                                    class="preview-line"
-                                                                    :style="{
-                                                                        background:
-                                                                            theme.styles
-                                                                                ?.accentColor ||
-                                                                            '#00b0ff',
-                                                                        opacity: 0.6,
-                                                                        width: '50%'
-                                                                    }"
-                                                                ></div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="theme-info">
-                                                        <div class="theme-name">
-                                                            {{ getThemeDisplayName(theme) }}
-                                                        </div>
-                                                        <div class="theme-desc">
-                                                            {{ getThemeDisplayDesc(theme) }}
-                                                        </div>
-                                                        <div class="theme-colors">
-                                                            <div
-                                                                class="color-dot"
-                                                                :style="{
-                                                                    background:
-                                                                        theme.styles
-                                                                            ?.backgroundColor ||
-                                                                        '#fff'
-                                                                }"
-                                                                :title="
-                                                                    t(
-                                                                        'dialogRenderer.themeSetting.colorBackground'
-                                                                    )
-                                                                "
-                                                            ></div>
-                                                            <div
-                                                                class="color-dot"
-                                                                :style="{
-                                                                    background:
-                                                                        theme.styles?.accentColor ||
-                                                                        '#00b0ff'
-                                                                }"
-                                                                :title="
-                                                                    t(
-                                                                        'dialogRenderer.themeSetting.colorAccent'
-                                                                    )
-                                                                "
-                                                            ></div>
-                                                            <div
-                                                                class="color-dot"
-                                                                :style="{
-                                                                    background:
-                                                                        theme.styles?.textColor ||
-                                                                        '#333'
-                                                                }"
-                                                                :title="
-                                                                    t(
-                                                                        'dialogRenderer.themeSetting.colorText'
-                                                                    )
-                                                                "
-                                                            ></div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div v-if="activePanel === 'editor-theme'" class="panel">
-                                    <div class="monaco-theme-list">
-                                        <div
-                                            v-for="theme in allMonacoThemes"
-                                            :key="theme.type"
-                                            :class="[
-                                                'theme-card',
-                                                { selected: currentMonacoTheme === theme.type }
-                                            ]"
-                                            @click="selectMonacoTheme(theme.type)"
-                                        >
+                                            class="preview-title-bar"
+                                            :style="{
+                                                background:
+                                                    theme.styles?.titleBarGradient ||
+                                                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                                            }"
+                                        ></div>
+                                        <div class="preview-content">
                                             <div
-                                                class="theme-preview"
-                                                :style="{ background: theme.colors.bg }"
-                                            >
+                                                class="preview-sidebar"
+                                                :style="{
+                                                    background:
+                                                        theme.styles?.cardBackground || '#f5f5f5'
+                                                }"
+                                            ></div>
+                                            <div class="preview-main">
                                                 <div
-                                                    class="preview-title-bar"
-                                                    :style="{ background: theme.colors.bg }"
+                                                    class="preview-line"
+                                                    :style="{
+                                                        background:
+                                                            theme.styles?.textColor || '#333',
+                                                        opacity: 0.8
+                                                    }"
                                                 ></div>
-                                                <div class="preview-content">
-                                                    <div
-                                                        class="preview-sidebar"
-                                                        :style="{
-                                                            background: theme.colors.bg,
-                                                            opacity: 0.8
-                                                        }"
-                                                    ></div>
-                                                    <div class="preview-main">
-                                                        <div
-                                                            class="preview-line"
-                                                            :style="{
-                                                                background: theme.colors.text,
-                                                                opacity: 0.8
-                                                            }"
-                                                        ></div>
-                                                        <div
-                                                            class="preview-line"
-                                                            :style="{
-                                                                background: theme.colors.text,
-                                                                opacity: 0.5,
-                                                                width: '70%'
-                                                            }"
-                                                        ></div>
-                                                        <div
-                                                            class="preview-line"
-                                                            :style="{
-                                                                background: theme.colors.text,
-                                                                opacity: 0.6,
-                                                                width: '50%'
-                                                            }"
-                                                        ></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="theme-info">
-                                                <div class="theme-name">
-                                                    {{ getMonacoThemeDisplayName(theme) }}
-                                                </div>
-                                                <div class="theme-desc">
-                                                    {{ getMonacoThemeDisplayDesc(theme) }}
-                                                </div>
-                                                <div class="theme-colors">
-                                                    <div
-                                                        class="color-dot"
-                                                        :style="{ background: theme.colors.bg }"
-                                                        :title="
-                                                            t(
-                                                                'dialogRenderer.themeSetting.colorBackground'
-                                                            )
-                                                        "
-                                                    ></div>
-                                                    <div
-                                                        class="color-dot"
-                                                        :style="{ background: theme.colors.text }"
-                                                        :title="
-                                                            t(
-                                                                'dialogRenderer.themeSetting.colorText'
-                                                            )
-                                                        "
-                                                    ></div>
-                                                    <div
-                                                        class="color-dot"
-                                                        :style="{
-                                                            background: theme.colors.text
-                                                        }"
-                                                        :title="
-                                                            t(
-                                                                'dialogRenderer.themeSetting.colorAccent'
-                                                            )
-                                                        "
-                                                    ></div>
-                                                </div>
+                                                <div
+                                                    class="preview-line"
+                                                    :style="{
+                                                        background:
+                                                            theme.styles?.textColor || '#333',
+                                                        opacity: 0.5,
+                                                        width: '70%'
+                                                    }"
+                                                ></div>
+                                                <div
+                                                    class="preview-line"
+                                                    :style="{
+                                                        background:
+                                                            theme.styles?.accentColor || '#00b0ff',
+                                                        opacity: 0.6,
+                                                        width: '50%'
+                                                    }"
+                                                ></div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div v-if="activePanel === 'font-settings'" class="panel">
-                                    <div class="setting-group">
-                                        <label class="setting-label">{{
-                                            t('dialogRenderer.themeSetting.labelEditorFont')
-                                        }}</label>
-                                        <select v-model="editorFont" class="setting-select">
-                                            <option
-                                                v-for="font in editorFonts"
-                                                :key="font"
-                                                :value="font"
-                                            >
-                                                {{ font }}
-                                            </option>
-                                        </select>
-                                    </div>
-
-                                    <div class="setting-group">
-                                        <label class="setting-label">{{
-                                            t('dialogRenderer.themeSetting.labelPreviewFont')
-                                        }}</label>
-                                        <select v-model="previewFont" class="setting-select">
-                                            <option
-                                                v-for="font in previewFonts"
-                                                :key="font"
-                                                :value="font"
-                                            >
-                                                {{ font }}
-                                            </option>
-                                        </select>
-                                    </div>
-
-                                    <div class="setting-group">
-                                        <label class="setting-label">{{
-                                            t('dialogRenderer.themeSetting.labelFontSize')
-                                        }}</label>
-                                        <input
-                                            v-model="fontSize"
-                                            type="number"
-                                            class="setting-input"
-                                            min="10"
-                                            max="32"
-                                        />
+                                    <div class="theme-info">
+                                        <div class="theme-name">
+                                            {{ getThemeDisplayName(theme) }}
+                                        </div>
+                                        <div class="theme-desc">
+                                            {{ getThemeDisplayDesc(theme) }}
+                                        </div>
+                                        <div class="theme-colors">
+                                            <div
+                                                class="color-dot"
+                                                :style="{
+                                                    background:
+                                                        theme.styles?.backgroundColor || '#fff'
+                                                }"
+                                                :title="
+                                                    t('dialogRenderer.themeSetting.colorBackground')
+                                                "
+                                            ></div>
+                                            <div
+                                                class="color-dot"
+                                                :style="{
+                                                    background:
+                                                        theme.styles?.accentColor || '#00b0ff'
+                                                }"
+                                                :title="
+                                                    t('dialogRenderer.themeSetting.colorAccent')
+                                                "
+                                            ></div>
+                                            <div
+                                                class="color-dot"
+                                                :style="{
+                                                    background: theme.styles?.textColor || '#333'
+                                                }"
+                                                :title="t('dialogRenderer.themeSetting.colorText')"
+                                            ></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="footer">
-                            <button class="btn btn-cancel" @click="handleCancel">
-                                {{ t('common.cancel') }}
-                            </button>
-                            <button class="btn btn-apply" @click="handleApply">
-                                {{ t('common.apply') }}
-                            </button>
-                            <button class="btn btn-confirm" @click="handleConfirm">
-                                {{ t('common.ok') }}
-                            </button>
                         </div>
                     </div>
-                </Transition>
+                </div>
+
+                <div v-if="activePanel === 'editor-theme'" class="panel">
+                    <div class="monaco-theme-list">
+                        <div
+                            v-for="theme in allMonacoThemes"
+                            :key="theme.type"
+                            :class="['theme-card', { selected: currentMonacoTheme === theme.type }]"
+                            @click="selectMonacoTheme(theme.type)"
+                        >
+                            <div class="theme-preview" :style="{ background: theme.colors.bg }">
+                                <div
+                                    class="preview-title-bar"
+                                    :style="{ background: theme.colors.bg }"
+                                ></div>
+                                <div class="preview-content">
+                                    <div
+                                        class="preview-sidebar"
+                                        :style="{
+                                            background: theme.colors.bg,
+                                            opacity: 0.8
+                                        }"
+                                    ></div>
+                                    <div class="preview-main">
+                                        <div
+                                            class="preview-line"
+                                            :style="{
+                                                background: theme.colors.text,
+                                                opacity: 0.8
+                                            }"
+                                        ></div>
+                                        <div
+                                            class="preview-line"
+                                            :style="{
+                                                background: theme.colors.text,
+                                                opacity: 0.5,
+                                                width: '70%'
+                                            }"
+                                        ></div>
+                                        <div
+                                            class="preview-line"
+                                            :style="{
+                                                background: theme.colors.text,
+                                                opacity: 0.6,
+                                                width: '50%'
+                                            }"
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">
+                                    {{ getMonacoThemeDisplayName(theme) }}
+                                </div>
+                                <div class="theme-desc">
+                                    {{ getMonacoThemeDisplayDesc(theme) }}
+                                </div>
+                                <div class="theme-colors">
+                                    <div
+                                        class="color-dot"
+                                        :style="{ background: theme.colors.bg }"
+                                        :title="t('dialogRenderer.themeSetting.colorBackground')"
+                                    ></div>
+                                    <div
+                                        class="color-dot"
+                                        :style="{ background: theme.colors.text }"
+                                        :title="t('dialogRenderer.themeSetting.colorText')"
+                                    ></div>
+                                    <div
+                                        class="color-dot"
+                                        :style="{
+                                            background: theme.colors.text
+                                        }"
+                                        :title="t('dialogRenderer.themeSetting.colorAccent')"
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="activePanel === 'font-settings'" class="panel">
+                    <div class="setting-group">
+                        <label class="setting-label">{{
+                            t('dialogRenderer.themeSetting.labelEditorFont')
+                        }}</label>
+                        <select v-model="editorFont" class="setting-select">
+                            <option v-for="font in editorFonts" :key="font" :value="font">
+                                {{ font }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="setting-label">{{
+                            t('dialogRenderer.themeSetting.labelPreviewFont')
+                        }}</label>
+                        <select v-model="previewFont" class="setting-select">
+                            <option v-for="font in previewFonts" :key="font" :value="font">
+                                {{ font }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="setting-label">{{
+                            t('dialogRenderer.themeSetting.labelFontSize')
+                        }}</label>
+                        <input
+                            v-model="fontSize"
+                            type="number"
+                            class="setting-input"
+                            min="10"
+                            max="32"
+                        />
+                    </div>
+                </div>
             </div>
-        </Transition>
-    </Teleport>
+        </div>
+
+        <template #footer>
+            <button class="btn btn-cancel" @click="handleCancel">
+                {{ t('common.cancel') }}
+            </button>
+            <button class="btn btn-apply" @click="handleApply">
+                {{ t('common.apply') }}
+            </button>
+            <button class="btn btn-confirm" @click="handleConfirm">
+                {{ t('common.ok') }}
+            </button>
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
+import { computed, ref, watch } from 'vue'
+import type { CSSProperties } from 'vue'
 import { useDialogResize } from '../../../composables/useDialogResize'
 import { IPC } from '../../../../../shared/ipc-channels'
 // 第 2 批契约重构：主题领域类型以 shared/types/theme.ts 为唯一真源（不再本地维护 partial 副本）；
@@ -352,6 +303,7 @@ import type {
 import { THEME_GROUPS } from '../../../../../shared/constants/theme'
 import { t } from '../../../common/i18n'
 import { logger } from '../../../common/logger'
+import BaseDialog from '../BaseDialog.vue'
 
 interface Props {
     visible: boolean
@@ -363,13 +315,28 @@ const emit = defineEmits<{
     (e: 'change', themeType: string, monacoTheme: string, separateEditorTheme: boolean): void
 }>()
 
-const { dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
 const { width, height, startResize } = useDialogResize({
     minWidth: 700,
     minHeight: 500,
     initialWidth: 900,
     initialHeight: 600
 })
+
+/**
+ * C-4 迁移：外壳覆盖（其余外壳声明与 BaseDialog 默认壳逐项一致）。
+ * - 容器：useDialogResize 维护的宽高（初始 900×600）经 computed 同时写入宽与高；
+ *   width 属性给出初始宽度声明，拖动 resize-handle 后由 containerStyle 覆盖为实时值；
+ *   容器仍由 useDialogDrag（BaseDialog 内部）内联 position:fixed 定位，作为 resize-handle 的
+ *   绝对定位基准，与迁移前模板 `{ ...dialogStyle, width, height }` 的定位方式一致。
+ * - 标题栏：40px 高 / 0 16px 内边距由 regular 变体提供，旧外壳另声明 flex-shrink: 0；
+ * - 底栏：旧外壳 15px 24px 内边距、12px 间距、flex-shrink: 0（默认壳为 15px 20px / gap 10px）。
+ */
+const containerStyle = computed<CSSProperties>(() => ({
+    width: `${width.value}px`,
+    height: `${height.value}px`
+}))
+const titleBarStyle: CSSProperties = { flexShrink: 0 }
+const footerStyle: CSSProperties = { padding: '15px 24px', gap: '12px', flexShrink: 0 }
 
 const activePanel = ref('app-theme')
 const currentTheme = ref('baize')
@@ -559,51 +526,10 @@ watch(
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 900px;
-    height: 600px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留正文（侧边栏 / 主题卡片 / 设置项 / 底栏按钮）与 resize-handle 样式。
+   resize-handle 渲染在 BaseDialog 的 #prepend 插槽（容器内、title-bar 之前），仍是
+   容器的直接子节点，绝对定位基准与迁移前一致。 */
 .resize-handle {
     position: absolute;
     z-index: 10;
@@ -671,43 +597,6 @@ watch(
     bottom: -6px;
     left: -6px;
     cursor: nesw-resize;
-}
-
-.title-bar {
-    height: 40px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 16px;
-    cursor: move;
-    user-select: none;
-    flex-shrink: 0;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.close-btn {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 80, 80, 0.95);
 }
 
 .main-container {
@@ -933,16 +822,6 @@ watch(
 .setting-select:focus,
 .setting-input:focus {
     border-color: var(--accent-color);
-}
-
-.footer {
-    padding: 15px 24px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
-    flex-shrink: 0;
 }
 
 .btn {

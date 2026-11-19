@@ -329,35 +329,11 @@ generateColor()
 
 .tab-btn {
     padding: 5px 16px;
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.tab-active {
-    background-color: var(--theme-accent-color);
-    color: var(--theme-button-text-color);
-    border-color: var(--theme-accent-color);
-}
-
-.panel-card {
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
 }
 
 .row-line {
-    display: flex;
-    align-items: center;
     gap: 12px;
     flex-wrap: wrap;
-}
-
-.field-label {
-    min-width: 90px;
-    color: var(--theme-secondary-text-color);
 }
 
 .check-label {
@@ -384,7 +360,6 @@ generateColor()
 }
 
 .btn-row {
-    display: flex;
     gap: 10px;
     justify-content: center;
 }
@@ -408,10 +383,5 @@ generateColor()
     gap: 4px;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
     font-weight: bold;
-}
-
-.error-text {
-    color: var(--theme-accent-color);
-    margin: 8px 0 0;
 }
 </style>

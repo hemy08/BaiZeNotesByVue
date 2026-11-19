@@ -1,67 +1,56 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleCancel">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <div class="title-bar">
-                            <span class="title-text">{{
-                                t('dialogRenderer.importOption.title')
-                            }}</span>
-                            <button class="close-btn" @click.stop="handleCancel">×</button>
-                        </div>
-
-                        <div class="container">
-                            <div class="header">
-                                <h2>{{ t('dialogRenderer.importOption.header') }}</h2>
-                                <p>{{ t('dialogRenderer.importOption.subtitle') }}</p>
-                            </div>
-
-                            <div class="options">
-                                <div
-                                    v-for="option in importOptions"
-                                    :key="option.value"
-                                    class="option-card"
-                                    :class="{ selected: selectedOption === option.value }"
-                                    @click="selectOption(option.value)"
-                                >
-                                    <div class="option-icon">{{ option.icon }}</div>
-                                    <div class="option-content">
-                                        <div class="option-title">{{ t(option.titleKey) }}</div>
-                                        <div class="option-desc">{{ t(option.descKey) }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="footer">
-                            <button class="btn btn-cancel" @click="handleCancel">
-                                {{ t('common.cancel') }}
-                            </button>
-                            <button
-                                class="btn btn-confirm"
-                                :disabled="!selectedOption"
-                                @click="handleConfirm"
-                            >
-                                {{ t('common.ok') }}
-                            </button>
-                        </div>
-                    </div>
-                </Transition>
+    <!--
+        C-2 迁移：默认变体零覆盖。
+        迁移前外壳声明（.dialog-overlay / .dialog-container / .title-bar / .title-text /
+        .close-btn / .footer / 过渡动画）与 BaseDialog 默认壳逐属性一致：
+        遮罩 rgba(0,0,0,0.4)+z-index 9999、容器 500px/var(--bg-color)/8px 圆角/
+        0 10px 40px rgba(0,0,0,0.25)、标题栏 32px+0 15px+13px 标题、关闭按钮 28px 圆形
+        rgba(255,255,255,0.2)、底栏 15px 20px+gap10+右对齐+顶部边框+var(--card-bg)、
+        0.2s 淡入+scale(0.9)。因此不传任何外壳样式覆盖，仅替换标签结构。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.importOption.title')"
+        @close="handleCancel"
+    >
+        <div class="container">
+            <div class="header">
+                <h2>{{ t('dialogRenderer.importOption.header') }}</h2>
+                <p>{{ t('dialogRenderer.importOption.subtitle') }}</p>
             </div>
-        </Transition>
-    </Teleport>
+
+            <div class="options">
+                <div
+                    v-for="option in importOptions"
+                    :key="option.value"
+                    class="option-card"
+                    :class="{ selected: selectedOption === option.value }"
+                    @click="selectOption(option.value)"
+                >
+                    <div class="option-icon">{{ option.icon }}</div>
+                    <div class="option-content">
+                        <div class="option-title">{{ t(option.titleKey) }}</div>
+                        <div class="option-desc">{{ t(option.descKey) }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template #footer>
+            <button class="btn btn-cancel" @click="handleCancel">
+                {{ t('common.cancel') }}
+            </button>
+            <button class="btn btn-confirm" :disabled="!selectedOption" @click="handleConfirm">
+                {{ t('common.ok') }}
+            </button>
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
 
 type ImportOption = 'replace' | 'newfile' | 'insert'
 
@@ -69,13 +58,13 @@ interface Props {
     visible: boolean
 }
 
+// 迁移前本对话框不重置拖拽位置（useDialogDrag 未调用 resetPosition），
+// BaseDialog 的 resetPositionOnOpen 默认 false 与之等价。
 defineProps<Props>()
 const emit = defineEmits<{
     (e: 'close'): void
     (e: 'confirm', option: ImportOption): void
 }>()
-
-const { dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
 
 const selectedOption = ref<ImportOption | null>(null)
 
@@ -116,85 +105,8 @@ function handleConfirm() {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 500px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 32px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 15px;
-    cursor: move;
-    user-select: none;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 13px;
-    font-weight: 500;
-}
-
-.close-btn {
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 100, 100, 0.9);
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留正文与按钮样式。 */
 .container {
     flex: 1;
     padding: 20px;
@@ -273,15 +185,6 @@ function handleConfirm() {
 .option-desc {
     font-size: 12px;
     color: var(--secondary-text-color);
-}
-
-.footer {
-    padding: 15px 20px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
 }
 
 .btn {

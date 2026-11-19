@@ -105,16 +105,9 @@ function clearText() {
 <style scoped>
 @import '../plugin-tools-theme.css';
 
-.divider-tool {
-    background-color: var(--theme-border-color);
-    height: 2px;
-}
-
 .tool-textarea {
-    width: 100%;
     margin-top: 12px;
     min-height: 180px;
-    resize: vertical;
     font-family: inherit;
 }
 
@@ -149,11 +142,5 @@ function clearText() {
     margin-top: 16px;
     gap: 12px;
     justify-content: center;
-}
-
-.tool-btn {
-    padding: 6px 20px;
-    border-radius: 4px;
-    cursor: pointer;
 }
 </style>

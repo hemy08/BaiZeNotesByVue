@@ -16,17 +16,24 @@
                         :style="containerStyles"
                         @mousedown="handleContainerMouseDown"
                     >
+                        <!--
+                            前置插槽：位于标题栏之前的装饰层（C-3/C-4 组 ThemeSettingDialog 的 8 个
+                            resize-handle 依赖此位置）；未提供插槽时不产生任何额外 DOM。
+                        -->
+                        <slot name="prepend"></slot>
+
                         <div
                             class="title-bar"
                             :class="`title-bar--${titleBarVariant}`"
                             :style="titleBarStyle"
                         >
                             <slot name="title">
-                                <span class="title-text">{{ title }}</span>
+                                <span class="title-text" :style="titleTextStyle">{{ title }}</span>
                             </slot>
                             <button
                                 class="close-btn"
                                 :class="`close-btn--${closeButtonVariant}`"
+                                :style="closeButtonStyle"
                                 @click.stop="handleClose"
                             >
                                 ×
@@ -66,9 +73,29 @@
  *   - 关闭按钮：circle(28px 圆形) / rounded(32px 圆角)；
  *   - 底部对齐：start / center / end；
  *   - 动画：quick(0.2s) / smooth(0.3s，缩放同时淡入，MessageDialog 迁移前动画)；
- *   - 任何未覆盖到的细节（padding/阴影/背景/宽度等）通过 `overlayStyle` / `containerStyle` /
- *     `titleBarStyle` / `footerStyle` 内联覆盖（内联样式优先级最高，与迁移前各对话框
- *     把特殊值写在模板 `:style` 上的行为一致）。
+ *   - 任何未覆盖到的细节（padding/阴影/背景/宽度/标题文字/关闭按钮等）通过 `overlayStyle` /
+ *     `containerStyle` / `titleBarStyle` / `footerStyle` / `titleTextStyle` / `closeButtonStyle`
+ *     内联覆盖（内联样式优先级最高，与迁移前各对话框把特殊值写在模板 `:style` 上的行为一致）。
+ *
+ * 插槽（共 4 个，全部可选，不提供时不产生额外 DOM）：
+ * - `prepend`：`.dialog-container` 内、`.title-bar` 之前的装饰层，供 C-3/C-4 组使用
+ *   （ThemeSettingDialog 的 8 个 resize-handle）。容器本身由 useDialogDrag 的内联
+ *   `position: fixed` 定位（见 containerStyles），可直接作为 prepend 内绝对定位装饰的
+ *   定位基准，调用方无需再传 containerStyle；
+ * - `title`：完全替换默认标题节点（默认渲染 `<span class="title-text">{{ title }}</span>`）；
+ * - 默认插槽：对话框正文；
+ * - `footer`：底部操作区，未提供时整条底栏不渲染（保持 MathTextDialog 等无 footer 现状）。
+ *
+ * C-3/C-4 组扩展的细粒度覆盖钩子：
+ * - `titleTextStyle`：标题文字内联样式（letter-spacing / font-size / font-weight 等现状差异）；
+ * - `closeButtonStyle`：关闭按钮内联样式（18px 图标、Electron app-region no-drag 等现状差异）；
+ * - 样式类型 `DialogStyleProperties` 在 Vue CSSProperties 基础上补充 Electron 专有的
+ *   `WebkitAppRegion`（csstype 未收录），使 help 对话框标题栏 drag / 关闭按钮 no-drag 可内联覆盖。
+ * - 「标题栏仅关闭按钮」场景（HelpAboutDialog）无需新增 prop：不传 `title` / title 插槽即可，
+ *   再用 `titleBarStyle` 覆盖 `justifyContent: 'flex-end'`、`padding: '0 10px'`、
+ *   `WebkitAppRegion: 'drag'`（关闭按钮用 `closeButtonStyle` 传 `WebkitAppRegion: 'no-drag'`），
+ *   与迁移前 flex-end/padding 0 10/app-region 的标题栏等价；其余 14 个待迁移对话框标题栏
+ *   均为「标题文字 + 关闭按钮」标准结构，同样无需新 prop。
  *
  * 行为与迁移前单个对话框的外壳保持一致：
  * 1. `<Teleport to="body">` 默认开启，可用 `teleport` 关闭 / 指定目标（测试用 teleport stub）；
@@ -84,6 +111,22 @@
 import { computed, useSlots, watch } from 'vue'
 import type { ClassValue, CSSProperties } from 'vue'
 import { useDialogDrag } from '../../composables/useDialogDrag'
+
+/**
+ * 对话框内联样式类型：Vue `CSSProperties` 的超集（仅补充 Electron 专有属性）。
+ *
+ * 背景：`CSSProperties` 由 csstype 生成，未收录 Electron 的 `-webkit-app-region`。
+ * C-3/C-4 组的 help 对话框（HelpAboutDialog / HelpContactUsDialog / TechStackDialog /
+ * QuickLinkSettingDialog）现状依赖「标题栏 drag + 关闭按钮 no-drag」，迁移时需要经
+ * `titleBarStyle` / `closeButtonStyle` 内联覆盖；直接写 `WebkitAppRegion` 会触发 TS
+ * 多余属性检查错误，故以「继承 + 单个可选属性」扩展，不引入 any、不改动全局类型。
+ * Vue 运行时会对该键做 autoPrefix 并写入 CSSStyleDeclaration（Electron 生效，
+ * jsdom/普通浏览器安全忽略），与迁移前写在外壳 CSS 里的 `-webkit-app-region` 等价。
+ */
+interface DialogStyleProperties extends CSSProperties {
+    /** Electron 无边框窗口拖拽区域（对应 CSS `-webkit-app-region`），其他环境忽略 */
+    WebkitAppRegion?: 'drag' | 'no-drag'
+}
 
 /** 标题栏视觉变体（取值来自 18 个对话框现状归类，未强行统一） */
 type TitleBarVariant = 'compact' | 'regular' | 'large' | 'plain'
@@ -120,13 +163,17 @@ interface Props {
     /** 容器附加 class（如 MessageDialog 需要 `${type}-dialog` 供外部/测试识别消息类型） */
     containerClass?: ClassValue
     /** 遮罩内联样式覆盖（MessageDialog 迁移前遮罩为更深的 rgba(0,0,0,0.5)） */
-    overlayStyle?: CSSProperties
-    /** 容器内联样式覆盖（背景/阴影/自适应宽度等现状差异） */
-    containerStyle?: CSSProperties
-    /** 标题栏内联样式覆盖（MessageDialog 按消息类型动态渐变背景） */
-    titleBarStyle?: CSSProperties
+    overlayStyle?: DialogStyleProperties
+    /** 容器内联样式覆盖（背景/阴影/自适应宽度/绝对定位基准等现状差异） */
+    containerStyle?: DialogStyleProperties
+    /** 标题栏内联样式覆盖（MessageDialog 动态渐变背景；help 对话框 flex-end/padding/app-region drag） */
+    titleBarStyle?: DialogStyleProperties
+    /** 标题文字内联样式覆盖（字距/字号/字重等现状差异；使用 title 插槽时由插槽内容自行控制） */
+    titleTextStyle?: DialogStyleProperties
+    /** 关闭按钮内联样式覆盖（18px 图标、Electron app-region no-drag 等现状差异） */
+    closeButtonStyle?: DialogStyleProperties
     /** 底部内联样式覆盖（预留：后续批次迁移中等/复杂对话框时覆盖 padding/gap 差异） */
-    footerStyle?: CSSProperties
+    footerStyle?: DialogStyleProperties
 }
 
 const props = withDefaults(defineProps<Props>(), {

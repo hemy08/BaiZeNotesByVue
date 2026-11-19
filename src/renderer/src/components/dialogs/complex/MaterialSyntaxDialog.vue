@@ -1,132 +1,120 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleCancel">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <div class="title-bar">
-                            <span class="title-text">{{
-                                t('dialogRenderer.materialSyntax.title')
-                            }}</span>
-                            <button class="close-btn" @click.stop="handleCancel">×</button>
-                        </div>
+    <!--
+        C-2 迁移：regular（40px 标题栏 / 14px 标题）+ rounded（32px 圆角关闭按钮）+ 900px 宽度；
+        容器 max-width 94vw / 高 640px / max-height 88vh、标题栏与底栏 flex-shrink:0、
+        底栏内边距 14px 20px 通过 containerStyle / titleBarStyle / footerStyle 覆盖还原
+        （遮罩、容器底色/圆角/阴影、右对齐 gap10 底栏与 0.2s 动画同默认壳）。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.materialSyntax.title')"
+        title-bar-variant="regular"
+        close-button-variant="rounded"
+        width="900px"
+        :container-style="containerStyle"
+        :title-bar-style="titleBarStyle"
+        :footer-style="footerStyle"
+        @close="handleCancel"
+    >
+        <div class="main-content">
+            <!-- 左侧：15 项 mkdocs-material 扩展语法入口 -->
+            <aside class="feature-list">
+                <button
+                    v-for="feature in materialFeatures"
+                    :key="feature.id"
+                    class="feature-item"
+                    :class="{ selected: selectedFeatureId === feature.id }"
+                    :data-feature="feature.id"
+                    @click="selectedFeatureId = feature.id"
+                >
+                    <span class="feature-icon">{{ feature.icon }}</span>
+                    <span class="feature-name">{{ t(feature.nameKey) }}</span>
+                </button>
+            </aside>
 
-                        <div class="main-content">
-                            <!-- 左侧：15 项 mkdocs-material 扩展语法入口 -->
-                            <aside class="feature-list">
-                                <button
-                                    v-for="feature in materialFeatures"
-                                    :key="feature.id"
-                                    class="feature-item"
-                                    :class="{ selected: selectedFeatureId === feature.id }"
-                                    :data-feature="feature.id"
-                                    @click="selectedFeatureId = feature.id"
-                                >
-                                    <span class="feature-icon">{{ feature.icon }}</span>
-                                    <span class="feature-name">{{ t(feature.nameKey) }}</span>
-                                </button>
-                            </aside>
+            <!-- 右侧：当前语法项的表单（字段由 FEATURES 数据驱动） -->
+            <section class="form-panel" :data-active-feature="selectedFeatureId">
+                <div
+                    v-for="field in visibleFields"
+                    :key="field.key"
+                    class="input-group"
+                    :data-field="field.key"
+                >
+                    <label v-if="field.kind === 'checkbox'" class="checkbox-row">
+                        <input
+                            type="checkbox"
+                            :checked="readBoolean(field.key)"
+                            @change="onCheckboxChange(field.key, $event)"
+                        />
+                        <span class="checkbox-text">{{ t(field.labelKey) }}</span>
+                    </label>
+                    <template v-else>
+                        <label class="input-label">{{ t(field.labelKey) }}</label>
+                        <select
+                            v-if="field.kind === 'select'"
+                            class="select-input"
+                            :value="readString(field.key)"
+                            @change="onSelectChange(field.key, $event)"
+                        >
+                            <option
+                                v-for="option in field.options || []"
+                                :key="option.value"
+                                :value="option.value"
+                            >
+                                {{ t(option.labelKey) }}
+                            </option>
+                        </select>
+                        <textarea
+                            v-else-if="field.kind === 'textarea'"
+                            class="textarea-input"
+                            :value="readString(field.key)"
+                            :placeholder="placeholderOf(field)"
+                            @input="onTextInput(field.key, $event)"
+                        ></textarea>
+                        <input
+                            v-else
+                            class="text-input"
+                            type="text"
+                            :value="readString(field.key)"
+                            :placeholder="placeholderOf(field)"
+                            :list="field.iconSuggestions ? ICON_DATALIST_ID : undefined"
+                            @input="onTextInput(field.key, $event)"
+                        />
+                    </template>
+                </div>
+                <!-- Material 图标名候选（来自预览渲染同一份 MDI 图标表，避免两套名单漂移） -->
+                <datalist v-if="selectedFeatureId === 'icon'" :id="ICON_DATALIST_ID">
+                    <option
+                        v-for="iconName in iconNames"
+                        :key="iconName"
+                        :value="iconName"
+                    ></option>
+                </datalist>
+            </section>
+        </div>
 
-                            <!-- 右侧：当前语法项的表单（字段由 FEATURES 数据驱动） -->
-                            <section class="form-panel" :data-active-feature="selectedFeatureId">
-                                <div
-                                    v-for="field in visibleFields"
-                                    :key="field.key"
-                                    class="input-group"
-                                    :data-field="field.key"
-                                >
-                                    <label v-if="field.kind === 'checkbox'" class="checkbox-row">
-                                        <input
-                                            type="checkbox"
-                                            :checked="readBoolean(field.key)"
-                                            @change="onCheckboxChange(field.key, $event)"
-                                        />
-                                        <span class="checkbox-text">{{ t(field.labelKey) }}</span>
-                                    </label>
-                                    <template v-else>
-                                        <label class="input-label">{{ t(field.labelKey) }}</label>
-                                        <select
-                                            v-if="field.kind === 'select'"
-                                            class="select-input"
-                                            :value="readString(field.key)"
-                                            @change="onSelectChange(field.key, $event)"
-                                        >
-                                            <option
-                                                v-for="option in field.options || []"
-                                                :key="option.value"
-                                                :value="option.value"
-                                            >
-                                                {{ t(option.labelKey) }}
-                                            </option>
-                                        </select>
-                                        <textarea
-                                            v-else-if="field.kind === 'textarea'"
-                                            class="textarea-input"
-                                            :value="readString(field.key)"
-                                            :placeholder="placeholderOf(field)"
-                                            @input="onTextInput(field.key, $event)"
-                                        ></textarea>
-                                        <input
-                                            v-else
-                                            class="text-input"
-                                            type="text"
-                                            :value="readString(field.key)"
-                                            :placeholder="placeholderOf(field)"
-                                            :list="
-                                                field.iconSuggestions ? ICON_DATALIST_ID : undefined
-                                            "
-                                            @input="onTextInput(field.key, $event)"
-                                        />
-                                    </template>
-                                </div>
-                                <!-- Material 图标名候选（来自预览渲染同一份 MDI 图标表，避免两套名单漂移） -->
-                                <datalist
-                                    v-if="selectedFeatureId === 'icon'"
-                                    :id="ICON_DATALIST_ID"
-                                >
-                                    <option
-                                        v-for="iconName in iconNames"
-                                        :key="iconName"
-                                        :value="iconName"
-                                    ></option>
-                                </datalist>
-                            </section>
-                        </div>
+        <!-- 底部：将要插入的 markdown 实时预览（纯文本，不做 HTML 渲染） -->
+        <div class="preview-section">
+            <label class="preview-label">{{ t('dialogRenderer.common.preview') }}</label>
+            <pre class="preview" :class="{ empty: !previewMarkdown }">{{ previewText }}</pre>
+        </div>
 
-                        <!-- 底部：将要插入的 markdown 实时预览（纯文本，不做 HTML 渲染） -->
-                        <div class="preview-section">
-                            <label class="preview-label">{{
-                                t('dialogRenderer.common.preview')
-                            }}</label>
-                            <pre class="preview" :class="{ empty: !previewMarkdown }">{{
-                                previewText
-                            }}</pre>
-                        </div>
-
-                        <div class="footer">
-                            <button class="btn btn-cancel" @click="handleCancel">
-                                {{ t('common.cancel') }}
-                            </button>
-                            <button class="btn btn-insert" @click="handleInsert">
-                                {{ t('dialogRenderer.common.insert') }}
-                            </button>
-                        </div>
-                    </div>
-                </Transition>
-            </div>
-        </Transition>
-    </Teleport>
+        <template #footer>
+            <button class="btn btn-cancel" @click="handleCancel">
+                {{ t('common.cancel') }}
+            </button>
+            <button class="btn btn-insert" @click="handleInsert">
+                {{ t('dialogRenderer.common.insert') }}
+            </button>
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
+import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
 import { getMdiIconNames, loadMdiIconData } from '../../Markdown/mdi-icons-loader'
 
 /**
@@ -157,6 +145,18 @@ const emit = defineEmits<{
     (e: 'close'): void
     (e: 'insert', markdown: string): void
 }>()
+
+// C-2 迁移：外壳覆盖（其余外壳声明与 BaseDialog 默认壳一致）。
+// 迁移前容器：宽 900px / max-width 94vw / 高 640px / max-height 88vh；
+// 标题栏：底部不放大的固定高度栏（flex-shrink: 0）；
+// 底栏：内边距 14px 20px（默认壳为 15px 20px），且不随内容压缩（flex-shrink: 0）。
+const containerStyle: CSSProperties = {
+    maxWidth: '94vw',
+    height: '640px',
+    maxHeight: '88vh'
+}
+const titleBarStyle: CSSProperties = { flexShrink: 0 }
+const footerStyle: CSSProperties = { padding: '14px 20px', flexShrink: 0 }
 
 /** material 语法功能项 id（顺序即左侧列表顺序，与菜单 15 项一一对应） */
 type MaterialSyntaxFeatureId =
@@ -765,8 +765,6 @@ watch(
     { immediate: true }
 )
 
-const { dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
-
 /* ============================== 表单读写 ============================== */
 
 function setFormValue(key: MaterialFormKey, value: string | boolean): void {
@@ -1131,89 +1129,8 @@ function handleInsert(): void {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 900px;
-    max-width: 94vw;
-    height: 640px;
-    max-height: 88vh;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 40px;
-    flex-shrink: 0;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 16px;
-    cursor: move;
-    user-select: none;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.close-btn {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 80, 80, 0.95);
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留正文（功能列表/表单/预览）与按钮样式。 */
 .main-content {
     flex: 1;
     min-height: 0;
@@ -1380,16 +1297,6 @@ function handleInsert(): void {
 .preview.empty {
     color: var(--secondary-text-color);
     font-style: italic;
-}
-
-.footer {
-    flex-shrink: 0;
-    padding: 14px 20px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
 }
 
 .btn {

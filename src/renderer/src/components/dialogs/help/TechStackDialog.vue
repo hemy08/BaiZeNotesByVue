@@ -1,164 +1,194 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleClose">
-                <Transition name="dialog-scale">
+    <!--
+        C-2 迁移：regular（40px 标题栏 / 14px 标题）+ circle（28px 圆形关闭按钮）+ 900×700 容器；
+        迁移前标题栏是 Electron 无边框窗口拖拽区（-webkit-app-region: drag，且无 cursor:move /
+        user-select:none），关闭按钮为 no-drag，这里经 titleBarStyle / closeButtonStyle 内联还原，
+        保证拖拽区域与关闭按钮可点击行为不变；底栏为居中的信息条（10px 20px 内边距、11px 次要文字）
+        而非操作按钮行，经 footerStyle 将默认的 flex 布局改回块级布局以还原居中文案。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.techStack.title')"
+        title-bar-variant="regular"
+        close-button-variant="circle"
+        width="900px"
+        :container-style="containerStyle"
+        :title-bar-style="titleBarStyle"
+        :close-button-style="closeButtonStyle"
+        :footer-style="footerStyle"
+        @close="handleClose"
+    >
+        <div class="container">
+            <div class="header">
+                <h1>🛠️ {{ t('dialogRenderer.techStack.title') }}</h1>
+                <p>{{ t('dialogRenderer.techStack.intro') }}</p>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    {{ t('dialogRenderer.techStack.sectionCore') }}
+                </div>
+                <div class="tech-grid">
                     <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
+                        v-for="tech in coreFrameworks"
+                        :key="tech.name"
+                        class="tech-card"
+                        @click="openLink(tech.url)"
                     >
-                        <div class="title-bar">
-                            <span class="title-text">{{
-                                t('dialogRenderer.techStack.title')
-                            }}</span>
-                            <button class="close-btn" @click.stop="handleClose">×</button>
+                        <div class="tech-name">{{ tech.name }}</div>
+                        <div class="tech-version">
+                            {{
+                                t('dialogRenderer.common.versionLabel', {
+                                    version: tech.version
+                                })
+                            }}
                         </div>
-
-                        <div class="container">
-                            <div class="header">
-                                <h1>🛠️ {{ t('dialogRenderer.techStack.title') }}</h1>
-                                <p>{{ t('dialogRenderer.techStack.intro') }}</p>
-                            </div>
-
-                            <div class="section">
-                                <div class="section-title">
-                                    {{ t('dialogRenderer.techStack.sectionCore') }}
-                                </div>
-                                <div class="tech-grid">
-                                    <div
-                                        v-for="tech in coreFrameworks"
-                                        :key="tech.name"
-                                        class="tech-card"
-                                        @click="openLink(tech.url)"
-                                    >
-                                        <div class="tech-name">{{ tech.name }}</div>
-                                        <div class="tech-version">
-                                            {{
-                                                t('dialogRenderer.common.versionLabel', {
-                                                    version: tech.version
-                                                })
-                                            }}
-                                        </div>
-                                        <div class="tech-desc">{{ t(tech.descKey) }}</div>
-                                        <div class="tech-url">
-                                            <span>{{ tech.url }}</span>
-                                            <span class="external-icon">↗</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="section">
-                                <div class="section-title">
-                                    {{ t('dialogRenderer.techStack.sectionEditors') }}
-                                </div>
-                                <div class="tech-grid">
-                                    <div
-                                        v-for="tech in editors"
-                                        :key="tech.name"
-                                        class="tech-card"
-                                        @click="openLink(tech.url)"
-                                    >
-                                        <div class="tech-name">{{ tech.name }}</div>
-                                        <div class="tech-version">
-                                            {{
-                                                t('dialogRenderer.common.versionLabel', {
-                                                    version: tech.version
-                                                })
-                                            }}
-                                        </div>
-                                        <div class="tech-desc">{{ t(tech.descKey) }}</div>
-                                        <div class="tech-url">
-                                            <span>{{ tech.url }}</span>
-                                            <span class="external-icon">↗</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="section">
-                                <div class="section-title">
-                                    {{ t('dialogRenderer.techStack.sectionData') }}
-                                </div>
-                                <div class="tech-grid">
-                                    <div
-                                        v-for="tech in dataStorage"
-                                        :key="tech.name"
-                                        class="tech-card"
-                                        @click="openLink(tech.url)"
-                                    >
-                                        <div class="tech-name">{{ tech.name }}</div>
-                                        <div class="tech-version">
-                                            {{
-                                                t('dialogRenderer.common.versionLabel', {
-                                                    version: tech.version
-                                                })
-                                            }}
-                                        </div>
-                                        <div class="tech-desc">{{ t(tech.descKey) }}</div>
-                                        <div class="tech-url">
-                                            <span>{{ tech.url }}</span>
-                                            <span class="external-icon">↗</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="section">
-                                <div class="section-title">
-                                    {{ t('dialogRenderer.techStack.sectionUtilities') }}
-                                </div>
-                                <div class="tech-grid">
-                                    <div
-                                        v-for="tech in utilities"
-                                        :key="tech.name"
-                                        class="tech-card"
-                                        @click="openLink(tech.url)"
-                                    >
-                                        <div class="tech-name">{{ tech.name }}</div>
-                                        <div class="tech-version">
-                                            {{
-                                                t('dialogRenderer.common.versionLabel', {
-                                                    version: tech.version
-                                                })
-                                            }}
-                                        </div>
-                                        <div class="tech-desc">{{ t(tech.descKey) }}</div>
-                                        <div class="tech-url">
-                                            <span>{{ tech.url }}</span>
-                                            <span class="external-icon">↗</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="footer">
-                            {{ t('dialogRenderer.techStack.footer') }}
+                        <div class="tech-desc">{{ t(tech.descKey) }}</div>
+                        <div class="tech-url">
+                            <span>{{ tech.url }}</span>
+                            <span class="external-icon">↗</span>
                         </div>
                     </div>
-                </Transition>
+                </div>
             </div>
-        </Transition>
-    </Teleport>
+
+            <div class="section">
+                <div class="section-title">
+                    {{ t('dialogRenderer.techStack.sectionEditors') }}
+                </div>
+                <div class="tech-grid">
+                    <div
+                        v-for="tech in editors"
+                        :key="tech.name"
+                        class="tech-card"
+                        @click="openLink(tech.url)"
+                    >
+                        <div class="tech-name">{{ tech.name }}</div>
+                        <div class="tech-version">
+                            {{
+                                t('dialogRenderer.common.versionLabel', {
+                                    version: tech.version
+                                })
+                            }}
+                        </div>
+                        <div class="tech-desc">{{ t(tech.descKey) }}</div>
+                        <div class="tech-url">
+                            <span>{{ tech.url }}</span>
+                            <span class="external-icon">↗</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    {{ t('dialogRenderer.techStack.sectionData') }}
+                </div>
+                <div class="tech-grid">
+                    <div
+                        v-for="tech in dataStorage"
+                        :key="tech.name"
+                        class="tech-card"
+                        @click="openLink(tech.url)"
+                    >
+                        <div class="tech-name">{{ tech.name }}</div>
+                        <div class="tech-version">
+                            {{
+                                t('dialogRenderer.common.versionLabel', {
+                                    version: tech.version
+                                })
+                            }}
+                        </div>
+                        <div class="tech-desc">{{ t(tech.descKey) }}</div>
+                        <div class="tech-url">
+                            <span>{{ tech.url }}</span>
+                            <span class="external-icon">↗</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    {{ t('dialogRenderer.techStack.sectionUtilities') }}
+                </div>
+                <div class="tech-grid">
+                    <div
+                        v-for="tech in utilities"
+                        :key="tech.name"
+                        class="tech-card"
+                        @click="openLink(tech.url)"
+                    >
+                        <div class="tech-name">{{ tech.name }}</div>
+                        <div class="tech-version">
+                            {{
+                                t('dialogRenderer.common.versionLabel', {
+                                    version: tech.version
+                                })
+                            }}
+                        </div>
+                        <div class="tech-desc">{{ t(tech.descKey) }}</div>
+                        <div class="tech-url">
+                            <span>{{ tech.url }}</span>
+                            <span class="external-icon">↗</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template #footer>
+            {{ t('dialogRenderer.techStack.footer') }}
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
-import { useDialogDrag } from '../../../composables/useDialogDrag'
+import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
+
+/**
+ * Electron 专有内联样式：BaseDialog 内部的 DialogStyleProperties 未导出，
+ * 这里按同构方式在 Vue CSSProperties 上补充 -webkit-app-region（不引入 any）。
+ */
+interface DialogStyleOverrides extends CSSProperties {
+    WebkitAppRegion?: 'drag' | 'no-drag'
+}
 
 interface Props {
     visible: boolean
 }
 
+// 迁移前不重置拖拽位置（useDialogDrag 未调用 resetPosition），与 BaseDialog 默认 false 等价。
 defineProps<Props>()
 const emit = defineEmits<{
     (e: 'close'): void
 }>()
 
-const { dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
+// 迁移前标题栏：-webkit-app-region: drag + flex-shrink: 0，且未声明 cursor / user-select
+// （BaseDialog 默认标题栏带 cursor:move / user-select:none，这里显式还原为 CSS 初始值 auto，
+//   与迁移前未声明时的计算值一致）。
+const titleBarStyle: DialogStyleOverrides = {
+    WebkitAppRegion: 'drag',
+    flexShrink: 0,
+    cursor: 'auto',
+    userSelect: 'auto'
+}
+// 迁移前关闭按钮：-webkit-app-region: no-drag（拖拽区内的按钮必须 no-drag 才能点击）。
+const closeButtonStyle: DialogStyleOverrides = { WebkitAppRegion: 'no-drag' }
+// 迁移前容器固定高 700px（宽度由 width 属性承载）。
+const containerStyle: CSSProperties = { height: '700px' }
+// 迁移前底栏是居中的信息条（块级布局、10px 20px 内边距、11px 次要文字、不随内容压缩），
+// 与 BaseDialog 默认的 flex 操作按钮行不同：改回 display:block 才能保持文案居中。
+const footerStyle: CSSProperties = {
+    display: 'block',
+    padding: '10px 20px',
+    textAlign: 'center',
+    fontSize: '11px',
+    color: 'var(--secondary-text-color)',
+    flexShrink: 0
+}
 
 const coreFrameworks = [
     {
@@ -274,87 +304,8 @@ function handleClose() {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 900px;
-    height: 700px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 40px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 16px;
-    -webkit-app-region: drag;
-    flex-shrink: 0;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.close-btn {
-    -webkit-app-region: no-drag;
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 100, 100, 0.9);
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留正文（头部/技术分组卡片）样式。 */
 .container {
     flex: 1;
     padding: 20px;
@@ -440,15 +391,5 @@ function handleClose() {
 
 .external-icon {
     font-size: 10px;
-}
-
-.footer {
-    padding: 10px 20px;
-    text-align: center;
-    font-size: 11px;
-    color: var(--secondary-text-color);
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
-    flex-shrink: 0;
 }
 </style>

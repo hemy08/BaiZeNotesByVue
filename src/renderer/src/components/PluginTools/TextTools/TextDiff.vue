@@ -138,11 +138,6 @@ function compare() {
 <style scoped>
 @import '../plugin-tools-theme.css';
 
-.divider-tool {
-    background-color: var(--theme-border-color);
-    height: 2px;
-}
-
 .input-panel {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -162,9 +157,7 @@ function compare() {
 }
 
 .tool-textarea {
-    width: 100%;
     min-height: 140px;
-    resize: vertical;
     font-family: monospace;
 }
 
@@ -172,12 +165,6 @@ function compare() {
     margin-top: 12px;
     gap: 12px;
     justify-content: center;
-}
-
-.tool-btn {
-    padding: 6px 20px;
-    border-radius: 4px;
-    cursor: pointer;
 }
 
 .notice-box {

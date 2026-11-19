@@ -1,138 +1,114 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleCancel">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <div class="title-bar">
-                            <span class="title-text">{{
-                                t('dialogRenderer.insertImage.title')
-                            }}</span>
-                            <button class="close-btn" @click.stop="handleCancel">×</button>
-                        </div>
+    <!--
+        C-2 迁移：regular（40px 标题栏 / 14px 标题）+ rounded（32px 圆角关闭按钮）+ 600px 宽度。
+        遮罩、容器底色/圆角/阴影、0.2s 动画同默认壳；底栏与 BaseDialog 默认一致但**保持原嵌套位置**：
+        迁移前 .footer 是 .content（padding:20px）的子元素，边框/背景随之向内缩进 20px；
+        BaseDialog 的 footer 插槽是 .dialog-container 的直接子级（通栏贴边），移入插槽会改变
+        边框宽度与背景位置，故此处保留正文内嵌结构，不提供 footer 插槽（BaseDialog 不渲染底栏）。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.insertImage.title')"
+        title-bar-variant="regular"
+        close-button-variant="rounded"
+        width="600px"
+        @close="handleCancel"
+    >
+        <div class="content">
+            <div class="tabs">
+                <button
+                    v-for="tab in tabs"
+                    :key="tab.id"
+                    class="tab-btn"
+                    :class="{ active: activeTab === tab.id }"
+                    @click="activeTab = tab.id"
+                >
+                    {{ t(tab.labelKey) }}
+                </button>
+            </div>
 
-                        <div class="content">
-                            <div class="tabs">
-                                <button
-                                    v-for="tab in tabs"
-                                    :key="tab.id"
-                                    class="tab-btn"
-                                    :class="{ active: activeTab === tab.id }"
-                                    @click="activeTab = tab.id"
-                                >
-                                    {{ t(tab.labelKey) }}
-                                </button>
-                            </div>
-
-                            <div class="tab-content">
-                                <div v-if="activeTab === 'local'" class="local-tab">
-                                    <div class="input-group">
-                                        <label class="input-label">{{
-                                            t('dialogRenderer.insertImage.filePath')
-                                        }}</label>
-                                        <div class="path-input-wrapper">
-                                            <input
-                                                v-model="localFilePath"
-                                                type="text"
-                                                class="text-input"
-                                                :placeholder="
-                                                    t('dialogRenderer.insertImage.chooseFile')
-                                                "
-                                                readonly
-                                            />
-                                            <button class="browse-btn" @click="browseFile">
-                                                {{ t('common.browse') }}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div v-if="activeTab === 'url'" class="url-tab">
-                                    <div class="input-group">
-                                        <label class="input-label">{{
-                                            t('dialogRenderer.insertImage.imageUrl')
-                                        }}</label>
-                                        <input
-                                            v-model="imageUrl"
-                                            type="text"
-                                            class="text-input"
-                                            :placeholder="
-                                                t('dialogRenderer.insertImage.imageUrlPlaceholder')
-                                            "
-                                        />
-                                    </div>
-                                </div>
-
-                                <div class="input-group">
-                                    <label class="input-label">{{
-                                        t('dialogRenderer.insertImage.altText')
-                                    }}</label>
-                                    <input
-                                        v-model="altText"
-                                        type="text"
-                                        class="text-input"
-                                        :placeholder="
-                                            t('dialogRenderer.insertImage.altPlaceholder')
-                                        "
-                                    />
-                                </div>
-
-                                <div class="input-group">
-                                    <label class="input-label">{{
-                                        t('dialogRenderer.common.titleLabel')
-                                    }}</label>
-                                    <input
-                                        v-model="imageTitle"
-                                        type="text"
-                                        class="text-input"
-                                        :placeholder="
-                                            t('dialogRenderer.insertImage.titlePlaceholder')
-                                        "
-                                    />
-                                </div>
-
-                                <div v-if="previewUrl" class="preview-section">
-                                    <label class="preview-label">{{
-                                        t('dialogRenderer.common.preview')
-                                    }}</label>
-                                    <img
-                                        :src="previewUrl"
-                                        alt="Preview"
-                                        class="preview-image"
-                                        @error="previewUrl = ''"
-                                    />
-                                </div>
-                            </div>
-
-                            <div class="footer">
-                                <button class="btn btn-cancel" @click="handleCancel">
-                                    {{ t('common.cancel') }}
-                                </button>
-                                <button
-                                    class="btn btn-confirm"
-                                    :disabled="!canInsert"
-                                    @click="handleInsert"
-                                >
-                                    {{ t('dialogRenderer.common.insert') }}
-                                </button>
-                            </div>
+            <div class="tab-content">
+                <div v-if="activeTab === 'local'" class="local-tab">
+                    <div class="input-group">
+                        <label class="input-label">{{
+                            t('dialogRenderer.insertImage.filePath')
+                        }}</label>
+                        <div class="path-input-wrapper">
+                            <input
+                                v-model="localFilePath"
+                                type="text"
+                                class="text-input"
+                                :placeholder="t('dialogRenderer.insertImage.chooseFile')"
+                                readonly
+                            />
+                            <button class="browse-btn" @click="browseFile">
+                                {{ t('common.browse') }}
+                            </button>
                         </div>
                     </div>
-                </Transition>
+                </div>
+
+                <div v-if="activeTab === 'url'" class="url-tab">
+                    <div class="input-group">
+                        <label class="input-label">{{
+                            t('dialogRenderer.insertImage.imageUrl')
+                        }}</label>
+                        <input
+                            v-model="imageUrl"
+                            type="text"
+                            class="text-input"
+                            :placeholder="t('dialogRenderer.insertImage.imageUrlPlaceholder')"
+                        />
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">{{ t('dialogRenderer.insertImage.altText') }}</label>
+                    <input
+                        v-model="altText"
+                        type="text"
+                        class="text-input"
+                        :placeholder="t('dialogRenderer.insertImage.altPlaceholder')"
+                    />
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">{{ t('dialogRenderer.common.titleLabel') }}</label>
+                    <input
+                        v-model="imageTitle"
+                        type="text"
+                        class="text-input"
+                        :placeholder="t('dialogRenderer.insertImage.titlePlaceholder')"
+                    />
+                </div>
+
+                <div v-if="previewUrl" class="preview-section">
+                    <label class="preview-label">{{ t('dialogRenderer.common.preview') }}</label>
+                    <img
+                        :src="previewUrl"
+                        alt="Preview"
+                        class="preview-image"
+                        @error="previewUrl = ''"
+                    />
+                </div>
             </div>
-        </Transition>
-    </Teleport>
+
+            <div class="footer">
+                <button class="btn btn-cancel" @click="handleCancel">
+                    {{ t('common.cancel') }}
+                </button>
+                <button class="btn btn-confirm" :disabled="!canInsert" @click="handleInsert">
+                    {{ t('dialogRenderer.common.insert') }}
+                </button>
+            </div>
+        </div>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
 
 /** P1-FE-03：父组件「浏览」后回填的本地图片选择结果 */
 interface PickedLocalImage {
@@ -148,6 +124,7 @@ interface Props {
     pickedImage?: PickedLocalImage | null
 }
 
+// 迁移前不重置拖拽位置（useDialogDrag 未调用 resetPosition），与 BaseDialog 默认 false 等价。
 const props = defineProps<Props>()
 const emit = defineEmits<{
     (e: 'close'): void
@@ -182,8 +159,6 @@ watch(
     },
     { immediate: true }
 )
-
-const { dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
 
 const tabs = [
     { id: 'local' as const, labelKey: 'dialogRenderer.insertImage.localFile' },
@@ -228,85 +203,8 @@ function handleInsert() {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 600px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 40px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 16px;
-    cursor: move;
-    user-select: none;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.close-btn {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 80, 80, 0.95);
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/过渡动画）已抽到 BaseDialog；
+   这里只保留正文、表单、内嵌底栏与按钮样式。 */
 .content {
     padding: 20px;
     display: flex;
@@ -416,6 +314,7 @@ function handleInsert() {
     border: 1px solid var(--border-color);
 }
 
+/* 原 .footer 嵌在 .content 内（见模板注释），结构与声明保持迁移前不变。 */
 .footer {
     padding: 15px 20px;
     display: flex;

@@ -216,34 +216,10 @@ computeStorage()
 
 .tab-btn {
     padding: 5px 18px;
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.tab-active {
-    background-color: var(--theme-accent-color);
-    color: var(--theme-button-text-color);
-    border-color: var(--theme-accent-color);
 }
 
 .panel-card {
     padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.row-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.field-label {
-    min-width: 90px;
-    color: var(--theme-secondary-text-color);
 }
 
 .value-input,
@@ -261,7 +237,6 @@ select {
 }
 
 .error-text {
-    color: var(--theme-accent-color);
     margin: 6px 0 0;
 }
 </style>

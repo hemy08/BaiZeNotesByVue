@@ -1,112 +1,92 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleCancel">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <div class="title-bar">
-                            <span class="title-text">{{
-                                t('dialogRenderer.admonition.title')
-                            }}</span>
-                            <button class="close-btn" @click.stop="handleCancel">×</button>
-                        </div>
-
-                        <div class="content">
-                            <div class="type-grid">
-                                <div
-                                    v-for="type in admonitionTypes"
-                                    :key="type.id"
-                                    class="type-card"
-                                    :class="{ selected: selectedType === type.id }"
-                                    @click="selectedType = type.id"
-                                >
-                                    <div class="type-icon" :style="{ backgroundColor: type.color }">
-                                        {{ type.icon }}
-                                    </div>
-                                    <div class="type-name">{{ type.name }}</div>
-                                </div>
-                            </div>
-
-                            <div class="input-group">
-                                <label class="input-label">{{
-                                    t('dialogRenderer.common.titleLabel')
-                                }}</label>
-                                <input
-                                    v-model="title"
-                                    type="text"
-                                    class="text-input"
-                                    :placeholder="t('dialogRenderer.admonition.titlePlaceholder')"
-                                />
-                            </div>
-
-                            <div class="input-group">
-                                <label class="input-label">{{
-                                    t('dialogRenderer.common.content')
-                                }}</label>
-                                <textarea
-                                    v-model="content"
-                                    class="textarea-input"
-                                    :placeholder="t('dialogRenderer.admonition.contentPlaceholder')"
-                                ></textarea>
-                            </div>
-
-                            <div class="preview-section">
-                                <label class="preview-label">{{
-                                    t('dialogRenderer.common.preview')
-                                }}</label>
-                                <div
-                                    class="preview-card"
-                                    :style="{
-                                        backgroundColor: previewColor + '15',
-                                        borderLeftColor: previewColor
-                                    }"
-                                >
-                                    <div
-                                        v-if="title"
-                                        class="preview-title"
-                                        :style="{ color: previewColor }"
-                                    >
-                                        {{ title || selectedTypeName }}
-                                    </div>
-                                    <div class="preview-content">
-                                        {{
-                                            content ||
-                                            t('dialogRenderer.admonition.contentFallback')
-                                        }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="footer">
-                            <button class="btn btn-cancel" @click="handleCancel">
-                                {{ t('common.cancel') }}
-                            </button>
-                            <button class="btn btn-confirm" @click="handleInsert">
-                                {{ t('dialogRenderer.common.insert') }}
-                            </button>
-                        </div>
+    <!--
+        C-2 迁移：regular（40px 标题栏 / 14px 标题）+ rounded（32px 圆角关闭按钮）+ 650px 宽度。
+        底栏与 BaseDialog 默认一致（15px 20px / gap10 / 右对齐 / 顶部边框 / var(--card-bg)），
+        故无需 footerStyle；遮罩、容器底色/圆角/阴影、0.2s 动画同默认壳。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.admonition.title')"
+        title-bar-variant="regular"
+        close-button-variant="rounded"
+        width="650px"
+        @close="handleCancel"
+    >
+        <div class="content">
+            <div class="type-grid">
+                <div
+                    v-for="type in admonitionTypes"
+                    :key="type.id"
+                    class="type-card"
+                    :class="{ selected: selectedType === type.id }"
+                    @click="selectedType = type.id"
+                >
+                    <div class="type-icon" :style="{ backgroundColor: type.color }">
+                        {{ type.icon }}
                     </div>
-                </Transition>
+                    <div class="type-name">{{ type.name }}</div>
+                </div>
             </div>
-        </Transition>
-    </Teleport>
+
+            <div class="input-group">
+                <label class="input-label">{{ t('dialogRenderer.common.titleLabel') }}</label>
+                <input
+                    v-model="title"
+                    type="text"
+                    class="text-input"
+                    :placeholder="t('dialogRenderer.admonition.titlePlaceholder')"
+                />
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">{{ t('dialogRenderer.common.content') }}</label>
+                <textarea
+                    v-model="content"
+                    class="textarea-input"
+                    :placeholder="t('dialogRenderer.admonition.contentPlaceholder')"
+                ></textarea>
+            </div>
+
+            <div class="preview-section">
+                <label class="preview-label">{{ t('dialogRenderer.common.preview') }}</label>
+                <div
+                    class="preview-card"
+                    :style="{
+                        backgroundColor: previewColor + '15',
+                        borderLeftColor: previewColor
+                    }"
+                >
+                    <div v-if="title" class="preview-title" :style="{ color: previewColor }">
+                        {{ title || selectedTypeName }}
+                    </div>
+                    <div class="preview-content">
+                        {{ content || t('dialogRenderer.admonition.contentFallback') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template #footer>
+            <button class="btn btn-cancel" @click="handleCancel">
+                {{ t('common.cancel') }}
+            </button>
+            <button class="btn btn-confirm" @click="handleInsert">
+                {{ t('dialogRenderer.common.insert') }}
+            </button>
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
 
 interface Props {
     visible: boolean
 }
 
+// 迁移前不重置拖拽位置（useDialogDrag 未调用 resetPosition），与 BaseDialog 默认 false 等价。
 defineProps<Props>()
 const emit = defineEmits<{
     (e: 'close'): void
@@ -120,8 +100,6 @@ const content = ref('')
 const selectedTypeName = computed(
     () => admonitionTypes.find((t) => t.id === selectedType.value)?.name || ''
 )
-
-const { dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
 
 const admonitionTypes = [
     { id: 'note', name: 'Note', icon: '📝', color: '#667eea' },
@@ -164,85 +142,8 @@ function handleInsert() {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 650px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 40px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 16px;
-    cursor: move;
-    user-select: none;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.close-btn {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 80, 80, 0.95);
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留正文、表单与按钮样式。 */
 .content {
     padding: 20px;
     display: flex;
@@ -368,15 +269,6 @@ function handleInsert() {
 .preview-content {
     font-size: 13px;
     color: var(--text-color);
-}
-
-.footer {
-    padding: 15px 20px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
 }
 
 .btn {

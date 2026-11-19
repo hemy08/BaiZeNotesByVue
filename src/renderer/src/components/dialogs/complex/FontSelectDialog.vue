@@ -1,226 +1,204 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleCancel">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <div class="title-bar">
-                            <span class="title-text">{{
-                                t('dialogRenderer.fontSelect.title')
-                            }}</span>
-                            <button class="close-btn" @click.stop="handleCancel">×</button>
+    <!--
+        C-3 迁移：regular（40px 标题栏 / 14px 标题）+ rounded（32px 圆角关闭按钮）+ 1280×800 容器。
+        迁移前后的外壳差异全部用 BaseDialog 现有能力等价表达：
+        - 标题额外声明 letter-spacing: 0.5px → titleTextStyle；
+        - 标题栏/容器/底栏固定不随内容压缩（迁移前显式 flex-shrink: 0）→ titleBarStyle/footerStyle 补充；
+        - 底栏内边距 15px 24px、按钮间距 12px → footerStyle（默认壳为 15px 20px / gap 10px）；
+        - 最小尺寸 min-width: 1000px / min-height: 600px → containerStyle；
+        - 拖拽沿用 JS 拖拽（useDialogDrag 的 center 初始位置），由 BaseDialog 默认 draggable 承载。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.fontSelect.title')"
+        title-bar-variant="regular"
+        close-button-variant="rounded"
+        width="1280px"
+        :container-style="containerStyle"
+        :title-bar-style="titleBarStyle"
+        :title-text-style="titleTextStyle"
+        :footer-style="footerStyle"
+        @close="handleCancel"
+    >
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="config-section">
+                    <div class="input-row">
+                        <label class="label-style">{{
+                            t('dialogRenderer.fontSelect.labelFontFamily')
+                        }}</label>
+                        <select
+                            v-model="fontStyle.fontFamily"
+                            class="select-style"
+                            @change="updatePreview"
+                        >
+                            <option v-for="font in fontFamilyList" :key="font" :value="font">
+                                {{ font }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="input-row">
+                        <label class="label-style">{{
+                            t('dialogRenderer.fontSelect.labelFontSize')
+                        }}</label>
+                        <select
+                            v-model="fontStyle.fontSize"
+                            class="select-style"
+                            @change="updatePreview"
+                        >
+                            <option v-for="size in fontSizes" :key="size" :value="size">
+                                {{ size }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="input-row">
+                        <label class="label-style">{{
+                            t('dialogRenderer.fontSelect.labelAlign')
+                        }}</label>
+                        <select
+                            v-model="fontStyle.textAlign"
+                            class="select-style"
+                            @change="updatePreview"
+                        >
+                            <option value="left">
+                                {{ t('dialogRenderer.fontSelect.alignLeft') }}
+                            </option>
+                            <option value="center">
+                                {{ t('dialogRenderer.fontSelect.alignCenter') }}
+                            </option>
+                            <option value="right">
+                                {{ t('dialogRenderer.fontSelect.alignRight') }}
+                            </option>
+                            <option value="justify">
+                                {{ t('dialogRenderer.fontSelect.alignJustify') }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="style-buttons">
+                        <button
+                            :class="['font-style-btn', { active: fontStyle.fontBold }]"
+                            @click="toggleStyle('fontBold')"
+                        >
+                            {{ t('dialogRenderer.fontSelect.bold') }}
+                        </button>
+                        <button
+                            :class="['font-style-btn', { active: fontStyle.fontItalic }]"
+                            @click="toggleStyle('fontItalic')"
+                        >
+                            {{ t('dialogRenderer.fontSelect.italic') }}
+                        </button>
+                        <button
+                            :class="['font-style-btn', { active: fontStyle.fontUnderline }]"
+                            @click="toggleStyle('fontUnderline')"
+                        >
+                            {{ t('dialogRenderer.fontSelect.underline') }}
+                        </button>
+                        <button
+                            :class="['font-style-btn', { active: fontStyle.fontDeleteLine }]"
+                            @click="toggleStyle('fontDeleteLine')"
+                        >
+                            {{ t('dialogRenderer.fontSelect.strikethrough') }}
+                        </button>
+                    </div>
+
+                    <div class="color-section">
+                        <div class="color-row">
+                            <label class="label-style">{{
+                                t('dialogRenderer.fontSelect.fontColor')
+                            }}</label>
+                            <input
+                                v-model="fontStyle.fontColor"
+                                type="color"
+                                class="color-input"
+                                @input="updatePreview"
+                            />
                         </div>
-
-                        <div class="main-content">
-                            <div class="left-panel">
-                                <div class="config-section">
-                                    <div class="input-row">
-                                        <label class="label-style">{{
-                                            t('dialogRenderer.fontSelect.labelFontFamily')
-                                        }}</label>
-                                        <select
-                                            v-model="fontStyle.fontFamily"
-                                            class="select-style"
-                                            @change="updatePreview"
-                                        >
-                                            <option
-                                                v-for="font in fontFamilyList"
-                                                :key="font"
-                                                :value="font"
-                                            >
-                                                {{ font }}
-                                            </option>
-                                        </select>
-                                    </div>
-
-                                    <div class="input-row">
-                                        <label class="label-style">{{
-                                            t('dialogRenderer.fontSelect.labelFontSize')
-                                        }}</label>
-                                        <select
-                                            v-model="fontStyle.fontSize"
-                                            class="select-style"
-                                            @change="updatePreview"
-                                        >
-                                            <option
-                                                v-for="size in fontSizes"
-                                                :key="size"
-                                                :value="size"
-                                            >
-                                                {{ size }}
-                                            </option>
-                                        </select>
-                                    </div>
-
-                                    <div class="input-row">
-                                        <label class="label-style">{{
-                                            t('dialogRenderer.fontSelect.labelAlign')
-                                        }}</label>
-                                        <select
-                                            v-model="fontStyle.textAlign"
-                                            class="select-style"
-                                            @change="updatePreview"
-                                        >
-                                            <option value="left">
-                                                {{ t('dialogRenderer.fontSelect.alignLeft') }}
-                                            </option>
-                                            <option value="center">
-                                                {{ t('dialogRenderer.fontSelect.alignCenter') }}
-                                            </option>
-                                            <option value="right">
-                                                {{ t('dialogRenderer.fontSelect.alignRight') }}
-                                            </option>
-                                            <option value="justify">
-                                                {{ t('dialogRenderer.fontSelect.alignJustify') }}
-                                            </option>
-                                        </select>
-                                    </div>
-
-                                    <div class="style-buttons">
-                                        <button
-                                            :class="[
-                                                'font-style-btn',
-                                                { active: fontStyle.fontBold }
-                                            ]"
-                                            @click="toggleStyle('fontBold')"
-                                        >
-                                            {{ t('dialogRenderer.fontSelect.bold') }}
-                                        </button>
-                                        <button
-                                            :class="[
-                                                'font-style-btn',
-                                                { active: fontStyle.fontItalic }
-                                            ]"
-                                            @click="toggleStyle('fontItalic')"
-                                        >
-                                            {{ t('dialogRenderer.fontSelect.italic') }}
-                                        </button>
-                                        <button
-                                            :class="[
-                                                'font-style-btn',
-                                                { active: fontStyle.fontUnderline }
-                                            ]"
-                                            @click="toggleStyle('fontUnderline')"
-                                        >
-                                            {{ t('dialogRenderer.fontSelect.underline') }}
-                                        </button>
-                                        <button
-                                            :class="[
-                                                'font-style-btn',
-                                                { active: fontStyle.fontDeleteLine }
-                                            ]"
-                                            @click="toggleStyle('fontDeleteLine')"
-                                        >
-                                            {{ t('dialogRenderer.fontSelect.strikethrough') }}
-                                        </button>
-                                    </div>
-
-                                    <div class="color-section">
-                                        <div class="color-row">
-                                            <label class="label-style">{{
-                                                t('dialogRenderer.fontSelect.fontColor')
-                                            }}</label>
-                                            <input
-                                                v-model="fontStyle.fontColor"
-                                                type="color"
-                                                class="color-input"
-                                                @input="updatePreview"
-                                            />
-                                        </div>
-                                        <div class="color-palette">
-                                            <button
-                                                v-for="color in commonColors"
-                                                :key="color"
-                                                class="color-btn"
-                                                :style="{ backgroundColor: color }"
-                                                @click="selectColor('fontColor', color)"
-                                            ></button>
-                                        </div>
-                                    </div>
-
-                                    <div class="color-section">
-                                        <div class="color-row">
-                                            <label class="label-style">{{
-                                                t('dialogRenderer.fontSelect.backgroundColor')
-                                            }}</label>
-                                            <input
-                                                v-model="fontStyle.fontBackGroundColor"
-                                                type="color"
-                                                class="color-input"
-                                                @input="updatePreview"
-                                            />
-                                        </div>
-                                        <div class="color-palette">
-                                            <button
-                                                v-for="color in commonColors"
-                                                :key="color"
-                                                class="color-btn"
-                                                :style="{ backgroundColor: color }"
-                                                @click="selectColor('fontBackGroundColor', color)"
-                                            ></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="divider"></div>
-
-                            <div class="right-panel">
-                                <div class="edit-section">
-                                    <label class="section-label">{{
-                                        t('dialogRenderer.fontSelect.editArea')
-                                    }}</label>
-                                    <textarea
-                                        v-model="fontStyle.textInput"
-                                        class="text-input-area"
-                                        :placeholder="
-                                            t('dialogRenderer.fontSelect.editPlaceholder')
-                                        "
-                                        @input="updatePreview"
-                                    ></textarea>
-                                </div>
-
-                                <div class="preview-section">
-                                    <label class="section-label">{{
-                                        t('dialogRenderer.fontSelect.preview')
-                                    }}</label>
-                                    <div class="preview-area" :style="previewStyle">
-                                        <span>{{
-                                            fontStyle.textInput ||
-                                            t('dialogRenderer.fontSelect.previewText')
-                                        }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="footer">
-                            <button class="btn btn-cancel" @click="handleCancel">
-                                {{ t('common.cancel') }}
-                            </button>
-                            <button class="btn btn-insert" @click="handleInsert">
-                                {{ t('common.insert') }}
-                            </button>
-                            <button class="btn btn-confirm" @click="handleConfirm">
-                                {{ t('common.ok') }}
-                            </button>
+                        <div class="color-palette">
+                            <button
+                                v-for="color in commonColors"
+                                :key="color"
+                                class="color-btn"
+                                :style="{ backgroundColor: color }"
+                                @click="selectColor('fontColor', color)"
+                            ></button>
                         </div>
                     </div>
-                </Transition>
+
+                    <div class="color-section">
+                        <div class="color-row">
+                            <label class="label-style">{{
+                                t('dialogRenderer.fontSelect.backgroundColor')
+                            }}</label>
+                            <input
+                                v-model="fontStyle.fontBackGroundColor"
+                                type="color"
+                                class="color-input"
+                                @input="updatePreview"
+                            />
+                        </div>
+                        <div class="color-palette">
+                            <button
+                                v-for="color in commonColors"
+                                :key="color"
+                                class="color-btn"
+                                :style="{ backgroundColor: color }"
+                                @click="selectColor('fontBackGroundColor', color)"
+                            ></button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </Transition>
-    </Teleport>
+
+            <div class="divider"></div>
+
+            <div class="right-panel">
+                <div class="edit-section">
+                    <label class="section-label">{{
+                        t('dialogRenderer.fontSelect.editArea')
+                    }}</label>
+                    <textarea
+                        v-model="fontStyle.textInput"
+                        class="text-input-area"
+                        :placeholder="t('dialogRenderer.fontSelect.editPlaceholder')"
+                        @input="updatePreview"
+                    ></textarea>
+                </div>
+
+                <div class="preview-section">
+                    <label class="section-label">{{
+                        t('dialogRenderer.fontSelect.preview')
+                    }}</label>
+                    <div class="preview-area" :style="previewStyle">
+                        <span>{{
+                            fontStyle.textInput || t('dialogRenderer.fontSelect.previewText')
+                        }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template #footer>
+            <button class="btn btn-cancel" @click="handleCancel">
+                {{ t('common.cancel') }}
+            </button>
+            <button class="btn btn-insert" @click="handleInsert">
+                {{ t('common.insert') }}
+            </button>
+            <button class="btn btn-confirm" @click="handleConfirm">
+                {{ t('common.ok') }}
+            </button>
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { reactive, computed } from 'vue'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
+import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
 
 const fontFamilyList = [
     'Arial',
@@ -314,7 +292,24 @@ const emit = defineEmits<{
     (e: 'apply', html: string): void
 }>()
 
-const { dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
+// C-3 迁移：外壳覆盖（其余外壳声明与 BaseDialog 默认壳一致）。
+// 迁移前容器固定 1280×800（宽度由 width 属性承载）且带 min-width / min-height 下限。
+const containerStyle: CSSProperties = {
+    height: '800px',
+    minWidth: '1000px',
+    minHeight: '600px'
+}
+// 迁移前标题栏固定高度不随内容压缩（容器为固定高度，显式 flex-shrink: 0 保持布局不变）。
+const titleBarStyle: CSSProperties = { flexShrink: 0 }
+// 迁移前标题额外声明 letter-spacing: 0.5px（14px 字号 / 500 字重由 regular 变体承载）。
+const titleTextStyle: CSSProperties = { letterSpacing: '0.5px' }
+// 迁移前底栏内边距 15px 24px、按钮间距 12px 且不随内容压缩
+// （默认壳为 15px 20px / gap 10px / 可压缩）。
+const footerStyle: CSSProperties = {
+    padding: '15px 24px',
+    gap: '12px',
+    flexShrink: 0
+}
 
 const fontStyle = reactive({
     fontFamily: 'Arial',
@@ -410,90 +405,8 @@ function generateHtml(): string {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 1280px;
-    height: 800px;
-    min-width: 1000px;
-    min-height: 600px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 40px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 16px;
-    cursor: move;
-    user-select: none;
-    flex-shrink: 0;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-}
-
-.close-btn {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 80, 80, 0.95);
-}
-
+/* 外壳（overlay/container/title-bar/title-text/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留正文（配置面板/预览区）与按钮样式。 */
 .main-content {
     flex: 1;
     padding: 20px 24px;
@@ -673,16 +586,6 @@ function generateHtml(): string {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 12px;
-}
-
-.footer {
-    padding: 15px 24px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
-    flex-shrink: 0;
 }
 
 .btn {

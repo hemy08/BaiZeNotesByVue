@@ -174,7 +174,6 @@ function evaluate(): void {
 }
 
 .error-text {
-    color: var(--theme-accent-color);
     margin: 0;
 }
 </style>

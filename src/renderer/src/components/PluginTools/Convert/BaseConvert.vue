@@ -194,13 +194,6 @@ convert()
     gap: 10px;
 }
 
-.panel-card {
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
 .panel-card h3 {
     margin: 0;
     font-size: 14px;
@@ -245,17 +238,6 @@ convert()
     font-size: 16px;
 }
 
-.row-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.field-label {
-    min-width: 90px;
-    color: var(--theme-secondary-text-color);
-}
-
 .result-text {
     font-weight: bold;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
@@ -263,13 +245,7 @@ convert()
 }
 
 .btn-row {
-    display: flex;
     gap: 10px;
     justify-content: center;
-}
-
-.error-text {
-    color: var(--theme-accent-color);
-    margin: 8px 0 0;
 }
 </style>

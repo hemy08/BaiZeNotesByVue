@@ -1,135 +1,133 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleClose">
-                <Transition name="dialog-scale">
-                    <div v-if="visible" class="dialog-container">
-                        <div class="title-bar">
-                            <button class="close-btn" @click="handleClose">×</button>
-                        </div>
-
-                        <div class="container">
-                            <div class="left-panel">
-                                <div class="icon-container">
-                                    <div class="baize-icon">白泽</div>
-                                </div>
-                                <h1 class="app-name">白泽笔记</h1>
-                                <div class="app-version">v{{ appVersion }}</div>
-                                <p class="app-desc">
-                                    {{ t('dialogRenderer.helpAbout.descLine1') }}
-                                </p>
-                                <p class="app-desc">Markdown</p>
-                                <p class="app-desc">
-                                    {{ t('dialogRenderer.helpAbout.descLine2') }}
-                                </p>
-                                <p class="app-desc">
-                                    {{ t('dialogRenderer.helpAbout.descLine3') }}
-                                </p>
-                            </div>
-
-                            <div class="right-panel">
-                                <div class="info-card">
-                                    <h3>{{ t('dialogRenderer.helpAbout.versionInfo') }}</h3>
-                                    <div class="info-row">
-                                        <span class="label">{{
-                                            t('dialogRenderer.helpAbout.appVersion')
-                                        }}</span>
-                                        <span class="value">v{{ appVersion }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="label">{{
-                                            t('dialogRenderer.helpAbout.releaseDate')
-                                        }}</span>
-                                        <span class="value">{{ buildDate }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="label">Electron</span>
-                                        <span class="value">v{{ electronVersion }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="label">Chromium</span>
-                                        <span class="value">v{{ chromeVersion }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="label">Node.js</span>
-                                        <span class="value">v{{ nodeVersion }}</span>
-                                    </div>
-                                </div>
-
-                                <div class="info-card">
-                                    <h3>{{ t('dialogRenderer.helpAbout.devFramework') }}</h3>
-                                    <div class="info-row">
-                                        <span class="label">Vue</span>
-                                        <span class="value">v{{ vueVersion }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="label">Vite</span>
-                                        <span class="value">v{{ viteVersion }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="label">TypeScript</span>
-                                        <span class="value">v{{ typescriptVersion }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="label">Monaco Editor</span>
-                                        <span class="value">v{{ monacoEditorVersion }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="label">markdown-it</span>
-                                        <span class="value">v{{ markdownItVersion }}</span>
-                                    </div>
-                                </div>
-
-                                <div class="info-card">
-                                    <h3>{{ t('dialogRenderer.helpAbout.systemEnvironment') }}</h3>
-                                    <div class="info-row">
-                                        <span class="label">{{
-                                            t('dialogRenderer.helpAbout.os')
-                                        }}</span>
-                                        <span class="value">{{ systemInfo }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="label">{{
-                                            t('dialogRenderer.helpAbout.platform')
-                                        }}</span>
-                                        <span class="value">{{ platform }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="footer">
-                            <a
-                                href="#"
-                                @click.prevent="
-                                    openLink('https://github.com/hemy08/BaiZeNotesByVue')
-                                "
-                                >GitHub</a
-                            >
-                            <span class="divider">|</span>
-                            <a
-                                href="#"
-                                @click.prevent="openLink('https://hemy08.github.io/hemynotes/')"
-                                >{{ t('dialogRenderer.common.docs') }}</a
-                            >
-                            <span class="divider">|</span>
-                            <span>2024 Hemy08</span>
-                        </div>
-                    </div>
-                </Transition>
+    <!--
+        C-4 迁移：compact（32px 标题栏）+ circle（28px 圆形关闭按钮）+ 750×600 容器；
+        迁移前标题栏是「仅关闭按钮、右对齐、无标题文字」的 Electron 原生拖拽区
+        （-webkit-app-region: drag），且不使用自定义拖拽（未调用 useDialogDrag），故：
+        - 不传 title / title 插槽（BaseDialog 默认渲染的空 .title-text 占 0 宽，布局等价）；
+        - titleBarStyle 覆盖 flex-end / 0 10px 内边距 / drag / flex-shrink:0，并还原旧外壳
+          未声明的 cursor:auto、user-select:auto（默认壳为 move/none）；
+        - closeButtonStyle 覆盖 no-drag（拖拽区内的按钮必须 no-drag 才能点击）；
+        - draggable=false 关闭自定义拖拽，标题栏拖拽完全交给 Electron 原生 app-region；
+        - 底栏是居中的信息条而非操作按钮行，经 footerStyle 还原为块级居中布局。
+    -->
+    <BaseDialog
+        :visible="visible"
+        title-bar-variant="compact"
+        close-button-variant="circle"
+        width="750px"
+        :draggable="false"
+        :container-style="containerStyle"
+        :title-bar-style="titleBarStyle"
+        :close-button-style="closeButtonStyle"
+        :footer-style="footerStyle"
+        @close="handleClose"
+    >
+        <div class="container">
+            <div class="left-panel">
+                <div class="icon-container">
+                    <div class="baize-icon">白泽</div>
+                </div>
+                <h1 class="app-name">白泽笔记</h1>
+                <div class="app-version">v{{ appVersion }}</div>
+                <p class="app-desc">
+                    {{ t('dialogRenderer.helpAbout.descLine1') }}
+                </p>
+                <p class="app-desc">Markdown</p>
+                <p class="app-desc">
+                    {{ t('dialogRenderer.helpAbout.descLine2') }}
+                </p>
+                <p class="app-desc">
+                    {{ t('dialogRenderer.helpAbout.descLine3') }}
+                </p>
             </div>
-        </Transition>
-    </Teleport>
+
+            <div class="right-panel">
+                <div class="info-card">
+                    <h3>{{ t('dialogRenderer.helpAbout.versionInfo') }}</h3>
+                    <div class="info-row">
+                        <span class="label">{{ t('dialogRenderer.helpAbout.appVersion') }}</span>
+                        <span class="value">v{{ appVersion }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">{{ t('dialogRenderer.helpAbout.releaseDate') }}</span>
+                        <span class="value">{{ buildDate }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Electron</span>
+                        <span class="value">v{{ electronVersion }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Chromium</span>
+                        <span class="value">v{{ chromeVersion }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Node.js</span>
+                        <span class="value">v{{ nodeVersion }}</span>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h3>{{ t('dialogRenderer.helpAbout.devFramework') }}</h3>
+                    <div class="info-row">
+                        <span class="label">Vue</span>
+                        <span class="value">v{{ vueVersion }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Vite</span>
+                        <span class="value">v{{ viteVersion }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">TypeScript</span>
+                        <span class="value">v{{ typescriptVersion }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Monaco Editor</span>
+                        <span class="value">v{{ monacoEditorVersion }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">markdown-it</span>
+                        <span class="value">v{{ markdownItVersion }}</span>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h3>{{ t('dialogRenderer.helpAbout.systemEnvironment') }}</h3>
+                    <div class="info-row">
+                        <span class="label">{{ t('dialogRenderer.helpAbout.os') }}</span>
+                        <span class="value">{{ systemInfo }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">{{ t('dialogRenderer.helpAbout.platform') }}</span>
+                        <span class="value">{{ platform }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template #footer>
+            <a href="#" @click.prevent="openLink('https://github.com/hemy08/BaiZeNotesByVue')"
+                >GitHub</a
+            >
+            <span class="divider">|</span>
+            <a href="#" @click.prevent="openLink('https://hemy08.github.io/hemynotes/')">{{
+                t('dialogRenderer.common.docs')
+            }}</a>
+            <span class="divider">|</span>
+            <span>2024 Hemy08</span>
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import type { CSSProperties } from 'vue'
 import { IPC } from '../../../../../shared/ipc-channels'
 // 第 2 批契约重构：版本信息返回结构统一引用 shared AppVersionInfo
 // （与主进程 utils.ts 的 SYSTEM.APP_VERSION handler、preload index.d.ts 同一契约）
 import type { AppVersionInfo } from '../../../../../shared/types'
 import { t } from '../../../common/i18n'
 import { logger } from '../../../common/logger'
+import BaseDialog from '../BaseDialog.vue'
 
 interface Props {
     visible: boolean
@@ -139,6 +137,42 @@ defineProps<Props>()
 const emit = defineEmits<{
     (e: 'close'): void
 }>()
+
+/**
+ * Electron 专有内联样式：BaseDialog 内部的 DialogStyleProperties 未导出，
+ * 这里按同构方式在 Vue CSSProperties 上补充 -webkit-app-region（不引入 any）。
+ */
+interface DialogStyleOverrides extends CSSProperties {
+    WebkitAppRegion?: 'drag' | 'no-drag'
+}
+
+/**
+ * C-4 迁移：外壳覆盖（其余外壳声明与 BaseDialog 默认壳逐项一致）。
+ * - 容器：宽度 750px 由 width 属性承载，固定高 600px 经 containerStyle 覆盖；
+ * - 标题栏：仅关闭按钮、右对齐（flex-end）、0 10px 内边距、Electron 原生 drag 区、
+ *   flex-shrink: 0；旧外壳未声明 cursor/user-select，这里显式还原为 auto，
+ *   避免默认壳的 cursor:move / user-select:none 在禁用自定义拖拽后误导交互；
+ * - 关闭按钮：circle 变体提供 28px 圆形按钮，拖拽区内需声明 no-drag 才能点击；
+ * - 底栏：旧外壳是居中的信息条（块级布局、10px 20px 内边距、11px 次要文字、无 gap），
+ *   与默认壳的 flex 操作按钮行不同，改回 display:block 才能保持文案居中。
+ */
+const containerStyle: CSSProperties = { height: '600px' }
+const titleBarStyle: DialogStyleOverrides = {
+    justifyContent: 'flex-end',
+    padding: '0 10px',
+    WebkitAppRegion: 'drag',
+    flexShrink: 0,
+    cursor: 'auto',
+    userSelect: 'auto'
+}
+const closeButtonStyle: DialogStyleOverrides = { WebkitAppRegion: 'no-drag' }
+const footerStyle: CSSProperties = {
+    display: 'block',
+    padding: '10px 20px',
+    textAlign: 'center',
+    fontSize: '11px',
+    color: 'var(--secondary-text-color)'
+}
 
 const appVersion = ref('')
 const buildDate = ref('')
@@ -209,81 +243,9 @@ function handleClose() {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 750px;
-    height: 600px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 32px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    padding: 0 10px;
-    -webkit-app-region: drag;
-    flex-shrink: 0;
-}
-
-.close-btn {
-    -webkit-app-region: no-drag;
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 100, 100, 0.9);
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留正文（左侧应用信息 / 右侧版本信息卡片）与底栏链接样式。底栏链接位于
+   BaseDialog 的 footer 插槽内、由本组件模板渲染，仍带本组件 scope id，故 .footer a 继续生效。 */
 .container {
     flex: 1;
     display: flex;
@@ -378,15 +340,6 @@ function handleClose() {
 .info-row .value {
     color: var(--text-color);
     font-weight: 500;
-}
-
-.footer {
-    padding: 10px 20px;
-    text-align: center;
-    font-size: 11px;
-    color: var(--secondary-text-color);
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
 }
 
 .footer a {

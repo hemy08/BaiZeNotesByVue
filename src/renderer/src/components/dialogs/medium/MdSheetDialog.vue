@@ -1,96 +1,86 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleCancel">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <div class="title-bar">
-                            <span class="title-text">{{ t('dialogRenderer.mdSheet.title') }}</span>
-                            <button class="close-btn" @click.stop="handleCancel">×</button>
-                        </div>
-
-                        <div class="content">
-                            <div class="left-right-container">
-                                <div class="left-section">
-                                    <div class="input-group">
-                                        <label class="label-style">{{
-                                            t('dialogRenderer.mdSheet.rows')
-                                        }}</label>
-                                        <input
-                                            v-model.number="sheetStyle.row"
-                                            type="number"
-                                            min="1"
-                                            class="input-style"
-                                        />
-                                    </div>
-                                    <div class="input-group">
-                                        <label class="label-style">{{
-                                            t('dialogRenderer.mdSheet.cols')
-                                        }}</label>
-                                        <input
-                                            v-model.number="sheetStyle.col"
-                                            type="number"
-                                            min="1"
-                                            class="input-style"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div class="right-section">
-                                    <div class="checkbox-list">
-                                        <label
-                                            v-for="option in alignOptions"
-                                            :key="option.value"
-                                            :class="{ active: sheetStyle.align === option.value }"
-                                        >
-                                            <input
-                                                v-model="sheetStyle.align"
-                                                type="radio"
-                                                :value="option.value"
-                                            />
-                                            {{ t(option.labelKey) }}
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="btn-style">
-                                <button class="btn" @click="handleCancel">
-                                    {{ t('common.cancel') }}
-                                </button>
-                                <button class="btn btn-primary" @click="handleInsert">
-                                    {{ t('dialogRenderer.common.insert') }}
-                                </button>
-                            </div>
-                        </div>
+    <!--
+        C-2 迁移：regular（40px 标题栏 / 14px 标题）+ rounded（32px 圆角关闭按钮）+ 530px 宽度；
+        迁移前无 footer（取消/插入按钮在正文 .content 内），故不提供 footer 插槽；
+        迁移前标题额外声明 letter-spacing: 0.5px，用 BaseDialog 的 titleTextStyle 内联覆盖还原。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.mdSheet.title')"
+        title-bar-variant="regular"
+        close-button-variant="rounded"
+        width="530px"
+        :title-text-style="titleTextStyle"
+        @close="handleCancel"
+    >
+        <div class="content">
+            <div class="left-right-container">
+                <div class="left-section">
+                    <div class="input-group">
+                        <label class="label-style">{{ t('dialogRenderer.mdSheet.rows') }}</label>
+                        <input
+                            v-model.number="sheetStyle.row"
+                            type="number"
+                            min="1"
+                            class="input-style"
+                        />
                     </div>
-                </Transition>
+                    <div class="input-group">
+                        <label class="label-style">{{ t('dialogRenderer.mdSheet.cols') }}</label>
+                        <input
+                            v-model.number="sheetStyle.col"
+                            type="number"
+                            min="1"
+                            class="input-style"
+                        />
+                    </div>
+                </div>
+
+                <div class="right-section">
+                    <div class="checkbox-list">
+                        <label
+                            v-for="option in alignOptions"
+                            :key="option.value"
+                            :class="{ active: sheetStyle.align === option.value }"
+                        >
+                            <input v-model="sheetStyle.align" type="radio" :value="option.value" />
+                            {{ t(option.labelKey) }}
+                        </label>
+                    </div>
+                </div>
             </div>
-        </Transition>
-    </Teleport>
+
+            <div class="btn-style">
+                <button class="btn" @click="handleCancel">
+                    {{ t('common.cancel') }}
+                </button>
+                <button class="btn btn-primary" @click="handleInsert">
+                    {{ t('dialogRenderer.common.insert') }}
+                </button>
+            </div>
+        </div>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { reactive } from 'vue'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
+import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
 
 interface Props {
     visible: boolean
 }
 
+// 迁移前不重置拖拽位置（useDialogDrag 未调用 resetPosition），与 BaseDialog 默认 false 等价。
 defineProps<Props>()
 const emit = defineEmits<{
     (e: 'close'): void
     (e: 'insert', markdown: string): void
 }>()
 
-const { dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
+// 迁移前 .title-text 额外声明 letter-spacing: 0.5px（其余标题样式由 regular 变体承载）。
+const titleTextStyle: CSSProperties = { letterSpacing: '0.5px' }
 
 const sheetStyle = reactive({
     row: 3,
@@ -143,86 +133,8 @@ function handleInsert() {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 530px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 40px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 16px;
-    cursor: move;
-    user-select: none;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-}
-
-.close-btn {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 80, 80, 0.95);
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/过渡动画）已抽到 BaseDialog；
+   这里只保留正文与按钮样式。 */
 .content {
     flex: 1;
     padding: 24px 28px;

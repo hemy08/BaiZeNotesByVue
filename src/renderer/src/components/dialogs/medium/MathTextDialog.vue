@@ -1,74 +1,80 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleCancel">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <div class="title-bar">
-                            <span class="title-text">{{ t('dialogRenderer.mathText.title') }}</span>
-                            <button class="close-btn" @click.stop="handleCancel">×</button>
-                        </div>
-
-                        <div class="main-content">
-                            <div class="preview-section">
-                                <label class="preview-label">{{
-                                    t('dialogRenderer.common.previewPlaceholder')
-                                }}</label>
-                                <!-- eslint-disable-next-line vue/no-v-html -- 预览为 KaTeX renderToString 输出（trust 默认 false，不产出原始 HTML 标签） -->
-                                <div class="preview-container" v-html="renderedFormula"></div>
-                            </div>
-
-                            <div class="editor-section">
-                                <label class="editor-label">{{
-                                    t('dialogRenderer.mathText.formulaEdit')
-                                }}</label>
-                                <textarea
-                                    id="textInput"
-                                    v-model="latexData"
-                                    :placeholder="t('dialogRenderer.mathText.formulaPlaceholder')"
-                                    class="text-input"
-                                ></textarea>
-                            </div>
-
-                            <div class="btn-list">
-                                <button class="btn" @click="handleInsertLine">
-                                    {{ t('dialogRenderer.mathText.insertInline') }}
-                                </button>
-                                <button class="btn" @click="handleInsertBlock">
-                                    {{ t('dialogRenderer.mathText.insertBlock') }}
-                                </button>
-                                <button class="btn" @click="handleInsertMath">
-                                    {{ t('dialogRenderer.mathText.insertMath') }}
-                                </button>
-                                <button class="btn" @click="handleInsertKatex">
-                                    {{ t('dialogRenderer.mathText.insertKatex') }}
-                                </button>
-                                <button class="btn" @click="handleInsertLatex">
-                                    {{ t('dialogRenderer.mathText.insertLatex') }}
-                                </button>
-                                <button class="btn" @click="handleCancel">
-                                    {{ t('dialogRenderer.mathText.cancelEdit') }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </Transition>
+    <!--
+        C-2 迁移：regular 变体 + 覆盖标题栏 36px 高 / 0 12px 内边距 + circle 关闭按钮 + 1280px 宽度；
+        迁移前无 footer（6 个插入按钮在正文 .btn-list 内），故不提供 footer 插槽。
+        迁移前标题栏无拖拽区（-webkit-app-region 只出现在关闭按钮上的 no-drag，属历史遗留），
+        这里用 closeButtonStyle 保留该声明；打开时重置拖拽位置由 resetPositionOnOpen 承担
+        （等价于迁移前 visible 监听内调用的 resetPosition）。
+    -->
+    <BaseDialog
+        :visible="visible"
+        :title="t('dialogRenderer.mathText.title')"
+        title-bar-variant="regular"
+        close-button-variant="circle"
+        width="1280px"
+        :title-bar-style="titleBarStyle"
+        :close-button-style="closeButtonStyle"
+        reset-position-on-open
+        @close="handleCancel"
+    >
+        <div class="main-content">
+            <div class="preview-section">
+                <label class="preview-label">{{
+                    t('dialogRenderer.common.previewPlaceholder')
+                }}</label>
+                <!-- eslint-disable-next-line vue/no-v-html -- 预览为 KaTeX renderToString 输出（trust 默认 false，不产出原始 HTML 标签） -->
+                <div class="preview-container" v-html="renderedFormula"></div>
             </div>
-        </Transition>
-    </Teleport>
+
+            <div class="editor-section">
+                <label class="editor-label">{{ t('dialogRenderer.mathText.formulaEdit') }}</label>
+                <textarea
+                    id="textInput"
+                    v-model="latexData"
+                    :placeholder="t('dialogRenderer.mathText.formulaPlaceholder')"
+                    class="text-input"
+                ></textarea>
+            </div>
+
+            <div class="btn-list">
+                <button class="btn" @click="handleInsertLine">
+                    {{ t('dialogRenderer.mathText.insertInline') }}
+                </button>
+                <button class="btn" @click="handleInsertBlock">
+                    {{ t('dialogRenderer.mathText.insertBlock') }}
+                </button>
+                <button class="btn" @click="handleInsertMath">
+                    {{ t('dialogRenderer.mathText.insertMath') }}
+                </button>
+                <button class="btn" @click="handleInsertKatex">
+                    {{ t('dialogRenderer.mathText.insertKatex') }}
+                </button>
+                <button class="btn" @click="handleInsertLatex">
+                    {{ t('dialogRenderer.mathText.insertLatex') }}
+                </button>
+                <button class="btn" @click="handleCancel">
+                    {{ t('dialogRenderer.mathText.cancelEdit') }}
+                </button>
+            </div>
+        </div>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
+import type { CSSProperties } from 'vue'
 import katex from 'katex'
 import 'katex/dist/katex.css'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
+
+/**
+ * Electron 专有内联样式：BaseDialog 内部的 DialogStyleProperties 未导出，
+ * 这里按同构方式在 Vue CSSProperties 上补充 -webkit-app-region（不引入 any）。
+ */
+interface DialogStyleOverrides extends CSSProperties {
+    WebkitAppRegion?: 'drag' | 'no-drag'
+}
 
 const latexInit =
     'x(t) = \\frac{a_0}{2} + \\sum_{n=1}^{\\infty} \\left( a_n \\cos\\left(\\frac{2\\pi nt}{T}\\right) + b_n \\sin\\left(\\frac{2\\pi nt}{T}\\right) \\right)'
@@ -77,7 +83,7 @@ interface Props {
     visible: boolean
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<{
     (e: 'close'): void
     (e: 'insert', markdown: string): void
@@ -85,9 +91,10 @@ const emit = defineEmits<{
 
 const latexData = ref(latexInit)
 
-const { dialogStyle, onDialogMouseDown, resetPosition } = useDialogDrag({
-    initialPosition: 'center'
-})
+// 迁移前标题栏 36px 高、0 12px 内边距（regular 变体默认 40px/0 16px）。
+const titleBarStyle: DialogStyleOverrides = { height: '36px', padding: '0 12px' }
+// 迁移前关闭按钮上的 -webkit-app-region: no-drag（标题栏本身不是拖拽区，故仅为声明等价）。
+const closeButtonStyle: DialogStyleOverrides = { WebkitAppRegion: 'no-drag' }
 
 const renderedFormula = computed(() => {
     try {
@@ -96,15 +103,6 @@ const renderedFormula = computed(() => {
         return '<span style="color:red">' + t('dialogRenderer.mathText.syntaxError') + '</span>'
     }
 })
-
-watch(
-    () => props.visible,
-    (newVal) => {
-        if (newVal) {
-            resetPosition()
-        }
-    }
-)
 
 function renderLatex(text: string): string {
     if (!text) return ''
@@ -144,86 +142,8 @@ function handleInsertLatex() {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 1280px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 36px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 12px;
-    cursor: move;
-    user-select: none;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.close-btn {
-    -webkit-app-region: no-drag;
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 100, 100, 0.9);
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/过渡动画）已抽到 BaseDialog；
+   这里只保留正文、公式编辑与按钮样式。 */
 .main-content {
     flex: 1;
     padding: 15px 20px;
