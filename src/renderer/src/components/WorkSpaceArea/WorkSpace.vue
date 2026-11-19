@@ -82,6 +82,7 @@ import {
     h
 } from 'vue'
 import EventBus from '@renderer/common/event-bus/event-bus'
+import { useEventBus } from '@renderer/composables/useEventBus'
 import { logger } from '@renderer/common/logger'
 import NaviTab from '@renderer/components/WorkSpaceArea/NaviTab.vue'
 import ResManager from '@renderer/components/ResourceManager/ResourceManager.vue'
@@ -139,6 +140,9 @@ const isShowPdfContainer = ref(false)
 // 激活后只切换 v-show，保证来回切换时组件状态（当前文件、页码、缩放）不丢失。
 const htmlContainerActivated = ref(false)
 const pdfContainerActivated = ref(false)
+
+// EventBus 注册器（M5）：监听随组件卸载自动清理，替代手写 $on/$off 配对
+const { on: onEventBus } = useEventBus({ componentIdPrefix: 'WorkSpace' })
 
 /** 预览文件选择事件载荷（与 FileTreeNode 发出的节点结构保持一致） */
 interface PreviewFileSelection {
@@ -325,11 +329,11 @@ onMounted(() => {
     windowWidth.value = window.innerWidth
     window.addEventListener('resize', onWindowResized)
 
-    EventBus.$on(EVENT_BUS.PLUGIN_TOOLS_CONTAINER_SHOW, handlePluginToolsContainerShow)
-    EventBus.$on(EVENT_BUS.WORKSPACE_SHOW, handleWorkAreaContainerShow)
+    onEventBus(EVENT_BUS.PLUGIN_TOOLS_CONTAINER_SHOW, handlePluginToolsContainerShow)
+    onEventBus(EVENT_BUS.WORKSPACE_SHOW, handleWorkAreaContainerShow)
     // 按需挂载：缓存首次激活 HTML/PDF 容器前发出的文件选择事件（挂载后补发）
-    EventBus.$on(EVENT_BUS.HTML_FILE_SELECTED, cacheHtmlSelection)
-    EventBus.$on(EVENT_BUS.PDF_FILE_SELECTED, cachePdfSelection)
+    onEventBus(EVENT_BUS.HTML_FILE_SELECTED, cacheHtmlSelection)
+    onEventBus(EVENT_BUS.PDF_FILE_SELECTED, cachePdfSelection)
     window.electron.ipcRenderer.on(IPC.VIEW.TOGGLE_RES_MANAGER, handleHideDisplayResManager)
 })
 
@@ -341,10 +345,7 @@ onBeforeUnmount(() => {
         IPC.VIEW.TOGGLE_RES_MANAGER,
         handleHideDisplayResManager
     )
-    EventBus.$off(EVENT_BUS.PLUGIN_TOOLS_CONTAINER_SHOW, handlePluginToolsContainerShow)
-    EventBus.$off(EVENT_BUS.WORKSPACE_SHOW, handleWorkAreaContainerShow)
-    EventBus.$off(EVENT_BUS.HTML_FILE_SELECTED, cacheHtmlSelection)
-    EventBus.$off(EVENT_BUS.PDF_FILE_SELECTED, cachePdfSelection)
+    // EventBus 监听已由 useEventBus 自动清理（本组件在 setup 内注册，先于此处执行）
 })
 </script>
 

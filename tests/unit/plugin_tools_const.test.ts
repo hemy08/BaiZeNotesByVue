@@ -13,10 +13,16 @@
  *   不再需要维护与组件清单同步的 mock 列表。
  */
 import { describe, it, expect } from 'vitest'
+import * as fs from 'fs'
+import * as path from 'path'
 
 import { pluginTools } from '../../src/renderer/src/components/PluginTools/plugin-tools-const'
 // FE-16/FE-17：插件工具注册表 ↔ 插件菜单双向一致性校验（菜单数据不依赖 .vue 组件，可安全导入）
 import { menuMap } from '../../src/renderer/src/components/MenuBar/menu-config'
+
+const ROOT = path.resolve(__dirname, '../..')
+const PLUGIN_TOOLS_DIR = path.join(ROOT, 'src', 'renderer', 'src', 'components', 'PluginTools')
+const PLUGIN_TOOLS_CONST_FILE = path.join(PLUGIN_TOOLS_DIR, 'plugin-tools-const.ts')
 
 /** 递归收集菜单树中的所有 menuAction */
 function collectMenuActions(items: unknown[]): string[] {
@@ -130,5 +136,61 @@ describe('pluginTools ↔ 插件菜单一致性（FE-16/FE-17）', () => {
     it('should keep plugin menu actions unique and non-empty', () => {
         expect(pluginMenuActions.length).toBeGreaterThan(0)
         expect(new Set(pluginMenuActions).size).toBe(pluginMenuActions.length)
+    })
+})
+
+// 第 4 批 4.5（M6：重复资产清理）：未注册工具页清理守卫。
+//
+// 收敛前 PluginTools 下存在 7 个「已实现占位页、但既不在 plugin-tools-const 注册表、
+// 也没有菜单入口」的 .vue 文件：6 个 NetWork 外链占位页（Ipv4AddrConvert /
+// Ipv6UlaGenerator / MacAddrGenerator / MacAddrLookup / QrcodeGenerator /
+// WifiQrcodeGenerator，均为「标题 + 一条 window.open 外链」）与 Tools/LatexEditor
+// （JSDOM 时代迁移的空壳：静态模板无任何交互/渲染逻辑）。
+// 它们属不可达死资源且与「在线工具」菜单的外链能力重复，本轮直接删除（不注册）：
+// 注册需要菜单名 i18n 词条（src/shared 在本批写入范围之外），且这些页面本身无功能价值。
+// 本守卫锁定删除结果，并防止未来再新增「未登记的任何工具页」。
+describe('未注册工具页清理（第 4 批 4.5 / M6）', () => {
+    /** 本轮删除的 7 个占位页（相对 PluginTools 目录） */
+    const DELETED_PLACEHOLDER_PAGES = [
+        'NetWork/Ipv4AddrConvert.vue',
+        'NetWork/Ipv6UlaGenerator.vue',
+        'NetWork/MacAddrGenerator.vue',
+        'NetWork/MacAddrLookup.vue',
+        'NetWork/QrcodeGenerator.vue',
+        'NetWork/WifiQrcodeGenerator.vue',
+        'Tools/LatexEditor.vue'
+    ]
+
+    it('7 个无注册/无菜单入口的占位工具页已删除', () => {
+        for (const relativePage of DELETED_PLACEHOLDER_PAGES) {
+            expect(
+                fs.existsSync(path.join(PLUGIN_TOOLS_DIR, relativePage)),
+                `应已删除：${relativePage}`
+            ).toBe(false)
+        }
+    })
+
+    it('PluginTools 下每个工具 .vue 都在注册表登记的懒加载清单中（无孤儿工具页）', () => {
+        // 非「工具页」的两个历史文件：插件面板宿主壳 + 4 个 codec 薄封装共用的基件
+        const NON_TOOL_PAGES = new Set(['PluginTools.vue', 'Codec/TextCodecTool.vue'])
+        const registrySource = fs.readFileSync(PLUGIN_TOOLS_CONST_FILE, 'utf-8')
+
+        const toolPages: string[] = []
+        const walk = (dir: string): void => {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const fullPath = path.join(dir, entry.name)
+                if (entry.isDirectory()) {
+                    walk(fullPath)
+                } else if (entry.name.endsWith('.vue')) {
+                    toolPages.push(path.relative(PLUGIN_TOOLS_DIR, fullPath).replace(/\\/g, '/'))
+                }
+            }
+        }
+        walk(PLUGIN_TOOLS_DIR)
+
+        const orphans = toolPages.filter(
+            (page) => !NON_TOOL_PAGES.has(page) && !registrySource.includes(`./${page}`)
+        )
+        expect(orphans).toEqual([])
     })
 })

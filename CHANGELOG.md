@@ -53,6 +53,14 @@
 - **3.4 产物治理（部分）**：`out/analysis` 独立目录 + `.gitignore`；dist 历史归档与 out/build 拆分留待第 5 批
 - 门禁：prettier --check 全绿；npm audit --omit=dev（官方 registry）0 漏洞；基线脚本 --check 通过
 
+### 🧱 结构优化第 4 批（M2 / M4 / M5 / M6）
+
+- **4.2 主题单真源**：新增 `useTheme` 单例，集中主题读盘/CSS 变量/Monaco/广播；`BaiZeNotes.vue` −276 行、`MenuBar.vue` −28 行，重复读盘与 DOM 直改消除
+- **4.3 EventBus 统一**：`useEventBus` 自动清理替换 8 文件 24 处手写 `$on/$off`；新增 24 事件双向契约与泄漏检测
+- **4.4 错误/状态栏 helper 收敛**：新增 `status-notify`（notifyStatus/toUserError）与 `error-report`，收敛 8 套 helper；状态栏消息类型收敛 shared 类型
+- **4.5 重复资产清理**：4 个 CSS/KaTeX CSS 收口 `main.ts`（index.html 仅 1 条 stylesheet）；删除 7 个未注册占位页与 `atom-one-light.css` 死副本；MermaidRender 生产引用归零
+- 门禁：typecheck 0 / ESLint 0 / vitest **172 文件 / 3,272 用例全通过** / electron-vite build 成功
+
 ## 2026年11月19日 - 版本 1.3.7（结构治理 / 性能 / 安全与文档体系）
 
 > 承接 1.3.6（2026-11-15 发布）之后 **11-18、11-19 的全部修改**：以「公共接口归位」第 0~4 批完成 shared 三层单真源与渲染层组件化，主界面异步分块将入口 chunk 降低 98.9%，并完成 PDF 预览 / CSP / preload 白名单等安全加固与报告 HTML Wiki 文档体系重构。

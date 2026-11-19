@@ -330,10 +330,8 @@ describe('HandleBaiZeMenuAction 错误上报兜底（FE-08 / ET-7）', () => {
         const win = { webContents: { send }, isDestroyed: () => false }
         expect(() => HandleBaiZeMenuAction('baize:menu:file:save', win as never)).not.toThrow()
         await vi.waitFor(() => {
-            expect(errorSpy).toHaveBeenCalledWith(
-                'Failed to report menu action error to status bar: ',
-                expect.any(Error)
-            )
+            // 4.4：发送失败由统一 helper 记日志（logger.error → console.error），不得再抛
+            expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('状态栏消息发送失败'))
         })
     })
 

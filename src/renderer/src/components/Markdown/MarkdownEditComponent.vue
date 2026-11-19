@@ -52,9 +52,13 @@ import {
 import type { PropType } from 'vue'
 import { t } from '../../common/i18n'
 import EventBus from '../../common/event-bus/event-bus'
+import { useEventBus } from '../../composables/useEventBus'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { logger } from '../../common/logger'
+
+// M5：保存/模板/导入替换 3 个进程内事件订阅统一经 useEventBus 注册，卸载时自动清理
+const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownEditComponent' })
 
 const props = defineProps({
     editorPreviewWidth: {
@@ -485,9 +489,9 @@ onMounted(() => {
         windowWidth.value = parentElement.clientWidth.toString()
     }
 
-    EventBus.$on(EVENT_BUS.MONACO_SAVE_FILE_CONTENT_TO_DISK, handleSaveFileContent)
-    EventBus.$on(EVENT_BUS.MONACO_USE_TEMPLATE, handleUseTemplate)
-    EventBus.$on(EVENT_BUS.MONACO_REPLACE_TEXT, handleFileImportReplace)
+    onEventBus(EVENT_BUS.MONACO_SAVE_FILE_CONTENT_TO_DISK, handleSaveFileContent)
+    onEventBus(EVENT_BUS.MONACO_USE_TEMPLATE, handleUseTemplate)
+    onEventBus(EVENT_BUS.MONACO_REPLACE_TEXT, handleFileImportReplace)
 
     window.electron.ipcRenderer.on(IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT, handleShowFileContext)
     window.electron.ipcRenderer.on(IPC.EVENTS.FILE_CONTENT_RELOADED, handleFileReloaded)
@@ -521,9 +525,7 @@ onBeforeUnmount(() => {
 
     window.removeEventListener('keydown', handleKeyDownEvent)
     window.removeEventListener('resize', handleResize)
-    EventBus.$off(EVENT_BUS.MONACO_SAVE_FILE_CONTENT_TO_DISK, handleSaveFileContent)
-    EventBus.$off(EVENT_BUS.MONACO_USE_TEMPLATE, handleUseTemplate)
-    EventBus.$off(EVENT_BUS.MONACO_REPLACE_TEXT, handleFileImportReplace)
+    // EventBus 监听已由 useEventBus 自动清理
 
     window.electron.ipcRenderer.removeListener(
         IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT,

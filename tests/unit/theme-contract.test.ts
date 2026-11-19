@@ -53,11 +53,40 @@ const THEME_SETTING_DIALOG = path.join(
     'ThemeSettingDialog.vue'
 )
 const BAIZE_NOTES = path.join(ROOT, 'src', 'renderer', 'src', 'components', 'BaiZeNotes.vue')
+const MENU_BAR = path.join(ROOT, 'src', 'renderer', 'src', 'components', 'MenuBar.vue')
+const USE_THEME = path.join(ROOT, 'src', 'renderer', 'src', 'composables', 'useTheme.ts')
 const CONFIG_STORE = path.join(ROOT, 'src', 'renderer', 'src', 'common', 'useConfigStore.ts')
+const MAIN_TS = path.join(ROOT, 'src', 'renderer', 'src', 'main.ts')
+const RENDERER_INDEX_HTML = path.join(ROOT, 'src', 'renderer', 'index.html')
+const RENDERER_SRC_DIR = path.join(ROOT, 'src', 'renderer', 'src')
+
+/** 递归收集目录下指定后缀的源文件（用于静态扫描「实现是否只在一处」） */
+function collectSourceFiles(dir: string, extensions: readonly string[]): string[] {
+    const files: string[] = []
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+            files.push(...collectSourceFiles(fullPath, extensions))
+        } else if (extensions.some((extension) => entry.name.endsWith(extension))) {
+            files.push(fullPath)
+        }
+    }
+    return files
+}
 
 function readSource(file: string): string {
     // 仓库内部分文件为 CRLF（prettier endOfLine=auto），统一归一化为 LF 后再做行级解析
     return fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n')
+}
+
+/** 去掉 JS/TS 注释（静态护栏只匹配真实代码；注释中的路径/句式不算引用） */
+function stripJsComments(source: string): string {
+    return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+}
+
+/** 去掉 HTML 注释（同上） */
+function stripHtmlComments(source: string): string {
+    return source.replace(/<!--[\s\S]*?-->/g, '')
 }
 
 /** 解析 shared/types/theme.ts 的 ThemeType 联合（28 个单引号字符串字面量） */
@@ -170,11 +199,18 @@ describe('渲染层消费方统一引用 shared 清单（防回退护栏）', ()
         expect(source.includes("'baize-starry'")).toBe(false)
     })
 
-    it('BaiZeNotes.vue 标题栏 logo 明暗应使用 isDarkThemeType，不再维护 darkThemeTypes', () => {
-        const source = readSource(BAIZE_NOTES)
-        expect(source).toContain('isDarkThemeType')
-        expect(source.includes('const darkThemeTypes')).toBe(false)
-        expect(source.includes('darkThemeTypes.includes')).toBe(false)
+    it('useTheme.ts 应使用 isDarkThemeType，BaiZeNotes.vue 只消费 useTheme 不再维护明暗逻辑', () => {
+        // 第 4 批 4.2（M4）：主题明暗判断与全部主题实现收敛到 useTheme 单例；
+        // 主界面组件只读 useTheme.isDarkTheme（内部仍走 shared DARK_THEME_TYPES 唯一口径）。
+        const apiSource = readSource(USE_THEME)
+        expect(apiSource).toContain("from '../../../shared/constants/theme'")
+        expect(apiSource).toContain('isDarkThemeType')
+        expect(apiSource.includes('const darkThemeTypes')).toBe(false)
+
+        const shellSource = readSource(BAIZE_NOTES)
+        expect(shellSource).toContain('theme.isDarkTheme')
+        expect(shellSource.includes('const darkThemeTypes')).toBe(false)
+        expect(shellSource.includes('darkThemeTypes.includes')).toBe(false)
     })
 
     it('useConfigStore.isDarkTheme 应使用 isDarkThemeType，不再按名字猜明暗', () => {
@@ -182,5 +218,126 @@ describe('渲染层消费方统一引用 shared 清单（防回退护栏）', ()
         expect(source).toContain('isDarkThemeType')
         expect(source.includes(".includes('dark')")).toBe(false)
         expect(source.includes(".includes('深')")).toBe(false)
+    })
+})
+
+// =============================================================================================
+// 第 4 批 4.2（M4）：主题单真源静态护栏
+//
+// 收敛目标：主题读盘 / CSS 变量应用 / Monaco 主题 / 广播监听在渲染层只有一处实现
+// （composables/useTheme.ts）；主界面壳与菜单栏只做「接线」，不得再各自读盘或直改 DOM。
+// =============================================================================================
+describe('主题单真源（第 4 批 4.2 / M4）', () => {
+    const rendererSources = collectSourceFiles(RENDERER_SRC_DIR, ['.ts', '.vue'])
+
+    it('渲染层只有 useTheme.ts 实现「当前主题样式」IPC 调用', () => {
+        const filesUsingThemeStylesIpc = rendererSources
+            .filter((file) => readSource(file).includes('THEME.GET_CURRENT_THEME_STYLES'))
+            .map((file) => path.relative(RENDERER_SRC_DIR, file).replace(/\\/g, '/'))
+        expect(filesUsingThemeStylesIpc).toEqual(['composables/useTheme.ts'])
+    })
+
+    it('渲染层只有 useTheme.ts 写主题 CSS 变量（--theme-* / --* 别名）', () => {
+        const filesWritingThemeVariables = rendererSources
+            .filter((file) => readSource(file).includes('setProperty('))
+            .map((file) => path.relative(RENDERER_SRC_DIR, file).replace(/\\/g, '/'))
+        expect(filesWritingThemeVariables).toEqual(['composables/useTheme.ts'])
+        // 变量映射表（10 个主题色字段 × 主变量/别名）只能在单真源文件维护
+        expect(readSource(USE_THEME)).toContain('THEME_CSS_VARIABLE_BINDINGS')
+    })
+
+    it('BaiZeNotes.vue 不再内联主题实现（读样式/写 DOM/Monaco 主题/重复订阅广播）', () => {
+        const source = stripJsComments(readSource(BAIZE_NOTES))
+        expect(source).toContain('useTheme')
+        expect(source.includes('THEME.GET_CURRENT_THEME_STYLES')).toBe(false)
+        expect(source.includes('document.documentElement')).toBe(false)
+        expect(source.includes('style.setProperty')).toBe(false)
+        expect(source.includes("querySelector('[data-theme]')")).toBe(false)
+        expect(source.includes('monaco.editor.defineTheme')).toBe(false)
+        expect(source.includes('THEME.THEME_UPDATED, handleThemeUpdate')).toBe(false)
+    })
+
+    it('MenuBar.vue 不再重复读主题配置 / 订阅主题广播', () => {
+        const source = stripJsComments(readSource(MENU_BAR))
+        expect(source.includes('config.read')).toBe(false)
+        expect(source.includes('THEME.THEME_UPDATED')).toBe(false)
+        expect(source.includes('IPC.THEME')).toBe(false)
+    })
+})
+
+// =============================================================================================
+// 第 4 批 4.5（M6）：CSS 单次注入静态护栏
+//
+// 收敛前：4 个 CSS 同时被 index.html 的 <link> 与 main.ts 的 import 加载（双份产物）；
+// KaTeX CSS 在 main.ts / MathTextDialog.vue / MarkdownPreviewComponent.vue 三处引入。
+// 收敛后：index.html 零 stylesheet link，全部 CSS 只由 main.ts 引入一次，KaTeX 只有一处。
+// =============================================================================================
+describe('CSS 单次注入（第 4 批 4.5 / M6）', () => {
+    const rendererSources = collectSourceFiles(RENDERER_SRC_DIR, ['.ts', '.vue', '.css'])
+
+    /** 收敛前被 index.html 与 main.ts 双重加载的 4 个 CSS（相对 renderer 根目录的路径片段） */
+    const DEDUPED_CSS_FILES = [
+        'atom-one-light.css',
+        'normalize.css',
+        'admonition.css',
+        'gridcards.css'
+    ]
+
+    /**
+     * 统计源码中「真正的 CSS 引入语句」条数（`import 'x.css'` / `@import 'x.css'`）。
+     * 注释中的文件名说明不算（本文件与源码注释都会提到这些路径）。
+     */
+    function countCssImports(source: string, cssFileName: string): number {
+        const escaped = cssFileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const pattern = new RegExp(`^\\s*(?:@?import)\\s+['"][^'"]*${escaped}['"]`, 'gm')
+        return [...source.matchAll(pattern)].length
+    }
+
+    it('index.html 不再通过 <link rel="stylesheet"> 加载任何 CSS（收口到 main.ts）', () => {
+        const source = stripHtmlComments(readSource(RENDERER_INDEX_HTML))
+        expect(/<link[^>]+rel=["']stylesheet["']/i.test(source)).toBe(false)
+        for (const cssFileName of DEDUPED_CSS_FILES) {
+            const linkPattern = new RegExp(
+                `<link[^>]+href=["'][^"']*${cssFileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`,
+                'i'
+            )
+            expect(linkPattern.test(source), `index.html 不应再 link ${cssFileName}`).toBe(false)
+        }
+    })
+
+    it('4 个双重加载 CSS 只在 main.ts import 一次，且全仓仅 main.ts 引用', () => {
+        const mainSource = readSource(MAIN_TS)
+        for (const cssFileName of DEDUPED_CSS_FILES) {
+            expect(countCssImports(mainSource, cssFileName), `main.ts 中 ${cssFileName}`).toBe(1)
+            const referencingFiles = rendererSources
+                .filter((file) => countCssImports(readSource(file), cssFileName) > 0)
+                .map((file) => path.relative(ROOT, file).replace(/\\/g, '/'))
+            expect(referencingFiles).toEqual(['src/renderer/src/main.ts'])
+        }
+    })
+
+    it('KaTeX CSS 全仓只有 main.ts 一处引入（katex.css / katex.min.css 均计）', () => {
+        const katexCssImportPattern =
+            /^\s*(?:@?import)\s+['"][^'"]*katex\/dist\/katex(?:\.min)?\.css['"]/m
+        const referencingFiles = rendererSources
+            .filter((file) => katexCssImportPattern.test(readSource(file)))
+            .map((file) => path.relative(ROOT, file).replace(/\\/g, '/'))
+        expect(referencingFiles).toEqual(['src/renderer/src/main.ts'])
+        expect(readSource(MAIN_TS)).toContain("import 'katex/dist/katex.css'")
+    })
+
+    it('与 styles/preview_font 重复的 assets/atom-one-light.css 死副本已删除（M6 重复资产）', () => {
+        const assetsDuplicate = path.join(RENDERER_SRC_DIR, 'assets', 'atom-one-light.css')
+        const effectiveStylesCopy = path.join(
+            RENDERER_SRC_DIR,
+            'styles',
+            'preview_font',
+            'atom-one-light.css'
+        )
+        // 收敛前 assets/ 下存在一份零引用的旧版 atom-one-light.css（1369B，
+        // 与 styles/preview_font 的生效版本内容不同且全仓无引用），本轮作为重复资产删除；
+        // 生效副本保留（main.ts 唯一引入，由上一个用例锁定）。
+        expect(fs.existsSync(assetsDuplicate)).toBe(false)
+        expect(fs.existsSync(effectiveStylesCopy)).toBe(true)
     })
 })

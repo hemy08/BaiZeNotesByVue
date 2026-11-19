@@ -7,11 +7,14 @@ import { promises as fs } from 'fs'
 import { clipboard } from 'electron'
 import { ParseDirectoryPath } from './path-utils'
 import { showErrorMessageBox } from './dialog-helpers'
-import { appState, sendToMainWindow } from '../app-state'
+// 4.4（M2）：图片路径越界提示与 file-utils/shared 的 notifyPathAccessDenied 是同一条
+// 文案/类型，原独立实现 notifyImagePathDenied 已删除，统一复用共享 helper
+// （name 参数非法时复用 notifyInvalidFileName，状态栏文案与原实现逐字一致、日志更准确）。
+import { notifyInvalidFileName, notifyPathAccessDenied } from './shared'
+import { appState } from '../app-state'
 import { tMain } from '../i18n'
 // P1-AS-1：图片落盘同样受文件路径守卫约束（活动文件目录之外一律拒绝）
 import { isPathAllowed, isSafeFileName } from '../security'
-import { IPC } from '../../../shared/ipc-channels'
 // 公共接口归位第 2 批：纯数字随机串迁移到 shared/utils/random（字符集与循环语义逐字对齐）
 import { randomDigits } from '../../../shared/utils/random'
 // 第 4 批 P3 清理：分隔符归一化复用 shared/utils/path.normalizeSlashes
@@ -19,19 +22,6 @@ import { randomDigits } from '../../../shared/utils/random'
 import { normalizeSlashes } from '../../../shared/utils/path'
 
 import path from 'path'
-
-/**
- * P1-AS-1：图片路径越界的用户提示（状态栏；不弹阻塞对话框、不抛异常）
- */
-function notifyImagePathDenied(targetPath: unknown): void {
-    const display = typeof targetPath === 'string' ? targetPath : String(targetPath)
-    sendToMainWindow(IPC.EVENTS.STATUS_BAR_UPDATE, {
-        message: tMain('mainMsg.status.operationFailed', {
-            message: `${tMain('mainMsg.file.readError.eacces')}: ${display}`
-        }),
-        type: 'error'
-    })
-}
 
 /**
  * 解析图片 Buffer
@@ -73,7 +63,7 @@ async function CreateImagesDir(): Promise<string> {
     // P1-AS-1：图片目录必须位于受信范围（活动文件目录/工作区/临时目录/对话框选择路径）；
     // 活动文件目录由 security.ts 依据「活动文件本身已受信」派生，正常场景不会被拒。
     if (!isPathAllowed(outDir)) {
-        notifyImagePathDenied(outDir)
+        notifyPathAccessDenied(outDir)
         return ''
     }
     try {
@@ -101,7 +91,7 @@ async function CreateImagesDir(): Promise<string> {
 async function SaveImagesFile(outFilePath: string, base64Image: string): Promise<boolean> {
     // P1-AS-1：写入目标必须在受信范围内（文件名由调用方经白名单校验，这里再守一层）
     if (!isPathAllowed(outFilePath)) {
-        notifyImagePathDenied(outFilePath)
+        notifyPathAccessDenied(outFilePath)
         return false
     }
     const imgBuffer = ParserImageBuffer(base64Image)
@@ -133,7 +123,7 @@ export async function SaveImageDataToFile(name: string, base64Image: string): Pr
     }
     // P1-AS-1：渲染层传入的 name 可能是 `..\\..\\x.png` 等路径片段，先做文件名白名单校验
     if (!isSafeFileName(name)) {
-        notifyImagePathDenied(name)
+        notifyInvalidFileName(name)
         return false
     }
 

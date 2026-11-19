@@ -21,10 +21,10 @@
             http-equiv="Content-Security-Policy"
             content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: file:; font-src 'self' data:; frame-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; worker-src 'self' blob:; object-src 'none'; form-action 'none'"
         />
-        <link rel="stylesheet" href="./src/styles/preview_font/atom-one-light.css" />
-        <link rel="stylesheet" href="./src/styles/material/admonition.css" />
-        <link rel="stylesheet" href="./src/styles/material/gridcards.css" />
-        <link rel="stylesheet" href="./src/styles/sheet_dialog/normalize.css" />
+        <!-- 第 4 批 4.5（M6）：删除此处 4 条 <link rel="stylesheet">（atom-one-light /
+             admonition / gridcards / normalize）。它们与 src/main.ts 的 import 重复加载
+             同一批 CSS（构建产物里同时出现两条加载路径）；现统一收口到 main.ts 单一入口，
+             顺序与收敛前 main.ts 的 import 顺序一致，级联行为不变。 -->
     </head>
 
     <body style="overflow: hidden">

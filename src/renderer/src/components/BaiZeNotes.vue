@@ -1,5 +1,5 @@
 <template>
-    <div id="editor-container" :style="containerStyles">
+    <div id="editor-container">
         <!-- 标题栏区域，高度30px，宽度与app一致，支持拖动移动窗口 -->
         <div
             v-show="electronMenu"
@@ -23,7 +23,7 @@
         <!-- 整个工作区域 -->
         <div id="workspace-area" class="workspace-area"><WorkSpace /></div>
         <!-- 状态栏区域，高度10px，宽度与app一致 -->
-        <div id="status-bar" class="status-bar" :style="statusBarStyles"><StatusBar /></div>
+        <div id="status-bar" class="status-bar"><StatusBar /></div>
         <!-- 窗口大小调整边框 -->
         <div class="resize-edge resize-top" @mousedown="onResizeMouseDown('top', $event)"></div>
         <div
@@ -57,10 +57,11 @@
             :message="configStore.dialogs.messageDialog.message"
             @close="configStore.hideDialog('message')"
         />
+        <!-- 第 4 批 4.2（M4）：主题切换入口直接绑定 useTheme 单例，组件不再自行读盘/写 DOM -->
         <BaiZeDialogs.ThemeSettingDialog
             :visible="configStore.dialogs.themeSettings.visible"
             @close="configStore.hideDialog('themeSettings')"
-            @change="handleThemeChange"
+            @change="theme.changeTheme"
         />
         <BaiZeDialogs.FontSelectDialog
             :visible="configStore.dialogs.fontSelect.visible"
@@ -182,15 +183,7 @@ import WorkSpace from './WorkSpaceArea/WorkSpace.vue'
 import StatusBar from './StatusBar.vue'
 import MenuBar from './MenuBar.vue'
 import EventBus from '../common/event-bus/event-bus'
-import type {
-    DialogActionResult,
-    SelectImageResult,
-    SystemSetting,
-    ThemeStyles,
-    ThemeUpdateData
-} from '../../../shared/types'
-// 第 2 批契约重构：主题明暗归属统一走 shared 常量（不再本地维护 darkThemeTypes 清单）
-import { isDarkThemeType } from '../../../shared/constants/theme'
+import type { DialogActionResult, SelectImageResult, SystemSetting } from '../../../shared/types'
 // 对话框组件导入（统一命名空间导出）
 import * as BaiZeDialogs from './dialogs'
 // 配置 Store
@@ -203,42 +196,17 @@ import logoLightLarge from '../assets/icons/light/logo-baize-light-A-large.svg'
 import { useWindowManagement } from '../composables/useWindowManagement'
 // 第 3 批组件化：标题栏窗口控制按钮统一为公共组件（内部复用 useWindowManagement）
 import WindowControls from './common/WindowControls.vue'
+// 第 4 批 4.2（M4）：主题单真源——读配置 / CSS 变量应用 / Monaco 主题 / 广播订阅统一收敛到
+// useTheme 单例（本组件此前内联了全部主题实现，并与 MenuBar 各自读盘、各自监听广播）。
+import { useTheme } from '../composables/useTheme'
 import { IPC } from '../../../shared/ipc-channels'
 import { t } from '../common/i18n'
 import { EVENT_BUS } from '../common/event-bus/event-bus-events'
 import { logger } from '../common/logger'
 
 const configStore = getConfigStore()
-
-// =============================================================================================
-// 结构优化第 2 批 2.2（H4）：主界面二级分块——Monaco 不再静态进入主界面壳 chunk。
-//
-// 改造前：本组件 `import * as monaco from 'monaco-editor'` 只为应用编辑器主题，
-// 却让 Monaco（约 7.3 MB）随主界面壳同步求值；现在改用动态 import，打包器会生成
-// 独立的 Monaco chunk，并让编辑器组件（MarkdownMonacoEditor）与本组件共享同一模块
-// 实例（同一 chunk 只下载/求值一次）。
-//
-// 语义保证：主题应用是异步的，但 setTheme 是 Monaco 全局主题服务的状态；无论编辑器
-// 先创建还是主题先应用，最终都会命中当前主题（「编辑器创建晚于主题」时新编辑器直接
-// 使用已设置的全局主题）。加载失败仅跳过主题更新，不影响主界面其他功能。
-// =============================================================================================
-
-/** Monaco 模块形态（仅类型引用，编译后不产生静态依赖） */
-type MonacoModule = typeof import('monaco-editor')
-
-/** Monaco 模块动态加载 Promise（失败后清空，允许主题更新时重试） */
-let monacoModulePromise: Promise<MonacoModule> | null = null
-
-/** 按需加载 Monaco 模块（与编辑器组件共享同一打包 chunk） */
-async function loadMonacoModule(): Promise<MonacoModule> {
-    if (monacoModulePromise === null) {
-        monacoModulePromise = import('monaco-editor').catch((error: unknown) => {
-            monacoModulePromise = null
-            throw error
-        })
-    }
-    return monacoModulePromise
-}
+// 主题单例（模块级，多组件共享同一状态与订阅；重复挂载不会二次读盘）
+const theme = useTheme()
 
 // 性能改造（主界面按需异步加载）配套：向 App.vue 上报「主界面已挂载、IPC 监听器已注册」。
 // App.vue 以此作为发送渲染层就绪握手（RENDER.READY）的时序依据——show-welcome=false 等
@@ -259,144 +227,10 @@ const {
 
 const electronMenu = ref(true)
 
-// 当前主题样式
-const currentTheme = ref<ThemeStyles | null>(null)
-
-// 第 2 批契约重构：标题栏 logo 的明暗切换改用 shared/constants/theme 的
-// isDarkThemeType（主题明暗归属的唯一真源）——原先本地 darkThemeTypes 清单与
-// useConfigStore 的「按名字含 dark 猜明暗」互相矛盾，本次统一（含 baize-text /
-// baize-starry / forest 三处历史归属差异，口径以主题设置对话框 UI 分类为准）。
-const logoSrc = computed(() => {
-    const themeType = configStore.themeConfig.value.currentTheme
-    return isDarkThemeType(themeType) ? logoLightLarge : logoDarkUltra
-})
-
-// 是否单独配置编辑器主题
-const separateEditorTheme = ref(false)
-
-// Monaco 编辑器主题
-const monacoEditorTheme = ref('vs')
-
-// 计算容器样式
-const containerStyles = computed(() => {
-    if (!currentTheme.value) return {}
-    return {
-        backgroundColor: currentTheme.value.backgroundColor,
-        color: currentTheme.value.textColor
-    }
-})
-
-// 计算状态栏样式
-const statusBarStyles = computed(() => {
-    if (!currentTheme.value) return {}
-    return {
-        backgroundColor: currentTheme.value.cardBackground,
-        color: currentTheme.value.secondaryTextColor
-    }
-})
-
-// 应用主题样式
-// 主题切换处理函数
-async function handleThemeChange(themeType?: string, monacoTheme?: string, separate?: boolean) {
-    try {
-        // 如果有参数，使用传入的值，否则使用当前配置
-        const targetTheme = themeType || configStore.themeConfig.value.currentTheme
-        const targetSeparate =
-            separate !== undefined ? separate : configStore.themeConfig.value.separateEditorTheme
-        const targetMonacoTheme = monacoTheme || configStore.themeConfig.value.editorTheme || 'vs'
-
-        // 更新配置
-        configStore.updateThemeConfig({
-            currentTheme: targetTheme,
-            separateEditorTheme: targetSeparate,
-            editorTheme: targetMonacoTheme
-        })
-
-        // 获取新的主题样式
-        const themeStyles = await window.electron.ipcRenderer.invoke(
-            IPC.THEME.GET_CURRENT_THEME_STYLES,
-            targetTheme
-        )
-
-        if (themeStyles) {
-            // 应用新主题
-            separateEditorTheme.value = targetSeparate
-            monacoEditorTheme.value = targetMonacoTheme
-            applyTheme(themeStyles)
-
-            // 更新 Monaco 编辑器主题
-            await updateMonacoEditorTheme(themeStyles, targetSeparate, targetMonacoTheme)
-
-            // A-3/FUN-20：主题应用成功后通知主进程向所有窗口广播
-            // {themeStyles, monacoTheme, separateEditorTheme} 形态的更新事件，
-            // 使主窗口与其他窗口（主进程 HTML 对话框等）正确热同步。
-            window.electron.ipcRenderer.send(
-                IPC.THEME.UPDATE_THEME,
-                targetTheme,
-                targetMonacoTheme,
-                targetSeparate
-            )
-        }
-    } catch (error) {
-        logger.error('Failed to handle theme change:', error)
-    }
-}
-
-function applyTheme(theme: ThemeStyles) {
-    currentTheme.value = theme
-
-    // 应用CSS变量到根元素
-    const root = document.documentElement
-
-    // 带前缀的变量（原始）
-    root.style.setProperty('--theme-background-color', theme.backgroundColor)
-    root.style.setProperty('--theme-card-background', theme.cardBackground)
-    root.style.setProperty('--theme-text-color', theme.textColor)
-    root.style.setProperty('--theme-secondary-text-color', theme.secondaryTextColor)
-    root.style.setProperty('--theme-border-color', theme.borderColor)
-    root.style.setProperty('--theme-accent-color', theme.accentColor)
-    root.style.setProperty('--theme-button-background', theme.buttonBackground)
-    root.style.setProperty('--theme-button-text-color', theme.buttonTextColor)
-    root.style.setProperty('--theme-hover-background', theme.hoverBackground)
-    root.style.setProperty('--theme-title-bar-gradient', theme.titleBarGradient)
-
-    // 无前缀的别名（对话框组件使用）
-    root.style.setProperty('--bg-color', theme.backgroundColor)
-    root.style.setProperty('--card-bg', theme.cardBackground)
-    root.style.setProperty('--text-color', theme.textColor)
-    root.style.setProperty('--secondary-text-color', theme.secondaryTextColor)
-    root.style.setProperty('--border-color', theme.borderColor)
-    root.style.setProperty('--accent-color', theme.accentColor)
-    root.style.setProperty('--button-bg', theme.buttonBackground)
-    root.style.setProperty('--button-text-color', theme.buttonTextColor)
-    root.style.setProperty('--hover-bg', theme.hoverBackground)
-    root.style.setProperty('--title-bar-gradient', theme.titleBarGradient)
-
-    // 更新标题栏样式
-    const titleBar = document.querySelector('.title-bar') as HTMLElement
-    if (titleBar) {
-        titleBar.style.background = theme.titleBarGradient
-    }
-
-    // 更新菜单栏样式
-    const menuContainer = document.querySelector('.menu-container') as HTMLElement
-    if (menuContainer) {
-        menuContainer.style.backgroundColor = theme.cardBackground
-        menuContainer.style.color = theme.textColor
-    }
-
-    // 更新预览区域样式
-    const previewContainer = document.querySelector('#markdown-preview-html') as HTMLElement
-    if (previewContainer) {
-        previewContainer.style.backgroundColor = theme.cardBackground
-        previewContainer.style.color = theme.textColor
-    }
-
-    // 强制所有组件重新应用主题
-    document.querySelectorAll('[data-theme]').forEach((element) => {
-        ;(element as HTMLElement).setAttribute('data-theme', theme.name)
-    })
-}
+// 标题栏 logo 明暗：第 4 批 4.2 起统一由 useTheme.isDarkTheme 提供（内部仍走
+// shared/constants/theme 的 isDarkThemeType 唯一口径，含 baize-text / baize-starry /
+// forest 三处历史归属差异，口径以主题设置对话框 UI 分类为准）。
+const logoSrc = computed(() => (theme.isDarkTheme.value ? logoLightLarge : logoDarkUltra))
 
 // 对话框 apply/insert 事件处理 —— 将对话框产生的内容插入到 Monaco 编辑器。
 // 历史说明：原 handleFontApply 经 IPC.EDITOR.UPDATE_FONT 发送字体 HTML，但主进程
@@ -577,106 +411,9 @@ async function handleConfirmDelete() {
     }
 }
 
-// 更新Monaco编辑器主题
-async function updateMonacoEditorTheme(
-    theme: ThemeStyles,
-    separate: boolean,
-    monacoThemeName: string
-) {
-    // 结构优化第 2 批 2.2（H4）：主题应用是唯一需要 Monaco 的壳层逻辑，改为按需加载；
-    // 加载失败的兜底：只跳过编辑器主题（界面/预览主题仍由 applyTheme 生效），不阻塞启动。
-    let monaco: MonacoModule
-    try {
-        monaco = await loadMonacoModule()
-    } catch (error) {
-        logger.warn('Monaco 模块加载失败，已跳过编辑器主题更新:', error)
-        return
-    }
-
-    // 如果单独配置了编辑器主题，使用配置的主题
-    if (separate) {
-        // 加载 Monaco 主题（loadMonacoTheme 内部已完成 defineTheme + setTheme）
-        // 2026-11-18：删除无接收方的 UPDATE_OPTIONS R→M 发送（主进程无该通道监听，
-        // 主题实际已由 loadMonacoTheme 本地应用，属空转死分支）
-        await loadMonacoTheme(monaco, monacoThemeName)
-    } else {
-        // 否则根据应用主题自动选择
-        const themeName =
-            theme.name.includes('dark') ||
-            theme.name.includes('深') ||
-            theme.name.includes('Dark') ||
-            theme.name.includes('黑')
-                ? 'vs-dark'
-                : 'vs'
-
-        // 动态定义自定义主题
-        monaco.editor.defineTheme('custom-theme', {
-            base: themeName,
-            inherit: true,
-            rules: [],
-            colors: {
-                'editor.background': theme.cardBackground,
-                'editor.foreground': theme.textColor,
-                'editor.lineHighlightBackground': theme.hoverBackground,
-                'editorCursor.foreground': theme.accentColor,
-                'editor.selectionBackground': theme.accentColor + '40',
-                'editor.inactiveSelectionBackground': theme.accentColor + '20'
-            }
-        })
-        monaco.editor.setTheme('custom-theme')
-    }
-
-    // 发送事件通知编辑器组件更新主题
-    EventBus.$emit(EVENT_BUS.THEME_UPDATED, theme)
-}
-
-// 加载 Monaco 编辑器主题（monaco 模块由调用方按需加载后传入，避免重复动态 import）
-async function loadMonacoTheme(monaco: MonacoModule, themeName: string): Promise<string | null> {
-    // 内置主题直接设置
-    if (themeName === 'vs' || themeName === 'vs-dark' || themeName === 'hc-black') {
-        monaco.editor.setTheme(themeName)
-        return themeName
-    }
-
-    // 从主进程 resources/themes/monaco-themes/ 加载扩展主题
-    try {
-        const themeData = await window.electron.ipcRenderer.invoke(
-            IPC.THEME.LOAD_MONACO_THEME,
-            themeName
-        )
-        if (themeData) {
-            monaco.editor.defineTheme(themeName, themeData)
-            monaco.editor.setTheme(themeName)
-            return themeName
-        }
-        logger.error(`Monaco theme not found: ${themeName}`)
-        monaco.editor.setTheme('vs')
-        return 'vs'
-    } catch (error) {
-        logger.error(`Failed to load Monaco theme: ${themeName}`, error)
-        // 失败时回退到默认主题
-        monaco.editor.setTheme('vs')
-        return 'vs'
-    }
-}
-
-// 监听主题更新事件
-async function handleThemeUpdate(_event: unknown, data: ThemeUpdateData) {
-    if (!data || !data.themeStyles) {
-        logger.error('[Renderer] Received invalid theme data')
-        return
-    }
-
-    // 更新配置状态
-    separateEditorTheme.value = data.separateEditorTheme
-    monacoEditorTheme.value = data.monacoTheme
-
-    // 应用主题样式
-    applyTheme(data.themeStyles)
-
-    // 更新 Monaco 编辑器主题
-    await updateMonacoEditorTheme(data.themeStyles, data.separateEditorTheme, data.monacoTheme)
-}
+// 第 4 批 4.2（M4）：Monaco 编辑器主题应用（updateMonacoEditorTheme / loadMonacoTheme）
+// 与 THEME_UPDATED 广播处理（handleThemeUpdate）已整体迁移到 composables/useTheme.ts，
+// 本组件不再持有 Monaco 动态导入与主题 DOM 写入逻辑。
 
 // P2 死通道清理：原 handleOpenUrlInWebBrowserWindow + IPC.OVERLAY.OPEN_URL
 // 监听已删除——该通道主进程零发送方（在线网页由 OpenOnlineWebPages 在主进程侧
@@ -705,10 +442,14 @@ const handleOpenVueDialog = (
     }
 }
 
+// 第 4 批 4.2（M4）：主题广播订阅清理函数由 useTheme 单例提供（订阅实现在 composable 内）。
+let unsubscribeThemeUpdates: (() => void) | null = null
+
 onMounted(async () => {
     window.electron.ipcRenderer.on(IPC.SETTING.SYSTEM_SETTING_UPDATE, handleSystemSettingUpdate)
-    window.electron.ipcRenderer.on(IPC.THEME.THEME_UPDATED, handleThemeUpdate)
     window.electron.ipcRenderer.on(IPC.DIALOG.OPEN_VUE_DIALOG, handleOpenVueDialog)
+    // 第 4 批 4.2：THEME_UPDATED 广播订阅收敛为 useTheme 单例（MenuBar 的重复订阅已删除）
+    unsubscribeThemeUpdates = theme.subscribeThemeUpdates()
 
     // 2026-11-19 修复（第 3 批组件化后）：标题栏最大化状态同步（初始查询 + resize 监听）
     // 已随按钮内聚到 WindowControls 组件，本组件只保留拖拽/缩放相关的清理逻辑。
@@ -717,31 +458,9 @@ onMounted(async () => {
     // 通知外壳主界面已就绪；App.vue 在此之后才发送 READY 握手，保证启动恢复数据不丢失。
     emit('main-view-mounted')
 
-    // 加载所有配置
-    try {
-        await configStore.loadAllConfigs()
-
-        // 应用主题配置
-        const themeConfig = configStore.themeConfig.value
-        const themeStyles = await window.electron.ipcRenderer.invoke(
-            IPC.THEME.GET_CURRENT_THEME_STYLES,
-            themeConfig.currentTheme
-        )
-
-        separateEditorTheme.value = themeConfig.separateEditorTheme
-        monacoEditorTheme.value = themeConfig.editorTheme || 'vs'
-
-        if (themeStyles) {
-            applyTheme(themeStyles)
-            await updateMonacoEditorTheme(
-                themeStyles,
-                separateEditorTheme.value,
-                monacoEditorTheme.value
-            )
-        }
-    } catch (error) {
-        logger.error('Failed to load configs:', error)
-    }
+    // 第 4 批 4.2（M4）：主题初始化（配置读盘 → 拉取主题样式 → CSS 变量 + Monaco 应用）
+    // 由 useTheme 单例统一实现；错误日志与「初始化只执行一次」的防重入语义均在 composable 内。
+    await theme.initializeTheme()
     EditorReLayout()
 })
 
@@ -750,8 +469,9 @@ onBeforeUnmount(() => {
         IPC.SETTING.SYSTEM_SETTING_UPDATE,
         handleSystemSettingUpdate
     )
-    window.electron.ipcRenderer.removeListener(IPC.THEME.THEME_UPDATED, handleThemeUpdate)
     window.electron.ipcRenderer.removeListener(IPC.DIALOG.OPEN_VUE_DIALOG, handleOpenVueDialog)
+    unsubscribeThemeUpdates?.()
+    unsubscribeThemeUpdates = null
     cleanupWindowEvents()
 })
 </script>
@@ -837,6 +557,10 @@ onBeforeUnmount(() => {
     height: 100vh;
     overflow: hidden;
     position: relative;
+    /* 第 4 批 4.2：原 :style="containerStyles" 内联主题色改为 CSS 变量（与主题单真源一致；
+       styles/theme.css 的 :root 默认值提供未应用主题时的兜底） */
+    background-color: var(--theme-background-color, #f5f0ff);
+    color: var(--theme-text-color, #2d2d2d);
 }
 
 /* 窗口大小调整边框 */

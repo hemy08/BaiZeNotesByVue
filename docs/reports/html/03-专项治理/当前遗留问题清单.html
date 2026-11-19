@@ -53,7 +53,7 @@
 <blockquote>
 <p>本报告为<strong>问题跟踪台账</strong>（2026-11-18 建立）：从 <a href="IPC通信矩阵.html">IPC 通信矩阵</a> §五、<a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告</a> 与三组一致性核对结论中，整理当前仍未闭环的问题。</p>
 <p><strong>维护约定</strong>：每次修复完成后更新对应行的「状态」列，并在文末「修复记录」章节追加日期化条目（日期、问题编号、改动摘要、验证结果）。</p>
-<p><strong>当前基线</strong>：v1.3.8（169 测试文件 / 3,234 用例 / 92 IPC 通道 / 17 组；生产依赖 0 漏洞）；最后核对：<strong>2026-11-19</strong>。</p>
+<p><strong>当前基线</strong>：v1.3.8（172 测试文件 / 3,272 用例 / 92 IPC 通道 / 17 组；生产依赖 0 漏洞）；最后核对：<strong>2026-11-19</strong>。</p>
 </blockquote>
 <h2 id="sec-1">一、状态约定</h2>
 <table>
@@ -461,13 +461,13 @@
 <li><strong>修复 2（锚点守卫）</strong>：ShowHtmlView 的 iframe <code>load</code> 后由父页面（同源）在 iframe 文档注入事件委托——拦截纯 fragment 链接默认导航，改为仅滚动 iframe 内部（<code>scrollTo</code>，避免父级滚动链冒泡）；跨文档链接（顶部导航）保持默认；iframe 每次导航后重新绑定</li>
 <li><strong>验证（真实应用脚本复现）</strong>：场景 A 跳转后点 <code>.toc</code>：容器 y 稳定 67、菜单 y 稳定 30、iframe 内滚动 529/1552/2256（修复前容器 y -8、菜单 y 27）；场景 B 直接打开后点 <code>.toc</code>：iframe 内容保持完整（不再空白）且内部滚动正常</li>
 <li><strong>回归护栏</strong>：新增 <code>tests/unit/viewer-layout-contract.test.ts</code> 3 用例锁定容器/壳层/iframe/PDF 滚动区样式契约</li>
-<li>验收：typecheck 0 / ESLint 0-0 / vitest <strong>169 文件 / 3,234 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E 4 passed</li>
+<li>验收：typecheck 0 / ESLint 0-0 / vitest <strong>172 文件 / 3,272 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E 4 passed</li>
 </ul>
 <h3 id="sub-9">2026-11-19 · 公共接口归位（第 4 批：P3 清理，✅ 完成）</h3>
 <ul>
 <li><strong>主进程/配置组</strong>：删除 <code>dialog-helpers</code> 3 个死包装（+ index re-export/测试同步）；4 处手写 basename/dirname 统一为 <code>path.basename/dirname</code>（顺带修 <code>OpenFolderExplorer</code> 的 <code>lastIndexOf('//')</code> 笔误）；主题注册表/主窗口图标资源路径统一 <code>app-paths</code>（<strong>修复真实缺陷：主窗口图标原路径指向不存在的 out/resources，一直未加载</strong>）；删除 <code>@mainer</code> 死别名（tsconfig/vite/vitest/test 四处）；<code>global-types.d.ts</code> 迁移到 <code>src/shared/types/global.d.ts</code>（web 程序不再 include main 目录）；IPC domain 计数文案 18→17 + 防回归断言</li>
 <li><strong>渲染层组</strong>：删除死 composable <code>useEventBus</code>（-44 行 + 13 用例删除，全仓 0 生产引用）；<code>messageTypes</code> 三处重复收敛为 <code>MESSAGE_DIALOG_TYPES</code> 常量；<strong>18 处裸 <code>console.*</code> 收敛到 logger</strong>（渲染层仅剩 logger 自身出口）；<strong>修复 ThemeSettingDialog 8 个 resize-handle 的 <code>@mousedown</code> 柯里化未调用缺陷</strong>（第 3 批发现的历史缺陷，新增逐方向回归用例）；清理 <code>DialogState.admonition.data</code> 死字段</li>
-<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>169 文件 / 3,234 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
+<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>172 文件 / 3,272 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
 </ul>
 <blockquote>
 <p><strong>公共接口归位计划（第 0–4 批）已全部完成</strong>：新建 shared 工具层 11 模块 + 常量层 7 模块 + 契约层 4 模块；主进程/渲染层 60+ 文件迁移；渲染层组件化（WindowControls/FileViewerShell/TextCodecTool/BaseDialog 18/18 对话框/preview-block-utils/Mermaid 清理）；P3 清理 12 项。累计净减约 4,000+ 行重复代码。剩余建议：实机 UI 手测（9 项清单）、主题明暗归属待产品确认、<code>useEventBus</code> 相关历史文档口径清理。</p>
@@ -480,7 +480,7 @@
 <li><strong>C-4 组（4 个特殊）</strong>：EditorSetting/MermaidEdit/ThemeSetting（<strong>8 个 resize-handle 放入 <code>#prepend</code></strong>，DOM 顺序断言锁定）/HelpAbout（仅关闭按钮标题栏 + app-region drag）迁移；新增 27 用例；<strong>18/18 对话框全部完成 BaseDialog 迁移</strong></li>
 <li><strong>插件样式副本清理</strong>：13 个 PluginTools 组件删除本地 scoped 副本（<strong>-229 行 CSS / 121 条重复声明</strong>），差异声明保留（公共定义作基础）；40 个候选中残留重复声明 0；视觉零变化</li>
 <li><strong>记录待修复（非本次引入）</strong>：ThemeSettingDialog 的 <code>@mousedown=&quot;startResize('n')&quot;</code> 柯里化函数未调用（resize 交互迁移前就可能未生效），建议后续单独修复为 <code>startResize('n')($event)</code></li>
-<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>169 文件 / 3,234 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
+<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>172 文件 / 3,272 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
 </ul>
 <h3 id="sub-11">2026-11-19 · 公共接口归位（第 3 批：渲染层组件化，✅ 已完成）</h3>
 <ul>
@@ -491,7 +491,7 @@
 <li><strong>预览解析 helper 去重</strong>：新建 <code>Markdown/preview-block-utils.ts</code>（14 函数 + 2 常量）；4 个 preview-md 插件删除重复 helper（净减 <strong>309 行</strong>），缩进口径差异以具名封装参数化保留（basic/blocks/media/material 各自 env 键隔离不变）；23 用例等价性单测（4 份旧实现逐字副本作参照）</li>
 <li><strong>Mermaid 双管线清理</strong>：删除死组件 <code>MermaidRender.vue</code>（-114 行，生产零引用）；测试改为断言 <code>hemy-editor-render</code> 懒加载路径（initialize 一次 + 错误块降级），新增死组件删除守卫</li>
 <li><strong>BaseDialog 抽层（保守范围）</strong>：新建 <code>dialogs/BaseDialog.vue</code>（16 props/3 插槽/4 种 title-bar 变体/4 种动画，默认样式 + 覆盖钩子）；迁移 <code>MessageDialog</code>（347→210）/<code>CreateFileFolderDialog</code>（352→238）/<code>WebUrlDialog</code>（271→160）3 个 simple 对话框，<strong>283 条声明逐属性核对 0 不一致</strong>；其余 15 个对话框保留，迁移清单（C-2/C-3/C-4 分组）见报告与修复计划</li>
-<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>169 文件 / 3,234 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
+<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>172 文件 / 3,272 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
 </ul>
 <blockquote>
 <p>第 3 批剩余项已全部完成（见下方批次 12）：BaseDialog 已扩展并迁移其余 15 个对话框、plugin-tools 样式副本已清理；第 4 批 P3 清理待执行。</p>
@@ -504,7 +504,7 @@
 <li><strong>文件树传输契约</strong>：<code>FileItem</code> 补 <code>id</code>/<code>fileExtension</code> 必填、新增 <code>FileTreePayload</code>；主进程去掉 <code>as FileItem</code> 绕过（根节点补稳定 id）；<code>StoreFileProperties</code> 改 shared <code>FileProperties</code>；渲染层 <code>FileSysItem</code> 从传输类型派生；新增 <code>file-tree-contract.test.ts</code></li>
 <li><strong>主题类型族</strong>：28 项 <code>ThemeType</code>/<code>ThemeConfig</code>/<code>MonacoThemeConfig</code>/<code>MonacoThemeData</code>/<code>ThemeListResult</code> 上移 shared；新建 <code>shared/constants/theme.ts</code>（<code>THEME_GROUPS</code> 浅色 14/深色 7/护眼 7 + <code>isDarkThemeType</code>），消除渲染层两套硬编码清单与「名字含 dark 猜测」的矛盾（<code>BaiZeNotes</code>/<code>ThemeSettingDialog</code>/<code>useConfigStore</code> 统一引用）；<strong>待产品确认</strong>：baize-text/baize-starry/forest 实际配色与 UI 分组相反，确认后只需改 shared 常量</li>
 <li><strong>其余契约</strong>：PlantUML 响应、AppVersionInfo、备份（ConfigBackupInfo/State/Command）、HashResult、CryptoWireData、RendererEditorConfig/RendererQuickLink 两端引用统一 + 静态护栏（<code>theme-contract/file-tree-contract/domain-contract</code> 3 个测试文件）</li>
-<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>169 文件 / 3,234 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
+<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>172 文件 / 3,272 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
 </ul>
 <blockquote>
 <p>记录待办（不阻塞）：主题明暗口径待产品确认；<code>FILE.READ_HTML</code> 空串语义；渲染层 75 处调用点尚未灰度替换为 typed helper（见计划第 2 批后续建议）。</p>
@@ -516,7 +516,7 @@
 <li><strong>使用方迁移</strong>：主进程 <strong>16 个文件</strong>（utils/security/workspace-root/directory-tree/path-utils/image-operations/file-operations/file-encoding/plantuml-local/logger/auto-backup/config-backup/config-schema/config-manager/handlers/window-bounds）与渲染层 <strong>15 个文件</strong>（html-view-utils/preview-local-render/preview-md-blocks/preview-chapters/hemy-editor-render/MermaidRender/MarkdownMonacoEditor/MarkdownPreviewComponent/MenuBar/resource-manager/FileTreeNode/escape-html/ImageBase64 等）改引 shared；保留既有导出名/签名（re-export 薄壳），行为零变化</li>
 <li><strong>迁移中修复的真实缺陷</strong>：<code>MarkdownPreviewComponent.vue</code> 的 <code>lastIndexOf('/') || lastIndexOf('\\')</code> 短路缺陷（根级 <code>/README.md</code> 返回整条路径）；Monaco model URI 统一为规范 <code>file:///E:/...</code> 并对 UNC 增加 <code>toMonacoModelUrl()</code> 兼容（原 <code>file://${path}</code> 把盘符当 authority，实测 monaco 0.57 6 类样本稳定唯一）</li>
 <li><strong>语义差异（已在代码注释记录）</strong>：README 大小文案统一为 <code>128.00 MB</code> 格式；<code>parseBackupStamp</code> 增加日历回读校验（非法日期返回 null）；目录树节点 id 的 FNV 输入由保留 <code>\\</code> 改为统一 <code>/</code>（确定性 id，不落盘/非 IPC 契约）；<code>clampNumber</code> 适配 shared 数字钳制（行为等价）</li>
-<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>169 文件 / 3,234 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
+<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>172 文件 / 3,272 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
 </ul>
 <blockquote>
 <p>后续：第 2 批 shared/types（零运行时，约 10 组契约）待执行；第 3 批渲染层组件化、第 4 批 P3 清理见《公共接口归位修复计划》。</p>

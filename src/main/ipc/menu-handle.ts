@@ -8,11 +8,13 @@ import {
     aiMenuHandlers
 } from './menu-tools'
 import { helpMenuHandlers } from './menu-help'
-import { IPC } from '../../shared/ipc-channels'
-// CQ-10：主进程统一日志出口。注意本文件另有 3 处 console.error/warn 被
+// CQ-10：主进程统一日志出口。注意本文件另有 2 处 console.error/warn 被
 // tests/unit/menu-handle.test.ts 以「精确参数」断言（Unknown menu action / Error executing
-// menu action / 上报失败），迁移会改变 console 实参形态导致断言失败，故按任务约定保留。
+// menu action），迁移会改变 console 实参形态导致断言失败，故按任务约定保留。
 import { logger } from '../utils/logger'
+// 4.4（M2）：状态栏发送与错误文案归一化统一 helper。注意本文件不得静态 import i18n
+// （启动早期加载链），因此只复用 status-notify 的纯发送/归一化能力，翻译仍走动态 import。
+import { notifyStatus, toUserError } from '../utils/status-notify'
 
 type MenuActionHandler = (mainWindow: Electron.CrossProcessExports.BrowserWindow) => unknown
 
@@ -92,40 +94,19 @@ function findHandler(action: string): MenuActionHandler | undefined {
     return undefined
 }
 
-/** 取错误对象中适合展示给用户的文案 */
-function describeMenuActionError(error: unknown): string {
-    if (error instanceof Error) {
-        return error.message
-    }
-    return String(error)
-}
-
 /**
  * FE-08：把菜单动作失败文案写入状态栏（主窗口可能已销毁，全部判空 + 兜底）。
  * tMain 经动态 import 加载：menu-handle 被 handlers.ts 在启动早期引用，
  * 静态 import i18n 链会提前带入 config 模块（与既有 lazy import 约定一致）；
  * 翻译模块不可用时退化为直接展示原始错误信息（仅供排查，不阻塞提示）。
+ * 4.4：发送统一走 notifyStatus（窗口判活/发送异常兜底由 helper 负责）。
  */
 function notifyMenuActionError(
     mainWindow: Electron.CrossProcessExports.BrowserWindow | undefined,
     rawMessage: string
 ): void {
     const send = (message: string): void => {
-        if (
-            !mainWindow ||
-            typeof mainWindow.isDestroyed !== 'function' ||
-            mainWindow.isDestroyed()
-        ) {
-            return
-        }
-        try {
-            mainWindow.webContents.send(IPC.EVENTS.STATUS_BAR_UPDATE, {
-                message,
-                type: 'error'
-            })
-        } catch (notifyError) {
-            console.error('Failed to report menu action error to status bar: ', notifyError)
-        }
+        notifyStatus({ message, type: 'error' }, mainWindow)
     }
 
     if (rawMessage === 'No active file') {
@@ -144,11 +125,11 @@ function notifyMenuActionError(
 /**
  * FE-08：菜单动作执行失败的统一上报。
  *
- * 修复前只做 console.error——async handler 返回的 rejected promise 无人消费
- * （主进程未处理拒绝），且用户没有任何提示。这里统一：
  * 1. 记录日志（保持原错误日志格式）；
  * 2. 经 STATUS_BAR_UPDATE 通知渲染层状态栏（窗口已销毁时静默跳过）；
  * 3. "无活动文件"这类已知受控错误给出明确文案（不从主进程把英文内部异常透出）。
+ * 4.4：非 Error 的 reject 值统一经 toUserError 归一化（Error→message，字符串原样，
+ * 其它→String），不再手写 describeMenuActionError。
  */
 function reportMenuActionError(
     action: string,
@@ -158,7 +139,7 @@ function reportMenuActionError(
     console.error('Error executing menu action: ', action, ', error: ', error)
 
     try {
-        notifyMenuActionError(mainWindow, describeMenuActionError(error))
+        notifyMenuActionError(mainWindow, toUserError(error))
     } catch (notifyError) {
         // 上报失败（窗口销毁/IPC 不可用）不得再次抛出，避免异常循环
         logger.error('Failed to report menu action error: ', action, notifyError)

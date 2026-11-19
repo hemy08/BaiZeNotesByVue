@@ -62,20 +62,14 @@
                 <button
                     class="tab-btn"
                     :class="{ 'tab-active': storageMode === 'binary' }"
-                    @click="
-                        storageMode = 'binary'
-                        computeStorage()
-                    "
+                    @click="selectStorageMode('binary')"
                 >
                     {{ t('toolsConvert.unit.binary') }}
                 </button>
                 <button
                     class="tab-btn"
                     :class="{ 'tab-active': storageMode === 'si' }"
-                    @click="
-                        storageMode = 'si'
-                        computeStorage()
-                    "
+                    @click="selectStorageMode('si')"
                 >
                     {{ t('toolsConvert.unit.si') }}
                 </button>
@@ -204,6 +198,12 @@ function computeStorage(): void {
         errorMessage.value = String(error)
         storageResult.value = ''
     }
+}
+
+/** 切换存储制式并立即重算（模板按钮点击；单一表达式避免模板内多语句处理器） */
+function selectStorageMode(mode: 'binary' | 'si'): void {
+    storageMode.value = mode
+    computeStorage()
 }
 
 // 初始化计算

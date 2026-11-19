@@ -637,7 +637,7 @@ function main() {
             output: readmeHtml,
             title: '报告 HTML Wiki · 首页',
             l1: '白泽笔记 · 历史报告归档（HTML Wiki）',
-            l2: '当前基线 v1.3.8 · 169 测试文件 / 3,234 用例 · 92 IPC 通道',
+            l2: '当前基线 v1.3.8 · 172 测试文件 / 3,272 用例 · 92 IPC 通道',
             depth: './'
         })
         // 首页导航与正文：md 报告链接 → 对应 html（存在时），便于在 wiki 内直接跳转

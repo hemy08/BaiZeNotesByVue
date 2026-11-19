@@ -47,6 +47,8 @@ import { appState, sendToMainWindow } from './app-state'
 // utils 不再静态 import config，消除 utils → config 反向依赖。
 import { getSystemSettingFromProvider } from './providers'
 import { tMain } from './i18n'
+// 4.4（M2）：unknown 异常 → 用户可读文案统一归一化
+import { toUserError } from './status-notify'
 import { IPC } from '../../shared/ipc-channels'
 import { encodeFileContent } from './file-utils/file-encoding'
 // 公共接口归位第 2 批：单文件大小上限常量与备份目录纯函数（时间戳/名称/安全解析/排序）
@@ -475,7 +477,7 @@ export async function runAutoBackupOnce(): Promise<void> {
         logger.error('[AutoBackup] 自动备份失败:', error)
         sendToMainWindow(IPC.EVENTS.STATUS_BAR_UPDATE, {
             message: tMain('mainMsg.status.autoBackupFailed', {
-                message: error instanceof Error ? error.message : String(error)
+                message: toUserError(error)
             }),
             type: 'error'
         })

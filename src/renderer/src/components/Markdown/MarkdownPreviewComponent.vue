@@ -15,8 +15,8 @@ import DOMPurify from 'dompurify'
 // 不再经 `hemy-editor` 聚合桶（该桶含 Monaco 编辑器动作/快捷键等），
 // 保证预览按需 chunk 不把 Monaco 重新带回来。
 import * as Render from './hemy-editor-render'
-import EventBus from '../../common/event-bus/event-bus'
 import actionscript from 'highlight.js/lib/languages/actionscript'
+import { useEventBus } from '../../composables/useEventBus'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import {
@@ -80,6 +80,9 @@ const props = defineProps({
 })
 
 const renderedMarkdownContent = ref('')
+
+// M5：大纲请求事件订阅经 useEventBus 注册，卸载时自动清理
+const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownPreviewComponent' })
 
 let renderDebounceTimer: ReturnType<typeof setTimeout> | null = null
 const RENDER_DEBOUNCE_DELAY = 150
@@ -404,7 +407,7 @@ function handlePreviewClick(event: MouseEvent) {
 }
 
 onMounted(() => {
-    EventBus.$on(EVENT_BUS.MONACO_GET_CHAPTERS, UpdateMarkdownChapters)
+    onEventBus(EVENT_BUS.MONACO_GET_CHAPTERS, UpdateMarkdownChapters)
     // PF-02：订阅既有活动文件路径事件（主进程打开/新建文件时下发），供本地 URL 转换使用
     window.electron.ipcRenderer.on(IPC.FILE.USER_SELECT_FILE, handleActiveFileChange)
     // AS-9：远程图片隐私开关——系统设置变更广播 + 初始值读取（默认不加载远程图片）
@@ -416,7 +419,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-    EventBus.$off(EVENT_BUS.MONACO_GET_CHAPTERS, UpdateMarkdownChapters)
+    // EventBus 监听已由 useEventBus 自动清理
     window.electron.ipcRenderer.removeListener(IPC.FILE.USER_SELECT_FILE, handleActiveFileChange)
     window.electron.ipcRenderer.removeListener(
         IPC.SETTING.SYSTEM_SETTING_UPDATE,
@@ -443,7 +446,9 @@ onBeforeUnmount(() => {
 </style>
 
 <style scoped>
-@import 'katex/dist/katex.min.css';
+/* 第 4 批 4.5（M6）：KaTeX CSS 统一由 src/renderer/src/main.ts 全局引入一次；
+   本组件原 `@import 'katex/dist/katex.min.css'` 与主入口重复（katex.css 与
+   katex.min.css 内容等价），已删除，避免同一份 KaTeX 样式被打包两次。 */
 
 .markdown-preview-html {
     width: calc(100% - 15px);

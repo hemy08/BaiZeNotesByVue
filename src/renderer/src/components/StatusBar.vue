@@ -22,15 +22,18 @@
 </template>
 
 <script setup lang="ts">
-import EventBus from '../common/event-bus/event-bus'
 import { onBeforeUnmount, onMounted, ref, computed } from 'vue'
 // Position 仅作为光标位置事件参数的类型使用（运行时字段为 lineNumber/column，
 // 不依赖 monaco 枚举值）；改为 import type 后编译期擦除，不把 monaco 拉入模块图。
 import type { Position } from 'monaco-editor'
 import { IPC } from '../../../shared/ipc-channels'
-import type { StatusBarUpdatePayload } from '../../../shared/types'
+import type { StatusBarMessageType, StatusBarUpdatePayload } from '../../../shared/types'
 import { EVENT_BUS } from '../common/event-bus/event-bus-events'
+import { useEventBus } from '../composables/useEventBus'
 import { t } from '../common/i18n'
+
+// M5：状态栏 3 个进程内事件统一经 useEventBus 注册，组件卸载时自动清理
+const { on: onEventBus } = useEventBus({ componentIdPrefix: 'StatusBar' })
 
 // CMP-30：状态栏消息由主进程发送「已本地化」的译文（mainMsg 命名空间），渲染层原样展示；
 // 未收到消息或消息自动清除后显示「就绪」，静态标签与动态模板均走 t()，切换语言即时刷新。
@@ -41,20 +44,17 @@ const consoleMessage = computed(() => consolePayload.value?.message ?? t('status
 // FUN-29：状态栏编码显示当前文件实际编码（主进程经状态栏通道下发），默认 utf-8
 const encodingDisplay = ref('utf-8')
 
-const consoleIcon = computed(() => {
-    switch (consoleType.value) {
-        case 'success':
-            return '✓'
-        case 'warning':
-            return '⚠'
-        case 'error':
-            return '✗'
-        case 'loading':
-            return '⋯'
-        default:
-            return 'ℹ'
-    }
-})
+// M2（4.4）：状态栏消息类型统一由 shared/types/status-bar 的 StatusBarMessageType
+// 驱动（主进程发送端与本组件消费端同一类型），图标映射穷举全部合法类型。
+const MESSAGE_TYPE_ICONS: Record<StatusBarMessageType, string> = {
+    info: 'ℹ',
+    success: '✓',
+    warning: '⚠',
+    error: '✗',
+    loading: '⋯'
+}
+
+const consoleIcon = computed(() => MESSAGE_TYPE_ICONS[consoleType.value] ?? 'ℹ')
 
 // PF-13：自动复位定时器句柄。状态栏消息每次更新都会创建 5s 定时器，
 // 此前未保存句柄 → 新消息到达时旧 timer 仍会触发、组件卸载后 timer 仍持有组件闭包。
@@ -164,9 +164,9 @@ onMounted(() => {
     window.electron.ipcRenderer.on(IPC.EVENTS.FILE_SAVED_SUCCESS, handleFileSaved)
     window.electron.ipcRenderer.on(IPC.EVENTS.STATUS_BAR_UPDATE, handleConsoleUpdateEvent)
 
-    EventBus.$on(EVENT_BUS.STATUS_BAR_FILE_PATH, handleFilePathUpdate)
-    EventBus.$on(EVENT_BUS.STATUS_BAR_CONTEXT_LENGTH, handleContentLengthUpdate)
-    EventBus.$on(EVENT_BUS.STATUS_BAR_CURSOR_POSITION, handleCursorPositionUpdate)
+    onEventBus(EVENT_BUS.STATUS_BAR_FILE_PATH, handleFilePathUpdate)
+    onEventBus(EVENT_BUS.STATUS_BAR_CONTEXT_LENGTH, handleContentLengthUpdate)
+    onEventBus(EVENT_BUS.STATUS_BAR_CURSOR_POSITION, handleCursorPositionUpdate)
 })
 
 onBeforeUnmount(() => {
@@ -180,9 +180,7 @@ onBeforeUnmount(() => {
         handleConsoleUpdateEvent
     )
 
-    EventBus.$off(EVENT_BUS.STATUS_BAR_FILE_PATH, handleFilePathUpdate)
-    EventBus.$off(EVENT_BUS.STATUS_BAR_CONTEXT_LENGTH, handleContentLengthUpdate)
-    EventBus.$off(EVENT_BUS.STATUS_BAR_CURSOR_POSITION, handleCursorPositionUpdate)
+    // EventBus 监听已由 useEventBus 自动清理
 })
 </script>
 

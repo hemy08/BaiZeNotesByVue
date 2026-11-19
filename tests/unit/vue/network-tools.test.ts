@@ -3,11 +3,12 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
 import type { DOMWrapper } from '@vue/test-utils'
 
-import Ipv4AddrConvert from '@renderer/components/PluginTools/NetWork/Ipv4AddrConvert.vue'
-import Ipv6UlaGenerator from '@renderer/components/PluginTools/NetWork/Ipv6UlaGenerator.vue'
-import MacAddrGenerator from '@renderer/components/PluginTools/NetWork/MacAddrGenerator.vue'
-import MacAddrLookup from '@renderer/components/PluginTools/NetWork/MacAddrLookup.vue'
 import Ipv4SubnetCalc from '@renderer/components/PluginTools/NetWork/Ipv4SubnetCalc.vue'
+
+// 第 4 批 4.5（M6）：原「NetWork 占位工具组件」用例（Ipv4AddrConvert / Ipv6UlaGenerator /
+// MacAddrGenerator / MacAddrLookup）已随 4 个无菜单入口、无注册、仅跳外链的占位页一起删除
+// （目录收缩为「已注册且有入口」的 Ipv4SubnetCalc / RegexTester；删除清单见
+// out/tool-results/opt-batch4-theme.md）。
 
 /** 在模板中按 label 文本定位一行（div-style-display-row）：find 返回 DOMWrapper 而非 VueWrapper */
 function findRow(wrapper: VueWrapper, label: string): DOMWrapper<Element> {
@@ -24,54 +25,6 @@ function rowValues(wrapper: VueWrapper, label: string): string[] {
         .findAll('input')
         .map((input) => (input.element as HTMLInputElement).value)
 }
-
-describe('NetWork 占位工具组件', () => {
-    afterEach(() => {
-        vi.restoreAllMocks()
-    })
-
-    const stubTools = [
-        {
-            name: 'Ipv4AddrConvert',
-            component: Ipv4AddrConvert,
-            title: 'Ipv4地址转换器',
-            url: 'https://tools.w3cschool.cn/ipv4-address-converter'
-        },
-        {
-            name: 'Ipv6UlaGenerator',
-            component: Ipv6UlaGenerator,
-            title: 'IPv6 ULA生成器',
-            url: 'https://tools.w3cschool.cn/ipv6-ula-generator'
-        },
-        {
-            name: 'MacAddrGenerator',
-            component: MacAddrGenerator,
-            title: 'MAC 地址生成器',
-            url: 'https://tools.w3cschool.cn/mac-address-generator'
-        },
-        {
-            name: 'MacAddrLookup',
-            component: MacAddrLookup,
-            title: 'MAC地址查找',
-            url: 'https://tools.w3cschool.cn/mac-address-lookup'
-        }
-    ]
-
-    it.each(stubTools)('$name renders its expected tool title', ({ component, title }) => {
-        const wrapper = mount(component as never)
-        expect(wrapper.find('h1').text().trim().replace(/\s+/g, '')).toBe(title.replace(/\s+/g, ''))
-    })
-
-    it.each(stubTools)(
-        '$name opens the reference URL via window.open',
-        async ({ component, url }) => {
-            const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-            const wrapper = mount(component as never)
-            await wrapper.find('a.plugin-tools-openurl').trigger('click')
-            expect(openSpy).toHaveBeenCalledWith(url, '_blank', 'noopener, noreferrer')
-        }
-    )
-})
 
 describe('Ipv4SubnetCalc', () => {
     afterEach(() => {

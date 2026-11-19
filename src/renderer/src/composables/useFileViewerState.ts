@@ -19,17 +19,9 @@
  * 通过 options.loader / onReset / onContentReady 注入，本模块不感知具体文件类型。
  */
 
-import {
-    computed,
-    getCurrentInstance,
-    nextTick,
-    onBeforeUnmount,
-    onMounted,
-    ref,
-    shallowRef
-} from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import type { ComputedRef, Ref, ShallowRef } from 'vue'
-import EventBus from '../common/event-bus/event-bus'
+import { useEventBus } from './useEventBus'
 import { t } from '../common/i18n'
 import { logger } from '../common/logger'
 
@@ -145,9 +137,6 @@ export interface FileViewerState<TContent> {
     isUnmounted: () => boolean
 }
 
-/** 无组件实例（如独立调用）时的 componentId 兜底序号 */
-let fallbackInstanceSeed = 0
-
 /**
  * 创建文件查看器通用状态机。
  *
@@ -180,13 +169,12 @@ export function useFileViewerState<TContent>(
 
     /**
      * 组件唯一标识：插件菜单实例与 WorkSpace 实例可能同时挂载，固定 id 会让
-     * EventBus.$cleanup 把另一实例的监听一并清掉；带实例 uid 保证卸载只清自身。
+     * EventBus.$cleanup 把另一实例的监听一并清掉；useEventBus 为每次调用生成
+     * 「查看器名-实例-序号」唯一 id，卸载时只清本实例监听。
      */
-    const instance = getCurrentInstance()
-    const instanceSuffix = instance
-        ? String(instance.uid)
-        : `fallback-${++fallbackInstanceSeed}-${Date.now()}`
-    const componentId = `${options.viewerName}-${instanceSuffix}`
+    const { componentId, on: onEventBus } = useEventBus({
+        componentIdPrefix: options.viewerName
+    })
 
     const hasContent = computed(() => content.value !== null)
     const isEmpty = computed(
@@ -308,17 +296,15 @@ export function useFileViewerState<TContent>(
 
     onMounted(() => {
         // 监听文件选择事件（componentId 实例唯一，卸载时只清理本实例）
-        EventBus.$on<FileSelectPayload>(options.fileSelectedEvent, handleFileSelect, {
-            componentId
-        })
+        onEventBus<FileSelectPayload>(options.fileSelectedEvent, handleFileSelect)
     })
 
     onBeforeUnmount(() => {
         // 卸载守卫：使在途加载全部过期，并拒绝后续新建加载任务
         isUnmounted = true
         loadGeneration += 1
-        // 清理事件监听（只清本实例注册的监听）
-        EventBus.$cleanup(componentId)
+        // 事件监听由 useEventBus 的 onBeforeUnmount 自动清理（本 composable 内
+        // useEventBus 先于此处注册清理钩子，清理先于查看器资源释放执行）
         // 查看器特有资源清理（如销毁 pdf.js 文档与渲染任务）
         options.onReset?.()
     })

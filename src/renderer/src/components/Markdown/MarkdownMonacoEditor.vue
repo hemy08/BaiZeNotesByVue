@@ -38,11 +38,15 @@ import type { MarkdownTOC } from '../../../../shared/types'
 import { IPC } from '../../../../shared/ipc-channels'
 import { t } from '../../common/i18n'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import { useEventBus } from '../../composables/useEventBus'
 import { logger } from '../../common/logger'
 import { toFileUrl } from '../../../../shared/utils/path'
 
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
+
+// M5：编辑器 9 个进程内事件订阅统一经 useEventBus 注册，卸载时自动清理
+const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownMonacoEditor' })
 
 const props = defineProps({
     // 代码内容
@@ -637,18 +641,18 @@ onMounted(async () => {
         }
     }
 
-    // 注册 EventBus 监听器
-    EventBus.$on(EVENT_BUS.MONACO_UPDATE_HEADER_FORMAT, handleUpdateContext)
-    EventBus.$on(EVENT_BUS.MONACO_UPDATE_FONT_FORMAT, handleUpdateContext)
-    EventBus.$on(EVENT_BUS.MONACO_INSERT_TEXT, handleInsertAfterCursor)
-    EventBus.$on(EVENT_BUS.MONACO_LOCATE_TARGET_LINE, handleLocateTargetLine)
-    EventBus.$on(EVENT_BUS.MONACO_RELAYOUT, handleRelayout)
+    // 注册 EventBus 监听器（M5：useEventBus 统一注册，卸载时自动清理）
+    onEventBus(EVENT_BUS.MONACO_UPDATE_HEADER_FORMAT, handleUpdateContext)
+    onEventBus(EVENT_BUS.MONACO_UPDATE_FONT_FORMAT, handleUpdateContext)
+    onEventBus(EVENT_BUS.MONACO_INSERT_TEXT, handleInsertAfterCursor)
+    onEventBus(EVENT_BUS.MONACO_LOCATE_TARGET_LINE, handleLocateTargetLine)
+    onEventBus(EVENT_BUS.MONACO_RELAYOUT, handleRelayout)
 
     // FUN-09：编辑器菜单动作（事件名与菜单代理的契约固定，勿改）
-    EventBus.$on(EVENT_BUS.EDITOR_TOGGLE_FOLD, handleToggleFold)
-    EventBus.$on(EVENT_BUS.EDITOR_TRIGGER_FIND, handleTriggerFind)
-    EventBus.$on(EVENT_BUS.EDITOR_JUMP_LINE, handleJumpToLine)
-    EventBus.$on(EVENT_BUS.EDITOR_TOGGLE_OUTLINE, handleToggleOutline)
+    onEventBus(EVENT_BUS.EDITOR_TOGGLE_FOLD, handleToggleFold)
+    onEventBus(EVENT_BUS.EDITOR_TRIGGER_FIND, handleTriggerFind)
+    onEventBus(EVENT_BUS.EDITOR_JUMP_LINE, handleJumpToLine)
+    onEventBus(EVENT_BUS.EDITOR_TOGGLE_OUTLINE, handleToggleOutline)
     // FUN-09（editor-toggle-outline）配套：点击外部/Esc 关闭大纲下拉
     document.addEventListener('click', handleOutlineOutsideClick)
     document.addEventListener('keydown', handleOutlineEscape)
@@ -665,18 +669,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-    // 1. 清理 EventBus 监听器
-    EventBus.$off(EVENT_BUS.MONACO_UPDATE_HEADER_FORMAT, handleUpdateContext)
-    EventBus.$off(EVENT_BUS.MONACO_UPDATE_FONT_FORMAT, handleUpdateContext)
-    EventBus.$off(EVENT_BUS.MONACO_INSERT_TEXT, handleInsertAfterCursor)
-    EventBus.$off(EVENT_BUS.MONACO_LOCATE_TARGET_LINE, handleLocateTargetLine)
-    EventBus.$off(EVENT_BUS.MONACO_RELAYOUT, handleRelayout)
-
-    // FUN-09：清理编辑器菜单动作监听器与大纲关闭监听
-    EventBus.$off(EVENT_BUS.EDITOR_TOGGLE_FOLD, handleToggleFold)
-    EventBus.$off(EVENT_BUS.EDITOR_TRIGGER_FIND, handleTriggerFind)
-    EventBus.$off(EVENT_BUS.EDITOR_JUMP_LINE, handleJumpToLine)
-    EventBus.$off(EVENT_BUS.EDITOR_TOGGLE_OUTLINE, handleToggleOutline)
+    // 1. EventBus 监听器已由 useEventBus 在 onBeforeUnmount 自动清理；
+    //    这里只清理 DOM 监听与大纲关闭监听
     document.removeEventListener('click', handleOutlineOutsideClick)
     document.removeEventListener('keydown', handleOutlineEscape)
 

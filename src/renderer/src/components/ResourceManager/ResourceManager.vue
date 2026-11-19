@@ -52,10 +52,14 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import FileTreeNode from './FileTreeNode.vue'
 import { ComputeTocSignature, FileSysItem, MergeExpandedState } from './resource-manager'
 import EventBus from '../../common/event-bus/event-bus'
+import { useEventBus } from '../../composables/useEventBus'
 import type { FileTreePayload, MarkdownTOC } from '../../../../shared/types'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { logger } from '../../common/logger'
+
+// M5：大纲广播订阅经 useEventBus 注册，卸载时自动清理
+const { on: onEventBus } = useEventBus({ componentIdPrefix: 'ResourceManager' })
 
 const showFileExplorer = ref(true)
 const showMarkdownToc = ref(false)
@@ -180,12 +184,12 @@ const handleFileSystemData = (_event: unknown, fileTree: string) => {
 }
 
 onMounted(() => {
-    EventBus.$on(EVENT_BUS.MONACO_CHAPTERS, handleChaptersUpdate)
+    onEventBus(EVENT_BUS.MONACO_CHAPTERS, handleChaptersUpdate)
     window.electron.ipcRenderer.on(IPC.FILE_MANAGER.FILE_SYSTEM_DATA, handleFileSystemData)
 })
 
 onBeforeUnmount(() => {
-    EventBus.$off(EVENT_BUS.MONACO_CHAPTERS, handleChaptersUpdate)
+    // EventBus 监听已由 useEventBus 自动清理
     window.electron.ipcRenderer.removeListener(
         IPC.FILE_MANAGER.FILE_SYSTEM_DATA,
         handleFileSystemData

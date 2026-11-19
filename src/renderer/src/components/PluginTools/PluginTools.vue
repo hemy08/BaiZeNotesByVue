@@ -13,13 +13,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import EventBus from '../../common/event-bus/event-bus'
 // ARC-14：插件工具显示事件走进程内 EventBus（集中常量），
 // 原 IPC 通道 'CHANNEL_PLUGIN_TOOL_SHOW' 无任何发送方（死监听）已删除。
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import { useEventBus } from '../../composables/useEventBus'
 import { t } from '../../common/i18n'
 import { pluginTools } from './plugin-tools-const'
+
+// M5：插件工具显示/主题更新订阅经 useEventBus 注册，卸载时自动清理
+const { on: onEventBus } = useEventBus({ componentIdPrefix: 'PluginTools' })
 
 const props = defineProps({
     pluginsAreaWidth: {
@@ -51,16 +55,12 @@ function handleClosePluginTools() {
 
 onMounted(() => {
     // 监听插件工具显示事件（来自 menu-actions.ts）
-    EventBus.$on(EVENT_BUS.PLUGIN_TOOL_SHOW, handlePluginToolShow)
+    onEventBus(EVENT_BUS.PLUGIN_TOOL_SHOW, handlePluginToolShow)
     // 监听主题更新事件
-    EventBus.$on(EVENT_BUS.THEME_UPDATED, applyThemeStyles)
+    onEventBus(EVENT_BUS.THEME_UPDATED, applyThemeStyles)
 })
 
-// 组件卸载时清理监听器
-onBeforeUnmount(() => {
-    EventBus.$off(EVENT_BUS.PLUGIN_TOOL_SHOW, handlePluginToolShow)
-    EventBus.$off(EVENT_BUS.THEME_UPDATED, applyThemeStyles)
-})
+// 组件卸载时 EventBus 监听由 useEventBus 自动清理（无需手写 $off）
 
 // 处理插件工具显示事件
 function handlePluginToolShow(action: string) {

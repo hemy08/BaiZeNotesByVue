@@ -30,6 +30,9 @@ import { formatFileSize } from '../../shared/utils/format'
 import type { AppVersionInfo, CryptoData, FileProperties, ThemeType } from '../../shared/types'
 import { tMain } from './i18n'
 import { logger } from './logger'
+// 4.4（M2）：异步 IPC 异常兜底 / 状态栏提示统一 helper（原本文件与 handlers.ts 各一份复制品）
+import { notifyIpcAsyncError } from './error-report'
+import { notifyStatus } from './status-notify'
 
 export {
     globalInitialize,
@@ -43,32 +46,6 @@ export {
 
 // MEM-10：本模块所有注册均归属的组件 ID（进程级全局注册）
 const GLOBAL_IPC_COMPONENT_ID = 'global-utils-ipc'
-
-/**
- * CQ-05：异步 ipcMain.on 回调异常兜底——主进程留错误日志，并经现有状态栏通道
- * （status-bar-console-update，见 logger.ts / file-operations.ts 同款用法）
- * 向渲染层提示，避免 rejection 变成 unhandledRejection 后静默丢失。
- */
-function notifyIpcAsyncError(
-    mainWindow: Electron.BrowserWindow,
-    channel: string,
-    error: unknown
-): void {
-    logger.error(`[IPC] 通道 "${channel}" 异步处理失败:`, error)
-    try {
-        // 窗口已销毁或（测试桩）缺少 isDestroyed 时跳过提示，不影响主流程
-        if (typeof mainWindow.isDestroyed === 'function' && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send(IPC.EVENTS.STATUS_BAR_UPDATE, {
-                message: tMain('mainMsg.status.operationFailed', {
-                    message: error instanceof Error ? error.message : String(error)
-                }),
-                type: 'error'
-            })
-        }
-    } catch (notifyError) {
-        logger.error('[IPC] 状态栏错误提示发送失败:', notifyError)
-    }
-}
 
 /**
  * CQ-05：invoke/handle 通道错误日志包装——保持"异常抛给渲染层 invoke 调用方"
@@ -232,6 +209,7 @@ function isUserWritableExecutablePath(filePath: string): boolean {
 /**
  * P1-AS-1：文件路径越界的用户提示（状态栏）。
  * 使用现有状态词条组合出「打开文件失败：没有读取权限: <path>」，不新增 i18n 词条。
+ * 4.4：发送统一走 notifyStatus（窗口判活/异常兜底不再手写）。
  */
 function notifyFilePathDenied(
     mainWindow: Electron.BrowserWindow,
@@ -241,18 +219,15 @@ function notifyFilePathDenied(
 ): void {
     const display = typeof filePath === 'string' ? filePath : String(filePath)
     logger.warn(`[Security] 通道 "${channel}" 已拒绝受信范围外的路径（P1-AS-1）：${display}`)
-    try {
-        if (typeof mainWindow.isDestroyed === 'function' && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send(IPC.EVENTS.STATUS_BAR_UPDATE, {
-                message: tMain(actionKey, {
-                    message: `${tMain('mainMsg.file.readError.eacces')}: ${display}`
-                }),
-                type: 'error'
-            })
-        }
-    } catch (notifyError) {
-        logger.error('[Security] 路径越界状态栏提示发送失败:', notifyError)
-    }
+    notifyStatus(
+        {
+            message: tMain(actionKey, {
+                message: `${tMain('mainMsg.file.readError.eacces')}: ${display}`
+            }),
+            type: 'error'
+        },
+        mainWindow
+    )
 }
 
 /**

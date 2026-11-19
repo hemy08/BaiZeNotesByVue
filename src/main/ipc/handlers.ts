@@ -73,31 +73,12 @@ import type {
 } from '../../shared/types'
 import { tMain } from '../utils/i18n'
 import { logger } from '../utils/logger'
+// 4.4（M2）：异步 IPC 异常兜底 / 状态栏发送统一 helper（原本文件与 utils.ts 各一份复制品）
+import { notifyIpcAsyncError } from '../utils/error-report'
+import { notifyStatus, toUserError } from '../utils/status-notify'
 
 // MEM-10：本模块所有注册均归属的组件 ID（进程级全局注册）
 const GLOBAL_IPC_COMPONENT_ID = 'global-ipc-handlers'
-
-/**
- * CQ-05：异步 ipcMain.on 回调异常兜底——主进程留错误日志，并经现有状态栏通道
- * （status-bar-console-update，见 logger.ts / file-operations.ts 同款用法）
- * 向渲染层提示，避免 rejection 变成 unhandledRejection 后静默丢失。
- */
-function notifyIpcAsyncError(mainWindow: BrowserWindow, channel: string, error: unknown): void {
-    logger.error(`[IPC] 通道 "${channel}" 异步处理失败:`, error)
-    try {
-        // 窗口已销毁或（测试桩）缺少 isDestroyed 时跳过提示，不影响主流程
-        if (typeof mainWindow.isDestroyed === 'function' && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send(IPC.EVENTS.STATUS_BAR_UPDATE, {
-                message: tMain('mainMsg.status.operationFailed', {
-                    message: error instanceof Error ? error.message : String(error)
-                }),
-                type: 'error'
-            })
-        }
-    } catch (notifyError) {
-        logger.error('[IPC] 状态栏错误提示发送失败:', notifyError)
-    }
-}
 
 /**
  * CQ-05：invoke/handle 通道错误日志包装——保持"异常抛给渲染层 invoke 调用方"
@@ -170,19 +151,16 @@ function notifyWorkspaceRootRejected(
     rejectedPath: unknown
 ): void {
     logger.warn(`[Security] 已拒绝 ${channel} 的工作区根目录（${reason}）：`, rejectedPath)
-    try {
-        // 窗口已销毁或（测试桩）缺少 isDestroyed 时跳过提示，不影响主流程
-        if (typeof mainWindow.isDestroyed === 'function' && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send(IPC.EVENTS.STATUS_BAR_UPDATE, {
-                message: tMain('mainMsg.status.operationFailed', {
-                    message: `工作区目录无效：${reason}`
-                }),
-                type: 'error'
-            })
-        }
-    } catch (error) {
-        logger.error('[Security] 工作区根目录拒绝提示发送失败:', error)
-    }
+    // 4.4：统一走 notifyStatus（窗口判活/发送异常兜底由 helper 负责）
+    notifyStatus(
+        {
+            message: tMain('mainMsg.status.operationFailed', {
+                message: `工作区目录无效：${reason}`
+            }),
+            type: 'error'
+        },
+        mainWindow
+    )
 }
 
 /* ============================================================================
@@ -243,16 +221,8 @@ function failRecentOpen(
     message: string
 ): { ok: false; message: string } {
     logger.warn('[IPC] 打开最近项失败：', message)
-    try {
-        if (typeof mainWindow.isDestroyed === 'function' && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send(IPC.EVENTS.STATUS_BAR_UPDATE, {
-                message,
-                type: 'error'
-            })
-        }
-    } catch (error) {
-        logger.error('[IPC] 打开最近项失败提示发送失败:', error)
-    }
+    // 4.4：统一走 notifyStatus（窗口判活/发送异常兜底由 helper 负责）
+    notifyStatus({ message, type: 'error' }, mainWindow)
     return { ok: false, message }
 }
 
@@ -615,7 +585,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
                     return failRecentOpen(
                         mainWindow,
                         tMain('mainMsg.status.operationFailed', {
-                            message: error instanceof Error ? error.message : String(error)
+                            message: toUserError(error)
                         })
                     )
                 }

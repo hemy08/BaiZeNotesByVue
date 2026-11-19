@@ -28,6 +28,8 @@ import { appState, sendToMainWindow } from './app-state'
 import { markMainViewEntered } from '../ipc/welcome-state'
 import { tMain } from './i18n'
 import { logger } from './logger'
+// 4.4（M2）：unknown 异常 → 用户可读文案统一归一化
+import { toUserError } from './status-notify'
 import { OpenSelectFile, ParserFileName, ReloadDirFromDisk } from './file-utils'
 import {
     clearLastOpenedDirectory,
@@ -128,7 +130,7 @@ export async function restoreLastOpenedAtStartup(
                 clearLastOpenedDirectory()
                 sendToMainWindow(IPC.EVENTS.STATUS_BAR_UPDATE, {
                     message: tMain('mainMsg.status.startupRestoreFailed', {
-                        message: error instanceof Error ? error.message : String(error)
+                        message: toUserError(error)
                     }),
                     type: 'error'
                 })
@@ -163,7 +165,7 @@ export async function restoreLastOpenedAtStartup(
             clearLastOpenedFile()
             sendToMainWindow(IPC.EVENTS.STATUS_BAR_UPDATE, {
                 message: tMain('mainMsg.status.startupRestoreFailed', {
-                    message: error instanceof Error ? error.message : String(error)
+                    message: toUserError(error)
                 }),
                 type: 'error'
             })

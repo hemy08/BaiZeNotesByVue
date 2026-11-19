@@ -35,9 +35,14 @@
 - 质量基线脚本 + CI 自动校验（版本/IPC/测试/dist 产物）
 - CI 增补 Coverage / Prettier / 生产依赖 audit；release-* tag 触发发布 workflow（构建→GitHub Release→latest.yml 验证）
 
+### 🧱 结构优化第 4 批（真源收敛）
+
+- 主题单真源 useTheme；EventBus 统一 + 24 事件契约；错误/状态栏 helper 收敛；CSS/KaTeX 资产收口 + 死资源清理
+- 门禁：typecheck 0 / ESLint 0 / vitest 172 文件 / 3,272 用例全通过
+
 ### ✅ 门禁
 
-- typecheck 三工程 0 错误、ESLint 0/0、vitest 169 文件 / 3,234 用例全通过
+- typecheck 三工程 0 错误、ESLint 0/0、vitest 172 文件 / 3,272 用例全通过
 
 </code></pre></blockcode></details>
 

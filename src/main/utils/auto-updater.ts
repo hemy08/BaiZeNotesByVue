@@ -21,6 +21,8 @@ import * as path from 'path'
 import { getAppResourcesPath } from './app-paths'
 import { logger } from './logger'
 import { tMain } from './i18n'
+// 4.4（M2）：unknown 异常 → 用户可读文案统一归一化
+import { toUserError } from './status-notify'
 
 /** 检查更新的结果状态 */
 export type UpdateCheckResult =
@@ -264,7 +266,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
         }
         return { status: 'update-available', version: result.updateInfo.version }
     } catch (error) {
-        return { status: 'error', message: error instanceof Error ? error.message : String(error) }
+        return { status: 'error', message: toUserError(error) }
     }
 }
 
@@ -342,7 +344,7 @@ export async function checkForUpdatesAndNotify(
                 type: 'error',
                 title: tMain('mainMsg.update.title'),
                 message: tMain('mainMsg.update.failedMessage'),
-                detail: error instanceof Error ? error.message : String(error)
+                detail: toUserError(error)
             })
         } catch (dialogError) {
             logger.error('[auto-updater] 弹出更新结果对话框失败:', dialogError)

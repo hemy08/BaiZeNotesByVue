@@ -13,8 +13,9 @@
 import { promises as fs } from 'fs'
 import { logger } from '../logger'
 import { tMain } from '../i18n'
-import { IPC } from '../../../shared/ipc-channels'
-import { appState, sendToMainWindow } from '../app-state'
+import { appState } from '../app-state'
+// 4.4（M2）：状态栏提示统一入口（原 sendToMainWindow 直发 + 手写消息组装收敛）
+import { notifyStatus } from '../status-notify'
 // ARC-11：直接依赖无反向边的 file-state-store（避免 file-state → file-utils 循环依赖）
 import { getLastOpenedDirectory, getLastOpenedFile, getRecentFiles } from '../file-state-store'
 // P1-AS-1：「最近打开」历史作为受信来源注入 security（由本模块统一注册一次）
@@ -112,10 +113,13 @@ export function notifyPathAccessDenied(
         typeof filePath === 'string' && filePath.trim().length > 0 ? filePath : String(filePath)
     const reason = tMain('mainMsg.file.readError.eacces')
     logger.warn('[Security] 已拒绝访问工作区外的路径（P1-AS-1）：', display)
-    sendToMainWindow(IPC.EVENTS.STATUS_BAR_UPDATE, {
-        message: tMain(actionKey, { message: `${reason}: ${display}` }),
-        type: 'error'
-    })
+    notifyStatus(
+        {
+            message: tMain(actionKey, { message: `${reason}: ${display}` }),
+            type: 'error'
+        },
+        appState.mainWindow
+    )
 }
 
 /** P1-AS-1：把路径校验异常转换为用户可读提示（非路径异常返回 null） */
@@ -127,12 +131,15 @@ export function describePathDeniedError(error: unknown): string | null {
 export function notifyInvalidFileName(name: unknown): void {
     const display = typeof name === 'string' ? name : String(name)
     logger.warn('[Security] 已拒绝非法文件名（P1-AS-1）：', display)
-    sendToMainWindow(IPC.EVENTS.STATUS_BAR_UPDATE, {
-        message: tMain('mainMsg.status.operationFailed', {
-            message: `${tMain('mainMsg.file.readError.eacces')}: ${display}`
-        }),
-        type: 'error'
-    })
+    notifyStatus(
+        {
+            message: tMain('mainMsg.status.operationFailed', {
+                message: `${tMain('mainMsg.file.readError.eacces')}: ${display}`
+            }),
+            type: 'error'
+        },
+        appState.mainWindow
+    )
 }
 
 /* ==================== PF-17：当前活动文件磁盘签名 ====================

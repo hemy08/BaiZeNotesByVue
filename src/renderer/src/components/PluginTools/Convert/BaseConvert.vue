@@ -14,10 +14,7 @@
                         :key="base"
                         class="base-btn"
                         :class="{ 'base-active': fromBase === base }"
-                        @click="
-                            fromBase = base
-                            convert()
-                        "
+                        @click="selectBase('from', base)"
                     >
                         {{ base }}
                     </button>
@@ -49,10 +46,7 @@
                         :key="base"
                         class="base-btn"
                         :class="{ 'base-active': toBase === base }"
-                        @click="
-                            toBase = base
-                            convert()
-                        "
+                        @click="selectBase('to', base)"
                     >
                         {{ base }}
                     </button>
@@ -150,6 +144,16 @@ function convert(): void {
         resultValue.value = ''
         errorMessage.value = String(error)
     }
+}
+
+/** 选择源/目标快捷进制并立即换算（模板按钮点击；单一表达式避免模板内多语句处理器） */
+function selectBase(target: 'from' | 'to', base: number): void {
+    if (target === 'from') {
+        fromBase.value = base
+    } else {
+        toBase.value = base
+    }
+    convert()
 }
 
 /** 自定义源进制输入（2-36） */

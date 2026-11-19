@@ -64,7 +64,8 @@
 import { ref, computed } from 'vue'
 import type { CSSProperties } from 'vue'
 import katex from 'katex'
-import 'katex/dist/katex.css'
+// 第 4 批 4.5（M6）：KaTeX CSS 统一由 src/renderer/src/main.ts 全局引入一次；
+// 本对话框原 `import 'katex/dist/katex.css'` 与主入口重复加载（同一 CSS 两份产物），已删除。
 import { t } from '../../../common/i18n'
 import BaseDialog from '../BaseDialog.vue'
 

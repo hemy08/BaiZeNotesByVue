@@ -4,6 +4,14 @@
  */
 
 // 引入样式文件
+//
+// 第 4 批 4.5（M6）「CSS 单次注入」唯一入口：
+// - 4 个曾被 index.html <link> 与下方 import 双重加载的 CSS（atom-one-light /
+//   normalize / admonition / gridcards）现只在此处引入一次（index.html 的 4 条 link 已删除）；
+// - KaTeX CSS 从 3 处（本文件 + MathTextDialog.vue + MarkdownPreviewComponent.vue）
+//   收敛为仅本文件一处（katex.css 与 katex.min.css 内容等价，保留非 min 版本）；
+// - 引入顺序与收敛前 main.ts 完全一致（级联顺序不变），tests/unit/theme-contract.test.ts
+//   的「CSS 单次注入」静态护栏锁定该契约。
 import './assets/main.css'
 import './styles/theme.css'
 import '@renderer/styles/preview_font/atom-one-light.css'

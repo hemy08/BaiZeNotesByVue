@@ -39,7 +39,6 @@ import { menuMap } from './MenuBar/menu-config'
 import type { BaiZeMenuEntry } from './MenuBar/menu-config'
 import { HandleMenuAction } from './MenuBar/menu-actions'
 import { t } from '../common/i18n'
-import { IPC } from '../../../shared/ipc-channels'
 import { getBaseName } from '../../../shared/utils/path'
 import { logger } from '../common/logger'
 
@@ -140,38 +139,11 @@ function refreshRecentMenusIfFileMenu(index: number): void {
     }
 }
 
-// 获取当前主题
-const currentTheme = ref('baize')
-
-// 加载当前主题
-async function loadCurrentTheme() {
-    try {
-        const themeConfig = await window.api.config.read<{ currentTheme?: string }>('theme')
-        if (themeConfig && themeConfig.currentTheme) {
-            currentTheme.value = themeConfig.currentTheme
-        }
-    } catch (error) {
-        logger.error('Failed to load theme:', error)
-    }
-}
-
-// 2026-11-18（遗留清单 #2）：THEME_UPDATED 广播载荷为
-// { themeStyles, monacoTheme, separateEditorTheme }，不含主题名；原实现按
-// theme.currentTheme 读取导致菜单主题选中态不刷新。改为收到广播后重新读取配置
-// （配置为单一真源），不再依赖广播载荷字段。
-const handleThemeUpdated = (): void => {
-    void loadCurrentTheme()
-}
-
-// 监听主题变化
-onMounted(() => {
-    loadCurrentTheme()
-    window.electron.ipcRenderer.on(IPC.THEME.THEME_UPDATED, handleThemeUpdated)
-})
-
-onBeforeUnmount(() => {
-    window.electron.ipcRenderer.removeListener(IPC.THEME.THEME_UPDATED, handleThemeUpdated)
-})
+// 第 4 批 4.2（M4：主题单真源）：菜单栏**没有**主题选中态/主题名渲染需求，收敛前这里
+// 独立 `window.api.config.read('theme')` 读盘 + 独立监听 THEME_UPDATED，把主题名写入一个
+// 无任何消费方的 `currentTheme` ref（死状态 + 重复读盘 + 重复订阅）。现全部删除——主题
+// 状态与广播订阅统一由 `composables/useTheme` 单例负责，本组件仅通过 CSS 变量消费主题。
+// 2026-11-18（遗留清单 #2）原注释中「菜单主题选中态不刷新」的问题随死状态删除不再存在。
 
 const activeMenu = ref<number | null>(null)
 const submenuPosition = ref({ x: 0, y: 0 })

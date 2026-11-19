@@ -113,4 +113,43 @@ describe('hemy-editor-render Mermaid 单管线（死组件已删除）', () => {
         // 模块级 import Promise 缓存：转失败路径不会重复初始化
         expect(mermaidMock.initialize).toHaveBeenCalledTimes(1)
     })
+
+    // 第 4 批 4.5（M6）「核对 MermaidRender 残留引用」：死组件（MermaidRender.vue）与
+    // 已删除的隐藏窗口链路（MermaidRenderFrame.vue / OpenMermaidRenderFrame.ts）在源码中
+    // 不得再出现 import 引用；历史上仅剩 dialogs/index.ts 的一条「已删除导出」说明注释
+    // （由本用例的注释剔除逻辑排除）。
+    it('MermaidRender 残留引用已清理（无 import，无死文件）', () => {
+        const root = process.cwd()
+        expect(
+            fs.existsSync(
+                path.join(root, 'src/renderer/src/components/dialogs/help/MermaidRenderFrame.vue')
+            )
+        ).toBe(false)
+        expect(fs.existsSync(path.join(root, 'src/main/dialogs/OpenMermaidRenderFrame.ts'))).toBe(
+            false
+        )
+
+        // 递归收集 src 下全部 .ts/.vue，剔除注释后断言不存在对已删 Mermaid 组件的 import
+        const sourceFiles: string[] = []
+        const walk = (dir: string): void => {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const fullPath = path.join(dir, entry.name)
+                if (entry.isDirectory()) {
+                    walk(fullPath)
+                } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.vue')) {
+                    sourceFiles.push(fullPath)
+                }
+            }
+        }
+        walk(path.join(root, 'src'))
+        const importPattern = /^\s*(?:import|export)\b[^\n]*MermaidRender/m
+        const offenders = sourceFiles.filter((file) => {
+            const source = fs
+                .readFileSync(file, 'utf-8')
+                .replace(/\/\*[\s\S]*?\*\//g, '')
+                .replace(/(^|[^:])\/\/.*$/gm, '$1')
+            return importPattern.test(source)
+        })
+        expect(offenders).toEqual([])
+    })
 })

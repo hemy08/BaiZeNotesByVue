@@ -5,6 +5,10 @@
  * 进程内（渲染层组件间）交互一律走 EventBus，事件名统一引用本文件常量。
  * 事件名字符串本身保持不变（历史契约，勿改）。
  *
+ * M5（第 4 批 4.3）：订阅方统一经 composables/useEventBus 注册（自动清理）；
+ * 每个事件的「谁发/谁收」见 event-bus-contract.ts，由
+ * tests/unit/event-bus-contract.test.ts 静态核对。
+ *
  * 防回归：tests/unit/ipc-channel-constants.test.ts 会解析本文件与
  * 渲染层 EventBus.$on/$emit/$off 调用点做交叉核对。
  */
