@@ -670,7 +670,9 @@ npm run clean
 - [x] 1.3.8 已发布 GitHub Release（tag `release-1.3.8`；NSIS 117.94 MB / portable 107.03 MB / latest.yml）
 - [x] 结构优化 1~5 批 + M3、设置页/对话框拆分、依赖安全治理已随 1.3.8 发布
 
-### v1.3.8 公共接口归位第 0~4 批：shared 三层单真源（types 14 / utils 11 / constants 10 模块）、60+ 文件迁移、18/18 对话框 BaseDialog 组件化
+### v1.3.8
+
+- 公共接口归位第 0~4 批：shared 三层单真源（types 14 / utils 11 / constants 10 模块）、60+ 文件迁移、18/18 对话框 BaseDialog 组件化
 
 - [x] 主界面异步分块：入口 chunk 10,096KB → 114KB（-98.9%），初始加载 -94.3%
 - [x] 安全加固：PDF 预览 pdf.js、CSP 收紧、preload 受限白名单、IPC 分组 17 组、PlantUML 空闲销毁
