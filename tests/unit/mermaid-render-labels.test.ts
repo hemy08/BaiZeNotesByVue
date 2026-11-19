@@ -13,10 +13,13 @@
  * 标签改用 SVG 原生 `<text>`（在白名单内）。本测试锁定：
  * 1. 初始化配置必须是 htmlLabels: false（Mermaid 11 推荐根级写法）；
  * 2. DOMPurify 的消毒配置确实会移除 foreignObject、但保留 text —— 证明修复方向有效；
- * 3. MermaidRender.vue 挂载时用该配置初始化 mermaid。
+ * 3. 渲染层 Mermaid 双管线已清理：死组件 MermaidRender.vue 已删除，唯一渲染路径是
+ *    `hemy-editor-render.ts`（懒加载 mermaid 时用 `MERMAID_INIT_CONFIG` 初始化，
+ *    渲染失败降级为源码回显 + 错误提示块）。
  */
+import fs from 'node:fs'
+import path from 'node:path'
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
 import DOMPurify from 'dompurify'
 import { MERMAID_INIT_CONFIG } from '../../src/renderer/src/components/Markdown/hemy-editor-render'
 
@@ -57,21 +60,57 @@ describe('Mermaid 初始化配置（文字丢失修复）', () => {
     })
 })
 
-// MermaidRender.vue 挂载时必须以 MERMAID_INIT_CONFIG 初始化 mermaid
+// hemy-editor-render 懒加载 mermaid 时必须用 MERMAID_INIT_CONFIG 初始化（覆盖原 MermaidRender.vue 挂载断言）
 const mermaidMock = vi.hoisted(() => ({
     initialize: vi.fn(),
-    render: vi.fn().mockResolvedValue({ svg: '<svg><text>ok</text></svg>' })
+    render: vi.fn()
 }))
 vi.mock('mermaid', () => ({ default: mermaidMock }))
 
-describe('MermaidRender.vue 初始化', () => {
-    it('挂载时用 htmlLabels: false 配置初始化 mermaid', async () => {
-        const { default: MermaidRender } =
-            await import('../../src/renderer/src/components/Markdown/MermaidRender.vue')
-        const wrapper = mount(MermaidRender, { props: { graphCode: '' } })
+describe('hemy-editor-render Mermaid 单管线（死组件已删除）', () => {
+    it('死组件 MermaidRender.vue 已删除（双管线收敛为单管线）', () => {
+        expect(
+            fs.existsSync(
+                path.join(process.cwd(), 'src/renderer/src/components/Markdown/MermaidRender.vue')
+            )
+        ).toBe(false)
+    })
+
+    it('首次渲染 mermaid 块时用 MERMAID_INIT_CONFIG 初始化；失败时降级为错误块', async () => {
+        mermaidMock.render.mockResolvedValueOnce({
+            svg: '<svg><text>ok</text></svg>',
+            diagramType: 'flowchart'
+        })
+        const { preRenderMermaidProc } =
+            await import('../../src/renderer/src/components/Markdown/hemy-editor-render')
+
+        const okResult = await preRenderMermaidProc(
+            'before\n```mermaid\ngraph TD; A-->B\n```\nafter'
+        )
+
+        // 懒加载初始化：只初始化一次，且参数就是 MERMAID_INIT_CONFIG（htmlLabels: false 修复）
         expect(mermaidMock.initialize).toHaveBeenCalledTimes(1)
+        expect(mermaidMock.initialize).toHaveBeenCalledWith(MERMAID_INIT_CONFIG)
         const initArg = mermaidMock.initialize.mock.calls[0]![0] as Record<string, unknown>
         expect(initArg.htmlLabels).toBe(false)
-        wrapper.unmount()
+        expect(initArg.startOnLoad).toBe(false)
+        expect(initArg.securityLevel).toBe('strict')
+        // 渲染成功路径：包装为预览所需 HTML 结构
+        expect(mermaidMock.render).toHaveBeenCalledTimes(1)
+        expect(okResult).toContain('before')
+        expect(okResult).toContain('after')
+        expect(okResult).toContain('<pre class="mermaid">')
+        expect(okResult).toContain('<svg><text>ok</text></svg>')
+        expect(okResult).not.toContain('```mermaid')
+
+        // 失败路径（FUN-21）：源码回显 + 错误提示块（原 MermaidRender.vue 覆盖的降级行为）
+        mermaidMock.render.mockRejectedValueOnce(new Error('render failed'))
+        const errorResult = await preRenderMermaidProc('```mermaid\nBROKEN-CODE\n```')
+        expect(errorResult).toContain('class="mermaid-render-error"')
+        expect(errorResult).toContain('Mermaid 图表渲染失败')
+        expect(errorResult).toContain('BROKEN-CODE')
+        expect(errorResult).toContain('render failed')
+        // 模块级 import Promise 缓存：转失败路径不会重复初始化
+        expect(mermaidMock.initialize).toHaveBeenCalledTimes(1)
     })
 })

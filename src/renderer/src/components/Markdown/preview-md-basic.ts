@@ -38,18 +38,27 @@
  */
 import type MarkdownIt from 'markdown-it'
 import type { Env, StateBlock, StateCore, StateInline, Token } from 'markdown-it'
+// 块级解析公共 helper（第 3 批子任务 D 去重）：缩进口径 A = blkIndent + 4（见 preview-block-utils）
+import {
+    CONTENT_INDENT,
+    canStartBlock,
+    collectIndentedBlockEnd,
+    ensureEnv,
+    getDedentedContent,
+    getIndentedBlockContent,
+    getLineText,
+    isNestingTooDeep,
+    parseNestedContent,
+    remapTokenLineMaps
+} from './preview-block-utils'
 
 /** markdown-it 实例类型（`MarkdownIt` 默认导出是构造器值，实例类型需用 InstanceType 表达） */
 type MarkdownItInstance = InstanceType<typeof MarkdownIt>
 
 /* ============================== 一、常量与 token 类型 ============================== */
 
-/** 自定义块缩进阈值：与 markdown-it 缩进代码块一致（4 列，Tab 按 4 列展开） */
-const CONTENT_INDENT = 4
-/** 定义列表 dd 续行缩进阈值（`: ` 标记本身占 2 列） */
+/** 定义列表 dd 续行缩进阈值（`: ` 标记本身占 2 列；本插件特有，不进入公共 helper） */
 const DEFINITION_CONTENT_INDENT = 2
-/** markdown-it 默认 maxNesting（防御恶意深层嵌套导致栈溢出） */
-const DEFAULT_MAX_NESTING = 100
 
 /** 折叠提示块：`??? type "title"` / `???+ type "title"`（type 仅字母/数字/下划线/连字符） */
 const COLLAPSIBLE_ADMONITION_PATTERN = /^\?\?\?(\+?)\s*([\w-]+)(?:\s+"([^"]*)")?[ \t]*$/
@@ -98,102 +107,9 @@ const ENV_NESTING_DEPTH = '__mdxBasicNestingDepth'
 
 /* ============================== 二、通用工具函数 ============================== */
 
-/** 读取某一行的原始文本（已去除行首缩进；markdown-it 的 src 已把 CRLF 归一化为 LF） */
-function getLineText(state: StateBlock, line: number): string {
-    return state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line])
-}
-
-/**
- * 是否允许在此行起始一个自定义块。
- * 与 markdown-it 内置 block rule 一致：相对当前块缩进（blkIndent）必须小于 4，
- * 否则该行属于缩进代码块，不应被当作 ??? / 脚注定义 / 定义列表的头部。
- */
-function canStartBlock(state: StateBlock, line: number): boolean {
-    return state.sCount[line] - state.blkIndent < CONTENT_INDENT
-}
-
 /** 是否为 ASCII 空白字符（不含换行） */
 function isSpaceCode(code: number): boolean {
     return code === 0x20 || code === 0x09 || code === 0x0b || code === 0x0c || code === 0x0d
-}
-
-/** 读取（必要时创建）当前解析的 env 对象 */
-function ensureEnv(state: { env: Env }): Env {
-    if (!state.env) {
-        state.env = {}
-    }
-    return state.env
-}
-
-/** 当前递归嵌套深度是否已超限（超限时自定义块回退为普通段落，避免栈溢出） */
-function isNestingTooDeep(state: StateBlock, env: Env): boolean {
-    const depth = typeof env[ENV_NESTING_DEPTH] === 'number' ? env[ENV_NESTING_DEPTH] : 0
-    const maxNesting = state.md.options.maxNesting ?? DEFAULT_MAX_NESTING
-    return depth >= maxNesting
-}
-
-/** 收集「缩进内容块」结束行号：空行或相对缩进 ≥4 列的行都属于块内容，遇其他行即结束 */
-function collectIndentedBlockEnd(state: StateBlock, startLine: number, endLine: number): number {
-    let line = startLine + 1
-    while (line < endLine) {
-        if (state.isEmpty(line)) {
-            line += 1
-            continue
-        }
-        if (state.sCount[line] - state.blkIndent >= CONTENT_INDENT) {
-            line += 1
-            continue
-        }
-        break
-    }
-    return line
-}
-
-/**
- * 取出 [beginLine, endLine) 区间文本并按「相对当前块缩进 +4 列」去缩进。
- * state.getLines() 是 markdown-it 官方缩进工具：按列展开 Tab、行数一一对应，
- * 因此递归解析后的 token.map 可以按行号整体平移回填。
- */
-function getDedentedContent(state: StateBlock, beginLine: number, endLine: number): string {
-    if (endLine <= beginLine) {
-        return ''
-    }
-    return state.getLines(beginLine, endLine, state.blkIndent + CONTENT_INDENT, false)
-}
-
-/** 把 [startIndex, ...] 新产出的 token.map 从「子文本相对行号」回填为整篇文档绝对行号 */
-function remapTokenLineMaps(tokens: Token[], startIndex: number, sourceStartLine: number): void {
-    for (let index = startIndex; index < tokens.length; index += 1) {
-        const map = tokens[index].map
-        if (map) {
-            map[0] += sourceStartLine
-            map[1] += sourceStartLine
-        }
-    }
-}
-
-/**
- * 块级递归解析：把去缩进后的 Markdown 内容解析为 token 追加到当前 token 流。
- * 内容 token 的源码行号会按 sourceStartLine 回填，保证目录/定位行号准确。
- */
-function parseNestedBlockContent(
-    state: StateBlock,
-    content: string,
-    sourceStartLine: number,
-    env: Env
-): void {
-    if (content.length === 0) {
-        return
-    }
-    const tokenStart = state.tokens.length
-    const depth = typeof env[ENV_NESTING_DEPTH] === 'number' ? env[ENV_NESTING_DEPTH] : 0
-    env[ENV_NESTING_DEPTH] = depth + 1
-    try {
-        state.md.block.parse(content, state.md, state.env, state.tokens)
-    } finally {
-        env[ENV_NESTING_DEPTH] = depth
-    }
-    remapTokenLineMaps(state.tokens, tokenStart, sourceStartLine)
 }
 
 /**
@@ -310,19 +226,19 @@ function collapsibleAdmonitionBlockRule(
     if (silent) {
         return true
     }
-    const env = ensureEnv(state)
-    if (isNestingTooDeep(state, env)) {
+    if (isNestingTooDeep(state, ENV_NESTING_DEPTH)) {
         return false
     }
 
     const nextLine = collectIndentedBlockEnd(state, startLine, endLine)
-    const content = getDedentedContent(state, startLine + 1, nextLine)
+    // 缩进口径 A（blkIndent + 4）：??? 内容必须相对容器再缩进 4 列
+    const content = getIndentedBlockContent(state, startLine + 1, nextLine)
 
     const openToken = state.push(TOKEN_DETAILS_OPEN, 'details', 1)
     openToken.block = true
     openToken.map = [startLine, nextLine]
     openToken.meta = { type: header.type.toLowerCase(), title: header.title, open: header.open }
-    parseNestedBlockContent(state, content, startLine + 1, env)
+    parseNestedContent(state, content, startLine + 1, ENV_NESTING_DEPTH)
     const closeToken = state.push(TOKEN_DETAILS_CLOSE, 'details', -1)
     closeToken.block = true
 
@@ -421,7 +337,8 @@ function footnoteDefinitionBlockRule(
         }
         break
     }
-    const continuation = getDedentedContent(state, startLine + 1, lastContentLine + 1)
+    // 缩进口径 A（blkIndent + 4）：脚注定义的续行要求相对容器缩进 ≥4 列
+    const continuation = getIndentedBlockContent(state, startLine + 1, lastContentLine + 1)
     const firstLine = match[2]
     let content = firstLine
     if (continuation.length > 0) {
@@ -519,11 +436,12 @@ function collectDefinitionContent(
     }
     let content = firstLine
     if (lastContentLine > markerLine) {
-        const continuation = state.getLines(
+        // 定义列表 dd 续行口径：blkIndent + 2（`: ` 标记占 2 列），与公共 helper 的基础去缩进函数等价
+        const continuation = getDedentedContent(
+            state,
             markerLine + 1,
             lastContentLine + 1,
-            state.blkIndent + DEFINITION_CONTENT_INDENT,
-            false
+            state.blkIndent + DEFINITION_CONTENT_INDENT
         )
         content = content.length > 0 ? `${content}\n${continuation}` : continuation
     }
@@ -568,8 +486,7 @@ function definitionListBlockRule(
     if (silent) {
         return true
     }
-    const env = ensureEnv(state)
-    if (isNestingTooDeep(state, env)) {
+    if (isNestingTooDeep(state, ENV_NESTING_DEPTH)) {
         return false
     }
 
@@ -599,7 +516,7 @@ function definitionListBlockRule(
             itemOpen.block = true
             itemOpen.map = [definitionLine, definition.nextLine]
             const contentStartIndex = state.tokens.length
-            parseNestedBlockContent(state, definition.content, definition.startLine, env)
+            parseNestedContent(state, definition.content, definition.startLine, ENV_NESTING_DEPTH)
             hideSingleParagraphWrapper(state.tokens, contentStartIndex)
             const itemClose = state.push(TOKEN_DEFINITION_DESC_CLOSE, 'dd', -1)
             itemClose.block = true

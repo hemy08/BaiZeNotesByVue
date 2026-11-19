@@ -1,4 +1,7 @@
 /* Plugin Tools 主题样式 */
+/* 第 3 批重构 / A3：公共类定义统一收敛到 plugin-tools-common.css（随主题样式一并引入） */
+@import './plugin-tools-common.css';
+
 .plugin-tools-theme {
     /* 使用主题 CSS 变量 */
     background-color: var(--theme-background-color);

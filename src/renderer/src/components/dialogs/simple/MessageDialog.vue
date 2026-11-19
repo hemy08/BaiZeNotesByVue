@@ -1,170 +1,108 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleClose">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :class="`${type}-dialog`"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <div class="title-bar" :style="titleBarStyle">
-                            <span class="title-text">{{ title }}</span>
-                            <button class="close-btn" @click.stop="handleClose">×</button>
-                        </div>
+    <BaseDialog
+        :visible="visible"
+        :title="title"
+        title-bar-variant="plain"
+        animation="smooth"
+        footer-align="center"
+        :container-class="`${type}-dialog`"
+        :overlay-style="overlayStyle"
+        :container-style="containerStyle"
+        :title-bar-style="titleBarStyle"
+        @close="handleClose"
+    >
+        <div class="container">
+            <!-- Success 图标 -->
+            <svg v-if="type === 'success'" class="message-icon" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" :stroke="iconColor" stroke-width="3" />
+                <path
+                    d="M 30 50 L 45 65 L 70 35"
+                    fill="none"
+                    :stroke="iconColor"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                />
+            </svg>
 
-                        <div class="container">
-                            <!-- Success 图标 -->
-                            <svg
-                                v-if="type === 'success'"
-                                class="message-icon"
-                                viewBox="0 0 100 100"
-                            >
-                                <circle
-                                    cx="50"
-                                    cy="50"
-                                    r="45"
-                                    fill="none"
-                                    :stroke="iconColor"
-                                    stroke-width="3"
-                                />
-                                <path
-                                    d="M 30 50 L 45 65 L 70 35"
-                                    fill="none"
-                                    :stroke="iconColor"
-                                    stroke-width="4"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                />
-                            </svg>
+            <!-- Error 图标 -->
+            <svg v-else-if="type === 'error'" class="message-icon" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" :stroke="iconColor" stroke-width="3" />
+                <path
+                    d="M 35 35 L 65 65 M 65 35 L 35 65"
+                    fill="none"
+                    :stroke="iconColor"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                />
+            </svg>
 
-                            <!-- Error 图标 -->
-                            <svg
-                                v-else-if="type === 'error'"
-                                class="message-icon"
-                                viewBox="0 0 100 100"
-                            >
-                                <circle
-                                    cx="50"
-                                    cy="50"
-                                    r="45"
-                                    fill="none"
-                                    :stroke="iconColor"
-                                    stroke-width="3"
-                                />
-                                <path
-                                    d="M 35 35 L 65 65 M 65 35 L 35 65"
-                                    fill="none"
-                                    :stroke="iconColor"
-                                    stroke-width="4"
-                                    stroke-linecap="round"
-                                />
-                            </svg>
+            <!-- Warning 图标 -->
+            <svg v-else-if="type === 'warning'" class="message-icon" viewBox="0 0 100 100">
+                <path
+                    d="M 50 10 L 90 85 L 10 85 Z"
+                    fill="none"
+                    :stroke="iconColor"
+                    stroke-width="3"
+                />
+                <line
+                    x1="50"
+                    y1="35"
+                    x2="50"
+                    y2="55"
+                    :stroke="iconColor"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                />
+                <circle cx="50" cy="68" r="3" :fill="iconColor" />
+            </svg>
 
-                            <!-- Warning 图标 -->
-                            <svg
-                                v-else-if="type === 'warning'"
-                                class="message-icon"
-                                viewBox="0 0 100 100"
-                            >
-                                <path
-                                    d="M 50 10 L 90 85 L 10 85 Z"
-                                    fill="none"
-                                    :stroke="iconColor"
-                                    stroke-width="3"
-                                />
-                                <line
-                                    x1="50"
-                                    y1="35"
-                                    x2="50"
-                                    y2="55"
-                                    :stroke="iconColor"
-                                    stroke-width="4"
-                                    stroke-linecap="round"
-                                />
-                                <circle cx="50" cy="68" r="3" :fill="iconColor" />
-                            </svg>
+            <!-- Info 图标 -->
+            <svg v-else-if="type === 'info'" class="message-icon" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" :stroke="iconColor" stroke-width="3" />
+                <line
+                    x1="50"
+                    y1="35"
+                    x2="50"
+                    y2="55"
+                    :stroke="iconColor"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                />
+                <circle cx="50" cy="68" r="3" :fill="iconColor" />
+            </svg>
 
-                            <!-- Info 图标 -->
-                            <svg
-                                v-else-if="type === 'info'"
-                                class="message-icon"
-                                viewBox="0 0 100 100"
-                            >
-                                <circle
-                                    cx="50"
-                                    cy="50"
-                                    r="45"
-                                    fill="none"
-                                    :stroke="iconColor"
-                                    stroke-width="3"
-                                />
-                                <line
-                                    x1="50"
-                                    y1="35"
-                                    x2="50"
-                                    y2="55"
-                                    :stroke="iconColor"
-                                    stroke-width="4"
-                                    stroke-linecap="round"
-                                />
-                                <circle cx="50" cy="68" r="3" :fill="iconColor" />
-                            </svg>
+            <!-- Failed 图标 -->
+            <svg v-else-if="type === 'failed'" class="message-icon" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" :stroke="iconColor" stroke-width="3" />
+                <circle cx="50" cy="50" r="20" fill="none" :stroke="iconColor" stroke-width="3" />
+                <line
+                    x1="35"
+                    y1="35"
+                    x2="65"
+                    y2="65"
+                    :stroke="iconColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                />
+            </svg>
 
-                            <!-- Failed 图标 -->
-                            <svg
-                                v-else-if="type === 'failed'"
-                                class="message-icon"
-                                viewBox="0 0 100 100"
-                            >
-                                <circle
-                                    cx="50"
-                                    cy="50"
-                                    r="45"
-                                    fill="none"
-                                    :stroke="iconColor"
-                                    stroke-width="3"
-                                />
-                                <circle
-                                    cx="50"
-                                    cy="50"
-                                    r="20"
-                                    fill="none"
-                                    :stroke="iconColor"
-                                    stroke-width="3"
-                                />
-                                <line
-                                    x1="35"
-                                    y1="35"
-                                    x2="65"
-                                    y2="65"
-                                    :stroke="iconColor"
-                                    stroke-width="3"
-                                    stroke-linecap="round"
-                                />
-                            </svg>
+            <div class="message-text">{{ message }}</div>
+        </div>
 
-                            <div class="message-text">{{ message }}</div>
-                        </div>
-
-                        <div class="footer">
-                            <button class="btn-confirm" :style="buttonStyle" @click="handleClose">
-                                {{ t('common.ok') }}
-                            </button>
-                        </div>
-                    </div>
-                </Transition>
-            </div>
-        </Transition>
-    </Teleport>
+        <template #footer>
+            <button class="btn-confirm" :style="buttonStyle" @click="handleClose">
+                {{ t('common.ok') }}
+            </button>
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
+import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
 
 type MessageType = 'success' | 'error' | 'warning' | 'info' | 'failed'
 
@@ -180,8 +118,6 @@ const emit = defineEmits<{
     (e: 'close'): void
 }>()
 
-const { dialogStyle, onDialogMouseDown } = useDialogDrag({ initialPosition: 'center' })
-
 // 颜色配置
 const colorConfig = {
     success: { color: '#2ed573', gradient: 'linear-gradient(135deg, #2ed573 0%, #7bed9f 100%)' },
@@ -193,12 +129,25 @@ const colorConfig = {
 
 // 计算属性
 const iconColor = computed(() => colorConfig[props.type].color)
-const titleBarStyle = computed(() => ({
+// 标题栏背景按消息类型动态渐变：迁移前写在本组件模板 `:style` 上，抽层后仍以覆盖档传入，
+// 其余标题栏形态（无固定高度、12px 16px 内边距）由 BaseDialog 的 plain 变体承载。
+const titleBarStyle = computed<CSSProperties>(() => ({
     background: colorConfig[props.type].gradient
 }))
 const buttonStyle = computed(() => ({
     background: colorConfig[props.type].color
 }))
+
+// MessageDialog 迁移前的专属外壳覆盖（BaseDialog 默认壳不同，必须显式传回保持视觉一致）：
+// 1) 遮罩更暗：rgba(0,0,0,0.5)；2) 容器用卡片背景 + 更柔阴影；3) 宽度自适应 400~500px。
+const overlayStyle: CSSProperties = { background: 'rgba(0, 0, 0, 0.5)' }
+const containerStyle: CSSProperties = {
+    width: 'auto',
+    minWidth: '400px',
+    maxWidth: '500px',
+    background: 'var(--card-bg)',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+}
 
 function handleClose() {
     emit('close')
@@ -206,64 +155,8 @@ function handleClose() {
 </script>
 
 <style scoped>
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    background: var(--card-bg);
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    display: flex;
-    flex-direction: column;
-    min-width: 400px;
-    max-width: 500px;
-    overflow: hidden;
-}
-
-.title-bar {
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: move;
-    user-select: none;
-}
-
-.title-text {
-    font-size: 14px;
-    font-weight: 500;
-    color: #fff;
-}
-
-.close-btn {
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 100, 100, 0.9);
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留 MessageDialog 正文与按钮样式。 */
 .container {
     flex: 1;
     display: flex;
@@ -300,14 +193,6 @@ function handleClose() {
     word-wrap: break-word;
 }
 
-.footer {
-    padding: 15px 20px;
-    display: flex;
-    justify-content: center;
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
-}
-
 .btn-confirm {
     padding: 8px 30px;
     border: none;
@@ -321,27 +206,5 @@ function handleClose() {
 
 .btn-confirm:hover {
     opacity: 0.9;
-}
-
-/* 动画 */
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.3s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: all 0.3s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-    opacity: 0;
 }
 </style>

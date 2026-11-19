@@ -1,33 +1,7 @@
 <template>
     <div class="welcome-screen">
-        <!-- 窗口控制按钮 -->
-        <div class="window-controls">
-            <button
-                type="button"
-                class="window-btn minimize"
-                :title="t('workspace.window.minimize')"
-                @click="minimizeWindow"
-            >
-                <svg viewBox="0 0 12 12"><path d="M2 6h8" /></svg>
-            </button>
-            <button
-                type="button"
-                class="window-btn maximize"
-                :title="isMaximized ? t('workspace.window.restore') : t('workspace.window.maximize')"
-                @click="maximizeWindow"
-            >
-                <svg v-if="!isMaximized" viewBox="0 0 12 12">
-                    <rect x="2" y="2" width="8" height="8" fill="none" />
-                </svg>
-                <svg v-else viewBox="0 0 12 12">
-                    <rect x="2" y="4" width="6" height="6" fill="none" />
-                    <path d="M4 4V2h6v6H8" fill="none" />
-                </svg>
-            </button>
-            <button type="button" class="window-btn close" :title="t('common.close')" @click="closeWindow">
-                <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" /></svg>
-            </button>
-        </div>
+        <!-- 窗口控制按钮（第 3 批组件化：统一走公共 WindowControls；欢迎页使用 welcome 变体） -->
+        <WindowControls variant="welcome" />
 
         <div class="welcome-content">
             <!-- Logo 和标题 -->
@@ -86,13 +60,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted } from 'vue'
 // 固定使用深色图标
 import logoDarkUltra from '../assets/icons/dark/baize_mirror_dark.svg'
-import { IPC } from '../../../shared/ipc-channels'
 import { t } from '../common/i18n'
 import { logger } from '../common/logger'
 import { clampRecentFilesLimit } from '../../../shared/constants/recent-files'
+// 第 3 批组件化：窗口控制按钮统一为公共组件（内部复用 useWindowManagement）
+import WindowControls from './common/WindowControls.vue'
 
 const emit = defineEmits(['openFile', 'openFolder', 'openRecentFolder'])
 
@@ -133,66 +108,14 @@ function openRecentFolder(folder: string) {
     emit('openRecentFolder', folder)
 }
 
-// 窗口控制
-// 2026-11-18（用户反馈）：最大化按钮需支持「再次点击还原」——原实现只发送 MAXIMIZE
-// （进入主界面自动最大化专用语义），二次点击无效。改为发送 TOGGLE_MAXIMIZE 并刷新
-// 当前最大化状态以切换「最大化/还原」图标。
-const isMaximized = ref(false)
-// 2026-11-19：最大化状态刷新定时器（点击切换后延迟查询；卸载清理）
-let maximizeRefreshTimer: ReturnType<typeof setTimeout> | null = null
-
-async function refreshMaximizedState(): Promise<void> {
-    try {
-        isMaximized.value = (await window.electron.ipcRenderer.invoke(
-            IPC.WINDOW.IS_MAXIMIZED
-        )) as boolean
-    } catch {
-        // 查询失败保持现有状态（不影响按钮操作）
-    }
-}
-
-function scheduleMaximizeRefresh(delay = 100): void {
-    if (maximizeRefreshTimer !== null) {
-        clearTimeout(maximizeRefreshTimer)
-    }
-    maximizeRefreshTimer = setTimeout(() => {
-        maximizeRefreshTimer = null
-        void refreshMaximizedState()
-    }, delay)
-}
-
-/** 系统方式（双击拖动条 / Win+Up 等）最大化/还原同样触发 resize，据此同步图标 */
-function handleWindowResize(): void {
-    scheduleMaximizeRefresh(50)
-}
-
-function minimizeWindow() {
-    window.electron.ipcRenderer.send(IPC.WINDOW.MINIMIZE)
-}
-
-function maximizeWindow() {
-    window.electron.ipcRenderer.send(IPC.WINDOW.TOGGLE_MAXIMIZE)
-    // 主进程切换完成后刷新图标（延迟查询，避免读到切换前的旧状态）
-    scheduleMaximizeRefresh()
-}
-
-function closeWindow() {
-    window.electron.ipcRenderer.send(IPC.WINDOW.CLOSE)
-}
+// 窗口控制（最小化 / 最大化·还原 / 关闭）已抽取到公共组件 WindowControls.vue：
+// - 点击发送 MINIMIZE / TOGGLE_MAXIMIZE / CLOSE 的 IPC 逻辑与最大化状态同步
+//   （初始查询 + resize 监听）统一由 useWindowManagement 提供；
+// - 原 2026-11-18/19 的两处修复（TOGGLE 二次点击还原、系统级最大化后图标同步）随逻辑
+//   一并迁移，本组件不再保留第二份实现。
 
 onMounted(() => {
     loadRecentFolders()
-    // 2026-11-18：初始化最大化图标状态（欢迎页期间窗口可能已被最大化）
-    void refreshMaximizedState()
-    window.addEventListener('resize', handleWindowResize)
-})
-
-onBeforeUnmount(() => {
-    window.removeEventListener('resize', handleWindowResize)
-    if (maximizeRefreshTimer !== null) {
-        clearTimeout(maximizeRefreshTimer)
-        maximizeRefreshTimer = null
-    }
 })
 </script>
 
@@ -212,55 +135,17 @@ onBeforeUnmount(() => {
     overflow: hidden;
 }
 
-/* 窗口控制按钮 */
+/* 窗口控制容器（按钮本体的尺寸/悬停/no-drag 样式已随组件抽取到 WindowControls.vue）：
+   - 容器整体保留 drag，作为无框窗口的拖动条；
+   - 子组件的按钮与 SVG 在 WindowControls 内统一声明 no-drag，保证按钮可点击。 */
 .window-controls {
     width: 100%;
     height: 30px;
     display: flex;
     justify-content: flex-end;
-    /* 控制条整体可拖动窗口（无框窗口）；按钮区域经下方 no-drag 恢复交互 */
     -webkit-app-region: drag;
     flex-shrink: 0;
     z-index: 10000;
-}
-
-.window-btn {
-    width: 46px;
-    height: 30px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-    -webkit-app-region: no-drag;
-    /* 修复「欢迎页右上角按钮不生效」：drag 区域内的 SVG 子元素默认仍被当作拖动
-       热区（-webkit-app-region 非继承、子元素未显式声明 no-drag 时命中祖先 drag），
-       导致点击图标本身开始拖动窗口而非触发 click。按钮及其全部子元素显式声明
-       no-drag，保证按钮任意位置都可点击。 */
-}
-
-.window-btn,
-.window-btn svg,
-.window-btn svg * {
-    -webkit-app-region: no-drag;
-}
-
-.window-btn:hover {
-    background: rgba(255, 255, 255, 0.25);
-}
-
-.window-btn.close:hover {
-    background: #e81123;
-}
-
-.window-btn svg {
-    width: 12px;
-    height: 12px;
-    stroke: white;
-    stroke-width: 1;
-    fill: none;
 }
 
 .welcome-content {

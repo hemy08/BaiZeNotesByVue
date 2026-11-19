@@ -24,6 +24,18 @@
  */
 import MarkdownIt from 'markdown-it'
 import type { Env, StateBlock } from 'markdown-it'
+// 块级解析公共 helper（第 3 批子任务 D 去重）：本模块使用缩进口径 A（blkIndent + 4，见 preview-block-utils）
+import {
+    CONTENT_INDENT,
+    canStartBlock,
+    collectIndentedBlockEnd,
+    ensureEnv,
+    getEnvNumber,
+    getIndentedBlockContent,
+    getLineText,
+    isNestingTooDeep,
+    parseNestedContent
+} from './preview-block-utils'
 
 /** markdown-it 实例类型（`MarkdownIt` 默认导出是构造器值，实例类型需用 InstanceType 表达） */
 type MarkdownItInstance = InstanceType<typeof MarkdownIt>
@@ -35,9 +47,6 @@ const ADMONITION_HEADER_PATTERN = /^!!!\s*([\w-]+)(?:\s+"([^"]*)")?[ \t]*$/
 
 /** tab 头部：`=== "标签"`（兼容 `===  "示例"` 这种 === 与引号间多个空格的写法） */
 const TABBED_HEADER_PATTERN = /^===\s+"([^"]*)"[ \t]*$/
-
-/** 内容缩进要求：相对当前块缩进（state.blkIndent）≥ 4 列，与 markdown-it 缩进代码块阈值一致 */
-const CONTENT_INDENT = 4
 
 /** 插件产出的 token 类型（开放/关闭成对出现，nesting 分别 1 / -1） */
 export const MKDOCS_ADMONITION_OPEN = 'mkdocs_admonition_open'
@@ -51,8 +60,6 @@ export const MKDOCS_TABS_CLOSE = 'mkdocs_tabs_close'
 const ENV_TABBED_SET_ID = '__mkdocsMaterialTabbedSetId'
 /** env 上的递归嵌套深度键名（防御恶意深层嵌套导致栈溢出） */
 const ENV_NESTING_DEPTH = '__mkdocsMaterialNestingDepth'
-/** 深度保护兜底阈值（markdown-it 的 maxNesting 默认值同样是 100） */
-const DEFAULT_MAX_NESTING = 100
 
 /* ============================== 一.五、tab 深链（#tab-id） ==============================
  * 目标：让 `#__tabbed_<setId>_<tabNumber>`（panel/radio 锚点）或
@@ -151,20 +158,6 @@ export function getTabTargetByHash(hash: string): TabDeepLinkTarget | null {
 
 /* ============================== 二、行级工具函数 ============================== */
 
-/** 读取某一行的原始文本（已去除行首缩进，markdown-it 的 state.src 已把 CRLF 归一化为 LF） */
-function getLineText(state: StateBlock, line: number): string {
-    return state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line])
-}
-
-/**
- * 是否允许在此行起始一个自定义块。
- * 与 markdown-it 内置 block rule 的判定一致：相对当前块缩进（blkIndent）必须小于 4，
- * 否则该行属于缩进代码块，不应被当作 admonition/tab 头部。
- */
-function canStartBlock(state: StateBlock, line: number): boolean {
-    return state.sCount[line] - state.blkIndent < CONTENT_INDENT
-}
-
 /**
  * 匹配 admonition 头部。
  * @returns 类型（保持原文大小写，渲染时再小写化）与标题（可为空串）；不匹配返回 null
@@ -186,104 +179,14 @@ function matchTabbedHeader(lineText: string): string | null {
     return match ? match[1] : null
 }
 
-/** 读取（必要时创建）当前解析的 env 对象：env 用于 tab 自增 id 与嵌套深度计数的跨规则共享 */
-function ensureEnv(state: StateBlock): Env {
-    if (!state.env) {
-        state.env = {}
-    }
-    return state.env
-}
-
-/** 当前递归嵌套深度是否已超限（超限时自定义块回退为普通段落，避免栈溢出） */
-function isNestingTooDeep(state: StateBlock, env: Env): boolean {
-    const depth = typeof env[ENV_NESTING_DEPTH] === 'number' ? env[ENV_NESTING_DEPTH] : 0
-    const maxNesting = state.md.options.maxNesting ?? DEFAULT_MAX_NESTING
-    return depth >= maxNesting
-}
-
 /**
  * 分配下一个 tabbed set 序号（从 1 开始）。
  * 计数器挂在 env 上，同一次解析（含递归子解析）内自增，保证多组 tab 的 radio name/id 不冲突。
  */
 function nextTabbedSetId(env: Env): number {
-    const current = typeof env[ENV_TABBED_SET_ID] === 'number' ? env[ENV_TABBED_SET_ID] : 0
-    const next = current + 1
+    const next = getEnvNumber(env, ENV_TABBED_SET_ID) + 1
     env[ENV_TABBED_SET_ID] = next
     return next
-}
-
-/**
- * 收集「缩进内容块」结束行号：从 startLine+1 起，空行或相对缩进 ≥4 列的行都属于块内容，
- * 遇到「非空且相对缩进 <4」的行即结束。
- * @returns 块结束后第一行的行号（endLine 表示到文末）
- */
-function collectIndentedBlockEnd(state: StateBlock, startLine: number, endLine: number): number {
-    let line = startLine + 1
-    while (line < endLine) {
-        if (state.isEmpty(line)) {
-            line += 1
-            continue
-        }
-        if (state.sCount[line] - state.blkIndent >= CONTENT_INDENT) {
-            line += 1
-            continue
-        }
-        break
-    }
-    return line
-}
-
-/**
- * 取出 [beginLine, endLine) 区间的文本并按 4 列（相对当前块缩进）去缩进。
- * state.getLines() 是 markdown-it 处理缩进的官方工具：按列展开 Tab，超出部分补空格，
- * 与原文本行数一一对应（行号回填因此可靠）。
- */
-function getDedentedContent(state: StateBlock, beginLine: number, endLine: number): string {
-    if (endLine <= beginLine) {
-        return ''
-    }
-    return state.getLines(beginLine, endLine, state.blkIndent + CONTENT_INDENT, false)
-}
-
-/**
- * 递归解析块内容并把内容 token 追加到当前 token 流。
- * @param state 当前 block 状态
- * @param content 去缩进后的 Markdown 内容
- * @param sourceStartLine 内容第一行在整篇文档中的绝对行号（用于回填 token.map）
- * @param env 共享 env（嵌套深度计数）
- */
-function parseNestedContent(
-    state: StateBlock,
-    content: string,
-    sourceStartLine: number,
-    env: Env
-): void {
-    if (content.length === 0) {
-        return
-    }
-    const tokenStart = state.tokens.length
-    const depth = typeof env[ENV_NESTING_DEPTH] === 'number' ? env[ENV_NESTING_DEPTH] : 0
-    env[ENV_NESTING_DEPTH] = depth + 1
-    try {
-        state.md.block.parse(content, state.md, state.env, state.tokens)
-    } finally {
-        env[ENV_NESTING_DEPTH] = depth
-    }
-    remapTokenLineMaps(state, tokenStart, sourceStartLine)
-}
-
-/**
- * 把递归子解析产出的 token.map 从「子文本相对行号」回填为「整篇文档绝对行号」。
- * 子文本与原文的行一一对应（getLines 不增删行），因此直接整体平移 offset 即可。
- */
-function remapTokenLineMaps(state: StateBlock, tokenStart: number, sourceStartLine: number): void {
-    for (let index = tokenStart; index < state.tokens.length; index += 1) {
-        const map = state.tokens[index].map
-        if (map) {
-            map[0] += sourceStartLine
-            map[1] += sourceStartLine
-        }
-    }
 }
 
 /* ============================== 三、block rule 实现 ============================== */
@@ -308,19 +211,19 @@ function admonitionBlockRule(
     if (silent) {
         return true
     }
-    const env = ensureEnv(state)
-    if (isNestingTooDeep(state, env)) {
+    if (isNestingTooDeep(state, ENV_NESTING_DEPTH)) {
         return false
     }
 
     const nextLine = collectIndentedBlockEnd(state, startLine, endLine)
-    const content = getDedentedContent(state, startLine + 1, nextLine)
+    // 缩进口径 A（blkIndent + 4）：!!! 内容必须相对容器再缩进 4 列
+    const content = getIndentedBlockContent(state, startLine + 1, nextLine)
 
     const openToken = state.push(MKDOCS_ADMONITION_OPEN, 'div', 1)
     openToken.block = true
     openToken.map = [startLine, nextLine]
     openToken.meta = { type: header.type, title: header.title }
-    parseNestedContent(state, content, startLine + 1, env)
+    parseNestedContent(state, content, startLine + 1, ENV_NESTING_DEPTH)
     const closeToken = state.push(MKDOCS_ADMONITION_CLOSE, 'div', -1)
     closeToken.block = true
 
@@ -356,7 +259,7 @@ function tabbedSetBlockRule(
         return true
     }
     const env = ensureEnv(state)
-    if (isNestingTooDeep(state, env)) {
+    if (isNestingTooDeep(state, ENV_NESTING_DEPTH)) {
         return false
     }
 
@@ -386,7 +289,8 @@ function tabbedSetBlockRule(
         }
         segments.push({
             label,
-            content: getDedentedContent(state, headerLine + 1, lastContentLine + 1),
+            // 缩进口径 A：tab 内容相对容器缩进 4 列
+            content: getIndentedBlockContent(state, headerLine + 1, lastContentLine + 1),
             contentStartLine: headerLine + 1
         })
         // 下一个 tab 段：要求下一行仍是（相对缩进 <4 的）tab 头部，否则本组结束
@@ -407,7 +311,7 @@ function tabbedSetBlockRule(
         tabOpenToken.map = [segment.contentStartLine - 1, segment.contentStartLine - 1]
         // setId 供渲染器生成深链 panel id（panel 与第 index+1 个 radio 共用同一 id）
         tabOpenToken.meta = { index, setId }
-        parseNestedContent(state, segment.content, segment.contentStartLine, env)
+        parseNestedContent(state, segment.content, segment.contentStartLine, ENV_NESTING_DEPTH)
         const tabCloseToken = state.push(MKDOCS_TAB_CLOSE, 'div', -1)
         tabCloseToken.block = true
     })

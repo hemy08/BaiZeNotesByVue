@@ -12,36 +12,9 @@
                 <img :src="logoSrc" alt="Baize Logo" width="24" height="24" />
                 <span class="title-text">{{ t('workspace.appTitle') }}</span>
             </div>
-            <div class="window-controls">
-                <!-- 窗口按钮与 WelcomeScreen.vue 的控件为重复实现（本轮不做组件抽取），
-                     后续可抽为公共 WindowControls.vue（最大化状态同步逻辑在 useWindowManagement 中）。 -->
-                <button
-                    class="window-btn minimize"
-                    :title="t('workspace.window.minimize')"
-                    @click="minimizeWindow"
-                >
-                    <svg viewBox="0 0 12 12"><path d="M2 6h8" /></svg>
-                </button>
-                <button
-                    class="window-btn maximize"
-                    :title="
-                        isMaximized ? t('workspace.window.restore') : t('workspace.window.maximize')
-                    "
-                    @click="maximizeWindow"
-                >
-                    <!-- 2026-11-19：与 WelcomeScreen 一致——最大化时切换为「还原」图标（两层矩形） -->
-                    <svg v-if="!isMaximized" viewBox="0 0 12 12">
-                        <rect x="2" y="2" width="8" height="8" fill="none" />
-                    </svg>
-                    <svg v-else viewBox="0 0 12 12">
-                        <rect x="2" y="4" width="6" height="6" fill="none" />
-                        <path d="M4 4V2h6v6H8" fill="none" />
-                    </svg>
-                </button>
-                <button class="window-btn close" :title="t('common.close')" @click="closeWindow">
-                    <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" /></svg>
-                </button>
-            </div>
+            <!-- 窗口控制按钮（第 3 批组件化：与欢迎页共用 WindowControls，最大化状态同步
+                 逻辑内聚在组件复用的 useWindowManagement 中；布局回调经 re-layout 上抛） -->
+            <WindowControls @re-layout="EditorReLayout" />
         </div>
         <!-- 菜单栏区域，高度24px，宽度与app一致 -->
         <div v-show="electronMenu" id="menu-bar" class="menu-bar"><MenuBar /></div>
@@ -199,6 +172,8 @@ import logoDarkUltra from '../assets/icons/dark/logo-baize-dark-A-ultra.svg'
 import logoLightLarge from '../assets/icons/light/logo-baize-light-A-large.svg'
 // 窗口管理 composable
 import { useWindowManagement } from '../composables/useWindowManagement'
+// 第 3 批组件化：标题栏窗口控制按钮统一为公共组件（内部复用 useWindowManagement）
+import WindowControls from './common/WindowControls.vue'
 import { IPC } from '../../../shared/ipc-channels'
 import { t } from '../common/i18n'
 import { EVENT_BUS } from '../common/event-bus/event-bus-events'
@@ -213,14 +188,11 @@ const configStore = getConfigStore()
 const emit = defineEmits<{ (event: 'main-view-mounted'): void }>()
 
 const {
-    isMaximized,
-    minimizeWindow,
-    maximizeWindow,
-    closeWindow,
+    // 标题栏拖拽/双击最大化/窗口缩放仍由本组件实例处理；
+    // 最小化/最大化/关闭按钮与 isMaximized 状态同步已内聚到 WindowControls 组件。
     onTitleBarMouseDown,
     onTitleBarDblClick,
     onResizeMouseDown,
-    startMaximizedStateSync,
     cleanupWindowEvents
 } = useWindowManagement({
     onReLayout: EditorReLayout
@@ -602,9 +574,8 @@ onMounted(async () => {
     window.electron.ipcRenderer.on(IPC.THEME.THEME_UPDATED, handleThemeUpdate)
     window.electron.ipcRenderer.on(IPC.DIALOG.OPEN_VUE_DIALOG, handleOpenVueDialog)
 
-    // 2026-11-19：启动标题栏最大化状态同步（初始查询 + resize 监听），
-    // 使窗口经双击标题栏/Win+Up/贴边吸附最大化后按钮图标仍能正确切换。
-    startMaximizedStateSync()
+    // 2026-11-19 修复（第 3 批组件化后）：标题栏最大化状态同步（初始查询 + resize 监听）
+    // 已随按钮内聚到 WindowControls 组件，本组件只保留拖拽/缩放相关的清理逻辑。
 
     // 以上监听器已同步注册完成（子组件的 onMounted 早于本组件的 onMounted 执行），
     // 通知外壳主界面已就绪；App.vue 在此之后才发送 READY 握手，保证启动恢复数据不丢失。
@@ -678,6 +649,7 @@ onBeforeUnmount(() => {
     margin-left: 8px;
 }
 
+/* 窗口控制容器（按钮本体的尺寸/悬停/no-drag 样式已随组件抽取到 WindowControls.vue） */
 .window-controls {
     display: flex;
     /* 2026-11-19：原值 align-items: right 为非法 CSS（交叉轴对齐不接受 right），
@@ -686,39 +658,6 @@ onBeforeUnmount(() => {
     align-items: flex-end;
     gap: 0;
     -webkit-app-region: no-drag;
-}
-
-.window-btn {
-    width: 46px;
-    height: 30px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-    -webkit-app-region: no-drag;
-}
-
-.window-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.window-btn.close:hover {
-    background: #e81123;
-}
-
-.window-btn svg {
-    width: 12px;
-    height: 12px;
-    stroke: #fff;
-    stroke-width: 1.5;
-    fill: none;
-}
-
-.window-btn.close:hover svg {
-    stroke: #fff;
 }
 
 .title-icon {

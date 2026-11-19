@@ -22,8 +22,11 @@ import EventBus from '@renderer/common/event-bus/event-bus'
 import { EVENT_BUS } from '@renderer/common/event-bus/event-bus-events'
 import { IPC } from '../../../src/shared/ipc-channels'
 
-/** 组件内部硬编码的 componentId，用于清理 EventBus 监听 */
-const COMPONENT_ID = 'ShowHtmlView'
+/**
+ * 本用例已挂载的实例：组件内 componentId 带实例 uid 唯一后缀（多实例隔离），
+ * 无法再按固定 id 统一清理，必须靠卸载来清理各自的 EventBus 监听，避免跨用例串台。
+ */
+const mountedViews: VueWrapper[] = []
 
 /** 由文件路径计算期望注入的 base URL（与 html-view-utils.withBaseHref 实现口径一致） */
 function baseOf(filePath: string): string {
@@ -34,11 +37,7 @@ function baseOf(filePath: string): string {
 }
 
 /** 断言 srcdoc = 注入 base 后的 HTML（包含 base 标签与原内容） */
-function expectSrcdoc(
-    srcdoc: string | undefined,
-    filePath: string,
-    content: string
-): void {
+function expectSrcdoc(srcdoc: string | undefined, filePath: string, content: string): void {
     expect(srcdoc).toContain(`<base href="${baseOf(filePath)}">`)
     expect(srcdoc).toContain(content)
 }
@@ -48,7 +47,25 @@ let send: ReturnType<typeof vi.fn>
 
 /** 挂载组件并登记，测试结束统一卸载，避免监听器串台 */
 function mountView(): VueWrapper {
-    return mount(ShowHtmlView)
+    const view = mount(ShowHtmlView)
+    mountedViews.push(view)
+    return view
+}
+
+/** 用例内主动卸载并移出登记表（避免 afterEach 二次卸载） */
+function unmountView(view: VueWrapper): void {
+    const index = mountedViews.indexOf(view)
+    if (index >= 0) {
+        mountedViews.splice(index, 1)
+    }
+    view.unmount()
+}
+
+/** 卸载所有残留实例（每个用例前后各执行一次，保证监听器不跨用例） */
+function unmountAllViews(): void {
+    while (mountedViews.length > 0) {
+        mountedViews.pop()?.unmount()
+    }
 }
 
 /** 通过 EventBus 走「HTML 文件被选中」入口 */
@@ -58,15 +75,15 @@ async function selectHtmlFile(path: string, name: string): Promise<void> {
 }
 
 beforeEach(() => {
-    // 上一个用例可能残留同 componentId 的监听器，先清干净
-    EventBus.$cleanup(COMPONENT_ID)
+    // 上一个用例可能残留未卸载的实例与监听器，先清干净
+    unmountAllViews()
     invoke = vi.fn()
     send = vi.fn()
     vi.stubGlobal('electron', { ipcRenderer: { invoke, send } })
 })
 
 afterEach(() => {
-    EventBus.$cleanup(COMPONENT_ID)
+    unmountAllViews()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
 })
@@ -227,7 +244,11 @@ describe('ShowHtmlView 错误处理与重试', () => {
         expect(invoke).toHaveBeenNthCalledWith(1, IPC.FILE.READ_HTML, '/notes/retry.html')
         expect(invoke).toHaveBeenNthCalledWith(2, IPC.FILE.READ_HTML, '/notes/retry.html')
         expect(wrapper.find('.error-container').exists()).toBe(false)
-        expectSrcdoc(wrapper.find('iframe').attributes('srcdoc'), '/notes/retry.html', '<p>recovered</p>')
+        expectSrcdoc(
+            wrapper.find('iframe').attributes('srcdoc'),
+            '/notes/retry.html',
+            '<p>recovered</p>'
+        )
     })
 
     it('reloads the current file through the toolbar refresh button', async () => {
@@ -241,7 +262,11 @@ describe('ShowHtmlView 错误处理与重试', () => {
         const wrapper = mountView()
 
         await selectHtmlFile('/notes/refresh.html', 'refresh.html')
-        expectSrcdoc(wrapper.find('iframe').attributes('srcdoc'), '/notes/refresh.html', '<p>old</p>')
+        expectSrcdoc(
+            wrapper.find('iframe').attributes('srcdoc'),
+            '/notes/refresh.html',
+            '<p>old</p>'
+        )
 
         await wrapper.find('button[title="刷新"]').trigger('click')
         await nextTick()
@@ -255,7 +280,11 @@ describe('ShowHtmlView 错误处理与重试', () => {
 
         expect(invoke).toHaveBeenCalledTimes(2)
         expect(invoke).toHaveBeenLastCalledWith(IPC.FILE.READ_HTML, '/notes/refresh.html')
-        expectSrcdoc(wrapper.find('iframe').attributes('srcdoc'), '/notes/refresh.html', '<p>new</p>')
+        expectSrcdoc(
+            wrapper.find('iframe').attributes('srcdoc'),
+            '/notes/refresh.html',
+            '<p>new</p>'
+        )
     })
 })
 
@@ -277,7 +306,7 @@ describe('ShowHtmlView 工具栏与生命周期', () => {
 
     it('cleans up event bus listeners when unmounted', async () => {
         const wrapper = mountView()
-        wrapper.unmount()
+        unmountView(wrapper)
 
         // 卸载后再触发事件，不应再调用 IPC
         EventBus.$emit(EVENT_BUS.HTML_FILE_SELECTED, {
@@ -317,8 +346,13 @@ describe('withBaseHref（srcdoc 相对链接基准修复）', () => {
     })
 
     it('builds a Windows drive-letter file url', () => {
-        const out = withBaseHref('<body>x</body>', 'E:\\github.com\\BaiZeNotesByVue\\docs\\reports\\html\\README.html')
-        expect(out).toContain('<base href="file:///E:/github.com/BaiZeNotesByVue/docs/reports/html/">')
+        const out = withBaseHref(
+            '<body>x</body>',
+            'E:\\github.com\\BaiZeNotesByVue\\docs\\reports\\html\\README.html'
+        )
+        expect(out).toContain(
+            '<base href="file:///E:/github.com/BaiZeNotesByVue/docs/reports/html/">'
+        )
     })
 
     it('encodes non-ascii directory segments', () => {

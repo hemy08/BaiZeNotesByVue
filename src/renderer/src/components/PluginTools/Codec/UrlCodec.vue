@@ -1,53 +1,22 @@
+<!--
+  URL 编解码插件入口（plugin-tools-const.ts 的 lazyTool 动态导入路径与 id 保持不变）。
+
+  第 3 批重构（子任务 A2）：模板/交互统一由 Codec/TextCodecTool.vue 提供，本文件只保留
+  本工具专属配置（i18n 前缀、DOM id 前缀、编码/解码纯函数映射），行为与迁移前一致。
+  URL 解码遇到非法百分号序列会抛 URIError：通过动作的 errorKey 传 decodeErrorAlert，
+  由通用组件统一捕获并弹出原 i18n 提示（文案 key 不变）。
+-->
 <template>
-    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">{{ t('toolsConvert.urlCodec.title') }}</h1>
-        <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p>{{ t('toolsConvert.urlCodec.description') }}</p>
-        <div class="codec-row">
-            <div class="codec-col" :style="{ width: columnWidth }">
-                <div class="codec-label-style">
-                    <label for="url-input">{{ t('toolsConvert.urlCodec.inputLabel') }}</label>
-                </div>
-                <textarea
-                    id="url-input"
-                    v-model="inputText"
-                    class="codec-textarea"
-                    :placeholder="t('toolsConvert.urlCodec.inputPlaceholder')"
-                ></textarea>
-            </div>
-            <div class="codec-col" :style="{ width: columnWidth }">
-                <div class="codec-label-style">
-                    <label for="url-output">{{ t('toolsConvert.urlCodec.outputLabel') }}</label>
-                </div>
-                <textarea
-                    id="url-output"
-                    v-model="outputText"
-                    class="codec-textarea"
-                    :placeholder="t('toolsConvert.urlCodec.outputPlaceholder')"
-                ></textarea>
-            </div>
-        </div>
-        <div class="codec-btn-list" :style="{ width: props.workAreaWidth }">
-            <button id="url-encode" class="codec-btn-style" @click="handleEncode">
-                {{ t('toolsConvert.urlCodec.encodeButton') }}
-            </button>
-            <button id="url-decode" class="codec-btn-style" @click="handleDecode">
-                {{ t('toolsConvert.urlCodec.decodeButton') }}
-            </button>
-            <button id="url-copy" class="codec-btn-style" @click="handleCopy">
-                {{ t('toolsConvert.urlCodec.copyButton') }}
-            </button>
-            <button id="url-clear" class="codec-btn-style" @click="handleClear">
-                {{ t('toolsConvert.urlCodec.clearButton') }}
-            </button>
-        </div>
-    </div>
+    <TextCodecTool
+        :work-area-width="props.workAreaWidth"
+        i18n-prefix="toolsConvert.urlCodec"
+        id-prefix="url"
+        :actions="actions"
+    />
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { t } from '../../../common/i18n'
-import { copyTextToClipboard } from '../../../common/clipboard'
+import TextCodecTool from './TextCodecTool.vue'
 import { decodeUrl, encodeUrl } from './url-lib'
 
 const props = defineProps({
@@ -58,82 +27,14 @@ const props = defineProps({
     }
 })
 
-const inputText = ref('')
-const outputText = ref('')
-
-// 左右两栏各占工作区宽度的一半（去掉栏间距），单位 px；宽度无法解析时回落 340px
-const columnWidth = computed(() => {
-    const workWidthVal = parseInt(props.workAreaWidth.replace('px', ''), 10)
-    const total = Number.isFinite(workWidthVal) ? workWidthVal : 680
-    return Math.max(240, Math.floor((total - 40) / 2)) + 'px'
-})
-
-// 编码：encodeURIComponent 百分号编码
-function handleEncode() {
-    outputText.value = encodeUrl(inputText.value)
-}
-
-// 解码：decodeURIComponent；非法百分号序列抛出 URIError，捕获后提示
-function handleDecode() {
-    try {
-        outputText.value = decodeUrl(inputText.value)
-    } catch (error) {
-        alert(t('toolsConvert.urlCodec.decodeErrorAlert', { error: String(error) }))
+// 编码：encodeURIComponent 百分号编码；解码：decodeURIComponent（非法序列由通用组件提示）
+const actions = [
+    { id: 'url-encode', labelKey: 'encodeButton', transform: encodeUrl },
+    {
+        id: 'url-decode',
+        labelKey: 'decodeButton',
+        transform: decodeUrl,
+        errorKey: 'decodeErrorAlert'
     }
-}
-
-function handleCopy() {
-    if (!outputText.value) return
-    void copyTextToClipboard(outputText.value)
-}
-
-function handleClear() {
-    inputText.value = ''
-    outputText.value = ''
-}
+]
 </script>
-
-<style scoped>
-@import '../plugin-tools-theme.css';
-.codec-row {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 10px;
-}
-
-.codec-col {
-    display: flex;
-    flex-direction: column;
-}
-
-.codec-label-style {
-    width: 150px;
-    text-align: justify;
-    background-color: #e1e4e8;
-}
-
-.codec-textarea {
-    width: 100%;
-    min-height: 120px;
-    resize: vertical;
-    margin-top: 5px;
-}
-
-.codec-btn-list {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.codec-btn-style {
-    padding: 5px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-</style>

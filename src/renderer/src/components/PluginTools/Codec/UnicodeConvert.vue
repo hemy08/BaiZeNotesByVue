@@ -1,59 +1,20 @@
+<!--
+  Unicode 与中文互转插件入口（plugin-tools-const.ts 的 lazyTool 动态导入路径与 id 保持不变）。
+
+  第 3 批重构（子任务 A2）：模板/交互统一由 Codec/TextCodecTool.vue 提供，本文件只保留
+  本工具专属配置（i18n 前缀、DOM id 前缀、4 个转换动作的纯函数映射），行为与迁移前一致。
+-->
 <template>
-    <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 class="header-display-center">{{ t('toolsConvert.unicode.title') }}</h1>
-        <div style="color: grey; background-color: grey; height: 2px"></div>
-        <p>{{ t('toolsConvert.unicode.description') }}</p>
-        <div class="codec-row">
-            <div class="codec-col" :style="{ width: columnWidth }">
-                <div class="codec-label-style">
-                    <label for="unicode-input">{{ t('toolsConvert.unicode.inputLabel') }}</label>
-                </div>
-                <textarea
-                    id="unicode-input"
-                    v-model="inputText"
-                    class="codec-textarea"
-                    :placeholder="t('toolsConvert.unicode.inputPlaceholder')"
-                ></textarea>
-            </div>
-            <div class="codec-col" :style="{ width: columnWidth }">
-                <div class="codec-label-style">
-                    <label for="unicode-output">{{ t('toolsConvert.unicode.outputLabel') }}</label>
-                </div>
-                <textarea
-                    id="unicode-output"
-                    v-model="outputText"
-                    class="codec-textarea"
-                    :placeholder="t('toolsConvert.unicode.outputPlaceholder')"
-                ></textarea>
-            </div>
-        </div>
-        <div class="codec-btn-list" :style="{ width: props.workAreaWidth }">
-            <button id="unicode-to-unicode" class="codec-btn-style" @click="handleToUnicode">
-                {{ t('toolsConvert.unicode.toUnicodeButton') }}
-            </button>
-            <button id="unicode-to-text" class="codec-btn-style" @click="handleToText">
-                {{ t('toolsConvert.unicode.toTextButton') }}
-            </button>
-            <button id="unicode-to-entity" class="codec-btn-style" @click="handleToEntity">
-                {{ t('toolsConvert.unicode.toEntityButton') }}
-            </button>
-            <button id="unicode-entity-to-text" class="codec-btn-style" @click="handleEntityToText">
-                {{ t('toolsConvert.unicode.entityToTextButton') }}
-            </button>
-            <button id="unicode-copy" class="codec-btn-style" @click="handleCopy">
-                {{ t('toolsConvert.unicode.copyButton') }}
-            </button>
-            <button id="unicode-clear" class="codec-btn-style" @click="handleClear">
-                {{ t('toolsConvert.unicode.clearButton') }}
-            </button>
-        </div>
-    </div>
+    <TextCodecTool
+        :work-area-width="props.workAreaWidth"
+        i18n-prefix="toolsConvert.unicode"
+        id-prefix="unicode"
+        :actions="actions"
+    />
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { t } from '../../../common/i18n'
-import { copyTextToClipboard } from '../../../common/clipboard'
+import TextCodecTool from './TextCodecTool.vue'
 import { asciiToEntity, entityToAscii, textToUnicode, unicodeToText } from './unicode-lib'
 
 const props = defineProps({
@@ -64,88 +25,15 @@ const props = defineProps({
     }
 })
 
-const inputText = ref('')
-const outputText = ref('')
-
-// 左右两栏各占工作区宽度的一半（去掉栏间距），单位 px；宽度无法解析时回落 340px
-const columnWidth = computed(() => {
-    const workWidthVal = parseInt(props.workAreaWidth.replace('px', ''), 10)
-    const total = Number.isFinite(workWidthVal) ? workWidthVal : 680
-    return Math.max(240, Math.floor((total - 40) / 2)) + 'px'
-})
-
-// 中文/非 ASCII 字符 → \uXXXX
-function handleToUnicode() {
-    outputText.value = textToUnicode(inputText.value)
-}
-
-// \uXXXX → 文本
-function handleToText() {
-    outputText.value = unicodeToText(inputText.value)
-}
-
-// 文本 → &#十进制; 实体
-function handleToEntity() {
-    outputText.value = asciiToEntity(inputText.value)
-}
-
-// &#nn; / &#xhh; 实体 → 文本
-function handleEntityToText() {
-    outputText.value = entityToAscii(inputText.value)
-}
-
-function handleCopy() {
-    if (!outputText.value) return
-    void copyTextToClipboard(outputText.value)
-}
-
-function handleClear() {
-    inputText.value = ''
-    outputText.value = ''
-}
+// 文本 ↔ \uXXXX、文本 ↔ &#数字实体; 四向转换
+const actions = [
+    { id: 'unicode-to-unicode', labelKey: 'toUnicodeButton', transform: textToUnicode },
+    { id: 'unicode-to-text', labelKey: 'toTextButton', transform: unicodeToText },
+    { id: 'unicode-to-entity', labelKey: 'toEntityButton', transform: asciiToEntity },
+    {
+        id: 'unicode-entity-to-text',
+        labelKey: 'entityToTextButton',
+        transform: entityToAscii
+    }
+]
 </script>
-
-<style scoped>
-@import '../plugin-tools-theme.css';
-.codec-row {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 10px;
-}
-
-.codec-col {
-    display: flex;
-    flex-direction: column;
-}
-
-.codec-label-style {
-    width: 150px;
-    text-align: justify;
-    background-color: #e1e4e8;
-}
-
-.codec-textarea {
-    width: 100%;
-    min-height: 120px;
-    resize: vertical;
-    margin-top: 5px;
-}
-
-.codec-btn-list {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.codec-btn-style {
-    padding: 5px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-</style>

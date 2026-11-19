@@ -29,7 +29,16 @@
  *   （div/span/svg/path/class/title/aria-hidden/viewBox/fill 均在白名单内，见单测）。
  */
 import MarkdownIt from 'markdown-it'
-import type { Env, MarkdownItOptions, Renderer, StateBlock, StateInline, Token } from 'markdown-it'
+import type { MarkdownItOptions, Renderer, StateBlock, StateInline, Token } from 'markdown-it'
+// 块级解析公共 helper（第 3 批子任务 D 去重）：本模块使用缩进口径 C（按容器开标签列，见 preview-block-utils）
+import {
+    canStartBlock,
+    getContainerBlockContent,
+    getLineText,
+    getRawLineText,
+    isNestingTooDeep,
+    parseNestedContent
+} from './preview-block-utils'
 // P2-4 修复：图标数据经统一加载器查询（核心子集同步内嵌 + 全量 95KB 动态 import 懒加载，
 // 首次使用时缓存 Promise/结果；渲染规则保持同步语义，见 mdi-icons-loader.ts 的方案说明）
 import { getMdiIconPath, getOcticonIconPath } from './mdi-icons-loader'
@@ -37,12 +46,8 @@ import { getMdiIconPath, getOcticonIconPath } from './mdi-icons-loader'
 /** markdown-it 实例类型（`MarkdownIt` 默认导出是构造器值，实例类型用 InstanceType 表达） */
 type MarkdownItInstance = InstanceType<typeof MarkdownIt>
 
-/** 与 markdown-it 缩进代码块判定一致的缩进阈值（相对当前块缩进 ≥ 4 列即缩进代码） */
-const CONTENT_INDENT = 4
-/** 递归嵌套深度在 env 上的键名（防御恶意深层嵌套导致栈溢出） */
+/** 递归嵌套深度在 env 上的键名（防御恶意深层嵌套导致栈溢出；本模块私有，与其它插件隔离） */
 const ENV_NESTING_DEPTH = '__mdxMediaNestingDepth'
-/** 深度保护兜底阈值（markdown-it 的 maxNesting 默认值同样是 100） */
-const DEFAULT_MAX_NESTING = 100
 /** hl_lines 区间展开上限（防止 `1-999999999` 之类输入构造超大 Set） */
 const MAX_HL_RANGE_SPAN = 10000
 /** icon / fence 等短代码扫描窗口（限制单次正则输入长度，避免长文档上的 O(n²) 扫描） */
@@ -175,7 +180,7 @@ function findGridCloseLine(state: StateBlock, startLine: number, endLine: number
     let fenceLength = 0
     let inHtmlComment = false
     for (let line = startLine + 1; line < endLine; line += 1) {
-        const rawLine = state.src.slice(state.bMarks[line], state.eMarks[line])
+        const rawLine = getRawLineText(state, line)
         // 围栏代码块内部：只找围栏闭合行，其余行不参与 div 计数
         if (fenceMarker !== '') {
             const closeMatch = FENCE_CLOSE_PATTERN.exec(rawLine)
@@ -227,65 +232,6 @@ function findGridCloseLine(state: StateBlock, startLine: number, endLine: number
     return -1
 }
 
-/** 读取（必要时创建）当前解析的 env：用于嵌套深度计数 */
-function ensureEnv(state: StateBlock): Env {
-    if (!state.env) {
-        state.env = {}
-    }
-    return state.env
-}
-
-/** 当前解析状态（含递归子解析）的嵌套深度 */
-function getNestingDepth(state: StateBlock): number {
-    const depth = state.env?.[ENV_NESTING_DEPTH]
-    return typeof depth === 'number' ? depth : 0
-}
-
-/** 当前嵌套深度是否已超限（超限时 grid 容器回退为普通 HTML 直通，避免栈溢出） */
-function isNestingTooDeep(state: StateBlock): boolean {
-    const maxNesting = state.md.options.maxNesting ?? DEFAULT_MAX_NESTING
-    return getNestingDepth(state) >= maxNesting
-}
-
-/**
- * 读取 [beginLine, endLine) 行区间并去掉外层缩进（按 open 标签所在列）。
- * 使用 markdown-it 官方 `state.getLines()`：按列展开 Tab、行数与原文一一对应，
- * 因此内容 token 的源码行号可以可靠回填为整篇文档的绝对行号。
- */
-function getDedentedContent(state: StateBlock, beginLine: number, endLine: number): string {
-    if (endLine <= beginLine) {
-        return ''
-    }
-    const indent = state.sCount[beginLine - 1] ?? state.blkIndent
-    return state.getLines(beginLine, endLine, indent, false)
-}
-
-/**
- * 递归解析容器内部 Markdown，并把内容 token 的 map 回填为整篇文档的绝对行号。
- * 递归深度计入 env，超过 maxNesting 时由上层判定回退。
- */
-function parseNestedContent(state: StateBlock, content: string, sourceStartLine: number): void {
-    if (content.length === 0) {
-        return
-    }
-    const env = ensureEnv(state)
-    const tokenStart = state.tokens.length
-    const depth = getNestingDepth(state)
-    env[ENV_NESTING_DEPTH] = depth + 1
-    try {
-        state.md.block.parse(content, state.md, state.env, state.tokens)
-    } finally {
-        env[ENV_NESTING_DEPTH] = depth
-    }
-    for (let index = tokenStart; index < state.tokens.length; index += 1) {
-        const map = state.tokens[index].map
-        if (map) {
-            map[0] += sourceStartLine
-            map[1] += sourceStartLine
-        }
-    }
-}
-
 /**
  * grid cards block rule。
  * 命中 `<div class="grid cards" markdown>` 后：
@@ -299,15 +245,12 @@ function gridCardsBlockRule(
     endLine: number,
     silent: boolean
 ): boolean {
-    // 缩进 ≥ 4 列时属于缩进代码块，不当作 HTML 容器
-    if (state.sCount[startLine] - state.blkIndent >= CONTENT_INDENT) {
+    // 缩进 ≥ 4 列时属于缩进代码块，不当作 HTML 容器（公共 helper 与 markdown-it 判定一致）
+    if (!canStartBlock(state, startLine)) {
         return false
     }
-    const rawLine = state.src.slice(state.bMarks[startLine], state.eMarks[startLine])
-    const lineText = state.src.slice(
-        state.bMarks[startLine] + state.tShift[startLine],
-        state.eMarks[startLine]
-    )
+    const rawLine = getRawLineText(state, startLine)
+    const lineText = getLineText(state, startLine)
     const container = matchGridContainerOpenTag(lineText)
     if (!container) {
         return false
@@ -315,7 +258,7 @@ function gridCardsBlockRule(
     if (silent) {
         return true
     }
-    if (isNestingTooDeep(state)) {
+    if (isNestingTooDeep(state, ENV_NESTING_DEPTH)) {
         return false
     }
     const closeLine = findGridCloseLine(state, startLine, endLine)
@@ -334,8 +277,9 @@ function gridCardsBlockRule(
     openToken.map = [startLine, closeLine + 1]
     openToken.meta = { classes: container.classes }
 
-    const content = getDedentedContent(state, startLine + 1, closeLine)
-    parseNestedContent(state, content, startLine + 1)
+    // 缩进口径 C：按容器开标签所在行的缩进列去缩进
+    const content = getContainerBlockContent(state, startLine + 1, closeLine)
+    parseNestedContent(state, content, startLine + 1, ENV_NESTING_DEPTH)
 
     const closeToken = state.push(MDX_GRID_CLOSE, 'div', -1)
     closeToken.block = true

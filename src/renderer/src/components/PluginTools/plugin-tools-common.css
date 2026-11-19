@@ -1,0 +1,82 @@
+/* ============================================================================
+ * Plugin Tools 通用样式（第 3 批渲染层重构 / 子任务 A3）
+ *
+ * 目的：收敛 44/45 个插件工具组件中反复出现的公共类，作为后续「组件删除本地
+ * scoped 副本」的统一定义来源。
+ *
+ * 现状与安全性：
+ * - 本文件按 `plugin-tools-theme.css` 的既有方式被各组件以 `@import` 引入；
+ * - 本轮（第 3 批）约束只允许改 Codec 目录，其他插件组件的本地 scoped 副本暂不
+ *   删除；scoped 规则的 `[data-v-*]` 属性选择器优先级更高，且本地规则在层叠中
+ *   后出现，因此本文件的公共定义不会覆盖各组件的差异值，现有视觉不变；
+ * - 仅收敛「结构与低风险」属性；各组件确实不同的取值（justify-content 对齐、
+ *   min-height/字体、margin 间距等）继续保留在组件内，不做一刀切。
+ * ========================================================================== */
+
+/* 标题下分隔线：全部 6 个使用方取值一致（2px + 主题边框色） */
+.divider-tool {
+    height: 2px;
+    background-color: var(--theme-border-color);
+}
+
+/* 工具按钮：全部 6 个使用方取值一致（6px 20px / 4px 圆角 / pointer） */
+.tool-btn {
+    padding: 6px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* 标签页按钮：padding 有 5px/6px 两档差异，此处取多数值；本地规则覆盖差异 */
+.tab-btn {
+    padding: 6px 18px;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* 激活标签页：两种历史类名（tab-active / tab-btn-active）取值完全一致，统一收口 */
+.tab-btn-active,
+.tab-active {
+    background-color: var(--theme-accent-color);
+    color: var(--theme-button-text-color);
+    border-color: var(--theme-accent-color);
+}
+
+/* 错误提示文案：颜色统一 accent；margin 取多数值，个别组件本地覆盖 */
+.error-text {
+    color: var(--theme-accent-color);
+    margin: 8px 0 0;
+}
+
+/* 表单字段标签：min-width 与颜色统一；个别组件用 width 覆盖（min-width 不冲突） */
+.field-label {
+    min-width: 90px;
+    color: var(--theme-secondary-text-color);
+}
+
+/* 单行表单：flex-wrap 因组件而异，继续保留在组件内 */
+.row-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 面板卡片：背景/边框由 theme.css 的 `.plugin-tools-theme .card` 提供 */
+.panel-card {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 工具文本域：min-height/字体/margin 因组件而异，保留在组件内 */
+.tool-textarea {
+    width: 100%;
+    resize: vertical;
+}
+
+/* 按钮行：仅统一 display:flex；对齐/间距/上边距各组件不同，保留在组件内 */
+.btn-row {
+    display: flex;
+}

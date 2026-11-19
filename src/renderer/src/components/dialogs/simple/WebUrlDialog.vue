@@ -1,71 +1,49 @@
 <template>
-    <Teleport to="body">
-        <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="handleCancel">
-                <Transition name="dialog-scale">
-                    <div
-                        v-if="visible"
-                        class="dialog-container"
-                        :style="dialogStyle"
-                        @mousedown="onDialogMouseDown"
-                    >
-                        <div class="title-bar">
-                            <span class="title-text">{{
-                                title || t('dialogRenderer.webUrl.defaultTitle')
-                            }}</span>
-                            <button class="close-btn" @click.stop="handleCancel">×</button>
-                        </div>
-
-                        <div class="content">
-                            <div class="input-group">
-                                <label class="input-label">{{
-                                    t('dialogRenderer.webUrl.linkText')
-                                }}</label>
-                                <input
-                                    v-model="linkText"
-                                    type="text"
-                                    class="text-input"
-                                    :placeholder="t('dialogRenderer.webUrl.linkTextPlaceholder')"
-                                />
-                            </div>
-
-                            <div class="input-group">
-                                <label class="input-label">{{
-                                    t('dialogRenderer.webUrl.linkUrl')
-                                }}</label>
-                                <input
-                                    v-model="linkUrl"
-                                    type="text"
-                                    class="text-input"
-                                    :placeholder="t('dialogRenderer.webUrl.linkUrlPlaceholder')"
-                                    @keyup.enter="handleConfirm"
-                                />
-                            </div>
-                        </div>
-
-                        <div class="footer">
-                            <button class="btn btn-cancel" @click="handleCancel">
-                                {{ t('common.cancel') }}
-                            </button>
-                            <button
-                                class="btn btn-confirm"
-                                :disabled="!linkUrl.trim()"
-                                @click="handleConfirm"
-                            >
-                                {{ t('dialogRenderer.common.insert') }}
-                            </button>
-                        </div>
-                    </div>
-                </Transition>
+    <BaseDialog
+        :visible="visible"
+        :title="title || t('dialogRenderer.webUrl.defaultTitle')"
+        width="520px"
+        reset-position-on-open
+        @close="handleCancel"
+    >
+        <div class="content">
+            <div class="input-group">
+                <label class="input-label">{{ t('dialogRenderer.webUrl.linkText') }}</label>
+                <input
+                    v-model="linkText"
+                    type="text"
+                    class="text-input"
+                    :placeholder="t('dialogRenderer.webUrl.linkTextPlaceholder')"
+                />
             </div>
-        </Transition>
-    </Teleport>
+
+            <div class="input-group">
+                <label class="input-label">{{ t('dialogRenderer.webUrl.linkUrl') }}</label>
+                <input
+                    v-model="linkUrl"
+                    type="text"
+                    class="text-input"
+                    :placeholder="t('dialogRenderer.webUrl.linkUrlPlaceholder')"
+                    @keyup.enter="handleConfirm"
+                />
+            </div>
+        </div>
+
+        <template #footer>
+            <button class="btn btn-cancel" @click="handleCancel">
+                {{ t('common.cancel') }}
+            </button>
+            <button class="btn btn-confirm" :disabled="!linkUrl.trim()" @click="handleConfirm">
+                {{ t('dialogRenderer.common.insert') }}
+            </button>
+        </template>
+    </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { t } from '../../../common/i18n'
+import BaseDialog from '../BaseDialog.vue'
 
 interface Props {
     visible: boolean
@@ -85,17 +63,14 @@ const emit = defineEmits<{
 const linkText = ref('')
 const linkUrl = ref('')
 
-const { dialogStyle, onDialogMouseDown, resetPosition } = useDialogDrag({
-    initialPosition: 'center'
-})
-
+// 打开对话框时重置表单；拖拽位置重置由 BaseDialog 的 reset-position-on-open 承担
+// （等价于迁移前在本监听内调用的 resetPosition()）。
 watch(
     () => props.visible,
     (newVal) => {
         if (newVal) {
             linkText.value = ''
             linkUrl.value = ''
-            resetPosition()
         }
     }
 )
@@ -114,85 +89,8 @@ function handleConfirm() {
 </script>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-    opacity: 0;
-}
-
-.dialog-scale-enter-active,
-.dialog-scale-leave-active {
-    transition: transform 0.2s ease;
-}
-
-.dialog-scale-enter-from,
-.dialog-scale-leave-to {
-    transform: scale(0.9);
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.dialog-container {
-    width: 520px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.title-bar {
-    height: 32px;
-    background: var(--title-bar-gradient);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 15px;
-    cursor: move;
-    user-select: none;
-}
-
-.title-text {
-    color: #fff;
-    font-size: 13px;
-    font-weight: 500;
-}
-
-.close-btn {
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    color: #fff;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 100, 100, 0.9);
-}
-
+/* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
+   这里只保留正文、输入框与底部按钮样式。 */
 .content {
     padding: 20px;
 }
@@ -229,15 +127,6 @@ function handleConfirm() {
 
 .text-input:focus {
     border-color: var(--accent-color);
-}
-
-.footer {
-    padding: 15px 20px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
 }
 
 .btn {

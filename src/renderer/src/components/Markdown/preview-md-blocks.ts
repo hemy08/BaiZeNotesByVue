@@ -58,6 +58,16 @@
  */
 import type MarkdownIt from 'markdown-it'
 import type { Env, StateBlock } from 'markdown-it'
+// 块级解析公共 helper（第 3 批子任务 D 去重）：本模块使用缩进口径 B（仅裁容器缩进，见 preview-block-utils）
+import {
+    canStartBlock,
+    ensureEnv,
+    getEnvNumber,
+    getFenceBlockContent,
+    getLineText,
+    isNestingTooDeep,
+    parseNestedContent
+} from './preview-block-utils'
 import {
     createTabDeepLinkEnv,
     getTabTargetByHash,
@@ -115,12 +125,6 @@ const BLOCK_OPEN_PATTERN = /^\/\/\/[ \t]+([A-Za-z][\w-]*)(?:[ \t]*\|[ \t]*(.*?))
 /** 块结束行：单独一行 `///`（允许尾随空白） */
 const BLOCK_CLOSE_PATTERN = /^\/\/\/[ \t]*$/
 
-/** 内容缩进要求：相对当前块缩进（state.blkIndent）≥ 4 列属于缩进代码块，不得作为块起始行 */
-const CONTENT_INDENT = 4
-
-/** markdown-it maxNesting 默认值（与 material 插件保持一致，防止恶意深层嵌套栈溢出） */
-const DEFAULT_MAX_NESTING = 100
-
 /** 特殊块类型（其余类型统一按 admonition 渲染） */
 const BLOCK_TYPE_TABBED = 'tabbed'
 const BLOCK_TYPE_TAB = 'tab'
@@ -151,16 +155,6 @@ export const MDX_SNIPPET_PLACEHOLDER = 'mdx_snippet_placeholder'
 
 /* ============================== 二、块语法行级工具 ============================== */
 
-/** 读取某一行的原始文本（已去除行首缩进；state.src 已把 CRLF 归一化为 LF） */
-function getLineText(state: StateBlock, line: number): string {
-    return state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line])
-}
-
-/** 是否允许在此行起始一个自定义块（相对缩进 < 4，否则属于缩进代码块） */
-function canStartBlock(state: StateBlock, line: number): boolean {
-    return state.sCount[line] - state.blkIndent < CONTENT_INDENT
-}
-
 /** 匹配块起始行；返回类型（保留原文大小写）与标题（可为空串），不匹配返回 null */
 function matchBlockHeader(lineText: string): { type: string; title: string } | null {
     const match = BLOCK_OPEN_PATTERN.exec(lineText)
@@ -175,25 +169,9 @@ function isBlockCloseLine(lineText: string): boolean {
     return BLOCK_CLOSE_PATTERN.test(lineText)
 }
 
-/** 读取（必要时创建）当前解析 env：tab 自增 id 与嵌套深度计数跨规则共享 */
-function ensureEnv(state: StateBlock): Env {
-    if (!state.env) {
-        state.env = {}
-    }
-    return state.env
-}
-
-/** 当前递归嵌套深度是否已超限（超限时自定义块回退为普通段落，避免栈溢出） */
-function isNestingTooDeep(state: StateBlock, env: Env): boolean {
-    const depth = typeof env[ENV_BLOCK_DEPTH] === 'number' ? env[ENV_BLOCK_DEPTH] : 0
-    const maxNesting = state.md.options.maxNesting ?? DEFAULT_MAX_NESTING
-    return depth >= maxNesting
-}
-
 /** 分配下一个 `/// tabbed` 组序号（从 PYMDOWNX_TABBED_SET_ID_BASE + 1 开始） */
 function nextPymdownxTabbedSetId(env: Env): number {
-    const current = typeof env[ENV_TABBED_SET_ID] === 'number' ? env[ENV_TABBED_SET_ID] : 0
-    const next = current + 1
+    const next = getEnvNumber(env, ENV_TABBED_SET_ID) + 1
     env[ENV_TABBED_SET_ID] = next
     return PYMDOWNX_TABBED_SET_ID_BASE + next
 }
@@ -277,57 +255,10 @@ function findBlockClose(state: StateBlock, startLine: number, endLine: number): 
     return null
 }
 
-/* ============================== 四、内容提取与递归解析 ============================== */
-
-/**
- * 取出 [beginLine, endLine) 区间的文本并按当前容器缩进（state.blkIndent）去缩进。
- * `///` 块内容是「围栏式」的，不像 `!!!` 那样额外要求 4 空格缩进，因此只去除容器缩进
- * （列表/引用块内的块缩进），块内保留的额外缩进（如 4 空格缩进代码块）原样交给递归解析。
+/* ============================== 四、内容提取与递归解析 ==============================
+ * 去缩进（缩进口径 B：`///` 围栏内容只裁容器缩进）与递归解析统一由
+ * `preview-block-utils.ts` 提供：getFenceBlockContent / parseNestedContent。
  */
-function getDedentedContent(state: StateBlock, beginLine: number, endLine: number): string {
-    if (endLine <= beginLine) {
-        return ''
-    }
-    return state.getLines(beginLine, endLine, state.blkIndent, false)
-}
-
-/**
- * 递归解析块内容并把内容 token 追加到当前 token 流。
- * @param sourceStartLine 内容第一行在整篇文档中的绝对行号（回填 token.map 用）
- */
-function parseNestedContent(
-    state: StateBlock,
-    content: string,
-    sourceStartLine: number,
-    env: Env
-): void {
-    if (content.length === 0) {
-        return
-    }
-    const tokenStart = state.tokens.length
-    const depth = typeof env[ENV_BLOCK_DEPTH] === 'number' ? env[ENV_BLOCK_DEPTH] : 0
-    env[ENV_BLOCK_DEPTH] = depth + 1
-    try {
-        state.md.block.parse(content, state.md, state.env, state.tokens)
-    } finally {
-        env[ENV_BLOCK_DEPTH] = depth
-    }
-    remapTokenLineMaps(state, tokenStart, sourceStartLine)
-}
-
-/**
- * 把递归子解析产出的 token.map 从「子文本相对行号」回填为「整篇文档绝对行号」。
- * 子文本与原文行一一对应（getLines 不增删行），因此整体平移 offset 即可。
- */
-function remapTokenLineMaps(state: StateBlock, tokenStart: number, sourceStartLine: number): void {
-    for (let index = tokenStart; index < state.tokens.length; index += 1) {
-        const map = state.tokens[index].map
-        if (map) {
-            map[0] += sourceStartLine
-            map[1] += sourceStartLine
-        }
-    }
-}
 
 /* ============================== 五、tabbed 子 tab 收集 ============================== */
 
@@ -367,7 +298,8 @@ function collectTabSegments(
         }
         segments.push({
             label: header.title.trim().length > 0 ? header.title.trim() : BLOCK_TYPE_TAB,
-            content: getDedentedContent(state, line + 1, range.closeLine),
+            // 缩进口径 B：/// 围栏内容只裁容器缩进（不额外要求 4 空格）
+            content: getFenceBlockContent(state, line + 1, range.closeLine),
             contentStartLine: line + 1
         })
         line = range.nextLine
@@ -398,7 +330,7 @@ function emitTabbedSet(
         tabOpenToken.block = true
         tabOpenToken.map = [segment.contentStartLine - 1, segment.contentStartLine - 1]
         tabOpenToken.meta = { index, setId }
-        parseNestedContent(state, segment.content, segment.contentStartLine, env)
+        parseNestedContent(state, segment.content, segment.contentStartLine, ENV_BLOCK_DEPTH)
         const tabCloseToken = state.push(MKDOCS_TAB_CLOSE, 'div', -1)
         tabCloseToken.block = true
     })
@@ -413,29 +345,22 @@ function emitAdmonition(
     startLine: number,
     range: BlockRange,
     type: string,
-    title: string,
-    env: Env
+    title: string
 ): void {
-    const content = getDedentedContent(state, startLine + 1, range.closeLine)
+    const content = getFenceBlockContent(state, startLine + 1, range.closeLine)
     const openToken = state.push(MKDOCS_ADMONITION_OPEN, 'div', 1)
     openToken.block = true
     openToken.map = [startLine, range.nextLine]
     openToken.meta = { type, title }
-    parseNestedContent(state, content, startLine + 1, env)
+    parseNestedContent(state, content, startLine + 1, ENV_BLOCK_DEPTH)
     const closeToken = state.push(MKDOCS_ADMONITION_CLOSE, 'div', -1)
     closeToken.block = true
     state.line = range.nextLine
 }
 
 /** 输出 details 折叠块 token（`<details class="admonition details"><summary>`） */
-function emitDetails(
-    state: StateBlock,
-    startLine: number,
-    range: BlockRange,
-    title: string,
-    env: Env
-): void {
-    const content = getDedentedContent(state, startLine + 1, range.closeLine)
+function emitDetails(state: StateBlock, startLine: number, range: BlockRange, title: string): void {
+    const content = getFenceBlockContent(state, startLine + 1, range.closeLine)
     const openToken = state.push(MDX_DETAILS_OPEN, 'details', 1)
     openToken.block = true
     openToken.map = [startLine, range.nextLine]
@@ -443,7 +368,7 @@ function emitDetails(
         type: BLOCK_TYPE_DETAILS,
         title: title.length > 0 ? title : BLOCK_TYPE_DETAILS
     }
-    parseNestedContent(state, content, startLine + 1, env)
+    parseNestedContent(state, content, startLine + 1, ENV_BLOCK_DEPTH)
     const closeToken = state.push(MDX_DETAILS_CLOSE, 'details', -1)
     closeToken.block = true
     state.line = range.nextLine
@@ -479,8 +404,8 @@ function pymdownxBlockRule(
     if (silent) {
         return true
     }
-    const env = ensureEnv(state)
-    if (isNestingTooDeep(state, env)) {
+    // 嵌套计数使用本模块私有 env 键（与 material 插件计数隔离）
+    if (isNestingTooDeep(state, ENV_BLOCK_DEPTH)) {
         return false
     }
     const blockType = header.type.toLowerCase()
@@ -492,7 +417,8 @@ function pymdownxBlockRule(
             // 子 tab 未闭合 / 没有合法子 tab：整体回退为普通段落，避免吞掉后续 Markdown
             return false
         }
-        emitTabbedSet(state, startLine, range, segments, env)
+        // tab 组序号计数器挂在 env 上（本模块特有），复用公共 ensureEnv 读取
+        emitTabbedSet(state, startLine, range, segments, ensureEnv(state))
         return true
     }
     if (blockType === BLOCK_TYPE_TAB) {
@@ -504,19 +430,19 @@ function pymdownxBlockRule(
             [
                 {
                     label: title.length > 0 ? title : BLOCK_TYPE_TAB,
-                    content: getDedentedContent(state, startLine + 1, range.closeLine),
+                    content: getFenceBlockContent(state, startLine + 1, range.closeLine),
                     contentStartLine: startLine + 1
                 }
             ],
-            env
+            ensureEnv(state)
         )
         return true
     }
     if (blockType === BLOCK_TYPE_DETAILS) {
-        emitDetails(state, startLine, range, title, env)
+        emitDetails(state, startLine, range, title)
         return true
     }
-    emitAdmonition(state, startLine, range, header.type, header.title, env)
+    emitAdmonition(state, startLine, range, header.type, header.title)
     return true
 }
 
