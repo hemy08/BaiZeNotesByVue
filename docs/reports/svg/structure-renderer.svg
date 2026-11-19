@@ -23,7 +23,7 @@
   </defs>
 
   <text x="16" y="32" class="title">图 3 · 渲染层分层与组件树</text>
-  <text x="16" y="54" class="sub">双段式外壳（欢迎页 / 主界面）：欢迎页入口 chunk ≈ 114 KB，主界面（Monaco + 预览 ≈ 9.6 MB）整体异步加载</text>
+  <text x="16" y="54" class="sub">双段式外壳（欢迎页 / 主界面）：入口 chunk ≈ 127 kB，主界面（Monaco + 预览 ≈ 9.89 MB）整体异步，64 处动态 import</text>
   <line x1="880" y1="48" x2="906" y2="48" class="flow" marker-end="url(#r-ar)"/>
   <text x="914" y="52" class="legend">分层依赖</text>
   <line x1="1010" y1="48" x2="1036" y2="48" class="flowg" marker-end="url(#r-arg)"/>
@@ -49,19 +49,19 @@
   <text x="122" y="256" class="cdesc">打开文件 / 文件夹 / 最近记录</text>
   <rect x="364" y="210" width="440" height="86" class="card"/>
   <text x="376" y="234" class="ctitle">BaiZeNotes.vue（主界面壳）</text>
-  <text x="376" y="256" class="cdesc">标题栏 · 窗口控制 · 主题应用 · 全局事件 · 快捷键</text>
-  <text x="376" y="276" class="cdesc">18 个 Vue 对话框统一宿主</text>
+  <text x="376" y="256" class="cdesc">WindowControls 窗口控制 · 主题应用 · 全局事件</text>
+  <text x="376" y="276" class="cdesc">774 行 · 18 个 Vue 对话框宿主</text>
 
   <rect x="16" y="320" width="800" height="112" class="layer"/>
   <text x="30" y="346" class="lbl">L2</text><text x="30" y="364" class="lbl">布局</text>
   <rect x="110" y="332" width="222" height="88" class="card"/>
   <text x="122" y="356" class="ctitle">MenuBar</text>
   <text x="122" y="378" class="cdesc">menu-config 数据驱动菜单</text>
-  <text x="122" y="398" class="cdesc">13 个顶层菜单 + 动作分发</text>
+  <text x="122" y="398" class="cdesc">12 个顶层菜单 + 动作分发</text>
   <rect x="344" y="332" width="266" height="88" class="card"/>
   <text x="356" y="356" class="ctitle">WorkSpace</text>
   <text x="356" y="378" class="cdesc">分栏容器：编辑 / 预览 / 资源管理器</text>
-  <text x="356" y="398" class="cdesc">HTML / PDF 查看器</text>
+  <text x="356" y="398" class="cdesc">HTML / PDF 查看：FileViewerShell器</text>
   <rect x="622" y="332" width="182" height="88" class="card"/>
   <text x="634" y="356" class="ctitle">StatusBar</text>
   <text x="634" y="378" class="cdesc">行列 / 编码 / 语言</text>
@@ -86,14 +86,14 @@
   <rect x="110" y="570" width="222" height="92" class="card"/>
   <text x="122" y="594" class="ctitle">PluginTools</text>
   <text x="122" y="616" class="cdesc">38 个插件工具（懒加载）</text>
-  <text x="122" y="636" class="cdesc">纯函数 lib + Vue 页面</text>
+  <text x="122" y="636" class="cdesc">TextCodecTool · 纯函数 lib</text>
   <rect x="344" y="570" width="170" height="92" class="card"/>
   <text x="356" y="594" class="ctitle">HemyTools</text>
   <text x="356" y="616" class="cdesc">HTML / PDF 查看</text>
-  <text x="356" y="636" class="cdesc">按需挂载</text>
+  <text x="356" y="636" class="cdesc">FileViewerShell</text>
   <rect x="526" y="570" width="278" height="92" class="card"/>
   <text x="538" y="594" class="ctitle">Vue 对话框 × 18</text>
-  <text x="538" y="616" class="cdesc">dialogs/index.ts 统一懒加载注册表</text>
+  <text x="538" y="616" class="cdesc">18/18 基于 BaseDialog 基座</text>
   <text x="538" y="636" class="cdesc">插入 / 设置 / 消息 / 主题 / 编辑器</text>
 
   <rect x="16" y="688" width="800" height="104" class="layer"/>
@@ -104,17 +104,17 @@
   <text x="122" y="766" class="cdesc">主题 CSS 变量（28 套应用主题）· logger</text>
   <rect x="542" y="700" width="262" height="80" class="card"/>
   <text x="554" y="724" class="ctitle">composables</text>
-  <text x="554" y="746" class="cdesc">useDialogDrag · useWindowManagement</text>
-  <text x="554" y="766" class="cdesc">窗口 / 对话框拖拽缩放</text>
+  <text x="554" y="746" class="cdesc">composables × 4：拖拽 / 缩放</text>
+  <text x="554" y="766" class="cdesc">窗口管理 · 查看器状态</text>
 
   <!-- 右侧：跨层契约 -->
   <rect x="832" y="82" width="252" height="170" class="layer"/>
   <text x="848" y="108" class="lbl">shared 单一真源</text>
   <rect x="846" y="120" width="224" height="112" class="card"/>
   <text x="858" y="144" class="cdesc">· ipc-channels：92 通道 / 17 组</text>
-  <text x="858" y="166" class="cdesc">· types：9 领域</text>
+  <text x="858" y="166" class="cdesc">· types 14 文件 · utils 11</text>
   <text x="858" y="188" class="cdesc">· i18n：12 命名空间 × 1,821 词条</text>
-  <text x="858" y="210" class="cdesc">· main 37 + renderer 31 文件消费</text>
+  <text x="858" y="210" class="cdesc">· main 42 + renderer 38 文件消费</text>
 
   <rect x="832" y="264" width="252" height="150" class="layer"/>
   <text x="848" y="290" class="lbl">与主进程通信</text>
@@ -135,9 +135,9 @@
   <rect x="832" y="626" width="252" height="166" class="layer"/>
   <text x="848" y="652" class="lbl">体积口径（实测）</text>
   <rect x="846" y="664" width="224" height="108" class="card"/>
-  <text x="858" y="688" class="cdesc">· 入口 chunk ≈ 114 KB</text>
-  <text x="858" y="710" class="cdesc">· 主界面异步块 ≈ 9.6 MB</text>
-  <text x="858" y="732" class="cdesc">· out/renderer ≈ 24.1 MiB</text>
+  <text x="858" y="688" class="cdesc">· 入口 chunk ≈ 127 kB</text>
+  <text x="858" y="710" class="cdesc">· 主界面异步块 ≈ 9.89 MB</text>
+  <text x="858" y="732" class="cdesc">· out/renderer ≈ 24.21 MiB</text>
   <text x="858" y="754" class="cdesc">· 38 工具 / 18 对话框按需加载</text>
 
   <!-- 箭头 -->
@@ -149,5 +149,5 @@
   <!-- 底部注释 -->
   <rect x="16" y="812" width="1068" height="54" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
   <text x="32" y="836" class="sect">欢迎页与主界面为 v-if 双段式：入口只负责欢迎页 + 语言 / CSS / 右键菜单；主界面异步加载 + loading / error / 重试兜底。无 Vue Router，界面状态由 welcome-state 与 store 驱动。</text>
-  <text x="32" y="858" class="sect">61 处动态 import 构成全部懒加载边界（18 对话框 + 38 插件 + 6 类重型依赖），electron.vite.config 中无手工 manualChunks。</text>
+  <text x="32" y="858" class="sect">64 处动态 import 构成全部懒加载边界（18 对话框 + 38 插件 + 8 其它），electron.vite.config 中无手工 manualChunks。</text>
 </svg>

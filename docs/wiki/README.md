@@ -32,17 +32,17 @@
 
 | 指标 | 数值 |
 | --- | --- |
-| `src` 下 `.ts`/`.vue` 文件 | **287 个**（206 `.ts` + 81 `.vue`），**约 91,500 行**；另 13 个 `.css`（`.ts/.vue/.css` 合计 300 个源码文件 / 约 94,100 行） |
-| 渲染层 Vue 组件 | **81 个**（80 个业务组件 + 根组件 `App.vue`） |
-| Vue 对话框 | **18 个**（`src/renderer/src/components/dialogs/`，主窗口内 Teleport 渲染） |
+| `src` 下 `.ts`/`.vue` 文件 | **313 个**（229 `.ts` + 84 `.vue`），**约 83,700 行**；另 14 个 `.css`（`.ts/.vue/.css` 合计 327 个源码文件 / 约 86,100 行） |
+| 渲染层 Vue 组件 | **84 个**（83 个业务/壳层组件 + 根组件 `App.vue`） |
+| Vue 对话框 | **18 个业务对话框 + BaseDialog 基座**（`src/renderer/src/components/dialogs/`，主窗口内 Teleport 渲染） |
 | 插件工具组件 | **38 个**（加密 8 / 信息 8 / 网络 4 / 编解码 5 / 格式转换 5 / 小工具 3 / 文本 3 / 格式化 2，全部注册为菜单工具） |
 | IPC 通道常量 | **92 个 / 17 组**（唯一真源 `src/shared/ipc-channels.ts`；FILE 组 24 个，含 `OPEN_IN_BROWSER`、`READ_BINARY`） |
 | preload 白名单 | send/invoke **58** 个、on/once **25** 个；`window.electron` 为**受限 ipcRenderer**（仅 send/invoke/on/once/removeListener/removeAllListeners + webFrame/webUtils/process；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露） |
-| 单元测试 | **158 个 `.test.ts` 文件 / 3,198 个用例**（vitest 全通过） |
-| 构建产物 | 主进程 `out/main/index.js` ≈**605 KB**；入口 chunk `out/renderer/assets/index-*.js` ≈**114 KB**（初始加载 JS+CSS ≈604 KB）；主界面异步 chunk `BaiZeNotes-*.js` ≈**9,644 KB**（Monaco ≈7.3MB/highlight.js/KaTeX 按需加载，2026-11-19 异步化） |
+| 单元测试 | **171 个 `.test.ts` 文件 / 3,198 个用例**（vitest 全通过） |
+| 构建产物 | 主进程 `out/main/index.js` ≈**10.50 MiB**（含内联 jsdom）；入口 chunk `out/renderer/assets/index-*.js` ≈**127 KB**；主界面异步 chunk `BaiZeNotes-*.js` ≈**9,889 KB**（Monaco/highlight.js/KaTeX 按需加载，2026-11-19 异步化） |
 | 覆盖率 | Statements 84.79% / Branch 77.99% / Functions 80.75% / Lines 85.09%（2026-11-15 历史基线，当前以最新 `npm run test:coverage` 为准） |
 
-> **当前口径**：以 [报告总索引](../reports/README.md) 的「当前基线」与 [IPC 通信矩阵](../reports/md/03-专项治理/IPC通信矩阵.md) 为准；待办跟踪见 [当前遗留问题清单](../reports/md/03-专项治理/当前遗留问题清单.md)（**21 项：17 ✅ / 3 🟡 / 1 ⏸️**；#6 / #11 / #19 为 🟡 部分修复）。
+> **当前口径**：以 [报告总索引](../reports/README.md) 的「当前基线」与 [IPC 通信矩阵](../reports/md/03-专项治理/IPC通信矩阵.md) 为准；待办跟踪见 [当前遗留问题清单](../reports/md/03-专项治理/当前遗留问题清单.md)（**21 项：18 ✅ / 2 🟡 / 1 ⏸️**；#6、#19 部分修复，#15 保持现状）。
 >
 > **门禁（2026-11-19 实测）**：typecheck 三工程 0 错误、ESLint 0/0、vitest 171 文件 / 3,198 用例全通过、生产依赖 audit 0 漏洞。
 

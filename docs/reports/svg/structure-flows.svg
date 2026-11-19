@@ -37,7 +37,7 @@
   <circle cx="264" cy="150" r="11" class="badge"/><text x="260" y="155" class="badgenum">2</text>
   <text x="284" y="155" class="stitle">IPC 请求</text>
   <text x="256" y="182" class="sdesc">invoke：sender 校验</text>
-  <text x="256" y="204" class="sdesc">路径守卫 / 受信根</text>
+  <text x="256" y="204" class="sdesc">路径守卫（shared）</text>
   <rect x="450" y="128" width="196" height="112" class="step"/>
   <circle cx="472" cy="150" r="11" class="badge"/><text x="468" y="155" class="badgenum">3</text>
   <text x="492" y="155" class="stitle">读取文件</text>
@@ -67,7 +67,7 @@
   <circle cx="56" cy="344" r="11" class="badge"/><text x="52" y="349" class="badgenum">1</text>
   <text x="76" y="349" class="stitle">MenuBar 点击</text>
   <text x="48" y="376" class="sdesc">menu-config 数据驱动</text>
-  <text x="48" y="398" class="sdesc">13 个顶层菜单</text>
+  <text x="48" y="398" class="sdesc">12 个顶层菜单</text>
   <rect x="242" y="322" width="196" height="112" class="step"/>
   <circle cx="264" cy="344" r="11" class="badge"/><text x="260" y="349" class="badgenum">2</text>
   <text x="284" y="349" class="stitle">渲染层拦截</text>
@@ -121,7 +121,7 @@
   <circle cx="888" cy="538" r="11" class="badge"/><text x="884" y="543" class="badgenum">5</text>
   <text x="908" y="543" class="stitle">落盘 + 广播</text>
   <text x="880" y="570" class="sdesc">应用主题 / 字体 / 快捷键</text>
-  <text x="880" y="592" class="sdesc">THEME.UPDATED 等 → 渲染层</text>
+  <text x="880" y="592" class="sdesc">theme-broadcast → 渲染层</text>
   <line x1="232" y1="572" x2="242" y2="572" class="flow" marker-end="url(#f-ar)"/>
   <line x1="440" y1="572" x2="450" y2="572" class="flow" marker-end="url(#f-ar)"/>
   <line x1="648" y1="572" x2="658" y2="572" class="flow" marker-end="url(#f-ar)"/>

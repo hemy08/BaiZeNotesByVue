@@ -55,7 +55,7 @@
   <text x="446" y="266" class="cdesc">persistent / 清理</text>
   <rect x="586" y="200" width="158" height="114" class="card"/>
   <text x="598" y="224" class="ctitle">窗口外设</text>
-  <text x="598" y="246" class="cdesc">dialogs：JSDOM 对话框</text>
+  <text x="598" y="246" class="cdesc">dialogs：JSDOM ×5</text>
   <text x="598" y="266" class="cdesc">renders：PlantUML 隐藏窗</text>
 
   <rect x="16" y="340" width="744" height="112" class="layer"/>
@@ -67,7 +67,7 @@
   <rect x="438" y="352" width="306" height="86" class="card"/>
   <text x="452" y="376" class="ctitle">electron-store 单真源 × 5</text>
   <text x="452" y="398" class="cdesc">system / editor / theme / quick-links / registry</text>
-  <text x="452" y="418" class="cdesc">28 套应用主题 · 54 套 Monaco 主题</text>
+  <text x="452" y="418" class="cdesc">28 套应用主题 · 57 套 Monaco 主题</text>
 
   <rect x="16" y="464" width="744" height="152" class="layer"/>
   <text x="30" y="490" class="lbl">L3</text><text x="30" y="508" class="lbl">内核</text>
@@ -92,7 +92,7 @@
   <text x="30" y="654" class="lbl">L4</text><text x="30" y="672" class="lbl">共享</text>
   <rect x="130" y="640" width="614" height="64" class="card"/>
   <text x="144" y="662" class="ctitle">shared 单一真源</text>
-  <text x="144" y="684" class="cdesc">ipc-channels（92 通道 / 17 组）· types（9 领域）· i18n（12 命名空间）· constants</text>
+  <text x="144" y="684" class="cdesc">ipc-channels（92/17）· types（14 文件）· utils（11）· constants（10）· i18n（12）</text>
 
   <!-- 右侧：preload 桥 -->
   <rect x="776" y="82" width="308" height="268" class="layer"/>
@@ -116,8 +116,9 @@
   <text x="792" y="466" class="cdesc">theme-config / ipc-security</text>
   <text x="792" y="492" class="ctitle" style="fill:#b91c1c">utils → config</text>
   <text x="792" y="514" class="cdesc">auto-backup / i18n / utils.ts</text>
-  <text x="792" y="544" class="sect">无自动环检测，靠注释与动态 import 维持顺序</text>
-  <text x="792" y="566" class="sect">建议：dependency-cruiser 方向矩阵 + 回调注入</text>
+  <text x="792" y="532" class="cdesc">file-utils/path-utils</text>
+  <text x="792" y="558" class="sect">无自动环检测，靠注释与动态 import 维持顺序</text>
+  <text x="792" y="578" class="sect">建议：dependency-cruiser 方向矩阵 + 回调注入</text>
 
   <!-- 依赖箭头 -->
   <line x1="390" y1="176" x2="390" y2="188" class="flow" marker-end="url(#m-ar)"/>

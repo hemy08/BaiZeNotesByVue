@@ -215,7 +215,7 @@
     <h4>目录</h4>
     <a class="toc-l2" href="#sec-1">分类导航</a>
     <a class="toc-l3" href="#sub-1">01-检查与扫描（9 份）</a>
-    <a class="toc-l3" href="#sub-2">02-修复与实施（6 份）</a>
+    <a class="toc-l3" href="#sub-2">02-修复与实施（7 份）</a>
     <a class="toc-l3" href="#sub-3">03-专项治理（6 份）</a>
     <a class="toc-l2" href="#sec-2">使用说明</a>
   </nav>
@@ -229,8 +229,8 @@
 
 
 <blockquote>
-<p>本目录为项目历史报告的 <strong>HTML Wiki</strong>（2026-11-18 整理）：22 个页面（1 首页 + 21 份报告）按分类存放，<strong>每页顶部均有整体导航</strong>（首页 + 3 个分类下拉 + 当前页高亮），报告页自带<strong>固定悬浮目录</strong>（随滚动保持可见），由 <code>node build/generate-report-wiki.js</code> 从 <a href="../md/">../md/</a> 同名 Markdown 批量生成。</p>
-<p><strong>口径说明</strong>：报告均为历史快照，数字与结论以报告时点为准；当前唯一现行口径见 <a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/IPC%E9%80%9A%E4%BF%A1%E7%9F%A9%E9%98%B5.html">IPC 通信矩阵</a>（92 通道）与最新门禁（v1.3.6：158 测试文件 / 3,198 用例）；待办跟踪见 <a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/%E5%BD%93%E5%89%8D%E9%81%97%E7%95%99%E9%97%AE%E9%A2%98%E6%B8%85%E5%8D%95.html">当前遗留问题清单</a>。完整索引与口径详见 <a href="../README.md">../README.md</a>。</p>
+<p>本目录为项目历史报告的 <strong>HTML Wiki</strong>（2026-11-18 整理）：23 个页面（1 首页 + 22 份报告）按分类存放，<strong>每页顶部均有整体导航</strong>（首页 + 3 个分类下拉 + 当前页高亮），报告页自带<strong>固定悬浮目录</strong>（随滚动保持可见），由 <code>node build/generate-report-wiki.js</code> 从 <a href="../md/">../md/</a> 同名 Markdown 批量生成。</p>
+<p><strong>口径说明</strong>：报告均为历史快照，数字与结论以报告时点为准；当前唯一现行口径见 <a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/IPC%E9%80%9A%E4%BF%A1%E7%9F%A9%E9%98%B5.html">IPC 通信矩阵</a>（92 通道）与最新门禁（v1.3.6：171 测试文件 / 3,198 用例）；待办跟踪见 <a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/%E5%BD%93%E5%89%8D%E9%81%97%E7%95%99%E9%97%AE%E9%A2%98%E6%B8%85%E5%8D%95.html">当前遗留问题清单</a>。完整索引与口径详见 <a href="../README.md">../README.md</a>。</p>
 </blockquote>
 <h2 id="sec-1">分类导航</h2>
 <h3 id="sub-1">01-检查与扫描（9 份）</h3>
@@ -276,11 +276,11 @@
 </tr>
 <tr>
 <td><a href="01-%E6%A3%80%E6%9F%A5%E4%B8%8E%E6%89%AB%E6%8F%8F/%E4%BB%A3%E7%A0%81%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A.html">代码整体结构分析报告</a></td>
-<td><strong>现行结构依据</strong>（v1.3.6 实测）：进程/模块/数据流/工程链路 + 结构风险与建议</td>
+<td><strong>现行结构依据</strong>（v1.3.6 实测，2026-11-19 17:55 刷新）：进程/模块/数据流/工程链路 + 结构风险与建议（含公共接口归位后刷新）</td>
 </tr>
 </tbody>
 </table>
-<h3 id="sub-2">02-修复与实施（6 份）</h3>
+<h3 id="sub-2">02-修复与实施（7 份）</h3>
 <table>
 <thead>
 <tr>
@@ -313,6 +313,10 @@
 <td><a href="02-%E4%BF%AE%E5%A4%8D%E4%B8%8E%E5%AE%9E%E6%96%BD/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E7%BD%AE%E8%A1%A5%E5%85%85%E5%AE%9E%E7%8E%B0.html">系统设置补充实现</a></td>
 <td>1.3.1 九项设置落地</td>
 </tr>
+<tr>
+<td><a href="02-%E4%BF%AE%E5%A4%8D%E4%B8%8E%E5%AE%9E%E6%96%BD/%E5%85%AC%E5%85%B1%E6%8E%A5%E5%8F%A3%E5%BD%92%E4%BD%8D%E4%BF%AE%E5%A4%8D%E8%AE%A1%E5%88%92.html">公共接口归位修复计划</a></td>
+<td><strong>执行计划</strong>（2026-11-19 结构扫描）：第 0–4 批已全部完成</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sub-3">03-专项治理（6 份）</h3>
@@ -326,11 +330,11 @@
 <tbody>
 <tr>
 <td><a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/IPC%E9%80%9A%E4%BF%A1%E7%9F%A9%E9%98%B5.html">IPC 通信矩阵</a></td>
-<td><strong>当前口径</strong>（90 通道）+ 历史快照</td>
+<td><strong>当前口径</strong>（92 通道）+ 历史快照</td>
 </tr>
 <tr>
 <td><a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/%E5%BD%93%E5%89%8D%E9%81%97%E7%95%99%E9%97%AE%E9%A2%98%E6%B8%85%E5%8D%95.html">当前遗留问题清单</a></td>
-<td><strong>问题跟踪台账</strong>（19 项，修复后更新状态）</td>
+<td><strong>问题跟踪台账</strong>（21 项，修复后更新状态）</td>
 </tr>
 <tr>
 <td><a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/IPC%E9%80%9A%E4%BF%A1%E6%B2%BB%E7%90%86%E6%8A%A5%E5%91%8A.html">IPC 通信治理报告</a></td>
@@ -342,7 +346,7 @@
 </tr>
 <tr>
 <td><a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/%E6%8F%92%E4%BB%B6%E5%B7%A5%E5%85%B7%E9%9B%86%E6%88%90.html">插件工具集成</a></td>
-<td>jyshare 调研 + 37 插件集成（合并）</td>
+<td>jyshare 调研 + 38 插件集成（合并）</td>
 </tr>
 <tr>
 <td><a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/%E4%B8%93%E9%A1%B9%E9%AA%8C%E8%AF%81%E8%AE%B0%E5%BD%95.html">专项验证记录</a></td>
