@@ -146,9 +146,16 @@ export const IPC = {
     } as const,
 
     // ============ 对话框 ============
+    // 结构优化第 2 批 2.1（H3）：原主进程 JSDOM 对话框体系收敛为渲染层 Vue + BaseDialog，
+    // 主进程只保留「请求渲染层打开对话框」与「对话框确认后执行动作」两类通道：
+    // - OPEN_VUE_DIALOG：主进程 → 渲染层（open-vue），请求打开 Vue 对话框；
+    // - RENAME_FILE_FOLDER_SUBMIT / DELETE_FILE_FOLDER_CONFIRM：渲染层 → 主进程（invoke），
+    //   用户在 Vue 对话框确认后提交重命名/删除动作（替代原 JSDOM 对话框 preload 的
+    //   CREATE_FILE_FOLDER_ENTER / RENAME_FILE_FOLDER_ENTER 两个回车通道；
+    //   新建文件/文件夹统一复用既有 IPC.FILE.CREATE_FILE_FOLDER invoke 动作）。
     DIALOG: {
-        CREATE_FILE_FOLDER_ENTER: 'baize:dialog:create-file-folder-enter',
-        RENAME_FILE_FOLDER_ENTER: 'baize:dialog:rename-file-folder-enter',
+        RENAME_FILE_FOLDER_SUBMIT: 'baize:dialog:rename-file-folder-submit',
+        DELETE_FILE_FOLDER_CONFIRM: 'baize:dialog:delete-file-folder-confirm',
         OPEN_VUE_DIALOG: 'baize:dialog:open-vue'
     } as const,
 

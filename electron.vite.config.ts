@@ -11,6 +11,12 @@ export default defineConfig({
         // ET-42：electron-vite 6 稳定版已将 externalizeDepsPlugin 标记为 @deprecated
         // （类型声明中写明 use `build.externalizeDeps` config option instead），
         // 迁移到 v6 推荐的 build.externalizeDeps 配置。main 的默认值即 true，这里显式声明以保持语义清晰。
+        //
+        // H6（结构优化第 2 批 2.3）：jsdom 仅为 vitest 的 jsdom 测试环境保留在
+        // devDependencies——它不参与主进程 bundle，src/main 已零运行时 import/require。
+        // 注意：devDependency 不在 externalizeDeps 的自动外部化名单内，若 src/main 再次
+        // 引入 jsdom，Rollup 会把它内联进 out/main/index.js（历史基线 10.50 MiB，
+        // 清理后约 0.63 MiB），体积回归可用 `git grep "jsdom" -- src/main` 与构建产物大小守护。
         build: {
             externalizeDeps: true
         }

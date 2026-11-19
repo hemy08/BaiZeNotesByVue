@@ -1,5 +1,5 @@
 /**
- * 对话框契约静态护栏（第 2 批契约重构）
+ * 对话框契约静态护栏（第 2 批契约重构 + 结构优化第 2 批 2.1：双对话框体系收敛）
  *
  * 目标：`src/shared/types/dialog.ts` 的对话框名与 data 契约和「主进程发送点」+
  * 「渲染层消费点」双向一致，防止新增对话框/改 data 字段时契约静默漂移。
@@ -7,10 +7,11 @@
  *
  * 1. 主进程全部 `OPEN_VUE_DIALOG` 发送点的 dialogName 集合 == MainProcessDialogName；
  * 2. MainProcessDialogName ⊆ VueDialogName（主进程发送集合是渲染层可接收集合的子集）；
- * 3. VueDialogName == useConfigStore 的 `keyof DialogState` + 消息伪名称（24 个）；
+ * 3. VueDialogName == useConfigStore 的 `keyof DialogState` + 消息伪名称（29 个）；
  * 4. 主进程发送的 data 键集合与 MainProcessDialogDataMap 各对话框 data 契约一致；
- * 5. 渲染层消费端（MessageDialog.vue / CreateFileFolderDialog.vue / DialogState）的
- *    字段集合与 shared data 契约一致；
+ * 5. 渲染层消费端（MessageDialog.vue / CreateFileFolderDialog.vue / RenameFileFolderDialog.vue /
+ *    ConfirmDeleteDialog.vue / ReleaseNotesDialog.vue / DialogState）的字段集合与 shared
+ *    data 契约一致；
  * 6. 死字段回归：createFileFolder 载荷不得再出现已删除的 `isFolder`。
  *
  * 解析说明：主进程 data 载荷对象可能包含嵌套调用（如 `tMain('key', { path })`），
@@ -50,6 +51,37 @@ const CREATE_FILE_FOLDER_VUE = path.join(
     'dialogs',
     'simple',
     'CreateFileFolderDialog.vue'
+)
+// 结构优化第 2 批 2.1：JSDOM/原生消息框迁移而来的 Vue 对话框（消费端字段核对）
+const RENAME_FILE_FOLDER_VUE = path.join(
+    ROOT,
+    'src',
+    'renderer',
+    'src',
+    'components',
+    'dialogs',
+    'simple',
+    'RenameFileFolderDialog.vue'
+)
+const CONFIRM_DELETE_VUE = path.join(
+    ROOT,
+    'src',
+    'renderer',
+    'src',
+    'components',
+    'dialogs',
+    'simple',
+    'ConfirmDeleteDialog.vue'
+)
+const RELEASE_NOTES_VUE = path.join(
+    ROOT,
+    'src',
+    'renderer',
+    'src',
+    'components',
+    'dialogs',
+    'help',
+    'ReleaseNotesDialog.vue'
 )
 
 /** 主进程一处 OPEN_VUE_DIALOG 发送点（dialogName + 可选的 data 顶层键） */
@@ -308,11 +340,12 @@ const MESSAGE_PSEUDO_NAMES = new Set(['message', ...MESSAGE_TYPE_NAMES])
 
 describe('对话框名集合核对（主进程 ↔ 渲染层）', () => {
     it('主进程全部 OPEN_VUE_DIALOG 发送点的 dialogName 应与 MainProcessDialogName 完全一致', () => {
-        // 7 个文件的 17 处发送点（menu-file ×2、menu-view ×4、menu-tools ×4、short-key ×1、
-        // dialog-helpers ×3、import ×1、file-operations ×2）去重后 9 个对话框名
+        // 发送点：dialogs.ts（帮助请求 ×3 + 文件管理器转 Vue ×3）、menu-file ×2、
+        // menu-view ×4、menu-tools ×4、short-key ×1、dialog-helpers ×3、import ×1、
+        // file-operations ×2（去重后 14 个对话框名）
         expect(SEND_SITES.length).toBeGreaterThanOrEqual(8)
-        expect(MAIN_DIALOG_NAMES.size).toBe(9)
-        expect(DECLARED_MAIN_DIALOG_NAMES.size).toBe(9)
+        expect(MAIN_DIALOG_NAMES.size).toBe(14)
+        expect(DECLARED_MAIN_DIALOG_NAMES.size).toBe(14)
         expect(sorted(MAIN_DIALOG_NAMES)).toEqual(sorted(DECLARED_MAIN_DIALOG_NAMES))
     })
 
@@ -322,12 +355,12 @@ describe('对话框名集合核对（主进程 ↔ 渲染层）', () => {
         )
     })
 
-    it('VueDialogName 应与 useConfigStore 的 DialogState 键 + 消息伪名称完全一致（24 个）', () => {
+    it('VueDialogName 应与 useConfigStore 的 DialogState 键 + 消息伪名称完全一致（29 个）', () => {
         const expected = new Set([...DIALOG_STATE_KEYS, ...MESSAGE_PSEUDO_NAMES])
-        expect(DIALOG_STATE_KEYS.size).toBe(18)
+        expect(DIALOG_STATE_KEYS.size).toBe(23)
         expect(MESSAGE_PSEUDO_NAMES.size).toBe(6)
-        expect(expected.size).toBe(24)
-        expect(VUE_DIALOG_NAMES.size).toBe(24)
+        expect(expected.size).toBe(29)
+        expect(VUE_DIALOG_NAMES.size).toBe(29)
         expect(sorted(VUE_DIALOG_NAMES)).toEqual(sorted(expected))
     })
 })
@@ -341,6 +374,19 @@ describe('对话框 data 契约核对（主进程发送 ↔ 渲染层消费）',
     const importOptionDataKeys = parseInterfacePropertyKeys(
         DIALOG_CONTRACT_FILE,
         'ImportOptionDialogData'
+    )
+    // 结构优化第 2 批 2.1：新增的 3 个带 data 对话框
+    const renameFileFolderDataKeys = parseInterfacePropertyKeys(
+        DIALOG_CONTRACT_FILE,
+        'RenameFileFolderDialogData'
+    )
+    const confirmDeleteDataKeys = parseInterfacePropertyKeys(
+        DIALOG_CONTRACT_FILE,
+        'ConfirmDeleteDialogData'
+    )
+    const releaseNotesDataKeys = parseInterfacePropertyKeys(
+        DIALOG_CONTRACT_FILE,
+        'ReleaseNotesDialogData'
     )
     const dataMapKeys = parseInterfacePropertyKeys(DIALOG_CONTRACT_FILE, 'MainProcessDialogDataMap')
 
@@ -377,8 +423,35 @@ describe('对话框 data 契约核对（主进程发送 ↔ 渲染层消费）',
         for (const site of menuSites) {
             expect(site.dataKeys).toBeNull()
         }
+        // 结构优化第 2 批 2.1：文件管理器右键「新建」通道由主进程仅透传 dirPath
+        const dialogSites = sites.filter((site) =>
+            site.file.replace(/\\/g, '/').endsWith('src/main/dialogs/dialogs.ts')
+        )
+        expect(dialogSites.length).toBe(1)
+        expect(sorted(dialogSites[0].dataKeys ?? [])).toEqual(['dirPath'])
         expect(readSource(MENU_FILE)).not.toMatch(/isFolder\s*:\s*(?:true|false)\s*\}\s*\)/)
         expect(sorted(createFileFolderDataKeys)).toEqual(['dirPath', 'title'])
+    })
+
+    it('renameFileFolder 发送载荷应恰好携带 path/isFile', () => {
+        const sites = SEND_SITES.filter((site) => site.dialogName === 'renameFileFolder')
+        expect(sites.length).toBe(1)
+        expect(sorted(sites[0].dataKeys ?? [])).toEqual(['isFile', 'path'])
+        expect(sorted(renameFileFolderDataKeys)).toEqual(['isFile', 'path'])
+    })
+
+    it('confirmDelete 发送载荷应恰好携带 path/isFile', () => {
+        const sites = SEND_SITES.filter((site) => site.dialogName === 'confirmDelete')
+        expect(sites.length).toBe(1)
+        expect(sorted(sites[0].dataKeys ?? [])).toEqual(['isFile', 'path'])
+        expect(sorted(confirmDeleteDataKeys)).toEqual(['isFile', 'path'])
+    })
+
+    it('releaseNotes 发送载荷应恰好携带 version', () => {
+        const sites = SEND_SITES.filter((site) => site.dialogName === 'releaseNotes')
+        expect(sites.length).toBe(1)
+        expect(sorted(sites[0].dataKeys ?? [])).toEqual(['version'])
+        expect(sorted(releaseNotesDataKeys)).toEqual(['version'])
     })
 
     it('importOption 发送载荷的顶层键应恰好是 ImportOptionDialogData 的 content', () => {
@@ -388,14 +461,16 @@ describe('对话框 data 契约核对（主进程发送 ↔ 渲染层消费）',
         expect(sorted(importOptionDataKeys)).toEqual(['content'])
     })
 
-    it('其余 6 个对话框（admonition/mathText/mdSheet/insertLink/mermaidEdit/insertImage）发送时不携带 data', () => {
+    it('其余 8 个对话框（admonition/mathText/mdSheet/insertLink/mermaidEdit/insertImage/shortcutKeys/updateLog）发送时不携带 data', () => {
         const noDataNames = [
             'admonition',
             'mathText',
             'mdSheet',
             'insertLink',
             'mermaidEdit',
-            'insertImage'
+            'insertImage',
+            'shortcutKeys',
+            'updateLog'
         ]
         for (const name of noDataNames) {
             const sites = SEND_SITES.filter((site) => site.dialogName === name)
@@ -417,6 +492,19 @@ describe('对话框 data 契约核对（主进程发送 ↔ 渲染层消费）',
         expect(sorted([...createDialogProps].filter((key) => key !== 'visible'))).toEqual(
             sorted(createFileFolderDataKeys)
         )
+        // 结构优化第 2 批 2.1：重命名/删除确认/版本发布说明对话框的 Props 与 data 契约一致
+        const renameProps = parseInterfacePropertyKeys(RENAME_FILE_FOLDER_VUE, 'Props')
+        expect(sorted([...renameProps].filter((key) => key !== 'visible'))).toEqual(
+            sorted(renameFileFolderDataKeys)
+        )
+        const confirmDeleteProps = parseInterfacePropertyKeys(CONFIRM_DELETE_VUE, 'Props')
+        expect(sorted([...confirmDeleteProps].filter((key) => key !== 'visible'))).toEqual(
+            sorted(confirmDeleteDataKeys)
+        )
+        const releaseNotesProps = parseInterfacePropertyKeys(RELEASE_NOTES_VUE, 'Props')
+        expect(sorted([...releaseNotesProps].filter((key) => key !== 'visible'))).toEqual(
+            sorted(releaseNotesDataKeys)
+        )
         // useConfigStore 的 DialogState：messageDialog 与 importOption 的 data 字段
         const stateSource = readSource(USE_CONFIG_STORE_FILE)
         /** 解析 DialogState 中某对话框的状态字段名（去掉 visible 与可选标记 ?） */
@@ -430,5 +518,10 @@ describe('对话框 data 契约核对（主进程发送 ↔ 渲染层消费）',
         }
         expect(sorted(parseDialogStateKeys('messageDialog'))).toEqual(sorted(messageDataKeys))
         expect(sorted(parseDialogStateKeys('importOption'))).toEqual(sorted(importOptionDataKeys))
+        expect(sorted(parseDialogStateKeys('renameFileFolder'))).toEqual(
+            sorted(renameFileFolderDataKeys)
+        )
+        expect(sorted(parseDialogStateKeys('confirmDelete'))).toEqual(sorted(confirmDeleteDataKeys))
+        expect(sorted(parseDialogStateKeys('releaseNotes'))).toEqual(sorted(releaseNotesDataKeys))
     })
 })

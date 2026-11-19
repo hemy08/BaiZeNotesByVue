@@ -8,12 +8,15 @@
  * 若漏登记，调用会被 preload 静默丢弃（inject 失效），只能靠事后静态测试发现。
  *
  * ## 单一来源
- * 1. 主窗口 send/invoke：`src/shared/types/ipc.ts` 的 `IpcRequests` 键集合（58）；
+ * 1. 主窗口 send/invoke：`src/shared/types/ipc.ts` 的 `IpcRequests` 键集合（60）；
  * 2. 主窗口 on/once：同文件 `IpcEvents` 键集合（25）；
  * 3. `window.api.*` 直连通道：同文件 `IpcPreloadApiRequests` 键集合（6，不经窗口白名单）；
  * 4. 对话框 preload send/on：静态扫描 `src/main/dialogs` 中
  *    `ipcRenderer.send/on('${IPC.X.Y}')` 模板插值调用（对话框通道没有 shared 契约，
  *    以「实际调用点」为真源；主进程新增对话框通道也会被自动登记）。
+ *    结构优化第 2 批 2.1（H3）后主进程 JSDOM 对话框已全部迁移为渲染层 Vue 对话框，
+ *    这里的扫描结果为 0 个通道（两套白名单为空数组，dialog.ts 仍可安全复用）；
+ *    生成器允许空结果，不再视为正则失效。
  * 通道字符串本身仍只在 `src/shared/ipc-channels.ts` 定义一次，生成产物一律引用 `IPC.*` 常量。
  *
  * ## 产物
@@ -200,8 +203,11 @@ function collectDialogChannels(channelMap) {
         }
     }
     if (send.length === 0 && receive.length === 0) {
-        throw new Error(
-            '[preload-whitelist] 未从 src/main/dialogs 扫描到任何对话框 preload 通道（正则失效？）'
+        // 结构优化第 2 批 2.1：JSDOM 对话框全部迁移后，src/main/dialogs 不再有
+        // dialog preload 调用点——空白名单是合法结果（dialog.ts 仍是安全空壳），
+        // 不能当作「正则失效」抛错。
+        console.log(
+            '[preload-whitelist] src/main/dialogs 无对话框 preload IPC 调用（第 2 批 2.1 已迁移为 Vue 对话框），对话框白名单为空'
         )
     }
     return { send, receive }
@@ -215,6 +221,17 @@ function renderChannelEntries(channels) {
             return `    IPC.${channel.id}${comma}`
         })
         .join('\n')
+}
+
+/**
+ * 渲染数组字面量（空数组输出 `[]`，避免生成 `[\n\n]` 这类非 Prettier 形态）。
+ * 供生成模块与 index.ts 镜像块共用。
+ */
+function renderChannelArray(channels) {
+    if (channels.length === 0) {
+        return '[]'
+    }
+    return `[\n${renderChannelEntries(channels)}\n]`
 }
 
 /** 生成 allowed-channels.generated.ts 全文 */
@@ -247,29 +264,19 @@ type AllIpcChannel = {
 type PreloadApiChannel = keyof IpcPreloadApiRequests
 
 /** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 ${send.length} 个 */
-export const RENDERER_SEND_CHANNELS = [
-${renderChannelEntries(send)}
-] as const satisfies readonly IpcSendChannel[]
+export const RENDERER_SEND_CHANNELS = ${renderChannelArray(send)} as const satisfies readonly IpcSendChannel[]
 
 /** 主进程 → 渲染层（on / once）白名单：来源 IpcEvents，共 ${receive.length} 个 */
-export const RENDERER_RECEIVE_CHANNELS = [
-${renderChannelEntries(receive)}
-] as const satisfies readonly IpcEventChannel[]
+export const RENDERER_RECEIVE_CHANNELS = ${renderChannelArray(receive)} as const satisfies readonly IpcEventChannel[]
 
 /** window.api.* 直连通道（不经窗口白名单）：来源 IpcPreloadApiRequests，共 ${preloadApi.length} 个 */
-export const PRELOAD_API_CHANNELS = [
-${renderChannelEntries(preloadApi)}
-] as const satisfies readonly PreloadApiChannel[]
+export const PRELOAD_API_CHANNELS = ${renderChannelArray(preloadApi)} as const satisfies readonly PreloadApiChannel[]
 
 /** 对话框 preload send 白名单：来源 src/main/dialogs 实际调用，共 ${dialogSend.length} 个 */
-export const DIALOG_SEND_CHANNELS = [
-${renderChannelEntries(dialogSend)}
-] as const satisfies readonly AllIpcChannel[]
+export const DIALOG_SEND_CHANNELS = ${renderChannelArray(dialogSend)} as const satisfies readonly AllIpcChannel[]
 
 /** 对话框 preload on/once 白名单：来源 src/main/dialogs 实际调用，共 ${dialogReceive.length} 个 */
-export const DIALOG_RECEIVE_CHANNELS = [
-${renderChannelEntries(dialogReceive)}
-] as const satisfies readonly AllIpcChannel[]
+export const DIALOG_RECEIVE_CHANNELS = ${renderChannelArray(dialogReceive)} as const satisfies readonly AllIpcChannel[]
 
 /* ==========================================================================
  * 编译期穷尽性断言（H2「新增 IPC 漏登记即静默丢弃」的编译期兜底）
@@ -314,9 +321,7 @@ function renderIndexBlock(kind, channels) {
  * ${title}允许通道：${channels.length} 个。
  * 由 build/generate-preload-whitelist.js 从 shared/types/ipc.ts 的 ${sourceName} 生成，禁止手改。
  */
-const ${variableName} = new Set<string>([
-${renderChannelEntries(channels)}
-])
+const ${variableName} = new Set<string>(${renderChannelArray(channels)})
 ${markers.close}`
 }
 

@@ -4,11 +4,14 @@
 //
 // P2 死代码清理：本聚合导出仅保留 BaiZeNotes.vue 等活跃组件实际消费的对话框。
 // 移除：BaiZeDialogs.vue（聚合器自身无消费者）、BaseDialog / DialogButton /
-// TitleBar（仅被已删死组件或测试引用）、NewFileFolderDialog、UpdateLogDialog、
-// MermaidRenderFrame（C-07 隐藏窗口链路）、OnlineWebPage、Versions、
-// RenameDialog（FE-27：Vue 重命名死轨，实际重命名走主进程 HTML 对话框）。
+// TitleBar（仅被已删死组件或测试引用）、NewFileFolderDialog、MermaidRenderFrame
+// （C-07 隐藏窗口链路）、OnlineWebPage、Versions。
+// 结构优化第 2 批 2.1（H3）：原主进程 JSDOM 对话框迁移为 Vue 对话框，
+// 新增 RenameFileFolderDialog / ConfirmDeleteDialog / ShortcutKeysDialog /
+// UpdateLogDialog / ReleaseNotesDialog 的懒加载导出（重命名/删除为受控组件，
+// 显隐与数据来自 useConfigStore.dialogs.*，由主进程 OPEN_VUE_DIALOG 驱动）。
 //
-// PF-6（首屏 eager JS 10.36 MiB）：本文件从「静态 import 18 个对话框」改为
+// PF-6（首屏 eager JS 10.36 MiB）：本文件从「静态 import 全部对话框」改为
 // 「按需动态 import + defineAsyncComponent」：
 // 1. 打包器会把每个对话框（及其专属依赖）拆成独立 chunk，不再进入首屏主 chunk；
 // 2. 外层包装组件只在 visible 第一次为 true 时才渲染异步子组件——对话框真正按需加载，
@@ -92,6 +95,13 @@ export const CreateFileFolderDialog = lazyDialog(
 )
 export const MessageDialog = lazyDialog(() => import('./simple/MessageDialog.vue'))
 export const WebUrlDialog = lazyDialog(() => import('./simple/WebUrlDialog.vue'))
+// 结构优化第 2 批 2.1（H3）：主进程 JSDOM/原生消息框迁移而来的 Vue 对话框。
+// 重命名为受控组件：显隐与 path/isFile 由 useConfigStore.dialogs.* 驱动，
+// 确认后由 BaiZeNotes.vue 统一 invoke 主进程动作通道。
+export const RenameFileFolderDialog = lazyDialog(
+    () => import('./simple/RenameFileFolderDialog.vue')
+)
+export const ConfirmDeleteDialog = lazyDialog(() => import('./simple/ConfirmDeleteDialog.vue'))
 
 export const AdmonitionDialog = lazyDialog(() => import('./medium/AdmonitionDialog.vue'))
 export const ImportOptionDialog = lazyDialog(() => import('./medium/ImportOptionDialog.vue'))
@@ -110,3 +120,7 @@ export const HelpAboutDialog = lazyDialog(() => import('./help/HelpAboutDialog.v
 export const HelpContactUsDialog = lazyDialog(() => import('./help/HelpContactUsDialog.vue'))
 export const QuickLinkSettingDialog = lazyDialog(() => import('./help/QuickLinkSettingDialog.vue'))
 export const TechStackDialog = lazyDialog(() => import('./help/TechStackDialog.vue'))
+// 结构优化第 2 批 2.1（H3）：帮助类 JSDOM 对话框迁移为 Vue + BaseDialog。
+export const ShortcutKeysDialog = lazyDialog(() => import('./help/ShortcutKeysDialog.vue'))
+export const UpdateLogDialog = lazyDialog(() => import('./help/UpdateLogDialog.vue'))
+export const ReleaseNotesDialog = lazyDialog(() => import('./help/ReleaseNotesDialog.vue'))

@@ -1251,6 +1251,9 @@ describe('P1-FE-03 select image handler', () => {
             filePaths: [existingImagePath]
         })
         appState._resetForTesting()
+        // 结构优化第 2 批 2.4（M1）：_resetForTesting 会整体复位 AppContext（含主窗口），
+        // 本用例只关心「无活动文件」状态，复位后需重新登记受信主窗口（sender 校验依据）。
+        setMainWindow(win as never)
 
         const result = await callSelectImage()
 

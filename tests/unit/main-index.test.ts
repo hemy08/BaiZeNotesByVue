@@ -136,10 +136,30 @@ vi.mock('@electron-toolkit/utils', () => ({
     optimizer: { watchWindowShortcuts: toolkitMocks.watchWindowShortcuts }
 }))
 
+/**
+ * 结构优化第 2 批 2.4（M2）：IPC 注册清单模块（src/main/ipc/registry.ts）。
+ *
+ * index.ts 已不再逐一调用各模块的注册函数——whenReady 后只调用：
+ *   1) registerPreWindowIpc()：建窗前阶段（配置 IPC + 旧配置迁移）；
+ *   2) registerAll(mainWindow, hooks)：建窗后一次性注册（本文件只验证编排接线）。
+ * 各注册模块内部的通道清单/顺序由 tests/unit/ipc-registry.test.ts 覆盖，这里
+ * mock 掉 registry 以隔离 config-manager/plantuml 等重依赖链。
+ */
+const registryMocks = vi.hoisted(() => {
+    // index.ts 经 hooks.onRendererReady 把「渲染层就绪握手 → 启动恢复」接回入口；
+    // 用例通过捕获的钩子模拟握手到达（真实 sender 校验/通道注册由 registry 单测覆盖）
+    const state: { onRendererReady: (() => void) | null } = { onRendererReady: null }
+    return {
+        state,
+        registerPreWindowIpc: vi.fn(),
+        registerAll: vi.fn((_mainWindow: unknown, hooks?: { onRendererReady?: () => void }) => {
+            state.onRendererReady = hooks?.onRendererReady ?? null
+        })
+    }
+})
+
 const internalMocks = vi.hoisted(() => ({
     globalInitialize: vi.fn(),
-    mainWindowListenUtilsEvent: vi.fn(),
-    mainWindowListenDialogsEvent: vi.fn(),
     cleanupMainWindowDialogsEvent: vi.fn(),
     restoreLastOpenedFile: vi.fn(),
     // 批次 A：#1/#2 启动恢复（autoOpenLastFile / autoOpenLastFolder 开启时走新流程）
@@ -150,8 +170,6 @@ const internalMocks = vi.hoisted(() => ({
     getAllThemes: vi.fn(),
     getAllMonacoThemes: vi.fn(),
     getQuickLinks: vi.fn(),
-    getMonacoTheme: vi.fn(),
-    getSeparateEditorTheme: vi.fn(),
     getSystemSetting: vi.fn(),
     // 1.3.6：存量设置迁移（旧默认 minimizeToTray/enableAutoBackup=true → false）
     migrateLegacyOptInSettings: vi.fn(() => false),
@@ -159,7 +177,6 @@ const internalMocks = vi.hoisted(() => ({
     notifyMinimizedToTray: vi.fn(),
     // 批次 A：#5 记住窗口位置和大小（resize/move 防抖后写回 windowBounds）
     saveSystemSetting: vi.fn(),
-    registerConfigIpcHandlers: vi.fn(),
     getEditorSetting: vi.fn(),
     registerShortKeys: vi.fn(),
     startAutoSaveFileTime: vi.fn(),
@@ -182,8 +199,6 @@ const internalMocks = vi.hoisted(() => ({
     loggerInfo: vi.fn(),
     loggerSetMainWindow: vi.fn(),
     cleanupAll: vi.fn(),
-    // PF-08：PlantUML 本地渲染注册（index.ts → plantuml-local → ipcListenerManager）
-    registerHandleOnce: vi.fn(),
     // 2026-11-18（#12）：窗口就绪后的 Monaco 主题缓存异步预热
     warmupMonacoThemeCache: vi.fn(),
     // 2026-11-19（P0 修复）：启动时读取遗留 show-welcome 配置（欢迎页状态同步）
@@ -191,18 +206,19 @@ const internalMocks = vi.hoisted(() => ({
     initUserDataDirectory: vi.fn(),
     // 第 4 批 P3：主窗口图标目录统一由 app-paths.getIconPath() 解析
     getIconPath: vi.fn(() => 'C:\\app\\resources\\icon'),
-    registerIpcHandlers: vi.fn(),
-    setMainWindow: vi.fn(),
     isDirty: vi.fn(() => false)
 }))
 
+vi.mock('../../src/main/ipc/registry', () => ({
+    registerPreWindowIpc: registryMocks.registerPreWindowIpc,
+    registerAll: registryMocks.registerAll
+}))
+
 vi.mock('../../src/main/utils/utils', () => ({
-    globalInitialize: internalMocks.globalInitialize,
-    MainWindowListenUtilsEvent: internalMocks.mainWindowListenUtilsEvent
+    globalInitialize: internalMocks.globalInitialize
 }))
 
 vi.mock('../../src/main/dialogs/dialogs', () => ({
-    MainWindowListenDialogsEvent: internalMocks.mainWindowListenDialogsEvent,
     CleanupMainWindowDialogsEvent: internalMocks.cleanupMainWindowDialogsEvent
 }))
 
@@ -222,14 +238,11 @@ vi.mock('../../src/main/config', () => ({
     getAllThemes: internalMocks.getAllThemes,
     getAllMonacoThemes: internalMocks.getAllMonacoThemes,
     getQuickLinks: internalMocks.getQuickLinks,
-    getMonacoTheme: internalMocks.getMonacoTheme,
-    getSeparateEditorTheme: internalMocks.getSeparateEditorTheme,
     getSystemSetting: internalMocks.getSystemSetting,
     // 1.3.6：存量设置迁移
     migrateLegacyOptInSettings: internalMocks.migrateLegacyOptInSettings,
     // 批次 A：窗口边界写回 system store
     saveSystemSetting: internalMocks.saveSystemSetting,
-    registerConfigIpcHandlers: internalMocks.registerConfigIpcHandlers,
     getEditorSetting: internalMocks.getEditorSetting,
     RegisterShortKeys: internalMocks.registerShortKeys,
     // 2026-11-19（P0 修复）：启动时读取遗留 show-welcome 配置（欢迎页状态同步）
@@ -264,8 +277,10 @@ vi.mock('../../src/main/utils/logger', () => ({
 vi.mock('../../src/main/ipc/ipc-listener-manager', () => ({
     ipcListenerManager: {
         cleanupAll: internalMocks.cleanupAll,
-        registerHandleOnce: internalMocks.registerHandleOnce,
-        // P1/C-04：index.ts 的主题更新/关闭回执监听已迁移到监听台账，
+        // M2 起 registerHandleOnce 注册已迁入 registry（本文件已整体 mock registry），
+        // index.ts 仅保留关闭落盘回执的组件级 register/unregister。
+        registerHandleOnce: vi.fn(),
+        // P1/C-04：index.ts 的关闭回执监听经监听台账注册，
         // mock 侧同步把注册落到 ipcOnMap，保持既有 triggerIpcHandler 触发方式可用
         registerOnce: vi.fn((channel: string, listener: (...args: never[]) => void) => {
             electronMocks.ipcMain.on(channel, listener)
@@ -330,11 +345,6 @@ vi.mock('../../src/main/utils/app-state', () => ({
     }
 }))
 
-vi.mock('../../src/main/ipc', () => ({
-    registerIpcHandlers: internalMocks.registerIpcHandlers,
-    setMainWindow: internalMocks.setMainWindow
-}))
-
 // 等待微任务队列清空（whenReady().then 与 async handler 回调）
 async function settle(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -376,6 +386,17 @@ function triggerIpcHandler(channel: string, ...args: unknown[]): void {
         { sender: electronMocks.win.webContents } as never,
         ...(args as never[])
     )
+}
+
+/**
+ * M2：渲染层就绪握手（IPC.RENDER.READY）的注册已迁入 registry；index.ts 只提供
+ * onRendererReady 钩子。这里直接调用 mock registry 捕获的钩子，模拟 registry 在
+ * 收到受信主窗口握手后回调入口（通道注册/sender 校验细节由 ipc-registry.test.ts 覆盖）。
+ */
+function triggerRendererReady(): void {
+    const hook = registryMocks.state.onRendererReady
+    expect(hook, 'index.ts 应向 registerAll 提供 onRendererReady 钩子').toBeTypeOf('function')
+    hook?.()
 }
 
 beforeEach(() => {
@@ -429,6 +450,10 @@ beforeEach(() => {
     for (const mock of Object.values(internalMocks)) {
         if (typeof mock === 'function') mock.mockClear()
     }
+    // M2：IPC 注册清单 mock 复位（记录每次 loadMainIndex 的 registerAll 钩子）
+    registryMocks.registerPreWindowIpc.mockClear()
+    registryMocks.registerAll.mockClear()
+    registryMocks.state.onRendererReady = null
     internalMocks.isDirty.mockReturnValue(false)
     internalMocks.getSystemSetting.mockReturnValue({
         fontFamily: 'Microsoft YaHei',
@@ -438,8 +463,6 @@ beforeEach(() => {
     })
     internalMocks.getCurrentThemeStyles.mockReturnValue({ dark: false })
     internalMocks.getThemeStylesByType.mockReturnValue({ dark: true })
-    internalMocks.getMonacoTheme.mockReturnValue('vs-dark')
-    internalMocks.getSeparateEditorTheme.mockReturnValue(false)
     internalMocks.getEditorSetting.mockReturnValue({ fontSize: 14 })
     internalMocks.restoreLastOpenedFile.mockResolvedValue(undefined)
     internalMocks.restoreLastOpenedAtStartup.mockResolvedValue(undefined)
@@ -452,12 +475,26 @@ describe('app whenReady startup flow', () => {
         await loadMainIndex()
         expect(electronMocks.app.whenReady).toHaveBeenCalled()
         expect(internalMocks.initUserDataDirectory).toHaveBeenCalled()
-        expect(internalMocks.registerConfigIpcHandlers).toHaveBeenCalled()
+        // M2：配置 IPC（含旧配置迁移）经 registry 的建窗前阶段注册
+        expect(registryMocks.registerPreWindowIpc).toHaveBeenCalledTimes(1)
         expect(toolkitMocks.setAppUserModelId).toHaveBeenCalledWith('com.electron')
         // 批次 B #7：whenReady 启动系统主题跟随监听
         expect(internalMocks.startSystemThemeWatcher).toHaveBeenCalled()
         // 批次 C #8/#9：whenReady 同步自动备份定时器（P1-2：仅启动调度，不立即执行备份）
         expect(internalMocks.syncAutoBackupTimer).toHaveBeenCalled()
+    })
+
+    // M2：注册阶段顺序——建窗前配置 IPC 必须先于窗口创建与窗口级注册执行
+    // （配置注册内含旧配置迁移，createWindow 会读取系统设置/窗口边界）。
+    it('should register pre-window IPC before creating the window and registering window IPC', async () => {
+        await loadMainIndex()
+        expect(registryMocks.registerPreWindowIpc).toHaveBeenCalledTimes(1)
+        expect(registryMocks.registerAll).toHaveBeenCalledTimes(1)
+        const preWindowOrder = registryMocks.registerPreWindowIpc.mock.invocationCallOrder[0]
+        const loadFileOrder = electronMocks.win.loadFile.mock.invocationCallOrder[0]
+        const registerAllOrder = registryMocks.registerAll.mock.invocationCallOrder[0]
+        expect(preWindowOrder).toBeLessThan(loadFileOrder)
+        expect(loadFileOrder).toBeLessThan(registerAllOrder)
     })
 
     // AS-9：启动时注册远程图表外发阻断（防止 PlantUML 源码绕道 plantuml.com 外发）
@@ -503,10 +540,13 @@ describe('app whenReady startup flow', () => {
 
     it('should register the window, listeners and IPC handlers once', async () => {
         await loadMainIndex()
-        expect(internalMocks.setMainWindow).toHaveBeenCalledWith(electronMocks.win)
-        expect(internalMocks.registerIpcHandlers).toHaveBeenCalledWith(electronMocks.win)
-        expect(internalMocks.mainWindowListenDialogsEvent).toHaveBeenCalledWith(electronMocks.win)
-        expect(internalMocks.mainWindowListenUtilsEvent).toHaveBeenCalledWith(electronMocks.win)
+        // M2：窗口级一次性 IPC 注册收敛到 registry.registerAll(mainWindow, hooks)；
+        // 具体注册模块（dialogs/utils/handlers/plantuml/主题/握手）由 registry 单测覆盖
+        expect(registryMocks.registerAll).toHaveBeenCalledTimes(1)
+        const [registeredWindow, hooks] = registryMocks.registerAll.mock.calls[0]
+        expect(registeredWindow).toBe(electronMocks.win)
+        expect(hooks?.onRendererReady).toBeTypeOf('function')
+        // M1：窗口级状态初始化仍由 createWindow 负责（快捷键目标窗口/AppState 复位）
         expect(internalMocks.registerShortKeys).toHaveBeenCalledWith(electronMocks.win)
         expect(internalMocks.globalInitialize).toHaveBeenCalledWith(electronMocks.win)
     })
@@ -556,7 +596,7 @@ describe('ready-to-show flow', () => {
         triggerWindowHandler('ready-to-show')
         // P2-5：恢复等待渲染层就绪握手，握手到达前不执行
         expect(internalMocks.restoreLastOpenedFile).not.toHaveBeenCalled()
-        triggerIpcHandler('baize:render:ready')
+        triggerRendererReady()
         await settle()
         expect(electronMocks.win.show).toHaveBeenCalled()
         expect(internalMocks.loggerSetMainWindow).toHaveBeenCalledWith(electronMocks.win)
@@ -575,7 +615,7 @@ describe('ready-to-show flow', () => {
     // P2-5：握手早于 ready-to-show（渲染层先挂载、窗口后显示）时立即恢复
     it('should restore immediately on ready-to-show when the renderer handshake arrived first', async () => {
         await loadMainIndex()
-        triggerIpcHandler('baize:render:ready')
+        triggerRendererReady()
         triggerWindowHandler('ready-to-show')
         await settle()
         expect(internalMocks.restoreLastOpenedFile).toHaveBeenCalled()
@@ -606,7 +646,7 @@ describe('ready-to-show flow', () => {
         })
         await loadMainIndex()
         triggerWindowHandler('ready-to-show')
-        triggerIpcHandler('baize:render:ready')
+        triggerRendererReady()
         await settle()
         expect(internalMocks.restoreLastOpenedAtStartup).toHaveBeenCalledWith(
             electronMocks.win,
@@ -626,7 +666,7 @@ describe('ready-to-show flow', () => {
         })
         await loadMainIndex()
         triggerWindowHandler('ready-to-show')
-        triggerIpcHandler('baize:render:ready')
+        triggerRendererReady()
         await settle()
         expect(internalMocks.restoreLastOpenedAtStartup).toHaveBeenCalledWith(
             electronMocks.win,
@@ -722,32 +762,6 @@ describe('remember window size (批次 A #5)', () => {
         vi.advanceTimersByTime(600)
         expect(internalMocks.saveSystemSetting).not.toHaveBeenCalled()
         vi.useRealTimers()
-    })
-})
-
-describe('theme update broadcast', () => {
-    it('should use the given theme type and broadcast to all windows', async () => {
-        await loadMainIndex()
-        electronMocks.windows.push(electronMocks.win as never)
-        triggerIpcHandler('baize:theme:update', 'dark', 'vs-light', true)
-        expect(internalMocks.getThemeStylesByType).toHaveBeenCalledWith('dark')
-        expect(electronMocks.win.webContents.send).toHaveBeenCalledWith('baize:theme:updated', {
-            themeStyles: { dark: true },
-            monacoTheme: 'vs-light',
-            separateEditorTheme: true
-        })
-    })
-
-    it('should fall back to current styles and defaults when no args given', async () => {
-        await loadMainIndex()
-        electronMocks.windows.push(electronMocks.win as never)
-        triggerIpcHandler('baize:theme:update')
-        expect(internalMocks.getCurrentThemeStyles).toHaveBeenCalled()
-        expect(electronMocks.win.webContents.send).toHaveBeenCalledWith('baize:theme:updated', {
-            themeStyles: { dark: false },
-            monacoTheme: 'vs-dark',
-            separateEditorTheme: false
-        })
     })
 })
 
@@ -992,7 +1006,8 @@ describe('single instance lock (P2-10)', () => {
         expect(electronMocks.app.quit).toHaveBeenCalled()
         // 未获得锁：不创建窗口、不注册配置 IPC、不注册 second-instance 回调
         expect(electronMocks.capturedBrowserWindowOptions).toBeNull()
-        expect(internalMocks.registerConfigIpcHandlers).not.toHaveBeenCalled()
+        expect(registryMocks.registerPreWindowIpc).not.toHaveBeenCalled()
+        expect(registryMocks.registerAll).not.toHaveBeenCalled()
         expect(electronMocks.appHandlers['second-instance']).toHaveLength(0)
     })
 
@@ -1008,13 +1023,13 @@ describe('single instance lock (P2-10)', () => {
 describe('activate recreation', () => {
     it('should recreate the window without re-registering IPC handlers (ARC-06)', async () => {
         await loadMainIndex()
-        internalMocks.registerIpcHandlers.mockClear()
+        registryMocks.registerAll.mockClear()
         electronMocks.windows.length = 0
         triggerAppHandler('activate')
         // 窗口重建：再次 loadFile
         expect(electronMocks.win.loadFile.mock.calls.length).toBeGreaterThanOrEqual(2)
-        // IPC 注册保持一次性，不随窗口重建重复执行
-        expect(internalMocks.registerIpcHandlers).not.toHaveBeenCalled()
+        // IPC 注册保持一次性，不随窗口重建重复执行（M2：注册清单 registerAll 只调一次）
+        expect(registryMocks.registerAll).not.toHaveBeenCalled()
         // P3（审查）：activate 重建窗口后重启系统主题跟随监听与自动备份定时器
         // （window-all-closed 的 cleanupApp 已停止两者；与 createWindow 内
         // auto-save 重启模式一致）

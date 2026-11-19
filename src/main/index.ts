@@ -11,11 +11,8 @@ import {
     getAllThemes,
     getAllMonacoThemes,
     getQuickLinks,
-    getMonacoTheme,
-    getSeparateEditorTheme,
     getSystemSetting,
     saveSystemSetting,
-    registerConfigIpcHandlers,
     getEditorSetting,
     buildFontCss,
     configManager,
@@ -24,7 +21,6 @@ import {
     // 1.3.6：存量设置迁移（旧默认 minimizeToTray/enableAutoBackup=true → false）
     migrateLegacyOptInSettings
 } from './config'
-import type { ThemeType } from './config'
 import { StartAutoSaveFileTime, StopAutoSaveFileTime, SaveActiveFile } from './utils/file-utils'
 // PF-05：目录树 fs.watch 监听的退出清理（仅新增生命周期管理，不改变原有落盘/清理逻辑）
 import { CleanupDirectoryWatch } from './utils/file-utils/file-operations'
@@ -33,20 +29,18 @@ import { logger } from './utils/logger'
 import { ipcListenerManager } from './ipc/ipc-listener-manager'
 import { resetWelcomeState } from './ipc/welcome-state'
 import { markMainViewEntered } from './ipc/welcome-state'
-// P1/C-03：主进程主题广播唯一实现（禁止再出现渲染层 window.electronAPI.broadcastTheme）；
-// 2026-11-19：载荷统一经 buildThemeBroadcastPayload 组装（shared ThemeUpdateData 契约）
-import { broadcastThemeToAllWindows, buildThemeBroadcastPayload } from './ipc/theme-broadcast'
-// P1/N-05：IPC 发送方授权校验（主窗口登记 + 监听器包装）
-import { setTrustedMainWindow, withSenderCheck } from './utils/ipc-security'
+// P1/N-05：IPC 发送方授权校验（关闭落盘回执通道的发送方包装）
+import { withSenderCheck } from './utils/ipc-security'
 import { initUserDataDirectory, getIconPath } from './utils/app-paths'
-import { registerIpcHandlers, setMainWindow } from './ipc'
 import { appState } from './utils/app-state'
+// 结构优化第 2 批 2.4（M1）：主进程全局状态上下文（主窗口引用/退出标志/握手状态等）
+import { getAppContext } from './app-context'
+// 结构优化第 2 批 2.4（M2）：IPC 注册清单——whenReady 后的注册调用集中到 registry，
+// 本入口不再逐一 import 各注册模块
+import { registerAll, registerPreWindowIpc } from './ipc/registry'
 import { IPC } from '../shared/ipc-channels'
-// PF-08：PlantUML 本地离线渲染的注册与隐藏窗口清理
-import {
-    registerPlantumlLocalRenderIpc,
-    disposePlantumlLocalWindows
-} from './renders/plantuml-local'
+// PF-08：PlantUML 本地离线渲染隐藏窗口的退出清理（注册已迁入 ipc/registry）
+import { disposePlantumlLocalWindows } from './renders/plantuml-local'
 import { tMain } from './utils/i18n'
 // P0 安全（导航边界 + shell 协议白名单）：窗口导航与外部链接打开统一走安全封装
 import { isAllowedAppNavigation, isSafeExternalUrl, openExternalSafely } from './utils/security'
@@ -78,9 +72,10 @@ import {
  * 结构优化 1.1（H1）：utils 配置读取提供者注入
  *
  * 时机：模块顶层、全部 import 求值完成后立即执行，早于 whenReady / createWindow /
- * registerConfigIpcHandlers / registerIpcHandlers。utils 各模块只在「函数调用时」经
- * provider 读取（无模块级缓存），因此此后所有运行期路径（自动备份定时器、主进程 i18n、
- * 目录选择默认路径、主题/快速链接 IPC）拿到的都是 config 真实实现，行为与改造前一致。
+ * registerPreWindowIpc / registerAll（M2 起 IPC 注册集中于 ipc/registry）。utils 各模块只在
+ * 「函数调用时」经 provider 读取（无模块级缓存），因此此后所有运行期路径（自动备份定时器、
+ * 主进程 i18n、目录选择默认路径、主题/快速链接 IPC）拿到的都是 config 真实实现，
+ * 行为与改造前一致。
  *
  * 容错：setter 对 undefined/非函数入参回退安全默认值；即使本注入因异常顺序未执行，
  * utils 侧也只回退默认值而不崩溃（正常启动流程不会走到回退分支）。
@@ -106,16 +101,19 @@ const EDITOR_FLUSH_TIMEOUT_MS = 2000
 // 不再用 `join(__dirname, '../resources/icon/...')` 硬编码相对构建目录的路径。
 const MAIN_WINDOW_ICON_FILE_NAME = 'baize_mirror_dark_512x512.ico'
 
-// P1/C-04：监听台账组件 ID——进程级主题更新监听为 palette 级（persistent）注册；
-// 关闭前 flush 回执为"主窗口一次关闭流程"级（随 finish/cleanupAll 清理）
-const GLOBAL_MAIN_INDEX_COMPONENT_ID = 'global-main-index'
+// P1/C-04：关闭前 flush 回执为"主窗口一次关闭流程"级组件注册（随 finish/cleanupAll 清理）。
+// 进程级主题更新/就绪握手监听的组件 ID 已随注册迁移到 ipc/registry（global-main-index）。
 const MAIN_WINDOW_FLUSH_COMPONENT_ID = 'main-window-flush'
 
-let mainWindow: Electron.CrossProcessExports.BrowserWindow
-
-// 「记住窗口位置和大小」的持久化监听清理函数（挂入 cleanupApp；activate 重建窗口时随
-// createWindow 重新挂接，旧窗口的监听随窗口销毁失效、dispose 函数仅负责清计时器）
-let disposeWindowBoundsPersistence: (() => void) | null = null
+/**
+ * 主窗口引用与进程级可变状态统一由 AppContext 持有（结构优化第 2 批 2.4 / M1）：
+ * - mainWindow → AppContext.mainWindow（createWindow 写入，窗口重建时刷新）；
+ * - rendererReadyReceived → AppContext.rendererReady.received；
+ * - flushedForQuit / flushedForClose → AppContext.quit.*；
+ * - 启动恢复等待 → AppContext.startupRestore.*；
+ * - disposeWindowBoundsPersistence → AppContext.windowBounds.disposePersistence。
+ * 本文件不再定义模块级 let，全部经 getAppContext() 读写（resetAppContext 可整体复位）。
+ */
 
 /**
  * 通知渲染层立即 flush 编辑器内容（取消防抖并把当前内容发到既有内容同步通道）。
@@ -159,13 +157,15 @@ function flushEditorContent(win: BrowserWindow): Promise<void> {
     })
 }
 
-function createWindow(): void {
-    // 当前窗口是否已完成"关闭前落盘"，用于放行第二次 close（D-3）
-    let flushedForClose = false
+function createWindow(): BrowserWindow {
+    // M1：主窗口引用与各生命周期 flag 统一在 AppContext（进程内唯一真源）
+    const context = getAppContext()
+    // 当前窗口是否已完成"关闭前落盘"（D-3）——随窗口创建复位（原函数级 let 迁入 context）
+    context.quit.flushedForClose = false
 
     // P2-5：新窗口（含 macOS activate 重建）重置渲染层就绪握手状态，
     // 并清掉上一窗口残留的启动恢复等待
-    rendererReadyReceived = false
+    context.rendererReady.received = false
     clearStartupRestorePending()
 
     // 记住窗口位置和大小（批次 A）：开关开启时恢复上次持久化的窗口边界，
@@ -177,7 +177,7 @@ function createWindow(): void {
         screen.getAllDisplays().map((display) => display.workArea)
     )
 
-    mainWindow = new BrowserWindow({
+    const mainWindow = new BrowserWindow({
         width: initialBounds.width,
         height: initialBounds.height,
         x: initialBounds.x,
@@ -199,10 +199,9 @@ function createWindow(): void {
 
     // 2026-11-18（用户反馈）：新窗口创建即显示欢迎页，复位主界面状态（macOS activate 重建同样生效）
     resetWelcomeState()
-    setMainWindow(mainWindow)
-    // P1/N-05：同步受信主窗口引用（index.ts 直连注册的通道——主题更新、关闭回执——
-    // 同样依赖该登记；macOS activate 重建窗口时随 createWindow 一并刷新）
-    setTrustedMainWindow(mainWindow)
+    // P1/N-05 / M1：主窗口引用登记到 AppContext（appState / ipc-security 受信主窗口 /
+    // handlers 当前主窗口均读取同一字段；macOS activate 重建窗口时随 createWindow 一并刷新）
+    context.mainWindow = mainWindow
 
     // D-3/FUN-03：拦截窗口关闭——先让渲染层 flush 编辑器内容，
     // 若当前文件仍有未保存修改则落盘，再真正关闭。
@@ -210,7 +209,7 @@ function createWindow(): void {
     // close（flush 落盘已在 before-quit 完成）；否则拦截并在 flush 完成后按
     // minimizeToTray 决定「隐藏到托盘」还是「真实关闭」。
     mainWindow.on('close', async (event) => {
-        if (flushedForClose) {
+        if (context.quit.flushedForClose) {
             return
         }
         if (appState.isQuitting) {
@@ -236,15 +235,15 @@ function createWindow(): void {
             mainWindow.hide()
             return
         }
-        flushedForClose = true
+        context.quit.flushedForClose = true
         mainWindow.close()
     })
 
     // 记住窗口位置和大小（批次 A）：resize/move 500ms 防抖写回 system store，
     // close 时立即落盘（与上方关闭落盘协议同为 close 监听，互不影响）；
-    // dispose 挂入 cleanupApp（窗口销毁与退出清理）。
-    disposeWindowBoundsPersistence?.()
-    disposeWindowBoundsPersistence = attachWindowBoundsPersistence(mainWindow, {
+    // dispose 挂入 cleanupApp（窗口销毁与退出清理）；M1：清理函数引用存入 AppContext。
+    context.windowBounds.disposePersistence?.()
+    context.windowBounds.disposePersistence = attachWindowBoundsPersistence(mainWindow, {
         isEnabled: () => getSystemSetting().rememberWindowSize === true,
         save: (bounds) => saveSystemSetting({ windowBounds: bounds })
     })
@@ -330,10 +329,9 @@ function createWindow(): void {
         const autoSaveInterval = (systemSetting.autoSaveInterval || 60) * 1000
         StartAutoSaveFileTime(autoSaveInterval)
     }
-}
 
-// D-3/FUN-03：应用退出（before-quit）同样走"flush → 脏则保存"路径
-let flushedForQuit = false
+    return mainWindow
+}
 
 // P2-10：单实例锁（必须在 app ready 之前申请，否则无效）。
 // 未获得锁说明已有实例在运行：本实例立即退出（whenReady 内短路，不创建窗口、
@@ -357,18 +355,17 @@ if (!gotSingleInstanceLock) {
 // STARTUP_RESTORE_FALLBACK_MS 内未收到则兜底恢复（渲染层异常时仅推迟最多 3s，
 // 不改变历史行为）。
 const STARTUP_RESTORE_FALLBACK_MS = 3000
-// 单主窗口场景的握手状态；macOS activate 重建窗口时随 createWindow 重置
-let rendererReadyReceived = false
-let startupRestorePendingWindow: BrowserWindow | null = null
-let startupRestoreFallbackTimer: NodeJS.Timeout | null = null
+// 单主窗口场景的握手/等待状态；M1 起统一保存在 AppContext（rendererReady.received /
+// startupRestore.pendingWindow / startupRestore.fallbackTimer），窗口重建时随 createWindow 重置。
 
 /** 清空启动恢复等待状态（新窗口挂接前与 cleanupApp 退出清理复用） */
 function clearStartupRestorePending(): void {
-    if (startupRestoreFallbackTimer !== null) {
-        clearTimeout(startupRestoreFallbackTimer)
-        startupRestoreFallbackTimer = null
+    const context = getAppContext()
+    if (context.startupRestore.fallbackTimer !== null) {
+        clearTimeout(context.startupRestore.fallbackTimer)
+        context.startupRestore.fallbackTimer = null
     }
-    startupRestorePendingWindow = null
+    context.startupRestore.pendingWindow = null
 }
 
 /** 执行启动恢复（原 ready-to-show 内联逻辑迁出，握手与超时兜底两个入口共用） */
@@ -384,21 +381,44 @@ async function runStartupRestore(win: BrowserWindow): Promise<void> {
 /** ready-to-show 后挂接启动恢复：握手已到则立即执行，否则等握手 + 3s 超时兜底 */
 function armStartupRestore(win: BrowserWindow): void {
     clearStartupRestorePending()
-    startupRestorePendingWindow = win
-    if (rendererReadyReceived) {
+    const context = getAppContext()
+    context.startupRestore.pendingWindow = win
+    if (context.rendererReady.received) {
         // 握手早于 ready-to-show（渲染层先完成挂载、窗口后显示）：立即恢复
-        startupRestorePendingWindow = null
+        context.startupRestore.pendingWindow = null
         void runStartupRestore(win)
         return
     }
-    startupRestoreFallbackTimer = setTimeout(() => {
-        startupRestoreFallbackTimer = null
-        const pending = startupRestorePendingWindow
-        startupRestorePendingWindow = null
+    context.startupRestore.fallbackTimer = setTimeout(() => {
+        context.startupRestore.fallbackTimer = null
+        const pending = context.startupRestore.pendingWindow
+        context.startupRestore.pendingWindow = null
         if (pending && !pending.isDestroyed() && !pending.webContents.isDestroyed()) {
             void runStartupRestore(pending)
         }
     }, STARTUP_RESTORE_FALLBACK_MS)
+}
+
+/**
+ * 渲染层就绪握手回调（M2：作为 registerAll 的 onRendererReady 钩子注入 registry）。
+ *
+ * 改造前该逻辑内联在 main/index.ts 的 IPC.RENDER.READY 监听回调里；注册迁移到
+ * registry 后，跨模块行为经钩子回传本入口：
+ * 1) 记录当前窗口握手状态（AppContext.rendererReady.received）；
+ * 2) 若 ready-to-show 已挂起恢复则立即执行，并清掉 3s 超时兜底。
+ */
+function handleRendererReady(): void {
+    const context = getAppContext()
+    context.rendererReady.received = true
+    const pending = context.startupRestore.pendingWindow
+    if (pending !== null) {
+        context.startupRestore.pendingWindow = null
+        if (context.startupRestore.fallbackTimer !== null) {
+            clearTimeout(context.startupRestore.fallbackTimer)
+            context.startupRestore.fallbackTimer = null
+        }
+        void runStartupRestore(pending)
+    }
 }
 
 app.whenReady().then(() => {
@@ -429,8 +449,9 @@ app.whenReady().then(() => {
         console.warn('[Security] 远程资源外发阻断注册失败（AS-9）：', error)
     }
 
-    // 注册配置 IPC 处理器
-    registerConfigIpcHandlers()
+    // M2：阶段 1 的 IPC 注册（配置通道；注册时执行旧配置兼容迁移）——
+    // 必须早于 createWindow 读取系统设置与 startSystemThemeWatcher，故保持在建窗前
+    registerPreWindowIpc()
 
     // 批次 B #7：跟随系统主题——启动 nativeTheme 监听并立即对齐一次当前系统深浅色
     // （创建窗口前应用，ready-to-show 时 INIT_THEME_STYLES 取到的即是最新主题）
@@ -447,68 +468,11 @@ app.whenReady().then(() => {
         optimizer.watchWindowShortcuts(window)
     })
 
-    // A-3/FUN-20：主题广播 payload 修正——渲染端 handleThemeUpdate 期望
-    // { themeStyles, monacoTheme, separateEditorTheme } 形态（原直接广播
-    // ThemeStyles 对象本体，会被渲染端丢弃并报 "Received invalid theme data"）。
-    // 渲染层可传入最新选择的主题类型/编辑器主题参数，避免与主进程 store
-    // 双轨不同步（ARC-05 遗留）时向所有窗口广播旧值。
-    //
-    // P1/C-03/C-04：监听注册迁移到 ipcListenerManager（台账可见、防重复注册），
-    // 广播收敛到 broadcastThemeToAllWindows（主进程唯一实现，替换历史上
-    // ShowThemeSettingDialog 里误用 window.electronAPI.broadcastTheme 的跨进程调用）。
-    // 2026-11-19：载荷组装统一走 buildThemeBroadcastPayload（shared ThemeUpdateData 契约）。
-    // P1/N-05：主题更新会改写渲染层外观并广播到所有窗口，仅主窗口可信。
-    ipcListenerManager.registerOnce(
-        IPC.THEME.UPDATE_THEME,
-        withSenderCheck(
-            IPC.THEME.UPDATE_THEME,
-            (
-                _event: Electron.IpcMainEvent,
-                themeType?: string,
-                monacoTheme?: string,
-                separate?: boolean
-            ) => {
-                const theme =
-                    typeof themeType === 'string'
-                        ? getThemeStylesByType(themeType as ThemeType)
-                        : getCurrentThemeStyles()
-                if (!theme) {
-                    logger.error('[Main] Failed to get current theme styles')
-                    return
-                }
-                broadcastThemeToAllWindows(
-                    buildThemeBroadcastPayload(
-                        theme,
-                        typeof monacoTheme === 'string' ? monacoTheme : getMonacoTheme(),
-                        typeof separate === 'boolean' ? separate : getSeparateEditorTheme()
-                    )
-                )
-            }
-        ),
-        GLOBAL_MAIN_INDEX_COMPONENT_ID
-    )
-
-    // P2-5：渲染层就绪握手——App.vue onMounted 注册完监听器后经 preload 发送
-    // IPC.RENDER.READY。主进程收到后执行启动恢复（armStartupRestore 挂起的窗口）；
-    // registerOnce 为 persistent 注册，macOS window-all-closed → cleanupAll 后
-    // activate 重建窗口仍可接收新窗口的握手。
-    // P1/N-05：仅受信主窗口可触发（防其他窗口/被注入页面伪造握手提前恢复）。
-    ipcListenerManager.registerOnce(
-        IPC.RENDER.READY,
-        withSenderCheck(IPC.RENDER.READY, () => {
-            rendererReadyReceived = true
-            const pending = startupRestorePendingWindow
-            if (pending !== null) {
-                startupRestorePendingWindow = null
-                if (startupRestoreFallbackTimer !== null) {
-                    clearTimeout(startupRestoreFallbackTimer)
-                    startupRestoreFallbackTimer = null
-                }
-                void runStartupRestore(pending)
-            }
-        }),
-        GLOBAL_MAIN_INDEX_COMPONENT_ID
-    )
+    // M2：主题更新广播 / 渲染层就绪握手（原此处的两条 ipcListenerManager.registerOnce）
+    // 已随「whenReady 后的注册调用」统一迁入 src/main/ipc/registry.ts：
+    // - 主题监听（P1/C-03/C-04、P1/N-05）在 registerAll 内注册；
+    // - 就绪握手（P2-5）在 registerAll 内注册，回调经 onRendererReady 钩子回到本文件
+    //   handleRendererReady()（启动恢复调度仍在入口，避免 registry 反向依赖入口）。
 
     // 2026-11-19（P0 修复）：遗留配置 show-welcome=false 时，渲染层启动读取该配置后
     // 直接隐藏欢迎页进入主界面，但主进程没有任何通知。这里在启动阶段同步读取同一配置，
@@ -525,18 +489,16 @@ app.whenReady().then(() => {
         }
     })()
 
-    createWindow()
+    const mainWindow = createWindow()
 
-    // A-1/ARC-06：IPC 注册一次性化——注册移出 createWindow，
-    // 在 app.whenReady 后仅执行一次；macOS activate 重建窗口不再重复注册。
+    // A-1/ARC-06：IPC 注册一次性化——注册移出 createWindow，在 app.whenReady 后仅执行一次；
+    // macOS activate 重建窗口不再重复注册。
+    // M2：全部一次性 IPC 注册收敛到 registry.registerAll（调用顺序 = 改造前顺序）；
+    // 渲染层就绪握手回调用本入口的 handleRendererReady（M1 状态在 AppContext）。
     // AS-12 复核：createWindow 内的窗口级监听（close / ready-to-show / 导航拦截）
-    // 绑定在新建窗口实例上，不随重建累积；全局 IPC 监听在此一次性注册；
-    // globalShortcut 由 short-key-register 内部幂等控制（重建窗口只更新目标窗口引用）。
-    dialogs.MainWindowListenDialogsEvent(mainWindow)
-    utils.MainWindowListenUtilsEvent(mainWindow)
-    registerIpcHandlers(mainWindow)
-    // PF-08：PlantUML 本地离线渲染 IPC（隐藏窗口 + 串行队列 + LRU 缓存）
-    registerPlantumlLocalRenderIpc()
+    // 绑定在新建窗口实例上，不随重建累积；globalShortcut 由 short-key-register 内部
+    // 幂等控制（重建窗口只更新目标窗口引用）。
+    registerAll(mainWindow, { onRendererReady: handleRendererReady })
 
     app.on('activate', function () {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -564,8 +526,10 @@ function cleanupApp(): void {
     // PF-08：销毁 PlantUML 本地渲染隐藏窗口（不阻塞应用退出）
     disposePlantumlLocalWindows()
     // 记住窗口位置和大小（批次 A）：清理 bounds 防抖计时器与窗口监听
-    disposeWindowBoundsPersistence?.()
-    disposeWindowBoundsPersistence = null
+    // M1：清理函数引用保存在 AppContext.windowBounds
+    const context = getAppContext()
+    context.windowBounds.disposePersistence?.()
+    context.windowBounds.disposePersistence = null
     // 批次 B #7：清理 nativeTheme 跟随监听（随应用退出）
     stopSystemThemeWatcher()
     // 批次 C #8/#9：退出时停止自动备份定时器，避免残留定时器继续写盘
@@ -592,12 +556,15 @@ app.on('window-all-closed', () => {
 app.on('before-quit', (event) => {
     // 批次 B #4：进入退出流程即置显式退出标志——随后窗口 close 事件不再被
     // 「最小化到托盘」拦截（否则 hide 会阻止窗口关闭、进程无法完全退出）。
+    // M1：标志本体在 AppContext.quit.isQuitting（appState.setQuitting 等价读写同一字段）。
+    const context = getAppContext()
     appState.setQuitting(true)
-    if (flushedForQuit) {
+    if (context.quit.flushedForQuit) {
         cleanupApp()
         return
     }
     // D-3/FUN-03：退出前先 flush 编辑器内容并落盘未保存修改
+    const mainWindow = context.mainWindow
     if (mainWindow && !mainWindow.isDestroyed()) {
         event.preventDefault()
         void (async () => {
@@ -609,7 +576,7 @@ app.on('before-quit', (event) => {
             } catch (err) {
                 logger.error('退出前落盘失败', err)
             }
-            flushedForQuit = true
+            context.quit.flushedForQuit = true
             app.quit()
         })()
         return

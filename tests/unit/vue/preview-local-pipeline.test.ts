@@ -12,8 +12,9 @@
  * 3. DOMPurify 消毒链路保持：恶意内联事件属性被剥离（CMP-15），且 tab 的
  *    input/label/checked/name/id 结构在消毒后仍保留（可交互）。
  *
- * 说明：mock hemy-editor 的 Render 门面，避免加载 monaco-editor 重型依赖；
- * 组件自身用到的 markdown-it / katex / DOMPurify 均为真实实现。
+ * 说明：mock hemy-editor-render 的渲染门面（MarkdownPreviewComponent 自「结构优化第 2 批
+ * 2.2（H4）」起直接依赖渲染模块，不再经含 Monaco 的 hemy-editor 聚合桶，避免预览 chunk
+ * 重新引入 Monaco）；组件自身用到的 markdown-it / katex / DOMPurify 均为真实实现。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -24,9 +25,7 @@ const renderMocks = vi.hoisted(() => ({
     ParserMarkdownChapters: vi.fn()
 }))
 
-vi.mock('@renderer/components/Markdown/hemy-editor', () => ({
-    Render: renderMocks
-}))
+vi.mock('@renderer/components/Markdown/hemy-editor-render', () => renderMocks)
 
 import MarkdownPreviewComponent from '@renderer/components/Markdown/MarkdownPreviewComponent.vue'
 import {

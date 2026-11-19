@@ -3,9 +3,9 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（58 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（60 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（26 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（28 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
  *   白名单**完全相等**（25 个通道）。
@@ -94,6 +94,22 @@ export interface ImportNewFileResult {
 export interface CreateFileFolderResult {
     /** 创建流程已执行（真正的失败/已存在由主进程弹框提示，不体现在返回值） */
     success: true
+}
+
+/**
+ * 对话框确认动作（重命名/删除）的返回结构（结构优化第 2 批 2.1）。
+ *
+ * 消费方：渲染层 RenameFileFolderDialog / ConfirmDeleteDialog 确认后的 invoke 回调。
+ * - `ok: true`：主进程已完成动作（渲染层可关闭对话框）；
+ * - `ok: false`：动作失败（error 为可直接展示的失败原因；主进程同时已按既有方式
+ *   经 Vue 消息对话框/状态栏提示，渲染层保留对话框供用户重试）。
+ * 未受信发送方被 withSenderCheck 拒绝时返回 `{ ok: false, error }`（不会执行文件操作）。
+ */
+export interface DialogActionResult {
+    /** 动作是否成功 */
+    ok: boolean
+    /** 失败原因（ok=false 时可能存在；文案由主进程生成） */
+    error?: string
 }
 
 /**
@@ -296,6 +312,12 @@ export interface IpcRequests {
     [IPC.FILE_MANAGER.IMPORT_FROM]: [fileType: string]
     [IPC.FILE_MANAGER.FIND_IN]: [targetPath: string]
 
+    // ============ 对话框确认动作（结构优化第 2 批 2.1：Vue 对话框替代 JSDOM 对话框） ============
+    /** 重命名确认（invoke；用户在 Vue 重命名对话框确认后提交新名称） */
+    [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: [path: string, isFile: boolean, newName: string]
+    /** 删除确认（invoke；用户在 Vue 删除确认对话框点击确认后执行删除） */
+    [IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM]: [path: string, isFile: boolean]
+
     // ============ 插件工具 ============
     /** 生成 RSA 密钥对（send；bits 仅接受 1024/2048/3072/4096，非法回退 2048） */
     [IPC.PLUGIN.RSA_GENERATE]: [bits: number]
@@ -364,6 +386,10 @@ export interface IpcResponses {
     [IPC.FILE.READ_BINARY]: Uint8Array
     [IPC.FILE.REOPEN_WITH_ENCODING]: void
     [IPC.FILE.CONVERT_SAVE_ENCODING]: void
+
+    // ============ 对话框确认动作 ============
+    [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult
+    [IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM]: DialogActionResult
 
     // ============ 插件工具 ============
     [IPC.PLUGIN.HASH_TEXT]: HashResult

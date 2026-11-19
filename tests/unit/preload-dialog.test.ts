@@ -1,10 +1,9 @@
 /**
  * preload/dialog.ts 单元测试
  * 覆盖：contextIsolated 开关、exposeInMainWorld 暴露结构、
- * send 通道白名单（放行/丢弃+告警）、on 的事件剥离转发、
- * removeListener/shell.openExternal 委托（P0 安全：仅 http/https 协议白名单）。
- * P2：broadcastTheme 辅助函数随主题设置 JSDOM 对话框删除（DIALOG_BROADCAST_THEME
- * 通道双端移除）。
+ * send 通道白名单（结构优化第 2 批 2.1 后为空——任何 send 都丢弃并告警）、
+ * on 接收白名单（同样为空）、removeListener 委托、
+ * shell.openExternal 委托（P0 安全：仅 http/https 协议白名单）。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
@@ -44,13 +43,12 @@ function getExposedDialogApi(): {
     return call![1]
 }
 
-// 与源码 ALLOWED_SEND_CHANNELS 一致的完整白名单（ARC-01）
-// P2：随 8 个不可达 JSDOM 对话框 / Mermaid 隐藏窗口 / 主题广播删除，白名单只剩
-// 当前可达的两个对话框通道。
-const ALLOWED_CHANNELS = [
-    'baize:dialog:create-file-folder-enter',
-    'baize:dialog:rename-file-folder-enter'
-]
+/**
+ * 结构优化第 2 批 2.1（H3）：JSDOM 对话框全部迁移为渲染层 Vue 对话框后，
+ * 生成器从 `src/main/dialogs` 扫描到的 dialog preload 通道为 0，
+ * dialog.ts 成为「白名单为空的安全空壳」——任何通道都必须被丢弃并告警。
+ */
+const ALLOWED_CHANNELS: string[] = []
 
 let warnSpy: ReturnType<typeof vi.spyOn>
 
@@ -84,39 +82,34 @@ describe('preload/dialog exposure', () => {
 })
 
 describe('preload/dialog send whitelist', () => {
-    it('should forward every whitelisted send channel to ipcRenderer', async () => {
+    it('should have an empty generated whitelist (JSDOM dialogs migrated to Vue)', async () => {
         await loadDialog()
-        const api = getExposedDialogApi()
-        for (const channel of ALLOWED_CHANNELS) {
-            dialogMocks.send.mockClear()
-            api.ipcRenderer.send(channel, 'payload')
-            expect(dialogMocks.send, `白名单通道 ${channel} 应被放行`).toHaveBeenCalledWith(
-                channel,
-                'payload'
-            )
-        }
+        expect(ALLOWED_CHANNELS).toEqual([])
     })
 
-    it('should drop unknown send channels with a warning', async () => {
+    it('should drop every send channel with a warning', async () => {
         await loadDialog()
         const api = getExposedDialogApi()
-        api.ipcRenderer.send('baize:navigation:open-exe', 'evil')
-        expect(dialogMocks.send).not.toHaveBeenCalled()
-        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('baize:navigation:open-exe'))
+        for (const channel of [
+            'baize:dialog:rename-file-folder-submit',
+            'baize:dialog:delete-file-folder-confirm',
+            'baize:navigation:open-exe'
+        ]) {
+            dialogMocks.send.mockClear()
+            api.ipcRenderer.send(channel, 'payload')
+            expect(dialogMocks.send, `空白名单下 ${channel} 不应被放行`).not.toHaveBeenCalled()
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(channel))
+        }
     })
 })
 
 describe('preload/dialog ipcRenderer delegation', () => {
-    it('should forward on() payload args without the event object', async () => {
+    it('should drop every on channel with a warning (empty receive whitelist)', async () => {
         await loadDialog()
         const api = getExposedDialogApi()
-        const callback = vi.fn()
-        api.ipcRenderer.on('baize:theme:updated', callback)
-        expect(dialogMocks.on).toHaveBeenCalledWith('baize:theme:updated', expect.any(Function))
-        // 触发包装后的监听器：第一个参数 event 被剥离
-        const wrapper = dialogMocks.on.mock.calls[0][1]
-        wrapper({ sender: 'fake-event' }, 'a', 2)
-        expect(callback).toHaveBeenCalledWith('a', 2)
+        api.ipcRenderer.on('baize:theme:updated', vi.fn())
+        expect(dialogMocks.on).not.toHaveBeenCalled()
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('baize:theme:updated'))
     })
 
     it('should drop unknown on channels with a warning (2026-11-19 接收白名单)', async () => {
@@ -133,18 +126,6 @@ describe('preload/dialog ipcRenderer delegation', () => {
         const callback = vi.fn()
         api.ipcRenderer.removeListener('some-channel', callback)
         expect(dialogMocks.removeListener).toHaveBeenCalledWith('some-channel', callback)
-    })
-
-    it('should unsubscribe the exact wrapped listener after on() (P2/C-02)', async () => {
-        await loadDialog()
-        const api = getExposedDialogApi()
-        const callback = vi.fn()
-        api.ipcRenderer.on('baize:theme:updated', callback)
-        // on 传给 ipcRenderer 的是包装函数，removeListener 必须用同一引用退订
-        const wrapped = dialogMocks.on.mock.calls[0][1]
-        api.ipcRenderer.removeListener('baize:theme:updated', callback)
-        expect(dialogMocks.removeListener).toHaveBeenCalledTimes(1)
-        expect(dialogMocks.removeListener).toHaveBeenCalledWith('baize:theme:updated', wrapped)
     })
 })
 

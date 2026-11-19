@@ -1,8 +1,52 @@
+import { join } from 'path'
+import type { BrowserWindowConstructorOptions, WebPreferences } from 'electron'
 import * as SystemSettingUtils from '../config'
-import { logger } from '../utils/logger'
 import { windowManager } from '../config/window-manager'
-import { createDialogOptions } from './dialog-defaults'
+import { logger } from '../utils/logger'
 import { isSafeExternalUrl, normalizeSafeExternalUrl, openExternalSafely } from '../utils/security'
+
+/**
+ * 结构优化第 2 批 2.3（H6）：jsdom 运行时依赖边界清理。
+ *
+ * 2.1（H3）把全部主进程 JSDOM 对话框迁移为渲染层 Vue 对话框后，
+ * `dialog-defaults.ts` 的 jsdom/HTML 构建助手（getJSDOM / createJSDOM /
+ * createDialogHtmlUrl / loadDialogHtml / notifyReloadDirFromDisk）已零生产调用，
+ * 本批随该文件一并删除；文件中唯一仍在使用的「对话框窗口默认配置」
+ * （DIALOG_WEB_PREFERENCES / createDialogOptions）归并到本文件——其唯一调用方。
+ *
+ * 清理结果：`src/main` 不再有任何 jsdom 运行时 import/require，主进程产物
+ * （out/main）不内联 jsdom；jsdom 仅保留为 devDependency 供 vitest 的 jsdom
+ * 测试环境使用，不参与主进程 bundle。
+ */
+
+/** 对话框 preload 产物路径（sandbox 对话框默认注入；在线网页窗口会显式覆盖为 undefined） */
+const DIALOG_PRELOAD = join(__dirname, '../preload/dialog.js')
+
+/** 对话框窗口 webPreferences 安全基线：无 Node 集成、上下文隔离、sandbox 开启 */
+const DIALOG_WEB_PREFERENCES: WebPreferences = {
+    nodeIntegration: false,
+    contextIsolation: true,
+    sandbox: true,
+    preload: DIALOG_PRELOAD
+}
+
+/**
+ * 合并对话框窗口默认配置（frameless + 隐藏菜单栏 + 安全基线），
+ * 调用方可通过 overrides / overrides.webPreferences 逐项覆盖。
+ */
+function createDialogOptions(
+    overrides?: Partial<BrowserWindowConstructorOptions>
+): BrowserWindowConstructorOptions {
+    return {
+        frame: false,
+        autoHideMenuBar: true,
+        ...overrides,
+        webPreferences: {
+            ...DIALOG_WEB_PREFERENCES,
+            ...(overrides?.webPreferences || {})
+        }
+    }
+}
 
 /**
  * C-08：在线网页窗口（远程 URL + 本地 BrowserWindow 打开模式）加固。

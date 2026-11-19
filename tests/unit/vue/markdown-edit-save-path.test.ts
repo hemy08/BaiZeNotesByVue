@@ -67,7 +67,10 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
     let wrapper: ReturnType<typeof mount> | null = null
 
     beforeEach(() => {
-        vi.useFakeTimers()
+        // 结构优化第 2 批 2.2（H4）：MarkdownMonacoEditor / MarkdownPreviewComponent 改为
+        // defineAsyncComponent 后，组件挂载需要等模块 Promise（真实宏任务）与渲染 flush；
+        // 这里只伪造防抖用到的 setTimeout/clearTimeout，保留 setImmediate 供异步组件就绪等待。
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
         ipcRenderer = {
             on: vi.fn(),
             send: vi.fn(),
@@ -86,8 +89,17 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
         vi.restoreAllMocks()
     })
 
-    function mountEditor() {
+    /**
+     * 等待按需加载的 Monaco/预览异步组件就绪后返回 wrapper。
+     * defineAsyncComponent 的延迟/超时定时器在挂载末尾清理，故用真实宏任务让模块 import
+     * 的 Promise 链与 Vue 渲染 flush 全部完成；随后再 nextTick 一次确保子组件已提交。
+     */
+    async function mountEditor() {
         wrapper = mount(MarkdownEditComponent)
+        await new Promise<void>((resolve) => {
+            setImmediate(resolve)
+        })
+        await nextTick()
         return wrapper
     }
 
@@ -109,8 +121,8 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
             .map(([, payload]) => payload)
     }
 
-    it('should debounce full-content IPC to a single send after 500ms idle', () => {
-        mountEditor()
+    it('should debounce full-content IPC to a single send after 500ms idle', async () => {
+        await mountEditor()
 
         emitCode('第一版')
         expect(ipcRenderer.send).not.toHaveBeenCalled()
@@ -123,8 +135,8 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
         expect(ipcRenderer.send).toHaveBeenCalledTimes(1)
     })
 
-    it('should skip IPC when the reported content equals the last synced content', () => {
-        mountEditor()
+    it('should skip IPC when the reported content equals the last synced content', async () => {
+        await mountEditor()
 
         emitCode('abc')
         vi.advanceTimersByTime(500)
@@ -137,8 +149,8 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
         expect(ipcRenderer.send).toHaveBeenCalledTimes(1)
     })
 
-    it('should merge Ctrl+S flush+save into a single full-content IPC (PF-3)', () => {
-        mountEditor()
+    it('should merge Ctrl+S flush+save into a single full-content IPC (PF-3)', async () => {
+        await mountEditor()
 
         emitCode('草稿内容')
         // 未等防抖窗口：Ctrl+S 立即保存
@@ -154,8 +166,8 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
         expect(ipcRenderer.send).toHaveBeenCalledTimes(1)
     })
 
-    it('should keep a single SAVE_TO_DISK IPC when saving an already synced document', () => {
-        mountEditor()
+    it('should keep a single SAVE_TO_DISK IPC when saving an already synced document', async () => {
+        await mountEditor()
 
         emitCode('已同步内容')
         vi.advanceTimersByTime(500)
@@ -166,8 +178,8 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
         expect(ipcRenderer.send).toHaveBeenLastCalledWith(IPC.FILE.SAVE_TO_DISK, '已同步内容')
     })
 
-    it('should answer the flush contract and only resend content when dirty (PF-3)', () => {
-        mountEditor()
+    it('should answer the flush contract and only resend content when dirty (PF-3)', async () => {
+        await mountEditor()
         const flushHandler = getIpcListener(IPC.EDITOR.FLUSH_CONTENT)
 
         // 内容未变化：主进程已有最新内容，只回执 DONE
@@ -187,7 +199,7 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
     })
 
     it('should keep an empty file empty instead of injecting CRLF (FE-13)', async () => {
-        const mounted = mountEditor()
+        const mounted = await mountEditor()
         const monaco = mounted.findComponent(MdMonacoEdit)
         const showFile = getIpcListener(IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT)
 
@@ -215,7 +227,7 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
     })
 
     it('should pass preview visibility to the preview component as active prop (PF-2)', async () => {
-        const mounted = mountEditor()
+        const mounted = await mountEditor()
         const preview = mounted.findComponent(MdPreview)
         expect(preview.props('active')).toBe(true)
 
@@ -239,7 +251,7 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
     // 在「欢迎页后台已恢复上次文件 → 点打开文件夹/最近文件夹 → 再打开新文件」链路上
     // 把旧文档内容污染成 '# '，切换/关闭时的自动保存会把旧文件写空（数据丢失）。
     it('should not sync placeholder content when clearing the editor (CLEAR_EDITOR_PREVIEW)', async () => {
-        const mounted = mountEditor()
+        const mounted = await mountEditor()
         const monaco = mounted.findComponent(MdMonacoEdit)
 
         // 主进程后台恢复的文件内容已加载
@@ -259,7 +271,7 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
     })
 
     it('should not flush stale content after the editor was cleared (数据安全)', async () => {
-        mountEditor()
+        await mountEditor()
 
         getIpcListener(IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT)({}, '文档原文')
         await nextTick()

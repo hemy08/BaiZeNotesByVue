@@ -120,9 +120,23 @@
             @close="configStore.hideDialog('createFileFolder')"
             @create="handleCreateFileFolder"
         />
-        <!-- FE-27/P2 死代码清理：Vue RenameDialog 死轨已删除（showRename 全仓无调用方、
-             父组件未绑定 @confirm，对话框永远不可见；实际重命名走主进程 HTML 对话框
-             ShowRenameDialog，见 FE-09/右键菜单路径）。 -->
+        <!-- 结构优化第 2 批 2.1（H3）：文件管理器右键「重命名/删除」与「新建」统一为
+             渲染层 Vue 对话框。主进程只发 OPEN_VUE_DIALOG 请求（含 path/isFile），
+             用户在 Vue 对话框确认后由本组件 invoke 主进程动作通道执行。 -->
+        <BaiZeDialogs.RenameFileFolderDialog
+            :visible="configStore.dialogs.renameFileFolder.visible"
+            :path="configStore.dialogs.renameFileFolder.path || ''"
+            :is-file="Boolean(configStore.dialogs.renameFileFolder.isFile)"
+            @close="configStore.hideDialog('renameFileFolder')"
+            @confirm="handleRenameConfirm"
+        />
+        <BaiZeDialogs.ConfirmDeleteDialog
+            :visible="configStore.dialogs.confirmDelete.visible"
+            :path="configStore.dialogs.confirmDelete.path || ''"
+            :is-file="Boolean(configStore.dialogs.confirmDelete.isFile)"
+            @close="configStore.hideDialog('confirmDelete')"
+            @confirm="handleConfirmDelete"
+        />
         <BaiZeDialogs.HelpAboutDialog
             :visible="configStore.dialogs.helpAbout.visible"
             @close="configStore.hideDialog('helpAbout')"
@@ -134,6 +148,21 @@
         <BaiZeDialogs.TechStackDialog
             :visible="configStore.dialogs.techStack.visible"
             @close="configStore.hideDialog('techStack')"
+        />
+        <!-- 结构优化第 2 批 2.1（H3）：帮助类 JSDOM 对话框迁移为 Vue + BaseDialog，
+             由主进程 help 菜单 handler 经 OPEN_VUE_DIALOG 请求打开。 -->
+        <BaiZeDialogs.ShortcutKeysDialog
+            :visible="configStore.dialogs.shortcutKeys.visible"
+            @close="configStore.hideDialog('shortcutKeys')"
+        />
+        <BaiZeDialogs.UpdateLogDialog
+            :visible="configStore.dialogs.updateLog.visible"
+            @close="configStore.hideDialog('updateLog')"
+        />
+        <BaiZeDialogs.ReleaseNotesDialog
+            :visible="configStore.dialogs.releaseNotes.visible"
+            :version="configStore.dialogs.releaseNotes.version || ''"
+            @close="configStore.hideDialog('releaseNotes')"
         />
         <BaiZeDialogs.QuickLinkSettingDialog
             :visible="configStore.dialogs.quickLinks.visible"
@@ -153,8 +182,8 @@ import WorkSpace from './WorkSpaceArea/WorkSpace.vue'
 import StatusBar from './StatusBar.vue'
 import MenuBar from './MenuBar.vue'
 import EventBus from '../common/event-bus/event-bus'
-import * as monaco from 'monaco-editor'
 import type {
+    DialogActionResult,
     SelectImageResult,
     SystemSetting,
     ThemeStyles,
@@ -180,6 +209,36 @@ import { EVENT_BUS } from '../common/event-bus/event-bus-events'
 import { logger } from '../common/logger'
 
 const configStore = getConfigStore()
+
+// =============================================================================================
+// 结构优化第 2 批 2.2（H4）：主界面二级分块——Monaco 不再静态进入主界面壳 chunk。
+//
+// 改造前：本组件 `import * as monaco from 'monaco-editor'` 只为应用编辑器主题，
+// 却让 Monaco（约 7.3 MB）随主界面壳同步求值；现在改用动态 import，打包器会生成
+// 独立的 Monaco chunk，并让编辑器组件（MarkdownMonacoEditor）与本组件共享同一模块
+// 实例（同一 chunk 只下载/求值一次）。
+//
+// 语义保证：主题应用是异步的，但 setTheme 是 Monaco 全局主题服务的状态；无论编辑器
+// 先创建还是主题先应用，最终都会命中当前主题（「编辑器创建晚于主题」时新编辑器直接
+// 使用已设置的全局主题）。加载失败仅跳过主题更新，不影响主界面其他功能。
+// =============================================================================================
+
+/** Monaco 模块形态（仅类型引用，编译后不产生静态依赖） */
+type MonacoModule = typeof import('monaco-editor')
+
+/** Monaco 模块动态加载 Promise（失败后清空，允许主题更新时重试） */
+let monacoModulePromise: Promise<MonacoModule> | null = null
+
+/** 按需加载 Monaco 模块（与编辑器组件共享同一打包 chunk） */
+async function loadMonacoModule(): Promise<MonacoModule> {
+    if (monacoModulePromise === null) {
+        monacoModulePromise = import('monaco-editor').catch((error: unknown) => {
+            monacoModulePromise = null
+            throw error
+        })
+    }
+    return monacoModulePromise
+}
 
 // 性能改造（主界面按需异步加载）配套：向 App.vue 上报「主界面已挂载、IPC 监听器已注册」。
 // App.vue 以此作为发送渲染层就绪握手（RENDER.READY）的时序依据——show-welcome=false 等
@@ -421,7 +480,10 @@ async function handleCreateFileFolder(data: {
     dirPath: string
 }) {
     const { type, name, dirPath } = data
-    const extension = '.md'
+    // 结构优化第 2 批 2.1（H3）：菜单/右键「新建」收敛到同一 Vue 对话框后，扩展名规则
+    // 保持迁移前 JSDOM 对话框语义——文件夹不加后缀；文件名已自带扩展名时不再追加；
+    // 纯名称的新建文件默认补 .md（与迁移前「文件默认后缀 .md」提示一致）。
+    const extension = type === 'folder' || name.includes('.') ? '' : '.md'
 
     configStore.hideDialog('createFileFolder')
 
@@ -447,20 +509,96 @@ async function handleCreateFileFolder(data: {
     }
 }
 
+/**
+ * 结构优化第 2 批 2.1（H3）：重命名对话框确认。
+ *
+ * 主进程只发 OPEN_VUE_DIALOG('renameFileFolder', { path, isFile }) 请求（原 JSDOM
+ * ShowRenameDialog 已删除），确认后由渲染层 invoke RENAME_FILE_FOLDER_SUBMIT：
+ * - ok=true：关闭对话框（主进程内部已完成目录刷新/文件重新打开）；
+ * - ok=false：主进程已按 FE-09 语义弹出 Vue 消息对话框说明失败原因，这里保留重命名
+ *   对话框供用户改名重试（与迁移前「失败保留窗口」行为一致）。
+ * invoke 本身异常（IPC 不可用等）走全局消息对话框兜底，不静默。
+ */
+async function handleRenameConfirm(newName: string) {
+    const { path, isFile } = configStore.dialogs.renameFileFolder
+    if (!path) {
+        configStore.hideDialog('renameFileFolder')
+        return
+    }
+    try {
+        const result = (await window.electron.ipcRenderer.invoke(
+            IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT,
+            path,
+            Boolean(isFile),
+            newName
+        )) as DialogActionResult | null
+        if (result?.ok) {
+            configStore.hideDialog('renameFileFolder')
+        }
+    } catch (error) {
+        configStore.showError(
+            t('mainMsg.dialog.errorTitle'),
+            t('mainMsg.status.menuActionFailed', {
+                message: error instanceof Error ? error.message : String(error)
+            })
+        )
+        logger.error('重命名失败:', error)
+    }
+}
+
+/**
+ * 结构优化第 2 批 2.1（H3）：删除确认对话框确认。
+ *
+ * 主进程只发 OPEN_VUE_DIALOG('confirmDelete', { path, isFile }) 请求（原 electron
+ * dialog.showMessageBox 已删除），确认后关闭对话框并 invoke DELETE_FILE_FOLDER_CONFIRM；
+ * 删除失败提示仍由主进程（DeleteFileFolder 内部 + Vue 消息对话框）负责，
+ * invoke 异常走全局消息对话框兜底。
+ */
+async function handleConfirmDelete() {
+    const { path, isFile } = configStore.dialogs.confirmDelete
+    configStore.hideDialog('confirmDelete')
+    if (!path) {
+        return
+    }
+    try {
+        await window.electron.ipcRenderer.invoke(
+            IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM,
+            path,
+            Boolean(isFile)
+        )
+    } catch (error) {
+        configStore.showError(
+            t('mainMsg.dialog.errorTitle'),
+            t('mainMsg.status.menuActionFailed', {
+                message: error instanceof Error ? error.message : String(error)
+            })
+        )
+        logger.error('删除文件/文件夹失败:', error)
+    }
+}
+
 // 更新Monaco编辑器主题
 async function updateMonacoEditorTheme(
     theme: ThemeStyles,
     separate: boolean,
     monacoThemeName: string
 ) {
-    if (typeof monaco === 'undefined') return
+    // 结构优化第 2 批 2.2（H4）：主题应用是唯一需要 Monaco 的壳层逻辑，改为按需加载；
+    // 加载失败的兜底：只跳过编辑器主题（界面/预览主题仍由 applyTheme 生效），不阻塞启动。
+    let monaco: MonacoModule
+    try {
+        monaco = await loadMonacoModule()
+    } catch (error) {
+        logger.warn('Monaco 模块加载失败，已跳过编辑器主题更新:', error)
+        return
+    }
 
     // 如果单独配置了编辑器主题，使用配置的主题
     if (separate) {
         // 加载 Monaco 主题（loadMonacoTheme 内部已完成 defineTheme + setTheme）
         // 2026-11-18：删除无接收方的 UPDATE_OPTIONS R→M 发送（主进程无该通道监听，
         // 主题实际已由 loadMonacoTheme 本地应用，属空转死分支）
-        await loadMonacoTheme(monacoThemeName)
+        await loadMonacoTheme(monaco, monacoThemeName)
     } else {
         // 否则根据应用主题自动选择
         const themeName =
@@ -492,10 +630,8 @@ async function updateMonacoEditorTheme(
     EventBus.$emit(EVENT_BUS.THEME_UPDATED, theme)
 }
 
-// 加载 Monaco 编辑器主题
-async function loadMonacoTheme(themeName: string): Promise<string | null> {
-    if (typeof monaco === 'undefined') return null
-
+// 加载 Monaco 编辑器主题（monaco 模块由调用方按需加载后传入，避免重复动态 import）
+async function loadMonacoTheme(monaco: MonacoModule, themeName: string): Promise<string | null> {
     // 内置主题直接设置
     if (themeName === 'vs' || themeName === 'vs-dark' || themeName === 'hc-black') {
         monaco.editor.setTheme(themeName)

@@ -22,9 +22,17 @@
 - **1.3.6 tag 补齐**：`release-1.3.6` → 提交 `506e78a`
 - 文档版本标注、版本历史与报告索引同步；HTML 报告重生成
 
+### 🧱 结构优化第 2 批（运行时收敛）
+
+- **双对话框收敛**：主进程 JSDOM 对话框全部迁移 Vue + BaseDialog，新建文件/文件夹双路径消除
+- **主界面二级分块**：入口 127.2 kB / 主界面壳 316.3 kB，Monaco 与预览改为独立按需 chunk（壳原 9.89 MB）
+- **jsdom 边界**：主进程 out/main 10.50 MiB → 0.60 MiB（-94.3%），jsdom 仅保留测试环境
+- **AppContext + IPC registry**：全局状态集中/reset，64 处 IPC 注册收口为单一 `registerAll`
+- 门禁：typecheck 0 / ESLint 0 / vitest 169 文件 / 3,234 用例全通过
+
 ### ✅ 门禁
 
-- typecheck 三工程 0 错误、ESLint 0/0、vitest 174 文件 / 3,224 用例全通过
+- typecheck 三工程 0 错误、ESLint 0/0、vitest 169 文件 / 3,234 用例全通过
 
 </code></pre></blockcode></details>
 

@@ -18,7 +18,9 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, watch, ref, nextTick } from 'vue'
 import { t } from '../../common/i18n'
-import { QuickAccess } from './hemy-editor'
+// 结构优化第 2 批 2.2（H4）：直接从功能模块引入 QuickAccess，避免经 `hemy-editor`
+// 聚合桶把 Monaco/编辑器动作等重型依赖带进工具栏 chunk（该组件已改为按需加载）。
+import { MdEditQuickAccess as QuickAccess } from './hemy-editor-quick-access'
 
 const showWidth = ref('')
 const toolbarContainer = ref<HTMLElement | null>(null)

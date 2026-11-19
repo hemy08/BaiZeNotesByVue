@@ -2,17 +2,17 @@
  * preload 白名单单一来源（H2）回归测试
  *
  * ## 背景
- * preload 此前维护三份手工通道白名单（主窗口 58 send + 25 on、对话框 2 + 1、
+ * preload 此前维护三份手工通道白名单（主窗口 60 send + 25 on、对话框 0 + 0、
  * `window.api` 直连 6），与 shared 契约没有生成期对应关系：新增 IPC 时若漏登记，
  * 渲染层调用会被 preload **静默丢弃**。H2 把白名单改为由共享契约驱动、
  * `build/generate-preload-whitelist.js` 统一生成（产物见
  * `src/preload/allowed-channels.generated.ts` 与 `src/preload/index.ts` 的生成标记块）。
  *
  * ## 本测试的双向核对
- * 1. 生成产物 ↔ shared 契约：`IpcRequests` 58 / `IpcEvents` 25 / `IpcPreloadApiRequests` 6；
+ * 1. 生成产物 ↔ shared 契约：`IpcRequests` 60 / `IpcEvents` 25 / `IpcPreloadApiRequests` 6；
  * 2. 入口镜像 ↔ 生成模块：`index.ts` 两个生成块必须与生成模块完全一致（防两处产物漂移）；
  * 3. 生成器 `--check`：契约已改但产物未重新生成 → 失败（杜绝「漏登记即静默丢弃」）；
- * 4. 对话框白名单 ↔ `src/main/dialogs` 实际调用点（2 send + 1 on，双向）；
+ * 4. 对话框白名单 ↔ `src/main/dialogs` 实际调用点（结构优化第 2 批 2.1 后为 0 + 0，双向）；
  * 5. 渲染层实际 `send/invoke/on/once` 调用 ⊆ 窗口白名单，且窗口白名单无未使用通道；
  * 6. `window.api` 直连通道 = 契约 6 个，且不在窗口白名单内（两套放行口径不重叠）；
  * 7. 白名单无重复、全部来自 `IPC` 常量表；受限 ipcRenderer 不暴露全量方法。
@@ -231,10 +231,10 @@ const DIALOG_USAGE = collectDialogUsage()
 const PRELOAD_API_USAGE = collectPreloadApiUsage()
 
 describe('preload 白名单：生成产物 ↔ shared 契约', () => {
-    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（58，双向）', () => {
+    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（60，双向）', () => {
         const generated = new Set(RENDERER_SEND_CHANNELS)
-        expect(generated.size).toBe(58)
-        expect(CONTRACT_REQUEST_KEYS.size).toBe(58)
+        expect(generated.size).toBe(60)
+        expect(CONTRACT_REQUEST_KEYS.size).toBe(60)
         expect(diff(generated, CONTRACT_REQUEST_KEYS)).toEqual([])
     })
 
@@ -277,8 +277,8 @@ describe('preload 白名单：生成产物 ↔ shared 契约', () => {
 })
 
 describe('preload 白名单：入口镜像 ↔ 生成产物（防两处产物漂移）', () => {
-    it('index.ts 两个生成块应可解析且与生成模块双向一致（58 / 25）', () => {
-        expect(INDEX_SEND_WHITELIST.size).toBe(58)
+    it('index.ts 两个生成块应可解析且与生成模块双向一致（60 / 25）', () => {
+        expect(INDEX_SEND_WHITELIST.size).toBe(60)
         expect(INDEX_RECEIVE_WHITELIST.size).toBe(25)
         expect(diff(INDEX_SEND_WHITELIST, new Set(RENDERER_SEND_CHANNELS))).toEqual([])
         expect(diff(INDEX_RECEIVE_WHITELIST, new Set(RENDERER_RECEIVE_CHANNELS))).toEqual([])
@@ -315,9 +315,12 @@ describe('preload 白名单：入口镜像 ↔ 生成产物（防两处产物漂
 })
 
 describe('preload 白名单：对话框（生成来源 = src/main/dialogs 实际调用点）', () => {
-    it('对话框 send/on 白名单应与实际调用点双向一致（2 send + 1 on）', () => {
-        expect(new Set(DIALOG_SEND_CHANNELS).size).toBe(2)
-        expect(new Set(DIALOG_RECEIVE_CHANNELS).size).toBe(1)
+    // 结构优化第 2 批 2.1（H3）：JSDOM 对话框全部迁移为渲染层 Vue 对话框后，
+    // src/main/dialogs 不再有 dialog preload 的 ipcRenderer.send/on 调用点，
+    // 两套对话框白名单为空（生成器允许空结果，dialog.ts 作为安全空壳保留）。
+    it('对话框 send/on 白名单应与实际调用点双向一致（0 send + 0 on）', () => {
+        expect(new Set(DIALOG_SEND_CHANNELS).size).toBe(0)
+        expect(new Set(DIALOG_RECEIVE_CHANNELS).size).toBe(0)
         expect(diff(new Set(DIALOG_SEND_CHANNELS), DIALOG_USAGE.send)).toEqual([])
         expect(diff(new Set(DIALOG_RECEIVE_CHANNELS), DIALOG_USAGE.receive)).toEqual([])
     })

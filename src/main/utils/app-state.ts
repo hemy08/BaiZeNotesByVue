@@ -1,5 +1,8 @@
 import { BrowserWindow } from 'electron'
 import { createHash } from 'crypto'
+// 结构优化第 2 批 2.4（M1）：主窗口引用与退出标志统一由 AppContext 持有
+// （原 AppState._mainWindow / _isQuitting 收口到进程内唯一上下文单例）
+import { getAppContext, resetAppContext } from '../app-context'
 // ARC-13 / 第 2 批契约重构：FileItem / FileProperties 已收敛到 src/shared/types/file.ts
 // （唯一真源）。本文件原先的本地 StoreFileProperties（type: string、children?: [] 零读取、
 // 字段为共享类型的超集）已删除，currentActiveFile 直接使用跨进程传输类型 FileProperties。
@@ -94,7 +97,6 @@ export function sendToMainWindow(channel: string, ...args: unknown[]): boolean {
 }
 
 class AppState {
-    private _mainWindow: BrowserWindow | null = null
     private _rootPath = ''
     private _currentActiveFile: FileProperties | null = null
     private _savingFile = false
@@ -110,24 +112,32 @@ class AppState {
     private _lastSavedContentHash: string | null = null
     // PF-17：当前活动文件的磁盘签名（mtime + size），null 表示未知（下次刷新按需重读并重建签名）
     private _activeFileDiskStamp: ActiveFileDiskStamp | null = null
-    // 批次 B #4：显式退出标志——before-quit / 托盘「退出」置位后，窗口 close 事件
-    // 不再被「最小化到托盘」拦截，保证真实退出路径能关闭窗口并完全结束进程。
-    private _isQuitting = false
 
+    /**
+     * 批次 B #4：显式退出标志——before-quit / 托盘「退出」置位后，窗口 close 事件
+     * 不再被「最小化到托盘」拦截。
+     * M1：状态本体迁移到 AppContext.quit.isQuitting（进程内唯一真源），
+     * getter/setter 保留原 API，调用方与行为不变。
+     */
     get isQuitting(): boolean {
-        return this._isQuitting
+        return getAppContext().quit.isQuitting
     }
 
     setQuitting(quitting: boolean): void {
-        this._isQuitting = quitting
+        getAppContext().quit.isQuitting = quitting
     }
 
+    /**
+     * 主窗口引用。
+     * M1：状态本体迁移到 AppContext.mainWindow（与 ipc-security 受信主窗口、
+     * handlers 当前主窗口同源），getter/setter 保留原 API。
+     */
     get mainWindow(): BrowserWindow | null {
-        return this._mainWindow
+        return getAppContext().mainWindow
     }
 
     set mainWindow(win: BrowserWindow | null) {
-        this._mainWindow = win
+        getAppContext().mainWindow = win
     }
 
     get rootPath(): string {
@@ -273,7 +283,9 @@ class AppState {
     }
 
     _resetForTesting(): void {
-        this._mainWindow = null
+        // M1：主窗口引用/退出标志已迁移到 AppContext，先整体复位上下文
+        // （同时复位欢迎页、快捷键等其它进程级状态，保证单测用例间完全隔离）
+        resetAppContext()
         this._rootPath = ''
         this._currentActiveFile = null
         this._savingFile = false
@@ -285,7 +297,6 @@ class AppState {
         this._lastSavedContentLength = 0
         this._lastSavedContentHash = null
         this._activeFileDiskStamp = null
-        this._isQuitting = false
     }
 }
 

@@ -11,7 +11,10 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import hljs from 'highlight.js'
 import DOMPurify from 'dompurify'
-import * as editor from './hemy-editor'
+// 结构优化第 2 批 2.2（H4）：预览只依赖渲染模块（hemy-editor-render），
+// 不再经 `hemy-editor` 聚合桶（该桶含 Monaco 编辑器动作/快捷键等），
+// 保证预览按需 chunk 不把 Monaco 重新带回来。
+import * as Render from './hemy-editor-render'
 import EventBus from '../../common/event-bus/event-bus'
 import actionscript from 'highlight.js/lib/languages/actionscript'
 import { IPC } from '../../../../shared/ipc-channels'
@@ -65,6 +68,14 @@ const props = defineProps({
     active: {
         type: Boolean,
         default: true
+    },
+    // 结构优化第 2 批 2.2（H4）：当前活动文件路径（由同步挂载的 MarkdownEditComponent
+    // 监听 IPC.FILE.USER_SELECT_FILE 后透传）。预览改为按需 chunk 后可能在「打开文件」
+    // 之后才挂载，本 prop 用于补齐首条路径事件，保证相对图片/snippets 解析正确。
+    // 默认空串 = 未提供（直接挂载预览的调用方仍走下方 USER_SELECT_FILE 监听，行为不变）。
+    activeFilePath: {
+        type: String,
+        default: ''
     }
 })
 
@@ -82,6 +93,23 @@ const md = createPreviewMarkdownIt()
 let lastRenderedContent: string | null = null
 // P1/PF-2：最近一次大纲解析时的「标题候选行」指纹；无标题结构变化时跳过第二次全文解析
 let lastChaptersFingerprint: number | null = null
+
+// 结构优化第 2 批 2.2（H4）：父组件透传的活动文件路径（懒加载时序兜底，见 props.activeFilePath）。
+// 只做非空写入，不覆盖预览自身监听得到的路径；路径变化时触发补渲，让相对 URL 按新文件重算。
+watch(
+    () => props.activeFilePath,
+    (filePath) => {
+        if (typeof filePath !== 'string' || filePath.length === 0) {
+            return
+        }
+        setPreviewActiveFilePath(filePath)
+        // 内容未变时 updateMarkdownPreview 会命中「已渲染内容」跳过，先清空基准再补渲
+        lastRenderedContent = null
+        clearRenderDebounceTimer()
+        void updateMarkdownPreview()
+    },
+    { immediate: true }
+)
 
 onMounted(() => {
     hljs.registerLanguage('actionscript', actionscript)
@@ -148,7 +176,7 @@ watch(
  * 供 MONACO_GET_CHAPTERS 主动请求使用；渲染轮次内由指纹判定后再调用。
  */
 function UpdateMarkdownChapters() {
-    editor.Render.ParserMarkdownChapters(md, props.editorContent)
+    Render.ParserMarkdownChapters(md, props.editorContent)
     // 主动解析后同步指纹基准，避免紧接着的渲染轮次重复解析
     lastChaptersFingerprint = ComputeChaptersFingerprint(props.editorContent)
 }
@@ -217,7 +245,7 @@ async function updateMarkdownPreview() {
             return
         }
         const preRenderText = HemyRenderPreLocal(snippetExpanded, { skipKatex: degraded })
-        const renderedText = await editor.Render.PreMarkdownRender(preRenderText, {
+        const renderedText = await Render.PreMarkdownRender(preRenderText, {
             skipDiagrams: degraded
         })
         // 渲染期间内容已变化（或有更新轮次）：丢弃本轮结果，避免旧结果覆盖新内容/白耗 CPU
@@ -233,7 +261,7 @@ async function updateMarkdownPreview() {
         }
         // 批次 C：tab 深链属性由 env 开关控制（不传 env 时 HTML 与历史版本一致）
         const renderedHtml = md.render(renderedText, createTabDeepLinkEnv())
-        const postRenderText = editor.Render.PostMarkdownRender(HemyRenderPostLocal(renderedHtml))
+        const postRenderText = Render.PostMarkdownRender(HemyRenderPostLocal(renderedHtml))
         if (sequence !== renderSequence || props.editorContent !== sourceContent) {
             return
         }

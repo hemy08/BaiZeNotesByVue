@@ -150,6 +150,9 @@ describe('OpenOnlineWebPage', () => {
         const win = eState.windows[0]
         expect(win.options.width).toBe(1280)
         expect(win.options.height).toBe(960)
+        // 结构优化第 2 批 2.3（H6）：原 dialog-defaults.test.ts 的对话框默认值断言归并到本文件
+        expect(win.options.frame).toBe(false)
+        expect(win.options.autoHideMenuBar).toBe(true)
         expect(win.loadURL).toHaveBeenCalledWith('https://example.com/')
     })
 

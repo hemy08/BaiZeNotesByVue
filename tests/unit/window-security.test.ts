@@ -169,6 +169,13 @@ vi.mock('../../src/main/dialogs/dialogs', () => ({
     cleanupMermaidRender: internalMocks.cleanupMermaidRender
 }))
 
+// 结构优化第 2 批 2.4（M2）：window-security 只验证 index.ts 的窗口/导航安全接线，
+// IPC 注册清单（registry）整体 mock，避免拉起 config-manager/plantuml 等重依赖链。
+vi.mock('../../src/main/ipc/registry', () => ({
+    registerPreWindowIpc: vi.fn(),
+    registerAll: vi.fn()
+}))
+
 vi.mock('../../src/main/utils/file-state', () => ({
     restoreLastOpenedFile: internalMocks.restoreLastOpenedFile
 }))

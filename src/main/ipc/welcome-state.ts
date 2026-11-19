@@ -9,21 +9,24 @@
  * 本模块记录「主界面是否已进入」：默认欢迎页（false），主进程发送 WELCOME_ENTER_MAIN
  * （进入主界面）时置 true；新窗口创建（macOS activate 重建）时复位。
  * CLOSE handler 依据 isWelcomeScreenVisible() 判定欢迎页 → 跳过 flush 直接关闭。
+ *
+ * 结构优化第 2 批 2.4（M1）：状态本体迁移到 src/main/app-context.ts 的
+ * `welcome.mainViewEntered`（进程内唯一上下文单例），本模块保留原有公开 API，
+ * 调用方与行为均不变；窗口重建可经 app-context.resetAppContext() 整体复位。
  */
-
-let mainViewEntered = false
+import { getAppContext } from '../app-context'
 
 /** 标记已进入主界面（发送 WELCOME_ENTER_MAIN 时调用） */
 export function markMainViewEntered(): void {
-    mainViewEntered = true
+    getAppContext().welcome.mainViewEntered = true
 }
 
 /** 新窗口创建（显示欢迎页）时复位状态 */
 export function resetWelcomeState(): void {
-    mainViewEntered = false
+    getAppContext().welcome.mainViewEntered = false
 }
 
 /** 当前是否仍显示欢迎页（未进入主界面） */
 export function isWelcomeScreenVisible(): boolean {
-    return !mainViewEntered
+    return !getAppContext().welcome.mainViewEntered
 }

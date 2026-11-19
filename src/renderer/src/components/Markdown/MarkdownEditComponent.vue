@@ -5,6 +5,8 @@
         class="md-edit-component"
         :style="{ width: monacoEditorWidth }"
     >
+        <!-- 结构优化第 2 批 2.2（H4）：Monaco 编辑器改为二级懒加载（独立 chunk），
+             加载期间显示轻量骨架，主界面壳与工具栏先完成首帧渲染。 -->
         <MdMonacoEdit
             v-model="markdownEditorCode"
             :code="initialCodeContent"
@@ -25,14 +27,30 @@
         class="md-preview"
         :style="{ width: editPreviewAreaWidth, left: editPreviewAreaLeft }"
     >
-        <MdPreview :editor-content="markdownEditorContent" :active="isShowPreviewArea" />
+        <!-- 结构优化第 2 批 2.2（H4）：预览管线（markdown-it/highlight.js/KaTeX 等）独立
+             按需 chunk；活动文件路径由本组件经 IPC 监听后透传，兼容「预览挂载晚于打开文件」
+             的启动恢复时序。 -->
+        <MdPreview
+            :editor-content="markdownEditorContent"
+            :active="isShowPreviewArea"
+            :active-file-path="activeFilePath"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import MdMonacoEdit from './MarkdownMonacoEditor.vue'
-import MdPreview from './MarkdownPreviewComponent.vue'
+import {
+    ref,
+    computed,
+    onMounted,
+    onBeforeUnmount,
+    watch,
+    defineAsyncComponent,
+    defineComponent,
+    h
+} from 'vue'
+import type { PropType } from 'vue'
+import { t } from '../../common/i18n'
 import EventBus from '../../common/event-bus/event-bus'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
@@ -45,6 +63,116 @@ const props = defineProps({
     }
 })
 
+// =============================================================================================
+// 结构优化第 2 批 2.2（H4）：编辑器/预览二级懒加载
+//
+// 改造前：本组件静态 import MarkdownMonacoEditor.vue（Monaco ≈7.3 MB）与
+// MarkdownPreviewComponent.vue（highlight.js ≈1.29 MB + KaTeX ≈0.51 MB + markdown-it 预览管线），
+// 二者随主界面壳同步求值，主界面首帧必须等约 9 MB 依赖解析/执行完。
+//
+// 改造后：本组件（编辑器编排层）保持同步加载——它负责注册启动恢复/保存 flush 等关键 IPC
+// 监听器，必须与主界面壳同批挂载；两个重型子组件改为 defineAsyncComponent 独立分块，
+// 在编辑器区域渲染时按需加载，加载期间显示骨架占位，失败时给出提示与重试。
+// =============================================================================================
+
+/**
+ * Monaco 编辑器 chunk 动态导入（打包器据此生成独立异步 chunk）。
+ * 显式解包 default：defineAsyncComponent 的模块解包依赖 `__esModule` / `Symbol.toStringTag`
+ * 标记，显式解包可避免不同打包/测试模块形态下的互操作差异（与 App.vue 主界面分块同口径）。
+ */
+const loadMdMonacoEditor = () => import('./MarkdownMonacoEditor.vue').then((mod) => mod.default)
+/** 预览管线 chunk 动态导入（含 markdown-it/highlight.js/KaTeX 等），同样显式解包 default */
+const loadMdPreview = () => import('./MarkdownPreviewComponent.vue').then((mod) => mod.default)
+
+/** 编辑器加载中的骨架（纯渲染函数实现，不引入任何依赖） */
+// eslint-disable-next-line vue/one-component-per-file -- 纯骨架占位组件，不值得拆独立 SFC/文件
+const MonacoEditorSkeleton = defineComponent({
+    name: 'MonacoEditorSkeleton',
+    setup() {
+        return () =>
+            h('div', {
+                class: 'md-pane-skeleton md-monaco-skeleton',
+                role: 'status',
+                'aria-label': 'loading'
+            })
+    }
+})
+
+/** 预览加载中的骨架（同上） */
+// eslint-disable-next-line vue/one-component-per-file -- 纯骨架占位组件，不值得拆独立 SFC/文件
+const PreviewSkeleton = defineComponent({
+    name: 'PreviewSkeleton',
+    setup() {
+        return () =>
+            h('div', {
+                class: 'md-pane-skeleton md-preview-skeleton',
+                role: 'status',
+                'aria-label': 'loading'
+            })
+    }
+})
+
+/**
+ * 加载失败兜底（defineAsyncComponent 会传入 error / retry 两个 props）。
+ * 文案复用既有 i18n 词条，避免为本批次新增词典键；重试只重新加载对应分块。
+ */
+// eslint-disable-next-line vue/one-component-per-file -- 纯错误占位组件，不值得拆独立 SFC/文件
+const MarkdownPaneError = defineComponent({
+    name: 'MarkdownPaneError',
+    props: {
+        error: {
+            type: Object as PropType<Error>,
+            required: true
+        },
+        retry: {
+            type: Function as PropType<() => void>,
+            required: true
+        }
+    },
+    setup(errorProps) {
+        return () =>
+            h('div', { class: 'md-pane-error', role: 'alert' }, [
+                h('p', { class: 'md-pane-error-title' }, t('common.error')),
+                h(
+                    'p',
+                    { class: 'md-pane-error-detail' },
+                    errorProps.error instanceof Error
+                        ? errorProps.error.message
+                        : String(errorProps.error ?? '')
+                ),
+                h(
+                    'button',
+                    {
+                        type: 'button',
+                        class: 'md-pane-error-retry',
+                        onClick: () => errorProps.retry()
+                    },
+                    t('dialogRenderer.common.retry')
+                )
+            ])
+    }
+})
+
+const MdMonacoEdit = defineAsyncComponent({
+    loader: loadMdMonacoEditor,
+    loadingComponent: MonacoEditorSkeleton,
+    errorComponent: MarkdownPaneError,
+    // 本地磁盘分块通常一帧内就绪；立即显示骨架避免空白
+    delay: 0,
+    timeout: 60000,
+    // 不依赖 Suspense 边界，与主界面/对话框懒加载语义一致
+    suspensible: false
+})
+
+const MdPreview = defineAsyncComponent({
+    loader: loadMdPreview,
+    loadingComponent: PreviewSkeleton,
+    errorComponent: MarkdownPaneError,
+    delay: 0,
+    timeout: 60000,
+    suspensible: false
+})
+
 const windowWidth = ref(props.editorPreviewWidth)
 const isShowEditArea = ref(true)
 const isShowPreviewArea = ref(true)
@@ -54,6 +182,11 @@ const resizerPosition = ref('50%')
 const initialCodeContent = ref('')
 const markdownEditorCode = ref('')
 const markdownEditorContent = ref('')
+// 结构优化第 2 批 2.2（H4）：当前活动文件路径（预览相对图片/snippets 解析依赖）。
+// 本组件同步挂载、监听 IPC.FILE.USER_SELECT_FILE，再把路径作为 prop 传给按需加载的预览，
+// 覆盖「启动恢复先下发文件路径、预览 chunk 后挂载」的时序（原实现由预览自己监听，
+// 异步化后可能错过首条事件）。
+const activeFilePath = ref('')
 
 const windowWidthValue = computed(() => {
     return parseFloat(windowWidth.value)
@@ -336,6 +469,15 @@ const handleConvertToEncoding = async (_event: unknown, encoding: string) => {
     }
 }
 
+/**
+ * 结构优化第 2 批 2.2（H4）：活动文件路径监听（同步组件注册，避免预览懒加载错过首条事件）。
+ * 预览相对图片/文件链接与 snippets 展开都依赖当前文件路径；预览组件自身仍保留同通道监听
+ * （直接挂载预览的既有调用方/测试不受影响），两条路径写入同一个模块级状态，值一致。
+ */
+const handleActiveFileChange = (_event: unknown, filePath: string) => {
+    activeFilePath.value = typeof filePath === 'string' ? filePath : ''
+}
+
 onMounted(() => {
     // 初始化容器宽度
     const parentElement = document.getElementById('md-edit-component')?.parentElement
@@ -360,6 +502,8 @@ onMounted(() => {
     // FUN-02：编码菜单事件监听（主进程菜单 → 渲染层 → 主进程 handler）
     window.electron.ipcRenderer.on(IPC.FILE.OPEN_WITH_ENCODING, handleOpenWithEncoding)
     window.electron.ipcRenderer.on(IPC.FILE.CONVERT_TO_ENCODING, handleConvertToEncoding)
+    // 结构优化第 2 批 2.2（H4）：预览按需加载后的活动文件路径时序兜底（见 handleActiveFileChange）
+    window.electron.ipcRenderer.on(IPC.FILE.USER_SELECT_FILE, handleActiveFileChange)
 
     window.addEventListener('resize', handleResize)
     window.addEventListener('keydown', handleKeyDownEvent)
@@ -392,14 +536,12 @@ onBeforeUnmount(() => {
     window.electron.ipcRenderer.removeListener(IPC.VIEW.EDIT_PREVIEW_MODE, handleEditPreviewModel)
     window.electron.ipcRenderer.removeListener(IPC.EDITOR.FLUSH_CONTENT, handleFlushContent)
     // FUN-02：卸载时移除编码菜单监听
-    window.electron.ipcRenderer.removeListener(
-        IPC.FILE.OPEN_WITH_ENCODING,
-        handleOpenWithEncoding
-    )
+    window.electron.ipcRenderer.removeListener(IPC.FILE.OPEN_WITH_ENCODING, handleOpenWithEncoding)
     window.electron.ipcRenderer.removeListener(
         IPC.FILE.CONVERT_TO_ENCODING,
         handleConvertToEncoding
     )
+    window.electron.ipcRenderer.removeListener(IPC.FILE.USER_SELECT_FILE, handleActiveFileChange)
 })
 </script>
 
@@ -431,5 +573,73 @@ onBeforeUnmount(() => {
     top: 0;
     overflow: visible;
     height: 100%;
+}
+
+/* 结构优化第 2 批 2.2（H4）：Monaco / 预览二级懒加载骨架。
+   编辑器与预览分栏并排，骨架带轻微 shimmer 动画提示「正在加载」，高度撑满容器，
+   避免分块加载期间出现白屏或布局跳动。 */
+.md-pane-skeleton {
+    width: 100%;
+    height: 100%;
+    min-height: 120px;
+    box-sizing: border-box;
+    background: linear-gradient(
+        90deg,
+        var(--theme-card-background, rgba(0, 0, 0, 0.03)) 25%,
+        var(--theme-hover-background, rgba(0, 0, 0, 0.06)) 37%,
+        var(--theme-card-background, rgba(0, 0, 0, 0.03)) 63%
+    );
+    background-size: 400% 100%;
+    animation: md-pane-skeleton-shimmer 1.2s ease infinite;
+}
+
+@keyframes md-pane-skeleton-shimmer {
+    0% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0 50%;
+    }
+}
+
+/* 分块加载失败兜底：与原内容区同尺寸的错误提示，不阻塞主界面其它区域 */
+.md-pane-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    min-height: 120px;
+    padding: 16px;
+    box-sizing: border-box;
+    text-align: center;
+    color: var(--theme-text-color, #333);
+    background: var(--theme-background-color, transparent);
+}
+
+.md-pane-error-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.md-pane-error-detail {
+    margin: 0;
+    max-width: 480px;
+    font-size: 12px;
+    color: var(--theme-secondary-text-color, #888);
+    word-break: break-all;
+}
+
+.md-pane-error-retry {
+    padding: 4px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--theme-button-text-color, #fff);
+    background: var(--theme-button-background, var(--theme-accent-color, #764ba2));
+    border: 1px solid var(--theme-border-color, transparent);
+    border-radius: 4px;
 }
 </style>

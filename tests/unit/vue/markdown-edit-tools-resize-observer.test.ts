@@ -7,8 +7,9 @@
  * 容器，阻碍组件实例与容器节点回收（渲染层内存泄漏缺口）。
  *
  * 隔离策略：
- * - hemy-editor 聚合了 Monaco / SVG 图标 / 渲染等重模块，本文件只验证工具栏容器的尺寸
- *   观察与生命周期，故 mock 为最小 QuickAccess 结构（只需 id/titleKey/svg 等模板字段）。
+ * - 「结构优化第 2 批 2.2（H4）」后工具栏直接从 hemy-editor-quick-access 引入 QuickAccess
+ *   （不再经 hemy-editor 聚合桶把 Monaco/编辑器动作拉进工具栏 chunk）；本文件只验证工具栏
+ *   容器的尺寸观察与生命周期，故 mock 为最小 QuickAccess 结构（只需 id/titleKey/svg 等模板字段）。
  * - jsdom 不提供 ResizeObserver，用记录实例的 FakeResizeObserver 桩替代，从而可断言
  *   observe/disconnect 调用与手动触发尺寸回调。
  */
@@ -33,7 +34,9 @@ const { quickAccessMock } = vi.hoisted(() => {
     }
 })
 
-vi.mock('@renderer/components/Markdown/hemy-editor', () => ({ QuickAccess: quickAccessMock }))
+vi.mock('@renderer/components/Markdown/hemy-editor-quick-access', () => ({
+    MdEditQuickAccess: quickAccessMock
+}))
 
 import MarkdownEditToolsComponent from '@renderer/components/Markdown/MarkdownEditToolsComponent.vue'
 

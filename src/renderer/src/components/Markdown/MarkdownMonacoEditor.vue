@@ -100,10 +100,7 @@ const handleTriggerUndoRedo = (_event: unknown, option: string) => {
 
 // 初始化编辑器 - 注册 IPC 监听器
 window.electron.ipcRenderer.on(IPC.MONACO.AFTER_CURSOR, handleInsertAfterCursorIPC)
-window.electron.ipcRenderer.on(
-    IPC.MONACO.TEXT_BLOCK_TEMPLATES,
-    handleInsertTextBlockTemplates
-)
+window.electron.ipcRenderer.on(IPC.MONACO.TEXT_BLOCK_TEMPLATES, handleInsertTextBlockTemplates)
 window.electron.ipcRenderer.on(IPC.EDITOR.UPDATE_OPTIONS, handleUpdateOptions)
 window.electron.ipcRenderer.on(IPC.MONACO.UNDO_REDO, handleTriggerUndoRedo)
 
@@ -595,6 +592,13 @@ onMounted(async () => {
             editor.Override
         )
 
+        // 结构优化第 2 批 2.2（H4）：编辑器改为二级懒加载后，「打开文件 / 启动恢复」的
+        // SHOW_SELECTED_FILE_CONTEXT 可能先于编辑器挂载到达（父组件已把内容写入 code prop）。
+        // 创建后的模型初始值为空，这里补一次初始内容，避免懒加载窗口内打开的文件显示为空。
+        if (props.code && editorInstance.getValue() !== props.code) {
+            editorInstance.setValue(props.code)
+        }
+
         editorInstance.onDidChangeModelContent(() => {
             const model = editorInstance?.getModel()
             if (!model) {
@@ -677,10 +681,7 @@ onBeforeUnmount(() => {
     document.removeEventListener('keydown', handleOutlineEscape)
 
     // 2. 清理 IPC 监听器 - 使用具体的监听器函数引用
-    window.electron.ipcRenderer.removeListener(
-        IPC.MONACO.AFTER_CURSOR,
-        handleInsertAfterCursorIPC
-    )
+    window.electron.ipcRenderer.removeListener(IPC.MONACO.AFTER_CURSOR, handleInsertAfterCursorIPC)
     window.electron.ipcRenderer.removeListener(
         IPC.MONACO.TEXT_BLOCK_TEMPLATES,
         handleInsertTextBlockTemplates

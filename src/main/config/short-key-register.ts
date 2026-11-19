@@ -29,14 +29,15 @@ import { is } from '@electron-toolkit/utils'
 import { OpenDirectory, ReloadDirFromDisk, GetCurrentFileDirectory } from '../utils/file-utils'
 import { logger } from '../utils/logger'
 import { IPC } from '../../shared/ipc-channels'
+// 结构优化第 2 批 2.4（M1）：快捷键注册状态迁移到 AppContext（进程内唯一上下文单例）
+import { getAppContext } from '../app-context'
 
-/** AS-12：是否已完成一次注册（进程级；macOS activate 重建窗口只更新目标窗口） */
-let shortcutsRegistered = false
-/** AS-12：当前快捷键动作应作用的目标窗口（重建窗口时由 RegisterShortKeys 更新） */
-let targetWindow: Electron.BrowserWindow | null = null
-
-/** 取仍存活的目标窗口；窗口已销毁/缺失时返回 null（调用方跳过动作） */
+/**
+ * AS-12：取仍存活的目标窗口；窗口已销毁/缺失时返回 null（调用方跳过动作）。
+ * M1：目标窗口引用统一保存在 AppContext.shortKeys.targetWindow（窗口重建时更新）。
+ */
 function getLiveTargetWindow(): Electron.BrowserWindow | null {
+    const targetWindow = getAppContext().shortKeys.targetWindow
     if (!targetWindow) {
         return null
     }
@@ -65,17 +66,19 @@ function sendToLiveWindow(channel: string, ...args: unknown[]): void {
 
 /** AS-12：重置注册状态（仅供单元测试隔离；生产不得调用） */
 export function resetShortKeysForTesting(): void {
-    shortcutsRegistered = false
-    targetWindow = null
+    // M1：注册状态与目标窗口统一由 AppContext 持有
+    getAppContext().shortKeys.registered = false
+    getAppContext().shortKeys.targetWindow = null
 }
 
 export function RegisterShortKeys(mainWindow: Electron.BrowserWindow): void {
     // AS-12：重建窗口时只更新目标引用，不重复注册（避免旧回调残留 + register 返回 false）
-    targetWindow = mainWindow
-    if (shortcutsRegistered) {
+    // M1：目标窗口与注册标记保存在 AppContext.shortKeys（进程内唯一）
+    getAppContext().shortKeys.targetWindow = mainWindow
+    if (getAppContext().shortKeys.registered) {
         return
     }
-    shortcutsRegistered = true
+    getAppContext().shortKeys.registered = true
 
     // 注册辅助函数：注册失败（如被系统/其他应用占用）时打日志，不中断其余快捷键注册
     const register = (accelerator: string, callback: () => void): void => {

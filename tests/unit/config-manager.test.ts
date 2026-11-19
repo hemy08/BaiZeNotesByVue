@@ -97,8 +97,14 @@ import { FakeStore } from './helpers/fake-store'
 // 批次 A：#4 最近文件列表数量——file-state-store 的最近文件存取
 import { getRecentFiles, saveLastOpenedFile } from '../../src/main/utils/file-state-store'
 
-// P1/N-05：config:read / config:write 统一校验发送方，测试桩提供受信主窗口与事件
-const trustedMainWindow = { webContents: { id: 1 }, isDestroyed: () => false }
+// P1/N-05：config:read / config:write 统一校验发送方，测试桩提供受信主窗口与事件。
+// 结构优化第 2 批 2.4（M1）：受信主窗口与 appState.mainWindow 同源（AppContext），
+// 配置写入的 applySystemSettings 会向该窗口 webContents 注入字体 CSS/广播设置更新，
+// 因此桩需提供 send/insertCSS（与真实 BrowserWindow 的最小形状一致）。
+const trustedMainWindow = {
+    webContents: { id: 1, send: vi.fn(), insertCSS: vi.fn() },
+    isDestroyed: () => false
+}
 const trustedEvent = { sender: trustedMainWindow.webContents }
 const foreignEvent = { sender: { id: 999 } }
 
@@ -110,9 +116,11 @@ describe('config-manager', () => {
         ipcHandlers.map.clear()
         hoisted.loginItem.openAtLogin = false
         hoisted.setLoginItemSettings.mockClear()
+        // 结构优化第 2 批 2.4（M1）：appState._resetForTesting 会整体复位 AppContext
+        // （含受信主窗口），因此必须先复位 appState 再登记受信主窗口，顺序不可交换。
+        appState._resetForTesting()
         resetTrustedSenderRegistry()
         setTrustedMainWindow(trustedMainWindow as never)
-        appState._resetForTesting()
         // 清空内存 store，保证 ARC-04 路由测试之间互不影响
         FakeStore.resetAll()
         // 批次 B：清理托盘/系统主题副作用 mock 的调用记录
@@ -281,9 +289,11 @@ describe('config-manager', () => {
             registerConfigIpcHandlers()
             const write = ipcHandlers.map.get('baize:config:write')!
             const send = vi.fn()
+            // M1：appState.mainWindow 与受信主窗口同源（AppContext），sender 校验按
+            // webContents 对象/id 严格匹配——桩的 id 必须与 trustedEvent.sender 一致。
             appState.mainWindow = {
                 isDestroyed: () => false,
-                webContents: { send }
+                webContents: { id: 1, send }
             } as never
 
             await expect(
@@ -304,9 +314,11 @@ describe('config-manager', () => {
             const write = ipcHandlers.map.get('baize:config:write')!
             const read = ipcHandlers.map.get('baize:config:read')!
             const send = vi.fn()
+            // M1：appState.mainWindow 与受信主窗口同源（AppContext），sender 校验按
+            // webContents 对象/id 严格匹配——桩的 id 必须与 trustedEvent.sender 一致。
             appState.mainWindow = {
                 isDestroyed: () => false,
-                webContents: { send }
+                webContents: { id: 1, send }
             } as never
 
             await expect(write(trustedEvent, 'system', { allowRemoteImages: true })).resolves.toBe(
@@ -476,9 +488,11 @@ describe('config-manager', () => {
         it('broadcasts the latest editor setting to the main window after saving', async () => {
             registerConfigIpcHandlers()
             const send = vi.fn()
+            // M1：appState.mainWindow 与受信主窗口同源（AppContext），sender 校验按
+            // webContents 对象/id 严格匹配——桩的 id 必须与 trustedEvent.sender 一致。
             appState.mainWindow = {
                 isDestroyed: () => false,
-                webContents: { send }
+                webContents: { id: 1, send }
             } as never
 
             await expect(

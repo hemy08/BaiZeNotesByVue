@@ -22,6 +22,8 @@
  * 与"对话框窗口加载了非预期页面"。
  */
 import type { BrowserWindow, WebContents } from 'electron'
+// 结构优化第 2 批 2.4（M1）：主窗口引用统一由 AppContext 持有（进程内唯一真源）
+import { getAppContext } from '../app-context'
 
 /** 受信发送方范围：main-window 仅主窗口；dialog 仅已登记的对话框窗口 */
 export type TrustedSenderScope = 'main-window' | 'dialog'
@@ -64,8 +66,12 @@ interface WindowEventSource {
 
 // ============================ 受信窗口登记表 ============================
 
-/** 主窗口引用（由 setTrustedMainWindow 同步；各注册模块在注册时同步一次） */
-let trustedMainWindow: BrowserWindow | null = null
+/**
+ * 主窗口引用：结构优化第 2 批 2.4（M1）起统一保存在 AppContext.mainWindow
+ * （由 createWindow 写入、各注册模块注册时同步一次，窗口重建后为最新窗口）。
+ * 本模块不再单独持有该引用，只经 getAppContext() 读写，保证与 appState /
+ * handlers / 窗口生命周期看到的是同一个主窗口。
+ */
 
 /** 已登记的对话框窗口 webContents（对象引用为主，id 兜底兼容测试桩/跨封装） */
 const trustedDialogWebContents = new Set<unknown>()
@@ -117,12 +123,12 @@ function extractSender(event: unknown): unknown {
  * 以及 src/main/index.ts 创建窗口时（覆盖 macOS activate 重建窗口场景）。
  */
 export function setTrustedMainWindow(window: BrowserWindow | null): void {
-    trustedMainWindow = window
+    getAppContext().mainWindow = window
 }
 
 /** 读取当前登记的主窗口（诊断/测试用） */
 export function getTrustedMainWindow(): BrowserWindow | null {
-    return trustedMainWindow
+    return getAppContext().mainWindow
 }
 
 /**
@@ -197,7 +203,8 @@ export function unregisterTrustedDialogWindow(window: WindowLike | null | undefi
  * 生产代码不应调用：主窗口引用由窗口生命周期管理。
  */
 export function resetTrustedSenderRegistry(): void {
-    trustedMainWindow = null
+    // M1：主窗口引用与 AppContext 同源，测试复位时一并清空
+    getAppContext().mainWindow = null
     trustedDialogWebContents.clear()
     trustedDialogWebContentsIds.clear()
 }
@@ -211,7 +218,7 @@ export function resetTrustedSenderRegistry(): void {
  */
 export function isTrustedSender(
     event: unknown,
-    mainWindow: BrowserWindow | null = trustedMainWindow
+    mainWindow: BrowserWindow | null = getAppContext().mainWindow
 ): boolean {
     const sender = extractSender(event)
     const window = mainWindow as WindowLike | null
@@ -253,7 +260,7 @@ export function isTrustedDialogSender(event: unknown): boolean {
 export function isTrustedIpcSender(
     event: unknown,
     scope: TrustedSenderScope = 'main-window',
-    mainWindow: BrowserWindow | null = trustedMainWindow
+    mainWindow: BrowserWindow | null = getAppContext().mainWindow
 ): boolean {
     return scope === 'dialog' ? isTrustedDialogSender(event) : isTrustedSender(event, mainWindow)
 }
@@ -300,7 +307,7 @@ export function assertTrustedSender(
     options: AssertTrustedSenderOptions = {}
 ): boolean {
     const scope = options.scope ?? 'main-window'
-    const mainWindow = options.mainWindow ?? trustedMainWindow
+    const mainWindow = options.mainWindow ?? getAppContext().mainWindow
     if (isTrustedIpcSender(event, scope, mainWindow)) {
         return true
     }

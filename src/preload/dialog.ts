@@ -5,17 +5,17 @@ import { contextBridge, ipcRenderer, shell } from 'electron'
 import { DIALOG_RECEIVE_CHANNELS, DIALOG_SEND_CHANNELS } from './allowed-channels.generated'
 
 // ARC-01：对话框窗口 send 通道白名单（生成来源：src/main/dialogs 内
-// `ipcRenderer.send('${IPC.X.Y}')` 实际调用，当前仅新建文件/文件夹、重命名两个回车通道）；
-// 未知通道一律丢弃并告警——即使将来有远程/不可信 HTML 复用本 preload，
-// 也无法通过 send 调用任意能力型 IPC 通道（如 navi-tab-open-exe）。
+// `ipcRenderer.send('${IPC.X.Y}')` 实际调用）。
+// 结构优化第 2 批 2.1（H3）：原 JSDOM 新建/重命名对话框已迁移为渲染层 Vue 对话框，
+// 主进程侧不再有对话框 preload 调用点，本白名单当前为空数组——保留本 preload 与
+// 白名单机制作为安全空壳（任何未知通道仍一律丢弃并告警），供未来确有独立窗口需求时复用。
 // C-08 起 OpenOnlineWebPages 的远程网页窗口已不再加载任何 preload（本白名单为纵深防御）。
 // ARC-03：通道名一律引用共享常量（ipc-channels.ts），不再写字面量。
-// P2 死代码清理：白名单只保留当前可达 JSDOM 对话框实际使用的通道。
 const ALLOWED_SEND_CHANNELS = new Set<string>(DIALOG_SEND_CHANNELS)
 
 // 2026-11-19（P3 纵深防御）：对话框接收（on/once）通道白名单（生成来源同上）。
-// JSDOM 对话框目前只订阅主题切换广播（THEME_UPDATED，主题设置立即生效）；
-// 未知通道一律丢弃并告警——即使不可信 HTML 复用本 preload 也无法嗅探任意广播。
+// 第 2 批 2.1 起同样为空数组；未知通道一律丢弃并告警——即使不可信 HTML 复用本
+// preload 也无法嗅探任意广播。
 const ALLOWED_RECEIVE_CHANNELS = new Set<string>(DIALOG_RECEIVE_CHANNELS)
 
 // P0 安全（shell 协议白名单）：对话框窗口的 openExternal 只允许 http/https。

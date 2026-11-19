@@ -36,7 +36,7 @@ import { appState } from '../utils/app-state'
 import { isWelcomeScreenVisible, markMainViewEntered } from './welcome-state'
 import { ipcListenerManager } from './ipc-listener-manager'
 // P1/N-05：IPC 发送方授权校验（主窗口 webContents 归属判定）
-import { setTrustedMainWindow, withSenderCheck } from '../utils/ipc-security'
+import { getTrustedMainWindow, setTrustedMainWindow, withSenderCheck } from '../utils/ipc-security'
 // AS-2：工作区根目录校验公共实现（P2-6：提取到 utils/workspace-root 供启动恢复复用）
 import { validateWorkspaceRoot } from '../utils/workspace-root'
 // FE-01：主界面数据事件投递时序（send WELCOME_ENTER_MAIN 后再于下一 tick 发数据事件）
@@ -866,17 +866,17 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 // 发送方/监听方双端移除，preload 的 broadcastTheme 辅助函数同步删除。
 
 /**
- * 获取当前主窗口实例
- * 注意：这是一个简单的方式，在实际应用中可能需要更复杂的管理
+ * 登记当前主窗口。
+ * 结构优化第 2 批 2.4（M1）：主窗口引用统一由 AppContext 持有（进程内唯一真源），
+ * 原模块级 currentMainWindow 已删除；setTrustedMainWindow 与 AppContext.mainWindow
+ * 同源，此处只需写入同一个字段（sender 校验自动可用）。
  */
-let currentMainWindow: BrowserWindow | null = null
-
 export function setMainWindow(window: BrowserWindow): void {
-    currentMainWindow = window
     // P1/N-05：同步 IPC 授权校验使用的主窗口引用（macOS activate 重建窗口后以最新窗口为准）
     setTrustedMainWindow(window)
 }
 
+/** 获取当前主窗口实例（M1：读取 AppContext.mainWindow） */
 export function getMainWindow(): BrowserWindow | null {
-    return currentMainWindow
+    return getTrustedMainWindow()
 }

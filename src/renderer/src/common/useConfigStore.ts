@@ -123,6 +123,14 @@ export interface DialogState {
     mdSheet: { visible: boolean }
     insertLink: { visible: boolean }
     createFileFolder: { visible: boolean; dirPath?: string }
+    // 结构优化第 2 批 2.1（H3）：原主进程 JSDOM 对话框迁移为 Vue 后新增的状态对象。
+    // 主进程经 IPC.DIALOG.OPEN_VUE_DIALOG 请求打开时把 path/isFile/version 原样
+    // Object.assign 进对应状态，对话框作为受控组件从 store 读取 props。
+    renameFileFolder: { visible: boolean; path?: string; isFile?: boolean }
+    confirmDelete: { visible: boolean; path?: string; isFile?: boolean }
+    shortcutKeys: { visible: boolean }
+    updateLog: { visible: boolean }
+    releaseNotes: { visible: boolean; version?: string }
     helpAbout: { visible: boolean }
     helpContact: { visible: boolean }
     techStack: { visible: boolean }
@@ -148,6 +156,11 @@ const defaultDialogState: DialogState = {
     mdSheet: { visible: false },
     insertLink: { visible: false },
     createFileFolder: { visible: false },
+    renameFileFolder: { visible: false },
+    confirmDelete: { visible: false },
+    shortcutKeys: { visible: false },
+    updateLog: { visible: false },
+    releaseNotes: { visible: false },
     helpAbout: { visible: false },
     helpContact: { visible: false },
     techStack: { visible: false },
@@ -428,9 +441,11 @@ function showFailed(title: string, message: string) {
     showDialog('failed', { title, message })
 }
 
-// FE-27/P2 死代码清理：原 showRename(currentPath) 全仓无调用方（父组件也未绑定
-// Vue RenameDialog 的 @confirm），属永远不可见的死轨道；重命名实际走主进程 HTML
-// 对话框 ShowRenameDialog。随 RenameDialog.vue 一并删除。
+// FE-27/P2 死代码清理历史记录：原 showRename(currentPath) 全仓无调用方（父组件也未绑定
+// Vue RenameDialog 的 @confirm），属永远不可见的死轨道；后由「结构优化第 2 批 2.1」
+// 重新以受控组件 RenameFileFolderDialog.vue 接入——重命名入口统一为
+// 主进程 OPEN_VUE_DIALOG('renameFileFolder', { path, isFile }) 请求，确认后经
+// IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT invoke 提交，不再需要独立 showRename helper。
 
 // 导出 store
 export const useConfigStore = () => ({

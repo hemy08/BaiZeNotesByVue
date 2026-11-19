@@ -18,10 +18,11 @@ const treeMocks = vi.hoisted(() => ({
     reloadDirFromDisk: vi.fn(),
     insertImportFormFile: vi.fn(),
     exportToFile: vi.fn(),
-    showReleaseNotesDialog: vi.fn(),
-    showUpdateLogDialog: vi.fn(),
-    // FE-07：帮助 → 快捷键 主进程 handler 现在打开真实对话框
-    showShortcutKeysDialog: vi.fn(),
+    // 结构优化第 2 批 2.1（H3）：帮助类 JSDOM 对话框已迁移为渲染层 Vue 对话框，
+    // menu-help 改为调用 Request*Dialog(mainWindow, ...) 发送 OPEN_VUE_DIALOG 请求。
+    requestReleaseNotesDialog: vi.fn(),
+    requestUpdateLogDialog: vi.fn(),
+    requestShortcutKeysDialog: vi.fn(),
     // ET-7：menu-help 的 'update' handler 动态 import '../utils/auto-updater.js'，
     // 测试中替换为桩函数（避免在无 Electron 运行时的测试环境加载 electron-updater）
     checkForUpdatesAndNotify: vi.fn()
@@ -63,9 +64,9 @@ vi.mock('../../src/main/utils/file-utils/export', () => ({
 }))
 
 vi.mock('../../src/main/dialogs/dialogs', () => ({
-    ShowReleaseNotesDialog: treeMocks.showReleaseNotesDialog,
-    ShowUpdateLogDialog: treeMocks.showUpdateLogDialog,
-    ShowShortcutKeysDialog: treeMocks.showShortcutKeysDialog,
+    RequestReleaseNotesDialog: treeMocks.requestReleaseNotesDialog,
+    RequestUpdateLogDialog: treeMocks.requestUpdateLogDialog,
+    RequestShortcutKeysDialog: treeMocks.requestShortcutKeysDialog,
     // task-50：AI 导航 handler 树叶子的末跳统一为 OpenOnlineWebPage(url)
     OpenOnlineWebPage: treeMocks.openOnlineWebPage
 }))
@@ -327,16 +328,17 @@ describe('helpMenuHandlers', () => {
         )
     })
 
-    it('should show the update log dialog', () => {
-        ;(helpMenuHandlers['update-log'] as () => void)()
-        expect(treeMocks.showUpdateLogDialog).toHaveBeenCalled()
+    it('should request the update log Vue dialog', () => {
+        const win = makeWindow()
+        ;(helpMenuHandlers['update-log'] as (w: never) => void)(win as never)
+        expect(treeMocks.requestUpdateLogDialog).toHaveBeenCalledWith(win)
     })
 
     it('should not expose the deleted tech-stack/about/contact-us handlers (P2：渲染层接管)', () => {
         // 渲染层 menu_actions.ts 对 help:tech-stack / help:about / help:contact-us
         // 优先拦截并打开 Vue 对话框，主进程 JSDOM 对话框已删除（CQ-4：联系对话框
         // 连同不可达的 contact-us handler 一并删除）；update-log / release-notes
-        // 仍在主进程可达（渲染层未拦截）。
+        // 仍在主进程可达（渲染层未拦截），第 2 批 2.1 起改为主进程请求渲染层 Vue 对话框。
         const handlers = helpMenuHandlers as unknown as Record<string, unknown>
         expect(handlers['tech-stack']).toBeUndefined()
         expect(handlers['about']).toBeUndefined()
@@ -345,27 +347,31 @@ describe('helpMenuHandlers', () => {
         expect(handlers['release-notes']).toBeDefined()
     })
 
-    it('should show the release notes dialog for each version', () => {
+    it('should request the release notes Vue dialog for each version', () => {
+        const win = makeWindow()
         const handler = (helpMenuHandlers['release-notes'] as Record<string, unknown>)[
             'v1.2.2'
-        ] as () => void
-        handler()
-        expect(treeMocks.showReleaseNotesDialog).toHaveBeenCalledWith('1.2.2')
+        ] as (w: never) => void
+        handler(win as never)
+        expect(treeMocks.requestReleaseNotesDialog).toHaveBeenCalledWith(win, '1.2.2')
     })
 
-    it('should show the release notes dialog for v1.3.0', () => {
+    it('should request the release notes Vue dialog for v1.3.0', () => {
+        const win = makeWindow()
         const handler = (helpMenuHandlers['release-notes'] as Record<string, unknown>)[
             'v1.3.0'
-        ] as () => void
-        handler()
-        expect(treeMocks.showReleaseNotesDialog).toHaveBeenCalledWith('1.3.0')
+        ] as (w: never) => void
+        handler(win as never)
+        expect(treeMocks.requestReleaseNotesDialog).toHaveBeenCalledWith(win, '1.3.0')
     })
 
-    // FE-07：快捷键说明由空实现（console.warn）改为打开真实对话框
-    it('should open the shortcut keys dialog (FE-07)', () => {
+    // FE-07：快捷键说明由空实现（console.warn）改为真实对话框（第 2 批 2.1 起为渲染层 Vue 对话框）
+    it('should request the shortcut keys Vue dialog (FE-07)', () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-        ;(helpMenuHandlers['shortkeys'] as () => void)()
-        expect(treeMocks.showShortcutKeysDialog).toHaveBeenCalledTimes(1)
+        const win = makeWindow()
+        ;(helpMenuHandlers['shortkeys'] as (w: never) => void)(win as never)
+        expect(treeMocks.requestShortcutKeysDialog).toHaveBeenCalledTimes(1)
+        expect(treeMocks.requestShortcutKeysDialog).toHaveBeenCalledWith(win)
         expect(warnSpy).not.toHaveBeenCalledWith('[Menu] Shortcut keys help not implemented yet')
         warnSpy.mockRestore()
     })
@@ -410,6 +416,7 @@ const FILE_ENCODINGS = [
 ] as const
 const FROM_FILE_TYPES = ['json', 'text', 'ini', 'yaml', 'xml', 'html', 'csv', 'excel'] as const
 const RELEASE_NOTE_VERSIONS = [
+    '1.3.5',
     '1.3.0',
     '1.2.2',
     '1.2.1',
@@ -494,9 +501,23 @@ describe('viewMenuHandlers 全量 handler（ET-7）', () => {
 })
 
 describe('helpMenuHandlers 全量 handler（ET-7）', () => {
-    it.each(RELEASE_NOTE_VERSIONS)('should show the release notes dialog for v%s', (version) => {
-        pickHandler(helpMenuHandlers, 'release-notes', `v${version}`)()
-        expect(treeMocks.showReleaseNotesDialog).toHaveBeenCalledWith(version)
+    it.each(RELEASE_NOTE_VERSIONS)('should request the release notes Vue dialog for v%s', (version) => {
+        const win = makeWindow()
+        pickHandler(helpMenuHandlers, 'release-notes', `v${version}`)(win as never)
+        expect(treeMocks.requestReleaseNotesDialog).toHaveBeenCalledWith(win, version)
+    })
+
+    // 结构优化第 2 批 2.1：快捷键/更新日志改为主进程请求渲染层 Vue 对话框（不再创建 JSDOM 窗口）
+    it('should request the shortcut-keys Vue dialog', () => {
+        const win = makeWindow()
+        pickHandler(helpMenuHandlers, 'shortkeys')(win as never)
+        expect(treeMocks.requestShortcutKeysDialog).toHaveBeenCalledWith(win)
+    })
+
+    it('should request the update-log Vue dialog', () => {
+        const win = makeWindow()
+        pickHandler(helpMenuHandlers, 'update-log')(win as never)
+        expect(treeMocks.requestUpdateLogDialog).toHaveBeenCalledWith(win)
     })
 
     it('should warn for the unimplemented change-log entry', () => {

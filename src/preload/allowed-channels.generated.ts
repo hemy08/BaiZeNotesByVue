@@ -24,7 +24,7 @@ type AllIpcChannel = {
 /** window.api.* 直连通道键类型（来源 IpcPreloadApiRequests） */
 type PreloadApiChannel = keyof IpcPreloadApiRequests
 
-/** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 58 个 */
+/** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 60 个 */
 export const RENDERER_SEND_CHANNELS = [
     IPC.WINDOW.MINIMIZE,
     IPC.WINDOW.MAXIMIZE,
@@ -72,6 +72,8 @@ export const RENDERER_SEND_CHANNELS = [
     IPC.FILE_MANAGER.DELETE,
     IPC.FILE_MANAGER.IMPORT_FROM,
     IPC.FILE_MANAGER.FIND_IN,
+    IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT,
+    IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM,
     IPC.PLUGIN.RSA_GENERATE,
     IPC.PLUGIN.HASH_TEXT,
     IPC.PLUGIN.HMAC_TEXT,
@@ -125,16 +127,11 @@ export const PRELOAD_API_CHANNELS = [
     IPC.FILE.OPEN_RECENT
 ] as const satisfies readonly PreloadApiChannel[]
 
-/** 对话框 preload send 白名单：来源 src/main/dialogs 实际调用，共 2 个 */
-export const DIALOG_SEND_CHANNELS = [
-    IPC.DIALOG.CREATE_FILE_FOLDER_ENTER,
-    IPC.DIALOG.RENAME_FILE_FOLDER_ENTER
-] as const satisfies readonly AllIpcChannel[]
+/** 对话框 preload send 白名单：来源 src/main/dialogs 实际调用，共 0 个 */
+export const DIALOG_SEND_CHANNELS = [] as const satisfies readonly AllIpcChannel[]
 
-/** 对话框 preload on/once 白名单：来源 src/main/dialogs 实际调用，共 1 个 */
-export const DIALOG_RECEIVE_CHANNELS = [
-    IPC.THEME.THEME_UPDATED
-] as const satisfies readonly AllIpcChannel[]
+/** 对话框 preload on/once 白名单：来源 src/main/dialogs 实际调用，共 0 个 */
+export const DIALOG_RECEIVE_CHANNELS = [] as const satisfies readonly AllIpcChannel[]
 
 /* ==========================================================================
  * 编译期穷尽性断言（H2「新增 IPC 漏登记即静默丢弃」的编译期兜底）

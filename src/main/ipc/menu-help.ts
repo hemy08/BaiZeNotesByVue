@@ -1,29 +1,49 @@
 import * as dialogs from '../dialogs/dialogs'
 import { openExternalSafely } from '../utils/security'
 
+/**
+ * 帮助菜单 handler（结构优化第 2 批 2.1：原主进程 JSDOM 对话框已迁移为渲染层 Vue 对话框）。
+ *
+ * 本文件的帮助类动作统一经 `dialogs.Request*Dialog(mainWindow, ...)` 发送
+ * `IPC.DIALOG.OPEN_VUE_DIALOG`，由渲染层 BaiZeNotes.vue 接收后打开对应 Vue + BaseDialog
+ * 组件（快捷键说明 / 更新日志 / 版本发布说明）；主进程不再创建任何 JSDOM 对话框窗口。
+ */
 export const helpMenuHandlers = {
     'release-notes': {
-        'v1.3.5': () => dialogs.ShowReleaseNotesDialog('1.3.5'),
-        'v1.3.0': () => dialogs.ShowReleaseNotesDialog('1.3.0'),
-        'v1.2.2': () => dialogs.ShowReleaseNotesDialog('1.2.2'),
-        'v1.2.1': () => dialogs.ShowReleaseNotesDialog('1.2.1'),
-        'v1.2.0': () => dialogs.ShowReleaseNotesDialog('1.2.0'),
-        'v1.1.5': () => dialogs.ShowReleaseNotesDialog('1.1.5'),
-        'v1.1.3': () => dialogs.ShowReleaseNotesDialog('1.1.3'),
-        'v1.1.2': () => dialogs.ShowReleaseNotesDialog('1.1.2'),
-        'v1.1.1': () => dialogs.ShowReleaseNotesDialog('1.1.1'),
-        'v1.1.0': () => dialogs.ShowReleaseNotesDialog('1.1.0'),
-        'v1.0.2': () => dialogs.ShowReleaseNotesDialog('1.0.2'),
-        'v1.0.1': () => dialogs.ShowReleaseNotesDialog('1.0.1'),
-        'v1.0.0': () => dialogs.ShowReleaseNotesDialog('1.0.0')
+        'v1.3.5': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.3.5'),
+        'v1.3.0': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.3.0'),
+        'v1.2.2': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.2.2'),
+        'v1.2.1': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.2.1'),
+        'v1.2.0': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.2.0'),
+        'v1.1.5': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.1.5'),
+        'v1.1.3': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.1.3'),
+        'v1.1.2': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.1.2'),
+        'v1.1.1': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.1.1'),
+        'v1.1.0': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.1.0'),
+        'v1.0.2': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.0.2'),
+        'v1.0.1': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.0.1'),
+        'v1.0.0': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.0.0')
     },
     'change-log': () => {
         console.warn('[Menu] Change log not implemented yet')
     },
-    shortkeys: () => {
-        // FE-07：原实现仅 console.warn（菜单可点但无任何界面反馈）。
-        // 现复用主进程 HTML 对话框体系展示完整快捷键说明（只读、无新增 IPC 通道）。
-        dialogs.ShowShortcutKeysDialog()
+    shortkeys: (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+        // FE-07：帮助 → 快捷键展示完整快捷键说明（只读）。第 2 批 2.1 起由渲染层
+        // ShortcutKeysDialog.vue（BaseDialog 体系）呈现，主体不再创建 JSDOM 窗口。
+        dialogs.RequestShortcutKeysDialog(mainWindow)
     },
     // P0 安全：帮助菜单的外部链接统一走 shell 协议白名单封装（固定 https 也走同一实现，
     // 保证主进程所有 openExternal 调用点行为一致、可审计）
@@ -35,7 +55,9 @@ export const helpMenuHandlers = {
     },
     // P2 死代码清理：'tech-stack' / 'about' 的 JSDOM 对话框已删除——渲染层
     // menu_actions.ts 对这两个动作优先拦截并展示 Vue 对话框，主进程 handler 不可达。
-    'update-log': () => dialogs.ShowUpdateLogDialog(),
+    'update-log': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
+        dialogs.RequestUpdateLogDialog(mainWindow)
+    },
     home: () => {
         void openExternalSafely('https://github.com/hemy08/BaiZeNotesByVue')
     },

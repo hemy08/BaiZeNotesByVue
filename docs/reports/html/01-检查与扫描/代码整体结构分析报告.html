@@ -1428,14 +1428,14 @@
 <tr>
 <td><strong>高</strong></td>
 <td>H3</td>
-<td>双对话框体系仍存在：Vue 18（已统一 BaseDialog 基座）vs 主进程 JSDOM 5 + 在线网页窗口，同一动作存在两条路径（如新建文件/文件夹）</td>
-<td>主题/文案/i18n/交互两套实现，回归面翻倍</td>
+<td>双对话框体系 <strong>已修复（结构优化第 2 批）</strong>：主进程 JSDOM 对话框全部迁移 Vue + BaseDialog（快捷键/更新日志/发布说明/重命名/删除确认），新建文件/文件夹双路径消除；仅保留在线网页独立窗口</td>
+<td>对话框实现/主题/i18n 统一，回归面收敛</td>
 </tr>
 <tr>
 <td><strong>高</strong></td>
 <td>H4</td>
-<td>主界面 chunk <strong>9,889.38 kB</strong> 首次进入整体同步求值（Monaco 二级懒加载未做）</td>
-<td>首次进入主界面长任务与内存峰值；大文档/多图表仍可能卡输入</td>
+<td>主界面大 chunk <strong>已修复（结构优化第 2 批）</strong>：入口 127.2 kB、主界面壳 316.3 kB；Monaco/预览改为壳 chunk 动态 import 的独立按需 chunk，未被首屏预载</td>
+<td>首屏不再同步求值 Monaco/预览；大文档性能基线待实机手测</td>
 </tr>
 <tr>
 <td><strong>高</strong></td>
@@ -1446,8 +1446,8 @@
 <tr>
 <td><strong>高</strong></td>
 <td>H6</td>
-<td>运行时依赖边界：<code>jsdom</code>（devDependency）被主进程 <code>require</code> 内联进 bundle（out/main 10.50 MiB）</td>
-<td>主进程包体 +9.3 MB；构建配置变动即运行时崩溃且单测难发现</td>
+<td>jsdom 运行时依赖 <strong>已修复（结构优化第 2 批）</strong>：删除主进程 jsdom 对话框助手，out/main 10.50 MiB → <strong>0.60 MiB（-94.3%）</strong>、<code>jsdom/lib</code> 计数 0；jsdom 仅保留 devDependency 供 vitest 环境</td>
+<td>构建配置变动时的体积回归可用构建产物/扫描守护</td>
 </tr>
 <tr>
 <td><strong>高</strong></td>
@@ -1458,14 +1458,14 @@
 <tr>
 <td><strong>中</strong></td>
 <td>M1</td>
-<td>全局单例/可变状态分散（appState/trustedMainWindow/welcome-state/快捷键目标窗/store/logger），仍无统一 reset</td>
-<td>窗口重建/测试隔离依赖手工 reset；并发状态串扰</td>
+<td>全局状态 <strong>部分修复（结构优化第 2 批）</strong>：新增 <code>app-context.ts</code> 集中 mainWindow/welcome/快捷键/退出/flags 并提供 reset；tray/logger 引用与少量模块级 let 待后续收口</td>
+<td>窗口重建/测试隔离已可统一复位，剩余状态待清理</td>
 </tr>
 <tr>
 <td><strong>中</strong></td>
 <td>M2</td>
-<td>IPC 注册分散 <strong>9 文件 / 69 处</strong>（较首次成文 +2 文件）、无显式注册清单；错误上报 5+ 套 helper 未统一</td>
-<td>审阅/测试需跨文件拼图；提示口径难统一</td>
+<td>IPC 注册 <strong>已收口（结构优化第 2 批）</strong>：新增 <code>ipc/registry.ts</code> 两阶段编排（6 类 64 处，入口只调用一次）；错误/状态栏 helper 统一仍待第 4 批</td>
+<td>注册入口单一，错误提示口径待统一</td>
 </tr>
 <tr>
 <td><strong>中</strong></td>
@@ -1535,7 +1535,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong>汇总</strong>：首次成文 19 条风险中，<strong>已修复 4 条（H1、H2、H5、M8）</strong>、<strong>部分修复 5 条（M4/M5/M6/M9/L3）</strong>、<strong>仍存在 10 条（H3/H4/H6/H7/M1/M2/M3/M7/L1/L2）</strong>；新增观察 L4 亦已修复（结构优化第 1 批）。</p>
+<p><strong>汇总</strong>：首次成文 19 条风险中，<strong>已修复 7 条（H1、H2、H3、H4、H5、H6、M8）</strong>、<strong>部分修复 7 条（M1/M2/M4/M5/M6/M9/L3）</strong>、<strong>仍存在 5 条（H7/M3/M7/L1/L2）</strong>；新增观察 L4 亦已修复（第 1 批）。</p>
 <h3 id="sub-3">9.3 改进建议（按优先级，不要求实施）</h3>
 <p><strong>P1（结构债，建议尽早）</strong></p>
 <ol>

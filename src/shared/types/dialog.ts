@@ -1,5 +1,5 @@
 /**
- * 对话框名与 data 契约（第 2 批契约重构：主进程 → 渲染层 OPEN_VUE_DIALOG 载荷真源）
+ * 对话框名与 data 契约（主进程 → 渲染层 OPEN_VUE_DIALOG 载荷真源）
  *
  * ## 通信链路
  * 主进程所有 Vue 对话框统一经 `IPC.DIALOG.OPEN_VUE_DIALOG` 广播：
@@ -21,6 +21,19 @@
  *     ① 主进程全部 OPEN_VUE_DIALOG 发送点的名称集合 == MainProcessDialogName；
  *     ② MainProcessDialogName ⊆ VueDialogName；
  *     ③ VueDialogName == useConfigStore 的 DialogState 键 + 消息伪名称。
+ *
+ * ## 结构优化第 2 批 2.1（H3：双对话框体系收敛）
+ * 原主进程 JSDOM 对话框（ShowShortcutKeysDialog / ShowUpdateLogDialog /
+ * ShowReleaseNotesDialog / ShowRenameDialog / ShowCreateFileFolderDialog，
+ * 以及基于 electron dialog.showMessageBox 的 ShowConfirmDeleteDialog）全部迁移为
+ * 渲染层 Vue + BaseDialog：
+ * - 帮助类（shortcutKeys / updateLog / releaseNotes）由主进程菜单 handler 经
+ *   `OPEN_VUE_DIALOG` 请求渲染层打开；
+ * - 文件管理器类（createFileFolder / renameFileFolder / confirmDelete）由主进程
+ *   文件管理器右键通道 handler 转成 `OPEN_VUE_DIALOG` 请求，渲染层 Vue 对话框确认后
+ *   经既有 `IPC.FILE.CREATE_FILE_FOLDER`（新建）或 `IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT` /
+ *   `IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM`（重命名/删除）提交动作；
+ * - 主进程不再创建任何 JSDOM/BrowserWindow 对话框（在线网页窗口除外）。
  *
  * ## 历史清理记录（2026-11-19 第 2 批）
  * - `menu-file.ts` 的 'new-file'/'new-folder' 原发送 `{ isFolder: boolean }`，
@@ -57,6 +70,11 @@ export type VueDialogStateName =
     | 'mdSheet'
     | 'insertLink'
     | 'createFileFolder'
+    | 'renameFileFolder'
+    | 'confirmDelete'
+    | 'shortcutKeys'
+    | 'updateLog'
+    | 'releaseNotes'
     | 'helpAbout'
     | 'helpContact'
     | 'techStack'
@@ -71,8 +89,11 @@ export type VueDialogStateName =
 export type VueDialogName = VueDialogStateName | MessageDialogPseudoName
 
 /**
- * 主进程实际发送的 dialogName 集合（覆盖 7 个文件的 17 处发送点，逐一核实）：
- * - `src/main/ipc/menu-file.ts`：createFileFolder ×2；
+ * 主进程实际发送的 dialogName 集合：
+ * - `src/main/dialogs/dialogs.ts`：createFileFolder / renameFileFolder / confirmDelete
+ *   （文件管理器右键通道转 Vue 请求）与 shortcutKeys / updateLog / releaseNotes
+ *   （帮助菜单 request* 函数）；
+ * - `src/main/ipc/menu-file.ts`：createFileFolder ×2（新建文件/新建文件夹）；
  * - `src/main/ipc/menu-view.ts`：admonition / mathText / mdSheet / insertLink；
  * - `src/main/ipc/menu-tools.ts`：mermaidEdit / mathText / mdSheet / insertImage；
  * - `src/main/config/short-key-register.ts`（Ctrl+N）：createFileFolder；
@@ -83,6 +104,11 @@ export type VueDialogName = VueDialogStateName | MessageDialogPseudoName
 export type MainProcessDialogName =
     | 'message'
     | 'createFileFolder'
+    | 'renameFileFolder'
+    | 'confirmDelete'
+    | 'shortcutKeys'
+    | 'updateLog'
+    | 'releaseNotes'
     | 'importOption'
     | 'admonition'
     | 'mathText'
@@ -109,13 +135,47 @@ export interface MessageDialogData {
  * 新建文件/文件夹对话框 data 契约。
  * 消费方：useConfigStore.dialogs.createFileFolder（dialog.dirPath）→
  * CreateFileFolderDialog.vue 的 props（title / dirPath）。
- * 注意：不含 `isFolder`（历史死字段已删除，文件/文件夹类型由对话框内部选择）。
+ * 注意：不含 `isFolder`（文件/文件夹类型由对话框内部选择）。
  */
 export interface CreateFileFolderDialogData {
     /** 自定义标题（可选，缺省由对话框按动作取默认标题） */
     title?: string
     /** 预填的目标目录（可选，快捷键 Ctrl+N 传入当前文件目录） */
     dirPath?: string
+}
+
+/**
+ * 重命名文件/文件夹对话框 data 契约（结构优化第 2 批 2.1）。
+ * 消费方：useConfigStore.dialogs.renameFileFolder → RenameFileFolderDialog.vue 的
+ * props（path / isFile）；确认后渲染层以同一 path/isFile 调用
+ * `IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT` 提交新名称。
+ */
+export interface RenameFileFolderDialogData {
+    /** 待重命名的文件/文件夹绝对路径 */
+    path: string
+    /** 是否为文件（影响扩展名保留与重命名后打开行为） */
+    isFile: boolean
+}
+
+/**
+ * 删除确认对话框 data 契约（结构优化第 2 批 2.1）。
+ * 消费方：useConfigStore.dialogs.confirmDelete → ConfirmDeleteDialog.vue 的
+ * props（path / isFile）；确认后渲染层调用 `IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM`。
+ */
+export interface ConfirmDeleteDialogData {
+    /** 待删除的文件/文件夹绝对路径 */
+    path: string
+    /** 是否为文件（文件夹递归删除） */
+    isFile: boolean
+}
+
+/**
+ * 版本发布说明对话框 data 契约（帮助 → 版本发布子菜单）。
+ * 消费方：useConfigStore.dialogs.releaseNotes.version → ReleaseNotesDialog.vue。
+ */
+export interface ReleaseNotesDialogData {
+    /** 发布版本号（如 '1.3.5'） */
+    version: string
 }
 
 /**
@@ -129,22 +189,32 @@ export interface ImportOptionDialogData {
 }
 
 /**
- * 主进程可携带的 data 联合（仅这 3 个对话框会带 data，其余对话框发送时无 data）。
+ * 主进程可携带的 data 联合（仅这 6 个对话框会带 data，其余对话框发送时无 data）。
  */
 export type MainProcessDialogData =
-    MessageDialogData | CreateFileFolderDialogData | ImportOptionDialogData
+    | MessageDialogData
+    | CreateFileFolderDialogData
+    | RenameFileFolderDialogData
+    | ConfirmDeleteDialogData
+    | ReleaseNotesDialogData
+    | ImportOptionDialogData
 
 /**
  * 主进程 dialogName → data 契约映射。
  *
  * 值为 `undefined` 表示该对话框主进程发送时**不携带 data**（渲染层 showDialog(name)
- * 单独打开，对话框内部自行维护状态）；带 data 的三个对话框的键集合由上方
- * MessageDialogData / CreateFileFolderDialogData / ImportOptionDialogData 精确约束。
+ * 单独打开，对话框内部自行维护状态）；带 data 的对话框的键集合由上方各 Data 接口
+ * 精确约束。
  */
 export interface MainProcessDialogDataMap {
     message: MessageDialogData
     createFileFolder: CreateFileFolderDialogData
+    renameFileFolder: RenameFileFolderDialogData
+    confirmDelete: ConfirmDeleteDialogData
+    releaseNotes: ReleaseNotesDialogData
     importOption: ImportOptionDialogData
+    shortcutKeys: undefined
+    updateLog: undefined
     admonition: undefined
     mathText: undefined
     mdSheet: undefined

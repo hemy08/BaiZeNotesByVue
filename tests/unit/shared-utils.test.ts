@@ -749,7 +749,7 @@ describe('injectIntoHead', () => {
         }
     })
 
-    it('should be equivalent to dialog-defaults.withDialogCsp injection branches', () => {
+    it('should be equivalent to the former main-process withDialogCsp injection branches', () => {
         const cspTag = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'">'
         const htmlSamples = [
             '<html><head><title>t</title></head><body></body></html>',
@@ -757,7 +757,8 @@ describe('injectIntoHead', () => {
             '<p>no html tag</p>'
         ]
         for (const html of htmlSamples) {
-            // 参考实现：dialog-defaults.ts:47-53 的三分支（CSP 幂等判断由调用方负责，这里输入不含 CSP）
+            // 参考实现：结构优化第 2 批 2.3（H6）前 dialog-defaults.ts 的三分支
+            // （该 jsdom/HTML 构建助手已随主进程 JSDOM 对话框迁移删除，此处保留等价契约）
             let expected: string
             if (/<head(\s[^>]*)?>/i.test(html)) {
                 expected = html.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n    ${cspTag}`)
