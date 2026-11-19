@@ -5,11 +5,12 @@
  * 映射串一次性构建为 Map<char,char> 后 O(1) 查询（见下方 P2 修复说明）。
  * 无词级转换：多对一/一对多字形一律取首个命中位置。
  *
- * 汉字转拼音：pinyin-data.ts 字库按下标（码点 - 0x4E00）连续索引，
+ * 汉字转拼音：字库 src/renderer/src/data/pinyin-data.ts 按下标（码点 - 0x4E00）连续索引，
  * 多音字在生成数据时已只保留第一读音；非汉字原样保留。
+ * 结构优化第 5 批 5.5：字库迁出组件目录至 data/，并由动态 import 按需加载（独立 chunk），
+ * 仅实际执行「汉字转拼音/取首字母」时才加载 232 KB 字库；getPinyin/getFirstLetter 因此为异步。
  */
 import { CHAR_PY_STR, FT_PY_STR } from './trad-simp-data'
-import PINYIN_DATA from './pinyin-data'
 
 /**
  * P2 修复：繁简映射改为模块级惰性构建的 Map<char, char>。
@@ -76,16 +77,36 @@ export function toSimplified(text: string): string {
     return result
 }
 
-/** 汉字码点区间：U+4E00 ~ U+9FA5（与字库实际覆盖一致，见 pinyin-data.ts；查表越界回落原字符） */
+/** 汉字码点区间：U+4E00 ~ U+9FA5（与字库实际覆盖一致，见 data/pinyin-data.ts；查表越界回落原字符） */
 const HANZI_MIN = 0x4e00
 const HANZI_MAX = 0x9fa5
+
+/**
+ * 字库按需加载（结构优化第 5 批 5.5）：pinyin-data 位于 renderer/src/data/ 并静态拆为独立 chunk。
+ * 首次调用 getPinyin/getFirstLetter 时才触发 import 与求值；失败不缓存 Promise 便于重试。
+ */
+let pinyinDataPromise: Promise<readonly string[]> | null = null
+
+function loadPinyinData(): Promise<readonly string[]> {
+    if (!pinyinDataPromise) {
+        pinyinDataPromise = import('../../../data/pinyin-data')
+            .then((module) => module.default)
+            .catch((error) => {
+                pinyinDataPromise = null
+                throw error
+            })
+    }
+    return pinyinDataPromise
+}
 
 /**
  * 汉字转拼音（无调、多音字取第一读音）。
  * 汉字之间以空格分隔；连续非汉字合并为一个片段原样保留（片段与拼音之间也以空格分隔）。
  * 例如：getPinyin('中国') === 'zhong guo'；getPinyin('你好123') === 'ni hao 123'。
+ * 注意：字库按需加载，函数为异步。
  */
-export function getPinyin(text: string): string {
+export async function getPinyin(text: string): Promise<string> {
+    const PINYIN_DATA = await loadPinyinData()
     const tokens: string[] = []
     let noChinese = ''
     for (let i = 0; i < text.length; i++) {
@@ -118,8 +139,10 @@ export function getPinyin(text: string): string {
  * 取各字拼音首字母（大写）。
  * 汉字取拼音首字母；非汉字（含字母、数字、符号）原样保留。
  * 例如：getFirstLetter('中国') === 'ZG'；getFirstLetter('中国abc') === 'ZGabc'。
+ * 注意：字库按需加载，函数为异步。
  */
-export function getFirstLetter(text: string): string {
+export async function getFirstLetter(text: string): Promise<string> {
+    const PINYIN_DATA = await loadPinyinData()
     let result = ''
     for (let i = 0; i < text.length; i++) {
         const ch = text.charAt(i)

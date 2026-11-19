@@ -81,17 +81,17 @@ const activeTab = ref<TabKey>('tabConvert')
 const inputText = ref('')
 const outputText = ref('')
 
-/** 执行转换：根据目标把输入写入输出区 */
-function runConvert(target: 'toTraditional' | 'toSimplified' | 'toPinyin' | 'toFirstLetter') {
+/** 执行转换：根据目标把输入写入输出区（拼音字库按需加载，异步返回） */
+async function runConvert(target: 'toTraditional' | 'toSimplified' | 'toPinyin' | 'toFirstLetter') {
     const source = inputText.value
     if (target === 'toTraditional') {
         outputText.value = toTraditional(source)
     } else if (target === 'toSimplified') {
         outputText.value = toSimplified(source)
     } else if (target === 'toPinyin') {
-        outputText.value = getPinyin(source)
+        outputText.value = await getPinyin(source)
     } else {
-        outputText.value = getFirstLetter(source)
+        outputText.value = await getFirstLetter(source)
     }
 }
 

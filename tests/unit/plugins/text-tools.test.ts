@@ -40,25 +40,25 @@ describe('繁简转换（chinese-lib）', () => {
     })
 })
 
-describe('汉字转拼音（chinese-lib）', () => {
-    it('全拼："中国" -> "zhong guo"', () => {
-        expect(getPinyin('中国')).toBe('zhong guo')
-        expect(getPinyin('你好')).toBe('ni hao')
+describe('汉字转拼音（chinese-lib，字库按需加载 → 异步）', () => {
+    it('全拼："中国" -> "zhong guo"', async () => {
+        expect(await getPinyin('中国')).toBe('zhong guo')
+        expect(await getPinyin('你好')).toBe('ni hao')
     })
 
-    it('首字母大写："中国" -> "ZG"', () => {
-        expect(getFirstLetter('中国')).toBe('ZG')
-        expect(getFirstLetter('你好世界')).toBe('NHSJ')
+    it('首字母大写："中国" -> "ZG"', async () => {
+        expect(await getFirstLetter('中国')).toBe('ZG')
+        expect(await getFirstLetter('你好世界')).toBe('NHSJ')
     })
 
-    it('非汉字原样保留（连续片段合并为一个整体）', () => {
-        expect(getPinyin('你好123')).toBe('ni hao 123')
-        expect(getFirstLetter('中国abc')).toBe('ZGabc')
+    it('非汉字原样保留（连续片段合并为一个整体）', async () => {
+        expect(await getPinyin('你好123')).toBe('ni hao 123')
+        expect(await getFirstLetter('中国abc')).toBe('ZGabc')
     })
 
-    it('多音字取第一读音（数据生成时已保留首读音）', () => {
+    it('多音字取第一读音（数据生成时已保留首读音）', async () => {
         // 行：源字库第一读音为 hang（第二读音 xing 被舍弃，与原页面行为一致）
-        expect(getPinyin('行')).toBe('hang')
+        expect(await getPinyin('行')).toBe('hang')
     })
 })
 
