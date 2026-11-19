@@ -11,7 +11,7 @@
  *   "NSIS Error: Error writing temporary file. Make sure your temp folder is valid."
  *
  * 处理：
- *   在 electron-builder 运行前，确保输出目录（dist/out）的完整性级别为 Medium
+ *   在 electron-builder 运行前，确保输出目录（out/build 与 out/build/dist）的完整性级别为 Medium
  *   （幂等；非 Windows 或权限不足时仅打印告警、不阻塞构建）。
  *
  * 结构优化第 5 批 5.3（L3）：并入原 build/build-win.ps1 的「NSIS 临时目录重定向」能力。
@@ -30,7 +30,10 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const projectRoot = path.resolve(__dirname, '..')
-const OUTPUT_DIRS = ['dist', 'out']
+// M7 产物治理（第 5 批）：构建产物统一收敛到 out/build/
+// - out/build：electron-vite 三段产物（main/preload/renderer）的父目录
+// - out/build/dist：electron-builder 安装包/解包目录（见 electron-builder.yml directories.output）
+const OUTPUT_DIRS = ['out/build', path.join('out', 'build', 'dist')]
 /** NSIS/makensis 临时目录：放在工作区内，规避受限宿主的系统 %TEMP% 不可写问题 */
 const BUILD_TEMP_DIR = path.join(projectRoot, 'out', 'tmp', 'build-temp')
 

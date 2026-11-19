@@ -1,6 +1,14 @@
 /node_modules
-/dist
+# ===== M7 产物治理：out/ 统一收纳构建产物 / 分析产物 / 历史归档 =====
+# - out/build/：构建产物。electron-vite → out/build/{main,preload,renderer}；
+#   electron-builder 安装包与解包目录 → out/build/dist（见 electron-builder.yml directories.output）
+# - out/analysis/：质量基线/审计/性能分析等分析产物（3.4 起独立目录）
+# - out/archive/：历史归档（如 out/archive/dist 为第 5 批 M7 迁入的历史安装包、_unused-assets）
+# - out/tool-results/、out/tmp/、out/full-scan/ 等：任务报告与临时产物
+# 以上全部不入库（报告正文入 docs/，产物入 out/，见 AGENTS.md 产物存放规范）
 /out
+# 兼容旧布局：第 5 批前 electron-builder 默认输出根 dist/；保留忽略防旧配置误产物入库
+/dist
 /coverage
 .DS_Store
 *.log*
@@ -31,6 +39,3 @@
 
 # TypeScript 增量构建缓存（构建产物，不入库）
 *.tsbuildinfo
-
-# 质量基线/分析产物（3.4 产物治理）
-out/analysis/

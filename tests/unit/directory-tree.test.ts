@@ -56,9 +56,25 @@ import * as shared from '../../src/main/utils/file-utils/shared'
 
 const FILE_UTILS_DIR = path.resolve(__dirname, '../../src/main/utils/file-utils')
 
+/**
+ * 结构优化第 5 批 5.5：directory-tree.ts 已按 scan/watch/reload 拆为同目录多文件，
+ * 本文件为聚合薄壳。依赖方向静态断言需覆盖全部子模块源码。
+ */
+const DIRECTORY_TREE_MODULE_FILES = [
+    'directory-tree.ts',
+    'directory-tree-scan.ts',
+    'directory-tree-watch.ts',
+    'directory-tree-reload.ts'
+] as const
+
 /** 读取源码文本（用于 import 图静态断言） */
 function readModuleSource(fileName: string): string {
     return readFileSync(path.join(FILE_UTILS_DIR, fileName), 'utf8')
+}
+
+/** 读取 directory-tree 拆分后的全部模块源码（拼接，用于「不得出现某写法」类断言） */
+function readDirectoryTreeModulesSource(): string {
+    return DIRECTORY_TREE_MODULE_FILES.map((fileName) => readModuleSource(fileName)).join('\n')
 }
 
 /** 命名空间导入按字符串索引访问（避免 noImplicitAny 的隐式 any） */
@@ -153,12 +169,32 @@ describe('CQ-7：file-operations.ts 拆分后的公开 API（re-export 完整性
 })
 
 describe('CQ-7：拆分后的依赖方向（静态 import 图）', () => {
-    it('directory-tree 不 import file-operations 的核心操作（避免循环依赖）', () => {
-        const source = readModuleSource('directory-tree.ts')
-        expect(source).not.toMatch(/from\s+['"]\.\/file-operations['"]/)
+    it('directory-tree 拆分模块不 import file-operations 的核心操作（避免循环依赖）', () => {
+        for (const fileName of DIRECTORY_TREE_MODULE_FILES) {
+            const source = readModuleSource(fileName)
+            expect(source, `${fileName} 不应 import file-operations`).not.toMatch(
+                /from\s+['"]\.\/file-operations['"]/
+            )
+        }
         // 正向依赖仍成立：目录树模块复用编码读取 + shared 的共享状态
-        expect(source).toMatch(/from\s+['"]\.\/file-encoding['"]/)
-        expect(source).toMatch(/from\s+['"]\.\/shared['"]/)
+        const modulesSource = readDirectoryTreeModulesSource()
+        expect(modulesSource).toMatch(/from\s+['"]\.\/file-encoding['"]/)
+        expect(modulesSource).toMatch(/from\s+['"]\.\/shared['"]/)
+    })
+
+    it('directory-tree.ts 为聚合薄壳：只 re-export 拆分模块，不重复实现', () => {
+        const shellSource = readModuleSource('directory-tree.ts')
+        // 薄壳内不应出现可执行实现（函数声明/顶层 let/const/异步流程）
+        expect(shellSource).not.toMatch(/\bfunction\s+[A-Za-z_$]/)
+        expect(shellSource).not.toMatch(/^\s*(let|const)\s/m)
+        expect(shellSource).not.toMatch(/\bsetTimeout\(|\bwatch\(/)
+        for (const subModule of [
+            './directory-tree-scan',
+            './directory-tree-watch',
+            './directory-tree-reload'
+        ]) {
+            expect(shellSource, `薄壳应聚合 ${subModule}`).toContain(`from '${subModule}'`)
+        }
     })
 
     it('file-encoding / shared 为叶子依赖，不反向 import 上层模块', () => {
@@ -183,7 +219,7 @@ describe('CQ-7：拆分后的依赖方向（静态 import 图）', () => {
 
     it('自身写入窗口状态只存在于 shared（状态与职责同模块，不在 directory-tree 重复声明）', () => {
         const sharedSource = readModuleSource('shared.ts')
-        const directoryTreeSource = readModuleSource('directory-tree.ts')
+        const directoryTreeSource = readDirectoryTreeModulesSource()
         expect(sharedSource).toMatch(/let selfWriteDepth = 0/)
         expect(directoryTreeSource).not.toMatch(/\bselfWriteDepth\b/)
         // directory-tree 只通过 shared 的消费入口判断抑制窗口

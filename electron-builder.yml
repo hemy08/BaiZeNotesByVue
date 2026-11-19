@@ -7,13 +7,17 @@ asar: true
 compression: maximum
 directories:
     buildResources: build
+    # M7 产物治理（第 5 批）：安装包/解包目录统一收敛到 out/build/dist（默认 dist/ 已废弃）。
+    # 与 electron.vite.config.ts 的 outDir、.github/workflows/release.yml 的产物校验路径保持一致。
+    output: out/build/dist
 files:
     # CMP-25：白名单化打包产物，避免 out/**/* 把 out/tool-results 等临时分析产物
     # （约 24MB）误打入 app.asar，并消除打包期并发写文件导致的构建不稳定
-    - out/main/**/*
-    - out/preload/**/*
-    - out/renderer/**/*
-    # ARC-20：electron-vite 6 产物为 out/main、out/preload、out/renderer，
+    # M7：electron-vite 产物已迁至 out/build/{main,preload,renderer}（见 electron.vite.config.ts）
+    - out/build/main/**/*
+    - out/build/preload/**/*
+    - out/build/renderer/**/*
+    # ARC-20：electron-vite 6 产物为 out/build/main、out/build/preload、out/build/renderer，
     # 不存在旧构建布局的 out/renderer/src 目录，空操作的排除项已移除
     # ET-3：排除 source map（运行时不需要；基线打包前 node_modules 内 *.map 约 100MB）
     - '!**/*.map'

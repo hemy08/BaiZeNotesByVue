@@ -1,7 +1,7 @@
 /**
  * E2E 冒烟：真实 Electron 进程启动与主窗口渲染（ET-11）
  *
- * 覆盖链路：out/main/index.js → app.whenReady → createWindow → preload contextBridge →
+ * 覆盖链路：out/build/main/index.js → app.whenReady → createWindow → preload contextBridge →
  * 渲染层 Vue 挂载 + IPC 往返。单元测试全部在 jsdom/mock 下运行，无法发现以下问题：
  * - preload 构建产物缺失或 sandbox 下 require 路径异常；
  * - BrowserWindow webPreferences 与渲染层入口不匹配；
@@ -18,10 +18,14 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 const ROOT = path.resolve(__dirname, '..')
-const MAIN_ENTRY = path.join(ROOT, 'out', 'main', 'index.js')
+// M7 产物治理：electron-vite 产物位于 out/build/main（见 electron.vite.config.ts）
+const MAIN_ENTRY = path.join(ROOT, 'out', 'build', 'main', 'index.js')
 
 // 未构建时整文件跳过，避免误报（构建命令见 CI 的 e2e job / 本地 npx electron-vite build）
-test.skip(!fs.existsSync(MAIN_ENTRY), '缺少 out/main/index.js：请先执行 npx electron-vite build')
+test.skip(
+    !fs.existsSync(MAIN_ENTRY),
+    '缺少 out/build/main/index.js：请先执行 npx electron-vite build'
+)
 
 test.describe('Electron 主窗口冒烟', () => {
     let app: ElectronApplication
@@ -78,8 +82,8 @@ test.describe('Electron 主窗口冒烟', () => {
     })
 
     test('欢迎页渲染与 preload 桥注入（含 IPC 往返）', async () => {
-        // 1) 渲染层已加载 electron-vite 构建产物（file:// 指向 out/renderer/index.html）
-        await expect(page).toHaveURL(/\/out\/renderer\/index\.html$/)
+        // 1) 渲染层已加载 electron-vite 构建产物（file:// 指向 out/build/renderer/index.html）
+        await expect(page).toHaveURL(/\/out\/build\/renderer\/index\.html$/)
 
         // 2) 启动默认界面为欢迎页，且已挂载可见
         await expect(page.locator('.welcome-screen')).toBeVisible()
@@ -151,7 +155,7 @@ test.describe('Electron 主窗口冒烟', () => {
      * 5. 上述大依赖 chunk 既不出现在入口 HTML 的 modulepreload 中，也不出现在入口代码中。
      */
     test('构建产物契约：主界面壳 ≤2MB，Monaco/预览为未预载的二级异步 chunk', () => {
-        const rendererDir = path.join(ROOT, 'out', 'renderer')
+        const rendererDir = path.join(ROOT, 'out', 'build', 'renderer')
         const assetsDir = path.join(rendererDir, 'assets')
         const html = fs.readFileSync(path.join(rendererDir, 'index.html'), 'utf-8')
         const assetPath = (href: string): string =>

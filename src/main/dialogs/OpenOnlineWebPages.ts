@@ -15,7 +15,7 @@ import { isSafeExternalUrl, normalizeSafeExternalUrl, openExternalSafely } from 
  * （DIALOG_WEB_PREFERENCES / createDialogOptions）归并到本文件——其唯一调用方。
  *
  * 清理结果：`src/main` 不再有任何 jsdom 运行时 import/require，主进程产物
- * （out/main）不内联 jsdom；jsdom 仅保留为 devDependency 供 vitest 的 jsdom
+ * （out/build/main）不内联 jsdom；jsdom 仅保留为 devDependency 供 vitest 的 jsdom
  * 测试环境使用，不参与主进程 bundle。
  */
 

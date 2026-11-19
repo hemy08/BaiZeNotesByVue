@@ -17,7 +17,15 @@ import * as path from 'path'
 
 const ROOT = path.resolve(__dirname, '../..')
 const SHARED_FILE_TYPE = path.join(ROOT, 'src', 'shared', 'types', 'file.ts')
-const DIRECTORY_TREE = path.join(ROOT, 'src', 'main', 'utils', 'file-utils', 'directory-tree.ts')
+// 结构优化第 5 批 5.5：scanDirectoryTree 实现位于 directory-tree.ts 拆分出的 scan 子模块
+const DIRECTORY_TREE = path.join(
+    ROOT,
+    'src',
+    'main',
+    'utils',
+    'file-utils',
+    'directory-tree-scan.ts'
+)
 const PATH_UTILS = path.join(ROOT, 'src', 'main', 'utils', 'file-utils', 'path-utils.ts')
 const APP_STATE = path.join(ROOT, 'src', 'main', 'utils', 'app-state.ts')
 const RESOURCE_MANAGER_TS = path.join(

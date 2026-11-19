@@ -15,17 +15,25 @@ export default defineConfig({
         // H6（结构优化第 2 批 2.3）：jsdom 仅为 vitest 的 jsdom 测试环境保留在
         // devDependencies——它不参与主进程 bundle，src/main 已零运行时 import/require。
         // 注意：devDependency 不在 externalizeDeps 的自动外部化名单内，若 src/main 再次
-        // 引入 jsdom，Rollup 会把它内联进 out/main/index.js（历史基线 10.50 MiB，
+        // 引入 jsdom，Rollup 会把它内联进 out/build/main/index.js（历史基线 10.50 MiB，
         // 清理后约 0.63 MiB），体积回归可用 `git grep "jsdom" -- src/main` 与构建产物大小守护。
+        //
+        // M7 产物治理（第 5 批）：构建产物统一收敛到 out/build/ 下——
+        // electron-vite 三段（main/preload/renderer）→ out/build/{main,preload,renderer}，
+        // electron-builder 安装包/解包目录 → out/build/dist（见 electron-builder.yml directories.output）；
+        // out/analysis 与 out/archive 分别存放分析产物与历史归档（不入库）。
+        // package.json "main"、electron-builder.yml files、E2E/CI/release 路径必须与这里保持一致。
         build: {
-            externalizeDeps: true
+            externalizeDeps: true,
+            outDir: resolve(__dirname, 'out/build/main')
         }
     },
     preload: {
         build: {
+            outDir: resolve(__dirname, 'out/build/preload'),
             // 【关键修复】Sandboxed preload 无法 require 相对路径文件：
             // 之前 index/dialog 两个入口共享 src/shared/ipc-channels.ts，Rollup 把它提取成
-            // out/preload/chunks/ipc-channels-*.js，产物里出现 require("./chunks/...")；
+            // out/build/preload/chunks/ipc-channels-*.js，产物里出现 require("./chunks/...")；
             // 主窗口与对话框均为 sandbox: true，该 require 会在 preload 启动时抛错，
             // 导致 contextBridge 未执行 → 渲染层 window.electron / window.api 缺失 →
             // 欢迎页「打开文件/文件夹」与窗口「最小化/最大化/关闭」全部无反应。
@@ -44,6 +52,10 @@ export default defineConfig({
         }
     },
     renderer: {
+        // M7 产物治理：渲染进程产物 → out/build/renderer（默认 out/renderer 已废弃）
+        build: {
+            outDir: resolve(__dirname, 'out/build/renderer')
+        },
         resolve: {
             alias: [
                 {

@@ -76,7 +76,7 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            # 先产出 out/main + out/preload + out/renderer：E2E 与本地一致，直接运行构建产物，
+            # 先产出 out/build/main + out/build/preload + out/build/renderer：E2E 与本地一致，直接运行构建产物，
             # 不依赖 electron-vite dev server（避免端口/热更新带来的不稳定）
             - name: Build (electron-vite)
               run: npx --no-install electron-vite build

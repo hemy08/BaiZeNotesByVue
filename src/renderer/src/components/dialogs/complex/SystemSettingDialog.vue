@@ -416,34 +416,19 @@ import { logger } from '../../../common/logger'
 // 批次 C #10：「打开主题设置」复用菜单动作同款调用链（menu-actions.ts 的
 // configStore.showDialog('themeSettings')），不新增 IPC 通道
 import { getConfigStore } from '../../../common/useConfigStore'
-// 2026-11-19：系统设置默认值统一到 shared 常量（真源在主进程 system-setting.ts）
-import { SYSTEM_SETTING_FALLBACK } from '../../../../../shared/constants/system-defaults'
+// 结构优化第 5 批 5.5：表单模型 / 侧边栏页签 / 存储合并与语言归一化纯函数抽到 ./system-setting/model.ts，
+// 本组件只保留响应式状态、IPC 编排与模板（默认值真源仍为主进程 system-setting.ts 的 shared 兜底常量）。
+import {
+    createDefaultSystemDialogSettings,
+    mergeStoredSystemSettings,
+    normalizeLanguageSelection,
+    SYSTEM_BACKUP_CONFIG_NAME,
+    SYSTEM_SETTING_SIDEBAR_ITEMS,
+    type SystemDialogSettings
+} from './system-setting/model'
 
 interface Props {
     visible: boolean
-}
-
-// 系统设置对话框的全部字段（含渲染层扩展字段，与主进程 systemSetting.json 同源持久化）
-export interface SystemDialogSettings {
-    autoOpenLastFile: boolean
-    autoOpenLastFolder: boolean
-    autoStart: boolean
-    minimizeToTray: boolean
-    rememberWindowSize: boolean
-    language: string
-    defaultFilePath: string
-    autoSaveEnabled: boolean
-    autoSaveInterval: number
-    recentFilesCount: number
-    appTheme: string
-    useSystemTheme: boolean
-    fontFamily: string
-    fontSize: number
-    enableAutoBackup: boolean
-    backupInterval: number
-    backupCount: number
-    // AS-9（P3 隐私）：允许预览加载文档中的远程图片（默认 false，仅本地图片）
-    allowRemoteImages: boolean
 }
 
 const props = defineProps<Props>()
@@ -483,41 +468,11 @@ const footerStyle: CSSProperties = {
 
 const activePanel = ref('general')
 
-const sidebarItems = [
-    { id: 'general', nameKey: 'dialogRenderer.systemSetting.sidebarGeneral', icon: '⚙️' },
-    { id: 'file', nameKey: 'dialogRenderer.systemSetting.sidebarFile', icon: '📁' },
-    { id: 'appearance', nameKey: 'dialogRenderer.systemSetting.sidebarAppearance', icon: '🎨' },
-    { id: 'backup', nameKey: 'dialogRenderer.systemSetting.sidebarBackup', icon: '💾' }
-]
+/** 左侧页签（纯数据由 ./system-setting/model.ts 提供） */
+const sidebarItems = SYSTEM_SETTING_SIDEBAR_ITEMS
 
-// 初始状态（也用于取消时恢复）：默认值统一引用共享常量 SYSTEM_SETTING_FALLBACK。
-// 背景：此前这里还有第三套本地默认值（两项 opt-in 为 false、autoSaveInterval: 30、
-// fontSize: 14），与主进程真源（60 / 13）及 store 旧 fallback 互相矛盾。
-// 常量真源为主进程 src/main/config/system-setting.ts，此处仅作读取失败/字段缺失兜底。
-// 注意只按本对话框字段做映射：不把主进程内部字段（模态开关、菜单栏样式等）带入
-// config:write('system') 的提交载荷，避免「应用」时覆盖主进程自身字段。
-const initialSettings = ref<SystemDialogSettings>({
-    autoOpenLastFile: SYSTEM_SETTING_FALLBACK.autoOpenLastFile,
-    autoOpenLastFolder: SYSTEM_SETTING_FALLBACK.autoOpenLastFolder,
-    autoStart: SYSTEM_SETTING_FALLBACK.autoStart,
-    minimizeToTray: SYSTEM_SETTING_FALLBACK.minimizeToTray,
-    rememberWindowSize: SYSTEM_SETTING_FALLBACK.rememberWindowSize,
-    // 主进程默认 'zh-cn'（小写），本对话框下拉选项为 'zh-CN' / 'en-US'，按展示值归一化
-    language: 'zh-CN',
-    defaultFilePath: SYSTEM_SETTING_FALLBACK.defaultFilePath,
-    autoSaveEnabled: SYSTEM_SETTING_FALLBACK.autoSaveEnabled,
-    autoSaveInterval: SYSTEM_SETTING_FALLBACK.autoSaveInterval,
-    recentFilesCount: SYSTEM_SETTING_FALLBACK.recentFilesCount,
-    appTheme: SYSTEM_SETTING_FALLBACK.appTheme,
-    useSystemTheme: SYSTEM_SETTING_FALLBACK.useSystemTheme,
-    fontFamily: SYSTEM_SETTING_FALLBACK.fontFamily,
-    fontSize: SYSTEM_SETTING_FALLBACK.fontSize,
-    enableAutoBackup: SYSTEM_SETTING_FALLBACK.enableAutoBackup,
-    backupInterval: SYSTEM_SETTING_FALLBACK.backupInterval,
-    backupCount: SYSTEM_SETTING_FALLBACK.backupCount,
-    // AS-9（P3 隐私）：安全默认——不加载远程图片
-    allowRemoteImages: SYSTEM_SETTING_FALLBACK.allowRemoteImages
-})
+// 初始状态（也用于取消时恢复）：默认值/映射逻辑见 ./system-setting/model.ts。
+const initialSettings = ref<SystemDialogSettings>(createDefaultSystemDialogSettings())
 
 const settings = ref<SystemDialogSettings>({ ...initialSettings.value })
 
@@ -575,7 +530,7 @@ const backupStatus = ref('')
 // 'backup' 读取形状统一引用 shared ConfigBackupState（backups / latest）。
 
 /** P1-FE-06：备份/恢复都复用既有 CONFIG 通道（configName = 'backup'），不新增 IPC 通道 */
-const BACKUP_CONFIG_NAME = 'backup'
+const BACKUP_CONFIG_NAME = SYSTEM_BACKUP_CONFIG_NAME
 
 // ARC-04：打开对话框时从主进程 systemSetting.json 读取当前值
 // （config:read('system') 已由 config-manager 路由到主进程 store），
@@ -584,22 +539,12 @@ async function loadSettings(): Promise<void> {
     try {
         // 第 2 批契约重构：主进程 'system' 实际返回完整 SystemSetting（含 autoStart 的
         // OS 校正值），旧断言 Partial<SystemDialogSettings> 只是它的子集；改为 shared 真源后
-        // 下方 typeof 逐字段守卫语义不变（仅类型标注变化，不改变运行时合并逻辑）。
+        // 下方逐字段守卫语义不变（仅类型标注变化，不改变运行时合并逻辑）。
         const stored = await window.api.config.read<SystemSetting>('system')
-        if (stored && typeof stored === 'object') {
-            for (const key of Object.keys(settings.value) as (keyof SystemDialogSettings)[]) {
-                const value = stored[key]
-                if (value !== undefined && typeof value === typeof settings.value[key]) {
-                    ;(settings.value as Record<string, unknown>)[key] = value
-                }
-            }
-        }
+        // 5.5：逐字段合并（已定义且类型一致才覆盖）抽为纯函数 mergeStoredSystemSettings
+        settings.value = mergeStoredSystemSettings(settings.value, stored)
         // 语言历史值归一化（主进程默认 'zh-cn'，下拉选项值为 'zh-CN' / 'en-US'）
-        settings.value.language = String(settings.value.language || '')
-            .toLowerCase()
-            .startsWith('en')
-            ? 'en-US'
-            : 'zh-CN'
+        settings.value.language = normalizeLanguageSelection(settings.value.language)
         // 记录加载后的初始状态，供「取消」还原
         initialSettings.value = { ...settings.value }
     } catch (error) {

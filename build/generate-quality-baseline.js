@@ -14,7 +14,8 @@
  *                                                         额外核对 vitest JSON 的用例数
  *
  * 口径说明：测试文件数只统计 tests/**\/*.test.ts；用例数需 vitest `--reporter=json` 报告；
- * dist 产物取 dist/ 下最新 *_Setup_<version>_*.exe（不存在时留空，不阻断）。
+ * 安装包产物取 out/build/dist/ 下最新 *_Setup_<version>_*.exe（不存在时留空，不阻断）。
+ * M7 产物治理（第 5 批）：dist 输出目录由根 dist/ 迁至 out/build/dist/（见 electron-builder.yml）。
  */
 const fs = require('fs')
 const path = require('path')
@@ -64,7 +65,8 @@ function getTestStats() {
 }
 
 function getDistStats() {
-    const dist = path.join(ROOT, 'dist')
+    // M7 产物治理：electron-builder 输出目录已迁至 out/build/dist（历史 dist/ 已归档到 out/archive/dist）
+    const dist = path.join(ROOT, 'out', 'build', 'dist')
     if (!fs.existsSync(dist)) return []
     return fs
         .readdirSync(dist)

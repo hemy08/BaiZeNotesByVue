@@ -6,7 +6,7 @@
  * 渲染层 Vue 挂载与 IPC 往返。
  *
  * 运行前提：
- * - 先执行 `npx electron-vite build`（或 `npm run build`）生成 `out/main/index.js`；
+ * - 先执行 `npx electron-vite build`（或 `npm run build`）生成 `out/build/main/index.js`；
  * - 需要可用的桌面环境（Electron 需要窗口系统）；
  * - CI 中由 .github/workflows/ci.yml 的独立 `e2e` job 在 windows-latest 上自动执行
  *   （push / pull_request / workflow_dispatch 均触发）。

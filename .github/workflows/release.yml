@@ -54,15 +54,17 @@ jobs:
               shell: pwsh
               run: |
                   $version = node -e "process.stdout.write(require('./package.json').version)"
+                  # M7 产物治理：electron-builder 输出目录为 out/build/dist（见 electron-builder.yml）
+                  $distDir = 'out/build/dist'
                   $expected = @(
-                    "dist/BaiZeNotes_Setup_$version`_windows_x64.exe",
-                    "dist/BaiZeNotes_$version`_windows_x64.exe",
-                    "dist/latest.yml"
+                    "$distDir/BaiZeNotes_Setup_$version`_windows_x64.exe",
+                    "$distDir/BaiZeNotes_$version`_windows_x64.exe",
+                    "$distDir/latest.yml"
                   )
                   foreach ($f in $expected) {
                     if (-not (Test-Path $f)) { throw "缺少发布产物：$f" }
                   }
-                  $latest = Get-Content dist/latest.yml -Raw
+                  $latest = Get-Content "$distDir/latest.yml" -Raw
                   if ($latest -notmatch "version: $version") { throw "latest.yml 版本不匹配（期望 $version）" }
                   Write-Host "产物校验通过：v$version"
 
@@ -73,10 +75,10 @@ jobs:
                   name: ${{ github.event.inputs.tag || github.ref_name }}
                   generate_release_notes: true
                   files: |
-                      dist/BaiZeNotes_Setup_*_windows_x64.exe
-                      dist/BaiZeNotes_*_windows_x64.exe
-                      dist/*.blockmap
-                      dist/latest.yml
+                      out/build/dist/BaiZeNotes_Setup_*_windows_x64.exe
+                      out/build/dist/BaiZeNotes_*_windows_x64.exe
+                      out/build/dist/*.blockmap
+                      out/build/dist/latest.yml
                   fail_on_unmatched_files: true
 
             - name: Verify update channel (latest.yml)
