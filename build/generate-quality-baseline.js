@@ -93,7 +93,7 @@ function parseDocBaseline() {
     const line = fs
         .readFileSync(DOC_BASELINE, 'utf-8')
         .split('\n')
-        .find((l) => l.includes('当前基线') && l.includes('版本'))
+        .find((l) => l.includes('当前基线') || l.includes('当前口径'))
     if (!line) return null
     const version = /版本\s*\*\*(\d+\.\d+\.\d+)\*\*/.exec(line)?.[1] ?? ''
     const tests = /测试\s*\*\*(\d+)\s*文件\s*\/\s*([\d,]+)\s*用例/.exec(line)
