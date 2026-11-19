@@ -46,6 +46,14 @@
 - 测试：新增 PDF 组件测试 6 用例、READ_BINARY 通道测试 3 用例；插件/菜单/词典断言同步（插件工具 37 → 38）
 - 验证：typecheck 0 错误、ESLint 0/0、vitest **156 文件 / 2,847 用例全通过**、`electron-vite build` 成功
 
+### 🔗 公共接口归位第 2 批（2026-11-19）
+
+- **IPC 载荷契约**：新建 `shared/types/ipc.ts`（IpcRequests 58/58、IpcResponses 26、IpcEvents 25/25）+ 静态护栏测试（渲染层 75 处调用通道 ⊆ 请求表）
+- **CONFIG 映射**：`ConfigName`（8）+ `ConfigReadMap/ConfigWriteMap`，修正 2 处渲染层错误断言（editor/quick-links 实际形状）
+- **对话框契约**：VueDialogName 24 / 主进程 9 + data 三方核对；删除 createFileFolder 的 isFolder 死字段
+- **文件树/主题/其余契约**：FileItem.id + FileTreePayload；28 项主题类型族上移 + THEME_GROUPS 统一（消除两套硬编码清单）；PlantUML/版本/备份/加密/编辑器/快捷链接契约两端统一
+- 门禁：typecheck 0 / ESLint 0-0 / vitest **165 文件 / 3,074 用例全通过** / build 成功 / E2E 4 passed
+
 ### 🧱 公共接口归位第 1 批（2026-11-19）
 
 - **新建 `src/shared/utils/`**：path（file:// URL/路径比较/解析）、hash（FNV-1a）、lru-cache、html（转义/head 注入）、random、validate、format、concurrency、debounce、date、backup-dir（11 模块 + 121 用例）

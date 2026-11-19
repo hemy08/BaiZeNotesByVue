@@ -346,7 +346,7 @@
 </tr>
 <tr>
 <td>质量</td>
-<td>Vitest（160 文件/2,871 用例） + Playwright E2E + ESLint flat config + 三 tsconfig</td>
+<td>Vitest（165 文件/2,871 用例） + Playwright E2E + ESLint flat config + 三 tsconfig</td>
 </tr>
 </tbody>
 </table>
@@ -1740,7 +1740,7 @@
 <h2 id="sec-13">附录 B：统计口径说明</h2>
 <ol>
 <li><strong>行数</strong>：LF 计数，含空行与注释；<code>src</code> 统计含 <code>.d.ts</code>/<code>.svg</code> 资源，<code>tests</code> 含测试 helper。</li>
-<li><strong>测试数</strong>：本报告采用分析时全量 <code>vitest run</code> 实测值 <strong>160 文件 / 2,871 用例</strong>（与历代报告中的 1,067～2,871 等历史值区分；历史值为各自时点口径）。</li>
+<li><strong>测试数</strong>：本报告采用分析时全量 <code>vitest run</code> 实测值 <strong>165 文件 / 2,871 用例</strong>（与历代报告中的 1,067～2,871 等历史值区分；历史值为各自时点口径）。</li>
 <li><strong>产物体积</strong>：<code>out/main</code> 为 Vite 产物（含内联 jsdom 的 10.46 MiB 口径），<code>app.asar</code> 49.96 MiB、NSIS 118.38 MB 为 2026-11-19 测得的最新安装包；历史报告中的 605 KB 主进程口径不可直接引用。</li>
 <li><strong>结构图</strong>：工程侧新增 <code>docs/reports/svg/</code> 目录集中存放结构类 SVG（本报告 5 张），报告生成流水线已支持 <code>SVG:&lt;名称&gt;</code> 占位（Markdown 注释形式）自动内嵌。</li>
 </ol>

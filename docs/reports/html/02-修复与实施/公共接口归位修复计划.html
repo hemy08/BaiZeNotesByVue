@@ -433,7 +433,7 @@
 <td><code>shared/types</code>（零运行时）</td>
 <td>约 10 组</td>
 <td>低</td>
-<td>1–2 天</td>
+<td>✅ <strong>已完成（2026-11-19）</strong></td>
 <td>第 1 批路径工具</td>
 <td>typecheck + 契约测试</td>
 </tr>
@@ -459,7 +459,7 @@
 </table>
 <h2 id="sec-3">2. 第 1 批：<code>shared/utils</code> + <code>shared/constants</code></h2>
 <blockquote>
-<p><strong>第 1 批状态</strong>：✅ 已完成（2026-11-19）——新建 11 个 <code>shared/utils</code> 模块 + 6 个 <code>shared/constants</code> 模块（136 用例）；主进程 16 文件、渲染层 15 文件完成迁移；门禁 160 文件 / 3,015 用例、E2E 4 passed。迁移中发现并修复的真实缺陷与语义差异详见台账「公共接口归位（第 1 批）」记录。</p>
+<p><strong>第 1 批状态</strong>：✅ 已完成（2026-11-19）——新建 11 个 <code>shared/utils</code> 模块 + 6 个 <code>shared/constants</code> 模块（136 用例）；主进程 16 文件、渲染层 15 文件完成迁移；门禁 165 文件 / 3,074 用例、E2E 4 passed。迁移中发现并修复的真实缺陷与语义差异详见台账「公共接口归位（第 1 批）」记录。</p>
 </blockquote>
 <p><strong>目标</strong>：把跨进程重复的<strong>纯函数与常量</strong>集中到 <code>src/shared/</code>，消除 4 份 FNV/4 份 LRU/3 份 file:// URL/3 份转义等重复；全部保留 re-export 薄壳，既有引用零改动。</p>
 <h3 id="sub-1">2.1 纯函数归位（<code>src/shared/utils/</code>）</h3>
@@ -642,6 +642,9 @@
 </table>
 <p><strong>第 1 批验收</strong>：每项新增等价性单测（迁移前后同输入同输出）；全量门禁；<code>grep</code> 确认无残留本地副本；re-export 薄壳保留既有引用路径。</p>
 <h2 id="sec-4">3. 第 2 批：<code>shared/types</code>（零运行时，优先做）</h2>
+<blockquote>
+<p><strong>第 2 批状态</strong>：✅ 已完成（2026-11-19）——IPC 载荷契约（58/26/25 通道全覆盖 + 静态护栏）、CONFIG 映射（8 配置名，修正 2 处渲染层错误断言）、对话框契约（24/9 名称 + data 三方核对，清 isFolder 死字段）、文件树传输契约（FileItem.id/FileTreePayload）、主题类型族（28 项上移 + 分类清单统一）、其余契约（PlantUML/版本/备份/加密/编辑器/快捷链接）；门禁 165 文件 / 3,074 用例、E2E 4 passed。待产品确认项：主题明暗归属（baize-text/baize-starry/forest 实际配色与 UI 分组相反）。</p>
+</blockquote>
 <table>
 <thead>
 <tr>
