@@ -187,11 +187,13 @@ describe('主进程 DIALOG.AUTO_SAVE_CHANGED handler 注册与返回语义', () 
 
 describe('DIALOG.AUTO_SAVE_CHANGED 渲染层调用模式契约（源码级防回归）', () => {
     // ET-19 说明：这里保留 1 处源码级断言——渲染层「必须 invoke、不得退回 send」属于
-    // 跨端调用模式契约，行为化验证需要挂载 SystemSettingDialog（jsdom + electronAPI mock），
+    // 跨端调用模式契约，行为化验证需要挂载系统设置对话框（jsdom + electronAPI mock），
     // 成本远高于收益；主进程侧「注册成 handle 而非 on」已由上方用例通过 mock 注册表
     // 行为化断言，因此删除原文件里重复的 handlers.ts 源码级断言。
+    // 设置页拆分 P0：自动保存开关逻辑从 SystemSettingDialog.vue 迁至文件设置页签
+    // system-setting/FilePanel.vue（行为契约不变，仅源码位置变化）。
     const rendererSource = fs.readFileSync(
-        path.join(ROOT, 'src/renderer/src/components/dialogs/complex/SystemSettingDialog.vue'),
+        path.join(ROOT, 'src/renderer/src/components/dialogs/complex/system-setting/FilePanel.vue'),
         'utf-8'
     )
 

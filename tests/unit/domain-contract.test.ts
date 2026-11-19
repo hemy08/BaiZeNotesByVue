@@ -8,7 +8,7 @@
  *    且 main utils.ts / preload index.d.ts / HelpAboutDialog.vue 三处引用同一类型；
  * 3. 备份契约：ConfigBackupInfo / ConfigBackupState / ConfigBackupCommand 以
  *    shared/types/config.ts 为唯一真源，main config-backup.ts 与渲染层
- *    SystemSettingDialog.vue 统一引用（删除本地副本）；
+ *    system-setting/BackupPanel.vue 统一引用（删除本地副本）；
  * 4. 加解密契约：CryptoWireData（渲染层传输形态）与 CryptoResult / HashResult
  *    主进程/渲染层两端引用 shared，不再本地重复定义；
  * 5. SelectImageResult：main handlers.ts 与渲染层 BaiZeNotes.vue 引用 shared 同一结构；
@@ -76,14 +76,17 @@ const RENDERER_HMAC_GENERATOR = p(
     'Encryption',
     'HmacGenerator.vue'
 )
-const RENDERER_SYSTEM_DIALOG = p(
+// 设置页拆分 P0：备份/恢复读写逻辑从 SystemSettingDialog.vue 迁至备份页签
+// system-setting/BackupPanel.vue（shared 类型引用契约不变，仅源码位置变化）。
+const RENDERER_SYSTEM_BACKUP_PANEL = p(
     'src',
     'renderer',
     'src',
     'components',
     'dialogs',
     'complex',
-    'SystemSettingDialog.vue'
+    'system-setting',
+    'BackupPanel.vue'
 )
 const RENDERER_EDITOR_DIALOG = p(
     'src',
@@ -232,8 +235,8 @@ describe('配置备份契约（shared 唯一真源）', () => {
         expect(source).toContain('export function getBackupState(): ConfigBackupState')
     })
 
-    it('渲染层 SystemSettingDialog.vue 应引用 shared ConfigBackupState（无本地 assert 副本）', () => {
-        const source = readSource(RENDERER_SYSTEM_DIALOG)
+    it('渲染层备份页签 BackupPanel.vue 应引用 shared ConfigBackupState（无本地 assert 副本）', () => {
+        const source = readSource(RENDERER_SYSTEM_BACKUP_PANEL)
         expect(source).toContain('ConfigBackupState')
         expect(source).not.toContain('interface BackupState')
         expect(source).not.toContain('interface BackupListItem')

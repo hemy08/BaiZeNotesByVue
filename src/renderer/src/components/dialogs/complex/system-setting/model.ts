@@ -1,13 +1,16 @@
 /**
- * 系统设置对话框 —— 表单模型 / 侧边栏页签 / 读写映射纯函数
- * （结构优化第 5 批 5.5：从 SystemSettingDialog.vue 抽出的纯数据与纯函数子集）。
+ * 系统设置对话框 —— 表单模型 / 侧边栏页签 / 读写映射 / 脏标记与校验纯函数
+ * （结构优化第 5 批 5.5 抽出的纯数据与纯函数；设置页拆分 P0 继续承载纯逻辑）。
  *
- * 说明（为什么先做纯函数/常量抽取而不是按页签拆组件）：
- * 该对话框 4 个页签（general/file/appearance/backup）共用一份 `settings` 响应式状态与
- * 只读主题展示状态；按页签拆子组件需要额外 props/defineModel 管道，并把 260+ 行 scoped
- * 样式拆分/去 scope，单次改动 >300 行且存在 UI 回归风险，超出「低风险子集」范围。
- * 因此本轮先抽取与 DOM/状态无关的部分（类型、默认值、存储合并、语言归一化、页签常量），
- * 后续若确需按页签拆组件，可在此基础上继续。
+ * 与 DOM / 响应式状态无关的部分全部收敛到本文件：
+ * - 对话框字段类型与默认值映射（createDefaultSystemDialogSettings）；
+ * - 主进程配置读取合并（mergeStoredSystemSettings）与语言历史值归一化；
+ * - 侧边栏页签常量（SYSTEM_SETTING_SIDEBAR_ITEMS，顺序即 DOM 顺序）；
+ * - 设置页拆分 P0 新增：脏标记比较（isSystemSettingsDirty）与保存前校验
+ *   （validateDialogSettings，仅诊断日志用，不阻断保存——主进程 AS-4 才是强制校验）。
+ *
+ * 响应式表单状态见 `./useSystemSettingForm.ts`，4 个页签组件见同目录
+ * GeneralPanel / FilePanel / AppearancePanel / BackupPanel。
  */
 
 import { SYSTEM_SETTING_FALLBACK } from '../../../../../../shared/constants/system-defaults'
@@ -42,6 +45,9 @@ export const SYSTEM_SETTING_SIDEBAR_ITEMS = [
     { id: 'appearance', nameKey: 'dialogRenderer.systemSetting.sidebarAppearance', icon: '🎨' },
     { id: 'backup', nameKey: 'dialogRenderer.systemSetting.sidebarBackup', icon: '💾' }
 ] as const
+
+/** 侧边栏页签 id（壳层 activePanel 的类型真源，与 4 个 panel 组件一一对应） */
+export type SystemSettingPanelId = (typeof SYSTEM_SETTING_SIDEBAR_ITEMS)[number]['id']
 
 /** 备份/恢复复用既有 CONFIG 通道（configName = 'backup'），不新增 IPC 通道 */
 export const SYSTEM_BACKUP_CONFIG_NAME = 'backup'
@@ -113,4 +119,74 @@ export function normalizeLanguageSelection(value: unknown): string {
         .startsWith('en')
         ? 'en-US'
         : 'zh-CN'
+}
+
+/**
+ * 脏标记：当前草稿是否与「打开时加载值 / 上次保存值」不同（纯函数，字段级浅比较）。
+ *
+ * 设置页拆分 P0：草稿状态收敛到 useSystemSettingForm，由它维护 initialSettings；
+ * 本函数只做判断，不改变保存/取消行为（对话框当前不展示脏标记 UI，仅作契约测试锚点）。
+ */
+export function isSystemSettingsDirty(
+    current: SystemDialogSettings,
+    initial: SystemDialogSettings
+): boolean {
+    return (Object.keys(initial) as (keyof SystemDialogSettings)[]).some(
+        (key) => !Object.is(current[key], initial[key])
+    )
+}
+
+/**
+ * 数值字段的界面输入范围（与 4 个 panel 模板的 min/max 属性一一对应）。
+ *
+ * 注意：这是「界面可达范围」，不是主进程 AS-4 的强制校验范围——主进程对越界值
+ * 钳制/丢弃而非拒绝，因此本表只用于保存前诊断日志（见 validateDialogSettings）。
+ */
+export const SYSTEM_SETTING_NUMBER_LIMITS = {
+    autoSaveInterval: { min: 10, max: 300 },
+    recentFilesCount: { min: 5, max: 20 },
+    fontSize: { min: 12, max: 20 },
+    backupInterval: { min: 1, max: 72 },
+    backupCount: { min: 1, max: 10 }
+} as const
+
+/** 校验问题项（field 供定位，reason 仅写日志，不作 UI 文案） */
+export interface SystemSettingValidationIssue {
+    field: keyof SystemDialogSettings
+    reason: string
+}
+
+/**
+ * 保存前校验（纯函数，诊断用）：按界面输入范围与语言下拉枚举检查草稿。
+ *
+ * 返回空数组表示全部字段在界面可达范围内；非空时 useSystemSettingForm 只记录 warn
+ * 日志，**不阻断保存、不修改草稿值**——用户可见行为与拆分前一致（文本框 min/max 仅是
+ * 浏览器提示，拆分前越界值同样会提交），强制校验唯一真源仍是主进程 AS-4
+ * `config-schema.ts` 的 validateSystemConfig。
+ */
+export function validateDialogSettings(
+    settings: SystemDialogSettings
+): SystemSettingValidationIssue[] {
+    const issues: SystemSettingValidationIssue[] = []
+    for (const [field, limits] of Object.entries(SYSTEM_SETTING_NUMBER_LIMITS) as [
+        keyof typeof SYSTEM_SETTING_NUMBER_LIMITS,
+        { min: number; max: number }
+    ][]) {
+        const value = settings[field]
+        if (
+            typeof value !== 'number' ||
+            !Number.isFinite(value) ||
+            value < limits.min ||
+            value > limits.max
+        ) {
+            issues.push({
+                field,
+                reason: `期望 ${limits.min}~${limits.max}，实际 ${String(value)}`
+            })
+        }
+    }
+    if (settings.language !== 'zh-CN' && settings.language !== 'en-US') {
+        issues.push({ field: 'language', reason: `未知语言选项：${String(settings.language)}` })
+    }
+    return issues
 }

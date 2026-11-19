@@ -1,0 +1,138 @@
+/* ============================================================================
+ * 系统设置对话框 —— 页签 panel 公共样式（设置页拆分 P0 从 SystemSettingDialog.vue
+ * 的 260 行 scoped 样式中按归属拆分出的公共部分）
+ *
+ * 引入方式：4 个 panel 组件在 `<style scoped>` 内 `@import './settings-panel.css'`，
+ * 随组件 scoped 样式内联并加上各自 `[data-v-*]` 属性（与 PluginTools 的
+ * plugin-tools-theme.css 同一既有模式），因此不会泄漏到其它对话框的同名类；
+ * 各 panel 取值确有差异的样式保留在组件本地 scoped 块中。
+ *
+ * 主题：全部沿用 var(--...) 主题变量（28 套应用主题 + 明暗模式由变量驱动），
+ * 不引入任何硬编码色值——暗色/多主题视觉与拆分前一致。
+ * ========================================================================== */
+
+/* 页签面板容器（4 个 panel 的根节点，高度占满内容区） */
+.setting-panel {
+    height: 100%;
+}
+
+/* 面板标题区 */
+.panel-header {
+    margin-bottom: 24px;
+}
+
+.panel-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 8px;
+}
+
+.panel-header p {
+    font-size: 13px;
+    color: var(--secondary-text-color);
+}
+
+/* 设置分组卡片 */
+.settings-group {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+/* 分组标题（带底部分隔线） */
+.group-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* P1-FE-06：分组级提示（功能说明） */
+.group-hint {
+    font-size: 12px;
+    color: #d48806;
+    margin: -8px 0 12px;
+}
+
+/* 暂未实现的设置项：禁用态输入统一弱化展示 */
+.setting-checkbox:disabled,
+.setting-input:disabled,
+.setting-select:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+/* 单行设置项：左标签 + 右控件 */
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.setting-row:last-child {
+    margin-bottom: 0;
+}
+
+.setting-label {
+    font-size: 13px;
+    color: var(--text-color);
+}
+
+/* 文本 / 数值输入框 */
+.setting-input {
+    width: 200px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-color);
+    background: var(--bg-color);
+    transition: border-color 0.2s;
+}
+
+.setting-input:focus {
+    border-color: var(--accent-color);
+    outline: none;
+}
+
+/* 下拉选择框 */
+.setting-select {
+    width: 200px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-color);
+    background: var(--bg-color);
+    cursor: pointer;
+}
+
+/* 复选框 */
+.setting-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+/* 次要操作按钮（浏览目录 / 打开主题设置，文件页签 + 外观页签共用） */
+.browse-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--text-color);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.browse-btn:hover {
+    border-color: var(--accent-color);
+}

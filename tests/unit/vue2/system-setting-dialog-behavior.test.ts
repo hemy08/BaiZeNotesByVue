@@ -1,0 +1,413 @@
+// @vitest-environment jsdom
+/**
+ * 系统设置对话框行为基线（设置页拆分 P0：拆分前后等价的行为契约）
+ *
+ * 覆盖点（只断言用户可见行为 / 对外 emit / IPC 载荷，不依赖组件内部状态形状）：
+ * 1. 4 个页签 × 4 个面板的切换（active 类与 v-show 可见性同步）；
+ * 2. 草稿语义：修改不落盘、跨页签保留、取消丢弃并恢复打开时的值；
+ * 3. 保存语义：应用写入 18 字段完整快照并 emit apply（不关闭）；确定 apply + close；
+ *    取消不写配置；写入被主进程拒绝（返回 false）时不抛异常、不改变既有 emit 契约；
+ * 4. 加载语义：打开时读取 system 配置并把值映射到 4 个面板（含语言历史值归一化）；
+ *    加载失败回退默认值并记录错误；重复打开重新加载；
+ * 5. 保存/校验失败契约：自动保存 IPC 返回 ok:false 时记录错误且不改变开关状态。
+ *
+ * 该文件在「拆分前单文件」与「拆分后壳层 + 4 panel + composable」两种结构下都必须通过。
+ */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+
+import SystemSettingDialog from '@renderer/components/dialogs/complex/SystemSettingDialog.vue'
+import {
+    createDefaultSystemDialogSettings,
+    type SystemDialogSettings
+} from '@renderer/components/dialogs/complex/system-setting/model'
+
+const dialogMountOptions = { global: { stubs: { teleport: true } } }
+
+/** 面板在 DOM 中的固定顺序（与侧边栏 4 项 1:1，拆分前后一致） */
+const PANEL_ORDER = ['general', 'file', 'appearance', 'backup'] as const
+
+function mountDialog(visible = true): VueWrapper {
+    return mount(SystemSettingDialog, {
+        ...dialogMountOptions,
+        props: { visible }
+    }) as VueWrapper
+}
+
+/** 打开对话框（watch 仅在 visible 变为 true 时加载配置，故先挂载 false 再打开） */
+async function openDialog(wrapper: VueWrapper): Promise<void> {
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+}
+
+function panel(wrapper: VueWrapper, index: number) {
+    return wrapper.findAll('.setting-panel')[index]
+}
+
+/**
+ * 面板可见性断言。
+ *
+ * 不用 `isVisible()`：jsdom 对「挂载在游离 DOM 树中的元素」的 getComputedStyle 会缓存
+ * 首次结果（VTU isVisible 依赖 computed style），同一元素二次断言会读到旧值；这里直接
+ * 读取 v-show 写入的行内 display，拆分前后（v-show 保留在壳层）语义一致且稳定。
+ */
+function isPanelShown(wrapper: VueWrapper, index: number): boolean {
+    const style = panel(wrapper, index).attributes('style') ?? ''
+    return !style.includes('display: none')
+}
+
+async function switchPanel(wrapper: VueWrapper, index: number): Promise<void> {
+    await wrapper.findAll('.sidebar-item')[index].trigger('click')
+    await flushPromises()
+}
+
+/** 读取默认值（期望值真源与组件一致，避免测试里再抄一份 18 字段默认值） */
+function defaults(): SystemDialogSettings {
+    return createDefaultSystemDialogSettings()
+}
+
+describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
+    let configWrite: ReturnType<typeof vi.fn>
+    let configRead: ReturnType<typeof vi.fn>
+    let send: ReturnType<typeof vi.fn>
+    let invoke: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+        configWrite = vi.fn().mockResolvedValue(true)
+        configRead = vi
+            .fn()
+            .mockImplementation((name: string) =>
+                Promise.resolve(name === 'backup' ? { backups: [], latest: null } : {})
+            )
+        send = vi.fn()
+        invoke = vi.fn().mockResolvedValue({ ok: true })
+        vi.stubGlobal('api', { config: { write: configWrite, read: configRead } })
+        vi.stubGlobal('electron', { ipcRenderer: { send, invoke } })
+    })
+
+    afterEach(() => {
+        vi.unstubAllGlobals()
+        vi.restoreAllMocks()
+    })
+
+    it('渲染 4 个侧边栏项与 4 个面板，默认仅通用设置面板可见', () => {
+        const wrapper = mountDialog()
+        expect(wrapper.findAll('.sidebar-item')).toHaveLength(4)
+        expect(wrapper.findAll('.setting-panel')).toHaveLength(4)
+        expect(wrapper.findAll('.sidebar-item')[0].classes()).toContain('active')
+        expect(isPanelShown(wrapper, 0)).toBe(true)
+        for (const index of [1, 2, 3]) {
+            expect(isPanelShown(wrapper, index)).toBe(false)
+        }
+        wrapper.unmount()
+    })
+
+    it('点击侧边栏逐页签切换面板：active 类与可见性同步', async () => {
+        const wrapper = mountDialog()
+        for (const [index, id] of PANEL_ORDER.entries()) {
+            await switchPanel(wrapper, index)
+            const items = wrapper.findAll('.sidebar-item')
+            items.forEach((item, itemIndex) => {
+                expect(item.classes().includes('active'), `${id} 侧边栏项 active`).toBe(
+                    itemIndex === index
+                )
+            })
+            for (const other of PANEL_ORDER.keys()) {
+                expect(isPanelShown(wrapper, other), `切到 ${id} 后面板 ${other} 可见性`).toBe(
+                    other === index
+                )
+            }
+        }
+        wrapper.unmount()
+    })
+
+    it('草稿修改不落盘、跨页签保留（应用前 config.write 未被调用）', async () => {
+        const wrapper = mountDialog()
+
+        // 通用：语言下拉改为英文
+        await panel(wrapper, 0).find('select.setting-select').setValue('en-US')
+        // 文件：关闭自动保存（会触发运行时 IPC，但不写配置）
+        await switchPanel(wrapper, 1)
+        await panel(wrapper, 1).findAll('.setting-checkbox')[0].setValue(false)
+        // 外观：字体大小改为 16
+        await switchPanel(wrapper, 2)
+        await panel(wrapper, 2).find('input[type="number"]').setValue('16')
+        // 备份：保留数量改为 3
+        await switchPanel(wrapper, 3)
+        await panel(wrapper, 3).find('input[max="10"]').setValue('3')
+
+        expect(configWrite).not.toHaveBeenCalled()
+
+        // 切回各面板，草稿值仍在（共享同一份草稿状态，而非各面板各存一份）
+        await switchPanel(wrapper, 0)
+        expect(
+            (panel(wrapper, 0).find('select.setting-select').element as HTMLSelectElement).value
+        ).toBe('en-US')
+        await switchPanel(wrapper, 1)
+        expect(
+            (panel(wrapper, 1).findAll('.setting-checkbox')[0].element as HTMLInputElement).checked
+        ).toBe(false)
+        await switchPanel(wrapper, 2)
+        expect(
+            (panel(wrapper, 2).find('input[type="number"]').element as HTMLInputElement).value
+        ).toBe('16')
+        await switchPanel(wrapper, 3)
+        expect((panel(wrapper, 3).find('input[max="10"]').element as HTMLInputElement).value).toBe(
+            '3'
+        )
+
+        wrapper.unmount()
+    })
+
+    it('应用：写入 18 字段完整快照并 emit apply，且不关闭对话框', async () => {
+        const wrapper = mountDialog()
+        // 通用：语言 en-US + 允许远程图片（隐私开关）
+        await panel(wrapper, 0).find('select.setting-select').setValue('en-US')
+        const generalCheckboxes = panel(wrapper, 0).findAll('.setting-checkbox')
+        await generalCheckboxes[5].setValue(true)
+        // 外观：字体大小 16
+        await switchPanel(wrapper, 2)
+        await panel(wrapper, 2).find('input[type="number"]').setValue('16')
+        // 备份：保留数量 3
+        await switchPanel(wrapper, 3)
+        await panel(wrapper, 3).find('input[max="10"]').setValue('3')
+
+        await wrapper.find('.btn-apply').trigger('click')
+        await flushPromises()
+
+        const expected: SystemDialogSettings = {
+            ...defaults(),
+            language: 'en-US',
+            allowRemoteImages: true,
+            fontSize: 16,
+            backupCount: 3
+        }
+        expect(configWrite).toHaveBeenCalledTimes(1)
+        expect(configWrite).toHaveBeenCalledWith('system', expected)
+        // 快照字段既不多也不少（不把主进程内部字段带入提交载荷）
+        expect(Object.keys(configWrite.mock.calls[0][1]).sort()).toEqual(
+            Object.keys(expected).sort()
+        )
+        expect(wrapper.emitted('apply')).toHaveLength(1)
+        expect(wrapper.emitted('apply')![0][0]).toEqual(expected)
+        // 「应用」只保存，不关闭
+        expect(wrapper.emitted('close')).toBeUndefined()
+
+        wrapper.unmount()
+    })
+
+    it('确定：写入配置后同时 emit apply 与 close', async () => {
+        const wrapper = mountDialog()
+        await wrapper.find('.btn-confirm').trigger('click')
+        await flushPromises()
+
+        expect(configWrite).toHaveBeenCalledTimes(1)
+        expect(configWrite).toHaveBeenCalledWith(
+            'system',
+            expect.objectContaining({ language: 'zh-CN' })
+        )
+        expect(wrapper.emitted('apply')).toHaveLength(1)
+        expect(wrapper.emitted('close')).toHaveLength(1)
+
+        wrapper.unmount()
+    })
+
+    it('取消：丢弃草稿、不写配置、恢复打开时的值并 emit close', async () => {
+        const wrapper = mountDialog()
+        await panel(wrapper, 0).find('select.setting-select').setValue('en-US')
+        await wrapper.find('.btn-cancel').trigger('click')
+        await flushPromises()
+
+        expect(configWrite).not.toHaveBeenCalled()
+        expect(wrapper.emitted('close')).toHaveLength(1)
+        expect(
+            (panel(wrapper, 0).find('select.setting-select').element as HTMLSelectElement).value
+        ).toBe('zh-CN')
+
+        wrapper.unmount()
+    })
+
+    it('打开时加载 system 配置并映射到 4 个面板（含语言历史值归一化）', async () => {
+        configRead.mockImplementation((name: string) => {
+            if (name === 'backup') {
+                return Promise.resolve({ backups: [], latest: null })
+            }
+            if (name === 'theme') {
+                return Promise.resolve({ currentTheme: 'dark' })
+            }
+            return Promise.resolve({
+                language: 'en-us',
+                fontSize: 16,
+                autoSaveEnabled: false,
+                autoSaveInterval: 120,
+                recentFilesCount: 12,
+                defaultFilePath: 'D:\\notes',
+                enableAutoBackup: true,
+                backupInterval: 12,
+                backupCount: 3,
+                allowRemoteImages: true,
+                useSystemTheme: true
+            })
+        })
+        invoke.mockImplementation((channel: string) =>
+            Promise.resolve(
+                channel === 'baize:theme:get-all'
+                    ? [{ type: 'dark', styles: { name: '深邃夜空' } }]
+                    : { ok: true }
+            )
+        )
+
+        const wrapper = mountDialog(false)
+        await openDialog(wrapper)
+
+        // 通用面板：语言值归一化为下拉选项值，隐私开关加载
+        expect(
+            (panel(wrapper, 0).find('select.setting-select').element as HTMLSelectElement).value
+        ).toBe('en-US')
+        expect(
+            (panel(wrapper, 0).findAll('.setting-checkbox')[5].element as HTMLInputElement).checked
+        ).toBe(true)
+
+        // 文件面板：自动保存关闭、最近文件数量与默认路径加载
+        await switchPanel(wrapper, 1)
+        expect(
+            (panel(wrapper, 1).findAll('.setting-checkbox')[0].element as HTMLInputElement).checked
+        ).toBe(false)
+        expect((panel(wrapper, 1).find('input[min="5"]').element as HTMLInputElement).value).toBe(
+            '12'
+        )
+        expect(
+            (panel(wrapper, 1).find('.path-input-group input').element as HTMLInputElement).value
+        ).toBe('D:\\notes')
+
+        // 外观面板：只读主题显示名、跟随系统主题、字体大小
+        await switchPanel(wrapper, 2)
+        expect(panel(wrapper, 2).find('.theme-current-name').text()).toBe('深邃夜空')
+        expect(
+            (panel(wrapper, 2).find('.setting-checkbox').element as HTMLInputElement).checked
+        ).toBe(true)
+        expect(
+            (panel(wrapper, 2).find('input[type="number"]').element as HTMLInputElement).value
+        ).toBe('16')
+
+        // 备份面板：自动备份、间隔、保留数量
+        await switchPanel(wrapper, 3)
+        expect(
+            (panel(wrapper, 3).find('.setting-checkbox').element as HTMLInputElement).checked
+        ).toBe(true)
+        expect((panel(wrapper, 3).find('input[max="72"]').element as HTMLInputElement).value).toBe(
+            '12'
+        )
+        expect((panel(wrapper, 3).find('input[max="10"]').element as HTMLInputElement).value).toBe(
+            '3'
+        )
+
+        wrapper.unmount()
+    })
+
+    it('加载后取消恢复到「打开时加载值」而非硬编码默认值', async () => {
+        configRead.mockImplementation((name: string) =>
+            Promise.resolve(name === 'backup' ? { backups: [], latest: null } : { fontSize: 16 })
+        )
+        const wrapper = mountDialog(false)
+        await openDialog(wrapper)
+        await switchPanel(wrapper, 2)
+        expect(
+            (panel(wrapper, 2).find('input[type="number"]').element as HTMLInputElement).value
+        ).toBe('16')
+
+        await panel(wrapper, 2).find('input[type="number"]').setValue('18')
+        await wrapper.find('.btn-cancel').trigger('click')
+        await flushPromises()
+
+        expect(
+            (panel(wrapper, 2).find('input[type="number"]').element as HTMLInputElement).value
+        ).toBe('16')
+        wrapper.unmount()
+    })
+
+    it('重新打开时重新加载配置（visible false → true）', async () => {
+        configRead.mockImplementation((name: string) =>
+            Promise.resolve(name === 'backup' ? { backups: [], latest: null } : { fontSize: 15 })
+        )
+        const wrapper = mountDialog(false)
+        await openDialog(wrapper)
+        await switchPanel(wrapper, 2)
+        expect(
+            (panel(wrapper, 2).find('input[type="number"]').element as HTMLInputElement).value
+        ).toBe('15')
+
+        await wrapper.setProps({ visible: false })
+        configRead.mockImplementation((name: string) =>
+            Promise.resolve(name === 'backup' ? { backups: [], latest: null } : { fontSize: 19 })
+        )
+        await openDialog(wrapper)
+        expect(
+            (panel(wrapper, 2).find('input[type="number"]').element as HTMLInputElement).value
+        ).toBe('19')
+
+        wrapper.unmount()
+    })
+
+    it('加载失败：回退默认值并记录错误，不崩溃', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        configRead.mockImplementation((name: string) =>
+            name === 'system'
+                ? Promise.reject(new Error('配置不可读'))
+                : Promise.resolve({ backups: [], latest: null })
+        )
+        const wrapper = mountDialog(false)
+        await openDialog(wrapper)
+
+        expect(errorSpy).toHaveBeenCalledWith('加载系统设置失败:', expect.any(Error))
+        expect(
+            (panel(wrapper, 0).find('select.setting-select').element as HTMLSelectElement).value
+        ).toBe('zh-CN')
+        expect(wrapper.find('.setting-panel').exists()).toBe(true)
+        wrapper.unmount()
+    })
+
+    // 校验失败契约（渲染层）：主进程 config:write 经 AS-4 config-schema 校验拒绝时返回
+    // false（而非抛异常）。拆分前渲染层即为「不等待、不拦截」的写入语义，此处锁定该契约，
+    // 防止拆分时误加 渲染层校验拦截 导致「点确定关不掉 / 不 emit apply」的行为变化。
+    it('保存被主进程拒绝（write 返回 false）时：不抛异常、仍按既有契约 emit apply/close', async () => {
+        configWrite.mockResolvedValue(false)
+        const wrapper = mountDialog()
+
+        await wrapper.find('.btn-apply').trigger('click')
+        await flushPromises()
+        expect(wrapper.emitted('apply')).toHaveLength(1)
+        expect(wrapper.emitted('close')).toBeUndefined()
+
+        await wrapper.find('.btn-confirm').trigger('click')
+        await flushPromises()
+        expect(wrapper.emitted('apply')).toHaveLength(2)
+        expect(wrapper.emitted('close')).toHaveLength(1)
+
+        wrapper.unmount()
+    })
+
+    // 校验失败契约（自动保存运行时通道）：主进程返回 { ok:false } 时渲染层记录错误，
+    // 不抛出、不回滚用户操作（开关保持操作后的状态）。
+    it('自动保存 IPC 返回 ok:false 时记录错误且不回滚开关', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        invoke.mockResolvedValueOnce({ ok: false })
+        const wrapper = mountDialog()
+        await switchPanel(wrapper, 1)
+        const autoSave = panel(wrapper, 1).findAll('.setting-checkbox')[0]
+        await autoSave.setValue(false)
+        await flushPromises()
+
+        expect(invoke).toHaveBeenCalledWith('baize:setting:auto-save-changed', {
+            autoSaveEnabled: false,
+            autoSaveInterval: 60
+        })
+        expect(errorSpy).toHaveBeenCalledWith(
+            '同步自动保存设置失败: 主进程返回失败标志',
+            expect.objectContaining({ ok: false })
+        )
+        expect((autoSave.element as HTMLInputElement).checked).toBe(false)
+
+        wrapper.unmount()
+    })
+})
