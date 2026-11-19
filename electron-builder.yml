@@ -5,6 +5,14 @@ asar: true
 # 2026-11-18（遗留清单 #14）：显式声明压缩策略（默认 normal；maximum 进一步压缩安装包，
 # 首次解压稍慢但体积更小；如需更快安装可改为 normal/store）
 compression: maximum
+# P0 安装包瘦身（2026-11-19）：Electron 运行时自带 55 个 locale 语言包
+# （win-unpacked/locales/*.pak，实测合计约 46.6 MiB），NSIS/portable 打包时全部随包分发。
+# 应用 UI 词典只有 zh-CN / en-US 两套（src/shared/i18n/messages），其余 53 种语言
+# 运行时不可达，属死重。按 electron-builder 官方 electronLanguages 配置裁剪；
+# 构建后由 build/check-bundle-budget.js 断言 locales 目录仅保留这 2 个 .pak。
+electronLanguages:
+    - zh-CN
+    - en-US
 directories:
     buildResources: build
     # M7 产物治理（第 5 批）：安装包/解包目录统一收敛到 out/build/dist（默认 dist/ 已废弃）。

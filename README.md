@@ -488,9 +488,9 @@ BaiZeNotesByVue/
 |   单元测试   |               3,201 个用例               | 172 个测试文件（vitest，全通过）                                                                                                                                                                     |
 |   声明依赖   |                  50 个                   | 生产依赖 11 + 开发依赖 39（package.json 实测）                                                                                                                                                       |
 |   依赖审计   |                  0 漏洞                  | 生产与全量依赖均为 0 漏洞（2026-11-19 依赖安全治理实测，官方 registry，828 依赖；electron 43.8.12 + electron-builder 26.18.1 + minimatch override 11.0.9；Dependabot 254 条告警全量分类 0 条可复现） |
-|  安装包体积  |                ≈118.4 MiB                | NSIS 安装包（app.asar 50.11 MiB；2026-11-19 构建实测；十进制 124.17 MB）                                                                                                                             |
-|  主进程产物  |                ≈10.50 MiB                | `out/build/main/index.js`（含内联 jsdom；2026-11-19 构建实测 11,007,119 B）                                                                                                                          |
-| 主渲染 chunk | ≈127 KB（入口）+ ≈9,889 KB（主界面异步） | 入口 `out/build/renderer/assets/index-*.js`（127,070 B）；主界面异步 chunk `BaiZeNotes-*.js`（含 Monaco/highlight.js/KaTeX，按需加载；2026-11-19 17:55 构建实测）                                    |
+|  安装包体积  |                ≈110.0 MiB                | NSIS 安装包 109.98 MiB / 便携版 99.83 MiB（app.asar 39.31 MiB；2026-11-19 P0 构建实测；十进制 115.32 MB / 104.68 MB）                                                                                |
+|  主进程产物  |                ≈0.60 MiB                 | `out/build/main/index.js`（634,114 B；2026-11-19 P0 构建实测；另有 auto-updater 分块 10,558 B）                                                                                                      |
+| 主渲染 chunk | 123.4 KiB（入口）+ 321.8 KiB（主界面壳） | 入口 `index-*.js`（126,396 B）；主界面壳 `BaiZeNotes-*.js`（329,538 B）；Monaco 异步 `editor.api-*.js` 4.82 MiB / `MarkdownMonacoEditor-*.js` 2.10 MiB（按需加载；2026-11-19 P0 实测）               |
 
 ### 代码规模分布（实测）
 

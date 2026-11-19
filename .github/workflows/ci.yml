@@ -10,6 +10,12 @@ name: CI
 # - 使用 @playwright/test 直接驱动 node_modules/electron，无需 `npx playwright install`
 #   下载浏览器（Electron 二进制由 npm ci 的 electron postinstall 下载）
 # - e2e 与 quality-gate 相互独立：任一失败都会在 PR 检查中单独可见，不改变原门禁结构
+#
+# 2026-11-19（P0 安装包瘦身 + CI 体积预算）：新增独立 `bundle-budget` job（与 quality-gate/e2e 并行）
+# - 体积预算断言的是真实安装包产物（NSIS/portable/asar），不能只跑 electron-vite build，
+#   因此该 job 先执行完整 `npm run build:win:all`，再运行 `npm run budget:check`
+#   （阈值与断言逻辑见 build/check-bundle-budget.js，基线数据见 out/tool-results/p0-size.md）
+# - 与 e2e job 的 electron-vite build 相互独立（各自 runner，不共享工作区）
 on:
     push:
         branches: [main, master]
@@ -93,3 +99,28 @@ jobs:
                       playwright-report/
                       test-results/
                   retention-days: 7
+
+    bundle-budget:
+        name: Bundle budget (packaged size)
+        runs-on: windows-latest
+        timeout-minutes: 40
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            # P0 体积预算检查对象是真实安装包 / app.asar（不是源码体积），必须先完整打包：
+            # electron-vite build ×1 + electron-builder ×2（NSIS + portable）
+            - name: Build Windows artifacts (NSIS + portable)
+              run: npm run build:win:all
+
+            - name: Check bundle budget
+              run: npm run budget:check
