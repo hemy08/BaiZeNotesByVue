@@ -81,6 +81,7 @@ const emit = defineEmits<{
 .file-viewer-shell {
     width: 100%;
     height: 100%;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     background-color: var(--theme-background-color, #ffffff);
@@ -150,6 +151,8 @@ const emit = defineEmits<{
 .file-viewer-content-wrapper {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-height: 0;
     height: 100%;
     overflow: hidden;
 }

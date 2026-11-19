@@ -62,6 +62,7 @@
                  安全约束：allow-scripts 与 allow-same-origin 绝不可同时出现——该组合
                  可让 srcdoc 内容以父窗口同源身份执行脚本并直接访问父窗口 Electron API。 -->
             <iframe
+                ref="iframeRef"
                 :srcdoc="htmlContent ?? ''"
                 class="html-iframe"
                 sandbox="allow-same-origin"
@@ -72,6 +73,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import FileViewerShell from './FileViewerShell.vue'
 import { t } from '../../common/i18n'
 import { IPC } from '../../../../shared/ipc-channels'
@@ -79,6 +81,9 @@ import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { withBaseHref } from './html-view-utils'
 import { useFileViewerState } from '../../composables/useFileViewerState'
 import type { FileLoadContext } from '../../composables/useFileViewerState'
+
+/** iframe 元素引用（用于锚点链接守卫：在 iframe 文档上做事件委托） */
+const iframeRef = ref<HTMLIFrameElement | null>(null)
 
 /**
  * 加载 HTML 文件内容（IPC 读取 + 注入 base href）
@@ -140,13 +145,77 @@ function openInBrowser(): void {
  */
 function onIframeLoad(): void {
     finishLoading()
+    bindIframeAnchorGuard()
+}
+
+/**
+ * 2026-11-19（用户反馈修复）：iframe 内 fragment 锚点导航守卫。
+ *
+ * 背景（两个真实问题）：
+ * 1. 报告页左侧悬浮目录（`.toc`）链接均为 `#sec-N`；在 iframe 中点击时 Chromium 会把
+ *    目标「scroll into view」并连带滚动**父文档**滚动容器——经顶部导航跳转到 file://
+ *    文档后再点击，整个工作区上移、被菜单栏遮挡；
+ * 2. HTML 查看器以 srcdoc + 注入 `<base>` 渲染，`#anchor` 可能被 base 解析为 file://
+ *    文档导航（sandbox 下导航失败 → iframe 空白）。
+ *
+ * 修复：父页面同源访问 iframe 文档做事件委托，拦截「纯 fragment」链接默认导航，改为
+ * **仅滚动 iframe 内部**（用 scrollTo，避免 scrollIntoView 冒泡滚动父级滚动链）；
+ * 跨文档链接（顶部导航）保持默认行为。iframe 每次导航后 load 事件重新绑定，
+ * 文档级标记防止重复绑定。
+ */
+function bindIframeAnchorGuard(): void {
+    const iframe = iframeRef.value
+    const doc = iframe?.contentDocument
+    if (!doc) {
+        return
+    }
+    const markedDoc = doc as Document & { __baizeAnchorGuardBound?: boolean }
+    if (markedDoc.__baizeAnchorGuardBound) {
+        return
+    }
+    markedDoc.__baizeAnchorGuardBound = true
+    doc.addEventListener(
+        'click',
+        (event: MouseEvent) => {
+            const target = event.target as Element | null
+            const link = target?.closest?.('a')
+            if (!link) {
+                return
+            }
+            const href = link.getAttribute('href') ?? ''
+            if (!href.startsWith('#')) {
+                return
+            }
+            event.preventDefault()
+            const win = doc.defaultView
+            if (!win || href.length <= 1) {
+                return
+            }
+            let id = href.slice(1)
+            try {
+                id = decodeURIComponent(id)
+            } catch {
+                // 非法编码按原文查找
+            }
+            const anchor = doc.getElementById(id)
+            if (!anchor) {
+                return
+            }
+            // 仅滚动 iframe 内部（报告页顶部导航高 72px，预留偏移）
+            const top = anchor.getBoundingClientRect().top + win.scrollY - 72
+            win.scrollTo({ top: Math.max(0, top) })
+        },
+        true
+    )
 }
 </script>
 
 <style scoped>
-/* HTML 查看器特有：iframe 占满剩余空间 */
+/* HTML 查看器特有：iframe 占满剩余空间；min-height:0 允许 flex 收缩，
+   由 iframe 文档自身滚动（避免内容撑动外层布局） */
 .html-iframe {
     flex: 1;
+    min-height: 0;
     width: 100%;
     border: none;
     background-color: #ffffff;

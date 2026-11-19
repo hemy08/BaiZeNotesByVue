@@ -386,6 +386,7 @@ const {
    使 overflow:auto 能真正横向/纵向滚动（flex 居中会让溢出部分无法滚动到） */
 .pdf-canvas-scroll {
     flex: 1;
+    min-height: 0;
     overflow: auto;
     padding: 16px;
     background-color: var(--theme-background-color, #f0f0f0);

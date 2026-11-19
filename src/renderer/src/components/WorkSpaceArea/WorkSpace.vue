@@ -385,6 +385,20 @@ onBeforeUnmount(() => {
     background-color: var(--theme-background-color, #ffffff);
 }
 
+/* 2026-11-19（UI 实测修复）：HTML/PDF 查看器容器此前缺少布局样式（md/plugin/tool 均有），
+   导致容器高度不受控：iframe 内文档变化或锚点导航时内容可撑动布局，出现"显示区域上移、
+   被菜单栏遮挡"。这里与其它容器对齐并固定高度/裁剪溢出，保证查看器内容只在自身区域滚动。 */
+#html-containers,
+#pdf-containers {
+    display: flex;
+    flex-direction: column;
+    float: left;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    background-color: var(--theme-background-color, #ffffff);
+}
+
 #plugin-containers {
     display: flex;
     flex-direction: column;
