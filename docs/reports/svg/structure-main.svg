@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 820" width="1100" height="820" role="img" aria-label="主进程分层与依赖方向">
+  <defs>
+    <marker id="m-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="m-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1f2328; }
+      .title { font-size: 23px; font-weight: 700; }
+      .sub { font-size: 13.5px; fill: #475569; }
+      .legend { font-size: 12.5px; fill: #475569; }
+      .layer { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.6; rx: 12; }
+      .lbl { font-size: 14px; font-weight: 700; fill: #334155; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.3; rx: 8; }
+      .ctitle { font-size: 14.5px; font-weight: 700; fill: #1e3a8a; }
+      .cdesc { font-size: 13px; fill: #334155; }
+      .hit { fill: #fef2f2; stroke: #dc2626; stroke-width: 1.5; rx: 10; }
+      .hitlbl { font-size: 14.5px; font-weight: 700; fill: #b91c1c; }
+      .flow { stroke: #2563eb; stroke-width: 2.2; fill: none; }
+      .revedge { stroke: #dc2626; stroke-width: 1.8; fill: none; stroke-dasharray: 6 4; }
+      .sect { font-size: 12.5px; fill: #475569; }
+    </style>
+  </defs>
+
+  <text x="16" y="32" class="title">图 2 · 主进程分层与依赖方向</text>
+  <text x="16" y="54" class="sub">理想依赖方向自上而下：入口 → IPC 编排 → 配置 → 业务内核 → 共享真源</text>
+  <line x1="640" y1="48" x2="666" y2="48" class="flow" marker-end="url(#m-ar)"/>
+  <text x="674" y="52" class="legend">正向依赖</text>
+  <line x1="790" y1="48" x2="816" y2="48" class="revedge" marker-end="url(#m-arr)"/>
+  <text x="824" y="52" class="legend">反向依赖（结构债）</text>
+
+  <!-- 主列图层 -->
+  <rect x="16" y="82" width="744" height="94" class="layer"/>
+  <text x="30" y="108" class="lbl">L0</text><text x="30" y="126" class="lbl">入口</text>
+  <rect x="130" y="94" width="614" height="68" class="card"/>
+  <text x="144" y="116" class="ctitle">index.ts：单实例锁 → whenReady</text>
+  <text x="144" y="136" class="cdesc">注册 IPC · 创建窗口 · 托盘 / 更新 / 备份 · close / before-quit / window-all-closed</text>
+  <text x="144" y="155" class="cdesc">关闭与退出：flush 编辑内容（2s 超时）→ cleanupApp 九步清理</text>
+
+  <rect x="16" y="188" width="744" height="140" class="layer"/>
+  <text x="30" y="214" class="lbl">L1</text><text x="30" y="232" class="lbl">编排</text>
+  <rect x="130" y="200" width="140" height="114" class="card"/>
+  <text x="142" y="224" class="ctitle">handlers.ts</text>
+  <text x="142" y="246" class="cdesc">窗口 / 菜单动作</text>
+  <text x="142" y="266" class="cdesc">欢迎页 / 最近文件</text>
+  <rect x="282" y="200" width="140" height="114" class="card"/>
+  <text x="294" y="224" class="ctitle">menu-*.ts</text>
+  <text x="294" y="246" class="cdesc">主进程 handler 树</text>
+  <text x="294" y="266" class="cdesc">与渲染层拦截分工</text>
+  <rect x="434" y="200" width="140" height="114" class="card"/>
+  <text x="446" y="224" class="ctitle">注册台账</text>
+  <text x="446" y="246" class="cdesc">ipc-listener-manager</text>
+  <text x="446" y="266" class="cdesc">persistent / 清理</text>
+  <rect x="586" y="200" width="158" height="114" class="card"/>
+  <text x="598" y="224" class="ctitle">窗口外设</text>
+  <text x="598" y="246" class="cdesc">dialogs：JSDOM 对话框</text>
+  <text x="598" y="266" class="cdesc">renders：PlantUML 隐藏窗</text>
+
+  <rect x="16" y="340" width="744" height="112" class="layer"/>
+  <text x="30" y="366" class="lbl">L2</text><text x="30" y="384" class="lbl">配置</text>
+  <rect x="130" y="352" width="296" height="86" class="card"/>
+  <text x="144" y="376" class="ctitle">config-manager</text>
+  <text x="144" y="398" class="cdesc">CONFIG.READ / WRITE 路由</text>
+  <text x="144" y="418" class="cdesc">校验 · 迁移 · 副作用 + 广播</text>
+  <rect x="438" y="352" width="306" height="86" class="card"/>
+  <text x="452" y="376" class="ctitle">electron-store 单真源 × 5</text>
+  <text x="452" y="398" class="cdesc">system / editor / theme / quick-links / registry</text>
+  <text x="452" y="418" class="cdesc">28 套应用主题 · 54 套 Monaco 主题</text>
+
+  <rect x="16" y="464" width="744" height="152" class="layer"/>
+  <text x="30" y="490" class="lbl">L3</text><text x="30" y="508" class="lbl">内核</text>
+  <rect x="130" y="476" width="192" height="126" class="card"/>
+  <text x="142" y="500" class="ctitle">文件与编辑内核</text>
+  <text x="142" y="522" class="cdesc">file-operations</text>
+  <text x="142" y="542" class="cdesc">directory-tree · fs.watch</text>
+  <text x="142" y="562" class="cdesc">auto-save · encoding</text>
+  <text x="142" y="582" class="cdesc">import / export</text>
+  <rect x="334" y="476" width="192" height="126" class="card"/>
+  <text x="346" y="500" class="ctitle">安全与状态</text>
+  <text x="346" y="522" class="cdesc">ipc-security / security</text>
+  <text x="346" y="542" class="cdesc">sender 校验 · 路径守卫</text>
+  <text x="346" y="562" class="cdesc">app-state：脏标记 / 退出标志</text>
+  <rect x="538" y="476" width="206" height="126" class="card"/>
+  <text x="550" y="500" class="ctitle">基础设施</text>
+  <text x="550" y="522" class="cdesc">logger · tray · auto-backup</text>
+  <text x="550" y="542" class="cdesc">auto-updater · window-bounds</text>
+  <text x="550" y="562" class="cdesc">i18n（tMain）· 快捷键</text>
+
+  <rect x="16" y="628" width="744" height="90" class="layer"/>
+  <text x="30" y="654" class="lbl">L4</text><text x="30" y="672" class="lbl">共享</text>
+  <rect x="130" y="640" width="614" height="64" class="card"/>
+  <text x="144" y="662" class="ctitle">shared 单一真源</text>
+  <text x="144" y="684" class="cdesc">ipc-channels（92 通道 / 17 组）· types（9 领域）· i18n（12 命名空间）· constants</text>
+
+  <!-- 右侧：preload 桥 -->
+  <rect x="776" y="82" width="308" height="268" class="layer"/>
+  <text x="792" y="108" class="lbl">preload 桥（受信边界）</text>
+  <rect x="790" y="120" width="280" height="64" class="card"/>
+  <text x="802" y="142" class="ctitle">index.ts（主窗口）</text>
+  <text x="802" y="162" class="cdesc">58 send + 25 on + window.api × 6</text>
+  <rect x="790" y="194" width="280" height="64" class="card"/>
+  <text x="802" y="216" class="ctitle">dialog.ts（对话框 / 隐藏窗）</text>
+  <text x="802" y="236" class="cdesc">2 send + 1 on + shell 白名单校验</text>
+  <text x="792" y="284" class="sect">sandbox + contextIsolation</text>
+  <text x="792" y="304" class="sect">→ contextBridge 注入</text>
+  <text x="792" y="324" class="sect">单文件产物（isolatedEntries）</text>
+  <text x="792" y="344" class="sect">白名单为手工清单，与 92 常量无对应</text>
+
+  <!-- 右侧：反向依赖 -->
+  <rect x="776" y="370" width="308" height="226" class="hit"/>
+  <text x="792" y="398" class="hitlbl">反向依赖（结构债 H1）</text>
+  <text x="792" y="424" class="ctitle" style="fill:#b91c1c">config → utils</text>
+  <text x="792" y="446" class="cdesc">app-paths / file-state-store</text>
+  <text x="792" y="466" class="cdesc">theme-config / ipc-security</text>
+  <text x="792" y="492" class="ctitle" style="fill:#b91c1c">utils → config</text>
+  <text x="792" y="514" class="cdesc">auto-backup / i18n / utils.ts</text>
+  <text x="792" y="544" class="sect">无自动环检测，靠注释与动态 import 维持顺序</text>
+  <text x="792" y="566" class="sect">建议：dependency-cruiser 方向矩阵 + 回调注入</text>
+
+  <!-- 依赖箭头 -->
+  <line x1="390" y1="176" x2="390" y2="188" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="390" y1="328" x2="390" y2="340" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="390" y1="452" x2="390" y2="464" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="390" y1="616" x2="390" y2="628" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="760" y1="220" x2="776" y2="220" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="776" y1="250" x2="760" y2="250" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="760" y1="452" x2="776" y2="452" class="revedge" marker-end="url(#m-arr)"/>
+
+  <!-- 底部注释 -->
+  <rect x="16" y="736" width="1068" height="66" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
+  <text x="32" y="760" class="sect">口径：92 通道 = 67 个主进程注册（全部套 withSenderCheck 发送方校验）+ 25 个主进程广播；窗口类型含主窗口 / HTML 对话框 / PlantUML 隐藏窗。</text>
+  <text x="32" y="784" class="sect">红线为真实存在的反向依赖：新增静态 import 可能引入真环（CJS 半初始化 undefined），构建与单测难以发现，是当前首要结构债。</text>
+</svg>

@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>代码整体结构分析报告</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+      <a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">0. 摘要与关键结论</a>
+    <a class="toc-l2" href="#sec-2">1. 仓库全景</a>
+    <a class="toc-l2" href="#sec-3">2. 进程架构</a>
+    <a class="toc-l2" href="#sec-4">3. 主进程结构</a>
+    <a class="toc-l2" href="#sec-5">4. 渲染层结构</a>
+    <a class="toc-l2" href="#sec-6">5. 共享层结构</a>
+    <a class="toc-l2" href="#sec-7">6. 关键数据流</a>
+    <a class="toc-l2" href="#sec-8">7. 构建、测试与发布工程</a>
+    <a class="toc-l2" href="#sec-9">8. 结构量化与热点</a>
+    <a class="toc-l2" href="#sec-10">9. 结构评估与改进建议</a>
+    <a class="toc-l3" href="#sub-1">9.1 设计优点</a>
+    <a class="toc-l3" href="#sub-2">9.2 结构风险清单（合并三份分析）</a>
+    <a class="toc-l3" href="#sub-3">9.3 改进建议（按优先级，不要求实施）</a>
+    <a class="toc-l2" href="#sec-11">10. 结论</a>
+    <a class="toc-l2" href="#sec-12">附录 A：证据与统计索引</a>
+    <a class="toc-l2" href="#sec-13">附录 B：统计口径说明</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>代码整体结构分析报告</h1>
+    <p>报告归档 · 01-检查与扫描</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>白泽笔记代码整体结构分析报告</h1>
+<blockquote>
+<p><strong>性质</strong>：结构分析（非缺陷清单）——对 v1.3.6 代码库做一次自顶向下的整体结构切片，梳理进程边界、模块分层、数据流、工程链路与结构风险。
+<strong>分析时点</strong>：2026-11-19（v1.3.6，git HEAD <code>3ea3a51</code>，工作区干净）。规模与门禁数字均为当时实测；历史报告的旧口径不适用于本报告。
+<strong>方法</strong>：3 个并行只读分析代理分别深读「主进程 + preload」「渲染层」「共享层 + 构建/测试/文档」，根代理汇总并出图。原始分析记录见 <code>out/tool-results/struct-main.md</code>、<code>struct-renderer.md</code>、<code>struct-cross.md</code>。</p>
+</blockquote>
+<h2 id="sec-1">0. 摘要与关键结论</h2>
+<p><strong>一句话</strong>：白泽笔记是一个「Electron 三进程 + shared 单真源 + 自研轻量基础设施」的本地优先 Markdown 笔记应用——主进程收口全部系统能力，preload 用两份白名单把 92 个 IPC 通道收敛为受信桥，渲染层用 Vue 3 承载欢迎页/编辑器/预览/38 个插件工具，工程侧以自建 md→HTML 报告流水线维护文档。</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th style="text-align:right">数值（2026-11-19 实测）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>源代码</td>
+<td style="text-align:right">362 文件 / 95,021 行（<code>.ts</code> 201/66,594；<code>.vue</code> 81/25,005；<code>.css</code> 13/2,610；其余声明/资源）</td>
+</tr>
+<tr>
+<td>进程分布</td>
+<td style="text-align:right">main 70 文件/18,439 行 · preload 3/443 · shared 39/6,200 · renderer 250/69,939</td>
+</tr>
+<tr>
+<td>测试</td>
+<td style="text-align:right">158 个测试文件 / 45,608 行 / <strong>2,871 用例全通过</strong>（jsdom 47 文件）+ 4 条 Playwright E2E</td>
+</tr>
+<tr>
+<td>依赖</td>
+<td style="text-align:right">生产依赖 11 · 开发依赖 39 · lockfile 828 包</td>
+</tr>
+<tr>
+<td>跨进程契约</td>
+<td style="text-align:right">IPC <strong>92 通道 / 17 组</strong>（67 个主进程注册 + 25 个主进程广播）</td>
+</tr>
+<tr>
+<td>国际化</td>
+<td style="text-align:right">12 命名空间 × 1,821 词条/语言（zh/en 强制同构）</td>
+</tr>
+<tr>
+<td>功能规模</td>
+<td style="text-align:right">28 套应用主题 / 54 套 Monaco 主题 / 38 个插件工具 / 18 个 Vue 对话框</td>
+</tr>
+<tr>
+<td>产物</td>
+<td style="text-align:right">NSIS 安装包 118.38 MB · 便携版 107.43 MB · app.asar 49.96 MiB</td>
+</tr>
+<tr>
+<td>文档</td>
+<td style="text-align:right">wiki 27 篇 + reports 20 篇（本报告为第 21 篇）· HTML Wiki 22 页</td>
+</tr>
+</tbody>
+</table>
+<p><strong>五条关键结论</strong></p>
+<ol>
+<li><strong>边界清晰、真源纪律强</strong>：92 IPC 通道、9 领域共享类型、12 命名空间 i18n 词典各有唯一出口，且有防回归测试做「常量 ↔ 调用点」双向核对。</li>
+<li><strong>主进程是「薄外壳 + 厚内核」</strong>：<code>index.ts</code> 只做生命周期编排，业务集中在 <code>utils/file-utils</code>；IPC 注册分散 7 个文件但统一在 <code>whenReady</code> 后一次性执行，全部套发送方校验。</li>
+<li><strong>渲染层是「双段式外壳 + 单主界面 + 懒加载边界」</strong>：欢迎页入口 chunk ≈114 KB，主界面（Monaco + 预览 ≈9.6 MB）整体异步；61 处动态 import 构成全部按需加载边界，无手工 manualChunks。</li>
+<li><strong>预览管线是当前最复杂的单条链路</strong>：预渲染 → markdown-it（mkdocs/basic/media/blocks 四层插件）→ 异步图表 → DOMPurify → 远程图片策略 → v-html + TOC，逐层可降级、可单测。</li>
+<li><strong>主要结构债集中在三处</strong>：<code>config ↔ utils</code> 双向依赖、preload 白名单三份手工清单、Vue 对话框与主进程 JSDOM 对话框双体系；另有文档口径漂移与发布链路未 CI 化。</li>
+</ol>
+<h2 id="sec-2">1. 仓库全景</h2>
+<pre><code>BaiZeNotesByVue/
+├── src/
+│   ├── main/          # 主进程：入口 / IPC / 配置 / 文件内核 / 对话框 / 隐藏渲染窗
+│   ├── preload/       # 受限桥：index.ts（主窗口） + dialog.ts（对话框/隐藏窗）
+│   ├── renderer/      # Vue 3 渲染层：壳 / 业务组件 / 插件工具 / 样式资源
+│   └── shared/        # 跨进程单真源：ipc-channels / types / i18n / constants
+├── tests/             # Vitest 单测与组件测试（158 测试文件）
+├── e2e/               # Playwright + Electron 冒烟（4 条）
+├── build/             # 构建/报告脚本（版本、打包目录防护、md→HTML 报告）
+├── resources/         # config / icon / themes / plantuml 等随包资源
+├── docs/              # wiki 项目文档 / reports 报告归档（md + HTML wiki） / images
+├── electron.vite.config.ts / electron-builder.yml / tsconfig*.json / eslint.config.js / vitest.config.ts
+└── CHANGELOG.md / RELEASE-NOTES.md / README.md / AGENTS.md
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>技术栈</th>
+<th>版本/说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>运行时</td>
+<td>Electron 43.8.x（主进程 + 渲染进程，全部窗口 <code>sandbox: true</code>）</td>
+</tr>
+<tr>
+<td>UI</td>
+<td>Vue 3.5 + TypeScript 6 严格模式 + 手写模块级 store（非 Pinia/Vuex）</td>
+</tr>
+<tr>
+<td>编辑器</td>
+<td>Monaco Editor（单 worker，按需语言）</td>
+</tr>
+<tr>
+<td>Markdown</td>
+<td>markdown-it 插件体系（highlight.js / emoji / plantuml / mkdocs-material 四层扩展）+ KaTeX + Mermaid + 本地 PlantUML</td>
+</tr>
+<tr>
+<td>构建</td>
+<td>electron-vite 6（三段构建） + electron-builder 26（NSIS/portable）</td>
+</tr>
+<tr>
+<td>质量</td>
+<td>Vitest（158 文件/2,871 用例） + Playwright E2E + ESLint flat config + 三 tsconfig</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-3">2. 进程架构</h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 800" width="1024" height="800" role="img" aria-label="白泽笔记进程架构总览">
+  <defs>
+    <marker id="o-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="o-arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1f2328; }
+      .title { font-size: 23px; font-weight: 700; }
+      .sub { font-size: 13.5px; fill: #475569; }
+      .legend { font-size: 12.5px; fill: #475569; }
+      .phead { font-size: 15.5px; font-weight: 700; fill: #ffffff; }
+      .pnote { font-size: 12px; fill: #e0e7ff; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.4; rx: 8; }
+      .ctitle { font-size: 15px; font-weight: 700; fill: #1e3a8a; }
+      .cdesc { font-size: 13.5px; fill: #334155; }
+      .chip { fill: #eff6ff; stroke: #93c5fd; stroke-width: 1; rx: 12; }
+      .chiptext { font-size: 12.5px; fill: #1e40af; font-weight: 600; }
+      .flow { stroke: #2563eb; stroke-width: 2.2; fill: none; }
+      .flowg { stroke: #16a34a; stroke-width: 1.8; fill: none; stroke-dasharray: 5 4; }
+      .sect { font-size: 13px; fill: #475569; }
+    </style>
+  </defs>
+
+  <!-- 标题与图例 -->
+  <text x="16" y="32" class="title">图 1 · 白泽笔记进程架构总览（v1.3.6）</text>
+  <text x="16" y="54" class="sub">Electron 三进程 + shared 单真源：主进程收口系统能力，preload 白名单收敛 92 个 IPC 通道，渲染层承载全部 UI</text>
+  <rect x="700" y="14" width="14" height="14" rx="3" fill="#1e40af"/><text x="720" y="26" class="legend">主进程</text>
+  <rect x="784" y="14" width="14" height="14" rx="3" fill="#0f766e"/><text x="804" y="26" class="legend">渲染进程</text>
+  <rect x="884" y="14" width="14" height="14" rx="3" fill="#16a34a"/><text x="904" y="26" class="legend">共享层</text>
+  <line x1="16" y1="70" x2="42" y2="70" class="flow" marker-end="url(#o-ar)"/>
+  <text x="50" y="74" class="legend">蓝色箭头 = IPC 请求 / 事件（R↔M）</text>
+  <line x1="300" y1="70" x2="326" y2="70" class="flowg" marker-end="url(#o-arg)"/>
+  <text x="334" y="74" class="legend">绿色虚线 = 共享契约引用</text>
+
+  <!-- ============ 左：主进程 ============ -->
+  <rect x="16" y="88" width="292" height="520" rx="12" fill="#f8fafc" stroke="#1e40af" stroke-width="2"/>
+  <rect x="16" y="88" width="292" height="40" rx="12" fill="#1e40af"/>
+  <rect x="16" y="116" width="292" height="12" fill="#1e40af"/>
+  <text x="32" y="114" class="phead">主进程 src/main</text>
+  <text x="294" y="114" class="pnote" text-anchor="end">70 文件 · 18.4k 行</text>
+
+  <rect x="30" y="140" width="264" height="68" class="card"/>
+  <text x="44" y="163" class="ctitle">① 入口与生命周期</text>
+  <text x="44" y="184" class="cdesc">窗口创建 · 单实例锁 · flush 落盘</text>
+  <text x="44" y="202" class="cdesc">cleanupApp 九步清理</text>
+
+  <rect x="30" y="218" width="264" height="68" class="card"/>
+  <text x="44" y="241" class="ctitle">② IPC 编排与安全</text>
+  <text x="44" y="262" class="cdesc">handlers · menu-* · 注册台账</text>
+  <text x="44" y="280" class="cdesc">sender 校验 68 处 · 路径守卫</text>
+
+  <rect x="30" y="296" width="264" height="68" class="card"/>
+  <text x="44" y="319" class="ctitle">③ 配置真源</text>
+  <text x="44" y="340" class="cdesc">config-manager 路由 / 迁移 / 校验</text>
+  <text x="44" y="358" class="cdesc">5 个 electron-store · 28 应用主题</text>
+
+  <rect x="30" y="374" width="264" height="68" class="card"/>
+  <text x="44" y="397" class="ctitle">④ 文件与编辑内核</text>
+  <text x="44" y="418" class="cdesc">读写 / 编码 / 目录树 fs.watch</text>
+  <text x="44" y="436" class="cdesc">自动保存 · 导入导出 · 加密</text>
+
+  <rect x="30" y="452" width="264" height="68" class="card"/>
+  <text x="44" y="475" class="ctitle">⑤ 窗口外设</text>
+  <text x="44" y="496" class="cdesc">JSDOM 对话框 · 在线网页窗口</text>
+  <text x="44" y="514" class="cdesc">PlantUML 本地渲染隐藏窗</text>
+
+  <rect x="30" y="530" width="264" height="62" class="card"/>
+  <text x="44" y="553" class="ctitle">⑥ 基础设施</text>
+  <text x="44" y="574" class="cdesc">日志 · 托盘 · 备份 · 更新 · 窗口边界</text>
+
+  <!-- ============ 中：preload 桥 ============ -->
+  <rect x="322" y="170" width="138" height="300" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="336" y="196" class="ctitle">preload 桥</text>
+  <rect x="332" y="206" width="118" height="104" class="card"/>
+  <text x="344" y="228" class="cdesc" style="font-weight:700">主窗口</text>
+  <text x="344" y="246" class="cdesc">index.ts</text>
+  <text x="344" y="264" class="cdesc">58 send</text>
+  <text x="344" y="282" class="cdesc">25 on</text>
+  <text x="344" y="300" class="cdesc">window.api × 6</text>
+  <rect x="332" y="320" width="118" height="104" class="card"/>
+  <text x="344" y="342" class="cdesc" style="font-weight:700">对话框</text>
+  <text x="344" y="360" class="cdesc">dialog.ts</text>
+  <text x="344" y="378" class="cdesc">2 send</text>
+  <text x="344" y="396" class="cdesc">1 on</text>
+  <text x="344" y="414" class="cdesc">shell 校验</text>
+  <text x="336" y="446" class="sect" style="fill:#1e40af">contextBridge</text>
+  <text x="336" y="462" class="sect" style="fill:#1e40af">sandbox · 单文件</text>
+
+  <!-- ============ 右：渲染进程 ============ -->
+  <rect x="486" y="88" width="522" height="520" rx="12" fill="#f8fafc" stroke="#0f766e" stroke-width="2"/>
+  <rect x="486" y="88" width="522" height="40" rx="12" fill="#0f766e"/>
+  <rect x="486" y="116" width="522" height="12" fill="#0f766e"/>
+  <text x="502" y="114" class="phead">渲染进程 src/renderer</text>
+  <text x="992" y="114" class="pnote" text-anchor="end">250 文件 · 70k 行</text>
+
+  <rect x="500" y="140" width="240" height="152" class="card"/>
+  <text x="514" y="164" class="ctitle">① 入口与外壳</text>
+  <text x="514" y="186" class="cdesc">App.vue：欢迎页 / 主界面</text>
+  <text x="514" y="206" class="cdesc">双段式 + READY 握手</text>
+  <text x="514" y="226" class="cdesc">入口 chunk ≈ 114 KB</text>
+  <text x="514" y="246" class="cdesc">主界面异步块 ≈ 9.6 MB</text>
+  <text x="514" y="266" class="cdesc">BaiZeNotes 壳：主题/对话框宿主</text>
+
+  <rect x="754" y="140" width="240" height="152" class="card"/>
+  <text x="768" y="164" class="ctitle">② 布局分区</text>
+  <text x="768" y="186" class="cdesc">MenuBar：数据驱动菜单</text>
+  <text x="768" y="206" class="cdesc">13 顶层菜单 + 动作分发</text>
+  <text x="768" y="226" class="cdesc">WorkSpace：编辑 / 预览分栏</text>
+  <text x="768" y="246" class="cdesc">StatusBar：行列 / 编码 / 消息</text>
+
+  <rect x="500" y="302" width="240" height="152" class="card"/>
+  <text x="514" y="326" class="ctitle">③ 编辑器域</text>
+  <text x="514" y="348" class="cdesc">Monaco 单 worker · 按需语言</text>
+  <text x="514" y="368" class="cdesc">500ms 空闲防抖</text>
+  <text x="514" y="388" class="cdesc">脏指纹（长度 + sha256）</text>
+  <text x="514" y="408" class="cdesc">5 种编辑 / 预览模式</text>
+
+  <rect x="754" y="302" width="240" height="152" class="card"/>
+  <text x="768" y="326" class="ctitle">④ 预览管线（单跳）</text>
+  <text x="768" y="348" class="cdesc">预渲染 → markdown-it 插件</text>
+  <text x="768" y="368" class="cdesc">→ mermaid / PlantUML</text>
+  <text x="768" y="388" class="cdesc">→ DOMPurify → v-html + TOC</text>
+  <text x="768" y="408" class="cdesc">mkdocs / KaTeX / 扩展语法</text>
+  <text x="768" y="428" class="cdesc">大文档降级 · 远程图片拦截</text>
+
+  <rect x="500" y="464" width="240" height="128" class="card"/>
+  <text x="514" y="488" class="ctitle">⑤ 插件与对话框</text>
+  <text x="514" y="510" class="cdesc">38 个插件工具（懒加载）</text>
+  <text x="514" y="530" class="cdesc">18 个 Vue 对话框</text>
+  <text x="514" y="550" class="cdesc">HTML / PDF 工具查看器</text>
+
+  <rect x="754" y="464" width="240" height="128" class="card"/>
+  <text x="768" y="488" class="ctitle">⑥ 基础设施</text>
+  <text x="768" y="510" class="cdesc">useConfigStore · EventBus</text>
+  <text x="768" y="530" class="cdesc">响应式 i18n · 主题 CSS 变量</text>
+  <text x="768" y="550" class="cdesc">窗口 / 对话框 composables</text>
+
+  <!-- ============ 共享层 ============ -->
+  <rect x="16" y="624" width="992" height="86" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="32" y="650" class="ctitle" style="fill:#166534">共享层 src/shared —— 跨进程单一真源（39 文件 · 6.2k 行）</text>
+  <rect x="32" y="662" width="180" height="28" class="chip"/><text x="46" y="681" class="chiptext">IPC 通道 92 / 17 组</text>
+  <rect x="222" y="662" width="140" height="28" class="chip"/><text x="236" y="681" class="chiptext">类型 9 领域</text>
+  <rect x="372" y="662" width="200" height="28" class="chip"/><text x="386" y="681" class="chiptext">i18n 12 命名空间</text>
+  <rect x="582" y="662" width="130" height="28" class="chip"/><text x="596" y="681" class="chiptext">zh / en 同构</text>
+  <text x="726" y="681" class="sect">main 37 文件 + renderer 31 文件共同消费</text>
+  <text x="32" y="702" class="sect">边界规则：shared 禁止引入 electron / node 运行时；main 与 renderer 不得互相直接 import</text>
+
+  <!-- ============ 工程侧 ============ -->
+  <rect x="16" y="726" width="992" height="50" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
+  <text x="32" y="748" class="sect">工程侧 · 构建：electron-vite 三段 → out/ → electron-builder（NSIS 118.4 MB / portable 107.4 MB）</text>
+  <text x="32" y="768" class="sect">质量：typecheck 三工程 + 158 测试文件 / 2,871 用例 + 4 条 E2E　·　文档：md → HTML Wiki（22 页）</text>
+
+  <!-- ============ 箭头：主进程 ↔ preload ↔ 渲染进程 ============ -->
+  <line x1="308" y1="270" x2="322" y2="270" class="flow" marker-end="url(#o-ar)"/>
+  <line x1="322" y1="330" x2="308" y2="330" class="flow" marker-end="url(#o-ar)"/>
+  <line x1="460" y1="270" x2="486" y2="270" class="flow" marker-end="url(#o-ar)"/>
+  <line x1="486" y1="330" x2="460" y2="330" class="flow" marker-end="url(#o-ar)"/>
+  <line x1="160" y1="608" x2="160" y2="624" class="flowg" marker-end="url(#o-arg)"/>
+  <line x1="740" y1="608" x2="740" y2="624" class="flowg" marker-end="url(#o-arg)"/>
+</svg>
+</figure>
+<p><strong>三进程职责与边界</strong></p>
+<table>
+<thead>
+<tr>
+<th>进程</th>
+<th>职责</th>
+<th>关键约束</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主进程 <code>src/main</code></td>
+<td>窗口生命周期、文件/配置读写、菜单动作、IPC 处理、Markdown 渲染工具（PlantUML 隐藏窗）、自动更新、日志、托盘</td>
+<td>所有 IPC 注册套 <code>withSenderCheck</code>；路径守卫 + shell 协议白名单 + 导航拦截</td>
+</tr>
+<tr>
+<td>preload <code>src/preload</code></td>
+<td>以 <code>contextBridge</code> 暴露受限 API（<code>window.electron</code> / <code>window.api</code> / 对话框 <code>window.electronAPI</code>）</td>
+<td>双入口、白名单手工清单、单文件产物（<code>isolatedEntries</code> + 关闭 externalize）</td>
+</tr>
+<tr>
+<td>渲染进程 <code>src/renderer</code></td>
+<td>全部 UI：欢迎页、编辑器、预览、资源管理器、插件工具、Vue 对话框</td>
+<td>不直接使用 Node 能力；主题只走 CSS 变量；预览末端 DOMPurify</td>
+</tr>
+</tbody>
+</table>
+<p><strong>安全边界（纵深 6 层）</strong>：导航拦截 → preload 白名单 → 主进程 sender 校验（68 处）→ 路径守卫（<code>isPathAllowed</code>/realpath）→ shell/外链协议白名单 → CSP/DOMPurify/远程资源阻断。</p>
+<h2 id="sec-4">3. 主进程结构</h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 820" width="1100" height="820" role="img" aria-label="主进程分层与依赖方向">
+  <defs>
+    <marker id="m-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="m-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1f2328; }
+      .title { font-size: 23px; font-weight: 700; }
+      .sub { font-size: 13.5px; fill: #475569; }
+      .legend { font-size: 12.5px; fill: #475569; }
+      .layer { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.6; rx: 12; }
+      .lbl { font-size: 14px; font-weight: 700; fill: #334155; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.3; rx: 8; }
+      .ctitle { font-size: 14.5px; font-weight: 700; fill: #1e3a8a; }
+      .cdesc { font-size: 13px; fill: #334155; }
+      .hit { fill: #fef2f2; stroke: #dc2626; stroke-width: 1.5; rx: 10; }
+      .hitlbl { font-size: 14.5px; font-weight: 700; fill: #b91c1c; }
+      .flow { stroke: #2563eb; stroke-width: 2.2; fill: none; }
+      .revedge { stroke: #dc2626; stroke-width: 1.8; fill: none; stroke-dasharray: 6 4; }
+      .sect { font-size: 12.5px; fill: #475569; }
+    </style>
+  </defs>
+
+  <text x="16" y="32" class="title">图 2 · 主进程分层与依赖方向</text>
+  <text x="16" y="54" class="sub">理想依赖方向自上而下：入口 → IPC 编排 → 配置 → 业务内核 → 共享真源</text>
+  <line x1="640" y1="48" x2="666" y2="48" class="flow" marker-end="url(#m-ar)"/>
+  <text x="674" y="52" class="legend">正向依赖</text>
+  <line x1="790" y1="48" x2="816" y2="48" class="revedge" marker-end="url(#m-arr)"/>
+  <text x="824" y="52" class="legend">反向依赖（结构债）</text>
+
+  <!-- 主列图层 -->
+  <rect x="16" y="82" width="744" height="94" class="layer"/>
+  <text x="30" y="108" class="lbl">L0</text><text x="30" y="126" class="lbl">入口</text>
+  <rect x="130" y="94" width="614" height="68" class="card"/>
+  <text x="144" y="116" class="ctitle">index.ts：单实例锁 → whenReady</text>
+  <text x="144" y="136" class="cdesc">注册 IPC · 创建窗口 · 托盘 / 更新 / 备份 · close / before-quit / window-all-closed</text>
+  <text x="144" y="155" class="cdesc">关闭与退出：flush 编辑内容（2s 超时）→ cleanupApp 九步清理</text>
+
+  <rect x="16" y="188" width="744" height="140" class="layer"/>
+  <text x="30" y="214" class="lbl">L1</text><text x="30" y="232" class="lbl">编排</text>
+  <rect x="130" y="200" width="140" height="114" class="card"/>
+  <text x="142" y="224" class="ctitle">handlers.ts</text>
+  <text x="142" y="246" class="cdesc">窗口 / 菜单动作</text>
+  <text x="142" y="266" class="cdesc">欢迎页 / 最近文件</text>
+  <rect x="282" y="200" width="140" height="114" class="card"/>
+  <text x="294" y="224" class="ctitle">menu-*.ts</text>
+  <text x="294" y="246" class="cdesc">主进程 handler 树</text>
+  <text x="294" y="266" class="cdesc">与渲染层拦截分工</text>
+  <rect x="434" y="200" width="140" height="114" class="card"/>
+  <text x="446" y="224" class="ctitle">listener</text>
+  <text x="446" y="246" class="cdesc">注册台账</text>
+  <text x="446" y="266" class="cdesc">persistent / 清理</text>
+  <rect x="586" y="200" width="158" height="114" class="card"/>
+  <text x="598" y="224" class="ctitle">窗口外设</text>
+  <text x="598" y="246" class="cdesc">dialogs：JSDOM 对话框</text>
+  <text x="598" y="266" class="cdesc">renders：PlantUML 隐藏窗</text>
+
+  <rect x="16" y="340" width="744" height="112" class="layer"/>
+  <text x="30" y="366" class="lbl">L2</text><text x="30" y="384" class="lbl">配置</text>
+  <rect x="130" y="352" width="296" height="86" class="card"/>
+  <text x="144" y="376" class="ctitle">config-manager</text>
+  <text x="144" y="398" class="cdesc">CONFIG.READ / WRITE 路由</text>
+  <text x="144" y="418" class="cdesc">校验 · 迁移 · 副作用 + 广播</text>
+  <rect x="438" y="352" width="306" height="86" class="card"/>
+  <text x="452" y="376" class="ctitle">electron-store 单真源 × 5</text>
+  <text x="452" y="398" class="cdesc">system / editor / theme / quick-links / registry</text>
+  <text x="452" y="418" class="cdesc">28 套应用主题 · 54 套 Monaco 主题</text>
+
+  <rect x="16" y="464" width="744" height="152" class="layer"/>
+  <text x="30" y="490" class="lbl">L3</text><text x="30" y="508" class="lbl">内核</text>
+  <rect x="130" y="476" width="192" height="126" class="card"/>
+  <text x="142" y="500" class="ctitle">文件与编辑内核</text>
+  <text x="142" y="522" class="cdesc">file-operations</text>
+  <text x="142" y="542" class="cdesc">directory-tree · fs.watch</text>
+  <text x="142" y="562" class="cdesc">auto-save · encoding</text>
+  <text x="142" y="582" class="cdesc">import / export</text>
+  <rect x="334" y="476" width="192" height="126" class="card"/>
+  <text x="346" y="500" class="ctitle">安全与状态</text>
+  <text x="346" y="522" class="cdesc">ipc-security / security</text>
+  <text x="346" y="542" class="cdesc">sender 校验 · 路径守卫</text>
+  <text x="346" y="562" class="cdesc">app-state：脏标记 / 退出标志</text>
+  <rect x="538" y="476" width="206" height="126" class="card"/>
+  <text x="550" y="500" class="ctitle">基础设施</text>
+  <text x="550" y="522" class="cdesc">logger · tray · auto-backup</text>
+  <text x="550" y="542" class="cdesc">auto-updater · window-bounds</text>
+  <text x="550" y="562" class="cdesc">i18n（tMain）· 快捷键</text>
+
+  <rect x="16" y="628" width="744" height="90" class="layer"/>
+  <text x="30" y="654" class="lbl">L4</text><text x="30" y="672" class="lbl">共享</text>
+  <rect x="130" y="640" width="614" height="64" class="card"/>
+  <text x="144" y="662" class="ctitle">shared 单一真源</text>
+  <text x="144" y="684" class="cdesc">ipc-channels（92 通道 / 17 组）· types（9 领域）· i18n（12 命名空间）· constants</text>
+
+  <!-- 右侧：preload 桥 -->
+  <rect x="776" y="82" width="308" height="268" class="layer"/>
+  <text x="792" y="108" class="lbl">preload 桥（受信边界）</text>
+  <rect x="790" y="120" width="280" height="64" class="card"/>
+  <text x="802" y="142" class="ctitle">index.ts（主窗口）</text>
+  <text x="802" y="162" class="cdesc">58 send + 25 on + window.api × 6</text>
+  <rect x="790" y="194" width="280" height="64" class="card"/>
+  <text x="802" y="216" class="ctitle">dialog.ts（对话框 / 隐藏窗）</text>
+  <text x="802" y="236" class="cdesc">2 send + 1 on + shell 白名单校验</text>
+  <text x="792" y="284" class="sect">sandbox + contextIsolation → contextBridge</text>
+  <text x="792" y="304" class="sect">单文件产物（isolatedEntries）</text>
+  <text x="792" y="324" class="sect">白名单手工清单，与 92 常量无编译期对应</text>
+
+  <!-- 右侧：反向依赖 -->
+  <rect x="776" y="370" width="308" height="226" class="hit"/>
+  <text x="792" y="398" class="hitlbl">反向依赖（结构债 H1）</text>
+  <text x="792" y="424" class="ctitle" style="fill:#b91c1c">config → utils</text>
+  <text x="792" y="446" class="cdesc">app-paths / file-state-store</text>
+  <text x="792" y="466" class="cdesc">theme-config / ipc-security</text>
+  <text x="792" y="492" class="ctitle" style="fill:#b91c1c">utils → config</text>
+  <text x="792" y="514" class="cdesc">auto-backup / i18n / utils.ts</text>
+  <text x="792" y="544" class="sect">无自动环检测，靠注释与动态 import 维持顺序</text>
+  <text x="792" y="566" class="sect">建议：dependency-cruiser 方向矩阵 + 回调注入</text>
+
+  <!-- 依赖箭头 -->
+  <line x1="390" y1="176" x2="390" y2="188" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="390" y1="328" x2="390" y2="340" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="390" y1="452" x2="390" y2="464" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="390" y1="616" x2="390" y2="628" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="760" y1="220" x2="776" y2="220" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="776" y1="250" x2="760" y2="250" class="flow" marker-end="url(#m-ar)"/>
+  <line x1="760" y1="452" x2="776" y2="452" class="revedge" marker-end="url(#m-arr)"/>
+  <text x="766" y="240" class="sect" style="font-size:11px">注册 / 调用</text>
+
+  <!-- 底部注释 -->
+  <rect x="16" y="736" width="1068" height="66" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
+  <text x="32" y="760" class="sect">口径：92 通道 = 67 个主进程注册（全部套 withSenderCheck 发送方校验）+ 25 个主进程广播；窗口类型含主窗口 / HTML 对话框 / PlantUML 隐藏窗。</text>
+  <text x="32" y="784" class="sect">红线为真实存在的反向依赖：新增静态 import 可能引入真环（CJS 半初始化 undefined），构建与单测难以发现，是当前首要结构债。</text>
+</svg>
+</figure>
+<p><strong>模块分层</strong></p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>目录/模块</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L0 入口</td>
+<td><code>main/index.ts</code></td>
+<td>单实例锁、<code>whenReady</code> 编排（注册 7 处 IPC / 创建窗口 / 托盘 / 更新 / 备份）、窗口创建与关闭/退出落盘链路、<code>cleanupApp</code> 九步清理</td>
+</tr>
+<tr>
+<td>L1 IPC 编排</td>
+<td><code>main/ipc/</code></td>
+<td><code>handlers.ts</code>（窗口/菜单/欢迎/最近/快捷链接）、<code>menu-*.ts</code>（菜单 handler 树）、<code>ipc-listener-manager.ts</code>（注册台账/持久化/组件级清理）、<code>theme-broadcast.ts</code>（唯一主题广播）</td>
+</tr>
+<tr>
+<td>L1 窗口外设</td>
+<td><code>main/dialogs/</code>、<code>main/renders/</code></td>
+<td>JSDOM HTML 对话框工厂与右键菜单、PlantUML 本地渲染隐藏窗、在线网页窗口</td>
+</tr>
+<tr>
+<td>L2 配置</td>
+<td><code>main/config/</code></td>
+<td><code>config-manager</code>（CONFIG.READ/WRITE 路由、校验、迁移、副作用）+ 5 个 electron-store 单真源 + 28 应用主题/54 Monaco 主题注册表 + 窗口管理</td>
+</tr>
+<tr>
+<td>L3 业务内核</td>
+<td><code>main/utils/file-utils/</code></td>
+<td>文件打开/保存/另存、编码检测与转换、目录树扫描 + <code>fs.watch</code>、自动保存、导入导出（PDF/Office）、文件状态持久化</td>
+</tr>
+<tr>
+<td>L3 安全与状态</td>
+<td><code>main/utils/</code></td>
+<td><code>ipc-security</code>（sender 校验）、<code>security</code>（导航/shell/路径守卫）、<code>app-state</code>（窗口引用/当前文件/脏标记/退出标志）</td>
+</tr>
+<tr>
+<td>L3 基础设施</td>
+<td><code>main/utils/</code></td>
+<td>logger（userData 落盘 + 脱敏）、托盘、自动备份、自动更新、窗口边界、<code>tMain</code> i18n</td>
+</tr>
+<tr>
+<td>L4 共享</td>
+<td><code>src/shared/</code></td>
+<td>IPC 常量、类型、词典、常量</td>
+</tr>
+</tbody>
+</table>
+<p><strong>启动顺序（<code>whenReady</code> 之后）</strong>：初始化 userData → 注册远程资源阻断 → 注册配置 IPC → 创建主窗口 → 注册主进程菜单/对话框/工具 IPC → 注册 PlantUML 本地渲染 → 注册 activate 重建逻辑；关闭链路：<code>close</code> → flush 编辑器内容（2s 超时）→ 脏则落盘；<code>before-quit</code> 同链路；<code>window-all-closed</code> → <code>cleanupApp</code>。</p>
+<p><strong>IPC 体系（92 通道 / 17 组）</strong></p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>真源与命名</td>
+<td><code>src/shared/ipc-channels.ts</code>，统一 <code>baize:&lt;domain&gt;:&lt;name&gt;</code>（17 组：WINDOW/CONFIG/THEME/MENU/EDITOR/FILE/FILE_MANAGER/PLUGIN/RENDER/DIALOG/NAVIGATION/VIEW/MONACO/SETTING/SYSTEM/QUICK_LINKS/EVENTS）</td>
+</tr>
+<tr>
+<td>注册模式</td>
+<td>全部经 <code>ipcListenerManager</code>（<code>registerOnce</code>/<code>registerHandleOnce</code>/组件级 <code>register</code>），区分 persistent 与随窗口清理两类</td>
+</tr>
+<tr>
+<td>方向</td>
+<td>67 个主进程注册（R→M send/invoke），25 个主进程 → 渲染层广播；无 <code>sendSync</code>、无硬编码通道字符串</td>
+</tr>
+<tr>
+<td>安全</td>
+<td>68 处 <code>withSenderCheck</code> 全覆盖；文件系统/配置写/外链/执行等高风险通道另有路径、协议、白名单、用户确认等专项校验</td>
+</tr>
+<tr>
+<td>已知问题</td>
+<td><code>SYSTEM.OPEN_EXTERNAL_LINK</code> 等少量死通道残留；preload 白名单与常量无编译期对应（见 §9 风险 H2）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>核心子系统</strong>：配置（electron-store 单真源 + 迁移 + 备份）、文件与自动保存/备份、目录监听（增量刷新）、主题、编辑器设置、菜单动作分发、对话框体系、PlantUML 隐藏窗（串行队列 + LRU + 空闲销毁）、自动更新、日志/状态栏、编码检测与转换、加密工具、导入导出、全局快捷键/托盘/窗口边界。</p>
+<h2 id="sec-5">4. 渲染层结构</h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 880" width="1100" height="880" role="img" aria-label="渲染层分层与组件树">
+  <defs>
+    <marker id="r-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="r-arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1f2328; }
+      .title { font-size: 23px; font-weight: 700; }
+      .sub { font-size: 13.5px; fill: #475569; }
+      .legend { font-size: 12.5px; fill: #475569; }
+      .layer { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.6; rx: 12; }
+      .lbl { font-size: 14px; font-weight: 700; fill: #334155; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.3; rx: 8; }
+      .ctitle { font-size: 14.5px; font-weight: 700; fill: #0f766e; }
+      .cdesc { font-size: 13px; fill: #334155; }
+      .flow { stroke: #2563eb; stroke-width: 2.2; fill: none; }
+      .flowg { stroke: #16a34a; stroke-width: 1.8; fill: none; stroke-dasharray: 5 4; }
+      .sect { font-size: 12.5px; fill: #475569; }
+    </style>
+  </defs>
+
+  <text x="16" y="32" class="title">图 3 · 渲染层分层与组件树</text>
+  <text x="16" y="54" class="sub">双段式外壳（欢迎页 / 主界面）：欢迎页入口 chunk ≈ 114 KB，主界面（Monaco + 预览 ≈ 9.6 MB）整体异步，61 处动态 import 构成按需加载边界</text>
+  <line x1="880" y1="48" x2="906" y2="48" class="flow" marker-end="url(#r-ar)"/>
+  <text x="914" y="52" class="legend">分层依赖</text>
+  <line x1="1010" y1="48" x2="1036" y2="48" class="flowg" marker-end="url(#r-arg)"/>
+  <text x="1044" y="52" class="legend">契约</text>
+
+  <!-- 左：分层 -->
+  <rect x="16" y="82" width="800" height="104" class="layer"/>
+  <text x="30" y="108" class="lbl">L0</text><text x="30" y="126" class="lbl">入口</text>
+  <rect x="110" y="94" width="216" height="80" class="card"/>
+  <text x="122" y="118" class="ctitle">index.html</text>
+  <text x="122" y="140" class="cdesc">CSP · 外链 CSS</text>
+  <rect x="338" y="94" width="216" height="80" class="card"/>
+  <text x="350" y="118" class="ctitle">main.ts</text>
+  <text x="350" y="140" class="cdesc">CSS / ContextMenu / i18n 初始化</text>
+  <rect x="566" y="94" width="238" height="80" class="card"/>
+  <text x="578" y="118" class="ctitle">App.vue（双段式）</text>
+  <text x="578" y="140" class="cdesc">欢迎页 / 主界面切换 + READY 握手</text>
+
+  <rect x="16" y="198" width="800" height="110" class="layer"/>
+  <text x="30" y="224" class="lbl">L1</text><text x="30" y="242" class="lbl">壳层</text>
+  <rect x="110" y="210" width="242" height="86" class="card"/>
+  <text x="122" y="234" class="ctitle">WelcomeScreen</text>
+  <text x="122" y="256" class="cdesc">打开文件 / 文件夹 / 最近记录</text>
+  <rect x="364" y="210" width="440" height="86" class="card"/>
+  <text x="376" y="234" class="ctitle">BaiZeNotes.vue（主界面壳）</text>
+  <text x="376" y="256" class="cdesc">标题栏 · 窗口控制 · 主题应用 · 全局事件 · 快捷键</text>
+  <text x="376" y="276" class="cdesc">18 个 Vue 对话框统一宿主</text>
+
+  <rect x="16" y="320" width="800" height="112" class="layer"/>
+  <text x="30" y="346" class="lbl">L2</text><text x="30" y="364" class="lbl">布局</text>
+  <rect x="110" y="332" width="222" height="88" class="card"/>
+  <text x="122" y="356" class="ctitle">MenuBar</text>
+  <text x="122" y="378" class="cdesc">menu-config 数据驱动菜单</text>
+  <text x="122" y="398" class="cdesc">13 个顶层菜单 + 动作分发</text>
+  <rect x="344" y="332" width="266" height="88" class="card"/>
+  <text x="356" y="356" class="ctitle">WorkSpace</text>
+  <text x="356" y="378" class="cdesc">分栏容器：编辑 / 预览 / 资源管理器</text>
+  <text x="356" y="398" class="cdesc">HTML / PDF 查看器</text>
+  <rect x="622" y="332" width="182" height="88" class="card"/>
+  <text x="634" y="356" class="ctitle">StatusBar</text>
+  <text x="634" y="378" class="cdesc">行列 / 编码 / 语言</text>
+  <text x="634" y="398" class="cdesc">消息与错误镜像</text>
+
+  <rect x="16" y="444" width="800" height="232" class="layer"/>
+  <text x="30" y="470" class="lbl">L3</text><text x="30" y="488" class="lbl">业务域</text>
+  <rect x="110" y="456" width="222" height="104" class="card"/>
+  <text x="122" y="480" class="ctitle">Markdown 编辑域</text>
+  <text x="122" y="502" class="cdesc">Container / EditTools / Monaco</text>
+  <text x="122" y="522" class="cdesc">击键防抖 · 脏指纹 · 模式切换</text>
+  <text x="122" y="542" class="cdesc">工具栏 / 写作模板 / 快捷键</text>
+  <rect x="344" y="456" width="268" height="104" class="card"/>
+  <text x="356" y="480" class="ctitle">预览渲染域（单跳本地）</text>
+  <text x="356" y="502" class="cdesc">preview-local-render（KaTeX / URL）</text>
+  <text x="356" y="522" class="cdesc">markdown-it：mkdocs / basic / media / blocks</text>
+  <text x="356" y="542" class="cdesc">mermaid / PlantUML · DOMPurify · TOC</text>
+  <rect x="624" y="456" width="180" height="104" class="card"/>
+  <text x="636" y="480" class="ctitle">ResourceManager</text>
+  <text x="636" y="502" class="cdesc">文件树 / 右键菜单</text>
+  <text x="636" y="522" class="cdesc">TOC 大纲</text>
+  <rect x="110" y="570" width="222" height="92" class="card"/>
+  <text x="122" y="594" class="ctitle">PluginTools</text>
+  <text x="122" y="616" class="cdesc">38 个插件工具（懒加载）</text>
+  <text x="122" y="636" class="cdesc">纯函数 lib + Vue 页面</text>
+  <rect x="344" y="570" width="170" height="92" class="card"/>
+  <text x="356" y="594" class="ctitle">HemyTools</text>
+  <text x="356" y="616" class="cdesc">HTML / PDF 查看</text>
+  <text x="356" y="636" class="cdesc">按需挂载</text>
+  <rect x="526" y="570" width="278" height="92" class="card"/>
+  <text x="538" y="594" class="ctitle">Vue 对话框 × 18</text>
+  <text x="538" y="616" class="cdesc">dialogs/index.ts 统一懒加载注册表</text>
+  <text x="538" y="636" class="cdesc">插入 / 设置 / 消息 / 主题 / 编辑器</text>
+
+  <rect x="16" y="688" width="800" height="104" class="layer"/>
+  <text x="30" y="714" class="lbl">L4</text><text x="30" y="732" class="lbl">基础设施</text>
+  <rect x="110" y="700" width="420" height="80" class="card"/>
+  <text x="122" y="724" class="ctitle">common</text>
+  <text x="122" y="746" class="cdesc">useConfigStore 单例 · EventBus（24 事件）· 响应式 i18n</text>
+  <text x="122" y="766" class="cdesc">主题 CSS 变量（28 套应用主题）· logger</text>
+  <rect x="542" y="700" width="262" height="80" class="card"/>
+  <text x="554" y="724" class="ctitle">composables</text>
+  <text x="554" y="746" class="cdesc">useDialogDrag · useWindowManagement</text>
+  <text x="554" y="766" class="cdesc">窗口 / 对话框拖拽缩放</text>
+
+  <!-- 右侧：跨层契约 -->
+  <rect x="832" y="82" width="252" height="170" class="layer"/>
+  <text x="848" y="108" class="lbl">shared 单一真源</text>
+  <rect x="846" y="120" width="224" height="112" class="card"/>
+  <text x="858" y="144" class="cdesc">· ipc-channels：92 通道 / 17 组</text>
+  <text x="858" y="166" class="cdesc">· types：9 领域</text>
+  <text x="858" y="188" class="cdesc">· i18n：12 命名空间 × 1,821 词条</text>
+  <text x="858" y="210" class="cdesc">· main 37 + renderer 31 文件消费</text>
+
+  <rect x="832" y="264" width="252" height="150" class="layer"/>
+  <text x="848" y="290" class="lbl">与主进程通信</text>
+  <rect x="846" y="302" width="224" height="92" class="card"/>
+  <text x="858" y="326" class="cdesc">· invoke / send（请求-响应）</text>
+  <text x="858" y="348" class="cdesc">· ipcRenderer.on（事件 / 广播）</text>
+  <text x="858" y="370" class="cdesc">· preload 白名单双向受限</text>
+
+  <rect x="832" y="426" width="252" height="188" class="layer"/>
+  <text x="848" y="452" class="lbl">工程约束</text>
+  <rect x="846" y="464" width="224" height="130" class="card"/>
+  <text x="858" y="488" class="cdesc">· sandbox + contextIsolation</text>
+  <text x="858" y="510" class="cdesc">· preload 单文件（isolatedEntries）</text>
+  <text x="858" y="532" class="cdesc">· CSP：script-src 'self'</text>
+  <text x="858" y="554" class="cdesc">· 主题一律 CSS 变量</text>
+  <text x="858" y="576" class="cdesc">· 禁止渲染层直接使用 Node 能力</text>
+
+  <rect x="832" y="626" width="252" height="166" class="layer"/>
+  <text x="848" y="652" class="lbl">体积口径（实测）</text>
+  <rect x="846" y="664" width="224" height="108" class="card"/>
+  <text x="858" y="688" class="cdesc">· 入口 chunk ≈ 114 KB</text>
+  <text x="858" y="710" class="cdesc">· 主界面异步块 ≈ 9.6 MB</text>
+  <text x="858" y="732" class="cdesc">· out/renderer ≈ 24.1 MiB</text>
+  <text x="858" y="754" class="cdesc">· 38 工具 / 18 对话框按需加载</text>
+
+  <!-- 箭头 -->
+  <line x1="410" y1="186" x2="410" y2="198" class="flow" marker-end="url(#r-ar)"/>
+  <line x1="410" y1="308" x2="410" y2="320" class="flow" marker-end="url(#r-ar)"/>
+  <line x1="410" y1="432" x2="410" y2="444" class="flow" marker-end="url(#r-ar)"/>
+  <line x1="410" y1="676" x2="410" y2="688" class="flow" marker-end="url(#r-ar)"/>
+  <line x1="246" y1="792" x2="246" y2="808" class="flowg" marker-end="url(#r-arg)"/>
+  <line x1="816" y1="750" x2="832" y2="750" class="flowg" marker-end="url(#r-arg)"/>
+
+  <!-- 底部注释 -->
+  <rect x="16" y="812" width="1068" height="54" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
+  <text x="32" y="836" class="sect">欢迎页与主界面为 v-if 双段式：入口只负责欢迎页 + 语言 / CSS / 右键菜单；主界面异步加载 + loading / error / 重试兜底。无 Vue Router，界面状态由 welcome-state 与 store 驱动。</text>
+  <text x="32" y="858" class="sect">61 处动态 import 构成全部懒加载边界（18 对话框 + 38 插件 + 6 类重型依赖），electron.vite.config 中无手工 manualChunks。</text>
+</svg>
+</figure>
+<p><strong>分层与目录</strong></p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>组成</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L0 入口</td>
+<td><code>index.html</code>、<code>src/main.ts</code>、<code>App.vue</code></td>
+<td>CSP/外链 CSS/ContextMenu/i18n 初始化；欢迎页与主界面双段式（<code>v-if</code>），主界面异步加载 + loading/error/重试 + <code>main-view-mounted</code> 握手</td>
+</tr>
+<tr>
+<td>L1 壳层</td>
+<td><code>BaiZeNotes.vue</code>（≈730 行）</td>
+<td>标题栏/窗口控制/主题应用/全局事件/18 个对话框统一宿主</td>
+</tr>
+<tr>
+<td>L2 布局</td>
+<td><code>MenuBar</code>、<code>WorkSpace</code>、<code>StatusBar</code></td>
+<td>菜单数据驱动（13 顶层菜单）、分栏容器（编辑/预览/资源管理器/HTML·PDF 查看）、状态栏（行列/编码/消息）</td>
+</tr>
+<tr>
+<td>L3 业务域</td>
+<td><code>Markdown/</code>（38 文件）、<code>ResourceManager</code>、<code>PluginTools</code>（84 文件/32.4k 行）、<code>HemyTools</code>、<code>dialogs/</code>（19 文件）</td>
+<td>编辑器 + 预览管线、文件树 + TOC、38 插件、HTML/PDF 查看、Vue 对话框</td>
+</tr>
+<tr>
+<td>L4 基础设施</td>
+<td><code>common/</code>、<code>composables/</code>、<code>styles/</code></td>
+<td><code>useConfigStore</code>（手写模块级单例）、EventBus（24 事件）、响应式 i18n、主题 CSS、拖拽/窗口管理 composable</td>
+</tr>
+<tr>
+<td>契约</td>
+<td><code>shared/</code>、preload</td>
+<td>92 通道 + 9 领域类型 + 词条；渲染层只通过白名单桥访问系统能力</td>
+</tr>
+</tbody>
+</table>
+<p><strong>状态与通信</strong></p>
+<ul>
+<li><strong>状态</strong>：<code>useConfigStore</code> 保存配置域与对话框状态（<code>dialogs.*</code>），组件级状态由 <code>ref/reactive</code> 管理；无 Vue Router，界面切换由 welcome-state 与 store 驱动。</li>
+<li><strong>事件</strong>：EventBus 24 个事件按域前缀命名（<code>MONACO_*</code>/<code>FILE_*</code>/<code>EVENT_BUS.*</code>），进程事件经 <code>ipcRenderer.on</code> 进入组件；<code>composables/useEventBus</code> 存在但生产未使用（结构观察项）。</li>
+<li><strong>懒加载</strong>：18 对话框 + 38 插件 + 6 类重型依赖全部 <code>defineAsyncComponent</code> 动态导入，共 61 处主要动态 import。</li>
+</ul>
+<p><strong>菜单、对话框与插件工具</strong></p>
+<table>
+<thead>
+<tr>
+<th>体系</th>
+<th>结构</th>
+<th>一致性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>菜单</td>
+<td><code>menu-config.ts</code>（数据驱动，820 行）→ <code>MenuBar.vue</code> 渲染 → <code>menu-actions.ts</code> 渲染层拦截；未命中经 <code>IPC.MENU.ACTION</code> 转主进程 handler 树</td>
+<td>渲染层拦截列表与主进程 handler 树以测试/注释对齐</td>
+</tr>
+<tr>
+<td>对话框</td>
+<td>Vue 18 个（懒加载注册表 <code>dialogs/index.ts</code>）+ 主进程 JSDOM 6 个（独立 BrowserWindow）</td>
+<td>同一动作存在双路径（结构债 H4）</td>
+</tr>
+<tr>
+<td>插件工具</td>
+<td><code>PluginTools/</code> 按分类目录组织，<code>plugin-tools-const.ts</code> 注册表（38 项）↔ 菜单 38 项一一对应；纯函数 lib + Vue 页面分层</td>
+<td>有菜单↔注册表一致性测试</td>
+</tr>
+</tbody>
+</table>
+<p><strong>编辑器与预览管线</strong></p>
+<ul>
+<li><strong>Monaco</strong>：单 worker、按需语言注册、每文件一个模型；击键链路 500ms 空闲防抖 + 脏指纹（长度 + sha256）跳过未变化内容；5 种编辑/预览模式切换。</li>
+<li><strong>预览（PF-02 单跳）</strong>：编辑内容 → 150ms 防抖 + 渲染序号 → 预渲染（snippets 展开 / KaTeX / 本地 URL 转换）→ markdown-it 插件（highlight.js / emoji / plantuml / mkdocs-material admonition+tabbed / basic/media/blocks 扩展）→ mermaid/PlantUML 异步 → DOMPurify → 远程图片策略 → v-html + TOC（章节指纹门控）；大文档（&gt;2 MiB / 5 万行）跳 KaTeX/图表并提示。</li>
+<li><strong>性能结构</strong>：入口 chunk ≈114 KB；主界面（Monaco + 预览）≈9.6 MB 首次进入时异步求值；<code>out/renderer</code> ≈24.1 MiB。</li>
+</ul>
+<h2 id="sec-6">5. 共享层结构</h2>
+<table>
+<thead>
+<tr>
+<th>组成</th>
+<th>规模</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>shared/ipc-channels.ts</code></td>
+<td>92 通道 / 17 组</td>
+<td>唯一通道真源，命名规范由测试守护</td>
+</tr>
+<tr>
+<td><code>shared/types/</code></td>
+<td>10 文件 / 9 领域</td>
+<td>system / theme / editor / file / quick-link / menu / markdown / crypto / status-bar，<code>index.ts</code> 统一出口</td>
+</tr>
+<tr>
+<td><code>shared/i18n/</code></td>
+<td>26 文件 / 12 命名空间</td>
+<td>zh-CN / en-US 各 1,821 词条；<code>translate()</code> + <code>resolveLocale()</code>；渲染层 <code>t()</code>、主进程 <code>tMain()</code></td>
+</tr>
+<tr>
+<td><code>shared/constants/</code></td>
+<td>2 文件</td>
+<td>共享常量（URL 等）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>消费矩阵</strong>：main 约 37 个文件、renderer 约 31 个文件引用 shared；边界规则为「只放纯类型 / 纯数据 / 纯函数，禁止引入 electron/node 运行时」——实际仅 1 处运行时相对 import，边界保持良好。</p>
+<blockquote>
+<p>注意：<code>main/constants/urls.ts</code> 与 <code>shared/constants/urls.ts</code> 存在 52 个同名导出（双份维护），应合并到 shared（见 §9）。</p>
+</blockquote>
+<h2 id="sec-7">6. 关键数据流</h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 900" width="1100" height="900" role="img" aria-label="四条关键数据流">
+  <defs>
+    <marker id="f-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1f2328; }
+      .title { font-size: 23px; font-weight: 700; }
+      .sub { font-size: 13.5px; fill: #475569; }
+      .legend { font-size: 12.5px; fill: #475569; }
+      .lane { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.5; rx: 12; }
+      .lanetitle { font-size: 15px; font-weight: 700; fill: #1e40af; }
+      .step { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.4; rx: 8; }
+      .badge { fill: #2563eb; }
+      .badgenum { font-size: 12px; font-weight: 700; fill: #ffffff; }
+      .stitle { font-size: 13.5px; font-weight: 700; fill: #1e3a8a; }
+      .sdesc { font-size: 12.5px; fill: #334155; }
+      .note { font-size: 12px; fill: #64748b; }
+      .flow { stroke: #2563eb; stroke-width: 2.2; fill: none; }
+    </style>
+  </defs>
+
+  <text x="16" y="32" class="title">图 4 · 四条关键数据流</text>
+  <text x="16" y="54" class="sub">编号即执行顺序；蓝色箭头为跨进程 / 跨模块调用方向</text>
+  <line x1="560" y1="48" x2="586" y2="48" class="flow" marker-end="url(#f-ar)"/>
+  <text x="594" y="52" class="legend">调用方向</text>
+
+  <!-- ① 文件 -->
+  <rect x="16" y="88" width="1068" height="178" class="lane"/>
+  <text x="34" y="114" class="lanetitle">① 文件：打开 → 编辑 → 保存 / 自动保存 → 退出落盘</text>
+  <rect x="34" y="128" width="196" height="112" class="step"/>
+  <circle cx="56" cy="150" r="11" class="badge"/><text x="52" y="155" class="badgenum">1</text>
+  <text x="76" y="155" class="stitle">选择文件</text>
+  <text x="48" y="182" class="sdesc">欢迎页 / 文件树 / 菜单</text>
+  <text x="48" y="204" class="sdesc">最近打开记录</text>
+  <rect x="242" y="128" width="196" height="112" class="step"/>
+  <circle cx="264" cy="150" r="11" class="badge"/><text x="260" y="155" class="badgenum">2</text>
+  <text x="284" y="155" class="stitle">IPC 请求</text>
+  <text x="256" y="182" class="sdesc">invoke：sender 校验</text>
+  <text x="256" y="204" class="sdesc">路径守卫 / 受信根</text>
+  <rect x="450" y="128" width="196" height="112" class="step"/>
+  <circle cx="472" cy="150" r="11" class="badge"/><text x="468" y="155" class="badgenum">3</text>
+  <text x="492" y="155" class="stitle">读取文件</text>
+  <text x="464" y="182" class="sdesc">file-operations</text>
+  <text x="464" y="204" class="sdesc">编码检测（jschardet）</text>
+  <rect x="658" y="128" width="196" height="112" class="step"/>
+  <circle cx="680" cy="150" r="11" class="badge"/><text x="676" y="155" class="badgenum">4</text>
+  <text x="700" y="155" class="stitle">回填编辑器</text>
+  <text x="672" y="182" class="sdesc">Monaco 模型 + appState</text>
+  <text x="672" y="204" class="sdesc">脏指纹（长度 + sha256）</text>
+  <rect x="866" y="128" width="196" height="112" class="step"/>
+  <circle cx="888" cy="150" r="11" class="badge"/><text x="884" y="155" class="badgenum">5</text>
+  <text x="908" y="155" class="stitle">保存 / 退出</text>
+  <text x="880" y="182" class="sdesc">Ctrl+S / 自动保存 / 切换文件</text>
+  <text x="880" y="204" class="sdesc">退出：FLUSH_CONTENT（2s 超时）</text>
+  <line x1="232" y1="184" x2="242" y2="184" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="440" y1="184" x2="450" y2="184" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="648" y1="184" x2="658" y2="184" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="856" y1="184" x2="866" y2="184" class="flow" marker-end="url(#f-ar)"/>
+  <text x="34" y="258" class="note">关键实现：切换文件前自动保存；关闭与退出共用同一落盘链路；保存失败经状态栏与日志反馈；最近文件持久化于 file-state-store。</text>
+
+  <!-- ② 菜单 -->
+  <rect x="16" y="282" width="1068" height="178" class="lane"/>
+  <text x="34" y="308" class="lanetitle">② 菜单动作：渲染层拦截优先，未命中转主进程 handler 树</text>
+  <rect x="34" y="322" width="196" height="112" class="step"/>
+  <circle cx="56" cy="344" r="11" class="badge"/><text x="52" y="349" class="badgenum">1</text>
+  <text x="76" y="349" class="stitle">MenuBar 点击</text>
+  <text x="48" y="376" class="sdesc">menu-config 数据驱动</text>
+  <text x="48" y="398" class="sdesc">13 个顶层菜单</text>
+  <rect x="242" y="322" width="196" height="112" class="step"/>
+  <circle cx="264" cy="344" r="11" class="badge"/><text x="260" y="349" class="badgenum">2</text>
+  <text x="284" y="349" class="stitle">渲染层拦截</text>
+  <text x="256" y="376" class="sdesc">HandleMenuAction</text>
+  <text x="256" y="398" class="sdesc">打开 Vue 对话框 / 插入文本</text>
+  <rect x="450" y="322" width="196" height="112" class="step"/>
+  <circle cx="472" cy="344" r="11" class="badge"/><text x="468" y="349" class="badgenum">3</text>
+  <text x="492" y="349" class="stitle">未命中 → IPC</text>
+  <text x="464" y="376" class="sdesc">IPC.MENU.ACTION</text>
+  <text x="464" y="398" class="sdesc">action 精确字符串</text>
+  <rect x="658" y="322" width="196" height="112" class="step"/>
+  <circle cx="680" cy="344" r="11" class="badge"/><text x="676" y="349" class="badgenum">4</text>
+  <text x="700" y="349" class="stitle">主进程解析</text>
+  <text x="672" y="376" class="sdesc">menu-handle</text>
+  <text x="672" y="398" class="sdesc">ActionParser → handler 树</text>
+  <rect x="866" y="322" width="196" height="112" class="step"/>
+  <circle cx="888" cy="344" r="11" class="badge"/><text x="884" y="349" class="badgenum">5</text>
+  <text x="908" y="349" class="stitle">业务执行</text>
+  <text x="880" y="376" class="sdesc">文件 / 窗口 / 外链 / 工具</text>
+  <text x="880" y="398" class="sdesc">对话框 / 绘图模板</text>
+  <line x1="232" y1="378" x2="242" y2="378" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="440" y1="378" x2="450" y2="378" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="648" y1="378" x2="658" y2="378" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="856" y1="378" x2="866" y2="378" class="flow" marker-end="url(#f-ar)"/>
+  <text x="34" y="452" class="note">现状：两套菜单动作体系以注释 + 测试对齐；新增动作需同时登记渲染层拦截与主进程 handler（字符串一致性由测试守护）。</text>
+
+  <!-- ③ 配置 -->
+  <rect x="16" y="476" width="1068" height="178" class="lane"/>
+  <text x="34" y="502" class="lanetitle">③ 配置变更：store → IPC → electron-store → 副作用 + 广播</text>
+  <rect x="34" y="516" width="196" height="112" class="step"/>
+  <circle cx="56" cy="538" r="11" class="badge"/><text x="52" y="543" class="badgenum">1</text>
+  <text x="76" y="543" class="stitle">设置对话框</text>
+  <text x="48" y="570" class="sdesc">v-model 双向绑定</text>
+  <text x="48" y="592" class="sdesc">useConfigStore</text>
+  <rect x="242" y="516" width="196" height="112" class="step"/>
+  <circle cx="264" cy="538" r="11" class="badge"/><text x="260" y="543" class="badgenum">2</text>
+  <text x="284" y="543" class="stitle">防抖写盘</text>
+  <text x="256" y="570" class="sdesc">300ms 防抖</text>
+  <text x="256" y="592" class="sdesc">JSON 往返剥离 Vue Proxy</text>
+  <rect x="450" y="516" width="196" height="112" class="step"/>
+  <circle cx="472" cy="538" r="11" class="badge"/><text x="468" y="543" class="badgenum">3</text>
+  <text x="492" y="543" class="stitle">IPC 写配置</text>
+  <text x="464" y="570" class="sdesc">window.api.config.write</text>
+  <text x="464" y="592" class="sdesc">CONFIG.WRITE（invoke）</text>
+  <rect x="658" y="516" width="196" height="112" class="step"/>
+  <circle cx="680" cy="538" r="11" class="badge"/><text x="676" y="543" class="badgenum">4</text>
+  <text x="700" y="543" class="stitle">config-manager</text>
+  <text x="672" y="570" class="sdesc">store 路由 / 校验 / 迁移</text>
+  <text x="672" y="592" class="sdesc">写入 5 个配置域之一</text>
+  <rect x="866" y="516" width="196" height="112" class="step"/>
+  <circle cx="888" cy="538" r="11" class="badge"/><text x="884" y="543" class="badgenum">5</text>
+  <text x="908" y="543" class="stitle">落盘 + 广播</text>
+  <text x="880" y="570" class="sdesc">应用副作用（主题 / 字体 / 快捷键）</text>
+  <text x="880" y="592" class="sdesc">THEME.UPDATED 等 → 渲染层</text>
+  <line x1="232" y1="572" x2="242" y2="572" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="440" y1="572" x2="450" y2="572" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="648" y1="572" x2="658" y2="572" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="856" y1="572" x2="866" y2="572" class="flow" marker-end="url(#f-ar)"/>
+  <text x="34" y="646" class="note">口径：配置真源为 electron-store（userData 配置目录），渲染层 store 只是内存镜像；写入失败统一弹「配置写入磁盘失败」并保留日志。</text>
+
+  <!-- ④ 预览 -->
+  <rect x="16" y="670" width="1068" height="178" class="lane"/>
+  <text x="34" y="696" class="lanetitle">④ Markdown 预览：单跳本地渲染管线（无主进程渲染 IPC）</text>
+  <rect x="34" y="710" width="196" height="112" class="step"/>
+  <circle cx="56" cy="732" r="11" class="badge"/><text x="52" y="737" class="badgenum">1</text>
+  <text x="76" y="737" class="stitle">内容变化</text>
+  <text x="48" y="764" class="sdesc">150ms 防抖</text>
+  <text x="48" y="786" class="sdesc">渲染序号 / 并发上限</text>
+  <rect x="242" y="710" width="196" height="112" class="step"/>
+  <circle cx="264" cy="732" r="11" class="badge"/><text x="260" y="737" class="badgenum">2</text>
+  <text x="284" y="737" class="stitle">预渲染</text>
+  <text x="256" y="764" class="sdesc">snippets 展开 / KaTeX</text>
+  <text x="256" y="786" class="sdesc">本地图片 / 文件 URL 转换</text>
+  <rect x="450" y="710" width="196" height="112" class="step"/>
+  <circle cx="472" cy="732" r="11" class="badge"/><text x="468" y="737" class="badgenum">3</text>
+  <text x="492" y="737" class="stitle">markdown-it</text>
+  <text x="464" y="764" class="sdesc">mkdocs / basic / media / blocks</text>
+  <text x="464" y="786" class="sdesc">highlight / emoji / plantuml</text>
+  <rect x="658" y="710" width="196" height="112" class="step"/>
+  <circle cx="680" cy="732" r="11" class="badge"/><text x="676" y="737" class="badgenum">4</text>
+  <text x="700" y="737" class="stitle">异步图表</text>
+  <text x="672" y="764" class="sdesc">mermaid 动态 import</text>
+  <text x="672" y="786" class="sdesc">PlantUML 本地隐藏窗（队列 / LRU）</text>
+  <rect x="866" y="710" width="196" height="112" class="step"/>
+  <circle cx="888" cy="732" r="11" class="badge"/><text x="884" y="737" class="badgenum">5</text>
+  <text x="908" y="737" class="stitle">输出</text>
+  <text x="880" y="764" class="sdesc">DOMPurify → 远程图片策略</text>
+  <text x="880" y="786" class="sdesc">v-html + TOC 章节指纹门控</text>
+  <line x1="232" y1="766" x2="242" y2="766" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="440" y1="766" x2="450" y2="766" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="648" y1="766" x2="658" y2="766" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="856" y1="766" x2="866" y2="766" class="flow" marker-end="url(#f-ar)"/>
+  <text x="34" y="840" class="note">降级：大文档（&gt;2 MiB / 5 万行）跳过 KaTeX 与图表并在顶部提示；渲染异常保留上一轮结果；预览 HTML 仅来自本地管线，叠加 DOMPurify + CSP。</text>
+
+  <!-- 底部说明 -->
+  <rect x="16" y="858" width="1068" height="30" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="32" y="878" class="note">说明：四条链路覆盖「文件生命周期 / 用户动作分发 / 配置持久化 / 渲染输出」四类主要数据路径，编号即执行顺序。</text>
+</svg>
+</figure>
+<ol>
+<li><strong>文件：打开 → 编辑 → 保存/自动保存 → 退出落盘</strong>
+选择文件 → IPC（sender 校验 + 路径守卫）→ <code>file-operations</code> 读取 + 编码检测 → 回填 Monaco + <code>appState</code> → 脏指纹更新 → Ctrl+S/自动保存/切换文件落盘；退出时 <code>close</code> 拦截 → <code>FLUSH_CONTENT</code>（2s 超时）→ 脏则落盘。</li>
+<li><strong>菜单动作：渲染层优先，主进程兜底</strong>
+<code>MenuBar</code> 点击 → <code>HandleMenuAction</code>（渲染层打开 Vue 对话框/插入文本）→ 未命中经 <code>IPC.MENU.ACTION</code> → 主进程 <code>menu-handle</code> 解析 → handler 树 → 业务调用/窗口操作。</li>
+<li><strong>配置变更：store → IPC → electron-store → 副作用 + 广播</strong>
+设置对话框 <code>v-model</code> → <code>useConfigStore</code>（300ms 防抖，JSON 往返剥离 Proxy）→ <code>window.api.config.write</code> → <code>config-manager</code> 路由/校验/迁移 → electron-store 落盘 → 应用副作用（主题/字体/快捷键/定时器）→ 广播 <code>THEME.UPDATED</code> / <code>SYSTEM_SETTING_UPDATE</code> → 渲染层监听器更新 UI。</li>
+<li><strong>Markdown 预览：单跳本地管线</strong>（见 §4「编辑器与预览管线」；无主进程渲染 IPC）。</li>
+</ol>
+<h2 id="sec-8">7. 构建、测试与发布工程</h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 800" width="1120" height="800" role="img" aria-label="构建测试发布与文档流水线">
+  <defs>
+    <marker id="b-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="b-arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1f2328; }
+      .title { font-size: 23px; font-weight: 700; }
+      .sub { font-size: 13.5px; fill: #475569; }
+      .legend { font-size: 12.5px; fill: #475569; }
+      .lane { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.5; rx: 12; }
+      .lanetitle { font-size: 15px; font-weight: 700; fill: #334155; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.4; rx: 8; }
+      .gate { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.5; rx: 8; }
+      .out { fill: #f0fdf4; stroke: #16a34a; stroke-width: 1.5; rx: 8; }
+      .ctitle { font-size: 14.5px; font-weight: 700; fill: #1e3a8a; }
+      .cdesc { font-size: 13px; fill: #334155; }
+      .note { font-size: 12.5px; fill: #64748b; }
+      .flow { stroke: #2563eb; stroke-width: 2.2; fill: none; }
+      .flowg { stroke: #16a34a; stroke-width: 2; fill: none; }
+    </style>
+  </defs>
+
+  <text x="16" y="32" class="title">图 5 · 构建、测试、发布与文档流水线</text>
+  <text x="16" y="54" class="sub">质量门禁与构建解耦；打包前必过构建目录防护脚本；文档由 md 自动生成 HTML Wiki</text>
+  <line x1="900" y1="48" x2="926" y2="48" class="flow" marker-end="url(#b-ar)"/>
+  <text x="934" y="52" class="legend">流水线步骤</text>
+  <line x1="1020" y1="48" x2="1046" y2="48" class="flowg" marker-end="url(#b-arg)"/>
+  <text x="1054" y="52" class="legend">产物</text>
+
+  <!-- ① 质量门禁 -->
+  <rect x="16" y="84" width="1088" height="176" class="lane"/>
+  <text x="34" y="110" class="lanetitle">① 质量门禁（本地 npm scripts · CI quality-gate job 覆盖 typecheck / ESLint / Vitest）</text>
+  <rect x="34" y="122" width="200" height="118" class="gate"/>
+  <text x="48" y="146" class="ctitle">typecheck</text>
+  <text x="48" y="168" class="cdesc">三工程：node / web / test</text>
+  <text x="48" y="188" class="cdesc">vue-tsc + tsc --noEmit</text>
+  <text x="48" y="208" class="cdesc">0 错误基线</text>
+  <rect x="246" y="122" width="200" height="118" class="gate"/>
+  <text x="260" y="146" class="ctitle">ESLint + Prettier</text>
+  <text x="260" y="168" class="cdesc">flat config</text>
+  <text x="260" y="188" class="cdesc">0 error / 0 warning</text>
+  <text x="260" y="208" class="cdesc">format:check 可用</text>
+  <rect x="458" y="122" width="200" height="118" class="gate"/>
+  <text x="472" y="146" class="ctitle">Vitest</text>
+  <text x="472" y="168" class="cdesc">158 测试文件 · 2,871 用例</text>
+  <text x="472" y="188" class="cdesc">jsdom 47 文件</text>
+  <text x="472" y="208" class="cdesc">通道 / i18n / CSP 不变量测试</text>
+  <rect x="670" y="122" width="200" height="118" class="gate"/>
+  <text x="684" y="146" class="ctitle">Playwright E2E</text>
+  <text x="684" y="168" class="cdesc">Electron 冒烟 4 条</text>
+  <text x="684" y="188" class="cdesc">CI e2e job</text>
+  <text x="684" y="208" class="cdesc">可选依赖安装</text>
+  <rect x="882" y="122" width="200" height="118" class="gate"/>
+  <text x="896" y="146" class="ctitle">安全审计</text>
+  <text x="896" y="168" class="cdesc">npm audit（prod / all）</text>
+  <text x="896" y="188" class="cdesc">生产依赖 0 漏洞</text>
+  <text x="896" y="208" class="cdesc">依赖边界探查</text>
+  <text x="34" y="254" class="note">CI：.github/workflows/ci.yml 双 job（quality-gate / e2e，失败上传报告）；本地命令：npm run typecheck / lint / test / test:coverage / test:e2e。</text>
+
+  <!-- ② 构建与打包 -->
+  <rect x="16" y="274" width="1088" height="196" class="lane"/>
+  <text x="34" y="300" class="lanetitle">② 构建与打包（electron-vite 6 + electron-builder 26）</text>
+  <rect x="34" y="312" width="200" height="128" class="card"/>
+  <text x="48" y="336" class="ctitle">generate-version</text>
+  <text x="48" y="358" class="cdesc">版本 / 依赖版本写入</text>
+  <text x="48" y="378" class="cdesc">resources/config/version.json</text>
+  <rect x="246" y="312" width="200" height="128" class="card"/>
+  <text x="260" y="336" class="ctitle">electron-vite build</text>
+  <text x="260" y="358" class="cdesc">main（依赖外部化）</text>
+  <text x="260" y="378" class="cdesc">preload（单文件隔离）</text>
+  <text x="260" y="398" class="cdesc">renderer（异步分包）</text>
+  <rect x="458" y="312" width="200" height="128" class="card"/>
+  <text x="472" y="336" class="ctitle">prepare-build-dirs</text>
+  <text x="472" y="358" class="cdesc">构建目录完整性级别校正</text>
+  <text x="472" y="378" class="cdesc">修复 NSIS 临时文件失败</text>
+  <rect x="670" y="312" width="200" height="128" class="card"/>
+  <text x="684" y="336" class="ctitle">electron-builder</text>
+  <text x="684" y="358" class="cdesc">asar + extraResources</text>
+  <text x="684" y="378" class="cdesc">files 白名单</text>
+  <text x="684" y="398" class="cdesc">NSIS / portable</text>
+  <rect x="882" y="312" width="200" height="128" class="out"/>
+  <text x="896" y="336" class="ctitle">dist/ 产物</text>
+  <text x="896" y="358" class="cdesc">Setup 1.3.6：118.38 MB</text>
+  <text x="896" y="378" class="cdesc">portable：107.43 MB</text>
+  <text x="896" y="398" class="cdesc">latest.yml · blockmap</text>
+  <line x1="234" y1="372" x2="246" y2="372" class="flow" marker-end="url(#b-ar)"/>
+  <line x1="446" y1="372" x2="458" y2="372" class="flow" marker-end="url(#b-ar)"/>
+  <line x1="658" y1="372" x2="670" y2="372" class="flow" marker-end="url(#b-ar)"/>
+  <line x1="870" y1="372" x2="882" y2="372" class="flow" marker-end="url(#b-ar)"/>
+  <text x="34" y="458" class="note">体积口径：out/main ≈ 10.5 MiB（含内联 jsdom）、out/renderer ≈ 24.1 MiB、app.asar ≈ 49.96 MiB；失败常见原因：preload 非单文件、构建目录完整性级别、并行写冲突。</text>
+
+  <!-- ③ 文档流水线 -->
+  <rect x="16" y="484" width="1088" height="176" class="lane"/>
+  <text x="34" y="510" class="lanetitle">③ 文档与报告流水线</text>
+  <rect x="34" y="522" width="200" height="118" class="card"/>
+  <text x="48" y="546" class="ctitle">报告 Markdown 源</text>
+  <text x="48" y="568" class="cdesc">docs/reports/md/&lt;分类&gt;/*.md</text>
+  <text x="48" y="588" class="cdesc">顶部 report-nav 导航行</text>
+  <text x="48" y="608" class="cdesc">正文 + SVG 占位</text>
+  <rect x="246" y="522" width="200" height="118" class="card"/>
+  <text x="260" y="546" class="ctitle">build-html-report</text>
+  <text x="260" y="568" class="cdesc">md → HTML 单页</text>
+  <text x="260" y="588" class="cdesc">固定悬浮目录 + 卡片</text>
+  <text x="260" y="608" class="cdesc">SVG 图自动内嵌</text>
+  <rect x="458" y="522" width="200" height="118" class="card"/>
+  <text x="472" y="546" class="ctitle">generate-report-wiki</text>
+  <text x="472" y="568" class="cdesc">批量注入顶部导航</text>
+  <text x="472" y="588" class="cdesc">自动同步导航 / 侧边栏</text>
+  <text x="472" y="608" class="cdesc">生成 Wiki 首页</text>
+  <rect x="670" y="522" width="200" height="118" class="out"/>
+  <text x="684" y="546" class="ctitle">docs/reports/html</text>
+  <text x="684" y="568" class="cdesc">22 页 HTML Wiki</text>
+  <text x="684" y="588" class="cdesc">首页 + 3 分类 + 悬浮目录</text>
+  <text x="684" y="608" class="cdesc">浏览器直接打开</text>
+  <rect x="882" y="522" width="200" height="118" class="card"/>
+  <text x="896" y="546" class="ctitle">docs/wiki</text>
+  <text x="896" y="568" class="cdesc">项目文档 5 类 27 篇</text>
+  <text x="896" y="588" class="cdesc">与 reports 分离维护</text>
+  <line x1="234" y1="582" x2="246" y2="582" class="flow" marker-end="url(#b-ar)"/>
+  <line x1="446" y1="582" x2="458" y2="582" class="flow" marker-end="url(#b-ar)"/>
+  <line x1="658" y1="582" x2="670" y2="582" class="flow" marker-end="url(#b-ar)"/>
+  <text x="34" y="660" class="note">本报告已按此流水线归档：写 md → 更新 README 索引 → 运行生成器 → HTML Wiki 自动同步（导航 / 侧边栏 / 首页 / SVG 图）。</text>
+
+  <!-- 发布现状 -->
+  <rect x="16" y="684" width="1088" height="96" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="34" y="712" class="ctitle" style="fill:#b91c1c">发布现状（结构风险 H7）</text>
+  <text x="34" y="736" class="cdesc">仅 Windows 发布（NSIS + portable）；打包 / 签名 / 更新源验证未纳入 CI，发布依赖本地手工链；git tag 缺 1.3.6。</text>
+  <text x="34" y="760" class="cdesc">macOS / Linux 配置存在但为占位，无签名与 entitlements；更新器 latest.yml 已指向 GitHub Releases，但 CI 未验证可用性。</text>
+
+  <!-- 底部说明 -->
+  <rect x="16" y="786" width="1088" height="0" fill="none"/>
+</svg>
+</figure>
+<p><strong>构建三段（electron-vite）</strong></p>
+<table>
+<thead>
+<tr>
+<th>段</th>
+<th>输入/输出</th>
+<th>关键配置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>main</td>
+<td><code>src/main/index.ts</code> → <code>out/main/index.js</code>（≈10.5 MiB，含内联 jsdom）</td>
+<td><code>externalizeDeps: true</code>（Node 依赖外部化）</td>
+</tr>
+<tr>
+<td>preload</td>
+<td><code>src/preload/index.ts</code> + <code>dialog.ts</code> → 单文件</td>
+<td><code>isolatedEntries: true</code> + <code>externalizeDeps: false</code>（sandbox 下 contextBridge 必需，事故驱动约束）</td>
+</tr>
+<tr>
+<td>renderer</td>
+<td><code>src/renderer/index.html</code> → <code>out/renderer/</code>（≈24.1 MiB）</td>
+<td>别名 + 按需分包（61 处动态 import）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>打包</strong>：<code>electron-builder.yml</code>（files 白名单、asar、extraResources config/icon/themes/plantuml、NSIS assisted + portable、publish generic 已迁移 GitHub Releases）；<code>build/prepare-build-dirs.js</code> 在 electron-builder 前校正构建目录完整性级别（修复 NSIS 临时文件失败）；产物 NSIS 118.38 MB / portable 107.43 MB / blockmap / latest.yml。</p>
+<p><strong>构建脚本（build/，10 个）</strong>：<code>generate-version-config.js</code>（版本与依赖版本 → version.json）、<code>prepare-build-dirs.js</code>、<code>build-html-report.js</code>、<code>generate-report-wiki.js</code>、<code>build-win.ps1</code>、两个 <code>.bat</code>、<code>installer/uninstaller.nsh</code>。npm scripts 共 30 个（门禁/构建/打包/审计/E2E）。</p>
+<p><strong>测试体系</strong></p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>规模</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>单元/组件（tests/unit）</td>
+<td>158 测试文件 / 2,871 用例</td>
+<td>根级 120 + vue 15 + vue2 15 + plugins 6 + composables 2；47 个 jsdom 环境</td>
+</tr>
+<tr>
+<td>测试特征</td>
+<td>586 describe / 2,649 静态 it / 17 it.each</td>
+<td>含架构级防回归：通道常量双向核对、i18n 五重门禁、preload 构建约束、CSP 不变量</td>
+</tr>
+<tr>
+<td>E2E</td>
+<td><code>e2e/smoke.spec.ts</code> 4 条</td>
+<td>Playwright + Electron 启动/窗口/preload 桥冒烟</td>
+</tr>
+<tr>
+<td>CI</td>
+<td><code>.github/workflows/ci.yml</code></td>
+<td>quality-gate（typecheck/ESLint/Vitest）+ e2e 双 job；<strong>未覆盖打包、签名、更新源验证</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>文档流水线</strong>：<code>docs/reports/md/&lt;分类&gt;/*.md</code> → <code>build-html-report.js</code>（固定悬浮目录/卡片/SVG 内嵌）→ <code>generate-report-wiki.js</code>（批量注入顶部导航与首页）→ <code>docs/reports/html/</code>（Wiki：首页 + 分类 + 每页悬浮目录）；本报告按此流程归档。</p>
+<h2 id="sec-9">8. 结构量化与热点</h2>
+<p><strong>目录规模（行数为 LF 实测）</strong></p>
+<table>
+<thead>
+<tr>
+<th>目录</th>
+<th style="text-align:right">文件</th>
+<th style="text-align:right">行数</th>
+<th>占比说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/main</code></td>
+<td style="text-align:right">70</td>
+<td style="text-align:right">18,439</td>
+<td>配置 12 / 对话框 10 / IPC 11 / utils 33 / renders 1</td>
+</tr>
+<tr>
+<td><code>src/preload</code></td>
+<td style="text-align:right">3</td>
+<td style="text-align:right">443</td>
+<td>双入口 + 类型声明</td>
+</tr>
+<tr>
+<td><code>src/shared</code></td>
+<td style="text-align:right">39</td>
+<td style="text-align:right">6,200</td>
+<td>契约层（types/i18n/constants）</td>
+</tr>
+<tr>
+<td><code>src/renderer</code></td>
+<td style="text-align:right">250</td>
+<td style="text-align:right">69,939</td>
+<td>组件 81 vue；PluginTools 84 文件 / 32,424 行</td>
+</tr>
+<tr>
+<td><code>tests</code></td>
+<td style="text-align:right">163</td>
+<td style="text-align:right">45,960</td>
+<td>测试代码量为源码约 48%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>最大文件热点（结构复杂度集中点）</strong></p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th style="text-align:right">行数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PluginTools/TextTools/pinyin-data.ts</code></td>
+<td style="text-align:right">20,914</td>
+<td>纯数据表（拼音字库），建议迁出组件目录并按需加载</td>
+</tr>
+<tr>
+<td><code>Markdown/preview-md-basic.ts</code></td>
+<td style="text-align:right">1,403</td>
+<td>批次 A 扩展插件（可再按语法拆文件）</td>
+</tr>
+<tr>
+<td><code>dialogs/complex/MaterialSyntaxDialog.vue</code></td>
+<td style="text-align:right">1,311</td>
+<td>15 项语法插入对话框（表单+生成器可抽纯函数目录）</td>
+</tr>
+<tr>
+<td><code>dialogs/complex/SystemSettingDialog.vue</code></td>
+<td style="text-align:right">1,067</td>
+<td>设置页按页签拆分候选</td>
+</tr>
+<tr>
+<td><code>BaiZeNotes.vue</code></td>
+<td style="text-align:right">732</td>
+<td>壳层（主题逻辑/对话框宿主可抽 composable + 子组件）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>重复模式</strong>：对话框骨架（overlay/title-bar/drag/footer）在 18 个 Vue 对话框重复；插件工具页样板（标题/输入/操作/输出）；预览插件四层文件均含「rule + renderer + 测试」同构结构；IPC 错误上报 5+ 套 helper。</p>
+<h2 id="sec-10">9. 结构评估与改进建议</h2>
+<h3 id="sub-1">9.1 设计优点</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>优点</th>
+<th>体现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>真源治理彻底</td>
+<td>IPC 92 通道 / 类型 9 领域 / i18n 12 命名空间 / 配置 5 store 均单点维护，且有测试守护</td>
+</tr>
+<tr>
+<td>2</td>
+<td>安全纵深完整</td>
+<td>sender 校验 68 处 + 路径守卫 + preload 双层白名单 + 导航/shell/CSP/远程资源阻断</td>
+</tr>
+<tr>
+<td>3</td>
+<td>生命周期收口清晰</td>
+<td><code>ipcListenerManager</code> + <code>windowManager</code> + <code>cleanupApp</code> 三件套，规避 Electron 窗口重建/泄漏常见坑</td>
+</tr>
+<tr>
+<td>4</td>
+<td>落盘可靠性</td>
+<td>flush 回执 + 超时 + 脏指纹 + 关闭/退出双路径统一</td>
+</tr>
+<tr>
+<td>5</td>
+<td>懒加载与性能意识</td>
+<td>61 处动态 import、入口 chunk ≈114 KB、渲染序号/防抖/LRU/大文档降级</td>
+</tr>
+<tr>
+<td>6</td>
+<td>测试有架构含量</td>
+<td>常量↔调用点双向核对、i18n 五重门禁、preload 构建约束等「结构不变量」测试</td>
+</tr>
+<tr>
+<td>7</td>
+<td>注释即决策记录</td>
+<td>P0/CQ/ARC/PF 编号注释把历史缺陷与约束写入代码</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-2">9.2 结构风险清单（合并三份分析）</h3>
+<table>
+<thead>
+<tr>
+<th>级别</th>
+<th>#</th>
+<th>风险</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>高</strong></td>
+<td>H1</td>
+<td><code>config ↔ utils</code> 双向依赖（config 9 文件 import utils，utils 3 文件反向 import config），无自动环检测</td>
+<td>新增静态 import 可能引入真环（CJS 半初始化 undefined），构建/测试难发现</td>
+</tr>
+<tr>
+<td><strong>高</strong></td>
+<td>H2</td>
+<td>preload 通道白名单为三份手工清单（主窗口 58+25、对话框 2+1、window.api 6），与 92 常量无编译期对应</td>
+<td>新增 IPC 漏登记即静默丢弃，历史已出现同类事故</td>
+</tr>
+<tr>
+<td><strong>高</strong></td>
+<td>H3</td>
+<td>双对话框体系：Vue 18 个 vs 主进程 JSDOM 6 个，同一动作存在两条路径</td>
+<td>主题/文案/i18n/交互两套实现，回归面翻倍</td>
+</tr>
+<tr>
+<td><strong>高</strong></td>
+<td>H4</td>
+<td>主界面 chunk ≈9.6 MB 首次进入时整体同步求值（Monaco 二级懒加载未做）</td>
+<td>首次进入主界面长任务与内存峰值；大文档/多图表仍可能卡输入</td>
+</tr>
+<tr>
+<td><strong>高</strong></td>
+<td>H5</td>
+<td>文档口径漂移：主进程产物「605 KB vs 10.46 MiB」、依赖「13/37 vs 11/39」、测试数多口径、审计「0 vs 12 moderate」</td>
+<td>读者/后续 AI 以错误基线做决策</td>
+</tr>
+<tr>
+<td><strong>高</strong></td>
+<td>H6</td>
+<td>运行时依赖边界：<code>jsdom</code>（devDependency）被主进程 <code>require</code> 内联进 bundle</td>
+<td>主进程包体 +9.3 MB；构建配置变动即运行时崩溃且单测难发现</td>
+</tr>
+<tr>
+<td><strong>高</strong></td>
+<td>H7</td>
+<td>发布链路单平台 + 无 CI 打包/签名/更新源验证；缺 1.3.6 tag</td>
+<td>发布依赖本地手工链，更新器可用性未验证</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>M1</td>
+<td>全局单例/可变状态分散（appState/trustedMainWindow/welcome-state/快捷键目标窗/store/logger）</td>
+<td>窗口重建/测试隔离依赖手工 reset；并发状态串扰</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>M2</td>
+<td>IPC 注册分散 7 文件、无显式注册清单；错误上报 5+ 套 helper</td>
+<td>审阅/测试需跨文件拼图；提示口径难统一</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>M3</td>
+<td>字符串协议三处同步（38 插件 id / 15 Material 项 / 模板 menuAction 分散菜单数据/注册表/分发器/i18n）</td>
+<td>新增工具需 4 处改动</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>M4</td>
+<td>状态/主题多真源 + DOM 直改样式（themeConfig/currentTheme 各有一份；querySelector 改主题）</td>
+<td>主题切换路径脆弱、易漂移</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>M5</td>
+<td>EventBus 双风格：24 事件中手写 <code>$on/$off</code> 9 文件，<code>useEventBus</code> 零使用</td>
+<td>新组件易漏 <code>$off</code>（已有泄漏检测兜底）</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>M6</td>
+<td>重复/死资源：4 个 CSS 双重加载、KaTeX CSS 三处、<code>MermaidRender.vue</code>/<code>HemyTools</code> 空壳、7 个未注册工具页、模板遗留资源</td>
+<td>体积与维护噪声</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>M7</td>
+<td>主进程保留 JSDOM（≈9.3 MB，仅惰性加载）；<code>out/</code> 构建产物与分析产物混放（81.8 MB/1,696 文件）</td>
+<td>包体/启动成本；产物可复现性差</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>M8</td>
+<td><code>main/constants/urls.ts</code> 与 <code>shared/constants/urls.ts</code> 52 个同名导出双份维护</td>
+<td>漂移风险</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>M9</td>
+<td>覆盖率阈值/格式检查/审计未进 CI；测试偏科（渲染层 72%，e2e 仅 4 条）</td>
+<td>回退不会在 PR 阶段暴露</td>
+</tr>
+<tr>
+<td><strong>低</strong></td>
+<td>L1</td>
+<td><code>utils/common.ts</code> 死文件；<code>SYSTEM.OPEN_EXTERNAL_LINK</code> 死通道；<code>window-manager</code> 放在 <code>config/</code></td>
+<td>结构语义混乱</td>
+</tr>
+<tr>
+<td><strong>低</strong></td>
+<td>L2</td>
+<td>EOL 不一致（.editorconfig CRLF vs 实际 LF 为主）；3 个非 UTF-8 文件</td>
+<td>跨工具链偶发异常</td>
+</tr>
+<tr>
+<td><strong>低</strong></td>
+<td>L3</td>
+<td>build/ 脚本腐化（installer.nsh 零引用、两个 .bat 未接 npm）；根目录游离资产；docs 双份架构文档</td>
+<td>维护者误解、仓库洁净度</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-3">9.3 改进建议（按优先级，不要求实施）</h3>
+<p><strong>P1（结构债，建议尽早）</strong></p>
+<ol>
+<li><strong>依赖边界自动化</strong>：引入 <code>dependency-cruiser</code> 或自研单测声明 <code>index → ipc|dialogs → config → utils → shared</code> 方向矩阵，禁止 utils 反向 import config（改回调注入，如现有 <code>setRecentFilesLimitProvider</code> 模式），并把 <code>config/index.ts</code> 的 ipc re-export 迁出。</li>
+<li><strong>白名单单一化</strong>：以 <code>shared/ipc-channels.ts</code> 分组 + 一张「通道路由元数据表」为源，构建期生成两份 preload 白名单与 <code>window.api</code> 闭包通道；测试改为「生成产物 vs 渲染层扫描」核对。</li>
+<li><strong>收敛对话框体系</strong>：把 <code>ShowShortcutKeys/ShowUpdateLog/ShowReleaseNotes/ShowRename/ShowConfirmDelete</code> 迁为 Vue 懒加载对话框，主进程只保留确有独立窗口需求的（在线网页等），消除「新建文件/文件夹」双路径。</li>
+<li><strong>主界面二次分块</strong>：Monaco 初始化与预览管线二级懒加载（先外壳骨架，空闲/首编辑时加载 Monaco），降低首次进入的 ~9.6 MB 同步求值；评估 highlight.js 改 <code>core + 常用语言</code>。</li>
+<li><strong>修正文档口径并自动化</strong>：统一 README/报告中的产物体积、依赖计数、测试数、审计口径；为门禁数字增加自动生成/校验脚本（CI 落盘并与 docs 基线比对）。</li>
+</ol>
+<p><strong>P2（治理与质量）</strong></p>
+<ol start="6">
+<li><strong>注册清单显式化</strong>：新增 <code>ipc/registry.ts</code> 只做 <code>registerAll(mainWindow)</code> 汇总；入口只调用一次。</li>
+<li><strong>状态收口</strong>：新增 <code>AppContext</code>（window/stores/listener manager/flags）统一 reset；删除无消费者的 <code>systemConfig/quickLinksConfig</code> 或真正接入；主题收敛为 <code>useTheme()</code> 单例。</li>
+<li><strong>单一注册表</strong>：插件工具由一份 manifest 同时生成菜单项与懒加载注册表；Material 15 项同理。</li>
+<li><strong>错误/状态栏统一</strong>：抽 <code>notifyStatus</code> + <code>toUserError</code> 替换 5 套 helper。</li>
+<li><strong>拆分超大文件</strong>：<code>directory-tree</code> 按扫描/watch/事件拆 3 文件；<code>preview-md-basic</code> 按语法域拆；<code>MaterialSyntaxDialog</code> 抽表单/生成器纯函数目录；设置页按页签拆子组件。</li>
+<li><strong>工程门禁补强</strong>：CI 增加 <code>vitest --coverage</code>、<code>prettier --check</code>、<code>npm audit --omit=dev</code>；shared 边界加 ESLint <code>no-restricted-imports</code>（禁止 renderer import main、禁止 shared 引 electron/node）。</li>
+<li><strong>发布链路补全</strong>：新增 release workflow（tag → nsis/portable + latest.yml 上传），补签名策略与 release-1.3.6 tag。</li>
+</ol>
+<p><strong>P3（清理与规范）</strong></p>
+<ol start="13">
+<li><strong>清理死代码/重复资源</strong>：<code>utils/common.ts</code>、<code>SYSTEM.OPEN_EXTERNAL_LINK</code>、<code>MermaidRender.vue</code>、HemyTools 空壳、重复 CSS/模板资源。</li>
+<li><strong>目录语义归位</strong>：<code>window-manager</code> 移至 <code>src/main/window/</code>；<code>main/constants/urls.ts</code> 合并到 shared。</li>
+<li><strong>格式统一</strong>：<code>.editorconfig</code> 与 Prettier <code>endOfLine</code> 对齐，修复非 UTF-8 文件；<code>out/</code> 拆分构建产物与分析产物，<code>dist/</code> 历史安装包归档到 Release。</li>
+<li><strong>文档资产治理</strong>：<code>docs/架构文档.html</code> 归档并在索引标注「非当前」；<code>_unused-assets</code> 移出工作区。</li>
+</ol>
+<h2 id="sec-11">10. 结论</h2>
+<ul>
+<li>白泽笔记的整体结构属于「<strong>边界清晰、真源纪律强的本地优先桌面应用</strong>」：进程边界、契约层、安全纵深、懒加载与生命周期收口都达到成熟工程水平，测试具备结构不变量守护能力。</li>
+<li>当前结构债并非功能缺陷，而集中在 <strong>依赖方向（config↔utils）</strong>、<strong>桥接层手工清单（preload 白名单）</strong>、<strong>双对话框体系</strong> 与 <strong>主界面大 chunk</strong> 四处；同时文档口径漂移与发布链路未 CI 化会放大这些债的维护成本。</li>
+<li>建议按 §9.3 的 P1→P3 顺序分批判修复：先用「依赖边界测试 + 白名单生成 + 对话框收敛 + Monaco 二级懒加载」四件事降低核心结构风险，再补 CI 门禁与发布流程，最后做清理与资产治理。</li>
+</ul>
+<h2 id="sec-12">附录 A：证据与统计索引</h2>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主进程/preload 深度分析</td>
+<td><code>out/tool-results/struct-main.md</code>（698 行，含启动顺序、IPC 分组、依赖矩阵、4 条数据流）</td>
+</tr>
+<tr>
+<td>渲染层深度分析</td>
+<td><code>out/tool-results/struct-renderer.md</code>（644 行，含组件树、分包边界、预览管线、10 节观察）</td>
+</tr>
+<tr>
+<td>共享层/工程/测试分析</td>
+<td><code>out/tool-results/struct-cross.md</code>（751 行，含构建产物、依赖图、CI、文档治理）</td>
+</tr>
+<tr>
+<td>当前现行口径</td>
+<td><a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>（92 通道）+ <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单</a></td>
+</tr>
+<tr>
+<td>数字采集</td>
+<td>2026-11-19 只读实测：<code>git status</code>（干净）、目录行数统计、<code>package.json</code>、<code>resources/config/version.json</code>、<code>dist/</code> 产物、<code>npm test</code> 全量结果</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-13">附录 B：统计口径说明</h2>
+<ol>
+<li><strong>行数</strong>：LF 计数，含空行与注释；<code>src</code> 统计含 <code>.d.ts</code>/<code>.svg</code> 资源，<code>tests</code> 含测试 helper。</li>
+<li><strong>测试数</strong>：本报告采用分析时全量 <code>vitest run</code> 实测值 <strong>158 文件 / 2,871 用例</strong>（与历代报告中的 1,067～2,871 等历史值区分；历史值为各自时点口径）。</li>
+<li><strong>产物体积</strong>：<code>out/main</code> 为 Vite 产物（含内联 jsdom 的 10.46 MiB 口径），<code>app.asar</code> 49.96 MiB、NSIS 118.38 MB 为 2026-11-19 测得的最新安装包；历史报告中的 605 KB 主进程口径不可直接引用。</li>
+<li><strong>结构图</strong>：工程侧新增 <code>docs/reports/svg/</code> 目录集中存放结构类 SVG（本报告 5 张），报告生成流水线已支持 <code>SVG:&lt;名称&gt;</code> 占位（Markdown 注释形式）自动内嵌。</li>
+</ol>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

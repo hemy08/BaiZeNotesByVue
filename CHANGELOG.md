@@ -46,6 +46,15 @@
 - 测试：新增 PDF 组件测试 6 用例、READ_BINARY 通道测试 3 用例；插件/菜单/词典断言同步（插件工具 37 → 38）
 - 验证：typecheck 0 错误、ESLint 0/0、vitest **156 文件 / 2,847 用例全通过**、`electron-vite build` 成功
 
+### 🧩 公共接口归位第 0 批（2026-11-19）
+
+- **URL 单一真源**：main 常量表改为 re-export shared 真源（删 52 条重复常量）；渲染层菜单删除 50 个死 URL 字段
+- **窗口控制修复**：主界面最大化改 TOGGLE_MAXIMIZE（二次点击还原）+ 图标/title 切换 + 状态同步；修复非法 CSS
+- **默认值统一**：删 useConfigStore 死状态；新增 shared `SYSTEM_SETTING_FALLBACK`；SystemSettingDialog 引用共享常量
+- **主题广播收敛**：改用 shared `ThemeUpdateData`；新增 `buildThemeBroadcastPayload()`；三处广播统一走 `broadcastThemeToAllWindows`
+- **结构分析报告归档**：《代码整体结构分析报告》+ 5 张 SVG 图 + HTML wiki；报告生成脚本新增导航自动同步
+- 门禁：typecheck 0 / ESLint 0-0 / vitest 158 文件 2,877 用例全通过 / build 成功
+
 ### ⚡ 主界面异步分块（2026-11-19）
 
 - **入口 chunk 10,096KB → 114KB（-98.9%）**：主界面 `BaiZeNotes.vue` 改为 `defineAsyncComponent` 按需加载；Monaco（≈7.3MB）、highlight.js（≈1.29MB）、KaTeX（≈0.51MB）与渲染管线移入主界面异步 chunk（≈9,644KB）；初始加载 JS+CSS 10,541KB → **604KB（-94.3%）**

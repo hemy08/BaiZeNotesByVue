@@ -16,6 +16,7 @@ const { buildHtml } = require('./build-html-report')
 const ROOT = path.resolve(__dirname, '..')
 const MD_ROOT = path.join(ROOT, 'docs', 'reports', 'md')
 const HTML_ROOT = path.join(ROOT, 'docs', 'reports', 'html')
+const SVG_ROOT = path.join(ROOT, 'docs', 'reports', 'svg')
 const NAV = path.join(__dirname, 'report-nav.html')
 
 function walk(dir, acc = []) {
@@ -27,6 +28,113 @@ function walk(dir, acc = []) {
     }
     return acc
 }
+
+/** 报告分类（与 md/ 下目录同名；顶部导航下拉与侧边栏均按此顺序/范围维护） */
+const NAV_CATEGORIES = ['01-检查与扫描', '02-修复与实施', '03-专项治理']
+
+/** 列出 md/ 下全部报告（按分类、文件名字典序），供导航/侧边栏自动补齐 */
+function listReportEntries() {
+    const entries = []
+    for (const cat of NAV_CATEGORIES) {
+        const dir = path.join(MD_ROOT, cat)
+        if (!fs.existsSync(dir)) continue
+        for (const f of fs.readdirSync(dir).filter((name) => name.endsWith('.md')).sort()) {
+            entries.push({ cat, name: path.basename(f, '.md') })
+        }
+    }
+    return entries
+}
+
+/**
+ * 顶部导航（build/report-nav.html）自动补齐：
+ * 保持既有的手写顺序，把 md/ 中存在但导航未登记的报告追加到对应分类下拉末尾，
+ * 避免「新增报告后 wiki 顶部导航漏项」（本次结构分析报告即因此遗漏）。
+ * 幂等：已有链接的文件不会重复追加。
+ */
+function syncReportNav(entries) {
+    let nav = fs.readFileSync(NAV, 'utf-8')
+    let added = 0
+    for (const cat of NAV_CATEGORIES) {
+        const catEntries = entries.filter((e) => e.cat === cat)
+        if (catEntries.length === 0) continue
+        const marker = `<summary>${cat} ▾</summary>`
+        const markerIndex = nav.indexOf(marker)
+        if (markerIndex < 0) {
+            console.warn(`[report-wiki] 顶部导航缺少分类：${cat}`)
+            continue
+        }
+        const openTag = '<div class="rgnav-drop">'
+        const bodyStart = nav.indexOf(openTag, markerIndex)
+        if (bodyStart < 0) continue
+        const bodyEnd = nav.indexOf('</div>', bodyStart)
+        if (bodyEnd < 0) continue
+        const body = nav.slice(bodyStart + openTag.length, bodyEnd)
+        const missing = catEntries.filter((e) => !body.includes(`${cat}/${e.name}.html`))
+        if (missing.length === 0) continue
+        const inserted = missing.map((e) => `      <a href="../${cat}/${e.name}.html">${e.name}</a>`).join('\n')
+        const updatedBody = body.replace(/\s*$/, '') + '\n' + inserted + '\n    '
+        nav = nav.slice(0, bodyStart + openTag.length) + updatedBody + nav.slice(bodyEnd)
+        added += missing.length
+    }
+    if (added > 0) {
+        fs.writeFileSync(NAV, nav, 'utf-8')
+        console.log(`[report-wiki] 顶部导航补齐 ${added} 个报告链接（build/report-nav.html）`)
+    }
+    return added
+}
+
+/** 侧边栏（docsify：docs/reports/html/_sidebar.md）自动补齐，规则同上 */
+function syncSidebar(entries) {
+    const sidebarPath = path.join(HTML_ROOT, '_sidebar.md')
+    if (!fs.existsSync(sidebarPath)) return 0
+    const lines = fs.readFileSync(sidebarPath, 'utf-8').split('\n')
+    let added = 0
+    for (const cat of NAV_CATEGORIES) {
+        const header = `- **${cat}**`
+        const headerIndex = lines.findIndex((line) => line.trim() === header)
+        if (headerIndex < 0) continue
+        let blockEnd = headerIndex + 1
+        while (blockEnd < lines.length && !/^-\s+\*\*/.test(lines[blockEnd].trim()) && lines[blockEnd].trim() !== '') {
+            blockEnd++
+        }
+        const blockText = lines.slice(headerIndex, blockEnd).join('\n')
+        const missing = entries.filter((e) => e.cat === cat && !blockText.includes(`${cat}/${e.name}.html`))
+        if (missing.length === 0) continue
+        const inserted = missing.map((e) => `  - [${e.name}](${cat}/${e.name}.html)`)
+        lines.splice(blockEnd, 0, ...inserted)
+        added += missing.length
+    }
+    if (added > 0) {
+        fs.writeFileSync(sidebarPath, lines.join('\n'), 'utf-8')
+        console.log(`[report-wiki] 侧边栏补齐 ${added} 个报告链接（docs/reports/html/_sidebar.md）`)
+    }
+    return added
+}
+
+/**
+ * 解析报告 Markdown 中的 `<!-- SVG:name -->` 占位，映射到 docs/reports/svg/name.svg。
+ * 返回 buildHtml 需要的 `name=绝对路径` 列表（AGENTS：文档配图优先 SVG，外部文件比内联更易维护）。
+ */
+function collectSvgSpecs(mdPath) {
+    const md = fs.readFileSync(mdPath, 'utf-8')
+    const names = new Set()
+    for (const match of md.matchAll(/<!--\s*SVG:([\w-]+)\s*-->/g)) {
+        names.add(match[1])
+    }
+    const specs = []
+    for (const name of names) {
+        const svgPath = path.join(SVG_ROOT, `${name}.svg`)
+        if (fs.existsSync(svgPath)) specs.push(`${name}=${svgPath}`)
+        else console.warn(`[report-wiki] 未找到 SVG：${svgPath}（占位保留）`)
+    }
+    return specs
+}
+
+// 生成前先同步导航与侧边栏：从 md/ 目录自动补齐缺失报告，
+// 保证本次生成的所有页面（含首页）顶部导航指向同一份最新清单。
+const reportEntries = listReportEntries()
+syncReportNav(reportEntries)
+syncSidebar(reportEntries)
 
 let count = 0
 for (const mdPath of walk(MD_ROOT)) {
@@ -40,7 +148,8 @@ for (const mdPath of walk(MD_ROOT)) {
         title: name,
         l1: `报告归档 · ${cat}`,
         l2: '历史快照 · 顶部导航可切换其他报告',
-        nav: NAV
+        nav: NAV,
+        svg: collectSvgSpecs(mdPath)
     })
     count++
 }
@@ -57,7 +166,7 @@ if (fs.existsSync(readmeMd)) {
         output: readmeHtml,
         title: '报告 HTML Wiki · 首页',
         l1: '白泽笔记 · 历史报告归档（HTML Wiki）',
-        l2: '当前基线 v1.3.6 · 155 测试文件 / 2,823 用例 · 90 IPC 通道',
+        l2: '当前基线 v1.3.6 · 158 测试文件 / 2,871 用例 · 92 IPC 通道',
         navHtml: navRoot
     })
     // 首页导航：md 报告链接 → 对应 html（存在时），便于在 wiki 内直接跳转

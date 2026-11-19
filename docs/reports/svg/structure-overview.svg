@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 800" width="1024" height="800" role="img" aria-label="白泽笔记进程架构总览">
+  <defs>
+    <marker id="o-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="o-arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1f2328; }
+      .title { font-size: 23px; font-weight: 700; }
+      .sub { font-size: 13.5px; fill: #475569; }
+      .legend { font-size: 12.5px; fill: #475569; }
+      .phead { font-size: 15.5px; font-weight: 700; fill: #ffffff; }
+      .pnote { font-size: 12px; fill: #e0e7ff; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.4; rx: 8; }
+      .ctitle { font-size: 15px; font-weight: 700; fill: #1e3a8a; }
+      .cdesc { font-size: 13.5px; fill: #334155; }
+      .chip { fill: #eff6ff; stroke: #93c5fd; stroke-width: 1; rx: 12; }
+      .chiptext { font-size: 12.5px; fill: #1e40af; font-weight: 600; }
+      .flow { stroke: #2563eb; stroke-width: 2.2; fill: none; }
+      .flowg { stroke: #16a34a; stroke-width: 1.8; fill: none; stroke-dasharray: 5 4; }
+      .sect { font-size: 13px; fill: #475569; }
+    </style>
+  </defs>
+
+  <!-- 标题与图例 -->
+  <text x="16" y="32" class="title">图 1 · 白泽笔记进程架构总览（v1.3.6）</text>
+  <text x="16" y="54" class="sub">Electron 三进程 + shared 单真源：主进程收口系统能力，preload 白名单收敛 92 个 IPC 通道，渲染层承载全部 UI</text>
+  <rect x="700" y="14" width="14" height="14" rx="3" fill="#1e40af"/><text x="720" y="26" class="legend">主进程</text>
+  <rect x="784" y="14" width="14" height="14" rx="3" fill="#0f766e"/><text x="804" y="26" class="legend">渲染进程</text>
+  <rect x="884" y="14" width="14" height="14" rx="3" fill="#16a34a"/><text x="904" y="26" class="legend">共享层</text>
+  <line x1="16" y1="70" x2="42" y2="70" class="flow" marker-end="url(#o-ar)"/>
+  <text x="50" y="74" class="legend">蓝色箭头 = IPC 请求 / 事件（R↔M）</text>
+  <line x1="300" y1="70" x2="326" y2="70" class="flowg" marker-end="url(#o-arg)"/>
+  <text x="334" y="74" class="legend">绿色虚线 = 共享契约引用</text>
+
+  <!-- ============ 左：主进程 ============ -->
+  <rect x="16" y="88" width="292" height="520" rx="12" fill="#f8fafc" stroke="#1e40af" stroke-width="2"/>
+  <rect x="16" y="88" width="292" height="40" rx="12" fill="#1e40af"/>
+  <rect x="16" y="116" width="292" height="12" fill="#1e40af"/>
+  <text x="32" y="114" class="phead">主进程 src/main</text>
+  <text x="294" y="114" class="pnote" text-anchor="end">70 文件 · 18.4k 行</text>
+
+  <rect x="30" y="140" width="264" height="68" class="card"/>
+  <text x="44" y="163" class="ctitle">① 入口与生命周期</text>
+  <text x="44" y="184" class="cdesc">窗口创建 · 单实例锁 · flush 落盘</text>
+  <text x="44" y="202" class="cdesc">cleanupApp 九步清理</text>
+
+  <rect x="30" y="218" width="264" height="68" class="card"/>
+  <text x="44" y="241" class="ctitle">② IPC 编排与安全</text>
+  <text x="44" y="262" class="cdesc">handlers · menu-* · 注册台账</text>
+  <text x="44" y="280" class="cdesc">sender 校验 68 处 · 路径守卫</text>
+
+  <rect x="30" y="296" width="264" height="68" class="card"/>
+  <text x="44" y="319" class="ctitle">③ 配置真源</text>
+  <text x="44" y="340" class="cdesc">config-manager 路由 / 迁移 / 校验</text>
+  <text x="44" y="358" class="cdesc">5 个 electron-store · 28 应用主题</text>
+
+  <rect x="30" y="374" width="264" height="68" class="card"/>
+  <text x="44" y="397" class="ctitle">④ 文件与编辑内核</text>
+  <text x="44" y="418" class="cdesc">读写 / 编码 / 目录树 fs.watch</text>
+  <text x="44" y="436" class="cdesc">自动保存 · 导入导出 · 加密</text>
+
+  <rect x="30" y="452" width="264" height="68" class="card"/>
+  <text x="44" y="475" class="ctitle">⑤ 窗口外设</text>
+  <text x="44" y="496" class="cdesc">JSDOM 对话框 · 在线网页窗口</text>
+  <text x="44" y="514" class="cdesc">PlantUML 本地渲染隐藏窗</text>
+
+  <rect x="30" y="530" width="264" height="62" class="card"/>
+  <text x="44" y="553" class="ctitle">⑥ 基础设施</text>
+  <text x="44" y="574" class="cdesc">日志 · 托盘 · 备份 · 更新 · 窗口边界</text>
+
+  <!-- ============ 中：preload 桥 ============ -->
+  <rect x="322" y="170" width="138" height="300" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="336" y="196" class="ctitle">preload 桥</text>
+  <rect x="332" y="206" width="118" height="104" class="card"/>
+  <text x="344" y="228" class="cdesc" style="font-weight:700">主窗口</text>
+  <text x="344" y="246" class="cdesc">index.ts</text>
+  <text x="344" y="264" class="cdesc">58 send</text>
+  <text x="344" y="282" class="cdesc">25 on</text>
+  <text x="344" y="300" class="cdesc">window.api × 6</text>
+  <rect x="332" y="320" width="118" height="104" class="card"/>
+  <text x="344" y="342" class="cdesc" style="font-weight:700">对话框</text>
+  <text x="344" y="360" class="cdesc">dialog.ts</text>
+  <text x="344" y="378" class="cdesc">2 send</text>
+  <text x="344" y="396" class="cdesc">1 on</text>
+  <text x="344" y="414" class="cdesc">shell 校验</text>
+  <text x="336" y="446" class="sect" style="fill:#1e40af">contextBridge</text>
+  <text x="336" y="462" class="sect" style="fill:#1e40af">sandbox · 单文件</text>
+
+  <!-- ============ 右：渲染进程 ============ -->
+  <rect x="486" y="88" width="522" height="520" rx="12" fill="#f8fafc" stroke="#0f766e" stroke-width="2"/>
+  <rect x="486" y="88" width="522" height="40" rx="12" fill="#0f766e"/>
+  <rect x="486" y="116" width="522" height="12" fill="#0f766e"/>
+  <text x="502" y="114" class="phead">渲染进程 src/renderer</text>
+  <text x="992" y="114" class="pnote" text-anchor="end">250 文件 · 70k 行</text>
+
+  <rect x="500" y="140" width="240" height="152" class="card"/>
+  <text x="514" y="164" class="ctitle">① 入口与外壳</text>
+  <text x="514" y="186" class="cdesc">App.vue：欢迎页 / 主界面</text>
+  <text x="514" y="206" class="cdesc">双段式 + READY 握手</text>
+  <text x="514" y="226" class="cdesc">入口 chunk ≈ 114 KB</text>
+  <text x="514" y="246" class="cdesc">主界面异步块 ≈ 9.6 MB</text>
+  <text x="514" y="266" class="cdesc">BaiZeNotes 壳：主题/对话框宿主</text>
+
+  <rect x="754" y="140" width="240" height="152" class="card"/>
+  <text x="768" y="164" class="ctitle">② 布局分区</text>
+  <text x="768" y="186" class="cdesc">MenuBar：数据驱动菜单</text>
+  <text x="768" y="206" class="cdesc">13 顶层菜单 + 动作分发</text>
+  <text x="768" y="226" class="cdesc">WorkSpace：编辑 / 预览分栏</text>
+  <text x="768" y="246" class="cdesc">StatusBar：行列 / 编码 / 消息</text>
+
+  <rect x="500" y="302" width="240" height="152" class="card"/>
+  <text x="514" y="326" class="ctitle">③ 编辑器域</text>
+  <text x="514" y="348" class="cdesc">Monaco 单 worker · 按需语言</text>
+  <text x="514" y="368" class="cdesc">500ms 空闲防抖</text>
+  <text x="514" y="388" class="cdesc">脏指纹（长度 + sha256）</text>
+  <text x="514" y="408" class="cdesc">5 种编辑 / 预览模式</text>
+
+  <rect x="754" y="302" width="240" height="152" class="card"/>
+  <text x="768" y="326" class="ctitle">④ 预览管线（单跳）</text>
+  <text x="768" y="348" class="cdesc">预渲染 → markdown-it 插件</text>
+  <text x="768" y="368" class="cdesc">→ mermaid / PlantUML</text>
+  <text x="768" y="388" class="cdesc">→ DOMPurify → v-html + TOC</text>
+  <text x="768" y="408" class="cdesc">mkdocs / KaTeX / 扩展语法</text>
+  <text x="768" y="428" class="cdesc">大文档降级 · 远程图片拦截</text>
+
+  <rect x="500" y="464" width="240" height="128" class="card"/>
+  <text x="514" y="488" class="ctitle">⑤ 插件与对话框</text>
+  <text x="514" y="510" class="cdesc">38 个插件工具（懒加载）</text>
+  <text x="514" y="530" class="cdesc">18 个 Vue 对话框</text>
+  <text x="514" y="550" class="cdesc">HTML / PDF 工具查看器</text>
+
+  <rect x="754" y="464" width="240" height="128" class="card"/>
+  <text x="768" y="488" class="ctitle">⑥ 基础设施</text>
+  <text x="768" y="510" class="cdesc">useConfigStore · EventBus</text>
+  <text x="768" y="530" class="cdesc">响应式 i18n · 主题 CSS 变量</text>
+  <text x="768" y="550" class="cdesc">窗口 / 对话框 composables</text>
+
+  <!-- ============ 共享层 ============ -->
+  <rect x="16" y="624" width="992" height="86" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="32" y="650" class="ctitle" style="fill:#166534">共享层 src/shared —— 跨进程单一真源（39 文件 · 6.2k 行）</text>
+  <rect x="32" y="662" width="180" height="28" class="chip"/><text x="46" y="681" class="chiptext">IPC 通道 92 / 17 组</text>
+  <rect x="222" y="662" width="140" height="28" class="chip"/><text x="236" y="681" class="chiptext">类型 9 领域</text>
+  <rect x="372" y="662" width="200" height="28" class="chip"/><text x="386" y="681" class="chiptext">i18n 12 命名空间</text>
+  <rect x="582" y="662" width="130" height="28" class="chip"/><text x="596" y="681" class="chiptext">zh / en 同构</text>
+  <text x="726" y="681" class="sect">main 37 文件 + renderer 31 文件共同消费</text>
+  <text x="32" y="702" class="sect">边界规则：shared 禁止引入 electron / node 运行时；main 与 renderer 不得互相直接 import</text>
+
+  <!-- ============ 工程侧 ============ -->
+  <rect x="16" y="726" width="992" height="50" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
+  <text x="32" y="748" class="sect">工程侧 · 构建：electron-vite 三段 → out/ → electron-builder（NSIS 118.4 MB / portable 107.4 MB）</text>
+  <text x="32" y="768" class="sect">质量：typecheck 三工程 + 158 测试文件 / 2,871 用例 + 4 条 E2E　·　文档：md → HTML Wiki（22 页）</text>
+
+  <!-- ============ 箭头：主进程 ↔ preload ↔ 渲染进程 ============ -->
+  <line x1="308" y1="270" x2="322" y2="270" class="flow" marker-end="url(#o-ar)"/>
+  <line x1="322" y1="330" x2="308" y2="330" class="flow" marker-end="url(#o-ar)"/>
+  <line x1="460" y1="270" x2="486" y2="270" class="flow" marker-end="url(#o-ar)"/>
+  <line x1="486" y1="330" x2="460" y2="330" class="flow" marker-end="url(#o-ar)"/>
+  <line x1="160" y1="608" x2="160" y2="624" class="flowg" marker-end="url(#o-arg)"/>
+  <line x1="740" y1="608" x2="740" y2="624" class="flowg" marker-end="url(#o-arg)"/>
+</svg>

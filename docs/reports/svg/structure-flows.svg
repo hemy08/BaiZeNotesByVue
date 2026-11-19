@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 900" width="1100" height="900" role="img" aria-label="四条关键数据流">
+  <defs>
+    <marker id="f-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1f2328; }
+      .title { font-size: 23px; font-weight: 700; }
+      .sub { font-size: 13.5px; fill: #475569; }
+      .legend { font-size: 12.5px; fill: #475569; }
+      .lane { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.5; rx: 12; }
+      .lanetitle { font-size: 15px; font-weight: 700; fill: #1e40af; }
+      .step { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.4; rx: 8; }
+      .badge { fill: #2563eb; }
+      .badgenum { font-size: 12px; font-weight: 700; fill: #ffffff; }
+      .stitle { font-size: 13.5px; font-weight: 700; fill: #1e3a8a; }
+      .sdesc { font-size: 12.5px; fill: #334155; }
+      .note { font-size: 12px; fill: #64748b; }
+      .flow { stroke: #2563eb; stroke-width: 2.2; fill: none; }
+    </style>
+  </defs>
+
+  <text x="16" y="32" class="title">图 4 · 四条关键数据流</text>
+  <text x="16" y="54" class="sub">编号即执行顺序；蓝色箭头为跨进程 / 跨模块调用方向</text>
+  <line x1="560" y1="48" x2="586" y2="48" class="flow" marker-end="url(#f-ar)"/>
+  <text x="594" y="52" class="legend">调用方向</text>
+
+  <!-- ① 文件 -->
+  <rect x="16" y="88" width="1068" height="178" class="lane"/>
+  <text x="34" y="114" class="lanetitle">① 文件：打开 → 编辑 → 保存 / 自动保存 → 退出落盘</text>
+  <rect x="34" y="128" width="196" height="112" class="step"/>
+  <circle cx="56" cy="150" r="11" class="badge"/><text x="52" y="155" class="badgenum">1</text>
+  <text x="76" y="155" class="stitle">选择文件</text>
+  <text x="48" y="182" class="sdesc">欢迎页 / 文件树 / 菜单</text>
+  <text x="48" y="204" class="sdesc">最近打开记录</text>
+  <rect x="242" y="128" width="196" height="112" class="step"/>
+  <circle cx="264" cy="150" r="11" class="badge"/><text x="260" y="155" class="badgenum">2</text>
+  <text x="284" y="155" class="stitle">IPC 请求</text>
+  <text x="256" y="182" class="sdesc">invoke：sender 校验</text>
+  <text x="256" y="204" class="sdesc">路径守卫 / 受信根</text>
+  <rect x="450" y="128" width="196" height="112" class="step"/>
+  <circle cx="472" cy="150" r="11" class="badge"/><text x="468" y="155" class="badgenum">3</text>
+  <text x="492" y="155" class="stitle">读取文件</text>
+  <text x="464" y="182" class="sdesc">file-operations</text>
+  <text x="464" y="204" class="sdesc">编码检测（jschardet）</text>
+  <rect x="658" y="128" width="196" height="112" class="step"/>
+  <circle cx="680" cy="150" r="11" class="badge"/><text x="676" y="155" class="badgenum">4</text>
+  <text x="700" y="155" class="stitle">回填编辑器</text>
+  <text x="672" y="182" class="sdesc">Monaco 模型 + appState</text>
+  <text x="672" y="204" class="sdesc">脏指纹（长度 + sha256）</text>
+  <rect x="866" y="128" width="196" height="112" class="step"/>
+  <circle cx="888" cy="150" r="11" class="badge"/><text x="884" y="155" class="badgenum">5</text>
+  <text x="908" y="155" class="stitle">保存 / 退出</text>
+  <text x="880" y="182" class="sdesc">Ctrl+S / 自动保存 / 切换文件</text>
+  <text x="880" y="204" class="sdesc">退出：FLUSH_CONTENT（2s 超时）</text>
+  <line x1="232" y1="184" x2="242" y2="184" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="440" y1="184" x2="450" y2="184" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="648" y1="184" x2="658" y2="184" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="856" y1="184" x2="866" y2="184" class="flow" marker-end="url(#f-ar)"/>
+  <text x="34" y="258" class="note">关键实现：切换文件前自动保存；关闭与退出共用同一落盘链路；保存失败经状态栏与日志反馈；最近文件持久化于 file-state-store。</text>
+
+  <!-- ② 菜单 -->
+  <rect x="16" y="282" width="1068" height="178" class="lane"/>
+  <text x="34" y="308" class="lanetitle">② 菜单动作：渲染层拦截优先，未命中转主进程 handler 树</text>
+  <rect x="34" y="322" width="196" height="112" class="step"/>
+  <circle cx="56" cy="344" r="11" class="badge"/><text x="52" y="349" class="badgenum">1</text>
+  <text x="76" y="349" class="stitle">MenuBar 点击</text>
+  <text x="48" y="376" class="sdesc">menu-config 数据驱动</text>
+  <text x="48" y="398" class="sdesc">13 个顶层菜单</text>
+  <rect x="242" y="322" width="196" height="112" class="step"/>
+  <circle cx="264" cy="344" r="11" class="badge"/><text x="260" y="349" class="badgenum">2</text>
+  <text x="284" y="349" class="stitle">渲染层拦截</text>
+  <text x="256" y="376" class="sdesc">HandleMenuAction</text>
+  <text x="256" y="398" class="sdesc">打开 Vue 对话框 / 插入文本</text>
+  <rect x="450" y="322" width="196" height="112" class="step"/>
+  <circle cx="472" cy="344" r="11" class="badge"/><text x="468" y="349" class="badgenum">3</text>
+  <text x="492" y="349" class="stitle">未命中 → IPC</text>
+  <text x="464" y="376" class="sdesc">IPC.MENU.ACTION</text>
+  <text x="464" y="398" class="sdesc">action 精确字符串</text>
+  <rect x="658" y="322" width="196" height="112" class="step"/>
+  <circle cx="680" cy="344" r="11" class="badge"/><text x="676" y="349" class="badgenum">4</text>
+  <text x="700" y="349" class="stitle">主进程解析</text>
+  <text x="672" y="376" class="sdesc">menu-handle</text>
+  <text x="672" y="398" class="sdesc">ActionParser → handler 树</text>
+  <rect x="866" y="322" width="196" height="112" class="step"/>
+  <circle cx="888" cy="344" r="11" class="badge"/><text x="884" y="349" class="badgenum">5</text>
+  <text x="908" y="349" class="stitle">业务执行</text>
+  <text x="880" y="376" class="sdesc">文件 / 窗口 / 外链 / 工具</text>
+  <text x="880" y="398" class="sdesc">对话框 / 绘图模板</text>
+  <line x1="232" y1="378" x2="242" y2="378" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="440" y1="378" x2="450" y2="378" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="648" y1="378" x2="658" y2="378" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="856" y1="378" x2="866" y2="378" class="flow" marker-end="url(#f-ar)"/>
+  <text x="34" y="452" class="note">现状：两套菜单动作体系以注释 + 测试对齐；新增动作需同时登记渲染层拦截与主进程 handler（字符串一致性由测试守护）。</text>
+
+  <!-- ③ 配置 -->
+  <rect x="16" y="476" width="1068" height="178" class="lane"/>
+  <text x="34" y="502" class="lanetitle">③ 配置变更：store → IPC → electron-store → 副作用 + 广播</text>
+  <rect x="34" y="516" width="196" height="112" class="step"/>
+  <circle cx="56" cy="538" r="11" class="badge"/><text x="52" y="543" class="badgenum">1</text>
+  <text x="76" y="543" class="stitle">设置对话框</text>
+  <text x="48" y="570" class="sdesc">v-model 双向绑定</text>
+  <text x="48" y="592" class="sdesc">useConfigStore</text>
+  <rect x="242" y="516" width="196" height="112" class="step"/>
+  <circle cx="264" cy="538" r="11" class="badge"/><text x="260" y="543" class="badgenum">2</text>
+  <text x="284" y="543" class="stitle">防抖写盘</text>
+  <text x="256" y="570" class="sdesc">300ms 防抖</text>
+  <text x="256" y="592" class="sdesc">JSON 往返剥离 Vue Proxy</text>
+  <rect x="450" y="516" width="196" height="112" class="step"/>
+  <circle cx="472" cy="538" r="11" class="badge"/><text x="468" y="543" class="badgenum">3</text>
+  <text x="492" y="543" class="stitle">IPC 写配置</text>
+  <text x="464" y="570" class="sdesc">window.api.config.write</text>
+  <text x="464" y="592" class="sdesc">CONFIG.WRITE（invoke）</text>
+  <rect x="658" y="516" width="196" height="112" class="step"/>
+  <circle cx="680" cy="538" r="11" class="badge"/><text x="676" y="543" class="badgenum">4</text>
+  <text x="700" y="543" class="stitle">config-manager</text>
+  <text x="672" y="570" class="sdesc">store 路由 / 校验 / 迁移</text>
+  <text x="672" y="592" class="sdesc">写入 5 个配置域之一</text>
+  <rect x="866" y="516" width="196" height="112" class="step"/>
+  <circle cx="888" cy="538" r="11" class="badge"/><text x="884" y="543" class="badgenum">5</text>
+  <text x="908" y="543" class="stitle">落盘 + 广播</text>
+  <text x="880" y="570" class="sdesc">应用主题 / 字体 / 快捷键</text>
+  <text x="880" y="592" class="sdesc">THEME.UPDATED 等 → 渲染层</text>
+  <line x1="232" y1="572" x2="242" y2="572" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="440" y1="572" x2="450" y2="572" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="648" y1="572" x2="658" y2="572" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="856" y1="572" x2="866" y2="572" class="flow" marker-end="url(#f-ar)"/>
+  <text x="34" y="646" class="note">口径：配置真源为 electron-store（userData 配置目录），渲染层 store 只是内存镜像；写入失败统一弹「配置写入磁盘失败」并保留日志。</text>
+
+  <!-- ④ 预览 -->
+  <rect x="16" y="670" width="1068" height="178" class="lane"/>
+  <text x="34" y="696" class="lanetitle">④ Markdown 预览：单跳本地渲染管线（无主进程渲染 IPC）</text>
+  <rect x="34" y="710" width="196" height="112" class="step"/>
+  <circle cx="56" cy="732" r="11" class="badge"/><text x="52" y="737" class="badgenum">1</text>
+  <text x="76" y="737" class="stitle">内容变化</text>
+  <text x="48" y="764" class="sdesc">150ms 防抖</text>
+  <text x="48" y="786" class="sdesc">渲染序号 / 并发上限</text>
+  <rect x="242" y="710" width="196" height="112" class="step"/>
+  <circle cx="264" cy="732" r="11" class="badge"/><text x="260" y="737" class="badgenum">2</text>
+  <text x="284" y="737" class="stitle">预渲染</text>
+  <text x="256" y="764" class="sdesc">snippets 展开 / KaTeX</text>
+  <text x="256" y="786" class="sdesc">本地图片 / 文件 URL 转换</text>
+  <rect x="450" y="710" width="196" height="112" class="step"/>
+  <circle cx="472" cy="732" r="11" class="badge"/><text x="468" y="737" class="badgenum">3</text>
+  <text x="492" y="737" class="stitle">markdown-it</text>
+  <text x="464" y="764" class="sdesc">mkdocs / basic / media / blocks</text>
+  <text x="464" y="786" class="sdesc">highlight / emoji / plantuml</text>
+  <rect x="658" y="710" width="196" height="112" class="step"/>
+  <circle cx="680" cy="732" r="11" class="badge"/><text x="676" y="737" class="badgenum">4</text>
+  <text x="700" y="737" class="stitle">异步图表</text>
+  <text x="672" y="764" class="sdesc">mermaid 动态 import</text>
+  <text x="672" y="786" class="sdesc">PlantUML 本地隐藏窗</text>
+  <text x="672" y="806" class="sdesc">串行队列 + LRU 缓存</text>
+  <rect x="866" y="710" width="196" height="112" class="step"/>
+  <circle cx="888" cy="732" r="11" class="badge"/><text x="884" y="737" class="badgenum">5</text>
+  <text x="908" y="737" class="stitle">输出</text>
+  <text x="880" y="764" class="sdesc">DOMPurify → 远程图片策略</text>
+  <text x="880" y="786" class="sdesc">v-html + TOC 渲染</text>
+  <line x1="232" y1="766" x2="242" y2="766" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="440" y1="766" x2="450" y2="766" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="648" y1="766" x2="658" y2="766" class="flow" marker-end="url(#f-ar)"/>
+  <line x1="856" y1="766" x2="866" y2="766" class="flow" marker-end="url(#f-ar)"/>
+  <text x="34" y="840" class="note">降级：大文档（&gt;2 MiB / 5 万行）跳过 KaTeX 与图表并在顶部提示；渲染异常保留上一轮结果；预览 HTML 仅来自本地管线，叠加 DOMPurify + CSP。</text>
+
+  <!-- 底部说明 -->
+  <rect x="16" y="858" width="1068" height="30" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="32" y="878" class="note">说明：四条链路覆盖「文件生命周期 / 用户动作分发 / 配置持久化 / 渲染输出」四类主要数据路径，编号即执行顺序。</text>
+</svg>
