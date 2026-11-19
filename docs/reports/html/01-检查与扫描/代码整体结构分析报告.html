@@ -42,7 +42,7 @@
 <blockquote>
 <p><strong>性质</strong>：结构分析（非缺陷清单）——对 v1.3.8 代码库（结构实测基线 v1.3.6 HEAD <code>7526e61</code>）做一次自顶向下的整体结构切片，梳理进程边界、模块分层、数据流、工程链路与结构风险。
 <strong>首次成文</strong>：2026-11-19 13:00（v1.3.6，git HEAD <code>3ea3a51</code>）。
-<strong>本次刷新</strong>：2026-11-19 17:55（HEAD <code>7526e61</code>，<code>3ea3a51..HEAD</code> 共 13 个提交：「公共接口归位」第 0~4 批 + 8 个文档批次）。结构描述、量化口径与风险状态均已按最新代码更新；刷新核验记录见 <code>out/tool-results/struct-delta.md</code>、<code>struct-metrics-b.md</code>，本轮全量测试实测 <strong>172 文件 / 3,272 用例全通过</strong>。<strong>第 5 批复核（2026-11-19 20:40）</strong>：L1/L2/L3 与 M3（Material）已处理，<code>pinyin-data</code> 迁 <code>data/</code> 并按需加载；测试口径更新为 <strong>171 文件 / 3,265 用例全通过</strong>、IPC <strong>91 通道 / 17 组</strong>，清理明细见 <code>out/tool-results/opt-batch5-final.md</code>。
+<strong>本次刷新</strong>：2026-11-19 17:55（HEAD <code>7526e61</code>，<code>3ea3a51..HEAD</code> 共 13 个提交：「公共接口归位」第 0~4 批 + 8 个文档批次）。结构描述、量化口径与风险状态均已按最新代码更新；刷新核验记录见 <code>out/tool-results/struct-delta.md</code>、<code>struct-metrics-b.md</code>，本轮全量测试实测 <strong>172 文件 / 3,272 用例全通过</strong>。<strong>第 5 批复核（2026-11-19 20:40）</strong>：L1/L2/L3 与 M3（Material）已处理，<code>pinyin-data</code> 迁 <code>data/</code> 并按需加载；测试口径更新为 <strong>171 文件 / 3,265 用例全通过</strong>、IPC <strong>91 通道 / 17 组</strong>，清理明细见 <code>out/tool-results/opt-batch5-final.md</code>。<strong>结构优化收尾（2026-11-19）</strong>：M7 产物治理（<code>out/build</code> 拆分 + <code>dist</code> 归档）与 5.5 剩余巨型文件拆分（directory-tree / preview-md-basic / MaterialSyntaxDialog，设置页纯函数子集）完成；集成 HEAD <code>7099663</code> + 收尾改动实测 <strong>172 文件 / 3,250 用例全通过</strong>，清理明细见 <code>out/tool-results/final-split.md</code>。
 <strong>方法</strong>：首次由 3 个并行只读分析代理分别深读「主进程 + preload」「渲染层」「共享层 + 构建/测试/文档」；刷新由 2 个并行核验代理（结构差异 / 量化口径）+ 根代理全量测试与出图完成。原始分析记录：<code>out/tool-results/struct-main.md</code>、<code>struct-renderer.md</code>、<code>struct-cross.md</code>。</p>
 </blockquote>
 <h2 id="sec-1">0. 摘要与关键结论</h2>
@@ -1327,19 +1327,19 @@
 <td><strong>已处理（第 5 批 5.5）</strong>：迁 <code>src/renderer/src/data/pinyin-data.ts</code> + 动态 <code>import()</code> 按需加载（独立 chunk 165.8 KB，入口不 preload）</td>
 </tr>
 <tr>
-<td><code>Markdown/preview-md-basic.ts</code></td>
+<td><s><code>Markdown/preview-md-basic.ts</code></s></td>
 <td style="text-align:right">1,328</td>
-<td>批次 A 扩展插件（已抽 preview-block-utils，仍可再按语法拆文件）</td>
+<td><strong>已处理（2026-11-19 收尾）</strong>：拆为薄壳 + <code>preview-md-basic-{shared,blocks,footnotes,attributes,inline}.ts</code> 5 个语法域文件（最大 446 行），<code>installMdxBasicExtensions</code> 入口与行为不变</td>
 </tr>
 <tr>
-<td><code>dialogs/complex/MaterialSyntaxDialog.vue</code></td>
+<td><s><code>dialogs/complex/MaterialSyntaxDialog.vue</code></s></td>
 <td style="text-align:right">1,230</td>
-<td>15 项语法插入对话框（已按 BaseDialog 基座迁移，表单/生成器可抽纯函数目录）</td>
+<td><strong>已处理（2026-11-19 收尾）</strong>：组件只保留模板/UI 状态（≈310 行），表单/功能项定义/生成器纯函数抽到 <code>material-syntax/{form,features,generators,index}.ts</code></td>
 </tr>
 <tr>
 <td><code>dialogs/complex/SystemSettingDialog.vue</code></td>
 <td style="text-align:right">917</td>
-<td>设置页按页签拆分候选</td>
+<td><strong>部分处理（2026-11-19 收尾）</strong>：类型/默认值/存储合并/语言归一化/页签常量抽到 <code>system-setting/model.ts</code>；按页签拆子组件因样式作用域 + 共享状态管道风险未执行</td>
 </tr>
 <tr>
 <td><code>BaiZeNotes.vue</code></td>
@@ -1470,8 +1470,8 @@
 <tr>
 <td><strong>中</strong></td>
 <td>M3</td>
-<td>字符串协议多段同步 <strong>部分修复（第 5 批 M3，<code>7c2467b</code>）</strong>：15 项 Material 扩展语法已收敛 <code>shared/constants/material-syntax.ts</code> 单一 manifest（菜单由 manifest 生成 + 4 条一致性测试）；38 插件 id / menuAction 仍分散</td>
-<td>新增 Material 语法只改 1 处；新增插件工具仍需多段同步</td>
+<td>字符串协议多段同步 <strong>已修复（第 5 批 M3 <code>7c2467b</code> + 收尾 M3 <code>7099663</code>）</strong>：Material 15 项扩展语法收敛 <code>shared/constants/material-syntax.ts</code> 单一 manifest；插件工具 38 项收敛 <code>shared/constants/plugin-tools-manifest.ts</code>（菜单项 + 懒加载注册表 + 一致性测试），新增只改 1 处</td>
+<td>新增 Material 语法/插件工具不再多段同步</td>
 </tr>
 <tr>
 <td><strong>中</strong></td>
@@ -1494,8 +1494,8 @@
 <tr>
 <td><strong>中</strong></td>
 <td>M7</td>
-<td>JSDOM 已随第 2 批移除；<code>out/analysis</code> 独立目录已建立（3.4）；<code>out/build</code> 拆分与 <code>dist</code> 历史归档仍待第 5 批</td>
-<td>产物目录部分治理，历史归档待清理</td>
+<td><strong>已修复（2026-11-19 结构优化收尾）</strong>：electron-vite 三段产物 → <code>out/build/{main,preload,renderer}</code>、electron-builder → <code>out/build/dist</code>；历史 <code>dist/</code>（约 867 MB 安装包/解包目录）归档 <code>out/archive/dist</code>；<code>.gitignore</code>/package.json main/build 脚本/E2E/CI/release workflow/质量基线脚本路径同步</td>
+<td>产物目录语义清晰；构建链路路径契约有 E2E/release 校验</td>
 </tr>
 <tr>
 <td><strong>中</strong></td>
@@ -1535,7 +1535,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong>汇总</strong>：首次成文 19 条风险中，<strong>已修复 16 条（H1~H6、M4、M5、M6、M8、M9、L1、L2、L3、L4）</strong>、<strong>部分修复 3 条（M3：Material 15 项已收口、38 插件 manifest 待后续；H7/M1/M2/M7：发布链路与状态/产物治理收尾）</strong>；第 5 批后无「未处理」项。</p>
+<p><strong>汇总</strong>：首次成文 19 条风险中，<strong>已修复 18 条（H1~H6、M3、M4、M5、M6、M7、M8、M9、L1、L2、L3、L4）</strong>、<strong>部分修复 3 条（H7 发布链路演练、M1 少量模块级状态、M2 错误/状态 helper 口径）</strong>；第 5 批收尾后无「未处理」项。</p>
 <h3 id="sub-3">9.3 改进建议（按优先级，不要求实施）</h3>
 <p><strong>P1（结构债，建议尽早）</strong></p>
 <ol>
@@ -1551,7 +1551,7 @@
 <li><strong>状态收口</strong>：新增 <code>AppContext</code>（window/stores/listener manager/flags）统一 reset；主题收敛为 <code>useTheme()</code> 单例，消除 <code>themeConfig/currentTheme</code> 双份与 DOM 直改样式。</li>
 <li><strong>shared 边界例外收口</strong>：<code>shared/utils/backup-dir.ts</code> 的 <code>node:path</code> 依赖改为注入式路径能力（仅 main 注入 node 实现），或在 ESLint <code>no-restricted-imports</code> 中显式豁免并加注释/测试，避免渲染层误用。</li>
 <li><strong>单一注册表（Material 已完成，第 5 批 M3）</strong>：Material 15 项已由 <code>shared/constants/material-syntax.ts</code> manifest 生成菜单并有一致性测试；插件工具 38 项 manifest（菜单项 + 懒加载注册表）留待后续。</li>
-<li><strong>拆分超大文件（pinyin 数据已完成）</strong>：<code>pinyin-data</code> 已迁 <code>data/</code> 并按需加载（独立 chunk 165.8 KB）；<code>directory-tree</code>（扫描/watch/事件）、<code>preview-md-basic</code>（语法域）、<code>MaterialSyntaxDialog</code>（表单/生成器纯函数）、设置页（页签）拆分留待后续。</li>
+<li><strong>拆分超大文件（已完成）</strong>：<code>pinyin-data</code> 已迁 <code>data/</code> 并按需加载（独立 chunk 165.8 KB）；<code>directory-tree</code>（1,021 行 → 薄壳 + scan/watch/reload）、<code>preview-md-basic</code>（1,416 行 → 薄壳 + 5 个语法域文件）、<code>MaterialSyntaxDialog</code>（1,298 行 → 组件薄壳 + <code>material-syntax/</code> 纯函数目录）已于 2026-11-19 收尾完成；设置页仅完成 <code>system-setting/model.ts</code> 纯函数子集，按页签拆组件留待后续。</li>
 <li><strong>工程门禁补强</strong>：CI 增加 <code>vitest --coverage</code>、<code>prettier --check</code>、<code>npm audit --omit=dev</code>；shared 边界加 ESLint <code>no-restricted-imports</code>（禁止 renderer import main、禁止 shared 引 electron/vue/DOM，node 仅白名单模块）。</li>
 <li><strong>发布链路补全</strong>：新增 release workflow（tag → nsis/portable + latest.yml 上传），补签名策略与 release-1.3.8 tag / 发布自动化。</li>
 </ol>
@@ -1559,7 +1559,7 @@
 <ol start="13">
 <li><strong>清理死代码/重复资源（已完成）</strong>：<code>useEventBus</code>、<code>MermaidRender</code>、<code>dialog-helpers</code>、<code>utils/common.ts</code>、<code>SYSTEM.OPEN_EXTERNAL_LINK</code> 已清理；重复 CSS/模板资源已收口（第 4+5 批）。</li>
 <li><strong>目录语义归位（已完成）</strong>：<code>window-manager</code> 已移至 <code>src/main/window/</code>；URL 双份已完成（保留门面）。</li>
-<li><strong>格式统一（已完成）</strong>：<code>.editorconfig</code>/Prettier/<code>.gitattributes</code> 三者 EOL 统一 LF，3 个含替换字符文件已修复；<code>out/</code> 与 <code>out/analysis</code> 已拆分（<code>dist/</code> 历史安装包归档留待发布侧处理）。</li>
+<li><strong>格式统一与产物治理（已完成）</strong>：<code>.editorconfig</code>/Prettier/<code>.gitattributes</code> 三者 EOL 统一 LF，3 个含替换字符文件已修复；<code>out/</code> 已按 M7 治理拆分为 <code>out/build</code>（electron-vite 三段 + electron-builder <code>out/build/dist</code>）、<code>out/analysis</code>、<code>out/archive</code>，历史 <code>dist/</code> 安装包归档到 <code>out/archive/dist</code>。</li>
 <li><strong>文档资产治理（已完成）</strong>：<code>docs/架构文档.html</code> 归档 <code>docs/历史归档/</code> 并在索引标注「非当前」；<code>_unused-assets</code> 已移出工作区。</li>
 </ol>
 <h2 id="sec-11">10. 结论</h2>

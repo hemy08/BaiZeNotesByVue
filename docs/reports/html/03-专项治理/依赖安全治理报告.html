@@ -1,0 +1,2060 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>依赖安全治理报告</title>
+<link rel="stylesheet" href="../assets/report.css">
+</head>
+<body>
+<!-- baize-report-nav-slot -->
+<div id="report-nav"></div>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">1. 结论摘要</a>
+    <a class="toc-l2" href="#sec-2">2. 数据来源与方法</a>
+    <a class="toc-l3" href="#sub-1">2.1 告警拉取</a>
+    <a class="toc-l3" href="#sub-2">2.2 分类与「当前是否可复现」核验方法</a>
+    <a class="toc-l2" href="#sec-3">3. 全量分类结果</a>
+    <a class="toc-l3" href="#sub-3">3.1 严重级别分布</a>
+    <a class="toc-l3" href="#sub-4">3.2 scope 与 relationship 分布</a>
+    <a class="toc-l3" href="#sub-5">3.3 清单文件（manifest_path）分布</a>
+    <a class="toc-l3" href="#sub-6">3.4 告警创建时间分布（历史快照的直接证据）</a>
+    <a class="toc-l3" href="#sub-7">3.5 Top 包（告警数）</a>
+    <a class="toc-l3" href="#sub-8">3.6 按当前仓库状态的判定（核心表）</a>
+    <a class="toc-l3" href="#sub-9">3.7 依赖已移除（30 条）</a>
+    <a class="toc-l3" href="#sub-10">3.8 清单已删除（vendor）的 15 条</a>
+    <a class="toc-l2" href="#sec-4">4. npm audit 差异归因（0 vs 254）</a>
+    <a class="toc-l3" href="#sub-11">4.1 两种工具的口径对比</a>
+    <a class="toc-l3" href="#sub-12">4.2 差异的五条实证</a>
+    <a class="toc-l3" href="#sub-13">4.3 差异结论与口径建议</a>
+    <a class="toc-l2" href="#sec-5">5. 修复批执行记录</a>
+    <a class="toc-l3" href="#sub-14">5.1 治理前基线（已构成修复的既有变更）</a>
+    <a class="toc-l3" href="#sub-15">5.2 本轮修复变更（18 项直接依赖 + 5 处 overrides）</a>
+    <a class="toc-l3" href="#sub-16">5.3 单项失败回滚记录</a>
+    <a class="toc-l3" href="#sub-17">5.4 未升级项与 major 评估结论</a>
+    <a class="toc-l3" href="#sub-18">5.5 剩余风险与待办</a>
+    <a class="toc-l2" href="#sec-6">6. Dependabot 配置（.github/dependabot.yml）</a>
+    <a class="toc-l3" href="#sub-19">6.1 配置要点</a>
+    <a class="toc-l3" href="#sub-20">6.2 安全更新（security updates）说明</a>
+    <a class="toc-l2" href="#sec-7">7. vendor 副本专项</a>
+    <a class="toc-l3" href="#sub-21">7.1 历史路径与现状</a>
+    <a class="toc-l3" href="#sub-22">7.2 是否参与构建的核对结论</a>
+    <a class="toc-l3" href="#sub-23">7.3 处置</a>
+    <a class="toc-l2" href="#sec-8">8. 门禁验证</a>
+    <a class="toc-l2" href="#sec-9">9. 复现与产物</a>
+    <a class="toc-l3" href="#sub-24">9.1 复现命令</a>
+    <a class="toc-l3" href="#sub-25">9.2 产物清单</a>
+    <a class="toc-l2" href="#sec-10">10. 后续建议</a>
+    <a class="toc-l2" href="#sec-11">附录 A：41 个包完整明细</a>
+    <a class="toc-l2" href="#sec-12">附录 B：overrides 清单（治理后）</a>
+    <a class="toc-l2" href="#sec-13">附录 C：数据字段说明（alerts-analysis.json）</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>依赖安全治理报告</h1>
+    <p>报告归档 · 03-专项治理</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<blockquote>
+<p>本报告对应任务：GitHub Dependabot 254 条 open 告警的<strong>全量分类 → 配置 → 修复 → 验证</strong>闭环。
+报告为 2026-11-19 治理时点快照；数字口径与复现命令见文末附录。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>仓库</td>
+<td><code>hemy08/BaiZeNotesByVue</code>（分支 <code>main</code>）</td>
+</tr>
+<tr>
+<td>治理前基线</td>
+<td>HEAD <code>7e80ff1</code>（v1.3.8）</td>
+</tr>
+<tr>
+<td>告警数据</td>
+<td>GitHub REST API <code>GET /repos/hemy08/BaiZeNotesByVue/dependabot/alerts?state=open</code>（游标分页 3 页：100 + 100 + 54）</td>
+</tr>
+<tr>
+<td>告警总数</td>
+<td><strong>254 条</strong>（critical 1 / high 93 / medium 120 / low 40）</td>
+</tr>
+<tr>
+<td>audit 对照</td>
+<td><code>npm audit</code>（官方 registry，含 dev）<strong>0 漏洞</strong>（828 个依赖）</td>
+</tr>
+<tr>
+<td>数据脚本</td>
+<td><code>build/fetch-dependabot-alerts.mjs</code>（拉取）、<code>build/analyze-dependabot-alerts.mjs</code>（核验分类）</td>
+</tr>
+<tr>
+<td>数据产物</td>
+<td><code>out/dependabot/alerts.raw.json</code>、<code>alerts-summary.json</code>、<code>alerts-analysis.json</code>、<code>npm-audit-*.json</code></td>
+</tr>
+<tr>
+<td>配置产物</td>
+<td><code>.github/dependabot.yml</code>（npm / weekly / 8 分组 / limit 5 / vendor 排除 / major ignore）</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="sec-1">1. 结论摘要</h2>
+<ul>
+<li><strong>254 条 open 告警全部为「历史快照/已处置」类：按当前 HEAD 依赖树逐条核验，0 条仍可复现（ACTIVE = 0）。</strong>
+<ul>
+<li>已修复（lockfile 已解析到修复版本）：<strong>209 条（82.3%）</strong></li>
+<li>依赖已移除（当前树无该包安装副本）：<strong>30 条（11.8%）</strong></li>
+<li>清单已删除（告警指向的 vendor 副本 manifest 已不在仓库）：<strong>15 条（5.9%）</strong></li>
+</ul>
+</li>
+<li><strong>npm audit = 0 与 254 条告警不矛盾</strong>：前者是「当前 lockfile 实时解析 + npm advisory 库」口径，后者是「GitHub 历史依赖图快照 + GHSA/CVE 全库」口径。差异可逐条归因（§4），核心为：依赖升级/overrides 已把受影响包解析到修复版本、30 条对应依赖已删除、15 条指向已删除的 vendor 清单、告警侧版本要求仍是升级前快照（<code>electron ^31.0.1</code>、<code>vite ^5.2.11</code> 等）。</li>
+<li><strong>本轮实际增量</strong>：
+<ul>
+<li>新增 <code>.github/dependabot.yml</code>（npm 生态、weekly、8 个分组、PR 上限 5、vendor 路径排除、major 统一 ignore）；</li>
+<li>18 项直接依赖声明升级 + 5 处 <code>overrides</code> 更新（dompurify 3.4.18、minimatch 11.0.9、electron 43.8.12、electron-builder 26.18.1、katex 0.18.11、mammoth 1.13.0 等）；</li>
+<li>1 项单项回滚：<code>vue-tsc</code> 3.3.14 暴露存量模板类型错误，按「失败单项回滚」恢复 3.3.11（§5.3）；</li>
+<li>全量门禁通过（typecheck / ESLint / Prettier / vitest / electron-vite build，数据见 §8）。</li>
+</ul>
+</li>
+<li><strong>剩余</strong>：15 条 vendor 陈旧告警需在 GitHub 侧关闭（代码侧已无对应清单，见 §7）；major 升级 9 项记录不动（§5.4）；npm audit 维持 0。</li>
+</ul>
+<hr>
+<h2 id="sec-2">2. 数据来源与方法</h2>
+<h3 id="sub-1">2.1 告警拉取</h3>
+<ul>
+<li>凭据：<code>git credential fill</code>（<code>host=github.com</code>）读取本机 Git 凭据，脚本内不硬编码 token。</li>
+<li>接口：<code>https://api.github.com/repos/hemy08/BaiZeNotesByVue/dependabot/alerts?state=open&amp;per_page=100</code>，Header 携带 <code>Authorization: Bearer &lt;token&gt;</code>、<code>Accept: application/vnd.github+json</code>、<code>X-GitHub-Api-Version: 2022-11-28</code>。</li>
+<li><strong>踩坑记录</strong>：Dependabot alerts 接口<strong>不支持 <code>page</code> 参数</strong>（传 <code>page=1</code> 会返回 HTTP 400「Pagination using the <code>page</code> parameter is not supported」），必须按响应 <code>Link: rel=&quot;next&quot;</code> 游标翻页；本仓库共 3 页（100 / 100 / 54）。</li>
+<li>校验：拉取总数 254，与 GitHub 安全页 open 数一致；告警编号范围 1–298（其余 44 条为已关闭/已修复后关闭的历史告警）。</li>
+<li>参考：<a href="https://docs.github.com/en/rest/dependabot/alerts">GitHub REST API — Dependabot alerts</a>。</li>
+</ul>
+<h3 id="sub-2">2.2 分类与「当前是否可复现」核验方法</h3>
+<ol>
+<li>按 <code>security_advisory.severity</code> / <code>dependency.scope</code> / <code>dependency.relationship</code> / <code>dependency.manifest_path</code> / <code>dependency.package.name</code> 五个维度聚合。</li>
+<li>读取当前 <code>package.json</code>（直接依赖声明范围）与 <code>package-lock.json</code>（828 个依赖节点的实际解析版本），对每条告警做 semver 核验：把 GitHub 返回的 <code>vulnerable_version_range</code>（形如 <code>&gt;= 2.0.0, &lt; 2.1.5</code>，逗号分隔需归一化为空格）与 lockfile 中该包<strong>全部安装副本</strong>逐一比对。</li>
+<li>判定规则：</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>判定</th>
+<th>含义</th>
+<th>判定条件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FIXED</code></td>
+<td>已修复</td>
+<td>lockfile 中该包所有副本均不在 <code>vulnerable_version_range</code> 内</td>
+</tr>
+<tr>
+<td><code>REMOVED</code></td>
+<td>依赖已移除</td>
+<td>当前 lockfile 中无该包任何安装副本</td>
+</tr>
+<tr>
+<td><code>STALE_MANIFEST</code></td>
+<td>清单已删除</td>
+<td>告警引用路径（<code>src/renderer/src/lib/**</code>）在当前仓库不存在</td>
+</tr>
+<tr>
+<td><code>ACTIVE</code></td>
+<td>仍受影响</td>
+<td>lockfile 中仍存在落在 <code>vulnerable_version_range</code> 内的副本</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>严重级别口径：GitHub API 返回 <code>medium</code>，安全页面中文口径称「中危（moderate）」，本报告统一记作「中（medium）」。</p>
+</blockquote>
+<hr>
+<h2 id="sec-3">3. 全量分类结果</h2>
+<h3 id="sub-3">3.1 严重级别分布</h3>
+<table>
+<thead>
+<tr>
+<th>严重级别</th>
+<th style="text-align:right">告警数</th>
+<th style="text-align:right">占比</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>严重（critical）</td>
+<td style="text-align:right">1</td>
+<td style="text-align:right">0.4%</td>
+<td><code>form-data@4.0.0</code>（GHSA-fjxv-7rqg-78g4，CVE-2025-7783），当前 tree 已为 4.0.6</td>
+</tr>
+<tr>
+<td>高（high）</td>
+<td style="text-align:right">93</td>
+<td style="text-align:right">36.6%</td>
+<td>集中在 electron / node-forge / @xmldom/xmldom / brace-expansion / tar 等</td>
+</tr>
+<tr>
+<td>中（medium）</td>
+<td style="text-align:right">120</td>
+<td style="text-align:right">47.2%</td>
+<td>集中在 electron / dompurify / vite / js-yaml / mermaid 等</td>
+</tr>
+<tr>
+<td>低（low）</td>
+<td style="text-align:right">40</td>
+<td style="text-align:right">15.7%</td>
+<td>集中在 electron / brace-expansion / katex / dompurify 等</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td style="text-align:right"><strong>254</strong></td>
+<td style="text-align:right"><strong>100%</strong></td>
+<td>41 个包、188 个唯一 GHSA 编号</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>与任务背景中「首 100 条采样 40 high / 45 medium / 15 low」完全吻合（实测第一页：high 40 / medium 45 / low 15）。</p>
+</blockquote>
+<h3 id="sub-4">3.2 scope 与 relationship 分布</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>取值</th>
+<th style="text-align:right">告警数</th>
+<th style="text-align:right">占比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>scope</td>
+<td>runtime</td>
+<td style="text-align:right">170</td>
+<td style="text-align:right">66.9%</td>
+</tr>
+<tr>
+<td>scope</td>
+<td>development</td>
+<td style="text-align:right">84</td>
+<td style="text-align:right">33.1%</td>
+</tr>
+<tr>
+<td>relationship</td>
+<td>direct（直接依赖）</td>
+<td style="text-align:right">83</td>
+<td style="text-align:right">32.7%</td>
+</tr>
+<tr>
+<td>relationship</td>
+<td>transitive（传递依赖）</td>
+<td style="text-align:right">22</td>
+<td style="text-align:right">8.7%</td>
+</tr>
+<tr>
+<td>relationship</td>
+<td>inconclusive（无法判定）</td>
+<td style="text-align:right">149</td>
+<td style="text-align:right">58.7%</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><code>inconclusive</code> 占比高是 GitHub 依赖图的已知现象：当告警对应的依赖副本已从锁文件移除、或清单为历史快照时，GitHub 无法标记 direct/transitive。本报告不依赖该字段做修复判断，而以 lockfile 实测为准。</p>
+</blockquote>
+<h3 id="sub-5">3.3 清单文件（manifest_path）分布</h3>
+<table>
+<thead>
+<tr>
+<th>清单文件</th>
+<th style="text-align:right">告警数</th>
+<th style="text-align:right">占比</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>package-lock.json</code></td>
+<td style="text-align:right">188</td>
+<td style="text-align:right">74.0%</td>
+<td>主锁文件（实际安装树）</td>
+</tr>
+<tr>
+<td><code>package.json</code></td>
+<td style="text-align:right">51</td>
+<td style="text-align:right">20.1%</td>
+<td>直接依赖声明（版本要求为历史快照，§4.2）</td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/monaco-editor/package.json</code></td>
+<td style="text-align:right">9</td>
+<td style="text-align:right">3.5%</td>
+<td><strong>vendor 副本，清单已于 <code>5a8fbf9</code> 删除</strong></td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/monaco-themes/package.json</code></td>
+<td style="text-align:right">4</td>
+<td style="text-align:right">1.6%</td>
+<td><strong>vendor 副本，清单已删除</strong></td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/mermaid/package.json</code></td>
+<td style="text-align:right">2</td>
+<td style="text-align:right">0.8%</td>
+<td><strong>vendor 副本，清单已删除</strong></td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td style="text-align:right"><strong>254</strong></td>
+<td style="text-align:right"><strong>100%</strong></td>
+<td>vendor 清单共 15 条（5.9%），与任务背景「4 条来自 2 个 vendor manifest」不符，已按实测修正</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-6">3.4 告警创建时间分布（历史快照的直接证据）</h3>
+<table>
+<thead>
+<tr>
+<th>创建月份</th>
+<th style="text-align:right">告警数</th>
+<th>创建月份</th>
+<th style="text-align:right">告警数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2025-07</td>
+<td style="text-align:right">2</td>
+<td>2026-03</td>
+<td style="text-align:right">17</td>
+</tr>
+<tr>
+<td>2025-08</td>
+<td style="text-align:right">2</td>
+<td>2026-04</td>
+<td style="text-align:right">50</td>
+</tr>
+<tr>
+<td>2025-09</td>
+<td style="text-align:right">6</td>
+<td>2026-05</td>
+<td style="text-align:right">11</td>
+</tr>
+<tr>
+<td>2025-10</td>
+<td style="text-align:right">2</td>
+<td>2026-06</td>
+<td style="text-align:right">22</td>
+</tr>
+<tr>
+<td>2025-11</td>
+<td style="text-align:right">5</td>
+<td>2026-07</td>
+<td style="text-align:right">12</td>
+</tr>
+<tr>
+<td>2026-01</td>
+<td style="text-align:right">5</td>
+<td>2026-08</td>
+<td style="text-align:right">42</td>
+</tr>
+<tr>
+<td>2026-02</td>
+<td style="text-align:right">7</td>
+<td>2026-09</td>
+<td style="text-align:right">27</td>
+</tr>
+<tr>
+<td></td>
+<td style="text-align:right"></td>
+<td>2026-10</td>
+<td style="text-align:right">34</td>
+</tr>
+<tr>
+<td></td>
+<td style="text-align:right"></td>
+<td>2026-11</td>
+<td style="text-align:right">10</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>告警跨越 2025-07 至 2026-11 共 17 个月，其中 2026-04（50 条）、2026-08（42 条）、2026-10（34 条）为三个高峰，分别对应 electron 43 线、node-forge 移除前、vite/electron 新 advisory 批次。</li>
+<li>大量告警的 <code>dependency.version_requirement</code> 仍是升级前版本（如 electron <code>^31.0.1</code>、vite <code>^5.2.11</code>），而当前 <code>package.json</code> 已升级至 <code>^43.8.12</code> / <code>^8.3.8</code>（变更落地于 <code>19ef1fe</code>，2026-11-15）——说明<strong>这些告警来自历史依赖图快照，GitHub 侧尚未随依赖升级批量重算关闭</strong>。</li>
+</ul>
+<h3 id="sub-7">3.5 Top 包（告警数）</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:right">排名</th>
+<th>包</th>
+<th style="text-align:right">告警数</th>
+<th>严重级别构成</th>
+<th>当前版本</th>
+<th>当前判定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right">1</td>
+<td><code>electron</code></td>
+<td style="text-align:right">85</td>
+<td>中 49 / 高 22 / 低 14</td>
+<td>43.8.12</td>
+<td>已修复</td>
+</tr>
+<tr>
+<td style="text-align:right">2</td>
+<td><code>vite</code></td>
+<td style="text-align:right">26</td>
+<td>中 17 / 高 5 / 低 4</td>
+<td>8.3.8</td>
+<td>已修复 17 + 清单已删除 9</td>
+</tr>
+<tr>
+<td style="text-align:right">3</td>
+<td><code>dompurify</code></td>
+<td style="text-align:right">21</td>
+<td>中 15 / 低 6</td>
+<td>3.4.18</td>
+<td>已修复</td>
+</tr>
+<tr>
+<td style="text-align:right">4</td>
+<td><code>node-forge</code></td>
+<td style="text-align:right">17</td>
+<td>高 9 / 中 5 / 低 3</td>
+<td>—（未安装）</td>
+<td>依赖已移除</td>
+</tr>
+<tr>
+<td style="text-align:right">5</td>
+<td><code>@xmldom/xmldom</code></td>
+<td style="text-align:right">15</td>
+<td>高 13 / 中 2</td>
+<td>0.8.15</td>
+<td>已修复</td>
+</tr>
+<tr>
+<td style="text-align:right">6</td>
+<td><code>brace-expansion</code></td>
+<td style="text-align:right">9</td>
+<td>高 6 / 中 2 / 低 1</td>
+<td>1.1.22 / 2.1.8 / 5.0.13</td>
+<td>已修复</td>
+</tr>
+<tr>
+<td style="text-align:right">7</td>
+<td><code>tar</code></td>
+<td style="text-align:right">8</td>
+<td>高 6 / 中 2</td>
+<td>7.5.23</td>
+<td>已修复</td>
+</tr>
+<tr>
+<td style="text-align:right">8</td>
+<td><code>mermaid</code></td>
+<td style="text-align:right">7</td>
+<td>中 6 / 低 1</td>
+<td>12.3.0</td>
+<td>已修复</td>
+</tr>
+<tr>
+<td style="text-align:right">9</td>
+<td><code>js-yaml</code></td>
+<td style="text-align:right">5</td>
+<td>高 3 / 中 2</td>
+<td>4.3.2</td>
+<td>已修复</td>
+</tr>
+<tr>
+<td style="text-align:right">10</td>
+<td><code>markdown-it</code></td>
+<td style="text-align:right">5</td>
+<td>高 2 / 中 2 / 低 1</td>
+<td>15.0.3</td>
+<td>已修复</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>完整 41 个包的明细见<strong>附录 A</strong>；GitHub 安全页面包 Top 与实测一致（任务背景中 electron 42、@xmldom/xmldom 10、node-forge 10、vite 10 等为首页/近 30 天口径，全量口径以本表为准）。</p>
+</blockquote>
+<h3 id="sub-8">3.6 按当前仓库状态的判定（核心表）</h3>
+<h4>状态 × 严重级别</h4>
+<table>
+<thead>
+<tr>
+<th>严重级别</th>
+<th style="text-align:right">告警数</th>
+<th style="text-align:right">已修复</th>
+<th style="text-align:right">依赖已移除</th>
+<th style="text-align:right">清单已删除</th>
+<th style="text-align:right">仍受影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>严重（critical）</td>
+<td style="text-align:right">1</td>
+<td style="text-align:right">1</td>
+<td style="text-align:right">0</td>
+<td style="text-align:right">0</td>
+<td style="text-align:right">0</td>
+</tr>
+<tr>
+<td>高（high）</td>
+<td style="text-align:right">93</td>
+<td style="text-align:right">77</td>
+<td style="text-align:right">14</td>
+<td style="text-align:right">2</td>
+<td style="text-align:right">0</td>
+</tr>
+<tr>
+<td>中（medium）</td>
+<td style="text-align:right">120</td>
+<td style="text-align:right">101</td>
+<td style="text-align:right">9</td>
+<td style="text-align:right">10</td>
+<td style="text-align:right">0</td>
+</tr>
+<tr>
+<td>低（low）</td>
+<td style="text-align:right">40</td>
+<td style="text-align:right">30</td>
+<td style="text-align:right">7</td>
+<td style="text-align:right">3</td>
+<td style="text-align:right">0</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td style="text-align:right"><strong>254</strong></td>
+<td style="text-align:right"><strong>209</strong></td>
+<td style="text-align:right"><strong>30</strong></td>
+<td style="text-align:right"><strong>15</strong></td>
+<td style="text-align:right"><strong>0</strong></td>
+</tr>
+</tbody>
+</table>
+<h4>状态 × 清单文件</h4>
+<table>
+<thead>
+<tr>
+<th>清单文件</th>
+<th style="text-align:right">告警数</th>
+<th style="text-align:right">已修复</th>
+<th style="text-align:right">依赖已移除</th>
+<th style="text-align:right">清单已删除</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>package-lock.json</code></td>
+<td style="text-align:right">188</td>
+<td style="text-align:right">158</td>
+<td style="text-align:right">30</td>
+<td style="text-align:right">0</td>
+</tr>
+<tr>
+<td><code>package.json</code></td>
+<td style="text-align:right">51</td>
+<td style="text-align:right">51</td>
+<td style="text-align:right">0</td>
+<td style="text-align:right">0</td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/monaco-editor/package.json</code></td>
+<td style="text-align:right">9</td>
+<td style="text-align:right">0</td>
+<td style="text-align:right">0</td>
+<td style="text-align:right">9</td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/monaco-themes/package.json</code></td>
+<td style="text-align:right">4</td>
+<td style="text-align:right">0</td>
+<td style="text-align:right">0</td>
+<td style="text-align:right">4</td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/mermaid/package.json</code></td>
+<td style="text-align:right">2</td>
+<td style="text-align:right">0</td>
+<td style="text-align:right">0</td>
+<td style="text-align:right">2</td>
+</tr>
+</tbody>
+</table>
+<h4>状态 × scope</h4>
+<table>
+<thead>
+<tr>
+<th>scope</th>
+<th style="text-align:right">已修复</th>
+<th style="text-align:right">依赖已移除</th>
+<th style="text-align:right">清单已删除</th>
+<th style="text-align:right">仍受影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>runtime</td>
+<td style="text-align:right">140</td>
+<td style="text-align:right">28</td>
+<td style="text-align:right">2</td>
+<td style="text-align:right">0</td>
+</tr>
+<tr>
+<td>development</td>
+<td style="text-align:right">69</td>
+<td style="text-align:right">2</td>
+<td style="text-align:right">13</td>
+<td style="text-align:right">0</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-9">3.7 依赖已移除（30 条）</h3>
+<table>
+<thead>
+<tr>
+<th>包</th>
+<th style="text-align:right">告警数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>node-forge</code></td>
+<td style="text-align:right">17</td>
+<td>加密/证书库，全 <code>src</code> 已 0 处 import（加密走 Node <code>crypto</code> + <code>crypto-js</code>），随 v1.3.x 依赖清理移除</td>
+</tr>
+<tr>
+<td><code>extract-zip</code></td>
+<td style="text-align:right">2</td>
+<td>electron 下载链旧传递依赖，当前树已无</td>
+</tr>
+<tr>
+<td><code>serialize-javascript</code></td>
+<td style="text-align:right">2</td>
+<td>webpack 链旧传递依赖，当前树已无</td>
+</tr>
+<tr>
+<td><code>webpack</code></td>
+<td style="text-align:right">2</td>
+<td>历史 vendor 构建链残留，当前主构建为 electron-vite</td>
+</tr>
+<tr>
+<td><code>ws</code></td>
+<td style="text-align:right">2</td>
+<td>旧传递依赖，当前树已无</td>
+</tr>
+<tr>
+<td><code>@tootallnate/once</code></td>
+<td style="text-align:right">1</td>
+<td>旧传递依赖</td>
+</tr>
+<tr>
+<td><code>diff</code></td>
+<td style="text-align:right">1</td>
+<td>旧传递依赖</td>
+</tr>
+<tr>
+<td><code>moment</code></td>
+<td style="text-align:right">1</td>
+<td>已移除（项目统一用轻量日期工具）</td>
+</tr>
+<tr>
+<td><code>rollup</code></td>
+<td style="text-align:right">1</td>
+<td>旧构建链传递依赖</td>
+</tr>
+<tr>
+<td><code>yaml</code></td>
+<td style="text-align:right">1</td>
+<td>旧传递依赖</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td style="text-align:right"><strong>30</strong></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-10">3.8 清单已删除（vendor）的 15 条</h3>
+<table>
+<thead>
+<tr>
+<th>已删除清单</th>
+<th>关联包</th>
+<th style="text-align:right">告警数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/renderer/src/lib/monaco-editor/package.json</code></td>
+<td><code>vite</code>（要求 <code>^3.2.8</code>）</td>
+<td style="text-align:right">9</td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/monaco-themes/package.json</code></td>
+<td><code>webpack-dev-server</code></td>
+<td style="text-align:right">4</td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/mermaid/package.json</code></td>
+<td><code>katex</code>（要求 <code>^0.16.9</code>）</td>
+<td style="text-align:right">1</td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/mermaid/package.json</code></td>
+<td><code>uuid</code></td>
+<td style="text-align:right">1</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>这 4 个路径均于提交 <code>5a8fbf9</code>（2026-04-19，「删除 src/renderer/src/lib，删除相关的使用」）被删除；当前仓库无这些目录，npm audit 也不会扫描未安装清单。详见 §7。</p>
+</blockquote>
+<hr>
+<h2 id="sec-4">4. npm audit 差异归因（0 vs 254）</h2>
+<h3 id="sub-11">4.1 两种工具的口径对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>GitHub Dependabot alerts</th>
+<th><code>npm audit</code>（官方 registry，含 dev）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>数据源</td>
+<td>GitHub Advisory Database（GHSA/CVE，含未收录进 npm 库的条目）+ 仓库依赖图</td>
+<td>npm registry advisory 接口（<code>npm audit</code> 端点）</td>
+</tr>
+<tr>
+<td>扫描对象</td>
+<td>仓库依赖图中<strong>全部被识别的 manifest</strong>（含锁文件、直接清单、历史快照）</td>
+<td>当前 <code>package-lock.json</code> 的<strong>实际安装树</strong></td>
+</tr>
+<tr>
+<td>版本判定</td>
+<td>告警创建时依赖图快照中的解析版本 + manifest 声明范围</td>
+<td>每次运行时的 lockfile 解析版本</td>
+</tr>
+<tr>
+<td>覆盖范围</td>
+<td>历史 open 告警（需依赖图重扫或人工 dismiss 才关闭）</td>
+<td>当前一次快照，实时计算</td>
+</tr>
+<tr>
+<td>是否扫描未安装清单</td>
+<td>会（只要曾被依赖图收录，如 vendor 目录 manifest）</td>
+<td>不会</td>
+</tr>
+<tr>
+<td>devDependencies</td>
+<td>覆盖（标注 scope=development）</td>
+<td>覆盖（<code>--omit=dev</code> 才排除）</td>
+</tr>
+<tr>
+<td>输出</td>
+<td>逐告警（含 GHSA/CVE、修复版本、依赖关系）</td>
+<td>逐漏洞（含 via/effects/range）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-12">4.2 差异的五条实证</h3>
+<p><strong>① 告警版本要求是升级前快照，当前声明已高于修复版本（51 条 package.json 告警）。</strong></p>
+<table>
+<thead>
+<tr>
+<th>包</th>
+<th>告警创建时要求</th>
+<th>当前 <code>package.json</code> 声明</th>
+<th style="text-align:right">不一致告警数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>electron</code></td>
+<td><code>^31.0.1</code></td>
+<td><code>^43.8.12</code></td>
+<td style="text-align:right">42</td>
+</tr>
+<tr>
+<td><code>vite</code></td>
+<td><code>^5.2.11</code></td>
+<td><code>^8.3.8</code></td>
+<td style="text-align:right">7</td>
+</tr>
+<tr>
+<td><code>katex</code></td>
+<td><code>^0.16.10</code></td>
+<td><code>^0.18.10</code></td>
+<td style="text-align:right">1</td>
+</tr>
+<tr>
+<td><code>uuid</code></td>
+<td><code>^10.0.0</code></td>
+<td><code>^14.0.3</code></td>
+<td style="text-align:right">1</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>依赖升级落地于提交 <code>19ef1fe</code>（2026-11-15）；此后 GitHub 侧未把这些告警批量重算关闭，因此 <code>state=open</code> 不代表当前可复现。</p>
+</blockquote>
+<p><strong>② overrides + 直接依赖升级已把受影响包解析到修复版本（209 条已修复）。</strong></p>
+<ul>
+<li>当前 <code>overrides</code> 共 20 项（完整清单见附录 B），覆盖 <strong>46 条告警</strong>涉及的包：<code>dompurify</code>、<code>@xmldom/xmldom</code>（0.8.15）、<code>js-yaml</code>（4.3.2）、<code>brace-expansion</code>（1.1.22 / 2.1.8 / 5.0.13）、<code>minimatch</code>（3.1.5 / 5.1.9 / 11.0.9）、<code>postcss-selector-parser</code>（6.1.6）、<code>browserslist</code>、<code>@babel/core</code>、<code>undici</code>、<code>glob</code> 等。</li>
+<li>代表项：<code>@xmldom/xmldom</code> 0.8.15（15 条 high/medium 告警全部修复）、<code>dompurify</code> 3.4.18（21 条全部修复）、<code>node-forge</code> 已移除（17 条）、<code>electron</code> 43.8.12（85 条全部修复）。</li>
+</ul>
+<p><strong>③ 30 条告警对应依赖已从依赖树移除（§3.7）。</strong> npm audit 只能看到当前树，看不到已移除的包；GitHub 历史告警在依赖图重扫前保持 open。</p>
+<p><strong>④ 15 条告警指向已删除的 vendor 清单（§3.8）。</strong> 这些清单从未安装 <code>node_modules</code>，不属于 npm audit 的扫描对象。</p>
+<p><strong>⑤ 工具库差异（次要）。</strong> npm audit 使用 npm registry 的 advisory 数据，GHSA 中部分条目（尤其新发布、撤回、或仅 GitHub 收录的）可能未进入 npm 的 audit 端点；即便同一条 advisory，两者发布的「修复版本」时点也可能不同。本仓库当前安装版本均高于所有告警声明的修复版本，故即使放开库差异，npm audit 仍为 0。</p>
+<h3 id="sub-13">4.3 差异结论与口径建议</h3>
+<ul>
+<li><strong>判定口径</strong>：判断「当前是否可复现漏洞」以 <code>npm audit</code>（官方 registry）+ 本地 lockfile semver 核验为准；Dependabot 告警定位为「历史暴露面与版本更新提醒」，需结合依赖图刷新周期看趋势，而不是直接当作当前漏洞数。</li>
+<li>本仓库 <code>npm audit</code> 0 漏洞是真实结果：828 个依赖全部不在告警受影响范围，且 <code>overrides</code> 把历史上高危的传递依赖强制在修复版本。</li>
+<li>254 条告警中的 15 条 vendor 陈旧告警<strong>无法通过代码修复</strong>（清单已不存在），需 GitHub 侧关闭或等待依赖图重扫（建议见 §10）。</li>
+<li>建议在治理记录中固定口径：<strong>「Dependabot open 告警数」与「npm audit 漏洞数」分别独立统计、不互相替代</strong>；本报告与 <code>.github/dependabot.yml</code> 均按该口径维护。</li>
+</ul>
+<hr>
+<h2 id="sec-5">5. 修复批执行记录</h2>
+<h3 id="sub-14">5.1 治理前基线（已构成修复的既有变更）</h3>
+<p>HEAD <code>7e80ff1</code> 已包含以下依赖安全治理成果（本轮核实有效，未重复改动）：</p>
+<table>
+<thead>
+<tr>
+<th>包</th>
+<th>治理前声明</th>
+<th>治理前锁定版本</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>electron</code></td>
+<td><code>^43.8.1</code></td>
+<td>43.8.10</td>
+<td>已高于全部 electron 告警修复版本（最高 42.11.9）</td>
+</tr>
+<tr>
+<td><code>markdown-it</code></td>
+<td><code>^15.0.3</code></td>
+<td>15.0.3</td>
+<td>高于修复版本（14.3.3）</td>
+</tr>
+<tr>
+<td><code>mermaid</code></td>
+<td><code>^12.3.0</code></td>
+<td>12.3.0</td>
+<td>高于修复版本（10.9.8）</td>
+</tr>
+<tr>
+<td><code>katex</code></td>
+<td><code>^0.18.4</code></td>
+<td>0.18.4</td>
+<td>高于修复版本（0.18.2）</td>
+</tr>
+<tr>
+<td><code>dompurify</code></td>
+<td><code>3.4.17</code>（overrides 固定）</td>
+<td>3.4.17</td>
+<td>高于全部修复版本（最高 3.4.17）</td>
+</tr>
+<tr>
+<td><code>@xmldom/xmldom</code></td>
+<td>overrides <code>^0.8.15</code></td>
+<td>0.8.15</td>
+<td>高于全部修复版本（最高 0.8.15）</td>
+</tr>
+<tr>
+<td><code>js-yaml</code></td>
+<td>overrides <code>^4.3.2</code></td>
+<td>4.3.2</td>
+<td>高于全部修复版本</td>
+</tr>
+<tr>
+<td><code>brace-expansion</code></td>
+<td>overrides（3 条线）</td>
+<td>1.1.22 / 2.1.8 / 5.0.13</td>
+<td>高于全部修复版本</td>
+</tr>
+<tr>
+<td><code>nanoid</code></td>
+<td>传递依赖</td>
+<td>3.3.20</td>
+<td>高于修复版本（3.3.18）</td>
+</tr>
+<tr>
+<td><code>node-forge</code></td>
+<td>已移除</td>
+<td>—</td>
+<td>17 条告警全部消解</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-15">5.2 本轮修复变更（18 项直接依赖 + 5 处 overrides）</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:right">#</th>
+<th>包</th>
+<th>类别</th>
+<th>治理前</th>
+<th>治理后（声明 / 锁定）</th>
+<th>升级级别</th>
+<th>关联告警（当前判定）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right">1</td>
+<td><code>dompurify</code></td>
+<td>渲染净化（dev）</td>
+<td><code>3.4.17</code></td>
+<td><code>3.4.18</code>（overrides 同步）</td>
+<td>patch</td>
+<td>21 条（已修复）</td>
+</tr>
+<tr>
+<td style="text-align:right">2</td>
+<td><code>electron</code></td>
+<td>运行时容器（dev）</td>
+<td><code>^43.8.1</code> / 43.8.10</td>
+<td><code>^43.8.12</code> / 43.8.12</td>
+<td>patch</td>
+<td>85 条（已修复）</td>
+</tr>
+<tr>
+<td style="text-align:right">3</td>
+<td><code>electron-builder</code></td>
+<td>打包（dev）</td>
+<td><code>^26.18.0</code> / 26.18.0</td>
+<td><code>^26.18.1</code> / 26.18.1</td>
+<td>patch</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">4</td>
+<td><code>vite</code></td>
+<td>构建（dev）</td>
+<td><code>^8.2.4</code> / 8.3.8</td>
+<td><code>^8.3.8</code> / 8.3.8</td>
+<td>声明对齐</td>
+<td>26 条（17 已修复 + 9 陈旧）</td>
+</tr>
+<tr>
+<td style="text-align:right">5</td>
+<td><code>katex</code></td>
+<td>渲染（dev）</td>
+<td><code>^0.18.4</code> / 0.18.4</td>
+<td><code>^0.18.10</code> / 0.18.11</td>
+<td>patch</td>
+<td>3 条（2 已修复 + 1 陈旧）</td>
+</tr>
+<tr>
+<td style="text-align:right">6</td>
+<td><code>mammoth</code></td>
+<td>docx 导入（runtime）</td>
+<td><code>^1.12.1</code> / 1.12.1</td>
+<td><code>^1.13.0</code> / 1.13.0</td>
+<td>minor</td>
+<td>1 条（已修复）</td>
+</tr>
+<tr>
+<td style="text-align:right">7</td>
+<td><code>turndown</code></td>
+<td>HTML→MD（runtime）</td>
+<td><code>^7.2.0</code> / 7.2.4</td>
+<td><code>^7.2.5</code> / 7.2.5</td>
+<td>patch</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">8</td>
+<td><code>uuid</code></td>
+<td>唯一 ID（dev）</td>
+<td><code>^14.0.2</code> / 14.0.2</td>
+<td><code>^14.0.3</code> / 14.0.3</td>
+<td>patch</td>
+<td>3 条（2 已修复 + 1 陈旧）</td>
+</tr>
+<tr>
+<td style="text-align:right">9</td>
+<td><code>fs-extra</code></td>
+<td>文件读写（runtime）</td>
+<td><code>^11.4.0</code> / 11.4.0</td>
+<td><code>^11.4.1</code> / 11.4.1</td>
+<td>patch</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">10</td>
+<td><code>electron-updater</code></td>
+<td>自动更新（runtime）</td>
+<td><code>^6.8.9</code> / 6.8.9</td>
+<td><code>^6.8.11</code> / 6.8.11</td>
+<td>patch</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">11</td>
+<td><code>jschardet</code></td>
+<td>编码探测（runtime）</td>
+<td><code>^3.1.3</code> / 3.1.4</td>
+<td><code>^3.1.4</code> / 3.1.4</td>
+<td>声明对齐</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">12</td>
+<td><code>eslint</code></td>
+<td>代码规范（dev）</td>
+<td><code>^9.39.4</code> / 9.39.4</td>
+<td><code>^9.39.5</code> / 9.39.5</td>
+<td>patch</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">13</td>
+<td><code>typescript</code></td>
+<td>类型检查（dev）</td>
+<td><code>^6.0.2</code> / 6.0.3</td>
+<td><code>^6.0.3</code> / 6.0.3</td>
+<td>声明对齐</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">14</td>
+<td><code>vue</code></td>
+<td>框架（dev）</td>
+<td><code>^3.5.42</code> / 3.5.45</td>
+<td><code>^3.5.45</code> / 3.5.45</td>
+<td>声明对齐</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">15</td>
+<td><code>@vitejs/plugin-vue</code></td>
+<td>Vue 插件（dev）</td>
+<td><code>^6.0.8</code> / 6.0.8</td>
+<td><code>^6.0.11</code> / 6.0.11</td>
+<td>patch</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">16</td>
+<td><code>@vue/test-utils</code></td>
+<td>测试（dev）</td>
+<td><code>^2.4.6</code> / 2.4.6</td>
+<td><code>^2.6.0</code> / 2.6.0</td>
+<td>minor</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">17</td>
+<td><code>@imengyu/vue3-context-menu</code></td>
+<td>右键菜单（dev）</td>
+<td><code>^1.5.6</code> / 1.5.6</td>
+<td><code>^1.5.7</code> / 1.5.7</td>
+<td>patch</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">18</td>
+<td><code>@types/node</code></td>
+<td>类型（dev）</td>
+<td><code>^22.0.0</code> / 22.20.1</td>
+<td><code>^22.20.5</code> / 22.20.5</td>
+<td>minor</td>
+<td>—</td>
+</tr>
+<tr>
+<td style="text-align:right">19</td>
+<td><code>minimatch</code>（overrides ×4）</td>
+<td>构建链传递</td>
+<td><code>^11.0.8</code> / 11.0.8</td>
+<td><code>^11.0.9</code> / 11.0.9</td>
+<td>patch</td>
+<td>3 条（已修复）</td>
+</tr>
+<tr>
+<td style="text-align:right">20</td>
+<td><code>dompurify</code>（overrides）</td>
+<td>见 #1</td>
+<td><code>3.4.17</code></td>
+<td><code>3.4.18</code></td>
+<td>patch</td>
+<td>21 条（已修复）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>说明：<code>overrides</code> 变更共 5 处（dompurify 1 处 + minimatch 4 处），与 #1/#19 合并计；#4/#11/#13/#14 为「锁定版本已满足，仅抬高声明下限」的声明对齐，不改变安装树。</p>
+</blockquote>
+<h3 id="sub-16">5.3 单项失败回滚记录</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>尝试</th>
+<th>失败现象</th>
+<th>处置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vue-tsc</code></td>
+<td><code>^3.3.11</code> → <code>^3.3.14</code></td>
+<td><code>npm run typecheck:web</code> 报 <code>InsertImageDialog.vue(91,33) TS2540: Cannot assign to 'value' because it is a read-only property</code>（模板对只读 <code>computed</code> 赋值；3.3.11 不检查该场景）</td>
+<td><strong>单项回滚</strong>：<code>npm install vue-tsc@3.3.11</code> 恢复 3.3.11，<code>package.json</code> 维持 <code>^3.3.11</code>；回滚后 typecheck 三工程 0 错误</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>回滚后其余 18 项升级均通过全量门禁。该存量模板错误（<code>InsertImageDialog.vue:91</code>、<code>system-setting</code> 页签同类写法）不属于本次治理范围（不改业务代码），已记录为后续项（§5.5）。</p>
+</blockquote>
+<h3 id="sub-17">5.4 未升级项与 major 评估结论</h3>
+<p>以下项存在新版本但<strong>本轮不动</strong>（跨 major 需单独评估兼容性与回归成本；<code>dependabot.yml</code> 已统一 ignore major，交由定期评估）：</p>
+<table>
+<thead>
+<tr>
+<th>包</th>
+<th>当前</th>
+<th>最新</th>
+<th>不动理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>electron</code></td>
+<td>43.8.12</td>
+<td>45.4.1</td>
+<td>跨 2 个 major，涉及 Chromium/Node ABI 与打包链回归，需独立任务 + 安装包实测</td>
+</tr>
+<tr>
+<td><code>typescript</code></td>
+<td>6.0.3</td>
+<td>7.0.2</td>
+<td>跨 major，需全仓类型迁移与 vue-tsc 配套</td>
+</tr>
+<tr>
+<td><code>vitest</code> / <code>@vitest/coverage-v8</code></td>
+<td>4.1.12</td>
+<td>5.1.1</td>
+<td>测试框架 major，覆盖阈值与配置需迁移</td>
+</tr>
+<tr>
+<td><code>eslint</code> / <code>eslint-plugin-vue</code></td>
+<td>9.39.5 / 9.33.0</td>
+<td>10.15.0 / 10.12.1</td>
+<td>flat config 规则集变更，存量 lint 结果可能大幅波动</td>
+</tr>
+<tr>
+<td><code>jsdom</code></td>
+<td>29.1.1</td>
+<td>31.0.1</td>
+<td>跨 2 个 major，仅测试环境依赖，需验证 jsdom 行为差异</td>
+</tr>
+<tr>
+<td><code>js-yaml</code></td>
+<td>4.3.2（override）</td>
+<td>5.5.0</td>
+<td>主版本 API 变更，当前 4.x 已高于全部修复版本</td>
+</tr>
+<tr>
+<td><code>nanoid</code></td>
+<td>3.3.20（传递）</td>
+<td>6.0.2</td>
+<td><code>postcss</code> 依赖线锁定 3.x，当前 3.3.20 已高于修复版本</td>
+</tr>
+<tr>
+<td><code>@xmldom/xmldom</code></td>
+<td>0.8.15（override）</td>
+<td>0.9.12</td>
+<td>0.x minor 视为破坏性变更，<code>mammoth</code> / <code>plist</code> 依赖 <code>^0.8</code>，当前 0.8.15 已修复全部 15 条告警</td>
+</tr>
+<tr>
+<td><code>prettier</code></td>
+<td>3.9.6</td>
+<td>3.10.1</td>
+<td>无安全告警；minor 可能触发全仓格式化差异，与本次治理范围无关，留待独立格式化任务</td>
+</tr>
+<tr>
+<td><code>electron-store</code> / <code>jschardet</code> / <code>@types/node</code></td>
+<td>11.0.2 / 3.1.4 / 22.20.5</td>
+<td>12.0.0 / 4.1.0 / 26.6.6</td>
+<td>major 升级，另立任务</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-18">5.5 剩余风险与待办</h3>
+<ol>
+<li><strong>存量模板类型错误</strong>（不阻塞门禁）：<code>InsertImageDialog.vue:91</code> 模板对只读 <code>computed</code> 赋值、<code>system-setting</code> 页签旧写法同类问题；当 <code>vue-tsc</code> 升到 3.3.14+ 时会暴露。建议另立「模板只读 computed 赋值清理」任务，与设置页拆分代理协同后升级 <code>vue-tsc</code>。</li>
+<li><strong>15 条 vendor 陈旧告警</strong>：代码侧已无清单，需 GitHub 侧关闭（§10）。</li>
+<li><strong>GitHub 依赖图重扫滞后</strong>：告警 <code>state=open</code> 会持续一段时间；建议在下一轮安全评审时重新拉取对照（复现命令见 §9）。</li>
+<li><code>npm audit</code> CI 闸门保持现状（生产依赖 <code>--omit=dev --audit-level=high</code>，不删除）；当前全量依赖（含 dev）也为 0，暂不必放宽/收紧。</li>
+</ol>
+<hr>
+<h2 id="sec-6">6. Dependabot 配置（<code>.github/dependabot.yml</code>）</h2>
+<h3 id="sub-19">6.1 配置要点</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>取值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>package-ecosystem</code></td>
+<td><code>npm</code>（<code>directory: /</code>）</td>
+<td>仓库唯一依赖清单在根目录</td>
+</tr>
+<tr>
+<td><code>schedule</code></td>
+<td><code>weekly</code>，周一 09:00（<code>Asia/Shanghai</code>）</td>
+<td>与发布节奏匹配，避免每日 PR 噪音</td>
+</tr>
+<tr>
+<td><code>open-pull-requests-limit</code></td>
+<td><code>5</code></td>
+<td>限制并行版本更新 PR，防止依赖图更新挤占 review 资源</td>
+</tr>
+<tr>
+<td><code>versioning-strategy</code></td>
+<td><code>increase</code></td>
+<td>应用型仓库：在允许范围内抬高声明下限</td>
+</tr>
+<tr>
+<td><code>rebase-strategy</code></td>
+<td><code>auto</code></td>
+<td>冲突时自动 rebase</td>
+</tr>
+<tr>
+<td><code>labels</code> / <code>commit-message</code></td>
+<td><code>dependencies</code> / <code>chore(deps)</code></td>
+<td>便于筛别与自动分类</td>
+</tr>
+<tr>
+<td><code>exclude-paths</code></td>
+<td><code>src/renderer/src/lib/**</code>、<code>resources/themes/**</code></td>
+<td>排除 vendor 副本（§7），避免为不参与构建的清单创建无效 PR</td>
+</tr>
+<tr>
+<td>分组 <code>groups</code></td>
+<td>electron / vue / vite / test / eslint / markdown / build / types</td>
+<td>8 个分组；组内 minor+patch 合并为 1 个 PR；未匹配项归入 build 兜底组</td>
+</tr>
+<tr>
+<td><code>ignore</code></td>
+<td><code>dependency-name: '*'</code> + <code>version-update:semver-major</code></td>
+<td>全部 major 统一忽略；major 升级走人工评估（§5.4）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>分组覆盖（按配置顺序，先匹配先归属）：electron 组含 <code>electron</code>、<code>electron-*</code>、<code>@electron/*</code>、<code>@electron-toolkit/*</code>；vue 组含 <code>vue</code>、<code>vue-tsc</code>、<code>@vue/*</code>、<code>@imengyu/*</code>；vite 组含 <code>vite</code>、<code>@vitejs/*</code>；test 组含 <code>vitest</code>、<code>@vitest/*</code>、<code>@playwright/*</code>、<code>@vue/test-utils</code>、<code>jsdom</code>；eslint 组含 <code>eslint</code>、<code>eslint-*</code>、<code>@typescript-eslint/*</code>、<code>@vue/eslint-config-*</code>；markdown 组含 <code>markdown-it*</code>、<code>mermaid</code>、<code>katex</code>、<code>dompurify</code>、<code>highlight.js</code>、<code>turndown</code>；types 组含 <code>@types/*</code>；build 组为兜底。
+参考：<a href="https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference">Dependabot options reference</a>、<a href="https://github.blog/changelog/2025-08-26-dependabot-can-now-exclude-automatic-pull-requests-for-manifests-in-selected-subdirectories/">exclude-paths changelog</a>。</p>
+</blockquote>
+<h3 id="sub-20">6.2 安全更新（security updates）说明</h3>
+<ul>
+<li><strong>本文件只控制「版本更新」PR。</strong> 「安全更新」PR 由 GitHub 仓库设置独立控制，无法通过 <code>dependabot.yml</code> 开启或配置：
+<ul>
+<li>路径：仓库 <strong>Settings → Code security and analysis → Dependabot</strong>；</li>
+<li>需同时开启 <strong>Dependabot alerts</strong>（本仓库已开启，254 条 open 告警即其产物）与 <strong>Dependabot security updates</strong>；</li>
+<li>security updates 不受 <code>ignore</code> 中 <code>version-update:semver-major</code> 影响（官方口径），会针对可修复的告警单独开 PR。</li>
+</ul>
+</li>
+<li>建议维护者在仓库设置中确认 security updates 开关为开启状态，并在下一轮告警评审时以「告警数回落」为准验收。</li>
+</ul>
+<hr>
+<h2 id="sec-7">7. vendor 副本专项</h2>
+<h3 id="sub-21">7.1 历史路径与现状</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>状态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/renderer/src/lib/monaco-editor/</code></td>
+<td><strong>已删除</strong>（<code>5a8fbf9</code>，2026-04-19）</td>
+<td>历史 Monaco vendor 副本（含 <code>vite ^3.2.8</code> 声明），删除后改用 npm <code>monaco-editor@0.57.0</code></td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/monaco-themes/</code></td>
+<td><strong>已删除</strong>（<code>5a8fbf9</code>）</td>
+<td>历史主题 vendor 副本（含 <code>webpack-dev-server</code> 声明），主题改由 <code>resources/themes/monaco-themes/themes/*.json</code> 提供</td>
+</tr>
+<tr>
+<td><code>src/renderer/src/lib/mermaid/</code></td>
+<td><strong>已删除</strong>（<code>5a8fbf9</code>）</td>
+<td>历史 Mermaid vendor 副本（含 <code>katex ^0.16.9</code> / <code>uuid</code> 声明），改用 npm <code>mermaid@12.3.0</code></td>
+</tr>
+<tr>
+<td><code>resources/themes/monaco-themes/</code></td>
+<td><strong>保留</strong>（当前唯一 vendor 目录）</td>
+<td><code>monaco-themes@0.4.8</code> 上游主题包副本（<code>themes/</code> 55 个 JSON + <code>dist/</code> + <code>package.json</code>），被 <code>electron-builder.yml</code> 作为 <code>extraResources</code> 打包（<code>from: resources/themes/monaco-themes → to: themes/monaco-themes</code>）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-22">7.2 是否参与构建的核对结论</h3>
+<table>
+<thead>
+<tr>
+<th>核对项</th>
+<th>结论</th>
+<th>证据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>源码是否 import vendor 副本</td>
+<td><strong>否</strong></td>
+<td><code>grep</code> 全仓无 <code>lib/monaco-editor</code>、<code>lib/mermaid</code> 引用；<code>useTheme.ts</code> / <code>shared/types/theme.ts</code> 只读 <code>resources/themes/monaco-themes/themes/*.json</code></td>
+</tr>
+<tr>
+<td>是否参与 Vite/electron-vite 打包</td>
+<td><strong>否</strong></td>
+<td><code>electron.vite.config.ts</code> 无相关 alias/入口；monaco 走 npm 包 + worker 注册</td>
+</tr>
+<tr>
+<td>是否有独立 <code>node_modules</code> 安装</td>
+<td><strong>否</strong></td>
+<td>vendor 目录内无 <code>node_modules</code>，<code>package-lock.json</code> 未包含其 devDependencies（<code>vite</code>、<code>webpack-dev-server</code> 等从未安装）</td>
+</tr>
+<tr>
+<td>是否随安装包分发</td>
+<td><strong>是（仅 <code>resources/themes/monaco-themes</code> 的 JSON/资源）</strong></td>
+<td><code>electron-builder.yml:42-44</code> 作为 extraResources 复制；<code>package.json</code> 一并复制但应用只读 <code>themes/</code></td>
+</tr>
+<tr>
+<td>告警关联的 4 个 manifest</td>
+<td><strong>均已删除</strong>（<code>src/renderer/src/lib/**</code>）</td>
+<td>告警 15 条为历史快照，当前仓库无该路径</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-23">7.3 处置</h3>
+<ol>
+<li><strong>不删除 <code>resources/themes/monaco-themes</code></strong>：其 <code>themes/*.json</code> 是 55 套 Monaco 主题的运行时数据源，删除会破坏主题功能。</li>
+<li><strong>不参与依赖治理</strong>：该副本不安装依赖、不参与构建，其 <code>package.json</code> 中的 <code>devDependencies</code>（<code>vite ^6.0.3</code> 等）是上游包自身开发依赖，对本仓库无运行风险。</li>
+<li><strong>在 <code>dependabot.yml</code> 中用 <code>exclude-paths</code> 排除 <code>src/renderer/src/lib/**</code> 与 <code>resources/themes/**</code></strong>：避免后续为这些不参与构建的清单生成版本更新 PR；已存在的 15 条历史告警在 GitHub 侧关闭/重扫（§10）。</li>
+</ol>
+<hr>
+<h2 id="sec-8">8. 门禁验证</h2>
+<blockquote>
+<p>单次完整门禁（<code>npm install</code> 后串行执行）：<strong>全部通过</strong>，数据如下。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>门禁</th>
+<th>命令</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>依赖安装</td>
+<td><code>npm install</code></td>
+<td>成功（18 项直接依赖声明 + 5 处 overrides 生效，lockfile 变更 32 个包节点）</td>
+</tr>
+<tr>
+<td>类型检查</td>
+<td><code>npm run typecheck</code>（node + web + test 三工程）</td>
+<td><strong>0 错误</strong></td>
+</tr>
+<tr>
+<td>ESLint</td>
+<td><code>npx eslint . --quiet</code></td>
+<td><strong>0 错误 / 0 警告</strong></td>
+</tr>
+<tr>
+<td>Prettier</td>
+<td><code>npx prettier --check .</code></td>
+<td><strong>全绿</strong>（<code>All matched files use Prettier code style!</code>）</td>
+</tr>
+<tr>
+<td>单元测试</td>
+<td><code>npm test</code>（vitest run）</td>
+<td><strong>175 个测试文件 / 3,297 个用例全部通过</strong></td>
+</tr>
+<tr>
+<td>构建</td>
+<td><code>npx electron-vite build</code></td>
+<td>成功（main 54ms / preload 43ms / renderer 2.88s；入口与异步 chunk 正常产出，Monaco/KaTeX/pdf.js 独立 chunk）</td>
+</tr>
+<tr>
+<td>依赖审计</td>
+<td><code>npm audit --omit=dev --registry=https://registry.npmjs.org --audit-level=high</code></td>
+<td><strong>found 0 vulnerabilities</strong>；全量（含 dev）audit 亦为 0（prod 131 / dev 698 / optional 62 / peer 8，共 828）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>执行备注：</p>
+<ol>
+<li>门禁全量执行日志见 <code>out/dependabot/final-gates.log</code>（另有两轮部分日志 <code>fix-batch-gates*.log</code> 记录单项回滚过程）。</li>
+<li>依赖升级后本机 <code>node_modules/electron</code> 二进制未随 <code>npm install</code> 落盘（<code>dist/</code>、<code>path.txt</code> 缺失），导致 <code>require('electron')</code> 触发联网下载、全量 vitest 挂起；已用 <code>ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ node node_modules/electron/install.js</code> 恢复二进制后复跑门禁通过（CI 全新 <code>npm ci</code> 且网络可达，不受影响）。</li>
+<li>同工作区并行有「设置页拆分」代理修改 <code>src/renderer/src/components/dialogs/complex/system-setting/**</code>；门禁按共享工作区最终状态执行（测试数含其新增 3 个测试文件），其文件不在本次依赖安全治理提交范围内。</li>
+</ol>
+</blockquote>
+<hr>
+<h2 id="sec-9">9. 复现与产物</h2>
+<h3 id="sub-24">9.1 复现命令</h3>
+<pre><code class="language-powershell"># 1) 拉取全部 open 告警（Git 凭据读取 token，游标分页）
+node build/fetch-dependabot-alerts.mjs --out out/dependabot
+
+# 2) 与当前 package.json/package-lock.json 核验分类
+node build/analyze-dependabot-alerts.mjs
+
+# 3) npm audit（官方 registry，含 dev）
+npm audit --registry=https://registry.npmjs.org --json &gt; out/dependabot/npm-audit-final.json
+</code></pre>
+<h3 id="sub-25">9.2 产物清单</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>out/dependabot/alerts.raw.json</code></td>
+<td>254 条告警原始 JSON（含 GHSA/CVE/修复版本/依赖关系）</td>
+</tr>
+<tr>
+<td><code>out/dependabot/alerts-summary.json</code></td>
+<td>五维聚合结果</td>
+</tr>
+<tr>
+<td><code>out/dependabot/alerts-analysis.json</code></td>
+<td>判定后明细（FIXED/REMOVED/STALE_MANIFEST/ACTIVE）+ 差异归因数据</td>
+</tr>
+<tr>
+<td><code>out/dependabot/npm-audit-final.json</code></td>
+<td>治理后 npm audit（全量，0 漏洞）</td>
+</tr>
+<tr>
+<td><code>out/dependabot/npm-audit-final-prod.json</code></td>
+<td>治理后 npm audit（仅生产依赖，0 漏洞）</td>
+</tr>
+<tr>
+<td><code>out/dependabot/npm-audit-root.json</code></td>
+<td>治理前基线 npm audit（0 漏洞）</td>
+</tr>
+<tr>
+<td><code>build/fetch-dependabot-alerts.mjs</code> / <code>build/analyze-dependabot-alerts.mjs</code></td>
+<td>可复现脚本（入库）</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="sec-10">10. 后续建议</h2>
+<ol>
+<li><strong>GitHub 侧闭环 15 条 vendor 陈旧告警</strong>：清单已不存在，可在 Security → Dependabot 中按「Not used / Vulnerable code is not present」理由 dismiss；或等待依赖图重扫自动关闭。</li>
+<li><strong>开启/确认 security updates</strong>：Settings → Code security and analysis → Dependabot security updates（<code>dependabot.yml</code> 无法开启，需人工确认）。</li>
+<li><strong>定期复核</strong>：每月执行 §9.1 命令，对比 <code>state=open</code> 告警数与 <code>npm audit</code> 漏洞数；本报告口径为「两者独立统计」。</li>
+<li><strong>major 升级计划</strong>：按 §5.4 清单分期评估（优先 electron / typescript / eslint / vitest 四条主线），每项独立任务 + 全量门禁 + 打包实测。</li>
+<li><strong>模板类型清理</strong>：另立任务清理模板对只读 <code>computed</code> 的赋值（<code>InsertImageDialog.vue:91</code> 等），随后再解锁 <code>vue-tsc</code> 3.3.14+ 升级。</li>
+<li><strong>CI audit 闸门保持</strong>：不删除现有 <code>npm audit --omit=dev --audit-level=high</code>；如需更严可在稳定期评估全量 audit。</li>
+</ol>
+<hr>
+<h2 id="sec-11">附录 A：41 个包完整明细</h2>
+<table>
+<thead>
+<tr>
+<th>包</th>
+<th style="text-align:right">告警</th>
+<th>严重级别</th>
+<th>scope</th>
+<th>relationship</th>
+<th>当前版本（lockfile）</th>
+<th>修复版本（告警口径）</th>
+<th>当前判定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>electron</code></td>
+<td style="text-align:right">85</td>
+<td>中×49 / 低×14 / 高×22</td>
+<td>development×42 / runtime×43</td>
+<td>direct×42 / inconclusive×43</td>
+<td>43.8.12</td>
+<td>42.11.9, 42.11.3, 42.11.6, 41.10.6, 41.10.4, 39.8.10, 39.8.8, 39.8.9, 39.8.7, 39.8.6, 39.8.5, 38.8.6, 39.8.1, 35.7.5</td>
+<td>已修复×85</td>
+</tr>
+<tr>
+<td><code>vite</code></td>
+<td style="text-align:right">26</td>
+<td>中×17 / 高×5 / 低×4</td>
+<td>runtime×17 / development×9</td>
+<td>inconclusive×10 / direct×16</td>
+<td>8.3.8</td>
+<td>6.4.4, 6.4.3, 5.4.9, 6.4.2, 5.4.21, 5.4.20</td>
+<td>已修复×17 / 清单已删除×9</td>
+</tr>
+<tr>
+<td><code>dompurify</code></td>
+<td style="text-align:right">21</td>
+<td>低×6 / 中×15</td>
+<td>runtime×21</td>
+<td>inconclusive×21</td>
+<td>3.4.18</td>
+<td>3.4.17, 3.4.13, 3.4.12, 3.4.11, 3.4.9, 3.4.7, 3.4.6, 3.4.8, 3.4.0, 3.3.2, 3.2.7</td>
+<td>已修复×21</td>
+</tr>
+<tr>
+<td><code>node-forge</code></td>
+<td style="text-align:right">17</td>
+<td>低×3 / 中×5 / 高×9</td>
+<td>runtime×17</td>
+<td>direct×17</td>
+<td>—（未安装）</td>
+<td>1.4.1, 1.4.3, 1.4.0, 1.3.2</td>
+<td>依赖已移除×17</td>
+</tr>
+<tr>
+<td><code>@xmldom/xmldom</code></td>
+<td style="text-align:right">15</td>
+<td>高×13 / 中×2</td>
+<td>runtime×15</td>
+<td>transitive×15</td>
+<td>0.8.15</td>
+<td>0.8.15, 0.8.14, 0.8.13, 0.8.12</td>
+<td>已修复×15</td>
+</tr>
+<tr>
+<td><code>brace-expansion</code></td>
+<td style="text-align:right">9</td>
+<td>高×6 / 中×2 / 低×1</td>
+<td>runtime×8 / development×1</td>
+<td>inconclusive×9</td>
+<td>1.1.22, 2.1.8, 5.0.13</td>
+<td>2.1.5, 2.1.7, 2.1.6, 2.1.2, 2.1.4, 2.1.3, 1.1.16, 2.0.3, 2.0.2</td>
+<td>已修复×9</td>
+</tr>
+<tr>
+<td><code>tar</code></td>
+<td style="text-align:right">8</td>
+<td>中×2 / 高×6</td>
+<td>development×8</td>
+<td>inconclusive×8</td>
+<td>7.5.23</td>
+<td>7.5.18, 7.5.16, 7.5.11, 7.5.10, 7.5.8, 7.5.7, 7.5.4, 7.5.3</td>
+<td>已修复×8</td>
+</tr>
+<tr>
+<td><code>mermaid</code></td>
+<td style="text-align:right">7</td>
+<td>中×6 / 低×1</td>
+<td>development×5 / runtime×2</td>
+<td>inconclusive×7</td>
+<td>12.3.0</td>
+<td>10.9.8, 10.9.6, 10.9.4</td>
+<td>已修复×7</td>
+</tr>
+<tr>
+<td><code>js-yaml</code></td>
+<td style="text-align:right">5</td>
+<td>高×3 / 中×2</td>
+<td>runtime×5</td>
+<td>inconclusive×5</td>
+<td>4.3.2</td>
+<td>4.3.2, 4.3.1, 4.3.0, 4.2.0, 4.1.1</td>
+<td>已修复×5</td>
+</tr>
+<tr>
+<td><code>markdown-it</code></td>
+<td style="text-align:right">5</td>
+<td>低×1 / 高×2 / 中×2</td>
+<td>development×4 / runtime×1</td>
+<td>inconclusive×5</td>
+<td>15.0.3</td>
+<td>14.3.3, 14.3.2, 14.3.1, 14.2.0</td>
+<td>已修复×5</td>
+</tr>
+<tr>
+<td><code>postcss</code></td>
+<td style="text-align:right">4</td>
+<td>中×2 / 高×2</td>
+<td>runtime×4</td>
+<td>inconclusive×4</td>
+<td>8.5.33</td>
+<td>8.5.23, 8.5.18, 8.5.12, 8.5.10</td>
+<td>已修复×4</td>
+</tr>
+<tr>
+<td><code>webpack-dev-server</code></td>
+<td style="text-align:right">4</td>
+<td>中×4</td>
+<td>development×4</td>
+<td>direct×4</td>
+<td>—（未安装）</td>
+<td>5.2.6, 5.2.5, 5.2.4</td>
+<td>清单已删除×4</td>
+</tr>
+<tr>
+<td><code>katex</code></td>
+<td style="text-align:right">3</td>
+<td>低×3</td>
+<td>runtime×3</td>
+<td>direct×1 / inconclusive×2</td>
+<td>0.18.11</td>
+<td>0.18.2</td>
+<td>已修复×2 / 清单已删除×1</td>
+</tr>
+<tr>
+<td><code>minimatch</code></td>
+<td style="text-align:right">3</td>
+<td>高×3</td>
+<td>development×3</td>
+<td>inconclusive×3</td>
+<td>3.1.5, 5.1.9, 11.0.9</td>
+<td>3.1.3, 5.1.8, 9.0.7</td>
+<td>已修复×3</td>
+</tr>
+<tr>
+<td><code>nanoid</code></td>
+<td style="text-align:right">3</td>
+<td>高×3</td>
+<td>runtime×3</td>
+<td>inconclusive×3</td>
+<td>3.3.20</td>
+<td>3.3.12, 3.3.18, 3.3.16</td>
+<td>已修复×3</td>
+</tr>
+<tr>
+<td><code>uuid</code></td>
+<td style="text-align:right">3</td>
+<td>中×3</td>
+<td>runtime×3</td>
+<td>direct×2 / inconclusive×1</td>
+<td>14.0.3</td>
+<td>11.1.1</td>
+<td>已修复×2 / 清单已删除×1</td>
+</tr>
+<tr>
+<td><code>ajv</code></td>
+<td style="text-align:right">2</td>
+<td>中×2</td>
+<td>runtime×2</td>
+<td>inconclusive×2</td>
+<td>6.15.0, 8.20.0</td>
+<td>6.14.0, 8.18.0</td>
+<td>已修复×2</td>
+</tr>
+<tr>
+<td><code>browserslist</code></td>
+<td style="text-align:right">2</td>
+<td>高×2</td>
+<td>runtime×2</td>
+<td>transitive×2</td>
+<td>4.29.5</td>
+<td>4.28.7</td>
+<td>已修复×2</td>
+</tr>
+<tr>
+<td><code>extract-zip</code></td>
+<td style="text-align:right">2</td>
+<td>高×2</td>
+<td>runtime×2</td>
+<td>inconclusive×2</td>
+<td>—（未安装）</td>
+<td>—（无补丁版本）</td>
+<td>依赖已移除×2</td>
+</tr>
+<tr>
+<td><code>flatted</code></td>
+<td style="text-align:right">2</td>
+<td>高×2</td>
+<td>runtime×2</td>
+<td>inconclusive×2</td>
+<td>3.4.2</td>
+<td>3.4.2, 3.4.0</td>
+<td>已修复×2</td>
+</tr>
+<tr>
+<td><code>form-data</code></td>
+<td style="text-align:right">2</td>
+<td>高×1 / 严重×1</td>
+<td>runtime×2</td>
+<td>inconclusive×2</td>
+<td>4.0.6</td>
+<td>4.0.6, 4.0.4</td>
+<td>已修复×2</td>
+</tr>
+<tr>
+<td><code>lodash</code></td>
+<td style="text-align:right">2</td>
+<td>高×1 / 中×1</td>
+<td>runtime×2</td>
+<td>inconclusive×2</td>
+<td>4.18.1</td>
+<td>4.18.0, 4.17.23</td>
+<td>已修复×2</td>
+</tr>
+<tr>
+<td><code>picomatch</code></td>
+<td style="text-align:right">2</td>
+<td>中×1 / 高×1</td>
+<td>runtime×2</td>
+<td>inconclusive×2</td>
+<td>2.3.2, 4.0.7</td>
+<td>2.3.2</td>
+<td>已修复×2</td>
+</tr>
+<tr>
+<td><code>serialize-javascript</code></td>
+<td style="text-align:right">2</td>
+<td>中×1 / 高×1</td>
+<td>runtime×2</td>
+<td>transitive×2</td>
+<td>—（未安装）</td>
+<td>7.0.5, 7.0.3</td>
+<td>依赖已移除×2</td>
+</tr>
+<tr>
+<td><code>tmp</code></td>
+<td style="text-align:right">2</td>
+<td>高×1 / 低×1</td>
+<td>development×2</td>
+<td>inconclusive×2</td>
+<td>0.2.7</td>
+<td>0.2.6, 0.2.4</td>
+<td>已修复×2</td>
+</tr>
+<tr>
+<td><code>webpack</code></td>
+<td style="text-align:right">2</td>
+<td>低×2</td>
+<td>runtime×2</td>
+<td>transitive×2</td>
+<td>—（未安装）</td>
+<td>5.104.1, 5.104.0</td>
+<td>依赖已移除×2</td>
+</tr>
+<tr>
+<td><code>ws</code></td>
+<td style="text-align:right">2</td>
+<td>高×1 / 中×1</td>
+<td>runtime×2</td>
+<td>inconclusive×2</td>
+<td>—（未安装）</td>
+<td>8.21.0, 8.20.1</td>
+<td>依赖已移除×2</td>
+</tr>
+<tr>
+<td><code>@babel/core</code></td>
+<td style="text-align:right">1</td>
+<td>低×1</td>
+<td>development×1</td>
+<td>inconclusive×1</td>
+<td>7.29.13</td>
+<td>7.29.6</td>
+<td>已修复×1</td>
+</tr>
+<tr>
+<td><code>@tootallnate/once</code></td>
+<td style="text-align:right">1</td>
+<td>低×1</td>
+<td>development×1</td>
+<td>inconclusive×1</td>
+<td>—（未安装）</td>
+<td>2.0.1</td>
+<td>依赖已移除×1</td>
+</tr>
+<tr>
+<td><code>app-builder-lib</code></td>
+<td style="text-align:right">1</td>
+<td>高×1</td>
+<td>development×1</td>
+<td>inconclusive×1</td>
+<td>26.18.1</td>
+<td>26.15.0</td>
+<td>已修复×1</td>
+</tr>
+<tr>
+<td><code>builder-util-runtime</code></td>
+<td style="text-align:right">1</td>
+<td>高×1</td>
+<td>runtime×1</td>
+<td>inconclusive×1</td>
+<td>9.7.0, 9.7.1</td>
+<td>9.7.0</td>
+<td>已修复×1</td>
+</tr>
+<tr>
+<td><code>diff</code></td>
+<td style="text-align:right">1</td>
+<td>低×1</td>
+<td>runtime×1</td>
+<td>inconclusive×1</td>
+<td>—（未安装）</td>
+<td>5.2.2</td>
+<td>依赖已移除×1</td>
+</tr>
+<tr>
+<td><code>glob</code></td>
+<td style="text-align:right">1</td>
+<td>高×1</td>
+<td>development×1</td>
+<td>inconclusive×1</td>
+<td>7.2.3, 14.0.6</td>
+<td>10.5.0</td>
+<td>已修复×1</td>
+</tr>
+<tr>
+<td><code>linkify-it</code></td>
+<td style="text-align:right">1</td>
+<td>高×1</td>
+<td>development×1</td>
+<td>inconclusive×1</td>
+<td>6.1.0</td>
+<td>5.0.2</td>
+<td>已修复×1</td>
+</tr>
+<tr>
+<td><code>lodash-es</code></td>
+<td style="text-align:right">1</td>
+<td>高×1</td>
+<td>runtime×1</td>
+<td>inconclusive×1</td>
+<td>4.18.1</td>
+<td>4.18.0</td>
+<td>已修复×1</td>
+</tr>
+<tr>
+<td><code>mammoth</code></td>
+<td style="text-align:right">1</td>
+<td>中×1</td>
+<td>runtime×1</td>
+<td>direct×1</td>
+<td>1.13.0</td>
+<td>1.11.0</td>
+<td>已修复×1</td>
+</tr>
+<tr>
+<td><code>moment</code></td>
+<td style="text-align:right">1</td>
+<td>中×1</td>
+<td>development×1</td>
+<td>inconclusive×1</td>
+<td>—（未安装）</td>
+<td>2.31.0</td>
+<td>依赖已移除×1</td>
+</tr>
+<tr>
+<td><code>postcss-selector-parser</code></td>
+<td style="text-align:right">1</td>
+<td>低×1</td>
+<td>runtime×1</td>
+<td>inconclusive×1</td>
+<td>6.1.6</td>
+<td>6.1.3</td>
+<td>已修复×1</td>
+</tr>
+<tr>
+<td><code>rollup</code></td>
+<td style="text-align:right">1</td>
+<td>高×1</td>
+<td>runtime×1</td>
+<td>inconclusive×1</td>
+<td>—（未安装）</td>
+<td>4.59.0</td>
+<td>依赖已移除×1</td>
+</tr>
+<tr>
+<td><code>underscore</code></td>
+<td style="text-align:right">1</td>
+<td>高×1</td>
+<td>runtime×1</td>
+<td>transitive×1</td>
+<td>1.13.8</td>
+<td>1.13.8</td>
+<td>已修复×1</td>
+</tr>
+<tr>
+<td><code>yaml</code></td>
+<td style="text-align:right">1</td>
+<td>中×1</td>
+<td>runtime×1</td>
+<td>inconclusive×1</td>
+<td>—（未安装）</td>
+<td>2.8.3</td>
+<td>依赖已移除×1</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-12">附录 B：<code>overrides</code> 清单（治理后）</h2>
+<table>
+<thead>
+<tr>
+<th>override 项</th>
+<th>取值</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@babel/core</code></td>
+<td><code>^7.29.13</code></td>
+<td>构建链传递依赖修复版本下限</td>
+</tr>
+<tr>
+<td><code>baseline-browser-mapping</code></td>
+<td><code>^2.11.37</code></td>
+<td>browserslist 数据依赖</td>
+</tr>
+<tr>
+<td><code>browserslist</code></td>
+<td><code>^4.29.5</code></td>
+<td>修复告警版本</td>
+</tr>
+<tr>
+<td><code>dompurify</code></td>
+<td><code>3.4.18</code></td>
+<td>XSS 净化库统一修复版本（本轮由 3.4.17 升级）</td>
+</tr>
+<tr>
+<td><code>@xmldom/xmldom</code></td>
+<td><code>^0.8.15</code></td>
+<td>修复全部 15 条 xmldom 告警</td>
+</tr>
+<tr>
+<td><code>fast-uri</code></td>
+<td><code>^3.1.9</code></td>
+<td>路径/URI 传递依赖修复</td>
+</tr>
+<tr>
+<td><code>js-yaml</code></td>
+<td><code>^4.3.2</code></td>
+<td>修复 js-yaml 告警（4.3.2 为 4.x 最新修复版本）</td>
+</tr>
+<tr>
+<td><code>postcss-selector-parser</code></td>
+<td><code>^6.1.6</code></td>
+<td>修复告警版本</td>
+</tr>
+<tr>
+<td><code>@electron/get</code> → <code>undici</code></td>
+<td><code>^7.30.1</code></td>
+<td>Electron 下载链传递依赖修复</td>
+</tr>
+<tr>
+<td><code>jsdom</code> → <code>undici</code></td>
+<td><code>^7.30.1</code></td>
+<td>测试环境传递依赖修复</td>
+</tr>
+<tr>
+<td><code>node-gyp</code> → <code>undici</code></td>
+<td><code>^6.29.1</code></td>
+<td>原生构建链传递依赖修复</td>
+</tr>
+<tr>
+<td><code>js-beautify</code> → <code>glob</code></td>
+<td><code>^14.0.6</code></td>
+<td>构建链传递依赖修复</td>
+</tr>
+<tr>
+<td><code>editorconfig</code> → <code>minimatch</code></td>
+<td><code>^11.0.9</code></td>
+<td>修复 minimatch/brace-expansion 告警（本轮由 11.0.8 升级）</td>
+</tr>
+<tr>
+<td><code>minimatch@^3.0.0</code> → <code>brace-expansion</code></td>
+<td><code>^1.1.22</code></td>
+<td>1.x 线修复版本</td>
+</tr>
+<tr>
+<td><code>minimatch@^10.0.0</code> → <code>brace-expansion</code></td>
+<td><code>^5.0.13</code></td>
+<td>10.x/11.x 线修复版本</td>
+</tr>
+<tr>
+<td><code>app-builder-lib</code> → <code>minimatch</code></td>
+<td><code>^11.0.9</code></td>
+<td>打包链传递依赖修复（本轮升级）</td>
+</tr>
+<tr>
+<td><code>@electron/universal</code> → <code>minimatch</code></td>
+<td><code>^11.0.9</code></td>
+<td>打包链传递依赖修复（本轮升级）</td>
+</tr>
+<tr>
+<td><code>@typescript-eslint/typescript-estree</code> → <code>minimatch</code></td>
+<td><code>^11.0.9</code></td>
+<td>类型工具链传递依赖修复（本轮升级）</td>
+</tr>
+<tr>
+<td><code>archiver-utils</code> → <code>glob</code> → <code>minimatch</code> → <code>brace-expansion</code></td>
+<td><code>^1.1.22</code></td>
+<td>归档链传递依赖修复</td>
+</tr>
+<tr>
+<td><code>readdir-glob</code> → <code>minimatch</code> → <code>brace-expansion</code></td>
+<td><code>^2.1.8</code></td>
+<td>归档链传递依赖修复</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-13">附录 C：数据字段说明（<code>alerts-analysis.json</code>）</h2>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>byStatus</code></td>
+<td>FIXED / REMOVED / STALE_MANIFEST / ACTIVE 计数</td>
+</tr>
+<tr>
+<td><code>statusBySeverity</code> / <code>statusByScope</code> / <code>statusByManifest</code></td>
+<td>交叉表</td>
+</tr>
+<tr>
+<td><code>packages[]</code></td>
+<td>每个包的告警数、严重级别/scope/relationship 构成、当前版本、修复版本、判定</td>
+</tr>
+<tr>
+<td><code>details[]</code></td>
+<td>254 条告警逐条明细（编号、GHSA/CVE、清单、范围、当前判定、当前版本、声明范围）</td>
+</tr>
+<tr>
+<td><code>residualActive[]</code></td>
+<td>当前仍受影响的告警（本次为空数组）</td>
+</tr>
+<tr>
+<td><code>npmAuditDiff</code></td>
+<td>与 npm audit 的差异归因数据（overrides 覆盖数、版本要求不一致数、清单缺失数等）</td>
+</tr>
+</tbody>
+</table>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+<script src="../assets/report-nav.js" defer></script>
+</body>
+</html>
