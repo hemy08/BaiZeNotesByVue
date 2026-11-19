@@ -1,11 +1,11 @@
-<!-- report-nav:start -->
+﻿<!-- report-nav:start -->
 > 🧭 **报告导航**：[🏠 报告首页](../../README.md) ｜ [01-检查与扫描](../01-检查与扫描/) ｜ [02-修复与实施](../02-修复与实施/) ｜ [03-专项治理](../03-专项治理/) ｜ 当前：**IPC通信矩阵**（03-专项治理）
 <!-- report-nav:end -->
 
 # IPC 通信矩阵（当前口径 + 历史快照）
 
 > **合并归档报告**：由以下历史报告合并而成（保留原文，按时间顺序成章）：`2026-11-18-IPC通信矩阵.md`、`2026-11-15-IPC通信矩阵.md`。
-> 内容为历史快照；当前口径见 [报告总索引](../../README.md) 与 [IPC通信矩阵](IPC通信矩阵.md)（v1.3.6 基线：158 测试文件 / 2,867 用例 / 92 IPC 通道）。
+> 内容为历史快照；当前口径见 [报告总索引](../../README.md) 与 [IPC通信矩阵](IPC通信矩阵.md)（v1.3.6 基线：158 测试文件 / 2,869 用例 / 92 IPC 通道）。
 
 ## 一、当前通信矩阵（2026-11-19 复核，92 通道）
 
@@ -149,7 +149,7 @@
 | OPEN_WITH_ENCODING | `baize:file:open-with-encoding` | M→R send | 编码菜单「以指定编码打开」下发编码名 | menu-file.ts:14（9 种编码） | MarkdownEditComponent.vue:361/395 |
 | CONVERT_TO_ENCODING | `baize:file:convert-to-encoding` | M→R send | 编码菜单「转换编码」下发编码名 | menu-file.ts:21（9 种） | MarkdownEditComponent.vue:362/399 |
 | REOPEN_WITH_ENCODING | `baize:file:reopen-with-encoding` | R→M invoke | 按指定编码重读活动文件 | utils.ts:640 registerHandleOnce | MarkdownEditComponent.vue:324 |
-| CONVERT_SAVE_ENCODING | `baize:file:convert-encoding` | R→M invoke | 按指定编码转码写盘（广播 FILE_SAVED_SUCCESS） | utils.ts:655 registerHandleOnce | MarkdownEditComponent.vue:333 |
+| CONVERT_SAVE_ENCODING | `baize:file:convert-save-encoding` | R→M invoke | 按指定编码转码写盘（广播 FILE_SAVED_SUCCESS） | utils.ts:655 registerHandleOnce | MarkdownEditComponent.vue:333 |
 
 ##### 4.7 FILE_MANAGER（14，右键菜单）
 
@@ -703,7 +703,7 @@
 | OPEN_WITH_ENCODING | baize:file:open-with-encoding | M→R send | menu-file.ts:codingMenuHandlers | MarkdownEditComponent.vue | `encoding`（9 种） | "以指定编码打开"下发 |
 | CONVERT_TO_ENCODING | baize:file:convert-to-encoding | M→R send | menu-file.ts:codingMenuHandlers | MarkdownEditComponent.vue | `encoding` | "转换编码"下发 |
 | REOPEN_WITH_ENCODING | file-rebaize:file:open-with-encoding | R→M invoke | MarkdownEditComponent.vue | utils.ts → ReopenActiveFileWithEncoding | `encoding`；返回 Promise | 按编码重新读取当前文件 |
-| CONVERT_SAVE_ENCODING | baize:file:convert-encoding | R→M invoke | MarkdownEditComponent.vue | utils.ts → ConvertActiveFileEncoding | `encoding`；返回 Promise | 按编码转码保存 |
+| CONVERT_SAVE_ENCODING | baize:file:convert-save-encoding | R→M invoke | MarkdownEditComponent.vue | utils.ts → ConvertActiveFileEncoding | `encoding`；返回 Promise | 按编码转码保存 |
 
 ##### 7.8 EVENTS（主进程→渲染层广播，4 个）
 
