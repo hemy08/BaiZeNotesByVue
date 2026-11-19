@@ -11,18 +11,16 @@ import {
     TeamUrlMaps,
     CloudUrlMaps,
     GitHubUrlMaps,
-    OnlineUrlMaps,
-    PluginGeneratorMaps,
-    PluginNetAddrs,
-    PluginInfoNormal,
-    PluginInfoScience
+    OnlineUrlMaps
 } from '../../src/renderer/src/components/MenuBar/menu-consts'
-// 以下 8 个插件映射表在 src 中声明为 `const X = []`（无元素类型的演进式数组），
-// 直接按名导入会让 tsc 在消费端报 TS7034/TS7005；测试侧通过命名空间 + 精确元素类型收口。
-import * as MenuConstsModule from '../../src/renderer/src/components/MenuBar/menu-consts'
+
+// M3（结构优化收尾）：menu-consts.ts 原有 14 张 Plugin*Maps 插件菜单映射表已删除，
+// 38 项插件菜单统一由 shared/constants/plugin-tools-manifest.ts 生成；插件菜单 ↔ 懒加载
+// 注册表 ↔ i18n 的一致性断言见 tests/unit/plugin_tools_manifest.test.ts。
+// 本文件只保留「在线工具映射表」与通道常量的结构断言。
 
 // CMP-30：菜单常量数据只存 labelKey（menu 命名空间），渲染时由 MenuBar.vue 调 t(labelKey) 输出；
-// 纯英文工具名/插件名保持原样 label。测试辅助：还原「渲染后文本」。
+// 纯英文工具名保持原样 label。测试辅助：还原「渲染后文本」。
 interface MenuLabelLike {
     label?: string
     labelKey?: string
@@ -30,11 +28,6 @@ interface MenuLabelLike {
 
 function displayText(item: MenuLabelLike, locale: 'zh-CN' | 'en-US' = 'zh-CN'): string {
     return item.labelKey ? translate(item.labelKey, locale) : (item.label ?? '')
-}
-
-function resolved(item: MenuLabelLike): Record<string, unknown> {
-    const { labelKey, ...rest } = item
-    return { ...rest, label: labelKey ? translate(labelKey, 'zh-CN') : rest.label }
 }
 
 // 汇总各在线工具映射表，用于统一的结构校验。
@@ -50,54 +43,6 @@ const urlMaps: Array<{ name: string; table: Array<MenuLabelLike & { id: string }
     { name: 'TeamUrlMaps', table: TeamUrlMaps },
     { name: 'CloudUrlMaps', table: CloudUrlMaps },
     { name: 'GitHubUrlMaps', table: GitHubUrlMaps }
-]
-
-// 插件菜单项最小结构（label/labelKey 见 MenuLabelLike）
-type PluginMenuItem = MenuLabelLike & { menuAction: string }
-
-/** src 中被清空但仍导出的 8 个插件映射表 + 1.3.5 新增的两个映射表（元素类型由测试侧断言） */
-interface EmptyPluginMenuMapExports {
-    PluginCodeConvertMaps: PluginMenuItem[]
-    PluginFormatMaps: PluginMenuItem[]
-    PluginConvertMaps: PluginMenuItem[]
-    PluginUpLowerMaps: PluginMenuItem[]
-    PluginNetGenerators: PluginMenuItem[]
-    PluginNetWork: PluginMenuItem[]
-    PluginInfoCmd: PluginMenuItem[]
-    PluginCodeDef: PluginMenuItem[]
-    PluginMiscToolsMaps: PluginMenuItem[]
-    PluginTextToolsMaps: PluginMenuItem[]
-}
-
-const {
-    PluginCodeConvertMaps,
-    PluginFormatMaps,
-    PluginConvertMaps,
-    PluginUpLowerMaps,
-    PluginNetGenerators,
-    PluginNetWork,
-    PluginInfoCmd,
-    PluginCodeDef,
-    PluginMiscToolsMaps,
-    PluginTextToolsMaps
-} = MenuConstsModule as unknown as EmptyPluginMenuMapExports
-
-// 汇总各插件菜单映射表
-const pluginMenuMaps: Array<{ name: string; table: PluginMenuItem[] }> = [
-    { name: 'PluginGeneratorMaps', table: PluginGeneratorMaps },
-    { name: 'PluginCodeConvertMaps', table: PluginCodeConvertMaps },
-    { name: 'PluginFormatMaps', table: PluginFormatMaps },
-    { name: 'PluginConvertMaps', table: PluginConvertMaps },
-    { name: 'PluginUpLowerMaps', table: PluginUpLowerMaps },
-    { name: 'PluginNetAddrs', table: PluginNetAddrs },
-    { name: 'PluginNetGenerators', table: PluginNetGenerators },
-    { name: 'PluginNetWork', table: PluginNetWork },
-    { name: 'PluginInfoNormal', table: PluginInfoNormal },
-    { name: 'PluginInfoScience', table: PluginInfoScience },
-    { name: 'PluginInfoCmd', table: PluginInfoCmd },
-    { name: 'PluginCodeDef', table: PluginCodeDef },
-    { name: 'PluginMiscToolsMaps', table: PluginMiscToolsMaps },
-    { name: 'PluginTextToolsMaps', table: PluginTextToolsMaps }
 ]
 
 describe('menu-consts', () => {
@@ -160,91 +105,9 @@ describe('menu-consts', () => {
         expect(displayText(byId('baize:menu:online:tools:toolfk')!)).toBe('ToolFK')
     })
 
-    describe('plugin menu maps', () => {
-        for (const { name, table } of pluginMenuMaps) {
-            it(`${name} should keep fields complete`, () => {
-                for (const item of table) {
-                    expect(displayText(item).length).toBeGreaterThan(0)
-                    expect(item.menuAction).toMatch(/^baize:menu:plugins:/)
-                    if (item.labelKey) {
-                        expect(translate(item.labelKey, 'en-US')).not.toBe(item.labelKey)
-                    } else {
-                        expect(item.label).not.toMatch(/[\u4e00-\u9fff]/)
-                    }
-                }
-            })
-
-            it(`${name} should keep menuAction values unique`, () => {
-                const actions = table.map((item) => item.menuAction)
-                expect(new Set(actions).size).toBe(actions.length)
-            })
-        }
-
-        it('should declare the expected entry counts per map', () => {
-            // A-4/ARC-09：无注册组件的插件菜单项已从渲染中隐藏；
-            // CMP-29：原以注释形式滞留的未实现条目已清理并归档至
-            // out/tool-results/r2-completeness-changes.md，因此仅统计仍展示的条目。
-            // 1.3.5：jyshare 常用工具集成补齐 codec/convert/format/net(text)/misc/text 组。
-            expect(PluginGeneratorMaps).toHaveLength(8)
-            expect(PluginCodeConvertMaps).toHaveLength(5)
-            expect(PluginFormatMaps).toHaveLength(2)
-            expect(PluginConvertMaps).toHaveLength(5)
-            expect(PluginUpLowerMaps).toHaveLength(0)
-            expect(PluginNetAddrs).toHaveLength(1)
-            expect(PluginNetGenerators).toHaveLength(1)
-            expect(PluginNetWork).toHaveLength(0)
-            expect(PluginInfoNormal).toHaveLength(4)
-            expect(PluginInfoScience).toHaveLength(2)
-            expect(PluginInfoCmd).toHaveLength(0)
-            expect(PluginCodeDef).toHaveLength(0)
-            expect(PluginMiscToolsMaps).toHaveLength(3)
-            expect(PluginTextToolsMaps).toHaveLength(3)
-        })
-
-        it('should sample key menu entries', () => {
-            // FE-28：Token Generator 原为硬编码英文 label，现经 menu 命名空间词典
-            // 输出中文「令牌生成器」（英文界面仍为 Token Generator，见下条用例）。
-            expect(resolved(PluginGeneratorMaps[0])).toEqual({
-                label: '令牌生成器',
-                menuAction: 'baize:menu:plugins:encrypt:token-generator'
-            })
-            expect(resolved(PluginNetAddrs[0])).toEqual({
-                label: 'IPv4子网计算器',
-                menuAction: 'baize:menu:plugins:net:ipv4-subnet-calculator'
-            })
-            expect(resolvedListSample(PluginInfoScience)).toContainEqual({
-                label: '数学符号对照表',
-                menuAction: 'baize:menu:plugins:info:math-symbol-table'
-            })
-        })
-
-        it('should keep menuAction values unique across all plugin maps', () => {
-            const allActions = pluginMenuMaps.flatMap(({ table }) =>
-                table.map((item) => item.menuAction)
-            )
-            expect(new Set(allActions).size).toBe(allActions.length)
-        })
-
-        it('should translate plugin labels to English', () => {
-            expect(displayText(PluginNetAddrs[0], 'en-US')).toBe('IPv4 Subnet Calculator')
-            expect(displayText(PluginInfoNormal[0], 'en-US')).toBe('ASCII Table')
-            // 英文插件名不翻译（词典英文值即原品牌/功能名）
-            expect(displayText(PluginGeneratorMaps[0], 'en-US')).toBe('Token Generator')
-        })
-    })
-
     // FE-28：此前硬编码的菜单 label 全部改走 menu 命名空间 labelKey，
     // 中英词典可解析；品牌名保留原文（中英同文）。
     describe('FE-28 i18n 硬编码标签收口', () => {
-        it('Token Generator / Hash Text 中英均可解析', () => {
-            expect(PluginGeneratorMaps[0].labelKey).toBe('menu.plugins.encrypt.tokenGenerator')
-            expect(displayText(PluginGeneratorMaps[0], 'zh-CN')).toBe('令牌生成器')
-            expect(displayText(PluginGeneratorMaps[0], 'en-US')).toBe('Token Generator')
-            expect(PluginGeneratorMaps[1].labelKey).toBe('menu.plugins.encrypt.hashText')
-            expect(displayText(PluginGeneratorMaps[1], 'zh-CN')).toBe('哈希文本')
-            expect(displayText(PluginGeneratorMaps[1], 'en-US')).toBe('Hash Text')
-        })
-
         it('ToolFK / Linux Crontab 改走 labelKey（ToolFK 品牌名中英同文）', () => {
             const byId = (id: string) => OnlineUrlMaps.find((item) => item.id === id)!
             expect(byId('baize:menu:online:tools:toolfk').labelKey).toBe('menu.online.tools.toolfk')
@@ -275,9 +138,3 @@ describe('menu-consts', () => {
         })
     })
 })
-
-function resolvedListSample(
-    table: Array<MenuLabelLike & { menuAction: string }>
-): Array<Record<string, unknown>> {
-    return table.map((item) => resolved(item))
-}

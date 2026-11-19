@@ -2,15 +2,14 @@
 /**
  * pluginTools 注册表结构测试 + 插件菜单双向一致性校验（FE-16/FE-17）
  *
- * ET-20 修复（原注释已过时）：
- * - 原实现以「UUIDSGenerator.vue 等组件模板存在 v-model 与 value 绑定的编译错误，
- *   node 环境下无法编译」为由，对全部 19 个 .vue 组件做 vi.mock。
- * - 实测：该编译错误只出现在 vitest 默认 node 环境（SSR 编译路径下 Vue 编译器把
- *   「v-model 与静态 value 并存」判为 Error）；切到 jsdom 环境（与
- *   tests/unit/vue/encryption-tools.test.ts 挂载同一批组件的方式一致）后，19 个组件
- *   可真实编译导入，本文件只做常量表断言、不挂载组件，开销约 +0.4s。
- * - 因此删除 19 处 vi.mock，改为真实 import：组件路径/默认导出若被误改会在这里直接暴露，
- *   不再需要维护与组件清单同步的 mock 列表。
+ * M3（结构优化收尾）：注册表已改为由 shared/constants/plugin-tools-manifest.ts 的
+ * PLUGIN_TOOL_ITEMS 生成（本文件不再包含 id/组件路径字面量），因此：
+ * - 本文件继续锁死「注册表结构与分类数量」；
+ * - manifest 的 38 项覆盖/无重复/菜单↔注册表顺序/i18n/组件懒加载表一致性
+ *   统一由 tests/unit/plugin_tools_manifest.test.ts 守护。
+ *
+ * ET-20：本文件保持 jsdom 环境（与 tests/unit/vue/encryption-tools.test.ts 挂载同一批
+ * 组件的方式一致）；当前用例只做常量表断言、不挂载组件，组件 import() 不会被触发。
  */
 import { describe, it, expect } from 'vitest'
 import * as fs from 'fs'
@@ -19,10 +18,11 @@ import * as path from 'path'
 import { pluginTools } from '../../src/renderer/src/components/PluginTools/plugin-tools-const'
 // FE-16/FE-17：插件工具注册表 ↔ 插件菜单双向一致性校验（菜单数据不依赖 .vue 组件，可安全导入）
 import { menuMap } from '../../src/renderer/src/components/MenuBar/menu-config'
+// M3：注册表唯一真源（38 项工具清单/组件模块路径）
+import { PLUGIN_TOOL_ITEMS } from '../../src/shared/constants/plugin-tools-manifest'
 
 const ROOT = path.resolve(__dirname, '../..')
 const PLUGIN_TOOLS_DIR = path.join(ROOT, 'src', 'renderer', 'src', 'components', 'PluginTools')
-const PLUGIN_TOOLS_CONST_FILE = path.join(PLUGIN_TOOLS_DIR, 'plugin-tools-const.ts')
 
 /** 递归收集菜单树中的所有 menuAction */
 function collectMenuActions(items: unknown[]): string[] {
@@ -170,10 +170,10 @@ describe('未注册工具页清理（第 4 批 4.5 / M6）', () => {
         }
     })
 
-    it('PluginTools 下每个工具 .vue 都在注册表登记的懒加载清单中（无孤儿工具页）', () => {
+    it('PluginTools 下每个工具 .vue 都在 manifest 登记的工具组件中（无孤儿工具页）', () => {
         // 非「工具页」的两个历史文件：插件面板宿主壳 + 4 个 codec 薄封装共用的基件
         const NON_TOOL_PAGES = new Set(['PluginTools.vue', 'Codec/TextCodecTool.vue'])
-        const registrySource = fs.readFileSync(PLUGIN_TOOLS_CONST_FILE, 'utf-8')
+        const registeredComponents = new Set(PLUGIN_TOOL_ITEMS.map((item) => item.component))
 
         const toolPages: string[] = []
         const walk = (dir: string): void => {
@@ -189,7 +189,7 @@ describe('未注册工具页清理（第 4 批 4.5 / M6）', () => {
         walk(PLUGIN_TOOLS_DIR)
 
         const orphans = toolPages.filter(
-            (page) => !NON_TOOL_PAGES.has(page) && !registrySource.includes(`./${page}`)
+            (page) => !NON_TOOL_PAGES.has(page) && !registeredComponents.has(page)
         )
         expect(orphans).toEqual([])
     })

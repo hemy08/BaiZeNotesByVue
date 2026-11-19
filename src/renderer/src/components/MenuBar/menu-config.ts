@@ -8,6 +8,13 @@ import {
     MATERIAL_SYNTAX_FEATURES,
     getMaterialSyntaxMenuAction
 } from '../../../../shared/constants/material-syntax'
+// M3（结构优化收尾）：38 项插件工具的菜单树/懒加载注册表收敛为 shared 单一 manifest。
+import {
+    PLUGIN_TOOL_MENU,
+    getPluginToolGroupLabelKey,
+    getPluginToolMenuAction
+} from '../../../../shared/constants/plugin-tools-manifest'
+import type { PluginToolMenuNode } from '../../../../shared/constants/plugin-tools-manifest'
 
 // CMP-30：菜单数据只存 labelKey（menu 命名空间键，见 shared/i18n/messages/*/menu.ts），
 // 由 MenuBar.vue 在渲染时调用 t(labelKey) 输出，切换语言即时生效；
@@ -370,7 +377,7 @@ const toolsMenu: BaiZeMenuEntry = {
 // FE-16/FE-17：插件菜单数据与「注册表 ↔ 菜单」一致性
 //
 // 三跳链路现状（task-23 核对结论）：
-//   1) menu-config.ts（本文件 pluginsMenu，数据主源为 menu-consts.ts 的 Plugin*Maps）
+//   1) menu-config.ts（本文件 pluginsMenu，数据主源为 shared/constants/plugin-tools-manifest.ts）
 //      —— 渲染层菜单树，MenuBar.vue 按 submenu.length > 0 决定是否有子菜单/箭头；
 //   2) menu-actions.ts —— 对所有 'baize:menu:plugins:*' 动作统一拦截并
 //      EventBus.$emit(PLUGIN_TOOL_SHOW, action)，由 PluginTools.vue 展示组件；
@@ -380,119 +387,33 @@ const toolsMenu: BaiZeMenuEntry = {
 // 因此 FE-16 的修复点只在数据层：剔除空组，避免渲染出点击无反应的空条目。
 // ---------------------------------------------------------------------------------------------
 
-// FE-17：plugin-tools-const.ts 注册表里这 4 个组件已实现且注册，但菜单数据源
-// （menu-consts.ts 的 PluginNetWork / PluginInfoNormal 组）此前没有对应菜单项，导致
-// 功能不可达（baize:menu:plugins:net:http-status-codes / net:subnet-mask-map-table /
-// info:numeric-case-table / info:normal-font-style-table）。
-// task-23 写作用域限定在 menu-config.ts，故在此补齐 4 个入口；标签使用 menu 命名空间
-// 对应的 i18n key（menu.plugins.net.* / menu.plugins.info.*，中英均已补齐）。
-const pluginNetExtraEntries: BaiZeMenuEntry[] = [
-    {
-        labelKey: 'menu.plugins.net.httpStatusCodes',
-        menuAction: 'baize:menu:plugins:net:http-status-codes'
-    },
-    {
-        labelKey: 'menu.plugins.net.subnetMaskMapTable',
-        menuAction: 'baize:menu:plugins:net:subnet-mask-map-table'
-    }
-]
+// M3（结构优化收尾）：38 项插件工具的分区/顺序/i18n key 统一由
+// shared/constants/plugin-tools-manifest.ts 的 PLUGIN_TOOL_MENU 维护（唯一真源）。
+// 本文件只做「manifest 节点 → 菜单项」的纯数据投影；plugin-tools-const.ts 的懒加载
+// 注册表由同一份 manifest 生成，菜单与注册表天然一致（tests/unit/plugin_tools_manifest.test.ts
+// 守护 38 项覆盖/无重复/顺序一致）。FE-17 的 4 个补入口（HTTP 状态码/子网掩码/数字大小写/
+// 常见字体）已并入 manifest 原位保留。
+//
+// 空组（语言关键字/大小写转换/数据和命令对照表）仍在 manifest 中保留 children: []，
+// 导出前由下方 pruneEmptySubmenus 剪除；数据补齐后无需改此处即自动展示（FE-16 语义不变）。
 
-const pluginInfoExtraEntries: BaiZeMenuEntry[] = [
-    {
-        labelKey: 'menu.plugins.info.numericCaseTable',
-        menuAction: 'baize:menu:plugins:info:numeric-case-table'
-    },
-    {
-        labelKey: 'menu.plugins.info.normalFontStyleTable',
-        menuAction: 'baize:menu:plugins:info:normal-font-style-table'
+/** manifest 菜单节点 → 菜单项（组节点递归展开，叶子项按 manifest 生成 menuAction） */
+function toPluginMenuEntry(node: PluginToolMenuNode): BaiZeMenuEntry {
+    if ('children' in node) {
+        return {
+            labelKey: getPluginToolGroupLabelKey(node.id),
+            submenu: node.children.map(toPluginMenuEntry)
+        }
     }
-]
+    return {
+        labelKey: node.menuLabelKey,
+        menuAction: getPluginToolMenuAction(node.id)
+    }
+}
 
 const pluginsMenu: BaiZeMenuEntry = {
     labelKey: 'menu.plugins.label',
-    submenu: [
-        {
-            // A-4/ARC-09/CMP-29：PluginCodeDef 目前为空（无注册组件），
-            // 该组会被下方 pruneEmptySubmenus 自动隐藏；数据恢复后无需改此处即可重新展示。
-            labelKey: 'menu.plugins.group.languageKeywords',
-            submenu: MenuConst.PluginCodeDef
-        },
-        {
-            labelKey: 'menu.plugins.group.encrypt',
-            submenu: MenuConst.PluginGeneratorMaps
-        },
-        {
-            // FE-16：本组 4 个子组在当前数据下均为空数据（无注册组件），
-            // 会被 pruneEmptySubmenus 整体剪除，不再渲染 4 个点击无反应的条目。
-            labelKey: 'menu.plugins.group.converters',
-            submenu: [
-                {
-                    labelKey: 'menu.plugins.group.codec',
-                    submenu: MenuConst.PluginCodeConvertMaps
-                },
-                {
-                    labelKey: 'menu.plugins.group.formatConvert',
-                    submenu: MenuConst.PluginConvertMaps
-                },
-                {
-                    labelKey: 'menu.plugins.group.caseConvert',
-                    submenu: MenuConst.PluginUpLowerMaps
-                },
-                {
-                    labelKey: 'menu.plugins.group.formatTools',
-                    submenu: MenuConst.PluginFormatMaps
-                },
-                {
-                    // 1.3.5：文本转换组（繁简/拼音/字数统计/文本比对）。
-                    labelKey: 'menu.plugins.group.textConvert',
-                    submenu: MenuConst.PluginTextToolsMaps
-                }
-            ]
-        },
-        {
-            // 1.3.5：常用小工具组（随机生成器/在线计算器）。
-            labelKey: 'menu.plugins.group.miscTools',
-            submenu: MenuConst.PluginMiscToolsMaps
-        },
-        {
-            labelKey: 'menu.plugins.group.network',
-            submenu: [
-                {
-                    labelKey: 'menu.plugins.group.addressConverter',
-                    submenu: MenuConst.PluginNetAddrs
-                },
-                // FE-17：2 个已注册网络对照表工具（HTTP 状态码 / 子网掩码）补入口。
-                ...pluginNetExtraEntries,
-                // FE-17：解析器组已补齐正则表达式测试入口（PluginNetGenerators 含 1 项，正常渲染）。
-                {
-                    labelKey: 'menu.plugins.group.parsers',
-                    submenu: MenuConst.PluginNetGenerators
-                },
-                ...MenuConst.PluginNetWork
-            ]
-        },
-        {
-            labelKey: 'menu.plugins.group.cheatSheets',
-            submenu: [
-                {
-                    labelKey: 'menu.plugins.group.cheatSheet1',
-                    // FE-17：2 个已注册常用对照表工具（数字大小写 / 常见字体）补入口。
-                    submenu: [...MenuConst.PluginInfoNormal, ...pluginInfoExtraEntries]
-                }, // 常用对照表
-                {
-                    // FE-16：数据和命令对照表（PluginInfoCmd）当前为空数据，将被自动剪除。
-                    labelKey: 'menu.plugins.group.dataCommand',
-                    submenu: MenuConst.PluginInfoCmd
-                },
-                {
-                    labelKey: 'menu.plugins.group.science',
-                    submenu: MenuConst.PluginInfoScience
-                }
-                // CMP-29：以下两条被注释的死菜单项（Unicode编码表/MIME类型表）已删除，
-                // 属"计划中未实现"清单，统一记入 Roadmap（目录级对照表扩展）。
-            ]
-        }
-    ]
+    submenu: PLUGIN_TOOL_MENU.map(toPluginMenuEntry)
 }
 
 /**

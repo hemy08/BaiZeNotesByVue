@@ -5,9 +5,19 @@
 //    未点击过的工具不会请求模块，实现真正的按需加载；
 // 3. 首次打开工具时显示 i18n 文案「加载中…」占位，避免点击菜单后无反馈；
 // 4. 工具组件内部实现与外部调用方式（id/component 字段、work-area-width prop）保持不变。
+//
+// M3（结构优化收尾）：38 项工具的 id / i18n key / 组件模块路径不再在本文件与菜单数据里
+// 重复维护，统一由 shared/constants/plugin-tools-manifest.ts 的 PLUGIN_TOOL_MENU 生成。
+// 本文件只负责把 manifest 的 component 模块路径映射为 defineAsyncComponent 懒加载：
+// 通过 import.meta.glob 做 Vite 静态分析，新增工具只需改 manifest 一处（组件文件放对目录），
+// 仍保持每工具独立 chunk 的 PF-6 行为。
 import { defineAsyncComponent, defineComponent, h, markRaw } from 'vue'
 import type { Component } from 'vue'
 import { t } from '../../common/i18n'
+import {
+    PLUGIN_TOOL_ITEMS,
+    getPluginToolMenuAction
+} from '../../../../shared/constants/plugin-tools-manifest'
 
 /** PF-6：工具分块加载中的占位（轻量，无额外依赖） */
 const ToolLoading = defineComponent({
@@ -42,184 +52,55 @@ function lazyTool(loader: () => Promise<VueModule>) {
     })
 }
 
-export const pluginTools = markRaw([
-    // ==================== 加解密插件 ====================
-    {
-        id: 'baize:menu:plugins:encrypt:token-generator',
-        component: lazyTool(() => import('./Encryption/TokenGenerator.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:encrypt:hash-text',
-        component: lazyTool(() => import('./Encryption/HashText.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:encrypt:uuids-generator',
-        component: lazyTool(() => import('./Encryption/UUIDSGenerator.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:encrypt:ulid-generator',
-        component: lazyTool(() => import('./Encryption/ULIDGenerator.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:encrypt:encrypt-decrypt',
-        component: lazyTool(() => import('./Encryption/EncryptDecrypt.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:encrypt:crypto-encrypt-decrypt',
-        component: lazyTool(() => import('./Encryption/CryptoEncDec.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:encrypt:hmac-generator',
-        component: lazyTool(() => import('./Encryption/HmacGenerator.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:encrypt:rsa-generator',
-        component: lazyTool(() => import('./Encryption/RSAGenerator.vue'))
-    },
+/**
+ * 工具组件懒加载表（M3：组件模块路径 → 懒加载函数）：
+ * - `./**\/*.vue` 覆盖 PluginTools 下全部工具页，排除 2 个非工具页——
+ *   `./PluginTools.vue`（插件面板宿主壳）与 `./Codec/TextCodecTool.vue`（4 个编解码页共用的基件），
+ *   避免它们被 glob 生成多余的动态 chunk；
+ * - PDF 预览工具页在 HemyTools 目录，单独加入（其一并注册进 manifest 的 misc:pdf-preview）；
+ * - 键统一为「相对 PluginTools 目录的模块路径」（去掉 glob 的 './' 前缀），与 manifest 的
+ *   component 字段一一对应；键缺失时注册表模块加载即抛错（fail fast，测试同时守护）。
+ */
+const toolModuleLoaders = new Map<string, () => Promise<VueModule>>(
+    Object.entries({
+        ...import.meta.glob<{ default: Component }>([
+            './**/*.vue',
+            '!./PluginTools.vue',
+            '!./Codec/TextCodecTool.vue'
+        ]),
+        ...import.meta.glob<{ default: Component }>('../HemyTools/ShowPdfEditor.vue')
+    }).map(([modulePath, loader]): [string, () => Promise<VueModule>] => [
+        modulePath.replace(/^\.\//, ''),
+        loader
+    ])
+)
 
-    // ==================== 网络计算插件 ====================
-    {
-        id: 'baize:menu:plugins:net:ipv4-subnet-calculator',
-        component: lazyTool(() => import('./NetWork/Ipv4SubnetCalc.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:net:http-status-codes',
-        component: lazyTool(() => import('./Informations/HttpStatusCode.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:net:subnet-mask-map-table',
-        component: lazyTool(() => import('./Informations/SubnetMaskMapTable.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:net:regex-tester',
-        component: lazyTool(() => import('./NetWork/RegexTester.vue'))
-    },
+/** 懒加载表覆盖的模块路径（一致性测试锁死：应与 manifest 的 component 集合完全一致） */
+export const pluginToolModuleKeys: readonly string[] = [...toolModuleLoaders.keys()]
 
-    // ==================== 编解码转换（1.3.5 jyshare 常用工具集成） ====================
-    {
-        id: 'baize:menu:plugins:codec:base64-codec',
-        component: lazyTool(() => import('./Codec/Base64Codec.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:codec:url-codec',
-        component: lazyTool(() => import('./Codec/UrlCodec.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:codec:html-codec',
-        component: lazyTool(() => import('./Codec/HtmlCodec.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:codec:unicode',
-        component: lazyTool(() => import('./Codec/UnicodeConvert.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:codec:image-base64',
-        component: lazyTool(() => import('./Codec/ImageBase64.vue'))
-    },
-
-    // ==================== 格式转换（1.3.5 jyshare 常用工具集成） ====================
-    {
-        id: 'baize:menu:plugins:convert:color-convert',
-        component: lazyTool(() => import('./Convert/ColorConvert.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:convert:unit-convert',
-        component: lazyTool(() => import('./Convert/UnitConvert.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:convert:rmb-case',
-        component: lazyTool(() => import('./Convert/RmbCase.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:convert:timestamp-convert',
-        component: lazyTool(() => import('./Convert/TimestampConvert.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:convert:base-convert',
-        component: lazyTool(() => import('./Convert/BaseConvert.vue'))
-    },
-
-    // ==================== 常用小工具（1.3.5 jyshare 常用工具集成） ====================
-    {
-        id: 'baize:menu:plugins:misc:random-generator',
-        component: lazyTool(() => import('./MiscTools/RandomGenerator.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:misc:calculator',
-        component: lazyTool(() => import('./MiscTools/Calculator.vue'))
-    },
-    // 2026-11-18（遗留清单 #9）：PDF 预览改走 pdf.js（pdfjs-dist）渲染后恢复注册。
-    // 2026-11-19 注释更新：资源管理器点击 .pdf 经 PDF_FILE_SELECTED + WORKSPACE_SHOW('pdf')
-    // 打开的是 **WorkSpace 工作区内的 PDF 视图容器**（ShowPdfEditor 实例），本菜单注册的
-    // 插件实例用于「工具 → 常用小工具 → PDF 预览」入口；两个实例通过唯一 componentId
-    // 隔离事件监听（见 ShowPdfEditor.vue），互不影响。
-    {
-        id: 'baize:menu:plugins:misc:pdf-preview',
-        component: lazyTool(() => import('@renderer/components/HemyTools/ShowPdfEditor.vue'))
-    },
-
-    // ==================== 文本转换（1.3.5 jyshare 常用工具集成） ====================
-    {
-        id: 'baize:menu:plugins:text:chinese-text',
-        component: lazyTool(() => import('./TextTools/ChineseTextTool.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:text:word-count',
-        component: lazyTool(() => import('./TextTools/WordCount.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:text:text-diff',
-        component: lazyTool(() => import('./TextTools/TextDiff.vue'))
-    },
-
-    // ==================== 格式化工具（1.3.5 jyshare 常用工具集成） ====================
-    {
-        id: 'baize:menu:plugins:format:json-tool',
-        component: lazyTool(() => import('./FormatTools/JsonTool.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:format:xml-format',
-        component: lazyTool(() => import('./FormatTools/XmlFormatter.vue'))
-    },
-
-    // ==================== 常用对照表 - 对照表一 ====================
-    {
-        id: 'baize:menu:plugins:info:ascii-table',
-        component: lazyTool(() => import('./Informations/ASCIIComparison.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:info:file-extension-table',
-        component: lazyTool(() => import('./Informations/FileNameExtension.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:info:numeric-case-table',
-        component: lazyTool(() => import('./Informations/NumericCase.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:info:normal-font-style-table',
-        component: lazyTool(() => import('./Informations/NormalFontStyle.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:info:greece-letter-table',
-        component: lazyTool(() => import('./Informations/GreeceLetter.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:info:html-entity-table',
-        component: lazyTool(() => import('./Informations/HTMLSpecialChar.vue'))
-    },
-
-    // ==================== 常用对照表 - 科学符号对照表 ====================
-    {
-        id: 'baize:menu:plugins:info:math-symbol-table',
-        component: lazyTool(() => import('./Informations/FormulaSymbol.vue'))
-    },
-    {
-        id: 'baize:menu:plugins:info:physical-constant-table',
-        component: lazyTool(() => import('./Informations/PhysicalSymbolic.vue'))
+/** 取 manifest 条目对应的懒加载器（缺失说明 manifest 登记了不存在的组件文件） */
+function requireToolModuleLoader(component: string): () => Promise<VueModule> {
+    const loader = toolModuleLoaders.get(component)
+    if (!loader) {
+        throw new Error(
+            `[plugin-tools] manifest 登记的工具组件未找到：${component}（请检查文件位置与 manifest 的 component 字段）`
+        )
     }
+    return loader
+}
 
-    // CMP-19/CMP-27：以下一项故意不注册为插件工具（沿用第一轮 A-4 模式，不展示入口）：
-    // HemyTools（工具面板）：模板仅一个"返回编辑器"按钮，属未完成空壳——补齐功能后再注册。
-    // 容器开关由 WorkSpace.vue 的事件控制，本注册表与 menu_consts.ts 均不为其生成菜单入口。
-    // （注：PDF 预览已于 2026-11-18 改为 pdf.js 方案并恢复注册，见上方 misc:pdf-preview。）
-])
+/**
+ * 38 项插件工具注册表：id/顺序来自 manifest（PLUGIN_TOOL_ITEMS），
+ * component 为按需加载的异步组件（每工具独立 chunk，PF-6 行为保持不变）。
+ */
+export const pluginTools = markRaw(
+    PLUGIN_TOOL_ITEMS.map((item) => ({
+        id: getPluginToolMenuAction(item.id),
+        component: lazyTool(requireToolModuleLoader(item.component))
+    }))
+)
+
+// CMP-19/CMP-27：HemyTools（工具面板）故意不注册为插件工具（沿用第一轮 A-4 模式，不展示入口）：
+// 其模板仅一个"返回编辑器"按钮，属未完成空壳——补齐功能后再登记到 manifest。
+// 容器开关由 WorkSpace.vue 的事件控制，manifest 与 menu-config.ts 均不为其生成菜单入口。
+// （注：PDF 预览已于 2026-11-18 改为 pdf.js 方案并恢复注册，见 manifest 的 misc:pdf-preview。）

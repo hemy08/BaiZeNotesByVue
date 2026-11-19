@@ -45,7 +45,7 @@ export interface EventBusContractEntry {
  */
 export const EVENT_BUS_CONTRACT: Record<EventBusEventKey, EventBusContractEntry> = {
     PLUGIN_TOOL_SHOW: {
-        payload: '插件工具 id（plugin-tools-const.ts 注册表键）',
+        payload: '插件工具 id（shared/constants/plugin-tools-manifest.ts 的动作 id）',
         emitters: ['components/MenuBar/menu-actions.ts'],
         receivers: ['components/PluginTools/PluginTools.vue']
     },

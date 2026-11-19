@@ -13,6 +13,8 @@ import {
     MATERIAL_SYNTAX_FEATURE_IDS,
     getMaterialSyntaxMenuAction
 } from '../../../../shared/constants/material-syntax'
+// M3（结构优化收尾）：插件工具动作前缀与 38 项 id 由 shared 单一 manifest 派生。
+import { PLUGIN_TOOL_ACTION_PREFIX } from '../../../../shared/constants/plugin-tools-manifest'
 
 /**
  * mkdocs-material 扩展语法插入入口（15 项，对应 menu-config.ts 的 Material 子菜单，
@@ -233,13 +235,15 @@ export function HandleMenuAction(action: string) {
 
     // 插件菜单
     // FE-16/FE-17（task-23）三跳链路核对结论：
-    //   menu-config.ts（pluginsMenu，空组已由 pruneEmptySubmenus 剔除，4 个已注册但
-    //   缺入口的工具已补齐）→ 本分支统一拦截所有 'baize:menu:plugins:*' 动作 →
+    //   menu-config.ts（pluginsMenu 由 shared/constants/plugin-tools-manifest.ts 的 manifest
+    //   生成，空组已由 pruneEmptySubmenus 剔除，4 个已注册但缺入口的工具已并入 manifest）→
+    //   本分支统一拦截所有 'baize:menu:plugins:*' 动作 →
     //   EventBus(PLUGIN_TOOL_SHOW) → PluginTools.vue 按 plugin-tools-const.ts 注册表渲染组件。
     // 主进程 menu-tools.ts 的 pluginsMenuHandlers 已在 P2 死代码清理中删除（唯一实现是向
     // 零监听的 OPEN_PLUGIN_TOOL 通道 send，属双死路径），因此本渲染层分支即最终落点，
-    // 无需再转发主进程。菜单动作与注册表的一致性由 tests/unit/plugin_tools_const.test.ts 守护。
-    if (action.startsWith('baize:menu:plugins:')) {
+    // 无需再转发主进程。M3：前缀常量与注册表均由同一 manifest 派生，一致性由
+    // tests/unit/plugin_tools_manifest.test.ts 守护。
+    if (action.startsWith(PLUGIN_TOOL_ACTION_PREFIX)) {
         EventBus.$emit(EVENT_BUS.PLUGIN_TOOL_SHOW, action)
         return
     }
