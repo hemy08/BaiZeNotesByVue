@@ -27,7 +27,8 @@ import {
     ROOT,
     createConfigSandbox,
     createTempProfile,
-    launchDevApp
+    launchDevAppWithRenderer,
+    waitForRendererReady
 } from './helpers/electron-profile'
 import type { ConfigSandbox, TempProfile } from './helpers/electron-profile'
 
@@ -48,9 +49,11 @@ test.describe('Electron 主窗口冒烟', () => {
         profile = createTempProfile('baize-e2e-smoke-')
         sandbox = createConfigSandbox(profile)
         sandbox.seed()
-        app = await launchDevApp(profile)
-        page = await app.firstWindow()
-        await page.waitForLoadState('domcontentloaded')
+        // 统一就绪等待：首窗口 → preload 桥注入 → IPC 往返 → Vue 根节点挂载
+        //（替代 firstWindow + domcontentloaded 的不可靠组合，避免 preload 未注入时误操作）
+        const launched = await launchDevAppWithRenderer(profile)
+        app = launched.app
+        page = launched.page
     })
 
     test.afterAll(async () => {
@@ -281,6 +284,8 @@ test.describe('Electron 主窗口冒烟', () => {
         try {
             expect(await writeShowWelcome(false)).toBe(true)
             await page.reload()
+            // reload 后同样做完整就绪等待（preload 重新注入 + 渲染层重新挂载）
+            await waitForRendererReady(page)
 
             // 欢迎页不再显示，主界面根节点与状态栏已挂载
             await expect(page.locator('.welcome-screen')).toHaveCount(0)

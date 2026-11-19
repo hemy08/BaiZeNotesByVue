@@ -8,6 +8,7 @@
  * 3. 保存语义：应用写入 18 字段完整快照并 emit apply（不关闭）；确定 apply + close；
  *    取消不写配置；写入被主进程拒绝（返回 false）时不抛异常、不改变既有 emit 契约；
  * 4. 加载语义：打开时读取 system 配置并把值映射到 4 个面板（含语言历史值归一化）；
+ *    首挂即打开（lazyDialog 首次打开才挂载、挂载时 visible 已为 true）也要回填；
  *    加载失败回退默认值并记录错误；重复打开重新加载；
  * 5. 保存/校验失败契约：自动保存 IPC 返回 ok:false 时记录错误且不改变开关状态。
  *
@@ -214,6 +215,8 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
 
     it('取消：丢弃草稿、不写配置、恢复打开时的值并 emit close', async () => {
         const wrapper = mountDialog()
+        // 首开回填修复：挂载即异步加载持久化配置，先等初始加载完成再模拟用户修改
+        await flushPromises()
         await panel(wrapper, 0).find('select.setting-select').setValue('en-US')
         await wrapper.find('.btn-cancel').trigger('click')
         await flushPromises()
@@ -305,6 +308,54 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         wrapper.unmount()
     })
 
+    /**
+     * 首开回填回归（P0 缺陷）：对话框经 lazyDialog 包装，**首次打开时组件才挂载**，
+     * 挂载时 props.visible 已经是 true。若 visible watch 未设置 immediate，首次挂载不会
+     * 触发 loadSettings()，首开展示默认值、第二次打开才回填（E2E settings-persistence
+     * 的 test.fixme 即由此而来）。本用例直接以「挂载时 visible=true」复现 lazyDialog 首开，
+     * 断言持久化值在首次挂载后即可见。
+     */
+    it('首次挂载即为打开状态（lazyDialog 首开）时立即回填持久化值', async () => {
+        configRead.mockImplementation((name: string) => {
+            if (name === 'backup') {
+                return Promise.resolve({ backups: [], latest: null })
+            }
+            if (name === 'theme') {
+                return Promise.resolve({ currentTheme: 'baize' })
+            }
+            return Promise.resolve({
+                autoOpenLastFile: true,
+                autoOpenLastFolder: true,
+                language: 'en-us',
+                fontSize: 16,
+                allowRemoteImages: true
+            })
+        })
+
+        // 直接挂载 visible=true = lazyDialog 首次打开（模块加载完成后以 true 挂载）
+        const wrapper = mountDialog(true)
+        await flushPromises()
+
+        // 通用面板：启动自动打开的持久化开关已回填
+        expect(
+            (panel(wrapper, 0).findAll('.setting-checkbox')[0].element as HTMLInputElement).checked
+        ).toBe(true)
+        expect(
+            (panel(wrapper, 0).findAll('.setting-checkbox')[1].element as HTMLInputElement).checked
+        ).toBe(true)
+        // 语言历史值归一化同样在首开生效
+        expect(
+            (panel(wrapper, 0).find('select.setting-select').element as HTMLSelectElement).value
+        ).toBe('en-US')
+        // 外观面板：字体大小持久化值已回填（默认值为 13，持久化值为 16）
+        await switchPanel(wrapper, 2)
+        expect(
+            (panel(wrapper, 2).find('input[type="number"]').element as HTMLInputElement).value
+        ).toBe('16')
+
+        wrapper.unmount()
+    })
+
     it('加载后取消恢复到「打开时加载值」而非硬编码默认值', async () => {
         configRead.mockImplementation((name: string) =>
             Promise.resolve(name === 'backup' ? { backups: [], latest: null } : { fontSize: 16 })
@@ -391,8 +442,15 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
     // 不抛出、不回滚用户操作（开关保持操作后的状态）。
     it('自动保存 IPC 返回 ok:false 时记录错误且不回滚开关', async () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-        invoke.mockResolvedValueOnce({ ok: false })
+        // 首开回填修复后，挂载即会经 invoke 读取主题显示名（同一通道）；
+        // 这里按通道返回 { ok:false }，避免挂载阶段消费掉一次性 mock。
+        invoke.mockImplementation((channel: string) =>
+            Promise.resolve(
+                channel === 'baize:setting:auto-save-changed' ? { ok: false } : undefined
+            )
+        )
         const wrapper = mountDialog()
+        await flushPromises()
         await switchPanel(wrapper, 1)
         const autoSave = panel(wrapper, 1).findAll('.setting-checkbox')[0]
         await autoSave.setValue(false)

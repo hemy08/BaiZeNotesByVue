@@ -146,13 +146,19 @@ const sidebarItems = SYSTEM_SETTING_SIDEBAR_ITEMS
 const { settings, appThemeDisplay, loadSettings, saveSettings, resetSettings } =
     useSystemSettingForm()
 
-// ARC-04：打开时读取主进程配置（与拆分前一致：watch 无 immediate，visible→true 才加载）
+// ARC-04 + 首开回填修复：打开时读取主进程配置。
+// 1) 对话框由 lazyDialog 包装，**首次打开时才挂载**，挂载时 visible 已经是 true：
+//    非 immediate 的 watch 不会触发 loadSettings()，首开一直展示默认值（P0 缺陷）。
+//    因此这里必须 `immediate: true`，让「首次挂载即已打开」也走同一加载路径；
+// 2) 打开过一次后 dialog 保持挂载（lazyDialog 语义），后续每次 visible false→true
+//    仍会重新加载（与拆分前「重新打开重新读取」的行为一致，见行为基线单测）。
 watch(
     () => props.visible,
     async (newVal) => {
         if (!newVal) return
         await loadSettings()
-    }
+    },
+    { immediate: true }
 )
 
 /** panel → 共享草稿：浅合并字段补丁（唯一写入口，保证 4 个页签共享同一份草稿） */

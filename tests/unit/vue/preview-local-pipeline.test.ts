@@ -86,9 +86,9 @@ describe('MarkdownPreviewComponent 预览单跳渲染（PF-02）', () => {
         vi.restoreAllMocks()
     })
 
-    function mountPreview(editorContent: string, active = true) {
+    function mountPreview(editorContent: string, active = true, activeFilePath = '') {
         wrapper = mount(MarkdownPreviewComponent, {
-            props: { editorContent, active },
+            props: { editorContent, active, activeFilePath },
             attachTo: document.body
         })
         return wrapper
@@ -148,6 +148,22 @@ describe('MarkdownPreviewComponent 预览单跳渲染（PF-02）', () => {
         expect(renderMocks.PreMarkdownRender).toHaveBeenCalledTimes(1)
         expect(renderMocks.PostMarkdownRender).toHaveBeenCalledTimes(1)
         expect(renderMocks.ParserMarkdownChapters).toHaveBeenCalledTimes(1)
+    })
+
+    /**
+     * TDZ 回归（P0 缺陷）：预览在「文件已打开之后」才挂载（启动恢复 / 异步 chunk 时序）时，
+     * activeFilePath prop 首次渲染即为非空，setup 内 immediate watcher 会直接调用
+     * updateMarkdownPreview；修复前 `let renderSequence = 0` 声明在 watchers 之后，
+     * 渲染函数同步段执行 `++renderSequence` 会抛
+     * `Cannot access 'renderSequence' before initialization`（未捕获 ReferenceError）。
+     * 断言方式：不等待 150ms 防抖，immediate watcher 的补渲应在微任务内完成一次真实渲染。
+     */
+    it('should render on first mount when activeFilePath is already set (renderSequence TDZ regression)', async () => {
+        mountPreview('# 首挂立即渲染', true, '/home/user/notes/startup-restore.md')
+        await flushPromises()
+        // 修复前：TDZ 异常中断本轮渲染，PreMarkdownRender 调用数为 0，预览保持空
+        expect(renderMocks.PreMarkdownRender).toHaveBeenCalledTimes(1)
+        expect(wrapper!.html()).toContain('首挂立即渲染')
     })
 
     it('should keep relative URLs untouched when no active file path was received', async () => {

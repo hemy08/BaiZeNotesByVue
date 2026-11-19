@@ -11,12 +11,11 @@
  * - Electron userData（show-welcome 等裸 JSON、fileState）重定向到临时目录；
  * - home 下真实配置目录（systemSetting.json）由 ConfigSandbox 备份 → 清空 → finally 恢复。
  *
- * 已知遗留缺陷（P0 E2E 探测发现，属业务代码问题、本轮不改业务代码）：
- * 设置对话框由 lazyDialog 包装（首次 visible=true 时才挂载异步组件），而
- * SystemSettingDialog 的 `watch(() => props.visible, ...)` 未设置 immediate——组件首次挂载时
- * visible 已经是 true，watch 不会触发 loadSettings()，导致**首次打开对话框展示的是默认值**
- * 而非持久化值；关闭后第二次打开才会回填。本用例的持久化断言以「主进程 store 真源 +
- * 磁盘文件 + 第二次打开的回填」为准，首个「首次打开即回填」的期望以 test.fixme 记录，待业务修复。
+ * 首开回填（已修复的 P0 缺陷）：设置对话框由 lazyDialog 包装（首次 visible=true 时才挂载
+ * 异步组件），首次挂载时 visible 已经是 true。修复前 SystemSettingDialog 的
+ * `watch(() => props.visible, ...)` 未设置 immediate，首挂不触发 loadSettings()，
+ * 首次打开展示默认值、关闭后第二次打开才回填。修复后 visible watch 为 immediate，
+ * 首挂即读取主进程配置——本文件两个用例都按「第一次打开即回填」断言，无 test.fixme 遗留。
  */
 import { test, expect } from '@playwright/test'
 import type { ElectronApplication, Locator, Page } from '@playwright/test'
@@ -26,7 +25,7 @@ import {
     MAIN_ENTRY,
     createConfigSandbox,
     createTempProfile,
-    launchDevApp,
+    launchDevAppWithRenderer,
     seedSystemSetting,
     seedUserDataConfig
 } from './helpers/electron-profile'
@@ -79,13 +78,12 @@ function readSystemSettingFile(sandbox: ConfigSandbox): Record<string, unknown> 
     }
 }
 
-/** 启动应用并等待主界面（预置 show-welcome=false，便于操作菜单/对话框） */
+/** 启动应用并等待渲染进程就绪（preload 桥 + IPC 往返 + Vue 挂载）后进入主界面 */
 async function launchToMainView(
     profile: TempProfile
 ): Promise<{ app: ElectronApplication; page: Page }> {
-    const app = await launchDevApp(profile)
-    const page = await app.firstWindow()
-    await page.waitForLoadState('domcontentloaded')
+    // 真源就绪等待：firstWindow 只代表窗口创建，不代表 preload 注入完成/页面已加载
+    const { app, page } = await launchDevAppWithRenderer(profile)
     await expect(page.locator('#editor-container')).toBeVisible({ timeout: 60_000 })
     return { app, page }
 }
@@ -142,15 +140,14 @@ test.describe('系统设置保存与持久化', () => {
             })
             expect(persisted.autoOpenLastFile).toBe(true)
 
-            // 2) 界面回填：首次打开存在「懒加载首挂未触发 loadSettings」已知缺陷，
-            //    关闭后再次打开会触发 visible watch → loadSettings，此时应回填持久化值。
+            // 2) 界面回填：首次打开即回填持久化值（首开回填修复回归；
+            //    修复前需关闭后二次打开才回填，见文件头说明）
             const firstDialog = await openSystemSettingDialog(page)
-            await firstDialog.locator('button.btn-cancel').click()
-            await expect(firstDialog).toBeHidden({ timeout: 15_000 })
-            const reopenedDialog = await openSystemSettingDialog(page)
-            await expect(settingCheckbox(reopenedDialog, AUTO_OPEN_LAST_FILE_LABEL)).toBeChecked({
+            await expect(settingCheckbox(firstDialog, AUTO_OPEN_LAST_FILE_LABEL)).toBeChecked({
                 timeout: 15_000
             })
+            await firstDialog.locator('button.btn-cancel').click()
+            await expect(firstDialog).toBeHidden({ timeout: 15_000 })
         } finally {
             await app2?.close().catch(() => undefined)
             sandbox.restore()
@@ -159,14 +156,11 @@ test.describe('系统设置保存与持久化', () => {
     })
 
     /**
-     * 期望行为：设置对话框「第一次打开」就应回填持久化值。
-     *
-     * 现状：由于 lazyDialog 首次挂载时 visible 已为 true，SystemSettingDialog 的 visible watch
-     * 不触发 loadSettings（未设置 immediate），首开显示默认值。该缺陷已在本轮 P0 E2E 中确认，
-     * 业务代码修复后把本用例改回 test()（断言方式：ConfigSandbox 预置 autoOpenLastFile=true，
-     * 首次打开即 expect(checkbox).toBeChecked()）。
+     * 首开回填回归（原 test.fixme 缺陷用例，已随业务修复转正）：
+     * ConfigSandbox 预置 autoOpenLastFile=true，**第一次**打开设置对话框即应回填
+     * （lazyDialog 首挂时 visible 已为 true，依赖 SystemSettingDialog 的 immediate 加载）。
      */
-    test.fixme('设置对话框首次打开即回填持久化值（已知缺陷：懒加载首挂未触发 loadSettings）', async () => {
+    test('设置对话框首次打开即回填持久化值（首开回填回归）', async () => {
         const profile = createTempProfile('baize-e2e-settings-first-open-')
         const sandbox = createConfigSandbox(profile)
         sandbox.seed()

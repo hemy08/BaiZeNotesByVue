@@ -97,6 +97,22 @@ let lastRenderedContent: string | null = null
 // P1/PF-2：最近一次大纲解析时的「标题候选行」指纹；无标题结构变化时跳过第二次全文解析
 let lastChaptersFingerprint: number | null = null
 
+// PF-02：渲染轮次序号——本地链路含 mermaid/PlantUML 异步渲染，快速连续输入时
+// 只允许最新一轮的结果写入 v-html，避免旧轮次结果晚到覆盖新内容。
+//
+// 声明位置约束（TDZ 回归防线）：必须早于下方任何「可能在 setup 阶段同步触发
+// updateMarkdownPreview」的 watcher——尤其是 activeFilePath 的 immediate watch。
+// 预览在文件已打开之后才挂载时（启动恢复/异步 chunk 时序），该 watcher 会在 setup 内
+// 直接调用渲染函数，其同步段会执行 `++renderSequence`；若声明放在 watchers 之后，
+// 会抛 `Cannot access 'renderSequence' before initialization`（TDZ ReferenceError）。
+let renderSequence = 0
+
+// PF-9：超大文档降级提示（每个文档只提示一次到控制台；预览顶部常驻一条可见提示，
+// 说明公式/图表渲染已跳过，避免用户误以为渲染出错）。
+// 与 renderSequence 同理：updateMarkdownPreview 的同步段（首个 await 之前）会读写本变量，
+// 必须与 renderSequence 一起提前声明。
+let degradedWarned = false
+
 // 结构优化第 2 批 2.2（H4）：父组件透传的活动文件路径（懒加载时序兜底，见 props.activeFilePath）。
 // 只做非空写入，不覆盖预览自身监听得到的路径；路径变化时触发补渲，让相对 URL 按新文件重算。
 watch(
@@ -183,14 +199,6 @@ function UpdateMarkdownChapters() {
     // 主动解析后同步指纹基准，避免紧接着的渲染轮次重复解析
     lastChaptersFingerprint = ComputeChaptersFingerprint(props.editorContent)
 }
-
-// PF-02：渲染轮次序号——本地链路含 mermaid/PlantUML 异步渲染，快速连续输入时
-// 只允许最新一轮的结果写入 v-html，避免旧轮次结果晚到覆盖新内容。
-let renderSequence = 0
-
-// PF-9：超大文档降级提示（每个文档只提示一次到控制台；预览顶部常驻一条可见提示，
-// 说明公式/图表渲染已跳过，避免用户误以为渲染出错）
-let degradedWarned = false
 
 /** PF-9：超大文档降级提示条 HTML（中英双语，随当前语言切换） */
 function buildDegradedNoticeHtml(): string {

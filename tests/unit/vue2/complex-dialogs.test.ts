@@ -436,11 +436,18 @@ describe('SystemSettingDialog', () => {
 
     it('logs an error instead of throwing when the auto save invoke fails', async () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-        invoke.mockRejectedValueOnce(new Error('主进程不可用'))
+        // 首开回填修复后，挂载即会经既有 invoke 通道读取应用主题显示名；
+        // 这里只让「自动保存同步」通道失败，其余通道照常成功，锁定被测语义。
+        invoke.mockImplementation((channel: string) =>
+            channel === 'baize:setting:auto-save-changed'
+                ? Promise.reject(new Error('主进程不可用'))
+                : Promise.resolve(undefined)
+        )
         const wrapper = mount(SystemSettingDialog, {
             ...dialogMountOptions,
             props: { visible: true }
         })
+        await flushPromises()
         await wrapper.findAll('.sidebar-item')[1].trigger('click')
         const filePanel = wrapper.findAll('.setting-panel')[1]
         await filePanel.findAll('.setting-checkbox')[0].setValue(false)
@@ -492,6 +499,8 @@ describe('SystemSettingDialog', () => {
             ...dialogMountOptions,
             props: { visible: true }
         })
+        // 首开回填修复：挂载即异步加载持久化配置，先等初始加载完成再模拟用户修改
+        await flushPromises()
         const languageSelect = wrapper.findAll('.setting-panel')[0].find('select.setting-select')
         await languageSelect.setValue('en-US')
         await wrapper.find('.btn-cancel').trigger('click')
@@ -681,11 +690,18 @@ describe('SystemSettingDialog', () => {
 
     // P1-FE-06：「浏览」默认路径经 IPC.FILE.SELECT_DIRECTORY 实现（原 void 0 空实现）
     it('browses the default path through the directory selector', async () => {
-        invoke.mockResolvedValueOnce('D:\\notes')
+        // 首开回填修复后挂载会先读取应用主题显示名（同一 invoke 通道）；
+        // 按通道返回，避免一次性 mock 被挂载阶段的主题读取消费。
+        invoke.mockImplementation((channel: string) =>
+            channel === 'baize:file:select-directory'
+                ? Promise.resolve('D:\\notes')
+                : Promise.resolve(undefined)
+        )
         const wrapper = mount(SystemSettingDialog, {
             ...dialogMountOptions,
             props: { visible: true }
         })
+        await flushPromises()
         await wrapper.findAll('.sidebar-item')[1].trigger('click')
         await wrapper.find('.browse-btn').trigger('click')
         await flushPromises()
@@ -811,7 +827,10 @@ describe('SystemSettingDialog', () => {
 describe('SystemSettingDialog i18n', () => {
     beforeEach(() => {
         vi.stubGlobal('api', { config: { write: vi.fn(), read: vi.fn().mockResolvedValue({}) } })
-        vi.stubGlobal('electron', { ipcRenderer: { send: vi.fn() } })
+        // 首开回填修复后，挂载即读取应用主题显示名（经既有 invoke 通道）
+        vi.stubGlobal('electron', {
+            ipcRenderer: { send: vi.fn(), invoke: vi.fn().mockResolvedValue(undefined) }
+        })
     })
 
     afterEach(() => {

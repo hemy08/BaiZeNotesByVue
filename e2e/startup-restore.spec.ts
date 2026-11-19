@@ -26,7 +26,7 @@ import {
     MAIN_ENTRY,
     createConfigSandbox,
     createTempProfile,
-    launchDevApp,
+    launchDevAppWithRenderer,
     seedFileState,
     seedSystemSetting
 } from './helpers/electron-profile'
@@ -39,24 +39,20 @@ test.skip(
 )
 
 /**
- * 已知遗留缺陷（P0 E2E 探测发现，属业务代码问题、本轮不改业务代码）：
- * 启动恢复/打开文件时预览组件在 setup 阶段触发 immediate watcher，
- * 而 `renderSequence` 在文件更下方才声明，导致一次 TDZ ReferenceError：
- * `Cannot access 'renderSequence' before initialization`。
- * 该错误不影响主界面与文件打开（预览随后仍能正常渲染），但属真实缺陷；
- * 本用例只容忍这一条已知错误，其余 pageerror 一律判失败，避免把新问题淹没成「假通过」。
+ * 渲染层未捕获异常断言（TDZ 回归防线）：
+ * 修复前，启动恢复打开文件时预览组件在 setup 阶段触发 immediate watcher，而
+ * `renderSequence` 在文件更下方才声明，会抛一次 TDZ ReferenceError
+ * （`Cannot access 'renderSequence' before initialization`）。该缺陷已修复
+ * （渲染状态声明上移到 watchers 之前），因此本文件**不再容忍任何 pageerror**：
+ * 任意未捕获异常都判失败，防止缺陷回归被静默吞掉。
  */
-const KNOWN_PAGE_ERROR_PATTERNS = [/Cannot access 'renderSequence' before initialization/]
 
-/** 启动开发应用并等待窗口首帧（不等待主界面，具体用例自行断言） */
+/** 启动开发应用并等待渲染进程就绪（preload 桥 + IPC 往返 + Vue 挂载，不等待主界面） */
 async function launchAndWaitFirstWindow(
     profile: TempProfile
 ): Promise<{ app: ElectronApplication; page: Page; pageErrors: string[] }> {
-    const app = await launchDevApp(profile)
-    const page = await app.firstWindow()
-    const pageErrors: string[] = []
-    page.on('pageerror', (error) => pageErrors.push(String(error)))
-    await page.waitForLoadState('domcontentloaded')
+    // 渲染就绪等待在 helper 内完成；pageerror 监听在等待前挂上，启动阶段异常不丢失
+    const { app, page, pageErrors } = await launchDevAppWithRenderer(profile)
     return { app, page, pageErrors }
 }
 
@@ -96,11 +92,8 @@ test.describe('启动恢复（autoOpenLastFile / autoOpenLastFolder）', () => {
                 timeout: 30_000
             })
 
-            // 4) 渲染层未出现「已知错误之外的」未捕获异常（见文件头 KNOWN_PAGE_ERROR_PATTERNS 说明）
-            const unexpected = pageErrors.filter(
-                (error) => !KNOWN_PAGE_ERROR_PATTERNS.some((pattern) => pattern.test(error))
-            )
-            expect(unexpected, `渲染层未捕获异常：${unexpected.join(' | ')}`).toEqual([])
+            // 4) 渲染层未出现任何未捕获异常（TDZ 等缺陷回归防线，见文件头说明）
+            expect(pageErrors, `渲染层未捕获异常：${pageErrors.join(' | ')}`).toEqual([])
         } finally {
             await app?.close().catch(() => undefined)
             sandbox.restore()

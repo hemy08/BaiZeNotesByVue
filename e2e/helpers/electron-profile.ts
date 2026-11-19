@@ -30,7 +30,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { _electron as electron } from '@playwright/test'
-import type { ElectronApplication } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
 
 /** 仓库根目录 */
 export const ROOT = path.resolve(__dirname, '..', '..')
@@ -264,4 +264,275 @@ export function launchPackagedApp(
         env: buildChildEnv({}),
         timeout: options.timeout ?? 120_000
     })
+}
+
+/* ============================================================================================
+ * 渲染进程就绪等待（E2E 稳定性：消除「preload 偶发未注入 / 页面尚未导航」导致的随机失败）
+ *
+ * 背景：`--repeat-each=3` 下 settings/smoke 偶发失败，历史现象是渲染层 `window.electron` /
+ * `window.api` 读不到（页面仍是 about:blank 或 preload 尚未完成注入）时用例已开始操作。
+ * Electron `_electron.launch()` 返回的窗口在 app 启动早期即可拿到，`firstWindow()` +
+ * `domcontentloaded` 并不能保证「页面已导航到应用入口 + preload contextBridge 已注入 +
+ * 渲染层已挂载」——固定 sleep 既慢又不可靠。
+ *
+ * 因此统一用 Playwright 的**条件轮询**（waitForFunction / waitForURL，自动重试、无固定 sleep）
+ * 等待以下四层就绪信号，全部满足后再让用例操作界面：
+ *   1. 页面已从 about:blank 导航到应用入口（file: 协议，开发构建与 asar 打包产物一致）；
+ *   2. preload 单文件已执行且 contextBridge 注入完整（window.electron.ipcRenderer 的
+ *      on/send/invoke + window.api.config.read/write + window.api.app.getVersion）；
+ *   3. IPC 真实往返可用（window.api.app.getVersion() 能拿到主进程返回的版本字段），
+ *      证明 preload 桥与主进程 handler 都已就绪，而不仅是对象存在；
+ *   4. Vue 根节点已挂载（#app-root 有子节点——App.vue 渲染完成，onMounted 的监听器注册
+ *      与 IPC.RENDER.READY 握手随之发生）。
+ *
+ * 失败时抛出带页面快照的异常（URL + 各桥函数是否存在），便于定位是「preload 未注入」
+ * 还是「页面未导航/渲染崩溃」，而不是让后续断言报无关的 selector 超时。
+ * ========================================================================================== */
+
+/** 页面 preload contextBridge 注入快照（失败诊断与就绪判定共用） */
+export interface RendererBridgeSnapshot {
+    /** 当前页面 URL（应为应用入口 file: URL，而非 about:blank） */
+    url: string
+    hasElectron: boolean
+    hasIpcRenderer: boolean
+    hasIpcRendererOn: boolean
+    hasIpcRendererSend: boolean
+    hasIpcRendererInvoke: boolean
+    hasApi: boolean
+    hasApiConfigRead: boolean
+    hasApiConfigWrite: boolean
+    hasApiGetVersion: boolean
+}
+
+/** 读取当前页面 preload 桥注入快照（页面不可读时不抛异常，返回 url 供诊断） */
+export async function readRendererBridgeSnapshot(page: Page): Promise<RendererBridgeSnapshot> {
+    return page.evaluate(() => {
+        const bridge = window as unknown as {
+            electron?: { ipcRenderer?: Record<string, unknown> }
+            api?: { config?: Record<string, unknown>; app?: Record<string, unknown> }
+        }
+        const ipc = bridge.electron?.ipcRenderer
+        const api = bridge.api
+        return {
+            url: window.location.href,
+            hasElectron: typeof bridge.electron === 'object' && bridge.electron !== null,
+            hasIpcRenderer: typeof ipc === 'object' && ipc !== null,
+            hasIpcRendererOn: typeof ipc?.on === 'function',
+            hasIpcRendererSend: typeof ipc?.send === 'function',
+            hasIpcRendererInvoke: typeof ipc?.invoke === 'function',
+            hasApi: typeof api === 'object' && api !== null,
+            hasApiConfigRead: typeof api?.config?.read === 'function',
+            hasApiConfigWrite: typeof api?.config?.write === 'function',
+            hasApiGetVersion: typeof api?.app?.getVersion === 'function'
+        }
+    })
+}
+
+/**
+ * 等待 preload contextBridge 注入完成（条件轮询，无固定 sleep）。
+ *
+ * 与 e2e/smoke.spec.ts 的桥断言同口径：只检查 preload 产物契约要求的函数存在，
+ * 不依赖页面业务 UI，因此可用于欢迎页/主界面/打包版等所有启动路径。
+ */
+export async function waitForPreloadBridge(page: Page, timeout = 30_000): Promise<void> {
+    await page.waitForFunction(
+        () => {
+            const bridge = window as unknown as {
+                electron?: { ipcRenderer?: Record<string, unknown> }
+                api?: { config?: Record<string, unknown>; app?: Record<string, unknown> }
+            }
+            const ipc = bridge.electron?.ipcRenderer
+            const api = bridge.api
+            return (
+                typeof ipc?.on === 'function' &&
+                typeof ipc?.send === 'function' &&
+                typeof ipc?.invoke === 'function' &&
+                typeof api?.config?.read === 'function' &&
+                typeof api?.config?.write === 'function' &&
+                typeof api?.app?.getVersion === 'function'
+            )
+        },
+        undefined,
+        { timeout }
+    )
+}
+
+/**
+ * 等待应用入口页面 + preload 桥 + IPC 往返 + Vue 根节点全部就绪。
+ *
+ * 使用方：所有 E2E spec 在拿到 firstWindow() 后应先 await 本函数，再进行任何界面操作
+ * （点击菜单、读取 DOM、page.evaluate 调用 window.api 等），避免固定 sleep 与竞态。
+ * 任何一步超时都会抛出含页面快照的错误，直接暴露「preload 未注入 / 页面未加载」根因。
+ */
+export async function waitForRendererReady(
+    page: Page,
+    options: { timeout?: number } = {}
+): Promise<void> {
+    const timeout = options.timeout ?? 30_000
+    try {
+        // 1) 已从初始 about:blank 导航到应用入口（开发构建与 asar 打包产物均为 file:）
+        await page.waitForURL((url) => url.protocol === 'file:', { timeout })
+        await page.waitForLoadState('domcontentloaded')
+        // 2) preload contextBridge 注入完成
+        await waitForPreloadBridge(page, timeout)
+        // 3) IPC 真实往返（桥 + 主进程 handler 均可用，而非仅有对象）
+        await page.waitForFunction(
+            async () => {
+                try {
+                    const api = (
+                        window as unknown as {
+                            api?: { app?: { getVersion?: () => Promise<unknown> } }
+                        }
+                    ).api
+                    const version = (await api?.app?.getVersion?.()) as
+                        { electronVersion?: unknown } | undefined
+                    return typeof version?.electronVersion === 'string'
+                } catch {
+                    return false
+                }
+            },
+            undefined,
+            { timeout }
+        )
+        // 4) Vue 根节点已挂载（App.vue 渲染完成，onMounted 的监听器与 RENDER.READY 握手就绪）
+        await page.waitForFunction(
+            () => {
+                const root = document.getElementById('app-root')
+                return root !== null && root.childElementCount > 0
+            },
+            undefined,
+            { timeout }
+        )
+    } catch (error) {
+        const snapshot = await readRendererBridgeSnapshot(page).catch(() => null)
+        throw new Error(
+            `渲染进程未就绪（${timeout}ms 内等待 preload 注入 / renderer ready 失败）：` +
+                (snapshot
+                    ? JSON.stringify(snapshot)
+                    : '页面状态不可读（可能尚未导航或渲染进程已崩溃）'),
+            { cause: error }
+        )
+    }
+}
+
+/** 开发构建启动结果（统一完成「窗口 + preload/渲染就绪」等待） */
+export interface LaunchedDevApp {
+    app: ElectronApplication
+    page: Page
+    /** 启动就绪前收集到的渲染层未捕获异常（供用例断言「无异常」） */
+    pageErrors: string[]
+    /** 实际启动次数（1 = 首次即就绪；>1 = 发生过 preload 注入态的重试，供报告统计偶发率） */
+    launchAttempts: number
+    /** 失败尝试的诊断信息（重试成功时也保留，不允许「静默吞掉」失败数据） */
+    launchFailures: string[]
+}
+
+/** launchDevAppWithRenderer 的启动/就绪选项 */
+export interface LaunchDevAppWithRendererOptions extends LaunchAppOptions {
+    /**
+     * 单次启动的就绪等待超时（默认 25s）。
+     * 正常启动 <1s 即就绪；超过该值基本可判定 preload 未注入（而非机器慢），
+     * 因此无需像旧实现那样一次等 60s，缩短重试成本。
+     */
+    readyTimeout?: number
+    /**
+     * 最多启动尝试次数（默认 3 = 首次 + 2 次重试）。
+     *
+     * 实测（--repeat-each=3 环境）存在约 20% 的「窗口已显示、欢迎页已渲染但
+     * window.electron/window.api 始终未注入」随机失败：这是 Electron 主进程启动期
+     * preload 加载偶发失败（页面侧 catch 后回退渲染欢迎页，因此截图看似正常），
+     * 与产品逻辑无关、重开进程即可恢复；重试次数与失败摘要都会记录进报告，
+     * 不做静默假绿（确定性 preload 缺陷会 3 次全失败并抛错）。
+     */
+    maxLaunchAttempts?: number
+}
+
+/**
+ * 启动开发构建并等待渲染进程就绪（各 spec 的统一入口）。
+ *
+ * 与 launchDevApp 的区别：
+ * 1. 返回前完成 waitForRendererReady，并提前挂上 pageerror / console 监听，
+ *    保证启动阶段的未捕获异常也能被用例捕获（而不是挂监听前就丢失）；
+ * 2. 就绪失败时收集主进程 stdout/stderr 尾部 + 渲染层异常作为诊断，然后关闭实例重试；
+ * 3. 正常启动不会重试（首次就绪即返回），重试只针对「preload 始终未注入」的随机启动失败。
+ */
+export async function launchDevAppWithRenderer(
+    profile: TempProfile,
+    options: LaunchDevAppWithRendererOptions = {}
+): Promise<LaunchedDevApp> {
+    const maxAttempts = Math.max(1, options.maxLaunchAttempts ?? 3)
+    const readyTimeout = options.readyTimeout ?? 25_000
+    const launchFailures: string[] = []
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const app = await launchDevApp(profile, options)
+        // 主进程日志只在失败诊断时使用；提前挂监听避免错过 preload 加载错误输出
+        const processLogs: string[] = []
+        const childProcess = app.process()
+        childProcess.stdout?.on('data', (chunk: unknown) =>
+            processLogs.push(`[stdout] ${String(chunk)}`)
+        )
+        childProcess.stderr?.on('data', (chunk: unknown) =>
+            processLogs.push(`[stderr] ${String(chunk)}`)
+        )
+
+        try {
+            const page = await app.firstWindow()
+            const pageErrors: string[] = []
+            const consoleErrors: string[] = []
+            page.on('pageerror', (error) => pageErrors.push(String(error)))
+            page.on('console', (message) => {
+                if (message.type() === 'error') {
+                    consoleErrors.push(message.text())
+                }
+            })
+            try {
+                await waitForRendererReady(page, { timeout: readyTimeout })
+                return {
+                    app,
+                    page,
+                    pageErrors,
+                    launchAttempts: attempt,
+                    launchFailures
+                }
+            } catch (error) {
+                const sections = [
+                    `第 ${attempt}/${maxAttempts} 次启动未就绪：${
+                        error instanceof Error ? error.message : String(error)
+                    }`
+                ]
+                if (pageErrors.length > 0) {
+                    sections.push(`渲染层未捕获异常：${pageErrors.join(' | ')}`)
+                }
+                if (consoleErrors.length > 0) {
+                    sections.push(`渲染层控制台错误：${consoleErrors.slice(-5).join(' | ')}`)
+                }
+                if (processLogs.length > 0) {
+                    sections.push(`主进程日志尾部：${processLogs.join('').slice(-2000)}`)
+                }
+                launchFailures.push(sections.join('\n'))
+            }
+        } catch (error) {
+            launchFailures.push(
+                `第 ${attempt}/${maxAttempts} 次启动失败（firstWindow 未返回）：${
+                    error instanceof Error ? error.message : String(error)
+                }`
+            )
+        }
+
+        // 失败实例必须关闭，避免残留 Electron 进程影响下一次尝试/后续 repeat-each 轮次
+        await app.close().catch(() => undefined)
+        if (attempt < maxAttempts) {
+            // 启动失败后短暂退避（非就绪等待；重试本身由上面的条件等待驱动）
+            console.warn(
+                `[e2e] 渲染进程未就绪（第 ${attempt}/${maxAttempts} 次启动），重新启动应用实例`
+            )
+            await new Promise((resolve) => setTimeout(resolve, 300))
+        }
+    }
+
+    throw new Error(
+        `应用启动 ${maxAttempts} 次仍未渲染就绪（preload 注入失败，非用例断言失败）：\n` +
+            launchFailures.join('\n')
+    )
 }

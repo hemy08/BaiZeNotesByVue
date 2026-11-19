@@ -24,7 +24,8 @@ import {
     PACKAGED_EXE,
     createConfigSandbox,
     createTempProfile,
-    launchPackagedApp
+    launchPackagedApp,
+    waitForRendererReady
 } from './helpers/electron-profile'
 
 test.skip(
@@ -75,7 +76,9 @@ test.describe('打包产物启动', () => {
 
             app = await launchPackagedApp(userDataDir)
             const page = await app.firstWindow()
-            await page.waitForLoadState('domcontentloaded')
+            // 统一就绪等待：页面已从 about:blank 导航到 asar 入口 + preload 桥注入 +
+            // IPC 往返可用 + Vue 根节点挂载（比 domcontentloaded 可靠，冷启动更慢故放宽超时）
+            await waitForRendererReady(page, { timeout: 90_000 })
 
             // 1) 主进程侧：确为打包版、只创建一个主窗口、窗口最终可见
             const state = await app.evaluate(({ app: electronApp, BrowserWindow }) => {
