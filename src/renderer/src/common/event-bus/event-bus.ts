@@ -1,8 +1,9 @@
 // CQ-10：渲染层统一日志出口（避免本模块裸 console.warn/error）
 import { logger } from '../logger'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- EventBus 是进程内泛型事件总线，各事件负载类型不同，内部存储必须使用通用可变参数签名；公开 API（$on/$off/$emit）已按类型参数收窄，此处 any[] 仅作为内部容器边界
-type AnyEventHandler = (...args: any[]) => unknown
+// P1 存量清理：内部容器统一以 unknown 载荷存储；公开 API（$on/$off）已按泛型 T 收窄，
+// 因此不再需要 `(...args: any[]) => unknown` 这一宽化签名。
+type AnyEventHandler = (payload: unknown) => unknown
 
 interface EventListener {
     callback: AnyEventHandler

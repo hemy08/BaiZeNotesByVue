@@ -74,6 +74,20 @@ module.exports = [
     },
     // 关闭与 Prettier 冲突的格式规则（对应旧 @vue/eslint-config-prettier，但不开 prettier/prettier）
     prettierSkipFormatting,
+    /**
+     * P1 存量清理：CommonJS 脚本的 require 豁免收敛为配置级约定。
+     *
+     * build/ 下的 .js 与所有 *.cjs 均由 node 以 CommonJS 直接运行（package.json 无
+     * "type": "module"；.cjs 按扩展名固定为 CommonJS），`require` 是唯一加载方式。
+     * 此前 8 处 `eslint-disable @typescript-eslint/no-require-imports` 逐文件内联，
+     * 现统一由本 override 声明，删除逐行豁免注释，避免规则语义散落各处。
+     */
+    {
+        files: ['build/**/*.js', '**/*.cjs'],
+        rules: {
+            '@typescript-eslint/no-require-imports': 'off'
+        }
+    },
     // 与旧 .eslintrc.cjs 保持语义接近的规则覆盖
     {
         rules: {

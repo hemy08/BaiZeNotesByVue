@@ -1,4 +1,4 @@
-/* eslint-disable vue/one-component-per-file */
+/* eslint-disable vue/one-component-per-file -- 本文件是「对话框聚合入口」：导出多个懒加载包装组件 + 一个共享加载占位组件，属聚合/工具模块而非单文件单组件 */
 // 本文件是「对话框聚合入口」：导出多个懒加载包装组件 + 一个共享的加载占位组件，
 // 属于聚合/工具模块而非单文件单组件，故关闭 one-component-per-file 规则。
 //

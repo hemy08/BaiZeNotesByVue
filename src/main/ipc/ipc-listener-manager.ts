@@ -12,17 +12,21 @@
  * - inventory()：导出库存清单快照，供测试与诊断使用。
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- 本文件是 IPC 监听器注册表边界，
-   监听器签名镜像 Electron ipcMain 自身类型（(event, ...args: any[]) => void），
-   参数类型随通道语义各异，无法在注册表内统一具体化；调用点各自声明参数类型。 */
+import { ipcMain } from 'electron'
 
-import { ipcMain, IpcMainEvent } from 'electron'
+/**
+ * P1 存量清理：监听器签名直接取自 Electron `ipcMain.on` / `ipcMain.handle` 的参数类型，
+ * 不再在本文件重复声明 `(...args: any[]) => any`。这样既保证与 Electron 自身类型同源
+ * （升级 Electron 时签名自动跟随），也消除了文件级 `no-explicit-any` 豁免。
+ */
+type IpcOnListener = Parameters<typeof ipcMain.on>[1]
+type IpcHandleListener = Parameters<typeof ipcMain.handle>[1]
 
 interface ListenerInfo {
     /** 注册时生成的唯一 ID（库存清单用） */
     id: string
     channel: string
-    listener: (...args: any[]) => any
+    listener: IpcOnListener | IpcHandleListener
     componentId: string
     registeredAt: number
     /** 注册方式：ipcMain.on 或 ipcMain.handle */
@@ -57,11 +61,7 @@ export class IPCListenerManager {
      * 避免误调用导致监听器累积（ARC-06 类问题）。
      * @returns 监听器唯一 ID
      */
-    register(
-        channel: string,
-        listener: (event: IpcMainEvent, ...args: any[]) => void,
-        componentId: string = 'global'
-    ): string {
+    register(channel: string, listener: IpcOnListener, componentId: string = 'global'): string {
         // CQ-15：一次 find 同时完成"是否重复"判断与重复项取用，避免 some + find 的重复遍历
         // 与非空断言（find 结果与 some 结果的成立条件完全一致）。
         const duplicate = this.listeners.get(channel)?.find((info) => info.listener === listener)
@@ -111,7 +111,7 @@ export class IPCListenerManager {
      */
     registerOnce(
         channel: string,
-        listener: (event: IpcMainEvent, ...args: any[]) => void,
+        listener: IpcOnListener,
         componentId: string = 'global'
     ): string | null {
         // 真实 Electron 环境：ipcMain 为 EventEmitter，提供 listenerCount 查询
@@ -159,7 +159,7 @@ export class IPCListenerManager {
      */
     registerHandleOnce(
         channel: string,
-        listener: (...args: any[]) => any,
+        listener: IpcHandleListener,
         componentId: string = 'global'
     ): string | null {
         try {
@@ -200,7 +200,7 @@ export class IPCListenerManager {
         return listenerId
     }
 
-    unregister(channel: string, listener: (event: IpcMainEvent, ...args: any[]) => void) {
+    unregister(channel: string, listener: IpcOnListener) {
         const channelListeners = this.listeners.get(channel)
         if (!channelListeners) {
             return

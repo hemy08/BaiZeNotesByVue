@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-require-imports -- 本脚本为 CommonJS 构建脚本，由 node 直接运行 */
 /**
  * 批量生成「报告 HTML Wiki」+ 共享资源：
  *   docs/reports/md/**\/*.md       → docs/reports/html/<分类>/<同名>.html

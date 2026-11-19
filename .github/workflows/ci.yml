@@ -82,6 +82,10 @@ jobs:
             - name: Quality baseline check
               run: node build/generate-quality-baseline.js --check
 
+            # P1 文档链接检查：扫描 docs/**/*.md 相对链接（忽略外链/锚点/代码块），断链即失败
+            - name: Docs link check
+              run: npm run docs:check
+
     e2e:
         name: E2E (Playwright + Electron)
         runs-on: windows-latest

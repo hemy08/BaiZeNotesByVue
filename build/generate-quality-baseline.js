@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-require-imports -- CommonJS 构建脚本，由 node 直接运行 */
 /**
  * 质量基线生成/校验脚本（结构优化第 3 批 3.1：文档口径自动化）
  *

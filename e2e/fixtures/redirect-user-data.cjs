@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports -- Electron `-r` 预加载夹具运行于 CommonJS 主进程环境，必须使用 require('electron') */
 /**
  * E2E 主进程预加载夹具（仅测试使用，不进入产品产物）。
  *
