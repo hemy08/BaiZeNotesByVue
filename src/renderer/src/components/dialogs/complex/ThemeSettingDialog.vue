@@ -7,6 +7,12 @@
         定位，绝对定位的 resize-handle 仍以容器为基准）；标题栏/底栏 flex-shrink: 0、
         底栏 15px 24px 内边距与 12px 间距经样式 prop 覆盖还原；遮罩、容器底色/圆角/阴影、
         标题栏渐变、关闭按钮样式与 0.2s 动画均与默认壳逐项一致。
+
+        设置对话框二期拆分：本组件为壳层（BaseDialog 外壳 + 左侧页签 + 3 个 panel 组合 +
+        底栏保存/取消编排）；共享草稿/主题加载/取消恢复见 theme-setting/useThemeSettingForm.ts，
+        页签见 theme-setting/AppThemePanel|EditorThemePanel|FontSettingsPanel.vue，
+        主题卡片见 theme-setting/ThemePreviewCard.vue，共享样式见 theme-setting/*.css。
+        对外 props/emit 契约不变。
     -->
     <BaseDialog
         :visible="visible"
@@ -52,231 +58,23 @@
             </div>
 
             <div class="content-area">
-                <div v-if="activePanel === 'app-theme'" class="panel">
-                    <div class="theme-list">
-                        <div
-                            v-for="category in themeCategories"
-                            :key="category.nameKey"
-                            class="theme-category"
-                        >
-                            <h3 class="category-title">
-                                {{ t(category.nameKey) }}
-                            </h3>
-                            <div class="theme-grid">
-                                <div
-                                    v-for="theme in category.themes"
-                                    :key="theme.type"
-                                    :class="[
-                                        'theme-card',
-                                        { selected: currentTheme === theme.type }
-                                    ]"
-                                    @click="selectTheme(theme.type)"
-                                >
-                                    <div class="theme-preview" :style="getThemePreviewStyle(theme)">
-                                        <div
-                                            class="preview-title-bar"
-                                            :style="{
-                                                background:
-                                                    theme.styles?.titleBarGradient ||
-                                                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                                            }"
-                                        ></div>
-                                        <div class="preview-content">
-                                            <div
-                                                class="preview-sidebar"
-                                                :style="{
-                                                    background:
-                                                        theme.styles?.cardBackground || '#f5f5f5'
-                                                }"
-                                            ></div>
-                                            <div class="preview-main">
-                                                <div
-                                                    class="preview-line"
-                                                    :style="{
-                                                        background:
-                                                            theme.styles?.textColor || '#333',
-                                                        opacity: 0.8
-                                                    }"
-                                                ></div>
-                                                <div
-                                                    class="preview-line"
-                                                    :style="{
-                                                        background:
-                                                            theme.styles?.textColor || '#333',
-                                                        opacity: 0.5,
-                                                        width: '70%'
-                                                    }"
-                                                ></div>
-                                                <div
-                                                    class="preview-line"
-                                                    :style="{
-                                                        background:
-                                                            theme.styles?.accentColor || '#00b0ff',
-                                                        opacity: 0.6,
-                                                        width: '50%'
-                                                    }"
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="theme-info">
-                                        <div class="theme-name">
-                                            {{ getThemeDisplayName(theme) }}
-                                        </div>
-                                        <div class="theme-desc">
-                                            {{ getThemeDisplayDesc(theme) }}
-                                        </div>
-                                        <div class="theme-colors">
-                                            <div
-                                                class="color-dot"
-                                                :style="{
-                                                    background:
-                                                        theme.styles?.backgroundColor || '#fff'
-                                                }"
-                                                :title="
-                                                    t('dialogRenderer.themeSetting.colorBackground')
-                                                "
-                                            ></div>
-                                            <div
-                                                class="color-dot"
-                                                :style="{
-                                                    background:
-                                                        theme.styles?.accentColor || '#00b0ff'
-                                                }"
-                                                :title="
-                                                    t('dialogRenderer.themeSetting.colorAccent')
-                                                "
-                                            ></div>
-                                            <div
-                                                class="color-dot"
-                                                :style="{
-                                                    background: theme.styles?.textColor || '#333'
-                                                }"
-                                                :title="t('dialogRenderer.themeSetting.colorText')"
-                                            ></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="activePanel === 'editor-theme'" class="panel">
-                    <div class="monaco-theme-list">
-                        <div
-                            v-for="theme in allMonacoThemes"
-                            :key="theme.type"
-                            :class="['theme-card', { selected: currentMonacoTheme === theme.type }]"
-                            @click="selectMonacoTheme(theme.type)"
-                        >
-                            <div class="theme-preview" :style="{ background: theme.colors.bg }">
-                                <div
-                                    class="preview-title-bar"
-                                    :style="{ background: theme.colors.bg }"
-                                ></div>
-                                <div class="preview-content">
-                                    <div
-                                        class="preview-sidebar"
-                                        :style="{
-                                            background: theme.colors.bg,
-                                            opacity: 0.8
-                                        }"
-                                    ></div>
-                                    <div class="preview-main">
-                                        <div
-                                            class="preview-line"
-                                            :style="{
-                                                background: theme.colors.text,
-                                                opacity: 0.8
-                                            }"
-                                        ></div>
-                                        <div
-                                            class="preview-line"
-                                            :style="{
-                                                background: theme.colors.text,
-                                                opacity: 0.5,
-                                                width: '70%'
-                                            }"
-                                        ></div>
-                                        <div
-                                            class="preview-line"
-                                            :style="{
-                                                background: theme.colors.text,
-                                                opacity: 0.6,
-                                                width: '50%'
-                                            }"
-                                        ></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="theme-info">
-                                <div class="theme-name">
-                                    {{ getMonacoThemeDisplayName(theme) }}
-                                </div>
-                                <div class="theme-desc">
-                                    {{ getMonacoThemeDisplayDesc(theme) }}
-                                </div>
-                                <div class="theme-colors">
-                                    <div
-                                        class="color-dot"
-                                        :style="{ background: theme.colors.bg }"
-                                        :title="t('dialogRenderer.themeSetting.colorBackground')"
-                                    ></div>
-                                    <div
-                                        class="color-dot"
-                                        :style="{ background: theme.colors.text }"
-                                        :title="t('dialogRenderer.themeSetting.colorText')"
-                                    ></div>
-                                    <div
-                                        class="color-dot"
-                                        :style="{
-                                            background: theme.colors.text
-                                        }"
-                                        :title="t('dialogRenderer.themeSetting.colorAccent')"
-                                    ></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="activePanel === 'font-settings'" class="panel">
-                    <div class="setting-group">
-                        <label class="setting-label">{{
-                            t('dialogRenderer.themeSetting.labelEditorFont')
-                        }}</label>
-                        <select v-model="editorFont" class="setting-select">
-                            <option v-for="font in editorFonts" :key="font" :value="font">
-                                {{ font }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="setting-group">
-                        <label class="setting-label">{{
-                            t('dialogRenderer.themeSetting.labelPreviewFont')
-                        }}</label>
-                        <select v-model="previewFont" class="setting-select">
-                            <option v-for="font in previewFonts" :key="font" :value="font">
-                                {{ font }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="setting-group">
-                        <label class="setting-label">{{
-                            t('dialogRenderer.themeSetting.labelFontSize')
-                        }}</label>
-                        <input
-                            v-model="fontSize"
-                            type="number"
-                            class="setting-input"
-                            min="10"
-                            max="32"
-                        />
-                    </div>
-                </div>
+                <AppThemePanel
+                    v-if="activePanel === 'app-theme'"
+                    :categories="themeCategories"
+                    :current-theme="currentTheme"
+                    @select="handleSelectTheme"
+                />
+                <EditorThemePanel
+                    v-if="activePanel === 'editor-theme'"
+                    :themes="allMonacoThemes"
+                    :current-monaco-theme="currentMonacoTheme"
+                    @select="handleSelectMonacoTheme"
+                />
+                <FontSettingsPanel
+                    v-if="activePanel === 'font-settings'"
+                    :fonts="fonts"
+                    @update="updateFonts"
+                />
             </div>
         </div>
 
@@ -295,22 +93,30 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * 主题设置对话框 —— 壳层（设置对话框二期拆分）
+ *
+ * 职责：BaseDialog 外壳覆盖 + resize-handle（#prepend）+ 左侧页签切换（activePanel 保留在壳层）
+ * + 3 个 panel 组合 + 底栏应用/取消编排。
+ *
+ * 对外契约不变：props `visible`；emits `close` / `change(themeType, monacoTheme,
+ * separateEditorTheme)`（与拆分前一致）。共享草稿 / 打开时主题加载 / 取消恢复统一由
+ * `./theme-setting/useThemeSettingForm` 承担；3 个页签只做展示 + 事件上报。
+ */
 import { computed, ref, watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import { useDialogResize } from '../../../composables/useDialogResize'
-import { IPC } from '../../../../../shared/ipc-channels'
-// 第 2 批契约重构：主题领域类型以 shared/types/theme.ts 为唯一真源（不再本地维护 partial 副本）；
-// 分组清单以 shared/constants/theme.ts 的 THEME_GROUPS 为唯一真源（浅色/深色/护眼 3 组）。
-import type {
-    AppThemeConfig,
-    MonacoThemeListItem,
-    ThemeListItem,
-    ThemeStyles
-} from '../../../../../shared/types'
-import { THEME_GROUPS } from '../../../../../shared/constants/theme'
 import { t } from '../../../common/i18n'
-import { logger } from '../../../common/logger'
 import BaseDialog from '../BaseDialog.vue'
+import {
+    THEME_SETTING_SIDEBAR_ITEMS,
+    type ThemeFontSettings,
+    type ThemeSettingPanelId
+} from './theme-setting/model'
+import { useThemeSettingForm } from './theme-setting/useThemeSettingForm'
+import AppThemePanel from './theme-setting/AppThemePanel.vue'
+import EditorThemePanel from './theme-setting/EditorThemePanel.vue'
+import FontSettingsPanel from './theme-setting/FontSettingsPanel.vue'
 
 interface Props {
     visible: boolean
@@ -345,529 +151,72 @@ const containerStyle = computed<CSSProperties>(() => ({
 const titleBarStyle: CSSProperties = { flexShrink: 0 }
 const footerStyle: CSSProperties = { padding: '15px 24px', gap: '12px', flexShrink: 0 }
 
-const activePanel = ref('app-theme')
-const currentTheme = ref('baize')
-const separateEditorTheme = ref(false)
-const currentMonacoTheme = ref('vs')
-const editorFont = ref('Consolas')
-const previewFont = ref('Microsoft YaHei')
-const fontSize = ref(14)
+/** 当前页签（壳层状态；拆分前即与 3 个 panel 的 v-if 共享，保留在壳层） */
+const activePanel = ref<ThemeSettingPanelId>('app-theme')
+/** 左侧页签（纯数据由 ./theme-setting/model.ts 提供） */
+const sidebarItems = THEME_SETTING_SIDEBAR_ITEMS
 
-const initialSettings = ref({
-    currentTheme: 'baize',
-    separateEditorTheme: false,
-    currentMonacoTheme: 'vs'
-})
+/** 共享草稿 / 主题列表数据 / 打开时加载 / 取消恢复（3 页签共用唯一一份草稿） */
+const form = useThemeSettingForm()
+const {
+    currentTheme,
+    separateEditorTheme,
+    currentMonacoTheme,
+    fonts,
+    themeCategories,
+    allMonacoThemes
+} = form
 
-// 第 2 批契约重构：ThemeListItem / MonacoThemeListItem 直接引用 shared 主题领域类型
-// （types/theme.ts）；主进程 getAllThemes() 返回的 styles 是完整 ThemeStyles，
-// 不再是历史 partial 断言。本对话框内部只额外补充「预览配色」一个视图字段。
-
-// 渲染层内部使用的编辑器主题视图项（在 shared MonacoThemeListItem 基础上补充预览配色）
-interface MonacoThemeViewItem {
-    type: string
-    name: string
-    colors: { bg: string; text: string; accent: string }
-    config: MonacoThemeListItem['config']
-}
-
-// 第 2 批契约重构：删除本地 RendererThemeConfig（与主进程 ThemeConfig 字段一致但
-// 全字段可选的历史断言），读取形状统一引用 shared AppThemeConfig（当前主题/独立编辑器主题）。
-// 主题配置结构见 shared/types/config.ts 的 AppThemeConfig。
-
-const themeCategories = ref<
-    Array<{
-        nameKey: string
-        themes: ThemeListItem[]
-    }>
->([])
-
-const allMonacoThemes = ref<MonacoThemeViewItem[]>([])
-
-const editorFonts = [
-    'Consolas',
-    'Monaco',
-    'Courier New',
-    'Fira Code',
-    'Source Code Pro',
-    'JetBrains Mono',
-    'Menlo',
-    'Ubuntu Mono'
-]
-
-const previewFonts = [
-    'Microsoft YaHei',
-    'PingFang SC',
-    'Segoe UI',
-    'Arial',
-    'Helvetica',
-    'SimSun',
-    'SimHei',
-    'KaiTi'
-]
-
-const sidebarItems = ref([
-    { id: 'app-theme', nameKey: 'dialogRenderer.themeSetting.sidebarAppTheme', icon: '🎨' },
-    { id: 'editor-theme', nameKey: 'dialogRenderer.themeSetting.sidebarEditorTheme', icon: '📝' },
-    { id: 'font-settings', nameKey: 'dialogRenderer.themeSetting.sidebarFontSettings', icon: '🔤' }
-])
-
-async function loadThemes() {
-    try {
-        const allThemes = (await window.electron.ipcRenderer.invoke(
-            IPC.THEME.GET_ALL_THEMES
-        )) as ThemeListItem[]
-
-        // 第 2 批契约重构：3 组分类清单统一引用 shared/constants/theme 的 THEME_GROUPS，
-        // 本组件不再维护主题 id 硬编码数组（浅色/深色/护眼归属的唯一真源）。
-        // 过滤条件与迁移前逐项一致：按组内 type 清单筛选主进程返回的全部主题，
-        // 未在清单中的主题（历史/未知值）不展示。
-        themeCategories.value = THEME_GROUPS.map((group) => ({
-            nameKey: group.labelKey,
-            themes: allThemes.filter((theme) => group.types.includes(theme.type))
-        }))
-
-        const monacoThemes = (await window.electron.ipcRenderer.invoke(
-            IPC.THEME.GET_ALL_MONACO_THEMES
-        )) as MonacoThemeListItem[]
-        allMonacoThemes.value = monacoThemes.map((t) => ({
-            type: t.type,
-            name: t.config.name,
-            config: t.config,
-            colors: {
-                bg: t.config.backgroundColor || (t.config.isDark ? '#1e1e1e' : '#ffffff'),
-                text: t.config.foregroundColor || (t.config.isDark ? '#d4d4d4' : '#333333'),
-                accent: t.config.isDark ? '#007acc' : '#007acc'
-            }
-        }))
-
-        const themeConfig = await window.api.config.read<AppThemeConfig>('theme')
-        if (themeConfig) {
-            currentTheme.value = themeConfig.currentTheme || 'baize'
-            separateEditorTheme.value = themeConfig.separateEditorTheme || false
-            currentMonacoTheme.value = themeConfig.editorTheme || 'vs'
-
-            initialSettings.value = {
-                currentTheme: currentTheme.value,
-                separateEditorTheme: separateEditorTheme.value,
-                currentMonacoTheme: currentMonacoTheme.value
-            }
-        }
-    } catch (error) {
-        logger.error('加载主题失败:', error)
-    }
-}
-
-function getThemePreviewStyle(theme: ThemeListItem) {
-    // 第 2 批：shared ThemeStyles 只有 backgroundColor / textColor（主进程从不发送
-    // 历史 partial 断言里的 background / color 字段），删除不可达的回退分支，
-    // 颜色取值与迁移前实际生效路径一致（backgroundColor / textColor 兜底默认色）。
-    const styles: ThemeStyles = theme.styles
-    return {
-        background: styles.backgroundColor || '#fff',
-        color: styles.textColor || '#333'
-    }
-}
-
-// CMP-30：主题名称/描述优先走 i18n key，词条或字段缺失时回退主题数据中的原文字段
-function getThemeDisplayName(theme: ThemeListItem): string {
-    const styles = theme.styles
-    if (styles?.nameKey) return t(styles.nameKey)
-    return styles?.name || theme.type
-}
-
-function getThemeDisplayDesc(theme: ThemeListItem): string {
-    const styles = theme.styles
-    if (styles?.descKey) return t(styles.descKey)
-    return styles?.description || t('dialogRenderer.themeSetting.customTheme')
-}
-
-function getMonacoThemeDisplayName(theme: MonacoThemeViewItem): string {
-    const config = theme.config
-    if (config?.nameKey) return t(config.nameKey, { name: theme.name })
-    return config?.name || theme.name
-}
-
-function getMonacoThemeDisplayDesc(theme: MonacoThemeViewItem): string {
-    const config = theme.config
-    if (config?.descKey) return t(config.descKey, { name: theme.name })
-    return config?.description || t('dialogRenderer.themeSetting.editorThemeFallback')
-}
-
-function selectTheme(themeType: string) {
-    currentTheme.value = themeType
-    emit('change', currentTheme.value, currentMonacoTheme.value, separateEditorTheme.value)
-}
-
-function selectMonacoTheme(monacoTheme: string) {
-    currentMonacoTheme.value = monacoTheme
-    // P2 死通道清理：原此处 send IPC.THEME.UPDATE_MONACO_THEME 企图"立即应用"
-    // 编辑器主题，但主进程全仓无该通道监听（实际生效路径为点击应用/确定 →
-    // emit('change') → BaiZeNotes.handleThemeChange）。发送点与常量一并删除。
-}
-
-function handleCancel() {
-    currentTheme.value = initialSettings.value.currentTheme
-    separateEditorTheme.value = initialSettings.value.separateEditorTheme
-    currentMonacoTheme.value = initialSettings.value.currentMonacoTheme
-    emit('close')
-}
-
-function handleApply() {
-    emit('change', currentTheme.value, currentMonacoTheme.value, separateEditorTheme.value)
-}
-
-function handleConfirm() {
-    handleApply()
-    emit('close')
-}
-
+// ARC-04：打开时读取主题列表与当前主题配置（与拆分前一致：watch 无 immediate）
 watch(
     () => props.visible,
     (newVal) => {
         if (newVal) {
-            loadThemes()
+            void form.loadThemes()
         }
     }
 )
+
+/**
+ * 应用主题点选：更新草稿并立即 emit('change')（与拆分前 selectTheme 的即时应用链路一致，
+ * 未应用前的取消回滚由 resetSettings 恢复）。
+ */
+function handleSelectTheme(themeType: string): void {
+    currentTheme.value = themeType
+    emit('change', currentTheme.value, currentMonacoTheme.value, separateEditorTheme.value)
+}
+
+/**
+ * 编辑器主题点选：仅更新本地草稿（实际应用走 apply/confirm → @change 链路）。
+ * P2 死通道清理：原 `selectMonacoTheme` 内的 IPC.THEME.UPDATE_MONACO_THEME 发送点
+ * 主进程全仓无监听，已删除，此处保持同样的本地更新语义。
+ */
+function handleSelectMonacoTheme(monacoTheme: string): void {
+    currentMonacoTheme.value = monacoTheme
+}
+
+/** 字体设置页签 → 共享字体草稿（不参与主题配置保存，与拆分前一致） */
+function updateFonts(patch: Partial<ThemeFontSettings>): void {
+    Object.assign(fonts, patch)
+}
+
+function handleCancel(): void {
+    form.resetSettings()
+    emit('close')
+}
+
+function handleApply(): void {
+    emit('change', currentTheme.value, currentMonacoTheme.value, separateEditorTheme.value)
+}
+
+function handleConfirm(): void {
+    handleApply()
+    emit('close')
+}
 </script>
 
 <style scoped>
-/* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
-   这里只保留正文（侧边栏 / 主题卡片 / 设置项 / 底栏按钮）与 resize-handle 样式。
-   resize-handle 渲染在 BaseDialog 的 #prepend 插槽（容器内、title-bar 之前），仍是
-   容器的直接子节点，绝对定位基准与迁移前一致。 */
-.resize-handle {
-    position: absolute;
-    z-index: 10;
-}
-
-.resize-n,
-.resize-s {
-    left: 10px;
-    right: 10px;
-    height: 6px;
-    cursor: ns-resize;
-}
-
-.resize-n {
-    top: -3px;
-}
-
-.resize-s {
-    bottom: -3px;
-}
-
-.resize-e,
-.resize-w {
-    top: 10px;
-    bottom: 10px;
-    width: 6px;
-    cursor: ew-resize;
-}
-
-.resize-e {
-    right: -3px;
-}
-
-.resize-w {
-    left: -3px;
-}
-
-.resize-ne,
-.resize-nw,
-.resize-se,
-.resize-sw {
-    width: 12px;
-    height: 12px;
-}
-
-.resize-ne {
-    top: -6px;
-    right: -6px;
-    cursor: nesw-resize;
-}
-
-.resize-nw {
-    top: -6px;
-    left: -6px;
-    cursor: nwse-resize;
-}
-
-.resize-se {
-    bottom: -6px;
-    right: -6px;
-    cursor: nwse-resize;
-}
-
-.resize-sw {
-    bottom: -6px;
-    left: -6px;
-    cursor: nesw-resize;
-}
-
-.main-container {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-}
-
-.sidebar {
-    width: 180px;
-    background: var(--card-bg);
-    border-right: 1px solid var(--border-color);
-    padding: 12px 0;
-}
-
-.sidebar-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    color: var(--text-color);
-}
-
-.sidebar-item:hover {
-    background: var(--hover-bg);
-}
-
-.sidebar-item.active {
-    background: rgba(102, 126, 234, 0.1);
-    color: var(--accent-color);
-    border-right: 3px solid var(--accent-color);
-}
-
-.sidebar-icon {
-    font-size: 18px;
-}
-
-.sidebar-name {
-    font-size: 13px;
-    font-weight: 500;
-}
-
-.content-area {
-    flex: 1;
-    padding: 20px;
-    overflow-y: auto;
-    background: var(--bg-color);
-}
-
-.panel {
-    height: 100%;
-}
-
-.theme-list {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
-.theme-category {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.category-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-color);
-    margin: 0;
-}
-
-.theme-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px;
-}
-
-.theme-card {
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: var(--card-bg);
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.theme-card:hover {
-    border-color: var(--accent-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.theme-card.selected {
-    border-color: var(--accent-color);
-    background: rgba(102, 126, 234, 0.08);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-}
-
-.theme-preview {
-    height: 100px;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.preview-title-bar {
-    height: 12px;
-    flex-shrink: 0;
-}
-
-.preview-content {
-    flex: 1;
-    display: flex;
-    padding: 6px;
-    gap: 4px;
-}
-
-.preview-sidebar {
-    width: 20px;
-    border-radius: 2px;
-    flex-shrink: 0;
-}
-
-.preview-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    padding: 2px;
-}
-
-.preview-line {
-    height: 3px;
-    border-radius: 1px;
-    width: 100%;
-}
-
-.theme-info {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.theme-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-color);
-    text-align: left;
-    line-height: 1.3;
-}
-
-.theme-desc {
-    font-size: 11px;
-    color: var(--secondary-text-color);
-    text-align: left;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.theme-colors {
-    display: flex;
-    gap: 6px;
-    margin-top: 2px;
-}
-
-.color-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 2px solid var(--border-color);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
-}
-
-.color-dot:hover {
-    transform: scale(1.2);
-}
-
-.monaco-theme-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px;
-}
-
-.setting-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 20px;
-}
-
-.setting-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-color);
-}
-
-.setting-select,
-.setting-input {
-    width: 100%;
-    max-width: 300px;
-    padding: 10px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 13px;
-    color: var(--text-color);
-    background: var(--card-bg);
-    outline: none;
-    transition: border-color 0.2s;
-}
-
-.setting-select:focus,
-.setting-input:focus {
-    border-color: var(--accent-color);
-}
-
-.btn {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-cancel {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
-}
-
-.btn-cancel:hover {
-    background: var(--border-color);
-}
-
-.btn-apply {
-    background: var(--card-bg);
-    border: 1px solid var(--accent-color);
-    color: var(--accent-color);
-}
-
-.btn-apply:hover {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn-confirm {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn-confirm:hover {
-    opacity: 0.9;
-}
+/* 壳层骨架/resize-handle/按钮样式见 ./theme-setting/settings-dialog-shell.css；
+   页签公共样式见 ./theme-setting/settings-panel.css（各 panel 自身 @import）。 */
+@import './theme-setting/settings-dialog-shell.css';
 </style>

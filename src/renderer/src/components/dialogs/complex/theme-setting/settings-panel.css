@@ -1,0 +1,84 @@
+/* ============================================================================
+ * 主题设置对话框 —— 页签 panel 公共样式（设置对话框二期拆分从 ThemeSettingDialog.vue
+ * 的 scoped 样式中按归属拆分出的公共部分）
+ *
+ * 引入方式：AppThemePanel / EditorThemePanel / FontSettingsPanel 在 `<style scoped>` 内
+ * `@import './settings-panel.css'`，随组件 scoped 样式内联并加上各自 `[data-v-*]` 属性
+ * （与 system-setting / editor-setting 的 settings-panel.css 同一既有模式），
+ * 因此不会泄漏到其它对话框的同名类。主题卡片样式收敛在 ThemePreviewCard.vue
+ * 自身的 scoped 样式中（卡片内所有元素均由该组件渲染）。
+ *
+ * 主题：全部沿用 var(--...) 主题变量（28 套应用主题 + 明暗模式由变量驱动），
+ * 不引入任何硬编码色值——暗色/多主题视觉与拆分前一致。
+ * ========================================================================== */
+
+/* 页签面板容器（3 个 panel 的根节点，高度占满内容区） */
+.panel {
+    height: 100%;
+}
+
+/* 应用主题：分组纵向列表 */
+.theme-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.theme-category {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.category-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+}
+
+/* 应用主题 / 编辑器主题卡片网格 */
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.monaco-theme-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+/* 字体设置项 */
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.setting-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.setting-select,
+.setting-input {
+    width: 100%;
+    max-width: 300px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-color);
+    background: var(--card-bg);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.setting-select:focus,
+.setting-input:focus {
+    border-color: var(--accent-color);
+}

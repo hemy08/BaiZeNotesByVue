@@ -52,6 +52,19 @@ const THEME_SETTING_DIALOG = path.join(
     'complex',
     'ThemeSettingDialog.vue'
 )
+// 设置对话框二期拆分：THEME_GROUPS 分组逻辑从 ThemeSettingDialog.vue 迁至
+// theme-setting/useThemeSettingForm.ts；静态护栏改为扫描「壳层 + theme-setting 目录」，
+// 保证 shared 清单仍被引用且不再出现硬编码主题 id 清单。
+const THEME_SETTING_DIR = path.join(
+    ROOT,
+    'src',
+    'renderer',
+    'src',
+    'components',
+    'dialogs',
+    'complex',
+    'theme-setting'
+)
 const BAIZE_NOTES = path.join(ROOT, 'src', 'renderer', 'src', 'components', 'BaiZeNotes.vue')
 const MENU_BAR = path.join(ROOT, 'src', 'renderer', 'src', 'components', 'MenuBar.vue')
 const USE_THEME = path.join(ROOT, 'src', 'renderer', 'src', 'composables', 'useTheme.ts')
@@ -189,9 +202,18 @@ describe('主题明暗分组清单（THEME_GROUPS）', () => {
 })
 
 describe('渲染层消费方统一引用 shared 清单（防回退护栏）', () => {
-    it('ThemeSettingDialog.vue 应按 THEME_GROUPS 分组，不再硬编码主题 id 清单', () => {
-        const source = readSource(THEME_SETTING_DIALOG)
-        expect(source).toContain("from '../../../../../shared/constants/theme'")
+    /** 主题设置对话框全部源码（壳层 + theme-setting 子组件/composable，拆分后分组逻辑在 composable） */
+    function readThemeSettingSources(): string {
+        const files = [
+            THEME_SETTING_DIALOG,
+            ...collectSourceFiles(THEME_SETTING_DIR, ['.ts', '.vue'])
+        ]
+        return files.map(readSource).join('\n')
+    }
+
+    it('主题设置对话框应按 THEME_GROUPS 分组，不再硬编码主题 id 清单', () => {
+        const source = readThemeSettingSources()
+        expect(source).toContain("from '../../../../../../shared/constants/theme'")
         expect(source).toContain('THEME_GROUPS')
         // 防回归：迁移前的三组硬编码清单里的代表 id 不应再以字符串字面量出现
         expect(source.includes("'eyecare-green'")).toBe(false)
