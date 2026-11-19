@@ -190,6 +190,12 @@ import { logger } from '../common/logger'
 
 const configStore = getConfigStore()
 
+// 性能改造（主界面按需异步加载）配套：向 App.vue 上报「主界面已挂载、IPC 监听器已注册」。
+// App.vue 以此作为发送渲染层就绪握手（RENDER.READY）的时序依据——show-welcome=false 等
+// 「启动即主界面」路径必须等主界面监听器就位后再握手，否则主进程随后投递的启动恢复数据
+// 事件会早于监听器注册到达而丢失（FE-01）。
+const emit = defineEmits<{ (event: 'main-view-mounted'): void }>()
+
 const {
     minimizeWindow,
     maximizeWindow,
@@ -585,6 +591,10 @@ onMounted(async () => {
     window.electron.ipcRenderer.on(IPC.SETTING.SYSTEM_SETTING_UPDATE, handleSystemSettingUpdate)
     window.electron.ipcRenderer.on(IPC.THEME.THEME_UPDATED, handleThemeUpdate)
     window.electron.ipcRenderer.on(IPC.DIALOG.OPEN_VUE_DIALOG, handleOpenVueDialog)
+
+    // 以上监听器已同步注册完成（子组件的 onMounted 早于本组件的 onMounted 执行），
+    // 通知外壳主界面已就绪；App.vue 在此之后才发送 READY 握手，保证启动恢复数据不丢失。
+    emit('main-view-mounted')
 
     // 加载所有配置
     try {

@@ -24,7 +24,9 @@
 <script setup lang="ts">
 import EventBus from '../common/event-bus/event-bus'
 import { onBeforeUnmount, onMounted, ref, computed } from 'vue'
-import { Position } from 'monaco-editor'
+// Position 仅作为光标位置事件参数的类型使用（运行时字段为 lineNumber/column，
+// 不依赖 monaco 枚举值）；改为 import type 后编译期擦除，不把 monaco 拉入模块图。
+import type { Position } from 'monaco-editor'
 import { IPC } from '../../../shared/ipc-channels'
 import type { StatusBarUpdatePayload } from '../../../shared/types'
 import { EVENT_BUS } from '../common/event-bus/event-bus-events'

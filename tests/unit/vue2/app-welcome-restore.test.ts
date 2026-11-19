@@ -24,7 +24,16 @@ vi.mock('../../../src/renderer/src/components/WelcomeScreen.vue', () => ({
     default: { name: 'WelcomeScreenStub', template: '<div class="welcome-stub" />' }
 }))
 vi.mock('../../../src/renderer/src/components/BaiZeNotes.vue', () => ({
-    default: { name: 'BaiZeNotesStub', template: '<div class="main-stub" />' }
+    default: {
+        name: 'BaiZeNotesStub',
+        // 与真实 BaiZeNotes.vue 保持同一契约：挂载完成后 emit('main-view-mounted')，
+        // App.vue 以此作为「主界面监听器已就位」的信号（READY 握手时序）
+        emits: ['main-view-mounted'],
+        template: '<div class="main-stub" />',
+        mounted(this: { $emit: (event: string) => void }) {
+            this.$emit('main-view-mounted')
+        }
+    }
 }))
 
 import App from '../../../src/renderer/src/App.vue'
@@ -43,7 +52,11 @@ interface IpcHarness {
     trigger: (channel: string, payload?: unknown) => void
 }
 
-function installIpcHarness(welcomeConfig: unknown = undefined): IpcHarness {
+/** 安装 IPC 桩（show-welcome 与 system 两个配置名分开返回，便于覆盖启动恢复分支） */
+function installIpcHarness(
+    welcomeConfig?: unknown,
+    options: { systemSetting?: unknown; onRendererReady?: () => void } = {}
+): IpcHarness {
     const listeners = new Map<string, IpcListener[]>()
     const send = vi.fn()
     const invoke = vi.fn().mockResolvedValue(undefined)
@@ -63,10 +76,14 @@ function installIpcHarness(welcomeConfig: unknown = undefined): IpcHarness {
         ipcRenderer: { on, removeListener, send, invoke }
     })
     // P2-5：渲染层就绪握手（onMounted 末尾经 window.api.app.notifyRendererReady 发送）
-    const notifyRendererReady = vi.fn()
+    const notifyRendererReady = vi.fn(() => {
+        options.onRendererReady?.()
+    })
     vi.stubGlobal('api', {
         config: {
-            read: vi.fn().mockResolvedValue(welcomeConfig),
+            read: vi.fn((name: string) =>
+                Promise.resolve(name === 'system' ? options.systemSetting : welcomeConfig)
+            ),
             write: vi.fn().mockResolvedValue(true)
         },
         app: { notifyRendererReady }
@@ -89,16 +106,35 @@ function installIpcHarness(welcomeConfig: unknown = undefined): IpcHarness {
 let wrapper: VueWrapper | null = null
 let ipc: IpcHarness
 
-/** 等待微任务队列（onMounted 中的 config.read / Vue 渲染 flush），不用真实定时器 */
-async function settle(): Promise<void> {
-    await Promise.resolve()
-    await Promise.resolve()
-    await Promise.resolve()
-    await wrapper?.vm.$nextTick()
+/**
+ * 等待微任务队列（onMounted 中的 config.read / 主界面动态 import / Vue 渲染 flush）。
+ *
+ * 主界面改为 defineAsyncComponent 后，进入主界面需要额外经过「动态 import 解析 →
+ * 异步组件 resolvedComp 赋值 → 挂载提交」若干轮微任务，固定次数的 Promise.resolve
+ * 不足以覆盖；这里循环推进微任务 + nextTick，直到断言条件满足或达到上限。
+ * 不使用真实定时器（本文件用 vi.useFakeTimers 控制 maximize 的 setTimeout）。
+ */
+async function settle(maxTicks = 200): Promise<void> {
+    for (let i = 0; i < maxTicks; i++) {
+        await Promise.resolve()
+        await wrapper?.vm.$nextTick()
+    }
 }
 
-async function mountApp(welcomeConfig?: unknown): Promise<VueWrapper> {
-    ipc = installIpcHarness(welcomeConfig)
+/** 等待主界面异步组件挂载完成（动态 import + 异步组件解析），用于时序断言 */
+async function waitForMainViewMounted(): Promise<void> {
+    for (let i = 0; i < 200; i++) {
+        if (wrapper?.find('.main-stub').exists()) return
+        await Promise.resolve()
+        await wrapper?.vm.$nextTick()
+    }
+}
+
+async function mountApp(
+    welcomeConfig?: unknown,
+    options: { systemSetting?: unknown; onRendererReady?: () => void } = {}
+): Promise<VueWrapper> {
+    ipc = installIpcHarness(welcomeConfig, options)
     wrapper = mount(App)
     await settle()
     return wrapper
@@ -171,6 +207,7 @@ describe('App.vue 欢迎页启动行为', () => {
         const app = await mountApp()
 
         ipc.trigger(IPC.FILE.WELCOME_ENTER_MAIN, { type: 'directory', path: 'C:\\docs' })
+        await waitForMainViewMounted()
         await settle()
 
         expect(app.find('.welcome-stub').exists()).toBe(false)
@@ -180,12 +217,55 @@ describe('App.vue 欢迎页启动行为', () => {
         expect(hasSend(IPC.WINDOW.MAXIMIZE)).toBe(true)
     })
 
-    it('show-welcome=false 配置允许启动时直接进入主界面', async () => {
-        const app = await mountApp(false)
+    it('show-welcome=false 配置允许启动时直接进入主界面，且 READY 在主界面挂载之后才发送', async () => {
+        // 主界面改为 defineAsyncComponent 分块加载后，READY 握手必须在「主界面组件挂载 +
+        // 子组件监听器注册」完成后才发出，否则主进程随后投递的启动恢复数据事件会被丢弃
+        // （FE-01 时序回归）。这里在握手回调发生的那一刻断言主界面已渲染。
+        let mainViewMountedAtReady = false
+        const app = await mountApp(false, {
+            onRendererReady: () => {
+                mainViewMountedAtReady = wrapper?.find('.main-stub').exists() ?? false
+            }
+        })
+        await waitForMainViewMounted()
         await settle()
 
         expect(app.find('.main-stub').exists()).toBe(true)
         expect(app.find('.welcome-stub').exists()).toBe(false)
+        expect(ipc.notifyRendererReady).toHaveBeenCalledTimes(1)
+        expect(mainViewMountedAtReady).toBe(true)
+    })
+
+    it('自动打开上次会话（autoOpenLastFile）时在 READY 前预加载主界面模块，但仍停留在欢迎页', async () => {
+        // 主进程收到 READY 后会先 send WELCOME_ENTER_MAIN、再于下一 tick 投递数据事件；
+        // 该分支要求 READY 前已完成主界面模块加载（WELCOME_ENTER_MAIN 到达时异步组件可立即解析）。
+        const app = await mountApp(undefined, { systemSetting: { autoOpenLastFile: true } })
+        await settle()
+
+        // 启动恢复的 WELCOME_ENTER_MAIN 尚未到达时仍显示欢迎页（产品决策：不自动跳转）
+        expect(app.find('.welcome-stub').exists()).toBe(true)
+        expect(app.find('.main-stub').exists()).toBe(false)
+        expect(ipc.notifyRendererReady).toHaveBeenCalledTimes(1)
+
+        // 模拟主进程收到握手后立即下发 WELCOME_ENTER_MAIN：主界面分块已预加载，应能挂载
+        ipc.trigger(IPC.FILE.WELCOME_ENTER_MAIN, { type: 'file', path: 'C:\\docs\\a.md' })
+        await waitForMainViewMounted()
+
+        expect(app.find('.main-stub').exists()).toBe(true)
+        expect(app.find('.welcome-stub').exists()).toBe(false)
+    })
+
+    it('自动打开上次会话（autoOpenLastFolder）时同样在 READY 前预加载主界面模块', async () => {
+        const app = await mountApp(undefined, { systemSetting: { autoOpenLastFolder: true } })
+        await settle()
+
+        expect(app.find('.welcome-stub').exists()).toBe(true)
+        expect(ipc.notifyRendererReady).toHaveBeenCalledTimes(1)
+
+        ipc.trigger(IPC.FILE.WELCOME_ENTER_MAIN, { type: 'directory', path: 'C:\\docs' })
+        await waitForMainViewMounted()
+
+        expect(app.find('.main-stub').exists()).toBe(true)
     })
 
     it('只注册必要的 IPC 监听：WELCOME_ENTER_MAIN 与配置 flush', async () => {

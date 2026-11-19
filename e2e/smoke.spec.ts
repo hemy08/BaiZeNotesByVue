@@ -133,4 +133,106 @@ test.describe('Electron 主窗口冒烟', () => {
         expect(version.chromeVersion).toBeTruthy()
         expect(version.nodeVersion).toBeTruthy()
     })
+
+    /**
+     * 性能改造（主界面按需异步加载）的真实产物契约：
+     * - 入口只加载欢迎页所需的少量 JS（改造前入口 chunk ≈ 9.86MB，含 Monaco/highlight.js/KaTeX）；
+     * - 主界面（BaiZeNotes.vue → Monaco 等）改为独立异步 chunk，入口 HTML 不预载该 chunk，
+     *   否则动态 import 失去「欢迎页首屏更快」的意义。
+     * 说明：该用例只读构建产物，不需要额外启动 Electron（describe 的 beforeAll 已启动一次）。
+     */
+    test('构建产物契约：入口 JS 小于 4MB，主界面大依赖在未预载的异步 chunk 中', () => {
+        const rendererDir = path.join(ROOT, 'out', 'renderer')
+        const html = fs.readFileSync(path.join(rendererDir, 'index.html'), 'utf-8')
+        const assetPath = (href: string): string =>
+            path.join(rendererDir, href.replace(/^(\.\/)+/, ''))
+        const assetSize = (href: string): number => fs.statSync(assetPath(href)).size
+
+        // 1) 入口脚本 + modulepreload 的初始 JS 总量 < 4MB（验收线；改造前单入口 chunk 即 9.86MB）
+        const scriptSrc = html.match(/<script[^>]+src="([^"]+)"/)?.[1]
+        expect(scriptSrc, 'index.html 应包含入口 module 脚本').toBeTruthy()
+        const preloadHrefs = [...html.matchAll(/rel="modulepreload"[^>]*href="([^"]+)"/g)].map(
+            (match) => match[1]
+        )
+        const initialJsBytes = [scriptSrc as string, ...preloadHrefs].reduce(
+            (sum, href) => sum + assetSize(href),
+            0
+        )
+        expect(initialJsBytes).toBeLessThan(4 * 1024 * 1024)
+
+        // 2) 入口 JS 不含 Monaco / highlight.js 运行时标记：大依赖确实不在首屏解析
+        const entryCode = fs.readFileSync(assetPath(scriptSrc as string), 'utf-8')
+        expect(entryCode).not.toContain('MonacoEnvironment')
+        expect(entryCode).not.toContain('hljs')
+
+        // 3) 主界面异步 chunk 存在且含 Monaco（入口 chunk 通过动态 import 引用），
+        //    并且入口 HTML 不把它放进 modulepreload（按需加载而非预载）
+        const asyncChunkMatch = entryCode.match(/import\("\.\/([^"]+\.js)"\)\.then/)
+        expect(asyncChunkMatch, '入口 chunk 应通过动态 import 引用主界面异步 chunk').toBeTruthy()
+        const asyncChunkName = asyncChunkMatch?.[1] as string
+        expect(html).not.toContain(asyncChunkName)
+        const asyncChunkCode = fs.readFileSync(
+            path.join(rendererDir, 'assets', asyncChunkName),
+            'utf-8'
+        )
+        expect(asyncChunkCode).toContain('MonacoEnvironment')
+        expect(fs.statSync(path.join(rendererDir, 'assets', asyncChunkName)).size).toBeGreaterThan(
+            5 * 1024 * 1024
+        )
+    })
+
+    /**
+     * 主界面异步分块的真实加载验证（改造前该组件随入口 chunk 静态加载，无此路径）。
+     *
+     * 通过真实 config:write 写入 show-welcome=false 后刷新页面，模拟「启动即主界面」路径：
+     * App.vue 会在 READY 前预加载主界面分块并等待其挂载；这里断言主界面根节点、状态栏与
+     * Monaco 编辑器 DOM 均出现，且整条链路没有渲染层未捕获异常。
+     */
+    test('主界面异步分块可加载：show-welcome=false 时直接进入主界面', async () => {
+        type ConfigApi = {
+            config: {
+                read: <T = unknown>(name: string) => Promise<T | null>
+                write: <T = unknown>(name: string, data: T) => Promise<boolean>
+            }
+        }
+        const readShowWelcome = () =>
+            page.evaluate(() =>
+                (window as unknown as { api: ConfigApi }).api.config.read<boolean>('show-welcome')
+            )
+        const writeShowWelcome = (value: boolean) =>
+            page.evaluate(
+                (next) =>
+                    (window as unknown as { api: ConfigApi }).api.config.write(
+                        'show-welcome',
+                        next
+                    ),
+                value
+            )
+
+        const originalShowWelcome = await readShowWelcome()
+        const pageErrors: string[] = []
+        const collectPageError = (error: Error): void => {
+            pageErrors.push(String(error))
+        }
+        page.on('pageerror', collectPageError)
+
+        try {
+            expect(await writeShowWelcome(false)).toBe(true)
+            await page.reload()
+
+            // 欢迎页不再显示，主界面根节点与状态栏已挂载
+            await expect(page.locator('.welcome-screen')).toHaveCount(0)
+            await expect(page.locator('#editor-container')).toBeVisible()
+            await expect(page.locator('#status-bar')).toBeVisible()
+            // Monaco 异步 chunk 加载完成：编辑器容器内出现 Monaco 根 DOM
+            await expect(page.locator('#monaco-editor-container .monaco-editor')).toBeVisible({
+                timeout: 30_000
+            })
+            expect(pageErrors).toEqual([])
+        } finally {
+            page.off('pageerror', collectPageError)
+            // 还原配置：未设置过（null）时恢复为默认的「显示欢迎页」
+            await writeShowWelcome(originalShowWelcome !== false)
+        }
+    })
 })
