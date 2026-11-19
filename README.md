@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3.6-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.7-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Electron](https://img.shields.io/badge/Electron-43.8.10-blue.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5.45-brightgreen.svg)
@@ -127,7 +127,7 @@
 
 #### 版本信息
 
-- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.6）的发布说明
+- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.7）的发布说明
 - **更新日志**：展示依赖升级详情和代码适配修复
 - **技术栈信息**：显示项目技术栈详细信息
 - **关于页面**：显示应用版本、开发框架、系统环境信息
@@ -473,7 +473,7 @@ BaiZeNotesByVue/
 
 ## 📊 项目统计
 
-> 以下数据为 2026-11-19 实测（v1.3.6 基线；口径说明见 [报告总索引](docs/reports/README.md)）。
+> 以下数据为 2026-11-19 实测（v1.3.7 基线；口径说明见 [报告总索引](docs/reports/README.md)）。
 
 |     指标     |     数量     | 说明                                                                                             |
 | :----------: | :----------: | :----------------------------------------------------------------------------------------------- |
@@ -663,7 +663,14 @@ npm run clean
 
 ## 🗺️ 开发路线图
 
-### v1.3.6 (当前版本)
+### v1.3.7 (当前版本)
+
+- [x] 公共接口归位第 0~4 批：shared 三层单真源（types 14 / utils 11 / constants 10 模块）、60+ 文件迁移、18/18 对话框 BaseDialog 组件化
+- [x] 主界面异步分块：入口 chunk 10,096KB → 114KB（-98.9%），初始加载 -94.3%
+- [x] 安全加固：PDF 预览 pdf.js、CSP 收紧、preload 受限白名单、IPC 分组 17 组、PlantUML 空闲销毁
+- [x] E2E 纳入 CI、死通道清理、欢迎页窗口控制修复、报告 HTML Wiki 重构（23 页）+ 结构分析报告（5 张 SVG）
+
+### v1.3.6
 
 - [x] 2026-11-15 全面治理与迭代：安全加固（P0 攻击链闭环）、国际化（i18n）、预览本地单跳渲染、IPC 架构收口
 - [x] 127 项检查清单 105 项完全修复、22 项部分修复；新增内容审查 32 项问题修复 25 项

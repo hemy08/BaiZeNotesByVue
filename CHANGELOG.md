@@ -1,120 +1,70 @@
-## 2026年11月15日 - 版本 1.3.6（审查修复批次）
+## 2026年11月19日 - 版本 1.3.7（结构治理 / 性能 / 安全与文档体系）
 
-> 对 1.3.0~1.3.5 新增内容（插件工具 / mkdocs-material 扩展 / 系统设置补充实现）做全量代码审查（32 项问题：P1×2 / P2×11 / P3×19），修复全部 P1/P2 与 12 项 P3，剩余 7 项 P3 为文档声明类低风险项。审查与修复详情见 [新增内容审查报告](docs/reports/md/01-检查与扫描/全量扫描与审查报告.md)。
+> 承接 1.3.6（2026-11-15 发布）之后 **11-18、11-19 的全部修改**：以「公共接口归位」第 0~4 批完成 shared 三层单真源与渲染层组件化，主界面异步分块将入口 chunk 降低 98.9%，并完成 PDF 预览 / CSP / preload 白名单等安全加固与报告 HTML Wiki 文档体系重构。
 
-### 📚 文档整理（2026-11-18）
-
-- **报告归档整理**：`docs/reports` 报告统一整理——文件名去除日期前缀、按「检查与扫描 / 修复与实施 / 专项治理」分类、同主题合并（32 份 → 19 份合并稿，另新增台账 1 份，共 20 篇）；Markdown 版在 `docs/reports/md/`，HTML 版单独整理为 `docs/reports/html/` 下的 **HTML Wiki**（`README.html` 首页 + `_sidebar.md` 侧边栏 + 报告页面），不再放入 `docs/wiki/`
-- **遗留问题跟踪台账**：新增 [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md)（21 项，含优先级/位置/影响/状态列与修复记录章节，修复完成后更新状态）；同步接入 HTML Wiki 顶部导航与侧边栏
-- **报告整体导航**：HTML Wiki 每页顶部新增固定整体导航（首页 + 3 个分类下拉 + 当前页高亮 + 分类自动展开）；Markdown 报告顶部同步带报告导航行（HTML 生成时自动剥离）；新增 `build/generate-report-wiki.js` 批量生成脚本与 `build/report-nav.html` 导航片段，`build-html-report.js` 支持 `--nav` / `--navHtml` 注入
-- **合并明细**：3 份扫描报告 →《全量扫描与审查报告》；4 份修复类（计划 + 三轮实施）→《127 项基线修复实施汇总》；新旧 IPC 矩阵 →《IPC 通信矩阵》；通信检查 + 修复计划 + 命名方案 →《IPC 通信治理报告》；3 份 mkdocs →《mkdocs-material 语法支持》；jyshare 调研（长版）+ 集成实施 →《插件工具集成》（重复短版删除）；CQ-10 + PF4-9 + NSIS →《专项验证记录》
-- **一致性核对**：32 份报告逐份对照当前实现（v1.3.6）——实施/调研类主体与代码一致（15 项 mkdocs 语法、38 插件、92 IPC 通道可验证）；检查类数字均停留在报告时点（已标注归档）；同步修正 README / reports 索引基线（158 文件 / 2,871 用例 / 92 通道）与 IPC 矩阵内部数字矛盾（当时 92→90、api 7→6、域错配 10 通道/5 组）
-- 同步更新：根 README 文档索引与统计数字、docs/reports 索引与 HTML Wiki（README + _sidebar）、wiki README（5 类 / 27 篇）
-
-### ✨ 新增功能
-
-- **死通道清理（2026-11-18 晚）**：按旧通信矩阵（2026-11-15，16 个死通道）逐项排查确认——16 个历史死通道已于此前的 P2 死代码清理批次全部删除（当前零引用常量扫描 = 0）；本轮另清理 4 项空转/死分支：
-  - `WINDOW.START_DRAG`（空实现握手：常量 + 发送点 + 注册 + 测试断言全部删除）
-  - `THEME.INIT_THEME_STYLES`（半死：6 个发送点、0 个接收；常量 + 6 处发送 + 6 个测试用例删除，对话框主题实际由内联注入 + THEME_UPDATED 重载覆盖）
-  - `EDITOR.UPDATE_OPTIONS` 的渲染层 R→M 死分支（BaiZeNotes.vue，Monaco 主题已由 loadMonacoTheme 本地 defineTheme/setTheme 应用）
-  - `EVENTS.STATUS_BAR_UPDATE` 的渲染层反向 send（主进程无监听，用户提示由主进程 failRecentOpen 下发）
-  - 通道总数 92 → **90**；同步更新 [2026-11-18-IPC通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md)（md + html）与 reports/README 基线
-  - 验证：typecheck 三工程 0 错误、ESLint 0/0、vitest **155 文件 / 2823 用例全通过**
-
-- **文件菜单「最近文件」/「最近文件夹」子菜单**：打开「文件」菜单时动态拉取最近列表，各最多展示 20 项（最近文件显示文件名、最近文件夹显示路径，超长自动截断），点击即快速切换；空列表显示「（暂无记录）」占位
-  - 主进程新增 `FILE.RECENT_LIST` / `FILE.OPEN_RECENT` invoke 通道（sender 校验）；打开目标必须命中当前最近列表（白名单，防任意路径），文件走 OpenSelectFile 链路、文件夹复用工作区根校验 + 主界面时序打开
-  - `openDirectoryInMainView` 抽取自启动恢复逻辑复用；`runAfterMainViewEntered` 下沉为叶子模块破循环依赖
-  - 新增测试：最近列表截断/容错、打开白名单/校验/时序、菜单动态注入（新增 menubar-recent 组件测试）、preload 暴露
-  - 验证：typecheck 三工程 0 错误、ESLint 0/0、vitest **154 文件 / 2821 用例全通过**
-
-### 🔴 P1 修复（2）
-
-- **正则测试冻结**：回归 **Web Worker + 3s 时间预算**（超时 terminate 重建 worker，UI「匹配中/超时」提示；electron-vite build 产出独立 worker chunk 5.23KB），灾难性回溯不再冻结应用
-- **自动备份阻塞**：全链路 `fs.promises` 异步化；保存设置/启动仅重启定时器不再立即执行（首备在第一个间隔到点）；逐条写入失败回滚半成品目录
-
-### 🧭 报告导航与 HTML 查看器修复（2026-11-18 晚追加）
-
-- **报告 HTML Wiki 顶部整体导航**：20 个页面（首页 + 19 份报告）顶部新增固定导航条（首页 + 3 分类下拉 + 当前页高亮 + 分类自动展开）；修复下拉菜单被 `overflow` 裁剪、`details` 关闭态被作者样式覆盖导致点击无反应的问题
-- **HTML 查看器相对链接修复**：`srcdoc` 文档基准 URL 为父页面，本地 HTML（报告 Wiki 导航等）相对链接会解析到 app 目录导致点击无响应；读取 HTML 后注入 `<base href="file:///<文件目录>/">`（新增 `html-view-utils.ts`，不改 sandbox 脚本策略），app 内查看报告可正常点击导航
-- **构建工具**：新增 `build/generate-report-wiki.js`（批量生成 + 自动注入导航 + 正文 md→html 链接规范化）与 `build/report-nav.html` 导航片段；`build-html-report.js` 支持 `--nav` / `--navHtml`
-
-### 📄 PDF 预览与安全收紧（2026-11-18）
-
-- **PDF 预览（pdf.js）**：新增 `pdfjs-dist` 依赖；新增 `FILE.READ_BINARY` 二进制读取通道（Path Guard 校验 → Uint8Array）；[ShowPdfEditor.vue](src/renderer/src/components/HemyTools/ShowPdfEditor.vue) 重写为 pdf.js canvas 渲染（翻页/缩放/错误提示/卸载销毁），恢复插件注册与「工具→常用小工具→PDF 预览」菜单入口（新增 2 个 i18n 词条）
-- **按需异步加载**：HTML 查看器与 PDF 预览改为异步组件，pdf.js 独立 chunk **802KB**；主 renderer chunk 11,142KB → **10,333KB（-809KB）**，消除 `INEFFECTIVE_DYNAMIC_IMPORT` 警告
-- **CSP 收紧**：补充 `object-src 'none'`、`base-uri 'self'`、`form-action 'none'`；新增 `renderer-csp.test.ts` 契约测试（6 用例）锁定关键指令；`unsafe-eval` 经 grep 确认渲染层无 eval/new Function 使用（移除需实机验证）
-- 测试：新增 PDF 组件测试 6 用例、READ_BINARY 通道测试 3 用例；插件/菜单/词典断言同步（插件工具 37 → 38）
-- 验证：typecheck 0 错误、ESLint 0/0、vitest **156 文件 / 2,847 用例全通过**、`electron-vite build` 成功
-
-### 🧹 公共接口归位第 4 批（P3 清理，2026-11-19）
-
-- **主进程/配置**：删 dialog-helpers 3 个死包装；4 处手写 basename/dirname 统一；主题/图标资源路径统一（**修复主窗口图标一直未加载的真实缺陷**）；删 @mainer 死别名；global-types 迁移 shared；IPC domain 计数 18→17 + 防回归断言
-- **渲染层**：删死 composable useEventBus（-13 用例）；messageTypes 收敛；18 处 console→logger；**修复 ThemeSettingDialog 8 个 resize-handle 未生效缺陷**（历史缺陷）；admonition.data 死字段清理
-- **公共接口归位计划第 0–4 批全部完成**：累计新建 shared 层 22 个模块、60+ 文件迁移、渲染层组件化 18/18 对话框、净减约 4,000+ 行重复代码
-- 门禁：typecheck 0 / ESLint 0-0 / vitest **171 文件 / 3,198 用例全通过** / build 成功 / E2E 4 passed
-
-### 🧩 公共接口归位第 3 批完成（2026-11-19）
-
-- **BaseDialog 18/18 对话框迁移完成**：C-2 组 7 个（净 -626 行，外壳 355 + 正文 545 条声明审计 0 不一致）、C-3 组 4 个（247 项属性 0 差异）、C-4 组 4 个特殊对话框（ThemeSetting 8 个 resize-handle → prepend 插槽、HelpAbout 仅关闭按钮标题栏）
-- **BaseDialog 扩展**：titleTextStyle/closeButtonStyle（DialogStyleProperties 类型含 app-region）+ prepend 插槽（18 props/4 插槽）
-- **插件样式副本清理**：13 个组件删除本地 scoped 副本（-229 行 / 121 条重复声明），视觉零变化
-- 新增 3 个外壳契约测试文件（C-2/C-3/C-4，共 79 用例）
-- 门禁：typecheck 0 / ESLint 0-0 / vitest **172 文件 / 3,214 用例全通过** / build 成功 / E2E 4 passed
-
-### 🧩 公共接口归位第 3 批（2026-11-19，🟡 部分完成）
-
-- **组件化**：WindowControls（欢迎页/主界面统一，-222 行）、FileViewerShell + useFileViewerState（HTML/PDF 壳层去重：-343 行，27 用例通过）、TextCodecTool（4 codec 薄封装 138/147/160→41/48/50 行）、BaseDialog（16 props/3 插槽 + 3 个 simple 对话框迁移，-225 行重复 CSS）
-- **样式/解析收口**：plugin-tools-common.css（10 个通用类）、preview-block-utils（4 插件净减 309 行 + 23 等价性单测）
-- **清理**：删除死组件 MermaidRender.vue（-114 行），测试迁移到 hemy-editor-render 懒加载路径
-- 门禁：typecheck 0 / ESLint 0-0 / vitest **169 文件 / 3,129 用例全通过** / build 成功 / E2E 4 passed
-
-### 🔗 公共接口归位第 2 批（2026-11-19）
-
-- **IPC 载荷契约**：新建 `shared/types/ipc.ts`（IpcRequests 58/58、IpcResponses 26、IpcEvents 25/25）+ 静态护栏测试（渲染层 75 处调用通道 ⊆ 请求表）
-- **CONFIG 映射**：`ConfigName`（8）+ `ConfigReadMap/ConfigWriteMap`，修正 2 处渲染层错误断言（editor/quick-links 实际形状）
-- **对话框契约**：VueDialogName 24 / 主进程 9 + data 三方核对；删除 createFileFolder 的 isFolder 死字段
-- **文件树/主题/其余契约**：FileItem.id + FileTreePayload；28 项主题类型族上移 + THEME_GROUPS 统一（消除两套硬编码清单）；PlantUML/版本/备份/加密/编辑器/快捷链接契约两端统一
-- 门禁：typecheck 0 / ESLint 0-0 / vitest **165 文件 / 3,074 用例全通过** / build 成功 / E2E 4 passed
-
-### 🧱 公共接口归位第 1 批（2026-11-19）
-
-- **新建 `src/shared/utils/`**：path（file:// URL/路径比较/解析）、hash（FNV-1a）、lru-cache、html（转义/head 注入）、random、validate、format、concurrency、debounce、date、backup-dir（11 模块 + 121 用例）
-- **新建 `src/shared/constants/`**：window、limits、render、file-extensions、hash-algorithms、encodings（6 模块 + 15 用例，含既有常量漂移护栏）
-- **使用方迁移**：主进程 16 文件 + 渲染层 15 文件改引 shared（保留导出名/签名，行为零变化）
-- **顺带修复**：`MarkdownPreviewComponent` basename 短路缺陷；Monaco model URI 统一规范 `file:///` + UNC 兼容（`toMonacoModelUrl`）
-- 门禁：typecheck 0 / ESLint 0-0 / vitest **160 文件 / 3,015 用例全通过** / build 成功 / E2E 4 passed
-
-### 🧩 公共接口归位第 0 批（2026-11-19）
-
-- **URL 单一真源**：main 常量表改为 re-export shared 真源（删 52 条重复常量）；渲染层菜单删除 50 个死 URL 字段
-- **窗口控制修复**：主界面最大化改 TOGGLE_MAXIMIZE（二次点击还原）+ 图标/title 切换 + 状态同步；修复非法 CSS
-- **默认值统一**：删 useConfigStore 死状态；新增 shared `SYSTEM_SETTING_FALLBACK`；SystemSettingDialog 引用共享常量
-- **主题广播收敛**：改用 shared `ThemeUpdateData`；新增 `buildThemeBroadcastPayload()`；三处广播统一走 `broadcastThemeToAllWindows`
-- **结构分析报告归档**：《代码整体结构分析报告》+ 5 张 SVG 图 + HTML wiki；报告生成脚本新增导航自动同步
-- **修复计划文档**：《公共接口归位修复计划》（批次路线图 SVG + 批次 1–4 明细/验收/手测/风险）HTML wiki 收录（23 页）
-- 门禁：typecheck 0 / ESLint 0-0 / vitest 158 文件 2,877 用例全通过 / build 成功
-
-### ⚡ 主界面异步分块（2026-11-19）
+### ⚡ 性能：主界面异步分块（2026-11-19）
 
 - **入口 chunk 10,096KB → 114KB（-98.9%）**：主界面 `BaiZeNotes.vue` 改为 `defineAsyncComponent` 按需加载；Monaco（≈7.3MB）、highlight.js（≈1.29MB）、KaTeX（≈0.51MB）与渲染管线移入主界面异步 chunk（≈9,644KB）；初始加载 JS+CSS 10,541KB → **604KB（-94.3%）**
 - **启动恢复时序**：主界面挂载并注册 IPC 监听后上报再发 READY（show-welcome=false）；autoOpenLastFile/Folder 路径 READY 前预加载模块；欢迎页首帧后空闲预加载
 - **E2E**：新增 2 用例（构建产物契约 + show-welcome=false 真实进入主界面且 Monaco 加载），共 4 passed
 - 门禁：typecheck 0 / ESLint 0-0 / vitest 158 文件 2,871 用例全通过 / electron-vite build 成功
 
-### 🧹 代码复检清理与 E2E 入 CI（2026-11-19）
+### 🧩 公共接口归位第 0~4 批（2026-11-19）
 
-- **E2E 纳入 CI**：新增并行 e2e job（windows-latest + Playwright Electron 冒烟，失败上传 report/trace）；冒烟增强为主窗口/欢迎页窗口控制/preload 桥/IPC 往返断言
-- **对话框安全**：dialog preload 增加接收通道白名单（仅 THEME_UPDATED）；JSDOM 对话框 HTML 统一注入严格 CSP（阻断外部资源/网络）
-- **命名与默认值**：`CONVERT_SAVE_ENCODING` 通道值改为 `file:convert-save-encoding`；渲染层 `autoOpenLastFile` 默认值与主进程统一为 false
-- **文档口径**：docs/wiki（29 篇）与 docs/md（2 篇）统一到 v1.3.6 实测口径（92 通道/17 组、158 文件/2,871 用例、58+25 白名单、38 插件），修复旧报告引用与过期基线指引
-- 门禁：typecheck 0 / ESLint 0-0 / vitest 158 文件 2,871 用例全通过 / electron-vite build 成功 / E2E 冒烟 2 passed
+- **第 0 批（URL / 窗口控制 / 默认值 / 主题广播）**：URL 单一真源（main 常量表改为 re-export shared 真源，删 52 条重复常量）；渲染层菜单删除 50 个死 URL 字段；主界面最大化改 `TOGGLE_MAXIMIZE`（二次点击还原）+ 图标/title 切换；删除 `useConfigStore` 死状态、新增 shared `SYSTEM_SETTING_FALLBACK`；主题广播统一走 `broadcastThemeToAllWindows`（shared `ThemeUpdateData`）
+- **第 1 批（shared/utils + shared/constants）**：新建 `src/shared/utils/` 11 模块（path / hash / lru-cache / html / random / validate / format / concurrency / debounce / date / backup-dir）+ `src/shared/constants/` 6 模块（window / limits / render / file-extensions / hash-algorithms / encodings）；主进程 16 文件 + 渲染层 15 文件迁移（保留导出名/签名，行为零变化）；顺带修复 MarkdownPreviewComponent basename 短路缺陷、Monaco model URI 统一 `file:///` + UNC 兼容
+- **第 2 批（shared/types 契约层）**：新建 `shared/types/ipc.ts`（IpcRequests 58 / IpcResponses 26 / IpcEvents 25 + 静态护栏测试）、`config.ts`（ConfigName 8 + 读写映射）、`dialog.ts`（VueDialogName 24 / 主进程 9）；文件树/主题族/其余契约两端统一；删除 createFileFolder `isFolder` 死字段
+- **第 3 批（渲染层组件化 + BaseDialog 18/18）**：WindowControls（欢迎页/主界面统一，-222 行）、FileViewerShell + useFileViewerState（HTML/PDF 壳层去重 -343 行）、TextCodecTool（4 codec 薄封装）、BaseDialog（18 props / 4 插槽，18/18 对话框迁移，+插件样式副本清理 -229 行/121 条重复声明）、preview-block-utils（4 预览插件净减 309 行 + 23 等价性单测）；删除死组件 MermaidRender.vue；新增 C-2/C-3/C-4 外壳契约测试 79 用例
+- **第 4 批（P3 清理）**：删 dialog-helpers 3 个死包装；4 处手写 basename/dirname 统一；主题/图标资源路径统一（**修复主窗口图标一直未加载的真实缺陷**）；删 @mainer 死别名；global-types 迁移 shared；IPC domain 计数 18→17 + 防回归断言；删死 composable useEventBus（-13 用例）；18 处 console→logger；**修复 ThemeSettingDialog 8 个 resize-handle 未生效缺陷**
+- **累计**：新建 shared 层 22 个模块、60+ 文件迁移、18/18 对话框组件化、净减约 4,000+ 行重复代码；最终 vitest **171 文件 / 3,198 用例全通过**
 
-### 🪟 欢迎页窗口控制修复（2026-11-18，用户反馈）
+### 🛡️ 安全与稳定性修复（2026-11-18）
 
-- **关闭按钮延迟**：CLOSE 通道原以「无活动文件」判断跳过 FLUSH_CONTENT 的 2s 超时，但启动恢复可能已在后台恢复上次文件到 appState → 欢迎页点击关闭仍进入 flush 等待。新增主进程 `welcome-state` 状态模块（发送 WELCOME_ENTER_MAIN 时标记进入主界面、新窗口创建时复位），欢迎页时直接快速关闭
-- **最大化二次点击无效**：欢迎页最大化按钮原发送 `MAXIMIZE`（仅最大化，二次点击无效果），改为 `TOGGLE_MAXIMIZE` 切换最大化/还原；按 `IS_MAXIMIZED` 动态切换「最大化/还原」图标与 title（新增 i18n 词条 `workspace.window.restore`）
-- 测试：新增 welcome-state 4 用例；欢迎页窗口控制测试更新（TOGGLE 断言 + 图标状态 2 用例）；basic-components 窗口按钮断言同步
-- 门禁：typecheck 0 错误、ESLint 0/0、vitest **158 文件 / 2,871 用例全通过**、`electron-vite build` 成功
+- **修复遗留问题批次 1**：新增 `FILE.OPEN_IN_BROWSER` 通道（扩展名 + Path Guard 校验后 `pathToFileURL` → `shell.openExternal`）；MenuBar 主题广播后重新读取配置（修正选中态不刷新）；dialog preload `on/removeListener` 包装函数缓存（退订引用一致）；新增 `.github/workflows/ci.yml`（typecheck + ESLint + Vitest）；electron-builder 显式 `compression: maximum`
+- **修复遗留问题批次 2**：主窗口 preload 受限 ipcRenderer（send/invoke 57 通道 + on/once 26 通道白名单，未知通道丢弃并告警）；默认更新源改为 GitHub Releases；`theme-registry` 新增 `warmupMonacoThemeCache()` 窗口就绪后异步预热，首次同步构建不再做文件 IO
+- **修复遗留问题批次 3**：IPC 常量分组与 domain 统一（编码类并入 FILE、系统类新建 SYSTEM、设置类新建 SETTING、Monaco 并入 MONACO，16→17 组，通道仍 90）；PlantUML 隐藏渲染窗空闲 60s 销毁（SVG LRU 保留、按需重建、timer unref）；CSP 与 HemyTools 评估结论
+- **修复遗留问题批次 4（PDF 预览与 CSP 收紧）**：新增 `pdfjs-dist` 依赖与 `FILE.READ_BINARY` 二进制读取通道（Path Guard → Uint8Array）；ShowPdfEditor 重写为 pdf.js canvas 渲染（翻页/缩放/错误提示/卸载销毁），恢复插件注册与「工具→常用小工具→PDF 预览」菜单入口（新增 2 个 i18n 词条）；HTML 查看器与 PDF 预览改按需异步组件，pdf.js 独立 chunk **802KB**（主 renderer chunk -809KB）；CSP 补充 `object-src 'none'` / `base-uri 'self'` / `form-action 'none'` 并新增 renderer-csp 契约测试 6 用例
+- **死通道清理（2026-11-18 晚）**：16 个历史死通道确认已删除；本轮另清 4 项空转/死分支——`WINDOW.START_DRAG`（空实现握手）、`THEME.INIT_THEME_STYLES`（6 发送点/0 接收）、`EDITOR.UPDATE_OPTIONS` 渲染层 R→M 死分支、`EVENTS.STATUS_BAR_UPDATE` 反向 send；同步更新 IPC 通信矩阵与索引基线
+- **报告导航与 HTML 查看器修复（2026-11-18 晚追加）**：HTML Wiki 顶部固定导航条（首页 + 3 分类下拉 + 当前页高亮 + 分类自动展开），修复下拉被 `overflow` 裁剪、`details` 关闭态被样式覆盖导致点击无反应；HTML 查看器 `srcdoc` 注入 `<base href="file:///<文件目录>/">`，本地 HTML 报告相对链接可正常点击；新增 `build/generate-report-wiki.js` 与 `build/report-nav.html` 导航片段
+- **欢迎页窗口控制修复（2026-11-18 用户反馈）**：新增主进程 `welcome-state` 状态模块，欢迎页关闭跳过 FLUSH_CONTENT 的 2s 等待；最大化按钮改 `TOGGLE_MAXIMIZE` 二次点击还原，按 `IS_MAXIMIZED` 动态切换图标与 title（新增 i18n 词条 `workspace.window.restore`）
+
+### 🔧 代码复检批次 5~6 与工程卫生（2026-11-19）
+
+- **批次 5（P0/P1/P2 与工程卫生）**：P0 欢迎页最近文件夹进入主界面补 `markMainViewEntered`、CLOSE 快路径 + 启动配置集成测试；P1 PDF 重试按钮失效/双实例 componentId/渲染令牌与加载代次/首屏空白/缩放滚动等修复；P2 `READ_BINARY` 128MB 上限与去拷贝、preload 白名单静态回归（58/25 双向核对）、`CSP frame-src` 收紧与 base-uri 回退、HTML/PDF 按需挂载、最大化 resize 同步 + timer 清理、PlantUML 空闲销毁重计时、dialog on 去重；工程卫生：pdfjs-dist/jsdom 迁 devDependencies、tsbuildinfo 出库、git 索引大小写修正、死事件清理
+- **批次 6（E2E 入 CI 与安全纵深）**：新增并行 e2e CI job（构建 + Playwright Electron 冒烟，失败上传 report/trace），冒烟增强主窗口/欢迎页窗口控制/preload 桥/IPC 往返断言；dialog preload 接收通道白名单（仅 THEME_UPDATED）；JSDOM 对话框 HTML 统一注入严格 CSP（`default-src 'none'`）；`CONVERT_SAVE_ENCODING` 通道值统一为 `file:convert-save-encoding`；渲染层 `autoOpenLastFile` 默认值与主进程一致（false）；清理过期注释
+
+### 📚 文档与报告体系（2026-11-18 ~ 11-19）
+
+- **报告归档重构（2026-11-18）**：`docs/reports` 去日期前缀、按「检查与扫描 / 修复与实施 / 专项治理」分类、同主题合并（32 份 → 19 份合并稿 + 新增台账 = 20 篇）；Markdown 与 HTML 分目录；HTML Wiki（首页 + `_sidebar.md` 侧边栏 + 每页固定导航与悬浮目录）；新增 `build/generate-report-wiki.js` 批量生成脚本与 `build/report-nav.html` 导航片段，`build-html-report.js` 支持 `--nav` / `--navHtml`
+- **遗留问题跟踪台账**：新增《当前遗留问题清单》（21 项，含优先级/位置/影响/状态列与修复记录章节）
+- **结构分析报告**：新增《代码整体结构分析报告》+ 5 张 SVG 架构图（进程架构 / 主进程分层 / 渲染层 / 数据流 / 构建发布），报告生成支持 SVG 占位自动内嵌与导航自动同步
+- **公共接口归位修复计划**：新增《公共接口归位修复计划》（批次路线图 SVG + 批次 1~4 明细/验收/手测/风险），HTML Wiki 收录（23 页）
+- **口径统一**：README / 报告索引 / docs wiki / 台账统一到最新实测口径（171 文件 / 3,198 用例、92 通道 / 17 组、58+25 白名单、38 插件、57 Monaco 主题、最新产物体积）
+
+### ✅ 门禁
+
+- typecheck 三工程 0 错误、ESLint 0/0、vitest **171 文件 / 3,198 用例全通过**、electron-vite build 通过、E2E 4 passed
+
+---
+
+## 2026年11月15日 - 版本 1.3.6（审查修复批次）
+
+> 对 1.3.0~1.3.5 新增内容（插件工具 / mkdocs-material 扩展 / 系统设置补充实现）做全量代码审查（32 项问题：P1×2 / P2×11 / P3×19），修复全部 P1/P2 与 12 项 P3，剩余 7 项 P3 为文档声明类低风险项。审查与修复详情见 [全量扫描与审查报告](docs/reports/md/01-检查与扫描/全量扫描与审查报告.md)。
+>
+> 说明：1.3.6 于 2026-11-15 发布；**11-18、11-19 的后续修改已全部归入 1.3.7**（见上）。
+
+### ✨ 新增功能
+
+- **文件菜单「最近文件」/「最近文件夹」子菜单**：打开「文件」菜单时动态拉取最近列表，各最多展示 20 项（最近文件显示文件名、最近文件夹显示路径，超长自动截断），点击即快速切换；空列表显示「（暂无记录）」占位
+  - 主进程新增 `FILE.RECENT_LIST` / `FILE.OPEN_RECENT` invoke 通道（sender 校验）；打开目标必须命中当前最近列表（白名单，防任意路径），文件走 OpenSelectFile 链路、文件夹复用工作区根校验 + 主界面时序打开
+  - `openDirectoryInMainView` 抽取自启动恢复逻辑复用；`runAfterMainViewEntered` 下沉为叶子模块破循环依赖
+  - 新增测试：最近列表截断/容错、打开白名单/校验/时序、菜单动态注入（新增 menubar-recent 组件测试）、preload 暴露
+  - 验证：typecheck 三工程 0 错误、ESLint 0/0、vitest **154 文件 / 2,821 用例全通过**
+
+### 🔴 P1 修复（2）
+
+- **正则测试冻结**：回归 **Web Worker + 3s 时间预算**（超时 terminate 重建 worker，UI「匹配中/超时」提示；electron-vite build 产出独立 worker chunk 5.23KB），灾难性回溯不再冻结应用
+- **自动备份阻塞**：全链路 `fs.promises` 异步化；保存设置/启动仅重启定时器不再立即执行（首备在第一个间隔到点）；逐条写入失败回滚半成品目录
 
 ### 🟡 P2 修复（11）
 

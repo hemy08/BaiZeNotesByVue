@@ -1,5 +1,43 @@
 # 发布说明 (Release Notes)
 
+## 版本 1.3.7 (2026-11-19)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🧩 公共接口归位（第 0~4 批）
+
+- 新建 `shared/utils`（11 模块）+ `shared/constants`（10 模块）+ `shared/types` 契约层（IPC 载荷 58/26/25、CONFIG 8、对话框/文件树/主题族）
+- 渲染层组件化：BaseDialog **18/18** 对话框迁移、WindowControls、FileViewerShell + useFileViewerState、TextCodecTool、preview-block-utils
+- 主进程/渲染层 60+ 文件迁移至 shared（re-export 门面 + 原导出名，调用点零改动），净减约 4,000+ 行重复代码
+
+### ⚡ 性能：主界面异步分块
+
+- 入口 chunk **10,096KB → 114KB（-98.9%）**；初始加载 10,541KB → **604KB（-94.3%）**
+- Monaco / highlight.js / KaTeX 与渲染管线移入主界面异步 chunk（≈9,644KB）；启动恢复时序修正
+
+### 🛡️ 安全与稳定性
+
+- PDF 预览改用 **pdf.js**（按需异步、独立 chunk 802KB），CSP 收紧（object-src / base-uri / form-action / frame-src）并新增契约测试
+- preload 主窗口受限 ipcRenderer 白名单（57/26）、dialog 接收白名单（仅 THEME_UPDATED）、JSDOM 对话框严格 CSP
+- IPC 常量分组统一 **17 组**；PlantUML 隐藏窗空闲销毁；死通道清理；欢迎页关闭延迟 / 最大化二次点击修复；报告 HTML 查看器相对链接修复
+
+### 🧪 工程与测试
+
+- **E2E 纳入 CI**（并行 e2e job + Playwright 冒烟增强）；新增 `.github/workflows/ci.yml`（typecheck + ESLint + Vitest）
+- 实测门禁：typecheck 三工程 0 错误、ESLint 0/0、vitest **171 文件 / 3,198 用例全通过**、E2E 4 passed、electron-vite build 通过
+
+### 📚 文档体系
+
+- 报告归档重构为 **HTML Wiki**（23 页，固定导航 + 悬浮目录 + 侧边栏）；新增《代码整体结构分析报告》（5 张 SVG 架构图）、《公共接口归位修复计划》、《当前遗留问题清单》台账
+- README / 报告索引 / docs wiki / 台账统一到最新实测口径
+
+</code></pre></blockcode></details>
+
+---
 ## 版本 1.3.6 (2026-11-15)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
@@ -15,7 +53,7 @@
   - **插件工具**：人民币大写超长金额精度修复；繁简转换/进制转换/字数统计性能优化；剪贴板操作失败有提示
   - **系统设置**：自动备份与托盘最小化默认关闭（可选开启）；新增单实例保护；启动恢复更可靠；备份文件冲突与超大文件保护
   - **性能**：图标数据拆出首屏主包
-- 门禁：typecheck 0 错误、ESLint 0/0、153 文件 / 2781 用例全通过
+- 门禁：typecheck 0 错误、ESLint 0/0、153 文件 / 2789 用例全通过
 - 详情见 [新增内容审查报告](docs/reports/md/01-检查与扫描/全量扫描与审查报告.md)
 
 </code></pre></blockcode></details>
