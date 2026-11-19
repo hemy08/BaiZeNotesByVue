@@ -2,7 +2,6 @@
 /dist
 /out
 /coverage
-/resources/_unused-assets/
 .DS_Store
 *.log*
 .vscode
@@ -13,10 +12,6 @@
 .codeartsdoer
 .npm-cache
 .codemate
-/resources/mermaid/node_modules/
-/resources/katex/node_modules/
-/src/renderer/src/lib/katex/node_modules
-/src/renderer/src/lib/mermaid/node_modules
 
 # ET-17：测试运行产生的临时目录（tests/unit/.window-security.test.ts.<pid>.<uuid>.tmpdir 等）。
 # 由 vitest globalSetup（tests/unit/helpers/tmpdir-global-setup.ts）兜底清理，
