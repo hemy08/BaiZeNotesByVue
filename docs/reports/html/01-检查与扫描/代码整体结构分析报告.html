@@ -301,7 +301,7 @@
 <li><strong>主进程是「薄外壳 + 厚内核」</strong>：<code>index.ts</code> 只做生命周期编排，业务集中在 <code>utils/file-utils</code>；IPC 注册分散 <strong>9 个文件 / 69 处调用</strong>（较首次成文 +2 文件），但统一在 <code>whenReady</code> 后一次性执行，全部套发送方校验（68 处）。</li>
 <li><strong>渲染层是「双段式外壳 + 单主界面 + 懒加载边界」</strong>：欢迎页入口 chunk <strong>127.07 kB</strong>，主界面（Monaco + 预览）**9,889.38 kB（≈9.89 MB）**整体异步；<strong>64 处动态 import</strong>（<code>.ts</code> 61 + <code>.vue</code> 3）构成全部按需加载边界，无手工 manualChunks。</li>
 <li><strong>预览管线是当前最复杂的单条链路</strong>：预渲染 → markdown-it（mkdocs/basic/media/blocks 四层插件）→ 异步图表 → DOMPurify → 远程图片策略 → v-html + TOC；四层插件已共享 <code>preview-block-utils</code>（14 函数 + 2 常量），本轮净减 309 行，逐层可降级、可单测。</li>
-<li><strong>主要结构债集中在四处</strong>：<code>config ↔ utils</code> 双向依赖（utils→config 实测 <strong>4</strong> 文件）、preload 白名单三份手工清单、Vue 对话框与主进程 JSDOM 对话框双体系、主界面大 chunk；另有 <strong>shared 边界唯一例外</strong>（<code>shared/utils/backup-dir.ts</code> 引用 <code>node:path</code>）、文档口径漂移与发布链路未 CI 化。</li>
+<li><strong>主要结构债集中在四处</strong>：<code>config ↔ utils</code> 双向依赖（utils→config 实测 <strong>4</strong> 文件）、preload 白名单三份手工清单、Vue 对话框与主进程 JSDOM 对话框双体系、主界面大 chunk；另有 <strong>shared 边界唯一例外</strong>（<code>shared/utils/backup-dir.ts</code> 引用 <code>node:path</code>）与发布链路未 CI 化（文档口径已完成全仓同步，自动化校验待做）。</li>
 </ol>
 <h2 id="sec-2">1. 仓库全景</h2>
 <pre><code>BaiZeNotesByVue/
@@ -1642,8 +1642,8 @@
 <tr>
 <td><strong>高</strong></td>
 <td>H5</td>
-<td>文档口径漂移<strong>部分修复</strong>：本轮 8 个文档提交已统一到 171 文件/3,198 用例，但台账基线仍写 158/2,871、README 仍含历史口径（157/158 文件等）</td>
-<td>读者/后续 AI 以错误基线做决策</td>
+<td>文档口径漂移 <strong>已修复（2026-11-19 18:00 全仓口径同步）</strong>：台账基线、根 README、docs/wiki 当前状态文档、报告索引统一为 171 文件/3,198 用例、57 Monaco 主题、最新产物体积；历史报告按「时点快照」保留旧数并已标注</td>
+<td>当前状态文档不再含旧基线；门禁数字自动校验仍未做（见 §9.3）</td>
 </tr>
 <tr>
 <td><strong>高</strong></td>
@@ -1737,7 +1737,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong>汇总</strong>：首次成文 19 条风险中，<strong>已修复 1 条（M8）</strong>、<strong>部分修复 7 条（H2/H5/M4/M5/M6/M9/L3）</strong>、<strong>仍存在 11 条（H1/H3/H4/H6/H7/M1/M2/M3/M7/L1/L2）</strong>；本轮新增 1 条低风险观察（L4）。</p>
+<p><strong>汇总</strong>：首次成文 19 条风险中，<strong>已修复 2 条（H5、M8）</strong>、<strong>部分修复 6 条（H2/M4/M5/M6/M9/L3）</strong>、<strong>仍存在 11 条（H1/H3/H4/H6/H7/M1/M2/M3/M7/L1/L2）</strong>；本轮新增 1 条低风险观察（L4）。</p>
 <h3 id="sub-3">9.3 改进建议（按优先级，不要求实施）</h3>
 <p><strong>P1（结构债，建议尽早）</strong></p>
 <ol>
@@ -1745,7 +1745,7 @@
 <li><strong>白名单单一化</strong>：以 <code>shared/ipc-channels.ts</code> + <code>shared/types/ipc.ts</code> 契约（58/26/25）为源，构建期生成两份 preload 白名单与 <code>window.api</code> 闭包通道；把现有 <code>ipc-payload-contract</code> 测试升级为「生成产物 vs 渲染层扫描」核对。</li>
 <li><strong>收敛对话框体系（基座已完成，剩余主进程侧）</strong>：18 个 Vue 对话框已统一 BaseDialog；下一步把 <code>ShowShortcutKeys/ShowUpdateLog/ShowReleaseNotes/ShowRename/ShowConfirmDelete</code> 等主进程 JSDOM 入口迁为 Vue 懒加载对话框，消除「新建文件/文件夹」双路径。</li>
 <li><strong>主界面二次分块</strong>：Monaco 初始化与预览管线二级懒加载（先外壳骨架，空闲/首编辑时加载 Monaco），降低首次进入的 ~9.89 MB 同步求值；评估 highlight.js 改 <code>core + 常用语言</code>。</li>
-<li><strong>修正文档口径并自动化</strong>：把台账/README 的 158/2,871 等旧口径统一到 171/3,198，并为门禁数字增加自动生成/校验脚本（CI 落盘并与 docs 基线比对）。</li>
+<li><strong>修正文档口径并自动化（口径已同步，自动化待做）</strong>：台账、README、docs/wiki 当前状态文档已统一到 171/3,198 等最新口径；下一步为门禁数字增加自动生成/校验脚本（CI 落盘并与 docs 基线比对）。</li>
 </ol>
 <p><strong>P2（治理与质量）</strong></p>
 <ol start="6">
@@ -1816,7 +1816,7 @@
 <h2 id="sec-13">附录 B：统计口径说明</h2>
 <ol>
 <li><strong>行数</strong>：UTF-8 统计、含空行与注释；<code>src</code> 统计含 <code>.d.ts</code>/<code>.svg</code> 资源，<code>tests</code> 含测试 helper；热点表为「非空行」口径（与目录行数不同口径）。</li>
-<li><strong>测试数</strong>：本报告采用 2026-11-19 17:55 全量 <code>vitest run</code> 实测值 <strong>171 文件 / 3,198 用例</strong>（首次成文为 158 / 2,871；历史报告中的 1,067～3,198 等为各自时点口径）。注意：根 README 与台账仍有 157/158 等旧口径，属风险 H5 的剩余部分。</li>
+<li><strong>测试数</strong>：本报告采用 2026-11-19 17:55 全量 <code>vitest run</code> 实测值 <strong>171 文件 / 3,198 用例</strong>（首次成文为 158 / 2,871；历史报告中的 1,067～3,198 等为各自时点口径）。口径同步：根 README、台账、docs/wiki 当前状态文档已于 2026-11-19 18:00 统一到本报告口径（历史报告保留时点快照并已标注）。</li>
 <li><strong>产物体积</strong>：Vite/electron-builder 输出为十进制 kB/MB；<code>out/main</code> <strong>10.50 MiB</strong>（含内联 jsdom）、<code>out/renderer</code> <strong>24.21 MiB</strong>、<code>app.asar</code> <strong>50.11 MiB</strong>、NSIS <strong>118.41 MiB（=124.17 MB）</strong>、portable <strong>107.46 MiB（=112.68 MB）</strong>、入口 chunk <strong>127.07 kB</strong>、主界面 <strong>9,889.38 kB（≈9.89 MB）</strong>。</li>
 <li><strong>主题口径</strong>：应用主题 28（<code>ThemeType</code> 28 项）；Monaco <strong>57 = 内置 3（vs/vs-dark/hc-black）+ 磁盘 54</strong>（themes 目录 55 个 JSON 中 <code>themelist.json</code> 为清单不计）。文档中「54/55」为旧口径。</li>
 <li><strong>动态 import</strong>：<strong>64 处</strong>（<code>.ts</code> 61 + <code>.vue</code> 3）；仅统计 <code>.ts</code> 时为 61（与首次成文同口径）。</li>
@@ -1824,12 +1824,27 @@
 </ol>
 <h2 id="sec-14">附录 C：更新记录（2026-11-19 17:55 刷新）</h2>
 <ul>
-<li><strong>触发</strong>：<code>3ea3a51..HEAD</code>（<code>7526e61</code>）共 13 个提交——「公共接口归位」第 0~4 批（URL 单一真源/窗口控制/默认值/主题广播收敛；shared/utils 11 + constants 7 + types 契约层；渲染层组件化与 BaseDialog；P3 清理）与 8 个文档批次。</li>
-<li><strong>结构刷新</strong>：shared 39→62 文件 / 6,200→9,179 行（三层单真源）；main 70→69 / 18,439→18,240（删 <code>global-types.d.ts</code>，16 文件实现迁入 shared）；renderer 250→255 / 69,939→68,211（组件化去重：18 对话框 −1,829 行、插件 CSS −229 行等）；消费矩阵 37/31→42/38。</li>
-<li><strong>事实修正</strong>：顶层菜单 13→12；Monaco 54→57（口径修正）；动态 import 61→64（口径补齐）；测试 158/2,871→171/3,198；jsdom 47→52；reports 22 篇 / HTML Wiki 23 页；URL 双份→单一真源（M8 已修复）。</li>
-<li><strong>风险状态刷新</strong>：M8 已修复；H2/H5/M4/M5/M6/M9/L3 部分修复（详见 §9.2）；其余仍存在；新增 L4（shared <code>backup-dir</code> 的 node:path 边界例外）。</li>
-<li><strong>图更新</strong>：5 张 SVG 的文件/行数、菜单数、主题数、测试数、文档页数、动态 import 等数字与模块名已按本表同步（见 <code>docs/reports/svg/</code>）。</li>
-<li><strong>未变</strong>：IPC 92/17、i18n 12 × 1,821、依赖 11/39/828、插件 38、Vue 对话框 18、E2E 4、应用主题 28、版本 1.3.6、最新 tag <code>release-1.3.5</code>、CI 覆盖范围、主要风险结构（H1/H3/H4/H6/H7）。</li>
+<li>
+<p><strong>触发</strong>：<code>3ea3a51..HEAD</code>（<code>7526e61</code>）共 13 个提交——「公共接口归位」第 0~4 批（URL 单一真源/窗口控制/默认值/主题广播收敛；shared/utils 11 + constants 7 + types 契约层；渲染层组件化与 BaseDialog；P3 清理）与 8 个文档批次。</p>
+</li>
+<li>
+<p><strong>结构刷新</strong>：shared 39→62 文件 / 6,200→9,179 行（三层单真源）；main 70→69 / 18,439→18,240（删 <code>global-types.d.ts</code>，16 文件实现迁入 shared）；renderer 250→255 / 69,939→68,211（组件化去重：18 对话框 −1,829 行、插件 CSS −229 行等）；消费矩阵 37/31→42/38。</p>
+</li>
+<li>
+<p><strong>事实修正</strong>：顶层菜单 13→12；Monaco 54→57（口径修正）；动态 import 61→64（口径补齐）；测试 158/2,871→171/3,198；jsdom 47→52；reports 22 篇 / HTML Wiki 23 页；URL 双份→单一真源（M8 已修复）。</p>
+</li>
+<li>
+<p><strong>风险状态刷新</strong>：M8 已修复；H2/H5/M4/M5/M6/M9/L3 部分修复（详见 §9.2）；其余仍存在；新增 L4（shared <code>backup-dir</code> 的 node:path 边界例外）。</p>
+</li>
+<li>
+<p><strong>图更新</strong>：5 张 SVG 的文件/行数、菜单数、主题数、测试数、文档页数、动态 import 等数字与模块名已按本表同步（见 <code>docs/reports/svg/</code>）。</p>
+</li>
+<li>
+<p><strong>未变</strong>：IPC 92/17、i18n 12 × 1,821、依赖 11/39/828、插件 38、Vue 对话框 18、E2E 4、应用主题 28、版本 1.3.6、最新 tag <code>release-1.3.5</code>、CI 覆盖范围、主要风险结构（H1/H3/H4/H6/H7）。</p>
+</li>
+<li>
+<p><strong>口径同步（2026-11-19 18:00）</strong>：根 README、docs/wiki（README + 02 设计与架构 4 篇 + 01 当前基线注）、报告总索引、HTML Wiki 首页、当前遗留问题清单统一到 171 文件/3,198 用例、92 通道/17 组、57 Monaco 主题（内置 3 + 磁盘 54）、118.41 MiB 安装包 / 50.11 MiB asar；H5 状态由「部分修复」更新为「已修复」。</p>
+</li>
 </ul>
 
   <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
