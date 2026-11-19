@@ -49,6 +49,7 @@
     <a class="toc-l2" href="#sec-11">附录 A：41 个包完整明细</a>
     <a class="toc-l2" href="#sec-12">附录 B：overrides 清单（治理后）</a>
     <a class="toc-l2" href="#sec-13">附录 C：数据字段说明（alerts-analysis.json）</a>
+    <a class="toc-l2" href="#sec-14">GitHub 侧操作记录（2026-11-19，API 实测）</a>
   </nav>
 
 <div class="wrap">
@@ -2052,6 +2053,13 @@ npm audit --registry=https://registry.npmjs.org --json &gt; out/dependabot/npm-a
 </tr>
 </tbody>
 </table>
+<h2 id="sec-14">GitHub 侧操作记录（2026-11-19，API 实测）</h2>
+<ul>
+<li>✅ 已开启 Dependabot alerts + security updates（PATCH /repos/{owner}/{repo} security_and_analysis → HTTP 200）</li>
+<li>✅ 已 dismiss 15 条 vendor 陈旧告警（manifest 位于 <code>src/renderer/src/lib/**</code>，对应清单已删除、无实际安装）：PATCH 成功 15/15，理由 <code>not_used</code></li>
+<li>当前 open 告警 254 → <strong>239</strong>（经全量分类：已修复 209 / 依赖已移除 30 / vendor 清单已删除 15 / 仍受影响 0；剩余为 GitHub 历史依赖图快照，待依赖图刷新后自动关闭或复核后 dismiss）</li>
+<li>后续：依赖图刷新后复核剩余 239 条；9 项 major（electron 45 / TS 7 / vitest 5 / eslint 10 / jsdom 31 等）按报告排期，不自动合并</li>
+</ul>
 
   <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
 </div>
