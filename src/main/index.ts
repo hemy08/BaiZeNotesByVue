@@ -14,6 +14,7 @@ import {
     registerConfigIpcHandlers,
     getEditorSetting,
     buildFontCss,
+    configManager,
     // 2026-11-18（遗留清单 #12）：窗口就绪后异步预热 Monaco 主题缓存
     warmupMonacoThemeCache,
     // 1.3.6：存量设置迁移（旧默认 minimizeToTray/enableAutoBackup=true → false）
@@ -27,6 +28,7 @@ import { RegisterShortKeys } from './config'
 import { logger } from './utils/logger'
 import { ipcListenerManager } from './ipc/ipc-listener-manager'
 import { resetWelcomeState } from './ipc/welcome-state'
+import { markMainViewEntered } from './ipc/welcome-state'
 // P1/C-03：主进程主题广播唯一实现（禁止再出现渲染层 window.electronAPI.broadcastTheme）
 import { broadcastThemeToAllWindows } from './ipc/theme-broadcast'
 // P1/N-05：IPC 发送方授权校验（主窗口登记 + 监听器包装）
@@ -467,6 +469,21 @@ app.whenReady().then(() => {
         }),
         GLOBAL_MAIN_INDEX_COMPONENT_ID
     )
+
+    // 2026-11-19（P0 修复）：遗留配置 show-welcome=false 时，渲染层启动读取该配置后
+    // 直接隐藏欢迎页进入主界面，但主进程没有任何通知。这里在启动阶段同步读取同一配置，
+    // 若为 false 则标记「主界面已进入」——否则 CLOSE 快速关闭会误判欢迎页并跳过
+    // FLUSH_CONTENT/脏保存（数据丢失回归）。
+    void (async () => {
+        try {
+            const showWelcome = (await configManager.readConfig('show-welcome')) as unknown
+            if (showWelcome === false) {
+                markMainViewEntered()
+            }
+        } catch (error) {
+            logger.warn('[Main] 读取 show-welcome 配置失败（按显示欢迎页处理）:', error)
+        }
+    })()
 
     createWindow()
 

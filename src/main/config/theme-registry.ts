@@ -197,7 +197,9 @@ function initializeRegistry(): void {
 }
 
 /**
- * 2026-11-18（遗留清单 #12）：启动空闲时异步预热 Monaco 主题缓存。
+ * 2026-11-18（遗留清单 #12）：窗口就绪后异步预热 Monaco 主题缓存。
+ * 注意：调用点在 ready-to-show（main/index.ts），**不是**空闲调度（无 setTimeout/
+ * requestIdleCallback），仅以异步 IO 并行于其他启动任务；2026-11-19 修正表述。
  *
  * 首次 getAllMonacoThemes 会在主线程同步 readdir/readFile 全量主题 JSON（冷启动 IO 阻塞）；
  * 本函数在窗口就绪后以异步 IO 填充「文件名清单 + 主题数据缓存」，使首次真实调用只做内存构建。

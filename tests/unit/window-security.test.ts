@@ -185,6 +185,8 @@ vi.mock('../../src/main/config', () => ({
     registerConfigIpcHandlers: internalMocks.registerConfigIpcHandlers,
     getEditorSetting: internalMocks.getEditorSetting,
     RegisterShortKeys: internalMocks.registerShortKeys,
+    // 2026-11-19（P0 修复）：index.ts 启动时读取 show-welcome 配置（欢迎页状态同步）
+    configManager: { readConfig: vi.fn(async () => null) },
     buildFontCss: (setting: { fontFamily: string; fontSize: number }) =>
         `body, .title-bar, .menu-bar { font-family: ${setting.fontFamily} !important; font-size: ${setting.fontSize}px !important; }`
 }))

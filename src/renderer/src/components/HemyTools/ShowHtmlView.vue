@@ -134,7 +134,7 @@ async function loadHtmlFile(path: string, name: string) {
  */
 function retryLoad() {
     if (filePath.value) {
-        loadHtmlFile(filePath.value, fileName.value)
+        void loadHtmlFile(filePath.value, fileName.value)
     }
 }
 
@@ -143,7 +143,7 @@ function retryLoad() {
  */
 function refreshContent() {
     if (filePath.value) {
-        loadHtmlFile(filePath.value, fileName.value)
+        void loadHtmlFile(filePath.value, fileName.value)
     }
 }
 
@@ -172,7 +172,7 @@ function onIframeLoad() {
  */
 function handleFileSelect(node: { path?: string; name?: string }) {
     if (node && node.path && node.name && node.name.endsWith('.html')) {
-        loadHtmlFile(node.path, node.name)
+        void loadHtmlFile(node.path, node.name)
     }
 }
 
@@ -180,17 +180,8 @@ function handleFileSelect(node: { path?: string; name?: string }) {
 onMounted(() => {
     // 监听文件选择事件
     EventBus.$on(EVENT_BUS.HTML_FILE_SELECTED, handleFileSelect, { componentId })
-
-    // 同时监听文件树节点的点击事件
-    EventBus.$on(
-        EVENT_BUS.FILE_TREE_NODE_CLICKED,
-        (node: { type?: string; name?: string; path?: string }) => {
-            if (node && node.type === 'file' && node.name && node.name.endsWith('.html')) {
-                loadHtmlFile(node.path ?? '', node.name)
-            }
-        },
-        { componentId }
-    )
+    // 2026-11-19 清理：原 FILE_TREE_NODE_CLICKED 监听为死监听（全仓无发送方，
+    // 资源管理器点击 HTML 已由 FileTreeNode 直接发 HTML_FILE_SELECTED + WORKSPACE_SHOW）。
 })
 
 onBeforeUnmount(() => {

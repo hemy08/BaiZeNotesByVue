@@ -21,9 +21,11 @@ export function withBaseHref(html: string, filePath: string): string {
     const normalized = String(filePath || '').replace(/\\/g, '/')
     const slash = normalized.lastIndexOf('/')
     const dir = slash >= 0 ? normalized.slice(0, slash + 1) : normalized
-    // encodeURI 保留 "/" 与 ":"，编码中文/空格等；确保目录以 / 结尾以便正确解析相对路径。
+    // encodeURI 保留 "/" 与 ":"，编码中文/空格等；但 `#` 与 `?` 在 file:// URL 中会分别被
+    // 解析为 fragment/query，必须先转义（与 preview-local-render.toFileUrl 口径一致）。
     // POSIX 绝对路径（/notes/）用 file:// + 路径（file:///notes/）；Windows（E:/...）需 file:/// 前缀。
-    const base = dir.startsWith('/') ? `file://${encodeURI(dir)}` : `file:///${encodeURI(dir)}`
+    const encodedDir = encodeURI(dir).replace(/#/g, '%23').replace(/\?/g, '%3F')
+    const base = dir.startsWith('/') ? `file://${encodedDir}` : `file:///${encodedDir}`
     const tag = `<base href="${base}">`
     if (/<head(\s[^>]*)?>/i.test(html)) {
         return html.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n    ${tag}`)

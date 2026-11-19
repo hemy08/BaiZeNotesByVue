@@ -543,6 +543,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcListenerManager.registerOnce(
         IPC.FILE.OPEN_SPECIFIC_FOLDER,
         withSenderCheck(IPC.FILE.OPEN_SPECIFIC_FOLDER, async (_, folderPath: string) => {
+            // 2026-11-19（P0 修复）：欢迎页「最近文件夹」路径不经过 WELCOME_ENTER_MAIN，
+            // 但渲染层已隐藏欢迎页进入主界面——必须同步标记主界面已进入，否则 CLOSE
+            // 快速关闭会误判为欢迎页并跳过 FLUSH_CONTENT/脏保存（数据丢失回归）。
+            markMainViewEntered()
             try {
                 const validation = await validateWorkspaceRoot(folderPath)
                 if (!validation.ok) {

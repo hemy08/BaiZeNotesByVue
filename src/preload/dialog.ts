@@ -46,12 +46,17 @@ const listenerWrappers = new Map<
 >()
 
 function addWrappedListener(channel: string, callback: (...args: unknown[]) => void): void {
-    const wrapped = (_event: unknown, ...args: unknown[]): void => callback(...args)
     let perChannel = listenerWrappers.get(channel)
     if (!perChannel) {
         perChannel = new Map()
         listenerWrappers.set(channel, perChannel)
     }
+    // 2026-11-19 修复：同一 callback 重复 on 时复用既有 wrapper——
+    // 原实现直接覆盖 Map 值并再注册一个新 wrapper，首个 wrapper 永不退订（泄漏）。
+    if (perChannel.has(callback)) {
+        return
+    }
+    const wrapped = (_event: unknown, ...args: unknown[]): void => callback(...args)
     perChannel.set(callback, wrapped)
     ipcRenderer.on(channel, wrapped)
 }

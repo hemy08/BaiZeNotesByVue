@@ -52,8 +52,6 @@ export const EVENT_BUS = {
     HTML_FILE_SELECTED: 'html-file-selected',
     // PDF 文件被选中
     PDF_FILE_SELECTED: 'pdf-file-selected',
-    // 文件树节点被点击
-    FILE_TREE_NODE_CLICKED: 'file-tree-node-clicked',
     // 标题格式更新
     MONACO_UPDATE_HEADER_FORMAT: 'monaco-editor-update-header-format',
     // 字体格式更新

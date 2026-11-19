@@ -9,6 +9,8 @@
  * - 常量分组与通道 domain 一一对应（2026-11-18 遗留清单 #3/#7 修复：原 CQ-13 的
  *   10 个「域错配」通道已归位——编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、
  *   设置类 2 通道新建 SETTING 组、Monaco 类 2 通道并入 MONACO 组）；
+ *   **例外：EVENTS 组**收纳跨 domain 的渲染层事件通知（file:/fs:/status-bar:），
+ *   属方向性分组而非 domain 分组（2026-11-19 注释澄清）；
  * - 同名通道只定义一份（如 get-quick-links 统一放 QUICK_LINKS 组）。
  *
  * 防回归：tests/unit/ipc-channel-constants.test.ts 用 fs 解析本文件与

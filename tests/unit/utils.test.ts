@@ -476,15 +476,31 @@ describe('MainWindowListenUtilsEvent', () => {
             return makeEvent(mainWindow.webContents)
         }
 
-        it('should read a trusted binary file as Uint8Array', async () => {
+        function inTempDir(
+            fileName: string,
+            content: string | Buffer = ''
+        ): {
+            dir: string
+            file: string
+        } {
             const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'baize-read-binary-'))
-            const pdfFile = path.join(dir, 'sample.pdf')
+            const file = path.join(dir, fileName)
+            fs.writeFileSync(file, content)
+            return { dir, file }
+        }
+
+        it('should read a trusted pdf file as Uint8Array (Buffer is a Uint8Array subclass)', async () => {
             // %PDF 魔数
-            fs.writeFileSync(pdfFile, Buffer.from([0x25, 0x50, 0x44, 0x46]))
+            const { dir, file: pdfFile } = inTempDir(
+                'sample.pdf',
+                Buffer.from([0x25, 0x50, 0x44, 0x46])
+            )
             try {
                 const handler = ipcMocks.handle.get('baize:file:read-binary')!
                 const result = (await handler(trustedEvent(), pdfFile)) as Uint8Array
                 expect(result).toBeInstanceOf(Uint8Array)
+                // 不再做 new Uint8Array(buffer) 拷贝：主进程直接返回 Buffer
+                expect(Buffer.isBuffer(result)).toBe(true)
                 expect(Array.from(result)).toEqual([0x25, 0x50, 0x44, 0x46])
             } finally {
                 fs.rmSync(dir, { recursive: true, force: true })
@@ -510,6 +526,39 @@ describe('MainWindowListenUtilsEvent', () => {
                 await expect(handler(trustedEvent(), '')).rejects.toThrow()
             } finally {
                 consoleError.mockRestore()
+            }
+        })
+
+        it('should reject non-pdf files (extension guard)', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const { dir, file: txtFile } = inTempDir('notes.txt', 'plain text')
+            try {
+                const handler = ipcMocks.handle.get('baize:file:read-binary')!
+                await expect(handler(trustedEvent(), txtFile)).rejects.toThrow()
+                // 非 PDF 扩展名在读取前即被拒绝，并有安全告警日志
+                expect(consoleWarn).toHaveBeenCalled()
+                expect(fs.readFileSync(txtFile, 'utf-8')).toBe('plain text')
+            } finally {
+                consoleWarn.mockRestore()
+                fs.rmSync(dir, { recursive: true, force: true })
+            }
+        })
+
+        it('should reject pdf files larger than the 128MB limit', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const { dir, file: bigPdfFile } = inTempDir('big.pdf', '%PDF')
+            // 不实际写入 128MB：按现有临时目录模式造文件，仅 mock stat 返回超限大小
+            const statSpy = vi.spyOn(fs.promises, 'stat').mockResolvedValue({
+                size: 129 * 1024 * 1024
+            } as unknown as fs.Stats)
+            try {
+                const handler = ipcMocks.handle.get('baize:file:read-binary')!
+                await expect(handler(trustedEvent(), bigPdfFile)).rejects.toThrow(/文件过大/)
+                expect(consoleWarn).toHaveBeenCalled()
+            } finally {
+                statSpy.mockRestore()
+                consoleWarn.mockRestore()
+                fs.rmSync(dir, { recursive: true, force: true })
             }
         })
     })

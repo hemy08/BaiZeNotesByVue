@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 // 固定使用深色图标
 import logoDarkUltra from '../assets/icons/dark/baize_mirror_dark.svg'
 import { IPC } from '../../../shared/ipc-channels'
@@ -138,6 +138,8 @@ function openRecentFolder(folder: string) {
 // （进入主界面自动最大化专用语义），二次点击无效。改为发送 TOGGLE_MAXIMIZE 并刷新
 // 当前最大化状态以切换「最大化/还原」图标。
 const isMaximized = ref(false)
+// 2026-11-19：最大化状态刷新定时器（点击切换后延迟查询；卸载清理）
+let maximizeRefreshTimer: ReturnType<typeof setTimeout> | null = null
 
 async function refreshMaximizedState(): Promise<void> {
     try {
@@ -149,16 +151,29 @@ async function refreshMaximizedState(): Promise<void> {
     }
 }
 
+function scheduleMaximizeRefresh(delay = 100): void {
+    if (maximizeRefreshTimer !== null) {
+        clearTimeout(maximizeRefreshTimer)
+    }
+    maximizeRefreshTimer = setTimeout(() => {
+        maximizeRefreshTimer = null
+        void refreshMaximizedState()
+    }, delay)
+}
+
+/** 系统方式（双击拖动条 / Win+Up 等）最大化/还原同样触发 resize，据此同步图标 */
+function handleWindowResize(): void {
+    scheduleMaximizeRefresh(50)
+}
+
 function minimizeWindow() {
     window.electron.ipcRenderer.send(IPC.WINDOW.MINIMIZE)
 }
 
 function maximizeWindow() {
     window.electron.ipcRenderer.send(IPC.WINDOW.TOGGLE_MAXIMIZE)
-    // 主进程切换完成后刷新图标（下一轮事件循环查询）
-    setTimeout(() => {
-        void refreshMaximizedState()
-    }, 0)
+    // 主进程切换完成后刷新图标（延迟查询，避免读到切换前的旧状态）
+    scheduleMaximizeRefresh()
 }
 
 function closeWindow() {
@@ -169,6 +184,15 @@ onMounted(() => {
     loadRecentFolders()
     // 2026-11-18：初始化最大化图标状态（欢迎页期间窗口可能已被最大化）
     void refreshMaximizedState()
+    window.addEventListener('resize', handleWindowResize)
+})
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', handleWindowResize)
+    if (maximizeRefreshTimer !== null) {
+        clearTimeout(maximizeRefreshTimer)
+        maximizeRefreshTimer = null
+    }
 })
 </script>
 

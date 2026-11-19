@@ -44,6 +44,9 @@ export {
 // MEM-10：本模块所有注册均归属的组件 ID（进程级全局注册）
 const GLOBAL_IPC_COMPONENT_ID = 'global-utils-ipc'
 
+/** READ_BINARY 单文件大小上限（128MB）：防止超大文件一次性读入主/渲染进程造成卡顿或 OOM */
+const MAX_READ_BINARY_SIZE = 128 * 1024 * 1024
+
 /**
  * CQ-05：异步 ipcMain.on 回调异常兜底——主进程留错误日志，并经现有状态栏通道
  * （status-bar-console-update，见 logger.ts / file-operations.ts 同款用法）
@@ -724,6 +727,10 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
 
     // 读取本地二进制文件（2026-11-18，遗留清单 #9：PDF 预览改走 pdf.js 需要原始字节）
     // P1-AS-1：仅允许受信范围路径（Path Guard），越界拒绝并提示。
+    // 2026-11-19 收紧边界：
+    // ① 仅允许 .pdf（不区分大小写）——本通道唯一调用方是 PDF 预览，防止被借道读取任意二进制；
+    // ② 单文件大小上限 128MB——stat 超限直接拒绝，避免超大文件一次性读入主/渲染进程造成卡顿或 OOM；
+    // ③ Buffer 本身是 Uint8Array 子类，IPC 结构化克隆后渲染层可直接使用，去掉多余拷贝（原 new Uint8Array(buffer)）。
     ipcListenerManager.registerHandleOnce(
         IPC.FILE.READ_BINARY,
         withSenderCheck(
@@ -741,10 +748,28 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
                     )
                     throw new Error(tMain('mainMsg.file.readError.eacces'))
                 }
+                if (!filePath.toLowerCase().endsWith('.pdf')) {
+                    logger.warn(`[Security] 已拒绝通过 READ_BINARY 读取非 PDF 文件：${filePath}`)
+                    throw new Error(tMain('mainMsg.file.readError.eacces'))
+                }
+                let fileSize = 0
                 try {
-                    const buffer = await fs.promises.readFile(filePath)
-                    // Uint8Array 可被 IPC 结构化克隆，避免 Buffer 在渲染层缺失原型
-                    return new Uint8Array(buffer)
+                    fileSize = (await fs.promises.stat(filePath)).size
+                } catch (error) {
+                    logger.error('读取二进制文件失败（无法获取文件大小）:', error)
+                    throw error
+                }
+                if (fileSize > MAX_READ_BINARY_SIZE) {
+                    logger.warn(
+                        `[Security] 已拒绝读取超过 ${MAX_READ_BINARY_SIZE} 字节上限的 PDF：${filePath}`
+                    )
+                    throw new Error(
+                        `文件过大，无法预览：${filePath} 超过 ${MAX_READ_BINARY_SIZE / 1024 / 1024}MB 上限`
+                    )
+                }
+                try {
+                    // Buffer 是 Uint8Array 子类，可被 IPC 结构化克隆，直接返回避免额外拷贝
+                    return await fs.promises.readFile(filePath)
                 } catch (error) {
                     logger.error('读取二进制文件失败:', error)
                     throw error

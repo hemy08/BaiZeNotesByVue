@@ -8,14 +8,18 @@
          - style-src 'unsafe-inline'：Vue/Monaco/KaTeX 内联样式需要；
          - img-src data: https: file:：Markdown 远程图片、base64 内嵌图与本地
            相对路径图片（预览层将相对路径转换为 file:// 绝对 URL，FE-12）；
-         - frame-src 'self' file:：PDF 预览（Electron 内置查看器/iframe 本地文件）；
-         - connect-src localhost:：保留 Vite dev HMR（http/ws）；
-         - object-src 'none' / base-uri 'self' / form-action 'none'：
-           2026-11-18（遗留清单 #6）补充的无功能影响收紧——禁止插件对象、限制
-           <base> 注入（防相对路径劫持）、禁止表单提交外发。 -->
+         - frame-src 'self'：PDF 已改 pdf.js canvas 渲染、HTML 查看器使用 srcdoc，
+           不再加载 file: 帧来源（2026-11-19 收紧）；
+         - connect-src localhost:：仅 Vite dev HMR 需要（打包后无实际用途，后续可做
+           dev/prod 双 CSP 剥离）；
+         - object-src 'none' / form-action 'none'：2026-11-18（遗留清单 #6）收紧——
+           禁止插件对象、禁止表单提交外发。
+         - 2026-11-19 调整：**不设 base-uri**——HTML 查看器需在 sandbox iframe 的 srcdoc
+           中注入 `<base href="file://...">` 修正相对链接，`base-uri 'self'` 会拦截该注入；
+           该注入仅改变相对 URL 解析基准（不执行脚本），base-uri 收益低而冲突明确。 -->
         <meta
             http-equiv="Content-Security-Policy"
-            content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: file:; font-src 'self' data:; frame-src 'self' file:; connect-src 'self' http://localhost:* ws://localhost:*; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'"
+            content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: file:; font-src 'self' data:; frame-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; worker-src 'self' blob:; object-src 'none'; form-action 'none'"
         />
         <link rel="stylesheet" href="./src/styles/preview_font/atom-one-light.css" />
         <link rel="stylesheet" href="./src/styles/material/admonition.css" />

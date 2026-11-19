@@ -10,6 +10,12 @@ import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach, vi } 
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
+// 2026-11-19（P0 修复）：欢迎页/主界面状态（CLOSE 快速关闭与数据安全回归测试）
+import {
+    isWelcomeScreenVisible,
+    markMainViewEntered,
+    resetWelcomeState
+} from '../../src/main/ipc/welcome-state'
 
 // CMP-30：IPC 异常状态栏提示经 tMain 读取词典（语言来自系统设置）。
 // 测试固定中文词条并 mock 掉 config/system-setting，隔离 electron-store 等主进程存储依赖链。
@@ -238,6 +244,8 @@ beforeEach(() => {
     startupRestoreDeps.openDirectoryInMainView.mockReset()
     startupRestoreDeps.openDirectoryInMainView.mockResolvedValue(undefined)
     appState._resetForTesting()
+    // 2026-11-19（P0 修复）：欢迎页状态按用例复位（CLOSE 快速关闭分支依赖）
+    resetWelcomeState()
     // P1-AS-1 交接：清空运行期受信路径登记，避免用例间相互污染
     clearTrustedPathsForTesting()
     registerIpcHandlers(win as never)
@@ -282,6 +290,31 @@ describe('registerIpcHandlers channel registration', () => {
                 'baize:window:is-maximized'
             ].sort()
         )
+    })
+})
+
+describe('window close fast path (P0 关闭延迟/数据安全)', () => {
+    it('should set the quitting flag and close immediately on the welcome screen', async () => {
+        resetWelcomeState()
+        appState.currentActiveFile = null
+        await getOnHandler('baize:window:close')(makeEvent())
+        expect(win.close).toHaveBeenCalled()
+        expect(appState.isQuitting).toBe(true)
+    })
+
+    it('should keep the flush protocol once the main view has been entered with an active file', async () => {
+        resetWelcomeState()
+        markMainViewEntered()
+        appState.currentActiveFile = {
+            name: 'a.md',
+            path: path.join(tempBase, 'a.md'),
+            type: 'file',
+            content: 'dirty'
+        } as never
+        await getOnHandler('baize:window:close')(makeEvent())
+        expect(win.close).toHaveBeenCalled()
+        // 未置退出标志：close 拦截继续走 FLUSH_CONTENT → 脏则保存（数据安全）
+        expect(appState.isQuitting).toBe(false)
     })
 })
 
@@ -411,6 +444,9 @@ describe('folder and file open handlers', () => {
         expect(appState.rootPath).toBe(validWorkspace)
         expect(handlerDeps.reloadDirFromDisk).toHaveBeenCalled()
         expect(handlerDeps.saveLastOpenedDirectory).toHaveBeenCalledWith(validWorkspace)
+        // 2026-11-19（P0 修复）：欢迎页「最近文件夹」进入主界面后必须标记——
+        // 否则关闭时会被误判为欢迎页而跳过 flush/脏保存
+        expect(isWelcomeScreenVisible()).toBe(false)
     })
 
     it('should do nothing when the welcome directory dialog is canceled', async () => {

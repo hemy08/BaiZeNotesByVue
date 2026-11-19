@@ -83,7 +83,7 @@ const api = {
 // 白名单变更后运行 `npx vitest run tests/unit/preload-index.test.ts` 校验。
 // ============================================================
 
-/** 渲染层 → 主进程（send / invoke）允许通道：57 个 */
+/** 渲染层 → 主进程（send / invoke）允许通道：58 个（2026-11-19 核对） */
 const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
     IPC.SETTING.AUTO_SAVE_CHANGED,
     IPC.EDITOR.FLUSH_CONTENT_DONE,
@@ -146,7 +146,7 @@ const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
     IPC.WINDOW.TOGGLE_MAXIMIZE
 ])
 
-/** 主进程 → 渲染层（on / once）允许通道：26 个 */
+/** 主进程 → 渲染层（on / once）允许通道：25 个（2026-11-19 核对） */
 const ALLOWED_RENDERER_RECEIVE_CHANNELS = new Set<string>([
     IPC.DIALOG.OPEN_VUE_DIALOG,
     IPC.EDITOR.FLUSH_CONTENT,

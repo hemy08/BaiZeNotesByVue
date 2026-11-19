@@ -33,3 +33,6 @@
 /playwright-report/
 
 # 说明：/.github（CI 工作流）应纳入版本控制，不要忽略；.git 目录天然不受 Git 管理。
+
+# �������뻺�棨��Ӧ��⣩
+*.tsbuildinfo

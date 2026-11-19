@@ -57,12 +57,6 @@ async function selectHtmlFile(path: string, name: string): Promise<void> {
     await flushPromises()
 }
 
-/** 通过 EventBus 走「文件树节点点击」入口 */
-async function clickTreeNode(node: { type?: string; name?: string; path?: string }): Promise<void> {
-    EventBus.$emit(EVENT_BUS.FILE_TREE_NODE_CLICKED, node)
-    await flushPromises()
-}
-
 beforeEach(() => {
     // 上一个用例可能残留同 componentId 的监听器，先清干净
     EventBus.$cleanup(COMPONENT_ID)
@@ -161,16 +155,6 @@ describe('ShowHtmlView 文件选择与内容渲染', () => {
         expect(tokens.includes('allow-scripts') && tokens.includes('allow-same-origin')).toBe(false)
     })
 
-    it('loads html files from file tree node click events', async () => {
-        invoke.mockResolvedValue('<p>tree</p>')
-        const wrapper = mountView()
-
-        await clickTreeNode({ type: 'file', name: 'page.html', path: '/notes/page.html' })
-
-        expect(invoke).toHaveBeenCalledWith(IPC.FILE.READ_HTML, '/notes/page.html')
-        expectSrcdoc(wrapper.find('iframe').attributes('srcdoc'), '/notes/page.html', '<p>tree</p>')
-    })
-
     it('ignores non-html files selected from the event bus', async () => {
         const wrapper = mountView()
 
@@ -179,18 +163,6 @@ describe('ShowHtmlView 文件选择与内容渲染', () => {
         expect(invoke).not.toHaveBeenCalled()
         expect(wrapper.find('.empty-container').exists()).toBe(true)
         expect(wrapper.find('iframe').exists()).toBe(false)
-    })
-
-    it('ignores file tree clicks for folders and non-html files', async () => {
-        const wrapper = mountView()
-
-        // 文件夹即使名字以 .html 结尾也不加载
-        await clickTreeNode({ type: 'folder', name: 'fake.html', path: '/notes/fake.html' })
-        // 普通文件但扩展名不是 html 也不加载
-        await clickTreeNode({ type: 'file', name: 'readme.md', path: '/notes/readme.md' })
-
-        expect(invoke).not.toHaveBeenCalled()
-        expect(wrapper.find('.empty-container').exists()).toBe(true)
     })
 
     it('replaces the preview when another html file is selected', async () => {
@@ -312,11 +284,6 @@ describe('ShowHtmlView 工具栏与生命周期', () => {
             path: '/notes/late.html',
             name: 'late.html'
         })
-        EventBus.$emit(EVENT_BUS.FILE_TREE_NODE_CLICKED, {
-            type: 'file',
-            name: 'late.html',
-            path: '/notes/late.html'
-        })
         await flushPromises()
 
         expect(invoke).not.toHaveBeenCalled()
@@ -351,5 +318,11 @@ describe('withBaseHref（srcdoc 相对链接基准修复）', () => {
     it('encodes non-ascii directory segments', () => {
         const out = withBaseHref('<body>x</body>', 'D:\\文档\\报告\\index.html')
         expect(out).toContain(`<base href="file:///D:/${encodeURI('文档/报告/')}">`)
+    })
+
+    it('encodes # and ? in directory names so paths are not truncated', () => {
+        // 2026-11-19（P2 修复）：# 会被解析为 fragment、? 为 query，必须转义
+        const out = withBaseHref('<body>x</body>', 'E:\\notes\\a#b?c\\index.html')
+        expect(out).toContain('<base href="file:///E:/notes/a%23b%3Fc/">')
     })
 })

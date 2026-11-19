@@ -182,6 +182,8 @@ const internalMocks = vi.hoisted(() => ({
     registerHandleOnce: vi.fn(),
     // 2026-11-18（#12）：窗口就绪后的 Monaco 主题缓存异步预热
     warmupMonacoThemeCache: vi.fn(),
+    // 2026-11-19（P0 修复）：启动时读取遗留 show-welcome 配置（欢迎页状态同步）
+    configRead: vi.fn(),
     initUserDataDirectory: vi.fn(),
     registerIpcHandlers: vi.fn(),
     setMainWindow: vi.fn(),
@@ -220,6 +222,8 @@ vi.mock('../../src/main/config', () => ({
     registerConfigIpcHandlers: internalMocks.registerConfigIpcHandlers,
     getEditorSetting: internalMocks.getEditorSetting,
     RegisterShortKeys: internalMocks.registerShortKeys,
+    // 2026-11-19（P0 修复）：启动时读取遗留 show-welcome 配置（欢迎页状态同步）
+    configManager: { readConfig: internalMocks.configRead },
     // 2026-11-18（#12）：Monaco 主题缓存异步预热（细节由 theme-registry.test.ts 覆盖）
     warmupMonacoThemeCache: internalMocks.warmupMonacoThemeCache,
     // ARC-04：启动字体 CSS 组装（拼出与真实实现一致的选择器与字体系列）
@@ -382,6 +386,9 @@ beforeEach(() => {
     electronMocks.windows.length = 0
     electronMocks.capturedBrowserWindowOptions = null
     // 批次 B #4：退出标志复位（before-quit 置位后需恢复，避免污染后续用例）
+    // 2026-11-19（P0 修复）：欢迎页状态按用例复位
+    // 说明：beforeEach 会 vi.resetModules()，welcome-state 需在 loadMainIndex 之后
+    // 动态 import 才能拿到与被测 index.ts 相同的模块实例（见本文件用例）。
     electronMocks.quitFlag.value = false
     // P2-10：单实例锁申请结果复位为成功
     electronMocks.singleInstanceLock.value = true
@@ -507,6 +514,27 @@ describe('app whenReady startup flow', () => {
     it('should not start the auto save timer when disabled', async () => {
         await loadMainIndex()
         expect(internalMocks.startAutoSaveFileTime).not.toHaveBeenCalled()
+    })
+
+    // 2026-11-19（P0 修复）：遗留配置 show-welcome=false 时渲染层启动即进主界面，
+    // 主进程必须在启动阶段同步标记，否则关闭快速路径会跳过 flush/脏保存。
+    // 注意：beforeEach 会 vi.resetModules()，必须动态 import 才能拿到与 index.ts
+    // 相同的 welcome-state 模块实例。
+    it('should mark the main view as entered when legacy show-welcome config is false', async () => {
+        internalMocks.configRead.mockResolvedValueOnce(false)
+        await loadMainIndex()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(internalMocks.configRead).toHaveBeenCalledWith('show-welcome')
+        const welcomeState = await import('../../src/main/ipc/welcome-state')
+        expect(welcomeState.isWelcomeScreenVisible()).toBe(false)
+    })
+
+    it('should stay on the welcome screen when show-welcome is not configured', async () => {
+        internalMocks.configRead.mockResolvedValueOnce(null)
+        await loadMainIndex()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        const welcomeState = await import('../../src/main/ipc/welcome-state')
+        expect(welcomeState.isWelcomeScreenVisible()).toBe(true)
     })
 })
 

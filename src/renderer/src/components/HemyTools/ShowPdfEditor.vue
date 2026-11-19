@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, getCurrentInstance, nextTick } from 'vue'
 import EventBus from '../../common/event-bus/event-bus'
 import { t } from '../../common/i18n'
 import { IPC } from '../../../../shared/ipc-channels'
@@ -141,26 +141,37 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
 // 响应式数据
 const pdfPath = ref<string>('')
-const fileName = ref<string>('')
 const isLoading = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const zoomLevel = ref<number>(1)
 const pageNumber = ref<number>(1)
 const numPages = ref<number>(0)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+/** 最近一次请求加载的路径/文件名：重试按钮据此重载（pdfPath 仅在加载成功后才赋值，不能作为守卫） */
+const lastLoadPath = ref<string>('')
+const lastLoadName = ref<string>('')
 
 /** 当前 pdf.js 文档句柄（卸载/重新加载时销毁） */
 let pdfDocument: PDFDocumentProxy | null = null
 /** getDocument 返回的加载任务（销毁文档与 worker 资源的入口） */
 let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | null = null
-/** 渲染任务句柄（避免并发渲染同一 canvas） */
+/** 当前渲染任务句柄（仅最新一次渲染持有，避免并发渲染同一 canvas） */
 let renderTask: { cancel: () => void } | null = null
+/** 渲染代次：每次 renderPage 递增，旧任务的异步回调据此丢弃写回 */
+let renderToken = 0
+/** 加载代次：并发选择文件时仅最新代次可以写状态/结束 loading */
+let loadGeneration = 0
+/** 组件是否已卸载：卸载后拒绝新建加载任务与渲染写回（防止异步泄漏） */
+let isUnmounted = false
 
-// 组件ID用于事件清理
-const componentId = 'ShowPdfEditor'
+// 组件唯一标识：插件菜单实例与 WorkSpace 实例可能同时挂载，固定 id 会让
+// EventBus.$cleanup 把另一实例的监听一并清掉；带实例 uid 保证卸载只清自身。
+const componentId = `ShowPdfEditor-${getCurrentInstance()?.uid ?? Date.now()}`
 
 /** 销毁当前 PDF 文档与渲染任务 */
 function disposePdfDocument(): void {
+    // 使在途渲染任务全部过期，避免销毁后旧任务继续写回 canvas / 清掉新任务句柄
+    renderToken += 1
     if (renderTask) {
         try {
             renderTask.cancel()
@@ -177,52 +188,113 @@ function disposePdfDocument(): void {
     pdfDocument = null
 }
 
+/** 判断某次加载是否已过期（组件已卸载，或已有更新的加载代次） */
+function isStaleGeneration(generation: number): boolean {
+    return isUnmounted || generation !== loadGeneration
+}
+
+/** 判断是否 pdf.js 渲染取消异常（翻页/缩放/重新加载时的正常路径，需静默） */
+function isRenderingCancelled(error: unknown): boolean {
+    return (error as { name?: string } | null)?.name === 'RenderingCancelledException'
+}
+
 /**
  * 加载 PDF 文件（主进程读取原始字节 → pdf.js 解析）
+ *
+ * 并发保护：进入时递增 loadGeneration，每个 await 之后校验代次；过期请求
+ * 直接退出且不写任何状态，避免旧请求的失败/成功覆盖新请求的结果。
+ * 卸载保护：isUnmounted 置位后拒绝新建 loadingTask，防止异步泄漏。
  */
-async function loadPdfFile(path: string, name: string) {
+async function loadPdfFile(path: string, name: string): Promise<void> {
+    if (isUnmounted) {
+        return
+    }
+    const generation = ++loadGeneration
+    // 进入 try 前记录加载目标：失败后 retryLoad 据此重载
+    lastLoadPath.value = path
+    lastLoadName.value = name
     isLoading.value = true
     errorMessage.value = ''
     pdfPath.value = ''
-    fileName.value = name
     pageNumber.value = 1
     numPages.value = 0
     disposePdfDocument()
 
     try {
         const exists = await window.electron.ipcRenderer.invoke(IPC.FILE.CHECK_EXISTS, path)
+        if (isStaleGeneration(generation)) {
+            return
+        }
         if (!exists) {
             errorMessage.value = t('toolsNetwork.hemyTools.pdfView.fileNotFound')
             return
         }
         // Uint8Array（IPC 结构化克隆）→ pdf.js getDocument
-        const data = (await window.electron.ipcRenderer.invoke(IPC.FILE.READ_BINARY, path)) as
-            | Uint8Array
-            | null
+        const data = (await window.electron.ipcRenderer.invoke(
+            IPC.FILE.READ_BINARY,
+            path
+        )) as Uint8Array | null
+        if (isStaleGeneration(generation)) {
+            return
+        }
         if (!data || data.byteLength === 0) {
             errorMessage.value = t('toolsNetwork.hemyTools.pdfView.unreadable')
             return
         }
-        loadingTask = pdfjsLib.getDocument({ data })
-        pdfDocument = await loadingTask.promise
-        numPages.value = pdfDocument.numPages
+        const task = pdfjsLib.getDocument({ data })
+        loadingTask = task
+        const doc = await task.promise
+        if (isStaleGeneration(generation)) {
+            // 过期请求：销毁刚创建的加载任务，避免残留文档/worker
+            void task.destroy()
+            return
+        }
+        if (doc.numPages <= 0) {
+            // 无有效页面的文档按不可读处理，避免工具栏显示 "1 / 0"
+            void task.destroy()
+            loadingTask = null
+            errorMessage.value = t('toolsNetwork.hemyTools.pdfView.unreadable')
+            return
+        }
+        pdfDocument = doc
+        numPages.value = doc.numPages
         pdfPath.value = path
+        // 加载态下模板只渲染 loading 容器、canvas 尚未挂载；先结束加载态并等 DOM 更新，
+        // 再绘制首页，否则首屏会是一块空白 canvas（此前 renderPage(1) 读到 null 直接跳过）。
+        isLoading.value = false
+        await nextTick()
+        if (isStaleGeneration(generation)) {
+            return
+        }
         await renderPage(1)
     } catch (error) {
+        if (isStaleGeneration(generation)) {
+            return
+        }
         logger.error('加载 PDF 文件失败:', error)
         errorMessage.value = t('toolsNetwork.hemyTools.pdfView.loadFailed', {
             error: String(error)
         })
     } finally {
-        isLoading.value = false
+        // isLoading 只由最新代次清除：旧请求不得提前结束新请求的加载态
+        if (!isStaleGeneration(generation)) {
+            isLoading.value = false
+        }
     }
 }
 
-/** 渲染指定页到 canvas */
+/**
+ * 渲染指定页到 canvas
+ *
+ * 竞态保护：每次渲染递增 renderToken，并记录本次文档句柄；被更新渲染取代
+ * （翻页/缩放/重新加载）或被取消的任务不写 canvas、不清新任务句柄、不覆盖错误态。
+ */
 async function renderPage(page: number): Promise<void> {
-    if (!pdfDocument) {
+    const pdfDoc = pdfDocument
+    if (!pdfDoc) {
         return
     }
+    const token = ++renderToken
     const canvas = canvasRef.value
     const context = canvas?.getContext('2d')
     if (!canvas || !context) {
@@ -238,7 +310,11 @@ async function renderPage(page: number): Promise<void> {
         renderTask = null
     }
     try {
-        const pdfPage = await pdfDocument.getPage(page)
+        const pdfPage = await pdfDoc.getPage(page)
+        if (token !== renderToken || isUnmounted || pdfDocument !== pdfDoc) {
+            // 已被新的渲染/加载取代：丢弃本次结果
+            return
+        }
         const viewport = pdfPage.getViewport({ scale: zoomLevel.value })
         canvas.width = Math.floor(viewport.width)
         canvas.height = Math.floor(viewport.height)
@@ -246,10 +322,22 @@ async function renderPage(page: number): Promise<void> {
         renderTask = task
         await task.promise
     } catch (error) {
-        // 渲染被取消（翻页/缩放并发）属正常路径，仅记录非取消异常
-        logger.warn('PDF 页面渲染失败:', error)
+        // 渲染被取消（翻页/缩放/重新加载的并发）属正常路径：静默处理
+        if (isRenderingCancelled(error)) {
+            return
+        }
+        if (token !== renderToken || isUnmounted) {
+            return
+        }
+        logger.error('PDF 页面渲染失败:', error)
+        errorMessage.value = t('toolsNetwork.hemyTools.pdfView.loadFailed', {
+            error: String(error)
+        })
     } finally {
-        renderTask = null
+        // 仅当仍是当前渲染任务时才清空句柄，否则会误清掉新任务的句柄
+        if (token === renderToken) {
+            renderTask = null
+        }
     }
 }
 
@@ -272,11 +360,12 @@ async function nextPage(): Promise<void> {
 }
 
 /**
- * 重试加载
+ * 重试加载：使用最近一次记录的路径/文件名重载
+ * （pdfPath 只在加载成功后赋值，失败时为空，不能再用作守卫）
  */
-function retryLoad() {
-    if (pdfPath.value) {
-        void loadPdfFile(pdfPath.value, fileName.value)
+function retryLoad(): void {
+    if (lastLoadPath.value) {
+        void loadPdfFile(lastLoadPath.value, lastLoadName.value)
     }
 }
 
@@ -310,21 +399,25 @@ function revealInExplorer() {
 }
 
 /**
- * 处理文件选择事件
+ * 处理文件选择事件（扩展名不区分大小写）
  */
-function handleFileSelect(node: { path?: string; name?: string }) {
-    if (node && node.path && node.name && node.name.endsWith('.pdf')) {
+function handleFileSelect(node: { path?: string; name?: string }): void {
+    if (node?.path && node.name && node.name.toLowerCase().endsWith('.pdf')) {
         void loadPdfFile(node.path, node.name)
     }
 }
 
 // 生命周期
 onMounted(() => {
-    // 监听文件选择事件
+    // 监听文件选择事件（componentId 实例唯一，卸载时只清理本实例）
     EventBus.$on(EVENT_BUS.PDF_FILE_SELECTED, handleFileSelect, { componentId })
 })
 
 onBeforeUnmount(() => {
+    // 卸载守卫：使在途加载/渲染全部过期，并拒绝后续新建加载任务
+    isUnmounted = true
+    loadGeneration += 1
+    renderToken += 1
     disposePdfDocument()
     // 清理事件监听
     EventBus.$cleanup(componentId)
@@ -461,18 +554,20 @@ onBeforeUnmount(() => {
     color: var(--theme-text-secondary, #757575);
 }
 
+/* 缩放后 canvas 可能大于容器：滚动容器保持块级布局，
+   使 overflow:auto 能真正横向/纵向滚动（flex 居中会让溢出部分无法滚动到） */
 .pdf-canvas-scroll {
     flex: 1;
     overflow: auto;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
     padding: 16px;
     background-color: var(--theme-background-color, #f0f0f0);
 }
 
+/* 去掉 max-width:100% 的视觉钳制：否则 zoom 放大后 canvas 仍被压回容器宽度，
+   滚动条永不出现；display:block + margin:auto 负责在未溢出时居中 */
 .pdf-canvas {
-    max-width: 100%;
+    display: block;
+    margin: 0 auto;
     background-color: #ffffff;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
 }

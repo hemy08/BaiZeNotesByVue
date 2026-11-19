@@ -44,7 +44,10 @@
     >
         <HemyTools :tools-area-width="workAreaWidth" />
     </div>
+    <!-- HTML 查看器：按需挂载——首次切换到该容器才渲染（避免进入主界面即加载其 chunk），
+         激活后仅用 v-show 切换，保留内部状态 -->
     <div
+        v-if="htmlContainerActivated"
         v-show="isShowHtmlContainer"
         id="html-containers"
         class="html-containers"
@@ -52,7 +55,9 @@
     >
         <ShowHtmlView :html-area-width="workAreaWidth" />
     </div>
+    <!-- PDF 预览：同上，首次切换到该容器才挂载，避免主界面初始化即加载 pdfjs-dist -->
     <div
+        v-if="pdfContainerActivated"
         v-show="isShowPdfContainer"
         id="pdf-containers"
         class="pdf-containers"
@@ -67,24 +72,57 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import {
+    ref,
+    computed,
+    onMounted,
+    onBeforeUnmount,
+    defineAsyncComponent,
+    defineComponent,
+    h
+} from 'vue'
 import EventBus from '@renderer/common/event-bus/event-bus'
+import { logger } from '@renderer/common/logger'
 import NaviTab from '@renderer/components/WorkSpaceArea/NaviTab.vue'
 import ResManager from '@renderer/components/ResourceManager/ResourceManager.vue'
 import MdContainer from '@renderer/components/Markdown/MarkdownContainer.vue'
 import PluginTools from '@renderer/components/PluginTools/PluginTools.vue'
 import HemyTools from '@renderer/components/HemyTools/HemyTools.vue'
+import { IPC } from '../../../../shared/ipc-channels'
+import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+
 // 2026-11-18（遗留清单 #9/#11）：HTML 查看器与 PDF 预览按需加载——
 // PDF 预览内含 pdfjs-dist（较大），静态导入会打进入口 chunk；改为异步组件后
 // 仅在首次切换到对应工作区时加载，消除 INEFFECTIVE_DYNAMIC_IMPORT 并减小首屏 chunk。
-const ShowHtmlView = defineAsyncComponent(
-    () => import('@renderer/components/HemyTools/ShowHtmlView.vue')
-)
-const ShowPdfEditor = defineAsyncComponent(
-    () => import('@renderer/components/HemyTools/ShowPdfEditor.vue')
-)
-import { IPC } from '../../../../shared/ipc-channels'
-import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+// 2026-11-19：容器改用 v-if 首次激活才挂载（原 v-show 始终渲染子树，进入主界面即拉取
+// pdfjs chunk）。loader 单独抽出，激活时先预加载 chunk，便于挂载后补发缓存的文件选择事件。
+const loadShowHtmlView = () => import('@renderer/components/HemyTools/ShowHtmlView.vue')
+const loadShowPdfEditor = () => import('@renderer/components/HemyTools/ShowPdfEditor.vue')
+
+// 异步组件加载中 / 加载失败占位：内联简单组件，避免为纯占位 UI 新增文件
+// eslint-disable-next-line vue/one-component-per-file -- 占位组件仅用于 defineAsyncComponent 的 loading/error 展示
+const AsyncLoadingPlaceholder = defineComponent({
+    name: 'AsyncLoadingPlaceholder',
+    render: () => h('div', { class: 'async-container-placeholder' }, '加载中...')
+})
+// eslint-disable-next-line vue/one-component-per-file -- 同上，纯占位组件
+const AsyncLoadErrorPlaceholder = defineComponent({
+    name: 'AsyncLoadErrorPlaceholder',
+    render: () => h('div', { class: 'async-container-placeholder' }, '加载失败，请重试')
+})
+
+const ShowHtmlView = defineAsyncComponent({
+    loader: loadShowHtmlView,
+    loadingComponent: AsyncLoadingPlaceholder,
+    errorComponent: AsyncLoadErrorPlaceholder,
+    delay: 200
+})
+const ShowPdfEditor = defineAsyncComponent({
+    loader: loadShowPdfEditor,
+    loadingComponent: AsyncLoadingPlaceholder,
+    errorComponent: AsyncLoadErrorPlaceholder,
+    delay: 200
+})
 
 // 使用 ref 来创建响应式引用
 const naviResManagerShow = ref('file-explorer')
@@ -97,6 +135,36 @@ const isShowPluginsContainer = ref(false)
 const isShowToolsContainer = ref(false)
 const isShowHtmlContainer = ref(false)
 const isShowPdfContainer = ref(false)
+// 2026-11-19（按需挂载）：HTML/PDF 容器是否已首次激活（激活后才 v-if 挂载组件）。
+// 激活后只切换 v-show，保证来回切换时组件状态（当前文件、页码、缩放）不丢失。
+const htmlContainerActivated = ref(false)
+const pdfContainerActivated = ref(false)
+
+/** 预览文件选择事件载荷（与 FileTreeNode 发出的节点结构保持一致） */
+interface PreviewFileSelection {
+    path?: string
+    name?: string
+}
+
+// 按需挂载带来的时序问题：资源管理器点击 .html/.pdf 时，FileTreeNode 先发
+// *_FILE_SELECTED、后发 WORKSPACE_SHOW；容器首次挂载的实例在事件发出时还没注册监听，
+// 会错过选择而显示空状态。WorkSpace 常驻，这里缓存首次激活前的选择，挂载完成后补发。
+let pendingHtmlSelection: PreviewFileSelection | null = null
+let pendingPdfSelection: PreviewFileSelection | null = null
+
+/** 缓存 HTML 文件选择（仅首次激活前需要，激活后由查看器实例自行监听） */
+function cacheHtmlSelection(node: PreviewFileSelection): void {
+    if (!htmlContainerActivated.value) {
+        pendingHtmlSelection = node
+    }
+}
+
+/** 缓存 PDF 文件选择（同上） */
+function cachePdfSelection(node: PreviewFileSelection): void {
+    if (!pdfContainerActivated.value) {
+        pendingPdfSelection = node
+    }
+}
 
 let mouseStartX = 0
 
@@ -129,6 +197,44 @@ const handlePluginToolsContainerShow = (value: boolean) => {
     }
 }
 
+/**
+ * 首次激活按需挂载的预览容器。
+ * 1) 先将 activated 置 true 触发挂载（defineAsyncComponent 立即显示 loading 占位）；
+ * 2) 预加载组件 chunk（与异步组件内部 loader 共享模块缓存）；
+ * 3) 等一个宏任务——异步组件「loader 完成 → 渲染真实组件 → onMounted 注册监听」
+ *    整条链路都由微任务驱动，宏任务执行时微任务队列（含 Vue 渲染 flush）已清空；
+ * 4) 补发此前缓存的文件选择事件，避免首次从资源管理器打开时显示空状态。
+ */
+async function activatePreviewContainer(kind: 'html' | 'pdf'): Promise<void> {
+    const isHtml = kind === 'html'
+    const activated = isHtml ? htmlContainerActivated : pdfContainerActivated
+    if (activated.value) {
+        // 非首次切换：实例已挂载并自行监听事件
+        return
+    }
+    activated.value = true
+    try {
+        // 先等 chunk 就绪（模块缓存与异步组件内部 loader 共享，重复 import 不会重复下载）
+        await (isHtml ? loadShowHtmlView() : loadShowPdfEditor())
+    } catch (error) {
+        logger.error('按需预览组件加载失败:', error)
+        return
+    }
+    // 等微任务队列清空（真实组件完成挂载）
+    await new Promise<void>((resolve) => {
+        setTimeout(resolve, 0)
+    })
+    const pending = isHtml ? pendingHtmlSelection : pendingPdfSelection
+    if (isHtml) {
+        pendingHtmlSelection = null
+    } else {
+        pendingPdfSelection = null
+    }
+    if (pending) {
+        EventBus.$emit(isHtml ? EVENT_BUS.HTML_FILE_SELECTED : EVENT_BUS.PDF_FILE_SELECTED, pending)
+    }
+}
+
 const handleWorkAreaContainerShow = (value: string) => {
     isShowMdContainer.value = false
     isShowPluginsContainer.value = false
@@ -139,8 +245,12 @@ const handleWorkAreaContainerShow = (value: string) => {
         isShowPluginsContainer.value = true
     } else if (value === 'html') {
         isShowHtmlContainer.value = true
+        // 首次切换到 HTML 查看器：按需挂载（并补发可能已发出的文件选择事件）
+        void activatePreviewContainer('html')
     } else if (value === 'pdf') {
         isShowPdfContainer.value = true
+        // 首次切换到 PDF 预览：按需挂载（并补发可能已发出的文件选择事件）
+        void activatePreviewContainer('pdf')
     } else if (value === 'tools') {
         // FE-26：工具面板（HemyTools 容器）此前没有对应分支——只能靠左侧导航直接
         // 翻转 isShowToolsContainer，且不会隐藏编辑器容器（两个容器叠加显示）。
@@ -217,6 +327,9 @@ onMounted(() => {
 
     EventBus.$on(EVENT_BUS.PLUGIN_TOOLS_CONTAINER_SHOW, handlePluginToolsContainerShow)
     EventBus.$on(EVENT_BUS.WORKSPACE_SHOW, handleWorkAreaContainerShow)
+    // 按需挂载：缓存首次激活 HTML/PDF 容器前发出的文件选择事件（挂载后补发）
+    EventBus.$on(EVENT_BUS.HTML_FILE_SELECTED, cacheHtmlSelection)
+    EventBus.$on(EVENT_BUS.PDF_FILE_SELECTED, cachePdfSelection)
     window.electron.ipcRenderer.on(IPC.VIEW.TOGGLE_RES_MANAGER, handleHideDisplayResManager)
 })
 
@@ -230,6 +343,8 @@ onBeforeUnmount(() => {
     )
     EventBus.$off(EVENT_BUS.PLUGIN_TOOLS_CONTAINER_SHOW, handlePluginToolsContainerShow)
     EventBus.$off(EVENT_BUS.WORKSPACE_SHOW, handleWorkAreaContainerShow)
+    EventBus.$off(EVENT_BUS.HTML_FILE_SELECTED, cacheHtmlSelection)
+    EventBus.$off(EVENT_BUS.PDF_FILE_SELECTED, cachePdfSelection)
 })
 </script>
 
@@ -286,6 +401,18 @@ onBeforeUnmount(() => {
     overflow-x: hidden;
     overflow-y: auto;
     background-color: var(--theme-background-color, #ffffff);
+}
+
+/* 按需挂载的 HTML/PDF 异步组件占位（加载中 / 加载失败） */
+.async-container-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    min-height: 120px;
+    font-size: 14px;
+    color: var(--theme-text-secondary, #757575);
 }
 
 /* 应用主题到所有子元素 */

@@ -32,7 +32,6 @@ const DOMAINS = new Set([
     'plugin',
     'render',
     'quick-links',
-    'overlay',
     'status-bar',
     'system'
 ])

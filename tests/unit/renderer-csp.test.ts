@@ -43,8 +43,10 @@ describe('renderer CSP 契约', () => {
     it('should keep hardening directives added for 遗留清单 #6', () => {
         const csp = extractCsp()
         expect(csp).toContain("object-src 'none'")
-        expect(csp).toContain("base-uri 'self'")
         expect(csp).toContain("form-action 'none'")
+        // 2026-11-19：不设 base-uri——HTML 查看器需在 srcdoc 中注入 file:// <base>
+        // 修正相对链接（见 html-view-utils.ts），base-uri 'self' 会拦截该注入。
+        expect(csp).not.toContain('base-uri')
     })
 
     it('should keep file: in img-src for local image rendering (FE-12 regression guard)', () => {
@@ -64,8 +66,9 @@ describe('renderer CSP 契约', () => {
         expect(csp).not.toMatch(/script-src [^;]*unsafe-inline/)
     })
 
-    it('should not allow remote frame sources', () => {
+    it('should not allow remote or file frame sources (PDF 已改 canvas/srcdoc)', () => {
         const csp = extractCsp()
         expect(csp).not.toMatch(/frame-src [^;]*\bhttps?:/)
+        expect(csp).not.toMatch(/frame-src [^;]*\bfile:/)
     })
 })

@@ -54,9 +54,22 @@ interface DialogApi {
     }
 }
 
+/**
+ * 主窗口暴露的 electron 对象（2026-11-19 类型收口）：toolkit ElectronAPI 运行时
+ * 已由 preload 白名单限制为 send/invoke/on/once/removeListener/removeAllListeners，
+ * 类型层同步去掉未暴露的 sendTo / sendSync / sendToHost / postMessage，避免渲染层
+ * 在类型检查通过的情况下调用运行时不存在的 API。
+ */
+type MainWindowElectronAPI = Omit<ElectronAPI, 'ipcRenderer'> & {
+    ipcRenderer: Omit<
+        ElectronAPI['ipcRenderer'],
+        'sendTo' | 'sendSync' | 'sendToHost' | 'postMessage'
+    >
+}
+
 declare global {
     interface Window {
-        electron: ElectronAPI
+        electron: MainWindowElectronAPI
         api: Api
         electronAPI: DialogApi
     }

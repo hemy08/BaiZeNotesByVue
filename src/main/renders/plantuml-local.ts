@@ -105,8 +105,8 @@ let ownerWindowCleanupHooked = false
  */
 let idleDisposeTimer: NodeJS.Timeout | null = null
 
-/** 空闲销毁超时（60s；渲染完成后的空闲期） */
-const PLANTUML_IDLE_DISPOSE_MS = 60_000
+/** 空闲销毁超时（60s；渲染完成后的空闲期；导出供测试引用） */
+export const PLANTUML_IDLE_DISPOSE_MS = 60_000
 
 /** 清除空闲销毁定时器（销毁/重建/新任务时调用） */
 function cancelIdleDispose(): void {
@@ -122,7 +122,9 @@ function scheduleIdleDispose(): void {
     idleDisposeTimer = setTimeout(() => {
         idleDisposeTimer = null
         if (pendingRenderWindow !== null) {
-            // 正在创建窗口：交由创建流程结束后重新计时
+            // 2026-11-19 修复：正在创建窗口时**重新计时**（原实现直接 return，
+            // 该次空闲销毁被永久丢弃——pending 结束后不会再有回调）。
+            scheduleIdleDispose()
             return
         }
         logger.info('[PlantUML] 隐藏渲染窗口空闲超时，销毁以释放渲染进程资源（下次渲染时重建）')
@@ -421,9 +423,16 @@ async function ensureRenderWindow(): Promise<BrowserWindow> {
         return renderWindow
     }
     if (!pendingRenderWindow) {
-        pendingRenderWindow = createRenderWindow().finally(() => {
-            pendingRenderWindow = null
-        })
+        // 2026-11-19 修复：仅清空「本次创建」对应的 pending 引用——
+        // dispose 后新建窗口时，旧创建 promise 的迟到 finally 不得清空新引用。
+        pendingRenderWindow = (() => {
+            const wrapped: Promise<BrowserWindow> = createRenderWindow().finally(() => {
+                if (pendingRenderWindow === wrapped) {
+                    pendingRenderWindow = null
+                }
+            })
+            return wrapped
+        })()
     }
     return await pendingRenderWindow
 }
