@@ -7,7 +7,7 @@
  * 2. 主进程 tMain()：语言取自系统设置，refreshMainLocale() 失效缓存后随之切换；
  * 3. resolveLocale / setLocale 对历史值（'zh-cn' / 'en-us' / 'zh' / 'en'）的归一化。
  *
- * 说明：tMain 的语言来源 mock 掉 config/system-setting，避免引入 electron-store 依赖链。
+ * 说明：tMain 的语言来源经 utils/providers 注入替身，避免引入 config/electron-store 依赖链。
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { computed, effectScope } from 'vue'
@@ -15,13 +15,17 @@ import { computed, effectScope } from 'vue'
 // 主进程 tMain 的语言来源（可在用例内修改）
 const settingState = vi.hoisted(() => ({ language: 'zh-CN' as string | undefined }))
 
-vi.mock('../../src/main/config/system-setting', () => ({
-    getSystemSetting: () => ({ language: settingState.language })
-}))
-
 import { DEFAULT_LOCALE, resolveLocale, SUPPORTED_LOCALES } from '../../src/shared/i18n'
 import { currentLocale, getLocale, setLocale, t } from '../../src/renderer/src/common/i18n'
 import { getMainLocale, refreshMainLocale, tMain } from '../../src/main/utils/i18n'
+import { setSystemSettingProvider } from '../../src/main/utils/providers'
+import type { SystemSetting } from '../../src/shared/types'
+
+// 结构优化 1.1（H1）：主进程 i18n 的语言读取改经 provider 注入（替代原 mock config/system-setting），
+// 用 settingState 模拟实时系统设置，保持各用例断言语义不变。
+setSystemSettingProvider(
+    () => ({ language: settingState.language }) as unknown as SystemSetting
+)
 
 describe('CMP-30 语言切换冒烟', () => {
     beforeEach(() => {

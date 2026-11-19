@@ -39,7 +39,9 @@ export {
 
 export { getQuickLinks, saveQuickLinks, resetToDefault } from './quick-link-config'
 
-export { ipcListenerManager } from '../ipc/ipc-listener-manager'
+// 结构优化 1.1（H1）：移除 ipcListenerManager 的转发导出——config 聚合入口不再引用
+// src/main/ipc/**，需要该单例的调用方请直接 import '../ipc/ipc-listener-manager'
+// （当前仓内 src 侧无任何经 config 取 ipcListenerManager 的引用）。
 
 export { RegisterShortKeys } from './short-key-register'
 

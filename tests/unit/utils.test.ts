@@ -13,11 +13,8 @@ import * as fs from 'fs'
 import { pathToFileURL } from 'url'
 import { appState } from '../../src/main/utils/app-state'
 
-// CMP-30：安全确认框与状态栏提示经 tMain 读取词典（语言来自系统设置）。
-// 测试固定中文词条并 mock 掉 config/system-setting，隔离 electron-store 等主进程存储依赖链。
-vi.mock('../../src/main/config/system-setting', () => ({
-    getSystemSetting: () => ({ language: 'zh-CN' })
-}))
+// 结构优化 1.1（H1）：主进程 tMain 语言、主题与快速链接读取均改经 utils/providers 注入，
+// 不再 mock config/**；注入值在下方 import 完成后立即注册（见 set*Provider 调用）
 
 const electronState = vi.hoisted(() => {
     const base = process.env.TEMP || process.env.TMP || '/tmp'
@@ -92,22 +89,28 @@ const configMocks = vi.hoisted(() => ({
     getThemeStylesByType: vi.fn()
 }))
 
-vi.mock('../../src/main/config/quick-link-config', () => ({
-    getQuickLinks: configMocks.getQuickLinks
-}))
-
-vi.mock('../../src/main/config', () => ({
-    getCurrentThemeStyles: configMocks.getCurrentThemeStyles,
-    getAllThemes: configMocks.getAllThemes,
-    getAllMonacoThemes: configMocks.getAllMonacoThemes,
-    getThemeStylesByType: configMocks.getThemeStylesByType
-}))
-
 import {
     MainWindowListenUtilsEvent,
     sanitizeRsaBits,
     getExecutableExtensionDecision
 } from '../../src/main/utils/utils'
+import {
+    setQuickLinksProvider,
+    setSystemSettingProvider,
+    setThemeApiProvider
+} from '../../src/main/utils/providers'
+import type { SystemSetting } from '../../src/shared/types'
+
+// 结构优化 1.1（H1）：utils 的主题 / 快速链接 / tMain 语言读取改经 provider 注入；
+// 注入原 config mock 的同款函数，保持「handler 转发调用 config 读取函数」的用例语义不变。
+setSystemSettingProvider(() => ({ language: 'zh-CN' }) as unknown as SystemSetting)
+setQuickLinksProvider(configMocks.getQuickLinks)
+setThemeApiProvider({
+    getCurrentThemeStyles: configMocks.getCurrentThemeStyles,
+    getAllThemes: configMocks.getAllThemes,
+    getAllMonacoThemes: configMocks.getAllMonacoThemes,
+    getThemeStylesByType: configMocks.getThemeStylesByType
+})
 
 // 受信目录（安全用例）与普通目录（非受信用例）
 const TRUSTED_DIR = path.join(os.tmpdir(), 'baize-vitest-utils-trusted')

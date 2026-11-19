@@ -11,7 +11,9 @@ import { appState } from '../app-state'
 // 公共接口归位第 2 批：文件名/目录路径解析统一引用 shared/utils/path 真源
 import { getBaseName, parseDirectoryPath } from '../../../shared/utils/path'
 // P1-FE-06：目录选择对话框以系统设置的默认文件路径为起始位置
-import { getSystemSetting } from '../../config/system-setting'
+// 结构优化 1.1（H1）：系统设置读取改为注入（main/index.ts 启动早期注入 config 实现），
+// utils 不再静态 import config，消除 utils → config 反向依赖。
+import { getSystemSettingFromProvider } from '../providers'
 
 /**
  * 获取当前打开文件的目录路径
@@ -36,7 +38,7 @@ export function GetCurrentFileDirectory(): string {
  */
 function readDefaultFilePath(): string {
     try {
-        const value = getSystemSetting().defaultFilePath
+        const value = getSystemSettingFromProvider().defaultFilePath
         return typeof value === 'string' ? value : ''
     } catch {
         return ''

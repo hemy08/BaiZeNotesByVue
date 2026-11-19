@@ -51,8 +51,20 @@ import {
     isValidBackupName,
     parseBackupStamp,
     resolveBackupDirSafe,
-    sortBackupNames
+    sortBackupNames,
+    type PathApi
 } from '../../src/shared/utils/backup-dir'
+
+/**
+ * 结构优化第 1 批 1.3（L4）：shared/utils/backup-dir 的 `resolveBackupDirSafe` 改为
+ * 显式注入路径能力（shared 层不再 import node:path）。测试文件允许依赖 Node 内建，
+ * 这里直接传真实 node:path 实现，断言与改造前逐字等价。
+ */
+const nodePathApi: PathApi = {
+    resolve: path.resolve,
+    relative: path.relative,
+    isAbsolute: path.isAbsolute
+}
 
 /* ============================== 参考实现（原文件逐字拷贝） ============================== */
 
@@ -1345,12 +1357,14 @@ describe('resolveBackupDirSafe', () => {
 
     it('should resolve valid backup names inside root', () => {
         const name = '20261119-135551'
-        expect(resolveBackupDirSafe(root, name)).toBe(path.resolve(root, name))
-        expect(resolveBackupDirSafe(root, 'config-backup-20261119-135551')).toBe(
+        expect(resolveBackupDirSafe(root, name, nodePathApi)).toBe(path.resolve(root, name))
+        expect(resolveBackupDirSafe(root, 'config-backup-20261119-135551', nodePathApi)).toBe(
             path.resolve(root, 'config-backup-20261119-135551')
         )
         // 根目录带尾分隔符也能正确解析
-        expect(resolveBackupDirSafe(`${root}${path.sep}`, name)).toBe(path.resolve(root, name))
+        expect(resolveBackupDirSafe(`${root}${path.sep}`, name, nodePathApi)).toBe(
+            path.resolve(root, name)
+        )
     })
 
     it('should reject invalid names including traversal and absolute paths', () => {
@@ -1363,14 +1377,42 @@ describe('resolveBackupDirSafe', () => {
             'abc',
             ''
         ]) {
-            expect(resolveBackupDirSafe(root, invalid)).toBeNull()
+            expect(resolveBackupDirSafe(root, invalid, nodePathApi)).toBeNull()
         }
+    })
+
+    it('should go through the injected path api only (no node:path fallback)', () => {
+        // 纯注入实现：resolve 只拼接、relative 只裁剪，不与 node:path 产生任何耦合
+        const injectedPathApi: PathApi = {
+            resolve: (...parts: string[]) => parts.join('/'),
+            relative: (from: string, to: string) => to.slice(from.length + 1),
+            isAbsolute: (target: string) => target.startsWith('/')
+        }
+        expect(resolveBackupDirSafe('fake/root', '20261119-135551', injectedPathApi)).toBe(
+            'fake/root/20261119-135551'
+        )
+
+        // 注入的 relative 返回逃逸结果 → 即便名称合法也必须拒绝（守卫逻辑走注入实现）
+        const escapingPathApi: PathApi = {
+            resolve: (...parts: string[]) => parts.join('/'),
+            relative: () => '..',
+            isAbsolute: () => false
+        }
+        expect(resolveBackupDirSafe('fake/root', '20261119-135551', escapingPathApi)).toBeNull()
+
+        // 注入的 isAbsolute 对 relative 结果返回 true（模拟 Windows 跨盘符）→ 同样拒绝
+        const crossDrivePathApi: PathApi = {
+            resolve: (...parts: string[]) => parts.join('/'),
+            relative: () => 'D:/elsewhere/20261119-135551',
+            isAbsolute: () => true
+        }
+        expect(resolveBackupDirSafe('fake/root', '20261119-135551', crossDrivePathApi)).toBeNull()
     })
 
     it('should be equivalent to the two original safe-path implementations', () => {
         const samples = ['20261119-135551', '20261119-135551-2', 'config-backup-20261119-135551']
         for (const sample of samples) {
-            expect(resolveBackupDirSafe(root, sample)).toBe(
+            expect(resolveBackupDirSafe(root, sample, nodePathApi)).toBe(
                 referenceResolveBackupDirSafe(root, sample)
             )
         }

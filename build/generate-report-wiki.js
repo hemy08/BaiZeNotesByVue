@@ -166,7 +166,7 @@ if (fs.existsSync(readmeMd)) {
         output: readmeHtml,
         title: '报告 HTML Wiki · 首页',
         l1: '白泽笔记 · 历史报告归档（HTML Wiki）',
-        l2: '当前基线 v1.3.8 · 172 测试文件 / 3,201 用例 · 92 IPC 通道',
+        l2: '当前基线 v1.3.8 · 174 测试文件 / 3,224 用例 · 92 IPC 通道',
         navHtml: navRoot
     })
     // 首页导航：md 报告链接 → 对应 html（存在时），便于在 wiki 内直接跳转

@@ -1,26 +1,22 @@
 import { contextBridge, ipcRenderer, shell } from 'electron'
-import { IPC } from '../shared/ipc-channels'
+// H2（结构优化第 1 批）：对话框 send/on 白名单不再手写，统一由
+// build/generate-preload-whitelist.js 从 src/main/dialogs 的实际调用点生成
+//（src/preload/allowed-channels.generated.ts），本文件只负责消费生成结果。
+import { DIALOG_RECEIVE_CHANNELS, DIALOG_SEND_CHANNELS } from './allowed-channels.generated'
 
-// ARC-01：对话框窗口 send 通道白名单。
-// 仅放行 src/main/dialogs 各对话框 HTML 实际使用的通道（grep 实测），
+// ARC-01：对话框窗口 send 通道白名单（生成来源：src/main/dialogs 内
+// `ipcRenderer.send('${IPC.X.Y}')` 实际调用，当前仅新建文件/文件夹、重命名两个回车通道）；
 // 未知通道一律丢弃并告警——即使将来有远程/不可信 HTML 复用本 preload，
 // 也无法通过 send 调用任意能力型 IPC 通道（如 navi-tab-open-exe）。
 // C-08 起 OpenOnlineWebPages 的远程网页窗口已不再加载任何 preload（本白名单为纵深防御）。
 // ARC-03：通道名一律引用共享常量（ipc-channels.ts），不再写字面量。
-// P2 死代码清理：白名单只保留当前可达 JSDOM 对话框（新建文件/文件夹、重命名）
-// 实际使用的通道；随 8 个不可达对话框删除的通道条目（编辑器设置/字体选择/
-// 导入选项/快速链接/系统设置/主题设置/Mermaid 隐藏窗口/主题广播）已移除。
-const ALLOWED_SEND_CHANNELS = new Set<string>([
-    // 新建文件/文件夹对话框（ShowCreateFileFolderDialog）
-    IPC.DIALOG.CREATE_FILE_FOLDER_ENTER,
-    // 重命名对话框（ShowRenameDialog）
-    IPC.DIALOG.RENAME_FILE_FOLDER_ENTER
-])
+// P2 死代码清理：白名单只保留当前可达 JSDOM 对话框实际使用的通道。
+const ALLOWED_SEND_CHANNELS = new Set<string>(DIALOG_SEND_CHANNELS)
 
-// 2026-11-19（P3 纵深防御）：对话框接收（on/once）通道白名单。
+// 2026-11-19（P3 纵深防御）：对话框接收（on/once）通道白名单（生成来源同上）。
 // JSDOM 对话框目前只订阅主题切换广播（THEME_UPDATED，主题设置立即生效）；
 // 未知通道一律丢弃并告警——即使不可信 HTML 复用本 preload 也无法嗅探任意广播。
-const ALLOWED_RECEIVE_CHANNELS = new Set<string>([IPC.THEME.THEME_UPDATED])
+const ALLOWED_RECEIVE_CHANNELS = new Set<string>(DIALOG_RECEIVE_CHANNELS)
 
 // P0 安全（shell 协议白名单）：对话框窗口的 openExternal 只允许 http/https。
 // 被加载的不可信 HTML（历史上 OpenOnlineWebPages 的远程页面就使用本 preload）即使能调用

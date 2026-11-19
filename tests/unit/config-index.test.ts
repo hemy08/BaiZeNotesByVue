@@ -63,6 +63,7 @@ vi.mock('../../src/main/ipc/ipc-listener-manager', () => ({
 import { FakeStore } from './helpers/fake-store'
 
 import * as configIndex from '../../src/main/config'
+import * as ipcListenerManagerModule from '../../src/main/ipc/ipc-listener-manager'
 import * as configManagerModule from '../../src/main/config/config-manager'
 import * as themeConfigModule from '../../src/main/config/theme-config'
 import * as themeRegistryModule from '../../src/main/config/theme-registry'
@@ -125,9 +126,15 @@ describe('config/index re-exports', () => {
     })
 
     it('should expose the light-weight module singletons', () => {
-        expect(configIndex.ipcListenerManager).toEqual({ __mock: true })
         expect(configIndex.windowManager).toEqual({ __mock: true })
         expect(typeof configIndex.RegisterShortKeys).toBe('function')
+    })
+
+    // 结构优化 1.1（H1）：config 聚合入口不再转发 ipc 单例（消除 config → ipc 方向），
+    // 需要 ipcListenerManager 的调用方直接 import '../ipc/ipc-listener-manager'。
+    it('should no longer re-export ipcListenerManager through the barrel', () => {
+        expect('ipcListenerManager' in configIndex).toBe(false)
+        expect(ipcListenerManagerModule.ipcListenerManager).toEqual({ __mock: true })
     })
 
     describe('functional smoke through the barrel', () => {

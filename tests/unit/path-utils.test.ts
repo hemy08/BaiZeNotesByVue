@@ -41,6 +41,21 @@ import {
     ParseDirectoryPath,
     BuildFileTree
 } from '../../src/main/utils/file-utils/path-utils'
+import { setSystemSettingProvider } from '../../src/main/utils/providers'
+import type { SystemSetting } from '../../src/shared/types'
+
+// 结构优化 1.1（H1）：path-utils 的系统设置读取改经 utils/providers 注入；
+// 用 FakeStore 中 systemSetting 的数据模拟 config/system-setting 的真实读取，
+// 保持「defaultFilePath 作为目录选择对话框起始路径」用例的语义与数据准备方式不变。
+setSystemSettingProvider(
+    () =>
+        ({
+            defaultFilePath:
+                (FakeStore.data.get('systemSetting')?.get('defaultFilePath') as
+                    | string
+                    | undefined) ?? ''
+        }) as unknown as SystemSetting
+)
 
 describe('ParserFileName', () => {
     it('should extract file name from a Windows path', () => {

@@ -22,6 +22,9 @@
 
 import * as fs from 'fs-extra'
 import * as path from 'path'
+// 结构优化第 1 批 1.3（L4）：shared 纯函数不再直接依赖 node:path，
+// 路径能力改由主进程调用方显式注入（主进程依赖 Node 内建属正常边界）。
+import { isAbsolute, relative, resolve } from 'node:path'
 import { CONFIG_DIR_NAME, getUserDataPath } from '../utils/app-paths'
 import { logger } from '../utils/logger'
 // 公共接口归位第 2 批：备份目录纯函数（时间戳/名称/安全解析/排序）统一引用 shared 真源，
@@ -31,7 +34,8 @@ import {
     isValidBackupName as isValidBackupNameShared,
     parseBackupStamp,
     resolveBackupDirSafe as resolveBackupDirSafeShared,
-    sortBackupNames
+    sortBackupNames,
+    type PathApi
 } from '../../shared/utils/backup-dir'
 import { getSystemSetting, saveSystemSetting } from './system-setting'
 import { setThemeConfig } from './theme-config'
@@ -49,6 +53,13 @@ import type {
     QuickLinkItem,
     SystemSetting
 } from '../../shared/types'
+
+/**
+ * Node 路径能力实现（结构优化第 1 批 1.3 / L4）：
+ * shared/utils/backup-dir 的 `resolveBackupDirSafe` 改为第三参数接收路径能力，
+ * 主进程在此传入真实的 `node:path` 同名函数，保持与原实现逐字一致的守卫语义。
+ */
+const NODE_PATH_API: PathApi = { resolve, relative, isAbsolute }
 
 export type { ConfigBackupCommand, ConfigBackupInfo, ConfigBackupState }
 
@@ -93,12 +104,13 @@ export function isValidBackupName(name: unknown): name is string {
  * 返回 null 表示非法（调用方直接拒绝，不做任何读写）。
  * 公共接口归位第 2 批：路径守卫（白名单 + path.relative 防逃逸）复用 shared 实现，
  * 本函数先按配置备份命名空间过滤，再交给 shared 做相对路径校验。
+ * 结构优化第 1 批 1.3（L4）：shared 实现不再 import node:path，改为注入 NODE_PATH_API。
  */
 function resolveBackupDirSafe(name: unknown): string | null {
     if (!isValidBackupName(name)) {
         return null
     }
-    return resolveBackupDirSafeShared(getConfigBackupRoot(), name)
+    return resolveBackupDirSafeShared(getConfigBackupRoot(), name, NODE_PATH_API)
 }
 
 /** 列出备份目录下的普通文件（不进入子目录） */

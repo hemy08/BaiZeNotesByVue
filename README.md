@@ -456,7 +456,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成            | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.0 | Electron 应用打包工具           | [官网](https://www.electron.build/)                    |
-|               Vitest               | 4.1.12  | 单元测试框架（172 个测试文件 / 3,201 用例） | [官网](https://vitest.dev/)                            |
+|               Vitest               | 4.1.12  | 单元测试框架（174 个测试文件 / 3,224 用例） | [官网](https://vitest.dev/)                            |
 |               ESLint               | 9.39.4  | JavaScript 代码检查工具         | [官网](https://eslint.org/)                            |
 |              Prettier              |  3.9.6  | 代码格式化工具                  | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  2.1.0  | Electron ESLint 配置            | [GitHub](https://github.com/alex8088/electron-toolkit) |
@@ -584,7 +584,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层）
 npm run typecheck
 
-# 运行单元测试（172 个测试文件 / 3,201 个用例）
+# 运行单元测试（174 个测试文件 / 3,224 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
@@ -665,7 +665,7 @@ npm run clean
 
 ### v1.3.8 (当前版本)
 
-- [x] 版本维护：全仓版本号 1.3.7 → 1.3.8（无功能/代码变更，为下一阶段发布准备）
+- [x] 版本维护：全仓版本号 1.3.7 → 1.3.8；结构优化第 1 批（依赖边界自动化 / preload 白名单生成 / shared 边界收口）
 - [x] 1.3.7 已发布 GitHub Release（tag `release-1.3.7`；NSIS / portable / latest.yml）；1.3.6 在 `506e78a` 补打 tag
 - [x] 文档版本标注 / 版本历史 / 报告索引同步，HTML 报告重生成
 

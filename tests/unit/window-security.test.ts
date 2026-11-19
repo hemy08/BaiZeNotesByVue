@@ -126,6 +126,10 @@ const internalMocks = vi.hoisted(() => ({
     restoreLastOpenedAtStartup: vi.fn(),
     getCurrentThemeStyles: vi.fn(),
     getThemeStylesByType: vi.fn(),
+    // 结构优化 1.1（H1）：main/index.ts 启动早期向 utils/providers 注入主题/快速链接读取实现
+    getAllThemes: vi.fn(),
+    getAllMonacoThemes: vi.fn(),
+    getQuickLinks: vi.fn(),
     getMonacoTheme: vi.fn(),
     getSeparateEditorTheme: vi.fn(),
     getSystemSetting: vi.fn(),
@@ -177,6 +181,10 @@ vi.mock('../../src/main/utils/startup-restore', () => ({
 vi.mock('../../src/main/config', () => ({
     getCurrentThemeStyles: internalMocks.getCurrentThemeStyles,
     getThemeStylesByType: internalMocks.getThemeStylesByType,
+    // 结构优化 1.1（H1）：main/index.ts 启动早期注入 utils providers 的读取实现
+    getAllThemes: internalMocks.getAllThemes,
+    getAllMonacoThemes: internalMocks.getAllMonacoThemes,
+    getQuickLinks: internalMocks.getQuickLinks,
     getMonacoTheme: internalMocks.getMonacoTheme,
     getSeparateEditorTheme: internalMocks.getSeparateEditorTheme,
     getSystemSetting: internalMocks.getSystemSetting,

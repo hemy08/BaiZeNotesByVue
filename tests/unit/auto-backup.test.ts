@@ -38,9 +38,9 @@ vi.mock('../../src/main/utils/i18n', () => ({
     tMain: (key: string) => key
 }))
 
-vi.mock('../../src/main/config/system-setting', () => ({
-    getSystemSetting: () => hoisted.setting
-}))
+// 结构优化 1.1（H1）：auto-backup 的系统设置读取改经 utils/providers 注入（替代原
+// mock config/system-setting），注入读取 hoisted.setting 的替身，保持 enableAutoBackup /
+// backupInterval / backupCount 各用例语义不变。
 
 // appState 用真实实例（可重置 rootPath/currentActiveFile），仅替换发送函数以便断言提示
 vi.mock('../../src/main/utils/app-state', async (importOriginal) => {
@@ -62,6 +62,12 @@ import {
 } from '../../src/main/utils/auto-backup'
 import { logger } from '../../src/main/utils/logger'
 import { appState } from '../../src/main/utils/app-state'
+import { setSystemSettingProvider } from '../../src/main/utils/providers'
+import type { SystemSetting } from '../../src/shared/types'
+
+// 结构优化 1.1（H1）：注入系统设置替身（等价原 mock 的 getSystemSetting），
+// 每次读取取 hoisted.setting 最新值，与改造前 mock 的实时读取语义一致。
+setSystemSettingProvider(() => hoisted.setting as unknown as SystemSetting)
 
 const INTERVAL_24H_MS = 24 * 60 * 60 * 1000
 

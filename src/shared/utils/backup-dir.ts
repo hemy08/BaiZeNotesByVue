@@ -11,12 +11,33 @@
  * - 自动备份：`YYYYMMDD-HHmmss`，同一秒重名时追加 `-N` 序号；
  * - 配置备份：`config-backup-YYYYMMDD-HHmmss`，同一秒重名时追加 `-N` 序号。
  *
- * 依赖说明：仅依赖 `node:path` 的 `resolve / relative / isAbsolute`（与两处原实现的
- * 防逃逸校验逐字一致）与同目录的纯函数 date.ts；不依赖 electron / vue。
+ * 边界约束（结构优化第 1 批 1.3 / L4：shared 边界例外收口）：
+ * 本文件属 shared 纯函数层，**不得静态依赖 Node / Electron / Vue 运行时模块**。
+ * 原实现直接 import `node:path` 的 `resolve / relative / isAbsolute`（与两处原实现的
+ * 防逃逸校验逐字一致），现改为由调用方通过 {@link PathApi} **显式注入**路径能力：
+ * 主进程调用方传真实 Node path 实现，测试可传任意等价实现；本文件自身仅依赖
+ * 同目录纯函数 date.ts，不依赖 electron / vue，也不访问 DOM。
  */
 
-import { isAbsolute, relative, resolve } from 'node:path'
 import { formatDateTime } from './date'
+
+/**
+ * 路径能力接口（依赖注入，保持 shared 层纯函数边界）。
+ *
+ * 设计说明：
+ * 1. 三个方法签名与 Node `path` 模块的同名函数一致，主进程可把 `node:path` 的
+ *    `resolve` / `relative` / `isAbsolute` 直接作为实现注入（零适配成本）；
+ * 2. shared 层不 import `node:path`，从而可在渲染进程、测试与任意宿主环境复用；
+ * 3. 只声明本模块实际使用的三个能力，避免接口膨胀；新增能力需先确认纯函数边界。
+ */
+export interface PathApi {
+    /** 合并路径片段为绝对路径（语义与 Node path.resolve 一致） */
+    resolve(...paths: string[]): string
+    /** 计算 from 到 to 的相对路径（语义与 Node path.relative 一致） */
+    relative(from: string, to: string): string
+    /** 判断是否为绝对路径（语义与 Node path.isAbsolute 一致） */
+    isAbsolute(path: string): boolean
+}
 
 /** 自动备份目录名规则（对齐 auto-backup.ts:52）：`YYYYMMDD-HHmmss` 或追加 `-N` */
 const AUTO_BACKUP_NAME_PATTERN = /^\d{8}-\d{6}(-\d+)?$/
@@ -114,16 +135,18 @@ export function parseBackupStamp(name: string): number | null {
  *
  * @param root 备份根目录
  * @param name 备份目录名
+ * @param pathApi 路径能力实现（由调用方注入，主进程传 `node:path` 的同名函数；
+ *                守卫逻辑与实现无关，同等语义实现得到同等结果）
  * @returns 备份目录绝对路径；非法/逃逸返回 null（调用方直接拒绝，不做任何读写）
  */
-export function resolveBackupDirSafe(root: string, name: string): string | null {
+export function resolveBackupDirSafe(root: string, name: string, pathApi: PathApi): string | null {
     if (!isValidBackupName(name)) {
         return null
     }
-    const resolvedRoot = resolve(root)
-    const target = resolve(resolvedRoot, name)
-    const relativePath = relative(resolvedRoot, target)
-    if (relativePath === '' || relativePath.startsWith('..') || isAbsolute(relativePath)) {
+    const resolvedRoot = pathApi.resolve(root)
+    const target = pathApi.resolve(resolvedRoot, name)
+    const relativePath = pathApi.relative(resolvedRoot, target)
+    if (relativePath === '' || relativePath.startsWith('..') || pathApi.isAbsolute(relativePath)) {
         return null
     }
     return target

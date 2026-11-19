@@ -37,10 +37,15 @@
 
 import * as fs from 'fs-extra'
 import * as path from 'path'
+// 结构优化第 1 批 1.3（L4）：shared 纯函数不再直接依赖 node:path，
+// 路径能力改由主进程调用方显式注入（主进程依赖 Node 内建属正常边界）。
+import { isAbsolute, relative, resolve } from 'node:path'
 import { getUserDataPath } from './app-paths'
 import { logger } from './logger'
 import { appState, sendToMainWindow } from './app-state'
-import { getSystemSetting } from '../config/system-setting'
+// 结构优化 1.1（H1）：系统设置读取改为注入（main/index.ts 启动早期注入 config 实现），
+// utils 不再静态 import config，消除 utils → config 反向依赖。
+import { getSystemSettingFromProvider } from './providers'
 import { tMain } from './i18n'
 import { IPC } from '../../shared/ipc-channels'
 import { encodeFileContent } from './file-utils/file-encoding'
@@ -52,8 +57,16 @@ import {
     isValidBackupName,
     parseBackupStamp,
     resolveBackupDirSafe as resolveBackupDirSafeShared,
-    sortBackupNames
+    sortBackupNames,
+    type PathApi
 } from '../../shared/utils/backup-dir'
+
+/**
+ * Node 路径能力实现（结构优化第 1 批 1.3 / L4）：
+ * shared/utils/backup-dir 的 `resolveBackupDirSafe` 改为第三参数接收路径能力，
+ * 主进程在此传入真实的 `node:path` 同名函数，保持与原实现逐字一致的守卫语义。
+ */
+const NODE_PATH_API: PathApi = { resolve, relative, isAbsolute }
 
 /** 备份根目录名（位于 ~/.baizenotes/ 下） */
 export const AUTO_BACKUP_DIR_NAME = 'backups'
@@ -128,12 +141,13 @@ export function isValidAutoBackupName(name: unknown): name is string {
  * 返回 null 表示非法（调用方直接拒绝，不做任何读写）。
  * 公共接口归位第 2 批：路径守卫（白名单 + path.relative 防逃逸）复用 shared 实现，
  * 本函数先按自动备份命名空间过滤，再交给 shared 做相对路径校验。
+ * 结构优化第 1 批 1.3（L4）：shared 实现不再 import node:path，改为注入 NODE_PATH_API。
  */
 function resolveAutoBackupDirSafe(name: unknown): string | null {
     if (!isValidAutoBackupName(name)) {
         return null
     }
-    return resolveBackupDirSafeShared(getAutoBackupRoot(), name)
+    return resolveBackupDirSafeShared(getAutoBackupRoot(), name, NODE_PATH_API)
 }
 
 /** 从备份目录名解析创建时间（命名含时间戳，不依赖 mtime）。
@@ -204,7 +218,7 @@ export async function listAutoBackups(): Promise<AutoBackupInfo[]> {
 
 /** 归一化保留数量：非法值回落默认，范围夹取到 [1, MAX_AUTO_BACKUP_KEEP] */
 function normalizeAutoBackupKeep(): number {
-    const raw = getSystemSetting().backupCount
+    const raw = getSystemSettingFromProvider().backupCount
     if (typeof raw === 'number' && Number.isFinite(raw)) {
         return Math.min(MAX_AUTO_BACKUP_KEEP, Math.max(1, Math.floor(raw)))
     }
@@ -427,7 +441,7 @@ export async function performAutoBackup(): Promise<AutoBackupResult | null> {
 
 /** 按当前设置计算备份间隔毫秒数（钳制到 1~72 小时，非法值回落默认） */
 export function getAutoBackupIntervalMs(): number {
-    const raw = getSystemSetting().backupInterval
+    const raw = getSystemSettingFromProvider().backupInterval
     const hours =
         typeof raw === 'number' && Number.isFinite(raw) ? raw : DEFAULT_AUTO_BACKUP_INTERVAL_HOURS
     const clamped = Math.min(
@@ -501,7 +515,7 @@ async function runAutoBackupCycle(): Promise<void> {
         await runAutoBackupOnce()
     } finally {
         autoBackupRunning = false
-        if (getSystemSetting().enableAutoBackup === true) {
+        if (getSystemSettingFromProvider().enableAutoBackup === true) {
             scheduleNextAutoBackup(getAutoBackupIntervalMs())
         }
     }
@@ -514,7 +528,7 @@ async function runAutoBackupCycle(): Promise<void> {
  */
 export function startAutoBackupTimer(): void {
     stopAutoBackupTimer()
-    if (getSystemSetting().enableAutoBackup !== true) {
+    if (getSystemSettingFromProvider().enableAutoBackup !== true) {
         return
     }
     scheduleNextAutoBackup(getAutoBackupIntervalMs())
@@ -526,7 +540,7 @@ export function startAutoBackupTimer(): void {
  * backupInterval 变更经 startAutoBackupTimer 的重启语义自动生效。
  */
 export function syncAutoBackupTimer(): void {
-    if (getSystemSetting().enableAutoBackup === true) {
+    if (getSystemSettingFromProvider().enableAutoBackup === true) {
         startAutoBackupTimer()
     } else {
         stopAutoBackupTimer()

@@ -8,16 +8,23 @@
 <summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
 <blockcode><pre><code>
 
+### 🧱 结构优化第 1 批（结构防御）
+
+- **H1 依赖边界自动化**：utils→config 反向依赖清零 + 依赖方向架构测试（0 violation）
+- **H2 preload 白名单单一化**：由 shared 契约生成白名单（58/25/6/2+1），编译期穷尽性断言 + `--check` 防漂移
+- **L4 shared 边界收口**：backup-dir 移除 node:path 注入化 + ESLint/架构测试硬约束
+- 门禁：typecheck 0 / ESLint 0 / vitest 174 文件 / 3,224 用例全通过 / build 成功
+
 ### 🔧 版本维护
 
-- 版本号 **1.3.7 → 1.3.8**（无功能/代码变更，为后续发布准备）
+- 版本号 **1.3.7 → 1.3.8**
 - **1.3.7 已发布**：GitHub Release `release-1.3.7`（NSIS 118.42 MiB / portable 107.46 MiB / latest.yml / blockmap），自动更新源可用
 - **1.3.6 tag 补齐**：`release-1.3.6` → 提交 `506e78a`
 - 文档版本标注、版本历史与报告索引同步；HTML 报告重生成
 
 ### ✅ 门禁
 
-- typecheck 三工程 0 错误、ESLint 0/0、vitest 172 文件 / 3,201 用例全通过
+- typecheck 三工程 0 错误、ESLint 0/0、vitest 174 文件 / 3,224 用例全通过
 
 </code></pre></blockcode></details>
 

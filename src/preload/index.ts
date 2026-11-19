@@ -72,94 +72,116 @@ const api = {
 }
 
 // ============================================================
-// 渲染层 IPC 通道白名单（2026-11-18，遗留清单 #4 / C-09）
+// 渲染层 IPC 通道白名单（H2：由 shared 契约驱动的单一来源，2026-11-19）
 //
 // 背景：主窗口 preload 此前直接暴露 @electron-toolkit/preload 的全量 electronAPI，
 // 渲染层可调用任意通道——若渲染层出现 XSS，将直达全量 IPC 能力（纵深防御缺口）。
-// 本白名单按「渲染层实际调用」收集（src/renderer 全量扫描：send/invoke 与 on/once
-// 两类方向），未知通道的 send/invoke/on 一律丢弃并告警。
+// 2026-11-18（遗留清单 #4 / C-09）起白名单按「渲染层实际调用」收窄，未知通道的
+// send/invoke/on 一律丢弃并告警。
 //
-// 维护约定：渲染层新增 IPC 调用时，必须同步登记到对应白名单，否则调用被丢弃；
-// 白名单变更后运行 `npx vitest run tests/unit/preload-whitelist.test.ts` 校验
-// （该测试静态扫描 src/renderer 全部 ipcRenderer 调用与两个 Set 做**双向**核对），
-// 同时 `tests/unit/preload-index.test.ts` 覆盖白名单的运行时拦截行为。
+// 单一来源（2026-11-19，结构优化第 1 批 H2）：三份手工白名单改为由
+// `src/shared/types/ipc.ts` 契约驱动、`build/generate-preload-whitelist.js` 统一生成：
+//   1. 生成模块 `src/preload/allowed-channels.generated.ts`：带字面量类型与编译期
+//      穷尽性断言，由 `dialog.ts` 运行时引用，并供 `preload-whitelist.test.ts` 双向核对；
+//   2. 本文件下方两个带「生成标记」的白名单块：入口镜像。既有
+//      `tests/unit/ipc-payload-contract.test.ts`（本批不修改）从入口文件静态解析
+//      `ALLOWED_RENDERER_SEND_CHANNELS` / `ALLOWED_RENDERER_RECEIVE_CHANNELS`，故镜像
+//      必须保留在入口文件；镜像与生成模块由同一份数据一次产出，`preload-whitelist.test.ts`
+//      校验两者完全一致（防两处生成产物漂移）。
 //
-// 边界说明（2026-11-19 补充）：本白名单只约束 `window.electron.ipcRenderer`（渲染层
-// 直接调用面）；`window.api`（config/app/file 三个高层受限 API）在 preload 闭包内使用
-// 原始 ipcRenderer 的 6 个通道（CONFIG.READ/WRITE、RENDER.READY、SYSTEM.APP_VERSION、
-// FILE.RECENT_LIST/OPEN_RECENT），属设计内的独立受限 API 面，不经过窗口白名单。
+// 维护约定：渲染层新增 IPC 调用时先更新 `src/shared/types/ipc.ts` 契约，再执行
+//   `node build/generate-preload-whitelist.js`
+// 生成器 `--check` 未通过（契约已改但产物未重新生成）会让测试直接失败，不再出现
+// 「新增通道漏登记 → 调用被静默丢弃」。白名单运行时拦截行为由
+// `tests/unit/preload-index.test.ts` 覆盖；生成产物/契约核对由
+// `tests/unit/preload-whitelist.test.ts` 覆盖。
+//
+// 边界说明（2026-11-19）：本白名单只约束 `window.electron.ipcRenderer`（渲染层直接
+// 调用面）；`window.api`（config/app/file 三个高层受限 API）在 preload 闭包内使用原始
+// ipcRenderer 的 6 个通道（CONFIG.READ/WRITE、RENDER.READY、SYSTEM.APP_VERSION、
+// FILE.RECENT_LIST/OPEN_RECENT），属设计内的独立受限 API 面，不经过窗口白名单；
+// 其通道清单由生成模块的 PRELOAD_API_CHANNELS（IpcPreloadApiRequests 契约）守护，
+// 测试断言它们不在这两个窗口白名单内。
 // ============================================================
 
-/** 渲染层 → 主进程（send / invoke）允许通道：58 个（2026-11-19 核对） */
+// <preload-whitelist:renderer-send>
+/**
+ * 渲染层 → 主进程（send / invoke）允许通道：58 个。
+ * 由 build/generate-preload-whitelist.js 从 shared/types/ipc.ts 的 IpcRequests 生成，禁止手改。
+ */
 const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
-    IPC.SETTING.AUTO_SAVE_CHANGED,
-    IPC.EDITOR.FLUSH_CONTENT_DONE,
-    IPC.EDITOR.GET_SETTING,
-    IPC.FILE.CHECK_EXISTS,
-    IPC.FILE.CREATE_FILE_FOLDER,
-    IPC.FILE.GET_CURRENT_FILE_PATH,
-    IPC.FILE.IMPORT_NEW_FILE,
-    IPC.FILE.OPEN_IN_BROWSER,
-    IPC.FILE.OPEN_SELECT_FILE,
-    IPC.FILE.OPEN_SPECIFIC_FOLDER,
-    IPC.FILE.READ_HTML,
-    // 2026-11-18（遗留清单 #9）：PDF 预览经 pdf.js 需要读取原始二进制
-    IPC.FILE.READ_BINARY,
-    IPC.FILE.SAVE_TO_DISK,
-    IPC.FILE.SELECT_DIRECTORY,
-    IPC.FILE.SELECT_IMAGE,
-    IPC.SYSTEM.SYSTEM_INFO,
-    IPC.FILE.UPDATE_SELECT_FILE_CONTENT,
-    IPC.FILE.WELCOME_OPEN_DIRECTORY,
-    IPC.FILE.WELCOME_OPEN_FILE,
-    IPC.FILE_MANAGER.COPY_FILE,
-    IPC.FILE_MANAGER.COPY_FILELINK,
-    IPC.FILE_MANAGER.COPY_IMAGELINK,
-    IPC.FILE_MANAGER.COPY_RELATIVE_PATH,
-    IPC.FILE_MANAGER.CREATE_FILE,
-    IPC.FILE_MANAGER.CUT,
-    IPC.FILE_MANAGER.DELETE,
-    IPC.FILE_MANAGER.FIND_IN,
-    IPC.FILE_MANAGER.IMPORT_FROM,
-    IPC.FILE_MANAGER.OPEN_IN_EXPLORER,
-    IPC.FILE_MANAGER.PASTE,
-    IPC.FILE_MANAGER.RELOAD_FROM_DISK,
-    IPC.FILE_MANAGER.RENAME,
-    IPC.MENU.ACTION,
-    IPC.NAVIGATION.OPEN_EXE,
-    IPC.FILE.CONVERT_SAVE_ENCODING,
-    IPC.FILE.REOPEN_WITH_ENCODING,
-    IPC.PLUGIN.CRYPTO_DECRYPT,
-    IPC.PLUGIN.CRYPTO_ENCRYPT,
-    IPC.PLUGIN.HASH_TEXT,
-    IPC.PLUGIN.HMAC_TEXT,
-    IPC.PLUGIN.RSA_GENERATE,
-    IPC.QUICK_LINKS.GET,
-    IPC.QUICK_LINKS.SAVE,
-    IPC.RENDER.INSERT_IMAGE,
-    IPC.RENDER.PLANTUML_LOCAL,
-    IPC.THEME.GET_ALL_MONACO_THEMES,
-    IPC.THEME.GET_ALL_THEMES,
-    IPC.THEME.GET_CURRENT_THEME_STYLES,
-    IPC.THEME.LOAD_MONACO_THEME,
-    IPC.THEME.UPDATE_THEME,
+    IPC.WINDOW.MINIMIZE,
+    IPC.WINDOW.MAXIMIZE,
     IPC.WINDOW.CLOSE,
+    IPC.WINDOW.TOGGLE_MAXIMIZE,
     IPC.WINDOW.GET_BOUNDS,
     IPC.WINDOW.IS_MAXIMIZED,
-    IPC.WINDOW.MAXIMIZE,
-    IPC.WINDOW.MINIMIZE,
     IPC.WINDOW.MOVE,
     IPC.WINDOW.SET_SIZE,
-    IPC.WINDOW.TOGGLE_MAXIMIZE
+    IPC.THEME.UPDATE_THEME,
+    IPC.THEME.LOAD_MONACO_THEME,
+    IPC.THEME.GET_CURRENT_THEME_STYLES,
+    IPC.THEME.GET_ALL_THEMES,
+    IPC.THEME.GET_ALL_MONACO_THEMES,
+    IPC.MENU.ACTION,
+    IPC.EDITOR.GET_SETTING,
+    IPC.EDITOR.FLUSH_CONTENT_DONE,
+    IPC.FILE.OPEN_SELECT_FILE,
+    IPC.FILE.OPEN_SPECIFIC_FOLDER,
+    IPC.FILE.WELCOME_OPEN_DIRECTORY,
+    IPC.FILE.WELCOME_OPEN_FILE,
+    IPC.FILE.IMPORT_NEW_FILE,
+    IPC.FILE.CREATE_FILE_FOLDER,
+    IPC.FILE.GET_CURRENT_FILE_PATH,
+    IPC.FILE.SELECT_DIRECTORY,
+    IPC.FILE.SELECT_IMAGE,
+    IPC.FILE.UPDATE_SELECT_FILE_CONTENT,
+    IPC.FILE.SAVE_TO_DISK,
+    IPC.FILE.CHECK_EXISTS,
+    IPC.FILE.READ_HTML,
+    IPC.FILE.READ_BINARY,
+    IPC.FILE.OPEN_IN_BROWSER,
+    IPC.FILE.REOPEN_WITH_ENCODING,
+    IPC.FILE.CONVERT_SAVE_ENCODING,
+    IPC.FILE_MANAGER.COPY_RELATIVE_PATH,
+    IPC.FILE_MANAGER.COPY_IMAGELINK,
+    IPC.FILE_MANAGER.COPY_FILELINK,
+    IPC.FILE_MANAGER.COPY_FILE,
+    IPC.FILE_MANAGER.CUT,
+    IPC.FILE_MANAGER.PASTE,
+    IPC.FILE_MANAGER.OPEN_IN_EXPLORER,
+    IPC.FILE_MANAGER.RELOAD_FROM_DISK,
+    IPC.FILE_MANAGER.CREATE_FILE,
+    IPC.FILE_MANAGER.RENAME,
+    IPC.FILE_MANAGER.DELETE,
+    IPC.FILE_MANAGER.IMPORT_FROM,
+    IPC.FILE_MANAGER.FIND_IN,
+    IPC.PLUGIN.RSA_GENERATE,
+    IPC.PLUGIN.HASH_TEXT,
+    IPC.PLUGIN.HMAC_TEXT,
+    IPC.PLUGIN.CRYPTO_ENCRYPT,
+    IPC.PLUGIN.CRYPTO_DECRYPT,
+    IPC.RENDER.INSERT_IMAGE,
+    IPC.RENDER.PLANTUML_LOCAL,
+    IPC.NAVIGATION.OPEN_EXE,
+    IPC.SETTING.AUTO_SAVE_CHANGED,
+    IPC.SYSTEM.SYSTEM_INFO,
+    IPC.QUICK_LINKS.GET,
+    IPC.QUICK_LINKS.SAVE
 ])
+// </preload-whitelist:renderer-send>
 
-/** 主进程 → 渲染层（on / once）允许通道：25 个（2026-11-19 核对） */
+// <preload-whitelist:renderer-receive>
+/**
+ * 主进程 → 渲染层（on / once）允许通道：25 个。
+ * 由 build/generate-preload-whitelist.js 从 shared/types/ipc.ts 的 IpcEvents 生成，禁止手改。
+ */
 const ALLOWED_RENDERER_RECEIVE_CHANNELS = new Set<string>([
     IPC.DIALOG.OPEN_VUE_DIALOG,
     IPC.EDITOR.FLUSH_CONTENT,
     IPC.EDITOR.INIT_SETTING,
-    IPC.SETTING.SYSTEM_SETTING_UPDATE,
     IPC.EDITOR.UPDATE_OPTIONS,
+    IPC.SETTING.SYSTEM_SETTING_UPDATE,
     IPC.EVENTS.FILE_CONTENT_RELOADED,
     IPC.EVENTS.FILE_SAVED_SUCCESS,
     IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT,
@@ -167,20 +189,21 @@ const ALLOWED_RENDERER_RECEIVE_CHANNELS = new Set<string>([
     IPC.FILE.CLEAR_EDITOR_PREVIEW,
     IPC.FILE.USER_SELECT_FILE,
     IPC.FILE.WELCOME_ENTER_MAIN,
+    IPC.FILE.OPEN_WITH_ENCODING,
+    IPC.FILE.CONVERT_TO_ENCODING,
     IPC.FILE_MANAGER.FILE_SYSTEM_DATA,
     IPC.MONACO.AFTER_CURSOR,
     IPC.MONACO.TEXT_BLOCK_TEMPLATES,
-    IPC.FILE.CONVERT_TO_ENCODING,
-    IPC.FILE.OPEN_WITH_ENCODING,
+    IPC.MONACO.UNDO_REDO,
     IPC.PLUGIN.RSA_RESULT,
     IPC.QUICK_LINKS.UPDATED,
     IPC.THEME.THEME_UPDATED,
     IPC.VIEW.EDIT_MODE,
-    IPC.VIEW.EDIT_PREVIEW_MODE,
     IPC.VIEW.PREVIEW_MODE,
-    IPC.VIEW.TOGGLE_RES_MANAGER,
-    IPC.MONACO.UNDO_REDO
+    IPC.VIEW.EDIT_PREVIEW_MODE,
+    IPC.VIEW.TOGGLE_RES_MANAGER
 ])
+// </preload-whitelist:renderer-receive>
 
 /** 渲染层可用的受限 ipcRenderer（send/invoke/on/once 校验白名单，退订不做限制） */
 function createRestrictedIpcRenderer(): typeof electronAPI.ipcRenderer {

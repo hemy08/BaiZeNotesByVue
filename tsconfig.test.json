@@ -33,6 +33,7 @@
     // tests/unit 下、也不会被 import，必须显式列入 include，否则测试程序里会报
     // “Property 'api' does not exist” / TS2882 / TS7016 等假阳性。
     "include": [
+        "tests/architecture/**/*.test.ts",
         "tests/unit/**/*.ts",
         "src/renderer/src/env.d.ts",
         "src/preload/index.d.ts",

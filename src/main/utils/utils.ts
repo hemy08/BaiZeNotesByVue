@@ -8,14 +8,9 @@ import {
     CryptoEncrypt
 } from './encrypt-decrypt'
 import { shell, dialog } from 'electron'
-import { getQuickLinks } from '../config/quick-link-config'
-import {
-    getCurrentThemeStyles,
-    getAllThemes,
-    getAllMonacoThemes,
-    getThemeStylesByType
-} from '../config'
-import type { ThemeType } from '../config'
+// 结构优化 1.1（H1）：配置读取依赖倒置——utils 不再静态 import config，
+// 主题/快速链接读取由 main/index.ts 启动早期注入（见 utils/providers.ts）
+import { getQuickLinksFromProvider, getThemeApiFromProvider } from './providers'
 import { appState } from './app-state'
 import { isPathAllowed, isSafeExternalUrl, openExternalSafely } from './security'
 import { getAppResourcesPath } from './app-paths'
@@ -32,7 +27,7 @@ import { formatFileSize } from '../../shared/utils/format'
 // ARC-13：CryptoData / FileProperties 已收敛到 src/shared/types（唯一真源）；
 // 第 2 批：版本信息返回结构统一引用 shared AppVersionInfo（与 preload index.d.ts、
 // 渲染层 HelpAboutDialog.vue 的消费形状同一契约）
-import type { AppVersionInfo, CryptoData, FileProperties } from '../../shared/types'
+import type { AppVersionInfo, CryptoData, FileProperties, ThemeType } from '../../shared/types'
 import { tMain } from './i18n'
 import { logger } from './logger'
 
@@ -573,7 +568,9 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
     // AS-6：快速链接含 exe 路径（可被后续 OPEN_EXE 消费），补发送方校验
     ipcListenerManager.registerHandleOnce(
         IPC.QUICK_LINKS.GET,
-        withSenderCheck(IPC.QUICK_LINKS.GET, () => getQuickLinks(), { kind: 'handle' }),
+        withSenderCheck(IPC.QUICK_LINKS.GET, () => getQuickLinksFromProvider(), {
+            kind: 'handle'
+        }),
         GLOBAL_IPC_COMPONENT_ID
     )
 
@@ -584,10 +581,11 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         withSenderCheck(
             IPC.THEME.GET_CURRENT_THEME_STYLES,
             (_event: Electron.IpcMainInvokeEvent, themeType?: string) => {
+                const themeApi = getThemeApiFromProvider()
                 if (themeType) {
-                    return getThemeStylesByType(themeType as ThemeType)
+                    return themeApi.getThemeStylesByType(themeType as ThemeType)
                 }
-                return getCurrentThemeStyles()
+                return themeApi.getCurrentThemeStyles()
             },
             { kind: 'handle' }
         ),
@@ -596,15 +594,21 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
 
     ipcListenerManager.registerHandleOnce(
         IPC.THEME.GET_ALL_THEMES,
-        withSenderCheck(IPC.THEME.GET_ALL_THEMES, () => getAllThemes(), { kind: 'handle' }),
+        withSenderCheck(IPC.THEME.GET_ALL_THEMES, () => getThemeApiFromProvider().getAllThemes(), {
+            kind: 'handle'
+        }),
         GLOBAL_IPC_COMPONENT_ID
     )
 
     ipcListenerManager.registerHandleOnce(
         IPC.THEME.GET_ALL_MONACO_THEMES,
-        withSenderCheck(IPC.THEME.GET_ALL_MONACO_THEMES, () => getAllMonacoThemes(), {
-            kind: 'handle'
-        }),
+        withSenderCheck(
+            IPC.THEME.GET_ALL_MONACO_THEMES,
+            () => getThemeApiFromProvider().getAllMonacoThemes(),
+            {
+                kind: 'handle'
+            }
+        ),
         GLOBAL_IPC_COMPONENT_ID
     )
 

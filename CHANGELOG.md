@@ -1,6 +1,6 @@
-## 2026年11月19日 - 版本 1.3.8（版本维护 / 发布准备）
+## 2026年11月19日 - 版本 1.3.8（版本维护 / 结构优化第 1 批）
 
-> 1.3.8 为版本维护批次：无功能与代码变更，用于承接 1.3.7 发布收尾并为下一阶段迭代准备。
+> 1.3.8 为版本维护 + 结构优化批次：承接 1.3.7 发布收尾，并落地《代码结构优化计划》第 1 批（结构防御 H1/H2/L4）。
 
 ### 🔧 版本与发布
 
@@ -8,13 +8,16 @@
 - **1.3.7 已发布**（2026-11-19）：GitHub Release `release-1.3.7`（tag `release-1.3.7` → `cc3d929`；NSIS 118.42 MiB / portable 107.46 MiB / latest.yml / blockmap），自动更新源 `releases/latest/download` 已验证可访问
 - **1.3.6 tag 补齐**：在发布提交 `506e78a` 上补打 `release-1.3.6` tag
 
-### 📚 文档
+### 🧱 结构优化第 1 批（H1 / H2 / L4）
 
-- 版本历史、报告索引、HTML Wiki、结构分析报告发布状态同步；HTML 报告重生成
+- **H1 依赖边界自动化**：新增 `src/main/utils/providers.ts`（依赖倒置，仅依赖 shared），`auto-backup`/`i18n`/`path-utils`/`utils.ts` 的 utils→config 静态 import 清零；`config/index.ts` 移除 `ipcListenerManager` re-export；新增 `tests/architecture/dependency-boundaries.test.ts`（方向矩阵扫描，0 violation）
+- **H2 preload 白名单单一化**：新增 `build/generate-preload-whitelist.js`，从 `shared/types/ipc.ts` 契约生成 `src/preload/allowed-channels.generated.ts`（send 58 / receive 25 / window.api 6 / dialog 2+1；`satisfies` + 编译期穷尽性断言）；`--check` 防漂移；预加载入口镜像与生成模块一致性由测试锁定；`predev`/`prebuild*` 前置生成
+- **L4 shared 边界收口**：`backup-dir.ts` 移除 `node:path`，`resolveBackupDirSafe` 改为显式注入 `PathApi`；`eslint.config.js` 新增 shared 禁止 node/electron/vue/DOM 的硬约束；新增 `tests/architecture/shared-boundary.test.ts`（AST 扫描）
+- 门禁：typecheck 0 / ESLint 0 / vitest **174 文件 / 3,224 用例全通过** / electron-vite build 成功（preload 保持单文件产物）
 
 ### ✅ 门禁
 
-- typecheck 三工程 0 错误、ESLint 0/0、vitest **172 文件 / 3,201 用例全通过**
+- typecheck 三工程 0 错误、ESLint 0/0、vitest **174 文件 / 3,224 用例全通过**
 
 ---
 ## 2026年11月19日 - 版本 1.3.7（结构治理 / 性能 / 安全与文档体系）

@@ -6,7 +6,9 @@
  * 系统设置写入后由 config-manager 调用 refreshMainLocale() 失效缓存。
  */
 import { DEFAULT_LOCALE, resolveLocale, translate, type Locale } from '../../shared/i18n'
-import { getSystemSetting } from '../config/system-setting'
+// 结构优化 1.1（H1）：语言设置读取改为注入（main/index.ts 启动早期注入 config 实现），
+// utils 不再静态 import config，消除 utils → config 反向依赖。
+import { getSystemSettingFromProvider } from './providers'
 import { logger } from './logger'
 
 let cachedLocale: Locale | null = null
@@ -21,7 +23,7 @@ export function getMainLocale(): Locale {
     if (cachedLocale === null) {
         let raw: string | undefined
         try {
-            raw = getSystemSetting()?.language
+            raw = getSystemSettingFromProvider()?.language
         } catch (error) {
             logger.warn('[i18n] 读取系统语言失败，使用默认语言', error)
         }

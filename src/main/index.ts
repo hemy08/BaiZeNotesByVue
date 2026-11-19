@@ -7,6 +7,10 @@ import { restoreLastOpenedFile } from './utils/file-state'
 import {
     getCurrentThemeStyles,
     getThemeStylesByType,
+    // 结构优化 1.1（H1）：追加导入主题/快速链接读取函数，用于注入 utils 侧提供者
+    getAllThemes,
+    getAllMonacoThemes,
+    getQuickLinks,
     getMonacoTheme,
     getSeparateEditorTheme,
     getSystemSetting,
@@ -62,6 +66,33 @@ import { startSystemThemeWatcher, stopSystemThemeWatcher } from './config/system
 // 系统设置补充实现批次 C：
 // - 自动备份（enableAutoBackup + backupInterval）：启动定时器（whenReady）+ 退出清理
 import { stopAutoBackupTimer, syncAutoBackupTimer } from './utils/auto-backup'
+// 结构优化 1.1（H1）：utils 侧配置读取提供者——由本入口注入 config 真实实现，
+// 使 src/main/utils/** 不再静态 import src/main/config/**（依赖倒置，方向单向 config → utils）
+import {
+    setQuickLinksProvider,
+    setSystemSettingProvider,
+    setThemeApiProvider
+} from './utils/providers'
+
+/* ============================================================================
+ * 结构优化 1.1（H1）：utils 配置读取提供者注入
+ *
+ * 时机：模块顶层、全部 import 求值完成后立即执行，早于 whenReady / createWindow /
+ * registerConfigIpcHandlers / registerIpcHandlers。utils 各模块只在「函数调用时」经
+ * provider 读取（无模块级缓存），因此此后所有运行期路径（自动备份定时器、主进程 i18n、
+ * 目录选择默认路径、主题/快速链接 IPC）拿到的都是 config 真实实现，行为与改造前一致。
+ *
+ * 容错：setter 对 undefined/非函数入参回退安全默认值；即使本注入因异常顺序未执行，
+ * utils 侧也只回退默认值而不崩溃（正常启动流程不会走到回退分支）。
+ * ========================================================================== */
+setSystemSettingProvider(getSystemSetting)
+setQuickLinksProvider(getQuickLinks)
+setThemeApiProvider({
+    getCurrentThemeStyles,
+    getAllThemes,
+    getAllMonacoThemes,
+    getThemeStylesByType
+})
 
 // D-3/FUN-03：关闭/退出落盘协议通道名（ARC-03：收口到共享 IPC 常量）
 const EDITOR_FLUSH_CHANNEL = IPC.EDITOR.FLUSH_CONTENT

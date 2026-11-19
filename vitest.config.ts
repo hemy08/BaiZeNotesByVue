@@ -37,7 +37,9 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'node',
-        include: ['tests/unit/**/*.test.ts'],
+        // 结构优化第 1 批 1.1（H1）：架构依赖边界测试独立于 tests/unit 目录，
+        // 补一条 include 使其随 `npm test` 自动发现（原 include 保持不变）。
+        include: ['tests/unit/**/*.test.ts', 'tests/architecture/**/*.test.ts'],
         // ET-17：测试临时目录统一清理。
         // globalSetup 在全部 worker 结束后（主进程内串行）删除本轮收尾时 %TEMP%/baize-*
         // 目录；这些目录由测试按需创建（mkdir recursive / mkdtemp），跨运行无保留价值。
