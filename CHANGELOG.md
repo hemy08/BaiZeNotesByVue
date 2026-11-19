@@ -46,6 +46,14 @@
 - 测试：新增 PDF 组件测试 6 用例、READ_BINARY 通道测试 3 用例；插件/菜单/词典断言同步（插件工具 37 → 38）
 - 验证：typecheck 0 错误、ESLint 0/0、vitest **156 文件 / 2,847 用例全通过**、`electron-vite build` 成功
 
+### 🧩 公共接口归位第 3 批完成（2026-11-19）
+
+- **BaseDialog 18/18 对话框迁移完成**：C-2 组 7 个（净 -626 行，外壳 355 + 正文 545 条声明审计 0 不一致）、C-3 组 4 个（247 项属性 0 差异）、C-4 组 4 个特殊对话框（ThemeSetting 8 个 resize-handle → prepend 插槽、HelpAbout 仅关闭按钮标题栏）
+- **BaseDialog 扩展**：titleTextStyle/closeButtonStyle（DialogStyleProperties 类型含 app-region）+ prepend 插槽（18 props/4 插槽）
+- **插件样式副本清理**：13 个组件删除本地 scoped 副本（-229 行 / 121 条重复声明），视觉零变化
+- 新增 3 个外壳契约测试文件（C-2/C-3/C-4，共 79 用例）
+- 门禁：typecheck 0 / ESLint 0-0 / vitest **172 文件 / 3,214 用例全通过** / build 成功 / E2E 4 passed
+
 ### 🧩 公共接口归位第 3 批（2026-11-19，🟡 部分完成）
 
 - **组件化**：WindowControls（欢迎页/主界面统一，-222 行）、FileViewerShell + useFileViewerState（HTML/PDF 壳层去重：-343 行，27 用例通过）、TextCodecTool（4 codec 薄封装 138/147/160→41/48/50 行）、BaseDialog（16 props/3 插槽 + 3 个 simple 对话框迁移，-225 行重复 CSS）
