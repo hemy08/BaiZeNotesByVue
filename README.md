@@ -369,8 +369,7 @@ BaiZeNotesByVue/
 │   │   └── monaco-themes/themes/         # Monaco 编辑器主题（55 个主题 json + themelist 索引）
 │   ├── plantuml/                         # PlantUML 本地 teaVM 渲染资源（6 个文件）
 │   ├── icon/                             # 应用图标（ico/svg）
-│   ├── config/                           # 配置文件（version.json 构建时生成）
-│   └── _unused-assets/                   # 未使用资产暂存（已加入 .gitignore）
+│   └── config/                           # 配置文件（version.json 构建时生成）
 ├── tests/                                # 单元测试（171 个 .test.ts / 3,201 个用例）
 ├── docs/                                 # 项目文档
 │   ├── wiki/                             # 知识库文档（分类结构）
@@ -384,10 +383,11 @@ BaiZeNotesByVue/
 │   │   ├── README.md                     # 报告总索引（含口径说明与合并记录）
 │   │   ├── md/                           # Markdown 报告（20 篇，按三类分类）
 │   │   └── html/                         # HTML 报告 Wiki（README+_sidebar 导航 + 20 份带悬浮目录页面）
-│   ├── 架构文档.html                     # 历史版架构文档（最新见 docs/wiki/02-设计与架构/架构文档.md）
 │   ├── images/                           # 文档配图
+│   ├── 历史归档/                          # 历史文档归档（非当前实现，见「文档导航」说明）
+│   │   └── 架构文档.html                  # 历史版架构文档合辑（非当前；最新见 docs/wiki/02-设计与架构/架构文档.md）
 │   └── md/                               # 其他 Markdown 文档
-├── build/                                # 构建脚本（generate-version-config.js、installer.nsh、build-html-report.js 报告工具等）
+├── build/                                # 构建脚本（generate-version-config.js、prepare-build-dirs.js、报告工具 generate-report-wiki.js 等）
 ├── dist/                                 # 打包输出（已忽略）
 ├── out/                                  # 编译输出（已忽略）
 ├── electron.vite.config.ts               # Electron-Vite 配置
@@ -561,7 +561,7 @@ BaiZeNotesByVue/
 - [预览单跳重构报告](docs/reports/md/02-修复与实施/预览单跳重构报告.md) - PF-02：预览本地渲染，IPC 4 跳 → 0 跳
 - [IPC 通道命名统一方案](docs/reports/md/03-专项治理/IPC通信治理报告.md) - `baize:<domain>:<name>` 命名规范（历史 123 通道清单，已并入治理报告）
 - [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.3.8 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
-- 说明：`docs/架构文档.html` 为 **历史版本合辑**，仅保留旧版版式与 ADR，最新架构以 wiki Markdown 为准
+- 说明：`docs/历史归档/架构文档.html` 为 **历史版本合辑（非当前实现）**，仅保留旧版版式与 ADR，最新架构以 wiki Markdown 为准
 
 ### 版本与历史
 
