@@ -28,23 +28,54 @@ import {
 } from '@renderer/components/dialogs/complex/theme-setting/model'
 import { THEME_GROUPS } from '../../../src/shared/constants/theme'
 import { IPC } from '../../../src/shared/ipc-channels'
-import type { MonacoThemeListItem, ThemeListItem } from '../../../src/shared/types'
+import type {
+    MonacoThemeListItem,
+    ThemeListItem,
+    ThemeStyles,
+    ThemeType
+} from '../../../src/shared/types'
 import { t } from '@renderer/common/i18n'
+
+/** 构造完整的 shared ThemeStyles（ThemeListItem.styles 为必填全字段，不允许 partial） */
+function makeThemeStyles(overrides: Partial<ThemeStyles> = {}): ThemeStyles {
+    return {
+        name: '测试主题',
+        description: '测试主题描述',
+        titleBarGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        backgroundColor: '#ffffff',
+        cardBackground: '#f5f5f5',
+        textColor: '#333333',
+        secondaryTextColor: '#666666',
+        borderColor: '#dddddd',
+        accentColor: '#00b0ff',
+        buttonBackground: '#00b0ff',
+        buttonTextColor: '#ffffff',
+        hoverBackground: '#f0f0f0',
+        ...overrides
+    }
+}
+
+/** 构造应用主题列表项（主进程 IPC 返回形状） */
+function makeTheme(type: ThemeType, overrides: Partial<ThemeStyles> = {}): ThemeListItem {
+    return { type, styles: makeThemeStyles({ name: type, ...overrides }) }
+}
+
+/** 构造 Monaco 主题列表项（主进程 IPC 返回形状） */
+function makeMonacoTheme(type: string, config: MonacoThemeListItem['config']): MonacoThemeListItem {
+    return { type, config }
+}
 
 const SAMPLE_CATEGORY: ThemeCategory[] = [
     {
         nameKey: 'dialogRenderer.themeSetting.categoryLight',
         themes: [
-            {
-                type: 'baize',
-                styles: {
-                    name: '白泽',
-                    description: '默认浅色主题',
-                    backgroundColor: '#ffffff',
-                    accentColor: '#00b0ff',
-                    textColor: '#333333'
-                }
-            }
+            makeTheme('baize', {
+                name: '白泽',
+                description: '默认浅色主题',
+                backgroundColor: '#ffffff',
+                accentColor: '#00b0ff',
+                textColor: '#333333'
+            })
         ]
     }
 ]
@@ -53,7 +84,11 @@ const SAMPLE_MONACO: MonacoThemeViewItem[] = [
     {
         type: 'vs-dark',
         name: 'Dark (Visual Studio)',
-        config: { name: 'Dark (Visual Studio)', isDark: true } as MonacoThemeListItem['config'],
+        config: makeMonacoTheme('vs-dark', {
+            name: 'Dark (Visual Studio)',
+            description: '深色编辑器主题',
+            isDark: true
+        }).config,
         colors: { bg: '#1e1e1e', text: '#d4d4d4', accent: '#007acc' }
     }
 ]
@@ -170,25 +205,21 @@ describe('useThemeSettingForm（共享草稿 composable）', () => {
     let configRead: ReturnType<typeof vi.fn>
 
     const ALL_THEMES: ThemeListItem[] = [
-        { type: 'baize', styles: { name: '白泽' } },
-        { type: THEME_GROUPS[1].types[0], styles: { name: '深色主题' } },
-        { type: THEME_GROUPS[2].types[0], styles: { name: '护眼主题' } }
+        makeTheme('baize', { name: '白泽' }),
+        makeTheme('dark', { name: '深色主题' }),
+        makeTheme('eyecare-green', { name: '护眼主题' })
     ]
     const ALL_MONACO: MonacoThemeListItem[] = [
-        {
-            type: 'vs',
-            config: {
-                name: 'Light (Visual Studio)',
-                isDark: false
-            } as MonacoThemeListItem['config']
-        },
-        {
-            type: 'vs-dark',
-            config: {
-                name: 'Dark (Visual Studio)',
-                isDark: true
-            } as MonacoThemeListItem['config']
-        }
+        makeMonacoTheme('vs', {
+            name: 'Light (Visual Studio)',
+            description: '浅色编辑器主题',
+            isDark: false
+        }),
+        makeMonacoTheme('vs-dark', {
+            name: 'Dark (Visual Studio)',
+            description: '深色编辑器主题',
+            isDark: true
+        })
     ]
 
     beforeEach(() => {
