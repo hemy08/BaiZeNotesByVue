@@ -31,7 +31,17 @@
 
 ### ✅ 门禁
 
-- typecheck 三工程 0 错误、ESLint 0/0、vitest **174 文件 / 3,224 用例全通过**
+### 🧱 结构优化第 2 批（H3 / H4 / H6 / M1 / M2）
+
+- **H3 双对话框收敛**：主进程 JSDOM/原生对话框全部删除 → 渲染层 Vue + BaseDialog（快捷键/更新日志/发布说明/重命名/删除确认 + 新建文件文件夹统一路径）；复用 \IPC.DIALOG.OPEN_VUE_DIALOG\，删除 2 个旧 ENTER 通道；preload dialog 白名单归零
+- **H4 主界面二级分块**：入口 **127.2 kB**、主界面壳 **316.3 kB**（原 9.89 MB）；Monaco（5,050+2,206 kB）与预览（1,757+KaTeX 499 kB）改为壳 chunk 动态 import，未被 index.html 预载
+- **H6 jsdom 依赖边界**：删除 \dialog-defaults.ts\，主进程 \out/main/index.js\ **10.50 MiB → 0.60 MiB（-94.3%）**、jsdom/lib 计数 0；jsdom 仅保留 devDependency（vitest 环境）
+- **M1/M2 基础设施收口**：新增 \pp-context.ts\（窗口/welcome/快捷键/退出/flags 集中 + reset）与 \ipc/registry.ts\（两阶段 6 类 64 处注册，入口只调用一次）；错误 helper 统一留待第 4 批
+- 门禁：typecheck 0 / ESLint 0 / vitest **169 文件 / 3,234 用例全通过** / electron-vite build 成功
+
+### ✅ 门禁
+
+- typecheck 三工程 0 错误、ESLint 0/0、vitest **169 文件 / 3,234 用例全通过**
 
 ---
 ## 2026年11月19日 - 版本 1.3.7（结构治理 / 性能 / 安全与文档体系）
