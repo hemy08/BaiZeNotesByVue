@@ -456,7 +456,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成            | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.0 | Electron 应用打包工具           | [官网](https://www.electron.build/)                    |
-|               Vitest               | 4.1.12  | 单元测试框架（171 个测试文件 / 3,198 用例） | [官网](https://vitest.dev/)                            |
+|               Vitest               | 4.1.12  | 单元测试框架（172 个测试文件 / 3,201 用例） | [官网](https://vitest.dev/)                            |
 |               ESLint               | 9.39.4  | JavaScript 代码检查工具         | [官网](https://eslint.org/)                            |
 |              Prettier              |  3.9.6  | 代码格式化工具                  | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  2.1.0  | Electron ESLint 配置            | [GitHub](https://github.com/alex8088/electron-toolkit) |
