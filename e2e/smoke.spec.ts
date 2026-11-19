@@ -11,15 +11,25 @@
  * 需桌面环境（Windows/macOS/Linux GUI）；CI 见 .github/workflows/ci.yml 的 e2e job。
  * 说明：页面的 index.html 未声明 <title>，窗口标题由主进程 BrowserWindow.title 提供，
  * 因此标题断言走 app.evaluate 读取原生窗口标题，而不是 page.title()。
+ *
+ * P0 E2E 补齐（本轮）：启动统一走 e2e/helpers/electron-profile.ts——
+ * userData 经 `-r` 夹具重定向到临时目录；home 下真实配置目录（~/.baizenotes/config）由
+ * ConfigSandbox 备份 → 隔离 → 恢复，用例结束整体清理；
+ * Windows 下使用 out/tmp 的 Electron 运行时副本（受限沙箱内 node_modules 的 electron.exe
+ * 会以 Low 完整性级别运行而无法创建 GUI 窗口），本地与 CI 行为一致。
  */
-import { test, expect, _electron as electron } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
-
-const ROOT = path.resolve(__dirname, '..')
-// M7 产物治理：electron-vite 产物位于 out/build/main（见 electron.vite.config.ts）
-const MAIN_ENTRY = path.join(ROOT, 'out', 'build', 'main', 'index.js')
+import {
+    MAIN_ENTRY,
+    ROOT,
+    createConfigSandbox,
+    createTempProfile,
+    launchDevApp
+} from './helpers/electron-profile'
+import type { ConfigSandbox, TempProfile } from './helpers/electron-profile'
 
 // 未构建时整文件跳过，避免误报（构建命令见 CI 的 e2e job / 本地 npx electron-vite build）
 test.skip(
@@ -30,21 +40,23 @@ test.skip(
 test.describe('Electron 主窗口冒烟', () => {
     let app: ElectronApplication
     let page: Page
+    let profile: TempProfile
+    let sandbox: ConfigSandbox
 
     test.beforeAll(async () => {
-        // 本会话/CI 可能继承 ELECTRON_RUN_AS_NODE=1（Electron 会以纯 Node 模式运行、
-        // 不创建窗口），启动时剔除该变量，确保以 GUI 模式启动。
-        const env = Object.fromEntries(
-            Object.entries(process.env).filter(([key]) => key !== 'ELECTRON_RUN_AS_NODE')
-        ) as Record<string, string>
-
-        app = await electron.launch({ args: [MAIN_ENTRY], env })
+        // 隔离用户数据：userData 用临时目录，真实配置目录用 ConfigSandbox 备份/恢复
+        profile = createTempProfile('baize-e2e-smoke-')
+        sandbox = createConfigSandbox(profile)
+        sandbox.seed()
+        app = await launchDevApp(profile)
         page = await app.firstWindow()
         await page.waitForLoadState('domcontentloaded')
     })
 
     test.afterAll(async () => {
         await app?.close()
+        sandbox?.restore()
+        profile?.cleanup()
     })
 
     test('主窗口已创建：原生标题、菜单与窗口可见状态均正常', async () => {

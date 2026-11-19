@@ -3,19 +3,28 @@ name: CI
 # 2026-11-18（遗留清单 #16）：最小质量门禁流水线
 # - 与本地门禁一致：typecheck（node/web/test 三段）→ ESLint → Vitest
 # - 平台选用 windows-latest：仓库为 Windows 桌面应用，路径/编码相关用例与本地环境一致
-# - 不执行打包（electron-builder 需要签名/发布配置，发布流水线另行配置）
+# - quality-gate 不执行打包；e2e job 仅执行 electron-builder --dir 解包产物（不做安装包签名/发布），
+#   安装包发布流水线另行配置
 #
 # 2026-11-19（P3 遗留项：E2E 未纳入 CI）：新增独立 `e2e` job（与 quality-gate 并行）
 # - 真实 Electron 冒烟：electron-vite build → Playwright `_electron.launch`（e2e/smoke.spec.ts）
-# - 使用 @playwright/test 直接驱动 node_modules/electron，无需 `npx playwright install`
+# - 使用 @playwright/test 直接驱动 Electron 二进制，无需 `npx playwright install`
 #   下载浏览器（Electron 二进制由 npm ci 的 electron postinstall 下载）
 # - e2e 与 quality-gate 相互独立：任一失败都会在 PR 检查中单独可见，不改变原门禁结构
+#
+# 2026-11-19（P0 E2E 补齐）：e2e job 扩展为「开发构建 + 打包产物」双层验证
+# - 构建改为 `npm run build:unpack`：一次产出 out/build/{main,preload,renderer} 与
+#   out/build/dist/win-unpacked（electron-builder --dir），后者供打包启动用例验证 asar/单文件 preload；
+# - 用例新增：启动恢复（autoOpenLastFile/Folder）、系统设置保存跨重启持久化、打包产物直接启动；
+# - 用例每个使用临时 home/userData 并清理（打包版见 e2e/packaged-launch.spec.ts 的备份/恢复策略）；
+# - e2e job 超时 25 → 45 分钟（含一次 electron-builder --dir 打包）；
+# - quality-gate 的 coverage 步骤后新增 coverage-report artifact 上传（retention 7 天）。
 #
 # 2026-11-19（P0 安装包瘦身 + CI 体积预算）：新增独立 `bundle-budget` job（与 quality-gate/e2e 并行）
 # - 体积预算断言的是真实安装包产物（NSIS/portable/asar），不能只跑 electron-vite build，
 #   因此该 job 先执行完整 `npm run build:win:all`，再运行 `npm run budget:check`
 #   （阈值与断言逻辑见 build/check-bundle-budget.js，基线数据见 out/tool-results/p0-size.md）
-# - 与 e2e job 的 electron-vite build 相互独立（各自 runner，不共享工作区）
+# - 与 e2e job 的 build:unpack 相互独立（各自 runner，不共享工作区）
 on:
     push:
         branches: [main, master]
@@ -56,6 +65,14 @@ jobs:
             - name: Coverage (thresholds)
               run: npx --no-install vitest run --coverage
 
+            # P0 E2E 补齐：coverage 结果作为 artifact 留存（7 天），便于质量趋势/失败排查
+            - name: Upload coverage artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage-report
+                  path: coverage/
+                  retention-days: 7
+
             - name: Prettier check
               run: npx --no-install prettier --check .
 
@@ -68,7 +85,10 @@ jobs:
     e2e:
         name: E2E (Playwright + Electron)
         runs-on: windows-latest
-        timeout-minutes: 25
+        # P0 E2E 补齐：e2e 现在同时覆盖开发构建与打包产物（npm run build:unpack 含
+        # electron-vite build + electron-builder --dir），耗时从纯构建的 ~5min 提升到 ~10min，
+        # 25 → 45 分钟留足冷启动/重试余量
+        timeout-minutes: 45
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -82,10 +102,13 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            # 先产出 out/build/main + out/build/preload + out/build/renderer：E2E 与本地一致，直接运行构建产物，
-            # 不依赖 electron-vite dev server（避免端口/热更新带来的不稳定）
-            - name: Build (electron-vite)
-              run: npx --no-install electron-vite build
+            # P0 E2E 补齐：一步产出全部 E2E 依赖的产物
+            # - out/build/main|preload|renderer：开发构建用例（冒烟/启动恢复/设置持久化）
+            # - out/build/dist/win-unpacked：打包启动用例（asar / extraResources / 单文件 preload 真实链路）
+            # 与本地构建命令一致（build:unpack = generate-version + generate-preload-whitelist +
+            # electron-vite build + prepare-build-dirs + electron-builder --dir）
+            - name: Build dev + unpacked app
+              run: npm run build:unpack
 
             - name: Run Playwright E2E
               run: npx --no-install playwright test
