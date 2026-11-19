@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3.7-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.8-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Electron](https://img.shields.io/badge/Electron-43.8.10-blue.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5.45-brightgreen.svg)
@@ -127,7 +127,7 @@
 
 #### 版本信息
 
-- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.7）的发布说明
+- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.8）的发布说明
 - **更新日志**：展示依赖升级详情和代码适配修复
 - **技术栈信息**：显示项目技术栈详细信息
 - **关于页面**：显示应用版本、开发框架、系统环境信息
@@ -473,7 +473,7 @@ BaiZeNotesByVue/
 
 ## 📊 项目统计
 
-> 以下数据为 2026-11-19 实测（v1.3.7 基线；口径说明见 [报告总索引](docs/reports/README.md)）。
+> 以下数据为 2026-11-19 实测（v1.3.8 基线；口径说明见 [报告总索引](docs/reports/README.md)）。
 
 |     指标     |     数量     | 说明                                                                                             |
 | :----------: | :----------: | :----------------------------------------------------------------------------------------------- |
@@ -560,7 +560,7 @@ BaiZeNotesByVue/
 - [国际化（i18n）实施报告](docs/reports/md/02-修复与实施/国际化实施报告.md) - 中英双语词典与 t()/tMain() 架构
 - [预览单跳重构报告](docs/reports/md/02-修复与实施/预览单跳重构报告.md) - PF-02：预览本地渲染，IPC 4 跳 → 0 跳
 - [IPC 通道命名统一方案](docs/reports/md/03-专项治理/IPC通信治理报告.md) - `baize:<domain>:<name>` 命名规范（历史 123 通道清单，已并入治理报告）
-- [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.3.7 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
+- [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.3.8 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
 - 说明：`docs/架构文档.html` 为 **历史版本合辑**，仅保留旧版版式与 ADR，最新架构以 wiki Markdown 为准
 
 ### 版本与历史
@@ -584,7 +584,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层）
 npm run typecheck
 
-# 运行单元测试（171 个测试文件 / 3,198 个用例）
+# 运行单元测试（172 个测试文件 / 3,201 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
@@ -663,7 +663,13 @@ npm run clean
 
 ## 🗺️ 开发路线图
 
-### v1.3.7 (当前版本)
+### v1.3.8 (当前版本)
+
+- [x] 版本维护：全仓版本号 1.3.7 → 1.3.8（无功能/代码变更，为下一阶段发布准备）
+- [x] 1.3.7 已发布 GitHub Release（tag `release-1.3.7`；NSIS / portable / latest.yml）；1.3.6 在 `506e78a` 补打 tag
+- [x] 文档版本标注 / 版本历史 / 报告索引同步，HTML 报告重生成
+
+### v1.3.7
 
 - [x] 公共接口归位第 0~4 批：shared 三层单真源（types 14 / utils 11 / constants 10 模块）、60+ 文件迁移、18/18 对话框 BaseDialog 组件化
 - [x] 主界面异步分块：入口 chunk 10,096KB → 114KB（-98.9%），初始加载 -94.3%

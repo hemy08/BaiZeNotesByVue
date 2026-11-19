@@ -1,5 +1,27 @@
 # 发布说明 (Release Notes)
 
+## 版本 1.3.8 (2026-11-19)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🔧 版本维护
+
+- 版本号 **1.3.7 → 1.3.8**（无功能/代码变更，为后续发布准备）
+- **1.3.7 已发布**：GitHub Release `release-1.3.7`（NSIS 118.42 MiB / portable 107.46 MiB / latest.yml / blockmap），自动更新源可用
+- **1.3.6 tag 补齐**：`release-1.3.6` → 提交 `506e78a`
+- 文档版本标注、版本历史与报告索引同步；HTML 报告重生成
+
+### ✅ 门禁
+
+- typecheck 三工程 0 错误、ESLint 0/0、vitest 172 文件 / 3,201 用例全通过
+
+</code></pre></blockcode></details>
+
+---
 ## 版本 1.3.7 (2026-11-19)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)

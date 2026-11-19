@@ -1,3 +1,22 @@
+## 2026年11月19日 - 版本 1.3.8（版本维护 / 发布准备）
+
+> 1.3.8 为版本维护批次：无功能与代码变更，用于承接 1.3.7 发布收尾并为下一阶段迭代准备。
+
+### 🔧 版本与发布
+
+- **全仓版本号升级 1.3.7 → 1.3.8**：`package.json` / `package-lock.json` / `resources/config/version.json` / README 徽章 / docs wiki / docs reports / 结构图等当前状态标注统一
+- **1.3.7 已发布**（2026-11-19）：GitHub Release `release-1.3.7`（tag `release-1.3.7` → `cc3d929`；NSIS 118.42 MiB / portable 107.46 MiB / latest.yml / blockmap），自动更新源 `releases/latest/download` 已验证可访问
+- **1.3.6 tag 补齐**：在发布提交 `506e78a` 上补打 `release-1.3.6` tag
+
+### 📚 文档
+
+- 版本历史、报告索引、HTML Wiki、结构分析报告发布状态同步；HTML 报告重生成
+
+### ✅ 门禁
+
+- typecheck 三工程 0 错误、ESLint 0/0、vitest **172 文件 / 3,201 用例全通过**
+
+---
 ## 2026年11月19日 - 版本 1.3.7（结构治理 / 性能 / 安全与文档体系）
 
 > 承接 1.3.6（2026-11-15 发布）之后 **11-18、11-19 的全部修改**：以「公共接口归位」第 0~4 批完成 shared 三层单真源与渲染层组件化，主界面异步分块将入口 chunk 降低 98.9%，并完成 PDF 预览 / CSP / preload 白名单等安全加固与报告 HTML Wiki 文档体系重构。

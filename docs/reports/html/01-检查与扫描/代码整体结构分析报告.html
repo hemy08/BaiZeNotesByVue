@@ -242,9 +242,9 @@
 
 <h1>白泽笔记代码整体结构分析报告</h1>
 <blockquote>
-<p><strong>性质</strong>：结构分析（非缺陷清单）——对 v1.3.7 代码库（结构实测基线 v1.3.6 HEAD <code>7526e61</code>）做一次自顶向下的整体结构切片，梳理进程边界、模块分层、数据流、工程链路与结构风险。
+<p><strong>性质</strong>：结构分析（非缺陷清单）——对 v1.3.8 代码库（结构实测基线 v1.3.6 HEAD <code>7526e61</code>）做一次自顶向下的整体结构切片，梳理进程边界、模块分层、数据流、工程链路与结构风险。
 <strong>首次成文</strong>：2026-11-19 13:00（v1.3.6，git HEAD <code>3ea3a51</code>）。
-<strong>本次刷新</strong>：2026-11-19 17:55（HEAD <code>7526e61</code>，<code>3ea3a51..HEAD</code> 共 13 个提交：「公共接口归位」第 0~4 批 + 8 个文档批次）。结构描述、量化口径与风险状态均已按最新代码更新；刷新核验记录见 <code>out/tool-results/struct-delta.md</code>、<code>struct-metrics-b.md</code>，本轮全量测试实测 <strong>171 文件 / 3,198 用例全通过</strong>。
+<strong>本次刷新</strong>：2026-11-19 17:55（HEAD <code>7526e61</code>，<code>3ea3a51..HEAD</code> 共 13 个提交：「公共接口归位」第 0~4 批 + 8 个文档批次）。结构描述、量化口径与风险状态均已按最新代码更新；刷新核验记录见 <code>out/tool-results/struct-delta.md</code>、<code>struct-metrics-b.md</code>，本轮全量测试实测 <strong>172 文件 / 3,201 用例全通过</strong>。
 <strong>方法</strong>：首次由 3 个并行只读分析代理分别深读「主进程 + preload」「渲染层」「共享层 + 构建/测试/文档」；刷新由 2 个并行核验代理（结构差异 / 量化口径）+ 根代理全量测试与出图完成。原始分析记录：<code>out/tool-results/struct-main.md</code>、<code>struct-renderer.md</code>、<code>struct-cross.md</code>。</p>
 </blockquote>
 <h2 id="sec-1">0. 摘要与关键结论</h2>
@@ -348,7 +348,7 @@
 </tr>
 <tr>
 <td>质量</td>
-<td>Vitest（171 文件 / 3,198 用例）+ Playwright E2E + ESLint flat config + 三 tsconfig</td>
+<td>Vitest（172 文件 / 3,201 用例）+ Playwright E2E + ESLint flat config + 三 tsconfig</td>
 </tr>
 </tbody>
 </table>
@@ -380,7 +380,7 @@
   </defs>
 
   <!-- 标题与图例 -->
-  <text x="16" y="32" class="title">图 1 · 白泽笔记进程架构总览（v1.3.7）</text>
+  <text x="16" y="32" class="title">图 1 · 白泽笔记进程架构总览（v1.3.8）</text>
   <text x="16" y="54" class="sub">Electron 三进程 + shared 单真源：主进程收口系统能力，preload 白名单收敛 92 个 IPC 通道，渲染层承载全部 UI</text>
   <rect x="700" y="14" width="14" height="14" rx="3" fill="#1e40af"/><text x="720" y="26" class="legend">主进程</text>
   <rect x="784" y="14" width="14" height="14" rx="3" fill="#0f766e"/><text x="804" y="26" class="legend">渲染进程</text>
@@ -1400,7 +1400,7 @@
   <!-- 发布现状 -->
   <rect x="16" y="684" width="1088" height="96" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
   <text x="34" y="712" class="ctitle" style="fill:#b91c1c">发布现状（结构风险 H7）</text>
-  <text x="34" y="736" class="cdesc">仅 Windows 发布（NSIS + portable）；打包 / 签名 / 更新源验证未纳入 CI，发布依赖本地手工链；git tag：1.3.6 已补（release-1.3.6），1.3.7 未打。</text>
+  <text x="34" y="736" class="cdesc">仅 Windows 发布（NSIS + portable）；打包 / 签名 / 更新源验证未纳入 CI，发布依赖本地手工链；git tag：release-1.3.6 / release-1.3.7 已发布；1.3.8 未打。</text>
   <text x="34" y="760" class="cdesc">macOS / Linux 配置存在但为占位，无签名与 entitlements；更新器 latest.yml 已指向 GitHub Releases，但 CI 未验证可用性。</text>
 
   <!-- 底部说明 -->
@@ -1654,7 +1654,7 @@
 <tr>
 <td><strong>高</strong></td>
 <td>H7</td>
-<td>发布链路单平台 + 无 CI 打包/签名/更新源自动验证；tag 已补齐（<code>release-1.3.6</code> → <code>506e78a</code>、<code>release-1.3.7</code> → <code>cc3d929</code>），1.3.7 GitHub Release 已发布（NSIS/portable/latest.yml）</td>
+<td>发布链路单平台 + 无 CI 打包/签名/更新源自动验证；tag 已补齐（<code>release-1.3.6</code> → <code>506e78a</code>、<code>release-1.3.7</code> → <code>cc3d929</code>），1.3.7 GitHub Release 已发布；1.3.8 已升级版本、尚未打 tag/发布</td>
 <td>发布仍依赖本地手工链；CI 未验证更新器下载与签名</td>
 </tr>
 <tr>
@@ -1755,7 +1755,7 @@
 <li><strong>单一注册表</strong>：插件工具由一份 manifest 同时生成菜单项与懒加载注册表；Material 15 项同理。</li>
 <li><strong>拆分超大文件</strong>：<code>directory-tree</code> 按扫描/watch/事件拆 3 文件；<code>preview-md-basic</code> 按语法域拆；<code>MaterialSyntaxDialog</code> 抽表单/生成器纯函数目录；设置页按页签拆子组件。</li>
 <li><strong>工程门禁补强</strong>：CI 增加 <code>vitest --coverage</code>、<code>prettier --check</code>、<code>npm audit --omit=dev</code>；shared 边界加 ESLint <code>no-restricted-imports</code>（禁止 renderer import main、禁止 shared 引 electron/vue/DOM，node 仅白名单模块）。</li>
-<li><strong>发布链路补全</strong>：新增 release workflow（tag → nsis/portable + latest.yml 上传），补签名策略与 release-1.3.7 tag / 发布自动化。</li>
+<li><strong>发布链路补全</strong>：新增 release workflow（tag → nsis/portable + latest.yml 上传），补签名策略与 release-1.3.8 tag / 发布自动化。</li>
 </ol>
 <p><strong>P3（清理与规范）</strong></p>
 <ol start="13">
@@ -1801,7 +1801,7 @@
 </tr>
 <tr>
 <td>本轮全量测试</td>
-<td><code>out/tool-results/struct-fulltest-latest.log</code>（171 文件 / 3,198 用例全通过）</td>
+<td><code>out/tool-results/struct-fulltest-latest.log</code>（172 文件 / 3,201 用例全通过）</td>
 </tr>
 <tr>
 <td>当前现行口径</td>
@@ -1816,7 +1816,7 @@
 <h2 id="sec-13">附录 B：统计口径说明</h2>
 <ol>
 <li><strong>行数</strong>：UTF-8 统计、含空行与注释；<code>src</code> 统计含 <code>.d.ts</code>/<code>.svg</code> 资源，<code>tests</code> 含测试 helper；热点表为「非空行」口径（与目录行数不同口径）。</li>
-<li><strong>测试数</strong>：本报告采用 2026-11-19 17:55 全量 <code>vitest run</code> 实测值 <strong>171 文件 / 3,198 用例</strong>（首次成文为 158 / 2,871；历史报告中的 1,067～3,201 等为各自时点口径）。口径同步：根 README、台账、docs/wiki 当前状态文档已于 2026-11-19 18:00 统一到本报告口径（历史报告保留时点快照并已标注）。</li>
+<li><strong>测试数</strong>：本报告采用 2026-11-19 17:55 全量 <code>vitest run</code> 实测值 <strong>172 文件 / 3,201 用例</strong>（首次成文为 158 / 2,871；历史报告中的 1,067～3,201 等为各自时点口径）。口径同步：根 README、台账、docs/wiki 当前状态文档已于 2026-11-19 18:00 统一到本报告口径（历史报告保留时点快照并已标注）。</li>
 <li><strong>产物体积</strong>：Vite/electron-builder 输出为十进制 kB/MB；<code>out/main</code> <strong>10.50 MiB</strong>（含内联 jsdom）、<code>out/renderer</code> <strong>24.21 MiB</strong>、<code>app.asar</code> <strong>50.11 MiB</strong>、NSIS <strong>118.41 MiB（=124.17 MB）</strong>、portable <strong>107.46 MiB（=112.68 MB）</strong>、入口 chunk <strong>127.07 kB</strong>、主界面 <strong>9,889.38 kB（≈9.89 MB）</strong>。</li>
 <li><strong>主题口径</strong>：应用主题 28（<code>ThemeType</code> 28 项）；Monaco <strong>57 = 内置 3（vs/vs-dark/hc-black）+ 磁盘 54</strong>（themes 目录 55 个 JSON 中 <code>themelist.json</code> 为清单不计）。文档中「54/55」为旧口径。</li>
 <li><strong>动态 import</strong>：<strong>64 处</strong>（<code>.ts</code> 61 + <code>.vue</code> 3）；仅统计 <code>.ts</code> 时为 61（与首次成文同口径）。</li>
@@ -1840,10 +1840,10 @@
 <p><strong>图更新</strong>：5 张 SVG 的文件/行数、菜单数、主题数、测试数、文档页数、动态 import 等数字与模块名已按本表同步（见 <code>docs/reports/svg/</code>）。</p>
 </li>
 <li>
-<p><strong>未变</strong>：IPC 92/17、i18n 12 × 1,821、依赖 11/39/828、插件 38、Vue 对话框 18、E2E 4、应用主题 28、版本 1.3.7、最新 tag <code>release-1.3.6</code>（<code>506e78a</code>，2026-11-15 发布提交）、CI 覆盖范围、主要风险结构（H1/H3/H4/H6/H7）。</p>
+<p><strong>未变</strong>：IPC 92/17、i18n 12 × 1,821、依赖 11/39/828、插件 38、Vue 对话框 18、E2E 4、应用主题 28、版本 1.3.8、最新 tag <code>release-1.3.7</code>（<code>cc3d929</code>，2026-11-19 发布提交）、CI 覆盖范围、主要风险结构（H1/H3/H4/H6/H7）。</p>
 </li>
 <li>
-<p><strong>版本升级与发布（2026-11-19 18:4x~19:0x）</strong>：全仓版本号由 1.3.6 升级为 1.3.7；1.3.6 在发布提交 <code>506e78a</code> 上补打 <code>release-1.3.6</code> tag；随后打 <code>release-1.3.7</code> tag（<code>cc3d929</code>）并发布 GitHub Release（NSIS 118.42 MiB / portable 107.46 MiB / latest.yml / blockmap）；CHANGELOG/RELEASE-NOTES 将 11-18、11-19 修改归入 1.3.7。</p>
+<p><strong>版本升级与发布（2026-11-19 18:4x~19:0x）</strong>：全仓版本号由 1.3.6 升级为 1.3.7；随后 19:0x 将全仓版本号升级为 1.3.8（版本维护批次，无功能/代码变更），1.3.7 的 GitHub Release 已发布、1.3.8 待发布；1.3.6 在发布提交 <code>506e78a</code> 上补打 <code>release-1.3.6</code> tag；随后打 <code>release-1.3.7</code> tag（<code>cc3d929</code>）并发布 GitHub Release（NSIS 118.42 MiB / portable 107.46 MiB / latest.yml / blockmap）；CHANGELOG/RELEASE-NOTES 将 11-18、11-19 修改归入 1.3.7。</p>
 </li>
 <li>
 <p><strong>口径同步（2026-11-19 18:00）</strong>：根 README、docs/wiki（README + 02 设计与架构 4 篇 + 01 当前基线注）、报告总索引、HTML Wiki 首页、当前遗留问题清单统一到 172 文件/3,201 用例、92 通道/17 组、57 Monaco 主题（内置 3 + 磁盘 54）、118.41 MiB 安装包 / 50.11 MiB asar；H5 状态由「部分修复」更新为「已修复」。</p>
