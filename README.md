@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3.8-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.9-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Electron](https://img.shields.io/badge/Electron-43.8.10-blue.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5.45-brightgreen.svg)
@@ -127,7 +127,7 @@
 
 #### 版本信息
 
-- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.8）的发布说明
+- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.9）的发布说明
 - **更新日志**：展示依赖升级详情和代码适配修复
 - **技术栈信息**：显示项目技术栈详细信息
 - **关于页面**：显示应用版本、开发框架、系统环境信息
@@ -473,7 +473,7 @@ BaiZeNotesByVue/
 
 ## 📊 项目统计
 
-> 以下数据为 2026-11-19 实测（v1.3.8 基线；口径说明见 [报告总索引](docs/reports/README.md)）。
+> 以下数据为 2026-11-19 实测（v1.3.9 基线；口径说明见 [报告总索引](docs/reports/README.md)）。
 
 |     指标     |                   数量                   | 说明                                                                                                                                                                                                 |
 | :----------: | :--------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -561,7 +561,7 @@ BaiZeNotesByVue/
 - [预览单跳重构报告](docs/reports/md/02-修复与实施/预览单跳重构报告.md) - PF-02：预览本地渲染，IPC 4 跳 → 0 跳
 - [IPC 通道命名统一方案](docs/reports/md/03-专项治理/IPC通信治理报告.md) - `baize:<domain>:<name>` 命名规范（历史 123 通道清单，已并入治理报告）
 - [依赖安全治理报告](docs/reports/md/03-专项治理/依赖安全治理报告.md) - Dependabot 254 条告警全量分类（0 条可复现）、npm audit 差异归因、修复批与 Dependabot 配置
-- [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.3.8 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
+- [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.3.9 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
 - 说明：`docs/历史归档/架构文档.html` 为 **历史版本合辑（非当前实现）**，仅保留旧版版式与 ADR，最新架构以 wiki Markdown 为准
 
 ### 版本与历史
@@ -664,15 +664,14 @@ npm run clean
 
 ## 🗺️ 开发路线图
 
-### v1.3.8 (当前版本)
+### v1.3.9 (当前版本)
 
-- [x] 版本维护：全仓版本号 1.3.7 → 1.3.8；结构优化第 1 批（依赖边界自动化 / preload 白名单生成 / shared 边界收口）
-- [x] 1.3.7 已发布 GitHub Release（tag `release-1.3.7`；NSIS / portable / latest.yml）；1.3.6 在 `506e78a` 补打 tag
-- [x] 文档版本标注 / 版本历史 / 报告索引同步，HTML 报告重生成
+- [x] 版本维护：全仓版本号 1.3.8 → 1.3.9（无功能/代码变更）
+- [x] 1.3.8 已发布 GitHub Release（tag `release-1.3.8`；NSIS 117.94 MB / portable 107.03 MB / latest.yml）
+- [x] 结构优化 1~5 批 + M3、设置页/对话框拆分、依赖安全治理已随 1.3.8 发布
 
-### v1.3.7
+### v1.3.8 公共接口归位第 0~4 批：shared 三层单真源（types 14 / utils 11 / constants 10 模块）、60+ 文件迁移、18/18 对话框 BaseDialog 组件化
 
-- [x] 公共接口归位第 0~4 批：shared 三层单真源（types 14 / utils 11 / constants 10 模块）、60+ 文件迁移、18/18 对话框 BaseDialog 组件化
 - [x] 主界面异步分块：入口 chunk 10,096KB → 114KB（-98.9%），初始加载 -94.3%
 - [x] 安全加固：PDF 预览 pdf.js、CSP 收紧、preload 受限白名单、IPC 分组 17 组、PlantUML 空闲销毁
 - [x] E2E 纳入 CI、死通道清理、欢迎页窗口控制修复、报告 HTML Wiki 重构（23 页）+ 结构分析报告（5 张 SVG）

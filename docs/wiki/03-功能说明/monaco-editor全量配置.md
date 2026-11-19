@@ -1,8 +1,8 @@
 # Monaco Editor 全量配置
 
-> 更新于 2026-11-19（对照 v1.3.8）
+> 更新于 2026-11-19（对照 v1.3.9）
 >
-> 文档版本 2.1 ｜ 代码基线 v1.3.8 ｜ Monaco 版本 **0.57.0**（`monaco-editor@^0.57.0`）
+> 文档版本 2.1 ｜ 代码基线 v1.3.9 ｜ Monaco 版本 **0.57.0**（`monaco-editor@^0.57.0`）
 > 事实来源：`src/renderer/src/components/Markdown/editor-options.ts`、`editor-option-maps.ts`、`editor-utils.ts`、`monaco-worker-setup.ts`、`monaco-worker-types.ts`、`register-languages.ts`、`MarkdownMonacoEditor.vue`、`electron.vite.config.ts`、`vitest.config.ts`、`src/main/config/editor-setting.ts`、`src/main/config/theme-registry.ts`。
 > 一句话结论：**当前只用 markdown 一种编辑器语言；Monaco worker 只注册 `editor.worker` 一个**（tsserver/css/html/json 4 个语言 worker 已移除，节省约 14.7 MB）；`monaco-editor` 裸包名经 Vite/Vitest 别名精确重定向到 `esm/vs/editor/editor.api.js`。
 

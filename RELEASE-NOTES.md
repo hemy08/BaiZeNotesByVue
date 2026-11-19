@@ -1,3 +1,26 @@
+## 版本 1.3.9 (2026-11-19)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🔧 版本维护
+
+- 版本号 **1.3.8 → 1.3.9**（无功能/代码变更，为后续发布准备）
+- **1.3.8 已发布**：GitHub Release `release-1.3.8`（tag → `1d71cc0`；NSIS 117.94 MB / portable 107.03 MB / latest.yml / blockmap）
+- 1.3.8 内容：结构优化 1~5 批 + M3、设置页/对话框拆分、依赖安全治理
+- 文档版本标注、版本历史、报告索引与 HTML Wiki 同步
+
+### ✅ 门禁
+
+- typecheck 三工程 0 错误、ESLint 0/0、vitest 178 文件 / 3,322 用例全通过
+
+</code></pre></blockcode></details>
+
+---
+
 # 发布说明 (Release Notes)
 
 ## 版本 1.3.8 (2026-11-19)

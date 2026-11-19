@@ -1,3 +1,17 @@
+## 2026年11月19日 - 版本 1.3.9（版本维护 / 1.3.8 发布收尾）
+
+> 1.3.9 为版本维护批次：无功能与代码变更；用于承接 1.3.8 发布收尾，并为下一阶段优化准备。
+
+### 🔧 版本与发布
+
+- **全仓版本号升级 1.3.8 → 1.3.9**：`package.json` / `package-lock.json` / `resources/config/version.json` / README 徽章与路线图 / docs wiki / docs reports / 结构图等当前状态标注统一
+- **1.3.8 已发布**（2026-11-19）：GitHub Release `release-1.3.8`（tag `release-1.3.8` → `1d71cc0`；NSIS 117.94 MB / portable 107.03 MB / latest.yml / blockmap），`/releases/latest` 已指向 1.3.8
+- **1.3.8 已包含**：结构优化第 1~5 批 + M3 单一 manifest、设置页/设置对话框拆分（4 个对话框）、依赖安全治理（Dependabot 254 条分类 + 配置 + 修复）
+
+### ✅ 门禁
+
+- typecheck 三工程 0 错误、ESLint 0/0、vitest **178 文件 / 3,322 用例全通过**、electron-vite build 成功
+
 ## 2026年11月19日 - 版本 1.3.8（版本维护 / 结构优化第 1 批）
 
 > 1.3.8 为版本维护 + 结构优化批次：承接 1.3.7 发布收尾，并落地《代码结构优化计划》第 1 批（结构防御 H1/H2/L4）。
