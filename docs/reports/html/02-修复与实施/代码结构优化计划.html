@@ -468,6 +468,7 @@
 </table>
 <blockquote>
 <p>第 5 批每项 ≤0.5~1 人日，可与其他批次穿插；任何一项导致回归立即回滚单文件。</p>
+<p><strong>第 5 批执行结果（2026-11-19）</strong>：5.1（L1）、5.2（L2）、5.3/5.4/5.6（L3）全部完成，5.5 完成 <code>pinyin-data</code> 迁 <code>data/</code> + 按需加载（其余拆分项未执行、已列入后续），M3 完成 Material 15 项一套（38 项插件 manifest 留待后续）；全量门禁通过，测试口径 171 文件 / 3,265 用例。</p>
 </blockquote>
 <h2 id="sec-8">7. 优先级与排期建议</h2>
 <ol>
@@ -544,14 +545,14 @@
 </tr>
 <tr>
 <td>测试规模</td>
-<td>172 文件 / 3,272 用例</td>
+<td>171 文件 / 3,265 用例（第 5 批收尾；第 4 批为 172/3,272）</td>
 <td><strong>≥ 当前，且关键批次新增回归测试</strong></td>
 <td>vitest 统计</td>
 </tr>
 <tr>
 <td>巨大单文件</td>
 <td>pinyin-data 20,914 行等</td>
-<td>拆分/迁移完成，单文件 ≤1,500 行（数据文件除外）</td>
+<td><strong>部分完成（第 5 批）</strong>：pinyin-data 已迁 <code>data/</code> 并按需加载；preview-md-basic / MaterialSyntaxDialog / 设置页拆分待后续</td>
 <td>行数统计</td>
 </tr>
 </tbody>
@@ -624,12 +625,12 @@
 <tr>
 <td>第 4 批 真源收敛</td>
 <td>🟡 部分完成（2026-11-19）</td>
-<td>主题单真源 / EventBus 统一 / 错误 helper 收敛 / 重复资产清理完成；单一 manifest（M3）留待后续</td>
+<td>主题单真源 / EventBus 统一 / 错误 helper 收敛 / 重复资产清理完成；M3 的 Material 一套已于第 5 批完成</td>
 </tr>
 <tr>
 <td>第 5 批 清理与规范</td>
-<td>⏳ 待执行</td>
-<td>—</td>
+<td>✅ 已完成（2026-11-19）</td>
+<td>L1/L2/L3 + 5.4/5.6 全部完成；5.5 完成 pinyin-data 迁 <code>data/</code> + 按需加载（其余拆分项列后续）；M3 Material 15 项 manifest 落地；vitest 171 文件 / 3,265 用例；提交 <code>c68e91f</code>/<code>f626a8a</code>/<code>af5a4b1</code>/<code>6ed8a3f</code>/<code>b71569e</code>/<code>13cd4ba</code>/<code>7c2467b</code></td>
 </tr>
 </tbody>
 </table>
@@ -770,9 +771,9 @@
 <ul>
 <li><a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a>（§9.2 风险清单、§9.3 建议、§8 量化）；</li>
 <li><a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单</a>（21 项跟踪台账，含已完成修复记录）；</li>
-<li><a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>（92 通道 / 17 组当前口径）；</li>
+<li><a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>（91 通道 / 17 组当前口径）；</li>
 <li><a href="公共接口归位修复计划.html">公共接口归位修复计划</a>（已完成批次作为「re-export 门面 + 契约测试」实施模式参考）；</li>
-<li>量化实测：2026-11-19，v1.3.8 基线（172 测试文件 / 3,272 用例，jsdom 52；入口 chunk 127.07 kB、主界面 9,889.38 kB；out/main 10.50 MiB）。</li>
+<li>量化实测：2026-11-19 第 5 批收尾，v1.3.8 基线（171 测试文件 / 3,265 用例，jsdom 52；入口 chunk 127.07 kB、主界面 9,889.38 kB；out/main 0.60 MiB）。</li>
 </ul>
 <h2 id="sec-14">附录 C：变更记录</h2>
 <ul>

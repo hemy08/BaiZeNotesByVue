@@ -11,7 +11,7 @@
 <div id="report-nav"></div>
   <nav class="toc">
     <h4>目录</h4>
-    <a class="toc-l2" href="#sec-1">一、当前通信矩阵（2026-11-19 复核，92 通道）</a>
+    <a class="toc-l2" href="#sec-1">一、当前通信矩阵（2026-11-19 第 5 批复核，91 通道）</a>
     <a class="toc-l2" href="#sec-2">二、历史快照（2026-11-15，123 通道口径）</a>
   </nav>
 
@@ -28,12 +28,12 @@
 <p><strong>合并归档报告</strong>：由以下历史报告合并而成（保留原文，按时间顺序成章）：<code>2026-11-18-IPC通信矩阵.md</code>、<code>2026-11-15-IPC通信矩阵.md</code>。
 内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.8 基线：169 测试文件 / 3,234 用例 / 92 IPC 通道）。</p>
 </blockquote>
-<h2 id="sec-1">一、当前通信矩阵（2026-11-19 复核，92 通道）</h2>
+<h2 id="sec-1">一、当前通信矩阵（2026-11-19 第 5 批复核，91 通道）</h2>
 <ul>
 <li><strong>编制日期</strong>：2026-11-18 首次编制，2026-11-19 补录 <code>FILE.OPEN_IN_BROWSER</code> / <code>FILE.READ_BINARY</code> 后复核（基于当前工作区源码；取代 <code>2026-11-15-IPC通信矩阵.md</code> 历史快照）</li>
 <li><strong>唯一真源</strong>：<code>src/shared/ipc-channels.ts</code>（<strong>92 个通道常量 / 17 个分组</strong>，全部以 <code>baize:&lt;domain&gt;:&lt;name&gt;</code> 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）</li>
 <li><strong>方法</strong>：对每个通道常量在 <code>src/main/**</code>、<code>src/preload/**</code>、<code>src/renderer/**</code> 全量 grep 实际发送点/接收点，只按源码事实填写；行号均为当前源码行号</li>
-<li><strong>统计摘要</strong>：92 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）</li>
+<li><strong>统计摘要</strong>：91 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）</li>
 </ul>
 <h4>一、方向记号</h4>
 <table>
@@ -111,8 +111,8 @@
 <tbody>
 <tr>
 <td>IPC 通道常量</td>
-<td><strong>92</strong></td>
-<td>WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 24 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 3 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 3 / QUICK_LINKS 3 / EVENTS 4</td>
+<td><strong>91</strong></td>
+<td>WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 24 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 3 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 2 / QUICK_LINKS 3 / EVENTS 4</td>
 </tr>
 <tr>
 <td>BrowserWindow 创建点</td>
@@ -175,7 +175,7 @@
 <li><strong>单主进程</strong>，每个 BrowserWindow 一个渲染进程；未使用 utilityProcess / MessageChannelMain / MessagePort / BrowserView / WebContentsView。</li>
 <li><strong>preload 单文件约束</strong>：<code>electron.vite.config.ts</code> 的 <code>isolatedEntries: true</code> + <code>externalizeDeps: false</code>，产物 <code>out/preload/index.js</code> / <code>dialog.js</code>（主窗口与对话框均 <code>sandbox:true</code>，preload 必须自包含）。</li>
 </ul>
-<h4>四、通道矩阵（92 通道 / 17 组）</h4>
+<h4>四、通道矩阵（91 通道 / 17 组）</h4>
 <h5>4.1 WINDOW（8）</h5>
 <table>
 <thead>
@@ -1035,7 +1035,7 @@
 </tr>
 </tbody>
 </table>
-<h5>4.15 SYSTEM（3）</h5>
+<h5>4.15 SYSTEM（2）</h5>
 <table>
 <thead>
 <tr>
@@ -1048,14 +1048,6 @@
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>OPEN_EXTERNAL_LINK</td>
-<td><code>baize:system:open-external-link</code></td>
-<td>R→M send</td>
-<td>系统浏览器打开外部链接（仅 http/https；本地 HTML 走 FILE.OPEN_IN_BROWSER）</td>
-<td>utils.ts:728 registerOnce</td>
-<td>主窗口 window.open 兜底（index.ts）；dialog preload 白名单</td>
-</tr>
 <tr>
 <td>SYSTEM_INFO</td>
 <td><code>baize:system:get-info</code></td>
@@ -1162,10 +1154,10 @@
 </table>
 <h4>五、异常与风险清单（已清零）</h4>
 <blockquote>
-<p><strong>统计口径</strong>：92 通道 / 17 组（2026-11-19 复核；含 2026-11-18 补录的 <code>FILE.OPEN_IN_BROWSER</code>、<code>FILE.READ_BINARY</code>）。</p>
+<p><strong>统计口径</strong>：91 通道 / 17 组（2026-11-19 第 5 批复核：删除 <code>SYSTEM.OPEN_EXTERNAL_LINK</code> 死通道；含 2026-11-18 补录的 <code>FILE.OPEN_IN_BROWSER</code>、<code>FILE.READ_BINARY</code>）。</p>
 </blockquote>
 <blockquote>
-<p><strong>2026-11-18 复核：异常清单已清零</strong>。历史已处理项：① 空转/死分支 4 项（<code>WINDOW.START_DRAG</code> 空实现、<code>THEME.INIT_THEME_STYLES</code> 半死、<code>EDITOR.UPDATE_OPTIONS</code> R→M 死分支、<code>EVENTS.STATUS_BAR_UPDATE</code> 反向 send）；② 语义错用 1 项（<code>SYSTEM.OPEN_EXTERNAL_LINK</code> 的本地文件调用已改走 <code>FILE.OPEN_IN_BROWSER</code>，遗留清单 #1）；③ 载荷不一致 1 项（<code>THEME.THEME_UPDATED</code>，MenuBar 改读配置，遗留清单 #2）；④ 域错配 10 通道 / 5 组（分组与 domain 已统一为 17 组，遗留清单 #3/#7）。详见 <a href="当前遗留问题清单.html">当前遗留问题清单</a>。</p>
+<p><strong>2026-11-18 复核：异常清单已清零</strong>。历史已处理项：① 空转/死分支 4 项（<code>WINDOW.START_DRAG</code> 空实现、<code>THEME.INIT_THEME_STYLES</code> 半死、<code>EDITOR.UPDATE_OPTIONS</code> R→M 死分支、<code>EVENTS.STATUS_BAR_UPDATE</code> 反向 send）；② 语义错用 1 项（<code>SYSTEM.OPEN_EXTERNAL_LINK</code> 的本地文件调用已改走 <code>FILE.OPEN_IN_BROWSER</code>，遗留清单 #1）；③ 载荷不一致 1 项（<code>THEME.THEME_UPDATED</code>，MenuBar 改读配置，遗留清单 #2）；④ 域错配 10 通道 / 5 组（分组与 domain 已统一为 17 组，遗留清单 #3/#7）；⑤ 第 5 批（2026-11-19）：删除 <code>SYSTEM.OPEN_EXTERNAL_LINK</code> 零发送方死通道（IPC 92 → 91），SYSTEM 组由 3 → 2 个通道。详见 <a href="当前遗留问题清单.html">当前遗留问题清单</a>。</p>
 </blockquote>
 <h4>六、窗口容器与 preload 矩阵</h4>
 <h5>6.1 BrowserWindow 容器（4 个创建点）</h5>
@@ -2572,15 +2564,6 @@
 <td>main/utils/utils.ts</td>
 <td><code>filePath</code>；返回 HTML 文本</td>
 <td>HTML 查看器读文件</td>
-</tr>
-<tr>
-<td>OPEN_EXTERNAL_LINK</td>
-<td>baize:system:open-external-link</td>
-<td>R→M send</td>
-<td>ShowHtmlVIew.vue；ShowPdfEditor.vue（openInBrowser）</td>
-<td>main/utils/utils.ts</td>
-<td><code>url</code></td>
-<td><code>shell.openExternal</code> 外开</td>
 </tr>
 <tr>
 <td>SYSTEM_INFO</td>

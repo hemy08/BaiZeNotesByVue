@@ -40,9 +40,14 @@
 - 主题单真源 useTheme；EventBus 统一 + 24 事件契约；错误/状态栏 helper 收敛；CSS/KaTeX 资产收口 + 死资源清理
 - 门禁：typecheck 0 / ESLint 0 / vitest 172 文件 / 3,272 用例全通过
 
-### ✅ 门禁
+### 🧹 结构优化第 5 批（清理与规范 + M3 manifest）
 
-- typecheck 三工程 0 错误、ESLint 0/0、vitest 172 文件 / 3,272 用例全通过
+- **L1**：删除 `utils/common.ts` 死文件与 `SYSTEM.OPEN_EXTERNAL_LINK` 死通道；`window-manager` 迁 `src/main/window/`
+- **L2**：`.editorconfig` / Prettier / 新增 `.gitattributes` 统一 LF；修复 3 个含 U+FFFD 替换字符的文件
+- **L3**：`installer.nsh`、两个 `.bat`、`build-win.ps1` 治理（能力并入 `prepare-build-dirs.js --exec`）；`docs/架构文档.html` 归档「非当前」；`_unused-assets` 287 文件移出；根目录 ico/log/tsbuildinfo/空目录清理
+- **巨型文件**：`pinyin-data` 20,914 行迁 `src/renderer/src/data/` 并动态 import 按需加载（独立 chunk 165.8 KB）
+- **M3**：Material 15 项语法收敛 `shared/constants/material-syntax.ts` 单一 manifest（菜单由 manifest 生成 + 4 条一致性测试）
+- 门禁：typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、electron-vite build 成功、vitest 171 文件 / 3,265 用例全通过
 
 </code></pre></blockcode></details>
 

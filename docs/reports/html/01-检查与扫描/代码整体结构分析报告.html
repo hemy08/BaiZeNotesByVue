@@ -42,11 +42,11 @@
 <blockquote>
 <p><strong>性质</strong>：结构分析（非缺陷清单）——对 v1.3.8 代码库（结构实测基线 v1.3.6 HEAD <code>7526e61</code>）做一次自顶向下的整体结构切片，梳理进程边界、模块分层、数据流、工程链路与结构风险。
 <strong>首次成文</strong>：2026-11-19 13:00（v1.3.6，git HEAD <code>3ea3a51</code>）。
-<strong>本次刷新</strong>：2026-11-19 17:55（HEAD <code>7526e61</code>，<code>3ea3a51..HEAD</code> 共 13 个提交：「公共接口归位」第 0~4 批 + 8 个文档批次）。结构描述、量化口径与风险状态均已按最新代码更新；刷新核验记录见 <code>out/tool-results/struct-delta.md</code>、<code>struct-metrics-b.md</code>，本轮全量测试实测 <strong>172 文件 / 3,272 用例全通过</strong>。
+<strong>本次刷新</strong>：2026-11-19 17:55（HEAD <code>7526e61</code>，<code>3ea3a51..HEAD</code> 共 13 个提交：「公共接口归位」第 0~4 批 + 8 个文档批次）。结构描述、量化口径与风险状态均已按最新代码更新；刷新核验记录见 <code>out/tool-results/struct-delta.md</code>、<code>struct-metrics-b.md</code>，本轮全量测试实测 <strong>172 文件 / 3,272 用例全通过</strong>。<strong>第 5 批复核（2026-11-19 20:40）</strong>：L1/L2/L3 与 M3（Material）已处理，<code>pinyin-data</code> 迁 <code>data/</code> 并按需加载；测试口径更新为 <strong>171 文件 / 3,265 用例全通过</strong>、IPC <strong>91 通道 / 17 组</strong>，清理明细见 <code>out/tool-results/opt-batch5-final.md</code>。
 <strong>方法</strong>：首次由 3 个并行只读分析代理分别深读「主进程 + preload」「渲染层」「共享层 + 构建/测试/文档」；刷新由 2 个并行核验代理（结构差异 / 量化口径）+ 根代理全量测试与出图完成。原始分析记录：<code>out/tool-results/struct-main.md</code>、<code>struct-renderer.md</code>、<code>struct-cross.md</code>。</p>
 </blockquote>
 <h2 id="sec-1">0. 摘要与关键结论</h2>
-<p><strong>一句话</strong>：白泽笔记是一个「Electron 三进程 + shared 三层单真源 + 自研轻量基础设施」的本地优先 Markdown 笔记应用——主进程收口全部系统能力，preload 用两份白名单把 92 个 IPC 通道收敛为受信桥，渲染层用 Vue 3 承载欢迎页/编辑器/预览/38 个插件工具，工程侧以自建 md→HTML 报告流水线维护文档。</p>
+<p><strong>一句话</strong>：白泽笔记是一个「Electron 三进程 + shared 三层单真源 + 自研轻量基础设施」的本地优先 Markdown 笔记应用——主进程收口全部系统能力，preload 用两份白名单把 91 个 IPC 通道收敛为受信桥，渲染层用 Vue 3 承载欢迎页/编辑器/预览/38 个插件工具，工程侧以自建 md→HTML 报告流水线维护文档。</p>
 <table>
 <thead>
 <tr>
@@ -65,7 +65,7 @@
 </tr>
 <tr>
 <td>测试</td>
-<td style="text-align:right"><strong>172 个测试文件 / 52,771 行 / 3,272 用例全通过</strong>（jsdom 52 文件）+ 4 条 Playwright E2E</td>
+<td style="text-align:right"><strong>171 个测试文件 / 53,852 行 / 3,265 用例全通过</strong>（jsdom 52 文件）+ 4 条 Playwright E2E</td>
 </tr>
 <tr>
 <td>依赖</td>
@@ -73,7 +73,7 @@
 </tr>
 <tr>
 <td>跨进程契约</td>
-<td style="text-align:right">IPC <strong>92 通道 / 17 组</strong>（67 个主进程注册 + 25 个主进程广播）</td>
+<td style="text-align:right">IPC <strong>91 通道 / 17 组</strong>（66 个主进程注册 + 25 个主进程广播）</td>
 </tr>
 <tr>
 <td>共享真源</td>
@@ -89,13 +89,13 @@
 </tr>
 <tr>
 <td>文档</td>
-<td style="text-align:right">wiki 27 篇 + reports 22 篇 · HTML Wiki 23 页</td>
+<td style="text-align:right">wiki 29 篇 + reports 23 篇 · HTML Wiki 26 页</td>
 </tr>
 </tbody>
 </table>
 <p><strong>五条关键结论</strong></p>
 <ol>
-<li><strong>边界清晰、真源纪律强</strong>：92 IPC 通道、shared 三层单真源（类型 14 文件含 IPC/CONFIG/对话框契约、纯函数 utils 11、常量 constants 10）、12 命名空间 i18n 词典各有唯一出口；本轮新增 <code>ipc-payload-contract</code> / <code>dialog-contract</code> / <code>theme-contract</code> 等契约测试，并用「re-export 门面 + 原导出名」模式完成 16 个主进程文件、13 个渲染层文件的实现归位。</li>
+<li><strong>边界清晰、真源纪律强</strong>：91 IPC 通道、shared 三层单真源（类型 14 文件含 IPC/CONFIG/对话框契约、纯函数 utils 11、常量 constants 10）、12 命名空间 i18n 词典各有唯一出口；本轮新增 <code>ipc-payload-contract</code> / <code>dialog-contract</code> / <code>theme-contract</code> 等契约测试，并用「re-export 门面 + 原导出名」模式完成 16 个主进程文件、13 个渲染层文件的实现归位。</li>
 <li><strong>主进程是「薄外壳 + 厚内核」</strong>：<code>index.ts</code> 只做生命周期编排，业务集中在 <code>utils/file-utils</code>；IPC 注册分散 <strong>9 个文件 / 69 处调用</strong>（较首次成文 +2 文件），但统一在 <code>whenReady</code> 后一次性执行，全部套发送方校验（68 处）。</li>
 <li><strong>渲染层是「双段式外壳 + 单主界面 + 懒加载边界」</strong>：欢迎页入口 chunk <strong>127.07 kB</strong>，主界面（Monaco + 预览）**9,889.38 kB（≈9.89 MB）**整体异步；<strong>64 处动态 import</strong>（<code>.ts</code> 61 + <code>.vue</code> 3）构成全部按需加载边界，无手工 manualChunks。</li>
 <li><strong>预览管线是当前最复杂的单条链路</strong>：预渲染 → markdown-it（mkdocs/basic/media/blocks 四层插件）→ 异步图表 → DOMPurify → 远程图片策略 → v-html + TOC；四层插件已共享 <code>preview-block-utils</code>（14 函数 + 2 常量），本轮净减 309 行，逐层可降级、可单测。</li>
@@ -108,7 +108,7 @@
 │   ├── preload/       # 受限桥：index.ts（主窗口） + dialog.ts（对话框/隐藏窗）
 │   ├── renderer/      # Vue 3 渲染层：壳 / 业务组件 / 插件工具 / 样式资源
 │   └── shared/        # 三层单真源：ipc-channels / types / utils / constants / i18n
-├── tests/             # Vitest 单测与组件测试（172 个测试文件）
+├── tests/             # Vitest 单测与组件测试（171 个测试文件）
 ├── e2e/               # Playwright + Electron 冒烟（4 条）
 ├── build/             # 构建/报告脚本（版本、打包目录防护、报告生成、导航片段）
 ├── resources/         # config / icon / themes / plantuml 等随包资源
@@ -146,7 +146,7 @@
 </tr>
 <tr>
 <td>质量</td>
-<td>Vitest（172 文件 / 3,272 用例）+ Playwright E2E + ESLint flat config + 三 tsconfig</td>
+<td>Vitest（171 文件 / 3,265 用例）+ Playwright E2E + ESLint flat config + 三 tsconfig</td>
 </tr>
 </tbody>
 </table>
@@ -540,7 +540,7 @@
 </tbody>
 </table>
 <p><strong>启动顺序（<code>whenReady</code> 之后）</strong>：初始化 userData → 注册远程资源阻断 → 注册配置 IPC → 创建主窗口 → 注册主进程菜单/对话框/工具 IPC → 注册 PlantUML 本地渲染 → 注册 activate 重建逻辑；关闭链路：<code>close</code> → flush 编辑器内容（2s 超时）→ 脏则落盘；<code>before-quit</code> 同链路；<code>window-all-closed</code> → <code>cleanupApp</code>。</p>
-<p><strong>IPC 体系（92 通道 / 17 组）</strong></p>
+<p><strong>IPC 体系（91 通道 / 17 组）</strong></p>
 <table>
 <thead>
 <tr>
@@ -769,7 +769,7 @@
 <tr>
 <td>契约</td>
 <td><code>shared/</code>、preload</td>
-<td>92 通道 + shared 类型契约（14 文件）+ 词条；main 42 + renderer 38 文件消费 shared；渲染层只通过白名单桥访问系统能力</td>
+<td>91 通道 + shared 类型契约（14 文件）+ 词条；main 42 + renderer 38 文件消费 shared；渲染层只通过白名单桥访问系统能力</td>
 </tr>
 </tbody>
 </table>
@@ -859,7 +859,7 @@
 <tbody>
 <tr>
 <td><code>shared/ipc-channels.ts</code></td>
-<td>1 文件 / 216 行 · 92 通道 / 17 组</td>
+<td>1 文件 / 214 行 · 91 通道 / 17 组</td>
 <td>唯一通道真源，命名规范由测试守护</td>
 </tr>
 <tr>
@@ -1233,7 +1233,7 @@
 </tbody>
 </table>
 <p><strong>打包</strong>：<code>electron-builder.yml</code>（files 白名单、asar、extraResources config/icon/themes/plantuml、NSIS assisted + portable、publish generic 已迁移 GitHub Releases）；<code>build/prepare-build-dirs.js</code> 在 electron-builder 前校正构建目录完整性级别（修复 NSIS 临时文件失败）；当前产物 <strong>NSIS 118.41 MiB（≈124.17 MB 十进制）/ portable 107.46 MiB / app.asar 50.11 MiB</strong> / blockmap / latest.yml。</p>
-<p><strong>构建脚本（build/，11 个）</strong>：<code>generate-version-config.js</code>、<code>prepare-build-dirs.js</code>、<code>build-html-report.js</code>、<code>generate-report-wiki.js</code>（含导航/侧边栏自动同步）、<code>build-win.ps1</code>、两个 <code>.bat</code>、<code>report-nav.html</code>（顶部导航片段）、<code>installer/uninstaller.nsh</code>。npm scripts 共 30 个（门禁/构建/打包/审计/E2E）。</p>
+<p><strong>构建脚本（build/，7 个）</strong>：<code>generate-version-config.js</code>、<code>prepare-build-dirs.js</code>（含 <code>--exec</code> 临时目录重定向）、<code>generate-preload-whitelist.js</code>、<code>generate-quality-baseline.js</code>、<code>build-html-report.js</code>、<code>generate-report-wiki.js</code>（含导航/侧边栏自动同步）、<code>uninstaller.nsh</code>。第 5 批删除零引用 <code>installer.nsh</code>／两个 <code>.bat</code>／<code>build-win.ps1</code>（能力并入 <code>prepare-build-dirs.js --exec</code>）。npm scripts 共 30 个（门禁/构建/打包/审计/E2E）。</p>
 <p><strong>测试体系（本轮刷新）</strong></p>
 <table>
 <thead>
@@ -1322,9 +1322,9 @@
 </thead>
 <tbody>
 <tr>
-<td><code>PluginTools/TextTools/pinyin-data.ts</code></td>
+<td><s><code>PluginTools/TextTools/pinyin-data.ts</code></s></td>
 <td style="text-align:right">20,914</td>
-<td>纯数据表（拼音字库），建议迁出组件目录并按需加载</td>
+<td><strong>已处理（第 5 批 5.5）</strong>：迁 <code>src/renderer/src/data/pinyin-data.ts</code> + 动态 <code>import()</code> 按需加载（独立 chunk 165.8 KB，入口不 preload）</td>
 </tr>
 <tr>
 <td><code>Markdown/preview-md-basic.ts</code></td>
@@ -1363,7 +1363,7 @@
 <tr>
 <td>1</td>
 <td>真源治理彻底</td>
-<td>IPC 92 通道 / shared 三层单真源（types 14 / utils 11 / constants 10）/ i18n 12 命名空间 / 配置 5 store 均单点维护，且有契约测试守护</td>
+<td>IPC 91 通道 / shared 三层单真源（types 14 / utils 11 / constants 10）/ i18n 12 命名空间 / 配置 5 store 均单点维护，且有契约测试守护</td>
 </tr>
 <tr>
 <td>2</td>
@@ -1440,7 +1440,7 @@
 <tr>
 <td><strong>高</strong></td>
 <td>H5</td>
-<td>文档口径漂移 <strong>已修复（2026-11-19 18:00 全仓口径同步）</strong>：台账基线、根 README、docs/wiki 当前状态文档、报告索引统一为 172 文件/3,201 用例、57 Monaco 主题、最新产物体积；历史报告按「时点快照」保留旧数并已标注</td>
+<td>文档口径漂移 <strong>已修复（2026-11-19 18:00 全仓口径同步）</strong>：台账基线、根 README、docs/wiki 当前状态文档、报告索引统一为 171 文件/3,265 用例、91 通道/17 组、57 Monaco 主题、最新产物体积；历史报告按「时点快照」保留旧数并已标注</td>
 <td>当前状态文档不再含旧基线；门禁数字自动校验仍未做（见 §9.3）</td>
 </tr>
 <tr>
@@ -1470,8 +1470,8 @@
 <tr>
 <td><strong>中</strong></td>
 <td>M3</td>
-<td>字符串协议多段同步（38 插件 id / 15 Material 项 / menuAction 分散菜单数据/注册表/分发器/i18n）仍存在</td>
-<td>新增工具需 4 处改动</td>
+<td>字符串协议多段同步 <strong>部分修复（第 5 批 M3，<code>7c2467b</code>）</strong>：15 项 Material 扩展语法已收敛 <code>shared/constants/material-syntax.ts</code> 单一 manifest（菜单由 manifest 生成 + 4 条一致性测试）；38 插件 id / menuAction 仍分散</td>
+<td>新增 Material 语法只改 1 处；新增插件工具仍需多段同步</td>
 </tr>
 <tr>
 <td><strong>中</strong></td>
@@ -1488,8 +1488,8 @@
 <tr>
 <td><strong>中</strong></td>
 <td>M6</td>
-<td>重复/死资源<strong>部分修复</strong>：<code>MermaidRender.vue</code>、<code>useEventBus</code> 已删除；仍存在 4 CSS 双重加载、KaTeX CSS 3 处、7 个未注册工具页、<code>resources/_unused-assets</code> 287 文件（HemyTools 空壳为误判，台账 #15 已澄清）</td>
-<td>体积与维护噪声</td>
+<td>重复/死资源<strong>已修复（第 4+5 批）</strong>：<code>MermaidRender.vue</code>、<code>useEventBus</code> 已删除、4 CSS/KaTeX CSS 收口、7 个未注册工具页删除、<code>resources/_unused-assets</code> 287 文件移出工作区（<code>out/archive/</code>）</td>
+<td>体积与维护噪声已消除</td>
 </tr>
 <tr>
 <td><strong>中</strong></td>
@@ -1512,19 +1512,19 @@
 <tr>
 <td><strong>低</strong></td>
 <td>L1</td>
-<td><code>utils/common.ts</code> 死文件、<code>SYSTEM.OPEN_EXTERNAL_LINK</code> 死通道、<code>window-manager</code> 仍在 <code>config/</code>（均未处理）</td>
-<td>结构语义混乱</td>
+<td><strong>已修复（第 5 批 5.1，<code>c68e91f</code>）</strong>：删除 <code>utils/common.ts</code> 死文件与 <code>SYSTEM.OPEN_EXTERNAL_LINK</code> 死通道（零发送方，含 IPC 常量/handler/4 条测试）；<code>window-manager</code> 迁 <code>src/main/window/</code></td>
+<td>目录语义归位，IPC 91 通道</td>
 </tr>
 <tr>
 <td><strong>低</strong></td>
 <td>L2</td>
-<td>EOL 不一致（.editorconfig CRLF vs 实际 LF 为主）；3 个非 UTF-8 文件（本轮无相关提交）</td>
-<td>跨工具链偶发异常</td>
+<td><strong>已修复（第 5 批 5.2，<code>f626a8a</code>）</strong>：<code>.editorconfig</code>/<code>.prettierrc</code>/新增 <code>.gitattributes</code>（<code>* text=auto eol=lf</code>）三者统一 LF；3 个含 U+FFFD 替换字符文件修复（.gitignore / wiki 版本报告 / plantuml vendored 产物改 <code>\uFFFD</code> 等价转义）</td>
+<td><code>prettier --check .</code> 全绿且全新检出一致</td>
 </tr>
 <tr>
 <td><strong>低</strong></td>
 <td>L3</td>
-<td>build/ 脚本腐化<strong>部分修复</strong>（新增 report-nav 导航片段自动同步；<code>installer.nsh</code> 仍零引用、两个 .bat 未接 npm）；根目录游离资产、<code>docs/架构文档.html</code> 双份仍在</td>
+<td><strong>已修复（第 5 批 5.3/5.4/5.6，<code>af5a4b1</code>/<code>6ed8a3f</code>/<code>b71569e</code>）</strong>：<code>installer.nsh</code>／两个 <code>.bat</code>／<code>build-win.ps1</code> 治理（构建脚本 11 → 7）；<code>docs/架构文档.html</code> 归档 <code>docs/历史归档/</code> 并在索引标注「非当前」；<code>_unused-assets</code> 移出；根目录游离资产（ico/log/tsbuildinfo/<code>$base</code>）清理</td>
 <td>维护者误解、仓库洁净度</td>
 </tr>
 <tr>
@@ -1535,7 +1535,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong>汇总</strong>：首次成文 19 条风险中，<strong>已修复 11 条（H1~H6、M4、M5、M8、M9）</strong>、<strong>部分修复 6 条（H7/M1/M2/M6/M7/L3）</strong>、<strong>仍存在 2 条（M3/L1/L2）</strong>；新增观察 L4 亦已修复（第 1 批）。</p>
+<p><strong>汇总</strong>：首次成文 19 条风险中，<strong>已修复 16 条（H1~H6、M4、M5、M6、M8、M9、L1、L2、L3、L4）</strong>、<strong>部分修复 3 条（M3：Material 15 项已收口、38 插件 manifest 待后续；H7/M1/M2/M7：发布链路与状态/产物治理收尾）</strong>；第 5 批后无「未处理」项。</p>
 <h3 id="sub-3">9.3 改进建议（按优先级，不要求实施）</h3>
 <p><strong>P1（结构债，建议尽早）</strong></p>
 <ol>
@@ -1543,24 +1543,24 @@
 <li><strong>白名单单一化</strong>：以 <code>shared/ipc-channels.ts</code> + <code>shared/types/ipc.ts</code> 契约（58/26/25）为源，构建期生成两份 preload 白名单与 <code>window.api</code> 闭包通道；把现有 <code>ipc-payload-contract</code> 测试升级为「生成产物 vs 渲染层扫描」核对。</li>
 <li><strong>收敛对话框体系（基座已完成，剩余主进程侧）</strong>：18 个 Vue 对话框已统一 BaseDialog；下一步把 <code>ShowShortcutKeys/ShowUpdateLog/ShowReleaseNotes/ShowRename/ShowConfirmDelete</code> 等主进程 JSDOM 入口迁为 Vue 懒加载对话框，消除「新建文件/文件夹」双路径。</li>
 <li><strong>主界面二次分块</strong>：Monaco 初始化与预览管线二级懒加载（先外壳骨架，空闲/首编辑时加载 Monaco），降低首次进入的 ~9.89 MB 同步求值；评估 highlight.js 改 <code>core + 常用语言</code>。</li>
-<li><strong>修正文档口径并自动化（口径已同步，自动化待做）</strong>：台账、README、docs/wiki 当前状态文档已统一到 171/3,201 等最新口径；下一步为门禁数字增加自动生成/校验脚本（CI 落盘并与 docs 基线比对）。</li>
+<li><strong>修正文档口径并自动化（口径已同步，自动化待做）</strong>：台账、README、docs/wiki 当前状态文档已统一到 171/3,265 等最新口径；下一步为门禁数字增加自动生成/校验脚本（CI 落盘并与 docs 基线比对）。</li>
 </ol>
 <p><strong>P2（治理与质量）</strong></p>
 <ol start="6">
 <li><strong>注册清单显式化</strong>：新增 <code>ipc/registry.ts</code> 只做 <code>registerAll(mainWindow)</code> 汇总（当前 9 文件 69 处注册），入口只调用一次。</li>
 <li><strong>状态收口</strong>：新增 <code>AppContext</code>（window/stores/listener manager/flags）统一 reset；主题收敛为 <code>useTheme()</code> 单例，消除 <code>themeConfig/currentTheme</code> 双份与 DOM 直改样式。</li>
 <li><strong>shared 边界例外收口</strong>：<code>shared/utils/backup-dir.ts</code> 的 <code>node:path</code> 依赖改为注入式路径能力（仅 main 注入 node 实现），或在 ESLint <code>no-restricted-imports</code> 中显式豁免并加注释/测试，避免渲染层误用。</li>
-<li><strong>单一注册表</strong>：插件工具由一份 manifest 同时生成菜单项与懒加载注册表；Material 15 项同理。</li>
-<li><strong>拆分超大文件</strong>：<code>directory-tree</code> 按扫描/watch/事件拆 3 文件；<code>preview-md-basic</code> 按语法域拆；<code>MaterialSyntaxDialog</code> 抽表单/生成器纯函数目录；设置页按页签拆子组件。</li>
+<li><strong>单一注册表（Material 已完成，第 5 批 M3）</strong>：Material 15 项已由 <code>shared/constants/material-syntax.ts</code> manifest 生成菜单并有一致性测试；插件工具 38 项 manifest（菜单项 + 懒加载注册表）留待后续。</li>
+<li><strong>拆分超大文件（pinyin 数据已完成）</strong>：<code>pinyin-data</code> 已迁 <code>data/</code> 并按需加载（独立 chunk 165.8 KB）；<code>directory-tree</code>（扫描/watch/事件）、<code>preview-md-basic</code>（语法域）、<code>MaterialSyntaxDialog</code>（表单/生成器纯函数）、设置页（页签）拆分留待后续。</li>
 <li><strong>工程门禁补强</strong>：CI 增加 <code>vitest --coverage</code>、<code>prettier --check</code>、<code>npm audit --omit=dev</code>；shared 边界加 ESLint <code>no-restricted-imports</code>（禁止 renderer import main、禁止 shared 引 electron/vue/DOM，node 仅白名单模块）。</li>
 <li><strong>发布链路补全</strong>：新增 release workflow（tag → nsis/portable + latest.yml 上传），补签名策略与 release-1.3.8 tag / 发布自动化。</li>
 </ol>
 <p><strong>P3（清理与规范）</strong></p>
 <ol start="13">
-<li><strong>清理死代码/重复资源（本轮已部分完成）</strong>：<code>useEventBus</code>、<code>MermaidRender</code>、<code>dialog-helpers</code> 死包装、4 处手写 basename/dirname 已清理；剩余 <code>utils/common.ts</code>、<code>SYSTEM.OPEN_EXTERNAL_LINK</code>、重复 CSS/模板资源。</li>
-<li><strong>目录语义归位</strong>：<code>window-manager</code> 移至 <code>src/main/window/</code>；URL 双份已完成（保留门面），无需再处理。</li>
-<li><strong>格式统一</strong>：<code>.editorconfig</code> 与 Prettier <code>endOfLine</code> 对齐，修复非 UTF-8 文件；<code>out/</code> 拆分构建产物与分析产物，<code>dist/</code> 历史安装包（1.78 GB）归档到 Release。</li>
-<li><strong>文档资产治理</strong>：<code>docs/架构文档.html</code> 归档并在索引标注「非当前」；<code>_unused-assets</code> 移出工作区。</li>
+<li><strong>清理死代码/重复资源（已完成）</strong>：<code>useEventBus</code>、<code>MermaidRender</code>、<code>dialog-helpers</code>、<code>utils/common.ts</code>、<code>SYSTEM.OPEN_EXTERNAL_LINK</code> 已清理；重复 CSS/模板资源已收口（第 4+5 批）。</li>
+<li><strong>目录语义归位（已完成）</strong>：<code>window-manager</code> 已移至 <code>src/main/window/</code>；URL 双份已完成（保留门面）。</li>
+<li><strong>格式统一（已完成）</strong>：<code>.editorconfig</code>/Prettier/<code>.gitattributes</code> 三者 EOL 统一 LF，3 个含替换字符文件已修复；<code>out/</code> 与 <code>out/analysis</code> 已拆分（<code>dist/</code> 历史安装包归档留待发布侧处理）。</li>
+<li><strong>文档资产治理（已完成）</strong>：<code>docs/架构文档.html</code> 归档 <code>docs/历史归档/</code> 并在索引标注「非当前」；<code>_unused-assets</code> 已移出工作区。</li>
 </ol>
 <h2 id="sec-11">10. 结论</h2>
 <ul>
@@ -1599,11 +1599,15 @@
 </tr>
 <tr>
 <td>本轮全量测试</td>
-<td><code>out/tool-results/struct-fulltest-latest.log</code>（172 文件 / 3,272 用例全通过）</td>
+<td><code>out/tool-results/struct-fulltest-latest.log</code>（第 5 批收尾：171 文件 / 3,265 用例全通过，<code>out/test-results.json</code>）</td>
+</tr>
+<tr>
+<td>第 5 批清理与规范</td>
+<td><code>out/tool-results/opt-batch5-final.md</code>（L1/L2/L3/M3/pinyin 明细、门禁数据、提交号）</td>
 </tr>
 <tr>
 <td>当前现行口径</td>
-<td><a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>（92 通道）+ <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单</a></td>
+<td><a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>（91 通道）+ <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单</a></td>
 </tr>
 <tr>
 <td>公共接口归位</td>
@@ -1614,7 +1618,7 @@
 <h2 id="sec-13">附录 B：统计口径说明</h2>
 <ol>
 <li><strong>行数</strong>：UTF-8 统计、含空行与注释；<code>src</code> 统计含 <code>.d.ts</code>/<code>.svg</code> 资源，<code>tests</code> 含测试 helper；热点表为「非空行」口径（与目录行数不同口径）。</li>
-<li><strong>测试数</strong>：本报告采用 2026-11-19 17:55 全量 <code>vitest run</code> 实测值 <strong>172 文件 / 3,272 用例</strong>（首次成文为 158 / 2,871；历史报告中的 1,067～3,201 等为各自时点口径）。口径同步：根 README、台账、docs/wiki 当前状态文档已于 2026-11-19 18:00 统一到本报告口径（历史报告保留时点快照并已标注）。</li>
+<li><strong>测试数</strong>：本报告采用 2026-11-19 第 5 批收尾全量 <code>vitest run</code> 实测值 <strong>171 文件 / 3,265 用例</strong>（第 4 批为 172 / 3,272；第 5 批删除死测试 11 条、新增 manifest 一致性测试 4 条；首次成文为 158 / 2,871，历史报告中的 1,067～3,201 等为各自时点口径）。口径同步：根 README、台账、docs/wiki 当前状态文档已同步到本报告口径（历史报告保留时点快照并已标注）。</li>
 <li><strong>产物体积</strong>：Vite/electron-builder 输出为十进制 kB/MB；<code>out/main</code> <strong>10.50 MiB</strong>（含内联 jsdom）、<code>out/renderer</code> <strong>24.21 MiB</strong>、<code>app.asar</code> <strong>50.11 MiB</strong>、NSIS <strong>118.41 MiB（=124.17 MB）</strong>、portable <strong>107.46 MiB（=112.68 MB）</strong>、入口 chunk <strong>127.07 kB</strong>、主界面 <strong>9,889.38 kB（≈9.89 MB）</strong>。</li>
 <li><strong>主题口径</strong>：应用主题 28（<code>ThemeType</code> 28 项）；Monaco <strong>57 = 内置 3（vs/vs-dark/hc-black）+ 磁盘 54</strong>（themes 目录 55 个 JSON 中 <code>themelist.json</code> 为清单不计）。文档中「54/55」为旧口径。</li>
 <li><strong>动态 import</strong>：<strong>64 处</strong>（<code>.ts</code> 61 + <code>.vue</code> 3）；仅统计 <code>.ts</code> 时为 61（与首次成文同口径）。</li>
@@ -1644,7 +1648,7 @@
 <p><strong>版本升级与发布（2026-11-19 18:4x~19:0x）</strong>：全仓版本号由 1.3.6 升级为 1.3.7；随后 19:0x 将全仓版本号升级为 1.3.8（版本维护批次，无功能/代码变更），1.3.7 的 GitHub Release 已发布、1.3.8 待发布；1.3.6 在发布提交 <code>506e78a</code> 上补打 <code>release-1.3.6</code> tag；随后打 <code>release-1.3.7</code> tag（<code>cc3d929</code>）并发布 GitHub Release（NSIS 118.42 MiB / portable 107.46 MiB / latest.yml / blockmap）；CHANGELOG/RELEASE-NOTES 将 11-18、11-19 修改归入 1.3.7。</p>
 </li>
 <li>
-<p><strong>口径同步（2026-11-19 18:00）</strong>：根 README、docs/wiki（README + 02 设计与架构 4 篇 + 01 当前基线注）、报告总索引、HTML Wiki 首页、当前遗留问题清单统一到 172 文件/3,201 用例、92 通道/17 组、57 Monaco 主题（内置 3 + 磁盘 54）、118.41 MiB 安装包 / 50.11 MiB asar；H5 状态由「部分修复」更新为「已修复」。</p>
+<p><strong>口径同步（2026-11-19 第 5 批收尾）</strong>：根 README、docs/wiki（README + 02 设计与架构 4 篇 + 01 当前基线注）、报告总索引、HTML Wiki 首页统一到 171 文件/3,265 用例、91 通道/17 组、构建脚本 7 个、57 Monaco 主题（内置 3 + 磁盘 54）、118.41 MiB 安装包 / 50.11 MiB asar。</p>
 </li>
 </ul>
 

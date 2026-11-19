@@ -61,6 +61,17 @@
 - **4.5 重复资产清理**：4 个 CSS/KaTeX CSS 收口 `main.ts`（index.html 仅 1 条 stylesheet）；删除 7 个未注册占位页与 `atom-one-light.css` 死副本；MermaidRender 生产引用归零
 - 门禁：typecheck 0 / ESLint 0 / vitest **172 文件 / 3,272 用例全通过** / electron-vite build 成功
 
+### 🧹 结构优化第 5 批（清理与规范 L1/L2/L3 + 巨型文件 + M3 manifest）
+
+- **5.1 死代码/目录语义（L1，`c68e91f`）**：删除 `src/main/utils/common.ts`（生产零调用的 FontFamily 表）及其测试；删除 `SYSTEM.OPEN_EXTERNAL_LINK` 死通道（零发送方：ipc-channels 常量 + 主进程 handler + 4 条相关测试；协议白名单安全矩阵仍由 window-security 测试覆盖）；`window-manager` 由 `config/` 迁 `src/main/window/`（config/index 保留 re-export 门面，调用点零改动）
+- **5.2 EOL/编码（L2，`f626a8a`）**：`.editorconfig` end_of_line 与 `.prettierrc` endOfLine 统一为 LF，新增 `.gitattributes`（`* text=auto eol=lf` + 二进制白名单）覆盖本机 core.autocrlf，保证任意环境检出即 LF；修复 3 个含 U+FFFD 替换字符的文件（`.gitignore` 损坏注释、wiki 版本更新报告、plantuml vendored 产物裸替换字符改等价 `\uFFFD` 转义）；`prettier --check .` 全绿
+- **5.3 build 脚本治理（L3，`af5a4b1`）**：删除零引用空宏桩 `build/installer.nsh`、两个未被引用的 `.bat`（能力已被 npm scripts 覆盖）；`build/build-win.ps1` 的 NSIS 临时目录重定向能力并入 `build/prepare-build-dirs.js` 新增 `--exec` 子命令（`node build/prepare-build-dirs.js --exec "npm run build:win:nsis"`）
+- **5.4 docs 资产归档（L3，`6ed8a3f`）**：`docs/架构文档.html` → `docs/历史归档/架构文档.html`（README/wiki 索引标注「非当前」）；`resources/_unused-assets`（287 文件 / 6.5 MB）移出工作区至 `out/archive/`
+- **5.5 巨型文件（`13cd4ba`，部分完成）**：`pinyin-data.ts`（20,914 行纯数据）迁 `src/renderer/src/data/`，`chinese-lib` 改动态 `import()` 按需加载（构建实测独立 chunk 165.8 KB、入口不 preload；`getPinyin/getFirstLetter` 异步化，交互语义不变）；`directory-tree`/`preview-md-basic`/`MaterialSyntaxDialog`/设置页拆分未执行，已列入后续计划（未假完成）
+- **5.6 根目录清理（L3，`b71569e`）**：`baize_clear_icon.ico` 归入 `resources/icon/`；删除 `debug.log`、`tsconfig.web.tsbuildinfo` 与空目录 `$base/`；`.gitignore`/`.prettierignore` 清理失效规则并忽略 `docs/历史归档/`
+- **M3 单一 manifest（`7c2467b`）**：新增 `src/shared/constants/material-syntax.ts` 作为 15 项 Material 扩展语法唯一真源（id / 菜单词条 / 动作 id）；`menu-config` 菜单项由 manifest 生成，`menu-actions` 拦截清单与对话框 id 类型/顺序改为派生；新增 4 条 manifest 一致性测试（菜单生成顺序 / 对话框渲染顺序 / zh-CN+en-US 词条齐全）；38 项插件工具 manifest 留待后续
+- 门禁：typecheck 三工程 0 错误、ESLint 0/0、`prettier --check .` 全绿、electron-vite build 成功、vitest **171 文件 / 3,265 用例全通过**（删除死测试 11 条 + 新增 manifest 一致性 4 条）、preload 白名单 `--check` 通过、质量基线 `--check` 一致、IPC **91 通道 / 17 组**
+
 ## 2026年11月19日 - 版本 1.3.7（结构治理 / 性能 / 安全与文档体系）
 
 > 承接 1.3.6（2026-11-15 发布）之后 **11-18、11-19 的全部修改**：以「公共接口归位」第 0~4 批完成 shared 三层单真源与渲染层组件化，主界面异步分块将入口 chunk 降低 98.9%，并完成 PDF 预览 / CSP / preload 白名单等安全加固与报告 HTML Wiki 文档体系重构。

@@ -7,12 +7,12 @@
 > **合并归档报告**：由以下历史报告合并而成（保留原文，按时间顺序成章）：`2026-11-18-IPC通信矩阵.md`、`2026-11-15-IPC通信矩阵.md`。
 > 内容为历史快照；当前口径见 [报告总索引](../../README.md) 与 [IPC通信矩阵](IPC通信矩阵.md)（v1.3.8 基线：169 测试文件 / 3,234 用例 / 92 IPC 通道）。
 
-## 一、当前通信矩阵（2026-11-19 复核，92 通道）
+## 一、当前通信矩阵（2026-11-19 第 5 批复核，91 通道）
 
 - **编制日期**：2026-11-18 首次编制，2026-11-19 补录 `FILE.OPEN_IN_BROWSER` / `FILE.READ_BINARY` 后复核（基于当前工作区源码；取代 `2026-11-15-IPC通信矩阵.md` 历史快照）
 - **唯一真源**：`src/shared/ipc-channels.ts`（**92 个通道常量 / 17 个分组**，全部以 `baize:<domain>:<name>` 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）
 - **方法**：对每个通道常量在 `src/main/**`、`src/preload/**`、`src/renderer/**` 全量 grep 实际发送点/接收点，只按源码事实填写；行号均为当前源码行号
-- **统计摘要**：92 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）
+- **统计摘要**：91 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）
 
 #### 一、方向记号
 
@@ -38,7 +38,7 @@
 
 | 指标 | 数量 | 说明 |
 | --- | --- | --- |
-| IPC 通道常量 | **92** | WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 24 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 3 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 3 / QUICK_LINKS 3 / EVENTS 4 |
+| IPC 通道常量 | **91** | WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 24 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 3 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 2 / QUICK_LINKS 3 / EVENTS 4 |
 | BrowserWindow 创建点 | **4** | 主窗口、windowManager 通用容器（5 个 JSDOM 对话框 + 在线网页窗口）、PDF 导出隐藏窗、PlantUML 渲染隐藏窗 |
 | preload 入口 | **2** | `src/preload/index.ts`（主窗口）、`src/preload/dialog.ts`（对话框/隐藏窗） |
 | `window.electron` 成员 | **1 对象（受限）** | 受限 `ipcRenderer`：`send`/`invoke` 白名单 **58** 通道、`on`/`once` 白名单 **25** 通道（未知通道丢弃/拒绝并告警；`removeListener`/`removeAllListeners` 不限制）+ `webFrame`{insertCSS,setZoomFactor,setZoomLevel}、`webUtils`{getPathForFile}、`process`{platform,versions,env}；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露 |
@@ -73,7 +73,7 @@
 - **单主进程**，每个 BrowserWindow 一个渲染进程；未使用 utilityProcess / MessageChannelMain / MessagePort / BrowserView / WebContentsView。
 - **preload 单文件约束**：`electron.vite.config.ts` 的 `isolatedEntries: true` + `externalizeDeps: false`，产物 `out/preload/index.js` / `dialog.js`（主窗口与对话框均 `sandbox:true`，preload 必须自包含）。
 
-#### 四、通道矩阵（92 通道 / 17 组）
+#### 四、通道矩阵（91 通道 / 17 组）
 
 ##### 4.1 WINDOW（8）
 
@@ -228,11 +228,10 @@
 | SYSTEM_SETTING_UPDATE | `baize:setting:updated` | M→R send | 系统设置变更广播（菜单形态/语言/远程图片等） | config-manager.ts:211 | BaiZeNotes.vue:587、MarkdownPreviewComponent.vue:375、i18n.ts:56 |
 | AUTO_SAVE_CHANGED | `baize:setting:auto-save-changed` | R→M invoke | 自动保存开关/间隔变更（启停定时器，返回状态） | handlers.ts:788 registerHandleOnce | SystemSettingDialog.vue:714-720 |
 
-##### 4.15 SYSTEM（3）
+##### 4.15 SYSTEM（2）
 
 | 常量 | 字符串 | 方向 | 作用 | 主进程侧 | 渲染层侧 |
 | --- | --- | --- | --- | --- | --- |
-| OPEN_EXTERNAL_LINK | `baize:system:open-external-link` | R→M send | 系统浏览器打开外部链接（仅 http/https；本地 HTML 走 FILE.OPEN_IN_BROWSER） | utils.ts:728 registerOnce | 主窗口 window.open 兜底（index.ts）；dialog preload 白名单 |
 | SYSTEM_INFO | `baize:system:get-info` | R→M invoke | 系统描述（OS/架构/版本） | handlers.ts:759 registerHandleOnce | HelpAboutDialog.vue:187 |
 | APP_VERSION | `baize:system:app-version` | R→M invoke | 版本信息（version.json + 运行时 electron/chrome/node） | utils.ts:778 registerHandleOnce | preload `api.app.getVersion`（index.ts:57）→ HelpAboutDialog.vue:155 |
 
@@ -256,9 +255,9 @@
 
 #### 五、异常与风险清单（已清零）
 
-> **统计口径**：92 通道 / 17 组（2026-11-19 复核；含 2026-11-18 补录的 `FILE.OPEN_IN_BROWSER`、`FILE.READ_BINARY`）。
+> **统计口径**：91 通道 / 17 组（2026-11-19 第 5 批复核：删除 `SYSTEM.OPEN_EXTERNAL_LINK` 死通道；含 2026-11-18 补录的 `FILE.OPEN_IN_BROWSER`、`FILE.READ_BINARY`）。
 
-> **2026-11-18 复核：异常清单已清零**。历史已处理项：① 空转/死分支 4 项（`WINDOW.START_DRAG` 空实现、`THEME.INIT_THEME_STYLES` 半死、`EDITOR.UPDATE_OPTIONS` R→M 死分支、`EVENTS.STATUS_BAR_UPDATE` 反向 send）；② 语义错用 1 项（`SYSTEM.OPEN_EXTERNAL_LINK` 的本地文件调用已改走 `FILE.OPEN_IN_BROWSER`，遗留清单 #1）；③ 载荷不一致 1 项（`THEME.THEME_UPDATED`，MenuBar 改读配置，遗留清单 #2）；④ 域错配 10 通道 / 5 组（分组与 domain 已统一为 17 组，遗留清单 #3/#7）。详见 [当前遗留问题清单](当前遗留问题清单.md)。
+> **2026-11-18 复核：异常清单已清零**。历史已处理项：① 空转/死分支 4 项（`WINDOW.START_DRAG` 空实现、`THEME.INIT_THEME_STYLES` 半死、`EDITOR.UPDATE_OPTIONS` R→M 死分支、`EVENTS.STATUS_BAR_UPDATE` 反向 send）；② 语义错用 1 项（`SYSTEM.OPEN_EXTERNAL_LINK` 的本地文件调用已改走 `FILE.OPEN_IN_BROWSER`，遗留清单 #1）；③ 载荷不一致 1 项（`THEME.THEME_UPDATED`，MenuBar 改读配置，遗留清单 #2）；④ 域错配 10 通道 / 5 组（分组与 domain 已统一为 17 组，遗留清单 #3/#7）；⑤ 第 5 批（2026-11-19）：删除 `SYSTEM.OPEN_EXTERNAL_LINK` 零发送方死通道（IPC 92 → 91），SYSTEM 组由 3 → 2 个通道。详见 [当前遗留问题清单](当前遗留问题清单.md)。
 
 #### 六、窗口容器与 preload 矩阵
 
@@ -587,7 +586,6 @@
 | UPDATE_SELECT_FILE_CONTENT | baize:file:update-content | R→M send | MarkdownEditComponent.vue:syncContentToMain（500ms 防抖） | main/utils/utils.ts | `content` | 仅同步内存内容（不落盘） |
 | CHECK_EXISTS | baize:file:check-exists | R→M invoke | ShowPdfEditor.vue:loadPdfFile | main/utils/utils.ts | `filePath`；返回 boolean | 判断文件是否存在 |
 | READ_HTML | baize:file:read-html | R→M invoke | ShowHtmlVIew.vue:loadHtmlFile | main/utils/utils.ts | `filePath`；返回 HTML 文本 | HTML 查看器读文件 |
-| OPEN_EXTERNAL_LINK | baize:system:open-external-link | R→M send | ShowHtmlVIew.vue；ShowPdfEditor.vue（openInBrowser） | main/utils/utils.ts | `url` | `shell.openExternal` 外开 |
 | SYSTEM_INFO | baize:system:get-info | R→M invoke | HelpAboutDialog.vue:onMounted | main/ipc/handlers.ts | 返回 `os.type + arch + release` | 关于对话框系统信息 |
 | APP_VERSION | baize:system:app-version | R→M invoke | preload api.app.getVersion；HelpAboutDialog | main/utils/utils.ts | 返回版本信息对象 | 版本信息 |
 | USER_SELECT_FILE | baize:file:user-select-file | M→R send | file-operations.ts:CreateFileFolder/OpenSelectFile/CreateFile | StatusBar.vue:handleUserSelectFile | `filePath` | 状态栏路径更新 |

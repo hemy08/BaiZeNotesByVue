@@ -370,7 +370,7 @@ BaiZeNotesByVue/
 │   ├── plantuml/                         # PlantUML 本地 teaVM 渲染资源（6 个文件）
 │   ├── icon/                             # 应用图标（ico/svg）
 │   └── config/                           # 配置文件（version.json 构建时生成）
-├── tests/                                # 单元测试（171 个 .test.ts / 3,201 个用例）
+├── tests/                                # 单元测试（171 个 .test.ts / 3,265 个用例）
 ├── docs/                                 # 项目文档
 │   ├── wiki/                             # 知识库文档（分类结构）
 │   │   ├── README.md                     # 文档索引
@@ -381,8 +381,8 @@ BaiZeNotesByVue/
 │   │   └── 05-版本与历史/                 # 版本更新历史
 │   ├── reports/                          # 报告归档（Markdown 版 + 独立 HTML Wiki）
 │   │   ├── README.md                     # 报告总索引（含口径说明与合并记录）
-│   │   ├── md/                           # Markdown 报告（20 篇，按三类分类）
-│   │   └── html/                         # HTML 报告 Wiki（README+_sidebar 导航 + 20 份带悬浮目录页面）
+│   │   ├── md/                           # Markdown 报告（23 篇，按三类分类）
+│   │   └── html/                         # HTML 报告 Wiki（README+_sidebar 导航 + 25 份带悬浮目录页面）
 │   ├── images/                           # 文档配图
 │   ├── 历史归档/                          # 历史文档归档（非当前实现，见「文档导航」说明）
 │   │   └── 架构文档.html                  # 历史版架构文档合辑（非当前；最新见 docs/wiki/02-设计与架构/架构文档.md）
@@ -456,7 +456,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成                        | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.0 | Electron 应用打包工具                       | [官网](https://www.electron.build/)                    |
-|               Vitest               | 4.1.12  | 单元测试框架（172 个测试文件 / 3,272 用例） | [官网](https://vitest.dev/)                            |
+|               Vitest               | 4.1.12  | 单元测试框架（171 个测试文件 / 3,265 用例） | [官网](https://vitest.dev/)                            |
 |               ESLint               | 9.39.4  | JavaScript 代码检查工具                     | [官网](https://eslint.org/)                            |
 |              Prettier              |  3.9.6  | 代码格式化工具                              | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  2.1.0  | Electron ESLint 配置                        | [GitHub](https://github.com/alex8088/electron-toolkit) |
@@ -484,7 +484,7 @@ BaiZeNotesByVue/
 | 主进程对话框 |                10 个文件                 | src/main/dialogs（JSDOM 对话框 + 共享样式）                                                                                                                 |
 |   应用主题   |                  28 种                   | src/main/config/theme-config.ts（编译进主进程，无资源 JSON；旧 app_themes 已删除）                                                                          |
 |  编辑器主题  |                  57 种                   | Monaco 主题（内置 3 + 磁盘 54；themes 目录含 54 个主题 json + themelist 索引）                                                                              |
-|   IPC 通道   |                  92 个                   | `baize:<domain>:<name>`（92 个 / 17 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                         |
+|   IPC 通道   |                  91 个                   | `baize:<domain>:<name>`（91 个 / 17 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                         |
 |   插件工具   |                  38 个                   | src/renderer/src/components/PluginTools/plugin-tools-const.ts（异步按需加载）                                                                               |
 |   单元测试   |               3,201 个用例               | 172 个测试文件（vitest，全通过）                                                                                                                            |
 |   声明依赖   |                  50 个                   | 生产依赖 11 + 开发依赖 39（package.json 实测）                                                                                                              |
@@ -529,7 +529,7 @@ BaiZeNotesByVue/
 - [报告总索引](docs/reports/README.md) - 检查/修复/专项报告（20 篇，已去日期并按主题合并，含口径说明）
 - [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md) - **问题跟踪台账**（21 项，17 ✅ / 3 🟡 / 1 ⏸️；修复后更新状态）
 - [报告 HTML Wiki](docs/reports/html/README.html) - HTML 版报告（首页 + 侧边栏 + 每页顶部整体导航 + 20 份带悬浮目录页面）
-- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（92 通道 / 17 组 + 窗口/preload 结构）
+- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（91 通道 / 17 组 + 窗口/preload 结构）
 - [IPC 通信治理报告](docs/reports/md/03-专项治理/IPC通信治理报告.md) - 通信检查 + 修复计划 + 命名方案（历史）
 
 ### 项目分析与架构
@@ -584,7 +584,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层）
 npm run typecheck
 
-# 运行单元测试（172 个测试文件 / 3,272 个用例）
+# 运行单元测试（171 个测试文件 / 3,265 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
