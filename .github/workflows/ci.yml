@@ -47,6 +47,17 @@ jobs:
 
             - name: Vitest
               run: npx --no-install vitest run
+        - name: Coverage (thresholds)
+          run: npx --no-install vitest run --coverage
+
+        - name: Prettier check
+          run: npx --no-install prettier --check .
+
+        - name: Production dependency audit
+          run: npm audit --omit=dev --registry=https://registry.npmjs.org --audit-level=high
+
+        - name: Quality baseline check
+          run: node build/generate-quality-baseline.js --check
 
     e2e:
         name: E2E (Playwright + Electron)

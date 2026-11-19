@@ -45,6 +45,14 @@
 
 ---
 
+### ⚙️ 结构优化第 3 批（H7 / M9 / M7）
+
+- **3.1 文档基线自动校验**：新增 `build/generate-quality-baseline.js`（版本/IPC/测试文件/用例/dist 产物 → `out/analysis/quality-baseline.json`），`--check` 与 docs 当前基线比对；CI 新增 Quality baseline check
+- **3.2 CI 门禁补强**：CI 新增 Coverage（80/75/73/80）、Prettier --check、生产依赖 audit（官方 registry，0 漏洞）；27 个文件完成 Prettier 修复
+- **3.3 release workflow**：新增 `.github/workflows/release.yml`（release-* tag → 门禁 → build:win:all → GitHub Release 上传 NSIS/portable/latest.yml/blockmap → latest.yml 更新源验证）
+- **3.4 产物治理（部分）**：`out/analysis` 独立目录 + `.gitignore`；dist 历史归档与 out/build 拆分留待第 5 批
+- 门禁：prettier --check 全绿；npm audit --omit=dev（官方 registry）0 漏洞；基线脚本 --check 通过
+
 ## 2026年11月19日 - 版本 1.3.7（结构治理 / 性能 / 安全与文档体系）
 
 > 承接 1.3.6（2026-11-15 发布）之后 **11-18、11-19 的全部修改**：以「公共接口归位」第 0~4 批完成 shared 三层单真源与渲染层组件化，主界面异步分块将入口 chunk 降低 98.9%，并完成 PDF 预览 / CSP / preload 白名单等安全加固与报告 HTML Wiki 文档体系重构。
