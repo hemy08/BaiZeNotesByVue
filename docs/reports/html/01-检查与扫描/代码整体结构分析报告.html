@@ -40,8 +40,8 @@
 
 <h1>白泽笔记代码整体结构分析报告</h1>
 <blockquote>
-<p><strong>性质</strong>：结构分析（非缺陷清单）——对 v1.3.8 代码库（结构实测基线 v1.3.6 HEAD <code>7526e61</code>）做一次自顶向下的整体结构切片，梳理进程边界、模块分层、数据流、工程链路与结构风险。
-<strong>首次成文</strong>：2026-11-19 13:00（v1.3.6，git HEAD <code>3ea3a51</code>）。
+<p><strong>性质</strong>：结构分析（非缺陷清单）——对当前代码库（结构实测基线 HEAD <code>7526e61</code>）做一次自顶向下的整体结构切片，梳理进程边界、模块分层、数据流、工程链路与结构风险。
+<strong>首次成文</strong>：2026-11-19 13:00（git HEAD <code>3ea3a51</code>）。
 <strong>本次刷新</strong>：2026-11-19 17:55（HEAD <code>7526e61</code>，<code>3ea3a51..HEAD</code> 共 13 个提交：「公共接口归位」第 0~4 批 + 8 个文档批次）。结构描述、量化口径与风险状态均已按最新代码更新；刷新核验记录见 <code>out/tool-results/struct-delta.md</code>、<code>struct-metrics-b.md</code>，本轮全量测试实测 <strong>172 文件 / 3,272 用例全通过</strong>。<strong>第 5 批复核（2026-11-19 20:40）</strong>：L1/L2/L3 与 M3（Material）已处理，<code>pinyin-data</code> 迁 <code>data/</code> 并按需加载；测试口径更新为 <strong>171 文件 / 3,265 用例全通过</strong>、IPC <strong>91 通道 / 17 组</strong>，清理明细见 <code>out/tool-results/opt-batch5-final.md</code>。<strong>结构优化收尾（2026-11-19）</strong>：M7 产物治理（<code>out/build</code> 拆分 + <code>dist</code> 归档）与 5.5 剩余巨型文件拆分（directory-tree / preview-md-basic / MaterialSyntaxDialog，设置页纯函数子集）完成；集成 HEAD <code>7099663</code> + 收尾改动实测 <strong>172 文件 / 3,250 用例全通过</strong>，清理明细见 <code>out/tool-results/final-split.md</code>。
 <strong>方法</strong>：首次由 3 个并行只读分析代理分别深读「主进程 + preload」「渲染层」「共享层 + 构建/测试/文档」；刷新由 2 个并行核验代理（结构差异 / 量化口径）+ 根代理全量测试与出图完成。原始分析记录：<code>out/tool-results/struct-main.md</code>、<code>struct-renderer.md</code>、<code>struct-cross.md</code>。</p>
 </blockquote>
@@ -178,7 +178,7 @@
   </defs>
 
   <!-- 标题与图例 -->
-  <text x="16" y="32" class="title">图 1 · 白泽笔记进程架构总览（v1.3.9）</text>
+  <text x="16" y="32" class="title">图 1 · 白泽笔记进程架构总览</text>
   <text x="16" y="54" class="sub">Electron 三进程 + shared 单真源：主进程收口系统能力，preload 白名单收敛 92 个 IPC 通道，渲染层承载全部 UI</text>
   <rect x="700" y="14" width="14" height="14" rx="3" fill="#1e40af"/><text x="720" y="26" class="legend">主进程</text>
   <rect x="784" y="14" width="14" height="14" rx="3" fill="#0f766e"/><text x="804" y="26" class="legend">渲染进程</text>
@@ -1198,7 +1198,7 @@
   <!-- 发布现状 -->
   <rect x="16" y="684" width="1088" height="96" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
   <text x="34" y="712" class="ctitle" style="fill:#b91c1c">发布现状（结构风险 H7）</text>
-  <text x="34" y="736" class="cdesc">仅 Windows 发布（NSIS + portable）；打包 / 签名 / 更新源验证未纳入 CI，发布依赖本地手工链；git tag：release-1.3.6 / release-1.3.7 / release-1.3.8 已发布；1.3.9 未打。</text>
+  <text x="34" y="736" class="cdesc">仅 Windows 发布（NSIS + portable）；打包 / 签名 / 更新源验证未纳入 CI，发布依赖本地手工链；git tag：release-1.3.6 / release-1.3.7 / release-1.3.8 已发布。</text>
   <text x="34" y="760" class="cdesc">macOS / Linux 配置存在但为占位，无签名与 entitlements；更新器 latest.yml 已指向 GitHub Releases，但 CI 未验证可用性。</text>
 
   <!-- 底部说明 -->
@@ -1452,7 +1452,7 @@
 <tr>
 <td><strong>高</strong></td>
 <td>H7</td>
-<td>发布链路单平台 + 无 CI 打包/签名/更新源自动验证；tag 已补齐（<code>release-1.3.6</code> → <code>506e78a</code>、<code>release-1.3.7</code> → <code>cc3d929</code>），1.3.7 GitHub Release 已发布；1.3.8 已发布（release-1.3.8）；1.3.9 已升级版本、待发布</td>
+<td>发布链路单平台 + 无 CI 打包/签名/更新源自动验证；tag 已补齐（<code>release-1.3.6</code> → <code>506e78a</code>、<code>release-1.3.7</code> → <code>cc3d929</code>），<code>release-1.3.7</code> / <code>release-1.3.8</code> 的 GitHub Release 已发布，后续版本待发布</td>
 <td>发布仍依赖本地手工链；CI 未验证更新器下载与签名</td>
 </tr>
 <tr>
@@ -1642,10 +1642,10 @@
 <p><strong>图更新</strong>：5 张 SVG 的文件/行数、菜单数、主题数、测试数、文档页数、动态 import 等数字与模块名已按本表同步（见 <code>docs/reports/svg/</code>）。</p>
 </li>
 <li>
-<p><strong>未变</strong>：IPC 92/17、i18n 12 × 1,821、依赖 11/39/828、插件 38、Vue 对话框 18、E2E 4、应用主题 28、版本 1.3.8、最新 tag <code>release-1.3.7</code>（<code>cc3d929</code>，2026-11-19 发布提交）、CI 覆盖范围、主要风险结构（H1/H3/H4/H6/H7）。</p>
+<p><strong>未变</strong>：IPC 92/17、i18n 12 × 1,821、依赖 11/39/828、插件 38、Vue 对话框 18、E2E 4、应用主题 28、最新 tag <code>release-1.3.7</code>（<code>cc3d929</code>，2026-11-19 发布提交）、CI 覆盖范围、主要风险结构（H1/H3/H4/H6/H7）。</p>
 </li>
 <li>
-<p><strong>版本升级与发布（2026-11-19 18:4x~19:0x）</strong>：全仓版本号由 1.3.6 升级为 1.3.7；随后 19:0x 将全仓版本号升级为 1.3.8（版本维护批次，无功能/代码变更），1.3.7 的 GitHub Release 已发布、1.3.8 待发布；1.3.6 在发布提交 <code>506e78a</code> 上补打 <code>release-1.3.6</code> tag；随后打 <code>release-1.3.7</code> tag（<code>cc3d929</code>）并发布 GitHub Release（NSIS 118.42 MiB / portable 107.46 MiB / latest.yml / blockmap）；CHANGELOG/RELEASE-NOTES 将 11-18、11-19 修改归入 1.3.7。</p>
+<p><strong>发布与打 tag（2026-11-19 18:4x~19:0x）</strong>：完成一次版本发布（维护性批次，无功能/代码变更）；在发布提交 <code>506e78a</code> 上补打 <code>release-1.3.6</code> tag，随后打 <code>release-1.3.7</code> tag（<code>cc3d929</code>）并发布 GitHub Release（NSIS 118.42 MiB / portable 107.46 MiB / latest.yml / blockmap）；CHANGELOG/RELEASE-NOTES 将 11-18、11-19 修改归入本次发布。</p>
 </li>
 <li>
 <p><strong>口径同步（2026-11-19 第 5 批收尾）</strong>：根 README、docs/wiki（README + 02 设计与架构 4 篇 + 01 当前基线注）、报告总索引、HTML Wiki 首页统一到 171 文件/3,265 用例、91 通道/17 组、构建脚本 7 个、57 Monaco 主题（内置 3 + 磁盘 54）、118.41 MiB 安装包 / 50.11 MiB asar。</p>

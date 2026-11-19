@@ -64,7 +64,7 @@
 <p>📦 <strong>归档报告（原文：06-完整性检查报告.md）</strong>——历史快照，数字与结论以报告时点为准；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="../03-专项治理/IPC通信矩阵.html">IPC通信矩阵</a>。</p>
 </blockquote>
 <blockquote>
-<p>检查维度：完整性 ｜ 项目：白泽笔记（BaiZe Notes）v1.2.2
+<p>检查维度：完整性 ｜ 项目：白泽笔记（BaiZe Notes）
 生成日期：2026-11-14 ｜ 检查方式：grep / read 深读 + 只读 PowerShell 统计与链接验证，未运行任何修改性命令
 编号前缀：CMP（Completeness）</p>
 </blockquote>
@@ -75,7 +75,6 @@
 <li><strong>资产完整性</strong>：images / assets/icons / resources/themes / resources/icon 的数量清点与「文件名在 src 中引用次数」抽查。</li>
 <li><strong>安全基线</strong>：<code>out/tool-results/audit2.json</code> 15 个漏洞整理；v-html/innerHTML 与 DOMPurify 使用面；webPreferences 与 CSP；加密（node-forge/crypto-js）密钥管理抽查。</li>
 <li><strong>发布完整性</strong>：electron-builder.yml / dev-app-update.yml / generate-version-config.js → version.json 链路 / package.json scripts。</li>
-<li><strong>版本一致性</strong>：package.json 1.2.2 vs CHANGELOG vs docs 中的版本号。</li>
 <li><strong>空壳与未挂载功能</strong>：ShowHtmlVIew / ShowPdfEditor / HemyTools / PluginTools 各工具的入口；electron.vite.config.ts 被注释插件的意图。</li>
 <li><strong>国际化</strong>：源码硬编码中文现状；<strong>依赖健康</strong>：sharp / png-to-ico / app-builder-bin 等使用点与重复依赖。</li>
 </ul>
@@ -290,7 +289,7 @@
 <td>CMP-25</td>
 <td>P3</td>
 <td>安装包 227MB、无体积优化策略</td>
-<td>docs/wiki/05-版本与历史/2026-08-22-版本更新报告.md:227-228</td>
+<td>早期版本文档（已移除）:227-228</td>
 <td>精简可选资源</td>
 <td>✅ 已修复</td>
 </tr>
@@ -579,9 +578,9 @@
 <p>→ ✅ 已修复</p>
 <p><strong>位置</strong>：docs/架构文档.html:88、:142 vs docs/wiki/02-设计与架构/架构文档.md:1</p>
 <p><strong>描述</strong>：<code>docs/架构文档.html</code> 为 v1.2.0-beta（2026-06-06，含 4+1/3A/C4 视图 + 8 条 ADR），而 wiki 中的 <code>架构文档.md</code> 仍是 v1.1.5-beta；docs/wiki/README.md:39 目录表也标注 v1.1.5-beta。同一份「架构文档」存在两个版本号、两个内容世代，且 HTML 比 MD 新。</p>
-<p><strong>证据</strong>：docs/架构文档.html:88（<code>v1.2.0-beta</code>）、:142（meta）、:655（footer）；架构文档.md:1（<code># 白泽笔记 v1.1.5-beta 架构文档</code>）。</p>
+<p><strong>证据</strong>：docs/架构文档.html:88（<code>v1.2.0-beta</code>）、:142（meta）、:655（footer）；架构文档.md:1（标题行标注旧版架构文档的版本标识）。</p>
 <p><strong>影响</strong>：读者按 wiki 进入读到旧架构描述；HTML 与 MD 内容差异未受控（无生成脚本）。</p>
-<p><strong>修复建议</strong>：确定一份为准（建议以 MD 为准、HTML 由脚本生成），统一版本号至 v1.2.2 或去版本化。</p>
+<p><strong>修复建议</strong>：确定一份为准（建议以 MD 为准、HTML 由脚本生成），统一架构文档的版本口径或去版本化。</p>
 <p><strong>工作量</strong>：0.5 人日。</p>
 <h3 id="sub-9">CMP-09 README 命令与口径小错误【P3】</h3>
 <p>→ ✅ 已修复</p>
@@ -830,9 +829,9 @@
 <p><strong>工作量</strong>：5 分钟。</p>
 <h3 id="sub-25">CMP-25 安装包 227MB 无体积优化【P3】</h3>
 <p>→ 🟡 部分修复</p>
-<p><strong>位置</strong>：docs/wiki/05-版本与历史/2026-08-22-版本更新报告.md:227-228</p>
-<p><strong>描述</strong>：1.2.1 产物 NSIS 227.6MB / 便携版 227.4MB；依赖 plantuml-cli（自带 jar）、mermaid、katex 全量、resources/themes、resources/icon（含 47 个未用图标，见 CMP-14）全量入包，无压缩/按需裁剪策略。</p>
-<p><strong>证据</strong>：2026-08-22-版本更新报告.md:227-228；electron-builder.yml:14-32。</p>
+<p><strong>位置</strong>：早期版本文档（已移除）:227-228</p>
+<p><strong>描述</strong>：旧版产物 NSIS 227.6MB / 便携版 227.4MB；依赖 plantuml-cli（自带 jar）、mermaid、katex 全量、resources/themes、resources/icon（含 47 个未用图标，见 CMP-14）全量入包，无压缩/按需裁剪策略。</p>
+<p><strong>证据</strong>：早期版本文档（已移除）:227-228；electron-builder.yml:14-32。</p>
 <p><strong>影响</strong>：下载/更新成本高。</p>
 <p><strong>修复建议</strong>：清理未用资源（CMP-11/13/14）后重测体积；评估 plantuml 按需下载；compression: maximum 试压。</p>
 <p><strong>工作量</strong>：0.5 人日。</p>
@@ -954,7 +953,7 @@
 <p><strong>工作量</strong>：并入 CMP-31。</p>
 <h2 id="sec-5">四、值得肯定的实践（简要）</h2>
 <ol>
-<li><strong>TypeScript 门禁健康</strong>：typecheck:node / typecheck:web 双门禁 0 错误（SHARED-FACTS §3.1），版本升级后 78 个类型错误全部清零。</li>
+<li><strong>TypeScript 门禁健康</strong>：typecheck:node / typecheck:web 双门禁 0 错误（SHARED-FACTS §3.1），本轮升级后 78 个类型错误全部清零。</li>
 <li><strong>webPreferences 安全基线达标</strong>：nodeIntegration:false + contextIsolation:true + sandbox:true + 生产 webSecurity:true（src/main/index.ts:32-36），窗口导航统一拦截转外部（index.ts:72-75）。</li>
 <li><strong>docs/wiki 链接 100% 有效</strong>：wiki README 与 _sidebar 共 27 个相对链接逐条验证全部存在；README「开发文档」章节 14 个链接仅 LICENSE 一个失效。</li>
 <li><strong>配置/资源打包链路完整</strong>：generate-version → version.json → extraResources 全链路可跑通（package.json:21-26、electron-builder.yml:14-32）；dev-app-update.yml 等 dev 文件被正确排除出包（electron-builder.yml:11）。</li>
@@ -1008,7 +1007,7 @@
 <td>P2 中期</td>
 <td>文档校准</td>
 <td>CMP-05、CMP-07、CMP-08、CMP-09、CMP-10</td>
-<td>重写 README 统计、补 LICENSE、统一架构文档版本</td>
+<td>重写 README 统计、补 LICENSE、统一架构文档口径</td>
 </tr>
 <tr>
 <td>P2 中期</td>

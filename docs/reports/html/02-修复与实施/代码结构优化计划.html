@@ -54,7 +54,7 @@
 <h1>代码结构优化计划（批次 1–5）</h1>
 <blockquote>
 <p><strong>性质</strong>：优化实施计划（非缺陷清单）——基于 <a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a>（2026-11-19 刷新版）的结构风险清单（H1–H7 / M1–M9 / L1–L4），把风险转化为<strong>可分批次执行、可独立回滚、可验收</strong>的工程计划。
-<strong>基线</strong>：v1.3.9（结构实测：2026-11-19，HEAD <code>1d71cc0</code>；发布基线：<code>release-1.3.8</code> 已于 2026-11-19 发布，1.3.9 未发布）。
+<strong>基线</strong>：当前工作区（结构实测：2026-11-19，HEAD <code>1d71cc0</code>；发布基线：<code>release-1.3.8</code> 已于 2026-11-19 发布，后续版本未发布）。
 <strong>依据</strong>：<a href="../01-检查与扫描/代码整体结构分析报告.html">结构分析报告</a>、<a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单</a>、<a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>、<a href="公共接口归位修复计划.html">公共接口归位修复计划</a>（已完成批次的模式参考）。
 <strong>维护约定</strong>：每批完成后在本计划「批次状态」回写 ✅/🟡/⏸️ 与提交号；新增发现项追加到「批次 5+」或风险映射表，不改变已定批次边界。计划本身不修改历史报告结论。</p>
 </blockquote>
@@ -137,7 +137,7 @@
   </defs>
 
   <text x="16" y="32" class="title">图 1 · 代码结构优化计划批次路线图</text>
-  <text x="16" y="54" class="sub">基线：v1.3.9（结构实测 2026-11-19，HEAD `1d71cc0`）｜原则：小批次、可独立提交/回滚、门禁不降级、先测试后重构</text>
+  <text x="16" y="54" class="sub">基线：结构实测 2026-11-19，HEAD `1d71cc0`｜原则：小批次、可独立提交/回滚、门禁不降级、先测试后重构</text>
   <rect x="860" y="16" width="14" height="14" rx="3" fill="#16a34a"/><text x="880" y="28" class="legend">已完成</text>
   <rect x="950" y="16" width="14" height="14" rx="3" fill="#dc2626"/><text x="970" y="28" class="legend">P1 高优先</text>
   <rect x="860" y="38" width="14" height="14" rx="3" fill="#2563eb"/><text x="880" y="50" class="legend">P2</text>
@@ -232,7 +232,7 @@
 <tbody>
 <tr>
 <td>第 0 批</td>
-<td>基线确认（报告 + 公共接口归位 + 1.3.7 发布）</td>
+<td>基线确认（报告 + 公共接口归位 + <code>release-1.3.7</code> 发布）</td>
 <td>—</td>
 <td>—</td>
 <td>—</td>
@@ -399,7 +399,7 @@
 <blockquote>
 <p><strong>执行结果（2026-11-19 结构优化收尾）：已完成。</strong> electron-vite 三段产物 → <code>out/build/{main,preload,renderer}</code>
 （<code>electron.vite.config.ts</code> 三处 <code>build.outDir</code>）；electron-builder 输出 → <code>out/build/dist</code>
-（<code>electron-builder.yml</code> <code>directories.output</code>）；历史 <code>dist/</code>（1.3.7/1.3.8 安装包与 win-unpacked，约 867 MB）
+（<code>electron-builder.yml</code> <code>directories.output</code>）；历史 <code>dist/</code>（旧版安装包与 win-unpacked，约 867 MB）
 归档到 <code>out/archive/dist</code>；<code>.gitignore</code> / <code>package.json main</code> / build 脚本 / E2E / CI / release workflow /
 质量基线脚本路径同步更新；<code>node build/prepare-build-dirs.js</code>、<code>node build/generate-preload-whitelist.js --check</code>、
 <code>node build/generate-quality-baseline.js --check</code> 均通过。</p>
@@ -490,16 +490,15 @@ UI 回归风险高）本轮未执行，仅做纯函数/常量抽取子集。M7 �
 <ol>
 <li><strong>先做第 1 批</strong>（结构防御）：改动局部、风险可控，收益是后续所有重构的安全网；预计 1 周内完成。</li>
 <li><strong>再做第 2 批</strong>（运行时收敛）：H3/H4 与用户体验直接相关，且 3.2 会改变构建契约，建议在无并行发布会话的窗口执行；分 4~5 个独立提交。</li>
-<li><strong>第 3 批与第 2 批部分并行</strong>：CI/发布脚本改动与运行时解耦，可提前准备；release workflow 需等 1.3.8 发布决策。</li>
+<li><strong>第 3 批与第 2 批部分并行</strong>：CI/发布脚本改动与运行时解耦，可提前准备；release workflow 需等后续版本发布决策。</li>
 <li><strong>第 4 批</strong>依赖第 2 批组件稳定；第 5 批可随时穿插（尽量在每批收尾时做 1~2 项）。</li>
 </ol>
-<p><strong>版本节奏建议</strong>：第 1、2 批完成可发 1.3.9（结构治理版）；第 3 批完成发 1.4.0-rc（工程与发布就绪）；第 4、5 批进入 1.4.x 维护版。实际版本号以产品决策为准。</p>
 <h2 id="sec-9">8. 度量与验收基线</h2>
 <table>
 <thead>
 <tr>
 <th>指标</th>
-<th>当前基线（2026-11-19，v1.3.9）</th>
+<th>当前基线（2026-11-19）</th>
 <th>目标</th>
 <th>验证方式</th>
 </tr>
@@ -621,7 +620,7 @@ UI 回归风险高）本轮未执行，仅做纯函数/常量抽取子集。M7 �
 <tr>
 <td>第 0 批 基线确认</td>
 <td>✅ 已完成</td>
-<td>结构报告 + 公共接口归位（已完成）+ 1.3.7 发布</td>
+<td>结构报告 + 公共接口归位（已完成）+ <code>release-1.3.7</code> 发布</td>
 </tr>
 <tr>
 <td>第 1 批 结构防御</td>
@@ -787,13 +786,13 @@ UI 回归风险高）本轮未执行，仅做纯函数/常量抽取子集。M7 �
 <ul>
 <li><a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a>（§9.2 风险清单、§9.3 建议、§8 量化）；</li>
 <li><a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单</a>（21 项跟踪台账，含已完成修复记录）；</li>
-<li><a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>（91 通道 / 17 组当前口径）；</li>
+<li><a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>（当前口径：91 通道 / 17 组）；</li>
 <li><a href="公共接口归位修复计划.html">公共接口归位修复计划</a>（已完成批次作为「re-export 门面 + 契约测试」实施模式参考）；</li>
-<li>量化实测：2026-11-19 结构优化收尾，v1.3.8 集成基线（HEAD <code>7099663</code> + 收尾改动；<strong>172 测试文件 / 3,250 用例</strong>，jsdom 52；入口 chunk ≈127 kB、主界面 ≈9.89 MB；<code>out/build/main</code> ≈0.63 MiB）。</li>
+<li>量化实测：2026-11-19 结构优化收尾，集成基线（HEAD <code>7099663</code> + 收尾改动；<strong>172 测试文件 / 3,250 用例</strong>，jsdom 52；入口 chunk ≈127 kB、主界面 ≈9.89 MB；<code>out/build/main</code> ≈0.63 MiB）。</li>
 </ul>
 <h2 id="sec-14">附录 C：变更记录</h2>
 <ul>
-<li>2026-11-19：创建本计划（基于《代码整体结构分析报告》v1.3.8 刷新版；批次 1~5，含批次 0 基线确认）。\n- 2026-11-19：第 1 批（结构防御）完成——utils→config 归零 + 架构方向测试；preload 白名单契约生成；shared node:path 边界收口（ESLint + AST 测试）。</li>
+<li>2026-11-19：创建本计划（基于《代码整体结构分析报告》刷新版；批次 1~5，含批次 0 基线确认）。\n- 2026-11-19：第 1 批（结构防御）完成——utils→config 归零 + 架构方向测试；preload 白名单契约生成；shared node:path 边界收口（ESLint + AST 测试）。</li>
 <li>2026-11-19：第 2 批（运行时收敛）完成——JSDOM 对话框全迁 Vue/BaseDialog；主界面二级分块（Monaco/预览独立 chunk）；jsdom 内联移除（out/main -94.3%）；AppContext + IPC registry 收口。</li>
 <li>2026-11-19：结构优化收尾——M7 产物治理（out/build 拆分 + dist 归档 + 配置/脚本/CI/E2E 路径同步）；5.5 剩余巨型文件拆分（directory-tree / preview-md-basic / MaterialSyntaxDialog + SystemSettingDialog 纯函数子集）；设置页按页签拆组件因风险未执行；门禁全绿，vitest 172 文件 / 3,250 用例。</li>
 </ul>

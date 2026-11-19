@@ -1,6 +1,6 @@
 # 全局状态管理优化总结
 
-> ⚠️ 本文为 2026-04-12 时点快照，正文数据与结论保留当时原貌，不代表当前状态。当前状态见 [报告总索引](../../reports/README.md) 与 [IPC 通信矩阵](../../reports/md/03-专项治理/IPC通信矩阵.md)（v1.3.9 当前口径）。
+> ⚠️ 本文为 2026-04-12 时点快照，正文数据与结论保留当时原貌，不代表当前状态。当前状态见 [报告总索引](../../reports/README.md) 与 [IPC 通信矩阵](../../reports/md/03-专项治理/IPC通信矩阵.md)。
 >
 > ✅ 当前状态：BaiZeStore 的持久化/运行时分离与 LRU 文件缓存方案已落地，全局变量治理已完成；后续状态职责由 `file-state-store.ts`、`store-factory.ts`、`config-manager.ts` 分担，主进程全文改为长度 + sha256 指纹（全量扫描报告 9.7 节 PF-14）。
 >
@@ -334,7 +334,7 @@ ReferenceError: 对象处未定义存储
 ```
 
 **发生场景**:
-- 运行打包后的应用 `BaiZeNotes_1.1.5-bate_windows_x64.exe`
+- 运行打包后的应用 `BaiZeNotes_windows_x64.exe`
 - 主进程中发生 JavaScript 错误
 
 **根本原因**:
@@ -596,4 +596,3 @@ C:\Users\用户\.baizenotes\config\
 
 **修复人员**: CodeArts 代码智能体  
 **修复日期**: 2026-05-01  
-**版本**: v1.1.5-beta

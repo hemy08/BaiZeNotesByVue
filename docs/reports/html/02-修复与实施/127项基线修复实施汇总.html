@@ -28,7 +28,7 @@
 <h1>127 项基线修复实施汇总（合并归档）</h1>
 <blockquote>
 <p><strong>合并归档报告</strong>：由以下历史报告合并而成（保留原文，按时间顺序成章）：<code>07-修复与优化计划.md</code>、<code>08-修复实施报告.md</code>、<code>09-第二轮修复实施报告.md</code>、<code>10-第三轮修复实施报告.md</code>。
-内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="../03-专项治理/IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.9 基线：169 测试文件 / 3,234 用例 / 92 IPC 通道 / 17 组）。</p>
+内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="../03-专项治理/IPC通信矩阵.html">IPC通信矩阵</a>（基线：169 测试文件 / 3,234 用例 / 92 IPC 通道 / 17 组）。</p>
 </blockquote>
 <h2 id="sec-1">一、修复与优化计划（2026-11-14）</h2>
 <ul>
@@ -151,7 +151,7 @@
 <h4>7. 阶段 5：完整性与发布（fix-release，B 波）</h4>
 <ul>
 <li><strong>R-1</strong> README 关键数据实测修正（CMP-05/09）：40,065 行代码、文件数、主题数、目录树、失效链接；</li>
-<li><strong>R-2</strong> CHANGELOG/RELEASE-NOTES 补记本轮修复（不升版本号，记入 1.2.2 补丁条目）；</li>
+<li><strong>R-2</strong> CHANGELOG/RELEASE-NOTES 补记本轮修复（记入补丁条目）；</li>
 <li><strong>R-3</strong> package.json homepage 修正（CMP-10）；</li>
 <li><strong>R-4</strong> electron-builder.yml extraResources 校正（ARC-20）；</li>
 <li><strong>R-5</strong> generate-version-config 修复 chromeVersion 空值问题（CMP-22）；</li>
@@ -171,7 +171,7 @@
 <p>📌 第二轮修复（Monaco worker、配置单真源、通道常量迁移、strict 模式等）已完成，见 <a href="127项基线修复实施汇总.html">09-第二轮修复实施报告</a>。</p>
 </blockquote>
 <ul>
-<li><strong>项目</strong>：白泽笔记（BaiZe Notes）v1.2.2 ｜ <strong>执行日期</strong>：2026-11-14（第一轮）</li>
+<li><strong>项目</strong>：白泽笔记（BaiZe Notes） ｜ <strong>执行日期</strong>：2026-11-14（第一轮）</li>
 <li><strong>依据</strong>：<a href="../01-检查与扫描/总体优化项报告.html">00-总体优化项报告</a>（127 项检查发现）与 <a href="127项基线修复实施汇总.html">07-修复与优化计划</a></li>
 <li><strong>执行方式</strong>：7 个修复子智能体两波并行（安全/数据/质量/性能 → 架构/发布 → lint 收官），根代理统一验收</li>
 <li><strong>验收结论</strong>：✅ 全部门禁通过（typecheck 0 错误、测试 1067/1067、ESLint 0 error、electron-vite build 通过、npm audit 0 漏洞）</li>
@@ -278,7 +278,7 @@
 </tr>
 <tr>
 <td>dist 目录</td>
-<td>含 1.2.1 旧安装包（约 1.8GB 残留）</td>
+<td>含旧版安装包（约 1.8GB 残留）</td>
 <td>清理旧产物，释放 455MB</td>
 </tr>
 <tr>
@@ -337,10 +337,10 @@
 <h4>8. 阶段 5 完整性与发布（fix-release，8 项）</h4>
 <ul>
 <li><strong>README 重写</strong>（CMP-05/09）：12 项修正——实测代码规模 40,065 行（ts 23,150/vue 15,133/css 1,675）、主题 24、结构树与文档链接全部对齐 wiki/reports 新结构，失真数字清零，22/22 链接有效。</li>
-<li><strong>CHANGELOG/RELEASE-NOTES</strong>（CMP-06）：补记本轮六类修复（版本号未变）。</li>
+<li><strong>CHANGELOG/RELEASE-NOTES</strong>（CMP-06）：补记本轮六类修复。</li>
 <li><strong>打包配置</strong>（ARC-20）：electron-builder.yml 删除不存在的 katex/mermaid 条目、显式 <code>asar: true</code>。</li>
 <li><strong>版本生成</strong>（CMP-22）：electronVersion 从 require('electron/package.json') 读取，chromeVersion 运行时兜底，generate-version 验证通过。</li>
-<li><strong>dist 清理</strong>（PF-16）：删除 1.2.1 旧安装包与 blockmap，释放 455.27MB。</li>
+<li><strong>dist 清理</strong>（PF-16）：删除旧版安装包与 blockmap，释放 455.27MB。</li>
 <li><strong>homepage 修正</strong>（CMP-10）。</li>
 </ul>
 <h4>9. 遗留与推迟项（按计划明确推迟，供下轮排期）</h4>
@@ -448,7 +448,7 @@
 </blockquote>
 <h2 id="sec-3">三、第二轮修复实施（2026-11-14）</h2>
 <ul>
-<li><strong>项目</strong>：白泽笔记（BaiZe Notes）v1.2.2 ｜ <strong>执行日期</strong>：2026-11-14（第二轮）</li>
+<li><strong>项目</strong>：白泽笔记（BaiZe Notes） ｜ <strong>执行日期</strong>：2026-11-14（第二轮）</li>
 <li><strong>依据</strong>：<a href="127项基线修复实施汇总.html">08-修复实施报告</a> 第 9 节遗留清单</li>
 <li><strong>执行方式</strong>：第一波 6 个并行子智能体 + 第二波 2 个串行重构子智能体，根代理统一验收</li>
 <li><strong>验收结论</strong>：✅ 全部门禁通过（typecheck 0 错误、测试 102 文件/1662 用例、ESLint 0 error、electron-vite build 通过、npm audit 0 漏洞）</li>
@@ -731,7 +731,7 @@
 </blockquote>
 <h2 id="sec-4">四、第三轮修复实施（2026-11-15）</h2>
 <ul>
-<li><strong>项目</strong>：白泽笔记（BaiZe Notes）v1.2.2 ｜ <strong>执行日期</strong>：2026-11-15（第三轮）</li>
+<li><strong>项目</strong>：白泽笔记（BaiZe Notes） ｜ <strong>执行日期</strong>：2026-11-15（第三轮）</li>
 <li><strong>依据</strong>：<a href="127项基线修复实施汇总.html">09-第二轮修复实施报告</a> 第 6 节遗留清单（7 项未处理 + 13 项部分修复）</li>
 <li><strong>执行方式</strong>：6 个修复子智能体（5 个并行 + 1 个类型收敛）+ 根代理统一接线与验收</li>
 <li><strong>验收结论</strong>：✅ 全部门禁通过（typecheck 0 错误、测试 110 文件/1808 用例、ESLint 0 error、electron-vite build 通过、npm audit 0 漏洞）</li>

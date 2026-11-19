@@ -1,8 +1,8 @@
 # Monaco Editor 全量配置
 
-> 更新于 2026-11-19（对照 v1.3.9）
+> 更新于 2026-11-19
 >
-> 文档版本 2.1 ｜ 代码基线 v1.3.9 ｜ Monaco 版本 **0.57.0**（`monaco-editor@^0.57.0`）
+> Monaco 版本 **0.57.0**（`monaco-editor@^0.57.0`）
 > 事实来源：`src/renderer/src/components/Markdown/editor-options.ts`、`editor-option-maps.ts`、`editor-utils.ts`、`monaco-worker-setup.ts`、`monaco-worker-types.ts`、`register-languages.ts`、`MarkdownMonacoEditor.vue`、`electron.vite.config.ts`、`vitest.config.ts`、`src/main/config/editor-setting.ts`、`src/main/config/theme-registry.ts`。
 > 一句话结论：**当前只用 markdown 一种编辑器语言；Monaco worker 只注册 `editor.worker` 一个**（tsserver/css/html/json 4 个语言 worker 已移除，节省约 14.7 MB）；`monaco-editor` 裸包名经 Vite/Vitest 别名精确重定向到 `esm/vs/editor/editor.api.js`。
 
@@ -387,7 +387,7 @@ preload 与 monaco 无关，但同属构建关键配置：`isolatedEntries: true
 | 主进程渲染 Monaco 的通道 | 与 Monaco 无关，但旧文档提到的 `baize-notes:init-editor-setting` 等通道已清理（见编辑器设置文档） |
 | 调试右键动作 `Hemy Custom ContextMenu` | FUN-30 删除 |
 
-### 14.1 对旧版文档的修正（v1.3.0）
+### 14.1 对旧版文档的修正
 
 | 旧文档描述 | 当前实际 |
 | --- | --- |
@@ -447,4 +447,4 @@ npm test -- tests/unit/editor-options.test.ts tests/unit/editor-option-maps.test
 
 ---
 
-**文档生成时间**：2026-05-02（初版，通用 API 手册）｜ **本次更新**：2026-11-15（改写为 v1.3.0 项目实现配置手册）｜ **维护者**：hemy08
+**文档生成时间**：2026-05-02（初版，通用 API 手册）｜ **本次更新**：2026-11-15（改写为项目实现配置手册）｜ **维护者**：hemy08

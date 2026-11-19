@@ -214,7 +214,7 @@
 <h3 id="sub-8">4.3 文档/架构/工程配置</h3>
 <ul>
 <li><strong>口径冲突</strong>：00/12/README 称&quot;127/127 全部闭环&quot;，而通信检查报告/13 号计划称 32 项待修（实际 31 项仍存在）；13 号计划承诺的《IPC 修复实施报告》无产出；测试数字多口径（46/1808/1839/1843/1849）。</li>
-<li><strong>架构文档过时</strong>：<code>docs/wiki/02-设计与架构/架构文档.md</code> 仍为 v1.1.5-beta/Electron 38/141 文件，<strong>未反映 i18n、PF-02 本地渲染、PlantUML 本地渲染、配置单真源、通道命名统一</strong> 5 项新架构；<code>docs/架构文档.html</code> 更旧（Monaco 0.45/Electron 28/Vuex 已采纳），且原 md 已迁移导致配对断裂。</li>
+<li><strong>架构文档过时</strong>：<code>docs/wiki/02-设计与架构/架构文档.md</code> 仍停留在旧版口径（Electron 38/141 文件），<strong>未反映 i18n、PF-02 本地渲染、PlantUML 本地渲染、配置单真源、通道命名统一</strong> 5 项新架构；<code>docs/架构文档.html</code> 更旧（Monaco 0.45/Electron 28/Vuex 已采纳），且原 md 已迁移导致配对断裂。</li>
 <li><strong>发布记录停滞</strong>：CHANGELOG/RELEASE-NOTES 无 i18n/PF-02/通道命名统一记录。</li>
 <li><strong>README 数据失真</strong>：218 文件/40,065 行/46 用例 vs 实测 267 文件/49,441 行/116 文件/1849 用例；含已删除文件清单；误列 lodash/dayjs；&quot;8 篇报告&quot;实际 17 对。</li>
 <li><strong>工程配置</strong>：<code>.gitignore</code> 未覆盖 <code>coverage/</code>（247 产物）与 <code>resources/_unused-assets/</code>（287 文件 6.5MB）；<code>eslint.config.js</code>/<code>.prettierignore</code> 缺 coverage；<code>package.json</code> 的 <code>rebuild</code> 脚本失效（electron-rebuild/sqlite3 均不存在）、<code>clean</code> 仅 Windows、缺 <code>license</code> 字段；tsconfig 未包含 <code>tests/</code>（116 测试文件不参与类型检查）；2 处真实断链（<code>10-第三轮修复实施报告.md</code> 的 <code>./LICENSE</code>、<code>状态管理与Store优化报告.md:215</code>）。</li>

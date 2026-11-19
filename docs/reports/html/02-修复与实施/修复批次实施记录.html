@@ -202,14 +202,14 @@
 <ul>
 <li><strong>非空断言 18 → 0</strong>：新增 <code>getLiveMainWindow()</code> / <code>sendToMainWindow()</code>（null → isDestroyed → webContents 校验 → try/catch），16 处 IPC 发送收口、2 处早退；新增 9 个用例；</li>
 <li><strong>console 清理</strong>：本批范围 59→12（-79.7%），<code>logger.*</code> 26→73；生产 console.log 仅剩 1 处（交接清单）；</li>
-<li><strong>依赖与脚本</strong>：devDeps 28→22（删除 @rushstack/eslint-patch、png-to-ico、sharp、app-builder-bin、vite-plugin-copy、@types/uuid）；删除失效 <code>rebuild</code>、<code>clean</code> 改跨平台、补 <code>license: MIT</code>；<code>npm install --package-lock-only</code> 同步（1.2.1→1.2.2、清理 vuex/node-forge/vite-plugin-monaco-editor 陈旧条目）；</li>
+<li><strong>依赖与脚本</strong>：devDeps 28→22（删除 @rushstack/eslint-patch、png-to-ico、sharp、app-builder-bin、vite-plugin-copy、@types/uuid）；删除失效 <code>rebuild</code>、<code>clean</code> 改跨平台、补 <code>license: MIT</code>；<code>npm install --package-lock-only</code> 同步（lockfile 版本口径同步、清理 vuex/node-forge/vite-plugin-monaco-editor 陈旧条目）；</li>
 <li><strong>覆盖率阈值</strong>：lines/statements/functions/branches 由 40 → <strong>73/73/67/68</strong>（实测下沿低 3~5pp 防回归）。</li>
 </ul>
 <h3 id="sub-6">2.6 P3 文档与工程治理（1 个代理，与 P1/P2 并行）</h3>
 <ul>
 <li><strong>README</strong>：按实测重写统计与目录树（删除已删文件、删除误列 lodash/dayjs、补 i18n/本地渲染/安全加固、链接指向最新索引）；</li>
-<li><strong>架构文档</strong>：<code>docs/wiki/02-设计与架构/架构文档.md</code> 升级为 v1.2.2 当前架构（+281 行，新增「2026-11 架构增补」7 小节 + ADR-006～012，删除 Vuex 矛盾表述）；<code>docs/架构文档.html</code> 标注历史版本并同步关键版本/ADR；</li>
-<li><strong>发布记录</strong>：CHANGELOG / RELEASE-NOTES 补记本轮全部工作（不升版本号）；</li>
+<li><strong>架构文档</strong>：<code>docs/wiki/02-设计与架构/架构文档.md</code> 升级为当前架构（+281 行，新增「2026-11 架构增补」7 小节 + ADR-006～012，删除 Vuex 矛盾表述）；<code>docs/架构文档.html</code> 标注为历史快照并同步关键架构/ADR；</li>
+<li><strong>发布记录</strong>：CHANGELOG / RELEASE-NOTES 补记本轮全部工作；</li>
 <li><strong>口径统一</strong>：<code>../../README.md</code> 新增口径说明（00–12 为历史验收；127/127 为早期时点口径；IPC 32 项独立专项，已修 7 类）；</li>
 <li><strong>忽略规则</strong>：<code>.gitignore</code> / <code>eslint.config.js</code> ignores / <code>.prettierignore</code> 增补 <code>coverage</code>、<code>resources/_unused-assets</code>；</li>
 <li>校验：README 33 链接、reports 46 链接、架构 HTML 3 链接、30 页内锚点全部有效（0 断链）。</li>

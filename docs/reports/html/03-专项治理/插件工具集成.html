@@ -26,7 +26,7 @@
 <h1>插件工具集成（合并归档）</h1>
 <blockquote>
 <p><strong>合并归档报告</strong>：由以下历史报告合并而成（保留原文，按时间顺序成章）：<code>2026-11-15-jyshare-前端工具源码调研.md</code>、<code>2026-11-15-jyshare-插件集成实施报告.md</code>。
-内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.9 基线：169 测试文件 / 3,234 用例 / 92 IPC 通道 / 17 组）。</p>
+内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="IPC通信矩阵.html">IPC通信矩阵</a>（基线：169 测试文件 / 3,234 用例 / 92 IPC 通道 / 17 组）。</p>
 </blockquote>
 <h2 id="sec-1">一、jyshare 前端工具源码调研</h2>
 <ul>
@@ -840,7 +840,7 @@ _stackHelper: function(f,s,op){
 10. <strong>SQL 格式化/压缩</strong>（原站后端依赖无法离线；必须用前端库 sql-formatter 重写，工作量最大，不建议首期做）</p>
 <h2 id="sec-2">二、插件集成实施报告（37 插件）</h2>
 <blockquote>
-<p>日期：2026-11-15　归属版本：1.3.5　任务来源：将菜鸟工具镜像站（www.jyshare.com）前端工具区的可用能力移植为本项目插件。</p>
+<p>日期：2026-11-15　任务来源：将菜鸟工具镜像站（www.jyshare.com）前端工具区的可用能力移植为本项目插件。</p>
 </blockquote>
 <h4>一、任务与结论摘要</h4>
 <ul>
@@ -1046,12 +1046,6 @@ _stackHelper: function(f,s,op){
 <li>渲染层 typecheck（vue-tsc）：0 错误</li>
 <li>ESLint（新增与改动文件）：0 错误 0 警告</li>
 <li>词典门禁：中英叶子键一致、en-US 无中文残留、占位符一致、静态引用全解析</li>
-</ul>
-<h4>七、版本归属（1.3.5）</h4>
-<ul>
-<li>CHANGELOG.md / RELEASE-NOTES.md：新增「版本 1.3.5」条目</li>
-<li>应用内发布说明：帮助菜单 → 版本发布 → v1.3.5（ShowReleaseNotesDialog + 双语词条 v135）</li>
-<li>package.json 版本号保持 1.3.3 不动（1.3.2~1.3.4 为并行迭代区间，1.3.5 发布时由发布流程统一推进）</li>
 </ul>
 
   <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>

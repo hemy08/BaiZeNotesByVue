@@ -5,7 +5,7 @@
 # mkdocs-material 语法支持（合并归档）
 
 > **合并归档报告**：由以下历史报告合并而成（保留原文，按时间顺序成章）：`2026-11-15-mkdocs-material渲染修复报告.md`、`2026-11-15-mkdocs-material语法支持清单与建议.md`、`2026-11-15-mkdocs-material扩展语法实施报告.md`。
-> 内容为历史快照；当前口径见 [报告总索引](../../README.md) 与 [IPC通信矩阵](IPC通信矩阵.md)（v1.3.9 基线：169 测试文件 / 3,234 用例 / 92 IPC 通道 / 17 组）。
+> 内容为历史快照；当前口径见 [报告总索引](../../README.md) 与 [IPC通信矩阵](IPC通信矩阵.md)（基线：169 测试文件 / 3,234 用例 / 92 IPC 通道 / 17 组）。
 
 ## 一、admonition / tabbed 原生插件渲染修复
 
@@ -193,7 +193,7 @@
 
 - **范围**：按 [语法支持清单与建议](mkdocs-material语法支持.md) 落地全部 **15 项**扩展语法
 - **实施方式**：3 个并行子智能体（批次 A/B/C）+ 根代理统一装配与接线
-- **发布版本**：**v1.3.3**（2026-11-15，CHANGELOG/RELEASE-NOTES 已同步）`r`n- **结论**：15 项全部实现并接入预览渲染管线；扩展相关 **8 文件 / 270 用例** scoped 验证全绿，渲染样例产物见 `out\tool-results\mdx-features-preview.html`
+- **发布情况**：2026-11-15 完成发布（CHANGELOG/RELEASE-NOTES 已同步）`r`n- **结论**：15 项全部实现并接入预览渲染管线；扩展相关 **8 文件 / 270 用例** scoped 验证全绿，渲染样例产物见 `out\tool-results\mdx-features-preview.html`
 - **门禁说明**：实施期间另一并行会话正在同时改造 PluginTools 等模块（WIP），其未完成改动会使全仓 typecheck/test/build 暂时红；本报告以「扩展相关 scoped 验证 + 外部阻塞说明」记录（详见第 5 节）
 
 #### 1. 架构：三批次插件 + 统一注册
@@ -293,7 +293,7 @@ export function installPreviewExtensions(md) {
 | `npm test` | `i18n-dict`（PluginTools 新键未入词典）、`window-security` / `complex-dialogs`（主进程并发改动） |
 | ESLint | `PluginTools/Convert/ColorConvert.vue`、`base-lib.ts` 等未使用变量/prefer-const |
 
-**处理**：本任务坚持只改自己的 15 个专属/新增文件；上述外部失败文件一个未动。扩展相关 scoped 验证全绿。报告成文时外部 WIP 仍未收尾，观测到的剩余外部失败示例：`typecheck`（`Codec/ImageBase64.vue`、`FormatTools/xml-format-lib.ts`）、`npm test`（`window-security`、`plugins/format-tools`、`plugins/text-tools`）、`eslint`（`json-tool-lib.ts` no-control-regex、`xml-format-lib.ts` unused var）。待外部会话完成后，需在安静工作区复跑全量 `typecheck / test / eslint`（`build` 与 `build:win` 已在成文前通过并产出 v1.3.3 安装包）。
+**处理**：本任务坚持只改自己的 15 个专属/新增文件；上述外部失败文件一个未动。扩展相关 scoped 验证全绿。报告成文时外部 WIP 仍未收尾，观测到的剩余外部失败示例：`typecheck`（`Codec/ImageBase64.vue`、`FormatTools/xml-format-lib.ts`）、`npm test`（`window-security`、`plugins/format-tools`、`plugins/text-tools`）、`eslint`（`json-tool-lib.ts` no-control-regex、`xml-format-lib.ts` unused var）。待外部会话完成后，需在安静工作区复跑全量 `typecheck / test / eslint`（`build` 与 `build:win` 已在成文前通过并产出安装包）。
 
 #### 6. 使用速查（示例）
 

@@ -49,7 +49,7 @@
 </blockquote>
 <ul>
 <li>检查维度：性能</li>
-<li>项目：白泽笔记（BaiZe Notes）v1.2.2（Electron ^43.0.0 + Vue 3.5.41 + TypeScript 6.0.2 + Monaco 0.56 + electron-vite 6 / electron-builder 26）</li>
+<li>项目：白泽笔记（BaiZe Notes） ｜ 技术栈：Electron ^43.0.0 + Vue 3.5.41 + TypeScript 6.0.2 + Monaco 0.56 + electron-vite 6 / electron-builder 26</li>
 <li>生成日期：2026-11-14</li>
 <li>检查方式：源码静态分析（grep/read 深读）+ 只读命令实测（构建产物体积、依赖体积）+ 与历史基线 <code>docs/wiki/01-项目分析报告/性能与优化综合报告.md</code> 交叉验证</li>
 <li>发现问题总数：16 ｜ P0：0 ｜ P1：5 ｜ P2：5 ｜ P3：6</li>
@@ -433,11 +433,11 @@ await fs.writeFile(currentFile.path, currentFile.content!, 'utf-8') // L344 无�
 <h3 id="sub-16">PF-16 dist 残留旧版本安装包与 unpacked 目录共 1.8GB（P3）</h3>
 <p>→ ✅ 已修复</p>
 <ul>
-<li>位置：<code>dist/</code>（实测：4 个安装 exe 约 930MB，其中 1.2.1 旧版 2 个；win-unpacked 约 500MB）</li>
+<li>位置：<code>dist/</code>（实测：4 个安装 exe 约 930MB，其中旧版 2 个；win-unpacked 约 500MB）</li>
 <li>影响：仅开发机磁盘占用与混淆发布（易误发旧版）；不影响终端用户</li>
 <li>工作量：0.1 天</li>
 </ul>
-<p>描述：<code>dist</code> 下同时存在 1.2.1 与 1.2.2 两版安装包、portable 与 setup 共 4 个约 230MB 级 exe，加 win-unpacked 目录，共 1819MB。</p>
+<p>描述：<code>dist</code> 下同时存在新旧两版安装包、portable 与 setup 共 4 个约 230MB 级 exe，加 win-unpacked 目录，共 1819MB。</p>
 <p>修复建议：发布前清理旧版本；CI 中加入产物清理步骤。</p>
 <h2 id="sec-5">4. 值得肯定的实践</h2>
 <ul>

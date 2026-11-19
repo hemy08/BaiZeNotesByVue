@@ -62,7 +62,7 @@
 <p>📦 <strong>归档报告（原文：05-功能检查报告.md）</strong>——历史快照，数字与结论以报告时点为准；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="../03-专项治理/IPC通信矩阵.html">IPC通信矩阵</a>。</p>
 </blockquote>
 <blockquote>
-<p>检查维度：功能 ｜ 项目：白泽笔记（BaiZe Notes）v1.2.2 ｜ 生成日期：2026-11-14 ｜ 检查方式：纯静态代码走查（grep/read + 只读命令验证），未做运行时实测</p>
+<p>检查维度：功能 ｜ 项目：白泽笔记（BaiZe Notes） ｜ 生成日期：2026-11-14 ｜ 检查方式：纯静态代码走查（grep/read + 只读命令验证），未做运行时实测</p>
 </blockquote>
 <h2 id="sec-1">1. 检查范围与方法</h2>
 <ul>
@@ -200,7 +200,7 @@
 <tr>
 <td>FUN-15</td>
 <td>P2</td>
-<td>导出 PDF 失败时隐藏窗口泄漏；XML 导出 CDATA 未处理 <code>]]&gt;</code>；导出元数据版本硬编码 1.1.5-beta</td>
+<td>导出 PDF 失败时隐藏窗口泄漏；XML 导出 CDATA 未处理 <code>]]&gt;</code>；导出元数据版本硬编码旧版本号</td>
 <td>export.ts:263-305,165-174,153/169/186</td>
 <td>try/finally 关闭窗口、转义 CDATA、版本读取 package.json</td>
 <td>✅ 已修复</td>
@@ -517,7 +517,7 @@
 <p>→ ✅ 已修复</p>
 <ul>
 <li><strong>位置</strong>：<code>src/main/utils/file-utils/export.ts:259-305</code>、<code>:164-174</code>、<code>:153/169/186</code></li>
-<li><strong>描述</strong>：①<code>ToPdf</code> 创建隐藏 BrowserWindow，<code>loadURL → printToPDF → writeFile → win.close()</code> 顺序执行，任一环节抛错则 <code>win.close()</code> 不执行（无 try/finally），隐藏窗口泄漏；且大文档经 data URL 加载有 2MB 导航上限风险（待验证）；②<code>ToXml</code> 将内容包在 <code>&lt;![CDATA[</code> 中，若正文含 <code>]]&gt;</code> 则生成非法 XML；③<code>ToJson/ToXml/ToYaml</code> 的 metadata.version 硬编码 <code>1.1.5-beta</code>，与应用版本 1.2.2 不符；④导出仅 UTF-8，无 GBK 选项（功能限制）。</li>
+<li><strong>描述</strong>：①<code>ToPdf</code> 创建隐藏 BrowserWindow，<code>loadURL → printToPDF → writeFile → win.close()</code> 顺序执行，任一环节抛错则 <code>win.close()</code> 不执行（无 try/finally），隐藏窗口泄漏；且大文档经 data URL 加载有 2MB 导航上限风险（待验证）；②<code>ToXml</code> 将内容包在 <code>&lt;![CDATA[</code> 中，若正文含 <code>]]&gt;</code> 则生成非法 XML；③<code>ToJson/ToXml/ToYaml</code> 的 metadata.version 硬编码旧版本号，与应用实际版本不符；④导出仅 UTF-8，无 GBK 选项（功能限制）。</li>
 <li><strong>证据</strong>：<code>export.ts:304-305</code> <code>await fs.writeFile(filePath, pdfData); win.close()</code>；<code>export.ts:173</code> <code>&lt;content&gt;&lt;![CDATA[${content}]]&gt;&lt;/content&gt;</code>；<code>export.ts:153</code> <code>version: '1.1.5-beta'</code></li>
 <li><strong>影响</strong>：隐藏窗口泄漏累积；特殊正文导出损坏；元数据误导。</li>
 <li><strong>修复建议</strong>：try/finally 确保窗口关闭；CDATA 前替换 <code>]]&gt;</code> 为 <code>]]]]&gt;&lt;![CDATA[&gt;</code>；版本从 package.json/version.json 读取。</li>

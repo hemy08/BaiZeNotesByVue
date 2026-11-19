@@ -66,7 +66,7 @@
 <tbody>
 <tr>
 <td>项目</td>
-<td>白泽笔记（BaiZe Notes）v1.2.2</td>
+<td>白泽笔记（BaiZe Notes）</td>
 </tr>
 <tr>
 <td>检查维度</td>
@@ -82,7 +82,7 @@
 </tr>
 <tr>
 <td>参考文档</td>
-<td>docs/wiki/02-设计与架构/架构文档.md（v1.1.5-beta，与代码存在漂移）</td>
+<td>docs/wiki/02-设计与架构/架构文档.md（与代码存在漂移）</td>
 </tr>
 </tbody>
 </table>
@@ -574,7 +574,7 @@
 <p>→ 🟡 部分修复</p>
 <ul>
 <li><strong>位置</strong>：<code>package.json:70</code>、<code>docs/wiki/02-设计与架构/架构文档.md:607,1232-1237</code></li>
-<li><strong>描述</strong>：<code>vuex@^4.1.0</code> 在 dependencies 中，但全仓库无 <code>import vuex/createStore/useStore</code>（grep 仅命中 main 进程 <code>store-factory</code> 的 electron-store <code>createStore</code> 与 renderer <code>useConfigStore</code> 的 Composition API）；渲染层状态实际由 <code>useConfigStore.ts</code>（ref/reactive 单例）承担。架构文档&quot;状态管理架构&quot;一节称采用 Vuex（架构文档.md:1232-1237），而其&quot;技术选型&quot;表又称&quot;组件状态&quot;（架构文档.md:607），自相矛盾；文档版本 v1.1.5-beta（架构文档.md:7）与当前 package.json 1.2.2 亦已漂移。</li>
+<li><strong>描述</strong>：<code>vuex@^4.1.0</code> 在 dependencies 中，但全仓库无 <code>import vuex/createStore/useStore</code>（grep 仅命中 main 进程 <code>store-factory</code> 的 electron-store <code>createStore</code> 与 renderer <code>useConfigStore</code> 的 Composition API）；渲染层状态实际由 <code>useConfigStore.ts</code>（ref/reactive 单例）承担。架构文档&quot;状态管理架构&quot;一节称采用 Vuex（架构文档.md:1232-1237），而其&quot;技术选型&quot;表又称&quot;组件状态&quot;（架构文档.md:607），自相矛盾；架构文档中的版本标注（架构文档.md:7）与当前 package.json 版本亦已漂移。</li>
 <li><strong>证据</strong>：<code>package.json:70</code>；grep <code>vuex</code> 在 src 下零命中；架构文档.md:607,1232。</li>
 <li><strong>影响</strong>：依赖体积无谓增加；文档误导新维护者。</li>
 <li><strong>修复建议</strong>：移除 vuex 依赖；更新架构文档状态管理章节为&quot;主进程 electron-store 单例 + 渲染层 Composition API 单例（useConfigStore）+ EventBus&quot;。</li>
