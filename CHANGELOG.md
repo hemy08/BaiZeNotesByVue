@@ -41,6 +41,11 @@
 - **公共接口归位修复计划**：新增《公共接口归位修复计划》（批次路线图 SVG + 批次 1~4 明细/验收/手测/风险），HTML Wiki 收录（23 页）
 - **口径统一**：README / 报告索引 / docs wiki / 台账统一到最新实测口径（171 文件 / 3,198 用例、92 通道 / 17 组、58+25 白名单、38 插件、57 Monaco 主题、最新产物体积）
 
+### 🚀 发布
+
+- **GitHub Release**：`release-1.3.7`（tag `release-1.3.7` → 提交 `cc3d929`），资产包含 **NSIS 安装包 118.42 MiB / 便携版 107.46 MiB / `.blockmap` / `latest.yml`**；自动更新源 `releases/latest/download` 已生效
+- **产物校验**：包内 `resources/config/version.json` = 1.3.7；`latest.yml` version = 1.3.7；`app.asar` ≈50.11 MiB
+
 ### ✅ 门禁
 
 - typecheck 三工程 0 错误、ESLint 0/0、vitest **171 文件 / 3,198 用例全通过**、electron-vite build 通过、E2E 4 passed
