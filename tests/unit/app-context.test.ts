@@ -9,11 +9,7 @@
  * - resetAppContext 取消挂起的启动恢复兜底计时器（避免复位后旧计时器触发恢复）。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import {
-    createDefaultAppContext,
-    getAppContext,
-    resetAppContext
-} from '../../src/main/app-context'
+import { createDefaultAppContext, getAppContext, resetAppContext } from '../../src/main/app-context'
 
 beforeEach(() => {
     resetAppContext()

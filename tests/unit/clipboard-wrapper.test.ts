@@ -6,7 +6,9 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { copyTextToClipboard } from '@renderer/common/clipboard'
 
-function installClipboardMock(behavior: 'resolve' | 'reject' | 'missing'): ReturnType<typeof vi.fn> {
+function installClipboardMock(
+    behavior: 'resolve' | 'reject' | 'missing'
+): ReturnType<typeof vi.fn> {
     const writeText = vi.fn()
     if (behavior === 'resolve') {
         writeText.mockResolvedValue(undefined)
@@ -14,7 +16,10 @@ function installClipboardMock(behavior: 'resolve' | 'reject' | 'missing'): Retur
         writeText.mockRejectedValue(new DOMException('denied', 'NotAllowedError'))
     }
     if (behavior === 'missing') {
-        Object.defineProperty(window.navigator, 'clipboard', { value: undefined, configurable: true })
+        Object.defineProperty(window.navigator, 'clipboard', {
+            value: undefined,
+            configurable: true
+        })
     } else {
         Object.defineProperty(window.navigator, 'clipboard', {
             value: { writeText },

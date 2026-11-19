@@ -135,7 +135,9 @@ function registerThemeUpdateIpc(): void {
  */
 function registerRendererReadyIpc(onRendererReady?: () => void): void {
     if (!onRendererReady) {
-        logger.warn('[IPC] registerAll 未提供 onRendererReady 钩子：渲染层就绪握手将无法触发启动恢复')
+        logger.warn(
+            '[IPC] registerAll 未提供 onRendererReady 钩子：渲染层就绪握手将无法触发启动恢复'
+        )
     }
     ipcListenerManager.registerOnce(
         IPC.RENDER.READY,

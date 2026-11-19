@@ -62,14 +62,20 @@
                 <button
                     class="tab-btn"
                     :class="{ 'tab-active': storageMode === 'binary' }"
-                    @click="storageMode = 'binary'; computeStorage()"
+                    @click="
+                        storageMode = 'binary'
+                        computeStorage()
+                    "
                 >
                     {{ t('toolsConvert.unit.binary') }}
                 </button>
                 <button
                     class="tab-btn"
                     :class="{ 'tab-active': storageMode === 'si' }"
-                    @click="storageMode = 'si'; computeStorage()"
+                    @click="
+                        storageMode = 'si'
+                        computeStorage()
+                    "
                 >
                     {{ t('toolsConvert.unit.si') }}
                 </button>

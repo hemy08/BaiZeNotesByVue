@@ -452,15 +452,15 @@ BaiZeNotesByVue/
 
 ### 开发工具
 
-|                技术                |  版本   | 说明                            | 官网                                                   |
-| :--------------------------------: | :-----: | :------------------------------ | :----------------------------------------------------- |
-|           electron-vite            |  6.0.0  | Electron + Vite 集成            | [官网](https://electron-vite.org/)                     |
-|          electron-builder          | 26.18.0 | Electron 应用打包工具           | [官网](https://www.electron.build/)                    |
+|                技术                |  版本   | 说明                                        | 官网                                                   |
+| :--------------------------------: | :-----: | :------------------------------------------ | :----------------------------------------------------- |
+|           electron-vite            |  6.0.0  | Electron + Vite 集成                        | [官网](https://electron-vite.org/)                     |
+|          electron-builder          | 26.18.0 | Electron 应用打包工具                       | [官网](https://www.electron.build/)                    |
 |               Vitest               | 4.1.12  | 单元测试框架（169 个测试文件 / 3,234 用例） | [官网](https://vitest.dev/)                            |
-|               ESLint               | 9.39.4  | JavaScript 代码检查工具         | [官网](https://eslint.org/)                            |
-|              Prettier              |  3.9.6  | 代码格式化工具                  | [官网](https://prettier.io/)                           |
-|  @electron-toolkit/eslint-config   |  2.1.0  | Electron ESLint 配置            | [GitHub](https://github.com/alex8088/electron-toolkit) |
-| @electron-toolkit/eslint-config-ts |  3.1.0  | Electron TypeScript ESLint 配置 | [GitHub](https://github.com/alex8088/electron-toolkit) |
+|               ESLint               | 9.39.4  | JavaScript 代码检查工具                     | [官网](https://eslint.org/)                            |
+|              Prettier              |  3.9.6  | 代码格式化工具                              | [官网](https://prettier.io/)                           |
+|  @electron-toolkit/eslint-config   |  2.1.0  | Electron ESLint 配置                        | [GitHub](https://github.com/alex8088/electron-toolkit) |
+| @electron-toolkit/eslint-config-ts |  3.1.0  | Electron TypeScript ESLint 配置             | [GitHub](https://github.com/alex8088/electron-toolkit) |
 
 ### 构建工具
 
@@ -475,23 +475,23 @@ BaiZeNotesByVue/
 
 > 以下数据为 2026-11-19 实测（v1.3.8 基线；口径说明见 [报告总索引](docs/reports/README.md)）。
 
-|     指标     |     数量     | 说明                                                                                             |
-| :----------: | :----------: | :----------------------------------------------------------------------------------------------- |
-|  源码文件数  |    300 个    | `src/` 下 .ts / .vue / .css 文件（206 ts / 81 vue / 13 css；其中 .ts/.vue 287 个）               |
-|   代码行数   |  94,406 行   | 上述 300 个文件总行数（含空行；其中 .ts/.vue 91,783 行）                                         |
-|  Vue 组件数  |    81 个     | `src/` 下 .vue 文件（components 目录 80 个 + 根组件 App.vue）                                     |
-| 渲染层对话框 |    18 个     | src/renderer/src/components/dialogs（.vue 对话框组件，另 1 个 ts 索引）                           |
-| 主进程对话框 |  10 个文件   | src/main/dialogs（JSDOM 对话框 + 共享样式）                                                      |
-|   应用主题   |    28 种     | src/main/config/theme-config.ts（编译进主进程，无资源 JSON；旧 app_themes 已删除）               |
-|  编辑器主题  |    57 种     | Monaco 主题（内置 3 + 磁盘 54；themes 目录含 54 个主题 json + themelist 索引）                  |
-|   IPC 通道   |    92 个     | `baize:<domain>:<name>`（92 个 / 17 组常量），唯一真源 `src/shared/ipc-channels.ts`              |
-|   插件工具   |    38 个     | src/renderer/src/components/PluginTools/plugin-tools-const.ts（异步按需加载）                    |
-|   单元测试   | 3,201 个用例 | 172 个测试文件（vitest，全通过）                                                                 |
-|   声明依赖   |    50 个     | 生产依赖 11 + 开发依赖 39（package.json 实测）                                                   |
-|   依赖审计   |    0 漏洞    | 生产与全量依赖均为 0 漏洞（2026-11-15 晚；minimatch override 11.0.8 + electron-builder 26.18.0） |
-|  安装包体积  |  ≈118.4 MiB   | NSIS 安装包（app.asar 50.11 MiB；2026-11-19 构建实测；十进制 124.17 MB）                                                |
-|  主进程产物  |  ≈10.50 MiB  | `out/main/index.js`（含内联 jsdom；2026-11-19 构建实测 11,007,119 B）                                          |
-|  主渲染 chunk |  ≈127 KB（入口）+ ≈9,889 KB（主界面异步）   | 入口 `out/renderer/assets/index-*.js`（127,070 B）；主界面异步 chunk `BaiZeNotes-*.js`（含 Monaco/highlight.js/KaTeX，按需加载；2026-11-19 17:55 构建实测） |
+|     指标     |                   数量                   | 说明                                                                                                                                                        |
+| :----------: | :--------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  源码文件数  |                  300 个                  | `src/` 下 .ts / .vue / .css 文件（206 ts / 81 vue / 13 css；其中 .ts/.vue 287 个）                                                                          |
+|   代码行数   |                94,406 行                 | 上述 300 个文件总行数（含空行；其中 .ts/.vue 91,783 行）                                                                                                    |
+|  Vue 组件数  |                  81 个                   | `src/` 下 .vue 文件（components 目录 80 个 + 根组件 App.vue）                                                                                               |
+| 渲染层对话框 |                  18 个                   | src/renderer/src/components/dialogs（.vue 对话框组件，另 1 个 ts 索引）                                                                                     |
+| 主进程对话框 |                10 个文件                 | src/main/dialogs（JSDOM 对话框 + 共享样式）                                                                                                                 |
+|   应用主题   |                  28 种                   | src/main/config/theme-config.ts（编译进主进程，无资源 JSON；旧 app_themes 已删除）                                                                          |
+|  编辑器主题  |                  57 种                   | Monaco 主题（内置 3 + 磁盘 54；themes 目录含 54 个主题 json + themelist 索引）                                                                              |
+|   IPC 通道   |                  92 个                   | `baize:<domain>:<name>`（92 个 / 17 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                         |
+|   插件工具   |                  38 个                   | src/renderer/src/components/PluginTools/plugin-tools-const.ts（异步按需加载）                                                                               |
+|   单元测试   |               3,201 个用例               | 172 个测试文件（vitest，全通过）                                                                                                                            |
+|   声明依赖   |                  50 个                   | 生产依赖 11 + 开发依赖 39（package.json 实测）                                                                                                              |
+|   依赖审计   |                  0 漏洞                  | 生产与全量依赖均为 0 漏洞（2026-11-15 晚；minimatch override 11.0.8 + electron-builder 26.18.0）                                                            |
+|  安装包体积  |                ≈118.4 MiB                | NSIS 安装包（app.asar 50.11 MiB；2026-11-19 构建实测；十进制 124.17 MB）                                                                                    |
+|  主进程产物  |                ≈10.50 MiB                | `out/main/index.js`（含内联 jsdom；2026-11-19 构建实测 11,007,119 B）                                                                                       |
+| 主渲染 chunk | ≈127 KB（入口）+ ≈9,889 KB（主界面异步） | 入口 `out/renderer/assets/index-*.js`（127,070 B）；主界面异步 chunk `BaiZeNotes-*.js`（含 Monaco/highlight.js/KaTeX，按需加载；2026-11-19 17:55 构建实测） |
 
 ### 代码规模分布（实测）
 
@@ -506,15 +506,15 @@ BaiZeNotesByVue/
 
 ### 关键源码文件行数（实测）
 
-|           文件           | 行数  | 说明                              |
-| :----------------------: | :---: | :-------------------------------- |
-| preview-local-render.ts  |  903  | 预览本地单跳渲染（PF-02）         |
-|  ThemeSettingDialog.vue  | 1,060 | 主题设置对话框                    |
-|    file-operations.ts    |  932  | 文件读写与文件树操作              |
-| plantuml.ts（templates） |  737  | PlantUML 代码模板                 |
-| MarkdownMonacoEditor.vue |  763  | Monaco 编辑器组件                 |
-|     theme-config.ts      |  730  | 应用主题配置（28 种）             |
-|    plantuml-local.ts     |  608  | PlantUML 本地 teaVM 渲染          |
+|           文件           | 行数  | 说明                                      |
+| :----------------------: | :---: | :---------------------------------------- |
+| preview-local-render.ts  |  903  | 预览本地单跳渲染（PF-02）                 |
+|  ThemeSettingDialog.vue  | 1,060 | 主题设置对话框                            |
+|    file-operations.ts    |  932  | 文件读写与文件树操作                      |
+| plantuml.ts（templates） |  737  | PlantUML 代码模板                         |
+| MarkdownMonacoEditor.vue |  763  | Monaco 编辑器组件                         |
+|     theme-config.ts      |  730  | 应用主题配置（28 种）                     |
+|    plantuml-local.ts     |  608  | PlantUML 本地 teaVM 渲染                  |
 |     ipc-channels.ts      |  213  | IPC 通道常量唯一真源（92 个通道 / 17 组） |
 
 ---

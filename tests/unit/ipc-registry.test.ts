@@ -104,10 +104,7 @@ vi.mock('../../src/main/utils/logger', () => ({
 
 import { IPC } from '../../src/shared/ipc-channels'
 // 真实 ipc-security / app-context：验证「注册即登记受信主窗口」与 sender 校验接线
-import {
-    getTrustedMainWindow,
-    resetTrustedSenderRegistry
-} from '../../src/main/utils/ipc-security'
+import { getTrustedMainWindow, resetTrustedSenderRegistry } from '../../src/main/utils/ipc-security'
 // 台账 mock 实例（与 registry 内部使用的是同一模块实例）
 import { ipcListenerManager } from '../../src/main/ipc/ipc-listener-manager'
 import { registerAll, registerPreWindowIpc } from '../../src/main/ipc/registry'

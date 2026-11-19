@@ -60,9 +60,7 @@ let systemSettingProvider: SystemSettingProvider | null = null
  * 注入系统设置读取实现（由 `src/main/index.ts` 启动早期调用，传入 config 的 getSystemSetting）。
  * 传 null/undefined 或非函数时视为未注入，回退 shared 兜底常量。
  */
-export function setSystemSettingProvider(
-    provider: SystemSettingProvider | null | undefined
-): void {
+export function setSystemSettingProvider(provider: SystemSettingProvider | null | undefined): void {
     systemSettingProvider = typeof provider === 'function' ? provider : null
 }
 

@@ -52,8 +52,7 @@ setSystemSettingProvider(
         ({
             defaultFilePath:
                 (FakeStore.data.get('systemSetting')?.get('defaultFilePath') as
-                    | string
-                    | undefined) ?? ''
+                    string | undefined) ?? ''
         }) as unknown as SystemSetting
 )
 

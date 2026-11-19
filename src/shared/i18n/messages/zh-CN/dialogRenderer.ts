@@ -247,7 +247,8 @@ const dialogRenderer = {
         // P2-11：默认关闭（opt-in），仅用户显式开启后才备份
         hintAutoBackupGroup:
             '默认关闭；开启后按设定间隔把活动文件（含未保存修改）与已打开工作区的 .md 文件备份到用户数据目录，并按「保留备份数量」滚动清理旧备份',
-        hintBackupInterval: '自动备份间隔（1~72 小时，默认 24），保存后重启定时器，首次备份在下一个间隔到点时执行',
+        hintBackupInterval:
+            '自动备份间隔（1~72 小时，默认 24），保存后重启定时器，首次备份在下一个间隔到点时执行',
         hintDefaultFilePath: '用于「打开文件夹」对话框的默认起始位置',
         hintBackupRetention: '「立即备份」时按此数量保留最近的备份',
         backupStatusSuccess: '备份完成：{name}（{count} 个配置文件）',

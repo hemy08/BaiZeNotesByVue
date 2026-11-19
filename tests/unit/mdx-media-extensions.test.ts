@@ -734,7 +734,15 @@ describe('MDI 核心子集与全量懒加载（P2-4）', () => {
             )
         }
         // 渲染测试用到的图标都在核心子集中（保证预览首屏渲染零异步等待）
-        for (const name of ['account', 'account-outline', 'cog', 'star', 'book', 'check', 'github']) {
+        for (const name of [
+            'account',
+            'account-outline',
+            'cog',
+            'star',
+            'book',
+            'check',
+            'github'
+        ]) {
             expect(MDI_ICON_PATHS_CORE[name]).toBeDefined()
         }
     })

@@ -14,7 +14,10 @@
                         :key="base"
                         class="base-btn"
                         :class="{ 'base-active': fromBase === base }"
-                        @click="fromBase = base; convert()"
+                        @click="
+                            fromBase = base
+                            convert()
+                        "
                     >
                         {{ base }}
                     </button>
@@ -46,7 +49,10 @@
                         :key="base"
                         class="base-btn"
                         :class="{ 'base-active': toBase === base }"
-                        @click="toBase = base; convert()"
+                        @click="
+                            toBase = base
+                            convert()
+                        "
                     >
                         {{ base }}
                     </button>

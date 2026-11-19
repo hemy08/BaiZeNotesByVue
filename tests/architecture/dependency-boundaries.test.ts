@@ -312,9 +312,7 @@ describe('架构依赖边界（H1：依赖方向自动化守护）', () => {
         const files = collectSourceFiles(SRC_ROOT)
         expect(files.length).toBeGreaterThan(100)
         // H1 关键文件必须在扫描范围内
-        expect(files.map((file) => toRepoRelative(file))).toContain(
-            'src/main/utils/auto-backup.ts'
-        )
+        expect(files.map((file) => toRepoRelative(file))).toContain('src/main/utils/auto-backup.ts')
         expect(files.map((file) => toRepoRelative(file))).toContain('src/main/index.ts')
     })
 
@@ -331,9 +329,10 @@ describe('架构依赖边界（H1：依赖方向自动化守护）', () => {
 
     it('KNOWN_EXCEPTIONS 每条都附原因且仍命中真实违规（防例外过期后继续豁免）', () => {
         for (const exception of KNOWN_EXCEPTIONS) {
-            expect(exception.reason.trim().length, `例外缺少原因：${exception.file}`).toBeGreaterThan(
-                0
-            )
+            expect(
+                exception.reason.trim().length,
+                `例外缺少原因：${exception.file}`
+            ).toBeGreaterThan(0)
             const hit = allViolations.some((violation) => matchesException(violation, exception))
             expect(
                 hit,

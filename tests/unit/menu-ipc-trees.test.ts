@@ -501,11 +501,14 @@ describe('viewMenuHandlers 全量 handler（ET-7）', () => {
 })
 
 describe('helpMenuHandlers 全量 handler（ET-7）', () => {
-    it.each(RELEASE_NOTE_VERSIONS)('should request the release notes Vue dialog for v%s', (version) => {
-        const win = makeWindow()
-        pickHandler(helpMenuHandlers, 'release-notes', `v${version}`)(win as never)
-        expect(treeMocks.requestReleaseNotesDialog).toHaveBeenCalledWith(win, version)
-    })
+    it.each(RELEASE_NOTE_VERSIONS)(
+        'should request the release notes Vue dialog for v%s',
+        (version) => {
+            const win = makeWindow()
+            pickHandler(helpMenuHandlers, 'release-notes', `v${version}`)(win as never)
+            expect(treeMocks.requestReleaseNotesDialog).toHaveBeenCalledWith(win, version)
+        }
+    )
 
     // 结构优化第 2 批 2.1：快捷键/更新日志改为主进程请求渲染层 Vue 对话框（不再创建 JSDOM 窗口）
     it('should request the shortcut-keys Vue dialog', () => {

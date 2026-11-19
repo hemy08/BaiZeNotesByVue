@@ -226,7 +226,9 @@ describe('auto-backup (批次 C #8/#9 + 审查修复)', () => {
         // 工作区文件保持原内容，未被静默替换
         expect(fs.readFileSync(path.join(backupDir, 'a.md'), 'utf8')).toBe('内容')
         // 工作区外活动文件放入 _active/ 子目录
-        expect(fs.readFileSync(path.join(backupDir, '_active', 'a.md'), 'utf8')).toBe('外部同名文件')
+        expect(fs.readFileSync(path.join(backupDir, '_active', 'a.md'), 'utf8')).toBe(
+            '外部同名文件'
+        )
     })
 
     it('should append a sequence number when _active/ also collides (P2-8)', async () => {

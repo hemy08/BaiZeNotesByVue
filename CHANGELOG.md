@@ -44,6 +44,7 @@
 - typecheck 三工程 0 错误、ESLint 0/0、vitest **169 文件 / 3,234 用例全通过**
 
 ---
+
 ## 2026年11月19日 - 版本 1.3.7（结构治理 / 性能 / 安全与文档体系）
 
 > 承接 1.3.6（2026-11-15 发布）之后 **11-18、11-19 的全部修改**：以「公共接口归位」第 0~4 批完成 shared 三层单真源与渲染层组件化，主界面异步分块将入口 chunk 降低 98.9%，并完成 PDF 预览 / CSP / preload 白名单等安全加固与报告 HTML Wiki 文档体系重构。
@@ -107,10 +108,10 @@
 ### ✨ 新增功能
 
 - **文件菜单「最近文件」/「最近文件夹」子菜单**：打开「文件」菜单时动态拉取最近列表，各最多展示 20 项（最近文件显示文件名、最近文件夹显示路径，超长自动截断），点击即快速切换；空列表显示「（暂无记录）」占位
-  - 主进程新增 `FILE.RECENT_LIST` / `FILE.OPEN_RECENT` invoke 通道（sender 校验）；打开目标必须命中当前最近列表（白名单，防任意路径），文件走 OpenSelectFile 链路、文件夹复用工作区根校验 + 主界面时序打开
-  - `openDirectoryInMainView` 抽取自启动恢复逻辑复用；`runAfterMainViewEntered` 下沉为叶子模块破循环依赖
-  - 新增测试：最近列表截断/容错、打开白名单/校验/时序、菜单动态注入（新增 menubar-recent 组件测试）、preload 暴露
-  - 验证：typecheck 三工程 0 错误、ESLint 0/0、vitest **154 文件 / 2,821 用例全通过**
+    - 主进程新增 `FILE.RECENT_LIST` / `FILE.OPEN_RECENT` invoke 通道（sender 校验）；打开目标必须命中当前最近列表（白名单，防任意路径），文件走 OpenSelectFile 链路、文件夹复用工作区根校验 + 主界面时序打开
+    - `openDirectoryInMainView` 抽取自启动恢复逻辑复用；`runAfterMainViewEntered` 下沉为叶子模块破循环依赖
+    - 新增测试：最近列表截断/容错、打开白名单/校验/时序、菜单动态注入（新增 menubar-recent 组件测试）、preload 暴露
+    - 验证：typecheck 三工程 0 错误、ESLint 0/0、vitest **154 文件 / 2,821 用例全通过**
 
 ### 🔴 P1 修复（2）
 
@@ -133,7 +134,7 @@
 
 - 剪贴板统一封装 `copyTextToClipboard`（替换 14 处裸调用，失败有提示）；Unicode >0xFFFF 码点修复（emoji 单实体）；字数统计防抖；图片 Base64 粘贴预检；时间戳空输入提示；3 处过期注释按实况修正
 - snippets 每轮读取缓存；grid 扫描排除缩进代码块；KaTeX 降级路径标记保护
-- schema 范围对齐（backupInterval 1~72 / backupCount 1~10）；macOS activate 重启主题 watcher 与备份定时器；跟随系统主题脏检查
+- schema 范围对齐（backupInterval 1~~72 / backupCount 1~~10）；macOS activate 重启主题 watcher 与备份定时器；跟随系统主题脏检查
 
 ### 🛠️ 关闭后进程残留修复（2026-11-15 晚追加）
 
@@ -215,6 +216,7 @@
 - **菜单入口**：`插入 → Material` 子菜单在原有 Admonition 之后新增 **15 个插入入口**（折叠提示块 / 任务列表 / 高亮 / 插入删除 / 上下标 / 键盘按键 / 属性列表 / 脚注 / 定义列表 / Grid cards / 代码块增强 / Material 图标 / `///` blocks / snippets / 标签页深链），动作 id 统一为 `baize:menu:insert:material:<featureId>`
 - **统一插入对话框** `MaterialSyntaxDialog`：左侧 15 项功能列表 + 右侧数据驱动表单 + **实时 Markdown 预览**；点击菜单项自动定位到对应语法（preset），「插入」经既有编辑器插入链路写入光标处；中文/英文界面完整适配（`dialogRenderer.materialSyntax` 命名空间 103 键）
 - **测试**：对话框 25 用例（15 项精确 markdown 生成、preset、条件字段、预览、事件）+ 菜单 16 项/动作映射一致性用例；全仓 150 文件 2737 用例通过
+
 ### 🧩 实现与安全
 
 - 新增统一扩展注册 `src/renderer/src/components/Markdown/preview-markdown-extensions.ts`，扩展拆分为 `preview-md-basic` / `preview-md-media` / `preview-md-blocks` 三个插件模块 + 3 个样式文件；全部为 markdown-it 原生 rule（解析阶段 token），不使用"渲染后字符串替换"

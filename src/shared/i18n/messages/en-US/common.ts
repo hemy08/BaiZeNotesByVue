@@ -35,6 +35,7 @@ export default {
     noData: 'No data',
     unknown: 'Unknown',
     clipboard: {
-        writeFailed: 'Failed to write to the clipboard. Please check clipboard permissions and retry.'
+        writeFailed:
+            'Failed to write to the clipboard. Please check clipboard permissions and retry.'
     }
 }

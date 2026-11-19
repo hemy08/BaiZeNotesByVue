@@ -233,8 +233,18 @@ describe('文件管理器右键通道 → Vue 对话框请求（不再创建 JSD
         const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
         MainWindowListenDialogsEvent(mainWindowStub as never)
         triggerIpcWithSender({ sender: { id: 999 } }, IPC.FILE_MANAGER.CREATE_FILE, 'C:/evil')
-        triggerIpcWithSender({ sender: { id: 999 } }, IPC.FILE_MANAGER.DELETE, 'C:/notes/a.md', true)
-        triggerIpcWithSender({ sender: { id: 999 } }, IPC.FILE_MANAGER.RENAME, 'C:/notes/a.md', true)
+        triggerIpcWithSender(
+            { sender: { id: 999 } },
+            IPC.FILE_MANAGER.DELETE,
+            'C:/notes/a.md',
+            true
+        )
+        triggerIpcWithSender(
+            { sender: { id: 999 } },
+            IPC.FILE_MANAGER.RENAME,
+            'C:/notes/a.md',
+            true
+        )
         expect(mainWindowStub.webContents.send).not.toHaveBeenCalled()
         expect(fileUtilsMocks.DeleteFileFolder).not.toHaveBeenCalled()
         expect(fileUtilsMocks.RenameFileFolder).not.toHaveBeenCalled()

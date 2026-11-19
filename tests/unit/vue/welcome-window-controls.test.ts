@@ -69,9 +69,7 @@ describe('WelcomeScreen 窗口控制按钮', () => {
     })
 
     it('shows the restore icon/title when the window is maximized', async () => {
-        const invokeMock = window.electron.ipcRenderer.invoke as unknown as ReturnType<
-            typeof vi.fn
-        >
+        const invokeMock = window.electron.ipcRenderer.invoke as unknown as ReturnType<typeof vi.fn>
         invokeMock.mockResolvedValue(true)
         wrapper = mount(WelcomeScreen)
         await flushPromises()
@@ -85,9 +83,7 @@ describe('WelcomeScreen 窗口控制按钮', () => {
     })
 
     it('shows the maximize icon/title when the window is not maximized', async () => {
-        const invokeMock = window.electron.ipcRenderer.invoke as unknown as ReturnType<
-            typeof vi.fn
-        >
+        const invokeMock = window.electron.ipcRenderer.invoke as unknown as ReturnType<typeof vi.fn>
         invokeMock.mockResolvedValue(false)
         wrapper = mount(WelcomeScreen)
         await flushPromises()

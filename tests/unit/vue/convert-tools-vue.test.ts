@@ -37,9 +37,7 @@ describe('TimestampConvert 空输入提示（P3）', () => {
 
     it('空输入点击转换：提示「请输入时间戳」，不再静默产出 1970-01-01', async () => {
         const wrapper = mountTimestamp()
-        const convertButton = wrapper
-            .findAll('button')
-            .find((button) => button.text() === '转换')
+        const convertButton = wrapper.findAll('button').find((button) => button.text() === '转换')
         expect(convertButton).toBeDefined()
 
         await convertButton!.trigger('click')
@@ -54,9 +52,7 @@ describe('TimestampConvert 空输入提示（P3）', () => {
     it('仅空白字符输入同样按空输入处理', async () => {
         const wrapper = mountTimestamp()
         await wrapper.findAll('input.value-input')[0].setValue('   ')
-        const convertButton = wrapper
-            .findAll('button')
-            .find((button) => button.text() === '转换')
+        const convertButton = wrapper.findAll('button').find((button) => button.text() === '转换')
         await convertButton!.trigger('click')
         await nextTick()
 
@@ -67,9 +63,7 @@ describe('TimestampConvert 空输入提示（P3）', () => {
     it('合法时间戳仍正常转换', async () => {
         const wrapper = mountTimestamp()
         await wrapper.findAll('input.value-input')[0].setValue('1700000000')
-        const convertButton = wrapper
-            .findAll('button')
-            .find((button) => button.text() === '转换')
+        const convertButton = wrapper.findAll('button').find((button) => button.text() === '转换')
         await convertButton!.trigger('click')
         await nextTick()
 

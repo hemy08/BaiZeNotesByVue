@@ -28,7 +28,11 @@ const electronMocks = vi.hoisted(() => {
         MockTray,
         trayInstances: [] as InstanceType<typeof MockTray>[],
         // 1.3.6：隐藏到托盘提示用的 Notification 替身
-        notificationInstances: [] as Array<{ title: string; body: string; show: ReturnType<typeof vi.fn> }>,
+        notificationInstances: [] as Array<{
+            title: string
+            body: string
+            show: ReturnType<typeof vi.fn>
+        }>,
         notificationSupported: { value: true },
         menuTemplates: [] as Array<Array<Record<string, unknown>>>,
         appQuit: vi.fn()
@@ -209,9 +213,7 @@ describe('tray (批次 B #4)', () => {
         it('should show a notification on first hide to tray', () => {
             notifyMinimizedToTray()
             expect(electronMocks.notificationInstances).toHaveLength(1)
-            expect(electronMocks.notificationInstances[0].title).toBe(
-                'mainMsg.tray.minimizedTitle'
-            )
+            expect(electronMocks.notificationInstances[0].title).toBe('mainMsg.tray.minimizedTitle')
             expect(electronMocks.notificationInstances[0].body).toBe('mainMsg.tray.minimizedBody')
             expect(electronMocks.notificationInstances[0].show).toHaveBeenCalled()
         })

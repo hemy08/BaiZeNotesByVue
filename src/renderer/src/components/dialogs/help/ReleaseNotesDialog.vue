@@ -28,9 +28,7 @@
             </div>
 
             <div v-if="note.featureKeys?.length" class="section">
-                <div class="section-title">
-                    ✨ {{ t('dialogMain.releaseNotes.featuresTitle') }}
-                </div>
+                <div class="section-title">✨ {{ t('dialogMain.releaseNotes.featuresTitle') }}</div>
                 <div class="note-list">
                     <div v-for="key in note.featureKeys" :key="key" class="note-item">
                         <span class="icon">✨</span>

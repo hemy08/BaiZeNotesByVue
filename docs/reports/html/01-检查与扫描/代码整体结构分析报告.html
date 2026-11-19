@@ -1494,8 +1494,8 @@
 <tr>
 <td><strong>中</strong></td>
 <td>M7</td>
-<td>主进程保留 JSDOM（≈9.3 MB，惰性加载）；<code>out/</code> 构建产物与分析产物混放（82.1 MB/1,782 文件）；<code>dist/</code> 历史安装包 1,775.5 MB 未归档</td>
-<td>包体/启动成本；产物可复现性差</td>
+<td>JSDOM 已随第 2 批移除；<code>out/analysis</code> 独立目录已建立（3.4）；<code>out/build</code> 拆分与 <code>dist</code> 历史归档仍待第 5 批</td>
+<td>产物目录部分治理，历史归档待清理</td>
 </tr>
 <tr>
 <td><strong>中</strong></td>
@@ -1506,8 +1506,8 @@
 <tr>
 <td><strong>中</strong></td>
 <td>M9</td>
-<td>覆盖率阈值/格式检查/审计未进 CI<strong>部分修复</strong>（E2E 已入 CI；仍无 coverage/prettier/audit job）；测试偏科（渲染层覆盖偏低，e2e 仅 4 条）</td>
-<td>回退不会在 PR 阶段暴露</td>
+<td>CI 门禁 <strong>已修复（结构优化第 3 批）</strong>：新增 Coverage（80/75/73/80）、Prettier --check、生产依赖 audit；测试偏科（渲染层覆盖偏低、E2E 4 条）仍待逐步补强</td>
+<td>回退在 PR 阶段可被覆盖/格式/漏洞门禁拦截</td>
 </tr>
 <tr>
 <td><strong>低</strong></td>
@@ -1535,7 +1535,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong>汇总</strong>：首次成文 19 条风险中，<strong>已修复 7 条（H1、H2、H3、H4、H5、H6、M8）</strong>、<strong>部分修复 7 条（M1/M2/M4/M5/M6/M9/L3）</strong>、<strong>仍存在 5 条（H7/M3/M7/L1/L2）</strong>；新增观察 L4 亦已修复（第 1 批）。</p>
+<p><strong>汇总</strong>：首次成文 19 条风险中，<strong>已修复 8 条（H1、H2、H3、H4、H5、H6、M8、M9）</strong>、<strong>部分修复 8 条（H7/M1/M2/M4/M5/M6/M7/L3）</strong>、<strong>仍存在 3 条（M3/L1/L2）</strong>；新增观察 L4 亦已修复（第 1 批）。</p>
 <h3 id="sub-3">9.3 改进建议（按优先级，不要求实施）</h3>
 <p><strong>P1（结构债，建议尽早）</strong></p>
 <ol>

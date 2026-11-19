@@ -23,9 +23,7 @@ import type { SystemSetting } from '../../src/shared/types'
 
 // 结构优化 1.1（H1）：主进程 i18n 的语言读取改经 provider 注入（替代原 mock config/system-setting），
 // 用 settingState 模拟实时系统设置，保持各用例断言语义不变。
-setSystemSettingProvider(
-    () => ({ language: settingState.language }) as unknown as SystemSetting
-)
+setSystemSettingProvider(() => ({ language: settingState.language }) as unknown as SystemSetting)
 
 describe('CMP-30 语言切换冒烟', () => {
     beforeEach(() => {
