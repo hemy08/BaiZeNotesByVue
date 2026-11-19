@@ -371,7 +371,7 @@ BaiZeNotesByVue/
 │   ├── icon/                             # 应用图标（ico/svg）
 │   ├── config/                           # 配置文件（version.json 构建时生成）
 │   └── _unused-assets/                   # 未使用资产暂存（已加入 .gitignore）
-├── tests/                                # 单元测试（157 个 .test.ts / 2,877 个用例）
+├── tests/                                # 单元测试（157 个 .test.ts / 3,015 个用例）
 ├── docs/                                 # 项目文档
 │   ├── wiki/                             # 知识库文档（分类结构）
 │   │   ├── README.md                     # 文档索引
@@ -456,7 +456,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成            | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.0 | Electron 应用打包工具           | [官网](https://www.electron.build/)                    |
-|               Vitest               | 4.1.12  | 单元测试框架（158 个测试文件 / 2,877 用例） | [官网](https://vitest.dev/)                            |
+|               Vitest               | 4.1.12  | 单元测试框架（158 个测试文件 / 3,015 用例） | [官网](https://vitest.dev/)                            |
 |               ESLint               | 9.39.4  | JavaScript 代码检查工具         | [官网](https://eslint.org/)                            |
 |              Prettier              |  3.9.6  | 代码格式化工具                  | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  2.1.0  | Electron ESLint 配置            | [GitHub](https://github.com/alex8088/electron-toolkit) |
@@ -486,7 +486,7 @@ BaiZeNotesByVue/
 |  编辑器主题  |    55 种     | Monaco 主题（沿用界面/历史口径；themes 目录含 54 个主题 json + themelist 索引）                  |
 |   IPC 通道   |    92 个     | `baize:<domain>:<name>`（92 个 / 17 组常量），唯一真源 `src/shared/ipc-channels.ts`              |
 |   插件工具   |    38 个     | src/renderer/src/components/PluginTools/plugin-tools-const.ts（异步按需加载）                    |
-|   单元测试   | 2,877 个用例 | 158 个测试文件（vitest，全通过）                                                                 |
+|   单元测试   | 3,015 个用例 | 158 个测试文件（vitest，全通过）                                                                 |
 |   声明依赖   |    50 个     | 生产依赖 13 + 开发依赖 37（package.json 实测）                                                   |
 |   依赖审计   |    0 漏洞    | 生产与全量依赖均为 0 漏洞（2026-11-15 晚；minimatch override 11.0.8 + electron-builder 26.18.0） |
 |  安装包体积  |  ≈111.8 MB   | NSIS 安装包（app.asar 51.96 MB；2026-11-15 实测）                                                |
@@ -584,7 +584,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层）
 npm run typecheck
 
-# 运行单元测试（158 个测试文件 / 2,877 个用例）
+# 运行单元测试（158 个测试文件 / 3,015 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
