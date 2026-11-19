@@ -88,14 +88,18 @@ const RENDERER_SYSTEM_BACKUP_PANEL = p(
     'system-setting',
     'BackupPanel.vue'
 )
-const RENDERER_EDITOR_DIALOG = p(
+// 设置对话框二期拆分：编辑器设置的 shared RendererEditorConfig 读取从
+// EditorSettingDialog.vue 迁至共享表单 composable（壳层不再直接读配置，
+// 静态契约路径同步到新文件）。
+const RENDERER_EDITOR_SETTING_FORM = p(
     'src',
     'renderer',
     'src',
     'components',
     'dialogs',
     'complex',
-    'EditorSettingDialog.vue'
+    'editor-setting',
+    'useEditorSettingForm.ts'
 )
 const RENDERER_BAIZE_NOTES = p('src', 'renderer', 'src', 'components', 'BaiZeNotes.vue')
 
@@ -332,9 +336,9 @@ describe('SelectImageResult / 渲染层配置读取形状引用护栏', () => {
         expect([...quickLink.keys()]).toEqual(['name', 'url', 'icon', 'description'])
     })
 
-    it('渲染层 EditorSettingDialog.vue 应引用 shared RendererEditorConfig', () => {
-        const source = readSource(RENDERER_EDITOR_DIALOG)
+    it('渲染层编辑器设置 composable 应引用 shared RendererEditorConfig', () => {
+        const source = readSource(RENDERER_EDITOR_SETTING_FORM)
         expect(source).toContain('RendererEditorConfig')
-        expect(source).toContain("from '../../../../../shared/types'")
+        expect(source).toContain("from '../../../../../../shared/types'")
     })
 })

@@ -1,0 +1,106 @@
+/* ============================================================================
+ * 编辑器设置对话框 —— 壳层样式（设置对话框二期拆分从 EditorSettingDialog.vue
+ * 的 scoped 样式中按归属拆分出的「正文骨架 + 底栏按钮」部分）
+ *
+ * 引入方式：EditorSettingDialog.vue 在 `<style scoped>` 内 @import 本文件，
+ * 构建时随组件 scoped 样式内联并加上该组件 `[data-v-*]` 属性，因此不会泄漏到
+ * 其它对话框的同名类（与 SystemSettingDialog/system-setting 同一既有模式）。
+ * 设置项公共样式（面板标题/分组卡片/设置行/输入控件）见 settings-panel.css。
+ *
+ * 主题：全部沿用 var(--...) 主题变量，不引入硬编码色值。
+ * ========================================================================== */
+
+/* 正文骨架：左侧页签 + 右侧内容区（BaseDialog 只承载外壳 title-bar/footer） */
+.main-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+/* 左侧页签栏 */
+.sidebar {
+    width: 220px;
+    background: var(--card-bg);
+    border-right: 1px solid var(--border-color);
+    padding: 16px 0;
+    flex-shrink: 0;
+}
+
+/* 页签项（图标 + 名称） */
+.sidebar-item {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 20px;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.sidebar-item:hover {
+    background: var(--hover-bg);
+}
+
+.sidebar-item.active {
+    background: var(--hover-bg);
+    color: var(--accent-color);
+    border-left-color: var(--accent-color);
+}
+
+.sidebar-icon {
+    font-size: 18px;
+}
+
+.sidebar-name {
+    font-size: 13px;
+}
+
+/* 右侧内容区：4 个 panel 由 v-show 切换（同一滚动容器，拆前后一致） */
+.content-area {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+/* 底栏按钮（取消 / 应用 / 确定） */
+.btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-cancel {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.btn-cancel:hover {
+    background: var(--border-color);
+}
+
+.btn-apply {
+    background: var(--card-bg);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+}
+
+.btn-apply:hover {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.btn-confirm {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.btn:hover {
+    opacity: 0.9;
+}
