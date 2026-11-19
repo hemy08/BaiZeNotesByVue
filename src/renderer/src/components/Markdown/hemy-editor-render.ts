@@ -1,6 +1,6 @@
 import MarkdownIt from 'markdown-it'
 import EventBus from '../../common/event-bus/event-bus'
-import type { MarkdownTOC } from '../../../../shared/types'
+import type { MarkdownTOC, PlantumlRenderResponse } from '../../../../shared/types'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { IPC } from '../../../../shared/ipc-channels'
 import { t } from '../../common/i18n'
@@ -213,13 +213,11 @@ const PLANTUML_LOCAL_RENDER_CHANNEL = IPC.RENDER.PLANTUML_LOCAL
  * - 渲染结果 HTML 缓存上限 50 → RENDERER_PLANTUML_CACHE_MAX。
  */
 
-/** 本地渲染返回结构（与主进程 PlantumlRenderResponse 保持一致） */
-interface PlantumlRenderResponse {
-    status?: 'ok' | 'error' | 'unavailable'
-    svg?: string
-    message?: string
-    reason?: string
-}
+/**
+ * 本地渲染返回结构：第 2 批契约重构后统一引用 shared `PlantumlRenderResponse`
+ * （主进程 src/main/renders/plantuml-local.ts 与渲染层共用同一类型，
+ * IPC.RENDER.PLANTUML_LOCAL 的响应契约见 shared/types/ipc.ts）。
+ */
 
 /** 待替换的 PlantUML 图块（Markdown 文本中的起止偏移 + 源码） */
 interface PlantumlDiagramMatch {

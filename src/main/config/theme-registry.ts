@@ -7,34 +7,18 @@ import { join } from 'path'
 import * as fs from 'node:fs'
 import { is } from '@electron-toolkit/utils'
 import { logger } from '../utils/logger'
+// 第 2 批契约重构：Monaco 主题领域类型已收敛到 src/shared/types/theme.ts（唯一真源），
+// 此处 import type 并 re-export，保持既有 `import type { MonacoThemeConfig, MonacoThemeData }
+// from './theme-registry'` / `from '../config'` 的引用路径不变。
+import type { MonacoThemeConfig, MonacoThemeData, MonacoThemeListItem } from '../../shared/types'
+
+export type { MonacoThemeConfig, MonacoThemeData }
 
 function getResourcesPath(): string {
     if (is.dev) {
         return join(__dirname, '../../resources')
     }
     return process.resourcesPath
-}
-
-export interface MonacoThemeConfig {
-    name: string
-    description: string
-    /** CMP-30：主题名称 i18n key（themeNames.monaco.<id>.name）；磁盘动态主题无此键，回退 name */
-    nameKey?: string
-    /** CMP-30：主题描述 i18n key；动态主题用 themeNames.monaco.dynamicDescription 模板（{name}） */
-    descKey?: string
-    isDark: boolean
-    backgroundColor?: string
-    foregroundColor?: string
-    cardBackground?: string
-    borderColor?: string
-}
-
-export interface MonacoThemeData {
-    base: string
-    inherit?: boolean
-    rules?: Array<{ token: string; foreground?: string; background?: string; fontStyle?: string }>
-    colors?: Record<string, string>
-    encodedTokensColors?: string[]
 }
 
 const builtinThemes: Record<string, MonacoThemeConfig> = {
@@ -224,7 +208,10 @@ export async function warmupMonacoThemeCache(): Promise<void> {
                     themeDataCache[themeName] = JSON.parse(content) as MonacoThemeData
                 } catch (error) {
                     // 单个主题失败不影响其余；后续同步路径仍会重试并记录错误
-                    logger.warn(`[Main] 预热 Monaco 主题 "${themeName}" 失败（保持惰性加载）`, error)
+                    logger.warn(
+                        `[Main] 预热 Monaco 主题 "${themeName}" 失败（保持惰性加载）`,
+                        error
+                    )
                 }
             })
         )
@@ -238,7 +225,11 @@ export async function warmupMonacoThemeCache(): Promise<void> {
     }
 }
 
-export function getAllMonacoThemes(): { type: string; config: MonacoThemeConfig }[] {    // P-5（PF-15）：仅在首次访问时读取全部主题 JSON，之后命中缓存
+/**
+ * 全部 Monaco 主题列表（内置 3 套 + 磁盘动态主题）：
+ * `{ type, config }` 即 shared `MonacoThemeListItem`（IPC.THEME.GET_ALL_MONACO_THEMES 返回项）。
+ */
+export function getAllMonacoThemes(): MonacoThemeListItem[] {
     initializeRegistry()
     return allThemeNames
         .map((type) => ({

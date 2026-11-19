@@ -52,7 +52,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import FileTreeNode from './FileTreeNode.vue'
 import { ComputeTocSignature, FileSysItem, MergeExpandedState } from './resource-manager'
 import EventBus from '../../common/event-bus/event-bus'
-import type { MarkdownTOC } from '../../../../shared/types'
+import type { FileTreePayload, MarkdownTOC } from '../../../../shared/types'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { logger } from '../../common/logger'
@@ -164,7 +164,10 @@ function applyPendingToc() {
 
 const handleFileSystemData = (_event: unknown, fileTree: string) => {
     try {
-        const parsedTree = JSON.parse(fileTree) as FileSysItem[]
+        // 第 2 批契约重构（文件树传输契约）：主进程下发的整树 JSON 按 shared
+        // FileTreePayload（= FileItem[]）解析，再作为 UI 类型 FileSysItem[]（从 FileItem
+        // 显式派生、仅多展开态字段）使用——渲染层解析与主进程发送共用同一传输类型。
+        const parsedTree: FileSysItem[] = JSON.parse(fileTree) as FileTreePayload
         // PF-4：整树刷新会下发 isExpanded 为空的新节点；先按路径恢复展开态再替换，
         // 避免每次外部目录变更都把用户展开的目录全部折叠
         MergeExpandedState(fileNodes.value, parsedTree)

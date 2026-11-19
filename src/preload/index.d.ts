@@ -1,10 +1,35 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { OpenRecentPayload, OpenRecentResult, RecentListResult } from '../shared/types'
+import type {
+    AppVersionInfo,
+    ConfigName,
+    ConfigReadMap,
+    ConfigWriteMap,
+    OpenRecentPayload,
+    OpenRecentResult,
+    RecentListResult
+} from '../shared/types'
 
-/** 渲染进程暴露的配置 API（泛型指定期望的配置结构） */
+/**
+ * 渲染进程暴露的配置 API。
+ *
+ * 两个签名并存（第 2 批契约重构，灰度过渡）：
+ * 1. 新签名：按 `ConfigName` 字面量自动推断主进程**实际读取/写入形状**，
+ *    新代码直接 `read('editor')` 即可拿到 `RendererEditorConfig`，无需手写泛型断言；
+ * 2. 兼容签名：保留历史 `<T = unknown>(configName: string)` 泛型写法（当前渲染层
+ *    75 处调用点尚未批量替换，且部分调用方只关心局部字段，如 `Pick<SystemSetting, ...>`）；
+ *    显式传入非 ConfigName 的类型实参时自动回退到该签名。
+ *
+ * 形状真源：`src/shared/types/config.ts`（ConfigReadMap / ConfigWriteMap）。
+ */
 interface ApiConfig {
-    read: <T = unknown>(configName: string) => Promise<T | null>
-    write: <T = unknown>(configName: string, data: T) => Promise<boolean>
+    /** 读取配置：按配置名推断主进程实际返回形状（不存在/读取失败返回 null） */
+    read<K extends ConfigName>(configName: K): Promise<ConfigReadMap[K] | null>
+    /** 兼容旧签名：泛型指定期望结构（历史调用点过渡用，不做形状校验） */
+    read<T = unknown>(configName: string): Promise<T | null>
+    /** 写入配置：按配置名约束载荷形状（主进程失败返回 false，不抛异常） */
+    write<K extends ConfigName>(configName: K, data: ConfigWriteMap[K]): Promise<boolean>
+    /** 兼容旧签名：泛型指定载荷结构（历史调用点过渡用） */
+    write<T = unknown>(configName: string, data: T): Promise<boolean>
 }
 
 /** 渲染进程暴露的文件 API（「文件」菜单 → 最近文件/最近文件夹） */
@@ -19,17 +44,8 @@ interface ApiFile {
 interface ApiApp {
     /** P2-5：渲染层就绪握手（App.vue onMounted 完成后调用，通知主进程执行启动恢复） */
     notifyRendererReady: () => void
-    getVersion: () => Promise<{
-        appVersion: string
-        electronVersion: string
-        chromeVersion: string
-        nodeVersion: string
-        vueVersion: string
-        viteVersion: string
-        typescriptVersion: string
-        monacoEditorVersion: string
-        markdownItVersion: string
-    }>
+    /** 读取应用/运行时版本信息（SYSTEM.APP_VERSION 通道，形状见 shared AppVersionInfo） */
+    getVersion: () => Promise<AppVersionInfo>
 }
 
 /** 渲染进程暴露的全局 API */

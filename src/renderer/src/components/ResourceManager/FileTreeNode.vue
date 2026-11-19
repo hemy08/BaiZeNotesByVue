@@ -69,8 +69,9 @@ import {
     MARKDOWN_EXTENSIONS,
     TREE_SUPPORTED_EXTENSIONS
 } from '../../../../shared/constants/file-extensions'
-// 全局类型 FileProperties 由 src/main/global-types.d.ts 的 declare global 提供（tsconfig.web 已 include）
-/* global FileProperties */
+// 第 2 批契约重构（文件树传输契约）：构造的打开请求载荷统一引用 shared FileProperties
+// （原依赖 src/main/global-types.d.ts 的全局兼容别名，现改为显式 import type）
+import type { FileProperties } from '../../../../shared/types'
 
 /**
  * 文件点击路由使用的扩展名（迁移：清单真源改为 `shared/constants/file-extensions`）。

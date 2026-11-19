@@ -29,8 +29,10 @@ import { IPC } from '../../shared/ipc-channels'
 // 公共接口归位第 2 批：文件读取大小上限与大小格式化统一引用 shared 真源
 import { MAX_READ_BINARY_SIZE } from '../../shared/constants/limits'
 import { formatFileSize } from '../../shared/utils/format'
-// ARC-13：CryptoData / FileProperties 已收敛到 src/shared/types（唯一真源）
-import type { CryptoData, FileProperties } from '../../shared/types'
+// ARC-13：CryptoData / FileProperties 已收敛到 src/shared/types（唯一真源）；
+// 第 2 批：版本信息返回结构统一引用 shared AppVersionInfo（与 preload index.d.ts、
+// 渲染层 HelpAboutDialog.vue 的消费形状同一契约）
+import type { AppVersionInfo, CryptoData, FileProperties } from '../../shared/types'
 import { tMain } from './i18n'
 import { logger } from './logger'
 
@@ -870,11 +872,13 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
 
     // 获取应用版本信息
     // AS-6：版本信息读取（含 resources/config/version.json 内容）补发送方校验
+    // 第 2 批契约重构：返回形状显式标注 shared AppVersionInfo（唯一真源），
+    // preload 的 window.api.app.getVersion() 类型声明与渲染层 HelpAboutDialog 同源。
     ipcListenerManager.registerHandleOnce(
         IPC.SYSTEM.APP_VERSION,
         withSenderCheck(
             IPC.SYSTEM.APP_VERSION,
-            async () => {
+            async (): Promise<AppVersionInfo> => {
                 try {
                     const versionFilePath = path.join(
                         getAppResourcesPath(),
@@ -882,9 +886,12 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
                         'version.json'
                     )
                     if (fs.existsSync(versionFilePath)) {
-                        const versionData = JSON.parse(fs.readFileSync(versionFilePath, 'utf-8'))
-                        // version.json 在构建时由 Node.js 生成，electron/chrome 版本可能为空
-                        // 在 Electron 主进程中补充运行时版本
+                        // version.json 由构建脚本（build/generate-version-config.js）生成，
+                        // 字段形状即 shared AppVersionInfo；electron/chrome/node 版本可能为空，
+                        // 在 Electron 主进程中用 process.versions 补齐。
+                        const versionData = JSON.parse(
+                            fs.readFileSync(versionFilePath, 'utf-8')
+                        ) as AppVersionInfo
                         if (!versionData.electronVersion) {
                             versionData.electronVersion = process.versions.electron || ''
                         }

@@ -163,9 +163,13 @@
 import { computed, ref } from 'vue'
 import { t } from '../../../common/i18n'
 import { IPC } from '../../../../../shared/ipc-channels'
-import { logger } from '../../../common/logger'
 // 全局类型 BufferEncoding 由 @types/node 的 declare global 提供
 /* global BufferEncoding */
+// 第 2 批契约重构：加解密 IPC 契约统一引用 shared/types/crypto.ts——
+// 请求载荷用 CryptoWireData（渲染层传输形态：编码字段 string、secretKey 可空），
+// 加密响应直接用主进程 CryptoResult（类型对齐，运行时结构不变；cast 行为保持原样）。
+import type { CryptoResult, CryptoWireData } from '../../../../../shared/types'
+import { logger } from '../../../common/logger'
 
 const props = defineProps({
     workAreaWidth: {
@@ -271,17 +275,13 @@ function encodingText(item: CryptoEncodingOption): string {
     return item.textKey ? t(item.textKey) : (item.text ?? '')
 }
 
-export interface CryptoData {
-    context: string
-    secretKey?: string
-    secretKeyEncoding: string
-    algorithm: string
-    inputEncoding: string
-    outputEncoding: string
-    iv?: string
-    /** AS-13：GCM 解密必填（加密结果中的 authTag，16 字节 hex），非 GCM 不发送 */
-    authTag?: string
-}
+/**
+ * 渲染层构造的加密/解密请求载荷。
+ * 第 2 批契约重构：删除本地 partial 副本，类型别名指向 shared CryptoWireData
+ * （secretKey 可选、编码字段 string——与表单 ref 的实际类型一致）；
+ * 主进程仍按 shared CryptoData（Node BufferEncoding）消费，运行期校验逻辑不变。
+ */
+export type CryptoData = CryptoWireData
 
 function checkSecretKey(): string {
     const item = CryptoAlgorithm.find((algo) => algo.value === cryptoAlgorithm.value)
@@ -323,15 +323,7 @@ function fillEncDecData(): CryptoData {
     return data
 }
 
-/** CQ-10/PF-11/ARC-21：invoke 返回的加密结果结构（与原 sendSync 返回对象保持一致） */
-interface CryptoEncryptResponse {
-    context: string
-    iv: string
-    secretKey: string
-    secretKeyEncoding: string
-    /** AS-13：GCM 加密时主进程返回的认证标签（hex，16 字节），供解密复用 */
-    authTag?: string
-}
+/** CQ-10/PF-11/ARC-21：invoke 返回的加密结果结构（第 2 批：统一引用 shared CryptoResult） */
 
 /** CQ-05：异步 IPC 失败统一提示——invoke 改为 Promise 后必须 await + catch，避免静默失败 */
 function showCryptoError(action: string, failedKey: string, error: unknown): void {
@@ -355,7 +347,7 @@ async function CryptoEncryptResult(): Promise<void> {
         const encRes = (await window.electron.ipcRenderer.invoke(
             IPC.PLUGIN.CRYPTO_ENCRYPT,
             data
-        )) as CryptoEncryptResponse
+        )) as CryptoResult
         EncryptResult.value = encRes.context
         cryptoIvBuffer.value = encRes.iv
         cryptoSecretKey.value = encRes.secretKey

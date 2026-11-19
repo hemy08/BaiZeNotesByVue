@@ -512,7 +512,7 @@ async function scanDirectoryTree(dirPath: string): Promise<FileItem[]> {
                 fileExtension: '',
                 isDirectory: true,
                 children: []
-            } as FileItem)
+            })
             continue
         }
         const extension = path.extname(entry.name)
@@ -527,7 +527,7 @@ async function scanDirectoryTree(dirPath: string): Promise<FileItem[]> {
             fileExtension: extension,
             isDirectory: false,
             children: []
-        } as FileItem)
+        })
     }
 
     await Promise.all(
@@ -870,7 +870,8 @@ export async function ReloadDirFromDisk(options: ReloadDirFromDiskOptions = {}):
         const mdFiles = await new Promise<FileItem[]>((resolve) => {
             TraverseDirectory(rootPath, resolve)
         })
-        fileTree = BuildFileTree(rootPath, mdFiles)
+        // 第 2 批：根节点 id 与子节点同源（路径派生稳定 id），保证整树 JSON 两次扫描一致
+        fileTree = BuildFileTree(rootPath, mdFiles, buildStableItemId(rootPath))
         // PF-4：全量扫描后重建「文件夹路径 → 节点」索引，供下一次 watcher 批次做局部重扫
         treeFolderIndex = indexTreeFolders(fileTree, rootPath)
         treeFolderIndexRootPath = rootPath

@@ -1,16 +1,9 @@
 import { BrowserWindow } from 'electron'
 import { createHash } from 'crypto'
-// ARC-13：FileItem 已收敛到 src/shared/types/file.ts（唯一真源）
-import type { FileItem } from '../../shared/types'
-
-interface StoreFileProperties {
-    name: string
-    path: string
-    type: string
-    content?: string
-    encoding?: string
-    children?: []
-}
+// ARC-13 / 第 2 批契约重构：FileItem / FileProperties 已收敛到 src/shared/types/file.ts
+// （唯一真源）。本文件原先的本地 StoreFileProperties（type: string、children?: [] 零读取、
+// 字段为共享类型的超集）已删除，currentActiveFile 直接使用跨进程传输类型 FileProperties。
+import type { FileItem, FileProperties } from '../../shared/types'
 
 /**
  * PF-17：当前活动文件的磁盘签名（mtime + size）。
@@ -103,7 +96,7 @@ export function sendToMainWindow(channel: string, ...args: unknown[]): boolean {
 class AppState {
     private _mainWindow: BrowserWindow | null = null
     private _rootPath = ''
-    private _currentActiveFile: StoreFileProperties | null = null
+    private _currentActiveFile: FileProperties | null = null
     private _savingFile = false
     private _saveFileInterval = '5000'
     private _srcDirCopyCut = ''
@@ -145,11 +138,11 @@ class AppState {
         this._rootPath = path
     }
 
-    get currentActiveFile(): StoreFileProperties | null {
+    get currentActiveFile(): FileProperties | null {
         return this._currentActiveFile
     }
 
-    set currentActiveFile(file: StoreFileProperties | null) {
+    set currentActiveFile(file: FileProperties | null) {
         this._currentActiveFile = file
         // PF-17：活动文件发生变化（打开/新建/另存为/关闭）后磁盘签名失效，
         // 由写盘/读取成功的调用方重新记录，避免用旧文件的 mtime/size 误判新文件未变化。

@@ -117,6 +117,7 @@ describe('WelcomeScreen i18n', () => {
 
 describe('ResourceManager context menu i18n', () => {
     const fileNode: FileSysItem = {
+        id: 'C:\\docs\\note.md',
         name: 'note.md',
         path: 'C:\\docs\\note.md',
         type: 'file',

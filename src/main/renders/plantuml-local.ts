@@ -60,6 +60,10 @@ import {
 } from '../../shared/constants/render'
 import { LRUCache } from '../../shared/utils/lru-cache'
 import { tMain } from '../utils/i18n'
+// 第 2 批契约重构：PlantUML 渲染响应结构已收敛到 src/shared/types/ipc.ts
+// （与渲染层 hemy-editor-render.ts 共用同一类型，两端字段不再各自维护），
+// 本文件 import type 并 re-export，保持既有 import 路径兼容。
+import type { PlantumlRenderResponse, PlantumlRenderStatus } from '../../shared/types'
 
 /**
  * PF-08 本地渲染 IPC 通道（单真源：src/shared/ipc-channels.ts 的 IPC.RENDER.PLANTUML_LOCAL）。
@@ -84,18 +88,7 @@ export const PLANTUML_WINDOW_LOAD_TIMEOUT_MS = SHARED_PLANTUML_WINDOW_LOAD_TIMEO
 export const PLANTUML_CACHE_MAX = PLANTUML_RENDER_CACHE_MAX
 
 /** 本地渲染结果状态：ok=成功出 SVG；error=渲染失败/超时；unavailable=离线资源缺失需远程降级 */
-export type PlantumlRenderStatus = 'ok' | 'error' | 'unavailable'
-
-/** 本地渲染返回给渲染层的结构（经 IPC 结构化克隆传输） */
-export interface PlantumlRenderResponse {
-    status: PlantumlRenderStatus
-    /** status === 'ok' 时的 SVG 字符串（含 <svg> 根节点） */
-    svg?: string
-    /** status === 'error' 时的错误信息 */
-    message?: string
-    /** status === 'unavailable' 时的降级原因 */
-    reason?: string
-}
+export type { PlantumlRenderStatus, PlantumlRenderResponse }
 
 /** 渲染结果 LRU 缓存：源码 sha1 → SVG 字符串（公共接口归位第 2 批：改用 shared 的 LRUCache） */
 const plantumlSvgCache = new LRUCache<string>(PLANTUML_CACHE_MAX)

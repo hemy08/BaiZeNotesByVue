@@ -220,9 +220,7 @@
                                                         <div
                                                             class="preview-line"
                                                             :style="{
-                                                                background:
-                                                                    theme.config?.accentColor ||
-                                                                    theme.colors.text,
+                                                                background: theme.colors.text,
                                                                 opacity: 0.6,
                                                                 width: '50%'
                                                             }"
@@ -259,9 +257,7 @@
                                                     <div
                                                         class="color-dot"
                                                         :style="{
-                                                            background:
-                                                                theme.config?.accentColor ||
-                                                                theme.colors.text
+                                                            background: theme.colors.text
                                                         }"
                                                         :title="
                                                             t(
@@ -345,6 +341,15 @@ import { ref, watch } from 'vue'
 import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { useDialogResize } from '../../../composables/useDialogResize'
 import { IPC } from '../../../../../shared/ipc-channels'
+// 第 2 批契约重构：主题领域类型以 shared/types/theme.ts 为唯一真源（不再本地维护 partial 副本）；
+// 分组清单以 shared/constants/theme.ts 的 THEME_GROUPS 为唯一真源（浅色/深色/护眼 3 组）。
+import type {
+    AppThemeConfig,
+    MonacoThemeListItem,
+    ThemeListItem,
+    ThemeStyles
+} from '../../../../../shared/types'
+import { THEME_GROUPS } from '../../../../../shared/constants/theme'
 import { t } from '../../../common/i18n'
 import { logger } from '../../../common/logger'
 
@@ -380,46 +385,11 @@ const initialSettings = ref({
     currentMonacoTheme: 'vs'
 })
 
-// 主进程 getAllThemes() 返回的主题列表项结构（styles 为主进程 ThemeStyles）
-interface ThemeListItem {
-    type: string
-    styles: {
-        name?: string
-        description?: string
-        /** CMP-30：主题名称 i18n key（缺省时回退 name 原文字段） */
-        nameKey?: string
-        /** CMP-30：主题描述 i18n key（缺省时回退 description 原文字段） */
-        descKey?: string
-        titleBarGradient?: string
-        backgroundColor?: string
-        background?: string
-        cardBackground?: string
-        textColor?: string
-        color?: string
-        borderColor?: string
-        accentColor?: string
-        buttonBackground?: string
-        buttonTextColor?: string
-        hoverBackground?: string
-    }
-}
+// 第 2 批契约重构：ThemeListItem / MonacoThemeListItem 直接引用 shared 主题领域类型
+// （types/theme.ts）；主进程 getAllThemes() 返回的 styles 是完整 ThemeStyles，
+// 不再是历史 partial 断言。本对话框内部只额外补充「预览配色」一个视图字段。
 
-// 主进程 getAllMonacoThemes() 返回的编辑器主题结构
-interface MonacoThemeListItem {
-    type: string
-    config: {
-        name: string
-        backgroundColor?: string
-        foregroundColor?: string
-        isDark?: boolean
-        accentColor?: string
-        description?: string
-        nameKey?: string
-        descKey?: string
-    }
-}
-
-// 渲染层内部使用的编辑器主题视图项（补充预览配色）
+// 渲染层内部使用的编辑器主题视图项（在 shared MonacoThemeListItem 基础上补充预览配色）
 interface MonacoThemeViewItem {
     type: string
     name: string
@@ -427,12 +397,9 @@ interface MonacoThemeViewItem {
     config: MonacoThemeListItem['config']
 }
 
-// 主题配置结构（与主进程 theme-config.json 的 themeConfig 键一致）
-interface RendererThemeConfig {
-    currentTheme?: string
-    separateEditorTheme?: boolean
-    editorTheme?: string
-}
+// 第 2 批契约重构：删除本地 RendererThemeConfig（与主进程 ThemeConfig 字段一致但
+// 全字段可选的历史断言），读取形状统一引用 shared AppThemeConfig（当前主题/独立编辑器主题）。
+// 主题配置结构见 shared/types/config.ts 的 AppThemeConfig。
 
 const themeCategories = ref<
     Array<{
@@ -477,52 +444,14 @@ async function loadThemes() {
             IPC.THEME.GET_ALL_THEMES
         )) as ThemeListItem[]
 
-        const lightThemes = allThemes.filter((t) =>
-            [
-                'baize',
-                'warm',
-                'light',
-                'lavender',
-                'coral',
-                'mint',
-                'sunset',
-                'rose',
-                'baize-beast',
-                'baize-clear',
-                'baize-text',
-                'baize-starry',
-                'baize-data-light',
-                'baize-mirror-light'
-            ].includes(t.type)
-        )
-        const darkThemes = allThemes.filter((t) =>
-            [
-                'dark',
-                'deepdark',
-                'icon',
-                'ocean',
-                'forest',
-                'baize-data-dark',
-                'baize-mirror-dark'
-            ].includes(t.type)
-        )
-        const eyecareThemes = allThemes.filter((t) =>
-            [
-                'eyecare-green',
-                'eyecare-beige',
-                'eyecare-blue',
-                'eyecare-pink',
-                'eyecare-amber',
-                'eyecare-teal',
-                'eyecare-lilac'
-            ].includes(t.type)
-        )
-
-        themeCategories.value = [
-            { nameKey: 'dialogRenderer.themeSetting.categoryLight', themes: lightThemes },
-            { nameKey: 'dialogRenderer.themeSetting.categoryDark', themes: darkThemes },
-            { nameKey: 'dialogRenderer.themeSetting.categoryEyecare', themes: eyecareThemes }
-        ]
+        // 第 2 批契约重构：3 组分类清单统一引用 shared/constants/theme 的 THEME_GROUPS，
+        // 本组件不再维护主题 id 硬编码数组（浅色/深色/护眼归属的唯一真源）。
+        // 过滤条件与迁移前逐项一致：按组内 type 清单筛选主进程返回的全部主题，
+        // 未在清单中的主题（历史/未知值）不展示。
+        themeCategories.value = THEME_GROUPS.map((group) => ({
+            nameKey: group.labelKey,
+            themes: allThemes.filter((theme) => group.types.includes(theme.type))
+        }))
 
         const monacoThemes = (await window.electron.ipcRenderer.invoke(
             IPC.THEME.GET_ALL_MONACO_THEMES
@@ -538,7 +467,7 @@ async function loadThemes() {
             }
         }))
 
-        const themeConfig = await window.api.config.read<RendererThemeConfig>('theme')
+        const themeConfig = await window.api.config.read<AppThemeConfig>('theme')
         if (themeConfig) {
             currentTheme.value = themeConfig.currentTheme || 'baize'
             separateEditorTheme.value = themeConfig.separateEditorTheme || false
@@ -556,15 +485,13 @@ async function loadThemes() {
 }
 
 function getThemePreviewStyle(theme: ThemeListItem) {
-    if (theme.styles) {
-        return {
-            background: theme.styles.backgroundColor || theme.styles.background || '#fff',
-            color: theme.styles.color || theme.styles.textColor || '#333'
-        }
-    }
+    // 第 2 批：shared ThemeStyles 只有 backgroundColor / textColor（主进程从不发送
+    // 历史 partial 断言里的 background / color 字段），删除不可达的回退分支，
+    // 颜色取值与迁移前实际生效路径一致（backgroundColor / textColor 兜底默认色）。
+    const styles: ThemeStyles = theme.styles
     return {
-        background: '#fff',
-        color: '#333'
+        background: styles.backgroundColor || '#fff',
+        color: styles.textColor || '#333'
     }
 }
 

@@ -181,7 +181,14 @@ import StatusBar from './StatusBar.vue'
 import MenuBar from './MenuBar.vue'
 import EventBus from '../common/event-bus/event-bus'
 import * as monaco from 'monaco-editor'
-import type { SystemSetting, ThemeStyles, ThemeUpdateData } from '../../../shared/types'
+import type {
+    SelectImageResult,
+    SystemSetting,
+    ThemeStyles,
+    ThemeUpdateData
+} from '../../../shared/types'
+// 第 2 批契约重构：主题明暗归属统一走 shared 常量（不再本地维护 darkThemeTypes 清单）
+import { isDarkThemeType } from '../../../shared/constants/theme'
 // 对话框组件导入（统一命名空间导出）
 import * as BaiZeDialogs from './dialogs'
 // 配置 Store
@@ -224,21 +231,13 @@ const electronMenu = ref(true)
 // 当前主题样式
 const currentTheme = ref<ThemeStyles | null>(null)
 
-const darkThemeTypes = [
-    'dark',
-    'deepdark',
-    'icon',
-    'ocean',
-    'baize-text',
-    'baize-starry',
-    'baize-data-dark',
-    'baize-mirror-dark'
-]
-
+// 第 2 批契约重构：标题栏 logo 的明暗切换改用 shared/constants/theme 的
+// isDarkThemeType（主题明暗归属的唯一真源）——原先本地 darkThemeTypes 清单与
+// useConfigStore 的「按名字含 dark 猜明暗」互相矛盾，本次统一（含 baize-text /
+// baize-starry / forest 三处历史归属差异，口径以主题设置对话框 UI 分类为准）。
 const logoSrc = computed(() => {
     const themeType = configStore.themeConfig.value.currentTheme
-    const isDark = darkThemeTypes.includes(themeType)
-    return isDark ? logoLightLarge : logoDarkUltra
+    return isDarkThemeType(themeType) ? logoLightLarge : logoDarkUltra
 })
 
 // 是否单独配置编辑器主题
@@ -397,14 +396,14 @@ function handleCloseInsertImageDialog() {
  * P1-FE-03：「插入图片 → 本地文件 → 浏览」处理。
  * 主进程弹出图片选择框并返回 { canceled, filePath, imageSrc }，选中后回填对话框；
  * 取消或异常不改变对话框已有内容（避免把上次的路径当成本次选择）。
+ * 第 2 批契约重构：返回结构统一引用 shared SelectImageResult（主进程 handlers.ts 的
+ * selectLocalImageFile 返回形状），不再在调用点内联匿名断言。
  */
 async function handleBrowseImageFile() {
     try {
-        const result = (await window.electron.ipcRenderer.invoke(IPC.FILE.SELECT_IMAGE)) as {
-            canceled?: boolean
-            filePath?: string | null
-            imageSrc?: string | null
-        } | null
+        const result = (await window.electron.ipcRenderer.invoke(
+            IPC.FILE.SELECT_IMAGE
+        )) as SelectImageResult | null
         if (
             !result ||
             result.canceled ||

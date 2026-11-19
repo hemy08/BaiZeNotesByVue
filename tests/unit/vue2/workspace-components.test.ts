@@ -31,6 +31,7 @@ describe('FileTreeNode', () => {
 
     it('renders a folder node with icon and collapse button', () => {
         const node: FileSysItem = {
+            id: '/notes/docs',
             name: 'docs',
             path: '/notes/docs',
             type: 'folder',
@@ -46,6 +47,7 @@ describe('FileTreeNode', () => {
 
     it('emits update:isExpanded when toggling the folder', async () => {
         const node: FileSysItem = {
+            id: '/notes/docs',
             name: 'docs',
             path: '/notes/docs',
             type: 'folder',
@@ -59,24 +61,28 @@ describe('FileTreeNode', () => {
 
     it('recursively renders children when the folder is expanded', () => {
         const node: FileSysItem = {
+            id: '/notes/docs',
             name: 'docs',
             path: '/notes/docs',
             type: 'folder',
             fileExtension: 'folder',
             children: [
                 {
+                    id: '/notes/docs/a.md',
                     name: 'a.md',
                     path: '/notes/docs/a.md',
                     type: 'file',
                     fileExtension: '.md'
                 },
                 {
+                    id: '/notes/docs/sub',
                     name: 'sub',
                     path: '/notes/docs/sub',
                     type: 'folder',
                     fileExtension: 'folder',
                     children: [
                         {
+                            id: '/notes/docs/sub/b.md',
                             name: 'b.md',
                             path: '/notes/docs/sub/b.md',
                             type: 'file',
@@ -97,6 +103,7 @@ describe('FileTreeNode', () => {
 
     it('renders a file node with its extension icon', () => {
         const node: FileSysItem = {
+            id: '/notes/photo.png',
             name: 'photo.png',
             path: '/notes/photo.png',
             type: 'file',
@@ -112,6 +119,7 @@ describe('FileTreeNode', () => {
 
     it('adds the indented class when isIndented is true', () => {
         const node: FileSysItem = {
+            id: '/notes/a.md',
             name: 'a.md',
             path: '/notes/a.md',
             type: 'file',
@@ -123,6 +131,7 @@ describe('FileTreeNode', () => {
 
     it('opens a markdown file through IPC and updates the status bar', async () => {
         const node: FileSysItem = {
+            id: '/notes/note.md',
             name: 'note.md',
             path: '/notes/note.md',
             type: 'file',
@@ -148,6 +157,7 @@ describe('FileTreeNode', () => {
 
     it('shows the html workspace when clicking an html file', async () => {
         const node: FileSysItem = {
+            id: '/notes/index.html',
             name: 'index.html',
             path: '/notes/index.html',
             type: 'file',
@@ -168,6 +178,7 @@ describe('FileTreeNode', () => {
 
     it('shows the pdf workspace when clicking a pdf file', async () => {
         const node: FileSysItem = {
+            id: '/notes/manual.pdf',
             name: 'manual.pdf',
             path: '/notes/manual.pdf',
             type: 'file',
@@ -187,6 +198,7 @@ describe('FileTreeNode', () => {
 
     it('does nothing when clicking a file with an unsupported extension', async () => {
         const node: FileSysItem = {
+            id: '/notes/readme.txt',
             name: 'readme.txt',
             path: '/notes/readme.txt',
             type: 'file',
@@ -199,6 +211,7 @@ describe('FileTreeNode', () => {
 
     it('opens the context menu on right click', async () => {
         const node: FileSysItem = {
+            id: '/notes/note.md',
             name: 'note.md',
             path: '/notes/note.md',
             type: 'file',

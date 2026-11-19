@@ -38,7 +38,19 @@ import { setThemeConfig } from './theme-config'
 import type { ThemeConfig } from './theme-config'
 import { saveEditorSetting } from './editor-setting'
 import { saveQuickLinks } from './quick-link-config'
-import type { EditorSetting, QuickLinkItem, SystemSetting } from '../../shared/types'
+// 第 2 批契约重构：备份领域契约（ConfigBackupInfo / ConfigBackupState / ConfigBackupCommand）
+// 已收敛到 src/shared/types/config.ts（与 preload 的 config:read('backup') / config:write('backup')
+// 形状同一真源），本文件 import type 并 re-export，保持既有 import 路径兼容。
+import type {
+    ConfigBackupCommand,
+    ConfigBackupInfo,
+    ConfigBackupState,
+    EditorSetting,
+    QuickLinkItem,
+    SystemSetting
+} from '../../shared/types'
+
+export type { ConfigBackupCommand, ConfigBackupInfo, ConfigBackupState }
 
 /** 备份根目录名（位于 ~/.baizenotes/ 下） */
 export const CONFIG_BACKUP_DIR_NAME = 'config-backups'
@@ -51,18 +63,6 @@ export const DEFAULT_BACKUP_KEEP = 5
 
 /** 保留备份数量上限（防异常配置造成无界磁盘占用） */
 export const MAX_BACKUP_KEEP = 20
-
-/** 备份目录元信息（config:read('backup') 的返回项） */
-export interface ConfigBackupInfo {
-    /** 备份目录名（恢复时作为 name 参数） */
-    name: string
-    /** 备份目录绝对路径（仅供主进程排查，渲染层不依赖） */
-    path: string
-    /** 备份创建时间（ISO 字符串） */
-    createdAt: string
-    /** 备份文件数 */
-    fileCount: number
-}
 
 /** 配置目录（主进程各 electron-store 的落盘位置） */
 export function getConfigDirectory(): string {
@@ -312,17 +312,8 @@ export function restoreConfigBackup(name: unknown): boolean {
     }
 }
 
-/** 备份配置命令的 action 白名单类型 */
-export type ConfigBackupAction = 'create' | 'restore'
-
-/** 备份命令 payload 形状（经 config:write('backup') 传入） */
-export interface ConfigBackupCommand {
-    action: ConfigBackupAction
-    /** 恢复时指定备份目录名 */
-    name?: string
-    /** 备份时指定保留数量 */
-    keep?: number
-}
+/** 备份配置命令的 action 白名单类型（= shared ConfigBackupCommand['action']，保持本地导出名兼容） */
+export type ConfigBackupAction = ConfigBackupCommand['action']
 
 /**
  * 处理 config:write('backup') 命令（config-manager 的备份命令路由入口）。
@@ -343,8 +334,8 @@ export function handleConfigBackupCommand(payload: unknown): boolean {
     return false
 }
 
-/** 读取备份列表（config:read('backup') 的返回形状） */
-export function getBackupState(): { backups: ConfigBackupInfo[]; latest: string | null } {
+/** 读取备份列表（config:read('backup') 的返回形状，shared ConfigBackupState 同一真源） */
+export function getBackupState(): ConfigBackupState {
     const backups = listConfigBackups()
     return { backups, latest: backups[0]?.name ?? null }
 }

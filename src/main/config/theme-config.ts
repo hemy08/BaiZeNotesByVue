@@ -9,47 +9,24 @@ import * as fs from 'fs'
 import { createStore } from '../utils/store-factory'
 import { getUserDataPath } from '../utils/app-paths'
 import { logger } from '../utils/logger'
-// ARC-13：ThemeStyles 已收敛到 src/shared/types/theme.ts（唯一真源），此处仅 import type
-import type { ThemeStyles } from '../../shared/types'
-
-export type ThemeType =
-    | 'baize'
-    | 'warm'
-    | 'light'
-    | 'lavender'
-    | 'coral'
-    | 'mint'
-    | 'sunset'
-    | 'rose'
-    | 'eyecare-green'
-    | 'eyecare-beige'
-    | 'eyecare-blue'
-    | 'eyecare-pink'
-    | 'eyecare-amber'
-    | 'eyecare-teal'
-    | 'eyecare-lilac'
-    | 'baize-beast'
-    | 'baize-clear'
-    | 'dark'
-    | 'deepdark'
-    | 'icon'
-    | 'ocean'
-    | 'forest'
-    | 'baize-text'
-    | 'baize-starry'
-    | 'baize-data-light'
-    | 'baize-mirror-light'
-    | 'baize-data-dark'
-    | 'baize-mirror-dark'
+// ARC-13 / 第 2 批契约重构：主题领域类型（ThemeStyles / ThemeType / ThemeConfig /
+// MonacoThemeType / ThemeListResult）已收敛到 src/shared/types/theme.ts（唯一真源），
+// 此处仅 import type 并 re-export，保持既有 `import type { ThemeType } from '../config'`
+// 等引用路径不变。
+import type {
+    MonacoThemeListItem,
+    MonacoThemeType,
+    ThemeConfig,
+    ThemeListResult,
+    ThemeStyles,
+    ThemeType
+} from '../../shared/types'
+// Monaco 主题注册表（内置/磁盘主题元信息的实际实现）；本模块只做委托与共享类型 re-export
+import { getAllMonacoThemes as registryGetAllMonacoThemes } from './theme-registry'
+import type { MonacoThemeConfig } from './theme-registry'
 
 // ARC-13：re-export 保持既有 `import type { ThemeStyles } from '../config'` 等引用路径不变
-export type { ThemeStyles }
-
-export interface ThemeConfig {
-    currentTheme: ThemeType
-    separateEditorTheme: boolean
-    editorTheme?: MonacoThemeType
-}
+export type { MonacoThemeType, ThemeConfig, ThemeStyles, ThemeType }
 
 export const themes: Record<ThemeType, ThemeStyles> = {
     baize: {
@@ -502,11 +479,6 @@ export const themes: Record<ThemeType, ThemeStyles> = {
     }
 }
 
-// 存储结构：theme-config.json 在 themeConfig 键下承载主题配置
-interface ThemeStoreShape {
-    themeConfig: ThemeConfig
-}
-
 /**
  * 安全创建 electron-store 实例（D-6/FUN-11，供 config 目录各配置文件复用）
  * 读取损坏时：把原文件改名备份为 <name>.json.corrupt-<时间戳>，再重建默认值。
@@ -610,6 +582,8 @@ export function createSafeConfigModule<T extends Record<string, any>>(options: {
 }
 
 // 存储结构：theme-config.json 在 themeConfig 键下承载主题配置
+// 第 2 批：本接口原先在文件中重复定义两次（createConfigStoreSafely 前一处零引用副本），
+// 已合并为唯一一处，供下方 themeModule 泛型使用。
 interface ThemeStoreShape {
     themeConfig: ThemeConfig
 }
@@ -632,7 +606,12 @@ function getStore(): Store<ThemeStoreShape> {
     return themeModule.getStore()
 }
 
-export function getAllThemes(): { type: ThemeType; styles: ThemeStyles }[] {
+/**
+ * 全部应用主题（28 项，顺序即 `themes` 注册表定义顺序）。
+ * 第 2 批：返回类型改用 shared 的 `ThemeListResult`（= ThemeListItem[]），
+ * 与 IPC.THEME.GET_ALL_THEMES 的响应契约同一真源。
+ */
+export function getAllThemes(): ThemeListResult {
     return Object.entries(themes).map(([type, styles]) => ({
         type: type as ThemeType,
         styles
@@ -696,16 +675,14 @@ export function setTheme(theme: ThemeType): void {
     setThemeConfig({ currentTheme: theme })
 }
 
-export type MonacoThemeType = string
-
-import {
-    getAllMonacoThemes as registryGetAllMonacoThemes,
-    MonacoThemeConfig
-} from './theme-registry'
-
 export type { MonacoThemeConfig }
 
-export function getAllMonacoThemes(): { type: MonacoThemeType; config: MonacoThemeConfig }[] {
+/**
+ * 全部 Monaco 编辑器主题（内置 3 套 + 磁盘动态主题）。
+ * 第 2 批：返回类型改用 shared 的 `MonacoThemeListItem[]`，
+ * 与 IPC.THEME.GET_ALL_MONACO_THEMES 的响应契约同一真源；实现委托 theme-registry。
+ */
+export function getAllMonacoThemes(): MonacoThemeListItem[] {
     return registryGetAllMonacoThemes()
 }
 

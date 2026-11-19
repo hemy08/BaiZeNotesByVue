@@ -122,18 +122,30 @@ describe('useConfigStore computed', () => {
         expect(store.currentTheme.value).toBe('vs-dark')
     })
 
-    it('should detect dark themes by the dark keyword', () => {
+    // 第 2 批契约重构：isDarkTheme 判定口径改为 shared/constants/theme 的
+    // DARK_THEME_TYPES（与主题设置对话框分组、标题栏 logo 同一清单），
+    // 不再按主题 id 是否含 'dark' / '深' 猜测。
+    it('should detect dark themes by the shared dark theme list (第 2 批)', () => {
         const store = getConfigStore()
         store.themeConfig.value.currentTheme = 'baize'
         expect(store.isDarkTheme.value).toBe(false)
-        store.themeConfig.value.currentTheme = 'baize-dark'
+        store.themeConfig.value.currentTheme = 'deepdark'
         expect(store.isDarkTheme.value).toBe(true)
+        // UI 分类基线：forest 属「深色主题」分组
+        store.themeConfig.value.currentTheme = 'forest'
+        expect(store.isDarkTheme.value).toBe(true)
+        // UI 分类基线：baize-starry 属「浅色主题」分组（配色争议见 shared/constants/theme 注释）
+        store.themeConfig.value.currentTheme = 'baize-starry'
+        expect(store.isDarkTheme.value).toBe(false)
     })
 
-    it('should detect dark themes by the Chinese dark keyword', () => {
+    it('should treat unknown theme ids as non-dark (第 2 批)', () => {
         const store = getConfigStore()
+        // 历史按名字猜测：'baize-dark' / '深色主题' 会被判为深色；统一清单后未知值按非深色处理
+        store.themeConfig.value.currentTheme = 'baize-dark'
+        expect(store.isDarkTheme.value).toBe(false)
         store.themeConfig.value.currentTheme = '深色主题'
-        expect(store.isDarkTheme.value).toBe(true)
+        expect(store.isDarkTheme.value).toBe(false)
     })
 })
 

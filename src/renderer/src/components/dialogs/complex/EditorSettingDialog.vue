@@ -445,6 +445,8 @@
 
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
+// 第 2 批契约重构：主进程 'editor' 配置读取形状以 shared RendererEditorConfig 为唯一真源
+import type { RendererEditorConfig } from '../../../../../shared/types'
 import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { t } from '../../../common/i18n'
 import { logger } from '../../../common/logger'
@@ -524,12 +526,20 @@ async function loadSettings(): Promise<void> {
             return
         }
         const [editor, system] = await Promise.all([
-            read<Partial<EditorDialogSettings>>('editor'),
+            // 第 2 批契约重构：主进程 'editor' 实际只返回 RendererEditorConfig 的 7 个
+            // 反算字段（fontSize/lineHeight/showLineNumbers/enableFolding/enableAutoComplete/
+            // cursorStyle/cursorWidth），是下方 EditorDialogSettings 的子集；旧断言
+            // Partial<EditorDialogSettings> 虽结构兼容但未体现真实形状，改为 shared 真源类型。
+            read<RendererEditorConfig>('editor'),
             read<{ autoSaveEnabled?: boolean; autoSaveInterval?: number }>('system')
         ])
         if (editor && typeof editor === 'object') {
+            // 主进程实际返回形状中没有 autoSave 等字段，这里按字符串键读取并复用下方
+            // typeof 逐字段守卫合并（仅类型断言跨越“实际子集 ↔ 对话框全字段”边界，
+            // 不改变运行时对象与合并逻辑）。
+            const editorValues = editor as unknown as Readonly<Record<string, unknown>>
             for (const key of Object.keys(settings) as (keyof EditorDialogSettings)[]) {
-                const value = editor[key]
+                const value = editorValues[key]
                 if (value !== undefined && typeof value === typeof settings[key]) {
                     ;(settings as Record<string, unknown>)[key] = value
                 }

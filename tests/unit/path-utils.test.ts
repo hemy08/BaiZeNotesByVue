@@ -100,33 +100,40 @@ describe('BuildFileTree', () => {
     it('should wrap file items into a single folder node named after root', () => {
         const items = [
             {
+                id: 'a-item',
                 name: 'a.md',
                 path: 'C:\\notes\\myroot\\a.md',
                 type: 'file' as const,
                 isDirectory: false,
+                fileExtension: '.md',
                 children: []
             },
             {
+                id: 'b-item',
                 name: 'b.txt',
                 path: 'C:\\notes\\myroot\\b.txt',
                 type: 'file' as const,
                 isDirectory: false,
+                fileExtension: '.txt',
                 children: []
             }
         ]
-        const tree = BuildFileTree('C:\\notes\\myroot', items)
+        const tree = BuildFileTree('C:\\notes\\myroot', items, 'root-item')
         expect(tree).toHaveLength(1)
+        expect(tree[0].id).toBe('root-item')
         expect(tree[0].name).toBe('myroot')
         expect(tree[0].path).toBe('C:\\notes\\myroot')
         expect(tree[0].type).toBe('folder')
         expect(tree[0].isDirectory).toBe(true)
+        // 第 2 批契约：根节点 fileExtension 固定空串（与文件夹节点口径一致）
+        expect(tree[0].fileExtension).toBe('')
         expect(tree[0].children).toHaveLength(2)
         expect(tree[0].children[0]).toBe(items[0])
     })
 
     it('should produce an empty directory name when rootPath ends with separator', () => {
         // 尾部分隔符导致目录名被解析为空字符串（真实行为）
-        const tree = BuildFileTree('C:\\notes\\myroot\\', [])
+        const tree = BuildFileTree('C:\\notes\\myroot\\', [], 'root-item-2')
         expect(tree).toHaveLength(1)
         expect(tree[0].name).toBe('')
     })

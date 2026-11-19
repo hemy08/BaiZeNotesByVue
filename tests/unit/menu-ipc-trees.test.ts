@@ -99,27 +99,24 @@ beforeEach(() => {
 })
 
 describe('fileMenuHandlers', () => {
-    it('should open the create dialog for new-file with a folder flag', () => {
+    // 2026-11-19（第 2 批契约重构）：原实现发送 `{ isFolder: true/false }`，但渲染层
+    // CreateFileFolderDialog 的 props 只有 title/dirPath，isFolder 无任何消费方，
+    // 已作为死字段删除；新建文件/文件夹均以「无 data」打开同一对话框（类型由对话框内部选择）。
+    it('should open the create dialog for new-file without dead isFolder payload', () => {
         const win = makeWindow()
         ;(fileMenuHandlers['new-file'] as (w: never) => void)(win as never)
         expect(win.webContents.send).toHaveBeenCalledWith(
             'baize:dialog:open-vue',
-            'createFileFolder',
-            {
-                isFolder: true
-            }
+            'createFileFolder'
         )
     })
 
-    it('should open the create dialog for new-folder with a file flag', () => {
+    it('should open the create dialog for new-folder without dead isFolder payload', () => {
         const win = makeWindow()
         ;(fileMenuHandlers['new-folder'] as (w: never) => void)(win as never)
         expect(win.webContents.send).toHaveBeenCalledWith(
             'baize:dialog:open-vue',
-            'createFileFolder',
-            {
-                isFolder: false
-            }
+            'createFileFolder'
         )
     })
 

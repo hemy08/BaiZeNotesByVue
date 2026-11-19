@@ -1,7 +1,7 @@
 import { markRaw } from 'vue'
 import ContextMenu from '@imengyu/vue3-context-menu'
 import { IPC } from '../../../../shared/ipc-channels'
-import type { MarkdownTOC } from '../../../../shared/types'
+import type { FileItem, MarkdownTOC } from '../../../../shared/types'
 import { t } from '../../common/i18n'
 import { getConfigStore } from '../../common/useConfigStore'
 import { logger } from '../../common/logger'
@@ -11,16 +11,27 @@ import {
     TREE_IMAGE_EXTENSIONS
 } from '../../../../shared/constants/file-extensions'
 
-export interface FileSysItem {
-    id?: string
-    name: string
-    path: string
-    type: 'file' | 'folder'
-    fileExtension: string
+/**
+ * 渲染层文件树节点（UI 类型）。
+ *
+ * 第 2 批契约重构（文件树传输契约）：从 shared 传输类型 `FileItem`（主进程
+ * directory-tree 实际下发的节点形状，IPC.FILE_MANAGER.FILE_SYSTEM_DATA 的 JSON）
+ * **显式派生**，只额外增加渲染层自己的 UI 扩展字段：
+ * - `isExpanded`：目录展开态（主进程不下发；整树刷新时由 MergeExpandedState 按路径恢复）；
+ * - `isIndented`：缩进标记（历史字段，FileTreeNode 目前用 isIndented prop 传递，保留兼容）。
+ *
+ * 映射关系：wire `FileItem` → UI `FileSysItem`（字段同名同义：id/name/path/type/
+ * fileExtension/isDirectory/children）；其中 id 用于 v-for key 与 ref（主进程按路径
+ * 派生稳定 id），path 用于展开态恢复与节点定位。
+ *
+ * `children` / `isDirectory` 在本 UI 类型中保持可选：渲染层只消费 JSON 解析结果，
+ * 且单测可构造「只有叶子必要字段」的节点；传输契约本身（FileItem）两者均为必填。
+ */
+export interface FileSysItem extends Omit<FileItem, 'children' | 'isDirectory'> {
     isDirectory?: boolean
-    isIndented?: boolean
-    isExpanded?: boolean
     children?: FileSysItem[]
+    isExpanded?: boolean
+    isIndented?: boolean
 }
 
 /* ==================== PF-8：TOC 指纹去重 + 文件树展开态合并 ==================== */

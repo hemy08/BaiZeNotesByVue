@@ -3,8 +3,10 @@ import type { Cipher, Decipher } from 'crypto'
 import { sendToMainWindow } from './app-state'
 import { logger } from './logger'
 import { IPC } from '../../shared/ipc-channels'
-// ARC-13：CryptoData / CryptoResult 已收敛到 src/shared/types/crypto.ts（唯一真源）
-import type { CryptoData, CryptoResult } from '../../shared/types'
+// ARC-13 / 第 2 批契约重构：CryptoData / CryptoResult 已收敛到 src/shared/types/crypto.ts，
+// HashResult（算法名 → 摘要字符串映射）在 shared/types/ipc.ts 已有定义——本文件删除本地
+// 重复接口，统一 import type（与渲染层 HashText/HmacGenerator 消费的返回形状同一契约）。
+import type { CryptoData, CryptoResult, HashResult } from '../../shared/types'
 
 // 生成RSA密钥对
 function generateRsaKeyPair(
@@ -47,10 +49,6 @@ export function CreateRsaKeyPair(bits: number): void {
             // 主进程日志统一走 logger（文件 + 控制台 + 状态栏）
             logger.error('[Crypto] RSA 密钥对生成失败：', err)
         })
-}
-
-interface HashResult {
-    [key: string]: string // 使用索引签名来允许任何字符串键
 }
 
 const hashTextInput = [

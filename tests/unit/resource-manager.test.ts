@@ -163,18 +163,21 @@ describe('PF-8 TOC 指纹去重', () => {
 describe('PF-4/PF-8 文件树展开态合并', () => {
     function makeTree(expandedPaths: string[]): FileSysItem[] {
         const root: FileSysItem = {
+            id: 'C:\\ws',
             name: 'workspace',
             path: 'C:\\ws',
             type: 'folder',
             fileExtension: '',
             children: [
                 {
+                    id: 'C:\\ws\\docs',
                     name: 'docs',
                     path: 'C:\\ws\\docs',
                     type: 'folder',
                     fileExtension: '',
                     children: [
                         {
+                            id: 'C:\\ws\\docs\\deep',
                             name: 'deep',
                             path: 'C:\\ws\\docs\\deep',
                             type: 'folder',
@@ -183,7 +186,13 @@ describe('PF-4/PF-8 文件树展开态合并', () => {
                         }
                     ]
                 },
-                { name: 'note.md', path: 'C:\\ws\\note.md', type: 'file', fileExtension: '.md' }
+                {
+                    id: 'C:\\ws\\note.md',
+                    name: 'note.md',
+                    path: 'C:\\ws\\note.md',
+                    type: 'file',
+                    fileExtension: '.md'
+                }
             ]
         }
         for (const expandedPath of expandedPaths) {
@@ -222,7 +231,13 @@ describe('PF-4/PF-8 文件树展开态合并', () => {
         const next = makeTree([])
         // 新树中 docs 已被删除，换成一个新目录
         next[0].children = [
-            { name: 'other', path: 'C:\\ws\\other', type: 'folder', fileExtension: '' }
+            {
+                id: 'C:\\ws\\other',
+                name: 'other',
+                path: 'C:\\ws\\other',
+                type: 'folder',
+                fileExtension: ''
+            }
         ]
 
         const restored = MergeExpandedState(previous, next)
@@ -262,6 +277,7 @@ describe('handleContextMenu', () => {
     }
 
     const fileNode: FileSysItem = {
+        id: 'C:\\docs\\note.md',
         name: 'note.md',
         path: 'C:\\docs\\note.md',
         type: 'file',
@@ -303,6 +319,7 @@ describe('handleContextMenu', () => {
 
     it('should create a folder directly under the target folder node', () => {
         const folderNode: FileSysItem = {
+            id: 'C:\\docs\\sub',
             name: 'sub',
             path: 'C:\\docs\\sub',
             type: 'folder',
@@ -342,6 +359,7 @@ describe('handleContextMenu', () => {
 
     it('should disable image/file link copy for folder nodes', () => {
         const folderNode: FileSysItem = {
+            id: 'C:\\docs\\sub',
             name: 'sub',
             path: 'C:\\docs\\sub',
             type: 'folder',
@@ -415,6 +433,7 @@ describe('handleContextMenu', () => {
     // FE-12：节点打不开时取消导出（宁可无动作，也不导出错误的当前文件内容）
     it('should cancel the export when the right-clicked node cannot be opened (FE-12)', async () => {
         const missingNode: FileSysItem = {
+            id: 'C:\\docs\\missing.md',
             name: 'missing.md',
             path: 'C:\\docs\\missing.md',
             type: 'file',
@@ -435,6 +454,7 @@ describe('handleContextMenu', () => {
 
     it('should disable export for folder nodes', () => {
         const folderNode: FileSysItem = {
+            id: 'C:\\docs\\sub',
             name: 'sub',
             path: 'C:\\docs\\sub',
             type: 'folder',

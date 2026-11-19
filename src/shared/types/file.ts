@@ -1,11 +1,22 @@
 /**
- * 文件系统类型（ARC-13：主进程 / 渲染层唯一真源）
+ * 文件系统类型（ARC-13 / 第 2 批契约重构：主进程 / 渲染层唯一真源）
  *
- * FileItem：
+ * FileItem（目录树传输契约）：
  * - 收敛前在 src/main/global-types.d.ts 与 src/shared/types/index.ts 重复定义（结构一致），
- *   主进程 app-state / file-operations / path-utils 直接使用；
- * - 渲染层不直接使用（渲染层文件树结构见 ResourceManager/resource-manager.ts 的
- *   FileSysItem，字段来源于主进程 FileItem 序列化结果 + 前端展开态扩展字段）。
+ *   主进程 app-state / file-operations / path-utils 直接使用；渲染层不直接使用
+ *   （渲染层 UI 类型见 ResourceManager/resource-manager.ts 的 FileSysItem，从本类型派生）；
+ * - 第 2 批补 `id`：主进程 `directory-tree.ts` 实际构造并 JSON 序列化下发的节点**一直含**
+ *   稳定 id（FNV-1a 32 位 → base36，由路径派生），但 shared FileItem 未声明，主进程只能
+ *   `as FileItem` 绕过、渲染层 FileSysItem 只能把 id 标为可选——契约与运行时漂移；
+ * - 第 2 批把 `fileExtension` 收紧为必填：主进程对所有节点都会赋值（文件为小写扩展名、
+ *   文件夹与根节点为空串），渲染层 FileTreeNode 的 `v-model:file-extension` 依赖 string。
+ *   根节点此前缺 id/fileExtension，已由主进程 `BuildFileTree` 补齐（契约对齐，非行为改造）。
+ *
+ * FileTreePayload（目录树传输载荷）：
+ * - IPC.FILE_MANAGER.FILE_SYSTEM_DATA 的载荷是**整树 JSON 字符串**，JSON.parse 后的形状
+ *   即 `FileItem[]`（主进程 `ReloadDirFromDisk` 对 `BuildFileTree` 结果做 JSON.stringify）。
+ *   定义该别名是为了让「主进程发送 → 渲染层解析 → UI 类型派生」共用同一传输类型；
+ *   该通道的 IPC 载荷元组仍是 `[fileTreeJson: string]`（见 shared/types/ipc.ts）。
  *
  * FileProperties：
  * - 收敛前有两处不同定义：
@@ -19,15 +30,30 @@
  *   新增 encoding 可选字段、删除零读取的 children。
  * - 收敛后主进程 file-operations.ts 仍保留 `export type { FileProperties }`，既有
  *   `import { FileProperties } from './file-operations'` 形式的引用不受影响。
+ * - 第 2 批：主进程 `src/main/utils/app-state.ts` 的本地 `StoreFileProperties`（type: string、
+ *   children?: [] 零读取）已删除，`currentActiveFile` 直接使用本类型。
  */
 export interface FileItem {
+    /**
+     * 稳定节点 id（PF-4）：由绝对路径规范键做 FNV-1a 32 位哈希后转 base36
+     * （主进程 directory-tree.buildStableItemId），同一路径重复扫描结果一致，
+     * 用于渲染层 v-for key / ref 与整树 JSON 去重。
+     */
+    id: string
     name: string
     path: string
     type: 'file' | 'folder'
     isDirectory: boolean
-    fileExtension?: string
+    /** 小写扩展名（含点，如 `.md`）；文件夹与根节点为空字符串 */
+    fileExtension: string
     children: FileItem[]
 }
+
+/**
+ * 目录树传输载荷：IPC.FILE_MANAGER.FILE_SYSTEM_DATA 的 JSON.parse 结果
+ * （主进程整树对象序列化后的形状，根节点为单个工作区目录节点）。
+ */
+export type FileTreePayload = FileItem[]
 
 /**
  * 文件属性（跨进程：渲染层 → 主进程，通道 baize:notes:open-select-file）

@@ -84,20 +84,30 @@ export function ParseDirectoryPath(fullName: string): string {
 }
 
 /**
- * 构建文件树结构
- * @param rootPath 根路径
- * @param mdFiles 文件列表
- * @returns 文件树结构
+ * 构建文件树结构（把目录扫描结果包装成单根目录节点）。
+ *
+ * 第 2 批契约重构：shared `FileItem` 已把 `id` / `fileExtension` 收紧为必填
+ * （主进程整树下发的节点契约），根节点也必须携带这两个字段：
+ * - `id`：由调用方传入与子节点同源的稳定 id（directory-tree.buildStableItemId，
+ *   保证同一路径两次扫描的整树 JSON 逐字节一致，PF-4 去重才能生效）；
+ * - `fileExtension`：根节点不是文件，固定空字符串（与文件夹节点口径一致）。
+ *
+ * @param rootPath 根路径（工作区目录绝对路径）
+ * @param mdFiles 文件列表（目录扫描结果）
+ * @param rootId 根节点的稳定 id（路径派生的 FNV-1a base36 字符串）
+ * @returns 文件树结构（单根节点）
  */
-export function BuildFileTree(rootPath: string, mdFiles: FileItem[]): FileItem[] {
+export function BuildFileTree(rootPath: string, mdFiles: FileItem[], rootId: string): FileItem[] {
     // 公共接口归位第 2 批：目录名提取（取最后一段）改用 shared 的 getBaseName
     const directoryName = getBaseName(rootPath)
 
     const directory: FileItem = {
+        id: rootId,
         name: directoryName,
         path: rootPath,
         type: 'folder',
         isDirectory: true,
+        fileExtension: '',
         children: mdFiles.map((fileItem) => {
             return fileItem
         })

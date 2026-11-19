@@ -506,6 +506,14 @@
 import { ref, watch } from 'vue'
 import { useDialogDrag } from '../../../composables/useDialogDrag'
 import { IPC } from '../../../../../shared/ipc-channels'
+// 第 2 批契约重构：配置读取形状统一引用 shared 真源（theme / system / backup 三类），
+// 主题列表项与主题设置对话框共用 shared ThemeListItem（types/theme.ts）。
+import type {
+    AppThemeConfig,
+    ConfigBackupState,
+    SystemSetting,
+    ThemeListItem
+} from '../../../../../shared/types'
 import { t } from '../../../common/i18n'
 import { logger } from '../../../common/logger'
 // 批次 C #10：「打开主题设置」复用菜单动作同款调用链（menu-actions.ts 的
@@ -597,20 +605,13 @@ const settings = ref<SystemDialogSettings>({ ...initialSettings.value })
  */
 const appThemeDisplay = ref('baize')
 
-/** 主进程 getAllThemes() 返回的主题列表项结构（仅取显示名所需字段） */
-interface ThemeListItem {
-    type: string
-    styles?: {
-        name?: string
-        /** CMP-30：主题名称 i18n key（缺省时回退 name 原文字段） */
-        nameKey?: string
-    }
-}
+// 第 2 批契约重构：删除本地 ThemeListItem partial 断言，统一引用 shared 主题领域类型
+// （types/theme.ts，styles 为完整 ThemeStyles）。本对话框只读取显示名相关字段。
 
 /** 读取当前主题显示名（打开对话框时随 loadSettings 一并刷新） */
 async function loadThemeDisplay(): Promise<void> {
     try {
-        const themeConfig = await window.api.config.read<{ currentTheme?: string }>('theme')
+        const themeConfig = await window.api.config.read<AppThemeConfig>('theme')
         const current = themeConfig?.currentTheme || 'baize'
         const allThemes: unknown = await window.electron.ipcRenderer.invoke(
             IPC.THEME.GET_ALL_THEMES
@@ -646,15 +647,8 @@ function handleOpenThemeSetting(): void {
 /** P1-FE-06：备份/恢复操作结果提示（成功后展示备份名与文件数） */
 const backupStatus = ref('')
 
-interface BackupListItem {
-    name: string
-    fileCount: number
-}
-
-interface BackupState {
-    backups?: BackupListItem[]
-    latest?: string | null
-}
+// 第 2 批契约重构：删除本地 BackupListItem / BackupState 断言，
+// 'backup' 读取形状统一引用 shared ConfigBackupState（backups / latest）。
 
 /** P1-FE-06：备份/恢复都复用既有 CONFIG 通道（configName = 'backup'），不新增 IPC 通道 */
 const BACKUP_CONFIG_NAME = 'backup'
@@ -664,7 +658,10 @@ const BACKUP_CONFIG_NAME = 'backup'
 // 只合并返回中已定义的字段，未返回的字段保持默认值。
 async function loadSettings(): Promise<void> {
     try {
-        const stored = await window.api.config.read<Partial<SystemDialogSettings>>('system')
+        // 第 2 批契约重构：主进程 'system' 实际返回完整 SystemSetting（含 autoStart 的
+        // OS 校正值），旧断言 Partial<SystemDialogSettings> 只是它的子集；改为 shared 真源后
+        // 下方 typeof 逐字段守卫语义不变（仅类型标注变化，不改变运行时合并逻辑）。
+        const stored = await window.api.config.read<SystemSetting>('system')
         if (stored && typeof stored === 'object') {
             for (const key of Object.keys(settings.value) as (keyof SystemDialogSettings)[]) {
                 const value = stored[key]
@@ -749,7 +746,7 @@ async function handleBackupNow(): Promise<void> {
             backupStatus.value = t('dialogRenderer.systemSetting.backupStatusFailed')
             return
         }
-        const state = await window.api.config.read<BackupState>(BACKUP_CONFIG_NAME)
+        const state = await window.api.config.read<ConfigBackupState>(BACKUP_CONFIG_NAME)
         const latest = state?.backups?.[0]
         backupStatus.value = latest
             ? t('dialogRenderer.systemSetting.backupStatusSuccess', {
@@ -770,7 +767,7 @@ async function handleBackupNow(): Promise<void> {
 async function handleRestore(): Promise<void> {
     backupStatus.value = ''
     try {
-        const state = await window.api.config.read<BackupState>(BACKUP_CONFIG_NAME)
+        const state = await window.api.config.read<ConfigBackupState>(BACKUP_CONFIG_NAME)
         const name = state?.latest ?? state?.backups?.[0]?.name
         if (!name) {
             backupStatus.value = t('dialogRenderer.systemSetting.restoreStatusNoBackup')

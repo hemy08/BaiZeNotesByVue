@@ -61,12 +61,15 @@ import {
     WINDOW_MAX_SIZE as SHARED_WINDOW_MAX_SIZE,
     WINDOW_MIN_SIZE as SHARED_WINDOW_MIN_SIZE
 } from '../../shared/constants/window'
-// ARC-13：FileProperties 已收敛到 src/shared/types/file.ts（唯一真源）
+// ARC-13 / 第 2 批契约重构：FileProperties 与 SelectImageResult 已收敛到
+// src/shared/types（唯一真源）；渲染层 BaiZeNotes.vue 与主进程 selectLocalImageFile
+// 共用同一返回结构，主进程不再本地定义 interface
 import type {
     FileProperties,
     OpenRecentPayload,
     OpenRecentResult,
-    RecentListResult
+    RecentListResult,
+    SelectImageResult
 } from '../../shared/types'
 import { tMain } from '../utils/i18n'
 import { logger } from '../utils/logger'
@@ -340,15 +343,10 @@ const ALLOWED_IMAGE_EXTENSIONS: ReadonlySet<string> = new Set(
     IMAGE_FILE_EXTENSIONS.map((extension) => `.${extension}`)
 )
 
-/** SELECT_IMAGE 通道返回结构（渲染层按此回填插入图片对话框） */
-interface SelectImageResult {
-    /** 用户是否取消了选择 */
-    canceled: boolean
-    /** 选中图片的绝对路径；取消时为 null */
-    filePath: string | null
-    /** 写入 Markdown 的图片地址：复制到 images/ 后为相对引用，回退时为绝对路径；取消时为 null */
-    imageSrc: string | null
-}
+/**
+ * SELECT_IMAGE 通道返回结构见 shared/types/ipc.ts 的 SelectImageResult
+ * （第 2 批契约重构：主进程与渲染层共用同一返回结构，本地 interface 已删除）。
+ */
 
 /**
  * 生成复制到 images/ 下的安全文件名：中文等非 ASCII 字符替换为 '-'，

@@ -125,6 +125,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { IPC } from '../../../../../shared/ipc-channels'
+// 第 2 批契约重构：版本信息返回结构统一引用 shared AppVersionInfo
+// （与主进程 utils.ts 的 SYSTEM.APP_VERSION handler、preload index.d.ts 同一契约）
+import type { AppVersionInfo } from '../../../../../shared/types'
 import { t } from '../../../common/i18n'
 import { logger } from '../../../common/logger'
 
@@ -152,7 +155,9 @@ const platform = ref('')
 
 onMounted(async () => {
     try {
-        const versionInfo = await window.api.app.getVersion()
+        // 第 2 批契约重构：返回类型由 preload 类型声明（shared AppVersionInfo）推断，
+        // 此处显式标注以固定消费契约（字段与主进程 handler / preload 双侧一致）。
+        const versionInfo: AppVersionInfo = await window.api.app.getVersion()
         appVersion.value = versionInfo.appVersion
         electronVersion.value = versionInfo.electronVersion
         chromeVersion.value = versionInfo.chromeVersion

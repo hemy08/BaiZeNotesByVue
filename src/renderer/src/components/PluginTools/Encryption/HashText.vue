@@ -71,6 +71,8 @@
 import { ref, watch, computed, reactive } from 'vue'
 import { t } from '../../../common/i18n'
 import { IPC } from '../../../../../shared/ipc-channels'
+// 第 2 批契约重构：摘要结果结构统一引用 shared HashResult（与主进程 encrypt-decrypt.ts 同源）
+import type { HashResult } from '../../../../../shared/types'
 import { logger } from '../../../common/logger'
 
 const props = defineProps({
@@ -144,7 +146,7 @@ async function getHashTextResult(): Promise<void> {
             IPC.PLUGIN.HASH_TEXT,
             textInput.value,
             encodeType.value
-        )) as Record<string, string>
+        )) as HashResult
         // 过期响应直接丢弃，避免先发后至的旧结果覆盖新结果
         if (requestSeq !== hashRequestSeq) {
             return

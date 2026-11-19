@@ -23,14 +23,16 @@ function FileConvertCoding(
 
 export const fileMenuHandlers = {
     'new-file': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send(IPC.DIALOG.OPEN_VUE_DIALOG, 'createFileFolder', {
-            isFolder: true
-        })
+        // 2026-11-19（第 2 批契约重构）：原载荷 `{ isFolder: true }` 已删除——
+        // 渲染层 CreateFileFolderDialog 的 props 只有 title / dirPath，文件/文件夹
+        // 类型由对话框内部选择，全仓无任何消费方；实际携带 dirPath 的发送点是
+        // 快捷键 Ctrl+N（config/short-key-register.ts）。对话框 data 契约见
+        // src/shared/types/dialog.ts 的 CreateFileFolderDialogData。
+        mainWindow.webContents.send(IPC.DIALOG.OPEN_VUE_DIALOG, 'createFileFolder')
     },
     'new-folder': (mainWindow: Electron.CrossProcessExports.BrowserWindow) => {
-        mainWindow.webContents.send(IPC.DIALOG.OPEN_VUE_DIALOG, 'createFileFolder', {
-            isFolder: false
-        })
+        // 同上：原 `{ isFolder: false }` 为无消费方死字段，已随第 2 批契约重构删除。
+        mainWindow.webContents.send(IPC.DIALOG.OPEN_VUE_DIALOG, 'createFileFolder')
     },
     'open-file': async (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
         await OpenFile(mainWindow),

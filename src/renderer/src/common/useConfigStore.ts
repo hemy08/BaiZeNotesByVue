@@ -8,15 +8,37 @@ import {
     DEFAULT_GOOGLE,
     DEFAULT_STACKOVERFLOW
 } from '../../../shared/constants/urls'
+// 第 2 批契约重构：主题明暗归属统一引用 shared/constants/theme（唯一真源），
+// 不再按主题 id 是否含 'dark' / '深' 猜明暗（与标题栏 logo、主题设置对话框分组共用同一清单）。
+import { isDarkThemeType } from '../../../shared/constants/theme'
+// 第 2 批契约重构：配置读取/写入形状以 shared/types/config.ts 为唯一真源——
+// window.api.config.read 的类型重载据此按配置名字面量推断主进程实际返回形状，
+// 本模块无需再手写泛型断言（下方 loadAllConfigs 的注释记录了两处历史形状漂移）。
 import { t } from './i18n'
 
 // 类型定义
+/**
+ * 主题配置（本地默认值形状）。
+ *
+ * 与 shared AppThemeConfig（主进程 'theme' 实际读取形状）结构等价；保留本地接口名
+ * 以维持本模块既有导出与默认值类型，不再作为 read 的泛型断言。
+ */
 export interface ThemeConfig {
     currentTheme: string
     separateEditorTheme: boolean
     editorTheme?: string
 }
 
+/**
+ * 编辑器配置（本地默认值形状，**不是**主进程 'editor' 的读取形状）。
+ *
+ * 契约漂移说明（第 2 批核实，仅记录不改运行时）：主进程 config:read('editor') 实际
+ * 返回 `RendererEditorConfig`（fontSize / lineHeight / showLineNumbers / enableFolding /
+ * enableAutoComplete / cursorStyle / cursorWidth 共 7 字段，见 shared/types/config.ts），
+ * 与本接口的 9 字段（含 fontFamily/tabSize/wordWrap/autoSave/minimap）“不同构”。
+ * 该 editorConfig 状态目前无生产消费者（仅单测覆盖默认值），加载时主进程返回值会
+ * 整体替换默认对象——属于历史遗留，后续批次修正时再统一形状。
+ */
 export interface EditorConfig {
     fontFamily: string
     fontSize: number
@@ -29,6 +51,7 @@ export interface EditorConfig {
     minimap: { enabled: boolean; maxColumn: number }
 }
 
+/** 快速链接项（本地默认值形状，与主进程快速链接设置对话框的 links 元素一致） */
 export interface QuickLink {
     name: string
     url: string
@@ -36,6 +59,14 @@ export interface QuickLink {
     description: string
 }
 
+/**
+ * 快速链接配置（本地默认值形状，**不是**主进程 'quick-links' 的读取形状）。
+ *
+ * 契约漂移说明（第 2 批核实，仅记录不改运行时）：主进程 config:read('quick-links')
+ * 实际直接返回 `RendererQuickLinkItem[]` 数组（无 `{ links }` 包裹，可能为 null），
+ * 本接口的 `{ links: [...] }` 包裹形态仅用于本地默认值；该 quickLinksConfig 状态
+ * 目前无生产消费者（仅单测覆盖默认值），后续批次修正时再统一形状。
+ */
 export interface QuickLinksConfig {
     links: QuickLink[]
 }
@@ -257,14 +288,21 @@ async function loadAllConfigs() {
         // 系统设置对话框直接经 window.api.config.read/write('system') 读写主进程
         // SystemSetting（唯一真源 src/main/config/system-setting.ts），避免两套默认值漂移。
         const [theme, editor, links] = await Promise.all([
-            window.api.config.read<ThemeConfig>('theme'),
-            window.api.config.read<EditorConfig>('editor'),
-            window.api.config.read<QuickLinksConfig>('quick-links')
+            // 第 2 批契约重构：不再手写 <ThemeConfig>/<EditorConfig>/<QuickLinksConfig>
+            // 泛型断言（其中后两者与主进程实际返回形状不符），改由 preload 类型重载
+            // 按配置名字面量推断 shared ConfigReadMap 的真实形状。
+            window.api.config.read('theme'),
+            window.api.config.read('editor'),
+            window.api.config.read('quick-links')
         ])
 
         if (theme) themeConfig.value = theme
-        if (editor) editorConfig.value = editor
-        if (links) quickLinksConfig.value = links
+        // 主进程 'editor' 实际返回 RendererEditorConfig（7 字段）；本 store 的
+        // editorConfig 是历史 9 字段默认值形状且无生产消费者（详见接口注释）。
+        // 运行时行为保持原样（整体替换），此处仅用类型断言跨过“历史形状 ↔ 实际形状”边界。
+        if (editor) editorConfig.value = editor as unknown as EditorConfig
+        // 主进程 'quick-links' 实际直接返回数组（可能为 null），同样保留原有整体替换行为。
+        if (links) quickLinksConfig.value = links as unknown as QuickLinksConfig
     } catch (error) {
         console.error('[ConfigStore] Error loading configs:', error)
     } finally {
@@ -412,11 +450,12 @@ export const useConfigStore = () => ({
 
     // 计算属性
     currentTheme: computed(() => themeConfig.value.currentTheme),
-    isDarkTheme: computed(
-        () =>
-            themeConfig.value.currentTheme.includes('dark') ||
-            themeConfig.value.currentTheme.includes('深')
-    ),
+    /**
+     * 是否为深色系主题。
+     * 第 2 批契约重构：判定口径统一为 shared/constants/theme 的 DARK_THEME_TYPES
+     * （与主题设置对话框分组、标题栏 logo 明暗切换同一清单）；未知主题值按非深色处理。
+     */
+    isDarkTheme: computed(() => isDarkThemeType(themeConfig.value.currentTheme)),
 
     // 方法
     loadAllConfigs,
