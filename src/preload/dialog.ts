@@ -17,6 +17,11 @@ const ALLOWED_SEND_CHANNELS = new Set<string>([
     IPC.DIALOG.RENAME_FILE_FOLDER_ENTER
 ])
 
+// 2026-11-19（P3 纵深防御）：对话框接收（on/once）通道白名单。
+// JSDOM 对话框目前只订阅主题切换广播（THEME_UPDATED，主题设置立即生效）；
+// 未知通道一律丢弃并告警——即使不可信 HTML 复用本 preload 也无法嗅探任意广播。
+const ALLOWED_RECEIVE_CHANNELS = new Set<string>([IPC.THEME.THEME_UPDATED])
+
 // P0 安全（shell 协议白名单）：对话框窗口的 openExternal 只允许 http/https。
 // 被加载的不可信 HTML（历史上 OpenOnlineWebPages 的远程页面就使用本 preload）即使能调用
 // electronAPI.shell.openExternal，也无法触发 file:/javascript:/data:/自定义协议打开，
@@ -87,6 +92,11 @@ const dialogApi = {
             ipcRenderer.send(channel, ...args)
         },
         on: (channel: string, callback: (...args: unknown[]) => void): void => {
+            // 2026-11-19：接收通道白名单（未知通道丢弃，避免不可信页面嗅探广播）
+            if (!ALLOWED_RECEIVE_CHANNELS.has(channel)) {
+                console.warn(`[DialogPreload] 已丢弃未知 IPC 通道的 on 订阅: ${channel}`)
+                return
+            }
             addWrappedListener(channel, callback)
         },
         removeListener: (channel: string, callback: (...args: unknown[]) => void): void => {

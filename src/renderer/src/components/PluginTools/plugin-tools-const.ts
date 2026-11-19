@@ -148,8 +148,11 @@ export const pluginTools = markRaw([
         id: 'baize:menu:plugins:misc:calculator',
         component: lazyTool(() => import('./MiscTools/Calculator.vue'))
     },
-    // 2026-11-18（遗留清单 #9）：PDF 预览改走 pdf.js（pdfjs-dist）渲染后恢复注册，
-    // 同时资源管理器点击 .pdf 会经 PDF_FILE_SELECTED + WORKSPACE_SHOW('pdf') 直接打开本组件
+    // 2026-11-18（遗留清单 #9）：PDF 预览改走 pdf.js（pdfjs-dist）渲染后恢复注册。
+    // 2026-11-19 注释更新：资源管理器点击 .pdf 经 PDF_FILE_SELECTED + WORKSPACE_SHOW('pdf')
+    // 打开的是 **WorkSpace 工作区内的 PDF 视图容器**（ShowPdfEditor 实例），本菜单注册的
+    // 插件实例用于「工具 → 常用小工具 → PDF 预览」入口；两个实例通过唯一 componentId
+    // 隔离事件监听（见 ShowPdfEditor.vue），互不影响。
     {
         id: 'baize:menu:plugins:misc:pdf-preview',
         component: lazyTool(() => import('@renderer/components/HemyTools/ShowPdfEditor.vue'))

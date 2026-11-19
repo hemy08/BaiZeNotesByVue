@@ -71,11 +71,16 @@ describe('createDialogOptions', () => {
 })
 
 describe('createDialogHtmlUrl', () => {
-    it('should wrap html into a data url with utf-8 charset', () => {
+    it('should wrap html into a data url with utf-8 charset (含 CSP 注入)', () => {
         const url = createDialogHtmlUrl('<html><body>你好</body></html>')
         expect(url.startsWith('data:text/html;charset=utf-8,')).toBe(true)
         const payload = url.substring(url.indexOf(',') + 1)
-        expect(decodeURIComponent(payload)).toBe('<html><body>你好</body></html>')
+        const decoded = decodeURIComponent(payload)
+        // 2026-11-19（P3）：对话框 HTML 注入严格 CSP，原文保留在页面体内
+        expect(decoded).toContain('<body>你好</body>')
+        expect(decoded).toContain('Content-Security-Policy')
+        expect(decoded).toContain("default-src 'none'")
+        expect(decoded).toContain("connect-src 'none'")
     })
 
     it('should percent-encode special characters in html', () => {
@@ -83,9 +88,18 @@ describe('createDialogHtmlUrl', () => {
         // 空格、引号与 # 等必须被编码，避免 data URL 提前结束
         expect(url).not.toContain('<div class="a b">')
         expect(url).toContain('%20')
-        expect(decodeURIComponent(url.substring(url.indexOf(',') + 1))).toBe(
+        expect(decodeURIComponent(url.substring(url.indexOf(',') + 1))).toContain(
             '<div class="a b">#100%</div>'
         )
+    })
+
+    it('should keep existing CSP untouched', () => {
+        const html =
+            '<html><head><meta http-equiv="Content-Security-Policy" content="default-src \'self\'"></head><body>x</body></html>'
+        const decoded = decodeURIComponent(
+            createDialogHtmlUrl(html).substring(createDialogHtmlUrl(html).indexOf(',') + 1)
+        )
+        expect(decoded).toBe(html)
     })
 })
 
@@ -97,7 +111,7 @@ describe('loadDialogHtml', () => {
         expect(loadURL).toHaveBeenCalledTimes(1)
         const url = loadURL.mock.calls[0][0] as string
         expect(url.startsWith('data:text/html;charset=utf-8,')).toBe(true)
-        expect(decodeURIComponent(url.substring(url.indexOf(',') + 1))).toBe('<p>内容</p>')
+        expect(decodeURIComponent(url.substring(url.indexOf(',') + 1))).toContain('<p>内容</p>')
     })
 })
 

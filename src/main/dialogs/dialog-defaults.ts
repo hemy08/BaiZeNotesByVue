@@ -30,8 +30,31 @@ export function createDialogOptions(
  * CQ-06：将 HTML 字符串编码为 data: URL 并加载到对话框窗口。
  * 各 Show*Dialog 中重复的 `loadURL(\`data:text/html;charset=utf-8,...\`)` 样板统一收口到此处。
  */
+/**
+ * 2026-11-19（P3 纵深防御）：对话框页面 CSP。
+ * 对话框 HTML 经 `data:text/html` 加载、内容由主进程可信生成（内联 <script>/<style>、
+ * 内嵌 SVG/图片 data: 资源），默认无 CSP——注入严格策略阻止外部资源/网络请求。
+ */
+const DIALOG_CSP =
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'"
+
+/** 为对话框 HTML 注入 CSP meta（已含 CSP 时保持原样） */
+function withDialogCsp(htmlContent: string): string {
+    if (/http-equiv=["']Content-Security-Policy["']/i.test(htmlContent)) {
+        return htmlContent
+    }
+    const meta = `<meta http-equiv="Content-Security-Policy" content="${DIALOG_CSP}">`
+    if (/<head(\s[^>]*)?>/i.test(htmlContent)) {
+        return htmlContent.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n    ${meta}`)
+    }
+    if (/<html(\s[^>]*)?>/i.test(htmlContent)) {
+        return htmlContent.replace(/<html(\s[^>]*)?>/i, (m) => `${m}\n<head>${meta}</head>`)
+    }
+    return `${meta}\n${htmlContent}`
+}
+
 export function createDialogHtmlUrl(htmlContent: string): string {
-    return `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`
+    return `data:text/html;charset=utf-8,${encodeURIComponent(withDialogCsp(htmlContent))}`
 }
 
 /**

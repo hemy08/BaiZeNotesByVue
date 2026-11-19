@@ -7,8 +7,9 @@
  *
  * 运行前提：
  * - 先执行 `npx electron-vite build`（或 `npm run build`）生成 `out/main/index.js`；
- * - 需要可用的桌面环境（Electron 需要窗口系统）；CI 中仅在手动触发
- *   （workflow_dispatch）时运行，见 .github/workflows/ci.yml。
+ * - 需要可用的桌面环境（Electron 需要窗口系统）；
+ * - CI 中由 .github/workflows/ci.yml 的独立 `e2e` job 在 windows-latest 上自动执行
+ *   （push / pull_request / workflow_dispatch 均触发）。
  *
  * 说明：本仓库仅做冒烟级 E2E，不做完整业务流程回放；用例集中在 e2e/ 目录，
  * 与单元测试（tests/unit）完全隔离，`npm test` 不会包含它们。

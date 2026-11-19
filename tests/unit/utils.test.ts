@@ -207,7 +207,7 @@ describe('MainWindowListenUtilsEvent', () => {
                 'baize:system:app-version',
                 // FUN-02：编码菜单 handler（重新打开 / 转码保存）
                 'baize:file:reopen-with-encoding',
-                'baize:file:convert-encoding'
+                'baize:file:convert-save-encoding'
             ]) {
                 expect(ipcMocks.handle.has(channel), channel).toBe(true)
             }

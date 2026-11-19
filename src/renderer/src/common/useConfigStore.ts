@@ -94,7 +94,8 @@ export const defaultEditorConfig: EditorConfig = {
 }
 
 export const defaultSystemConfig: SystemConfig = {
-    autoOpenLastFile: true,
+    // 2026-11-19：与主进程 system-setting 默认值统一（此前渲染层 fallback 为 true）
+    autoOpenLastFile: false,
     autoOpenLastFolder: false,
     autoStart: false,
     minimizeToTray: true,

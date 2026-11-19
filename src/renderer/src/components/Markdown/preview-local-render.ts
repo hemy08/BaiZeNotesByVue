@@ -192,8 +192,9 @@ function parseDirectoryPath(fullName: string): string {
  * 1. 浏览器会把 `C:` 当作未知 scheme 或相对 URL 解析，图片无法加载；
  * 2. Windows 盘符路径（含 `:`）会被 DOMPurify 默认 URI 白名单剥离，src 属性被删除。
  * file:// 协议同时解决两者（浏览器可解析、DOMPurify 默认放行 f|ht)tps? 分支），
- * 与 ShowPdfEditor.vue 的 toFileUrl 方案一致：补前导斜杠 + encodeURI 编码，
+ * 与 html-view-utils.ts 的 withBaseHref 口径一致：补前导斜杠 + encodeURI 编码，
  * 并对 encodeURI 保留的 `#`/`?` 单独编码（避免文件名中的 # 变成片段标识）。
+ * 2026-11-19 注释更新：原引用「ShowPdfEditor.vue 的 toFileUrl 方案」已随 PDF 改 pdf.js 删除。
  */
 function toFileUrl(localPath: string): string {
     const normalized = localPath.replace(/\\/g, '/')

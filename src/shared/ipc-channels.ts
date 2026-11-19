@@ -99,7 +99,10 @@ export const IPC = {
         OPEN_WITH_ENCODING: 'baize:file:open-with-encoding',
         CONVERT_TO_ENCODING: 'baize:file:convert-to-encoding',
         REOPEN_WITH_ENCODING: 'baize:file:reopen-with-encoding',
-        CONVERT_SAVE_ENCODING: 'baize:file:convert-encoding'
+        // 2026-11-19（命名统一）：原值 `file:convert-encoding` 与 CONVERT_TO_ENCODING
+        // （`file:convert-to-encoding`）仅差 "to"，语义易混——改为 convert-save-encoding
+        // （按指定编码转码保存），全端同步（utils.ts / preload 白名单 / 渲染层 / 文档）。
+        CONVERT_SAVE_ENCODING: 'baize:file:convert-save-encoding'
     } as const,
 
     // ============ 文件管理器右键菜单 ============

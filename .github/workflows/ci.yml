@@ -4,6 +4,12 @@ name: CI
 # - 与本地门禁一致：typecheck（node/web/test 三段）→ ESLint → Vitest
 # - 平台选用 windows-latest：仓库为 Windows 桌面应用，路径/编码相关用例与本地环境一致
 # - 不执行打包（electron-builder 需要签名/发布配置，发布流水线另行配置）
+#
+# 2026-11-19（P3 遗留项：E2E 未纳入 CI）：新增独立 `e2e` job（与 quality-gate 并行）
+# - 真实 Electron 冒烟：electron-vite build → Playwright `_electron.launch`（e2e/smoke.spec.ts）
+# - 使用 @playwright/test 直接驱动 node_modules/electron，无需 `npx playwright install`
+#   下载浏览器（Electron 二进制由 npm ci 的 electron postinstall 下载）
+# - e2e 与 quality-gate 相互独立：任一失败都会在 PR 检查中单独可见，不改变原门禁结构
 on:
   push:
     branches: [main, master]
@@ -41,3 +47,38 @@ jobs:
 
       - name: Vitest
         run: npx --no-install vitest run
+
+  e2e:
+    name: E2E (Playwright + Electron)
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 先产出 out/main + out/preload + out/renderer：E2E 与本地一致，直接运行构建产物，
+      # 不依赖 electron-vite dev server（避免端口/热更新带来的不稳定）
+      - name: Build (electron-vite)
+        run: npx --no-install electron-vite build
+
+      - name: Run Playwright E2E
+        run: npx --no-install playwright test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

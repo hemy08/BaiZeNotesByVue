@@ -1,9 +1,8 @@
 // 渲染层菜单常量（在线工具 + 插件工具菜单数据源）。
-// CMP-19/CMP-27：本文件不提供「PDF 预览」与「HemyTools 工具面板」的菜单入口——
-// ① PDF 预览（ShowPdfEditor.vue）使用已废弃的 <webview> 标签，且全项目未开启
-// webviewTag（默认 false），预览必然空白；② HemyTools 模板仅一个"返回编辑器"按钮，
-// 属未完成空壳。两者容器开关由 WorkSpace.vue 事件控制，待 pdf.js 方案落地 /
-// HemyTools 补全后再行接入（沿用第一轮 A-4 模式，见 plugin-tools-const.ts 注册表注释）。
+// 2026-11-19 更新：PDF 预览已改 pdf.js（pdfjs-dist）渲染并恢复菜单入口
+// （misc:pdf-preview，见 plugin-tools-const.ts 与 MenuBar 插件菜单）；
+// HemyTools 工具面板仍不提供菜单入口（模板仅"返回编辑器"按钮，属未完成空壳，
+// 其容器开关由 WorkSpace.vue 事件控制）。
 
 // ARC-14：插件工具显示事件名收敛至 EventBus 集中常量文件（字符串不变），
 // 此处 re-export 保持历史调用方（menu-actions.ts / PluginTools.vue / 测试）兼容。

@@ -80,7 +80,14 @@ const api = {
 // 两类方向），未知通道的 send/invoke/on 一律丢弃并告警。
 //
 // 维护约定：渲染层新增 IPC 调用时，必须同步登记到对应白名单，否则调用被丢弃；
-// 白名单变更后运行 `npx vitest run tests/unit/preload-index.test.ts` 校验。
+// 白名单变更后运行 `npx vitest run tests/unit/preload-whitelist.test.ts` 校验
+// （该测试静态扫描 src/renderer 全部 ipcRenderer 调用与两个 Set 做**双向**核对），
+// 同时 `tests/unit/preload-index.test.ts` 覆盖白名单的运行时拦截行为。
+//
+// 边界说明（2026-11-19 补充）：本白名单只约束 `window.electron.ipcRenderer`（渲染层
+// 直接调用面）；`window.api`（config/app/file 三个高层受限 API）在 preload 闭包内使用
+// 原始 ipcRenderer 的 6 个通道（CONFIG.READ/WRITE、RENDER.READY、SYSTEM.APP_VERSION、
+// FILE.RECENT_LIST/OPEN_RECENT），属设计内的独立受限 API 面，不经过窗口白名单。
 // ============================================================
 
 /** 渲染层 → 主进程（send / invoke）允许通道：58 个（2026-11-19 核对） */

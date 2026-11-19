@@ -111,12 +111,20 @@ describe('preload/dialog ipcRenderer delegation', () => {
         await loadDialog()
         const api = getExposedDialogApi()
         const callback = vi.fn()
-        api.ipcRenderer.on('some-channel', callback)
-        expect(dialogMocks.on).toHaveBeenCalledWith('some-channel', expect.any(Function))
+        api.ipcRenderer.on('baize:theme:updated', callback)
+        expect(dialogMocks.on).toHaveBeenCalledWith('baize:theme:updated', expect.any(Function))
         // 触发包装后的监听器：第一个参数 event 被剥离
         const wrapper = dialogMocks.on.mock.calls[0][1]
         wrapper({ sender: 'fake-event' }, 'a', 2)
         expect(callback).toHaveBeenCalledWith('a', 2)
+    })
+
+    it('should drop unknown on channels with a warning (2026-11-19 接收白名单)', async () => {
+        await loadDialog()
+        const api = getExposedDialogApi()
+        api.ipcRenderer.on('baize:file:saved', vi.fn())
+        expect(dialogMocks.on).not.toHaveBeenCalled()
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('baize:file:saved'))
     })
 
     it('should delegate removeListener directly', async () => {

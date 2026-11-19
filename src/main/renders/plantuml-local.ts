@@ -14,7 +14,8 @@
  * 3. 从页面取回 `#out.innerHTML`（SVG 字符串），经 IPC 返回渲染层插入预览 HTML。
  *
  * 可靠性设计：
- * - 窗口复用：进程内单例隐藏窗口，首次渲染创建、后续复用（渲染完成不销毁）；
+ * - 窗口复用 + 空闲销毁：进程内单例隐藏窗口，首次渲染创建、后续复用；渲染完成 60s
+ *   无新渲染请求自动销毁释放渲染进程资源（SVG 结果仍在 LRU 缓存，下次按需重建）；
  * - 串行队列：teaVM 渲染非重入且共享同一页面全局状态，所有请求单队列串行执行；
  *   渲染层仍按并发 3 发起 invoke，主进程侧排队，耗时可控且不会互相污染；
  * - 内容 hash 缓存：同一份源码只渲染一次（LRU，上限 50），避免重复渲染；
@@ -31,9 +32,9 @@
  * 开发环境 = `<项目根>/resources/plantuml`，打包后 = `<process.resourcesPath>/plantuml`
  * （electron-builder.yml 的 extraResources 已把 resources/plantuml 复制到该目录）。
  *
- * 接线说明（本轮由根代理统一收口，本文件只导出函数，不修改共享文件）：
- * - 通道常量最终应收敛到 `src/shared/ipc-channels.ts`（建议 `IPC.RENDER.PLANTUML_LOCAL`），
- *   当前为本文件导出的 `PLANTUML_LOCAL_RENDER_CHANNEL`，渲染层使用同值常量；
+ * 接线说明（2026-11-19：通道已收敛，以下为现状）：
+ * - 通道常量收敛到 `src/shared/ipc-channels.ts` 的 `IPC.RENDER.PLANTUML_LOCAL`，
+ *   本文件导出 `PLANTUML_LOCAL_RENDER_CHANNEL` 作为别名，渲染层引用同一常量；
  * - 主进程入口 `src/main/index.ts` 的 `app.whenReady()` 内调用
  *   `registerPlantumlLocalRenderIpc()` 注册 invoke 处理器；
  * - `cleanupApp()` 内调用 `disposePlantumlLocalWindows()` 兜底销毁隐藏窗口。
