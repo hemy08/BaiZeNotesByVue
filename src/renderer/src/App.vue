@@ -35,6 +35,8 @@ import { flushConfigWrites } from './common/useConfigStore'
 import { t } from './common/i18n'
 // 第 4 批 P3：裸 console.* 收敛到渲染层统一日志出口（仅替换输出出口，启动时序/兜底逻辑不变）
 import { logger } from './common/logger'
+// P1 性能基线：启动阶段轻量标记（默认关闭，诊断开关下才输出；见 common/perf.ts）
+import { PERF_MARK, perfMark, perfMeasure } from './common/perf'
 
 // 欢迎界面显示状态
 const showWelcome = ref(true)
@@ -210,6 +212,9 @@ const pendingMainViewMountResolvers: Array<() => void> = []
 
 /** 主界面组件挂载完成（来自 BaiZeNotes.vue 的 main-view-mounted 事件） */
 function handleMainViewMounted(): void {
+    // P1 性能基线：主界面挂载确认（标记本体在 BaiZeNotes.vue onMounted 内，此处补一条
+    // 渲染层时间轴上的 measure，便于报告里直接看到 main-view-mounted 相对导航起点的耗时）
+    perfMeasure(PERF_MARK.MAIN_VIEW_MOUNTED)
     mainViewMounted = true
     while (pendingMainViewMountResolvers.length > 0) {
         pendingMainViewMountResolvers.shift()?.()
@@ -406,6 +411,9 @@ onMounted(async () => {
     // （autoOpenLastFile / autoOpenLastFolder / 后台恢复）。监听器（WELCOME_ENTER_MAIN 等）
     // 与主界面组件就位均已在上方完成；握手放在 try 之外，保证配置读取失败时监听器已就位
     // 仍能通知主进程。
+    // P1 性能基线：renderer-ready 标记紧贴握手发送点（主进程收到后记录同名标记）
+    perfMark(PERF_MARK.RENDERER_READY)
+    perfMeasure(PERF_MARK.RENDERER_READY)
     window.api.app.notifyRendererReady()
 })
 

@@ -534,7 +534,9 @@ describe('app whenReady startup flow', () => {
     it('should load the dev server URL when ELECTRON_RENDERER_URL is set', async () => {
         process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173/'
         await loadMainIndex()
-        expect(electronMocks.win.loadURL).toHaveBeenCalledWith('http://localhost:5173/')
+        // P1 性能基线：dev 模式自动开启诊断，主进程给渲染层 URL 追加 ?baizePerf=1
+        // （普通/打包启动不追加，URL 与历史行为完全一致）
+        expect(electronMocks.win.loadURL).toHaveBeenCalledWith('http://localhost:5173/?baizePerf=1')
         expect(electronMocks.win.loadFile).not.toHaveBeenCalled()
     })
 

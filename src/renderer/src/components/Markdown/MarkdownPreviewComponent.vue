@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import hljs from 'highlight.js'
 import DOMPurify from 'dompurify'
 // 结构优化第 2 批 2.2（H4）：预览只依赖渲染模块（hemy-editor-render），
@@ -37,6 +37,8 @@ import { ComputeChaptersFingerprint } from './preview-chapters'
 import { getLocale, t } from '../../common/i18n'
 import { logger } from '../../common/logger'
 import { getBaseName } from '../../../../shared/utils/path'
+// P1 性能基线：预览首帧就绪阶段标记（默认关闭，诊断开关下才输出）
+import { PERF_MARK, perfMark, perfMeasure } from '../../common/perf'
 // AS-9：系统设置契约（远程图片隐私开关 allowRemoteImages 的真源类型）
 import type { SystemSetting } from '../../../../shared/types'
 // 全局类型 FileProperties 由 src/main/global-types.d.ts 的 declare global 提供（tsconfig.web 已 include）
@@ -292,6 +294,14 @@ async function updateMarkdownPreview() {
             : policyHtml
         // 记录本轮已渲染的原始内容（仅在同一引用上赋值，不复制全文）
         lastRenderedContent = sourceContent
+        // P1 性能基线：v-html 已写入，等本轮 DOM 更新后标记 preview-ready
+        //（诊断开关关闭时 perfMark/perfMeasure 为空操作，不产生额外渲染成本；
+        //  perfMark 返回 false 表示已标记过——后续重渲染不再重复上报 measure）
+        void nextTick().then(() => {
+            if (perfMark(PERF_MARK.PREVIEW_READY)) {
+                perfMeasure(PERF_MARK.PREVIEW_READY, PERF_MARK.RENDERER_READY)
+            }
+        })
     } catch (error) {
         // 单轮渲染异常时保留上一轮预览内容，避免整块预览白屏
         logger.warn('[MarkdownPreview] 本地渲染失败，已保留上一轮预览:', error)

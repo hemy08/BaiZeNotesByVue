@@ -203,6 +203,8 @@ import { IPC } from '../../../shared/ipc-channels'
 import { t } from '../common/i18n'
 import { EVENT_BUS } from '../common/event-bus/event-bus-events'
 import { logger } from '../common/logger'
+// P1 性能基线：主界面挂载阶段标记（默认关闭，诊断开关下才输出）
+import { PERF_MARK, perfMark, perfMeasure } from '../common/perf'
 
 const configStore = getConfigStore()
 // 主题单例（模块级，多组件共享同一状态与订阅；重复挂载不会二次读盘）
@@ -456,6 +458,9 @@ onMounted(async () => {
 
     // 以上监听器已同步注册完成（子组件的 onMounted 早于本组件的 onMounted 执行），
     // 通知外壳主界面已就绪；App.vue 在此之后才发送 READY 握手，保证启动恢复数据不丢失。
+    // P1 性能基线：main-view-mounted 标记放在 emit 之前（组件监听器已就位、主界面 DOM 已挂载）
+    perfMark(PERF_MARK.MAIN_VIEW_MOUNTED)
+    perfMeasure(PERF_MARK.MAIN_VIEW_MOUNTED)
     emit('main-view-mounted')
 
     // 第 4 批 4.2（M4）：主题初始化（配置读盘 → 拉取主题样式 → CSS 变量 + Monaco 应用）

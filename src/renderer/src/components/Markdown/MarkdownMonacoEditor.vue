@@ -41,6 +41,8 @@ import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { useEventBus } from '../../composables/useEventBus'
 import { logger } from '../../common/logger'
 import { toFileUrl } from '../../../../shared/utils/path'
+// P1 性能基线：Monaco 编辑器就绪阶段标记（默认关闭，诊断开关下才输出）
+import { PERF_MARK, perfMark, perfMeasure } from '../../common/perf'
 
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
@@ -621,6 +623,10 @@ onMounted(async () => {
 
         // 初始化后立即布局，确保编辑器尺寸正确
         editorInstance.layout()
+
+        // P1 性能基线：Monaco 实例创建 + 首次 layout 完成即视为 editor-ready
+        perfMark(PERF_MARK.EDITOR_READY)
+        perfMeasure(PERF_MARK.EDITOR_READY)
 
         // 延迟再次布局，确保DOM完全渲染后尺寸正确
         setTimeout(() => {

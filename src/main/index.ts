@@ -67,6 +67,15 @@ import {
     setSystemSettingProvider,
     setThemeApiProvider
 } from './utils/providers'
+// P1 性能基线：启动阶段 mark/measure + 诊断上报（默认关闭；仅 BAIZE_PERF/--baize-perf/dev 下输出）
+import {
+    isPerfDiagnosticsEnabled,
+    perfMark,
+    perfMeasure,
+    setupPerfDiagnostics,
+    withPerfQueryParam
+} from './utils/perf'
+import { PERF_MARK, PERF_QUERY_PARAM, PERF_SEGMENT_MEASURE } from '../shared/constants/perf'
 
 /* ============================================================================
  * 结构优化 1.1（H1）：utils 配置读取提供者注入
@@ -197,6 +206,10 @@ function createWindow(): BrowserWindow {
         }
     })
 
+    // P1 性能基线：BrowserWindow 构造完成即 window-create（后续 loadURL/loadFile 为异步加载）
+    perfMark(PERF_MARK.WINDOW_CREATE)
+    perfMeasure(PERF_MARK.WINDOW_CREATE)
+
     // 2026-11-18（用户反馈）：新窗口创建即显示欢迎页，复位主界面状态（macOS activate 重建同样生效）
     resetWelcomeState()
     // P1/N-05 / M1：主窗口引用登记到 AppContext（appState / ipc-security 受信主窗口 /
@@ -313,8 +326,13 @@ function createWindow(): BrowserWindow {
         return { action: 'deny' }
     })
 
+    // P1 性能基线：诊断模式下给渲染层 URL 追加 ?baizePerf=1，渲染层据此打开
+    // performance.mark/measure 采集并经控制台哨兵上报（普通启动 URL 不变，零影响）。
+    const perfDiagnosticsEnabled = isPerfDiagnosticsEnabled()
     if (devServerUrl) {
-        mainWindow.loadURL(devServerUrl)
+        mainWindow.loadURL(perfDiagnosticsEnabled ? withPerfQueryParam(devServerUrl) : devServerUrl)
+    } else if (perfDiagnosticsEnabled) {
+        mainWindow.loadFile(rendererIndexPath, { query: { [PERF_QUERY_PARAM]: '1' } })
     } else {
         mainWindow.loadFile(rendererIndexPath)
     }
@@ -408,6 +426,10 @@ function armStartupRestore(win: BrowserWindow): void {
  * 2) 若 ready-to-show 已挂起恢复则立即执行，并清掉 3s 超时兜底。
  */
 function handleRendererReady(): void {
+    // P1 性能基线：渲染层握手到达 = renderer-ready（渲染层已挂载并注册完 IPC 监听器）
+    perfMark(PERF_MARK.RENDERER_READY)
+    perfMeasure(PERF_MARK.RENDERER_READY)
+    perfMeasure(PERF_SEGMENT_MEASURE.WINDOW_TO_RENDERER_READY, PERF_MARK.WINDOW_CREATE)
     const context = getAppContext()
     context.rendererReady.received = true
     const pending = context.startupRestore.pendingWindow
@@ -426,6 +448,10 @@ app.whenReady().then(() => {
     if (!gotSingleInstanceLock) {
         return
     }
+
+    // P1 性能基线：whenReady 回调进入 = app-ready（进程启动 → 主进程就绪）
+    perfMark(PERF_MARK.APP_READY)
+    perfMeasure(PERF_MARK.APP_READY)
 
     // 1.3.6：存量设置迁移——1.3.1~1.3.5 期间 minimizeToTray / enableAutoBackup 默认 true，
     // 用户保存过系统设置即把 true 落盘，导致升级后「关闭窗口」退化为「隐藏到托盘」
@@ -490,6 +516,11 @@ app.whenReady().then(() => {
     })()
 
     const mainWindow = createWindow()
+
+    // P1 性能基线：挂接诊断上报（默认关闭，空操作）。
+    // 开启时增量写 BAIZE_PERF_OUT，并支持基线脚本的「采集齐关键阶段后自动退出」；
+    // 退出回调交给 app.quit，复用现有 before-quit/close 落盘协议，不绕过任何清理逻辑。
+    setupPerfDiagnostics(mainWindow, () => app.quit())
 
     // A-1/ARC-06：IPC 注册一次性化——注册移出 createWindow，在 app.whenReady 后仅执行一次；
     // macOS activate 重建窗口不再重复注册。
