@@ -44,12 +44,25 @@ import { getSystemSetting } from '../config/system-setting'
 import { tMain } from './i18n'
 import { IPC } from '../../shared/ipc-channels'
 import { encodeFileContent } from './file-utils/file-encoding'
+// 公共接口归位第 2 批：单文件大小上限常量与备份目录纯函数（时间戳/名称/安全解析/排序）
+// 统一引用 shared 真源；本模块仅保留与自动备份业务相关的 IO 与调度逻辑
+import { MAX_AUTO_BACKUP_FILE_SIZE } from '../../shared/constants/limits'
+import {
+    formatBackupStamp,
+    isValidBackupName,
+    parseBackupStamp,
+    resolveBackupDirSafe as resolveBackupDirSafeShared,
+    sortBackupNames
+} from '../../shared/utils/backup-dir'
 
 /** 备份根目录名（位于 ~/.baizenotes/ 下） */
 export const AUTO_BACKUP_DIR_NAME = 'backups'
 
-/** 备份目录命名规则：YYYYMMDD-HHmmss（同一秒内重名时追加 -N 序号） */
-const AUTO_BACKUP_NAME_PATTERN = /^\d{8}-\d{6}(-\d+)?$/
+/**
+ * 配置备份目录名前缀（shared 的备份名校验器同时接受两种命名空间，
+ * 自动备份只认自己的 `YYYYMMDD-HHmmss` 形式，需要排除配置备份命名）。
+ */
+const CONFIG_BACKUP_NAME_PREFIX = 'config-backup-'
 
 /** 默认保留备份数量（与 systemSettingDefaults.backupCount 一致） */
 export const DEFAULT_AUTO_BACKUP_KEEP = 5
@@ -64,8 +77,10 @@ export const DEFAULT_AUTO_BACKUP_INTERVAL_HOURS = 24
 export const MIN_AUTO_BACKUP_INTERVAL_HOURS = 1
 export const MAX_AUTO_BACKUP_INTERVAL_HOURS = 72
 
-/** 单文件备份大小上限（20MB）：超过则跳过并记日志 */
-export const AUTO_BACKUP_MAX_FILE_BYTES = 20 * 1024 * 1024
+/** 单文件备份大小上限（20MB）：超过则跳过并记日志。
+ * 公共接口归位第 2 批：数值真源为 shared/constants/limits.MAX_AUTO_BACKUP_FILE_SIZE，
+ * 保留既有导出名（既有测试/调用方引用）并引用 shared 常量。 */
+export const AUTO_BACKUP_MAX_FILE_BYTES = MAX_AUTO_BACKUP_FILE_SIZE
 
 /** 遍历工作区时跳过的目录名（含备份根自身，防把旧备份再拷进新备份） */
 const SKIP_DIR_NAMES = new Set(['node_modules', '.git', '.svn', '.hg'])
@@ -94,53 +109,40 @@ export function getAutoBackupRoot(): string {
     return path.join(getUserDataPath(), AUTO_BACKUP_DIR_NAME)
 }
 
-/** 组装备份时间戳：YYYYMMDD-HHmmss（本地时区，与目录名规则一致） */
-function formatAutoBackupStamp(date: Date): string {
-    const pad = (value: number): string => String(value).padStart(2, '0')
-    return (
-        `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}` +
-        `-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
-    )
-}
-
-/** 是否为合法备份目录名（防路径逃逸的第一道关卡） */
+/**
+ * 是否为合法备份目录名（防路径逃逸的第一道关卡）。
+ * 公共接口归位第 2 批：命名形状校验复用 shared/utils/backup-dir.isValidBackupName；
+ * 该 shared 校验器同时接受配置备份命名（`config-backup-` 前缀），自动备份只认自己的
+ * 命名空间，因此额外排除配置备份前缀，保持既有「备份列表互不串号」语义不变。
+ */
 export function isValidAutoBackupName(name: unknown): name is string {
-    return typeof name === 'string' && AUTO_BACKUP_NAME_PATTERN.test(name)
+    return (
+        typeof name === 'string' &&
+        !name.startsWith(CONFIG_BACKUP_NAME_PREFIX) &&
+        isValidBackupName(name)
+    )
 }
 
 /**
  * 校验备份目录绝对路径是否严格位于备份根目录内。
  * 返回 null 表示非法（调用方直接拒绝，不做任何读写）。
+ * 公共接口归位第 2 批：路径守卫（白名单 + path.relative 防逃逸）复用 shared 实现，
+ * 本函数先按自动备份命名空间过滤，再交给 shared 做相对路径校验。
  */
 function resolveAutoBackupDirSafe(name: unknown): string | null {
     if (!isValidAutoBackupName(name)) {
         return null
     }
-    const root = path.resolve(getAutoBackupRoot())
-    const target = path.resolve(root, name)
-    const relative = path.relative(root, target)
-    if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) {
-        return null
-    }
-    return target
+    return resolveBackupDirSafeShared(getAutoBackupRoot(), name)
 }
 
-/** 从备份目录名解析创建时间（命名含时间戳，不依赖 mtime） */
+/** 从备份目录名解析创建时间（命名含时间戳，不依赖 mtime）。
+ * 公共接口归位第 2 批：解析迁至 shared/utils/backup-dir.parseBackupStamp；
+ * 与旧实现的差异：shared 会对年月日时分秒做回读校验，非法日历值（如 13 月）
+ * 返回 null，这里按旧实现「无法解析 → epoch」的兜底语义映射为 1970-01-01。 */
 function parseAutoBackupCreatedAt(name: string): string {
-    const match = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/.exec(name)
-    if (!match) {
-        return new Date(0).toISOString()
-    }
-    const [, year, month, day, hour, minute, second] = match
-    const date = new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day),
-        Number(hour),
-        Number(minute),
-        Number(second)
-    )
-    return Number.isNaN(date.getTime()) ? new Date(0).toISOString() : date.toISOString()
+    const timestamp = parseBackupStamp(name)
+    return timestamp === null ? new Date(0).toISOString() : new Date(timestamp).toISOString()
 }
 
 /** 统计备份目录内文件数（递归 .md 拷贝可能带子目录，统计递归文件数） */
@@ -191,12 +193,13 @@ export async function listAutoBackups(): Promise<AutoBackupInfo[]> {
         logger.warn('[AutoBackup] 读取备份根目录失败', error)
         return []
     }
-    const infos = await Promise.all(
+    // 公共接口归位第 2 批：名称过滤后按 shared 的倒序排序工具排列（最新在前）
+    const names = sortBackupNames(
         entries
             .filter((entry) => entry.isDirectory() && isValidAutoBackupName(entry.name))
-            .map((entry) => buildAutoBackupInfo(entry.name))
+            .map((entry) => entry.name)
     )
-    return infos.sort((left, right) => right.name.localeCompare(left.name))
+    return await Promise.all(names.map((name) => buildAutoBackupInfo(name)))
 }
 
 /** 归一化保留数量：非法值回落默认，范围夹取到 [1, MAX_AUTO_BACKUP_KEEP] */
@@ -383,7 +386,8 @@ export async function performAutoBackup(): Promise<AutoBackupResult | null> {
     // 2. 创建带时间戳的备份目录（同一秒内重名追加 -N 序号）
     const root = getAutoBackupRoot()
     await fs.ensureDir(root)
-    const stamp = formatAutoBackupStamp(new Date())
+    // 公共接口归位第 2 批：时间戳格式由 shared 的 formatBackupStamp 生成（YYYYMMDD-HHmmss）
+    const stamp = formatBackupStamp(new Date())
     let name = stamp
     let suffix = 1
     while (await fs.pathExists(path.join(root, name))) {

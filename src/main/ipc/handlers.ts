@@ -55,6 +55,12 @@ import {
     registerTrustedPath
 } from '../utils/security'
 import { IPC } from '../../shared/ipc-channels'
+// 公共接口归位第 2 批：窗口 bounds 安全范围真源迁移到 shared/constants/window
+import {
+    WINDOW_COORDINATE_LIMIT as SHARED_WINDOW_COORDINATE_LIMIT,
+    WINDOW_MAX_SIZE as SHARED_WINDOW_MAX_SIZE,
+    WINDOW_MIN_SIZE as SHARED_WINDOW_MIN_SIZE
+} from '../../shared/constants/window'
 // ARC-13：FileProperties 已收敛到 src/shared/types/file.ts（唯一真源）
 import type {
     FileProperties,
@@ -112,11 +118,16 @@ function withHandleErrorLog<TArgs extends unknown[]>(
  * AS-6：窗口 bounds 数值校验（防 NaN/字符串/超大值导致 setBounds 抛错或窗口移出屏幕）
  * ========================================================================== */
 
-/** 窗口坐标绝对值上限（覆盖多显示器/超宽屏，同时挡住 1e9 级异常值） */
-export const WINDOW_COORDINATE_LIMIT = 100000
-/** 窗口尺寸上限/下限（下限取 1：真正的可用尺寸由渲染层拖拽约束与系统窗口管理器决定） */
-export const WINDOW_MIN_SIZE = 1
-export const WINDOW_MAX_SIZE = 32768
+/**
+ * 窗口坐标绝对值上限（覆盖多显示器/超宽屏，同时挡住 1e9 级异常值）。
+ * 公共接口归位第 2 批：数值真源为 shared/constants/window.WINDOW_COORDINATE_LIMIT，
+ * 保留本导出名以兼容既有测试/调用方（值引用 shared 常量）。
+ */
+export const WINDOW_COORDINATE_LIMIT = SHARED_WINDOW_COORDINATE_LIMIT
+/** 窗口尺寸上限/下限（下限取 1：真正的可用尺寸由渲染层拖拽约束与系统窗口管理器决定）。
+ * 公共接口归位第 2 批：数值真源为 shared/constants/window。 */
+export const WINDOW_MIN_SIZE = SHARED_WINDOW_MIN_SIZE
+export const WINDOW_MAX_SIZE = SHARED_WINDOW_MAX_SIZE
 
 /** AS-6：合法窗口坐标——有限整数且绝对值不超过上限 */
 export function isValidWindowCoordinate(value: unknown): value is number {

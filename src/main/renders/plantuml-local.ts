@@ -50,6 +50,15 @@ import { ipcListenerManager } from '../ipc/ipc-listener-manager'
 // AS-6：PlantUML 本地渲染通道补发送方校验（仅主窗口可触发隐藏窗口渲染）
 import { withSenderCheck } from '../utils/ipc-security'
 import { IPC } from '../../shared/ipc-channels'
+// 公共接口归位第 2 批：渲染超时/缓存上限常量与 LRU 缓存统一引用 shared 真源
+import {
+    PLANTUML_IDLE_DISPOSE_MS as SHARED_PLANTUML_IDLE_DISPOSE_MS,
+    PLANTUML_PAGE_RENDER_WAIT_MS,
+    PLANTUML_RENDER_CACHE_MAX,
+    PLANTUML_RENDER_TIMEOUT_MS as SHARED_PLANTUML_RENDER_TIMEOUT_MS,
+    PLANTUML_WINDOW_LOAD_TIMEOUT_MS as SHARED_PLANTUML_WINDOW_LOAD_TIMEOUT_MS
+} from '../../shared/constants/render'
+import { LRUCache } from '../../shared/utils/lru-cache'
 import { tMain } from '../utils/i18n'
 
 /**
@@ -58,17 +67,21 @@ import { tMain } from '../utils/i18n'
  */
 export const PLANTUML_LOCAL_RENDER_CHANNEL = IPC.RENDER.PLANTUML_LOCAL
 
-/** 单张图本地渲染总超时（毫秒）——超时返回 error，预览侧回显源码+错误提示 */
-export const PLANTUML_RENDER_TIMEOUT_MS = 10000
+/**
+ * 单张图本地渲染总超时（毫秒）——超时返回 error，预览侧回显源码+错误提示。
+ * 公共接口归位第 2 批：数值真源为 shared/constants/render.PLANTUML_RENDER_TIMEOUT_MS，
+ * 保留本导出名以兼容既有测试/调用方（值引用 shared 常量）。
+ */
+export const PLANTUML_RENDER_TIMEOUT_MS = SHARED_PLANTUML_RENDER_TIMEOUT_MS
 
-/** 隐藏窗口首次加载 + teaVM 初始化超时（毫秒） */
-export const PLANTUML_WINDOW_LOAD_TIMEOUT_MS = 20000
+/**
+ * 隐藏窗口首次加载 + teaVM 初始化超时（毫秒）。
+ * 公共接口归位第 2 批：值引用 shared/constants/render.PLANTUML_WINDOW_LOAD_TIMEOUT_MS。
+ */
+export const PLANTUML_WINDOW_LOAD_TIMEOUT_MS = SHARED_PLANTUML_WINDOW_LOAD_TIMEOUT_MS
 
-/** 页面内等待 PlantUML 把 SVG 写入 #out 的最长时间（毫秒，teavm 正常为同步输出） */
-const PLANTUML_PAGE_RENDER_WAIT_MS = 8000
-
-/** 渲染结果缓存上限（LRU 按源码 sha1） */
-export const PLANTUML_CACHE_MAX = 50
+/** 渲染结果缓存上限（LRU 按源码 sha1）——数值真源为 shared/constants/render.PLANTUML_RENDER_CACHE_MAX */
+export const PLANTUML_CACHE_MAX = PLANTUML_RENDER_CACHE_MAX
 
 /** 本地渲染结果状态：ok=成功出 SVG；error=渲染失败/超时；unavailable=离线资源缺失需远程降级 */
 export type PlantumlRenderStatus = 'ok' | 'error' | 'unavailable'
@@ -84,8 +97,8 @@ export interface PlantumlRenderResponse {
     reason?: string
 }
 
-/** 渲染结果 LRU 缓存：源码 sha1 → SVG 字符串 */
-const plantumlSvgCache = new Map<string, string>()
+/** 渲染结果 LRU 缓存：源码 sha1 → SVG 字符串（公共接口归位第 2 批：改用 shared 的 LRUCache） */
+const plantumlSvgCache = new LRUCache<string>(PLANTUML_CACHE_MAX)
 
 /** 复用的隐藏渲染窗口（null 表示尚未创建或已销毁） */
 let renderWindow: BrowserWindow | null = null
@@ -106,8 +119,9 @@ let ownerWindowCleanupHooked = false
  */
 let idleDisposeTimer: NodeJS.Timeout | null = null
 
-/** 空闲销毁超时（60s；渲染完成后的空闲期；导出供测试引用） */
-export const PLANTUML_IDLE_DISPOSE_MS = 60_000
+/** 空闲销毁超时（60s；渲染完成后的空闲期；导出供测试引用）。
+ * 公共接口归位第 2 批：值引用 shared/constants/render.PLANTUML_IDLE_DISPOSE_MS。 */
+export const PLANTUML_IDLE_DISPOSE_MS = SHARED_PLANTUML_IDLE_DISPOSE_MS
 
 /** 清除空闲销毁定时器（销毁/重建/新任务时调用） */
 function cancelIdleDispose(): void {
@@ -133,7 +147,6 @@ function scheduleIdleDispose(): void {
     }, PLANTUML_IDLE_DISPOSE_MS)
     idleDisposeTimer.unref?.()
 }
-
 
 /** 隐藏窗口初始化失败原因（仅用于诊断日志，不缓存失败状态，允许后续重试） */
 let lastWindowError: string | null = null
@@ -175,28 +188,6 @@ export function resolvePlantumlIndexHtmlPath(): string | null {
 /** 清空渲染结果缓存（测试与诊断用） */
 export function clearPlantumlRenderCache(): void {
     plantumlSvgCache.clear()
-}
-
-/** 读取缓存并刷新 LRU 顺序 */
-function getCachedPlantumlSvg(cacheKey: string): string | null {
-    const cached = plantumlSvgCache.get(cacheKey)
-    if (!cached) {
-        return null
-    }
-    plantumlSvgCache.delete(cacheKey)
-    plantumlSvgCache.set(cacheKey, cached)
-    return cached
-}
-
-/** 写入缓存，超出上限时淘汰最早条目 */
-function setCachedPlantumlSvg(cacheKey: string, svg: string): void {
-    if (plantumlSvgCache.size >= PLANTUML_CACHE_MAX) {
-        const oldestKey = plantumlSvgCache.keys().next().value
-        if (oldestKey !== undefined) {
-            plantumlSvgCache.delete(oldestKey)
-        }
-    }
-    plantumlSvgCache.set(cacheKey, svg)
 }
 
 /**
@@ -510,8 +501,8 @@ export async function renderPlantumlDiagram(source: string): Promise<PlantumlRen
     }
 
     const cacheKey = hashPlantumlSource(source)
-    const cachedSvg = getCachedPlantumlSvg(cacheKey)
-    if (cachedSvg) {
+    const cachedSvg = plantumlSvgCache.get(cacheKey)
+    if (cachedSvg !== undefined) {
         return { status: 'ok', svg: cachedSvg }
     }
 
@@ -519,7 +510,7 @@ export async function renderPlantumlDiagram(source: string): Promise<PlantumlRen
     const task = renderQueueTail.then(async () => {
         const result = await renderSingleDiagram(source)
         if (result.status === 'ok' && typeof result.svg === 'string') {
-            setCachedPlantumlSvg(cacheKey, result.svg)
+            plantumlSvgCache.set(cacheKey, result.svg)
         }
         return result
     })

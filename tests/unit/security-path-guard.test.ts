@@ -33,6 +33,7 @@ import {
     isSafeFileName,
     isSafeShowItemInFolderPath,
     isSafeWorkspaceRoot,
+    isSameOrWithin,
     normalizeLocalPath,
     PathAccessDeniedError,
     registerTrustedDirectory,
@@ -119,6 +120,22 @@ describe('normalizeLocalPath', () => {
         }
         expect(normalizeLocalPath('\\\\server\\share')).toBeNull()
         expect(normalizeLocalPath('\\\\server\\share\\sub\\a.md')).not.toBeNull()
+    })
+})
+
+describe('isSameOrWithin（shared/utils/path.isPathWithin 薄包装）', () => {
+    it('should treat the root itself and its children as within', () => {
+        expect(isSameOrWithin(tmpDir, tmpDir)).toBe(true)
+        expect(isSameOrWithin(path.join(tmpDir, 'a.md'), tmpDir)).toBe(true)
+        expect(isSameOrWithin(path.join(tmpDir, 'sub', 'deep', 'a.md'), tmpDir)).toBe(true)
+    })
+
+    it('should reject sibling prefixes and lexically escaping paths', () => {
+        // 前缀相同但不是子目录（/tmp/x 与 /tmp/x2）
+        expect(isSameOrWithin(`${tmpDir}2`, tmpDir)).toBe(false)
+        // 公共接口归位第 2 批：shared 实现自带 `..` 词法折叠，逃逸路径判为不在根内
+        expect(isSameOrWithin(path.join(tmpDir, '..', 'escape.md'), tmpDir)).toBe(false)
+        expect(isSameOrWithin(path.join(tmpDir, 'sub', '..', '..'), tmpDir)).toBe(false)
     })
 })
 

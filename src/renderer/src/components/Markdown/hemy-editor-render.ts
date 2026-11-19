@@ -6,6 +6,17 @@ import { IPC } from '../../../../shared/ipc-channels'
 import { t } from '../../common/i18n'
 import { escapeHtml } from '../../common/escape-html'
 import { logger } from '../../common/logger'
+import { LRUCache } from '../../../../shared/utils/lru-cache'
+import { fnv1a32, toRadixString } from '../../../../shared/utils/hash'
+import { randomDigits } from '../../../../shared/utils/random'
+import { limitConcurrency } from '../../../../shared/utils/concurrency'
+import {
+    MERMAID_CONCURRENCY_LIMIT,
+    MERMAID_RENDER_CACHE_MAX,
+    PLANTUML_CONCURRENCY_LIMIT,
+    RENDERER_PLANTUML_CACHE_MAX,
+    RENDERER_PLANTUML_TIMEOUT_MS
+} from '../../../../shared/constants/render'
 
 // PF-6：mermaid 是渲染层最大的第三方依赖之一（打包体积/解析成本均以 MB 计）。
 // 改为「首次遇到 ```mermaid 块时才动态 import」，未使用图表的文档（绝大多数笔记）不再加载它，
@@ -49,14 +60,12 @@ async function getMermaidInstance(): Promise<MermaidApi> {
     return mermaidModulePromise
 }
 
+/**
+ * 生成 mermaid 图唯一 id 尾串（迁移：改用 `shared/utils/random.randomDigits`，
+ * 原实现逐位 `Math.floor(Math.random() * 10)` 拼接，输出字符集与长度语义完全一致）。
+ */
 function genRandomNumString(length: number): string {
-    let result = ''
-    const characters = '0123456789'
-    const charactersLength = characters.length
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * charactersLength))
-    }
-    return result
+    return randomDigits(length)
 }
 
 function removeMermaidDiv(mermaidId: string) {
@@ -66,20 +75,24 @@ function removeMermaidDiv(mermaidId: string) {
     }
 }
 
-// P-3（PF-09）：mermaid 渲染结果按内容 hash 缓存，避免每次防抖结束后全量重渲染
-const MERMAID_CACHE_MAX = 50
-const mermaidRenderCache = new Map<string, { svg: string; id: string }>()
+/**
+ * P-3（PF-09）：mermaid 渲染结果按内容 hash 缓存，避免每次防抖结束后全量重渲染。
+ *
+ * 迁移（渲染层公共接口归位）：缓存容器改用 `shared/utils/lru-cache.LRUCache`
+ * （命中提升 + 超限淘汰语义与原手写 Map 实现逐字对齐），上限引用
+ * `shared/constants/render.MERMAID_RENDER_CACHE_MAX`（50，与原 MERMAID_CACHE_MAX 一致）。
+ */
+const mermaidRenderCache = new LRUCache<{ svg: string; id: string }>(MERMAID_RENDER_CACHE_MAX)
 
 /**
- * FNV-1a 32 位字符串哈希（仅作缓存键，无需密码学强度）
+ * FNV-1a 32 位字符串哈希（仅作缓存键，无需密码学强度）。
+ *
+ * 迁移（渲染层公共接口归位）：哈希核心改为 `shared/utils/hash.fnv1a32`（无符号），
+ * 十六进制输出改用 `toRadixString(hash, 16)`；与原本地实现的
+ * `(hash >>> 0).toString(16)` 逐字等价（无前导零补位）。
  */
 function hashString(str: string): string {
-    let hash = 0x811c9dc5
-    for (let i = 0; i < str.length; i++) {
-        hash ^= str.charCodeAt(i)
-        hash = Math.imul(hash, 0x01000193)
-    }
-    return (hash >>> 0).toString(16)
+    return toRadixString(fnv1a32(str), 16)
 }
 
 /** 包装 mermaid SVG 为预览所需的 HTML 结构 */
@@ -94,7 +107,8 @@ function wrapMermaidSvg(svg: string): string {
 /**
  * FUN-21：构造 mermaid 渲染失败降级块。
  * 回显图表源码与错误信息，预览中可见、可诊断，不再静默空白。
- * P1：转义实现已迁移到 `common/escape-html.ts` 共享（唯一来源），此处直接复用。
+ * P1：转义实现已收敛为单一来源（`common/escape-html.ts` → 现 re-export
+ * `shared/utils/html.escapeHtml`），此处直接复用。
  */
 function buildMermaidErrorHtml(graphDefinition: string, error: unknown): string {
     const errMessage = error instanceof Error ? error.message : String(error)
@@ -120,10 +134,8 @@ async function mermaidRender(graphDefinition: string): Promise<string> {
     const cached = mermaidRenderCache.get(cacheKey)
 
     if (cached) {
-        // 命中缓存：将缓存 SVG 中的旧 id 替换为本次唯一 id（mermaid 内部 id 由传入 id 派生），
-        // 避免同一文档内多份相同图表出现 DOM id 冲突；同时刷新 LRU 顺序
-        mermaidRenderCache.delete(cacheKey)
-        mermaidRenderCache.set(cacheKey, cached)
+        // 命中缓存（get 已刷新 LRU 顺序）：将缓存 SVG 中的旧 id 替换为本次唯一 id
+        // （mermaid 内部 id 由传入 id 派生），避免同一文档内多份相同图表出现 DOM id 冲突
         const svg = cached.svg.split(cached.id).join(mermaidId)
         return wrapMermaidSvg(svg)
     }
@@ -134,13 +146,7 @@ async function mermaidRender(graphDefinition: string): Promise<string> {
         const renderSvg = await mermaid.render(mermaidId, graphDefinition)
         // 删除mermaid.render过程中增加的div
         removeMermaidDiv(mermaidId)
-        // 写入缓存，超出上限时淘汰最早条目
-        if (mermaidRenderCache.size >= MERMAID_CACHE_MAX) {
-            const oldestKey = mermaidRenderCache.keys().next().value
-            if (oldestKey !== undefined) {
-                mermaidRenderCache.delete(oldestKey)
-            }
-        }
+        // 写入缓存（set 内部在容量已满时淘汰最旧条目，上限来自 shared 常量）
         mermaidRenderCache.set(cacheKey, { svg: renderSvg.svg, id: mermaidId })
         return wrapMermaidSvg(renderSvg.svg)
     } catch (error) {
@@ -150,44 +156,13 @@ async function mermaidRender(graphDefinition: string): Promise<string> {
     }
 }
 
-/**
- * 并发限制的批量执行函数
- * @param tasks 任务数组
- * @param concurrency 并发限制数量
- * @returns 结果数组
+/*
+ * 并发限制的批量执行函数（迁移说明）。
+ *
+ * 原实现为本模块私有：按任务数组顺序启动、`Promise.race` 等待名额、结果按原始下标回填、
+ * 单任务失败把错误对象当作结果返回（不整体 reject）。该实现已逐字归位到
+ * `src/shared/utils/concurrency.limitConcurrency`，本模块改为直接 import 复用。
  */
-async function limitConcurrency<T>(tasks: (() => Promise<T>)[], concurrency: number): Promise<T[]> {
-    const results: T[] = []
-    const executing: Promise<void>[] = []
-
-    for (let i = 0; i < tasks.length; i++) {
-        const task = tasks[i]
-        const promise = task()
-            .then((result) => {
-                results[i] = result
-                const index = executing.indexOf(promise)
-                if (index > -1) {
-                    executing.splice(index, 1)
-                }
-            })
-            .catch((err) => {
-                results[i] = err as T
-                const index = executing.indexOf(promise)
-                if (index > -1) {
-                    executing.splice(index, 1)
-                }
-            })
-
-        executing.push(promise)
-
-        if (executing.length >= concurrency) {
-            await Promise.race(executing)
-        }
-    }
-
-    await Promise.all(executing)
-    return results
-}
 
 export async function preRenderMermaidProc(text: string): Promise<string> {
     // 正则表达式匹配 mermaid 代码块
@@ -207,8 +182,7 @@ export async function preRenderMermaidProc(text: string): Promise<string> {
 
     // 并发限制的并行渲染（限制并发数为3，避免Mermaid内部全局状态竞争）
     // Mermaid 11.x版本支持一定程度的并行，但需要限制并发数
-    const MERMAID_CONCURRENCY_LIMIT = 3
-
+    // 迁移：并发上限引用 shared/constants/render.MERMAID_CONCURRENCY_LIMIT（3，与原局部常量一致）
     const renderTasks = matches.map((m) => () => mermaidRender(m.code))
     const renderResults = await limitConcurrency(renderTasks, MERMAID_CONCURRENCY_LIMIT)
 
@@ -229,12 +203,15 @@ export async function preRenderMermaidProc(text: string): Promise<string> {
  */
 const PLANTUML_LOCAL_RENDER_CHANNEL = IPC.RENDER.PLANTUML_LOCAL
 
-/** 单图渲染兜底超时（主进程侧 10s 超时，渲染层留 2s 余量） */
-const PLANTUML_INVOKE_TIMEOUT_MS = 12000
-/** 与 mermaid 一致的并发上限（主进程内部串行队列消化，避免一次性塞满 IPC） */
-const PLANTUML_CONCURRENCY_LIMIT = 3
-/** 渲染结果 HTML 缓存上限（LRU，避免同一源码重复跨进程渲染） */
-const PLANTUML_HTML_CACHE_MAX = 50
+/*
+ * 迁移（渲染层公共接口归位）：原本地常量改为引用 `src/shared/constants/render.ts`
+ * （数值逐字一致，禁止在此另行调整）：
+ * - 单图渲染兜底超时 12000ms → RENDERER_PLANTUML_TIMEOUT_MS
+ *   （主进程侧 10s 超时，渲染层留 2s 余量）；
+ * - 并发上限 3 → PLANTUML_CONCURRENCY_LIMIT（与 mermaid 一致，主进程内部串行队列消化，
+ *   避免一次性塞满 IPC）；
+ * - 渲染结果 HTML 缓存上限 50 → RENDERER_PLANTUML_CACHE_MAX。
+ */
 
 /** 本地渲染返回结构（与主进程 PlantumlRenderResponse 保持一致） */
 interface PlantumlRenderResponse {
@@ -263,28 +240,21 @@ interface FencedBlock {
 /** 本地渲染是否已确认不可用（资源缺失/主进程通道未注册）：确认后本会话直接远程/代码块降级 */
 let plantumlLocalUnavailable = false
 
-/** 本地渲染结果 HTML 缓存：源码 hash → 预览 HTML */
-const plantumlHtmlCache = new Map<string, string>()
+/**
+ * 本地渲染结果 HTML 缓存：源码 hash → 预览 HTML。
+ *
+ * 迁移（渲染层公共接口归位）：容器改用 `shared/utils/lru-cache.LRUCache`，
+ * 上限引用 `shared/constants/render.RENDERER_PLANTUML_CACHE_MAX`（50）。
+ */
+const plantumlHtmlCache = new LRUCache<string>(RENDERER_PLANTUML_CACHE_MAX)
 
-/** 按源码 hash 读取缓存并刷新 LRU 顺序 */
+/** 按源码 hash 读取缓存（get 内部已刷新 LRU 顺序；未命中返回 null） */
 function getCachedPlantumlHtml(cacheKey: string): string | null {
-    const cached = plantumlHtmlCache.get(cacheKey)
-    if (!cached) {
-        return null
-    }
-    plantumlHtmlCache.delete(cacheKey)
-    plantumlHtmlCache.set(cacheKey, cached)
-    return cached
+    return plantumlHtmlCache.get(cacheKey) ?? null
 }
 
-/** 写入缓存，超出上限时淘汰最早条目 */
+/** 写入缓存（set 内部在容量已满时淘汰最旧条目，上限来自 shared 常量） */
 function setCachedPlantumlHtml(cacheKey: string, html: string): void {
-    if (plantumlHtmlCache.size >= PLANTUML_HTML_CACHE_MAX) {
-        const oldestKey = plantumlHtmlCache.keys().next().value
-        if (oldestKey !== undefined) {
-            plantumlHtmlCache.delete(oldestKey)
-        }
-    }
     plantumlHtmlCache.set(cacheKey, html)
 }
 
@@ -465,9 +435,9 @@ async function invokePlantumlLocalRender(source: string): Promise<PlantumlRender
         timeoutTimer = setTimeout(() => {
             resolve({
                 status: 'error',
-                message: t('editorUi.render.plantumlTimeout', { ms: PLANTUML_INVOKE_TIMEOUT_MS })
+                message: t('editorUi.render.plantumlTimeout', { ms: RENDERER_PLANTUML_TIMEOUT_MS })
             })
-        }, PLANTUML_INVOKE_TIMEOUT_MS)
+        }, RENDERER_PLANTUML_TIMEOUT_MS)
     })
 
     try {

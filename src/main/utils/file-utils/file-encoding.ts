@@ -15,33 +15,20 @@ import { promises as fs, createReadStream } from 'fs'
 import { StringDecoder } from 'string_decoder'
 import { detect } from 'jschardet'
 import * as iconv from 'iconv-lite'
+// 公共接口归位第 2 批：大文件阈值与编码别名表统一引用 shared 真源
+import { MAX_FILE_ENCODING_SIZE } from '../../../shared/constants/limits'
+import { ENCODING_ALIASES } from '../../../shared/constants/encodings'
 import { logger } from '../logger'
 import { tMain } from '../i18n'
 
-// 大文件阈值 (5MB)——PF-10：超过该阈值的文件打开/重载改为流式分块读取
-export const LARGE_FILE_THRESHOLD = 5 * 1024 * 1024
+/* 大文件阈值 (5MB)——PF-10：超过该阈值的文件打开/重载改为流式分块读取。
+ * 公共接口归位第 2 批：数值真源迁移到 shared/constants/limits.MAX_FILE_ENCODING_SIZE，
+ * 保留既有导出名 LARGE_FILE_THRESHOLD（既有调用方与单测按该名字引用），值引用 shared 常量。 */
+export const LARGE_FILE_THRESHOLD = MAX_FILE_ENCODING_SIZE
 
-/**
- * 编码名归一化表（D-4/FUN-02）
- * 将 jschardet 的返回名（如 GB2312/ASCII）映射为 iconv-lite 可用的编码名
- */
-const ENCODING_ALIASES: Record<string, string> = {
-    'utf-8': 'utf-8',
-    utf8: 'utf-8',
-    ascii: 'utf-8',
-    gb2312: 'gbk',
-    gbk: 'gbk',
-    gb18030: 'gbk',
-    big5: 'big5',
-    'utf-16le': 'utf-16le',
-    'utf-16be': 'utf-16be',
-    shift_jis: 'shift_jis',
-    sjis: 'shift_jis',
-    'euc-jp': 'euc-jp',
-    'euc-kr': 'euc-kr',
-    'windows-1252': 'windows-1252',
-    latin1: 'latin1'
-}
+// 编码名归一化表（D-4/FUN-02）：将 jschardet 的返回名（如 GB2312/ASCII）映射为
+// iconv-lite 可用的编码名。公共接口归位第 2 批：表内容迁至
+// shared/constants/encodings.ENCODING_ALIASES（15 项逐字对齐），本模块直接引用。
 
 /**
  * 归一化编码名；未识别时保守回退 UTF-8（D-4）

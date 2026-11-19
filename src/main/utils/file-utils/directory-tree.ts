@@ -21,6 +21,11 @@ import { promises as fs, watch } from 'fs'
 import type { Dirent, FSWatcher } from 'fs'
 // ARC-13：FileItem 已收敛到 src/shared/types/file.ts（唯一真源）
 import type { FileItem } from '../../../shared/types'
+// 公共接口归位第 2 批：扩展名白名单 / 哈希 / 路径比较 / 并发闸门统一引用 shared 真源
+import { TREE_SUPPORTED_EXTENSIONS } from '../../../shared/constants/file-extensions'
+import { fnv1a32, toRadixString } from '../../../shared/utils/hash'
+import { isPathWithin, normalizePathForCompare } from '../../../shared/utils/path'
+import { createSemaphore } from '../../../shared/utils/concurrency'
 import { logger } from '../logger'
 // PF-4：全量扫描后构建根节点（保持原 BuildFileTree 语义）
 import { BuildFileTree } from './path-utils'
@@ -74,17 +79,8 @@ const INCREMENTAL_MAX_CHANGED_PATHS = 200
 const FS_SCAN_CONCURRENCY = 64
 /** 目录扫描/监听排除的依赖与版本控制目录（不在笔记树中展示，且体量通常极大） */
 const SKIPPED_DIRECTORY_NAMES = new Set(['node_modules', '.git', '.svn', '.hg', '.idea', '.vscode'])
-/** 目录树支持展示的文件扩展名（大小写敏感，保持优化前行为） */
-const SUPPORTED_FILE_EXTENSIONS = new Set([
-    '.md',
-    '.png',
-    '.jpg',
-    '.jpeg',
-    '.svg',
-    '.pdf',
-    '.txt',
-    '.html'
-])
+/** 目录树支持展示的文件扩展名（大小写敏感，保持优化前行为；清单真源在 shared 常量） */
+const SUPPORTED_FILE_EXTENSIONS: ReadonlySet<string> = new Set(TREE_SUPPORTED_EXTENSIONS)
 
 /** 最近一次目录刷新的统计（诊断/量化/单元测试断言用，PF-4） */
 export interface DirectoryReloadStats {
@@ -426,19 +422,17 @@ function ensureDirectoryWatcher(): void {
 
 /* ==================== PF-4：目录增量重扫工具 ==================== */
 
-/** 规范化路径键：绝对路径 + Windows 大小写不敏感（用于树节点定位与变更路径匹配） */
+/** 当前平台路径比较是否大小写不敏感（Windows 盘符/目录名不区分大小写） */
+const WIN32_CASE_INSENSITIVE = process.platform === 'win32'
+
+/** 规范化路径键：绝对路径 + 统一分隔符 + Windows 大小写不敏感（用于树节点定位与变更路径匹配） */
 function normalizePathKey(targetPath: string): string {
-    const resolved = path.resolve(targetPath)
-    return process.platform === 'win32' ? resolved.toLowerCase() : resolved
+    return normalizePathForCompare(path.resolve(targetPath), WIN32_CASE_INSENSITIVE)
 }
 
-/** child 是否等于 parent 或位于 parent 目录之下（入参必须是 normalizePathKey 的结果） */
-function isSameOrInsidePath(childKey: string, parentKey: string): boolean {
-    if (childKey === parentKey) {
-        return true
-    }
-    const parentWithSeparator = parentKey.endsWith(path.sep) ? parentKey : parentKey + path.sep
-    return childKey.startsWith(parentWithSeparator)
+/** child 是否等于 parent 或位于 parent 目录之下（判定实现来自 shared/utils/path） */
+function isSameOrInsidePath(child: string, parent: string): boolean {
+    return isPathWithin(child, parent, { win32CaseInsensitive: WIN32_CASE_INSENSITIVE })
 }
 
 /**
@@ -462,46 +456,22 @@ function shouldSkipDirectoryName(dirName: string): boolean {
  * PF-4：由绝对路径生成稳定的节点 id（FNV-1a 32 位 → base36）。
  * 原实现为每条目随机 id，导致同一目录两次扫描得到的整树 JSON 永远不同：
  * watcher 批次的「JSON 未变化则跳过 IPC」永远失效，渲染层还会因节点对象更换重建 DOM。
+ * 公共接口归位第 2 批：哈希实现改为 shared/utils/hash 的 fnv1a32 + toRadixString。
  */
 function buildStableItemId(targetPath: string): string {
     const key = normalizePathKey(targetPath)
-    let hash = 0x811c9dc5
-    for (let index = 0; index < key.length; index += 1) {
-        hash ^= key.charCodeAt(index)
-        hash = Math.imul(hash, 0x01000193)
-    }
-    return (hash >>> 0).toString(36)
+    return toRadixString(fnv1a32(key), 36)
 }
 
-// 目录扫描并发闸门（PF-4）：只限制 readdir 系统调用并发，递归等待子目录时不占名额，因此不会死锁
-let activeScanSlots = 0
-const scanSlotWaiters: Array<() => void> = []
-
-/** 获取一个目录扫描名额（上限 FS_SCAN_CONCURRENCY） */
-async function acquireScanSlot(): Promise<void> {
-    if (activeScanSlots < FS_SCAN_CONCURRENCY) {
-        activeScanSlots += 1
-        return
-    }
-    await new Promise<void>((resolve) => {
-        scanSlotWaiters.push(resolve)
-    })
-}
-
-/** 释放目录扫描名额：优先把名额直接转交给等待者（不减少活跃数） */
-function releaseScanSlot(): void {
-    const next = scanSlotWaiters.shift()
-    if (next) {
-        next()
-        return
-    }
-    activeScanSlots = Math.max(0, activeScanSlots - 1)
-}
+// 目录扫描并发闸门（PF-4）：只限制 readdir 系统调用并发，递归等待子目录时不占名额，因此不会死锁。
+// 公共接口归位第 2 批：名额闸门实现改为 shared/utils/concurrency 的 createSemaphore
+// （释放时把名额直接转交给等待者，避免「先减后加」窗口导致并发超限）。
+let scanSemaphore = createSemaphore(FS_SCAN_CONCURRENCY)
 
 /** 测试/退出时复位扫描闸门状态（生产代码仅在 CleanupDirectoryWatch 调用） */
 function resetScanSlots(): void {
-    activeScanSlots = 0
-    scanSlotWaiters.length = 0
+    // 与旧实现「清空活跃数 + 等待队列」等价：直接换一个新信号量，旧等待者随旧实例丢弃
+    scanSemaphore = createSemaphore(FS_SCAN_CONCURRENCY)
 }
 
 /**
@@ -509,11 +479,11 @@ function resetScanSlots(): void {
  * 读取失败（权限/目录被删）直接抛出，由上层决定「子树置空」还是「全量回退」。
  */
 async function readDirectoryEntries(dirPath: string): Promise<Dirent[]> {
-    await acquireScanSlot()
+    const release = await scanSemaphore.acquire()
     try {
         return await fs.readdir(dirPath, { withFileTypes: true })
     } finally {
-        releaseScanSlot()
+        release()
     }
 }
 

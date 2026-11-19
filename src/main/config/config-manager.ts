@@ -69,6 +69,8 @@ import type { SystemSetting } from '../../shared/types'
 // 「最近文件列表数量」：存量裁剪（file-state 最近文件）与 recent-folders 写入侧截断
 import { trimRecentFiles } from '../utils/file-state-store'
 import { clampRecentFilesLimit } from '../../shared/constants/recent-files'
+// 公共接口归位第 2 批：纯对象判定统一引用 shared/utils/validate 真源
+import { isPlainObject } from '../../shared/utils/validate'
 
 // MEM-10：本模块所有注册均归属的组件 ID（进程级全局注册）
 const GLOBAL_CONFIG_IPC_COMPONENT_ID = 'global-config-ipc'
@@ -84,9 +86,7 @@ function isValidConfigName(configName: unknown): configName is string {
     return typeof configName === 'string' && VALID_CONFIG_NAME_PATTERN.test(configName)
 }
 
-function isPlainObject(data: unknown): data is Record<string, unknown> {
-    return typeof data === 'object' && data !== null && !Array.isArray(data)
-}
+/* 公共接口归位第 2 批：isPlainObject 本地副本已删除，统一引用 shared/utils/validate */
 
 /**
  * 开机自启动：把 OS 实际状态校正进 system 配置的读取结果。

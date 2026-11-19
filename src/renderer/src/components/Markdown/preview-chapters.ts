@@ -19,6 +19,8 @@
  * 收益：正文编辑（标题结构未变）时不再触发第二次全文解析；标题新增/删除/改名/平移时才解析。
  */
 
+import { FNV_OFFSET_BASIS, fnv1a32Mix } from '../../../../shared/utils/hash'
+
 /**
  * 可出现在标题行前的容器前缀（候选超集）：引用符、列表标记（含嵌套列表）。
  * markdown-it 只会因 ATX 标题规则或 setext 下划线规则产生 heading token，
@@ -32,19 +34,13 @@ const ATX_CANDIDATE_RE = new RegExp(`^${CONTAINER_PREFIX}#{1,6}(?:\\s|$)`)
 /** setext 标题下划线候选行：仅由 `=`/`-` 与空白/引用符组成（超集，含主题分隔线） */
 const SETEXT_CANDIDATE_RE = new RegExp(`^${CONTAINER_PREFIX}[-=]+[\\s>]*$`)
 
-/** FNV-1a 32 位哈希参数（仅作指纹，无需密码学强度） */
-const FNV_OFFSET_BASIS = 0x811c9dc5
-const FNV_PRIME = 0x01000193
-
-/** 将字符串混入 FNV-1a 哈希 */
-function mixString(hash: number, value: string): number {
-    let mixed = hash
-    for (let i = 0; i < value.length; i += 1) {
-        mixed ^= value.charCodeAt(i)
-        mixed = Math.imul(mixed, FNV_PRIME)
-    }
-    return mixed
-}
+/*
+ * 章节指纹的 FNV-1a 32 位哈希（仅作指纹，无需密码学强度）。
+ *
+ * 迁移（渲染层公共接口归位）：原本地常量 `FNV_OFFSET_BASIS`/`FNV_PRIME` 与
+ * `mixString()` 实现已删除，改为复用 `src/shared/utils/hash.ts`（同一偏移基准、
+ * 同一质数、同一逐字符 XOR + Math.imul 顺序，输出逐字一致）。
+ */
 
 /**
  * 计算「标题候选行」指纹。
@@ -70,7 +66,7 @@ export function ComputeChaptersFingerprint(text: string): number {
         const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine
         lineStart = index + 1
         if (ATX_CANDIDATE_RE.test(line) || SETEXT_CANDIDATE_RE.test(line)) {
-            hash = mixString(hash, `${lineNumber}\u0000${line}\u0001`)
+            hash = fnv1a32Mix(hash, `${lineNumber}\u0000${line}\u0001`)
         }
         lineNumber += 1
     }

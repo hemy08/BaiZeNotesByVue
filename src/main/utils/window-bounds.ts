@@ -16,6 +16,12 @@
 
 import type { BrowserWindow } from 'electron'
 import type { WindowBounds } from '../../shared/types'
+// 公共接口归位第 2 批：窗口 bounds 安全范围真源迁移到 shared/constants/window
+import {
+    WINDOW_COORDINATE_LIMIT,
+    WINDOW_MAX_SIZE,
+    WINDOW_MIN_SIZE
+} from '../../shared/constants/window'
 
 /** 历史默认窗口尺寸（rememberWindowSize 未开启时保持既有行为） */
 export const DEFAULT_WINDOW_WIDTH = 900
@@ -27,12 +33,6 @@ export const FALLBACK_WINDOW_HEIGHT = 800
 
 /** resize/move 写回防抖窗口（毫秒） */
 export const WINDOW_BOUNDS_SAVE_DEBOUNCE_MS = 500
-
-// 与 handlers.ts 的 AS-6 校验同范围（handlers 反向依赖 config 不可 import，常量就地复制）
-/** 窗口坐标绝对值上限 */
-const WINDOW_COORDINATE_LIMIT = 100000
-/** 窗口尺寸上限（下限 1：真正的可用尺寸由系统窗口管理器决定） */
-const WINDOW_MAX_SIZE = 32768
 
 /** 显示器工作区（与 electron-screen 的 Display.workArea 形状一致的子集） */
 export interface WorkArea {
@@ -56,9 +56,9 @@ export function isValidWindowBounds(value: unknown): value is WindowBounds {
     return (
         Math.abs(x) <= WINDOW_COORDINATE_LIMIT &&
         Math.abs(y) <= WINDOW_COORDINATE_LIMIT &&
-        width >= 1 &&
+        width >= WINDOW_MIN_SIZE &&
         width <= WINDOW_MAX_SIZE &&
-        height >= 1 &&
+        height >= WINDOW_MIN_SIZE &&
         height <= WINDOW_MAX_SIZE
     )
 }

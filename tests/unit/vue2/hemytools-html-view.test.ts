@@ -298,6 +298,12 @@ describe('withBaseHref（srcdoc 相对链接基准修复）', () => {
         expect(out).toContain('<meta charset="utf-8">')
         // base 必须位于 head 内（紧跟 <head> 之后）
         expect(out.indexOf('<base href=')).toBeLessThan(out.indexOf('</head>'))
+        // 迁移（渲染层公共接口归位）：带属性的 <head> 同样按 shared injectIntoHead 语义注入
+        const withAttr = withBaseHref(
+            '<html><head class="head"><title>x</title></head><body>y</body></html>',
+            '/notes/index.html'
+        )
+        expect(withAttr).toContain('<head class="head">\n    <base href="file:///notes/">')
     })
 
     it('creates a <head> when only <html> exists', () => {

@@ -5,6 +5,11 @@ import type { MarkdownTOC } from '../../../../shared/types'
 import { t } from '../../common/i18n'
 import { getConfigStore } from '../../common/useConfigStore'
 import { logger } from '../../common/logger'
+import { FNV_OFFSET_BASIS, fnv1a32Mix } from '../../../../shared/utils/hash'
+import {
+    MARKDOWN_EXTENSIONS,
+    TREE_IMAGE_EXTENSIONS
+} from '../../../../shared/constants/file-extensions'
 
 export interface FileSysItem {
     id?: string
@@ -20,10 +25,6 @@ export interface FileSysItem {
 
 /* ==================== PF-8：TOC 指纹去重 + 文件树展开态合并 ==================== */
 
-/** FNV-1a 32 位哈希参数（仅作指纹，无需密码学强度） */
-const FNV_OFFSET_BASIS = 0x811c9dc5
-const FNV_PRIME = 0x01000193
-
 /**
  * PF-8：计算目录（TOC）内容指纹。
  *
@@ -32,6 +33,10 @@ const FNV_PRIME = 0x01000193
  * （1708 标题样本每轮全量替换）。这里用「标题数 + 每项 id/level/text」的 FNV 指纹判断内容是否变化，
  * 相同则跳过整表替换；指纹相同的判定只与真正影响渲染的字段有关（lineNumber 参与 id 派生，
  * 标题平移/改名都会改变 id → 指纹变化，不会漏更新）。
+ *
+ * 迁移（渲染层公共接口归位）：FNV-1a 核心改为复用 `src/shared/utils/hash.ts` 的
+ * `FNV_OFFSET_BASIS` / `fnv1a32Mix`（与原本地常量、逐字符 mix 实现逐字一致；
+ * 最终 `>>> 0` 无符号化保持不变）。
  */
 export function ComputeTocSignature(toc: ReadonlyArray<MarkdownTOC> | null | undefined): number {
     if (!Array.isArray(toc)) {
@@ -39,10 +44,7 @@ export function ComputeTocSignature(toc: ReadonlyArray<MarkdownTOC> | null | und
     }
     let hash = FNV_OFFSET_BASIS
     const mixString = (value: string): void => {
-        for (let index = 0; index < value.length; index += 1) {
-            hash ^= value.charCodeAt(index)
-            hash = Math.imul(hash, FNV_PRIME)
-        }
+        hash = fnv1a32Mix(hash, value)
     }
     mixString(String(toc.length))
     for (const item of toc) {
@@ -112,20 +114,31 @@ type MappingTable = {
     } // 键是字符串，值是数字
 }
 
+/**
+ * 文件图标映射使用的扩展名（键名真源：`shared/constants/file-extensions`）。
+ *
+ * 迁移（渲染层公共接口归位）：图标映射结构（className/style/viewBox/path）仍保留在本文件，
+ * 仅扩展名键名改为引用共享清单——`.md` 取 `MARKDOWN_EXTENSIONS` 首项，
+ * `.png` / `.jpg` 取 `TREE_IMAGE_EXTENSIONS` 前两项（与迁移前字面量一致）。
+ */
+const ICON_EXTENSION_MARKDOWN = MARKDOWN_EXTENSIONS[0]
+const ICON_EXTENSION_PNG = TREE_IMAGE_EXTENSIONS[0]
+const ICON_EXTENSION_JPG = TREE_IMAGE_EXTENSIONS[1]
+
 export const FileMgrSvgs: MappingTable = markRaw({
-    '.md': {
+    [ICON_EXTENSION_MARKDOWN]: {
         className: 'file-icon',
         style: 'fill: #ff9100;',
         viewBox: '0 0 16 10',
         path: 'M14.85 3c.63 0 1.15.52 1.14 1.15v7.7c0 .63-.51 1.15-1.15 1.15H1.15C.52 13 0 12.48 0 11.84V4.15C0 3.52.52 3 1.15 3ZM9 11V5H7L5.5 7 4 5H2v6h2V8l1.5 1.92L7 8v3Zm2.99.5L14.5 8H13V5h-2v3H9.5Z'
     },
-    '.png': {
+    [ICON_EXTENSION_PNG]: {
         className: 'file-icon',
         style: 'fill: #ff00ff;',
         viewBox: '0 0 24 24',
         path: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2M9 11.5c0 .8-.7 1.5-1.5 1.5h-1v2H5V9h2.5c.8 0 1.5.7 1.5 1.5v1m5 3.5h-1.5l-1-2.5V15H10V9h1.5l1 2.5V9H14v6m5-4.5h-2.5v3h1V12H19v1.7c0 .7-.5 1.3-1.3 1.3h-1.3c-.8 0-1.3-.7-1.3-1.3v-3.3c-.1-.7.4-1.4 1.2-1.4h1.3c.8 0 1.3.7 1.3 1.3v.2h.1m-12.5 0h1v1h-1v-1Z'
     },
-    '.jpg': {
+    [ICON_EXTENSION_JPG]: {
         className: 'file-icon',
         style: 'fill: #a846b9;',
         viewBox: '0 0 24 24',

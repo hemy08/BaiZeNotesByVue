@@ -9,7 +9,15 @@
  *
  * 安全说明：注入 base 只改变相对 URL 解析基准，不执行脚本（sandbox 仍为
  * `allow-same-origin` 且无 `allow-scripts`），不提升跨域权限；打开本地 HTML 是用户主动行为。
+ *
+ * 迁移（渲染层公共接口归位）：base href 计算与 `<head>` 注入改为复用
+ * `src/shared/utils/path.ts` 的 `dirToBaseHref` 与 `src/shared/utils/html.ts` 的
+ * `injectIntoHead`（原实现已逐字抽取到 shared 并带等价性单测）；
+ * 本函数保留原导出名/签名与输出格式，仅替换实现来源。
  */
+
+import { dirToBaseHref } from '../../../../shared/utils/path'
+import { injectIntoHead } from '../../../../shared/utils/html'
 
 /**
  * 为 HTML 字符串注入 `<base href>`（基准指向 filePath 所在目录）。
@@ -18,20 +26,9 @@
  * @returns 注入 base 后的 HTML（保持原有 <head> 优先）
  */
 export function withBaseHref(html: string, filePath: string): string {
-    const normalized = String(filePath || '').replace(/\\/g, '/')
-    const slash = normalized.lastIndexOf('/')
-    const dir = slash >= 0 ? normalized.slice(0, slash + 1) : normalized
-    // encodeURI 保留 "/" 与 ":"，编码中文/空格等；但 `#` 与 `?` 在 file:// URL 中会分别被
-    // 解析为 fragment/query，必须先转义（与 preview-local-render.toFileUrl 口径一致）。
-    // POSIX 绝对路径（/notes/）用 file:// + 路径（file:///notes/）；Windows（E:/...）需 file:/// 前缀。
-    const encodedDir = encodeURI(dir).replace(/#/g, '%23').replace(/\?/g, '%3F')
-    const base = dir.startsWith('/') ? `file://${encodedDir}` : `file:///${encodedDir}`
-    const tag = `<base href="${base}">`
-    if (/<head(\s[^>]*)?>/i.test(html)) {
-        return html.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n    ${tag}`)
-    }
-    if (/<html(\s[^>]*)?>/i.test(html)) {
-        return html.replace(/<html(\s[^>]*)?>/i, (m) => `${m}\n<head>${tag}</head>`)
-    }
-    return `${tag}\n${html}`
+    // dirToBaseHref 内部：反斜杠归一化 → 取目录（含尾部 /）→ encodeURI → 转义 #/?，
+    // 与迁移前本地实现逐字等价（含 Windows 盘符 file:/// 前缀与 POSIX file:// 前缀）。
+    const tag = `<base href="${dirToBaseHref(filePath)}">`
+    // injectIntoHead 的三分支（已有 head / 仅 html / 裸露片段）与原实现逐字一致。
+    return injectIntoHead(html, tag)
 }

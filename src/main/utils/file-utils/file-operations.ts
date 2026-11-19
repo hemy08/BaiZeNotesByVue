@@ -19,6 +19,10 @@ import { promises as fs } from 'fs'
 import { BrowserWindow, dialog, shell } from 'electron'
 // ARC-13：FileItem / FileProperties 已收敛到 src/shared/types/file.ts（唯一真源）
 import type { FileProperties } from '../../../shared/types'
+// 公共接口归位第 2 批：随机串 / 文件大小格式化 / 扩展名清单统一引用 shared 真源
+import { randomAlnum } from '../../../shared/utils/random'
+import { formatFileSize } from '../../../shared/utils/format'
+import { MARKDOWN_EXTENSIONS } from '../../../shared/constants/file-extensions'
 // ARC-11：直接依赖无反向边的 file-state-store（避免 file-state → file-utils 循环依赖）
 import { saveLastOpenedDirectory, saveLastOpenedFile } from '../file-state-store'
 import { logger } from '../logger'
@@ -64,16 +68,13 @@ export type { FileProperties } from '../../../shared/types'
 
 /**
  * 生成随机ID
+ * 公共接口归位第 2 批：实现改为 shared/utils/random.randomAlnum（字符集
+ * `A-Z a-z 0-9` 与循环语义逐字一致）；保留本导出名以兼容既有调用/测试。
  * @param maxLength 最大长度
  * @returns 随机ID字符串
  */
 export function getMathRandom(maxLength: number): string {
-    let text = ''
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    for (let i = 0; i < maxLength; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length))
-    }
-    return text
+    return randomAlnum(maxLength)
 }
 
 /**
@@ -376,7 +377,11 @@ export async function OpenSelectFile(fileProperties: FileProperties): Promise<vo
 
     // 在打开新文件前,保存当前文件
     const currentFile = appState.currentActiveFile
-    if (currentFile && currentFile.path && currentFile.path.endsWith('.md')) {
+    if (
+        currentFile &&
+        currentFile.path &&
+        MARKDOWN_EXTENSIONS.some((extension) => currentFile.path.endsWith(extension))
+    ) {
         // P1-AS-1：切换文件前的自动保存同样受路径约束（活动文件路径失效时跳过而非越权写盘）
         if (!isPathAllowed(currentFile.path)) {
             logger.warn('[Security] 已跳过越界活动文件的自动保存（P1-AS-1）：', currentFile.path)
@@ -416,13 +421,12 @@ export async function OpenSelectFile(fileProperties: FileProperties): Promise<vo
         knownFileMtimeMs = stats.mtimeMs
 
         if (fileSize > LARGE_FILE_THRESHOLD) {
-            logger.warn(
-                'Open Large File ',
-                `${(fileSize / 1024 / 1024).toFixed(2)}MB`,
-                fileProperties.path
-            )
+            // 公共接口归位第 2 批：日志内联大小格式化改为 shared 的 formatFileSize
+            logger.warn('Open Large File ', formatFileSize(fileSize), fileProperties.path)
             // FUN-30：大文件确认改为异步对话框，不再用 showMessageBoxSync 阻塞主进程；
-            // 文案统一中文
+            // 文案统一中文。注意：对话框文案模板 `largeFileMessage` 自带固定的 `MB`
+            // 单位占位（`文件大小为 {size} MB`），因此这里仍传「MB 数值」，不能直接
+            // 换成带单位的 formatFileSize（否则会输出「5.00 MB MB」）。
             const messageBoxOptions = {
                 type: 'warning' as const,
                 title: tMain('mainMsg.dialog.largeFileTitle'),

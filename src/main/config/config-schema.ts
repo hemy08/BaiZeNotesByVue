@@ -18,6 +18,13 @@
  * system-setting（buildFontCss 渲染兜底）复用。
  */
 import { isKnownThemeType } from './theme-config'
+// 公共接口归位第 2 批：纯校验函数统一引用 shared/utils/validate 真源
+import {
+    clampNumber as clampNumberBase,
+    hasControlChars,
+    isFiniteNumber,
+    isPlainObject
+} from '../../shared/utils/validate'
 
 /**
  * AS-4：允许经 config:write / config:read 访问的配置名白名单。
@@ -66,17 +73,17 @@ export const FONT_SIZE_MAX = 72
  */
 const FONT_FAMILY_SAFE_PATTERN = /^[A-Za-z0-9\u4e00-\u9fa5\s,"'_.-]+$/
 
-/** 是否为纯对象（排除数组/null/函数等） */
-function isPlainObject(data: unknown): data is Record<string, unknown> {
-    return typeof data === 'object' && data !== null && !Array.isArray(data)
-}
+/* 公共接口归位第 2 批：isPlainObject / isFiniteNumber / hasControlChars 的本地副本已删除，
+ * 统一引用 shared/utils/validate；仅保留下方 clampNumber 的「{value, clamped} | null」适配包装。 */
 
-/** 是否为有限数字（拒绝 NaN/Infinity/字符串数字） */
-function isFiniteNumber(value: unknown): value is number {
-    return typeof value === 'number' && Number.isFinite(value)
-}
-
-/** 数值钳制：非法值返回 null；超范围返回边界值并标记 clamped */
+/**
+ * 数值钳制：非法值返回 null；超范围返回边界值并标记 clamped。
+ *
+ * 公共接口归位第 2 批：保留本地适配包装——shared 的 clampNumber 是「数字进、数字出」，
+ * 而本模块的调用方需要区分「非法（null）」与「被钳制（clamped=true）」；因此先用
+ * shared.isFiniteNumber 判非法，再调用 shared.clampNumber 做区间钳制，最后比较入参
+ * 是否被改动得到 clamped 标志，行为与原实现逐字一致。
+ */
 function clampNumber(
     value: unknown,
     min: number,
@@ -85,24 +92,8 @@ function clampNumber(
     if (!isFiniteNumber(value)) {
         return null
     }
-    if (value < min) {
-        return { value: min, clamped: true }
-    }
-    if (value > max) {
-        return { value: max, clamped: true }
-    }
-    return { value, clamped: false }
-}
-
-/** 是否含控制字符（NUL / 换行 / 制表等，用于路径/单行文本字段） */
-function hasControlChars(value: string): boolean {
-    for (let index = 0; index < value.length; index += 1) {
-        const code = value.charCodeAt(index)
-        if (code <= 0x1f || code === 0x7f) {
-            return true
-        }
-    }
-    return false
+    const clampedValue = clampNumberBase(value, min, max)
+    return { value: clampedValue, clamped: clampedValue !== value }
 }
 
 /**

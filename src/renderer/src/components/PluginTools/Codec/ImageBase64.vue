@@ -55,6 +55,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { t } from '../../../common/i18n'
 import { copyTextToClipboard } from '../../../common/clipboard'
+import { MAX_IMAGE_BASE64_SIZE } from '../../../../../shared/constants/limits'
 import { base64ToBytes, bytesToBase64 } from './image-base64-lib'
 
 const props = defineProps({
@@ -65,8 +66,13 @@ const props = defineProps({
     }
 })
 
-/** 图片大小上限：20MB（与 jyshare 原版一致） */
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024
+/**
+ * 图片大小上限：20MB（与 jyshare 原版一致）。
+ *
+ * 迁移（渲染层公共接口归位）：数值真源改为
+ * `shared/constants/limits.MAX_IMAGE_BASE64_SIZE`（逐字一致），本文件不再硬编码。
+ */
+const MAX_IMAGE_BYTES = MAX_IMAGE_BASE64_SIZE
 /**
  * P3 修复：粘贴 Base64 的输入长度预检上限（≈20MB×4/3，另加少量余量容纳
  * DataURL 前缀/空白字符）。先按长度拦截再 atob 解码，避免 20MB+ 数据先解码

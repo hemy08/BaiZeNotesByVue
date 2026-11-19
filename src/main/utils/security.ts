@@ -24,6 +24,9 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
 import { appState } from './app-state'
+// 公共接口归位第 2 批：控制字符校验与路径比较纯函数统一引用 shared 真源
+import { hasControlChars } from '../../shared/utils/validate'
+import { isPathWithin, normalizePathForCompare } from '../../shared/utils/path'
 // CQ-10：本模块保留 2 处被测试断言参数的 console.warn（openExternalSafely 拒绝/失败），
 // 其余告警统一走 logger（写文件 + 控制台镜像 + WARN 状态栏镜像）。
 import { logger } from './logger'
@@ -181,16 +184,8 @@ export async function openExternalSafely(url: string): Promise<boolean> {
  * 大小写不敏感；本模块不依赖 electron app 模块，便于单测直接加载。
  * ========================================================================== */
 
-/** 文件名中禁止出现的控制字符（逐字符判断，避免 no-control-regex 规则告警） */
-function hasControlChars(value: string): boolean {
-    for (let index = 0; index < value.length; index += 1) {
-        const code = value.charCodeAt(index)
-        if (code <= 0x1f || code === 0x7f) {
-            return true
-        }
-    }
-    return false
-}
+// 文件名中禁止出现的控制字符（逐字符判断，避免 no-control-regex 规则告警）——
+// 公共接口归位第 2 批：hasControlChars 已迁至 shared/utils/validate（逐字符语义逐字对齐）
 
 /** Windows 文件名非法字符（含路径分隔符与 ADS 冒号） */
 const WINDOWS_ILLEGAL_FILENAME_PATTERN = /[<>:"/\\|?*]/
@@ -220,16 +215,16 @@ function isWindowsPlatform(): boolean {
 }
 
 /**
- * 归一化用于比较的路径：path.normalize + 去掉尾部分隔符 + Windows 下转小写。
+ * 归一化用于比较的路径：统一分隔符（`/`）+ 词法折叠 `.`/`..` + 去掉尾部分隔符 +
+ * Windows 下转小写。
  * 仅用于白名单比较，不用于真实 FS 访问。
+ *
+ * 公共接口归位第 2 批：实现迁移至 `shared/utils/path.normalizePathForCompare`
+ * （大小写不敏感由显式平台参数传入，不再读 process.platform；折叠点段语义与旧
+ * `path.normalize` 等价），本函数只保留「平台判断」这层薄包装。
  */
 function normalizeForCompare(value: string): string {
-    const normalized = path.normalize(value)
-    const trimmed =
-        normalized.length > 1 && normalized.endsWith(path.sep)
-            ? normalized.slice(0, -1)
-            : normalized
-    return isWindowsPlatform() ? trimmed.toLowerCase() : trimmed
+    return normalizePathForCompare(value, isWindowsPlatform())
 }
 
 /**
@@ -322,17 +317,13 @@ export function normalizeTrustedRootPath(input: unknown): string | null {
 /**
  * 判断 candidate 是否等于 root 或位于 root 子树（词法比较，不解析符号链接）。
  * 调用方需保证两者均已规范化。
+ *
+ * 公共接口归位第 2 批：核心判定改为调用 `shared/utils/path.isPathWithin`
+ * （分隔符统一为 `/`、自包含词法折叠、Windows 大小写不敏感由平台参数显式传入）；
+ * 保留本函数名作为既有测试/内部调用入口。
  */
-function isSameOrWithin(candidate: string, root: string): boolean {
-    const normalizedCandidate = normalizeForCompare(candidate)
-    const normalizedRoot = normalizeForCompare(root)
-    if (normalizedCandidate === normalizedRoot) {
-        return true
-    }
-    const rootWithSeparator = normalizedRoot.endsWith(path.sep)
-        ? normalizedRoot
-        : normalizedRoot + path.sep
-    return normalizedCandidate.startsWith(rootWithSeparator)
+export function isSameOrWithin(candidate: string, root: string): boolean {
+    return isPathWithin(candidate, root, { win32CaseInsensitive: isWindowsPlatform() })
 }
 
 /**

@@ -7,6 +7,8 @@ import { dialog } from 'electron'
 // ARC-13：FileItem 已收敛到 src/shared/types/file.ts（唯一真源）
 import type { FileItem } from '../../../shared/types'
 import { appState } from '../app-state'
+// 公共接口归位第 2 批：文件名/目录路径解析统一引用 shared/utils/path 真源
+import { getBaseName, parseDirectoryPath } from '../../../shared/utils/path'
 // P1-FE-06：目录选择对话框以系统设置的默认文件路径为起始位置
 import { getSystemSetting } from '../../config/system-setting'
 
@@ -61,30 +63,24 @@ export async function SelectDirectory(mainWindow: Electron.BrowserWindow): Promi
 
 /**
  * 解析文件名（从完整路径中提取文件名）
+ * 公共接口归位第 2 批：实现改为 shared/utils/path.getBaseName（同时识别 `/` 与 `\`，
+ * 无分隔符时返回原字符串，与旧实现逐字等价）。
  * @param filePath 完整的文件路径
  * @returns 文件名
  */
 export function ParserFileName(filePath: string): string {
-    const lastIndex = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))
-    if (lastIndex === -1) {
-        return filePath
-    }
-    return filePath.slice(lastIndex + 1)
+    return getBaseName(filePath)
 }
 
 /**
  * 解析目录路径（从完整路径中提取目录部分）
+ * 公共接口归位第 2 批：实现改为 shared/utils/path.parseDirectoryPath，并**保留**
+ * 「整个路径无点号时原样返回」的历史特殊语义（shared 按原实现逐字对齐，不得顺手修正）。
  * @param fullName 完整的文件或目录路径
  * @returns 目录路径
  */
 export function ParseDirectoryPath(fullName: string): string {
-    if (fullName.lastIndexOf('.') === -1) {
-        return fullName
-    }
-    const lastIndex1 = fullName.lastIndexOf('\\')
-    const lastIndex2 = fullName.lastIndexOf('/')
-    const lastIndex = Math.max(lastIndex1, lastIndex2)
-    return fullName.substring(0, lastIndex)
+    return parseDirectoryPath(fullName)
 }
 
 /**
@@ -94,8 +90,8 @@ export function ParseDirectoryPath(fullName: string): string {
  * @returns 文件树结构
  */
 export function BuildFileTree(rootPath: string, mdFiles: FileItem[]): FileItem[] {
-    const lastIndex = Math.max(rootPath.lastIndexOf('\\'), rootPath.lastIndexOf('/'))
-    const directoryName = rootPath.substring(lastIndex + 1)
+    // 公共接口归位第 2 批：目录名提取（取最后一段）改用 shared 的 getBaseName
+    const directoryName = getBaseName(rootPath)
 
     const directory: FileItem = {
         name: directoryName,

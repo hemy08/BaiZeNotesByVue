@@ -39,6 +39,7 @@ import { IPC } from '../../../../shared/ipc-channels'
 import { t } from '../../common/i18n'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { logger } from '../../common/logger'
+import { toFileUrl } from '../../../../shared/utils/path'
 
 // 定义 emit 函数
 const emit = defineEmits(['update:code'])
@@ -120,13 +121,37 @@ watch(
     }
 )
 
+/**
+ * 本地文件路径 → Monaco model URI 字符串（统一 file:// 编码口径 + Uri.parse 兼容处理）。
+ *
+ * 迁移（渲染层公共接口归位）：原先三处直接 `` `file://${path}` `` 拼接（不归一化反斜杠、
+ * 不编码中文/空格/#/?，与预览管线 toFileUrl 已分叉），现统一改用
+ * `shared/utils/path.toFileUrl`。
+ *
+ * 回归发现（monaco-editor 0.57 `Uri.parse`）：shared 对 UNC 路径输出
+ * `file:////server/share/...`（4 个斜杠，见 shared/utils/path.toFileUrl 注释）；
+ * Monaco 要求「不含 authority 的 URI 的 path 不能以 // 开头」，会抛
+ * `UriError: If a URI does not contain an authority component, ...`。
+ * 原实现 `` `file://${'\\\\server\\share\\a.md'}` `` 恰好可被解析（整段落入 authority），
+ * 因此统一后必须修掉该形态，否则网络共享路径切换文件会抛错。这里把 UNC 的 4 斜杠
+ * 补成标准 `file://server/share/...`（仅作为 Monaco model 身份键，不参与文件系统访问；
+ * 同一路径映射结果稳定，getModel/createModel 复用语义不变）。
+ */
+function toMonacoModelUrl(filePath: string): string {
+    const fileUrl = toFileUrl(filePath)
+    return fileUrl.startsWith('file:////') ? `file://${fileUrl.slice('file:////'.length)}` : fileUrl
+}
+
 // 监听文件路径变化,清理旧Model
+// 迁移（渲染层公共接口归位）：model URI 统一改用 `shared/utils/path.toFileUrl`
+// （经 toMonacoModelUrl 兼容处理），仍作为 model 的身份键使用，
+// watch 的「旧路径销毁 / 新路径复用」语义不变。
 watch(
     () => props.filePath,
     (newPath, oldPath) => {
         if (oldPath && editorInstance) {
             // 清理旧文件的 model
-            const oldUri = monaco.Uri.parse(`file://${oldPath}`)
+            const oldUri = monaco.Uri.parse(toMonacoModelUrl(oldPath))
             const oldModel = monaco.editor.getModel(oldUri)
             if (oldModel) {
                 oldModel.dispose()
@@ -135,7 +160,7 @@ watch(
 
         if (newPath && editorInstance) {
             // 创建或获取新文件的 model
-            const newUri = monaco.Uri.parse(`file://${newPath}`)
+            const newUri = monaco.Uri.parse(toMonacoModelUrl(newPath))
             let newModel = monaco.editor.getModel(newUri)
 
             if (!newModel) {
@@ -561,7 +586,7 @@ onMounted(async () => {
         /*model = monaco.editor.createModel(
             props.code,
             'markdown',
-            monaco.Uri.parse(`file://${props.filePath || 'untitled.md'}`)
+            monaco.Uri.parse(toMonacoModelUrl(props.filePath || 'untitled.md'))
         )*/
 
         editorInstance = monaco.editor.create(

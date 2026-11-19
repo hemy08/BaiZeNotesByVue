@@ -33,6 +33,7 @@ import { createTabDeepLinkEnv, getTabTargetByHash } from './preview-mkdocs-mater
 import { ComputeChaptersFingerprint } from './preview-chapters'
 import { getLocale, t } from '../../common/i18n'
 import { logger } from '../../common/logger'
+import { getBaseName } from '../../../../shared/utils/path'
 // AS-9：系统设置契约（远程图片隐私开关 allowRemoteImages 的真源类型）
 import type { SystemSetting } from '../../../../shared/types'
 // 全局类型 FileProperties 由 src/main/global-types.d.ts 的 declare global 提供（tsconfig.web 已 include）
@@ -325,12 +326,19 @@ const handleActiveFileChange = (_event: unknown, filePath: string) => {
     setPreviewActiveFilePath(typeof filePath === 'string' && filePath.length > 0 ? filePath : null)
 }
 
+/**
+ * 取链接路径中的文件名（预览内点击 `.md` 链接时构造 FileProperties.name）。
+ *
+ * 迁移（渲染层公共接口归位）：改为复用 `shared/utils/path.getBaseName`
+ * （同时识别 `/` 与 `\`，取最后一段）。
+ *
+ * 顺带修复原实现的 `||` 缺陷变体：原写法
+ * `filePath.lastIndexOf('/') || filePath.lastIndexOf('\\')` 在 `/` 恰好位于下标 0 时
+ * （根目录文件如 `/README.md`）短路取到 -1，导致返回整条路径；shared 实现按最大值判定，
+ * 正确返回 `README.md`。
+ */
 function parserFileName(filePath: string): string {
-    const lastIndex = filePath.lastIndexOf('/') || filePath.lastIndexOf('\\')
-    if (lastIndex === -1) {
-        return filePath
-    }
-    return filePath.slice(lastIndex + 1)
+    return getBaseName(filePath)
 }
 
 function handlePreviewClick(event: MouseEvent) {

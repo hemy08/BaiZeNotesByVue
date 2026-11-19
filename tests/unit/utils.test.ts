@@ -554,6 +554,11 @@ describe('MainWindowListenUtilsEvent', () => {
             try {
                 const handler = ipcMocks.handle.get('baize:file:read-binary')!
                 await expect(handler(trustedEvent(), bigPdfFile)).rejects.toThrow(/文件过大/)
+                // 公共接口归位第 2 批：超限文案中的大小统一由 shared formatFileSize 生成
+                // （「128.00 MB」，数值口径与旧 `128MB` 一致，仅格式统一）
+                await expect(handler(trustedEvent(), bigPdfFile)).rejects.toThrow(
+                    /超过 128\.00 MB 上限/
+                )
                 expect(consoleWarn).toHaveBeenCalled()
             } finally {
                 statSpy.mockRestore()

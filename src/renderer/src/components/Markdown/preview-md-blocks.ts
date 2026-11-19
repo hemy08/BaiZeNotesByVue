@@ -74,6 +74,18 @@ import {
     MKDOCS_TABS_OPEN
 } from './preview-mkdocs-material'
 import type { TabDeepLinkTarget } from './preview-mkdocs-material'
+import {
+    getExtension,
+    isPathWithin,
+    normalizePathForCompare as normalizePathForCompareShared,
+    normalizeSlashes
+} from '../../../../shared/utils/path'
+import { SNIPPET_SUPPORTED_EXTENSIONS } from '../../../../shared/constants/file-extensions'
+import {
+    PREVIEW_BLOCK_MAX_DEPTH,
+    PREVIEW_BLOCK_MAX_SIZE,
+    PREVIEW_BLOCK_TOTAL_MAX_SIZE
+} from '../../../../shared/constants/limits'
 
 /** markdown-it 实例类型（`MarkdownIt` 默认导出是构造器值，实例类型需用 InstanceType 表达） */
 type MarkdownItInstance = InstanceType<typeof MarkdownIt>
@@ -513,59 +525,36 @@ function pymdownxBlockRule(
 /** snippets 指令标记 */
 export const SNIPPET_INCLUDE_MARKER = '--8<--'
 
-/** 默认递归展开深度上限（防循环） */
-export const SNIPPET_DEFAULT_MAX_DEPTH = 5
-/** 默认单文件大小上限（1 MiB） */
-export const SNIPPET_DEFAULT_MAX_FILE_BYTES = 1024 * 1024
-/** 默认展开总大小上限（4 MiB；防止一次预览读入过多内容） */
-export const SNIPPET_DEFAULT_MAX_TOTAL_BYTES = 4 * 1024 * 1024
+/**
+ * 默认递归展开深度上限（防循环）。
+ *
+ * 迁移（渲染层公共接口归位）：数值真源改为 `src/shared/constants/limits.ts` 的
+ * `PREVIEW_BLOCK_MAX_DEPTH`；本常量保留原导出名，既有 import（单测/调用方）零改动。
+ */
+export const SNIPPET_DEFAULT_MAX_DEPTH = PREVIEW_BLOCK_MAX_DEPTH
+/**
+ * 默认单文件大小上限（1 MiB）。
+ *
+ * 迁移（渲染层公共接口归位）：数值真源改为 `shared/constants/limits.PREVIEW_BLOCK_MAX_SIZE`
+ * （shared 常量名按「预览块」语义命名，与原 SNIPPET_DEFAULT_MAX_FILE_BYTES 数值逐字一致）。
+ */
+export const SNIPPET_DEFAULT_MAX_FILE_BYTES = PREVIEW_BLOCK_MAX_SIZE
+/**
+ * 默认展开总大小上限（4 MiB；防止一次预览读入过多内容）。
+ *
+ * 迁移（渲染层公共接口归位）：数值真源改为
+ * `shared/constants/limits.PREVIEW_BLOCK_TOTAL_MAX_SIZE`。
+ */
+export const SNIPPET_DEFAULT_MAX_TOTAL_BYTES = PREVIEW_BLOCK_TOTAL_MAX_SIZE
 
-/** 允许作为片段包含的文本扩展名白名单（小写，含点） */
-export const SNIPPET_ALLOWED_EXTENSIONS: readonly string[] = [
-    '.md',
-    '.markdown',
-    '.txt',
-    '.text',
-    '.py',
-    '.js',
-    '.mjs',
-    '.cjs',
-    '.jsx',
-    '.ts',
-    '.tsx',
-    '.json',
-    '.yaml',
-    '.yml',
-    '.toml',
-    '.ini',
-    '.cfg',
-    '.sh',
-    '.bash',
-    '.zsh',
-    '.ps1',
-    '.bat',
-    '.cmd',
-    '.c',
-    '.h',
-    '.cpp',
-    '.hpp',
-    '.cs',
-    '.java',
-    '.go',
-    '.rs',
-    '.rb',
-    '.php',
-    '.sql',
-    '.css',
-    '.html',
-    '.htm',
-    '.xml',
-    '.vue',
-    '.log',
-    '.csv',
-    '.diff',
-    '.patch'
-]
+/**
+ * 允许作为片段包含的文本扩展名白名单（小写，含点）。
+ *
+ * 迁移（渲染层公共接口归位）：清单真源改为
+ * `shared/constants/file-extensions.SNIPPET_SUPPORTED_EXTENSIONS`（43 项，逐项对齐）；
+ * 本常量保留原导出名，既有 import 零改动。
+ */
+export const SNIPPET_ALLOWED_EXTENSIONS: readonly string[] = SNIPPET_SUPPORTED_EXTENSIONS
 
 /**
  * 单行 snippets 指令：
@@ -658,10 +647,25 @@ export function isSnippetDirectiveLine(line: string): boolean {
 
 /* ============================== 八、snippets 路径与文本工具 ============================== */
 
-/** 统一分隔符为 `/`（Windows 反斜杠在渲染层没有 node:path 可用，统一按字符串处理） */
-function normalizeSlashes(value: string): string {
-    return value.replace(/\\/g, '/')
-}
+/*
+ * snippets 路径工具（迁移说明）。
+ *
+ * 原实现：
+ * - `normalizeSlashes`（反斜杠 → `/`）；
+ * - `normalizePathForCompare`（去尾部 `/`，盘符/UNC 路径自动小写后比较）；
+ * - `isWithinDirectory`（candidate 等于 root 或位于 root 子树）；
+ * - `getLowerExtension`（取最后一段文件名的小写扩展名，含点）。
+ *
+ * 迁移（渲染层公共接口归位）：以上四个函数改为复用 `src/shared/utils/path.ts` 的
+ * `normalizeSlashes` / `normalizePathForCompare` / `isPathWithin` / `getExtension`。
+ * 为保持行为零变化，本地薄壳保留原语义细节：
+ * - Windows 大小写不敏感由「路径本身是否为盘符/UNC 形态」判定（与原实现一致；
+ *   shared 版本要求显式传 `win32CaseInsensitive`，不读平台）；
+ * - shared 额外做 `.`/`..` 词法折叠（安全增强；snippets 的 resolved 路径在
+ *   `resolveSnippetPath` 中已折叠，实际输入无点段，比较结果不变）；
+ * - shared `getExtension` 返回不含点的扩展名，本地 `getLowerExtension` 补回点以
+ *   对齐白名单清单（43 项均带点）。
+ */
 
 /** 是否为绝对路径（盘符 / UNC / POSIX 根） */
 function isAbsoluteSnippetPath(value: string): boolean {
@@ -731,33 +735,40 @@ function resolveSnippetPath(
     return rootPrefix.length > 0 ? `${rootPrefix}/${joined}` : `/${joined}`
 }
 
-/** 路径比较归一化：Windows 盘符/UNC 路径大小写不敏感 */
+/** 判断路径是否为 Windows 盘符 / UNC 形态（原实现按此形态自动启用大小写不敏感比较） */
+function isWindowsStylePath(normalizedPath: string): boolean {
+    return /^[A-Za-z]:/.test(normalizedPath) || normalizedPath.startsWith('//')
+}
+
+/**
+ * 路径比较归一化（原语义：统一分隔符 + 去尾部 `/` + Windows 盘符/UNC 自动小写）。
+ *
+ * 迁移：底层复用 shared `normalizePathForCompare`（额外做 `.`/`..` 词法折叠），
+ * 大小写不敏感标志由原实现自身的形态判定传入，保证同一输入得到相同比较键。
+ */
 function normalizePathForCompare(value: string): string {
     const normalized = normalizeSlashes(value).replace(/\/+$/, '')
-    if (/^[A-Za-z]:/.test(normalized) || normalized.startsWith('//')) {
-        return normalized.toLowerCase()
-    }
-    return normalized
+    return normalizePathForCompareShared(normalized, isWindowsStylePath(normalized))
 }
 
 /** candidate 是否等于 rootDirectory 或位于其子树（词法比较） */
 function isWithinDirectory(candidate: string, rootDirectory: string): boolean {
-    const normalizedCandidate = normalizePathForCompare(candidate)
     const normalizedRoot = normalizePathForCompare(rootDirectory)
+    // 保留原实现的空 root 分支（空 root 时以「candidate 是否绝对路径」判定；
+    // shared isPathWithin 对空 root 只有空 child 返回 true，语义不同，故本地先行处理）
     if (normalizedRoot.length === 0) {
-        return normalizedCandidate.startsWith('/')
+        return normalizePathForCompare(candidate).startsWith('/')
     }
-    return (
-        normalizedCandidate === normalizedRoot ||
-        normalizedCandidate.startsWith(`${normalizedRoot}/`)
-    )
+    const rawRoot = normalizeSlashes(rootDirectory).replace(/\/+$/, '')
+    return isPathWithin(candidate, rootDirectory, {
+        win32CaseInsensitive: isWindowsStylePath(rawRoot)
+    })
 }
 
-/** 取小写扩展名（含点）；无扩展名返回空串 */
+/** 取小写扩展名（含点，对齐白名单清单格式）；无扩展名返回空串 */
 function getLowerExtension(filePath: string): string {
-    const fileName = filePath.slice(filePath.lastIndexOf('/') + 1)
-    const dot = fileName.lastIndexOf('.')
-    return dot <= 0 ? '' : fileName.slice(dot).toLowerCase()
+    const extension = getExtension(filePath)
+    return extension.length > 0 ? `.${extension}` : ''
 }
 
 /** 统计 UTF-8 字节数（大小上限判定；TextEncoder 在浏览器与 Node 22 均可用） */

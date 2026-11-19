@@ -7,6 +7,8 @@ import { onMounted, onBeforeUnmount, watch } from 'vue'
 import mermaid from 'mermaid'
 import { t } from '../../common/i18n'
 import { MERMAID_INIT_CONFIG } from './hemy-editor-render'
+import { escapeHtml } from '../../../../shared/utils/html'
+import { randomAlnum } from '../../../../shared/utils/random'
 
 // P2 死通道清理：原 mermaidContainer 模板 ref 仅服务已删除的 OVERLAY.MERMAID_GRAPH_DEF
 // 监听（把主进程推送的图定义直接写入容器）；渲染结果现统一经 emit 交给父组件预览链路。
@@ -21,9 +23,12 @@ const props = defineProps({
 const emit = defineEmits(['mermaid-render-result'])
 
 // FUN-21：mermaid.render 要求传入 id 全局唯一，固定 id 第二次渲染会报错。
-// 每次渲染生成唯一 id，渲染结束后清理 mermaid 遗留的临时节点
+// 每次渲染生成唯一 id，渲染结束后清理 mermaid 遗留的临时节点。
+// 迁移（渲染层公共接口归位）：随机尾串改用 `shared/utils/random.randomAlnum`（6 位字母数字），
+// 与原 `Math.random().toString(36).substring(2, 8)` 语义等价（仅用作非安全场景的 DOM id 随机段，
+// 且不引入 `:` 等需要转义的字符，避免 id 选择器失效）。
 function generateUniqueMermaidId(): string {
-    return 'mermaidContainer-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)
+    return 'mermaidContainer-' + Date.now() + '-' + randomAlnum(6)
 }
 
 function removeMermaidTempDiv(mermaidId: string): void {
@@ -34,14 +39,8 @@ function removeMermaidTempDiv(mermaidId: string): void {
 }
 
 // HTML 转义（FUN-21：错误回显中的图表源码/错误信息避免注入）
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-}
+// 迁移（渲染层公共接口归位）：原本地实现已删除，统一复用 `shared/utils/html.escapeHtml`
+// （5 字符转义、`&` 最先替换，与原实现逐字等价；与 hemy-editor-render 的错误回显同源）。
 
 // FUN-21：渲染失败降级为"源码回显 + 错误提示"，不再静默空白
 function buildErrorHtml(graphCode: string, error: unknown): string {

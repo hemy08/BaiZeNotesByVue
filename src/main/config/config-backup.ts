@@ -24,6 +24,15 @@ import * as fs from 'fs-extra'
 import * as path from 'path'
 import { CONFIG_DIR_NAME, getUserDataPath } from '../utils/app-paths'
 import { logger } from '../utils/logger'
+// 公共接口归位第 2 批：备份目录纯函数（时间戳/名称/安全解析/排序）统一引用 shared 真源，
+// 本模块只保留配置备份的 IO 与恢复后 store 灌入逻辑
+import {
+    formatBackupStamp,
+    isValidBackupName as isValidBackupNameShared,
+    parseBackupStamp,
+    resolveBackupDirSafe as resolveBackupDirSafeShared,
+    sortBackupNames
+} from '../../shared/utils/backup-dir'
 import { getSystemSetting, saveSystemSetting } from './system-setting'
 import { setThemeConfig } from './theme-config'
 import type { ThemeConfig } from './theme-config'
@@ -34,8 +43,8 @@ import type { EditorSetting, QuickLinkItem, SystemSetting } from '../../shared/t
 /** 备份根目录名（位于 ~/.baizenotes/ 下） */
 export const CONFIG_BACKUP_DIR_NAME = 'config-backups'
 
-/** 备份目录命名规则：config-backup-YYYYMMDD-HHmmss（同一秒内重名时追加 -N 序号） */
-const BACKUP_NAME_PATTERN = /^config-backup-\d{8}-\d{6}(-\d+)?$/
+/** 配置备份目录名前缀（shared 的备份名校验器同时接受两种命名空间，本模块只认自己的命名空间） */
+const CONFIG_BACKUP_NAME_PREFIX = 'config-backup-'
 
 /** 默认保留备份数量（与 systemSettingDefaults.backupCount 一致） */
 export const DEFAULT_BACKUP_KEEP = 5
@@ -65,35 +74,31 @@ export function getConfigBackupRoot(): string {
     return path.join(getUserDataPath(), CONFIG_BACKUP_DIR_NAME)
 }
 
-/** 组装备份时间戳：YYYYMMDD-HHmmss（本地时区，与目录名规则一致） */
-function formatBackupStamp(date: Date): string {
-    const pad = (value: number): string => String(value).padStart(2, '0')
-    return (
-        `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}` +
-        `-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
-    )
-}
-
-/** 是否为合法备份目录名（防路径逃逸的第一道关卡） */
+/**
+ * 是否为合法备份目录名（防路径逃逸的第一道关卡）。
+ * 公共接口归位第 2 批：命名形状校验复用 shared/utils/backup-dir.isValidBackupName；
+ * 该 shared 校验器同时接受自动备份命名（纯时间戳），配置备份只认自己的
+ * `config-backup-` 命名空间，因此额外要求前缀，保持既有「备份列表互不串号」语义不变。
+ */
 export function isValidBackupName(name: unknown): name is string {
-    return typeof name === 'string' && BACKUP_NAME_PATTERN.test(name)
+    return (
+        typeof name === 'string' &&
+        name.startsWith(CONFIG_BACKUP_NAME_PREFIX) &&
+        isValidBackupNameShared(name)
+    )
 }
 
 /**
  * 校验备份目录绝对路径是否严格位于备份根目录内。
  * 返回 null 表示非法（调用方直接拒绝，不做任何读写）。
+ * 公共接口归位第 2 批：路径守卫（白名单 + path.relative 防逃逸）复用 shared 实现，
+ * 本函数先按配置备份命名空间过滤，再交给 shared 做相对路径校验。
  */
 function resolveBackupDirSafe(name: unknown): string | null {
     if (!isValidBackupName(name)) {
         return null
     }
-    const root = path.resolve(getConfigBackupRoot())
-    const target = path.resolve(root, name)
-    const relative = path.relative(root, target)
-    if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) {
-        return null
-    }
-    return target
+    return resolveBackupDirSafeShared(getConfigBackupRoot(), name)
 }
 
 /** 列出备份目录下的普通文件（不进入子目录） */
@@ -119,22 +124,13 @@ function normalizeKeep(keep: unknown): number {
     return Math.min(MAX_BACKUP_KEEP, Math.max(1, raw))
 }
 
-/** 从备份目录名解析创建时间（命名含时间戳，不依赖 mtime） */
+/** 从备份目录名解析创建时间（命名含时间戳，不依赖 mtime）。
+ * 公共接口归位第 2 批：解析迁至 shared/utils/backup-dir.parseBackupStamp；
+ * 与旧实现的差异：shared 会对年月日时分秒做回读校验，非法日历值返回 null，
+ * 这里按旧实现「无法解析 → epoch」的兜底语义映射为 1970-01-01。 */
 function parseBackupCreatedAt(name: string): string {
-    const match = /^config-backup-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/.exec(name)
-    if (!match) {
-        return new Date(0).toISOString()
-    }
-    const [, year, month, day, hour, minute, second] = match
-    const date = new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day),
-        Number(hour),
-        Number(minute),
-        Number(second)
-    )
-    return Number.isNaN(date.getTime()) ? new Date(0).toISOString() : date.toISOString()
+    const timestamp = parseBackupStamp(name)
+    return timestamp === null ? new Date(0).toISOString() : new Date(timestamp).toISOString()
 }
 
 function buildBackupInfo(name: string): ConfigBackupInfo {
@@ -180,10 +176,13 @@ export function listConfigBackups(): ConfigBackupInfo[] {
         logger.warn('[ConfigBackup] 读取备份根目录失败', error)
         return []
     }
-    return entries
-        .filter((entry) => entry.isDirectory() && isValidBackupName(entry.name))
-        .map((entry) => buildBackupInfo(entry.name))
-        .sort((left, right) => right.name.localeCompare(left.name))
+    // 公共接口归位第 2 批：名称过滤后按 shared 的倒序排序工具排列（最新在前）
+    const names = sortBackupNames(
+        entries
+            .filter((entry) => entry.isDirectory() && isValidBackupName(entry.name))
+            .map((entry) => entry.name)
+    )
+    return names.map((name) => buildBackupInfo(name))
 }
 
 /**

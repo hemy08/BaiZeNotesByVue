@@ -40,6 +40,7 @@ import type { BaiZeMenuEntry } from './MenuBar/menu-config'
 import { HandleMenuAction } from './MenuBar/menu-actions'
 import { t } from '../common/i18n'
 import { IPC } from '../../../shared/ipc-channels'
+import { getBaseName } from '../../../shared/utils/path'
 import { logger } from '../common/logger'
 
 // ---------------------------------------------------------------------------------------------
@@ -69,10 +70,15 @@ function truncateRecentLabel(label: string): string {
         : label
 }
 
-/** 最近文件菜单项：标签取文件名（basename），动作携带 encodeURIComponent 后的完整路径 */
+/**
+ * 最近文件菜单项：标签取文件名（basename），动作携带 encodeURIComponent 后的完整路径。
+ *
+ * 迁移（渲染层公共接口归位）：basename 解析改为复用 `shared/utils/path.getBaseName`
+ * （同时识别 `/` 与 `\`；原实现先归一化反斜杠再按 `/` 切分，两者对文件路径输出一致）。
+ * 保留原 `|| filePath` 兜底：路径以分隔符结尾导致 basename 为空串时仍展示原路径。
+ */
 function toRecentFileEntry(filePath: string): BaiZeMenuEntry {
-    const normalized = filePath.replace(/\\/g, '/')
-    const baseName = normalized.slice(normalized.lastIndexOf('/') + 1) || filePath
+    const baseName = getBaseName(filePath) || filePath
     return {
         label: truncateRecentLabel(baseName),
         menuAction: `baize:menu:file:recent-file:${encodeURIComponent(filePath)}`

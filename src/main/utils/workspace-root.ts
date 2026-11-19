@@ -16,11 +16,14 @@
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
+// 公共接口归位第 2 批：路径归一化与包含判断统一引用 shared 真源
+import { isPathWithin, normalizePathForCompare } from '../../shared/utils/path'
 
 /** AS-2：路径比较前归一化（Windows 下盘符/目录名大小写不敏感） */
 function toComparablePath(input: string): string {
-    const normalized = path.normalize(path.resolve(input))
-    return process.platform === 'win32' ? normalized.toLowerCase() : normalized
+    // 旧实现为 path.normalize(path.resolve(input)) + Windows 小写；shared 版本额外把
+    // 分隔符统一为 `/`，仅用于比较，不影响真实 FS 访问
+    return normalizePathForCompare(path.resolve(input), process.platform === 'win32')
 }
 
 /** AS-2：Windows 系统目录清单（取环境变量，缺失的跳过），用于拒绝系统目录及其子树 */
@@ -67,7 +70,13 @@ export function detectDangerousWorkspaceRoot(resolvedPath: string): string | nul
     }
 
     for (const systemDir of getSystemDirectories()) {
-        if (comparablePath === systemDir || comparablePath.startsWith(`${systemDir}${path.sep}`)) {
+        // 公共接口归位第 2 批：系统目录及其子树的判定改用 shared 的 isPathWithin
+        // （等价于旧 `equal || startsWith(systemDir + path.sep)`，大小写由平台参数决定）
+        if (
+            isPathWithin(comparablePath, systemDir, {
+                win32CaseInsensitive: process.platform === 'win32'
+            })
+        ) {
             return '不允许将系统目录作为工作区'
         }
     }
@@ -81,9 +90,7 @@ export type WorkspaceRootValidation = { ok: true; path: string } | { ok: false; 
  * AS-2：校验工作区根目录（原 open-specific-folder 直接信任入参）。
  * 后续若引入主进程统一 path-guard（security.ts），可把本函数内联规则替换为复用实现。
  */
-export async function validateWorkspaceRoot(
-    candidate: unknown
-): Promise<WorkspaceRootValidation> {
+export async function validateWorkspaceRoot(candidate: unknown): Promise<WorkspaceRootValidation> {
     if (typeof candidate !== 'string' || candidate.trim() === '') {
         return { ok: false, reason: '目录路径为空或格式非法' }
     }

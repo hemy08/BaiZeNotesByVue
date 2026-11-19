@@ -12,6 +12,8 @@ import { tMain } from '../i18n'
 // P1-AS-1：图片落盘同样受文件路径守卫约束（活动文件目录之外一律拒绝）
 import { isPathAllowed, isSafeFileName } from '../security'
 import { IPC } from '../../../shared/ipc-channels'
+// 公共接口归位第 2 批：纯数字随机串迁移到 shared/utils/random（字符集与循环语义逐字对齐）
+import { randomDigits } from '../../../shared/utils/random'
 
 import path from 'path'
 
@@ -26,14 +28,6 @@ function notifyImagePathDenied(targetPath: unknown): void {
         }),
         type: 'error'
     })
-}
-
-function getMathRandom(maxLength: number): string {
-    let result = ''
-    for (let i = 0; i < maxLength; i++) {
-        result += Math.floor(Math.random() * 10)
-    }
-    return result
 }
 
 /**
@@ -173,7 +167,8 @@ export async function InsertImagesToFile(base64Image: string): Promise<string> {
         return ''
     }
 
-    const fileName = getMathRandom(16) + '.png'
+    // 公共接口归位第 2 批：16 位纯数字随机文件名片段改由 shared 的 randomDigits 生成
+    const fileName = randomDigits(16) + '.png'
     const outFilePath = path.join(outDir, fileName)
     try {
         await fs.access(outFilePath)

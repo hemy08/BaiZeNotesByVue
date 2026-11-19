@@ -26,6 +26,9 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { pathToFileURL } from 'url'
 import { IPC } from '../../shared/ipc-channels'
+// 公共接口归位第 2 批：文件读取大小上限与大小格式化统一引用 shared 真源
+import { MAX_READ_BINARY_SIZE } from '../../shared/constants/limits'
+import { formatFileSize } from '../../shared/utils/format'
 // ARC-13：CryptoData / FileProperties 已收敛到 src/shared/types（唯一真源）
 import type { CryptoData, FileProperties } from '../../shared/types'
 import { tMain } from './i18n'
@@ -43,9 +46,6 @@ export {
 
 // MEM-10：本模块所有注册均归属的组件 ID（进程级全局注册）
 const GLOBAL_IPC_COMPONENT_ID = 'global-utils-ipc'
-
-/** READ_BINARY 单文件大小上限（128MB）：防止超大文件一次性读入主/渲染进程造成卡顿或 OOM */
-const MAX_READ_BINARY_SIZE = 128 * 1024 * 1024
 
 /**
  * CQ-05：异步 ipcMain.on 回调异常兜底——主进程留错误日志，并经现有状态栏通道
@@ -763,8 +763,10 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
                     logger.warn(
                         `[Security] 已拒绝读取超过 ${MAX_READ_BINARY_SIZE} 字节上限的 PDF：${filePath}`
                     )
+                    // 公共接口归位第 2 批：大小文案统一走 shared 的 formatFileSize（1024 进制、
+                    // 两位小数、单位与数值间有空格），数值口径与旧 `${size / 1024 / 1024}MB` 一致
                     throw new Error(
-                        `文件过大，无法预览：${filePath} 超过 ${MAX_READ_BINARY_SIZE / 1024 / 1024}MB 上限`
+                        `文件过大，无法预览：${filePath} 超过 ${formatFileSize(MAX_READ_BINARY_SIZE)} 上限`
                     )
                 }
                 try {

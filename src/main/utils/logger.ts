@@ -19,6 +19,8 @@ import * as os from 'os'
 import * as path from 'path'
 import { app, BrowserWindow } from 'electron'
 import { IPC } from '../../shared/ipc-channels'
+// 公共接口归位第 2 批：单文件日志大小上限引用 shared 真源（数值逐字对齐 10MB）
+import { MAX_LOG_FILE_SIZE } from '../../shared/constants/limits'
 
 // 日志级别
 export enum LogLevel {
@@ -38,7 +40,7 @@ interface LogConfig {
 
 // 默认配置
 const defaultConfig: LogConfig = {
-    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFileSize: MAX_LOG_FILE_SIZE, // 10MB（真源：shared/constants/limits.MAX_LOG_FILE_SIZE）
     maxFiles: 5,
     enableConsole: true,
     enableFile: true

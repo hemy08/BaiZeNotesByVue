@@ -35,6 +35,10 @@
 
 import katex from 'katex'
 import { logger } from '../../common/logger'
+import { LRUCache } from '../../../../shared/utils/lru-cache'
+import { parseDirectoryPath, toFileUrl } from '../../../../shared/utils/path'
+import { escapeHtml } from '../../../../shared/utils/html'
+import { PREVIEW_MAX_FILE_SIZE, PREVIEW_MAX_LINES } from '../../../../shared/constants/limits'
 
 /* ============================ 一、KaTeX 数学公式 ============================
  * 迁移自 src/main/renders/KatexRender.ts（纯字符串变换，无 Node 专属依赖）。
@@ -46,28 +50,24 @@ import { logger } from '../../common/logger'
  * PF-9：KaTeX 渲染结果 LRU 缓存上限（以「公式字符串」为 key）。
  * 预览每轮整篇重渲染，正文未变时公式重复渲染是主要浪费（实测 0.08 ms/公式，
  * 500 公式 ≈ 40 ms/轮）；缓存后同一公式只在首次出现时调用 katex.renderToString。
+ *
+ * 迁移（渲染层公共接口归位）：缓存容器改用 `src/shared/utils/lru-cache.ts` 的
+ * `LRUCache`（命中提升/超限淘汰语义与原手写 Map 实现逐字对齐，见该文件头注释）；
+ * 上限仍是渲染层私有值 200，不进入 shared 常量（仅此处使用，无跨进程复用价值）。
  */
 export const KATEX_CACHE_MAX_ENTRIES = 200
-const katexHtmlCache = new Map<string, string>()
+const katexHtmlCache = new LRUCache<string>(KATEX_CACHE_MAX_ENTRIES)
 
 /**
  * 渲染单个公式（带 LRU 缓存）。非法公式会抛错，由调用方按各自语义降级。
- * 命中缓存时把条目移到 Map 末尾（最近使用），超出上限淘汰最久未用条目。
+ * 命中缓存时 LRUCache.get 会把条目移到最近使用位置，超出上限时淘汰最久未用条目。
  */
 function renderKatexCached(latex: string): string {
     const cached = katexHtmlCache.get(latex)
     if (cached !== undefined) {
-        katexHtmlCache.delete(latex)
-        katexHtmlCache.set(latex, cached)
         return cached
     }
     const html = katex.renderToString(latex)
-    if (katexHtmlCache.size >= KATEX_CACHE_MAX_ENTRIES) {
-        const oldestKey = katexHtmlCache.keys().next().value
-        if (oldestKey !== undefined) {
-            katexHtmlCache.delete(oldestKey)
-        }
-    }
     katexHtmlCache.set(latex, html)
     return html
 }
@@ -172,38 +172,21 @@ export function getPreviewActiveFilePath(): string | null {
     return previewActiveFilePath
 }
 
-/**
- * 解析目录路径（与主进程 ParseDirectoryPath 同语义）
- * @param fullName 完整的文件路径
- * @returns 目录部分；无扩展名分隔符时返回原路径
+/*
+ * 目录解析与 file:// URL 生成（迁移说明）。
+ *
+ * 原实现：
+ * - `parseDirectoryPath`（与主进程 `ParseDirectoryPath` 同语义，含「路径无点号时原样返回」的
+ *   特殊分支）；
+ * - `toFileUrl`（FE-12 本地图片预览修复：补前导斜杠 + encodeURI，并对 encodeURI 保留的
+ *   `#`/`?` 单独编码，避免文件名中的 # 变成片段标识；文档解析后的本地 `file://` 仍可被
+ *   DOMPurify 默认 URI 白名单放行）。
+ *
+ * 迁移（渲染层公共接口归位）：两者已逐字归位到 `src/shared/utils/path.ts`
+ * （`parseDirectoryPath` / `toFileUrl`，带与主进程实现的等价性单测），本模块直接 import，
+ * 不再保留本地副本。`toFileUrl` 的编码口径与 `html-view-utils.withBaseHref` 一致
+ * （后者现由 shared 的 `dirToBaseHref` 提供）。
  */
-function parseDirectoryPath(fullName: string): string {
-    if (fullName.lastIndexOf('.') === -1) {
-        return fullName
-    }
-    const lastIndex = Math.max(fullName.lastIndexOf('\\'), fullName.lastIndexOf('/'))
-    return fullName.substring(0, lastIndex)
-}
-
-/**
- * 把本地绝对路径转成合法的 file:// URL。
- * 修复背景（FE-12 本地图片预览）：原实现直接输出无协议的绝对路径
- * （如 `C:/notes/img/a.png`），存在两个问题：
- * 1. 浏览器会把 `C:` 当作未知 scheme 或相对 URL 解析，图片无法加载；
- * 2. Windows 盘符路径（含 `:`）会被 DOMPurify 默认 URI 白名单剥离，src 属性被删除。
- * file:// 协议同时解决两者（浏览器可解析、DOMPurify 默认放行 f|ht)tps? 分支），
- * 与 html-view-utils.ts 的 withBaseHref 口径一致：补前导斜杠 + encodeURI 编码，
- * 并对 encodeURI 保留的 `#`/`?` 单独编码（避免文件名中的 # 变成片段标识）。
- * 2026-11-19 注释更新：原引用「ShowPdfEditor.vue 的 toFileUrl 方案」已随 PDF 改 pdf.js 删除。
- */
-function toFileUrl(localPath: string): string {
-    const normalized = localPath.replace(/\\/g, '/')
-    const withLeadingSlash = normalized.startsWith('/') ? normalized : '/' + normalized
-    return (
-        'file://' +
-        encodeURI(withLeadingSlash).replace(/[?#]/g, (ch) => (ch === '#' ? '%23' : '%3F'))
-    )
-}
 
 /**
  * 转换相对 URL 为基于当前活动文件的绝对路径
@@ -441,10 +424,20 @@ function renderContentSafely(text: string, skipKatex: boolean): string {
  * 阈值常量可配置（导出的 PREVIEW_LARGE_DOC_* 常量）。
  */
 
-/** PF-9：超大文档估算字节阈值（默认 2 MiB） */
-export const PREVIEW_LARGE_DOC_BYTE_THRESHOLD = 2 * 1024 * 1024
-/** PF-9：超大文档行数阈值（默认 5 万行） */
-export const PREVIEW_LARGE_DOC_LINE_THRESHOLD = 50000
+/**
+ * PF-9：超大文档估算字节阈值（默认 2 MiB）。
+ *
+ * 迁移（渲染层公共接口归位）：数值真源改为 `src/shared/constants/limits.ts` 的
+ * `PREVIEW_MAX_FILE_SIZE`；本常量保留原导出名，供既有 import（单测/调用方）零改动。
+ */
+export const PREVIEW_LARGE_DOC_BYTE_THRESHOLD = PREVIEW_MAX_FILE_SIZE
+/**
+ * PF-9：超大文档行数阈值（默认 5 万行）。
+ *
+ * 迁移（渲染层公共接口归位）：数值真源改为 `src/shared/constants/limits.ts` 的
+ * `PREVIEW_MAX_LINES`；本常量保留原导出名。
+ */
+export const PREVIEW_LARGE_DOC_LINE_THRESHOLD = PREVIEW_MAX_LINES
 
 /**
  * PF-9：判断文档是否达到「预览降级」阈值。
@@ -651,15 +644,14 @@ function decodeHtmlEntities(value: string): string {
         .replaceAll('&amp;', '&')
 }
 
-/** AS-9：HTML 文本/属性值转义（占位块内容全部经此转义，杜绝二次注入） */
-function escapeHtml(value: string): string {
-    return value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;')
-}
+/*
+ * AS-9：HTML 文本/属性值转义（占位块内容全部经此转义，杜绝二次注入）。
+ *
+ * 迁移（渲染层公共接口归位）：原本地实现（replaceAll 版 5 字符转义）已删除，
+ * 统一复用 `src/shared/utils/html.ts` 的 `escapeHtml`（与 `common/escape-html.ts`
+ * 的 re-export 为同一实现）。两者对 5 个 HTML 特殊字符的输出逐字一致（`&` 均最先替换），
+ * 故此处行为零变化；`decodeHtmlEntities` 属于 AS-9 反向解码语义，保留在本模块。
+ */
 
 /** AS-9：CSS url(...) 引用（单引号/双引号/无引号三种写法，匹配时忽略大小写） */
 const CSS_URL_PATTERN = /url\(\s*(?:'([^']*)'|"([^"]*)"|([^)]*))\s*\)/gi

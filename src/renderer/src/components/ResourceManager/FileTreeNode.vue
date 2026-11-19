@@ -65,8 +65,24 @@ import { FileSysItem, getFileMgrSvg, handleContextMenu } from './resource-manage
 import EventBus from '../../common/event-bus/event-bus'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import {
+    MARKDOWN_EXTENSIONS,
+    TREE_SUPPORTED_EXTENSIONS
+} from '../../../../shared/constants/file-extensions'
 // 全局类型 FileProperties 由 src/main/global-types.d.ts 的 declare global 提供（tsconfig.web 已 include）
 /* global FileProperties */
+
+/**
+ * 文件点击路由使用的扩展名（迁移：清单真源改为 `shared/constants/file-extensions`）。
+ *
+ * `.md` 取共享 Markdown 主扩展名；`.html` / `.pdf` 是共享目录树展示白名单
+ * `TREE_SUPPORTED_EXTENSIONS` 的成员（shared 未提供独立常量，故由该清单派生；
+ * 清单若缺失时回退原字面量，保证点击行为与迁移前完全一致）。
+ */
+const MARKDOWN_EXTENSION = MARKDOWN_EXTENSIONS[0]
+const HTML_EXTENSION =
+    TREE_SUPPORTED_EXTENSIONS.find((extension) => extension === '.html') ?? '.html'
+const PDF_EXTENSION = TREE_SUPPORTED_EXTENSIONS.find((extension) => extension === '.pdf') ?? '.pdf'
 
 const props = defineProps({
     node: {
@@ -125,13 +141,13 @@ function handleFileSelect(node: FileSysItem) {
 
 function handleClick(node: FileSysItem) {
     if (node.type === 'file') {
-        if (node.name.endsWith('.md')) {
+        if (node.name.endsWith(MARKDOWN_EXTENSION)) {
             handleFileSelect(node)
             EventBus.$emit(EVENT_BUS.STATUS_BAR_FILE_PATH, node.path)
-        } else if (node.name.endsWith('.html')) {
+        } else if (node.name.endsWith(HTML_EXTENSION)) {
             EventBus.$emit(EVENT_BUS.HTML_FILE_SELECTED, node)
             EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'html')
-        } else if (node.name.endsWith('.pdf')) {
+        } else if (node.name.endsWith(PDF_EXTENSION)) {
             EventBus.$emit(EVENT_BUS.PDF_FILE_SELECTED, node)
             EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'pdf')
         }
