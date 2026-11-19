@@ -8,7 +8,7 @@
 - **遗留问题跟踪台账**：新增 [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md)（21 项，含优先级/位置/影响/状态列与修复记录章节，修复完成后更新状态）；同步接入 HTML Wiki 顶部导航与侧边栏
 - **报告整体导航**：HTML Wiki 每页顶部新增固定整体导航（首页 + 3 个分类下拉 + 当前页高亮 + 分类自动展开）；Markdown 报告顶部同步带报告导航行（HTML 生成时自动剥离）；新增 `build/generate-report-wiki.js` 批量生成脚本与 `build/report-nav.html` 导航片段，`build-html-report.js` 支持 `--nav` / `--navHtml` 注入
 - **合并明细**：3 份扫描报告 →《全量扫描与审查报告》；4 份修复类（计划 + 三轮实施）→《127 项基线修复实施汇总》；新旧 IPC 矩阵 →《IPC 通信矩阵》；通信检查 + 修复计划 + 命名方案 →《IPC 通信治理报告》；3 份 mkdocs →《mkdocs-material 语法支持》；jyshare 调研（长版）+ 集成实施 →《插件工具集成》（重复短版删除）；CQ-10 + PF4-9 + NSIS →《专项验证记录》
-- **一致性核对**：32 份报告逐份对照当前实现（v1.3.6）——实施/调研类主体与代码一致（15 项 mkdocs 语法、38 插件、92 IPC 通道可验证）；检查类数字均停留在报告时点（已标注归档）；同步修正 README / reports 索引基线（158 文件 / 2,869 用例 / 92 通道）与 IPC 矩阵内部数字矛盾（当时 92→90、api 7→6、域错配 10 通道/5 组）
+- **一致性核对**：32 份报告逐份对照当前实现（v1.3.6）——实施/调研类主体与代码一致（15 项 mkdocs 语法、38 插件、92 IPC 通道可验证）；检查类数字均停留在报告时点（已标注归档）；同步修正 README / reports 索引基线（158 文件 / 2,871 用例 / 92 通道）与 IPC 矩阵内部数字矛盾（当时 92→90、api 7→6、域错配 10 通道/5 组）
 - 同步更新：根 README 文档索引与统计数字、docs/reports 索引与 HTML Wiki（README + _sidebar）、wiki README（5 类 / 27 篇）
 
 ### ✨ 新增功能
@@ -46,20 +46,27 @@
 - 测试：新增 PDF 组件测试 6 用例、READ_BINARY 通道测试 3 用例；插件/菜单/词典断言同步（插件工具 37 → 38）
 - 验证：typecheck 0 错误、ESLint 0/0、vitest **156 文件 / 2,847 用例全通过**、`electron-vite build` 成功
 
+### ⚡ 主界面异步分块（2026-11-19）
+
+- **入口 chunk 10,096KB → 114KB（-98.9%）**：主界面 `BaiZeNotes.vue` 改为 `defineAsyncComponent` 按需加载；Monaco（≈7.3MB）、highlight.js（≈1.29MB）、KaTeX（≈0.51MB）与渲染管线移入主界面异步 chunk（≈9,644KB）；初始加载 JS+CSS 10,541KB → **604KB（-94.3%）**
+- **启动恢复时序**：主界面挂载并注册 IPC 监听后上报再发 READY（show-welcome=false）；autoOpenLastFile/Folder 路径 READY 前预加载模块；欢迎页首帧后空闲预加载
+- **E2E**：新增 2 用例（构建产物契约 + show-welcome=false 真实进入主界面且 Monaco 加载），共 4 passed
+- 门禁：typecheck 0 / ESLint 0-0 / vitest 158 文件 2,871 用例全通过 / electron-vite build 成功
+
 ### 🧹 代码复检清理与 E2E 入 CI（2026-11-19）
 
 - **E2E 纳入 CI**：新增并行 e2e job（windows-latest + Playwright Electron 冒烟，失败上传 report/trace）；冒烟增强为主窗口/欢迎页窗口控制/preload 桥/IPC 往返断言
 - **对话框安全**：dialog preload 增加接收通道白名单（仅 THEME_UPDATED）；JSDOM 对话框 HTML 统一注入严格 CSP（阻断外部资源/网络）
 - **命名与默认值**：`CONVERT_SAVE_ENCODING` 通道值改为 `file:convert-save-encoding`；渲染层 `autoOpenLastFile` 默认值与主进程统一为 false
-- **文档口径**：docs/wiki（29 篇）与 docs/md（2 篇）统一到 v1.3.6 实测口径（92 通道/17 组、158 文件/2,869 用例、58+25 白名单、38 插件），修复旧报告引用与过期基线指引
-- 门禁：typecheck 0 / ESLint 0-0 / vitest 158 文件 2,869 用例全通过 / electron-vite build 成功 / E2E 冒烟 2 passed
+- **文档口径**：docs/wiki（29 篇）与 docs/md（2 篇）统一到 v1.3.6 实测口径（92 通道/17 组、158 文件/2,871 用例、58+25 白名单、38 插件），修复旧报告引用与过期基线指引
+- 门禁：typecheck 0 / ESLint 0-0 / vitest 158 文件 2,871 用例全通过 / electron-vite build 成功 / E2E 冒烟 2 passed
 
 ### 🪟 欢迎页窗口控制修复（2026-11-18，用户反馈）
 
 - **关闭按钮延迟**：CLOSE 通道原以「无活动文件」判断跳过 FLUSH_CONTENT 的 2s 超时，但启动恢复可能已在后台恢复上次文件到 appState → 欢迎页点击关闭仍进入 flush 等待。新增主进程 `welcome-state` 状态模块（发送 WELCOME_ENTER_MAIN 时标记进入主界面、新窗口创建时复位），欢迎页时直接快速关闭
 - **最大化二次点击无效**：欢迎页最大化按钮原发送 `MAXIMIZE`（仅最大化，二次点击无效果），改为 `TOGGLE_MAXIMIZE` 切换最大化/还原；按 `IS_MAXIMIZED` 动态切换「最大化/还原」图标与 title（新增 i18n 词条 `workspace.window.restore`）
 - 测试：新增 welcome-state 4 用例；欢迎页窗口控制测试更新（TOGGLE 断言 + 图标状态 2 用例）；basic-components 窗口按钮断言同步
-- 门禁：typecheck 0 错误、ESLint 0/0、vitest **158 文件 / 2,869 用例全通过**、`electron-vite build` 成功
+- 门禁：typecheck 0 错误、ESLint 0/0、vitest **158 文件 / 2,871 用例全通过**、`electron-vite build` 成功
 
 ### 🟡 P2 修复（11）
 
