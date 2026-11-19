@@ -7,6 +7,12 @@ import { t } from '../../common/i18n'
 import { logger } from '../../common/logger'
 // ARC-14：插件工具显示事件名收敛至 EventBus 集中常量（menu-consts 仅保留兼容 re-export）
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+// M3（结构优化第 5 批）：15 项 Material 扩展语法 id 由 shared 单一 manifest 派生，
+// 不再维护本文件内的字面量数组（与 menu-config 菜单、MaterialSyntaxDialog 功能项同源）。
+import {
+    MATERIAL_SYNTAX_FEATURE_IDS,
+    getMaterialSyntaxMenuAction
+} from '../../../../shared/constants/material-syntax'
 
 /**
  * mkdocs-material 扩展语法插入入口（15 项，对应 menu-config.ts 的 Material 子菜单，
@@ -16,26 +22,9 @@ import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
  * configStore.showDialog('materialSyntax', { preset: <featureId> })，
  * 由 MaterialSyntaxDialog 按 preset 展示对应语法的说明与插入操作。
  *
- * 顺序与菜单展示顺序一致（collapsible → tab-link）。新增语法时需三处同步：
- * 本数组、menu-config.ts 的 insertMaterial.submenu、menu 命名空间 i18n（zh-CN/en-US）。
+ * M3（结构优化第 5 批）：featureId 清单与动作 id 均由 shared/constants/material-syntax.ts
+ * 单一 manifest 派生（原「本数组 + menu-config + i18n 三处同步」收敛为 manifest 一处新增）。
  */
-const MATERIAL_SYNTAX_FEATURE_IDS = [
-    'collapsible',
-    'task-list',
-    'highlight',
-    'insert-delete',
-    'sup-sub',
-    'keys',
-    'attr-list',
-    'footnote',
-    'definition-list',
-    'grid-cards',
-    'code-block',
-    'icon',
-    'blocks',
-    'snippet',
-    'tab-link'
-] as const
 
 /**
  * 「文件」菜单 → 最近文件/最近文件夹 的动作前缀。
@@ -163,7 +152,7 @@ export function HandleMenuAction(action: string) {
     // 动作 id 精确匹配 baize:menu:insert:material:<featureId>，打开 materialSyntax 对话框并
     // 通过 preset 指明语法类型；既有 material:admonition 不在此表内，保持原主进程对话框链路。
     for (const featureId of MATERIAL_SYNTAX_FEATURE_IDS) {
-        if (action === `baize:menu:insert:material:${featureId}`) {
+        if (action === getMaterialSyntaxMenuAction(featureId)) {
             configStore.showDialog('materialSyntax', { preset: featureId })
             return
         }

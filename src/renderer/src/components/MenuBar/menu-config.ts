@@ -3,6 +3,11 @@ import { ref, markRaw } from 'vue'
 import type { BaiZeMenuItem } from '../../../../shared/types'
 import * as MenuConst from './menu-consts'
 import * as Templates from '../../common/templates'
+// M3（结构优化第 5 批）：Material 15 项扩展语法收敛为 shared 单一 manifest，菜单项由 manifest 生成。
+import {
+    MATERIAL_SYNTAX_FEATURES,
+    getMaterialSyntaxMenuAction
+} from '../../../../shared/constants/material-syntax'
 
 // CMP-30：菜单数据只存 labelKey（menu 命名空间键，见 shared/i18n/messages/*/menu.ts），
 // 由 MenuBar.vue 在渲染时调用 t(labelKey) 输出，切换语言即时生效；
@@ -267,6 +272,9 @@ const codingMenu: BaiZeMenuEntry = {
 // 顺序即菜单展示顺序：折叠提示块/任务列表/高亮/插入删除/上下标/键盘按键/属性列表/脚注/
 // 定义列表/网格卡片/代码块增强/Material 图标/块语法/文件片段/标签页深链。
 // 现有 material:admonition 保持原有链路（主进程 Vue 对话框）不变。
+// M3（结构优化第 5 批）：15 项扩展语法的 labelKey/menuAction 不再手写，统一由
+// shared/constants/material-syntax.ts 的 MATERIAL_SYNTAX_FEATURES 生成（单一真源）；
+// 菜单顺序即 manifest 顺序。
 const insertMaterial: BaiZeMenuEntry = {
     labelKey: 'menu.insert.material.label',
     submenu: [
@@ -274,66 +282,10 @@ const insertMaterial: BaiZeMenuEntry = {
             labelKey: 'menu.insert.material.admonition',
             menuAction: 'baize:menu:insert:material:admonition'
         },
-        {
-            labelKey: 'menu.insert.material.collapsible',
-            menuAction: 'baize:menu:insert:material:collapsible'
-        },
-        {
-            labelKey: 'menu.insert.material.taskList',
-            menuAction: 'baize:menu:insert:material:task-list'
-        },
-        {
-            labelKey: 'menu.insert.material.highlight',
-            menuAction: 'baize:menu:insert:material:highlight'
-        },
-        {
-            labelKey: 'menu.insert.material.insertDelete',
-            menuAction: 'baize:menu:insert:material:insert-delete'
-        },
-        {
-            labelKey: 'menu.insert.material.supSub',
-            menuAction: 'baize:menu:insert:material:sup-sub'
-        },
-        {
-            labelKey: 'menu.insert.material.keys',
-            menuAction: 'baize:menu:insert:material:keys'
-        },
-        {
-            labelKey: 'menu.insert.material.attrList',
-            menuAction: 'baize:menu:insert:material:attr-list'
-        },
-        {
-            labelKey: 'menu.insert.material.footnote',
-            menuAction: 'baize:menu:insert:material:footnote'
-        },
-        {
-            labelKey: 'menu.insert.material.definitionList',
-            menuAction: 'baize:menu:insert:material:definition-list'
-        },
-        {
-            labelKey: 'menu.insert.material.gridCards',
-            menuAction: 'baize:menu:insert:material:grid-cards'
-        },
-        {
-            labelKey: 'menu.insert.material.codeBlock',
-            menuAction: 'baize:menu:insert:material:code-block'
-        },
-        {
-            labelKey: 'menu.insert.material.icon',
-            menuAction: 'baize:menu:insert:material:icon'
-        },
-        {
-            labelKey: 'menu.insert.material.blocks',
-            menuAction: 'baize:menu:insert:material:blocks'
-        },
-        {
-            labelKey: 'menu.insert.material.snippet',
-            menuAction: 'baize:menu:insert:material:snippet'
-        },
-        {
-            labelKey: 'menu.insert.material.tabLink',
-            menuAction: 'baize:menu:insert:material:tab-link'
-        }
+        ...MATERIAL_SYNTAX_FEATURES.map((feature) => ({
+            labelKey: feature.menuLabelKey,
+            menuAction: getMaterialSyntaxMenuAction(feature.id)
+        }))
     ]
 }
 

@@ -17,28 +17,22 @@ import MaterialSyntaxDialog from '@renderer/components/dialogs/complex/MaterialS
 import { MaterialSyntaxDialog as LazyMaterialSyntaxDialog } from '@renderer/components/dialogs'
 import { getConfigStore } from '@renderer/common/useConfigStore'
 import { t } from '@renderer/common/i18n'
+// M3（结构优化第 5 批）：15 项扩展语法单一 manifest → 菜单/动作/对话框/i18n 一致性校验
+import {
+    MATERIAL_SYNTAX_ACTION_PREFIX,
+    MATERIAL_SYNTAX_FEATURES,
+    MATERIAL_SYNTAX_FEATURE_IDS,
+    getMaterialSyntaxMenuAction
+} from '../../../src/shared/constants/material-syntax'
+import { menuMap } from '../../../src/renderer/src/components/MenuBar/menu-config'
+import zhMenu from '../../../src/shared/i18n/messages/zh-CN/menu'
+import enMenu from '../../../src/shared/i18n/messages/en-US/menu'
 
 /** 代码块围栏（避免在源码里直接写三反引号） */
 const FENCE = '```'
 
 /** 15 个 feature id：顺序即左侧列表顺序（与 useConfigStore 的 preset 契约一致） */
-const MATERIAL_FEATURE_IDS = [
-    'collapsible',
-    'task-list',
-    'highlight',
-    'insert-delete',
-    'sup-sub',
-    'keys',
-    'attr-list',
-    'footnote',
-    'definition-list',
-    'grid-cards',
-    'code-block',
-    'icon',
-    'blocks',
-    'snippet',
-    'tab-link'
-] as const
+const MATERIAL_FEATURE_IDS = MATERIAL_SYNTAX_FEATURE_IDS
 
 // 对话框使用 <Teleport to="body">，测试时 stub 成内联渲染以便断言
 const dialogMountOptions = { global: { stubs: { teleport: true } } }
@@ -444,5 +438,92 @@ describe('MaterialSyntaxDialog 契约与懒加载导出', () => {
         })
         expect(wrapper.find('[data-field="keysText"]').exists()).toBe(true)
         wrapper.unmount()
+    })
+})
+
+// M3（结构优化第 5 批）：Material 15 项扩展语法单一 manifest 一致性。
+// 原三处重复维护（menu-config.ts 菜单字面量 / menu-actions.ts 动作 id 数组 /
+// MaterialSyntaxDialog.vue 功能项 id 清单）已收敛为 shared/constants/material-syntax.ts，
+// 本组用例守护「菜单由 manifest 生成 + 对话框渲染顺序 + 中英词条」三者同步。
+describe('M3 Material 语法 manifest 一致性', () => {
+    interface MenuNode {
+        labelKey?: string
+        menuAction?: string
+        submenu?: MenuNode[]
+    }
+
+    function findByLabelKey(items: MenuNode[], labelKey: string): MenuNode | undefined {
+        for (const item of items) {
+            if (item.labelKey === labelKey) return item
+            if (item.submenu) {
+                const found = findByLabelKey(item.submenu, labelKey)
+                if (found) return found
+            }
+        }
+        return undefined
+    }
+
+    /** 按点分路径解析 i18n 字典（menu 命名空间对象的键不含 `menu.` 前缀） */
+    function resolveI18nKey(dict: Record<string, unknown>, key: string): unknown {
+        return key
+            .replace(/^menu\./, '')
+            .split('.')
+            .reduce<unknown>((acc, part) => {
+                if (acc && typeof acc === 'object') return (acc as Record<string, unknown>)[part]
+                return undefined
+            }, dict)
+    }
+
+    it('manifest 自身：15 项、id 唯一、kebab-case、动作前缀契约', () => {
+        expect(MATERIAL_SYNTAX_FEATURES).toHaveLength(15)
+        const ids = MATERIAL_SYNTAX_FEATURES.map((feature) => feature.id)
+        expect(new Set(ids).size).toBe(ids.length)
+        for (const feature of MATERIAL_SYNTAX_FEATURES) {
+            expect(feature.id).toMatch(/^[a-z]+(-[a-z]+)*$/)
+            expect(feature.menuLabelKey.startsWith('menu.insert.material.')).toBe(true)
+            expect(getMaterialSyntaxMenuAction(feature.id)).toBe(
+                `${MATERIAL_SYNTAX_ACTION_PREFIX}${feature.id}`
+            )
+        }
+    })
+
+    it('菜单由 manifest 生成：Material 子菜单 = legacy admonition + manifest 15 项（顺序一致）', () => {
+        const materialMenu = findByLabelKey(
+            menuMap.value as unknown as MenuNode[],
+            'menu.insert.material.label'
+        )
+        expect(materialMenu?.submenu).toBeDefined()
+        const actions = (materialMenu!.submenu as MenuNode[]).map((item) => item.menuAction)
+        expect(actions).toEqual([
+            'baize:menu:insert:material:admonition',
+            ...MATERIAL_SYNTAX_FEATURES.map((feature) => getMaterialSyntaxMenuAction(feature.id))
+        ])
+    })
+
+    it('对话框左侧 15 项渲染顺序与 manifest 完全一致', () => {
+        const wrapper = mountDialog()
+        const rendered = wrapper
+            .findAll('.feature-item')
+            .map((item) => item.attributes('data-feature'))
+        expect(rendered).toEqual([...MATERIAL_SYNTAX_FEATURE_IDS])
+        wrapper.unmount()
+    })
+
+    it('menu 命名空间 i18n：zh-CN 与 en-US 均存在全部 15 项词条', () => {
+        const locales: Array<[string, Record<string, unknown>]> = [
+            ['zh-CN', zhMenu as unknown as Record<string, unknown>],
+            ['en-US', enMenu as unknown as Record<string, unknown>]
+        ]
+        for (const [locale, dict] of locales) {
+            for (const feature of MATERIAL_SYNTAX_FEATURES) {
+                const value = resolveI18nKey(dict, feature.menuLabelKey)
+                expect(typeof value, `${locale} 缺少 ${feature.menuLabelKey}`).toBe('string')
+                expect(
+                    (value as string).length,
+                    `${locale} 的 ${feature.menuLabelKey} 为空`
+                ).toBeGreaterThan(0)
+            }
+            expect(resolveI18nKey(dict, 'menu.insert.material.label'), `缺少分组标签`).toBeTruthy()
+        }
     })
 })

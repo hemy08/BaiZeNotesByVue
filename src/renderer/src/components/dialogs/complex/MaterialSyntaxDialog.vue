@@ -116,6 +116,12 @@ import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
 import BaseDialog from '../BaseDialog.vue'
 import { getMdiIconNames, loadMdiIconData } from '../../Markdown/mdi-icons-loader'
+// M3（结构优化第 5 批）：功能项 id 联合类型与顺序清单由 shared 单一 manifest 提供，
+// 新增/改名扩展语法只改 shared/constants/material-syntax.ts（类型层面禁止未登记 id）。
+import {
+    MATERIAL_SYNTAX_FEATURE_IDS,
+    type MaterialSyntaxFeatureId
+} from '../../../../../shared/constants/material-syntax'
 
 /**
  * Material 语法插入对话框（覆盖 15 项 mkdocs-material 扩展语法）。
@@ -158,41 +164,8 @@ const containerStyle: CSSProperties = {
 const titleBarStyle: CSSProperties = { flexShrink: 0 }
 const footerStyle: CSSProperties = { padding: '14px 20px', flexShrink: 0 }
 
-/** material 语法功能项 id（顺序即左侧列表顺序，与菜单 15 项一一对应） */
-type MaterialSyntaxFeatureId =
-    | 'collapsible'
-    | 'task-list'
-    | 'highlight'
-    | 'insert-delete'
-    | 'sup-sub'
-    | 'keys'
-    | 'attr-list'
-    | 'footnote'
-    | 'definition-list'
-    | 'grid-cards'
-    | 'code-block'
-    | 'icon'
-    | 'blocks'
-    | 'snippet'
-    | 'tab-link'
-
-const MATERIAL_FEATURE_IDS: readonly MaterialSyntaxFeatureId[] = [
-    'collapsible',
-    'task-list',
-    'highlight',
-    'insert-delete',
-    'sup-sub',
-    'keys',
-    'attr-list',
-    'footnote',
-    'definition-list',
-    'grid-cards',
-    'code-block',
-    'icon',
-    'blocks',
-    'snippet',
-    'tab-link'
-]
+/** material 语法功能项 id（类型与顺序来自 shared manifest，顺序即左侧列表顺序，与菜单 15 项一一对应） */
+const MATERIAL_FEATURE_IDS: readonly MaterialSyntaxFeatureId[] = MATERIAL_SYNTAX_FEATURE_IDS
 
 /** 表单状态：15 个功能项共用一份扁平状态，切换功能项时各自字段互不干扰 */
 interface MaterialSyntaxForm {
