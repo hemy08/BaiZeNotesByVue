@@ -9,6 +9,11 @@
           （app-region drag、flex-shrink:0，cursor/user-select 显式恢复初始值）；
         - 底栏内边距 15px 20px（与默认壳一致）、按钮间距 12px 且不随内容压缩 → footerStyle；
         - 容器固定高 600px → containerStyle（宽度由 width 属性承载）。
+
+        设置对话框二期拆分：本组件为壳层（BaseDialog 外壳 + 链接列表/编辑表单组合 +
+        底栏保存/取消编排）；草稿与主进程读写见 quick-link-setting/useQuickLinkSettingForm.ts，
+        列表见 quick-link-setting/QuickLinkList.vue，表单见 quick-link-setting/QuickLinkForm.vue，
+        共享样式见 quick-link-setting/*.css。对外 props/emit 契约不变。
     -->
     <BaseDialog
         :visible="visible"
@@ -26,94 +31,22 @@
     >
         <div class="main-content">
             <div class="content-wrapper">
-                <div class="link-list">
-                    <div class="list-header">
-                        <h3>{{ t('dialogRenderer.quickLink.listTitle') }}</h3>
-                        <button class="add-btn" @click="handleAdd">+ {{ t('common.add') }}</button>
-                    </div>
+                <QuickLinkList
+                    :links="links"
+                    :selected-index="selectedIndex"
+                    @select="handleSelect"
+                    @add="handleAdd"
+                    @edit="handleEdit"
+                    @delete="handleDelete"
+                />
 
-                    <div class="link-items">
-                        <div
-                            v-for="(link, index) in links"
-                            :key="index"
-                            class="link-item"
-                            :class="{ selected: selectedIndex === index }"
-                            @click="selectedIndex = index"
-                        >
-                            <div class="link-info">
-                                <span class="link-icon">{{ link.icon }}</span>
-                                <span class="link-name">{{ link.name }}</span>
-                            </div>
-                            <div class="link-actions">
-                                <button class="action-btn" @click.stop="handleEdit(index)">
-                                    {{ t('dialogRenderer.common.edit') }}
-                                </button>
-                                <button class="action-btn delete" @click.stop="handleDelete(index)">
-                                    {{ t('common.delete') }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="showForm" class="link-form">
-                    <h3>
-                        {{
-                            isEditing
-                                ? t('dialogRenderer.quickLink.editLink')
-                                : t('dialogRenderer.quickLink.addLink')
-                        }}
-                    </h3>
-
-                    <div class="form-group">
-                        <label>{{ t('dialogRenderer.common.name') }}</label>
-                        <input
-                            v-model="formData.name"
-                            type="text"
-                            class="form-input"
-                            :placeholder="t('dialogRenderer.quickLink.namePlaceholder')"
-                        />
-                    </div>
-
-                    <div class="form-group">
-                        <label>URL</label>
-                        <input
-                            v-model="formData.url"
-                            type="text"
-                            class="form-input"
-                            placeholder="https://..."
-                        />
-                    </div>
-
-                    <div class="form-group">
-                        <label>{{ t('dialogRenderer.quickLink.iconLabel') }}</label>
-                        <input
-                            v-model="formData.icon"
-                            type="text"
-                            class="form-input"
-                            placeholder="🌐"
-                            maxlength="2"
-                        />
-                    </div>
-
-                    <div class="form-group">
-                        <label>{{ t('dialogRenderer.quickLink.descLabel') }}</label>
-                        <textarea
-                            v-model="formData.description"
-                            class="form-textarea"
-                            :placeholder="t('dialogRenderer.quickLink.descPlaceholder')"
-                        ></textarea>
-                    </div>
-
-                    <div class="form-actions">
-                        <button class="btn btn-cancel" @click="handleCancelForm">
-                            {{ t('common.cancel') }}
-                        </button>
-                        <button class="btn btn-primary" @click="handleSaveForm">
-                            {{ t('common.save') }}
-                        </button>
-                    </div>
-                </div>
+                <QuickLinkForm
+                    v-if="showForm"
+                    :initial="editingLink"
+                    :is-editing="isEditing"
+                    @save="handleSaveForm"
+                    @cancel="handleCancelForm"
+                />
 
                 <div v-else-if="links.length === 0" class="empty-state">
                     <p>{{ t('dialogRenderer.quickLink.emptyState') }}</p>
@@ -139,28 +72,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+/**
+ * 快捷链接设置对话框 —— 壳层（设置对话框二期拆分）
+ *
+ * 职责：BaseDialog 外壳覆盖 + 链接列表/编辑表单组合 + 底栏保存/取消编排。
+ * 对外契约不变：props `visible`；emits `close` / `apply(links)`（与拆分前一致）。
+ * 草稿 / 初始快照 / 主进程读写 / 表单显隐统一由
+ * `./quick-link-setting/useQuickLinkSettingForm` 承担，子组件只做展示与事件上报。
+ */
+import { watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
-// 第 4 批 P3：裸 console.* 收敛到渲染层统一日志出口（失败时对话框保持打开等用户可见逻辑不变）
-import { logger } from '../../../common/logger'
 import BaseDialog from '../BaseDialog.vue'
-// P1-FE-04：快捷链接设置数据源统一——读写统一走主进程 quickLinks（与 NaviTab 同源）
-import { IPC } from '../../../../../shared/ipc-channels'
-import type { QuickLinkItem } from '../../../../../shared/types'
-
-interface Link {
-    name: string
-    url: string
-    icon: string
-    description: string
-    /**
-     * P1-FE-04：从主进程加载的原始 QuickLinkItem。
-     * 保留对话框不可编辑的 id/enabled/position 以及 svg/img 图标类型，
-     * 保存时未改动的字段原样回写，避免往返丢失。
-     */
-    source?: QuickLinkItem
-}
+import QuickLinkList from './quick-link-setting/QuickLinkList.vue'
+import QuickLinkForm from './quick-link-setting/QuickLinkForm.vue'
+import { useQuickLinkSettingForm } from './quick-link-setting/useQuickLinkSettingForm'
+import type { Link, QuickLinkDraft } from './quick-link-setting/model'
 
 interface Props {
     visible: boolean
@@ -203,460 +130,73 @@ const closeButtonStyle: DialogStyleOverrides = {
 // 迁移前底栏按钮间距 12px 且不随内容压缩（默认壳 gap 10px / 可压缩；内边距 15px 20px 与默认一致）。
 const footerStyle: CSSProperties = { gap: '12px', flexShrink: 0 }
 
-// 主进程读取失败时的兜底展示（正常情况下会被主进程 quickLinks 覆盖）
-const DEFAULT_LINKS: Link[] = [
-    {
-        name: 'GitHub',
-        url: 'https://github.com',
-        icon: '🐙',
-        description: t('dialogRenderer.quickLink.defaultGitHubDesc')
-    },
-    {
-        name: 'Google',
-        url: 'https://google.com',
-        icon: '🔍',
-        description: t('dialogRenderer.quickLink.defaultGoogleDesc')
-    },
-    {
-        name: 'Stack Overflow',
-        url: 'https://stackoverflow.com',
-        icon: '📚',
-        description: t('dialogRenderer.quickLink.defaultStackOverflowDesc')
-    }
-]
+/** 共享草稿 / 初始快照 / 主进程读写 / 表单显隐（壳层唯一数据源） */
+const form = useQuickLinkSettingForm()
+// 模板直接使用：ref 在 <script setup> 顶层绑定会在模板中自动解包
+const { links, selectedIndex, showForm, isEditing, editingLink } = form
 
-function cloneLinks(list: Link[]): Link[] {
-    return JSON.parse(JSON.stringify(list)) as Link[]
-}
-
-const links = ref<Link[]>(cloneLinks(DEFAULT_LINKS))
-const initialLinks = ref<Link[]>(cloneLinks(DEFAULT_LINKS))
-// 打开对话框后用户是否已改动列表：主进程读取是异步的，若用户在读取返回前已增删改，
-// 迟到的读取结果不得覆盖用户操作（否则表现为「刚删掉的链接又回来了」）。
-let userModifiedSinceOpen = false
-
-/** 主进程 QuickLinkItem 在对话框内的展示图标（svg/img 无法在 2 字符输入框内编辑，用通用图标占位） */
-function getDisplayIcon(item: QuickLinkItem): string {
-    return item.icon === 'svg' || item.icon === 'img' ? '🔗' : item.iconContent
-}
-
-/** 主进程 QuickLinkItem → 对话框 Link */
-function toDialogLink(item: QuickLinkItem): Link {
-    return {
-        name: item.name,
-        url: item.path,
-        icon: getDisplayIcon(item),
-        description: '',
-        source: item
-    }
-}
-
-/** 主进程返回值形状校验（IPC 返回 unknown，防御异常数据） */
-function isQuickLinkItem(value: unknown): value is QuickLinkItem {
-    return (
-        value !== null &&
-        typeof value === 'object' &&
-        typeof (value as QuickLinkItem).name === 'string' &&
-        typeof (value as QuickLinkItem).path === 'string'
-    )
-}
-
-/**
- * P1-FE-04：从主进程读取 quickLinks（与 NaviTab 同一数据源），
- * 保证设置对话框展示的是导航栏当前生效配置，避免用兜底默认值覆盖用户已保存的链接。
- */
-async function loadLinksFromMain(): Promise<void> {
-    let loaded: Link[] | null = null
-    try {
-        const items: unknown = await window.electron.ipcRenderer.invoke(IPC.QUICK_LINKS.GET)
-        if (Array.isArray(items)) {
-            // 主进程返回空数组是合法状态（用户删除了全部链接），仅读取失败时保留兜底默认值
-            loaded = items.filter(isQuickLinkItem).map(toDialogLink)
-        }
-    } catch (error) {
-        logger.warn('[QuickLinkSettingDialog] 读取主进程快捷链接失败，使用兜底默认值:', error)
-    }
-    // 取消操作始终回滚到「打开时的数据源状态」；读取失败时回滚到当前兜底列表
-    initialLinks.value = cloneLinks(loaded ?? links.value)
-    if (loaded !== null && !userModifiedSinceOpen) {
-        links.value = loaded
-    }
-}
-
-/** 对话框 Link → 主进程 QuickLinkItem（source 未改动时保留 id/enabled/position/原始图标） */
-function toQuickLinkItem(link: Link, index: number): QuickLinkItem {
-    const source = link.source
-    const samePath = source !== undefined && source.path === link.url
-    const iconUnchanged = source !== undefined && samePath && getDisplayIcon(source) === link.icon
-    return {
-        id: source?.id || `quick-link-${index + 1}`,
-        name: link.name,
-        type: samePath ? source.type : 'url',
-        path: link.url,
-        // 'auto' 不是主进程图标白名单值：主进程按 iconContent 推断实际渲染分支（svg/img/emoji/text）
-        icon: iconUnchanged ? source.icon : 'auto',
-        iconContent: iconUnchanged ? source.iconContent : link.icon,
-        enabled: source?.enabled ?? true,
-        order: index + 1,
-        position: source?.position ?? 'left'
-    }
-}
-
-/**
- * P1-FE-04：经 IPC.QUICK_LINKS.SAVE 保存到主进程 quickLinks（唯一数据源），
- * 主进程保存成功后广播 UPDATED，NaviTab 监听后即时刷新。
- * @returns 是否保存成功（失败时对话框保持打开，避免用户改动丢失）
- */
-async function saveLinksToMain(): Promise<boolean> {
-    const items = links.value.map((link, index) => toQuickLinkItem(link, index))
-    try {
-        const result: unknown = await window.electron.ipcRenderer.invoke(
-            IPC.QUICK_LINKS.SAVE,
-            items
-        )
-        if (
-            result !== null &&
-            typeof result === 'object' &&
-            (result as { ok?: unknown }).ok === false
-        ) {
-            logger.error('[QuickLinkSettingDialog] 主进程拒绝保存快捷链接:', result)
-            return false
-        }
-        return true
-    } catch (error) {
-        logger.error('[QuickLinkSettingDialog] 保存快捷链接失败:', error)
-        return false
-    }
-}
-
-const selectedIndex = ref(-1)
-const showForm = ref(false)
-const isEditing = ref(false)
-const editingIndex = ref(-1)
-
-const formData = reactive({
-    name: '',
-    url: '',
-    icon: '🌐',
-    description: ''
-})
-
+// FE-34：每次打开都重新从主进程读取最新 quickLinks（与拆分前 watch immediate 一致）
 watch(
     () => props.visible,
     (newVal) => {
         if (newVal) {
-            userModifiedSinceOpen = false
-            void loadLinksFromMain()
+            void form.loadLinksOnOpen()
         }
     },
     { immediate: true }
 )
 
-function handleAdd() {
-    isEditing.value = false
-    editingIndex.value = -1
-    Object.assign(formData, { name: '', url: '', icon: '🌐', description: '' })
-    showForm.value = true
+function handleSelect(index: number): void {
+    form.selectLink(index)
 }
 
-function handleEdit(index: number) {
-    isEditing.value = true
-    editingIndex.value = index
-    Object.assign(formData, links.value[index])
-    showForm.value = true
+function handleAdd(): void {
+    form.openAddForm()
 }
 
-function handleDelete(index: number) {
-    userModifiedSinceOpen = true
-    links.value.splice(index, 1)
-    if (selectedIndex.value === index) {
-        selectedIndex.value = -1
-    }
+function handleEdit(index: number): void {
+    form.openEditForm(index)
 }
 
-function handleCancelForm() {
-    showForm.value = false
-    editingIndex.value = -1
+function handleDelete(index: number): void {
+    form.deleteLink(index)
 }
 
-function handleSaveForm() {
-    if (!formData.name || !formData.url) return
-
-    userModifiedSinceOpen = true
-    const link: Link = {
-        name: formData.name,
-        url: formData.url,
-        icon: formData.icon || '🌐',
-        description: formData.description
-    }
-
-    if (isEditing.value && editingIndex.value >= 0) {
-        // 名称/URL 编辑不改变图标时，保留主进程原始项的不可编辑字段（id/enabled/position 等）
-        const previous = links.value[editingIndex.value]
-        if (previous?.source !== undefined && getDisplayIcon(previous.source) === link.icon) {
-            link.source = previous.source
-        }
-        links.value[editingIndex.value] = link
-    } else {
-        links.value.push(link)
-    }
-
-    showForm.value = false
+function handleCancelForm(): void {
+    form.closeForm()
 }
 
-function handleClose() {
+function handleSaveForm(draft: QuickLinkDraft): void {
+    form.submitForm(draft)
+}
+
+function handleClose(): void {
     emit('close')
 }
 
-async function handleApply() {
-    if (!(await saveLinksToMain())) {
+async function handleApply(): Promise<void> {
+    if (!(await form.saveLinksToMain())) {
         return
     }
-    emit('apply', cloneLinks(links.value))
+    emit('apply', form.snapshotLinks())
 }
 
-async function handleConfirm() {
-    if (!(await saveLinksToMain())) {
+async function handleConfirm(): Promise<void> {
+    if (!(await form.saveLinksToMain())) {
         return
     }
-    emit('apply', cloneLinks(links.value))
+    emit('apply', form.snapshotLinks())
     emit('close')
 }
 
-function handleCancel() {
-    links.value = cloneLinks(initialLinks.value)
+function handleCancel(): void {
+    form.resetLinks()
     handleClose()
 }
 </script>
 
 <style scoped>
-/* 外壳（overlay/container/title-bar/title-text/close-btn/footer/过渡动画）已抽到 BaseDialog；
-   这里只保留正文（链接列表/编辑表单）与按钮样式。 */
-.main-content {
-    flex: 1;
-    padding: 20px;
-    overflow: hidden;
-}
-
-.content-wrapper {
-    height: 100%;
-    display: flex;
-    gap: 20px;
-}
-
-.link-list {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: var(--card-bg);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-}
-
-.list-header {
-    padding: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.list-header h3 {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-color);
-}
-
-.add-btn {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    background: var(--accent-color);
-    color: #fff;
-    font-size: 12px;
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.add-btn:hover {
-    opacity: 0.9;
-}
-
-.link-items {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px;
-}
-
-.link-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s;
-    margin-bottom: 4px;
-}
-
-.link-item:hover {
-    background: var(--hover-bg);
-}
-
-.link-item.selected {
-    background: var(--hover-bg);
-    border-left: 3px solid var(--accent-color);
-}
-
-.link-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.link-icon {
-    font-size: 20px;
-}
-
-.link-name {
-    font-size: 13px;
-    color: var(--text-color);
-}
-
-.link-actions {
-    display: flex;
-    gap: 8px;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.link-item:hover .link-actions {
-    opacity: 1;
-}
-
-.action-btn {
-    padding: 4px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--card-bg);
-    color: var(--text-color);
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.action-btn:hover {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-}
-
-.action-btn.delete:hover {
-    border-color: #ff4d4f;
-    color: #ff4d4f;
-}
-
-.link-form {
-    width: 280px;
-    background: var(--card-bg);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    padding: 16px;
-}
-
-.link-form h3 {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-color);
-    margin-bottom: 16px;
-}
-
-.form-group {
-    margin-bottom: 12px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 12px;
-    color: var(--text-color);
-    margin-bottom: 6px;
-}
-
-.form-input {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    font-size: 13px;
-    color: var(--text-color);
-    background: var(--bg-color);
-}
-
-.form-textarea {
-    width: 100%;
-    min-height: 60px;
-    padding: 8px 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    font-size: 13px;
-    color: var(--text-color);
-    background: var(--bg-color);
-    resize: vertical;
-}
-
-.form-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 16px;
-}
-
-.empty-state {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    color: var(--secondary-text-color);
-}
-
-.btn {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-cancel {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
-}
-
-.btn-cancel:hover {
-    background: var(--border-color);
-}
-
-.btn-apply {
-    background: var(--card-bg);
-    border: 1px solid var(--accent-color);
-    color: var(--accent-color);
-}
-
-.btn-apply:hover {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn-confirm {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn:hover {
-    opacity: 0.9;
-}
+/* 壳层骨架/空状态见 settings-dialog-shell.css；按钮见 dialog-buttons.css。 */
+@import './quick-link-setting/settings-dialog-shell.css';
+@import './quick-link-setting/dialog-buttons.css';
 </style>

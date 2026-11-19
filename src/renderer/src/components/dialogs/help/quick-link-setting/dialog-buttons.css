@@ -1,0 +1,68 @@
+/* ============================================================================
+ * 快捷链接设置对话框 —— 按钮公共样式（设置对话框二期拆分从 QuickLinkSettingDialog.vue
+ * 的 scoped 样式中按归属拆分出的「新增按钮 + 底栏/表单按钮」部分）
+ *
+ * 引入方式（各自组件在 `<style scoped>` 内 @import，随 scoped 样式内联并加 `[data-v-*]`）：
+ * - QuickLinkSettingDialog.vue：底栏 取消/应用/确定 + 空状态「新增」按钮；
+ * - QuickLinkList.vue：列表头部「+ 新增」按钮；
+ * - QuickLinkForm.vue：表单内 取消/保存 按钮（保存按钮仅有 .btn 基础样式，与拆分前一致）。
+ *
+ * 主题：全部沿用 var(--...) 主题变量，不引入硬编码色值。
+ * ========================================================================== */
+
+/* 新增按钮（列表头部 / 空状态共用） */
+.add-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background: var(--accent-color);
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.add-btn:hover {
+    opacity: 0.9;
+}
+
+/* 底栏 / 表单按钮基类 */
+.btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-cancel {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.btn-cancel:hover {
+    background: var(--border-color);
+}
+
+.btn-apply {
+    background: var(--card-bg);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+}
+
+.btn-apply:hover {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.btn-confirm {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.btn:hover {
+    opacity: 0.9;
+}

@@ -1,0 +1,109 @@
+/* ============================================================================
+ * 快捷链接设置对话框 —— 链接列表样式（设置对话框二期拆分从 QuickLinkSettingDialog.vue
+ * 的 scoped 样式中按归属拆分到 QuickLinkList.vue 的部分）
+ *
+ * 按钮样式（.add-btn / .action-btn 之外的底栏按钮）见 dialog-buttons.css。
+ * 主题：全部沿用 var(--...) 主题变量，不引入硬编码色值。
+ * ========================================================================== */
+
+/* 列表容器（与右侧编辑表单并排，占满剩余宽度） */
+.link-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+/* 列表头部：标题 + 新增按钮 */
+.list-header {
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.list-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+/* 列表滚动区 */
+.link-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+/* 单条链接：图标 + 名称 + 悬停操作 */
+.link-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 4px;
+}
+
+.link-item:hover {
+    background: var(--hover-bg);
+}
+
+.link-item.selected {
+    background: var(--hover-bg);
+    border-left: 3px solid var(--accent-color);
+}
+
+.link-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.link-icon {
+    font-size: 20px;
+}
+
+.link-name {
+    font-size: 13px;
+    color: var(--text-color);
+}
+
+/* 操作按钮：默认隐藏，悬停该条时显示（与拆分前一致） */
+.link-actions {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.link-item:hover .link-actions {
+    opacity: 1;
+}
+
+.action-btn {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--card-bg);
+    color: var(--text-color);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.action-btn.delete:hover {
+    border-color: #ff4d4f;
+    color: #ff4d4f;
+}
