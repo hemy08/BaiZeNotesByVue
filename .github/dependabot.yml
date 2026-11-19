@@ -1,0 +1,103 @@
+# Dependabot 版本更新配置（依赖安全治理，2026-11-19）
+#
+# 说明：
+# - 本文件只控制「版本更新」PR；「安全更新」PR 由 GitHub 仓库
+#   Settings → Code security and analysis → Dependabot security updates 开关统一生成，
+#   无法通过本文件开启/关闭，需在仓库设置中开启（口径见依赖安全治理报告 §7）。
+# - 分组策略：同类依赖合并为 1 个 PR；open-pull-requests-limit 限制并行版本更新 PR 上限。
+# - 重大版本（semver-major）统一 ignore：跨大版本升级需单独评估破坏性与回归成本，
+#   评估结论与待办记录在 docs/reports/md/03-专项治理/依赖安全治理报告.md。
+# - vendor 副本（历史 src/renderer/src/lib/* 与 resources/themes/monaco-themes 主题资源）
+#   不参与构建、不安装 node_modules，排除扫描以避免无效版本更新 PR。
+version: 2
+updates:
+    - package-ecosystem: npm
+      directory: /
+      schedule:
+          interval: weekly
+          day: monday
+          time: '09:00'
+          timezone: Asia/Shanghai
+      open-pull-requests-limit: 5
+      versioning-strategy: increase
+      rebase-strategy: auto
+      labels:
+          - dependencies
+      commit-message:
+          prefix: 'chore(deps)'
+      exclude-paths:
+          - 'src/renderer/src/lib/**'
+          - 'resources/themes/**'
+      groups:
+          # 1) Electron 运行时与打包链
+          electron:
+              patterns:
+                  - electron
+                  - electron-*
+                  - '@electron/*'
+                  - '@electron-toolkit/*'
+              update-types: [minor, patch]
+          # 2) Vue 生态
+          vue:
+              patterns:
+                  - vue
+                  - vue-tsc
+                  - '@vue/*'
+                  - '@imengyu/*'
+              update-types: [minor, patch]
+          # 3) Vite 构建器
+          vite:
+              patterns:
+                  - vite
+                  - '@vitejs/*'
+              update-types: [minor, patch]
+          # 4) 测试链
+          test:
+              patterns:
+                  - vitest
+                  - '@vitest/*'
+                  - '@playwright/*'
+                  - '@vue/test-utils'
+                  - jsdom
+              update-types: [minor, patch]
+          # 5) ESLint 与代码规范
+          eslint:
+              patterns:
+                  - eslint
+                  - eslint-*
+                  - '@typescript-eslint/*'
+                  - '@vue/eslint-config-*'
+              update-types: [minor, patch]
+          # 6) Markdown / 渲染 / 净化（安全敏感）
+          markdown:
+              patterns:
+                  - markdown-it
+                  - markdown-it-*
+                  - mermaid
+                  - katex
+                  - dompurify
+                  - highlight.js
+                  - turndown
+              update-types: [minor, patch]
+          # 7) 构建链与其他开发工具（兜底组）
+          build:
+              patterns:
+                  - typescript
+                  - monaco-editor
+                  - pdfjs-dist
+                  - prettier
+                  - officegen
+                  - csv-parser
+                  - '*'
+              update-types: [minor, patch]
+          # 8) 类型声明（必须在兜底组之前，避免被 build 的 '*' 吞掉）
+          types:
+              patterns:
+                  - '@types/*'
+              update-types: [minor, patch]
+      # 重大版本统一忽略：跨 major 需人工评估（含 Electron 43→45、TypeScript 6→7、
+      # Vitest 4→5、ESLint 9→10、jsdom 29→31、js-yaml 4→5、nanoid 3→6、
+      # @xmldom/xmldom 0.8→0.9 等，清单见治理报告「剩余项」）。
+      ignore:
+          - dependency-name: '*'
+            update-types: ['version-update:semver-major']

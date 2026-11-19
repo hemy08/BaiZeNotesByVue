@@ -72,6 +72,14 @@
 - **M3 单一 manifest（`7c2467b`）**：新增 `src/shared/constants/material-syntax.ts` 作为 15 项 Material 扩展语法唯一真源（id / 菜单词条 / 动作 id）；`menu-config` 菜单项由 manifest 生成，`menu-actions` 拦截清单与对话框 id 类型/顺序改为派生；新增 4 条 manifest 一致性测试（菜单生成顺序 / 对话框渲染顺序 / zh-CN+en-US 词条齐全）；38 项插件工具 manifest 留待后续
 - 门禁：typecheck 三工程 0 错误、ESLint 0/0、`prettier --check .` 全绿、electron-vite build 成功、vitest **171 文件 / 3,265 用例全通过**（删除死测试 11 条 + 新增 manifest 一致性 4 条）、preload 白名单 `--check` 通过、质量基线 `--check` 一致、IPC **91 通道 / 17 组**
 
+### 🛡️ 依赖安全治理（Dependabot 254 条告警全量分类与修复，2026-11-19）
+
+- **全量分类**：经 GitHub REST API 拉取 254 条 open 告警（critical 1 / high 93 / medium 120 / low 40；runtime 170 / development 84；41 个包 / 188 个唯一 GHSA），按当前依赖树逐条 semver 核验：**已修复 209 条、依赖已移除 30 条、清单已删除（vendor）15 条、仍受影响 0 条**；npm audit（官方 registry，含 dev，828 个依赖）**0 漏洞**，差异归因（告警为历史快照 / overrides 已修复 / 依赖已移除 / vendor 清单已删除 / 工具库差异）见报告
+- **Dependabot 配置**：新增 `.github/dependabot.yml`（npm / weekly / 8 分组合并 PR / `open-pull-requests-limit: 5` / `exclude-paths` 排除 vendor 副本 / major 统一 ignore；security updates 需在仓库 Settings 开启，文档注明）
+- **修复批**：18 项直接依赖声明升级 + 5 处 overrides 更新（electron 43.8.12、electron-builder 26.18.1、dompurify 3.4.18、katex 0.18.11、mammoth 1.13.0、minimatch 11.0.9、uuid 14.0.3 等）；`vue-tsc` 3.3.14 暴露存量模板对只读 computed 赋值，按「失败单项回滚」恢复 3.3.11；electron 二进制未随依赖安装落盘的问题经 `ELECTRON_MIRROR` 恢复后复跑门禁
+- **报告**：[依赖安全治理报告](docs/reports/md/03-专项治理/依赖安全治理报告.md)（254 条分类表、Top 包、npm audit 差异归因、vendor 说明、剩余 major 清单与复现命令）
+- **门禁**：typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **175 文件 / 3,297 用例全通过**、electron-vite build 成功、npm audit 0 漏洞
+
 ## 2026年11月19日 - 版本 1.3.7（结构治理 / 性能 / 安全与文档体系）
 
 > 承接 1.3.6（2026-11-15 发布）之后 **11-18、11-19 的全部修改**：以「公共接口归位」第 0~4 批完成 shared 三层单真源与渲染层组件化，主界面异步分块将入口 chunk 降低 98.9%，并完成 PDF 预览 / CSP / preload 白名单等安全加固与报告 HTML Wiki 文档体系重构。
