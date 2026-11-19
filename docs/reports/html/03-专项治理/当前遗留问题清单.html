@@ -224,20 +224,21 @@
     <a class="toc-l3" href="#sub-6">3.6 用户反馈问题（2026-11-18 修复）</a>
     <a class="toc-l2" href="#sec-4">四、建议处理顺序</a>
     <a class="toc-l2" href="#sec-5">五、修复记录（按时间倒序）</a>
-    <a class="toc-l3" href="#sub-7">2026-11-19 · 公共接口归位（第 3 批完成：18/18 对话框迁移 + 插件样式收口）</a>
-    <a class="toc-l3" href="#sub-8">2026-11-19 · 公共接口归位（第 3 批：渲染层组件化，✅ 已完成）</a>
-    <a class="toc-l3" href="#sub-9">2026-11-19 · 公共接口归位（第 2 批：shared/types 契约层）</a>
-    <a class="toc-l3" href="#sub-10">2026-11-19 · 公共接口归位（第 1 批：shared/utils + shared/constants）</a>
-    <a class="toc-l3" href="#sub-11">2026-11-19 · 公共接口归位（第 0 批，P1）</a>
-    <a class="toc-l3" href="#sub-12">2026-11-19 · 修复批次 7（性能：主界面异步分块，入口 chunk -98.9%）</a>
-    <a class="toc-l3" href="#sub-13">2026-11-19 · 修复批次 6（P3 清理：E2E 入 CI / 对话框安全 / 命名统一 / 文档口径）</a>
-    <a class="toc-l3" href="#sub-14">2026-11-19 · 修复批次 5（代码复检：P0/P1/P2 修复 + 文档口径统一）</a>
-    <a class="toc-l3" href="#sub-15">2026-11-18 · 用户反馈修复（欢迎页窗口控制）</a>
-    <a class="toc-l3" href="#sub-16">2026-11-18 · 修复批次 4（CSP / PDF 预览 / 按需加载）</a>
-    <a class="toc-l3" href="#sub-17">2026-11-18 · 修复批次 3（IPC 分组统一 / 资源优化）</a>
-    <a class="toc-l3" href="#sub-18">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</a>
-    <a class="toc-l3" href="#sub-19">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</a>
-    <a class="toc-l3" href="#sub-20">2026-11-18 · 台账建立</a>
+    <a class="toc-l3" href="#sub-7">2026-11-19 · 公共接口归位（第 4 批：P3 清理，✅ 完成）</a>
+    <a class="toc-l3" href="#sub-8">2026-11-19 · 公共接口归位（第 3 批完成：18/18 对话框迁移 + 插件样式收口）</a>
+    <a class="toc-l3" href="#sub-9">2026-11-19 · 公共接口归位（第 3 批：渲染层组件化，✅ 已完成）</a>
+    <a class="toc-l3" href="#sub-10">2026-11-19 · 公共接口归位（第 2 批：shared/types 契约层）</a>
+    <a class="toc-l3" href="#sub-11">2026-11-19 · 公共接口归位（第 1 批：shared/utils + shared/constants）</a>
+    <a class="toc-l3" href="#sub-12">2026-11-19 · 公共接口归位（第 0 批，P1）</a>
+    <a class="toc-l3" href="#sub-13">2026-11-19 · 修复批次 7（性能：主界面异步分块，入口 chunk -98.9%）</a>
+    <a class="toc-l3" href="#sub-14">2026-11-19 · 修复批次 6（P3 清理：E2E 入 CI / 对话框安全 / 命名统一 / 文档口径）</a>
+    <a class="toc-l3" href="#sub-15">2026-11-19 · 修复批次 5（代码复检：P0/P1/P2 修复 + 文档口径统一）</a>
+    <a class="toc-l3" href="#sub-16">2026-11-18 · 用户反馈修复（欢迎页窗口控制）</a>
+    <a class="toc-l3" href="#sub-17">2026-11-18 · 修复批次 4（CSP / PDF 预览 / 按需加载）</a>
+    <a class="toc-l3" href="#sub-18">2026-11-18 · 修复批次 3（IPC 分组统一 / 资源优化）</a>
+    <a class="toc-l3" href="#sub-19">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</a>
+    <a class="toc-l3" href="#sub-20">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</a>
+    <a class="toc-l3" href="#sub-21">2026-11-18 · 台账建立</a>
   </nav>
 
 <div class="wrap">
@@ -634,7 +635,16 @@
 <li><strong>低风险收尾</strong>：#3/#7 域错配统一 → #10 P3 文档声明 → #13/#14/#15 → #18</li>
 </ol>
 <h2 id="sec-5">五、修复记录（按时间倒序）</h2>
-<h3 id="sub-7">2026-11-19 · 公共接口归位（第 3 批完成：18/18 对话框迁移 + 插件样式收口）</h3>
+<h3 id="sub-7">2026-11-19 · 公共接口归位（第 4 批：P3 清理，✅ 完成）</h3>
+<ul>
+<li><strong>主进程/配置组</strong>：删除 <code>dialog-helpers</code> 3 个死包装（+ index re-export/测试同步）；4 处手写 basename/dirname 统一为 <code>path.basename/dirname</code>（顺带修 <code>OpenFolderExplorer</code> 的 <code>lastIndexOf('//')</code> 笔误）；主题注册表/主窗口图标资源路径统一 <code>app-paths</code>（<strong>修复真实缺陷：主窗口图标原路径指向不存在的 out/resources，一直未加载</strong>）；删除 <code>@mainer</code> 死别名（tsconfig/vite/vitest/test 四处）；<code>global-types.d.ts</code> 迁移到 <code>src/shared/types/global.d.ts</code>（web 程序不再 include main 目录）；IPC domain 计数文案 18→17 + 防回归断言</li>
+<li><strong>渲染层组</strong>：删除死 composable <code>useEventBus</code>（-44 行 + 13 用例删除，全仓 0 生产引用）；<code>messageTypes</code> 三处重复收敛为 <code>MESSAGE_DIALOG_TYPES</code> 常量；<strong>18 处裸 <code>console.*</code> 收敛到 logger</strong>（渲染层仅剩 logger 自身出口）；<strong>修复 ThemeSettingDialog 8 个 resize-handle 的 <code>@mousedown</code> 柯里化未调用缺陷</strong>（第 3 批发现的历史缺陷，新增逐方向回归用例）；清理 <code>DialogState.admonition.data</code> 死字段</li>
+<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>171 文件 / 3,198 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
+</ul>
+<blockquote>
+<p><strong>公共接口归位计划（第 0–4 批）已全部完成</strong>：新建 shared 工具层 11 模块 + 常量层 7 模块 + 契约层 4 模块；主进程/渲染层 60+ 文件迁移；渲染层组件化（WindowControls/FileViewerShell/TextCodecTool/BaseDialog 18/18 对话框/preview-block-utils/Mermaid 清理）；P3 清理 12 项。累计净减约 4,000+ 行重复代码。剩余建议：实机 UI 手测（9 项清单）、主题明暗归属待产品确认、<code>useEventBus</code> 相关历史文档口径清理。</p>
+</blockquote>
+<h3 id="sub-8">2026-11-19 · 公共接口归位（第 3 批完成：18/18 对话框迁移 + 插件样式收口）</h3>
 <ul>
 <li><strong>BaseDialog 能力扩展</strong>：新增 <code>titleTextStyle</code>/<code>closeButtonStyle</code>（类型 <code>DialogStyleProperties</code> = CSSProperties + <code>WebkitAppRegion</code>，解决 csstype 未收录 app-region 的 TS 拒绝）+ <code>prepend</code> 插槽（容器内 title-bar 之前）；18 props / 4 插槽，兼容既有 10 个已迁移对话框；新增 6 用例</li>
 <li><strong>C-2 组（纯样式覆盖 7 个）</strong>：ImportOption（零覆盖）/Admonition/InsertImage/MdSheet/MathText/MaterialSyntax/TechStack 迁移；净 <strong>-626 行</strong>；外壳声明审计 355 条 + 正文 545 条<strong>0 不一致</strong>；新增 30 用例</li>
@@ -642,9 +652,9 @@
 <li><strong>C-4 组（4 个特殊）</strong>：EditorSetting/MermaidEdit/ThemeSetting（<strong>8 个 resize-handle 放入 <code>#prepend</code></strong>，DOM 顺序断言锁定）/HelpAbout（仅关闭按钮标题栏 + app-region drag）迁移；新增 27 用例；<strong>18/18 对话框全部完成 BaseDialog 迁移</strong></li>
 <li><strong>插件样式副本清理</strong>：13 个 PluginTools 组件删除本地 scoped 副本（<strong>-229 行 CSS / 121 条重复声明</strong>），差异声明保留（公共定义作基础）；40 个候选中残留重复声明 0；视觉零变化</li>
 <li><strong>记录待修复（非本次引入）</strong>：ThemeSettingDialog 的 <code>@mousedown=&quot;startResize('n')&quot;</code> 柯里化函数未调用（resize 交互迁移前就可能未生效），建议后续单独修复为 <code>startResize('n')($event)</code></li>
-<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>172 文件 / 3,214 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
+<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>171 文件 / 3,198 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
 </ul>
-<h3 id="sub-8">2026-11-19 · 公共接口归位（第 3 批：渲染层组件化，✅ 已完成）</h3>
+<h3 id="sub-9">2026-11-19 · 公共接口归位（第 3 批：渲染层组件化，✅ 已完成）</h3>
 <ul>
 <li><strong>窗口控制组件化</strong>：新建 <code>components/common/WindowControls.vue</code>（props：<code>showMaximize/variant</code>，复用 <code>useWindowManagement</code> 的 TOGGLE/状态同步），<code>WelcomeScreen.vue</code>（-141 行）与 <code>BaiZeNotes.vue</code>（-81 行）改用共享组件；DOM class/i18n/no-drag 契约保持，新增 6 用例</li>
 <li><strong>HTML/PDF 查看器壳层去重</strong>：新建 <code>composables/useFileViewerState.ts</code>（三态/代次守卫/重试/文件选择监听）+ <code>HemyTools/FileViewerShell.vue</code>（三态容器/工具栏/内容插槽 + 16 条共享样式）；<code>ShowHtmlView</code> 320→154 行、<code>ShowPdfEditor</code> 579→402 行；IPC 通道、EventBus 事件、全部既有 class 名不变，27 个既有用例通过</li>
@@ -653,12 +663,12 @@
 <li><strong>预览解析 helper 去重</strong>：新建 <code>Markdown/preview-block-utils.ts</code>（14 函数 + 2 常量）；4 个 preview-md 插件删除重复 helper（净减 <strong>309 行</strong>），缩进口径差异以具名封装参数化保留（basic/blocks/media/material 各自 env 键隔离不变）；23 用例等价性单测（4 份旧实现逐字副本作参照）</li>
 <li><strong>Mermaid 双管线清理</strong>：删除死组件 <code>MermaidRender.vue</code>（-114 行，生产零引用）；测试改为断言 <code>hemy-editor-render</code> 懒加载路径（initialize 一次 + 错误块降级），新增死组件删除守卫</li>
 <li><strong>BaseDialog 抽层（保守范围）</strong>：新建 <code>dialogs/BaseDialog.vue</code>（16 props/3 插槽/4 种 title-bar 变体/4 种动画，默认样式 + 覆盖钩子）；迁移 <code>MessageDialog</code>（347→210）/<code>CreateFileFolderDialog</code>（352→238）/<code>WebUrlDialog</code>（271→160）3 个 simple 对话框，<strong>283 条声明逐属性核对 0 不一致</strong>；其余 15 个对话框保留，迁移清单（C-2/C-3/C-4 分组）见报告与修复计划</li>
-<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>172 文件 / 3,214 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
+<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>171 文件 / 3,198 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
 </ul>
 <blockquote>
 <p>第 3 批剩余项已全部完成（见下方批次 12）：BaseDialog 已扩展并迁移其余 15 个对话框、plugin-tools 样式副本已清理；第 4 批 P3 清理待执行。</p>
 </blockquote>
-<h3 id="sub-9">2026-11-19 · 公共接口归位（第 2 批：shared/types 契约层）</h3>
+<h3 id="sub-10">2026-11-19 · 公共接口归位（第 2 批：shared/types 契约层）</h3>
 <ul>
 <li><strong>IPC 载荷契约骨架</strong>：新建 <code>src/shared/types/ipc.ts</code> —— <code>IpcRequests</code> <strong>58/58</strong>（与 preload send/invoke 白名单双向相等）、<code>IpcResponses</code> <strong>26</strong>（⊆ 请求且与主进程 handle 注册对齐）、<code>IpcEvents</code> <strong>25/25</strong>（与 receive 白名单双向相等，且每通道有真实发送点）；另建 <code>IpcPreloadApiRequests</code>（window.api 直连 6 通道，断言不在白名单内）；新增 <code>ipc-payload-contract.test.ts</code> 静态护栏（含渲染层 75 处调用通道 ⊆ 请求表）</li>
 <li><strong>CONFIG 配置映射</strong>：新建 <code>src/shared/types/config.ts</code> —— <code>ConfigName</code>（8 个，与 config-schema 白名单/validate switch 双向核对）、<code>ConfigReadMap/ConfigWriteMap/ConfigDataMap</code>（按主进程实际返回定义）；修复渲染层 2 处真实错误断言（<code>editor</code> 实际 7 字段、<code>quick-links</code> 实际裸数组）；preload <code>ApiConfig</code> 增加 <code>K extends ConfigName</code> 重载（旧泛型保留过渡）</li>
@@ -666,24 +676,24 @@
 <li><strong>文件树传输契约</strong>：<code>FileItem</code> 补 <code>id</code>/<code>fileExtension</code> 必填、新增 <code>FileTreePayload</code>；主进程去掉 <code>as FileItem</code> 绕过（根节点补稳定 id）；<code>StoreFileProperties</code> 改 shared <code>FileProperties</code>；渲染层 <code>FileSysItem</code> 从传输类型派生；新增 <code>file-tree-contract.test.ts</code></li>
 <li><strong>主题类型族</strong>：28 项 <code>ThemeType</code>/<code>ThemeConfig</code>/<code>MonacoThemeConfig</code>/<code>MonacoThemeData</code>/<code>ThemeListResult</code> 上移 shared；新建 <code>shared/constants/theme.ts</code>（<code>THEME_GROUPS</code> 浅色 14/深色 7/护眼 7 + <code>isDarkThemeType</code>），消除渲染层两套硬编码清单与「名字含 dark 猜测」的矛盾（<code>BaiZeNotes</code>/<code>ThemeSettingDialog</code>/<code>useConfigStore</code> 统一引用）；<strong>待产品确认</strong>：baize-text/baize-starry/forest 实际配色与 UI 分组相反，确认后只需改 shared 常量</li>
 <li><strong>其余契约</strong>：PlantUML 响应、AppVersionInfo、备份（ConfigBackupInfo/State/Command）、HashResult、CryptoWireData、RendererEditorConfig/RendererQuickLink 两端引用统一 + 静态护栏（<code>theme-contract/file-tree-contract/domain-contract</code> 3 个测试文件）</li>
-<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>172 文件 / 3,214 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
+<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>171 文件 / 3,198 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
 </ul>
 <blockquote>
 <p>记录待办（不阻塞）：主题明暗口径待产品确认；<code>FILE.READ_HTML</code> 空串语义；渲染层 75 处调用点尚未灰度替换为 typed helper（见计划第 2 批后续建议）。</p>
 </blockquote>
-<h3 id="sub-10">2026-11-19 · 公共接口归位（第 1 批：shared/utils + shared/constants）</h3>
+<h3 id="sub-11">2026-11-19 · 公共接口归位（第 1 批：shared/utils + shared/constants）</h3>
 <ul>
 <li><strong>新建共享纯函数层</strong>：<code>src/shared/utils/</code> 11 个模块（path/hash/lru-cache/html/random/validate/format/concurrency/debounce/date/backup-dir），逐函数对齐现有实现（路径/哈希 4 份、LRU 4 份、HTML 转义 3 份、随机串 2 套、备份样板 2 套等），新增 <code>tests/unit/shared-utils.test.ts</code> <strong>121 用例</strong>（编码/UNC/大小写/逃逸/淘汰/fake timers/时间戳等边界）</li>
 <li><strong>新建共享常量层</strong>：<code>src/shared/constants/</code> 6 个模块（window/limits/render/file-extensions/hash-algorithms/encodings），逐值对齐来源并带漂移护栏（<code>tests/unit/shared-constants.test.ts</code> <strong>15 用例</strong>，import 既有导出常量做 <code>toBe</code> 对比）</li>
 <li><strong>使用方迁移</strong>：主进程 <strong>16 个文件</strong>（utils/security/workspace-root/directory-tree/path-utils/image-operations/file-operations/file-encoding/plantuml-local/logger/auto-backup/config-backup/config-schema/config-manager/handlers/window-bounds）与渲染层 <strong>15 个文件</strong>（html-view-utils/preview-local-render/preview-md-blocks/preview-chapters/hemy-editor-render/MermaidRender/MarkdownMonacoEditor/MarkdownPreviewComponent/MenuBar/resource-manager/FileTreeNode/escape-html/ImageBase64 等）改引 shared；保留既有导出名/签名（re-export 薄壳），行为零变化</li>
 <li><strong>迁移中修复的真实缺陷</strong>：<code>MarkdownPreviewComponent.vue</code> 的 <code>lastIndexOf('/') || lastIndexOf('\\')</code> 短路缺陷（根级 <code>/README.md</code> 返回整条路径）；Monaco model URI 统一为规范 <code>file:///E:/...</code> 并对 UNC 增加 <code>toMonacoModelUrl()</code> 兼容（原 <code>file://${path}</code> 把盘符当 authority，实测 monaco 0.57 6 类样本稳定唯一）</li>
 <li><strong>语义差异（已在代码注释记录）</strong>：README 大小文案统一为 <code>128.00 MB</code> 格式；<code>parseBackupStamp</code> 增加日历回读校验（非法日期返回 null）；目录树节点 id 的 FNV 输入由保留 <code>\\</code> 改为统一 <code>/</code>（确定性 id，不落盘/非 IPC 契约）；<code>clampNumber</code> 适配 shared 数字钳制（行为等价）</li>
-<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>172 文件 / 3,214 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
+<li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>171 文件 / 3,198 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
 </ul>
 <blockquote>
 <p>后续：第 2 批 shared/types（零运行时，约 10 组契约）待执行；第 3 批渲染层组件化、第 4 批 P3 清理见《公共接口归位修复计划》。</p>
 </blockquote>
-<h3 id="sub-11">2026-11-19 · 公共接口归位（第 0 批，P1）</h3>
+<h3 id="sub-12">2026-11-19 · 公共接口归位（第 0 批，P1）</h3>
 <p>三组只读扫描（跨端重复 28 项、单端内部 35 项、类型契约 17 组）后，第 0 批完成 4 项 P1 归位：</p>
 <ul>
 <li><strong>URL 单一真源</strong>：<code>src/main/constants/urls.ts</code> 改为 re-export <code>src/shared/constants/urls.ts</code>（删除 52 条逐字重复常量）；渲染层 <code>menu-consts.ts</code> 删除 50 个死 URL 字段（<code>generateMenuItems</code> 本就丢弃 url），<code>urls-constants</code> 测试改为「真源键集合 + 门面全等」断言</li>
@@ -697,7 +707,7 @@
 <blockquote>
 <p>后续批次（扫描结论，待执行）：第 1 批 shared/utils+constants（file-url/hash/LRU/html/path/random/validate/format、limits/window/encodings）；第 2 批 shared/types（ipc/config/dialog/file/theme/backup/app-info，零运行时）；第 3 批渲染层组件化（WindowControls/FileViewerShell/BaseDialog/CodecTool/preview-block-utils）；第 4 批 P3 清理。</p>
 </blockquote>
-<h3 id="sub-12">2026-11-19 · 修复批次 7（性能：主界面异步分块，入口 chunk -98.9%）</h3>
+<h3 id="sub-13">2026-11-19 · 修复批次 7（性能：主界面异步分块，入口 chunk -98.9%）</h3>
 <ul>
 <li><strong>主界面整体异步化</strong>：<code>App.vue</code> 中 <code>BaiZeNotes.vue</code> 改为 <code>defineAsyncComponent</code> 按需加载——Monaco（≈7.3MB）、highlight.js（≈1.29MB）、KaTeX（≈0.51MB）与渲染管线全部移出入口 chunk；入口 chunk <strong>10,096KB → 114KB</strong>，初始加载 JS+CSS <strong>10,541KB → 604KB（-94.3%）</strong>；主界面异步 chunk <code>BaiZeNotes-*.js</code> ≈9,644KB（按需加载、入口 HTML 不预载）</li>
 <li><strong>启动恢复时序保证</strong>：<code>BaiZeNotes.vue</code> 挂载并注册完全部 IPC 监听后 <code>emit('main-view-mounted')</code>，<code>show-welcome=false</code> 路径等该信号再发 READY；<code>autoOpenLastFile/Folder</code> 路径在 READY 前预加载模块（WELCOME_ENTER_MAIN 同一微任务链完成挂载）；欢迎页路径首帧后空闲预加载</li>
@@ -705,7 +715,7 @@
 <li><strong>结构债评估</strong>：原 4 个 &gt;800 行目标文件已降至 700–795 行（&lt;800 阈值）；剩余超阈值历史大文件（preview-md-basic/对话框等）不涉及本轮功能，记录为后续专项（拆分收益为可维护性、回归风险高，不阻塞）</li>
 <li>门禁：typecheck 0 / ESLint 0-0 / vitest <strong>158 文件 / 2,877 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E 4 passed</li>
 </ul>
-<h3 id="sub-13">2026-11-19 · 修复批次 6（P3 清理：E2E 入 CI / 对话框安全 / 命名统一 / 文档口径）</h3>
+<h3 id="sub-14">2026-11-19 · 修复批次 6（P3 清理：E2E 入 CI / 对话框安全 / 命名统一 / 文档口径）</h3>
 <ul>
 <li><strong>E2E 纳入 CI</strong>：新增独立并行 <code>e2e</code> job（windows-latest：构建后 Playwright Electron 冒烟，失败上传 report/trace）；本地冒烟 2 用例通过（修复原用例标题断言与 Electron 启动环境问题），冒烟增强为主窗口/欢迎页窗口控制/preload 桥/IPC 往返断言</li>
 <li><strong>对话框安全纵深</strong>：<code>preload/dialog.ts</code> 增加<strong>接收通道白名单</strong>（仅 <code>THEME_UPDATED</code>，未知丢弃告警）；JSDOM 对话框 HTML 统一注入严格 CSP（<code>default-src 'none'</code>、仅内联 script/style + data: 图片，阻断外部资源/网络）</li>
@@ -715,7 +725,7 @@
 <li><strong>文档口径</strong>：<code>docs/wiki/</code>（29 篇）与 <code>docs/md/</code>（2 篇）统一到 v1.3.6 实测口径（92 通道/17 组、158 文件/2,871 用例、58+25 白名单、38 插件、源码规模、菜单 12 顶层/319 项），修复 7 处旧报告引用与 34 处过期基线指引（链接失效 0）</li>
 <li>门禁：typecheck 0 / ESLint 0-0 / vitest <strong>158 文件 / 2,871 用例全通过（0 未处理错误）</strong> / <code>electron-vite build</code> 成功 / E2E 冒烟 2 passed</li>
 </ul>
-<h3 id="sub-14">2026-11-19 · 修复批次 5（代码复检：P0/P1/P2 修复 + 文档口径统一）</h3>
+<h3 id="sub-15">2026-11-19 · 修复批次 5（代码复检：P0/P1/P2 修复 + 文档口径统一）</h3>
 <p>三组并行审计（安全/IPC、质量/架构、性能/测试/文档）共 72 项原始发现，本轮修复：</p>
 <ul>
 <li><strong>P0 数据丢失回归</strong>：欢迎页「最近文件夹」路径（<code>OPEN_SPECIFIC_FOLDER</code>）补 <code>markMainViewEntered()</code>；遗留配置 <code>show-welcome=false</code> 启动时由主进程同步读取并标记；新增 CLOSE 快路径集成测试（欢迎页跳过 flush / 主界面保留 flush→脏保存）与启动配置用例</li>
@@ -725,21 +735,21 @@
 <li><strong>文档统一</strong>：README/CHANGELOG/reports README/台账/矩阵/架构文档统一为 <strong>92 通道 / 17 组、158 文件 / 2,871 用例、58+25 白名单、38 插件</strong>；修复 14 处失效相对链接</li>
 <li>门禁：typecheck 0 / ESLint 0-0 / vitest <strong>158 文件 / 2,871 用例全通过（0 未处理错误）</strong> / <code>electron-vite build</code> 成功</li>
 </ul>
-<h3 id="sub-15">2026-11-18 · 用户反馈修复（欢迎页窗口控制）</h3>
+<h3 id="sub-16">2026-11-18 · 用户反馈修复（欢迎页窗口控制）</h3>
 <ul>
 <li><strong>#20 关闭按钮延迟</strong>：新增主进程 <code>welcome-state</code> 状态模块（发送 WELCOME_ENTER_MAIN 标记进入主界面、新窗口创建复位），CLOSE 通道在欢迎页时跳过 FLUSH_CONTENT 的 2s 超时直接关闭；主界面保留 flush→脏则保存协议</li>
 <li><strong>#21 最大化二次点击无效</strong>：欢迎页最大化按钮改发 <code>TOGGLE_MAXIMIZE</code>；按 <code>IS_MAXIMIZED</code> 动态切换「最大化/还原」图标与 title（新增 i18n 词条 <code>workspace.window.restore</code>）</li>
 <li>测试：新增 welcome-state 4 用例；欢迎页窗口控制测试更新（TOGGLE 断言 + 图标状态 2 用例）；basic-components 窗口按钮断言同步</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0-0 / vitest <strong>158 文件 / 2,871 用例全通过</strong> / <code>electron-vite build</code> 成功</li>
 </ul>
-<h3 id="sub-16">2026-11-18 · 修复批次 4（CSP / PDF 预览 / 按需加载）</h3>
+<h3 id="sub-17">2026-11-18 · 修复批次 4（CSP / PDF 预览 / 按需加载）</h3>
 <ul>
 <li><strong>#6 CSP 收紧</strong>：补充 <code>object-src 'none'</code>、<code>base-uri 'self'</code>、<code>form-action 'none'</code>（不影响现有功能的纵深防御）；新增 <code>renderer-csp.test.ts</code> 契约测试（6 用例）锁定关键指令与 file:/blob: 放行项；<code>unsafe-eval</code> 经 grep 确认无 eval/new Function 使用，保留待实机验证</li>
 <li><strong>#9 PDF 预览（pdf.js 方案）</strong>：新增 <code>FILE.READ_BINARY</code> 二进制读取通道（Path Guard 校验 → Uint8Array）；ShowPdfEditor 重写为 pdfjs-dist 渲染（翻页/缩放/错误提示/卸载销毁），恢复插件注册与「工具→常用小工具→PDF 预览」菜单入口；新增组件测试 6 用例、utils 通道测试 3 用例、插件/菜单/词典断言更新</li>
 <li><strong>#11 主 chunk 拆分（部分）</strong>：HTML 查看器与 PDF 预览改为按需异步组件（ShowPdfEditor 独立 chunk 802KB），主 chunk 11,142KB → 10,333KB（-809KB），消除 INEFFECTIVE_DYNAMIC_IMPORT 警告；剩余 Mermaid/Monaco 大依赖异步化需实机回归，留待独立批次</li>
 <li>构建验证：<code>electron-vite build</code> 成功（pdfjs worker 正常打包）</li>
 </ul>
-<h3 id="sub-17">2026-11-18 · 修复批次 3（IPC 分组统一 / 资源优化）</h3>
+<h3 id="sub-18">2026-11-18 · 修复批次 3（IPC 分组统一 / 资源优化）</h3>
 <ul>
 <li><strong>#3/#7 IPC 域错配统一</strong>：常量分组与通道 domain 一一对应——编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、设置类 2 通道新建 SETTING 组、Monaco 类并入 MONACO 组（原 MONACO_INSERT 组）；共 12 个符号引用全仓批量替换（16 文件），分组由 16 → 17 组、通道仍 90 个</li>
 <li><strong>#13 PlantUML 隐藏窗空闲销毁</strong>：渲染完成后 60s 无新渲染即销毁隐藏窗口释放渲染进程资源（SVG LRU 缓存保留，下次渲染按需重建；timer unref 不阻塞退出）；新增 2 个测试用例</li>
@@ -747,7 +757,7 @@
 <li><strong>#15 HemyTools.vue 核实</strong>：被 WorkSpace.vue 引用且含实际实现，非空壳死代码 → 无需处理</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0-0 / vitest 全量通过</li>
 </ul>
-<h3 id="sub-18">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</h3>
+<h3 id="sub-19">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</h3>
 <ul>
 <li><strong>#4 preload 发送白名单（C-09）</strong>：主窗口 preload 不再暴露 toolkit 全量 ipcRenderer，改为受限包装——send/invoke 57 通道、on/once 26 通道白名单（按渲染层实际调用静态扫描收集），未知通道丢弃/拒绝并告警；preload-index.test 新增 5 用例</li>
 <li><strong>#8 自动更新源</strong>：默认源改为本仓库 GitHub Releases 静态目录（electron-builder.yml / dev-app-update.yml / update.json.example / update.config.md 同步）；发布时上传 latest.yml 与安装包即可</li>
@@ -755,7 +765,7 @@
 <li><strong>#12 主题缓存异步预热</strong>：theme-registry 新增 <code>warmupMonacoThemeCache()</code>（异步填充文件名与主题数据缓存），index.ts 窗口就绪后空闲调用；主题注册表测试新增 4 用例</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0/0 / vitest 155+ 文件 / 2,83x 用例全通过</li>
 </ul>
-<h3 id="sub-19">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</h3>
+<h3 id="sub-20">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</h3>
 <ul>
 <li><strong>#1 查看器「在浏览器中打开」</strong>：新增 <code>FILE.OPEN_IN_BROWSER</code> 通道（ipc-channels.ts / utils.ts：.html/.htm 扩展名 + Path Guard 校验 → <code>pathToFileURL</code> → <code>shell.openExternal</code>）；ShowHtmlView.vue 改走新通道；测试：utils.test 新增 4 用例、html-view 断言更新</li>
 <li><strong>#2 菜单主题选中态</strong>：MenuBar.vue <code>handleThemeUpdated</code> 改为收到广播后重新读取主题配置（单一真源）</li>
@@ -767,7 +777,7 @@
 <li><strong>评估后保持现状/暂缓</strong>：#3/#7 域错配（通道字符串不可变，重组收益低）、#4 preload 白名单（独立批次）、#6 CSP（需实机验证）、#9 PDF（待 pdf.js）、#11 chunk 拆分、#12 主题异步预热、#13 PlantUML 节流、#15（已确认在使用）</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0/0 / vitest 155 文件 2,828+ 用例全通过</li>
 </ul>
-<h3 id="sub-20">2026-11-18 · 台账建立</h3>
+<h3 id="sub-21">2026-11-18 · 台账建立</h3>
 <ul>
 <li>从 IPC 通信矩阵 §五（3 类异常）、全量扫描与审查报告（P3 剩余 7 项）与三组一致性核对结论整理，共 <strong>19 项</strong>。</li>
 <li>全部逐项对照当前源码复核（v1.3.6 工作区），初始状态：❌ 18 项、⏸️ 1 项（#19 历史快照保留）。</li>

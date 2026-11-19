@@ -46,6 +46,13 @@
 - 测试：新增 PDF 组件测试 6 用例、READ_BINARY 通道测试 3 用例；插件/菜单/词典断言同步（插件工具 37 → 38）
 - 验证：typecheck 0 错误、ESLint 0/0、vitest **156 文件 / 2,847 用例全通过**、`electron-vite build` 成功
 
+### 🧹 公共接口归位第 4 批（P3 清理，2026-11-19）
+
+- **主进程/配置**：删 dialog-helpers 3 个死包装；4 处手写 basename/dirname 统一；主题/图标资源路径统一（**修复主窗口图标一直未加载的真实缺陷**）；删 @mainer 死别名；global-types 迁移 shared；IPC domain 计数 18→17 + 防回归断言
+- **渲染层**：删死 composable useEventBus（-13 用例）；messageTypes 收敛；18 处 console→logger；**修复 ThemeSettingDialog 8 个 resize-handle 未生效缺陷**（历史缺陷）；admonition.data 死字段清理
+- **公共接口归位计划第 0–4 批全部完成**：累计新建 shared 层 22 个模块、60+ 文件迁移、渲染层组件化 18/18 对话框、净减约 4,000+ 行重复代码
+- 门禁：typecheck 0 / ESLint 0-0 / vitest **171 文件 / 3,198 用例全通过** / build 成功 / E2E 4 passed
+
 ### 🧩 公共接口归位第 3 批完成（2026-11-19）
 
 - **BaseDialog 18/18 对话框迁移完成**：C-2 组 7 个（净 -626 行，外壳 355 + 正文 545 条声明审计 0 不一致）、C-3 组 4 个（247 项属性 0 差异）、C-4 组 4 个特殊对话框（ThemeSetting 8 个 resize-handle → prepend 插槽、HelpAbout 仅关闭按钮标题栏）
