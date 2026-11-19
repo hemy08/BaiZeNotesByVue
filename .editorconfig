@@ -4,6 +4,8 @@ root = true
 charset = utf-8
 indent_style = space
 indent_size = 4
-end_of_line = crlf
+# 结构优化第 5 批 5.2（L2）：行尾统一为 LF（与 .prettierrc endOfLine 一致），
+# 避免 Windows 下 core.autocrlf=true 与 Prettier --check 的 EOL 口径打架。
+end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true

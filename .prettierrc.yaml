@@ -6,6 +6,6 @@ singleQuote: true
 semi: false
 printWidth: 100
 trailingComma: none
-# 仓库历史文件行尾不统一（src/tests 为 LF，部分配置文件为 CRLF），
-# 用 auto 保留各文件既有行尾，避免格式化检查因 EOL 差异产生成百上千条无关告警。
-endOfLine: auto
+# 结构优化第 5 批 5.2（L2）：行尾统一 LF，与 .editorconfig end_of_line 及 .gitattributes eol=lf 三者一致。
+# 原为 auto（历史文件 CRLF/LF 混杂）；统一后 prettier --check 在全新检出（含 CI）同样稳定通过。
+endOfLine: lf

@@ -1,0 +1,28 @@
+# 行尾策略（结构优化第 5 批 5.2，L2）
+# 仓库统一 LF：显式 eol=lf 覆盖各平台 core.autocrlf（本机为 true），
+# 保证任意环境检出后工作区即 LF，Prettier --check（endOfLine: lf）稳定通过。
+# 二进制资产声明为 binary，禁止行尾/编码转换。
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.bmp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.exe binary
+*.dll binary
+*.node binary
+*.zip binary
+*.7z binary
+*.gz binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
