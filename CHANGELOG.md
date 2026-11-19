@@ -46,6 +46,13 @@
 - 测试：新增 PDF 组件测试 6 用例、READ_BINARY 通道测试 3 用例；插件/菜单/词典断言同步（插件工具 37 → 38）
 - 验证：typecheck 0 错误、ESLint 0/0、vitest **156 文件 / 2,847 用例全通过**、`electron-vite build` 成功
 
+### 🧩 公共接口归位第 3 批（2026-11-19，🟡 部分完成）
+
+- **组件化**：WindowControls（欢迎页/主界面统一，-222 行）、FileViewerShell + useFileViewerState（HTML/PDF 壳层去重：-343 行，27 用例通过）、TextCodecTool（4 codec 薄封装 138/147/160→41/48/50 行）、BaseDialog（16 props/3 插槽 + 3 个 simple 对话框迁移，-225 行重复 CSS）
+- **样式/解析收口**：plugin-tools-common.css（10 个通用类）、preview-block-utils（4 插件净减 309 行 + 23 等价性单测）
+- **清理**：删除死组件 MermaidRender.vue（-114 行），测试迁移到 hemy-editor-render 懒加载路径
+- 门禁：typecheck 0 / ESLint 0-0 / vitest **169 文件 / 3,129 用例全通过** / build 成功 / E2E 4 passed
+
 ### 🔗 公共接口归位第 2 批（2026-11-19）
 
 - **IPC 载荷契约**：新建 `shared/types/ipc.ts`（IpcRequests 58/58、IpcResponses 26、IpcEvents 25/25）+ 静态护栏测试（渲染层 75 处调用通道 ⊆ 请求表）
