@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500" role="img" aria-label="公共接口归位修复计划批次路线图">
+  <defs>
+    <style>
+      .bg { fill: #fbfaff; }
+      .title { font: 700 20px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #2d2350; }
+      .sub { font: 12px 'Microsoft YaHei', sans-serif; fill: #6b6485; }
+      .card { stroke-width: 1.5; rx: 10; }
+      .card-title { font: 700 14px 'Microsoft YaHei', sans-serif; }
+      .card-line { font: 12px 'Microsoft YaHei', sans-serif; fill: #3f3960; }
+      .card-meta { font: 11px 'Microsoft YaHei', sans-serif; fill: #6b6485; }
+      .badge { font: 700 11px 'Microsoft YaHei', sans-serif; }
+      .arrow { stroke: #8d86a8; stroke-width: 2; fill: none; }
+      .legend { font: 11px 'Microsoft YaHei', sans-serif; fill: #55506e; }
+      .done { fill: #e9f7ef; stroke: #2e9e63; }
+      .low { fill: #eef4ff; stroke: #3b6fd4; }
+      .mid { fill: #fff7e6; stroke: #d48a1c; }
+      .p3 { fill: #f3f0fa; stroke: #7c6bb0; }
+      .done-t { fill: #1e7a4c; }
+      .low-t { fill: #2b5cb8; }
+      .mid-t { fill: #a86410; }
+      .p3-t { fill: #5d4f8c; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#8d86a8" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1200" height="500" />
+  <text class="title" x="32" y="42">公共接口归位修复计划 · 批次路线图（2026-11-19）</text>
+  <text class="sub" x="32" y="64">依据：三组只读扫描（跨端重复 28 项 / 单端内部 35 项 / 类型契约 17 组）；第 0 批已完成，本图覆盖第 1–4 批</text>
+
+  <!-- 第 0 批（已完成） -->
+  <rect class="card done" x="32" y="92" width="220" height="196" rx="10" />
+  <circle cx="52" cy="116" r="9" fill="#2e9e63" />
+  <text class="badge done-t" x="66" y="120">✅ 已完成 · 35935ab</text>
+  <text class="card-title done-t" x="48" y="144">第 0 批 · P1 公共接口</text>
+  <text class="card-line" x="48" y="168">· URL 单一真源（-52 重复/-50 死数据）</text>
+  <text class="card-line" x="48" y="188">· 窗口控制 TOGGLE（二次点击还原）</text>
+  <text class="card-line" x="48" y="208">· 系统设置默认值统一</text>
+  <text class="card-line" x="48" y="228">· 主题广播收敛（shared 契约）</text>
+  <text class="card-meta" x="48" y="256">风险：低 · 门禁：158 文件/2,877 用例</text>
+
+  <!-- 第 1 批 -->
+  <rect class="card low" x="292" y="92" width="220" height="196" rx="10" />
+  <circle cx="312" cy="116" r="9" fill="#3b6fd4" />
+  <text class="badge low-t" x="326" y="120">P2 · 低-中风险</text>
+  <text class="card-title low-t" x="308" y="144">第 1 批 · shared/utils</text>
+  <text class="card-line" x="308" y="168">· file-url/hash/LRU/html/path</text>
+  <text class="card-line" x="308" y="188">· random/validate/format</text>
+  <text class="card-line" x="308" y="208">· concurrency/debounce</text>
+  <text class="card-line" x="308" y="228">· constants：limits/window/encodings</text>
+  <text class="card-meta" x="308" y="256">约 20 项 · 2–3 天 · re-export 薄壳迁移</text>
+
+  <!-- 第 2 批 -->
+  <rect class="card low" x="552" y="92" width="220" height="196" rx="10" />
+  <circle cx="572" cy="116" r="9" fill="#3b6fd4" />
+  <text class="badge low-t" x="586" y="120">P2 · 零运行时</text>
+  <text class="card-title low-t" x="568" y="144">第 2 批 · shared/types</text>
+  <text class="card-line" x="568" y="168">· IPC 载荷契约（IpcRequests）</text>
+  <text class="card-line" x="568" y="188">· CONFIG 名称/载荷映射</text>
+  <text class="card-line" x="568" y="208">· 对话框名+data 契约</text>
+  <text class="card-line" x="568" y="228">· 文件树/主题/版本等类型族</text>
+  <text class="card-meta" x="568" y="256">约 10 组 · 1–2 天 · 仅类型标注</text>
+
+  <!-- 第 3 批 -->
+  <rect class="card mid" x="812" y="92" width="220" height="196" rx="10" />
+  <circle cx="832" cy="116" r="9" fill="#d48a1c" />
+  <text class="badge mid-t" x="846" y="120">P2 · 中风险（UI）</text>
+  <text class="card-title mid-t" x="828" y="144">第 3 批 · 渲染层组件化</text>
+  <text class="card-line" x="828" y="168">· WindowControls / BaseDialog</text>
+  <text class="card-line" x="828" y="188">· FileViewerShell（HTML/PDF）</text>
+  <text class="card-line" x="828" y="208">· TextCodecTool（5 编解码）</text>
+  <text class="card-line" x="828" y="228">· preview-block-utils（4 插件）</text>
+  <text class="card-meta" x="828" y="256">约 8 项 · 3–5 天 · 需手测全 UI</text>
+
+  <!-- 第 4 批 -->
+  <rect class="card p3" x="292" y="330" width="520" height="120" rx="10" />
+  <circle cx="312" cy="354" r="9" fill="#7c6bb0" />
+  <text class="badge p3-t" x="326" y="358">P3 · 低风险 · 可穿插</text>
+  <text class="card-title p3-t" x="308" y="382">第 4 批 · P3 清理</text>
+  <text class="card-line" x="308" y="404">· escapeHtml 引用统一 / useEventBus 死代码 / messageTypes / console→logger</text>
+  <text class="card-line" x="308" y="424">· dialog-helpers 死包装 / 路径 basename 统一 / 资源路径 / @mainer 别名 / global-types 迁移</text>
+  <text class="card-meta" x="308" y="442">约 20 项 · 每项独立小 PR · 可穿插执行</text>
+
+  <!-- 箭头 -->
+  <line class="arrow" x1="252" y1="190" x2="288" y2="190" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="512" y1="190" x2="548" y2="190" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="772" y1="190" x2="808" y2="190" marker-end="url(#arrowhead)" />
+  <path class="arrow" d="M 922 292 L 922 314 L 680 314 L 680 326" marker-end="url(#arrowhead)" />
+  <path class="arrow" d="M 402 288 L 402 300 L 420 300 L 420 326" marker-end="url(#arrowhead)" />
+
+  <!-- 图例与依赖说明 -->
+  <text class="legend" x="32" y="484">图例：绿=已完成 · 蓝=低风险（纯函数/类型） · 黄=中风险（UI 回归，需手测） · 紫=P3 清理。依赖：第 0 批 → 第 1 批（路径工具先行，供 2/3 批复用）；第 2 批零运行时可与第 1 批部分并行；第 3 批依赖第 2 批契约；第 4 批可穿插任意批次。</text>
+</svg>

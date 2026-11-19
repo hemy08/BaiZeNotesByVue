@@ -144,6 +144,7 @@
       <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
       <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
       <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+      <a href="../02-修复与实施/公共接口归位修复计划.html">公共接口归位修复计划</a>
     </div>
   </details>
   <details>
@@ -637,6 +638,7 @@
 <li><strong>系统设置默认值统一</strong>：删除 <code>useConfigStore</code> 死状态（<code>systemConfig/defaultSystemConfig/save/update</code>，零生产消费者）；新增 shared <code>SYSTEM_SETTING_FALLBACK</code>（与主进程默认值逐字段一致）；<code>SystemSettingDialog</code> fallback 引用共享常量（消除三套默认值矛盾：minimizeToTray/enableAutoBackup/fontSize/autoSaveInterval）</li>
 <li><strong>主题广播收敛</strong>：删除 main 本地 <code>ThemeBroadcastPayload</code>，改用 shared <code>ThemeUpdateData</code>（themeType 标为可选并注明运行时事实）；新增 <code>buildThemeBroadcastPayload()</code>；<code>main/index.ts</code>、<code>system-theme.ts</code>、<code>config-manager.ts</code> 三处 payload 组装与发送统一走 <code>broadcastThemeToAllWindows</code>（config-manager 不再自行广播）</li>
 <li><strong>结构分析报告归档</strong>：新增《代码整体结构分析报告》（<code>docs/reports/md/01-检查与扫描/</code>，含 5 张 SVG 架构图 + HTML wiki 页面）；<code>build/generate-report-wiki.js</code> 增强为<strong>导航自动同步</strong>（md/ 新增报告自动补入顶部导航下拉，避免漏项）</li>
+<li><strong>修复计划文档</strong>：新增《公共接口归位修复计划》（<code>docs/reports/md/02-修复与实施/</code>，含批次路线图 SVG、批次 1–4 逐项明细、验收门禁矩阵、UI 手测清单与风险登记），HTML wiki 同步收录（23 页）</li>
 <li>门禁：typecheck 0 / ESLint 0-0 / vitest <strong>158 文件 / 2,877 用例全通过</strong> / <code>electron-vite build</code> 成功</li>
 </ul>
 <blockquote>

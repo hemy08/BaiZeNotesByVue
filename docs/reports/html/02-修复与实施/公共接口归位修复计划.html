@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公共接口归位修复计划</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+      <a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+      <a href="../02-修复与实施/公共接口归位修复计划.html">公共接口归位修复计划</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">0. 摘要</a>
+    <a class="toc-l2" href="#sec-2">1. 批次总览</a>
+    <a class="toc-l2" href="#sec-3">2. 第 1 批：shared/utils + shared/constants</a>
+    <a class="toc-l3" href="#sub-1">2.1 纯函数归位（src/shared/utils/）</a>
+    <a class="toc-l3" href="#sub-2">2.2 常量归位（src/shared/constants/）</a>
+    <a class="toc-l2" href="#sec-4">3. 第 2 批：shared/types（零运行时，优先做）</a>
+    <a class="toc-l2" href="#sec-5">4. 第 3 批：渲染层组件化/样式收口（需 UI 手测）</a>
+    <a class="toc-l2" href="#sec-6">5. 第 4 批：P3 清理（可穿插，每项独立小 PR）</a>
+    <a class="toc-l2" href="#sec-7">6. 依赖关系与执行顺序</a>
+    <a class="toc-l2" href="#sec-8">7. 验证策略（每批门禁矩阵）</a>
+    <a class="toc-l2" href="#sec-9">8. 风险登记</a>
+    <a class="toc-l2" href="#sec-10">9. 附录：扫描明细索引</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>公共接口归位修复计划</h1>
+    <p>报告归档 · 02-修复与实施</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<blockquote>
+<p><strong>性质</strong>：修复实施计划（非缺陷清单）——基于 2026-11-19 三组只读扫描（跨端重复、单端内部重复、类型契约放置）与已完成第 0 批的实测结果，规划后续公共接口/工具/常量归位的执行顺序、验收标准与风险控制。
+<strong>依据</strong>：<a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a>、<a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>、<a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单</a>。
+<strong>维护约定</strong>：每批完成后回写本计划状态（✅/🟡/⏸️）并附提交号；新增发现项按「批次 4+」追加，不改变已定批次边界。</p>
+</blockquote>
+<h2 id="sec-1">0. 摘要</h2>
+<p><strong>扫描结论</strong>：项目分层方向正确（<code>src/shared</code> 公共层已存在、main/preload/renderer <strong>0 处互相 import</strong>），但公共层覆盖「通道层强、载荷层弱」：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>统计</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>跨端重复工具/常量</td>
+<td>28 项（P1 5 / P2 15 / P3 8）</td>
+</tr>
+<tr>
+<td>单端内部重复与 common 归位</td>
+<td>35 项（P1 3 / P2 15 / P3 13）</td>
+</tr>
+<tr>
+<td>类型/契约放置</td>
+<td>17 组（P1 4 / P2 10 / P3 3）</td>
+</tr>
+<tr>
+<td>去重合并后</td>
+<td><strong>P1 6 项 / P2 约 25 项 / P3 约 20 项</strong>，另有 8 类确认「保持不动」</td>
+</tr>
+</tbody>
+</table>
+<p><strong>已完成（第 0 批，提交 <code>35935ab</code>）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>项</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.1</td>
+<td>URL 单一真源</td>
+<td><code>main/constants/urls.ts</code> 改 re-export shared 真源（删 52 条重复）；渲染层删 50 个死 URL 字段</td>
+</tr>
+<tr>
+<td>0.2</td>
+<td>窗口控制修复</td>
+<td>主界面最大化改 <code>TOGGLE_MAXIMIZE</code>（二次点击还原）+ 图标/title 切换 + 状态同步</td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>系统设置默认值统一</td>
+<td>删 <code>useConfigStore</code> 死状态；新增 shared <code>SYSTEM_SETTING_FALLBACK</code>；对话框引用共享常量</td>
+</tr>
+<tr>
+<td>0.4</td>
+<td>主题广播收敛</td>
+<td>改用 shared <code>ThemeUpdateData</code>；新增 <code>buildThemeBroadcastPayload()</code>；三处广播统一</td>
+</tr>
+</tbody>
+</table>
+<p><strong>本计划覆盖第 1–4 批（待执行）</strong>，预计分 4 个可独立提交/回滚的批次推进。</p>
+<h2 id="sec-2">1. 批次总览</h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500" role="img" aria-label="公共接口归位修复计划批次路线图">
+  <defs>
+    <style>
+      .bg { fill: #fbfaff; }
+      .title { font: 700 20px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #2d2350; }
+      .sub { font: 12px 'Microsoft YaHei', sans-serif; fill: #6b6485; }
+      .card { stroke-width: 1.5; rx: 10; }
+      .card-title { font: 700 14px 'Microsoft YaHei', sans-serif; }
+      .card-line { font: 12px 'Microsoft YaHei', sans-serif; fill: #3f3960; }
+      .card-meta { font: 11px 'Microsoft YaHei', sans-serif; fill: #6b6485; }
+      .badge { font: 700 11px 'Microsoft YaHei', sans-serif; }
+      .arrow { stroke: #8d86a8; stroke-width: 2; fill: none; }
+      .legend { font: 11px 'Microsoft YaHei', sans-serif; fill: #55506e; }
+      .done { fill: #e9f7ef; stroke: #2e9e63; }
+      .low { fill: #eef4ff; stroke: #3b6fd4; }
+      .mid { fill: #fff7e6; stroke: #d48a1c; }
+      .p3 { fill: #f3f0fa; stroke: #7c6bb0; }
+      .done-t { fill: #1e7a4c; }
+      .low-t { fill: #2b5cb8; }
+      .mid-t { fill: #a86410; }
+      .p3-t { fill: #5d4f8c; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#8d86a8" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1200" height="500" />
+  <text class="title" x="32" y="42">公共接口归位修复计划 · 批次路线图（2026-11-19）</text>
+  <text class="sub" x="32" y="64">依据：三组只读扫描（跨端重复 28 项 / 单端内部 35 项 / 类型契约 17 组）；第 0 批已完成，本图覆盖第 1–4 批</text>
+
+  <!-- 第 0 批（已完成） -->
+  <rect class="card done" x="32" y="92" width="220" height="196" rx="10" />
+  <circle cx="52" cy="116" r="9" fill="#2e9e63" />
+  <text class="badge done-t" x="66" y="120">✅ 已完成 · 35935ab</text>
+  <text class="card-title done-t" x="48" y="144">第 0 批 · P1 公共接口</text>
+  <text class="card-line" x="48" y="168">· URL 单一真源（-52 重复/-50 死数据）</text>
+  <text class="card-line" x="48" y="188">· 窗口控制 TOGGLE（二次点击还原）</text>
+  <text class="card-line" x="48" y="208">· 系统设置默认值统一</text>
+  <text class="card-line" x="48" y="228">· 主题广播收敛（shared 契约）</text>
+  <text class="card-meta" x="48" y="256">风险：低 · 门禁：158 文件/2,877 用例</text>
+
+  <!-- 第 1 批 -->
+  <rect class="card low" x="292" y="92" width="220" height="196" rx="10" />
+  <circle cx="312" cy="116" r="9" fill="#3b6fd4" />
+  <text class="badge low-t" x="326" y="120">P2 · 低-中风险</text>
+  <text class="card-title low-t" x="308" y="144">第 1 批 · shared/utils</text>
+  <text class="card-line" x="308" y="168">· file-url/hash/LRU/html/path</text>
+  <text class="card-line" x="308" y="188">· random/validate/format</text>
+  <text class="card-line" x="308" y="208">· concurrency/debounce</text>
+  <text class="card-line" x="308" y="228">· constants：limits/window/encodings</text>
+  <text class="card-meta" x="308" y="256">约 20 项 · 2–3 天 · re-export 薄壳迁移</text>
+
+  <!-- 第 2 批 -->
+  <rect class="card low" x="552" y="92" width="220" height="196" rx="10" />
+  <circle cx="572" cy="116" r="9" fill="#3b6fd4" />
+  <text class="badge low-t" x="586" y="120">P2 · 零运行时</text>
+  <text class="card-title low-t" x="568" y="144">第 2 批 · shared/types</text>
+  <text class="card-line" x="568" y="168">· IPC 载荷契约（IpcRequests）</text>
+  <text class="card-line" x="568" y="188">· CONFIG 名称/载荷映射</text>
+  <text class="card-line" x="568" y="208">· 对话框名+data 契约</text>
+  <text class="card-line" x="568" y="228">· 文件树/主题/版本等类型族</text>
+  <text class="card-meta" x="568" y="256">约 10 组 · 1–2 天 · 仅类型标注</text>
+
+  <!-- 第 3 批 -->
+  <rect class="card mid" x="812" y="92" width="220" height="196" rx="10" />
+  <circle cx="832" cy="116" r="9" fill="#d48a1c" />
+  <text class="badge mid-t" x="846" y="120">P2 · 中风险（UI）</text>
+  <text class="card-title mid-t" x="828" y="144">第 3 批 · 渲染层组件化</text>
+  <text class="card-line" x="828" y="168">· WindowControls / BaseDialog</text>
+  <text class="card-line" x="828" y="188">· FileViewerShell（HTML/PDF）</text>
+  <text class="card-line" x="828" y="208">· TextCodecTool（5 编解码）</text>
+  <text class="card-line" x="828" y="228">· preview-block-utils（4 插件）</text>
+  <text class="card-meta" x="828" y="256">约 8 项 · 3–5 天 · 需手测全 UI</text>
+
+  <!-- 第 4 批 -->
+  <rect class="card p3" x="292" y="330" width="520" height="120" rx="10" />
+  <circle cx="312" cy="354" r="9" fill="#7c6bb0" />
+  <text class="badge p3-t" x="326" y="358">P3 · 低风险 · 可穿插</text>
+  <text class="card-title p3-t" x="308" y="382">第 4 批 · P3 清理</text>
+  <text class="card-line" x="308" y="404">· escapeHtml 引用统一 / useEventBus 死代码 / messageTypes / console→logger</text>
+  <text class="card-line" x="308" y="424">· dialog-helpers 死包装 / 路径 basename 统一 / 资源路径 / @mainer 别名 / global-types 迁移</text>
+  <text class="card-meta" x="308" y="442">约 20 项 · 每项独立小 PR · 可穿插执行</text>
+
+  <!-- 箭头 -->
+  <line class="arrow" x1="252" y1="190" x2="288" y2="190" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="512" y1="190" x2="548" y2="190" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="772" y1="190" x2="808" y2="190" marker-end="url(#arrowhead)" />
+  <path class="arrow" d="M 922 292 L 922 314 L 680 314 L 680 326" marker-end="url(#arrowhead)" />
+  <path class="arrow" d="M 402 288 L 402 300 L 420 300 L 420 326" marker-end="url(#arrowhead)" />
+
+  <!-- 图例与依赖说明 -->
+  <text class="legend" x="32" y="484">图例：绿=已完成 · 蓝=低风险（纯函数/类型） · 黄=中风险（UI 回归，需手测） · 紫=P3 清理。依赖：第 0 批 → 第 1 批（路径工具先行，供 2/3 批复用）；第 2 批零运行时可与第 1 批部分并行；第 3 批依赖第 2 批契约；第 4 批可穿插任意批次。</text>
+</svg>
+</figure>
+<table>
+<thead>
+<tr>
+<th>批次</th>
+<th>范围</th>
+<th>条目</th>
+<th>风险</th>
+<th>预估</th>
+<th>前置依赖</th>
+<th>验收门禁</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 0 批</td>
+<td>P1 公共接口归位</td>
+<td>4</td>
+<td>低</td>
+<td>✅ 已完成</td>
+<td>—</td>
+<td>typecheck/ESLint/vitest/build</td>
+</tr>
+<tr>
+<td><strong>第 1 批</strong></td>
+<td><code>shared/utils</code> + <code>shared/constants</code></td>
+<td>约 20</td>
+<td>低-中</td>
+<td>2–3 天</td>
+<td>第 0 批</td>
+<td>全量门禁 + 等价性测试</td>
+</tr>
+<tr>
+<td><strong>第 2 批</strong></td>
+<td><code>shared/types</code>（零运行时）</td>
+<td>约 10 组</td>
+<td>低</td>
+<td>1–2 天</td>
+<td>第 1 批路径工具</td>
+<td>typecheck + 契约测试</td>
+</tr>
+<tr>
+<td><strong>第 3 批</strong></td>
+<td>渲染层组件化/样式收口</td>
+<td>约 8</td>
+<td>中（UI）</td>
+<td>3–5 天</td>
+<td>第 2 批契约</td>
+<td>全量门禁 + <strong>UI 手测清单</strong></td>
+</tr>
+<tr>
+<td><strong>第 4 批</strong></td>
+<td>P3 清理</td>
+<td>约 20</td>
+<td>低</td>
+<td>穿插</td>
+<td>无</td>
+<td>每项独立小 PR</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-3">2. 第 1 批：<code>shared/utils</code> + <code>shared/constants</code></h2>
+<p><strong>目标</strong>：把跨进程重复的<strong>纯函数与常量</strong>集中到 <code>src/shared/</code>，消除 4 份 FNV/4 份 LRU/3 份 file:// URL/3 份转义等重复；全部保留 re-export 薄壳，既有引用零改动。</p>
+<h3 id="sub-1">2.1 纯函数归位（<code>src/shared/utils/</code>）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>条目</th>
+<th>现状散落位置</th>
+<th>目标落点</th>
+<th>迁移方式</th>
+<th>风险</th>
+<th>验证</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.1</td>
+<td>本地路径 → <code>file://</code> URL</td>
+<td><code>renderer/.../HemyTools/html-view-utils.ts:20-36</code>、<code>renderer/.../Markdown/preview-local-render.ts:198-206</code>、<code>renderer/.../Markdown/MarkdownMonacoEditor.vue:129,138</code>（<strong>不编码不归一化，已分叉</strong>）；main 用 Node <code>pathToFileURL</code></td>
+<td><code>shared/utils/path.ts</code>：<code>toFileUrl(path, opts)</code>、<code>dirToBaseHref(dir)</code></td>
+<td>抽纯函数 + 两处 renderer 改 import；Monaco 版显式改用统一实现</td>
+<td><strong>中</strong>：Monaco Uri 对编码路径的行为需回归（换文件/图片预览/HTML 查看器/PDF）</td>
+<td>preview-local-render.test、hemytools-html-view.test、monaco 相关测试 + 手测</td>
+</tr>
+<tr>
+<td>1.2</td>
+<td>FNV-1a 32 位哈希</td>
+<td><code>main/utils/file-utils/directory-tree.ts:466-474</code>、<code>renderer/.../ResourceManager/resource-manager.ts:23-57</code>、<code>renderer/.../Markdown/preview-chapters.ts:35-47</code>、<code>renderer/.../Markdown/hemy-editor-render.ts:73-83</code>（<strong>4 份，输出进制不同</strong>）</td>
+<td><code>shared/utils/hash.ts</code>：<code>fnv1a32</code>、<code>fnv1a32Mix</code>、<code>toRadix</code></td>
+<td>抽函数，四处改 import（保留各自进制参数）</td>
+<td>低</td>
+<td>现有报告/目录树相关测试</td>
+</tr>
+<tr>
+<td>1.3</td>
+<td>LRU 缓存</td>
+<td><code>main/renders/plantuml-local.ts:71,88,176-200</code>、<code>renderer/.../Markdown/hemy-editor-render.ts:70-71,118-144</code>（mermaid）与 <code>:237,267-289</code>（plantuml）、<code>renderer/.../Markdown/preview-local-render.ts:50-77</code>（katex）（<strong>4 份，上限 50/50/50/200</strong>）</td>
+<td><code>shared/utils/lru-cache.ts</code>：<code>class LRUCache(max)</code>（get/set/clear，命中提升）</td>
+<td>抽类，四处替换（保留各自上限参数）</td>
+<td>低</td>
+<td>各缓存命中/淘汰单测</td>
+</tr>
+<tr>
+<td>1.4</td>
+<td>HTML <code>&lt;head&gt;</code> 注入</td>
+<td><code>main/dialogs/dialog-defaults.ts:42-54</code>（withDialogCsp）、<code>renderer/.../HemyTools/html-view-utils.ts:30-36</code>（withBaseHref）</td>
+<td><code>shared/utils/html.ts</code>：<code>injectIntoHead(html, tag)</code></td>
+<td>两处改调用（CSP 幂等判断留在调用方）</td>
+<td>低</td>
+<td>dialog-defaults、html-view 测试</td>
+</tr>
+<tr>
+<td>1.5</td>
+<td>HTML 转义</td>
+<td><code>renderer/src/common/escape-html.ts</code>（目标实现）、<code>renderer/.../Markdown/preview-local-render.ts:644-662</code>、<code>renderer/.../Markdown/MermaidRender.vue:37-44</code></td>
+<td><code>shared/utils/html.ts</code>：<code>escapeHtml</code>（common 改为 re-export 或直接迁移）</td>
+<td>3 处统一 import；<code>decodeHtmlEntities</code> 留原位并注释配对</td>
+<td>低</td>
+<td>escape/html 相关测试</td>
+</tr>
+<tr>
+<td>1.6</td>
+<td>路径防御工具</td>
+<td><code>main/utils/security.ts:218-233,322-336</code>（isPathWithin 最完整）、<code>main/utils/workspace-root.ts:20-24</code>、<code>main/utils/file-utils/directory-tree.ts:429-446</code>、<code>renderer/.../preview-md-blocks.ts:734-761</code>、<code>MenuBar.vue:74-75</code>（<strong>win32 大小写 4 份、<code>startsWith(root+sep)</code> 3 份、<code>path.relative</code> 2 份</strong>）</td>
+<td><code>shared/utils/path.ts</code>：<code>normalizeSlashes</code>、<code>normalizePathForCompare(win32CaseInsensitive)</code>、<code>isPathWithin</code></td>
+<td>先补边界单测（UNC/大小写/<code>..</code>/尾分隔符），再统一</td>
+<td><strong>中</strong>：安全相关，<code>normalizePathKey</code> 与 <code>normalizePathForCompare</code> 语义不同（尾分隔符）</td>
+<td>security-path-guard、workspace-root、directory-tree 测试</td>
+</tr>
+<tr>
+<td>1.7</td>
+<td>文件名/目录名解析</td>
+<td><code>main/utils/file-utils/path-utils.ts:67-88</code>（ParserFileName/ParseDirectoryPath）、renderer 3 份重复（<code>preview-local-render.ts:180-186</code>、<code>MarkdownPreviewComponent.vue:328-334</code>、<code>MenuBar.vue:72-80</code>、<code>preview-md-blocks.ts:756-761</code>）+ 内联 5 处</td>
+<td><code>shared/utils/path.ts</code>：<code>getBaseName/parseDirectoryPath</code>（保留「无点号返回原路径」语义）</td>
+<td>抽函数 + re-export 薄壳</td>
+<td>低-中（顺带修 <code>MarkdownPreviewComponent.vue:329</code> 的 `</td>
+<td></td>
+</tr>
+<tr>
+<td>1.8</td>
+<td>随机串/唯一 ID</td>
+<td><code>${Date.now()}:${Math.random().toString(36).substr(2,9)}</code> 4 份；<code>getMathRandom</code> <strong>同名两实现</strong>（file-operations 字母数字 vs image-operations 纯数字，误用风险）</td>
+<td><code>shared/utils/random.ts</code>：<code>randomDigits/randomAlnum/uniqueSuffix</code></td>
+<td>分别替换（保持各自字符集语义）</td>
+<td>低</td>
+<td>图片/文件名相关测试</td>
+</tr>
+<tr>
+<td>1.9</td>
+<td>校验/格式化</td>
+<td><code>hasControlChars</code> 2 份（security/config-schema）、<code>isPlainObject</code> 6 处、<code>clamp</code> 3 种、<code>formatFileSize</code> 不存在（3 处内联除法）</td>
+<td><code>shared/utils/validate.ts</code>（hasControlChars/isPlainObject/clamp）、<code>shared/utils/format.ts</code>（formatFileSize）</td>
+<td>抽取 + 替换</td>
+<td>低</td>
+<td>config-schema、security、utils 测试</td>
+</tr>
+<tr>
+<td>1.10</td>
+<td>并发/防抖</td>
+<td><code>limitConcurrency</code>（hemy-editor-render 1 份，main 也需要）；12+ 处手写 setTimeout 防抖</td>
+<td><code>shared/utils/concurrency.ts</code>、<code>shared/utils/debounce.ts</code></td>
+<td>limitConcurrency 先抽；debounce 按需替换（不强制全量）</td>
+<td>低</td>
+<td>渲染并发相关测试</td>
+</tr>
+<tr>
+<td>1.11</td>
+<td>日期/时间格式化</td>
+<td><code>auto-backup.ts</code> 与 <code>config-backup.ts</code> 同构 5 函数（时间戳/名称校验/安全解析/裁剪）；<code>padStart</code> 日期拼装 3 份</td>
+<td><code>shared/utils/date.ts</code>、<code>shared/utils/backup-dir.ts</code>（纯函数）</td>
+<td>两模块保留 IO 差异，纯样板抽公共</td>
+<td>低-中（备份模块作者已决定独立，只抽纯样板）</td>
+<td>auto-backup/config-backup 测试</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-2">2.2 常量归位（<code>src/shared/constants/</code>）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>条目</th>
+<th>现状</th>
+<th>目标落点</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.12</td>
+<td>窗口 bounds 极限</td>
+<td>3 份（handlers.ts:114-119 导出、config-schema.ts:205-210、window-bounds.ts:31-35，后两者注释自认&quot;就地复制&quot;）</td>
+<td><code>shared/constants/window.ts</code>（<code>WINDOW_COORDINATE_LIMIT/WINDOW_MIN_SIZE/WINDOW_MAX_SIZE</code>）</td>
+<td>低</td>
+</tr>
+<tr>
+<td>1.13</td>
+<td>文件大小上限</td>
+<td>128MB（utils.ts:47）、5MB（file-encoding）、20MB（auto-backup）、10MB（logger）、20MB（ImageBase64）、2MB/5万行（preview-local-render）、1MB/4MB（preview-md-blocks）</td>
+<td><code>shared/constants/limits.ts</code>（按域分组；进程私有项可留原地并注释）</td>
+<td>低（值不变，仅引用）</td>
+</tr>
+<tr>
+<td>1.14</td>
+<td>编码清单</td>
+<td>4 处：<code>menu-file.ts:80-120</code>、<code>menu-config.ts:214-248</code>、<code>file-encoding.ts:26-55</code> 别名表、状态栏</td>
+<td><code>shared/constants/encodings.ts</code>（<code>FileEncoding</code> 联合 + 菜单项 + 别名）</td>
+<td>中（菜单 action id 是跨进程路由契约，需两端一次性改）</td>
+</tr>
+<tr>
+<td>1.15</td>
+<td>Hash/HMAC 算法清单</td>
+<td>3 份（main <code>encrypt-decrypt.ts:56-66</code>；renderer <code>HashText.vue</code>、<code>HmacGenerator.vue</code>）；主进程结果字典以显示文案为 key</td>
+<td><code>shared/constants/hash.ts</code>（<code>HASH_ALGORITHMS</code>、<code>HASH_ENCODINGS</code>）</td>
+<td>中（重命名算法文案会破坏渲染层回填，仅抽常量不改文案）</td>
+</tr>
+<tr>
+<td>1.16</td>
+<td>文件扩展名清单</td>
+<td>main 2 套（树 8 项 / 图片 7 项）、renderer 多份（图标映射/.md/.html/.pdf 判断）</td>
+<td><code>shared/constants/file-extensions.ts</code>（MARKDOWN/IMAGE/TREE/SNIPPET）</td>
+<td>低</td>
+</tr>
+<tr>
+<td>1.17</td>
+<td>超时/缓存上限</td>
+<td>PlantUML 10s/20s/8s/60s/cache50、渲染层 12s/cache50/并发 3</td>
+<td><code>shared/constants/render.ts</code></td>
+<td>低</td>
+</tr>
+<tr>
+<td>1.18</td>
+<td>最近文件条数</td>
+<td>4 处写死 20/5；<code>config-schema.ts</code> MAX_RECENT_FOLDERS=50 与 20 口径不一致</td>
+<td>统一引用现有 <code>shared/constants/recent-files.ts</code></td>
+<td>低（先业务确认口径）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>第 1 批验收</strong>：每项新增等价性单测（迁移前后同输入同输出）；全量门禁；<code>grep</code> 确认无残留本地副本；re-export 薄壳保留既有引用路径。</p>
+<h2 id="sec-4">3. 第 2 批：<code>shared/types</code>（零运行时，优先做）</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>契约</th>
+<th>现状问题</th>
+<th>目标落点</th>
+<th>实施要点</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2.1</td>
+<td><strong>IPC 载荷契约</strong></td>
+<td>92 通道仅约 10% 有 shared 类型；<code>invoke</code> 返回 <code>any</code>；handler 参数被 <code>never/any</code> 泛型擦除</td>
+<td><code>shared/types/ipc.ts</code>：<code>IpcRequests</code>/<code>IpcResponses</code> + 可选 typed helper</td>
+<td>先覆盖查询类与高频写通道；新增 <code>tests/unit/ipc-payload-contract.test.ts</code> 静态护栏</td>
+<td>低（纯类型）；typed helper 灰度替换</td>
+</tr>
+<tr>
+<td>2.2</td>
+<td>配置名称/载荷映射</td>
+<td>preload <code>read&lt;T&gt;</code> 任意配置名；<strong>已存在错误断言</strong>：<code>read&lt;EditorConfig&gt;('editor')</code> 实际返回 7 字段、<code>read&lt;QuickLinksConfig&gt;('quick-links')</code> 实际返回数组</td>
+<td><code>shared/types/config.ts</code>：<code>ConfigName</code> 联合 + <code>ConfigDataMap</code></td>
+<td>preload <code>ApiConfig</code> 保留旧泛型过渡；修复渲染层错误断言</td>
+<td>低-中（preload 签名变更波及 18 处调用，需单测）</td>
+</tr>
+<tr>
+<td>2.3</td>
+<td>对话框名/data</td>
+<td>名字靠字符串人工对齐（渲染层 <code>as DialogName</code> 兜底）；<strong>data 已漂移</strong>：<code>{isFolder}</code> 无消费方</td>
+<td><code>shared/types/dialog.ts</code>：<code>VueDialogName</code> 联合 + 按名映射 data</td>
+<td>主进程 17 处发送点与渲染层 <code>showDialog</code> 双侧标注；清死字段</td>
+<td>低（union 零运行时）；data 统一需改发送逻辑</td>
+</tr>
+<tr>
+<td>2.4</td>
+<td>文件树传输契约</td>
+<td>实际发送含 <code>id</code> 但 shared <code>FileItem</code> 未声明（<code>as</code> 隐藏）；renderer <code>FileSysItem</code> 与 wire 树非同构</td>
+<td><code>shared/types/file.ts</code>：补 <code>id</code>、<code>FileTreePayload</code></td>
+<td>renderer 树类型 <code>extends</code> 传输类型；<code>StoreFileProperties</code> 改用 shared <code>FileProperties</code></td>
+<td>低</td>
+</tr>
+<tr>
+<td>2.5</td>
+<td>主题类型族</td>
+<td>28 主题 id 联合只在 main；渲染层硬编码 3 组分类且<strong>明暗归属已矛盾</strong>（baize-text/baize-starry）</td>
+<td><code>shared/types/theme.ts</code>：<code>ThemeType</code>/<code>ThemeConfig</code>/<code>MonacoThemeConfig</code>/<code>ThemeListResult</code></td>
+<td>分类改由主进程 <code>getAllThemes()</code> 返回 <code>isDark/category</code>，渲染层不再维护清单</td>
+<td>中（分类口径需产品确认）</td>
+</tr>
+<tr>
+<td>2.6</td>
+<td>其他契约</td>
+<td><code>PlantumlRenderResponse</code>（两端各一份）、<code>SelectImageResult</code>、<code>AppVersionInfo</code>（4 处）、备份状态（两端）、<code>CryptoData/CryptoResult</code>（不同构）、<code>RendererEditorConfig</code>、<code>RendererQuickLink</code></td>
+<td><code>shared/types/{markdown,file,system,backup,crypto,editor,quick-link}.ts</code></td>
+<td>逐项 <code>import type</code> 迁移；主进程 Node API 边界集中 cast 一次</td>
+<td>低（类型层）；crypto 合并需实现层配合</td>
+</tr>
+</tbody>
+</table>
+<p><strong>第 2 批验收</strong>：<code>typecheck</code> 0；不新增运行时逻辑；契约测试通过；两端字段增删产生编译错误（护栏生效）。</p>
+<h2 id="sec-5">4. 第 3 批：渲染层组件化/样式收口（需 UI 手测）</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>项</th>
+<th>现状</th>
+<th>目标</th>
+<th>实施要点</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.1</td>
+<td><code>WindowControls.vue</code></td>
+<td>欢迎页与主界面窗口控制两套实现（第 0 批已统一 TOGGLE 语义，仍重复）</td>
+<td><code>components/common/WindowControls.vue</code></td>
+<td>抽组件 + 两处复用（props：是否显示还原图标）</td>
+<td>低</td>
+</tr>
+<tr>
+<td>3.2</td>
+<td><code>FileViewerShell</code> + <code>useFileViewerState</code></td>
+<td>ShowHtmlView/ShowPdfEditor 共 795 行；11 条 CSS 逐字相同、15 个声明块相同</td>
+<td><code>composables/useFileViewerState.ts</code> + <code>viewer-shared.css</code></td>
+<td>抽三态（loading/error/empty）+ 文件选择 + 重试；仅保留各自渲染逻辑</td>
+<td>中</td>
+</tr>
+<tr>
+<td>3.3</td>
+<td><code>BaseDialog</code> + <code>styles/dialog.css</code></td>
+<td>18 个对话框 10,396 行；<code>.title-bar</code> 11 种变体、<code>.close-btn</code> 5 种、<code>.footer</code> 8 种、动画 18 份</td>
+<td><code>components/dialogs/BaseDialog.vue</code> + 非 scoped <code>styles/dialog.css</code></td>
+<td><strong>分两批迁移</strong>：simple+medium 9 个 → complex+help 9 个；统一 Teleport/Transition/overlay/title-bar/footer 插槽</td>
+<td>中-高</td>
+</tr>
+<tr>
+<td>3.4</td>
+<td><code>TextCodecTool.vue</code></td>
+<td>5 个 codec 组件模板/脚本/CSS 近乎逐行相同（base64/html/url/unicode/image）</td>
+<td><code>PluginTools/Codec/TextCodecTool.vue</code>（props：标题/label i18n key/按钮表/编解码函数）</td>
+<td>配置表驱动，5 组件瘦身</td>
+<td>中</td>
+</tr>
+<tr>
+<td>3.5</td>
+<td><code>plugin-tools-common.css</code></td>
+<td><code>.btn-row</code>(9)/<code>.tool-btn</code>(9)/<code>.tab-btn</code>(7)/<code>.error-text</code>(7) 等 9 类通用样式类重复 5-20 份</td>
+<td><code>PluginTools/plugin-tools-common.css</code></td>
+<td>在现有 <code>plugin-tools-theme.css</code> 旁新增；组件删本地副本</td>
+<td>低-中</td>
+</tr>
+<tr>
+<td>3.6</td>
+<td><code>preview-block-utils.ts</code></td>
+<td>markdown 预览 4 插件共 3,979 行；<code>getLineText</code>/<code>canStartBlock</code>/<code>ensureEnv</code> 逐字 3-4 份，4 个 helper 已 2-3 版本漂移</td>
+<td><code>Markdown/preview-block-utils.ts</code></td>
+<td><strong>先补 helper 等价性单测</strong>，再迁移 4 个插件；保留各模块 <code>ENV_*</code> 键隔离</td>
+<td>中</td>
+</tr>
+<tr>
+<td>3.7</td>
+<td>Mermaid 双管线清理</td>
+<td><code>MermaidRender.vue</code> 死组件（仅测试引用）与 <code>hemy-editor-render.ts</code> 双实现</td>
+<td>收敛到 <code>hemy-editor-render.ts</code></td>
+<td>删除死组件（测试改造）或反向合并；错误块/唯一 id/清理收敛</td>
+<td>低</td>
+</tr>
+</tbody>
+</table>
+<p><strong>UI 手测清单（第 3 批每项完成后必测）</strong>：</p>
+<ol>
+<li>欢迎页 → 主界面切换；窗口最小化/最大化/还原/关闭（欢迎页 + 主界面）</li>
+<li>编辑器：打开 md、编辑、保存、另存为、编码切换、编辑/预览分栏拖动</li>
+<li>预览：Markdown 全语法（表格/代码高亮/mermaid/plantuml/katex/图片）、预览刷新</li>
+<li>HTML 查看器：打开 HTML、相对链接、在浏览器打开、刷新</li>
+<li>PDF 预览：打开、翻页、缩放、重试、资源管理器定位</li>
+<li>插件工具：5 个编解码工具编/解码/复制/清空</li>
+<li>18 个对话框：打开/关闭/拖拽/ESC/遮罩点击/确认/取消</li>
+<li>主题切换：28 应用主题 + 55 Monaco 主题即时生效</li>
+<li>系统设置：打开/取消/保存；备份创建/恢复</li>
+</ol>
+<h2 id="sec-6">5. 第 4 批：P3 清理（可穿插，每项独立小 PR）</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>项</th>
+<th>现状</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4.1</td>
+<td>escapeHtml 引用统一</td>
+<td>3 处本地副本</td>
+<td>改 import 共享实现（随第 1 批完成）</td>
+</tr>
+<tr>
+<td>4.2</td>
+<td><code>useEventBus</code> 死 composable</td>
+<td>零生产使用，9 个组件手写监听</td>
+<td>迁移组件到 composable 或删除（二选一）</td>
+</tr>
+<tr>
+<td>4.3</td>
+<td><code>messageTypes</code> 重复</td>
+<td>useConfigStore 内重复 3 次</td>
+<td>提模块常量</td>
+</tr>
+<tr>
+<td>4.4</td>
+<td>裸 <code>console.*</code></td>
+<td>29 处（App 7、menu-actions 5 等）</td>
+<td>逐文件替换为 <code>logger.*</code>（或 ESLint no-console + logger 豁免）</td>
+</tr>
+<tr>
+<td>4.5</td>
+<td><code>dialog-helpers</code> 死包装</td>
+<td>3 个包装零生产调用</td>
+<td>删除（同步测试）或迁移调用方</td>
+</tr>
+<tr>
+<td>4.6</td>
+<td>手写 basename/dirname</td>
+<td>4 处内联（含 `</td>
+<td></td>
+</tr>
+<tr>
+<td>4.7</td>
+<td>资源路径解析</td>
+<td>3 套（theme-registry/app-paths/tray/index.ts 硬编码）</td>
+<td>统一 <code>getAppResourcesPath()</code></td>
+</tr>
+<tr>
+<td>4.8</td>
+<td><code>@mainer</code> 别名</td>
+<td>tsconfig/vite 配置存在但 0 引用</td>
+<td>删除别名</td>
+</tr>
+<tr>
+<td>4.9</td>
+<td><code>global-types.d.ts</code> 跨层挂靠</td>
+<td>main 目录文件被 tsconfig.web include</td>
+<td>迁 <code>src/shared/types/global.d.ts</code></td>
+</tr>
+<tr>
+<td>4.10</td>
+<td>死组件/死通道注释</td>
+<td><code>MermaidRender.vue</code>、<code>FILE_TREE_NODE_CLICKED</code> 已清理</td>
+<td>持续扫描（ESLint/零引用测试）</td>
+</tr>
+<tr>
+<td>4.11</td>
+<td>文档计数</td>
+<td>通道命名测试/注释写「18 domain」实际 17</td>
+<td>修正文案</td>
+</tr>
+<tr>
+<td>4.12</td>
+<td>主题明暗分类统一</td>
+<td>渲染层硬编码清单（随第 2 批 2.5）</td>
+<td>主进程返回分类，渲染层删除清单</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-7">6. 依赖关系与执行顺序</h2>
+<ul>
+<li><strong>先第 1 批的路径/HTML 工具</strong>（1.1/1.4/1.5/1.6/1.7）：第 2 批类型与第 3 批组件都会复用它；</li>
+<li><strong>第 2 批零运行时</strong>可与第 1 批部分并行（类型标注不依赖运行时工具）；</li>
+<li><strong>第 3 批依赖第 2 批契约</strong>（对话框 data、文件树类型）后 UI 迁移才安全；</li>
+<li><strong>第 4 批可穿插</strong>任意批次（每项独立小 PR）；</li>
+<li>每个<strong>子项独立提交</strong>（可单点回滚），每批末尾打一次批次提交（台账/CHANGELOG 记录）。</li>
+</ul>
+<h2 id="sec-8">7. 验证策略（每批门禁矩阵）</h2>
+<table>
+<thead>
+<tr>
+<th>批次</th>
+<th>typecheck</th>
+<th>ESLint</th>
+<th>vitest</th>
+<th>build</th>
+<th>E2E</th>
+<th>UI 手测</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 1 批</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅ 全量</td>
+<td>✅</td>
+<td>—</td>
+<td>图片预览/HTML/PDF 换文件</td>
+</tr>
+<tr>
+<td>第 2 批</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅ 全量 + 契约测试</td>
+<td>✅</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>第 3 批</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅ 全量</td>
+<td>✅</td>
+<td>✅ 4 用例</td>
+<td>✅ 9 项清单</td>
+</tr>
+<tr>
+<td>第 4 批</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅ 全量</td>
+<td>✅</td>
+<td>—</td>
+<td>按项</td>
+</tr>
+</tbody>
+</table>
+<p><strong>统一要求</strong>：</p>
+<ol>
+<li>每批完成后 <code>npm run typecheck</code>（node/web/test 三工程）、<code>npx eslint .</code>、<code>npx vitest run</code> 全绿、<code>npx electron-vite build</code> 成功；</li>
+<li>涉及 preload 的改动后检查 <code>out/preload/</code> 产物为<strong>自包含单文件</strong>（<code>isolatedEntries: true</code> 硬约束，禁止出现 <code>chunks/</code> 目录）；</li>
+<li>涉及 IPC 的改动同步维护 <code>tests/unit/ipc-payload-contract.test.ts</code>（新增护栏）与 <code>ipc-channel-constants.test.ts</code>；</li>
+<li>每批收尾更新本计划状态、台账「修复批次」记录、CHANGELOG。</li>
+</ol>
+<h2 id="sec-9">8. 风险登记</h2>
+<table>
+<thead>
+<tr>
+<th>风险</th>
+<th>场景</th>
+<th>缓解措施</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>行为差异</strong></td>
+<td>file:// URL（Monaco 版不编码）、<code>ParseDirectoryPath</code> 无点号特殊语义、主题明暗归属、默认值口径</td>
+<td>迁移前补等价性/边界单测；差异项先对齐再迁移；不顺手改变行为（除非明确修复）</td>
+</tr>
+<tr>
+<td><strong>契约变更</strong></td>
+<td>preload <code>ApiConfig</code> 映射重载（18 处调用）、<code>VueDialogName</code> data 形状、编码菜单 action id</td>
+<td>保留旧签名过渡；两端一次性改 + 测试；灰度替换</td>
+</tr>
+<tr>
+<td><strong>测试守护调整</strong></td>
+<td><code>urls-constants</code> 已改为真源断言；<code>ipc-channel-constants</code> 需扩展组→domain 断言；<code>preload-whitelist</code> 静态解析对象不能变</td>
+<td>测试与实现同 PR；静态解析对象（白名单 Set）留在入口文件</td>
+</tr>
+<tr>
+<td><strong>UI 回归</strong></td>
+<td>BaseDialog 18 个迁移、查看器壳层抽取、codec 组件化</td>
+<td>每项独立提交可回滚；按 9 项手测清单验收；先 simple 后 complex</td>
+</tr>
+<tr>
+<td><strong>安全相关</strong></td>
+<td>路径守卫/文件名解析/外部链接协议</td>
+<td>先补边界单测（UNC/大小写/<code>..</code>）；安全实现迁移需双人复核等价性</td>
+</tr>
+<tr>
+<td><strong>并发/顺序</strong></td>
+<td>多工项并行改动同文件</td>
+<td>每批拆独立子任务，写作用域不重叠；批次内串行集成</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-10">9. 附录：扫描明细索引</h2>
+<ul>
+<li><strong>跨端重复工具/常量</strong>（28 项）：file:// URL、FNV 哈希、LRU、HTML head 注入/转义、路径工具、随机串、限制常量、编码清单、Hash 算法清单、主题分类、备份基础设施、PlantUML 契约、防抖/并发、日期格式化等；</li>
+<li><strong>单端内部重复</strong>（35 项）：窗口控制两套、HTML/PDF 查看器壳层、18 对话框 CSS、codec 组件、插件通用样式、markdown 预览 helper、Mermaid 双管线、escapeHtml、useEventBus、messageTypes、系统设置默认值三份、配置读取双轨、logger 裸用等；</li>
+<li><strong>类型契约</strong>（17 组）：IPC 载荷缺失、ThemeUpdateData、CONFIG 映射、对话框名/data、文件树、主题类型族、主题广播、版本信息、备份、PlantUML/SelectImage、编码、状态栏、URL 常量、工作区/EventBus 载荷、全局声明挂靠等。</li>
+</ul>
+<blockquote>
+<p>完整扫描明细见 <a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a> 与台账「修复批次」记录；本计划不重复列出全部证据行号，仅保留可执行条目与验收标准。</p>
+</blockquote>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>

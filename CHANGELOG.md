@@ -53,6 +53,7 @@
 - **默认值统一**：删 useConfigStore 死状态；新增 shared `SYSTEM_SETTING_FALLBACK`；SystemSettingDialog 引用共享常量
 - **主题广播收敛**：改用 shared `ThemeUpdateData`；新增 `buildThemeBroadcastPayload()`；三处广播统一走 `broadcastThemeToAllWindows`
 - **结构分析报告归档**：《代码整体结构分析报告》+ 5 张 SVG 图 + HTML wiki；报告生成脚本新增导航自动同步
+- **修复计划文档**：《公共接口归位修复计划》（批次路线图 SVG + 批次 1–4 明细/验收/手测/风险）HTML wiki 收录（23 页）
 - 门禁：typecheck 0 / ESLint 0-0 / vitest 158 文件 2,877 用例全通过 / build 成功
 
 ### ⚡ 主界面异步分块（2026-11-19）

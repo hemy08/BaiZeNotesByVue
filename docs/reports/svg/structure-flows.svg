@@ -51,8 +51,9 @@
   <rect x="866" y="128" width="196" height="112" class="step"/>
   <circle cx="888" cy="150" r="11" class="badge"/><text x="884" y="155" class="badgenum">5</text>
   <text x="908" y="155" class="stitle">保存 / 退出</text>
-  <text x="880" y="182" class="sdesc">Ctrl+S / 自动保存 / 切换文件</text>
-  <text x="880" y="204" class="sdesc">退出：FLUSH_CONTENT（2s 超时）</text>
+  <text x="880" y="182" class="sdesc">Ctrl+S / 自动保存</text>
+  <text x="880" y="204" class="sdesc">切换文件前自动保存</text>
+  <text x="880" y="224" class="sdesc">退出：FLUSH_CONTENT 2s 超时</text>
   <line x1="232" y1="184" x2="242" y2="184" class="flow" marker-end="url(#f-ar)"/>
   <line x1="440" y1="184" x2="450" y2="184" class="flow" marker-end="url(#f-ar)"/>
   <line x1="648" y1="184" x2="658" y2="184" class="flow" marker-end="url(#f-ar)"/>

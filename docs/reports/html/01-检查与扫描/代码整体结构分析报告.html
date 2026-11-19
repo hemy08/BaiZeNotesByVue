@@ -144,6 +144,7 @@
       <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
       <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
       <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+      <a href="../02-修复与实施/公共接口归位修复计划.html">公共接口归位修复计划</a>
     </div>
   </details>
   <details>
@@ -595,8 +596,8 @@
   <text x="294" y="246" class="cdesc">主进程 handler 树</text>
   <text x="294" y="266" class="cdesc">与渲染层拦截分工</text>
   <rect x="434" y="200" width="140" height="114" class="card"/>
-  <text x="446" y="224" class="ctitle">listener</text>
-  <text x="446" y="246" class="cdesc">注册台账</text>
+  <text x="446" y="224" class="ctitle">注册台账</text>
+  <text x="446" y="246" class="cdesc">ipc-listener-manager</text>
   <text x="446" y="266" class="cdesc">persistent / 清理</text>
   <rect x="586" y="200" width="158" height="114" class="card"/>
   <text x="598" y="224" class="ctitle">窗口外设</text>
@@ -648,9 +649,10 @@
   <rect x="790" y="194" width="280" height="64" class="card"/>
   <text x="802" y="216" class="ctitle">dialog.ts（对话框 / 隐藏窗）</text>
   <text x="802" y="236" class="cdesc">2 send + 1 on + shell 白名单校验</text>
-  <text x="792" y="284" class="sect">sandbox + contextIsolation → contextBridge</text>
-  <text x="792" y="304" class="sect">单文件产物（isolatedEntries）</text>
-  <text x="792" y="324" class="sect">白名单手工清单，与 92 常量无编译期对应</text>
+  <text x="792" y="284" class="sect">sandbox + contextIsolation</text>
+  <text x="792" y="304" class="sect">→ contextBridge 注入</text>
+  <text x="792" y="324" class="sect">单文件产物（isolatedEntries）</text>
+  <text x="792" y="344" class="sect">白名单为手工清单，与 92 常量无对应</text>
 
   <!-- 右侧：反向依赖 -->
   <rect x="776" y="370" width="308" height="226" class="hit"/>
@@ -671,7 +673,6 @@
   <line x1="760" y1="220" x2="776" y2="220" class="flow" marker-end="url(#m-ar)"/>
   <line x1="776" y1="250" x2="760" y2="250" class="flow" marker-end="url(#m-ar)"/>
   <line x1="760" y1="452" x2="776" y2="452" class="revedge" marker-end="url(#m-arr)"/>
-  <text x="766" y="240" class="sect" style="font-size:11px">注册 / 调用</text>
 
   <!-- 底部注释 -->
   <rect x="16" y="736" width="1068" height="66" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
@@ -790,7 +791,7 @@
   </defs>
 
   <text x="16" y="32" class="title">图 3 · 渲染层分层与组件树</text>
-  <text x="16" y="54" class="sub">双段式外壳（欢迎页 / 主界面）：欢迎页入口 chunk ≈ 114 KB，主界面（Monaco + 预览 ≈ 9.6 MB）整体异步，61 处动态 import 构成按需加载边界</text>
+  <text x="16" y="54" class="sub">双段式外壳（欢迎页 / 主界面）：欢迎页入口 chunk ≈ 114 KB，主界面（Monaco + 预览 ≈ 9.6 MB）整体异步加载</text>
   <line x1="880" y1="48" x2="906" y2="48" class="flow" marker-end="url(#r-ar)"/>
   <text x="914" y="52" class="legend">分层依赖</text>
   <line x1="1010" y1="48" x2="1036" y2="48" class="flowg" marker-end="url(#r-arg)"/>
@@ -844,7 +845,7 @@
   <rect x="344" y="456" width="268" height="104" class="card"/>
   <text x="356" y="480" class="ctitle">预览渲染域（单跳本地）</text>
   <text x="356" y="502" class="cdesc">preview-local-render（KaTeX / URL）</text>
-  <text x="356" y="522" class="cdesc">markdown-it：mkdocs / basic / media / blocks</text>
+  <text x="356" y="522" class="cdesc">mkdocs / basic / media / blocks 四层插件</text>
   <text x="356" y="542" class="cdesc">mermaid / PlantUML · DOMPurify · TOC</text>
   <rect x="624" y="456" width="180" height="104" class="card"/>
   <text x="636" y="480" class="ctitle">ResourceManager</text>
@@ -912,8 +913,6 @@
   <line x1="410" y1="308" x2="410" y2="320" class="flow" marker-end="url(#r-ar)"/>
   <line x1="410" y1="432" x2="410" y2="444" class="flow" marker-end="url(#r-ar)"/>
   <line x1="410" y1="676" x2="410" y2="688" class="flow" marker-end="url(#r-ar)"/>
-  <line x1="246" y1="792" x2="246" y2="808" class="flowg" marker-end="url(#r-arg)"/>
-  <line x1="816" y1="750" x2="832" y2="750" class="flowg" marker-end="url(#r-arg)"/>
 
   <!-- 底部注释 -->
   <rect x="16" y="812" width="1068" height="54" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
@@ -1092,8 +1091,9 @@
   <rect x="866" y="128" width="196" height="112" class="step"/>
   <circle cx="888" cy="150" r="11" class="badge"/><text x="884" y="155" class="badgenum">5</text>
   <text x="908" y="155" class="stitle">保存 / 退出</text>
-  <text x="880" y="182" class="sdesc">Ctrl+S / 自动保存 / 切换文件</text>
-  <text x="880" y="204" class="sdesc">退出：FLUSH_CONTENT（2s 超时）</text>
+  <text x="880" y="182" class="sdesc">Ctrl+S / 自动保存</text>
+  <text x="880" y="204" class="sdesc">切换文件前自动保存</text>
+  <text x="880" y="224" class="sdesc">退出：FLUSH_CONTENT 2s 超时</text>
   <line x1="232" y1="184" x2="242" y2="184" class="flow" marker-end="url(#f-ar)"/>
   <line x1="440" y1="184" x2="450" y2="184" class="flow" marker-end="url(#f-ar)"/>
   <line x1="648" y1="184" x2="658" y2="184" class="flow" marker-end="url(#f-ar)"/>
@@ -1160,7 +1160,7 @@
   <rect x="866" y="516" width="196" height="112" class="step"/>
   <circle cx="888" cy="538" r="11" class="badge"/><text x="884" y="543" class="badgenum">5</text>
   <text x="908" y="543" class="stitle">落盘 + 广播</text>
-  <text x="880" y="570" class="sdesc">应用副作用（主题 / 字体 / 快捷键）</text>
+  <text x="880" y="570" class="sdesc">应用主题 / 字体 / 快捷键</text>
   <text x="880" y="592" class="sdesc">THEME.UPDATED 等 → 渲染层</text>
   <line x1="232" y1="572" x2="242" y2="572" class="flow" marker-end="url(#f-ar)"/>
   <line x1="440" y1="572" x2="450" y2="572" class="flow" marker-end="url(#f-ar)"/>
@@ -1190,12 +1190,13 @@
   <circle cx="680" cy="732" r="11" class="badge"/><text x="676" y="737" class="badgenum">4</text>
   <text x="700" y="737" class="stitle">异步图表</text>
   <text x="672" y="764" class="sdesc">mermaid 动态 import</text>
-  <text x="672" y="786" class="sdesc">PlantUML 本地隐藏窗（队列 / LRU）</text>
+  <text x="672" y="786" class="sdesc">PlantUML 本地隐藏窗</text>
+  <text x="672" y="806" class="sdesc">串行队列 + LRU 缓存</text>
   <rect x="866" y="710" width="196" height="112" class="step"/>
   <circle cx="888" cy="732" r="11" class="badge"/><text x="884" y="737" class="badgenum">5</text>
   <text x="908" y="737" class="stitle">输出</text>
   <text x="880" y="764" class="sdesc">DOMPurify → 远程图片策略</text>
-  <text x="880" y="786" class="sdesc">v-html + TOC 章节指纹门控</text>
+  <text x="880" y="786" class="sdesc">v-html + TOC 渲染</text>
   <line x1="232" y1="766" x2="242" y2="766" class="flow" marker-end="url(#f-ar)"/>
   <line x1="440" y1="766" x2="450" y2="766" class="flow" marker-end="url(#f-ar)"/>
   <line x1="648" y1="766" x2="658" y2="766" class="flow" marker-end="url(#f-ar)"/>
