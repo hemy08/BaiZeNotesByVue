@@ -78,7 +78,12 @@ import FileViewerShell from './FileViewerShell.vue'
 import { t } from '../../common/i18n'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
-import { withBaseHref } from './html-view-utils'
+import {
+    withBaseHref,
+    hasReportNavSlot,
+    injectReportNav,
+    getReportNavCandidatePaths
+} from './html-view-utils'
 import { useFileViewerState } from '../../composables/useFileViewerState'
 import type { FileLoadContext } from '../../composables/useFileViewerState'
 
@@ -86,7 +91,52 @@ import type { FileLoadContext } from '../../composables/useFileViewerState'
 const iframeRef = ref<HTMLIFrameElement | null>(null)
 
 /**
- * 加载 HTML 文件内容（IPC 读取 + 注入 base href）
+ * 读取报告页静态导航片段（2026-11-19：应用内查看器 ↔ 报告 HTML 共享 assets 配套）
+ *
+ * 背景：报告 HTML 页面由生成脚本改为引用共享 `assets/` 导航（浏览器打开时由
+ * `report-nav.js` 渲染）；但查看器 iframe 的 sandbox 不含 `allow-scripts`，页面脚本
+ * 不执行 → 导航不显示。生成脚本同时产出静态片段，由本函数在渲染层读取后注入占位处。
+ *
+ * 性能与降级约定：
+ * - **普通 HTML 零额外 IPC**：内容不含占位标记时同步返回空串，不做任何探测；
+ * - 候选最多 4 个（页面同级 `assets/`、父级 `assets/` × 两种深度变体），按顺序
+ *   「CHECK_EXISTS → READ_HTML」短路探测，命中即停（最坏 4 次探测 + 1 次读取）；
+ * - 单候选失败（Path Guard 越界 / 文件被删 / 读取异常）静默跳过；全部失败返回空串，
+ *   由调用方保持原内容（导航缺失但页面正常），不影响普通 HTML 加载。
+ *
+ * @param html 已读取的 HTML 内容（用于判断是否报告页）
+ * @param path 被查看 HTML 的完整路径（用于推导片段候选位置）
+ * @returns 静态导航片段；非报告页 / 无可用片段时返回空串
+ */
+async function readReportNavFragment(html: string, path: string): Promise<string> {
+    if (!hasReportNavSlot(html)) {
+        return ''
+    }
+    for (const candidate of getReportNavCandidatePaths(path)) {
+        try {
+            const exists = (await window.electron.ipcRenderer.invoke(
+                IPC.FILE.CHECK_EXISTS,
+                candidate
+            )) as boolean
+            if (!exists) {
+                continue
+            }
+            const fragment = (await window.electron.ipcRenderer.invoke(
+                IPC.FILE.READ_HTML,
+                candidate
+            )) as string | null
+            if (typeof fragment === 'string' && fragment.trim().length > 0) {
+                return fragment
+            }
+        } catch {
+            // 单个候选读取失败（越界/文件消失等）：静默跳过，继续下一个候选
+        }
+    }
+    return ''
+}
+
+/**
+ * 加载 HTML 文件内容（IPC 读取 + 报告导航注入 + 注入 base href）
  *
  * @param path HTML 文件完整路径
  * @param context 加载上下文（代次/卸载守卫：过期请求直接返回，不写任何状态）
@@ -99,10 +149,29 @@ async function loadHtmlContent(path: string, context: FileLoadContext): Promise<
     if (context.isStale()) {
         return null
     }
+    if (!content) {
+        return null
+    }
+    // 2026-11-19：报告页（内容含 `<!-- baize-report-nav-slot -->` 占位标记）注入静态导航。
+    // iframe sandbox 无 allow-scripts，页面内的 report-nav.js 不会执行，必须在渲染层补上；
+    // 普通 HTML 无占位标记 → 零额外 IPC、内容原样返回（不受影响）。
+    let html = content
+    const navFragment = await readReportNavFragment(content, path)
+    if (context.isStale()) {
+        return null
+    }
+    if (navFragment) {
+        try {
+            html = injectReportNav(content, navFragment)
+        } catch {
+            // 注入异常保持原内容：导航缺失但页面正常展示
+        }
+    }
     // 2026-11-18 修复「HTML 查看器内相对链接点击无反应」：
     // srcdoc 文档基准 URL 是父页面，注入 <base href="file:///<文件目录>/"> 后，
     // 报告 HTML Wiki 顶部导航、图片等相对资源可正确定位（详见 html-view-utils.ts）。
-    return content ? withBaseHref(content, path) : null
+    // 注入顺序：先补导航（占位在 body）再注入 base（head），二者互不影响。
+    return withBaseHref(html, path)
 }
 
 // 通用查看器状态机：三态 + 文件选择监听 + 重试/刷新 + 加载守卫

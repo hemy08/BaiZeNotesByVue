@@ -1,18 +1,28 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/no-require-imports -- 本脚本为 CommonJS 构建脚本（package.json 无 type:module，由 node 直接运行），保持 require 写法 */
 /**
- * Markdown → HTML 报告生成器（复用 ../docs/wiki/06-历史报告/html 既有报告视觉风格）
+ * Markdown → HTML 报告生成器（报告 HTML Wiki 的单页渲染器）
  *
  * 用法：
- *   node build/build-html-report.js --input docs/wiki/06-历史报告/md/x.md --output docs/wiki/06-历史报告/html/x.html \
- *     --title "报告标题" --l1 "副标题一" --l2 "副标题二" --cards "127|通道总数;16|死通道;10|机制风险" \
- * --svg doc=path/to/topology.svg --svg-at "<!-- SVG:topology -->"
+ *   node build/build-html-report.js --input docs/reports/md/x.md --output docs/reports/html/x.html \
+ *     --title "报告标题" --l1 "副标题一" --l2 "副标题二" --cards "127|通道总数;16|死通道" \
+ *     --depth ../ --svg doc=path/to/topology.svg
+ *   （md 中放 `<!-- SVG:name -->` 占位符，脚本用 --svg name=file 替换为内嵌 SVG）
  *
- * 特性：
- * - 固定悬浮目录（h2/h3 两级锚点，随滚动保持可见）
- * - 表格斑马纹、行内代码、代码块、列表、链接
- * - 可选 SVG 内嵌：md 中放 <!-- SVG:name --> 占位符，脚本用 --svg name=file 替换
- * - 卡片统计区（--cards "数值|标签;数值|标签"）
+ * 页面结构约定（2026-11-19 重构：导航与公共样式抽为共享资源）：
+ * - head 只引用 `<link rel="stylesheet" href="{depth}assets/report.css">`，不再内联公共 CSS；
+ * - body 顶部输出 `<!-- baize-report-nav-slot -->` + `<div id="report-nav"></div>`：
+ *   - 浏览器直接打开：由 `{depth}assets/report-nav.js`（defer）在运行时渲染导航；
+ *   - 应用内 HTML 查看器（sandbox 不执行脚本）：由渲染层向该容器注入静态片段
+ *     `assets/report-nav.html`（分类报告页深度）或 `assets/report-nav-home.html`（首页深度）；
+ * - body 末尾引用 `{depth}assets/report-nav.js`；
+ * - 页面内联悬浮目录（.toc）保留：目录项因页而异，由本脚本按 h2/h3 生成，不做抽取。
+ *
+ * 共享资源（report.css / report-nav.js / 两个静态片段）由 build/generate-report-wiki.js
+ * 统一生成并维护（产物位于 docs/reports/html/assets/，可提交入库）。
+ * 因此单页生成前需先跑过一次 Wiki 批量生成，否则共享资源缺失（脚本会给出告警）。
+ *
+ * 兼容说明：`--nav` / `--navHtml` 参数保留但已废弃——导航不再内联进页面，传入会被忽略。
  */
 const fs = require('fs')
 const path = require('path')
@@ -37,6 +47,20 @@ function escapeHtml(str) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
+}
+
+/**
+ * 规范化资源相对深度：分类报告页为 `../`（默认），Wiki 首页为 `./`；
+ * 更深层级报告页（如 `docs/reports/html/<分类>/<子目录>/x.html`）可传 `../../`。
+ */
+function normalizeDepth(raw) {
+    const value = String(raw === undefined || raw === null ? '' : raw).trim()
+    if (value === '') return '../'
+    if (value === '.' || value === './') return './'
+    if (/^(?:\.\.\/)+$/.test(value)) return value
+    if (/^(?:\.\.\/)*\.\.$/.test(value)) return `${value}/`
+    if (/^(?:\.\.\/)*\.$/.test(value)) return value.replace(/\.$/, './')
+    throw new Error(`--depth 参数不合法：${raw}（仅支持 './'、'../'、'../../' 这类相对前缀）`)
 }
 
 function buildToc(mdHtml) {
@@ -108,71 +132,6 @@ function addHeadingIds(html) {
         })
 }
 
-const CSS = `
-  :root {
-    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
-    --border: #e5e7eb; --accent: #2563eb;
-    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
-  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
-           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
-  header h1 { margin: 0 0 10px; font-size: 26px; }
-  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-           gap: 12px; margin-bottom: 24px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-          padding: 14px 16px; text-align: center; }
-  .card b { display: block; font-size: 26px; }
-  .card span { font-size: 12px; color: var(--muted); }
-  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
-       scroll-margin-top: 20px; }
-  h3 { margin-top: 26px; scroll-margin-top: 20px; }
-  table { width: 100%; border-collapse: collapse; background: var(--card);
-          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
-          font-size: 13.5px; margin: 14px 0; }
-  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
-           text-align: left; vertical-align: top; }
-  th { background: #f3f4f6; white-space: nowrap; }
-  tr:nth-child(even) td { background: #fafbfc; }
-  tr:last-child td { border-bottom: none; }
-  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
-         font-family: Consolas, monospace; font-size: 12.5px; }
-  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
-        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
-  pre code { background: none; color: inherit; padding: 0; }
-  ul, ol { padding-left: 24px; }
-  li { margin: 4px 0; }
-  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
-               border-left: 4px solid var(--accent); border-radius: 6px; }
-  a { color: var(--accent); }
-  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
-           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
-  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
-  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
-  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
-             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
-  .diagram svg { max-width: 100%; height: auto; }
-  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
-           text-align: center; }
-  /* 悬浮导航 */
-  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
-         max-height: calc(100vh - 48px); overflow-y: auto;
-         background: var(--card); border: 1px solid var(--border);
-         border-radius: 10px; padding: 14px 10px; z-index: 100;
-         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
-  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
-  .toc a { display: block; color: var(--text); text-decoration: none;
-           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
-  .toc a:hover { background: #eef1f5; color: var(--accent); }
-  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
-  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
-  @media (max-width: 1249px) { .toc { display: none; } }
-`
-
 function buildHtml(args) {
     const mdPath = path.resolve(args.input)
     if (!fs.existsSync(mdPath)) throw new Error(`Markdown 文件不存在：${mdPath}`)
@@ -181,7 +140,7 @@ function buildHtml(args) {
     const mdit = new MarkdownIt({ html: true, linkify: false, typographer: false })
     // 报告标题由 <header> 呈现：跳过 md 开头的首个一级标题，避免页面中出现重复标题
     let mdBody = md.replace(/^\s*#\s+[^\n]*(?:\r?\n)+/, '')
-    // 剥离 Markdown 报告顶部的「报告导航」一行（HTML 页面改由 --nav 顶部固定导航承担）
+    // 剥离 Markdown 报告顶部的手写「报告导航」行（页面导航改由共享导航资源承担）
     mdBody = mdBody.replace(/<!-- report-nav:start -->[\s\S]*?<!-- report-nav:end -->\s*/, '')
     let body = mdit.render(mdBody)
     body = addHeadingIds(body)
@@ -191,15 +150,28 @@ function buildHtml(args) {
     const cards = renderCards(args.cards)
     const title = args.title || '报告'
     const subtitleLines = [args.l1, args.l2, args.l3].filter(Boolean)
-    // 可选整体导航条：读取 HTML 片段并注入 <body> 顶部（见 build/report-nav.html）
-    // 支持 --nav <文件路径> 或 --navHtml <片段字符串>（后者用于按页面深度做路径适配）
-    let navHtml = ''
-    if (args.nav) {
-        const navPath = path.resolve(args.nav)
-        if (!fs.existsSync(navPath)) throw new Error(`导航片段文件不存在：${navPath}`)
-        navHtml = fs.readFileSync(navPath, 'utf-8')
+    const depth = normalizeDepth(args.depth)
+
+    // 旧参数兼容：导航已不再内联进页面（改为 assets/ 共享资源 + 静态片段注入）
+    if (args.nav || args.navHtml) {
+        console.warn(
+            '[warn] --nav / --navHtml 已废弃并被忽略：导航改由 docs/reports/html/assets/report-nav.js（浏览器）' +
+                '与 assets/report-nav.html（应用内静态注入）承担，请运行 node build/generate-report-wiki.js 维护'
+        )
     }
-    if (args.navHtml) navHtml = args.navHtml
+
+    const outPath = path.resolve(args.output)
+    fs.mkdirSync(path.dirname(outPath), { recursive: true })
+    // 共享资源缺失时给出明确告警（不阻断单页生成，但页面样式/导航会失效）
+    const missingAssets = ['report.css', 'report-nav.js']
+        .map((name) => path.resolve(path.dirname(outPath), depth, 'assets', name))
+        .filter((file) => !fs.existsSync(file))
+    if (missingAssets.length > 0) {
+        console.warn(
+            `[warn] 共享资源缺失：${missingAssets.join('、')}；` +
+                '请先运行 node build/generate-report-wiki.js 生成 docs/reports/html/assets/'
+        )
+    }
 
     const html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -207,10 +179,11 @@ function buildHtml(args) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escapeHtml(title)}</title>
-<style>${CSS}</style>
+<link rel="stylesheet" href="${depth}assets/report.css">
 </head>
 <body>
-${navHtml}
+<!-- baize-report-nav-slot -->
+<div id="report-nav"></div>
   <nav class="toc">
     <h4>目录</h4>
 ${renderToc(toc)}
@@ -226,12 +199,11 @@ ${cards ? `  <div class="cards">\n${cards}\n  </div>\n` : ''}
 ${body}
   <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
 </div>
+<script src="${depth}assets/report-nav.js" defer></script>
 </body>
 </html>
 `
 
-    const outPath = path.resolve(args.output)
-    fs.mkdirSync(path.dirname(outPath), { recursive: true })
     fs.writeFileSync(outPath, html, 'utf-8')
     console.log(`[ok] 生成 ${outPath}（${html.length} 字节，${toc.length} 个目录项）`)
     return outPath
@@ -241,11 +213,11 @@ if (require.main === module) {
     const args = parseArgs(process.argv)
     if (!args.input || !args.output) {
         console.error(
-            '用法：node build/build-html-report.js --input <md> --output <html> [--title ...] [--l1 ...] [--cards ...] [--nav <导航片段 html>] [--svg name=file]'
+            '用法：node build/build-html-report.js --input <md> --output <html> [--title ...] [--depth ./|../] [--l1 ...] [--cards ...] [--svg name=file]'
         )
         process.exit(1)
     }
     buildHtml(args)
 }
 
-module.exports = { buildHtml }
+module.exports = { buildHtml, escapeHtml }

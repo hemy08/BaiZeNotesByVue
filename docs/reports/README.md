@@ -16,9 +16,10 @@ docs/reports/
 │   ├── 02-修复与实施/  # 8 篇
 │   └── 03-专项治理/    # 6 篇
 └── html/              # HTML 报告 wiki（独立站点结构）
-    ├── README.md      # wiki 首页（分类导航）
+    ├── README.md      # wiki 首页 Markdown 源（分类导航）
     ├── _sidebar.md    # wiki 侧边栏导航（docsify）
-    ├── 01-检查与扫描/  # 8 份 HTML（完整页面 + 固定悬浮目录）
+    ├── assets/        # 共享资源（脚本生成、可入库）：report.css / report-nav.js / 静态导航片段
+    ├── 01-检查与扫描/  # 9 份 HTML（完整页面 + 固定悬浮目录）
     ├── 02-修复与实施/  # 8 份 HTML
     └── 03-专项治理/    # 6 份 HTML
 ```
@@ -67,9 +68,11 @@ docs/reports/
 
 - 入口：[html/README.html](html/README.html)（wiki 首页，可直接浏览器打开；Markdown 版首页为 [html/README.md](html/README.md)）
 - 侧边栏：[html/_sidebar.md](html/_sidebar.md)（docsify 导航）
-- 页面：**23 个**（1 首页 + 22 份报告），每页顶部均有**整体导航**（首页 + 3 分类下拉 + 当前页高亮）；报告页自带**固定悬浮目录**（符合 AGENTS.md 文档规范）
-- 构建：`node build/generate-report-wiki.js`（批量从 `md/` 生成到 `html/`，自动注入顶部导航并规范化正文链接）；顶部导航片段见 `build/report-nav.html`
-- 打开方式：浏览器直接打开 `html/README.html` 体验最完整；应用内「HTML 查看器」打开时相对链接已由查看器注入 `<base>` 修正（导航可点击），但沙箱不执行脚本
+- 页面：**24 个**（1 首页 + 23 份报告），每页顶部均有**整体导航**（首页 + 3 分类下拉 + 当前页高亮）；报告页自带**固定悬浮目录**（符合 AGENTS.md 文档规范）
+- 共享资源：[html/assets/](html/assets/)（由生成脚本自动生成/维护，可提交入库）——`report.css` 公共样式（报告版式 + `.rgnav` 导航 + `.toc` 定位）、`report-nav.js` 浏览器端导航渲染（内嵌导航数据，file:// 直接打开可用）、`report-nav.html` / `report-nav-home.html` 静态导航片段（应用内 HTML 查看器沙箱不执行脚本时，由渲染层注入 `#report-nav` 容器）
+- 构建：`node build/generate-report-wiki.js`（从 `md/` 批量生成 `html/`，同时自动维护 `html/assets/` 共享资源并规范化正文链接）；导航数据唯一真源为脚本内 `REPORT_NAV_DATA` 数据表
+- 新增报告：在 `build/generate-report-wiki.js` 的 `REPORT_NAV_DATA` 对应分类追加条目 + 把 Markdown 放入 `md/<分类>/`，重跑上述命令即可；既有页面均引用共享资源，**无需逐页改动**
+- 打开方式：浏览器直接打开 `html/README.html` 体验最完整（外链 `assets/report.css` 样式 + `assets/report-nav.js` 渲染导航，高亮/下拉生效）；应用内「HTML 查看器」打开时相对链接由查看器注入 `<base>` 修正，沙箱不执行脚本，导航改用渲染层注入的 `assets/report-nav.html` 静态片段
 - Markdown 报告顶部也带一行报告导航（`report-nav` 标记包裹，HTML 生成时自动剥离避免重复）
 
 ## 四、口径说明与整理记录

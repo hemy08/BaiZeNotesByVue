@@ -7,7 +7,9 @@
  * 2. EventBus 两个入口事件（html-file-selected、file-tree-node-clicked）与文件类型过滤；
  * 3. IPC 读写（read-html-file、open-external-link）通道与参数；
  * 4. 错误处理、重试、刷新、二次选择文件；
- * 5. 卸载时 EventBus 监听清理。
+ * 5. 卸载时 EventBus 监听清理；
+ * 6. 报告页静态导航注入（2026-11-19：共享 assets 改造配套）——占位检测、片段探测顺序、
+ *    首页深度变体优先级、读取失败静默降级、普通 HTML 零额外 IPC。
  *
  * 说明：组件本身没有 props/emits，所有输入来自 EventBus，所有输出走 window.electron IPC。
  */
@@ -17,7 +19,13 @@ import { nextTick } from 'vue'
 import type { VueWrapper } from '@vue/test-utils'
 
 import ShowHtmlView from '@renderer/components/HemyTools/ShowHtmlView.vue'
-import { withBaseHref } from '@renderer/components/HemyTools/html-view-utils'
+import {
+    withBaseHref,
+    hasReportNavSlot,
+    injectReportNav,
+    isReportHomePage,
+    getReportNavCandidatePaths
+} from '@renderer/components/HemyTools/html-view-utils'
 import EventBus from '@renderer/common/event-bus/event-bus'
 import { EVENT_BUS } from '@renderer/common/event-bus/event-bus-events'
 import { IPC } from '../../../src/shared/ipc-channels'
@@ -72,6 +80,68 @@ function unmountAllViews(): void {
 async function selectHtmlFile(path: string, name: string): Promise<void> {
     EventBus.$emit(EVENT_BUS.HTML_FILE_SELECTED, { path, name })
     await flushPromises()
+}
+
+/** 构造报告页 HTML（生成脚本产出的新结构：占位注释 + 空导航容器 + 共享 assets 引用） */
+function reportPageHtml(cssHref = '../assets/report.css'): string {
+    return [
+        '<!DOCTYPE html>',
+        '<html>',
+        '<head>',
+        `<link rel="stylesheet" href="${cssHref}">`,
+        '</head>',
+        '<body>',
+        '<!-- baize-report-nav-slot -->',
+        '<div id="report-nav"></div>',
+        '<main>报告正文</main>',
+        '<script src="../assets/report-nav.js" defer></script>',
+        '</body>',
+        '</html>'
+    ].join('\n')
+}
+
+/** 报告页静态导航片段样例（分类页深度：链接带一层 ../） */
+const NAV_FRAGMENT =
+    '<nav class="rgnav" aria-label="报告整体导航"><a href="../README.html">🏠 报告首页</a></nav>'
+
+/** 报告导航候选探测的 IPC mock 配置 */
+interface ReportNavMockOptions {
+    /** 被查看的 HTML 文件路径（READ_HTML 返回 pageContent） */
+    pagePath: string
+    /** 页面 HTML 内容 */
+    pageContent: string
+    /** 唯一「存在」的导航片段路径；其余候选 CHECK_EXISTS 返回 false */
+    navPath?: string
+    /** 命中后 READ_HTML 返回的片段内容 */
+    navContent?: string
+    /** 命中后 READ_HTML 是否抛错（模拟 Path Guard 拒绝 / 文件被删） */
+    navReadFails?: boolean
+}
+
+/** 构造报告导航探测相关 IPC mock（区分页面读取 / 存在性探测 / 片段读取） */
+function mockReportNavIpc(options: ReportNavMockOptions): void {
+    invoke.mockImplementation((channel: string, target: unknown) => {
+        const targetPath = String(target)
+        if (channel === IPC.FILE.READ_HTML && targetPath === options.pagePath) {
+            return Promise.resolve(options.pageContent)
+        }
+        if (channel === IPC.FILE.CHECK_EXISTS) {
+            return Promise.resolve(options.navPath !== undefined && targetPath === options.navPath)
+        }
+        if (channel === IPC.FILE.READ_HTML && targetPath === options.navPath) {
+            if (options.navReadFails) {
+                return Promise.reject(new Error('read denied'))
+            }
+            return Promise.resolve(options.navContent ?? '')
+        }
+        return Promise.resolve(null)
+    })
+}
+
+/** 取 invoke mock 中指定通道调用的首个参数列表（call[0] 为通道，call[1] 为首个参数） */
+function invokeArgsOf(channel: string): unknown[] {
+    const calls = invoke.mock.calls as unknown[][]
+    return calls.filter((call) => call[0] === channel).map((call) => call[1])
 }
 
 beforeEach(() => {
@@ -364,5 +434,252 @@ describe('withBaseHref（srcdoc 相对链接基准修复）', () => {
         // 2026-11-19（P2 修复）：# 会被解析为 fragment、? 为 query，必须转义
         const out = withBaseHref('<body>x</body>', 'E:\\notes\\a#b?c\\index.html')
         expect(out).toContain('<base href="file:///E:/notes/a%23b%3Fc/">')
+    })
+})
+
+describe('hasReportNavSlot / injectReportNav（报告导航注入纯函数）', () => {
+    /** 报告页占位结构（生成脚本新契约：body 顶部标记 + 空容器） */
+    const pageHtml = `<html><body>
+<!-- baize-report-nav-slot -->
+<div id="report-nav"></div>
+<main>x</main>
+</body></html>`
+
+    it('detects the slot comment marker only', () => {
+        expect(hasReportNavSlot(pageHtml)).toBe(true)
+        // 注释内多余空白/大小写容忍
+        expect(hasReportNavSlot('<!--   BAIZE-REPORT-NAV-SLOT   -->')).toBe(true)
+        // 仅空容器不算占位（普通用户 HTML 不会被探测）
+        expect(hasReportNavSlot('<html><body><div id="report-nav"></div></body></html>')).toBe(
+            false
+        )
+        expect(hasReportNavSlot('<html><body>plain</body></html>')).toBe(false)
+        expect(hasReportNavSlot('')).toBe(false)
+    })
+
+    it('replaces the slot comment and the adjacent empty nav container', () => {
+        const out = injectReportNav(pageHtml, NAV_FRAGMENT)
+
+        expect(out).toContain('<div id="report-nav">\n<nav class="rgnav"')
+        expect(out).toContain('</nav>\n</div>')
+        // 占位标记与空容器都必须消失，否则 srcdoc 内出现重复 id / 空导航
+        expect(out).not.toContain('baize-report-nav-slot')
+        expect(out).not.toContain('<div id="report-nav"></div>')
+        // 页面其余内容原样保留
+        expect(out).toContain('<main>x</main>')
+    })
+
+    it('cleans up the empty container when the slot and container are separated by content', () => {
+        const html =
+            '<body><!-- baize-report-nav-slot -->\n<p>中间内容</p>\n<div id="report-nav"></div></body>'
+        const out = injectReportNav(html, NAV_FRAGMENT)
+
+        expect(out).toContain('<p>中间内容</p>')
+        expect(out).toContain('class="rgnav"')
+        // 注入后文档中只允许一个 report-nav 容器（残留空容器被清理）
+        expect(out.match(/id="report-nav"/g)).toHaveLength(1)
+    })
+
+    it('injects when the slot comment has no nav container following it', () => {
+        const html = '<body><!-- baize-report-nav-slot --><main>y</main></body>'
+        const out = injectReportNav(html, NAV_FRAGMENT)
+
+        expect(out).toContain('<div id="report-nav">')
+        expect(out).toContain('class="rgnav"')
+        expect(out).toContain('<main>y</main>')
+    })
+
+    it('returns unchanged html for ordinary pages without a slot', () => {
+        const html = '<html><body><p>plain</p></body></html>'
+        expect(injectReportNav(html, NAV_FRAGMENT)).toBe(html)
+    })
+
+    it('returns unchanged html when the fragment is empty (read failure degradation)', () => {
+        expect(injectReportNav(pageHtml, '')).toBe(pageHtml)
+        expect(injectReportNav(pageHtml, '   \n ')).toBe(pageHtml)
+    })
+
+    it('inserts trusted fragment markup as-is (no escaping / no $ replacement patterns)', () => {
+        // 片段含 `$&`/`$1` 等字符时不能被 String.replace 当作替换模式
+        const fragment =
+            '<nav class="rgnav"><a href="../assets/report.css?x=1&amp;y=2">A &amp; B $&amp; $1</a></nav>'
+        const out = injectReportNav(pageHtml, fragment)
+        expect(out).toContain(fragment)
+    })
+})
+
+describe('isReportHomePage / getReportNavCandidatePaths（导航片段候选）', () => {
+    it('recognizes the report wiki homepage README.html', () => {
+        expect(isReportHomePage('/reports/html/README.html')).toBe(true)
+        expect(isReportHomePage('E:\\repo\\docs\\reports\\html\\readme.HTML')).toBe(true)
+        expect(isReportHomePage('/reports/html/01-scan/a.html')).toBe(false)
+    })
+
+    it('returns category-depth candidates in the contracted order', () => {
+        expect(getReportNavCandidatePaths('/reports/html/01-scan/a.html')).toEqual([
+            '/reports/html/01-scan/assets/report-nav.html',
+            '/reports/html/01-scan/assets/report-nav-home.html',
+            '/reports/html/assets/report-nav.html',
+            '/reports/html/assets/report-nav-home.html'
+        ])
+    })
+
+    it('prefers the home-depth variant for README.html (same assets dir holds both variants)', () => {
+        expect(getReportNavCandidatePaths('/reports/html/README.html')).toEqual([
+            '/reports/html/assets/report-nav-home.html',
+            '/reports/html/assets/report-nav.html',
+            '/reports/assets/report-nav-home.html',
+            '/reports/assets/report-nav.html'
+        ])
+    })
+
+    it('normalizes Windows separators for drive-letter paths', () => {
+        expect(
+            getReportNavCandidatePaths(
+                'E:\\github.com\\BaiZeNotesByVue\\docs\\reports\\html\\01-检查与扫描\\示例.html'
+            )
+        ).toEqual([
+            'E:/github.com/BaiZeNotesByVue/docs/reports/html/01-检查与扫描/assets/report-nav.html',
+            'E:/github.com/BaiZeNotesByVue/docs/reports/html/01-检查与扫描/assets/report-nav-home.html',
+            'E:/github.com/BaiZeNotesByVue/docs/reports/html/assets/report-nav.html',
+            'E:/github.com/BaiZeNotesByVue/docs/reports/html/assets/report-nav-home.html'
+        ])
+    })
+
+    it('returns no candidates for a bare file name (no directory information)', () => {
+        expect(getReportNavCandidatePaths('a.html')).toEqual([])
+        expect(getReportNavCandidatePaths('')).toEqual([])
+    })
+})
+
+describe('ShowHtmlView 报告页静态导航注入（组件级）', () => {
+    it('injects the static navigation fragment into report pages', async () => {
+        mockReportNavIpc({
+            pagePath: '/reports/html/01-scan/a.html',
+            pageContent: reportPageHtml(),
+            navPath: '/reports/html/assets/report-nav.html',
+            navContent: NAV_FRAGMENT
+        })
+        const wrapper = mountView()
+
+        await selectHtmlFile('/reports/html/01-scan/a.html', 'a.html')
+
+        const iframe = wrapper.find('iframe')
+        expect(iframe.exists()).toBe(true)
+        const srcdoc = iframe.attributes('srcdoc') ?? ''
+        // 注入静态导航片段（srcdoc 下脚本不执行，导航必须由渲染层补）
+        expect(srcdoc).toContain('class="rgnav"')
+        expect(srcdoc).toContain('<div id="report-nav">')
+        expect(srcdoc).toContain('🏠 报告首页')
+        // 占位与空容器均被替换，不残留
+        expect(srcdoc).not.toContain('baize-report-nav-slot')
+        expect(srcdoc).not.toContain('<div id="report-nav"></div>')
+        // base 仍注入（srcdoc 内 ../assets/report.css 相对资源可加载）
+        expect(srcdoc).toContain('<base href="file:///reports/html/01-scan/">')
+        // 探测顺序：页面同级两个候选不存在 → 父级分类深度片段命中后即停止
+        expect(invokeArgsOf(IPC.FILE.CHECK_EXISTS)).toEqual([
+            '/reports/html/01-scan/assets/report-nav.html',
+            '/reports/html/01-scan/assets/report-nav-home.html',
+            '/reports/html/assets/report-nav.html'
+        ])
+        expect(invokeArgsOf(IPC.FILE.READ_HTML)).toEqual([
+            '/reports/html/01-scan/a.html',
+            '/reports/html/assets/report-nav.html'
+        ])
+    })
+
+    it('does not probe nav assets for ordinary html pages (zero extra IPC)', async () => {
+        invoke.mockResolvedValue('<html><body><h1>普通页面</h1></body></html>')
+        const wrapper = mountView()
+
+        await selectHtmlFile('/notes/plain.html', 'plain.html')
+
+        expect(invoke).toHaveBeenCalledTimes(1)
+        expect(invoke).toHaveBeenCalledWith(IPC.FILE.READ_HTML, '/notes/plain.html')
+        expect(invokeArgsOf(IPC.FILE.CHECK_EXISTS)).toEqual([])
+        const srcdoc = wrapper.find('iframe').attributes('srcdoc') ?? ''
+        expect(srcdoc).toContain('<h1>普通页面</h1>')
+        expect(srcdoc).not.toContain('rgnav')
+    })
+
+    it('prefers the home-depth nav variant when viewing the README.html homepage', async () => {
+        const homeNav =
+            '<nav class="rgnav"><a href="01-scan/a.html">01-检查与扫描 · 分类页</a></nav>'
+        mockReportNavIpc({
+            pagePath: '/reports/html/README.html',
+            pageContent: reportPageHtml('assets/report.css'),
+            navPath: '/reports/html/assets/report-nav-home.html',
+            navContent: homeNav
+        })
+        const wrapper = mountView()
+
+        await selectHtmlFile('/reports/html/README.html', 'README.html')
+
+        // 首页位于报告根目录：第一个候选必须是首页深度片段，避免误用分类深度（多一层 ../）
+        expect(invokeArgsOf(IPC.FILE.CHECK_EXISTS)[0]).toBe(
+            '/reports/html/assets/report-nav-home.html'
+        )
+        const srcdoc = wrapper.find('iframe').attributes('srcdoc') ?? ''
+        expect(srcdoc).toContain('class="rgnav"')
+        expect(srcdoc).toContain('href="01-scan/a.html"')
+        expect(srcdoc).toContain('<base href="file:///reports/html/">')
+    })
+
+    it('degrades gracefully when the nav fragment cannot be read', async () => {
+        mockReportNavIpc({
+            pagePath: '/reports/html/01-scan/a.html',
+            pageContent: reportPageHtml(),
+            navPath: '/reports/html/assets/report-nav.html',
+            navReadFails: true
+        })
+        const wrapper = mountView()
+
+        await selectHtmlFile('/reports/html/01-scan/a.html', 'a.html')
+
+        // 不抛错、不进入错误态：页面正常展示，仅导航缺失
+        expect(wrapper.find('.error-container').exists()).toBe(false)
+        expect(wrapper.find('iframe').exists()).toBe(true)
+        const srcdoc = wrapper.find('iframe').attributes('srcdoc') ?? ''
+        expect(srcdoc).toContain('<main>报告正文</main>')
+        expect(srcdoc).toContain('<base href="file:///reports/html/01-scan/">')
+        expect(srcdoc).not.toContain('rgnav')
+    })
+
+    it('keeps the page when no nav fragment candidate exists', async () => {
+        mockReportNavIpc({
+            pagePath: '/reports/html/01-scan/a.html',
+            pageContent: reportPageHtml(),
+            navContent: NAV_FRAGMENT
+        })
+        const wrapper = mountView()
+
+        await selectHtmlFile('/reports/html/01-scan/a.html', 'a.html')
+
+        expect(wrapper.find('.error-container').exists()).toBe(false)
+        const srcdoc = wrapper.find('iframe').attributes('srcdoc') ?? ''
+        expect(srcdoc).toContain('<main>报告正文</main>')
+        expect(srcdoc).not.toContain('rgnav')
+    })
+
+    it('re-injects the navigation when refreshing a report page', async () => {
+        // 首次读取 + 片段探测
+        mockReportNavIpc({
+            pagePath: '/reports/html/01-scan/a.html',
+            pageContent: reportPageHtml(),
+            navPath: '/reports/html/assets/report-nav.html',
+            navContent: NAV_FRAGMENT
+        })
+        const wrapper = mountView()
+        await selectHtmlFile('/reports/html/01-scan/a.html', 'a.html')
+        expect(invokeArgsOf(IPC.FILE.READ_HTML)).toHaveLength(2)
+
+        // 刷新：重新读页面并再次注入（IPC mock 保持）
+        await wrapper.find('button[title="刷新"]').trigger('click')
+        await flushPromises()
+
+        // 页面读取 2 次 + 导航片段读取 2 次（每次刷新各自注入一次）
+        expect(invokeArgsOf(IPC.FILE.READ_HTML)).toHaveLength(4)
+        const srcdoc = wrapper.find('iframe').attributes('srcdoc') ?? ''
+        expect(srcdoc).toContain('class="rgnav"')
     })
 })

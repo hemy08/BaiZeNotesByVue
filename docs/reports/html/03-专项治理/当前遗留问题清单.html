@@ -4,214 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>当前遗留问题清单</title>
-<style>
-  :root {
-    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
-    --border: #e5e7eb; --accent: #2563eb;
-    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
-  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
-           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
-  header h1 { margin: 0 0 10px; font-size: 26px; }
-  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-           gap: 12px; margin-bottom: 24px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-          padding: 14px 16px; text-align: center; }
-  .card b { display: block; font-size: 26px; }
-  .card span { font-size: 12px; color: var(--muted); }
-  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
-       scroll-margin-top: 20px; }
-  h3 { margin-top: 26px; scroll-margin-top: 20px; }
-  table { width: 100%; border-collapse: collapse; background: var(--card);
-          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
-          font-size: 13.5px; margin: 14px 0; }
-  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
-           text-align: left; vertical-align: top; }
-  th { background: #f3f4f6; white-space: nowrap; }
-  tr:nth-child(even) td { background: #fafbfc; }
-  tr:last-child td { border-bottom: none; }
-  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
-         font-family: Consolas, monospace; font-size: 12.5px; }
-  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
-        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
-  pre code { background: none; color: inherit; padding: 0; }
-  ul, ol { padding-left: 24px; }
-  li { margin: 4px 0; }
-  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
-               border-left: 4px solid var(--accent); border-radius: 6px; }
-  a { color: var(--accent); }
-  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
-           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
-  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
-  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
-  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
-             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
-  .diagram svg { max-width: 100%; height: auto; }
-  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
-           text-align: center; }
-  /* 悬浮导航 */
-  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
-         max-height: calc(100vh - 48px); overflow-y: auto;
-         background: var(--card); border: 1px solid var(--border);
-         border-radius: 10px; padding: 14px 10px; z-index: 100;
-         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
-  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
-  .toc a { display: block; color: var(--text); text-decoration: none;
-           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
-  .toc a:hover { background: #eef1f5; color: var(--accent); }
-  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
-  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
-  @media (max-width: 1249px) { .toc { display: none; } }
-</style>
+<link rel="stylesheet" href="../assets/report.css">
 </head>
 <body>
-<!-- =========================================================================
-     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
-     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
-     ========================================================================= -->
-<style>
-  html { scroll-padding-top: 72px; }
-  body { padding-top: 56px; }
-  .rgnav {
-    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
-    display: flex; align-items: center; gap: 2px; padding: 0 14px;
-    background: #1f2937; color: #e5e7eb; font-size: 13px;
-    box-shadow: 0 2px 10px rgba(0,0,0,.28);
-    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
-       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
-    overflow: visible;
-  }
-  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
-             border-radius: 6px; white-space: nowrap; }
-  .rgnav a:hover { background: rgba(255,255,255,.12); }
-  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
-  .rgnav details { position: relative; }
-  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
-                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
-  .rgnav summary::-webkit-details-marker { display: none; }
-  .rgnav summary:hover { background: rgba(255,255,255,.12); }
-  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
-  .rgnav .rgnav-drop {
-    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
-    background: #111827; border: 1px solid #374151; border-radius: 8px;
-    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
-  }
-  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
-     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
-  .rgnav details[open] .rgnav-drop { display: flex; }
-  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
-  .rgnav .rgnav-home { font-weight: 600; }
-  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
-  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
-                        white-space: nowrap; padding-left: 12px; }
-  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
-  /* 原悬浮目录下移，避免被顶部导航遮挡 */
-  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
-  @media (max-width: 760px) {
-    .rgnav { font-size: 12px; }
-    .rgnav .rgnav-right { display: none; }
-  }
-</style>
-
-<nav class="rgnav" aria-label="报告整体导航">
-  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
-  <span class="rgnav-sep"></span>
-  <details>
-    <summary>01-检查与扫描 ▾</summary>
-    <div class="rgnav-drop">
-      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
-      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
-      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
-      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
-      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
-      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
-      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
-      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
-      <a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a>
-    </div>
-  </details>
-  <details>
-    <summary>02-修复与实施 ▾</summary>
-    <div class="rgnav-drop">
-      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
-      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
-      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
-      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
-      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
-      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
-      <a href="../02-修复与实施/公共接口归位修复计划.html">公共接口归位修复计划</a>
-      <a href="../02-修复与实施/代码结构优化计划.html">代码结构优化计划</a>
-    </div>
-  </details>
-  <details>
-    <summary>03-专项治理 ▾</summary>
-    <div class="rgnav-drop">
-      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
-      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
-      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
-      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
-      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
-      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
-    </div>
-  </details>
-  <span class="rgnav-right">
-    当前：<a id="rgnav-current" href="#">—</a> ·
-    <a href="../README.md" title="Markdown 索引">MD 索引</a>
-  </span>
-</nav>
-
-<script>
-  ;(function () {
-    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
-    var norm = function (p) {
-      try {
-        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
-      } catch (e) {
-        return p
-      }
-    }
-    var self = norm(location.pathname)
-    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
-    var current = null
-    for (var i = 0; i < links.length; i++) {
-      var a = links[i]
-      if (norm(new URL(a.href, location.href).pathname) === self) {
-        a.classList.add('active')
-        current = a
-      }
-    }
-    if (current) {
-      var box = current.closest('details')
-      if (box) box.setAttribute('open', '')
-      var label = document.getElementById('rgnav-current')
-      if (label) {
-        label.textContent = current.textContent.trim()
-        label.setAttribute('href', current.getAttribute('href'))
-      }
-    } else {
-      var home = document.querySelector('.rgnav .rgnav-home')
-      if (home && norm(new URL(home.href, location.href).pathname) === self) {
-        home.classList.add('active')
-      }
-      var label2 = document.getElementById('rgnav-current')
-      if (label2) label2.textContent = document.title.replace(' · 报告', '')
-    }
-    // 点击页面空白处收起下拉
-    document.addEventListener('click', function (e) {
-      var within = e.target.closest && e.target.closest('.rgnav details')
-      var all = document.querySelectorAll('.rgnav details[open]')
-      for (var j = 0; j < all.length; j++) {
-        if (all[j] !== within) all[j].removeAttribute('open')
-      }
-    })
-  })()
-</script>
-
+<!-- baize-report-nav-slot -->
+<div id="report-nav"></div>
   <nav class="toc">
     <h4>目录</h4>
     <a class="toc-l2" href="#sec-1">一、状态约定</a>
@@ -225,22 +22,23 @@
     <a class="toc-l3" href="#sub-6">3.6 用户反馈问题（2026-11-18 起）</a>
     <a class="toc-l2" href="#sec-4">四、建议处理顺序</a>
     <a class="toc-l2" href="#sec-5">五、修复记录（按时间倒序）</a>
-    <a class="toc-l3" href="#sub-7">2026-11-19 · 用户反馈修复（HTML 查看器导航）</a>
-    <a class="toc-l3" href="#sub-8">2026-11-19 · 公共接口归位（第 4 批：P3 清理，✅ 完成）</a>
-    <a class="toc-l3" href="#sub-9">2026-11-19 · 公共接口归位（第 3 批完成：18/18 对话框迁移 + 插件样式收口）</a>
-    <a class="toc-l3" href="#sub-10">2026-11-19 · 公共接口归位（第 3 批：渲染层组件化，✅ 已完成）</a>
-    <a class="toc-l3" href="#sub-11">2026-11-19 · 公共接口归位（第 2 批：shared/types 契约层）</a>
-    <a class="toc-l3" href="#sub-12">2026-11-19 · 公共接口归位（第 1 批：shared/utils + shared/constants）</a>
-    <a class="toc-l3" href="#sub-13">2026-11-19 · 公共接口归位（第 0 批，P1）</a>
-    <a class="toc-l3" href="#sub-14">2026-11-19 · 修复批次 7（性能：主界面异步分块，入口 chunk -98.9%）</a>
-    <a class="toc-l3" href="#sub-15">2026-11-19 · 修复批次 6（P3 清理：E2E 入 CI / 对话框安全 / 命名统一 / 文档口径）</a>
-    <a class="toc-l3" href="#sub-16">2026-11-19 · 修复批次 5（代码复检：P0/P1/P2 修复 + 文档口径统一）</a>
-    <a class="toc-l3" href="#sub-17">2026-11-18 · 用户反馈修复（欢迎页窗口控制）</a>
-    <a class="toc-l3" href="#sub-18">2026-11-18 · 修复批次 4（CSP / PDF 预览 / 按需加载）</a>
-    <a class="toc-l3" href="#sub-19">2026-11-18 · 修复批次 3（IPC 分组统一 / 资源优化）</a>
-    <a class="toc-l3" href="#sub-20">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</a>
-    <a class="toc-l3" href="#sub-21">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</a>
-    <a class="toc-l3" href="#sub-22">2026-11-18 · 台账建立</a>
+    <a class="toc-l3" href="#sub-7">2026-11-19 · HTML 报告 Wiki 导航共享化（构建 + 应用内双通道）</a>
+    <a class="toc-l3" href="#sub-8">2026-11-19 · 用户反馈修复（HTML 查看器导航）</a>
+    <a class="toc-l3" href="#sub-9">2026-11-19 · 公共接口归位（第 4 批：P3 清理，✅ 完成）</a>
+    <a class="toc-l3" href="#sub-10">2026-11-19 · 公共接口归位（第 3 批完成：18/18 对话框迁移 + 插件样式收口）</a>
+    <a class="toc-l3" href="#sub-11">2026-11-19 · 公共接口归位（第 3 批：渲染层组件化，✅ 已完成）</a>
+    <a class="toc-l3" href="#sub-12">2026-11-19 · 公共接口归位（第 2 批：shared/types 契约层）</a>
+    <a class="toc-l3" href="#sub-13">2026-11-19 · 公共接口归位（第 1 批：shared/utils + shared/constants）</a>
+    <a class="toc-l3" href="#sub-14">2026-11-19 · 公共接口归位（第 0 批，P1）</a>
+    <a class="toc-l3" href="#sub-15">2026-11-19 · 修复批次 7（性能：主界面异步分块，入口 chunk -98.9%）</a>
+    <a class="toc-l3" href="#sub-16">2026-11-19 · 修复批次 6（P3 清理：E2E 入 CI / 对话框安全 / 命名统一 / 文档口径）</a>
+    <a class="toc-l3" href="#sub-17">2026-11-19 · 修复批次 5（代码复检：P0/P1/P2 修复 + 文档口径统一）</a>
+    <a class="toc-l3" href="#sub-18">2026-11-18 · 用户反馈修复（欢迎页窗口控制）</a>
+    <a class="toc-l3" href="#sub-19">2026-11-18 · 修复批次 4（CSP / PDF 预览 / 按需加载）</a>
+    <a class="toc-l3" href="#sub-20">2026-11-18 · 修复批次 3（IPC 分组统一 / 资源优化）</a>
+    <a class="toc-l3" href="#sub-21">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</a>
+    <a class="toc-l3" href="#sub-22">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</a>
+    <a class="toc-l3" href="#sub-23">2026-11-18 · 台账建立</a>
   </nav>
 
 <div class="wrap">
@@ -646,7 +444,17 @@
 <li><strong>低风险收尾</strong>：#3/#7 域错配统一 → #10 P3 文档声明 → #13/#14/#15 → #18</li>
 </ol>
 <h2 id="sec-5">五、修复记录（按时间倒序）</h2>
-<h3 id="sub-7">2026-11-19 · 用户反馈修复（HTML 查看器导航）</h3>
+<h3 id="sub-7">2026-11-19 · HTML 报告 Wiki 导航共享化（构建 + 应用内双通道）</h3>
+<ul>
+<li><strong>共享资源</strong>：新建 <code>docs/reports/html/assets/</code>——<code>report.css</code>（公共样式 6.6KB：报告模板全部 CSS + <code>.rgnav</code>/<code>.toc</code> 样式）、<code>report-nav.js</code>（浏览器端导航渲染 10.9KB：内嵌数据、按脚本 URL 反推根路径、当前页高亮/分类自动展开/点击空白收起/「当前：」标签）、<code>report-nav.html</code> 与 <code>report-nav-home.html</code>（静态片段，供应用内注入，分别按分类页/首页深度写链接）；导航数据、两份静态片段与渲染脚本由 <code>generate-report-wiki.js</code> 的 <code>REPORT_NAV_DATA</code> <strong>单一真源</strong>生成，杜绝漂移</li>
+<li><strong>页面模板</strong>：24 页（1 首页 + 23 报告）改为引用共享资产（<code>&lt;link assets/report.css&gt;</code> + <code>&lt;!-- baize-report-nav-slot --&gt;</code> + 占位容器 + <code>&lt;script assets/report-nav.js defer&gt;</code>），移除每页内联公共 CSS 与导航 HTML（每页 diff 约 +4/−206 行）；<strong>新增报告只需在数据表加条目 + 写 md，已有页面无需改动</strong></li>
+<li><strong>应用内注入</strong>：<code>ShowHtmlView</code> 检测占位标记后按候选路径（同目录 → 上级 assets，首页与分类页变体优先级不同）读取静态片段注入（srcdoc 无脚本场景）；普通 HTML 零额外 IPC、读取失败静默降级、代次守卫保留；<code>html-view-utils.ts</code> 新增 4 个纯函数，hemytools-html-view 测试 18→36 用例</li>
+<li><strong>验证证据</strong>：24 页模板契约 24/24；导航数据三方一致（report-nav.js / 两份静态片段 / 实际页面）；jsdom file:// 外链加载 <strong>749 项 0 失败</strong>；Chromium 无头 file:// 实测 <strong>17/17</strong>（导航渲染/高亮/下拉/CSS/.toc 定位）；视觉与行为零回归（报告页截图 SHA256 前后一致、23 篇正文逐字节一致、导航 DOM 一致）；生成脚本幂等（二次运行 0 变更、删除 assets 后自动重建哈希一致）；新增报告流程 13/13</li>
+<li><strong>真实应用验证</strong>：应用内打开报告页（srcdoc 无脚本）→ 静态导航注入成功（26 个导航链接、<code>.rgnav</code> 背景 <code>#1f2937</code>、<code>report.css</code> 生效、内联 TOC 17 项、布局正常）</li>
+<li><strong>口径修正</strong>：<code>docs/reports/md</code> 实有 <strong>23 篇报告</strong> → HTML Wiki <strong>24 页</strong>（1 首页 + 23 报告）；<code>docs/reports/README.md</code> 与 <code>docs/reports/html/README.md</code> 已同步（旧文档写 23 页/22 报告属过期口径）</li>
+<li><strong>清理</strong>：删除 <code>build/report-nav.html</code>（旧内联导航片段，build/src/tests 已无运行引用）；<code>--nav/--navHtml</code> 参数保留但废弃告警</li>
+</ul>
+<h3 id="sub-8">2026-11-19 · 用户反馈修复（HTML 查看器导航）</h3>
 <ul>
 <li><strong>#22 布局越界 / 点击空白</strong>（用户实测两个场景）：①顶部导航跳转到 file:// 文档后点击左侧悬浮目录（<code>.toc</code>）→ iframe 内锚点 scroll-into-view 连带滚动父文档 → 工作区上移被菜单栏遮挡（实测容器 y 67→-8）；②直接打开时 srcdoc 的 <code>#anchor</code> 经 base 解析为 file:// 导航 → sandbox 下失败 → iframe 空白</li>
 <li><strong>修复 1（容器布局）</strong>：<code>#html-containers</code>/<code>#pdf-containers</code> 补齐布局样式（flex/column/float/height:100%/min-height:0/overflow:hidden）；FileViewerShell 的 shell/content-wrapper 与 iframe/PDF 滚动区补 <code>min-height:0</code>，确保 iframe 视口高度受控（修复前实测内部视口高度=内容高度 18501px，文档不可滚动）</li>
@@ -655,7 +463,7 @@
 <li><strong>回归护栏</strong>：新增 <code>tests/unit/viewer-layout-contract.test.ts</code> 3 用例锁定容器/壳层/iframe/PDF 滚动区样式契约</li>
 <li>验收：typecheck 0 / ESLint 0-0 / vitest <strong>174 文件 / 3,224 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E 4 passed</li>
 </ul>
-<h3 id="sub-8">2026-11-19 · 公共接口归位（第 4 批：P3 清理，✅ 完成）</h3>
+<h3 id="sub-9">2026-11-19 · 公共接口归位（第 4 批：P3 清理，✅ 完成）</h3>
 <ul>
 <li><strong>主进程/配置组</strong>：删除 <code>dialog-helpers</code> 3 个死包装（+ index re-export/测试同步）；4 处手写 basename/dirname 统一为 <code>path.basename/dirname</code>（顺带修 <code>OpenFolderExplorer</code> 的 <code>lastIndexOf('//')</code> 笔误）；主题注册表/主窗口图标资源路径统一 <code>app-paths</code>（<strong>修复真实缺陷：主窗口图标原路径指向不存在的 out/resources，一直未加载</strong>）；删除 <code>@mainer</code> 死别名（tsconfig/vite/vitest/test 四处）；<code>global-types.d.ts</code> 迁移到 <code>src/shared/types/global.d.ts</code>（web 程序不再 include main 目录）；IPC domain 计数文案 18→17 + 防回归断言</li>
 <li><strong>渲染层组</strong>：删除死 composable <code>useEventBus</code>（-44 行 + 13 用例删除，全仓 0 生产引用）；<code>messageTypes</code> 三处重复收敛为 <code>MESSAGE_DIALOG_TYPES</code> 常量；<strong>18 处裸 <code>console.*</code> 收敛到 logger</strong>（渲染层仅剩 logger 自身出口）；<strong>修复 ThemeSettingDialog 8 个 resize-handle 的 <code>@mousedown</code> 柯里化未调用缺陷</strong>（第 3 批发现的历史缺陷，新增逐方向回归用例）；清理 <code>DialogState.admonition.data</code> 死字段</li>
@@ -664,7 +472,7 @@
 <blockquote>
 <p><strong>公共接口归位计划（第 0–4 批）已全部完成</strong>：新建 shared 工具层 11 模块 + 常量层 7 模块 + 契约层 4 模块；主进程/渲染层 60+ 文件迁移；渲染层组件化（WindowControls/FileViewerShell/TextCodecTool/BaseDialog 18/18 对话框/preview-block-utils/Mermaid 清理）；P3 清理 12 项。累计净减约 4,000+ 行重复代码。剩余建议：实机 UI 手测（9 项清单）、主题明暗归属待产品确认、<code>useEventBus</code> 相关历史文档口径清理。</p>
 </blockquote>
-<h3 id="sub-9">2026-11-19 · 公共接口归位（第 3 批完成：18/18 对话框迁移 + 插件样式收口）</h3>
+<h3 id="sub-10">2026-11-19 · 公共接口归位（第 3 批完成：18/18 对话框迁移 + 插件样式收口）</h3>
 <ul>
 <li><strong>BaseDialog 能力扩展</strong>：新增 <code>titleTextStyle</code>/<code>closeButtonStyle</code>（类型 <code>DialogStyleProperties</code> = CSSProperties + <code>WebkitAppRegion</code>，解决 csstype 未收录 app-region 的 TS 拒绝）+ <code>prepend</code> 插槽（容器内 title-bar 之前）；18 props / 4 插槽，兼容既有 10 个已迁移对话框；新增 6 用例</li>
 <li><strong>C-2 组（纯样式覆盖 7 个）</strong>：ImportOption（零覆盖）/Admonition/InsertImage/MdSheet/MathText/MaterialSyntax/TechStack 迁移；净 <strong>-626 行</strong>；外壳声明审计 355 条 + 正文 545 条<strong>0 不一致</strong>；新增 30 用例</li>
@@ -674,7 +482,7 @@
 <li><strong>记录待修复（非本次引入）</strong>：ThemeSettingDialog 的 <code>@mousedown=&quot;startResize('n')&quot;</code> 柯里化函数未调用（resize 交互迁移前就可能未生效），建议后续单独修复为 <code>startResize('n')($event)</code></li>
 <li><strong>验收</strong>：typecheck 0 / ESLint 0-0 / vitest <strong>174 文件 / 3,224 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E <strong>4 passed</strong></li>
 </ul>
-<h3 id="sub-10">2026-11-19 · 公共接口归位（第 3 批：渲染层组件化，✅ 已完成）</h3>
+<h3 id="sub-11">2026-11-19 · 公共接口归位（第 3 批：渲染层组件化，✅ 已完成）</h3>
 <ul>
 <li><strong>窗口控制组件化</strong>：新建 <code>components/common/WindowControls.vue</code>（props：<code>showMaximize/variant</code>，复用 <code>useWindowManagement</code> 的 TOGGLE/状态同步），<code>WelcomeScreen.vue</code>（-141 行）与 <code>BaiZeNotes.vue</code>（-81 行）改用共享组件；DOM class/i18n/no-drag 契约保持，新增 6 用例</li>
 <li><strong>HTML/PDF 查看器壳层去重</strong>：新建 <code>composables/useFileViewerState.ts</code>（三态/代次守卫/重试/文件选择监听）+ <code>HemyTools/FileViewerShell.vue</code>（三态容器/工具栏/内容插槽 + 16 条共享样式）；<code>ShowHtmlView</code> 320→154 行、<code>ShowPdfEditor</code> 579→402 行；IPC 通道、EventBus 事件、全部既有 class 名不变，27 个既有用例通过</li>
@@ -688,7 +496,7 @@
 <blockquote>
 <p>第 3 批剩余项已全部完成（见下方批次 12）：BaseDialog 已扩展并迁移其余 15 个对话框、plugin-tools 样式副本已清理；第 4 批 P3 清理待执行。</p>
 </blockquote>
-<h3 id="sub-11">2026-11-19 · 公共接口归位（第 2 批：shared/types 契约层）</h3>
+<h3 id="sub-12">2026-11-19 · 公共接口归位（第 2 批：shared/types 契约层）</h3>
 <ul>
 <li><strong>IPC 载荷契约骨架</strong>：新建 <code>src/shared/types/ipc.ts</code> —— <code>IpcRequests</code> <strong>58/58</strong>（与 preload send/invoke 白名单双向相等）、<code>IpcResponses</code> <strong>26</strong>（⊆ 请求且与主进程 handle 注册对齐）、<code>IpcEvents</code> <strong>25/25</strong>（与 receive 白名单双向相等，且每通道有真实发送点）；另建 <code>IpcPreloadApiRequests</code>（window.api 直连 6 通道，断言不在白名单内）；新增 <code>ipc-payload-contract.test.ts</code> 静态护栏（含渲染层 75 处调用通道 ⊆ 请求表）</li>
 <li><strong>CONFIG 配置映射</strong>：新建 <code>src/shared/types/config.ts</code> —— <code>ConfigName</code>（8 个，与 config-schema 白名单/validate switch 双向核对）、<code>ConfigReadMap/ConfigWriteMap/ConfigDataMap</code>（按主进程实际返回定义）；修复渲染层 2 处真实错误断言（<code>editor</code> 实际 7 字段、<code>quick-links</code> 实际裸数组）；preload <code>ApiConfig</code> 增加 <code>K extends ConfigName</code> 重载（旧泛型保留过渡）</li>
@@ -701,7 +509,7 @@
 <blockquote>
 <p>记录待办（不阻塞）：主题明暗口径待产品确认；<code>FILE.READ_HTML</code> 空串语义；渲染层 75 处调用点尚未灰度替换为 typed helper（见计划第 2 批后续建议）。</p>
 </blockquote>
-<h3 id="sub-12">2026-11-19 · 公共接口归位（第 1 批：shared/utils + shared/constants）</h3>
+<h3 id="sub-13">2026-11-19 · 公共接口归位（第 1 批：shared/utils + shared/constants）</h3>
 <ul>
 <li><strong>新建共享纯函数层</strong>：<code>src/shared/utils/</code> 11 个模块（path/hash/lru-cache/html/random/validate/format/concurrency/debounce/date/backup-dir），逐函数对齐现有实现（路径/哈希 4 份、LRU 4 份、HTML 转义 3 份、随机串 2 套、备份样板 2 套等），新增 <code>tests/unit/shared-utils.test.ts</code> <strong>121 用例</strong>（编码/UNC/大小写/逃逸/淘汰/fake timers/时间戳等边界）</li>
 <li><strong>新建共享常量层</strong>：<code>src/shared/constants/</code> 6 个模块（window/limits/render/file-extensions/hash-algorithms/encodings），逐值对齐来源并带漂移护栏（<code>tests/unit/shared-constants.test.ts</code> <strong>15 用例</strong>，import 既有导出常量做 <code>toBe</code> 对比）</li>
@@ -713,7 +521,7 @@
 <blockquote>
 <p>后续：第 2 批 shared/types（零运行时，约 10 组契约）待执行；第 3 批渲染层组件化、第 4 批 P3 清理见《公共接口归位修复计划》。</p>
 </blockquote>
-<h3 id="sub-13">2026-11-19 · 公共接口归位（第 0 批，P1）</h3>
+<h3 id="sub-14">2026-11-19 · 公共接口归位（第 0 批，P1）</h3>
 <p>三组只读扫描（跨端重复 28 项、单端内部 35 项、类型契约 17 组）后，第 0 批完成 4 项 P1 归位：</p>
 <ul>
 <li><strong>URL 单一真源</strong>：<code>src/main/constants/urls.ts</code> 改为 re-export <code>src/shared/constants/urls.ts</code>（删除 52 条逐字重复常量）；渲染层 <code>menu-consts.ts</code> 删除 50 个死 URL 字段（<code>generateMenuItems</code> 本就丢弃 url），<code>urls-constants</code> 测试改为「真源键集合 + 门面全等」断言</li>
@@ -727,7 +535,7 @@
 <blockquote>
 <p>后续批次（扫描结论，待执行）：第 1 批 shared/utils+constants（file-url/hash/LRU/html/path/random/validate/format、limits/window/encodings）；第 2 批 shared/types（ipc/config/dialog/file/theme/backup/app-info，零运行时）；第 3 批渲染层组件化（WindowControls/FileViewerShell/BaseDialog/CodecTool/preview-block-utils）；第 4 批 P3 清理。</p>
 </blockquote>
-<h3 id="sub-14">2026-11-19 · 修复批次 7（性能：主界面异步分块，入口 chunk -98.9%）</h3>
+<h3 id="sub-15">2026-11-19 · 修复批次 7（性能：主界面异步分块，入口 chunk -98.9%）</h3>
 <ul>
 <li><strong>主界面整体异步化</strong>：<code>App.vue</code> 中 <code>BaiZeNotes.vue</code> 改为 <code>defineAsyncComponent</code> 按需加载——Monaco（≈7.3MB）、highlight.js（≈1.29MB）、KaTeX（≈0.51MB）与渲染管线全部移出入口 chunk；入口 chunk <strong>10,096KB → 114KB</strong>，初始加载 JS+CSS <strong>10,541KB → 604KB（-94.3%）</strong>；主界面异步 chunk <code>BaiZeNotes-*.js</code> ≈9,644KB（按需加载、入口 HTML 不预载）</li>
 <li><strong>启动恢复时序保证</strong>：<code>BaiZeNotes.vue</code> 挂载并注册完全部 IPC 监听后 <code>emit('main-view-mounted')</code>，<code>show-welcome=false</code> 路径等该信号再发 READY；<code>autoOpenLastFile/Folder</code> 路径在 READY 前预加载模块（WELCOME_ENTER_MAIN 同一微任务链完成挂载）；欢迎页路径首帧后空闲预加载</li>
@@ -735,7 +543,7 @@
 <li><strong>结构债评估</strong>：原 4 个 &gt;800 行目标文件已降至 700–795 行（&lt;800 阈值）；剩余超阈值历史大文件（preview-md-basic/对话框等）不涉及本轮功能，记录为后续专项（拆分收益为可维护性、回归风险高，不阻塞）</li>
 <li>门禁：typecheck 0 / ESLint 0-0 / vitest <strong>158 文件 / 2,877 用例全通过</strong> / <code>electron-vite build</code> 成功 / E2E 4 passed</li>
 </ul>
-<h3 id="sub-15">2026-11-19 · 修复批次 6（P3 清理：E2E 入 CI / 对话框安全 / 命名统一 / 文档口径）</h3>
+<h3 id="sub-16">2026-11-19 · 修复批次 6（P3 清理：E2E 入 CI / 对话框安全 / 命名统一 / 文档口径）</h3>
 <ul>
 <li><strong>E2E 纳入 CI</strong>：新增独立并行 <code>e2e</code> job（windows-latest：构建后 Playwright Electron 冒烟，失败上传 report/trace）；本地冒烟 2 用例通过（修复原用例标题断言与 Electron 启动环境问题），冒烟增强为主窗口/欢迎页窗口控制/preload 桥/IPC 往返断言</li>
 <li><strong>对话框安全纵深</strong>：<code>preload/dialog.ts</code> 增加<strong>接收通道白名单</strong>（仅 <code>THEME_UPDATED</code>，未知丢弃告警）；JSDOM 对话框 HTML 统一注入严格 CSP（<code>default-src 'none'</code>、仅内联 script/style + data: 图片，阻断外部资源/网络）</li>
@@ -745,7 +553,7 @@
 <li><strong>文档口径</strong>：<code>docs/wiki/</code>（29 篇）与 <code>docs/md/</code>（2 篇）统一到 v1.3.6 实测口径（92 通道/17 组、158 文件/2,871 用例、58+25 白名单、38 插件、源码规模、菜单 12 顶层/319 项），修复 7 处旧报告引用与 34 处过期基线指引（链接失效 0）</li>
 <li>门禁：typecheck 0 / ESLint 0-0 / vitest <strong>158 文件 / 2,871 用例全通过（0 未处理错误）</strong> / <code>electron-vite build</code> 成功 / E2E 冒烟 2 passed</li>
 </ul>
-<h3 id="sub-16">2026-11-19 · 修复批次 5（代码复检：P0/P1/P2 修复 + 文档口径统一）</h3>
+<h3 id="sub-17">2026-11-19 · 修复批次 5（代码复检：P0/P1/P2 修复 + 文档口径统一）</h3>
 <p>三组并行审计（安全/IPC、质量/架构、性能/测试/文档）共 72 项原始发现，本轮修复：</p>
 <ul>
 <li><strong>P0 数据丢失回归</strong>：欢迎页「最近文件夹」路径（<code>OPEN_SPECIFIC_FOLDER</code>）补 <code>markMainViewEntered()</code>；遗留配置 <code>show-welcome=false</code> 启动时由主进程同步读取并标记；新增 CLOSE 快路径集成测试（欢迎页跳过 flush / 主界面保留 flush→脏保存）与启动配置用例</li>
@@ -755,21 +563,21 @@
 <li><strong>文档统一</strong>：README/CHANGELOG/reports README/台账/矩阵/架构文档统一为 <strong>92 通道 / 17 组、158 文件 / 2,871 用例、58+25 白名单、38 插件</strong>；修复 14 处失效相对链接</li>
 <li>门禁：typecheck 0 / ESLint 0-0 / vitest <strong>158 文件 / 2,871 用例全通过（0 未处理错误）</strong> / <code>electron-vite build</code> 成功</li>
 </ul>
-<h3 id="sub-17">2026-11-18 · 用户反馈修复（欢迎页窗口控制）</h3>
+<h3 id="sub-18">2026-11-18 · 用户反馈修复（欢迎页窗口控制）</h3>
 <ul>
 <li><strong>#20 关闭按钮延迟</strong>：新增主进程 <code>welcome-state</code> 状态模块（发送 WELCOME_ENTER_MAIN 标记进入主界面、新窗口创建复位），CLOSE 通道在欢迎页时跳过 FLUSH_CONTENT 的 2s 超时直接关闭；主界面保留 flush→脏则保存协议</li>
 <li><strong>#21 最大化二次点击无效</strong>：欢迎页最大化按钮改发 <code>TOGGLE_MAXIMIZE</code>；按 <code>IS_MAXIMIZED</code> 动态切换「最大化/还原」图标与 title（新增 i18n 词条 <code>workspace.window.restore</code>）</li>
 <li>测试：新增 welcome-state 4 用例；欢迎页窗口控制测试更新（TOGGLE 断言 + 图标状态 2 用例）；basic-components 窗口按钮断言同步</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0-0 / vitest <strong>158 文件 / 2,871 用例全通过</strong> / <code>electron-vite build</code> 成功</li>
 </ul>
-<h3 id="sub-18">2026-11-18 · 修复批次 4（CSP / PDF 预览 / 按需加载）</h3>
+<h3 id="sub-19">2026-11-18 · 修复批次 4（CSP / PDF 预览 / 按需加载）</h3>
 <ul>
 <li><strong>#6 CSP 收紧</strong>：补充 <code>object-src 'none'</code>、<code>base-uri 'self'</code>、<code>form-action 'none'</code>（不影响现有功能的纵深防御）；新增 <code>renderer-csp.test.ts</code> 契约测试（6 用例）锁定关键指令与 file:/blob: 放行项；<code>unsafe-eval</code> 经 grep 确认无 eval/new Function 使用，保留待实机验证</li>
 <li><strong>#9 PDF 预览（pdf.js 方案）</strong>：新增 <code>FILE.READ_BINARY</code> 二进制读取通道（Path Guard 校验 → Uint8Array）；ShowPdfEditor 重写为 pdfjs-dist 渲染（翻页/缩放/错误提示/卸载销毁），恢复插件注册与「工具→常用小工具→PDF 预览」菜单入口；新增组件测试 6 用例、utils 通道测试 3 用例、插件/菜单/词典断言更新</li>
 <li><strong>#11 主 chunk 拆分（部分）</strong>：HTML 查看器与 PDF 预览改为按需异步组件（ShowPdfEditor 独立 chunk 802KB），主 chunk 11,142KB → 10,333KB（-809KB），消除 INEFFECTIVE_DYNAMIC_IMPORT 警告；剩余 Mermaid/Monaco 大依赖异步化需实机回归，留待独立批次</li>
 <li>构建验证：<code>electron-vite build</code> 成功（pdfjs worker 正常打包）</li>
 </ul>
-<h3 id="sub-19">2026-11-18 · 修复批次 3（IPC 分组统一 / 资源优化）</h3>
+<h3 id="sub-20">2026-11-18 · 修复批次 3（IPC 分组统一 / 资源优化）</h3>
 <ul>
 <li><strong>#3/#7 IPC 域错配统一</strong>：常量分组与通道 domain 一一对应——编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、设置类 2 通道新建 SETTING 组、Monaco 类并入 MONACO 组（原 MONACO_INSERT 组）；共 12 个符号引用全仓批量替换（16 文件），分组由 16 → 17 组、通道仍 90 个</li>
 <li><strong>#13 PlantUML 隐藏窗空闲销毁</strong>：渲染完成后 60s 无新渲染即销毁隐藏窗口释放渲染进程资源（SVG LRU 缓存保留，下次渲染按需重建；timer unref 不阻塞退出）；新增 2 个测试用例</li>
@@ -777,7 +585,7 @@
 <li><strong>#15 HemyTools.vue 核实</strong>：被 WorkSpace.vue 引用且含实际实现，非空壳死代码 → 无需处理</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0-0 / vitest 全量通过</li>
 </ul>
-<h3 id="sub-20">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</h3>
+<h3 id="sub-21">2026-11-18 · 修复批次 2（安全 / 发布 / 性能）</h3>
 <ul>
 <li><strong>#4 preload 发送白名单（C-09）</strong>：主窗口 preload 不再暴露 toolkit 全量 ipcRenderer，改为受限包装——send/invoke 57 通道、on/once 26 通道白名单（按渲染层实际调用静态扫描收集），未知通道丢弃/拒绝并告警；preload-index.test 新增 5 用例</li>
 <li><strong>#8 自动更新源</strong>：默认源改为本仓库 GitHub Releases 静态目录（electron-builder.yml / dev-app-update.yml / update.json.example / update.config.md 同步）；发布时上传 latest.yml 与安装包即可</li>
@@ -785,7 +593,7 @@
 <li><strong>#12 主题缓存异步预热</strong>：theme-registry 新增 <code>warmupMonacoThemeCache()</code>（异步填充文件名与主题数据缓存），index.ts 窗口就绪后空闲调用；主题注册表测试新增 4 用例</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0/0 / vitest 155+ 文件 / 2,83x 用例全通过</li>
 </ul>
-<h3 id="sub-21">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</h3>
+<h3 id="sub-22">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</h3>
 <ul>
 <li><strong>#1 查看器「在浏览器中打开」</strong>：新增 <code>FILE.OPEN_IN_BROWSER</code> 通道（ipc-channels.ts / utils.ts：.html/.htm 扩展名 + Path Guard 校验 → <code>pathToFileURL</code> → <code>shell.openExternal</code>）；ShowHtmlView.vue 改走新通道；测试：utils.test 新增 4 用例、html-view 断言更新</li>
 <li><strong>#2 菜单主题选中态</strong>：MenuBar.vue <code>handleThemeUpdated</code> 改为收到广播后重新读取主题配置（单一真源）</li>
@@ -797,7 +605,7 @@
 <li><strong>评估后保持现状/暂缓</strong>：#3/#7 域错配（通道字符串不可变，重组收益低）、#4 preload 白名单（独立批次）、#6 CSP（需实机验证）、#9 PDF（待 pdf.js）、#11 chunk 拆分、#12 主题异步预热、#13 PlantUML 节流、#15（已确认在使用）</li>
 <li>门禁：typecheck 三工程 0 错误 / ESLint 0/0 / vitest 155 文件 2,828+ 用例全通过</li>
 </ul>
-<h3 id="sub-22">2026-11-18 · 台账建立</h3>
+<h3 id="sub-23">2026-11-18 · 台账建立</h3>
 <ul>
 <li>从 IPC 通信矩阵 §五（3 类异常）、全量扫描与审查报告（P3 剩余 7 项）与三组一致性核对结论整理，共 <strong>19 项</strong>。</li>
 <li>全部逐项对照当前源码复核（v1.3.6 工作区），初始状态：❌ 18 项、⏸️ 1 项（#19 历史快照保留）。</li>
@@ -815,5 +623,6 @@
 
   <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
 </div>
+<script src="../assets/report-nav.js" defer></script>
 </body>
 </html>
