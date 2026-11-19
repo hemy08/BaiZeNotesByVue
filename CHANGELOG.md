@@ -4,11 +4,11 @@
 
 ### 📚 文档整理（2026-11-18）
 
-- **报告归档整理**：`docs/reports` 报告统一整理——文件名去除日期前缀、按「检查与扫描 / 修复与实施 / 专项治理」分类、同主题合并（32 份 → 19 份）；Markdown 版在 `docs/reports/md/`，HTML 版单独整理为 `docs/reports/html/` 下的 **HTML Wiki**（`README.html` 首页 + `_sidebar.md` 侧边栏 + 报告页面），不再放入 `docs/wiki/`
-- **遗留问题跟踪台账**：新增 [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md)（19 项，含优先级/位置/影响/状态列与修复记录章节，修复完成后更新状态）；同步接入 HTML Wiki 顶部导航与侧边栏
+- **报告归档整理**：`docs/reports` 报告统一整理——文件名去除日期前缀、按「检查与扫描 / 修复与实施 / 专项治理」分类、同主题合并（32 份 → 19 份合并稿，另新增台账 1 份，共 20 篇）；Markdown 版在 `docs/reports/md/`，HTML 版单独整理为 `docs/reports/html/` 下的 **HTML Wiki**（`README.html` 首页 + `_sidebar.md` 侧边栏 + 报告页面），不再放入 `docs/wiki/`
+- **遗留问题跟踪台账**：新增 [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md)（21 项，含优先级/位置/影响/状态列与修复记录章节，修复完成后更新状态）；同步接入 HTML Wiki 顶部导航与侧边栏
 - **报告整体导航**：HTML Wiki 每页顶部新增固定整体导航（首页 + 3 个分类下拉 + 当前页高亮 + 分类自动展开）；Markdown 报告顶部同步带报告导航行（HTML 生成时自动剥离）；新增 `build/generate-report-wiki.js` 批量生成脚本与 `build/report-nav.html` 导航片段，`build-html-report.js` 支持 `--nav` / `--navHtml` 注入
 - **合并明细**：3 份扫描报告 →《全量扫描与审查报告》；4 份修复类（计划 + 三轮实施）→《127 项基线修复实施汇总》；新旧 IPC 矩阵 →《IPC 通信矩阵》；通信检查 + 修复计划 + 命名方案 →《IPC 通信治理报告》；3 份 mkdocs →《mkdocs-material 语法支持》；jyshare 调研（长版）+ 集成实施 →《插件工具集成》（重复短版删除）；CQ-10 + PF4-9 + NSIS →《专项验证记录》
-- **一致性核对**：32 份报告逐份对照当前实现（v1.3.6）——实施/调研类主体与代码一致（15 项 mkdocs 语法、37 插件、90 IPC 通道可验证）；检查类数字均停留在报告时点（已标注归档）；同步修正 README / reports 索引基线（155 文件 / 2,823 用例 / 90 通道）与 IPC 矩阵内部数字矛盾（92→90、api 7→6、域错配 10 通道/5 组）
+- **一致性核对**：32 份报告逐份对照当前实现（v1.3.6）——实施/调研类主体与代码一致（15 项 mkdocs 语法、38 插件、92 IPC 通道可验证）；检查类数字均停留在报告时点（已标注归档）；同步修正 README / reports 索引基线（158 文件 / 2,867 用例 / 92 通道）与 IPC 矩阵内部数字矛盾（当时 92→90、api 7→6、域错配 10 通道/5 组）
 - 同步更新：根 README 文档索引与统计数字、docs/reports 索引与 HTML Wiki（README + _sidebar）、wiki README（5 类 / 27 篇）
 
 ### ✨ 新增功能
@@ -51,7 +51,7 @@
 - **关闭按钮延迟**：CLOSE 通道原以「无活动文件」判断跳过 FLUSH_CONTENT 的 2s 超时，但启动恢复可能已在后台恢复上次文件到 appState → 欢迎页点击关闭仍进入 flush 等待。新增主进程 `welcome-state` 状态模块（发送 WELCOME_ENTER_MAIN 时标记进入主界面、新窗口创建时复位），欢迎页时直接快速关闭
 - **最大化二次点击无效**：欢迎页最大化按钮原发送 `MAXIMIZE`（仅最大化，二次点击无效果），改为 `TOGGLE_MAXIMIZE` 切换最大化/还原；按 `IS_MAXIMIZED` 动态切换「最大化/还原」图标与 title（新增 i18n 词条 `workspace.window.restore`）
 - 测试：新增 welcome-state 4 用例；欢迎页窗口控制测试更新（TOGGLE 断言 + 图标状态 2 用例）；basic-components 窗口按钮断言同步
-- 门禁：typecheck 0 错误、ESLint 0/0、vitest **157 文件 / 2,853 用例全通过**、`electron-vite build` 成功
+- 门禁：typecheck 0 错误、ESLint 0/0、vitest **158 文件 / 2,867 用例全通过**、`electron-vite build` 成功
 
 ### 🟡 P2 修复（11）
 

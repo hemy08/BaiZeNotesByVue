@@ -211,7 +211,7 @@
 
   <nav class="toc">
     <h4>目录</h4>
-    <a class="toc-l2" href="#sec-1">一、当前通信矩阵（2026-11-18 复核，90 通道）</a>
+    <a class="toc-l2" href="#sec-1">一、当前通信矩阵（2026-11-19 复核，92 通道）</a>
     <a class="toc-l2" href="#sec-2">二、历史快照（2026-11-15，123 通道口径）</a>
   </nav>
 
@@ -226,14 +226,14 @@
 <h1>IPC 通信矩阵（当前口径 + 历史快照）</h1>
 <blockquote>
 <p><strong>合并归档报告</strong>：由以下历史报告合并而成（保留原文，按时间顺序成章）：<code>2026-11-18-IPC通信矩阵.md</code>、<code>2026-11-15-IPC通信矩阵.md</code>。
-内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.6 基线：155 测试文件 / 2,823 用例 / 90 IPC 通道）。</p>
+内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.6 基线：158 测试文件 / 2,867 用例 / 92 IPC 通道）。</p>
 </blockquote>
-<h2 id="sec-1">一、当前通信矩阵（2026-11-18 复核，90 通道）</h2>
+<h2 id="sec-1">一、当前通信矩阵（2026-11-19 复核，92 通道）</h2>
 <ul>
-<li><strong>编制日期</strong>：2026-11-18（基于当前工作区源码；取代 <code>2026-11-15-IPC通信矩阵.md</code> 历史快照）</li>
-<li><strong>唯一真源</strong>：<code>src/shared/ipc-channels.ts</code>（<strong>90 个通道常量 / 17 个分组</strong>，全部以 <code>baize:&lt;domain&gt;:&lt;name&gt;</code> 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）</li>
+<li><strong>编制日期</strong>：2026-11-18 首次编制，2026-11-19 补录 <code>FILE.OPEN_IN_BROWSER</code> / <code>FILE.READ_BINARY</code> 后复核（基于当前工作区源码；取代 <code>2026-11-15-IPC通信矩阵.md</code> 历史快照）</li>
+<li><strong>唯一真源</strong>：<code>src/shared/ipc-channels.ts</code>（<strong>92 个通道常量 / 17 个分组</strong>，全部以 <code>baize:&lt;domain&gt;:&lt;name&gt;</code> 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）</li>
 <li><strong>方法</strong>：对每个通道常量在 <code>src/main/**</code>、<code>src/preload/**</code>、<code>src/renderer/**</code> 全量 grep 实际发送点/接收点，只按源码事实填写；行号均为当前源码行号</li>
-<li><strong>统计摘要</strong>：90 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）</li>
+<li><strong>统计摘要</strong>：92 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）</li>
 </ul>
 <h4>一、方向记号</h4>
 <table>
@@ -311,8 +311,8 @@
 <tbody>
 <tr>
 <td>IPC 通道常量</td>
-<td><strong>90</strong></td>
-<td>WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 22 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 3 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 3 / QUICK_LINKS 3 / EVENTS 4</td>
+<td><strong>92</strong></td>
+<td>WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 24 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 3 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 3 / QUICK_LINKS 3 / EVENTS 4</td>
 </tr>
 <tr>
 <td>BrowserWindow 创建点</td>
@@ -326,8 +326,8 @@
 </tr>
 <tr>
 <td><code>window.electron</code> 成员</td>
-<td><strong>1 对象</strong></td>
-<td><code>@electron-toolkit/preload</code> 原样暴露：ipcRenderer{send,sendTo,sendSync,sendToHost,postMessage,invoke,on,once,removeListener,removeAllListeners}、webFrame{insertCSS,setZoomFactor,setZoomLevel}、webUtils{getPathForFile}、process{platform,versions,env}</td>
+<td><strong>1 对象（受限）</strong></td>
+<td>受限 <code>ipcRenderer</code>：<code>send</code>/<code>invoke</code> 白名单 <strong>58</strong> 通道、<code>on</code>/<code>once</code> 白名单 <strong>25</strong> 通道（未知通道丢弃/拒绝并告警；<code>removeListener</code>/<code>removeAllListeners</code> 不限制）+ <code>webFrame</code>{insertCSS,setZoomFactor,setZoomLevel}、<code>webUtils</code>{getPathForFile}、<code>process</code>{platform,versions,env}；<code>sendTo</code>/<code>sendSync</code>/<code>sendToHost</code>/<code>postMessage</code> 不暴露</td>
 </tr>
 <tr>
 <td><code>window.api</code> 成员</td>
@@ -347,7 +347,7 @@
 <tr>
 <td>死通道（双端全无）</td>
 <td><strong>0</strong></td>
-<td>90 个通道均有至少一端引用；2026-11-18 已清理 2 个空转/空实现通道（START_DRAG、INIT_THEME_STYLES）与 2 处死分支</td>
+<td>92 个通道均有至少一端引用；2026-11-18 已清理 2 个空转/空实现通道（START_DRAG、INIT_THEME_STYLES）与 2 处死分支</td>
 </tr>
 </tbody>
 </table>
@@ -375,7 +375,7 @@
 <li><strong>单主进程</strong>，每个 BrowserWindow 一个渲染进程；未使用 utilityProcess / MessageChannelMain / MessagePort / BrowserView / WebContentsView。</li>
 <li><strong>preload 单文件约束</strong>：<code>electron.vite.config.ts</code> 的 <code>isolatedEntries: true</code> + <code>externalizeDeps: false</code>，产物 <code>out/preload/index.js</code> / <code>dialog.js</code>（主窗口与对话框均 <code>sandbox:true</code>，preload 必须自包含）。</li>
 </ul>
-<h4>四、通道矩阵（90 通道 / 17 组）</h4>
+<h4>四、通道矩阵（92 通道 / 17 组）</h4>
 <h5>4.1 WINDOW（8）</h5>
 <table>
 <thead>
@@ -627,7 +627,7 @@
 </tr>
 </tbody>
 </table>
-<h5>4.6 FILE（22）</h5>
+<h5>4.6 FILE（24）</h5>
 <table>
 <thead>
 <tr>
@@ -759,6 +759,22 @@
 <td>读文本/HTML 内容（Path Guard）</td>
 <td>utils.ts:697 registerHandleOnce</td>
 <td>ShowHtmlView.vue:111、MarkdownPreviewComponent.vue:264（snippets）</td>
+</tr>
+<tr>
+<td>READ_BINARY</td>
+<td><code>baize:file:read-binary</code></td>
+<td>R→M invoke</td>
+<td>读取本地 PDF 二进制（pdf.js 预览数据源）：Path Guard + 仅 <code>.pdf</code> + 单文件 <strong>128MB</strong> 上限校验后返回 Uint8Array（Buffer 结构化克隆），交由 pdf.js 解析渲染（遗留清单 #9）</td>
+<td>utils.ts:734 registerHandleOnce（2026-11-18 新增；2026-11-19 收紧 <code>.pdf</code>/128MB 边界）</td>
+<td>ShowPdfEditor.vue:233</td>
+</tr>
+<tr>
+<td>OPEN_IN_BROWSER</td>
+<td><code>baize:file:open-in-browser</code></td>
+<td>R→M send</td>
+<td>本地 HTML 交系统默认浏览器打开：仅 <code>.html</code>/<code>.htm</code> + Path Guard 校验 → <code>pathToFileURL</code> → <code>shell.openExternal</code>（替代误用 <code>OPEN_EXTERNAL_LINK</code>，遗留清单 #1）</td>
+<td>utils.ts:813 registerOnce（2026-11-18 新增）</td>
+<td>ShowHtmlView.vue:158</td>
 </tr>
 <tr>
 <td>USER_SELECT_FILE</td>
@@ -1346,6 +1362,9 @@
 </table>
 <h4>五、异常与风险清单（已清零）</h4>
 <blockquote>
+<p><strong>统计口径</strong>：92 通道 / 17 组（2026-11-19 复核；含 2026-11-18 补录的 <code>FILE.OPEN_IN_BROWSER</code>、<code>FILE.READ_BINARY</code>）。</p>
+</blockquote>
+<blockquote>
 <p><strong>2026-11-18 复核：异常清单已清零</strong>。历史已处理项：① 空转/死分支 4 项（<code>WINDOW.START_DRAG</code> 空实现、<code>THEME.INIT_THEME_STYLES</code> 半死、<code>EDITOR.UPDATE_OPTIONS</code> R→M 死分支、<code>EVENTS.STATUS_BAR_UPDATE</code> 反向 send）；② 语义错用 1 项（<code>SYSTEM.OPEN_EXTERNAL_LINK</code> 的本地文件调用已改走 <code>FILE.OPEN_IN_BROWSER</code>，遗留清单 #1）；③ 载荷不一致 1 项（<code>THEME.THEME_UPDATED</code>，MenuBar 改读配置，遗留清单 #2）；④ 域错配 10 通道 / 5 组（分组与 domain 已统一为 17 组，遗留清单 #3/#7）。详见 <a href="当前遗留问题清单.html">当前遗留问题清单</a>。</p>
 </blockquote>
 <h4>六、窗口容器与 preload 矩阵</h4>
@@ -1415,7 +1434,7 @@
 <tr>
 <td><code>src/preload/index.ts</code></td>
 <td><code>window.electron</code></td>
-<td>electronAPI（@electron-toolkit/preload 原样）：ipcRenderer / webFrame / webUtils / process</td>
+<td>受限 electronAPI：ipcRenderer（send/invoke 白名单 <strong>58</strong> 通道、on/once 白名单 <strong>25</strong> 通道；sendTo/sendSync/sendToHost/postMessage 不暴露）+ webFrame / webUtils / process</td>
 </tr>
 <tr>
 <td><code>src/preload/index.ts</code></td>
@@ -1485,7 +1504,7 @@
 <tr>
 <td>通道数</td>
 <td>123</td>
-<td><strong>90</strong>（死通道清理 + PF-02 渲染通道移除 + HTML 对话框大量下线）</td>
+<td><strong>92</strong>（死通道清理 + PF-02 渲染通道移除 + HTML 对话框大量下线；2026-11-18 新增最近文件 2 通道与 <code>OPEN_IN_BROWSER</code>/<code>READ_BINARY</code> 等）</td>
 </tr>
 <tr>
 <td>HTML 对话框</td>
@@ -1505,7 +1524,7 @@
 <tr>
 <td>新增通道</td>
 <td>—</td>
-<td><code>RENDER.READY</code>、<code>FILE.RECENT_LIST</code>、<code>FILE.OPEN_RECENT</code>、<code>QUICK_LINKS.SAVE/UPDATED</code>、<code>FILE.SELECT_IMAGE</code>、<code>EDITOR.SYSTEM_SETTING_UPDATE</code> 等</td>
+<td><code>RENDER.READY</code>、<code>FILE.RECENT_LIST</code>、<code>FILE.OPEN_RECENT</code>、<code>FILE.OPEN_IN_BROWSER</code>、<code>FILE.READ_BINARY</code>、<code>QUICK_LINKS.SAVE/UPDATED</code>、<code>FILE.SELECT_IMAGE</code>、<code>EDITOR.SYSTEM_SETTING_UPDATE</code> 等</td>
 </tr>
 <tr>
 <td>2026-11-18 死通道清理</td>
@@ -1515,7 +1534,7 @@
 <tr>
 <td>preload 暴露</td>
 <td>27 成员</td>
-<td>electron 全量 electronAPI + api 6 方法 + dialog 受限 API</td>
+<td>受限 electronAPI（ipcRenderer send/invoke 白名单 58 通道、on/once 白名单 25 通道，sendTo/sendSync/sendToHost/postMessage 不暴露 + webFrame/webUtils/process）+ api 6 方法 + dialog 受限 API</td>
 </tr>
 </tbody>
 </table>

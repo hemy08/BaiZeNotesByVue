@@ -5,7 +5,7 @@
 # mkdocs-material 语法支持（合并归档）
 
 > **合并归档报告**：由以下历史报告合并而成（保留原文，按时间顺序成章）：`2026-11-15-mkdocs-material渲染修复报告.md`、`2026-11-15-mkdocs-material语法支持清单与建议.md`、`2026-11-15-mkdocs-material扩展语法实施报告.md`。
-> 内容为历史快照；当前口径见 [报告总索引](../../README.md) 与 [IPC通信矩阵](IPC通信矩阵.md)（v1.3.6 基线：155 测试文件 / 2,823 用例 / 90 IPC 通道）。
+> 内容为历史快照；当前口径见 [报告总索引](../../README.md) 与 [IPC通信矩阵](IPC通信矩阵.md)（v1.3.6 基线：158 测试文件 / 2,867 用例 / 92 IPC 通道 / 17 组）。
 
 ## 一、admonition / tabbed 原生插件渲染修复
 
@@ -37,7 +37,7 @@
 
 ##### 3.1 新增 markdown-it block 插件（核心）
 
-新增 [`preview-mkdocs-material.ts`](src/renderer/src/components/Markdown/preview-mkdocs-material.ts)，导出 `mkdocsMaterialPlugin(md)`：
+新增 [`preview-mkdocs-material.ts`](../../../../src/renderer/src/components/Markdown/preview-mkdocs-material.ts)，导出 `mkdocsMaterialPlugin(md)`：
 
 - **admonition rule**：匹配 `!!! type "title"`；收集空行或缩进 ≥4 空格/Tab 的后续行并去缩进，调用 `state.md.block.parse()` **递归解析**内容；产出 `mkdocs_admonition_open/title/close` token，渲染为 `.admonition.<type> > .admonition-title`（复用已引入的 mkdocs CSS，Success 等类型自带彩色/图标样式）；
 - **tabbed set rule**：匹配 `=== "标签"`（兼容双空格），收集连续标签段并递归解析每段内容；渲染为与 `tableset.css` 选择器完全匹配的结构：
@@ -198,7 +198,7 @@
 
 #### 1. 架构：三批次插件 + 统一注册
 
-新增统一注册入口 [`preview-markdown-extensions.ts`](src/renderer/src/components/Markdown/preview-markdown-extensions.ts)：
+新增统一注册入口 [`preview-markdown-extensions.ts`](../../../../src/renderer/src/components/Markdown/preview-markdown-extensions.ts)：
 
 ```ts
 export function installPreviewExtensions(md) {
@@ -366,7 +366,7 @@ print(2)
 
 ##### 8.2 统一插入对话框
 
-新增 [`MaterialSyntaxDialog.vue`](src/renderer/src/components/dialogs/complex/MaterialSyntaxDialog.vue)：
+新增 [`MaterialSyntaxDialog.vue`](../../../../src/renderer/src/components/dialogs/complex/MaterialSyntaxDialog.vue)：
 
 - **左侧 15 项功能列表**（点击切换，菜单打开时按 `preset` 自动定位），右侧为数据驱动表单；
 - **实时 Markdown 预览**（等宽字体展示将要插入的片段），随输入实时更新；

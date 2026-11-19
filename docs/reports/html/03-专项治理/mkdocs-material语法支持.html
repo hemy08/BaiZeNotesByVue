@@ -227,7 +227,7 @@
 <h1>mkdocs-material 语法支持（合并归档）</h1>
 <blockquote>
 <p><strong>合并归档报告</strong>：由以下历史报告合并而成（保留原文，按时间顺序成章）：<code>2026-11-15-mkdocs-material渲染修复报告.md</code>、<code>2026-11-15-mkdocs-material语法支持清单与建议.md</code>、<code>2026-11-15-mkdocs-material扩展语法实施报告.md</code>。
-内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.6 基线：155 测试文件 / 2,823 用例 / 90 IPC 通道）。</p>
+内容为历史快照；当前口径见 <a href="../../README.md">报告总索引</a> 与 <a href="IPC通信矩阵.html">IPC通信矩阵</a>（v1.3.6 基线：158 测试文件 / 2,867 用例 / 92 IPC 通道 / 17 组）。</p>
 </blockquote>
 <h2 id="sec-1">一、admonition / tabbed 原生插件渲染修复</h2>
 <ul>
@@ -278,7 +278,7 @@
 </table>
 <h4>3. 修复方案</h4>
 <h5>3.1 新增 markdown-it block 插件（核心）</h5>
-<p>新增 <a href="src/renderer/src/components/Markdown/preview-mkdocs-material.ts"><code>preview-mkdocs-material.ts</code></a>，导出 <code>mkdocsMaterialPlugin(md)</code>：</p>
+<p>新增 <a href="../../../../src/renderer/src/components/Markdown/preview-mkdocs-material.ts"><code>preview-mkdocs-material.ts</code></a>，导出 <code>mkdocsMaterialPlugin(md)</code>：</p>
 <ul>
 <li><strong>admonition rule</strong>：匹配 <code>!!! type &quot;title&quot;</code>；收集空行或缩进 ≥4 空格/Tab 的后续行并去缩进，调用 <code>state.md.block.parse()</code> <strong>递归解析</strong>内容；产出 <code>mkdocs_admonition_open/title/close</code> token，渲染为 <code>.admonition.&lt;type&gt; &gt; .admonition-title</code>（复用已引入的 mkdocs CSS，Success 等类型自带彩色/图标样式）；</li>
 <li><strong>tabbed set rule</strong>：匹配 <code>=== &quot;标签&quot;</code>（兼容双空格），收集连续标签段并递归解析每段内容；渲染为与 <code>tableset.css</code> 选择器完全匹配的结构：<pre><code class="language-html">&lt;div class=&quot;tabbed-set tabbed-alternate&quot; data-tabs=&quot;N&quot;&gt;
@@ -704,7 +704,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <li><strong>门禁说明</strong>：实施期间另一并行会话正在同时改造 PluginTools 等模块（WIP），其未完成改动会使全仓 typecheck/test/build 暂时红；本报告以「扩展相关 scoped 验证 + 外部阻塞说明」记录（详见第 5 节）</li>
 </ul>
 <h4>1. 架构：三批次插件 + 统一注册</h4>
-<p>新增统一注册入口 <a href="src/renderer/src/components/Markdown/preview-markdown-extensions.ts"><code>preview-markdown-extensions.ts</code></a>：</p>
+<p>新增统一注册入口 <a href="../../../../src/renderer/src/components/Markdown/preview-markdown-extensions.ts"><code>preview-markdown-extensions.ts</code></a>：</p>
 <pre><code class="language-ts">export function installPreviewExtensions(md) {
     installMdxBasicExtensions(md)   // 批次 A
     installMdxMediaExtensions(md)   // 批次 B
@@ -1021,7 +1021,7 @@ print(2)
 
 ##### 8.2 统一插入对话框
 
-新增 [`MaterialSyntaxDialog.vue`](src/renderer/src/components/dialogs/complex/MaterialSyntaxDialog.vue)：
+新增 [`MaterialSyntaxDialog.vue`](../../../../src/renderer/src/components/dialogs/complex/MaterialSyntaxDialog.vue)：
 
 - **左侧 15 项功能列表**（点击切换，菜单打开时按 `preset` 自动定位），右侧为数据驱动表单；
 - **实时 Markdown 预览**（等宽字体展示将要插入的片段），随输入实时更新；
