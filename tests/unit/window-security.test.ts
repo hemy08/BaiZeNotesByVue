@@ -318,7 +318,7 @@ const c08Mocks = vi.hoisted(() => {
     return { remoteWindows, createWindow }
 })
 
-vi.mock('../../src/main/config/window-manager', () => ({
+vi.mock('../../src/main/window/window-manager', () => ({
     windowManager: { createWindow: c08Mocks.createWindow }
 }))
 

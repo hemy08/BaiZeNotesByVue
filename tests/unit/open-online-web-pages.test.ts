@@ -98,7 +98,7 @@ const loggerMocks = vi.hoisted(() => ({
 vi.mock('../../src/main/utils/logger', () => ({ logger: loggerMocks }))
 
 import { OpenOnlineWebPage } from '../../src/main/dialogs/OpenOnlineWebPages'
-import { windowManager } from '../../src/main/config/window-manager'
+import { windowManager } from '../../src/main/window/window-manager'
 
 // 取出 webContents.on 注册的处理器
 function getWebHandler(win: FakeBrowserWindow, event: string): GenericListener {

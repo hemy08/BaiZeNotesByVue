@@ -1,7 +1,7 @@
 import { join } from 'path'
 import type { BrowserWindowConstructorOptions, WebPreferences } from 'electron'
 import * as SystemSettingUtils from '../config'
-import { windowManager } from '../config/window-manager'
+import { windowManager } from '../window/window-manager'
 import { logger } from '../utils/logger'
 import { isSafeExternalUrl, normalizeSafeExternalUrl, openExternalSafely } from '../utils/security'
 

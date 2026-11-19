@@ -45,4 +45,6 @@ export { getQuickLinks, saveQuickLinks, resetToDefault } from './quick-link-conf
 
 export { RegisterShortKeys } from './short-key-register'
 
-export { windowManager } from './window-manager'
+// 结构优化第 5 批 5.1：window-manager 目录语义归位（config/ → window/）；
+// 此处保留 re-export 门面，既有 `import { windowManager } from '../config'` 调用点零改动。
+export { windowManager } from '../window/window-manager'

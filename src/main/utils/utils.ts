@@ -12,7 +12,7 @@ import { shell, dialog } from 'electron'
 // 主题/快速链接读取由 main/index.ts 启动早期注入（见 utils/providers.ts）
 import { getQuickLinksFromProvider, getThemeApiFromProvider } from './providers'
 import { appState } from './app-state'
-import { isPathAllowed, isSafeExternalUrl, openExternalSafely } from './security'
+import { isPathAllowed } from './security'
 import { getAppResourcesPath } from './app-paths'
 import { ipcListenerManager } from '../ipc/ipc-listener-manager'
 // P1/N-05：IPC 发送方授权校验（文件系统/外部链接等高风险通道仅接受主窗口发送方）
@@ -763,33 +763,8 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         GLOBAL_IPC_COMPONENT_ID
     )
 
-    // 在外部浏览器中打开链接
-    // P0 安全：统一走 shell 协议白名单封装，仅允许 http/https；
-    // 非白名单协议直接拒绝（console.warn），打开失败仍按 CQ-05 经状态栏提示。
-    // P1/N-05：外部链接打开属高风险通道（钓鱼/协议利用），仅主窗口可信。
-    ipcListenerManager.registerOnce(
-        IPC.SYSTEM.OPEN_EXTERNAL_LINK,
-        withSenderCheck(IPC.SYSTEM.OPEN_EXTERNAL_LINK, async (_, url: string) => {
-            if (!isSafeExternalUrl(url)) {
-                logger.warn(`[Security] 已拒绝打开非 http/https 协议的外部链接：${url}`)
-                return
-            }
-            try {
-                const opened = await openExternalSafely(url)
-                if (!opened) {
-                    // openExternalSafely 已记录具体失败原因；这里抛错以复用 CQ-05 的状态栏提示
-                    throw new Error(url)
-                }
-            } catch (error) {
-                // CQ-05：打开失败时主进程留日志并经状态栏提示，不再只打 console.error
-                notifyIpcAsyncError(mainWindow, IPC.SYSTEM.OPEN_EXTERNAL_LINK, error)
-            }
-        }),
-        GLOBAL_IPC_COMPONENT_ID
-    )
-
     // 在外部浏览器中打开本地 HTML 文件（2026-11-18，遗留清单 #1）
-    // 背景：HTML 查看器「在浏览器中打开」此前复用 OPEN_EXTERNAL_LINK，该通道按设计
+    // 背景：HTML 查看器「在浏览器中打开」此前复用已删除的 OPEN_EXTERNAL_LINK（该通道按设计
     // 仅放行 http/https，本地路径必被拒绝（按钮点击无效）。本通道专门处理本地文件：
     // ① 仅允许 .html/.htm；② 必须命中 Path Guard（工作区/受信目录，防任意文件外带）；
     // ③ 通过后经 pathToFileURL 交给系统默认浏览器打开。

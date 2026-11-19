@@ -85,7 +85,7 @@ export const IPC = {
         // 渲染层交给 pdf.js 解析渲染（不再依赖 Electron 内置 PDF 查看器/iframe）。
         READ_BINARY: 'baize:file:read-binary',
         // 2026-11-18（遗留清单 #1）：HTML 查看器「在浏览器中打开」本地 .html 文件专用通道。
-        // OPEN_EXTERNAL_LINK 设计上仅放行 http/https，本地文件需走本通道；
+        // 本地文件不走 http/https 白名单（原 OPEN_EXTERNAL_LINK 已随第 5 批 5.1 删除）；
         // 主进程做「扩展名 + Path Guard」校验后再交给系统默认浏览器。
         OPEN_IN_BROWSER: 'baize:file:open-in-browser',
         USER_SELECT_FILE: 'baize:file:user-select-file',
@@ -194,9 +194,10 @@ export const IPC = {
 
     // ============ 系统级能力（domain=system） ============
     // 2026-11-18（遗留清单 #3/#7）：原 3 个域错配在 FILE 组，归位到本组。
+    // 结构优化第 5 批 5.1（L1）：原 OPEN_EXTERNAL_LINK（`baize:system:open-external-link`）
+    // 已删除——全库无发送方（渲染层统一走 window.open 由主窗口 setWindowOpenHandler 兜底，
+    // 本地 HTML 走 FILE.OPEN_IN_BROWSER），仅存主进程注册的空转通道。
     SYSTEM: {
-        // 系统浏览器打开外部链接（仅 http/https）
-        OPEN_EXTERNAL_LINK: 'baize:system:open-external-link',
         // 系统信息（OS/架构/版本，关于对话框）
         SYSTEM_INFO: 'baize:system:get-info',
         // 应用版本信息（version.json + 运行时 electron/chrome/node 版本）

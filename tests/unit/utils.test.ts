@@ -187,8 +187,7 @@ describe('MainWindowListenUtilsEvent', () => {
                 // CQ-10/PF-11/ARC-21：hash/hmac/crypto 四通道已由 sendSync 改 handle，不在此列表
                 'baize:navigation:open-exe',
                 'baize:file:update-content',
-                'baize:file:save-content-to-disk',
-                'baize:system:open-external-link'
+                'baize:file:save-content-to-disk'
             ]) {
                 expect(ipcMocks.on.has(channel), channel).toBe(true)
             }
@@ -368,26 +367,6 @@ describe('MainWindowListenUtilsEvent', () => {
                 type: 'error'
             })
             consoleError.mockRestore()
-        })
-
-        it('should log and notify the status bar when open-external-link fails', async () => {
-            const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-            ipcMocks.shellOpenExternal.mockRejectedValueOnce(new Error('no browser'))
-            await ipcMocks.on.get('baize:system:open-external-link')!(
-                makeEvent(mainWindow.webContents),
-                'https://example.com/'
-            )
-            // P0 安全：协议白名单封装内部已 console.warn 记录具体失败原因
-            expect(consoleWarn).toHaveBeenCalled()
-            expect(consoleError).toHaveBeenCalled()
-            // 状态栏提示沿用 CQ-05：openExternalSafely 返回 false 后按失败处理
-            expect(mainWindow.webContents.send).toHaveBeenCalledWith('baize:status-bar:update', {
-                message: expect.stringContaining('https://example.com/'),
-                type: 'error'
-            })
-            consoleError.mockRestore()
-            consoleWarn.mockRestore()
         })
 
         it('should log and notify the status bar when save-file-content-to-disk fails', async () => {
@@ -897,17 +876,6 @@ describe('MainWindowListenUtilsEvent', () => {
             expect(consoleWarn).toHaveBeenCalled()
             consoleWarn.mockRestore()
         })
-
-        it('should reject untrusted senders on external link channel', async () => {
-            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-            await ipcMocks.on.get('baize:system:open-external-link')!(
-                makeEvent({ id: 999 }),
-                'https://example.com/'
-            )
-            expect(ipcMocks.shellOpenExternal).not.toHaveBeenCalled()
-            expect(consoleWarn).toHaveBeenCalled()
-            consoleWarn.mockRestore()
-        })
     })
 
     describe('fs and external channels', () => {
@@ -985,32 +953,6 @@ describe('MainWindowListenUtilsEvent', () => {
             expect(existsResult).toEqual(
                 expect.objectContaining({ ok: false, code: 'untrusted-sender' })
             )
-            expect(consoleWarn).toHaveBeenCalled()
-            consoleWarn.mockRestore()
-        })
-
-        it('should open external links', async () => {
-            await ipcMocks.on.get('baize:system:open-external-link')!(
-                makeEvent(mainWindow.webContents),
-                'https://example.com/'
-            )
-            expect(ipcMocks.shellOpenExternal).toHaveBeenCalledWith('https://example.com/')
-        })
-
-        it('should reject non http/https external links without calling shell', async () => {
-            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-            for (const url of [
-                'javascript:alert(1)',
-                'file:///C:/Windows/System32/calc.exe',
-                'data:text/html,<h1>x</h1>',
-                'baize-evil://payload'
-            ]) {
-                await ipcMocks.on.get('baize:system:open-external-link')!(
-                    makeEvent(mainWindow.webContents),
-                    url
-                )
-            }
-            expect(ipcMocks.shellOpenExternal).not.toHaveBeenCalled()
             expect(consoleWarn).toHaveBeenCalled()
             consoleWarn.mockRestore()
         })

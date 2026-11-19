@@ -52,7 +52,7 @@ vi.mock('../../src/main/config/short-key-register', () => ({
     RegisterShortKeys: () => {}
 }))
 
-vi.mock('../../src/main/config/window-manager', () => ({
+vi.mock('../../src/main/window/window-manager', () => ({
     windowManager: { __mock: true }
 }))
 

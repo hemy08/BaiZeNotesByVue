@@ -367,7 +367,7 @@ describe('ShowHtmlView 工具栏与生命周期', () => {
         await wrapper.find('button[title="在浏览器中打开"]').trigger('click')
 
         // 2026-11-18（遗留清单 #1）：本地 HTML 改走专用通道
-        // （OPEN_EXTERNAL_LINK 仅放行 http/https，原实现点击无效）
+        // （原 OPEN_EXTERNAL_LINK 仅放行 http/https，已随第 5 批 5.1 删除）
         expect(send).toHaveBeenCalledTimes(1)
         expect(send).toHaveBeenCalledWith(IPC.FILE.OPEN_IN_BROWSER, '/notes/index.html')
         // 打开外部浏览器不应重新读取文件

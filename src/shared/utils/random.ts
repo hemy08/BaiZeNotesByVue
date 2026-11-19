@@ -51,7 +51,7 @@ export function randomAlnum(length: number): string {
  * 生成「时间戳 + 冒号 + 9 位 36 进制随机尾串」的唯一后缀。
  *
  * 对齐现有 4 处同构写法（如 `src/main/ipc/ipc-listener-manager.ts:77`、
- * `src/main/config/window-manager.ts:48`）：
+ * `src/main/window/window-manager.ts:48`）：
  * `` `${Date.now()}:${Math.random().toString(36).substr(2, 9)}` ``。
  * 这里用 `slice(2, 11)` 替代已废弃的 `substr(2, 9)`——对任意字符串两者结果一致。
  *

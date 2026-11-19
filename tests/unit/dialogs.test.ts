@@ -73,7 +73,7 @@ const windowManagerMock = vi.hoisted(() => ({
         createWindow: vi.fn()
     }
 }))
-vi.mock('../../src/main/config/window-manager', () => windowManagerMock)
+vi.mock('../../src/main/window/window-manager', () => windowManagerMock)
 
 const fileUtilsMocks = vi.hoisted(() => ({
     DeleteFileFolder: vi.fn(),
