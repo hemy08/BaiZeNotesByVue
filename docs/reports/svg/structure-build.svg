@@ -84,7 +84,7 @@
   <text x="684" y="398" class="cdesc">NSIS / portable</text>
   <rect x="882" y="312" width="200" height="128" class="out"/>
   <text x="896" y="336" class="ctitle">dist/ 产物</text>
-  <text x="896" y="358" class="cdesc">Setup 1.3.6：118.41 MiB</text>
+  <text x="896" y="358" class="cdesc">NSIS：118.41 MiB</text>
   <text x="896" y="378" class="cdesc">portable：107.46 MiB</text>
   <text x="896" y="398" class="cdesc">latest.yml · blockmap</text>
   <line x1="234" y1="372" x2="246" y2="372" class="flow" marker-end="url(#b-ar)"/>
@@ -128,7 +128,7 @@
   <!-- 发布现状 -->
   <rect x="16" y="684" width="1088" height="96" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
   <text x="34" y="712" class="ctitle" style="fill:#b91c1c">发布现状（结构风险 H7）</text>
-  <text x="34" y="736" class="cdesc">仅 Windows 发布（NSIS + portable）；打包 / 签名 / 更新源验证未纳入 CI，发布依赖本地手工链；git tag 缺 1.3.6。</text>
+  <text x="34" y="736" class="cdesc">仅 Windows 发布（NSIS + portable）；打包 / 签名 / 更新源验证未纳入 CI，发布依赖本地手工链；git tag：1.3.6 已补（release-1.3.6），1.3.7 未打。</text>
   <text x="34" y="760" class="cdesc">macOS / Linux 配置存在但为占位，无签名与 entitlements；更新器 latest.yml 已指向 GitHub Releases，但 CI 未验证可用性。</text>
 
   <!-- 底部说明 -->

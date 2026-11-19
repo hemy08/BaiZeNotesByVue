@@ -456,7 +456,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成            | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.0 | Electron 应用打包工具           | [官网](https://www.electron.build/)                    |
-|               Vitest               | 4.1.12  | 单元测试框架（172 个测试文件 / 3,201 用例） | [官网](https://vitest.dev/)                            |
+|               Vitest               | 4.1.12  | 单元测试框架（171 个测试文件 / 3,198 用例） | [官网](https://vitest.dev/)                            |
 |               ESLint               | 9.39.4  | JavaScript 代码检查工具         | [官网](https://eslint.org/)                            |
 |              Prettier              |  3.9.6  | 代码格式化工具                  | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  2.1.0  | Electron ESLint 配置            | [GitHub](https://github.com/alex8088/electron-toolkit) |
@@ -560,7 +560,7 @@ BaiZeNotesByVue/
 - [国际化（i18n）实施报告](docs/reports/md/02-修复与实施/国际化实施报告.md) - 中英双语词典与 t()/tMain() 架构
 - [预览单跳重构报告](docs/reports/md/02-修复与实施/预览单跳重构报告.md) - PF-02：预览本地渲染，IPC 4 跳 → 0 跳
 - [IPC 通道命名统一方案](docs/reports/md/03-专项治理/IPC通信治理报告.md) - `baize:<domain>:<name>` 命名规范（历史 123 通道清单，已并入治理报告）
-- [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.3.6 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
+- [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.3.7 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
 - 说明：`docs/架构文档.html` 为 **历史版本合辑**，仅保留旧版版式与 ADR，最新架构以 wiki Markdown 为准
 
 ### 版本与历史
@@ -584,7 +584,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层）
 npm run typecheck
 
-# 运行单元测试（172 个测试文件 / 3,201 个用例）
+# 运行单元测试（171 个测试文件 / 3,198 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
