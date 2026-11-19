@@ -145,6 +145,8 @@ const internalMocks = vi.hoisted(() => ({
     cleanupAll: vi.fn(),
     registerHandleOnce: vi.fn(),
     initUserDataDirectory: vi.fn(),
+    // 第 4 批 P3：主窗口图标目录统一由 app-paths.getIconPath() 解析
+    getIconPath: vi.fn(() => 'C:\\app\\resources\\icon'),
     registerIpcHandlers: vi.fn(),
     setMainWindow: vi.fn(),
     isDirty: vi.fn(() => false)
@@ -221,7 +223,9 @@ vi.mock('../../src/main/ipc/ipc-listener-manager', () => ({
 }))
 
 vi.mock('../../src/main/utils/app-paths', () => ({
-    initUserDataDirectory: internalMocks.initUserDataDirectory
+    initUserDataDirectory: internalMocks.initUserDataDirectory,
+    // 第 4 批 P3：主窗口图标目录统一由 app-paths.getIconPath() 解析
+    getIconPath: internalMocks.getIconPath
 }))
 
 // 批次 B：托盘与系统主题跟随模块单独 mock（其内部行为由 tray.test.ts /

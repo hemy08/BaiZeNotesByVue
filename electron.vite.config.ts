@@ -44,10 +44,8 @@ export default defineConfig({
                     find: '@renderer',
                     replacement: resolve('src/renderer/src')
                 },
-                {
-                    find: '@mainer',
-                    replacement: resolve('src/main')
-                },
+                // 第 4 批 P3 清理：删除 @mainer（src/main）死别名——全仓 0 引用；
+                // 渲染层不再 import 主进程源码，主进程源码也不经该别名被引用。
                 // PF-03/CMP-28：裸包名 'monaco-editor' 精确重定向到 editor.api（不含 LSP 客户端、
                 // 全量基础语言与 css/html/json/ts 语言服务）。全量入口 editor.main 不再进入主 chunk；
                 // 编辑器 contributions、精选语言与 worker 由 Markdown/monaco-worker-setup.ts 按需导入。

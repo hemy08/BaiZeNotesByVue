@@ -5,7 +5,7 @@
  * - 主进程 / preload / 渲染层的 ipcMain、ipcRenderer、webContents.send、
  *   ipcListenerManager 注册一律引用本文件常量，禁止再写通道字符串字面量；
  * - 通道字符串统一为 `baize:<domain>:<name>`（2026-11-15 命名统一后 100% 带 `baize:`
- *   前缀，domain 限定 18 个白名单，见 tests/unit/ipc-channel-naming.test.ts）；
+ *   前缀，domain 限定 17 个白名单，见 tests/unit/ipc-channel-naming.test.ts）；
  * - 常量分组与通道 domain 一一对应（2026-11-18 遗留清单 #3/#7 修复：原 CQ-13 的
  *   10 个「域错配」通道已归位——编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、
  *   设置类 2 通道新建 SETTING 组、Monaco 类 2 通道并入 MONACO 组）；

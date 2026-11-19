@@ -16,7 +16,7 @@
  * 锁定内容：
  * 1. 外壳唯一且保留原 class（overlay/container/title-bar/title-text/close-btn/footer）；
  * 2. 变体 class、容器宽高、标题栏/标题文字/关闭按钮/底栏的内联覆盖与原 scoped 声明一致；
- * 3. ThemeSetting 的 resize-handle DOM 位置 / class / 事件绑定不丢失；
+ * 3. ThemeSetting 的 resize-handle DOM 位置 / class / 事件绑定不丢失，且按下后拖动可实际缩放容器；
  * 4. HelpAbout 标题栏 flex-end / padding / 无标题文字 / drag + no-drag 与禁用自定义拖拽保持；
  * 5. 行为：遮罩空白处点击与关闭按钮点击均只 emit 一次 close；前三个对话框仍可标题栏拖拽。
  */
@@ -326,6 +326,64 @@ describe('ThemeSettingDialog resize-handle（BaseDialog #prepend 插槽）', () 
         expect(containerStyle).toContain('left: 50%')
         expect(containerStyle).not.toContain('left: 80px')
         document.dispatchEvent(new MouseEvent('mouseup'))
+    })
+
+    // 第 4 批 P3 缺陷回归：迁移时模板曾把柯里化的 startResize(direction) 直接绑为事件处理器
+    // （`@mousedown="startResize('n')"` 只求值外层调用，返回的处理函数从未被调用），
+    // 导致 8 个 resize-handle 拖动全部无反应。修复为 `startResize('n')($event)` 后，
+    // 这里用原生鼠标事件逐方向验证容器确实随拖动改变尺寸（修复前本用例失败）。
+    it('按下 resize-handle 后拖动鼠标会按方向调整容器尺寸（第 4 批缺陷回归）', async () => {
+        const wrapper = mountDialog(ThemeSettingDialog)
+        // 每次重渲染后重新查找元素：teleport stub 在 BaseDialog 重渲染时会替换其根节点，
+        // 之前缓存的 element 引用会失效（生产环境真实 Teleport 不会这样，属于测试环境行为）。
+        const containerOf = () => wrapper.find('.dialog-container').element as HTMLElement
+        expect(containerOf().style.width).toBe('900px')
+        expect(containerOf().style.height).toBe('600px')
+
+        // dx/dy 为鼠标位移；dw/dh 为期望的容器尺寸变化。
+        // 判定口径：useDialogResize 用 direction.includes('e'/'w'/'s'/'n')，四角方向字符串
+        // 同时含两个字母（如 'ne' 同时匹配 e 与 n），因此宽高按各自方向的位移公式分别计算。
+        const resizeCases = [
+            { selector: '.resize-e', dx: 10, dy: 0, dw: 10, dh: 0 },
+            { selector: '.resize-w', dx: 10, dy: 0, dw: -10, dh: 0 },
+            { selector: '.resize-s', dx: 0, dy: 10, dw: 0, dh: 10 },
+            { selector: '.resize-n', dx: 0, dy: 10, dw: 0, dh: -10 },
+            // ne：e 分支宽度 += dx；n 分支高度 -= dy
+            { selector: '.resize-ne', dx: -10, dy: -10, dw: -10, dh: 10 },
+            // nw：w 分支宽度 -= dx；n 分支高度 -= dy
+            { selector: '.resize-nw', dx: 10, dy: 10, dw: -10, dh: -10 },
+            // se：e 分支宽度 += dx；s 分支高度 += dy
+            { selector: '.resize-se', dx: 10, dy: 10, dw: 10, dh: 10 },
+            // sw：w 分支宽度 -= dx；s 分支高度 += dy
+            { selector: '.resize-sw', dx: -10, dy: -10, dw: 10, dh: -10 }
+        ]
+
+        for (const item of resizeCases) {
+            const widthBefore = Number.parseFloat(containerOf().style.width)
+            const heightBefore = Number.parseFloat(containerOf().style.height)
+
+            wrapper
+                .find(item.selector)
+                .element.dispatchEvent(
+                    new MouseEvent('mousedown', { clientX: 500, clientY: 400, bubbles: true })
+                )
+            document.dispatchEvent(
+                new MouseEvent('mousemove', {
+                    clientX: 500 + item.dx,
+                    clientY: 400 + item.dy,
+                    bubbles: true
+                })
+            )
+            document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+            await nextTick()
+
+            expect(containerOf().style.width, `${item.selector} 宽度变化`).toBe(
+                `${widthBefore + item.dw}px`
+            )
+            expect(containerOf().style.height, `${item.selector} 高度变化`).toBe(
+                `${heightBefore + item.dh}px`
+            )
+        }
     })
 })
 

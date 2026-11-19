@@ -14,6 +14,9 @@ import { isPathAllowed, isSafeFileName } from '../security'
 import { IPC } from '../../../shared/ipc-channels'
 // 公共接口归位第 2 批：纯数字随机串迁移到 shared/utils/random（字符集与循环语义逐字对齐）
 import { randomDigits } from '../../../shared/utils/random'
+// 第 4 批 P3 清理：分隔符归一化复用 shared/utils/path.normalizeSlashes
+//（FE-14：必须是全局替换，原 `replace('\\', '/')` 只替换首个反斜杠，嵌套目录会生成带反斜杠的链接）
+import { normalizeSlashes } from '../../../shared/utils/path'
 
 import path from 'path'
 
@@ -183,15 +186,6 @@ export async function InsertImagesToFile(base64Image: string): Promise<string> {
 }
 
 /**
- * FE-14：把 Windows 路径分隔符全部转成正斜杠（Markdown 链接约定）。
- * 原实现 `replace('\\', '/')` 只替换第一个反斜杠，嵌套目录（如 images\\sub\\a.png）
- * 会生成带反斜杠的链接，Markdown 预览与其他工具无法识别。
- */
-function toMarkdownPath(relativePath: string): string {
-    return relativePath.replace(/\\/g, '/')
-}
-
-/**
  * 复制相对路径到剪贴板
  * @param toPath 目标路径
  */
@@ -204,7 +198,7 @@ export function CopyRelativePath(toPath: string): void {
     if (relative.startsWith('../') || relative.startsWith('..\\')) {
         relative = relative.substring(3)
     }
-    relative = toMarkdownPath(relative)
+    relative = normalizeSlashes(relative)
     clipboard.writeText(relative)
 }
 
@@ -222,7 +216,7 @@ export function CopyFileLink(toPath: string): void {
         relative = relative.substring(3)
     }
     let fileLink = '[' + path.basename(toPath) + '](' + relative + ')'
-    fileLink = toMarkdownPath(fileLink)
+    fileLink = normalizeSlashes(fileLink)
     clipboard.writeText(fileLink)
 }
 
@@ -240,6 +234,6 @@ export function CopyImageLink(toPath: string): void {
         relative = relative.substring(3)
     }
     let fileLink = '![' + path.basename(toPath) + '](' + relative + ')'
-    fileLink = toMarkdownPath(fileLink)
+    fileLink = normalizeSlashes(fileLink)
     clipboard.writeText(fileLink)
 }

@@ -3,6 +3,8 @@ import EventBus from '@renderer/common/event-bus/event-bus'
 import { getConfigStore } from '@renderer/common/useConfigStore'
 import { IPC } from '../../../../shared/ipc-channels'
 import { t } from '../../common/i18n'
+// 第 4 批 P3：裸 console.* 收敛到渲染层统一日志出口（失败降级逻辑保持不变）
+import { logger } from '../../common/logger'
 // ARC-14：插件工具显示事件名收敛至 EventBus 集中常量（menu-consts 仅保留兼容 re-export）
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 
@@ -70,7 +72,7 @@ function handleRecentMenuAction(action: string): void {
     try {
         target = decodeURIComponent(action.slice(prefix.length))
     } catch (error) {
-        console.warn('[Menu] 最近项路径解码失败：', action, error)
+        logger.warn('[Menu] 最近项路径解码失败：', action, error)
         return
     }
     if (target.length === 0) {
@@ -80,7 +82,7 @@ function handleRecentMenuAction(action: string): void {
     // 防御：测试桩/旧 preload 未暴露 file.openRecent 时静默降级（仅记录日志）
     const openRecent = window.api?.file?.openRecent
     if (typeof openRecent !== 'function') {
-        console.warn('[Menu] window.api.file.openRecent 不可用，无法打开最近项')
+        logger.warn('[Menu] window.api.file.openRecent 不可用，无法打开最近项')
         return
     }
 
@@ -90,11 +92,11 @@ function handleRecentMenuAction(action: string): void {
                 // 用户可见的失败提示由主进程 OPEN_RECENT 的 failRecentOpen 直接经
                 // STATUS_BAR_UPDATE 下发；2026-11-18 删除原渲染层反向 send 空转分支
                 // （主进程无该通道的 renderer→main 监听）。
-                console.warn('[Menu] 打开最近项失败：', result.message)
+                logger.warn('[Menu] 打开最近项失败：', result.message)
             }
         })
         .catch((error: unknown) => {
-            console.error('[Menu] 打开最近项失败：', error)
+            logger.error('[Menu] 打开最近项失败：', error)
         })
 }
 
@@ -336,7 +338,7 @@ export function HandleMenuAction(action: string) {
             if (Number.isInteger(line) && line > 0) {
                 EventBus.$emit(EVENT_BUS.EDITOR_JUMP_LINE, { line })
             } else {
-                console.warn(`[Menu] 无效的行号: ${input}`)
+                logger.warn(`[Menu] 无效的行号: ${input}`)
             }
         }
         return

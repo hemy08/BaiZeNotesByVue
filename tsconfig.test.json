@@ -23,10 +23,9 @@
         "skipLibCheck": true,
         "noErrorTruncation": true,
         "types": ["vitest/globals", "node"],
-        // 与 vitest.config.ts 的 resolve.alias 保持一致，测试里混用相对路径与别名均可解析。
+        // 与 vitest.config.ts 的 resolve.alias 保持一致；第 4 批 P3 清理删除 @mainer 死别名。
         "paths": {
-            "@renderer/*": ["./src/renderer/src/*"],
-            "@mainer/*": ["./src/main/*"]
+            "@renderer/*": ["./src/renderer/src/*"]
         }
     },
     // 测试通过 import 拉进来的 src 模块会用到 src 侧的环境声明（*.vue / vite 资源、
@@ -37,7 +36,7 @@
         "tests/unit/**/*.ts",
         "src/renderer/src/env.d.ts",
         "src/preload/index.d.ts",
-        "src/main/global-types.d.ts",
+        "src/shared/types/global.d.ts",
         "src/renderer/src/components/Markdown/monaco-worker-types.ts",
         "src/renderer/src/components/Markdown/markdown-it-plantuml.d.ts",
         "src/renderer/src/components/PluginTools/Encryption/crypto-js.d.ts"

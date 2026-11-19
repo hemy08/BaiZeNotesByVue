@@ -15,6 +15,9 @@ import { isDarkThemeType } from '../../../shared/constants/theme'
 // window.api.config.read 的类型重载据此按配置名字面量推断主进程实际返回形状，
 // 本模块无需再手写泛型断言（下方 loadAllConfigs 的注释记录了两处历史形状漂移）。
 import { t } from './i18n'
+// 第 4 批 P3：裸 console.* 收敛到渲染层统一日志出口（logger.warn/error 参数原样透传，
+// 输出与控制台可检索性保持不变；用户可见的失败提示仍由 showDialog 负责）。
+import { logger } from './logger'
 
 // 类型定义
 /**
@@ -113,7 +116,8 @@ export interface DialogState {
     editorSettings: { visible: boolean }
     systemSettings: { visible: boolean }
     mermaidEdit: { visible: boolean }
-    admonition: { visible: boolean; data?: Record<string, unknown> }
+    // 第 4 批 P3：删除主进程从不发送、零消费方的 data 死字段（保留 visible 开关）。
+    admonition: { visible: boolean }
     mathText: { visible: boolean }
     insertImage: { visible: boolean }
     mdSheet: { visible: boolean }
@@ -199,7 +203,7 @@ function describeSaveError(error: unknown): string {
  * 重启后丢失且用户毫无提示。现在写失败经全局消息对话框明确告知（保留日志便于排查）。
  */
 function reportConfigSaveFailure(name: string, error: unknown): void {
-    console.error(`[ConfigStore] Error saving config ${name}:`, error)
+    logger.error(`[ConfigStore] Error saving config ${name}:`, error)
     const displayName = CONFIG_NAME_KEYS[name] ? t(CONFIG_NAME_KEYS[name]) : name
     showDialog('error', {
         title: t('workspace.config.saveFailedTitle'),
@@ -304,7 +308,7 @@ async function loadAllConfigs() {
         // 主进程 'quick-links' 实际直接返回数组（可能为 null），同样保留原有整体替换行为。
         if (links) quickLinksConfig.value = links as unknown as QuickLinksConfig
     } catch (error) {
-        console.error('[ConfigStore] Error loading configs:', error)
+        logger.error('[ConfigStore] Error loading configs:', error)
     } finally {
         isLoading.value = false
     }
@@ -339,21 +343,26 @@ function updateEditorConfig(config: Partial<EditorConfig>) {
 
 // 消息对话框类型
 type MessageDialogType = 'message' | MessageType
+/**
+ * 消息对话框名称集合（'message' 伪名称 + 5 种消息类型）。
+ * 第 4 批 P3：showDialog / hideDialog / toggleDialog 此前各自内联同一数组 3 份，
+ * 收敛为本模块常量复用，避免新增消息类型时漏改某一处。
+ */
+const MESSAGE_DIALOG_TYPES: readonly MessageDialogType[] = [
+    'success',
+    'error',
+    'warning',
+    'info',
+    'failed',
+    'message'
+]
 // 对话框名称类型（包括消息对话框的伪名称）
 export type DialogName = keyof DialogState | MessageDialogType
 
 // 对话框控制函数
 function showDialog(dialogName: DialogName, data?: Record<string, unknown>) {
     // 如果是消息对话框类型（'message' 或具体的消息类型），更新 messageDialog
-    const messageTypes: readonly MessageDialogType[] = [
-        'success',
-        'error',
-        'warning',
-        'info',
-        'failed',
-        'message'
-    ]
-    if (messageTypes.includes(dialogName as MessageDialogType)) {
+    if (MESSAGE_DIALOG_TYPES.includes(dialogName as MessageDialogType)) {
         // 如果 dialogName 是 'message'，从 data.type 读取具体类型
         // 如果 dialogName 是具体类型（如 'success'），直接使用
         const messageType = dialogName === 'message' ? data?.type || 'success' : dialogName
@@ -376,15 +385,7 @@ function showDialog(dialogName: DialogName, data?: Record<string, unknown>) {
 
 function hideDialog(dialogName: DialogName) {
     // 如果是消息对话框类型（'message' 或具体的消息类型），隐藏 messageDialog
-    const messageTypes: readonly MessageDialogType[] = [
-        'success',
-        'error',
-        'warning',
-        'info',
-        'failed',
-        'message'
-    ]
-    if (messageTypes.includes(dialogName as MessageDialogType)) {
+    if (MESSAGE_DIALOG_TYPES.includes(dialogName as MessageDialogType)) {
         dialogs.messageDialog.visible = false
     } else {
         // 其他对话框类型，正常处理
@@ -398,15 +399,7 @@ function hideDialog(dialogName: DialogName) {
 }
 
 function toggleDialog(dialogName: DialogName) {
-    const messageTypes: readonly MessageDialogType[] = [
-        'success',
-        'error',
-        'warning',
-        'info',
-        'failed',
-        'message'
-    ]
-    if (messageTypes.includes(dialogName as MessageDialogType)) {
+    if (MESSAGE_DIALOG_TYPES.includes(dialogName as MessageDialogType)) {
         dialogs.messageDialog.visible = !dialogs.messageDialog.visible
     } else {
         const name = dialogName as keyof DialogState

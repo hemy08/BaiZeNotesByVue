@@ -44,11 +44,11 @@ function resetStoreState() {
     dialogs.messageDialog.message = ''
     dialogs.importOption.visible = false
     dialogs.importOption.content = undefined
-    dialogs.admonition.visible = false
-    dialogs.admonition.data = undefined
 
+    // 第 4 批 P3：admonition 已删除 data 死字段（主进程从不发送、零消费方），
+    // 现在与其他普通对话框一样只需在下方循环中统一重置 visible。
     for (const key of Object.keys(dialogs) as (keyof typeof dialogs)[]) {
-        if (key === 'messageDialog' || key === 'importOption' || key === 'admonition') {
+        if (key === 'messageDialog' || key === 'importOption') {
             continue
         }
         dialogs[key].visible = false

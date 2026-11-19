@@ -12,15 +12,8 @@ export {
     BuildFileTree
 } from './path-utils'
 
-// 对话框辅助
-export {
-    showErrorMessageBox,
-    showInfoMessageBox,
-    showWarningMessageBox,
-    showConfirmDialog,
-    showSaveDialog,
-    showOpenDialog
-} from './dialog-helpers'
+// 对话框辅助（第 4 批 P3 清理：死包装 showConfirmDialog/showSaveDialog/showOpenDialog 已删除）
+export { showErrorMessageBox, showInfoMessageBox, showWarningMessageBox } from './dialog-helpers'
 
 // 自动保存
 export { StartAutoSaveFileTime, StopAutoSaveFileTime, IsAutoSaveRunning } from './auto-save'

@@ -58,6 +58,8 @@
  */
 import type MarkdownIt from 'markdown-it'
 import type { Env, StateBlock } from 'markdown-it'
+// 第 4 批 P3：snippets 默认告警输出收敛到渲染层统一日志出口（logger.warn 参数原样透传）
+import { logger } from '../../common/logger'
 // 块级解析公共 helper（第 3 批子任务 D 去重）：本模块使用缩进口径 B（仅裁容器缩进，见 preview-block-utils）
 import {
     canStartBlock,
@@ -757,7 +759,7 @@ export interface SnippetExpandOptions {
     maxTotalBytes?: number
     /** 文本扩展名白名单（默认 SNIPPET_ALLOWED_EXTENSIONS） */
     allowedExtensions?: readonly string[]
-    /** 告警回调（默认 console.warn；测试可注入 spy） */
+    /** 告警回调（默认 logger.warn；测试可注入 spy） */
     onWarn?: (message: string) => void
 }
 
@@ -810,9 +812,9 @@ function createSnippetExpansionContext(
     }
 }
 
-/** 默认告警输出（console.warn 便于用户/开发者定位失败原因；任务约定的失败不抛异常） */
+/** 默认告警输出（logger.warn 便于用户/开发者定位失败原因；任务约定的失败不抛异常） */
 function defaultSnippetWarning(message: string): void {
-    console.warn(`[mdx-snippets] ${message}`)
+    logger.warn(`[mdx-snippets] ${message}`)
 }
 
 /** 全局指令行匹配（多行、逐行；`^`/`$` 按行锚定，match[0] 不含行尾换行符） */
@@ -936,7 +938,7 @@ async function expandSnippetMarkdown(
  * 2. 相对路径基于 activeFilePath 所在目录解析；activeFilePath 为空 / 非绝对路径时
  *    不展开、原样返回（保证无活动文件场景零开销且不误伤普通文本）；
  * 3. 行号区间 `path.md:10:20`（1-based、含端点、越界夹取）；`path.md:10` 表示到末尾；
- * 4. 递归展开深度上限（默认 5 层）防循环：超限的行保留原文并 console.warn；
+ * 4. 递归展开深度上限（默认 5 层）防循环：超限的行保留原文并 logger.warn；
  * 5. 仅允许文本扩展名；默认禁止 `..` 越出 active 目录（allowOutsideRoot 显式放开）；
  *    单文件（默认 1 MiB）与总展开量（默认 4 MiB）限流；
  * 6. 展开内容按指令行缩进逐行缩进（可直接放进 `!!!` / `/// tab` 的缩进内容中）。

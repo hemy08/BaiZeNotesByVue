@@ -2,12 +2,17 @@
  * theme-registry.ts 单元测试
  * 覆盖：内置主题、目录扫描失败兜底、扫描结果缓存、外部主题加载与配置提取
  * （lighten/darken 颜色计算）、坏 JSON 跳过、名称排序、getMonacoThemeData
- * 的按需读取与缓存、路径逃逸防护、非法 JSON/读取失败处理
+ * 的按需读取与缓存、路径逃逸防护、非法 JSON/读取失败处理。
+ *
+ * 第 4 批 P3：资源目录解析已统一到 app-paths.getAppResourcesPath()，测试桩替换该模块。
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-// is.dev 恒为 true：getResourcesPath 走 __dirname 相对路径（文件读写已被 mock）
-vi.mock('@electron-toolkit/utils', () => ({ is: { dev: true } }))
+// 第 4 批 P3：资源目录统一由 app-paths.getAppResourcesPath() 解析（基于 app.isPackaged）。
+// 单元测试桩替换该模块为固定资源目录，避免加载 electron 运行时；文件读写仍由下方 fs mock 拦截。
+vi.mock('../../src/main/utils/app-paths', () => ({
+    getAppResourcesPath: () => 'E:/baize-vitest/resources'
+}))
 
 // P2：theme-registry 的失败日志统一走 utils/logger（logger 依赖 electron 运行时）。
 // 本测试不 mock electron，命中失败路径时若加载真实 logger 会因缺少 electron app 报错，

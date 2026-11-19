@@ -886,9 +886,10 @@ export function OpenFolderExplorer(filePath: string): void {
         return
     }
     if (filePath.lastIndexOf('.') === -1) {
-        const lastIndex = Math.max(filePath.lastIndexOf('//'), filePath.lastIndexOf('\\'))
-        const folderPath = filePath.substring(0, lastIndex)
-        shell.showItemInFolder(folderPath)
+        // 第 4 批 P3 清理：原手写 `Math.max(lastIndexOf('//'), lastIndexOf('\\')) + substring`
+        // （'//' 为历史笔误，单个正斜杠路径算不出父目录）统一改用 Node `path.dirname`；
+        // Windows 下 `\` 与 `/` 分隔符行为一致，POSIX 下由 path 模块按平台语义处理。
+        shell.showItemInFolder(path.dirname(filePath))
     } else {
         shell.showItemInFolder(filePath)
     }

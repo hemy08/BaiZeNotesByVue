@@ -8,7 +8,7 @@
  */
 
 import { promises as fs } from 'fs'
-import { join } from 'path'
+import { basename, join } from 'path'
 import * as fsExtra from 'fs-extra'
 import { showErrorMessageBox } from './dialog-helpers'
 import {
@@ -100,11 +100,12 @@ export async function FileManagerContextMenuPaste(toPath: string, isFile: boolea
         return
     }
 
-    // 先在目标目录中创建一个与原目录同名文件夹，返回进行拷贝
-    const lastIndex = Math.max(src.lastIndexOf('\\'), src.lastIndexOf('//'))
-    const srcName = src.substring(lastIndex)
-    // 源名可能带前导分隔符（历史实现），取纯文件名并做白名单校验，杜绝 ../ 拼出目标目录外路径
-    const srcBaseName = srcName.replace(/^[\\/]+/, '')
+    // 先在目标目录中创建一个与原目录同名文件夹，返回进行拷贝。
+    // 第 4 批 P3 清理：原手写 `Math.max(lastIndexOf('\\'), lastIndexOf('//')) + substring`
+    // 再剥离前导分隔符的逻辑统一改用 Node `path.basename`（Windows 下结果一致；
+    // POSIX 下正确处理正斜杠，不再把整段路径误当文件名）。
+    const srcBaseName = basename(src)
+    // 源名仍做文件名白名单校验，杜绝 ../ 拼出目标目录外路径（防御纵深，保留）
     if (!isSafeFileName(srcBaseName)) {
         notifyPathAccessDenied(src, 'mainMsg.status.operationFailed')
         return

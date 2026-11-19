@@ -33,6 +33,8 @@ import type { SystemSetting } from '../../shared/types'
 // FE-35：配置写盘去抖窗口内的最后修改需要关窗前主动落盘
 import { flushConfigWrites } from './common/useConfigStore'
 import { t } from './common/i18n'
+// 第 4 批 P3：裸 console.* 收敛到渲染层统一日志出口（仅替换输出出口，启动时序/兜底逻辑不变）
+import { logger } from './common/logger'
 
 // 欢迎界面显示状态
 const showWelcome = ref(true)
@@ -179,7 +181,7 @@ function scheduleMainViewPreload(): void {
     const startPreload = (): void => {
         void preloadMainView().catch((error: unknown) => {
             // 预加载失败不弹窗：用户真正进入主界面时异步组件的 errorComponent 会给出提示与重试
-            console.error('预加载主界面模块失败:', error)
+            logger.error('预加载主界面模块失败:', error)
         })
     }
     if (typeof requestAnimationFrame === 'function') {
@@ -225,7 +227,7 @@ async function ensureMainViewModuleLoaded(): Promise<void> {
     try {
         await preloadMainView()
     } catch (error) {
-        console.error('主界面模块加载失败:', error)
+        logger.error('主界面模块加载失败:', error)
     }
 }
 
@@ -245,7 +247,7 @@ async function waitMainViewMounted(): Promise<void> {
     } catch (error) {
         // 模块加载失败时不再等待挂载：保持后续 READY / 启动恢复流程不被无限阻塞，
         // 界面由 errorComponent 展示错误与重试入口。
-        console.error('主界面模块加载失败:', error)
+        logger.error('主界面模块加载失败:', error)
         return
     }
     // 让 showWelcome=false 引起的这次渲染先提交（异步组件开始解析/挂载）
@@ -302,7 +304,7 @@ async function saveToRecentFolders(folderPath: string) {
         history = history.slice(0, 20)
         await window.api.config.write('recent-folders', history)
     } catch (error) {
-        console.error('Failed to save recent folders:', error)
+        logger.error('Failed to save recent folders:', error)
     }
 }
 
@@ -366,12 +368,12 @@ onMounted(async () => {
     if (welcomeResult.status === 'fulfilled') {
         showWelcomeConfig = welcomeResult.value
     } else {
-        console.error('Failed to load welcome config:', welcomeResult.reason)
+        logger.error('Failed to load welcome config:', welcomeResult.reason)
     }
     if (systemResult.status === 'fulfilled') {
         systemSetting = systemResult.value
     } else {
-        console.error('Failed to load system setting:', systemResult.reason)
+        logger.error('Failed to load system setting:', systemResult.reason)
     }
 
     // 启动恢复时序（P2-5 / FE-01）：
@@ -397,7 +399,7 @@ onMounted(async () => {
             scheduleMainViewPreload()
         }
     } catch (error) {
-        console.error('准备主界面时序失败:', error)
+        logger.error('准备主界面时序失败:', error)
     }
 
     // P2-5：渲染层就绪握手——主进程（main/index.ts）收到后才执行启动恢复

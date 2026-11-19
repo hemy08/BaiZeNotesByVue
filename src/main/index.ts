@@ -34,7 +34,7 @@ import { markMainViewEntered } from './ipc/welcome-state'
 import { broadcastThemeToAllWindows, buildThemeBroadcastPayload } from './ipc/theme-broadcast'
 // P1/N-05：IPC 发送方授权校验（主窗口登记 + 监听器包装）
 import { setTrustedMainWindow, withSenderCheck } from './utils/ipc-security'
-import { initUserDataDirectory } from './utils/app-paths'
+import { initUserDataDirectory, getIconPath } from './utils/app-paths'
 import { registerIpcHandlers, setMainWindow } from './ipc'
 import { appState } from './utils/app-state'
 import { IPC } from '../shared/ipc-channels'
@@ -68,6 +68,12 @@ const EDITOR_FLUSH_CHANNEL = IPC.EDITOR.FLUSH_CONTENT
 const EDITOR_FLUSH_DONE_CHANNEL = IPC.EDITOR.FLUSH_CONTENT_DONE
 // 等待渲染层回执的超时时间（毫秒），超时后兜底继续关闭流程
 const EDITOR_FLUSH_TIMEOUT_MS = 2000
+
+// 第 4 批 P3 清理：主窗口图标文件名（resources/icon 下的 512 尺寸图标）。
+// 目录一律经 app-paths.getIconPath() 解析——开发环境=项目 resources/icon，
+// 打包后=process.resourcesPath/icon（electron-builder.yml 的 extraResources 复制目标），
+// 不再用 `join(__dirname, '../resources/icon/...')` 硬编码相对构建目录的路径。
+const MAIN_WINDOW_ICON_FILE_NAME = 'baize_mirror_dark_512x512.ico'
 
 // P1/C-04：监听台账组件 ID——进程级主题更新监听为 palette 级（persistent）注册；
 // 关闭前 flush 回执为"主窗口一次关闭流程"级（随 finish/cleanupAll 清理）
@@ -149,7 +155,7 @@ function createWindow(): void {
         title: tMain('mainMsg.app.windowTitle'),
         frame: false,
         autoHideMenuBar: false,
-        icon: join(__dirname, '../resources/icon/baize_mirror_dark_512x512.ico'),
+        icon: join(getIconPath(), MAIN_WINDOW_ICON_FILE_NAME),
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
             nodeIntegration: false,

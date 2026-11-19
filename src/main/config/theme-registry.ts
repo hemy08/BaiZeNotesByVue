@@ -5,7 +5,10 @@
  */
 import { join } from 'path'
 import * as fs from 'node:fs'
-import { is } from '@electron-toolkit/utils'
+// 第 4 批 P3 清理：资源目录解析统一收敛到 app-paths.getAppResourcesPath()
+//（判据由 electron-toolkit 的 is.dev 改为 app.isPackaged，二者在 Electron 运行时等价：
+//  is.dev 的定义就是 !app.isPackaged；开发环境=项目根目录 resources，打包后=process.resourcesPath）
+import { getAppResourcesPath } from '../utils/app-paths'
 import { logger } from '../utils/logger'
 // 第 2 批契约重构：Monaco 主题领域类型已收敛到 src/shared/types/theme.ts（唯一真源），
 // 此处 import type 并 re-export，保持既有 `import type { MonacoThemeConfig, MonacoThemeData }
@@ -13,13 +16,6 @@ import { logger } from '../utils/logger'
 import type { MonacoThemeConfig, MonacoThemeData, MonacoThemeListItem } from '../../shared/types'
 
 export type { MonacoThemeConfig, MonacoThemeData }
-
-function getResourcesPath(): string {
-    if (is.dev) {
-        return join(__dirname, '../../resources')
-    }
-    return process.resourcesPath
-}
 
 const builtinThemes: Record<string, MonacoThemeConfig> = {
     vs: {
@@ -66,7 +62,9 @@ let themeFileNames: string[] | null = null
 let allThemesLoaded = false
 
 function getThemesDir(): string {
-    const resourcesPath = getResourcesPath()
+    // 打包后 themes 由 extraResources 复制到 process.resourcesPath/themes，
+    // 开发环境为项目根目录 resources/themes（app-paths 统一解析，见 electron-builder.yml）
+    const resourcesPath = getAppResourcesPath()
     return join(resourcesPath, 'themes', 'monaco-themes', 'themes')
 }
 

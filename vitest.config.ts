@@ -6,6 +6,7 @@ export default defineConfig({
     plugins: [vue()],
     resolve: {
         // ET-8：vitest 复用 electron.vite.config.ts 的别名解析，保证测试与构建使用同一套模块图。
+        // 第 4 批 P3 清理：删除 @mainer（src/main）死别名——全仓 0 引用。
         // 构建侧（electron.vite.config.ts）的 monaco 正则别名此前未同步到 vitest：
         // monaco-editor 的 package.json exports 仅声明 `./*.js → ./esm/vs/*.js`，
         // node SSR 解析深层 ESM 子路径时不一定会走 exports 映射，容易出现
@@ -15,10 +16,6 @@ export default defineConfig({
             {
                 find: '@renderer',
                 replacement: resolve(__dirname, 'src/renderer/src')
-            },
-            {
-                find: '@mainer',
-                replacement: resolve(__dirname, 'src/main')
             },
             // 裸包名 'monaco-editor' 精确重定向到 editor.api（不含 LSP/全量语言服务），
             // 与构建侧一致；用正则做精确匹配，避免字符串 find 的前缀替换破坏子路径导入。

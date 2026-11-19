@@ -3,7 +3,7 @@
  *
  * 规则（见 ../../docs/wiki/06-历史报告/md/14-IPC通道命名统一方案.md）：
  * 1. 统一格式 `baize:<domain>:<name>`（三段、全小写 kebab-case）；
- * 2. domain 必须属于白名单（18 个）；
+ * 2. domain 必须属于白名单（17 个）；
  * 3. 禁止历史前缀（`baize-notes:` / `baize:notes:`）与无前缀通道；
  * 4. 通道值唯一（与 ipc-channel-constants.test.ts 互为补充）。
  *
@@ -59,6 +59,12 @@ function flattenChannels(): Entry[] {
 const channels = flattenChannels()
 
 describe('IPC 通道命名规范', () => {
+    it('白名单领域数量为 17（与 ipc-channels.ts 注释口径一致）', () => {
+        // 第 4 批 P3：原注释写「18 个白名单」，实际 DOMAINS 集合/实现域为 17。
+        // 用断言锁定口径，避免后续增删 domain 时再次出现注释与实现脱节。
+        expect(DOMAINS.size).toBe(17)
+    })
+
     it('解析到完整的通道常量表（P2 清理后 ≥80 个）', () => {
         expect(channels.length).toBeGreaterThanOrEqual(80)
     })
@@ -71,7 +77,7 @@ describe('IPC 通道命名规范', () => {
         ).toEqual([])
     })
 
-    it('所有通道 domain 属于 18 个白名单', () => {
+    it('所有通道 domain 属于 17 个白名单', () => {
         const invalid = channels.filter((c) => !DOMAINS.has(c.value.split(':')[1]))
         expect(
             invalid,

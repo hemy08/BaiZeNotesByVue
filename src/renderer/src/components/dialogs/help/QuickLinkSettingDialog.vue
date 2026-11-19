@@ -142,6 +142,8 @@
 import { ref, reactive, watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
+// 第 4 批 P3：裸 console.* 收敛到渲染层统一日志出口（失败时对话框保持打开等用户可见逻辑不变）
+import { logger } from '../../../common/logger'
 import BaseDialog from '../BaseDialog.vue'
 // P1-FE-04：快捷链接设置数据源统一——读写统一走主进程 quickLinks（与 NaviTab 同源）
 import { IPC } from '../../../../../shared/ipc-channels'
@@ -272,7 +274,7 @@ async function loadLinksFromMain(): Promise<void> {
             loaded = items.filter(isQuickLinkItem).map(toDialogLink)
         }
     } catch (error) {
-        console.warn('[QuickLinkSettingDialog] 读取主进程快捷链接失败，使用兜底默认值:', error)
+        logger.warn('[QuickLinkSettingDialog] 读取主进程快捷链接失败，使用兜底默认值:', error)
     }
     // 取消操作始终回滚到「打开时的数据源状态」；读取失败时回滚到当前兜底列表
     initialLinks.value = cloneLinks(loaded ?? links.value)
@@ -317,12 +319,12 @@ async function saveLinksToMain(): Promise<boolean> {
             typeof result === 'object' &&
             (result as { ok?: unknown }).ok === false
         ) {
-            console.error('[QuickLinkSettingDialog] 主进程拒绝保存快捷链接:', result)
+            logger.error('[QuickLinkSettingDialog] 主进程拒绝保存快捷链接:', result)
             return false
         }
         return true
     } catch (error) {
-        console.error('[QuickLinkSettingDialog] 保存快捷链接失败:', error)
+        logger.error('[QuickLinkSettingDialog] 保存快捷链接失败:', error)
         return false
     }
 }

@@ -66,9 +66,6 @@ describe('file-utils index re-exports', () => {
         expect(typeof FileUtils.showErrorMessageBox).toBe('function')
         expect(typeof FileUtils.showInfoMessageBox).toBe('function')
         expect(typeof FileUtils.showWarningMessageBox).toBe('function')
-        expect(typeof FileUtils.showConfirmDialog).toBe('function')
-        expect(typeof FileUtils.showSaveDialog).toBe('function')
-        expect(typeof FileUtils.showOpenDialog).toBe('function')
     })
 
     it('should re-export auto-save functions', () => {

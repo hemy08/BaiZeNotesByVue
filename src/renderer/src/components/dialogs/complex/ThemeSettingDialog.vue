@@ -20,15 +20,22 @@
         @close="handleCancel"
     >
         <template #prepend>
-            <!-- 调整大小的边框：class 与指针事件处理与迁移前一致，且仍位于 title-bar 之前 -->
-            <div class="resize-handle resize-n" @mousedown="startResize('n')"></div>
-            <div class="resize-handle resize-s" @mousedown="startResize('s')"></div>
-            <div class="resize-handle resize-e" @mousedown="startResize('e')"></div>
-            <div class="resize-handle resize-w" @mousedown="startResize('w')"></div>
-            <div class="resize-handle resize-ne" @mousedown="startResize('ne')"></div>
-            <div class="resize-handle resize-nw" @mousedown="startResize('nw')"></div>
-            <div class="resize-handle resize-se" @mousedown="startResize('se')"></div>
-            <div class="resize-handle resize-sw" @mousedown="startResize('sw')"></div>
+            <!--
+                调整大小的边框：class 与指针事件处理与迁移前一致，且仍位于 title-bar 之前。
+                第 4 批 P3 缺陷修复：useDialogResize 的 startResize(direction) 是「柯里化」函数——
+                它返回真正的 mousedown 处理函数，本身不会启动缩放。此前模板写成
+                `@mousedown="startResize('n')"` 只是求值了外层调用、返回的函数未被调用，
+                导致 8 个 handle 全部失效（拖拽 resize 无任何反应）。现显式以 $event 调用
+                返回的处理函数（内部会 preventDefault / stopPropagation，不会误触发标题栏拖拽）。
+            -->
+            <div class="resize-handle resize-n" @mousedown="startResize('n')($event)"></div>
+            <div class="resize-handle resize-s" @mousedown="startResize('s')($event)"></div>
+            <div class="resize-handle resize-e" @mousedown="startResize('e')($event)"></div>
+            <div class="resize-handle resize-w" @mousedown="startResize('w')($event)"></div>
+            <div class="resize-handle resize-ne" @mousedown="startResize('ne')($event)"></div>
+            <div class="resize-handle resize-nw" @mousedown="startResize('nw')($event)"></div>
+            <div class="resize-handle resize-se" @mousedown="startResize('se')($event)"></div>
+            <div class="resize-handle resize-sw" @mousedown="startResize('sw')($event)"></div>
         </template>
 
         <div class="main-container">

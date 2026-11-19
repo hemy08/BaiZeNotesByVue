@@ -4,6 +4,7 @@
  */
 
 import { dialog } from 'electron'
+import { dirname } from 'path'
 // ARC-13：FileItem 已收敛到 src/shared/types/file.ts（唯一真源）
 import type { FileItem } from '../../../shared/types'
 import { appState } from '../app-state'
@@ -14,14 +15,16 @@ import { getSystemSetting } from '../../config/system-setting'
 
 /**
  * 获取当前打开文件的目录路径
+ * 第 4 批 P3 清理：原手写 `Math.max(lastIndexOf('\\'), lastIndexOf('/')) + substring`
+ * 统一改用 Node `path.dirname`。Windows 下对 `\` 与 `/` 混合分隔符的结果与旧实现一致；
+ * 仅「完全无分隔符」的输入由旧实现的空串变为 `.`——活动文件路径恒为分隔符完整的
+ * 绝对路径，该分支不会出现在真实调用中。
  * @returns 当前文件的目录路径，如果没有打开的文件则返回项目根路径
  */
 export function GetCurrentFileDirectory(): string {
     const activeFile = appState.currentActiveFile
     if (activeFile && activeFile.path) {
-        const filePath = activeFile.path
-        const lastIndex = Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/'))
-        return filePath.substring(0, lastIndex)
+        return dirname(activeFile.path)
     }
     return appState.rootPath || ''
 }

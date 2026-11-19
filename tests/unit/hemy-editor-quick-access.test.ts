@@ -41,10 +41,8 @@ function resetDialogs() {
         } else if (key === 'importOption') {
             store.dialogs.importOption.visible = false
             store.dialogs.importOption.content = undefined
-        } else if (key === 'admonition') {
-            store.dialogs.admonition.visible = false
-            store.dialogs.admonition.data = undefined
         } else {
+            // 第 4 批 P3：admonition 的 data 死字段已删除，与其他普通对话框一致只重置 visible
             store.dialogs[key].visible = false
         }
     }
