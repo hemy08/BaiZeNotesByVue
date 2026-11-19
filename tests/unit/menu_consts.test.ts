@@ -37,19 +37,20 @@ function resolved(item: MenuLabelLike): Record<string, unknown> {
     return { ...rest, label: labelKey ? translate(labelKey, 'zh-CN') : rest.label }
 }
 
-// 汇总各 URL 映射表，用于统一的结构校验
-const urlMaps: Array<{ name: string; table: Array<MenuLabelLike & { id: string; url: string }> }> =
-    [
-        { name: 'OnlineToolMaps', table: OnlineToolMaps },
-        { name: 'CaiNiaoUrlMaps', table: CaiNiaoUrlMaps },
-        { name: 'W3SchoolUrlMaps', table: W3SchoolUrlMaps },
-        { name: 'EncDecUrlMaps', table: EncDecUrlMaps },
-        { name: 'IdeUrlMaps', table: IdeUrlMaps },
-        { name: 'DevelopUrlMaps', table: DevelopUrlMaps },
-        { name: 'TeamUrlMaps', table: TeamUrlMaps },
-        { name: 'CloudUrlMaps', table: CloudUrlMaps },
-        { name: 'GitHubUrlMaps', table: GitHubUrlMaps }
-    ]
+// 汇总各在线工具映射表，用于统一的结构校验。
+// 2026-11-19 重构：映射项已删除死数据 url 字段（渲染层只消费 id/labelKey，
+// URL 真源在 shared/constants/urls.ts，由主进程 menu-tools.ts 按 id 命中）。
+const urlMaps: Array<{ name: string; table: Array<MenuLabelLike & { id: string }> }> = [
+    { name: 'OnlineToolMaps', table: OnlineToolMaps },
+    { name: 'CaiNiaoUrlMaps', table: CaiNiaoUrlMaps },
+    { name: 'W3SchoolUrlMaps', table: W3SchoolUrlMaps },
+    { name: 'EncDecUrlMaps', table: EncDecUrlMaps },
+    { name: 'IdeUrlMaps', table: IdeUrlMaps },
+    { name: 'DevelopUrlMaps', table: DevelopUrlMaps },
+    { name: 'TeamUrlMaps', table: TeamUrlMaps },
+    { name: 'CloudUrlMaps', table: CloudUrlMaps },
+    { name: 'GitHubUrlMaps', table: GitHubUrlMaps }
+]
 
 // 插件菜单项最小结构（label/labelKey 见 MenuLabelLike）
 type PluginMenuItem = MenuLabelLike & { menuAction: string }
@@ -119,7 +120,9 @@ describe('menu-consts', () => {
                     } else {
                         expect(item.label).not.toMatch(/[\u4e00-\u9fff]/)
                     }
-                    expect(item.url).toMatch(/^https?:\/\//)
+                    // 2026-11-19 重构：渲染层菜单项不得再携带 url 死数据
+                    // （URL 单一真源在 shared/constants/urls.ts，由主进程命中）
+                    expect('url' in item).toBe(false)
                 }
             })
 
@@ -143,11 +146,15 @@ describe('menu-consts', () => {
 
     it('should sample key online tools', () => {
         const byId = (id: string) => OnlineUrlMaps.find((item) => item.id === id)
-        expect(byId('baize:menu:online:tools:cainiao-tools')?.url).toBe('https://www.jyshare.com/')
-        expect(byId('baize:menu:online:cainiao:svg-editor')?.url).toBe(
-            'https://www.jyshare.com/more/svgeditor/'
+        // URL 字段已删除（真源在 shared/constants/urls.ts、主进程 menu-tools.ts 消费），
+        // 渲染层菜单只保留 id + labelKey；此处锁死代表性条目的 id 与 i18n 键。
+        expect(byId('baize:menu:online:tools:cainiao-tools')?.labelKey).toBe(
+            'menu.online.tools.cainiaoTools'
         )
-        expect(byId('baize:menu:online:cloud:aliyun')?.url).toBe('https://www.aliyun.com/')
+        expect(byId('baize:menu:online:cainiao:svg-editor')?.labelKey).toBe(
+            'menu.online.cainiao.svgEditor'
+        )
+        expect(byId('baize:menu:online:cloud:aliyun')?.labelKey).toBe('menu.online.cloud.aliyun')
         // 中文工具名经 labelKey 还原为原文案；英文工具名原样展示
         expect(displayText(byId('baize:menu:online:tools:cainiao-tools')!)).toBe('菜鸟工具')
         expect(displayText(byId('baize:menu:online:tools:toolfk')!)).toBe('ToolFK')

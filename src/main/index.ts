@@ -29,8 +29,9 @@ import { logger } from './utils/logger'
 import { ipcListenerManager } from './ipc/ipc-listener-manager'
 import { resetWelcomeState } from './ipc/welcome-state'
 import { markMainViewEntered } from './ipc/welcome-state'
-// P1/C-03：主进程主题广播唯一实现（禁止再出现渲染层 window.electronAPI.broadcastTheme）
-import { broadcastThemeToAllWindows } from './ipc/theme-broadcast'
+// P1/C-03：主进程主题广播唯一实现（禁止再出现渲染层 window.electronAPI.broadcastTheme）；
+// 2026-11-19：载荷统一经 buildThemeBroadcastPayload 组装（shared ThemeUpdateData 契约）
+import { broadcastThemeToAllWindows, buildThemeBroadcastPayload } from './ipc/theme-broadcast'
 // P1/N-05：IPC 发送方授权校验（主窗口登记 + 监听器包装）
 import { setTrustedMainWindow, withSenderCheck } from './utils/ipc-security'
 import { initUserDataDirectory } from './utils/app-paths'
@@ -418,6 +419,7 @@ app.whenReady().then(() => {
     // P1/C-03/C-04：监听注册迁移到 ipcListenerManager（台账可见、防重复注册），
     // 广播收敛到 broadcastThemeToAllWindows（主进程唯一实现，替换历史上
     // ShowThemeSettingDialog 里误用 window.electronAPI.broadcastTheme 的跨进程调用）。
+    // 2026-11-19：载荷组装统一走 buildThemeBroadcastPayload（shared ThemeUpdateData 契约）。
     // P1/N-05：主题更新会改写渲染层外观并广播到所有窗口，仅主窗口可信。
     ipcListenerManager.registerOnce(
         IPC.THEME.UPDATE_THEME,
@@ -437,12 +439,13 @@ app.whenReady().then(() => {
                     logger.error('[Main] Failed to get current theme styles')
                     return
                 }
-                broadcastThemeToAllWindows({
-                    themeStyles: theme,
-                    monacoTheme: typeof monacoTheme === 'string' ? monacoTheme : getMonacoTheme(),
-                    separateEditorTheme:
+                broadcastThemeToAllWindows(
+                    buildThemeBroadcastPayload(
+                        theme,
+                        typeof monacoTheme === 'string' ? monacoTheme : getMonacoTheme(),
                         typeof separate === 'boolean' ? separate : getSeparateEditorTheme()
-                })
+                    )
+                )
             }
         ),
         GLOBAL_MAIN_INDEX_COMPONENT_ID

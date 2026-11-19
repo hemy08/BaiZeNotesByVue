@@ -1,3 +1,10 @@
+// ============ URL 常量单一真源 ============
+// 2026-11-19 重构：全仓库在线工具/默认快速链接 URL 只在此文件维护。
+//   - 主进程：经 src/main/constants/urls.ts 的 re-export 门面引用（导出表面不变）；
+//   - 渲染层：src/renderer/src/common/useConfigStore.ts 使用 DEFAULT_* 快速链接。
+// 渲染层菜单数据（MenuBar/menu-consts.ts）只存 id/labelKey，不再保存 URL 副本，
+// 由主进程 src/main/ipc/menu-tools.ts 按菜单动作 id 命中本文件的 URL 常量。
+// 新增/修改 URL 只需改本文件，禁止再复制到其他模块（避免多份副本漂移）。
 export const TOOLS_JYSHARE = 'https://www.jyshare.com/'
 export const TOOLS_W3CSCHOOL = 'https://www.w3cschool.cn/tools/'
 export const TOOLS_TOOLNB = 'https://www.toolnb.com/'

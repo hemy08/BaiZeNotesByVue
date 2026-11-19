@@ -511,6 +511,8 @@ import { logger } from '../../../common/logger'
 // 批次 C #10：「打开主题设置」复用菜单动作同款调用链（menu-actions.ts 的
 // configStore.showDialog('themeSettings')），不新增 IPC 通道
 import { getConfigStore } from '../../../common/useConfigStore'
+// 2026-11-19：系统设置默认值统一到 shared 常量（真源在主进程 system-setting.ts）
+import { SYSTEM_SETTING_FALLBACK } from '../../../../../shared/constants/system-defaults'
 
 interface Props {
     visible: boolean
@@ -556,28 +558,33 @@ const sidebarItems = [
     { id: 'backup', nameKey: 'dialogRenderer.systemSetting.sidebarBackup', icon: '💾' }
 ]
 
-// 保存初始状态，用于取消时恢复（与主进程 system-setting.ts 的新默认值一致：
-// P2-10 minimizeToTray / P2-11 enableAutoBackup 均默认关闭，opt-in）
-const initialSettings = ref({
-    autoOpenLastFile: false,
-    autoOpenLastFolder: false,
-    autoStart: false,
-    minimizeToTray: false,
-    rememberWindowSize: true,
+// 初始状态（也用于取消时恢复）：默认值统一引用共享常量 SYSTEM_SETTING_FALLBACK。
+// 背景：此前这里还有第三套本地默认值（两项 opt-in 为 false、autoSaveInterval: 30、
+// fontSize: 14），与主进程真源（60 / 13）及 store 旧 fallback 互相矛盾。
+// 常量真源为主进程 src/main/config/system-setting.ts，此处仅作读取失败/字段缺失兜底。
+// 注意只按本对话框字段做映射：不把主进程内部字段（模态开关、菜单栏样式等）带入
+// config:write('system') 的提交载荷，避免「应用」时覆盖主进程自身字段。
+const initialSettings = ref<SystemDialogSettings>({
+    autoOpenLastFile: SYSTEM_SETTING_FALLBACK.autoOpenLastFile,
+    autoOpenLastFolder: SYSTEM_SETTING_FALLBACK.autoOpenLastFolder,
+    autoStart: SYSTEM_SETTING_FALLBACK.autoStart,
+    minimizeToTray: SYSTEM_SETTING_FALLBACK.minimizeToTray,
+    rememberWindowSize: SYSTEM_SETTING_FALLBACK.rememberWindowSize,
+    // 主进程默认 'zh-cn'（小写），本对话框下拉选项为 'zh-CN' / 'en-US'，按展示值归一化
     language: 'zh-CN',
-    defaultFilePath: '',
-    autoSaveEnabled: true,
-    autoSaveInterval: 30,
-    recentFilesCount: 10,
-    appTheme: 'baize',
-    useSystemTheme: false,
-    fontFamily: 'Microsoft YaHei',
-    fontSize: 14,
-    enableAutoBackup: false,
-    backupInterval: 24,
-    backupCount: 5,
+    defaultFilePath: SYSTEM_SETTING_FALLBACK.defaultFilePath,
+    autoSaveEnabled: SYSTEM_SETTING_FALLBACK.autoSaveEnabled,
+    autoSaveInterval: SYSTEM_SETTING_FALLBACK.autoSaveInterval,
+    recentFilesCount: SYSTEM_SETTING_FALLBACK.recentFilesCount,
+    appTheme: SYSTEM_SETTING_FALLBACK.appTheme,
+    useSystemTheme: SYSTEM_SETTING_FALLBACK.useSystemTheme,
+    fontFamily: SYSTEM_SETTING_FALLBACK.fontFamily,
+    fontSize: SYSTEM_SETTING_FALLBACK.fontSize,
+    enableAutoBackup: SYSTEM_SETTING_FALLBACK.enableAutoBackup,
+    backupInterval: SYSTEM_SETTING_FALLBACK.backupInterval,
+    backupCount: SYSTEM_SETTING_FALLBACK.backupCount,
     // AS-9（P3 隐私）：安全默认——不加载远程图片
-    allowRemoteImages: false
+    allowRemoteImages: SYSTEM_SETTING_FALLBACK.allowRemoteImages
 })
 
 const settings = ref<SystemDialogSettings>({ ...initialSettings.value })

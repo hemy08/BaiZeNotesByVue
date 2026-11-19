@@ -11,19 +11,44 @@
  * C-03 收口：把"向所有存活窗口广播主题"抽成主进程独立函数，统一由此模块实现，
  * 任何主进程侧主题广播（index.ts 的 UPDATE_THEME、配置写后的主题应用）都复用本函数；
  * 主进程内禁止再出现 `window.electronAPI` 形式的跨进程调用。
+ *
+ * 2026-11-19 契约归位 + 载荷组装收口（本轮重构）：
+ * - 删除本模块自定义的 ThemeBroadcastPayload（themeStyles: unknown），广播载荷类型
+ *   直接复用 shared 唯一真源 ThemeUpdateData（src/shared/types/theme.ts），主进程与
+ *   渲染层不再各持一份契约；
+ * - 载荷组装抽为纯函数 buildThemeBroadcastPayload()，主进程三处发送现场
+ *   （main/index.ts 的 UPDATE_THEME、config/system-theme.ts 跟随系统主题、
+ *   config/config-manager.ts 配置写入与备份恢复）统一经它组装，字段形态只在
+ *   本模块定义一次；
+ * - config-manager.ts 原先自行遍历 BrowserWindow 的广播实现已删除，改为复用
+ *   broadcastThemeToAllWindows（本模块仍是主进程唯一广播出口）。
  */
 import { BrowserWindow } from 'electron'
 import { IPC } from '../../shared/ipc-channels'
+// ARC-13/契约归位：广播载荷类型以 shared 为唯一真源（主进程不再自定义重复结构）
+import type { ThemeStyles, ThemeUpdateData } from '../../shared/types'
 import { logger } from '../utils/logger'
 
-/** 主题广播载荷：与渲染层 handleThemeUpdate 的期望形态保持一致 */
-export interface ThemeBroadcastPayload {
-    /** 最新主题样式（ThemeStyles 对象；保持 unknown 以避免与本模块耦合主题注册表） */
-    themeStyles: unknown
-    /** Monaco 主题名 */
-    monacoTheme: string
-    /** 编辑器是否使用独立主题 */
+/**
+ * 组装主题广播载荷（纯函数：只做字段组装，不读 store、不发送 IPC）。
+ *
+ * 返回值即 shared 唯一契约 ThemeUpdateData——主进程发送端与渲染层
+ * BaiZeNotes.vue 的 handleThemeUpdate 共用同一份字段定义。
+ *
+ * 三处调用现场的取值来源不同（index.ts 优先采用渲染层经 IPC 传入的主题类型 /
+ * Monaco 主题 / 独立主题参数，另两处读取当前 store），因此由调用方传入字段值，
+ * 本函数只负责把值收敛成契约形态，避免字段名/顺序在多点重复。
+ *
+ * @param themeStyles 最新应用主题样式（shared ThemeStyles）
+ * @param monacoTheme Monaco 编辑器主题名
+ * @param separateEditorTheme 编辑器是否使用独立主题
+ */
+export function buildThemeBroadcastPayload(
+    themeStyles: ThemeStyles,
+    monacoTheme: string,
     separateEditorTheme: boolean
+): ThemeUpdateData {
+    return { themeStyles, monacoTheme, separateEditorTheme }
 }
 
 /**
@@ -33,7 +58,7 @@ export interface ThemeBroadcastPayload {
  * - 单个窗口 send 抛错（窗口销毁竞态）只告警，不影响其余窗口；
  * - 返回成功发送的窗口数量（供测试与诊断断言）。
  */
-export function broadcastThemeToAllWindows(payload: ThemeBroadcastPayload): number {
+export function broadcastThemeToAllWindows(payload: ThemeUpdateData): number {
     const windows = BrowserWindow.getAllWindows()
     let sentCount = 0
     for (const window of windows) {

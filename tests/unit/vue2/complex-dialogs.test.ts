@@ -426,7 +426,9 @@ describe('SystemSettingDialog', () => {
 
         expect(invoke).toHaveBeenCalledWith('baize:setting:auto-save-changed', {
             autoSaveEnabled: false,
-            autoSaveInterval: 30
+            // 2026-11-19：默认值统一到 SYSTEM_SETTING_FALLBACK（主进程真源 60 秒，
+            // 此前对话框本地 fallback 为 30 与主进程矛盾）
+            autoSaveInterval: 60
         })
         // 防回归：不得再退回单向 send（send 无法触达 ipcMain.handle）
         expect(send).not.toHaveBeenCalled()

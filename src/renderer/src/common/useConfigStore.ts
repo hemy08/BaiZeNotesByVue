@@ -8,8 +8,6 @@ import {
     DEFAULT_GOOGLE,
     DEFAULT_STACKOVERFLOW
 } from '../../../shared/constants/urls'
-// CQ-8：'system' 配置的主进程唯一契约类型（ARC-13）
-import type { SystemSetting } from '../../../shared/types'
 import { t } from './i18n'
 
 // 类型定义
@@ -30,38 +28,6 @@ export interface EditorConfig {
     showLineNumbers: boolean
     minimap: { enabled: boolean; maxColumn: number }
 }
-
-/**
- * CQ-8：系统设置渲染层视图。
- *
- * 主进程 'system' 配置的真实契约是 src/shared/types/system.ts 的 SystemSetting
- * （ARC-13 唯一真源；config-manager 的 'system' 路由 → getSystemSetting/saveSystemSetting）。
- * 历史上本接口把「渲染层扩展字段」全部声明为必填，导致 `read<SystemConfig>('system')`
- * 的类型断言向消费者撒谎（主进程实际返回 SystemSetting，必填 language 之外的扩展字段
- * 可能缺失）。现改为 SystemSetting 对应字段的 Partial 视图：字段名/类型与主进程契约一致，
- * 可选性与真实往返数据一致。
- *
- * 注意：该状态当前没有生产消费者——FE-05/06 修复后，系统设置对话框直接经
- * window.api.config.read/write('system') 读写 SystemSetting。保留本状态与
- * save/update 方法仅为兼容历史调用面。
- */
-export type SystemConfig = Partial<
-    Pick<
-        SystemSetting,
-        | 'language'
-        | 'autoOpenLastFile'
-        | 'autoOpenLastFolder'
-        | 'autoStart'
-        | 'minimizeToTray'
-        | 'rememberWindowSize'
-        | 'defaultFilePath'
-        | 'recentFilesCount'
-        | 'checkUpdateOnStart'
-        | 'enableAutoBackup'
-        | 'backupInterval'
-        | 'backupCount'
-    >
->
 
 export interface QuickLink {
     name: string
@@ -91,22 +57,6 @@ export const defaultEditorConfig: EditorConfig = {
     autoSaveInterval: 30,
     showLineNumbers: true,
     minimap: { enabled: true, maxColumn: 120 }
-}
-
-export const defaultSystemConfig: SystemConfig = {
-    // 2026-11-19：与主进程 system-setting 默认值统一（此前渲染层 fallback 为 true）
-    autoOpenLastFile: false,
-    autoOpenLastFolder: false,
-    autoStart: false,
-    minimizeToTray: true,
-    rememberWindowSize: true,
-    defaultFilePath: '',
-    recentFilesCount: 10,
-    language: 'zh-CN',
-    checkUpdateOnStart: true,
-    enableAutoBackup: true,
-    backupInterval: 24,
-    backupCount: 5
 }
 
 export const defaultQuickLinksConfig: QuickLinksConfig = {
@@ -174,7 +124,6 @@ const defaultDialogState: DialogState = {
 // 全局状态
 const themeConfig = ref<ThemeConfig>({ ...defaultThemeConfig })
 const editorConfig = ref<EditorConfig>({ ...defaultEditorConfig })
-const systemConfig = ref<SystemConfig>({ ...defaultSystemConfig })
 const quickLinksConfig = ref<QuickLinksConfig>({ ...defaultQuickLinksConfig })
 const dialogs = reactive<DialogState>({ ...defaultDialogState })
 const isLoading = ref(false)
@@ -304,18 +253,17 @@ export async function flushConfigWrites(): Promise<void> {
 async function loadAllConfigs() {
     isLoading.value = true
     try {
-        const [theme, editor, system, links] = await Promise.all([
+        // 2026-11-19：不再在全局 store 缓存 'system' 配置——该状态零生产消费者，
+        // 系统设置对话框直接经 window.api.config.read/write('system') 读写主进程
+        // SystemSetting（唯一真源 src/main/config/system-setting.ts），避免两套默认值漂移。
+        const [theme, editor, links] = await Promise.all([
             window.api.config.read<ThemeConfig>('theme'),
             window.api.config.read<EditorConfig>('editor'),
-            // CQ-8：'system' 路由实际返回 SystemSetting（config-manager: getSystemSetting），
-            // 原 read<SystemConfig> 为错误断言；现按主进程契约读取。
-            window.api.config.read<SystemSetting>('system'),
             window.api.config.read<QuickLinksConfig>('quick-links')
         ])
 
         if (theme) themeConfig.value = theme
         if (editor) editorConfig.value = editor
-        if (system) systemConfig.value = system
         if (links) quickLinksConfig.value = links
     } catch (error) {
         console.error('[ConfigStore] Error loading configs:', error)
@@ -334,11 +282,6 @@ async function saveEditorConfig() {
     saveConfig('editor', editorConfig.value)
 }
 
-// 保存系统配置
-async function saveSystemConfig() {
-    saveConfig('system', systemConfig.value)
-}
-
 // 保存快捷链接配置
 async function saveQuickLinksConfig() {
     saveConfig('quick-links', quickLinksConfig.value)
@@ -354,12 +297,6 @@ function updateThemeConfig(config: Partial<ThemeConfig>) {
 function updateEditorConfig(config: Partial<EditorConfig>) {
     Object.assign(editorConfig.value, config)
     saveEditorConfig()
-}
-
-// 更新系统配置
-function updateSystemConfig(config: Partial<SystemConfig>) {
-    Object.assign(systemConfig.value, config)
-    saveSystemConfig()
 }
 
 // 消息对话框类型
@@ -469,7 +406,6 @@ export const useConfigStore = () => ({
     // 状态
     themeConfig,
     editorConfig,
-    systemConfig,
     quickLinksConfig,
     dialogs,
     isLoading,
@@ -486,13 +422,11 @@ export const useConfigStore = () => ({
     loadAllConfigs,
     saveThemeConfig,
     saveEditorConfig,
-    saveSystemConfig,
     saveQuickLinksConfig,
     // FE-35：立即落盘待写配置（关闭窗口/卸载前 flush）
     flushConfigWrites,
     updateThemeConfig,
     updateEditorConfig,
-    updateSystemConfig,
     showDialog,
     hideDialog,
     toggleDialog,

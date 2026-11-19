@@ -30,7 +30,11 @@ vi.mock('electron', () => ({
         },
         on: nativeThemeMocks.on,
         removeListener: nativeThemeMocks.removeListener
-    }
+    },
+    // theme-broadcast 模块静态导入 BrowserWindow（本文件经 importOriginal 保留其
+    // 真实 buildThemeBroadcastPayload），mock 侧提供空实现避免缺失导出报错；
+    // 实际广播发送端已被下方 mock 替换，不会触发窗口遍历。
+    BrowserWindow: { getAllWindows: vi.fn(() => []) }
 }))
 
 const systemSettingMocks = vi.hoisted(() => ({
@@ -66,9 +70,14 @@ const broadcastMocks = vi.hoisted(() => ({
     broadcast: vi.fn(() => 1)
 }))
 
-vi.mock('../../src/main/ipc/theme-broadcast', () => ({
-    broadcastThemeToAllWindows: broadcastMocks.broadcast
-}))
+// 只替换广播发送端（保持 theme-broadcast 模块其余导出为真实实现）：
+// - buildThemeBroadcastPayload 是本次收敛新增的纯组装函数，保留真实实现才能让下方
+//   "broadcast 收到完整 3 字段载荷" 断言覆盖 system-theme → 组装 → 统一广播整条链路；
+// - broadcastThemeToAllWindows 用 mock 记录调用（避免真实 electron 窗口依赖）。
+vi.mock('../../src/main/ipc/theme-broadcast', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../src/main/ipc/theme-broadcast')>()
+    return { ...actual, broadcastThemeToAllWindows: broadcastMocks.broadcast }
+})
 
 vi.mock('../../src/main/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }

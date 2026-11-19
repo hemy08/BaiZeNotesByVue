@@ -65,6 +65,19 @@ vi.mock('../../src/main/config/system-theme', () => ({
     applySystemThemeNow: vi.fn()
 }))
 
+// 2026-11-19 主题广播收敛：config-manager 的 broadcastThemeConfig 不再自行遍历
+// BrowserWindow，改为调用 ipc/theme-broadcast 的唯一广播实现。本文件只验证
+// "是否走统一函数"及其载荷（buildThemeBroadcastPayload 保留真实纯函数实现）；
+// 窗口遍历/容错细节由 theme-broadcast.test.ts 覆盖。
+const broadcastMocks = vi.hoisted(() => ({
+    broadcast: vi.fn()
+}))
+
+vi.mock('../../src/main/ipc/theme-broadcast', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../src/main/ipc/theme-broadcast')>()
+    return { ...actual, broadcastThemeToAllWindows: broadcastMocks.broadcast }
+})
+
 // 批次 C #8/#9：自动备份定时器同步单独 mock——备份细节由 auto-backup.test.ts 覆盖，
 // 本文件只验证 config-manager 保存路径的调用触发关系
 vi.mock('../../src/main/utils/auto-backup', () => ({
@@ -75,6 +88,8 @@ import { configManager, registerConfigIpcHandlers } from '../../src/main/config/
 import { ensureTrayCreated } from '../../src/main/utils/tray'
 import { applySystemThemeNow } from '../../src/main/config/system-theme'
 import { syncAutoBackupTimer } from '../../src/main/utils/auto-backup'
+// 2026-11-19：主题广播收敛后的统一广播函数（模块被 mock，仅替换发送端）
+import { broadcastThemeToAllWindows } from '../../src/main/ipc/theme-broadcast'
 import { setTrustedMainWindow, resetTrustedSenderRegistry } from '../../src/main/utils/ipc-security'
 import { appState } from '../../src/main/utils/app-state'
 import { IPC } from '../../src/shared/ipc-channels'
@@ -103,6 +118,8 @@ describe('config-manager', () => {
         // 批次 B：清理托盘/系统主题副作用 mock 的调用记录
         vi.mocked(ensureTrayCreated).mockClear()
         vi.mocked(applySystemThemeNow).mockClear()
+        // 2026-11-19：主题广播收敛——清理统一广播函数调用记录
+        vi.mocked(broadcastThemeToAllWindows).mockClear()
         // 批次 C：清理自动备份定时器同步 mock 的调用记录
         vi.mocked(syncAutoBackupTimer).mockClear()
     })
@@ -328,6 +345,14 @@ describe('config-manager', () => {
             expect(stored.editorTheme).toBe('vs')
             // 不再产生裸 JSON theme.json
             expect(await fs.pathExists(path.join(CONFIG_DIR, 'theme.json'))).toBe(false)
+            // 2026-11-19 广播收敛：主题写入后的广播统一经 ipc/theme-broadcast 的唯一实现，
+            // 载荷由 buildThemeBroadcastPayload 组装为 shared ThemeUpdateData 契约形态
+            expect(vi.mocked(broadcastThemeToAllWindows)).toHaveBeenCalledTimes(1)
+            expect(vi.mocked(broadcastThemeToAllWindows).mock.calls[0][0]).toEqual({
+                themeStyles: expect.objectContaining({ name: '深邃夜空' }),
+                monacoTheme: 'vs',
+                separateEditorTheme: false
+            })
         })
     })
 

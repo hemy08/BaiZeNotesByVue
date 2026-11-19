@@ -124,13 +124,77 @@ export function useWindowManagement(options: UseWindowManagementOptions = {}) {
         pendingResizeBounds = null
     }
 
+    // ==================== 窗口最大化状态同步（主界面标题栏按钮） ====================
+    // 2026-11-19（用户反馈）：标题栏最大化按钮此前发送 MAXIMIZE（主进程只 maximize()），
+    // 二次点击无法还原。现统一为 TOGGLE_MAXIMIZE 语义，并维护真实最大化状态供按钮在
+    // 「最大化 / 还原」图标与 title 之间切换（与 WelcomeScreen.vue 的交互保持一致）。
+    // 除点击按钮外，双击标题栏、Win+Up、拖拽贴边等「系统级」最大化/还原不会经过本
+    // composable 的点击处理，只触发窗口 resize，因此监听 resize 延迟刷新状态。
+    const isMaximized = ref(false)
+
+    /** 最大化状态刷新定时器（主进程切换完成后再查询，避免读到切换前的旧状态） */
+    let maximizeRefreshTimer: ReturnType<typeof setTimeout> | null = null
+    /** resize 状态同步是否已启动（startMaximizedStateSync / stopMaximizedStateSync 成对） */
+    let isMaximizeSyncStarted = false
+
+    /** 查询主进程当前最大化状态（失败时保持现有状态，不影响按钮操作） */
+    async function refreshMaximizedState(): Promise<void> {
+        try {
+            const value = await window.electron.ipcRenderer.invoke(IPC.WINDOW.IS_MAXIMIZED)
+            isMaximized.value = value === true
+        } catch {
+            // 查询失败保持现有状态（不影响窗口按钮操作）
+        }
+    }
+
+    /** 延迟刷新最大化状态（点击切换后主进程状态更新有异步时延） */
+    function scheduleMaximizeRefresh(delay = 100): void {
+        if (maximizeRefreshTimer !== null) {
+            clearTimeout(maximizeRefreshTimer)
+        }
+        maximizeRefreshTimer = setTimeout(() => {
+            maximizeRefreshTimer = null
+            void refreshMaximizedState()
+        }, delay)
+    }
+
+    /** 系统级最大化/还原（双击拖拽条、Win+Up、贴边吸附等）同样触发 resize，据此同步图标 */
+    function handleWindowResize(): void {
+        scheduleMaximizeRefresh(50)
+    }
+
+    /**
+     * 启动最大化状态同步：先查询一次当前状态，再监听 window resize。
+     * 由组件在 onMounted 中调用；清理统一走 cleanupWindowEvents()。
+     */
+    function startMaximizedStateSync(): void {
+        if (isMaximizeSyncStarted) return
+        isMaximizeSyncStarted = true
+        window.addEventListener('resize', handleWindowResize)
+        void refreshMaximizedState()
+    }
+
+    /** 停止最大化状态同步：清理刷新定时器与 resize 监听（幂等） */
+    function stopMaximizedStateSync(): void {
+        if (maximizeRefreshTimer !== null) {
+            clearTimeout(maximizeRefreshTimer)
+            maximizeRefreshTimer = null
+        }
+        if (isMaximizeSyncStarted) {
+            isMaximizeSyncStarted = false
+            window.removeEventListener('resize', handleWindowResize)
+        }
+    }
+
     function minimizeWindow() {
         window.electron.ipcRenderer.send(IPC.WINDOW.MINIMIZE)
         onReLayout?.()
     }
 
     function maximizeWindow() {
-        window.electron.ipcRenderer.send(IPC.WINDOW.MAXIMIZE)
+        // 统一 TOGGLE 语义：二次点击还原（原 MAXIMIZE 只能最大化、无法还原）
+        window.electron.ipcRenderer.send(IPC.WINDOW.TOGGLE_MAXIMIZE)
+        scheduleMaximizeRefresh()
         onReLayout?.()
     }
 
@@ -189,6 +253,8 @@ export function useWindowManagement(options: UseWindowManagementOptions = {}) {
     function onTitleBarDblClick(e: MouseEvent) {
         if ((e.target as HTMLElement).closest('.window-controls')) return
         window.electron.ipcRenderer.send(IPC.WINDOW.TOGGLE_MAXIMIZE)
+        // 双击切换后同步标题栏按钮图标（resize 亦会触发刷新，此处覆盖无 resize 的边界情况）
+        scheduleMaximizeRefresh()
         onReLayout?.()
     }
 
@@ -255,6 +321,8 @@ export function useWindowManagement(options: UseWindowManagementOptions = {}) {
     function cleanupWindowEvents() {
         // PF-7：卸载/清理时丢弃未提交的拖拽/缩放帧并取消 rAF
         cancelPendingFrames()
+        // 停止最大化状态同步（移除 window resize 监听并清理刷新定时器）
+        stopMaximizedStateSync()
         document.removeEventListener('mousemove', onDragMouseMove)
         document.removeEventListener('mouseup', onDragMouseUp)
         document.removeEventListener('mousemove', onResizeMouseMove)
@@ -264,6 +332,10 @@ export function useWindowManagement(options: UseWindowManagementOptions = {}) {
     return {
         isDragging,
         isResizing,
+        // 窗口最大化状态（主界面标题栏按钮据此切换「最大化/还原」图标与 title）
+        isMaximized,
+        refreshMaximizedState,
+        startMaximizedStateSync,
         minimizeWindow,
         maximizeWindow,
         closeWindow,

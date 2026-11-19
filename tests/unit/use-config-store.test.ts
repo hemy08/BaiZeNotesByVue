@@ -7,16 +7,18 @@ import {
     useConfigStore,
     defaultThemeConfig,
     defaultEditorConfig,
-    defaultSystemConfig,
     defaultQuickLinksConfig,
     CONFIG_SAVE_DEBOUNCE_MS,
     flushConfigWrites
 } from '../../src/renderer/src/common/useConfigStore'
+// 2026-11-19 重构：DEFAULT_* 唯一真源为 shared/constants/urls.ts
+// （main/constants/urls.ts 现仅为 re-export 门面，useConfigStore 亦直接引用 shared），
+// 故此处断言改为对齐真源模块，覆盖不弱化。
 import {
     DEFAULT_GITHUB,
     DEFAULT_GOOGLE,
     DEFAULT_STACKOVERFLOW
-} from '../../src/main/constants/urls'
+} from '../../src/shared/constants/urls'
 
 // 假配置读写 API
 const configApi = {
@@ -29,7 +31,6 @@ function resetStoreState() {
     const store = getConfigStore()
     store.themeConfig.value = { ...defaultThemeConfig }
     store.editorConfig.value = { ...defaultEditorConfig }
-    store.systemConfig.value = { ...defaultSystemConfig }
     store.quickLinksConfig.value = { ...defaultQuickLinksConfig }
     store.isLoading.value = false
 
@@ -77,11 +78,9 @@ describe('useConfigStore defaults', () => {
         expect(store.editorConfig.value.minimap).toEqual({ enabled: true, maxColumn: 120 })
     })
 
-    it('should expose default system and quick link configs', () => {
+    // 2026-11-19：删除 systemConfig 死状态后只保留快捷链接默认值断言
+    it('should expose default quick link configs', () => {
         const store = getConfigStore()
-        expect(store.systemConfig.value).toEqual(defaultSystemConfig)
-        expect(store.systemConfig.value.language).toBe('zh-CN')
-        expect(store.systemConfig.value.backupInterval).toBe(24)
         expect(store.quickLinksConfig.value).toEqual(defaultQuickLinksConfig)
         expect(store.quickLinksConfig.value.links).toHaveLength(3)
         expect(store.quickLinksConfig.value.links[0].url).toBe(DEFAULT_GITHUB)
@@ -279,14 +278,13 @@ describe('useConfigStore saving', () => {
         expect(names).toEqual(['theme', 'editor'])
     })
 
-    it('should save the system and quick link configs with their names', async () => {
+    it('should save the quick link config with its name', async () => {
         const store = getConfigStore()
-        store.updateSystemConfig({ language: 'en-US' })
         store.saveQuickLinksConfig()
 
         await vi.advanceTimersByTimeAsync(500)
-        expect(configApi.write).toHaveBeenCalledTimes(2)
-        expect(configApi.write.mock.calls.map((call) => call[0])).toEqual(['system', 'quick-links'])
+        expect(configApi.write).toHaveBeenCalledTimes(1)
+        expect(configApi.write.mock.calls.map((call) => call[0])).toEqual(['quick-links'])
     })
 
     // FE-20：去抖写盘失败（主进程 writeConfig 返回 false）不再静默——弹消息对话框提示
@@ -338,11 +336,12 @@ describe('useConfigStore loading', () => {
         vi.restoreAllMocks()
     })
 
-    it('should load all four configs in parallel and apply them', async () => {
+    // 2026-11-19：'system' 不再由全局 store 加载（无生产消费者的死状态已删除），
+    // 系统设置对话框直接经 config:read/write('system') 读取主进程真源。
+    it('should load the remaining three configs in parallel and apply them', async () => {
         configApi.read.mockImplementation(async (name: string) => {
             if (name === 'theme') return { currentTheme: 'loaded-dark', separateEditorTheme: false }
             if (name === 'editor') return { fontSize: 22 }
-            if (name === 'system') return { language: 'en-US' }
             if (name === 'quick-links')
                 return { links: [{ name: 'A', url: 'u', icon: 'i', description: 'd' }] }
             return null
@@ -353,10 +352,10 @@ describe('useConfigStore loading', () => {
 
         expect(store.themeConfig.value.currentTheme).toBe('loaded-dark')
         expect(store.editorConfig.value.fontSize).toBe(22)
-        expect(store.systemConfig.value.language).toBe('en-US')
         expect(store.quickLinksConfig.value.links).toHaveLength(1)
         expect(store.isLoading.value).toBe(false)
-        expect(configApi.read).toHaveBeenCalledTimes(4)
+        expect(configApi.read).toHaveBeenCalledTimes(3)
+        expect(configApi.read).not.toHaveBeenCalledWith('system')
     })
 
     it('should keep defaults for configs missing on disk', async () => {
@@ -370,7 +369,6 @@ describe('useConfigStore loading', () => {
 
         expect(store.themeConfig.value.currentTheme).toBe('saved')
         expect(store.editorConfig.value.fontSize).toBe(defaultEditorConfig.fontSize)
-        expect(store.systemConfig.value.language).toBe(defaultSystemConfig.language)
         expect(store.quickLinksConfig.value.links).toHaveLength(3)
         expect(store.isLoading.value).toBe(false)
     })
@@ -496,7 +494,8 @@ describe('useConfigStore flush（FE-35）', () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
         configApi.write.mockRejectedValue(new Error('disk full'))
         const store = getConfigStore()
-        store.updateSystemConfig({ language: 'en-US' })
+        // 2026-11-19：改用仍有生产消费者的 theme 配置（systemConfig 死状态已删除）
+        store.updateThemeConfig({ currentTheme: 'flush-error' })
 
         await expect(store.flushConfigWrites()).resolves.toBeUndefined()
 

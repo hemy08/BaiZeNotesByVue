@@ -18,10 +18,14 @@
  * MEM-10：ipcMain.handle 直连注册迁移至 ipcListenerManager.registerHandleOnce
  * （全局一次性注册，重复注册跳过而非抛错，防 ARC-06 回归）。
  */
-import { app, BrowserWindow } from 'electron'
+import { app } from 'electron'
 import * as fs from 'fs-extra'
 import * as path from 'path'
 import { ipcListenerManager } from '../ipc/ipc-listener-manager'
+// 2026-11-19：主题广播收敛——配置写入/备份恢复后的主题广播复用主进程唯一广播实现，
+// 载荷经 buildThemeBroadcastPayload 统一组装（shared ThemeUpdateData 契约），
+// 不再在本文件自行遍历 BrowserWindow 发送 THEME_UPDATED。
+import { broadcastThemeToAllWindows, buildThemeBroadcastPayload } from '../ipc/theme-broadcast'
 // P1/N-05：配置读写为高风险通道（可改写自动保存/主题/编辑器/快速链接等主进程配置），
 // 仅接受主窗口发送方；拒绝时 handle 返回统一错误对象（不执行读写）。
 import { withSenderCheck } from '../utils/ipc-security'
@@ -213,8 +217,9 @@ function applySystemSettings(data: Record<string, unknown>): void {
 }
 
 /**
- * ARC-04：主题配置写入后的广播——向所有窗口发送最新主题数据
- * （payload 形态与 main/index.ts 的 UPDATE_THEME 广播一致）。
+ * ARC-04：主题配置写入后的广播——经主进程唯一广播实现向所有窗口发送最新主题数据
+ * （载荷由 buildThemeBroadcastPayload 统一组装，形态与 shared ThemeUpdateData 契约一致，
+ * 与 main/index.ts 的 UPDATE_THEME 广播同源）。
  */
 function applyThemeConfig(data: Record<string, unknown>): void {
     const partial: Partial<ThemeConfig> = {}
@@ -233,18 +238,19 @@ function applyThemeConfig(data: Record<string, unknown>): void {
     broadcastThemeConfig()
 }
 
-/** 向所有窗口广播当前主题（写入后 / 备份恢复后复用同一负载组装） */
+/**
+ * 向所有窗口广播当前主题（写入后 / 备份恢复后复用同一负载组装与唯一广播实现）。
+ * 行为等价改写：原实现自行 BrowserWindow.getAllWindows().forEach + isDestroyed 过滤，
+ * 与 broadcastThemeToAllWindows 完全一致（后者另对单窗口 send 抛错做告警容错）。
+ */
 function broadcastThemeConfig(): void {
-    const themeData = {
-        themeStyles: getCurrentThemeStyles(),
-        monacoTheme: getMonacoTheme(),
-        separateEditorTheme: getSeparateEditorTheme()
-    }
-    BrowserWindow.getAllWindows().forEach((window) => {
-        if (!window.isDestroyed()) {
-            window.webContents.send(IPC.THEME.THEME_UPDATED, themeData)
-        }
-    })
+    broadcastThemeToAllWindows(
+        buildThemeBroadcastPayload(
+            getCurrentThemeStyles(),
+            getMonacoTheme(),
+            getSeparateEditorTheme()
+        )
+    )
 }
 
 /**

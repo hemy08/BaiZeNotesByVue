@@ -147,7 +147,8 @@ describe('App.vue 配置 flush（FE-35）', () => {
 
     it('App 卸载（onBeforeUnmount）时兜底 flush 待写配置', async () => {
         const app = await mountApp()
-        getConfigStore().updateSystemConfig({ language: 'en-US' })
+        // 2026-11-19：systemConfig 全局死状态已删除，改用仍有消费者的 theme 配置验证兜底 flush
+        getConfigStore().updateThemeConfig({ currentTheme: 'unmount-flush-dark' })
         expect(configWrite).not.toHaveBeenCalled()
 
         app.unmount()
@@ -156,8 +157,8 @@ describe('App.vue 配置 flush（FE-35）', () => {
         await Promise.resolve()
 
         expect(configWrite).toHaveBeenCalledWith(
-            'system',
-            expect.objectContaining({ language: 'en-US' })
+            'theme',
+            expect.objectContaining({ currentTheme: 'unmount-flush-dark' })
         )
     })
 

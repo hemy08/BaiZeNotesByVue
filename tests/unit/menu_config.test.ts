@@ -403,7 +403,8 @@ describe('menu-config', () => {
         expect(labels).toContain('开发者工具')
         expect(labels).toContain('国内知名前端团队')
         expect(labels).toContain('云计算平台')
-        // 在线菜单项由 url maps 生成：labelKey + menuAction(id) 形式
+        // 在线菜单项由 menu-consts.ts 的映射表生成：渲染层只取 labelKey + menuAction(id)
+        // （url 字段已删除，跳转地址真源在主进程/ shared constants）
         const cainiao = onlineMenu.submenu!.find((item) => displayText(item) === '菜鸟在线工具')
         expect(resolved(cainiao!.submenu![0])).toEqual({
             label: '菜鸟SVG图片编辑器',

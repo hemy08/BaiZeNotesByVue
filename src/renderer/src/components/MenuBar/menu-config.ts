@@ -29,9 +29,12 @@ export interface BaiZeMenuEntry extends BaiZeMenuItem {
     recentMenuPlaceholder?: boolean
 }
 
-// 辅助函数：从UrlMaps生成菜单项
+// 辅助函数：从菜单映射表生成菜单项。
+// 2026-11-19 重构：映射项中的死数据 url 字段已删除（渲染层从不消费 URL，
+// 真正跳转地址由主进程 menu-tools.ts 按 id 命中 shared/constants/urls.ts 的真源），
+// 故入参类型只保留渲染层实际使用的 id / label / labelKey。
 function generateMenuItems(
-    urlMaps: Array<{ id: string; label?: string; labelKey?: string; url: string }>
+    urlMaps: Array<{ id: string; label?: string; labelKey?: string }>
 ): BaiZeMenuEntry[] {
     return urlMaps.map((item) =>
         item.labelKey

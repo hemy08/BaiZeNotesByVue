@@ -2,7 +2,8 @@
  * 批次 B #7：跟随系统主题
  *
  * nativeTheme.on('updated') 监听：useSystemTheme 开启时，按 nativeTheme.shouldUseDarkColors
- * 选择语义对应的应用主题并立即应用 + 广播（复用 ipc/theme-broadcast.ts 的唯一广播实现）：
+ * 选择语义对应的应用主题并立即应用 + 广播（广播载荷经 buildThemeBroadcastPayload 统一组装、
+ * 经 ipc/theme-broadcast.ts 的 broadcastThemeToAllWindows 唯一广播实现发出）：
  * - 深色 → 'dark'（主题注册表中的「深邃夜空」，theme-config.ts themes.dark，确实存在）；
  * - 浅色 → 'light'（主题注册表中的「清新简约」，theme-config.ts themes.light，确实存在）；
  * 若未来注册表移除这两个主题，resolveSystemTheme 经 isKnownThemeType 防御性回退默认主题
@@ -24,7 +25,9 @@ import {
     setThemeConfig
 } from './theme-config'
 import type { ThemeType } from './theme-config'
-import { broadcastThemeToAllWindows } from '../ipc/theme-broadcast'
+// 2026-11-19：载荷统一经 buildThemeBroadcastPayload 组装（shared ThemeUpdateData 契约），
+// 发送统一经 broadcastThemeToAllWindows（主进程唯一广播实现）
+import { broadcastThemeToAllWindows, buildThemeBroadcastPayload } from '../ipc/theme-broadcast'
 import { logger } from '../utils/logger'
 
 /** 系统深色对应的应用主题（theme-config 注册表中的「深邃夜空」） */
@@ -56,11 +59,13 @@ export function applySystemThemeNow(): void {
         return
     }
     setThemeConfig({ currentTheme: target })
-    broadcastThemeToAllWindows({
-        themeStyles: getCurrentThemeStyles(),
-        monacoTheme: getMonacoTheme(),
-        separateEditorTheme: getSeparateEditorTheme()
-    })
+    broadcastThemeToAllWindows(
+        buildThemeBroadcastPayload(
+            getCurrentThemeStyles(),
+            getMonacoTheme(),
+            getSeparateEditorTheme()
+        )
+    )
     logger.info(`[SystemTheme] 已跟随系统主题切换为 ${target}`)
 }
 

@@ -13,6 +13,8 @@
                 <span class="title-text">{{ t('workspace.appTitle') }}</span>
             </div>
             <div class="window-controls">
+                <!-- 窗口按钮与 WelcomeScreen.vue 的控件为重复实现（本轮不做组件抽取），
+                     后续可抽为公共 WindowControls.vue（最大化状态同步逻辑在 useWindowManagement 中）。 -->
                 <button
                     class="window-btn minimize"
                     :title="t('workspace.window.minimize')"
@@ -22,11 +24,18 @@
                 </button>
                 <button
                     class="window-btn maximize"
-                    :title="t('workspace.window.maximize')"
+                    :title="
+                        isMaximized ? t('workspace.window.restore') : t('workspace.window.maximize')
+                    "
                     @click="maximizeWindow"
                 >
-                    <svg viewBox="0 0 12 12">
+                    <!-- 2026-11-19：与 WelcomeScreen 一致——最大化时切换为「还原」图标（两层矩形） -->
+                    <svg v-if="!isMaximized" viewBox="0 0 12 12">
                         <rect x="2" y="2" width="8" height="8" fill="none" />
+                    </svg>
+                    <svg v-else viewBox="0 0 12 12">
+                        <rect x="2" y="4" width="6" height="6" fill="none" />
+                        <path d="M4 4V2h6v6H8" fill="none" />
                     </svg>
                 </button>
                 <button class="window-btn close" :title="t('common.close')" @click="closeWindow">
@@ -197,12 +206,14 @@ const configStore = getConfigStore()
 const emit = defineEmits<{ (event: 'main-view-mounted'): void }>()
 
 const {
+    isMaximized,
     minimizeWindow,
     maximizeWindow,
     closeWindow,
     onTitleBarMouseDown,
     onTitleBarDblClick,
     onResizeMouseDown,
+    startMaximizedStateSync,
     cleanupWindowEvents
 } = useWindowManagement({
     onReLayout: EditorReLayout
@@ -592,6 +603,10 @@ onMounted(async () => {
     window.electron.ipcRenderer.on(IPC.THEME.THEME_UPDATED, handleThemeUpdate)
     window.electron.ipcRenderer.on(IPC.DIALOG.OPEN_VUE_DIALOG, handleOpenVueDialog)
 
+    // 2026-11-19：启动标题栏最大化状态同步（初始查询 + resize 监听），
+    // 使窗口经双击标题栏/Win+Up/贴边吸附最大化后按钮图标仍能正确切换。
+    startMaximizedStateSync()
+
     // 以上监听器已同步注册完成（子组件的 onMounted 早于本组件的 onMounted 执行），
     // 通知外壳主界面已就绪；App.vue 在此之后才发送 READY 握手，保证启动恢复数据不丢失。
     emit('main-view-mounted')
@@ -666,7 +681,10 @@ onBeforeUnmount(() => {
 
 .window-controls {
     display: flex;
-    align-items: right;
+    /* 2026-11-19：原值 align-items: right 为非法 CSS（交叉轴对齐不接受 right），
+       改为合法值 flex-end；按钮自身高 30px 撑满标题栏，横向位置由标题栏的
+       justify-content: space-between 决定。 */
+    align-items: flex-end;
     gap: 0;
     -webkit-app-region: no-drag;
 }

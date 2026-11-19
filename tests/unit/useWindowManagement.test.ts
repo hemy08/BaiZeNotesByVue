@@ -10,6 +10,10 @@ let ipcInvoke: ReturnType<typeof vi.fn>
 let docListeners: Map<string, Array<(e: unknown) => void>>
 let addEventListenerMock: ReturnType<typeof vi.fn>
 let removeEventListenerMock: ReturnType<typeof vi.fn>
+// 2026-11-19：最大化状态同步监听 window resize（与 document 的拖拽/缩放监听分开记录）
+let windowListeners: Map<string, Array<(e: unknown) => void>>
+let windowAddEventListenerMock: ReturnType<typeof vi.fn>
+let windowRemoveEventListenerMock: ReturnType<typeof vi.fn>
 // onReLayout 作为 UseWindowManagementOptions.onReLayout（() => void）传入，
 // 用精确签名替代 vi.fn() 的 Procedure|Constructable 宽签名，否则选项赋值 TS2322。
 let onReLayout: Mock<() => void>
@@ -33,12 +37,30 @@ beforeEach(() => {
             }
         }
     })
+    windowListeners = new Map()
+    windowAddEventListenerMock = vi.fn((type: string, fn: (e: unknown) => void) => {
+        if (!windowListeners.has(type)) {
+            windowListeners.set(type, [])
+        }
+        windowListeners.get(type)!.push(fn)
+    })
+    windowRemoveEventListenerMock = vi.fn((type: string, fn: (e: unknown) => void) => {
+        const list = windowListeners.get(type)
+        if (list) {
+            const index = list.indexOf(fn)
+            if (index >= 0) {
+                list.splice(index, 1)
+            }
+        }
+    })
     onReLayout = vi.fn<() => void>()
 
     vi.stubGlobal('window', {
         electron: { ipcRenderer: { send: ipcSend, invoke: ipcInvoke } },
         innerWidth: 1000,
-        innerHeight: 800
+        innerHeight: 800,
+        addEventListener: windowAddEventListenerMock,
+        removeEventListener: windowRemoveEventListenerMock
     })
     vi.stubGlobal('document', {
         addEventListener: addEventListenerMock,
@@ -47,12 +69,21 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
 })
 
 // 触发 document 上注册的指定类型监听器
 function fireDocumentListener(type: string, event: unknown) {
     const listeners = docListeners.get(type) ?? []
+    for (const listener of [...listeners]) {
+        listener(event)
+    }
+}
+
+// 触发 window 上注册的指定类型监听器（最大化状态同步的 resize）
+function fireWindowListener(type: string, event: unknown) {
+    const listeners = windowListeners.get(type) ?? []
     for (const listener of [...listeners]) {
         listener(event)
     }
@@ -86,11 +117,89 @@ describe('useWindowManagement', () => {
         expect(onReLayout).toHaveBeenCalledTimes(1)
     })
 
-    it('should send window-maximize and notify layout on maximize', () => {
+    it('should send window-toggle-maximize and notify layout on maximize (TOGGLE 语义)', () => {
         const mgr = useWindowManagement({ onReLayout })
         mgr.maximizeWindow()
-        expect(ipcSend).toHaveBeenCalledWith('baize:window:maximize')
+        // 2026-11-19（用户反馈）：主界面最大化按钮此前发送 MAXIMIZE（只能最大化），
+        // 二次点击无法还原；统一改为 TOGGLE_MAXIMIZE。
+        expect(ipcSend).toHaveBeenCalledWith('baize:window:toggle-maximize')
+        expect(ipcSend).not.toHaveBeenCalledWith('baize:window:maximize')
         expect(onReLayout).toHaveBeenCalledTimes(1)
+        // 清理点击后排队的状态刷新定时器
+        mgr.cleanupWindowEvents()
+    })
+
+    it('should refresh isMaximized from the main process on demand', async () => {
+        ipcInvoke.mockImplementation((channel: string) =>
+            Promise.resolve(channel === 'baize:window:is-maximized' ? true : undefined)
+        )
+        const mgr = useWindowManagement()
+        expect(mgr.isMaximized.value).toBe(false)
+
+        await mgr.refreshMaximizedState()
+
+        expect(ipcInvoke).toHaveBeenCalledWith('baize:window:is-maximized')
+        expect(mgr.isMaximized.value).toBe(true)
+    })
+
+    it('should keep the previous isMaximized state when the query fails', async () => {
+        ipcInvoke.mockRejectedValue(new Error('ipc unavailable'))
+        const mgr = useWindowManagement()
+        await expect(mgr.refreshMaximizedState()).resolves.toBeUndefined()
+        expect(mgr.isMaximized.value).toBe(false)
+    })
+
+    it('should refresh the maximize icon state after clicking maximize', async () => {
+        vi.useFakeTimers()
+        ipcInvoke.mockImplementation((channel: string) =>
+            Promise.resolve(channel === 'baize:window:is-maximized' ? true : undefined)
+        )
+        const mgr = useWindowManagement()
+        mgr.maximizeWindow()
+        // 延迟查询完成前保持旧状态（避免读到主进程切换前的状态）
+        expect(mgr.isMaximized.value).toBe(false)
+
+        await vi.advanceTimersByTimeAsync(100)
+        expect(mgr.isMaximized.value).toBe(true)
+        mgr.cleanupWindowEvents()
+    })
+
+    it('should sync isMaximized on window resize and stop syncing on cleanup', async () => {
+        vi.useFakeTimers()
+        ipcInvoke.mockImplementation((channel: string) =>
+            Promise.resolve(channel === 'baize:window:is-maximized' ? true : undefined)
+        )
+        const mgr = useWindowManagement()
+
+        mgr.startMaximizedStateSync()
+        // 启动时先查询一次当前状态并监听 resize
+        await vi.advanceTimersByTimeAsync(0)
+        expect(ipcInvoke).toHaveBeenCalledWith('baize:window:is-maximized')
+        expect(windowAddEventListenerMock).toHaveBeenCalledWith('resize', expect.any(Function))
+        expect(mgr.isMaximized.value).toBe(true)
+
+        // 系统级最大化/还原（Win+Up、贴边吸附等）只触发 resize → 延迟 50ms 刷新
+        ipcInvoke.mockClear()
+        fireWindowListener('resize', {})
+        await vi.advanceTimersByTimeAsync(50)
+        expect(ipcInvoke).toHaveBeenCalledWith('baize:window:is-maximized')
+
+        mgr.cleanupWindowEvents()
+        expect(windowRemoveEventListenerMock).toHaveBeenCalledWith('resize', expect.any(Function))
+        // 清理后 resize 不再触发查询
+        ipcInvoke.mockClear()
+        fireWindowListener('resize', {})
+        await vi.advanceTimersByTimeAsync(100)
+        expect(ipcInvoke).not.toHaveBeenCalled()
+    })
+
+    it('should not register the resize listener twice when starting sync repeatedly', async () => {
+        const mgr = useWindowManagement()
+        mgr.startMaximizedStateSync()
+        mgr.startMaximizedStateSync()
+        expect(windowAddEventListenerMock).toHaveBeenCalledTimes(1)
+        mgr.cleanupWindowEvents()
+        expect(windowRemoveEventListenerMock).toHaveBeenCalledTimes(1)
     })
 
     it('should send window-close without notifying layout on close', () => {
@@ -201,6 +310,8 @@ describe('useWindowManagement', () => {
         mgr.onTitleBarDblClick(mouseEvent() as MouseEvent)
         expect(ipcSend).toHaveBeenCalledWith('baize:window:toggle-maximize')
         expect(onReLayout).toHaveBeenCalledTimes(1)
+        // 清理双击后排队的状态刷新定时器
+        mgr.cleanupWindowEvents()
     })
 
     it('should ignore resize mousedown for non-left buttons', async () => {
