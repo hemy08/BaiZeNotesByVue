@@ -46,6 +46,14 @@
 - 测试：新增 PDF 组件测试 6 用例、READ_BINARY 通道测试 3 用例；插件/菜单/词典断言同步（插件工具 37 → 38）
 - 验证：typecheck 0 错误、ESLint 0/0、vitest **156 文件 / 2,847 用例全通过**、`electron-vite build` 成功
 
+### 🧱 公共接口归位第 1 批（2026-11-19）
+
+- **新建 `src/shared/utils/`**：path（file:// URL/路径比较/解析）、hash（FNV-1a）、lru-cache、html（转义/head 注入）、random、validate、format、concurrency、debounce、date、backup-dir（11 模块 + 121 用例）
+- **新建 `src/shared/constants/`**：window、limits、render、file-extensions、hash-algorithms、encodings（6 模块 + 15 用例，含既有常量漂移护栏）
+- **使用方迁移**：主进程 16 文件 + 渲染层 15 文件改引 shared（保留导出名/签名，行为零变化）
+- **顺带修复**：`MarkdownPreviewComponent` basename 短路缺陷；Monaco model URI 统一规范 `file:///` + UNC 兼容（`toMonacoModelUrl`）
+- 门禁：typecheck 0 / ESLint 0-0 / vitest **160 文件 / 3,015 用例全通过** / build 成功 / E2E 4 passed
+
 ### 🧩 公共接口归位第 0 批（2026-11-19）
 
 - **URL 单一真源**：main 常量表改为 re-export shared 真源（删 52 条重复常量）；渲染层菜单删除 50 个死 URL 字段

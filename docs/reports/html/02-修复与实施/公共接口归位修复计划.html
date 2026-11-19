@@ -424,7 +424,7 @@
 <td><code>shared/utils</code> + <code>shared/constants</code></td>
 <td>约 20</td>
 <td>低-中</td>
-<td>2–3 天</td>
+<td>✅ <strong>已完成（2026-11-19）</strong></td>
 <td>第 0 批</td>
 <td>全量门禁 + 等价性测试</td>
 </tr>
@@ -458,6 +458,9 @@
 </tbody>
 </table>
 <h2 id="sec-3">2. 第 1 批：<code>shared/utils</code> + <code>shared/constants</code></h2>
+<blockquote>
+<p><strong>第 1 批状态</strong>：✅ 已完成（2026-11-19）——新建 11 个 <code>shared/utils</code> 模块 + 6 个 <code>shared/constants</code> 模块（136 用例）；主进程 16 文件、渲染层 15 文件完成迁移；门禁 160 文件 / 3,015 用例、E2E 4 passed。迁移中发现并修复的真实缺陷与语义差异详见台账「公共接口归位（第 1 批）」记录。</p>
+</blockquote>
 <p><strong>目标</strong>：把跨进程重复的<strong>纯函数与常量</strong>集中到 <code>src/shared/</code>，消除 4 份 FNV/4 份 LRU/3 份 file:// URL/3 份转义等重复；全部保留 re-export 薄壳，既有引用零改动。</p>
 <h3 id="sub-1">2.1 纯函数归位（<code>src/shared/utils/</code>）</h3>
 <table>
