@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 820" width="1100" height="820" role="img" aria-label="代码结构优化计划批次路线图">
+  <defs>
+    <marker id="so-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <marker id="so-arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1f2328; }
+      .title { font-size: 23px; font-weight: 700; }
+      .sub { font-size: 13.5px; fill: #475569; }
+      .legend { font-size: 12.5px; fill: #475569; }
+      .lane { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.5; rx: 12; }
+      .lanelbl { font-size: 14px; font-weight: 700; fill: #334155; }
+      .batch { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.4; rx: 10; }
+      .p1 { fill: #fef2f2; stroke: #dc2626; stroke-width: 1.6; rx: 10; }
+      .p2 { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; rx: 10; }
+      .p3 { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.6; rx: 10; }
+      .done { fill: #f0fdf4; stroke: #16a34a; stroke-width: 1.6; rx: 10; }
+      .btitle { font-size: 14.5px; font-weight: 700; fill: #1e293b; }
+      .bdesc { font-size: 12.5px; fill: #334155; }
+      .risk { font-size: 11.5px; fill: #b91c1c; font-weight: 600; }
+      .eff { font-size: 11.5px; fill: #475569; }
+      .flow { stroke: #64748b; stroke-width: 2; fill: none; }
+      .flowg { stroke: #16a34a; stroke-width: 2; fill: none; }
+    </style>
+  </defs>
+
+  <text x="16" y="32" class="title">图 1 · 代码结构优化计划批次路线图</text>
+  <text x="16" y="54" class="sub">基线：v1.3.8（结构实测 2026-11-19，HEAD `b227eab`）｜原则：小批次、可独立提交/回滚、门禁不降级、先测试后重构</text>
+  <rect x="860" y="16" width="14" height="14" rx="3" fill="#16a34a"/><text x="880" y="28" class="legend">已完成</text>
+  <rect x="950" y="16" width="14" height="14" rx="3" fill="#dc2626"/><text x="970" y="28" class="legend">P1 高优先</text>
+  <rect x="860" y="38" width="14" height="14" rx="3" fill="#2563eb"/><text x="880" y="50" class="legend">P2</text>
+  <rect x="950" y="38" width="14" height="14" rx="3" fill="#94a3b8"/><text x="970" y="50" class="legend">P3</text>
+
+  <!-- 第 0 批：基线（已完成） -->
+  <rect x="16" y="80" width="1068" height="78" class="lane"/>
+  <rect x="32" y="94" width="1036" height="50" class="done"/>
+  <text x="46" y="114" class="btitle">第 0 批 · 基线确认（已完成）</text>
+  <text x="46" y="134" class="bdesc">《代码整体结构分析报告》成文 + 公共接口归位第 0~4 批完成 + 1.3.7 发布（tag release-1.3.7）；本计划以此为起点</text>
+  <text x="1000" y="134" class="eff">✅ 已完成</text>
+
+  <!-- 第 1 批 -->
+  <rect x="16" y="172" width="522" height="176" class="lane"/>
+  <text x="32" y="196" class="lanelbl">第 1 批 · 结构防御（P1）</text>
+  <rect x="32" y="208" width="490" height="58" class="p1"/>
+  <text x="46" y="228" class="btitle">1.1 依赖环自动检测</text>
+  <text x="46" y="247" class="bdesc">方向矩阵测试 + config/index ipc re-export 迁出 + utils→config 4 文件回调注入</text>
+  <text x="46" y="262" class="risk">覆盖 H1</text><text x="420" y="262" class="eff">2~3 人日</text>
+  <rect x="32" y="276" width="490" height="58" class="p1"/>
+  <text x="46" y="296" class="btitle">1.2 preload 白名单单一化</text>
+  <text x="46" y="315" class="bdesc">由 shared/types/ipc 契约生成 send/invoke/on 白名单，构建期校验</text>
+  <text x="46" y="330" class="risk">覆盖 H2</text><text x="420" y="330" class="eff">2~3 人日</text>
+
+  <rect x="542" y="172" width="542" height="176" class="lane"/>
+  <text x="558" y="196" class="lanelbl">第 1 批 · 继续</text>
+  <rect x="558" y="208" width="510" height="126" class="p1"/>
+  <text x="572" y="228" class="btitle">1.3 shared 边界例外收口</text>
+  <text x="572" y="247" class="bdesc">backup-dir.ts 的 node:path 改注入式纯函数；ESLint no-restricted-imports 硬约束</text>
+  <text x="572" y="267" class="bdesc">验收：shared 内 0 处运行时 node/electron 依赖（显式豁免需注释+测试）</text>
+  <text x="572" y="287" class="bdesc">配套：方向矩阵测试纳入 CI，违规即失败；每批独立提交可回滚</text>
+  <text x="572" y="312" class="risk">覆盖 L4（新增观察项）</text><text x="940" y="312" class="eff">1~2 人日</text>
+
+  <!-- 第 2 批 -->
+  <rect x="16" y="364" width="522" height="176" class="lane"/>
+  <text x="32" y="388" class="lanelbl">第 2 批 · 运行时架构收敛（P1~P2）</text>
+  <rect x="32" y="400" width="490" height="58" class="p2"/>
+  <text x="46" y="420" class="btitle">2.1 双对话框体系收敛</text>
+  <text x="46" y="439" class="bdesc">主进程 JSDOM 5 个 → Vue BaseDialog；保留在线网页独立窗口；消除同一动作双路径</text>
+  <text x="46" y="454" class="risk">覆盖 H3</text><text x="420" y="454" class="eff">3~4 人日</text>
+  <rect x="32" y="468" width="490" height="58" class="p2"/>
+  <text x="46" y="488" class="btitle">2.2 主界面二级分块</text>
+  <text x="46" y="507" class="bdesc">Monaco/预览管线二级懒加载 + 首屏骨架；建立 TTI/内存基线</text>
+  <text x="46" y="522" class="risk">覆盖 H4</text><text x="420" y="522" class="eff">3~5 人日</text>
+
+  <rect x="542" y="364" width="542" height="176" class="lane"/>
+  <text x="558" y="388" class="lanelbl">第 2 批 · 继续</text>
+  <rect x="558" y="400" width="510" height="126" class="p2"/>
+  <text x="572" y="420" class="btitle">2.3 jsdom 运行时依赖边界</text>
+  <text x="572" y="439" class="bdesc">随 2.1 迁移后评估移除 jsdom 内联（或升为生产依赖 + externalize，记录包体权衡）</text>
+  <text x="572" y="459" class="bdesc">2.4 AppContext 统一状态 + ipc/registry.ts 注册清单（9 文件 69 处 → 1 入口）</text>
+  <text x="572" y="479" class="bdesc">验收：窗口重建/reload/退出路径无状态串扰；注册清单单一入口</text>
+  <text x="572" y="504" class="risk">覆盖 H6 / M1 / M2</text><text x="940" y="504" class="eff">3~4 人日</text>
+
+  <!-- 第 3 批 -->
+  <rect x="16" y="556" width="522" height="128" class="lane"/>
+  <text x="32" y="580" class="lanelbl">第 3 批 · 工程门禁与发布（P2）</text>
+  <rect x="32" y="592" width="490" height="80" class="p2"/>
+  <text x="46" y="612" class="btitle">3.1 文档基线自动校验 + 3.2 CI 门禁补强</text>
+  <text x="46" y="631" class="bdesc">门禁数字自动生成/对比；CI 补 coverage / prettier / audit</text>
+  <text x="46" y="650" class="bdesc">3.3 release workflow（tag 触发）；3.4 out/ 拆分与 dist 归档</text>
+  <text x="46" y="665" class="risk">覆盖 H7 / M9 / M7</text><text x="430" y="665" class="eff">2~3 人日</text>
+
+  <rect x="542" y="556" width="542" height="128" class="lane"/>
+  <text x="558" y="580" class="lanelbl">第 4 批 · 真源收敛与可维护性（P2）</text>
+  <rect x="558" y="592" width="510" height="80" class="p2"/>
+  <text x="572" y="612" class="btitle">4.1 单一 manifest / 4.2 主题单真源</text>
+  <text x="572" y="631" class="bdesc">插件/菜单/Material 一份 manifest；useTheme() 收口主题状态</text>
+  <text x="572" y="650" class="bdesc">4.3 EventBus 统一 · 4.4 错误/状态栏 helper · 4.5 重复资产清理</text>
+  <text x="572" y="665" class="risk">覆盖 M3 / M4 / M5 / M6 / M2</text><text x="940" y="665" class="eff">3~4 人日</text>
+
+  <!-- 第 5 批 -->
+  <rect x="16" y="704" width="1068" height="100" class="lane"/>
+  <text x="32" y="728" class="lanelbl">第 5 批 · 清理与规范（P3）</text>
+  <rect x="32" y="740" width="1036" height="52" class="p3"/>
+  <text x="46" y="758" class="btitle">死代码/目录归位 · EOL 与编码统一 · build 脚本治理 · docs 资产归档</text>
+  <text x="46" y="777" class="bdesc">巨型文件拆分（directory-tree / preview-md-basic / MaterialSyntaxDialog / 设置页 / pinyin-data）；覆盖 L1/L2/L3</text>
+</svg>

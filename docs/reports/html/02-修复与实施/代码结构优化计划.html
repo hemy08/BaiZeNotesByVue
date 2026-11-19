@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>代码结构优化计划</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #2563eb;
+    --p0: #dc2626; --p1: #ea580c; --p2: #ca8a04; --p3: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  header p { margin: 2px 0; opacity: .92; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; text-align: center; }
+  .card b { display: block; font-size: 26px; }
+  .card span { font-size: 12px; color: var(--muted); }
+  h2 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 40px;
+       scroll-margin-top: 20px; }
+  h3 { margin-top: 26px; scroll-margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+          font-size: 13.5px; margin: 14px 0; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border);
+           text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 4px;
+         font-family: Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  blockquote { margin: 14px 0; padding: 8px 14px; background: #eff6ff;
+               border-left: 4px solid var(--accent); border-radius: 6px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+           color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .p0 { background: var(--p0); } .p1 { background: var(--p1); }
+  .p2 { background: var(--p2); } .p3 { background: var(--p3); }
+  .diagram { margin: 18px 0; background: var(--card); border: 1px solid var(--border);
+             border-radius: 12px; padding: 16px; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted);
+           text-align: center; }
+  /* 悬浮导航 */
+  .toc { position: fixed; top: 24px; left: 24px; width: 220px;
+         max-height: calc(100vh - 48px); overflow-y: auto;
+         background: var(--card); border: 1px solid var(--border);
+         border-radius: 10px; padding: 14px 10px; z-index: 100;
+         box-shadow: 0 4px 12px rgba(0,0,0,.08); font-size: 13px; }
+  .toc h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); padding-left: 8px; }
+  .toc a { display: block; color: var(--text); text-decoration: none;
+           padding: 4px 8px; border-radius: 6px; line-height: 1.45; }
+  .toc a:hover { background: #eef1f5; color: var(--accent); }
+  .toc-l3 { padding-left: 20px !important; font-size: 12.5px; color: var(--muted) !important; }
+  @media (min-width: 1250px) { .wrap { margin: 0 auto 0 292px; } }
+  @media (max-width: 1249px) { .toc { display: none; } }
+</style>
+</head>
+<body>
+<!-- =========================================================================
+     报告 HTML Wiki · 整体导航片段（由 build/generate-report-wiki.js 注入到每份报告页顶部）
+     相对路径约定：报告页面位于 docs/reports/html/<分类>/ 下，本片段链接均按该深度编写
+     ========================================================================= -->
+<style>
+  html { scroll-padding-top: 72px; }
+  body { padding-top: 56px; }
+  .rgnav {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 300;
+    display: flex; align-items: center; gap: 2px; padding: 0 14px;
+    background: #1f2937; color: #e5e7eb; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    /* 注意：不能用 overflow-x:auto —— 会把绝对定位的下拉菜单裁剪掉，
+       表现为「点击分类下拉没反应」。导航项在窄屏下由 media query 收缩。 */
+    overflow: visible;
+  }
+  .rgnav a { color: #e5e7eb; text-decoration: none; padding: 6px 10px;
+             border-radius: 6px; white-space: nowrap; }
+  .rgnav a:hover { background: rgba(255,255,255,.12); }
+  .rgnav a.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .rgnav details { position: relative; }
+  .rgnav summary { cursor: pointer; list-style: none; padding: 6px 10px;
+                   border-radius: 6px; white-space: nowrap; color: #e5e7eb; }
+  .rgnav summary::-webkit-details-marker { display: none; }
+  .rgnav summary:hover { background: rgba(255,255,255,.12); }
+  .rgnav details[open] summary { background: rgba(255,255,255,.16); }
+  .rgnav .rgnav-drop {
+    display: none; position: absolute; top: 34px; left: 0; min-width: 260px; padding: 6px;
+    background: #111827; border: 1px solid #374151; border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45); flex-direction: column;
+  }
+  /* 显式控制下拉显隐：details 关闭时浏览器 UA 样式的隐藏可能被作者 display 覆盖，
+     故用 details[open] 显式展开，避免下拉面板常驻遮挡页面导致「点击导航无反应」。 */
+  .rgnav details[open] .rgnav-drop { display: flex; }
+  .rgnav .rgnav-drop a { display: block; padding: 6px 10px; font-weight: 400; }
+  .rgnav .rgnav-home { font-weight: 600; }
+  .rgnav .rgnav-sep { width: 1px; height: 20px; background: #4b5563; margin: 0 6px; }
+  .rgnav .rgnav-right { margin-left: auto; font-size: 12px; color: #9ca3af;
+                        white-space: nowrap; padding-left: 12px; }
+  .rgnav .rgnav-right a { color: #93c5fd; padding: 2px 4px; }
+  /* 原悬浮目录下移，避免被顶部导航遮挡 */
+  .toc { top: 72px !important; max-height: calc(100vh - 96px) !important; }
+  @media (max-width: 760px) {
+    .rgnav { font-size: 12px; }
+    .rgnav .rgnav-right { display: none; }
+  }
+</style>
+
+<nav class="rgnav" aria-label="报告整体导航">
+  <a class="rgnav-home" href="../README.html" title="报告 HTML Wiki 首页">🏠 报告首页</a>
+  <span class="rgnav-sep"></span>
+  <details>
+    <summary>01-检查与扫描 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../01-检查与扫描/总体优化项报告.html">总体优化项报告</a>
+      <a href="../01-检查与扫描/代码质量检查报告.html">代码质量检查报告</a>
+      <a href="../01-检查与扫描/性能检查报告.html">性能检查报告</a>
+      <a href="../01-检查与扫描/内存检查报告.html">内存检查报告</a>
+      <a href="../01-检查与扫描/架构检查报告.html">架构检查报告</a>
+      <a href="../01-检查与扫描/功能检查报告.html">功能检查报告</a>
+      <a href="../01-检查与扫描/完整性检查报告.html">完整性检查报告</a>
+      <a href="../01-检查与扫描/全量扫描与审查报告.html">全量扫描与审查报告（合并）</a>
+      <a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a>
+    </div>
+  </details>
+  <details>
+    <summary>02-修复与实施 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../02-修复与实施/127项基线修复实施汇总.html">127 项基线修复实施汇总（合并）</a>
+      <a href="../02-修复与实施/修复批次实施记录.html">修复批次实施记录</a>
+      <a href="../02-修复与实施/项目问题复查报告.html">项目问题复查报告</a>
+      <a href="../02-修复与实施/国际化实施报告.html">国际化实施报告</a>
+      <a href="../02-修复与实施/预览单跳重构报告.html">预览单跳重构报告</a>
+      <a href="../02-修复与实施/系统设置补充实现.html">系统设置补充实现</a>
+      <a href="../02-修复与实施/公共接口归位修复计划.html">公共接口归位修复计划</a>
+      <a href="../02-修复与实施/代码结构优化计划.html">代码结构优化计划</a>
+    </div>
+  </details>
+  <details>
+    <summary>03-专项治理 ▾</summary>
+    <div class="rgnav-drop">
+      <a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵（当前口径）</a>
+      <a href="../03-专项治理/IPC通信治理报告.html">IPC 通信治理报告（合并）</a>
+      <a href="../03-专项治理/mkdocs-material语法支持.html">mkdocs-material 语法支持（合并）</a>
+      <a href="../03-专项治理/插件工具集成.html">插件工具集成（合并）</a>
+      <a href="../03-专项治理/专项验证记录.html">专项验证记录（合并）</a>
+      <a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单（跟踪台账）</a>
+    </div>
+  </details>
+  <span class="rgnav-right">
+    当前：<a id="rgnav-current" href="#">—</a> ·
+    <a href="../README.md" title="Markdown 索引">MD 索引</a>
+  </span>
+</nav>
+
+<script>
+  ;(function () {
+    // 当前页高亮 + 所属分类展开 + 顶部显示当前报告名
+    var norm = function (p) {
+      try {
+        return decodeURIComponent(p).replace(/\\/g, '/').replace(/\/+$/, '')
+      } catch (e) {
+        return p
+      }
+    }
+    var self = norm(location.pathname)
+    var links = document.querySelectorAll('.rgnav a[href$=".html"]')
+    var current = null
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i]
+      if (norm(new URL(a.href, location.href).pathname) === self) {
+        a.classList.add('active')
+        current = a
+      }
+    }
+    if (current) {
+      var box = current.closest('details')
+      if (box) box.setAttribute('open', '')
+      var label = document.getElementById('rgnav-current')
+      if (label) {
+        label.textContent = current.textContent.trim()
+        label.setAttribute('href', current.getAttribute('href'))
+      }
+    } else {
+      var home = document.querySelector('.rgnav .rgnav-home')
+      if (home && norm(new URL(home.href, location.href).pathname) === self) {
+        home.classList.add('active')
+      }
+      var label2 = document.getElementById('rgnav-current')
+      if (label2) label2.textContent = document.title.replace(' · 报告', '')
+    }
+    // 点击页面空白处收起下拉
+    document.addEventListener('click', function (e) {
+      var within = e.target.closest && e.target.closest('.rgnav details')
+      var all = document.querySelectorAll('.rgnav details[open]')
+      for (var j = 0; j < all.length; j++) {
+        if (all[j] !== within) all[j].removeAttribute('open')
+      }
+    })
+  })()
+</script>
+
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">0. 摘要</a>
+    <a class="toc-l2" href="#sec-2">1. 批次总览</a>
+    <a class="toc-l2" href="#sec-3">2. 第 1 批：结构防御（P1）</a>
+    <a class="toc-l3" href="#sub-1">2.1 依赖环自动检测（H1）</a>
+    <a class="toc-l3" href="#sub-2">2.2 preload 白名单单一化（H2）</a>
+    <a class="toc-l3" href="#sub-3">2.3 shared 边界例外收口（L4）</a>
+    <a class="toc-l2" href="#sec-4">3. 第 2 批：运行时架构收敛（P1~P2）</a>
+    <a class="toc-l3" href="#sub-4">3.1 双对话框体系收敛（H3）</a>
+    <a class="toc-l3" href="#sub-5">3.2 主界面二级分块（H4）</a>
+    <a class="toc-l3" href="#sub-6">3.3 jsdom 运行时依赖边界（H6）</a>
+    <a class="toc-l3" href="#sub-7">3.4 AppContext 与 IPC 注册清单（M1/M2）</a>
+    <a class="toc-l2" href="#sec-5">4. 第 3 批：工程门禁与发布（P2）</a>
+    <a class="toc-l3" href="#sub-8">4.1 文档基线自动校验（H5 自动化）</a>
+    <a class="toc-l3" href="#sub-9">4.2 CI 门禁补强（M9）</a>
+    <a class="toc-l3" href="#sub-10">4.3 release workflow（H7）</a>
+    <a class="toc-l3" href="#sub-11">4.4 产物治理（M7）</a>
+    <a class="toc-l2" href="#sec-6">5. 第 4 批：真源收敛与可维护性（P2）</a>
+    <a class="toc-l3" href="#sub-12">5.1 单一 manifest（M3）</a>
+    <a class="toc-l3" href="#sub-13">5.2 主题单真源（M4）</a>
+    <a class="toc-l3" href="#sub-14">5.3 EventBus 统一（M5）</a>
+    <a class="toc-l3" href="#sub-15">5.4 错误/状态栏 helper 统一（M2 剩余部分）</a>
+    <a class="toc-l3" href="#sub-16">5.5 重复资产清理（M6）</a>
+    <a class="toc-l2" href="#sec-7">6. 第 5 批：清理与规范（P3）</a>
+    <a class="toc-l2" href="#sec-8">7. 优先级与排期建议</a>
+    <a class="toc-l2" href="#sec-9">8. 度量与验收基线</a>
+    <a class="toc-l2" href="#sec-10">9. 风险与回滚管理</a>
+    <a class="toc-l2" href="#sec-11">10. 批次状态</a>
+    <a class="toc-l2" href="#sec-12">附录 A：风险 → 批次映射</a>
+    <a class="toc-l2" href="#sec-13">附录 B：依据与证据</a>
+    <a class="toc-l2" href="#sec-14">附录 C：变更记录</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>代码结构优化计划</h1>
+    <p>报告归档 · 02-修复与实施</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>代码结构优化计划（批次 1–5）</h1>
+<blockquote>
+<p><strong>性质</strong>：优化实施计划（非缺陷清单）——基于 <a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a>（2026-11-19 刷新版）的结构风险清单（H1–H7 / M1–M9 / L1–L4），把风险转化为<strong>可分批次执行、可独立回滚、可验收</strong>的工程计划。
+<strong>基线</strong>：v1.3.8（结构实测：2026-11-19，HEAD <code>b227eab</code>；发布基线：<code>release-1.3.7</code> 已于 2026-11-19 发布，1.3.8 未发布）。
+<strong>依据</strong>：<a href="../01-检查与扫描/代码整体结构分析报告.html">结构分析报告</a>、<a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单</a>、<a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>、<a href="公共接口归位修复计划.html">公共接口归位修复计划</a>（已完成批次的模式参考）。
+<strong>维护约定</strong>：每批完成后在本计划「批次状态」回写 ✅/🟡/⏸️ 与提交号；新增发现项追加到「批次 5+」或风险映射表，不改变已定批次边界。计划本身不修改历史报告结论。</p>
+</blockquote>
+<h2 id="sec-1">0. 摘要</h2>
+<p><strong>结论</strong>：结构分析报告确认项目边界与真源治理已达到成熟水平，剩余结构债集中在「依赖方向、桥接层手工清单、双对话框体系、主界面大 chunk、发布链路」五处；本计划按 <strong>P1 结构防御 → P2 运行时收敛 → P3 清理规范</strong> 的顺序分为 <strong>5 个批次（含批次 0 基线确认）</strong>，每批独立提交/回滚，门禁不降级。</p>
+<p><strong>风险总览（来自结构报告 §9.2）</strong></p>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th style="text-align:right">数量</th>
+<th>条目</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>已修复</td>
+<td style="text-align:right">2</td>
+<td>H5（文档口径漂移）、M8（URL 双份）</td>
+</tr>
+<tr>
+<td>部分修复</td>
+<td style="text-align:right">6</td>
+<td>H2（白名单契约护栏）、M4（主题分类真源）、M5（EventBus 死 composable）、M6（死资源）、M9（E2E 入 CI）、L3（build 脚本）</td>
+</tr>
+<tr>
+<td>仍存在</td>
+<td style="text-align:right">11</td>
+<td>H1/H3/H4/H6/H7、M1/M2/M3/M7、L1/L2</td>
+</tr>
+<tr>
+<td>新增观察</td>
+<td style="text-align:right">1</td>
+<td>L4（shared 边界唯一 node:path 例外）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>本计划目标（按批次验收）</strong></p>
+<ol>
+<li><strong>结构防御自动化</strong>：依赖方向、preload 白名单、shared 边界三处从「人工守护」升级为「构建/测试强制」；</li>
+<li><strong>运行时收敛</strong>：双对话框体系收敛、主界面二级分块、jsdom 依赖边界、状态与 IPC 注册清单收口；</li>
+<li><strong>工程门禁与发布</strong>：文档基线自动校验、CI 覆盖率/格式/审计、tag 触发的发布流水线；</li>
+<li><strong>真源与可维护性</strong>：单一 manifest、主题单真源、EventBus/错误处理统一、重复资产清理；</li>
+<li><strong>清理与规范</strong>：死代码/目录语义、EOL/编码、build 脚本、docs 资产、巨型文件拆分。</li>
+</ol>
+<p><strong>不在本计划范围</strong>（避免与并行迭代冲突）</p>
+<ul>
+<li>业务功能新增/交互改版、预览渲染管线重写、第三方插件系统、构建工具迁移；</li>
+<li>并行会话正在改动的文件/模块：执行前先与当前工作区同步并确认「安静窗口」；</li>
+<li>历史报告/版本快照的数字回写（仅更新当前状态文档与索引）。</li>
+</ul>
+<h2 id="sec-2">1. 批次总览</h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 820" width="1100" height="820" role="img" aria-label="代码结构优化计划批次路线图">
+  <defs>
+    <marker id="so-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <marker id="so-arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1f2328; }
+      .title { font-size: 23px; font-weight: 700; }
+      .sub { font-size: 13.5px; fill: #475569; }
+      .legend { font-size: 12.5px; fill: #475569; }
+      .lane { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.5; rx: 12; }
+      .lanelbl { font-size: 14px; font-weight: 700; fill: #334155; }
+      .batch { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.4; rx: 10; }
+      .p1 { fill: #fef2f2; stroke: #dc2626; stroke-width: 1.6; rx: 10; }
+      .p2 { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; rx: 10; }
+      .p3 { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.6; rx: 10; }
+      .done { fill: #f0fdf4; stroke: #16a34a; stroke-width: 1.6; rx: 10; }
+      .btitle { font-size: 14.5px; font-weight: 700; fill: #1e293b; }
+      .bdesc { font-size: 12.5px; fill: #334155; }
+      .risk { font-size: 11.5px; fill: #b91c1c; font-weight: 600; }
+      .eff { font-size: 11.5px; fill: #475569; }
+      .flow { stroke: #64748b; stroke-width: 2; fill: none; }
+      .flowg { stroke: #16a34a; stroke-width: 2; fill: none; }
+    </style>
+  </defs>
+
+  <text x="16" y="32" class="title">图 1 · 代码结构优化计划批次路线图</text>
+  <text x="16" y="54" class="sub">基线：v1.3.8（结构实测 2026-11-19，HEAD `b227eab`）｜原则：小批次、可独立提交/回滚、门禁不降级、先测试后重构</text>
+  <rect x="860" y="16" width="14" height="14" rx="3" fill="#16a34a"/><text x="880" y="28" class="legend">已完成</text>
+  <rect x="950" y="16" width="14" height="14" rx="3" fill="#dc2626"/><text x="970" y="28" class="legend">P1 高优先</text>
+  <rect x="860" y="38" width="14" height="14" rx="3" fill="#2563eb"/><text x="880" y="50" class="legend">P2</text>
+  <rect x="950" y="38" width="14" height="14" rx="3" fill="#94a3b8"/><text x="970" y="50" class="legend">P3</text>
+
+  <!-- 第 0 批：基线（已完成） -->
+  <rect x="16" y="80" width="1068" height="78" class="lane"/>
+  <rect x="32" y="94" width="1036" height="50" class="done"/>
+  <text x="46" y="114" class="btitle">第 0 批 · 基线确认（已完成）</text>
+  <text x="46" y="134" class="bdesc">《代码整体结构分析报告》成文 + 公共接口归位第 0~4 批完成 + 1.3.7 发布（tag release-1.3.7）；本计划以此为起点</text>
+  <text x="1000" y="134" class="eff">✅ 已完成</text>
+
+  <!-- 第 1 批 -->
+  <rect x="16" y="172" width="522" height="176" class="lane"/>
+  <text x="32" y="196" class="lanelbl">第 1 批 · 结构防御（P1）</text>
+  <rect x="32" y="208" width="490" height="58" class="p1"/>
+  <text x="46" y="228" class="btitle">1.1 依赖环自动检测</text>
+  <text x="46" y="247" class="bdesc">方向矩阵测试 + config/index ipc re-export 迁出 + utils→config 4 文件回调注入</text>
+  <text x="46" y="262" class="risk">覆盖 H1</text><text x="420" y="262" class="eff">2~3 人日</text>
+  <rect x="32" y="276" width="490" height="58" class="p1"/>
+  <text x="46" y="296" class="btitle">1.2 preload 白名单单一化</text>
+  <text x="46" y="315" class="bdesc">由 shared/types/ipc 契约生成 send/invoke/on 白名单，构建期校验</text>
+  <text x="46" y="330" class="risk">覆盖 H2</text><text x="420" y="330" class="eff">2~3 人日</text>
+
+  <rect x="542" y="172" width="542" height="176" class="lane"/>
+  <text x="558" y="196" class="lanelbl">第 1 批 · 继续</text>
+  <rect x="558" y="208" width="510" height="126" class="p1"/>
+  <text x="572" y="228" class="btitle">1.3 shared 边界例外收口</text>
+  <text x="572" y="247" class="bdesc">backup-dir.ts 的 node:path 改注入式纯函数；ESLint no-restricted-imports 硬约束</text>
+  <text x="572" y="267" class="bdesc">验收：shared 内 0 处运行时 node/electron 依赖（显式豁免需注释+测试）</text>
+  <text x="572" y="287" class="bdesc">配套：方向矩阵测试纳入 CI，违规即失败；每批独立提交可回滚</text>
+  <text x="572" y="312" class="risk">覆盖 L4（新增观察项）</text><text x="940" y="312" class="eff">1~2 人日</text>
+
+  <!-- 第 2 批 -->
+  <rect x="16" y="364" width="522" height="176" class="lane"/>
+  <text x="32" y="388" class="lanelbl">第 2 批 · 运行时架构收敛（P1~P2）</text>
+  <rect x="32" y="400" width="490" height="58" class="p2"/>
+  <text x="46" y="420" class="btitle">2.1 双对话框体系收敛</text>
+  <text x="46" y="439" class="bdesc">主进程 JSDOM 5 个 → Vue BaseDialog；保留在线网页独立窗口；消除同一动作双路径</text>
+  <text x="46" y="454" class="risk">覆盖 H3</text><text x="420" y="454" class="eff">3~4 人日</text>
+  <rect x="32" y="468" width="490" height="58" class="p2"/>
+  <text x="46" y="488" class="btitle">2.2 主界面二级分块</text>
+  <text x="46" y="507" class="bdesc">Monaco/预览管线二级懒加载 + 首屏骨架；建立 TTI/内存基线</text>
+  <text x="46" y="522" class="risk">覆盖 H4</text><text x="420" y="522" class="eff">3~5 人日</text>
+
+  <rect x="542" y="364" width="542" height="176" class="lane"/>
+  <text x="558" y="388" class="lanelbl">第 2 批 · 继续</text>
+  <rect x="558" y="400" width="510" height="126" class="p2"/>
+  <text x="572" y="420" class="btitle">2.3 jsdom 运行时依赖边界</text>
+  <text x="572" y="439" class="bdesc">随 2.1 迁移后评估移除 jsdom 内联（或升为生产依赖 + externalize，记录包体权衡）</text>
+  <text x="572" y="459" class="bdesc">2.4 AppContext 统一状态 + ipc/registry.ts 注册清单（9 文件 69 处 → 1 入口）</text>
+  <text x="572" y="479" class="bdesc">验收：窗口重建/reload/退出路径无状态串扰；注册清单单一入口</text>
+  <text x="572" y="504" class="risk">覆盖 H6 / M1 / M2</text><text x="940" y="504" class="eff">3~4 人日</text>
+
+  <!-- 第 3 批 -->
+  <rect x="16" y="556" width="522" height="128" class="lane"/>
+  <text x="32" y="580" class="lanelbl">第 3 批 · 工程门禁与发布（P2）</text>
+  <rect x="32" y="592" width="490" height="80" class="p2"/>
+  <text x="46" y="612" class="btitle">3.1 文档基线自动校验 + 3.2 CI 门禁补强</text>
+  <text x="46" y="631" class="bdesc">门禁数字自动生成/对比；CI 补 coverage / prettier / audit</text>
+  <text x="46" y="650" class="bdesc">3.3 release workflow（tag 触发）；3.4 out/ 拆分与 dist 归档</text>
+  <text x="46" y="665" class="risk">覆盖 H7 / M9 / M7</text><text x="430" y="665" class="eff">2~3 人日</text>
+
+  <rect x="542" y="556" width="542" height="128" class="lane"/>
+  <text x="558" y="580" class="lanelbl">第 4 批 · 真源收敛与可维护性（P2）</text>
+  <rect x="558" y="592" width="510" height="80" class="p2"/>
+  <text x="572" y="612" class="btitle">4.1 单一 manifest / 4.2 主题单真源</text>
+  <text x="572" y="631" class="bdesc">插件/菜单/Material 一份 manifest；useTheme() 收口主题状态</text>
+  <text x="572" y="650" class="bdesc">4.3 EventBus 统一 · 4.4 错误/状态栏 helper · 4.5 重复资产清理</text>
+  <text x="572" y="665" class="risk">覆盖 M3 / M4 / M5 / M6 / M2</text><text x="940" y="665" class="eff">3~4 人日</text>
+
+  <!-- 第 5 批 -->
+  <rect x="16" y="704" width="1068" height="100" class="lane"/>
+  <text x="32" y="728" class="lanelbl">第 5 批 · 清理与规范（P3）</text>
+  <rect x="32" y="740" width="1036" height="52" class="p3"/>
+  <text x="46" y="758" class="btitle">死代码/目录归位 · EOL 与编码统一 · build 脚本治理 · docs 资产归档</text>
+  <text x="46" y="777" class="bdesc">巨型文件拆分（directory-tree / preview-md-basic / MaterialSyntaxDialog / 设置页 / pinyin-data）；覆盖 L1/L2/L3</text>
+</svg>
+</figure>
+<table>
+<thead>
+<tr>
+<th>批次</th>
+<th>主题</th>
+<th>覆盖风险</th>
+<th>预估</th>
+<th>前置依赖</th>
+<th>验收门禁</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 0 批</td>
+<td>基线确认（报告 + 公共接口归位 + 1.3.7 发布）</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>现有全量门禁</td>
+<td>✅ 已完成</td>
+</tr>
+<tr>
+<td><strong>第 1 批</strong></td>
+<td>结构防御：依赖环 / 白名单 / shared 边界</td>
+<td>H1、H2、L4</td>
+<td>5~8 人日</td>
+<td>第 0 批</td>
+<td>新增架构测试 + 全量门禁</td>
+<td>⏳ 待执行</td>
+</tr>
+<tr>
+<td><strong>第 2 批</strong></td>
+<td>运行时收敛：对话框 / 主界面分块 / jsdom / 状态注册</td>
+<td>H3、H4、H6、M1、M2</td>
+<td>9~13 人日</td>
+<td>第 1 批（白名单/契约）</td>
+<td>全量门禁 + <strong>UI 手测清单</strong> + 性能基线</td>
+<td>⏳ 待执行</td>
+</tr>
+<tr>
+<td><strong>第 3 批</strong></td>
+<td>工程门禁与发布：文档校验 / CI / release workflow / 产物治理</td>
+<td>H7、M9、M7、H5（自动化）</td>
+<td>4~6 人日</td>
+<td>第 1 批最佳（契约稳定）</td>
+<td>CI 全绿 + release 演练</td>
+<td>⏳ 待执行</td>
+</tr>
+<tr>
+<td><strong>第 4 批</strong></td>
+<td>真源收敛：manifest / 主题 / EventBus / 错误处理 / 资产</td>
+<td>M3、M4、M5、M6、M2（错误 helper）</td>
+<td>6~9 人日</td>
+<td>第 2 批（组件稳定）</td>
+<td>全量门禁 + 一致性测试</td>
+<td>⏳ 待执行</td>
+</tr>
+<tr>
+<td><strong>第 5 批</strong></td>
+<td>清理与规范：死代码 / EOL / build 脚本 / docs / 巨型文件</td>
+<td>L1、L2、L3 + 巨型文件类</td>
+<td>5~8 人日</td>
+<td>无硬依赖（可穿插）</td>
+<td>每项独立小批次 + 全量门禁</td>
+<td>⏳ 待执行</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>预估单位为「人日」，按单代理执行、含测试与文档回写估算；实际以批次拆分后的任务卡为准。</p>
+</blockquote>
+<h2 id="sec-3">2. 第 1 批：结构防御（P1）</h2>
+<p><strong>目标</strong>：把当前最危险的 3 类结构债（依赖方向、桥接白名单、shared 边界）从「注释/人工约定」升级为「自动检测 + 构建期生成/校验」。<strong>本批不改变任何业务行为。</strong></p>
+<h3 id="sub-1">2.1 依赖环自动检测（H1）</h3>
+<ul>
+<li><strong>现状</strong>：<code>config</code> 9 文件 import <code>utils</code>；<code>utils</code> 4 文件反向 import <code>config</code>（<code>auto-backup</code>/<code>i18n</code>/<code>utils</code>/<code>file-utils/path-utils</code>）；<code>config/index.ts</code> 仍 re-export <code>ipcListenerManager</code>；无自动环检测。</li>
+<li><strong>改动点</strong>：
+<ol>
+<li>新增 <code>tests/architecture/dependency-boundaries.test.ts</code>（静态扫描 import，声明方向矩阵：<code>index → ipc|dialogs → config → utils → shared</code>，与 <code>shared → 无反向依赖</code>）；</li>
+<li><code>main/config/index.ts</code> 移除 ipc re-export，受影响引用改为直接 import <code>ipc/ipc-listener-manager</code>；</li>
+<li><code>utils</code> 反向依赖改「回调注入 / 参数注入」：<code>auto-backup</code>（备份目录/设置）、<code>i18n</code>（语言）、<code>utils.ts</code>（快捷链接）、<code>file-utils/path-utils</code>（窗口/资源路径）；</li>
+<li>新增 <code>npm run arch:check</code>（或在 <code>test</code> 前置），CI 纳入。</li>
+</ol>
+</li>
+<li><strong>验收</strong>：方向矩阵测试 0 violation；<code>utils → config</code> import 数 = 0；全量 typecheck/test/eslint/build 通过；新增测试 ≥ 15 用例。</li>
+<li><strong>风险/回滚</strong>：注入式改造可能影响启动顺序（配置早于备份/日志）；按模块拆 3~4 个独立 commit，每步可回滚；不改变函数签名（用可选注入 + 默认实现）。</li>
+</ul>
+<h3 id="sub-2">2.2 preload 白名单单一化（H2）</h3>
+<ul>
+<li><strong>现状</strong>：三份手工清单（主窗口 58 send + 25 on、对话框 2 + 1、<code>window.api</code> 6），与 92 通道常量无编译期对应；已有 <code>shared/types/ipc.ts</code> 契约与 <code>ipc-payload-contract</code> 测试。</li>
+<li><strong>改动点</strong>：
+<ol>
+<li>新增 <code>build/generate-preload-whitelist.js</code>（或 electron-vite 构建钩子）：从 <code>shared/types/ipc.ts</code> 的 <code>IpcRequests/IpcResponses/IpcEvents/window.api</code> 生成 <code>preload/allowed-channels.generated.ts</code>（静态 import，保持 preload 单文件产物约束）；</li>
+<li><code>preload/index.ts</code>、<code>preload/dialog.ts</code> 改为引用生成常量；</li>
+<li>测试改为「生成文件 vs 主进程注册/渲染层调用」双向核对（扩展既有 <code>ipc-payload-contract</code>）。</li>
+</ol>
+</li>
+<li><strong>验收</strong>：92 通道与三份白名单 100% 对应（缺失/多余即测试失败）；preload 产物仍单文件、sandbox 下 <code>contextBridge</code> 正常（E2E 冒烟）；构建通过。</li>
+<li><strong>风险/回滚</strong>：生成步骤需接入 <code>dev/build</code> 两条链路；若生成失败应有清晰报错；保留手写清单为对照测试基线一个版本，确认无差异后删除。</li>
+</ul>
+<h3 id="sub-3">2.3 shared 边界例外收口（L4）</h3>
+<ul>
+<li><strong>现状</strong>：<code>shared/utils/backup-dir.ts</code> 引 <code>node:path</code>（仅主进程消费），是 shared「禁止 Node 运行时」规则的唯一例外。</li>
+<li><strong>改动点</strong>：
+<ol>
+<li>拆分 <code>backup-dir-core.ts</code>（纯函数：时间戳/名称校验/路径比较，接收 <code>PathApi</code> 或纯字符串实现）+ main 侧 <code>backup-dir.ts</code> 注入 <code>node:path</code>；</li>
+<li><code>shared/utils/index.ts</code> 只导出纯函数版本；</li>
+<li>ESLint <code>no-restricted-imports</code>：<code>src/shared/**</code> 禁止 <code>node:*</code> / <code>electron</code> / <code>vue</code> / DOM globals（若确需例外，需 <code>// eslint-disable-next-line</code> + 注释 + 单测锁定）。</li>
+</ol>
+</li>
+<li><strong>验收</strong>：<code>grep</code> shared 内 <code>node:</code>/<code>electron</code> 仅剩类型/注释（或 0 处）；ESLint 规则生效；备份相关测试（auto-backup/config-backup）全过。</li>
+<li><strong>风险/回滚</strong>：备份路径语义敏感（时间戳/名称/解析），先补等价性测试再迁移；改动局限 2~3 文件。</li>
+</ul>
+<h2 id="sec-4">3. 第 2 批：运行时架构收敛（P1~P2）</h2>
+<p><strong>目标</strong>：消除双对话框体系与主界面大 chunk 两个用户体验相关结构债，并把 jsdom/状态/IPC 注册三处基础设施收口。</p>
+<h3 id="sub-4">3.1 双对话框体系收敛（H3）</h3>
+<ul>
+<li><strong>现状</strong>：Vue 18 个（已统一 BaseDialog）+ 主进程 JSDOM 5 个 + 在线网页窗口；同一动作（如新建文件/文件夹）存在两条路径。</li>
+<li><strong>改动点</strong>：
+<ol>
+<li>盘点主进程 5 个 JSDOM 窗口（<code>ShowShortcutKeys</code> / <code>ShowUpdateLog</code> / <code>ShowReleaseNotes</code> / <code>ShowRename</code> / <code>ShowConfirmDelete</code>）与全部调用点；</li>
+<li>逐一迁移为 Vue + BaseDialog（复用 <code>dialogRenderer</code> 词典与 <code>useDialogDrag/Resize</code>），主进程只保留 <code>OpenOnlineWebPage</code> 等确有独立窗口需求的；</li>
+<li>统一「新建文件/文件夹」入口：菜单/欢迎页/资源管理器全部走 Vue 对话框 + 既有 IPC 动作；</li>
+<li>更新 <code>shared/types/dialog.ts</code> 契约（<code>MainProcessDialogName</code> 缩减）与 <code>dialog-contract</code>/<code>preload</code> 测试。</li>
+</ol>
+</li>
+<li><strong>验收</strong>：JSDOM 对话框数量 5 → 0（在线网页除外）；同一动作仅一条路径（代码检索 + 测试）；UI 手测清单（快捷键/更新日志/发布说明/重命名/删除确认/新建文件文件夹）全过；<code>dialog-contract</code> 测试更新。</li>
+<li><strong>风险/回滚</strong>：对话框 UI/主题/多语言易漏；按对话框逐个提交，保留主进程旧代码一个批次（feature flag 或双入口日志）以便回滚；需真实窗口手测。</li>
+</ul>
+<h3 id="sub-5">3.2 主界面二级分块（H4）</h3>
+<ul>
+<li><strong>现状</strong>：主界面异步块 9,889.38 kB（Monaco≈7.3MB / highlight.js≈1.29MB / KaTeX≈0.51MB 与预览管线整体同步求值）；入口 127.07 kB。</li>
+<li><strong>改动点</strong>：
+<ol>
+<li>把 Monaco 初始化抽为二级异步边界（先渲染主界面骨架/编辑区占位，空闲或首次编辑时加载 Monaco），预览管线同理（首帧不阻塞输入）；</li>
+<li><code>App.vue</code> 只保留欢迎页/主界面切换；<code>BaiZeNotes.vue</code> 壳层不再 import 编辑器/预览实现；</li>
+<li>更新 E2E 构建契约（入口 chunk、主界面壳 chunk、Monaco chunk 独立）；补充 TTI/内存基线记录。</li>
+</ol>
+</li>
+<li><strong>验收</strong>：入口 ≤150 kB；主界面壳 chunk ≤2 MB（Monaco/预览独立按需 chunk）；E2E 构建契约更新且通过；大文档首屏/输入延迟不劣化（记录基线）。</li>
+<li><strong>风险/回滚</strong>：启动时序/恢复文件路径易回归（此前 PF/批次 7 有先例）；保留原有异步分块策略为回退路径；需实机手测「自动恢复文件/最近文件」。</li>
+</ul>
+<h3 id="sub-6">3.3 jsdom 运行时依赖边界（H6）</h3>
+<ul>
+<li><strong>改动点</strong>：随 3.1 完成后评估两种方案——A：删除 JSDOM 对话框 → 主进程不再 <code>require('jsdom')</code>（out/main 10.50 MiB → 显著下降）；B：若仍需保留部分 JSDOM，则 <code>jsdom</code> 升为 production dependency + 构建 externalize，并记录 asar 体积权衡。CI 增加「asar 运行时必需包」探查步骤。</li>
+<li><strong>验收</strong>：方案 A 下主进程 bundle 无 jsdom；方案 B 下 asar 含运行时依赖、<code>externalizeDeps</code> 配置有注释与测试；两种方案均需记录包体/启动对比数据。</li>
+<li><strong>风险/回滚</strong>：构建配置变动可能导致运行时崩溃且单测难发现——必须真机启动 + 对话框链路手测；保留构建对比日志。</li>
+</ul>
+<h3 id="sub-7">3.4 AppContext 与 IPC 注册清单（M1/M2）</h3>
+<ul>
+<li><strong>改动点</strong>：
+<ol>
+<li>新增 <code>main/app-context.ts</code>：集中窗口引用、stores、<code>ipcListenerManager</code>、退出/托盘/快捷键 flags，提供 <code>reset()</code>（activate/测试复用）；</li>
+<li>新增 <code>ipc/registry.ts</code>：<code>registerAll(mainWindow)</code> 汇总现有 9 文件 / 69 处注册，<code>index.ts</code> 只调用一次；</li>
+<li>统一错误上报 helper（<code>notifyStatus</code> / <code>toUserError</code>），替换 5+ 套 helper（可与第 4 批联动的部分只在第 4 批做）。</li>
+</ol>
+</li>
+<li><strong>验收</strong>：窗口重建/reload/退出路径无重复监听或状态串扰（单测 + 手测）；注册清单单一入口；错误提示文案/类型统一。</li>
+</ul>
+<h2 id="sec-5">4. 第 3 批：工程门禁与发布（P2）</h2>
+<h3 id="sub-8">4.1 文档基线自动校验（H5 自动化）</h3>
+<ul>
+<li>新增脚本从 <code>package.json</code> 版本、<code>vitest</code> 统计、IPC 常量和 <code>dist/</code> 产物生成 <code>out/quality-baseline.json</code>；CI 将结果与 <code>docs/reports/README.md</code>「当前基线」比对，不一致即失败（允许历史报告保留旧值）。</li>
+</ul>
+<h3 id="sub-9">4.2 CI 门禁补强（M9）</h3>
+<ul>
+<li>新增 <code>vitest --coverage</code>（阈值按当前渲染层覆盖率基线，不降低）、<code>prettier --check</code>（存量格式先批量修复或按目录白名单渐进）、<code>npm audit --omit=dev</code>；</li>
+<li>逐步把渲染层高频交互（保存/打开/主题切换）补 2~3 条 E2E。</li>
+</ul>
+<h3 id="sub-10">4.3 release workflow（H7）</h3>
+<ul>
+<li>新增 <code>.github/workflows/release.yml</code>：<code>release-*</code> tag 触发 → <code>npm run build:win:all</code> → 上传 NSIS/portable/latest.yml/blockmap 到 GitHub Release → 验证 <code>releases/latest/download/latest.yml</code> 可访问；</li>
+<li>明确签名策略（无签名需在 Release 说明中声明）；补 <code>release-1.3.8</code> tag 与发布（若产品确认）。</li>
+</ul>
+<h3 id="sub-11">4.4 产物治理（M7）</h3>
+<ul>
+<li><code>out/</code> 拆分 <code>out/build</code>（构建产物）与 <code>out/analysis</code>（报告/分析/日志）；<code>dist/</code> 历史安装包归档到 Release 或移出工作区；<code>scripts</code> 与文档同步清理命令。</li>
+</ul>
+<h2 id="sec-6">5. 第 4 批：真源收敛与可维护性（P2）</h2>
+<h3 id="sub-12">5.1 单一 manifest（M3）</h3>
+<ul>
+<li>插件工具 38 项 + Material 15 项 + 菜单 <code>menuAction</code> 改为一份 manifest 生成：<code>menu-config</code> 菜单项、<code>plugin-tools-const</code> 懒加载注册表、i18n 键校验；新增一致性测试。</li>
+</ul>
+<h3 id="sub-13">5.2 主题单真源（M4）</h3>
+<ul>
+<li>抽 <code>useTheme()</code> 单例：<code>currentTheme</code> / <code>themeConfig</code> / Monaco 主题 / <code>apply</code> 统一；移除 <code>BaiZeNotes.vue</code>/<code>MenuBar.vue</code> 重复读盘与 DOM 直改样式；主题明暗归属（baize-text/baize-starry/forest）待产品确认后修正。</li>
+</ul>
+<h3 id="sub-14">5.3 EventBus 统一（M5）</h3>
+<ul>
+<li>推广 <code>useEventBus</code>（自动清理）替换 8 文件手写 <code>$on/$off</code>；为 24 事件补「谁发/谁收」表并纳入测试；保留泄漏检测兜底。</li>
+</ul>
+<h3 id="sub-15">5.4 错误/状态栏 helper 统一（M2 剩余部分）</h3>
+<ul>
+<li>抽 <code>notifyStatus</code> + <code>toUserError</code>，替换 5+ 套 helper；状态栏消息类型/i18n 统一。</li>
+</ul>
+<h3 id="sub-16">5.5 重复资产清理（M6）</h3>
+<ul>
+<li>4 个 CSS 双重加载 → 1 处（推荐 <code>main.ts</code>）；KaTeX CSS 3 → 1；7 个未注册工具页（注册或删除）；清理 <code>resources/_unused-assets</code>（287 文件）与模板遗留资源；核对 <code>MermaidRender</code> 残留引用。</li>
+</ul>
+<h2 id="sec-7">6. 第 5 批：清理与规范（P3）</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>条目</th>
+<th>动作</th>
+<th>覆盖</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5.1</td>
+<td>死代码/目录语义</td>
+<td>删除 <code>utils/common.ts</code>、<code>SYSTEM.OPEN_EXTERNAL_LINK</code>；<code>window-manager</code> 移 <code>main/window/</code></td>
+<td>L1</td>
+</tr>
+<tr>
+<td>5.2</td>
+<td>EOL/编码</td>
+<td><code>.editorconfig</code> 与 Prettier <code>endOfLine</code> 统一（推荐 LF）；修复 3 个非 UTF-8 文件；配合 4.2 的 <code>format:check</code></td>
+<td>L2</td>
+</tr>
+<tr>
+<td>5.3</td>
+<td>build 脚本治理</td>
+<td><code>installer.nsh</code>（零引用）删除或接入；两个 <code>.bat</code> 接 npm 或删除；<code>build-win.ps1</code> 能力并入 <code>prepare-build-dirs.js</code></td>
+<td>L3</td>
+</tr>
+<tr>
+<td>5.4</td>
+<td>docs 资产归档</td>
+<td><code>docs/架构文档.html</code> 归档到 <code>docs/历史归档/</code> 并在索引标注「非当前」；<code>_unused-assets</code> 移出工作区</td>
+<td>L3</td>
+</tr>
+<tr>
+<td>5.5</td>
+<td>巨型文件拆分</td>
+<td><code>directory-tree</code>（扫描/watch/事件）、<code>preview-md-basic</code>（按语法域）、<code>MaterialSyntaxDialog</code>（表单/生成器纯函数目录）、设置页（按页签）、<code>pinyin-data</code>（迁 <code>data/</code> + 按需加载）</td>
+<td>热点</td>
+</tr>
+<tr>
+<td>5.6</td>
+<td>根目录清理</td>
+<td><code>baize_clear_icon.ico</code> 归入 <code>resources/</code>、<code>debug.log</code>/<code>tsbuildinfo</code> 清理、<code>_unused-assets</code> 归档</td>
+<td>L3</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>第 5 批每项 ≤0.5~1 人日，可与其他批次穿插；任何一项导致回归立即回滚单文件。</p>
+</blockquote>
+<h2 id="sec-8">7. 优先级与排期建议</h2>
+<ol>
+<li><strong>先做第 1 批</strong>（结构防御）：改动局部、风险可控，收益是后续所有重构的安全网；预计 1 周内完成。</li>
+<li><strong>再做第 2 批</strong>（运行时收敛）：H3/H4 与用户体验直接相关，且 3.2 会改变构建契约，建议在无并行发布会话的窗口执行；分 4~5 个独立提交。</li>
+<li><strong>第 3 批与第 2 批部分并行</strong>：CI/发布脚本改动与运行时解耦，可提前准备；release workflow 需等 1.3.8 发布决策。</li>
+<li><strong>第 4 批</strong>依赖第 2 批组件稳定；第 5 批可随时穿插（尽量在每批收尾时做 1~2 项）。</li>
+</ol>
+<p><strong>版本节奏建议</strong>：第 1、2 批完成可发 1.3.9（结构治理版）；第 3 批完成发 1.4.0-rc（工程与发布就绪）；第 4、5 批进入 1.4.x 维护版。实际版本号以产品决策为准。</p>
+<h2 id="sec-9">8. 度量与验收基线</h2>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>当前基线（2026-11-19，v1.3.8）</th>
+<th>目标</th>
+<th>验证方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>依赖方向违规（config↔utils）</td>
+<td>utils→config 4 文件</td>
+<td><strong>0</strong></td>
+<td><code>arch:check</code> 测试</td>
+</tr>
+<tr>
+<td>preload 白名单一致性</td>
+<td>三份手工清单</td>
+<td><strong>生成 + 双向核对 100%</strong></td>
+<td>构建期生成 + 契约测试</td>
+</tr>
+<tr>
+<td>shared 运行时 node/electron 依赖</td>
+<td>backup-dir 1 处（例外）</td>
+<td><strong>0（或显式豁免）</strong></td>
+<td>ESLint + grep + 测试</td>
+</tr>
+<tr>
+<td>主进程 JSDOM 对话框</td>
+<td>5 个</td>
+<td><strong>0（仅保留在线网页窗口）</strong></td>
+<td>代码检索 + UI 手测</td>
+</tr>
+<tr>
+<td>入口 chunk / 主界面壳 chunk</td>
+<td>127.07 kB / 9,889.38 kB</td>
+<td><strong>入口 ≤150 kB；主界面壳 ≤2 MB，Monaco/预览独立按需</strong></td>
+<td>构建产物契约 E2E</td>
+</tr>
+<tr>
+<td>主进程 out/main 体积</td>
+<td>10.50 MiB（含内联 jsdom）</td>
+<td>方案 A：<strong>≤2 MiB</strong>；方案 B：记录权衡</td>
+<td>构建产物</td>
+</tr>
+<tr>
+<td>文档基线一致性</td>
+<td>人工同步</td>
+<td><strong>CI 自动比对，不一致失败</strong></td>
+<td>quality-baseline job</td>
+</tr>
+<tr>
+<td>发布自动化</td>
+<td>手工 tag + 手工上传</td>
+<td><strong>tag 触发 → Release → latest.yml 验证</strong></td>
+<td>release workflow 演练</td>
+</tr>
+<tr>
+<td>CI 门禁</td>
+<td>typecheck/ESLint/Vitest/E2E</td>
+<td><strong>+ coverage / prettier / audit</strong></td>
+<td>CI 全绿</td>
+</tr>
+<tr>
+<td>测试规模</td>
+<td>172 文件 / 3,201 用例</td>
+<td><strong>≥ 当前，且关键批次新增回归测试</strong></td>
+<td>vitest 统计</td>
+</tr>
+<tr>
+<td>巨大单文件</td>
+<td>pinyin-data 20,914 行等</td>
+<td>拆分/迁移完成，单文件 ≤1,500 行（数据文件除外）</td>
+<td>行数统计</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-10">9. 风险与回滚管理</h2>
+<table>
+<thead>
+<tr>
+<th>风险</th>
+<th>缓解措施</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>重构改变行为（尤其启动/恢复/对话框）</td>
+<td>每批独立提交；先补等价性/契约测试；UI 手测清单随批次更新</td>
+</tr>
+<tr>
+<td>并行会话冲突</td>
+<td>执行前同步工作区并确认安静窗口；批次写入范围记录在任务卡；只改计划内文件</td>
+</tr>
+<tr>
+<td>构建/sandbox 约束被破坏</td>
+<td>preload 单文件、sandbox、CSP 相关改动必须 E2E + 真机验证；保留构建对比日志</td>
+</tr>
+<tr>
+<td>发布链路改动引入事故</td>
+<td>release workflow 先 dry-run（手动触发 + 不上传）；latest.yml 下载验证通过后再正式发布</td>
+</tr>
+<tr>
+<td>门禁数字/文档再次漂移</td>
+<td>第 3 批自动化校验；每批完成后回写本计划与台账</td>
+</tr>
+<tr>
+<td>工作量超预期</td>
+<td>每批可只完成其中 1~2 项（独立可验收）；不阻塞版本迭代</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-11">10. 批次状态</h2>
+<table>
+<thead>
+<tr>
+<th>批次</th>
+<th>状态</th>
+<th>提交/备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 0 批 基线确认</td>
+<td>✅ 已完成</td>
+<td>结构报告 + 公共接口归位（已完成）+ 1.3.7 发布</td>
+</tr>
+<tr>
+<td>第 1 批 结构防御</td>
+<td>⏳ 待执行</td>
+<td>—</td>
+</tr>
+<tr>
+<td>第 2 批 运行时收敛</td>
+<td>⏳ 待执行</td>
+<td>—</td>
+</tr>
+<tr>
+<td>第 3 批 工程门禁与发布</td>
+<td>⏳ 待执行</td>
+<td>—</td>
+</tr>
+<tr>
+<td>第 4 批 真源收敛</td>
+<td>⏳ 待执行</td>
+<td>—</td>
+</tr>
+<tr>
+<td>第 5 批 清理与规范</td>
+<td>⏳ 待执行</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-12">附录 A：风险 → 批次映射</h2>
+<table>
+<thead>
+<tr>
+<th>风险</th>
+<th>级别</th>
+<th>对应批次</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>H1 config↔utils 双向依赖</td>
+<td>高</td>
+<td>第 1 批</td>
+<td>依赖矩阵测试 + 回调注入</td>
+</tr>
+<tr>
+<td>H2 preload 白名单手工清单</td>
+<td>高</td>
+<td>第 1 批</td>
+<td>契约生成 + 双向核对</td>
+</tr>
+<tr>
+<td>H3 双对话框体系</td>
+<td>高</td>
+<td>第 2 批</td>
+<td>JSDOM 5 → Vue/BaseDialog</td>
+</tr>
+<tr>
+<td>H4 主界面大 chunk</td>
+<td>高</td>
+<td>第 2 批</td>
+<td>Monaco/预览二级懒加载</td>
+</tr>
+<tr>
+<td>H5 文档口径漂移</td>
+<td>高</td>
+<td>第 3 批（已修复，转自动化）</td>
+<td>自动比对基线</td>
+</tr>
+<tr>
+<td>H6 jsdom 运行时依赖</td>
+<td>高</td>
+<td>第 2 批</td>
+<td>迁移后移除或显式 externalize</td>
+</tr>
+<tr>
+<td>H7 发布链路</td>
+<td>高</td>
+<td>第 3 批</td>
+<td>release workflow + 签名/更新验证</td>
+</tr>
+<tr>
+<td>M1 全局单例分散</td>
+<td>中</td>
+<td>第 2 批</td>
+<td>AppContext + reset</td>
+</tr>
+<tr>
+<td>M2 IPC 注册分散 / 错误 helper</td>
+<td>中</td>
+<td>第 2 批（注册）/ 第 4 批（helper）</td>
+<td>registry.ts + 统一 helper</td>
+</tr>
+<tr>
+<td>M3 字符串协议多段同步</td>
+<td>中</td>
+<td>第 4 批</td>
+<td>单一 manifest</td>
+</tr>
+<tr>
+<td>M4 主题多真源</td>
+<td>中</td>
+<td>第 4 批</td>
+<td>useTheme 单例</td>
+</tr>
+<tr>
+<td>M5 EventBus 双风格</td>
+<td>中</td>
+<td>第 4 批</td>
+<td>useEventBus 推广</td>
+</tr>
+<tr>
+<td>M6 重复/死资源</td>
+<td>中</td>
+<td>第 4 批 + 第 5 批</td>
+<td>资产清理</td>
+</tr>
+<tr>
+<td>M7 out/dist 产物治理</td>
+<td>中</td>
+<td>第 3 批</td>
+<td>目录拆分 + 归档</td>
+</tr>
+<tr>
+<td>M8 URL 双份</td>
+<td>中</td>
+<td>已完成</td>
+<td>—</td>
+</tr>
+<tr>
+<td>M9 CI 门禁缺口</td>
+<td>中</td>
+<td>第 3 批</td>
+<td>coverage/prettier/audit</td>
+</tr>
+<tr>
+<td>L1 死代码/目录语义</td>
+<td>低</td>
+<td>第 5 批</td>
+<td>—</td>
+</tr>
+<tr>
+<td>L2 EOL/编码</td>
+<td>低</td>
+<td>第 5 批</td>
+<td>—</td>
+</tr>
+<tr>
+<td>L3 build/docs 资产腐化</td>
+<td>低</td>
+<td>第 5 批</td>
+<td>—</td>
+</tr>
+<tr>
+<td>L4 shared 边界例外</td>
+<td>低</td>
+<td>第 1 批</td>
+<td>backup-dir 注入化 + ESLint</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-13">附录 B：依据与证据</h2>
+<ul>
+<li><a href="../01-检查与扫描/代码整体结构分析报告.html">代码整体结构分析报告</a>（§9.2 风险清单、§9.3 建议、§8 量化）；</li>
+<li><a href="../03-专项治理/当前遗留问题清单.html">当前遗留问题清单</a>（21 项跟踪台账，含已完成修复记录）；</li>
+<li><a href="../03-专项治理/IPC通信矩阵.html">IPC 通信矩阵</a>（92 通道 / 17 组当前口径）；</li>
+<li><a href="公共接口归位修复计划.html">公共接口归位修复计划</a>（已完成批次作为「re-export 门面 + 契约测试」实施模式参考）；</li>
+<li>量化实测：2026-11-19，v1.3.8 基线（172 测试文件 / 3,201 用例，jsdom 52；入口 chunk 127.07 kB、主界面 9,889.38 kB；out/main 10.50 MiB）。</li>
+</ul>
+<h2 id="sec-14">附录 C：变更记录</h2>
+<ul>
+<li>2026-11-19：创建本计划（基于《代码整体结构分析报告》v1.3.8 刷新版；批次 1~5，含批次 0 基线确认）。</li>
+</ul>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+</body>
+</html>
