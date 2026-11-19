@@ -8,6 +8,20 @@
 - **1.3.7 已发布**（2026-11-19）：GitHub Release `release-1.3.7`（tag `release-1.3.7` → `cc3d929`；NSIS 118.42 MiB / portable 107.46 MiB / latest.yml / blockmap），自动更新源 `releases/latest/download` 已验证可访问
 - **1.3.6 tag 补齐**：在发布提交 `506e78a` 上补打 `release-1.3.6` tag
 
+### 🧭 HTML 报告 Wiki 导航共享化（2026-11-19）
+
+- **导航/样式抽成共享资产**：docs/reports/html/assets/（report.css 公共样式、report-nav.js 浏览器端导航渲染、report-nav.html/report-nav-home.html 静态片段），由 REPORT_NAV_DATA 单一真源生成；24 页（1 首页 + 23 报告）改为引用共享资源，每页减少约 206 行内联重复，新增报告只需改数据表 + 写 md，已有页面无需改动
+- **应用内兼容**：HTML 查看器（srcdoc 无脚本）检测占位后注入静态导航片段（首页/分类页变体按候选路径探测，失败静默降级）；hemytools-html-view 测试 18→36 用例
+- **验证**：24 页模板契约 24/24、jsdom 外链加载 749 项 0 失败、Chromium file:// 实测 17/17、视觉零回归（截图 SHA256 一致、正文逐字节一致）、生成幂等与 assets 自动重建、新增报告流程 13/13；真实应用内导航注入验证通过（26 链接、样式生效、布局正常）
+- **清理/口径**：删除废弃 build/report-nav.html；reports 实有 23 篇 → HTML Wiki 24 页（旧文档 23 页/22 报告属过期口径，两份 README 已同步）
+
+### 🖼️ HTML 查看器导航修复（2026-11-19，用户反馈）
+
+- **问题**：①HTML 内顶部导航跳转后点击左侧悬浮目录，布局越界上移被菜单栏遮挡；②直接打开 HTML 后点击左侧导航，页面空白
+- **根因**：①容器缺少布局样式 + iframe 无 min-height 收缩 → 内部视口高度被内容撑大（18501px vs 1192px），点锚点时浏览器转而滚动父级滚动链；②srcdoc 的 #anchor 经注入 base 解析为 file:// 导航（sandbox 下失败）
+- **修复**：容器补齐 flex/column/height:100%/min-height:0/overflow:hidden，shell/iframe/PDF 滚动区 min-height:0；新增 iframe 锚点守卫（父页面事件委托拦截纯 fragment 链接，仅滚动 iframe 内部；跨文档链接保持默认）
+- **验证**：真实应用脚本复现两场景——跳转后点 .toc 容器 y 稳定 67（修复前 -8）、直接打开点 .toc 不再空白且内部滚动正常；新增布局契约测试 3 用例
+
 ### 🧱 结构优化第 1 批（H1 / H2 / L4）
 
 - **H1 依赖边界自动化**：新增 `src/main/utils/providers.ts`（依赖倒置，仅依赖 shared），`auto-backup`/`i18n`/`path-utils`/`utils.ts` 的 utils→config 静态 import 清零；`config/index.ts` 移除 `ipcListenerManager` re-export；新增 `tests/architecture/dependency-boundaries.test.ts`（方向矩阵扫描，0 violation）
