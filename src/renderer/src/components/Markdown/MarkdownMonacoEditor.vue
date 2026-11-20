@@ -49,11 +49,13 @@ import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { useEventBus } from '../../composables/useEventBus'
 import { logger } from '../../common/logger'
 import { toFileUrl } from '../../../../shared/utils/path'
+// 1.5.0（编辑器 → 预览滚动同步）：锚点归一化纯函数（与预览侧同一模块，口径唯一）
+import { ComputeEditorScrollAnchor, type EditorScrollAnchor } from './preview-scroll-sync'
 // P1 性能基线：Monaco 编辑器就绪阶段标记（默认关闭，诊断开关下才输出）
 import { PERF_MARK, perfMark, perfMeasure } from '../../common/perf'
 
-// 定义 emit 函数
-const emit = defineEmits(['update:code'])
+// 定义 emit 函数（sync-scroll：编辑器 → 预览单向滚动同步的触发端事件）
+const emit = defineEmits(['update:code', 'sync-scroll'])
 
 // M5：编辑器 9 个进程内事件订阅统一经 useEventBus 注册，卸载时自动清理
 const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownMonacoEditor' })
@@ -78,6 +80,112 @@ const props = defineProps({
 
 const monacoEditorContainer = ref<HTMLElement | null>(null)
 let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
+
+/* ==================== 1.5.0 编辑器 → 预览单向滚动同步（触发端） ====================
+ * 三条触发路径统一收敛为一个 `sync-scroll` 事件（父组件再补 seq 并透传给预览）：
+ * 1. onDidScrollChange：滚轮/PageDown/大纲跳转/光标 reveal 等一切滚动 -> rAF 合帧，
+ *    每帧最多发一次（取可见区首行 + scrollTop/scrollHeight 归一化比例）；
+ * 2. onDidChangeModelContent：键入/回车会触发 Monaco 自动滚动，但滚动事件偶发早于
+ *    重排完成 -> 150~200ms 尾随防抖后再发一次（连续输入只发最后一帧，不逐字符计算）；
+ * 3. onDidChangeCursorPosition（reason=Explicit）：键盘/鼠标移动光标的兜底路径
+ *    （Monaco 内部 reveal 不一定触发滚动事件），同样 rAF 合帧。
+ * 只发轻量 { line, ratio }，不做任何 DOM/预览侧计算；卸载时取消帧/防抖并 dispose 订阅。
+ */
+/** 内容变化后的尾随防抖（150~200ms 区间）：覆盖输入导致的光标自动 reveal */
+const SCROLL_SYNC_CONTENT_DEBOUNCE_MS = 180
+/** rAF 合帧句柄（null = 无待执行帧） */
+let scrollSyncFrameId: number | null = null
+/** 内容变化尾随防抖计时器 */
+let scrollSyncContentTimer: ReturnType<typeof setTimeout> | null = null
+/** 编辑器事件订阅句柄（卸载时统一 dispose；单测桩可能不返回句柄，故按可空处理） */
+const scrollSyncDisposables: Array<{ dispose(): void } | undefined> = []
+
+/** 读取一次编辑器滚动锚点（可见区首行 + 滚动比例）；无实例/取不到可见区时返回 null */
+function readEditorScrollAnchor(): EditorScrollAnchor | null {
+    if (!editorInstance) {
+        return null
+    }
+    const visibleRanges = editorInstance.getVisibleRanges()
+    const startLine = visibleRanges.length > 0 ? visibleRanges[0].startLineNumber : 1
+    const layoutInfo = editorInstance.getLayoutInfo()
+    return ComputeEditorScrollAnchor(
+        startLine,
+        editorInstance.getScrollTop(),
+        editorInstance.getScrollHeight(),
+        layoutInfo ? layoutInfo.height : 0
+    )
+}
+
+/** 立即发出一次同步锚点（取不到数据/计算异常时静默跳过，绝不影响编辑器主链路） */
+function emitScrollSyncAnchor(): void {
+    try {
+        const anchor = readEditorScrollAnchor()
+        if (!anchor) {
+            return
+        }
+        emit('sync-scroll', anchor)
+    } catch (error) {
+        // 滚动同步属体验增强：编排/预览侧的失败不能反向影响编辑器输入与渲染
+        logger.warn('[MarkdownMonacoEditor] 滚动同步锚点计算失败，已跳过本次同步:', error)
+    }
+}
+
+/** 滚动事件触发：rAF 合帧（同一帧内多次滚动只发最后一次位置） */
+function scheduleScrollSyncFromScroll(): void {
+    if (scrollSyncFrameId !== null) {
+        return
+    }
+    // 无 rAF 环境（单测/极旧运行时）退化为同步发出，保持事件语义
+    if (typeof requestAnimationFrame !== 'function') {
+        emitScrollSyncAnchor()
+        return
+    }
+    scrollSyncFrameId = requestAnimationFrame(() => {
+        scrollSyncFrameId = null
+        emitScrollSyncAnchor()
+    })
+}
+
+/** 内容变化触发：尾随防抖（连续输入只发最终位置，避免逐字符触发预览级计算） */
+function scheduleScrollSyncFromContent(): void {
+    if (scrollSyncContentTimer !== null) {
+        clearTimeout(scrollSyncContentTimer)
+    }
+    scrollSyncContentTimer = setTimeout(() => {
+        scrollSyncContentTimer = null
+        emitScrollSyncAnchor()
+    }, SCROLL_SYNC_CONTENT_DEBOUNCE_MS)
+}
+
+/** 取消未执行的滚动同步帧与防抖计时器（卸载时调用，幂等） */
+function cancelScheduledScrollSync(): void {
+    if (scrollSyncFrameId !== null && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(scrollSyncFrameId)
+    }
+    scrollSyncFrameId = null
+    if (scrollSyncContentTimer !== null) {
+        clearTimeout(scrollSyncContentTimer)
+        scrollSyncContentTimer = null
+    }
+}
+
+/** 注册滚动同步所需编辑器事件订阅（编辑器创建后调用一次） */
+function registerScrollSyncListeners(): void {
+    if (!editorInstance) {
+        return
+    }
+    scrollSyncDisposables.push(
+        editorInstance.onDidScrollChange(() => scheduleScrollSyncFromScroll())
+    )
+    // 光标变化兜底：仅处理显式原因（键盘/鼠标移动），内容回填等内部原因不触发
+    scrollSyncDisposables.push(
+        editorInstance.onDidChangeCursorPosition((event) => {
+            if (event.reason === monaco.editor.CursorChangeReason.Explicit) {
+                scheduleScrollSyncFromScroll()
+            }
+        })
+    )
+}
 
 /**
  * 2026-11-20（编辑器底部光标不可见修复）：内容变化（回车/粘贴等）后，若光标落在
@@ -648,10 +756,15 @@ onMounted(async () => {
             const context = model.getValue()
             emit('update:code', context)
             EventBus.$emit(EVENT_BUS.STATUS_BAR_CONTEXT_LENGTH, model.getValueLength())
+            // 1.5.0（滚动同步）：键入/回车会触发 Monaco 自动滚动，尾随防抖后再同步一次预览
+            scheduleScrollSyncFromContent()
             // 2026-11-20（编辑器底部光标不可见修复）：内容变化（含回车）后，
             // 若光标落在视口最后一行且下面还有行，把下一行也滚入视口（底部留一行安全区）。
             requestAnimationFrame(revealCursorLineWithBreathingRoom)
         })
+
+        // 1.5.0（滚动同步）：滚动/光标兜底两条订阅（内容变化在上一行回调内触发）
+        registerScrollSyncListeners()
 
         editor.DidChange(editorInstance)
         editor.KeyMaps(editorInstance)
@@ -731,6 +844,13 @@ onBeforeUnmount(() => {
 
     // PF-7：取消未执行的 layout 合帧
     cancelScheduledMonacoLayout()
+
+    // 1.5.0（滚动同步）：取消未执行的 rAF 合帧/尾随防抖，并 dispose 编辑器事件订阅
+    cancelScheduledScrollSync()
+    for (const disposable of scrollSyncDisposables) {
+        disposable?.dispose()
+    }
+    scrollSyncDisposables.length = 0
 
     // 4. 完整清理 Monaco Editor
     if (editorInstance) {

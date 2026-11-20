@@ -32,6 +32,7 @@ import { full as emoji } from 'markdown-it-emoji'
 import { logger } from '../../common/logger'
 import { installPreviewExtensions } from './preview-markdown-extensions'
 import { mkdocsMaterialPlugin } from './preview-mkdocs-material'
+import { installPreviewSourceAnchors } from './preview-source-anchor'
 
 /**
  * 构建预览专用 markdown-it 实例（插件顺序与 PF-02 单跳渲染链路一致）。
@@ -83,6 +84,12 @@ export function createPreviewMarkdownIt(): InstanceType<typeof MarkdownIt> {
         .use(mkdocsMaterialPlugin)
         // 2026-11-15：mkdocs-material / pymdownx 扩展统一装配（批次 A/B/C 插件）
         .use(installPreviewExtensions)
+        // 1.5.0（滚动同步）：给块级元素注入 data-source-line 源行锚点。
+        // 必须最后装配——在 core.block 之后遍历最终 token 流，天然覆盖全部扩展插件
+        // 产生的 token；普通/大文档分块/流式渲染共用同一实例，故三条渲染路径都带锚点。
+        // 锚点由渲染 env 显式开启（仅预览组件真实链路，见 preview-source-anchor.ts），
+        // 其它 md.render 调用方输出保持逐字不变。
+        .use(installPreviewSourceAnchors)
 
     // 关键顺序：必须在 .use(highlightjs) 之后重新赋值，否则会被插件 core 覆盖（PF-1）
     md.options.highlight = safeHighlight

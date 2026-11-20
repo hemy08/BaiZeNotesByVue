@@ -96,6 +96,13 @@ const editorStub = {
     onDidChangeModelContent: (callback: () => void) => {
         M.changeHandlers.push(callback)
     },
+    // 1.5.0（滚动同步）：编辑器创建后注册滚动/光标订阅（本文件只验证挂载装配不受影响）
+    onDidScrollChange: vi.fn(),
+    onDidChangeCursorPosition: vi.fn(),
+    getVisibleRanges: (): Array<{ startLineNumber: number; endLineNumber: number }> => [],
+    getScrollTop: (): number => 0,
+    getScrollHeight: (): number => 0,
+    getLayoutInfo: (): { height: number } => ({ height: 0 }),
     layout: M.layout,
     getModel: (): ModelLike | null => M.currentModel,
     setModel: M.setModel,

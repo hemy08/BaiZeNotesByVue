@@ -12,6 +12,7 @@
             :code="initialCodeContent"
             :editor-area-width="monacoEditorWidthPx"
             @update:code="handleMarkdownCodeUpdate"
+            @sync-scroll="handleEditorSyncScroll"
         />
     </div>
     <div
@@ -34,6 +35,7 @@
             :editor-content="markdownEditorContent"
             :active="isShowPreviewArea"
             :active-file-path="activeFilePath"
+            :sync-scroll-target="visibleSyncScrollTarget"
         />
     </div>
 </template>
@@ -58,6 +60,7 @@ import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { logger } from '../../common/logger'
 // P2 功能错误处理修复：用户主动操作失败统一反馈（编码转换/按编码重开）
 import { describeActionError, reportActionFailure } from '../../common/action-feedback'
+import type { PreviewScrollTarget } from './preview-scroll-sync'
 
 // M5：保存/模板/导入替换 3 个进程内事件订阅统一经 useEventBus 注册，卸载时自动清理
 const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownEditComponent' })
@@ -193,6 +196,50 @@ const resizerPosition = ref('50%')
 const initialCodeContent = ref('')
 const markdownEditorCode = ref('')
 const markdownEditorContent = ref('')
+
+/* ==================== 1.5.0 编辑器 → 预览单向滚动同步（父组件编排） ====================
+ * 数据流：MarkdownMonacoEditor 发 `sync-scroll`（{ line, ratio }）
+ *   → 本组件补单调递增 seq → 经 prop 透传 MarkdownPreviewComponent（仅预览可见时）。
+ * 为什么在父组件分配 seq：编辑器事件可能被 rAF/防抖合并，seq 统一由编排层生成，
+ * 预览侧只需比较「比已应用 seq 更大」即可丢弃过期目标（快速滚动时旧目标晚到不覆盖新位置）。
+ * 为什么仅预览可见时透传：纯编辑模式下预览不渲染/不同步，避免隐藏预览产生无效计算。
+ */
+const syncScrollTarget = ref<PreviewScrollTarget | null>(null)
+let syncScrollSeq = 0
+/** 传给预览的同步目标：预览不可见时恒为 null（隐藏预览不同步） */
+const visibleSyncScrollTarget = computed(() =>
+    isShowPreviewArea.value ? syncScrollTarget.value : null
+)
+
+/**
+ * 接收编辑器滚动同步事件。
+ * 只接受合法的有限数值；仅分栏预览可见时更新目标，seq 递增后透传。
+ */
+function handleEditorSyncScroll(
+    anchor: { line?: number; ratio?: number } | null | undefined
+): void {
+    if (!isShowPreviewArea.value || !anchor) {
+        return
+    }
+    if (typeof anchor.line !== 'number' || typeof anchor.ratio !== 'number') {
+        return
+    }
+    if (!Number.isFinite(anchor.line) || !Number.isFinite(anchor.ratio)) {
+        return
+    }
+    syncScrollSeq += 1
+    syncScrollTarget.value = {
+        line: anchor.line,
+        ratio: anchor.ratio,
+        seq: syncScrollSeq
+    }
+}
+
+/** 清除同步目标并复位 seq（切换文件/清空编辑器时调用，避免预览跳到上一文件的旧行） */
+function resetSyncScrollTarget(): void {
+    syncScrollSeq = 0
+    syncScrollTarget.value = null
+}
 // 结构优化第 2 批 2.2（H4）：当前活动文件路径（预览相对图片/snippets 解析依赖）。
 // 本组件同步挂载、监听 IPC.FILE.USER_SELECT_FILE，再把路径作为 prop 传给按需加载的预览，
 // 覆盖「启动恢复先下发文件路径、预览 chunk 后挂载」的时序（原实现由预览自己监听，
@@ -383,6 +430,8 @@ const handleFlushContent = () => {
 }
 
 function onHandleNewContent(content: string) {
+    // 1.5.0（滚动同步）：新文件不继承上一文件的同步目标（否则预览会重放旧行号）
+    resetSyncScrollTarget()
     // FE-13：空文件必须保持空内容。
     // 原实现在 content 为空时走 handleMarkdownCodeUpdate('\r\n')：编辑器被注入一行空行，
     // 500ms 后同步回主进程 → appState 内容与保存快照不一致 → isDirty() 为 true，
@@ -435,6 +484,8 @@ const handleClearEditor = () => {
     // 此时点「打开文件夹 / 最近文件夹」会先进入主界面再发本事件，'# ' 同步后该文件变脏，
     // 之后打开新文件前的自动保存 / 关闭保存会把旧文档写成 '# '（数据被清空）。
     clearContentSyncTimer()
+    // 1.5.0（滚动同步）：清空编辑器时清除同步目标，预览回到顶部
+    resetSyncScrollTarget()
     // 先更新基准，再改内容：即使后续编辑器回传 change 事件，newValue 与 lastSyncedContent
     // 相同也会被跳过，不会产生 UPDATE_SELECT_FILE_CONTENT IPC。
     lastSyncedContent = ''

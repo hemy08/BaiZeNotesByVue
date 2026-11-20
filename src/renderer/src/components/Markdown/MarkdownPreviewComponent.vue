@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { PropType } from 'vue'
 // 结构优化第 2 批 2.2（H4）：预览只依赖渲染模块（hemy-editor-render），
 // 不再经 `hemy-editor` 聚合桶（该桶含 Monaco 编辑器动作/快捷键等），
 // 保证预览按需 chunk 不把 Monaco 重新带回来。
@@ -35,6 +36,8 @@ import { EnsurePreviewHighlightLanguagesLoaded } from './preview-highlight'
 // 批次 C：snippets（--8<--）异步展开 + tab 深链（#__tabbed_N_i）
 import { expandSnippetIncludes } from './preview-md-blocks'
 import { createTabDeepLinkEnv, getTabTargetByHash } from './preview-mkdocs-material'
+// 1.5.0（滚动同步）：按次渲染开启源行锚点（只在预览真实链路注入，其余 md.render 调用零变化）
+import { WithPreviewSourceAnchors } from './preview-source-anchor'
 import { ComputeChaptersFingerprint } from './preview-chapters'
 // CMP-15：XSS 防护 —— DOMPurify 配置与消毒唯一入口统一收敛到 preview-sanitize.ts；
 // P2-1：大文档按安全顶层边界分块消毒（块间让出主线程、首块先显示），任何路径都不绕过消毒。
@@ -56,6 +59,17 @@ import { PERF_MARK, perfMark, perfMeasure } from '../../common/perf'
 import type { SystemSetting } from '../../../../shared/types'
 // 全局类型 FileProperties 由 src/main/global-types.d.ts 的 declare global 提供（tsconfig.web 已 include）
 /* global FileProperties */
+
+// 1.5.0（编辑器 → 预览滚动同步）：锚点收集/测量、二分映射与 seq 去重的纯计算在
+// preview-scroll-sync.ts 统一收敛（可脱离组件单测）；本组件只负责「何时、是否可见」的编排。
+import {
+    CollectPreviewAnchorElements,
+    MeasurePreviewAnchorOffsets,
+    ResolvePreviewScrollTop,
+    ShouldApplyPreviewScrollTarget,
+    type PreviewAnchorOffset,
+    type PreviewScrollTarget
+} from './preview-scroll-sync'
 
 // CMP-15：XSS 防护 —— markdown-it 以 html:true 渲染，产物经 v-html 注入前必须消毒。
 // 消毒配置（svg + mathMl + file: URI 白名单）与分块净化统一收敛到 preview-sanitize.ts，
@@ -80,6 +94,13 @@ const props = defineProps({
     activeFilePath: {
         type: String,
         default: ''
+    },
+    // 1.5.0（编辑器 → 预览滚动同步）：父组件编排后的同步目标（仅分栏预览可见时透传）。
+    // null = 无目标/父组件主动清除（切换文件）；预览隐藏时本组件只记录目标、不写 scrollTop，
+    // 恢复可见后重放最后目标（见下方 active watch）。仅做单向同步，预览滚动不会反向影响编辑器。
+    syncScrollTarget: {
+        type: Object as PropType<PreviewScrollTarget | null>,
+        default: null
     }
 })
 
@@ -142,6 +163,23 @@ let skeletonVisible = false
  */
 let isPreviewUnmounted = false
 
+/* ==================== 1.5.0（编辑器 → 预览单向滚动同步）状态 ====================
+ * 设计要点：
+ * - 目标来自 props.syncScrollTarget（父组件编排，含单调递增 seq）；
+ * - 锚点 = `[data-source-line]`（markdown-it 源行插件注入，见 preview-source-anchor.ts）；
+ *   首次同步时收集 + 测量并缓存，v-html 重渲染 / 流式追加后置脏重建；
+ * - 预览隐藏时只记录目标不滚动；内容重渲染完成后（nextTick）重放最后目标，
+ *   避免输入导致的整篇替换把滚动位置丢掉；
+ * - 空内容跳过、过期 seq 丢弃（快速滚动时旧目标晚到不得覆盖新位置）。
+ */
+let lastSyncScrollTarget: PreviewScrollTarget | null = null
+/** 已应用到 DOM 的最大目标 seq（丢弃过期/重复目标） */
+let lastAppliedSyncSeq = 0
+/** 锚点偏移缓存是否失效（内容重渲染/流式追加后置 true） */
+let anchorOffsetsDirty = true
+/** 锚点相对滚动容器内容顶部的偏移缓存（按 line 升序） */
+let cachedAnchorOffsets: PreviewAnchorOffset[] = []
+
 /** snippets（--8<--）指令标记：含片段展开时结果依赖磁盘文件，不使用渲染缓存 */
 const SNIPPET_DIRECTIVE_MARKER = '--8<--'
 /** 渲染标记注释前缀（不可见、无渲染成本；用于区分不同渲染轮次的 v-html 值） */
@@ -173,6 +211,84 @@ function clearRenderDebounceTimer(): void {
         clearTimeout(renderDebounceTimer)
         renderDebounceTimer = null
     }
+}
+
+/**
+ * 1.5.0（滚动同步）：确保锚点偏移缓存与当前预览 DOM 一致。
+ *
+ * 仅在缓存失效时重建（内容重渲染/流式追加/首次同步）。测量成本与块数量线性相关，
+ * 正常滚动帧内直接命中缓存（O(log n) 二分），不会每帧重新遍历 DOM。
+ */
+function ensurePreviewAnchorOffsets(container: HTMLElement): PreviewAnchorOffset[] {
+    if (!anchorOffsetsDirty) {
+        return cachedAnchorOffsets
+    }
+    cachedAnchorOffsets = MeasurePreviewAnchorOffsets(
+        container,
+        CollectPreviewAnchorElements(container)
+    )
+    anchorOffsetsDirty = false
+    return cachedAnchorOffsets
+}
+
+/**
+ * 1.5.0（滚动同步）：把同步目标应用到预览滚动容器。
+ *
+ * 跳过条件（返回 false，不产生任何 DOM 写入）：
+ * - 组件已卸载 / 预览不可见（隐藏预览不同步）；
+ * - 编辑内容为空（空内容没有可定位的块，写入 scrollTop 只会造成无意义跳动）；
+ * - 非重放模式下 seq 不大于已应用 seq（过期/重复目标丢弃）；
+ * - 预览容器尚未挂载。
+ *
+ * @param target 同步目标
+ * @param replay 是否为「渲染完成后重放」——重放不受 seq 去重约束（同一目标允许再次写回）
+ * @returns 是否实际写入了 scrollTop
+ */
+function applyPreviewSyncScrollTarget(target: PreviewScrollTarget, replay: boolean): boolean {
+    if (isPreviewUnmounted || !props.active) {
+        return false
+    }
+    if (props.editorContent.trim().length === 0) {
+        return false
+    }
+    const container = previewRoot.value
+    if (!container) {
+        return false
+    }
+    if (!replay && !ShouldApplyPreviewScrollTarget(target.seq, lastAppliedSyncSeq)) {
+        return false
+    }
+    const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight)
+    const scrollTop = ResolvePreviewScrollTop(
+        ensurePreviewAnchorOffsets(container),
+        target,
+        maxScrollTop
+    )
+    // 直接设 scrollTop（不做 smooth 动画）：滚动同步必须与编辑器实时同帧，动画会产生滞后感
+    container.scrollTop = scrollTop
+    lastAppliedSyncSeq = Math.max(lastAppliedSyncSeq, target.seq)
+    return true
+}
+
+/**
+ * 1.5.0（滚动同步）：预览内容重渲染后排期一次「重放最后目标」。
+ *
+ * 为什么必须重放：预览整篇替换 v-html 后浏览器的滚动位置会被重置/漂移；
+ * 编辑期如果只依赖「目标变化」触发同步，输入（内容变化）导致的每轮重渲染都会把
+ * 预览拉回顶部或错位。这里在 DOM 更新后的 nextTick 用缓存锚点重新计算并回写。
+ */
+function schedulePreviewSyncReplay(): void {
+    // 内容变了：锚点位置/数量都可能变，下一次同步必须重新测量
+    anchorOffsetsDirty = true
+    if (lastSyncScrollTarget === null) {
+        return
+    }
+    void nextTick(() => {
+        if (isPreviewUnmounted || lastSyncScrollTarget === null) {
+            return
+        }
+        applyPreviewSyncScrollTarget(lastSyncScrollTarget, true)
+    })
 }
 
 /** P2-1：构造本轮 v-html 的渲染标记注释（纯组件内生成的静态字符串，不含用户内容） */
@@ -279,7 +395,28 @@ watch(
             clearRenderDebounceTimer()
             void updateMarkdownPreview()
         }
+        // 1.5.0（滚动同步）：预览恢复可见后重放最后一次目标。
+        // 隐藏期间不同步（不打扰后台渲染），但目标已记录，恢复时一次补上。
+        schedulePreviewSyncReplay()
     }
+)
+
+// 1.5.0（滚动同步）：父组件编排后的同步目标变化——记录最新目标并立即应用。
+// - immediate：预览 chunk 异步挂载晚于父组件首次收到编辑器事件时，也能补上首个目标；
+// - target 为 null：父组件主动清除（切换文件/隐藏预览），同时复位 seq 去重基准，
+//   避免新文件的首个目标（seq 从 1 重新计数）被旧文件的已应用 seq 误判为过期。
+watch(
+    () => props.syncScrollTarget,
+    (target) => {
+        if (!target) {
+            lastSyncScrollTarget = null
+            lastAppliedSyncSeq = 0
+            return
+        }
+        lastSyncScrollTarget = target
+        applyPreviewSyncScrollTarget(target, false)
+    },
+    { immediate: true }
 )
 
 /**
@@ -465,6 +602,8 @@ async function updateMarkdownPreview() {
                 hasVisiblePreviewContent = true
                 skeletonVisible = false
                 lastRenderedContent = sourceContent
+                // 1.5.0（滚动同步）：v-html 已替换，DOM 更新后重放最后目标（避免位置丢失）
+                schedulePreviewSyncReplay()
                 reportPreviewReadyAfterDomUpdate()
                 return
             }
@@ -505,8 +644,13 @@ async function updateMarkdownPreview() {
             UpdateMarkdownChapters()
             lastChaptersFingerprint = chaptersFingerprint
         }
-        // 批次 C：tab 深链属性由 env 开关控制（不传 env 时 HTML 与历史版本一致）
-        const renderedHtml = md.render(renderedText, createTabDeepLinkEnv())
+        // 批次 C：tab 深链属性由 env 开关控制（不传 env 时 HTML 与历史版本一致）；
+        // 1.5.0（滚动同步）：同时开启源行锚点——仅预览真实渲染链路注入 data-source-line，
+        // 普通/大文档分块/流式渲染共用本实例，因此三条路径都带锚点。
+        const renderedHtml = md.render(
+            renderedText,
+            WithPreviewSourceAnchors(createTabDeepLinkEnv())
+        )
         const postRenderText = Render.PostMarkdownRender(HemyRenderPostLocal(renderedHtml))
         if (isStaleRender(sequence, sourceContent)) {
             return
@@ -567,6 +711,8 @@ async function updateMarkdownPreview() {
         skeletonVisible = false
         // 记录本轮已渲染的原始内容（仅在同一引用上赋值，不复制全文）
         lastRenderedContent = sourceContent
+        // 1.5.0（滚动同步）：本轮 DOM 更新后重放最后目标（普通/流式/渐进档统一入口）
+        schedulePreviewSyncReplay()
         // P1 性能基线：v-html 已写入，等本轮 DOM 更新后标记 preview-ready
         //（诊断开关关闭时 perfMark/perfMeasure 为空操作，不产生额外渲染成本；
         //  perfMark 返回 false 表示已标记过——后续重渲染不再重复上报 measure）
@@ -755,6 +901,19 @@ onBeforeUnmount(() => {
     overflow-y: scroll;
     overflow-x: auto;
     display: inline-block;
+}
+
+/* 1.5.0（编辑器 → 预览滚动同步）：源行锚点标记（preview-source-anchor.ts 注入的 <span>）。
+   代码围栏 / 原始 HTML 块无法通过属性承载锚点，改为块级零高度标记：必须不参与排版，
+   否则会在每段代码块前多出一个空行（display:block + 高度 0 即可消除行盒影响）。 */
+.markdown-preview-html :deep(.preview-source-anchor) {
+    display: block;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    line-height: 0;
+    overflow: hidden;
 }
 
 /* P2-1：大文档首屏骨架屏（仅在简化档/渐进档文档首次渲染且预览为空时短暂出现） */

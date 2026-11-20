@@ -45,6 +45,13 @@ function createModel(lines: string[]): {
 const monacoMock = vi.hoisted(() => {
     const editorStub = {
         onDidChangeModelContent: vi.fn(),
+        // 1.5.0（滚动同步）：编辑器创建后会注册滚动/光标订阅，桩必须提供这两个 API
+        onDidScrollChange: vi.fn(),
+        onDidChangeCursorPosition: vi.fn(),
+        getVisibleRanges: (): Array<{ startLineNumber: number; endLineNumber: number }> => [],
+        getScrollTop: (): number => 0,
+        getScrollHeight: (): number => 0,
+        getLayoutInfo: (): { height: number } => ({ height: 0 }),
         layout: vi.fn(),
         getModel: vi.fn(() => null),
         setModel: vi.fn(),
