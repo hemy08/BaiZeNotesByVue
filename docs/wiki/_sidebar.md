@@ -1,4 +1,4 @@
-> 更新于 2026-11-19
+> 更新于 2026-11-20
 
 - [**Wiki 首页**](README.md)
 
@@ -38,7 +38,7 @@
 - **报告归档（不在本 Wiki 内）**
   - [报告总索引与口径说明](../reports/README.md)
   - [Markdown 报告（md/）](../reports/md/)（01-检查与扫描 / 02-修复与实施 / 03-专项治理）
-  - [HTML Wiki（html/）](../reports/html/README.md)（21 个页面：1 首页 + 20 份带固定悬浮目录的报告页面）
+  - [HTML Wiki（html/）](../reports/html/README.md)（27 个页面：1 首页 + 26 份带固定悬浮目录的报告页面）
 
 - **相关文档**
   - [单元测试补充报告（docs/md）](../md/2026-11-14-单元测试补充报告.md)

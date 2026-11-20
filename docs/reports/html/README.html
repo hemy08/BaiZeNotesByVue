@@ -28,7 +28,7 @@
 
 <blockquote>
 <p>本目录为项目历史报告的 <strong>HTML Wiki</strong>（2026-11-18 整理）：27 个页面（1 首页 + 26 份报告）按分类存放，<strong>每页顶部均有整体导航</strong>（首页 + 3 个分类下拉 + 当前页高亮），报告页自带<strong>固定悬浮目录</strong>（随滚动保持可见），由 <code>node build/generate-report-wiki.js</code> 从 <a href="../md/">../md/</a> 同名 Markdown 批量生成。</p>
-<p><strong>口径说明</strong>：报告均为历史快照，数字与结论以报告时点为准；当前唯一现行口径见 <a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/IPC%E9%80%9A%E4%BF%A1%E7%9F%A9%E9%98%B5.html">IPC 通信矩阵</a>（92 通道）与最新门禁（172 测试文件 / 3,272 用例）；待办跟踪见 <a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/%E5%BD%93%E5%89%8D%E9%81%97%E7%95%99%E9%97%AE%E9%A2%98%E6%B8%85%E5%8D%95.html">当前遗留问题清单</a>。完整索引与口径详见 <a href="../README.md">../README.md</a>。</p>
+<p><strong>口径说明</strong>：报告均为历史快照，数字与结论以报告时点为准；当前唯一现行口径见 <a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/IPC%E9%80%9A%E4%BF%A1%E7%9F%A9%E9%98%B5.html">IPC 通信矩阵</a>（91 通道 / 17 组、白名单 send 60 + receive 25）与最新门禁（187 测试文件 / 3,458 用例）；待办跟踪见 <a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/%E5%BD%93%E5%89%8D%E9%81%97%E7%95%99%E9%97%AE%E9%A2%98%E6%B8%85%E5%8D%95.html">当前遗留问题清单</a>（22 项）。完整索引与口径详见 <a href="../README.md">../README.md</a>。</p>
 </blockquote>
 <h2 id="sec-1">分类导航</h2>
 <h3 id="sub-1">01-检查与扫描（10 份）</h3>
@@ -136,11 +136,11 @@
 <tbody>
 <tr>
 <td><a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/IPC%E9%80%9A%E4%BF%A1%E7%9F%A9%E9%98%B5.html">IPC 通信矩阵</a></td>
-<td><strong>当前口径</strong>（92 通道）+ 历史快照</td>
+<td><strong>当前口径</strong>（91 通道 / 17 组、白名单 60+25）+ 历史快照</td>
 </tr>
 <tr>
 <td><a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/%E5%BD%93%E5%89%8D%E9%81%97%E7%95%99%E9%97%AE%E9%A2%98%E6%B8%85%E5%8D%95.html">当前遗留问题清单</a></td>
-<td><strong>问题跟踪台账</strong>（21 项，修复后更新状态）</td>
+<td><strong>问题跟踪台账</strong>（22 项：19 ✅ / 2 🟡 / 1 ⏸️，修复后更新状态）</td>
 </tr>
 <tr>
 <td><a href="03-%E4%B8%93%E9%A1%B9%E6%B2%BB%E7%90%86/IPC%E9%80%9A%E4%BF%A1%E6%B2%BB%E7%90%86%E6%8A%A5%E5%91%8A.html">IPC 通信治理报告</a></td>
@@ -170,7 +170,7 @@
 </table>
 <h2 id="sec-2">使用说明</h2>
 <ul>
-<li><strong>整体导航</strong>：每页顶部固定横条——<code>🏠 报告首页</code> + <code>01-检查与扫描 / 02-修复与实施 / 03-专项治理</code> 三个分类下拉（含全部 23 份报告）+ 右侧当前页名称；当前页在导航中自动高亮，所属分类自动展开。</li>
+<li><strong>整体导航</strong>：每页顶部固定横条——<code>🏠 报告首页</code> + <code>01-检查与扫描 / 02-修复与实施 / 03-专项治理</code> 三个分类下拉（含全部 26 份报告）+ 右侧当前页名称；当前页在导航中自动高亮，所属分类自动展开。</li>
 <li><strong>打开方式</strong>：浏览器直接打开本目录 <code>README.html</code> 体验最完整（公共样式由 <code>assets/report.css</code> 提供、导航由 <code>assets/report-nav.js</code> 运行时渲染，下拉/高亮生效）；在应用内「HTML 查看器」打开时，查看器会注入 <code>&lt;base&gt;</code> 修正相对链接，沙箱不执行脚本，导航改由渲染层注入 <code>assets/report-nav.html</code> 静态片段（高亮/自动展开不生效）。</li>
 <li><strong>页内目录</strong>：每份报告页面自带固定悬浮目录（h2/h3 两级锚点），点击跳转对应章节。</li>
 <li><strong>Markdown 版</strong>：见 <a href="../md/">../md/</a>（与 HTML 版同名分类一一对应，顶部同样带报告导航行）。</li>

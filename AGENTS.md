@@ -49,7 +49,7 @@
 
 ### UI 设计规范
 
-> 说明：项目已实现 **28 套应用主题 + 55 套编辑器（Monaco）主题**（真源 `src/main/config/theme-config.ts` / `theme-registry.ts`，主题为 CSS 变量驱动，而非单一固定色板）。下表为**默认 baize 主题**的基线值，新增 UI 必须走主题变量（`var(--xxx)`），禁止硬编码固定色。
+> 说明：项目已实现 **28 套应用主题 + 57 套编辑器（Monaco）主题（内置 3 + 磁盘 54）**（真源 `src/main/config/theme-config.ts` / `theme-registry.ts`，主题为 CSS 变量驱动，而非单一固定色板）。下表为**默认 baize 主题**的基线值，新增 UI 必须走主题变量（`var(--xxx)`），禁止硬编码固定色。
 
 | 项       | 约定（默认 baize 主题）                                                               |
 | -------- | ------------------------------------------------------------------------------------- |
@@ -63,7 +63,7 @@
 
 | 进程     | 目录           | 职责                                                                                                                    |
 | -------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| 主进程   | `src/main`     | 窗口创建与生命周期、文件/配置读写、菜单动作分发、IPC 处理、Markdown 渲染管线                                            |
+| 主进程   | `src/main`     | 窗口创建与生命周期、文件/配置读写、菜单动作分发、IPC 处理、PlantUML 本地渲染（Markdown 预览在渲染层本地完成）           |
 | 预加载   | `src/preload`  | 通过 contextBridge 暴露受限 API（`window.electron` / `window.api` / 对话框 `window.electronAPI`），保证渲染进程最小权限 |
 | 渲染进程 | `src/renderer` | Vue 应用：导航栏、状态栏、欢迎页、编辑器（Monaco）、预览、资源管理器、插件工具                                          |
 
@@ -71,4 +71,4 @@
 
 - 主窗口与对话框均 `sandbox: true`：preload 产物必须是**单文件**（`electron.vite.config.ts` 的 preload 需保持 `isolatedEntries: true` + `externalizeDeps: false`），否则 `contextBridge` 不会注入、渲染层所有按钮失效（事故记录见 [全量扫描报告 9.8 节](docs/reports/md/01-检查与扫描/全量扫描与审查报告.md)）。
 - 性能敏感路径（预览渲染、击键同步、目录刷新）改动前先查 `docs/reports/` 最新一轮扫描报告的量化基线。
-- 安全边界、死通道与遗留问题清单见 `docs/reports/md/01-检查与扫描/全量扫描与审查报告.md` 与通信检查报告。
+- 安全边界、死通道与遗留问题清单见 `docs/reports/md/01-检查与扫描/全量扫描与审查报告.md`、[IPC 通信治理报告](docs/reports/md/03-专项治理/IPC通信治理报告.md) 与 [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md)。

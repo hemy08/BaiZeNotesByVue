@@ -5,12 +5,12 @@
 # IPC 通信矩阵（当前口径 + 历史快照）
 
 > **合并归档报告**：由以下历史报告合并而成（保留原文，按时间顺序成章）：`2026-11-18-IPC通信矩阵.md`、`2026-11-15-IPC通信矩阵.md`。
-> 内容为历史快照；当前口径见 [报告总索引](../../README.md) 与 [IPC通信矩阵](IPC通信矩阵.md)（基线：169 测试文件 / 3,234 用例 / 92 IPC 通道）。
+> 内容为历史快照；当前口径见 [报告总索引](../../README.md) 与 [IPC通信矩阵](IPC通信矩阵.md)（基线：187 文件 / 3,458 用例 / 91 IPC 通道 / 17 组 / 白名单 60+25）。
 
 ## 一、当前通信矩阵（2026-11-19 第 5 批复核，91 通道）
 
 - **编制日期**：2026-11-18 首次编制，2026-11-19 补录 `FILE.OPEN_IN_BROWSER` / `FILE.READ_BINARY` 后复核（基于当前工作区源码；取代 `2026-11-15-IPC通信矩阵.md` 历史快照）
-- **唯一真源**：`src/shared/ipc-channels.ts`（**92 个通道常量 / 17 个分组**，全部以 `baize:<domain>:<name>` 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）
+- **唯一真源**：`src/shared/ipc-channels.ts`（**91 个通道常量 / 17 个分组**，全部以 `baize:<domain>:<name>` 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）
 - **方法**：对每个通道常量在 `src/main/**`、`src/preload/**`、`src/renderer/**` 全量 grep 实际发送点/接收点，只按源码事实填写；行号均为当前源码行号
 - **统计摘要**：91 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）
 
@@ -41,11 +41,11 @@
 | IPC 通道常量 | **91** | WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 24 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 3 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 2 / QUICK_LINKS 3 / EVENTS 4 |
 | BrowserWindow 创建点 | **4** | 主窗口、windowManager 通用容器（5 个 JSDOM 对话框 + 在线网页窗口）、PDF 导出隐藏窗、PlantUML 渲染隐藏窗 |
 | preload 入口 | **2** | `src/preload/index.ts`（主窗口）、`src/preload/dialog.ts`（对话框/隐藏窗） |
-| `window.electron` 成员 | **1 对象（受限）** | 受限 `ipcRenderer`：`send`/`invoke` 白名单 **58** 通道、`on`/`once` 白名单 **25** 通道（未知通道丢弃/拒绝并告警；`removeListener`/`removeAllListeners` 不限制）+ `webFrame`{insertCSS,setZoomFactor,setZoomLevel}、`webUtils`{getPathForFile}、`process`{platform,versions,env}；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露 |
+| `window.electron` 成员 | **1 对象（受限）** | 受限 `ipcRenderer`：`send`/`invoke` 白名单 **60** 通道、`on`/`once` 白名单 **25** 通道（未知通道丢弃/拒绝并告警；`removeListener`/`removeAllListeners` 不限制）+ `webFrame`{insertCSS,setZoomFactor,setZoomLevel}、`webUtils`{getPathForFile}、`process`{platform,versions,env}；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露 |
 | `window.api` 成员 | **6 方法 / 3 组** | `config.read/write`、`app.notifyRendererReady/getVersion`、`file.recentList/openRecent` |
 | 对话框 send 白名单 | **2** | `baize:dialog:create-file-folder-enter`、`baize:dialog:rename-file-folder-enter` |
 | 发现异常 | **0 类** | 语义错用（#1）、载荷不一致（#2）、域错配 10 通道（#3/#7）均已修复，见 §五修复记录 |
-| 死通道（双端全无） | **0** | 92 个通道均有至少一端引用；2026-11-18 已清理 2 个空转/空实现通道（START_DRAG、INIT_THEME_STYLES）与 2 处死分支 |
+| 死通道（双端全无） | **0** | 91 个通道均有至少一端引用；2026-11-18 已清理 2 个空转/空实现通道（START_DRAG、INIT_THEME_STYLES）与 2 处死分支 |
 
 #### 三、进程模型与通信拓扑
 
@@ -276,7 +276,7 @@
 
 | 入口 | 全局对象 | 成员 |
 | --- | --- | --- |
-| `src/preload/index.ts` | `window.electron` | 受限 electronAPI：ipcRenderer（send/invoke 白名单 **58** 通道、on/once 白名单 **25** 通道；sendTo/sendSync/sendToHost/postMessage 不暴露）+ webFrame / webUtils / process |
+| `src/preload/index.ts` | `window.electron` | 受限 electronAPI：ipcRenderer（send/invoke 白名单 **60** 通道、on/once 白名单 **25** 通道；sendTo/sendSync/sendToHost/postMessage 不暴露）+ webFrame / webUtils / process |
 | `src/preload/index.ts` | `window.api` | config{read,write}、app{notifyRendererReady,getVersion}、file{recentList,openRecent} |
 | `src/preload/dialog.ts` | `window.electronAPI` | ipcRenderer{send(白名单),on,removeListener}、shell{openExternal(仅 http/https)} |
 
@@ -302,13 +302,13 @@
 
 | 项 | 2026-11-15 快照 | 当前（本报告） |
 | --- | --- | --- |
-| 通道数 | 123 | **92**（死通道清理 + PF-02 渲染通道移除 + HTML 对话框大量下线；2026-11-18 新增最近文件 2 通道与 `OPEN_IN_BROWSER`/`READ_BINARY` 等） |
+| 通道数 | 123 | **91**（死通道清理 + PF-02 渲染通道移除 + HTML 对话框大量下线；2026-11-18 新增最近文件 2 通道与 `OPEN_IN_BROWSER`/`READ_BINARY` 等，2026-11-19 删除 `SYSTEM.OPEN_EXTERNAL_LINK`） |
 | HTML 对话框 | 14 个可见 | 5 个（新建/重命名/发布说明/快捷键/更新日志）+ 在线网页窗口 |
 | 隐藏窗口 | 3（Mermaid/PlantUML/PDF） | 2（PlantUML/PDF；Mermaid 隐藏窗链路已删） |
 | 渲染通道 | 4 个 PRE/POST | 0（预览本地单跳渲染） |
 | 新增通道 | — | `RENDER.READY`、`FILE.RECENT_LIST`、`FILE.OPEN_RECENT`、`FILE.OPEN_IN_BROWSER`、`FILE.READ_BINARY`、`QUICK_LINKS.SAVE/UPDATED`、`FILE.SELECT_IMAGE`、`EDITOR.SYSTEM_SETTING_UPDATE` 等 |
 | 2026-11-18 死通道清理 | — | 删除 `WINDOW.START_DRAG`、`THEME.INIT_THEME_STYLES`（常量+发送+注册+测试断言）；删除 `EDITOR.UPDATE_OPTIONS` 的 R→M 死分支与 `STATUS_BAR_UPDATE` 反向 send；历史报告 16 个死通道此前已全部清理（当前 0 个零引用常量） |
-| preload 暴露 | 27 成员 | 受限 electronAPI（ipcRenderer send/invoke 白名单 58 通道、on/once 白名单 25 通道，sendTo/sendSync/sendToHost/postMessage 不暴露 + webFrame/webUtils/process）+ api 6 方法 + dialog 受限 API |
+| preload 暴露 | 27 成员 | 受限 electronAPI（ipcRenderer send/invoke 白名单 60 通道、on/once 白名单 25 通道，sendTo/sendSync/sendToHost/postMessage 不暴露 + webFrame/webUtils/process）+ api 6 方法 + dialog 受限 API |
 
 > 本报告基于当前工作区源码（含未提交的最近文件菜单改动）；历史快照 `2026-11-15-IPC通信矩阵.md` 保留作归档。
 

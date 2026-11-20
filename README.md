@@ -4,8 +4,8 @@
 
 ![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
-![Electron](https://img.shields.io/badge/Electron-43.8.10-blue.svg)
-![Vue](https://img.shields.io/badge/Vue-3.5.45-brightgreen.svg)
+![Electron](https://img.shields.io/badge/Electron-43.8.12-blue.svg)
+![Vue](https://img.shields.io/badge/Vue-3.5.46-brightgreen.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0.3-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -90,9 +90,9 @@
 - **自然主题**：深海蔚蓝、森林秘境
 - **白泽专属**：白泽图标、白泽文字、白泽星空、白泽神兽、白泽数据、白泽镜像（浅色/深色）
 
-#### 编辑器主题（55种）
+#### 编辑器主题（57种）
 
-- Monaco Editor 主题同步
+- Monaco Editor 主题同步（内置 3 + 磁盘 54）
 - 支持自定义主题
 - 主题实时切换，无需重启
 
@@ -255,10 +255,10 @@ npm run build:win:nsis
 # 构建 Windows 便携版
 npm run build:win:portable
 
-# 构建 macOS 版本
+# 构建 macOS 版本（占位命令，当前未验证：缺少 entitlements.mac.plist 与签名配置，暂不可用）
 npm run build:mac
 
-# 构建 Linux 版本
+# 构建 Linux 版本（占位命令，当前未验证：maintainer 等元数据为占位，暂不可用）
 npm run build:linux
 ```
 
@@ -309,10 +309,10 @@ npm run build:linux
 
 ```
 BaiZeNotesByVue/
-├── src/                                  # 源代码目录（300 个源码文件：206 ts / 81 vue / 13 css）
-│   ├── main/                             # 主进程（70 个 .ts）
+├── src/                                  # 源代码目录（357 个代码文件：261 ts / 96 vue；另 22 css）
+│   ├── main/                             # 主进程（72 个 .ts）
 │   │   ├── index.ts                      # 主进程入口（窗口、生命周期、导航边界）
-│   │   ├── config/                       # 配置管理（12 个模块）
+│   │   ├── config/                       # 配置管理（11 个模块）
 │   │   │   ├── config-manager.ts         # 配置读写单真源（STORE_BACKED_CONFIGS）
 │   │   │   ├── theme-config.ts           # 应用主题配置（28 种）
 │   │   │   ├── theme-registry.ts         # Monaco 主题注册表
@@ -322,7 +322,7 @@ BaiZeNotesByVue/
 │   │   │   ├── window-manager.ts         # 窗口管理
 │   │   │   └── short-key-register.ts     # 快捷键注册
 │   │   ├── constants/                    # 共享常量（urls.ts）
-│   │   ├── dialogs/                      # 主进程 JSDOM 对话框（10 个文件）
+│   │   ├── dialogs/                      # 主进程对话框（2 个文件；JSDOM HTML 对话框已下线，仅剩 Vue 对话框转发与在线网页窗口）
 │   │   ├── ipc/                          # IPC 注册与菜单动作（11 个文件）
 │   │   │   ├── handlers.ts               # IPC 处理器
 │   │   │   ├── index.ts                  # IPC 注册入口
@@ -330,58 +330,61 @@ BaiZeNotesByVue/
 │   │   │   └── menu-*.ts                 # 菜单动作（file/edit/view/help/tools/handle）
 │   │   ├── renders/                      # 主进程渲染器
 │   │   │   └── plantuml-local.ts         # PlantUML 本地 teaVM 离线渲染
-│   │   └── utils/                        # 工具函数（33 个文件）
-│   │       ├── file-utils/               # 文件操作（12 个：读写/导入导出/自动保存/剪贴板/图片）
+│   │   ├── window/                       # 窗口管理（WindowManager 单例）
+│   │   └── utils/                        # 工具函数（43 个文件）
+│   │       ├── file-utils/               # 文件操作（15 个文件：读写/导入导出/自动保存/剪贴板/图片/目录树）
 │   │       ├── security.ts               # 导航边界与 shell 协议白名单
 │   │       ├── i18n.ts                   # 主进程 tMain() 翻译
 │   │       ├── baize-store.ts / store-factory.ts / file-state-store.ts
 │   │       ├── app-paths.ts / app-state.ts / global.ts / utils.ts
 │   │       ├── logger.ts / auto-updater.ts
 │   │       └── encrypt-decrypt.ts        # 加解密工具
-│   ├── preload/                          # 预加载脚本（3 个文件）
-│   │   ├── index.ts                      # 主窗口 API 暴露
+│   ├── preload/                          # 预加载脚本（4 个文件）
+│   │   ├── index.ts                      # 主窗口 API 暴露（受限 ipcRenderer + window.api）
 │   │   ├── dialog.ts                     # 对话框 preload（send 通道白名单）
+│   │   ├── allowed-channels.generated.ts # 生成的通道白名单常量（send 60 / receive 25 / window.api 6）
 │   │   └── index.d.ts                    # 类型声明
-│   ├── shared/                           # 主进程 / 渲染层共享代码（39 个 .ts）
-│   │   ├── ipc-channels.ts               # IPC 通道常量唯一真源（92 个通道 / 17 组）
-│   │   ├── i18n/                         # 中英词典（12 个命名空间 + translate 函数）
-│   │   ├── types/                        # 共享类型定义（10 个模块）
-│   │   └── constants/                    # 共享常量
-│   └── renderer/                         # 渲染进程代码
+│   ├── shared/                           # 主进程 / 渲染层共享代码（65 个 .ts）
+│   │   ├── ipc-channels.ts               # IPC 通道常量唯一真源（91 个通道 / 17 组）
+│   │   ├── i18n/                         # 中英词典（12 个命名空间 × 2 语言 = 26 个文件）
+│   │   ├── types/                        # 共享类型定义（14 个模块）
+│   │   └── constants/                    # 共享常量（13 个模块）
+│   └── renderer/                         # 渲染进程代码（300 个文件：96 vue / 120 ts / 60 svg / 22 css）
 │       ├── index.html                    # 渲染页（含 CSP）
 │       └── src/
 │           ├── App.vue / main.ts / env.d.ts
-│           ├── components/               # Vue 组件（80 个 .vue + 77 个 ts/css）
+│           ├── components/               # Vue 组件（203 个文件：95 vue + 97 ts + 11 css）
 │           │   ├── BaiZeNotes.vue / MenuBar.vue / StatusBar.vue / WelcomeScreen.vue
-│           │   ├── Markdown/             # 编辑器与预览（38 个文件，含 preview-local-render.ts）
-│           │   ├── dialogs/              # 渲染层对话框（18 个 .vue + 1 个 ts 索引：simple/medium/complex/help）
-│           │   ├── PluginTools/          # 插件工具（84 个文件：Convert/Encryption/Informations/NetWork/Tools）
+│           │   ├── Markdown/             # 编辑器与预览（43 个文件，含 preview-local-render.ts）
+│           │   ├── dialogs/              # 渲染层对话框（23 个懒加载对话框 + BaseDialog 基座 + 面板子组件）
+│           │   ├── PluginTools/          # 插件工具（78 个文件：38 个工具）
 │           │   ├── MenuBar/              # 菜单逻辑（menu-config / menu-actions / menu-consts）
 │           │   ├── ResourceManager/      # 资源管理器
 │           │   ├── WorkSpaceArea/        # 工作区（NaviTab / WorkSpace）
 │           │   └── HemyTools/            # 辅助工具（HTML 查看 / PDF 预览）
-│           ├── composables/              # 组合式函数（4 个：对话框拖拽/缩放、EventBus、窗口管理）
-│           ├── common/                   # 公共模块（useConfigStore、i18n、event-bus、templates、escape-html）
+│           ├── composables/              # 组合式函数（6 个：对话框拖拽/缩放、EventBus、窗口管理）
+│           ├── common/                   # 公共模块（15 个文件：useConfigStore、i18n、event-bus、templates、escape-html）
+│           ├── data/                     # 纯数据资产（pinyin-data 字库，动态 import 按需加载）
 │           ├── styles/                   # 样式文件（9 个）
-│           └── assets/                   # 静态资源（图标/图片等 63 个文件）
+│           └── assets/                   # 静态资源（图标/图片等 62 个文件）
 ├── resources/                            # 应用资源
 │   ├── themes/                           # 主题配置
-│   │   └── monaco-themes/themes/         # Monaco 编辑器主题（55 个主题 json + themelist 索引）
-│   ├── plantuml/                         # PlantUML 本地 teaVM 渲染资源（6 个文件）
+│   │   └── monaco-themes/themes/         # Monaco 编辑器主题（54 个主题 json + themelist 索引）
+│   ├── plantuml/                         # PlantUML 本地 teaVM 渲染资源
 │   ├── icon/                             # 应用图标（ico/svg）
 │   └── config/                           # 配置文件（version.json 构建时生成）
-├── tests/                                # 单元测试（171 个 .test.ts / 3,265 个用例）
+├── tests/                                # 单元测试（187 个 .test.ts / 3,458 个用例）
 ├── docs/                                 # 项目文档
-│   ├── wiki/                             # 知识库文档（分类结构）
+│   ├── wiki/                             # 知识库文档（4 类 25 篇）
 │   │   ├── README.md                     # 文档索引
-│   │   ├── 01-项目分析报告/               # 项目分析（9 篇）
-│   │   ├── 02-设计与架构/                 # 架构文档、设计文档、规格文档、项目详细文档
+│   │   ├── 01-项目分析报告/               # 项目分析（9 篇，历史快照）
+│   │   ├── 02-设计与架构/                 # 架构文档、设计文档、规格文档、项目详细文档（4 篇）
 │   │   ├── 03-功能说明/                   # 导入/导出/菜单配置等功能说明（5 篇）
 │   │   └── 04-优化与专项报告/             # 优化专项报告（7 篇）
 │   ├── reports/                          # 报告归档（Markdown 版 + 独立 HTML Wiki）
 │   │   ├── README.md                     # 报告总索引（含口径说明与合并记录）
-│   │   ├── md/                           # Markdown 报告（26 篇，按三类分类）
-│   │   └── html/                         # HTML 报告 Wiki（README+_sidebar 导航 + 25 份带悬浮目录页面）
+│   │   ├── md/                           # Markdown 报告（26 篇：01 检查 10 / 02 修复 8 / 03 专项 8）
+│   │   └── html/                         # HTML 报告 Wiki（首页 + 侧边栏 + 26 份带悬浮目录页面，共 27 页）
 │   ├── images/                           # 文档配图
 │   ├── 历史归档/                          # 历史文档归档（非当前实现，见「文档导航」说明）
 │   │   └── 架构文档.html                  # 历史版架构文档合辑（非当前；最新见 docs/wiki/02-设计与架构/架构文档.md）
@@ -408,8 +411,8 @@ BaiZeNotesByVue/
 
 |    技术    |  版本   | 说明                   | 官网                                    |
 | :--------: | :-----: | :--------------------- | :-------------------------------------- |
-|  Electron  | 43.8.10 | 跨平台桌面应用框架     | [官网](https://www.electronjs.org/)     |
-|    Vue     | 3.5.45  | 渐进式 JavaScript 框架 | [官网](https://vuejs.org/)              |
+|  Electron  | 43.8.12 | 跨平台桌面应用框架     | [官网](https://www.electronjs.org/)     |
+|    Vue     | 3.5.46  | 渐进式 JavaScript 框架 | [官网](https://vuejs.org/)              |
 | TypeScript |  6.0.3  | JavaScript 的类型超集  | [官网](https://www.typescriptlang.org/) |
 |    Vite    |  8.3.8  | 下一代前端构建工具     | [官网](https://vitejs.dev/)             |
 
@@ -420,7 +423,7 @@ BaiZeNotesByVue/
 |   Monaco Editor   | 0.57.0  | VS Code 同款代码编辑器                         | [官网](https://microsoft.github.io/monaco-editor/) |
 |    markdown-it    | 15.0.3  | Markdown 解析器，支持插件扩展                  | [官网](https://markdown-it.github.io/)             |
 |   highlight.js    | 11.12.0 | 代码语法高亮，支持 100+ 语言                   | [官网](https://highlightjs.org/)                   |
-|       KaTeX       | 0.18.4  | 快速数学公式渲染（渲染层本地渲染）             | [官网](https://katex.org/)                         |
+|       KaTeX       | 0.18.11 | 快速数学公式渲染（渲染层本地渲染）             | [官网](https://katex.org/)                         |
 |      Mermaid      | 12.3.0  | 流程图、时序图、甘特图等                       | [官网](https://mermaid-js.github.io/)              |
 | PlantUML（teaVM） |    -    | 本地离线渲染（内置 `resources/plantuml` 资源） | [官网](https://plantuml.com/)                      |
 
@@ -429,37 +432,37 @@ BaiZeNotesByVue/
 |      技术       |  版本  | 说明                                              | 官网                                                     |
 | :-------------: | :----: | :------------------------------------------------ | :------------------------------------------------------- |
 | Vue Composables |   -    | Vue 3 组合式函数状态管理（渲染层 useConfigStore） | [官网](https://vuejs.org/)                               |
-| electron-store  | 11.0.2 | Electron 持久化存储（主进程配置单真源）           | [GitHub](https://github.com/sindresorhus/electron-store) |
-|    fs-extra     | 11.4.0 | 文件系统增强，Promise 支持                        | [GitHub](https://github.com/jprichardson/node-fs-extra)  |
+| electron-store  | 12.0.0 | Electron 持久化存储（主进程配置单真源）           | [GitHub](https://github.com/sindresorhus/electron-store) |
+|    fs-extra     | 11.4.1 | 文件系统增强，Promise 支持                        | [GitHub](https://github.com/jprichardson/node-fs-extra)  |
 
 ### 工具库
 
 |    技术    |  版本  | 说明                  | 官网                                               |
 | :--------: | :----: | :-------------------- | :------------------------------------------------- |
 | crypto-js  | 4.2.0  | JavaScript 加密库     | [文档](https://cryptojs.gitbook.io/)               |
-| DOMPurify  | 3.4.17 | HTML/SVG 消毒，防 XSS | [GitHub](https://github.com/cure53/DOMPurify)      |
-|    uuid    | 14.0.2 | UUID 生成工具         | [GitHub](https://github.com/uuidjs/uuid)           |
+| DOMPurify  | 3.4.18 | HTML/SVG 消毒，防 XSS | [GitHub](https://github.com/cure53/DOMPurify)      |
+|    uuid    | 14.0.3 | UUID 生成工具         | [GitHub](https://github.com/uuidjs/uuid)           |
 |    ulid    | 3.0.2  | ULID 生成工具         | [GitHub](https://github.com/ulid/javascript)       |
 | iconv-lite | 0.7.3  | 文件编码转换          | [GitHub](https://github.com/ashtuchkin/iconv-lite) |
-| jschardet  | 3.1.4  | 文件编码探测          | [GitHub](https://github.com/aadsm/jschardet)       |
+| jschardet  | 4.1.0  | 文件编码探测          | [GitHub](https://github.com/aadsm/jschardet)       |
 
 ### UI 组件
 
 |            技术            | 版本  | 说明              | 官网                                                   |
 | :------------------------: | :---: | :---------------- | :----------------------------------------------------- |
-| @imengyu/vue3-context-menu | 1.5.6 | Vue3 右键菜单组件 | [GitHub](https://github.com/imengyu/vue3-context-menu) |
+| @imengyu/vue3-context-menu | 1.5.7 | Vue3 右键菜单组件 | [GitHub](https://github.com/imengyu/vue3-context-menu) |
 
 ### 开发工具
 
 |                技术                |  版本   | 说明                                        | 官网                                                   |
 | :--------------------------------: | :-----: | :------------------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成                        | [官网](https://electron-vite.org/)                     |
-|          electron-builder          | 26.18.0 | Electron 应用打包工具                       | [官网](https://www.electron.build/)                    |
-|               Vitest               | 4.1.12  | 单元测试框架（171 个测试文件 / 3,265 用例） | [官网](https://vitest.dev/)                            |
-|               ESLint               | 9.39.4  | JavaScript 代码检查工具                     | [官网](https://eslint.org/)                            |
-|              Prettier              |  3.9.6  | 代码格式化工具                              | [官网](https://prettier.io/)                           |
-|  @electron-toolkit/eslint-config   |  2.1.0  | Electron ESLint 配置                        | [GitHub](https://github.com/alex8088/electron-toolkit) |
-| @electron-toolkit/eslint-config-ts |  3.1.0  | Electron TypeScript ESLint 配置             | [GitHub](https://github.com/alex8088/electron-toolkit) |
+|          electron-builder          | 26.18.1 | Electron 应用打包工具                       | [官网](https://www.electron.build/)                    |
+|               Vitest               |  5.1.1  | 单元测试框架（187 个测试文件 / 3,458 用例） | [官网](https://vitest.dev/)                            |
+|               ESLint               | 10.15.0 | JavaScript 代码检查工具                     | [官网](https://eslint.org/)                            |
+|              Prettier              | 3.10.1  | 代码格式化工具                              | [官网](https://prettier.io/)                           |
+|  @electron-toolkit/eslint-config   |  3.0.0  | Electron ESLint 配置                        | [GitHub](https://github.com/alex8088/electron-toolkit) |
+| @electron-toolkit/eslint-config-ts |  4.0.0  | Electron TypeScript ESLint 配置             | [GitHub](https://github.com/alex8088/electron-toolkit) |
 
 ### 构建工具
 
@@ -472,49 +475,56 @@ BaiZeNotesByVue/
 
 ## 📊 项目统计
 
-> 以下数据为 2026-11-19 实测（v1.3.9 基线；口径说明见 [报告总索引](docs/reports/README.md)）。
+> 以下数据为 **2026-11-20 实测**（v1.4.0 当前基线；唯一真值以 [报告总索引](docs/reports/README.md) 的「当前基线」与 [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) 为准；历史版本数据保留在各报告时点）。
 
-|     指标     |                   数量                   | 说明                                                                                                                                                                                                 |
-| :----------: | :--------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-|  源码文件数  |                  300 个                  | `src/` 下 .ts / .vue / .css 文件（206 ts / 81 vue / 13 css；其中 .ts/.vue 287 个）                                                                                                                   |
-|   代码行数   |                94,406 行                 | 上述 300 个文件总行数（含空行；其中 .ts/.vue 91,783 行）                                                                                                                                             |
-|  Vue 组件数  |                  81 个                   | `src/` 下 .vue 文件（components 目录 80 个 + 根组件 App.vue）                                                                                                                                        |
-| 渲染层对话框 |                  18 个                   | src/renderer/src/components/dialogs（.vue 对话框组件，另 1 个 ts 索引）                                                                                                                              |
-| 主进程对话框 |                10 个文件                 | src/main/dialogs（JSDOM 对话框 + 共享样式）                                                                                                                                                          |
-|   应用主题   |                  28 种                   | src/main/config/theme-config.ts（编译进主进程，无资源 JSON；旧 app_themes 已删除）                                                                                                                   |
-|  编辑器主题  |                  57 种                   | Monaco 主题（内置 3 + 磁盘 54；themes 目录含 54 个主题 json + themelist 索引）                                                                                                                       |
-|   IPC 通道   |                  91 个                   | `baize:<domain>:<name>`（91 个 / 17 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                                                                  |
-|   插件工具   |                  38 个                   | src/renderer/src/components/PluginTools/plugin-tools-const.ts（异步按需加载）                                                                                                                        |
-|   单元测试   |               3,201 个用例               | 172 个测试文件（vitest，全通过）                                                                                                                                                                     |
-|   声明依赖   |                  50 个                   | 生产依赖 11 + 开发依赖 39（package.json 实测）                                                                                                                                                       |
-|   依赖审计   |                  0 漏洞                  | 生产与全量依赖均为 0 漏洞（2026-11-19 依赖安全治理实测，官方 registry，828 依赖；electron 43.8.12 + electron-builder 26.18.1 + minimatch override 11.0.9；Dependabot 254 条告警全量分类 0 条可复现） |
-|  安装包体积  |                ≈110.0 MiB                | NSIS 安装包 109.98 MiB / 便携版 99.83 MiB（app.asar 39.31 MiB；2026-11-19 P0 构建实测；十进制 115.32 MB / 104.68 MB）                                                                                |
-|  主进程产物  |                ≈0.60 MiB                 | `out/build/main/index.js`（634,114 B；2026-11-19 P0 构建实测；另有 auto-updater 分块 10,558 B）                                                                                                      |
-| 主渲染 chunk | 123.4 KiB（入口）+ 321.8 KiB（主界面壳） | 入口 `index-*.js`（126,396 B）；主界面壳 `BaiZeNotes-*.js`（329,538 B）；Monaco 异步 `editor.api-*.js` 4.82 MiB / `MarkdownMonacoEditor-*.js` 2.10 MiB（按需加载；2026-11-19 P0 实测）               |
+|      指标      |                           数量                           | 说明                                                                                                                                                                                                  |
+| :------------: | :------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|   源码文件数   |                          357 个                          | `src/` 下代码文件（261 ts / 96 vue）；另 22 个 css（`src/` 总计 441 文件，含 60 个 svg）                                                                                                              |
+|    代码行数    |                        97,434 行                         | 上述 357 个代码文件总行数（含空行；另 22 个 css 共 3,563 行）                                                                                                                                         |
+|   Vue 组件数   |                          96 个                           | `src/` 下 .vue 文件（components 目录 95 个 + 根组件 App.vue）                                                                                                                                         |
+|  渲染层对话框  |                          23 个                           | src/renderer/src/components/dialogs（懒加载对话框：complex 6 / help 7 / medium 5 / simple 5，另 BaseDialog 基座与面板子组件）                                                                         |
+|  主进程对话框  |                         2 个文件                         | src/main/dialogs（JSDOM HTML 对话框已下线，仅剩 Vue 对话框转发与在线网页窗口）                                                                                                                        |
+|    应用主题    |                          28 种                           | src/main/config/theme-config.ts（编译进主进程，无资源 JSON；旧 app_themes 已删除）                                                                                                                    |
+|   编辑器主题   |                          57 种                           | Monaco 主题（内置 3 + 磁盘 54；themes 目录含 54 个主题 json + themelist 索引）                                                                                                                        |
+|    IPC 通道    |                          91 个                           | `baize:<domain>:<name>`（91 个 / 17 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                                                                   |
+| preload 白名单 |               send 60 / receive 25 / api 6               | `src/preload/allowed-channels.generated.ts`（send/invoke 60、on/once 25 通道；`window.api` 6 方法 / 3 组）                                                                                            |
+|    插件工具    |                          38 个                           | src/shared/constants/plugin-tools-manifest.ts（单一 manifest，异步按需加载）                                                                                                                          |
+|    单元测试    |                       3,458 个用例                       | 187 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                              |
+|    声明依赖    |                          49 个                           | 生产依赖 11 + 开发依赖 38（package.json 实测）                                                                                                                                                        |
+|    依赖审计    |                          0 漏洞                          | 生产与全量依赖均为 0 漏洞（2026-11-20 官方 registry 实测，`npm ls` 干净；Dependabot 254 条告警全量分类 0 条可复现）                                                                                   |
+|   安装包体积   |                        ≈114.0 MiB                        | NSIS 安装包 113.92 MiB / 便携版 100.48 MiB（app.asar 45.21 MiB、locales 2；2026-11-20 当前 dist 实测，发布前需从 HEAD 重建复验）                                                                      |
+|   主进程产物   |                        ≈0.62 MiB                         | `out/build/main/index.js`（655,183 B；2026-11-20 构建实测）                                                                                                                                           |
+|  主渲染 chunk  | 133.6 KiB（入口）+ 321.9 KiB（主界面壳）；首屏 482.0 KiB | 入口 `index-*.js`（136,838 B）；主界面壳 `BaiZeNotes-*.js`（329,664 B）；首屏实际 = 入口 + modulepreload 共享 chunk 348.5 KiB（2026-11-20 构建实测）；Monaco/highlight.js/KaTeX 在异步 chunk 按需加载 |
+|    文档规模    |       wiki 4 类 25 篇 / 报告 md 26 篇 / HTML 27 页       | 报告分类：01 检查与扫描 10 / 02 修复与实施 8 / 03 专项治理 8；HTML Wiki = 1 首页 + 26 份报告                                                                                                          |
 
 ### 代码规模分布（实测）
 
 |         类型         | 文件数  |    行数    |
 | :------------------: | :-----: | :--------: |
-|   TypeScript (.ts)   |   229   |   63,311   |
-|    Vue SFC (.vue)    |   84    |   20,393   |
-|         CSS          |   14    |   2,348    |
-|     **源码合计**     | **327** | **86,052** |
-| 单元测试（.test.ts） |   171   |   51,646   |
-|   静态资源（.svg）   |   60    |    504     |
+|   TypeScript (.ts)   |   261   |   74,657   |
+|    Vue SFC (.vue)    |   96    |   22,777   |
+|     **源码合计**     | **357** | **97,434** |
+|         CSS          |   22    |   3,563    |
+| 单元测试（.test.ts） |   187   |   58,434   |
+|   静态资源（.svg）   |   60    |    447     |
 
 ### 关键源码文件行数（实测）
 
-|           文件           | 行数  | 说明                                      |
-| :----------------------: | :---: | :---------------------------------------- |
-| preview-local-render.ts  |  903  | 预览本地单跳渲染（PF-02）                 |
-|  ThemeSettingDialog.vue  | 1,060 | 主题设置对话框                            |
-|    file-operations.ts    |  932  | 文件读写与文件树操作                      |
-| plantuml.ts（templates） |  737  | PlantUML 代码模板                         |
-| MarkdownMonacoEditor.vue |  763  | Monaco 编辑器组件                         |
-|     theme-config.ts      |  730  | 应用主题配置（28 种）                     |
-|    plantuml-local.ts     |  608  | PlantUML 本地 teaVM 渲染                  |
-|     ipc-channels.ts      |  213  | IPC 通道常量唯一真源（92 个通道 / 17 组） |
+|              文件               |  行数  | 说明                             |
+| :-----------------------------: | :----: | :------------------------------- |
+| pinyin-data.ts（data 数据资产） | 20,914 | 拼音字库（动态 import 按需加载） |
+|      preview-md-blocks.ts       | 1,075  | 预览 blocks 插件                 |
+|       file-operations.ts        |  937   | 文件读写与文件树操作             |
+|     preview-local-render.ts     |  896   | 预览本地单跳渲染（PF-02）        |
+|            utils.ts             |  879   | 主进程通用工具                   |
+|           handlers.ts           |  852   | IPC 处理器注册                   |
+|    MarkdownMonacoEditor.vue     |  789   | Monaco 编辑器组件                |
+|       preview-md-media.ts       |  768   | 预览媒体插件                     |
+|    plantuml.ts（templates）     |  737   | PlantUML 代码模板                |
+|         menu-config.ts          |  724   | 菜单树配置（12 顶层 / 319 项）   |
+|         theme-config.ts         |  707   | 应用主题配置（28 种）            |
+|           security.ts           |  663   | 导航边界 / 协议白名单 / 路径守卫 |
+|         ipc-channels.ts         |  170   | IPC 通道常量唯一真源（91 / 17）  |
 
 ---
 
@@ -525,10 +535,10 @@ BaiZeNotesByVue/
 ### 文档索引
 
 - [知识库文档索引](docs/wiki/README.md) - docs/wiki 全部文档导航（4 类 25 篇）
-- [报告总索引](docs/reports/README.md) - 检查/修复/专项报告（26 篇，已去日期并按主题合并，含口径说明）
-- [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md) - **问题跟踪台账**（21 项，17 ✅ / 3 🟡 / 1 ⏸️；修复后更新状态）
-- [报告 HTML Wiki](docs/reports/html/README.html) - HTML 版报告（首页 + 侧边栏 + 每页顶部整体导航 + 20 份带悬浮目录页面）
-- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（91 通道 / 17 组 + 窗口/preload 结构）
+- [报告总索引](docs/reports/README.md) - 检查/修复/专项报告（26 篇：01 检查与扫描 10 / 02 修复与实施 8 / 03 专项治理 8，已去日期并按主题合并，含口径说明）
+- [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md) - **问题跟踪台账**（22 项，19 ✅ / 2 🟡 / 1 ⏸️；修复后更新状态）
+- [报告 HTML Wiki](docs/reports/html/README.html) - HTML 版报告（首页 + 侧边栏 + 每页顶部整体导航 + 26 份带悬浮目录页面，共 27 页）
+- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（91 通道 / 17 组 + 白名单 send 60 + receive 25 + 窗口/preload 结构）
 - [IPC 通信治理报告](docs/reports/md/03-专项治理/IPC通信治理报告.md) - 通信检查 + 修复计划 + 命名方案（历史）
 
 ### 项目分析与架构
@@ -560,7 +570,8 @@ BaiZeNotesByVue/
 - [预览单跳重构报告](docs/reports/md/02-修复与实施/预览单跳重构报告.md) - PF-02：预览本地渲染，IPC 4 跳 → 0 跳
 - [IPC 通道命名统一方案](docs/reports/md/03-专项治理/IPC通信治理报告.md) - `baize:<domain>:<name>` 命名规范（历史 123 通道清单，已并入治理报告）
 - [依赖安全治理报告](docs/reports/md/03-专项治理/依赖安全治理报告.md) - Dependabot 254 条告警全量分类（0 条可复现）、npm audit 差异归因、修复批与 Dependabot 配置
-- [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.3.9 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
+- [全量代码扫描报告（2026-11-20）](docs/reports/md/01-检查与扫描/2026-11-20-全量代码扫描报告.md) - 只读全量扫描（安全/架构/质量性能/功能/文档六专项；P0 0 / P1 10 / P2 精选 18）
+- [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.4.0 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
 - 说明：`docs/历史归档/架构文档.html` 为 **历史版本合辑（非当前实现）**，仅保留旧版版式与 ADR，最新架构以 wiki Markdown 为准
 
 ### 更新记录
@@ -577,17 +588,29 @@ npm run lint
 # 代码格式化
 npm run format
 
-# 代码格式检查（仅检查，不自动修改；CI 中以信息性步骤运行）
+# 代码格式检查（仅检查，不自动修改；CI quality-gate 中为阻断步骤，失败即 job 失败）
 npm run format:check
 
-# 类型检查（主进程 + 渲染层）
+# 类型检查（主进程 + 渲染层 + 测试三工程）
 npm run typecheck
 
-# 运行单元测试（171 个测试文件 / 3,265 个用例）
+# 运行单元测试（187 个测试文件 / 3,458 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
 npm run test:coverage
+
+# 架构边界检查（tests/architecture，依赖方向与 shared 边界）
+npm run arch:check
+
+# 质量基线一致性检查（版本 / IPC / 测试文件数等与 docs 基线比对）
+npm run quality:check
+
+# 文档相对链接检查（docs 下 Markdown）
+npm run docs:check
+
+# 构建产物体积预算检查（入口 chunk / NSIS / portable / asar / locales）
+npm run budget:check
 
 # 清理构建产物
 npm run clean
@@ -667,6 +690,7 @@ npm run clean
 - [x] 新版本基线：全仓版本号 1.3.9 → 1.4.0；自本版本起所有修改归入 1.4.0
 - [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
 - [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
+- [x] 文档口径统一（2026-11-20）：测试 187 文件 / 3,458 用例、IPC 91 通道 / 17 组、preload 白名单 send 60 / receive 25 / window.api 6、报告 md 26 篇 / HTML Wiki 27 页
 - [ ] 长期计划：macOS 和 Linux 版本支持、协作编辑、插件系统、云同步
 
 ### v1.3.9
