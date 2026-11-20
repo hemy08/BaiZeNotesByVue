@@ -48,7 +48,11 @@ import { logger } from '../../common/logger'
 import { LRUCache } from '../../../../shared/utils/lru-cache'
 import { parseDirectoryPath, toFileUrl } from '../../../../shared/utils/path'
 import { escapeHtml } from '../../../../shared/utils/html'
-import { PREVIEW_MAX_FILE_SIZE, PREVIEW_MAX_LINES } from '../../../../shared/constants/limits'
+import {
+    PREVIEW_DEGRADE_FILE_SIZE,
+    PREVIEW_DEGRADE_LINES
+} from '../../../../shared/constants/limits'
+import { ResolvePreviewRenderPlan } from './preview-large-doc'
 import { EnsurePreviewKatexCssLoaded } from './preview-katex-assets'
 
 /* ============================ 一、KaTeX 数学公式 ============================
@@ -492,69 +496,39 @@ function renderContentSafely(text: string, skipKatex: boolean): string {
     }
 }
 
-/* ==================== 三点五、PF-9：超大文档降级判定 ====================
- * 背景（out/full-scan/perf.md PF-9）：超大文档（>2 MB / >5 万行）在预览中没有降级，
- * KaTeX 全量渲染 + mermaid 渲染会长时间占用渲染主线程（与 Monaco 输入同线程），导致输入卡顿。
- * 策略：超过阈值时「跳过 KaTeX 公式与 mermaid/PlantUML 图表渲染」（保留代码块高亮与正文渲染，
- * 编辑器保持可用），并由预览组件显示一次「文档过大，预览已简化」提示。
- * 阈值常量可配置（导出的 PREVIEW_LARGE_DOC_* 常量）。
+/* ==================== 三点五、P2-1：文档规模分级判定 ====================
+ * 背景（out/tool-results/scan-perf.md P2-1）：原 PF-9 只在超大文档（>2 MB / >5 万行）
+ * 才跳过 KaTeX 与图表，而 DOMPurify 主导的渲染成本在 200KB 档已约 216ms、1MB 档约 795ms；
+ * 200KB~1MB 区间没有保护。P2-1 把阈值下调到 256KiB / 1 万行（简化档），并在
+ * 512KiB / 2 万行以上启用渐进渲染（preview-large-doc.ts 是分级判定的唯一入口）。
+ *
+ * 本模块保留 `IsLargePreviewDocument` 名称与 `PREVIEW_LARGE_DOC_*` 导出常量，
+ * 既有调用方/单测零改动；语义收敛为「是否进入简化档及以上」。
  */
 
 /**
- * PF-9：超大文档估算字节阈值（默认 2 MiB）。
+ * 简化档估算字节阈值（默认 256KiB）。
  *
  * 迁移（渲染层公共接口归位）：数值真源改为 `src/shared/constants/limits.ts` 的
- * `PREVIEW_MAX_FILE_SIZE`；本常量保留原导出名，供既有 import（单测/调用方）零改动。
+ * `PREVIEW_DEGRADE_FILE_SIZE`；本常量保留原导出名，供既有 import（单测/调用方）零改动。
  */
-export const PREVIEW_LARGE_DOC_BYTE_THRESHOLD = PREVIEW_MAX_FILE_SIZE
+export const PREVIEW_LARGE_DOC_BYTE_THRESHOLD = PREVIEW_DEGRADE_FILE_SIZE
 /**
- * PF-9：超大文档行数阈值（默认 5 万行）。
+ * 简化档行数阈值（默认 1 万行）。
  *
  * 迁移（渲染层公共接口归位）：数值真源改为 `src/shared/constants/limits.ts` 的
- * `PREVIEW_MAX_LINES`；本常量保留原导出名。
+ * `PREVIEW_DEGRADE_LINES`；本常量保留原导出名。
  */
-export const PREVIEW_LARGE_DOC_LINE_THRESHOLD = PREVIEW_MAX_LINES
+export const PREVIEW_LARGE_DOC_LINE_THRESHOLD = PREVIEW_DEGRADE_LINES
 
 /**
- * PF-9：判断文档是否达到「预览降级」阈值。
+ * 判断文档是否达到「预览简化档」阈值（>256KiB 或 >1 万行）。
  *
- * 单次线性扫描（无数组拆分/无全文拷贝），命任一条即提前返回：
- * 1. 估算 UTF-8 字节数 > PREVIEW_LARGE_DOC_BYTE_THRESHOLD
- *    （ASCII 记 1、非 ASCII 记 3，代理对按 6 计，足够精确且 O(n)）；
- * 2. 行数 > PREVIEW_LARGE_DOC_LINE_THRESHOLD。
+ * 判定逻辑收敛到 `preview-large-doc.ResolvePreviewRenderPlan`（单次线性扫描、带单条目缓存，
+ * 与组件使用同一份分级结果，避免两处阈值漂移）。
  */
 export function IsLargePreviewDocument(text: string): boolean {
-    if (typeof text !== 'string' || text.length === 0) {
-        return false
-    }
-    // 纯 ASCII 时 length 即字节数：明显超标可直接判定，避免再扫描一遍
-    if (text.length > PREVIEW_LARGE_DOC_BYTE_THRESHOLD) {
-        return true
-    }
-    let estimatedBytes = 0
-    let lineCount = 1
-    for (let index = 0; index < text.length; index += 1) {
-        const code = text.charCodeAt(index)
-        if (code === 10) {
-            lineCount += 1
-            if (lineCount > PREVIEW_LARGE_DOC_LINE_THRESHOLD) {
-                return true
-            }
-        }
-        if (code < 0x80) {
-            estimatedBytes += 1
-        } else if (code >= 0xd800 && code <= 0xdbff) {
-            // 代理对高字节：UTF-8 编码为 4 字节；跳过紧随的低字节
-            estimatedBytes += 4
-            index += 1
-        } else {
-            estimatedBytes += 3
-        }
-        if (estimatedBytes > PREVIEW_LARGE_DOC_BYTE_THRESHOLD) {
-            return true
-        }
-    }
-    return false
+    return ResolvePreviewRenderPlan(text).degraded
 }
 
 /** HemyRenderPreLocal 的可选参数（PF-9） */
@@ -743,7 +717,7 @@ export async function EnsurePreviewKatexLoaded(text: string): Promise<boolean> {
  * 1. 扫描围栏代码块字符区间（任意语言/缩进）
  * 2. 非保护片段执行 KaTeX / 图片与文件 URL 变换（admonition/tabbed 已交由 markdown-it 插件）
  * 3. 按字符偏移原样拼接返回（不再经主进程，无 IPC；分段边界换行符不丢失）
- * PF-9：超大文档（>2 MiB / >5 万行）自动跳过 KaTeX 渲染，避免阻塞渲染主线程；
+ * P2-1：简化档及以上（>256KiB / >1 万行）自动跳过 KaTeX 渲染，避免阻塞渲染主线程；
  * 调用方可显式传 skipKatex 覆盖自动判定。
  * P1-8：KaTeX 改为按需加载——调用方必须先 `await EnsurePreviewKatexLoaded(text)`；
  * 未加载时公式按原文保留（不抛异常、不产出半渲染 HTML）。

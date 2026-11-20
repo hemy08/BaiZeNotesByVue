@@ -112,8 +112,10 @@ import {
     MAX_AUTO_BACKUP_FILE_SIZE,
     MAX_LOG_FILE_SIZE,
     MAX_IMAGE_BASE64_SIZE,
-    PREVIEW_MAX_FILE_SIZE,
-    PREVIEW_MAX_LINES,
+    PREVIEW_DEGRADE_FILE_SIZE,
+    PREVIEW_DEGRADE_LINES,
+    PREVIEW_PROGRESSIVE_FILE_SIZE,
+    PREVIEW_PROGRESSIVE_LINES,
     PREVIEW_BLOCK_MAX_SIZE,
     PREVIEW_BLOCK_TOTAL_MAX_SIZE,
     PREVIEW_BLOCK_MAX_DEPTH
@@ -244,11 +246,14 @@ describe('limits 共享常量', () => {
         // 来源：auto-backup.ts:67-68 的 AUTO_BACKUP_MAX_FILE_BYTES（20MB）
         expect(MAX_AUTO_BACKUP_FILE_SIZE).toBe(AUTO_BACKUP_MAX_FILE_BYTES)
         expect(MAX_AUTO_BACKUP_FILE_SIZE).toBe(20 * 1024 * 1024)
-        // 来源：preview-local-render.ts:444-447（PF-9 超大文档降级阈值 2MiB / 5 万行）
-        expect(PREVIEW_MAX_FILE_SIZE).toBe(PREVIEW_LARGE_DOC_BYTE_THRESHOLD)
-        expect(PREVIEW_MAX_FILE_SIZE).toBe(2 * 1024 * 1024)
-        expect(PREVIEW_MAX_LINES).toBe(PREVIEW_LARGE_DOC_LINE_THRESHOLD)
-        expect(PREVIEW_MAX_LINES).toBe(50000)
+        // 来源：preview-large-doc.ts / preview-local-render.ts（P2-1 大文档分级阈值）
+        // 简化档：>256KiB 或 >1 万行；渐进档：>512KiB 或 >2 万行（原 PF-9 的 2MiB/5 万行已下调）
+        expect(PREVIEW_DEGRADE_FILE_SIZE).toBe(PREVIEW_LARGE_DOC_BYTE_THRESHOLD)
+        expect(PREVIEW_DEGRADE_FILE_SIZE).toBe(256 * 1024)
+        expect(PREVIEW_DEGRADE_LINES).toBe(PREVIEW_LARGE_DOC_LINE_THRESHOLD)
+        expect(PREVIEW_DEGRADE_LINES).toBe(10_000)
+        expect(PREVIEW_PROGRESSIVE_FILE_SIZE).toBe(512 * 1024)
+        expect(PREVIEW_PROGRESSIVE_LINES).toBe(20_000)
         // 来源：preview-md-blocks.ts:516-521（snippets 深度 5 / 单文件 1MiB / 总量 4MiB）
         expect(PREVIEW_BLOCK_MAX_DEPTH).toBe(SNIPPET_DEFAULT_MAX_DEPTH)
         expect(PREVIEW_BLOCK_MAX_DEPTH).toBe(5)

@@ -52,23 +52,37 @@ export const MAX_LOG_FILE_SIZE = 10 * 1024 * 1024
  */
 export const MAX_IMAGE_BASE64_SIZE = 20 * 1024 * 1024
 
-/* ==================== 六、Markdown 预览降级（渲染进程，PF-9） ==================== */
+/* ==================== 六、Markdown 预览分级降级（渲染进程，P2-1） ==================== */
 
 /**
- * 超大文档估算字节阈值（2MiB）：达到后预览跳过 KaTeX / mermaid / PlantUML 渲染并提示。
- * 进程 / 用途：渲染进程 / Markdown 预览超大文档降级判定。
- * 来源：`src/renderer/src/components/Markdown/preview-local-render.ts:444-445`
- * （源码导出名 `PREVIEW_LARGE_DOC_BYTE_THRESHOLD`）。
+ * 大文档「简化档」估算字节阈值（256KiB）：达到后预览跳过 KaTeX 公式、mermaid/PlantUML
+ * 图表与 hljs 冷门语言按需预取，只保留基础 Markdown 渲染 + DOMPurify 消毒。
+ *
+ * P2-1（大文档预览性能）：原 PF-9 阈值 2MiB / 5 万行过晚——实测 200KB 文档单轮
+ * DOMPurify 已约 200ms、1MB 约 900ms（jsdom），而 2MiB 以下完全无保护；下调到 256KiB，
+ * 覆盖 200KB~1MB 的常见长笔记档位。数值真源在本文件，渲染层只读取不复制。
+ *
+ * 进程 / 用途：渲染进程 / Markdown 预览降级判定（preview-large-doc.ts）。
  */
-export const PREVIEW_MAX_FILE_SIZE = 2 * 1024 * 1024
+export const PREVIEW_DEGRADE_FILE_SIZE = 256 * 1024
 
 /**
- * 超大文档行数阈值（5 万行）：与字节阈值任一命中即触发预览降级。
- * 进程 / 用途：渲染进程 / Markdown 预览超大文档降级判定。
- * 来源：`src/renderer/src/components/Markdown/preview-local-render.ts:446-447`
- * （源码导出名 `PREVIEW_LARGE_DOC_LINE_THRESHOLD`）。
+ * 大文档「简化档」行数阈值（1 万行）：与字节阈值任一命中即进入简化档。
+ * 行数档位覆盖「短行多、字节数不高」的长文档（如密集列表/表格）。
  */
-export const PREVIEW_MAX_LINES = 50000
+export const PREVIEW_DEGRADE_LINES = 10_000
+
+/**
+ * 大文档「渐进档」估算字节阈值（512KiB）：达到后在简化档基础上再启用
+ * 「分块 DOMPurify + 首块先显示 + 逐块补全」的渐进渲染（preview-sanitize.ts），
+ * 让 1MB 级文档的首屏内容不必等待整篇消毒完成。
+ */
+export const PREVIEW_PROGRESSIVE_FILE_SIZE = 512 * 1024
+
+/**
+ * 大文档「渐进档」行数阈值（2 万行）：与字节阈值任一命中即进入渐进档。
+ */
+export const PREVIEW_PROGRESSIVE_LINES = 20_000
 
 /* ==================== 七、Markdown snippets 片段包含（渲染进程） ==================== */
 

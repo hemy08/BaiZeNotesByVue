@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * 大文档预览渲染性能回归（P1 性能基线化）。
+ * 大文档预览渲染性能回归（P1 性能基线化 / P2-1 分级降级）。
  *
  * 只做「宽松阈值」防退化断言，不追求精确基准：
  * - 样本：≈50KB+ Markdown / 500 个二级标题 + 段落 + 代码块（贴近长笔记/文档大纲场景）；
@@ -8,6 +8,8 @@
  *   v-html DOM 写入；仅 hemy-editor-render 的异步图表门面 mock 为直通，避免 mermaid/PlantUML
  *   在 jsdom 中不可用）；
  * - 阈值：初次渲染与内容变更后的重渲染均要求 < 8000ms（宽松上限，只为捕获数量级退化）。
+ * - P2-1：新增 200KB/1MB 档「纯管线」耗时预算（HemyRenderPreLocal + md.render + DOMPurify），
+ *   并断言分级阈值命中（200KB→简化档、1MB→渐进档），捕获「阈值/净化策略被回退」的数量级退化。
  *
  * 说明：耗时来自 jsdom + CI 机器，波动较大；阈值特意留出 5~10 倍余量，避免偶发抖动误报。
  */
@@ -22,9 +24,14 @@ vi.mock('@renderer/components/Markdown/hemy-editor-render', () => ({
 
 import MarkdownPreviewComponent from '@renderer/components/Markdown/MarkdownPreviewComponent.vue'
 import {
+    HemyRenderPreLocal,
     setPreviewActiveFilePath,
     setPreviewAllowRemoteImages
 } from '@renderer/components/Markdown/preview-local-render'
+import { createPreviewMarkdownIt } from '@renderer/components/Markdown/preview-markdown-it'
+import { createTabDeepLinkEnv } from '@renderer/components/Markdown/preview-mkdocs-material'
+import { SanitizePreviewHtml } from '@renderer/components/Markdown/preview-sanitize'
+import { ResolvePreviewRenderPlan } from '@renderer/components/Markdown/preview-large-doc'
 
 /** 大文档预览渲染宽松耗时上限（毫秒）：捕获数量级退化，不用于精确基准 */
 const LARGE_DOC_RENDER_BUDGET_MS = 8000
@@ -144,4 +151,57 @@ describe('大文档预览渲染性能（50KB+/500 标题，宽松阈值）', () 
         expect(wrapper.text()).toContain('第 500 节：性能基线复测标题 500')
         expect(wrapper.findAll('h2')).toHaveLength(HEADING_COUNT)
     }, 30_000)
+})
+
+/* ==================== P2-1：200KB / 1MB 纯管线耗时预算 ====================
+ * 只测「预览渲染管线」本身（预渲染 + md.render + DOMPurify 整篇消毒），不测 DOM 插入，
+ * 与 out/tool-results/scan-perf.md 的口径一致。阈值按 jsdom 实测的 8~12 倍设置，
+ * 仅捕获数量级退化（例如降级策略失效导致 KaTeX/图表被全量渲染、返回全量消毒被去掉）。
+ */
+describe('P2-1 大文档预览管线耗时预算（200KB / 1MB）', () => {
+    /** 构造指定字节规模的 Markdown 样本（标题/正文/代码围栏，贴近长笔记） */
+    function buildSizedMarkdown(targetChars: number): string {
+        const blocks: string[] = []
+        let index = 0
+        let size = 0
+        while (size < targetChars) {
+            index += 1
+            const block = [
+                `## 第 ${index} 节：大文档性能样本 ${index}`,
+                '',
+                `第 ${index} 节正文：包含 **加粗**、*斜体*、\`inline code\` 与 [链接](https://example.com/${index})。`,
+                '',
+                '```js',
+                `const section${index} = { index: ${index} }`,
+                '```',
+                ''
+            ].join('\n')
+            blocks.push(block)
+            size += block.length + 1
+        }
+        return blocks.join('\n')
+    }
+
+    /** 跑一轮纯管线并返回耗时（毫秒） */
+    function runPreviewPipeline(source: string): number {
+        const md = createPreviewMarkdownIt()
+        const plan = ResolvePreviewRenderPlan(source)
+        const startedAt = performance.now()
+        const preRendered = HemyRenderPreLocal(source, { skipKatex: plan.skipKatex })
+        const renderedHtml = md.render(preRendered, createTabDeepLinkEnv())
+        SanitizePreviewHtml(renderedHtml)
+        return performance.now() - startedAt
+    }
+
+    it('200KB 文档进入简化档，纯管线耗时低于宽松上限（jsdom 实测约 0.4s）', () => {
+        const source = buildSizedMarkdown(200 * 1024)
+        expect(ResolvePreviewRenderPlan(source).tier).toBe('degraded')
+        expect(runPreviewPipeline(source)).toBeLessThan(5000)
+    }, 60_000)
+
+    it('1MB 文档进入渐进档，纯管线耗时低于宽松上限（jsdom 实测约 1.1s）', () => {
+        const source = buildSizedMarkdown(1024 * 1024)
+        expect(ResolvePreviewRenderPlan(source).tier).toBe('progressive')
+        expect(runPreviewPipeline(source)).toBeLessThan(12_000)
+    }, 120_000)
 })

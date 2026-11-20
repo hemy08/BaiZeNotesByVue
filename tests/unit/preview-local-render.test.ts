@@ -55,8 +55,8 @@ import {
 } from '../../src/renderer/src/components/Markdown/preview-local-render'
 import { createPreviewMarkdownIt } from '../../src/renderer/src/components/Markdown/preview-markdown-it'
 import { PreMarkdownRender } from '../../src/renderer/src/components/Markdown/hemy-editor-render'
-// 迁移（渲染层公共接口归位）：预览限制常量的数值真源
-import { PREVIEW_MAX_FILE_SIZE, PREVIEW_MAX_LINES } from '../../src/shared/constants/limits'
+// 迁移（渲染层公共接口归位）：预览限制常量的数值真源（P2-1：简化档 256KiB / 1 万行）
+import { PREVIEW_DEGRADE_FILE_SIZE, PREVIEW_DEGRADE_LINES } from '../../src/shared/constants/limits'
 
 /** 构造与 MarkdownPreviewComponent 等价的 markdown-it 实例（预览同款插件链，渲染链路一致性用） */
 function createMarkdownIt(): InstanceType<typeof MarkdownIt> {
@@ -328,20 +328,21 @@ describe('PF-9 KaTeX LRU 缓存', () => {
     })
 })
 
-describe('PF-9 超大文档降级', () => {
+describe('PF-9 / P2-1 大文档分级降级', () => {
     it('should detect large documents by estimated bytes or line count', () => {
-        // 迁移（渲染层公共接口归位）：本地导出常量必须与 shared 数值真源同值（行为零变化）
-        expect(PREVIEW_LARGE_DOC_BYTE_THRESHOLD).toBe(PREVIEW_MAX_FILE_SIZE)
-        expect(PREVIEW_LARGE_DOC_LINE_THRESHOLD).toBe(PREVIEW_MAX_LINES)
+        // 迁移（渲染层公共接口归位）：本地导出常量必须与 shared 数值真源同值
+        // P2-1：阈值由 2MiB/5 万行下调为 256KiB/1 万行（200KB~1MB 档纳入降级保护）
+        expect(PREVIEW_LARGE_DOC_BYTE_THRESHOLD).toBe(PREVIEW_DEGRADE_FILE_SIZE)
+        expect(PREVIEW_LARGE_DOC_LINE_THRESHOLD).toBe(PREVIEW_DEGRADE_LINES)
         expect(IsLargePreviewDocument('')).toBe(false)
         expect(IsLargePreviewDocument('# 普通短文档\n正文 $x^2$')).toBe(false)
         // 纯 ASCII 超过字节阈值
         expect(IsLargePreviewDocument('a'.repeat(PREVIEW_LARGE_DOC_BYTE_THRESHOLD + 1))).toBe(true)
-        // 行数超过行数阈值（单行较短，但行数 5 万+）
+        // 行数超过行数阈值（单行较短，但行数 1 万+）
         expect(IsLargePreviewDocument('x\n'.repeat(PREVIEW_LARGE_DOC_LINE_THRESHOLD + 1))).toBe(
             true
         )
-        // 中文按 UTF-8 3 字节估算：约 70 万汉字即超过 2 MiB
+        // 中文按 UTF-8 3 字节估算：约 8.7 万汉字即超过 256KiB
         expect(
             IsLargePreviewDocument(
                 '中'.repeat(Math.ceil(PREVIEW_LARGE_DOC_BYTE_THRESHOLD / 3) + 10)

@@ -2,6 +2,7 @@
     <!-- eslint-disable vue/no-v-html -- 预览 HTML 为本地渲染管线产物，已经 DOMPurify.sanitize 消毒（见 render 流程 sanitizedHtml），v-html 是 Markdown 富文本预览的唯一渲染方式（文件级 disable，格式化后行号稳定） -->
     <div
         id="markdown-preview-html"
+        ref="previewRoot"
         class="markdown-preview-html md-typeset"
         v-html="renderedMarkdownContent"
     ></div>
@@ -9,7 +10,6 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import DOMPurify from 'dompurify'
 // 结构优化第 2 批 2.2（H4）：预览只依赖渲染模块（hemy-editor-render），
 // 不再经 `hemy-editor` 聚合桶（该桶含 Monaco 编辑器动作/快捷键等），
 // 保证预览按需 chunk 不把 Monaco 重新带回来。
@@ -26,7 +26,8 @@ import {
     HemyRenderPreLocal,
     IsLargePreviewDocument,
     setPreviewActiveFilePath,
-    setPreviewAllowRemoteImages
+    setPreviewAllowRemoteImages,
+    type RemoteImagePolicyOptions
 } from './preview-local-render'
 import { createPreviewMarkdownIt } from './preview-markdown-it'
 // P1-8 后续：代码围栏冷门语言按需预取（与 KaTeX 同一异步前置位置，await 后同轮同步渲染即高亮）
@@ -35,6 +36,17 @@ import { EnsurePreviewHighlightLanguagesLoaded } from './preview-highlight'
 import { expandSnippetIncludes } from './preview-md-blocks'
 import { createTabDeepLinkEnv, getTabTargetByHash } from './preview-mkdocs-material'
 import { ComputeChaptersFingerprint } from './preview-chapters'
+// CMP-15：XSS 防护 —— DOMPurify 配置与消毒唯一入口统一收敛到 preview-sanitize.ts；
+// P2-1：大文档按安全顶层边界分块消毒（块间让出主线程、首块先显示），任何路径都不绕过消毒。
+import { SanitizePreviewHtml, SanitizePreviewHtmlInChunks } from './preview-sanitize'
+// P2-1：分级降级判定（简化档 >256KiB / >1 万行；渐进档 >512KiB / >2 万行）
+// 与「降级级别感知」的大文档渲染缓存（缓存键含级别/路径/远程图片策略，避免不同模式串用）。
+import {
+    GetCachedPreviewRenderHtml,
+    IsPreviewContentProbablyLarge,
+    ResolvePreviewRenderPlan,
+    SetCachedPreviewRenderHtml
+} from './preview-large-doc'
 import { getLocale, t } from '../../common/i18n'
 import { logger } from '../../common/logger'
 import { getBaseName } from '../../../../shared/utils/path'
@@ -46,19 +58,8 @@ import type { SystemSetting } from '../../../../shared/types'
 /* global FileProperties */
 
 // CMP-15：XSS 防护 —— markdown-it 以 html:true 渲染，产物经 v-html 注入前必须消毒。
-// 使用 DOMPurify 的 svg + mathMl 配置：
-// - svg/svgFilters：保留 mermaid 渲染的 SVG 图表（含 foreignObject/marker/style 等）；
-// - mathMl：保留 KaTeX 公式输出的 MathML（可访问性层）；
-// - highlight.js 高亮仅使用 class 属性，不受消毒影响。
-// FE-12：默认 URI 白名单不允许 file: 协议，本地相对路径图片（预览管线已转换为
-// file:// 绝对 URL）的 src 会被剥离导致图片不显示。此处基于 DOMPurify 默认白名单
-// 追加 file:（file: 仅作为 img 等资源 URL 使用，不承载脚本执行能力，见 sanitize 语义）。
-const DOMPURIFY_ALLOWED_URI_REGEXP =
-    /^(?:(?:(?:f|ht)tps?|file|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i
-const DOMPURIFY_CONFIG = {
-    USE_PROFILES: { html: true, svg: true, svgFilters: true, mathMl: true },
-    ALLOWED_URI_REGEXP: DOMPURIFY_ALLOWED_URI_REGEXP
-}
+// 消毒配置（svg + mathMl + file: URI 白名单）与分块净化统一收敛到 preview-sanitize.ts，
+// 保证普通/简化档/渐进档/缓存命中所有路径共用同一份 DOMPurify 配置，不存在绕过消毒的降级。
 
 const props = defineProps({
     editorContent: {
@@ -83,6 +84,8 @@ const props = defineProps({
 })
 
 const renderedMarkdownContent = ref('')
+/** P2-1：预览容器（渐进渲染时后续分块直接追加到这里，避免整篇 v-html 二次解析） */
+const previewRoot = ref<HTMLElement | null>(null)
 
 // M5：大纲请求事件订阅经 useEventBus 注册，卸载时自动清理
 const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownPreviewComponent' })
@@ -116,6 +119,21 @@ let renderSequence = 0
 // 必须与 renderSequence 一起提前声明。
 let degradedWarned = false
 
+// P2-1：v-html 渲染标记自增序号。用于给每次渲染的 v-html 值加一个不可见的渲染序号注释，
+// 保证「流式追加模式」下后续渲染轮次一定触发 Vue 的 innerHTML 整体替换，
+// 不会因为首块 HTML 字符串恰好相同而残留上一轮的追加内容。
+let renderNonce = 0
+// P2-1：预览是否已有用户可见内容（决定大文档首次渲染是否启用「首块先显示 + 逐块补全」；
+// 已有内容时保持整篇原子替换，避免编辑期间预览内容被截断/闪烁）。
+let hasVisiblePreviewContent = false
+// P2-1：骨架屏是否正在显示（避免重复写入骨架/误判首屏为空）
+let skeletonVisible = false
+
+/** snippets（--8<--）指令标记：含片段展开时结果依赖磁盘文件，不使用渲染缓存 */
+const SNIPPET_DIRECTIVE_MARKER = '--8<--'
+/** 渲染标记注释前缀（不可见、无渲染成本；用于区分不同渲染轮次的 v-html 值） */
+const PREVIEW_RENDER_MARKER_PREFIX = '<!--baize-preview-render:'
+
 // 结构优化第 2 批 2.2（H4）：父组件透传的活动文件路径（懒加载时序兜底，见 props.activeFilePath）。
 // 只做非空写入，不覆盖预览自身监听得到的路径；路径变化时触发补渲，让相对 URL 按新文件重算。
 watch(
@@ -144,6 +162,62 @@ function clearRenderDebounceTimer(): void {
     }
 }
 
+/** P2-1：构造本轮 v-html 的渲染标记注释（纯组件内生成的静态字符串，不含用户内容） */
+function buildPreviewRenderMarker(nonce: number): string {
+    return `${PREVIEW_RENDER_MARKER_PREFIX}${nonce}-->`
+}
+
+/**
+ * P2-1：组装写入 v-html 的 HTML：渲染标记 + 降级提示条（如需）+ 已消毒内容。
+ * 内容部分必须已经过 DOMPurify（preview-sanitize.ts）与远程图片策略处理。
+ */
+function wrapPreviewHtml(
+    nonce: number,
+    degraded: boolean,
+    progressive: boolean,
+    contentHtml: string
+): string {
+    const notice = degraded ? buildDegradedNoticeHtml(progressive) : ''
+    return `${buildPreviewRenderMarker(nonce)}${notice}${contentHtml}`
+}
+
+/** 本轮渲染是否已过期（内容已变化或有更新的渲染轮次） */
+function isStaleRender(sequence: number, sourceContent: string): boolean {
+    return sequence !== renderSequence || props.editorContent !== sourceContent
+}
+
+/**
+ * P2-1：大文档首屏骨架屏（静态 HTML，无用户内容，不构成注入面）。
+ * 仅在「预览尚无内容 + 文档可能达到简化档」时立即显示，避免防抖 + 整篇渲染期间白屏。
+ */
+function buildProgressiveSkeletonHtml(): string {
+    const label = getLocale() === 'en-US' ? 'Rendering large document…' : '正在渲染大文档…'
+    const lines = [92, 86, 94, 72, 88, 64]
+        .map(
+            (width) =>
+                `<div class="preview-rendering-skeleton__line" style="width:${width}%"></div>`
+        )
+        .join('')
+    return (
+        '<div class="preview-rendering-skeleton" role="status" aria-live="polite">' +
+        `<div class="preview-rendering-skeleton__title">${label}</div>` +
+        lines +
+        '</div>'
+    )
+}
+
+/** P2-1：内容变化、防抖等待期间立即显示大文档骨架屏（仅大文档 + 预览尚无内容时） */
+function scheduleSkeletonIfNeeded(): void {
+    if (hasVisiblePreviewContent || skeletonVisible || !props.active) {
+        return
+    }
+    if (!IsPreviewContentProbablyLarge(props.editorContent)) {
+        return
+    }
+    skeletonVisible = true
+    renderedMarkdownContent.value = `${buildPreviewRenderMarker(++renderNonce)}${buildProgressiveSkeletonHtml()}`
+}
+
 /**
  * P1/PF-2：排期一次防抖渲染。
  * 预览不可见（纯编辑模式）时**不启动定时器**——隐藏期间的任何内容变化都不产生渲染成本，
@@ -154,6 +228,7 @@ function schedulePreviewRender(): void {
         clearRenderDebounceTimer()
         return
     }
+    scheduleSkeletonIfNeeded()
     clearRenderDebounceTimer()
     renderDebounceTimer = setTimeout(() => {
         renderDebounceTimer = null
@@ -202,32 +277,121 @@ function UpdateMarkdownChapters() {
     lastChaptersFingerprint = ComputeChaptersFingerprint(props.editorContent)
 }
 
-/** PF-9：超大文档降级提示条 HTML（中英双语，随当前语言切换） */
-function buildDegradedNoticeHtml(): string {
-    const message =
-        getLocale() === 'en-US'
-            ? 'Document is large: preview simplified (formula and diagram rendering skipped to keep editing responsive).'
+/**
+ * PF-9 / P2-1：大文档降级提示条 HTML（中英双语，随当前语言切换）。
+ * 纯组件内生成的静态字符串（无用户内容），不构成注入面。
+ * @param progressive 渐进档提示「分块渐进渲染」
+ */
+function buildDegradedNoticeHtml(progressive = false): string {
+    const isEnglish = getLocale() === 'en-US'
+    let message: string
+    if (isEnglish) {
+        message = progressive
+            ? 'Document is large: preview is streamed progressively (formula and diagram rendering skipped to keep editing responsive).'
+            : 'Document is large: preview simplified (formula and diagram rendering skipped to keep editing responsive).'
+    } else {
+        message = progressive
+            ? '文档过大，预览已简化（大文档分块渐进渲染，已跳过公式与图表渲染以保证编辑器流畅可用）。'
             : '文档过大，预览已简化（已跳过公式与图表渲染，以保证编辑器流畅可用）。'
+    }
     return `<div class="preview-degraded-notice" role="status" style="margin:0 0 12px;padding:8px 12px;border:1px solid #d97706;border-radius:4px;background:#fffbeb;color:#92400e;font-size:13px;">${message}</div>`
+}
+
+/** P2-1：渲染完成后上报 preview-ready 度量（诊断开关关闭时为空操作） */
+function reportPreviewReadyAfterDomUpdate(): void {
+    void nextTick().then(() => {
+        if (perfMark(PERF_MARK.PREVIEW_READY)) {
+            perfMeasure(PERF_MARK.PREVIEW_READY, PERF_MARK.RENDERER_READY)
+        }
+    })
+}
+
+/** P2-1：分块渐进渲染上下文 */
+interface ProgressiveRenderContext {
+    sequence: number
+    sourceContent: string
+    renderMarkerNonce: number
+    degraded: boolean
+    /** 首块先显示 + 逐块追加（仅「预览尚无内容」的大文档首次渲染启用） */
+    streaming: boolean
+    policyOptions: RemoteImagePolicyOptions
+}
+
+/**
+ * P2-1：渐进档渲染——分块 DOMPurify（块间让出主线程）+ 首块先显示 / 逐块补全。
+ *
+ * 安全边界：每一块都必须经 SanitizePreviewHtmlInChunks 内部的 DOMPurify 消毒后才写入 DOM；
+ * 分块边界只能落在完整顶层元素上（preview-html-chunks.ts 保守校验，畸形 HTML 自动回退整篇消毒）。
+ *
+ * 显示策略：
+ * - streaming=true（首次渲染且预览为空）：第 1 块写入 v-html，其余块在块间让出主线程后
+ *   直接追加到预览容器（避免整篇 HTML 二次解析；后续渲染轮次由渲染标记注释保证整体替换）；
+ * - streaming=false（编辑期重渲染）：旧内容保持可见，全部块消毒完成后一次性原子替换，避免闪烁。
+ *
+ * @returns 已应用远程图片策略的完整 HTML（供渲染缓存复用）；被取消时返回 null
+ */
+async function renderChunkedPreviewHtml(
+    postRenderText: string,
+    context: ProgressiveRenderContext
+): Promise<string | null> {
+    const streamRoot = previewRoot.value
+    const policyHtmlChunks: string[] = []
+    const finalHtml = await SanitizePreviewHtmlInChunks(postRenderText, {
+        isCancelled: () => isStaleRender(context.sequence, context.sourceContent),
+        onChunk: async (sanitizedChunk, chunkIndex) => {
+            if (isStaleRender(context.sequence, context.sourceContent)) {
+                return
+            }
+            const policyHtml = ApplyRemoteImagePolicy(sanitizedChunk, context.policyOptions)
+            policyHtmlChunks.push(policyHtml)
+            if (!context.streaming) {
+                return
+            }
+            if (chunkIndex === 0) {
+                renderedMarkdownContent.value = wrapPreviewHtml(
+                    context.renderMarkerNonce,
+                    context.degraded,
+                    true,
+                    policyHtml
+                )
+                // 等 Vue 完成 v-html 的首块写入后，才能安全地按块追加 DOM
+                await nextTick()
+            } else if (streamRoot) {
+                streamRoot.insertAdjacentHTML('beforeend', policyHtml)
+            }
+        }
+    })
+    if (finalHtml === null) {
+        return null
+    }
+    const appliedPolicyHtml = policyHtmlChunks.length > 0 ? policyHtmlChunks.join('') : finalHtml
+    if (!context.streaming) {
+        renderedMarkdownContent.value = wrapPreviewHtml(
+            context.renderMarkerNonce,
+            context.degraded,
+            true,
+            appliedPolicyHtml
+        )
+    }
+    return appliedPolicyHtml
 }
 
 /**
  * PF-02：预览本地单跳渲染链路（全部在渲染进程内完成，无 PRE_RENDER/POST_RENDER IPC 往返）
- * 0. EnsurePreviewKatexLoaded：P1-8 按需加载 KaTeX（仅文档含公式标记时动态 import，
- *    KaTeX CSS 也在同一次会话级加载中拉起）；EnsurePreviewHighlightLanguagesLoaded：
- *    P1-8 后续按需预取围栏冷门语言包（两者都是渲染前的异步前置，无需求时零加载）；
+ * 0. 按 P2-1 分级计划跳过/按需加载 KaTeX 与 hljs 冷门语言；
  * 1. HemyRenderPreLocal：admonition / tabbed / KaTeX / 图片与文件 URL 变换（原主进程 PRE 变换）；
  * 2. PreMarkdownRender：PlantUML 本地渲染 + mermaid 渲染（保持原有渲染层逻辑）；
  * 3. md.render：markdown-it 全量解析 + highlight.js；
  * 4. HemyRenderPostLocal + PostMarkdownRender：渲染层后处理（原主进程 POST 变换，当前为恒等）；
- * 5. DOMPurify 消毒后写入 v-html。
+ * 5. preview-sanitize：DOMPurify 消毒（普通/简化档整篇消毒，渐进档分块消毒 + 首块先显示）后写入 v-html。
  *
- * 前置优化（PF-2）：
+ * 前置优化（PF-2 / P2-1）：
  * - 预览不可见 / 内容与已渲染内容一致 → 直接返回，不执行任何渲染步骤；
  * - 大纲解析改为「标题候选行指纹变化时才做第二次全文解析」，正常正文编辑不再重复解析；
- * - 异步等待后再次校验内容版本，内容已变化则丢弃本轮结果（连 md.render 都不执行）。
- * PF-9：超大文档（>2 MiB / >5 万行）降级为「跳过 KaTeX 与 mermaid/PlantUML 渲染」，
- * 并在预览顶部显示提示条；正文/代码高亮仍正常渲染，编辑器保持可用。
+ * - 异步等待后再次校验内容版本，内容已变化则丢弃本轮结果（连 md.render 都不执行）；
+ * - 大文档：简化档（>256KiB / >1 万行）跳过 KaTeX、图表与冷门语言预取并显示提示；
+ *   渐进档（>512KiB / >2 万行）再叠加分块 DOMPurify + 首块先显示的渐进渲染；
+ * - 级别感知渲染缓存：内容未变但被强制重渲（撤销回退/文件切换回退）时可跳过整篇管线。
  */
 async function updateMarkdownPreview() {
     if (!props.active) {
@@ -238,17 +402,46 @@ async function updateMarkdownPreview() {
         return
     }
     const sequence = ++renderSequence
+    const renderMarkerNonce = ++renderNonce
     try {
-        // PF-9：先判定是否超大文档（单次线性扫描），再决定是否降级渲染
-        const degraded = IsLargePreviewDocument(sourceContent)
+        // P2-1：先做分级判定（单次线性扫描），再决定各高成本插件与净化方式
+        const plan = ResolvePreviewRenderPlan(sourceContent)
+        // 兼容既有 IsLargePreviewDocument 判定（任一命中即降级），并保留 PF-9 的告警语义
+        const degraded = IsLargePreviewDocument(sourceContent) || plan.degraded
         if (degraded && !degradedWarned) {
             degradedWarned = true
             logger.warn(
-                '[MarkdownPreview] 文档超过降级阈值，已跳过 KaTeX 与 mermaid/PlantUML 渲染（PF-9）',
-                `${sourceContent.length} chars`
+                '[MarkdownPreview] 文档达到大文档降级阈值，已跳过 KaTeX 与 mermaid/PlantUML 渲染（P2-1）',
+                `${sourceContent.length} chars / tier=${plan.tier}`
             )
         } else if (!degraded) {
             degradedWarned = false
+        }
+        const allowRemoteImages = getPreviewAllowRemoteImages()
+        const activeFilePath = getPreviewActiveFilePath() ?? ''
+        // 含 snippets 指令时渲染结果依赖磁盘片段文件，不能复用渲染缓存
+        const cacheable = !sourceContent.includes(SNIPPET_DIRECTIVE_MARKER)
+        // P2-1：大文档渲染缓存（内容未变但被强制重渲时跳过整篇管线；缓存键包含降级级别）
+        if (cacheable) {
+            const cachedHtml = GetCachedPreviewRenderHtml(
+                plan,
+                sourceContent,
+                activeFilePath,
+                allowRemoteImages
+            )
+            if (cachedHtml !== null) {
+                renderedMarkdownContent.value = wrapPreviewHtml(
+                    renderMarkerNonce,
+                    degraded,
+                    plan.progressive,
+                    cachedHtml
+                )
+                hasVisiblePreviewContent = true
+                skeletonVisible = false
+                lastRenderedContent = sourceContent
+                reportPreviewReadyAfterDomUpdate()
+                return
+            }
         }
         // 批次 C：snippets（--8<-- "file.md"）异步展开——读取当前笔记同目录文本文件；
         // 无活动文件/读取失败/非法路径时保留原文（占位由同步 rule 渲染为普通文本，不中断预览）。
@@ -257,19 +450,18 @@ async function updateMarkdownPreview() {
             getPreviewActiveFilePath(),
             readSnippetFile
         )
-        if (sequence !== renderSequence || props.editorContent !== sourceContent) {
+        if (isStaleRender(sequence, sourceContent)) {
             return
         }
-        // P1-8：KaTeX 与围栏冷门语言包按需加载（同一异步前置位置并行等待）：
-        // - 无公式文档不加载 KaTeX JS/CSS（JS 487.7 KiB + KaTeX 样式），超大文档降级本就跳过公式；
-        // - 代码围栏语言预取始终执行（PF-9 降级仍正常渲染代码高亮），无围栏文档零动态 import；
-        // - 必须在同步的 HemyRenderPreLocal / md.render 之前完成，保证首轮即完整渲染
-        //   （不会出现「先转义/无样式、下一轮才生效」的闪烁或半渲染）。
+        // P1-8：KaTeX 与围栏冷门语言包按需加载（同一异步前置位置并行等待）。
+        // P2-1：简化档/渐进档跳过这两类额外动态 import（降级档不做任何高成本前置加载）。
         await Promise.all([
-            degraded ? Promise.resolve(false) : EnsurePreviewKatexLoaded(snippetExpanded),
-            EnsurePreviewHighlightLanguagesLoaded(snippetExpanded)
+            plan.skipKatex ? Promise.resolve(false) : EnsurePreviewKatexLoaded(snippetExpanded),
+            plan.skipLazyHighlight
+                ? Promise.resolve()
+                : EnsurePreviewHighlightLanguagesLoaded(snippetExpanded)
         ])
-        if (sequence !== renderSequence || props.editorContent !== sourceContent) {
+        if (isStaleRender(sequence, sourceContent)) {
             return
         }
         const preRenderText = HemyRenderPreLocal(snippetExpanded, { skipKatex: degraded })
@@ -277,7 +469,7 @@ async function updateMarkdownPreview() {
             skipDiagrams: degraded
         })
         // 渲染期间内容已变化（或有更新轮次）：丢弃本轮结果，避免旧结果覆盖新内容/白耗 CPU
-        if (sequence !== renderSequence || props.editorContent !== sourceContent) {
+        if (isStaleRender(sequence, sourceContent)) {
             return
         }
         // P1/PF-2：大纲基于编辑器原始内容（行号准确），仅当标题候选行指纹变化时才全文解析
@@ -290,33 +482,64 @@ async function updateMarkdownPreview() {
         // 批次 C：tab 深链属性由 env 开关控制（不传 env 时 HTML 与历史版本一致）
         const renderedHtml = md.render(renderedText, createTabDeepLinkEnv())
         const postRenderText = Render.PostMarkdownRender(HemyRenderPostLocal(renderedHtml))
-        if (sequence !== renderSequence || props.editorContent !== sourceContent) {
+        if (isStaleRender(sequence, sourceContent)) {
             return
         }
-        // CMP-15：渲染结果先经 DOMPurify 消毒（剥离 script/事件处理器/javascript: 等），
-        // 再写入 v-html，阻断恶意 Markdown/HTML 注入的 XSS 链。
-        const sanitizedHtml = DOMPurify.sanitize(postRenderText, DOMPURIFY_CONFIG)
-        // AS-9（P3 隐私）：远程图片策略在消毒之后执行——此时属性已由浏览器解析器归一化，
-        // 拦截结果稳定；被拦截的远程 URL 不写入任何可被请求的属性（src/srcset/data-*），
-        // 因此默认（allowRemoteImages=false）不会发起任何远程请求。
-        const policyHtml = ApplyRemoteImagePolicy(sanitizedHtml, {
-            allowRemoteImages: getPreviewAllowRemoteImages(),
+        // CMP-15 / P2-1：渲染结果必须经 DOMPurify 消毒后才能写入 v-html：
+        // - 普通/简化档：整篇一次消毒；
+        // - 渐进档：分块消毒（块间让出主线程），首块先显示、逐块补全。
+        const policyOptions: RemoteImagePolicyOptions = {
+            allowRemoteImages,
             blockedLabel: t('dialogRenderer.systemSetting.remoteImageBlocked')
-        })
-        // PF-9：降级时在预览顶部插入一次可见提示条（随渲染结果一起消毒，无注入面）
-        renderedMarkdownContent.value = degraded
-            ? buildDegradedNoticeHtml() + policyHtml
-            : policyHtml
+        }
+        let finalSanitizedHtml: string | null
+        if (plan.progressive) {
+            finalSanitizedHtml = await renderChunkedPreviewHtml(postRenderText, {
+                sequence,
+                sourceContent,
+                renderMarkerNonce,
+                degraded,
+                // 仅大文档首次渲染（预览尚无内容）启用「首块先显示 + 逐块补全」；
+                // 编辑期重渲染保持整篇原子替换，避免预览内容被截断/闪烁。
+                streaming: !hasVisiblePreviewContent,
+                policyOptions
+            })
+        } else {
+            const sanitizedHtml = SanitizePreviewHtml(postRenderText)
+            // AS-9（P3 隐私）：远程图片策略在消毒之后执行——此时属性已由浏览器解析器归一化，
+            // 拦截结果稳定；被拦截的远程 URL 不写入任何可被请求的属性（src/srcset/data-*），
+            // 因此默认（allowRemoteImages=false）不会发起任何远程请求。
+            const policyHtml = ApplyRemoteImagePolicy(sanitizedHtml, policyOptions)
+            renderedMarkdownContent.value = wrapPreviewHtml(
+                renderMarkerNonce,
+                degraded,
+                false,
+                policyHtml
+            )
+            finalSanitizedHtml = policyHtml
+        }
+        if (finalSanitizedHtml === null) {
+            // 本轮已被更新轮次取消（内容已变化），丢弃结果
+            return
+        }
+        // P2-1：缓存「已消毒 + 已应用图片策略」的最终 HTML（仅大文档；缓存键含降级级别）
+        if (cacheable && plan.degraded) {
+            SetCachedPreviewRenderHtml(
+                plan,
+                sourceContent,
+                activeFilePath,
+                allowRemoteImages,
+                finalSanitizedHtml
+            )
+        }
+        hasVisiblePreviewContent = true
+        skeletonVisible = false
         // 记录本轮已渲染的原始内容（仅在同一引用上赋值，不复制全文）
         lastRenderedContent = sourceContent
         // P1 性能基线：v-html 已写入，等本轮 DOM 更新后标记 preview-ready
         //（诊断开关关闭时 perfMark/perfMeasure 为空操作，不产生额外渲染成本；
         //  perfMark 返回 false 表示已标记过——后续重渲染不再重复上报 measure）
-        void nextTick().then(() => {
-            if (perfMark(PERF_MARK.PREVIEW_READY)) {
-                perfMeasure(PERF_MARK.PREVIEW_READY, PERF_MARK.RENDERER_READY)
-            }
-        })
+        reportPreviewReadyAfterDomUpdate()
     } catch (error) {
         // 单轮渲染异常时保留上一轮预览内容，避免整块预览白屏
         logger.warn('[MarkdownPreview] 本地渲染失败，已保留上一轮预览:', error)
@@ -413,10 +636,12 @@ function handlePreviewClick(event: MouseEvent) {
     // 批次 C：标签页深链（#__tabbed_<setId>_<n> / _label / _panel）→ 选中对应 radio 并滚动
     if (href.startsWith('#__tabbed_')) {
         const tabTarget = getTabTargetByHash(href)
-        const previewRoot = document.getElementById('markdown-preview-html')
+        const previewRootElement = document.getElementById('markdown-preview-html')
         const radio =
-            tabTarget && previewRoot
-                ? (previewRoot.querySelector(`#${tabTarget.radioId}`) as HTMLInputElement | null)
+            tabTarget && previewRootElement
+                ? (previewRootElement.querySelector(
+                      `#${tabTarget.radioId}`
+                  ) as HTMLInputElement | null)
                 : null
         if (tabTarget && radio) {
             event.preventDefault()
@@ -490,6 +715,45 @@ onBeforeUnmount(() => {
     overflow-y: scroll;
     overflow-x: auto;
     display: inline-block;
+}
+
+/* P2-1：大文档首屏骨架屏（仅在简化档/渐进档文档首次渲染且预览为空时短暂出现） */
+.preview-rendering-skeleton {
+    padding: 16px 4px;
+    animation: preview-skeleton-fade-in 120ms ease-out;
+}
+
+.preview-rendering-skeleton__title {
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--secondary-text-color, #909399);
+}
+
+.preview-rendering-skeleton__line {
+    height: 14px;
+    margin: 10px 0;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #ececec 25%, #f5f5f5 37%, #ececec 63%);
+    background-size: 400% 100%;
+    animation: preview-skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes preview-skeleton-shimmer {
+    0% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0 50%;
+    }
+}
+
+@keyframes preview-skeleton-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 /* 代码块样式优化 */
