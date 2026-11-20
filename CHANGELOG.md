@@ -1,3 +1,14 @@
+## 2026年11月20日 - 版本 1.3.10（未发布）
+
+### 🔧 行为变更
+
+- **自动保存默认关闭**：`systemSettingDefaults` / `SYSTEM_SETTING_FALLBACK` 的 `autoSaveEnabled` 由 true 改为 false；软件打开后不启用自动保存，用户需在「系统设置 → 文件设置」中自行开启（一次性迁移 v2→v3 也会把旧默认 true 的存量值重置为 false，之后用户开启的 true 不再被覆盖）
+- **未保存关闭确认**：关闭窗口/退出应用时，若当前文件有未保存修改，弹原生对话框「保存并关闭 / 不保存 / 取消」；保存失败或取消不会关闭，避免静默丢内容（新增 `src/main/utils/close-confirm.ts` 与 `mainMsg.closeConfirm.*` 中英文文案）
+
+### ✅ 门禁
+
+- typecheck 0 / ESLint 0 / Prettier 全绿 / vitest 185 文件 / 3,396 用例 / electron-vite build 成功
+
 ## 2026年11月19日 - 版本 1.3.9（版本维护 / 1.3.8 发布收尾）
 
 > 1.3.9 为版本维护批次：无功能与代码变更；用于承接 1.3.8 发布收尾，并为下一阶段优化准备。

@@ -38,7 +38,8 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     editorModel: 'default',
     pluginOpen: 'browser',
     menuBarStyle: 'electron',
-    autoSaveEnabled: true,
+    // 2026-11-20（用户需求）：自动保存默认关闭（opt-in），需用户在系统设置中自行开启
+    autoSaveEnabled: false,
     autoSaveInterval: 60,
     fontFamily:
         '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif',

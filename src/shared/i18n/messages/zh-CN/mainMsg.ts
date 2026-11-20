@@ -21,6 +21,15 @@ export default {
     editor: {
         ariaLabel: '白泽笔记编辑器'
     },
+    // 2026-11-20（用户需求）：关闭窗口/退出时存在未保存修改的确认文案
+    closeConfirm: {
+        title: '未保存的修改',
+        message: '当前文件有未保存的修改，是否保存后关闭？',
+        detail: '选择「保存并关闭」将保存当前文件；「不保存」将丢弃修改；「取消」返回继续编辑。',
+        save: '保存并关闭',
+        discard: '不保存',
+        cancel: '取消'
+    },
     dialog: {
         errorTitle: '错误!',
         infoTitle: '提示',

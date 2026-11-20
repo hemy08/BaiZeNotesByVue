@@ -72,14 +72,15 @@ describe('FilePanel（文件设置页签）', () => {
     it('自动保存开关：emit 补丁并 invoke 主进程通道（含当前间隔）', async () => {
         const wrapper = mount(FilePanel, { props: { settings: draft() } })
         const autoSave = wrapper.findAll('.setting-checkbox')[0]
-        expect((autoSave.element as HTMLInputElement).checked).toBe(true)
+        // 2026-11-20：自动保存默认关闭（opt-in），此处操作改为开启
+        expect((autoSave.element as HTMLInputElement).checked).toBe(false)
 
-        await autoSave.setValue(false)
+        await autoSave.setValue(true)
         await flushPromises()
 
-        expect(wrapper.emitted('update')![0]).toEqual([{ autoSaveEnabled: false }])
+        expect(wrapper.emitted('update')![0]).toEqual([{ autoSaveEnabled: true }])
         expect(invoke).toHaveBeenCalledWith('baize:setting:auto-save-changed', {
-            autoSaveEnabled: false,
+            autoSaveEnabled: true,
             autoSaveInterval: 60
         })
     })
@@ -106,14 +107,14 @@ describe('FilePanel（文件设置页签）', () => {
         invoke.mockResolvedValueOnce({ ok: false })
         const wrapper = mount(FilePanel, { props: { settings: draft() } })
 
-        await wrapper.findAll('.setting-checkbox')[0].setValue(false)
+        await wrapper.findAll('.setting-checkbox')[0].setValue(true)
         await flushPromises()
 
         expect(errorSpy).toHaveBeenCalledWith(
             '同步自动保存设置失败: 主进程返回失败标志',
             expect.objectContaining({ ok: false })
         )
-        expect(wrapper.emitted('update')![0]).toEqual([{ autoSaveEnabled: false }])
+        expect(wrapper.emitted('update')![0]).toEqual([{ autoSaveEnabled: true }])
     })
 })
 

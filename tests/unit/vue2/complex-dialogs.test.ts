@@ -420,12 +420,13 @@ describe('SystemSettingDialog', () => {
         await wrapper.findAll('.sidebar-item')[1].trigger('click')
         const filePanel = wrapper.findAll('.setting-panel')[1]
         const autoSave = filePanel.findAll('.setting-checkbox')[0]
-        expect((autoSave.element as HTMLInputElement).checked).toBe(true)
-        await autoSave.setValue(false)
+        // 2026-11-20：自动保存默认关闭（opt-in），此处操作改为开启
+        expect((autoSave.element as HTMLInputElement).checked).toBe(false)
+        await autoSave.setValue(true)
         await flushPromises()
 
         expect(invoke).toHaveBeenCalledWith('baize:setting:auto-save-changed', {
-            autoSaveEnabled: false,
+            autoSaveEnabled: true,
             // 2026-11-19：默认值统一到 SYSTEM_SETTING_FALLBACK（主进程真源 60 秒，
             // 此前对话框本地 fallback 为 30 与主进程矛盾）
             autoSaveInterval: 60
@@ -450,14 +451,14 @@ describe('SystemSettingDialog', () => {
         await flushPromises()
         await wrapper.findAll('.sidebar-item')[1].trigger('click')
         const filePanel = wrapper.findAll('.setting-panel')[1]
-        await filePanel.findAll('.setting-checkbox')[0].setValue(false)
+        await filePanel.findAll('.setting-checkbox')[0].setValue(true)
         await flushPromises()
 
         expect(errorSpy).toHaveBeenCalledWith('同步自动保存设置失败:', expect.any(Error))
         // 失败后组件不抛出、不卸载，开关仍保持用户操作后的状态
         expect(
             (filePanel.findAll('.setting-checkbox')[0].element as HTMLInputElement).checked
-        ).toBe(false)
+        ).toBe(true)
     })
 
     it('hides the auto save interval row when auto save is disabled', async () => {
@@ -467,10 +468,12 @@ describe('SystemSettingDialog', () => {
         })
         await wrapper.findAll('.sidebar-item')[1].trigger('click')
         const filePanel = wrapper.findAll('.setting-panel')[1]
-        expect(filePanel.text()).toContain('自动保存间隔')
+        // 2026-11-20：自动保存默认关闭 → 间隔行默认隐藏；开启后出现、再关闭消失
+        expect(filePanel.text()).not.toContain('自动保存间隔')
 
+        await filePanel.findAll('.setting-checkbox')[0].setValue(true)
+        expect(filePanel.text()).toContain('自动保存间隔（秒）')
         await filePanel.findAll('.setting-checkbox')[0].setValue(false)
-        // 间隔设置行使用 v-if，取消勾选后从 DOM 中移除
         expect(filePanel.text()).not.toContain('自动保存间隔（秒）')
         expect(filePanel.find('input[min="10"]').exists()).toBe(false)
     })

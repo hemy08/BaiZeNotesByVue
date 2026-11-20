@@ -22,6 +22,7 @@ import {
     migrateLegacyOptInSettings
 } from './config'
 import { StartAutoSaveFileTime, StopAutoSaveFileTime, SaveActiveFile } from './utils/file-utils'
+import { confirmUnsavedChangesClose } from './utils/close-confirm'
 // PF-05：目录树 fs.watch 监听的退出清理（仅新增生命周期管理，不改变原有落盘/清理逻辑）
 import { CleanupDirectoryWatch } from './utils/file-utils/file-operations'
 import { RegisterShortKeys } from './config'
@@ -232,7 +233,16 @@ function createWindow(): BrowserWindow {
         try {
             await flushEditorContent(mainWindow)
             if (appState.isDirty()) {
-                await SaveActiveFile()
+                // 2026-11-20（用户需求）：关闭前若仍有未保存修改，弹框让用户选择
+                // 「保存并关闭 / 不保存 / 取消」；取消则保持窗口与编辑状态。
+                const choice = await confirmUnsavedChangesClose(mainWindow)
+                if (choice === 'cancel') {
+                    return
+                }
+                if (choice === 'save' && !(await SaveActiveFile())) {
+                    // 保存失败/另存为被取消：不关闭，避免静默丢内容
+                    return
+                }
             }
         } catch (err) {
             logger.error('关闭窗口前落盘失败', err)
@@ -602,7 +612,17 @@ app.on('before-quit', (event) => {
             try {
                 await flushEditorContent(mainWindow)
                 if (appState.isDirty()) {
-                    await SaveActiveFile()
+                    // 2026-11-20（用户需求）：退出前未保存修改同样由用户决定；
+                    // 取消时复位退出标志并保持应用运行。
+                    const choice = await confirmUnsavedChangesClose(mainWindow)
+                    if (choice === 'cancel') {
+                        appState.setQuitting(false)
+                        return
+                    }
+                    if (choice === 'save' && !(await SaveActiveFile())) {
+                        appState.setQuitting(false)
+                        return
+                    }
                 }
             } catch (err) {
                 logger.error('退出前落盘失败', err)

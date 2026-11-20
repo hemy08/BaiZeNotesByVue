@@ -453,18 +453,19 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         await flushPromises()
         await switchPanel(wrapper, 1)
         const autoSave = panel(wrapper, 1).findAll('.setting-checkbox')[0]
-        await autoSave.setValue(false)
+        // 2026-11-20：自动保存默认关闭（opt-in），此处操作改为开启
+        await autoSave.setValue(true)
         await flushPromises()
 
         expect(invoke).toHaveBeenCalledWith('baize:setting:auto-save-changed', {
-            autoSaveEnabled: false,
+            autoSaveEnabled: true,
             autoSaveInterval: 60
         })
         expect(errorSpy).toHaveBeenCalledWith(
             '同步自动保存设置失败: 主进程返回失败标志',
             expect.objectContaining({ ok: false })
         )
-        expect((autoSave.element as HTMLInputElement).checked).toBe(false)
+        expect((autoSave.element as HTMLInputElement).checked).toBe(true)
 
         wrapper.unmount()
     })

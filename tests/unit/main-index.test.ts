@@ -182,6 +182,8 @@ const internalMocks = vi.hoisted(() => ({
     startAutoSaveFileTime: vi.fn(),
     stopAutoSaveFileTime: vi.fn(),
     saveActiveFile: vi.fn(),
+    // 2026-11-20（用户需求）：关闭/退出未保存确认对话框（细节由 close-confirm.test.ts 覆盖）
+    confirmUnsavedChangesClose: vi.fn(),
     // PF-05：目录 fs.watch 监听的退出清理（index.ts 直接依赖 file-operations 单文件导出）
     cleanupDirectoryWatch: vi.fn(),
     // 批次 B #4：托盘创建/销毁（细节由 tray.test.ts 覆盖）；
@@ -345,6 +347,11 @@ vi.mock('../../src/main/utils/app-state', () => ({
     }
 }))
 
+// 2026-11-20（用户需求）：关闭/退出未保存确认（原生对话框由 close-confirm.test.ts 单测）
+vi.mock('../../src/main/utils/close-confirm', () => ({
+    confirmUnsavedChangesClose: internalMocks.confirmUnsavedChangesClose
+}))
+
 // 等待微任务队列清空（whenReady().then 与 async handler 回调）
 async function settle(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -466,7 +473,9 @@ beforeEach(() => {
     internalMocks.getEditorSetting.mockReturnValue({ fontSize: 14 })
     internalMocks.restoreLastOpenedFile.mockResolvedValue(undefined)
     internalMocks.restoreLastOpenedAtStartup.mockResolvedValue(undefined)
-    internalMocks.saveActiveFile.mockResolvedValue(undefined)
+    internalMocks.saveActiveFile.mockResolvedValue(true)
+    // 未保存确认默认「取消」：仅显式声明选择的用例会关闭/退出
+    internalMocks.confirmUnsavedChangesClose.mockResolvedValue('cancel')
     delete process.env.ELECTRON_RENDERER_URL
 })
 
@@ -850,13 +859,37 @@ describe('close flush protocol (D-3)', () => {
         expect(electronMocks.win.close).toHaveBeenCalled()
     })
 
-    it('should save the active file before closing when dirty', async () => {
+    it('should prompt and save the active file before closing when dirty', async () => {
         internalMocks.isDirty.mockReturnValue(true)
+        internalMocks.confirmUnsavedChangesClose.mockResolvedValue('save')
         await loadMainIndex()
         triggerWindowHandler('close', { preventDefault: vi.fn() })
         triggerIpcHandler('baize:editor:flush-content-done')
         await settle()
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalled()
         expect(internalMocks.saveActiveFile).toHaveBeenCalled()
+        expect(electronMocks.win.close).toHaveBeenCalled()
+    })
+
+    it('should keep the window open when the user cancels the unsaved prompt', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        internalMocks.confirmUnsavedChangesClose.mockResolvedValue('cancel')
+        await loadMainIndex()
+        triggerWindowHandler('close', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(internalMocks.saveActiveFile).not.toHaveBeenCalled()
+        expect(electronMocks.win.close).not.toHaveBeenCalled()
+    })
+
+    it('should close without saving when the user discards unsaved changes', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        internalMocks.confirmUnsavedChangesClose.mockResolvedValue('discard')
+        await loadMainIndex()
+        triggerWindowHandler('close', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(internalMocks.saveActiveFile).not.toHaveBeenCalled()
         expect(electronMocks.win.close).toHaveBeenCalled()
     })
 
@@ -991,6 +1024,30 @@ describe('app lifecycle cleanup', () => {
         triggerIpcHandler('baize:editor:flush-content-done')
         await settle()
         expect(electronMocks.app.quit).toHaveBeenCalled()
+    })
+
+    it('should prompt and save on before-quit when dirty', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        internalMocks.confirmUnsavedChangesClose.mockResolvedValue('save')
+        await loadMainIndex()
+        triggerAppHandler('before-quit', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalled()
+        expect(internalMocks.saveActiveFile).toHaveBeenCalled()
+        expect(electronMocks.app.quit).toHaveBeenCalled()
+    })
+
+    it('should cancel quit on before-quit when user cancels the unsaved prompt', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        internalMocks.confirmUnsavedChangesClose.mockResolvedValue('cancel')
+        await loadMainIndex()
+        triggerAppHandler('before-quit', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(internalMocks.saveActiveFile).not.toHaveBeenCalled()
+        expect(electronMocks.app.quit).not.toHaveBeenCalled()
+        expect(electronMocks.quitFlag.value).toBe(false)
     })
 
     it('should watch window shortcuts for created windows', async () => {

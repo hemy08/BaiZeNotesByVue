@@ -1,3 +1,16 @@
+## 版本 1.3.10 (2026-11-20，未发布)
+
+### 🔧 行为变更
+
+- 自动保存默认关闭：软件打开后不启用，需在系统设置中自行开启（存量旧默认 true 一次性迁移为 false）
+- 关闭窗口/退出时若有未保存修改：弹框「保存并关闭 / 不保存 / 取消」，取消或保存失败不关闭
+
+### ✅ 门禁
+
+- typecheck 0 / ESLint 0 / Prettier 全绿 / vitest 185 文件 / 3,396 用例 / build 成功
+
+---
+
 ## 版本 1.3.9 (2026-11-19)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)

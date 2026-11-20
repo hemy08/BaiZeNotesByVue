@@ -276,7 +276,8 @@ describe('config-manager', () => {
             registerConfigIpcHandlers()
             const read = ipcHandlers.map.get('baize:config:read')!
             const stored = (await read(trustedEvent, 'system')) as Record<string, unknown>
-            expect(stored.autoSaveEnabled).toBe(true)
+            // 2026-11-20：自动保存默认关闭（opt-in）
+            expect(stored.autoSaveEnabled).toBe(false)
             expect(stored.autoSaveInterval).toBe(60)
             expect(stored.fontFamily).toContain('Microsoft YaHei')
             // AS-9：远程图片隐私开关默认关闭（安全默认）

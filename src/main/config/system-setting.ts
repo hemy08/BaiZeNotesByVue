@@ -31,7 +31,10 @@ const systemSettingDefaults: SystemSetting = {
     editorModel: 'default',
     pluginOpen: 'browser',
     menuBarStyle: 'electron',
-    autoSaveEnabled: true,
+    // 2026-11-20（用户需求）：自动保存默认关闭（opt-in）——软件打开后不启用自动保存，
+    // 用户需在系统设置中自行开启；避免用户未察觉的定时写盘。升级用户已存的 true 值保留
+    //（由下方一次性迁移处理旧默认 true 的存量数据，见 migrateLegacyOptInSettings）。
+    autoSaveEnabled: false,
     autoSaveInterval: 60,
     fontFamily:
         '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif',
@@ -84,7 +87,7 @@ const systemSettingDefaults: SystemSetting = {
 }
 
 /** 当前系统设置结构版本（迁移判断用） */
-export const SYSTEM_SETTINGS_SCHEMA_VERSION = 2
+export const SYSTEM_SETTINGS_SCHEMA_VERSION = 3
 
 // ARC-12：平铺模式（不传 storageKey），并保持"模块加载即建 store"的历史行为
 // （system-setting.test.ts 断言模块导入后 store 实例已存在）。
@@ -138,11 +141,20 @@ export function migrateLegacyOptInSettings(): boolean {
     if (typeof storedVersion === 'number' && storedVersion >= SYSTEM_SETTINGS_SCHEMA_VERSION) {
         return false
     }
-    systemSettingModule.updateConfig({
-        minimizeToTray: false,
-        enableAutoBackup: false,
+    const legacyVersion = typeof storedVersion === 'number' ? storedVersion : 0
+    const patch: Partial<SystemSetting> = {
+        // v3（2026-11-20）：自动保存默认关闭——旧版本默认 true 的存量值一并重置为 false，
+        // 用户之后在系统设置中开启（版本标记已存在，不会被再次迁移覆盖）。
+        autoSaveEnabled: false,
         settingsSchemaVersion: SYSTEM_SETTINGS_SCHEMA_VERSION
-    } as Partial<SystemSetting>)
+    }
+    // v2（1.3.6）：旧默认 true 的托盘/自动备份只对「无版本标记」的旧数据重置，
+    // 避免二次迁移覆盖用户重新开启的值。
+    if (legacyVersion < 2) {
+        patch.minimizeToTray = false
+        patch.enableAutoBackup = false
+    }
+    systemSettingModule.updateConfig(patch)
     return true
 }
 

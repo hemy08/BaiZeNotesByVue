@@ -21,6 +21,15 @@ export default {
     editor: {
         ariaLabel: 'Baize Notes editor'
     },
+    // 2026-11-20 (user request): confirmation when unsaved changes exist on close/quit
+    closeConfirm: {
+        title: 'Unsaved changes',
+        message: 'The current file has unsaved changes. Save before closing?',
+        detail: "Save & close keeps your changes; Don't save discards them; Cancel returns to editing.",
+        save: 'Save & close',
+        discard: "Don't save",
+        cancel: 'Cancel'
+    },
     dialog: {
         errorTitle: 'Error!',
         infoTitle: 'Info',

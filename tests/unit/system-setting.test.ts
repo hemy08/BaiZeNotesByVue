@@ -77,7 +77,7 @@ describe('system-setting', () => {
             expect(setting.editorModel).toBe('default')
             expect(setting.pluginOpen).toBe('browser')
             expect(setting.menuBarStyle).toBe('electron')
-            expect(setting.autoSaveEnabled).toBe(true)
+            expect(setting.autoSaveEnabled).toBe(false)
             expect(setting.autoSaveInterval).toBe(60)
             expect(setting.fontFamily).toContain('Microsoft YaHei')
             expect(setting.fontSize).toBe(13)
@@ -124,6 +124,22 @@ describe('system-setting', () => {
             const setting = getSystemSetting()
             expect(setting.minimizeToTray).toBe(false)
             expect(setting.enableAutoBackup).toBe(false)
+            // 2026-11-20：自动保存旧默认 true 一并重置为 false（opt-in）
+            expect(setting.autoSaveEnabled).toBe(false)
+        })
+
+        it('should reset autoSaveEnabled for v2 settings but keep re-enabled tray/backup flags', () => {
+            // 模拟 1.3.6 迁移完成（版本标记 2）后用户重新开启托盘/备份
+            saveSystemSetting({
+                settingsSchemaVersion: 2,
+                minimizeToTray: true,
+                enableAutoBackup: true
+            })
+            expect(migrateLegacyOptInSettings()).toBe(true)
+            const setting = getSystemSetting()
+            expect(setting.autoSaveEnabled).toBe(false)
+            expect(setting.minimizeToTray).toBe(true)
+            expect(setting.enableAutoBackup).toBe(true)
         })
 
         it('should not migrate twice and should keep user re-enabled values', () => {
@@ -151,7 +167,8 @@ describe('system-setting', () => {
             expect(setting.fontSize).toBe(20)
             // 未传入字段保持不变
             expect(setting.menuBarStyle).toBe('electron')
-            expect(setting.autoSaveEnabled).toBe(true)
+            // 2026-11-20：自动保存默认关闭（opt-in）
+            expect(setting.autoSaveEnabled).toBe(false)
             expect(setting.autoSaveInterval).toBe(60)
             expect(setting.fontFamily).toContain('Microsoft YaHei')
         })
@@ -232,7 +249,7 @@ describe('system-setting', () => {
             saveSystemSetting({ allowRemoteImages: true })
             expect(getSystemSetting().allowRemoteImages).toBe(true)
             // 部分更新不丢其它字段
-            expect(getSystemSetting().autoSaveEnabled).toBe(true)
+            expect(getSystemSetting().autoSaveEnabled).toBe(false)
 
             saveSystemSetting({ allowRemoteImages: false })
             expect(getSystemSetting().allowRemoteImages).toBe(false)
