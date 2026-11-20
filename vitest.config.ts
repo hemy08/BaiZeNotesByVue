@@ -92,14 +92,14 @@ export default defineConfig({
             // 阈值取实测下沿约 2pp（statements 80 / branches 75 / functions 73 / lines 80），
             // 既能拦住明显回归，又给正常迭代留出浮动空间；补测提升覆盖率后再逐档上调。
             //
-            // 2026-11-20（P1-6 覆盖率盲区补测）：保留全局红线不动，新增「核心目录 glob 下限」。
-            // 背景：全局平均值会稀释单目录退化（window-manager 分支曾仅 32.25%、preload/dialog
-            // 62.5%、WorkSpace.vue 0% 都不触发全局阈值）。glob 下限按补测后实测值 - 2pp 取整设定：
-            //   src/main/window/**                             实测 100 / 93.55 / 100 / 100
-            //   src/main/renders/**                            实测 71.98 / 61.18 / 74.36 / 72.38
-            //   src/preload/**                                 实测 93.48 / 96.67 / 90.91 / 93.41
-            //   src/renderer/src/components/WorkSpaceArea/**   实测 95.76 / 97.26 / 94.59 / 95.60
-            //   src/renderer/src/components/Markdown/**        实测 85.97 / 74.61 / 81.60 / 86.28
+            // 2026-11-20（P1-6 覆盖率盲区补测第二批）：保留全局红线不动，按补测后实测值
+            // 上调已有 5 个目录 glob 下限（口径：实测 - 2pp 取整；实测时间为第二批补测完成后，
+            // 顺序为 lines / statements / functions / branches）：
+            //   src/main/window/**                             实测 100.00 / 100.00 / 100.00 / 93.55
+            //   src/main/renders/**                            实测 97.24 / 97.25 / 97.44 / 91.76
+            //   src/preload/**                                 实测 93.41 / 93.48 / 90.91 / 96.67
+            //   src/renderer/src/components/WorkSpaceArea/**   实测 95.60 / 95.76 / 94.59 / 97.26
+            //   src/renderer/src/components/Markdown/**        实测 90.54 / 90.29 / 88.40 / 80.29
             // 说明：glob 阈值只约束匹配文件；未匹配文件仍适用上方全局阈值。
             thresholds: {
                 lines: 80,
@@ -113,10 +113,10 @@ export default defineConfig({
                     branches: 91
                 },
                 'src/main/renders/**': {
-                    lines: 70,
-                    statements: 69,
-                    functions: 72,
-                    branches: 59
+                    lines: 95,
+                    statements: 95,
+                    functions: 95,
+                    branches: 89
                 },
                 'src/preload/**': {
                     lines: 91,
@@ -131,10 +131,10 @@ export default defineConfig({
                     branches: 95
                 },
                 'src/renderer/src/components/Markdown/**': {
-                    lines: 84,
-                    statements: 83,
-                    functions: 79,
-                    branches: 72
+                    lines: 88,
+                    statements: 88,
+                    functions: 86,
+                    branches: 78
                 }
             }
         }

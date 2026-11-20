@@ -24,6 +24,14 @@
     </div>
 </template>
 
+<script lang="ts">
+// FUN-09（editor-toggle-fold）：markdown 折叠提供器属「应用级注册」——Monaco 语言
+// 注册表是全局的，registerFoldingRangeProvider 每个应用只需注册一次。
+// 注意：`<script setup>` 顶层变量是「每实例作用域」，把标记放在那里会导致编辑器
+// 每次挂载都重复注册 provider（补测暴露的真实缺陷），故标记放模块作用域。
+let markdownFoldingProviderRegistered = false
+</script>
+
 <script setup lang="ts">
 // 引入 Monaco Editor
 // PF-03/CMP-28：先于一切 Monaco 使用引入 worker 注册与按需语言贡献
@@ -265,7 +273,6 @@ const handleLocateTargetLine = (item: MarkdownTOC) => {
 // Monaco 内置 markdown 语言仅支持 <!-- #region --> 标记折叠；这里补充“ATX 标题层级 +
 // 围栏代码块”折叠范围，使 foldAll / unfoldAll / foldLevel1~6 真正作用于标题与代码块。
 // Monaco 会合并多个折叠提供器的结果（syntaxRangeProvider 收集全部 provider），与内置标记折叠不冲突。
-let markdownFoldingProviderRegistered = false
 // 大文件保护：只扫描前 N 行参与折叠，与 editor-options 的 foldingMaximumRegions（5000）呼应
 const FOLD_SCAN_LINE_LIMIT = 20000
 // ATX 标题：行首最多 3 个空格 + 1~6 个 # + 至少一个空白
