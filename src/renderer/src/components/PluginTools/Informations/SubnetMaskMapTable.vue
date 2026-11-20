@@ -8,7 +8,7 @@
                 v-model="searchQuery"
                 type="text"
                 :style="{ width: subnetMaskMapTableWidth }"
-                placeholder="Search ASCII..."
+                :placeholder="t('toolsNetwork.infoTables.searchPlaceholder')"
             />
         </div>
         <table

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import CryptoJS from 'crypto-js'
-import { setLocale } from '@renderer/common/i18n'
+import { setLocale, t } from '@renderer/common/i18n'
 
 import TokenGenerator from '@renderer/components/PluginTools/Encryption/TokenGenerator.vue'
 import RSAGenerator from '@renderer/components/PluginTools/Encryption/RSAGenerator.vue'
@@ -42,7 +42,7 @@ describe('TokenGenerator', () => {
 
     it('renders title and four character type checkboxes with default selections', () => {
         const wrapper = mountToken()
-        expect(wrapper.find('h1').text()).toBe('Token Generator')
+        expect(wrapper.find('h1').text()).toBe(t('toolsConvert.token.title'))
         const boxes = wrapper.findAll('input[type="checkbox"]')
         expect(boxes).toHaveLength(4)
         // findAll 的 element 静态类型是 Element，勾选状态需按 HTMLInputElement 读取
@@ -550,22 +550,22 @@ describe('UUIDSGenerator', () => {
         await clickVersion(wrapper, 'v3')
 
         // 命名空间区显示，默认 DNS 命名空间
-        expect(
-            (wrapper.find('input[placeholder="uuids namespace"]').element as HTMLInputElement).value
-        ).toBe('6ba7b810-9dad-11d1-80b4-00c04fd430c8')
+        expect((wrapper.find('#uuids-namespace').element as HTMLInputElement).value).toBe(
+            '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
+        )
 
-        await wrapper.find('input[placeholder="name"]').setValue('demo')
+        await wrapper.find('#uuids-name').setValue('demo')
         const first = getList(wrapper).trim()
         expect(first).toMatch(
             /^[0-9a-f]{8}-[0-9a-f]{4}-3[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
         )
 
         // v3 是确定性算法：相同名称产生相同 UUID，不同名称产生不同 UUID
-        await wrapper.find('input[placeholder="name"]').setValue('other')
+        await wrapper.find('#uuids-name').setValue('other')
         const second = getList(wrapper).trim()
         expect(second).not.toBe(first)
 
-        await wrapper.find('input[placeholder="name"]').setValue('demo')
+        await wrapper.find('#uuids-name').setValue('demo')
         expect(getList(wrapper).trim()).toBe(first)
     })
 
@@ -574,9 +574,9 @@ describe('UUIDSGenerator', () => {
         await clickVersion(wrapper, 'v5')
         const urlBtn = wrapper.findAll('.uuid-btn-style').find((b) => b.text() === 'URL')!
         await urlBtn.trigger('click')
-        expect(
-            (wrapper.find('input[placeholder="uuids namespace"]').element as HTMLInputElement).value
-        ).toBe('6ba7b811-9dad-11d1-80b4-00c04fd430c9')
+        expect((wrapper.find('#uuids-namespace').element as HTMLInputElement).value).toBe(
+            '6ba7b811-9dad-11d1-80b4-00c04fd430c9'
+        )
         // v5 版本号字段为 5
         expect(getList(wrapper).trim()).toMatch(
             /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/

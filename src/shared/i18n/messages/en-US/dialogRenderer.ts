@@ -282,6 +282,7 @@ const dialogRenderer = {
         categoryEyecare: 'Eye-care themes'
     },
     helpAbout: {
+        windowTitle: 'About BaiZe Notes',
         descLine1: 'A simple and elegant',
         descLine2: 'note-taking app',
         descLine3: 'Write to your heart’s content!',

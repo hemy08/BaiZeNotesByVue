@@ -10,7 +10,7 @@
                 v-model="searchQuery"
                 type="text"
                 :style="{ width: fileNameExtTableWidth }"
-                placeholder="Search ASCII..."
+                :placeholder="t('toolsNetwork.infoTables.searchPlaceholder')"
             />
         </div>
         <table

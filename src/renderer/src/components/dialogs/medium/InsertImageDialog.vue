@@ -86,7 +86,7 @@
                     <label class="preview-label">{{ t('dialogRenderer.common.preview') }}</label>
                     <img
                         :src="previewUrl"
-                        alt="Preview"
+                        :alt="t('dialogRenderer.common.preview')"
                         class="preview-image"
                         @error="previewUrl = ''"
                     />

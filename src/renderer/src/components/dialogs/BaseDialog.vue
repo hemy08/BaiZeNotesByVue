@@ -11,9 +11,15 @@
                 <Transition name="dialog-scale">
                     <div
                         v-if="visible"
+                        ref="containerRef"
                         class="dialog-container"
                         :class="containerClass"
                         :style="containerStyles"
+                        role="dialog"
+                        aria-modal="true"
+                        :aria-labelledby="ariaLabelledby"
+                        :aria-label="ariaLabelValue"
+                        tabindex="-1"
                         @mousedown="handleContainerMouseDown"
                     >
                         <!--
@@ -28,12 +34,16 @@
                             :style="titleBarStyle"
                         >
                             <slot name="title">
-                                <span class="title-text" :style="titleTextStyle">{{ title }}</span>
+                                <span class="title-text" :id="titleId" :style="titleTextStyle">
+                                    {{ title }}
+                                </span>
                             </slot>
                             <button
                                 class="close-btn"
                                 :class="`close-btn--${closeButtonVariant}`"
                                 :style="closeButtonStyle"
+                                type="button"
+                                :aria-label="closeButtonLabel"
                                 @click.stop="handleClose"
                             >
                                 ×
@@ -102,15 +112,22 @@
  * 2. 遮罩空白处点击（`@click.self`）触发 `close`，可用 `closeOnOverlay` 关闭该行为；
  * 3. 关闭按钮点击触发 `close`（`.stop` 阻止冒泡到遮罩）；
  * 4. 按标题栏拖拽移动对话框（`draggable`，复用 useDialogDrag；关闭按钮/正文不触发拖拽）；
- * 5. `resetPositionOnOpen` 为 true 时每次打开重置到初始居中位置（默认沿用上次拖拽位置）。
+ * 5. `resetPositionOnOpen` 为 true 时每次打开重置到初始居中位置（默认沿用上次拖拽位置）；
+ * 6. 可访问性（P2 新增，纯增量，不改变视觉与既有交互）：容器 `role="dialog"` +
+ *    `aria-modal="true"` + 标题关联（默认标题用 aria-labelledby；无标题场景可传 `ariaLabel`）、
+ *    关闭按钮 aria-label；打开时聚焦容器、关闭时归还打开前焦点；Esc 关闭；Tab / Shift+Tab
+ *    在对话框内循环（焦点陷阱）。多个对话框同时打开时只有顶层响应 Esc/Tab（模块级栈），
+ *    避免一次按键同时关闭多层。
  *
  * 说明：本组件样式使用 scoped 而非全局 `styles/dialog.css`——避免非 scoped 外壳类
  * （`.dialog-overlay` 等）在 15 个尚未迁移的对话框上产生全局样式泄漏，符合本任务
  * 「迁移前后视觉一致」的保守策略；等全部对话框迁移完成后再评估是否收敛为全局共享 CSS。
  */
-import { computed, useSlots, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useSlots, watch } from 'vue'
 import type { ClassValue, CSSProperties } from 'vue'
+import { t } from '../../common/i18n'
 import { useDialogDrag } from '../../composables/useDialogDrag'
+import { isTopmostDialog, pushOpenDialog, removeOpenDialog } from './dialog-stack'
 
 /**
  * 对话框内联样式类型：Vue `CSSProperties` 的超集（仅补充 Electron 专有属性）。
@@ -174,6 +191,11 @@ interface Props {
     closeButtonStyle?: DialogStyleProperties
     /** 底部内联样式覆盖（预留：后续批次迁移中等/复杂对话框时覆盖 padding/gap 差异） */
     footerStyle?: DialogStyleProperties
+    /**
+     * 无可见标题时的可访问名称（HelpAboutDialog 这类「仅关闭按钮」标题栏场景）。
+     * 有默认标题文字时忽略（优先 aria-labelledby 指向标题节点）。
+     */
+    ariaLabel?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -198,6 +220,173 @@ const slots = useSlots()
 // 底部只在调用方提供 footer 插槽时渲染：MathTextDialog / MdSheetDialog 等迁移前无 footer，
 // 不能凭空多出一条带边框的空白底栏（后续批次迁移时必须保持该结构差异）。
 const hasFooter = computed(() => Boolean(slots.footer))
+
+// ==================== 可访问性（a11y）契约 ====================
+// 1) role="dialog" + aria-modal + 标题关联（aria-labelledby / aria-label）；
+// 2) 打开后把焦点移入对话框，关闭后归还到打开前焦点元素；
+// 3) Esc 关闭（仅最顶层对话框响应，避免嵌套对话框被一次 Esc 全部关闭）；
+// 4) Tab / Shift+Tab 在对话框内循环（焦点陷阱），无可见焦点元素时回到容器；
+// 5) 关闭按钮补 aria-label（图标 × 对读屏无意义）。
+// 样式/结构不变，仅新增语义属性与键盘行为；jsdom 下均可测试。
+
+const containerRef = ref<HTMLElement | null>(null)
+const titleId = useId()
+const hasTitleSlot = computed(() => Boolean(slots.title))
+const hasTitleText = computed(() => !hasTitleSlot.value && Boolean(props.title.trim()))
+const ariaLabelledby = computed(() => (hasTitleText.value ? titleId : undefined))
+const ariaLabelValue = computed(() =>
+    hasTitleText.value
+        ? undefined
+        : props.ariaLabel || (hasTitleSlot.value ? props.title : undefined)
+)
+const closeButtonLabel = computed(() => t('common.close'))
+
+/** 焦点陷阱候选选择器（覆盖对话框内常见可聚焦元素） */
+const FOCUSABLE_SELECTOR = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled]):not([type="hidden"])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+    '[contenteditable="true"]'
+].join(',')
+
+/**
+ * 顶层对话框栈：多个 BaseDialog 同时可见时（如设置对话框上再弹确认框），
+ * 只有最后打开的对话框响应 Esc/Tab，避免一次按键同时关闭多层。
+ * 栈状态放在独立模块（dialog-stack.ts）——`<script setup>` 顶层变量是实例级作用域，
+ * 若放在本文件会导致每个实例各持一份栈、全部自认为顶层。
+ */
+const dialogToken = Symbol('baize-dialog')
+let registered = false
+let restoreFocusTarget: HTMLElement | null = null
+
+function registerOpen(): void {
+    if (registered) return
+    registered = true
+    pushOpenDialog(dialogToken)
+    const active = document.activeElement
+    // body/html 作为焦点目标无意义，不记录（关闭后不强行聚焦 body）
+    restoreFocusTarget = active instanceof HTMLElement && active !== document.body ? active : null
+}
+
+function unregister(): void {
+    if (!registered) return
+    registered = false
+    removeOpenDialog(dialogToken)
+}
+
+function isTopmost(): boolean {
+    return isTopmostDialog(dialogToken)
+}
+
+/** 收集当前对话框内可见、可聚焦的元素（跳过 display:none / visibility:hidden / aria-hidden） */
+function getFocusableElements(): HTMLElement[] {
+    const root = containerRef.value
+    if (!root) return []
+    return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((element) => {
+        if (element.hasAttribute('disabled')) return false
+        if (element.getAttribute('aria-hidden') === 'true') return false
+        if (element.closest('[aria-hidden="true"]')) return false
+        const style = window.getComputedStyle?.(element)
+        if (style && (style.display === 'none' || style.visibility === 'hidden')) return false
+        return true
+    })
+}
+
+/** 打开时聚焦入口：优先把焦点放到容器本身（读屏会先播报对话框名称），再按 Tab 进入内容 */
+function focusDialog(): void {
+    const root = containerRef.value
+    if (!root) return
+    // 子组件（如重命名输入框）已在打开时自行聚焦时不抢焦点
+    if (document.activeElement && root.contains(document.activeElement)) return
+    root.focus()
+}
+
+async function restoreFocus(): Promise<void> {
+    const target = restoreFocusTarget
+    restoreFocusTarget = null
+    if (!target) return
+    await nextTick()
+    if (document.contains(target) && typeof target.focus === 'function') {
+        target.focus()
+    }
+}
+
+function handleDocumentKeyDown(event: KeyboardEvent): void {
+    if (!props.visible || !isTopmost()) return
+    const root = containerRef.value
+    if (!root) return
+
+    if (event.key === 'Escape') {
+        // 阻止 Esc 继续冒泡到编辑器（如 Monaco 大纲）等全局快捷键
+        event.preventDefault()
+        event.stopPropagation()
+        emit('close')
+        return
+    }
+    if (event.key !== 'Tab') return
+
+    const focusables = getFocusableElements()
+    if (focusables.length === 0) {
+        event.preventDefault()
+        root.focus()
+        return
+    }
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    if (!active || !root.contains(active)) {
+        event.preventDefault()
+        ;(event.shiftKey ? last : first).focus()
+        return
+    }
+    // 焦点停在容器本身（初始焦点）时，Tab 进入第一个可聚焦元素，Shift+Tab 回到最后一个
+    if (active === root) {
+        event.preventDefault()
+        ;(event.shiftKey ? last : first).focus()
+        return
+    }
+    if (event.shiftKey && active === first) {
+        event.preventDefault()
+        last.focus()
+    } else if (!event.shiftKey && active === last) {
+        event.preventDefault()
+        first.focus()
+    }
+}
+
+onMounted(() => {
+    document.addEventListener('keydown', handleDocumentKeyDown)
+})
+
+onBeforeUnmount(() => {
+    document.removeEventListener('keydown', handleDocumentKeyDown)
+    const wasOpen = registered
+    unregister()
+    if (wasOpen) {
+        void restoreFocus()
+    }
+})
+
+// 显隐驱动：打开登记栈 + 移动焦点；关闭出栈 + 归还焦点。
+// flush: 'post' 保证 Teleport 内容已插入 DOM（容器 ref 可用）。
+watch(
+    () => props.visible,
+    async (isVisible) => {
+        if (isVisible) {
+            registerOpen()
+            await nextTick()
+            if (props.visible) focusDialog()
+        } else {
+            const wasOpen = registered
+            unregister()
+            if (wasOpen) await restoreFocus()
+        }
+    },
+    { flush: 'post', immediate: true }
+)
 
 // Teleport 目标：字符串即自定义目标；true 缺省传送到 body；false 时禁用传送（to 仍需传合法值）。
 const teleportTarget = computed(() =>

@@ -216,6 +216,7 @@ export default {
         refreshButton: 'Refresh key pair'
     },
     token: {
+        title: 'Token Generator',
         description:
             'Generate a random string using the characters you want — uppercase or lowercase letters, numbers, and/or symbols.',
         uppercaseLabel: 'Uppercase (ABCDEFGHIJKLMNOPQRSTUVWXYZ)',
@@ -239,6 +240,11 @@ export default {
     },
     uuid: {
         title: 'UUIDs generator',
+        versionLabel: 'UUID Version',
+        listLabel: 'UUID list:',
+        namespacePlaceholder: 'UUID namespace',
+        namePlaceholder: 'Name',
+        listPlaceholder: 'UUID list',
         description:
             'Universally unique identifiers (UUIDs) are 128-bit numbers used to identify information in computer systems. The number of possible UUIDs is 16^32, or 2^128 — about 3.4x10^38 (that is a lot of numbers!).',
         countLabel: 'Count:',

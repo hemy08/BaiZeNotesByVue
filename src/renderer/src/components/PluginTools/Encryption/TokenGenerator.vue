@@ -1,6 +1,8 @@
 <template>
     <div class="plugin-tools-theme" :style="{ width: props.workAreaWidth }">
-        <h1 style="display: flex; align-items: center; justify-content: center">Token Generator</h1>
+        <h1 style="display: flex; align-items: center; justify-content: center">
+            {{ t('toolsConvert.token.title') }}
+        </h1>
         <div style="color: grey; background-color: grey; height: 2px"></div>
         <p style="color: grey">{{ t('toolsConvert.token.description') }}</p>
         <a

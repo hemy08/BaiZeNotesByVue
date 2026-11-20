@@ -211,6 +211,7 @@ export default {
         refreshButton: '刷新密钥对'
     },
     token: {
+        title: '令牌生成器',
         description: '使用您想要的字符、大写或小写字母、数字和/或符号生成随机字符串。',
         uppercaseLabel: '大写(ABCDEFGHIJKLMNOPQRSTUVWXYZ)',
         lowercaseLabel: '小写(abcdefghijklmnopqrstuvwxyz)',
@@ -232,6 +233,11 @@ export default {
     },
     uuid: {
         title: 'UUIDs 生成器',
+        versionLabel: 'UUID 版本',
+        listLabel: 'UUID 列表：',
+        namespacePlaceholder: 'UUID 命名空间',
+        namePlaceholder: '名称',
+        listPlaceholder: 'UUID 列表',
         description:
             '通用唯一标识符（UUID）是一个128位数字，用于标识计算机系统中的信息。可能的UUID数量为16^32，即2^128或约3.4x10^38（这是一个很大的数字！）。',
         countLabel: '生成数量：',

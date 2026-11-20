@@ -13,7 +13,9 @@
             https://tools.w3cschool.cn/uuid-generator
         </a>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="uuid-label-style"><label>UUID Version</label></div>
+            <div class="uuid-label-style">
+                <label>{{ t('toolsConvert.uuid.versionLabel') }}</label>
+            </div>
             <div v-for="(version, index) in uuidVerKeys" :key="index">
                 <button
                     class="uuid-btn-style"
@@ -47,26 +49,35 @@
             </div>
             <div style="margin-top: 10px">
                 <input
+                    id="uuids-namespace"
                     v-model="uuidNameSpace"
                     :style="uuidNameSpaceStyle"
                     style="text-align: center"
-                    placeholder="uuids namespace"
+                    :placeholder="t('toolsConvert.uuid.namespacePlaceholder')"
                 />
             </div>
             <div class="div-style-display-row" style="margin-top: 10px">
                 <div class="uuid-label-style">
                     <label>{{ t('toolsConvert.uuid.nameLabel') }}</label>
                 </div>
-                <input v-model="uuidName" type="text" :style="uuidNameStyle" placeholder="name" />
+                <input
+                    id="uuids-name"
+                    v-model="uuidName"
+                    type="text"
+                    :style="uuidNameStyle"
+                    :placeholder="t('toolsConvert.uuid.namePlaceholder')"
+                />
             </div>
         </div>
         <div class="div-style-display-row" style="margin-top: 10px">
-            <div class="uuid-label-style"><label>UUIDS：</label></div>
+            <div class="uuid-label-style">
+                <label>{{ t('toolsConvert.uuid.listLabel') }}</label>
+            </div>
             <textarea
                 v-model="uuidList"
                 :style="uuidTextStyle"
                 style="overflow-y: hidden; text-align: center"
-                placeholder="uuids"
+                :placeholder="t('toolsConvert.uuid.listPlaceholder')"
             />
         </div>
         <div

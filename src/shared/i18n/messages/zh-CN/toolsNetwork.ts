@@ -16,6 +16,8 @@ export default {
         placeholder: '请选择其他工具，当前工具正在开发中，敬请期待。。。'
     },
     infoTables: {
+        /** 对照表通用搜索框占位符（10 个查询表复用，避免英文硬编码） */
+        searchPlaceholder: '搜索…',
         ascii: {
             title: 'ASCII 对照表',
             desc: 'ASCII 对照表，支持查询',

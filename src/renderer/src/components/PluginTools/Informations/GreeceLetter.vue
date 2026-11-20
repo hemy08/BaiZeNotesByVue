@@ -8,7 +8,7 @@
                 v-model="searchQuery"
                 type="text"
                 :style="{ width: greeceLetterTableWidth }"
-                placeholder="Search ASCII..."
+                :placeholder="t('toolsNetwork.infoTables.searchPlaceholder')"
             />
         </div>
         <table

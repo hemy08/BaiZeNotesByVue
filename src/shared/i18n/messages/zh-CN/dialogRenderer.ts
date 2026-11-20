@@ -281,6 +281,7 @@ const dialogRenderer = {
         categoryEyecare: '护眼主题'
     },
     helpAbout: {
+        windowTitle: '关于白泽笔记',
         descLine1: '一款简洁优雅的',
         descLine2: '笔记应用',
         descLine3: '请尽情书写吧！！！',

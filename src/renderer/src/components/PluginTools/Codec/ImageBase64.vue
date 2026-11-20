@@ -46,7 +46,12 @@
         </div>
         <div v-if="previewUrl" class="image-preview-area">
             <h2>{{ t('toolsConvert.imageBase64.previewLabel') }}</h2>
-            <img id="image-preview" :src="previewUrl" class="image-preview" alt="preview" />
+            <img
+                id="image-preview"
+                :src="previewUrl"
+                class="image-preview"
+                :alt="t('toolsConvert.imageBase64.previewLabel')"
+            />
         </div>
     </div>
 </template>

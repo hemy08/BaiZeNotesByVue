@@ -12,6 +12,7 @@
     -->
     <BaseDialog
         :visible="visible"
+        :aria-label="t('dialogRenderer.helpAbout.windowTitle')"
         title-bar-variant="compact"
         close-button-variant="circle"
         width="750px"

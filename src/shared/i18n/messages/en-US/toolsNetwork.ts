@@ -17,6 +17,8 @@ export default {
         placeholder: 'Please select another tool. This tool is under development — stay tuned.'
     },
     infoTables: {
+        /** Shared search placeholder for the 10 lookup tables */
+        searchPlaceholder: 'Search…',
         ascii: {
             title: 'ASCII table',
             desc: 'ASCII reference table with search',

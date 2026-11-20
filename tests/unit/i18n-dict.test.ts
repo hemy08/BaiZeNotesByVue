@@ -8,7 +8,9 @@
  * 3. 全仓静态 t('...') / tMain('...') 引用键在两语言词典均可解析（模板拼接等动态键自然跳过）；
  * 4. 中英占位符 {xxx} 集合一致，防止翻译丢参数；
  * 5. themeNames 主题 key 与主题配置数据（theme-config / theme-registry）一一对应、中英可解析，
- *    且中文词典值与主题数据原中文字段逐字一致（保证中文界面零变化）。
+ *    且中文词典值与主题数据原中文字段逐字一致（保证中文界面零变化）；
+ * 6. P2 新增：词典无空值/纯空白值；语言目录与命名空间文件、MESSAGES 命名空间三方一一对应
+ *    （防止新增语言目录漏接入或词典文件漏 merge）。
  *
  * 本用例只读源码与词典文件，不启动主进程 / 渲染层，不依赖运行中的 app，可稳定在 CI 复跑。
  *
@@ -22,10 +24,11 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { MESSAGES } from '../../src/shared/i18n'
+import { MESSAGES, SUPPORTED_LOCALES } from '../../src/shared/i18n'
 
 const ROOT = resolve(__dirname, '../..')
 const SRC_DIR = join(ROOT, 'src')
+const MESSAGES_DIR = join(SRC_DIR, 'shared/i18n/messages')
 const THEME_CONFIG_FILE = join(SRC_DIR, 'main/config/theme-config.ts')
 const THEME_REGISTRY_FILE = join(SRC_DIR, 'main/config/theme-registry.ts')
 
@@ -139,6 +142,38 @@ describe('CMP-30 词典质量门禁', () => {
         const themeNameKeys = [...zhMap.keys()].filter((key) => key.startsWith('themeNames.'))
         expect(themeNameKeys).toHaveLength(63)
         expect(enMap.size).toBe(zhMap.size)
+    })
+
+    it('语言目录、词典文件与 MESSAGES 命名空间三方一一对应', () => {
+        // 实际存在的语言目录（唯一真源：messages/ 下的子目录）
+        const localeDirs = readdirSync(MESSAGES_DIR, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => entry.name)
+            .sort()
+        expect(localeDirs).toEqual([...SUPPORTED_LOCALES].sort())
+        expect(localeDirs).toEqual(Object.keys(MESSAGES).sort())
+
+        const expectedNamespaces = Object.keys(MESSAGES['zh-CN']).sort()
+        expect(expectedNamespaces).toHaveLength(12)
+        for (const locale of localeDirs) {
+            const files = readdirSync(join(MESSAGES_DIR, locale))
+                .filter((name) => name.endsWith('.ts'))
+                .map((name) => name.replace(/\.ts$/, ''))
+                .sort()
+            // 每个语言目录必须与 MESSAGES 的命名空间集合完全一致（漏文件会在 index.ts 中 import 报错前先被拦下）
+            expect(files, `${locale} 词典文件`).toEqual(expectedNamespaces)
+        }
+    })
+
+    it('词典无空值/纯空白值（中英全部叶子键）', () => {
+        const empties: string[] = []
+        for (const locale of Object.keys(MESSAGES)) {
+            const map = flattenLocale(locale as 'zh-CN' | 'en-US')
+            for (const [key, value] of map) {
+                if (value.trim() === '') empties.push(`${locale}:${key}`)
+            }
+        }
+        expect(empties).toEqual([])
     })
 
     it('en-US 词条不含中日韩汉字（白名单除外，且白名单必须真实存在）', () => {
