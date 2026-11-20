@@ -91,11 +91,51 @@ export default defineConfig({
             // （最终计入统计 196 个文件，其中 18 个纯类型/纯 re-export 模块无可执行指标，不进入分母）。
             // 阈值取实测下沿约 2pp（statements 80 / branches 75 / functions 73 / lines 80），
             // 既能拦住明显回归，又给正常迭代留出浮动空间；补测提升覆盖率后再逐档上调。
+            //
+            // 2026-11-20（P1-6 覆盖率盲区补测）：保留全局红线不动，新增「核心目录 glob 下限」。
+            // 背景：全局平均值会稀释单目录退化（window-manager 分支曾仅 32.25%、preload/dialog
+            // 62.5%、WorkSpace.vue 0% 都不触发全局阈值）。glob 下限按补测后实测值 - 2pp 取整设定：
+            //   src/main/window/**                             实测 100 / 93.55 / 100 / 100
+            //   src/main/renders/**                            实测 71.98 / 61.18 / 74.36 / 72.38
+            //   src/preload/**                                 实测 93.48 / 96.67 / 90.91 / 93.41
+            //   src/renderer/src/components/WorkSpaceArea/**   实测 95.76 / 97.26 / 94.59 / 95.60
+            //   src/renderer/src/components/Markdown/**        实测 85.97 / 74.61 / 81.60 / 86.28
+            // 说明：glob 阈值只约束匹配文件；未匹配文件仍适用上方全局阈值。
             thresholds: {
                 lines: 80,
                 statements: 80,
                 functions: 73,
-                branches: 75
+                branches: 75,
+                'src/main/window/**': {
+                    lines: 98,
+                    statements: 98,
+                    functions: 98,
+                    branches: 91
+                },
+                'src/main/renders/**': {
+                    lines: 70,
+                    statements: 69,
+                    functions: 72,
+                    branches: 59
+                },
+                'src/preload/**': {
+                    lines: 91,
+                    statements: 91,
+                    functions: 88,
+                    branches: 94
+                },
+                'src/renderer/src/components/WorkSpaceArea/**': {
+                    lines: 93,
+                    statements: 93,
+                    functions: 92,
+                    branches: 95
+                },
+                'src/renderer/src/components/Markdown/**': {
+                    lines: 84,
+                    statements: 83,
+                    functions: 79,
+                    branches: 72
+                }
             }
         }
     }
