@@ -15,7 +15,8 @@ const hoisted = vi.hoisted(() => {
         tmpRoot: `${process.env.TEMP || process.env.TMP || '/tmp'}/baize-vitest-config-manager`,
         // 批次 A：#3 开机自启动——OS 登录项实际状态（读取时校正 system.autoStart 显示值）
         loginItem: { openAtLogin: false },
-        setLoginItemSettings: vi.fn()
+        setLoginItemSettings: vi.fn(),
+        getLoginItemSettings: vi.fn(() => hoisted.loginItem)
     }
 })
 
@@ -33,7 +34,7 @@ vi.mock('electron', () => ({
         getPath: vi.fn(() => hoisted.tmpRoot),
         // 批次 A：#3 开机自启动的系统登录项 API
         setLoginItemSettings: hoisted.setLoginItemSettings,
-        getLoginItemSettings: vi.fn(() => hoisted.loginItem)
+        getLoginItemSettings: hoisted.getLoginItemSettings
     },
     BrowserWindow: { getAllWindows: vi.fn(() => []) }
 }))
@@ -105,6 +106,7 @@ import { setTrustedMainWindow, resetTrustedSenderRegistry } from '../../src/main
 import { appState } from '../../src/main/utils/app-state'
 import { IPC } from '../../src/shared/ipc-channels'
 import { FakeStore } from './helpers/fake-store'
+import { logger } from '../../src/main/utils/logger'
 // 批次 A：#4 最近文件列表数量——file-state-store 的最近文件存取
 import {
     getRecentFiles,
@@ -138,6 +140,8 @@ describe('config-manager', () => {
         ipcHandlers.map.clear()
         hoisted.loginItem.openAtLogin = false
         hoisted.setLoginItemSettings.mockClear()
+        hoisted.getLoginItemSettings.mockClear()
+        hoisted.getLoginItemSettings.mockImplementation(() => hoisted.loginItem)
         // 结构优化第 2 批 2.4（M1）：appState._resetForTesting 会整体复位 AppContext
         // （含受信主窗口/受信工作区根），因此必须先复位 appState 再登记受信主窗口，顺序不可交换。
         appState._resetForTesting()
@@ -1024,6 +1028,137 @@ describe('config-manager', () => {
             await configManager.writeConfig('system', { fontSize: 14 })
             await configManager.writeConfig('system', { autoSaveEnabled: true })
             expect(vi.mocked(syncAutoBackupTimer)).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('覆盖率补测第五批：配置异常分支与历史兼容', () => {
+        it('读取系统登录项抛错时回退 store 中的 autoStart 值', async () => {
+            await configManager.writeConfigFromMainProcess('recent-folders', [])
+            hoisted.getLoginItemSettings.mockImplementationOnce(() => {
+                throw new Error('dev mode unavailable')
+            })
+            const system = (await configManager.readConfig('system')) as Record<string, unknown>
+            expect(system.autoStart).toBe(false)
+            expect(logger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('读取开机自启动状态失败'),
+                expect.any(Error)
+            )
+        })
+
+        it('应用开机自启动设置抛错时只告警、不影响写入成功', async () => {
+            hoisted.setLoginItemSettings.mockImplementationOnce(() => {
+                throw new Error('permission denied')
+            })
+            await expect(configManager.writeConfig('system', { autoStart: true })).resolves.toBe(
+                true
+            )
+            expect(logger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('应用开机自启动设置失败'),
+                expect.any(Error)
+            )
+        })
+
+        it('recent-folders 非数组时最近文件夹裁剪直接返回', async () => {
+            await configManager.writeConfigFromMainProcess('recent-folders', [])
+            fs.writeJsonSync(path.join(CONFIG_DIR, 'recent-folders.json'), { not: 'array' })
+            await expect(
+                configManager.writeConfig('system', { recentFilesCount: 5 })
+            ).resolves.toBe(true)
+            const written = fs.readJsonSync(path.join(CONFIG_DIR, 'recent-folders.json')) as unknown
+            expect(written).toEqual({ not: 'array' })
+        })
+
+        it('recent-folders 超出保留数量时就地裁剪', async () => {
+            const folders = Array.from({ length: 10 }, (_, index) => `E:/notes/${index}`)
+            fs.ensureDirSync(CONFIG_DIR)
+            fs.writeJsonSync(path.join(CONFIG_DIR, 'recent-folders.json'), folders)
+            await configManager.writeConfig('system', { recentFilesCount: 5 })
+            const written = fs.readJsonSync(
+                path.join(CONFIG_DIR, 'recent-folders.json')
+            ) as string[]
+            expect(written).toHaveLength(5)
+            expect(written[0]).toBe('E:/notes/0')
+        })
+
+        it('最近文件夹 JSON 损坏时裁剪只告警不阻断写入', async () => {
+            fs.ensureDirSync(CONFIG_DIR)
+            fs.writeFileSync(path.join(CONFIG_DIR, 'recent-folders.json'), '{broken', 'utf-8')
+            await expect(
+                configManager.writeConfig('system', { recentFilesCount: 6 })
+            ).resolves.toBe(true)
+            expect(logger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('裁剪最近文件夹列表失败'),
+                expect.any(Error)
+            )
+        })
+
+        it('quick-links / quickLinks 读取均路由到快速链接配置', async () => {
+            await expect(configManager.readConfig('quick-links')).resolves.toBeDefined()
+            await expect(configManager.readConfig('quickLinks')).resolves.toBeDefined()
+        })
+
+        it('最近文件夹历史读取损坏时按空列表处理并继续置顶写入', async () => {
+            fs.ensureDirSync(CONFIG_DIR)
+            fs.writeFileSync(path.join(CONFIG_DIR, 'recent-folders.json'), '{broken', 'utf-8')
+            await recordRecentFolder('E:/notes/safe')
+            expect(logger.error).toHaveBeenCalledWith(
+                expect.stringContaining('Error reading config recent-folders'),
+                expect.any(Error)
+            )
+            const written = fs.readJsonSync(
+                path.join(CONFIG_DIR, 'recent-folders.json')
+            ) as string[]
+            expect(written).toEqual([path.resolve('E:/notes/safe')])
+        })
+
+        it('最近文件夹写入失败时告警且不抛出', async () => {
+            fs.ensureDirSync(CONFIG_DIR)
+            // 目标路径被同名目录占位：writeJson 抛 EISDIR → writeConfig 返回 false
+            fs.ensureDirSync(path.join(CONFIG_DIR, 'recent-folders.json'))
+            await expect(recordRecentFolder('E:/notes/safe')).resolves.toBeUndefined()
+            expect(logger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('写入最近文件夹历史失败'),
+                path.resolve('E:/notes/safe')
+            )
+        })
+
+        it('旧 theme.json 迁移进主进程主题 store 并改名标记', async () => {
+            fs.ensureDirSync(CONFIG_DIR)
+            fs.writeJsonSync(path.join(CONFIG_DIR, 'theme.json'), {
+                currentTheme: 'rose',
+                separateEditorTheme: true,
+                editorTheme: 'vs-dark'
+            })
+            registerConfigIpcHandlers()
+            expect(fs.existsSync(path.join(CONFIG_DIR, 'theme.json.legacy-migrated'))).toBe(true)
+            const stored = (await configManager.readConfig('theme')) as Record<string, unknown>
+            expect(stored.currentTheme).toBe('rose')
+        })
+
+        it('旧 quickLinks.json 迁移进快速链接配置并改名标记', async () => {
+            fs.ensureDirSync(CONFIG_DIR)
+            fs.writeJsonSync(path.join(CONFIG_DIR, 'quickLinks.json'), {
+                links: [{ name: '旧链接', url: 'https://old.example/' }]
+            })
+            registerConfigIpcHandlers()
+            expect(fs.existsSync(path.join(CONFIG_DIR, 'quickLinks.json.legacy-migrated'))).toBe(
+                true
+            )
+            const stored = (await configManager.readConfig('quick-links')) as unknown as Array<{
+                name?: string
+            }>
+            expect(stored[0]?.name).toBe('旧链接')
+        })
+
+        it('旧配置损坏时记录错误并保留原文件（可人工修复）', async () => {
+            fs.ensureDirSync(CONFIG_DIR)
+            fs.writeFileSync(path.join(CONFIG_DIR, 'system.json'), '{broken', 'utf-8')
+            registerConfigIpcHandlers()
+            expect(logger.error).toHaveBeenCalledWith(
+                expect.stringContaining('迁移旧配置 system.json 失败'),
+                expect.any(Error)
+            )
+            expect(fs.existsSync(path.join(CONFIG_DIR, 'system.json'))).toBe(true)
         })
     })
 })

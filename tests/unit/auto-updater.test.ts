@@ -100,6 +100,7 @@ import {
     checkForUpdates,
     checkForUpdatesAndNotify,
     getPendingInstallVersion,
+    isTrustedUpdateSourceUrl,
     resetUpdateInstallStateForTesting,
     UPDATE_DOWNLOAD_TIMEOUT_MS,
     INSTALL_FLAG_SAFETY_RESET_MS
@@ -542,6 +543,147 @@ describe('install coordination with unsaved changes (P1 F-01)', () => {
         expect(updaterState.quitAndInstall).toHaveBeenCalledTimes(1)
         expect(getAppContext().update.installing).toBe(true)
 
+        await vi.advanceTimersByTimeAsync(INSTALL_FLAG_SAFETY_RESET_MS)
+        expect(getAppContext().update.installing).toBe(false)
+    })
+})
+
+// ---------------------------------------------------------------------------
+// 覆盖率补测第五批（fix-cov5）：auto-updater 剩余边界分支
+// ---------------------------------------------------------------------------
+
+describe('isTrustedUpdateSourceUrl 边界（AS-5）', () => {
+    it('非字符串 / 空串 / 空白串一律拒绝', () => {
+        expect(isTrustedUpdateSourceUrl(undefined)).toBe(false)
+        expect(isTrustedUpdateSourceUrl(42)).toBe(false)
+        expect(isTrustedUpdateSourceUrl('')).toBe(false)
+        expect(isTrustedUpdateSourceUrl('   ')).toBe(false)
+    })
+
+    it('非 https / 含 userinfo / 非法 URL 拒绝，合法 https 通过', () => {
+        expect(isTrustedUpdateSourceUrl('http://updates.baize.test/app/')).toBe(false)
+        expect(isTrustedUpdateSourceUrl('https://user:pass@updates.baize.test/')).toBe(false)
+        expect(isTrustedUpdateSourceUrl('not a url')).toBe(false)
+        expect(isTrustedUpdateSourceUrl('https://updates.baize.test/app/')).toBe(true)
+    })
+})
+
+describe('readUpdateJsonConfig 非对象内容兜底', () => {
+    it('JSON 标量 / 数组 / null 均回退 app-update.yml（返回 null 并告警）', () => {
+        writeUpdateJson('null')
+        expect(readUpdateJsonConfig()).toBeNull()
+        writeUpdateJson('[1,2,3]')
+        expect(readUpdateJsonConfig()).toBeNull()
+        writeUpdateJson('"https://updates.baize.test/"')
+        expect(readUpdateJsonConfig()).toBeNull()
+    })
+})
+
+describe('checkForUpdates 失败与下载失败事件', () => {
+    it('检查阶段抛错时清理下载监听并返回 error 状态', async () => {
+        writeUpdateJson('{ "provider": "generic", "url": "https://updates.baize.test/app/" }')
+        updaterState.checkForUpdates.mockRejectedValue(new Error('network down'))
+
+        await expect(checkForUpdates()).resolves.toEqual({
+            status: 'error',
+            message: expect.stringContaining('network down')
+        })
+        // 等待器已取消：不残留下载监听器
+        expect(updaterState.listeners.get('update-downloaded') ?? []).toHaveLength(0)
+        expect(updaterState.listeners.get('error') ?? []).toHaveLength(0)
+    })
+
+    it('下载过程 error 事件 → 下载失败状态（先到先得，后续事件忽略）', async () => {
+        writeUpdateJson('{ "provider": "generic", "url": "https://updates.baize.test/app/" }')
+        updaterState.checkForUpdates.mockImplementation(async () => {
+            queueMicrotask(() => {
+                updaterState.emit('error')
+                // 已 settle 后到达的 update-downloaded 不应改写结果（settle 防重入）
+                updaterState.emit('update-downloaded')
+            })
+            return { updateInfo: { version: '1.3.0' } }
+        })
+
+        await expect(checkForUpdates()).resolves.toEqual({
+            status: 'error',
+            message: '新版本下载失败，请检查网络后重试'
+        })
+    })
+})
+
+describe('checkForUpdatesAndNotify 结果对话框分支', () => {
+    it('已是最新版本时弹「已是最新」提示', async () => {
+        writeUpdateJson('{ "provider": "generic", "url": "https://updates.baize.test/app/" }')
+        updaterState.checkForUpdates.mockResolvedValue(null)
+        electronState.dialogShowMessageBox.mockResolvedValue({ response: 0 })
+
+        await checkForUpdatesAndNotify(undefined)
+
+        const options = lastDialogOptions()
+        expect(options.message).toBe('已是最新版本')
+        expect(options.detail).toContain('1.2.2')
+    })
+
+    it('检查失败（error 状态）时弹「检查更新失败」提示', async () => {
+        writeUpdateJson('{ "provider": "generic", "url": "https://updates.baize.test/app/" }')
+        updaterState.checkForUpdates.mockRejectedValue(new Error('boom'))
+        electronState.dialogShowMessageBox.mockResolvedValue({ response: 0 })
+
+        await checkForUpdatesAndNotify(undefined)
+
+        const options = lastDialogOptions()
+        expect(options.message).toBe('检查更新失败')
+        expect(options.detail).toContain('boom')
+    })
+
+    it('传入主窗口时对话框以窗口为父窗口调用', async () => {
+        const mainWindow = {} as Electron.BrowserWindow
+        await checkForUpdatesAndNotify(mainWindow)
+        expect(electronState.dialogShowMessageBox).toHaveBeenCalledWith(
+            mainWindow,
+            expect.objectContaining({ message: '未配置更新源' })
+        )
+    })
+
+    it('检查进行中时重复请求被忽略（checking 防重入）', async () => {
+        let resolveDialog: (value: { response: number }) => void = () => undefined
+        electronState.dialogShowMessageBox.mockReturnValue(
+            new Promise<{ response: number }>((resolve) => {
+                resolveDialog = resolve
+            })
+        )
+
+        const first = checkForUpdatesAndNotify(undefined)
+        await Promise.resolve()
+        // 第一次仍停留在结果对话框：第二次请求直接返回、不重复弹框
+        await expect(checkForUpdatesAndNotify(undefined)).resolves.toBeUndefined()
+        expect(electronState.dialogShowMessageBox).toHaveBeenCalledTimes(1)
+
+        resolveDialog({ response: 0 })
+        await first
+    })
+
+    it('结果对话框自身抛错时静默兜底，不向上抛出', async () => {
+        electronState.dialogShowMessageBox.mockRejectedValue(new Error('dialog destroyed'))
+        await expect(checkForUpdatesAndNotify(undefined)).resolves.toBeUndefined()
+        // 外层 catch 再次尝试弹错误框，同样失败但不抛
+        expect(electronState.dialogShowMessageBox).toHaveBeenCalledTimes(2)
+    })
+})
+
+describe('安装标志兜底计时器（P1 F-01 防御深度）', () => {
+    it('应用已退出（installing 已复位）时兜底计时器不重复复位', async () => {
+        vi.useFakeTimers()
+        mockUpdateAvailable()
+        electronState.dialogShowMessageBox.mockResolvedValue({ response: 0 })
+
+        const pending = checkForUpdatesAndNotify(undefined)
+        await vi.advanceTimersByTimeAsync(0)
+        await pending
+        expect(getAppContext().update.installing).toBe(true)
+
+        // 模拟应用已在兜底期限前退出：标志已复位，计时器到点不应再告警/改写
+        getAppContext().update.installing = false
         await vi.advanceTimersByTimeAsync(INSTALL_FLAG_SAFETY_RESET_MS)
         expect(getAppContext().update.installing).toBe(false)
     })

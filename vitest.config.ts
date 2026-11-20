@@ -127,6 +127,13 @@ export default defineConfig({
             //   src/main/utils/**（新增 glob）                 实测 89.25 / 89.22 / 94.83 / 84.03
             // 说明：glob 阈值只约束匹配文件；未匹配文件仍适用上方全局阈值。
             // 并发批次（IPC 拆分 / 对话框可访问性）仍在主工作区推进，阈值统一保留 2pp 余量。
+            // 2026-11-20（P1-6 覆盖率盲区补测第五批）：在第四批 glob 基础上按本批实测上调，
+            // 并新增 main/config、main/ipc 两个主进程目录下限（本批补测重点域）。实测口径
+            // （326 文件，lines / statements / functions / branches）：
+            //   src/main/utils/**                              实测 96.76 / 96.69 / 98.15 / 92.25
+            //   src/main/config/**（新增）                     实测 95.77 / 95.87 / 98.82 / 89.37
+            //   src/main/ipc/**（新增）                        实测 97.07 / 96.50 / 98.26 / 88.22
+            // 阈值统一取「实测 - 2pp 取整」，保留并行批次浮动余量；全局红线不下调。
             thresholds: {
                 lines: 80,
                 statements: 80,
@@ -187,10 +194,22 @@ export default defineConfig({
                     branches: 82
                 },
                 'src/main/utils/**': {
-                    lines: 87,
-                    statements: 87,
-                    functions: 92,
-                    branches: 82
+                    lines: 94,
+                    statements: 94,
+                    functions: 96,
+                    branches: 90
+                },
+                'src/main/config/**': {
+                    lines: 93,
+                    statements: 93,
+                    functions: 96,
+                    branches: 87
+                },
+                'src/main/ipc/**': {
+                    lines: 95,
+                    statements: 94,
+                    functions: 96,
+                    branches: 86
                 }
             }
         }

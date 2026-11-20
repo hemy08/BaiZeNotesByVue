@@ -315,4 +315,44 @@ describe('restoreLastOpenedAtStartup', () => {
         expect(send).toHaveBeenCalledWith(IPC.FILE.WELCOME_ENTER_MAIN, { type: 'file', path: file })
         appState.mainWindow = null
     })
+
+    it('目录打开动作抛错时清除记录并状态栏 error 提示（不进入主界面数据事件）', async () => {
+        const dir = path.join(hoisted.userData, 'notes-broken')
+        fs.mkdirSync(dir, { recursive: true })
+        saveLastOpenedDirectory(dir)
+        hoisted.setting.autoOpenLastFolder = true
+        const { win, send } = mainWindowStub()
+        appState.mainWindow = win
+        fileUtilsMocks.ReloadDirFromDisk.mockRejectedValueOnce(new Error('reload exploded'))
+
+        await restoreLastOpenedAtStartup(win, hoisted.setting as unknown as SystemSetting)
+        await settle()
+
+        expect(getLastOpenedDirectory()).toBeNull()
+        const statusCall = send.mock.calls.find((call) => call[0] === IPC.EVENTS.STATUS_BAR_UPDATE)
+        expect(statusCall?.[1]).toEqual(
+            expect.objectContaining({ type: 'error', message: expect.stringContaining('reload') })
+        )
+        appState.mainWindow = null
+    })
+
+    it('文件打开动作抛错时清除记录并状态栏 error 提示', async () => {
+        const file = path.join(hoisted.userData, 'note-broken.md')
+        fs.writeFileSync(file, 'x', 'utf-8')
+        saveLastOpenedFile(file)
+        hoisted.setting.autoOpenLastFile = true
+        const { win, send } = mainWindowStub()
+        appState.mainWindow = win
+        fileUtilsMocks.OpenSelectFile.mockRejectedValueOnce(new Error('open exploded'))
+
+        await restoreLastOpenedAtStartup(win, hoisted.setting as unknown as SystemSetting)
+        await settle()
+
+        expect(getLastOpenedFile()).toBeNull()
+        const statusCall = send.mock.calls.find((call) => call[0] === IPC.EVENTS.STATUS_BAR_UPDATE)
+        expect(statusCall?.[1]).toEqual(
+            expect.objectContaining({ type: 'error', message: expect.stringContaining('open') })
+        )
+        appState.mainWindow = null
+    })
 })

@@ -251,11 +251,14 @@ describe('FE-32 剪贴板失败错误码中文化', () => {
         const srcFile = path.join(caseDir, 'gone.md')
         const dstDir = path.join(caseDir, 'dst')
         await fs.writeFile(srcFile, 'SRC', 'utf8')
-        appState.srcDirCopyCut = srcFile
-        appState.isCopyOrCut = 'copy'
         await fs.mkdir(dstDir)
         // 复制前源被删除（TOCTOU 场景）→ fsExtra.copy 抛 ENOENT
         await fs.rm(srcFile)
+        // 隔离说明：粘贴成功会调度 100ms 后清空 appState.srcDirCopyCut 的定时器，
+        // 上一条用例的定时器可能在本用例运行中触发；因此把「记录剪贴板源」放到
+        // 紧邻粘贴调用之前（中间不再 await），避免状态被上一条用例的遗留定时器清空。
+        appState.srcDirCopyCut = srcFile
+        appState.isCopyOrCut = 'copy'
 
         await FileManagerContextMenuPaste(dstDir, false)
 
