@@ -20,8 +20,13 @@
  *    `<code>`，不像围栏规则那样在空串时兜底 `escapeHtml`，返回 '' 会让行内代码内容消失。
  */
 import MarkdownIt from 'markdown-it'
-import highlightjs from 'markdown-it-highlightjs'
-import hljs from 'highlight.js'
+// P1-8：必须使用 core 子入口。默认入口（markdown-it-highlightjs）内部 `require('highlight.js')`
+// 会重新把全量 199 种语言拉进预览 chunk（即使我们显式传入 hljs 实例，静态 require 仍被求值）；
+// core 子入口不带默认 highlight.js 依赖，只使用调用方传入的实例。
+import highlightjs from 'markdown-it-highlightjs/core'
+// P1-8：代码高亮实例统一由 preview-highlight.ts 提供（highlight.js core + 精选常用语言，
+// 不再引入默认入口的全量 199 种语言）
+import hljs from './preview-highlight'
 import plantuml from 'markdown-it-plantuml'
 import { full as emoji } from 'markdown-it-emoji'
 import { logger } from '../../common/logger'
@@ -31,7 +36,8 @@ import { mkdocsMaterialPlugin } from './preview-mkdocs-material'
 /**
  * 构建预览专用 markdown-it 实例（插件顺序与 PF-02 单跳渲染链路一致）。
  *
- * 注意：actionscript 语言仍由调用方在挂载后注册（与修复前一致），本函数不做全局注册。
+ * 说明：代码高亮使用的语言由 preview-highlight.ts 在模块加载时统一注册（含 actionscript），
+ * 本函数只负责装配 markdown-it 插件，不再做语言注册。
  */
 export function createPreviewMarkdownIt(): InstanceType<typeof MarkdownIt> {
     const md = MarkdownIt({

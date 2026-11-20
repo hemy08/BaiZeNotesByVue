@@ -1,13 +1,20 @@
 /**
  * 导入模块
  * 提供从外部格式导入内容到Markdown的功能
+ *
+ * P1-7（2026-11-20 全量代码扫描）：Word/HTML/CSV 导入专用的 mammoth / turndown /
+ * csv-parser 原先在模块顶层静态加载，会经 file-utils 门面进入主进程启动期急切 require
+ * 图（三者实测合计 ≈50.01ms，占打包版 app-ready 中位 203.8ms 的 24.5%）。现改为
+ * 「首次执行对应导入时才动态加载」：
+ * - 模块求值阶段不再 require 这三个包，启动路径零成本；
+ * - 各格式的 importReader/insertReader 调用时才加载，加载/转换失败仍由既有 catch 统一提示
+ *   （错误路径与改造前一致）；
+ * - 模块级 Promise 缓存保证同一进程内只加载一次（旧版由 Node require 缓存保证同语义）。
  */
 
 import { promises as fs } from 'fs'
 import * as path from 'path'
-import csv from 'csv-parser'
 import { dialog, BrowserWindow } from 'electron'
-import * as mammoth from 'mammoth'
 import { showErrorMessageBox } from './dialog-helpers'
 import {
     decodeFileContent,
@@ -23,8 +30,57 @@ import { tMain } from '../i18n'
 // 系统对话框返回的路径在返回后登记为受信来源
 import { isPathAllowed, registerTrustedPath } from '../security'
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports -- turndown 无 TypeScript 类型声明，require 返回 any 是当前唯一无类型错误的加载方式
-const TurndownService = require('turndown')
+/* ============================================================================
+ * P1-7：导入专用重依赖的惰性加载
+ *
+ * mammoth（≈35.3ms）/ turndown（≈14.4ms）/ csv-parser（≈0.3ms）只在用户执行
+ * 「插入/导入 Word/HTML/CSV」时才需要，不应进入主进程启动期 require 图。
+ * ========================================================================== */
+
+/** mammoth 的 CJS API 类型（其 lib/index.d.ts 以 `export =` 暴露 Mammoth 实例） */
+type MammothApi = typeof import('mammoth')
+/** csv-parser 的 CJS 工厂函数类型（其 index.d.ts 以 `export = csvParser` 暴露） */
+type CsvParserFactory = typeof import('csv-parser')
+
+let mammothApi: MammothApi | null = null
+let csvParserFactory: CsvParserFactory | null = null
+
+/**
+ * P1-7：按需加载 mammoth（Word 导入专用）。
+ * 采用函数内 require（首次使用时同步加载）而非顶层静态 import：
+ * - 主进程产物为 CJS，require 在文件系统 / asar 内的模块解析行为与启动路径完全一致；
+ * - Electron 主进程用原生 `import()` 加载 asar 内 node_modules 存在历史兼容问题
+ *   （electron#38957），用户功能路径优先用 require 保证打包版行为稳定；
+ * - 与既有 officegen（ToWord 函数内 require）保持同一模式；require 自带模块缓存，
+ *   与改造前“顶层 require 一次”的加载次数语义一致，只是时机推迟到首次使用。
+ */
+function loadMammoth(): MammothApi {
+    if (!mammothApi) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- P1-7：启动期不加载，首次 Word 导入时才 require；asar 内原生 import() 兼容性差，采用与 officegen 一致的惰性 require
+        mammothApi = require('mammoth') as MammothApi
+    }
+    return mammothApi
+}
+
+/** P1-7：按需加载 csv-parser 工厂（CSV 导入专用），说明同 loadMammoth */
+function loadCsvParser(): CsvParserFactory {
+    if (!csvParserFactory) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- P1-7：启动期不加载，首次 CSV 导入时才 require；asar 内原生 import() 兼容性差，采用惰性 require
+        csvParserFactory = require('csv-parser') as CsvParserFactory
+    }
+    return csvParserFactory
+}
+
+/**
+ * P1-7：按需创建 turndown 转换器（Word/HTML 导入专用）。
+ * turndown 无 TypeScript 类型声明，沿用函数内 require（`require` 调用本身即惰性：只有真正
+ * 执行 Word/HTML 导入时才会解析模块），因此模块顶层不再 require。
+ */
+function createTurndownService(): { turndown(html: string): string } {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- turndown 无 TypeScript 类型声明，require 返回 any 是当前唯一无类型错误的加载方式
+    const TurndownService = require('turndown')
+    return new TurndownService()
+}
 
 /**
  * 导入格式模型（CQ-1/TS7053：原对象字面量用 string 索引会隐式 any，
@@ -143,15 +199,10 @@ async function rejectExcelImport(): Promise<string> {
 }
 
 async function convertDocxToMarkdown(file: string): Promise<string> {
-    return mammoth
-        .convertToHtml({ path: file })
-        .then((result: { value: string }) => {
-            const turndownService = new TurndownService()
-            return turndownService.turndown(result.value)
-        })
-        .catch((error: unknown) => {
-            throw error
-        })
+    // P1-7：首次 Word 导入时才加载 mammoth/turndown（失败向上抛，由外层统一提示）
+    const mammoth = loadMammoth()
+    const result = await mammoth.convertToHtml({ path: file })
+    return createTurndownService().turndown(result.value)
 }
 
 async function convertHtmlToMarkdown(file: string): Promise<string> {
@@ -160,8 +211,8 @@ async function convertHtmlToMarkdown(file: string): Promise<string> {
     // FE-19：内层不再 showErrorMessageBox——原实现内层提示 + 外层 catch 再提示
     // 导致一次失败弹两个错误框；错误统一上抛，仅由外层提示一处。
     const htmlContent = await ReadFile(file)
-    const turndownService = new TurndownService()
-    return turndownService.turndown(htmlContent)
+    // P1-7：首次 HTML 导入时才加载 turndown
+    return createTurndownService().turndown(htmlContent)
 }
 
 /**
@@ -205,13 +256,15 @@ function buildMarkdownTable(headers: string[], rows: string[][]): string {
  * 缺列补空、多余列按表头列数截断；空行（csv-parser 会推入 `{}`）与空文件不产生表格。
  */
 function csvStringParser(csvData: string): Promise<string> {
+    // P1-7：首次 CSV 导入时才加载 csv-parser（惰性 require + Node 模块缓存，只加载一次）
+    const createCsvParser = loadCsvParser()
     return new Promise((resolve, reject) => {
         // BOM 兜底：convertCsvToMarkdown 已由 decodeFileContent 剥离 BOM，
         // 这里再防一次直接传入带 BOM 文本的调用（csv-parser 自身不处理 BOM）
         const content = csvData.charCodeAt(0) === 0xfeff ? csvData.slice(1) : csvData
         const headers: string[] = []
         const rows: string[][] = []
-        const csvParser = csv()
+        const csvParser = createCsvParser()
         csvParser.on('headers', (headerRow: Array<string | null>) => {
             headers.push(...headerRow.map((header) => toMarkdownCell(header)))
         })

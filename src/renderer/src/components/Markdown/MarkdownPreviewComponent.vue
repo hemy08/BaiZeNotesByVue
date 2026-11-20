@@ -9,13 +9,11 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import hljs from 'highlight.js'
 import DOMPurify from 'dompurify'
 // 结构优化第 2 批 2.2（H4）：预览只依赖渲染模块（hemy-editor-render），
 // 不再经 `hemy-editor` 聚合桶（该桶含 Monaco 编辑器动作/快捷键等），
 // 保证预览按需 chunk 不把 Monaco 重新带回来。
 import * as Render from './hemy-editor-render'
-import actionscript from 'highlight.js/lib/languages/actionscript'
 import { useEventBus } from '../../composables/useEventBus'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
@@ -132,9 +130,8 @@ watch(
     { immediate: true }
 )
 
-onMounted(() => {
-    hljs.registerLanguage('actionscript', actionscript)
-})
+// P1-8：highlight.js 实例（core + 精选常用语言）由 preview-markdown-it.ts 统一引入并注册，
+// 本组件不再 import 全量 highlight.js、也不再在挂载时注册 actionscript（已在白名单中）。
 
 /** 清除待执行的预览渲染定时器 */
 function clearRenderDebounceTimer(): void {

@@ -40,6 +40,7 @@
         "src/shared/types/global.d.ts",
         "src/renderer/src/components/Markdown/monaco-worker-types.ts",
         "src/renderer/src/components/Markdown/markdown-it-plantuml.d.ts",
+        "src/renderer/src/components/Markdown/markdown-it-highlightjs-core.d.ts",
         "src/renderer/src/components/PluginTools/Encryption/crypto-js.d.ts"
     ],
     "exclude": ["node_modules", "out", "dist"]

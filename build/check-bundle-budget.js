@@ -11,17 +11,30 @@
  *   - out/build/renderer/assets  electron-vite 渲染层产物（入口/壳/关键 chunk）
  *   - out/build/dist              electron-builder 产物（NSIS 安装包/portable/win-unpacked）
  *
- * 断言项（阈值集中在 BUDGETS；调整阈值时同步更新 out/tool-results/p0-size.md）：
+ * 断言项（阈值集中在 BUDGETS；调整阈值时同步更新 out/tool-results/p0-size.md 与
+ * docs/reports/md/01-检查与扫描/2026-11-20-全量代码扫描报告.md）：
  *   1. 渲染入口 chunk（index-*.js）      ≤ 150 KiB
  *   2. BaiZeNotes 壳 chunk（BaiZeNotes-*.js） ≤ 2 MiB
  *   3. NSIS 安装包（Setup exe）          ≤ 110 MiB
  *   4. 便携版 exe（portable）            ≤ 100 MiB
  *   5. app.asar                          ≤ 45 MiB
  *   6. locales 语言包仅保留 zh-CN / en-US（electronLanguages 裁剪的回归防线）
+ *   7. 首屏初始 JS（入口 script + index.html 中 modulepreload 的本地 JS） ≤ 512 KiB
+ *
+ * P1-3 背景（2026-11-20 全量代码扫描）：
+ *   index.html 会通过 `<link rel="modulepreload">` 同步加载一个共享 chunk（Vue 运行时 +
+ *   中英双语 i18n 全量词典 + shared/ipc-channels + renderer logger，实测 348.5 KiB），
+ *   它和入口 chunk 一样属于首屏初始 JS，但此前预算只断言入口（136.8 KiB），真实首屏
+ *   482.0 KiB 存在约 3.5 倍的统计盲区（预算门禁看不到该共享 chunk 的回归）。
+ *   第 7 项把两者合并断言：解析 index.html 的 modulepreload 本地 .js，逐文件打印组成；
+ *   阈值 512 KiB = 当前实测 482.0 KiB + 约 6% 回归余量。
  *
  * 说明：
  *   - 安装包按 package.json 的当前 version 精确匹配文件名，dist 里残留的旧版本产物会被忽略
  *     （若当前版本产物缺失则直接报错，提示先执行 npm run build:win:all）。
+ *   - 首屏 JS 解析只针对 electron-vite 生成产物：index.html 结构稳定（入口 script +
+ *     modulepreload link），用正则读取即可，不引入 HTML 解析依赖、也不执行页面脚本；
+ *     非本地（http/data/上级目录）资源不纳入统计。
  *   - 预算项之外额外打印关键 chunk（Monaco/mermaid）体积作为参考，不参与断言，避免锁死
  *     第三方库的小版本波动。
  *
@@ -38,6 +51,7 @@ const KIB = 1024
 const MIB = 1024 * KIB
 
 const RENDERER_ASSETS_DIR = path.join(projectRoot, 'out', 'build', 'renderer', 'assets')
+const RENDERER_INDEX_HTML = path.join(projectRoot, 'out', 'build', 'renderer', 'index.html')
 const DIST_DIR = path.join(projectRoot, 'out', 'build', 'dist')
 const UNPACKED_DIR = path.join(DIST_DIR, 'win-unpacked')
 const ASAR_FILE = path.join(UNPACKED_DIR, 'resources', 'app.asar')
@@ -56,6 +70,9 @@ const LOCALES_DIR = path.join(UNPACKED_DIR, 'locales')
 const BUDGETS = {
     entry: { label: '渲染入口 chunk（index-*.js）', limit: 150 * KIB },
     shell: { label: 'BaiZeNotes 壳 chunk（BaiZeNotes-*.js）', limit: 2 * MIB },
+    // 2026-11-20（P1-3 首屏预算盲区）：真实首屏 JS = 入口 + index.html modulepreload 共享 chunk
+    // （Vue 运行时 + 中英双语 i18n 词典 + ipc/logger），实测 482.0 KiB；阈值取 +约 6% 余量。
+    firstScreenJs: { label: '首屏初始 JS（入口 + modulepreload 本地 JS）', limit: 512 * KIB },
     // 2026-11-20（B4 electron-store 12）：Setup 109.98→113.92 MiB，按实测+余量调整
     setup: { label: 'NSIS 安装包（Setup exe）', limit: 115 * MIB },
     portable: { label: '便携版 exe（portable）', limit: 101 * MIB },
@@ -144,6 +161,97 @@ function checkSizeBudget({ label, limit }, filePath, displayUnit) {
     }
 }
 
+/**
+ * 从 index.html 收集首屏初始 JS 组成（入口 chunk + modulepreload 的本地 .js）。
+ *
+ * 解析方式：electron-vite 产物 index.html 由 Vite 生成、结构稳定（入口 `<script type="module" src>`
+ * 与 `<link rel="modulepreload" href>`）；这里用正则读取静态 HTML，不引入 HTML 解析依赖，
+ * 也不执行页面脚本（动态注入的 script 不属于静态首屏初始闭包）。外部 URL（http/data/上级目录）
+ * 不纳入本地体积统计。
+ */
+function collectFirstScreenJs(entryFile) {
+    const components = []
+    const seenPaths = new Set()
+    if (entryFile) {
+        const entryPath = path.resolve(entryFile)
+        seenPaths.add(entryPath)
+        components.push({ filePath: entryPath, kind: '入口 script' })
+    }
+    if (!fs.existsSync(RENDERER_INDEX_HTML)) {
+        failures.push(`未找到渲染层 index.html：${relativePath(RENDERER_INDEX_HTML)}`)
+        return components
+    }
+    const html = fs.readFileSync(RENDERER_INDEX_HTML, 'utf-8')
+    for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
+        // 只认 modulepreload：Vite 用它把入口的静态共享 chunk 提前同步加载（同样计入首屏）
+        if (!/\brel\s*=\s*["']modulepreload["']/i.test(tag)) continue
+        const hrefMatch = /\bhref\s*=\s*["']([^"']+)["']/i.exec(tag)
+        if (!hrefMatch) continue
+        const href = hrefMatch[1].trim().split(/[?#]/)[0]
+        if (!/\.m?js$/i.test(href)) continue
+        // 仅统计产物目录内的相对路径；跨域/绝对 URL 不是本地首屏体积
+        if (/^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(href) || path.isAbsolute(href)) continue
+        const assetPath = path.resolve(path.dirname(RENDERER_INDEX_HTML), href)
+        const relativeToRenderer = path.relative(path.dirname(RENDERER_INDEX_HTML), assetPath)
+        if (
+            relativeToRenderer.length === 0 ||
+            relativeToRenderer.startsWith('..') ||
+            path.isAbsolute(relativeToRenderer)
+        ) {
+            continue
+        }
+        if (seenPaths.has(assetPath)) continue
+        seenPaths.add(assetPath)
+        if (!fs.existsSync(assetPath)) {
+            failures.push(
+                `index.html modulepreload 指向的产物缺失：${href}（${relativePath(assetPath)}）`
+            )
+            continue
+        }
+        components.push({ filePath: assetPath, kind: 'modulepreload' })
+    }
+    return components
+}
+
+/**
+ * P1-3：断言首屏初始 JS 总量（入口 + modulepreload 本地 JS），并打印逐文件组成。
+ * 返回值结构与 checkSizeBudget 一致，额外带 details（逐文件明细）。
+ */
+function checkFirstScreenJs(entryFile) {
+    const { label, limit } = BUDGETS.firstScreenJs
+    const components = collectFirstScreenJs(entryFile)
+    const details = []
+    let total = 0
+    for (const component of components) {
+        const bytes = fs.statSync(component.filePath).size
+        total += bytes
+        details.push(
+            `      · ${component.kind} ${path.basename(component.filePath)}：${formatSize(bytes)}`
+        )
+    }
+    const pass = total <= limit
+    if (!pass) {
+        failures.push(
+            `${label} 超预算：${formatSize(total)} > ${formatSize(limit)}（` +
+                components
+                    .map(
+                        (component) =>
+                            `${path.basename(component.filePath)} ${formatSize(fs.statSync(component.filePath).size)}`
+                    )
+                    .join(' + ') +
+                '）'
+        )
+    }
+    return {
+        label,
+        actualText: formatSize(total),
+        limitText: formatSize(limit),
+        marginText: formatSize(Math.max(limit - total, 0)),
+        pass,
+        details
+    }
+}
+
 /** 校验 locales 目录仅保留期望的 2 个语言包 */
 function checkLocales() {
     const label = 'locales 语言包数量'
@@ -217,6 +325,8 @@ function main() {
     if (entryFile) {
         results.push(checkSizeBudget(BUDGETS.entry, entryFile, 'KiB'))
     }
+    // P1-3：真实首屏 JS = 入口 + index.html 中 modulepreload 的本地共享 chunk
+    results.push(checkFirstScreenJs(entryFile))
     const shellFile = findSingleFile(
         RENDERER_ASSETS_DIR,
         /^BaiZeNotes-.*\.js$/,
@@ -266,6 +376,10 @@ function main() {
             `  ${status} ${item.label}\n` +
                 `      实测 ${item.actualText} / 预算 ${item.limitText} / 余量 ${item.marginText}`
         )
+        if (Array.isArray(item.details) && item.details.length > 0) {
+            console.log('      首屏组成：')
+            console.log(item.details.join('\n'))
+        }
     }
     printReferenceChunks()
 

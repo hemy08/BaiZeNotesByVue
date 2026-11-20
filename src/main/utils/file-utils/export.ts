@@ -1,18 +1,42 @@
 /**
  * 导出模块 - 优化版
  * 使用配置驱动的方式统一处理各种格式的导出
+ *
+ * P1-7（2026-11-20 全量代码扫描）：HTML/PDF 导出专用的 markdown-it（≈4.7ms）原先在模块
+ * 顶层静态加载，会进入主进程启动期急切 require 图。现改为「首次执行 HTML/PDF 导出时
+ * 才惰性 require」（模块级缓存）；officegen 原本就只在 ToWord 函数内 require，本次保持不变。
  */
 
 import { promises as fs, createWriteStream } from 'fs'
 import * as path from 'path'
 import { dialog, BrowserWindow, app } from 'electron'
-import MarkdownIt from 'markdown-it'
+// P1-7：markdown-it 改为首次 HTML/PDF 导出时惰性 require，这里只保留类型导入（编译期擦除）
+import type MarkdownItType from 'markdown-it'
 import { showErrorMessageBox, showInfoMessageBox } from './dialog-helpers'
 import { appState } from '../app-state'
 import { tMain } from '../i18n'
 // P1-AS-1：导出目标来自系统保存对话框（用户显式选择），返回后登记为受信精确文件；
 // 导出器只写该路径，避免渲染层通过其它入口驱动任意写
 import { registerTrustedPath } from '../security'
+
+/** P1-7：markdown-it 构造函数类型（默认导入为可直接 new 的构造器） */
+type MarkdownItConstructor = typeof MarkdownItType
+
+let markdownItConstructor: MarkdownItConstructor | null = null
+
+/**
+ * P1-7：按需加载 markdown-it（仅 HTML/PDF 导出使用）。
+ * 采用函数内 require（首次使用时同步加载）而非顶层静态 import：主进程产物为 CJS，
+ * require 在文件系统 / asar 内的解析行为稳定（Electron 主进程原生 `import()` 加载 asar
+ * 内 node_modules 存在历史兼容问题 electron#38957）；与既有 officegen 同一模式。
+ */
+function loadMarkdownItConstructor(): MarkdownItConstructor {
+    if (!markdownItConstructor) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- P1-7：启动期不加载，首次 HTML/PDF 导出时才 require；asar 内原生 import() 兼容性差，采用与 officegen 一致的惰性 require
+        markdownItConstructor = require('markdown-it') as MarkdownItConstructor
+    }
+    return markdownItConstructor
+}
 
 /**
  * 导出配置接口
@@ -259,6 +283,8 @@ metadata:
  * 导出为 HTML 文件
  */
 export async function ToHtml(content: string, filePath: string): Promise<void> {
+    // P1-7：首次 HTML 导出时才加载 markdown-it
+    const MarkdownIt = loadMarkdownItConstructor()
     const md = new MarkdownIt()
 
     const htmlContent = `<!DOCTYPE html>
@@ -322,6 +348,8 @@ ${md.render(content)}
  * 导出为 PDF 文件
  */
 export async function ToPdf(content: string, filePath: string): Promise<void> {
+    // P1-7：首次 PDF 导出时才加载 markdown-it
+    const MarkdownIt = loadMarkdownItConstructor()
     const md = new MarkdownIt()
 
     const win = new BrowserWindow({
