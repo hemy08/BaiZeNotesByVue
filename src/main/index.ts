@@ -31,9 +31,12 @@ import {
     // P2 死配置字段清理：删除历史持久化、已无消费方的 checkUpdateOnStart
     cleanupDeprecatedSystemSettings
 } from './config'
-import { StartAutoSaveFileTime, StopAutoSaveFileTime, SaveActiveFile } from './utils/file-utils'
+import { StartAutoSaveFileTime, StopAutoSaveFileTime } from './utils/file-utils'
 // 内存与生命周期治理（P3）：退出时回收 Word 转换 worker 线程（懒创建；未使用过则空操作）
 import { disposeWordWorkerClient } from './utils/file-utils/word-worker-client'
+// 2026-11-20（关闭确认应用内对话框）：原生 dialog.showMessageBox → 渲染层 BaseDialog。
+// 本入口只负责「何时请求确认 + 拿到结果后放行/中止」；保存动作与超时/兜底均在
+// utils/close-confirm 内完成（含渲染层不可用时的原生回退）。
 import { confirmUnsavedChangesClose } from './utils/close-confirm'
 // PF-05：目录树 fs.watch 监听的退出清理（仅新增生命周期管理，不改变原有落盘/清理逻辑）
 import { CleanupDirectoryWatch } from './utils/file-utils/file-operations'
@@ -254,6 +257,17 @@ function createWindow(): BrowserWindow {
     // handlers 当前主窗口均读取同一字段；macOS activate 重建窗口时随 createWindow 一并刷新）
     context.mainWindow = mainWindow
 
+    // 2026-11-20（关闭确认应用内对话框）：渲染进程退出/崩溃后渲染层就绪状态立即失效，
+    // 后续关闭/退出确认改走原生兜底（应用内对话框已不可能显示），避免用户无法退出应用。
+    // 同时 close-confirm 的等待请求自身也监听 render-process-gone 并立即按取消结算。
+    mainWindow.webContents.on('render-process-gone', (_event, details) => {
+        context.rendererReady.received = false
+        logger.error(
+            '[Main] 主窗口渲染进程退出，后续关闭确认将回退原生对话框（原因：' +
+                `${details.reason}）`
+        )
+    })
+
     // D-3/FUN-03：拦截窗口关闭——先让渲染层 flush 编辑器内容，
     // 若当前文件仍有未保存修改则落盘，再真正关闭。
     // 批次 B #4：显式退出（托盘「退出」/before-quit 已置 appState 退出标志）时直接放行
@@ -268,7 +282,7 @@ function createWindow(): BrowserWindow {
         }
         event.preventDefault()
         // P2-6（关闭协议重入保护）：已有确认/落盘流程进行中时，重复 close 直接忽略，
-        // 避免叠加第二个原生对话框或重复 flush；取消后由协议末尾 finally 复位。
+        // 避免叠加第二个未保存确认框或重复 flush；取消后由协议末尾 finally 复位。
         if (context.quit.confirming) {
             return
         }
@@ -276,19 +290,21 @@ function createWindow(): BrowserWindow {
         try {
             await flushEditorContent(mainWindow)
             if (appState.isDirty()) {
-                // 2026-11-20（用户需求）：关闭前若仍有未保存修改，弹框让用户选择
-                // 「保存并关闭 / 不保存 / 取消」；取消则保持窗口与编辑状态。
+                // 2026-11-20（用户需求）：关闭前若仍有未保存修改，弹应用内风格确认框
+                // （BaseDialog 三按钮）让用户选择「保存并关闭 / 不保存 / 取消」；
+                // 取消则保持窗口与编辑状态。「保存并关闭」的保存动作在
+                // close-confirm 内执行：成功返回 save 放行关闭，失败返回 cancel 中止
+                // （并保留对话框/错误提示供重试）。
                 // P3 F-09：minimizeToTray 开启时本次「关闭」实际是隐藏到托盘，
                 // 文案改用「保存并隐藏」，避免用户误以为应用已退出。
+                // 渲染层不可用（窗口/渲染进程已销毁、未就绪）时 close-confirm 自动回退
+                // 原生确认框并记录原因，不会出现原生框 + 应用内框双弹。
                 const hideToTray = getSystemSetting().minimizeToTray === true
                 const choice = await confirmUnsavedChangesClose(mainWindow, {
-                    minimizeToTray: hideToTray
+                    minimizeToTray: hideToTray,
+                    rendererReady: context.rendererReady.received
                 })
                 if (choice === 'cancel') {
-                    return
-                }
-                if (choice === 'save' && !(await SaveActiveFile())) {
-                    // 保存失败/另存为被取消：不关闭，避免静默丢内容
                     return
                 }
             }
@@ -722,7 +738,7 @@ app.on('before-quit', (event) => {
         return
     }
     // P2-6（关闭协议重入保护）：关闭/退出确认流程进行中时，重入的退出请求直接阻止，
-    // 避免叠加第二个原生对话框或重复 flush。注意此处不要置 isQuitting（否则关闭协议
+    // 避免叠加第二个未保存确认框或重复 flush。注意此处不要置 isQuitting（否则关闭协议
     // 取消退出后退出标志会残留，导致后续 close 跳过未保存确认）；同时丢弃本次重入的
     // 「重启应用」意图，避免下次退出误执行 relaunch（P2-7）。
     if (context.quit.confirming) {
@@ -749,11 +765,13 @@ app.on('before-quit', (event) => {
                 await flushEditorContent(mainWindow)
                 if (appState.isDirty()) {
                     // 2026-11-20（用户需求）：退出前未保存修改同样由用户决定；
-                    // 取消时复位退出标志并保持应用运行。
-                    const choice = await confirmUnsavedChangesClose(mainWindow)
+                    // 应用内确认框与窗口关闭流程语义一致（保存并关闭 / 不保存 / 取消），
+                    // 取消时复位退出标志并保持应用运行。保存失败由 close-confirm 按
+                    // cancel 处理（窗口不关闭、对话框保留供重试）。
+                    const choice = await confirmUnsavedChangesClose(mainWindow, {
+                        rendererReady: context.rendererReady.received
+                    })
                     if (choice === 'cancel') {
-                        aborted = true
-                    } else if (choice === 'save' && !(await SaveActiveFile())) {
                         aborted = true
                     }
                 }

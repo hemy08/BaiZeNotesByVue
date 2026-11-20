@@ -1022,7 +1022,7 @@ describe('close flush protocol (D-3)', () => {
         expect(electronMocks.win.close).toHaveBeenCalled()
     })
 
-    it('should prompt and save the active file before closing when dirty', async () => {
+    it('should prompt for the unsaved close and let close-confirm own the save (dirty)', async () => {
         internalMocks.isDirty.mockReturnValue(true)
         internalMocks.confirmUnsavedChangesClose.mockResolvedValue('save')
         await loadMainIndex()
@@ -1030,7 +1030,9 @@ describe('close flush protocol (D-3)', () => {
         triggerIpcHandler('baize:editor:flush-content-done')
         await settle()
         expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalled()
-        expect(internalMocks.saveActiveFile).toHaveBeenCalled()
+        // 2026-11-20（应用内确认框）：保存动作收敛到 utils/close-confirm，
+        // 本入口只根据结果（save/discard/cancel）放行或中止，避免双实现/双保存。
+        expect(internalMocks.saveActiveFile).not.toHaveBeenCalled()
         expect(electronMocks.win.close).toHaveBeenCalled()
     })
 
@@ -1041,7 +1043,7 @@ describe('close flush protocol (D-3)', () => {
         triggerWindowHandler('close', { preventDefault: vi.fn() })
         triggerIpcHandler('baize:editor:flush-content-done')
         await settle()
-        expect(internalMocks.saveActiveFile).not.toHaveBeenCalled()
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalled()
         expect(electronMocks.win.close).not.toHaveBeenCalled()
     })
 
@@ -1109,7 +1111,47 @@ describe('close flush protocol (D-3)', () => {
         triggerIpcHandler('baize:editor:flush-content-done')
         await settle()
         expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalledWith(electronMocks.win, {
-            minimizeToTray: false
+            minimizeToTray: false,
+            // 未触发渲染层就绪握手：显式传 false，close-confirm 据此回退原生确认框
+            rendererReady: false
+        })
+    })
+
+    // 2026-11-20（应用内确认框）：渲染层就绪握手状态透传给 close-confirm，
+    // 只有已握手时才请求渲染层应用内确认框（否则回退原生框）。
+    it('should pass rendererReady=true when the renderer handshake was received', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        await loadMainIndex()
+        const { getAppContext } = await import('../../src/main/app-context')
+        getAppContext().rendererReady.received = true
+
+        triggerWindowHandler('close', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalledWith(electronMocks.win, {
+            minimizeToTray: false,
+            rendererReady: true
+        })
+    })
+
+    // 2026-11-20（应用内确认框兜底）：渲染进程退出后渲染层就绪状态立即失效，
+    // 后续关闭确认回退原生框（应用内框已不可能显示），避免用户无法退出应用。
+    it('should mark the renderer as not-ready after render-process-gone', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        await loadMainIndex()
+        const { getAppContext } = await import('../../src/main/app-context')
+        getAppContext().rendererReady.received = true
+
+        triggerWebContentHandler('render-process-gone', {}, { reason: 'crashed' })
+        expect(getAppContext().rendererReady.received).toBe(false)
+        expect(internalMocks.loggerError).toHaveBeenCalled()
+
+        triggerWindowHandler('close', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalledWith(electronMocks.win, {
+            minimizeToTray: false,
+            rendererReady: false
         })
     })
 })
@@ -1184,7 +1226,8 @@ describe('minimize to tray on close (批次 B #4)', () => {
         triggerIpcHandler('baize:editor:flush-content-done')
         await settle()
         expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalledWith(electronMocks.win, {
-            minimizeToTray: true
+            minimizeToTray: true,
+            rendererReady: false
         })
     })
 
@@ -1252,7 +1295,7 @@ describe('app lifecycle cleanup', () => {
         expect(electronMocks.app.quit).toHaveBeenCalled()
     })
 
-    it('should prompt and save on before-quit when dirty', async () => {
+    it('should prompt on before-quit when dirty (save/discard/cancel owned by close-confirm)', async () => {
         internalMocks.isDirty.mockReturnValue(true)
         internalMocks.confirmUnsavedChangesClose.mockResolvedValue('save')
         await loadMainIndex()
@@ -1260,7 +1303,8 @@ describe('app lifecycle cleanup', () => {
         triggerIpcHandler('baize:editor:flush-content-done')
         await settle()
         expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalled()
-        expect(internalMocks.saveActiveFile).toHaveBeenCalled()
+        // 2026-11-20（应用内确认框）：保存动作收敛到 close-confirm，本入口不再二次保存
+        expect(internalMocks.saveActiveFile).not.toHaveBeenCalled()
         expect(electronMocks.app.quit).toHaveBeenCalled()
     })
 
@@ -1271,7 +1315,7 @@ describe('app lifecycle cleanup', () => {
         triggerAppHandler('before-quit', { preventDefault: vi.fn() })
         triggerIpcHandler('baize:editor:flush-content-done')
         await settle()
-        expect(internalMocks.saveActiveFile).not.toHaveBeenCalled()
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalled()
         expect(electronMocks.app.quit).not.toHaveBeenCalled()
         expect(electronMocks.quitFlag.value).toBe(false)
     })

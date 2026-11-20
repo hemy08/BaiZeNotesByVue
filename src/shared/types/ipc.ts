@@ -3,12 +3,12 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（60 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（61 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（28 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（29 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
- *   白名单**完全相等**（25 个通道）。
+ *   白名单**完全相等**（26 个通道）。
  *
  * ## 键的写法（可静态校验）
  * 三张表统一用计算属性名 `[IPC.<组>.<键>]` 引用 `src/shared/ipc-channels.ts` 常量，
@@ -155,6 +155,48 @@ export type AutoSaveChangedResult =
     | { ok: true; autoSaveEnabled: true; autoSaveInterval: number }
     | { ok: true; autoSaveEnabled: false }
 
+/* ----------------------------------------------------------------------------
+ * 关闭/退出「未保存修改」确认（2026-11-20：原生 dialog.showMessageBox → 应用内 BaseDialog）
+ *
+ * 通信链路（双通道协议，对齐 IPC-05 的 FLUSH_CONTENT / FLUSH_CONTENT_DONE 先例）：
+ *   1. 主进程关闭/退出协议检测到脏文件后 `webContents.send(IPC.DIALOG.UNSAVED_CLOSE_REQUEST, payload)`；
+ *   2. 渲染层主界面常驻的 UnsavedCloseConfirmHost 打开 BaseDialog 风格的
+ *      UnsavedChangesDialog，用户选择后 `invoke(IPC.DIALOG.UNSAVED_CLOSE_SUBMIT, choice)` 回传；
+ *   3. 主进程 handler 对 save 分支执行真实保存并回传 ok/失败（失败保留对话框供重试），
+ *      随后关闭协议据此放行或中止。
+ * 主进程侧有 30s 超时 / 窗口销毁 / 渲染进程退出兜底（统一按 cancel 安全侧处理），
+ * 渲染层不可用时回退原生确认框并记录原因（见 src/main/utils/close-confirm.ts）。
+ * -------------------------------------------------------------------------- */
+
+/** 用户在「未保存修改」确认框中的选择（主进程与渲染层共用唯一真源） */
+export type UnsavedCloseChoice = 'save' | 'discard' | 'cancel'
+
+/**
+ * UNSAVED_CLOSE_REQUEST 广播载荷（主进程 → 渲染层）。
+ * 仅承载展示语义；文案由渲染层按当前语言装配。
+ */
+export interface UnsavedCloseRequestPayload {
+    /**
+     * 本次「关闭」动作实际是隐藏到系统托盘（minimizeToTray 开启且非显式退出）：
+     * 渲染层据此把「保存并关闭」改为「保存并隐藏」并使用托盘说明文案。
+     */
+    minimizeToTray: boolean
+}
+
+/**
+ * UNSAVED_CLOSE_SUBMIT 返回结构（渲染层 invoke → 主进程）。
+ * - `ok: true`：选择已受理（save 表示已成功保存并放行关闭；discard/cancel 表示选择已生效）；
+ * - `ok: false, stale: true`：主进程侧等待已结束（超时/窗口销毁等），渲染层应直接收起对话框，
+ *   本次关闭不会发生（用户可重新触发关闭）；
+ * - `ok: false`（其余）：动作失败（save 保存失败；含未受信发送方拒绝对象，按失败处理），
+ *   渲染层保留对话框并展示错误，用户可重试 / 改选「不保存」/「取消」。
+ */
+export interface UnsavedCloseSubmitResult {
+    ok: boolean
+    /** true = 主进程已无等待中的关闭确认（超时/窗口销毁兜底后），对话框应直接收起 */
+    stale?: boolean
+}
+
 /** PLUGIN.HASH_TEXT / PLUGIN.HMAC_TEXT 返回结构（算法名 → 摘要字符串） */
 export interface HashResult {
     [algorithm: string]: string
@@ -209,7 +251,7 @@ export interface WelcomeEnterMainPayload {
 /* ============================================================================
  * 二、渲染层 → 主进程（send / invoke）请求参数元组
  *
- * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（58 个，双向核对见测试）。
+ * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（61 个，双向核对见测试）。
  * 元组即 ipcRenderer.send/invoke 除通道名之外的实参列表（可为空元组）。
  * ========================================================================== */
 export interface IpcRequests {
@@ -318,6 +360,11 @@ export interface IpcRequests {
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: [path: string, isFile: boolean, newName: string]
     /** 删除确认（invoke；用户在 Vue 删除确认对话框点击确认后执行删除） */
     [IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM]: [path: string, isFile: boolean]
+    /**
+     * 关闭/退出「未保存修改」确认结果（invoke；渲染层应用内对话框 → 主进程）。
+     * save 分支由主进程执行保存并返回 ok/失败（失败保留对话框供重试）。
+     */
+    [IPC.DIALOG.UNSAVED_CLOSE_SUBMIT]: [choice: UnsavedCloseChoice]
 
     // ============ 插件工具 ============
     /** 生成 RSA 密钥对（send；bits 仅接受 1024/2048/3072/4096，非法回退 2048） */
@@ -359,7 +406,7 @@ export interface IpcRequests {
 /* ============================================================================
  * 三、invoke 通道返回类型
  *
- * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（26 个）。
+ * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（29 个）。
  * send 通道无返回值，故不在此表。
  * ========================================================================== */
 export interface IpcResponses {
@@ -391,6 +438,7 @@ export interface IpcResponses {
     // ============ 对话框确认动作 ============
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult
     [IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM]: DialogActionResult
+    [IPC.DIALOG.UNSAVED_CLOSE_SUBMIT]: UnsavedCloseSubmitResult
 
     // ============ 插件工具 ============
     [IPC.PLUGIN.HASH_TEXT]: HashResult
@@ -415,13 +463,18 @@ export interface IpcResponses {
 /* ============================================================================
  * 四、主进程 → 渲染层广播（on / once）监听回调参数元组
  *
- * 键集合 == preload ALLOWED_RENDERER_RECEIVE_CHANNELS（25 个，双向核对见测试）。
+ * 键集合 == preload ALLOWED_RENDERER_RECEIVE_CHANNELS（26 个，双向核对见测试）。
  * 元组即 ipcRenderer.on 回调除 event 之外的参数列表（单载荷 = 一元元组）。
  * ========================================================================== */
 export interface IpcEvents {
     // ============ 对话框 ============
     /** 打开 Vue 对话框（dialogName + 可选 data，data 形状见 shared/types/dialog.ts） */
     [IPC.DIALOG.OPEN_VUE_DIALOG]: [dialogName: MainProcessDialogName, data?: MainProcessDialogData]
+    /**
+     * 关闭/退出「未保存修改」确认请求（主进程 → 渲染层）：渲染层收到后打开应用内
+     * UnsavedChangesDialog，用户选择经 UNSAVED_CLOSE_SUBMIT invoke 回传。
+     */
+    [IPC.DIALOG.UNSAVED_CLOSE_REQUEST]: [payload: UnsavedCloseRequestPayload]
 
     // ============ 编辑器 ============
     /** 关闭/退出落盘协议：主进程请求渲染层立即同步内容（渲染层回发 FLUSH_CONTENT_DONE） */

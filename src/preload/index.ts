@@ -106,7 +106,7 @@ const api = {
 
 // <preload-whitelist:renderer-send>
 /**
- * 渲染层 → 主进程（send / invoke）允许通道：60 个。
+ * 渲染层 → 主进程（send / invoke）允许通道：61 个。
  * 由 build/generate-preload-whitelist.js 从 shared/types/ipc.ts 的 IpcRequests 生成，禁止手改。
  */
 const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
@@ -158,6 +158,7 @@ const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
     IPC.FILE_MANAGER.FIND_IN,
     IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT,
     IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM,
+    IPC.DIALOG.UNSAVED_CLOSE_SUBMIT,
     IPC.PLUGIN.RSA_GENERATE,
     IPC.PLUGIN.HASH_TEXT,
     IPC.PLUGIN.HMAC_TEXT,
@@ -175,11 +176,12 @@ const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
 
 // <preload-whitelist:renderer-receive>
 /**
- * 主进程 → 渲染层（on / once）允许通道：25 个。
+ * 主进程 → 渲染层（on / once）允许通道：26 个。
  * 由 build/generate-preload-whitelist.js 从 shared/types/ipc.ts 的 IpcEvents 生成，禁止手改。
  */
 const ALLOWED_RENDERER_RECEIVE_CHANNELS = new Set<string>([
     IPC.DIALOG.OPEN_VUE_DIALOG,
+    IPC.DIALOG.UNSAVED_CLOSE_REQUEST,
     IPC.EDITOR.FLUSH_CONTENT,
     IPC.EDITOR.INIT_SETTING,
     IPC.EDITOR.UPDATE_OPTIONS,

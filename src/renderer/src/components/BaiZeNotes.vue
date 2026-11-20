@@ -187,6 +187,14 @@
             @close="configStore.hideDialog('importOption')"
             @confirm="handleImportOptionConfirm"
         />
+        <!--
+            2026-11-20（关闭确认应用内对话框）：关闭/退出「未保存修改」确认宿主。
+            主进程 close / before-quit 在脏文件时经 IPC.DIALOG.UNSAVED_CLOSE_REQUEST 请求，
+            宿主注册监听并驱动 BaseDialog 风格的 UnsavedChangesDialog（保存并关闭 / 不保存 / 取消）。
+            脏文件只可能出现在主界面编辑场景，故宿主随主界面挂载即可；代码随本异步 chunk 加载
+            （不进入 150 KiB 入口 chunk 预算）。
+        -->
+        <UnsavedCloseConfirmHost />
     </div>
 </template>
 
@@ -199,6 +207,8 @@ import EventBus from '../common/event-bus/event-bus'
 import type { DialogActionResult, SelectImageResult, SystemSetting } from '../../../shared/types'
 // 对话框组件导入（统一命名空间导出）
 import * as BaiZeDialogs from './dialogs'
+// 2026-11-20（关闭确认应用内对话框）：主界面常驻的关闭确认宿主（监听主进程请求 + 展示确认框）
+import UnsavedCloseConfirmHost from './dialogs/UnsavedCloseConfirmHost.vue'
 // 配置 Store
 import { getConfigStore } from '../common/useConfigStore'
 import type { DialogName } from '../common/useConfigStore'

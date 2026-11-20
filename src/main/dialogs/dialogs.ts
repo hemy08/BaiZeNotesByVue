@@ -12,6 +12,11 @@
  *   - 新建文件/文件夹 → 既有 `IPC.FILE.CREATE_FILE_FOLDER`（handlers.ts，不在本文件范围）；
  *   - 重命名 → `IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT`（本文件注册）；
  *   - 删除 → `IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM`（本文件注册）。
+ * - 2026-11-20（关闭确认应用内对话框）：关闭/退出时的「未保存修改」确认也改为应用内
+ *   BaseDialog（UnsavedChangesDialog.vue）。主进程关闭协议经
+ *   `IPC.DIALOG.UNSAVED_CLOSE_REQUEST` 请求渲染层显示，用户选择经
+ *   `IPC.DIALOG.UNSAVED_CLOSE_SUBMIT` invoke 回传（本文件注册 handler，保存动作在
+ *   utils/close-confirm 内执行；渲染层不可用时仍回退原生确认框）。
  * - 本文件不再创建任何 BrowserWindow；唯一保留的独立窗口是
  *   「在线网页窗口」（OpenOnlineWebPages，确有独立 BrowserWindow 需求）。
  *
@@ -34,6 +39,7 @@ import {
     RenameFileFolder,
     showErrorMessageBox
 } from '../utils/file-utils'
+import { submitUnsavedCloseChoice } from '../utils/close-confirm'
 import { ipcListenerManager } from '../ipc/ipc-listener-manager'
 import { tMain } from '../utils/i18n'
 // P1/N-05：文件管理器右键通道统一校验发送方必须为主窗口
@@ -163,6 +169,7 @@ export function MainWindowListenDialogsEvent(mainWindow: BrowserWindow): void {
 
     registerRenameSubmitHandler()
     registerDeleteConfirmHandler()
+    registerUnsavedCloseSubmitHandler()
 }
 
 /**
@@ -225,6 +232,27 @@ function registerDeleteConfirmHandler(): void {
                     return { ok: false, error: message }
                 }
             },
+            { kind: 'handle' }
+        ),
+        MAIN_WINDOW_DIALOGS_COMPONENT_ID
+    )
+}
+
+/**
+ * 关闭/退出「未保存修改」确认回执（渲染层应用内对话框 → 主进程 invoke）。
+ *
+ * 2026-11-20（关闭确认应用内对话框）：关闭/退出协议在 utils/close-confirm 中等待渲染层
+ * 回执；本 handler 只做「受信发送方校验 + 转交」，具体语义（save 执行真实保存、失败保留
+ * 对话框；discard/cancel 结算；无等待中请求返回 stale）由 submitUnsavedCloseChoice 负责。
+ * 安全：仅受信主窗口可提交（withSenderCheck），非受信调用返回拒绝对象而非执行业务。
+ */
+function registerUnsavedCloseSubmitHandler(): void {
+    ipcListenerManager.registerHandleOnce(
+        IPC.DIALOG.UNSAVED_CLOSE_SUBMIT,
+        withSenderCheck(
+            IPC.DIALOG.UNSAVED_CLOSE_SUBMIT,
+            async (_event: Electron.IpcMainInvokeEvent, choice: unknown) =>
+                submitUnsavedCloseChoice(choice),
             { kind: 'handle' }
         ),
         MAIN_WINDOW_DIALOGS_COMPONENT_ID

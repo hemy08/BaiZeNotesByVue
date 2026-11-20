@@ -153,10 +153,17 @@ export const IPC = {
     //   用户在 Vue 对话框确认后提交重命名/删除动作（替代原 JSDOM 对话框 preload 的
     //   CREATE_FILE_FOLDER_ENTER / RENAME_FILE_FOLDER_ENTER 两个回车通道；
     //   新建文件/文件夹统一复用既有 IPC.FILE.CREATE_FILE_FOLDER invoke 动作）。
+    // 2026-11-20（关闭确认应用内对话框）：关闭/退出时的「未保存修改」确认由主进程原生
+    // dialog.showMessageBox 改为应用内 BaseDialog，采用显式双通道协议：
+    // - UNSAVED_CLOSE_REQUEST：主进程 → 渲染层，请求显示应用内确认框（载荷含托盘语义）；
+    // - UNSAVED_CLOSE_SUBMIT：渲染层 → 主进程（invoke），回传用户选择（save/discard/cancel），
+    //   「保存并关闭」在 handler 内执行保存并回传成功/失败（失败保留对话框供重试）。
     DIALOG: {
         RENAME_FILE_FOLDER_SUBMIT: 'baize:dialog:rename-file-folder-submit',
         DELETE_FILE_FOLDER_CONFIRM: 'baize:dialog:delete-file-folder-confirm',
-        OPEN_VUE_DIALOG: 'baize:dialog:open-vue'
+        OPEN_VUE_DIALOG: 'baize:dialog:open-vue',
+        UNSAVED_CLOSE_REQUEST: 'baize:dialog:unsaved-close-request',
+        UNSAVED_CLOSE_SUBMIT: 'baize:dialog:unsaved-close-submit'
     } as const,
 
     // ============ 导航 ============

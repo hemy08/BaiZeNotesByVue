@@ -33,7 +33,10 @@ export default {
         trayMessage: 'The current file has unsaved changes. Save before hiding to the system tray?',
         trayDetail:
             "Save & hide keeps your changes and hides the window to the system tray (the app keeps running in the background); Don't save discards them; Cancel returns to editing.",
-        traySave: 'Save & hide'
+        traySave: 'Save & hide',
+        // 2026-11-20 (in-app unsaved-close dialog): saving label and failure notice
+        saving: 'Saving...',
+        saveFailed: 'Saving failed; the window stays open. Retry, or choose "Don\'t save" / Cancel.'
     },
     dialog: {
         errorTitle: 'Error!',
