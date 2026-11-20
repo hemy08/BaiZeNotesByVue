@@ -98,7 +98,9 @@ watch(
         errorVisible.value = false
         await nextTick()
         inputRef.value?.focus()
-    }
+    },
+    // 2026-11-20：首次挂载时 visible 直接为 true，immediate 保证输入框聚焦
+    { immediate: true }
 )
 
 function handleCancel(): void {

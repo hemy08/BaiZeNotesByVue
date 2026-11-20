@@ -94,6 +94,8 @@ describe('EditorSettingDialog', () => {
             ...dialogMountOptions,
             props: { visible: true }
         })
+        // 2026-11-20：首次挂载即 visible=true 时改为立即加载配置，先等加载完成再交互
+        await flushPromises()
         await wrapper.findAll('.setting-checkbox')[0].setValue(false)
         expect((wrapper.findAll('.setting-checkbox')[0].element as HTMLInputElement).checked).toBe(
             false
@@ -278,6 +280,20 @@ describe('ThemeSettingDialog', () => {
         await flushPromises()
         return wrapper
     }
+
+    it('loads the theme list on first open when mounted already visible', async () => {
+        // 2026-11-20（用户反馈）：父级 v-if 首次挂载时 visible 直接为 true，
+        // watch 必须 immediate 才能触发 loadThemes，否则主题列表首次打开为空。
+        const wrapper = mount(ThemeSettingDialog, {
+            ...dialogMountOptions,
+            props: { visible: true }
+        })
+        await flushPromises()
+        expect(invoke).toHaveBeenCalledWith('baize:theme:get-all')
+        expect(invoke).toHaveBeenCalledWith('baize:theme:get-all-monaco')
+        expect(wrapper.findAll('.theme-card')).toHaveLength(3)
+        expect(wrapper.findAll('.category-title')).toHaveLength(3)
+    })
 
     it('loads and groups themes into three categories', async () => {
         const wrapper = await mountVisible()

@@ -88,7 +88,9 @@ watch(
             name.value = ''
             dirPathInput.value = props.dirPath || ''
         }
-    }
+    },
+    // 2026-11-20：首次挂载时 visible 直接为 true，immediate 保证默认路径回填
+    { immediate: true }
 )
 
 function handleCancel() {

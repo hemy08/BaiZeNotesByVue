@@ -167,14 +167,18 @@ const {
     allMonacoThemes
 } = form
 
-// ARC-04：打开时读取主题列表与当前主题配置（与拆分前一致：watch 无 immediate）
+// ARC-04：打开时读取主题列表与当前主题配置。
+// 2026-11-20（用户反馈修复）：immediate 必须为 true——对话框在首次打开时由父级
+// v-if 直接以 visible=true 挂载，无 visible false→true 变化，非 immediate 的 watch
+// 不会触发 loadThemes，导致主题列表首次打开为空；immediate 同时保持二次打开重载语义。
 watch(
     () => props.visible,
     (newVal) => {
         if (newVal) {
             void form.loadThemes()
         }
-    }
+    },
+    { immediate: true }
 )
 
 /**

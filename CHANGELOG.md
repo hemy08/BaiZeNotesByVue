@@ -40,10 +40,11 @@
 - **HTML 查看器导航修复**：点击顶部导航后目标页 `report-nav.js` 因 sandbox 不执行而导航消失、路径不切换；改为拦截本地 `.html` 链接走查看器加载器（重新读取 + 注入静态导航 + 更新 filePath）
 - **自动保存默认关闭**：`systemSettingDefaults` / `SYSTEM_SETTING_FALLBACK` 的 `autoSaveEnabled` 由 true 改为 false；软件打开后不启用自动保存，用户需在「系统设置 → 文件设置」中自行开启（schema v3 一次性迁移旧默认 true → false，之后用户开启不再覆盖）
 - **未保存关闭确认**：关闭窗口/退出应用时若当前文件有未保存修改，弹原生对话框「保存并关闭 / 不保存 / 取消」；取消或保存失败不关闭（新增 `close-confirm.ts` 与中英文案）
+- **主题设置首次打开列表为空修复**：拆分后 `ThemeSettingDialog` 的 visible watch 缺少 `immediate`，父级 v-if 首次以 visible=true 挂载时不触发 `loadThemes`；已补 immediate，并同步修复 Editor/CreateFileFolder/Rename 等同样首开初始化缺失（默认路径/输入聚焦）
 
 ### ✅ 门禁
 
-- typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **185 文件 / 3,396 用例全通过**、electron-vite build 成功
+- typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **185 文件 / 3,397 用例全通过**、electron-vite build 成功
 - 质量基线/文档链接检查/CI 体积预算/生产依赖 audit（0 漏洞）全部通过
 
 ## 2026年11月19日 - 版本 1.3.8（版本维护 / 结构优化第 1 批）

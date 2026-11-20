@@ -141,7 +141,7 @@ const sidebarItems = EDITOR_SETTING_SIDEBAR_ITEMS
 /** 共享草稿状态 / 加载 / 保存 / 取消（4 页签共用唯一一份草稿） */
 const { settings, loadSettings, saveSettings, resetSettings } = useEditorSettingForm()
 
-// ARC-04：打开时读取主进程配置（与拆分前一致：watch 无 immediate，visible→true 才加载）
+// ARC-04：打开时读取主进程配置；2026-11-20 增加 immediate（首次由父级 v-if 以 visible=true 挂载时也能加载）
 watch(
     () => props.visible,
     async (newVal) => {
@@ -149,7 +149,9 @@ watch(
             return
         }
         await loadSettings()
-    }
+    },
+    // 2026-11-20：首次打开由父级 v-if 直接以 visible=true 挂载，必须 immediate 才能加载设置
+    { immediate: true }
 )
 
 /** panel → 共享草稿：浅合并字段补丁（唯一写入口，保证 4 个页签共享同一份草稿） */
