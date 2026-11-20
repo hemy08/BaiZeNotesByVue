@@ -25,12 +25,24 @@ name: CI
 #   因此该 job 先执行完整 `npm run build:win:all`，再运行 `npm run budget:check`
 #   （阈值与断言逻辑见 build/check-bundle-budget.js，基线数据见 out/tool-results/p0-size.md）
 # - 与 e2e job 的 build:unpack 相互独立（各自 runner，不共享工作区）
+#
+# 2026-11-20（发布/CI 门禁修复批次）：
+# - 显式最小权限（contents: read），不再继承仓库默认 token 权限；
+# - 全量测试只跑一次：`vitest run --coverage` 同时产出覆盖率（阈值仍生效）与 JSON 报告，
+#   JSON 供 quality baseline 校验用例数（此前 quality:check 未传 --test-json，用例数漂移无法拦截）；
+# - coverage artifact 改为 `if: always()`（覆盖率阈值失败时也要留下现场）；
+# - ESLint 加 `--max-warnings=0`（no-explicit-any 等 warn 不再可长期累积）；
+# - 三个 job 增加 Electron 二进制下载缓存（npm ci 各自下载 ≈100MB+）；
+# - e2e 类型检查已纳入 `npm run typecheck`（tsconfig.e2e.json），无需单独步骤。
 on:
     push:
         branches: [main, master]
     pull_request:
         branches: [main, master]
     workflow_dispatch:
+
+permissions:
+    contents: read
 
 concurrency:
     group: ci-${{ github.ref }}
@@ -45,6 +57,15 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
 
+            # 可选优化：缓存 Electron 二进制（npm ci 的 electron postinstall 下载 ≈100MB+）
+            - name: Cache Electron binary
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/AppData/Local/electron/Cache
+                      ~/AppData/Local/electron-builder/Cache
+                  key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
+
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
@@ -54,19 +75,21 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Typecheck (node / web / test)
+            - name: Typecheck (node / web / test / e2e)
               run: npm run typecheck
 
+            # Q-17：warn 也纳入门禁，避免 warning 长期累积（当前实测 0 warning）
             - name: ESLint
-              run: npx --no-install eslint .
+              run: npx --no-install eslint . --max-warnings=0
 
-            - name: Vitest
-              run: npx --no-install vitest run
-            - name: Coverage (thresholds)
-              run: npx --no-install vitest run --coverage
+            # Q-16：测试只跑一次——覆盖率阈值 + 默认控制台报告 + JSON 报告（供用例数基线校验）
+            - name: Vitest with coverage (+ JSON report)
+              run: npx --no-install vitest run --coverage --reporter=default --reporter=json --outputFile.json=out/test-results/vitest.json
 
             # P0 E2E 补齐：coverage 结果作为 artifact 留存（7 天），便于质量趋势/失败排查
+            # Q-16：覆盖率阈值失败（步骤红）时也要上传现场证据，故用 if: always()
             - name: Upload coverage artifact
+              if: always()
               uses: actions/upload-artifact@v4
               with:
                   name: coverage-report
@@ -79,8 +102,9 @@ jobs:
             - name: Production dependency audit
               run: npm audit --omit=dev --registry=https://registry.npmjs.org --audit-level=high
 
+            # Q-10：传入 vitest JSON 报告，用例数（numTotalTests）漂移也会被基线门禁拦截
             - name: Quality baseline check
-              run: node build/generate-quality-baseline.js --check
+              run: node build/generate-quality-baseline.js --check --test-json=out/test-results/vitest.json
 
             # P1 文档链接检查：扫描 docs/**/*.md 相对链接（忽略外链/锚点/代码块），断链即失败
             - name: Docs link check
@@ -96,6 +120,15 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+
+            # 可选优化：缓存 Electron 二进制（npm ci 的 electron postinstall 下载 ≈100MB+）
+            - name: Cache Electron binary
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/AppData/Local/electron/Cache
+                      ~/AppData/Local/electron-builder/Cache
+                  key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
@@ -134,6 +167,15 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+
+            # 可选优化：缓存 Electron 二进制（npm ci 的 electron postinstall 下载 ≈100MB+）
+            - name: Cache Electron binary
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/AppData/Local/electron/Cache
+                      ~/AppData/Local/electron-builder/Cache
+                  key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
 
             - name: Setup Node.js
               uses: actions/setup-node@v4

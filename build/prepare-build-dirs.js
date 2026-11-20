@@ -23,6 +23,11 @@
  *   node build/prepare-build-dirs.js --exec "<命令>"     预检 + 以工作区临时目录执行构建命令
  *     例：node build/prepare-build-dirs.js --exec "npm run build:win:nsis"
  *         （等价于已删除的 build-win.ps1 -Target nsis；portable/all 同理）
+ *
+ * 说明（package.json 为严格 JSON、无法写注释，双调用原因记录在此）：
+ *   `build:win:all` 中本脚本被刻意调用两次——NSIS 打包完成后 electron-builder 会重建
+ *   `out/build/dist`（新增安装包/blockmap/latest.yml），因此 portable 打包前需要再预检一次
+ *   该目录的完整性级别（幂等；正常路径只打印一行「正常（Medium）」日志，不改变产物）。
  */
 const { execFileSync, spawnSync } = require('node:child_process')
 const fs = require('node:fs')

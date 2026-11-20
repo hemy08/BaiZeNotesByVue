@@ -1,0 +1,32 @@
+{
+    // E2E 专项类型检查配置（Q-04/P2-7）。
+    //
+    // 背景：`e2e/**/*.ts` 此前未被任何 tsconfig 的 include 覆盖（tsconfig.node/web/test 均不含），
+    // 而 Playwright 只用 esbuild 转译、不做类型检查，导致 E2E 夹具与用例的类型漂移
+    // （如 launchFailures / 快照结构变更、Node API 误用）只能在运行时暴露。
+    //
+    // 本配置只覆盖 E2E 代码，由 package.json 的 `typecheck:e2e` 纳入 `npm run typecheck` 链；
+    // 与 tsconfig.test.json 同口径（strict + noImplicitAny + noEmit），刻意不继承
+    // @electron-toolkit/tsconfig 基座：其 noUnusedLocals/noUnusedParameters 对 Playwright
+    // 夹具（未使用的 fixture / 测试辅助变量）噪音过大，会把类型检查变成 lint 检查。
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "strict": true,
+        "noImplicitAny": true,
+        "noEmit": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "resolveJsonModule": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
+        "noErrorTruncation": true,
+        // E2E 夹具直接用 Node 内建（fs/os/path/child_process）与 Electron 类型；
+        // @playwright/test 的类型由 import 自动带入，无需放入 types。
+        "types": ["node"]
+    },
+    "include": ["e2e/**/*.ts"],
+    "exclude": ["node_modules", "out", "dist"]
+}

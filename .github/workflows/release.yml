@@ -1,10 +1,15 @@
 name: Release (tag → build → GitHub Release)
 
-# 结构优化第 3 批 3.3：tag 触发的发布流水线（替代手工本地打包上传）。
-# - 触发：推送 release-* tag（如 release-1.3.8）或手动 dispatch（输入 tag）
-# - Windows 构建：npm run build:win:all（NSIS + portable），生成 latest.yml / blockmap
-# - 上传到 GitHub Release：Setup exe、portable exe、blockmap、latest.yml
-# - 发布后验证：releases/latest/download/latest.yml 可访问且版本与 tag 一致
+# 发布流水线（tag push / 手动 dispatch）。
+# - 触发：推送 release-x.y.z tag，或手动 dispatch 并输入「已存在」的 tag
+# - 检出强一致：dispatch 按输入 tag 检出（而非默认分支）；tag push 用 github.ref；
+#   检出后再校验「tag 存在 + HEAD 提交 == tag 指向提交」
+# - 版本守卫：tag（release-x.y.z）↔ package.json.version ↔ 生成的 appVersion 三方必须一致
+# - 发布门禁：与 ci.yml 对齐——typecheck / ESLint（0 warning）/ Prettier / vitest 覆盖率阈值 /
+#   docs:check / quality baseline / 生产依赖 audit；构建后再跑体积预算 budget:check
+# - 产物：按版本精确匹配（Setup exe + blockmap / portable exe / latest.yml），不做版本通配
+# - 发布页：body 取自 RELEASE-NOTES.md 对应版本段；发布后校验 tag 维度的 latest.yml
+#   （https://github.com/<repo>/releases/download/<tag>/latest.yml，而非 releases/latest）
 on:
     push:
         tags:
@@ -12,7 +17,7 @@ on:
     workflow_dispatch:
         inputs:
             tag:
-                description: '要发布的 tag（例如 release-1.3.8；需已存在）'
+                description: '要发布的 tag（例如 release-1.4.0；必须已存在，格式 release-x.y.z）'
                 required: true
                 type: string
 
@@ -27,10 +32,56 @@ jobs:
     release:
         name: Windows Release
         runs-on: windows-latest
-        timeout-minutes: 45
+        # 发布门禁已与 CI 对齐（typecheck/ESLint/Prettier/coverage/docs/baseline/audit）
+        # + NSIS/portable 双打包 + 产物校验，45 分钟（原「仅打包」口径）上调到 60 分钟
+        timeout-minutes: 60
+        # 发布审批环境：未配置保护规则时自动创建并直接运行；配置 required reviewers 后即为人工发布闸门
+        environment: release
         steps:
-            - name: Checkout
+            # 1) 先校验输入（纯字符串，不依赖检出）：dispatch 取 inputs.tag，tag push 取 github.ref_name
+            # 2) 再按 tag 检出，最后用 git ls-remote 确认 tag 存在且 HEAD 正是 tag 指向的提交
+            - name: Resolve and validate release tag
+              id: resolve
+              shell: pwsh
+              env:
+                  EVENT_NAME: ${{ github.event_name }}
+                  INPUT_TAG: ${{ inputs.tag }}
+                  REF_NAME: ${{ github.ref_name }}
+              run: |
+                  $rawTag = if ($env:EVENT_NAME -eq 'workflow_dispatch') { $env:INPUT_TAG } else { $env:REF_NAME }
+                  if (-not $rawTag) { throw 'workflow_dispatch 事件缺少 tag 输入' }
+                  $rawTag = $rawTag.Trim()
+                  if ($rawTag -notmatch '^release-(?<version>\d+\.\d+\.\d+)$') {
+                      throw "非法发布 tag：'$rawTag'（要求形如 release-x.y.z，例如 release-1.4.0）"
+                  }
+                  $version = $Matches['version']
+                  Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "tag=$rawTag" -Encoding utf8
+                  Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "version=$version" -Encoding utf8
+                  Write-Host "发布目标：tag=$rawTag（版本 $version）"
+
+            - name: Checkout release ref
               uses: actions/checkout@v4
+              with:
+                  # workflow_dispatch：检出输入 tag（修复此前「dispatch 构建默认分支却挂目标 tag」的缺陷）
+                  # push tag：github.ref 即 refs/tags/release-x.y.z
+                  ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+                  # 保留完整历史，便于后续核对 tag 提交与 git describe 类操作
+                  fetch-depth: 0
+
+            - name: Verify tag exists and checkout matches tag
+              shell: pwsh
+              env:
+                  TAG: ${{ steps.resolve.outputs.tag }}
+              run: |
+                  # tag 必须已存在：禁止 softprops 自动创建指向默认分支的 tag
+                  $remoteRef = git ls-remote --tags --refs origin "refs/tags/$env:TAG"
+                  if (-not $remoteRef) { throw "tag 不存在：$env:TAG（请先创建并推送 tag 后再发布）" }
+                  $tagSha = ($remoteRef -split '\s+')[0].Trim()
+                  $headSha = (git rev-parse HEAD).Trim()
+                  if ($headSha -ne $tagSha) {
+                      throw "检出提交与 tag 不一致：HEAD=$headSha / tag $env:TAG=$tagSha（dispatch 必须检出该 tag 指向的提交）"
+                  }
+                  Write-Host "✓ 已按 tag 检出：$env:TAG @ $headSha"
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
@@ -41,52 +92,151 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Quality gate (typecheck + lint + tests)
+            # 版本守卫：tag ↔ package.json.version ↔ 生成的 appVersion 三方一致才允许构建
+            - name: Verify tag ↔ package.json.version ↔ appVersion
+              shell: pwsh
+              env:
+                  TAG: ${{ steps.resolve.outputs.tag }}
+                  VERSION: ${{ steps.resolve.outputs.version }}
               run: |
-                  npm run typecheck
-                  npx --no-install eslint . --quiet
-                  npx --no-install vitest run
+                  $pkgVersion = node -e "process.stdout.write(require('./package.json').version)"
+                  if ($pkgVersion -ne $env:VERSION) {
+                      throw "版本不一致：tag $env:TAG → $env:VERSION，package.json.version → $pkgVersion"
+                  }
+                  # appVersion 生成后核对（version.json 由 build/generate-version-config.js 从 package.json 生成）
+                  node build/generate-version-config.js
+                  $appVersion = (Get-Content resources/config/version.json -Raw -Encoding UTF8 | ConvertFrom-Json).appVersion
+                  if ($appVersion -ne $env:VERSION) {
+                      throw "appVersion 生成后不一致：resources/config/version.json=$appVersion，tag 版本=$env:VERSION"
+                  }
+                  Write-Host "✓ 版本一致：tag=$env:TAG / package.json=$pkgVersion / appVersion=$appVersion"
+
+            # 发布门禁（与 ci.yml 的 quality-gate 对齐）。逐条独立步骤：
+            # pwsh 的 `run` 多行脚本只以「最后一条命令」退出码判定步骤成败，合并写会把
+            # 中间门禁的失败吞掉，因此这里与 CI 一样一条门禁一个 step。
+            - name: Gate · Typecheck (node / web / test / e2e)
+              run: npm run typecheck
+
+            - name: Gate · ESLint (0 warning)
+              run: npx --no-install eslint . --max-warnings=0
+
+            - name: Gate · Prettier
+              run: npx --no-install prettier --check .
+
+            - name: Gate · Vitest with coverage thresholds
+              run: npx --no-install vitest run --coverage
+
+            - name: Gate · Docs link check
+              run: npm run docs:check
+
+            - name: Gate · Quality baseline
+              run: node build/generate-quality-baseline.js --check
+
+            - name: Gate · Production dependency audit
+              run: npm audit --omit=dev --registry=https://registry.npmjs.org --audit-level=high
 
             - name: Build installers (NSIS + portable)
               run: npm run build:win:all
 
-            - name: Verify artifacts
+            # 体积预算：断言对象是真实安装包（基于本次构建产物，不能省）
+            - name: Check bundle budget
+              run: npm run budget:check
+
+            # 按版本精确匹配产物：避免通配同时命中旧版本、以及 Setup/portable 两个 glob 互相重叠
+            - name: Verify artifacts (version-exact)
               shell: pwsh
+              env:
+                  VERSION: ${{ steps.resolve.outputs.version }}
               run: |
-                  $version = node -e "process.stdout.write(require('./package.json').version)"
+                  $version = $env:VERSION
                   # M7 产物治理：electron-builder 输出目录为 out/build/dist（见 electron-builder.yml）
                   $distDir = 'out/build/dist'
                   $expected = @(
-                    "$distDir/BaiZeNotes_Setup_$version`_windows_x64.exe",
-                    "$distDir/BaiZeNotes_$version`_windows_x64.exe",
-                    "$distDir/latest.yml"
+                      "$distDir/BaiZeNotes_Setup_${version}_windows_x64.exe",
+                      "$distDir/BaiZeNotes_Setup_${version}_windows_x64.exe.blockmap",
+                      "$distDir/BaiZeNotes_${version}_windows_x64.exe",
+                      "$distDir/latest.yml"
                   )
                   foreach ($f in $expected) {
-                    if (-not (Test-Path $f)) { throw "缺少发布产物：$f" }
+                      if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { throw "缺少发布产物：$f" }
+                      if ((Get-Item -LiteralPath $f).Length -le 0) { throw "发布产物为空：$f" }
                   }
-                  $latest = Get-Content "$distDir/latest.yml" -Raw
-                  if ($latest -notmatch "version: $version") { throw "latest.yml 版本不匹配（期望 $version）" }
-                  Write-Host "产物校验通过：v$version"
+                  $latest = Get-Content -LiteralPath "$distDir/latest.yml" -Raw -Encoding UTF8
+                  if ($latest -notmatch "(?m)^version:\s*$([regex]::Escape($version))\s*$") {
+                      throw "latest.yml 版本不匹配（期望 $version）：`n$latest"
+                  }
+                  if ($latest -notmatch "BaiZeNotes_Setup_$([regex]::Escape($version))_windows_x64\.exe") {
+                      throw "latest.yml 未指向本版本安装包（期望 $version）"
+                  }
+                  Write-Host "✓ 产物校验通过：v$version（Setup / blockmap / portable / latest.yml）"
+
+            # 发布页 body 改为仓库 RELEASE-NOTES.md 的对应版本段（不再用 GitHub 自动生成）
+            - name: Extract release notes from RELEASE-NOTES.md
+              id: notes
+              shell: pwsh
+              env:
+                  VERSION: ${{ steps.resolve.outputs.version }}
+              run: |
+                  $content = Get-Content RELEASE-NOTES.md -Raw -Encoding UTF8
+                  $pattern = "(?ms)^##\s+版本\s+$([regex]::Escape($env:VERSION))\b.*?(?=^##\s+版本\s|\z)"
+                  $match = [regex]::Match($content, $pattern)
+                  if (-not $match.Success) { throw "RELEASE-NOTES.md 中未找到版本 $env:VERSION 的发布说明段" }
+                  $body = $match.Value.Trim()
+                  $body = $body -replace '(?s)\s*\n---\s*$', ''
+                  $body = $body.Trim()
+                  if (-not $body) { throw "RELEASE-NOTES.md 中版本 $env:VERSION 的发布说明段为空" }
+                  $delimiter = "RELEASE_NOTES_$([guid]::NewGuid().ToString('N'))"
+                  Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "body<<$delimiter" -Encoding utf8
+                  Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value $body -Encoding utf8
+                  Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value $delimiter -Encoding utf8
+                  Write-Host "✓ 已提取 RELEASE-NOTES.md 版本 $env:VERSION 段（$($body.Length) 字符）"
 
             - name: Create GitHub Release and upload assets
               uses: softprops/action-gh-release@v2
               with:
-                  tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-                  name: ${{ github.event.inputs.tag || github.ref_name }}
-                  generate_release_notes: true
+                  tag_name: ${{ steps.resolve.outputs.tag }}
+                  name: ${{ steps.resolve.outputs.tag }}
+                  body: ${{ steps.notes.outputs.body }}
+                  # 精确到版本与文件名，禁止通配（旧版本产物/重叠 glob 不再可能被上传）
                   files: |
-                      out/build/dist/BaiZeNotes_Setup_*_windows_x64.exe
-                      out/build/dist/BaiZeNotes_*_windows_x64.exe
-                      out/build/dist/*.blockmap
+                      out/build/dist/BaiZeNotes_Setup_${{ steps.resolve.outputs.version }}_windows_x64.exe
+                      out/build/dist/BaiZeNotes_Setup_${{ steps.resolve.outputs.version }}_windows_x64.exe.blockmap
+                      out/build/dist/BaiZeNotes_${{ steps.resolve.outputs.version }}_windows_x64.exe
                       out/build/dist/latest.yml
                   fail_on_unmatched_files: true
+                  draft: false
+                  prerelease: false
 
-            - name: Verify update channel (latest.yml)
+            # 发布后校验改为「本次 tag 维度」：releases/download/<tag>/latest.yml，
+            # 不再用 releases/latest（补发旧版本/非最新 tag 时口径不成立）
+            - name: Verify tag-scoped update channel (latest.yml)
               shell: pwsh
+              env:
+                  TAG: ${{ steps.resolve.outputs.tag }}
+                  VERSION: ${{ steps.resolve.outputs.version }}
+                  REPO: ${{ github.repository }}
               run: |
-                  $version = node -e "process.stdout.write(require('./package.json').version)"
-                  $url = 'https://github.com/hemy08/BaiZeNotesByVue/releases/latest/download/latest.yml'
-                  $resp = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 60
-                  if ($resp.StatusCode -ne 200) { throw "latest.yml 下载失败：$($resp.StatusCode)" }
-                  if ($resp.Content -notmatch "version: $version") { throw "latest.yml 内容版本不匹配（期望 $version）" }
-                  Write-Host "自动更新源验证通过：v$version"
+                  $version = $env:VERSION
+                  $url = "https://github.com/$env:REPO/releases/download/$env:TAG/latest.yml"
+                  # GitHub Release 资产有短暂传播延迟：最多重试 6 次（间隔 10s）
+                  $resp = $null
+                  for ($attempt = 1; $attempt -le 6; $attempt++) {
+                      try {
+                          $resp = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 60
+                          if ($resp.StatusCode -eq 200) { break }
+                      } catch {
+                          Write-Host "第 $attempt 次请求 latest.yml 失败：$($_.Exception.Message)"
+                      }
+                      Start-Sleep -Seconds 10
+                  }
+                  if (-not $resp -or $resp.StatusCode -ne 200) { throw "latest.yml 下载失败：$url" }
+                  $content = $resp.Content
+                  # 兼容不同 PowerShell 版本对 octet-stream 响应体的处理（string 或 byte[]）
+                  if ($content -is [byte[]]) { $content = [System.Text.Encoding]::UTF8.GetString($content) }
+                  if ($content -notmatch "(?m)^version:\s*$([regex]::Escape($version))\s*$") {
+                      throw "latest.yml 版本与 tag 版本不一致（期望 $version）：`n$content"
+                  }
+                  if ($content -notmatch "BaiZeNotes_Setup_$([regex]::Escape($version))_windows_x64\.exe") {
+                      throw "latest.yml 未指向本版本安装包（期望 $version）"
+                  }
+                  Write-Host "✓ 发布后校验通过：$url（version=$version）"
