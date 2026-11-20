@@ -232,12 +232,23 @@ function createWindow(): BrowserWindow {
             return
         }
         event.preventDefault()
+        // P2-6（关闭协议重入保护）：已有确认/落盘流程进行中时，重复 close 直接忽略，
+        // 避免叠加第二个原生对话框或重复 flush；取消后由协议末尾 finally 复位。
+        if (context.quit.confirming) {
+            return
+        }
+        context.quit.confirming = true
         try {
             await flushEditorContent(mainWindow)
             if (appState.isDirty()) {
                 // 2026-11-20（用户需求）：关闭前若仍有未保存修改，弹框让用户选择
                 // 「保存并关闭 / 不保存 / 取消」；取消则保持窗口与编辑状态。
-                const choice = await confirmUnsavedChangesClose(mainWindow)
+                // P3 F-09：minimizeToTray 开启时本次「关闭」实际是隐藏到托盘，
+                // 文案改用「保存并隐藏」，避免用户误以为应用已退出。
+                const hideToTray = getSystemSetting().minimizeToTray === true
+                const choice = await confirmUnsavedChangesClose(mainWindow, {
+                    minimizeToTray: hideToTray
+                })
                 if (choice === 'cancel') {
                     return
                 }
@@ -248,6 +259,9 @@ function createWindow(): BrowserWindow {
             }
         } catch (err) {
             logger.error('关闭窗口前落盘失败', err)
+        } finally {
+            // 无论保存/取消/异常，协议结束即复位重入标志
+            context.quit.confirming = false
         }
         // 批次 B #4：flush 落盘完成后，minimizeToTray 开启且非显式退出 → 隐藏窗口
         // （托盘常驻）；隐藏分支不置 flushedForClose，下次点关闭重新走 flush 协议
@@ -609,10 +623,29 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', (event) => {
+    const context = getAppContext()
+    // P1-9（更新安装 × 关闭确认协调）：auto-updater 在拉起安装器前已完成未保存确认
+    // （保存成功或用户确认不保存），并置 update.installing。安装路径的 app.quit()
+    // 不允许再弹一次未保存确认，也不能被 preventDefault 卡住（安装器可能已启动），
+    // 因此直接放行退出并完成清理。
+    if (context.update.installing) {
+        appState.setQuitting(true)
+        context.quit.flushedForQuit = true
+        cleanupApp()
+        return
+    }
+    // P2-6（关闭协议重入保护）：关闭/退出确认流程进行中时，重入的退出请求直接阻止，
+    // 避免叠加第二个原生对话框或重复 flush。注意此处不要置 isQuitting（否则关闭协议
+    // 取消退出后退出标志会残留，导致后续 close 跳过未保存确认）；同时丢弃本次重入的
+    // 「重启应用」意图，避免下次退出误执行 relaunch（P2-7）。
+    if (context.quit.confirming) {
+        context.quit.pendingRelaunch = false
+        event.preventDefault()
+        return
+    }
     // 批次 B #4：进入退出流程即置显式退出标志——随后窗口 close 事件不再被
     // 「最小化到托盘」拦截（否则 hide 会阻止窗口关闭、进程无法完全退出）。
     // M1：标志本体在 AppContext.quit.isQuitting（appState.setQuitting 等价读写同一字段）。
-    const context = getAppContext()
     appState.setQuitting(true)
     if (context.quit.flushedForQuit) {
         cleanupApp()
@@ -622,7 +655,9 @@ app.on('before-quit', (event) => {
     const mainWindow = context.mainWindow
     if (mainWindow && !mainWindow.isDestroyed()) {
         event.preventDefault()
+        context.quit.confirming = true
         void (async () => {
+            let aborted = false
             try {
                 await flushEditorContent(mainWindow)
                 if (appState.isDirty()) {
@@ -630,21 +665,38 @@ app.on('before-quit', (event) => {
                     // 取消时复位退出标志并保持应用运行。
                     const choice = await confirmUnsavedChangesClose(mainWindow)
                     if (choice === 'cancel') {
-                        appState.setQuitting(false)
-                        return
-                    }
-                    if (choice === 'save' && !(await SaveActiveFile())) {
-                        appState.setQuitting(false)
-                        return
+                        aborted = true
+                    } else if (choice === 'save' && !(await SaveActiveFile())) {
+                        aborted = true
                     }
                 }
             } catch (err) {
                 logger.error('退出前落盘失败', err)
+            } finally {
+                // 协议结束（保存/不保存/取消/异常）即复位重入标志
+                context.quit.confirming = false
+            }
+            if (aborted) {
+                // 用户取消退出：恢复运行状态，并丢弃「重启应用」意图
+                // （P2-7：不能让已登记的 relaunch 在下次正常退出时意外执行）
+                appState.setQuitting(false)
+                context.quit.pendingRelaunch = false
+                return
+            }
+            // P2-7：确认放行后才真正执行「重启应用」（requestRelaunch 只登记意图）
+            if (context.quit.pendingRelaunch) {
+                context.quit.pendingRelaunch = false
+                app.relaunch()
             }
             context.quit.flushedForQuit = true
             app.quit()
         })()
         return
+    }
+    // 无主窗口：确认放行（无未保存内容可确认）后同样处理重启意图，再直接清理退出
+    if (context.quit.pendingRelaunch) {
+        context.quit.pendingRelaunch = false
+        app.relaunch()
     }
     cleanupApp()
 })

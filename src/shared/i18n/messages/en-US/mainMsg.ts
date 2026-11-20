@@ -28,7 +28,12 @@ export default {
         detail: "Save & close keeps your changes; Don't save discards them; Cancel returns to editing.",
         save: 'Save & close',
         discard: "Don't save",
-        cancel: 'Cancel'
+        cancel: 'Cancel',
+        // P3 F-09: when minimizeToTray is on, "close" actually hides to the system tray
+        trayMessage: 'The current file has unsaved changes. Save before hiding to the system tray?',
+        trayDetail:
+            "Save & hide keeps your changes and hides the window to the system tray (the app keeps running in the background); Don't save discards them; Cancel returns to editing.",
+        traySave: 'Save & hide'
     },
     dialog: {
         errorTitle: 'Error!',
@@ -153,7 +158,14 @@ export default {
         restartNow: 'Restart and install',
         later: 'Later',
         failedMessage: 'Failed to check for updates',
-        downloadFailed: 'Failed to download the new version. Check your network and try again.'
+        downloadFailed: 'Failed to download the new version. Check your network and try again.',
+        // Update robustness: download wait timeout (10 minutes) and pre-install save failure
+        downloadTimeout:
+            'Timed out while downloading the new version. Check your network and try again.',
+        saveBeforeInstallFailedMessage:
+            'Failed to save unsaved changes, so the update installation was cancelled',
+        saveBeforeInstallFailedDetail:
+            'Resolve the save failure first (for example, "Save as" to a new file), then install the downloaded update again via Help → Check for updates.'
     },
     plantuml: {
         missingOutContainer: 'PlantUML render page is missing the #out container',

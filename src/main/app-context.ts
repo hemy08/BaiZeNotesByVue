@@ -75,6 +75,21 @@ export interface AppContext {
         flushedForQuit: boolean
         /** 当前主窗口本次关闭是否已完成 flush（放行第二次 close；窗口重建时复位） */
         flushedForClose: boolean
+        /**
+         * 关闭/退出确认协议是否进行中（P2-6 重入保护）。
+         *
+         * 从 flush 开始到用户选择返回期间为 true：此时重复的窗口 close / app.quit 请求
+         * 直接阻止，避免叠加第二个原生对话框或重复 flush。协议结束（含取消/保存失败）
+         * 后在 finally 中复位。
+         */
+        confirming: boolean
+        /**
+         * 「重启应用」意图（P2-7）：菜单/Ctrl+Shift+R 只登记该标志并 app.quit()，
+         * 由 before-quit 在未保存确认放行后**才**调用 app.relaunch()。
+         *
+         * 用户取消退出/保存失败时清除，确保不会遗留 relaunch 请求在下次正常退出中被执行。
+         */
+        pendingRelaunch: boolean
     }
 
     /**
@@ -95,6 +110,17 @@ export interface AppContext {
         pendingWindow: BrowserWindow | null
         /** 握手超时兜底计时器句柄（null = 无计时器） */
         fallbackTimer: ReturnType<typeof setTimeout> | null
+    }
+
+    /**
+     * 应用更新安装状态（P1-9：更新安装 × 关闭确认协调）。
+     *
+     * auto-updater 在完成「保存未保存修改」前置确认后置位，`app.quit()` 触发的
+     * before-quit 据此跳过再次弹框（安装前已确认过），直接放行退出。
+     */
+    update: {
+        /** 更新安装是否已进入「安装器已拉起 / 应用即将退出」阶段 */
+        installing: boolean
     }
 
     /** 「记住窗口位置和大小」持久化监听的清理函数（原 index.ts 模块级 let） */
@@ -121,9 +147,16 @@ export function createDefaultAppContext(): AppContext {
         mainWindow: null,
         welcome: { mainViewEntered: false },
         shortKeys: { registered: false, targetWindow: null },
-        quit: { isQuitting: false, flushedForQuit: false, flushedForClose: false },
+        quit: {
+            isQuitting: false,
+            flushedForQuit: false,
+            flushedForClose: false,
+            confirming: false,
+            pendingRelaunch: false
+        },
         rendererReady: { received: false },
         startupRestore: { pendingWindow: null, fallbackTimer: null },
+        update: { installing: false },
         windowBounds: { disposePersistence: null },
         tray: { hideNotified: false }
     }

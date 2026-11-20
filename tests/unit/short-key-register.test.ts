@@ -46,6 +46,12 @@ const loggerMock = vi.hoisted(() => ({
 }))
 vi.mock('../../src/main/utils/logger', () => ({ logger: loggerMock }))
 
+// P2-7：Ctrl+Shift+R 只登记重启意图并请求退出（真正 relaunch 由 before-quit 放行后执行）
+const relaunchMocks = vi.hoisted(() => ({ requestRelaunch: vi.fn() }))
+vi.mock('../../src/main/utils/app-relaunch', () => ({
+    requestRelaunch: relaunchMocks.requestRelaunch
+}))
+
 import { globalShortcut } from 'electron'
 import {
     RegisterShortKeys,
@@ -86,6 +92,7 @@ describe('AS-12 RegisterShortKeys', () => {
         fileUtilsMocks.GetCurrentFileDirectory.mockClear()
         electronState.app.relaunch.mockClear()
         electronState.app.quit.mockClear()
+        relaunchMocks.requestRelaunch.mockClear()
         resetShortKeysForTesting()
     })
 
@@ -179,7 +186,9 @@ describe('AS-12 RegisterShortKeys', () => {
         expect(fileUtilsMocks.ReloadDirFromDisk).toHaveBeenCalled()
 
         electronState.registered.get('Ctrl+Shift+R')?.()
-        expect(electronState.app.relaunch).toHaveBeenCalled()
+        // P2-7：只登记重启意图，不直接 app.relaunch()（用户取消退出时不遗留重启）
+        expect(relaunchMocks.requestRelaunch).toHaveBeenCalledTimes(1)
+        expect(electronState.app.relaunch).not.toHaveBeenCalled()
 
         electronState.registered.get('F4')?.()
         expect(electronState.app.quit).toHaveBeenCalled()

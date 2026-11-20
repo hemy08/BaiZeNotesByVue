@@ -9,6 +9,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 const treeMocks = vi.hoisted(() => ({
     relaunch: vi.fn(),
     quit: vi.fn(),
+    // P2-7：「重启应用」只登记意图并请求退出，真正 relaunch 在 before-quit 确认放行后执行
+    requestRelaunch: vi.fn(),
     openExternal: vi.fn(),
     openOnlineWebPage: vi.fn(),
     openFile: vi.fn(),
@@ -73,6 +75,11 @@ vi.mock('../../src/main/dialogs/dialogs', () => ({
 
 vi.mock('../../src/main/utils/auto-updater.js', () => ({
     checkForUpdatesAndNotify: treeMocks.checkForUpdatesAndNotify
+}))
+
+// P2-7：重启意图协调模块单独 mock（行为由 app-relaunch.test.ts / main-index.test.ts 覆盖）
+vi.mock('../../src/main/utils/app-relaunch', () => ({
+    requestRelaunch: treeMocks.requestRelaunch
 }))
 
 import { IPC } from '../../src/shared/ipc-channels'
@@ -140,10 +147,11 @@ describe('fileMenuHandlers', () => {
         expect(treeMocks.openDirectory).toHaveBeenCalledWith(win)
     })
 
-    it('should relaunch then quit for relaunch', () => {
+    it('should register a relaunch intent instead of calling app.relaunch immediately (P2-7)', () => {
         ;(fileMenuHandlers['relaunch'] as () => void)()
-        expect(treeMocks.relaunch).toHaveBeenCalled()
-        expect(treeMocks.quit).toHaveBeenCalled()
+        // 重启意图交给 before-quit：用户取消退出时不会遗留 app.relaunch()
+        expect(treeMocks.requestRelaunch).toHaveBeenCalledTimes(1)
+        expect(treeMocks.relaunch).not.toHaveBeenCalled()
     })
 
     it('should quit the app for exit', () => {

@@ -28,7 +28,12 @@ export default {
         detail: '选择「保存并关闭」将保存当前文件；「不保存」将丢弃修改；「取消」返回继续编辑。',
         save: '保存并关闭',
         discard: '不保存',
-        cancel: '取消'
+        cancel: '取消',
+        // P3 F-09：minimizeToTray 开启时「关闭」实际是隐藏到托盘，文案随场景切换
+        trayMessage: '当前文件有未保存的修改，是否保存后隐藏到系统托盘？',
+        trayDetail:
+            '选择「保存并隐藏」将保存当前文件并隐藏到系统托盘（应用继续在后台运行）；「不保存」将丢弃修改；「取消」返回继续编辑。',
+        traySave: '保存并隐藏'
     },
     dialog: {
         errorTitle: '错误!',
@@ -152,7 +157,12 @@ export default {
         restartNow: '立即重启安装',
         later: '稍后',
         failedMessage: '检查更新失败',
-        downloadFailed: '新版本下载失败，请检查网络后重试'
+        downloadFailed: '新版本下载失败，请检查网络后重试',
+        // 更新链路健壮性：下载等待超时（10 分钟）与安装前置保存失败
+        downloadTimeout: '新版本下载超时，请检查网络后重试',
+        saveBeforeInstallFailedMessage: '保存未完成的修改失败，本次更新安装已取消',
+        saveBeforeInstallFailedDetail:
+            '请先处理保存失败的原因（例如另存为新文件）后，再次通过「帮助 → 检查更新」安装已下载的更新。'
     },
     plantuml: {
         missingOutContainer: 'PlantUML 渲染页缺少 #out 容器',

@@ -30,6 +30,11 @@ describe('createDefaultAppContext', () => {
         expect(context.quit.isQuitting).toBe(false)
         expect(context.quit.flushedForQuit).toBe(false)
         expect(context.quit.flushedForClose).toBe(false)
+        // P2-6/P2-7：关闭确认重入保护与「重启应用」意图
+        expect(context.quit.confirming).toBe(false)
+        expect(context.quit.pendingRelaunch).toBe(false)
+        // P1-9：更新安装中标志（安装路径 before-quit 跳过未保存确认）
+        expect(context.update.installing).toBe(false)
         expect(context.rendererReady.received).toBe(false)
         expect(context.startupRestore.pendingWindow).toBeNull()
         expect(context.startupRestore.fallbackTimer).toBeNull()
@@ -58,6 +63,9 @@ describe('getAppContext / resetAppContext', () => {
         context.quit.isQuitting = true
         context.quit.flushedForQuit = true
         context.quit.flushedForClose = true
+        context.quit.confirming = true
+        context.quit.pendingRelaunch = true
+        context.update.installing = true
         context.rendererReady.received = true
         context.startupRestore.pendingWindow = windowStub as never
         context.windowBounds.disposePersistence = () => undefined
@@ -74,6 +82,9 @@ describe('getAppContext / resetAppContext', () => {
         expect(reset.quit.isQuitting).toBe(false)
         expect(reset.quit.flushedForQuit).toBe(false)
         expect(reset.quit.flushedForClose).toBe(false)
+        expect(reset.quit.confirming).toBe(false)
+        expect(reset.quit.pendingRelaunch).toBe(false)
+        expect(reset.update.installing).toBe(false)
         expect(reset.rendererReady.received).toBe(false)
         expect(reset.startupRestore.pendingWindow).toBeNull()
         expect(reset.startupRestore.fallbackTimer).toBeNull()

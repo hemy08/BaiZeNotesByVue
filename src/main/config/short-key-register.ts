@@ -28,6 +28,8 @@ import { app, globalShortcut } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { OpenDirectory, ReloadDirFromDisk, GetCurrentFileDirectory } from '../utils/file-utils'
 import { logger } from '../utils/logger'
+// P2 F-07：重启意图协调（取消退出后不遗留 app.relaunch）
+import { requestRelaunch } from '../utils/app-relaunch'
 import { IPC } from '../../shared/ipc-channels'
 // 结构优化第 2 批 2.4（M1）：快捷键注册状态迁移到 AppContext（进程内唯一上下文单例）
 import { getAppContext } from '../app-context'
@@ -149,9 +151,10 @@ export function RegisterShortKeys(mainWindow: Electron.BrowserWindow): void {
     })
 
     // Ctrl+Shift+R 重启应用：与菜单 'baize:menu:file:relaunch' 的 handler 一致
+    // P2 F-07：只登记重启意图并请求退出，真正 relaunch 由 before-quit 在未保存确认
+    // 放行后执行（用户取消退出时不遗留 relaunch 请求）
     register('Ctrl+Shift+R', () => {
-        app.relaunch()
-        app.quit()
+        requestRelaunch()
     })
 
     // F4 退出：与菜单 'baize:menu:file:exit' 的 handler 一致（退出前落盘由

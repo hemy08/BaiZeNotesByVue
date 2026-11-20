@@ -99,6 +99,8 @@ const electronMocks = vi.hoisted(() => {
             }),
             whenReady: vi.fn(() => Promise.resolve()),
             quit: vi.fn(),
+            // P2-7：「重启应用」意图在 before-quit 确认放行后才调用 app.relaunch()
+            relaunch: vi.fn(),
             // P2-10：单实例锁申请（默认成功；失败用例改 lockFlag.value=false）
             requestSingleInstanceLock: vi.fn(() => state.lockFlag.value)
         },
@@ -474,6 +476,7 @@ beforeEach(() => {
     }
     electronMocks.app.on.mockClear()
     electronMocks.app.quit.mockClear()
+    electronMocks.app.relaunch.mockClear()
     electronMocks.app.requestSingleInstanceLock.mockClear()
     electronMocks.ipcMain.on.mockClear()
     electronMocks.ipcMain.removeListener.mockClear()
@@ -978,6 +981,50 @@ describe('close flush protocol (D-3)', () => {
         expect(firstEvent.preventDefault).toHaveBeenCalled()
         expect(secondEvent.preventDefault).not.toHaveBeenCalled()
     })
+
+    // P2-6：确认/落盘协议进行中时重复 close 直接忽略（不重复 flush、不叠加对话框）
+    it('should ignore a repeated close while the confirmation is in progress (P2-6)', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        await loadMainIndex()
+        const firstEvent = { preventDefault: vi.fn() }
+        const secondEvent = { preventDefault: vi.fn() }
+        triggerWindowHandler('close', firstEvent)
+        // 首次流程仍在等 flush 回执（确认协议进行中）时再次 close
+        triggerWindowHandler('close', secondEvent)
+        expect(firstEvent.preventDefault).toHaveBeenCalled()
+        expect(secondEvent.preventDefault).toHaveBeenCalled()
+        expect(
+            electronMocks.win.webContents.send.mock.calls.filter(
+                (call) => call[0] === 'baize:editor:flush-content'
+            )
+        ).toHaveLength(1)
+
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        // 只弹一次确认框；默认「取消」→ 不关闭
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalledTimes(1)
+        expect(electronMocks.win.close).not.toHaveBeenCalled()
+
+        // 取消后确认标志已复位：再次 close 能重新进入完整协议（不残留重入锁）
+        const thirdEvent = { preventDefault: vi.fn() }
+        triggerWindowHandler('close', thirdEvent)
+        expect(thirdEvent.preventDefault).toHaveBeenCalled()
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalledTimes(2)
+    })
+
+    // P3 F-09：真实关闭（非托盘隐藏）时确认框保持「保存并关闭」语义
+    it('should pass minimizeToTray=false when the close is a real close (P3 F-09)', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        await loadMainIndex()
+        triggerWindowHandler('close', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalledWith(electronMocks.win, {
+            minimizeToTray: false
+        })
+    })
 })
 
 describe('minimize to tray on close (批次 B #4)', () => {
@@ -1040,6 +1087,18 @@ describe('minimize to tray on close (批次 B #4)', () => {
         expect(electronMocks.win.webContents.send).not.toHaveBeenCalledWith(
             'baize:editor:flush-content'
         )
+    })
+
+    // P3 F-09：托盘模式下「关闭」实际是隐藏到托盘，确认框需使用「保存并隐藏」文案上下文
+    it('should pass minimizeToTray=true to the unsaved confirmation when hiding to tray (P3 F-09)', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        await loadMainIndex()
+        triggerWindowHandler('close', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalledWith(electronMocks.win, {
+            minimizeToTray: true
+        })
     })
 
     it('should set the quitting flag on before-quit', async () => {
@@ -1121,6 +1180,83 @@ describe('app lifecycle cleanup', () => {
         expect(internalMocks.saveActiveFile).not.toHaveBeenCalled()
         expect(electronMocks.app.quit).not.toHaveBeenCalled()
         expect(electronMocks.quitFlag.value).toBe(false)
+    })
+
+    // P2-6：关闭确认进行中时重入的退出请求直接阻止，且不得置 isQuitting
+    it('should ignore a reentrant quit while the close confirmation is in progress (P2-6)', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        await loadMainIndex()
+        triggerWindowHandler('close', { preventDefault: vi.fn() })
+
+        const quitEvent = { preventDefault: vi.fn() }
+        triggerAppHandler('before-quit', quitEvent)
+
+        expect(quitEvent.preventDefault).toHaveBeenCalled()
+        // 关键：重入退出不能置退出标志（否则关闭协议取消后状态残留，后续 close 跳过确认）
+        expect(electronMocks.quitFlag.value).toBe(false)
+        expect(internalMocks.confirmUnsavedChangesClose).not.toHaveBeenCalled()
+        expect(electronMocks.app.relaunch).not.toHaveBeenCalled()
+
+        // 原 close 协议继续：只弹一次确认框，取消后窗口保持
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+        expect(internalMocks.confirmUnsavedChangesClose).toHaveBeenCalledTimes(1)
+        expect(electronMocks.win.close).not.toHaveBeenCalled()
+    })
+
+    // P1-9：更新安装已在前置协调中完成未保存确认，安装路径的 before-quit 不再弹框
+    it('should skip unsaved confirmation on before-quit while update installation is in progress (P1-9)', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        await loadMainIndex()
+        const { getAppContext } = await import('../../src/main/app-context')
+        getAppContext().update.installing = true
+
+        const preventDefault = vi.fn()
+        triggerAppHandler('before-quit', { preventDefault })
+
+        expect(preventDefault).not.toHaveBeenCalled()
+        expect(internalMocks.confirmUnsavedChangesClose).not.toHaveBeenCalled()
+        expect(internalMocks.saveActiveFile).not.toHaveBeenCalled()
+        // 安装路径直接完成清理并放行退出（不再被 preventDefault 卡住）
+        expect(internalMocks.cleanupAll).toHaveBeenCalled()
+    })
+
+    // P2-7：用户取消退出时必须丢弃「重启应用」意图，不能遗留 relaunch
+    it('should not relaunch when the user cancels quitting (P2-7)', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        internalMocks.confirmUnsavedChangesClose.mockResolvedValue('cancel')
+        await loadMainIndex()
+        const { getAppContext } = await import('../../src/main/app-context')
+        const context = getAppContext()
+        context.quit.pendingRelaunch = true
+
+        triggerAppHandler('before-quit', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+
+        expect(electronMocks.app.relaunch).not.toHaveBeenCalled()
+        expect(electronMocks.app.quit).not.toHaveBeenCalled()
+        expect(context.quit.pendingRelaunch).toBe(false)
+        expect(electronMocks.quitFlag.value).toBe(false)
+    })
+
+    // P2-7：重启意图仅在确认放行后执行，且只执行一次（后续 before-quit 不再重复）
+    it('should relaunch only after the quit is confirmed (P2-7)', async () => {
+        internalMocks.isDirty.mockReturnValue(true)
+        internalMocks.confirmUnsavedChangesClose.mockResolvedValue('discard')
+        await loadMainIndex()
+        const { getAppContext } = await import('../../src/main/app-context')
+        getAppContext().quit.pendingRelaunch = true
+
+        triggerAppHandler('before-quit', { preventDefault: vi.fn() })
+        triggerIpcHandler('baize:editor:flush-content-done')
+        await settle()
+
+        expect(electronMocks.app.relaunch).toHaveBeenCalledTimes(1)
+        expect(electronMocks.app.quit).toHaveBeenCalled()
+        // 已放行：后续 before-quit 走 flushedForQuit 快速路径，不再重复 relaunch
+        triggerAppHandler('before-quit', { preventDefault: vi.fn() })
+        expect(electronMocks.app.relaunch).toHaveBeenCalledTimes(1)
     })
 
     it('should watch window shortcuts for created windows', async () => {

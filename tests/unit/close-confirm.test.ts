@@ -4,6 +4,7 @@
  * 2026-11-20 用户需求：关闭/退出时未保存修改确认对话框。
  * 验证按钮顺序（保存并关闭 / 不保存 / 取消）与返回值映射，以及窗口销毁时
  * 退化为无父窗口对话框。
+ * P3 F-09：minimizeToTray 场景（关闭 = 隐藏到托盘）使用「保存并隐藏」文案。
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -61,5 +62,38 @@ describe('confirmUnsavedChangesClose', () => {
         dialogMocks.showMessageBox.mockResolvedValue({ response: 1 })
         await confirmUnsavedChangesClose({ isDestroyed: () => true } as never)
         expect(dialogMocks.showMessageBox.mock.calls[0]).toHaveLength(1)
+    })
+
+    // P3 F-09：minimizeToTray 开启时关闭动作实际是隐藏到托盘，文案必须如实
+    it('uses tray wording when the close action actually hides to tray (P3 F-09)', async () => {
+        dialogMocks.showMessageBox.mockResolvedValue({ response: 0 })
+        await expect(
+            confirmUnsavedChangesClose({ isDestroyed: () => false } as never, {
+                minimizeToTray: true
+            })
+        ).resolves.toBe('save')
+
+        const options = dialogMocks.showMessageBox.mock.calls[0][1] as {
+            message: string
+            detail: string
+            buttons: string[]
+        }
+        expect(options.buttons).toEqual(['保存并隐藏', '不保存', '取消'])
+        expect(options.message).toContain('隐藏到系统托盘')
+        expect(options.detail).toContain('隐藏到系统托盘')
+        expect(options.message).not.toContain('保存后关闭')
+    })
+
+    it('keeps the "close" wording for quit (minimizeToTray not applicable)', async () => {
+        dialogMocks.showMessageBox.mockResolvedValue({ response: 2 })
+        await expect(confirmUnsavedChangesClose(null, { minimizeToTray: false })).resolves.toBe(
+            'cancel'
+        )
+        const options = dialogMocks.showMessageBox.mock.calls[0][0] as {
+            message: string
+            buttons: string[]
+        }
+        expect(options.buttons).toEqual(['保存并关闭', '不保存', '取消'])
+        expect(options.message).toContain('保存后关闭')
     })
 })

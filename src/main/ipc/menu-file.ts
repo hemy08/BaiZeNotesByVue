@@ -8,6 +8,7 @@ import {
 } from '../utils/file-utils/file-operations'
 import { InsertImportFormFile } from '../utils/file-utils/import'
 import { ExportToFile } from '../utils/file-utils/export'
+import { requestRelaunch } from '../utils/app-relaunch'
 import { IPC } from '../../shared/ipc-channels'
 
 function FileEncoding(mainWindow: Electron.CrossProcessExports.BrowserWindow, encoding: string) {
@@ -43,8 +44,9 @@ export const fileMenuHandlers = {
     'close-file': async () => await SaveActiveFile(),
     reload: async () => await ReloadDirFromDisk(),
     relaunch: () => {
-        app.relaunch()
-        app.quit()
+        // P2 F-07：只登记重启意图并请求退出；真正 app.relaunch() 由 before-quit 在
+        // 未保存确认放行后执行（用户取消退出时不会遗留 relaunch 请求）
+        requestRelaunch()
     },
     exit: () => app.quit(),
 

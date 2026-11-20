@@ -7,7 +7,10 @@
  * - example.com 占位地址仍判定为"未配置"，绝不假装自动更新；
  * - update.json 生效时经 autoUpdater.setFeedURL 显式注入更新源；
  * - 检查更新的结果状态（not-configured / up-to-date / update-available）；
- * - "检查更新"入口未配置时的诚实提示文案。
+ * - "检查更新"入口未配置时的诚实提示文案；
+ * - P2 F-05：下载等待超时（10 分钟）→ 明确的「下载超时」失败状态并清理监听；
+ * - P1 F-01：安装前置协调（未保存修改 save / discard / cancel 三分支、保存失败不安装、
+ *   安装期间置 update.installing、取消后保留「已下载待安装」可重试）。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
@@ -36,6 +39,28 @@ vi.mock('electron', () => ({
     },
     dialog: { showMessageBox: electronState.dialogShowMessageBox },
     BrowserWindow: class {}
+}))
+
+/**
+ * P1 F-01：安装前置协调依赖的 app-state / close-confirm / SaveActiveFile 全部以 mock 隔离
+ * （真实实现分别由 app-state / close-confirm / file-operations 单测覆盖）。
+ */
+const installMocks = vi.hoisted(() => ({
+    isDirty: vi.fn(() => false),
+    confirmUnsavedChangesClose: vi.fn(),
+    saveActiveFile: vi.fn()
+}))
+
+vi.mock('../../src/main/utils/app-state', () => ({
+    appState: { isDirty: installMocks.isDirty }
+}))
+
+vi.mock('../../src/main/utils/close-confirm', () => ({
+    confirmUnsavedChangesClose: installMocks.confirmUnsavedChangesClose
+}))
+
+vi.mock('../../src/main/utils/file-utils/file-operations', () => ({
+    SaveActiveFile: installMocks.saveActiveFile
 }))
 
 const updaterState = vi.hoisted(() => {
@@ -73,8 +98,13 @@ import {
     resolveUpdateSource,
     isUpdateSourceConfigured,
     checkForUpdates,
-    checkForUpdatesAndNotify
+    checkForUpdatesAndNotify,
+    getPendingInstallVersion,
+    resetUpdateInstallStateForTesting,
+    UPDATE_DOWNLOAD_TIMEOUT_MS,
+    INSTALL_FLAG_SAFETY_RESET_MS
 } from '../../src/main/utils/auto-updater'
+import { getAppContext } from '../../src/main/app-context'
 
 /** 每个用例独立的应用根目录（模拟开发模式 app.getAppPath()） */
 let appRoot = ''
@@ -112,10 +142,21 @@ beforeEach(() => {
     updaterState.removeListener.mockClear()
     updaterState.forceDevUpdateConfig = false
 
+    // P1 F-01：安装前置协调默认「无未保存修改」，确认框返回取消（仅显式声明的用例改变）
+    installMocks.isDirty.mockReset()
+    installMocks.isDirty.mockReturnValue(false)
+    installMocks.confirmUnsavedChangesClose.mockReset()
+    installMocks.confirmUnsavedChangesClose.mockResolvedValue('cancel')
+    installMocks.saveActiveFile.mockReset()
+    installMocks.saveActiveFile.mockResolvedValue(true)
+    // 模块级「已下载待安装」/安装中标志复位，保证用例隔离
+    resetUpdateInstallStateForTesting()
+
     vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
 
 afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
     delete (process as { resourcesPath?: string }).resourcesPath
     fs.rmSync(appRoot, { recursive: true, force: true })
@@ -303,5 +344,205 @@ describe('checkForUpdatesAndNotify', () => {
         }
         expect(options.message).toBe('未配置更新源')
         expect(options.detail).toContain('resources/config/update.json')
+    })
+})
+
+// ---------------------------------------------------------------------------
+// P2 F-05：下载等待超时
+// ---------------------------------------------------------------------------
+
+describe('download timeout (P2 F-05)', () => {
+    it('should time out waiting for the download and report a dedicated message', async () => {
+        writeUpdateJson('{ "provider": "generic", "url": "https://updates.baize.test/app/" }')
+        updaterState.checkForUpdates.mockResolvedValue({ updateInfo: { version: '1.3.0' } })
+        vi.useFakeTimers()
+
+        const pending = checkForUpdates()
+        await vi.advanceTimersByTimeAsync(UPDATE_DOWNLOAD_TIMEOUT_MS)
+
+        await expect(pending).resolves.toEqual({
+            status: 'error',
+            message: '新版本下载超时，请检查网络后重试'
+        })
+        // 超时后监听器与计时器已清理（避免事件监听/计时器累积）
+        expect(updaterState.listeners.get('update-downloaded') ?? []).toHaveLength(0)
+        expect(updaterState.listeners.get('error') ?? []).toHaveLength(0)
+    })
+
+    it('should not report a timeout once the download finishes normally', async () => {
+        writeUpdateJson('{ "provider": "generic", "url": "https://updates.baize.test/app/" }')
+        updaterState.checkForUpdates.mockImplementation(async () => {
+            queueMicrotask(() => updaterState.emit('update-downloaded'))
+            return { updateInfo: { version: '1.3.0' } }
+        })
+        vi.useFakeTimers()
+
+        const pending = checkForUpdates()
+        await vi.advanceTimersByTimeAsync(0)
+        await expect(pending).resolves.toEqual({ status: 'update-available', version: '1.3.0' })
+        // 已正常结束：再推进 10 分钟也不应产生任何副作用/未清理计时器
+        await vi.advanceTimersByTimeAsync(UPDATE_DOWNLOAD_TIMEOUT_MS)
+        expect(updaterState.listeners.get('update-downloaded') ?? []).toHaveLength(0)
+    })
+
+    it('should clean up the download waiter when the app is already up to date', async () => {
+        writeUpdateJson('{ "provider": "generic", "url": "https://updates.baize.test/app/" }')
+        updaterState.checkForUpdates.mockResolvedValue(null)
+
+        await expect(checkForUpdates()).resolves.toEqual({
+            status: 'up-to-date',
+            version: '1.2.2'
+        })
+        // 「已是最新」无需等待下载：监听器已清理，不残留 10 分钟计时器/事件监听
+        expect(updaterState.listeners.get('update-downloaded') ?? []).toHaveLength(0)
+        expect(updaterState.listeners.get('error') ?? []).toHaveLength(0)
+    })
+})
+
+// ---------------------------------------------------------------------------
+// P1 F-01：更新安装 × 未保存关闭确认的前置协调
+// ---------------------------------------------------------------------------
+
+/** 让「检查更新」返回 update-available（下载完成事件在 checkForUpdates 返回后到达） */
+function mockUpdateAvailable(): void {
+    writeUpdateJson('{ "provider": "generic", "url": "https://updates.baize.test/app/" }')
+    updaterState.checkForUpdates.mockImplementation(async () => {
+        queueMicrotask(() => updaterState.emit('update-downloaded'))
+        return { updateInfo: { version: '1.3.0' } }
+    })
+}
+
+/** 取最近一次对话框参数 */
+function lastDialogOptions(): { message?: string; detail?: string; buttons?: string[] } {
+    const calls = electronState.dialogShowMessageBox.mock.calls
+    return (calls[calls.length - 1]?.[0] ?? {}) as {
+        message?: string
+        detail?: string
+        buttons?: string[]
+    }
+}
+
+describe('install coordination with unsaved changes (P1 F-01)', () => {
+    beforeEach(() => {
+        mockUpdateAvailable()
+        // 第一层对话框「立即重启安装 / 稍后」默认选择安装
+        electronState.dialogShowMessageBox.mockResolvedValue({ response: 0 })
+    })
+
+    it('should install directly when the active file is clean', async () => {
+        await checkForUpdatesAndNotify(undefined)
+
+        expect(installMocks.confirmUnsavedChangesClose).not.toHaveBeenCalled()
+        expect(updaterState.quitAndInstall).toHaveBeenCalledTimes(1)
+        // 安装前置位专用标志：before-quit 不再重复弹未保存确认
+        expect(getAppContext().update.installing).toBe(true)
+        expect(getPendingInstallVersion()).toBeNull()
+    })
+
+    it('should save first and then install when the user chooses save', async () => {
+        installMocks.isDirty.mockReturnValue(true)
+        installMocks.confirmUnsavedChangesClose.mockResolvedValue('save')
+        installMocks.saveActiveFile.mockResolvedValue(true)
+
+        await checkForUpdatesAndNotify(undefined)
+
+        expect(installMocks.confirmUnsavedChangesClose).toHaveBeenCalledTimes(1)
+        expect(installMocks.saveActiveFile).toHaveBeenCalledTimes(1)
+        expect(updaterState.quitAndInstall).toHaveBeenCalledTimes(1)
+        expect(getAppContext().update.installing).toBe(true)
+    })
+
+    it('should install without saving when the user discards changes', async () => {
+        installMocks.isDirty.mockReturnValue(true)
+        installMocks.confirmUnsavedChangesClose.mockResolvedValue('discard')
+
+        await checkForUpdatesAndNotify(undefined)
+
+        expect(installMocks.saveActiveFile).not.toHaveBeenCalled()
+        expect(updaterState.quitAndInstall).toHaveBeenCalledTimes(1)
+        expect(getPendingInstallVersion()).toBeNull()
+    })
+
+    it('should NOT install and keep the update pending when the user cancels', async () => {
+        installMocks.isDirty.mockReturnValue(true)
+        installMocks.confirmUnsavedChangesClose.mockResolvedValue('cancel')
+
+        await checkForUpdatesAndNotify(undefined)
+
+        // 取消：安装器绝不启动，应用保持运行，更新回到「已下载待安装」
+        expect(updaterState.quitAndInstall).not.toHaveBeenCalled()
+        expect(installMocks.saveActiveFile).not.toHaveBeenCalled()
+        expect(getAppContext().update.installing).toBe(false)
+        expect(getPendingInstallVersion()).toBe('1.3.0')
+    })
+
+    it('should NOT install and notify when saving before install fails', async () => {
+        installMocks.isDirty.mockReturnValue(true)
+        installMocks.confirmUnsavedChangesClose.mockResolvedValue('save')
+        installMocks.saveActiveFile.mockResolvedValue(false)
+
+        await checkForUpdatesAndNotify(undefined)
+
+        expect(updaterState.quitAndInstall).not.toHaveBeenCalled()
+        expect(getAppContext().update.installing).toBe(false)
+        // 保存失败：保留「已下载待安装」可重试，并给出明确错误提示
+        expect(getPendingInstallVersion()).toBe('1.3.0')
+        expect(lastDialogOptions().message).toBe('保存未完成的修改失败，本次更新安装已取消')
+    })
+
+    it('should keep the update pending when the user chooses later', async () => {
+        electronState.dialogShowMessageBox.mockResolvedValue({ response: 1 })
+
+        await checkForUpdatesAndNotify(undefined)
+
+        expect(updaterState.quitAndInstall).not.toHaveBeenCalled()
+        expect(getPendingInstallVersion()).toBe('1.3.0')
+    })
+
+    it('should retry the pending update without a new network check', async () => {
+        // 第一次：取消安装 → 保留待安装状态
+        installMocks.isDirty.mockReturnValue(true)
+        installMocks.confirmUnsavedChangesClose.mockResolvedValue('cancel')
+        await checkForUpdatesAndNotify(undefined)
+        expect(updaterState.checkForUpdates).toHaveBeenCalledTimes(1)
+
+        // 第二次「帮助 → 检查更新」：直接进入安装询问，不重新检查/下载
+        installMocks.isDirty.mockReturnValue(false)
+        electronState.dialogShowMessageBox.mockClear()
+        electronState.dialogShowMessageBox.mockResolvedValue({ response: 0 })
+        await checkForUpdatesAndNotify(undefined)
+
+        expect(updaterState.checkForUpdates).toHaveBeenCalledTimes(1)
+        expect(updaterState.quitAndInstall).toHaveBeenCalledTimes(1)
+        expect(getPendingInstallVersion()).toBeNull()
+    })
+
+    it('should reset the installing flag and report an error when quitAndInstall throws', async () => {
+        updaterState.quitAndInstall.mockImplementation(() => {
+            throw new Error('installer failed')
+        })
+
+        await checkForUpdatesAndNotify(undefined)
+
+        expect(getAppContext().update.installing).toBe(false)
+        expect(lastDialogOptions().message).toBe('检查更新失败')
+        expect(lastDialogOptions().detail).toContain('installer failed')
+        // 安装失败仍保留已下载更新，可重试
+        expect(getPendingInstallVersion()).toBe('1.3.0')
+    })
+
+    // 防御深度：quitAndInstall 未触发 app.quit（安装器无法启动等）时，安装标志必须兜底复位，
+    // 否则后续每次退出都会跳过未保存确认（数据安全回归）。
+    it('should reset the installing flag if the app does not quit after triggering install', async () => {
+        vi.useFakeTimers()
+
+        const pending = checkForUpdatesAndNotify(undefined)
+        await vi.advanceTimersByTimeAsync(0)
+        await pending
+        expect(updaterState.quitAndInstall).toHaveBeenCalledTimes(1)
+        expect(getAppContext().update.installing).toBe(true)
+
+        await vi.advanceTimersByTimeAsync(INSTALL_FLAG_SAFETY_RESET_MS)
+        expect(getAppContext().update.installing).toBe(false)
     })
 })
