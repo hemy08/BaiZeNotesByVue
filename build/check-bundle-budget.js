@@ -20,6 +20,7 @@
  *   5. app.asar                          ≤ 45 MiB
  *   6. locales 语言包仅保留 zh-CN / en-US（electronLanguages 裁剪的回归防线）
  *   7. 首屏初始 JS（入口 script + index.html 中 modulepreload 的本地 JS） ≤ 512 KiB
+ *   8. i18n 词典按语言拆包：语言词典不得进入首屏静态闭包，且中英各为独立异步 chunk
  *
  * P1-3 背景（2026-11-20 全量代码扫描）：
  *   index.html 会通过 `<link rel="modulepreload">` 同步加载一个共享 chunk（Vue 运行时 +
@@ -28,6 +29,13 @@
  *   482.0 KiB 存在约 3.5 倍的统计盲区（预算门禁看不到该共享 chunk 的回归）。
  *   第 7 项把两者合并断言：解析 index.html 的 modulepreload 本地 .js，逐文件打印组成；
  *   阈值 512 KiB = 当前实测 482.0 KiB + 约 6% 回归余量。
+ *
+ * P1-3 修复（2026-11-20 首屏 i18n 拆包）：
+ *   i18n 词典拆为按语言动态 import 的独立 chunk（messages/<locale>/index.ts），渲染层
+ *   启动时只 await 当前语言：首屏从 487.5 KiB 降到 321.9 KiB（入口 132.3 + preload-helper
+ *   3.4 + 共享 chunk 186.2），中/英词典各 83.7 / 85.3 KiB 仅在需要时加载。
+ *   为防止「词典再次被静态 import 回共享 chunk」而阈值（512 KiB）仍能通过，新增第 8 项：
+ *   首屏静态闭包内不得出现任何语言词典标记，且两种语言都必须存在独立异步 chunk。
  *
  * 说明：
  *   - 安装包按 package.json 的当前 version 精确匹配文件名，dist 里残留的旧版本产物会被忽略
@@ -70,8 +78,10 @@ const LOCALES_DIR = path.join(UNPACKED_DIR, 'locales')
 const BUDGETS = {
     entry: { label: '渲染入口 chunk（index-*.js）', limit: 150 * KIB },
     shell: { label: 'BaiZeNotes 壳 chunk（BaiZeNotes-*.js）', limit: 2 * MIB },
-    // 2026-11-20（P1-3 首屏预算盲区）：真实首屏 JS = 入口 + index.html modulepreload 共享 chunk
-    // （Vue 运行时 + 中英双语 i18n 词典 + ipc/logger），实测 482.0 KiB；阈值取 +约 6% 余量。
+    // 2026-11-20（P1-3 首屏预算盲区）：真实首屏 JS = 入口 + index.html modulepreload 共享 chunk。
+    // 修复前（双语 i18n 全量进共享 chunk）实测 482.0~487.5 KiB；首屏 i18n 拆包后实测 321.9 KiB。
+    // 阈值保留 512 KiB 作为「入口+共享运行时」总量上限（不随优化收紧误伤正常迭代）；
+    // 「词典不得回流首屏」由下方第 8 项 I18N 拆包断言单独、更精确地守护。
     firstScreenJs: { label: '首屏初始 JS（入口 + modulepreload 本地 JS）', limit: 512 * KIB },
     // 2026-11-20（B4 electron-store 12）：Setup 109.98→113.92 MiB，按实测+余量调整
     setup: { label: 'NSIS 安装包（Setup exe）', limit: 115 * MIB },
@@ -82,6 +92,20 @@ const BUDGETS = {
 
 /** electronLanguages 裁剪后期望保留的语言包（electron-builder 按 locale 文件名匹配） */
 const EXPECTED_LOCALES = ['en-US.pak', 'zh-CN.pak']
+
+/**
+ * P1-3 首屏 i18n 拆包断言用的「词典独有标记」。
+ *
+ * 每个标记只存在于对应语言词典（`src/shared/i18n/messages/<locale>/dialogRenderer.ts`
+ * 的 techStack.title）中，其它源码/组件不硬编码该文案（组件经 t() 取值），因此可用
+ * 文件内容判定某 chunk 是否包含该语言词典：
+ * - 首屏静态闭包（入口 + modulepreload）不得包含任一标记；
+ * - 每个语言必须存在一个「非首屏的独立异步 chunk」包含对应标记（按需加载单元）。
+ */
+const I18N_LOCALE_MARKERS = {
+    'zh-CN': '技术栈',
+    'en-US': 'Tech stack'
+}
 
 /** 参考 chunk（只打印体积，不设预算）：Monaco / mermaid 相关核心产物 */
 const REFERENCE_CHUNKS = [
@@ -215,11 +239,11 @@ function collectFirstScreenJs(entryFile) {
 
 /**
  * P1-3：断言首屏初始 JS 总量（入口 + modulepreload 本地 JS），并打印逐文件组成。
+ * @param components collectFirstScreenJs() 的返回（入口 script + modulepreload 明细）
  * 返回值结构与 checkSizeBudget 一致，额外带 details（逐文件明细）。
  */
-function checkFirstScreenJs(entryFile) {
+function checkFirstScreenJs(components) {
     const { label, limit } = BUDGETS.firstScreenJs
-    const components = collectFirstScreenJs(entryFile)
     const details = []
     let total = 0
     for (const component of components) {
@@ -248,7 +272,89 @@ function checkFirstScreenJs(entryFile) {
         limitText: formatSize(limit),
         marginText: formatSize(Math.max(limit - total, 0)),
         pass,
-        details
+        details,
+        detailsHeader: '首屏组成：'
+    }
+}
+
+/**
+ * P1-3：i18n 词典按语言拆包的回归防线。
+ *
+ * 1. 首屏静态闭包（入口 + modulepreload）内不得出现任何语言的词典独有标记——
+ *    否则说明词典又被静态 import 回首屏共享 chunk（中文/英文用户白加载）；
+ * 2. 中英两种语言都必须存在「不在首屏闭包内的独立异步 chunk」且内容含对应标记——
+ *    保证 Vite/Rollup 仍把 messages/<locale> 拆成按需加载单元。
+ *
+ * @param firstScreenComponents collectFirstScreenJs() 的返回
+ */
+function checkI18nDictionarySplit(firstScreenComponents) {
+    const label = 'i18n 词典按语言拆包（首屏不装双语词典）'
+    const firstScreenPaths = new Set(
+        firstScreenComponents.map((item) => path.resolve(item.filePath))
+    )
+    const leaked = []
+    const localeChunkDetails = []
+    let pass = true
+
+    // 1) 首屏闭包内不得出现词典标记
+    for (const component of firstScreenComponents) {
+        const content = fs.readFileSync(component.filePath)
+        for (const [locale, marker] of Object.entries(I18N_LOCALE_MARKERS)) {
+            if (content.includes(marker)) {
+                leaked.push(
+                    `${locale} 词典「${marker}」出现在首屏 ${path.basename(component.filePath)}`
+                )
+            }
+        }
+    }
+    if (leaked.length > 0) {
+        pass = false
+        failures.push(`${label}：${leaked.join('；')}`)
+    }
+
+    // 2) 每种语言各有一个非首屏的独立异步 chunk（一次遍历资产目录，避免重复读大文件）
+    const assetNames = fs.existsSync(RENDERER_ASSETS_DIR)
+        ? fs.readdirSync(RENDERER_ASSETS_DIR).filter((name) => /\.js$/i.test(name))
+        : []
+    const localeChunks = Object.fromEntries(
+        Object.keys(I18N_LOCALE_MARKERS).map((locale) => [locale, []])
+    )
+    for (const name of assetNames) {
+        const assetPath = path.join(RENDERER_ASSETS_DIR, name)
+        if (firstScreenPaths.has(assetPath)) continue
+        const content = fs.readFileSync(assetPath)
+        for (const [locale, marker] of Object.entries(I18N_LOCALE_MARKERS)) {
+            if (content.includes(marker)) {
+                localeChunks[locale].push(assetPath)
+            }
+        }
+    }
+    for (const [locale, marker] of Object.entries(I18N_LOCALE_MARKERS)) {
+        const matched = localeChunks[locale].sort(
+            (left, right) => fs.statSync(right).size - fs.statSync(left).size
+        )
+        if (matched.length === 0) {
+            pass = false
+            failures.push(`${label}：未找到 ${locale} 词典（「${marker}」）的独立异步 chunk`)
+            continue
+        }
+        const bytes = fs.statSync(matched[0]).size
+        localeChunkDetails.push(
+            `      · ${locale} 按需 chunk ${path.basename(matched[0])}：${formatSize(bytes)}`
+        )
+    }
+
+    return {
+        label,
+        actualText:
+            localeChunkDetails.length > 0
+                ? localeChunkDetails.map((line) => line.replace(/^ {6}· /, '')).join(' / ')
+                : '未找到语言 chunk',
+        limitText: '词典均不进首屏，中英各为按需 chunk',
+        marginText: pass ? '中英词典均按需加载' : '存在回流/缺失',
+        pass,
+        details: localeChunkDetails,
+        detailsHeader: '按需语言 chunk：'
     }
 }
 
@@ -308,6 +414,46 @@ function printReferenceChunks() {
     }
 }
 
+/**
+ * P1-3：从 index.html 的入口 `<script type="module" src>` 解析真实渲染入口 chunk。
+ *
+ * 旧口径用 `index-*.js` 正则取最大文件：一旦出现多个以 `index` 命名的异步 chunk
+ * （例如懒加载目录的 index.ts），就会产生「命中多个文件」的告警并依赖体积启发式。
+ * 现在是确定性的：入口以 electron-vite 生成的 index.html 为准，解析失败再回退旧口径。
+ *
+ * @returns 入口产物绝对路径；index.html 缺失/无入口 script/目标不存在时返回 null
+ */
+function findEntryScriptFromIndexHtml() {
+    if (!fs.existsSync(RENDERER_INDEX_HTML)) {
+        return null
+    }
+    const html = fs.readFileSync(RENDERER_INDEX_HTML, 'utf-8')
+    const scriptTag = html.match(/<script\b[^>]*\btype\s*=\s*["']module["'][^>]*>/i)?.[0]
+    if (!scriptTag) {
+        return null
+    }
+    const src = /\bsrc\s*=\s*["']([^"']+)["']/i.exec(scriptTag)?.[1]?.trim()
+    if (!src) {
+        return null
+    }
+    const href = src.split(/[?#]/)[0]
+    // 与 collectFirstScreenJs 同口径：仅接受 renderer 目录内的相对路径
+    if (/^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(href) || path.isAbsolute(href)) {
+        return null
+    }
+    const scriptPath = path.resolve(path.dirname(RENDERER_INDEX_HTML), href)
+    const relativeToRenderer = path.relative(path.dirname(RENDERER_INDEX_HTML), scriptPath)
+    if (
+        relativeToRenderer.length === 0 ||
+        relativeToRenderer.startsWith('..') ||
+        path.isAbsolute(relativeToRenderer) ||
+        !fs.existsSync(scriptPath)
+    ) {
+        return null
+    }
+    return scriptPath
+}
+
 function main() {
     console.log('============================================================')
     console.log(' P0 安装包体积预算检查（bundle budget）')
@@ -317,16 +463,18 @@ function main() {
     const results = []
 
     // —— 1. 渲染层：入口 chunk 与主界面壳 chunk ——
-    const entryFile = findSingleFile(
-        RENDERER_ASSETS_DIR,
-        /^index-.*\.js$/,
-        '渲染入口 chunk（index-*.js）'
-    )
+    // P1-3：入口优先从 index.html 解析，避免多个 index-*.js 异步 chunk 造成误判
+    const entryFile =
+        findEntryScriptFromIndexHtml() ??
+        findSingleFile(RENDERER_ASSETS_DIR, /^index-.*\.js$/, '渲染入口 chunk（index-*.js）')
     if (entryFile) {
         results.push(checkSizeBudget(BUDGETS.entry, entryFile, 'KiB'))
     }
     // P1-3：真实首屏 JS = 入口 + index.html 中 modulepreload 的本地共享 chunk
-    results.push(checkFirstScreenJs(entryFile))
+    const firstScreenComponents = collectFirstScreenJs(entryFile)
+    results.push(checkFirstScreenJs(firstScreenComponents))
+    // P1-3：i18n 词典按语言拆包（词典不得进首屏静态闭包，中英各为按需 chunk）
+    results.push(checkI18nDictionarySplit(firstScreenComponents))
     const shellFile = findSingleFile(
         RENDERER_ASSETS_DIR,
         /^BaiZeNotes-.*\.js$/,
@@ -377,7 +525,7 @@ function main() {
                 `      实测 ${item.actualText} / 预算 ${item.limitText} / 余量 ${item.marginText}`
         )
         if (Array.isArray(item.details) && item.details.length > 0) {
-            console.log('      首屏组成：')
+            console.log(item.detailsHeader ?? '组成明细：')
             console.log(item.details.join('\n'))
         }
     }

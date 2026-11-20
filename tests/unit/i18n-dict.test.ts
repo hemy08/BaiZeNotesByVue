@@ -158,11 +158,53 @@ describe('CMP-30 词典质量门禁', () => {
         for (const locale of localeDirs) {
             const files = readdirSync(join(MESSAGES_DIR, locale))
                 .filter((name) => name.endsWith('.ts'))
+                // P1-3：index.ts 为语言聚合入口（动态 import 的按语言拆包单元），
+                // 不计入命名空间文件；其覆盖性由下一条用例单独守护。
                 .map((name) => name.replace(/\.ts$/, ''))
+                .filter((name) => name !== 'index')
                 .sort()
             // 每个语言目录必须与 MESSAGES 的命名空间集合完全一致（漏文件会在 index.ts 中 import 报错前先被拦下）
             expect(files, `${locale} 词典文件`).toEqual(expectedNamespaces)
         }
+    })
+
+    it('语言聚合入口 index.ts 覆盖全部命名空间文件；词典动态 import 只在渲染层（P1-3 首屏拆包回归防线）', () => {
+        const namespaces = Object.keys(MESSAGES['zh-CN']).sort()
+        for (const locale of SUPPORTED_LOCALES) {
+            const indexPath = join(MESSAGES_DIR, locale, 'index.ts')
+            const source = readFileSync(indexPath, 'utf-8')
+            // 聚合入口必须 import 本语言目录下每个命名空间文件，并挂到同名 key 上
+            for (const namespace of namespaces) {
+                expect(source, `${locale}/index.ts 缺少 import`).toMatch(
+                    new RegExp(`import ${namespace} from '\\./${namespace}'`)
+                )
+            }
+            // default 导出必须包含全部命名空间键（防止 import 了但忘记 merge）
+            const exported =
+                /\bconst messages: MessageNode = \{([\s\S]*?)\n\}/.exec(source)?.[1] ?? ''
+            for (const namespace of namespaces) {
+                expect(exported, `${locale}/index.ts 未 merge ${namespace}`).toMatch(
+                    new RegExp(`\\b${namespace}\\b`)
+                )
+            }
+        }
+
+        // shared/i18n/index.ts 不得以任何形式（静态 import / 动态 import）引用词典文件：
+        // 它被 main/renderer 共同依赖，一旦引用就会把双语词典重新拉回首屏共享 chunk。
+        const sharedIndexSource = readFileSync(join(SRC_DIR, 'shared/i18n/index.ts'), 'utf-8')
+        expect(sharedIndexSource).not.toMatch(/from '\.\/messages\//)
+        expect(sharedIndexSource).not.toMatch(/import\('\.\/messages\//)
+
+        // 词典动态 import 只允许出现在渲染层 i18n 门面（Vite 据此按语言拆 chunk）；
+        // 首屏 initI18n 仅 await 当前语言，另一语言切换时按需加载。
+        const rendererSource = readFileSync(join(SRC_DIR, 'renderer/src/common/i18n.ts'), 'utf-8')
+        for (const locale of SUPPORTED_LOCALES) {
+            expect(rendererSource, `渲染层未注册 ${locale} 动态加载器`).toContain(
+                `import('../../../shared/i18n/messages/${locale}')`
+            )
+        }
+        expect(rendererSource).toMatch(/registerLocaleLoader\('zh-CN'/)
+        expect(rendererSource).toMatch(/registerLocaleLoader\('en-US'/)
     })
 
     it('词典无空值/纯空白值（中英全部叶子键）', () => {

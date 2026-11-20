@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
     DEFAULT_LOCALE,
+    getMessages,
+    hasLocaleMessages,
+    loadAllLocales,
     resolveLocale,
     translate,
     SUPPORTED_LOCALES,
@@ -55,5 +58,16 @@ describe('i18n 核心', () => {
         const zhKeys = Object.keys(MESSAGES['zh-CN']).sort()
         const enKeys = Object.keys(MESSAGES['en-US']).sort()
         expect(enKeys).toEqual(zhKeys)
+    })
+
+    it('按语言懒加载 API：加载状态查询 + loadAllLocales 幂等（测试 setup 已预载双语）', async () => {
+        // setupFiles（tests/unit/helpers/i18n-preload.ts）已同步预载双语，其它用例才能在
+        // 模块顶层同步读取词典；这里校验加载状态查询接口的契约与 loadAllLocales 幂等性。
+        // 真实的「按需只加载当前语言」语义见 tests/unit/i18n-lazy.test.ts（resetModules 冷启动）。
+        expect(hasLocaleMessages('zh-CN')).toBe(true)
+        expect(hasLocaleMessages('en-US')).toBe(true)
+        expect(getMessages('zh-CN')).toBe(MESSAGES['zh-CN'])
+        await loadAllLocales()
+        expect(Object.keys(MESSAGES).sort()).toEqual([...SUPPORTED_LOCALES].sort())
     })
 })

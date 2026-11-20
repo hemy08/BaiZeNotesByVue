@@ -51,6 +51,11 @@ export default defineConfig({
         // 采用 globalSetup 而不是 setupFiles+afterAll，是因为各 worker 并行运行时
         // afterAll 清理会与其他 worker 正在使用的临时目录竞争（详见 helpers 注释）。
         globalSetup: [resolve(__dirname, 'tests/unit/helpers/tmpdir-global-setup.ts')],
+        // P1-3（首屏 i18n 拆包）：shared/i18n 改为按语言动态加载后，单测在模块顶层就要能
+        // 同步读取中英两套词典（词典一致性用例构建 zh/en 键值映射、组件用例断言具体文案）。
+        // 该 setup 用静态 import + 同步 register 预载双语——只影响测试进程，不进入构建产物；
+        // 渲染层的首屏单语言行为由 tests/unit/i18n-lazy.test.ts 与 budget 门禁守护。
+        setupFiles: [resolve(__dirname, 'tests/unit/helpers/i18n-preload.ts')],
         // ET-18：用例级 mock 隔离。restoreMocks 在每个用例前恢复 vi.spyOn 的原始实现，
         // 避免同一文件内跨用例共享 spy 状态造成顺序依赖；全量 118 文件 / 1896 用例实测全绿。
         restoreMocks: true,
