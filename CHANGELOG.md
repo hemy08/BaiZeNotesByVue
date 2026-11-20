@@ -26,9 +26,16 @@
 - **E2E 启动链路**：dev 启动改用原生 `--user-data-dir`（替代 `-r` 夹具 setPath），删除废弃夹具；Electron 43 下 E2E 9/9，为后续 Electron 45 升级减少启动分支差异
 - **M1 收口**：`trayHideNotified` 从 tray.ts 模块级状态迁入 `AppContext.tray`（窗口重建/测试统一 reset，行为不变）
 
+### 🛡️ 全量扫描 P1 修复（2026-11-20）
+
+- **安全**：工作区敏感根黑名单（.ssh/.gnupg/.aws 等 + AppData/浏览器配置）；defaultSession 权限处理器（默认拒绝，仅本地受信页面放行安全权限）；preload 收敛为受限 ipcRenderer（不再暴露 process.env/webFrame/webUtils）；生产 CSP 移除 unsafe-eval 与 localhost（dev 保留）
+- **发布/CI**：release dispatch 按 tag 检出 + tag↔package.json↔appVersion 三方守卫；发布门禁对齐 CI（typecheck/eslint/prettier/vitest/docs/baseline/audit/budget）；按版本精确上传与 tag 维度 latest.yml 校验；CI 最小权限、单次 coverage+JSON 基线、--max-warnings=0、E2E 纳入 typecheck；package.json 卫生（private/description/packageManager/engines/clean）
+- **架构**：架构测试升级 TS AST（静态/动态 import/.vue），新增 config→ipc 零例外、main→renderer/preload、renderer→preload 规则；config→ipc 反向边清零（theme-broadcast 迁中性层、IPC 台账 provider 注入）
+- **文档**：README/wiki/报告索引/IPC 矩阵/台账统一到 HEAD 实测口径（187 文件 / 3,458 用例、91 通道 / 17 组、白名单 60+25、26 md / 27 HTML）
+
 ### ✅ 门禁
 
-- typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **185 文件 / 3,397 用例全通过**、electron-vite build 成功
+- typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **187 文件 / 3,458 用例全通过**、electron-vite build 成功
 
 ## 2026年11月20日 - 版本 1.3.9（结构治理 / 工程优化 / 体验修复）
 
