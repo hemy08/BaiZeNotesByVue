@@ -28,7 +28,7 @@
   </defs>
 
   <text x="16" y="32" class="title">图 1 · 代码结构优化计划批次路线图</text>
-  <text x="16" y="54" class="sub">基线：结构实测 2026-11-19，HEAD `1d71cc0`｜原则：小批次、可独立提交/回滚、门禁不降级、先测试后重构</text>
+  <text x="16" y="54" class="sub">基线：结构实测 2026-11-19，HEAD `c10dcf6`｜原则：小批次、可独立提交/回滚、门禁不降级、先测试后重构</text>
   <rect x="860" y="16" width="14" height="14" rx="3" fill="#16a34a"/><text x="880" y="28" class="legend">已完成</text>
   <rect x="950" y="16" width="14" height="14" rx="3" fill="#dc2626"/><text x="970" y="28" class="legend">P1 高优先</text>
   <rect x="860" y="38" width="14" height="14" rx="3" fill="#2563eb"/><text x="880" y="50" class="legend">P2</text>
