@@ -117,7 +117,16 @@ export default defineConfig({
             //   src/renderer/src/components/PluginTools/**     实测 93.16 / 92.71 / 87.80 / 89.48
             //   src/renderer/src/common/**                     实测 96.58 / 96.50 / 100.00 / 88.54
             //   src/renderer/src/composables/**                实测 93.90 / 93.15 / 93.02 / 84.91
+            // 2026-11-20（P1-6 覆盖率盲区补测第四批）：在第三批 glob 基础上按本轮实测上调。
+            // 本轮补测覆盖 preview-highlight 全量惰性语言/word-worker 入口/preview-md-inline/media
+            // 分支/MarkdownPreview·MarkdownEdit 组件事件/App.vue 降级/主进程小模块等，实测
+            // （321 文件，口径 lines / statements / functions / branches，取整为「实测 - 2pp」）：
+            //   src/renderer/src/components/Markdown/**       实测 95.13 / 94.92 / 95.87 / 86.08
+            //   src/renderer/src/components/PluginTools/**     实测 94.57 / 94.37 / 87.80 / 93.19
+            //   src/renderer/src/components/HemyTools/**       实测 96.76 / 96.77 / 100.00 / 88.62
+            //   src/main/utils/**（新增 glob）                 实测 89.25 / 89.22 / 94.83 / 84.03
             // 说明：glob 阈值只约束匹配文件；未匹配文件仍适用上方全局阈值。
+            // 并发批次（IPC 拆分 / 对话框可访问性）仍在主工作区推进，阈值统一保留 2pp 余量。
             thresholds: {
                 lines: 80,
                 statements: 80,
@@ -148,10 +157,10 @@ export default defineConfig({
                     branches: 95
                 },
                 'src/renderer/src/components/Markdown/**': {
-                    lines: 88,
-                    statements: 88,
-                    functions: 82,
-                    branches: 79
+                    lines: 93,
+                    statements: 92,
+                    functions: 93,
+                    branches: 84
                 },
                 'src/renderer/src/components/HemyTools/**': {
                     lines: 94,
@@ -160,10 +169,10 @@ export default defineConfig({
                     branches: 86
                 },
                 'src/renderer/src/components/PluginTools/**': {
-                    lines: 91,
-                    statements: 90,
-                    functions: 85,
-                    branches: 87
+                    lines: 92,
+                    statements: 92,
+                    functions: 86,
+                    branches: 90
                 },
                 'src/renderer/src/common/**': {
                     lines: 94,
@@ -175,6 +184,12 @@ export default defineConfig({
                     lines: 91,
                     statements: 91,
                     functions: 91,
+                    branches: 82
+                },
+                'src/main/utils/**': {
+                    lines: 87,
+                    statements: 87,
+                    functions: 92,
                     branches: 82
                 }
             }

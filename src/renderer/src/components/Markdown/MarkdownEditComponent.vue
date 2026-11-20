@@ -132,7 +132,12 @@ const MarkdownPaneError = defineComponent({
         },
         retry: {
             type: Function as PropType<() => void>,
-            required: true
+            // Vue 3 的 defineAsyncComponent 目前只向 errorComponent 传 `error`，不会传 `retry`
+            //（retry 仅出现在 onError 回调签名里）。原实现把 retry 声明为 required，点击错误占位
+            // 上的「重试」按钮会抛 `TypeError: errorProps.retry is not a function`；这里给默认空
+            // 实现，保证错误界面的重试按钮永不再崩溃（无 retry 时点击为无操作）。
+            required: false,
+            default: () => undefined
         }
     },
     setup(errorProps) {
@@ -151,7 +156,7 @@ const MarkdownPaneError = defineComponent({
                     {
                         type: 'button',
                         class: 'md-pane-error-retry',
-                        onClick: () => errorProps.retry()
+                        onClick: () => errorProps.retry?.()
                     },
                     t('dialogRenderer.common.retry')
                 )

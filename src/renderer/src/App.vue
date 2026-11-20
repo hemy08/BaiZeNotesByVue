@@ -126,7 +126,11 @@ const MainViewError = defineComponent({
         },
         retry: {
             type: Function as PropType<() => void>,
-            required: true
+            // 同 MarkdownEditComponent 的错误占位：Vue 3 的 defineAsyncComponent 只向
+            // errorComponent 传 `error`、不传 `retry`（retry 仅存在于 onError 回调签名）。
+            // 原实现 required:true 使「重试」按钮点击抛 TypeError，这里给默认空实现兜底。
+            required: false,
+            default: () => undefined
         }
     },
     setup(props) {
@@ -144,7 +148,7 @@ const MainViewError = defineComponent({
                     {
                         type: 'button',
                         class: 'main-view-error-retry',
-                        onClick: () => props.retry()
+                        onClick: () => props.retry?.()
                     },
                     t('dialogRenderer.common.retry')
                 )

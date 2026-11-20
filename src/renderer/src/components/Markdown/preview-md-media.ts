@@ -625,6 +625,10 @@ function iconInlineRule(state: StateInline, silent: boolean): boolean {
         return false
     }
     if (silent) {
+        // markdown-it 契约：silent 模式命中后必须推进 state.pos（skipToken 会校验位置前进），
+        // 否则「链接 label 中出现图标短代码」会在 parseLinkLabel 的静默扫描阶段抛
+        // `inline rule didn't increment state.pos`，导致整篇预览渲染失败。
+        state.pos += match[0].length
         return true
     }
     const token = state.push(MDX_ICON, '', 0)
