@@ -186,3 +186,96 @@ export function getReportNavCandidatePaths(filePath: string): string[] {
     }
     return candidates
 }
+
+/* ============================================================================
+ * 查看器内本地 HTML 链接导航（2026-11-20 用户反馈修复）
+ *
+ * 背景：iframe 使用 `sandbox="allow-same-origin"`（无 allow-scripts），报告页顶部导航
+ * 链接为跨文档 `.html` 链接。此前点击后 iframe 直接导航到 file:// 目标页，目标页里的
+ * `report-nav.js` 不执行 → 顶部导航消失；同时查看器路径仍停留在旧文件。
+ * 修复：父页面拦截本地 `.html` 链接，改走查看器自身加载器（重新读取 + 注入静态导航 +
+ * 更新 filePath），保持查看器状态与路径一致。
+ * ========================================================================== */
+
+/** 查看器内链接点击的解析结果 */
+export type ViewerHtmlLinkAction =
+    { kind: 'anchor' } | { kind: 'navigate'; path: string; name: string } | { kind: 'default' }
+
+/**
+ * 把 file:// URL 解析为本地 HTML 文件路径（仅 .html/.htm）。
+ *
+ * @param href 链接的绝对 URL（iframe 注入 base 后，本地链接的 link.href 为 file:// URL）
+ * @returns 本地路径与文件名；非 file: 协议 / 非 HTML 扩展名 / 无法解析时返回 null
+ */
+export function resolveLocalHtmlTarget(href: string): { path: string; name: string } | null {
+    if (!href) {
+        return null
+    }
+    let url: URL
+    try {
+        url = new URL(href)
+    } catch {
+        return null
+    }
+    if (url.protocol !== 'file:') {
+        return null
+    }
+    let pathname = url.pathname
+    try {
+        pathname = decodeURIComponent(pathname)
+    } catch {
+        // 非法百分号编码：保持原样继续判断
+    }
+    if (!/\.html?$/i.test(pathname)) {
+        return null
+    }
+    // Windows 盘符：/E:/dir/a.html → E:/dir/a.html（再统一为反斜杠）；POSIX 保留斜杠。
+    let localPath = pathname
+    if (/^\/[A-Za-z]:/.test(localPath)) {
+        localPath = localPath.slice(1).replace(/\//g, '\\')
+    }
+    const slash = pathname.lastIndexOf('/')
+    const name = slash >= 0 ? pathname.slice(slash + 1) : pathname
+    if (!name) {
+        return null
+    }
+    return { path: localPath, name }
+}
+
+/** 规范化本地路径用于「是否当前页」比较（分隔符、大小写不敏感） */
+function normalizeLocalPathForCompare(filePath: string): string {
+    return normalizeSlashes(filePath).replace(/\/+$/, '').toLowerCase()
+}
+
+/**
+ * 解析 iframe 内链接点击行为：
+ * - `#anchor` → 交由现有锚点滚动守卫处理；
+ * - 本地 .html 且与当前文件不同 → `navigate`（走查看器加载器，保留导航注入与路径状态）；
+ * - 其他（http/https/mailto/非 html/当前页自身）→ `default`，保持浏览器默认行为。
+ *
+ * @param href 链接 href 属性（可为相对值）
+ * @param currentFilePath 查看器当前文件完整路径
+ * @returns 点击动作；组件据此 preventDefault + loadWithGuard 或放行
+ */
+export function resolveViewerHtmlLinkClick(
+    href: string,
+    currentFilePath: string
+): ViewerHtmlLinkAction {
+    if (!href) {
+        return { kind: 'default' }
+    }
+    if (href.startsWith('#')) {
+        return { kind: 'anchor' }
+    }
+    const target = resolveLocalHtmlTarget(href)
+    if (!target) {
+        return { kind: 'default' }
+    }
+    if (
+        currentFilePath &&
+        normalizeLocalPathForCompare(target.path) === normalizeLocalPathForCompare(currentFilePath)
+    ) {
+        return { kind: 'default' }
+    }
+    return { kind: 'navigate', ...target }
+}

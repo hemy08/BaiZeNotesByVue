@@ -82,7 +82,8 @@ import {
     withBaseHref,
     hasReportNavSlot,
     injectReportNav,
-    getReportNavCandidatePaths
+    getReportNavCandidatePaths,
+    resolveViewerHtmlLinkClick
 } from './html-view-utils'
 import { useFileViewerState } from '../../composables/useFileViewerState'
 import type { FileLoadContext } from '../../composables/useFileViewerState'
@@ -184,7 +185,8 @@ const {
     loadingText,
     emptyText,
     retry,
-    finishLoading
+    finishLoading,
+    loadWithGuard
 } = useFileViewerState<string>({
     viewerName: 'ShowHtmlView',
     fileExtension: 'html',
@@ -214,7 +216,7 @@ function openInBrowser(): void {
  */
 function onIframeLoad(): void {
     finishLoading()
-    bindIframeAnchorGuard()
+    bindIframeLinkGuard()
 }
 
 /**
@@ -227,12 +229,14 @@ function onIframeLoad(): void {
  * 2. HTML 查看器以 srcdoc + 注入 `<base>` 渲染，`#anchor` 可能被 base 解析为 file://
  *    文档导航（sandbox 下导航失败 → iframe 空白）。
  *
- * 修复：父页面同源访问 iframe 文档做事件委托，拦截「纯 fragment」链接默认导航，改为
- * **仅滚动 iframe 内部**（用 scrollTo，避免 scrollIntoView 冒泡滚动父级滚动链）；
- * 跨文档链接（顶部导航）保持默认行为。iframe 每次导航后 load 事件重新绑定，
+ * 修复：父页面同源访问 iframe 文档做事件委托：
+ * 1. 「纯 fragment」链接 → 仅滚动 iframe 内部（scrollTo，避免冒泡滚动父级滚动链）；
+ * 2. 本地 `.html` 跨文档链接（报告顶部导航等）→ 走查看器加载器（注入静态导航 + 更新
+ *    filePath），避免 iframe 直接跳 file:// 后导航消失/路径不切换；http(s) 等默认行为。
+ * iframe 每次导航后 load 事件重新绑定，
  * 文档级标记防止重复绑定。
  */
-function bindIframeAnchorGuard(): void {
+function bindIframeLinkGuard(): void {
     const iframe = iframeRef.value
     const doc = iframe?.contentDocument
     if (!doc) {
@@ -252,7 +256,16 @@ function bindIframeAnchorGuard(): void {
                 return
             }
             const href = link.getAttribute('href') ?? ''
+            // 2026-11-20（用户反馈修复）：本地 .html 链接（报告顶部导航等）不再让 iframe
+            // 直接跳 file://（目标页 report-nav.js 在 sandbox 下不执行 → 导航消失，且
+            // 查看器路径停留在旧文件）。改为走查看器自身加载器：重新读取 + 注入静态导航
+            // + 更新 filePath；http(s)/mailto/非 HTML/当前页自身保持默认行为。
             if (!href.startsWith('#')) {
+                const action = resolveViewerHtmlLinkClick(link.href, filePath.value)
+                if (action.kind === 'navigate') {
+                    event.preventDefault()
+                    void loadWithGuard(action.path, action.name)
+                }
                 return
             }
             event.preventDefault()
