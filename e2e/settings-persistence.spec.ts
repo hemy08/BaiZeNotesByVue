@@ -143,6 +143,9 @@ test.describe('系统设置保存与持久化', () => {
                     .toBe(true)
             } finally {
                 await app?.close().catch(() => undefined)
+                // 2026-11-20（Electron 45）：关闭后进程/文件锁释放存在延迟，等 1s 再启动下一实例，
+                // 避免同一 profile 的 Chromium 单例/文件锁与新实例启动竞态。
+                await new Promise((resolve) => setTimeout(resolve, 1000))
             }
 
             // ===== 第二次启动：验证跨重启持久化 =====
@@ -171,6 +174,7 @@ test.describe('系统设置保存与持久化', () => {
             await expect(firstDialog).toBeHidden({ timeout: 15_000 })
         } finally {
             await app2?.close().catch(() => undefined)
+            await new Promise((resolve) => setTimeout(resolve, 1000))
             sandbox.restore()
             profile.cleanup()
         }

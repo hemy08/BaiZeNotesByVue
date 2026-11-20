@@ -67,9 +67,6 @@ export const PACKAGED_EXE = path.join(
     'win-unpacked',
     'BaiZeNotes.exe'
 )
-/** 测试专用主进程预加载夹具（重定向 userData 到临时目录） */
-export const USER_DATA_FIXTURE = path.join(ROOT, 'e2e', 'fixtures', 'redirect-user-data.cjs')
-
 /** 真实用户配置根目录（产品代码固定为 home/.baizenotes） */
 const BAIZE_HOME_DIR = path.join(os.homedir(), '.baizenotes')
 /** 真实主进程配置目录（electron-store 文件所在目录，由 ConfigSandbox 备份/恢复） */
@@ -280,10 +277,14 @@ export function launchDevApp(
     profile: TempProfile,
     options: LaunchAppOptions = {}
 ): Promise<ElectronApplication> {
+    // 2026-11-20（Electron 45 兼容）：改为原生 --user-data-dir，替代 -r 夹具 setPath。
+    // 原因：Electron 45 下 -r setPath 时序与欢迎页/preload 注入偶发冲突；原生 switch 在
+    // Chromium 初始化阶段生效，与打包版 E2E 使用同一条路径，减少启动分支差异。
+    // ~/.baizenotes/config 仍不重定向，由调用方 ConfigSandbox 备份/恢复。
     return electron.launch({
         executablePath: resolveElectronExecutable(),
-        args: ['-r', USER_DATA_FIXTURE, MAIN_ENTRY],
-        env: buildChildEnv({ BAIZE_E2E_USER_DATA: profile.userData }),
+        args: [`--user-data-dir=${profile.userData}`, MAIN_ENTRY],
+        env: buildChildEnv({}),
         timeout: options.timeout ?? 60_000
     })
 }
