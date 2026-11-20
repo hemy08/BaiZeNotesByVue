@@ -17,6 +17,7 @@
 - **B2**：@types/node 22→26（encrypt-decrypt 适配 Cipheriv/Decipheriv）；typescript 7 因 vue-tsc 不兼容回滚
 - **B3**：vitest 4→5.1.1、@vitest/coverage-v8 4→5.1.1；Node 26 下 forks 池 crypto 熵源异常 → 改用 threads 池 + testTimeout 15s
 - **B4**：electron-store 11→12（ESM-only，store-factory 适配 + 打包启动验证）、jschardet 3→4
+- **B8（补充）**：vue 3.5.45→3.5.46；jsdom 29→31 评估失败回滚（简写序列化/游离 DOM 用例异常）；ESLint 10 存量 **30 条 warning 全部清理**并恢复新增规则为 error（0 warning）
 - **B5**：electron 43→45 评估后回滚（dev E2E userData/欢迎页时序不稳定，保留 43.8.12）
 - Node 运行时升级 26.13.1；体积预算按依赖增长调整（Setup 115 MiB / asar 47 MiB）
 
@@ -73,6 +74,7 @@
 - **B2**：@types/node 22→26（encrypt-decrypt 适配 Cipheriv/Decipheriv）；typescript 7 因 vue-tsc 不兼容回滚
 - **B3**：vitest 4→5.1.1、@vitest/coverage-v8 4→5.1.1；Node 26 下 forks 池 crypto 熵源异常 → 改用 threads 池 + testTimeout 15s
 - **B4**：electron-store 11→12（ESM-only，store-factory 适配 + 打包启动验证）、jschardet 3→4
+- **B8（补充）**：vue 3.5.45→3.5.46；jsdom 29→31 评估失败回滚（简写序列化/游离 DOM 用例异常）；ESLint 10 存量 **30 条 warning 全部清理**并恢复新增规则为 error（0 warning）
 - **B5**：electron 43→45 评估后回滚（dev E2E userData/欢迎页时序不稳定，保留 43.8.12）
 - Node 运行时升级 26.13.1；体积预算按依赖增长调整（Setup 115 MiB / asar 47 MiB）
 
