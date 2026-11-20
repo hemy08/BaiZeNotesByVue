@@ -4,21 +4,43 @@
  * 目标：让所有 E2E 用例都满足「临时用户数据 + 运行后清理」，不污染开发者的真实数据，
  * 同时保证本地与 CI 使用同一套启动方式。
  *
- * ## 路径隔离方案（为什么不是一个 setPath 解决）
- * 产品代码把配置目录固定为 `app.getPath('home')/.baizenotes`，而 Electron 的
- * `app.getPath('home')` 不支持环境变量覆盖；测试侧只有两条路可走：
- * 1. 用 `-r` 预加载夹具在应用主脚本之前 `app.setPath('home', 临时目录)`；
- * 2. 保留真实 home，只把「配置目录」做备份/替换/恢复。
+ * ## 路径隔离方案
+ * 产品代码把「主进程 electron-store 配置目录」固定为 `app.getPath('home')/.baizenotes/config`，
+ * 且 `home` 不支持命令行/环境变量覆盖；测试侧能重定向的是 Electron 的 `userData`
+ * （fileState.json / 渲染层裸 JSON 配置 / Session 缓存 / 单实例锁 / preload 字节码缓存）。
+ * - `userData`：经 `-r` 夹具 `app.setPath('userData', 临时目录)` 重定向（Node bootstrap 阶段执行，
+ *   早于应用主脚本），完全避开真实 `%APPDATA%`；
+ * - `home/.baizenotes/config`：真实目录，由 `createConfigSandbox()` 在用例内「备份 → 清空
+ *   （可写种子）→ finally 恢复」，测试写入的配置由用例自己隔离并在结束后还原（config 仅几 KB）。
  *
- * 本仓库实测方案 1 **不稳定**：`app.setPath('home')` 在 ready 之前执行时，约 40%~60% 的启动
- * 会偶发 preload 未注入（`window.api` undefined → 欢迎页回退、主界面不加载），属 Electron
- * 内部路径服务时序问题，测试侧无法可靠规避。因此采用组合方案：
- * - `userData`（fileState.json / 渲染层裸 JSON 配置 / 缓存 / 单实例锁）：经 `-r` 夹具
- *   `app.setPath('userData', 临时目录)` 重定向。该操作实测稳定（0/8 失败），且完全避开真实
- *   `%APPDATA%`；
- * - `home/.baizenotes/config`（主进程 systemSetting 等 electron-store 配置）：真实目录，
- *   由 `createConfigSandbox()` 在用例内「备份 → 清空（可写种子）→ finally 恢复」，
- *   测试写入的配置由用例自己隔离并在结束后还原（config 目录仅几 KB）。
+ * ## P4：dev 启动「preload 偶发未注入」根因与修复（详见 out/tool-results/p4-e2e-flake.md）
+ * 现象（P0~P3 期间 46 次 dev 启动观测到 6 次 ≈ 13%，固定 3 次启动重试后 100% 恢复）：
+ * 窗口已创建、欢迎页正常渲染（renderer 脚本已执行），但 `window.electron` / `window.api`
+ * 在 25s 内始终不存在；页面 URL 正确、无 preload-error、无 render-process-gone、无 did-fail-load。
+ *
+ * P4 在 Playwright test worker 内稳定复现（观测窗口内首启失败 3/4~4/5，与启动方案无关：
+ * `-r`+setPath 与 `--user-data-dir` 同等失败），并取证到：
+ * - 失败 run 的 sandbox 主进程事件中 `preload-error` 为空、dom-ready 后的桥探针不返回且
+ *   无任何 preload 报错 —— 即 preload 脚本**根本没有被执行**（不是执行后抛错）；
+ * - 失败页面仍正常渲染 app 并输出 `Cannot read properties of undefined (reading 'api')`
+ *   类回退日志；主进程 userData/sessionData/单实例锁/窗口/webContents 均正常。
+ *
+ * 根因（Electron 43.x 上游 sandboxed preload 启动数据 mojo 推送竞态，非产品逻辑）：
+ * Electron 42/43 起（#51602 / 43-x-y backport #51792）sandboxed preload 的启动数据改为
+ * 浏览器进程在 `ReadyToCommitNavigation` 时经 mojo 推送；42~44 分支的 43.8.12 又带
+ * #54155（`DidCreateScriptContext` 在 `startup_data()` 为空时**静默跳过** sandbox bundle，
+ * 不再报错）。当 Playwright 的 CDP 客户端在首次导航提交前提前 attach / 强制创建脚本上下文
+ * （即 #54149 的触发条件；Playwright `--remote-debugging-port=0` 默认如此）时，提交文档的
+ * `DidCreateScriptContext` 可能先于启动数据注册执行 → 守卫静默跳过 bundle → 该文档 preload
+ * 永远不执行（Electron 不会重试）→ `window.electron` / `window.api` 缺失，而页面本身正常。
+ * 该竞态与 `-r`/setPath 无关；本机表现为「测试 worker 内高频、独立脚本低频」，重试恢复是因为
+ * 新进程/新导航重新推送了启动数据。
+ *
+ * 修复（测试侧，不改产品代码）：`launchDevAppWithRenderer()` 在就绪失败且命中「页面已导航到
+ * file: 但 preload 桥完全缺失」签名时，先对当前页面执行 `page.reload()`（新导航会重新推送
+ * 启动数据），实测恢复 3/3、耗时约 40ms；reload 恢复失败才关闭实例整进程重试（最多 3 次）。
+ * 失败文档的 pageerror/console 错误记入 `launchFailures`（不静默吞掉），恢复后的新文档重新
+ * 监听，因此不污染用例的「无未捕获异常」断言。
  *
  * ## Electron 可执行文件
  * Windows 下统一使用 `node_modules/electron/dist` 的**副本**（out/tmp 下，首次运行复制一次）：
@@ -233,7 +255,7 @@ export interface LaunchAppOptions {
  *
  * 夹具经 `-r` 在 Electron 主进程启动早期执行，早于应用主脚本读取 userData 派生路径，
  * 因此 fileState.json / userData/config 下的裸 JSON 种子文件均落在临时目录。
- * home（`~/.baizenotes/config`）不重定向，由调用方的 ConfigSandbox 负责备份/恢复。
+ * `~/.baizenotes/config` 不重定向，由调用方的 ConfigSandbox 负责备份/恢复。
  */
 export function launchDevApp(
     profile: TempProfile,
@@ -421,9 +443,14 @@ export interface LaunchedDevApp {
     page: Page
     /** 启动就绪前收集到的渲染层未捕获异常（供用例断言「无异常」） */
     pageErrors: string[]
-    /** 实际启动次数（1 = 首次即就绪；>1 = 发生过 preload 注入态的重试，供报告统计偶发率） */
+    /** 实际启动进程次数（1 = 首次即就绪；>1 = 关闭实例重启过，供报告统计偶发率） */
     launchAttempts: number
-    /** 失败尝试的诊断信息（重试成功时也保留，不允许「静默吞掉」失败数据） */
+    /**
+     * 通过页面 reload 从「首次导航 preload 未注入」恢复的次数（P4 根因缓解，0 = 未发生）。
+     * reload 恢复不增加 launchAttempts（同一进程内新导航，启动数据会被重新推送）。
+     */
+    reloadRecoveries: number
+    /** 失败/恢复尝试的诊断信息（恢复成功时也保留，不允许「静默吞掉」失败数据） */
     launchFailures: string[]
 }
 
@@ -436,16 +463,142 @@ export interface LaunchDevAppWithRendererOptions extends LaunchAppOptions {
      */
     readyTimeout?: number
     /**
-     * 最多启动尝试次数（默认 3 = 首次 + 2 次重试）。
+     * 最多启动进程次数（默认 3 = 首次 + 2 次重启重试）。
      *
-     * 实测（--repeat-each=3 环境）存在约 20% 的「窗口已显示、欢迎页已渲染但
-     * window.electron/window.api 始终未注入」随机失败：这是 Electron 主进程启动期
-     * preload 加载偶发失败（页面侧 catch 后回退渲染欢迎页，因此截图看似正常），
-     * 与产品逻辑无关、重开进程即可恢复；重试次数与失败摘要都会记录进报告，
-     * 不做静默假绿（确定性 preload 缺陷会 3 次全失败并抛错）。
+     * P4 根因：Electron 43.x sandboxed preload 启动数据 mojo 推送竞态可能让「首次导航」
+     * 的文档不执行 preload（窗口已显示、欢迎页已渲染但 window.electron/window.api 缺失），
+     * 属上游 Electron 行为、与产品逻辑无关；新导航/新进程会重新推送启动数据，因此可恢复。
+     * 重试次数与失败摘要都会记录进报告，不做静默假绿（确定性 preload 缺陷会全部失败并抛错）。
      */
     maxLaunchAttempts?: number
+    /**
+     * 就绪失败后、关闭实例前的页面 reload 恢复次数（默认 2）。
+     * 仅对「页面已导航到 file: 但 preload 桥完全缺失」签名生效（P4 根因）；实测恢复
+     * 约 40ms，比整进程重启（25s 等待 + 启动）快两个数量级。
+     */
+    reloadAttempts?: number
 }
+
+/** 判定是否为「首次导航 preload 未注入」签名（可在同一进程内 reload 恢复） */
+function isPreloadMissingSignature(snapshot: RendererBridgeSnapshot | null): boolean {
+    return (
+        snapshot !== null &&
+        snapshot.url.startsWith('file:') &&
+        !snapshot.hasElectron &&
+        !snapshot.hasApi
+    )
+}
+
+/**
+ * 就绪失败后尝试用 `page.reload()` 恢复（P4 根因缓解）。
+ *
+ * 背景：Electron 42/43 起 sandboxed preload 启动数据在 `ReadyToCommitNavigation` 时经
+ * mojo 推送（#51602/#51792），43.8.12 携带 #54155 的守卫：若提交文档的脚本上下文先于
+ * 启动数据创建，`DidCreateScriptContext` 会**静默跳过** sandbox bundle，该文档的 preload
+ * 永不执行（Electron 不重试）。Playwright 的 CDP 早期 attach（Runtime.enable 强制初始
+ * 空文档创建上下文，即 #54149 触发条件）会放大该竞态。
+ *
+ * 恢复方式：`page.reload()` 触发一次新的导航，浏览器重新推送启动数据，新文档即可正常注入
+ * preload。仅当前页面已导航到 `file:` 且桥完全缺失时才尝试（避免对普通慢启动/其它错误
+ * 做无意义 reload）；失败时返回 false，由调用方走关闭实例重启路径。
+ */
+async function tryReloadRecovery(
+    page: Page,
+    attempts: number,
+    readyTimeout: number
+): Promise<boolean> {
+    const snapshot = await readRendererBridgeSnapshot(page).catch(() => null)
+    if (!isPreloadMissingSignature(snapshot)) {
+        return false
+    }
+    for (let round = 1; round <= attempts; round++) {
+        try {
+            await page.reload({ timeout: 15_000 })
+            await waitForRendererReady(page, { timeout: readyTimeout })
+            return true
+        } catch {
+            const retrySnapshot = await readRendererBridgeSnapshot(page).catch(() => null)
+            if (!isPreloadMissingSignature(retrySnapshot)) {
+                return false
+            }
+        }
+    }
+    return false
+}
+
+/**
+ * 就绪失败时采集主进程侧诊断快照（窗口/webContents/单实例锁/userData），best-effort。
+ *
+ * 目的：P4 排查「窗口已显示、欢迎页已渲染但 preload 未注入」这类偶发失败时，除了页面侧
+ * 桥快照外，还能看到主进程视角的窗口数量、webContents 类型/URL/renderer 进程/崩溃标记，
+ * 以及 userData 是否确实落在临时目录（排除隔离失效）。超时或异常不阻塞重试。
+ */
+async function readMainProcessState(app: ElectronApplication): Promise<unknown> {
+    const evaluator = app.evaluate(({ app: electronApp, BrowserWindow, webContents }) => {
+        const safe = <T>(fn: () => T): T | string => {
+            try {
+                return fn()
+            } catch (error) {
+                return `ERR:${String(error)}`
+            }
+        }
+        return {
+            isReady: electronApp.isReady(),
+            hasSingleInstanceLock: electronApp.hasSingleInstanceLock(),
+            userData: safe(() => electronApp.getPath('userData')),
+            isPackaged: electronApp.isPackaged,
+            windows: safe(() =>
+                BrowserWindow.getAllWindows().map((win) => ({
+                    id: win.id,
+                    visible: safe(() => win.isVisible()),
+                    destroyed: safe(() => win.isDestroyed())
+                }))
+            ),
+            webContents: safe(() =>
+                webContents.getAllWebContents().map((content) => ({
+                    id: content.id,
+                    type: safe(() => content.getType()),
+                    url: safe(() => content.getURL()),
+                    processId: safe(() => content.getProcessId()),
+                    crashed: safe(() => content.isCrashed()),
+                    destroyed: safe(() => content.isDestroyed())
+                }))
+            )
+        }
+    })
+    return Promise.race([
+        evaluator,
+        new Promise((resolve) => setTimeout(() => resolve({ timeoutMs: 3000 }), 3000))
+    ])
+}
+
+/**
+ * 首次导航 preload 注入快速预检（P4）。
+ *
+ * 正常启动时页面 <1s 内完成导航且 preload 注入（桥函数应在页面脚本执行前就绪）。
+ * 若页面已导航到 `file:` 但宽限期内桥仍完全缺失，即命中 Electron 上游竞态签名
+ * （该文档 preload 永远不再执行），可立即 reload 恢复，无需等完整就绪超时。
+ *
+ * @returns true = 命中「首次导航 preload 未注入」签名；false = 桥已注入或页面尚未导航
+ *          （后者交给完整 waitForRendererReady 处理，避免对慢启动误判）。
+ */
+async function detectFirstNavigationPreloadMissing(page: Page, graceMs: number): Promise<boolean> {
+    try {
+        await page.waitForURL((url) => url.protocol === 'file:', { timeout: 5000 })
+    } catch {
+        return false
+    }
+    try {
+        await waitForPreloadBridge(page, graceMs)
+        return false
+    } catch {
+        const snapshot = await readRendererBridgeSnapshot(page).catch(() => null)
+        return isPreloadMissingSignature(snapshot)
+    }
+}
+
+/** 首次导航 preload 注入宽限（ms）：正常注入 <100ms，2s 足够区分「未注入」与「机器慢」 */
+const FIRST_NAVIGATION_PRELOAD_GRACE_MS = 2000
 
 /**
  * 启动开发构建并等待渲染进程就绪（各 spec 的统一入口）。
@@ -453,7 +606,9 @@ export interface LaunchDevAppWithRendererOptions extends LaunchAppOptions {
  * 与 launchDevApp 的区别：
  * 1. 返回前完成 waitForRendererReady，并提前挂上 pageerror / console 监听，
  *    保证启动阶段的未捕获异常也能被用例捕获（而不是挂监听前就丢失）；
- * 2. 就绪失败时收集主进程 stdout/stderr 尾部 + 渲染层异常作为诊断，然后关闭实例重试；
+ * 2. 就绪失败时收集主进程 stdout/stderr 尾部 + 渲染层异常 + 主进程窗口/webContents 快照
+ *    作为诊断；若命中「首次导航 preload 未注入」签名（P4 根因）先尝试同一进程内
+ *    `page.reload()` 恢复，恢复失败才关闭实例重试；
  * 3. 正常启动不会重试（首次就绪即返回），重试只针对「preload 始终未注入」的随机启动失败。
  */
 export async function launchDevAppWithRenderer(
@@ -462,7 +617,9 @@ export async function launchDevAppWithRenderer(
 ): Promise<LaunchedDevApp> {
     const maxAttempts = Math.max(1, options.maxLaunchAttempts ?? 3)
     const readyTimeout = options.readyTimeout ?? 25_000
+    const reloadAttempts = Math.max(0, options.reloadAttempts ?? 2)
     const launchFailures: string[] = []
+    let reloadRecoveries = 0
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         const app = await launchDevApp(profile, options)
@@ -486,37 +643,101 @@ export async function launchDevAppWithRenderer(
                     consoleErrors.push(message.text())
                 }
             })
-            try {
-                await waitForRendererReady(page, { timeout: readyTimeout })
-                return {
-                    app,
-                    page,
-                    pageErrors,
-                    launchAttempts: attempt,
-                    launchFailures
+            // P4 根因缓解：先做一次「首次导航 preload 是否注入」快速预检（正常 <1s 完成）。
+            // 命中上游 Electron 竞态签名时，同一进程内 page.reload() 即可恢复（约 40ms），
+            // 无需等完整 25s 就绪超时后再整进程重启（把偶发失败成本从 ~28s 降到 ~2s）。
+            if (
+                await detectFirstNavigationPreloadMissing(page, FIRST_NAVIGATION_PRELOAD_GRACE_MS)
+            ) {
+                const preloadSnapshot = await readRendererBridgeSnapshot(page).catch(() => null)
+                launchFailures.push(
+                    `第 ${attempt}/${maxAttempts} 次启动：首次导航 preload 未注入（快速预检命中）` +
+                        `，页面桥快照：${JSON.stringify(preloadSnapshot)}`
+                )
+                if (
+                    reloadAttempts > 0 &&
+                    (await tryReloadRecovery(page, reloadAttempts, readyTimeout))
+                ) {
+                    reloadRecoveries += 1
+                    // 失败文档的渲染层异常已记入 launchFailures；恢复后的新文档重新累积，
+                    // 避免「首次导航缺失 preload」的噪声错误污染用例的 pageerror 断言。
+                    pageErrors.length = 0
+                    consoleErrors.length = 0
+                    launchFailures.push(
+                        `第 ${attempt}/${maxAttempts} 次启动首次导航 preload 未注入，已通过 page.reload() 恢复（未重启进程）`
+                    )
+                    console.warn(
+                        `[e2e] 首次导航 preload 未注入，已通过 page.reload() 恢复（第 ${attempt}/${maxAttempts} 次启动）`
+                    )
+                    return {
+                        app,
+                        page,
+                        pageErrors,
+                        launchAttempts: attempt,
+                        reloadRecoveries,
+                        launchFailures
+                    }
                 }
-            } catch (error) {
-                const sections = [
-                    `第 ${attempt}/${maxAttempts} 次启动未就绪：${
-                        error instanceof Error ? error.message : String(error)
-                    }`
-                ]
-                if (pageErrors.length > 0) {
-                    sections.push(`渲染层未捕获异常：${pageErrors.join(' | ')}`)
+                launchFailures.push(
+                    `第 ${attempt}/${maxAttempts} 次启动：page.reload() 恢复失败，关闭实例重新启动`
+                )
+            } else {
+                try {
+                    await waitForRendererReady(page, { timeout: readyTimeout })
+                    return {
+                        app,
+                        page,
+                        pageErrors,
+                        launchAttempts: attempt,
+                        reloadRecoveries,
+                        launchFailures
+                    }
+                } catch (error) {
+                    const sections = [
+                        `第 ${attempt}/${maxAttempts} 次启动未就绪：${
+                            error instanceof Error ? error.message : String(error)
+                        }`
+                    ]
+                    if (pageErrors.length > 0) {
+                        sections.push(`渲染层未捕获异常：${pageErrors.join(' | ')}`)
+                    }
+                    if (consoleErrors.length > 0) {
+                        sections.push(`渲染层控制台错误：${consoleErrors.slice(-5).join(' | ')}`)
+                    }
+                    if (processLogs.length > 0) {
+                        sections.push(`主进程日志尾部：${processLogs.join('').slice(-2000)}`)
+                    }
+                    try {
+                        sections.push(
+                            `主进程窗口/webContents 快照：${JSON.stringify(
+                                await readMainProcessState(app)
+                            )}`
+                        )
+                    } catch (diagnosticError) {
+                        sections.push(
+                            `主进程快照采集失败：${
+                                diagnosticError instanceof Error
+                                    ? diagnosticError.message
+                                    : String(diagnosticError)
+                            }`
+                        )
+                    }
+                    launchFailures.push(sections.join('\n'))
                 }
-                if (consoleErrors.length > 0) {
-                    sections.push(`渲染层控制台错误：${consoleErrors.slice(-5).join(' | ')}`)
-                }
-                if (processLogs.length > 0) {
-                    sections.push(`主进程日志尾部：${processLogs.join('').slice(-2000)}`)
-                }
-                launchFailures.push(sections.join('\n'))
             }
         } catch (error) {
+            let diagnosticSuffix = ''
+            try {
+                diagnosticSuffix = `；主进程窗口/webContents 快照：${JSON.stringify(
+                    await readMainProcessState(app)
+                )}`
+            } catch {
+                /* 诊断失败不覆盖原始错误 */
+            }
             launchFailures.push(
                 `第 ${attempt}/${maxAttempts} 次启动失败（firstWindow 未返回）：${
                     error instanceof Error ? error.message : String(error)
-                }`
+                }${diagnosticSuffix}`
             )
         }
 
