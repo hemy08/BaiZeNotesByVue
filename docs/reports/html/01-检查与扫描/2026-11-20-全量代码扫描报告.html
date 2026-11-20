@@ -76,8 +76,8 @@
 </tr>
 <tr>
 <td>首屏初始 JS</td>
-<td style="text-align:right"><strong>482.0 KiB</strong>（入口 133.6 + modulepreload 348.5）</td>
-<td>P1-3 部分修复：<code>budget:check</code> 已补「入口 + modulepreload 本地 JS」断言（≤512 KiB，逐文件明细）；i18n 拆包待做</td>
+<td style="text-align:right"><strong>321.9 KiB</strong>（入口 132.3 + modulepreload 189.6）</td>
+<td>P1-3 已修复：i18n 中英词典按语言动态加载，首屏只装当前语言；<code>budget:check</code> 增加「首屏 + 词典不得进首屏」双重断言</td>
 </tr>
 <tr>
 <td>主进程产物</td>
@@ -521,6 +521,43 @@
 <td><code>64d0016</code></td>
 <td>P2 E2E 缺口</td>
 <td>新增 4 条：主题首开/二次重载、主题取消不回滚、HTML 查看器导航+路径切换、文件打开-Monaco 编辑-Ctrl+S-磁盘落盘；全量 E2E 9→13 条，两轮 13/13 通过；新增 helpers/app-ui.ts</td>
+</tr>
+</tbody>
+</table>
+<p><strong>第四批 P1/P2 修复（2026-11-20 晚）</strong></p>
+<table>
+<thead>
+<tr>
+<th>修复批次</th>
+<th>提交</th>
+<th>覆盖问题</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>i18n 首屏拆包</td>
+<td><code>c76f77a</code></td>
+<td>P1-3 剩余</td>
+<td>messages 增加 zh-CN/en-US 聚合入口；shared i18n 改 registerLocaleLoader/loadLocale 按需加载；renderer mount 前 await 当前语言、切换按需加载；main 静态注册保持 tMain 同步。首屏 <strong>487.5→321.9 KiB（−34.0%）</strong>，中英词典各 83.7/85.3 KiB 独立异步 chunk；budget 新增「词典不得进首屏」断言</td>
+</tr>
+<tr>
+<td>KaTeX 按需加载</td>
+<td><code>8700593</code></td>
+<td>P1-8 剩余</td>
+<td>移除 katex 静态 import，公式标记检测（跳过代码块）后会话级 <code>await import('katex')</code>；无公式文档 0 加载。预览首载静态闭包 <strong>1,146,305→652,683 B（−43.1%，gzip 298,937→191,722）</strong>；新增 8 用例</td>
+</tr>
+<tr>
+<td>E2E 启动稳定性量化</td>
+<td><code>e2b5b2d</code></td>
+<td>P1-4</td>
+<td>新增 <code>startup-stability.spec.ts</code>（8 次启动，统计 launchAttempts/reloadRecoveries/readyMs）；7 个功能 spec 接入 <code>recordStartupMetrics</code>；CI retries 1→0、新增严格 startup-stability job；<code>E2E_STRICT_LAUNCH=1</code> 零恢复硬失败；实测恢复率 12.5%~62.5%（已知上游竞态），采用零重启硬门禁+恢复率软门禁</td>
+</tr>
+<tr>
+<td>主题取消回滚</td>
+<td><code>d275465</code></td>
+<td>P2 #17</td>
+<td>取消/关闭/Esc/遮罩时若草稿偏离初始三值，先 emit <code>change(初始值)</code> 回滚再关闭；未修改不 emit；确认/应用与字体不持久化语义不变；+8 用例</td>
 </tr>
 </tbody>
 </table>
