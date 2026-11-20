@@ -493,6 +493,37 @@
 </tr>
 </tbody>
 </table>
+<p><strong>第三批 P1/P2 修复（2026-11-20 晚）</strong></p>
+<table>
+<thead>
+<tr>
+<th>修复批次</th>
+<th>提交</th>
+<th>覆盖问题</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>工作区授权收敛</td>
+<td><code>dee0a81</code></td>
+<td>P1-1 剩余</td>
+<td>新增受信根批准机制：仅主进程在原生目录选择/启动播种时登记 approvedRoots（realpath + 50 条 LRU）；OPEN_SPECIFIC_FOLDER/OPEN_RECENT 只读判定；recent-folders 渲染层写入一律拒绝、主进程维护；敏感根黑名单保留为第二道防线</td>
+</tr>
+<tr>
+<td>覆盖率补测第二批</td>
+<td><code>99a32b7</code></td>
+<td>P1-6 剩余</td>
+<td>新增 5 测试文件 +123 用例；0% 文件 <strong>12→0</strong>（414 语句清零）；全局覆盖 86.57/79.63/85.51/86.98 → <strong>90.28/83.72/89.11/90.58</strong>；MarkdownMonacoEditor 53→96.6%、plantuml 72→97.3%；修复折叠提供器重复注册真实缺陷</td>
+</tr>
+<tr>
+<td>E2E 覆盖扩展</td>
+<td><code>64d0016</code></td>
+<td>P2 E2E 缺口</td>
+<td>新增 4 条：主题首开/二次重载、主题取消不回滚、HTML 查看器导航+路径切换、文件打开-Monaco 编辑-Ctrl+S-磁盘落盘；全量 E2E 9→13 条，两轮 13/13 通过；新增 helpers/app-ui.ts</td>
+</tr>
+</tbody>
+</table>
 <p><strong>修复后未收口（持续跟进）</strong>：P1-3 i18n 双语词典拆包与首屏口径修正、P1-4 E2E 零恢复断言、P1-6 覆盖率 glob 阈值、P1-8 KaTeX 按需加载与冷门语言动态补载、P1-9 更新安装×关闭确认、P2-3 代码签名、P2-5 依赖分类、E2E 覆盖扩展等。</p>
 <h2 id="sec-7">5. 更新记录</h2>
 <ul>
