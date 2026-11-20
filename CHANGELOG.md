@@ -75,6 +75,13 @@
 - **Fuses**：最终 8 项显式矩阵（禁用 runAsNode/NodeOptions/NodeCliInsp/cookie 加密等；保留 asar 完整性/onlyLoadAppFromAsar/file 协议权限）；E2E 与硬化构建分离 + 发布产物 8/8 断言
 - **回归修复**：打包产物权限处理器 Session 方法 this 绑定（Illegal invocation），新增回归测试
 
+### 🧩 第八批 架构/性能/质量优化（2026-11-20）
+
+- **IPC 收口**：`utils.ts` 29 处注册清零（929→187 行），按域拆 6 个 ipc 模块 + 编排入口；`utils→ipc` 架构例外清零（2→0），通道/顺序/handler AST 逐字核对；新增重复注册守护测试
+- **大文档预览**：256KB 简化档 + 512KB 渐进档（骨架屏/分块净化/让出），1MB 首屏正文 2325.8→583.5ms（−74.9%）、600KB −66.6%；降级不绕过 DOMPurify
+- **覆盖率**：新增 9 文件/132 用例；全局 93.42/87.82/93.24/93.67；修复图标链接 label 崩溃、错误占位 retry TypeError 等 3 个真实缺陷
+- **A11y**：BaseDialog 滚动锁/描述关联/焦点循环排除/IME Esc；MessageDialog 与 ConfirmDeleteDialog 同步
+
 ### ✅ 门禁
 
 - typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **187 文件 / 3,458 用例全通过**、electron-vite build 成功

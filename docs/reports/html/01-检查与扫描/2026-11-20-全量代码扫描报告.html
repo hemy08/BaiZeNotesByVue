@@ -684,6 +684,43 @@
 </tr>
 </tbody>
 </table>
+<p><strong>第八批 架构/性能/质量优化（2026-11-20 深夜）</strong></p>
+<table>
+<thead>
+<tr>
+<th>优化批次</th>
+<th>提交</th>
+<th>覆盖问题</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IPC 注册收口</td>
+<td><code>ae2dfc2</code></td>
+<td>P2 架构债</td>
+<td><code>utils.ts</code> 929→187 行、29 处注册清零，按域拆 6 个 ipc 模块 + 编排入口；<code>utils→ipc</code> 例外 2→0、<code>KNOWN_EXCEPTIONS</code> 清零；AST 逐字核对 29/29 通道/注册方式/handler 一致；新增通道清单/注册顺序/重复注册守护用例</td>
+</tr>
+<tr>
+<td>大文档预览性能</td>
+<td><code>9d1456d</code></td>
+<td>P2 性能</td>
+<td>分级降级：256KB/1 万行简化档（跳过 KaTeX/mermaid/PlantUML/冷门 hljs）、512KB/2 万行渐进档（骨架屏 + 顶层元素分块净化 + 块间让出）；1MB 首屏正文 2325.8→<strong>583.5ms（−74.9%）</strong>、600KB 1464.4→<strong>489.5ms（−66.6%）</strong>、骨架屏 0.1ms；分级不绕过 DOMPurify，XSS 回归逐字一致</td>
+</tr>
+<tr>
+<td>覆盖率补测第四批</td>
+<td><code>710e3de</code></td>
+<td>P1-6 收尾</td>
+<td>新增 9 文件/132 用例；全局 91.80/85.76/90.62/92.14 → <strong>93.42/87.82/93.24/93.67</strong>；&lt;90% 文件 59→50；修复 3 个真实缺陷（图标 silent 未推进 pos 致链接 label 崩溃、App/Edit 错误占位 retry 点击 TypeError）</td>
+</tr>
+<tr>
+<td>对话框可访问性</td>
+<td><code>ae05948</code></td>
+<td>P2 A11y</td>
+<td>BaseDialog 模态滚动锁定（引用计数嵌套安全）、可选 <code>aria-describedby</code>；Tab/Shift+Tab 焦点候选排除 iframe/disabled/hidden/inert/tabindex&lt;0；输入法组合中 Esc 不误关；MessageDialog/ConfirmDeleteDialog 描述关联；+14 用例</td>
+</tr>
+</tbody>
+</table>
 <p><strong>修复后未收口（持续跟进）</strong>：P1-3 i18n 双语词典拆包与首屏口径修正、P1-4 E2E 零恢复断言、P1-6 覆盖率 glob 阈值、P1-8 KaTeX 按需加载与冷门语言动态补载、P1-9 更新安装×关闭确认、P2-3 代码签名、P2-5 依赖分类、E2E 覆盖扩展等。</p>
 <h2 id="sec-7">5. 更新记录</h2>
 <ul>
