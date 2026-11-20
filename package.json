@@ -1,6 +1,6 @@
 {
     "name": "baize-notes",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "private": true,
     "description": "白泽笔记（BaiZeNotes）：基于 Electron + Vue 3 + Monaco 的本地 Markdown 笔记与预览桌面应用",
     "main": "./out/build/main/index.js",

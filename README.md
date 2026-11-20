@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Electron](https://img.shields.io/badge/Electron-43.8.12-blue.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5.46-brightgreen.svg)
@@ -127,7 +127,7 @@
 
 #### 版本信息
 
-- **版本发布说明**：查看各版本（v1.0.0 ~ v1.4.0）的发布说明
+- **版本发布说明**：查看各版本（v1.0.0 ~ v1.5.0）的发布说明
 - **更新日志**：展示依赖升级详情和代码适配修复
 - **技术栈信息**：显示项目技术栈详细信息
 - **关于页面**：显示应用版本、开发框架、系统环境信息
@@ -476,7 +476,7 @@ BaiZeNotesByVue/
 
 ## 📊 项目统计
 
-> 以下数据为 **2026-11-20 实测**（v1.4.0 当前基线；唯一真值以 [报告总索引](docs/reports/README.md) 的「当前基线」与 [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) 为准；历史版本数据保留在各报告时点）。
+> 以下数据为 **2026-11-20 实测**（v1.5.0 当前基线；唯一真值以 [报告总索引](docs/reports/README.md) 的「当前基线」与 [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) 为准；历史版本数据保留在各报告时点）。
 
 |      指标      |                           数量                           | 说明                                                                                                                                                                                                  |
 | :------------: | :------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -572,7 +572,7 @@ BaiZeNotesByVue/
 - [IPC 通道命名统一方案](docs/reports/md/03-专项治理/IPC通信治理报告.md) - `baize:<domain>:<name>` 命名规范（历史 123 通道清单，已并入治理报告）
 - [依赖安全治理报告](docs/reports/md/03-专项治理/依赖安全治理报告.md) - Dependabot 254 条告警全量分类（0 条可复现）、npm audit 差异归因、修复批与 Dependabot 配置
 - [全量代码扫描报告（2026-11-20）](docs/reports/md/01-检查与扫描/2026-11-20-全量代码扫描报告.md) - 只读全量扫描（安全/架构/质量性能/功能/文档六专项；P0 0 / P1 10 / P2 精选 18）
-- [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.4.0 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
+- [架构文档（最新）](docs/wiki/02-设计与架构/架构文档.md) - v1.5.0 当前架构（含 i18n / PF-02 / PlantUML 本地渲染 / 配置单真源 / 安全边界）
 - 说明：`docs/历史归档/架构文档.html` 为 **历史版本合辑（非当前实现）**，仅保留旧版版式与 ADR，最新架构以 wiki Markdown 为准
 
 ### 更新记录
@@ -714,9 +714,9 @@ npm run clean
 
 ## 🗺️ 开发路线图
 
-### v1.4.0 (当前版本)
+### v1.5.0 (当前版本)
 
-- [x] 新版本基线：全仓版本号 1.3.9 → 1.4.0；自本版本起所有修改归入 1.4.0
+- [x] 新版本基线：全仓版本号 1.3.9 → 1.5.0；自本版本起所有修改归入 1.5.0
 - [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
 - [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
 - [x] 文档口径统一（2026-11-20）：测试 252 文件 / 4,520 用例、IPC 91 通道 / 17 组、preload 白名单 send 60 / receive 25 / window.api 6、报告 md 26 篇 / HTML Wiki 27 页

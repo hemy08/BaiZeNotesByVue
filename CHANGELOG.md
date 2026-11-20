@@ -1,10 +1,12 @@
-## 2026年11月20日 - 版本 1.4.0（新版本基线 / 主题设置首开修复）
+## 2026年11月20日 - 版本 1.5.0（新版本基线 / 主题设置首开修复）
 
-> 1.4.0 起作为新版本基线：自本次版本升级之后的所有修改归入 1.4.0；1.3.9 保持已发布内容（tag `release-1.3.9`）。
+> **版本号调整（2026-11-20）**：应维护者要求，项目当前版本统一为 **1.5.0**（尚未发布，无历史 tag/资产）；本文件与 README/RELEASE-NOTES 的当前版本标识同步为 1.5.0。
+
+> 1.5.0 起作为新版本基线：自本次版本升级之后的所有修改归入 1.5.0；1.3.9 保持已发布内容（tag `release-1.3.9`）。
 
 ### 🔧 版本与发布
 
-- **全仓版本号升级 1.3.9 → 1.4.0**：`package.json` / `package-lock.json` / `resources/config/version.json` / README 徽章与路线图 / docs 当前状态标注统一
+- **全仓版本号升级 1.3.9 → 1.5.0**：`package.json` / `package-lock.json` / `resources/config/version.json` / README 徽章与路线图 / docs 当前状态标注统一
 - **1.3.9 已发布**（2026-11-20）：GitHub Release `release-1.3.9`（tag → `1b73d9b`；NSIS 109.98 MB / portable 99.84 MB / latest.yml / blockmap），包含 tag `release-1.3.8` 之后全部修改
 
 ### 🐛 体验修复

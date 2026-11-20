@@ -620,7 +620,7 @@ describe('system-ipc：版本信息读取', () => {
         fs.mkdirSync(configDir, { recursive: true })
         fs.writeFileSync(
             path.join(configDir, 'version.json'),
-            JSON.stringify({ appVersion: '1.4.0', vueVersion: '3' }),
+            JSON.stringify({ appVersion: '1.5.0', vueVersion: '3' }),
             'utf-8'
         )
         const info = (await listenerOf(IPC.SYSTEM.APP_VERSION).listener(trustedEvent)) as {
@@ -629,7 +629,7 @@ describe('system-ipc：版本信息读取', () => {
             chromeVersion: string
             nodeVersion: string
         }
-        expect(info.appVersion).toBe('1.4.0')
+        expect(info.appVersion).toBe('1.5.0')
         expect(info.electronVersion).toBe(process.versions.electron || '')
         expect(info.chromeVersion).toBe(process.versions.chrome || '')
         expect(info.nodeVersion).toBe(process.versions.node || '')

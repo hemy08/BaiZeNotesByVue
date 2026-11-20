@@ -33,7 +33,7 @@
 <h1>全量代码扫描报告（2026-11-20）</h1>
 <blockquote>
 <p><strong>性质</strong>：只读全量扫描（安全 / 架构 / 质量与测试 / 性能 / 功能体验 / 文档工程 六专项并行），不改源码与配置。
-<strong>扫描对象</strong>：<code>E:\github.com\hemy08\BaiZeNotesByVue</code>，HEAD <code>b966813</code>，版本 <strong>v1.4.0（未发布）</strong>，Node <strong>26.13.1</strong>，npm 11.20.0，工作区干净。
+<strong>扫描对象</strong>：<code>E:\github.com\hemy08\BaiZeNotesByVue</code>，HEAD <code>b966813</code>，版本 <strong>v1.5.0（未发布）</strong>，Node <strong>26.13.1</strong>，npm 11.20.0，工作区干净。
 <strong>方法</strong>：六个专项代理只读扫描 + 实跑门禁（typecheck/ESLint/Prettier/vitest/coverage/docs:check/quality:check/budget:check/audit）+ 静态依赖图/AST 扫描 + 既有性能基线复核；未启动 Electron、未重建产物（性能数据为静态/实测混合，打包体积取现有 <code>out/build/dist</code>）。
 <strong>配套明细</strong>（不随仓库提交，<code>out/</code> 为 gitignore）：<code>out/tool-results/scan-security.md</code>、<code>scan-arch.md</code>、<code>scan-quality.md</code>、<code>scan-perf.md</code>、<code>scan-func.md</code>、<code>scan-docs.md</code>。</p>
 </blockquote>
@@ -407,7 +407,7 @@
 </table>
 <h3 id="sub-2">遗留状态（与结构报告基线对比）</h3>
 <ul>
-<li>H1~H6、L1~L4 维持已修复；H7 仍缺 1.4.0 tag/签名；M1 明显推进（tray 已接入 AppContext），M2 部分完成（注册仍散 8 文件/68 处），M3/M4/M5 基本完成；</li>
+<li>H1~H6、L1~L4 维持已修复；H7 仍缺 1.5.0 tag/签名；M1 明显推进（tray 已接入 AppContext），M2 部分完成（注册仍散 8 文件/68 处），M3/M4/M5 基本完成；</li>
 <li>新增风险：Path Guard 授权面、首屏预算盲区、发布 workflow 完整性、E2E 恢复掩盖、文档多口径。</li>
 </ul>
 <h2 id="sec-6">6. 修复进展（2026-11-20 当日）</h2>

@@ -1,4 +1,4 @@
-## 版本 1.4.0 (2026-11-20)
+## 版本 1.5.0 (2026-11-20)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
 
@@ -8,7 +8,7 @@
 
 ### 🔧 新版本基线
 
-- 全仓版本号 **1.3.9 → 1.4.0**；自本版本起所有修改归入 1.4.0
+- 全仓版本号 **1.3.9 → 1.5.0**；自本版本起所有修改归入 1.5.0
 - **1.3.9 已发布**：GitHub Release `release-1.3.9`（tag → `1b73d9b`；NSIS 109.98 MB / portable 99.84 MB / latest.yml / blockmap），包含 tag release-1.3.8 之后全部修改
 
 ### 🐛 体验修复

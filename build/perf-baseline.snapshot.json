@@ -8,7 +8,7 @@
         "policy": "warn-only",
         "annotationPrefix": "性能基线偏离"
     },
-    "appVersion": "1.4.0",
+    "appVersion": "1.5.0",
     "gitHead": "c135587",
     "environment": {
         "capturedAt": "2026-11-20T10:20:22.936Z",
@@ -20,7 +20,7 @@
         "totalMemMb": 65244,
         "nodeVersion": "v26.13.1",
         "electronVersion": "43.8.12",
-        "appVersion": "1.4.0",
+        "appVersion": "1.5.0",
         "gitHead": "c135587",
         "ci": false
     },
@@ -100,14 +100,14 @@
             "unit": "bytes",
             "value": 119449860,
             "measuredAt": "2026-11-20T10:20:22.936Z",
-            "provenance": "构建产物实测：out\\build\\dist\\BaiZeNotes_Setup_1.4.0_windows_x64.exe"
+            "provenance": "构建产物实测：out\\build\\dist\\BaiZeNotes_Setup_1.5.0_windows_x64.exe"
         },
         "bundle.portableInstallerBytes": {
             "label": "便携版（portable exe）",
             "unit": "bytes",
             "value": 105363253,
             "measuredAt": "2026-11-20T10:20:22.936Z",
-            "provenance": "构建产物实测：out\\build\\dist\\BaiZeNotes_1.4.0_windows_x64.exe"
+            "provenance": "构建产物实测：out\\build\\dist\\BaiZeNotes_1.5.0_windows_x64.exe"
         },
         "startup.dev.appReadyMs": {
             "label": "app-ready（app.whenReady）",
@@ -156,56 +156,56 @@
             "unit": "ms",
             "value": 164.2,
             "measuredAt": "2026-11-20T10:19:55.418Z",
-            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.5.0）"
         },
         "startup.packaged.windowCreateMs": {
             "label": "window-create（窗口构造）",
             "unit": "ms",
             "value": 190.1,
             "measuredAt": "2026-11-20T10:19:55.418Z",
-            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.5.0）"
         },
         "startup.packaged.rendererReadyMs": {
             "label": "renderer-ready（渲染层握手）",
             "unit": "ms",
             "value": 336.6,
             "measuredAt": "2026-11-20T10:19:55.418Z",
-            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.5.0）"
         },
         "startup.packaged.mainViewMountedMs": {
             "label": "main-view-mounted（主界面挂载）",
             "unit": "ms",
             "value": 298.7,
             "measuredAt": "2026-11-20T10:19:55.418Z",
-            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.5.0）"
         },
         "startup.packaged.editorReadyMs": {
             "label": "editor-ready（Monaco 就绪）",
             "unit": "ms",
             "value": 448.5,
             "measuredAt": "2026-11-20T10:19:55.418Z",
-            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.5.0）"
         },
         "startup.packaged.previewReadyMs": {
             "label": "preview-ready（预览首帧）",
             "unit": "ms",
             "value": 476.8,
             "measuredAt": "2026-11-20T10:19:55.418Z",
-            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.5.0）"
         },
         "startup.packaged.windowVisibleMs": {
             "label": "窗口可见（进程启动→首个可见窗口，外部探测）",
             "unit": "ms",
             "value": 368.8,
             "measuredAt": "2026-11-20T10:19:55.418Z",
-            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.5.0）"
         },
         "startup.packaged.processRuntimeMs": {
             "label": "进程总耗时（进程启动→退出，外部探测）",
             "unit": "ms",
             "value": 1602.4,
             "measuredAt": "2026-11-20T10:19:55.418Z",
-            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.5.0）"
         }
     }
 }

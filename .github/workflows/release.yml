@@ -29,7 +29,7 @@ on:
     workflow_dispatch:
         inputs:
             tag:
-                description: '要发布的 tag（例如 release-1.4.0；必须已存在，格式 release-x.y.z）'
+                description: '要发布的 tag（例如 release-1.5.0；必须已存在，格式 release-x.y.z）'
                 required: true
                 type: string
 
@@ -75,7 +75,7 @@ jobs:
                   if (-not $rawTag) { throw 'workflow_dispatch 事件缺少 tag 输入' }
                   $rawTag = $rawTag.Trim()
                   if ($rawTag -notmatch '^release-(?<version>\d+\.\d+\.\d+)$') {
-                      throw "非法发布 tag：'$rawTag'（要求形如 release-x.y.z，例如 release-1.4.0）"
+                      throw "非法发布 tag：'$rawTag'（要求形如 release-x.y.z，例如 release-1.5.0）"
                   }
                   $version = $Matches['version']
                   Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "tag=$rawTag" -Encoding utf8

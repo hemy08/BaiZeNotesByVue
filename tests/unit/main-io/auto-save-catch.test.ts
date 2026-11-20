@@ -12,7 +12,7 @@ const electronMocks = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
     BrowserWindow: class {},
-    app: { getPath: () => '', getVersion: () => '1.4.0-test' },
+    app: { getPath: () => '', getVersion: () => '1.5.0-test' },
     ipcMain: { on: () => {} }
 }))
 

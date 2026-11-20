@@ -25,7 +25,7 @@ vi.mock('electron', () => ({
         showSaveDialog: electronMocks.showSaveDialog
     },
     BrowserWindow: class {},
-    app: { getPath: () => '', getVersion: () => '1.4.0-test' }
+    app: { getPath: () => '', getVersion: () => '1.5.0-test' }
 }))
 
 vi.mock('../../../src/main/config/system-setting', () => ({

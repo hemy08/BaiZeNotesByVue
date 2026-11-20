@@ -30,7 +30,7 @@ vi.mock('electron', () => {
         },
         shell: { showItemInFolder: vi.fn() },
         clipboard: { writeText: vi.fn() },
-        app: { getPath: () => '', getVersion: () => '1.4.0-test' },
+        app: { getPath: () => '', getVersion: () => '1.5.0-test' },
         ipcMain: { on: () => {} }
     }
 })
