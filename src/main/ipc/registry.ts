@@ -55,7 +55,9 @@ import { broadcastThemeToAllWindows, buildThemeBroadcastPayload } from '../utils
 import { setIpcHandleRegistrar } from '../utils/ipc-registration'
 import { registerPlantumlLocalRenderIpc } from '../renders/plantuml-local'
 import { setTrustedMainWindow, withSenderCheck } from '../utils/ipc-security'
-import { MainWindowListenUtilsEvent } from '../utils/utils'
+// P2 IPC 注册收口：原 utils/utils.ts 的 29 处注册已按域拆分到同目录模块，
+// 由 utils-ipc.ts 按拆分前顺序统一编排（本文件只负责阶段与调用位置）
+import { registerUtilsIpcHandlers } from './utils-ipc'
 import { logger } from '../utils/logger'
 import { IPC } from '../../shared/ipc-channels'
 
@@ -176,8 +178,9 @@ export function registerAll(mainWindow: BrowserWindow, hooks: RegisterAllHooks =
     registerRendererReadyIpc(hooks.onRendererReady)
     // 3) 对话框文件管理器右键通道（原 main/index.ts:535）
     MainWindowListenDialogsEvent(mainWindow)
-    // 4) utils 侧文件/加密/外部链接等通道（原 main/index.ts:536）
-    MainWindowListenUtilsEvent(mainWindow)
+    // 4) 原 utils 侧文件/加密/外部链接等 29 处通道（P2：已按域拆分到 ipc/ 各模块，
+    //    由 registerUtilsIpcHandlers 按拆分前顺序编排；原 main/index.ts:536）
+    registerUtilsIpcHandlers(mainWindow)
     // 5) handlers 窗口控制/菜单/最近文件等通道（原 main/index.ts:537）
     registerIpcHandlers(mainWindow)
     // 6) PF-08：PlantUML 本地离线渲染（隐藏窗口 + 串行队列 + LRU 缓存，原 main/index.ts:539）

@@ -33,8 +33,9 @@ import { CleanupDirectoryWatch } from './utils/file-utils/file-operations'
 import { RegisterShortKeys } from './config'
 import { logger } from './utils/logger'
 import { ipcListenerManager } from './ipc/ipc-listener-manager'
-import { resetWelcomeState } from './ipc/welcome-state'
-import { markMainViewEntered } from './ipc/welcome-state'
+// P2 IPC 注册收口：welcome-state 为纯状态门面，已从 ipc 层迁到 utils 层
+import { resetWelcomeState } from './utils/welcome-state'
+import { markMainViewEntered } from './utils/welcome-state'
 // P1/N-05：IPC 发送方授权校验（关闭落盘回执通道的发送方包装）
 import { withSenderCheck } from './utils/ipc-security'
 import { initUserDataDirectory, getIconPath } from './utils/app-paths'

@@ -114,7 +114,6 @@ vi.mock('@electron-toolkit/utils', () => ({
 // ============ index.ts 依赖 mock ============
 const internalMocks = vi.hoisted(() => ({
     globalInitialize: vi.fn(),
-    mainWindowListenUtilsEvent: vi.fn(),
     mainWindowListenDialogsEvent: vi.fn(),
     cleanupMainWindowDialogsEvent: vi.fn(),
     // P2 Mermaid 隐藏渲染窗：index.ts 关闭时清理 / 启动时按需创建
@@ -156,9 +155,10 @@ const internalMocks = vi.hoisted(() => ({
     isDirty: vi.fn(() => false)
 }))
 
+// P2 IPC 注册收口：utils.ts 的 IPC 注册已迁到 ipc/（registry 整体 mock，不在此加载）；
+// 本文件只保留 main/index.ts 用到的 utils 门面 globalInitialize
 vi.mock('../../src/main/utils/utils', () => ({
-    globalInitialize: internalMocks.globalInitialize,
-    MainWindowListenUtilsEvent: internalMocks.mainWindowListenUtilsEvent
+    globalInitialize: internalMocks.globalInitialize
 }))
 
 vi.mock('../../src/main/dialogs/dialogs', () => ({

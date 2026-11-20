@@ -4,7 +4,8 @@
  * 结构优化第 2 批 2.4（M2）：覆盖把 main/index.ts 散落的注册调用收口为 registry 后的
  * 编排契约：
  * - 两个阶段：registerPreWindowIpc（建窗前，配置 IPC + 旧配置迁移）→ registerAll
- *   （建窗后：主题更新 → 渲染层就绪握手 → 对话框右键 → utils → handlers → PlantUML）；
+ *   （建窗后：主题更新 → 渲染层就绪握手 → 对话框右键 → utils 侧 29 通道（P2 已拆分到
+ *   ipc/ 各域模块，由 utils-ipc.ts 编排）→ handlers → PlantUML）；
  * - registerAll 内部调用顺序与改造前 main/index.ts 一致，不得调整；
  * - 主题更新通道仍按旧行为组装载荷并广播（含无参回退默认值）、只接受受信主窗口；
  * - 渲染层就绪握手经 onRendererReady 钩子回调入口（sender 校验后再回调）；
@@ -32,7 +33,8 @@ const implementationMocks = vi.hoisted(() => ({
     // 各注册实现（按调用顺序 push 到 callOrder）
     registerConfigIpcHandlers: vi.fn(),
     mainWindowListenDialogsEvent: vi.fn(),
-    mainWindowListenUtilsEvent: vi.fn(),
+    // P2 IPC 注册收口：原 utils/utils.ts 的注册入口已迁到 ipc/utils-ipc.ts
+    registerUtilsIpcHandlers: vi.fn(),
     registerIpcHandlers: vi.fn(),
     registerPlantumlLocalRenderIpc: vi.fn(),
     // 主题广播依赖
@@ -92,8 +94,10 @@ vi.mock('../../src/main/ipc/ipc-listener-manager', () => ({
     }
 }))
 
-vi.mock('../../src/main/utils/utils', () => ({
-    MainWindowListenUtilsEvent: implementationMocks.mainWindowListenUtilsEvent
+// P2 IPC 注册收口：原 utils/utils.ts 的 29 处注册已按域拆到 ipc/ 各模块，
+// registry 只调用 ipc/utils-ipc.ts 的统一编排入口（本文件 mock 该入口，验证编排顺序）
+vi.mock('../../src/main/ipc/utils-ipc', () => ({
+    registerUtilsIpcHandlers: implementationMocks.registerUtilsIpcHandlers
 }))
 
 vi.mock('../../src/main/utils/logger', () => ({
@@ -148,7 +152,7 @@ beforeEach(() => {
     implementationMocks.mainWindowListenDialogsEvent.mockImplementation(() => {
         callOrder.push('dialogs')
     })
-    implementationMocks.mainWindowListenUtilsEvent.mockImplementation(() => {
+    implementationMocks.registerUtilsIpcHandlers.mockImplementation(() => {
         callOrder.push('utils')
     })
     implementationMocks.registerIpcHandlers.mockImplementation(() => {
@@ -193,7 +197,7 @@ describe('registerAll（建窗后一次性注册清单）', () => {
         // （主题/握手为 persistent 注册，见下一条用例；它们不进入 callOrder）
         expect(callOrder).toEqual(['dialogs', 'utils', 'handlers', 'plantuml'])
         expect(implementationMocks.mainWindowListenDialogsEvent).toHaveBeenCalledWith(mainWindow)
-        expect(implementationMocks.mainWindowListenUtilsEvent).toHaveBeenCalledWith(mainWindow)
+        expect(implementationMocks.registerUtilsIpcHandlers).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerIpcHandlers).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerPlantumlLocalRenderIpc).toHaveBeenCalledTimes(1)
     })

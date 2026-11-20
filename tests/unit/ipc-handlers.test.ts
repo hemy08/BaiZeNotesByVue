@@ -11,11 +11,12 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 // 2026-11-19（P0 修复）：欢迎页/主界面状态（CLOSE 快速关闭与数据安全回归测试）
+// P2 IPC 注册收口：welcome-state 为纯状态门面，已从 ipc 层迁到 utils 层
 import {
     isWelcomeScreenVisible,
     markMainViewEntered,
     resetWelcomeState
-} from '../../src/main/ipc/welcome-state'
+} from '../../src/main/utils/welcome-state'
 
 // CMP-30：IPC 异常状态栏提示经 tMain 读取词典（语言来自系统设置）。
 // 测试固定中文词条并 mock 掉 config/system-setting，隔离 electron-store 等主进程存储依赖链。
@@ -133,7 +134,14 @@ vi.mock('../../src/main/config/quick-link-config', () => ({
 
 import { registerIpcHandlers, setMainWindow, getMainWindow } from '../../src/main/ipc/handlers'
 import * as ipcIndex from '../../src/main/ipc/index'
+// P2 IPC 注册收口：ipc/index 新增 utils-ipc 统一注册入口 re-export；
+// 本文件只验证 handlers 域与 re-export 契约，mock 掉该入口避免拉起文件/加密依赖链
+import { registerUtilsIpcHandlers } from '../../src/main/ipc/utils-ipc'
 import { ipcListenerManager } from '../../src/main/ipc/ipc-listener-manager'
+vi.mock('../../src/main/ipc/utils-ipc', () => ({
+    registerUtilsIpcHandlers: vi.fn()
+}))
+
 import { appState } from '../../src/main/utils/app-state'
 // P1-1：工作区受信根集合（OPEN_SPECIFIC_FOLDER 来源收敛断言）
 import {
@@ -1520,6 +1528,11 @@ describe('ipc/index re-exports', () => {
     it('should re-export the handlers module functions consumed by main/index.ts', () => {
         expect(ipcIndex.registerIpcHandlers).toBe(registerIpcHandlers)
         expect(ipcIndex.setMainWindow).toBe(setMainWindow)
+    })
+
+    it('should re-export the utils IPC registration entry (P2 注册收口)', () => {
+        // 原 utils/utils.ts 的 29 处注册已按域拆到 ipc/，由 ipc/index 暴露统一注册入口
+        expect(ipcIndex.registerUtilsIpcHandlers).toBe(registerUtilsIpcHandlers)
     })
 
     it('should not re-export dead symbols (A-5/ARC-15)', () => {

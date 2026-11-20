@@ -241,6 +241,8 @@ vi.mock('../../src/main/ipc/registry', () => ({
     registerAll: registryMocks.registerAll
 }))
 
+// P2 IPC 注册收口：utils.ts 的 IPC 注册已迁到 ipc/（registry 由下方 mock 接管），
+// 本文件只保留 main/index.ts 用到的 utils 门面 globalInitialize
 vi.mock('../../src/main/utils/utils', () => ({
     globalInitialize: internalMocks.globalInitialize
 }))
@@ -460,8 +462,8 @@ beforeEach(() => {
     electronMocks.capturedBrowserWindowOptions = null
     // 批次 B #4：退出标志复位（before-quit 置位后需恢复，避免污染后续用例）
     // 2026-11-19（P0 修复）：欢迎页状态按用例复位
-    // 说明：beforeEach 会 vi.resetModules()，welcome-state 需在 loadMainIndex 之后
-    // 动态 import 才能拿到与被测 index.ts 相同的模块实例（见本文件用例）。
+    // 说明：beforeEach 会 vi.resetModules()，welcome-state（P2 已迁到 utils 层）需在
+    // loadMainIndex 之后动态 import 才能拿到与被测 index.ts 相同的模块实例（见本文件用例）。
     electronMocks.quitFlag.value = false
     // P2-10：单实例锁申请结果复位为成功
     electronMocks.singleInstanceLock.value = true
@@ -678,7 +680,7 @@ describe('app whenReady startup flow', () => {
         await loadMainIndex()
         await new Promise((resolve) => setTimeout(resolve, 0))
         expect(internalMocks.configRead).toHaveBeenCalledWith('show-welcome')
-        const welcomeState = await import('../../src/main/ipc/welcome-state')
+        const welcomeState = await import('../../src/main/utils/welcome-state')
         expect(welcomeState.isWelcomeScreenVisible()).toBe(false)
     })
 
@@ -686,7 +688,7 @@ describe('app whenReady startup flow', () => {
         internalMocks.configRead.mockResolvedValueOnce(null)
         await loadMainIndex()
         await new Promise((resolve) => setTimeout(resolve, 0))
-        const welcomeState = await import('../../src/main/ipc/welcome-state')
+        const welcomeState = await import('../../src/main/utils/welcome-state')
         expect(welcomeState.isWelcomeScreenVisible()).toBe(true)
     })
 })

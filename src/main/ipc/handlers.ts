@@ -33,7 +33,8 @@ import {
 import { ImportCreateNewFile } from '../utils/file-utils'
 import { getRecentFiles, saveLastOpenedDirectory } from '../utils/file-state'
 import { appState } from '../utils/app-state'
-import { isWelcomeScreenVisible, markMainViewEntered } from './welcome-state'
+// P2 IPC 注册收口：welcome-state 为纯状态门面，已从 ipc 层迁到 utils 层
+import { isWelcomeScreenVisible, markMainViewEntered } from '../utils/welcome-state'
 import { ipcListenerManager } from './ipc-listener-manager'
 // P1/N-05：IPC 发送方授权校验（主窗口 webContents 归属判定）
 import { getTrustedMainWindow, setTrustedMainWindow, withSenderCheck } from '../utils/ipc-security'
@@ -863,8 +864,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     //
     // 修复：设置对话框改为 invoke 本通道提交 QuickLinkItem[]，主进程归一化校验后
     // 写入 quickLinks 键（与 GET 同源），保存成功后向主窗口广播 QUICK_LINKS.UPDATED，
-    // NaviTab 监听后即时刷新。GET handler 保留在 utils.ts 的 MainWindowListenUtilsEvent
-    // （历史注册位置，行为不变）；SAVE/UPDATED 通道常量与广播均在此模块收口。
+    // NaviTab 监听后即时刷新。GET handler 保留在 ipc/theme-ipc.ts 的 registerThemeIpc
+    // （P2 IPC 注册收口：原 utils.ts MainWindowListenUtilsEvent 的注册位置，行为不变）
     ipcListenerManager.registerHandleOnce(
         IPC.QUICK_LINKS.SAVE,
         withSenderCheck(

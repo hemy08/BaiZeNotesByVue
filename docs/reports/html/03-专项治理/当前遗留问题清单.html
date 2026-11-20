@@ -414,7 +414,7 @@
 <td>20</td>
 <td>P1</td>
 <td><strong>欢迎页关闭按钮延迟</strong>：启动恢复已把上次文件恢复到 appState，CLOSE 通道的「无活动文件」快速关闭判断失效 → 仍进入 FLUSH_CONTENT 2s 超时等待</td>
-<td><a href="../../../../src/renderer/src/components/WelcomeScreen.vue">WelcomeScreen.vue</a>、<a href="../../../../src/main/ipc/handlers.ts">handlers.ts</a>、<a href="../../../../src/main/ipc/welcome-state.ts">welcome-state.ts</a></td>
+<td><a href="../../../../src/renderer/src/components/WelcomeScreen.vue">WelcomeScreen.vue</a>、<a href="../../../../src/main/ipc/handlers.ts">handlers.ts</a>、<a href="../../../../src/main/utils/welcome-state.ts">welcome-state.ts</a></td>
 <td>用户可感知（点击关闭后延迟约 2 秒才关闭）</td>
 <td>✅ 已修复</td>
 <td>新增主进程 <code>welcome-state</code>（WELCOME_ENTER_MAIN 标记进入主界面、新窗口创建复位），CLOSE 通道欢迎页时跳过 flush 直接关闭；主界面仍保留 flush→脏则保存协议</td>

@@ -17,7 +17,8 @@
  * 通道值，再与 IPC 常量表 / preload 白名单 / 主进程注册点做双向交叉核对。
  *
  * ## 类型依据（逐一读取主进程实现，不修改任何 handler）
- * - `src/main/ipc/handlers.ts`、`src/main/utils/utils.ts`、`src/main/config/config-manager.ts`、
+ * - `src/main/ipc/handlers.ts`、`src/main/ipc/{file-editor,crypto,theme,system}-ipc.ts`
+ *   （原 `utils/utils.ts` 的 29 处注册已按域迁入）、`src/main/config/config-manager.ts`、
  *   `src/main/renders/plantuml-local.ts`：31 个 handle 注册点的入参/返回值；
  * - `src/main/ipc/*`（menu-*）、`src/main/utils/file-utils/*`、`src/main/dialogs/*`、
  *   `src/main/utils/encrypt-decrypt.ts`：on 通道的入参与广播载荷；

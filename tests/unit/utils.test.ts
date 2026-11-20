@@ -1,5 +1,11 @@
 /**
- * utils.ts（MainWindowListenUtilsEvent）单元测试
+ * utils 侧 IPC 注册收口（src/main/ipc/utils-ipc.ts + 各域模块）与 utils.ts 纯工具函数单元测试
+ *
+ * P2 IPC 注册收口（2026-11-20）：原 `utils/utils.ts` 的 29 处注册已按域拆到
+ * `src/main/ipc/`（file-manager / crypto / navigation / theme / file-editor / system），
+ * 由 `ipc/utils-ipc.ts` 的 registerUtilsIpcHandlers 按拆分前顺序统一编排；
+ * 本文件同步改为面向新入口，通道行为断言保持不变，并新增「通道注册清单 / 重复注册」守护用例。
+ *
  * 覆盖：IPC 通道注册、hash/hmac/crypto 工具通道、主题与快速链接查询通道、
  * navi-tab-open-exe 安全校验（发送方/路径/扩展名/确认策略）、
  * READ_HTML 文本扩展名白名单、
@@ -46,8 +52,14 @@ vi.mock('electron', () => ({
             ipcMocks.on.set(channel, fn as unknown as (...args: unknown[]) => unknown)
         }),
         handle: vi.fn((channel: string, fn: (...args: never[]) => unknown) => {
+            // 与真实 Electron 一致：同一通道重复 handle 会抛错（registerHandleOnce 据此判重）
+            if (ipcMocks.handle.has(channel)) {
+                throw new Error(`Attempted to register a second handler for '${channel}'`)
+            }
             ipcMocks.handle.set(channel, fn as unknown as (...args: unknown[]) => unknown)
-        })
+        }),
+        // 与真实 ipcMain（EventEmitter）一致：registerOnce 依赖 listenerCount 判重
+        listenerCount: vi.fn((channel: string) => (ipcMocks.on.has(channel) ? 1 : 0))
     },
     shell: {
         openPath: ipcMocks.shellOpenPath,
@@ -92,18 +104,21 @@ const configMocks = vi.hoisted(() => ({
 }))
 
 import {
-    MainWindowListenUtilsEvent,
     getSensitiveSystemExecutableDirs,
     getExecutableExtensionDecision,
     isSensitiveSystemExecutablePath,
     sanitizeRsaBits
 } from '../../src/main/utils/utils'
+// P2 IPC 注册收口：原 utils.ts 的 29 处注册由 ipc/utils-ipc.ts 统一编排（按域拆分）
+import { registerUtilsIpcHandlers } from '../../src/main/ipc/utils-ipc'
 import {
     setQuickLinksProvider,
     setSystemSettingProvider,
     setThemeApiProvider
 } from '../../src/main/utils/providers'
 import type { SystemSetting } from '../../src/shared/types'
+// P2 IPC 注册收口：通道注册清单守护用例直接引用通道常量（唯一真源），避免字符串漂移
+import { IPC } from '../../src/shared/ipc-channels'
 
 // 结构优化 1.1（H1）：utils 的主题 / 快速链接 / tMain 语言读取改经 provider 注入；
 // 注入原 config mock 的同款函数，保持「handler 转发调用 config 读取函数」的用例语义不变。
@@ -135,7 +150,7 @@ function makeEvent(sender: unknown) {
     return { sender, returnValue: undefined }
 }
 
-describe('MainWindowListenUtilsEvent', () => {
+describe('utils 侧 IPC 注册收口（registerUtilsIpcHandlers）', () => {
     let mainWindow: ReturnType<typeof makeMainWindow>
 
     beforeEach(() => {
@@ -162,7 +177,7 @@ describe('MainWindowListenUtilsEvent', () => {
         fs.mkdirSync(UNTRUSTED_DIR, { recursive: true })
 
         mainWindow = makeMainWindow()
-        MainWindowListenUtilsEvent(mainWindow as never)
+        registerUtilsIpcHandlers(mainWindow as never)
     })
 
     afterEach(() => {
@@ -217,6 +232,87 @@ describe('MainWindowListenUtilsEvent', () => {
             ]) {
                 expect(ipcMocks.handle.has(channel), channel).toBe(true)
             }
+        })
+
+        // ====================================================================
+        // P2 IPC 注册收口守护（通道注册清单 / 注册顺序 / 重复注册）
+        // 清单 = 拆分前 utils.ts MainWindowListenUtilsEvent 注册的 29 个通道（只减不增）；
+        // 任何误删/误加/改变 on-handle 类型/重复注册都会在此失败。
+        // ====================================================================
+
+        /** 拆分前 utils 侧注册的 on 通道（按实际注册顺序，便于守护顺序） */
+        const EXPECTED_ON_CHANNELS: readonly string[] = [
+            IPC.FILE.OPEN_SELECT_FILE,
+            IPC.FILE_MANAGER.COPY_RELATIVE_PATH,
+            IPC.FILE_MANAGER.COPY_IMAGELINK,
+            IPC.FILE_MANAGER.COPY_FILELINK,
+            IPC.FILE_MANAGER.COPY_FILE,
+            IPC.FILE_MANAGER.CUT,
+            IPC.FILE_MANAGER.PASTE,
+            IPC.FILE_MANAGER.OPEN_IN_EXPLORER,
+            IPC.FILE_MANAGER.RELOAD_FROM_DISK,
+            IPC.RENDER.INSERT_IMAGE,
+            IPC.PLUGIN.RSA_GENERATE,
+            IPC.NAVIGATION.OPEN_EXE,
+            IPC.FILE.UPDATE_SELECT_FILE_CONTENT,
+            IPC.FILE.SAVE_TO_DISK,
+            IPC.FILE.OPEN_IN_BROWSER
+        ]
+
+        /** 拆分前 utils 侧注册的 handle 通道（按实际注册顺序） */
+        const EXPECTED_HANDLE_CHANNELS: readonly string[] = [
+            IPC.PLUGIN.HASH_TEXT,
+            IPC.PLUGIN.HMAC_TEXT,
+            IPC.PLUGIN.CRYPTO_ENCRYPT,
+            IPC.PLUGIN.CRYPTO_DECRYPT,
+            IPC.QUICK_LINKS.GET,
+            IPC.THEME.GET_CURRENT_THEME_STYLES,
+            IPC.THEME.GET_ALL_THEMES,
+            IPC.THEME.GET_ALL_MONACO_THEMES,
+            IPC.FILE.REOPEN_WITH_ENCODING,
+            IPC.FILE.CONVERT_SAVE_ENCODING,
+            IPC.FILE.READ_HTML,
+            IPC.FILE.READ_BINARY,
+            IPC.FILE.CHECK_EXISTS,
+            IPC.SYSTEM.APP_VERSION
+        ]
+
+        it('should register exactly the migrated 29-channel inventory (no missing / no extra)', () => {
+            // 总量：15 个 on + 14 个 handle = 29（拆分前 utils.ts 的 29 处注册）
+            expect(EXPECTED_ON_CHANNELS).toHaveLength(15)
+            expect(EXPECTED_HANDLE_CHANNELS).toHaveLength(14)
+            expect([...ipcMocks.on.keys()].sort()).toEqual([...EXPECTED_ON_CHANNELS].sort())
+            expect([...ipcMocks.handle.keys()].sort()).toEqual([...EXPECTED_HANDLE_CHANNELS].sort())
+            // 同一通道不得同时以 on 与 handle 注册（否则 invoke/send 契约重叠且台账重复）
+            const overlap = [...ipcMocks.on.keys()].filter((channel) =>
+                ipcMocks.handle.has(channel)
+            )
+            expect(overlap).toEqual([])
+        })
+
+        it('should keep the historical registration order (on / handle)', () => {
+            // 注册顺序与拆分前 MainWindowListenUtilsEvent 完全一致：
+            // 文件打开/管理器 → 插入图片 → 加密 → 导航 → 主题 → 文件编辑/读取 → 系统版本
+            expect([...ipcMocks.on.keys()]).toEqual([...EXPECTED_ON_CHANNELS])
+            expect([...ipcMocks.handle.keys()]).toEqual([...EXPECTED_HANDLE_CHANNELS])
+        })
+
+        it('should be idempotent: duplicate registration is skipped without throwing', () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const onBefore = [...ipcMocks.on.keys()]
+            const handleBefore = [...ipcMocks.handle.keys()]
+
+            expect(() => registerUtilsIpcHandlers(mainWindow as never)).not.toThrow()
+
+            // 重复注册被台账判重跳过（registerOnce 经 listenerCount、registerHandleOnce 捕获
+            // Electron 的重复 handle 抛错），监听器清单与数量均不增长
+            expect([...ipcMocks.on.keys()]).toEqual(onBefore)
+            expect([...ipcMocks.handle.keys()]).toEqual(handleBefore)
+            expect(ipcMocks.on.size).toBe(EXPECTED_ON_CHANNELS.length)
+            expect(ipcMocks.handle.size).toBe(EXPECTED_HANDLE_CHANNELS.length)
+            // 重复注册必须留下告警（便于定位误调用），且不抛未捕获异常
+            expect(warnSpy).toHaveBeenCalled()
+            warnSpy.mockRestore()
         })
     })
 

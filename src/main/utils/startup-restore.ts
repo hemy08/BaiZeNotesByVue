@@ -25,7 +25,8 @@ import { IPC } from '../../shared/ipc-channels'
 // ARC-13：FileProperties 已收敛到 src/shared/types/file.ts（唯一真源）
 import type { FileProperties, SystemSetting } from '../../shared/types'
 import { appState, sendToMainWindow } from './app-state'
-import { markMainViewEntered } from '../ipc/welcome-state'
+// P2 IPC 注册收口：welcome-state 已迁到 utils 层（同层 import，消除 utils → ipc 反向依赖）
+import { markMainViewEntered } from './welcome-state'
 import { tMain } from './i18n'
 import { logger } from './logger'
 // 4.4（M2）：unknown 异常 → 用户可读文案统一归一化

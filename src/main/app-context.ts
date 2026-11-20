@@ -8,7 +8,7 @@
  *   startupRestorePendingWindow/startupRestoreFallbackTimer、disposeWindowBoundsPersistence；
  * - `src/main/utils/app-state.ts`：AppState._mainWindow、_isQuitting；
  * - `src/main/utils/ipc-security.ts`：trustedMainWindow；
- * - `src/main/ipc/welcome-state.ts`：mainViewEntered；
+ * - `src/main/utils/welcome-state.ts`（原 ipc/welcome-state.ts）：mainViewEntered；
  * - `src/main/config/short-key-register.ts`：shortcutsRegistered/targetWindow；
  * - `src/main/utils/tray.ts`：trayHideNotified。
  *
@@ -44,7 +44,7 @@ export interface AppContext {
      */
     mainWindow: BrowserWindow | null
 
-    /** 欢迎页 / 主界面可见状态（原 ipc/welcome-state.ts 的 mainViewEntered） */
+    /** 欢迎页 / 主界面可见状态（原 welcome-state 模块的 mainViewEntered） */
     welcome: {
         /** 是否已进入主界面（false = 仍显示欢迎页） */
         mainViewEntered: boolean

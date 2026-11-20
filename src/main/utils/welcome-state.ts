@@ -13,6 +13,10 @@
  * 结构优化第 2 批 2.4（M1）：状态本体迁移到 src/main/app-context.ts 的
  * `welcome.mainViewEntered`（进程内唯一上下文单例），本模块保留原有公开 API，
  * 调用方与行为均不变；窗口重建可经 app-context.resetAppContext() 整体复位。
+ *
+ * P2 IPC 注册收口：本模块从 `src/main/ipc/welcome-state.ts` 迁到 utils 层（纯状态访问、
+ * 无 IPC 注册），使 `utils/startup-restore.ts` 不再反向 import ipc 层——架构测试
+ * 例外清单中 `utils → ipc` 的最后一条随之消除（ipc 层消费 utils 属合法方向）。
  */
 import { getAppContext } from '../app-context'
 

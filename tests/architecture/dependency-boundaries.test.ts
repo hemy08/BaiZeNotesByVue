@@ -9,9 +9,9 @@
  * ## 强制规则（violation 即失败）
  * 1. `src/main/utils/**` 禁止 import `src/main/config/**`
  *    —— H1 核心：utils → config 反向依赖必须为 0，**不允许任何 KNOWN_EXCEPTIONS**；
- * 2. `src/main/utils/**` 禁止 import `src/main/ipc/**`
- *    —— 历史遗留 IPC 注册枢纽登记例外（KNOWN_EXCEPTIONS），属后续「IPC 注册收口」
- *       批次范围，本批不处理；
+ * 2. `src/main/utils/**` 禁止 import `src/main/ipc/**`（P2 IPC 注册收口后硬门禁，无例外）
+ *    —— 历史上 utils.ts 是 IPC 注册枢纽、startup-restore 依赖 ipc/welcome-state；本轮把
+ *       29 处注册按域拆到 ipc/ 各模块、welcome-state 迁到 utils 层后，该方向违规清零；
  * 3. `src/main/config/**` 禁止 import `src/main/ipc/**`（P1-1 新增）
  *    —— config 是业务层（L2），ipc 是编排层（L1）；历史上 config-manager /
  *       system-theme 反向依赖 ipc 的监听台账与主题广播实现。本轮已把
@@ -104,25 +104,14 @@ interface KnownException {
 }
 
 /**
- * 例外清单（当前仅 utils → ipc 2 条；均为「IPC 注册收口」批次的遗留范围）。
+ * 例外清单（P2 IPC 注册收口后为 **0 条**；只减不增）。
  * 注意：
  * - utils → config 的违规**禁止**登记为例外（H1 验收要求清零）；
- * - config → ipc 的违规**禁止**登记为例外（P1-1 验收要求清零）。
+ * - config → ipc 的违规**禁止**登记为例外（P1-1 验收要求清零）；
+ * - utils → ipc 的违规**禁止**登记为例外（P2 收口验收要求清零：注册已拆到 ipc/、
+ *   welcome-state 已迁 utils 层，方向改为合法的 ipc → utils）。
  */
-const KNOWN_EXCEPTIONS: KnownException[] = [
-    {
-        rule: 'utils-no-ipc',
-        file: 'src/main/utils/utils.ts',
-        specifier: '../ipc/ipc-listener-manager',
-        reason: 'H1 范围外：utils.ts 是 IPC 注册枢纽，需经 ipcListenerManager 统一台账注册；遗留的 29 处 IPC 注册收口与 utils.ts 拆分属后续「IPC 收口」批次范围，本批只强制 config → ipc 清零'
-    },
-    {
-        rule: 'utils-no-ipc',
-        file: 'src/main/utils/startup-restore.ts',
-        specifier: '../ipc/welcome-state',
-        reason: 'H1 范围外：启动恢复需读写欢迎页状态，而 welcome-state 历史归属 ipc 目录；随后续「IPC 收口」批次的启动模块归属调整一并迁移'
-    }
-]
+const KNOWN_EXCEPTIONS: KnownException[] = []
 
 /** 归一化为仓库相对路径 + 正斜杠（跨平台稳定） */
 function toRepoRelative(absolutePath: string): string {
@@ -326,11 +315,11 @@ function inspectLayerRules(
             reason: 'utils 反向依赖 config（H1 禁止，须改为 utils/providers 注入）'
         }
     }
-    // 规则 2：utils 禁止 import ipc（历史遗留按 KNOWN_EXCEPTIONS 登记）
+    // 规则 2：utils 禁止 import ipc（P2 IPC 注册收口后硬门禁，无例外）
     if (isMainUtils(file) && targetPath.startsWith('src/main/ipc/')) {
         return {
             rule: 'utils-no-ipc',
-            reason: 'utils 反向依赖 ipc（遗留注册枢纽，应经后续 IPC 收口批次迁移）'
+            reason: 'utils 反向依赖 ipc（P2 收口后禁止：IPC 注册在 ipc 层，utils 只保留纯工具函数）'
         }
     }
     // 规则 3：config 禁止 import ipc（P1-1 硬门禁，无例外）
@@ -474,6 +463,21 @@ describe('架构依赖边界（H1 + P1-1：依赖方向自动化守护）', () =
         expect(scannedFiles).toContain('src/preload/index.ts')
         // theme-broadcast 已迁出 ipc 层（P1-1 反向边修复），不得残留旧路径
         expect(scannedFiles).not.toContain('src/main/ipc/theme-broadcast.ts')
+        // P2 IPC 注册收口：原 utils.ts 的 29 处注册已拆到 ipc/ 各域模块，
+        // 新模块必须进入扫描范围、welcome-state 不得残留旧 ipc 路径
+        for (const migratedModule of [
+            'src/main/ipc/utils-ipc.ts',
+            'src/main/ipc/file-manager-ipc.ts',
+            'src/main/ipc/crypto-ipc.ts',
+            'src/main/ipc/navigation-ipc.ts',
+            'src/main/ipc/theme-ipc.ts',
+            'src/main/ipc/file-editor-ipc.ts',
+            'src/main/ipc/system-ipc.ts',
+            'src/main/utils/welcome-state.ts'
+        ]) {
+            expect(scannedFiles).toContain(migratedModule)
+        }
+        expect(scannedFiles).not.toContain('src/main/ipc/welcome-state.ts')
         // .vue SFC 必须进入扫描范围（动态 import/require 的 SFC 解析依赖于此）
         expect(scannedFiles.filter((file) => file.endsWith('.vue')).length).toBeGreaterThan(50)
         expect(scannedFiles).toContain('src/renderer/src/App.vue')
@@ -508,17 +512,12 @@ describe('架构依赖边界（H1 + P1-1：依赖方向自动化守护）', () =
         expect(violations, formatViolations(violations)).toEqual([])
     })
 
-    it('utils → ipc 仅允许 2 处登记例外，且随「IPC 收口」批次清理', () => {
+    it('utils → ipc 必须为 0（P2 IPC 注册收口硬门禁，无任何例外）', () => {
         const utilsToIpc = byRule('utils-no-ipc')
-        // 例外清单本身已覆盖 2 条；本用例把「只允许这 2 条」固化，新增即失败
-        expect(utilsToIpc).toHaveLength(2)
-        expect(excepted).toHaveLength(2)
-        for (const violation of utilsToIpc) {
-            expect(
-                KNOWN_EXCEPTIONS.some((exception) => matchesException(violation, exception)),
-                `utils → ipc 违规必须登记原因：${formatViolations([violation])}`
-            ).toBe(true)
-        }
+        // 收口后：utils.ts 只保留纯工具函数，welcome-state 已迁 utils 层；
+        // 架构测试的例外清单只减不增，本类违规不允许再登记例外
+        expect(utilsToIpc, formatViolations(utilsToIpc)).toEqual([])
+        expect(excepted).toHaveLength(0)
     })
 
     it('不得存在未登记的跨层/反向依赖违规', () => {
@@ -543,9 +542,11 @@ describe('架构依赖边界（H1 + P1-1：依赖方向自动化守护）', () =
         )
         // 例外不得覆盖 config → ipc（P1-1 验收要求该类违规清零）
         expect(KNOWN_EXCEPTIONS.some((exception) => exception.rule === 'config-no-ipc')).toBe(false)
-        // 已登记例外数量保持可控，新增需在代码评审中说明
-        expect(KNOWN_EXCEPTIONS).toHaveLength(2)
-        expect(excepted.length).toBeLessThanOrEqual(KNOWN_EXCEPTIONS.length)
+        // 例外不得覆盖 utils → ipc（P2 收口验收要求该类违规清零）
+        expect(KNOWN_EXCEPTIONS.some((exception) => exception.rule === 'utils-no-ipc')).toBe(false)
+        // P2 收口后例外清单应为空（只减不增；新增需在代码评审中说明）
+        expect(KNOWN_EXCEPTIONS).toHaveLength(0)
+        expect(excepted).toHaveLength(0)
     })
 
     it('规则自检：AST 扫描须命中静态/动态/require/类型查询/SFC 违例，注释与字符串不得误报', () => {

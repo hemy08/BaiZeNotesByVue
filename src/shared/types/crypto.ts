@@ -40,7 +40,7 @@ export interface CryptoData {
  *   renderer 侧无需伪造 Node 的 BufferEncoding 联合类型。
  *
  * 消费方：渲染层 CryptoEncDec.vue `fillEncDecData()` 构造请求；
- * 主进程 `src/main/utils/utils.ts` 的 `requireCryptoData()` 运行期校验后按 CryptoData 使用。
+ * 主进程 `src/main/ipc/crypto-ipc.ts` 的 `requireCryptoData()` 运行期校验后按 CryptoData 使用。
  */
 export interface CryptoWireData {
     context: string

@@ -5,7 +5,7 @@
  * 1. PlantUML 渲染响应：主进程 plantuml-local.ts 与渲染层 hemy-editor-render.ts
  *    均引用 shared 类型、不再各自定义，两端字段由同一接口约束；
  * 2. AppVersionInfo：shared 接口字段 == preload 运行时 getVersion 返回类型字段，
- *    且 main utils.ts / preload index.d.ts / HelpAboutDialog.vue 三处引用同一类型；
+ *    且 main ipc/system-ipc.ts / preload index.d.ts / HelpAboutDialog.vue 三处引用同一类型；
  * 3. 备份契约：ConfigBackupInfo / ConfigBackupState / ConfigBackupCommand 以
  *    shared/types/config.ts 为唯一真源，main config-backup.ts 与渲染层
  *    system-setting/BackupPanel.vue 统一引用（删除本地副本）；
@@ -27,7 +27,8 @@ const CONFIG_TYPES = p('src', 'shared', 'types', 'config.ts')
 const CRYPTO_TYPES = p('src', 'shared', 'types', 'crypto.ts')
 const PRELOAD_DTS = p('src', 'preload', 'index.d.ts')
 const PRELOAD_INDEX = p('src', 'preload', 'index.ts')
-const MAIN_UTILS = p('src', 'main', 'utils', 'utils.ts')
+// P2 IPC 注册收口：APP_VERSION handler 从 utils.ts 迁到 ipc/system-ipc.ts（行为/类型不变）
+const MAIN_IPC_SYSTEM = p('src', 'main', 'ipc', 'system-ipc.ts')
 const MAIN_ENCRYPT = p('src', 'main', 'utils', 'encrypt-decrypt.ts')
 const MAIN_PLANTUML = p('src', 'main', 'renders', 'plantuml-local.ts')
 const MAIN_CONFIG_BACKUP = p('src', 'main', 'config', 'config-backup.ts')
@@ -202,8 +203,8 @@ describe('AppVersionInfo 契约（shared / preload / main / 渲染层一致）',
         expect(inlineFields).toEqual(sharedFields)
     })
 
-    it('主进程 utils.ts 的 APP_VERSION handler 应标注 shared AppVersionInfo', () => {
-        const source = readSource(MAIN_UTILS)
+    it('主进程 ipc/system-ipc.ts 的 APP_VERSION handler 应标注 shared AppVersionInfo', () => {
+        const source = readSource(MAIN_IPC_SYSTEM)
         expect(source).toContain('AppVersionInfo')
         expect(source).toContain('async (): Promise<AppVersionInfo>')
     })
