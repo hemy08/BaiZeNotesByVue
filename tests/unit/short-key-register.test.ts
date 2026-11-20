@@ -85,6 +85,13 @@ describe('AS-12 RegisterShortKeys', () => {
         electronState.unregistered.length = 0
         toolkitState.is.dev = true
         vi.mocked(globalShortcut.register).mockClear()
+        // P3-6：恢复默认注册实现（个别用例会临时改为抛错/返回 false）
+        vi.mocked(globalShortcut.register).mockImplementation(
+            (accelerator: string, callback: () => void) => {
+                electronState.registered.set(accelerator, callback)
+                return true
+            }
+        )
         loggerMock.warn.mockClear()
         loggerMock.error.mockClear()
         fileUtilsMocks.OpenDirectory.mockClear()
@@ -164,6 +171,52 @@ describe('AS-12 RegisterShortKeys', () => {
         expect(() => electronState.registered.get('F9')?.()).not.toThrow()
         expect(window.webContents.send).not.toHaveBeenCalled()
         expect(loggerMock.warn).toHaveBeenCalled()
+    })
+
+    // P3-6（安全剩余项）：单个快捷键注册失败/抛错不中断其余注册，且失败项不自动重试
+    it('should survive per-accelerator errors and failures without aborting the rest (P3-6)', () => {
+        const registerMock = vi.mocked(globalShortcut.register)
+        registerMock.mockImplementation((accelerator: string, callback: () => void) => {
+            if (accelerator === 'F10') {
+                throw new Error('invalid accelerator')
+            }
+            if (accelerator === 'F11') {
+                return false
+            }
+            electronState.registered.set(accelerator, callback)
+            return true
+        })
+
+        expect(() => RegisterShortKeys(makeWindow() as never)).not.toThrow()
+
+        // 其余 7 个快捷键仍注册成功（9 项 - F10 抛错 - F11 返回 false）
+        expect(registeredAccelerators()).toEqual(
+            ['F4', 'F9', 'F12', 'Ctrl+N', 'Ctrl+O', 'Ctrl+R', 'Ctrl+Shift+R'].sort()
+        )
+        expect(loggerMock.warn).toHaveBeenCalledWith(
+            expect.stringContaining('F10'),
+            expect.any(Error)
+        )
+        expect(loggerMock.warn).toHaveBeenCalledWith(expect.stringContaining('F11'))
+        // 汇总告警：便于用户/支持排查“某个热键没反应”
+        expect(loggerMock.warn).toHaveBeenCalledWith(
+            expect.stringContaining('成功 7 项 / 失败 2 项')
+        )
+        expect(loggerMock.error).not.toHaveBeenCalled()
+
+        // 失败项不做自动重试：再次调用（模拟重建窗口）不重复注册
+        const callsAfterFirst = registerMock.mock.calls.length
+        RegisterShortKeys(makeWindow() as never)
+        expect(registerMock.mock.calls.length).toBe(callsAfterFirst)
+    })
+
+    it('should log an explicit error when every accelerator fails to register (P3-6)', () => {
+        vi.mocked(globalShortcut.register).mockImplementation(() => false)
+
+        expect(() => RegisterShortKeys(makeWindow() as never)).not.toThrow()
+        expect(loggerMock.error).toHaveBeenCalledWith(
+            expect.stringContaining('所有全局快捷键注册失败')
+        )
     })
 
     it('should dispatch Ctrl+N / Ctrl+O / Ctrl+R / Ctrl+Shift+R / F4 actions', () => {

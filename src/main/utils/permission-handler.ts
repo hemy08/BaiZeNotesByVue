@@ -86,6 +86,14 @@ export interface PermissionHandlerOptions {
 /** 是否已注册（进程级一次性，防重复覆盖 handler） */
 let registered = false
 
+/**
+ * P3-10：已安装「一律拒绝」处理器的独立 session 集合（WeakSet，不阻止 session 被回收）。
+ * 在线网页窗口使用独立内存 partition 后不再享受 defaultSession 的主窗口白名单策略，
+ * 因此必须在该 session 上显式安装拒绝型处理器（Electron 对无 handler 的 session
+ * 默认自动批准权限）。
+ */
+let denyAllSessions: WeakSet<object> = new WeakSet()
+
 /** 取当前主窗口的 webContents（窗口不存在/已销毁时返回 null） */
 function getCurrentMainWindowContents(): PermissionWebContentsLike | null {
     try {
@@ -226,7 +234,78 @@ export function registerPermissionHandlers(
     }
 }
 
+/**
+ * P3-10：拒绝型处理器注册期/请求期的安全告警——日志模块在极端环境（或单测桩）不可用时
+ * 不得让权限决策路径抛错（否则会绕过「默认拒绝」）。
+ */
+function safeDenyAllWarn(message: string, ...args: unknown[]): void {
+    try {
+        logger.warn(message, ...args)
+    } catch {
+        // 日志不可用不影响权限决策
+    }
+}
+
+/**
+ * P3-10：为独立 session（在线网页窗口的内存 partition）安装「一律拒绝」权限处理器。
+ *
+ * 为什么必须有：Electron 对未安装 handler 的 session 默认自动批准权限；在线网页窗口
+ * 改用独立 partition 后不再被 defaultSession 的主窗口白名单处理器覆盖，若不显式安装，
+ * 远程站点反而可无提示获取摄像头/麦克风/剪贴板等权限（比共享 session 更差）。
+ *
+ * 语义：该 session 内所有权限请求/检查一律 false（不区分来源与主框架）；幂等（同一
+ * session 重复调用返回 false）；session/方法缺失时安全跳过并告警；回调必调一次防挂起。
+ */
+export function registerDenyAllPermissionHandlers(
+    session?: PermissionSessionLike | null,
+    label = 'isolated'
+): boolean {
+    if (!session) {
+        safeDenyAllWarn(`[Security] 拒绝型 Web 权限处理器未注册：session 不可用（P3-10 ${label}）`)
+        return false
+    }
+    const target = session as unknown as object
+    if (denyAllSessions.has(target)) {
+        return false
+    }
+    const setRequestHandler = session.setPermissionRequestHandler
+    const setCheckHandler = session.setPermissionCheckHandler
+    if (typeof setRequestHandler !== 'function' || typeof setCheckHandler !== 'function') {
+        safeDenyAllWarn(
+            `[Security] 拒绝型 Web 权限处理器未注册：session 缺少权限 API（P3-10 ${label}）`
+        )
+        return false
+    }
+    try {
+        const requestHandler: PermissionRequestHandlerLike = (
+            _webContents,
+            permission,
+            callback
+        ) => {
+            safeDenyAllWarn(
+                `[Security] 已拒绝隔离窗口 Web 权限请求（P3-10 ${label}）：${permission}`
+            )
+            // 无论判定如何都必须回调，否则请求方会永久挂起
+            try {
+                callback(false)
+            } catch {
+                // 回调本身抛错（请求方已销毁）不得冒泡到主进程
+            }
+        }
+        const checkHandler: PermissionCheckHandlerLike = () => false
+        // 与主 session 注册同样的 this 绑定问题：必须经属性调用，不能解构后裸调用
+        session.setPermissionRequestHandler?.(requestHandler)
+        session.setPermissionCheckHandler?.(checkHandler)
+        denyAllSessions.add(target)
+        return true
+    } catch (error) {
+        safeDenyAllWarn(`[Security] 注册拒绝型 Web 权限处理器失败（P3-10 ${label}）：`, error)
+        return false
+    }
+}
+
 /** 重置注册标记（仅测试隔离使用） */
 export function resetPermissionHandlersForTesting(): void {
     registered = false
+    denyAllSessions = new WeakSet()
 }

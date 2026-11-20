@@ -1518,6 +1518,28 @@ describe('OpenFolderExplorer', () => {
             expect.objectContaining({ type: 'error' })
         )
     })
+
+    // P3-3（安全剩余项）：与 FILE_MANAGER.FIND_IN 统一走 isSafeShowItemInFolderPath，
+    // UNC/设备命名空间路径在进入 isPathAllowed（可能触发 realpath/网络）之前即被拒绝。
+    it('should reject UNC and device-namespace targets (P3-3)', () => {
+        const targets = [
+            '\\\\attacker-server\\share\\note.md',
+            '//attacker-server/share/note.md',
+            '\\\\?\\C:\\Windows\\win.ini',
+            '\\\\.\\pipe\\evil'
+        ]
+        for (const target of targets) {
+            OpenFolderExplorer(target)
+        }
+        expect(electronMocks.showItemInFolder).not.toHaveBeenCalled()
+        // 每个越界目标都应产生一次状态栏拒绝提示（说明走的是统一安全判定而非静默失败）
+        const deniedNotices = mainSend.mock.calls.filter(
+            (call) =>
+                call[0] === 'baize:status-bar:update' &&
+                (call[1] as { type?: string }).type === 'error'
+        )
+        expect(deniedNotices.length).toBe(targets.length)
+    })
 })
 
 describe('GetSelectDir', () => {

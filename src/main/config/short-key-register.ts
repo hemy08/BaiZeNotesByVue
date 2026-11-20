@@ -82,11 +82,33 @@ export function RegisterShortKeys(mainWindow: Electron.BrowserWindow): void {
     }
     getAppContext().shortKeys.registered = true
 
-    // 注册辅助函数：注册失败（如被系统/其他应用占用）时打日志，不中断其余快捷键注册
-    const register = (accelerator: string, callback: () => void): void => {
-        const ok = globalShortcut.register(accelerator, callback)
-        if (!ok) {
-            logger.warn(`[ShortKey] 注册快捷键失败（可能已被占用）: ${accelerator}`)
+    // P3-6（安全剩余项）：注册失败/异常处理加固。
+    // - globalShortcut.register 在 accelerator 非法、平台不支持（如部分 Wayland 环境）或
+    //   被系统/其他应用占用时会返回 false 或抛错；单个失败不得中断其余快捷键注册；
+    // - 失败项记录告警并汇总，便于用户排查“某个热键没反应”；
+    // - 注册标记在循环前已置位：重建窗口时不会重复注册（重复注册返回 false 且旧回调
+    //   仍绑定已销毁窗口），失败项也不做自动重试（避免占用风暴）。
+    let registeredCount = 0
+    let failedCount = 0
+    const register = (accelerator: string, callback: () => void): boolean => {
+        try {
+            const ok = globalShortcut.register(accelerator, callback)
+            if (!ok) {
+                failedCount += 1
+                logger.warn(
+                    `[ShortKey] 注册快捷键失败（可能已被系统或其他应用占用）: ${accelerator}`
+                )
+                return false
+            }
+            registeredCount += 1
+            return true
+        } catch (error) {
+            failedCount += 1
+            logger.warn(
+                `[ShortKey] 注册快捷键异常（已跳过该键，不影响其余热键）: ${accelerator}`,
+                error
+            )
+            return false
         }
     }
 
@@ -162,4 +184,13 @@ export function RegisterShortKeys(mainWindow: Electron.BrowserWindow): void {
     register('F4', () => {
         app.quit()
     })
+
+    // P3-6：汇总注册结果（失败仅告警，不抛错、不阻断启动；全失败时明确提示热键不可用）
+    if (registeredCount === 0) {
+        logger.error(`[ShortKey] 所有全局快捷键注册失败（共 ${failedCount} 项），热键功能不可用`)
+    } else if (failedCount > 0) {
+        logger.warn(
+            `[ShortKey] 全局快捷键部分注册失败：成功 ${registeredCount} 项 / 失败 ${failedCount} 项`
+        )
+    }
 }

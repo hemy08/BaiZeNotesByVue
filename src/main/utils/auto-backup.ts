@@ -40,7 +40,12 @@ import * as path from 'path'
 // 结构优化第 1 批 1.3（L4）：shared 纯函数不再直接依赖 node:path，
 // 路径能力改由主进程调用方显式注入（主进程依赖 Node 内建属正常边界）。
 import { isAbsolute, relative, resolve } from 'node:path'
-import { getUserDataPath } from './app-paths'
+import {
+    getUserDataPath,
+    BACKUP_FILE_MODE,
+    USER_DATA_DIR_MODE,
+    hardenPathPermissions
+} from './app-paths'
 import { logger } from './logger'
 import { appState, sendToMainWindow } from './app-state'
 // 结构优化 1.1（H1）：系统设置读取改为注入（main/index.ts 启动早期注入 config 实现），
@@ -402,6 +407,8 @@ export async function performAutoBackup(): Promise<AutoBackupResult | null> {
     // 2. 创建带时间戳的备份目录（同一秒内重名追加 -N 序号）
     const root = getAutoBackupRoot()
     await fs.ensureDir(root)
+    // P3-7：备份根目录尽力收紧到 0o700（POSIX；Windows 由用户目录默认 ACL 保护）
+    await hardenPathPermissions(root, USER_DATA_DIR_MODE)
     // 公共接口归位第 2 批：时间戳格式由 shared 的 formatBackupStamp 生成（YYYYMMDD-HHmmss）
     const stamp = formatBackupStamp(new Date())
     let name = stamp
@@ -412,6 +419,7 @@ export async function performAutoBackup(): Promise<AutoBackupResult | null> {
     }
     const destDir = path.join(root, name)
     await fs.ensureDir(destDir)
+    await hardenPathPermissions(destDir, USER_DATA_DIR_MODE)
 
     // 3. 逐条写入（保留相对目录结构）；P3：中途失败（磁盘满/权限）时
     // 先回滚删除本次半成品目录，再抛出交由调度方记录/提示，不残留废目录
@@ -424,6 +432,8 @@ export async function performAutoBackup(): Promise<AutoBackupResult | null> {
             } else if (copy.source) {
                 await fs.copyFile(copy.source, destPath)
             }
+            // P3-7：备份文件为笔记明文，POSIX 下尽力收紧到 0o600（失败不影响备份）
+            await hardenPathPermissions(destPath, BACKUP_FILE_MODE)
         }
     } catch (error) {
         try {

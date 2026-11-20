@@ -32,6 +32,7 @@ import {
     ALLOWED_APP_PERMISSIONS,
     isTrustedAppPermission,
     registerPermissionHandlers,
+    registerDenyAllPermissionHandlers,
     resetPermissionHandlersForTesting,
     type PermissionCheckHandlerLike,
     type PermissionHandlerOptions,
@@ -354,5 +355,72 @@ describe('registerPermissionHandlers', () => {
         resetPermissionHandlersForTesting()
         const { session } = makeSession()
         expect(registerPermissionHandlers(session, OPTIONS)).toBe(true)
+    })
+})
+
+// P3-10：在线网页窗口独立 session 的「一律拒绝」权限处理器
+describe('registerDenyAllPermissionHandlers (P3-10)', () => {
+    it('should install deny-all request/check handlers and be idempotent per session', () => {
+        const { session, getRequestHandler, getCheckHandler } = makeSession()
+        expect(registerDenyAllPermissionHandlers(session, 'online-web-page')).toBe(true)
+        // 同一 session 重复调用不覆盖已有处理器
+        expect(registerDenyAllPermissionHandlers(session, 'online-web-page')).toBe(false)
+
+        const requestHandler = getRequestHandler()!
+        const callback = vi.fn()
+        requestHandler(
+            makeContents(() => 'https://example.com/'),
+            'media',
+            callback
+        )
+        expect(callback).toHaveBeenCalledTimes(1)
+        expect(callback).toHaveBeenCalledWith(false)
+        // 远程站点即使请求白名单内的 fullscreen 也拒绝（该 session 不存在任何白名单）
+        const fullscreenCallback = vi.fn()
+        requestHandler(
+            makeContents(() => 'https://example.com/'),
+            'fullscreen',
+            fullscreenCallback
+        )
+        expect(fullscreenCallback).toHaveBeenCalledWith(false)
+        expect(loggerMocks.warn).toHaveBeenCalledWith(
+            expect.stringContaining('已拒绝隔离窗口 Web 权限请求')
+        )
+
+        const checkHandler = getCheckHandler()!
+        expect(checkHandler(null, 'fullscreen', 'https://example.com/', {})).toBe(false)
+        expect(checkHandler(null, 'clipboard-read', 'file://', {})).toBe(false)
+    })
+
+    it('should defensively handle a throwing permission callback', () => {
+        const { session, getRequestHandler } = makeSession()
+        expect(registerDenyAllPermissionHandlers(session)).toBe(true)
+        const requestHandler = getRequestHandler()!
+        expect(() =>
+            requestHandler(
+                makeContents(() => 'https://example.com/'),
+                'media',
+                () => {
+                    throw new Error('renderer destroyed')
+                }
+            )
+        ).not.toThrow()
+    })
+
+    it('should safely skip unavailable sessions and still allow a valid session afterwards', () => {
+        expect(registerDenyAllPermissionHandlers(null, 'online')).toBe(false)
+        expect(registerDenyAllPermissionHandlers(undefined, 'online')).toBe(false)
+        expect(
+            registerDenyAllPermissionHandlers(
+                { setPermissionRequestHandler: vi.fn() } as never,
+                'online'
+            )
+        ).toBe(false)
+        expect(loggerMocks.warn).toHaveBeenCalledWith(
+            expect.stringContaining('拒绝型 Web 权限处理器未注册')
+        )
+
+        const { session } = makeSession()
+        expect(registerDenyAllPermissionHandlers(session, 'online')).toBe(true)
     })
 })

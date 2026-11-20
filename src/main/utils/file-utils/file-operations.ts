@@ -38,10 +38,13 @@ import { tMain } from '../i18n'
 import { approveWorkspaceRoot } from '../workspace-approval'
 import { recordRecentFolderFromProvider } from '../providers'
 // P1-AS-1：文件 IPC 路径守卫——工作区/临时目录/用户选择过的路径之外一律拒绝
+// P3-3（安全剩余项）：资源管理器定位额外复用 AS-8 的 isSafeShowItemInFolderPath，
+// 与 FILE_MANAGER.FIND_IN 保持一致（拒绝 UNC/设备命名空间，避免 SMB 认证面）。
 import {
     isPathAllowed,
     isSafeFileExtension,
     isSafeFileName,
+    isSafeShowItemInFolderPath,
     PathAccessDeniedError,
     registerTrustedDirectory,
     registerTrustedPath
@@ -960,9 +963,11 @@ async function DeleteFileFolder(name: string, isFile: boolean): Promise<void> {
  * @param filePath 文件路径
  */
 export function OpenFolderExplorer(filePath: string): void {
-    // P1-AS-1/AS-8：资源管理器定位同样是文件系统信息暴露面（可探测任意路径是否存在），
-    // 仅允许受信范围内的路径；越界时状态栏提示并 return。
-    if (!isPathAllowed(filePath)) {
+    // P1-AS-1/AS-8/P3-3：资源管理器定位同样是文件系统信息暴露面（可探测任意路径是否存在），
+    // 仅允许受信范围内的路径，并复用 FIND_IN 的同一判定拒绝 UNC/设备命名空间
+    // （工作区为网络共享子目录时也不把 UNC 路径交给资源管理器，避免触发 SMB 认证）。
+    // 越界时状态栏提示并 return。
+    if (!isSafeShowItemInFolderPath(filePath)) {
         notifyPathAccessDenied(filePath, 'mainMsg.status.operationFailed')
         return
     }

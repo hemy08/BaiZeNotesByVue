@@ -10,8 +10,19 @@ import { FakeBrowserWindow, FakeWebContents, GenericListener } from './helpers/f
 // ============ electron mock ============
 const eState = vi.hoisted(() => ({
     windows: [] as FakeBrowserWindow[],
-    openExternal: vi.fn()
+    openExternal: vi.fn(),
+    // P3-10：在线网页独立 session 的权限处理器安装桩
+    session: {
+        setPermissionRequestHandler: vi.fn(),
+        setPermissionCheckHandler: vi.fn()
+    }
 }))
+
+const permissionMocks = vi.hoisted(() => ({
+    registerDenyAllPermissionHandlers: vi.fn(() => true)
+}))
+
+vi.mock('../../src/main/utils/permission-handler', () => permissionMocks)
 
 vi.mock('electron', () => {
     class MockBrowserWindow {
@@ -24,7 +35,14 @@ vi.mock('electron', () => {
         loadFile = vi.fn()
         show = vi.fn()
         focus = vi.fn()
-        webContents: FakeWebContents & { setWindowOpenHandler: ReturnType<typeof vi.fn> }
+        webContents: FakeWebContents & {
+            setWindowOpenHandler: ReturnType<typeof vi.fn>
+            // P3-10：在线窗口独立 session（权限处理器安装目标）
+            session: {
+                setPermissionRequestHandler: ReturnType<typeof vi.fn>
+                setPermissionCheckHandler: ReturnType<typeof vi.fn>
+            }
+        }
 
         constructor(options: Record<string, unknown>) {
             this.options = options
@@ -32,6 +50,7 @@ vi.mock('electron', () => {
                 send: vi.fn(),
                 executeJavaScript: vi.fn(),
                 insertCSS: vi.fn(),
+                session: eState.session,
                 on: vi.fn((event: string, cb: GenericListener) => {
                     const list = this.webListeners.get(event) || []
                     list.push(cb)
@@ -97,7 +116,7 @@ const loggerMocks = vi.hoisted(() => ({
 
 vi.mock('../../src/main/utils/logger', () => ({ logger: loggerMocks }))
 
-import { OpenOnlineWebPage } from '../../src/main/dialogs/OpenOnlineWebPages'
+import { ONLINE_WEB_PARTITION, OpenOnlineWebPage } from '../../src/main/dialogs/OpenOnlineWebPages'
 import { windowManager } from '../../src/main/window/window-manager'
 
 // 取出 webContents.on 注册的处理器
@@ -228,5 +247,22 @@ describe('online web page window hardening (C-08)', () => {
         })
         expect(openHandler({ url: 'javascript:alert(1)' })).toEqual({ action: 'deny' })
         expect(eState.openExternal).not.toHaveBeenCalled()
+    })
+
+    // P3-10：在线网页窗口使用独立内存 session，且该 session 显式「一律拒绝」权限
+    it('should use an isolated in-memory partition instead of defaultSession (P3-10)', () => {
+        const win = eState.windows[0]
+        const webPreferences = win.options.webPreferences as Record<string, unknown>
+        expect(webPreferences.partition).toBe(ONLINE_WEB_PARTITION)
+        // 无 persist: 前缀 = 内存 session，退出即清空，不写磁盘 profile
+        expect(String(webPreferences.partition)).not.toMatch(/^persist:/)
+    })
+
+    it('should install deny-all permission handlers on the isolated session (P3-10)', () => {
+        expect(permissionMocks.registerDenyAllPermissionHandlers).toHaveBeenCalledTimes(1)
+        expect(permissionMocks.registerDenyAllPermissionHandlers).toHaveBeenCalledWith(
+            eState.session,
+            'online-web-page'
+        )
     })
 })

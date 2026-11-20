@@ -26,15 +26,28 @@ const electronMocks = vi.hoisted(() => ({
     printToPDF: vi.fn(),
     loadURL: vi.fn(),
     close: vi.fn(),
-    isDestroyed: vi.fn()
+    isDestroyed: vi.fn(),
+    // P3-1：记录隐藏导出窗的构造参数与导航/开窗拦截器，便于断言安全基线
+    windowOptions: [] as unknown[],
+    webContentsOn: vi.fn(),
+    setWindowOpenHandler: vi.fn()
 }))
 
 vi.mock('electron', () => {
     class MockBrowserWindow {
-        webContents = { send: electronMocks.mainSend, printToPDF: electronMocks.printToPDF }
+        webContents = {
+            send: electronMocks.mainSend,
+            printToPDF: electronMocks.printToPDF,
+            on: electronMocks.webContentsOn,
+            setWindowOpenHandler: electronMocks.setWindowOpenHandler
+        }
         loadURL = electronMocks.loadURL
         close = electronMocks.close
         isDestroyed = electronMocks.isDestroyed
+
+        constructor(options: unknown) {
+            electronMocks.windowOptions.push(options)
+        }
     }
     return {
         BrowserWindow: MockBrowserWindow,
@@ -75,6 +88,7 @@ afterAll(async () => {
 
 beforeEach(() => {
     vi.clearAllMocks()
+    electronMocks.windowOptions.length = 0
     appState._resetForTesting()
     appState.mainWindow = {
         webContents: { send: electronMocks.mainSend }
@@ -198,6 +212,54 @@ describe('ToPdf', () => {
         await expect(ToPdf('# 标题', filePath)).rejects.toThrow('load failed')
         expect(electronMocks.close).toHaveBeenCalled()
         expect(electronMocks.printToPDF).not.toHaveBeenCalled()
+    })
+
+    // P3-1（安全剩余项）：PDF 导出隐藏窗口与主窗口安全基线对齐
+    it('should use a hardened hidden-window baseline (P3-1)', async () => {
+        const caseDir = await fs.mkdtemp(path.join(tmpDir, 'case-'))
+        const filePath = path.join(caseDir, 'out-hardened.pdf')
+        electronMocks.printToPDF.mockResolvedValue(Buffer.from('FAKE-PDF-DATA'))
+        electronMocks.loadURL.mockResolvedValue(undefined)
+
+        await ToPdf('# 标题', filePath)
+
+        expect(electronMocks.windowOptions).toHaveLength(1)
+        const options = electronMocks.windowOptions[0] as {
+            webPreferences?: Record<string, unknown>
+        }
+        // nodeIntegration/contextIsolation/sandbox/webSecurity 四项基线；隐藏窗不注入 preload
+        expect(options.webPreferences).toMatchObject({
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true,
+            webSecurity: true
+        })
+        expect(options.webPreferences?.preload).toBeUndefined()
+    })
+
+    it('should deny navigation/redirect/window.open in the hidden export window (P3-1)', async () => {
+        const caseDir = await fs.mkdtemp(path.join(tmpDir, 'case-'))
+        const filePath = path.join(caseDir, 'out-nav.pdf')
+        electronMocks.printToPDF.mockResolvedValue(Buffer.from('FAKE-PDF-DATA'))
+        electronMocks.loadURL.mockResolvedValue(undefined)
+
+        await ToPdf('# 标题', filePath)
+
+        const onCalls = electronMocks.webContentsOn.mock.calls as unknown[][]
+        for (const eventName of ['will-navigate', 'will-redirect']) {
+            const call = onCalls.find((item) => item[0] === eventName)
+            expect(call, `应注册 ${eventName} 拦截器`).toBeDefined()
+            const event = { preventDefault: vi.fn() }
+            ;(call![1] as (e: { preventDefault: () => void }) => void)(event)
+            expect(event.preventDefault).toHaveBeenCalled()
+        }
+
+        expect(electronMocks.setWindowOpenHandler).toHaveBeenCalledTimes(1)
+        const openHandler = electronMocks.setWindowOpenHandler.mock.calls[0][0] as (details: {
+            url: string
+        }) => { action: string }
+        expect(openHandler({ url: 'https://evil.example.com/' })).toEqual({ action: 'deny' })
+        expect(openHandler({ url: 'file:///C:/Windows/win.ini' })).toEqual({ action: 'deny' })
     })
 })
 

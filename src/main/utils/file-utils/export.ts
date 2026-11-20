@@ -355,15 +355,30 @@ export async function ToPdf(content: string, filePath: string): Promise<void> {
     const MarkdownIt = loadMarkdownItConstructor()
     const md = new MarkdownIt()
 
+    // P3-1（安全剩余项）：PDF 导出隐藏窗口与主窗口安全基线对齐。
+    // 该窗口只渲染应用生成的静态 HTML（markdown-it 默认 html:false），不注入 preload、
+    // 不参与任何应用交互；sandbox/webSecurity 为纵深防御，防止未来内容注入后接触 Node/网络面。
     const win = new BrowserWindow({
         width: 800,
         height: 600,
         show: false,
         webPreferences: {
             nodeIntegration: false,
-            contextIsolation: true
+            contextIsolation: true,
+            sandbox: true,
+            webSecurity: true
         }
     })
+
+    // P3-1：隐藏窗口不允许任何导航/重定向/新窗口（纵深防御；正常流程只 loadURL 一次
+    // 应用拼装的 data:text/html）。data: 页面中的链接/表单若被注入也不会在导出窗内继续加载。
+    win.webContents.on('will-navigate', (event) => {
+        event.preventDefault()
+    })
+    win.webContents.on('will-redirect', (event) => {
+        event.preventDefault()
+    })
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 
     try {
         const htmlContent = `

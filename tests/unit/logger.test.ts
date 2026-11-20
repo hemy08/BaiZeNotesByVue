@@ -160,6 +160,72 @@ describe('logger', () => {
         })
     })
 
+    // P3-7：敏感值脱敏（口令/令牌/API Key/私钥不入日志；文件/控制台/状态栏统一掩码）
+    describe('sensitive value masking (P3-7)', () => {
+        it('should mask key=value and JSON-keyed secrets', async () => {
+            const { maskSensitiveData } = await loadLogger()
+
+            expect(maskSensitiveData('password=hunter2')).toBe('password=***')
+            expect(maskSensitiveData('login failed: pwd=topsecret, retry=2')).toBe(
+                'login failed: pwd=***, retry=2'
+            )
+            expect(maskSensitiveData('{"token":"abc123","user":"alice"}')).toBe(
+                '{"token":***,"user":"alice"}'
+            )
+            expect(maskSensitiveData("api_key: 'sk-raw-value'")).toBe('api_key: ***')
+            expect(maskSensitiveData('apiKey=xyz client_secret=s3cr3t')).toBe(
+                'apiKey=*** client_secret=***'
+            )
+        })
+
+        it('should mask bearer/basic credentials and PEM private key blocks', async () => {
+            const { maskSensitiveData } = await loadLogger()
+
+            const authorization = 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig'
+            expect(maskSensitiveData(authorization)).not.toContain('eyJhbGciOiJIUzI1NiJ9')
+            expect(maskSensitiveData('Basic dXNlcjpwYXNz')).toBe('Basic ***')
+
+            const pem =
+                '-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA\n-----END RSA PRIVATE KEY-----'
+            const maskedPem = maskSensitiveData(pem)
+            expect(maskedPem).toBe('[PRIVATE KEY REDACTED]')
+            expect(maskedPem).not.toContain('MIIEowIBAAKCAQEA')
+        })
+
+        it('should keep ordinary log text unchanged (no over-masking)', async () => {
+            const { maskSensitiveData } = await loadLogger()
+
+            // 仅字段名紧跟 :/= 才掩码，正文中的普通单词不误伤
+            expect(maskSensitiveData('the token count is 3')).toBe('the token count is 3')
+            expect(maskSensitiveData('secret sauce recipe')).toBe('secret sauce recipe')
+            expect(maskSensitiveData('')).toBe('')
+        })
+
+        it('should not write secrets into the log file', async () => {
+            const { logger } = await loadLogger()
+            logger.info('login', { password: 'hunter2', token: 'tok-123456' })
+            logger.close()
+            await new Promise((resolve) => setTimeout(resolve, 80))
+
+            const content = fs.readFileSync(logger.getCurrentLogFile(), 'utf-8')
+            expect(content).not.toContain('hunter2')
+            expect(content).not.toContain('tok-123456')
+            expect(content).toContain('***')
+        })
+
+        it('should mask secrets in status bar messages', async () => {
+            const { logger } = await loadLogger()
+            const send = vi.fn()
+            logger.setMainWindow({ isDestroyed: () => false, webContents: { send } } as never)
+
+            logger.error('auth failed password=hunter2')
+
+            const payload = send.mock.calls[0][1] as { message: string }
+            expect(payload.message).not.toContain('hunter2')
+            expect(payload.message).toContain('password=***')
+        })
+    })
+
     describe('status bar messages', () => {
         it('should mirror WARN/ERROR to the status bar with mapped types (AS-11)', async () => {
             const { logger } = await loadLogger()

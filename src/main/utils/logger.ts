@@ -12,6 +12,11 @@
  *    减少内部调试信息进入 UI 可见面。
  * 4. 写入流错误兜底：createWriteStream 的 error 事件必须消费，否则磁盘满/权限
  *    变化时 Node 会以未捕获异常终止主进程。
+ *
+ * P3-7（安全剩余项）：敏感值脱敏——在既有的主目录脱敏之外，对调用方误写入日志的
+ * 口令/令牌/API Key/私钥等敏感值做「尽力而为」的掩码（文件日志、控制台、状态栏三路
+ * 统一走 maskSensitiveData）；这不是调用方可以依赖的保密机制，日志调用点仍不得
+ * 主动记录密钥/笔记正文（见扫描报告「已验证无问题」#16）。
  */
 
 import * as fs from 'fs'
@@ -85,6 +90,57 @@ export function maskUserPaths(text: string): string {
         }
     }
     return masked
+}
+
+/**
+ * 敏感值掩码关键字（P3-7）：口令/令牌/API Key/私钥等常见字段名。
+ * 仅在这些字段名后紧跟 `:` 或 `=` 时掩码其值，避免误伤正文中的普通单词。
+ */
+const SENSITIVE_KEY_PATTERN =
+    '(?:password|passwd|pwd|secret|token|access[_-]?token|refresh[_-]?token|auth[_-]?token|client[_-]?secret|private[_-]?key|api[_-]?key|apikey|authorization)'
+
+/**
+ * P3-7：日志敏感值脱敏（尽力而为、纯函数、不抛异常）。
+ *
+ * 背景：扫描确认应用自身不写密钥/笔记正文，但主进程错误日志可能透传第三方错误信息、
+ * 请求头或配置对象，存在把口令/令牌带进日志的残余风险。本函数在日志落盘/控制台/
+ * 状态栏三路统一做掩码：
+ * 1. PEM 私钥块整体替换（`-----BEGIN ... PRIVATE KEY-----`）；
+ * 2. `Authorization: Bearer/Basic <凭证>` 凭证部分替换；
+ * 3. `password=...`、`"token": "..."`、`api_key: ...` 等键值形式的字段值替换为 `***`。
+ *
+ * 说明：掩码是最后一道防线，不是加密；调用点仍不应主动把敏感数据交给日志。
+ */
+export function maskSensitiveData(text: string): string {
+    if (typeof text !== 'string' || text.length === 0) {
+        return text
+    }
+    let masked = text
+
+    // 1) PEM 私钥块（多行，贪婪范围限定在 BEGIN/END 之间）
+    masked = masked.replace(
+        /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g,
+        '[PRIVATE KEY REDACTED]'
+    )
+
+    // 2) Authorization: Bearer/Basic <凭证>（先于键值规则执行，避免只掩到 "Bearer" 一词）
+    masked = masked.replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '$1 ***')
+
+    // 3) 键值形式：password=xxx / "token": "xxx" / api_key: xxx
+    masked = masked.replace(
+        new RegExp(
+            `((?:["']?${SENSITIVE_KEY_PATTERN}["']?)\\s*[:=]\\s*)("[^"]*"|'[^']*'|[^\\s,;&}\\]]+)`,
+            'gi'
+        ),
+        '$1***'
+    )
+
+    return masked
+}
+
+/** 日志统一净化入口：主目录脱敏 + 敏感值掩码（纯函数、不抛异常） */
+function sanitizeLogText(text: string): string {
+    return maskSensitiveData(maskUserPaths(text))
 }
 
 class Logger {
@@ -346,14 +402,14 @@ class Logger {
     }
 
     /**
-     * 格式化日志消息（AS-11：用户主目录脱敏后再输出/落盘）
+     * 格式化日志消息（AS-11：用户主目录脱敏；P3-7：敏感值掩码后再输出/落盘）
      */
     private formatMessage(level: LogLevel, message: string, ...args: unknown[]): string {
         const timestamp = new Date().toISOString()
         const argsStr =
             args.length > 0 ? ' ' + args.map((arg) => this.formatLogArg(arg)).join(' ') : ''
 
-        return `${maskUserPaths(`[${timestamp}] [${level}] ${message}${argsStr}`)}\n`
+        return `${sanitizeLogText(`[${timestamp}] [${level}] ${message}${argsStr}`)}\n`
     }
 
     /**
@@ -411,7 +467,8 @@ class Logger {
         // 映射日志级别到console类型
         const consoleType = level === LogLevel.ERROR ? 'error' : 'warning'
 
-        // 构建显示消息（AS-11：同样脱敏用户主目录；CQ-10：Error 只取单行 message，不刷堆栈）
+        // 构建显示消息（AS-11：同样脱敏用户主目录；P3-7：敏感值掩码；
+        // CQ-10：Error 只取单行 message，不刷堆栈）
         const displayMessage =
             args.length > 0
                 ? `${message} ${args.map((arg) => this.formatLogArg(arg, { includeStack: false })).join(' ')}`
@@ -420,7 +477,7 @@ class Logger {
         // 发送到渲染进程
         try {
             this.mainWindow.webContents.send(IPC.EVENTS.STATUS_BAR_UPDATE, {
-                message: maskUserPaths(displayMessage),
+                message: sanitizeLogText(displayMessage),
                 type: consoleType
             })
         } catch (error) {

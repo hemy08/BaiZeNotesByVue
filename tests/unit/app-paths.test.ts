@@ -40,7 +40,12 @@ import {
     getMermaidPath,
     getPlantumlPath,
     initUserDataDirectory,
-    getAppPathsInfo
+    getAppPathsInfo,
+    USER_DATA_DIR_MODE,
+    BACKUP_FILE_MODE,
+    shouldApplyPosixPermissionHardening,
+    hardenPathPermissionsSync,
+    hardenPathPermissions
 } from '../../src/main/utils/app-paths'
 
 const HOME = electronState.paths.home
@@ -149,6 +154,55 @@ describe('app-paths', () => {
             expect(info.plantuml).toBe(path.join(electronState.appPath, 'resources', 'plantuml'))
             expect(info.exe).toBe(electronState.paths.exe)
             expect(info.home).toBe(HOME)
+        })
+    })
+
+    // P3-7（安全剩余项）：明文数据根目录/备份文件的 POSIX 权限收紧
+    describe('POSIX permission hardening (P3-7)', () => {
+        it('should expose least-privilege modes and apply only on POSIX platforms', () => {
+            expect(USER_DATA_DIR_MODE).toBe(0o700)
+            expect(BACKUP_FILE_MODE).toBe(0o600)
+            // Windows 的 ACL 不能通过 chmod 收紧：显式跳过，避免“看似加固实则无效”
+            expect(shouldApplyPosixPermissionHardening('win32')).toBe(false)
+            expect(shouldApplyPosixPermissionHardening('linux')).toBe(true)
+            expect(shouldApplyPosixPermissionHardening('darwin')).toBe(true)
+        })
+
+        it.skipIf(process.platform === 'win32')(
+            'should tighten the user data directory to 0o700',
+            () => {
+                const result = getUserDataPath()
+                expect(fs.statSync(result).mode & 0o777).toBe(0o700)
+            }
+        )
+
+        it.skipIf(process.platform === 'win32')(
+            'should harden an existing directory/file synchronously and asynchronously',
+            async () => {
+                fs.ensureDirSync(USER_DATA)
+                expect(hardenPathPermissionsSync(USER_DATA, USER_DATA_DIR_MODE)).toBe(true)
+                expect(fs.statSync(USER_DATA).mode & 0o777).toBe(0o700)
+
+                const backupFile = path.join(USER_DATA, 'backup.md')
+                fs.writeFileSync(backupFile, '明文备份')
+                await expect(hardenPathPermissions(backupFile, BACKUP_FILE_MODE)).resolves.toBe(
+                    true
+                )
+                expect(fs.statSync(backupFile).mode & 0o777).toBe(0o600)
+            }
+        )
+
+        it('should fail safe (return false, never throw) when hardening is unsupported', async () => {
+            // 路径不存在：POSIX 下 chmod 抛 ENOENT，函数必须吞掉并返回 false
+            const missing = path.join(HOME, 'not-existent-dir')
+            expect(hardenPathPermissionsSync(missing, USER_DATA_DIR_MODE)).toBe(false)
+            await expect(hardenPathPermissions(missing, BACKUP_FILE_MODE)).resolves.toBe(false)
+            // 显式指定 Windows 平台：即使路径存在也跳过收紧
+            fs.ensureDirSync(USER_DATA)
+            expect(hardenPathPermissionsSync(USER_DATA, USER_DATA_DIR_MODE, 'win32')).toBe(false)
+            await expect(hardenPathPermissions(USER_DATA, BACKUP_FILE_MODE, 'win32')).resolves.toBe(
+                false
+            )
         })
     })
 })

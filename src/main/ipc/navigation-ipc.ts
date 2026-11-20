@@ -117,6 +117,9 @@ export function registerNavigationIpc(mainWindow: BrowserWindow, componentId: st
                     return
                 }
 
+                // P3-2 残余审计：执行通道是「能力型」操作，用户确认后落一条审计日志
+                // （路径经 logger 主目录脱敏，不含参数/内容；便于事后排查异常拉起）。
+                logger.info('[Security] navi-tab-open-exe：用户已确认执行', exePath)
                 await shell.openPath(exePath)
             } catch (error) {
                 // CQ-05：对话框/打开程序异常统一兜底，避免 unhandledRejection

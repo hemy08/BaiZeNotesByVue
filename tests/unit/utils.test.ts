@@ -790,6 +790,34 @@ describe('utils 侧 IPC 注册收口（registerUtilsIpcHandlers）', () => {
             expect(ipcMocks.shellOpenPath).toHaveBeenCalledWith(exe)
         })
 
+        // P3-2 残余：用户确认后写入审计日志（能力型通道可追溯），取消时不写
+        it('should write an audit log after the user confirms execution (P3-2)', async () => {
+            const handler = ipcMocks.on.get('baize:navigation:open-exe')!
+            const exe = untrustedExe()
+            ipcMocks.dialogShowMessageBox.mockResolvedValue({ response: 1 })
+            // 真实 logger.info 会镜像到 console.log（WARN/ERROR 才进状态栏）
+            const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+            await handler(makeEvent(mainWindow.webContents), exe)
+
+            expect(ipcMocks.shellOpenPath).toHaveBeenCalledWith(exe)
+            expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('用户已确认执行'))
+            consoleLog.mockRestore()
+        })
+
+        it('should not write a confirmation audit log when the user cancels (P3-2)', async () => {
+            const handler = ipcMocks.on.get('baize:navigation:open-exe')!
+            const exe = untrustedExe()
+            ipcMocks.dialogShowMessageBox.mockResolvedValue({ response: 0 })
+            const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+            await handler(makeEvent(mainWindow.webContents), exe)
+
+            expect(ipcMocks.shellOpenPath).not.toHaveBeenCalled()
+            expect(consoleLog).not.toHaveBeenCalledWith(expect.stringContaining('用户已确认执行'))
+            consoleLog.mockRestore()
+        })
+
         it('should not open untrusted executables when the user cancels', async () => {
             const handler = ipcMocks.on.get('baize:navigation:open-exe')!
             const exe = untrustedExe()

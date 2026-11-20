@@ -3,7 +3,18 @@ import type { BrowserWindowConstructorOptions, WebPreferences } from 'electron'
 import * as SystemSettingUtils from '../config'
 import { windowManager } from '../window/window-manager'
 import { logger } from '../utils/logger'
+import { registerDenyAllPermissionHandlers } from '../utils/permission-handler'
 import { isSafeExternalUrl, normalizeSafeExternalUrl, openExternalSafely } from '../utils/security'
+
+/**
+ * P3-10：在线网页窗口专用内存 session 名（无 `persist:` 前缀 = 内存 session，
+ * 退出即清空，不落盘到磁盘 profile）。
+ *
+ * 背景：历史上在线网页窗口与主渲染页共享 `defaultSession`（同一存储/缓存/配额）。
+ * 远程不可信页面与本地受信页面应隔离会话；同时该 session 不走 defaultSession 的
+ * 「主窗口白名单」权限处理器，必须显式安装「一律拒绝」处理器（见窗口创建处）。
+ */
+export const ONLINE_WEB_PARTITION = 'baize-online-web'
 
 /**
  * 结构优化第 2 批 2.3（H6）：jsdom 运行时依赖边界清理。
@@ -76,12 +87,27 @@ function OpenOnlineWebPageWithDialog(url: string) {
                 preload: undefined,
                 sandbox: true,
                 nodeIntegration: false,
-                contextIsolation: true
+                contextIsolation: true,
+                // P3-10：独立内存 session，隔离远程站点与主渲染页的存储/缓存/配额
+                partition: ONLINE_WEB_PARTITION
             }
         }),
         'online-web-page',
         false
     )
+
+    // P3-10：独立 session 不被 defaultSession 的权限处理器覆盖，必须显式安装
+    // 「一律拒绝」处理器（Electron 对无 handler 的 session 默认自动批准权限）。
+    try {
+        registerDenyAllPermissionHandlers(
+            localOpenWebPageDialog.webContents.session,
+            'online-web-page'
+        )
+    } catch (error) {
+        // 窗口 webContents 已销毁等竞态：拒绝型处理器注册失败不得阻断网页打开，
+        // 但必须留下告警（此时该独立 session 的权限策略退化为 Electron 默认值）。
+        logger.warn('[Security] 在线网页窗口拒绝型权限处理器注册异常（P3-10）：', error)
+    }
 
     // 窗口内导航一律 deny：远程页面内的链接跳转不在本地窗口里继续，避免被钓鱼页面接管
     localOpenWebPageDialog.webContents.on('will-navigate', (event, targetUrl) => {

@@ -169,6 +169,23 @@ describe('auto-backup (批次 C #8/#9 + 审查修复)', () => {
         expect(fs.existsSync(path.join(backupDir, 'big.md'))).toBe(false)
     })
 
+    // P3-7（安全剩余项）：备份为笔记明文，POSIX 下备份根/目录 0o700、文件 0o600
+    it.skipIf(process.platform === 'win32')(
+        'should harden backup directory/file permissions on POSIX (P3-7)',
+        async () => {
+            setupWorkspace()
+
+            const result = await performAutoBackup()
+            expect(result).not.toBeNull()
+            const backupRoot = getAutoBackupRoot()
+            const backupDir = path.join(backupRoot, result?.name ?? '')
+
+            expect(fs.statSync(backupRoot).mode & 0o777).toBe(0o700)
+            expect(fs.statSync(backupDir).mode & 0o777).toBe(0o700)
+            expect(fs.statSync(path.join(backupDir, 'a.md')).mode & 0o777).toBe(0o600)
+        }
+    )
+
     it('should put the active file outside the workspace at the backup root', async () => {
         const ws = setupWorkspace()
         const outside = path.join(hoisted.tmpRoot, 'outside.md')
