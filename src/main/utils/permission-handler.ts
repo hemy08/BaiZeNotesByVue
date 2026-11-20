@@ -212,8 +212,12 @@ export function registerPermissionHandlers(
                 return false
             }
         }
-        setRequestHandler(requestHandler)
-        setCheckHandler(checkHandler)
+        // 2026-11-20（打包 E2E 实测）：Session 方法依赖 `this` 指向 session 实例；
+        // 解构后直接调用会抛 "Illegal invocation: Function must be called on an object
+        // of type Session"。必须通过属性调用（或 call(session)）绑定接收者。
+        const targetSession = session as PermissionSessionLike
+        targetSession.setPermissionRequestHandler?.(requestHandler)
+        targetSession.setPermissionCheckHandler?.(checkHandler)
         registered = true
         return true
     } catch (error) {

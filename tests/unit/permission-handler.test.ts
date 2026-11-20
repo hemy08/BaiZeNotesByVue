@@ -323,6 +323,24 @@ describe('registerPermissionHandlers', () => {
         expect(callback).toHaveBeenCalledWith(false)
     })
 
+    it('should invoke session setters with the session object as receiver', () => {
+        // 回归：打包产物中 Session 方法依赖 this 指向 session，解构后裸调用会抛
+        // "Illegal invocation: Function must be called on an object of type Session"
+        const receivers: unknown[] = []
+        const session = {
+            setPermissionRequestHandler(this: unknown, _handler: PermissionRequestHandlerLike) {
+                void _handler
+                receivers.push(this)
+            },
+            setPermissionCheckHandler(this: unknown, _handler: PermissionCheckHandlerLike) {
+                void _handler
+                receivers.push(this)
+            }
+        }
+        expect(registerPermissionHandlers(session as never, OPTIONS)).toBe(true)
+        expect(receivers).toEqual([session, session])
+    })
+
     it('should safely skip when the session or its permission APIs are unavailable', () => {
         expect(registerPermissionHandlers(null, OPTIONS)).toBe(false)
         expect(registerPermissionHandlers(undefined, OPTIONS)).toBe(false)
