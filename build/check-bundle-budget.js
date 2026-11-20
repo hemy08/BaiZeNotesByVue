@@ -73,7 +73,7 @@ const LOCALES_DIR = path.join(UNPACKED_DIR, 'locales')
  *   这样一旦 electronLanguages 配置失效、55 个语言包回流，预算必然失败；
  * - 单位统一为二进制 KiB/MiB（1 MiB = 1024 KiB），与 electron-builder 的 MB 显示口径略有差异。
  * 实测基线（v1.3.9/1.4.0 + Electron 43，详见 out/tool-results/p0-size.md）：
- *   入口 123.4 KiB / 壳 321.8 KiB / Setup 113.92 MiB / portable 100.48 MiB / asar 45.21 MiB（B4 electron-store 12 后）
+ *   入口 123.4 KiB / 壳 321.8 KiB / Setup 111.04 MiB / portable 100.25 MiB / asar 39.59 MiB（2026-11-20 裁剪后）（B4 electron-store 12 后）
  */
 const BUDGETS = {
     entry: { label: '渲染入口 chunk（index-*.js）', limit: 150 * KIB },

@@ -40,7 +40,7 @@
 | preload 白名单 | send/invoke **60** 个、on/once **25** 个、`window.api` **6** 个；`window.electron` 为**受限 ipcRenderer**（仅 send/invoke/on/once/removeListener/removeAllListeners + webFrame/webUtils/process；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露） |
 | 单元测试 | **205 个 `.test.ts` 文件 / 3,795 个用例**（vitest 全通过） |
 | 构建产物 | 主进程 `out/build/main/index.js` ≈**0.62 MiB**（655,183 B）；入口 chunk `out/build/renderer/assets/index-*.js` ≈**133.6 KiB**；主界面异步 chunk `BaiZeNotes-*.js` ≈**321.9 KiB**（Monaco/highlight.js/KaTeX 在异步 chunk 按需加载）；首屏实际 ≈**321.9 KiB**（入口 + modulepreload 共享 chunk；i18n 词典已按语言按需加载） |
-| 安装包 | Setup **113.92 MiB** / portable **100.48 MiB** / app.asar **45.21 MiB** / locales **2**（2026-11-20 当前 dist；发布前需从 HEAD 重建复验） |
+| 安装包 | Setup **111.04 MiB** / portable **100.25 MiB** / app.asar **39.59 MiB** / locales **2**（2026-11-20 当前 dist；发布前需从 HEAD 重建复验） |
 | 报告规模 | **md 26 篇（01 类 10 / 02 类 8 / 03 类 8）/ HTML Wiki 27 页（1 首页 + 26 报告）** |
 | 覆盖率 | Statements 84.79% / Branch 77.99% / Functions 80.75% / Lines 85.09%（2026-11-15 历史基线，当前以最新 `npm run test:coverage` 为准） |
 

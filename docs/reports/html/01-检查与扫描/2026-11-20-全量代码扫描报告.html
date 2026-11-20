@@ -91,8 +91,8 @@
 </tr>
 <tr>
 <td>安装包</td>
-<td style="text-align:right">Setup 113.92 MiB / portable 100.48 MiB / asar 45.21 MiB</td>
-<td>均为 HEAD 前产物，发布前需重建</td>
+<td style="text-align:right">Setup 111.04 MiB / portable 100.25 MiB / asar 39.59 MiB</td>
+<td>asar 已裁剪 jschardet/dist 与 config 示例；发布前需重建</td>
 </tr>
 <tr>
 <td>生产依赖 audit</td>
@@ -589,6 +589,55 @@
 <td><code>672f717</code></td>
 <td>P2 性能</td>
 <td>新增 <code>build/perf-ci.js</code> 与 <code>perf:baseline/perf:ci/perf:ci:startup/perf:snapshot</code>：26 项指标（bundle 12 + 冷启动 14），与基线快照偏离 &gt;20% 仅 warning annotation、不阻断；CI 新增 <code>perf-baseline</code> job（build:unpack + artifact + Step Summary）；开发 preview-ready 478.7ms、打包版 476.8ms、窗口可见 368.8ms</td>
+</tr>
+</tbody>
+</table>
+<p><strong>第六批 P2/工程修复（2026-11-20 晚）</strong></p>
+<table>
+<thead>
+<tr>
+<th>修复批次</th>
+<th>提交</th>
+<th>覆盖问题</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CI 安全加固</td>
+<td><code>c0f931a</code></td>
+<td>P2 供应链/仓库治理</td>
+<td>25 处 <code>uses</code> 全量 pin 40 位 SHA（6 个 action）；ci/release 最小权限、ci 并发按 ref 取消、release 固定不取消、job timeout、显式 shell、checkout 不持久化凭据、缓存 key 含 lock 哈希；新增 PR 级 dependency-review（fail-on-severity high，含 dev scope）</td>
+</tr>
+<tr>
+<td>asar 无用文件裁剪</td>
+<td><code>d5b92d7</code></td>
+<td>P2 体积</td>
+<td>排除 <code>node_modules/jschardet/dist</code>（4.66MiB）+ <code>resources/config</code> 仅保留 naviConfig/version；asar 46,401,238→41,512,716B（−10.53%），Setup −2.82MB；裁剪后 asar 39.59MiB / Setup 111.04MiB / portable 100.25MiB；打包启动与 GBK 编码探测验证通过</td>
+</tr>
+<tr>
+<td>剩余静默失败提示</td>
+<td><code>91842e9</code></td>
+<td>P2 错误处理</td>
+<td>4 条路径：设置-浏览失败、自动保存开关同步失败（提示+回滚+重试）、主题显示名读取降级、主题应用/样式加载失败重试；<code>reportActionFailure</code> 支持 10s 节流；主进程自动保存失败改非模态状态栏 + 5 分钟去重</td>
+</tr>
+<tr>
+<td>文档质量门禁扩展</td>
+<td><code>19a8eb7</code></td>
+<td>P2 口径防漂移</td>
+<td>quality baseline 扩为三文档 <strong>27 条规则/87 项事实</strong>（版本/IPC/测试文件数/用例数/preload 白名单/报告页数，用例数取自 vitest JSON）；docs:check 纳入根 README/SECURITY；注入错误数字/断链均能失败</td>
+</tr>
+<tr>
+<td>死配置/死代码清理</td>
+<td><code>d4de15d</code></td>
+<td>P2 死字段</td>
+<td>删除无消费方的 <code>checkUpdateOnStart</code>（含 whenReady 幂等清理历史键，不升 schemaVersion）；删除 0B 空文件与 4 个零引用导出；新增 5 用例</td>
+</tr>
+<tr>
+<td>Dependabot 复核</td>
+<td>—（API 操作）</td>
+<td>治理</td>
+<td>当前 <strong>open alerts = 0</strong>（依赖图刷新后历史快照告警已闭合，无需批量 dismiss）</td>
 </tr>
 </tbody>
 </table>

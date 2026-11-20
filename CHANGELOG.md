@@ -59,6 +59,14 @@
 - **安全剩余项**：`READ_HTML` 文本扩展名白名单（44 项）；`OPEN_EXE` 一律确认+系统目录强化提示；Electron Fuses 启用 `runAsNode:false`/`onlyLoadAppFromAsar`/`enableEmbeddedAsarIntegrityValidation`（asar 篡改拒绝启动）；新增 SECURITY.md
 - **性能基线 CI**：新增 perf CI 脚本与 26 项指标（bundle 12 + 冷启动 14），基线快照偏离 >20% 仅 warning；CI `perf-baseline` job 上传 artifact/Step Summary；开发 preview-ready 478.7ms、打包版 476.8ms
 
+### 🧱 第六批 P2/工程修复（2026-11-20）
+
+- **CI 安全**：actions 全量 SHA 锁定（25 处/6 action）；最小权限、并发控制、job 超时、不持久化凭据、缓存 key 含 lock 哈希；新增 PR 级 dependency-review
+- **体积**：asar 排除 `jschardet/dist` 与 config 示例，asar 46.4→41.5MB（−10.53%）；裁剪后 asar 39.59MiB / Setup 111.04MiB / portable 100.25MiB
+- **健壮性**：设置浏览失败、自动保存同步失败（提示+回滚+重试）、主题显示名/应用失败等 4 条静默路径补可见反馈与防刷屏节流
+- **门禁**：quality baseline 扩为三文档 27 条规则/87 项事实（含 vitest JSON 用例数）；docs:check 纳入根 README/SECURITY
+- **清理**：移除无消费方的 `checkUpdateOnStart`（含历史键幂等清理）、0B 空文件与 4 个零引用导出；Dependabot open alerts 复核为 0
+
 ### ✅ 门禁
 
 - typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **187 文件 / 3,458 用例全通过**、electron-vite build 成功
