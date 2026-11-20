@@ -641,6 +641,49 @@
 </tr>
 </tbody>
 </table>
+<p><strong>第七批 性能/安全/质量优化（2026-11-20 晚）</strong></p>
+<table>
+<thead>
+<tr>
+<th>优化批次</th>
+<th>提交</th>
+<th>覆盖问题</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Word 导入/导出移出主线程</td>
+<td><code>2988742</code></td>
+<td>P2 性能</td>
+<td>worker_threads（协议/任务/worker/客户端 4 文件，electron-vite 独立入口，随 asar 打包）；错误原样上抛、worker 启动失败才降级；10min 超时/崩溃/空闲 60s 回收；事件循环阻塞 导入 418.4→16.5ms、导出 99→17ms；打包 E2E 验证真实导出 docx</td>
+</tr>
+<tr>
+<td>KaTeX CSS/hljs 优化</td>
+<td><code>6ce6aea</code></td>
+<td>P1-8 剩余</td>
+<td>KaTeX CSS 由首屏静态改为与 JS 同一次按需加载：首屏 CSS 145,215→107,011 B（−26.3%），首屏 KaTeX 字体引用 51→0，KaTeX CSS 异步 chunk 38,204 B；hljs 新增 52 种冷门语言按需预取（268 KB 仅触发时加载），未知语言保持转义</td>
+</tr>
+<tr>
+<td>覆盖率补测第三批</td>
+<td><code>7c2d1e3</code></td>
+<td>P1-6 剩余</td>
+<td>新增 9 文件/99 用例；&lt;70% 文件 <strong>9→0</strong>；全局覆盖 90.40/83.89/89.34/90.72 → <strong>91.80/85.76/90.62/92.14</strong>；目录 glob 阈值新增/上调</td>
+</tr>
+<tr>
+<td>Fuses 余项</td>
+<td><code>eb391ef</code></td>
+<td>安全硬化</td>
+<td>最终 8 项显式矩阵：禁用 runAsNode/NodeOptions/NodeCliInsp/enableCookieEncryption/loadBrowserProcessSpecificV8Snapshot；启用 asar 完整性/onlyLoadAppFromAsar/grantFileProtocolExtraPrivileges（关闭会导致 renderer ERR_FILE_NOT_FOUND，报告给出 app:// 迁移方案）；E2E 与硬化构建分离（build:unpack:e2e 仅放开 inspect），发布产物 verify:fuses 8/8 断言</td>
+</tr>
+<tr>
+<td>修复权限处理器绑定</td>
+<td><code>f12900e</code></td>
+<td>回归缺陷</td>
+<td>打包 E2E 发现 WARN「Illegal invocation: Function must be called on an object of type Session」：解构 session 方法丢失 this；改为属性调用绑定 receiver，并加 session receiver 回归测试</td>
+</tr>
+</tbody>
+</table>
 <p><strong>修复后未收口（持续跟进）</strong>：P1-3 i18n 双语词典拆包与首屏口径修正、P1-4 E2E 零恢复断言、P1-6 覆盖率 glob 阈值、P1-8 KaTeX 按需加载与冷门语言动态补载、P1-9 更新安装×关闭确认、P2-3 代码签名、P2-5 依赖分类、E2E 覆盖扩展等。</p>
 <h2 id="sec-7">5. 更新记录</h2>
 <ul>

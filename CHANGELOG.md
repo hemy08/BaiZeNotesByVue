@@ -67,6 +67,14 @@
 - **门禁**：quality baseline 扩为三文档 27 条规则/87 项事实（含 vitest JSON 用例数）；docs:check 纳入根 README/SECURITY
 - **清理**：移除无消费方的 `checkUpdateOnStart`（含历史键幂等清理）、0B 空文件与 4 个零引用导出；Dependabot open alerts 复核为 0
 
+### ⚡ 第七批 性能/安全/质量优化（2026-11-20）
+
+- **Word 主线程阻塞**：导入/导出改 worker_threads（独立入口随 asar 打包、超时/崩溃/空闲回收、失败降级）；事件循环阻塞导入 418.4→16.5ms、导出 99→17ms
+- **预览优化**：KaTeX CSS 改按需加载（首屏 CSS −26.3%，首屏 KaTeX 字体引用归零）；hljs 新增 52 种冷门语言按需预取
+- **覆盖率**：新增 9 测试文件/99 用例，<70% 文件 9→0；全局覆盖 91.80/85.76/90.62/92.14
+- **Fuses**：最终 8 项显式矩阵（禁用 runAsNode/NodeOptions/NodeCliInsp/cookie 加密等；保留 asar 完整性/onlyLoadAppFromAsar/file 协议权限）；E2E 与硬化构建分离 + 发布产物 8/8 断言
+- **回归修复**：打包产物权限处理器 Session 方法 this 绑定（Illegal invocation），新增回归测试
+
 ### ✅ 门禁
 
 - typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **187 文件 / 3,458 用例全通过**、electron-vite build 成功
