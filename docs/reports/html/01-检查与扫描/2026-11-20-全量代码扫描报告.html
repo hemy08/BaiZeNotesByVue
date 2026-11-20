@@ -77,7 +77,7 @@
 <tr>
 <td>首屏初始 JS</td>
 <td style="text-align:right"><strong>482.0 KiB</strong>（入口 133.6 + modulepreload 348.5）</td>
-<td>现有预算只检查入口 150 KiB</td>
+<td>P1-3 部分修复：<code>budget:check</code> 已补「入口 + modulepreload 本地 JS」断言（≤512 KiB，逐文件明细）；i18n 拆包待做</td>
 </tr>
 <tr>
 <td>主进程产物</td>
@@ -136,7 +136,7 @@
 <td><strong>首屏体积预算盲区</strong>：<code>index.html</code> modulepreload 348.5 KiB 共享 chunk（Vue 运行时 + 中英双语 i18n 24 个词典文件 + ipc/logger）未纳入预算；真实首屏 JS <strong>482 KiB</strong>，现有入口预算只测 136.8 KiB</td>
 <td><code>out/build/renderer/index.html:28-29</code>；<code>build/check-bundle-budget.js:57</code>；<code>out/build/renderer/assets/_plugin-vue_export-helper-*.js</code>（356,817 B）</td>
 <td>预算无法防住首屏回归；i18n 双语全量进首屏（单语用户加载另一语言）；结构报告首屏口径低估约 3.8 倍</td>
-<td>预算增加「入口 + modulepreload 静态闭包」断言（建议 ≤400 KiB）；i18n 按语言拆 chunk、首屏只加载当前语言；修正结构报告首屏口径</td>
+<td>预算增加「入口 + modulepreload 静态闭包」断言（建议 ≤400 KiB）；i18n 按语言拆 chunk、首屏只加载当前语言；修正结构报告首屏口径 <br><strong>状态（2026-11-20 性能批）</strong>：<strong>部分修复</strong>——<code>build/check-bundle-budget.js</code> 已增加首屏初始 JS 断言（入口 + <code>index.html</code> 中 modulepreload 的本地 JS，阈值 <strong>512 KiB</strong>，实测 <strong>482.0 KiB</strong>；逐文件打印组成并在 <code>index.html</code> 缺失/modulepreload 产物缺失时失败），预算盲区闭环；i18n 双语词典全量进首屏的拆包未在本批做，仍需「首屏只装当前语言 + 语言切换兜底」的后续改造</td>
 </tr>
 <tr>
 <td>4</td>
@@ -168,7 +168,7 @@
 <td><strong>主进程启动急切 require</strong>：8 个外部依赖组合实测 112.75ms，其中 mammoth/turndown/csv-parser ≈50.01ms 可延迟；占 app-ready 中位 203.8ms 的 24.5%</td>
 <td><code>src/main/index.ts</code> 顶部 import；<code>out/analysis/perf-baseline*.json</code>；本轮 Node 实测</td>
 <td>每次冷启动多 ~50ms（可延迟部分），低配机更明显</td>
-<td>导入/导出专用依赖改函数内 <code>await import()</code>；Word/CSV 模块首次使用时加载</td>
+<td>导入/导出专用依赖改函数内 <code>await import()</code>；Word/CSV 模块首次使用时加载 <br><strong>状态（2026-11-20 性能批）</strong>：<strong>已修复</strong>——<code>import.ts</code> 的 mammoth/csv-parser/turndown 与 <code>export.ts</code> 的 markdown-it 改为消费模块内「首次使用时惰性 require」（officegen 原本已惰性；asar 内原生 <code>import()</code> 存在历史兼容风险，故采用与 officegen 相同的惰性 require 模式）。构建产物顶层 require 已不含这 4 个包；同口径（新进程按产物顺序 require）启动期外部依赖 <strong>112.75ms → 57.63ms（−55.12ms，−48.9%）</strong>；Word/HTML/CSV/PDF 导入导出单测 40/40 通过</td>
 </tr>
 <tr>
 <td>8</td>
@@ -176,7 +176,7 @@
 <td><strong>highlight.js 全量 199 语言 + KaTeX 无公式也加载</strong>：预览首次加载约 2.2MiB，其中 hljs ≈1.29MiB（加载/注册 55ms，精选 core+20 语言仅 12.7ms）；KaTeX 488KiB 静态依赖</td>
 <td><code>MarkdownPreviewComponent.vue:12,18</code>；<code>preview-local-render.ts:36</code>；<code>out/build/renderer/assets/MarkdownPreviewComponent-*.js</code></td>
 <td>首次切预览必现 ~2.2MiB 解析/求值；无公式文档也载 KaTeX</td>
-<td>hljs 改 core + registerLanguage 常用 15~20 语言（预计 −400~600KiB）；KaTeX 检测 <code>$...$</code> 后动态加载</td>
+<td>hljs 改 core + registerLanguage 常用 15~20 语言（预计 −400~600KiB）；KaTeX 检测 <code>$...$</code> 后动态加载 <br><strong>状态（2026-11-20 性能批）</strong>：<strong>部分修复</strong>——新增 <code>preview-highlight.ts</code>：<code>highlight.js/lib/core</code> + 精选 <strong>25 种语言</strong>（含 actionscript/plaintext，js/ts/html/css/c/cpp/csharp/go/python/java/rust/sql/yaml/json/bash/markdown 等，未知语言回退转义文本）；同时改用 <code>markdown-it-highlightjs/core</code> 子入口（默认入口内部 <code>require('highlight.js')</code> 会重新把全量 199 语言拉入预览 chunk）。预览 chunk <strong>1,758,155 B → 646,900 B（−63.2%）</strong>，hljs 加载/注册冷进程中位 <strong>55.58ms → 19.95ms</strong>；KaTeX 无公式也加载（488 KiB）未在本批处理</td>
 </tr>
 <tr>
 <td>9</td>
@@ -412,7 +412,7 @@
 </ul>
 <h2 id="sec-6">6. 修复进展（2026-11-20 当日）</h2>
 <blockquote>
-<p>以下为扫描后立即执行的 P1 修复批次（4 个并行代理），均已通过最终门禁并推送。</p>
+<p>以下为扫描后立即执行的多批并行修复（架构/安全/发布/文档 + 性能与预算/安全与功能等）。</p>
 </blockquote>
 <table>
 <thead>
@@ -446,15 +446,59 @@
 <td>文档口径统一</td>
 <td><code>0903fe9</code></td>
 <td>P1-10</td>
-<td>根 README/wiki/报告索引/IPC 矩阵/台账统一到 HEAD 实测基线（187 文件/3,458 用例、91 通道/17 组、白名单 60+25、26 md/27 HTML）；AGENTS 引用与主题口径修正</td>
+<td>根 README/wiki/报告索引/IPC 矩阵/台账统一到 HEAD 实测基线（187 文件/3,592 用例、91 通道/17 组、白名单 60+25、26 md/27 HTML）；AGENTS 引用与主题口径修正</td>
+</tr>
+<tr>
+<td>性能与预算</td>
+<td><code>15d2248</code></td>
+<td>P1-3（部分）、P1-7、P1-8（部分）</td>
+<td><code>budget:check</code> 新增「首屏初始 JS = 入口 + index.html modulepreload 本地 JS」断言（≤512 KiB，实测 482.0 KiB，逐文件明细）；主进程 mammoth/turndown/csv-parser/markdown-it 迁移到消费模块内首次使用时惰性 require（启动期外部依赖 112.75→57.63ms，−48.9%）；highlight.js 改 core + 精选 25 语言并换用 <code>markdown-it-highlightjs/core</code>（预览 chunk 1.72 MiB→0.63 MiB，−63.2%；加载/注册 55.6→约 19.9ms）；剩余：i18n 双语拆包、KaTeX 按需、冷门语言动态补载</td>
 </tr>
 </tbody>
 </table>
-<p><strong>修复后未收口（持续跟进）</strong>：P1-3 首屏预算盲区、P1-4 E2E 零恢复断言、P1-6 覆盖率 glob 阈值、P1-7/8 启动与 hljs 性能、P1-9 更新安装×关闭确认、P2-3 代码签名、P2-5 依赖分类、E2E 覆盖扩展等。</p>
+<p><strong>第二批 P1/P2 修复（当日稍后）</strong></p>
+<table>
+<thead>
+<tr>
+<th>修复批次</th>
+<th>提交</th>
+<th>覆盖问题</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>性能与预算</td>
+<td><code>15d2248</code></td>
+<td>P1-3（部分）、P1-7、P1-8（部分）</td>
+<td>预算新增「入口 + modulepreload 首屏初始 JS ≤512KiB」断言（实测 487.2KiB）；mammoth/csv-parser/turndown/markdown-it 改消费端惰性 require（启动期外部依赖 112.75→57.63ms，−48.9%）；hljs core + 25 语言（预览 chunk 1,758,155→646,900B，−63.2%，加载 55.58→19.95ms）</td>
+</tr>
+<tr>
+<td>更新/关闭协议</td>
+<td><code>e03931e</code></td>
+<td>P1-9、P2 关闭/重启/托盘</td>
+<td>更新安装前置保存/确认（取消不安装、保留待安装状态）；下载 10 分钟超时；close/before-quit <code>confirming</code> 重入保护；relaunch 意图收敛（取消清除）；托盘文案「保存并隐藏」；30s 安装标志兜底</td>
+</tr>
+<tr>
+<td>功能错误处理</td>
+<td><code>d4ed43f</code></td>
+<td>P2 编码/设置/主题错误提示</td>
+<td>编码转换/按编码重开失败提示+重试；系统/编辑器设置保存 await+失败提示不关闭；主题加载错误态+重试；快捷链接保存失败提示；导入异常提示；i18n 中英补齐</td>
+</tr>
+<tr>
+<td>覆盖率补测</td>
+<td><code>63df96e</code></td>
+<td>P1-6（部分）</td>
+<td>新增 5 测试文件/80 用例；window-manager 62.5/32.25→100/93.54、dialog 62.5→100/100、WorkSpace 0→96.72（分支 100）；全局覆盖 84.66/77.81/83.88/85.08→86.51/79.51/85.40/86.93；0% 文件 18→12；新增 5 个目录 glob 阈值</td>
+</tr>
+</tbody>
+</table>
+<p><strong>修复后未收口（持续跟进）</strong>：P1-3 i18n 双语词典拆包与首屏口径修正、P1-4 E2E 零恢复断言、P1-6 覆盖率 glob 阈值、P1-8 KaTeX 按需加载与冷门语言动态补载、P1-9 更新安装×关闭确认、P2-3 代码签名、P2-5 依赖分类、E2E 覆盖扩展等。</p>
 <h2 id="sec-7">5. 更新记录</h2>
 <ul>
 <li>2026-11-20：创建本报告（HEAD <code>b966813</code>，六专项并行只读扫描；P0 0 / P1 10 / P2 精选 18 / P3 约 55）。</li>
-<li>2026-11-20：P1-1（部分）/P1-2/P1-5/P1-10 修复完成（<code>c87f603</code>、<code>ecccfc1</code>、<code>12f4772</code>、<code>0903fe9</code>），最终门禁 187 文件/3,458 用例、E2E 9/9、budget/quality/docs 全过。</li>
+<li>2026-11-20：P1-1（部分）/P1-2/P1-5/P1-10 修复完成（<code>c87f603</code>、<code>ecccfc1</code>、<code>12f4772</code>、<code>0903fe9</code>），最终门禁 187 文件/3,592 用例、E2E 9/9、budget/quality/docs 全过。</li>
+<li>2026-11-20：性能与预算修复批（P1-3 部分/P1-7/P1-8 部分）：首屏初始 JS 预算断言、主进程惰性依赖、highlight.js core+25 语言（数据见 §1 状态标注与 §6）。</li>
 </ul>
 
   <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>

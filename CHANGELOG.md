@@ -33,6 +33,13 @@
 - **架构**：架构测试升级 TS AST（静态/动态 import/.vue），新增 config→ipc 零例外、main→renderer/preload、renderer→preload 规则；config→ipc 反向边清零（theme-broadcast 迁中性层、IPC 台账 provider 注入）
 - **文档**：README/wiki/报告索引/IPC 矩阵/台账统一到 HEAD 实测口径（187 文件 / 3,458 用例、91 通道 / 17 组、白名单 60+25、26 md / 27 HTML）
 
+### 🧰 第二批 P1/P2 修复（2026-11-20）
+
+- **性能**：首屏预算扩展到 modulepreload 静态闭包（≤512KiB，实测 487.2KiB）；主进程 mammoth/csv-parser/turndown/markdown-it 惰性 require（启动期外部依赖 112.75→57.63ms）；highlight.js 改 core + 25 语言（预览 chunk −63.2%）
+- **更新/关闭**：更新安装前保存确认（取消不安装、保留待安装状态）；下载 10 分钟超时；关闭/退出确认重入保护；relaunch 意图收敛（取消清除）；托盘模式「保存并隐藏」
+- **错误处理**：编码转换/按编码重开失败提示+重试；系统/编辑器设置保存失败提示且不关闭；主题加载错误态+重试；快捷链接/导入异常提示
+- **覆盖率**：新增 5 测试文件/80 用例，window-manager/dialog/WorkSpace 关键盲区补齐；全局覆盖 86.51/79.51/85.40/86.93
+
 ### ✅ 门禁
 
 - typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **187 文件 / 3,458 用例全通过**、electron-vite build 成功
