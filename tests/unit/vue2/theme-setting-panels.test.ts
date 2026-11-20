@@ -9,7 +9,8 @@
  * 4. useThemeSettingForm：
  *    - loadThemes：GET_ALL_THEMES 按 shared THEME_GROUPS 分组、GET_ALL_MONACO_THEMES 映射预览配色、
  *      config:read('theme') 回填当前主题并记录初始值；
- *    - resetSettings：取消时恢复主题选择（字体草稿不恢复，与拆分前一致）；
+ *    - resetSettings：取消时恢复主题选择（字体草稿不恢复，与拆分前一致），并在草稿偏离
+ *      打开时初始值时返回回滚目标（P2 #17：取消回滚已即时应用的主题；未修改返回 null）；
  *    - 读取失败只记日志、保持默认值。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
@@ -358,7 +359,7 @@ describe('useThemeSettingForm（共享草稿 composable）', () => {
         expect(form.currentMonacoTheme.value).toBe('vs-dark')
     })
 
-    it('resetSettings：取消时恢复打开时主题选择（字体草稿保持不动）', async () => {
+    it('resetSettings：取消时恢复打开时主题选择（字体草稿保持不动）并返回回滚目标', async () => {
         const form = mountForm()
         await form.loadThemes()
 
@@ -368,14 +369,100 @@ describe('useThemeSettingForm（共享草稿 composable）', () => {
         form.fonts.editorFont = 'Fira Code'
         form.fonts.fontSize = 20
 
-        form.resetSettings()
+        const rollback = form.resetSettings()
 
+        // P2 #17：返回打开时的初始选择（供壳层 emit change(initial...) 回滚已应用主题）
+        expect(rollback).toEqual({
+            currentTheme: 'dark',
+            separateEditorTheme: true,
+            currentMonacoTheme: 'vs-dark'
+        })
         expect(form.currentTheme.value).toBe('dark')
         expect(form.separateEditorTheme.value).toBe(true)
         expect(form.currentMonacoTheme.value).toBe('vs-dark')
         // 字体草稿拆分前后均不参与取消恢复
         expect(form.fonts.editorFont).toBe('Fira Code')
         expect(form.fonts.fontSize).toBe(20)
+    })
+
+    // P2 #17：未修改主题时取消不额外 emit（resetSettings 返回 null）
+    it('resetSettings：草稿未偏离初始值时返回 null（取消不额外 emit）', async () => {
+        const form = mountForm()
+        await form.loadThemes()
+
+        expect(form.resetSettings()).toBeNull()
+        // 返回值不影响草稿复位语义
+        expect(form.currentTheme.value).toBe('dark')
+    })
+
+    // P2 #17：仅改编辑器主题草稿（尚未经应用/确定提交）也算草稿偏离，取消要回滚到初始主题
+    it('resetSettings：仅改编辑器主题草稿时同样返回回滚目标', async () => {
+        const form = mountForm()
+        await form.loadThemes()
+
+        form.currentMonacoTheme.value = 'vs'
+
+        expect(form.resetSettings()).toEqual({
+            currentTheme: 'dark',
+            separateEditorTheme: true,
+            currentMonacoTheme: 'vs-dark'
+        })
+    })
+
+    // P2 #17：对话框打开过一次后保持挂载，二次打开重新 loadThemes 时须刷新回滚快照，
+    // 不能仍回滚到上一次打开前的旧主题。
+    it('再次 loadThemes（二次打开）时以本次配置刷新取消回滚快照', async () => {
+        const form = mountForm()
+        await form.loadThemes()
+        expect(form.currentTheme.value).toBe('dark')
+
+        // 模拟第一次打开时「确定」切换主题后父级写盘：再次打开读到新配置
+        configRead.mockResolvedValue({
+            currentTheme: 'baize',
+            separateEditorTheme: false,
+            editorTheme: 'vs'
+        })
+        form.currentTheme.value = 'baize'
+        await form.loadThemes()
+        expect(form.currentTheme.value).toBe('baize')
+
+        form.currentTheme.value = 'eyecare-green'
+        expect(form.resetSettings()).toEqual({
+            currentTheme: 'baize',
+            separateEditorTheme: false,
+            currentMonacoTheme: 'vs'
+        })
+    })
+
+    // P2 #17：二次打开时列表沿用上次加载结果、可立即点选，而配置读取可能尚未返回；
+    // 此时取消应回滚到「本次打开时已应用主题」，而不是上一次打开前更旧的快照。
+    it('二次打开配置读取未返回前取消：回滚到本次打开时的主题', async () => {
+        const form = mountForm()
+        await form.loadThemes()
+
+        // 模拟第一次打开时已确认切换到 baize（此时已加载快照仍是 dark）
+        form.currentTheme.value = 'baize'
+
+        // 二次打开：配置读取挂起（模拟取消发生在加载完成前）
+        let resolveConfig!: (value: unknown) => void
+        configRead.mockReturnValueOnce(
+            new Promise((resolve) => {
+                resolveConfig = resolve
+            })
+        )
+        const pending = form.loadThemes()
+        await Promise.resolve()
+        await Promise.resolve()
+
+        form.currentTheme.value = 'eyecare-green'
+        expect(form.resetSettings()).toEqual({
+            currentTheme: 'baize',
+            separateEditorTheme: true,
+            currentMonacoTheme: 'vs-dark'
+        })
+
+        resolveConfig(null)
+        await pending
     })
 
     it('读取失败时保持默认值并记录错误，不阻塞对话框', async () => {

@@ -10,6 +10,7 @@
 
         设置对话框二期拆分：本组件为壳层（BaseDialog 外壳 + 左侧页签 + 3 个 panel 组合 +
         底栏保存/取消编排）；共享草稿/主题加载/取消恢复见 theme-setting/useThemeSettingForm.ts，
+        取消回滚已即时应用的主题见 handleCancel（P2 #17），
         页签见 theme-setting/AppThemePanel|EditorThemePanel|FontSettingsPanel.vue，
         主题卡片见 theme-setting/ThemePreviewCard.vue，共享样式见 theme-setting/*.css。
         对外 props/emit 契约不变。
@@ -106,7 +107,8 @@
  * + 3 个 panel 组合 + 底栏应用/取消编排。
  *
  * 对外契约不变：props `visible`；emits `close` / `change(themeType, monacoTheme,
- * separateEditorTheme)`（与拆分前一致）。共享草稿 / 打开时主题加载 / 取消恢复统一由
+ * separateEditorTheme)`（与拆分前一致；P2 #17 起取消时若用户已改主题会额外 emit 一次
+ * change(初始值) 回滚，仍未新增任何对外接口）。共享草稿 / 打开时主题加载 / 取消恢复统一由
  * `./theme-setting/useThemeSettingForm` 承担；3 个页签只做展示 + 事件上报。
  */
 import { computed, ref, watch } from 'vue'
@@ -198,8 +200,8 @@ function handleRetryLoadThemes(): void {
 }
 
 /**
- * 应用主题点选：更新草稿并立即 emit('change')（与拆分前 selectTheme 的即时应用链路一致，
- * 未应用前的取消回滚由 resetSettings 恢复）。
+ * 应用主题点选：更新草稿并立即 emit('change')（与拆分前 selectTheme 的即时应用链路一致）。
+ * 取消时已即时应用的主题由 handleCancel 经 change(initial...) 回滚（P2 #17）。
  */
 function handleSelectTheme(themeType: string): void {
     currentTheme.value = themeType
@@ -220,8 +222,27 @@ function updateFonts(patch: Partial<ThemeFontSettings>): void {
     Object.assign(fonts, patch)
 }
 
+/**
+ * 取消（底栏「取消」/ 标题栏关闭按钮 / Esc / 遮罩点击统一经 BaseDialog → handleCancel）：
+ * P2 #17 缺陷修复——应用主题点选会立即 emit('change') 生效并由父级写盘，此前取消只
+ * resetSettings() 恢复本地草稿、不回滚已应用主题，与「取消」预期不符（拆分前行为相同，
+ * 已确认）。现由 composable 判断草稿是否偏离打开时初始值：偏离则 emit 一次
+ * change(initial...) 走既有应用链路恢复初始主题（应用主题 + 编辑器主题 + 独立开关），
+ * 未修改则不额外 emit（避免无谓写盘/广播）；随后关闭对话框。
+ *
+ * 选择说明：未采用「父层另提供恢复接口」方案——change 已是主题应用的唯一入口，
+ * 复用它在契约上不新增 props/emit，且回滚与应用走同一条状态更新链路，不会出现两套状态。
+ */
 function handleCancel(): void {
-    form.resetSettings()
+    const rollback = form.resetSettings()
+    if (rollback) {
+        emit(
+            'change',
+            rollback.currentTheme,
+            rollback.currentMonacoTheme,
+            rollback.separateEditorTheme
+        )
+    }
     emit('close')
 }
 

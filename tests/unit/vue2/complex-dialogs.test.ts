@@ -424,18 +424,82 @@ describe('ThemeSettingDialog', () => {
         expect(wrapper.emitted('change')![0]).toEqual(['baize', 'vs', false])
     })
 
-    it('restores the initial theme when cancelling', async () => {
+    // P2 #17（F-11）：「取消」必须回滚已即时应用的主题。点选应用主题会立即 emit('change')
+    // 经父级 useTheme.changeTheme 应用并写盘，仅恢复本地草稿不够；取消复用既有 change
+    // 链路 emit 一次初始值，不新增父层接口。
+    it('rolls back the immediately applied theme when cancelling (P2 #17)', async () => {
+        const wrapper = await mountVisible()
+        const darkCard = wrapper
+            .findAll('.theme-card')
+            .find((card) => card.text().includes('深色'))!
+        await darkCard.trigger('click')
+        // 点选即生效：第 1 次 change 是用户选择值
+        expect(wrapper.emitted('change')).toHaveLength(1)
+        expect(wrapper.emitted('change')![0]).toEqual(['dark', 'vs', false])
+
+        await wrapper.find('.btn-cancel').trigger('click')
+
+        // 取消：先 emit 一次初始值回滚，再关闭
+        expect(wrapper.emitted('change')).toHaveLength(2)
+        expect(wrapper.emitted('change')![1]).toEqual(['baize', 'vs', false])
+        expect(wrapper.emitted('close')).toHaveLength(1)
+
+        // 取消后草稿已回到初始值：再次「应用」发出的仍是初始主题
+        await wrapper.find('.btn-apply').trigger('click')
+        expect(wrapper.emitted('change')![2]).toEqual(['baize', 'vs', false])
+    })
+
+    // P2 #17：未修改主题时取消只关闭，不额外 emit（避免无谓写盘/广播）
+    it('does not emit an extra change when cancelling without modifications (P2 #17)', async () => {
+        const wrapper = await mountVisible()
+        await wrapper.find('.btn-cancel').trigger('click')
+        expect(wrapper.emitted('change')).toBeUndefined()
+        expect(wrapper.emitted('close')).toHaveLength(1)
+    })
+
+    // P2 #17：标题栏关闭按钮同样走取消语义（BaseDialog close → handleCancel）
+    it('rolls back the applied theme when clicking the title bar close button (P2 #17)', async () => {
         const wrapper = await mountVisible()
         const darkCard = wrapper
             .findAll('.theme-card')
             .find((card) => card.text().includes('深色'))!
         await darkCard.trigger('click')
 
-        await wrapper.find('.btn-cancel').trigger('click')
-        expect(wrapper.emitted('close')).toHaveLength(1)
-        // 取消后再次应用应回到初始主题
-        await wrapper.find('.btn-apply').trigger('click')
+        await wrapper.find('.close-btn').trigger('click')
+        expect(wrapper.emitted('change')).toHaveLength(2)
         expect(wrapper.emitted('change')![1]).toEqual(['baize', 'vs', false])
+        expect(wrapper.emitted('close')).toHaveLength(1)
+    })
+
+    // P2 #17：Esc 关闭同样走取消语义（BaseDialog 顶层 Esc → close → handleCancel）
+    it('rolls back the applied theme when pressing Escape (P2 #17)', async () => {
+        const wrapper = await mountVisible()
+        const darkCard = wrapper
+            .findAll('.theme-card')
+            .find((card) => card.text().includes('深色'))!
+        await darkCard.trigger('click')
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+        expect(wrapper.emitted('change')).toHaveLength(2)
+        expect(wrapper.emitted('change')![1]).toEqual(['baize', 'vs', false])
+        expect(wrapper.emitted('close')).toHaveLength(1)
+        wrapper.unmount()
+    })
+
+    // P2 #17：确认保持现状——应用选择值并关闭，不回滚
+    it('applies the selected theme and closes when confirming (P2 #17)', async () => {
+        const wrapper = await mountVisible()
+        const darkCard = wrapper
+            .findAll('.theme-card')
+            .find((card) => card.text().includes('深色'))!
+        await darkCard.trigger('click')
+
+        await wrapper.find('.btn-confirm').trigger('click')
+        const changes = wrapper.emitted('change')!
+        // 点选 1 次 + 确认应用 1 次，两次都是用户选择值（没有初始值回滚）
+        expect(changes).toHaveLength(2)
+        expect(changes[1]).toEqual(['dark', 'vs', false])
+        expect(wrapper.emitted('close')).toHaveLength(1)
     })
 
     it('renders eight resize handles', async () => {

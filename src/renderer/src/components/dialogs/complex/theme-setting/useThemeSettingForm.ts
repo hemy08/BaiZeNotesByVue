@@ -14,7 +14,8 @@
  *   失败不再只记日志，面板显示错误态 + 「重试」按钮，重试复用 loadThemes）；
  * - `loadThemes()`：读取全部主题 + 编辑器主题 + 当前主题配置（读取失败记录错误态并清空
  *   半成品数据，面板据此显示可重试的降级 UI）；
- * - `resetSettings()`：取消时恢复打开时加载值（字体草稿不恢复，与拆分前一致）。
+ * - `resetSettings()`：取消时恢复打开时加载值（字体草稿不恢复，与拆分前一致）；返回值
+ *   供壳层判断是否需要回滚已即时应用的主题（P2 #17，详见返回值注释）。
  */
 import { ref, reactive } from 'vue'
 import type { Ref } from 'vue'
@@ -59,8 +60,14 @@ export interface ThemeSettingForm {
     loadError: Ref<string>
     /** 打开对话框时加载主题列表与当前主题配置（兼作失败后的重试入口） */
     loadThemes: () => Promise<void>
-    /** 取消：恢复打开时加载的主题选择（字体草稿保持不动，与拆分前一致） */
-    resetSettings: () => void
+    /**
+     * 取消：恢复打开时加载的主题选择（字体草稿保持不动，与拆分前一致）。
+     *
+     * P2 #17：返回回滚目标——草稿与打开时初始值不同（用户已改变应用主题/编辑器主题）时
+     * 返回打开时的初始选择，壳层据此 emit 一次 `change(initial...)` 恢复已即时应用的主题；
+     * 草稿未变化时返回 null（壳层不额外 emit，避免无谓的写盘/广播）。
+     */
+    resetSettings: () => ThemeDialogSelection | null
 }
 
 export function useThemeSettingForm(): ThemeSettingForm {
@@ -80,10 +87,31 @@ export function useThemeSettingForm(): ThemeSettingForm {
     const isLoading = ref(false)
     const loadError = ref('')
 
+    /**
+     * 记录「打开时初始主题选择」快照（P2 #17：取消回滚目标）。
+     *
+     * 调用于两处：
+     * 1. `loadThemes()` 起始处：父级懒加载包装组件打开过一次后保持挂载，二次打开时列表
+     *    来自上一次加载、可立即点选（配置读取可能尚未返回）。先按当前草稿记快照——
+     *    此时草稿即上一次确认/取消后的已应用主题，保证取消回滚到的是「本次打开前」的主题，
+     *    而不是上一次打开前更旧的快照；
+     * 2. 主题配置读取成功后：以主进程配置为打开时初始值（唯一真源）；
+     * 读取失败走 catch，不覆盖快照（仍按默认/上次值处理）。
+     */
+    function captureInitialSettings(): void {
+        initialSettings.value = {
+            currentTheme: currentTheme.value,
+            separateEditorTheme: separateEditorTheme.value,
+            currentMonacoTheme: currentMonacoTheme.value
+        }
+    }
+
     /** 打开对话框时读取全部主题 / 编辑器主题 / 当前主题配置 */
     async function loadThemes(): Promise<void> {
         isLoading.value = true
         loadError.value = ''
+        // P2 #17：进入本次打开/重试时先记录回滚快照（见 captureInitialSettings 注释）
+        captureInitialSettings()
         try {
             const allThemes = (await window.electron.ipcRenderer.invoke(
                 IPC.THEME.GET_ALL_THEMES
@@ -118,13 +146,9 @@ export function useThemeSettingForm(): ThemeSettingForm {
                 currentTheme.value = themeConfig.currentTheme || 'baize'
                 separateEditorTheme.value = themeConfig.separateEditorTheme || false
                 currentMonacoTheme.value = themeConfig.editorTheme || 'vs'
-
-                initialSettings.value = {
-                    currentTheme: currentTheme.value,
-                    separateEditorTheme: separateEditorTheme.value,
-                    currentMonacoTheme: currentMonacoTheme.value
-                }
             }
+            // P2 #17：配置读取完成后的主题选择即「打开时初始值」（读取失败不覆盖快照）
+            captureInitialSettings()
         } catch (error) {
             // P2 功能错误处理修复：失败不再空白面板——清空半成品数据并记录可重试错误态，
             // 由 ThemeSettingDialog 传入页签展示错误文案 + 「重试」按钮（重试调用本函数）。
@@ -139,10 +163,26 @@ export function useThemeSettingForm(): ThemeSettingForm {
         }
     }
 
-    function resetSettings(): void {
-        currentTheme.value = initialSettings.value.currentTheme
-        separateEditorTheme.value = initialSettings.value.separateEditorTheme
-        currentMonacoTheme.value = initialSettings.value.currentMonacoTheme
+    /**
+     * 取消：恢复打开时的主题选择，并返回需要回滚的初始选择（P2 #17）。
+     *
+     * 应用主题点选是「立即 emit('change') 生效」的语义（父级写盘），若用户取消时草稿
+     * 已偏离打开时的初始值，仅恢复本地草稿无法撤销已应用主题，故返回初始选择供壳层
+     * emit 一次 change(initial...) 走既有应用链路回滚；未修改时返回 null。
+     * 字体草稿仍不参与取消恢复（与拆分前一致，「字体页签不持久化」语义不变）。
+     */
+    function resetSettings(): ThemeDialogSelection | null {
+        const initial = initialSettings.value
+        const changed =
+            currentTheme.value !== initial.currentTheme ||
+            separateEditorTheme.value !== initial.separateEditorTheme ||
+            currentMonacoTheme.value !== initial.currentMonacoTheme
+
+        currentTheme.value = initial.currentTheme
+        separateEditorTheme.value = initial.separateEditorTheme
+        currentMonacoTheme.value = initial.currentMonacoTheme
+
+        return changed ? { ...initial } : null
     }
 
     return {
