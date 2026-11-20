@@ -22,7 +22,9 @@ import {
     // 2026-11-18（遗留清单 #12）：窗口就绪后异步预热 Monaco 主题缓存
     warmupMonacoThemeCache,
     // 1.3.6：存量设置迁移（旧默认 minimizeToTray/enableAutoBackup=true → false）
-    migrateLegacyOptInSettings
+    migrateLegacyOptInSettings,
+    // P2 死配置字段清理：删除历史持久化、已无消费方的 checkUpdateOnStart
+    cleanupDeprecatedSystemSettings
 } from './config'
 import { StartAutoSaveFileTime, StopAutoSaveFileTime, SaveActiveFile } from './utils/file-utils'
 import { confirmUnsavedChangesClose } from './utils/close-confirm'
@@ -498,6 +500,11 @@ app.whenReady().then(() => {
     try {
         if (migrateLegacyOptInSettings()) {
             logger.info('[Config] 已迁移存量系统设置：minimizeToTray / enableAutoBackup → false')
+        }
+        // P2 死配置字段清理：checkUpdateOnStart 无任何消费方（设置 UI 无入口、启动不检查
+        // 更新），已从 schema/类型/默认值移除；此处幂等删除历史残留键（不升 schema 版本）。
+        if (cleanupDeprecatedSystemSettings()) {
+            logger.info('[Config] 已清理废弃系统设置字段：checkUpdateOnStart')
         }
     } catch (err) {
         logger.error('[Config] 存量系统设置迁移失败', err)

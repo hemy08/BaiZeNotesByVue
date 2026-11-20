@@ -324,9 +324,6 @@ export function restoreConfigBackup(name: unknown): boolean {
     }
 }
 
-/** 备份配置命令的 action 白名单类型（= shared ConfigBackupCommand['action']，保持本地导出名兼容） */
-export type ConfigBackupAction = ConfigBackupCommand['action']
-
 /**
  * 处理 config:write('backup') 命令（config-manager 的备份命令路由入口）。
  * 备份/恢复都通过既有 CONFIG.WRITE 通道承载，避免为两个低频动作新增 IPC 通道。

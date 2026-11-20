@@ -66,7 +66,6 @@ export interface SystemSetting {
     windowBounds?: WindowBounds | null
     defaultFilePath?: string // 默认文件保存路径
     recentFilesCount?: number // 最近文件列表数量
-    checkUpdateOnStart?: boolean // 启动时检查更新
     enableAutoBackup?: boolean // 启用自动备份（默认 false，opt-in；P2-11）
     backupInterval?: number // 备份间隔（小时）
     backupCount?: number // 保留备份数量

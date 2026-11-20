@@ -70,7 +70,6 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     windowBounds: null,
     defaultFilePath: '',
     recentFilesCount: 10,
-    checkUpdateOnStart: true,
     enableAutoBackup: false,
     backupInterval: 24,
     backupCount: 5,

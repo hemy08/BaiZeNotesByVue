@@ -68,7 +68,9 @@ const systemSettingDefaults: SystemSetting = {
     windowBounds: null,
     defaultFilePath: '',
     recentFilesCount: 10,
-    checkUpdateOnStart: true,
+    // P2 死配置字段清理：`checkUpdateOnStart` 已移除——全仓无任何消费方（无设置 UI
+    // 入口、启动流程不检查更新，「帮助 → 检查更新」是独立手动入口）；历史持久化的
+    // 旧值由下方 cleanupDeprecatedSystemSettings() 幂等清理，读取路径不再返回该键。
     // P2-11：默认关闭（opt-in）——升级不静默把工作区全部 .md（含未保存修改）明文
     // 复制到备份目录（隐私面 + 磁盘占用）；用户显式开启后才启动自动备份定时器。
     // 升级用户已存的 true 值保留（不迁移，仅影响新默认值）。
@@ -155,6 +157,27 @@ export function migrateLegacyOptInSettings(): boolean {
         patch.enableAutoBackup = false
     }
     systemSettingModule.updateConfig(patch)
+    return true
+}
+
+/**
+ * P2 死配置字段清理：历史版本持久化的 `checkUpdateOnStart` 字段无任何消费方
+ * （无设置 UI 入口、启动时不检查更新；「帮助 → 检查更新」是独立手动入口），
+ * 已从 SystemSetting 类型 / 默认值 / config-schema 白名单中移除。
+ *
+ * 读取侧：getConfig() 只按 defaults 的键合并，旧键不会进入 getSystemSetting() 结果；
+ * 写入侧：saveSystemSetting 只写传入字段，不会再把该键写回。本函数负责把残留在磁盘
+ * store 中的旧键删除，避免配置文件长期保留无效字段。幂等、不抛异常，**不改变
+ * settingsSchemaVersion**（该标记只用于 opt-in 默认值迁移，字段清理不强制升版）。
+ * @returns 是否删除了残留字段
+ */
+export function cleanupDeprecatedSystemSettings(): boolean {
+    // 该键已不在 SystemSetting 类型中，electron-store 的键参数按 keyof T 约束，需显式收窄
+    const staleKey = 'checkUpdateOnStart' as never
+    if (!systemSettingStore.has(staleKey)) {
+        return false
+    }
+    systemSettingStore.delete(staleKey)
     return true
 }
 

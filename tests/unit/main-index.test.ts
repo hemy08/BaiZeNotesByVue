@@ -191,6 +191,8 @@ const internalMocks = vi.hoisted(() => ({
     getSystemSetting: vi.fn(),
     // 1.3.6：存量设置迁移（旧默认 minimizeToTray/enableAutoBackup=true → false）
     migrateLegacyOptInSettings: vi.fn(() => false),
+    // P2 死配置字段清理：幂等删除历史残留 checkUpdateOnStart
+    cleanupDeprecatedSystemSettings: vi.fn(() => false),
     // 1.3.6：首次隐藏到托盘的通知
     notifyMinimizedToTray: vi.fn(),
     // 批次 A：#5 记住窗口位置和大小（resize/move 防抖后写回 windowBounds）
@@ -266,6 +268,8 @@ vi.mock('../../src/main/config', () => ({
     getSystemSetting: internalMocks.getSystemSetting,
     // 1.3.6：存量设置迁移
     migrateLegacyOptInSettings: internalMocks.migrateLegacyOptInSettings,
+    // P2 死配置字段清理：残留 checkUpdateOnStart 的幂等删除
+    cleanupDeprecatedSystemSettings: internalMocks.cleanupDeprecatedSystemSettings,
     // 批次 A：窗口边界写回 system store
     saveSystemSetting: internalMocks.saveSystemSetting,
     getEditorSetting: internalMocks.getEditorSetting,
@@ -1144,6 +1148,13 @@ describe('minimize to tray on close (批次 B #4)', () => {
     it('should run legacy opt-in migration on whenReady', async () => {
         await loadMainIndex()
         expect(internalMocks.migrateLegacyOptInSettings).toHaveBeenCalled()
+    })
+
+    // P2 死配置字段清理：whenReady 时幂等清理历史残留的 checkUpdateOnStart（无消费方死字段），
+    // 与 1.3.6 迁移同在启动早期、建窗之前执行，失败仅记录日志不影响启动。
+    it('should clean up deprecated system setting fields on whenReady', async () => {
+        await loadMainIndex()
+        expect(internalMocks.cleanupDeprecatedSystemSettings).toHaveBeenCalled()
     })
 })
 

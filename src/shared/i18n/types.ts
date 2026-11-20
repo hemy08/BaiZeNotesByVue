@@ -12,6 +12,3 @@ export type Locale = 'zh-CN' | 'en-US'
 export interface MessageNode {
     [key: string]: string | MessageNode
 }
-
-/** 单个命名空间的词典 */
-export type MessageNamespace = MessageNode

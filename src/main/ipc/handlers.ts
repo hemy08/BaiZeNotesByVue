@@ -142,15 +142,6 @@ export function isValidWindowSize(value: unknown): value is number {
     )
 }
 
-/**
- * FE-01：欢迎页 → 主界面的数据事件时序。
- *
- * 详细背景与实现说明见 `src/main/utils/main-view-timing.ts`（本函数已下沉到该叶子模块，
- * 供 handlers.ts 与 startup-restore.ts 共用，避免 handlers ↔ startup-restore 循环依赖）。
- * 此处保留 re-export 以兼容既有引用/文档中的 handlers.runAfterMainViewEntered 说法。
- */
-export { runAfterMainViewEntered }
-
 /** AS-2：拒绝非法工作区根目录时记录安全日志并经状态栏提示，不执行目录遍历 */
 function notifyWorkspaceRootRejected(
     mainWindow: BrowserWindow,

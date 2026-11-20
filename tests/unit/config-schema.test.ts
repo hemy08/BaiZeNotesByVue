@@ -140,6 +140,15 @@ describe('AS-4 validateSystemConfig', () => {
         expect(result.adjusted).toEqual([expect.stringContaining('unknownKey')])
     })
 
+    // P2 死配置字段清理：checkUpdateOnStart 已无消费方，从字段白名单移除——
+    // 历史渲染层若仍提交该字段，按「未知系统设置字段」丢弃（ok=true，不写坏 store）。
+    it('should drop the deprecated checkUpdateOnStart field as unknown (P2 dead config)', () => {
+        const result = validateSystemConfig({ checkUpdateOnStart: true, language: 'zh-cn' })
+        expect(result.ok).toBe(true)
+        expect((result.value as Record<string, unknown>).checkUpdateOnStart).toBeUndefined()
+        expect(result.adjusted).toEqual([expect.stringContaining('checkUpdateOnStart')])
+    })
+
     it('should reject CSS-injection fontFamily as a whole write', () => {
         const result = validateSystemConfig({
             language: 'zh-CN',

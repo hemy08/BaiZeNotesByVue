@@ -30,8 +30,3 @@ export function removeOpenDialog(token: symbol): void {
 export function isTopmostDialog(token: symbol): boolean {
     return openDialogStack[openDialogStack.length - 1] === token
 }
-
-/** 当前已打开对话框数量（测试/排查用） */
-export function openDialogCount(): number {
-    return openDialogStack.length
-}

@@ -157,7 +157,6 @@ const SYSTEM_BOOLEAN_FIELDS: ReadonlySet<string> = new Set([
     'autoStart',
     'minimizeToTray',
     'rememberWindowSize',
-    'checkUpdateOnStart',
     'enableAutoBackup',
     'useSystemTheme',
     // AS-9：远程图片隐私开关（默认 false，仅接受布尔值；非布尔值丢弃并记录 adjusted）

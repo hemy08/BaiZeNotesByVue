@@ -108,6 +108,10 @@ describe('config/index re-exports', () => {
         expect(configIndex.getSystemSettingValString).toBe(
             systemSettingModule.getSystemSettingValString
         )
+        // P2 死配置字段清理：残留 checkUpdateOnStart 的幂等清理入口经 barrel 透出
+        expect(configIndex.cleanupDeprecatedSystemSettings).toBe(
+            systemSettingModule.cleanupDeprecatedSystemSettings
+        )
     })
 
     it('should re-export editor-setting members by reference', () => {

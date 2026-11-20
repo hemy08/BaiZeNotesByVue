@@ -32,6 +32,8 @@ export {
     getSystemSettingValString,
     buildFontCss,
     migrateLegacyOptInSettings,
+    // P2 死配置字段清理：幂等删除历史残留的 checkUpdateOnStart
+    cleanupDeprecatedSystemSettings,
     SYSTEM_SETTINGS_SCHEMA_VERSION
 } from './system-setting'
 

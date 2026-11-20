@@ -42,7 +42,8 @@ import {
     getSystemSetting,
     saveSystemSetting,
     getSystemSettingValString,
-    migrateLegacyOptInSettings
+    migrateLegacyOptInSettings,
+    cleanupDeprecatedSystemSettings
 } from '../../src/main/config/system-setting'
 
 // 全部模态开关键
@@ -156,6 +157,39 @@ describe('system-setting', () => {
             expect(migrateLegacyOptInSettings()).toBe(true)
             expect(getSystemSetting().minimizeToTray).toBe(false)
             expect(getSystemSetting().enableAutoBackup).toBe(false)
+        })
+    })
+
+    // P2 死配置字段清理：checkUpdateOnStart 无消费方（无 UI 入口、启动不检查更新），
+    // 已从类型/默认值/schema 移除；历史持久化的残留键由清理函数幂等删除，不升 schema 版本。
+    describe('cleanupDeprecatedSystemSettings (P2 dead config)', () => {
+        /** 模拟历史版本落盘的 checkUpdateOnStart 键（直接注入 electron-store 替身数据） */
+        const seedLegacyField = (): void => {
+            FakeStore.data.set(
+                'systemSetting',
+                new Map<string, unknown>([['checkUpdateOnStart', true]])
+            )
+        }
+
+        it('should remove the persisted legacy checkUpdateOnStart key once', () => {
+            seedLegacyField()
+            expect(cleanupDeprecatedSystemSettings()).toBe(true)
+            expect(FakeStore.data.get('systemSetting')?.has('checkUpdateOnStart')).toBe(false)
+            // 幂等：清理后再次调用返回 false，且不抛异常
+            expect(cleanupDeprecatedSystemSettings()).toBe(false)
+        })
+
+        it('should not expose the removed field through getSystemSetting', () => {
+            seedLegacyField()
+            const setting = getSystemSetting()
+            expect('checkUpdateOnStart' in setting).toBe(false)
+            // 其它字段仍按默认值补齐，读取不因旧字段报错
+            expect(setting.language).toBe('zh-cn')
+            expect(setting.autoSaveEnabled).toBe(false)
+        })
+
+        it('should be a no-op when the legacy key was never persisted', () => {
+            expect(cleanupDeprecatedSystemSettings()).toBe(false)
         })
     })
 
