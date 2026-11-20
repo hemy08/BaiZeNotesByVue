@@ -20,7 +20,8 @@
  *     不再出现「HTML 字符串提前拼进 Markdown 导致围栏/内层语法失效」的问题。
  *
  * 管线（单链路，全部发生在渲染进程）：
- *   HemyRenderPreLocal(content)          // katex / 图片与文件 URL（admonition/tabbed 已交由 markdown-it）
+ *   EnsurePreviewKatexLoaded(content)    // P1-8：仅含公式标记时才动态 import KaTeX（异步前置）
+ *   → HemyRenderPreLocal(content)        // katex / 图片与文件 URL（admonition/tabbed 已交由 markdown-it）
  *   → editor.Render.PreMarkdownRender()  // PlantUML 本地 IPC 渲染 + mermaid 本地渲染（保持现状）
  *   → md.render()                        // markdown-it 全量解析 + highlight.js
  *   → HemyRenderPostLocal(html)          // 后处理（当前为恒等变换，保留 API 对等）
@@ -29,11 +30,16 @@
  *   → ApplyRemoteImagePolicy()           // AS-9：远程图片隐私策略（默认拦截，不发起网络请求）
  *   → v-html
  *
+ * P1-8（2026-11-20 性能扫描剩余项）：KaTeX 由静态依赖改为按需动态加载。
+ * 修复前 `import katex from 'katex'` 让预览 chunk 的静态闭包无条件加载 katex-*.js
+ * （487.7 KiB），纯文本/普通 Markdown 文档也付出该成本；现在只有文档含公式标记
+ * （见 HasPreviewMathMarkup）时才 `await import('katex')`，无公式文档零加载。
+ * 渲染函数保持同步（输出/样式/LRU 缓存行为不变），加载由组件在渲染前 await 完成。
+ *
  * 说明：PlantUML 本地渲染仍保留必要的主进程 IPC（离线 teaVM 渲染依赖 resources 资源），
  * 属于图表渲染资源依赖，不计入 Markdown 文本流水线；mermaid 保持渲染层本地渲染。
  */
 
-import katex from 'katex'
 import { logger } from '../../common/logger'
 import { LRUCache } from '../../../../shared/utils/lru-cache'
 import { parseDirectoryPath, toFileUrl } from '../../../../shared/utils/path'
@@ -42,8 +48,10 @@ import { PREVIEW_MAX_FILE_SIZE, PREVIEW_MAX_LINES } from '../../../../shared/con
 
 /* ============================ 一、KaTeX 数学公式 ============================
  * 迁移自 src/main/renders/KatexRender.ts（纯字符串变换，无 Node 专属依赖）。
- * 支持：行内 $...$、块级 $$...$$、代码块 ```math/```katex/```latex。
+ * 支持：行内 $...$、块级 $$...$$、代码块 ```math/```katex/```latex（代码围栏路径见下方
+ * 围栏保护说明；预览管线把围栏块整体保护，故实际渲染以 `$`/`$$` 为主）。
  * PF-02：渲染位置由主进程改为渲染进程，使用渲染层已依赖的 katex 包与已有 katex CSS。
+ * P1-8：katex 包改为按需动态 import（见 EnsurePreviewKatexLoaded），不再静态进入预览 chunk。
  */
 
 /**
@@ -59,15 +67,67 @@ export const KATEX_CACHE_MAX_ENTRIES = 200
 const katexHtmlCache = new LRUCache<string>(KATEX_CACHE_MAX_ENTRIES)
 
 /**
+ * P1-8：KaTeX 实例与会话级加载 Promise（`import('katex')` 只会真正执行一次）。
+ *
+ * 类型用 `typeof import('katex')` 的 type-only 查询：编译期擦除，不会把 katex 静态
+ * 打进预览 chunk——这是「无公式文档不加载 487.7 KiB」的关键。
+ * 加载失败（chunk 缺失/环境不支持动态 import）时保持 null，公式按原文降级，
+ * 不阻塞预览（与既有 FUN-08 非法公式降级一致）。
+ */
+type KatexInstance = (typeof import('katex'))['default']
+
+let katexInstance: KatexInstance | null = null
+let katexLoadPromise: Promise<KatexInstance | null> | null = null
+/** P1-8：KaTeX 动态加载尝试次数（诊断/单元测试用；同一会话最多发起 1 次） */
+let katexLoadAttempts = 0
+
+/** P1-8：KaTeX 是否已加载（诊断/单元测试用） */
+export function IsPreviewKatexLoaded(): boolean {
+    return katexInstance !== null
+}
+
+/** P1-8：KaTeX 动态 import 尝试次数（诊断/单元测试用；无公式文档应保持 0） */
+export function GetPreviewKatexLoadCount(): number {
+    return katexLoadAttempts
+}
+
+/**
+ * P1-8：动态加载 KaTeX 实例（同一会话只发起一次；失败返回 null 并记录告警，不抛异常）。
+ * 幂等：并发调用共享同一个 Promise。
+ */
+async function loadKatexInstance(): Promise<KatexInstance | null> {
+    if (katexInstance) {
+        return katexInstance
+    }
+    if (!katexLoadPromise) {
+        katexLoadAttempts += 1
+        katexLoadPromise = import('katex')
+            .then((module) => {
+                katexInstance = module.default
+                return katexInstance
+            })
+            .catch((error: unknown) => {
+                logger.warn('[KatexRender] KaTeX 动态加载失败，公式按原文降级:', error)
+                return null
+            })
+    }
+    return katexLoadPromise
+}
+
+/**
  * 渲染单个公式（带 LRU 缓存）。非法公式会抛错，由调用方按各自语义降级。
  * 命中缓存时 LRUCache.get 会把条目移到最近使用位置，超出上限时淘汰最久未用条目。
+ * P1-8：KaTeX 未加载（未经过 EnsurePreviewKatexLoaded 前置）时抛错，由调用方降级为原文。
  */
 function renderKatexCached(latex: string): string {
     const cached = katexHtmlCache.get(latex)
     if (cached !== undefined) {
         return cached
     }
-    const html = katex.renderToString(latex)
+    if (!katexInstance) {
+        throw new Error('KaTeX 尚未加载（需先调用 EnsurePreviewKatexLoaded）')
+    }
+    const html = katexInstance.renderToString(latex)
     katexHtmlCache.set(latex, html)
     return html
 }
@@ -138,6 +198,12 @@ function renderMathCodeBlock(text: string, regex: RegExp): string {
 }
 
 function katexRenderMathInText(text: string): string {
+    // P1-8：KaTeX 按需加载——未加载时不改写文本（公式保持 `$...$` 原文，预览不中断）。
+    // 正常链路由预览组件在渲染前 await EnsurePreviewKatexLoaded 保证已加载；
+    // 直接调用本函数（单测/其它调用方）若未前置加载，同样按无公式处理。
+    if (!katexInstance) {
+        return text
+    }
     // 正则表达式匹配以 $ 开头和结尾的文本（简单版本，不处理转义字符或嵌套）
     // 公式块$$ $$
     let result = renderMathInText(text, /\$\$([^$]+)\$\$/g, true)
@@ -508,6 +574,158 @@ function renderContent(text: string, skipKatex: boolean): string {
     return result
 }
 
+/* ============ 三点六、P1-8：KaTeX 公式标记检测与按需加载 ============
+ * 目标：只有文档真正含公式标记时才动态 import KaTeX（487.7 KiB 的 katex chunk），
+ * 纯文本/普通 Markdown 文档不再付出该加载成本。
+ *
+ * 检测口径（与既有渲染管线保持一致，宁多载不漏渲染）：
+ * 1. 支持 `$...$`、`$$...$$`、`\(...\)`、`\[...\]` 四类常见定界符；
+ *    - `$`/`$$` 是既有 KaTeX 渲染实际支持的语法，检测必须命中它们，否则会出现
+ *      「检测说不含公式 → 不加载 → 公式漏渲染」的正确性回归；
+ *    - `\(...\)`/`\[...\]` 目前不进入既有渲染（渲染输出行为保持不变），但按任务口径
+ *      作为「公式标记」参与检测：宁可多加载一次，也不让含公式意图的文档漏渲染。
+ * 2. 跳过围栏代码块（含 ```math/```katex/```latex 围栏——既有管线把**所有**围栏块整体
+ *    保护为代码，不会交给 KaTeX 渲染）与行内 code span，避免代码示例里的 `$` 误触发加载；
+ * 3. 输入非法/检测异常一律返回 false（按无公式处理），不阻断预览。
+ */
+
+/**
+ * P1-8：公式定界符正则（非 global：可安全复用 `.test()`，无 lastIndex 状态）。
+ * 与既有渲染正则对齐：块级 `$$...$$` 允许跨行；行内 `$...$` 不允许跨行。
+ */
+const MATH_MARKUP_PATTERNS: ReadonlyArray<RegExp> = [
+    /\$\$(?:[^$])+\$\$/, // $$...$$
+    /\$(?:[^$\n])+\$/, // $...$
+    /\\\([^\n]+?\\\)/, // \(...\)
+    /\\\[[\s\S]+?\\\]/ // \[...\]
+]
+
+/**
+ * P1-8：去掉行内 code span（成对、同长度反引号；CommonMark 近似语义），
+ * 避免把代码示例里的 `$...$` 误判为公式。
+ * 未闭合反引号不构成行内代码（与 markdown-it 一致），按普通文本保留继续检测。
+ */
+function stripInlineCodeSpans(text: string): string {
+    if (!text.includes('`')) {
+        return text
+    }
+    let result = ''
+    let cursor = 0
+    while (cursor < text.length) {
+        const openIndex = text.indexOf('`', cursor)
+        if (openIndex === -1) {
+            result += text.slice(cursor)
+            break
+        }
+        result += text.slice(cursor, openIndex)
+        let openEnd = openIndex
+        while (openEnd < text.length && text[openEnd] === '`') {
+            openEnd += 1
+        }
+        const fenceLength = openEnd - openIndex
+        const closeStart = findBacktickRun(text, openEnd, fenceLength)
+        if (closeStart === -1) {
+            // 未闭合反引号：原样保留，后续公式检测照常进行
+            result += '`'.repeat(fenceLength)
+            cursor = openEnd
+            continue
+        }
+        // code span 内容不参与公式检测（用单个空格占位，避免两侧拼出新的定界符）
+        result += ' '
+        cursor = closeStart + fenceLength
+    }
+    return result
+}
+
+/** P1-8：从 start 开始查找长度为 fenceLength 的连续反引号串，返回起始下标（找不到返回 -1） */
+function findBacktickRun(text: string, start: number, fenceLength: number): number {
+    let index = start
+    while (index < text.length) {
+        const next = text.indexOf('`', index)
+        if (next === -1) {
+            return -1
+        }
+        let runEnd = next
+        while (runEnd < text.length && text[runEnd] === '`') {
+            runEnd += 1
+        }
+        if (runEnd - next === fenceLength) {
+            return next
+        }
+        index = runEnd
+    }
+    return -1
+}
+
+/** P1-8：单个「非围栏片段」是否含公式标记（先剔除行内 code） */
+function segmentHasMathMarkup(segment: string): boolean {
+    if (segment.length === 0) {
+        return false
+    }
+    // 快速排除：既无 `$` 也无反斜杠的片段不可能含公式标记
+    if (!segment.includes('$') && !segment.includes('\\')) {
+        return false
+    }
+    const withoutInlineCode = stripInlineCodeSpans(segment)
+    if (!withoutInlineCode.includes('$') && !withoutInlineCode.includes('\\')) {
+        return false
+    }
+    return MATH_MARKUP_PATTERNS.some((pattern) => pattern.test(withoutInlineCode))
+}
+
+/**
+ * P1-8：检测文本是否包含公式标记（`$...$`、`$$...$$`、`\(...\)`、`\[...\]`）。
+ * 跳过围栏代码块与行内 code span；检测异常/非字符串输入按无公式处理（返回 false）。
+ * @param text 编辑器原始 Markdown 文本
+ */
+export function HasPreviewMathMarkup(text: string): boolean {
+    if (typeof text !== 'string' || text.length === 0) {
+        return false
+    }
+    try {
+        // 快速排除：绝大多数纯文本/Markdown 不含 `$` 与反斜杠，一次 includes 即返回
+        if (!text.includes('$') && !text.includes('\\')) {
+            return false
+        }
+        const ranges = findProtectedRanges(text)
+        if (ranges.length === 0) {
+            return segmentHasMathMarkup(text)
+        }
+        let cursor = 0
+        for (const range of ranges) {
+            if (range.start > cursor && segmentHasMathMarkup(text.slice(cursor, range.start))) {
+                return true
+            }
+            cursor = Math.max(cursor, range.end)
+        }
+        return cursor < text.length && segmentHasMathMarkup(text.slice(cursor))
+    } catch (error) {
+        logger.warn('[KatexRender] 公式标记检测失败，按无公式处理:', error)
+        return false
+    }
+}
+
+/**
+ * P1-8：预览渲染前的异步前置——只有含公式标记时才动态加载 KaTeX。
+ *
+ * - 无公式标记：不发起任何动态 import（纯文本/普通 Markdown 文档零 KaTeX 加载）；
+ * - 含公式标记：首次调用 `await import('katex')`，之后复用实例（同会话只加载一次）；
+ * - 加载失败：按无公式降级（公式保持 `$...$` 原文，预览不中断）。
+ *
+ * 调用约束：必须在同步的 HemyRenderPreLocal 之前 await 完成（组件管线已按此顺序接入）。
+ * @param text 待渲染的 Markdown 文本（snippets 展开后）
+ * @returns 是否已加载 KaTeX（true 表示后续同步渲染会输出公式 HTML）
+ */
+export async function EnsurePreviewKatexLoaded(text: string): Promise<boolean> {
+    if (katexInstance) {
+        return true
+    }
+    if (!HasPreviewMathMarkup(text)) {
+        return false
+    }
+    return (await loadKatexInstance()) !== null
+}
+
 /* ======================= 四、PRE / POST 渲染入口（本地） ======================= */
 
 /**
@@ -517,6 +735,8 @@ function renderContent(text: string, skipKatex: boolean): string {
  * 3. 按字符偏移原样拼接返回（不再经主进程，无 IPC；分段边界换行符不丢失）
  * PF-9：超大文档（>2 MiB / >5 万行）自动跳过 KaTeX 渲染，避免阻塞渲染主线程；
  * 调用方可显式传 skipKatex 覆盖自动判定。
+ * P1-8：KaTeX 改为按需加载——调用方必须先 `await EnsurePreviewKatexLoaded(text)`；
+ * 未加载时公式按原文保留（不抛异常、不产出半渲染 HTML）。
  * @param text 编辑器原始 Markdown 文本
  * @param options PF-9 降级选项
  * @returns 预渲染后的文本（供 markdown-it md.render 使用）
@@ -539,6 +759,9 @@ export function HemyRenderPostLocal(text: string): string {
 
 /**
  * 渲染层本地渲染状态复位（单元测试用，避免用例间相互影响）
+ * 说明：KaTeX 模块实例（P1-8 按需加载）属于会话级状态，**不在此复位**——模块加载后
+ * 不会卸载（与 mermaid 等动态依赖同语义）；单测需要「未加载」初始态时用 vi.resetModules()
+ * 重新导入本模块。
  */
 export function resetPreviewLocalRenderState(): void {
     previewActiveFilePath = null

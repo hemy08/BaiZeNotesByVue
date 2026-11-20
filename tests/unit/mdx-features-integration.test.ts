@@ -15,7 +15,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import DOMPurify from 'dompurify'
 import { createPreviewMarkdownIt } from '../../src/renderer/src/components/Markdown/preview-markdown-it'
-import { HemyRenderPreLocal } from '../../src/renderer/src/components/Markdown/preview-local-render'
+import {
+    EnsurePreviewKatexLoaded,
+    HemyRenderPreLocal
+} from '../../src/renderer/src/components/Markdown/preview-local-render'
 import { expandSnippetIncludes } from '../../src/renderer/src/components/Markdown/preview-md-blocks'
 import {
     createTabDeepLinkEnv,
@@ -147,6 +150,8 @@ async function renderSample(): Promise<string> {
         '/tmp/notes/example.md',
         async (absPath: string) => (absPath.endsWith('snippet-part.md') ? SNIPPET_CONTENT : null)
     )
+    // P1-8：KaTeX 改为按需动态加载——与预览组件同序，在同步预渲染前先 await 加载
+    await EnsurePreviewKatexLoaded(expanded)
     const preRendered = HemyRenderPreLocal(expanded, { skipKatex: false })
     return md.render(preRendered, createTabDeepLinkEnv())
 }

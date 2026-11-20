@@ -16,7 +16,7 @@
  * 2.2（H4）」起直接依赖渲染模块，不再经含 Monaco 的 hemy-editor 聚合桶，避免预览 chunk
  * 重新引入 Monaco）；组件自身用到的 markdown-it / katex / DOMPurify 均为真实实现。
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 
 const renderMocks = vi.hoisted(() => ({
@@ -32,6 +32,12 @@ import {
     setPreviewActiveFilePath,
     setPreviewAllowRemoteImages
 } from '@renderer/components/Markdown/preview-local-render'
+
+beforeAll(async () => {
+    // P1-8：KaTeX 改为按需动态加载（首次 import 触发模块 transform）。
+    // 这里预热一次真实 katex 模块，避免 150/200ms 防抖窗口内首次 transform 抖动导致用例偶发失败。
+    await import('katex')
+})
 
 const USER_SELECT_FILE_CHANNEL = 'baize:file:user-select-file'
 const SYSTEM_SETTING_UPDATE_CHANNEL = 'baize:setting:updated'

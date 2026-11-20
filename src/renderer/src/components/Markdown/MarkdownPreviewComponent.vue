@@ -19,6 +19,7 @@ import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import {
     ApplyRemoteImagePolicy,
+    EnsurePreviewKatexLoaded,
     getPreviewActiveFilePath,
     getPreviewAllowRemoteImages,
     HemyRenderPostLocal,
@@ -210,6 +211,7 @@ function buildDegradedNoticeHtml(): string {
 
 /**
  * PF-02：预览本地单跳渲染链路（全部在渲染进程内完成，无 PRE_RENDER/POST_RENDER IPC 往返）
+ * 0. EnsurePreviewKatexLoaded：P1-8 按需加载 KaTeX（仅文档含公式标记时动态 import）；
  * 1. HemyRenderPreLocal：admonition / tabbed / KaTeX / 图片与文件 URL 变换（原主进程 PRE 变换）；
  * 2. PreMarkdownRender：PlantUML 本地渲染 + mermaid 渲染（保持原有渲染层逻辑）；
  * 3. md.render：markdown-it 全量解析 + highlight.js；
@@ -253,6 +255,15 @@ async function updateMarkdownPreview() {
         )
         if (sequence !== renderSequence || props.editorContent !== sourceContent) {
             return
+        }
+        // P1-8：KaTeX 按需加载（异步前置）——只有 snippets 展开后的文档含公式标记时才
+        // 动态 import katex（无公式文档不再加载 487.7 KiB）；必须在同步的 HemyRenderPreLocal
+        // 之前完成，否则公式会按原文降级。超大文档降级本就跳过 KaTeX，无需加载。
+        if (!degraded) {
+            await EnsurePreviewKatexLoaded(snippetExpanded)
+            if (sequence !== renderSequence || props.editorContent !== sourceContent) {
+                return
+            }
         }
         const preRenderText = HemyRenderPreLocal(snippetExpanded, { skipKatex: degraded })
         const renderedText = await Render.PreMarkdownRender(preRenderText, {

@@ -1,12 +1,24 @@
 /**
  * KaTeX 渲染单元测试（PF-02：已迁移至渲染层 preview-local-render.ts）
  * 覆盖：LaTeX → HTML、非法公式降级、行内/块级/数学代码块、反引号内公式不渲染、无公式透传
+ *
+ * P1-8（KaTeX 按需加载）：katex 已改为动态 import，直接调用渲染函数前必须先
+ * `await EnsurePreviewKatexLoaded()`（预览组件在渲染前完成同一步骤）；本文件验证真实
+ * KaTeX 渲染输出，因此在 beforeAll 中显式加载一次。
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import {
+    EnsurePreviewKatexLoaded,
+    IsPreviewKatexLoaded,
     katexRenderToString,
     katexRenderMathInText
 } from '../../src/renderer/src/components/Markdown/preview-local-render'
+
+beforeAll(async () => {
+    // 真实 KaTeX：加载一次后整个文件复用（模块级实例）
+    expect(await EnsurePreviewKatexLoaded('$x^2$')).toBe(true)
+    expect(IsPreviewKatexLoaded()).toBe(true)
+})
 
 describe('KatexRender', () => {
     describe('katexRenderToString', () => {

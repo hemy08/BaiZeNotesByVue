@@ -20,7 +20,10 @@
 import { describe, it, expect } from 'vitest'
 import DOMPurify from 'dompurify'
 import { createPreviewMarkdownIt } from '../../src/renderer/src/components/Markdown/preview-markdown-it'
-import { HemyRenderPreLocal } from '../../src/renderer/src/components/Markdown/preview-local-render'
+import {
+    EnsurePreviewKatexLoaded,
+    HemyRenderPreLocal
+} from '../../src/renderer/src/components/Markdown/preview-local-render'
 
 /** 与 MarkdownPreviewComponent.vue 完全一致的 DOMPurify 配置（CMP-15） */
 const DOMPURIFY_CONFIG = {
@@ -38,7 +41,9 @@ function countMatches(html: string, pattern: RegExp): number {
 }
 
 /** 经「本地预渲染 + markdown-it」完整语法管线渲染（用于 KaTeX 共存验证） */
-function renderThroughPipeline(source: string): string {
+async function renderThroughPipeline(source: string): Promise<string> {
+    // P1-8：KaTeX 改为按需动态加载——与预览组件同序，在同步预渲染前先 await 加载
+    await EnsurePreviewKatexLoaded(source)
     return createPreviewMarkdownIt().render(HemyRenderPreLocal(source))
 }
 
@@ -632,8 +637,8 @@ describe('与既有语法共存（不回归）', () => {
         expect(html).toMatch(/<code[^>]*>code<\/code>/)
     })
 
-    it('should keep KaTeX output from the local pre-render pipeline untouched', () => {
-        const html = renderThroughPipeline('行内公式 $E=mc^2$ 与 $a^2 + b^2$ 结束')
+    it('should keep KaTeX output from the local pre-render pipeline untouched', async () => {
+        const html = await renderThroughPipeline('行内公式 $E=mc^2$ 与 $a^2 + b^2$ 结束')
 
         expect(html).toContain('class="katex"')
         // 公式源码在 MathML annotation 中保持原样：^ 不被当作上标语法改写
@@ -734,7 +739,7 @@ describe('DOMPurify（USE_PROFILES 配置）消毒后标签与属性保留', () 
 /* ============================== 十二、与本地预渲染管线串联 ============================== */
 
 describe('与本地预渲染管线（HemyRenderPreLocal）串联', () => {
-    it('should render all batch-A syntaxes through the real preview pipeline', () => {
+    it('should render all batch-A syntaxes through the real preview pipeline', async () => {
         const source = [
             '???+ note "折叠标题"',
             '    折叠内容',
@@ -753,7 +758,7 @@ describe('与本地预渲染管线（HemyRenderPreLocal）串联', () => {
             '',
             '[按钮](https://example.com){ .md-button }'
         ].join('\n')
-        const html = renderThroughPipeline(source)
+        const html = await renderThroughPipeline(source)
 
         expect(html).toContain('<details class="admonition note" open>')
         expect(html).toContain('<summary class="admonition-title">折叠标题</summary>')
@@ -773,7 +778,7 @@ describe('与本地预渲染管线（HemyRenderPreLocal）串联', () => {
         expect(html).not.toContain('???+')
     })
 
-    it('should keep code fences inside collapsible blocks intact after pre-render', () => {
+    it('should keep code fences inside collapsible blocks intact after pre-render', async () => {
         const source = [
             '??? tip "代码示例"',
             '    ```js',
@@ -786,7 +791,7 @@ describe('与本地预渲染管线（HemyRenderPreLocal）串联', () => {
             'const b = 2',
             '```'
         ].join('\n')
-        const html = renderThroughPipeline(source)
+        const html = await renderThroughPipeline(source)
 
         expect(countMatches(html, /class="hljs language-js"/g)).toBe(2)
         expect(html).not.toContain('```')

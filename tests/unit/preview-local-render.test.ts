@@ -35,6 +35,8 @@ vi.mock('mermaid', () => ({
 import {
     HemyRenderPreLocal,
     HemyRenderPostLocal,
+    // P1-8：KaTeX 改为按需动态加载，用例前置显式加载一次（动态 import 会被 vi.mock 拦截）
+    EnsurePreviewKatexLoaded,
     getPreviewActiveFilePath,
     resetPreviewLocalRenderState,
     setPreviewActiveFilePath,
@@ -61,7 +63,7 @@ function createMarkdownIt(): InstanceType<typeof MarkdownIt> {
     return createPreviewMarkdownIt()
 }
 
-beforeEach(() => {
+beforeEach(async () => {
     katexMock.renderToString.mockReset()
     katexMock.renderToString.mockImplementation((latex: string) => {
         if (latex.includes('BOOM')) {
@@ -71,6 +73,9 @@ beforeEach(() => {
     })
     mermaidMock.render.mockReset()
     resetPreviewLocalRenderState()
+    // P1-8：KaTeX 已改为按需动态加载（vi.mock('katex') 拦截动态 import）；
+    // 本文件验证同步预渲染管道的 KaTeX 分支，用例前置加载一次（加载后会话级复用）。
+    await EnsurePreviewKatexLoaded('$x$')
 })
 
 afterEach(() => {
