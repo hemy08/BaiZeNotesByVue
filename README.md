@@ -380,7 +380,7 @@ BaiZeNotesByVue/
 │   │   └── 04-优化与专项报告/             # 优化专项报告（7 篇）
 │   ├── reports/                          # 报告归档（Markdown 版 + 独立 HTML Wiki）
 │   │   ├── README.md                     # 报告总索引（含口径说明与合并记录）
-│   │   ├── md/                           # Markdown 报告（25 篇，按三类分类）
+│   │   ├── md/                           # Markdown 报告（26 篇，按三类分类）
 │   │   └── html/                         # HTML 报告 Wiki（README+_sidebar 导航 + 25 份带悬浮目录页面）
 │   ├── images/                           # 文档配图
 │   ├── 历史归档/                          # 历史文档归档（非当前实现，见「文档导航」说明）
@@ -525,7 +525,7 @@ BaiZeNotesByVue/
 ### 文档索引
 
 - [知识库文档索引](docs/wiki/README.md) - docs/wiki 全部文档导航（4 类 25 篇）
-- [报告总索引](docs/reports/README.md) - 检查/修复/专项报告（25 篇，已去日期并按主题合并，含口径说明）
+- [报告总索引](docs/reports/README.md) - 检查/修复/专项报告（26 篇，已去日期并按主题合并，含口径说明）
 - [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md) - **问题跟踪台账**（21 项，17 ✅ / 3 🟡 / 1 ⏸️；修复后更新状态）
 - [报告 HTML Wiki](docs/reports/html/README.html) - HTML 版报告（首页 + 侧边栏 + 每页顶部整体导航 + 20 份带悬浮目录页面）
 - [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（91 通道 / 17 组 + 窗口/preload 结构）

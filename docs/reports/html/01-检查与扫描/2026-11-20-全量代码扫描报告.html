@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026-11-20-全量代码扫描报告</title>
+<link rel="stylesheet" href="../assets/report.css">
+</head>
+<body>
+<!-- baize-report-nav-slot -->
+<div id="report-nav"></div>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">0. 结论摘要</a>
+    <a class="toc-l3" href="#sub-1">关键量化（实测）</a>
+    <a class="toc-l2" href="#sec-2">1. P1 高优先级问题（去重 10 项）</a>
+    <a class="toc-l2" href="#sec-3">2. P2 中优先级（精选 18 项）</a>
+    <a class="toc-l2" href="#sec-4">3. 建议处理顺序（不涉及发布）</a>
+    <a class="toc-l2" href="#sec-5">4. 附录：扫描方法与门禁实测</a>
+    <a class="toc-l3" href="#sub-2">遗留状态（与结构报告基线对比）</a>
+    <a class="toc-l2" href="#sec-6">5. 更新记录</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>2026-11-20-全量代码扫描报告</h1>
+    <p>报告归档 · 01-检查与扫描</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>全量代码扫描报告（2026-11-20）</h1>
+<blockquote>
+<p><strong>性质</strong>：只读全量扫描（安全 / 架构 / 质量与测试 / 性能 / 功能体验 / 文档工程 六专项并行），不改源码与配置。
+<strong>扫描对象</strong>：<code>E:\github.com\hemy08\BaiZeNotesByVue</code>，HEAD <code>b966813</code>，版本 <strong>v1.4.0（未发布）</strong>，Node <strong>26.13.1</strong>，npm 11.20.0，工作区干净。
+<strong>方法</strong>：六个专项代理只读扫描 + 实跑门禁（typecheck/ESLint/Prettier/vitest/coverage/docs:check/quality:check/budget:check/audit）+ 静态依赖图/AST 扫描 + 既有性能基线复核；未启动 Electron、未重建产物（性能数据为静态/实测混合，打包体积取现有 <code>out/build/dist</code>）。
+<strong>配套明细</strong>（不随仓库提交，<code>out/</code> 为 gitignore）：<code>out/tool-results/scan-security.md</code>、<code>scan-arch.md</code>、<code>scan-quality.md</code>、<code>scan-perf.md</code>、<code>scan-func.md</code>、<code>scan-docs.md</code>。</p>
+</blockquote>
+<h2 id="sec-1">0. 结论摘要</h2>
+<ul>
+<li><strong>P0（阻断/可直接远程利用/必然数据丢失）：0 项</strong>；</li>
+<li><strong>P1：10 项</strong>（去重后，见 §1）；<strong>P2：约 30 项</strong>（§2 精选 18 项）；<strong>P3：约 55 项</strong>（明细见六份专项报告）；</li>
+<li>整体质量处于良好水平：<strong>门禁全绿</strong>（typecheck 0 / ESLint 0 error 0 warning / Prettier 全绿 / <strong>185 文件 3,397 用例</strong> / 覆盖率阈值全过 / 生产依赖 audit 0）、<strong>依赖图 0 环</strong>、跨进程依赖违规 0、IPC 发送方校验 100%、preload 单文件+白名单校验通过；</li>
+<li>主要风险集中在 <strong>「防御纵深下一层」与「发布/门禁口径」</strong>：Path Guard 工作区根可被渲染层扩展、首屏体积预算盲区、E2E 自动恢复掩盖真实稳定性、发布 workflow 完整性、文档多口径漂移；此外有若干高收益性能项（急切 require、highlight.js 全量）与更新/关闭协议时序缺陷。</li>
+</ul>
+<h3 id="sub-1">关键量化（实测）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th style="text-align:right">当前值</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>源码（代码文件）</td>
+<td style="text-align:right">355 文件 / 96,941 行</td>
+<td>main 70 / preload 4 / shared 65 / renderer 216</td>
+</tr>
+<tr>
+<td>测试</td>
+<td style="text-align:right">185 文件 / 3,397 用例全通过</td>
+<td>覆盖率：stmts 84.67% / branch 77.78% / func 83.82% / line 85.1%</td>
+</tr>
+<tr>
+<td>静态依赖图</td>
+<td style="text-align:right">355 节点 / 1,017 边，<strong>0 环</strong></td>
+<td>跨进程（main↔renderer/preload）违规 0</td>
+</tr>
+<tr>
+<td>IPC</td>
+<td style="text-align:right">91 通道 / 17 组</td>
+<td>preload 白名单 send 60 / receive 25 / window.api 6</td>
+</tr>
+<tr>
+<td>首屏初始 JS</td>
+<td style="text-align:right"><strong>482.0 KiB</strong>（入口 133.6 + modulepreload 348.5）</td>
+<td>现有预算只检查入口 150 KiB</td>
+</tr>
+<tr>
+<td>主进程产物</td>
+<td style="text-align:right">0.62 MiB</td>
+<td></td>
+</tr>
+<tr>
+<td>渲染产物</td>
+<td style="text-align:right">24.38 MiB / 356 assets</td>
+<td>Monaco 7.49 MiB、预览 2.2 MiB（懒加载）</td>
+</tr>
+<tr>
+<td>安装包</td>
+<td style="text-align:right">Setup 113.92 MiB / portable 100.48 MiB / asar 45.21 MiB</td>
+<td>均为 HEAD 前产物，发布前需重建</td>
+</tr>
+<tr>
+<td>生产依赖 audit</td>
+<td style="text-align:right">0 漏洞</td>
+<td>全量 0 漏洞；Dependabot 剩余 239 条历史快照</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-2">1. P1 高优先级问题（去重 10 项）</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>来源</th>
+<th>问题</th>
+<th>证据（文件:行/实测）</th>
+<th>影响</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>安全</td>
+<td><strong>Path Guard 受信根可被渲染层自行扩展</strong>：<code>OPEN_SPECIFIC_FOLDER</code> 直接信任入参并设为工作区根（仅做危险根校验）；<code>recent-folders</code> 可被 <code>config:write</code> 任意写入</td>
+<td><code>src/main/ipc/handlers.ts:522-549</code>；<code>src/main/utils/workspace-root.ts:93-127</code>；<code>src/main/utils/security.ts:473-497</code>；<code>src/renderer/src/preload/index.ts:130</code></td>
+<td>XSS/恶意渲染包后可把工作区指向 <code>.ssh</code>/<code>AppData</code>/任意非系统目录，读取/删除敏感文本文件；且可持久化到 <code>lastOpenedDirectory</code></td>
+<td>工作区根改为「主进程持有白名单」；<code>recent-folders</code> 禁止通用 <code>config:write</code>，改主进程专用追加通道；危险目录黑名单；<code>READ_HTML</code> 增加文本扩展名白名单</td>
+</tr>
+<tr>
+<td>2</td>
+<td>架构</td>
+<td><strong>依赖方向门禁只覆盖第一层</strong>：架构测试未覆盖 <code>config→ipc</code>、<code>main→renderer/preload</code>、<code>renderer→preload</code> 与动态 import；实测 <code>config→ipc</code> 反向边 3 处、<code>utils→ipc</code> 登记例外 2 处</td>
+<td><code>tests/architecture/dependency-boundaries.test.ts:198-276</code>；<code>src/main/config/config-manager.ts:24/28</code>；<code>src/main/config/system-theme.ts:30</code>；<code>src/main/utils/utils.ts:17</code>、<code>startup-restore.ts:28</code></td>
+<td>H1 修好的方向约束出现下一层缺口；<code>config→ipc</code> 会随主题/配置副作用扩大且门禁不报警</td>
+<td>扩展方向矩阵到 config/main/renderer/preload 全组合（现均为 0，可设 0 基线）；<code>theme-broadcast</code> 迁中性模块或 provider 注入；正则扫描改 AST 并覆盖 <code>import()</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>架构</td>
+<td><strong>首屏体积预算盲区</strong>：<code>index.html</code> modulepreload 348.5 KiB 共享 chunk（Vue 运行时 + 中英双语 i18n 24 个词典文件 + ipc/logger）未纳入预算；真实首屏 JS <strong>482 KiB</strong>，现有入口预算只测 136.8 KiB</td>
+<td><code>out/build/renderer/index.html:28-29</code>；<code>build/check-bundle-budget.js:57</code>；<code>out/build/renderer/assets/_plugin-vue_export-helper-*.js</code>（356,817 B）</td>
+<td>预算无法防住首屏回归；i18n 双语全量进首屏（单语用户加载另一语言）；结构报告首屏口径低估约 3.8 倍</td>
+<td>预算增加「入口 + modulepreload 静态闭包」断言（建议 ≤400 KiB）；i18n 按语言拆 chunk、首屏只加载当前语言；修正结构报告首屏口径</td>
+</tr>
+<tr>
+<td>4</td>
+<td>质量</td>
+<td><strong>E2E 自动恢复掩盖真实稳定性</strong>：启动链有「首次导航 preload 缺失 → reload 恢复 + 最多 3 次进程重启」；单轮 9/9 期间约 2 条用例命中恢复，用例未断言 <code>launchAttempts==1 &amp;&amp; reloadRecoveries==0</code>；CI <code>retries: 1</code></td>
+<td><code>e2e/helpers/electron-profile.ts:633-779</code>；<code>playwright.config.ts:45</code>；<code>out/tool-results/p4-e2e-flake.md</code></td>
+<td>产品启动链真实退化会被恢复/重试吸收成绿；「9/9」不能等价稳定；回归信息无人消费</td>
+<td>用例断言零恢复或把恢复计入可观测指标并超阈值失败；CI 设 <code>retries: 0</code> 观察真实 flake；preload 探针独立必过步骤</td>
+</tr>
+<tr>
+<td>5</td>
+<td>质量/文档</td>
+<td><strong>发布 workflow 完整性缺陷</strong>：<code>workflow_dispatch</code> 不按输入 tag 检出（默认分支构建）、无 tag↔<code>package.json.version</code> 守卫；发布门禁弱于 CI（无 Prettier/docs/coverage/budget/E2E）</td>
+<td><code>.github/workflows/release.yml:12-17、32-33、44-48、53-69</code>；<code>package.json:3</code></td>
+<td>手动发布可能把 main 产物挂到旧/错误 tag；可带格式/文档/覆盖率漂移发布；tag 不存在时可能自动创建错误 tag</td>
+<td>dispatch 分支加 <code>ref</code> 检出；显式校验 <code>release-&lt;version&gt;</code> 与 package.json 一致；发布 job 复用 CI 门禁；按 tag URL 校验 latest.yml；上传 glob 收窄到 <code>${version}</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>质量</td>
+<td><strong>覆盖率关键盲区 + 全仓单阈值</strong>：18 个文件语句覆盖 0%（合计 627 语句），<code>WorkSpace.vue</code> 0%（132 语句），<code>window-manager</code> 分支 32.25%，<code>preload/dialog.ts</code> 62.5%；阈值仅全局 80/75/73/80，实测余量 2.8~10.8pp</td>
+<td><code>vitest.config.ts:87-99</code>；<code>coverage/coverage-final.json</code></td>
+<td>首屏壳/窗口管理/对话框 preload/Monaco 集成等核心路径静默退化不被拦截</td>
+<td>增加 glob/per-file 阈值（<code>main/window</code>、<code>main/renders</code>、<code>preload</code>、<code>Markdown/**</code>、<code>WorkSpaceArea/**</code>）；优先补这些模块用例；阈值随实测上调 2~3pp</td>
+</tr>
+<tr>
+<td>7</td>
+<td>性能</td>
+<td><strong>主进程启动急切 require</strong>：8 个外部依赖组合实测 112.75ms，其中 mammoth/turndown/csv-parser ≈50.01ms 可延迟；占 app-ready 中位 203.8ms 的 24.5%</td>
+<td><code>src/main/index.ts</code> 顶部 import；<code>out/analysis/perf-baseline*.json</code>；本轮 Node 实测</td>
+<td>每次冷启动多 ~50ms（可延迟部分），低配机更明显</td>
+<td>导入/导出专用依赖改函数内 <code>await import()</code>；Word/CSV 模块首次使用时加载</td>
+</tr>
+<tr>
+<td>8</td>
+<td>性能</td>
+<td><strong>highlight.js 全量 199 语言 + KaTeX 无公式也加载</strong>：预览首次加载约 2.2MiB，其中 hljs ≈1.29MiB（加载/注册 55ms，精选 core+20 语言仅 12.7ms）；KaTeX 488KiB 静态依赖</td>
+<td><code>MarkdownPreviewComponent.vue:12,18</code>；<code>preview-local-render.ts:36</code>；<code>out/build/renderer/assets/MarkdownPreviewComponent-*.js</code></td>
+<td>首次切预览必现 ~2.2MiB 解析/求值；无公式文档也载 KaTeX</td>
+<td>hljs 改 core + registerLanguage 常用 15~20 语言（预计 −400~600KiB）；KaTeX 检测 <code>$...$</code> 后动态加载</td>
+</tr>
+<tr>
+<td>9</td>
+<td>功能</td>
+<td><strong>更新安装与未保存关闭确认未协调</strong>：<code>quitAndInstall()</code> 先拉起安装器再 <code>app.quit()</code>；新增 <code>before-quit</code> 会 <code>preventDefault</code> 弹框，用户取消时安装器已启动</td>
+<td><code>src/main/utils/auto-updater.ts:324-327</code>；<code>src/main/index.ts:597-633</code>；<code>electron-updater/out/BaseUpdater.js:13-23</code></td>
+<td>更新安装阶段取消可能导致安装器已执行/等待，应用与安装状态不一致</td>
+<td>安装前先走「保存/取消」前置确认；dirty 时取消则不调用 <code>quitAndInstall</code>；或安装阶段禁止取消（按钮改「稍后」放弃本次安装）</td>
+</tr>
+<tr>
+<td>10</td>
+<td>文档</td>
+<td><strong>当前口径文档多源漂移</strong>：README/wiki/报告索引/IPC 矩阵存在 171/172/183/185 文件、3,201/3,250/3,265/3,376/3,396/3,397 用例、91/92 通道、58/60 白名单、20/21/25/26 页等多口径；<code>docs/reports/README.md</code> 基线 3,396 与实测 3,397 差 1</td>
+<td><code>README.md:458/488/586</code>；<code>docs/wiki/README.md:40/46</code>；<code>docs/reports/README.md:5</code>；<code>docs/reports/md/03-专项治理/IPC通信矩阵.md:8/13/48</code>；<code>架构文档.md:12</code></td>
+<td>门禁/发布前无法判断权威数字；新人环境认知过期；IPC 矩阵自称「当前唯一口径」却自相矛盾</td>
+<td>以 vitest JSON 实测 + <code>ipc-channels.ts</code> 为真源自动生成/校验；统一当前口径到 185/3,397/91/60+25；历史数字保留时点标注；<code>quality:check</code> 扩展 README/wiki/用例数</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-3">2. P2 中优先级（精选 18 项）</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>类别</th>
+<th>问题</th>
+<th>证据/量化</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>安全</td>
+<td>无权限请求处理器（Electron 默认自动批准摄像头/麦克风/剪贴板/通知等）；在线网页窗口加载第三方站点</td>
+<td>全仓无 <code>setPermissionRequestHandler</code>；<code>OpenOnlineWebPages.ts:62-101</code></td>
+<td><code>session.defaultSession</code> 默认拒绝，仅本地来源按需放行</td>
+</tr>
+<tr>
+<td>2</td>
+<td>安全</td>
+<td>preload 暴露 <code>process.env</code> / <code>webFrame</code> / <code>webUtils</code>（渲染层零使用）</td>
+<td><code>src/preload/index.ts:256-263</code>；toolkit 实现</td>
+<td>仅保留实际需要的最小集合，测试断言不存在</td>
+</tr>
+<tr>
+<td>3</td>
+<td>安全</td>
+<td>更新链路无代码签名；CSP 残留 <code>unsafe-eval</code> + <code>localhost</code> connect-src</td>
+<td><code>electron-builder.yml:110-125</code>；<code>src/renderer/index.html:20-23</code></td>
+<td>按排期接签名；构建期拆分 dev/prod CSP</td>
+</tr>
+<tr>
+<td>4</td>
+<td>安全</td>
+<td>渲染层运行时安全依赖（dompurify/mermaid/katex/hljs/crypto-js/markdown-it）在 devDependencies，<code>audit --omit=dev</code> 不覆盖</td>
+<td><code>package.json:65-104</code>；<code>ci.yml:79-80</code></td>
+<td>明确依赖分类策略；审计覆盖渲染运行时库（或改 dependencies 并配置 builder 排除）</td>
+</tr>
+<tr>
+<td>5</td>
+<td>架构</td>
+<td>巨型文件/职责混合：<code>main/utils/utils.ts</code> 879 行含 29/68 处 IPC 注册 + 安全策略；<code>ipc/handlers.ts</code> 852 行/24 处；<code>preview-md-blocks.ts</code> 1,075 行；<code>file-operations.ts</code> 937 行</td>
+<td><code>src/main/utils/utils.ts</code> 等</td>
+<td>按注册域拆 <code>utils/ipc/*</code>；安全策略独立；预览按语法域拆</td>
+</tr>
+<tr>
+<td>6</td>
+<td>架构</td>
+<td>生产/开发依赖分类不一致：16 个被生产源码引用的运行时库在 devDependencies</td>
+<td>同上</td>
+<td>建立「生产源码 import 的包必须在 dependencies 或显式例外」门禁</td>
+</tr>
+<tr>
+<td>7</td>
+<td>架构</td>
+<td>死代码/导出面过宽：0 字节入库空文件、172 个无外部引用导出（25 完全零引用）、仅测试消费模块（debounce/hash-algorithms/ipc/index barrel）</td>
+<td><code>hemy-editor-contextmenu.ts</code> 0B；<code>dialog-stack.ts:35</code> 等</td>
+<td>删除空文件与零引用导出；明确仅测试模块去留</td>
+</tr>
+<tr>
+<td>8</td>
+<td>架构</td>
+<td>体积预算余量过小：Setup 113.92/115（0.94%）、portable 100.48/101（0.51%）、asar 45.21/47（3.8%）</td>
+<td><code>build/check-bundle-budget.js:57-63</code></td>
+<td>改为「基线+允许增量」；发布前重建复验；余量 ≥2%</td>
+</tr>
+<tr>
+<td>9</td>
+<td>性能</td>
+<td>大文档预览 DOM 净化瓶颈：50KB≈114ms、200KB≈216ms、1MB≈795ms（DOMPurify 74~85%）；降级阈值 2MiB 过晚</td>
+<td>本轮 jsdom 实测；<code>MarkdownPreviewComponent</code> 管线</td>
+<td>分片/增量净化或在 256KB 启用降级；阈值下调</td>
+</tr>
+<tr>
+<td>10</td>
+<td>性能</td>
+<td>Word 导入/导出在主进程同步执行：118KB docx=109ms、1MB 导出=76ms，冻结所有窗口</td>
+<td><code>src/main/utils/file-utils/export.ts</code>、mammoth/officegen 调用</td>
+<td>移 utilityProcess/worker_threads 或至少分段 + 进度</td>
+</tr>
+<tr>
+<td>11</td>
+<td>性能</td>
+<td>asar 内 7.43MB 运行期无用文件（jschardet/dist 4.66MB 高置信可裁）；首屏含主界面专用 context-menu/KaTeX CSS</td>
+<td>asar 解包统计；<code>index.html</code> CSS 141.8KB</td>
+<td>构建期裁剪 jschardet dist；CSS 按路由拆分</td>
+</tr>
+<tr>
+<td>12</td>
+<td>质量</td>
+<td>E2E 未纳入 tsconfig/类型检查；E2E 仅 9 条，缺关闭确认/主题首开/文件保存/更新/编码等关键链路</td>
+<td><code>tsconfig.*</code> 均不含 e2e；<code>e2e/</code> 4 spec</td>
+<td>新增 <code>tsconfig.e2e.json</code> 并入 typecheck；补 3 条关键 E2E</td>
+</tr>
+<tr>
+<td>13</td>
+<td>质量</td>
+<td>测试环境 Node 26 vs CI/release Node 22；<code>@types/node</code> 26</td>
+<td><code>ci.yml:48-52</code>、<code>release.yml:38</code>；<code>package.json:11-13</code></td>
+<td>统一 Node 基线（建议 26）或 matrix；明确 engines</td>
+</tr>
+<tr>
+<td>14</td>
+<td>质量</td>
+<td>质量基线门禁过窄：只解析 docs/reports/README 一行，默认不校验用例数；<code>docs:check</code> 只扫 docs 下 md</td>
+<td><code>build/generate-quality-baseline.js:24、151</code>；<code>check-doc-links.js:26</code></td>
+<td>CI quality:check 加 <code>--test-json</code>；扩展 README/wiki/用例数/白名单；根 md 纳入 link check</td>
+</tr>
+<tr>
+<td>15</td>
+<td>质量</td>
+<td>测试卫生：E2E 配置沙箱直接备份/清空真实 <code>~/.baizenotes/config</code>（崩溃不恢复）；MD4 不可用静默；officegen 错误路径缺失会挂起；tmp 残留 20 目录</td>
+<td><code>electron-profile.ts:126-183</code>；<code>encrypt-decrypt.ts:54-98</code>；<code>export.ts</code></td>
+<td>产品支持配置目录覆盖/环境变量；MD4 删除或纯 JS；补 officegen error；精确清理</td>
+</tr>
+<tr>
+<td>16</td>
+<td>功能</td>
+<td>编码转换/按编码重开失败完全静默；系统设置保存 fire-and-forget 失败不提示；主题加载失败空白无重试；更新下载无超时</td>
+<td><code>MarkdownEditComponent.vue:459-474</code>；<code>useSystemSettingForm.ts:114-128</code>；<code>useThemeSettingForm.ts:72-117</code>；<code>auto-updater.ts:210-271</code></td>
+<td>统一错误提示/重试；设置保存 await 并失败弹窗；下载超时与进度</td>
+</tr>
+<tr>
+<td>17</td>
+<td>功能</td>
+<td>关闭协议/重启残留：关闭确认无重入保护；<code>app.relaunch()</code> 在取消退出后仍可能下次退出触发；tray 模式文案「保存并关闭」实际隐藏；主题「取消」不回滚已应用主题</td>
+<td><code>src/main/index.ts:225-263、597-633</code>；<code>menu-file.ts</code> relaunch；<code>ThemeSettingDialog.vue:188-210</code>；<code>mainMsg.closeConfirm.*</code></td>
+<td>AppContext 增加 <code>confirming</code>；重启改确认后 relaunch；托盘文案区分；主题取消恢复初始值</td>
+</tr>
+<tr>
+<td>18</td>
+<td>文档/工程</td>
+<td>文档索引/生成物手写文案漂移（HTML Wiki「23 份报告」实 25、树状图 6 篇实 8）；package.json 缺 <code>private</code>/真实描述/重复脚本；mac/linux 构建文档与 builder TODO 冲突；锁文件 832/832 走 npmmirror</td>
+<td><code>html/README.md:51</code>；<code>package.json:3-5、34-47</code>；<code>electron-builder.yml:86-108</code>；<code>package-lock.json</code></td>
+<td>计数生成化；package.json 卫生；mac/linux 标注未验证；镜像策略显式化</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>另有 P3 约 55 项（依赖分组顺序、Bundle 预算策略、发布签名/SHA256 清单、仓库治理文件、日志/注释漂移、测试目录语义等），明细见六份专项报告，本文不逐条展开。</p>
+</blockquote>
+<h2 id="sec-4">3. 建议处理顺序（不涉及发布）</h2>
+<ol>
+<li><strong>安全加固（P1-1/P2-1/2/3/4）</strong>：收敛工作区根授权、权限处理器、preload 暴露面、CSP 拆分、依赖分类与签名排期；</li>
+<li><strong>发布门禁完整性（P1-5）</strong>：修 release.yml 的 ref/版本守卫/门禁复用/文件 glob，配合发布前重建；</li>
+<li><strong>首屏与启动性能（P1-3/P1-7/P1-8）</strong>：i18n 按语言拆包、预算补 modulepreload、延迟 require、hljs 语言裁剪；</li>
+<li><strong>测试与质量门禁（P1-4/P1-6/P2-12~15）</strong>：E2E 零恢复断言、关键覆盖率阈值、e2e typecheck、quality/docs 门禁扩展；</li>
+<li><strong>功能健壮性（P1-9/P2-16/P2-17）</strong>：更新安装与关闭确认协调、错误提示/超时/重入保护；</li>
+<li><strong>文档口径（P1-10/P2-18）</strong>：以实测与代码真源刷新 README/wiki/报告索引/IPC 矩阵，并把易漂移数字生成化。</li>
+</ol>
+<h2 id="sec-5">4. 附录：扫描方法与门禁实测</h2>
+<table>
+<thead>
+<tr>
+<th>门禁</th>
+<th>结果</th>
+<th>耗时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>npm run typecheck</code></td>
+<td>0 错误</td>
+<td>8.4s</td>
+</tr>
+<tr>
+<td><code>npx eslint .</code></td>
+<td>0 error / 0 warning</td>
+<td>5.1s</td>
+</tr>
+<tr>
+<td><code>npx prettier --check .</code></td>
+<td>全绿</td>
+<td>4.5s</td>
+</tr>
+<tr>
+<td><code>npm test</code></td>
+<td><strong>185 文件 / 3,397 用例全通过</strong></td>
+<td>6.7s</td>
+</tr>
+<tr>
+<td><code>vitest run --coverage</code></td>
+<td>阈值全过（stmts 84.67 / branch 77.78 / func 83.82 / line 85.1）</td>
+<td>8.4s</td>
+</tr>
+<tr>
+<td><code>npm run docs:check</code></td>
+<td>59 md / 747 链接 / 相对 500，断链 0</td>
+<td>&lt;1s</td>
+</tr>
+<tr>
+<td><code>quality:check</code></td>
+<td>通过（口径过窄，见 P2-14）</td>
+<td>&lt;1s</td>
+</tr>
+<tr>
+<td><code>budget:check</code></td>
+<td>6/6 通过（基于 HEAD 前产物，发布前需重建）</td>
+<td>&lt;1s</td>
+</tr>
+<tr>
+<td><code>npm audit --omit=dev</code></td>
+<td>0 漏洞</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-2">遗留状态（与结构报告基线对比）</h3>
+<ul>
+<li>H1~H6、L1~L4 维持已修复；H7 仍缺 1.4.0 tag/签名；M1 明显推进（tray 已接入 AppContext），M2 部分完成（注册仍散 8 文件/68 处），M3/M4/M5 基本完成；</li>
+<li>新增风险：Path Guard 授权面、首屏预算盲区、发布 workflow 完整性、E2E 恢复掩盖、文档多口径。</li>
+</ul>
+<h2 id="sec-6">5. 更新记录</h2>
+<ul>
+<li>2026-11-20：创建本报告（HEAD <code>b966813</code>，六专项并行只读扫描；P0 0 / P1 10 / P2 精选 18 / P3 约 55）。</li>
+</ul>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+<script src="../assets/report-nav.js" defer></script>
+</body>
+</html>
