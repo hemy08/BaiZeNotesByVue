@@ -69,16 +69,21 @@ const MdEditTools = defineAsyncComponent({
 #md-edit-tools-bar {
     width: 100%;
     height: auto;
+    flex: 0 0 auto;
     background-color: var(--theme-background-color, #f2f2f2);
     color: var(--theme-text-color, black);
     display: flex;
     flex-wrap: wrap;
 }
 
+/* 2026-11-20（编辑器底部光标不可见修复）：编辑器高度不再用 100vh 推算，改为
+   跟随 #md-container 的 flex 剩余空间；min-height:0 允许 Monaco 视口收缩到
+   状态栏上方，避免光标行渲染到被裁掉的底部区域。 */
 #md-edit-component {
-    height: calc(100vh - 40px - 2px - 20px);
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
     display: flex;
-    flex: 1;
     width: 100%;
     flex-direction: row;
     position: relative;

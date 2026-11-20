@@ -4,6 +4,12 @@
 
 > 1.5.0 起作为新版本基线：自本次版本升级之后的所有修改归入 1.5.0；1.3.9 保持已发布内容（tag `release-1.3.9`）。
 
+### 🖥️ 编辑器底部布局修复（2026-11-20）
+
+- **根因**：Markdown 编辑器容器用 `calc(100vh - 62px)` 推算高度，而工作区实际高度为 `100vh - 92px`；编辑器底部被 `.workspace-area` 的 `overflow:hidden` 裁掉，Monaco 视口延伸到裁剪区，页面已满时回车产生的新行/光标落在状态栏后面
+- **修复**：工作区改为 flex 跟随父容器（`flex:1` + `min-height:0`），编辑器/资源管理器/插件容器统一 `height:100%`；状态栏 `flex-shrink:0`；Monaco 开启 `scrollBeyondLastLine` + 底部 20px 安全距；内容变化后若光标在视口最后一行，额外 reveal 下一行
+- **回归**：新增 E2E `e2e/editor-bottom-visible.spec.ts`（输入填满视口→Ctrl+End→回车→断言编辑器/光标在状态栏上方）与 `viewer-layout-contract` 源码级布局契约；全量 E2E 20/20
+
 ### 🔧 版本与发布
 
 - **全仓版本号升级 1.3.9 → 1.5.0**：`package.json` / `package-lock.json` / `resources/config/version.json` / README 徽章与路线图 / docs 当前状态标注统一

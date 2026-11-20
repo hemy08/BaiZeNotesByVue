@@ -78,6 +78,32 @@ const props = defineProps({
 
 const monacoEditorContainer = ref<HTMLElement | null>(null)
 let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
+
+/**
+ * 2026-11-20（编辑器底部光标不可见修复）：内容变化（回车/粘贴等）后，若光标落在
+ * 视口最后一行且下方仍有行，把下一行也滚入视口，保证新行不贴状态栏（底部留一行）。
+ * 仅做视口滚动，不改变光标位置/内容；rAF 合并连续键入。
+ */
+function revealCursorLineWithBreathingRoom(): void {
+    if (!editorInstance) {
+        return
+    }
+    const model = editorInstance.getModel()
+    const position = editorInstance.getPosition()
+    if (!model || !position) {
+        return
+    }
+    const visibleRanges = editorInstance.getVisibleRanges()
+    if (visibleRanges.length === 0) {
+        return
+    }
+    const lastVisibleLine = visibleRanges[visibleRanges.length - 1].endLineNumber
+    if (position.lineNumber < lastVisibleLine) {
+        return
+    }
+    const targetLine = Math.min(position.lineNumber + 1, model.getLineCount())
+    editorInstance.revealLineInCenterIfOutsideViewport(targetLine, monaco.editor.ScrollType.Smooth)
+}
 //let model: monaco.editor.ITextModel | null = null
 //const registeredActions: string[] = []
 //const registeredDecorations: string[] = []
@@ -622,6 +648,9 @@ onMounted(async () => {
             const context = model.getValue()
             emit('update:code', context)
             EventBus.$emit(EVENT_BUS.STATUS_BAR_CONTEXT_LENGTH, model.getValueLength())
+            // 2026-11-20（编辑器底部光标不可见修复）：内容变化（含回车）后，
+            // 若光标落在视口最后一行且下面还有行，把下一行也滚入视口（底部留一行安全区）。
+            requestAnimationFrame(revealCursorLineWithBreathingRoom)
         })
 
         editor.DidChange(editorInstance)

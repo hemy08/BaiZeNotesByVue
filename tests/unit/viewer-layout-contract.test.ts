@@ -24,6 +24,12 @@ const shell = read('src/renderer/src/components/HemyTools/FileViewerShell.vue')
 const htmlView = read('src/renderer/src/components/HemyTools/ShowHtmlView.vue')
 const pdfView = read('src/renderer/src/components/HemyTools/ShowPdfEditor.vue')
 
+// 2026-11-20（用户反馈：页面满时回车后光标被状态栏遮挡）：编辑器底部布局契约
+const baiZeNotes = read('src/renderer/src/components/BaiZeNotes.vue')
+const markdownContainer = read('src/renderer/src/components/Markdown/MarkdownContainer.vue')
+const editorOptions = read('src/renderer/src/components/Markdown/editor-options.ts')
+const monacoEditor = read('src/renderer/src/components/Markdown/MarkdownMonacoEditor.vue')
+
 /** 取某个选择器块的样式声明文本（从选择器到下一个 `}`），用于断言关键属性 */
 function selectorBlock(source: string, selector: string): string {
     const idx = source.indexOf(selector)
@@ -56,5 +62,35 @@ describe('HTML/PDF 查看器布局契约（用户反馈：点击导航后布局�
         const pdfScroll = selectorBlock(pdfView, '.pdf-canvas-scroll')
         expect(pdfScroll).toContain('min-height: 0')
         expect(pdfScroll).toContain('overflow: auto')
+    })
+})
+
+describe('编辑器底部布局契约（用户反馈：页面满时回车后光标被状态栏遮挡）', () => {
+    it('should let the workspace height follow flex layout instead of a hard-coded 100vh calc', () => {
+        const block = selectorBlock(baiZeNotes, '.workspace-area')
+        expect(block).toContain('flex: 1 1 auto')
+        expect(block).toContain('min-height: 0')
+        expect(block).toContain('height: auto')
+        expect(block).not.toContain('100vh')
+        // 状态栏不得被 flex 压缩，否则会覆盖编辑器底部
+        expect(selectorBlock(baiZeNotes, '.status-bar')).toContain('flex-shrink: 0')
+    })
+
+    it('should fill markdown editor height from its flex parent, not viewport height', () => {
+        const block = selectorBlock(markdownContainer, '#md-edit-component')
+        expect(block).toContain('flex: 1 1 auto')
+        expect(block).toContain('min-height: 0')
+        expect(block).toContain('height: auto')
+        expect(markdownContainer).not.toContain('height: calc(100vh')
+        expect(selectorBlock(workspace, '#md-container')).toContain('height: 100%')
+        expect(selectorBlock(workspace, '#md-container')).toContain('min-height: 0')
+    })
+
+    it('should keep one-line breathing room below the last line and reveal the cursor line', () => {
+        expect(editorOptions).toContain('scrollBeyondLastLine: true')
+        expect(editorOptions).toMatch(/padding:\s*\{[^}]*bottom:\s*20[^}]*\}/s)
+        expect(monacoEditor).toContain('revealCursorLineWithBreathingRoom')
+        expect(monacoEditor).toContain('revealLineInCenterIfOutsideViewport')
+        expect(monacoEditor).toContain('requestAnimationFrame(revealCursorLineWithBreathingRoom)')
     })
 })

@@ -351,12 +351,20 @@ onBeforeUnmount(() => {
 
 <style scoped>
 #navi-tab {
-    height: calc(100vh - 2px - 20px);
+    height: 100%;
     background-color: var(--theme-card-background, white);
     display: flex;
     float: left;
     width: 40px;
     border-right: 1px solid var(--theme-border-color, #e0e0e0);
+}
+
+/* 2026-11-20（编辑器底部光标不可见修复）：工作区子容器统一跟随父容器高度，
+   禁止各自用 100vh 推算；编辑器/预览滚动容器必须能收缩（min-height:0）。 */
+#resource-manager {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
 }
 
 #resource-manager .resource-manager {
@@ -374,7 +382,7 @@ onBeforeUnmount(() => {
     color: var(--theme-accent-color, blue);
     width: 2px;
     background-color: var(--theme-border-color, #f0dc4e);
-    height: calc(100vh - 20px);
+    height: 100%;
     float: left;
     /* Other styles... */
 }
@@ -383,6 +391,9 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     float: left;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
     background-color: var(--theme-background-color, #ffffff);
 }
 
@@ -404,6 +415,8 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     float: left;
+    height: 100%;
+    min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
     background-color: var(--theme-background-color, #ffffff);
@@ -413,6 +426,8 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     float: left;
+    height: 100%;
+    min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
     background-color: var(--theme-background-color, #ffffff);

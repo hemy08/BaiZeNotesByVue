@@ -46,7 +46,13 @@ export const MonacoEditorOptions: monaco.editor.IStandaloneEditorConstructionOpt
     largeFileOptimizations: true,
     maxTokenizationLineLength: 10000,
     renderLineHighlight: 'all',
-    scrollBeyondLastLine: false,
+    // 2026-11-20（编辑器底部光标不可见修复）：允许滚过最后一行，并在底部留一行安全距，
+    // 避免在页面已满时回车产生的新行贴住状态栏。padding 不随主进程 editor-setting 覆盖。
+    scrollBeyondLastLine: true,
+    padding: {
+        top: 0,
+        bottom: 20
+    },
     foldingMaximumRegions: 5000,
     find: {
         addExtraSpaceOnTop: true,

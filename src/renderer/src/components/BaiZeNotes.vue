@@ -530,6 +530,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .menu-bar {
     height: 35px;
+    flex-shrink: 0;
 }
 
 .title-bar {
@@ -541,6 +542,7 @@ onBeforeUnmount(() => {
     color: #fff;
     font-size: 13px;
     height: 30px;
+    flex-shrink: 0;
     user-select: none;
     -webkit-app-region: drag;
 }
@@ -592,13 +594,18 @@ onBeforeUnmount(() => {
     margin-right: 8px;
     vertical-align: middle;
 }
-/* 需要隐藏滚动条，如果不隐藏，在区域内部，窗口会层叠*/
+/* 需要隐藏滚动条，如果不隐藏，在区域内部，窗口会层叠。
+   2026-11-20（编辑器底部光标不可见修复）：工作区高度由 flex 分配，禁止再用
+   `calc(100vh - 固定条高)` 推算——顶部条/状态栏高度变化（菜单 35px、状态栏 24px）
+   会让写死值失真，编辑器底部被 `.workspace-area` 裁掉，Monaco 视口延伸到裁剪区，
+   回车后光标行落在状态栏后面。min-height:0 保证 flex 子项可收缩。 */
 .workspace-area {
-    flex: 1;
+    flex: 1 1 auto;
     display: flex;
     flex-direction: row;
     overflow: hidden;
-    height: calc(100vh - 2px - 30px - 30px - 30px);
+    min-height: 0;
+    height: auto;
 }
 
 #workspace-area {
@@ -609,6 +616,7 @@ onBeforeUnmount(() => {
 
 .status-bar {
     height: 24px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     padding: 0 12px;
@@ -618,6 +626,7 @@ onBeforeUnmount(() => {
 
 #file-bar {
     height: 2px;
+    flex-shrink: 0;
     background: var(--theme-accent-color, #764ba2);
 }
 

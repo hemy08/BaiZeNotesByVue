@@ -143,7 +143,9 @@ describe('MonacoEditorOptions', () => {
         expect(MonacoEditorOptions.foldingMaximumRegions).toBe(5000)
         // FUN-28：renderLineHighlight/foldingStrategy 已与 defaultEditorSetting 统一
         expect(MonacoEditorOptions.renderLineHighlight).toBe('all')
-        expect(MonacoEditorOptions.scrollBeyondLastLine).toBe(false)
+        // 2026-11-20（底部光标可见性修复）：允许滚过最后一行，并保留底部安全距
+        expect(MonacoEditorOptions.scrollBeyondLastLine).toBe(true)
+        expect(MonacoEditorOptions.padding).toEqual({ top: 0, bottom: 20 })
         expect(MonacoEditorOptions.folding).toBe(true)
         expect(MonacoEditorOptions.foldingStrategy).toBe('auto')
     })

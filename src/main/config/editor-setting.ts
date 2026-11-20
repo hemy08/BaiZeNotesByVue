@@ -98,7 +98,9 @@ const defaultEditorSetting: EditorSetting = {
 
     // 滚动配置
     smoothScrolling: true,
-    scrollBeyondLastLine: false,
+    // 2026-11-20（编辑器底部光标不可见修复）：与渲染层初始选项保持一致，
+    // 允许滚过最后一行，给回车产生的新行留出底部安全区。
+    scrollBeyondLastLine: true,
     mouseWheelScrollSensitivity: 1,
     fastScrollSensitivity: 5,
     scrollBeyondLastColumn: 0,
