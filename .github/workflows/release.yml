@@ -10,6 +10,18 @@ name: Release (tag → build → GitHub Release)
 # - 产物：按版本精确匹配（Setup exe + blockmap / portable exe / latest.yml），不做版本通配
 # - 发布页：body 取自 RELEASE-NOTES.md 对应版本段；发布后校验 tag 维度的 latest.yml
 #   （https://github.com/<repo>/releases/download/<tag>/latest.yml，而非 releases/latest）
+
+# 2026-11-20（CI/供应链安全加固，本批）：
+# - 第三方 action 全部由浮动 tag 改为 commit SHA 锁定（40 位 + `# vX.Y.Z` 版本注释），
+#   防止 tag 被移动/重写导致供应链投毒；解析记录见 out/tool-results/fix-ci-hardening.md；
+# - 最小权限：workflow 顶层只声明 `contents: read`，仅 `release` job 提升为
+#   `contents: write`（创建 Release / 上传资产所需），其余未来 job 默认只读；
+# - 单点发布保护：concurrency 组名固定为 `release`（不按 ref 区分）且不取消进行中运行，
+#   保证同一时间只有一个发布流程（避免不同 tag 并发发布互相覆盖资产/更新通道）；
+# - 显式声明 workflow 级 `defaults.run.shell: pwsh`（多行脚本仍保留 step 级 shell: pwsh）；
+# - checkout 统一 `persist-credentials: false`（tag 校验只用公开读取的 git ls-remote，
+#   不依赖持久化 GITHUB_TOKEN；Release 上传由 softprops action 使用独立 token 输入）；
+# - 新增 Electron 二进制缓存（key 含 package-lock.json 哈希），缩短发布构建耗时。
 on:
     push:
         tags:
@@ -21,12 +33,20 @@ on:
                 required: true
                 type: string
 
+# 最小权限（顶层只读）：仅 release job 需要写权限，其余未来新增 job 默认只读
 permissions:
-    contents: write
+    contents: read
 
+# 单点发布保护：固定组名 `release`（不按 ref/tag 区分）且不取消进行中的发布，
+# 保证同一时间只有一个发布流程，避免不同 tag 并发发布互相覆盖资产/更新通道
 concurrency:
-    group: release-${{ github.ref }}
+    group: release
     cancel-in-progress: false
+
+# 显式声明默认 shell：所有 run 步骤统一 pwsh（等价于 windows-latest 默认值，避免隐式）
+defaults:
+    run:
+        shell: pwsh
 
 jobs:
     release:
@@ -35,6 +55,9 @@ jobs:
         # 发布门禁已与 CI 对齐（typecheck/ESLint/Prettier/coverage/docs/baseline/audit）
         # + NSIS/portable 双打包 + 产物校验，45 分钟（原「仅打包」口径）上调到 60 分钟
         timeout-minutes: 60
+        # 最小权限：只有本发布 job 需要 contents: write（创建 Release + 上传安装包资产）
+        permissions:
+            contents: write
         # 发布审批环境：未配置保护规则时自动创建并直接运行；配置 required reviewers 后即为人工发布闸门
         environment: release
         steps:
@@ -60,8 +83,10 @@ jobs:
                   Write-Host "发布目标：tag=$rawTag（版本 $version）"
 
             - name: Checkout release ref
-              uses: actions/checkout@v4
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
               with:
+                  # 最小权限：不把 GITHUB_TOKEN 留在 .git/config（本流程无 git push）
+                  persist-credentials: false
                   # workflow_dispatch：检出输入 tag（修复此前「dispatch 构建默认分支却挂目标 tag」的缺陷）
                   # push tag：github.ref 即 refs/tags/release-x.y.z
                   ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
@@ -83,8 +108,18 @@ jobs:
                   }
                   Write-Host "✓ 已按 tag 检出：$env:TAG @ $headSha"
 
+            # 缓存 Electron 二进制（npm ci 的 electron postinstall 下载 ≈100MB+；
+            # key 含 package-lock.json 哈希，依赖变更自动失效）
+            - name: Cache Electron binary
+              uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+              with:
+                  path: |
+                      ~/AppData/Local/electron/Cache
+                      ~/AppData/Local/electron-builder/Cache
+                  key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
+
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:
                   node-version: 22
                   cache: npm
@@ -195,7 +230,7 @@ jobs:
                   Write-Host "✓ 已提取 RELEASE-NOTES.md 版本 $env:VERSION 段（$($body.Length) 字符）"
 
             - name: Create GitHub Release and upload assets
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
               with:
                   tag_name: ${{ steps.resolve.outputs.tag }}
                   name: ${{ steps.resolve.outputs.tag }}

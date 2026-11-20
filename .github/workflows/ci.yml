@@ -59,6 +59,15 @@ name: CI
 #   build/perf-ci.js 头部注释、README「性能基线 CI（软门禁）」；
 # - 与 bundle-budget 分工：后者是体积硬门禁；本 job 记录性能趋势并做回归提示；
 # - 与 e2e-startup-stability 分工：后者测启动链恢复率/零进程重启（稳定性），本 job 测启动耗时基线。
+
+# 2026-11-20（CI/供应链安全加固，本批）：
+# - 第三方 action 全部由浮动 tag 改为 commit SHA 锁定（40 位 + `# vX.Y.Z` 版本注释），
+#   防止 tag 被移动/重写导致供应链投毒；解析记录见 out/tool-results/fix-ci-hardening.md；
+# - 显式声明 workflow 级 `defaults.run.shell: pwsh`（windows-latest 默认虽为 pwsh，
+#   显式声明避免 runner 默认 shell 演进造成隐式行为差异）；
+# - checkout 统一 `persist-credentials: false`：不把 GITHUB_TOKEN 留在 .git/config，
+#   本流水线无 git push 操作，无需持久化凭据；
+# - Electron 二进制缓存 key 继续包含 package-lock.json 哈希（依赖变更自动失效）。
 on:
     push:
         branches: [main, master]
@@ -73,6 +82,11 @@ concurrency:
     group: ci-${{ github.ref }}
     cancel-in-progress: true
 
+# 显式声明默认 shell：所有 run 步骤统一 pwsh（等价于 windows-latest 默认值，避免隐式）
+defaults:
+    run:
+        shell: pwsh
+
 jobs:
     quality-gate:
         name: Typecheck / Lint / Test
@@ -80,11 +94,13 @@ jobs:
         timeout-minutes: 30
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  persist-credentials: false
 
             # 可选优化：缓存 Electron 二进制（npm ci 的 electron postinstall 下载 ≈100MB+）
             - name: Cache Electron binary
-              uses: actions/cache@v4
+              uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
               with:
                   path: |
                       ~/AppData/Local/electron/Cache
@@ -92,7 +108,7 @@ jobs:
                   key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:
                   node-version: 22
                   cache: npm
@@ -115,7 +131,7 @@ jobs:
             # Q-16：覆盖率阈值失败（步骤红）时也要上传现场证据，故用 if: always()
             - name: Upload coverage artifact
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
               with:
                   name: coverage-report
                   path: coverage/
@@ -152,11 +168,13 @@ jobs:
         timeout-minutes: 45
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  persist-credentials: false
 
             # 可选优化：缓存 Electron 二进制（npm ci 的 electron postinstall 下载 ≈100MB+）
             - name: Cache Electron binary
-              uses: actions/cache@v4
+              uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
               with:
                   path: |
                       ~/AppData/Local/electron/Cache
@@ -164,7 +182,7 @@ jobs:
                   key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:
                   node-version: 22
                   cache: npm
@@ -189,7 +207,7 @@ jobs:
 
             - name: Upload Playwright report on failure
               if: failure()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
               with:
                   name: playwright-report
                   path: |
@@ -208,10 +226,12 @@ jobs:
         timeout-minutes: 30
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  persist-credentials: false
 
             - name: Cache Electron binary
-              uses: actions/cache@v4
+              uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
               with:
                   path: |
                       ~/AppData/Local/electron/Cache
@@ -219,7 +239,7 @@ jobs:
                   key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:
                   node-version: 22
                   cache: npm
@@ -248,7 +268,7 @@ jobs:
 
             - name: Upload Playwright report on failure
               if: failure()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
               with:
                   name: playwright-report-startup-stability
                   path: |
@@ -262,11 +282,13 @@ jobs:
         timeout-minutes: 40
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  persist-credentials: false
 
             # 可选优化：缓存 Electron 二进制（npm ci 的 electron postinstall 下载 ≈100MB+）
             - name: Cache Electron binary
-              uses: actions/cache@v4
+              uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
               with:
                   path: |
                       ~/AppData/Local/electron/Cache
@@ -274,7 +296,7 @@ jobs:
                   key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:
                   node-version: 22
                   cache: npm
@@ -302,10 +324,12 @@ jobs:
         continue-on-error: true
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  persist-credentials: false
 
             - name: Cache Electron binary
-              uses: actions/cache@v4
+              uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
               with:
                   path: |
                       ~/AppData/Local/electron/Cache
@@ -313,7 +337,7 @@ jobs:
                   key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:
                   node-version: 22
                   cache: npm
@@ -334,7 +358,7 @@ jobs:
             # 报告作为 artifact 留存（含 JSON / Markdown / 冷启动原始报告），失败也上传现场
             - name: Upload perf baseline artifacts
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
               with:
                   name: perf-baseline
                   path: |

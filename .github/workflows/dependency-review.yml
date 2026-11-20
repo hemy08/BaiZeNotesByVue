@@ -1,0 +1,47 @@
+name: Dependency Review
+
+# 2026-11-20（CI/供应链安全加固）：PR 级依赖审查（低风险、只读）
+# - 触发：仅 pull_request（对比 base..head 的依赖变更）；不作用于 push，避免与 CI 重复
+# - 目标：拦截 PR 新引入的高危依赖漏洞（fail-on-severity: high，含 high/critical）
+# - 权限最小化：contents: read + pull-requests: read。未启用 comment-summary-in-pr，
+#   因此不需要 pull-requests: write（该选项才会往 PR 写评论）
+# - fail-on-scopes 显式包含 development：本仓库渲染层运行时安全库（dompurify / mermaid /
+#   katex / highlight.js / markdown-it-* 等）位于 devDependencies，被 Vite 内联进 renderer
+#   后随包分发，默认仅 runtime 口径会漏审；与 CI `npm run audit:all`（全量依赖树审计）
+#   口径保持一致（依据见 ci.yml 中 P2-5 注释与依赖分类测试）
+# - 公开仓库可用（无需 GitHub Advanced Security 许可；本仓库为 public）
+# - action 按 commit SHA 锁定（dependency-review-action v4.9.0）；该 action 上游已不再维护
+#   `v4` 浮动 tag（仅 v4.x.y 具体 tag），故按当前 v4 最新补丁版精确锁定。
+#   SHA 升级需人工/Dependabot 批次统一更新（本批未改 dependabot.yml，见报告「后续建议」）
+#
+# 备注（CodeQL）：本批评估后未新增 codeql.yml——本仓库为公开仓库虽可免 GHAS 许可运行，
+# 但仓库若已启用 Code scanning「Default setup」则 Advanced workflow 会冲突失败（需仓库
+# Settings 侧确认），且 JS/TS 分析对 .vue 单文件组件覆盖有限；作为独立批次评估，见报告。
+on:
+    pull_request:
+        branches: [main, master]
+
+permissions:
+    contents: read
+    pull-requests: read
+
+concurrency:
+    group: dependency-review-${{ github.event.pull_request.number }}
+    cancel-in-progress: true
+
+jobs:
+    dependency-review:
+        name: Dependency review (fail on high)
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - name: Checkout
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  persist-credentials: false
+
+            - name: Review dependency changes
+              uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+              with:
+                  fail-on-severity: high
+                  fail-on-scopes: 'runtime, development'
