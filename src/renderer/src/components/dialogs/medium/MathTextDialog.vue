@@ -23,7 +23,7 @@
                     t('dialogRenderer.common.previewPlaceholder')
                 }}</label>
                 <!-- eslint-disable-next-line vue/no-v-html -- 预览为 KaTeX renderToString 输出（trust 默认 false，不产出原始 HTML 标签） -->
-                <div class="preview-container" v-html="renderedFormula"></div>
+                <div class="preview-container" v-html="previewFormulaHtml"></div>
             </div>
 
             <div class="editor-section">
@@ -61,11 +61,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { CSSProperties } from 'vue'
 import katex from 'katex'
-// 第 4 批 4.5（M6）：KaTeX CSS 统一由 src/renderer/src/main.ts 全局引入一次；
-// 本对话框原 `import 'katex/dist/katex.css'` 与主入口重复加载（同一 CSS 两份产物），已删除。
+// P1-8 后续（KaTeX CSS 按需）：KaTeX 样式表已从 main.ts 首屏静态样式移出，改为与预览管线
+// 同一会话级加载器按需加载（katex.css 与 katex.min.css 内容等价，原两处静态引入已删除）。
+import { EnsurePreviewKatexCssLoaded } from '../../Markdown/preview-katex-assets'
 import { t } from '../../../common/i18n'
 import BaseDialog from '../BaseDialog.vue'
 
@@ -103,6 +104,22 @@ const renderedFormula = computed(() => {
     } catch {
         return '<span style="color:red">' + t('dialogRenderer.mathText.syntaxError') + '</span>'
     }
+})
+
+/**
+ * P1-8 后续：KaTeX 样式是否已就绪。
+ * 样式表按需加载（不再随首屏静态样式进入主 CSS），首次打开编辑器时等待加载完成再渲染公式，
+ * 避免「无样式公式」闪现后再跳变（本地磁盘 chunk 通常 < 1 帧）。
+ */
+const katexCssReady = ref(false)
+
+/** 实际写入预览区的 HTML：样式就绪前留空（避免半渲染/样式跳变） */
+const previewFormulaHtml = computed(() => (katexCssReady.value ? renderedFormula.value : ''))
+
+onMounted(async () => {
+    // 加载失败也放行（Ensure 内部已降级为 warn，不抛异常）：公式按 KaTeX 自带 MathML 回退展示
+    await EnsurePreviewKatexCssLoaded()
+    katexCssReady.value = true
 })
 
 function renderLatex(text: string): string {

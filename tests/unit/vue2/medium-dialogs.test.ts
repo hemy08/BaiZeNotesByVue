@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import AdmonitionDialog from '@renderer/components/dialogs/medium/AdmonitionDialog.vue'
@@ -315,13 +315,16 @@ describe('MdSheetDialog', () => {
 })
 
 describe('MathTextDialog', () => {
-    it('renders the initial LaTeX formula with katex', () => {
+    it('renders the initial LaTeX formula with katex', async () => {
         const wrapper = mount(MathTextDialog, {
             ...dialogMountOptions,
             props: { visible: true }
         })
-        // katex 渲染出的 DOM 带 .katex 类
-        expect(wrapper.find('.preview-container .katex').exists()).toBe(true)
+        // P1-8 后续：KaTeX CSS 改为按需加载，对话框 onMounted 等待样式就绪后才渲染公式
+        //（避免无样式公式闪现）；动态 import 的完成时机与 macrotask 有关，用 waitFor 轮询断言。
+        await vi.waitFor(() => {
+            expect(wrapper.find('.preview-container .katex').exists()).toBe(true)
+        })
     })
 
     it('clears the preview when the formula input becomes empty', async () => {

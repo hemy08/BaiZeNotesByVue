@@ -29,6 +29,8 @@ import {
     setPreviewAllowRemoteImages
 } from './preview-local-render'
 import { createPreviewMarkdownIt } from './preview-markdown-it'
+// P1-8 后续：代码围栏冷门语言按需预取（与 KaTeX 同一异步前置位置，await 后同轮同步渲染即高亮）
+import { EnsurePreviewHighlightLanguagesLoaded } from './preview-highlight'
 // 批次 C：snippets（--8<--）异步展开 + tab 深链（#__tabbed_N_i）
 import { expandSnippetIncludes } from './preview-md-blocks'
 import { createTabDeepLinkEnv, getTabTargetByHash } from './preview-mkdocs-material'
@@ -211,7 +213,9 @@ function buildDegradedNoticeHtml(): string {
 
 /**
  * PF-02：预览本地单跳渲染链路（全部在渲染进程内完成，无 PRE_RENDER/POST_RENDER IPC 往返）
- * 0. EnsurePreviewKatexLoaded：P1-8 按需加载 KaTeX（仅文档含公式标记时动态 import）；
+ * 0. EnsurePreviewKatexLoaded：P1-8 按需加载 KaTeX（仅文档含公式标记时动态 import，
+ *    KaTeX CSS 也在同一次会话级加载中拉起）；EnsurePreviewHighlightLanguagesLoaded：
+ *    P1-8 后续按需预取围栏冷门语言包（两者都是渲染前的异步前置，无需求时零加载）；
  * 1. HemyRenderPreLocal：admonition / tabbed / KaTeX / 图片与文件 URL 变换（原主进程 PRE 变换）；
  * 2. PreMarkdownRender：PlantUML 本地渲染 + mermaid 渲染（保持原有渲染层逻辑）；
  * 3. md.render：markdown-it 全量解析 + highlight.js；
@@ -256,14 +260,17 @@ async function updateMarkdownPreview() {
         if (sequence !== renderSequence || props.editorContent !== sourceContent) {
             return
         }
-        // P1-8：KaTeX 按需加载（异步前置）——只有 snippets 展开后的文档含公式标记时才
-        // 动态 import katex（无公式文档不再加载 487.7 KiB）；必须在同步的 HemyRenderPreLocal
-        // 之前完成，否则公式会按原文降级。超大文档降级本就跳过 KaTeX，无需加载。
-        if (!degraded) {
-            await EnsurePreviewKatexLoaded(snippetExpanded)
-            if (sequence !== renderSequence || props.editorContent !== sourceContent) {
-                return
-            }
+        // P1-8：KaTeX 与围栏冷门语言包按需加载（同一异步前置位置并行等待）：
+        // - 无公式文档不加载 KaTeX JS/CSS（JS 487.7 KiB + KaTeX 样式），超大文档降级本就跳过公式；
+        // - 代码围栏语言预取始终执行（PF-9 降级仍正常渲染代码高亮），无围栏文档零动态 import；
+        // - 必须在同步的 HemyRenderPreLocal / md.render 之前完成，保证首轮即完整渲染
+        //   （不会出现「先转义/无样式、下一轮才生效」的闪烁或半渲染）。
+        await Promise.all([
+            degraded ? Promise.resolve(false) : EnsurePreviewKatexLoaded(snippetExpanded),
+            EnsurePreviewHighlightLanguagesLoaded(snippetExpanded)
+        ])
+        if (sequence !== renderSequence || props.editorContent !== sourceContent) {
+            return
         }
         const preRenderText = HemyRenderPreLocal(snippetExpanded, { skipKatex: degraded })
         const renderedText = await Render.PreMarkdownRender(preRenderText, {

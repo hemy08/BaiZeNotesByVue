@@ -216,6 +216,20 @@ describe('MarkdownPreviewComponent 预览单跳渲染（PF-02）', () => {
         expect(html).not.toContain('```')
     })
 
+    it('should prefetch cold highlight.js fence languages before render (first render highlighted)', async () => {
+        // P1-8 后续：围栏冷门语言在渲染前异步预取（与 KaTeX 同一位置），首轮同步渲染即高亮，
+        // 不存在「先转义、下一轮才高亮」的闪烁或半渲染。
+        const content = ['```lua', 'local answer = 42', '```'].join('\n')
+
+        mountPreview(content)
+        await waitForDebouncedRender()
+
+        const html = wrapper!.html()
+        expect(html).toContain('hljs language-lua')
+        expect(html).toContain('hljs-keyword')
+        expect(html).not.toContain('```')
+    })
+
     it('should sanitize rendered html with DOMPurify (CMP-15)', async () => {
         mountPreview('<img src="x" onerror="alert(1)"><script>alert(2)</script>')
         await waitForDebouncedRender()

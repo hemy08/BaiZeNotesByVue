@@ -292,7 +292,9 @@ describe('主题单真源（第 4 批 4.2 / M4）', () => {
 //
 // 收敛前：4 个 CSS 同时被 index.html 的 <link> 与 main.ts 的 import 加载（双份产物）；
 // KaTeX CSS 在 main.ts / MathTextDialog.vue / MarkdownPreviewComponent.vue 三处引入。
-// 收敛后：index.html 零 stylesheet link，全部 CSS 只由 main.ts 引入一次，KaTeX 只有一处。
+// 收敛后：index.html 零 stylesheet link，基础 CSS 只由 main.ts 引入一次。
+// P1-8 后续（KaTeX CSS 按需）：KaTeX CSS 移出 main.ts 首屏静态引入，改为
+// preview-katex-assets.ts 中的单处动态 import（有公式时才加载），由下方用例锁定。
 // =============================================================================================
 describe('CSS 单次注入（第 4 批 4.5 / M6）', () => {
     const rendererSources = collectSourceFiles(RENDERER_SRC_DIR, ['.ts', '.vue', '.css'])
@@ -338,14 +340,28 @@ describe('CSS 单次注入（第 4 批 4.5 / M6）', () => {
         }
     })
 
-    it('KaTeX CSS 全仓只有 main.ts 一处引入（katex.css / katex.min.css 均计）', () => {
-        const katexCssImportPattern =
-            /^\s*(?:@?import)\s+['"][^'"]*katex\/dist\/katex(?:\.min)?\.css['"]/m
-        const referencingFiles = rendererSources
-            .filter((file) => katexCssImportPattern.test(readSource(file)))
+    it('KaTeX CSS 不再随首屏静态引入，且动态引入收敛到 preview-katex-assets.ts 唯一一处', () => {
+        // P1-8 后续（KaTeX CSS 按需）：KATEX CSS 曾由 main.ts 静态 import（进入首屏 CSS）。
+        // 现在必须在「有公式时」与 KaTeX JS 同一次会话级加载，因此：
+        // 1) 全仓不得再有静态 `import 'katex/dist/katex.css'`（含 min 变体）——否则样式回流首屏；
+        // 2) 动态 import('...katex.css') 只能出现在 preview-katex-assets.ts（单一真源，
+        //    预览管线与公式编辑器共用同一会话 Promise，避免重复打包/重复加载）。
+        const staticKatexCssImportPattern =
+            /^\s*import\s+['"][^'"]*katex\/dist\/katex(?:\.min)?\.css['"]/m
+        const staticReferencingFiles = rendererSources
+            .filter((file) => staticKatexCssImportPattern.test(readSource(file)))
             .map((file) => path.relative(ROOT, file).replace(/\\/g, '/'))
-        expect(referencingFiles).toEqual(['src/renderer/src/main.ts'])
-        expect(readSource(MAIN_TS)).toContain("import 'katex/dist/katex.css'")
+        expect(staticReferencingFiles).toEqual([])
+        expect(readSource(MAIN_TS)).not.toContain("import 'katex/dist/katex.css'")
+
+        const dynamicKatexCssImportPattern =
+            /import\(\s*['"][^'"]*katex\/dist\/katex(?:\.min)?\.css['"]\s*\)/
+        const dynamicReferencingFiles = rendererSources
+            .filter((file) => dynamicKatexCssImportPattern.test(readSource(file)))
+            .map((file) => path.relative(ROOT, file).replace(/\\/g, '/'))
+        expect(dynamicReferencingFiles).toEqual([
+            'src/renderer/src/components/Markdown/preview-katex-assets.ts'
+        ])
     })
 
     it('与 styles/preview_font 重复的 assets/atom-one-light.css 死副本已删除（M6 重复资产）', () => {

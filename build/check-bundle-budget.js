@@ -21,6 +21,8 @@
  *   6. locales 语言包仅保留 zh-CN / en-US（electronLanguages 裁剪的回归防线）
  *   7. 首屏初始 JS（入口 script + index.html 中 modulepreload 的本地 JS） ≤ 512 KiB
  *   8. i18n 词典按语言拆包：语言词典不得进入首屏静态闭包，且中英各为独立异步 chunk
+ *   9. KaTeX CSS 按需加载（P1-8 后续）：首屏 CSS 不得含 KaTeX 样式/字体引用，且产物中必须
+ *      存在非首屏的 KaTeX 异步 CSS（含 @font-face，仅含公式文档加载）
  *
  * P1-3 背景（2026-11-20 全量代码扫描）：
  *   index.html 会通过 `<link rel="modulepreload">` 同步加载一个共享 chunk（Vue 运行时 +
@@ -235,6 +237,116 @@ function collectFirstScreenJs(entryFile) {
         components.push({ filePath: assetPath, kind: 'modulepreload' })
     }
     return components
+}
+
+/**
+ * P1-8 后续（KaTeX CSS 按需）：收集 index.html 首屏样式表（`<link rel="stylesheet">` 本地相对路径）。
+ *
+ * 解析口径与 collectFirstScreenJs 一致：先剥 HTML 注释（index.html 注释里出现过
+ * `<link rel="stylesheet">` 的历史说明文本，避免把注释误判为真实标签），只统计 renderer
+ * 产物目录内的本地 .css；外部 URL / 绝对路径不纳入。
+ */
+function collectFirstScreenCss() {
+    const components = []
+    if (!fs.existsSync(RENDERER_INDEX_HTML)) {
+        failures.push(`未找到渲染层 index.html：${relativePath(RENDERER_INDEX_HTML)}`)
+        return components
+    }
+    const html = fs.readFileSync(RENDERER_INDEX_HTML, 'utf-8').replace(/<!--[\s\S]*?-->/g, '')
+    const seenPaths = new Set()
+    for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
+        if (!/\brel\s*=\s*["']stylesheet["']/i.test(tag)) continue
+        const hrefMatch = /\bhref\s*=\s*["']([^"']+)["']/i.exec(tag)
+        if (!hrefMatch) continue
+        const href = hrefMatch[1].trim().split(/[?#]/)[0]
+        if (!/\.css$/i.test(href)) continue
+        if (/^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(href) || path.isAbsolute(href)) continue
+        const cssPath = path.resolve(path.dirname(RENDERER_INDEX_HTML), href)
+        const relativeToRenderer = path.relative(path.dirname(RENDERER_INDEX_HTML), cssPath)
+        if (
+            relativeToRenderer.length === 0 ||
+            relativeToRenderer.startsWith('..') ||
+            path.isAbsolute(relativeToRenderer)
+        ) {
+            continue
+        }
+        if (seenPaths.has(cssPath)) continue
+        if (!fs.existsSync(cssPath)) {
+            failures.push(
+                `index.html 首屏样式表指向的产物缺失：${href}（${relativePath(cssPath)}）`
+            )
+            continue
+        }
+        seenPaths.add(cssPath)
+        components.push({ filePath: cssPath, href })
+    }
+    return components
+}
+
+/** KaTeX 样式选择器标记（`.katex {`，兼容未来压缩为 `.katex{` 的格式） */
+const KATEX_CSS_SELECTOR_MARKER = /\.katex\s*\{/
+/** KaTeX 字体 url() 标记（woff2/woff/ttf 任一格式） */
+const KATEX_FONT_URL_MARKER = /KaTeX_[A-Za-z0-9-]+\.(?:woff2?|ttf)/
+
+/**
+ * P1-8 后续：KaTeX CSS 按需加载回归防线。
+ *
+ * 修复前 `katex/dist/katex.css` 由 main.ts 静态 import，进入首屏 CSS（含约 51 处 KaTeX 字体
+ * url()），纯文本/普通 Markdown 笔记也要下载解析；修复后改为 preview-katex-assets.ts 中的
+ * 动态 import（与 KaTeX JS 同一会话级 Promise，只有含公式文档才加载）。本断言锁定：
+ * 1. 首屏 CSS（index.html 的 stylesheet link）不得包含 KaTeX 样式选择器/字体引用；
+ * 2. 渲染层产物中必须仍存在「非首屏」的 KaTeX 异步 CSS（含 @font-face），防样式被误删。
+ */
+function checkKatexCssOnDemand() {
+    const label = 'KaTeX CSS 按需加载（首屏 CSS 不含 KaTeX 样式/字体）'
+    const firstScreenCss = collectFirstScreenCss()
+    const firstScreenPaths = new Set(firstScreenCss.map((item) => path.resolve(item.filePath)))
+    const leaked = []
+    let firstScreenCssBytes = 0
+    for (const component of firstScreenCss) {
+        const content = fs.readFileSync(component.filePath, 'utf-8')
+        firstScreenCssBytes += fs.statSync(component.filePath).size
+        if (KATEX_CSS_SELECTOR_MARKER.test(content)) {
+            leaked.push(`${path.basename(component.filePath)} 含 KaTeX 样式`)
+        }
+        if (KATEX_FONT_URL_MARKER.test(content)) {
+            leaked.push(`${path.basename(component.filePath)} 含 KaTeX 字体引用`)
+        }
+    }
+    if (firstScreenCss.length === 0) {
+        failures.push(`${label}：未找到首屏样式表（index.html 无 stylesheet link）`)
+    }
+    if (leaked.length > 0) {
+        failures.push(`${label}：${leaked.join('；')}（KaTeX CSS/字体回流首屏）`)
+    }
+
+    const asyncKatexChunks = []
+    if (fs.existsSync(RENDERER_ASSETS_DIR)) {
+        for (const name of fs.readdirSync(RENDERER_ASSETS_DIR)) {
+            if (!/\.css$/i.test(name)) continue
+            const cssPath = path.join(RENDERER_ASSETS_DIR, name)
+            if (firstScreenPaths.has(path.resolve(cssPath))) continue
+            const content = fs.readFileSync(cssPath, 'utf-8')
+            if (KATEX_CSS_SELECTOR_MARKER.test(content) && KATEX_FONT_URL_MARKER.test(content)) {
+                asyncKatexChunks.push(cssPath)
+            }
+        }
+    }
+    if (asyncKatexChunks.length === 0) {
+        failures.push(`${label}：未找到含 KaTeX 样式的非首屏异步 CSS 产物（按需加载单元缺失）`)
+    }
+
+    const pass = leaked.length === 0 && asyncKatexChunks.length > 0 && firstScreenCss.length > 0
+    const asyncText = asyncKatexChunks
+        .map((cssPath) => `${path.basename(cssPath)} ${formatSize(fs.statSync(cssPath).size)}`)
+        .join(', ')
+    return {
+        label,
+        actualText: `首屏 CSS ${formatSize(firstScreenCssBytes)}（KaTeX 0 处）/ 按需 chunk ${asyncText || '缺失'}`,
+        limitText: '首屏 CSS 无 KaTeX 样式/字体，KaTeX CSS 为按需异步 chunk',
+        marginText: pass ? '按需生效' : '回流/缺失',
+        pass
+    }
 }
 
 /**
@@ -475,6 +587,8 @@ function main() {
     results.push(checkFirstScreenJs(firstScreenComponents))
     // P1-3：i18n 词典按语言拆包（词典不得进首屏静态闭包，中英各为按需 chunk）
     results.push(checkI18nDictionarySplit(firstScreenComponents))
+    // P1-8 后续：KaTeX CSS 按需（首屏 CSS 不含 KaTeX 样式/字体，且存在按需异步 CSS 产物）
+    results.push(checkKatexCssOnDemand())
     const shellFile = findSingleFile(
         RENDERER_ASSETS_DIR,
         /^BaiZeNotes-.*\.js$/,

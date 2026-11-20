@@ -8,15 +8,17 @@
 // 第 4 批 4.5（M6）「CSS 单次注入」唯一入口：
 // - 4 个曾被 index.html <link> 与下方 import 双重加载的 CSS（atom-one-light /
 //   normalize / admonition / gridcards）现只在此处引入一次（index.html 的 4 条 link 已删除）；
-// - KaTeX CSS 从 3 处（本文件 + MathTextDialog.vue + MarkdownPreviewComponent.vue）
-//   收敛为仅本文件一处（katex.css 与 katex.min.css 内容等价，保留非 min 版本）；
 // - 引入顺序与收敛前 main.ts 完全一致（级联顺序不变），tests/unit/theme-contract.test.ts
 //   的「CSS 单次注入」静态护栏锁定该契约。
+//
+// P1-8 后续（KaTeX CSS 按需，2026-11-20）：`katex/dist/katex.css` 不再在本入口静态引入
+// （此前它是首屏 CSS 的一部分，无公式文档也要下载解析 KaTeX 样式与字体声明）。现改由
+// preview-katex-assets.ts 在检测到公式时与 KaTeX JS 同一会话级 Promise 动态加载；公式编辑器
+// 懒加载打开时同样走该加载器。首屏 CSS 因此不含任何 KaTeX 选择器/字体引用（预算门禁守护）。
 import './assets/main.css'
 import './styles/theme.css'
 import '@renderer/styles/preview_font/atom-one-light.css'
 import '@renderer/styles/sheet_dialog/normalize.css'
-import 'katex/dist/katex.css'
 import '@renderer/styles/material/admonition.css'
 import '@renderer/styles/material/gridcards.css'
 import '@renderer/styles/material/tableset.css'

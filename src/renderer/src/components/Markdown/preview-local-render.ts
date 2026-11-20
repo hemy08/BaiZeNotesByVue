@@ -36,6 +36,10 @@
  * （见 HasPreviewMathMarkup）时才 `await import('katex')`，无公式文档零加载。
  * 渲染函数保持同步（输出/样式/LRU 缓存行为不变），加载由组件在渲染前 await 完成。
  *
+ * P1-8 后续（KaTeX CSS 按需）：KaTeX 样式表（katex/dist/katex.css，含字体引用）不再由
+ * main.ts 首屏静态引入，改为与 KaTeX JS **同一次**会话级加载（见 loadKatexInstance 与
+ * preview-katex-assets.ts）：只有含公式文档才加载 CSS/字体，无公式文档首屏样式零 KaTeX。
+ *
  * 说明：PlantUML 本地渲染仍保留必要的主进程 IPC（离线 teaVM 渲染依赖 resources 资源），
  * 属于图表渲染资源依赖，不计入 Markdown 文本流水线；mermaid 保持渲染层本地渲染。
  */
@@ -45,13 +49,15 @@ import { LRUCache } from '../../../../shared/utils/lru-cache'
 import { parseDirectoryPath, toFileUrl } from '../../../../shared/utils/path'
 import { escapeHtml } from '../../../../shared/utils/html'
 import { PREVIEW_MAX_FILE_SIZE, PREVIEW_MAX_LINES } from '../../../../shared/constants/limits'
+import { EnsurePreviewKatexCssLoaded } from './preview-katex-assets'
 
 /* ============================ 一、KaTeX 数学公式 ============================
  * 迁移自 src/main/renders/KatexRender.ts（纯字符串变换，无 Node 专属依赖）。
  * 支持：行内 $...$、块级 $$...$$、代码块 ```math/```katex/```latex（代码围栏路径见下方
  * 围栏保护说明；预览管线把围栏块整体保护，故实际渲染以 `$`/`$$` 为主）。
- * PF-02：渲染位置由主进程改为渲染进程，使用渲染层已依赖的 katex 包与已有 katex CSS。
+ * PF-02：渲染位置由主进程改为渲染进程，使用渲染层已依赖的 katex 包。
  * P1-8：katex 包改为按需动态 import（见 EnsurePreviewKatexLoaded），不再静态进入预览 chunk。
+ * P1-8 后续：katex CSS 也从首屏静态样式移出，与 JS 同一会话级加载（preview-katex-assets.ts）。
  */
 
 /**
@@ -94,6 +100,10 @@ export function GetPreviewKatexLoadCount(): number {
 /**
  * P1-8：动态加载 KaTeX 实例（同一会话只发起一次；失败返回 null 并记录告警，不抛异常）。
  * 幂等：并发调用共享同一个 Promise。
+ *
+ * P1-8 后续（KaTeX CSS 按需）：JS 与样式表在**同一次**会话级加载中并行拉起（Promise.all），
+ * 只有含公式文档才会走到这里。样式加载失败不阻断公式渲染（KaTeX 自带 MathML 回退），
+ * 仅记录告警；KaTeX JS 加载失败仍按 FUN-08 降级为原文。
  */
 async function loadKatexInstance(): Promise<KatexInstance | null> {
     if (katexInstance) {
@@ -101,8 +111,8 @@ async function loadKatexInstance(): Promise<KatexInstance | null> {
     }
     if (!katexLoadPromise) {
         katexLoadAttempts += 1
-        katexLoadPromise = import('katex')
-            .then((module) => {
+        katexLoadPromise = Promise.all([import('katex'), EnsurePreviewKatexCssLoaded()])
+            .then(([module]) => {
                 katexInstance = module.default
                 return katexInstance
             })
