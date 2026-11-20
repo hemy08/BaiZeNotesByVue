@@ -47,6 +47,12 @@ files:
     # 不存在旧构建布局的 out/renderer/src 目录，空操作的排除项已移除
     # ET-3：排除 source map（运行时不需要；基线打包前 node_modules 内 *.map 约 100MB）
     - '!**/*.map'
+    # P2-4（2026-11-20 性能扫描：asar 内运行期无用文件裁剪）：jschardet 的 dist/（实测
+    # 4.66 MiB，含 esm/umd/min 等多份浏览器构建）仅服务 package.json 的 `browser` 条件与
+    # jsdelivr/unpkg 字段；主进程 `require('jschardet')` 按 exports 的 require 条件解析到
+    # `build/index.cjs`（Node 端入口），build/ 内无任何 ../dist 引用，渲染层也不 import
+    # jschardet。因此 dist/ 运行期不可达，精确排除；build/（编码探测实现）完整保留。
+    - '!**/node_modules/jschardet/dist/**'
     - '!**/.vscode/*'
     - '!src/*'
     - '!electron.vite.config.{js,ts,mjs,cjs}'
@@ -55,9 +61,14 @@ files:
     - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 extraResources:
     # 运行时配置文件（主进程经 getAppResourcesPath()/config/version.json 读取，见 src/main/utils/utils.ts）
+    # P2-4（2026-11-20：resources 死重裁剪）：只打包运行必需的两份配置——
+    # naviConfig.json 与构建脚本 build/generate-version-config.js 生成的 version.json；
+    # update.config.md（update.json 字段说明文档）、update.json.example（示例）不随包分发。
+    # 说明：update.json 本身是用户按需在安装目录自建的运行时覆盖文件（默认不存在，缺失时
+    # 回退 electron-builder 的 app-update.yml），两文档仅面向部署者，运行期代码不读取。
     - from: 'resources/config'
       to: 'config'
-      filter: ['**/*']
+      filter: ['naviConfig.json', 'version.json']
     # 应用图标（安装器与运行时引用，保留）
     - from: 'resources/icon'
       to: 'icon'
