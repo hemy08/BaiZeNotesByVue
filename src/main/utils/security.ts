@@ -27,6 +27,8 @@ import { appState } from './app-state'
 // 公共接口归位第 2 批：控制字符校验与路径比较纯函数统一引用 shared 真源
 import { hasControlChars } from '../../shared/utils/validate'
 import { isPathWithin, normalizePathForCompare } from '../../shared/utils/path'
+// P3 安全剩余项：READ_HTML 文本扩展名白名单与渲染层 snippets 白名单同源（shared 真源）
+import { READ_HTML_TEXT_EXTENSIONS } from '../../shared/constants/file-extensions'
 // CQ-10：本模块保留 2 处被测试断言参数的 console.warn（openExternalSafely 拒绝/失败），
 // 其余告警统一走 logger（写文件 + 控制台镜像 + WARN 状态栏镜像）。
 import { logger } from './logger'
@@ -660,4 +662,34 @@ export function isSafeFileExtension(input: unknown): boolean {
         return false
     }
     return SAFE_EXTENSION_PATTERN.test(input)
+}
+
+/**
+ * P3 安全剩余项：`FILE.READ_HTML` 文本扩展名白名单判定。
+ *
+ * 背景：该通道历史上只做 Path Guard（受信根/用户选择路径）与固定 UTF-8 读取，
+ * 受信根内任意文件（含 `.exe/.dll` 等二进制、无扩展名文件）都可被读成字符串返回。
+ * 虽然二进制无法逐字节还原，但会扩大「渲染层 XSS → 任意文本外带」的读取面；
+ * 本判定把读取范围收敛到文本/文档扩展名（口径见 shared `READ_HTML_TEXT_EXTENSIONS`，
+ * 与渲染层 snippets 白名单同源）。
+ *
+ * 规则：
+ * - 非字符串/空白串/无扩展名 → false；
+ * - 扩展名按最后一个 `.` 段取小写并整体比对（`a.md` 通过、`a.md.exe` 拒绝，
+ *   `file.html::$DATA` 这类 NTFS ADS 写法同样不命中白名单）；
+ * - 入参先 trim（与 Path Guard 的 normalizeLocalPath 同一容忍口径）。
+ */
+export function isAllowedReadHtmlExtension(input: unknown): boolean {
+    if (typeof input !== 'string') {
+        return false
+    }
+    const trimmed = input.trim()
+    if (trimmed.length === 0) {
+        return false
+    }
+    const extension = path.extname(trimmed).toLowerCase()
+    if (extension.length === 0) {
+        return false
+    }
+    return READ_HTML_TEXT_EXTENSIONS.includes(extension)
 }

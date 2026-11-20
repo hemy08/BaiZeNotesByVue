@@ -1,10 +1,12 @@
 /**
  * utils.ts（MainWindowListenUtilsEvent）单元测试
  * 覆盖：IPC 通道注册、hash/hmac/crypto 工具通道、主题与快速链接查询通道、
- * navi-tab-open-exe 安全三重校验（发送方/路径/受信目录）、
+ * navi-tab-open-exe 安全校验（发送方/路径/扩展名/确认策略）、
+ * READ_HTML 文本扩展名白名单、
  * 文件内容更新、版本信息读取、文件检查与外部链接
  * （P2：THEME.GET_CURRENT_THEME / GET_SEPARATE_EDITOR_THEME / GET_MONACO_THEME /
  * NAVIGATION.KEYDOWN 四个死通道已删除，对应用例同步移除）
+ * （P3 安全剩余项：OPEN_EXE 取消系统目录免确认、READ_HTML 增加文本扩展名白名单）
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as path from 'path'
@@ -91,8 +93,10 @@ const configMocks = vi.hoisted(() => ({
 
 import {
     MainWindowListenUtilsEvent,
-    sanitizeRsaBits,
-    getExecutableExtensionDecision
+    getSensitiveSystemExecutableDirs,
+    getExecutableExtensionDecision,
+    isSensitiveSystemExecutablePath,
+    sanitizeRsaBits
 } from '../../src/main/utils/utils'
 import {
     setQuickLinksProvider,
@@ -648,12 +652,32 @@ describe('MainWindowListenUtilsEvent', () => {
             expect(ipcMocks.dialogShowMessageBox).not.toHaveBeenCalled()
         })
 
-        it('should open trusted executables without confirmation', async () => {
+        // ============ P3-2：取消系统目录免确认（一律用户确认） ============
+
+        it('should require confirmation for executables inside system directories (P3-2)', async () => {
             const handler = ipcMocks.on.get('baize:navigation:open-exe')!
             const exe = trustedExe()
+            ipcMocks.dialogShowMessageBox.mockResolvedValue({ response: 1 })
             await handler(makeEvent(mainWindow.webContents), exe)
+            // 系统敏感目录（本用例 ENV 把 %SystemRoot%/%ProgramFiles% 指到 TRUSTED_DIR）
+            // 不再免确认；用户确认后仍可打开（保留快速链接能力）
+            expect(ipcMocks.dialogShowMessageBox).toHaveBeenCalledTimes(1)
+            const options = ipcMocks.dialogShowMessageBox.mock.calls[0][1]
+            expect(options.buttons).toEqual(['取消', '确认打开'])
+            // 系统敏感目录使用强化文案，区别于普通非受信目录
+            expect(options.detail).toContain('系统敏感目录')
             expect(ipcMocks.shellOpenPath).toHaveBeenCalledWith(exe)
-            expect(ipcMocks.dialogShowMessageBox).not.toHaveBeenCalled()
+        })
+
+        it('should not open system-directory executables when the user cancels (P3-2)', async () => {
+            const exe = trustedExe()
+            ipcMocks.dialogShowMessageBox.mockResolvedValue({ response: 0 })
+            await ipcMocks.on.get('baize:navigation:open-exe')!(
+                makeEvent(mainWindow.webContents),
+                exe
+            )
+            expect(ipcMocks.dialogShowMessageBox).toHaveBeenCalledTimes(1)
+            expect(ipcMocks.shellOpenPath).not.toHaveBeenCalled()
         })
 
         it('should ask for confirmation for untrusted executables and open on confirm', async () => {
@@ -782,6 +806,69 @@ describe('MainWindowListenUtilsEvent', () => {
         })
     })
 
+    // P3-2：系统敏感目录判定（仅用于确认文案/审计日志，不再作为免确认依据）
+    describe('sensitive system executable directories (P3-2)', () => {
+        const winEnv: NodeJS.ProcessEnv = {
+            SystemRoot: 'C:\\Windows',
+            windir: 'C:\\Windows',
+            ProgramFiles: 'C:\\Program Files',
+            'ProgramFiles(x86)': 'C:\\Program Files (x86)',
+            ProgramW6432: 'C:\\Program Files',
+            ProgramData: 'C:\\ProgramData'
+        }
+
+        it.runIf(process.platform === 'win32')(
+            'should detect Windows system directories (System32 / Program Files)',
+            () => {
+                const dirs = getSensitiveSystemExecutableDirs('win32', winEnv)
+                // 同值环境变量（SystemRoot/windir、ProgramFiles/ProgramW6432）去重
+                expect(dirs.filter((dir) => dir === 'C:\\Windows')).toHaveLength(1)
+                expect(dirs).toContain('C:\\Program Files')
+                expect(dirs).toContain('C:\\Program Files (x86)')
+                expect(dirs).toContain('C:\\ProgramData')
+
+                for (const target of [
+                    'C:\\Windows\\System32\\cmd.exe',
+                    'C:\\Windows\\SysWOW64\\rundll32.exe',
+                    'C:\\Program Files\\app\\tool.exe',
+                    'C:\\Program Files (x86)\\app\\tool.exe'
+                ]) {
+                    expect(isSensitiveSystemExecutablePath(target, 'win32', winEnv), target).toBe(
+                        true
+                    )
+                }
+                // 前缀相似目录不误伤、普通用户目录不命中
+                for (const target of [
+                    'C:\\notes\\tool.exe',
+                    'D:\\Projects\\app\\run.exe',
+                    'C:\\Program FilesEvil\\tool.exe'
+                ]) {
+                    expect(isSensitiveSystemExecutablePath(target, 'win32', winEnv), target).toBe(
+                        false
+                    )
+                }
+            }
+        )
+
+        it('should detect macOS and Linux system directories', () => {
+            expect(getSensitiveSystemExecutableDirs('darwin', {})).toContain('/System')
+            for (const target of ['/System/Library/CoreServices/foo.exe', '/usr/bin/tool.exe']) {
+                expect(isSensitiveSystemExecutablePath(target, 'darwin', {}), target).toBe(true)
+            }
+            expect(isSensitiveSystemExecutablePath('/Users/me/tool.exe', 'darwin', {})).toBe(false)
+
+            expect(getSensitiveSystemExecutableDirs('linux', {})).toContain('/usr')
+            expect(isSensitiveSystemExecutablePath('/usr/bin/tool.exe', 'linux', {})).toBe(true)
+            expect(isSensitiveSystemExecutablePath('/home/me/tool.exe', 'linux', {})).toBe(false)
+        })
+
+        it('should reject non-string / empty inputs', () => {
+            for (const input of [undefined, null, 42, {}, '', '   ']) {
+                expect(isSensitiveSystemExecutablePath(input), String(input)).toBe(false)
+            }
+        })
+    })
+
     describe('file and editor channels', () => {
         it('should call OpenSelectFile for the open-select-file channel', async () => {
             const message = { name: 'a.md', path: '/tmp/a.md', type: 'file', content: '' }
@@ -887,6 +974,49 @@ describe('MainWindowListenUtilsEvent', () => {
                 htmlFile
             )
             expect(content).toBe('<html>白泽</html>')
+        })
+
+        // P3 安全剩余项：READ_HTML 文本扩展名白名单（Path Guard 之后再收窄，拒绝二进制/可执行）
+        it('should read allowed text/document extensions (P3 READ_HTML whitelist)', async () => {
+            const handler = ipcMocks.handle.get('baize:file:read-html')!
+            const cases: ReadonlyArray<readonly [string, string]> = [
+                ['note.md', '# 白泽'],
+                ['data.json', '{"a":1}'],
+                ['vector.svg', '<svg></svg>'],
+                ['LOG.TXT', 'log']
+            ]
+            for (const [fileName, text] of cases) {
+                const file = path.join(UNTRUSTED_DIR, fileName)
+                fs.writeFileSync(file, text, 'utf-8')
+                await expect(
+                    handler(makeEvent(mainWindow.webContents), file),
+                    fileName
+                ).resolves.toBe(text)
+            }
+        })
+
+        it('should reject non-text extensions even inside trusted roots (P3 READ_HTML whitelist)', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const handler = ipcMocks.handle.get('baize:file:read-html')!
+            for (const fileName of [
+                'setup.exe',
+                'lib.dll',
+                'report.pdf',
+                'payload.bin',
+                'README',
+                'page.html.exe'
+            ]) {
+                const file = path.join(UNTRUSTED_DIR, fileName)
+                fs.writeFileSync(file, 'secret-binary-content', 'utf-8')
+                // 非文本扩展名在读取前即被拒绝，返回与 Path Guard 一致的受控错误
+                await expect(
+                    handler(makeEvent(mainWindow.webContents), file),
+                    fileName
+                ).rejects.toThrow('没有读取权限')
+            }
+            // 拒绝路径有安全告警日志（便于审计渲染层异常读取尝试）
+            expect(consoleWarn).toHaveBeenCalled()
+            consoleWarn.mockRestore()
         })
 
         it('should report whether a file exists', async () => {

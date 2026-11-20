@@ -8,7 +8,8 @@
  *    `..` 解析后仍在根内放行、逃逸拒绝，符号链接/junction 逃逸（可创建时）拒绝；
  * 3. registerTrustedPath / registerTrustedDirectory / setTrustedHistoryProvider 的登记语义；
  * 4. isSafeFileName / isSafeFileExtension 文件名与扩展名白名单；
- * 5. assertSafePath / PathAccessDeniedError 的受控异常语义。
+ * 5. assertSafePath / PathAccessDeniedError 的受控异常语义；
+ * 6. P3 安全剩余项：isAllowedReadHtmlExtension（READ_HTML 文本扩展名白名单）。
  *
  * 说明：security.ts 不依赖 electron app 模块；这里仅 mock electron 的 shell（模块顶部导入）。
  * 允许根使用系统临时目录（os.tmpdir），白名单外路径使用用户主目录下临时目录（测试后清理）。
@@ -28,6 +29,7 @@ import {
     assertSafePath,
     clearTrustedPathsForTesting,
     getTrustedPathsForTesting,
+    isAllowedReadHtmlExtension,
     isPathAllowed,
     isSafeFileExtension,
     isSafeFileName,
@@ -403,5 +405,65 @@ describe('isSafeShowItemInFolderPath (AS-8)', () => {
     it('should allow a dialog-registered exact file (user explicitly chose it)', () => {
         registerTrustedPath(outsideFile)
         expect(isSafeShowItemInFolderPath(outsideFile)).toBe(true)
+    })
+})
+
+// P3 安全剩余项：READ_HTML 文本扩展名白名单（文本/文档可读，二进制/可执行/无扩展名拒绝）
+describe('isAllowedReadHtmlExtension (P3: READ_HTML 白名单)', () => {
+    it('should allow text and document extensions (case-insensitive)', () => {
+        for (const file of [
+            'page.html',
+            'PAGE.HTML',
+            'index.htm',
+            'note.md',
+            'note.markdown',
+            'readme.txt',
+            'data.json',
+            'doc.xml',
+            'vector.svg',
+            'table.csv',
+            'config.yaml',
+            'config.yml',
+            'app.log',
+            'main.ts',
+            'style.css',
+            path.join('C:', 'notes', 'page.html'),
+            '/notes/page.md'
+        ]) {
+            expect(isAllowedReadHtmlExtension(file), file).toBe(true)
+        }
+    })
+
+    it('should reject binary / executable / unknown extensions', () => {
+        for (const file of [
+            'setup.exe',
+            'lib.dll',
+            'binary.bin',
+            'report.pdf',
+            'arch.zip',
+            'image.png',
+            'font.woff2',
+            'note.md.bak',
+            'README',
+            '.gitignore'
+        ]) {
+            expect(isAllowedReadHtmlExtension(file), file).toBe(false)
+        }
+    })
+
+    it('should reject executable / NTFS ADS suffix tricks', () => {
+        for (const file of ['secret.txt.exe', 'page.html::$DATA', 'a.md:zone', 'x.']) {
+            expect(isAllowedReadHtmlExtension(file), file).toBe(false)
+        }
+    })
+
+    it('should reject non-string and empty inputs', () => {
+        for (const input of [undefined, null, 42, {}, [], '   ']) {
+            expect(isAllowedReadHtmlExtension(input), String(input)).toBe(false)
+        }
+    })
+
+    it('should trim surrounding whitespace like the path guard', () => {
+        expect(isAllowedReadHtmlExtension('  page.html  ')).toBe(true)
     })
 })

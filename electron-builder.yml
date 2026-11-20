@@ -5,6 +5,24 @@ asar: true
 # 2026-11-18（遗留清单 #14）：显式声明压缩策略（默认 normal；maximum 进一步压缩安装包，
 # 首次解压稍慢但体积更小；如需更快安装可改为 normal/store）
 compression: maximum
+# P3-4（2026-11-20 安全剩余项）：Electron Fuses 加固（electron-builder 26 的 electronFuses
+# 直接透传 @electron/fuses；在 afterPack 阶段、签名前翻转打包产物中的 fuse 位）。
+# 本批启用 3 项低风险且可用 E2E 验证的组合：
+# - runAsNode: false——禁止 ELECTRON_RUN_AS_NODE 把应用二进制当 Node 运行
+#   （本地攻击者/恶意快捷方式无法借此执行任意 JS；应用运行期无 process.fork 依赖）；
+# - onlyLoadAppFromAsar: true——只从 resources/app.asar 加载应用代码，跳过 app/ 与
+#   default_app.asar 回退，阻止旁加载未校验代码；
+# - enableEmbeddedAsarIntegrityValidation: true——校验 app.asar 完整性（Electron Windows
+#   支持见 >=30，本项目 43.8.12；electron-builder 会写入 PE 资源 INTEGRITY/ELECTRONASAR）。
+# 后续评估项（本批不开启，原因见 out/tool-results/fix-security2.md）：
+# - enableNodeCliInspectArguments: false——会禁用 --inspect，Playwright 打包启动 E2E 依赖
+#   `--inspect=0` 连接主进程，需先改造 E2E 启动方式；
+# - enableNodeOptionsEnvironmentVariable: false——企业代理自定义 CA（NODE_EXTRA_CA_CERTS）等场景可能受影响；
+# - grantFileProtocolExtraPrivileges: false——应用以 file:// 加载渲染层，禁用会影响本地资源/Worker 加载，需专项验证。
+electronFuses:
+    runAsNode: false
+    onlyLoadAppFromAsar: true
+    enableEmbeddedAsarIntegrityValidation: true
 # P0 安装包瘦身（2026-11-19）：Electron 运行时自带 55 个 locale 语言包
 # （win-unpacked/locales/*.pak，实测合计约 46.6 MiB），NSIS/portable 打包时全部随包分发。
 # 应用 UI 词典只有 zh-CN / en-US 两套（src/shared/i18n/messages），其余 53 种语言

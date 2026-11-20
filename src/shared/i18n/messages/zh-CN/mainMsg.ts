@@ -146,6 +146,10 @@ export default {
         openExeTitle: '安全确认',
         openExeMessage: '即将打开可执行程序',
         openExeDetail: '该程序不在系统受信目录中：\n{path}\n\n请确认来源可信后再继续。',
+        // P3-2：系统敏感目录（%SystemRoot%\System32、Program Files、macOS /System 等）
+        // 不再免确认，使用更强提示；普通目录仍用 openExeDetail。
+        openExeDetailSystem:
+            '该程序位于系统敏感目录（如 Windows 系统目录、Program Files 或系统程序目录）：\n{path}\n\n系统目录中的程序通常由操作系统或软件安装器管理。请确认来源可信后再继续。',
         openExeConfirm: '确认打开'
     },
     update: {

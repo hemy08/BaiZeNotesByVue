@@ -12,7 +12,7 @@ import { shell, dialog } from 'electron'
 // 主题/快速链接读取由 main/index.ts 启动早期注入（见 utils/providers.ts）
 import { getQuickLinksFromProvider, getThemeApiFromProvider } from './providers'
 import { appState } from './app-state'
-import { isPathAllowed } from './security'
+import { isAllowedReadHtmlExtension, isPathAllowed } from './security'
 import { getAppResourcesPath } from './app-paths'
 import { ipcListenerManager } from '../ipc/ipc-listener-manager'
 // P1/N-05：IPC 发送方授权校验（文件系统/外部链接等高风险通道仅接受主窗口发送方）
@@ -123,17 +123,33 @@ function requireCryptoData(value: unknown): CryptoData {
     return data as unknown as CryptoData
 }
 
-// ARC-01：受信可执行目录列表（系统程序目录，防大小写/.. 混用绕过）。
-// AS-7：用户可写的 %LOCALAPPDATA%\Programs 不再视为"免确认"受信目录（见
-// getUserWritableExecutableDirs），其内程序一律走确认框。
-function getTrustedExecutableDirs(): string[] {
-    const candidates = [
-        process.env.ProgramFiles,
-        process.env['ProgramFiles(x86)'],
-        process.env.ProgramW6432,
-        process.env.SystemRoot
-    ]
-    return candidates.filter((dir): dir is string => !!dir && path.isAbsolute(dir))
+// P3-2：系统敏感目录清单（系统程序目录，防大小写/`..` 混用绕过）。
+// 历史实现（ARC-01）把系统程序目录视为「免确认受信目录」；AS-7 把用户可写的
+// %LOCALAPPDATA%\Programs 移出免确认；本批（P3-2）进一步取消所有系统目录免确认
+// ——该清单只用于确认框强化文案与审计日志（见 isSensitiveSystemExecutablePath）。
+export function getSensitiveSystemExecutableDirs(
+    platform: NodeJS.Platform = process.platform,
+    env: NodeJS.ProcessEnv = process.env
+): string[] {
+    if (platform === 'win32') {
+        const candidates = [
+            env.SystemRoot,
+            env.windir,
+            env.ProgramFiles,
+            env['ProgramFiles(x86)'],
+            env.ProgramW6432,
+            env.ProgramData
+        ]
+        return [
+            ...new Set(candidates.filter((dir): dir is string => !!dir && path.isAbsolute(dir)))
+        ]
+    }
+    if (platform === 'darwin') {
+        // macOS：系统卷与系统级程序目录（/Applications 为用户安装目录，不在此列）
+        return ['/System', '/usr', '/bin', '/sbin', '/Library']
+    }
+    // 其他 POSIX（Linux 等）：系统级程序/配置目录
+    return ['/usr', '/bin', '/sbin', '/lib', '/lib64', '/etc']
 }
 
 /**
@@ -197,8 +213,26 @@ function isUnderDirectories(filePath: string, directories: string[]): boolean {
     })
 }
 
-function isTrustedExecutablePath(filePath: string): boolean {
-    return isUnderDirectories(filePath, getTrustedExecutableDirs())
+/**
+ * P3-2：目标是否位于系统敏感目录（Windows/System32、Program Files、macOS /System 等）。
+ * 仅用于确认框强化文案与审计日志：OPEN_EXE 已改为「一律需用户显式确认」。
+ *
+ * @param input 渲染层传入的路径（任意类型，非法/空串返回 false）
+ * @param platform 目标平台（默认 process.platform；显式传入便于跨平台单测矩阵）
+ * @param env 环境变量（默认 process.env；单测可注入）
+ */
+export function isSensitiveSystemExecutablePath(
+    input: unknown,
+    platform: NodeJS.Platform = process.platform,
+    env: NodeJS.ProcessEnv = process.env
+): boolean {
+    if (typeof input !== 'string' || input.trim().length === 0) {
+        return false
+    }
+    return isUnderDirectories(
+        path.resolve(input.trim()),
+        getSensitiveSystemExecutableDirs(platform, env)
+    )
 }
 
 /** AS-7：是否位于用户可写目录（用于确认提示/审计日志，不再免确认） */
@@ -451,12 +485,13 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         GLOBAL_IPC_COMPONENT_ID
     )
 
-    // ARC-01：navi-tab-open-exe 为"能力型"通道（执行任意本地程序），必须多重校验：
+    // ARC-01 / P3-2：navi-tab-open-exe 为"能力型"通道（执行任意本地程序），必须多重校验：
     // 1) 发送方必须是主窗口（远程网页/对话框窗口一律拒绝）；
     // 2) 路径必须是绝对路径、存在且为普通文件（AS-7 增加 isFile 校验，排除目录/设备）；
-    // 3) AS-7 扩展名白名单：仅 .exe/.com 可在系统受信目录内免确认；脚本/快捷方式/安装包
-    //    （.bat/.cmd/.lnk/.msi/.ps1 等）一律弹确认；白名单外扩展名直接拒绝；
-    // 4) 系统受信目录内直接放行；用户可写的 %LOCALAPPDATA%\Programs 与非受信目录必须确认。
+    // 3) AS-7 扩展名白名单：仅 .exe/.com 与脚本/快捷方式/安装包类扩展名（.bat/.cmd/.lnk/
+    //    .msi/.ps1 等）允许进入确认流程；白名单外扩展名直接拒绝；
+    // 4) P3-2：无论目标位于哪个目录，一律弹主进程级确认（系统敏感目录/用户可写目录使用
+    //    强化文案与审计日志）——渲染层取得脚本执行能力后不能无提示拉起可执行文件。
     ipcListenerManager.registerOnce(
         IPC.NAVIGATION.OPEN_EXE,
         async (event: Electron.IpcMainEvent, exePath: string) => {
@@ -499,35 +534,40 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
                     return
                 }
 
-                // 4) 受信目录校验：系统程序目录内且免确认扩展名（.exe/.com）直接放行；
-                //    其余情况（非受信目录、用户可写目录、脚本/快捷方式类扩展名）需用户显式确认。
+                // 4) P3-2：执行通道一律需用户显式确认（取消「系统目录内 .exe/.com 免确认」）。
+                //    系统敏感目录（Windows/System32、Program Files、macOS /System 等）与用户
+                //    可写目录使用强化文案/审计日志：这些目录内的系统工具同样可能被同权限本地
+                //    程序替换或滥用，渲染层取得脚本执行能力后不应能无提示拉起任意可执行文件。
+                const sensitiveSystemPath = isSensitiveSystemExecutablePath(exePath)
                 const userWritable = isUserWritableExecutablePath(exePath)
-                const trustedSystemPath = isTrustedExecutablePath(exePath)
-                const requiresConfirm =
-                    !trustedSystemPath || userWritable || extensionDecision !== 'direct'
-                if (requiresConfirm) {
-                    if (userWritable) {
-                        logger.warn(
-                            '[Security] navi-tab-open-exe：目标位于用户可写目录，需用户确认',
-                            exePath
-                        )
-                    }
-                    const { response } = await dialog.showMessageBox(mainWindow, {
-                        type: 'warning',
-                        buttons: [
-                            tMain('mainMsg.dialog.cancel'),
-                            tMain('mainMsg.security.openExeConfirm')
-                        ],
-                        defaultId: 0,
-                        cancelId: 0,
-                        noLink: true,
-                        title: tMain('mainMsg.security.openExeTitle'),
-                        message: tMain('mainMsg.security.openExeMessage'),
-                        detail: tMain('mainMsg.security.openExeDetail', { path: exePath })
-                    })
-                    if (response !== 1) {
-                        return
-                    }
+                if (sensitiveSystemPath) {
+                    logger.warn(
+                        '[Security] navi-tab-open-exe：目标位于系统敏感目录，需用户确认',
+                        exePath
+                    )
+                } else if (userWritable) {
+                    logger.warn(
+                        '[Security] navi-tab-open-exe：目标位于用户可写目录，需用户确认',
+                        exePath
+                    )
+                }
+                const { response } = await dialog.showMessageBox(mainWindow, {
+                    type: 'warning',
+                    buttons: [
+                        tMain('mainMsg.dialog.cancel'),
+                        tMain('mainMsg.security.openExeConfirm')
+                    ],
+                    defaultId: 0,
+                    cancelId: 0,
+                    noLink: true,
+                    title: tMain('mainMsg.security.openExeTitle'),
+                    message: tMain('mainMsg.security.openExeMessage'),
+                    detail: sensitiveSystemPath
+                        ? tMain('mainMsg.security.openExeDetailSystem', { path: exePath })
+                        : tMain('mainMsg.security.openExeDetail', { path: exePath })
+                })
+                if (response !== 1) {
+                    return
                 }
 
                 await shell.openPath(exePath)
@@ -675,10 +715,13 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
         GLOBAL_IPC_COMPONENT_ID
     )
 
-    // 读取 HTML 文件内容
+    // 读取文本/HTML 文件内容
     // P1/N-05：可读取任意路径文件内容，仅主窗口可信（handle 拒绝返回错误对象）。
     // P1-AS-1：路径必须位于受信范围（工作区/临时目录/用户选择过的路径），
     // 防止渲染层借该通道读取任意文件（如 SSH 密钥、浏览器配置）。
+    // P3 安全剩余项：受信范围内再收窄到文本/文档扩展名白名单（`.html/.htm/.md/.txt/.json`
+    // 等，口径见 shared `READ_HTML_TEXT_EXTENSIONS`），拒绝 .exe/.dll/.pdf 等二进制与无扩展名
+    // 文件——本通道唯一消费方是 HTML 查看器与 Markdown snippets，二者均只读取文本。
     ipcListenerManager.registerHandleOnce(
         IPC.FILE.READ_HTML,
         withSenderCheck(
@@ -690,6 +733,12 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
                         IPC.FILE.READ_HTML,
                         filePath,
                         'mainMsg.status.openFileFailed'
+                    )
+                    throw new Error(tMain('mainMsg.file.readError.eacces'))
+                }
+                if (!isAllowedReadHtmlExtension(filePath)) {
+                    logger.warn(
+                        `[Security] 已拒绝通过 READ_HTML 读取非文本扩展名文件：${String(filePath)}`
                     )
                     throw new Error(tMain('mainMsg.file.readError.eacces'))
                 }

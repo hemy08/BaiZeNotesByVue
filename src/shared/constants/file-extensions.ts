@@ -129,3 +129,25 @@ export const SNIPPET_SUPPORTED_EXTENSIONS: readonly string[] = [
     '.diff',
     '.patch'
 ]
+
+/* ==================== 五、READ_HTML 文本读取白名单 ==================== */
+
+/**
+ * 允许经 `FILE.READ_HTML`（`baize:file:read-html`）按 UTF-8 读取的文本/文档扩展名
+ * （44 项，小写带点）。
+ *
+ * 进程 / 用途：主进程 / READ_HTML handler 的扩展名白名单（安全剩余项 P3 加固：
+ * 该通道此前只做 Path Guard，受信根内任意文件（含二进制）都可被读成字符串，
+ * 若渲染层出现 XSS 可借道读取 SSH 私钥之外的各类非文本文件/探测路径）。
+ *
+ * 口径：
+ * - 与 `SNIPPET_SUPPORTED_EXTENSIONS`（Markdown snippets `--8<--` 异步展开）同源——
+ *   snippets 的渲染层扩展名白名单是 READ_HTML 唯一「任意文本」消费方，二者必须同口径，
+ *   否则主进程会拒绝渲染层已放行的片段文件；
+ * - 额外补 `.svg`：SVG 为文本/XML 文档（非二进制），HTML 查看器/文本预览可安全按字符串读取；
+ * - 白名单外的一律拒绝（`.exe/.dll/.pdf/.bin` 等二进制、无扩展名文件均不读取）。
+ */
+export const READ_HTML_TEXT_EXTENSIONS: readonly string[] = [
+    ...SNIPPET_SUPPORTED_EXTENSIONS,
+    '.svg'
+]

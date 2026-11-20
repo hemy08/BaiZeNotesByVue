@@ -148,6 +148,10 @@ export default {
         openExeMessage: 'About to open an executable',
         openExeDetail:
             'This program is not in a trusted system directory:\n{path}\n\nContinue only if you trust its source.',
+        // P3-2: executables in sensitive system directories are no longer opened without
+        // confirmation; they use this stronger warning instead of openExeDetail.
+        openExeDetailSystem:
+            'This program is in a sensitive system directory (for example the Windows directory, Program Files, or a system program directory):\n{path}\n\nSystem directories are usually managed by the operating system or software installers. Continue only if you trust its source.',
         openExeConfirm: 'Open anyway'
     },
     update: {
