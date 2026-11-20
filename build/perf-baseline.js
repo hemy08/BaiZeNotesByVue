@@ -988,7 +988,7 @@ async function runPackagedBaseline(options) {
 async function runOnce(options, electronExecutable) {
     const profile = createTempProfile()
     const sandbox = createConfigSandbox(profile)
-    let launchResult = null
+    let launchResult
     try {
         sandbox.seed()
         seedUserData(profile)

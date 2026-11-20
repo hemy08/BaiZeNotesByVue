@@ -45,7 +45,7 @@ function randomInt(min: number, max: number, random: RandomSource): number {
         // 无偏拒绝采样（与 jyshare 6680 页一致）
         const limit = Math.floor(4294967296 / range) * range
         const buf = new Uint32Array(1)
-        let v = 0
+        let v: number
         do {
             globalThis.crypto.getRandomValues(buf)
             v = buf[0]

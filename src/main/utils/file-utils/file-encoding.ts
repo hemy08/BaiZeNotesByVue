@@ -240,7 +240,8 @@ async function StreamDecodeFile(
         throw new Error(
             tMain('mainMsg.file.readLargeFileFailed', {
                 message: (err as Error)?.message || String(err)
-            })
+            }),
+            { cause: err }
         )
     }
 }
@@ -316,7 +317,7 @@ export async function ReadFileContentAdaptive(
             return { content, encoding, streamed: true }
         } catch (error) {
             logger.error('流式读取大文件失败', filePath, error)
-            throw new Error(DescribeFileReadError(error))
+            throw new Error(DescribeFileReadError(error), { cause: error })
         }
     }
     try {
@@ -325,7 +326,7 @@ export async function ReadFileContentAdaptive(
         return { content, encoding, streamed: false }
     } catch (error) {
         logger.error('读取文件失败', filePath, error)
-        throw new Error(DescribeFileReadError(error))
+        throw new Error(DescribeFileReadError(error), { cause: error })
     }
 }
 

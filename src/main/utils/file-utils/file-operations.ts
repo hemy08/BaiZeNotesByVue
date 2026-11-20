@@ -313,7 +313,7 @@ export async function CreateFileFolder(
             // 文件不存在，继续创建
         }
         const lastIndex = name.lastIndexOf('.')
-        let fileContent = ''
+        let fileContent: string
         if (lastIndex === -1) {
             fileContent = '# ' + name + '\r\n'
         } else {
@@ -799,7 +799,7 @@ async function RenameFileFolder(name: string, newName: string, isFile: boolean):
         return
     }
     const dirPath = ParseDirectoryPath(name)
-    let newFullPath = ''
+    let newFullPath: string
     if (!isFile) {
         newFullPath = path.join(dirPath, newName)
     } else {

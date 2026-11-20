@@ -733,7 +733,7 @@ export function MainWindowListenUtilsEvent(mainWindow: Electron.BrowserWindow) {
                     logger.warn(`[Security] 已拒绝通过 READ_BINARY 读取非 PDF 文件：${filePath}`)
                     throw new Error(tMain('mainMsg.file.readError.eacces'))
                 }
-                let fileSize = 0
+                let fileSize: number
                 try {
                     fileSize = (await fs.promises.stat(filePath)).size
                 } catch (error) {

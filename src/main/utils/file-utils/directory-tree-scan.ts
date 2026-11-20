@@ -287,7 +287,7 @@ export async function planIncrementalRescan(
             ignoredChanges += 1
             continue
         }
-        let stats: { isDirectory(): boolean } | null = null
+        let stats: { isDirectory(): boolean } | null
         try {
             stats = await fs.lstat(absolutePath)
         } catch {

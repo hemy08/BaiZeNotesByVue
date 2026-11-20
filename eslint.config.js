@@ -74,21 +74,9 @@ module.exports = [
     },
     // 关闭与 Prettier 冲突的格式规则（对应旧 @vue/eslint-config-prettier，但不开 prettier/prettier）
     prettierSkipFormatting,
-    /**
-     * ESLint 10 新增 recommended 规则基线（2026-11-20 B1 依赖升级）。
-     *
-     * eslint 9 → 10 后 recommended 新增 no-useless-assignment / preserve-caught-error，
-     * 存量代码命中 25 处（15 文件）。按「先升级依赖、再分批清债」策略先降为 warn：
-     * warn 不阻断 CI/本地门禁（eslint 退出码 0），但会在输出中提示；后续批次逐条修复
-     * 后恢复为 error。详见《依赖升级与代码签名排期》B1 记录。
-     */
-    {
-        name: 'eslint10-new-rules-baseline',
-        rules: {
-            'no-useless-assignment': 'warn',
-            'preserve-caught-error': 'warn'
-        }
-    },
+    // 2026-11-20：ESLint 10 新增 recommended 规则（no-useless-assignment /
+    // preserve-caught-error）存量已全部清债，原「降为 warn」的基线 override 已移除，
+    // 两条规则恢复为 recommended 的 error 级别。
     /**
      * P1 存量清理：CommonJS 脚本的 require 豁免收敛为配置级约定。
      *

@@ -82,7 +82,7 @@ const ulidTextWidth = computed(() => {
 })
 
 const ulidTextStyle = computed(() => {
-    let textHeight = 0
+    let textHeight: number
     if (activeFormatterStyle.value === 'RAW') {
         textHeight = ulidNumber.value * 20 + 40
     } else {

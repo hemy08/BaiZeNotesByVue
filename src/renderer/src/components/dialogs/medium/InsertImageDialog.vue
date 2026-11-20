@@ -191,7 +191,7 @@ function handleCancel() {
 }
 
 function handleInsert() {
-    let src = ''
+    let src: string
     if (activeTab.value === 'local') {
         // P1-FE-03：优先使用主进程复制到 images/ 后的相对引用，回退为选中图片的绝对路径
         src = localImageSrc.value || localFilePath.value

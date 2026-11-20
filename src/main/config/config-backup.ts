@@ -181,7 +181,7 @@ export function listConfigBackups(): ConfigBackupInfo[] {
     if (!fs.existsSync(root)) {
         return []
     }
-    let entries: fs.Dirent[] = []
+    let entries: fs.Dirent[]
     try {
         entries = fs.readdirSync(root, { withFileTypes: true })
     } catch (error) {

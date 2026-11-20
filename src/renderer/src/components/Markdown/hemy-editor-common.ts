@@ -36,7 +36,7 @@ function ConvertContextToHeader(
     // 编写插入的内容，获取整行内容，如果行首是#开头的，替换掉
     const headers = ['# ', '## ', '### ', '#### ', '##### ', '###### ']
     const insertHead = headers[parseInt(header.charAt(1)) - 1] || ''
-    let selectionText = ''
+    let selectionText: string
     // 前面有#的，替换掉
     if (lineContent.trim().startsWith('#') && lineContent.length > 1) {
         // 如果文字目标lever和当前level一样，去掉前面的#
@@ -91,7 +91,7 @@ function updateSelection(
     prefix: string,
     suffix: string
 ) {
-    let newText = ''
+    let newText: string
     if (!selection || selection.isEmpty()) return
     const { startLineNumber, startColumn, endLineNumber, endColumn } = selection
     // 选择的部分没有*，向前后增加三个字符
@@ -129,7 +129,7 @@ function editorOnSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor) {
     let selectRange: monaco.Range = selection
     const selectedText = model.getValueInRange(selection)
     // 选择的部分就有*
-    let newText = ''
+    let newText: string
     if (selectedText.startsWith('***') && selectedText.endsWith('***')) {
         newText = selectedText.substring(1, selectedText.length - 1)
     } else if (selectedText.startsWith('**') && selectedText.endsWith('**')) {
@@ -173,9 +173,8 @@ function editorOnUpdateFontStyle(
     const selectRange: monaco.Range = selection
     const selectedText = model.getValueInRange(selection)
     // 选择的部分就有*
-    let newText = ''
     if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix)) {
-        newText = selectedText.substring(prefix.length, selectedText.length - suffix.length)
+        const newText = selectedText.substring(prefix.length, selectedText.length - suffix.length)
         replaceSelection(editor, newText, false, selectRange)
     } else {
         updateSelection(editor, selection, model, prefix, suffix)

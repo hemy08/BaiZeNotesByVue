@@ -93,7 +93,7 @@ function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string
         if (!isBlock && latex.includes('\n')) {
             return match
         }
-        let html = ''
+        let html: string
         try {
             html = renderKatexCached(latex)
         } catch {
@@ -113,7 +113,7 @@ function renderMathInText(text: string, regex: RegExp, isBlock: boolean): string
  * @returns HTML 字符串
  */
 function katexRenderToString(text: string): string {
-    let html = ''
+    let html: string
     try {
         html = renderKatexCached(text)
     } catch {

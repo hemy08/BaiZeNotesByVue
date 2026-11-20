@@ -34,7 +34,7 @@
                             :style="titleBarStyle"
                         >
                             <slot name="title">
-                                <span class="title-text" :id="titleId" :style="titleTextStyle">
+                                <span :id="titleId" class="title-text" :style="titleTextStyle">
                                     {{ title }}
                                 </span>
                             </slot>

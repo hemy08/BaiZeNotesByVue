@@ -126,9 +126,9 @@ export function hsvToRgb(hsv: HsvColor): RgbColor {
     const q = v * (1 - f * s)
     const t = v * (1 - (1 - f) * s)
 
-    let r = 0
-    let g = 0
-    let b = 0
+    let r: number
+    let g: number
+    let b: number
     switch (i % 6) {
         case 0:
             r = v
@@ -199,9 +199,9 @@ export function hslToRgb(hsl: HslColor): RgbColor {
     const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
     const m = l - c / 2
 
-    let r = 0
-    let g = 0
-    let b = 0
+    let r: number
+    let g: number
+    let b: number
     if (h < 60) {
         r = c
         g = x

@@ -150,7 +150,7 @@ export function compileRegex(pattern: string, flags: string, input: string): Reg
     try {
         return new RegExp(pattern, flags)
     } catch (error) {
-        throw new Error(describeSyntaxError(error))
+        throw new Error(describeSyntaxError(error), { cause: error })
     }
 }
 

@@ -169,7 +169,7 @@ function checkTarget(sourceFile, rawTarget) {
     if (queryIndex !== -1) target = target.slice(0, queryIndex)
     if (!target) return { ok: true }
 
-    let decoded = target
+    let decoded
     try {
         decoded = decodeURIComponent(target)
     } catch {

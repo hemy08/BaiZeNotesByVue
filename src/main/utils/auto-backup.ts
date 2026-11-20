@@ -202,7 +202,7 @@ export async function listAutoBackups(): Promise<AutoBackupInfo[]> {
     if (!(await fs.pathExists(root))) {
         return []
     }
-    let entries: fs.Dirent[] = []
+    let entries: fs.Dirent[]
     try {
         entries = await fs.readdir(root, { withFileTypes: true })
     } catch (error) {
@@ -309,7 +309,7 @@ async function collectWorkspaceMarkdownFiles(root: string): Promise<BackupCopyIt
     const backupRoot = path.resolve(getAutoBackupRoot())
 
     const walk = async (dir: string): Promise<void> => {
-        let entries: fs.Dirent[] = []
+        let entries: fs.Dirent[]
         try {
             entries = await fs.readdir(dir, { withFileTypes: true })
         } catch (error) {
