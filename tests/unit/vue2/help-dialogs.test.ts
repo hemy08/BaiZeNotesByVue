@@ -8,6 +8,9 @@ import TechStackDialog from '@renderer/components/dialogs/help/TechStackDialog.v
 import HelpContactUsDialog from '@renderer/components/dialogs/help/HelpContactUsDialog.vue'
 import { IPC } from '../../../src/shared/ipc-channels'
 import type { QuickLinkItem } from '../../../src/shared/types'
+// P2 功能错误处理修复：保存失败的用户可见提示断言
+import { getConfigStore } from '@renderer/common/useConfigStore'
+import { t } from '@renderer/common/i18n'
 
 // P2 死代码清理：UpdateLogDialog / MermaidRenderFrame（C-07 隐藏窗口链路）/
 // OnlineWebPage / Versions 四个渲染层死组件已删除，对应用例同步移除。
@@ -268,6 +271,43 @@ describe('QuickLinkSettingDialog', () => {
         expect(wrapper.emitted('close')).toBeUndefined()
         expect(wrapper.emitted('apply')).toBeUndefined()
         expect(consoleError).toHaveBeenCalled()
+        // P2 功能错误处理修复：失败不再静默——全局消息对话框给出错误提示
+        const store = getConfigStore()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.quickLink.saveFailedTitle')
+        )
+        store.hideDialog('message')
+    })
+
+    // P2 功能错误处理修复：invoke 异常（IPC 不可用等）同样弹错误提示并保留对话框
+    it('reports an error dialog when saving quick links throws', async () => {
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+        invoke.mockImplementation((channel: string) => {
+            if (channel === IPC.QUICK_LINKS.GET) {
+                return Promise.resolve(makeMainQuickLinks())
+            }
+            if (channel === IPC.QUICK_LINKS.SAVE) {
+                return Promise.reject(new Error('IPC 通道不可用'))
+            }
+            return Promise.resolve(undefined)
+        })
+        const wrapper = mount(QuickLinkSettingDialog, {
+            ...dialogMountOptions,
+            props: { visible: true }
+        })
+        await flushPromises()
+
+        await wrapper.find('.btn-apply').trigger('click')
+        await flushPromises()
+
+        expect(wrapper.emitted('apply')).toBeUndefined()
+        expect(consoleError).toHaveBeenCalled()
+        const store = getConfigStore()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.message).toContain('IPC 通道不可用')
+        store.hideDialog('message')
     })
 
     it('restores the initial links when cancelling', async () => {

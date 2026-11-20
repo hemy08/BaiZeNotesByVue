@@ -53,6 +53,8 @@ vi.mock('@renderer/components/Markdown/MarkdownPreviewComponent.vue', async () =
 import MdMonacoEdit from '@renderer/components/Markdown/MarkdownMonacoEditor.vue'
 import MdPreview from '@renderer/components/Markdown/MarkdownPreviewComponent.vue'
 import MarkdownEditComponent from '@renderer/components/Markdown/MarkdownEditComponent.vue'
+import { getConfigStore } from '@renderer/common/useConfigStore'
+import { t } from '@renderer/common/i18n'
 import { IPC } from '../../../src/shared/ipc-channels'
 
 type IpcMock = {
@@ -283,5 +285,107 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
         getIpcListener(IPC.EDITOR.FLUSH_CONTENT)()
         expect(sentPayloads(IPC.FILE.UPDATE_SELECT_FILE_CONTENT)).toEqual([])
         expect(ipcRenderer.send).toHaveBeenLastCalledWith(IPC.EDITOR.FLUSH_CONTENT_DONE)
+    })
+
+    // =====================================================================================
+    // P2 功能错误处理修复（F-02）：编码菜单失败不再只写 logger——弹出可重试错误对话框，
+    // 重试按钮再次执行同一编码操作（此前用户点完「编码 → 转换」后界面无任何反馈）。
+    // =====================================================================================
+    /** 清空全局消息框状态（store 单例跨用例复用） */
+    function resetMessageDialog(): ReturnType<typeof getConfigStore> {
+        const store = getConfigStore()
+        store.hideDialog('message')
+        store.clearMessageDialogRetry()
+        return store
+    }
+
+    /** 等待失败处理链（invoke reject → catch → 弹框）完成（假定时器下不用 flushPromises） */
+    async function flushMicrotasks(): Promise<void> {
+        await Promise.resolve()
+        await Promise.resolve()
+        await nextTick()
+    }
+
+    it('should report a retryable error when converting encoding fails (P2)', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        await mountEditor()
+        const store = resetMessageDialog()
+
+        ipcRenderer.invoke.mockRejectedValueOnce(
+            new Error(
+                "Error invoking remote method 'baize:file:convert-save-encoding': Error: 文件只读"
+            )
+        )
+        getIpcListener(IPC.FILE.CONVERT_TO_ENCODING)({}, 'gbk')
+        await flushMicrotasks()
+
+        // 用户可见提示：错误对话框（标题/正文走 i18n，含目标编码与归一化后的错误详情）
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.encoding.convertFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain('gbk')
+        expect(store.dialogs.messageDialog.message).toContain('文件只读')
+        expect(errorSpy).toHaveBeenCalledWith('转换编码保存失败:', expect.any(Error))
+        // 失败后可重试：消息框挂载重试动作
+        expect(store.messageDialogRetry.value).not.toBeNull()
+
+        // 点击重试：重新 invoke 同一编码转换；成功后关闭错误框
+        ipcRenderer.invoke.mockResolvedValueOnce(undefined)
+        store.runMessageDialogRetry()
+        await flushMicrotasks()
+        expect(ipcRenderer.invoke).toHaveBeenLastCalledWith(IPC.FILE.CONVERT_SAVE_ENCODING, 'gbk')
+        expect(store.dialogs.messageDialog.visible).toBe(false)
+
+        wrapper?.unmount()
+        wrapper = null
+        resetMessageDialog()
+    })
+
+    it('should report a retryable error when reopening with encoding fails (P2)', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        await mountEditor()
+        const store = resetMessageDialog()
+
+        ipcRenderer.invoke.mockRejectedValueOnce(new Error('未打开任何文件'))
+        getIpcListener(IPC.FILE.OPEN_WITH_ENCODING)({}, 'utf-16le')
+        await flushMicrotasks()
+
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.encoding.reopenFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain('utf-16le')
+        expect(store.dialogs.messageDialog.message).toContain('未打开任何文件')
+        expect(errorSpy).toHaveBeenCalledWith('按指定编码重新打开失败:', expect.any(Error))
+        expect(store.messageDialogRetry.value).not.toBeNull()
+
+        // 重试：再次 invoke 同一编码重开通道
+        ipcRenderer.invoke.mockResolvedValueOnce(undefined)
+        store.runMessageDialogRetry()
+        await flushMicrotasks()
+        expect(ipcRenderer.invoke).toHaveBeenLastCalledWith(
+            IPC.FILE.REOPEN_WITH_ENCODING,
+            'utf-16le'
+        )
+        expect(store.dialogs.messageDialog.visible).toBe(false)
+
+        wrapper?.unmount()
+        wrapper = null
+        resetMessageDialog()
+    })
+
+    it('should not show any error dialog when the encoding action succeeds (P2)', async () => {
+        await mountEditor()
+        const store = resetMessageDialog()
+
+        getIpcListener(IPC.FILE.CONVERT_TO_ENCODING)({}, 'utf-8')
+        await flushMicrotasks()
+
+        expect(ipcRenderer.invoke).toHaveBeenCalledWith(IPC.FILE.CONVERT_SAVE_ENCODING, 'utf-8')
+        expect(store.dialogs.messageDialog.visible).toBe(false)
+        expect(store.messageDialogRetry.value).toBeNull()
     })
 })

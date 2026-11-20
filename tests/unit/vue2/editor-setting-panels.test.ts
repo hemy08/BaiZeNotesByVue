@@ -9,7 +9,8 @@
  * 3. useEditorSettingForm：
  *    - loadSettings：config:read('editor') 逐字段类型守卫合并 + config:read('system') 自动保存字段，
  *      加载后记录初始值供取消恢复；
- *    - saveSettings：写 editor 配置并返回提交快照（fire-and-forget，写入异常只记日志）；
+ *    - saveSettings：await 写 editor 配置并返回提交快照；失败弹错误提示并返回 null
+ *      （P2 功能错误处理修复：原 fire-and-forget 失败仅记日志）；
  *    - resetSettings：恢复打开时加载值。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
@@ -25,6 +26,12 @@ import {
     type EditorDialogSettings
 } from '@renderer/components/dialogs/complex/editor-setting/model'
 import { useEditorSettingForm } from '@renderer/components/dialogs/complex/editor-setting/useEditorSettingForm'
+// P2 功能错误处理修复：保存失败断言（全局消息对话框 + 错误文案走 i18n）
+import { getConfigStore } from '@renderer/common/useConfigStore'
+import { t } from '@renderer/common/i18n'
+
+/** 全局配置 store 单例（断言保存失败的可见提示） */
+const store = getConfigStore()
 
 /** 构造草稿：默认值 + 局部覆盖（与组件默认值真源一致） */
 function draft(overrides: Partial<EditorDialogSettings> = {}): EditorDialogSettings {
@@ -200,20 +207,47 @@ describe('useEditorSettingForm（共享草稿 composable）', () => {
         expect(form.settings.autoSave).toBe(true)
     })
 
-    it('saveSettings：写 editor 配置并返回提交快照；写入异常只记日志不抛出', async () => {
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    it('saveSettings：await 写 editor 配置并返回提交快照（P2 后不再 fire-and-forget）', async () => {
         const form = mountForm()
         form.settings.fontSize = 20
 
-        configWrite.mockRejectedValueOnce(new Error('写入失败'))
-        const snapshot = form.saveSettings()
-        await Promise.resolve()
+        const snapshot = await form.saveSettings()
 
+        expect(configWrite).toHaveBeenCalledTimes(1)
         expect(configWrite).toHaveBeenCalledWith('editor', snapshot)
-        expect(snapshot.fontSize).toBe(20)
-        expect(errorSpy).toHaveBeenCalledWith('保存编辑器设置失败:', expect.any(Error))
+        expect(snapshot?.fontSize).toBe(20)
         // 快照与草稿解耦：修改快照不影响草稿
-        snapshot.fontSize = 12
+        expect(snapshot).not.toBeNull()
+        ;(snapshot as EditorDialogSettings).fontSize = 12
         expect(form.settings.fontSize).toBe(20)
+    })
+
+    // P2 功能错误处理修复：保存失败（主进程返回 false / invoke 异常）弹错误提示并返回 null，
+    // 壳层据此保持对话框打开（修复前 fire-and-forget，失败仅写日志、用户无感知）。
+    it('saveSettings：写入失败时弹错误提示并返回 null（返回 false 与异常两种形态）', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const form = mountForm()
+
+        // 形态 1：主进程返回 false（AS-4 校验拒绝/磁盘失败，不抛异常）
+        configWrite.mockResolvedValueOnce(false)
+        const failedSnapshot = await form.saveSettings()
+        expect(failedSnapshot).toBeNull()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.editorSetting.saveFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain(
+            t('workspace.config.writeReturnedFalse')
+        )
+        store.hideDialog('message')
+
+        // 形态 2：invoke 异常（IPC 不可用）
+        configWrite.mockRejectedValueOnce(new Error('写入失败'))
+        const thrownSnapshot = await form.saveSettings()
+        expect(thrownSnapshot).toBeNull()
+        expect(errorSpy).toHaveBeenCalledWith('保存编辑器设置失败:', expect.any(Error))
+        expect(store.dialogs.messageDialog.message).toContain('写入失败')
+        store.hideDialog('message')
     })
 })

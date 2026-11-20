@@ -82,3 +82,44 @@
 .setting-input:focus {
     border-color: var(--accent-color);
 }
+
+/* P2 功能错误处理修复：主题页签的加载态 / 空态 / 错误态（含「重试」按钮）。
+   全部使用主题变量，暗色/多主题下视觉一致；不使用硬编码色值。 */
+.panel-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--theme-secondary-text-color, #666666);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.panel-state-text {
+    margin: 0;
+    max-width: 520px;
+    word-break: break-word;
+}
+
+.panel-state-error .panel-state-text {
+    color: var(--theme-accent-color, #764ba2);
+}
+
+.panel-retry-btn {
+    padding: 6px 20px;
+    border: 1px solid var(--theme-border-color, #e0d4f0);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--theme-text-color, #2d2d2d);
+    background: var(--theme-card-background, #ffffff);
+    transition: all 0.2s;
+}
+
+.panel-retry-btn:hover {
+    border-color: var(--theme-accent-color, #764ba2);
+    color: var(--theme-accent-color, #764ba2);
+}

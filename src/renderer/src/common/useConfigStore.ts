@@ -176,6 +176,16 @@ const quickLinksConfig = ref<QuickLinksConfig>({ ...defaultQuickLinksConfig })
 const dialogs = reactive<DialogState>({ ...defaultDialogState })
 const isLoading = ref(false)
 
+/**
+ * P2 功能错误处理修复：消息对话框的「重试」动作（非 DialogState 字段）。
+ *
+ * 说明：DialogState 的 messageDialog 只允许 title/type/message 三个 data 字段
+ * （tests/unit/dialog-contract.test.ts 静态护栏锁定），因此可重试动作单独以模块级
+ * ref 保存，不进 DialogState；MessageDialog 通过 #footer-extra 插槽渲染重试按钮
+ * （BaiZeNotes.vue 接线）。新消息 / 关闭消息框时清空，避免旧重试挂到新消息上。
+ */
+const messageDialogRetry = ref<(() => void | Promise<void>) | null>(null)
+
 // MEM-15：按配置名（configName）分离防抖定时器，
 // 避免不同配置连续保存时互相取消、仅最后一种配置落盘。
 const saveTimers = new Map<string, NodeJS.Timeout>()
@@ -376,6 +386,8 @@ export type DialogName = keyof DialogState | MessageDialogType
 function showDialog(dialogName: DialogName, data?: Record<string, unknown>) {
     // 如果是消息对话框类型（'message' 或具体的消息类型），更新 messageDialog
     if (MESSAGE_DIALOG_TYPES.includes(dialogName as MessageDialogType)) {
+        // P2：新消息一律清空上一条的重试动作（showRetryableError 会在本函数返回后重新挂载）
+        messageDialogRetry.value = null
         // 如果 dialogName 是 'message'，从 data.type 读取具体类型
         // 如果 dialogName 是具体类型（如 'success'），直接使用
         const messageType = dialogName === 'message' ? data?.type || 'success' : dialogName
@@ -400,6 +412,8 @@ function hideDialog(dialogName: DialogName) {
     // 如果是消息对话框类型（'message' 或具体的消息类型），隐藏 messageDialog
     if (MESSAGE_DIALOG_TYPES.includes(dialogName as MessageDialogType)) {
         dialogs.messageDialog.visible = false
+        // P2：消息框关闭后清空重试动作，避免下次普通消息误显示「重试」按钮
+        messageDialogRetry.value = null
     } else {
         // 其他对话框类型，正常处理
         const name = dialogName as keyof DialogState
@@ -439,6 +453,47 @@ function showInfo(title: string, message: string) {
 
 function showFailed(title: string, message: string) {
     showDialog('failed', { title, message })
+}
+
+/**
+ * P2 功能错误处理修复：展示带「重试」按钮的错误消息框（可恢复失败的统一入口）。
+ *
+ * 使用方：编码转换 / 按编码重开等「失败后可原样重试」的用户操作（见 common/action-feedback.ts）。
+ * 重试动作不进 DialogState（data 契约锁定 title/type/message），由模块级 ref 保存；
+ * 关闭消息框或展示新消息时自动清空。
+ */
+function showRetryableError(
+    title: string,
+    message: string,
+    retry: () => void | Promise<void>
+): void {
+    showDialog('error', { title, message })
+    messageDialogRetry.value = retry
+}
+
+/**
+ * P2：执行消息对话框的重试动作：关闭消息框 → 清空动作 → 重新执行原操作。
+ * 重试动作抛错/拒绝只记日志，不产生未捕获拒绝（失败反馈由原操作自身的 helper 负责）。
+ */
+function runMessageDialogRetry(): void {
+    const retry = messageDialogRetry.value
+    messageDialogRetry.value = null
+    hideDialog('message')
+    if (!retry) {
+        return
+    }
+    try {
+        void Promise.resolve(retry()).catch((error: unknown) => {
+            logger.error('[ConfigStore] 消息对话框重试动作失败:', error)
+        })
+    } catch (error) {
+        logger.error('[ConfigStore] 消息对话框重试动作失败:', error)
+    }
+}
+
+/** P2：清空消息对话框的重试动作（普通关闭路径调用，避免残留） */
+function clearMessageDialogRetry(): void {
+    messageDialogRetry.value = null
 }
 
 // FE-27/P2 死代码清理历史记录：原 showRename(currentPath) 全仓无调用方（父组件也未绑定
@@ -481,7 +536,12 @@ export const useConfigStore = () => ({
     showError,
     showWarning,
     showInfo,
-    showFailed
+    showFailed,
+    // P2 功能错误处理修复：可重试消息框（编码转换/重开等可恢复失败）
+    messageDialogRetry,
+    showRetryableError,
+    runMessageDialogRetry,
+    clearMessageDialogRetry
 })
 
 // 创建全局单例

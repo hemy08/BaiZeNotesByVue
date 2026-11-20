@@ -42,6 +42,8 @@ function resetStoreState() {
     dialogs.messageDialog.type = 'success'
     dialogs.messageDialog.title = ''
     dialogs.messageDialog.message = ''
+    // P2 功能错误处理修复：模块级重试动作不属于 DialogState，需单独清理
+    store.clearMessageDialogRetry()
     dialogs.importOption.visible = false
     dialogs.importOption.content = undefined
 
@@ -216,6 +218,53 @@ describe('useConfigStore dialogs', () => {
         store.showSuccess('t', 'm')
         store.hideDialog('success')
         expect(store.dialogs.messageDialog.visible).toBe(false)
+    })
+
+    // P2 功能错误处理修复：可重试消息框（编码转换/按编码重开失败）——重试动作单独保存在
+    // 模块级 ref（不进 DialogState data 契约），重试时关闭消息框并重新执行原操作。
+    it('should show a retryable error message and run the retry action', () => {
+        const store = getConfigStore()
+        const retry = vi.fn()
+        store.showRetryableError('编码转换失败', '可重试的消息', retry)
+
+        expect(store.dialogs.messageDialog).toEqual({
+            visible: true,
+            type: 'error',
+            title: '编码转换失败',
+            message: '可重试的消息'
+        })
+        expect(store.messageDialogRetry.value).not.toBeNull()
+
+        store.runMessageDialogRetry()
+        expect(retry).toHaveBeenCalledTimes(1)
+        expect(store.dialogs.messageDialog.visible).toBe(false)
+        expect(store.messageDialogRetry.value).toBeNull()
+    })
+
+    it('should clear a pending retry action on new messages and on close', () => {
+        const store = getConfigStore()
+        store.showRetryableError('失败', '可重试', vi.fn())
+        store.showSuccess('成功', '完成')
+        expect(store.messageDialogRetry.value).toBeNull()
+
+        store.showRetryableError('失败2', '可重试2', vi.fn())
+        store.hideDialog('message')
+        expect(store.messageDialogRetry.value).toBeNull()
+    })
+
+    it('should log instead of throwing when the retry action rejects', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const store = getConfigStore()
+        store.showRetryableError('失败', '可重试', () => Promise.reject(new Error('重试失败')))
+
+        store.runMessageDialogRetry()
+        await Promise.resolve()
+        await Promise.resolve()
+
+        expect(errorSpy).toHaveBeenCalledWith(
+            '[ConfigStore] 消息对话框重试动作失败:',
+            expect.any(Error)
+        )
     })
 
     it('should clear the import option content when hiding it', () => {

@@ -22,6 +22,9 @@ import {
     createDefaultSystemDialogSettings,
     type SystemDialogSettings
 } from '@renderer/components/dialogs/complex/system-setting/model'
+// P2 功能错误处理修复：保存失败断言（全局消息对话框 + 错误文案走 i18n）
+import { getConfigStore } from '@renderer/common/useConfigStore'
+import { t } from '@renderer/common/i18n'
 
 const dialogMountOptions = { global: { stubs: { teleport: true } } }
 
@@ -418,21 +421,40 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         wrapper.unmount()
     })
 
-    // 校验失败契约（渲染层）：主进程 config:write 经 AS-4 config-schema 校验拒绝时返回
-    // false（而非抛异常）。拆分前渲染层即为「不等待、不拦截」的写入语义，此处锁定该契约，
-    // 防止拆分时误加 渲染层校验拦截 导致「点确定关不掉 / 不 emit apply」的行为变化。
-    it('保存被主进程拒绝（write 返回 false）时：不抛异常、仍按既有契约 emit apply/close', async () => {
+    // 校验失败契约（渲染层，P2 功能错误处理修复后更新）：主进程 config:write 经 AS-4
+    // config-schema 校验拒绝时返回 false（而非抛异常）。修复前为 fire-and-forget——
+    // 仍然 emit apply/close，用户以为已保存；修复后 **await 结果并弹错误提示**，
+    // 不 emit apply、不关闭对话框（草稿不丢，用户可修正后原地重试）。
+    it('保存被主进程拒绝（write 返回 false）时：弹错误提示且不 emit apply/close，恢复后可重试', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
         configWrite.mockResolvedValue(false)
         const wrapper = mountDialog()
+        await flushPromises()
 
         await wrapper.find('.btn-apply').trigger('click')
         await flushPromises()
-        expect(wrapper.emitted('apply')).toHaveLength(1)
+        // 保存尝试发生，但失败后不按「已保存」处理
+        expect(configWrite).toHaveBeenCalledTimes(1)
+        expect(wrapper.emitted('apply')).toBeUndefined()
         expect(wrapper.emitted('close')).toBeUndefined()
+        // 失败有用户可见提示（全局消息对话框，标题为系统设置保存失败）
+        const store = getConfigStore()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.systemSetting.saveFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain(
+            t('workspace.config.writeReturnedFalse')
+        )
+        expect(errorSpy).toHaveBeenCalled()
+        store.hideDialog('message')
 
+        // 失败后对话框保持打开；主进程恢复后「确定」可正常保存并关闭（可重试）
+        configWrite.mockResolvedValue(true)
         await wrapper.find('.btn-confirm').trigger('click')
         await flushPromises()
-        expect(wrapper.emitted('apply')).toHaveLength(2)
+        expect(wrapper.emitted('apply')).toHaveLength(1)
         expect(wrapper.emitted('close')).toHaveLength(1)
 
         wrapper.unmount()

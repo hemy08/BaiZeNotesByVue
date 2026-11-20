@@ -9,9 +9,11 @@
  * - `settings`：草稿（响应式，唯一一份，4 个 panel 通过 `:settings` + `@update` 读写）；
  * - `loadSettings()`：`config:read('system')` → 逐字段合并 → 语言归一化 → 记录初始值，
  *   随后刷新「外观-应用主题」只读显示名（独立 try/catch，失败不影响设置加载）；
- * - `saveSettings()`：写 `config:write('system', 快照)` 并返回提交快照，由壳层 emit apply；
- *   写入为 fire-and-forget（不 await、不拦截）——主进程 AS-4 校验拒绝时返回 false 的既有
- *   契约不变；保存前仅做诊断校验（越界 warn 日志，不阻断、不改值）；
+ * - `saveSettings()`：写 `config:write('system', 快照)` 并返回提交快照（null 表示保存失败），
+ *   由壳层 emit apply；P2 功能错误处理修复后改为 **await 写结果**：主进程 AS-4 校验拒绝时
+ *   返回 false、IPC 异常时 reject，两种失败都经统一 helper 弹错误对话框并返回 null
+ *   （壳层据此不关闭对话框、不 emit apply，用户可原地重试）；保存前仅做诊断校验
+ *   （越界 warn 日志，不阻断、不改值）；
  * - `resetSettings()`：取消时恢复打开时加载值（不写配置）；
  * - `isDirty`：草稿与初始值的差异（仅供契约测试 / 后续 UI 使用，当前不绑定视觉）。
  *
@@ -25,6 +27,7 @@ import { IPC } from '../../../../../../shared/ipc-channels'
 import type { AppThemeConfig, SystemSetting, ThemeListItem } from '../../../../../../shared/types'
 import { t } from '../../../../common/i18n'
 import { logger } from '../../../../common/logger'
+import { describeActionError, reportActionFailure } from '../../../../common/action-feedback'
 import {
     createDefaultSystemDialogSettings,
     isSystemSettingsDirty,
@@ -44,8 +47,8 @@ export interface SystemSettingForm {
     isDirty: ComputedRef<boolean>
     /** 打开对话框时加载主进程配置 + 主题显示名 */
     loadSettings: () => Promise<void>
-    /** 应用草稿：写 system 配置并返回提交快照（不关闭对话框） */
-    saveSettings: () => SystemDialogSettings
+    /** 应用草稿：写 system 配置并返回提交快照；保存失败时弹错误提示并返回 null */
+    saveSettings: () => Promise<SystemDialogSettings | null>
     /** 取消：恢复打开时加载值（不写配置） */
     resetSettings: () => void
 }
@@ -111,7 +114,7 @@ export function useSystemSettingForm(): SystemSettingForm {
         await loadThemeDisplay()
     }
 
-    function saveSettings(): SystemDialogSettings {
+    async function saveSettings(): Promise<SystemDialogSettings | null> {
         const snapshot: SystemDialogSettings = { ...settings.value }
         // 设置页拆分 P0：保存前诊断校验（越界/未知枚举只记 warn，不阻断保存、不改值；
         // 强制校验仍由主进程 AS-4 config-schema 承担，行为与拆分前一致）。
@@ -122,9 +125,32 @@ export function useSystemSettingForm(): SystemSettingForm {
                 issues
             )
         }
-        // 与原实现一致：fire-and-forget，不 await 写结果（主进程拒绝时返回 false 不抛异常）
-        window.api.config.write('system', snapshot)
-        return snapshot
+        // P2 功能错误处理修复：主进程 write 失败有两种形态——返回 false（AS-4 校验拒绝/
+        // 磁盘失败，不抛异常）与 invoke 异常（IPC 不可用等）。两者此前都静默（fire-and-forget），
+        // 用户以为设置已保存、重启后丢失且无提示。现在 await 结果并统一弹错误对话框，
+        // 返回 null 让壳层保持对话框打开（草稿不丢）供用户重试。
+        try {
+            const saved = await window.api.config.write('system', snapshot)
+            if (saved === false) {
+                reportActionFailure({
+                    title: t('dialogRenderer.systemSetting.saveFailedTitle'),
+                    message: t('dialogRenderer.systemSetting.saveFailedMessage', {
+                        error: t('workspace.config.writeReturnedFalse')
+                    })
+                })
+                return null
+            }
+            return snapshot
+        } catch (error) {
+            logger.error('保存系统设置失败:', error)
+            reportActionFailure({
+                title: t('dialogRenderer.systemSetting.saveFailedTitle'),
+                message: t('dialogRenderer.systemSetting.saveFailedMessage', {
+                    error: describeActionError(error, t('common.unknown'))
+                })
+            })
+            return null
+        }
     }
 
     function resetSettings(): void {

@@ -69,7 +69,7 @@ function lazyDialog(loader: () => Promise<VueModule>) {
                 default: false
             }
         },
-        setup(props, { attrs }) {
+        setup(props, { attrs, slots }) {
             // 打开过一次后保持挂载，避免每次打开都重建对话框内部状态（保持原常驻语义）
             const everOpened = ref(props.visible)
             watch(
@@ -84,7 +84,9 @@ function lazyDialog(loader: () => Promise<VueModule>) {
                 if (!everOpened.value) {
                     return null
                 }
-                return h(AsyncDialog, { ...attrs, visible: props.visible })
+                // P2 功能错误处理修复：透传父级插槽——MessageDialog 的 #footer-extra
+                // （可重试错误的「重试」按钮）经本包装层传入，此前被丢弃导致按钮不渲染。
+                return h(AsyncDialog, { ...attrs, visible: props.visible }, slots)
             }
         }
     })

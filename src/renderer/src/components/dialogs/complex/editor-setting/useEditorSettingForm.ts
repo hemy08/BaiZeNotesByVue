@@ -11,14 +11,17 @@
  *   `config:read('editor')`（shared RendererEditorConfig 反算字段）按草稿字段类型守卫合并，
  *   `config:read('system')` 回填自动保存开关/间隔；读取失败保持默认值、不阻塞打开，
  *   加载完成后记录初始值供「取消」恢复；
- * - `saveSettings()`：写 `config:write('editor', 快照)`（fire-and-forget，失败仅记日志），
- *   返回提交快照供壳层 emit('apply')；
+ * - `saveSettings()`：写 `config:write('editor', 快照)` 并返回提交快照（null 表示保存失败），
+ *   由壳层 emit('apply')；P2 功能错误处理修复后改为 await 写结果并统一提示失败
+ *   （返回 false / invoke 异常都弹错误对话框，壳层据此保持对话框打开供用户重试）；
  * - `resetSettings()`：取消时恢复打开时加载值（不写配置）。
  */
 import { reactive, ref } from 'vue'
 // 第 2 批契约重构：主进程 'editor' 配置读取形状以 shared RendererEditorConfig 为唯一真源
 import type { RendererEditorConfig } from '../../../../../../shared/types'
 import { logger } from '../../../../common/logger'
+import { t } from '../../../../common/i18n'
+import { describeActionError, reportActionFailure } from '../../../../common/action-feedback'
 import { createDefaultEditorDialogSettings, type EditorDialogSettings } from './model'
 
 /** useEditorSettingForm 的返回值（壳层与测试共用同一份契约） */
@@ -27,8 +30,8 @@ export interface EditorSettingForm {
     settings: EditorDialogSettings
     /** 打开对话框时加载主进程配置并记录初始值 */
     loadSettings: () => Promise<void>
-    /** 应用草稿：写 editor 配置并返回提交快照（不关闭对话框） */
-    saveSettings: () => EditorDialogSettings
+    /** 应用草稿：写 editor 配置并返回提交快照；保存失败时弹错误提示并返回 null */
+    saveSettings: () => Promise<EditorDialogSettings | null>
     /** 取消：恢复打开时加载值（不写配置） */
     resetSettings: () => void
 }
@@ -85,19 +88,34 @@ export function useEditorSettingForm(): EditorSettingForm {
         initialSettings.value = { ...settings }
     }
 
-    function saveSettings(): EditorDialogSettings {
+    async function saveSettings(): Promise<EditorDialogSettings | null> {
         const snapshot: EditorDialogSettings = { ...settings }
         // P1-FE-05：主进程 config-manager 将该 payload 映射进 Monaco 唯一真源
         // editorSetting，并广播 INIT_SETTING 让当前编辑器立即生效。
+        // P2 功能错误处理修复：同系统设置——await 写结果，失败（返回 false / invoke 异常）
+        // 统一弹错误对话框并返回 null，不再静默丢设置。
         try {
-            const pending = window.api.config.write('editor', snapshot)
-            if (pending && typeof pending.catch === 'function') {
-                pending.catch((error: unknown) => logger.error('保存编辑器设置失败:', error))
+            const saved = await window.api.config.write('editor', snapshot)
+            if (saved === false) {
+                reportActionFailure({
+                    title: t('dialogRenderer.editorSetting.saveFailedTitle'),
+                    message: t('dialogRenderer.editorSetting.saveFailedMessage', {
+                        error: t('workspace.config.writeReturnedFalse')
+                    })
+                })
+                return null
             }
+            return snapshot
         } catch (error) {
             logger.error('保存编辑器设置失败:', error)
+            reportActionFailure({
+                title: t('dialogRenderer.editorSetting.saveFailedTitle'),
+                message: t('dialogRenderer.editorSetting.saveFailedMessage', {
+                    error: describeActionError(error, t('common.unknown'))
+                })
+            })
+            return null
         }
-        return snapshot
     }
 
     function resetSettings(): void {

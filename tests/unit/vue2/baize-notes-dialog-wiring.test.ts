@@ -85,6 +85,10 @@ beforeEach(() => {
     const store = getConfigStore()
     store.hideDialog('fontSelect')
     store.hideDialog('insertImage')
+    // P2 功能错误处理修复：消息对话框（含可重试动作）与导入选项状态复位
+    store.hideDialog('message')
+    store.clearMessageDialogRetry()
+    store.hideDialog('importOption')
     // 结构优化第 2 批 2.1：主进程请求打开的 Vue 对话框状态复位
     store.hideDialog('shortcutKeys')
     store.hideDialog('updateLog')
@@ -416,5 +420,75 @@ describe('结构优化第 2 批 2.1：OPEN_VUE_DIALOG 事件链路与确认动�
             true
         )
         expect(getConfigStore().dialogs.confirmDelete.visible).toBe(false)
+    })
+})
+
+/**
+ * P2 功能错误处理修复：消息对话框重试按钮接线 + 导入落盘失败反馈。
+ *
+ * - 可重试错误（编码转换/按编码重开失败）经 store.showRetryableError 打开消息框时，
+ *   底部显示「重试」按钮；点击后关闭消息框并重新执行原操作；
+ * - 普通消息框不显示重试按钮；
+ * - 导入「新建文件」invoke 异常不再成为未捕获 Promise 拒绝，而是弹错误对话框。
+ */
+describe('P2 功能错误处理：重试按钮接线与导入失败提示', () => {
+    it('renders the retry button for retryable errors and re-runs the retry action', async () => {
+        const shell = await mountShell()
+        const retry = vi.fn()
+        const store = getConfigStore()
+
+        store.showRetryableError('编码转换失败', '无法转换为 gbk 编码', retry)
+        await flushPromises()
+
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.message).toContain('gbk')
+        // 消息框为懒加载对话框（defineAsyncComponent）：等待真实动态 import 完成后再断言
+        await vi.waitFor(
+            () => {
+                expect(shell.find('.btn-message-retry').exists()).toBe(true)
+            },
+            { timeout: 3000, interval: 10 }
+        )
+        expect(shell.find('.message-text').text()).toContain('gbk')
+
+        await shell.find('.btn-message-retry').trigger('click')
+        await flushPromises()
+
+        expect(retry).toHaveBeenCalledTimes(1)
+        expect(store.dialogs.messageDialog.visible).toBe(false)
+        expect(store.messageDialogRetry.value).toBeNull()
+        // 普通消息（无重试动作）不显示重试按钮
+        store.showError('失败', '普通错误消息')
+        await flushPromises()
+        expect(shell.find('.btn-message-retry').exists()).toBe(false)
+        store.hideDialog('message')
+    })
+
+    it('reports an error dialog instead of an unhandled rejection when importing a new file fails', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const shell = await mountShell()
+        invokeMock.mockImplementation(async (channel: string) => {
+            if (channel === IPC.FILE.IMPORT_NEW_FILE) {
+                throw new Error('目标目录不可写')
+            }
+            return null
+        })
+
+        await openDialog('importOption')
+        getConfigStore().dialogs.importOption.content = '导入的正文'
+        // 第二个选项卡片为「新建文件」，选中后确定 → 父组件 invoke IMPORT_NEW_FILE
+        const optionCards = shell.findAll('.option-card')
+        expect(optionCards).toHaveLength(3)
+        await optionCards[1].trigger('click')
+        await shell.find('.btn-confirm').trigger('click')
+        await flushPromises()
+
+        expect(invokeMock).toHaveBeenCalledWith(IPC.FILE.IMPORT_NEW_FILE, '导入的正文')
+        expect(errorSpy).toHaveBeenCalled()
+        const store = getConfigStore()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.message).toContain('目标目录不可写')
+        store.hideDialog('message')
     })
 })

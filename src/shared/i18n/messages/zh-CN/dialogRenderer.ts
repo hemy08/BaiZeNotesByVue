@@ -30,6 +30,14 @@ const dialogRenderer = {
         docs: '文档',
         followUs: '关注我们'
     },
+    // P2 功能错误处理修复：编码菜单（以指定编码重新打开 / 转换编码）失败提示。
+    // 失败后由消息对话框的「重试」按钮再次执行同一编码操作，不再静默失败。
+    encoding: {
+        reopenFailedTitle: '按编码重新打开失败',
+        reopenFailedMessage: '无法按「{encoding}」编码重新打开当前文件：{error}',
+        convertFailedTitle: '编码转换失败',
+        convertFailedMessage: '无法把当前文件转换为「{encoding}」编码并保存：{error}'
+    },
     rename: {
         currentPath: '当前路径',
         newName: '新名称',
@@ -146,7 +154,10 @@ const dialogRenderer = {
         labelEnableExperimental: '启用实验性功能',
         // P1-FE-05：无 Monaco 对应项的遗留字段统一禁用并标注，避免「假开关」误导
         hintNotImplemented: '该选项暂未接入实际功能，保存后不会产生效果，后续版本支持',
-        hintAppliedImmediately: '保存后立即应用到当前编辑器'
+        hintAppliedImmediately: '保存后立即应用到当前编辑器',
+        // P2 功能错误处理修复：保存失败时消息对话框提示，且设置对话框保持打开供用户重试
+        saveFailedTitle: '编辑器设置保存失败',
+        saveFailedMessage: '编辑器设置写入磁盘失败：{error}。修改尚未保存，请重试。'
     },
     fontSelect: {
         title: '特殊文字编辑',
@@ -261,7 +272,10 @@ const dialogRenderer = {
         labelAllowRemoteImages: '允许加载远程图片',
         hintAllowRemoteImages:
             '开启后预览会加载文档中的远程图片（可能被第三方统计像素追踪阅读行为）；默认关闭，仅加载本地图片',
-        remoteImageBlocked: '远程图片已拦截（可在「系统设置 → 隐私」中开启加载）'
+        remoteImageBlocked: '远程图片已拦截（可在「系统设置 → 隐私」中开启加载）',
+        // P2 功能错误处理修复：保存失败时消息对话框提示，且设置对话框保持打开供用户重试
+        saveFailedTitle: '设置保存失败',
+        saveFailedMessage: '设置写入磁盘失败：{error}。修改尚未保存，请重试或检查配置目录权限。'
     },
     themeSetting: {
         title: '主题设置',
@@ -278,7 +292,11 @@ const dialogRenderer = {
         labelFontSize: '字体大小',
         categoryLight: '浅色主题',
         categoryDark: '深色主题',
-        categoryEyecare: '护眼主题'
+        categoryEyecare: '护眼主题',
+        // P2 功能错误处理修复：主题列表加载失败时页签显示错误文案 + 「重试」按钮；
+        // 加载成功但列表为空时显示空态提示（同样可重试）
+        loadFailed: '主题列表加载失败：{error}',
+        emptyState: '暂无可显示的主题，请重试'
     },
     helpAbout: {
         windowTitle: '关于白泽笔记',
@@ -317,7 +335,10 @@ const dialogRenderer = {
         addFirst: '添加第一个链接',
         defaultGitHubDesc: '代码托管平台',
         defaultGoogleDesc: '搜索引擎',
-        defaultStackOverflowDesc: '程序员问答社区'
+        defaultStackOverflowDesc: '程序员问答社区',
+        // P2 功能错误处理修复：快捷链接保存失败时消息对话框提示，且设置对话框保持打开供用户重试
+        saveFailedTitle: '快捷链接保存失败',
+        saveFailedMessage: '快捷链接写入磁盘失败：{error}。修改尚未保存，请重试。'
     },
     techStack: {
         title: '技术栈',

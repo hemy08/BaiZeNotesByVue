@@ -63,10 +63,10 @@
             <button class="btn btn-cancel" @click="handleCancel">
                 {{ t('common.cancel') }}
             </button>
-            <button class="btn btn-apply" @click="handleApply">
+            <button class="btn btn-apply" :disabled="isSaving" @click="handleApply">
                 {{ t('common.apply') }}
             </button>
-            <button class="btn btn-confirm" @click="handleConfirm">
+            <button class="btn btn-confirm" :disabled="isSaving" @click="handleConfirm">
                 {{ t('common.ok') }}
             </button>
         </template>
@@ -141,6 +141,8 @@ const footerStyle: CSSProperties = {
 const activePanel = ref<SystemSettingPanelId>('general')
 /** 左侧页签（纯数据由 ./system-setting/model.ts 提供） */
 const sidebarItems = SYSTEM_SETTING_SIDEBAR_ITEMS
+/** P2 功能错误处理修复：保存中标志（防重复提交；保存失败时对话框保持打开） */
+const isSaving = ref(false)
 
 /** 共享草稿状态 / 加载 / 保存 / 取消 / 脏标记 / 校验（4 页签共用唯一一份草稿） */
 const { settings, appThemeDisplay, loadSettings, saveSettings, resetSettings } =
@@ -182,14 +184,35 @@ function handleClose(): void {
 }
 
 // 应用当前配置，不关闭窗口（写配置 + emit apply 由 composable/壳层分工完成）
-function handleApply(): void {
-    emit('apply', saveSettings())
+// P2 功能错误处理修复：保存改为 await——失败时 composable 已弹错误提示并返回 null，
+// 此时不 emit apply（避免上游按「已保存」处理），对话框保持打开供用户重试。
+async function handleApply(): Promise<void> {
+    if (isSaving.value) return
+    isSaving.value = true
+    try {
+        const saved = await saveSettings()
+        if (saved) {
+            emit('apply', saved)
+        }
+    } finally {
+        isSaving.value = false
+    }
 }
 
-// 应用配置并关闭窗口
-function handleConfirm(): void {
-    handleApply()
-    handleClose()
+// 应用配置并关闭窗口：保存失败时**不关闭**（草稿不丢，用户可修正后重试）
+async function handleConfirm(): Promise<void> {
+    if (isSaving.value) return
+    isSaving.value = true
+    try {
+        const saved = await saveSettings()
+        if (!saved) {
+            return
+        }
+        emit('apply', saved)
+        emit('close')
+    } finally {
+        isSaving.value = false
+    }
 }
 
 // 取消：恢复初始配置，关闭窗口

@@ -26,6 +26,12 @@ import {
     type SystemDialogSettings
 } from '@renderer/components/dialogs/complex/system-setting/model'
 import { useSystemSettingForm } from '@renderer/components/dialogs/complex/system-setting/useSystemSettingForm'
+// P2 功能错误处理修复：保存失败断言（全局消息对话框 + 错误文案走 i18n）
+import { getConfigStore } from '@renderer/common/useConfigStore'
+import { t } from '@renderer/common/i18n'
+
+/** 全局配置 store 单例（断言保存失败的可见提示） */
+const store = getConfigStore()
 
 /** 构造草稿：默认值 + 局部覆盖（与组件默认值真源一致） */
 function draft(overrides: Partial<SystemDialogSettings> = {}): SystemDialogSettings {
@@ -294,23 +300,62 @@ describe('useSystemSettingForm（共享表单 composable）', () => {
         expect(form.isDirty.value).toBe(false)
     })
 
-    it('saveSettings：写 system 配置并返回快照；界面范围外值只 warn、不阻断、不改值', async () => {
+    it('saveSettings：await 写入 system 配置并返回快照；界面范围外值只 warn、不阻断、不改值', async () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
         const form = mountForm()
         form.settings.value = { ...form.settings.value, fontSize: 99 }
         expect(form.isDirty.value).toBe(true)
 
-        const snapshot = form.saveSettings()
+        const snapshot = await form.saveSettings()
         await flushPromises()
 
         expect(configWrite).toHaveBeenCalledTimes(1)
+        // P2 功能错误处理修复：saveSettings 改为 await 后返回提交快照（原同步返回）
+        expect(snapshot).not.toBeNull()
         expect(configWrite).toHaveBeenCalledWith('system', snapshot)
-        expect(snapshot.fontSize).toBe(99)
+        expect(snapshot?.fontSize).toBe(99)
         // 诊断校验只记录日志：不阻断写入、不修改草稿
         expect(warnSpy).toHaveBeenCalledWith(
             expect.stringContaining('系统设置保存前校验'),
             expect.arrayContaining([expect.objectContaining({ field: 'fontSize' })])
         )
         expect(form.settings.value.fontSize).toBe(99)
+    })
+
+    // P2 功能错误处理修复：保存失败（返回 false / invoke 异常）必须弹错误提示并返回 null，
+    // 壳层据此保持对话框打开、不 emit apply（修复前 fire-and-forget，失败完全静默）。
+    it('saveSettings：主进程返回 false 时弹错误提示并返回 null（不再静默）', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        configWrite.mockResolvedValue(false)
+        const form = mountForm()
+
+        const snapshot = await form.saveSettings()
+        await flushPromises()
+
+        expect(snapshot).toBeNull()
+        expect(errorSpy).toHaveBeenCalled()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.systemSetting.saveFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain(
+            t('workspace.config.writeReturnedFalse')
+        )
+        store.hideDialog('message')
+    })
+
+    it('saveSettings：invoke 抛异常时弹错误提示（含错误详情）并返回 null', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        configWrite.mockRejectedValue(new Error('IPC 通道不可用'))
+        const form = mountForm()
+
+        const snapshot = await form.saveSettings()
+        await flushPromises()
+
+        expect(snapshot).toBeNull()
+        expect(errorSpy).toHaveBeenCalled()
+        expect(store.dialogs.messageDialog.message).toContain('IPC 通道不可用')
+        store.hideDialog('message')
     })
 })

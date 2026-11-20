@@ -11,7 +11,8 @@
  *   读取失败保留兜底默认值；迟到的读取结果不覆盖用户已做的增删改；
  * - `selectedIndex` / `showForm` / `isEditing` / `editingLink`：列表选中与表单显隐状态；
  * - `openAddForm` / `openEditForm` / `deleteLink` / `closeForm` / `submitForm`：增删改表单编排；
- * - `saveLinksToMain()`：主进程 QUICK_LINKS.SAVE 保存，返回是否成功（失败时壳层保持对话框打开）；
+ * - `saveLinksToMain()`：主进程 QUICK_LINKS.SAVE 保存，返回 { ok, error? }（失败时壳层
+ *   弹错误提示并保持对话框打开；P2 功能错误处理修复前失败被完全静默）；
  * - `snapshotLinks()`：emit('apply') 的深拷贝载荷；`resetLinks()`：取消时恢复打开时数据源状态。
  */
 import { computed, ref } from 'vue'
@@ -29,6 +30,13 @@ import {
     type Link,
     type QuickLinkDraft
 } from './model'
+
+/** quickLinks 保存结果（P2：失败详情回传壳层做用户可见提示） */
+export interface QuickLinkSaveResult {
+    ok: boolean
+    /** 失败原因（ok=false 时提供，供壳层展示错误详情） */
+    error?: unknown
+}
 
 /** useQuickLinkSettingForm 的返回值（壳层与测试共用同一份契约） */
 export interface QuickLinkSettingForm {
@@ -56,8 +64,8 @@ export interface QuickLinkSettingForm {
     closeForm: () => void
     /** 提交表单：校验名称/URL，写入草稿并关闭表单 */
     submitForm: (draft: QuickLinkDraft) => void
-    /** 保存到主进程 quickLinks，返回是否成功（失败时壳层保持对话框打开） */
-    saveLinksToMain: () => Promise<boolean>
+    /** 保存到主进程 quickLinks，返回结果（失败时壳层提示并保持对话框打开供重试） */
+    saveLinksToMain: () => Promise<QuickLinkSaveResult>
     /** emit('apply') 的深拷贝载荷 */
     snapshotLinks: () => Link[]
     /** 取消：恢复打开时的数据源状态（不写配置） */
@@ -166,9 +174,12 @@ export function useQuickLinkSettingForm(): QuickLinkSettingForm {
     /**
      * P1-FE-04：经 IPC.QUICK_LINKS.SAVE 保存到主进程 quickLinks（唯一数据源），
      * 主进程保存成功后广播 UPDATED，NaviTab 监听后即时刷新。
-     * @returns 是否保存成功（失败时对话框保持打开，避免用户改动丢失）
+     *
+     * P2 功能错误处理修复：失败详情（主进程拒绝 / invoke 异常）随结果回传，
+     * 由壳层经统一 helper 弹错误对话框（此前只写日志，用户看不到任何反馈）。
+     * @returns { ok, error? }：ok=false 时壳层保持对话框打开，避免用户改动丢失
      */
-    async function saveLinksToMain(): Promise<boolean> {
+    async function saveLinksToMain(): Promise<QuickLinkSaveResult> {
         const items = links.value.map((link, index) => toQuickLinkItem(link, index))
         try {
             const result: unknown = await window.electron.ipcRenderer.invoke(
@@ -181,12 +192,12 @@ export function useQuickLinkSettingForm(): QuickLinkSettingForm {
                 (result as { ok?: unknown }).ok === false
             ) {
                 logger.error('[QuickLinkSettingDialog] 主进程拒绝保存快捷链接:', result)
-                return false
+                return { ok: false, error: result }
             }
-            return true
+            return { ok: true }
         } catch (error) {
             logger.error('[QuickLinkSettingDialog] 保存快捷链接失败:', error)
-            return false
+            return { ok: false, error }
         }
     }
 

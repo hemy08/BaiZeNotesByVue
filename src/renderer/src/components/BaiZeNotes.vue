@@ -55,8 +55,21 @@
             :type="configStore.dialogs.messageDialog.type"
             :title="configStore.dialogs.messageDialog.title"
             :message="configStore.dialogs.messageDialog.message"
-            @close="configStore.hideDialog('message')"
-        />
+            @close="handleMessageDialogClose"
+        >
+            <!-- P2 功能错误处理修复：可重试错误（编码转换/按编码重开失败等）显示「重试」按钮；
+                 重试动作由 store 的 messageDialogRetry 保存（不污染 messageDialog data 契约）。 -->
+            <template #footer-extra>
+                <button
+                    v-if="hasMessageDialogRetry"
+                    type="button"
+                    class="btn-message-retry"
+                    @click="handleMessageDialogRetry"
+                >
+                    {{ t('dialogRenderer.common.retry') }}
+                </button>
+            </template>
+        </BaiZeDialogs.MessageDialog>
         <!-- 第 4 批 4.2（M4）：主题切换入口直接绑定 useTheme 单例，组件不再自行读盘/写 DOM -->
         <BaiZeDialogs.ThemeSettingDialog
             :visible="configStore.dialogs.themeSettings.visible"
@@ -203,6 +216,8 @@ import { IPC } from '../../../shared/ipc-channels'
 import { t } from '../common/i18n'
 import { EVENT_BUS } from '../common/event-bus/event-bus-events'
 import { logger } from '../common/logger'
+// P2 功能错误处理修复：导入失败等用户操作错误的详情归一化
+import { describeActionError } from '../common/action-feedback'
 // P1 性能基线：主界面挂载阶段标记（默认关闭，诊断开关下才输出）
 import { PERF_MARK, perfMark, perfMeasure } from '../common/perf'
 
@@ -247,6 +262,25 @@ const pickedLocalImage = ref<{ filePath: string; imageSrc: string } | null>(null
 
 function handleDialogInsert(markdown: string) {
     EventBus.$emit(EVENT_BUS.MONACO_INSERT_TEXT, markdown)
+}
+
+/**
+ * P2 功能错误处理修复：消息对话框是否存在「重试」动作。
+ *
+ * messageDialogRetry 为模块级 ref（不在 reactive 的 dialogs 内），模板中经 computed
+ * 解包；存在时底部渲染「重试」按钮（见模板 #footer-extra 插槽）。
+ */
+const hasMessageDialogRetry = computed(() => configStore.messageDialogRetry.value !== null)
+
+/** 关闭消息对话框：隐藏 + 清空残留的重试动作（普通消息框不得残留「重试」按钮） */
+function handleMessageDialogClose(): void {
+    configStore.hideDialog('message')
+    configStore.clearMessageDialogRetry()
+}
+
+/** 点击「重试」：关闭消息框并重新执行原失败操作（重试动作与日志由 store/helper 负责） */
+function handleMessageDialogRetry(): void {
+    configStore.runMessageDialogRetry()
 }
 
 /**
@@ -300,7 +334,19 @@ async function handleImportOptionConfirm(option: 'replace' | 'newfile' | 'insert
             break
 
         case 'newfile':
-            await window.electron.ipcRenderer.invoke(IPC.FILE.IMPORT_NEW_FILE, content)
+            // P2 功能错误处理修复（导入路径）：invoke 异常（写盘失败/IPC 不可用）此前
+            // 成为未捕获 Promise 拒绝，用户看不到反馈。现在弹错误对话框说明失败原因。
+            try {
+                await window.electron.ipcRenderer.invoke(IPC.FILE.IMPORT_NEW_FILE, content)
+            } catch (error) {
+                logger.error('导入新文件失败:', error)
+                configStore.showError(
+                    t('mainMsg.dialog.errorTitle'),
+                    t('mainMsg.file.importFailed', {
+                        error: describeActionError(error, t('common.unknown'))
+                    })
+                )
+            }
             break
 
         case 'insert':
@@ -497,6 +543,25 @@ onBeforeUnmount(() => {
     height: 30px;
     user-select: none;
     -webkit-app-region: drag;
+}
+
+/* P2 功能错误处理修复：消息对话框「重试」按钮（经 MessageDialog #footer-extra 插槽注入，
+   与 MessageDialog 内 .btn-confirm 同排；颜色不随消息类型变化，使用主题强调色）。 */
+.btn-message-retry {
+    padding: 8px 22px;
+    border: 1px solid var(--theme-border-color, #d9d9d9);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--theme-text-color, #333333);
+    background: var(--theme-card-background, #f5f5f5);
+    transition: all 0.2s;
+}
+
+.btn-message-retry:hover {
+    border-color: var(--theme-accent-color, #764ba2);
+    color: var(--theme-accent-color, #764ba2);
 }
 
 .title-left {

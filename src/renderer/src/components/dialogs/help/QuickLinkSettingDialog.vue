@@ -83,6 +83,8 @@
 import { watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
+// P2 功能错误处理修复：保存失败统一弹错误提示（不再静默）
+import { describeActionError, reportActionFailure } from '../../../common/action-feedback'
 import BaseDialog from '../BaseDialog.vue'
 import QuickLinkList from './quick-link-setting/QuickLinkList.vue'
 import QuickLinkForm from './quick-link-setting/QuickLinkForm.vue'
@@ -174,15 +176,35 @@ function handleClose(): void {
     emit('close')
 }
 
+/**
+ * P2 功能错误处理修复：保存并处理失败反馈。
+ *
+ * 修复前 `saveLinksToMain()` 返回 false 时壳层直接 return——用户点「确定/应用」后
+ * 对话框不关闭但无任何提示，不知道保存失败（且改动未落盘）。现在失败经统一 helper
+ * 弹错误对话框（含失败详情），对话框保持打开，用户修正/重试后可直接再次保存。
+ */
+async function saveWithFailureFeedback(): Promise<boolean> {
+    const result = await form.saveLinksToMain()
+    if (!result.ok) {
+        reportActionFailure({
+            title: t('dialogRenderer.quickLink.saveFailedTitle'),
+            message: t('dialogRenderer.quickLink.saveFailedMessage', {
+                error: describeActionError(result.error, t('common.unknown'))
+            })
+        })
+    }
+    return result.ok
+}
+
 async function handleApply(): Promise<void> {
-    if (!(await form.saveLinksToMain())) {
+    if (!(await saveWithFailureFeedback())) {
         return
     }
     emit('apply', form.snapshotLinks())
 }
 
 async function handleConfirm(): Promise<void> {
-    if (!(await form.saveLinksToMain())) {
+    if (!(await saveWithFailureFeedback())) {
         return
     }
     emit('apply', form.snapshotLinks())

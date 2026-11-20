@@ -25,6 +25,15 @@ const dialogRenderer = {
         docs: 'Docs',
         followUs: 'Follow us'
     },
+    // P2 error-handling fix: encoding menu (reopen with encoding / convert encoding)
+    // failure messages. The retry button on the message dialog re-runs the same action.
+    encoding: {
+        reopenFailedTitle: 'Failed to reopen with encoding',
+        reopenFailedMessage:
+            'Could not reopen the current file with "{encoding}" encoding: {error}',
+        convertFailedTitle: 'Failed to convert encoding',
+        convertFailedMessage: 'Could not convert and save the current file as "{encoding}": {error}'
+    },
     rename: {
         currentPath: 'Current path',
         newName: 'New name',
@@ -143,7 +152,12 @@ const dialogRenderer = {
         // P1-FE-05: legacy fields without Monaco counterparts are disabled and labelled
         hintNotImplemented:
             'This option is not wired to any feature yet and will have no effect after saving.',
-        hintAppliedImmediately: 'Applied to the current editor immediately after saving'
+        hintAppliedImmediately: 'Applied to the current editor immediately after saving',
+        // P2 error-handling fix: on save failure the message dialog reports it and the
+        // settings dialog stays open so the user can retry
+        saveFailedTitle: 'Failed to save editor settings',
+        saveFailedMessage:
+            'Could not write the editor settings to disk: {error}. Your changes were not saved; please retry.'
     },
     fontSelect: {
         title: 'Styled text editor',
@@ -262,7 +276,12 @@ const dialogRenderer = {
         labelAllowRemoteImages: 'Allow loading remote images',
         hintAllowRemoteImages:
             'When enabled, the preview loads remote images from documents (third parties may use tracking pixels to record reading activity). Off by default: only local images are loaded.',
-        remoteImageBlocked: 'Remote image blocked (enable loading in System Settings → Privacy)'
+        remoteImageBlocked: 'Remote image blocked (enable loading in System Settings → Privacy)',
+        // P2 error-handling fix: on save failure the message dialog reports it and the
+        // settings dialog stays open so the user can retry
+        saveFailedTitle: 'Failed to save settings',
+        saveFailedMessage:
+            'Could not write the settings to disk: {error}. Your changes were not saved; please retry or check the config directory permissions.'
     },
     themeSetting: {
         title: 'Theme settings',
@@ -279,7 +298,11 @@ const dialogRenderer = {
         labelFontSize: 'Font size',
         categoryLight: 'Light themes',
         categoryDark: 'Dark themes',
-        categoryEyecare: 'Eye-care themes'
+        categoryEyecare: 'Eye-care themes',
+        // P2 error-handling fix: show an error state + retry button when the theme list
+        // fails to load; show an empty-state hint (also retryable) when the list is empty
+        loadFailed: 'Failed to load the theme list: {error}',
+        emptyState: 'No themes available. Please retry.'
     },
     helpAbout: {
         windowTitle: 'About BaiZe Notes',
@@ -318,7 +341,12 @@ const dialogRenderer = {
         addFirst: 'Add your first link',
         defaultGitHubDesc: 'Code hosting platform',
         defaultGoogleDesc: 'Search engine',
-        defaultStackOverflowDesc: 'Programmer Q&A community'
+        defaultStackOverflowDesc: 'Programmer Q&A community',
+        // P2 error-handling fix: on save failure the message dialog reports it and the
+        // settings dialog stays open so the user can retry
+        saveFailedTitle: 'Failed to save quick links',
+        saveFailedMessage:
+            'Could not write the quick links to disk: {error}. Your changes were not saved; please retry.'
     },
     techStack: {
         title: 'Tech stack',

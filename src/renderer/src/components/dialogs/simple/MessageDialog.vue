@@ -91,6 +91,9 @@
         </div>
 
         <template #footer>
+            <!-- P2 功能错误处理修复：可重试错误（如编码转换/按编码重开失败）由宿主经本插槽
+                 注入「重试」按钮；普通消息框不传插槽，外观与行为保持不变。 -->
+            <slot name="footer-extra" />
             <button class="btn-confirm" :style="buttonStyle" @click="handleClose">
                 {{ t('common.ok') }}
             </button>

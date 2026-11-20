@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 
-import { setLocale } from '@renderer/common/i18n'
+import { setLocale, t } from '@renderer/common/i18n'
 import { getConfigStore } from '@renderer/common/useConfigStore'
 import EditorSettingDialog from '@renderer/components/dialogs/complex/EditorSettingDialog.vue'
 import ThemeSettingDialog from '@renderer/components/dialogs/complex/ThemeSettingDialog.vue'
@@ -118,6 +118,40 @@ describe('EditorSettingDialog', () => {
             'editor',
             expect.objectContaining({ autoSave: true })
         )
+        expect(wrapper.emitted('apply')).toHaveLength(1)
+        expect(wrapper.emitted('close')).toHaveLength(1)
+    })
+
+    // P2 功能错误处理修复：编辑器设置保存失败（主进程返回 false / invoke 异常）不再静默——
+    // 弹错误对话框并保持设置对话框打开（不 emit apply/close，草稿不丢）。
+    it('reports a save failure and keeps the dialog open (P2)', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        configWrite.mockResolvedValue(false)
+        const wrapper = mount(EditorSettingDialog, {
+            ...dialogMountOptions,
+            props: { visible: true }
+        })
+        await flushPromises()
+
+        await wrapper.find('.btn-confirm').trigger('click')
+        await flushPromises()
+
+        expect(configWrite).toHaveBeenCalledTimes(1)
+        expect(wrapper.emitted('apply')).toBeUndefined()
+        expect(wrapper.emitted('close')).toBeUndefined()
+        const store = getConfigStore()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.editorSetting.saveFailedTitle')
+        )
+        expect(errorSpy).toHaveBeenCalled()
+        store.hideDialog('message')
+
+        // 失败后主进程恢复：再次「确定」可正常保存并关闭（可重试）
+        configWrite.mockResolvedValue(true)
+        await wrapper.find('.btn-confirm').trigger('click')
+        await flushPromises()
         expect(wrapper.emitted('apply')).toHaveLength(1)
         expect(wrapper.emitted('close')).toHaveLength(1)
     })
@@ -303,6 +337,31 @@ describe('ThemeSettingDialog', () => {
         expect(wrapper.findAll('.theme-card')).toHaveLength(3)
         expect(invoke).toHaveBeenCalledWith('baize:theme:get-all')
         expect(invoke).toHaveBeenCalledWith('baize:theme:get-all-monaco')
+    })
+
+    // P2 功能错误处理修复（F-04）：主题列表加载失败不再空白面板——显示错误文案 +
+    // 「重试」按钮；重试成功后正常渲染主题列表。
+    it('shows a retryable error state when loading themes fails, and recovers after retry', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        invoke.mockRejectedValueOnce(new Error('主题 IPC 失败'))
+        const wrapper = mount(ThemeSettingDialog, {
+            ...dialogMountOptions,
+            props: { visible: true }
+        })
+        await flushPromises()
+
+        const errorState = wrapper.find('.panel-state-error')
+        expect(errorState.exists()).toBe(true)
+        expect(errorState.text()).toContain('主题列表加载失败')
+        expect(wrapper.findAll('.theme-card')).toHaveLength(0)
+        expect(errorSpy).toHaveBeenCalled()
+
+        // 点击「重试」：重新加载成功后错误态消失、主题卡片正常渲染
+        await wrapper.find('.panel-retry-btn').trigger('click')
+        await flushPromises()
+        expect(wrapper.find('.panel-state-error').exists()).toBe(false)
+        expect(wrapper.findAll('.theme-card')).toHaveLength(3)
+        expect(wrapper.findAll('.category-title')).toHaveLength(3)
     })
 
     it('marks the current app theme as selected', async () => {

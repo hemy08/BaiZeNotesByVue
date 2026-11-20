@@ -174,6 +174,68 @@ describe('AppThemePanel / EditorThemePanel（主题页签）', () => {
         await cards[0].trigger('click')
         expect(wrapper.emitted('select')).toEqual([['vs-dark']])
     })
+
+    // P2 功能错误处理修复（F-04）：加载失败不再空白面板——错误文案 + 重试按钮
+    it('应用主题页签加载失败时显示错误文案与「重试」按钮', async () => {
+        const wrapper = mount(AppThemePanel, {
+            props: {
+                categories: [],
+                currentTheme: 'baize',
+                errorMessage: '主题列表加载失败：主进程不可用'
+            }
+        })
+        expect(wrapper.find('.panel-state-error').exists()).toBe(true)
+        expect(wrapper.find('[role="alert"]').text()).toContain('主进程不可用')
+        // 失败态不渲染空的分组/卡片（避免误判「没有主题」）
+        expect(wrapper.findAll('.theme-card')).toHaveLength(0)
+        expect(wrapper.findAll('.category-title')).toHaveLength(0)
+
+        await wrapper.find('.panel-retry-btn').trigger('click')
+        expect(wrapper.emitted('retry')).toHaveLength(1)
+    })
+
+    // P2 功能错误处理修复（F-04）：加载中显示加载态；加载成功但为空显示可重试空态
+    it('应用主题页签加载中显示加载态，加载成功但为空显示空态 + 重试', async () => {
+        const loadingWrapper = mount(AppThemePanel, {
+            props: { categories: [], currentTheme: 'baize', loading: true }
+        })
+        expect(loadingWrapper.find('.panel-state-loading').exists()).toBe(true)
+        expect(loadingWrapper.findAll('.theme-card')).toHaveLength(0)
+        loadingWrapper.unmount()
+
+        const emptyWrapper = mount(AppThemePanel, {
+            props: {
+                categories: THEME_GROUPS.map((group) => ({ nameKey: group.labelKey, themes: [] })),
+                currentTheme: 'baize'
+            }
+        })
+        expect(emptyWrapper.find('.panel-state-empty').exists()).toBe(true)
+        await emptyWrapper.find('.panel-retry-btn').trigger('click')
+        expect(emptyWrapper.emitted('retry')).toHaveLength(1)
+    })
+
+    // P2 功能错误处理修复（F-04）：编辑器主题页签同样支持错误态 / 空态 / 重试
+    it('编辑器主题页签加载失败或为空时显示降级提示与「重试」按钮', async () => {
+        const errorWrapper = mount(EditorThemePanel, {
+            props: {
+                themes: [],
+                currentMonacoTheme: 'vs',
+                errorMessage: '主题列表加载失败：IPC 异常'
+            }
+        })
+        expect(errorWrapper.find('.panel-state-error').exists()).toBe(true)
+        expect(errorWrapper.findAll('.theme-card')).toHaveLength(0)
+        await errorWrapper.find('.panel-retry-btn').trigger('click')
+        expect(errorWrapper.emitted('retry')).toHaveLength(1)
+        errorWrapper.unmount()
+
+        const emptyWrapper = mount(EditorThemePanel, {
+            props: { themes: [], currentMonacoTheme: 'vs' }
+        })
+        expect(emptyWrapper.find('.panel-state-empty').exists()).toBe(true)
+        await emptyWrapper.find('.panel-retry-btn').trigger('click')
+        expect(emptyWrapper.emitted('retry')).toHaveLength(1)
+    })
 })
 
 describe('FontSettingsPanel（字体设置页签）', () => {
@@ -327,9 +389,45 @@ describe('useThemeSettingForm（共享草稿 composable）', () => {
         expect(form.currentTheme.value).toBe('baize')
         expect(form.currentMonacoTheme.value).toBe('vs')
         expect(form.themeCategories.value).toHaveLength(0)
+        // P2 功能错误处理修复：失败写入可重试错误态（面板显示错误文案 + 重试按钮）
+        expect(form.isLoading.value).toBe(false)
+        expect(form.loadError.value).not.toBe('')
+        expect(form.loadError.value).toContain('主进程不可用')
         // 读取失败不覆盖初始快照：取消仍回默认值
         form.currentTheme.value = 'dark'
         form.resetSettings()
         expect(form.currentTheme.value).toBe('baize')
+    })
+
+    // P2 功能错误处理修复（F-04）：加载失败 → 错误态；重试成功 → 清除错误并正常渲染。
+    it('加载失败后可重试：重试成功清除错误态并渲染主题列表', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        invoke.mockRejectedValueOnce(new Error('主题 IPC 失败'))
+        const form = mountForm()
+
+        await form.loadThemes()
+        expect(form.loadError.value).toContain('主题 IPC 失败')
+        expect(form.themeCategories.value).toHaveLength(0)
+        expect(form.allMonacoThemes.value).toHaveLength(0)
+
+        // 恢复后重试（loadThemes 兼作重试入口）
+        await form.loadThemes()
+
+        expect(form.loadError.value).toBe('')
+        expect(form.isLoading.value).toBe(false)
+        expect(form.themeCategories.value.map((category) => category.themes.length)).toEqual([
+            1, 1, 1
+        ])
+        expect(form.allMonacoThemes.value).toHaveLength(2)
+        expect(errorSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('加载中标记 isLoading（用于面板加载态；结束后复位）', async () => {
+        const form = mountForm()
+        const pending = form.loadThemes()
+        expect(form.isLoading.value).toBe(true)
+        await pending
+        expect(form.isLoading.value).toBe(false)
+        expect(form.loadError.value).toBe('')
     })
 })

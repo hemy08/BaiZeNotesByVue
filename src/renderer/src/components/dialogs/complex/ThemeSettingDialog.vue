@@ -62,13 +62,19 @@
                     v-if="activePanel === 'app-theme'"
                     :categories="themeCategories"
                     :current-theme="currentTheme"
+                    :loading="isLoading"
+                    :error-message="loadError"
                     @select="handleSelectTheme"
+                    @retry="handleRetryLoadThemes"
                 />
                 <EditorThemePanel
                     v-if="activePanel === 'editor-theme'"
                     :themes="allMonacoThemes"
                     :current-monaco-theme="currentMonacoTheme"
+                    :loading="isLoading"
+                    :error-message="loadError"
                     @select="handleSelectMonacoTheme"
+                    @retry="handleRetryLoadThemes"
                 />
                 <FontSettingsPanel
                     v-if="activePanel === 'font-settings'"
@@ -164,7 +170,9 @@ const {
     currentMonacoTheme,
     fonts,
     themeCategories,
-    allMonacoThemes
+    allMonacoThemes,
+    isLoading,
+    loadError
 } = form
 
 // ARC-04：打开时读取主题列表与当前主题配置。
@@ -180,6 +188,14 @@ watch(
     },
     { immediate: true }
 )
+
+/**
+ * P2 功能错误处理修复（F-04）：主题页签「重试」——重新执行 loadThemes。
+ * 失败时 composable 会重新写入 loadError（面板继续显示错误态），成功后正常渲染列表。
+ */
+function handleRetryLoadThemes(): void {
+    void form.loadThemes()
+}
 
 /**
  * 应用主题点选：更新草稿并立即 emit('change')（与拆分前 selectTheme 的即时应用链路一致，

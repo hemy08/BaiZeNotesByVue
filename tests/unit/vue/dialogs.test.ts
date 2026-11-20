@@ -188,4 +188,27 @@ describe('MessageDialog', () => {
         await wrapper.find('.close-btn').trigger('click')
         expect(wrapper.emitted('close')).toHaveLength(1)
     })
+
+    // P2 功能错误处理修复：宿主可经 footer-extra 插槽注入「重试」按钮（编码转换失败等），
+    // 普通消息框不传插槽时外观/行为不变。
+    it('renders host footer-extra slot content when provided (P2 retry button)', () => {
+        const wrapper = mount(MessageDialog, {
+            ...dialogMountOptions,
+            props: { visible: true, type: 'error', title: '失败', message: '可重试的错误' },
+            slots: {
+                'footer-extra': '<button class="btn-retry-slot">重试</button>'
+            }
+        })
+        expect(wrapper.find('.btn-retry-slot').exists()).toBe(true)
+        expect(wrapper.find('.btn-confirm').exists()).toBe(true)
+    })
+
+    it('renders no extra footer button without the slot', () => {
+        const wrapper = mount(MessageDialog, {
+            ...dialogMountOptions,
+            props: { visible: true, type: 'info', title: '提示', message: '普通消息' }
+        })
+        expect(wrapper.find('.btn-retry-slot').exists()).toBe(false)
+        expect(wrapper.findAll('.btn-confirm')).toHaveLength(1)
+    })
 })

@@ -56,6 +56,8 @@ import { useEventBus } from '../../composables/useEventBus'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { logger } from '../../common/logger'
+// P2 功能错误处理修复：用户主动操作失败统一反馈（编码转换/按编码重开）
+import { describeActionError, reportActionFailure } from '../../common/action-feedback'
 
 // M5：保存/模板/导入替换 3 个进程内事件订阅统一经 useEventBus 注册，卸载时自动清理
 const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownEditComponent' })
@@ -456,21 +458,54 @@ const handleResize = () => {
 
 // FUN-02：编码菜单"以指定编码打开"——收到主进程菜单事件后，
 // invoke 主进程 handler 按指定编码重新读取当前文件并刷新编辑器
-const handleOpenWithEncoding = async (_event: unknown, encoding: string) => {
+//
+// P2 功能错误处理修复：失败路径此前只写 logger.error（用户点完「编码 → 转换」后界面
+// 无任何反馈，误以为已转码成功）。现统一经 common/action-feedback 的 reportActionFailure
+// 弹出错误对话框，并在消息框底部提供「重试」按钮——读盘失败/权限不足/无活动文件等
+// 可恢复失败均可原样重试，重试成功仍由主进程下发状态栏成功提示。
+type EncodingAction = 'reopen' | 'convert'
+
+/**
+ * 执行编码操作并统一处理失败反馈。
+ * @param action reopen=按指定编码重新打开；convert=转换编码并保存
+ * @param encoding 目标编码（主进程菜单事件携带）
+ */
+async function runEncodingAction(action: EncodingAction, encoding: string): Promise<void> {
+    const isReopen = action === 'reopen'
     try {
-        await window.electron.ipcRenderer.invoke(IPC.FILE.REOPEN_WITH_ENCODING, encoding)
+        // 两个通道分别保持字面量调用形态：tests/unit/preload-whitelist.test.ts 的静态
+        // 扫描依赖 `invoke(IPC.<组>.<键>` 字面量（三目/变量会漏检导致白名单误报未使用）。
+        if (isReopen) {
+            await window.electron.ipcRenderer.invoke(IPC.FILE.REOPEN_WITH_ENCODING, encoding)
+        } else {
+            await window.electron.ipcRenderer.invoke(IPC.FILE.CONVERT_SAVE_ENCODING, encoding)
+        }
     } catch (error) {
-        logger.error('按指定编码重新打开失败:', error)
+        logger.error(isReopen ? '按指定编码重新打开失败:' : '转换编码保存失败:', error)
+        reportActionFailure({
+            title: t(
+                isReopen
+                    ? 'dialogRenderer.encoding.reopenFailedTitle'
+                    : 'dialogRenderer.encoding.convertFailedTitle'
+            ),
+            message: t(
+                isReopen
+                    ? 'dialogRenderer.encoding.reopenFailedMessage'
+                    : 'dialogRenderer.encoding.convertFailedMessage',
+                { encoding, error: describeActionError(error, t('common.unknown')) }
+            ),
+            retry: () => runEncodingAction(action, encoding)
+        })
     }
 }
 
+const handleOpenWithEncoding = (_event: unknown, encoding: string): void => {
+    void runEncodingAction('reopen', encoding)
+}
+
 // FUN-02：编码菜单"转换编码"——按指定编码转码当前内容并写盘
-const handleConvertToEncoding = async (_event: unknown, encoding: string) => {
-    try {
-        await window.electron.ipcRenderer.invoke(IPC.FILE.CONVERT_SAVE_ENCODING, encoding)
-    } catch (error) {
-        logger.error('转换编码保存失败:', error)
-    }
+const handleConvertToEncoding = (_event: unknown, encoding: string): void => {
+    void runEncodingAction('convert', encoding)
 }
 
 /**

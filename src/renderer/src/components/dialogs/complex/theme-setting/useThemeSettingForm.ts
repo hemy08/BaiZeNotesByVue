@@ -10,7 +10,10 @@
  *   （打开时记录初始值，取消时恢复；点选应用主题时由壳层立即 emit('change')）；
  * - `fonts`：字体设置草稿（不参与主题配置读写，仅保持页签切换不丢值——拆分前即该行为）；
  * - `themeCategories` / `allMonacoThemes`：主题列表数据（打开时经既有 IPC 加载）；
- * - `loadThemes()`：读取全部主题 + 编辑器主题 + 当前主题配置（读取失败仅记日志）；
+ * - `isLoading` / `loadError`：主题列表加载态与失败文案（P2 功能错误处理修复：
+ *   失败不再只记日志，面板显示错误态 + 「重试」按钮，重试复用 loadThemes）；
+ * - `loadThemes()`：读取全部主题 + 编辑器主题 + 当前主题配置（读取失败记录错误态并清空
+ *   半成品数据，面板据此显示可重试的降级 UI）；
  * - `resetSettings()`：取消时恢复打开时加载值（字体草稿不恢复，与拆分前一致）。
  */
 import { ref, reactive } from 'vue'
@@ -25,6 +28,8 @@ import type {
 } from '../../../../../../shared/types'
 import { THEME_GROUPS } from '../../../../../../shared/constants/theme'
 import { logger } from '../../../../common/logger'
+import { t } from '../../../../common/i18n'
+import { describeActionError } from '../../../../common/action-feedback'
 import {
     createDefaultThemeDialogSelection,
     createDefaultThemeFontSettings,
@@ -48,7 +53,11 @@ export interface ThemeSettingForm {
     themeCategories: Ref<ThemeCategory[]>
     /** 编辑器主题视图项（含预览配色） */
     allMonacoThemes: Ref<MonacoThemeViewItem[]>
-    /** 打开对话框时加载主题列表与当前主题配置 */
+    /** 主题列表是否加载中（面板显示加载态，避免首次打开空白） */
+    isLoading: Ref<boolean>
+    /** 主题列表加载失败文案（空串 = 无错误；非空时面板显示错误态 + 重试） */
+    loadError: Ref<string>
+    /** 打开对话框时加载主题列表与当前主题配置（兼作失败后的重试入口） */
     loadThemes: () => Promise<void>
     /** 取消：恢复打开时加载的主题选择（字体草稿保持不动，与拆分前一致） */
     resetSettings: () => void
@@ -67,9 +76,14 @@ export function useThemeSettingForm(): ThemeSettingForm {
 
     const themeCategories = ref<ThemeCategory[]>([])
     const allMonacoThemes = ref<MonacoThemeViewItem[]>([])
+    // P2 功能错误处理修复：加载态 / 失败文案（面板据此显示加载或「错误 + 重试」降级 UI）
+    const isLoading = ref(false)
+    const loadError = ref('')
 
     /** 打开对话框时读取全部主题 / 编辑器主题 / 当前主题配置 */
     async function loadThemes(): Promise<void> {
+        isLoading.value = true
+        loadError.value = ''
         try {
             const allThemes = (await window.electron.ipcRenderer.invoke(
                 IPC.THEME.GET_ALL_THEMES
@@ -112,7 +126,16 @@ export function useThemeSettingForm(): ThemeSettingForm {
                 }
             }
         } catch (error) {
+            // P2 功能错误处理修复：失败不再空白面板——清空半成品数据并记录可重试错误态，
+            // 由 ThemeSettingDialog 传入页签展示错误文案 + 「重试」按钮（重试调用本函数）。
             logger.error('加载主题失败:', error)
+            themeCategories.value = []
+            allMonacoThemes.value = []
+            loadError.value = t('dialogRenderer.themeSetting.loadFailed', {
+                error: describeActionError(error, t('common.unknown'))
+            })
+        } finally {
+            isLoading.value = false
         }
     }
 
@@ -129,6 +152,8 @@ export function useThemeSettingForm(): ThemeSettingForm {
         fonts,
         themeCategories,
         allMonacoThemes,
+        isLoading,
+        loadError,
         loadThemes,
         resetSettings
     }

@@ -163,13 +163,23 @@ function handleClose(): void {
     emit('close')
 }
 
-function handleApply(): void {
-    emit('apply', saveSettings())
+// P2 功能错误处理修复：保存改为 await——失败时 composable 已弹错误提示并返回 null，
+// 此时不 emit('apply')，对话框保持打开供用户重试。
+async function handleApply(): Promise<void> {
+    const saved = await saveSettings()
+    if (saved) {
+        emit('apply', saved)
+    }
 }
 
-function handleConfirm(): void {
-    handleApply()
-    handleClose()
+// 应用配置并关闭窗口：保存失败时不关闭（草稿不丢）
+async function handleConfirm(): Promise<void> {
+    const saved = await saveSettings()
+    if (!saved) {
+        return
+    }
+    emit('apply', saved)
+    emit('close')
 }
 
 function handleCancel(): void {

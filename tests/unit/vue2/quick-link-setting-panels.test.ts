@@ -9,7 +9,7 @@
  *    - 打开时从主进程 QUICK_LINKS.GET 读取并映射为对话框 Link（path→url / iconContent→icon）；
  *    - 异步读取迟到时不得覆盖用户已做的增删（userModifiedSinceOpen 竞态保护）；
  *    - 新增/编辑/删除/取消回滚；编辑未改图标时保留主进程原始 source；
- *    - saveLinksToMain：SUCCESS 返回 true、ok:false / 抛异常返回 false；
+ *    - saveLinksToMain：SUCCESS 返回 { ok:true }、ok:false / 抛异常返回 { ok:false, error }（P2）；
  *    - snapshotLinks：深拷贝载荷，emit 后修改不影响草稿。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
@@ -240,14 +240,16 @@ describe('useQuickLinkSettingForm（共享草稿 composable）', () => {
         expect(form.showForm.value).toBe(true)
     })
 
-    it('保存成功返回 true 并提交主进程形状；ok:false / 抛异常返回 false', async () => {
+    // P2 功能错误处理修复：saveLinksToMain 返回 { ok, error? }（失败详情回传壳层弹提示），
+    // 不再是 boolean——成功/主进程拒绝/invoke 异常三种形态都锁定。
+    it('保存成功返回 ok:true 并提交主进程形状；ok:false / 抛异常返回 ok:false 且带失败详情', async () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
         invoke.mockResolvedValueOnce([makeMainItem()])
         const form = mountForm()
         await form.loadLinksOnOpen()
 
         invoke.mockResolvedValueOnce({ ok: true })
-        expect(await form.saveLinksToMain()).toBe(true)
+        expect(await form.saveLinksToMain()).toEqual({ ok: true })
         expect(invoke).toHaveBeenLastCalledWith(
             IPC.QUICK_LINKS.SAVE,
             expect.arrayContaining([
@@ -261,12 +263,19 @@ describe('useQuickLinkSettingForm（共享草稿 composable）', () => {
             ])
         )
 
-        invoke.mockResolvedValueOnce({ ok: false, reason: 'invalid-payload' })
-        expect(await form.saveLinksToMain()).toBe(false)
+        const rejectedPayload = { ok: false, reason: 'invalid-payload' }
+        invoke.mockResolvedValueOnce(rejectedPayload)
+        const rejectedResult = await form.saveLinksToMain()
+        expect(rejectedResult.ok).toBe(false)
+        // 主进程拒绝原因回传，供壳层展示错误详情
+        expect(rejectedResult.error).toEqual(rejectedPayload)
         expect(errorSpy).toHaveBeenCalled()
 
-        invoke.mockRejectedValueOnce(new Error('主进程不可用'))
-        expect(await form.saveLinksToMain()).toBe(false)
+        const thrown = new Error('主进程不可用')
+        invoke.mockRejectedValueOnce(thrown)
+        const thrownResult = await form.saveLinksToMain()
+        expect(thrownResult.ok).toBe(false)
+        expect(thrownResult.error).toBe(thrown)
         expect(errorSpy).toHaveBeenCalledTimes(2)
     })
 
