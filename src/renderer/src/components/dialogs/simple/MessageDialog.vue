@@ -2,6 +2,7 @@
     <BaseDialog
         :visible="visible"
         :title="title"
+        :aria-describedby="messageId"
         title-bar-variant="plain"
         animation="smooth"
         footer-align="center"
@@ -87,7 +88,7 @@
                 />
             </svg>
 
-            <div class="message-text">{{ message }}</div>
+            <div :id="messageId" class="message-text">{{ message }}</div>
         </div>
 
         <template #footer>
@@ -102,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
 import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
 import BaseDialog from '../BaseDialog.vue'
@@ -120,6 +121,13 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
     (e: 'close'): void
 }>()
+
+/**
+ * 消息正文的节点 id：经 BaseDialog 的 aria-describedby 关联到对话框容器，
+ * 读屏在播报标题（aria-labelledby）后会把正文作为补充说明一并读出。
+ * 用 useId() 生成实例级唯一 id，消息框嵌套在其它对话框上时也不会与外部 id 冲突。
+ */
+const messageId = useId()
 
 // 颜色配置
 const colorConfig = {

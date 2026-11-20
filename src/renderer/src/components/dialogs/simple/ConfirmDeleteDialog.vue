@@ -9,12 +9,13 @@
     <BaseDialog
         :visible="visible"
         :title="t('dialogMain.confirmDelete.title')"
+        :aria-describedby="messageId"
         width="460px"
         reset-position-on-open
         @close="handleCancel"
     >
         <div class="content">
-            <div class="message">
+            <div :id="messageId" class="message">
                 {{ t('dialogMain.confirmDelete.message', { path: path }) }}
             </div>
         </div>
@@ -38,6 +39,7 @@
  * （由主进程 OPEN_VUE_DIALOG('confirmDelete', { path, isFile }) 填充）；
  * 点击「是」emit('confirm')，由 BaiZeNotes.vue invoke 主进程执行删除。
  */
+import { useId } from 'vue'
 import { t } from '../../../common/i18n'
 import BaseDialog from '../BaseDialog.vue'
 
@@ -58,6 +60,12 @@ const emit = defineEmits<{
     (e: 'close'): void
     (e: 'confirm'): void
 }>()
+
+/**
+ * 删除确认文案节点 id：经 BaseDialog 的 aria-describedby 关联到对话框容器，
+ * 读屏播报标题后补充说明「将删除哪个路径」。useId() 保证实例级唯一，不手写固定 id。
+ */
+const messageId = useId()
 
 function handleCancel(): void {
     emit('close')

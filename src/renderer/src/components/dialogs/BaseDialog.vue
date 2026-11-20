@@ -19,6 +19,7 @@
                         aria-modal="true"
                         :aria-labelledby="ariaLabelledby"
                         :aria-label="ariaLabelValue"
+                        :aria-describedby="ariaDescribedbyValue"
                         tabindex="-1"
                         @mousedown="handleContainerMouseDown"
                     >
@@ -115,9 +116,11 @@
  * 5. `resetPositionOnOpen` 为 true 时每次打开重置到初始居中位置（默认沿用上次拖拽位置）；
  * 6. 可访问性（P2 新增，纯增量，不改变视觉与既有交互）：容器 `role="dialog"` +
  *    `aria-modal="true"` + 标题关联（默认标题用 aria-labelledby；无标题场景可传 `ariaLabel`）、
- *    关闭按钮 aria-label；打开时聚焦容器、关闭时归还打开前焦点；Esc 关闭；Tab / Shift+Tab
- *    在对话框内循环（焦点陷阱）。多个对话框同时打开时只有顶层响应 Esc/Tab（模块级栈），
- *    避免一次按键同时关闭多层。
+ *    可选描述关联（`ariaDescribedby`，如消息框正文/确认文案）、关闭按钮 aria-label；
+ *    打开时聚焦容器、关闭时归还打开前焦点；Esc 关闭；Tab / Shift+Tab 在对话框内循环
+ *    （焦点陷阱，跳过 disabled / hidden / inert / aria-hidden / iframe / tabindex=-1）；
+ *    打开期间锁定 body 滚动，最后一个对话框关闭后恢复（模块级引用计数，嵌套对话框安全）。
+ *    多个对话框同时打开时只有顶层响应 Esc/Tab（模块级栈），避免一次按键同时关闭多层。
  *
  * 说明：本组件样式使用 scoped 而非全局 `styles/dialog.css`——避免非 scoped 外壳类
  * （`.dialog-overlay` 等）在 15 个尚未迁移的对话框上产生全局样式泄漏，符合本任务
@@ -128,6 +131,7 @@ import type { ClassValue, CSSProperties } from 'vue'
 import { t } from '../../common/i18n'
 import { useDialogDrag } from '../../composables/useDialogDrag'
 import { isTopmostDialog, pushOpenDialog, removeOpenDialog } from './dialog-stack'
+import { lockDialogScroll, unlockDialogScroll } from './dialog-scroll-lock'
 
 /**
  * 对话框内联样式类型：Vue `CSSProperties` 的超集（仅补充 Electron 专有属性）。
@@ -196,6 +200,12 @@ interface Props {
      * 有默认标题文字时忽略（优先 aria-labelledby 指向标题节点）。
      */
     ariaLabel?: string
+    /**
+     * 可选的描述内容节点 id（写入容器 aria-describedby）：适合放简短的补充说明
+     * （如消息框正文、删除确认文案），不替代 aria-labelledby 的标题命名。
+     * 调用方用 `useId()` 生成 id 并落在描述节点上，避免多个对话框/嵌套对话框 id 冲突。
+     */
+    ariaDescribedby?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -222,11 +232,14 @@ const slots = useSlots()
 const hasFooter = computed(() => Boolean(slots.footer))
 
 // ==================== 可访问性（a11y）契约 ====================
-// 1) role="dialog" + aria-modal + 标题关联（aria-labelledby / aria-label）；
+// 1) role="dialog" + aria-modal + 标题关联（aria-labelledby / aria-label）+ 可选描述关联
+//    （aria-describedby，由调用方传描述节点 id）；
 // 2) 打开后把焦点移入对话框，关闭后归还到打开前焦点元素；
 // 3) Esc 关闭（仅最顶层对话框响应，避免嵌套对话框被一次 Esc 全部关闭）；
-// 4) Tab / Shift+Tab 在对话框内循环（焦点陷阱），无可见焦点元素时回到容器；
-// 5) 关闭按钮补 aria-label（图标 × 对读屏无意义）。
+// 4) Tab / Shift+Tab 在对话框内循环（焦点陷阱），跳过不可 Tab 到达的元素，无可见焦点
+//    元素时回到容器；
+// 5) 关闭按钮补 aria-label（图标 × 对读屏无意义）；
+// 6) 打开期间锁定 body 滚动，最后一个对话框关闭后恢复（模块级引用计数，嵌套安全）。
 // 样式/结构不变，仅新增语义属性与键盘行为；jsdom 下均可测试。
 
 const containerRef = ref<HTMLElement | null>(null)
@@ -239,6 +252,7 @@ const ariaLabelValue = computed(() =>
         ? undefined
         : props.ariaLabel || (hasTitleSlot.value ? props.title : undefined)
 )
+const ariaDescribedbyValue = computed(() => props.ariaDescribedby || undefined)
 const closeButtonLabel = computed(() => t('common.close'))
 
 /** 焦点陷阱候选选择器（覆盖对话框内常见可聚焦元素） */
@@ -253,6 +267,13 @@ const FOCUSABLE_SELECTOR = [
 ].join(',')
 
 /**
+ * 内嵌文档/插件标签：父文档无法接管其内部焦点（iframe 的 Tab 只会在子文档内循环，
+ * 且 jsdom/浏览器都无法从父文档把焦点送进去），因此从焦点陷阱候选中排除，
+ * 避免 Tab 循环把焦点“丢”进 iframe 后 Esc/其余按键全部失效。
+ */
+const NON_FOCUSABLE_TAGS = new Set(['IFRAME', 'OBJECT', 'EMBED'])
+
+/**
  * 顶层对话框栈：多个 BaseDialog 同时可见时（如设置对话框上再弹确认框），
  * 只有最后打开的对话框响应 Esc/Tab，避免一次按键同时关闭多层。
  * 栈状态放在独立模块（dialog-stack.ts）——`<script setup>` 顶层变量是实例级作用域，
@@ -265,6 +286,8 @@ let restoreFocusTarget: HTMLElement | null = null
 function registerOpen(): void {
     if (registered) return
     registered = true
+    // 先锁 body 滚动再登记栈：无论焦点/键盘逻辑如何，模态打开期间背景不应可滚动
+    lockDialogScroll()
     pushOpenDialog(dialogToken)
     const active = document.activeElement
     // body/html 作为焦点目标无意义，不记录（关闭后不强行聚焦 body）
@@ -275,24 +298,49 @@ function unregister(): void {
     if (!registered) return
     registered = false
     removeOpenDialog(dialogToken)
+    // 引用计数归零（最后一个对话框关闭）时才恢复 body 滚动
+    unlockDialogScroll()
 }
 
 function isTopmost(): boolean {
     return isTopmostDialog(dialogToken)
 }
 
-/** 收集当前对话框内可见、可聚焦的元素（跳过 display:none / visibility:hidden / aria-hidden） */
+/**
+ * 判断元素是否真正可 Tab 到达（焦点陷阱候选）：
+ * - 原生禁用控件 / `fieldset[disabled]` 后代跳过；
+ * - iframe/object/embed 跳过（父文档无法接管内嵌文档焦点，Tab 进去后 Esc 失效）；
+ * - `tabindex` 为负的元素可脚本聚焦但不在 Tab 次序内（含 button/a 显式 tabindex="-1"）跳过；
+ * - 自身或祖先 `hidden` / `inert` / `aria-hidden="true"` / `display:none` / `visibility:hidden`
+ *   跳过。必须向上遍历祖先：设置对话框的 v-show 页签用 `display:none` 隐藏后控件仍留在
+ *   DOM 中，若只查元素自身 computed style 会把隐藏页签控件算进焦点循环，Tab 边界回绕时
+ *   可能聚焦失败（焦点停在原地）。
+ */
+function isTabbable(element: HTMLElement, root: HTMLElement): boolean {
+    if (element.hasAttribute('disabled')) return false
+    if (NON_FOCUSABLE_TAGS.has(element.tagName)) return false
+    if (element.closest('fieldset[disabled]')) return false
+    const tabindex = element.getAttribute('tabindex')
+    if (tabindex !== null && Number.parseInt(tabindex, 10) < 0) return false
+    let current: HTMLElement | null = element
+    while (current && current !== root) {
+        if (current.hidden) return false
+        if (current.getAttribute('aria-hidden') === 'true') return false
+        if (current.hasAttribute('inert')) return false
+        const style = window.getComputedStyle?.(current)
+        if (style && (style.display === 'none' || style.visibility === 'hidden')) return false
+        current = current.parentElement
+    }
+    return true
+}
+
+/** 收集当前对话框内真正可 Tab 到达的元素（按 DOM 顺序，与浏览器 Tab 次序一致） */
 function getFocusableElements(): HTMLElement[] {
     const root = containerRef.value
     if (!root) return []
-    return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((element) => {
-        if (element.hasAttribute('disabled')) return false
-        if (element.getAttribute('aria-hidden') === 'true') return false
-        if (element.closest('[aria-hidden="true"]')) return false
-        const style = window.getComputedStyle?.(element)
-        if (style && (style.display === 'none' || style.visibility === 'hidden')) return false
-        return true
-    })
+    return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((element) =>
+        isTabbable(element, root)
+    )
 }
 
 /** 打开时聚焦入口：优先把焦点放到容器本身（读屏会先播报对话框名称），再按 Tab 进入内容 */
@@ -320,6 +368,10 @@ function handleDocumentKeyDown(event: KeyboardEvent): void {
     if (!root) return
 
     if (event.key === 'Escape') {
+        // 输入法组合期间 Esc 是「取消候选」而不是关闭对话框（中文输入场景常见）。
+        // 现代浏览器组合事件的 isComposing 为 true（Chrome 另以 keyCode 229 标记），
+        // 两种标记都放行，避免用户取消候选时误关对话框。
+        if (event.isComposing || event.keyCode === 229) return
         // 阻止 Esc 继续冒泡到编辑器（如 Monaco 大纲）等全局快捷键
         event.preventDefault()
         event.stopPropagation()
