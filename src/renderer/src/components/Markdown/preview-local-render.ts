@@ -46,7 +46,11 @@
 
 import { logger } from '../../common/logger'
 import { LRUCache } from '../../../../shared/utils/lru-cache'
-import { parseDirectoryPath, toFileUrl } from '../../../../shared/utils/path'
+import { parseDirectoryPath } from '../../../../shared/utils/path'
+// 2026-11-20（file:// → app:// 迁移）：本地资源 URL 生成收敛到共享协议纯函数——
+// app:// 模式生成 app://local/<绝对路径>（file:// 在 fuse 关闭后不可用），
+// Vite dev server 模式保持 file:// 口径。
+import { toRendererLocalResourceUrl } from '../../../../shared/protocol/app-protocol'
 import { escapeHtml } from '../../../../shared/utils/html'
 import {
     PREVIEW_DEGRADE_FILE_SIZE,
@@ -262,14 +266,19 @@ export function getPreviewActiveFilePath(): string | null {
  *   `#`/`?` 单独编码，避免文件名中的 # 变成片段标识；文档解析后的本地 `file://` 仍可被
  *   DOMPurify 默认 URI 白名单放行）。
  *
- * 迁移（渲染层公共接口归位）：两者已逐字归位到 `src/shared/utils/path.ts`
- * （`parseDirectoryPath` / `toFileUrl`，带与主进程实现的等价性单测），本模块直接 import，
- * 不再保留本地副本。`toFileUrl` 的编码口径与 `html-view-utils.withBaseHref` 一致
- * （后者现由 shared 的 `dirToBaseHref` 提供）。
+ * 迁移（渲染层公共接口归位）：`parseDirectoryPath` 已逐字归位到 `src/shared/utils/path.ts`
+ * （带与主进程实现的等价性单测），本模块直接 import；资源 URL 生成改为
+ * `src/shared/protocol/app-protocol.ts` 的 `toRendererLocalResourceUrl`（app:// 模式下
+ * `app://local/<绝对路径>`，dev server 模式回退 `toFileUrl` 的 file:// 口径）。
  */
 
 /**
  * 转换相对 URL 为基于当前活动文件的绝对路径
+ *
+ * 2026-11-20（file:// → app:// 迁移）：相对路径统一经
+ * `toRendererLocalResourceUrl` 生成资源 URL——app:// 模式下为 `app://local/<绝对路径>`
+ * （由主进程协议 handler 经 Path Guard 白名单读取），dev server 模式仍为 file://。
+ * 用户 Markdown 中硬编码的 `file://` 绝对路径在 app:// 模式下转换为等价 app://local URL。
  */
 function covertFileUrl(url: string): string {
     const filePath = previewActiveFilePath
@@ -283,6 +292,9 @@ function covertFileUrl(url: string): string {
     }
 
     if (url.indexOf(':') !== -1) {
+        // FUN-22 安全口径不变：带协议前缀的 URL（http/https/mailto 等白名单与危险伪协议）
+        // 一律原样透传；其中 file: 属不在白名单的「伪协议」，预览管线迁移前后都保持
+        // Markdown 原文（不在此处改写为 app://local，避免引入行为变化）。
         return url
     }
 
@@ -291,7 +303,7 @@ function covertFileUrl(url: string): string {
     }
 
     const fullPath = parseDirectoryPath(filePath) + '\\' + url
-    return toFileUrl(fullPath)
+    return toRendererLocalResourceUrl(fullPath)
 }
 
 /**

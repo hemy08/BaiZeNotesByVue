@@ -121,11 +121,15 @@ test.describe('打包产物启动', () => {
                 return {
                     isPackaged: electronApp.isPackaged,
                     windowCount: windows.length,
-                    userData: electronApp.getPath('userData')
+                    userData: electronApp.getPath('userData'),
+                    appPath: electronApp.getAppPath(),
+                    windowUrl: windows[0]?.webContents.getURL() ?? ''
                 }
             })
             expect(state.isPackaged).toBe(true)
             expect(state.windowCount).toBe(1)
+            // 应用代码确实从 app.asar 加载（onlyLoadAppFromAsar + 协议 handler 读取 asar 内资源）
+            expect(state.appPath.replace(/\\/g, '/')).toMatch(/app\.asar$/)
             // --user-data-dir 必须生效，否则 fileState/缓存会写真实 %APPDATA%
             expect(path.resolve(state.userData)).toBe(path.resolve(userDataDir))
             await expect
@@ -139,10 +143,32 @@ test.describe('打包产物启动', () => {
                 )
                 .toBe(true)
 
-            // 2) 渲染层来自打包后的 asar（production 资源路径分支，区别于开发构建的 out/build/renderer）
-            await expect(page).toHaveURL(
-                /resources[\\/]app\.asar[\\/]out[\\/]build[\\/]renderer[\\/]index\.html$/
-            )
+            // 2) 渲染层来自 app:// 自定义协议（2026-11-20 file:// → app:// 迁移）：
+            //    页面 URL 为 app://baize/index.html，资源由主进程 protocol.handle 从 app.asar
+            //    内的 out/build/renderer 根读取（严格限制在 renderer 根内，禁止路径穿越）。
+            await expect(page).toHaveURL(/^app:\/\/baize\/index\.html/)
+            expect(state.windowUrl).toMatch(/^app:\/\/baize\/index\.html/)
+            // 3) 文件特权 fuse 关闭后的负向证据：file:// 资源不可用（app:// 页面无法加载，
+            //    协议 handler 也不服务 file://）；app:// 越界路径必须被拒绝（防目录穿越）。
+            const protocolProbes = await page.evaluate(async () => {
+                const probe = async (url: string): Promise<number> => {
+                    try {
+                        const response = await fetch(url)
+                        return response.status
+                    } catch {
+                        return -1
+                    }
+                }
+                return {
+                    rendererAsset: await probe('app://baize/index.html'),
+                    traversal: await probe('app://baize/%2e%2e/%2e%2e/%2e%2e/package.json'),
+                    fileProtocol: await probe('file:///C:/Windows/win.ini')
+                }
+            })
+            expect(protocolProbes.rendererAsset).toBe(200)
+            expect([403, 404]).toContain(protocolProbes.traversal)
+            // file: 在 app:// 页面被 Chromium/CSP 拒绝（fuse 关闭后 file 协议本身也不可用）
+            expect(protocolProbes.fileProtocol).toBe(-1)
 
             // 3) 无白屏：欢迎页与主界面至少一个可见，且根节点有文本内容
             await expect

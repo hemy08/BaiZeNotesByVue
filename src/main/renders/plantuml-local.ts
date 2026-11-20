@@ -8,7 +8,8 @@
  * （index.html + teaVM 版 plantuml.js + viz-global.js 等），但此前从未被引用。
  *
  * 本模块方案（参考第一轮 Mermaid 隐藏窗口本地化思路，但不再需要 preload/IPC 回传）：
- * 1. 隐藏 BrowserWindow 加载本地 `resources/plantuml/index.html`（file:// 本地页）；
+ * 1. 隐藏 BrowserWindow 加载本地 PlantUML 渲染页（2026-11-20 起为 `app://plantuml/index.html`；
+ *    关闭 file 协议特权 fuse 后 file:// 页面不可用，故与主窗口一并迁移自定义协议）；
  * 2. 通过 `webContents.executeJavaScript` 注入 diagram 源码，调用页面暴露的
  *    `window.plantumlRender(lines, 'out')` 把 SVG 渲染到 #out 容器；
  * 3. 从页面取回 `#out.innerHTML`（SVG 字符串），经 IPC 返回渲染层插入预览 HTML。
@@ -45,6 +46,9 @@ import { createHash } from 'crypto'
 import * as fs from 'fs'
 import * as path from 'path'
 import { getPlantumlPath } from '../utils/app-paths'
+// 2026-11-20（file:// → app:// 迁移）：隐藏渲染窗口改由 app://plantuml 协议加载，
+// 页面 URL 由共享纯函数构建（与主进程协议 handler 的宿主常量同一个真源）。
+import { buildPlantumlPageUrl } from '../../shared/protocol/app-protocol'
 import { logger } from '../utils/logger'
 import { ipcListenerManager } from '../ipc/ipc-listener-manager'
 // AS-6：PlantUML 本地渲染通道补发送方校验（仅主窗口可触发隐藏窗口渲染）
@@ -181,6 +185,24 @@ export function resolvePlantumlIndexHtmlPath(): string | null {
 /** 清空渲染结果缓存（测试与诊断用） */
 export function clearPlantumlRenderCache(): void {
     plantumlSvgCache.clear()
+}
+
+/**
+ * 解析 app://plantuml 协议映射根目录（2026-11-20 file:// → app:// 迁移）。
+ *
+ * 协议 handler 需要提前拿到资源根：开发环境 = `<项目根>/resources/plantuml`，
+ * 打包后 = `<process.resourcesPath>/plantuml`（与 getPlantumlPath 同一真源）。
+ * index.html 不存在时返回 null，协议对该宿主统一 404（渲染侧按资源缺失走
+ * `unavailable` 降级，不阻断启动）。
+ */
+export function resolvePlantumlProtocolRoot(): string | null {
+    try {
+        const plantumlDir = getPlantumlPath()
+        return fs.existsSync(path.join(plantumlDir, 'index.html')) ? plantumlDir : null
+    } catch (error) {
+        logger.warn('[PlantUML] 解析协议映射根目录失败:', error)
+        return null
+    }
 }
 
 /**
@@ -394,7 +416,9 @@ function createRenderWindow(): Promise<BrowserWindow> {
             }
         })
 
-        void win.loadFile(indexPath).catch((error: unknown) => {
+        // 2026-11-20（file:// → app:// 迁移）：改用 app://plantuml/index.html。
+        // file:// 在 grantFileProtocolExtraPrivileges 关闭后不可用（实测 ERR_FAILED）。
+        void win.loadURL(buildPlantumlPageUrl()).catch((error: unknown) => {
             settleReject(error instanceof Error ? error : new Error(String(error)))
         })
     })

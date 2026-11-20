@@ -61,8 +61,16 @@ describe('开发口径 CSP（源 index.html，dev server 使用）', () => {
         expect(DEV_CSP).not.toContain('base-uri')
     })
 
-    it('should keep file: in img-src for local image rendering (FE-12 regression guard)', () => {
+    it('should keep file: in img-src for dev-server local image rendering (FE-12 regression guard)', () => {
         expect(DEV_CSP).toMatch(/img-src [^;]*\bfile:/)
+    })
+
+    it('should keep app: scheme for app://local local resources (2026-11-20 file:// → app://)', () => {
+        // 生产/构建产物由 app://baize 加载：本地用户文件走 app://local（'self' 只覆盖
+        // app://baize），预览本地图片、HTML 查看器相对 CSS/字体需要按 scheme 放行 app:
+        expect(DEV_CSP).toMatch(/img-src [^;]*\bapp:/)
+        expect(DEV_CSP).toMatch(/style-src [^;]*\bapp:/)
+        expect(DEV_CSP).toMatch(/font-src [^;]*\bapp:/)
     })
 
     it('should keep blob: worker support for Monaco workers', () => {
@@ -100,7 +108,11 @@ describe('生产口径 CSP（构建期注入，P2-4）', () => {
         expect(PRODUCTION_CSP).toContain("object-src 'none'")
         expect(PRODUCTION_CSP).toContain("form-action 'none'")
         expect(PRODUCTION_CSP).toContain("default-src 'self'")
-        expect(PRODUCTION_CSP).toMatch(/img-src [^;]*\bfile:/)
+        // 2026-11-20（file:// → app:// 迁移）：本地资源改走 app://local，file: 必须被剥离
+        expect(PRODUCTION_CSP).not.toMatch(/\bfile:/)
+        expect(PRODUCTION_CSP).toMatch(/img-src [^;]*\bapp:/)
+        expect(PRODUCTION_CSP).toMatch(/style-src [^;]*\bapp:/)
+        expect(PRODUCTION_CSP).toMatch(/font-src [^;]*\bapp:/)
         expect(PRODUCTION_CSP).toMatch(/worker-src [^;]*\bblob:/)
     })
 
@@ -130,9 +142,27 @@ describe('生产口径 CSP（构建期注入，P2-4）', () => {
         ).toThrow(/localhost/)
     })
 
+    it('should fail the production self-check when file: remains (file protocol fuse off)', () => {
+        expect(() =>
+            assertProductionCsp(
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' app:; img-src 'self' data: https: file: app:; connect-src 'self'; object-src 'none'; form-action 'none'"
+            )
+        ).toThrow(/file:/)
+    })
+
+    it('should fail the production self-check when app: local-resource allowance is missing', () => {
+        expect(() =>
+            assertProductionCsp(
+                "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; connect-src 'self'; object-src 'none'; form-action 'none'"
+            )
+        ).toThrow(/app:/)
+    })
+
     it('should fail the production self-check when hardening directives are missing', () => {
-        expect(() => assertProductionCsp("script-src 'self'; connect-src 'self'")).toThrow(
-            /object-src/
-        )
+        expect(() =>
+            assertProductionCsp(
+                "script-src 'self'; style-src 'self' app:; img-src 'self' app:; connect-src 'self'"
+            )
+        ).toThrow(/object-src/)
     })
 })

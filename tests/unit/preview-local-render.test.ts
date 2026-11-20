@@ -57,6 +57,11 @@ import { createPreviewMarkdownIt } from '../../src/renderer/src/components/Markd
 import { PreMarkdownRender } from '../../src/renderer/src/components/Markdown/hemy-editor-render'
 // 迁移（渲染层公共接口归位）：预览限制常量的数值真源（P2-1：简化档 256KiB / 1 万行）
 import { PREVIEW_DEGRADE_FILE_SIZE, PREVIEW_DEGRADE_LINES } from '../../src/shared/constants/limits'
+// 2026-11-20（file:// → app:// 迁移）：本地图片/链接在 app:// 模式下改走 app://local
+import {
+    resetAppProtocolStateForTesting,
+    setAppProtocolActive
+} from '../../src/shared/protocol/app-protocol'
 
 /** 构造与 MarkdownPreviewComponent 等价的 markdown-it 实例（预览同款插件链，渲染链路一致性用） */
 function createMarkdownIt(): InstanceType<typeof MarkdownIt> {
@@ -206,6 +211,57 @@ describe('HemyRenderPreLocal 图片/文件 URL 绝对化（原主进程 appState
         const result = HemyRenderPreLocal('![x](javascript:alert(1))')
         expect(result).toContain('![x](javascript:alert(1))')
         expect(result).not.toContain('<img')
+    })
+})
+
+describe('app:// 模式：本地图片/链接改走 app://local（2026-11-20 file:// → app:// 迁移）', () => {
+    afterEach(() => {
+        resetAppProtocolStateForTesting()
+    })
+
+    it('相对图片 → app://local/<绝对路径>（协议 handler 经 Path Guard 读取）', () => {
+        setPreviewActiveFilePath('C:\\notes\\dir\\file.md')
+        setAppProtocolActive(true)
+        const result = HemyRenderPreLocal('![alt](./img/a.png)')
+        expect(result).toContain('src="app://local/C:/notes/dir/img/a.png"')
+    })
+
+    it('相对文件链接 → app://local/<绝对路径>', () => {
+        setPreviewActiveFilePath('C:\\notes\\dir\\file.md')
+        setAppProtocolActive(true)
+        expect(HemyRenderPreLocal('[doc](./a.md)')).toContain(
+            '<a href="app://local/C:/notes/dir/a.md">doc</a>'
+        )
+    })
+
+    it('用户 Markdown 中 file:// 绝对引用保持原始 FUN-22 安全口径（不引入行为变化）', () => {
+        setPreviewActiveFilePath('C:\\notes\\dir\\file.md')
+        setAppProtocolActive(true)
+        // file: 不在 SAFE_URL_PROTOCOLS 白名单内，迁移前后都保持 Markdown 原文
+        const result = HemyRenderPreLocal('![pic](file:///C:/notes/dir/img/b.png)')
+        expect(result).toContain('![pic](file:///C:/notes/dir/img/b.png)')
+        expect(result).not.toContain('<img')
+    })
+
+    it('app:// 模式下 http 链接与非文件协议仍保持原行为', () => {
+        setPreviewActiveFilePath('C:\\notes\\dir\\file.md')
+        setAppProtocolActive(true)
+        expect(HemyRenderPreLocal('[x](http://example.com/a)')).toContain(
+            '[x](http://example.com/a)'
+        )
+        expect(HemyRenderPreLocal('[d](data:text/plain,hello)')).toContain(
+            '[d](data:text/plain,hello)'
+        )
+    })
+
+    it('开关复位后回到 file:// 口径（dev server 兼容）', () => {
+        setPreviewActiveFilePath('C:\\notes\\dir\\file.md')
+        setAppProtocolActive(true)
+        expect(HemyRenderPreLocal('![alt](./img/a.png)')).toContain('app://local/')
+        resetAppProtocolStateForTesting()
+        expect(HemyRenderPreLocal('![alt](./img/a.png)')).toContain(
+            'src="file:///C:/notes/dir/img/a.png"'
+        )
     })
 })
 

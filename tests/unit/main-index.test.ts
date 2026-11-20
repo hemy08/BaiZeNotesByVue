@@ -1,15 +1,13 @@
 /**
  * src/main/index.ts 单元测试（注册流程）
  * 覆盖：whenReady 后初始化（用户目录/config IPC/AppUserModelId）、
- * 窗口创建参数与 preload/loadFile、ELECTRON_RENDERER_URL 分支、
+ * 窗口创建参数与 preload/app:// 渲染入口加载、ELECTRON_RENDERER_URL 分支、
  * ready-to-show 初始化流程、自动保存定时器启动、update-theme 广播、
  * window-open-handler 拦截、P0 安全的主窗口 will-navigate/will-redirect 导航边界、
  * close 前 flush 协议（脏保存/幂等）、
  * before-quit 清理、window-all-closed 清理、activate 重建窗口不重复注册 IPC
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import * as path from 'path'
-import { pathToFileURL } from 'url'
 
 // CMP-30：主进程入口窗口标题等文案经 tMain 读取词典（语言来自系统设置）。
 // 测试固定中文词条并 mock 掉 config/system-setting，隔离 electron-store 等主进程存储依赖链。
@@ -29,13 +27,13 @@ const electronMocks = vi.hoisted(() => {
         // 批次 B #4：appState 退出标志（before-quit 置位后 close 不再被托盘拦截）
         quitFlag: { value: false },
         // P2-10：单实例锁申请结果（requestSingleInstanceLock 返回值）
-        lockFlag: { value: true }
+        lockFlag: { value: true },
+        // 2026-11-20（file:// → app:// 迁移）：is.dev 分支开关（默认 dev；打包分支用例置 false）
+        devFlag: { value: true }
     }
-    // P2-1：主窗口当前 URL（与 index.ts 的 join(__dirname, '../renderer/index.html') 同路径）
-    const rendererIndexFileUrl = (): string => {
-        const normalized = `${process.cwd()}/src/renderer/index.html`.replace(/\\/g, '/')
-        return normalized.startsWith('/') ? `file://${normalized}` : `file:///${normalized}`
-    }
+    // P2-1：主窗口当前 URL（2026-11-20 file:// → app:// 迁移后为 app://baize/index.html；
+    // 导航白名单/权限受信来源判定与实际加载 URL 同口径）
+    const rendererIndexUrl = (): string => 'app://baize/index.html'
     const win = {
         on: vi.fn((event: string, handler: (...args: never[]) => void) => {
             const arr = winHandlers[event] ?? []
@@ -66,8 +64,8 @@ const electronMocks = vi.hoisted(() => {
             setWindowOpenHandler: vi.fn(),
             isDestroyed: vi.fn(() => false),
             // P2-1：权限处理器按「主窗口 webContents + 当前 URL 属受信页面」判定，
-            // 主窗口 mock 返回构建后的 renderer index.html 文件 URL（与导航测试同路径）
-            getURL: vi.fn(() => rendererIndexFileUrl())
+            // 主窗口 mock 返回 app:// renderer 入口 URL（2026-11-20 file:// → app://）
+            getURL: vi.fn(() => rendererIndexUrl())
         },
         loadURL: vi.fn(),
         loadFile: vi.fn()
@@ -85,9 +83,17 @@ const electronMocks = vi.hoisted(() => {
         // P2-1：Web 权限请求/检查处理器注册记录（session.defaultSession）
         setPermissionRequestHandler: vi.fn(),
         setPermissionCheckHandler: vi.fn(),
+        // 2026-11-20（file:// → app:// 迁移）：自定义协议注册记录
+        // （registerSchemesAsPrivileged 在模块顶层、handle 在 whenReady 内各调用一次）
+        protocol: {
+            registerSchemesAsPrivileged: vi.fn(),
+            handle: vi.fn()
+        },
         screenDisplays: state.screenDisplays,
         quitFlag: state.quitFlag,
         singleInstanceLock: state.lockFlag,
+        // 2026-11-20（file:// → app:// 迁移）：is.dev 分支开关
+        devFlag: state.devFlag,
         screen: {
             getAllDisplays: vi.fn(() => state.screenDisplays)
         },
@@ -123,6 +129,7 @@ vi.mock('electron', () => ({
     shell: { openExternal: electronMocks.openExternal },
     ipcMain: electronMocks.ipcMain,
     screen: electronMocks.screen,
+    protocol: electronMocks.protocol,
     // AS-9：index.ts 在 whenReady 注册远程资源外发阻断（session.defaultSession.webRequest）
     // P2-1：同时注册 Web 权限请求/检查处理器（默认拒绝）
     session: {
@@ -149,7 +156,13 @@ const toolkitMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@electron-toolkit/utils', () => ({
-    is: { dev: true },
+    // 2026-11-20（file:// → app:// 迁移）：is.dev 改为读取可变开关，覆盖「开发构建 file://」
+    // 与「打包产物 app://」两条加载分支
+    is: {
+        get dev() {
+            return electronMocks.devFlag.value
+        }
+    },
     electronApp: { setAppUserModelId: toolkitMocks.setAppUserModelId },
     optimizer: { watchWindowShortcuts: toolkitMocks.watchWindowShortcuts }
 }))
@@ -467,6 +480,8 @@ beforeEach(() => {
     electronMocks.quitFlag.value = false
     // P2-10：单实例锁申请结果复位为成功
     electronMocks.singleInstanceLock.value = true
+    // 2026-11-20（file:// → app:// 迁移）：加载分支开关复位为 dev（默认用例走 file:// 分支）
+    electronMocks.devFlag.value = true
     electronMocks.screenDisplays.length = 0
     electronMocks.screenDisplays.push({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } })
     electronMocks.win.isDestroyed.mockReset()
@@ -498,6 +513,8 @@ beforeEach(() => {
     electronMocks.webRequestOnBeforeRequest.mockClear()
     electronMocks.setPermissionRequestHandler.mockClear()
     electronMocks.setPermissionCheckHandler.mockClear()
+    electronMocks.protocol.registerSchemesAsPrivileged.mockClear()
+    electronMocks.protocol.handle.mockClear()
     for (const mock of Object.values(toolkitMocks)) mock.mockClear()
     for (const mock of Object.values(internalMocks)) {
         if (typeof mock === 'function') mock.mockClear()
@@ -547,10 +564,33 @@ describe('app whenReady startup flow', () => {
         expect(registryMocks.registerPreWindowIpc).toHaveBeenCalledTimes(1)
         expect(registryMocks.registerAll).toHaveBeenCalledTimes(1)
         const preWindowOrder = registryMocks.registerPreWindowIpc.mock.invocationCallOrder[0]
-        const loadFileOrder = electronMocks.win.loadFile.mock.invocationCallOrder[0]
+        // 2026-11-20（file:// → app:// 迁移）：dev 走 loadFile、打包走 loadURL，取实际发生的
+        // 首个 renderer 加载调用顺序（不绑定具体分支）
+        const loadOrders = [
+            electronMocks.win.loadFile.mock.invocationCallOrder[0],
+            electronMocks.win.loadURL.mock.invocationCallOrder[0]
+        ].filter((order): order is number => typeof order === 'number')
+        const loadOrder = Math.min(...loadOrders)
         const registerAllOrder = registryMocks.registerAll.mock.invocationCallOrder[0]
-        expect(preWindowOrder).toBeLessThan(loadFileOrder)
-        expect(loadFileOrder).toBeLessThan(registerAllOrder)
+        expect(preWindowOrder).toBeLessThan(loadOrder)
+        expect(loadOrder).toBeLessThan(registerAllOrder)
+    })
+
+    // 2026-11-20（renderer file:// → app:// 迁移）：协议特权须在 app ready 前注册
+    // （模块顶层），handler 在 whenReady 内、创建窗口之前注册。
+    it('should register app:// protocol schemes before ready and handlers on ready', async () => {
+        await loadMainIndex()
+        expect(electronMocks.protocol.registerSchemesAsPrivileged).toHaveBeenCalledTimes(1)
+        const schemes = electronMocks.protocol.registerSchemesAsPrivileged.mock.calls[0][0]
+        expect(schemes[0].scheme).toBe('app')
+        expect(schemes[0].privileges).toMatchObject({
+            standard: true,
+            secure: true,
+            supportFetchAPI: true
+        })
+        expect(electronMocks.protocol.handle).toHaveBeenCalledTimes(1)
+        expect(electronMocks.protocol.handle.mock.calls[0][0]).toBe('app')
+        expect(typeof electronMocks.protocol.handle.mock.calls[0][1]).toBe('function')
     })
 
     // AS-9：启动时注册远程图表外发阻断（防止 PlantUML 源码绕道 plantuml.com 外发）
@@ -626,10 +666,20 @@ describe('app whenReady startup flow', () => {
         expect(String(options.webPreferences.preload)).toContain('preload')
     })
 
-    it('should load the renderer index.html when no dev URL is set', async () => {
+    it('should load the renderer entry through file:// for unpackaged dev builds', async () => {
         await loadMainIndex()
+        // 2026-11-20（file:// → app:// 迁移）：未打包 dev 构建（is.dev=true，无 dev server URL）
+        // 保留 file://（file 协议特权 fuse 只作用于打包产物；dev 分支不进发布产物）
         expect(electronMocks.win.loadFile).toHaveBeenCalledWith(expect.stringContaining('renderer'))
         expect(electronMocks.win.loadURL).not.toHaveBeenCalled()
+    })
+
+    it('should load the renderer entry through app:// for packaged builds', async () => {
+        electronMocks.devFlag.value = false
+        await loadMainIndex()
+        // 打包产物：renderer 由 app:// 自定义协议加载（关闭 file 协议特权 fuse 后的生产路径）
+        expect(electronMocks.win.loadURL).toHaveBeenCalledWith('app://baize/index.html')
+        expect(electronMocks.win.loadFile).not.toHaveBeenCalled()
     })
 
     it('should load the dev server URL when ELECTRON_RENDERER_URL is set', async () => {
@@ -924,20 +974,21 @@ describe('main window navigation boundary (P0 安全)', () => {
         expect(electronMocks.webContentHandlers['will-redirect']).toHaveLength(1)
     })
 
-    it('should block external navigation and allow the packaged renderer index.html', async () => {
+    it('should block external navigation and allow the app:// renderer entry', async () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
         await loadMainIndex()
         // 外部地址：拦截
         const blockedEvent = { preventDefault: vi.fn() }
         triggerWebContentHandler('will-navigate', blockedEvent, 'https://evil.example.com/steal')
         expect(blockedEvent.preventDefault).toHaveBeenCalled()
-        // 打包后的 renderer index.html：放行（按 index.ts 的 join(__dirname, '../renderer/index.html') 构造）
+        // 2026-11-20 file:// → app:// 迁移：app:// renderer 入口放行
         const allowedEvent = { preventDefault: vi.fn() }
-        const rendererUrl = pathToFileURL(
-            path.join(process.cwd(), 'src', 'renderer', 'index.html')
-        ).href
-        triggerWebContentHandler('will-navigate', allowedEvent, rendererUrl)
+        triggerWebContentHandler('will-navigate', allowedEvent, 'app://baize/index.html')
         expect(allowedEvent.preventDefault).not.toHaveBeenCalled()
+        // app:// 下的其它路径（非入口）仍拦截
+        const blockedAppEvent = { preventDefault: vi.fn() }
+        triggerWebContentHandler('will-navigate', blockedAppEvent, 'app://baize/assets/app.js')
+        expect(blockedAppEvent.preventDefault).toHaveBeenCalled()
         expect(warnSpy).toHaveBeenCalled()
         warnSpy.mockRestore()
     })
@@ -1337,8 +1388,11 @@ describe('activate recreation', () => {
         registryMocks.registerAll.mockClear()
         electronMocks.windows.length = 0
         triggerAppHandler('activate')
-        // 窗口重建：再次 loadFile
-        expect(electronMocks.win.loadFile.mock.calls.length).toBeGreaterThanOrEqual(2)
+        // 窗口重建：再次加载 renderer 入口（dev 分支 file://；打包分支 app://）
+        const loadCalls =
+            electronMocks.win.loadFile.mock.calls.length +
+            electronMocks.win.loadURL.mock.calls.length
+        expect(loadCalls).toBeGreaterThanOrEqual(2)
         // IPC 注册保持一次性，不随窗口重建重复执行（M2：注册清单 registerAll 只调一次）
         expect(registryMocks.registerAll).not.toHaveBeenCalled()
         // P3（审查）：activate 重建窗口后重启系统主题跟随监听与自动备份定时器

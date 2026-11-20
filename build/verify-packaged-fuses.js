@@ -15,6 +15,12 @@
  * `npm run build:unpack:e2e`（发布矩阵 + 仅 inspect 例外）。本脚本在**翻转例外之前**
  * 对真实发布口径产物做 fuse 断言 + 无调试器启动验证，保证硬化不牺牲可启动性。
  *
+ * 2026-11-20（renderer file:// → app:// 迁移）：发布矩阵第 8 位
+ * `grantFileProtocolExtraPrivileges` 已关闭，renderer 由 app:// 自定义协议加载
+ * （src/main/protocol/app-protocol.ts）。启动冒烟轮询到 `rendererReadyMs` 即证明
+ * 「app:// 协议注册 → 窗口加载 app://baize/index.html → 渲染层挂载握手」全链路可用；
+ * 打包产物的协议安全边界与功能链路由 E2E（packaged-launch / app-protocol）覆盖。
+ *
  * 用法：
  *   node build/verify-packaged-fuses.js                 # 断言 + 启动冒烟
  *   node build/verify-packaged-fuses.js --no-launch     # 仅断言 fuse 位（无需桌面环境）

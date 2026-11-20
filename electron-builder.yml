@@ -24,10 +24,11 @@ compression: maximum
 # - onlyLoadAppFromAsar: true——只从 resources/app.asar 加载应用代码，跳过 app/ 与
 #   default_app.asar 回退，阻止旁加载未校验代码；
 # - loadBrowserProcessSpecificV8Snapshot: false——无自定义 V8 快照需求，保持默认；
-# - grantFileProtocolExtraPrivileges: true（评估后**保持启用**）——应用 renderer 以
-#   file:// 从 app.asar 加载（mainWindow.loadFile），关闭该 fuse 后 Electron 不再走
-#   asar-aware 的 file 协议加载，实测白屏并报 ERR_FILE_NOT_FOUND；关闭需先把 renderer
-#   迁移到自定义协议（app:// + protocol.handle），属独立改造，列为后续方案。
+# - grantFileProtocolExtraPrivileges: false（2026-11-20 已关闭）——renderer 已从 file://
+#   迁移到 app:// 自定义标准安全协议（src/main/protocol/app-protocol.ts）：主窗口/PlantUML
+#   隐藏窗口经 app:// 加载 asar 内 renderer 与 extraResources，用户本地文件走受 Path Guard
+#   白名单校验的 app://local。关闭后同时消除 file:// 页面的 fetch/ServiceWorker/子帧越权面
+#   （评估与迁移证据见 out/tool-results/fix-app-protocol.md）。
 electronFuses:
     runAsNode: false
     enableCookieEncryption: false
@@ -36,7 +37,7 @@ electronFuses:
     enableEmbeddedAsarIntegrityValidation: true
     onlyLoadAppFromAsar: true
     loadBrowserProcessSpecificV8Snapshot: false
-    grantFileProtocolExtraPrivileges: true
+    grantFileProtocolExtraPrivileges: false
 # P0 安装包瘦身（2026-11-19）：Electron 运行时自带 55 个 locale 语言包
 # （win-unpacked/locales/*.pak，实测合计约 46.6 MiB），NSIS/portable 打包时全部随包分发。
 # 应用 UI 词典只有 zh-CN / en-US 两套（src/shared/i18n/messages），其余 53 种语言

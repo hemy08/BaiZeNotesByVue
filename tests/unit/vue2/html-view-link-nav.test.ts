@@ -54,6 +54,23 @@ describe('resolveLocalHtmlTarget', () => {
         })
     })
 
+    it('解析 app://local URL 为本地路径与文件名（2026-11-20 file:// → app:// 迁移）', () => {
+        expect(
+            resolveLocalHtmlTarget(
+                'app://local/E:/repo/docs/reports/html/%E6%8A%A5%E5%91%8A/README.html'
+            )
+        ).toEqual({ path: 'E:/repo/docs/reports/html/报告/README.html', name: 'README.html' })
+        expect(resolveLocalHtmlTarget('app://local/home/user/report/index.html')).toEqual({
+            path: '/home/user/report/index.html',
+            name: 'index.html'
+        })
+    })
+
+    it('app:// 非 local 宿主 / app://local 非 HTML 扩展名返回 null', () => {
+        expect(resolveLocalHtmlTarget('app://baize/index.html')).toBeNull()
+        expect(resolveLocalHtmlTarget('app://local/E:/repo/README.md')).toBeNull()
+    })
+
     it('非 file 协议返回 null', () => {
         expect(resolveLocalHtmlTarget('https://example.com/a.html')).toBeNull()
         expect(resolveLocalHtmlTarget('mailto:a@b.com')).toBeNull()
@@ -84,6 +101,19 @@ describe('resolveViewerHtmlLinkClick', () => {
         ).toEqual({
             kind: 'navigate',
             path: 'E:\\repo\\docs\\reports\\html\\01-检查\\README.html',
+            name: 'README.html'
+        })
+    })
+
+    it('app://local 基准下的本地 HTML 链接归类为 navigate（迁移后 iframe base 口径）', () => {
+        expect(
+            resolveViewerHtmlLinkClick(
+                'app://local/E:/repo/docs/reports/html/01-%E6%A3%80%E6%9F%A5/README.html',
+                current
+            )
+        ).toEqual({
+            kind: 'navigate',
+            path: 'E:/repo/docs/reports/html/01-检查/README.html',
             name: 'README.html'
         })
     })

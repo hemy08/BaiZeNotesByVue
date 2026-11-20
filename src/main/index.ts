@@ -1,5 +1,10 @@
 import { app, BrowserWindow, session, screen } from 'electron'
 import { join } from 'path'
+// renderer file:// → app:// 迁移（2026-11-20）：自定义标准安全协议注册/处理。
+// 主窗口与 PlantUML 隐藏窗口改为 app:// 加载，本地用户文件经 app://local + Path Guard 白名单，
+// 从而可以关闭 grantFileProtocolExtraPrivileges（file:// 特权）fuse。
+import { registerAppProtocolHandlers, registerAppProtocolSchemes } from './protocol/app-protocol'
+import { buildAppRendererUrl } from '../shared/protocol/app-protocol'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import * as utils from './utils/utils'
 import * as dialogs from './dialogs/dialogs'
@@ -49,10 +54,18 @@ import { getAppContext } from './app-context'
 import { registerAll, registerPreWindowIpc } from './ipc/registry'
 import { IPC } from '../shared/ipc-channels'
 // PF-08：PlantUML 本地离线渲染隐藏窗口的退出清理（注册已迁入 ipc/registry）
-import { disposePlantumlLocalWindows } from './renders/plantuml-local'
+// 2026-11-20：新增 resolvePlantumlProtocolRoot——app://plantuml 协议映射根（file:// 迁移）
+import { disposePlantumlLocalWindows, resolvePlantumlProtocolRoot } from './renders/plantuml-local'
 import { tMain } from './utils/i18n'
 // P0 安全（导航边界 + shell 协议白名单）：窗口导航与外部链接打开统一走安全封装
-import { isAllowedAppNavigation, isSafeExternalUrl, openExternalSafely } from './utils/security'
+// 2026-11-20（app:// 迁移）：新增 isPathAllowed——app://local 用户本地文件的 Path Guard
+// 白名单判定与 IPC 文件通道复用同一实现，避免协议层与 IPC 层两套规则漂移。
+import {
+    isAllowedAppNavigation,
+    isPathAllowed,
+    isSafeExternalUrl,
+    openExternalSafely
+} from './utils/security'
 // AS-9：远程图表外发阻断（PlantUML 本地渲染不可用时的 plantuml.com 远程降级请求）
 import { registerRemoteResourceGuard } from './utils/remote-resource-guard'
 // P2-1：Web 权限请求处理器（默认拒绝；仅主窗口本地受信页面按需放行）
@@ -112,6 +125,16 @@ setThemeApiProvider({
 // P1-1（工作区受信根来源收敛）：recent-folders 为主进程专属配置——配置层写入实现注入
 // utils（file-operations.OpenDirectory 等 utils 层调用；utils 不反向 import config）。
 setRecentFolderRecorderProvider(recordRecentFolder)
+
+/* ============================================================================
+ * renderer file:// → app:// 迁移（2026-11-20）
+ *
+ * 协议特权注册必须在 `app.whenReady` 之前完成（Electron 的硬性要求），因此在模块顶层
+ * 立即注册；handler 映射根（renderer 构建产物 / PlantUML 资源）在 whenReady 内注册。
+ * 迁移原因：关闭 grantFileProtocolExtraPrivileges fuse 后 file:// 页面不可用，见
+ * src/main/protocol/app-protocol.ts 与 out/tool-results/fix-app-protocol.md。
+ * ========================================================================== */
+registerAppProtocolSchemes()
 
 // D-3/FUN-03：关闭/退出落盘协议通道名（ARC-03：收口到共享 IPC 常量）
 const EDITOR_FLUSH_CHANNEL = IPC.EDITOR.FLUSH_CONTENT
@@ -335,10 +358,12 @@ function createWindow(): BrowserWindow {
 
     // P0 安全（导航边界）：主窗口只允许导航到受信来源——
     // 1) 开发模式下的 ELECTRON_RENDERER_URL（Vite dev server）；
-    // 2) 打包/构建后的本地 renderer/index.html（file:）。
+    // 2) 打包/构建后的 renderer 入口（app://baize/index.html，2026-11-20 由 file:// 迁移；
+    //    security.isAllowedAppNavigation 同时兼容 file:// 口径，便于灰度/回退）。
     // 其余目标（渲染层被拖入远程链接、页面 location 跳转、远程重定向、file:/javascript:/
-    // data:/自定义协议等）一律拦截，防止不可信页面替换应用界面后接触 IPC 与本地文件。
-    const rendererIndexPath = join(__dirname, '../renderer/index.html')
+    // data:/其它自定义协议等）一律拦截，防止不可信页面替换应用界面后接触 IPC 与本地文件。
+    const rendererRoot = join(__dirname, '../renderer')
+    const rendererIndexPath = join(rendererRoot, 'index.html')
     const devServerUrl =
         is.dev && process.env['ELECTRON_RENDERER_URL']
             ? process.env['ELECTRON_RENDERER_URL']
@@ -366,13 +391,31 @@ function createWindow(): BrowserWindow {
 
     // P1 性能基线：诊断模式下给渲染层 URL 追加 ?baizePerf=1，渲染层据此打开
     // performance.mark/measure 采集并经控制台哨兵上报（普通启动 URL 不变，零影响）。
+    //
+    // 2026-11-20（file:// → app:// 迁移）加载口径：
+    // - dev server（ELECTRON_RENDERER_URL）→ http://localhost（Vite HMR，保持不变）；
+    // - **打包产物（is.dev=false）→ app://baize/index.html**：协议 handler 从 app.asar 内
+    //   out/build/renderer 读取资源；这是关闭 grantFileProtocolExtraPrivileges 后唯一可用的
+    //   生产加载路径；
+    // - 未打包的 dev 构建（electron-vite build 后直接以 electron 运行，含 E2E dev 用例）→
+    //   保留 file://：file 协议特权 fuse 只作用于打包产物，且 Electron 43 上游「CDP 提前
+    //   attach 触发 sandboxed preload 启动数据竞态」在自定义协议首导航下高发（实测 app://
+    //   首导航 preload 缺失 5/6，file:// 仅 1/6），会放大 E2E 启动稳定性指标的噪声。
+    //   该分支不进入发布产物，生产路径始终走 app://。
     const perfDiagnosticsEnabled = isPerfDiagnosticsEnabled()
+    const appRendererUrl = buildAppRendererUrl()
     if (devServerUrl) {
         mainWindow.loadURL(perfDiagnosticsEnabled ? withPerfQueryParam(devServerUrl) : devServerUrl)
+    } else if (is.dev) {
+        if (perfDiagnosticsEnabled) {
+            mainWindow.loadFile(rendererIndexPath, { query: { [PERF_QUERY_PARAM]: '1' } })
+        } else {
+            mainWindow.loadFile(rendererIndexPath)
+        }
     } else if (perfDiagnosticsEnabled) {
-        mainWindow.loadFile(rendererIndexPath, { query: { [PERF_QUERY_PARAM]: '1' } })
+        mainWindow.loadURL(withPerfQueryParam(appRendererUrl))
     } else {
-        mainWindow.loadFile(rendererIndexPath)
+        mainWindow.loadURL(appRendererUrl)
     }
 
     // A-1/ARC-06：IPC 注册已移出 createWindow，改在 app.whenReady 后一次性执行，
@@ -514,6 +557,20 @@ app.whenReady().then(() => {
     }
     initUserDataDirectory()
 
+    // renderer file:// → app:// 迁移：注册 app:// 协议 handler（映射 renderer 构建产物根、
+    // PlantUML 资源根与受信本地文件），必须在创建窗口（loadURL(app://...)）之前完成。
+    // Path Guard 与 IPC 文件通道共用 security.isPathAllowed：app://local 只能读取受信根内文件。
+    const appProtocolRegistered = registerAppProtocolHandlers(
+        {
+            rendererRoot: join(__dirname, '../renderer'),
+            plantumlRoot: resolvePlantumlProtocolRoot()
+        },
+        isPathAllowed
+    )
+    if (!appProtocolRegistered) {
+        logger.warn('[app-protocol] app:// 协议 handler 未注册，主窗口 renderer 可能无法加载')
+    }
+
     // AS-9：注册远程图表外发阻断（PlantUML 本地渲染不可用时不再把图表源码发往
     // plantuml.com）。session 在单测桩中可能缺失：registerRemoteResourceGuard 自身
     // try/catch + 空 session 安全跳过，不阻断启动。
@@ -524,7 +581,7 @@ app.whenReady().then(() => {
     }
 
     // P2-1：注册 Web 权限请求/检查处理器（默认拒绝）。仅主窗口本地受信页面
-    // （打包 file: renderer/index.html / dev http://localhost）按需放行 fullscreen 与
+    // （打包 app://baize/index.html / dev http://localhost）按需放行 fullscreen 与
     // 剪贴板读写；在线网页窗口与隐藏窗口一律拒绝。session 缺失时安全跳过。
     try {
         registerPermissionHandlers(session?.defaultSession ?? null, {

@@ -28,9 +28,13 @@ import { SplitPreviewHtmlForSanitize, type PreviewHtmlChunkSpan } from './previe
  * 默认 URI 白名单不允许 file: 协议，本地相对路径图片（预览管线已转换为 file:// 绝对 URL）
  * 的 src 会被剥离导致图片不显示；基于默认白名单追加 file:（file: 仅作为 img 等资源 URL
  * 使用，不承载脚本执行能力）。
+ *
+ * 2026-11-20（file:// → app:// 迁移）：app:// 模式下本地图片改由 `app://local/<绝对路径>`
+ * 提供（file:// 在 fuse 关闭后不可用），URI 白名单追加 app 协议；file: 保留以兼容
+ * Vite dev server 模式（app:// 开关关闭时仍生成 file:// URL）。
  */
 export const DOMPURIFY_ALLOWED_URI_REGEXP =
-    /^(?:(?:(?:f|ht)tps?|file|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i
+    /^(?:(?:(?:f|ht)tps?|file|app|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i
 
 /**
  * CMP-15：DOMPurify 配置（预览唯一真源）。

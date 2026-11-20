@@ -5,23 +5,29 @@
         <!-- CMP-17：内容安全策略（纵深防御，XSS 后效阻断内联脚本执行）。
          - 本文件为「开发口径」CSP（dev server / Monaco 调试链路）；**生产产物由构建期
            插件自动剥离开发专用 token**（build/renderer-csp.ts + electron.vite.config.ts
-           的 baize-production-csp 插件），打包后的 CSP 不含 'unsafe-eval' 与 localhost 放行；
+           的 baize-production-csp 插件），打包后的 CSP 不含 'unsafe-eval'、localhost 放行
+           与 file: 放行；
          - script-src 'unsafe-eval'：Monaco/Vite 开发链路需要；渲染层源码无 new Function/eval，
            生产口径由构建期移除（tests/unit/renderer-csp.test.ts 同时锁定两套口径）；
          - style-src 'unsafe-inline'：Vue/Monaco/KaTeX 内联样式需要；
-         - img-src data: https: file:：Markdown 远程图片、base64 内嵌图与本地
-           相对路径图片（预览层将相对路径转换为 file:// 绝对 URL，FE-12）；
+         - style-src / img-src / font-src 的 app:：2026-11-20 renderer file:// → app:// 迁移——
+           页面由 app://baize 加载，本地用户文件（Markdown 预览本地图片、HTML 查看器报告页
+           相对 CSS/图片/字体）改由 app://local 协议提供（主进程 Path Guard 白名单校验），
+           因此需要按 scheme 放行 app:（'self' 只覆盖 app://baize，不含 app://local）；
+         - img-src data: https: file:：远程图片、base64 内嵌图与 dev server 模式（http 页面 +
+           webSecurity=false）下的 file:// 本地图片；**生产构建剥离 file:**（fuse 关闭后
+           file:// 不可用），生产本地图片只走 app://local；
          - frame-src 'self'：PDF 已改 pdf.js canvas 渲染、HTML 查看器使用 srcdoc，
            不再加载 file: 帧来源（2026-11-19 收紧）；
          - connect-src localhost:：仅 Vite dev HMR 需要（生产构建剥离）；
          - object-src 'none' / form-action 'none'：2026-11-18（遗留清单 #6）收紧——
            禁止插件对象、禁止表单提交外发。
          - 2026-11-19 调整：**不设 base-uri**——HTML 查看器需在 sandbox iframe 的 srcdoc
-           中注入 `<base href="file://...">` 修正相对链接，`base-uri 'self'` 会拦截该注入；
+           中注入 `<base href>` 修正相对链接，`base-uri 'self'` 会拦截该注入；
            该注入仅改变相对 URL 解析基准（不执行脚本），base-uri 收益低而冲突明确。 -->
         <meta
             http-equiv="Content-Security-Policy"
-            content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: file:; font-src 'self' data:; frame-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; worker-src 'self' blob:; object-src 'none'; form-action 'none'"
+            content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' app:; img-src 'self' data: https: file: app:; font-src 'self' data: app:; frame-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; worker-src 'self' blob:; object-src 'none'; form-action 'none'"
         />
         <!-- 第 4 批 4.5（M6）：删除此处 4 条 <link rel="stylesheet">（atom-one-light /
              admonition / gridcards / normalize）。它们与 src/main.ts 的 import 重复加载

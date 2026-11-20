@@ -33,6 +33,12 @@ import { createApp } from 'vue'
 import App from './App.vue'
 // CMP-30：i18n 初始化（读取系统语言设置 + 订阅语言变更）
 import { initI18n } from './common/i18n'
+// 2026-11-20（renderer file:// → app:// 迁移）：打包/构建产物由 app://baize 协议加载，
+// 本地用户文件（预览图片、HTML 查看器相对资源）必须改走 app://local（file:// 在 fuse
+// 关闭后不可用，且被 Chromium 从 app:// origin 禁止）；Vite dev server 模式保持 file:// 口径。
+import { setAppProtocolActive } from '../../shared/protocol/app-protocol'
+
+setAppProtocolActive(window.location.protocol === 'app:')
 
 /**
  * 创建 Vue 应用实例

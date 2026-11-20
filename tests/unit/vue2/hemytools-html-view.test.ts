@@ -29,6 +29,11 @@ import {
 import EventBus from '@renderer/common/event-bus/event-bus'
 import { EVENT_BUS } from '@renderer/common/event-bus/event-bus-events'
 import { IPC } from '../../../src/shared/ipc-channels'
+// 2026-11-20（file:// → app:// 迁移）：app:// 模式下 base href 改走 app://local
+import {
+    resetAppProtocolStateForTesting,
+    setAppProtocolActive
+} from '../../../src/shared/protocol/app-protocol'
 
 /**
  * 本用例已挂载的实例：组件内 componentId 带实例 uid 唯一后缀（多实例隔离），
@@ -434,6 +439,27 @@ describe('withBaseHref（srcdoc 相对链接基准修复）', () => {
         // 2026-11-19（P2 修复）：# 会被解析为 fragment、? 为 query，必须转义
         const out = withBaseHref('<body>x</body>', 'E:\\notes\\a#b?c\\index.html')
         expect(out).toContain('<base href="file:///E:/notes/a%23b%3Fc/">')
+    })
+})
+
+describe('withBaseHref：app:// 模式（2026-11-20 file:// → app:// 迁移）', () => {
+    afterEach(() => {
+        resetAppProtocolStateForTesting()
+    })
+
+    it('app:// 模式下 base href 改为 app://local/<目录>/（HTML 查看器相对资源由协议 handler 提供）', () => {
+        setAppProtocolActive(true)
+        const html = '<!DOCTYPE html><html><head></head><body>x</body></html>'
+        const out = withBaseHref(html, 'E:\\notes\\dir\\README.html')
+        expect(out).toContain('<base href="app://local/E:/notes/dir/">')
+        expect(out).not.toContain('file:///E:/notes/dir/')
+    })
+
+    it('app:// 模式下 POSIX 路径与 #/? 编码口径一致', () => {
+        setAppProtocolActive(true)
+        expect(withBaseHref('<body>x</body>', '/notes/a#b?c/index.html')).toContain(
+            '<base href="app://local/notes/a%23b%3Fc/">'
+        )
     })
 })
 

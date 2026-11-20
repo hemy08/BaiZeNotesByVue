@@ -84,6 +84,8 @@ vi.mock('electron', () => ({
     screen: { getAllDisplays: vi.fn(() => []) },
     // AS-9：index.ts 在 whenReady 注册远程资源外发阻断（session.defaultSession.webRequest）
     session: { defaultSession: { webRequest: { onBeforeRequest: vi.fn() } } },
+    // 2026-11-20（renderer file:// → app:// 迁移）：index.ts 模块顶层注册 app:// 协议特权
+    protocol: { registerSchemesAsPrivileged: vi.fn(), handle: vi.fn() },
     BrowserWindow: class {
         constructor(options: unknown) {
             electronMocks.capturedBrowserWindowOptions = options
@@ -144,6 +146,8 @@ const internalMocks = vi.hoisted(() => ({
     cleanupDirectoryWatch: vi.fn(),
     loggerError: vi.fn(),
     loggerInfo: vi.fn(),
+    // 2026-11-20（app:// 迁移）：index.ts 启动路径新增协议注册告警（logger.warn）
+    loggerWarn: vi.fn(),
     loggerSetMainWindow: vi.fn(),
     cleanupAll: vi.fn(),
     registerHandleOnce: vi.fn(),
@@ -225,6 +229,7 @@ vi.mock('../../src/main/utils/logger', () => ({
     logger: {
         error: internalMocks.loggerError,
         info: internalMocks.loggerInfo,
+        warn: internalMocks.loggerWarn,
         setMainWindow: internalMocks.loggerSetMainWindow
     }
 }))
@@ -283,6 +288,8 @@ const securityMocks = vi.hoisted(() => ({
     openExternalSafely: vi.fn(),
     isSafeExternalUrl: vi.fn(),
     isAllowedAppNavigation: vi.fn(),
+    // 2026-11-20（app:// 迁移）：index.ts 以 Path Guard 注入 app://local 白名单判定
+    isPathAllowed: vi.fn(() => false),
     normalizeSafeExternalUrl: vi.fn((url: string) => url)
 }))
 
@@ -518,6 +525,22 @@ describe('isAllowedAppNavigation 导航边界（真实实现）', () => {
         expect(
             security.isAllowedAppNavigation(otherFile, { rendererIndexPath: RENDERER_INDEX_PATH })
         ).toBe(false)
+    })
+
+    it('should allow exactly the app:// renderer entry URL (2026-11-20 file:// → app://)', async () => {
+        const security = await loadActualSecurity()
+        const options = { rendererIndexPath: RENDERER_INDEX_PATH }
+        expect(security.isAllowedAppNavigation('app://baize/index.html', options)).toBe(true)
+        // 诊断 query 不影响入口判定
+        expect(security.isAllowedAppNavigation('app://baize/index.html?baizePerf=1', options)).toBe(
+            true
+        )
+        // 其它 app:// 路径/宿主、未提供 rendererIndexPath 时一律拒绝
+        expect(security.isAllowedAppNavigation('app://baize/assets/app.js', options)).toBe(false)
+        expect(security.isAllowedAppNavigation('app://baize/other.html', options)).toBe(false)
+        expect(security.isAllowedAppNavigation('app://local/E:/notes/a.png', options)).toBe(false)
+        expect(security.isAllowedAppNavigation('app://unknown/index.html', options)).toBe(false)
+        expect(security.isAllowedAppNavigation('app://baize/index.html', {})).toBe(false)
     })
 
     it('should reject external / non-app navigations', async () => {

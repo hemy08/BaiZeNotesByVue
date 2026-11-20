@@ -105,7 +105,8 @@ test.describe('Electron 主窗口冒烟', () => {
     })
 
     test('欢迎页渲染与 preload 桥注入（含 IPC 往返）', async () => {
-        // 1) 渲染层已加载 electron-vite 构建产物（file:// 指向 out/build/renderer/index.html）
+        // 1) 渲染层已加载 electron-vite 构建产物（未打包 dev 构建走 file://；
+        //    打包产物走 app://baize/index.html，见 packaged-launch/app-protocol spec）
         await expect(page).toHaveURL(/\/out\/build\/renderer\/index\.html$/)
 
         // 2) 启动默认界面为欢迎页，且已挂载可见

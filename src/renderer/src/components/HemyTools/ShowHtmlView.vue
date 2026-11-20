@@ -169,8 +169,9 @@ async function loadHtmlContent(path: string, context: FileLoadContext): Promise<
         }
     }
     // 2026-11-18 修复「HTML 查看器内相对链接点击无反应」：
-    // srcdoc 文档基准 URL 是父页面，注入 <base href="file:///<文件目录>/"> 后，
-    // 报告 HTML Wiki 顶部导航、图片等相对资源可正确定位（详见 html-view-utils.ts）。
+    // srcdoc 文档基准 URL 是父页面，注入 `<base href>`（2026-11-20 起为
+    // `app://local/<文件目录>/`，迁移前为 file://）后，报告 HTML Wiki 顶部导航、图片等
+    // 相对资源可正确定位（详见 html-view-utils.ts）。
     // 注入顺序：先补导航（占位在 body）再注入 base（head），二者互不影响。
     return withBaseHref(html, path)
 }

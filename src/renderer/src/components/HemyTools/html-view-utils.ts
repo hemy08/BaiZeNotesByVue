@@ -20,19 +20,31 @@
  * 与 base 注入同属「读取 HTML 后的 srcdoc 内容后处理」，便于单测且保持组件精简。
  */
 
-import { dirToBaseHref, normalizeSlashes } from '../../../../shared/utils/path'
+import {
+    appLocalUrlToLocalPath,
+    dirToRendererBaseHref,
+    isAppLocalFileUrl
+} from '../../../../shared/protocol/app-protocol'
+import { normalizeSlashes } from '../../../../shared/utils/path'
 import { injectIntoHead } from '../../../../shared/utils/html'
 
 /**
  * 为 HTML 字符串注入 `<base href>`（基准指向 filePath 所在目录）。
+ *
+ * 2026-11-20（file:// → app:// 迁移）：renderer 改由 app:// 协议加载后，srcdoc 内注入的
+ * file:// base 无法再加载相对资源（Chromium 禁止 app:// origin 读 file://，且 fuse 关闭后
+ * file 协议不可用）；因此 app:// 模式下 base href 改为 `app://local/<文件目录>/`，由主进程
+ * 协议 handler 经 Path Guard 白名单读取报告页的 assets/report.css、图片等相对资源。
+ * dev server 模式保持 file:// 口径（见 dirToRendererBaseHref）。
+ *
  * @param html 原始 HTML 内容
  * @param filePath 被查看 HTML 的本地绝对路径（Windows 反斜杠 / POSIX 斜杠均可）
  * @returns 注入 base 后的 HTML（保持原有 <head> 优先）
  */
 export function withBaseHref(html: string, filePath: string): string {
-    // dirToBaseHref 内部：反斜杠归一化 → 取目录（含尾部 /）→ encodeURI → 转义 #/?，
-    // 与迁移前本地实现逐字等价（含 Windows 盘符 file:/// 前缀与 POSIX file:// 前缀）。
-    const tag = `<base href="${dirToBaseHref(filePath)}">`
+    // 目录语义与迁移前逐字等价：反斜杠归一化 → 取目录（含尾部 /）→ encodeURI → 转义 #/?；
+    // app:// 模式下仅前缀由 file:// 改为 app://local/。
+    const tag = `<base href="${dirToRendererBaseHref(filePath)}">`
     // injectIntoHead 的三分支（已有 head / 仅 html / 裸露片段）与原实现逐字一致。
     return injectIntoHead(html, tag)
 }
@@ -202,10 +214,14 @@ export type ViewerHtmlLinkAction =
     { kind: 'anchor' } | { kind: 'navigate'; path: string; name: string } | { kind: 'default' }
 
 /**
- * 把 file:// URL 解析为本地 HTML 文件路径（仅 .html/.htm）。
+ * 把本地 HTML 的 URL（file:// 或 app://local）解析为本地文件路径（仅 .html/.htm）。
  *
- * @param href 链接的绝对 URL（iframe 注入 base 后，本地链接的 link.href 为 file:// URL）
- * @returns 本地路径与文件名；非 file: 协议 / 非 HTML 扩展名 / 无法解析时返回 null
+ * 2026-11-20（file:// → app:// 迁移）：app:// 模式下 `<base href>` 已改为
+ * `app://local/<目录>/`，iframe 内已解析的本地链接 href 因此是 app://local URL；
+ * 两种协议形态都在此归一为本地绝对路径，供查看器走自身加载器（IPC READ_HTML + Path Guard）。
+ *
+ * @param href 链接的绝对 URL（iframe 注入 base 后，本地链接的 link.href 为解析后的绝对 URL）
+ * @returns 本地路径与文件名；非 file:/app://local 协议、非 HTML 扩展名、无法解析时返回 null
  */
 export function resolveLocalHtmlTarget(href: string): { path: string; name: string } | null {
     if (!href) {
@@ -217,22 +233,31 @@ export function resolveLocalHtmlTarget(href: string): { path: string; name: stri
     } catch {
         return null
     }
-    if (url.protocol !== 'file:') {
-        return null
-    }
+    let localPath: string
     let pathname = url.pathname
     try {
         pathname = decodeURIComponent(pathname)
     } catch {
         // 非法百分号编码：保持原样继续判断
     }
-    if (!/\.html?$/i.test(pathname)) {
+    if (url.protocol === 'file:') {
+        localPath = pathname
+        // Windows 盘符：/E:/dir/a.html → E:/dir/a.html（再统一为反斜杠）；POSIX 保留斜杠。
+        if (/^\/[A-Za-z]:/.test(localPath)) {
+            localPath = localPath.slice(1).replace(/\//g, '\\')
+        }
+    } else if (isAppLocalFileUrl(href)) {
+        // app://local：pathname 即带前导 / 的本地绝对路径，解码口径由共享模块统一提供
+        const decoded = appLocalUrlToLocalPath(href)
+        if (decoded === null) {
+            return null
+        }
+        localPath = decoded
+    } else {
         return null
     }
-    // Windows 盘符：/E:/dir/a.html → E:/dir/a.html（再统一为反斜杠）；POSIX 保留斜杠。
-    let localPath = pathname
-    if (/^\/[A-Za-z]:/.test(localPath)) {
-        localPath = localPath.slice(1).replace(/\//g, '\\')
+    if (!/\.html?$/i.test(pathname)) {
+        return null
     }
     const slash = pathname.lastIndexOf('/')
     const name = slash >= 0 ? pathname.slice(slash + 1) : pathname

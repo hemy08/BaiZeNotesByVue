@@ -54,9 +54,9 @@ const state = vi.hoisted(() => {
         static fromWebContents = vi.fn((): MockBrowserWindow | null => null)
         options: Record<string, unknown>
         destroyed = false
-        /** 记录 loadFile 入参；state.loadFileError 非空时模拟加载失败 */
-        loadFile = vi.fn<(filePath: string) => Promise<void>>((): Promise<void> =>
-            state.loadFileError === null ? Promise.resolve() : Promise.reject(state.loadFileError)
+        /** 记录 loadURL 入参；state.loadURLFailure 非空时模拟加载失败 */
+        loadURL = vi.fn<(filePath: string) => Promise<void>>((): Promise<void> =>
+            state.loadURLFailure === null ? Promise.resolve() : Promise.reject(state.loadURLFailure)
         )
         setWindowOpenHandler = vi.fn<SetWindowOpenHandler>()
         executeJavaScript = vi.fn<() => Promise<unknown>>((): Promise<unknown> =>
@@ -147,8 +147,8 @@ const state = vi.hoisted(() => {
         appPath: '',
         packaged: false,
         resourcesPath: '',
-        /** 非空时 loadFile 返回 reject（Error 或原始字符串，覆盖异常类型两分支） */
-        loadFileError: null as Error | string | null,
+        /** 非空时 loadURL 返回 reject（Error 或原始字符串，覆盖异常类型两分支） */
+        loadURLFailure: null as Error | string | null,
         /** true 时 MockBrowserWindow.destroy 抛错（覆盖销毁失败 catch 分支） */
         destroyThrows: false
     }
@@ -235,7 +235,7 @@ beforeEach(() => {
     state.packaged = false
     state.windows.length = 0
     state.handlers.clear()
-    state.loadFileError = null
+    state.loadURLFailure = null
     state.destroyThrows = false
     appPathsState.throwOnGetPlantumlPath = false
     delete (process as { resourcesPath?: string }).resourcesPath
@@ -248,7 +248,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-    state.loadFileError = null
+    state.loadURLFailure = null
     state.destroyThrows = false
     appPathsState.throwOnGetPlantumlPath = false
     disposePlantumlLocalWindows()
@@ -302,8 +302,8 @@ describe('renderPlantumlDiagram', () => {
         expect(state.windows).toHaveLength(1)
         const win = state.windows[0]
         expect(win.options.show).toBe(false)
-        expect(win.loadFile).toHaveBeenCalledTimes(1)
-        expect(String(win.loadFile.mock.calls[0][0])).toContain('plantuml')
+        expect(win.loadURL).toHaveBeenCalledTimes(1)
+        expect(String(win.loadURL.mock.calls[0][0])).toBe('app://plantuml/index.html')
 
         // 第一次 executeJavaScript 为"渲染页就绪探测"，第二次才注入源码取 SVG
         win.executeJavaScript
@@ -350,7 +350,7 @@ describe('renderPlantumlDiagram', () => {
         await expect(secondPromise).resolves.toEqual({ status: 'ok', svg: '<svg>SECOND</svg>' })
 
         expect(state.windows).toHaveLength(1)
-        expect(win.loadFile).toHaveBeenCalledTimes(1)
+        expect(win.loadURL).toHaveBeenCalledTimes(1)
     })
 
     it('should dispose the hidden window after the idle timeout (遗留清单 #13)', async () => {
@@ -638,17 +638,17 @@ describe('renderPlantumlDiagram 窗口初始化失败分支（补测）', () => 
         }
     })
 
-    it('loadFile 失败（Error / 字符串）→ error；重复 settle 幂等', async () => {
-        state.loadFileError = new Error('load failed raw')
+    it('loadURL 失败（Error / 字符串）→ error；重复 settle 幂等', async () => {
+        state.loadURLFailure = new Error('load failed raw')
         const first = await startRender()
-        // 先由 loadFile reject 触发 settleReject，随后 did-fail-load 再次 settle 应早退
+        // 先由 loadURL reject 触发 settleReject，随后 did-fail-load 再次 settle 应早退
         first.win.emitWebContents('did-fail-load', {}, -2, 'SECOND_SETTLE')
         await expect(first.promise).resolves.toMatchObject({
             status: 'error',
             message: expect.stringContaining('load failed raw')
         })
 
-        state.loadFileError = 'string load failure'
+        state.loadURLFailure = 'string load failure'
         const second = await startRender()
         await expect(second.promise).resolves.toMatchObject({
             status: 'error',

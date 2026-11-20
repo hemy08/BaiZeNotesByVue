@@ -269,6 +269,9 @@ export interface LaunchAppOptions {
 /**
  * 启动开发构建（out/build/main/index.js）：userData 重定向到临时目录。
  *
+ * 2026-11-20（file:// → app:// 迁移）：未打包 dev 构建的 renderer 仍以 file:// 加载
+ * （app:// 仅用于打包/生产路径，理由见 src/main/index.ts 的加载分支注释）。
+ *
  * 夹具经 `-r` 在 Electron 主进程启动早期执行，早于应用主脚本读取 userData 派生路径，
  * 因此 fileState.json / userData/config 下的裸 JSON 种子文件均落在临时目录。
  * `~/.baizenotes/config` 不重定向，由调用方的 ConfigSandbox 负责备份/恢复。
@@ -291,6 +294,9 @@ export function launchDevApp(
 
 /**
  * 启动打包产物（out/build/dist/win-unpacked/BaiZeNotes.exe）。
+ *
+ * 2026-11-20（file:// → app:// 迁移）：打包产物 renderer 由 app://baize/index.html 加载
+ * （app.asar 内 out/build/renderer），file 协议特权 fuse 已关闭。
  *
  * 前提（Fuses 余项后）：产物必须由 `ELECTRON_BUILDER_E2E=1 npm run build:unpack:e2e` 生成。
  * 发布配置已禁用主进程 inspect（enableNodeCliInspectArguments:false），而 Playwright
@@ -325,7 +331,8 @@ export function launchPackagedApp(
  *
  * 因此统一用 Playwright 的**条件轮询**（waitForFunction / waitForURL，自动重试、无固定 sleep）
  * 等待以下四层就绪信号，全部满足后再让用例操作界面：
- *   1. 页面已从 about:blank 导航到应用入口（file: 协议，开发构建与 asar 打包产物一致）；
+ *   1. 页面已从 about:blank 导航到应用入口（未打包 dev 构建为 file://out/build/renderer/
+ *      index.html；打包产物为 app://baize/index.html，2026-11-20 file:// → app:// 迁移）；
  *   2. preload 单文件已执行且 contextBridge 注入完整（window.electron.ipcRenderer 的
  *      on/send/invoke + window.api.config.read/write + window.api.app.getVersion）；
  *   3. IPC 真实往返可用（window.api.app.getVersion() 能拿到主进程返回的版本字段），
@@ -337,9 +344,15 @@ export function launchPackagedApp(
  * 还是「页面未导航/渲染崩溃」，而不是让后续断言报无关的 selector 超时。
  * ========================================================================================== */
 
+/** 应用入口页面的 URL 协议判定（dev 构建 file: / 打包产物 app:；其余协议不算入口） */
+function isAppEntryUrl(url: URL): boolean {
+    return url.protocol === 'app:' || url.protocol === 'file:'
+}
+
 /** 页面 preload contextBridge 注入快照（失败诊断与就绪判定共用） */
 export interface RendererBridgeSnapshot {
-    /** 当前页面 URL（应为应用入口 file: URL，而非 about:blank） */
+    /** 当前页面 URL（dev 构建为 file://…/out/build/renderer/index.html；
+     *  打包产物为 app://baize/index.html，而非 about:blank） */
     url: string
     hasElectron: boolean
     hasIpcRenderer: boolean
@@ -418,8 +431,8 @@ export async function waitForRendererReady(
 ): Promise<void> {
     const timeout = options.timeout ?? 30_000
     try {
-        // 1) 已从初始 about:blank 导航到应用入口（开发构建与 asar 打包产物均为 file:）
-        await page.waitForURL((url) => url.protocol === 'file:', { timeout })
+        // 1) 已从初始 about:blank 导航到应用入口（dev 构建 file:；打包产物 app://baize/index.html）
+        await page.waitForURL(isAppEntryUrl, { timeout })
         await page.waitForLoadState('domcontentloaded')
         // 2) preload contextBridge 注入完成
         await waitForPreloadBridge(page, timeout)
@@ -499,8 +512,8 @@ export interface LaunchDevAppWithRendererOptions extends LaunchAppOptions {
     maxLaunchAttempts?: number
     /**
      * 就绪失败后、关闭实例前的页面 reload 恢复次数（默认 2）。
-     * 仅对「页面已导航到 file: 但 preload 桥完全缺失」签名生效（P4 根因）；实测恢复
-     * 约 40ms，比整进程重启（25s 等待 + 启动）快两个数量级。
+     * 仅对「页面已导航到应用入口（dev 构建 file: / 打包产物 app:）但 preload 桥完全缺失」
+     * 签名生效（P4 根因）；实测恢复约 40ms，比整进程重启（25s 等待 + 启动）快两个数量级。
      */
     reloadAttempts?: number
 }
@@ -509,7 +522,7 @@ export interface LaunchDevAppWithRendererOptions extends LaunchAppOptions {
 function isPreloadMissingSignature(snapshot: RendererBridgeSnapshot | null): boolean {
     return (
         snapshot !== null &&
-        snapshot.url.startsWith('file:') &&
+        (snapshot.url.startsWith('app:') || snapshot.url.startsWith('file:')) &&
         !snapshot.hasElectron &&
         !snapshot.hasApi
     )
@@ -525,7 +538,8 @@ function isPreloadMissingSignature(snapshot: RendererBridgeSnapshot | null): boo
  * 空文档创建上下文，即 #54149 触发条件）会放大该竞态。
  *
  * 恢复方式：`page.reload()` 触发一次新的导航，浏览器重新推送启动数据，新文档即可正常注入
- * preload。仅当前页面已导航到 `file:` 且桥完全缺失时才尝试（避免对普通慢启动/其它错误
+ * preload。仅当前页面已导航到应用入口（dev 构建 `file:` / 打包产物 `app:`）且桥完全缺失时才尝试
+ * （避免对普通慢启动/其它错误
  * 做无意义 reload）；失败时返回 false，由调用方走关闭实例重启路径。
  */
 async function tryReloadRecovery(
@@ -602,7 +616,7 @@ async function readMainProcessState(app: ElectronApplication): Promise<unknown> 
  * 首次导航 preload 注入快速预检（P4）。
  *
  * 正常启动时页面 <1s 内完成导航且 preload 注入（桥函数应在页面脚本执行前就绪）。
- * 若页面已导航到 `file:` 但宽限期内桥仍完全缺失，即命中 Electron 上游竞态签名
+ * 若页面已导航到 `app:`（历史 `file:`）但宽限期内桥仍完全缺失，即命中 Electron 上游竞态签名
  * （该文档 preload 永远不再执行），可立即 reload 恢复，无需等完整就绪超时。
  *
  * @returns true = 命中「首次导航 preload 未注入」签名；false = 桥已注入或页面尚未导航
@@ -610,7 +624,7 @@ async function readMainProcessState(app: ElectronApplication): Promise<unknown> 
  */
 async function detectFirstNavigationPreloadMissing(page: Page, graceMs: number): Promise<boolean> {
     try {
-        await page.waitForURL((url) => url.protocol === 'file:', { timeout: 5000 })
+        await page.waitForURL(isAppEntryUrl, { timeout: 5000 })
     } catch {
         return false
     }

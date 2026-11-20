@@ -192,6 +192,14 @@ describe('P2-1 整篇消毒（SanitizePreviewHtml，XSS 防线）', () => {
         expect(sanitized).toContain('data:image/png;base64')
     })
 
+    it('保留 app://local 本地资源（2026-11-20 file:// → app:// 迁移口径）', () => {
+        const html =
+            '<img src="app://local/E:/notes/img/a.png"><a href="app://local/E:/notes/a.md">doc</a>'
+        const sanitized = SanitizePreviewHtml(html)
+        expect(sanitized).toContain('app://local/E:/notes/img/a.png')
+        expect(sanitized).toContain('app://local/E:/notes/a.md')
+    })
+
     it('保留 mermaid SVG 与 KaTeX MathML 所需的 svg/mathMl 档位', () => {
         expect(DOMPURIFY_CONFIG.USE_PROFILES.svg).toBe(true)
         expect(DOMPURIFY_CONFIG.USE_PROFILES.mathMl).toBe(true)

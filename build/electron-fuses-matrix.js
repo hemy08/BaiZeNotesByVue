@@ -41,7 +41,7 @@ const FUSE_KEYS = {
  * 发布产物 fuse 矩阵（8 项全量显式声明；值语义 = 该 Electron 特性是否启用，与
  * electron-builder.yml / @electron/fuses 一致）。
  *
- * 逐项理由（完整版见报告 out/tool-results/fix-fuses2.md）：
+ * 逐项理由（完整版见报告 out/tool-results/fix-app-protocol.md 与 fix-fuses2.md）：
  * - runAsNode:false                        禁止 ELECTRON_RUN_AS_NODE 把应用当 Node 运行；
  * - enableCookieEncryption:false           应用不使用 Cookie（无登录态），保持默认；
  * - enableNodeOptionsEnvironmentVariable:false  NODE_OPTIONS/NODE_EXTRA_CA_CERTS 不被读取，
@@ -52,10 +52,11 @@ const FUSE_KEYS = {
  * - enableEmbeddedAsarIntegrityValidation:true 校验 app.asar 完整性（Windows ≥ Electron 30）；
  * - onlyLoadAppFromAsar:true               只从 app.asar 加载应用代码，阻断旁加载；
  * - loadBrowserProcessSpecificV8Snapshot:false 无自定义 V8 快照需求，保持默认；
- * - grantFileProtocolExtraPrivileges:true  **必须保持启用**：应用以 file:// 从 app.asar 加载
- *                                          renderer（loadFile），关闭后 Electron 不再走 asar-aware
- *                                          file 协议加载，实测窗口空白并报 ERR_FILE_NOT_FOUND；
- *                                          关闭需先迁移到自定义协议（见报告后续方案）。
+ * - grantFileProtocolExtraPrivileges:false **2026-11-20 起已关闭**：renderer 从 file:// 迁移到
+ *                                          app:// 自定义标准安全协议（src/main/protocol/），
+ *                                          本地用户文件走受 Path Guard 校验的 app://local；
+ *                                          消除 file:// 页面的 fetch/ServiceWorker/子帧越权面。
+ *                                          迁移与 A/B 证据见 out/tool-results/fix-app-protocol.md。
  */
 const RELEASE_FUSE_MATRIX = {
     runAsNode: false,
@@ -65,7 +66,7 @@ const RELEASE_FUSE_MATRIX = {
     enableEmbeddedAsarIntegrityValidation: true,
     onlyLoadAppFromAsar: true,
     loadBrowserProcessSpecificV8Snapshot: false,
-    grantFileProtocolExtraPrivileges: true
+    grantFileProtocolExtraPrivileges: false
 }
 
 /** fuse 线状态值 → 布尔（启用/禁用）；未知状态显式失败，避免静默放过 */

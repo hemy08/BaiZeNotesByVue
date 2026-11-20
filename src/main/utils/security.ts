@@ -9,7 +9,8 @@
  * 策略（收敛为两条）：
  * 1. 交给系统 shell 打开的外部链接只允许 http/https（file:/javascript:/data:/自定义协议
  *    一律拒绝并 console.warn），避免协议混淆把本地文件或可执行内容交给系统打开；
- * 2. 应用窗口只允许导航到自身受信来源（dev 服务器地址或打包后的 renderer index.html），
+ * 2. 应用窗口只允许导航到自身受信来源（dev 服务器地址或打包后的 renderer 入口
+ *    app://baize/index.html；2026-11-20 file:// → app:// 迁移后兼容 file: 口径），
  *    其余目标一律 preventDefault，防止不可信页面替换应用界面后接触 IPC / 本地文件。
  *
  * 二、P1-AS-1：文件路径守卫（本文件末尾 Path Guard 段）
@@ -27,6 +28,8 @@ import { appState } from './app-state'
 // 公共接口归位第 2 批：控制字符校验与路径比较纯函数统一引用 shared 真源
 import { hasControlChars } from '../../shared/utils/validate'
 import { isPathWithin, normalizePathForCompare } from '../../shared/utils/path'
+// 2026-11-20（file:// → app:// 迁移）：renderer 入口 URL 判定（app://baize/index.html）
+import { isAppRendererIndexUrl } from '../../shared/protocol/app-protocol'
 // P3 安全剩余项：READ_HTML 文本扩展名白名单与渲染层 snippets 白名单同源（shared 真源）
 import { READ_HTML_TEXT_EXTENSIONS } from '../../shared/constants/file-extensions'
 // CQ-10：本模块保留 2 处被测试断言参数的 console.warn（openExternalSafely 拒绝/失败），
@@ -95,15 +98,21 @@ export function isDevServerUrl(url: string, devUrl: string): boolean {
 }
 
 /**
- * 是否为打包后的 renderer index.html（file: 协议 + 规范化路径完全一致）。
+ * 是否为应用受信 renderer 入口 URL（2026-11-20 file:// → app:// 迁移后兼容两种口径）：
+ * 1. `app://baize/index.html`（当前生产/构建口径，协议 handler 严格限定 renderer 根内文件）；
+ * 2. `file://<rendererIndexPath>`（迁移前口径，保留用于灰度/回退与单测基线）。
  * Windows 下盘符大小写不敏感，统一转小写比较。
  */
 export function isRendererIndexFileUrl(url: string, rendererIndexPath: string): boolean {
-    const target = parseUrlSafely(url)
-    if (target === null || target.protocol !== 'file:') {
+    if (typeof rendererIndexPath !== 'string' || rendererIndexPath.length === 0) {
         return false
     }
-    if (typeof rendererIndexPath !== 'string' || rendererIndexPath.length === 0) {
+    // app:// 入口判定由共享协议纯函数统一提供（宿主 + pathname 精确匹配，忽略 query）
+    if (isAppRendererIndexUrl(url)) {
+        return true
+    }
+    const target = parseUrlSafely(url)
+    if (target === null || target.protocol !== 'file:') {
         return false
     }
     try {
