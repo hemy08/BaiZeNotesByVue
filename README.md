@@ -194,6 +194,7 @@
 - **死代码清理**：删除 36 个零引用文件 / 10,403 行死代码，主进程产物 `out/main/index.js` 体积下降 44.97%
 - **死通道清理**：IPC 通道常量 123 → 86；通道命名统一为 `baize:<domain>:<name>`，并在测试中强制校验格式、域名白名单与零死常量
 - **打包体积治理**：渲染层依赖（mermaid / monaco-editor / vue / katex / highlight.js 等 14 个已由 Vite 打入 renderer 的包）移入 devDependencies，并排除 node_modules 内 source map；app.asar 361.59 MiB → 66.65 MiB（-81.6%），NSIS 安装包 161.2 MiB → 111.8 MiB（-30.6%），便携包 131.0 MiB → 100.0 MiB（-23.7%）
+- **依赖分类策略（P2-5）**：上述「Vite 内联进 renderer/preload 的运行时库」保持 devDependencies（避免 electron-builder 重复打包 node_modules），并由架构测试冻结 15 项显式 allowlist；依赖审计口径同步升级为全量树 `npm audit --audit-level=high`（含 dev），详见 [项目详细文档 §8.5](docs/wiki/02-设计与架构/项目详细文档.md)
 
 #### 状态管理优化
 

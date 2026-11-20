@@ -6,7 +6,7 @@ name: Release (tag → build → GitHub Release)
 #   检出后再校验「tag 存在 + HEAD 提交 == tag 指向提交」
 # - 版本守卫：tag（release-x.y.z）↔ package.json.version ↔ 生成的 appVersion 三方必须一致
 # - 发布门禁：与 ci.yml 对齐——typecheck / ESLint（0 warning）/ Prettier / vitest 覆盖率阈值 /
-#   docs:check / quality baseline / 生产依赖 audit；构建后再跑体积预算 budget:check
+#   docs:check / quality baseline / 全量依赖 audit（含 dev，见 P2-5）；构建后再跑体积预算 budget:check
 # - 产物：按版本精确匹配（Setup exe + blockmap / portable exe / latest.yml），不做版本通配
 # - 发布页：body 取自 RELEASE-NOTES.md 对应版本段；发布后校验 tag 维度的 latest.yml
 #   （https://github.com/<repo>/releases/download/<tag>/latest.yml，而非 releases/latest）
@@ -132,8 +132,11 @@ jobs:
             - name: Gate · Quality baseline
               run: node build/generate-quality-baseline.js --check
 
-            - name: Gate · Production dependency audit
-              run: npm audit --omit=dev --registry=https://registry.npmjs.org --audit-level=high
+            # P2-5：发布门禁与 CI 对齐为「全量依赖树（含 dev）」审计——
+            # 渲染层运行时安全库（dompurify/mermaid/katex/highlight.js 等）位于 devDependencies
+            # 并由 Vite 内联进 renderer，属于随包分发的实际运行时依赖，必须纳入审计。
+            - name: Gate · Dependency audit (full tree, incl. bundled renderer libs)
+              run: npm run audit:all
 
             - name: Build installers (NSIS + portable)
               run: npm run build:win:all

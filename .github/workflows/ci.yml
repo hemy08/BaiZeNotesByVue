@@ -112,8 +112,16 @@ jobs:
             - name: Prettier check
               run: npx --no-install prettier --check .
 
-            - name: Production dependency audit
-              run: npm audit --omit=dev --registry=https://registry.npmjs.org --audit-level=high
+            # P2-5（2026-11-20 安全扫描）：审计口径由「仅生产依赖」升级为「全量依赖树（含 dev）」。
+            # 背景：dompurify / mermaid / katex / highlight.js / crypto-js / markdown-it-* 等实际
+            # 随 renderer bundle 分发到用户机器的运行时安全库位于 devDependencies
+            # （Vite 内联，避免 electron-builder 把 node_modules 重复打进 asar），
+            # 原 `--omit=dev` 门禁漏审这些库。现统一走 package.json 的 audit:all
+            # （全量树 + --audit-level=high + 官方 registry，本地 `npm run audit:all` 可复现）；
+            # 生产专项审计保留为 `npm run audit:prod`，供本地快速核对主进程 externalize 依赖。
+            # 依赖分类策略与冻结 allowlist 由 tests/architecture/dependency-classification.test.ts 守护。
+            - name: Dependency audit (full tree, incl. bundled renderer libs)
+              run: npm run audit:all
 
             # Q-10：传入 vitest JSON 报告，用例数（numTotalTests）漂移也会被基线门禁拦截
             - name: Quality baseline check
