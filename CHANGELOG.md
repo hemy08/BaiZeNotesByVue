@@ -53,6 +53,12 @@
 - **E2E 稳定性量化**：新增 startup-stability spec（8 次启动统计恢复率/就绪耗时）；CI retries 1→0；新增严格 startup-stability job；功能用例接入 metrics 与 `E2E_STRICT_LAUNCH` 严格开关
 - **主题取消回滚**：取消/关闭/Esc/遮罩恢复打开时主题（未修改不额外 emit）；确认/应用语义不变
 
+### 🛡️ 第五批 P2 修复（2026-11-20）
+
+- **依赖分类与审计**：明确「Vite 内联运行时库留 devDependencies」策略并新增架构测试冻结 allowlist；新增 `audit:all` 全量树审计（含 dev）接入 CI/release，实测 0 漏洞
+- **安全剩余项**：`READ_HTML` 文本扩展名白名单（44 项）；`OPEN_EXE` 一律确认+系统目录强化提示；Electron Fuses 启用 `runAsNode:false`/`onlyLoadAppFromAsar`/`enableEmbeddedAsarIntegrityValidation`（asar 篡改拒绝启动）；新增 SECURITY.md
+- **性能基线 CI**：新增 perf CI 脚本与 26 项指标（bundle 12 + 冷启动 14），基线快照偏离 >20% 仅 warning；CI `perf-baseline` job 上传 artifact/Step Summary；开发 preview-ready 478.7ms、打包版 476.8ms
+
 ### ✅ 门禁
 
 - typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **187 文件 / 3,458 用例全通过**、electron-vite build 成功
