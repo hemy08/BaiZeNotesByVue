@@ -1,3 +1,28 @@
+## 版本 1.4.0 (2026-11-20)
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🔧 新版本基线
+
+- 全仓版本号 **1.3.9 → 1.4.0**；自本版本起所有修改归入 1.4.0
+- **1.3.9 已发布**：GitHub Release `release-1.3.9`（tag → `1b73d9b`；NSIS 109.98 MB / portable 99.84 MB / latest.yml / blockmap），包含 tag release-1.3.8 之后全部修改
+
+### 🐛 体验修复
+
+- 主题设置首次打开主题列表为空（visible watch 缺 immediate）；同步修复 Editor 设置加载、新建文件/文件夹默认路径、重命名对话框首开聚焦
+
+### ✅ 门禁
+
+- typecheck 0 / ESLint 0 / Prettier 全绿 / vitest 185 文件 / 3,397 用例 / build 成功
+
+</code></pre></blockcode></details>
+
+---
+
 ## 版本 1.3.9 (2026-11-20)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
@@ -29,11 +54,10 @@
 - HTML 查看器顶部导航跳转后导航消失/路径不切换 → 拦截本地 .html 走查看器加载器
 - 自动保存默认关闭（用户自行开启；schema v3 迁移旧默认 true）
 - 关闭/退出未保存修改 → 「保存并关闭 / 不保存 / 取消」确认框，取消不关闭
-- 修复主题设置首次打开列表为空（watch 缺 immediate；同步修复 Editor/新建/重命名对话框首开初始化）
 
 ### ✅ 门禁
 
-- typecheck 0 / ESLint 0 / Prettier 全绿 / vitest 185 文件 / 3,397 用例 / build 成功
+- typecheck 0 / ESLint 0 / Prettier 全绿 / vitest 185 文件 / 3,396 用例 / build 成功
 
 </code></pre></blockcode></details>
 

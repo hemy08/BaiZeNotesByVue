@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3.9-blue.svg)
+![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Electron](https://img.shields.io/badge/Electron-43.8.10-blue.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5.45-brightgreen.svg)
@@ -127,7 +127,7 @@
 
 #### 版本信息
 
-- **版本发布说明**：查看各版本（v1.0.0 ~ v1.3.9）的发布说明
+- **版本发布说明**：查看各版本（v1.0.0 ~ v1.4.0）的发布说明
 - **更新日志**：展示依赖升级详情和代码适配修复
 - **技术栈信息**：显示项目技术栈详细信息
 - **关于页面**：显示应用版本、开发框架、系统环境信息
@@ -662,11 +662,19 @@ npm run clean
 
 ## 🗺️ 开发路线图
 
-### v1.3.9 (当前版本)
+### v1.4.0 (当前版本)
 
-- [x] 版本维护：全仓版本号 1.3.8 → 1.3.9（无功能/代码变更）
-- [x] 1.3.8 已发布 GitHub Release（tag `release-1.3.8`；NSIS 117.94 MB / portable 107.03 MB / latest.yml）
-- [x] 结构优化 1~5 批 + M3、设置页/对话框拆分、依赖安全治理已随 1.3.8 发布
+- [x] 新版本基线：全仓版本号 1.3.9 → 1.4.0；自本版本起所有修改归入 1.4.0
+- [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
+- [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
+- [ ] 长期计划：macOS 和 Linux 版本支持、协作编辑、插件系统、云同步
+
+### v1.3.9
+
+- [x] 结构治理与工程优化：P0 安装包瘦身（Setup 109.98 MiB / portable 99.83 MiB）+ CI 体积预算、E2E 补启动恢复/设置持久化/打包启动
+- [x] P1 性能基线（开发/打包版冷启动）、预览 renderSequence TDZ / 设置首开回填修复、存量清理与 docs 链接检查
+- [x] P2 i18n 一致性 + BaseDialog 可访问性；P3 prettier 3.10.1、vue-tsc 3.3.14；P4 E2E preload 根因修复
+- [x] HTML 查看器顶部导航修复；自动保存默认关闭；未保存关闭确认
 
 ### v1.3.8
 
@@ -683,13 +691,6 @@ npm run clean
 - [x] 系统设置 9 项禁用项全部补充实现（启动恢复/自启动/托盘/窗口记忆/跟随系统主题/自动备份等）
 - [x] 菜鸟工具插件集成（18 个离线工具，插件总数 38）；mkdocs-material 扩展语法 15 项
 - [x] 正则工具 Worker 化、自动备份异步化等审查修复批次
-
-### v1.4.0 (计划中)
-
-- [ ] macOS 和 Linux 版本支持
-- [ ] 协作编辑功能
-- [ ] 插件系统
-- [ ] 云同步功能
 
 ### v1.2.2
 

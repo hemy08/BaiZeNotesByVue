@@ -1,6 +1,6 @@
 {
     "name": "baize-notes",
-    "version": "1.3.9",
+    "version": "1.4.0",
     "description": "An Electron application with Vue and TypeScript",
     "main": "./out/build/main/index.js",
     "author": "hemy08",

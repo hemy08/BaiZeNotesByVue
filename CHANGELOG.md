@@ -1,3 +1,20 @@
+## 2026年11月20日 - 版本 1.4.0（新版本基线 / 主题设置首开修复）
+
+> 1.4.0 起作为新版本基线：自本次版本升级之后的所有修改归入 1.4.0；1.3.9 保持已发布内容（tag `release-1.3.9`）。
+
+### 🔧 版本与发布
+
+- **全仓版本号升级 1.3.9 → 1.4.0**：`package.json` / `package-lock.json` / `resources/config/version.json` / README 徽章与路线图 / docs 当前状态标注统一
+- **1.3.9 已发布**（2026-11-20）：GitHub Release `release-1.3.9`（tag → `1b73d9b`；NSIS 109.98 MB / portable 99.84 MB / latest.yml / blockmap），包含 tag `release-1.3.8` 之后全部修改
+
+### 🐛 体验修复
+
+- **主题设置首次打开主题列表为空**：拆分后 `ThemeSettingDialog` 的 visible watch 缺少 `immediate`，父级 v-if 首次以 visible=true 挂载时不触发 `loadThemes`；已补 immediate，并同步修复 `EditorSettingDialog` 配置加载、`CreateFileFolderDialog` 默认路径回填、`RenameFileFolderDialog` 首开聚焦
+
+### ✅ 门禁
+
+- typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **185 文件 / 3,397 用例全通过**、electron-vite build 成功
+
 ## 2026年11月20日 - 版本 1.3.9（结构治理 / 工程优化 / 体验修复）
 
 > 承接 1.3.8（2026-11-19 发布）之后 tag `release-1.3.8` 的全部修改：P0~P4 工程优化、设置/对话框与 i18n/可访问性、安装包瘦身、E2E 与性能基线、HTML 查看器导航修复、自动保存默认关闭与未保存关闭确认等。
@@ -40,7 +57,6 @@
 - **HTML 查看器导航修复**：点击顶部导航后目标页 `report-nav.js` 因 sandbox 不执行而导航消失、路径不切换；改为拦截本地 `.html` 链接走查看器加载器（重新读取 + 注入静态导航 + 更新 filePath）
 - **自动保存默认关闭**：`systemSettingDefaults` / `SYSTEM_SETTING_FALLBACK` 的 `autoSaveEnabled` 由 true 改为 false；软件打开后不启用自动保存，用户需在「系统设置 → 文件设置」中自行开启（schema v3 一次性迁移旧默认 true → false，之后用户开启不再覆盖）
 - **未保存关闭确认**：关闭窗口/退出应用时若当前文件有未保存修改，弹原生对话框「保存并关闭 / 不保存 / 取消」；取消或保存失败不关闭（新增 `close-confirm.ts` 与中英文案）
-- **主题设置首次打开列表为空修复**：拆分后 `ThemeSettingDialog` 的 visible watch 缺少 `immediate`，父级 v-if 首次以 visible=true 挂载时不触发 `loadThemes`；已补 immediate，并同步修复 Editor/CreateFileFolder/Rename 等同样首开初始化缺失（默认路径/输入聚焦）
 
 ### ✅ 门禁
 
