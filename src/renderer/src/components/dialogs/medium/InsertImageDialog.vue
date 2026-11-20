@@ -88,7 +88,7 @@
                         :src="previewUrl"
                         :alt="t('dialogRenderer.common.preview')"
                         class="preview-image"
-                        @error="previewUrl = ''"
+                        @error="previewLoadFailed = true"
                     />
                 </div>
             </div>
@@ -140,6 +140,8 @@ const localImageSrc = ref('')
 const imageUrl = ref('')
 const altText = ref('')
 const imageTitle = ref('')
+// 预览图片加载失败时隐藏预览区（computed 只读，需独立状态位；切换来源后重置）。
+const previewLoadFailed = ref(false)
 
 // P1-FE-03：父组件调用 IPC.FILE.SELECT_IMAGE 后经 pickedImage 回填选择结果。
 // 输入框显示绝对路径（用户可见到底选了哪个文件），插入时优先使用复制后的相对引用。
@@ -166,8 +168,13 @@ const tabs = [
 ]
 
 const previewUrl = computed(() => {
+    if (previewLoadFailed.value) return ''
     if (activeTab.value === 'local') return localFilePath.value
     return imageUrl.value
+})
+
+watch([activeTab, localFilePath, imageUrl], () => {
+    previewLoadFailed.value = false
 })
 
 const canInsert = computed(() => {
