@@ -61,8 +61,8 @@
 </tr>
 <tr>
 <td>测试</td>
-<td style="text-align:right">185 文件 / 3,397 用例全通过</td>
-<td>覆盖率：stmts 84.67% / branch 77.78% / func 83.82% / line 85.1%</td>
+<td style="text-align:right">260 文件 / 4,622 用例（4,619 通过 / 3 skipped）</td>
+<td>覆盖率：stmts 95.10% / branch 89.83% / func 94.32% / line 95.37%</td>
 </tr>
 <tr>
 <td>静态依赖图</td>
@@ -71,13 +71,13 @@
 </tr>
 <tr>
 <td>IPC</td>
-<td style="text-align:right">91 通道 / 17 组</td>
-<td>preload 白名单 send 60 / receive 25 / window.api 6</td>
+<td style="text-align:right">93 通道 / 17 组</td>
+<td>preload 白名单 send/invoke 61 / receive 26 / window.api 6</td>
 </tr>
 <tr>
 <td>首屏初始 JS</td>
-<td style="text-align:right"><strong>321.9 KiB</strong>（入口 132.3 + modulepreload 189.6）</td>
-<td>P1-3 已修复：i18n 中英词典按语言动态加载，首屏只装当前语言；<code>budget:check</code> 增加「首屏 + 词典不得进首屏」双重断言</td>
+<td style="text-align:right"><strong>338.2 KiB</strong>（入口 148.4 + modulepreload 189.8）</td>
+<td>P1-3 已修复：i18n 中英词典按语言动态加载；<code>budget:check</code> 增加「首屏 + 词典不得进首屏」双重断言</td>
 </tr>
 <tr>
 <td>主进程产物</td>
@@ -91,8 +91,8 @@
 </tr>
 <tr>
 <td>安装包</td>
-<td style="text-align:right">Setup 111.04 MiB / portable 100.25 MiB / asar 39.59 MiB</td>
-<td>asar 已裁剪 jschardet/dist 与 config 示例；发布前需重建</td>
+<td style="text-align:right">Setup 111.14 MiB / portable 100.34 MiB / asar 40.01 MiB</td>
+<td>asar 已裁剪 jschardet/dist 与 config 示例；app:// 迁移 + fuses 硬化</td>
 </tr>
 <tr>
 <td>生产依赖 audit</td>
@@ -755,6 +755,31 @@
 <td><code>24b3ef4</code></td>
 <td>P3 安全收口</td>
 <td>PDF 导出窗 sandbox/导航/开窗基线；日志口令/令牌/私钥脱敏；<code>~/.baizenotes</code> 与备份 POSIX 700/600；热键注册异常隔离汇总；资源管理器定位拒 UNC/设备命名空间；OPEN_EXE 确认后审计；在线网页独立内存 session + 权限全拒</td>
+</tr>
+</tbody>
+</table>
+<p><strong>第十批 功能/体验优化（2026-11-20 晚）</strong></p>
+<table>
+<thead>
+<tr>
+<th>优化批次</th>
+<th>提交</th>
+<th>功能</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>编辑器→预览滚动同步</td>
+<td><code>c70bfda</code></td>
+<td>体验</td>
+<td>markdown-it 注入 <code>data-source-line</code>（html_block/fence 用零高锚点）；编辑器滚动 rAF + 内容 180ms 防抖 + 光标兜底 → 父组件 seq 透传 → 预览锚点二分映射 + ratio 兜底、渲染后重放；隐藏/空内容跳过；E2E <code>scroll-sync.spec.ts</code> 3/3（滚轮/PageDown、输入自动跟随、可视区修改不跳项）</td>
+</tr>
+<tr>
+<td>未保存关闭确认应用内对话框</td>
+<td><code>2494ed7</code></td>
+<td>体验</td>
+<td>原生 <code>dialog.showMessageBox</code> → BaseDialog 风格 <code>UnsavedChangesDialog</code>；新增 <code>DIALOG.UNSAVED_CLOSE_REQUEST/SUBMIT</code> 双通道（IPC 91→93，白名单 send 61/receive 26）；30s 超时、窗口关闭、渲染进程崩溃均安全取消；渲染层不可用回退原生框；保存失败保留对话框+内联错误；E2E <code>close-confirm.spec.ts</code> 3/3</td>
 </tr>
 </tbody>
 </table>

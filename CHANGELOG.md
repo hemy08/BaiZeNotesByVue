@@ -10,6 +10,20 @@
 - **修复**：工作区改为 flex 跟随父容器（`flex:1` + `min-height:0`），编辑器/资源管理器/插件容器统一 `height:100%`；状态栏 `flex-shrink:0`；Monaco 开启 `scrollBeyondLastLine` + 底部 20px 安全距；内容变化后若光标在视口最后一行，额外 reveal 下一行
 - **回归**：新增 E2E `e2e/editor-bottom-visible.spec.ts`（输入填满视口→Ctrl+End→回车→断言编辑器/光标在状态栏上方）与 `viewer-layout-contract` 源码级布局契约；全量 E2E 20/20
 
+### 🔄 编辑器→预览滚动同步（2026-11-20）
+
+- markdown-it 渲染注入 `data-source-line` 锚点（标题/段落/列表/代码块/表格等；html_block/fence 用零高布局锚点），DOMPurify 消毒后保留
+- 编辑器滚动 rAF 合帧 + 内容变化 180ms 尾随防抖 + 光标兜底三路触发；父组件以 seq 去重后透传
+- 预览缓存锚点二分查找并同步 `scrollTop`，无锚点按比例兜底；内容重渲染后重放最后目标；隐藏/空内容跳过
+- E2E：`e2e/scroll-sync.spec.ts` 覆盖滚轮/PageDown、输入自动跟随、可视区修改不跳项（3/3）
+
+### 🪟 未保存关闭确认应用内对话框（2026-11-20）
+
+- 窗口关闭/退出未保存确认从 Electron 原生 `dialog.showMessageBox` 改为 BaseDialog 风格 `UnsavedChangesDialog`（保存并关闭 / 不保存 / 取消，默认焦点保存、Esc 取消）
+- 新增双通道 IPC `DIALOG.UNSAVED_CLOSE_REQUEST` + `DIALOG.UNSAVED_CLOSE_SUBMIT`（通道 91→93；preload 白名单 send 61 / receive 26），经 `withSenderCheck` 注册
+- 兜底：30s 超时、窗口销毁、渲染进程崩溃均按取消安全侧处理；preload 不可用回退原生框并记录；保存失败保留对话框并展示内联错误
+- E2E：`e2e/close-confirm.spec.ts` 覆盖自定义框、取消/不保存、保存失败路径（3/3）
+
 ### 🔧 版本与发布
 
 - **全仓版本号升级 1.3.9 → 1.5.0**：`package.json` / `package-lock.json` / `resources/config/version.json` / README 徽章与路线图 / docs 当前状态标注统一

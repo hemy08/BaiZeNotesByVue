@@ -256,7 +256,9 @@ export function useUnsavedCloseConfirm(): UnsavedCloseConfirmController {
     function stop(): void {
         const ipcRenderer = getIpcRenderer()
         if (requestListener !== null) {
-            ipcRenderer?.removeListener(IPC.DIALOG.UNSAVED_CLOSE_REQUEST, requestListener)
+            if (ipcRenderer) {
+                ipcRenderer.removeListener(IPC.DIALOG.UNSAVED_CLOSE_REQUEST, requestListener)
+            }
             requestListener = null
         }
         hide()
