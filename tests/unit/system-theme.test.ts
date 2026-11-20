@@ -74,8 +74,8 @@ const broadcastMocks = vi.hoisted(() => ({
 // - buildThemeBroadcastPayload 是本次收敛新增的纯组装函数，保留真实实现才能让下方
 //   "broadcast 收到完整 3 字段载荷" 断言覆盖 system-theme → 组装 → 统一广播整条链路；
 // - broadcastThemeToAllWindows 用 mock 记录调用（避免真实 electron 窗口依赖）。
-vi.mock('../../src/main/ipc/theme-broadcast', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('../../src/main/ipc/theme-broadcast')>()
+vi.mock('../../src/main/utils/theme-broadcast', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../src/main/utils/theme-broadcast')>()
     return { ...actual, broadcastThemeToAllWindows: broadcastMocks.broadcast }
 })
 

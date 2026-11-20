@@ -15,17 +15,25 @@
  * 兼容迁移：启动时一次性把旧渲染层裸写的 system.json 等合并进对应
  * store 并改名标记（详见 migrateLegacyConfigFiles），只执行一次。
  *
- * MEM-10：ipcMain.handle 直连注册迁移至 ipcListenerManager.registerHandleOnce
- * （全局一次性注册，重复注册跳过而非抛错，防 ARC-06 回归）。
+ * MEM-10：ipcMain.handle 直连注册迁移至统一 IPC 注册台账的一次性注册
+ * （P1-1 起经 utils/ipc-registration 的依赖倒置 provider 调用，台账口径不变；
+ * 全局一次性注册，重复注册跳过而非抛错，防 ARC-06 回归）。
+ *
+ * P1-1（架构方向门禁）：本文件属 config 业务层，禁止静态 import `src/main/ipc/**`。
+ * 为此 IPC 注册能力改为「依赖倒置」——经 utils/ipc-registration 的注入式提供者调用
+ * 注册台账，真实实现由 ipc/registry 在启动早期注入（行为/调用顺序/台账口径不变）。
  */
 import { app } from 'electron'
 import * as fs from 'fs-extra'
 import * as path from 'path'
-import { ipcListenerManager } from '../ipc/ipc-listener-manager'
+// P1-1：IPC 注册能力经注入式 provider 获取（config 不再直接依赖 ipc/ipc-listener-manager）
+import { registerIpcHandleOnce } from '../utils/ipc-registration'
 // 2026-11-19：主题广播收敛——配置写入/备份恢复后的主题广播复用主进程唯一广播实现，
 // 载荷经 buildThemeBroadcastPayload 统一组装（shared ThemeUpdateData 契约），
 // 不再在本文件自行遍历 BrowserWindow 发送 THEME_UPDATED。
-import { broadcastThemeToAllWindows, buildThemeBroadcastPayload } from '../ipc/theme-broadcast'
+// 2026-11-20（P1-1）：广播实现从 ipc/theme-broadcast 迁到中性层 utils/theme-broadcast，
+// config 不再静态 import ipc/**。
+import { broadcastThemeToAllWindows, buildThemeBroadcastPayload } from '../utils/theme-broadcast'
 // P1/N-05：配置读写为高风险通道（可改写自动保存/主题/编辑器/快速链接等主进程配置），
 // 仅接受主窗口发送方；拒绝时 handle 返回统一错误对象（不执行读写）。
 import { withSenderCheck } from '../utils/ipc-security'
@@ -525,7 +533,7 @@ export function registerConfigIpcHandlers() {
 
     // 读取配置
     // P1/N-05：配置读取暴露主进程配置内容（含主题/编辑器/快速链接等），仅主窗口可信。
-    ipcListenerManager.registerHandleOnce(
+    registerIpcHandleOnce(
         IPC.CONFIG.READ,
         withSenderCheck(
             IPC.CONFIG.READ,
@@ -539,7 +547,7 @@ export function registerConfigIpcHandlers() {
 
     // 写入配置
     // P1/N-05：配置写入会触发主进程 store 落盘与主题/系统设置副作用，仅主窗口可信。
-    ipcListenerManager.registerHandleOnce(
+    registerIpcHandleOnce(
         IPC.CONFIG.WRITE,
         withSenderCheck(
             IPC.CONFIG.WRITE,

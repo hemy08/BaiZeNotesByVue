@@ -22,12 +22,21 @@
  *   本模块定义一次；
  * - config-manager.ts 原先自行遍历 BrowserWindow 的广播实现已删除，改为复用
  *   broadcastThemeToAllWindows（本模块仍是主进程唯一广播出口）。
+ *
+ * 2026-11-20 归档归位（P1-1：依赖方向门禁第二层）：
+ * - 本模块从 `src/main/ipc/theme-broadcast.ts` 迁到中性层 `src/main/utils/`：
+ *   它只是「向所有窗口发送主题更新」的发送端实现，不注册任何 IPC 监听器，不属
+ *   IPC 编排层；迁出后 config（L2 业务层，config-manager / system-theme）不再
+ *   静态 import `src/main/ipc/**`，消除了 config → ipc 反向边；
+ * - 调用方（ipc/registry、config/config-manager、config/system-theme）与单测
+ *   mock 路径同步更新；行为、调用顺序、广播载荷与窗口遍历语义完全不变；
+ * - `src/main/utils/**` 对本模块的依赖方向为 utils → electron/shared/utils，不变。
  */
 import { BrowserWindow } from 'electron'
 import { IPC } from '../../shared/ipc-channels'
 // ARC-13/契约归位：广播载荷类型以 shared 为唯一真源（主进程不再自定义重复结构）
 import type { ThemeStyles, ThemeUpdateData } from '../../shared/types'
-import { logger } from '../utils/logger'
+import { logger } from './logger'
 
 /**
  * 组装主题广播载荷（纯函数：只做字段组装，不读 store、不发送 IPC）。

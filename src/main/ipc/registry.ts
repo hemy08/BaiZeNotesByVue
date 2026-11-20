@@ -49,7 +49,10 @@ import type { ThemeType } from '../config/theme-config'
 import { MainWindowListenDialogsEvent } from '../dialogs/dialogs'
 import { registerIpcHandlers } from './handlers'
 import { ipcListenerManager } from './ipc-listener-manager'
-import { broadcastThemeToAllWindows, buildThemeBroadcastPayload } from './theme-broadcast'
+// P1-1：主题广播实现已迁到中性层 utils（config 不再 import ipc/**，广播语义不变）
+import { broadcastThemeToAllWindows, buildThemeBroadcastPayload } from '../utils/theme-broadcast'
+// P1-1：向 config 侧注入 IPC 注册能力（依赖倒置，消除 config → ipc 反向依赖）
+import { setIpcHandleRegistrar } from '../utils/ipc-registration'
 import { registerPlantumlLocalRenderIpc } from '../renders/plantuml-local'
 import { setTrustedMainWindow, withSenderCheck } from '../utils/ipc-security'
 import { MainWindowListenUtilsEvent } from '../utils/utils'
@@ -80,8 +83,13 @@ export interface RegisterAllHooks {
  *
  * 当前仅配置 IPC 一组（config/read + config/write）；注册前会执行旧配置兼容迁移，
  * 因此必须保持在 createWindow 之前调用（迁移完成的设置才能被建窗流程读到）。
+ *
+ * P1-1：config 层已不直接依赖 ipc/ipc-listener-manager，注册能力经
+ * utils/ipc-registration 依赖倒置注入——必须在调用 config 的注册函数**之前**注入，
+ * 否则配置通道不会注册（未注入时提供者只告警，避免启动崩溃）。
  */
 export function registerPreWindowIpc(): void {
+    setIpcHandleRegistrar(ipcListenerManager)
     registerConfigIpcHandlers()
 }
 

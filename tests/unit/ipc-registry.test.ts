@@ -70,7 +70,8 @@ vi.mock('../../src/main/renders/plantuml-local', () => ({
     registerPlantumlLocalRenderIpc: implementationMocks.registerPlantumlLocalRenderIpc
 }))
 
-vi.mock('../../src/main/ipc/theme-broadcast', () => ({
+// P1-1：主题广播实现已迁到中性层 utils/theme-broadcast（config 不再 import ipc/**）
+vi.mock('../../src/main/utils/theme-broadcast', () => ({
     broadcastThemeToAllWindows: implementationMocks.broadcastThemeToAllWindows,
     buildThemeBroadcastPayload: implementationMocks.buildThemeBroadcastPayload
 }))

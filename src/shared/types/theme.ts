@@ -172,7 +172,7 @@ export interface MonacoThemeListItem {
  * 主题更新数据（主进程 → 渲染层广播，通道 baize-notes:theme-updated）
  * 收敛前在 main/global-types.d.ts 与 shared/types 各一份，结构一致；
  * 渲染层 BaiZeNotes.vue 的 handleThemeUpdate 使用本类型，主进程发送端
- * （src/main/ipc/theme-broadcast.ts 的 ThemeUpdateData）同样引用本类型，
+ * （src/main/utils/theme-broadcast.ts 的 ThemeUpdateData）同样引用本类型，
  * 保证广播契约只有一个真源。
  *
  * themeType 说明：历史字段（收敛前主进程广播载荷实际不携带、渲染层也未消费），

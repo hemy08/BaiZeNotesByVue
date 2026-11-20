@@ -1,5 +1,5 @@
 /**
- * P1/C-03：主进程主题广播（ipc/theme-broadcast.ts）单元测试
+ * P1/C-03：主进程主题广播（utils/theme-broadcast.ts）单元测试
  *
  * 背景：原主题广播有两处实现，其一在已删除的 JSDOM 主题设置对话框里误用
  * 渲染层全局 `window.electronAPI.broadcastTheme(...)`（主进程无 window 全局，
@@ -9,6 +9,9 @@
  * - 向所有存活窗口发送 THEME.THEME_UPDATED（载荷形态与渲染层 handleThemeUpdate 对齐）；
  * - 跳过 isDestroyed() 的窗口；单窗口 send 抛错不影响其余窗口；
  * - 返回成功广播的窗口数量。
+ *
+ * 2026-11-20（P1-1）：模块从 `src/main/ipc/theme-broadcast.ts` 迁到
+ * `src/main/utils/theme-broadcast.ts`（中性层），实现与断言完全不变，仅导入路径更新。
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
@@ -30,7 +33,7 @@ vi.mock('electron', () => ({
 import {
     broadcastThemeToAllWindows,
     buildThemeBroadcastPayload
-} from '../../src/main/ipc/theme-broadcast'
+} from '../../src/main/utils/theme-broadcast'
 import type { ThemeStyles } from '../../src/shared/types'
 
 /** 完整 ThemeStyles（与 theme-config.ts 的 baize 主题一致，满足 shared 契约类型） */

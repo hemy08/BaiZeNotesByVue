@@ -66,15 +66,16 @@ vi.mock('../../src/main/config/system-theme', () => ({
 }))
 
 // 2026-11-19 主题广播收敛：config-manager 的 broadcastThemeConfig 不再自行遍历
-// BrowserWindow，改为调用 ipc/theme-broadcast 的唯一广播实现。本文件只验证
-// "是否走统一函数"及其载荷（buildThemeBroadcastPayload 保留真实纯函数实现）；
-// 窗口遍历/容错细节由 theme-broadcast.test.ts 覆盖。
+// BrowserWindow，改为调用唯一广播实现。本文件只验证「是否走统一函数」及其载荷
+// （buildThemeBroadcastPayload 保留真实纯函数实现）；窗口遍历/容错细节由
+// theme-broadcast.test.ts 覆盖。
+// 2026-11-20（P1-1）：广播实现从 ipc/theme-broadcast 迁到中性层 utils/theme-broadcast。
 const broadcastMocks = vi.hoisted(() => ({
     broadcast: vi.fn()
 }))
 
-vi.mock('../../src/main/ipc/theme-broadcast', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('../../src/main/ipc/theme-broadcast')>()
+vi.mock('../../src/main/utils/theme-broadcast', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../src/main/utils/theme-broadcast')>()
     return { ...actual, broadcastThemeToAllWindows: broadcastMocks.broadcast }
 })
 
@@ -89,7 +90,11 @@ import { ensureTrayCreated } from '../../src/main/utils/tray'
 import { applySystemThemeNow } from '../../src/main/config/system-theme'
 import { syncAutoBackupTimer } from '../../src/main/utils/auto-backup'
 // 2026-11-19：主题广播收敛后的统一广播函数（模块被 mock，仅替换发送端）
-import { broadcastThemeToAllWindows } from '../../src/main/ipc/theme-broadcast'
+import { broadcastThemeToAllWindows } from '../../src/main/utils/theme-broadcast'
+// P1-1：config 层经依赖倒置的 provider 调用 IPC 注册台账——单测注入真实台账实现，
+// 使 registerConfigIpcHandlers 仍真实注册到 ipcMain（electron mock 捕获），行为不变。
+import { setIpcHandleRegistrar } from '../../src/main/utils/ipc-registration'
+import { ipcListenerManager } from '../../src/main/ipc/ipc-listener-manager'
 import { setTrustedMainWindow, resetTrustedSenderRegistry } from '../../src/main/utils/ipc-security'
 import { appState } from '../../src/main/utils/app-state'
 import { IPC } from '../../src/shared/ipc-channels'
@@ -121,6 +126,9 @@ describe('config-manager', () => {
         appState._resetForTesting()
         resetTrustedSenderRegistry()
         setTrustedMainWindow(trustedMainWindow as never)
+        // P1-1：注入真实 IPC 注册台账（config 已不直接 import ipc 层，注册能力经 provider 注入；
+        // 生产环境由 ipc/registry.registerPreWindowIpc 在注册前完成同一注入）
+        setIpcHandleRegistrar(ipcListenerManager)
         // 清空内存 store，保证 ARC-04 路由测试之间互不影响
         FakeStore.resetAll()
         // 批次 B：清理托盘/系统主题副作用 mock 的调用记录
