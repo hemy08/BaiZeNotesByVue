@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import type { Cipher, Decipher } from 'crypto'
+import type { Cipheriv, Decipheriv } from 'crypto'
 import { sendToMainWindow } from './app-state'
 import { logger } from './logger'
 import { IPC } from '../../shared/ipc-channels'
@@ -141,12 +141,12 @@ const GCM_AUTH_TAG_HEX_PATTERN = /^[0-9a-fA-F]{32}$/
  * @types/node 只在算法名匹配 `CipherGCMTypes` 字面量的重载上返回 CipherGCM/DecipherGCM，
  * 而本模块算法来自运行时字符串（dynamic），故用结构类型显式声明 GCM 专属方法，避免 any。
  */
-interface GcmCipherLike extends Cipher {
+interface GcmCipherLike extends Cipheriv {
     getAuthTag(): Buffer
 }
 
 /** AS-13：GCM 类 Decipher 的认证标签能力（setAuthTag 必须在 final 之前调用） */
-interface GcmDecipherLike extends Decipher {
+interface GcmDecipherLike extends Decipheriv {
     setAuthTag(buffer: Buffer): this
 }
 
@@ -225,7 +225,7 @@ export function CryptoEncrypt(data: CryptoData): CryptoResult {
         }
         // AS-13：GCM 必须在 final() 之后显式取认证标签（Node 24 的 final 不再返回 tag）
         if (isGcm) {
-            result.authTag = (cipher as GcmCipherLike).getAuthTag().toString('hex')
+            result.authTag = (cipher as unknown as GcmCipherLike).getAuthTag().toString('hex')
         }
         return result
     } catch (error) {
@@ -269,7 +269,7 @@ export function CryptoDecrypt(data: CryptoData): string {
         const decipher = crypto.createDecipheriv(data.algorithm, bufKey, bufIv)
         // AS-13：setAuthTag 必须在 final() 之前调用，认证失败的明文绝不会被返回
         if (authTag) {
-            const gcmDecipher = decipher as GcmDecipherLike
+            const gcmDecipher = decipher as unknown as GcmDecipherLike
             gcmDecipher.setAuthTag(authTag)
         }
         let decrypted = decipher.update(data.context, inputEncoding, outputEncoding)
