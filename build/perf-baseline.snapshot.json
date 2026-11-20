@@ -1,0 +1,211 @@
+{
+    "schemaVersion": 1,
+    "kind": "perf-baseline-snapshot",
+    "generatedAt": "2026-11-20T10:20:22.983Z",
+    "note": "仓库内性能基线快照（软门禁对比基准，非硬阈值）。维护：npm run perf:ci:startup → npm run perf:snapshot，PR 中说明变化原因；CI 偏离 >20% 仅 warning，不阻断。",
+    "thresholds": {
+        "deviationRatio": 0.2,
+        "policy": "warn-only",
+        "annotationPrefix": "性能基线偏离"
+    },
+    "appVersion": "1.4.0",
+    "gitHead": "c135587",
+    "environment": {
+        "capturedAt": "2026-11-20T10:20:22.936Z",
+        "platform": "win32",
+        "arch": "x64",
+        "osRelease": "10.0.26200",
+        "cpuModel": "Intel(R) Core(TM) i9-14900KS",
+        "cpuCount": 32,
+        "totalMemMb": 65244,
+        "nodeVersion": "v26.13.1",
+        "electronVersion": "43.8.12",
+        "appVersion": "1.4.0",
+        "gitHead": "c135587",
+        "ci": false
+    },
+    "metrics": {
+        "bundle.firstScreenJsBytes": {
+            "label": "首屏初始 JS（入口 + modulepreload 本地 JS）",
+            "unit": "bytes",
+            "value": 329635,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\renderer\\index.html"
+        },
+        "bundle.entryJsBytes": {
+            "label": "渲染入口 chunk（index-*.js）",
+            "unit": "bytes",
+            "value": 135452,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\renderer\\assets\\index-CAlQDKSS.js"
+        },
+        "bundle.shellJsBytes": {
+            "label": "主界面壳 chunk（BaiZeNotes-*.js）",
+            "unit": "bytes",
+            "value": 334782,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\renderer\\assets\\BaiZeNotes-BAWLmuUo.js"
+        },
+        "bundle.previewChunkBytes": {
+            "label": "预览 chunk（MarkdownPreviewComponent-*.js）",
+            "unit": "bytes",
+            "value": 652683,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\renderer\\assets\\MarkdownPreviewComponent-B2BH9d09.js"
+        },
+        "bundle.rendererAssetsBytes": {
+            "label": "渲染层 assets 全部文件",
+            "unit": "bytes",
+            "value": 24492380,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\renderer\\assets"
+        },
+        "bundle.mainEntryBytes": {
+            "label": "主进程入口（out/build/main/index.js）",
+            "unit": "bytes",
+            "value": 694105,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\main\\index.js"
+        },
+        "bundle.preloadEntryBytes": {
+            "label": "preload 入口（out/build/preload/index.js）",
+            "unit": "bytes",
+            "value": 13751,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\preload\\index.js"
+        },
+        "bundle.asarBytes": {
+            "label": "app.asar",
+            "unit": "bytes",
+            "value": 46385061,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\dist\\win-unpacked\\resources\\app.asar"
+        },
+        "bundle.unpackedBytes": {
+            "label": "win-unpacked 解包目录",
+            "unit": "bytes",
+            "value": 395304470,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\dist\\win-unpacked"
+        },
+        "bundle.localesBytes": {
+            "label": "locales 语言包（zh-CN/en-US）",
+            "unit": "bytes",
+            "value": 1137843,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\dist\\win-unpacked\\locales"
+        },
+        "bundle.setupInstallerBytes": {
+            "label": "NSIS 安装包（Setup exe）",
+            "unit": "bytes",
+            "value": 119449860,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\dist\\BaiZeNotes_Setup_1.4.0_windows_x64.exe"
+        },
+        "bundle.portableInstallerBytes": {
+            "label": "便携版（portable exe）",
+            "unit": "bytes",
+            "value": 105363253,
+            "measuredAt": "2026-11-20T10:20:22.936Z",
+            "provenance": "构建产物实测：out\\build\\dist\\BaiZeNotes_1.4.0_windows_x64.exe"
+        },
+        "startup.dev.appReadyMs": {
+            "label": "app-ready（app.whenReady）",
+            "unit": "ms",
+            "value": 168.1,
+            "measuredAt": "2026-11-20T10:19:46.033Z",
+            "provenance": "报告 out\\analysis\\perf-baseline.json（generatedAt 2026-11-20T10:19:46.033Z，appVersion -）"
+        },
+        "startup.dev.windowCreateMs": {
+            "label": "window-create（窗口构造）",
+            "unit": "ms",
+            "value": 188.9,
+            "measuredAt": "2026-11-20T10:19:46.033Z",
+            "provenance": "报告 out\\analysis\\perf-baseline.json（generatedAt 2026-11-20T10:19:46.033Z，appVersion -）"
+        },
+        "startup.dev.rendererReadyMs": {
+            "label": "renderer-ready（渲染层握手）",
+            "unit": "ms",
+            "value": 323.6,
+            "measuredAt": "2026-11-20T10:19:46.033Z",
+            "provenance": "报告 out\\analysis\\perf-baseline.json（generatedAt 2026-11-20T10:19:46.033Z，appVersion -）"
+        },
+        "startup.dev.mainViewMountedMs": {
+            "label": "main-view-mounted（主界面挂载）",
+            "unit": "ms",
+            "value": 297.2,
+            "measuredAt": "2026-11-20T10:19:46.033Z",
+            "provenance": "报告 out\\analysis\\perf-baseline.json（generatedAt 2026-11-20T10:19:46.033Z，appVersion -）"
+        },
+        "startup.dev.editorReadyMs": {
+            "label": "editor-ready（Monaco 就绪）",
+            "unit": "ms",
+            "value": 424,
+            "measuredAt": "2026-11-20T10:19:46.033Z",
+            "provenance": "报告 out\\analysis\\perf-baseline.json（generatedAt 2026-11-20T10:19:46.033Z，appVersion -）"
+        },
+        "startup.dev.previewReadyMs": {
+            "label": "preview-ready（预览首帧）",
+            "unit": "ms",
+            "value": 478.7,
+            "measuredAt": "2026-11-20T10:19:46.033Z",
+            "provenance": "报告 out\\analysis\\perf-baseline.json（generatedAt 2026-11-20T10:19:46.033Z，appVersion -）"
+        },
+        "startup.packaged.appReadyMs": {
+            "label": "app-ready（主进程）",
+            "unit": "ms",
+            "value": 164.2,
+            "measuredAt": "2026-11-20T10:19:55.418Z",
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+        },
+        "startup.packaged.windowCreateMs": {
+            "label": "window-create（窗口构造）",
+            "unit": "ms",
+            "value": 190.1,
+            "measuredAt": "2026-11-20T10:19:55.418Z",
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+        },
+        "startup.packaged.rendererReadyMs": {
+            "label": "renderer-ready（渲染层握手）",
+            "unit": "ms",
+            "value": 336.6,
+            "measuredAt": "2026-11-20T10:19:55.418Z",
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+        },
+        "startup.packaged.mainViewMountedMs": {
+            "label": "main-view-mounted（主界面挂载）",
+            "unit": "ms",
+            "value": 298.7,
+            "measuredAt": "2026-11-20T10:19:55.418Z",
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+        },
+        "startup.packaged.editorReadyMs": {
+            "label": "editor-ready（Monaco 就绪）",
+            "unit": "ms",
+            "value": 448.5,
+            "measuredAt": "2026-11-20T10:19:55.418Z",
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+        },
+        "startup.packaged.previewReadyMs": {
+            "label": "preview-ready（预览首帧）",
+            "unit": "ms",
+            "value": 476.8,
+            "measuredAt": "2026-11-20T10:19:55.418Z",
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+        },
+        "startup.packaged.windowVisibleMs": {
+            "label": "窗口可见（进程启动→首个可见窗口，外部探测）",
+            "unit": "ms",
+            "value": 368.8,
+            "measuredAt": "2026-11-20T10:19:55.418Z",
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+        },
+        "startup.packaged.processRuntimeMs": {
+            "label": "进程总耗时（进程启动→退出，外部探测）",
+            "unit": "ms",
+            "value": 1602.4,
+            "measuredAt": "2026-11-20T10:19:55.418Z",
+            "provenance": "报告 out\\analysis\\perf-baseline-packaged.json（generatedAt 2026-11-20T10:19:55.418Z，appVersion 1.4.0）"
+        }
+    }
+}

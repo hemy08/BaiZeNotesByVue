@@ -613,9 +613,37 @@ npm run docs:check
 # 构建产物体积预算检查（入口 chunk / NSIS / portable / asar / locales）
 npm run budget:check
 
+# 性能基线（软门禁）：bundle 指标 + 与仓库基线快照对比，偏离 >20% 仅输出 warning
+npm run perf:ci
+
+# 性能基线（含冷启动采样）：开发构建 + 打包版各 1 次（需先 npm run build:unpack；与 CI 同口径）
+npm run perf:ci:startup
+
+# 仅采集开发构建冷启动 performance marks（输出 out/analysis/perf-baseline.json）
+npm run perf:baseline
+
+# 更新仓库内性能基线快照（维护基线时执行，PR 中说明变化原因）
+npm run perf:snapshot
+
 # 清理构建产物
 npm run clean
 ```
+
+### 性能基线 CI（软门禁）
+
+启动/首屏性能基线已纳入 CI，但为**非阻断软门禁**：只记录趋势并在回归时输出 warning annotation，不卡 PR。
+
+| 项       | 说明                                                                                                                                                                                                                                                |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 测量项   | **bundle**：首屏初始 JS、渲染入口、主界面壳、预览 chunk、主进程入口、preload 入口、渲染层 assets、app.asar、win-unpacked、locales、NSIS/portable（存在时）；**冷启动**：开发构建 6 个 performance marks + 打包版 6 项 marks + 窗口可见 + 进程总耗时 |
+| 基线快照 | [build/perf-baseline.snapshot.json](./build/perf-baseline.snapshot.json)（入库；2026-11-20 本地实测：首屏 321.9 KiB、开发 preview-ready 478.7ms、打包版 preview-ready 476.8ms / 窗口可见 368.8ms）                                                  |
+| 阈值     | 相对基线偏离 **>20%** 输出 `::warning` annotation；下降 >20% 记为改善；不改变退出码                                                                                                                                                                 |
+| CI 接入  | `.github/workflows/ci.yml` 的 `perf-baseline` job：`build:unpack` 后运行 `npm run perf:ci:startup`，`continue-on-error: true`，报告上传 artifact（14 天）并写入 GitHub Step Summary                                                                 |
+| 产物     | `out/analysis/perf-baseline-ci.json`、`out/analysis/perf-baseline-ci.md`（另含冷启动原始报告 `perf-baseline.json` / `perf-baseline-packaged.json`）                                                                                                 |
+| 可选输入 | E2E 的 `startup-metrics` annotation（readyMs / launchAttempts / reloadRecoveries）可经 `node build/perf-ci.js --e2e-report=<playwright.json>` 纳入报告统计                                                                                          |
+| 基线维护 | 确认性能变化合理后：`npm run perf:ci:startup` → `npm run perf:snapshot`，在 PR 中说明阈值/基线变更原因                                                                                                                                              |
+
+> 实现：`build/perf-ci.js`（bundle 采集 + 快照对比 + 报告/annotation）、`build/perf-baseline.js`（冷启动 performance marks，`--packaged` 为打包版窗口可见探测）。
 
 ---
 

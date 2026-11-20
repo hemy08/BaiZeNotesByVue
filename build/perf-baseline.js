@@ -14,7 +14,7 @@
  * - **不纳入 CI 阻断**：脚本只做基线记录与「参考阈值」提示，指标超阈值不改变退出码；
  *   只有「没拿到报告 / 报告结构不合法」这类执行失败才返回非 0；
  * - 开发构建模式默认跑一次冷启动；打包版模式默认跑 3 次（可用 `--runs=N` 覆盖）；
- * - 运行完全隔离：userData 重定向到系统临时目录（开发构建经 `-r` 夹具、打包版经
+ * - 运行完全隔离：userData 重定向到系统临时目录（开发构建与打包版均经 Chromium
  *   `--user-data-dir`）；真实 `~/.baizenotes/config` 由本脚本「备份 → 清空（写最小种子）→ 恢复」，
  *   不污染开发机配置；每次采样使用全新 userData，采样间等待并确保旧进程已退出；
  * - 打包版窗口可见探测不向应用注入任何代码：Windows 下由 PowerShell + Win32
@@ -45,7 +45,6 @@ const REPORT_PATH = path.join(OUT_DIR, 'perf-baseline.json')
 const PACKAGED_REPORT_PATH = path.join(OUT_DIR, 'perf-baseline-packaged.json')
 /** electron-builder --dir 解包产物：打包版冷启动的被测对象 */
 const PACKAGED_EXE = path.join(ROOT, 'out', 'build', 'dist', 'win-unpacked', 'BaiZeNotes.exe')
-const USER_DATA_FIXTURE = path.join(ROOT, 'e2e', 'fixtures', 'redirect-user-data.cjs')
 const ELECTRON_DIST_DIR = path.join(ROOT, 'node_modules', 'electron', 'dist')
 const RUNTIME_ELECTRON_DIR = path.join(ROOT, 'out', 'tmp', 'e2e-electron-runtime')
 const BAIZE_HOME_DIR = path.join(os.homedir(), '.baizenotes')
@@ -228,13 +227,13 @@ function seedUserData(profile) {
 }
 
 /** 构造子进程环境：去除宿主/沙箱污染变量，注入诊断与路径 */
-function buildChildEnv(profile) {
+function buildChildEnv() {
     const env = { ...process.env }
     delete env.ELECTRON_RUN_AS_NODE
     delete env.BAIZE_PERF
+    delete env.BAIZE_E2E_USER_DATA
     return {
         ...env,
-        BAIZE_E2E_USER_DATA: profile.userData,
         BAIZE_PERF: '1',
         BAIZE_PERF_OUT: REPORT_PATH,
         ...QUIT_ON_COMPLETE_ENV
@@ -258,16 +257,24 @@ function forwardOutput(stream, prefix) {
     })
 }
 
-/** 启动一次 Electron 并等待退出（超时则强杀） */
+/**
+ * 启动一次 Electron 并等待退出（超时则强杀）。
+ *
+ * 2026-11-20（E2E 启动改进 147582b 之后）：开发构建的 userData 重定向改为原生
+ * `--user-data-dir`（与 e2e/helpers/electron-profile.ts 的 launchDevApp 同口径），
+ * 不再依赖已删除的 `e2e/fixtures/redirect-user-data.cjs`（`-r` 夹具）。
+ * 应用配置目录 config-manager 取 `app.getPath('userData')/config`，因此临时 profile 内
+ * seedUserData() 写入的 show-welcome.json / fileState.json 仍会生效。
+ */
 function launchOnce(electronExecutable, profile, timeoutMs) {
     return new Promise((resolve) => {
         const startedAt = Date.now()
         const child = spawn(
             electronExecutable,
-            ['-r', USER_DATA_FIXTURE, MAIN_ENTRY, '--baize-perf'],
+            [`--user-data-dir=${profile.userData}`, MAIN_ENTRY, '--baize-perf'],
             {
                 cwd: ROOT,
-                env: buildChildEnv(profile),
+                env: buildChildEnv(),
                 stdio: ['ignore', 'pipe', 'pipe'],
                 windowsHide: true
             }
@@ -395,7 +402,8 @@ function printMetrics(report) {
  *
  * 与开发构建模式的区别：
  * - 被测对象是 out/build/dist/win-unpacked/BaiZeNotes.exe（真实分发运行时）；
- * - 打包版 Electron 不支持 `-r` 预加载夹具，userData 经 Chromium `--user-data-dir` 重定向；
+ * - 开发构建与打包版的 userData 均经 Chromium `--user-data-dir` 重定向到临时目录
+ *   （打包版不支持 `-r` 预加载夹具，两条路径口径已统一）；
  * - 额外记录「进程启动 → 窗口可见」：不向应用注入代码，由 PowerShell 子进程用 Win32
  *   EnumWindows/IsWindowVisible 探测主进程 PID 的首个可见窗口（停止计时点）；
  * - 每次采样使用全新 userData，采样间等待并确保旧进程退出（冷启动口径）。

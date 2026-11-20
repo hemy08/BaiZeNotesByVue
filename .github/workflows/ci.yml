@@ -47,6 +47,18 @@ name: CI
 #   命中已知竞态不会误红），再跑启动稳定性量化 spec（软门禁：恢复率告警线 ≤25%、
 #   阻断线 ≤75%，且零进程重启；阈值校准依据见 spec 头部注释与 fix-e2e3 报告）；
 #   该 job 只需开发构建（不打包），因此单独跑 electron-vite build 而不是 build:unpack。
+#
+# 2026-11-20（性能基线纳入 CI，scan-perf「基线只记录、不防回归」）：
+# - 新增独立 `perf-baseline` job（与 quality-gate / e2e / bundle-budget 并行）：
+#   `build:unpack` 后运行 `npm run perf:ci:startup`——采集 bundle 指标（首屏/入口/壳/预览/
+#   主进程/preload/asar/解包/locales/安装包）并触发开发构建 + 打包版各 1 次冷启动采样
+#   （performance marks + 外部窗口可见探测），与仓库内基线快照
+#   `build/perf-baseline.snapshot.json` 对比；
+# - 软门禁：偏离基线 >20% 只输出 warning annotation（::warning）并写 JSON/Markdown artifact，
+#   job 级 `continue-on-error: true`，任何回归都不阻塞 PR；采集逻辑与阈值依据见
+#   build/perf-ci.js 头部注释、README「性能基线 CI（软门禁）」；
+# - 与 bundle-budget 分工：后者是体积硬门禁；本 job 记录性能趋势并做回归提示；
+# - 与 e2e-startup-stability 分工：后者测启动链恢复率/零进程重启（稳定性），本 job 测启动耗时基线。
 on:
     push:
         branches: [main, master]
@@ -277,3 +289,57 @@ jobs:
 
             - name: Check bundle budget
               run: npm run budget:check
+
+    # 性能基线软门禁（2026-11-20：scan-perf P1「性能基线只记录、不能防回归」）
+    # - 构建后采集 bundle 指标 + 冷启动采样，与仓库内基线快照 build/perf-baseline.snapshot.json 对比；
+    # - 偏离 >20% 只输出 warning annotation + 报告 artifact，不 fail（job continue-on-error）；
+    # - 与 bundle-budget（体积硬门禁）/ e2e-startup-stability（启动链稳定性）职责互补。
+    perf-baseline:
+        name: Performance baseline (soft gate)
+        runs-on: windows-latest
+        timeout-minutes: 40
+        # 软门禁：任何失败/告警都不阻塞 PR；回归信息通过 warning annotation 与 artifact 呈现
+        continue-on-error: true
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Cache Electron binary
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/AppData/Local/electron/Cache
+                      ~/AppData/Local/electron-builder/Cache
+                  key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            # 一次构建同时提供：out/build/{main,preload,renderer}（开发构建冷启动）
+            # 与 out/build/dist/win-unpacked（打包版冷启动 + asar/locales/unpacked 指标）
+            - name: Build dev + unpacked app
+              run: npm run build:unpack
+
+            # bundle 指标 + 开发构建 / 打包版各 1 次冷启动采样；指标偏离只 warning。
+            # 采样失败时脚本内部降级为 warning 并继续输出 bundle 报告，不改变退出码。
+            - name: Collect perf baseline (bundle + startup, warn-only)
+              run: npm run perf:ci:startup
+
+            # 报告作为 artifact 留存（含 JSON / Markdown / 冷启动原始报告），失败也上传现场
+            - name: Upload perf baseline artifacts
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: perf-baseline
+                  path: |
+                      out/analysis/perf-baseline-ci.json
+                      out/analysis/perf-baseline-ci.md
+                      out/analysis/perf-baseline.json
+                      out/analysis/perf-baseline-packaged.json
+                  retention-days: 14
