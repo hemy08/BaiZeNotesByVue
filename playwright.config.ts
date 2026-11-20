@@ -8,6 +8,11 @@
  * ## 运行前提（runbook）
  * 1. 先构建开发产物：`npx electron-vite build`（或一步到位 `npm run build:unpack`，
  *    该命令同时产出 out/build/main|preload|renderer 与 out/build/dist/win-unpacked）；
+ *    注意：发布配置已禁用主进程 `--inspect`（enableNodeCliInspectArguments:false），
+ *    Playwright 的 `_electron.launch` 依赖 `--inspect=0` 连接主进程，因此**打包启动用例**
+ *    必须使用 `ELECTRON_BUILDER_E2E=1 npm run build:unpack:e2e` 构建的测试产物
+ *    （发布硬化矩阵 + 仅 inspect 例外；该脚本会先断言硬化矩阵并做无调试器启动冒烟，
+ *    详见 build/e2e-enable-inspect.js / out/tool-results/fix-fuses2.md）；
  * 2. 需要可用的桌面环境（Electron 需要窗口系统）；CI 在 windows-latest 的 `e2e` job 自动执行；
  * 3. Windows 下用例统一经 e2e/helpers/electron-profile.ts 使用 `out/tmp/e2e-electron-runtime`
  *    的 Electron 运行时副本（首次运行自动从 node_modules/electron/dist 复制一次）；

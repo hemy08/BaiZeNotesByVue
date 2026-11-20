@@ -176,6 +176,13 @@ jobs:
             - name: Build installers (NSIS + portable)
               run: npm run build:win:all
 
+            # 2026-11-20（Fuses 余项）：发布产物硬化断言 + 无调试器启动冒烟。
+            # 读取待发布 win-unpacked exe 的实际 fuse 位（runAsNode/inspect 禁用、asar 完整性、
+            # onlyLoadAppFromAsar 等），并以诊断模式直接启动验证「主进程 + 渲染层就绪」——
+            # 发布流水线不设置 ELECTRON_BUILDER_E2E，因此产物始终保持硬化矩阵（无 E2E 例外）。
+            - name: Verify packaged fuses + hardened boot
+              run: node build/verify-packaged-fuses.js
+
             # 体积预算：断言对象是真实安装包（基于本次构建产物，不能省）
             - name: Check bundle budget
               run: npm run budget:check

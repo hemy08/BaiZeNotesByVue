@@ -204,10 +204,17 @@ jobs:
             # P0 E2E 补齐：一步产出全部 E2E 依赖的产物
             # - out/build/main|preload|renderer：开发构建用例（冒烟/启动恢复/设置持久化）
             # - out/build/dist/win-unpacked：打包启动用例（asar / extraResources / 单文件 preload 真实链路）
-            # 与本地构建命令一致（build:unpack = generate-version + generate-preload-whitelist +
-            # electron-vite build + prepare-build-dirs + electron-builder --dir）
-            - name: Build dev + unpacked app
-              run: npm run build:unpack
+            # 2026-11-20（Fuses 余项）：打包 E2E 改用 build:unpack:e2e，与发布硬化矩阵的关系为：
+            #  1) 先按发布配置（electron-builder.yml）构建全硬化产物；
+            #  2) build/verify-packaged-fuses.js 读取 exe 实际 fuse 位断言发布矩阵，
+            #     并以 BAIZE_PERF 诊断模式启动硬化产物（不依赖 --inspect）验证可启动/渲染就绪；
+            #  3) build/e2e-enable-inspect.js 仅放开 enableNodeCliInspectArguments（Playwright
+            #     `_electron.launch` 需要 --inspect 连接主进程），产物仅供测试、禁止发布。
+            # 需显式 ELECTRON_BUILDER_E2E=1 才会执行第 3 步（发布流水线不设置该变量）。
+            - name: Build dev + unpacked app (hardened fuses + E2E inspect exception)
+              env:
+                  ELECTRON_BUILDER_E2E: '1'
+              run: npm run build:unpack:e2e
 
             # P1-4：功能 E2E 保持容错模式（E2E_STRICT_LAUNCH=0）并输出启动指标；
             # 量化用例由独立 e2e-startup-stability job 执行（避免重复启动 Electron 采样）。

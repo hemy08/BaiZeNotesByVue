@@ -90,7 +90,13 @@
   与文本扩展名白名单；
 - 权限请求默认拒绝，仅主窗口本地受信页面按需放行最小权限；
 - 生产 CSP 已移除 `'unsafe-eval'` 与 localhost 放行；
-- 打包启用 Electron Fuses（`runAsNode: false`、`onlyLoadAppFromAsar`、asar 完整性校验）。
+- 打包启用 Electron Fuses 发布矩阵（`electron-builder.yml`，8 项显式声明并经
+  `build/verify-packaged-fuses.js` 对打包产物逐位断言）：`runAsNode: false`、
+  `enableNodeOptionsEnvironmentVariable: false`、`enableNodeCliInspectArguments: false`、
+  `enableEmbeddedAsarIntegrityValidation: true`、`onlyLoadAppFromAsar: true`；
+  `grantFileProtocolExtraPrivileges` 因 renderer 以 file:// 从 app.asar 加载而**保持启用**
+  （关闭实测白屏，后续需迁移自定义协议）。E2E 测试构建经 `ELECTRON_BUILDER_E2E=1
+npm run build:unpack:e2e` 仅放开主进程 inspect，发布流水线不设该变量，发布产物始终为硬化矩阵。
 
 ## 六、披露约定
 

@@ -292,6 +292,12 @@ export function launchDevApp(
 /**
  * 启动打包产物（out/build/dist/win-unpacked/BaiZeNotes.exe）。
  *
+ * 前提（Fuses 余项后）：产物必须由 `ELECTRON_BUILDER_E2E=1 npm run build:unpack:e2e` 生成。
+ * 发布配置已禁用主进程 inspect（enableNodeCliInspectArguments:false），而 Playwright
+ * `_electron.launch` 固定以 `--inspect=0` 启动并等待 `Debugger listening` 输出，直接对
+ * 发布硬化产物启动会一直等到超时；`:e2e` 脚本先断言硬化矩阵（build/verify-packaged-fuses.js）
+ * 后仅放开该 fuse（build/e2e-enable-inspect.js），其余 7 位保持发布值。
+ *
  * 打包版 Electron 不支持 `-r` 预加载注入（实测被忽略），因此：
  * - Electron userData 走 `--user-data-dir=<临时目录>`；
  * - `~/.baizenotes/config` 同样由调用方的 ConfigSandbox 备份/恢复。
