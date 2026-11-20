@@ -31,6 +31,11 @@ const electronMocks = vi.hoisted(() => {
         // P2-10：单实例锁申请结果（requestSingleInstanceLock 返回值）
         lockFlag: { value: true }
     }
+    // P2-1：主窗口当前 URL（与 index.ts 的 join(__dirname, '../renderer/index.html') 同路径）
+    const rendererIndexFileUrl = (): string => {
+        const normalized = `${process.cwd()}/src/renderer/index.html`.replace(/\\/g, '/')
+        return normalized.startsWith('/') ? `file://${normalized}` : `file:///${normalized}`
+    }
     const win = {
         on: vi.fn((event: string, handler: (...args: never[]) => void) => {
             const arr = winHandlers[event] ?? []
@@ -59,7 +64,10 @@ const electronMocks = vi.hoisted(() => {
                 webContentHandlers[event] = arr
             }),
             setWindowOpenHandler: vi.fn(),
-            isDestroyed: vi.fn(() => false)
+            isDestroyed: vi.fn(() => false),
+            // P2-1：权限处理器按「主窗口 webContents + 当前 URL 属受信页面」判定，
+            // 主窗口 mock 返回构建后的 renderer index.html 文件 URL（与导航测试同路径）
+            getURL: vi.fn(() => rendererIndexFileUrl())
         },
         loadURL: vi.fn(),
         loadFile: vi.fn()
@@ -74,6 +82,9 @@ const electronMocks = vi.hoisted(() => {
         capturedBrowserWindowOptions: null as unknown,
         openExternal: vi.fn(),
         webRequestOnBeforeRequest: vi.fn(),
+        // P2-1：Web 权限请求/检查处理器注册记录（session.defaultSession）
+        setPermissionRequestHandler: vi.fn(),
+        setPermissionCheckHandler: vi.fn(),
         screenDisplays: state.screenDisplays,
         quitFlag: state.quitFlag,
         singleInstanceLock: state.lockFlag,
@@ -111,8 +122,13 @@ vi.mock('electron', () => ({
     ipcMain: electronMocks.ipcMain,
     screen: electronMocks.screen,
     // AS-9：index.ts 在 whenReady 注册远程资源外发阻断（session.defaultSession.webRequest）
+    // P2-1：同时注册 Web 权限请求/检查处理器（默认拒绝）
     session: {
-        defaultSession: { webRequest: { onBeforeRequest: electronMocks.webRequestOnBeforeRequest } }
+        defaultSession: {
+            webRequest: { onBeforeRequest: electronMocks.webRequestOnBeforeRequest },
+            setPermissionRequestHandler: electronMocks.setPermissionRequestHandler,
+            setPermissionCheckHandler: electronMocks.setPermissionCheckHandler
+        }
     },
     BrowserWindow: class {
         constructor(options: unknown) {
@@ -199,6 +215,8 @@ const internalMocks = vi.hoisted(() => ({
     stopAutoBackupTimer: vi.fn(),
     loggerError: vi.fn(),
     loggerInfo: vi.fn(),
+    // P2-1：权限处理器拒绝请求时经 logger.warn 记录
+    loggerWarn: vi.fn(),
     loggerSetMainWindow: vi.fn(),
     cleanupAll: vi.fn(),
     // 2026-11-18（#12）：窗口就绪后的 Monaco 主题缓存异步预热
@@ -272,6 +290,7 @@ vi.mock('../../src/main/utils/logger', () => ({
     logger: {
         error: internalMocks.loggerError,
         info: internalMocks.loggerInfo,
+        warn: internalMocks.loggerWarn,
         setMainWindow: internalMocks.loggerSetMainWindow
     }
 }))
@@ -441,7 +460,14 @@ beforeEach(() => {
     for (const mock of Object.values(electronMocks.win)) {
         if (typeof mock === 'function') mock.mockClear()
     }
-    for (const key of ['send', 'insertCSS', 'on', 'setWindowOpenHandler', 'isDestroyed']) {
+    for (const key of [
+        'send',
+        'insertCSS',
+        'on',
+        'setWindowOpenHandler',
+        'isDestroyed',
+        'getURL'
+    ]) {
         const mock =
             electronMocks.win.webContents[key as keyof typeof electronMocks.win.webContents]
         if (typeof mock === 'function') mock.mockClear()
@@ -453,6 +479,8 @@ beforeEach(() => {
     electronMocks.ipcMain.removeListener.mockClear()
     electronMocks.openExternal.mockClear()
     electronMocks.webRequestOnBeforeRequest.mockClear()
+    electronMocks.setPermissionRequestHandler.mockClear()
+    electronMocks.setPermissionCheckHandler.mockClear()
     for (const mock of Object.values(toolkitMocks)) mock.mockClear()
     for (const mock of Object.values(internalMocks)) {
         if (typeof mock === 'function') mock.mockClear()
@@ -513,6 +541,51 @@ describe('app whenReady startup flow', () => {
             { urls: expect.arrayContaining(['*://*.plantuml.com/*']) },
             expect.any(Function)
         )
+    })
+
+    // P2-1：启动时安装默认拒绝的 Web 权限处理器；仅主窗口本地受信页面按需放行
+    it('should install default-deny Web permission handlers on the default session (P2-1)', async () => {
+        await loadMainIndex()
+        expect(electronMocks.setPermissionRequestHandler).toHaveBeenCalledTimes(1)
+        expect(electronMocks.setPermissionCheckHandler).toHaveBeenCalledTimes(1)
+
+        const requestHandler = electronMocks.setPermissionRequestHandler.mock.calls[0][0]
+        // 在线网页窗口（非主窗口 webContents）请求摄像头 → 拒绝
+        const onlineDeny = vi.fn()
+        requestHandler({ getURL: () => 'https://example.com/' }, 'media', onlineDeny, {
+            isMainFrame: true
+        })
+        expect(onlineDeny).toHaveBeenCalledWith(false)
+
+        // 主窗口本地受信页面请求全屏 / 剪贴板读取 → 放行（编辑器 Ctrl+V 贴图依赖）
+        const fullscreenAllow = vi.fn()
+        requestHandler(electronMocks.win.webContents, 'fullscreen', fullscreenAllow, {
+            isMainFrame: true
+        })
+        expect(fullscreenAllow).toHaveBeenCalledWith(true)
+        const clipboardAllow = vi.fn()
+        requestHandler(electronMocks.win.webContents, 'clipboard-read', clipboardAllow, {
+            isMainFrame: true
+        })
+        expect(clipboardAllow).toHaveBeenCalledWith(true)
+
+        // 主窗口请求摄像头（白名单外）→ 拒绝
+        const mediaDeny = vi.fn()
+        requestHandler(electronMocks.win.webContents, 'media', mediaDeny, { isMainFrame: true })
+        expect(mediaDeny).toHaveBeenCalledWith(false)
+
+        // 检查处理器与请求处理器同规则
+        const checkHandler = electronMocks.setPermissionCheckHandler.mock.calls[0][0]
+        expect(
+            checkHandler(electronMocks.win.webContents, 'fullscreen', 'file://', {
+                isMainFrame: true
+            })
+        ).toBe(true)
+        expect(
+            checkHandler({ getURL: () => 'https://example.com/' }, 'fullscreen', 'file://', {
+                isMainFrame: true
+            })
+        ).toBe(false)
     })
 
     it('should create the main window with the expected options and preload', async () => {

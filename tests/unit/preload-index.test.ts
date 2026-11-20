@@ -23,10 +23,19 @@ vi.mock('electron', () => ({
     ipcRenderer: { invoke: preloadMocks.invoke, send: preloadMocks.send }
 }))
 
-// mock @electron-toolkit/preload 的 electronAPI（含 ipcRenderer，供受限包装使用）
+// mock @electron-toolkit/preload 的 electronAPI（含 ipcRenderer，供受限包装使用）。
+// P2-2：toolkit 的其余成员（process 含全量 env / webFrame / webUtils）必须不再被展开暴露，
+// 这里显式提供这些「诱饵」字段，单测断言它们不会出现在 window.electron 上。
 vi.mock('@electron-toolkit/preload', () => ({
     electronAPI: {
         toolkitApi: true,
+        process: {
+            env: { BAIZE_LEAKED_TOKEN: 'should-not-be-exposed' },
+            platform: 'win32',
+            versions: { electron: '43.0.0' }
+        },
+        webFrame: { insertCSS: vi.fn(), setZoomFactor: vi.fn() },
+        webUtils: { getPathForFile: vi.fn() },
         ipcRenderer: {
             send: preloadMocks.send,
             invoke: preloadMocks.invoke,
@@ -57,9 +66,9 @@ function getExposedApi(): {
     return call![1]
 }
 
-// 从 exposeInMainWorld 调用记录中取出暴露的 electron 对象（#4 起为受限包装）
-function getExposedElectron(): {
-    toolkitApi?: boolean
+// 从 exposeInMainWorld 调用记录中取出暴露的 electron 对象（#4 起为受限包装；
+// P2-2 起只允许 ipcRenderer 一个成员，故返回类型带索引签名以便断言「不存在」）
+function getExposedElectron(): Record<string, unknown> & {
     ipcRenderer: {
         send: (channel: string, ...args: unknown[]) => void
         invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
@@ -75,13 +84,28 @@ function getExposedElectron(): {
 }
 
 describe('preload/index', () => {
-    it('should expose the toolkit electronAPI (with restricted ipcRenderer) under the electron key', () => {
+    it('should expose only the restricted ipcRenderer under the electron key (P2-2)', () => {
         const exposed = getExposedElectron()
-        expect(exposed.toolkitApi).toBe(true)
+        // P2-2：不再展开 toolkit electronAPI——electron 对象只应有 ipcRenderer 一个成员
+        expect(Object.keys(exposed)).toEqual(['ipcRenderer'])
         // 2026-11-18（#4）：ipcRenderer 为白名单受限包装（send/invoke/on 均为函数）
         expect(typeof exposed.ipcRenderer.send).toBe('function')
         expect(typeof exposed.ipcRenderer.invoke).toBe('function')
         expect(typeof exposed.ipcRenderer.on).toBe('function')
+    })
+
+    it('should not expose process.env / webFrame / webUtils to the renderer (P2-2)', () => {
+        const exposed = getExposedElectron()
+        expect('process' in exposed).toBe(false)
+        expect('webFrame' in exposed).toBe(false)
+        expect('webUtils' in exposed).toBe(false)
+        expect('toolkitApi' in exposed).toBe(false)
+        expect(exposed.process).toBeUndefined()
+        expect(exposed.webFrame).toBeUndefined()
+        expect(exposed.webUtils).toBeUndefined()
+        // 双重断言：即使通过可选链也拿不到任何环境变量
+        const exposedProcess = exposed.process as { env?: Record<string, string> } | undefined
+        expect(exposedProcess?.env).toBeUndefined()
     })
 
     it('should drop unregistered renderer send channels (C-09)', () => {

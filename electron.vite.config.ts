@@ -5,6 +5,8 @@ import { defineConfig } from 'electron-vite'
 // 不兼容（writeBundle 钩子与旧版 transformIndexHtml 返回结构已失效），弃用插件，改为手动 worker 注册：
 // 见 src/renderer/src/components/Markdown/monaco-worker-setup.ts（?worker 导入 + MonacoEnvironment.getWorker）。
 import vue from '@vitejs/plugin-vue'
+// P2-4：构建期把渲染层 CSP 从「开发口径」改写为「生产口径」（移除 unsafe-eval 与 localhost 放行）
+import { applyProductionCsp } from './build/renderer-csp'
 
 export default defineConfig({
     main: {
@@ -81,6 +83,18 @@ export default defineConfig({
                 }
             ]
         },
-        plugins: [vue({})]
+        plugins: [
+            vue({}),
+            // P2-4（2026-11-20 安全扫描）：生产构建剥离 CSP 中仅供开发链路的 token。
+            // apply: 'build' 保证 dev server（Vite HMR / Monaco 调试）仍使用源文件的开发口径；
+            // 转换函数内部会做生产口径自检（残留 unsafe-eval/localhost 直接让构建失败）。
+            {
+                name: 'baize-production-csp',
+                apply: 'build',
+                transformIndexHtml(html: string): string {
+                    return applyProductionCsp(html)
+                }
+            }
+        ]
     }
 })

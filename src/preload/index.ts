@@ -254,12 +254,14 @@ function createRestrictedIpcRenderer(): typeof electronAPI.ipcRenderer {
 // 本项目所有窗口均启用 contextIsolation（src/main/index.ts 与 dialog-defaults.ts），
 // 原“非 contextIsolated 直接挂 window”分支为死代码，已删除（原含 2 处 @ts-ignore）。
 try {
-    // 2026-11-18（#4）：暴露受限 ipcRenderer（其余 toolkit 成员 webFrame/webUtils/process 原样保留）
-    const exposedElectronAPI = {
-        ...electronAPI,
+    // P2-2（2026-11-20 全量安全扫描）：不再展开 @electron-toolkit/preload 的 electronAPI。
+    // 其 toolkit 成员中 `process`（含完整 env）/`webFrame`/`webUtils` 对渲染层毫无用途
+    // （全仓 grep 零引用），展开后会让任意渲染层脚本读取应用进程全部环境变量
+    // （CI/开发机常含 *_TOKEN、代理口令、云密钥）并静默取得拖入文件的本地绝对路径。
+    // 渲染层实际只使用 `window.electron.ipcRenderer`（白名单受限包装），故仅暴露该最小集合。
+    contextBridge.exposeInMainWorld('electron', {
         ipcRenderer: createRestrictedIpcRenderer()
-    }
-    contextBridge.exposeInMainWorld('electron', exposedElectronAPI)
+    })
     contextBridge.exposeInMainWorld('api', api)
 } catch (error) {
     console.error(error)

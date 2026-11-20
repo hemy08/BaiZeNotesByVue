@@ -47,6 +47,8 @@ import { tMain } from './utils/i18n'
 import { isAllowedAppNavigation, isSafeExternalUrl, openExternalSafely } from './utils/security'
 // AS-9：远程图表外发阻断（PlantUML 本地渲染不可用时的 plantuml.com 远程降级请求）
 import { registerRemoteResourceGuard } from './utils/remote-resource-guard'
+// P2-1：Web 权限请求处理器（默认拒绝；仅主窗口本地受信页面按需放行）
+import { registerPermissionHandlers } from './utils/permission-handler'
 // 系统设置补充实现批次 A：
 // - 启动恢复上次文件/目录（autoOpenLastFile / autoOpenLastFolder）
 import { restoreLastOpenedAtStartup } from './utils/startup-restore'
@@ -483,6 +485,18 @@ app.whenReady().then(() => {
         registerRemoteResourceGuard(session?.defaultSession ?? null)
     } catch (error) {
         console.warn('[Security] 远程资源外发阻断注册失败（AS-9）：', error)
+    }
+
+    // P2-1：注册 Web 权限请求/检查处理器（默认拒绝）。仅主窗口本地受信页面
+    // （打包 file: renderer/index.html / dev http://localhost）按需放行 fullscreen 与
+    // 剪贴板读写；在线网页窗口与隐藏窗口一律拒绝。session 缺失时安全跳过。
+    try {
+        registerPermissionHandlers(session?.defaultSession ?? null, {
+            devUrl: is.dev ? (process.env['ELECTRON_RENDERER_URL'] ?? null) : null,
+            rendererIndexPath: join(__dirname, '../renderer/index.html')
+        })
+    } catch (error) {
+        console.warn('[Security] Web 权限处理器注册失败（P2-1）：', error)
     }
 
     // M2：阶段 1 的 IPC 注册（配置通道；注册时执行旧配置兼容迁移）——

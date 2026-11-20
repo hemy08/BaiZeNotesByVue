@@ -3,15 +3,17 @@
     <head>
         <meta charset="UTF-8" />
         <!-- CMP-17：内容安全策略（纵深防御，XSS 后效阻断内联脚本执行）。
-         - script-src 'unsafe-eval'：Monaco/Vite 开发链路需要；2026-11-18 复核：
-           渲染层源码无 new Function/eval 使用，移除该指令需实机验证 Monaco 兼容性；
+         - 本文件为「开发口径」CSP（dev server / Monaco 调试链路）；**生产产物由构建期
+           插件自动剥离开发专用 token**（build/renderer-csp.ts + electron.vite.config.ts
+           的 baize-production-csp 插件），打包后的 CSP 不含 'unsafe-eval' 与 localhost 放行；
+         - script-src 'unsafe-eval'：Monaco/Vite 开发链路需要；渲染层源码无 new Function/eval，
+           生产口径由构建期移除（tests/unit/renderer-csp.test.ts 同时锁定两套口径）；
          - style-src 'unsafe-inline'：Vue/Monaco/KaTeX 内联样式需要；
          - img-src data: https: file:：Markdown 远程图片、base64 内嵌图与本地
            相对路径图片（预览层将相对路径转换为 file:// 绝对 URL，FE-12）；
          - frame-src 'self'：PDF 已改 pdf.js canvas 渲染、HTML 查看器使用 srcdoc，
            不再加载 file: 帧来源（2026-11-19 收紧）；
-         - connect-src localhost:：仅 Vite dev HMR 需要（打包后无实际用途，后续可做
-           dev/prod 双 CSP 剥离）；
+         - connect-src localhost:：仅 Vite dev HMR 需要（生产构建剥离）；
          - object-src 'none' / form-action 'none'：2026-11-18（遗留清单 #6）收紧——
            禁止插件对象、禁止表单提交外发。
          - 2026-11-19 调整：**不设 base-uri**——HTML 查看器需在 sandbox iframe 的 srcdoc
