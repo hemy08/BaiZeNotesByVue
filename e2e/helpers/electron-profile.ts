@@ -96,7 +96,26 @@ export function createTempProfile(prefix = 'baize-e2e-'): TempProfile {
     return {
         root,
         userData,
-        cleanup: () => fs.rmSync(root, { recursive: true, force: true })
+        cleanup: () => {
+            // 2026-11-20（Electron 45）：关闭后文件句柄偶发延迟释放（Windows EPERM/EBUSY），
+            // 直接 rmSync 会让清理失败覆盖用例结果；重试 10 次（每次 ~200ms），最终失败仅告警。
+            for (let attempt = 1; attempt <= 10; attempt++) {
+                try {
+                    fs.rmSync(root, { recursive: true, force: true })
+                    return
+                } catch (error) {
+                    if (attempt === 10) {
+                        console.warn(
+                            '[e2e] 临时 profile 清理失败（已忽略，系统临时目录可回收）:',
+                            root,
+                            error
+                        )
+                        return
+                    }
+                    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200)
+                }
+            }
+        }
     }
 }
 

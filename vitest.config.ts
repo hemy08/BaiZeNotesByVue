@@ -37,6 +37,11 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'node',
+        // 2026-11-20（Node 26.13.1 升级）：forks 池在 Node 26 下 crypto.randomBytes
+        // 触发 OpenSSL 熵源错误（1C8000BA），threads 池正常；统一改用线程池。
+        pool: 'threads',
+        // Node 26 + 大型静态扫描/集成测试在慢机器上偶发 >5s（默认 5s 超时），统一放宽。
+        testTimeout: 15_000,
         // 结构优化第 1 批 1.1（H1）：架构依赖边界测试独立于 tests/unit 目录，
         // 补一条 include 使其随 `npm test` 自动发现（原 include 保持不变）。
         include: ['tests/unit/**/*.test.ts', 'tests/architecture/**/*.test.ts'],

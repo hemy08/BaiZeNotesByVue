@@ -12,13 +12,14 @@
   <nav class="toc">
     <h4>目录</h4>
     <a class="toc-l2" href="#sec-1">1. 现状</a>
-    <a class="toc-l2" href="#sec-2">2. 分批升级计划</a>
-    <a class="toc-l2" href="#sec-3">3. 代码签名上线清单（需人工前置）</a>
+    <a class="toc-l2" href="#sec-2">2. 执行结果（2026-11-20）</a>
+    <a class="toc-l2" href="#sec-3">3. 分批升级计划（原始排期）</a>
+    <a class="toc-l2" href="#sec-4">4. 代码签名上线清单（需人工前置）</a>
     <a class="toc-l3" href="#sub-1">3.1 采购与准备</a>
     <a class="toc-l3" href="#sub-2">3.2 工程接入</a>
     <a class="toc-l3" href="#sub-3">3.3 验收</a>
-    <a class="toc-l2" href="#sec-4">4. 排期建议</a>
-    <a class="toc-l2" href="#sec-5">5. 风险与回滚</a>
+    <a class="toc-l2" href="#sec-5">5. 排期建议</a>
+    <a class="toc-l2" href="#sec-6">6. 风险与回滚</a>
   </nav>
 
 <div class="wrap">
@@ -40,7 +41,17 @@
 <li>异常项：<code>crypto-js</code> latest 4.1.1 &lt; current 4.2.0（registry 异常，保持）；<code>electron-builder</code> latest 26.18.0 &lt; current 26.18.1（保持）。</li>
 <li>生产依赖 audit：0 漏洞；Dependabot 侧 vendor 告警已 dismiss，剩余历史快照待依赖图刷新。</li>
 </ul>
-<h2 id="sec-2">2. 分批升级计划</h2>
+<h2 id="sec-2">2. 执行结果（2026-11-20）</h2>
+<ul>
+<li><strong>B1 已完成</strong>：eslint 9.39→10.15、eslint-plugin-vue 9.33→10.12、@electron-toolkit/eslint-config 2→3、eslint-config-ts 3→4；ESLint 10 新增 2 条 recommended 规则命中存量 25 处，暂降 warn（后续清债）。</li>
+<li><strong>B2 部分完成</strong>：@types/node 22→26 已完成（encrypt-decrypt 适配 Node 26 的 Cipheriv/Decipheriv 类型）；<strong>typescript 7 回滚</strong>——vue-tsc 3.3.14 依赖 <code>typescript/lib/tsc</code> 导出，TS7 已移除（ERR_PACKAGE_PATH_NOT_EXPORTED），待 vue-tsc 支持后重试。</li>
+<li><strong>B3 已完成</strong>：vitest 4→5.1.1、@vitest/coverage-v8 4→5.1.1；覆盖率阈值不降。Node 26 下 forks 池 crypto 熵源报错，vitest 改 <code>pool: threads</code> + <code>testTimeout: 15s</code>。</li>
+<li><strong>B4 已完成</strong>：electron-store 11.0.2→12.0.0（ESM-only；store-factory 适配默认值类型，打包启动 E2E 验证通过）；jschardet 3.1.4→4.1.0。</li>
+<li><strong>B5 评估后回滚</strong>：electron 43.8.12→45.4.1 后基础门禁通过、打包产物可启动，但 dev E2E <code>-r</code> userData 重定向/欢迎页时序不稳定（9 条用例偶发 1~2 失败），按排期风险策略回滚 43.8.12；待 E2E 夹具升级后再试。</li>
+<li><strong>B6/B7 未执行</strong>：katex 0.19 仍受 mermaid <code>^0.18</code> 锁定；发布待 1.4.0 版本内容完成后进行。</li>
+<li>版本：1.4.0（未发布）；Node 运行时已升级 26.13.1。</li>
+</ul>
+<h2 id="sec-3">3. 分批升级计划（原始排期）</h2>
 <table>
 <thead>
 <tr>
@@ -114,7 +125,7 @@
 <blockquote>
 <p>每批单独 commit/PR，失败单项回滚；major 不自动合并（Dependabot ignore 策略保持）。</p>
 </blockquote>
-<h2 id="sec-3">3. 代码签名上线清单（需人工前置）</h2>
+<h2 id="sec-4">4. 代码签名上线清单（需人工前置）</h2>
 <h3 id="sub-1">3.1 采购与准备</h3>
 <ul>
 <li>[ ] 选择证书：OV/EV Windows 代码签名证书（EV 可更快建立 SmartScreen 信誉；需企业资质）</li>
@@ -135,7 +146,7 @@
 <li>[ ] Release 说明标注签名状态与指纹</li>
 <li>[ ] 回滚：保留未签名构建产物与证书吊销流程</li>
 </ul>
-<h2 id="sec-4">4. 排期建议</h2>
+<h2 id="sec-5">5. 排期建议</h2>
 <ol>
 <li>先做 <strong>B1~B3</strong>（工具链/测试链，风险可控、无产品行为变更）；</li>
 <li>再做 <strong>B4</strong>（运行时行为变更，需真机手测）；</li>
@@ -143,7 +154,7 @@
 <li><strong>B6 katex</strong> 等待 mermaid 升级配合；</li>
 <li><strong>代码签名</strong>与 B5 同步推进（证书采购周期通常 3~10 个工作日，需提前启动）。</li>
 </ol>
-<h2 id="sec-5">5. 风险与回滚</h2>
+<h2 id="sec-6">6. 风险与回滚</h2>
 <ul>
 <li>每批独立分支/commit；门禁（typecheck/eslint/prettier/vitest/build/E2E/docs/quality/budget）全绿才合并；</li>
 <li>electron 45 升级失败回滚到 43.x 并保留 <code>electron-store</code> 旧版；</li>

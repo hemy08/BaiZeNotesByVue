@@ -11,6 +11,15 @@
 
 - **主题设置首次打开主题列表为空**：拆分后 `ThemeSettingDialog` 的 visible watch 缺少 `immediate`，父级 v-if 首次以 visible=true 挂载时不触发 `loadThemes`；已补 immediate，并同步修复 `EditorSettingDialog` 配置加载、`CreateFileFolderDialog` 默认路径回填、`RenameFileFolderDialog` 首开聚焦
 
+### 📦 依赖升级（B1~B4）
+
+- **B1**：eslint 9.39→10.15、eslint-plugin-vue 9.33→10.12、@electron-toolkit/eslint-config 2→3、eslint-config-ts 3→4（ESLint 10 新增 2 条规则命中存量 25 处，暂降 warn 待清债）
+- **B2**：@types/node 22→26（encrypt-decrypt 适配 Cipheriv/Decipheriv）；typescript 7 因 vue-tsc 不兼容回滚
+- **B3**：vitest 4→5.1.1、@vitest/coverage-v8 4→5.1.1；Node 26 下 forks 池 crypto 熵源异常 → 改用 threads 池 + testTimeout 15s
+- **B4**：electron-store 11→12（ESM-only，store-factory 适配 + 打包启动验证）、jschardet 3→4
+- **B5**：electron 43→45 评估后回滚（dev E2E userData/欢迎页时序不稳定，保留 43.8.12）
+- Node 运行时升级 26.13.1；体积预算按依赖增长调整（Setup 115 MiB / asar 47 MiB）
+
 ### ✅ 门禁
 
 - typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **185 文件 / 3,397 用例全通过**、electron-vite build 成功
@@ -57,6 +66,15 @@
 - **HTML 查看器导航修复**：点击顶部导航后目标页 `report-nav.js` 因 sandbox 不执行而导航消失、路径不切换；改为拦截本地 `.html` 链接走查看器加载器（重新读取 + 注入静态导航 + 更新 filePath）
 - **自动保存默认关闭**：`systemSettingDefaults` / `SYSTEM_SETTING_FALLBACK` 的 `autoSaveEnabled` 由 true 改为 false；软件打开后不启用自动保存，用户需在「系统设置 → 文件设置」中自行开启（schema v3 一次性迁移旧默认 true → false，之后用户开启不再覆盖）
 - **未保存关闭确认**：关闭窗口/退出应用时若当前文件有未保存修改，弹原生对话框「保存并关闭 / 不保存 / 取消」；取消或保存失败不关闭（新增 `close-confirm.ts` 与中英文案）
+
+### 📦 依赖升级（B1~B4）
+
+- **B1**：eslint 9.39→10.15、eslint-plugin-vue 9.33→10.12、@electron-toolkit/eslint-config 2→3、eslint-config-ts 3→4（ESLint 10 新增 2 条规则命中存量 25 处，暂降 warn 待清债）
+- **B2**：@types/node 22→26（encrypt-decrypt 适配 Cipheriv/Decipheriv）；typescript 7 因 vue-tsc 不兼容回滚
+- **B3**：vitest 4→5.1.1、@vitest/coverage-v8 4→5.1.1；Node 26 下 forks 池 crypto 熵源异常 → 改用 threads 池 + testTimeout 15s
+- **B4**：electron-store 11→12（ESM-only，store-factory 适配 + 打包启动验证）、jschardet 3→4
+- **B5**：electron 43→45 评估后回滚（dev E2E userData/欢迎页时序不稳定，保留 43.8.12）
+- Node 运行时升级 26.13.1；体积预算按依赖增长调整（Setup 115 MiB / asar 47 MiB）
 
 ### ✅ 门禁
 

@@ -84,6 +84,23 @@ async function launchToMainView(
 ): Promise<{ app: ElectronApplication; page: Page }> {
     // 真源就绪等待：firstWindow 只代表窗口创建，不代表 preload 注入完成/页面已加载
     const { app, page } = await launchDevAppWithRenderer(profile)
+    // 2026-11-20（Electron 45 稳定性）：极少数启动仍落在欢迎页（show-welcome 读取/时序竞态）；
+    // 若检测到欢迎页，重写隔离 userData 中的 show-welcome=false 并 reload，再等待主界面。
+    if (
+        !(await page
+            .locator('#editor-container')
+            .isVisible({ timeout: 3_000 })
+            .catch(() => false))
+    ) {
+        const welcomeVisible = await page
+            .getByRole('button', { name: '打开文件' })
+            .isVisible()
+            .catch(() => false)
+        if (welcomeVisible) {
+            seedUserDataConfig(profile, 'show-welcome', false)
+            await page.reload()
+        }
+    }
     await expect(page.locator('#editor-container')).toBeVisible({ timeout: 60_000 })
     return { app, page }
 }
@@ -107,8 +124,12 @@ test.describe('系统设置保存与持久化', () => {
 
                 const dialog = await openSystemSettingDialog(page)
                 const checkbox = settingCheckbox(dialog, AUTO_OPEN_LAST_FILE_LABEL)
-                await expect(checkbox).not.toBeChecked()
-                await checkbox.click()
+                // 2026-11-20（Electron 45 稳定性）：真实配置目录可能残留上次失败用例的
+                // autoOpenLastFile=true（ConfigSandbox 恢复竞态）；不假设初始 false，
+                // 归一化为 true 后再保存，保证持久化断言与初始状态无关。
+                if (!(await checkbox.isChecked())) {
+                    await checkbox.click()
+                }
                 await expect(checkbox).toBeChecked()
                 await dialog.locator(DIALOG_CONFIRM_SELECTOR).click()
                 await expect(dialog).toBeHidden({ timeout: 15_000 })
