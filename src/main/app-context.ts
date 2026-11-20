@@ -139,6 +139,25 @@ export interface AppContext {
         /** 因「最小化到托盘」隐藏窗口的系统通知是否已发送（每进程一次） */
         hideNotified: boolean
     }
+
+    /**
+     * 工作区受信根状态（P1-1 剩余：工作区受信根来源收敛）。
+     *
+     * 背景：历史实现里 `OPEN_SPECIFIC_FOLDER` 直接信任渲染层入参并设为工作区根，
+     * 渲染层还可经 `config:write('recent-folders')` 写入任意目录后再从「最近文件夹」
+     * 合法入口打开，形成「渲染层自行声明受信根」的授权扩张面。
+     *
+     * 收敛后本字段是**唯一**的进程内授权来源：
+     * - 只由主进程在「原生目录选择器返回结果」「主进程持久化的最近文件夹/上次打开目录」
+     *   「主进程已确认过的打开流程」中写入（见 utils/workspace-approval）；
+     * - `OPEN_SPECIFIC_FOLDER` / `OPEN_RECENT` 等渲染层可触达入口只做只读判定 + LRU 刷新；
+     * - 集合元素为 realpath 归一化后的比较键（Windows 大小写不敏感），最多保留
+     *   MAX_APPROVED_WORKSPACE_ROOTS 个，Set 插入顺序即 LRU 顺序。
+     */
+    workspace: {
+        /** 已获主进程确认的工作区受信根比较键集合（realpath 归一化，LRU 顺序） */
+        approvedRoots: Set<string>
+    }
 }
 
 /** 创建一份「全部复位为默认值」的上下文（不接管任何外部引用） */
@@ -158,7 +177,8 @@ export function createDefaultAppContext(): AppContext {
         startupRestore: { pendingWindow: null, fallbackTimer: null },
         update: { installing: false },
         windowBounds: { disposePersistence: null },
-        tray: { hideNotified: false }
+        tray: { hideNotified: false },
+        workspace: { approvedRoots: new Set<string>() }
     }
 }
 

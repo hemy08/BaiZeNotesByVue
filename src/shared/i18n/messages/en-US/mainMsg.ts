@@ -72,6 +72,10 @@ export default {
         menuActionFailed: 'Menu action failed: {message}',
         // File menu recent files/folders: the target is no longer in the current recent list
         recentTargetMissing: 'The recent item no longer exists.',
+        // P1-1 (workspace trusted-root source convergence): reject a folder not confirmed
+        // by the main-process native directory picker
+        workspaceRootNotApproved:
+            'This folder was not confirmed by the system directory picker, so it was not opened. Please choose the folder again via "Open Folder".',
         // System settings supplement batch A: startup restore of last file/folder
         startupRestoreFileMissing:
             'The last opened file no longer exists (it may have been moved or deleted), so it was not restored: {path}',

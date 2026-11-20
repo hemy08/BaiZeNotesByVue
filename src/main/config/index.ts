@@ -1,7 +1,12 @@
 /**
  * 配置文件模块导出
  */
-export { configManager, registerConfigIpcHandlers } from './config-manager'
+export {
+    configManager,
+    ensureApprovedWorkspaceRootsInitialized,
+    recordRecentFolder,
+    registerConfigIpcHandlers
+} from './config-manager'
 
 export type { ThemeType, MonacoThemeType, ThemeStyles, ThemeConfig } from './theme-config'
 export {

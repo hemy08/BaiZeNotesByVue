@@ -28,6 +28,7 @@ import {
     clampFontSize,
     DEFAULT_FONT_FAMILY,
     isAllowedConfigName,
+    isMainProcessOnlyConfigName,
     sanitizeFontFamily,
     validateConfigData,
     validateEditorConfig,
@@ -59,6 +60,16 @@ describe('AS-4 config name whitelist', () => {
         for (const name of ['evil', 'rendererEditorConfig', '../system', '', null, 42, {}]) {
             expect(isAllowedConfigName(name), String(name)).toBe(false)
         }
+    })
+
+    // P1-1（工作区受信根来源收敛）：recent-folders 仍是可读白名单，但仅主进程可写
+    it('should mark recent-folders as main-process-only writable', () => {
+        expect(isMainProcessOnlyConfigName('recent-folders')).toBe(true)
+        expect(isMainProcessOnlyConfigName('show-welcome')).toBe(false)
+        expect(isMainProcessOnlyConfigName('system')).toBe(false)
+        expect(isMainProcessOnlyConfigName(undefined)).toBe(false)
+        // 可读白名单仍包含 recent-folders（欢迎页展示需要 config:read）
+        expect(isAllowedConfigName('recent-folders')).toBe(true)
     })
 })
 

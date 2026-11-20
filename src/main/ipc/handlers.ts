@@ -39,13 +39,21 @@ import { ipcListenerManager } from './ipc-listener-manager'
 import { getTrustedMainWindow, setTrustedMainWindow, withSenderCheck } from '../utils/ipc-security'
 // AS-2：工作区根目录校验公共实现（P2-6：提取到 utils/workspace-root 供启动恢复复用）
 import { validateWorkspaceRoot } from '../utils/workspace-root'
+// P1-1（工作区受信根来源收敛）：渲染层可触达入口只做「只读判定」，不得自行声明受信根
+import { approveWorkspaceRoot, touchApprovedWorkspaceRoot } from '../utils/workspace-approval'
 // FE-01：主界面数据事件投递时序（send WELCOME_ENTER_MAIN 后再于下一 tick 发数据事件）
 import { runAfterMainViewEntered } from '../utils/main-view-timing'
 // 「文件」菜单 → 最近文件夹：复用启动恢复的目录打开实现（WELCOME_ENTER_MAIN →
 // runAfterMainViewEntered → CLEAR_EDITOR_PREVIEW + ReloadDirFromDisk + 保存工作区记录）
 import { openDirectoryInMainView } from '../utils/startup-restore'
 // 「文件」菜单 → 最近列表：最近文件夹存于 recent-folders 裸 JSON 配置（configManager 读取）
-import { configManager } from '../config/config-manager'
+// P1-1（工作区受信根来源收敛）：recent-folders 改为主进程专属写入，打开目录后由主进程
+// 自行置顶维护；启动时由主进程读取持久化历史播种受信根集合（ensureApprovedWorkspaceRootsInitialized）
+import {
+    configManager,
+    ensureApprovedWorkspaceRootsInitialized,
+    recordRecentFolder
+} from '../config/config-manager'
 // P1-AS-1：对话框选择路径登记（受信来源）——欢迎页打开的单文件/目录可能在工作区外，
 // 登记后 file-operations 的路径守卫（security.ts）才会允许读取（task-13/task-15 交接）。
 import {
@@ -157,6 +165,33 @@ function notifyWorkspaceRootRejected(
             message: tMain('mainMsg.status.operationFailed', {
                 message: `工作区目录无效：${reason}`
             }),
+            type: 'error'
+        },
+        mainWindow
+    )
+}
+
+/**
+ * P1-1（工作区受信根来源收敛）：拒绝「通过危险根校验但未经主进程确认」的目录。
+ *
+ * 与 notifyWorkspaceRootRejected 的区别：本函数的拒绝原因是「来源不合法」而非
+ * 「路径本身敏感」——路径必须命中主进程受信根集合（原生目录选择器/主进程持久化历史），
+ * 渲染层无法自行声明任意目录为工作区根。
+ */
+function notifyWorkspaceRootNotApproved(
+    mainWindow: BrowserWindow,
+    channel: string,
+    rejectedPath: unknown
+): void {
+    const reason = tMain('mainMsg.status.workspaceRootNotApproved')
+    logger.warn(
+        `[Security] 已拒绝 ${channel} 的工作区根目录（未经系统目录选择器确认）：`,
+        rejectedPath
+    )
+    // 4.4：统一走 notifyStatus（窗口判活/发送异常兜底由 helper 负责）
+    notifyStatus(
+        {
+            message: tMain('mainMsg.status.operationFailed', { message: reason }),
             type: 'error'
         },
         mainWindow
@@ -277,6 +312,9 @@ async function openRecentTarget(
     if (!(await readRecentFolders()).includes(target)) {
         return failRecentOpen(mainWindow, tMain('mainMsg.status.recentTargetMissing'))
     }
+    // P1-1：最近文件夹列表本身由主进程维护，但仍要求目录命中受信根集合——
+    // 防止历史持久化数据/外部篡改绕过来源收敛（启动时主进程已按持久化历史播种）。
+    await ensureApprovedWorkspaceRootsInitialized()
     const validation = await validateWorkspaceRoot(target)
     if (!validation.ok) {
         return failRecentOpen(
@@ -287,7 +325,12 @@ async function openRecentTarget(
             })
         )
     }
+    if ((await touchApprovedWorkspaceRoot(validation.path)) === null) {
+        return failRecentOpen(mainWindow, tMain('mainMsg.status.workspaceRootNotApproved'))
+    }
     await openDirectoryInMainView(mainWindow, validation.path)
+    // P1-1：最近列表打开同样由主进程置顶维护（渲染层不再写 recent-folders）
+    await recordRecentFolder(validation.path)
     return { ok: true }
 }
 
@@ -519,6 +562,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     // AS-2：渲染层传入的 folderPath 不再直接作为工作区根——先做绝对路径/存在性/目录性/
     // 危险根（磁盘根、系统目录、用户主目录等）校验，非法路径仅状态栏提示并 return，
     // 避免被注入的渲染层把根目录指向任意路径后递归遍历整树回传（DoS/信息泄露）。
+    // P1-1（来源收敛）：校验通过后还必须命中主进程受信根集合（APPROVED），否则拒绝——
+    // 只有用户经主进程原生目录选择器确认过的目录（及其主进程持久化的历史记录）可作工作区根。
     ipcListenerManager.registerOnce(
         IPC.FILE.OPEN_SPECIFIC_FOLDER,
         withSenderCheck(IPC.FILE.OPEN_SPECIFIC_FOLDER, async (_, folderPath: string) => {
@@ -527,6 +572,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
             // 快速关闭会误判为欢迎页并跳过 FLUSH_CONTENT/脏保存（数据丢失回归）。
             markMainViewEntered()
             try {
+                // P1-1：先确保主进程持久化历史（最近文件夹/上次打开目录）已播种受信根
+                await ensureApprovedWorkspaceRootsInitialized()
                 const validation = await validateWorkspaceRoot(folderPath)
                 if (!validation.ok) {
                     notifyWorkspaceRootRejected(
@@ -537,10 +584,22 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
                     )
                     return
                 }
+                // P1-1：第二道闸——来源判定（不产生新授权，仅命中已有受信根并刷新 LRU）
+                const approvedPath = await touchApprovedWorkspaceRoot(validation.path)
+                if (approvedPath === null) {
+                    notifyWorkspaceRootNotApproved(
+                        mainWindow,
+                        IPC.FILE.OPEN_SPECIFIC_FOLDER,
+                        validation.path
+                    )
+                    return
+                }
                 mainWindow.webContents.send(IPC.FILE.CLEAR_EDITOR_PREVIEW)
                 appState.rootPath = validation.path
                 await ReloadDirFromDisk()
                 saveLastOpenedDirectory(validation.path)
+                // P1-1：最近文件夹由主进程自行维护（渲染层 config:write 已被拒绝）
+                await recordRecentFolder(validation.path)
             } catch (error) {
                 notifyIpcAsyncError(mainWindow, IPC.FILE.OPEN_SPECIFIC_FOLDER, error)
             }
@@ -608,6 +667,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
                     const dirPath = result.filePaths[0]
                     // 目录来自系统对话框（用户显式选择），登记为受信目录子树并跳过 AS-2 入参校验
                     registerTrustedDirectory(dirPath)
+                    // P1-1：原生目录选择器结果 = 用户确认 → 登记为受信工作区根（realpath 归一化）
+                    await approveWorkspaceRoot(dirPath)
                     appState.rootPath = dirPath
                     // FE-01：先通知渲染层进入主界面（触发主界面组件挂载并注册 IPC 监听），
                     // 再在下一 tick 发送 CLEAR_EDITOR_PREVIEW / FILE_SYSTEM_DATA 等数据事件，
@@ -621,6 +682,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
                         mainWindow.webContents.send(IPC.FILE.CLEAR_EDITOR_PREVIEW)
                         await ReloadDirFromDisk()
                         saveLastOpenedDirectory(dirPath)
+                        // P1-1：最近文件夹由主进程维护（替代渲染层 handleEnterMain 的写入）
+                        await recordRecentFolder(dirPath)
                     })
                 }
             } catch (error) {
@@ -713,12 +776,18 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     )
 
     // P1/N-05：目录选择会拉起系统对话框（读取用户选择结果 → 文件系统读取），仅主窗口可信。
+    // P1-1：原生目录选择器返回结果 = 用户显式确认 → 登记为受信工作区根（realpath 归一化），
+    // 供后续「最近文件夹」等入口复用；这是渲染层可触达的目录选择通道里唯一的授权入口。
     ipcListenerManager.registerHandleOnce(
         IPC.FILE.SELECT_DIRECTORY,
         withSenderCheck(
             IPC.FILE.SELECT_DIRECTORY,
             withHandleErrorLog(IPC.FILE.SELECT_DIRECTORY, async () => {
-                return await SelectDirectory(mainWindow)
+                const selectedDirectory = await SelectDirectory(mainWindow)
+                if (typeof selectedDirectory === 'string' && selectedDirectory.length > 0) {
+                    await approveWorkspaceRoot(selectedDirectory)
+                }
+                return selectedDirectory
             }),
             { kind: 'handle' }
         ),

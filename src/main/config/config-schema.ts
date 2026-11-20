@@ -10,7 +10,10 @@
  * 本模块提供：
  * 1. 已知配置名白名单（isAllowedConfigName）：system / theme / editor / quick-links /
  *    quickLinks / backup / recent-folders / show-welcome；
- * 2. 按配置名的字段级 schema 校验（类型/枚举/范围/长度）：
+ * 2. 仅主进程可写配置名清单（isMainProcessOnlyConfigName）：recent-folders——P1-1
+ *    工作区受信根来源收敛后不再允许渲染层经通用 config:write 写入，由主进程在用户
+ *    打开目录时自行维护（读取仍对渲染层开放，欢迎页展示需要）；
+ * 3. 按配置名的字段级 schema 校验（类型/枚举/范围/长度）：
  *    - 结构非法或安全敏感字段非法 → ok=false（调用方返回 false 并记日志，不抛异常）；
  *    - 未知字段丢弃、超范围数值钳制 → ok=true，记录 adjusted 供日志审计。
  *
@@ -46,6 +49,21 @@ export const ALLOWED_CONFIG_NAMES: ReadonlySet<string> = new Set([
 /** 是否为白名单内的配置名（未知/非字符串一律 false） */
 export function isAllowedConfigName(name: unknown): name is string {
     return typeof name === 'string' && ALLOWED_CONFIG_NAMES.has(name)
+}
+
+/**
+ * P1-1（工作区受信根来源收敛）：仅允许主进程写入的配置名。
+ *
+ * `recent-folders` 是工作区受信根的历史来源：历史实现允许渲染层经通用 `config:write`
+ * 任意写入，XSS 后可写入任意目录再从「最近文件夹」入口合法打开。收敛后该配置名
+ * **只允许主进程写入**（打开目录时由主进程置顶维护、启动时由主进程读取播种受信根），
+ * 渲染层仍可经 `config:read` 读取（欢迎页展示需要），但 `config:write` 一律拒绝。
+ */
+export const MAIN_PROCESS_ONLY_CONFIG_NAMES: ReadonlySet<string> = new Set(['recent-folders'])
+
+/** 是否为「仅主进程可写」的配置名（渲染层 config:write 必须拒绝） */
+export function isMainProcessOnlyConfigName(name: unknown): boolean {
+    return typeof name === 'string' && MAIN_PROCESS_ONLY_CONFIG_NAMES.has(name)
 }
 
 /** 字段级校验结果：ok=false 时调用方应拒绝写入；adjusted 记录被丢弃/钳制字段（仅日志用） */

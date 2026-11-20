@@ -45,6 +45,9 @@ import { runAfterMainViewEntered } from './main-view-timing'
 // 拦截主目录/系统目录/磁盘根等危险路径——历史遗留的 lastOpenedDirectory 若指向此类
 // 目录，启动即全量遍历 + 自动备份全量收集
 import { validateWorkspaceRoot } from './workspace-root'
+// P1-1（工作区受信根来源收敛）：lastOpenedDirectory 是主进程 fileState 持久化记录
+// （渲染层无写权限），启动恢复前登记为受信根，保证来源收敛不破坏启动恢复语义
+import { approveWorkspaceRoot } from './workspace-approval'
 
 /**
  * 发送 WELCOME_ENTER_MAIN（进入主界面），随后经 FE-01 时序执行恢复动作。
@@ -123,6 +126,9 @@ export async function restoreLastOpenedAtStartup(
                 type: 'warning'
             })
         } else {
+            // P1-1：启动恢复目标来自主进程自有持久化记录（fileState.lastOpenedDirectory），
+            // 视为已批准并登记为受信根——后续会话/欢迎页入口复用同一授权语义。
+            await approveWorkspaceRoot(validation.path)
             try {
                 await openDirectoryInMainView(mainWindow, validation.path)
             } catch (error) {

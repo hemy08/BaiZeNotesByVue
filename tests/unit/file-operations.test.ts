@@ -57,6 +57,8 @@ vi.mock('../../src/main/utils/file-state-store', () => ({
 import { appState } from '../../src/main/utils/app-state'
 import { saveLastOpenedFile, saveLastOpenedDirectory } from '../../src/main/utils/file-state-store'
 import { logger } from '../../src/main/utils/logger'
+// P1-1（工作区受信根来源收敛）：recent-folders 主进程写入实现经 providers 注入
+import { setRecentFolderRecorderProvider } from '../../src/main/utils/providers'
 import {
     getMathRandom,
     normalizeEncoding,
@@ -1512,6 +1514,24 @@ describe('OpenFile / OpenDirectory', () => {
         expect(openDirSend).toHaveBeenCalledWith('baize:file:clear-editor-preview')
         expect(appState.mdFileTree?.[0].name).toBe(path.basename(caseDir))
         expect(saveLastOpenedDirectory).toHaveBeenCalledWith(caseDir)
+    })
+
+    // P1-1（工作区受信根来源收敛）：菜单/快捷键「打开文件夹」的原生选择结果由主进程
+    // 置顶维护 recent-folders（渲染层 config:write('recent-folders') 已被拒绝）
+    it('should record the opened directory through the injected recent-folder recorder', async () => {
+        const caseDir = await fs.mkdtemp(path.join(tmpDir, 'case-'))
+        electronMocks.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [caseDir] })
+        const recorder = vi.fn(async () => {})
+        setRecentFolderRecorderProvider(recorder)
+        try {
+            await OpenDirectory({
+                webContents: { send: vi.fn() }
+            } as unknown as Electron.BrowserWindow)
+            expect(recorder).toHaveBeenCalledWith(caseDir)
+        } finally {
+            // 注入属进程级全局状态：用例结束复位，避免污染其它用例
+            setRecentFolderRecorderProvider(null)
+        }
     })
 })
 

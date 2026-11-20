@@ -16,6 +16,9 @@ import {
     getEditorSetting,
     buildFontCss,
     configManager,
+    // P1-1（工作区受信根来源收敛）：主进程维护 recent-folders 与受信根播种
+    ensureApprovedWorkspaceRootsInitialized,
+    recordRecentFolder,
     // 2026-11-18（遗留清单 #12）：窗口就绪后异步预热 Monaco 主题缓存
     warmupMonacoThemeCache,
     // 1.3.6：存量设置迁移（旧默认 minimizeToTray/enableAutoBackup=true → false）
@@ -67,6 +70,7 @@ import { stopAutoBackupTimer, syncAutoBackupTimer } from './utils/auto-backup'
 // 使 src/main/utils/** 不再静态 import src/main/config/**（依赖倒置，方向单向 config → utils）
 import {
     setQuickLinksProvider,
+    setRecentFolderRecorderProvider,
     setSystemSettingProvider,
     setThemeApiProvider
 } from './utils/providers'
@@ -100,6 +104,9 @@ setThemeApiProvider({
     getAllMonacoThemes,
     getThemeStylesByType
 })
+// P1-1（工作区受信根来源收敛）：recent-folders 为主进程专属配置——配置层写入实现注入
+// utils（file-operations.OpenDirectory 等 utils 层调用；utils 不反向 import config）。
+setRecentFolderRecorderProvider(recordRecentFolder)
 
 // D-3/FUN-03：关闭/退出落盘协议通道名（ARC-03：收口到共享 IPC 常量）
 const EDITOR_FLUSH_CHANNEL = IPC.EDITOR.FLUSH_CONTENT
@@ -417,6 +424,11 @@ async function runStartupRestore(win: BrowserWindow): Promise<void> {
     const systemSetting = getSystemSetting()
     if (systemSetting.autoOpenLastFile || systemSetting.autoOpenLastFolder) {
         await restoreLastOpenedAtStartup(win, systemSetting)
+        // P1-1（工作区受信根来源收敛）：启动恢复打开的历史目录同样由主进程置顶写入
+        // 最近文件夹（渲染层 config:write('recent-folders') 已被拒绝）。
+        if (typeof appState.rootPath === 'string' && appState.rootPath.length > 0) {
+            await recordRecentFolder(appState.rootPath)
+        }
     } else {
         await restoreLastOpenedFile()
     }
@@ -516,6 +528,11 @@ app.whenReady().then(() => {
     // M2：阶段 1 的 IPC 注册（配置通道；注册时执行旧配置兼容迁移）——
     // 必须早于 createWindow 读取系统设置与 startSystemThemeWatcher，故保持在建窗前
     registerPreWindowIpc()
+
+    // P1-1（工作区受信根来源收敛）：启动时由主进程持久化数据（recent-folders /
+    // lastOpenedDirectory）播种受信工作区根。异步预热，失败仅记日志不阻断启动；
+    // 渲染层可触达的 OPEN_SPECIFIC_FOLDER / OPEN_RECENT 会 await 同一 Promise 兜底。
+    void ensureApprovedWorkspaceRootsInitialized()
 
     // 批次 B #7：跟随系统主题——启动 nativeTheme 监听并立即对齐一次当前系统深浅色
     // （创建窗口前应用，ready-to-show 时 INIT_THEME_STYLES 取到的即是最新主题）

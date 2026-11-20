@@ -74,6 +74,9 @@ export default {
         menuActionFailed: '菜单操作执行失败：{message}',
         // 「文件」菜单最近文件/最近文件夹：目标已不在当前最近列表中（列表变化/文件被移动）
         recentTargetMissing: '最近列表已变化，目标不存在',
+        // P1-1（工作区受信根来源收敛）：拒绝未经主进程确认的工作区目录
+        workspaceRootNotApproved:
+            '该工作目录未经系统目录选择器确认，已拒绝打开（请通过「打开文件夹」重新选择目录）',
         // 系统设置补充实现批次 A：启动恢复上次文件/目录失败时的状态栏提示
         startupRestoreFileMissing:
             '上次打开的文件已不存在（可能已被移动或删除），本次未自动恢复：{path}',

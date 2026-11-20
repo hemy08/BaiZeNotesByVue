@@ -85,7 +85,13 @@ vi.mock('../../src/main/utils/auto-backup', () => ({
     syncAutoBackupTimer: vi.fn()
 }))
 
-import { configManager, registerConfigIpcHandlers } from '../../src/main/config/config-manager'
+import {
+    configManager,
+    ensureApprovedWorkspaceRootsInitialized,
+    recordRecentFolder,
+    registerConfigIpcHandlers,
+    resetWorkspaceApprovalSeedForTesting
+} from '../../src/main/config/config-manager'
 import { ensureTrayCreated } from '../../src/main/utils/tray'
 import { applySystemThemeNow } from '../../src/main/config/system-theme'
 import { syncAutoBackupTimer } from '../../src/main/utils/auto-backup'
@@ -100,7 +106,18 @@ import { appState } from '../../src/main/utils/app-state'
 import { IPC } from '../../src/shared/ipc-channels'
 import { FakeStore } from './helpers/fake-store'
 // 批次 A：#4 最近文件列表数量——file-state-store 的最近文件存取
-import { getRecentFiles, saveLastOpenedFile } from '../../src/main/utils/file-state-store'
+import {
+    getRecentFiles,
+    saveLastOpenedDirectory,
+    saveLastOpenedFile
+} from '../../src/main/utils/file-state-store'
+// P1-1（工作区受信根来源收敛）：受信根集合/播种/写入断言
+import {
+    getApprovedWorkspaceRootsForTesting,
+    resetWorkspaceApprovalsForTesting
+} from '../../src/main/utils/workspace-approval'
+import { normalizePathForCompare } from '../../src/shared/utils/path'
+import * as os from 'os'
 
 // P1/N-05：config:read / config:write 统一校验发送方，测试桩提供受信主窗口与事件。
 // 结构优化第 2 批 2.4（M1）：受信主窗口与 appState.mainWindow 同源（AppContext），
@@ -122,8 +139,11 @@ describe('config-manager', () => {
         hoisted.loginItem.openAtLogin = false
         hoisted.setLoginItemSettings.mockClear()
         // 结构优化第 2 批 2.4（M1）：appState._resetForTesting 会整体复位 AppContext
-        // （含受信主窗口），因此必须先复位 appState 再登记受信主窗口，顺序不可交换。
+        // （含受信主窗口/受信工作区根），因此必须先复位 appState 再登记受信主窗口，顺序不可交换。
         appState._resetForTesting()
+        // P1-1：受信根播种 Promise 按用例复位（否则用例间共享已播种结果）
+        resetWorkspaceApprovalSeedForTesting()
+        resetWorkspaceApprovalsForTesting()
         resetTrustedSenderRegistry()
         setTrustedMainWindow(trustedMainWindow as never)
         // P1-1：注入真实 IPC 注册台账（config 已不直接 import ipc 层，注册能力经 provider 注入；
@@ -151,10 +171,13 @@ describe('config-manager', () => {
             await expect(configManager.readConfig('missing')).resolves.toBeNull()
         })
 
-        it('should roundtrip whitelisted bare-JSON data including unicode', async () => {
-            // AS-4：裸 JSON 配置名收敛到白名单（recent-folders / show-welcome 为渲染层在用）
+        it('should roundtrip main-process-written bare-JSON data including unicode', async () => {
+            // P1-1：recent-folders 为主进程专属写入（渲染层 config:write 一律拒绝），
+            // 主进程内部维护入口 writeConfigFromMainProcess 仍可正常落盘/读取
             const data = ['白泽笔记', 'another-folder']
-            await expect(configManager.writeConfig('recent-folders', data)).resolves.toBe(true)
+            await expect(
+                configManager.writeConfigFromMainProcess('recent-folders', data)
+            ).resolves.toBe(true)
             await expect(configManager.readConfig('recent-folders')).resolves.toEqual(data)
         })
 
@@ -759,15 +782,33 @@ describe('config-manager', () => {
             expect(stored[0].name).toBe('GitHub')
         })
 
-        it('rejects non-array recent-folders and filters non-string entries', async () => {
+        it('rejects renderer writes to main-process-only recent-folders (P1-1)', async () => {
+            // 渲染层可经 config:write 触达的 IPC 通道必须拒绝（否则 XSS 可写入任意目录，
+            // 再从「最近文件夹」入口合法打开，来源收敛失效）
             await expect(
-                writeChannel()(trustedEvent, 'recent-folders', { folders: [] })
+                writeChannel()(trustedEvent, 'recent-folders', ['C:\\secrets'])
             ).resolves.toBe(false)
             await expect(
-                writeChannel()(trustedEvent, 'recent-folders', ['C:\\notes', 42, '', 'D:\\work'])
+                configManager.writeConfig('recent-folders', ['C:\\secrets'])
+            ).resolves.toBe(false)
+            await expect(configManager.readConfig('recent-folders')).resolves.toBeNull()
+
+            // 主进程专属写入入口仍走 AS-4 schema 校验（非数组拒绝、非法条目丢弃）
+            await expect(
+                configManager.writeConfigFromMainProcess('recent-folders', { folders: [] })
+            ).resolves.toBe(false)
+            await expect(
+                configManager.writeConfigFromMainProcess('recent-folders', [
+                    'C:\\notes',
+                    42,
+                    '',
+                    'D:\\work'
+                ])
             ).resolves.toBe(true)
-            const stored = (await readChannel()(trustedEvent, 'recent-folders')) as unknown[]
-            expect(stored).toEqual(['C:\\notes', 'D:\\work'])
+            await expect(configManager.readConfig('recent-folders')).resolves.toEqual([
+                'C:\\notes',
+                'D:\\work'
+            ])
         })
     })
 
@@ -810,7 +851,7 @@ describe('config-manager', () => {
 
         it('recentFilesCount 变更后即时裁剪 recent-folders.json 存量', async () => {
             const folders = Array.from({ length: 12 }, (_, i) => `C:\\notes\\dir${i}`)
-            await configManager.writeConfig('recent-folders', folders)
+            await configManager.writeConfigFromMainProcess('recent-folders', folders)
             expect(await configManager.readConfig('recent-folders')).toHaveLength(10)
 
             await configManager.writeConfig('system', { recentFilesCount: 5 })
@@ -822,9 +863,89 @@ describe('config-manager', () => {
         it('recent-folders 写入侧按 recentFilesCount 截断', async () => {
             await configManager.writeConfig('system', { recentFilesCount: 6 })
             const folders = Array.from({ length: 12 }, (_, i) => `D:\\work\\dir${i}`)
-            await configManager.writeConfig('recent-folders', folders)
+            await configManager.writeConfigFromMainProcess('recent-folders', folders)
             const stored = (await configManager.readConfig('recent-folders')) as unknown as string[]
             expect(stored).toHaveLength(6)
+        })
+    })
+
+    // P1-1（工作区受信根来源收敛）：recent-folders 主进程专属写入 + 启动播种受信根
+    describe('P1-1 工作区受信根来源收敛', () => {
+        /** 受信根比较键（与 utils/workspace-approval 内部一致：realpath + 平台归一化） */
+        function approvalKey(dirPath: string): string {
+            return normalizePathForCompare(fs.realpathSync(dirPath), process.platform === 'win32')
+        }
+
+        /** 创建真实临时目录（受信根播种/记录均要求绝对路径） */
+        function makeDir(name: string): string {
+            const dir = path.join(hoisted.tmpRoot, name)
+            fs.ensureDirSync(dir)
+            return dir
+        }
+
+        it('recordRecentFolder 去重置顶并按 recentFilesCount 截断（主进程写入）', async () => {
+            await configManager.writeConfig('system', { recentFilesCount: 5 })
+            const dirs = Array.from({ length: 6 }, (_, index) => makeDir(`recent-${index}`))
+            for (const dir of dirs) {
+                await recordRecentFolder(dir)
+            }
+            // 最近打开的置顶、只保留 5 条（第 6 条 dirs[5] 最新，最旧 dirs[0] 被淘汰）
+            const stored = (await configManager.readConfig('recent-folders')) as unknown as string[]
+            expect(stored).toEqual([...dirs].reverse().slice(0, 5))
+
+            // 再次打开已存在项：去重置顶，不产生重复
+            await recordRecentFolder(dirs[2])
+            const deduplicated = (await configManager.readConfig(
+                'recent-folders'
+            )) as unknown as string[]
+            expect(deduplicated[0]).toBe(dirs[2])
+            expect(deduplicated.filter((entry) => entry === dirs[2])).toHaveLength(1)
+            expect(deduplicated).toHaveLength(5)
+        })
+
+        it('recordRecentFolder 忽略非法路径（空串/相对路径）', async () => {
+            await recordRecentFolder('')
+            await recordRecentFolder('relative/folder')
+            await recordRecentFolder(null)
+            await expect(configManager.readConfig('recent-folders')).resolves.toBeNull()
+        })
+
+        it('ensureApprovedWorkspaceRootsInitialized 用主进程持久化历史播种受信根', async () => {
+            const recentDir = makeDir('persisted-recent')
+            const lastDir = makeDir('persisted-last')
+            const dangerousDir = os.homedir()
+            // 主进程持久化来源：recent-folders（含危险/相对路径条目）+ fileState.lastOpenedDirectory
+            await configManager.writeConfigFromMainProcess('recent-folders', [
+                recentDir,
+                dangerousDir,
+                'relative/folder'
+            ])
+            saveLastOpenedDirectory(lastDir)
+
+            await ensureApprovedWorkspaceRootsInitialized()
+
+            const approvedKeys = getApprovedWorkspaceRootsForTesting()
+            expect(approvedKeys).toContain(approvalKey(recentDir))
+            expect(approvedKeys).toContain(approvalKey(lastDir))
+            // 危险根/相对路径不进入受信集合（黑名单作为来源收敛之后的第二道防线）
+            expect(approvedKeys).not.toContain(approvalKey(dangerousDir))
+            expect(approvedKeys).toHaveLength(2)
+        })
+
+        it('ensureApprovedWorkspaceRootsInitialized 幂等且可复位（单测隔离）', async () => {
+            const recentDir = makeDir('idempotent-recent')
+            await configManager.writeConfigFromMainProcess('recent-folders', [recentDir])
+
+            const first = ensureApprovedWorkspaceRootsInitialized()
+            const second = ensureApprovedWorkspaceRootsInitialized()
+            expect(first).toBe(second)
+            await first
+            expect(getApprovedWorkspaceRootsForTesting()).toHaveLength(1)
+
+            // 复位后再次播种（AppContext 受信根由其它用例复位，这里只复位播种 Promise）
+            resetWorkspaceApprovalSeedForTesting()
+            await ensureApprovedWorkspaceRootsInitialized()
+            expect(getApprovedWorkspaceRootsForTesting()).toHaveLength(1)
         })
     })
 

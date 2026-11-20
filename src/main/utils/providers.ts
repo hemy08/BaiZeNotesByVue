@@ -90,6 +90,39 @@ export function getQuickLinksFromProvider(): QuickLinkItem[] {
 }
 
 /* ============================================================================
+ * 最近文件夹写入（P1-1 工作区受信根来源收敛）
+ * ========================================================================== */
+
+/** 最近文件夹写入器（注入真源：`config/config-manager.recordRecentFolder`） */
+export type RecentFolderRecorderProvider = (folderPath: string) => Promise<void> | void
+
+let recentFolderRecorderProvider: RecentFolderRecorderProvider | null = null
+
+/**
+ * 注入最近文件夹写入实现（由 `src/main/index.ts` 启动早期调用）。
+ *
+ * 背景：`recent-folders` 在 P1-1 后为主进程专属配置，渲染层无权写入。目录选择对话框
+ * 位于 utils 层（file-operations.OpenDirectory），不能静态 import config 层
+ * （utils → config 反向依赖门禁），因此写入能力经本 provider 由入口注入。
+ */
+export function setRecentFolderRecorderProvider(
+    provider: RecentFolderRecorderProvider | null | undefined
+): void {
+    recentFolderRecorderProvider = typeof provider === 'function' ? provider : null
+}
+
+/**
+ * 调用最近文件夹写入器：未注入时为空操作（单测/初始化顺序异常时不崩溃）。
+ * 异常不在此吞掉——调用方（OpenDirectory）按既有容错语义自行 catch + 记日志。
+ */
+export async function recordRecentFolderFromProvider(folderPath: string): Promise<void> {
+    if (!recentFolderRecorderProvider) {
+        return
+    }
+    await recentFolderRecorderProvider(folderPath)
+}
+
+/* ============================================================================
  * 主题 API
  * ========================================================================== */
 

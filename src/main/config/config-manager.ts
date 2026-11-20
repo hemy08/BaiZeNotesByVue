@@ -62,7 +62,11 @@ import { applySystemThemeNow } from './system-theme'
 import { ensureTrayCreated } from '../utils/tray'
 import { getRendererQuickLinks, saveRendererQuickLinks } from './quick-link-config'
 // AS-4：配置写入白名单 + 字段级 schema 校验（fontFamily CSS 注入 / 非法主题 / 未知配置名）
-import { isAllowedConfigName, validateConfigData } from './config-schema'
+import {
+    isAllowedConfigName,
+    isMainProcessOnlyConfigName,
+    validateConfigData
+} from './config-schema'
 // P1-FE-06：配置目录备份/恢复（系统设置对话框「立即备份 / 从备份恢复」）
 import { getBackupState, handleConfigBackupCommand } from './config-backup'
 // 批次 C #8/#9：自动备份——enableAutoBackup/backupInterval 保存后同步定时器
@@ -75,10 +79,16 @@ import { logger } from '../utils/logger'
 // ARC-13：SystemSetting 已收敛到 src/shared/types/system.ts（唯一真源）
 import type { SystemSetting } from '../../shared/types'
 // 「最近文件列表数量」：存量裁剪（file-state 最近文件）与 recent-folders 写入侧截断
-import { trimRecentFiles } from '../utils/file-state-store'
+import { getLastOpenedDirectory, trimRecentFiles } from '../utils/file-state-store'
 import { clampRecentFilesLimit } from '../../shared/constants/recent-files'
 // 公共接口归位第 2 批：纯对象判定统一引用 shared/utils/validate 真源
 import { isPlainObject } from '../../shared/utils/validate'
+// 公共接口归位第 2 批：路径比较前归一化（分隔符/大小写）统一引用 shared/utils/path 真源
+import { normalizePathForCompare } from '../../shared/utils/path'
+// P1-1（工作区受信根来源收敛）：启动时由主进程持久化历史播种受信根；
+// config 层可 import utils（单向），utils 侧不反向依赖 config（架构门禁）
+import { seedApprovedWorkspaceRoots } from '../utils/workspace-approval'
+import { detectDangerousWorkspaceRoot } from '../utils/workspace-root'
 
 // MEM-10：本模块所有注册均归属的组件 ID（进程级全局注册）
 const GLOBAL_CONFIG_IPC_COMPONENT_ID = 'global-config-ipc'
@@ -379,8 +389,25 @@ async function readConfig(configName: string): Promise<Record<string, unknown> |
     }
 }
 
-// 写入配置文件
-async function writeConfig(configName: string, data: unknown): Promise<boolean> {
+/**
+ * 配置写入来源（P1-1 工作区受信根来源收敛）。
+ * - `renderer`（默认）：经 IPC.CONFIG.WRITE 的渲染层写入，受「仅主进程可写」清单限制；
+ * - `main`：主进程自身维护写入（recent-folders 置顶维护等），不受该清单限制。
+ */
+export type ConfigWriteSource = 'renderer' | 'main'
+
+/**
+ * 写入配置文件。
+ *
+ * P1-1：`recent-folders` 是工作区受信根的历史来源，渲染层写入一律拒绝——
+ * 否则 XSS 可写入任意目录，再从「最近文件夹」入口合法打开（来源收敛失效）。
+ * 主进程内部维护走 source='main'（见 recordRecentFolder）。
+ */
+async function writeConfig(
+    configName: string,
+    data: unknown,
+    source: ConfigWriteSource = 'renderer'
+): Promise<boolean> {
     if (!isValidConfigName(configName)) {
         logger.warn('[ConfigManager] 拒绝非法配置名（防路径逃逸）:', configName)
         return false
@@ -388,6 +415,14 @@ async function writeConfig(configName: string, data: unknown): Promise<boolean> 
     // AS-4：配置名白名单——只允许已知业务配置名，未知名称一律拒绝（不落任意 JSON）
     if (!isAllowedConfigName(configName)) {
         logger.warn('[ConfigManager] 拒绝白名单外的配置名:', configName)
+        return false
+    }
+    // P1-1：仅主进程可写配置（recent-folders）——渲染层写入请求无条件拒绝
+    if (source === 'renderer' && isMainProcessOnlyConfigName(configName)) {
+        logger.warn(
+            '[ConfigManager] 拒绝渲染层写入主进程专属配置（工作区受信根来源收敛）:',
+            configName
+        )
         return false
     }
     // AS-4：字段级 schema 校验——结构非法 / fontFamily CSS 注入 / 非法主题等直接拒绝；
@@ -430,7 +465,7 @@ async function writeConfig(configName: string, data: unknown): Promise<boolean> 
     try {
         await ensureConfigDir()
         const configPath = path.join(CONFIG_DIR, `${configName}.json`)
-        // 「最近文件列表数量」：recent-folders 写入侧按当前设置截断（渲染层先去重置顶，
+        // 「最近文件列表数量」：recent-folders 写入侧按当前设置截断（主进程置顶写入，
         // 主进程保证落盘条数不超过 recentFilesCount）。
         if (configName === 'recent-folders' && Array.isArray(sanitizedData)) {
             const limit = clampRecentFilesLimit(getSystemSetting().recentFilesCount)
@@ -442,6 +477,139 @@ async function writeConfig(configName: string, data: unknown): Promise<boolean> 
         logger.error(`[ConfigManager] Error writing config ${configName}:`, error)
         return false
     }
+}
+
+/* ============================================================================
+ * P1-1（工作区受信根来源收敛）：recent-folders 主进程专属写入 + 受信根播种
+ *
+ * 历史实现：渲染层经 config:write('recent-folders') 维护最近文件夹列表，XSS 后可写入
+ * 任意目录并再从「最近文件夹」入口打开。收敛后：
+ * - 渲染层仍可 config:read（欢迎页展示），但 config:write 一律拒绝（见 writeConfig）；
+ * - 主进程在用户真正打开目录后自行「去重置顶 + 条数截断」写入（recordRecentFolder）；
+ * - 启动时主进程读取自身持久化的 recent-folders 与 lastOpenedDirectory，播种
+ *   AppContext.workspace.approvedRoots（ensureApprovedWorkspaceRootsInitialized），
+ *   保证升级/重启后欢迎页最近文件夹与启动恢复不被来源收敛破坏。
+ * ========================================================================== */
+
+/** recent-folders 配置名（主进程专属写入） */
+const RECENT_FOLDERS_CONFIG_NAME = 'recent-folders'
+
+/** 读取当前最近文件夹列表（仅保留非空字符串条目；读取失败按空列表，不抛异常） */
+async function readRecentFolderList(): Promise<string[]> {
+    try {
+        const raw: unknown = await readConfig(RECENT_FOLDERS_CONFIG_NAME)
+        if (!Array.isArray(raw)) {
+            return []
+        }
+        return raw.filter((item): item is string => typeof item === 'string' && item.length > 0)
+    } catch (error) {
+        logger.warn('[ConfigManager] 读取最近文件夹列表失败（按空列表处理）:', error)
+        return []
+    }
+}
+
+/** 最近文件夹去重比较键（Windows 大小写不敏感；统一分隔符） */
+function toRecentFolderCompareKey(folderPath: string): string {
+    return normalizePathForCompare(path.resolve(folderPath), process.platform === 'win32')
+}
+
+/**
+ * P1-1：主进程专属——把目录置顶写入「最近文件夹」历史（渲染层无写权限）。
+ *
+ * 语义与历史渲染层实现保持一致：去重置顶、条数按「最近文件列表数量」设置截断；
+ * 写入失败仅记日志，不影响目录打开主流程。
+ *
+ * @param folderPath 用户已打开（或刚被主进程确认）的目录绝对路径
+ */
+export async function recordRecentFolder(folderPath: unknown): Promise<void> {
+    if (
+        typeof folderPath !== 'string' ||
+        folderPath.trim() === '' ||
+        !path.isAbsolute(folderPath)
+    ) {
+        return
+    }
+    try {
+        const resolvedPath = path.resolve(folderPath)
+        const targetKey = toRecentFolderCompareKey(resolvedPath)
+        const history = await readRecentFolderList()
+        const deduplicated = history.filter((item) => {
+            try {
+                return toRecentFolderCompareKey(item) !== targetKey
+            } catch {
+                // 损坏条目（无法解析的路径）不参与比较，保留原样由 schema 清洗
+                return true
+            }
+        })
+        const limit = clampRecentFilesLimit(getSystemSetting().recentFilesCount)
+        const nextHistory = [resolvedPath, ...deduplicated].slice(0, limit)
+        const ok = await writeConfig(RECENT_FOLDERS_CONFIG_NAME, nextHistory, 'main')
+        if (!ok) {
+            logger.warn('[ConfigManager] 写入最近文件夹历史失败:', resolvedPath)
+        }
+    } catch (error) {
+        logger.warn('[ConfigManager] 更新最近文件夹历史失败:', error)
+    }
+}
+
+/** 主进程启动时播种受信工作区根的 Promise（并发调用共享，失败后不再重试） */
+let approvedRootsSeedPromise: Promise<void> | null = null
+
+/**
+ * P1-1：启动时用主进程持久化数据初始化受信工作区根（幂等）。
+ *
+ * 数据来源（均由主进程读取，不经渲染层写入）：
+ * 1. `recent-folders` 裸 JSON 配置（历史最近文件夹；升级前的历史条目视为已批准）；
+ * 2. fileState 的 `lastOpenedDirectory`（启动恢复目标）。
+ *
+ * 危险根/敏感目录（磁盘根、系统目录、用户主目录、.ssh/AppData 等）不进入受信集合
+ * ——它们是「第二道防线」，即便历史数据被写入也不会获得受信根身份。
+ */
+export function ensureApprovedWorkspaceRootsInitialized(): Promise<void> {
+    if (approvedRootsSeedPromise === null) {
+        approvedRootsSeedPromise = seedApprovedWorkspaceRootsFromPersistedState()
+    }
+    return approvedRootsSeedPromise
+}
+
+/** 播种实现（异常统一兜底为告警：初始化失败按空集合处理，不阻断启动） */
+async function seedApprovedWorkspaceRootsFromPersistedState(): Promise<void> {
+    try {
+        const candidates: unknown[] = []
+        candidates.push(...(await readRecentFolderList()))
+        try {
+            candidates.push(getLastOpenedDirectory())
+        } catch (error) {
+            logger.warn('[Security] 读取上次打开目录失败（跳过该来源）:', error)
+        }
+        // 危险根/敏感目录不进受信集合（黑名单作为来源收敛之后的第二道防线）
+        const safeCandidates = candidates.filter(
+            (candidate): candidate is string =>
+                typeof candidate === 'string' &&
+                candidate.trim() !== '' &&
+                path.isAbsolute(candidate) &&
+                detectDangerousWorkspaceRoot(candidate) === null
+        )
+        const approvedCount = await seedApprovedWorkspaceRoots(safeCandidates)
+        logger.info(
+            `[Security] 已初始化工作区受信根 ${approvedCount} 个（来源：主进程持久化的最近文件夹/上次打开目录）`
+        )
+    } catch (error) {
+        logger.warn('[Security] 初始化工作区受信根失败（按空集合处理）:', error)
+    }
+}
+
+/** 复位播种状态（单元测试隔离用；生产代码不调用） */
+export function resetWorkspaceApprovalSeedForTesting(): void {
+    approvedRootsSeedPromise = null
+}
+
+/** 主进程专属写入入口（测试/主进程内部使用；渲染层不可达） */
+export async function writeConfigFromMainProcess(
+    configName: string,
+    data: unknown
+): Promise<boolean> {
+    return writeConfig(configName, data, 'main')
 }
 
 // P2 死代码清理：deleteConfig / listConfigs 原仅被 CONFIG.DELETE / CONFIG.LIST
@@ -566,6 +734,11 @@ export function registerConfigIpcHandlers() {
 // 导出配置管理器实例（P2：deleteConfig/listConfigs 仅被已删除的死通道调用，一并移除）
 export const configManager = {
     readConfig,
+    // 注意：此入口等价渲染层 config:write（默认 source='renderer'），
+    // recent-folders 等主进程专属配置会被拒绝；主进程内部维护走 writeConfigFromMainProcess。
     writeConfig,
+    writeConfigFromMainProcess,
+    recordRecentFolder,
+    ensureApprovedWorkspaceRootsInitialized,
     CONFIG_DIR
 }

@@ -40,11 +40,15 @@ describe('createDefaultAppContext', () => {
         expect(context.startupRestore.fallbackTimer).toBeNull()
         expect(context.windowBounds.disposePersistence).toBeNull()
         expect(context.tray.hideNotified).toBe(false)
+        // P1-1（工作区受信根来源收敛）：默认无任何受信根
+        expect(context.workspace.approvedRoots).toBeInstanceOf(Set)
+        expect(context.workspace.approvedRoots.size).toBe(0)
 
         // 两次创建互不共享嵌套对象（reset 时不会串改其它上下文实例）
         const another = createDefaultAppContext()
         expect(another.welcome).not.toBe(context.welcome)
         expect(another.quit).not.toBe(context.quit)
+        expect(another.workspace.approvedRoots).not.toBe(context.workspace.approvedRoots)
     })
 })
 
@@ -70,6 +74,7 @@ describe('getAppContext / resetAppContext', () => {
         context.startupRestore.pendingWindow = windowStub as never
         context.windowBounds.disposePersistence = () => undefined
         context.tray.hideNotified = true
+        context.workspace.approvedRoots.add('c:/notes')
 
         resetAppContext()
 
@@ -90,6 +95,8 @@ describe('getAppContext / resetAppContext', () => {
         expect(reset.startupRestore.fallbackTimer).toBeNull()
         expect(reset.windowBounds.disposePersistence).toBeNull()
         expect(reset.tray.hideNotified).toBe(false)
+        // P1-1：受信工作区根随上下文复位清空
+        expect(reset.workspace.approvedRoots.size).toBe(0)
     })
 
     it('should cancel the pending startup-restore fallback timer on reset', () => {

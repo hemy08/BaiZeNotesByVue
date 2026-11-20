@@ -225,6 +225,9 @@ const internalMocks = vi.hoisted(() => ({
     warmupMonacoThemeCache: vi.fn(),
     // 2026-11-19（P0 修复）：启动时读取遗留 show-welcome 配置（欢迎页状态同步）
     configRead: vi.fn(),
+    // P1-1（工作区受信根来源收敛）：启动播种受信根 + 启动恢复后置顶维护最近文件夹
+    ensureApprovedWorkspaceRootsInitialized: vi.fn(async () => {}),
+    recordRecentFolder: vi.fn(async () => {}),
     initUserDataDirectory: vi.fn(),
     // 第 4 批 P3：主窗口图标目录统一由 app-paths.getIconPath() 解析
     getIconPath: vi.fn(() => 'C:\\app\\resources\\icon'),
@@ -269,6 +272,9 @@ vi.mock('../../src/main/config', () => ({
     RegisterShortKeys: internalMocks.registerShortKeys,
     // 2026-11-19（P0 修复）：启动时读取遗留 show-welcome 配置（欢迎页状态同步）
     configManager: { readConfig: internalMocks.configRead },
+    // P1-1（工作区受信根来源收敛）：启动播种受信根 + 启动恢复后主进程维护最近文件夹
+    ensureApprovedWorkspaceRootsInitialized: internalMocks.ensureApprovedWorkspaceRootsInitialized,
+    recordRecentFolder: internalMocks.recordRecentFolder,
     // 2026-11-18（#12）：Monaco 主题缓存异步预热（细节由 theme-registry.test.ts 覆盖）
     warmupMonacoThemeCache: internalMocks.warmupMonacoThemeCache,
     // ARC-04：启动字体 CSS 组装（拼出与真实实现一致的选择器与字体系列）
@@ -356,6 +362,8 @@ vi.mock('../../src/main/utils/auto-backup', () => ({
 vi.mock('../../src/main/utils/app-state', () => ({
     appState: {
         isDirty: internalMocks.isDirty,
+        // P1-1：启动恢复后主进程据 rootPath 置顶维护最近文件夹（默认空 = 未恢复目录）
+        rootPath: '',
         // 批次 B #4：显式退出标志——before-quit 置位，close 拦截判断读取。
         // 真实 AppState 是 getter 属性，mock 以对象 getter 镜像（非函数），
         // 否则 index.ts 的 `appState.isQuitting` 真值判断恒为 true。
@@ -517,6 +525,8 @@ describe('app whenReady startup flow', () => {
         expect(internalMocks.initUserDataDirectory).toHaveBeenCalled()
         // M2：配置 IPC（含旧配置迁移）经 registry 的建窗前阶段注册
         expect(registryMocks.registerPreWindowIpc).toHaveBeenCalledTimes(1)
+        // P1-1（工作区受信根来源收敛）：建窗前异步播种受信工作区根
+        expect(internalMocks.ensureApprovedWorkspaceRootsInitialized).toHaveBeenCalledTimes(1)
         expect(toolkitMocks.setAppUserModelId).toHaveBeenCalledWith('com.electron')
         // 批次 B #7：whenReady 启动系统主题跟随监听
         expect(internalMocks.startSystemThemeWatcher).toHaveBeenCalled()
@@ -760,6 +770,26 @@ describe('ready-to-show flow', () => {
             expect.objectContaining({ autoOpenLastFolder: true })
         )
         expect(internalMocks.restoreLastOpenedFile).not.toHaveBeenCalled()
+    })
+
+    // P1-1（工作区受信根来源收敛）：启动恢复打开的历史目录由主进程置顶维护最近文件夹
+    // （渲染层 config:write('recent-folders') 已被拒绝）
+    it('should maintain recent-folders from the main process after startup restore (P1-1)', async () => {
+        internalMocks.getSystemSetting.mockReturnValue({
+            fontFamily: 'A',
+            fontSize: 12,
+            autoSaveEnabled: false,
+            autoSaveInterval: 60,
+            autoOpenLastFile: false,
+            autoOpenLastFolder: true
+        })
+        await loadMainIndex()
+        const { appState: appStateModule } = await import('../../src/main/utils/app-state')
+        ;(appStateModule as unknown as { rootPath: string }).rootPath = 'C:\\restored-notes'
+        triggerWindowHandler('ready-to-show')
+        triggerRendererReady()
+        await settle()
+        expect(internalMocks.recordRecentFolder).toHaveBeenCalledWith('C:\\restored-notes')
     })
 })
 

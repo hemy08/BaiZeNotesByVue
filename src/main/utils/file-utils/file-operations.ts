@@ -33,6 +33,10 @@ import { showErrorMessageBox } from './dialog-helpers'
 import { appState, getLiveMainWindow, sendToMainWindow } from '../app-state'
 import { IPC } from '../../../shared/ipc-channels'
 import { tMain } from '../i18n'
+// P1-1（工作区受信根来源收敛）：原生目录选择器 return 的目录登记为受信工作区根；
+// 最近文件夹为主进程专属配置，写入实现经 providers 注入（utils 不反向 import config）
+import { approveWorkspaceRoot } from '../workspace-approval'
+import { recordRecentFolderFromProvider } from '../providers'
 // P1-AS-1：文件 IPC 路径守卫——工作区/临时目录/用户选择过的路径之外一律拒绝
 import {
     isPathAllowed,
@@ -682,6 +686,9 @@ export async function OpenDirectory(mainWindow: BrowserWindow): Promise<void> {
         // P1-AS-1：对话框返回目录 = 用户显式选择，登记为受信目录子树；
         // 工作区根合法性仍由 ReloadDirFromDisk 的形状校验兜底
         registerTrustedDirectory(selectedDirectory)
+        // P1-1：原生目录选择器结果 = 用户显式确认 → 登记为受信工作区根（realpath 归一化），
+        // 状态栏/欢迎页「最近文件夹」等入口据此判定来源合法性
+        await approveWorkspaceRoot(selectedDirectory)
 
         mainWindow.webContents.send(IPC.FILE.CLEAR_EDITOR_PREVIEW)
 
@@ -691,6 +698,14 @@ export async function OpenDirectory(mainWindow: BrowserWindow): Promise<void> {
         await ReloadDirFromDisk()
 
         saveLastOpenedDirectory(selectedDirectory)
+
+        // P1-1：最近文件夹由主进程自行维护（渲染层 config:write('recent-folders') 已拒绝）；
+        // 放在目录树刷新之后，写入失败仅记日志、不影响目录打开主流程
+        try {
+            await recordRecentFolderFromProvider(selectedDirectory)
+        } catch (recordError) {
+            logger.warn('[FileOperations] 更新最近文件夹历史失败（不影响打开）:', recordError)
+        }
     } catch (err) {
         // FUN-27：用户可见提示统一中文
         showErrorMessageBox(tMain('mainMsg.file.openDirectoryDialogFailed', { error: String(err) }))

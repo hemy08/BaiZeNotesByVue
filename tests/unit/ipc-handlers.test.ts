@@ -99,11 +99,18 @@ vi.mock('../../src/main/utils/file-state', () => ({
 
 // 「文件」菜单最近文件夹：主进程读取 recent-folders 裸 JSON 配置（configManager.readConfig）；
 // mock 掉避免拉起 electron app.getPath/electron-store 依赖链。
+// P1-1（工作区受信根来源收敛）：handlers 还调用主进程专属的播种/最近文件夹写入函数，
+// 一并 mock（真实实现由 config-manager.test.ts 覆盖）。
 const configManagerDeps = vi.hoisted(() => ({
-    readConfig: vi.fn()
+    readConfig: vi.fn(),
+    ensureApprovedWorkspaceRootsInitialized: vi.fn(),
+    recordRecentFolder: vi.fn()
 }))
 vi.mock('../../src/main/config/config-manager', () => ({
-    configManager: { readConfig: configManagerDeps.readConfig }
+    configManager: { readConfig: configManagerDeps.readConfig },
+    ensureApprovedWorkspaceRootsInitialized:
+        configManagerDeps.ensureApprovedWorkspaceRootsInitialized,
+    recordRecentFolder: configManagerDeps.recordRecentFolder
 }))
 
 // 「文件」菜单最近文件夹：打开动作复用 startup-restore 的目录打开实现（WELCOME_ENTER_MAIN
@@ -128,6 +135,12 @@ import { registerIpcHandlers, setMainWindow, getMainWindow } from '../../src/mai
 import * as ipcIndex from '../../src/main/ipc/index'
 import { ipcListenerManager } from '../../src/main/ipc/ipc-listener-manager'
 import { appState } from '../../src/main/utils/app-state'
+// P1-1：工作区受信根集合（OPEN_SPECIFIC_FOLDER 来源收敛断言）
+import {
+    approveWorkspaceRoot,
+    isWorkspaceRootApproved,
+    resetWorkspaceApprovalsForTesting
+} from '../../src/main/utils/workspace-approval'
 // P1-AS-1 交接：欢迎页对话框选择路径需登记为受信路径（task-13/task-15）
 import {
     clearTrustedPathsForTesting,
@@ -187,6 +200,10 @@ let win: ReturnType<typeof makeWindow>
 let tempBase: string
 let validWorkspace: string
 let existingFilePath: string
+// P1-1（工作区受信根来源收敛）：未被主进程确认过的真实目录（有目录树/read 能力）
+let unapprovedWorkspace: string
+// P1-1：模拟「原生目录选择器」结果目录（WELCOME_OPEN_DIRECTORY 确认后应可打开）
+let nativePickedWorkspace: string
 // P1-FE-03：插入图片「本地文件」浏览用例需要真实存在的图片文件（复制源）
 let existingImagePath: string
 // Windows 系统目录（存在时用于 AS-2「系统目录拒绝」用例；非 Windows 平台自动跳过）
@@ -196,6 +213,10 @@ beforeAll(() => {
     tempBase = fs.mkdtempSync(path.join(os.tmpdir(), 'baize-ipc-handlers-'))
     validWorkspace = path.join(tempBase, 'workspace')
     fs.mkdirSync(validWorkspace)
+    unapprovedWorkspace = path.join(tempBase, 'unapproved-workspace')
+    fs.mkdirSync(unapprovedWorkspace)
+    nativePickedWorkspace = path.join(tempBase, 'native-picked-workspace')
+    fs.mkdirSync(nativePickedWorkspace)
     existingFilePath = path.join(tempBase, 'note.md')
     fs.writeFileSync(existingFilePath, '# note')
     // 最小 PNG 头（复制逻辑只做二进制拷贝，不解析图片内容）
@@ -223,7 +244,7 @@ function getSendMock(): SendMock {
     return (win as unknown as { webContents: { send: SendMock } }).webContents.send
 }
 
-beforeEach(() => {
+beforeEach(async () => {
     win = makeWindow()
     // 清空捕获，仅统计本次 registerIpcHandlers 的注册
     electronMocks.onMap.clear()
@@ -241,6 +262,10 @@ beforeEach(() => {
     quickLinkDeps.saveQuickLinks.mockClear()
     configManagerDeps.readConfig.mockReset()
     configManagerDeps.readConfig.mockResolvedValue(null)
+    configManagerDeps.ensureApprovedWorkspaceRootsInitialized.mockReset()
+    configManagerDeps.ensureApprovedWorkspaceRootsInitialized.mockResolvedValue(undefined)
+    configManagerDeps.recordRecentFolder.mockReset()
+    configManagerDeps.recordRecentFolder.mockResolvedValue(undefined)
     startupRestoreDeps.openDirectoryInMainView.mockReset()
     startupRestoreDeps.openDirectoryInMainView.mockResolvedValue(undefined)
     appState._resetForTesting()
@@ -248,6 +273,9 @@ beforeEach(() => {
     resetWelcomeState()
     // P1-AS-1 交接：清空运行期受信路径登记，避免用例间相互污染
     clearTrustedPathsForTesting()
+    // P1-1：受信工作区根按用例复位；把「已批准目录」预置为常态 fixture
+    resetWorkspaceApprovalsForTesting()
+    await approveWorkspaceRoot(validWorkspace)
     registerIpcHandlers(win as never)
 })
 
@@ -444,9 +472,32 @@ describe('folder and file open handlers', () => {
         expect(appState.rootPath).toBe(validWorkspace)
         expect(handlerDeps.reloadDirFromDisk).toHaveBeenCalled()
         expect(handlerDeps.saveLastOpenedDirectory).toHaveBeenCalledWith(validWorkspace)
+        // P1-1：最近文件夹由主进程置顶维护（渲染层 config:write 已拒绝）
+        expect(configManagerDeps.recordRecentFolder).toHaveBeenCalledWith(validWorkspace)
         // 2026-11-19（P0 修复）：欢迎页「最近文件夹」进入主界面后必须标记——
         // 否则关闭时会被误判为欢迎页而跳过 flush/脏保存
         expect(isWelcomeScreenVisible()).toBe(false)
+    })
+
+    it('should approve the folder picked by the welcome native dialog and allow opening it (P1-1)', async () => {
+        // 场景：用户从未打开过该目录 → 经欢迎页「打开文件夹」原生选择器确认
+        electronMocks.showOpenDialog.mockResolvedValue({
+            canceled: false,
+            filePaths: [nativePickedWorkspace]
+        })
+        handlerDeps.reloadDirFromDisk.mockResolvedValue(undefined)
+
+        await getOnHandler('baize:file:welcome-open-directory')(makeEvent())
+
+        // 原生选择结果登记为受信根，并由主进程维护最近文件夹
+        await expect(isWorkspaceRootApproved(nativePickedWorkspace)).resolves.toBe(true)
+        expect(configManagerDeps.recordRecentFolder).toHaveBeenCalledWith(nativePickedWorkspace)
+
+        // 之后从「最近文件夹」入口（OPEN_SPECIFIC_FOLDER）打开同一目录应被放行
+        await getOnHandler('baize:file:open-specific-folder')(makeEvent(), nativePickedWorkspace)
+        expect(appState.rootPath).toBe(nativePickedWorkspace)
+        expect(handlerDeps.reloadDirFromDisk).toHaveBeenCalled()
+        expect(win.webContents.send).toHaveBeenCalledWith('baize:file:clear-editor-preview')
     })
 
     it('should do nothing when the welcome directory dialog is canceled', async () => {
@@ -689,6 +740,24 @@ describe('AS-2 workspace root validation (open-specific-folder)', () => {
         }
     )
 
+    // P1-1（工作区受信根来源收敛）：路径本身合法（绝对/存在/目录/非黑名单）但未经主进程
+    // 确认的目录必须拒绝——渲染层不能自行声明任意目录为受信根
+    it('should reject an existing directory that has not been approved by the main process', async () => {
+        const handler = getOnHandler('baize:file:open-specific-folder')
+        await handler(makeEvent(), unapprovedWorkspace)
+        expectRootRejected()
+        // 拒绝原因走 i18n 的「未经系统目录选择器确认」提示（而不是黑名单原因）
+        const statusCall = getSendMock().mock.calls.find(
+            ([channel]) => channel === 'baize:status-bar:update'
+        )
+        expect(statusCall?.[1]).toEqual(
+            expect.objectContaining({
+                type: 'error',
+                message: expect.stringContaining('未经系统目录选择器确认')
+            })
+        )
+    })
+
     it('should accept a valid existing directory and keep the recent-folder flow working', async () => {
         await getOnHandler('baize:file:open-specific-folder')(makeEvent(), validWorkspace)
         expect(appState.rootPath).toBe(validWorkspace)
@@ -778,6 +847,21 @@ describe('file operation handlers', () => {
             'D:\\picked'
         )
         expect(handlerDeps.selectDirectory).toHaveBeenCalledWith(win)
+    })
+
+    // P1-1：原生目录选择器结果是渲染层可触达通道里唯一的授权入口——返回即登记受信根
+    it('should approve the directory picked by SELECT_DIRECTORY (P1-1)', async () => {
+        handlerDeps.selectDirectory.mockResolvedValue(nativePickedWorkspace)
+        await expect(getHandleHandler('baize:file:select-directory')(makeEvent())).resolves.toBe(
+            nativePickedWorkspace
+        )
+        await expect(isWorkspaceRootApproved(nativePickedWorkspace)).resolves.toBe(true)
+    })
+
+    it('should not approve anything when SELECT_DIRECTORY is canceled', async () => {
+        handlerDeps.selectDirectory.mockResolvedValue('')
+        await expect(getHandleHandler('baize:file:select-directory')(makeEvent())).resolves.toBe('')
+        await expect(isWorkspaceRootApproved(nativePickedWorkspace)).resolves.toBe(false)
     })
 })
 
@@ -937,6 +1021,25 @@ describe('recent files/folders menu handlers', () => {
                 win,
                 validWorkspace
             )
+            // P1-1：最近列表打开后同样由主进程置顶维护 recent-folders
+            expect(configManagerDeps.recordRecentFolder).toHaveBeenCalledWith(validWorkspace)
+        })
+
+        // P1-1：最近列表条目也必须命中受信根集合（主进程持久化历史播种），
+        // 防止历史数据/外部篡改把未确认目录从「最近文件夹」入口合法化
+        it('should reject a recent folder that is not approved by the main process (P1-1)', async () => {
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            configManagerDeps.readConfig.mockResolvedValue([unapprovedWorkspace])
+
+            const result = await openRecentHandler()(makeEvent(), {
+                kind: 'folder',
+                path: unapprovedWorkspace
+            })
+
+            expect(result).toEqual(expect.objectContaining({ ok: false }))
+            expect((result as { message?: string }).message).toContain('未经系统目录选择器确认')
+            expect(startupRestoreDeps.openDirectoryInMainView).not.toHaveBeenCalled()
+            consoleWarn.mockRestore()
         })
 
         it('should reject a recent folder that fails the workspace root check', async () => {

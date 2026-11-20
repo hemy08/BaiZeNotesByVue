@@ -84,6 +84,8 @@ import {
     saveLastOpenedDirectory,
     saveLastOpenedFile
 } from '../../src/main/utils/file-state-store'
+// P1-1（工作区受信根来源收敛）：启动恢复的历史目录来自主进程持久化记录，恢复前登记为受信根
+import { isWorkspaceRootApproved } from '../../src/main/utils/workspace-approval'
 import type { SystemSetting } from '../../src/shared/types'
 
 const mainWindowStub = () => {
@@ -200,6 +202,9 @@ describe('restoreLastOpenedAtStartup', () => {
         expect(appState.rootPath).toBe(dir)
         expect(fileUtilsMocks.ReloadDirFromDisk).toHaveBeenCalledTimes(1)
         expect(getLastOpenedDirectory()).toBe(dir)
+        // P1-1：恢复的历史目录来自主进程 fileState 持久化记录 → 登记为受信根，
+        // 后续欢迎页「最近文件夹」等入口可合法打开
+        await expect(isWorkspaceRootApproved(dir)).resolves.toBe(true)
         appState.mainWindow = null
     })
 

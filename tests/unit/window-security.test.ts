@@ -204,6 +204,9 @@ vi.mock('../../src/main/config', () => ({
     RegisterShortKeys: internalMocks.registerShortKeys,
     // 2026-11-19（P0 修复）：index.ts 启动时读取 show-welcome 配置（欢迎页状态同步）
     configManager: { readConfig: vi.fn(async () => null) },
+    // P1-1（工作区受信根来源收敛）：index.ts 启动早期注入最近文件夹写入器并播种受信根
+    ensureApprovedWorkspaceRootsInitialized: vi.fn(async () => {}),
+    recordRecentFolder: vi.fn(async () => {}),
     buildFontCss: (setting: { fontFamily: string; fontSize: number }) =>
         `body, .title-bar, .menu-bar { font-family: ${setting.fontFamily} !important; font-size: ${setting.fontSize}px !important; }`
 }))
