@@ -34,6 +34,19 @@ name: CI
 # - ESLint 加 `--max-warnings=0`（no-explicit-any 等 warn 不再可长期累积）；
 # - 三个 job 增加 Electron 二进制下载缓存（npm ci 各自下载 ≈100MB+）；
 # - e2e 类型检查已纳入 `npm run typecheck`（tsconfig.e2e.json），无需单独步骤。
+#
+# 2026-11-20（P1-4：E2E 自动恢复掩盖启动稳定性）：
+# - Playwright `retries` 由 1 调整为 0（playwright.config.ts）：重试会把「启动靠自动恢复/
+#   重跑才通过」洗成绿色，真实恢复率不可观测；取舍见配置注释与 fix-e2e3 报告；
+# - `e2e` job 保持容错：功能用例经 helpers/app-ui.ts 的 recordStartupMetrics() 把
+#   launchAttempts / reloadRecoveries 写入 annotation + CI 日志（console），功能测试不因
+#   已知 Electron 43.x 上游 preload 竞态变红；用 --grep-invert 排除量化用例
+#   （tag `@startup-stability`），避免重复执行；
+# - 新增独立 `e2e-startup-stability` job：严格模式 E2E_STRICT_LAUNCH=1 + retries=0，
+#   先跑零恢复基线功能用例（tag `@zero-recovery-baseline`，自带 3 次有界重试，
+#   命中已知竞态不会误红），再跑启动稳定性量化 spec（软门禁：恢复率告警线 ≤25%、
+#   阻断线 ≤75%，且零进程重启；阈值校准依据见 spec 头部注释与 fix-e2e3 报告）；
+#   该 job 只需开发构建（不打包），因此单独跑 electron-vite build 而不是 build:unpack。
 on:
     push:
         branches: [main, master]
@@ -147,14 +160,77 @@ jobs:
             - name: Build dev + unpacked app
               run: npm run build:unpack
 
-            - name: Run Playwright E2E
-              run: npx --no-install playwright test
+            # P1-4：功能 E2E 保持容错模式（E2E_STRICT_LAUNCH=0）并输出启动指标；
+            # 量化用例由独立 e2e-startup-stability job 执行（避免重复启动 Electron 采样）。
+            - name: Run Playwright E2E (functional, tolerant startup metrics)
+              env:
+                  E2E_STRICT_LAUNCH: '0'
+              run: npx --no-install playwright test --grep-invert "@startup-stability"
 
             - name: Upload Playwright report on failure
               if: failure()
               uses: actions/upload-artifact@v4
               with:
                   name: playwright-report
+                  path: |
+                      playwright-report/
+                      test-results/
+                  retention-days: 7
+
+    # P1-4：启动链稳定性独立量化（与功能 E2E 分离，避免自动恢复掩盖启动退化）
+    # - 严格模式（E2E_STRICT_LAUNCH=1）：功能用例零恢复硬失败；量化 spec 逐样本零进程重启
+    # - retries=0：量化必须单次运行，重试会抹平真实恢复率
+    # - 软门禁：N 次连续启动的恢复率告警线 25% / 阻断线 75%，且零进程重启
+    #   （阈值校准依据见 e2e/startup-stability.spec.ts 头部注释与 fix-e2e3 报告）
+    e2e-startup-stability:
+        name: E2E startup stability (strict metrics)
+        runs-on: windows-latest
+        timeout-minutes: 30
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Cache Electron binary
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/AppData/Local/electron/Cache
+                      ~/AppData/Local/electron-builder/Cache
+                  key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            # 只需开发构建（out/build/main|preload|renderer），不需要 electron-builder 打包：
+            # 与 build:unpack 的前三步一致（版本/白名单生成 + electron-vite build）
+            - name: Build dev artifacts
+              run: npm run generate-version && npm run generate-preload-whitelist && npx --no-install electron-vite build
+
+            # 严格模式功能基线：零恢复启动路径必须存在（该用例自带最多 3 次有界重试，
+            # 单次命中已知 Electron 上游竞态不会误红，最终仍硬断言首启零恢复）
+            - name: Strict zero-recovery baseline (functional)
+              env:
+                  E2E_STRICT_LAUNCH: '1'
+              run: npx --no-install playwright test --grep "@zero-recovery-baseline" --retries=0
+
+            # 量化门禁：连续启动 N 次统计恢复率；retries=0 保证统计真实性
+            - name: Startup stability metrics (soft gate)
+              env:
+                  E2E_STRICT_LAUNCH: '1'
+                  E2E_STARTUP_SAMPLES: '8'
+              run: npx --no-install playwright test --grep "@startup-stability" --retries=0
+
+            - name: Upload Playwright report on failure
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: playwright-report-startup-stability
                   path: |
                       playwright-report/
                       test-results/

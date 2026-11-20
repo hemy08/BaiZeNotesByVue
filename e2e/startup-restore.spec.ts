@@ -19,7 +19,7 @@
  * 运行的构建前提：`npx electron-vite build`（或 `npm run build:unpack`），缺产物时整文件跳过。
  */
 import { test, expect } from '@playwright/test'
-import type { ElectronApplication, Page } from '@playwright/test'
+import type { ElectronApplication } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
 import {
@@ -30,7 +30,8 @@ import {
     seedFileState,
     seedSystemSetting
 } from './helpers/electron-profile'
-import type { ConfigSandbox, TempProfile } from './helpers/electron-profile'
+import type { ConfigSandbox, LaunchedDevApp, TempProfile } from './helpers/electron-profile'
+import { recordStartupMetrics } from './helpers/app-ui'
 
 // 未构建时整文件跳过，避免误报（构建命令见 CI 的 e2e job / 本地 npx electron-vite build）
 test.skip(
@@ -48,12 +49,9 @@ test.skip(
  */
 
 /** 启动开发应用并等待渲染进程就绪（preload 桥 + IPC 往返 + Vue 挂载，不等待主界面） */
-async function launchAndWaitFirstWindow(
-    profile: TempProfile
-): Promise<{ app: ElectronApplication; page: Page; pageErrors: string[] }> {
+async function launchAndWaitFirstWindow(profile: TempProfile): Promise<LaunchedDevApp> {
     // 渲染就绪等待在 helper 内完成；pageerror 监听在等待前挂上，启动阶段异常不丢失
-    const { app, page, pageErrors } = await launchDevAppWithRenderer(profile)
-    return { app, page, pageErrors }
+    return launchDevAppWithRenderer(profile)
 }
 
 test.describe('启动恢复（autoOpenLastFile / autoOpenLastFolder）', () => {
@@ -72,6 +70,8 @@ test.describe('启动恢复（autoOpenLastFile / autoOpenLastFolder）', () => {
             const launched = await launchAndWaitFirstWindow(profile)
             app = launched.app
             const { page, pageErrors } = launched
+            // P1-4：启动指标进入 annotation/console（默认容错；E2E_STRICT_LAUNCH=1 时零恢复硬失败）
+            recordStartupMetrics(launched, test.info(), '启动恢复-autoOpenLastFile')
 
             // 1) 欢迎页被启动恢复流程关闭，主界面根节点与状态栏挂载
             await expect(page.locator('.welcome-screen')).toHaveCount(0, { timeout: 30_000 })
@@ -116,6 +116,7 @@ test.describe('启动恢复（autoOpenLastFile / autoOpenLastFolder）', () => {
             const launched = await launchAndWaitFirstWindow(profile)
             app = launched.app
             const { page } = launched
+            recordStartupMetrics(launched, test.info(), '启动恢复-autoOpenLastFolder')
 
             // 1) 启动恢复进入主界面（不显示欢迎页）
             await expect(page.locator('.welcome-screen')).toHaveCount(0, { timeout: 30_000 })

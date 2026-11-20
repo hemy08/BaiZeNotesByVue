@@ -30,7 +30,8 @@ import {
     launchDevAppWithRenderer,
     waitForRendererReady
 } from './helpers/electron-profile'
-import type { ConfigSandbox, TempProfile } from './helpers/electron-profile'
+import type { ConfigSandbox, LaunchedDevApp, TempProfile } from './helpers/electron-profile'
+import { recordStartupMetrics } from './helpers/app-ui'
 
 // 未构建时整文件跳过，避免误报（构建命令见 CI 的 e2e job / 本地 npx electron-vite build）
 test.skip(
@@ -43,6 +44,7 @@ test.describe('Electron 主窗口冒烟', () => {
     let page: Page
     let profile: TempProfile
     let sandbox: ConfigSandbox
+    let launched: LaunchedDevApp
 
     test.beforeAll(async () => {
         // 隔离用户数据：userData 用临时目录，真实配置目录用 ConfigSandbox 备份/恢复
@@ -51,7 +53,7 @@ test.describe('Electron 主窗口冒烟', () => {
         sandbox.seed()
         // 统一就绪等待：首窗口 → preload 桥注入 → IPC 往返 → Vue 根节点挂载
         //（替代 firstWindow + domcontentloaded 的不可靠组合，避免 preload 未注入时误操作）
-        const launched = await launchDevAppWithRenderer(profile)
+        launched = await launchDevAppWithRenderer(profile)
         app = launched.app
         page = launched.page
     })
@@ -60,6 +62,12 @@ test.describe('Electron 主窗口冒烟', () => {
         await app?.close()
         sandbox?.restore()
         profile?.cleanup()
+    })
+
+    // P1-4：每个用例都消费启动指标（annotation + console）；默认容错只记录，
+    // E2E_STRICT_LAUNCH=1 时零恢复硬失败。beforeAll 内不可调用 test.info()，故放在 beforeEach。
+    test.beforeEach(() => {
+        recordStartupMetrics(launched, test.info(), '主窗口冒烟')
     })
 
     test('主窗口已创建：原生标题、菜单与窗口可见状态均正常', async () => {

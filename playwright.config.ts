@@ -22,6 +22,17 @@
  * - e2e/startup-restore.spec.ts    启动恢复（autoOpenLastFile / autoOpenLastFolder）
  * - e2e/settings-persistence.spec.ts 系统设置保存与跨重启持久化
  * - e2e/packaged-launch.spec.ts    打包产物（win-unpacked/BaiZeNotes.exe）直接启动
+ * - e2e/startup-stability.spec.ts  启动链稳定性独立量化（`@startup-stability`，CI 独立 job）
+ *
+ * ## 启动稳定性与重试口径（P1-4：E2E 自动恢复掩盖启动稳定性）
+ * - 所有功能 spec 启动后经 helpers/app-ui.ts 的 `recordStartupMetrics()` 把
+ *   launchAttempts / reloadRecoveries 写入 annotation + console；默认容错只记录，
+ *   仅在 `E2E_STRICT_LAUNCH=1`（CI 启动稳定性 job）时零恢复/零进程重启硬失败。
+ * - **CI retries 由 1 调整为 0**：已知 Electron 43.x sandboxed preload 上游竞态由 helper 的
+ *   reload 恢复兜底，用例本身不依赖 Playwright retry；此前 retries=1 会把「需要恢复/重试的
+ *   启动」洗成绿色，让真实恢复率无法观测。取舍：放弃「偶发环境抖动自动重跑」的一层保险，
+ *   换取启动稳定性指标的真实性——真实偶发失败会直接红并暴露在报告里，量化容忍度由
+ *   `startup-stability` job 的软门禁（恢复率 ≤25% 且零进程重启）承担。
  *
  * 说明：本仓库仅做冒烟/回归级 E2E，不做完整业务流程回放；用例集中在 e2e/ 目录，
  * 与单元测试（tests/unit）完全隔离，`npm test` 不会包含它们。
@@ -42,7 +53,10 @@ export default defineConfig({
     // 完整用例串行执行：避免多个 Electron 实例（单实例锁/窗口焦点/磁盘 IO）互相干扰
     fullyParallel: false,
     workers: 1,
-    retries: process.env.CI ? 1 : 0,
+    // P1-4：CI 也固定 0 次重试（此前 CI retries=1）——重试会掩盖 helper 的启动恢复事实，
+    // 使「启动链稳定性」无法被观测；启动稳定性由 startup-stability job 的量化软门禁承担
+    // （恢复率 ≤25% 且零进程重启，见 e2e/startup-stability.spec.ts 与报告）。
+    retries: 0,
     forbidOnly: Boolean(process.env.CI),
     reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
     outputDir: 'test-results',

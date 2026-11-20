@@ -34,7 +34,7 @@ import {
     launchToMainViewZeroRecovery,
     openMenuSubmenu,
     readMainConfig,
-    recordLaunchDiagnostics
+    recordStartupMetrics
 } from './helpers/app-ui'
 
 test.skip(
@@ -76,7 +76,14 @@ async function closeApp(app: ElectronApplication | undefined): Promise<void> {
 }
 
 test.describe('主题设置首开与取消回滚', () => {
-    test('首次打开主题设置：3 个页签 / 3 个分类 / 28 张主题卡片即时渲染（首开回归）', async () => {
+    /**
+     * P1-4：本用例是功能套件内的**零恢复基线**（标签 `@zero-recovery-baseline`）：
+     * 命中已知 Electron 上游 preload 竞态时，`launchToMainViewZeroRecovery` 会在有界重试
+     * （最多 3 次启动）内取得「首启零恢复」实例，再把重试记录写进 annotation；
+     * 最终仍要求 launchAttempts===1 && reloadRecoveries===0，因此 CI 启动稳定性 job
+     * 以 E2E_STRICT_LAUNCH=1 单跑本用例即可硬验证「零恢复启动路径存在」。
+     */
+    test('@zero-recovery-baseline 首次打开主题设置：3 个页签 / 3 个分类 / 28 张主题卡片即时渲染（首开回归）', async () => {
         const testInfo = test.info()
         const profile: TempProfile = createTempProfile('baize-e2e-theme-first-open-')
         const sandbox: ConfigSandbox = createConfigSandbox(profile)
@@ -92,12 +99,17 @@ test.describe('主题设置首开与取消回滚', () => {
                 app: electronApp,
                 page,
                 launched,
-                recoveryNotes
+                recoveryNotes,
+                compensationReloads
             } = await launchToMainViewZeroRecovery(profile)
             app = electronApp
             for (const note of recoveryNotes) {
                 testInfo.annotations.push({ type: 'known-issue', description: note })
             }
+            // P1-4：统一启动指标（严格模式下同样要求零恢复/零进程重启）
+            recordStartupMetrics(launched, testInfo, '主题首开-零恢复基线', {
+                compensationReloads
+            })
             expect(
                 launched.launchAttempts,
                 `首次启动发生进程级重试（launchAttempts=${launched.launchAttempts}）`
@@ -164,9 +176,14 @@ test.describe('主题设置首开与取消回滚', () => {
 
         let app: ElectronApplication | undefined
         try {
-            const { app: electronApp, page, launched } = await launchToMainView(profile)
+            const {
+                app: electronApp,
+                page,
+                launched,
+                compensationReloads
+            } = await launchToMainView(profile)
             app = electronApp
-            recordLaunchDiagnostics(launched, testInfo, '主题取消回滚')
+            recordStartupMetrics(launched, testInfo, '主题取消回滚', { compensationReloads })
 
             const dialog = await openThemeSettingDialog(page)
             // 切到「编辑器主题」页签

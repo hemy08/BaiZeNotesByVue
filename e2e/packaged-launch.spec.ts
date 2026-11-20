@@ -27,6 +27,7 @@ import {
     launchPackagedApp,
     waitForRendererReady
 } from './helpers/electron-profile'
+import { recordStartupMetrics } from './helpers/app-ui'
 
 test.skip(
     !fs.existsSync(PACKAGED_EXE),
@@ -78,7 +79,16 @@ test.describe('打包产物启动', () => {
             const page = await app.firstWindow()
             // 统一就绪等待：页面已从 about:blank 导航到 asar 入口 + preload 桥注入 +
             // IPC 往返可用 + Vue 根节点挂载（比 domcontentloaded 可靠，冷启动更慢故放宽超时）
+            const startedAt = Date.now()
             await waitForRendererReady(page, { timeout: 90_000 })
+            // P1-4：打包启动路径没有 reload/进程重启兜底（launchPackagedApp 直接启动），
+            // 成功即代表首启就绪；仍记录统一指标，保证所有 spec 的启动数据口径一致。
+            recordStartupMetrics(
+                { launchAttempts: 1, reloadRecoveries: 0, launchFailures: [] },
+                test.info(),
+                '打包产物启动',
+                { readyMs: Date.now() - startedAt }
+            )
 
             // 1) 主进程侧：确为打包版、只创建一个主窗口、窗口最终可见
             const state = await app.evaluate(({ app: electronApp, BrowserWindow }) => {

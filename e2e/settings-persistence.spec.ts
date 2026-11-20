@@ -25,11 +25,11 @@ import {
     MAIN_ENTRY,
     createConfigSandbox,
     createTempProfile,
-    launchDevAppWithRenderer,
     seedSystemSetting,
     seedUserDataConfig
 } from './helpers/electron-profile'
-import type { ConfigSandbox, TempProfile } from './helpers/electron-profile'
+import type { ConfigSandbox } from './helpers/electron-profile'
+import { launchToMainView, recordStartupMetrics } from './helpers/app-ui'
 
 test.skip(
     !fs.existsSync(MAIN_ENTRY),
@@ -79,31 +79,8 @@ function readSystemSettingFile(sandbox: ConfigSandbox): Record<string, unknown> 
 }
 
 /** 启动应用并等待渲染进程就绪（preload 桥 + IPC 往返 + Vue 挂载）后进入主界面 */
-async function launchToMainView(
-    profile: TempProfile
-): Promise<{ app: ElectronApplication; page: Page }> {
-    // 真源就绪等待：firstWindow 只代表窗口创建，不代表 preload 注入完成/页面已加载
-    const { app, page } = await launchDevAppWithRenderer(profile)
-    // 2026-11-20（Electron 45 稳定性）：极少数启动仍落在欢迎页（show-welcome 读取/时序竞态）；
-    // 若检测到欢迎页，重写隔离 userData 中的 show-welcome=false 并 reload，再等待主界面。
-    if (
-        !(await page
-            .locator('#editor-container')
-            .isVisible({ timeout: 3_000 })
-            .catch(() => false))
-    ) {
-        const welcomeVisible = await page
-            .getByRole('button', { name: '打开文件' })
-            .isVisible()
-            .catch(() => false)
-        if (welcomeVisible) {
-            seedUserDataConfig(profile, 'show-welcome', false)
-            await page.reload()
-        }
-    }
-    await expect(page.locator('#editor-container')).toBeVisible({ timeout: 60_000 })
-    return { app, page }
-}
+// 备注（P1-4）：本地 launchToMainView 已上收到 helpers/app-ui.ts（含启动指标入口），
+// 本文件两次启动都复用共享 helper，避免各 spec 复制启动补偿逻辑。
 
 test.describe('系统设置保存与持久化', () => {
     test('修改设置 → 确定 → 落盘 → 重启后主进程配置与对话框均持久化', async () => {
@@ -121,6 +98,9 @@ test.describe('系统设置保存与持久化', () => {
                 const launched = await launchToMainView(profile)
                 app = launched.app
                 const { page } = launched
+                recordStartupMetrics(launched.launched, test.info(), '设置持久化-首次启动', {
+                    compensationReloads: launched.compensationReloads
+                })
 
                 const dialog = await openSystemSettingDialog(page)
                 const checkbox = settingCheckbox(dialog, AUTO_OPEN_LAST_FILE_LABEL)
@@ -152,6 +132,9 @@ test.describe('系统设置保存与持久化', () => {
             const launched = await launchToMainView(profile)
             app2 = launched.app
             const { page } = launched
+            recordStartupMetrics(launched.launched, test.info(), '设置持久化-重启后启动', {
+                compensationReloads: launched.compensationReloads
+            })
 
             // 1) preload 桥读取主进程 store 真源（config:read('system')）应返回修改后的值
             const persisted = await page.evaluate(async () => {
@@ -196,6 +179,9 @@ test.describe('系统设置保存与持久化', () => {
         try {
             const launched = await launchToMainView(profile)
             app = launched.app
+            recordStartupMetrics(launched.launched, test.info(), '设置持久化-首开回填', {
+                compensationReloads: launched.compensationReloads
+            })
             const dialog = await openSystemSettingDialog(launched.page)
             await expect(settingCheckbox(dialog, AUTO_OPEN_LAST_FILE_LABEL)).toBeChecked({
                 timeout: 15_000

@@ -6,15 +6,24 @@
  *
  * 1. `launchToMainView()`：启动开发构建并进入主界面（复用既有 helper 的渲染就绪等待；
  *    极少数启动仍落在欢迎页时，与 settings-persistence 同口径重写 show-welcome=false 后
- *    reload 补偿，补偿事实由调用方记录，不静默吞掉）；
+ *    reload 补偿，补偿次数经返回值 `compensationReloads` 暴露，不静默吞掉）；
  * 2. `launchToMainViewZeroRecovery()`：Q-01「启动零恢复」可观测断言入口——期望首启即
  *    零恢复；若命中 Electron 43.x 上游 sandboxed preload 启动数据 mojo 竞态（helper 的
  *    `reloadRecoveries>0`，属已知环境竞态而非产品逻辑），记录诊断并重试启动，最终仍要求
  *    返回实例为 `launchAttempts===1 && reloadRecoveries===0`，同时把命中记录交回用例写入
  *    Playwright annotation / 报告，不做假绿；
- * 3. `recordLaunchDiagnostics()`：非严格用例统一记录 helper 的启动次数/恢复次数（写入
- *    annotation 与 console，便于汇总到报告）；
+ * 3. `recordStartupMetrics()`：**所有功能 spec 启动后的统一指标入口**（P1-4）。始终把
+ *    `launchAttempts` / `reloadRecoveries` / 测试侧补偿 reload 次数写入 Playwright annotation
+ *    与 console（CI 日志/HTML 报告可消费）；默认**只记录不失败**（避免已知 Electron 上游
+ *    preload 竞态误伤功能用例）；CI 启动稳定性 job 设置 `E2E_STRICT_LAUNCH=1` 时，恢复/
+ *    进程重启一律硬失败并打印 `launchFailures` 诊断，防止启动链退化被静默吸收；
  * 4. 菜单动作、主进程配置读取、「最近项」打开等真实 IPC 小工具。
+ *
+ * P1-4（E2E 自动恢复掩盖启动稳定性）配套：
+ * - 量化 spec `e2e/startup-stability.spec.ts` 连续启动 N 次，汇总本文件的指标并做
+ *   「恢复率 ≤ 25% 且零进程重启」的软门禁（阈值依据见该文件头部）；
+ * - 本文件只消费 `electron-profile.ts` 已有的 `launchAttempts` / `reloadRecoveries` /
+ *   `launchFailures`，不修改也不绕过其恢复逻辑。
  *
  * 约束：本文件只被 e2e/** 引用，不修改产品源码；所有等待均使用条件轮询（locator 断言 /
  * expect.poll），不引入固定 sleep 作为同步手段（启动重试间的最小退避除外）。
@@ -33,6 +42,12 @@ export interface MainViewLaunch {
     app: ElectronApplication
     page: Page
     launched: LaunchedDevApp
+    /**
+     * 测试侧欢迎页补偿 reload 次数（0 = 启动即主界面）。
+     * 这是「show-welcome 读取/主进程时序竞态」的测试侧补偿，**不是** preload 恢复，
+     * 因此与 `launched.reloadRecoveries` 分开统计，不混入启动恢复率。
+     */
+    compensationReloads: number
 }
 
 /** 等待两个事件循环轮次（启动重试间退避；不用于代替条件等待） */
@@ -51,6 +66,7 @@ function delay(ms: number): Promise<void> {
 export async function launchToMainView(profile: TempProfile): Promise<MainViewLaunch> {
     const launched = await launchDevAppWithRenderer(profile)
     const { app, page } = launched
+    let compensationReloads = 0
     const mainViewVisible = await page
         .locator('#editor-container')
         .isVisible({ timeout: 3_000 })
@@ -63,11 +79,12 @@ export async function launchToMainView(profile: TempProfile): Promise<MainViewLa
         if (welcomeVisible) {
             seedUserDataConfig(profile, 'show-welcome', false)
             await page.reload()
+            compensationReloads += 1
             await waitForRendererReady(page)
         }
     }
     await expect(page.locator('#editor-container')).toBeVisible({ timeout: 60_000 })
-    return { app, page, launched }
+    return { app, page, launched, compensationReloads }
 }
 
 /** launchToMainViewZeroRecovery 的选项 */
@@ -126,29 +143,140 @@ export async function launchToMainViewZeroRecovery(
     throw new Error('launchToMainViewZeroRecovery：未返回启动结果（不可达分支）')
 }
 
+/** 启动稳定性指标（P1-4：所有启动用例统一口径，供 annotation/报告与 startup-stability 汇总消费） */
+export interface StartupLaunchMetrics {
+    /** 进程级启动次数（1 = 首启即就绪；>1 = helper 关闭实例重启过） */
+    launchAttempts: number
+    /** helper 的页面 reload 恢复次数（已知 Electron 43.x 上游 sandboxed preload 竞态） */
+    reloadRecoveries: number
+    /** 测试侧欢迎页补偿 reload 次数（非 preload 恢复，不计入恢复率） */
+    compensationReloads: number
+    /** helper 记录的启动失败/恢复诊断条数（launchFailures.length） */
+    launchFailureCount: number
+    /** 从启动到主界面就绪耗时（ms；未采集时为 null） */
+    readyMs: number | null
+}
+
+/** 可派生启动指标的最小来源（开发构建的 LaunchedDevApp；打包启动路径用普通对象补齐） */
+export interface StartupLaunchSource {
+    launchAttempts: number
+    reloadRecoveries: number
+    launchFailures: string[]
+}
+
+/** 指标补充信息（测试侧统计，不属于 helper 恢复逻辑） */
+export interface StartupMetricsExtra {
+    /** 测试侧欢迎页补偿 reload 次数 */
+    compensationReloads?: number
+    /** 启动到主界面就绪耗时（ms） */
+    readyMs?: number | null
+}
+
+/** annotation 类型：统一用该 type，便于在 HTML 报告/CI 日志中筛选启动稳定性指标 */
+export const STARTUP_METRICS_ANNOTATION = 'startup-metrics'
+
 /**
- * 记录启动诊断（非严格用例统一调用）：
- * - `launchAttempts>1`：发生过进程级重启（helper 最多 3 次），一定是异常信号，记录告警；
- * - `reloadRecoveries>0`：命中已知 Electron 上游 preload 竞态，记录告警 + annotation。
- * 两者都写入 Playwright annotation（报告可见），不改变用例断言。
+ * 是否严格启动模式（CI 启动稳定性 job 设置 E2E_STRICT_LAUNCH=1）。
+ * 严格模式下功能用例「零恢复 + 零进程重启」硬失败；默认容错模式只记录指标。
  */
-export function recordLaunchDiagnostics(
-    launched: LaunchedDevApp,
+export function isStrictLaunchMode(): boolean {
+    return process.env.E2E_STRICT_LAUNCH === '1'
+}
+
+/** 由启动结果派生统一口径的指标 */
+export function startupMetricsOf(
+    source: StartupLaunchSource,
+    extra: StartupMetricsExtra = {}
+): StartupLaunchMetrics {
+    return {
+        launchAttempts: source.launchAttempts,
+        reloadRecoveries: source.reloadRecoveries,
+        compensationReloads: extra.compensationReloads ?? 0,
+        launchFailureCount: source.launchFailures.length,
+        readyMs: extra.readyMs ?? null
+    }
+}
+
+/** 指标的单行文本（console 与 annotation 共用，便于 grep/汇总） */
+export function formatStartupMetrics(label: string, metrics: StartupLaunchMetrics): string {
+    return (
+        `[${label}] launchAttempts=${metrics.launchAttempts}` +
+        ` reloadRecoveries=${metrics.reloadRecoveries}` +
+        ` compensationReloads=${metrics.compensationReloads}` +
+        ` launchFailureCount=${metrics.launchFailureCount}` +
+        ` readyMs=${metrics.readyMs ?? '-'}`
+    )
+}
+
+/** recordStartupMetrics 的选项 */
+export interface RecordStartupMetricsOptions extends StartupMetricsExtra {
+    /**
+     * 覆盖严格模式判定（默认跟随 E2E_STRICT_LAUNCH）。
+     * 量化 spec `startup-stability.spec.ts` 逐样本记录时显式传 false：其门禁是
+     * 「恢复率 ≤ 阈值 + 零进程重启」，不做逐样本零恢复硬失败。
+     */
+    strict?: boolean
+}
+
+/**
+ * 记录启动稳定性指标（P1-4：所有功能 spec 启动后必须调用）。
+ *
+ * 行为：
+ * - **始终**写入 Playwright annotation（type=`startup-metrics`）与 console（前缀
+ *   `[e2e][startup-metrics]`）：即使用例最终通过，启动恢复/进程重试的事实也进入报告与
+ *   CI 日志，不再被「9/9 通过」静默吸收；
+ * - 默认（容错模式）：只记录，不改变用例结果——已知 Electron 43.x sandboxed preload
+ *   上游竞态属环境噪声，不应误伤功能用例；
+ * - `E2E_STRICT_LAUNCH=1`（CI 启动稳定性 job）：`launchAttempts>1`（进程级重启）或
+ *   `reloadRecoveries>0`（启动恢复）硬失败，并打印 `launchFailures` 诊断，保证启动链
+ *   真实退化不会被容错模式掩盖。
+ */
+export function recordStartupMetrics(
+    source: StartupLaunchSource,
     testInfo: TestInfo,
-    label: string
-): void {
-    if (launched.launchAttempts > 1) {
-        const description = `[${label}] 启动发生进程级重试 launchAttempts=${launched.launchAttempts}`
-        console.warn(`[e2e] ${description}`)
-        testInfo.annotations.push({ type: 'startup-retry', description })
+    label: string,
+    options: RecordStartupMetricsOptions = {}
+): StartupLaunchMetrics {
+    const metrics = startupMetricsOf(source, options)
+    const description = formatStartupMetrics(label, metrics)
+    // 始终写 annotation + console：即使用例最终通过，启动恢复事实也进入报告/CI 日志（拒绝静默吸收）
+    testInfo.annotations.push({ type: STARTUP_METRICS_ANNOTATION, description })
+    console.log(`[e2e][startup-metrics] ${description}`)
+
+    const failureDiagnostics =
+        source.launchFailures.length > 0
+            ? `\n启动诊断（launchFailures，共 ${source.launchFailures.length} 条）：\n` +
+              source.launchFailures.join('\n')
+            : ''
+    const strict = options.strict ?? isStrictLaunchMode()
+    if (strict) {
+        expect(
+            metrics.launchAttempts,
+            `[${label}] E2E_STRICT_LAUNCH=1 但启动发生进程级重试（launchAttempts=${metrics.launchAttempts}，期望 1）${failureDiagnostics}`
+        ).toBe(1)
+        expect(
+            metrics.reloadRecoveries,
+            `[${label}] E2E_STRICT_LAUNCH=1 但启动命中 reload 恢复（reloadRecoveries=${metrics.reloadRecoveries}，期望 0）${failureDiagnostics}`
+        ).toBe(0)
+        return metrics
     }
-    if (launched.reloadRecoveries > 0) {
-        const description =
+    // 容错模式（默认）：只记录，不改用例结果——避免已知 Electron 上游竞态误伤功能用例
+    if (metrics.launchAttempts > 1) {
+        const text =
+            `[${label}] 启动发生进程级重试 launchAttempts=${metrics.launchAttempts}` +
+            `（属异常信号；E2E_STRICT_LAUNCH=1 时该用例会失败）`
+        console.warn(`[e2e] ${text}`)
+        testInfo.annotations.push({ type: 'startup-retry', description: text })
+    }
+    if (metrics.reloadRecoveries > 0) {
+        const text =
             `[${label}] 命中已知 Electron sandboxed preload 启动竞态，` +
-            `reloadRecoveries=${launched.reloadRecoveries}（测试侧 reload 恢复，非产品逻辑）`
-        console.warn(`[e2e] ${description}`)
-        testInfo.annotations.push({ type: 'known-issue', description })
+            `reloadRecoveries=${metrics.reloadRecoveries}（测试侧 reload 恢复，非产品逻辑；` +
+            `E2E_STRICT_LAUNCH=1 时该用例会失败）`
+        console.warn(`[e2e] ${text}`)
+        testInfo.annotations.push({ type: 'known-issue', description: text })
     }
+    return metrics
 }
 
 /**

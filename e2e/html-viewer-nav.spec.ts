@@ -35,7 +35,7 @@ import {
     seedUserDataConfig
 } from './helpers/electron-profile'
 import type { ConfigSandbox, TempProfile } from './helpers/electron-profile'
-import { launchToMainView, openRecentViaApi, recordLaunchDiagnostics } from './helpers/app-ui'
+import { launchToMainView, openRecentViaApi, recordStartupMetrics } from './helpers/app-ui'
 
 test.skip(
     !fs.existsSync(MAIN_ENTRY),
@@ -86,9 +86,14 @@ test.describe('HTML 查看器导航', () => {
 
         let app: ElectronApplication | undefined
         try {
-            const { app: electronApp, page, launched } = await launchToMainView(profile)
+            const {
+                app: electronApp,
+                page,
+                launched,
+                compensationReloads
+            } = await launchToMainView(profile)
             app = electronApp
-            recordLaunchDiagnostics(launched, testInfo, 'HTML 查看器导航')
+            recordStartupMetrics(launched, testInfo, 'HTML 查看器导航', { compensationReloads })
 
             // 1) 经真实主进程链路打开最近文件夹：工作区校验 → WELCOME_ENTER_MAIN → 目录树下发
             const openResult = await openRecentViaApi(page, {
