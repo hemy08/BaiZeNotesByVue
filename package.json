@@ -63,8 +63,8 @@
         "turndown": "^7.2.5"
     },
     "devDependencies": {
-        "@electron-toolkit/eslint-config": "^2.1.0",
-        "@electron-toolkit/eslint-config-ts": "^3.1.0",
+        "@electron-toolkit/eslint-config": "^3.0.0",
+        "@electron-toolkit/eslint-config-ts": "^4.0.0",
         "@electron-toolkit/preload": "^3.0.2",
         "@electron-toolkit/tsconfig": "^2.0.0",
         "@imengyu/vue3-context-menu": "^1.5.7",
@@ -82,8 +82,8 @@
         "electron": "^43.8.12",
         "electron-builder": "^26.18.1",
         "electron-vite": "^6.0.0",
-        "eslint": "^9.39.5",
-        "eslint-plugin-vue": "^9.33.0",
+        "eslint": "^10.15.0",
+        "eslint-plugin-vue": "^10.12.1",
         "highlight.js": "^11.12.0",
         "jsdom": "^29.1.1",
         "katex": "^0.18.10",
