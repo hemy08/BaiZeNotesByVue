@@ -59,6 +59,14 @@ name: CI
 #   build/perf-ci.js 头部注释、README「性能基线 CI（软门禁）」；
 # - 与 bundle-budget 分工：后者是体积硬门禁；本 job 记录性能趋势并做回归提示；
 # - 与 e2e-startup-stability 分工：后者测启动链恢复率/零进程重启（稳定性），本 job 测启动耗时基线。
+#
+# 2026-11-20（P2-2 文档质量门禁扩展，本批）：
+# - quality baseline 校验范围由 `docs/reports/README.md` 单行扩展为三份对外文档的「当前基线」
+#   口径：README.md / docs/wiki/README.md / docs/reports/README.md（版本、IPC、测试文件数、
+#   用例数、preload 白名单、报告页数）；用例数取自本 workflow 上方 vitest JSON（--test-json），
+#   白名单/报告页数取自代码与目录实测，不再允许「测试用例数错误但门禁全绿」；
+# - docs:check 扫描范围扩展至仓库根 README.md、SECURITY.md（docs/md/**、docs/reports/md/**
+#   本就包含在 docs/** 内）；HTML 生成物不扫描、锚点不校验（成本口径见脚本头注释）。
 
 # 2026-11-20（CI/供应链安全加固，本批）：
 # - 第三方 action 全部由浮动 tag 改为 commit SHA 锁定（40 位 + `# vX.Y.Z` 版本注释），
@@ -151,11 +159,14 @@ jobs:
             - name: Dependency audit (full tree, incl. bundled renderer libs)
               run: npm run audit:all
 
-            # Q-10：传入 vitest JSON 报告，用例数（numTotalTests）漂移也会被基线门禁拦截
+            # Q-10 / P2-2：传入 vitest JSON 报告后，quality baseline 门禁会同时校验
+            # README / docs/wiki/README.md / docs/reports/README.md 三处「当前基线」口径
+            # （版本 / IPC / 测试文件数 / 用例数 / preload 白名单 / 报告页数），不一致即失败
             - name: Quality baseline check
               run: node build/generate-quality-baseline.js --check --test-json=out/test-results/vitest.json
 
-            # P1 文档链接检查：扫描 docs/**/*.md 相对链接（忽略外链/锚点/代码块），断链即失败
+            # P1 / P2-1 文档链接检查：扫描仓库根 README.md、SECURITY.md + docs/**/*.md 的相对链接
+            # （忽略外链/锚点/代码块，HTML 生成物不扫描），断链即失败
             - name: Docs link check
               run: npm run docs:check
 

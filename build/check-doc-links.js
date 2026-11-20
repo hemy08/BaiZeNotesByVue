@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 /**
- * 文档相对链接检查（P1：文档链接检查 CI）
+ * 文档相对链接检查（P1：文档链接检查 CI，P2-1 扩展：根级文档纳入）
  *
- * 扫描 `docs/**\/*.md` 中的 Markdown 链接，校验相对路径目标是否存在，发现断链时
- * 以退出码 1 结束，供 `npm run docs:check` 与 CI quality-gate 使用。
+ * 扫描「仓库根 Markdown + docs 目录 Markdown」中的相对链接，校验相对路径目标是否存在，
+ * 发现断链时以退出码 1 结束，供 `npm run docs:check` 与 CI quality-gate 使用。
+ *
+ * 扫描范围（见 SCAN_ROOT_FILES / DOCS_DIR）：
+ * - 仓库根：README.md、SECURITY.md（扫描报告 P2-1：此前只扫 docs，根 README 的链接无门禁）；
+ * - docs/**\/*.md：已覆盖 docs/md/**、docs/reports/md/**、docs/wiki/** 等全部 Markdown；
+ * - 不扫描 HTML 生成物（docs/reports/html/**、docs/历史归档/*.html）：相对链接由
+ *   `build/generate-report-wiki.js` 生成时统一拼装，且 HTML 锚点/导航片段校验成本高。
  *
  * 检查口径（与任务约定一致）：
  * - 只检查相对链接（以及指向仓库内文件的链接）；`http(s)://`、`mailto:`、`tel:`、
  *   `data:`、协议相对 `//`、纯锚点 `#...` 一律忽略；
  * - 忽略代码块：围栏代码块（``` / ~~~）与行内代码（`...`）；HTML 注释同样忽略；
- * - 锚点不校验标题存在性：`foo.md#section` 只校验 `foo.md` 是否存在；
+ * - **锚点不校验标题存在性**：`foo.md#section` 只校验 `foo.md` 是否存在（标题锚点需要解析
+ *   全部标题与 GitHub/docsify 两套 slug 规则，成本与误报都高，本脚本不做）；
  * - 链接目标为目录时视为有效（目录型链接）；
  * - 支持行内链接 `[text](target "title")`、`[text](<target with space>)`、
  *   图片 `![alt](target)` 与引用式定义 `[id]: target`。
@@ -25,6 +32,8 @@ const path = require('path')
 const ROOT = path.resolve(__dirname, '..')
 const DOCS_DIR = path.join(ROOT, 'docs')
 const LIST_ALL = process.argv.includes('--list')
+/** 仓库根目录纳入扫描的 Markdown（P2-1：根 README/SECURITY 的相对链接此前无门禁） */
+const SCAN_ROOT_FILES = ['README.md', 'SECURITY.md']
 
 /** 忽略的链接协议/前缀（外部资源与非文件目标） */
 const IGNORED_PREFIXES = [
@@ -57,6 +66,22 @@ function collectMarkdownFiles(dir, result = []) {
         }
     }
     return result
+}
+
+/**
+ * 汇总扫描目标：仓库根 SCAN_ROOT_FILES + docs/**\/*.md。
+ * 顺序固定（根文件在前），便于输出与 CI 日志对比。
+ */
+function collectScanFiles() {
+    const files = []
+    const missing = []
+    for (const rel of SCAN_ROOT_FILES) {
+        const abs = path.join(ROOT, rel)
+        if (fs.existsSync(abs) && fs.statSync(abs).isFile()) files.push(abs)
+        else missing.push(rel)
+    }
+    if (fs.existsSync(DOCS_DIR)) files.push(...collectMarkdownFiles(DOCS_DIR))
+    return { files, missing }
 }
 
 /**
@@ -197,7 +222,7 @@ function main() {
         return
     }
 
-    const files = collectMarkdownFiles(DOCS_DIR)
+    const { files, missing } = collectScanFiles()
     const broken = []
     const checked = []
     const ignored = []
@@ -250,11 +275,15 @@ function main() {
         }
     }
 
-    const rel = (p) => p.split(path.sep).join('/')
+    const rootFileCount = files.filter((f) => path.dirname(f) === ROOT).length
     console.log('============================================================')
     console.log(' 文档相对链接检查（docs:check）')
     console.log('============================================================')
-    console.log(`扫描文件：${files.length} 个 Markdown（${rel(path.relative(ROOT, DOCS_DIR))}）`)
+    console.log(
+        `扫描文件：${files.length} 个 Markdown（仓库根 ${rootFileCount} 个：${SCAN_ROOT_FILES.join('、')}；docs 下 ${files.length - rootFileCount} 个）`
+    )
+    console.log('排除：HTML 生成物（docs/reports/html/**、docs/历史归档/*.html）；不校验锚点')
+    for (const name of missing) console.warn(`  ⚠️ 仓库根文档不存在，已跳过：${name}`)
     console.log(
         `链接总数：${linkCount}（相对链接 ${checked.length + broken.length}，忽略外部/锚点 ${ignored.length}）`
     )
@@ -271,7 +300,7 @@ function main() {
         process.exitCode = 1
         return
     }
-    console.log('\n[docs:check] ✅ 全部相对链接有效')
+    console.log('\n[docs:check] ✅ 全部相对链接有效（锚点按口径不校验）')
 }
 
 main()
