@@ -37,6 +37,7 @@
         "perf:ci": "node build/perf-ci.js",
         "perf:ci:startup": "node build/perf-ci.js --startup",
         "perf:snapshot": "node build/perf-ci.js --update-snapshot",
+        "memory:check": "node build/check-memory-lifecycle.js",
         "arch:check": "vitest run tests/architecture",
         "dev": "npm run generate-version && npm run generate-preload-whitelist && electron-vite dev",
         "build": "npm run generate-version && npm run generate-preload-whitelist && electron-vite build && node build/prepare-build-dirs.js && electron-builder --dir",

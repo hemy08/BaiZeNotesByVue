@@ -129,6 +129,19 @@ let hasVisiblePreviewContent = false
 // P2-1：骨架屏是否正在显示（避免重复写入骨架/误判首屏为空）
 let skeletonVisible = false
 
+/**
+ * 内存与生命周期治理（P3）：组件是否已卸载。
+ *
+ * 背景：预览渲染链路包含多处 await（snippets 文件 IPC、KaTeX/hljs 动态 import、
+ * PlantUML/mermaid 图表、分块净化）。组件卸载时只清理了防抖计时器与 IPC 监听，
+ * 但这些**在途异步任务仍会继续执行**，并在 await 之后写回 `renderedMarkdownContent`
+ * / `lastRenderedContent` / `hasVisiblePreviewContent`，甚至经 v-html 触发已卸载
+ * 组件的 DOM 更新、继续占用主线程。`loadRemoteImagePolicy()` 在卸载后才返回时同样会
+ * 触发一轮完整渲染。这里以卸载标志参与「过期轮次」判定，让所有 await 校验点统一丢弃
+ * 卸载后的写回；同时阻止卸载后再排期新的渲染/骨架屏。
+ */
+let isPreviewUnmounted = false
+
 /** snippets（--8<--）指令标记：含片段展开时结果依赖磁盘文件，不使用渲染缓存 */
 const SNIPPET_DIRECTIVE_MARKER = '--8<--'
 /** 渲染标记注释前缀（不可见、无渲染成本；用于区分不同渲染轮次的 v-html 值） */
@@ -181,9 +194,11 @@ function wrapPreviewHtml(
     return `${buildPreviewRenderMarker(nonce)}${notice}${contentHtml}`
 }
 
-/** 本轮渲染是否已过期（内容已变化或有更新的渲染轮次） */
+/** 本轮渲染是否已过期（组件已卸载、内容已变化或有更新的渲染轮次） */
 function isStaleRender(sequence: number, sourceContent: string): boolean {
-    return sequence !== renderSequence || props.editorContent !== sourceContent
+    return (
+        isPreviewUnmounted || sequence !== renderSequence || props.editorContent !== sourceContent
+    )
 }
 
 /**
@@ -224,7 +239,7 @@ function scheduleSkeletonIfNeeded(): void {
  * 由 active 的 watch 在重新可见时一次性补渲。
  */
 function schedulePreviewRender(): void {
-    if (!props.active) {
+    if (isPreviewUnmounted || !props.active) {
         clearRenderDebounceTimer()
         return
     }
@@ -300,6 +315,10 @@ function buildDegradedNoticeHtml(progressive = false): string {
 /** P2-1：渲染完成后上报 preview-ready 度量（诊断开关关闭时为空操作） */
 function reportPreviewReadyAfterDomUpdate(): void {
     void nextTick().then(() => {
+        // 内存与生命周期治理（P3）：nextTick 回调可能在卸载后执行，不再做任何上报
+        if (isPreviewUnmounted) {
+            return
+        }
         if (perfMark(PERF_MARK.PREVIEW_READY)) {
             perfMeasure(PERF_MARK.PREVIEW_READY, PERF_MARK.RENDERER_READY)
         }
@@ -364,6 +383,11 @@ async function renderChunkedPreviewHtml(
     if (finalHtml === null) {
         return null
     }
+    // 内存与生命周期治理（P3）：分块净化期间组件可能已卸载/内容已变化，
+    // 非流式路径在整篇替换前再做一次过期校验，避免卸载后写回 v-html。
+    if (isStaleRender(context.sequence, context.sourceContent)) {
+        return null
+    }
     const appliedPolicyHtml = policyHtmlChunks.length > 0 ? policyHtmlChunks.join('') : finalHtml
     if (!context.streaming) {
         renderedMarkdownContent.value = wrapPreviewHtml(
@@ -394,7 +418,9 @@ async function renderChunkedPreviewHtml(
  * - 级别感知渲染缓存：内容未变但被强制重渲（撤销回退/文件切换回退）时可跳过整篇管线。
  */
 async function updateMarkdownPreview() {
-    if (!props.active) {
+    // 内存与生命周期治理（P3）：已卸载后拒绝启动任何新渲染轮次
+    //（卸载前发起的异步前置在 await 处由 isStaleRender 丢弃）
+    if (isPreviewUnmounted || !props.active) {
         return
     }
     const sourceContent = props.editorContent
@@ -519,7 +545,12 @@ async function updateMarkdownPreview() {
             finalSanitizedHtml = policyHtml
         }
         if (finalSanitizedHtml === null) {
-            // 本轮已被更新轮次取消（内容已变化），丢弃结果
+            // 本轮已被更新轮次取消（内容已变化/组件已卸载），丢弃结果
+            return
+        }
+        // 内存与生命周期治理（P3）：渐进档分块净化是长异步链路，返回时组件可能已卸载；
+        // 缓存写入与状态更新前再校验一次，避免卸载后继续占用内存与派发 DOM 更新。
+        if (isStaleRender(sequence, sourceContent)) {
             return
         }
         // P2-1：缓存「已消毒 + 已应用图片策略」的最终 HTML（仅大文档；缓存键含降级级别）
@@ -568,6 +599,11 @@ async function readSnippetFile(absPath: string): Promise<string | null> {
 
 /** 应用一次最新的 allowRemoteImages 设置；返回策略是否发生变化 */
 function refreshRemoteImagePolicy(allowRemoteImages: unknown): boolean {
+    // 内存与生命周期治理（P3）：初始策略读取是异步的，组件可能在读取返回前已卸载；
+    // 此时不得再触发一轮渲染（否则会写入已卸载组件的状态、继续执行渲染管线）。
+    if (isPreviewUnmounted) {
+        return false
+    }
     if (typeof allowRemoteImages !== 'boolean') {
         return false
     }
@@ -677,6 +713,10 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+    // 内存与生命周期治理（P3）：先置卸载标志——让在途异步链路的每个 await 校验点
+    //（isStaleRender / updateMarkdownPreview / refreshRemoteImagePolicy）统一丢弃写回，
+    // 任何卸载后才返回的异步任务都不会再启动新的渲染轮次。
+    isPreviewUnmounted = true
     // EventBus 监听已由 useEventBus 自动清理
     window.electron.ipcRenderer.removeListener(IPC.FILE.USER_SELECT_FILE, handleActiveFileChange)
     window.electron.ipcRenderer.removeListener(

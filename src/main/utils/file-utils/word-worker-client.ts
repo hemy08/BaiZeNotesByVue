@@ -366,6 +366,19 @@ export class WordWorkerClient {
 export const wordWorkerClient = new WordWorkerClient()
 
 /**
+ * 应用退出清理（内存与生命周期治理 P3）：终止 Word worker 线程并拒绝未完成任务。
+ *
+ * 背景：worker 与空闲回收计时器均已 unref（不阻止进程退出），但退出链路
+ *（cleanupApp）此前未显式回收该线程——若退出时恰有 Word 转换在途，线程会活到进程
+ * 终止；在「关闭窗口但进程常驻（托盘）」场景则要等 60s 空闲回收才释放。
+ * 这里提供幂等清理入口，由 main/index.ts 的 cleanupApp 统一调用
+ *（WordWorkerClient.dispose 自身幂等：重复调用安全）。
+ */
+export function disposeWordWorkerClient(): void {
+    wordWorkerClient.dispose()
+}
+
+/**
  * Word 导入（docx → Markdown）经 worker 执行。
  * 基础设施不可用时调用方应捕获 `WordWorkerInfrastructureError` 并降级为进程内转换。
  */

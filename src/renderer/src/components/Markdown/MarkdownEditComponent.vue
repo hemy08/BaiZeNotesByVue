@@ -234,7 +234,22 @@ let isResizing = false
 let startX = 0
 let startWidth = 0
 
+/**
+ * 内存与生命周期治理（P3）：摘除拖拽期间挂在 document 上的全局监听。
+ *
+ * 背景：mousemove/mouseup 此前只在 stopResizing（mouseup）中移除。若拖拽尚未结束时
+ * 组件被卸载（关窗、切换视图、热更新），两个 document 级监听会残留并持续持有组件闭包；
+ * 若某次 mouseup 因窗口失焦/切到系统对话框而丢失，下次 mousedown 还会重复叠加监听。
+ * 抽出成对清理函数：重入前与卸载时都先摘除，保证监听数量不随拖拽次数增长。
+ */
+function detachResizeListeners(): void {
+    document.removeEventListener('mousemove', handleResizing)
+    document.removeEventListener('mouseup', stopResizing)
+}
+
 function startResizing(event: MouseEvent) {
+    // 重入防御：上一次拖拽的 mouseup 可能丢失，先摘除旧监听再挂接，避免累积
+    detachResizeListeners()
     isResizing = true
     startX = event.clientX
     startWidth = parseFloat(resizerPosition.value)
@@ -256,8 +271,33 @@ function handleResizing(event: MouseEvent) {
 
 function stopResizing() {
     isResizing = false
-    document.removeEventListener('mousemove', handleResizing)
-    document.removeEventListener('mouseup', stopResizing)
+    detachResizeListeners()
+}
+
+/**
+ * 内存与生命周期治理（P3）：内容加载 / 视图切换后的 Monaco 重排通知计时器。
+ *
+ * 背景：原实现裸 setTimeout(…, 150/100) 未保存句柄，组件卸载后回调仍会执行并
+ * 向全局 EventBus 派发 MONACO_RELAYOUT（监听者已卸载，属空转且持有组件闭包）；
+ * 快速连续打开文件时也会同时挂起多个不可取消的计时器。这里统一登记并在卸载时清理。
+ */
+const relayoutTimers = new Set<ReturnType<typeof setTimeout>>()
+
+/** 延迟派发一次编辑器重排通知（计时器句柄登记，卸载时统一清理） */
+function scheduleRelayout(delayMs: number): void {
+    const timer = setTimeout(() => {
+        relayoutTimers.delete(timer)
+        EventBus.$emit(EVENT_BUS.MONACO_RELAYOUT)
+    }, delayMs)
+    relayoutTimers.add(timer)
+}
+
+/** 清理全部未执行的重排通知计时器（卸载时调用，幂等） */
+function clearRelayoutTimers(): void {
+    for (const timer of relayoutTimers) {
+        clearTimeout(timer)
+    }
+    relayoutTimers.clear()
 }
 
 // P-1（PF-01）：击键同步防抖 + 脏标记
@@ -356,9 +396,7 @@ function onHandleNewContent(content: string) {
         initialCodeContent.value = content
     }
     // 文件加载后通知编辑器重新布局
-    setTimeout(() => {
-        EventBus.$emit(EVENT_BUS.MONACO_RELAYOUT)
-    }, 150)
+    scheduleRelayout(150)
 }
 
 function onHandleEditorShow(edit: boolean, preview: boolean) {
@@ -377,9 +415,7 @@ function onHandleEditorShow(edit: boolean, preview: boolean) {
     }
 
     // 视图切换后，通知Monaco编辑器重新布局
-    setTimeout(() => {
-        EventBus.$emit(EVENT_BUS.MONACO_RELAYOUT)
-    }, 100)
+    scheduleRelayout(100)
 }
 
 const handleShowFileContext = (_event: unknown, content: string) => {
@@ -555,6 +591,12 @@ onMounted(() => {
 
 // 销毁编辑器实例
 onBeforeUnmount(() => {
+    // 内存与生命周期治理（P3）：先摘除拖拽期间挂在 document 上的全局监听
+    //（尚未结束的拖拽不再留有 mousemove/mouseup 回调），并取消未执行的重排通知计时器
+    isResizing = false
+    detachResizeListeners()
+    clearRelayoutTimers()
+
     // P-1（PF-01）：卸载前尝试同步未发送内容（应用关闭时主进程可能已销毁窗口，忽略异常）
     try {
         flushContentSync()

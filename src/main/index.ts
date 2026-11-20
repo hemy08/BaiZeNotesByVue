@@ -27,6 +27,8 @@ import {
     cleanupDeprecatedSystemSettings
 } from './config'
 import { StartAutoSaveFileTime, StopAutoSaveFileTime, SaveActiveFile } from './utils/file-utils'
+// 内存与生命周期治理（P3）：退出时回收 Word 转换 worker 线程（懒创建；未使用过则空操作）
+import { disposeWordWorkerClient } from './utils/file-utils/word-worker-client'
 import { confirmUnsavedChangesClose } from './utils/close-confirm'
 // PF-05：目录树 fs.watch 监听的退出清理（仅新增生命周期管理，不改变原有落盘/清理逻辑）
 import { CleanupDirectoryWatch } from './utils/file-utils/file-operations'
@@ -630,6 +632,9 @@ function cleanupApp(): void {
     stopAutoBackupTimer()
     // 批次 B #4：销毁托盘（进程退出时清理系统资源；设置开关关闭不触发此处）
     disposeTray()
+    // 内存与生命周期治理（P3）：终止 Word 导入/导出 worker 线程并清空其空闲回收计时器
+    //（未执行过 Word 转换时为空操作；dispose 幂等，macOS window-all-closed 后再退出也安全）
+    disposeWordWorkerClient()
     ipcListenerManager.cleanupAll()
 
     const windows = BrowserWindow.getAllWindows()

@@ -30,3 +30,13 @@ export function removeOpenDialog(token: symbol): void {
 export function isTopmostDialog(token: symbol): boolean {
     return openDialogStack[openDialogStack.length - 1] === token
 }
+
+/**
+ * 当前已登记打开的对话框数量（诊断/单测用）。
+ *
+ * 内存与生命周期治理（P3）回归断言点：正常关闭/卸载后必须回到 0，
+ * 防止「关闭时未 remove 导致 token 常驻栈中」这类随开关次数累积的泄漏。
+ */
+export function getOpenDialogCount(): number {
+    return openDialogStack.length
+}
