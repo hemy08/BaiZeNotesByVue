@@ -721,6 +721,43 @@
 </tr>
 </tbody>
 </table>
+<p><strong>第九批 安全/质量/稳定性优化（2026-11-20 深夜）</strong></p>
+<table>
+<thead>
+<tr>
+<th>优化批次</th>
+<th>提交</th>
+<th>覆盖问题</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>app:// 协议迁移</td>
+<td><code>8bf8ea3</code></td>
+<td>file 协议特权</td>
+<td>renderer 从 file:// 迁移到 app://（baize 资源/plantuml/local 经 Path Guard）；<code>grantFileProtocolExtraPrivileges</code> 关闭，fuses 8/8 一致；打包 E2E 新增 4 条（Monaco worker/预览图片/HTML/PDF），全量 E2E <strong>19/19</strong>；dev 保留 file://（Electron 43 CDP preload 竞态在 app:// 首导航放大 5/6 vs 1/6，打包 0/3）</td>
+</tr>
+<tr>
+<td>覆盖率补测第五批</td>
+<td><code>f559126</code></td>
+<td>主进程 IO 边界</td>
+<td>新增 16 文件 +299 用例，覆盖 22 个主进程模块；全局覆盖 93.42/87.82/93.24/93.67 → <strong>95.14/89.82/94.24/95.42</strong>；&lt;90% 文件 51→30；main/utils、main/config、main/ipc 目录阈值新增/上调；修复 clipboard flaky 与 tsconfig.node 缺 build 的 TS6307 缺陷</td>
+</tr>
+<tr>
+<td>内存与生命周期治理</td>
+<td><code>9267b9a</code></td>
+<td>P3 稳定性</td>
+<td>审计无累积型泄漏；修复 4 处生命周期缺口：分栏拖拽 document 监听/重入、布局 setTimeout 空转、预览卸载后在途渲染写回、退出未回收 Word worker；新增 <code>memory:check</code> 门禁 +3 测试文件/10 用例</td>
+</tr>
+<tr>
+<td>剩余安全 P3</td>
+<td><code>24b3ef4</code></td>
+<td>P3 安全收口</td>
+<td>PDF 导出窗 sandbox/导航/开窗基线；日志口令/令牌/私钥脱敏；<code>~/.baizenotes</code> 与备份 POSIX 700/600；热键注册异常隔离汇总；资源管理器定位拒 UNC/设备命名空间；OPEN_EXE 确认后审计；在线网页独立内存 session + 权限全拒</td>
+</tr>
+</tbody>
+</table>
 <p><strong>修复后未收口（持续跟进）</strong>：P1-3 i18n 双语词典拆包与首屏口径修正、P1-4 E2E 零恢复断言、P1-6 覆盖率 glob 阈值、P1-8 KaTeX 按需加载与冷门语言动态补载、P1-9 更新安装×关闭确认、P2-3 代码签名、P2-5 依赖分类、E2E 覆盖扩展等。</p>
 <h2 id="sec-7">5. 更新记录</h2>
 <ul>

@@ -82,6 +82,13 @@
 - **覆盖率**：新增 9 文件/132 用例；全局 93.42/87.82/93.24/93.67；修复图标链接 label 崩溃、错误占位 retry TypeError 等 3 个真实缺陷
 - **A11y**：BaseDialog 滚动锁/描述关联/焦点循环排除/IME Esc；MessageDialog 与 ConfirmDeleteDialog 同步
 
+### 🔐 第九批 安全/质量/稳定性优化（2026-11-20）
+
+- **app:// 迁移**：renderer 从 file:// → app://（资源/PlantUML/本地图片经 Path Guard）；关闭 `grantFileProtocolExtraPrivileges`，fuses 8/8 一致；打包 E2E 新增 Monaco worker/预览图片/HTML/PDF 4 条
+- **覆盖率**：新增 16 测试文件 +299 用例，覆盖 22 个主进程 IO 模块；全局覆盖 95.14/89.82/94.24/95.42；<90% 文件 51→30；修复 clipboard 串扰与 tsconfig.node TS6307 门禁缺陷
+- **内存治理**：修复分栏监听/timer/预览在途渲染/Word worker 退出 4 处生命周期缺口；新增 `memory:check`
+- **安全 P3**：PDF 导出窗硬化、日志敏感值脱敏、数据/备份 POSIX 权限、热键异常隔离、UNC/设备命名空间拒绝、OPEN_EXE 审计、在线网页独立 session 权限全拒
+
 ### ✅ 门禁
 
 - typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **187 文件 / 3,458 用例全通过**、electron-vite build 成功
