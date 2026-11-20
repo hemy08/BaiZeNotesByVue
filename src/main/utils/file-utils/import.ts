@@ -10,6 +10,11 @@
  * - 各格式的 importReader/insertReader 调用时才加载，加载/转换失败仍由既有 catch 统一提示
  *   （错误路径与改造前一致）；
  * - 模块级 Promise 缓存保证同一进程内只加载一次（旧版由 Node require 缓存保证同语义）。
+ *
+ * P2-2（2026-11-20 性能扫描）：Word 导入（mammoth + turndown，实测 118KB docx 109ms）
+ * 原先在主进程同步执行，期间所有窗口 UI/IPC/菜单/定时器停摆。现改为在 Node worker 线程
+ * 执行（见 word-worker-client.ts / word-worker.ts），主进程只做路径校验与消息转发；
+ * worker 基础设施不可用时降级为主进程内转换并记录 WARN（功能可用性兜底）。
  */
 
 import { promises as fs } from 'fs'
@@ -29,40 +34,27 @@ import { tMain } from '../i18n'
 // P1-AS-1：导入/另存导入文件均涉及文件读写，路径必须位于受信范围；
 // 系统对话框返回的路径在返回后登记为受信来源
 import { isPathAllowed, registerTrustedPath } from '../security'
+// P2-2：Word 重计算改由 worker 线程执行；基础设施不可用时降级为进程内转换
+import {
+    convertDocxToMarkdownWithWorker,
+    isWordWorkerInfrastructureError
+} from './word-worker-client'
+import { convertDocxToMarkdownInProcess } from './word-worker-tasks'
 
 /* ============================================================================
  * P1-7：导入专用重依赖的惰性加载
  *
- * mammoth（≈35.3ms）/ turndown（≈14.4ms）/ csv-parser（≈0.3ms）只在用户执行
- * 「插入/导入 Word/HTML/CSV」时才需要，不应进入主进程启动期 require 图。
+ * turndown（≈14.4ms）/ csv-parser（≈0.3ms）只在用户执行「插入/导入 HTML/CSV」时才需要，
+ * 不应进入主进程启动期 require 图。mammoth 已随 Word 转换整体移入 worker 线程（P2-2），
+ * 由 word-worker-tasks.ts 在 worker 内惰性加载。
  * ========================================================================== */
 
-/** mammoth 的 CJS API 类型（其 lib/index.d.ts 以 `export =` 暴露 Mammoth 实例） */
-type MammothApi = typeof import('mammoth')
 /** csv-parser 的 CJS 工厂函数类型（其 index.d.ts 以 `export = csvParser` 暴露） */
 type CsvParserFactory = typeof import('csv-parser')
 
-let mammothApi: MammothApi | null = null
 let csvParserFactory: CsvParserFactory | null = null
 
-/**
- * P1-7：按需加载 mammoth（Word 导入专用）。
- * 采用函数内 require（首次使用时同步加载）而非顶层静态 import：
- * - 主进程产物为 CJS，require 在文件系统 / asar 内的模块解析行为与启动路径完全一致；
- * - Electron 主进程用原生 `import()` 加载 asar 内 node_modules 存在历史兼容问题
- *   （electron#38957），用户功能路径优先用 require 保证打包版行为稳定；
- * - 与既有 officegen（ToWord 函数内 require）保持同一模式；require 自带模块缓存，
- *   与改造前“顶层 require 一次”的加载次数语义一致，只是时机推迟到首次使用。
- */
-function loadMammoth(): MammothApi {
-    if (!mammothApi) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports -- P1-7：启动期不加载，首次 Word 导入时才 require；asar 内原生 import() 兼容性差，采用与 officegen 一致的惰性 require
-        mammothApi = require('mammoth') as MammothApi
-    }
-    return mammothApi
-}
-
-/** P1-7：按需加载 csv-parser 工厂（CSV 导入专用），说明同 loadMammoth */
+/** P1-7：按需加载 csv-parser 工厂（CSV 导入专用） */
 function loadCsvParser(): CsvParserFactory {
     if (!csvParserFactory) {
         // eslint-disable-next-line @typescript-eslint/no-require-imports -- P1-7：启动期不加载，首次 CSV 导入时才 require；asar 内原生 import() 兼容性差，采用惰性 require
@@ -72,9 +64,9 @@ function loadCsvParser(): CsvParserFactory {
 }
 
 /**
- * P1-7：按需创建 turndown 转换器（Word/HTML 导入专用）。
+ * P1-7：按需创建 turndown 转换器（HTML 导入专用；Word 导入的 turndown 已在 worker 内加载）。
  * turndown 无 TypeScript 类型声明，沿用函数内 require（`require` 调用本身即惰性：只有真正
- * 执行 Word/HTML 导入时才会解析模块），因此模块顶层不再 require。
+ * 执行 HTML 导入时才会解析模块），因此模块顶层不再 require。
  */
 function createTurndownService(): { turndown(html: string): string } {
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- turndown 无 TypeScript 类型声明，require 返回 any 是当前唯一无类型错误的加载方式
@@ -199,10 +191,21 @@ async function rejectExcelImport(): Promise<string> {
 }
 
 async function convertDocxToMarkdown(file: string): Promise<string> {
-    // P1-7：首次 Word 导入时才加载 mammoth/turndown（失败向上抛，由外层统一提示）
-    const mammoth = loadMammoth()
-    const result = await mammoth.convertToHtml({ path: file })
-    return createTurndownService().turndown(result.value)
+    // P2-2：Word 解析（mammoth + turndown）在 Node worker 线程执行，主进程事件循环不再
+    // 被 100ms 级同步计算阻塞；转换错误（docx 损坏等）保持原有语义向上抛，由外层统一提示。
+    try {
+        const markdown = await convertDocxToMarkdownWithWorker(file)
+        logger.info(`[word-worker] Word 导入由 worker 线程完成（Markdown ${markdown.length} 字符）`)
+        return markdown
+    } catch (error) {
+        // 仅 worker 基础设施不可用（打包回归/线程崩溃等）才降级为主进程内转换，保证功能
+        // 可用；转换本身的错误直接上抛，不掩盖用户可感知的失败原因。
+        if (!isWordWorkerInfrastructureError(error)) {
+            throw error
+        }
+        logger.warn('[import] Word worker 不可用，降级为主进程内转换（本次会阻塞主线程）:', error)
+        return convertDocxToMarkdownInProcess(file)
+    }
 }
 
 async function convertHtmlToMarkdown(file: string): Promise<string> {

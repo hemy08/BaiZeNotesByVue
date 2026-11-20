@@ -25,9 +25,22 @@ export default defineConfig({
         // electron-builder 安装包/解包目录 → out/build/dist（见 electron-builder.yml directories.output）；
         // out/analysis 与 out/archive 分别存放分析产物与历史归档（不入库）。
         // package.json "main"、electron-builder.yml files、E2E/CI/release 路径必须与这里保持一致。
+        //
+        // P2-2（2026-11-20 性能扫描）：主进程构建新增第二个入口 word-worker
+        // （src/main/utils/file-utils/word-worker.ts）——Word 导入/导出的
+        // mammoth/turndown/officegen 重计算在该 worker_threads 线程执行，主进程事件循环
+        // 不再被 100ms 级同步计算冻结。产物固定为 out/build/main/word-worker.js
+        // （与主入口 index.js 同目录，主进程按 __dirname 解析加载）；electron-builder 的
+        // files 白名单已包含 out/build/main/**，该文件随 app.asar 打包，E2E 打包启动用例守护。
         build: {
             externalizeDeps: true,
-            outDir: resolve(__dirname, 'out/build/main')
+            outDir: resolve(__dirname, 'out/build/main'),
+            rollupOptions: {
+                input: {
+                    index: resolve(__dirname, 'src/main/index.ts'),
+                    'word-worker': resolve(__dirname, 'src/main/utils/file-utils/word-worker.ts')
+                }
+            }
         }
     },
     preload: {

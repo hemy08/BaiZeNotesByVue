@@ -5,9 +5,14 @@
  * P1-7（2026-11-20 全量代码扫描）：HTML/PDF 导出专用的 markdown-it（≈4.7ms）原先在模块
  * 顶层静态加载，会进入主进程启动期急切 require 图。现改为「首次执行 HTML/PDF 导出时
  * 才惰性 require」（模块级缓存）；officegen 原本就只在 ToWord 函数内 require，本次保持不变。
+ *
+ * P2-2（2026-11-20 性能扫描）：Word 导出（officegen 流式生成，实测 1MB 文本 76ms）原先在
+ * 主进程同步执行，期间所有窗口 UI/IPC/菜单/定时器停摆。现改为在 Node worker 线程执行
+ * （见 word-worker-client.ts / word-worker.ts），主进程只做消息转发与成功/失败提示；
+ * worker 基础设施不可用时降级为主进程内导出并记录 WARN（功能可用性兜底）。
  */
 
-import { promises as fs, createWriteStream } from 'fs'
+import { promises as fs } from 'fs'
 import * as path from 'path'
 import { dialog, BrowserWindow, app } from 'electron'
 // P1-7：markdown-it 改为首次 HTML/PDF 导出时惰性 require，这里只保留类型导入（编译期擦除）
@@ -15,9 +20,16 @@ import type MarkdownItType from 'markdown-it'
 import { showErrorMessageBox, showInfoMessageBox } from './dialog-helpers'
 import { appState } from '../app-state'
 import { tMain } from '../i18n'
+import { logger } from '../logger'
 // P1-AS-1：导出目标来自系统保存对话框（用户显式选择），返回后登记为受信精确文件；
 // 导出器只写该路径，避免渲染层通过其它入口驱动任意写
 import { registerTrustedPath } from '../security'
+// P2-2：Word 重计算改由 worker 线程执行；基础设施不可用时降级为进程内导出
+import {
+    exportMarkdownToWordWithWorker,
+    isWordWorkerInfrastructureError
+} from './word-worker-client'
+import { exportMarkdownToWordInProcess } from './word-worker-tasks'
 
 /** P1-7：markdown-it 构造函数类型（默认导入为可直接 new 的构造器） */
 type MarkdownItConstructor = typeof MarkdownItType
@@ -193,31 +205,22 @@ export function registerExportFormat(formatKey: string, config: ExportConfig): v
 
 /**
  * 导出为 Word 文档
+ *
+ * P2-2：officegen 的文档组装与 zip 流式生成在 Node worker 线程执行（实测 1MB 文本
+ * 76ms 的主进程同步阻塞被移出主线程）；成功/失败返回契约不变（Promise 完成/抛错，
+ * 由 ExportToFile 统一提示）。worker 基础设施不可用时降级为主进程内导出并记录 WARN。
  */
 export async function ToWord(content: string, filePath: string): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports -- officegen 无 TypeScript 类型声明，require 返回 any 是当前唯一无类型错误的加载方式
-    const officeGen = require('officegen')
-    const docx = officeGen('docx')
-
-    const lines = content.split('\n')
-    lines.forEach((line) => {
-        if (line.startsWith('# ')) {
-            docx.createP().addText(line.substring(2), { bold: true, fontSize: 20 })
-        } else if (line.startsWith('## ')) {
-            docx.createP().addText(line.substring(3), { bold: true, fontSize: 18 })
-        } else if (line.startsWith('### ')) {
-            docx.createP().addText(line.substring(4), { bold: true, fontSize: 16 })
-        } else if (line.trim().length > 0) {
-            docx.createP().addText(line)
+    try {
+        await exportMarkdownToWordWithWorker(content, filePath)
+        logger.info('[word-worker] Word 导出由 worker 线程完成')
+    } catch (error) {
+        if (!isWordWorkerInfrastructureError(error)) {
+            throw error
         }
-    })
-
-    return new Promise((resolve, reject) => {
-        const stream = createWriteStream(filePath)
-        docx.generate(stream)
-        stream.on('close', resolve)
-        stream.on('error', reject)
-    })
+        logger.warn('[export] Word worker 不可用，降级为主进程内导出（本次会阻塞主线程）:', error)
+        await exportMarkdownToWordInProcess(content, filePath)
+    }
 }
 
 /**
