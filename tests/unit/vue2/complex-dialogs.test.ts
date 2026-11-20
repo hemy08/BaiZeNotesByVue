@@ -574,7 +574,8 @@ describe('SystemSettingDialog', () => {
         expect(send).not.toHaveBeenCalled()
     })
 
-    it('logs an error instead of throwing when the auto save invoke fails', async () => {
+    // P2 剩余静默失败提示（本批）：invoke 失败不再只记日志——弹错误对话框并回滚开关。
+    it('shows an error dialog and reverts the auto save toggle when the invoke fails', async () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
         // 首开回填修复后，挂载即会经既有 invoke 通道读取应用主题显示名；
         // 这里只让「自动保存同步」通道失败，其余通道照常成功，锁定被测语义。
@@ -594,10 +595,18 @@ describe('SystemSettingDialog', () => {
         await flushPromises()
 
         expect(errorSpy).toHaveBeenCalledWith('同步自动保存设置失败:', expect.any(Error))
-        // 失败后组件不抛出、不卸载，开关仍保持用户操作后的状态
+        // 用户可见反馈：错误对话框（标题/正文走 i18n，正文含错误详情）
+        const store = getConfigStore()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.systemSetting.autoSaveSyncFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain('主进程不可用')
+        store.hideDialog('message')
+        // 失败后组件不抛出、不卸载，开关回滚到操作前状态
         expect(
             (filePanel.findAll('.setting-checkbox')[0].element as HTMLInputElement).checked
-        ).toBe(true)
+        ).toBe(false)
     })
 
     it('hides the auto save interval row when auto save is disabled', async () => {

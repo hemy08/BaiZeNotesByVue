@@ -48,6 +48,9 @@ import { getConfigStore } from '../common/useConfigStore'
 import EventBus from '../common/event-bus/event-bus'
 import { EVENT_BUS } from '../common/event-bus/event-bus-events'
 import { logger } from '../common/logger'
+// P2 剩余静默失败提示：用户主动切换主题失败时经统一失败反馈 helper 弹错误对话框 + 重试
+import { t } from '../common/i18n'
+import { describeActionError, reportActionFailure } from '../common/action-feedback'
 
 /** Monaco 模块形态（仅类型引用；运行时按需动态 import，避免 Monaco 进入首屏 chunk） */
 type MonacoModule = typeof import('monaco-editor')
@@ -174,22 +177,25 @@ function getRendererIpc(): Window['electron']['ipcRenderer'] | null {
     return window.electron?.ipcRenderer ?? null
 }
 
-/** 取主进程当前主题样式（渲染层唯一调用点；失败返回 null 且不抛异常） */
+/**
+ * 取主进程当前主题样式（渲染层唯一调用点）。
+ *
+ * P2 剩余静默失败提示：此前 IPC 异常在此被吞掉并返回 null，调用方（主题切换）静默退出，
+ * 用户看不到任何反馈。现在：
+ * - invoke 异常向上抛（由调用方决定提示策略：用户主动切换 → 错误对话框 + 重试；
+ *   启动初始化/广播 → 静默回退默认主题，见 initializeTheme / handleThemeBroadcast 注释）；
+ * - resolve 为 null（主题不存在等）仍返回 null，由调用方按「未返回样式」处理。
+ */
 async function fetchCurrentThemeStyles(themeType: string): Promise<ThemeStyles | null> {
     const ipc = getRendererIpc()
     if (!ipc) {
         return null
     }
-    try {
-        const styles = (await ipc.invoke(
-            IPC.THEME.GET_CURRENT_THEME_STYLES,
-            themeType
-        )) as ThemeStyles | null
-        return styles ?? null
-    } catch (error) {
-        logger.error(`Failed to load theme styles: ${themeType}`, error)
-        return null
-    }
+    const styles = (await ipc.invoke(
+        IPC.THEME.GET_CURRENT_THEME_STYLES,
+        themeType
+    )) as ThemeStyles | null
+    return styles ?? null
 }
 
 /**
@@ -244,17 +250,23 @@ function resolveBaseTheme(themeName: string): 'vs' | 'vs-dark' {
  *
  * 内置主题直接 setTheme；扩展主题经 `THEME.LOAD_MONACO_THEME` 从
  * `resources/themes/monaco-themes/` 读取后 defineTheme；失败回退 `vs`。
+ *
+ * P2 剩余静默失败提示：此前失败只记日志并静默回退（用户以为编辑器主题已切换），
+ * 现返回是否成功；用户主动切换主题（changeTheme）时由调用方弹错误提示，启动/广播等
+ * 后台路径仍保持「静默回退默认主题」（不打断编辑，理由见各调用方注释）。
+ *
+ * @returns 是否成功应用目标 Monaco 主题（false = 已回退 vs 或默认主题）
  */
-async function loadMonacoTheme(monaco: MonacoModule, themeName: string): Promise<void> {
+async function loadMonacoTheme(monaco: MonacoModule, themeName: string): Promise<boolean> {
     if (themeName === 'vs' || themeName === 'vs-dark' || themeName === 'hc-black') {
         monaco.editor.setTheme(themeName)
-        return
+        return true
     }
 
     const ipc = getRendererIpc()
     if (!ipc) {
         monaco.editor.setTheme('vs')
-        return
+        return false
     }
 
     try {
@@ -262,13 +274,15 @@ async function loadMonacoTheme(monaco: MonacoModule, themeName: string): Promise
         if (themeData) {
             monaco.editor.defineTheme(themeName, themeData)
             monaco.editor.setTheme(themeName)
-            return
+            return true
         }
         logger.error(`Monaco theme not found: ${themeName}`)
         monaco.editor.setTheme('vs')
+        return false
     } catch (error) {
         logger.error(`Failed to load Monaco theme: ${themeName}`, error)
         monaco.editor.setTheme('vs')
+        return false
     }
 }
 
@@ -278,41 +292,49 @@ async function loadMonacoTheme(monaco: MonacoModule, themeName: string): Promise
  * - 独立编辑器主题（separate → true）：加载用户选择的 Monaco 主题；
  * - 否则按应用主题生成 `custom-theme`（基色 vs/vs-dark + 主题色覆盖）；
  * - 成功后 `EventBus.$emit(THEME_UPDATED, theme)` 通知编辑器/插件面板（历史契约保留）；
- * - Monaco 模块加载失败只跳过编辑器主题，不影响界面/预览主题，不阻塞启动。
+ * - Monaco 模块加载失败只跳过编辑器主题，不影响界面/预览主题，不阻塞启动；
+ * - P2：返回是否成功应用编辑器主题，供用户主动切换路径提示失败（启动/广播路径忽略）。
  */
 async function applyMonacoEditorTheme(
     theme: ThemeStyles,
     separate: boolean,
     monacoThemeName: string
-): Promise<void> {
+): Promise<boolean> {
     let monaco: MonacoModule
     try {
         monaco = await loadMonacoModule()
     } catch (error) {
         logger.warn('Monaco 模块加载失败，已跳过编辑器主题更新:', error)
-        return
+        return false
     }
 
+    let monacoApplied = true
     if (separate) {
-        await loadMonacoTheme(monaco, monacoThemeName)
+        monacoApplied = await loadMonacoTheme(monaco, monacoThemeName)
     } else {
-        monaco.editor.defineTheme('custom-theme', {
-            base: resolveBaseTheme(theme.name),
-            inherit: true,
-            rules: [],
-            colors: {
-                'editor.background': theme.cardBackground,
-                'editor.foreground': theme.textColor,
-                'editor.lineHighlightBackground': theme.hoverBackground,
-                'editorCursor.foreground': theme.accentColor,
-                'editor.selectionBackground': theme.accentColor + '40',
-                'editor.inactiveSelectionBackground': theme.accentColor + '20'
-            }
-        })
-        monaco.editor.setTheme('custom-theme')
+        try {
+            monaco.editor.defineTheme('custom-theme', {
+                base: resolveBaseTheme(theme.name),
+                inherit: true,
+                rules: [],
+                colors: {
+                    'editor.background': theme.cardBackground,
+                    'editor.foreground': theme.textColor,
+                    'editor.lineHighlightBackground': theme.hoverBackground,
+                    'editorCursor.foreground': theme.accentColor,
+                    'editor.selectionBackground': theme.accentColor + '40',
+                    'editor.inactiveSelectionBackground': theme.accentColor + '20'
+                }
+            })
+            monaco.editor.setTheme('custom-theme')
+        } catch (error) {
+            logger.error('应用自定义 Monaco 主题失败（已回退默认主题）:', error)
+            monacoApplied = false
+        }
     }
 
     EventBus.$emit(EVENT_BUS.THEME_UPDATED, theme)
+    return monacoApplied
 }
 
 /**
@@ -320,16 +342,18 @@ async function applyMonacoEditorTheme(
  *
  * 调用方：启动初始化、主题切换、主进程 `THEME_UPDATED` 广播、跟随系统主题。
  * 顺序与收敛前一致：先同步状态 → 应用界面主题 → 再异步应用编辑器主题。
+ *
+ * @returns Monaco 编辑器主题是否成功应用（界面主题此时已应用；供用户主动切换路径提示）
  */
 async function applyThemeUpdate(
     themeStyles: ThemeStyles,
     separate: boolean,
     monacoThemeName: string
-): Promise<void> {
+): Promise<boolean> {
     separateEditorTheme.value = separate
     monacoEditorTheme.value = monacoThemeName
     applyThemeStyles(themeStyles)
-    await applyMonacoEditorTheme(themeStyles, separate, monacoThemeName)
+    return applyMonacoEditorTheme(themeStyles, separate, monacoThemeName)
 }
 
 /**
@@ -337,6 +361,12 @@ async function applyThemeUpdate(
  *
  * 时序与收敛前 BaiZeNotes.onMounted 完全一致：先加载配置（主题配置为唯一读盘入口），
  * 再按配置拉取主题样式并应用。单例防重入：主界面重复挂载不会二次读盘。
+ *
+ * P2 剩余静默失败提示的范围说明（为何此路径仍保持静默回退）：
+ * - 启动阶段属于**后台路径**：此时主界面尚未稳定、用户没有主动触发任何操作，弹模态错误框
+ *   会打断首次进入应用；且 CSS 变量在 styles/theme.css 的 :root 中已有默认主题兜底，
+ *   界面仍完整可用。因此仅记 error 日志并保持默认主题（P3 体验项，不误导用户为「已切换」）。
+ * - 用户主动切换主题的 changeTheme 路径已改为错误对话框 + 重试（见下方）。
  */
 async function initializeTheme(): Promise<void> {
     if (initializePromise) {
@@ -351,6 +381,7 @@ async function initializeTheme(): Promise<void> {
             const themeConfig = store.themeConfig.value
             const styles = await fetchCurrentThemeStyles(themeConfig.currentTheme)
             if (styles) {
+                // 启动路径忽略 Monaco 主题应用结果：失败已回退默认主题且不打断启动
                 await applyThemeUpdate(
                     styles,
                     themeConfig.separateEditorTheme,
@@ -373,6 +404,11 @@ async function initializeTheme(): Promise<void> {
  * 3. 应用界面主题 + Monaco 主题；
  * 4. 请求主进程向所有窗口广播（多窗口/主进程侧同步）。
  *
+ * P2 剩余静默失败提示（用户主动操作，必须可见）：样式拉取失败 / 主进程未返回样式 /
+ * 编辑器主题加载失败此前都只写日志，用户误以为主题已切换。现统一弹错误对话框并附
+ * 「重试」按钮（重试按同一目标参数重走完整切换链路）。界面主题应用成功后仍会广播，
+ * 编辑器主题失败不影响界面主题与广播。
+ *
  * @param themeType 目标应用主题标识（缺省取配置中的当前主题）
  * @param monacoTheme 目标 Monaco 主题标识（缺省取配置 / 'vs'）
  * @param separate 是否使用独立编辑器主题（缺省取配置）
@@ -382,25 +418,60 @@ async function changeTheme(
     monacoTheme?: string,
     separate?: boolean
 ): Promise<void> {
-    try {
-        const store = getConfigStore()
-        const targetTheme = themeType || store.themeConfig.value.currentTheme
-        const targetSeparate =
-            separate !== undefined ? separate : store.themeConfig.value.separateEditorTheme
-        const targetMonacoTheme = monacoTheme || store.themeConfig.value.editorTheme || 'vs'
+    const store = getConfigStore()
+    const targetTheme = themeType || store.themeConfig.value.currentTheme
+    const targetSeparate =
+        separate !== undefined ? separate : store.themeConfig.value.separateEditorTheme
+    const targetMonacoTheme = monacoTheme || store.themeConfig.value.editorTheme || 'vs'
+    /** 重试：按本次目标参数重走完整切换链路（失败会再次进入本函数并重新提示） */
+    const retry = (): Promise<void> => changeTheme(targetTheme, targetMonacoTheme, targetSeparate)
 
+    try {
         store.updateThemeConfig({
             currentTheme: targetTheme,
             separateEditorTheme: targetSeparate,
             editorTheme: targetMonacoTheme
         })
 
-        const styles = await fetchCurrentThemeStyles(targetTheme)
+        let styles: ThemeStyles | null
+        try {
+            styles = await fetchCurrentThemeStyles(targetTheme)
+        } catch (error) {
+            logger.error(`Failed to load theme styles: ${targetTheme}`, error)
+            reportActionFailure({
+                title: t('dialogRenderer.themeSetting.applyFailedTitle'),
+                message: t('dialogRenderer.themeSetting.applyFailedMessage', {
+                    theme: targetTheme,
+                    error: describeActionError(error, t('common.unknown'))
+                }),
+                retry
+            })
+            return
+        }
         if (!styles) {
+            logger.error(`Theme styles not found: ${targetTheme}`)
+            reportActionFailure({
+                title: t('dialogRenderer.themeSetting.applyFailedTitle'),
+                message: t('dialogRenderer.themeSetting.applyFailedMessage', {
+                    theme: targetTheme,
+                    error: t('dialogRenderer.themeSetting.applyFailedReasonNotFound')
+                }),
+                retry
+            })
             return
         }
 
-        await applyThemeUpdate(styles, targetSeparate, targetMonacoTheme)
+        const monacoApplied = await applyThemeUpdate(styles, targetSeparate, targetMonacoTheme)
+        if (!monacoApplied) {
+            // 界面主题已应用，仅编辑器主题回退：单独提示，不影响下方主进程广播
+            reportActionFailure({
+                title: t('dialogRenderer.themeSetting.editorThemeApplyFailedTitle'),
+                message: t('dialogRenderer.themeSetting.editorThemeApplyFailedMessage', {
+                    theme: targetMonacoTheme
+                }),
+                retry
+            })
+        }
 
         // A-3/FUN-20：主题应用成功后请求主进程广播（多窗口热同步）——原逻辑原样保留。
         getRendererIpc()?.send(
@@ -411,6 +482,14 @@ async function changeTheme(
         )
     } catch (error) {
         logger.error('Failed to handle theme change:', error)
+        reportActionFailure({
+            title: t('dialogRenderer.themeSetting.applyFailedTitle'),
+            message: t('dialogRenderer.themeSetting.applyFailedMessage', {
+                theme: targetTheme,
+                error: describeActionError(error, t('common.unknown'))
+            }),
+            retry
+        })
     }
 }
 
@@ -420,12 +499,18 @@ async function changeTheme(
  * 契约（shared ThemeUpdateData）：{ themeStyles, monacoTheme, separateEditorTheme }，
  * 不含主题标识（历史字段可选且现行不发送）——因此这里只应用样式，不改写 config store
  * 中的主题名（与收敛前一致；主题名由主进程配置真源持久化，重启/读配置时对齐）。
+ *
+ * P2 剩余静默失败提示的范围说明（为何此路径无需提示）：广播是**后台路径**（其他窗口/
+ * 系统主题触发），当前窗口没有用户主动操作；样式已在主进程侧应用成功，编辑器主题加载
+ * 失败时回退默认主题不影响界面。弹框会打断用户正在进行的编辑，因此保持日志 + 默认主题
+ * 兜底（与 startup 路径同一口径）。
  */
 async function handleThemeBroadcast(_event: unknown, data: ThemeUpdateData): Promise<void> {
     if (!data || !data.themeStyles) {
         logger.error('[Renderer] Received invalid theme data')
         return
     }
+    // 后台广播忽略 Monaco 主题应用结果（失败已回退默认主题，不打断当前编辑）
     await applyThemeUpdate(data.themeStyles, data.separateEditorTheme, data.monacoTheme)
 }
 

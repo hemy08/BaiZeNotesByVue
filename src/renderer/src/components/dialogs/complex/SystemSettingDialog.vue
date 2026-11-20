@@ -47,6 +47,7 @@
                     v-show="activePanel === 'appearance'"
                     :settings="settings"
                     :theme-display="appThemeDisplay"
+                    :theme-display-fallback="appThemeDisplayFallback"
                     @update="updateSettings"
                     @open-theme-setting="handleOpenThemeSetting"
                 />
@@ -145,8 +146,14 @@ const sidebarItems = SYSTEM_SETTING_SIDEBAR_ITEMS
 const isSaving = ref(false)
 
 /** 共享草稿状态 / 加载 / 保存 / 取消 / 脏标记 / 校验（4 页签共用唯一一份草稿） */
-const { settings, appThemeDisplay, loadSettings, saveSettings, resetSettings } =
-    useSystemSettingForm()
+const {
+    settings,
+    appThemeDisplay,
+    appThemeDisplayFallback,
+    loadSettings,
+    saveSettings,
+    resetSettings
+} = useSystemSettingForm()
 
 // ARC-04 + 首开回填修复：打开时读取主进程配置。
 // 1) 对话框由 lazyDialog 包装，**首次打开时才挂载**，挂载时 visible 已经是 true：

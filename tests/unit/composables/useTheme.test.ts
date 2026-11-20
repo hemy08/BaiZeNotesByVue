@@ -32,6 +32,7 @@ import {
     useTheme
 } from '../../../src/renderer/src/composables/useTheme'
 import { defaultThemeConfig, getConfigStore } from '../../../src/renderer/src/common/useConfigStore'
+import { t } from '../../../src/renderer/src/common/i18n'
 import EventBus from '../../../src/renderer/src/common/event-bus/event-bus'
 import { EVENT_BUS } from '../../../src/renderer/src/common/event-bus/event-bus-events'
 import { IPC } from '../../../src/shared/ipc-channels'
@@ -99,6 +100,9 @@ function resetAll(): void {
     resetThemeStateForTesting()
     const store = getConfigStore()
     store.themeConfig.value = { ...defaultThemeConfig }
+    // P2 剩余静默失败提示：清理上一用例遗留的消息对话框/重试动作
+    store.hideDialog('message')
+    store.clearMessageDialogRetry()
     document.documentElement.removeAttribute('style')
 
     invokeMock.mockReset()
@@ -311,6 +315,8 @@ describe('changeTheme：主题切换（配置 → 样式 → 应用 → 广播�
         expect(monacoMock.editor.setTheme).toHaveBeenCalledWith('vs-dark')
         // A-3/FUN-20：主题应用成功后请求主进程向所有窗口广播
         expect(sendMock).toHaveBeenCalledWith(IPC.THEME.UPDATE_THEME, 'dark', 'vs-dark', true)
+        // 成功路径不弹错误提示
+        expect(getConfigStore().dialogs.messageDialog.visible).toBe(false)
         // 配置写盘仍走 config store 去抖（200ms），本模块不重复实现写盘
         await vi.advanceTimersByTimeAsync(300)
         expect(configWriteMock).toHaveBeenCalledWith(
@@ -319,14 +325,99 @@ describe('changeTheme：主题切换（配置 → 样式 → 应用 → 广播�
         )
     })
 
-    it('主题样式拉取失败时不广播、不写 DOM（保持当前界面）', async () => {
+    // P2 剩余静默失败提示（本批）：样式拉取失败此前静默 return，用户误以为主题已切换。
+    // 现在弹错误对话框（含主题名/错误详情）+「重试」按钮，且不广播、不写 DOM。
+    it('主题样式拉取失败：弹错误提示 + 可重试，不广播、不写 DOM', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
         invokeMock.mockResolvedValue(null)
         const theme = useTheme()
+        const store = getConfigStore()
 
         await theme.changeTheme('dark', 'vs', false)
 
         expect(sendMock).not.toHaveBeenCalled()
         expect(document.documentElement.style.getPropertyValue('--theme-background-color')).toBe('')
+        expect(errorSpy).toHaveBeenCalled()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.themeSetting.applyFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain('dark')
+        expect(store.dialogs.messageDialog.message).toContain(
+            t('dialogRenderer.themeSetting.applyFailedReasonNotFound')
+        )
+        // 重试按钮已挂载：主进程恢复后重试 → 应用主题并广播
+        expect(store.messageDialogRetry.value).not.toBeNull()
+        invokeMock.mockImplementation(async (channel: string) =>
+            channel === IPC.THEME.GET_CURRENT_THEME_STYLES ? BAIZE_STYLES : null
+        )
+        store.runMessageDialogRetry()
+        await vi.waitFor(() => {
+            expect(
+                document.documentElement.style.getPropertyValue('--theme-background-color')
+            ).toBe(BAIZE_STYLES.backgroundColor)
+        })
+        expect(sendMock).toHaveBeenCalledWith(IPC.THEME.UPDATE_THEME, 'dark', 'vs', false)
+        store.hideDialog('message')
+        await vi.advanceTimersByTimeAsync(300)
+    })
+
+    it('主题样式 IPC 异常：弹错误提示（含错误详情）', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        invokeMock.mockImplementation(async (channel: string) => {
+            if (channel === IPC.THEME.GET_CURRENT_THEME_STYLES) {
+                throw new Error('主题通道不可用')
+            }
+            return null
+        })
+        const theme = useTheme()
+        const store = getConfigStore()
+
+        await theme.changeTheme('dark', 'vs', false)
+
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.themeSetting.applyFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain('主题通道不可用')
+        expect(sendMock).not.toHaveBeenCalled()
+        store.hideDialog('message')
+        await vi.advanceTimersByTimeAsync(300)
+    })
+
+    // P2 剩余静默失败提示（本批）：编辑器主题（独立 Monaco 主题）加载失败此前静默回退 vs。
+    // 现在界面主题仍正常应用并广播，但弹「编辑器主题加载失败」提示 + 重试。
+    it('编辑器主题加载失败：回退 vs 并弹错误提示（界面主题与广播不受影响）', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        invokeMock.mockImplementation(async (channel: string) => {
+            if (channel === IPC.THEME.GET_CURRENT_THEME_STYLES) return BAIZE_STYLES
+            if (channel === IPC.THEME.LOAD_MONACO_THEME) throw new Error('主题文件缺失')
+            return null
+        })
+        const theme = useTheme()
+        const store = getConfigStore()
+        monacoMock.editor.setTheme.mockClear()
+
+        await theme.changeTheme('dark', 'my-monaco-theme', true)
+
+        expect(monacoMock.editor.setTheme).toHaveBeenCalledWith('vs')
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.themeSetting.editorThemeApplyFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain('my-monaco-theme')
+        // 界面主题已应用并广播（编辑器主题失败不阻塞其他部分）
+        expect(document.documentElement.style.getPropertyValue('--theme-background-color')).toBe(
+            BAIZE_STYLES.backgroundColor
+        )
+        expect(sendMock).toHaveBeenCalledWith(
+            IPC.THEME.UPDATE_THEME,
+            'dark',
+            'my-monaco-theme',
+            true
+        )
+        store.hideDialog('message')
         await vi.advanceTimersByTimeAsync(300)
     })
 })

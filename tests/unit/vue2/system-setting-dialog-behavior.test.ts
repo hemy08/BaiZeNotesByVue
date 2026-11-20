@@ -10,7 +10,7 @@
  * 4. 加载语义：打开时读取 system 配置并把值映射到 4 个面板（含语言历史值归一化）；
  *    首挂即打开（lazyDialog 首次打开才挂载、挂载时 visible 已为 true）也要回填；
  *    加载失败回退默认值并记录错误；重复打开重新加载；
- * 5. 保存/校验失败契约：自动保存 IPC 返回 ok:false 时记录错误且不改变开关状态。
+ * 5. 保存/校验失败契约：自动保存 IPC 返回 ok:false 时弹错误提示并回滚开关（不再静默）。
  *
  * 该文件在「拆分前单文件」与「拆分后壳层 + 4 panel + composable」两种结构下都必须通过。
  */
@@ -25,6 +25,8 @@ import {
 // P2 功能错误处理修复：保存失败断言（全局消息对话框 + 错误文案走 i18n）
 import { getConfigStore } from '@renderer/common/useConfigStore'
 import { t } from '@renderer/common/i18n'
+// P2 剩余静默失败提示（本批）：失败提示节流复位（自动保存开关同步防刷屏）
+import { resetActionFailureThrottleForTesting } from '@renderer/common/action-feedback'
 
 const dialogMountOptions = { global: { stubs: { teleport: true } } }
 
@@ -460,15 +462,19 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         wrapper.unmount()
     })
 
-    // 校验失败契约（自动保存运行时通道）：主进程返回 { ok:false } 时渲染层记录错误，
-    // 不抛出、不回滚用户操作（开关保持操作后的状态）。
-    it('自动保存 IPC 返回 ok:false 时记录错误且不回滚开关', async () => {
+    // 校验失败契约（自动保存运行时通道，P2 剩余静默失败提示）：主进程返回 { ok:false }
+    // 时渲染层此前只记日志（开关保持操作后的状态，主进程定时器未同步且用户无感知）。
+    // 修复后：弹错误对话框 + 回滚开关到操作前状态（可重试），不抛出、不崩溃。
+    it('自动保存 IPC 返回 ok:false 时弹错误提示并回滚开关', async () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        resetActionFailureThrottleForTesting()
         // 首开回填修复后，挂载即会经 invoke 读取主题显示名（同一通道）；
         // 这里按通道返回 { ok:false }，避免挂载阶段消费掉一次性 mock。
         invoke.mockImplementation((channel: string) =>
             Promise.resolve(
-                channel === 'baize:setting:auto-save-changed' ? { ok: false } : undefined
+                channel === 'baize:setting:auto-save-changed'
+                    ? { ok: false, reason: 'invalid-payload' }
+                    : undefined
             )
         )
         const wrapper = mountDialog()
@@ -484,10 +490,20 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
             autoSaveInterval: 60
         })
         expect(errorSpy).toHaveBeenCalledWith(
-            '同步自动保存设置失败: 主进程返回失败标志',
-            expect.objectContaining({ ok: false })
+            '同步自动保存设置失败:',
+            expect.objectContaining({ message: 'invalid-payload' })
         )
-        expect((autoSave.element as HTMLInputElement).checked).toBe(true)
+        // 用户可见反馈：错误对话框（标题/正文走 i18n）
+        const store = getConfigStore()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.systemSetting.autoSaveSyncFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain('invalid-payload')
+        store.hideDialog('message')
+        // 回滚开关到操作前状态（默认关闭），界面不误导用户
+        expect((autoSave.element as HTMLInputElement).checked).toBe(false)
 
         wrapper.unmount()
     })

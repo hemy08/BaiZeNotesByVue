@@ -33,6 +33,19 @@
                     </button>
                 </div>
             </div>
+            <!--
+                P2 剩余静默失败提示：应用主题显示名读取失败时显示内联降级提示（非阻断）。
+                不弹错误对话框：本行只是只读展示，弹窗会打断用户浏览/修改其他设置；
+                用户关闭后重新打开设置即会重新读取。
+            -->
+            <p
+                v-if="themeDisplayFallback"
+                class="theme-display-fallback-hint"
+                role="status"
+                data-testid="theme-display-fallback-hint"
+            >
+                {{ t('dialogRenderer.systemSetting.themeDisplayFallbackHint') }}
+            </p>
             <div class="setting-row">
                 <label class="setting-label">{{
                     t('dialogRenderer.systemSetting.labelUseSystemTheme')
@@ -99,6 +112,11 @@ const props = defineProps<{
     settings: SystemDialogSettings
     /** 外观页签只读展示的应用主题显示名（i18n 映射后，由壳层加载） */
     themeDisplay: string
+    /**
+     * P2 剩余静默失败提示：显示名是否因读取失败而回退（true 时显示内联降级提示）。
+     * 默认 false，保持既有挂载方式（仅传 settings/themeDisplay）的渲染结果不变。
+     */
+    themeDisplayFallback?: boolean
 }>()
 const emit = defineEmits<{
     (e: 'update', patch: Partial<SystemDialogSettings>): void
@@ -139,5 +157,13 @@ function emitOpenThemeSetting(): void {
     color: var(--secondary-text-color);
     background: var(--bg-color);
     text-align: center;
+}
+
+/* P2 剩余静默失败提示：主题显示名读取失败的内联降级提示（非阻断，跟随主题变量） */
+.theme-display-fallback-hint {
+    margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--secondary-text-color);
 }
 </style>

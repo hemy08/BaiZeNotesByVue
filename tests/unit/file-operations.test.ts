@@ -66,6 +66,8 @@ import {
     encodeFileContent,
     SaveActiveFile,
     SaveActiveFileAs,
+    // P2 剩余静默失败提示（本批）：自动保存失败提示去重状态复位（仅测试）
+    resetAutoSaveFailureNoticeForTesting,
     TraverseDirectory,
     CreateFileFolder,
     ReloadDirFromDisk,
@@ -120,6 +122,8 @@ beforeEach(() => {
     CleanupDirectoryWatch()
     vi.clearAllMocks()
     appState._resetForTesting()
+    // P2 防刷屏：自动保存失败提示去重状态按用例复位
+    resetAutoSaveFailureNoticeForTesting()
     appState.mainWindow = makeWindow() as unknown as Electron.BrowserWindow
     // 默认 mock 行为：所有窗口为空、对话框默认取消
     electronMocks.getAllWindows.mockReturnValue([])
@@ -1134,6 +1138,72 @@ describe('SaveActiveFile', () => {
             'baize:status-bar:update',
             expect.objectContaining({ type: 'error' })
         )
+    })
+
+    // P2 剩余静默失败提示 / 防刷屏（本批）：自动保存（定时写盘）失败改走非模态状态栏，
+    // 不再弹错误对话框（否则每个定时周期都会弹模态框打断编辑）。
+    it('auto-save policy: 失败只走状态栏、不弹错误对话框（不打断编辑）', async () => {
+        const filePath = path.join(tmpDir, 'autosave-missing-a', 'f.md')
+        appState.currentActiveFile = {
+            name: 'f.md',
+            path: filePath,
+            type: 'file',
+            content: 'x',
+            encoding: 'utf-8'
+        }
+
+        const ok = await SaveActiveFile({ failureNotice: 'auto-save' })
+
+        expect(ok).toBe(false)
+        // 状态栏：自动保存失败文案（非模态，不打断编辑）
+        expect(mainSend).toHaveBeenCalledWith(
+            'baize:status-bar:update',
+            expect.objectContaining({
+                type: 'error',
+                message: expect.stringContaining('自动保存失败')
+            })
+        )
+        // 不得再经错误对话框打断用户编辑
+        expect(mainSend).not.toHaveBeenCalledWith(
+            'baize:dialog:open-vue',
+            'message',
+            expect.anything()
+        )
+    })
+
+    it('auto-save policy: 同一错误在去重窗口内只提示一次，保存成功后再次失败重新提示', async () => {
+        const caseDir = await fs.mkdtemp(path.join(tmpDir, 'case-'))
+        const missingDir = path.join(caseDir, 'missing')
+        const filePath = path.join(missingDir, 'f.md')
+        appState.currentActiveFile = {
+            name: 'f.md',
+            path: filePath,
+            type: 'file',
+            content: 'x',
+            encoding: 'utf-8'
+        }
+        /** 统计自动保存失败状态栏提示次数 */
+        const autoSaveNoticeCount = (): number =>
+            mainSend.mock.calls.filter(
+                ([channel, payload]) =>
+                    channel === 'baize:status-bar:update' &&
+                    (payload as { type?: string; message?: string }).type === 'error' &&
+                    (payload as { message?: string }).message?.includes('自动保存失败') === true
+            ).length
+
+        // 连续两次失败（同一错误）：只提示一次（防刷屏）
+        await SaveActiveFile({ failureNotice: 'auto-save' })
+        await SaveActiveFile({ failureNotice: 'auto-save' })
+        expect(autoSaveNoticeCount()).toBe(1)
+
+        // 保存成功 → 清除去重记录
+        await fs.mkdir(missingDir)
+        await expect(SaveActiveFile({ failureNotice: 'auto-save' })).resolves.toBe(true)
+
+        // 再次失败：重新提示（共 2 次）
+        await fs.rm(missingDir, { recursive: true, force: true })
+        await SaveActiveFile({ failureNotice: 'auto-save' })
+        expect(autoSaveNoticeCount()).toBe(2)
     })
 })
 

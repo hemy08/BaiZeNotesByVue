@@ -59,7 +59,7 @@ import {
 } from '../../src/main/utils/file-utils/auto-save'
 // 显式导入被测的 file-operations，确保其真实模块已进入 vitest 模块图，
 // 供桥接文件通过 __vitest_worker__.evaluatedModules 转发调用
-import '../../src/main/utils/file-utils/file-operations'
+import { resetAutoSaveFailureNoticeForTesting } from '../../src/main/utils/file-utils/file-operations'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -96,8 +96,8 @@ if (!realExports) {
     throw new Error('[auto-save-test] bridge cannot find file-operations in the vitest module graph')
 }
 module.exports = {
-    SaveActiveFile: function () {
-        return Promise.resolve(realExports.SaveActiveFile())
+    SaveActiveFile: function (...args) {
+        return Promise.resolve(realExports.SaveActiveFile(...args))
     }
 }
 `
@@ -144,6 +144,8 @@ beforeEach(() => {
     vi.clearAllMocks()
     StopAutoSaveFileTime()
     appState._resetForTesting()
+    // P2 防刷屏：自动保存失败提示去重状态按用例复位
+    resetAutoSaveFailureNoticeForTesting()
     appState.mainWindow = {
         webContents: { send: electronMocks.mainSend }
     } as unknown as Electron.BrowserWindow
@@ -263,9 +265,23 @@ describe('auto-save behavior with real timers', () => {
         await sleep(300)
         StopAutoSaveFileTime()
 
+        // P2 剩余静默失败提示 / 防刷屏：定时自动保存失败只走非模态状态栏，
+        // 且同一错误去重（300ms 内约 10 个周期只提示一次），不再周期性弹错误对话框打断编辑。
         expect(electronMocks.mainSend).toHaveBeenCalledWith(
             'baize:status-bar:update',
             expect.objectContaining({ type: 'error' })
         )
+        const errorNotices = electronMocks.mainSend.mock.calls.filter(
+            ([channel, payload]) =>
+                channel === 'baize:status-bar:update' &&
+                (payload as { type?: string }).type === 'error'
+        )
+        expect(errorNotices).toHaveLength(1)
+        // 自动保存失败不得弹错误对话框（不打断编辑）
+        expect(
+            electronMocks.mainSend.mock.calls.filter(
+                ([channel]) => channel === 'baize:dialog:open-vue'
+            )
+        ).toHaveLength(0)
     })
 })

@@ -275,7 +275,18 @@ const dialogRenderer = {
         remoteImageBlocked: '远程图片已拦截（可在「系统设置 → 隐私」中开启加载）',
         // P2 功能错误处理修复：保存失败时消息对话框提示，且设置对话框保持打开供用户重试
         saveFailedTitle: '设置保存失败',
-        saveFailedMessage: '设置写入磁盘失败：{error}。修改尚未保存，请重试或检查配置目录权限。'
+        saveFailedMessage: '设置写入磁盘失败：{error}。修改尚未保存，请重试或检查配置目录权限。',
+        // P2 剩余静默失败提示：文件页签「浏览默认路径」与自动保存运行时开关同步失败
+        // （原实现只写日志，用户无任何反馈；开关同步失败时回滚 UI 并提供重试）
+        browseFailedTitle: '选择默认路径失败',
+        browseFailedMessage: '无法选择默认保存路径：{error}。可重试。',
+        autoSaveSyncFailedTitle: '自动保存开关同步失败',
+        autoSaveSyncFailedMessage:
+            '自动保存开关未能同步到主进程：{error}。开关已恢复为原状态，可重试或稍后在「应用」时重新保存。',
+        // P2 剩余静默失败提示：外观页签「应用主题」只读显示名读取失败时的内联降级提示
+        // （非阻断；显示名回退为主题标识，不误导为具体主题名）
+        themeDisplayFallbackHint:
+            '无法读取当前应用主题的显示名，已回退显示主题标识；可关闭设置后重新打开重试。'
     },
     themeSetting: {
         title: '主题设置',
@@ -296,7 +307,15 @@ const dialogRenderer = {
         // P2 功能错误处理修复：主题列表加载失败时页签显示错误文案 + 「重试」按钮；
         // 加载成功但列表为空时显示空态提示（同样可重试）
         loadFailed: '主题列表加载失败：{error}',
-        emptyState: '暂无可显示的主题，请重试'
+        emptyState: '暂无可显示的主题，请重试',
+        // P2 剩余静默失败提示：用户切换主题时样式拉取 / 编辑器主题加载失败
+        // （原实现只写日志并静默回退，用户误以为主题切换成功）
+        applyFailedTitle: '应用主题失败',
+        applyFailedMessage: '无法加载主题「{theme}」的样式，界面已保持原主题：{error}。可重试。',
+        applyFailedReasonNotFound: '主进程未返回该主题的样式数据',
+        editorThemeApplyFailedTitle: '编辑器主题加载失败',
+        editorThemeApplyFailedMessage:
+            '编辑器主题「{theme}」加载失败，编辑器已回退为默认主题（界面主题不受影响）。可重试。'
     },
     helpAbout: {
         windowTitle: '关于白泽笔记',

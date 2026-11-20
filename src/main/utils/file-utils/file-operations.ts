@@ -82,10 +82,60 @@ export function getMathRandom(maxLength: number): string {
 }
 
 /**
+ * 自动保存（定时写盘）失败状态栏提示的去重窗口（5 分钟，P2 防刷屏）。
+ *
+ * 背景：自动保存失败后文件仍是脏的，下一个间隔会再次重试；若每次失败都提示（尤其是
+ * 走 SaveActiveFile 原先的「错误对话框 + 状态栏」双提示），会周期性弹模态框打断编辑。
+ * 策略：定时写盘只走状态栏（非模态），且**同一文件 + 同一错误**在窗口内只提示一次，
+ * 错误变化或窗口过期后重新提示；保存成功即清除记录，下次失败立即提示。
+ */
+const AUTO_SAVE_FAILURE_NOTICE_DEDUPE_MS = 5 * 60 * 1000
+
+/** 上一次自动保存失败提示的签名（文件路径 + 错误信息）与时间（仅内存态） */
+let lastAutoSaveFailureNotice: { signature: string; at: number } | null = null
+
+/**
+ * 判定本次自动保存失败是否需要发送状态栏提示（同一错误在窗口内去重）。
+ *
+ * @param signature 失败签名（文件路径 + 错误信息）
+ * @returns true = 需要提示并记录本次时间；false = 窗口内重复失败，仅保留日志
+ */
+function shouldNotifyAutoSaveFailure(signature: string): boolean {
+    const now = Date.now()
+    if (
+        lastAutoSaveFailureNotice !== null &&
+        lastAutoSaveFailureNotice.signature === signature &&
+        now - lastAutoSaveFailureNotice.at < AUTO_SAVE_FAILURE_NOTICE_DEDUPE_MS
+    ) {
+        return false
+    }
+    lastAutoSaveFailureNotice = { signature, at: now }
+    return true
+}
+
+/** 仅供单测：复位自动保存失败提示去重状态（生产代码不得调用） */
+export function resetAutoSaveFailureNoticeForTesting(): void {
+    lastAutoSaveFailureNotice = null
+}
+
+/** SaveActiveFile 的可选行为参数（缺省保持既有行为，向后兼容） */
+export interface SaveActiveFileOptions {
+    /**
+     * 失败提示策略：
+     * - `interactive`（默认）：错误对话框 + 状态栏——用户主动保存（菜单 / Ctrl+S /
+     *   关闭确认 / 另存为前置保存等），必须明确告知且可立即处理；
+     * - `auto-save`：仅状态栏（非模态，不打断编辑）且同一错误 5 分钟内去重——
+     *   定时自动保存失败会周期性重试，反复弹模态框会严重打断编辑（P2 防刷屏）。
+     */
+    failureNotice?: 'interactive' | 'auto-save'
+}
+
+/**
  * 保存当前激活的文件
+ * @param options 失败提示策略（缺省 interactive，与既有行为一致）
  * @returns 保存是否成功
  */
-export async function SaveActiveFile(): Promise<boolean> {
+export async function SaveActiveFile(options: SaveActiveFileOptions = {}): Promise<boolean> {
     const curFile = appState.currentActiveFile
     if (!curFile) {
         // FE-08：无活动文件时不再 `throw new Error('No active file')`——
@@ -119,6 +169,8 @@ export async function SaveActiveFile(): Promise<boolean> {
         appState.markSaved()
         // PF-17：写盘后刷新磁盘签名，避免下一次目录刷新因旧签名而重读刚保存的内容
         await refreshActiveFileDiskStamp(curFile.path)
+        // P2 防刷屏：保存成功即清除自动保存失败提示记录，下次失败重新提示
+        lastAutoSaveFailureNotice = null
 
         logger.info('The file has been saved successfully', curFile.path)
 
@@ -129,11 +181,25 @@ export async function SaveActiveFile(): Promise<boolean> {
         return true
     } catch (error: unknown) {
         logger.error('Failed to save the file', curFile.path, error)
+        const errorMessage = (error as Error).message
+        if (options.failureNotice === 'auto-save') {
+            // P2 防刷屏：自动保存失败只走非模态状态栏，且同一错误在窗口内去重，
+            // 不弹错误对话框（否则定时器每轮重试都会打断用户编辑）
+            if (shouldNotifyAutoSaveFailure(`${curFile.path}::${errorMessage}`)) {
+                sendToMainWindow(IPC.EVENTS.STATUS_BAR_UPDATE, {
+                    message: tMain('mainMsg.status.autoSaveFailed', {
+                        message: errorMessage
+                    }),
+                    type: 'error'
+                })
+            }
+            return false
+        }
         // FUN-27：用户可见提示统一中文（CMP-30：文案走 mainMsg 词典）
-        showErrorMessageBox(tMain('mainMsg.file.saveFailed', { message: (error as Error).message }))
+        showErrorMessageBox(tMain('mainMsg.file.saveFailed', { message: errorMessage }))
         // D-1/FUN-05：保存失败通过现有状态栏事件通知渲染层，用户可见
-        appState.mainWindow?.webContents.send(IPC.EVENTS.STATUS_BAR_UPDATE, {
-            message: tMain('mainMsg.status.saveFailed', { message: (error as Error).message }),
+        sendToMainWindow(IPC.EVENTS.STATUS_BAR_UPDATE, {
+            message: tMain('mainMsg.status.saveFailed', { message: errorMessage }),
             type: 'error'
         })
         return false

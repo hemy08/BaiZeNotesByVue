@@ -15,7 +15,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { defineComponent } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 
 import GeneralPanel from '@renderer/components/dialogs/complex/system-setting/GeneralPanel.vue'
 import FilePanel from '@renderer/components/dialogs/complex/system-setting/FilePanel.vue'
@@ -29,6 +29,8 @@ import { useSystemSettingForm } from '@renderer/components/dialogs/complex/syste
 // P2 功能错误处理修复：保存失败断言（全局消息对话框 + 错误文案走 i18n）
 import { getConfigStore } from '@renderer/common/useConfigStore'
 import { t } from '@renderer/common/i18n'
+// P2 剩余静默失败提示（本批）：失败提示节流复位（自动保存开关同步防刷屏）
+import { resetActionFailureThrottleForTesting } from '@renderer/common/action-feedback'
 
 /** 全局配置 store 单例（断言保存失败的可见提示） */
 const store = getConfigStore()
@@ -36,6 +38,30 @@ const store = getConfigStore()
 /** 构造草稿：默认值 + 局部覆盖（与组件默认值真源一致） */
 function draft(overrides: Partial<SystemDialogSettings> = {}): SystemDialogSettings {
     return { ...createDefaultSystemDialogSettings(), ...overrides }
+}
+
+/**
+ * 以最小宿主挂载 FilePanel 并像壳层一样把 update 补丁合并回 props。
+ *
+ * 失败回滚（P2 剩余静默失败提示）需要 props 真实更新才能断言 DOM 状态，直接 mount
+ * 子组件时 props 是静态的，因此新增用例统一用本宿主挂载。
+ */
+function mountFilePanel(initial: SystemDialogSettings = draft()) {
+    const settings = ref<SystemDialogSettings>({ ...initial })
+    // 最小宿主组件（普通组件选项对象，避免新增 defineComponent 触发
+    // vue/one-component-per-file 警告）：模拟壳层把 update 补丁合并回 props
+    const wrapper = mount({
+        setup() {
+            return () =>
+                h(FilePanel, {
+                    settings: settings.value,
+                    onUpdate: (patch: Partial<SystemDialogSettings>) => {
+                        settings.value = { ...settings.value, ...patch }
+                    }
+                })
+        }
+    })
+    return { wrapper, settings }
 }
 
 describe('GeneralPanel（通用设置页签）', () => {
@@ -66,11 +92,18 @@ describe('FilePanel（文件设置页签）', () => {
     let invoke: ReturnType<typeof vi.fn>
 
     beforeEach(() => {
+        // P2 防刷屏：失败提示节流状态按用例复位，避免跨用例相互抑制弹框
+        resetActionFailureThrottleForTesting()
+        store.hideDialog('message')
+        store.clearMessageDialogRetry()
         invoke = vi.fn().mockResolvedValue({ ok: true })
         vi.stubGlobal('electron', { ipcRenderer: { invoke } })
     })
 
     afterEach(() => {
+        store.hideDialog('message')
+        store.clearMessageDialogRetry()
+        resetActionFailureThrottleForTesting()
         vi.unstubAllGlobals()
         vi.restoreAllMocks()
     })
@@ -89,6 +122,8 @@ describe('FilePanel（文件设置页签）', () => {
             autoSaveEnabled: true,
             autoSaveInterval: 60
         })
+        // 成功路径不弹错误提示
+        expect(store.dialogs.messageDialog.visible).toBe(false)
     })
 
     it('自动保存关闭时隐藏间隔输入行', () => {
@@ -108,19 +143,110 @@ describe('FilePanel（文件设置页签）', () => {
         expect(wrapper.emitted('update')).toEqual([[{ defaultFilePath: 'D:\\notes' }]])
     })
 
-    it('自动保存 IPC 返回 ok:false 时记录错误、不抛异常、不回滚开关', async () => {
+    // P2 剩余静默失败提示（本批）：浏览默认路径失败此前只写日志，按钮无任何反馈。
+    it('浏览默认路径失败：弹错误提示 + 重试，重试成功后写入路径', async () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-        invoke.mockResolvedValueOnce({ ok: false })
+        invoke.mockRejectedValueOnce(new Error('目录选择器不可用'))
         const wrapper = mount(FilePanel, { props: { settings: draft() } })
+
+        await wrapper.find('.browse-btn').trigger('click')
+        await flushPromises()
+
+        expect(errorSpy).toHaveBeenCalledWith(
+            '选择默认路径失败:',
+            expect.objectContaining({ message: '目录选择器不可用' })
+        )
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.type).toBe('error')
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.systemSetting.browseFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain('目录选择器不可用')
+        // 失败时不写入路径
+        expect(wrapper.emitted('update')).toBeUndefined()
+        // 重试按钮已挂载：主进程恢复后重试 → 重新拉起选择器并写入路径
+        expect(store.messageDialogRetry.value).not.toBeNull()
+        invoke.mockResolvedValueOnce('D:\\notes')
+        store.runMessageDialogRetry()
+        await flushPromises()
+        expect(wrapper.emitted('update')).toEqual([[{ defaultFilePath: 'D:\\notes' }]])
+    })
+
+    // P2 剩余静默失败提示（本批）：自动保存开关同步失败此前只记日志，开关 UI 已即时变更
+    // 但主进程定时器未同步。现在弹错误提示 + 回滚开关 + 重试（宿主模拟壳层合并补丁）。
+    it('自动保存同步返回 ok:false：弹错误提示、回滚开关，重试成功后重新开启', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        invoke.mockResolvedValueOnce({ ok: false, reason: 'invalid-payload' })
+        const { wrapper, settings } = mountFilePanel()
 
         await wrapper.findAll('.setting-checkbox')[0].setValue(true)
         await flushPromises()
 
         expect(errorSpy).toHaveBeenCalledWith(
-            '同步自动保存设置失败: 主进程返回失败标志',
-            expect.objectContaining({ ok: false })
+            '同步自动保存设置失败:',
+            expect.objectContaining({ message: 'invalid-payload' })
         )
-        expect(wrapper.emitted('update')![0]).toEqual([{ autoSaveEnabled: true }])
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.title).toBe(
+            t('dialogRenderer.systemSetting.autoSaveSyncFailedTitle')
+        )
+        expect(store.dialogs.messageDialog.message).toContain('invalid-payload')
+        // 开关回滚到操作前状态（默认关闭）：DOM 与草稿一致
+        expect(settings.value.autoSaveEnabled).toBe(false)
+        expect((wrapper.findAll('.setting-checkbox')[0].element as HTMLInputElement).checked).toBe(
+            false
+        )
+        // 重试：主进程恢复后按用户目标状态重新同步并重新开启
+        expect(store.messageDialogRetry.value).not.toBeNull()
+        invoke.mockResolvedValueOnce({ ok: true, autoSaveEnabled: true, autoSaveInterval: 60 })
+        store.runMessageDialogRetry()
+        await flushPromises()
+        expect(settings.value.autoSaveEnabled).toBe(true)
+        expect((wrapper.findAll('.setting-checkbox')[0].element as HTMLInputElement).checked).toBe(
+            true
+        )
+    })
+
+    it('自动保存同步 invoke 异常：弹错误提示并回滚开关', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        invoke.mockRejectedValueOnce(new Error('主进程不可用'))
+        const { wrapper, settings } = mountFilePanel()
+
+        await wrapper.findAll('.setting-checkbox')[0].setValue(true)
+        await flushPromises()
+
+        expect(errorSpy).toHaveBeenCalledWith('同步自动保存设置失败:', expect.any(Error))
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        expect(store.dialogs.messageDialog.message).toContain('主进程不可用')
+        expect(settings.value.autoSaveEnabled).toBe(false)
+        expect((wrapper.findAll('.setting-checkbox')[0].element as HTMLInputElement).checked).toBe(
+            false
+        )
+    })
+
+    // P2 防刷屏：同一目标状态 10s 内重复失败只提示一次（后续只记日志）
+    it('自动保存同步：同一目标状态重复失败时提示节流（只弹一次）', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        invoke.mockResolvedValue({ ok: false, reason: 'busy' })
+        const { wrapper } = mountFilePanel()
+
+        await wrapper.findAll('.setting-checkbox')[0].setValue(true)
+        await flushPromises()
+        expect(store.dialogs.messageDialog.visible).toBe(true)
+        store.hideDialog('message')
+
+        // 回滚后再开启（同一目标状态）→ 节流期内只记日志
+        await wrapper.findAll('.setting-checkbox')[0].setValue(true)
+        await flushPromises()
+        expect(store.dialogs.messageDialog.visible).toBe(false)
+        expect(errorSpy).toHaveBeenCalledWith(
+            '[ActionFeedback][throttled] ' +
+                t('dialogRenderer.systemSetting.autoSaveSyncFailedTitle') +
+                ': ' +
+                t('dialogRenderer.systemSetting.autoSaveSyncFailedMessage', {
+                    error: 'busy'
+                })
+        )
     })
 })
 
@@ -146,6 +272,22 @@ describe('AppearancePanel（外观设置页签）', () => {
 
         await wrapper.find('.browse-btn').trigger('click')
         expect(wrapper.emitted('open-theme-setting')).toHaveLength(1)
+    })
+
+    // P2 剩余静默失败提示（本批）：主题显示名读取失败时显示内联降级提示（非阻断）
+    it('themeDisplayFallback 为 true 时显示内联降级提示，默认不显示', () => {
+        const normal = mount(AppearancePanel, {
+            props: { settings: draft(), themeDisplay: 'baize' }
+        })
+        expect(normal.find('.theme-display-fallback-hint').exists()).toBe(false)
+
+        const fallback = mount(AppearancePanel, {
+            props: { settings: draft(), themeDisplay: '未知', themeDisplayFallback: true }
+        })
+        const hint = fallback.find('.theme-display-fallback-hint')
+        expect(hint.exists()).toBe(true)
+        expect(hint.text()).toBe(t('dialogRenderer.systemSetting.themeDisplayFallbackHint'))
+        expect(fallback.find('.theme-current-name').text()).toBe('未知')
     })
 })
 
@@ -298,6 +440,38 @@ describe('useSystemSettingForm（共享表单 composable）', () => {
         expect(form.settings.value.language).toBe('en-US')
         expect(form.settings.value.fontSize).toBe(16)
         expect(form.isDirty.value).toBe(false)
+    })
+
+    // P2 剩余静默失败提示（本批）：主题显示名读取失败此前只写日志、界面停留在初始值，
+    // 用户可能把「baize」误读为真实主题名。现在回退为「未知」并置 fallback 标记（外观页签
+    // 渲染内联提示），且不影响系统设置本身的加载。
+    it('loadSettings：主题显示名读取失败时回退「未知」并置降级标记（设置加载不受影响）', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        configRead.mockImplementation((name: string) => {
+            if (name === 'theme') return Promise.reject(new Error('主题配置不可读'))
+            if (name === 'backup') return Promise.resolve({ backups: [], latest: null })
+            return Promise.resolve({ language: 'en-us', fontSize: 16 })
+        })
+        const form = mountForm()
+        await form.loadSettings()
+
+        // 系统设置正常加载
+        expect(form.settings.value.language).toBe('en-US')
+        expect(form.settings.value.fontSize).toBe(16)
+        // 主题显示名降级 + 标记
+        expect(errorSpy).toHaveBeenCalledWith('读取当前主题显示名失败:', expect.any(Error))
+        expect(form.appThemeDisplay.value).toBe(t('common.unknown'))
+        expect(form.appThemeDisplayFallback.value).toBe(true)
+
+        // 重新打开（再次 loadSettings）成功时清除降级标记
+        configRead.mockImplementation((name: string) => {
+            if (name === 'theme') return Promise.resolve({ currentTheme: 'dark' })
+            if (name === 'backup') return Promise.resolve({ backups: [], latest: null })
+            return Promise.resolve({ language: 'zh-CN' })
+        })
+        await form.loadSettings()
+        expect(form.appThemeDisplay.value).toBe('深邃夜空')
+        expect(form.appThemeDisplayFallback.value).toBe(false)
     })
 
     it('saveSettings：await 写入 system 配置并返回快照；界面范围外值只 warn、不阻断、不改值', async () => {

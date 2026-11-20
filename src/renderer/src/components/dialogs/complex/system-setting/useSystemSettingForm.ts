@@ -43,6 +43,11 @@ export interface SystemSettingForm {
     settings: Ref<SystemDialogSettings>
     /** 外观页签只读展示的应用主题显示名（i18n 映射后） */
     appThemeDisplay: Ref<string>
+    /**
+     * P2 剩余静默失败提示：应用主题显示名是否因读取失败而回退。
+     * 为 true 时外观页签显示内联降级提示（非阻断，不弹窗打断设置浏览）。
+     */
+    appThemeDisplayFallback: Ref<boolean>
     /** 草稿是否偏离打开时的加载值 */
     isDirty: ComputedRef<boolean>
     /** 打开对话框时加载主进程配置 + 主题显示名 */
@@ -63,11 +68,17 @@ export function useSystemSettingForm(): SystemSettingForm {
      * 批次 C #10：应用主题收口（方案 A）——只读展示当前主题显示名，
      * 数据来自 config:read('theme')（主进程 theme-config 真源）经既有
      * IPC.THEME.GET_ALL_THEMES 通道映射 i18n 显示名；两个通道均为既有通道，
-     * 不新增 IPC。读取失败时回退显示主题 type。
+     * 不新增 IPC。
+     *
+     * P2 剩余静默失败提示：读取失败此前只写日志（显示名停留在初始值，用户可能误读为
+     * 真实主题名）。现回退显示「未知」并置 fallback 标记，由外观页签渲染一行内联降级提示
+     * （非阻断；重新打开设置会再次读取，用户无需处理弹窗）。
      */
     const appThemeDisplay = ref('baize')
+    const appThemeDisplayFallback = ref(false)
 
     async function loadThemeDisplay(): Promise<void> {
+        appThemeDisplayFallback.value = false
         try {
             const themeConfig = await window.api.config.read<AppThemeConfig>('theme')
             const current = themeConfig?.currentTheme || 'baize'
@@ -89,6 +100,8 @@ export function useSystemSettingForm(): SystemSettingForm {
             appThemeDisplay.value = current
         } catch (error) {
             logger.error('读取当前主题显示名失败:', error)
+            appThemeDisplay.value = t('common.unknown')
+            appThemeDisplayFallback.value = true
         }
     }
 
@@ -160,6 +173,7 @@ export function useSystemSettingForm(): SystemSettingForm {
     return {
         settings,
         appThemeDisplay,
+        appThemeDisplayFallback,
         isDirty,
         loadSettings,
         saveSettings,

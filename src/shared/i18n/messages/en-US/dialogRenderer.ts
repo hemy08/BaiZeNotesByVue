@@ -281,7 +281,18 @@ const dialogRenderer = {
         // settings dialog stays open so the user can retry
         saveFailedTitle: 'Failed to save settings',
         saveFailedMessage:
-            'Could not write the settings to disk: {error}. Your changes were not saved; please retry or check the config directory permissions.'
+            'Could not write the settings to disk: {error}. Your changes were not saved; please retry or check the config directory permissions.',
+        // P2 remaining silent-failure fix: "Browse default path" and the runtime auto-save
+        // toggle sync used to only log errors; failures now show a dialog (toggle rolls back)
+        browseFailedTitle: 'Failed to choose the default path',
+        browseFailedMessage: 'Could not choose the default save path: {error}. You can retry.',
+        autoSaveSyncFailedTitle: 'Failed to sync the auto-save toggle',
+        autoSaveSyncFailedMessage:
+            'The auto-save toggle could not be synced to the main process: {error}. The toggle was restored to its previous state; retry now or save again with "Apply".',
+        // P2 remaining silent-failure fix: inline, non-blocking hint when the read-only
+        // "App theme" display name cannot be loaded (falls back to the theme id)
+        themeDisplayFallbackHint:
+            'Could not read the display name of the current app theme, so the theme id is shown instead. Close the settings and reopen them to retry.'
     },
     themeSetting: {
         title: 'Theme settings',
@@ -302,7 +313,16 @@ const dialogRenderer = {
         // P2 error-handling fix: show an error state + retry button when the theme list
         // fails to load; show an empty-state hint (also retryable) when the list is empty
         loadFailed: 'Failed to load the theme list: {error}',
-        emptyState: 'No themes available. Please retry.'
+        emptyState: 'No themes available. Please retry.',
+        // P2 remaining silent-failure fix: theme style / editor theme load failures while
+        // the user switches themes used to be logged only and silently fell back
+        applyFailedTitle: 'Failed to apply the theme',
+        applyFailedMessage:
+            'Could not load the styles of theme "{theme}"; the previous theme is kept: {error}. You can retry.',
+        applyFailedReasonNotFound: 'the main process returned no style data for this theme',
+        editorThemeApplyFailedTitle: 'Failed to load the editor theme',
+        editorThemeApplyFailedMessage:
+            'Could not load editor theme "{theme}"; the editor fell back to the default theme (the app theme is unaffected). You can retry.'
     },
     helpAbout: {
         windowTitle: 'About BaiZe Notes',
