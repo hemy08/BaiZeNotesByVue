@@ -1,27 +1,50 @@
-## 2026年11月20日 - 版本 1.3.10（未发布）
+## 2026年11月20日 - 版本 1.3.9（结构治理 / 工程优化 / 体验修复）
 
-### 🔧 行为变更
-
-- **自动保存默认关闭**：`systemSettingDefaults` / `SYSTEM_SETTING_FALLBACK` 的 `autoSaveEnabled` 由 true 改为 false；软件打开后不启用自动保存，用户需在「系统设置 → 文件设置」中自行开启（一次性迁移 v2→v3 也会把旧默认 true 的存量值重置为 false，之后用户开启的 true 不再被覆盖）
-- **未保存关闭确认**：关闭窗口/退出应用时，若当前文件有未保存修改，弹原生对话框「保存并关闭 / 不保存 / 取消」；保存失败或取消不会关闭，避免静默丢内容（新增 `src/main/utils/close-confirm.ts` 与 `mainMsg.closeConfirm.*` 中英文文案）
-
-### ✅ 门禁
-
-- typecheck 0 / ESLint 0 / Prettier 全绿 / vitest 185 文件 / 3,396 用例 / electron-vite build 成功
-
-## 2026年11月19日 - 版本 1.3.9（版本维护 / 1.3.8 发布收尾）
-
-> 1.3.9 为版本维护批次：无功能与代码变更；用于承接 1.3.8 发布收尾，并为下一阶段优化准备。
+> 承接 1.3.8（2026-11-19 发布）之后 tag `release-1.3.8` 的全部修改：P0~P4 工程优化、设置/对话框与 i18n/可访问性、安装包瘦身、E2E 与性能基线、HTML 查看器导航修复、自动保存默认关闭与未保存关闭确认等。
 
 ### 🔧 版本与发布
 
 - **全仓版本号升级 1.3.8 → 1.3.9**：`package.json` / `package-lock.json` / `resources/config/version.json` / README 徽章与路线图 / docs wiki / docs reports / 结构图等当前状态标注统一
-- **1.3.8 已发布**（2026-11-19）：GitHub Release `release-1.3.8`（tag `release-1.3.8` → `1d71cc0`；NSIS 117.94 MB / portable 107.03 MB / latest.yml / blockmap），`/releases/latest` 已指向 1.3.8
+- **1.3.8 已发布**（2026-11-19）：GitHub Release `release-1.3.8`（tag `release-1.3.8` → `1d71cc0`；NSIS 117.94 MB / portable 107.03 MB / latest.yml / blockmap）
 - **1.3.8 已包含**：结构优化第 1~5 批 + M3 单一 manifest、设置页/设置对话框拆分（4 个对话框）、依赖安全治理（Dependabot 254 条分类 + 配置 + 修复）
+
+### 📦 P0 安装包瘦身与 E2E
+
+- **安装包瘦身**：Electron locales 55 → 2（zh-CN/en-US）；Setup **117.94 → 109.98 MiB（−6.76%）**、portable **107.03 → 99.83 MiB（−6.73%）**、win-unpacked **−45.56 MiB（−10.9%）**、asar 39.31 MiB
+- **CI 体积预算**：新增 `build/check-bundle-budget.js` + `budget:check` + CI `bundle-budget` job（入口/壳/安装包/asar/locales 阈值）
+- **E2E 补齐**：新增启动恢复（autoOpenLastFile/Folder）、设置持久化、打包产物启动用例；新增 Electron profile 夹具（临时 userData + ConfigSandbox）；CI e2e 改 `build:unpack`、超时 45min、coverage artifact 上传
+- **E2E 根因与稳定性**：定位 Electron 43.8.12 上游 sandboxed preload mojo 竞态（非产品逻辑），增加「首次导航 file: + 2s 桥宽限 + 同进程 reload 恢复」；单轮 9/9、repeat-each=2 18/18
+
+### ⚡ P1 缺陷修复 / 性能 / 清理
+
+- 修复预览 `renderSequence` TDZ ReferenceError（+回归测试）
+- 修复设置对话框首开不回填持久化值（immediate watch + 单测，E2E fixme 转正）
+- **启动性能基线**：新增 shared/perf marks 与 `build/perf-baseline.js` → `out/analysis/perf-baseline.json`；开发构建冷启动 app-ready 260.6ms / renderer-ready 399.5ms / editor-ready 514.6ms / preview-ready 585.8ms
+- **打包版冷启动基线**：窗口可见 414.3ms、app-ready 203.8ms、editor-ready 492.4ms、preview-ready 535.2ms（较开发构建快 4%~22%）
+- 存量清理：eslint-disable 34→24（源码保留项均有原因注释）、`@types/jsdom` 移除；新增 `build/check-doc-links.js` + `docs:check` + CI 步骤（742 链接 / 495 相对链接，断链 0）
+
+### 🌐 P2 i18n 与可访问性
+
+- 补齐 zh-CN/en-US 缺失 key（dialogRenderer / toolsConvert / toolsNetwork 等），替换插件工具与对话框硬编码文案；新增 key 一致性/空值/引用校验
+- **BaseDialog 可访问性**：`role="dialog"`、`aria-modal`、`aria-labelledby/aria-label`、关闭按钮 aria-label、打开聚焦/关闭焦点归还、Esc 关闭、Tab/Shift+Tab 焦点陷阱；新增 `dialog-stack`（多对话框仅顶层响应 Esc/Tab）；新增 `dialog-a11y` 测试（12 例）
+
+### 🔧 P3 依赖升级
+
+- `prettier` 3.9.6 → **3.10.1**；`vue-tsc` 3.3.11 → **3.3.14**
+- 升级 vue-tsc 暴露并修复 `InsertImageDialog` 只读 computed 赋值（TS2540）真实缺陷
+- `katex` 0.19.1 评估后回滚（mermaid 锁 `^0.18`，产生双份 KaTeX chunk +499KB）；15 项 major 依赖单列排期（见《依赖升级与代码签名排期》）
+
+### 🧭 P4 与体验修复
+
+- 新增《依赖升级与代码签名排期》（11 项 major 分批 B1~B7 + 签名上线清单）
+- **HTML 查看器导航修复**：点击顶部导航后目标页 `report-nav.js` 因 sandbox 不执行而导航消失、路径不切换；改为拦截本地 `.html` 链接走查看器加载器（重新读取 + 注入静态导航 + 更新 filePath）
+- **自动保存默认关闭**：`systemSettingDefaults` / `SYSTEM_SETTING_FALLBACK` 的 `autoSaveEnabled` 由 true 改为 false；软件打开后不启用自动保存，用户需在「系统设置 → 文件设置」中自行开启（schema v3 一次性迁移旧默认 true → false，之后用户开启不再覆盖）
+- **未保存关闭确认**：关闭窗口/退出应用时若当前文件有未保存修改，弹原生对话框「保存并关闭 / 不保存 / 取消」；取消或保存失败不关闭（新增 `close-confirm.ts` 与中英文案）
 
 ### ✅ 门禁
 
-- typecheck 三工程 0 错误、ESLint 0/0、vitest **178 文件 / 3,322 用例全通过**、electron-vite build 成功
+- typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **185 文件 / 3,396 用例全通过**、electron-vite build 成功
+- 质量基线/文档链接检查/CI 体积预算/生产依赖 audit（0 漏洞）全部通过
 
 ## 2026年11月19日 - 版本 1.3.8（版本维护 / 结构优化第 1 批）
 

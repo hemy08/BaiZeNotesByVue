@@ -1,17 +1,4 @@
-## 版本 1.3.10 (2026-11-20，未发布)
-
-### 🔧 行为变更
-
-- 自动保存默认关闭：软件打开后不启用，需在系统设置中自行开启（存量旧默认 true 一次性迁移为 false）
-- 关闭窗口/退出时若有未保存修改：弹框「保存并关闭 / 不保存 / 取消」，取消或保存失败不关闭
-
-### ✅ 门禁
-
-- typecheck 0 / ESLint 0 / Prettier 全绿 / vitest 185 文件 / 3,396 用例 / build 成功
-
----
-
-## 版本 1.3.9 (2026-11-19)
+## 版本 1.3.9 (2026-11-20)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
 
@@ -19,22 +6,37 @@
 <summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
 <blockcode><pre><code>
 
-### 🔧 版本维护
+> 1.3.9 承接 tag release-1.3.8 之后的全部修改（原 1.3.10 草稿已合并归入本版本）。
 
-- 版本号 **1.3.8 → 1.3.9**（无功能/代码变更，为后续发布准备）
-- **1.3.8 已发布**：GitHub Release `release-1.3.8`（tag → `1d71cc0`；NSIS 117.94 MB / portable 107.03 MB / latest.yml / blockmap）
-- 1.3.8 内容：结构优化 1~5 批 + M3、设置页/对话框拆分、依赖安全治理
-- 文档版本标注、版本历史、报告索引与 HTML Wiki 同步
+### 📦 安装包与 E2E
+
+- Electron locales 55 → 2：Setup 109.98 MiB（−6.76%）、portable 99.83 MiB（−6.73%）、win-unpacked −45.56 MiB
+- CI 体积预算（bundle-budget）；E2E 补启动恢复/设置持久化/打包启动 + coverage artifact
+- E2E preload 偶发未注入定位为 Electron 上游 mojo 竞态，增加 reload 恢复（单轮 9/9、repeat 18/18）
+
+### ⚡ 性能与修复
+
+- 启动性能基线（开发 585.8ms / 打包 535.2ms preview-ready）+ 打包版冷启动数据
+- 修复预览 renderSequence TDZ、设置首开不回填、InsertImageDialog 只读 computed
+- 存量清理 + docs 链接检查（742 链接 / 断链 0）；prettier 3.10.1、vue-tsc 3.3.14
+
+### 🌐 i18n 与可访问性
+
+- 补齐中英文 key、替换硬编码文案；BaseDialog ARIA/焦点陷阱/嵌套对话框栈 + 测试
+
+### 🧭 体验修复
+
+- HTML 查看器顶部导航跳转后导航消失/路径不切换 → 拦截本地 .html 走查看器加载器
+- 自动保存默认关闭（用户自行开启；schema v3 迁移旧默认 true）
+- 关闭/退出未保存修改 → 「保存并关闭 / 不保存 / 取消」确认框，取消不关闭
 
 ### ✅ 门禁
 
-- typecheck 三工程 0 错误、ESLint 0/0、vitest 178 文件 / 3,322 用例全通过
+- typecheck 0 / ESLint 0 / Prettier 全绿 / vitest 185 文件 / 3,396 用例 / build 成功
 
 </code></pre></blockcode></details>
 
 ---
-
-# 发布说明 (Release Notes)
 
 ## 版本 1.3.8 (2026-11-19)
 
