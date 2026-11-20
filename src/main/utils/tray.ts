@@ -16,6 +16,7 @@ import { app, Menu, Notification, Tray } from 'electron'
 import { join } from 'path'
 import { getIconPath } from './app-paths'
 import { appState, getLiveMainWindow } from './app-state'
+import { getAppContext } from '../app-context'
 import { tMain } from './i18n'
 import { logger } from './logger'
 
@@ -49,9 +50,6 @@ function quitFromTray(): void {
 
 let tray: Tray | null = null
 
-/** 1.3.6：隐藏到托盘的提示是否已发送（每进程一次，避免每次关闭都弹通知） */
-let trayHideNotified = false
-
 /**
  * 1.3.6：首次因「最小化到托盘」隐藏窗口时发送系统通知。
  * 背景：Windows 托盘图标可能位于任务栏溢出区（用户默认看不到），关闭窗口后
@@ -59,10 +57,13 @@ let trayHideNotified = false
  * 仍在托盘运行、可右键托盘图标退出。Notification 不受支持或发送失败时静默降级。
  */
 export function notifyMinimizedToTray(): void {
-    if (trayHideNotified) {
+    // M1（2026-11-20）：状态收敛到 AppContext（原模块级 let），窗口重建/测试统一 reset；
+    // 语义不变：每进程仅提示一次，disposeTray 后允许重新提示。
+    const context = getAppContext()
+    if (context.tray.hideNotified) {
         return
     }
-    trayHideNotified = true
+    context.tray.hideNotified = true
     try {
         if (!Notification.isSupported()) {
             return
@@ -106,5 +107,5 @@ export function disposeTray(): void {
         tray = null
     }
     // 销毁后允许下次按需重新创建时再次提示（进程退出场景无影响；测试据此复位）
-    trayHideNotified = false
+    getAppContext().tray.hideNotified = false
 }

@@ -21,6 +21,11 @@
 - **B5**：electron 43→45 评估后回滚（dev E2E userData/欢迎页时序不稳定，保留 43.8.12）
 - Node 运行时升级 26.13.1；体积预算按依赖增长调整（Setup 115 MiB / asar 47 MiB）
 
+### 🧹 工程质量
+
+- **E2E 启动链路**：dev 启动改用原生 `--user-data-dir`（替代 `-r` 夹具 setPath），删除废弃夹具；Electron 43 下 E2E 9/9，为后续 Electron 45 升级减少启动分支差异
+- **M1 收口**：`trayHideNotified` 从 tray.ts 模块级状态迁入 `AppContext.tray`（窗口重建/测试统一 reset，行为不变）
+
 ### ✅ 门禁
 
 - typecheck 三工程 0 错误、ESLint 0/0、Prettier 全绿、vitest **185 文件 / 3,397 用例全通过**、electron-vite build 成功
@@ -77,6 +82,11 @@
 - **B8（补充）**：vue 3.5.45→3.5.46；jsdom 29→31 评估失败回滚（简写序列化/游离 DOM 用例异常）；ESLint 10 存量 **30 条 warning 全部清理**并恢复新增规则为 error（0 warning）
 - **B5**：electron 43→45 评估后回滚（dev E2E userData/欢迎页时序不稳定，保留 43.8.12）
 - Node 运行时升级 26.13.1；体积预算按依赖增长调整（Setup 115 MiB / asar 47 MiB）
+
+### 🧹 工程质量
+
+- **E2E 启动链路**：dev 启动改用原生 `--user-data-dir`（替代 `-r` 夹具 setPath），删除废弃夹具；Electron 43 下 E2E 9/9，为后续 Electron 45 升级减少启动分支差异
+- **M1 收口**：`trayHideNotified` 从 tray.ts 模块级状态迁入 `AppContext.tray`（窗口重建/测试统一 reset，行为不变）
 
 ### ✅ 门禁
 
