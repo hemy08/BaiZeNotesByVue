@@ -30,6 +30,13 @@
                 </li>
             </ul>
         </div>
+        <!-- P0-6：选中文本气泡工具栏 + Slash 命令（编写体验开关，默认关闭；组件零监听当禁用） -->
+        <EditorBubbleToolbar
+            v-if="flags.writingBubble || flags.writingSlash"
+            :editor="bubbleEditorRef"
+            :bubble-enabled="flags.writingBubble"
+            :slash-enabled="flags.writingSlash"
+        />
     </div>
 </template>
 
@@ -48,7 +55,7 @@ let markdownFoldingProviderRegistered = false
 import './monaco-worker-setup'
 import { registerCustomLanguages } from './register-languages'
 import * as monaco from 'monaco-editor'
-import { ref, onMounted, watch, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, watch, onBeforeUnmount, computed, nextTick, shallowRef } from 'vue'
 import EventBus from '../../common/event-bus/event-bus'
 import * as editor from './hemy-editor'
 import type { MarkdownTOC } from '../../../../shared/types'
@@ -66,6 +73,18 @@ import {
     filterOutlineItems
 } from './editor-outline-plus'
 import { applyEditorSpellcheck, resolveSpellcheckLanguage } from './editor-spellcheck'
+import { writingModeState } from './useWritingMode'
+import { EditorBubbleToolbar } from './writing-bubble'
+import {
+    loadCursorSession,
+    saveCursorSession,
+    type EditorCursorSession
+} from './editor-cursor-session'
+import {
+    recordSelectionStats,
+    recordWritingStats,
+    resetWritingStatsBaselineForFile
+} from './useWritingSession'
 // 1.5.0（编辑器 → 预览滚动同步）：锚点归一化纯函数（与预览侧同一模块，口径唯一）
 import { ComputeEditorScrollAnchor, type EditorScrollAnchor } from './preview-scroll-sync'
 // P1 性能基线：Monaco 编辑器就绪阶段标记（默认关闭，诊断开关下才输出）
@@ -97,6 +116,8 @@ const props = defineProps({
 
 const monacoEditorContainer = ref<HTMLElement | null>(null)
 let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
+/** 气泡工具栏使用 shallowRef 传递 Monaco 实例（避免 VNode 深度响应式代理） */
+const bubbleEditorRef = shallowRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 
 // 1.5.1 可选能力开关（A6/A7/A10；A8 为默认能力不受开关控制）
 const { flags } = useFeatureFlags()
@@ -110,17 +131,326 @@ const spellcheckLanguage = resolveSpellcheckLanguage()
 
 /** 按当前开关同步编辑器 textarea 的拼写检查属性（编辑器未就绪时安全跳过） */
 function syncSpellcheckAttributes(): void {
+    // 写作模式临时启用拼写检查（不修改系统能力开关）
     applyEditorSpellcheck(editorInstance, flags.spellcheck, spellcheckLanguage)
 }
 
 // A6：开关变化时即时切换（设置保存后主进程广播 -> useFeatureFlags 更新 -> 此处响应）
 watch(
-    () => flags.spellcheck,
+    () => [flags.spellcheck, writingModeState.enabled],
     () => syncSpellcheckAttributes()
 )
 
 /** A7/A8：AddActions 返回的显式释放句柄（原生 paste 监听等），卸载时统一 dispose */
 const editorEnhanceDisposables: Array<{ dispose(): void } | undefined> = []
+
+/* ==================== 写作模式（P0-1/2/4/5） ====================
+ * 只影响呈现与编辑行为：
+ * - 进入时保存当前编辑器选项并应用写作排版（字号/行高/隐藏行号等）；
+ * - Typewriter：光标移动后把当前行稳定在视口中部；
+ * - Focus：给当前段落加 decoration 高亮（CSS 在 WritingModeHost 全局样式中）；
+ * - 光标/滚动/选区按文件路径写入 localStorage，切回文件时恢复。
+ * 关闭写作模式后恢复进入前的选项；所有失败静默降级，不影响输入主链路。
+ */
+let savedWritingOptions: monaco.editor.IEditorOptions | null = null
+let writingModeDecorations: monaco.editor.IEditorDecorationsCollection | null = null
+let cursorSessionTimer: ReturnType<typeof setTimeout> | null = null
+let writingStatsTimer: ReturnType<typeof setTimeout> | null = null
+let writingModeFrameId: number | null = null
+const writingModeDisposables: Array<{ dispose(): void } | undefined> = []
+let writingListenersRegistered = false
+
+function resolveLocalStorage(): Storage | null {
+    try {
+        return typeof window !== 'undefined' ? window.localStorage : null
+    } catch {
+        return null
+    }
+}
+
+function captureCurrentEditorOptions(): monaco.editor.IEditorOptions {
+    const raw = (editorInstance?.getRawOptions() ?? {}) as unknown as Record<string, unknown>
+    return {
+        fontSize: raw.fontSize as number,
+        lineHeight: raw.lineHeight as number,
+        lineNumbers: raw.lineNumbers as monaco.editor.LineNumbersType,
+        minimap: raw.minimap as monaco.editor.IEditorMinimapOptions,
+        folding: raw.folding as boolean,
+        renderWhitespace: raw.renderWhitespace as 'none' | 'boundary' | 'selection' | 'all',
+        renderLineHighlight: raw.renderLineHighlight as 'none' | 'gutter' | 'line' | 'all',
+        glyphMargin: raw.glyphMargin as boolean,
+        lineDecorationsWidth: raw.lineDecorationsWidth as number,
+        padding: raw.padding as monaco.editor.IEditorPaddingOptions,
+        wordWrap: raw.wordWrap as 'off' | 'on' | 'wordWrapColumn' | 'bounded',
+        scrollBeyondLastLine: raw.scrollBeyondLastLine as boolean
+    }
+}
+
+function applyWritingModeEditorOptions(): void {
+    if (!editorInstance) return
+    if (writingModeState.enabled) {
+        if (savedWritingOptions === null) {
+            savedWritingOptions = captureCurrentEditorOptions()
+        }
+        editorInstance.updateOptions({
+            lineNumbers: 'off',
+            minimap: { enabled: false },
+            folding: false,
+            renderWhitespace: 'none',
+            renderLineHighlight:
+                flags.writingFocus && writingModeState.focusParagraph ? 'none' : 'line',
+            glyphMargin: false,
+            lineDecorationsWidth: 0,
+            wordWrap: 'on',
+            scrollBeyondLastLine: true,
+            ...(flags.writingTypography
+                ? {
+                      lineHeight: writingModeState.lineHeight,
+                      fontSize: writingModeState.fontSize,
+                      padding: { top: 32, bottom: 32 }
+                  }
+                : {})
+        })
+    } else if (savedWritingOptions !== null) {
+        editorInstance.updateOptions(savedWritingOptions)
+        savedWritingOptions = null
+    }
+}
+
+/** 当前段落的行范围（空行/标题作为分隔；范围限制在文档内） */
+function computeCurrentParagraphRange(): monaco.Range | null {
+    if (!editorInstance) return null
+    const model = editorInstance.getModel()
+    const position = editorInstance.getPosition()
+    if (!model || !position) return null
+    const isBoundary = (lineNumber: number): boolean => {
+        const text = model.getLineContent(lineNumber)
+        return text.trim().length === 0 || /^\s{0,3}#{1,6}\s/.test(text)
+    }
+    let start = position.lineNumber
+    while (start > 1 && !isBoundary(start - 1)) start -= 1
+    let end = position.lineNumber
+    while (end < model.getLineCount() && !isBoundary(end + 1)) end += 1
+    return new monaco.Range(start, 1, end, model.getLineMaxColumn(end))
+}
+
+function updateWritingFocusDecoration(): void {
+    if (!editorInstance) return
+    if (!writingModeState.enabled || !flags.writingFocus || !writingModeState.focusParagraph) {
+        writingModeDecorations?.clear()
+        return
+    }
+    const range = computeCurrentParagraphRange()
+    if (!range) {
+        writingModeDecorations?.clear()
+        return
+    }
+    if (!writingModeDecorations) {
+        writingModeDecorations = editorInstance.createDecorationsCollection([])
+    }
+    writingModeDecorations.set([
+        {
+            range,
+            options: {
+                isWholeLine: true,
+                className: 'writing-paragraph-focus'
+            }
+        }
+    ])
+}
+
+/** Typewriter：把当前行放到视口垂直中部；rAF 合帧，避免连续键入时多次 reveal */
+function scheduleTypewriterReveal(): void {
+    if (
+        !editorInstance ||
+        !writingModeState.enabled ||
+        !flags.writingTypewriter ||
+        !writingModeState.typewriter
+    ) {
+        return
+    }
+    const position = editorInstance.getPosition()
+    if (!position || writingModeFrameId !== null) return
+    if (typeof requestAnimationFrame !== 'function') {
+        editorInstance.revealLineInCenter(position.lineNumber, monaco.editor.ScrollType.Smooth)
+        return
+    }
+    writingModeFrameId = requestAnimationFrame(() => {
+        writingModeFrameId = null
+        const current = editorInstance?.getPosition()
+        if (
+            !current ||
+            !writingModeState.enabled ||
+            !flags.writingTypewriter ||
+            !writingModeState.typewriter
+        ) {
+            return
+        }
+        editorInstance?.revealLineInCenter(current.lineNumber, monaco.editor.ScrollType.Smooth)
+    })
+}
+
+/** 按文件路径恢复光标/滚动/选区（内容 setModel 后异步等待一帧） */
+function restoreCursorSessionForPath(filePath: string): void {
+    if (!filePath || !flags.writingSessionRestore) return
+    void nextTick(() => {
+        setTimeout(() => {
+            if (!editorInstance || props.filePath !== filePath) return
+            const model = editorInstance.getModel()
+            if (!model) return
+            const session = loadCursorSession(resolveLocalStorage(), filePath)
+            if (!session) return
+            const lineNumber = Math.min(session.lineNumber, model.getLineCount())
+            const column = Math.min(session.column, model.getLineMaxColumn(Math.max(1, lineNumber)))
+            const selection = session.selection
+                ? new monaco.Selection(
+                      Math.min(session.selection.startLineNumber, model.getLineCount()),
+                      Math.min(
+                          session.selection.startColumn,
+                          model.getLineMaxColumn(
+                              Math.min(session.selection.startLineNumber, model.getLineCount())
+                          )
+                      ),
+                      Math.min(session.selection.endLineNumber, model.getLineCount()),
+                      Math.min(
+                          session.selection.endColumn,
+                          model.getLineMaxColumn(
+                              Math.min(session.selection.endLineNumber, model.getLineCount())
+                          )
+                      )
+                  )
+                : null
+            if (selection) {
+                editorInstance.setSelection(selection)
+            } else {
+                editorInstance.setPosition({ lineNumber, column })
+            }
+            editorInstance.setScrollTop(Math.max(0, session.scrollTop))
+        }, 0)
+    })
+}
+
+/** 保存当前光标/滚动/选区会话（防抖；仅在有活动文件路径时写入） */
+function saveCursorSessionNow(): void {
+    if (!editorInstance || !props.filePath || !flags.writingSessionRestore) return
+    const position = editorInstance.getPosition()
+    if (!position) return
+    const selection = editorInstance.getSelection()
+    const session: EditorCursorSession = {
+        lineNumber: position.lineNumber,
+        column: position.column,
+        scrollTop: editorInstance.getScrollTop(),
+        selection:
+            selection && !selection.isEmpty()
+                ? {
+                      startLineNumber: selection.startLineNumber,
+                      startColumn: selection.startColumn,
+                      endLineNumber: selection.endLineNumber,
+                      endColumn: selection.endColumn
+                  }
+                : undefined
+    }
+    saveCursorSession(resolveLocalStorage(), props.filePath, session)
+}
+
+function scheduleWritingStats(): void {
+    if (!flags.writingStats) return
+    if (writingStatsTimer !== null) clearTimeout(writingStatsTimer)
+    writingStatsTimer = setTimeout(() => {
+        writingStatsTimer = null
+        const model = editorInstance?.getModel()
+        if (!model) return
+        recordWritingStats(model.getValue(), props.filePath)
+    }, 250)
+}
+
+function scheduleSaveCursorSession(): void {
+    if (cursorSessionTimer !== null) clearTimeout(cursorSessionTimer)
+    cursorSessionTimer = setTimeout(() => {
+        cursorSessionTimer = null
+        saveCursorSessionNow()
+    }, 300)
+}
+
+/** 注册写作模式/光标恢复监听（编辑器创建后调用一次） */
+function registerWritingModeListeners(): void {
+    if (!editorInstance) return
+    if (writingListenersRegistered) return
+    if (!hasAnyWritingEditorFeature()) return
+    writingListenersRegistered = true
+    writingModeDisposables.push(
+        editorInstance.onDidChangeCursorPosition(() => {
+            updateWritingFocusDecoration()
+            if (flags.writingStats) {
+                const selection = editorInstance?.getSelection()
+                const model = editorInstance?.getModel()
+                if (selection && model && !selection.isEmpty()) {
+                    recordSelectionStats(model.getValueInRange(selection))
+                } else {
+                    recordSelectionStats('')
+                }
+            }
+            scheduleTypewriterReveal()
+            scheduleSaveCursorSession()
+        })
+    )
+    writingModeDisposables.push(
+        editorInstance.onDidScrollChange(() => {
+            scheduleSaveCursorSession()
+        })
+    )
+    writingModeDisposables.push(
+        editorInstance.onDidChangeModelContent(() => {
+            updateWritingFocusDecoration()
+            scheduleWritingStats()
+            scheduleSaveCursorSession()
+        })
+    )
+}
+
+/** 是否需要为写作体验注册编辑器监听（全部关闭时零监听，保持旧行为） */
+function hasAnyWritingEditorFeature(): boolean {
+    return (
+        (writingModeState.enabled && (flags.writingTypewriter || flags.writingFocus)) ||
+        flags.writingStats ||
+        flags.writingSessionRestore
+    )
+}
+
+watch(
+    () => [
+        writingModeState.enabled,
+        writingModeState.typewriter,
+        writingModeState.focusParagraph,
+        writingModeState.fontSize,
+        writingModeState.lineHeight,
+        flags.writingTypewriter,
+        flags.writingFocus,
+        flags.writingTypography,
+        flags.writingStats,
+        flags.writingSessionRestore
+    ],
+    () => {
+        applyWritingModeEditorOptions()
+        updateWritingFocusDecoration()
+        scheduleTypewriterReveal()
+        // 配置可能在编辑器创建后才从主进程加载完成：首次出现写作能力时补注册监听
+        registerWritingModeListeners()
+        if (flags.writingSessionRestore && props.filePath) {
+            restoreCursorSessionForPath(props.filePath)
+        }
+    }
+)
+
+watch(
+    () => props.filePath,
+    (newPath) => {
+        if (!newPath) return
+        applyWritingModeEditorOptions()
+        resetWritingStatsBaselineForFile(newPath)
+        restoreCursorSessionForPath(newPath)
+    }
+)
 
 /* ==================== 1.5.0 编辑器 → 预览单向滚动同步（触发端） ====================
  * 三条触发路径统一收敛为一个 `sync-scroll` 事件（父组件再补 seq 并透传给预览）：
@@ -848,6 +1178,7 @@ onMounted(async () => {
             editor.Options,
             editor.Override
         )
+        bubbleEditorRef.value = editorInstance
 
         // 结构优化第 2 批 2.2（H4）：编辑器改为二级懒加载后，「打开文件 / 启动恢复」的
         // SHOW_SELECTED_FILE_CONTEXT 可能先于编辑器挂载到达（父组件已把内容写入 code prop）。
@@ -866,11 +1197,19 @@ onMounted(async () => {
             const context = model.getValue()
             emit('update:code', context)
             EventBus.$emit(EVENT_BUS.STATUS_BAR_CONTEXT_LENGTH, model.getValueLength())
+            scheduleWritingStats()
             // 1.5.0（滚动同步）：键入/回车会触发 Monaco 自动滚动，尾随防抖后再同步一次预览
             scheduleScrollSyncFromContent()
             // 2026-11-20（编辑器底部光标不可见修复）：内容变化（含回车）后，
             // 若光标落在视口最后一行且下面还有行，把下一行也滚入视口（底部留一行安全区）。
-            requestAnimationFrame(revealCursorLineWithBreathingRoom)
+            // 写作模式 Typewriter 由光标居中接管，避免与底部留白 reveal 竞争。
+            if (!(
+                writingModeState.enabled &&
+                flags.writingTypewriter &&
+                writingModeState.typewriter
+            )) {
+                requestAnimationFrame(revealCursorLineWithBreathingRoom)
+            }
         })
 
         // 1.5.0（滚动同步）：滚动/光标兜底两条订阅（内容变化在上一行回调内触发）
@@ -886,6 +1225,12 @@ onMounted(async () => {
 
         // A6：编辑器创建后按当前开关同步拼写检查属性（默认关闭 -> spellcheck=false）
         syncSpellcheckAttributes()
+        // P0 写作模式/光标恢复：编辑器创建后注册监听、应用排版并恢复上次会话
+        registerWritingModeListeners()
+        applyWritingModeEditorOptions()
+        if (props.filePath) {
+            restoreCursorSessionForPath(props.filePath)
+        }
 
         // 初始化后立即布局，确保编辑器尺寸正确
         editorInstance.layout()
@@ -991,6 +1336,28 @@ onBeforeUnmount(() => {
         editorInstance.dispose()
         editorInstance = null
     }
+    bubbleEditorRef.value = null
+
+    // P0 写作模式/光标恢复：卸载前保存会话并释放监听/装饰器/计时器
+    saveCursorSessionNow()
+    if (cursorSessionTimer !== null) {
+        clearTimeout(cursorSessionTimer)
+        cursorSessionTimer = null
+    }
+    if (writingStatsTimer !== null) {
+        clearTimeout(writingStatsTimer)
+        writingStatsTimer = null
+    }
+    if (writingModeFrameId !== null && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(writingModeFrameId)
+    }
+    writingModeFrameId = null
+    writingModeDecorations?.clear()
+    writingModeDecorations = null
+    for (const disposable of writingModeDisposables) {
+        disposable?.dispose()
+    }
+    writingModeDisposables.length = 0
 
     // 5. 清理 Monaco 内部缓存（只清理未附加到编辑器的模型）
     monaco.editor.getModels().forEach((model) => {

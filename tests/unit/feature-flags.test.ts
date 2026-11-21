@@ -8,7 +8,10 @@ import { describe, it, expect } from 'vitest'
 import {
     OPTIONAL_FEATURE_FLAG_DEFAULTS,
     OPTIONAL_FEATURE_FLAG_IDS,
-    OPTIONAL_FEATURE_FLAGS
+    OPTIONAL_FEATURE_FLAGS,
+    WRITING_EXPERIENCE_DEFAULTS,
+    WRITING_EXPERIENCE_FLAG_IDS,
+    WRITING_EXPERIENCE_FLAGS
 } from '../../src/shared/constants/feature-flags'
 import { SYSTEM_SETTING_FALLBACK } from '../../src/shared/constants/system-defaults'
 
@@ -51,6 +54,49 @@ describe('可选能力开关定义', () => {
         for (const id of OPTIONAL_FEATURE_FLAG_IDS) {
             const key = OPTIONAL_FEATURE_FLAGS[id].settingKey
             expect(SYSTEM_SETTING_FALLBACK[key]).toBe(false)
+        }
+    })
+})
+
+describe('编写体验开关定义（P0）', () => {
+    it('包含 10 项写作体验能力且默认全部关闭', () => {
+        expect(WRITING_EXPERIENCE_FLAG_IDS).toEqual([
+            'writingMode',
+            'writingTypewriter',
+            'writingFocus',
+            'writingStats',
+            'writingTypography',
+            'writingSessionRestore',
+            'writingBubble',
+            'writingSlash',
+            'writingStyleCheck',
+            'writingSmartInput'
+        ])
+        for (const id of WRITING_EXPERIENCE_FLAG_IDS) {
+            expect(WRITING_EXPERIENCE_FLAGS[id].defaultValue).toBe(false)
+            expect(WRITING_EXPERIENCE_DEFAULTS[id]).toBe(false)
+            expect(SYSTEM_SETTING_FALLBACK[WRITING_EXPERIENCE_FLAGS[id].settingKey]).toBe(false)
+        }
+    })
+
+    it('持久化字段唯一且为 writingXxxEnabled 命名', () => {
+        const keys = WRITING_EXPERIENCE_FLAG_IDS.map(
+            (id) => WRITING_EXPERIENCE_FLAGS[id].settingKey
+        )
+        expect(new Set(keys).size).toBe(keys.length)
+        for (const key of keys) {
+            expect(key).toMatch(/^writing[A-Z][A-Za-z]+Enabled$/)
+        }
+    })
+
+    it('i18n 文案键落在 dialogRenderer.systemSetting.writing 命名空间', () => {
+        for (const id of WRITING_EXPERIENCE_FLAG_IDS) {
+            expect(WRITING_EXPERIENCE_FLAGS[id].labelKey).toBe(
+                `dialogRenderer.systemSetting.writing.${id.replace('writing', '').charAt(0).toLowerCase() + id.replace('writing', '').slice(1)}Label`
+            )
+            expect(WRITING_EXPERIENCE_FLAGS[id].descKey).toContain(
+                'dialogRenderer.systemSetting.writing.'
+            )
         }
     })
 })

@@ -56,6 +56,11 @@
                     :settings="settings"
                     @update="updateSettings"
                 />
+                <WritingPanel
+                    v-show="activePanel === 'writing'"
+                    :settings="settings"
+                    @update="updateSettings"
+                />
                 <BackupPanel
                     v-show="activePanel === 'backup'"
                     :settings="settings"
@@ -115,6 +120,7 @@ import GeneralPanel from './system-setting/GeneralPanel.vue'
 import FilePanel from './system-setting/FilePanel.vue'
 import AppearancePanel from './system-setting/AppearancePanel.vue'
 import FeaturesPanel from './system-setting/FeaturesPanel.vue'
+import WritingPanel from './system-setting/WritingPanel.vue'
 import BackupPanel from './system-setting/BackupPanel.vue'
 
 interface Props {

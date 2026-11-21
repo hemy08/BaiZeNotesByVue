@@ -16,13 +16,20 @@ import {
     OPTIONAL_FEATURE_FLAG_DEFAULTS,
     OPTIONAL_FEATURE_FLAG_IDS,
     OPTIONAL_FEATURE_FLAGS,
-    type OptionalFeatureFlagId
+    WRITING_EXPERIENCE_DEFAULTS,
+    WRITING_EXPERIENCE_FLAG_IDS,
+    WRITING_EXPERIENCE_FLAGS,
+    type OptionalFeatureFlagId,
+    type WritingExperienceFlagId
 } from '../../../shared/constants/feature-flags'
 
-export type FeatureFlagState = Record<OptionalFeatureFlagId, boolean>
+export type FeatureFlagState = Record<OptionalFeatureFlagId | WritingExperienceFlagId, boolean>
 
 /** 运行时开关状态（模块单例；组件只读消费） */
-const flags = reactive<FeatureFlagState>({ ...OPTIONAL_FEATURE_FLAG_DEFAULTS })
+const flags = reactive<FeatureFlagState>({
+    ...OPTIONAL_FEATURE_FLAG_DEFAULTS,
+    ...WRITING_EXPERIENCE_DEFAULTS
+})
 
 let initialized = false
 let initPromise: Promise<void> | null = null
@@ -32,6 +39,10 @@ let listenerRegistered = false
 function applySettings(settings: Partial<SystemSetting> | null | undefined): void {
     for (const id of OPTIONAL_FEATURE_FLAG_IDS) {
         const value = settings?.[OPTIONAL_FEATURE_FLAGS[id].settingKey]
+        flags[id] = value === true
+    }
+    for (const id of WRITING_EXPERIENCE_FLAG_IDS) {
+        const value = settings?.[WRITING_EXPERIENCE_FLAGS[id].settingKey]
         flags[id] = value === true
     }
 }

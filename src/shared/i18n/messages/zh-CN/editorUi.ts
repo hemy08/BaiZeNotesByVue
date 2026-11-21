@@ -255,5 +255,62 @@ export default {
             tableColumnCount: '表格列数与表头不一致（表头 {expected} 列，实际 {actual} 列）',
             tableSeparator: '表格分隔行格式不正确（每列应为 --- / :-- / --: / :-:）'
         }
+    },
+    /** P0 写作模式（顶部控制条 + 状态栏入口） */
+    writingMode: {
+        enter: '写作模式',
+        exit: '退出写作',
+        label: '写作模式',
+        typewriter: '打字机',
+        focusParagraph: '段落聚焦',
+        typography: '排版',
+        goalHint: '今日写作目标与完成情况',
+        contentWidth: '正文宽度',
+        fontSize: '字号',
+        lineHeight: '行高',
+        dailyGoal: '每日目标',
+        charsUnit: '字',
+        today: '今日',
+        reset: '恢复默认排版'
+    },
+    /** P0-8 写作风格/语法检查 */
+    writingStyle: {
+        title: '写作风格检查',
+        checking: '正在检查…',
+        loadFailed: '读取编辑器内容失败，请稍后重试',
+        noContent: '没有可检查的文档',
+        tooLarge: '文档过大（超过 2 MiB），暂不支持风格检查',
+        noIssues: '未发现明显的写作风格问题',
+        recheck: '重新检查',
+        issueListTitle: '问题列表',
+        ruleStatsTitle: '规则统计',
+        ruleStatsTotal: '共 {total} 项，已启用 {enabled}/{all} 条规则',
+        summary: '共 {total} 项：警告 {warnings} / 提示 {infos}',
+        truncatedHint: '结果过多，已截断，仅显示前 {count} 项',
+        savedContentHint: '编辑器未就绪，当前检查基于已保存内容',
+        targetEditor: '目标：{path}',
+        targetEditorFallback: '当前编辑器',
+        close: '关闭',
+        rules: {
+            longSentence: '长句共 {count} 字（建议不超过 {limit} 字）',
+            longSentenceWords: '长句共 {count} 词（建议不超过 {limit} 词）',
+            repeatedWord: '词语连续重复：「{word}」',
+            frequentCatchphrase: '高频口头禅：「{phrase}」出现 {count} 次（建议不超过 {limit} 次）',
+            fillerWord: '填充词：「{word}」',
+            consecutivePunctuation: '连续标点：「{punctuation}」',
+            longParagraph: '段落过长：约 {count} 字（建议不超过 {limit} 字）',
+            mixedScriptSpacing: '中英混排建议加空格',
+            punctuationWidthMix: '全角/半角标点混用'
+        },
+        ruleLabels: {
+            longSentence: '长句',
+            repeatedWord: '重复词',
+            frequentCatchphrase: '高频口头禅',
+            fillerWord: '填充词',
+            consecutivePunctuation: '连续标点',
+            longParagraph: '超长段落',
+            mixedScriptSpacing: '中英混排空格',
+            punctuationWidthMix: '全半角标点混用'
+        }
     }
 }

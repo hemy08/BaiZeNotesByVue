@@ -182,7 +182,18 @@ const SYSTEM_BOOLEAN_FIELDS: ReadonlySet<string> = new Set([
     'featureMarkdownLint',
     'featureSpellcheck',
     'featureSmartInput',
-    'featureOutlinePlus'
+    'featureOutlinePlus',
+    // 写作体验（P0）
+    'writingModeEnabled',
+    'writingTypewriterEnabled',
+    'writingFocusEnabled',
+    'writingStatsEnabled',
+    'writingTypographyEnabled',
+    'writingSessionRestoreEnabled',
+    'writingBubbleEnabled',
+    'writingSlashEnabled',
+    'writingStyleCheckEnabled',
+    'writingSmartInputEnabled'
 ])
 
 /** 系统设置中的数值字段范围（超范围钳制而非拒绝，避免一个越界值导致整次保存失败） */

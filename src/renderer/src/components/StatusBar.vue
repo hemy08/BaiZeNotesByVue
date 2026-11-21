@@ -13,6 +13,27 @@
         </div>
         <div class="status-bar-divider"></div>
         <div id="status-bar-info">
+            <button
+                v-if="flags.writingMode"
+                type="button"
+                class="writing-mode-toggle"
+                :class="{ active: writingModeState.enabled }"
+                :aria-pressed="writingModeState.enabled"
+                @click="toggleWritingMode"
+            >
+                {{
+                    writingModeState.enabled
+                        ? t('editorUi.writingMode.exit')
+                        : t('editorUi.writingMode.enter')
+                }}
+            </button>
+            <div v-if="flags.writingStats" id="status-bar-writing-stats" class="writing-stats">
+                <span v-if="selectionActive" class="writing-stats-selection">
+                    {{ selectionSummary }}
+                </span>
+                <span v-else class="writing-stats-main">{{ writingSummary }}</span>
+                <span class="writing-stats-goal">{{ goalSummary }}</span>
+            </div>
             <div id="status-bar-file-type">Markdown</div>
             <div id="status-bar-encoding">{{ encodingDisplay }}</div>
             <div id="status-bar-cursor-position">{{ cursorDisplay }}</div>
@@ -31,9 +52,43 @@ import type { StatusBarMessageType, StatusBarUpdatePayload } from '../../../shar
 import { EVENT_BUS } from '../common/event-bus/event-bus-events'
 import { useEventBus } from '../composables/useEventBus'
 import { t } from '../common/i18n'
+import { toggleWritingMode, writingModeState } from './Markdown/useWritingMode'
+import { useFeatureFlags } from '../composables/useFeatureFlags'
+import { writingSessionState } from './Markdown/useWritingSession'
 
 // M5：状态栏 3 个进程内事件统一经 useEventBus 注册，组件卸载时自动清理
 const { on: onEventBus } = useEventBus({ componentIdPrefix: 'StatusBar' })
+const { flags } = useFeatureFlags()
+
+const writingSummary = computed(() =>
+    t('status.writingStats.summary', {
+        cjk: writingSessionState.stats.cjkChars,
+        words: writingSessionState.stats.latinWords,
+        chars: writingSessionState.stats.totalChars,
+        minutes: writingSessionState.stats.readingMinutes
+    })
+)
+const selectionActive = computed(
+    () =>
+        writingSessionState.selection.totalChars > 0 || writingSessionState.selection.latinWords > 0
+)
+const selectionSummary = computed(() =>
+    t('status.writingStats.selection', {
+        chars: writingSessionState.selection.totalChars,
+        words: writingSessionState.selection.latinWords
+    })
+)
+const goalSummary = computed(() => {
+    const progress = writingSessionState.goal
+    if (progress.achieved) {
+        return t('status.writingStats.goalAchieved', { written: progress.written })
+    }
+    return t('status.writingStats.goal', {
+        written: progress.written,
+        goal: progress.dailyGoal,
+        percent: progress.percent
+    })
+})
 
 // CMP-30：状态栏消息由主进程发送「已本地化」的译文（mainMsg 命名空间），渲染层原样展示；
 // 未收到消息或消息自动清除后显示「就绪」，静态标签与动态模板均走 t()，切换语言即时刷新。
@@ -319,5 +374,41 @@ onBeforeUnmount(() => {
     50% {
         opacity: 0.5;
     }
+}
+.writing-stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 8px;
+    color: var(--secondary-text-color);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.writing-stats-goal {
+    color: var(--accent-color);
+}
+
+.writing-mode-toggle {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--secondary-text-color);
+    font-size: 11px;
+    line-height: 1;
+    padding: 3px 7px;
+    margin-right: 6px;
+    cursor: pointer;
+}
+
+.writing-mode-toggle:hover {
+    color: var(--text-color);
+    border-color: var(--accent-color);
+}
+
+.writing-mode-toggle.active {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    background: var(--accent-bg, rgb(118 75 162 / 12%));
 }
 </style>

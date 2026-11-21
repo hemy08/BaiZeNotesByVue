@@ -86,3 +86,119 @@ export const OPTIONAL_FEATURE_FLAG_DEFAULTS: Readonly<Record<OptionalFeatureFlag
     smartInput: false,
     outlinePlus: false
 }
+
+/** 写作体验能力标识（P0；系统设置「编写体验」页签，默认全部关闭） */
+export type WritingExperienceFlagId =
+    | 'writingMode'
+    | 'writingTypewriter'
+    | 'writingFocus'
+    | 'writingStats'
+    | 'writingTypography'
+    | 'writingSessionRestore'
+    | 'writingBubble'
+    | 'writingSlash'
+    | 'writingStyleCheck'
+    | 'writingSmartInput'
+
+/** 单条写作体验开关定义 */
+export interface WritingExperienceFlagDefinition {
+    settingKey:
+        | 'writingModeEnabled'
+        | 'writingTypewriterEnabled'
+        | 'writingFocusEnabled'
+        | 'writingStatsEnabled'
+        | 'writingTypographyEnabled'
+        | 'writingSessionRestoreEnabled'
+        | 'writingBubbleEnabled'
+        | 'writingSlashEnabled'
+        | 'writingStyleCheckEnabled'
+        | 'writingSmartInputEnabled'
+    defaultValue: boolean
+    labelKey: string
+    descKey: string
+}
+
+/** 写作体验开关定义表（顺序即设置页展示顺序） */
+export const WRITING_EXPERIENCE_FLAGS: Readonly<
+    Record<WritingExperienceFlagId, WritingExperienceFlagDefinition>
+> = {
+    writingMode: {
+        settingKey: 'writingModeEnabled',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.writing.modeLabel',
+        descKey: 'dialogRenderer.systemSetting.writing.modeDesc'
+    },
+    writingTypewriter: {
+        settingKey: 'writingTypewriterEnabled',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.writing.typewriterLabel',
+        descKey: 'dialogRenderer.systemSetting.writing.typewriterDesc'
+    },
+    writingFocus: {
+        settingKey: 'writingFocusEnabled',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.writing.focusLabel',
+        descKey: 'dialogRenderer.systemSetting.writing.focusDesc'
+    },
+    writingStats: {
+        settingKey: 'writingStatsEnabled',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.writing.statsLabel',
+        descKey: 'dialogRenderer.systemSetting.writing.statsDesc'
+    },
+    writingTypography: {
+        settingKey: 'writingTypographyEnabled',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.writing.typographyLabel',
+        descKey: 'dialogRenderer.systemSetting.writing.typographyDesc'
+    },
+    writingSessionRestore: {
+        settingKey: 'writingSessionRestoreEnabled',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.writing.sessionRestoreLabel',
+        descKey: 'dialogRenderer.systemSetting.writing.sessionRestoreDesc'
+    },
+    writingBubble: {
+        settingKey: 'writingBubbleEnabled',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.writing.bubbleLabel',
+        descKey: 'dialogRenderer.systemSetting.writing.bubbleDesc'
+    },
+    writingSlash: {
+        settingKey: 'writingSlashEnabled',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.writing.slashLabel',
+        descKey: 'dialogRenderer.systemSetting.writing.slashDesc'
+    },
+    writingStyleCheck: {
+        settingKey: 'writingStyleCheckEnabled',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.writing.styleCheckLabel',
+        descKey: 'dialogRenderer.systemSetting.writing.styleCheckDesc'
+    },
+    writingSmartInput: {
+        settingKey: 'writingSmartInputEnabled',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.writing.smartInputLabel',
+        descKey: 'dialogRenderer.systemSetting.writing.smartInputDesc'
+    }
+} as const
+
+/** 写作体验开关 id 列表 */
+export const WRITING_EXPERIENCE_FLAG_IDS = Object.keys(
+    WRITING_EXPERIENCE_FLAGS
+) as WritingExperienceFlagId[]
+
+/** 写作体验默认快照（默认全部关闭） */
+export const WRITING_EXPERIENCE_DEFAULTS: Readonly<Record<WritingExperienceFlagId, boolean>> = {
+    writingMode: false,
+    writingTypewriter: false,
+    writingFocus: false,
+    writingStats: false,
+    writingTypography: false,
+    writingSessionRestore: false,
+    writingBubble: false,
+    writingSlash: false,
+    writingStyleCheck: false,
+    writingSmartInput: false
+}

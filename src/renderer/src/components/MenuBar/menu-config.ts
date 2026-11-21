@@ -33,6 +33,8 @@ export interface BaiZeMenuEntry extends BaiZeMenuItem {
      * 只用于 UI 可见性，动作 handler 仍需自行防守（命令面板/快捷键可绕过菜单）。
      */
     featureFlag?: import('../../../../shared/constants/feature-flags').OptionalFeatureFlagId
+    /** 写作体验开关（P0）：关闭时 MenuBar 运行时隐藏该菜单项 */
+    writingFlag?: import('../../../../shared/constants/feature-flags').WritingExperienceFlagId
     /**
      * 菜单项稳定标识（可选）。用于 MenuBar.vue 在运行时定位并注入动态子菜单
      * （当前为「最近文件」/「最近文件夹」两个占位项）。
@@ -194,6 +196,11 @@ const editMenu: BaiZeMenuEntry = {
             labelKey: 'menu.edit.markdownLint',
             menuAction: 'baize:menu:edit:markdown-lint',
             featureFlag: 'markdownLint'
+        },
+        {
+            labelKey: 'menu.edit.writingStyleCheck',
+            menuAction: 'baize:menu:edit:writing-style-check',
+            writingFlag: 'writingStyleCheck'
         }
         // FUN-09：在文件中查找/替换（Ctrl+Shift+F/H）需要主进程目录遍历与结果面板，
         // 本轮无法低成本实现，暂时从菜单隐藏（A-4 模式，数据保留）。
@@ -240,6 +247,11 @@ const viewMenu: BaiZeMenuEntry = {
         // 资源管理器开关串线，已修复）；折叠子菜单 emit 'editor-toggle-fold'
         // （payload { mode: 'fold-all' | 'expand-all' | 'fold-level', level }）。
         { labelKey: 'menu.view.toggleOutline', menuAction: 'baize:menu:view:toggle-outline' },
+        {
+            labelKey: 'menu.view.writingMode',
+            menuAction: 'baize:menu:view:writing-mode',
+            writingFlag: 'writingMode'
+        },
         { type: 'separator' },
         {
             labelKey: 'menu.view.fold.label',

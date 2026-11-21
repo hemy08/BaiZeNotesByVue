@@ -12,5 +12,11 @@ export default {
     bytesZero: '0字节',
     bytes: '{value} 字节',
     cursorLabel: '行',
-    cursorPosition: '行 {line} 列 {column}'
+    cursorPosition: '行 {line} 列 {column}',
+    writingStats: {
+        summary: '{cjk} 字 · {words} 词 · {chars} 字符 · 约 {minutes} 分钟',
+        selection: '选中 {chars} 字符 · {words} 词',
+        goal: '今日 {written}/{goal} · {percent}%',
+        goalAchieved: '今日目标已达成 · {written} 字'
+    }
 }

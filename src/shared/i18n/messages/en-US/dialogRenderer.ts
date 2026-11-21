@@ -202,6 +202,44 @@ const dialogRenderer = {
         sidebarAppearance: 'Appearance',
         sidebarBackup: 'Backup & restore',
         sidebarFeatures: 'Features',
+        sidebarWriting: 'Writing experience',
+        panelWritingTitle: 'Writing experience',
+        panelWritingDesc:
+            'Optional helpers that improve the writing process. All are off by default; enable the ones you need.',
+        groupWritingFeatures: 'Writing helpers',
+        hintWritingFeatures:
+            'All helpers are off by default. Typography helpers only apply while Writing Mode is active.',
+        writing: {
+            modeLabel: 'Writing Mode',
+            modeDesc:
+                'Immersive writing layout: hide sidebars/menus, constrain text width and show the writing toolbar.',
+            typewriterLabel: 'Typewriter mode',
+            typewriterDesc:
+                'Keep the caret near the vertical center of the screen for long-form typing.',
+            focusLabel: 'Paragraph focus',
+            focusDesc:
+                'Highlight the paragraph currently being edited and reduce surrounding noise.',
+            statsLabel: 'Writing statistics',
+            statsDesc:
+                'Show Chinese characters, English words, total characters and estimated reading time in the status bar.',
+            typographyLabel: 'Writing typography',
+            typographyDesc: 'Use a separate text width, font size and line height in Writing Mode.',
+            sessionRestoreLabel: 'Caret and scroll restore',
+            sessionRestoreDesc:
+                'Remember caret, scroll and selection per file and restore them when reopening.',
+            bubbleLabel: 'Selection bubble toolbar',
+            bubbleDesc:
+                'Show a formatting toolbar for selected text (bold, italic, link, heading, list, etc.).',
+            slashLabel: 'Slash commands',
+            slashDesc:
+                'Type / in the editor to open an insert menu (heading, table, math, image, etc.).',
+            styleCheckLabel: 'Writing style check',
+            styleCheckDesc:
+                'Check long sentences, repeated words and filler words; suggestions only, never auto-rewrite.',
+            smartInputLabel: 'Writing smart input',
+            smartInputDesc:
+                'Enable list/quote/heading continuation in Writing Mode without changing the global Markdown smart-input switch.'
+        },
         panelFeaturesTitle: 'Feature switches',
         panelFeaturesDesc:
             'Default capabilities are always on. Optional capabilities are off by default and only register their UI/behavior when enabled.',

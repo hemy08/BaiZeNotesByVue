@@ -47,7 +47,8 @@ export default {
         commandPalette: 'Command Palette',
         quickOpen: 'Quick Open File',
         documentHistory: 'Document History…',
-        markdownLint: 'Markdown Lint/Format…'
+        markdownLint: 'Markdown Lint/Format…',
+        writingStyleCheck: 'Writing Style Check…'
     },
     view: {
         label: 'View',
@@ -59,6 +60,7 @@ export default {
         toggleLineNumber: 'Show/Hide Line Numbers',
         toggleWhitespace: 'Show/Hide Whitespace',
         toggleOutline: 'Show/Hide Outline',
+        writingMode: 'Writing Mode',
         fold: {
             label: 'Collapse/Expand Headings',
             allFold: 'Collapse All',

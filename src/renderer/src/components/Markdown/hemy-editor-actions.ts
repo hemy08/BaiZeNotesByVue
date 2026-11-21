@@ -2,6 +2,7 @@ import { OnInsertAfterCursor, replaceSelection } from './hemy-editor-common'
 import * as monaco from 'monaco-editor'
 import { t } from '../../common/i18n'
 import { useFeatureFlags } from '../../composables/useFeatureFlags'
+import { writingModeState } from './useWritingMode'
 import { computeSmartEnterPlan } from './editor-smart-input'
 import {
     attachPasteEnhance,
@@ -38,7 +39,8 @@ function applySmartEnter(
     position: monaco.Position
 ): boolean {
     const { flags } = useFeatureFlags()
-    if (!flags.smartInput) {
+    // 写作模式是显式的沉浸写作预设：临时启用智能输入，不修改系统能力开关
+    if (!flags.smartInput && !(writingModeState.enabled && flags.writingSmartInput)) {
         // 开关关闭：不读取 model、不改变任何行为（与原 EnterAction 完全一致）
         return false
     }

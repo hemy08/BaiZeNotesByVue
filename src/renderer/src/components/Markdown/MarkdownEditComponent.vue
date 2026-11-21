@@ -24,6 +24,7 @@
             v-model="markdownEditorCode"
             :code="initialCodeContent"
             :editor-area-width="monacoEditorWidthPx"
+            :file-path="activeFilePath"
             @update:code="handleMarkdownCodeUpdate"
             @sync-scroll="handleEditorSyncScroll"
         />

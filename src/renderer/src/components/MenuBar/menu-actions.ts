@@ -6,6 +6,8 @@ import { IPC } from '../../../../shared/ipc-channels'
 import { logger } from '../../common/logger'
 // ARC-14：插件工具显示事件名收敛至 EventBus 集中常量（menu-consts 仅保留兼容 re-export）
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import { toggleWritingMode } from '../Markdown/useWritingMode'
+import { useFeatureFlags } from '../../composables/useFeatureFlags'
 import {
     openCommandPalette,
     openQuickOpen,
@@ -334,6 +336,20 @@ export function HandleMenuAction(action: string) {
     }
     if (action === 'baize:menu:edit:markdown-lint') {
         void import('../Markdown/lint').then((module) => module.openMarkdownLint())
+        return
+    }
+
+    // ========== P0 写作体验：写作模式 / 风格检查 ==========
+    if (action === 'baize:menu:view:writing-mode') {
+        const { flags } = useFeatureFlags()
+        if (!flags.writingMode) return
+        toggleWritingMode()
+        return
+    }
+    if (action === 'baize:menu:edit:writing-style-check') {
+        const { flags } = useFeatureFlags()
+        if (!flags.writingStyleCheck) return
+        void import('../Markdown/writing-style').then((module) => module.openWritingStyleCheck())
         return
     }
 

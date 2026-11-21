@@ -49,7 +49,8 @@ export default {
         commandPalette: '命令面板',
         quickOpen: '快速打开文件',
         documentHistory: '文档历史…',
-        markdownLint: 'Markdown 检查/格式化…'
+        markdownLint: 'Markdown 检查/格式化…',
+        writingStyleCheck: '写作风格检查…'
     },
     view: {
         label: '视图',
@@ -61,6 +62,7 @@ export default {
         toggleLineNumber: '显示/隐藏行号',
         toggleWhitespace: '显示/隐藏空白字符',
         toggleOutline: '显示/隐藏文章大纲',
+        writingMode: '写作模式',
         fold: {
             label: '折叠/展开标题',
             allFold: '全部折叠',

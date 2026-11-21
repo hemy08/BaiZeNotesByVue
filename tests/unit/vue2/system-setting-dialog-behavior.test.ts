@@ -3,7 +3,7 @@
  * 系统设置对话框行为基线（设置页拆分 P0：拆分前后等价的行为契约）
  *
  * 覆盖点（只断言用户可见行为 / 对外 emit / IPC 载荷，不依赖组件内部状态形状）：
- * 1. 5 个页签 × 5 个面板的切换（active 类与 v-show 可见性同步）；
+ * 1. 6 个页签 × 6 个面板的切换（active 类与 v-show 可见性同步）；
  * 2. 草稿语义：修改不落盘、跨页签保留、取消丢弃并恢复打开时的值；
  * 3. 保存语义：应用写入完整快照并 emit apply（不关闭）；确定 apply + close；
  *    取消不写配置；写入被主进程拒绝（返回 false）时不抛异常、不改变既有 emit 契约；
@@ -30,8 +30,8 @@ import { resetActionFailureThrottleForTesting } from '@renderer/common/action-fe
 
 const dialogMountOptions = { global: { stubs: { teleport: true } } }
 
-/** 面板在 DOM 中的固定顺序（与侧边栏 5 项 1:1，拆分前后一致） */
-const PANEL_ORDER = ['general', 'file', 'appearance', 'features', 'backup'] as const
+/** 面板在 DOM 中的固定顺序（与侧边栏 6 项 1:1，拆分前后一致） */
+const PANEL_ORDER = ['general', 'file', 'appearance', 'features', 'writing', 'backup'] as const
 
 function mountDialog(visible = true): VueWrapper {
     return mount(SystemSettingDialog, {
@@ -96,13 +96,13 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         vi.restoreAllMocks()
     })
 
-    it('渲染 5 个侧边栏项与 5 个面板，默认仅通用设置面板可见', () => {
+    it('渲染 6 个侧边栏项与 6 个面板，默认仅通用设置面板可见', () => {
         const wrapper = mountDialog()
-        expect(wrapper.findAll('.sidebar-item')).toHaveLength(5)
-        expect(wrapper.findAll('.setting-panel')).toHaveLength(5)
+        expect(wrapper.findAll('.sidebar-item')).toHaveLength(6)
+        expect(wrapper.findAll('.setting-panel')).toHaveLength(6)
         expect(wrapper.findAll('.sidebar-item')[0].classes()).toContain('active')
         expect(isPanelShown(wrapper, 0)).toBe(true)
-        for (const index of [1, 2, 3, 4]) {
+        for (const index of [1, 2, 3, 4, 5]) {
             expect(isPanelShown(wrapper, index)).toBe(false)
         }
         wrapper.unmount()
@@ -139,8 +139,8 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         await switchPanel(wrapper, 2)
         await panel(wrapper, 2).find('input[type="number"]').setValue('16')
         // 备份：保留数量改为 3
-        await switchPanel(wrapper, 4)
-        await panel(wrapper, 4).find('input[max="10"]').setValue('3')
+        await switchPanel(wrapper, 5)
+        await panel(wrapper, 5).find('input[max="10"]').setValue('3')
 
         expect(configWrite).not.toHaveBeenCalled()
 
@@ -158,7 +158,7 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
             (panel(wrapper, 2).find('input[type="number"]').element as HTMLInputElement).value
         ).toBe('16')
         await switchPanel(wrapper, 4)
-        expect((panel(wrapper, 4).find('input[max="10"]').element as HTMLInputElement).value).toBe(
+        expect((panel(wrapper, 5).find('input[max="10"]').element as HTMLInputElement).value).toBe(
             '3'
         )
 
@@ -176,7 +176,7 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         await panel(wrapper, 2).find('input[type="number"]').setValue('16')
         // 备份：保留数量 3
         await switchPanel(wrapper, 4)
-        await panel(wrapper, 4).find('input[max="10"]').setValue('3')
+        await panel(wrapper, 5).find('input[max="10"]').setValue('3')
 
         await wrapper.find('.btn-apply').trigger('click')
         await flushPromises()
@@ -241,6 +241,29 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         wrapper.unmount()
     })
 
+    it('编写体验页签：10 项写作能力默认关闭，开启后随保存写入 system 配置', async () => {
+        const wrapper = mountDialog()
+        await switchPanel(wrapper, 4)
+
+        const checkboxes = panel(wrapper, 4).findAll('.setting-checkbox')
+        expect(checkboxes).toHaveLength(10)
+        for (const checkbox of checkboxes) {
+            expect((checkbox.element as HTMLInputElement).checked).toBe(false)
+        }
+
+        // 开启第一项（写作模式）
+        await checkboxes[0].setValue(true)
+        await wrapper.find('.btn-apply').trigger('click')
+        await flushPromises()
+
+        expect(configWrite).toHaveBeenCalledWith(
+            'system',
+            expect.objectContaining({ writingModeEnabled: true })
+        )
+
+        wrapper.unmount()
+    })
+
     it('取消：丢弃草稿、不写配置、恢复打开时的值并 emit close', async () => {
         const wrapper = mountDialog()
         // 首开回填修复：挂载即异步加载持久化配置，先等初始加载完成再模拟用户修改
@@ -258,7 +281,7 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         wrapper.unmount()
     })
 
-    it('打开时加载 system 配置并映射到 5 个面板（含语言历史值归一化）', async () => {
+    it('打开时加载 system 配置并映射到 6 个面板（含语言历史值归一化）', async () => {
         configRead.mockImplementation((name: string) => {
             if (name === 'backup') {
                 return Promise.resolve({ backups: [], latest: null })
@@ -324,12 +347,12 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         // 备份面板：自动备份、间隔、保留数量
         await switchPanel(wrapper, 4)
         expect(
-            (panel(wrapper, 4).find('.setting-checkbox').element as HTMLInputElement).checked
+            (panel(wrapper, 5).find('.setting-checkbox').element as HTMLInputElement).checked
         ).toBe(true)
-        expect((panel(wrapper, 4).find('input[max="72"]').element as HTMLInputElement).value).toBe(
+        expect((panel(wrapper, 5).find('input[max="72"]').element as HTMLInputElement).value).toBe(
             '12'
         )
-        expect((panel(wrapper, 4).find('input[max="10"]').element as HTMLInputElement).value).toBe(
+        expect((panel(wrapper, 5).find('input[max="10"]').element as HTMLInputElement).value).toBe(
             '3'
         )
 

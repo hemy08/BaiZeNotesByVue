@@ -43,6 +43,17 @@ export interface SystemDialogSettings {
     featureSpellcheck: boolean
     featureSmartInput: boolean
     featureOutlinePlus: boolean
+    // 写作体验（P0，默认全部关闭）
+    writingModeEnabled: boolean
+    writingTypewriterEnabled: boolean
+    writingFocusEnabled: boolean
+    writingStatsEnabled: boolean
+    writingTypographyEnabled: boolean
+    writingSessionRestoreEnabled: boolean
+    writingBubbleEnabled: boolean
+    writingSlashEnabled: boolean
+    writingStyleCheckEnabled: boolean
+    writingSmartInputEnabled: boolean
 }
 
 /** 左侧页签（顺序即展示顺序；id 与模板中的 activePanel 判定一一对应） */
@@ -51,6 +62,7 @@ export const SYSTEM_SETTING_SIDEBAR_ITEMS = [
     { id: 'file', nameKey: 'dialogRenderer.systemSetting.sidebarFile', icon: '📁' },
     { id: 'appearance', nameKey: 'dialogRenderer.systemSetting.sidebarAppearance', icon: '🎨' },
     { id: 'features', nameKey: 'dialogRenderer.systemSetting.sidebarFeatures', icon: '🧩' },
+    { id: 'writing', nameKey: 'dialogRenderer.systemSetting.sidebarWriting', icon: '✍️' },
     { id: 'backup', nameKey: 'dialogRenderer.systemSetting.sidebarBackup', icon: '💾' }
 ] as const
 
@@ -96,7 +108,17 @@ export function createDefaultSystemDialogSettings(): SystemDialogSettings {
         featureMarkdownLint: SYSTEM_SETTING_FALLBACK.featureMarkdownLint,
         featureSpellcheck: SYSTEM_SETTING_FALLBACK.featureSpellcheck,
         featureSmartInput: SYSTEM_SETTING_FALLBACK.featureSmartInput,
-        featureOutlinePlus: SYSTEM_SETTING_FALLBACK.featureOutlinePlus
+        featureOutlinePlus: SYSTEM_SETTING_FALLBACK.featureOutlinePlus,
+        writingModeEnabled: SYSTEM_SETTING_FALLBACK.writingModeEnabled,
+        writingTypewriterEnabled: SYSTEM_SETTING_FALLBACK.writingTypewriterEnabled,
+        writingFocusEnabled: SYSTEM_SETTING_FALLBACK.writingFocusEnabled,
+        writingStatsEnabled: SYSTEM_SETTING_FALLBACK.writingStatsEnabled,
+        writingTypographyEnabled: SYSTEM_SETTING_FALLBACK.writingTypographyEnabled,
+        writingSessionRestoreEnabled: SYSTEM_SETTING_FALLBACK.writingSessionRestoreEnabled,
+        writingBubbleEnabled: SYSTEM_SETTING_FALLBACK.writingBubbleEnabled,
+        writingSlashEnabled: SYSTEM_SETTING_FALLBACK.writingSlashEnabled,
+        writingStyleCheckEnabled: SYSTEM_SETTING_FALLBACK.writingStyleCheckEnabled,
+        writingSmartInputEnabled: SYSTEM_SETTING_FALLBACK.writingSmartInputEnabled
     }
 }
 

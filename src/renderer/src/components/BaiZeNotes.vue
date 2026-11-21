@@ -212,6 +212,8 @@
             代码随主界面异步 chunk 加载，不进入渲染入口 chunk 预算。
         -->
         <SearchOverlayHost />
+        <!-- 写作模式（P0）：沉浸布局 + 顶部写作控制条；关闭时只保留状态栏入口 -->
+        <WritingModeHost />
     </div>
 </template>
 
@@ -231,6 +233,7 @@ import AppMessageBoxHost from './dialogs/AppMessageBoxHost.vue'
 // 2026-11-21（A2/A9 默认开启）：工作区搜索/替换 + 命令面板/Quick Open 宿主
 // （快捷键监听与浮层显隐内聚在宿主；本组件只负责挂载与跟随主界面卸载）
 import SearchOverlayHost from './search/SearchOverlayHost.vue'
+import WritingModeHost from './Markdown/WritingModeHost.vue'
 import { initDocumentHistoryFeature } from '../composables/useDocumentHistory'
 // 配置 Store
 import { getConfigStore } from '../common/useConfigStore'

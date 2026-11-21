@@ -202,6 +202,36 @@ const dialogRenderer = {
         sidebarAppearance: '外观设置',
         sidebarBackup: '备份与恢复',
         sidebarFeatures: '功能',
+        sidebarWriting: '编写体验',
+        panelWritingTitle: '编写体验',
+        panelWritingDesc:
+            '用于提升写作过程体验的辅助能力，默认全部关闭；开启后可在状态栏/菜单中使用。',
+        groupWritingFeatures: '写作辅助',
+        hintWritingFeatures:
+            '以下能力默认关闭，按你的写作习惯逐项开启；涉及外观的能力仅在写作模式内生效。',
+        writing: {
+            modeLabel: '写作模式',
+            modeDesc: '进入沉浸写作布局：隐藏侧栏与菜单、正文限宽，并显示写作控制条。',
+            typewriterLabel: '打字机模式',
+            typewriterDesc: '光标保持在屏幕垂直中部附近，适合长文连续输入。',
+            focusLabel: '段落聚焦',
+            focusDesc: '高亮当前正在编辑的段落，降低周围内容的视觉干扰。',
+            statsLabel: '写作统计',
+            statsDesc: '在状态栏显示中文字符、英文词、总字符与预计阅读时间。',
+            typographyLabel: '写作排版',
+            typographyDesc: '写作模式下使用独立的正文宽度、字号与行高。',
+            sessionRestoreLabel: '光标与滚动恢复',
+            sessionRestoreDesc: '按文件记住光标、滚动和选区位置，重新打开时回到上次位置。',
+            bubbleLabel: '选中文本气泡工具栏',
+            bubbleDesc: '选中文字时显示格式工具栏（加粗、斜体、链接、标题、列表等）。',
+            slashLabel: 'Slash 命令',
+            slashDesc: '在编辑器输入 / 打开插入命令菜单（标题、表格、公式、图片等）。',
+            styleCheckLabel: '写作风格检查',
+            styleCheckDesc: '检查长句、重复词、口头禅等写作问题，只提示不自动修改。',
+            smartInputLabel: '写作智能输入',
+            smartInputDesc:
+                '写作模式下启用列表/引用/标题续行增强，不改变全局 Markdown 智能输入开关。'
+        },
         panelFeaturesTitle: '功能开关',
         panelFeaturesDesc:
             '默认能力始终开启；可选能力按需开启，关闭时不注册界面与编辑行为，不增加启动负担。',

@@ -82,5 +82,16 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     featureMarkdownLint: false,
     featureSpellcheck: false,
     featureSmartInput: false,
-    featureOutlinePlus: false
+    featureOutlinePlus: false,
+    // 写作体验（P0）默认全部关闭
+    writingModeEnabled: false,
+    writingTypewriterEnabled: false,
+    writingFocusEnabled: false,
+    writingStatsEnabled: false,
+    writingTypographyEnabled: false,
+    writingSessionRestoreEnabled: false,
+    writingBubbleEnabled: false,
+    writingSlashEnabled: false,
+    writingStyleCheckEnabled: false,
+    writingSmartInputEnabled: false
 }

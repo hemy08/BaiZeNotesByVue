@@ -65,6 +65,9 @@ function filterFeatureMenu(items: BaiZeMenuEntry[]): BaiZeMenuEntry[] {
         if (item.featureFlag && !flags[item.featureFlag]) {
             continue
         }
+        if (item.writingFlag && !flags[item.writingFlag]) {
+            continue
+        }
         if (item.submenu) {
             const submenu = filterFeatureMenu(item.submenu)
             if (submenu.length === 0 && !item.recentMenuPlaceholder) {
@@ -84,7 +87,7 @@ onMounted(() => {
 })
 
 watch(
-    () => [flags.documentHistory, flags.markdownLint],
+    () => [flags.documentHistory, flags.markdownLint, flags.writingMode, flags.writingStyleCheck],
     () => {
         // 开关变化时重建运行时菜单；最近文件/文件夹占位项会由既有逻辑在打开菜单时重新注入
         menuData.value = filterFeatureMenu(structuredClone(menuMap.value))

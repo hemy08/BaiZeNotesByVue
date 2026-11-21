@@ -261,5 +261,63 @@ export default {
             tableSeparator:
                 'Invalid table separator row (each column should be --- / :-- / --: / :-:)'
         }
+    },
+    /** P0 writing mode (floating controls + status bar entry) */
+    writingMode: {
+        enter: 'Writing Mode',
+        exit: 'Exit Writing',
+        label: 'Writing Mode',
+        typewriter: 'Typewriter',
+        focusParagraph: 'Paragraph Focus',
+        typography: 'Typography',
+        goalHint: 'Today’s writing goal and progress',
+        contentWidth: 'Text width',
+        fontSize: 'Font size',
+        lineHeight: 'Line height',
+        dailyGoal: 'Daily goal',
+        charsUnit: 'chars',
+        today: 'Today',
+        reset: 'Reset typography'
+    },
+    /** P0-8 writing style / grammar check */
+    writingStyle: {
+        title: 'Writing Style Check',
+        checking: 'Checking…',
+        loadFailed: 'Failed to read editor content. Please try again.',
+        noContent: 'No document to check',
+        tooLarge: 'Document exceeds 2 MiB; style check is unavailable',
+        noIssues: 'No obvious writing style issues found',
+        recheck: 'Check again',
+        issueListTitle: 'Issues',
+        ruleStatsTitle: 'Rule summary',
+        ruleStatsTotal: '{total} issues, {enabled}/{all} rules enabled',
+        summary: '{total} issues: {warnings} warnings / {infos} hints',
+        truncatedHint: 'Too many results; showing the first {count}',
+        savedContentHint: 'Editor unavailable; checking saved content',
+        targetEditor: 'Target: {path}',
+        targetEditorFallback: 'Current editor',
+        close: 'Close',
+        rules: {
+            longSentence: 'Long sentence: {count} chars (suggested max {limit})',
+            longSentenceWords: 'Long sentence: {count} words (suggested max {limit})',
+            repeatedWord: 'Possible repeated word: {word}',
+            frequentCatchphrase:
+                'Frequent phrase: "{phrase}" appears {count} times (suggested max {limit})',
+            fillerWord: 'Filler word: {word}',
+            consecutivePunctuation: 'Consecutive punctuation: "{punctuation}"',
+            longParagraph: 'Long paragraph: about {count} chars (suggested max {limit})',
+            mixedScriptSpacing: 'Consider a space in mixed Chinese/Latin text',
+            punctuationWidthMix: 'Mixed full-width and half-width punctuation'
+        },
+        ruleLabels: {
+            longSentence: 'Long sentence',
+            repeatedWord: 'Repeated word',
+            frequentCatchphrase: 'Frequent phrase',
+            fillerWord: 'Filler word',
+            consecutivePunctuation: 'Consecutive punctuation',
+            longParagraph: 'Long paragraph',
+            mixedScriptSpacing: 'Mixed script spacing',
+            punctuationWidthMix: 'Punctuation width mix'
+        }
     }
 }
