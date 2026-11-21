@@ -42,6 +42,7 @@
     <a class="toc-l3" href="#sub-24">2026-11-18 · 修复批次 1（P1 + 高价值 P2/P3）</a>
     <a class="toc-l3" href="#sub-25">2026-11-18 · 台账建立</a>
     <a class="toc-l2" href="#sec-6">2026-11-20 P0~P3 优化记录</a>
+    <a class="toc-l2" href="#sec-7">2026-11-21 1.5.0 发布记录</a>
   </nav>
 
 <div class="wrap">
@@ -648,7 +649,13 @@
 <li>修复预览 renderSequence TDZ、设置对话框首开回填、InsertImageDialog 只读 computed 赋值</li>
 <li>性能 marks 基线 + 大文档/Monaco dispose 回归；P1 存量清理（eslint-disable、@types/jsdom）+ docs:check 链接检查</li>
 <li>i18n key 一致性 + BaseDialog 可访问性（ARIA/焦点陷阱/嵌套对话框栈）；prettier 3.10.1、vue-tsc 3.3.14</li>
-<li>当前全量测试 <strong>187 文件 / 3,458 用例</strong>；最新 tag <code>release-1.3.9</code>（1.3.9 已发布；1.5.0 未发布）</li>
+<li>截至 2026-11-20 的历史时点：全量测试 <strong>187 文件 / 3,458 用例</strong>、最新 tag <code>release-1.3.9</code>；1.5.0 发布记录见文末 2026-11-21 段</li>
+</ul>
+<h2 id="sec-7">2026-11-21 1.5.0 发布记录</h2>
+<ul>
+<li><strong>发布</strong>：1.5.0 已发布（tag <code>release-1.5.0</code>；GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap）</li>
+<li><strong>当前门禁基线</strong>：测试 266 文件 / 4,714 用例（4,711 passed / 3 skipped）、覆盖率 95.04/89.77/94.42/95.31、E2E 28/28、IPC 97 通道 / 17 组、preload 白名单 send 63 / receive 28</li>
+<li><strong>说明</strong>：文内 2026-11-20 的历史段保持时点数字；当前基线以 <code>docs/reports/README.md</code> 与 <code>quality:check</code> 实测为准。</li>
 </ul>
 
   <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
