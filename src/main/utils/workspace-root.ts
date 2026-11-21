@@ -178,6 +178,38 @@ function isWithinSystemTempDirectory(comparablePath: string): boolean {
 }
 
 /**
+ * 异步版本：用 `fs.promises.realpath` 解析系统临时目录（Windows GitHub Runner 的
+ * `os.tmpdir()` 返回 8.3 短路径 RUNNER~1，而 `fs.promises.realpath` 返回 runneradmin
+ * 长路径；同步 realpathSync 与异步 realpath 行为不同）。validateWorkspaceRoot 的
+ * realpath 二次校验必须用异步版本，否则合法临时目录会被 AppData 黑名单误伤。
+ */
+async function isWithinSystemTempDirectoryAsync(candidate: string): Promise<boolean> {
+    const tempCandidates = new Set<string>()
+    const rawCandidates = [os.tmpdir(), process.env.TEMP, process.env.TMP]
+    for (const raw of rawCandidates) {
+        if (typeof raw !== 'string' || raw.trim() === '') {
+            continue
+        }
+        tempCandidates.add(toComparablePath(raw))
+    }
+    for (const raw of rawCandidates) {
+        if (typeof raw !== 'string' || raw.trim() === '') {
+            continue
+        }
+        try {
+            tempCandidates.add(toComparablePath(await fs.promises.realpath(raw)))
+        } catch {
+            // 忽略不可解析的临时目录候选
+        }
+    }
+    return [...tempCandidates].some((tempDir) =>
+        isPathWithin(toComparablePath(candidate), tempDir, {
+            win32CaseInsensitive: process.platform === 'win32'
+        })
+    )
+}
+
+/**
  * AS-2：危险工作区根判定（返回中文原因，安全路径返回 null）。
  * 拒绝：磁盘根 / UNC 共享根 / POSIX 根（path.parse().root 全覆盖）、系统目录及其子树、
  * 用户主目录与用户目录根（如 C:\Users）。这些路径递归遍历代价极高且多为敏感区。
@@ -264,7 +296,9 @@ export async function validateWorkspaceRoot(candidate: unknown): Promise<Workspa
     try {
         const realPath = await fs.promises.realpath(resolvedPath)
         const realDangerousReason = detectDangerousWorkspaceRoot(realPath)
-        if (realDangerousReason !== null) {
+        // Windows 短路径别名：realPath 为长路径时同步黑名单中的 temp 候选可能仍是短路径；
+        // 用异步 realpath 再确认一次，合法临时目录不因 8.3 别名被误伤。
+        if (realDangerousReason !== null && !(await isWithinSystemTempDirectoryAsync(realPath))) {
             return { ok: false, reason: realDangerousReason }
         }
     } catch {
