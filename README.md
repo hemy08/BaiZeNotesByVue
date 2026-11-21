@@ -717,6 +717,7 @@ npm run clean
 ### v1.5.0 (当前版本)
 
 - [x] 新版本基线：全仓版本号 1.3.9 → 1.5.0；自本版本起所有修改归入 1.5.0
+- [x] 1.5.0 已发布 GitHub Release（2026-11-21，tag `release-1.5.0`；NSIS 安装包 / portable / latest.yml / blockmap）
 - [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
 - [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
 - [x] 文档口径统一（2026-11-20），2026-11-21 复核刷新测试数：测试 266 文件 / 4,714 用例、IPC 97 通道 / 17 组、preload 白名单 send 63 / receive 28 / window.api 6、报告 md 26 篇 / HTML Wiki 27 页

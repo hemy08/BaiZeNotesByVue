@@ -1,5 +1,7 @@
 ## 版本 1.5.0 (2026-11-21)
 
+> **发布状态**：**已发布**（2026-11-21）｜tag：[`release-1.5.0`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.0)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
+
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
 
 > 本版本承接 1.3.9 之后的全部分批改动（上一发布为 GitHub Release `release-1.3.9`）；各批量化明细与提交记录见 CHANGELOG.md 的 1.5.0 段。
@@ -120,7 +122,7 @@
 ### ⚠️ 已知限制
 
 - **未代码签名**：当前构建未配置代码签名证书，Windows 可能出现 SmartScreen 提示；本说明不声称已签名发布
-- **尚未发布**：1.5.0 未打 tag、未上传 GitHub Release；站点最新发布版本仍为 `release-1.3.9`
+- **发布状态**：已于 2026-11-21 发布（tag `release-1.5.0`；资产：Windows NSIS 安装包 / portable / latest.yml / blockmap）
 - **Electron 上游启动竞态**：sandboxed preload 在首次导航偶发未注入（Electron 上游 mojo 竞态），E2E 侧以 `page.reload()` 恢复并由启动稳定性量化 job 以零进程重启把关，非产品逻辑缺陷
 - 完整逐批明细与限制见 [CHANGELOG.md](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
 

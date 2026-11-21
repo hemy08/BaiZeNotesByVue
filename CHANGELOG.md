@@ -1,6 +1,6 @@
 ## 2026年11月20日 - 版本 1.5.0（新版本基线 / 主题设置首开修复）
 
-> **版本号调整（2026-11-20）**：应维护者要求，项目当前版本统一为 **1.5.0**（尚未发布，无历史 tag/资产）；本文件与 README/RELEASE-NOTES 的当前版本标识同步为 1.5.0。
+> **版本号调整（2026-11-20，2026-11-21 发布）**：应维护者要求，项目当前版本统一为 **1.5.0** 并已发布（tag `release-1.5.0`，GitHub Release 资产：NSIS 安装包 / portable / latest.yml / blockmap）；本文件与 README/RELEASE-NOTES 的当前版本标识同步为 1.5.0。
 
 > 1.5.0 起作为新版本基线：自本次版本升级之后的所有修改归入 1.5.0；1.3.9 保持已发布内容（tag `release-1.3.9`）。
 
@@ -45,6 +45,7 @@
 
 - **全仓版本号升级 1.3.9 → 1.5.0**：`package.json` / `package-lock.json` / `resources/config/version.json` / README 徽章与路线图 / docs 当前状态标注统一
 - **1.3.9 已发布**（2026-11-20）：GitHub Release `release-1.3.9`（tag → `1b73d9b`；NSIS 109.98 MB / portable 99.84 MB / latest.yml / blockmap），包含 tag `release-1.3.8` 之后全部修改
+- **1.5.0 已发布**（2026-11-21）：GitHub Release `release-1.5.0`（tag 触发 release workflow；NSIS 安装包 / portable / latest.yml / blockmap）；包含 1.3.9 之后全部修改（依赖升级、安全/性能/质量治理、滚动同步、应用内对话框与按钮统一等）
 - **应用内发布说明补齐（REL-16 / 遗留 D-2）**：帮助 → 版本发布新增 **1.5.0 / 1.3.9** 两条（`release-notes-data.ts` + `menu-help.ts` handler + `menu-config.ts` 子菜单 + `dialogMain` 中英词典同步），版本项 13 → 15；`menu_config` 断言同步为 15 条并锁定最新两项
 
 ### 🐛 体验修复
