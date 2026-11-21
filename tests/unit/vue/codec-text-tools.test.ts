@@ -12,6 +12,13 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
+// alert 应用内化批次：组件失败提示改走 common/app-message（MessageDialog），mock 断言
+const appMessageMocks = vi.hoisted(() => ({
+    showAppError: vi.fn(),
+    showAppWarning: vi.fn()
+}))
+vi.mock('@renderer/common/app-message', () => appMessageMocks)
+
 import { setLocale } from '@renderer/common/i18n'
 import Base64Codec from '@renderer/components/PluginTools/Codec/Base64Codec.vue'
 import HtmlCodec from '@renderer/components/PluginTools/Codec/HtmlCodec.vue'
@@ -22,6 +29,8 @@ let wrapper: VueWrapper | null = null
 
 beforeEach(() => {
     setLocale('zh-CN')
+    appMessageMocks.showAppError.mockClear()
+    appMessageMocks.showAppWarning.mockClear()
 })
 
 afterEach(() => {
@@ -109,9 +118,8 @@ describe('UrlCodec（TextCodecTool 薄封装）', () => {
         )
     })
 
-    it('alerts with the original i18n message on invalid URL encoding and keeps output', async () => {
+    it('shows the original i18n message on invalid URL encoding and keeps output', async () => {
         wrapper = mount(UrlCodec)
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
         await wrapper.find('#url-input').setValue('%E7%99')
         await wrapper.find('#url-encode').trigger('click')
         const previous = (wrapper.find('#url-output').element as HTMLTextAreaElement).value
@@ -119,8 +127,11 @@ describe('UrlCodec（TextCodecTool 薄封装）', () => {
         await wrapper.find('#url-input').setValue('%')
         await wrapper.find('#url-decode').trigger('click')
 
-        expect(alertSpy).toHaveBeenCalledTimes(1)
-        expect(alertSpy.mock.calls[0][0]).toContain('解码失败，输入包含非法 URL 编码：')
+        // 解码异常 → 应用内 error 提示（一次），文案与迁移前逐字一致
+        expect(appMessageMocks.showAppError).toHaveBeenCalledTimes(1)
+        expect(appMessageMocks.showAppError.mock.calls[0][0]).toContain(
+            '解码失败，输入包含非法 URL 编码：'
+        )
         // 失败时输出框保持上一次结果，不被清空/改写
         expect((wrapper.find('#url-output').element as HTMLTextAreaElement).value).toBe(previous)
     })

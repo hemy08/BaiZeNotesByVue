@@ -599,7 +599,7 @@ describe('EventBus 事件动作', () => {
         expect(M.trigger).not.toHaveBeenCalled()
     })
 
-    it('跳行：正常跳转、越界钳制并警告、非法 payload / 无 model 忽略', async () => {
+    it('跳行：指定行号直接跳转/越界钳制并警告；无 payload 唤起 Monaco 原生跳行输入', async () => {
         await mountEditor()
         M.currentModel = makeModel(['1', '2', '3', '4', '5'])
 
@@ -612,12 +612,34 @@ describe('EventBus 事件动作', () => {
         expect(M.setPosition).toHaveBeenLastCalledWith({ lineNumber: 5, column: 1 })
         expect(M.loggerWarn).toHaveBeenCalled()
 
+        // 无 payload（菜单「跳转到行」兜底路径）：唤起 Monaco 自带跳行快捷输入，
+        // 原 window.prompt 已移除；action 不存在时用 trigger 兜底
         M.setPosition.mockClear()
+        M.trigger.mockClear()
+        M.action = null
         EventBus.$emit(EVENT_BUS.EDITOR_JUMP_LINE)
+        expect(M.getAction).toHaveBeenCalledWith('editor.action.gotoLine')
+        expect(M.trigger).toHaveBeenCalledWith('menu', 'editor.action.gotoLine', null)
+        expect(M.focus).toHaveBeenCalled()
+        expect(M.setPosition).not.toHaveBeenCalled()
+
+        // action 存在时优先 run()
+        const run = vi.fn()
+        M.action = { run }
+        M.trigger.mockClear()
+        EventBus.$emit(EVENT_BUS.EDITOR_JUMP_LINE)
+        expect(run).toHaveBeenCalledTimes(1)
+        expect(M.trigger).not.toHaveBeenCalled()
+
+        // 非法行号 payload 仍按原行为忽略（不跳转、也不唤起快捷输入）
+        M.setPosition.mockClear()
+        M.getAction.mockClear()
         EventBus.$emit(EVENT_BUS.EDITOR_JUMP_LINE, { line: 'x' })
         EventBus.$emit(EVENT_BUS.EDITOR_JUMP_LINE, { line: Number.NaN })
         expect(M.setPosition).not.toHaveBeenCalled()
+        expect(M.getAction).not.toHaveBeenCalled()
 
+        // 无 model（行数 0）：指定行号仍忽略
         M.currentModel = null
         EventBus.$emit(EVENT_BUS.EDITOR_JUMP_LINE, { line: 1 })
         expect(M.setPosition).not.toHaveBeenCalled()

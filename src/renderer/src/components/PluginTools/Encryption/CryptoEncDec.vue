@@ -170,6 +170,8 @@ import { IPC } from '../../../../../shared/ipc-channels'
 // 加密响应直接用主进程 CryptoResult（类型对齐，运行时结构不变；cast 行为保持原样）。
 import type { CryptoResult, CryptoWireData } from '../../../../../shared/types'
 import { logger } from '../../../common/logger'
+// alert 应用内化：校验/前置条件 → warning，IPC 失败 → error（统一走 MessageDialog）
+import { showAppError, showAppWarning } from '../../../common/app-message'
 
 const props = defineProps({
     workAreaWidth: {
@@ -328,17 +330,17 @@ function fillEncDecData(): CryptoData {
 /** CQ-05：异步 IPC 失败统一提示——invoke 改为 Promise 后必须 await + catch，避免静默失败 */
 function showCryptoError(action: string, failedKey: string, error: unknown): void {
     logger.error(`${action}失败:`, error)
-    alert(t(failedKey, { error: error instanceof Error ? error.message : String(error) }))
+    showAppError(t(failedKey, { error: error instanceof Error ? error.message : String(error) }))
 }
 
 async function CryptoEncryptResult(): Promise<void> {
     if (!cryptoInput.value) {
-        alert(t('toolsConvert.crypto.emptyInputAlert'))
+        showAppWarning(t('toolsConvert.crypto.emptyInputAlert'))
         return
     }
     const result = checkSecretKey()
     if (result.length) {
-        alert(result)
+        showAppWarning(result)
         return
     }
     const data = fillEncDecData()
@@ -361,17 +363,17 @@ async function CryptoEncryptResult(): Promise<void> {
 
 async function CryptoDecryptResult(): Promise<void> {
     if (!cryptoInput.value) {
-        alert(t('toolsConvert.crypto.emptyInputAlert'))
+        showAppWarning(t('toolsConvert.crypto.emptyInputAlert'))
         return
     }
     const result = checkSecretKey()
     if (result.length) {
-        alert(result)
+        showAppWarning(result)
         return
     }
     // AS-13：GCM 解密必须先有 authTag，缺失时直接提示，不发起必然失败的 IPC 调用
     if (isGcmMode.value && cryptoAuthTag.value.trim().length === 0) {
-        alert(t('toolsConvert.crypto.authTagRequiredAlert'))
+        showAppWarning(t('toolsConvert.crypto.authTagRequiredAlert'))
         return
     }
     const data = fillEncDecData()

@@ -610,12 +610,28 @@ const handleTriggerFind = (payload?: { mode?: 'replace' }) => {
 }
 
 // FUN-09（editor-jump-line）：跳转到指定行（含行号范围校验：越界钳制到 [1, 总行数]）
-// payload 契约：{ line: number }（菜单侧 window.prompt 收集并已校验为正整数，此处再做防御性钳制）
+// payload 契约：
+// - `{ line: number }`：直接跳转（其他调用方/测试显式指定行号；越界钳制，非法值忽略）；
+// - 无 payload：唤起 Monaco 自带「跳转到行」快捷输入（editor.action.gotoLine），
+//   行号输入与校验由 Monaco 原生 UI 完成——菜单「编辑 → 跳转到行」的兜底路径，
+//   替代原浏览器 window.prompt（alert/prompt 应用内化批次，事件名契约不变）。
 const handleJumpToLine = (payload?: { line?: number }) => {
     if (!editorInstance) {
         return
     }
     const rawLine = payload?.line
+    if (rawLine === undefined) {
+        // 无行号：交给 Monaco 原生跳行快捷输入（Ctrl+G 同一入口，自带行号解析/范围校验）
+        const action = editorInstance.getAction('editor.action.gotoLine')
+        if (action) {
+            action.run()
+        } else {
+            // 极旧 Monaco 版本无该 action 时用 trigger 兜底（同一 command id）
+            editorInstance.trigger('menu', 'editor.action.gotoLine', null)
+        }
+        editorInstance.focus()
+        return
+    }
     if (typeof rawLine !== 'number' || !Number.isFinite(rawLine)) {
         return
     }

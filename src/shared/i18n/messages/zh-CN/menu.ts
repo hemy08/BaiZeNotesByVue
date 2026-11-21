@@ -43,7 +43,6 @@ export default {
     edit: {
         label: '编辑',
         goLine: '跳转到行',
-        goLinePrompt: '请输入要跳转的行号：',
         find: '查找',
         replace: '替换'
     },

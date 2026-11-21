@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
 import type { DOMWrapper } from '@vue/test-utils'
+
+// alert 应用内化批次：非法 IP 提示改走 common/app-message（MessageDialog），mock 断言
+const appMessageMocks = vi.hoisted(() => ({
+    showAppError: vi.fn(),
+    showAppWarning: vi.fn()
+}))
+vi.mock('@renderer/common/app-message', () => appMessageMocks)
 
 import Ipv4SubnetCalc from '@renderer/components/PluginTools/NetWork/Ipv4SubnetCalc.vue'
 
@@ -27,6 +34,11 @@ function rowValues(wrapper: VueWrapper, label: string): string[] {
 }
 
 describe('Ipv4SubnetCalc', () => {
+    beforeEach(() => {
+        appMessageMocks.showAppWarning.mockClear()
+        appMessageMocks.showAppError.mockClear()
+    })
+
     afterEach(() => {
         vi.restoreAllMocks()
     })
@@ -56,15 +68,15 @@ describe('Ipv4SubnetCalc', () => {
         expect(rowValues(wrapper, '广播：')).toEqual(['192', '168', '16', '255'])
     })
 
-    it('alerts when the IP address is invalid', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('shows an in-app warning when the IP address is invalid', async () => {
         const wrapper = mountCalc()
         const row = findRow(wrapper, 'IP/掩码位:')
         const inputs = row.findAll('input')
         await inputs[0].setValue('999')
         await row.findAll('button')[0].trigger('click')
 
-        expect(alertSpy).toHaveBeenCalledWith('输入IP地址无效')
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledWith('输入IP地址无效')
+        expect(appMessageMocks.showAppError).not.toHaveBeenCalled()
         // 输出未被更新，保持初始 0
         expect(rowValues(wrapper, '网络地址：')).toEqual(['0', '0', '0', '0'])
     })

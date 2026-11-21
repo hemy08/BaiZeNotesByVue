@@ -41,7 +41,6 @@ export default {
     edit: {
         label: 'Edit',
         goLine: 'Go to Line',
-        goLinePrompt: 'Enter the line number to jump to:',
         find: 'Find',
         replace: 'Replace'
     },

@@ -2,7 +2,6 @@ import * as Templates from '../../common/templates'
 import EventBus from '@renderer/common/event-bus/event-bus'
 import { getConfigStore } from '@renderer/common/useConfigStore'
 import { IPC } from '../../../../shared/ipc-channels'
-import { t } from '../../common/i18n'
 // 第 4 批 P3：裸 console.* 收敛到渲染层统一日志出口（失败降级逻辑保持不变）
 import { logger } from '../../common/logger'
 // ARC-14：插件工具显示事件名收敛至 EventBus 集中常量（menu-consts 仅保留兼容 re-export）
@@ -322,18 +321,12 @@ export function HandleMenuAction(action: string) {
     }
 
     // 编辑 → 跳转到行
-    // 事件名契约（勿改）：'editor-jump-line'（payload { line }）
-    // 行号由 window.prompt 收集并校验（编辑器内 Ctrl+G 走 Monaco 原生跳行输入框，本路径为菜单点击兜底）。
+    // 事件名契约（勿改）：'editor-jump-line'（payload 可选 { line }）
+    // 行号收集统一复用 Monaco 自带「跳转到行」快捷输入（editor.action.gotoLine）：
+    // 菜单点击只发事件（无 payload），由 MarkdownMonacoEditor 唤起 Monaco 快捷输入并校验行号；
+    // 不再使用浏览器原生 window.prompt（alert/prompt 应用内化批次）。
     if (action === 'baize:menu:edit:go-line') {
-        const input = window.prompt(t('menu.edit.goLinePrompt'))
-        if (input !== null) {
-            const line = Number(input)
-            if (Number.isInteger(line) && line > 0) {
-                EventBus.$emit(EVENT_BUS.EDITOR_JUMP_LINE, { line })
-            } else {
-                logger.warn(`[Menu] 无效的行号: ${input}`)
-            }
-        }
+        EventBus.$emit(EVENT_BUS.EDITOR_JUMP_LINE)
         return
     }
 

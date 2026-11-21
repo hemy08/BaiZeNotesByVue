@@ -458,22 +458,18 @@ describe('HandleMenuAction', () => {
             expect(emitMock).toHaveBeenCalledWith('editor-trigger-find', { mode: 'replace' })
         })
 
-        it('should emit editor-jump-line with the prompted line number', () => {
-            promptMock.mockReturnValue('42')
+        // alert/prompt 应用内化批次：菜单「跳转到行」不再使用 window.prompt 收集行号，
+        // 改为发无 payload 事件，由编辑器唤起 Monaco 原生「跳转到行」快捷输入
+        //（editor.action.gotoLine，自带行号输入与校验）；菜单动作语义与可用性不变。
+        it('should emit editor-jump-line without payload for the menu fallback path', () => {
             HandleMenuAction('baize:menu:edit:go-line')
-            expect(emitMock).toHaveBeenCalledWith('editor-jump-line', { line: 42 })
+            expect(emitMock).toHaveBeenCalledWith('editor-jump-line')
+            expect(ipcSend).not.toHaveBeenCalled()
         })
 
-        it('should not emit editor-jump-line for an invalid line number', () => {
-            promptMock.mockReturnValue('abc')
+        it('should not use the browser window.prompt for go-line', () => {
             HandleMenuAction('baize:menu:edit:go-line')
-            expect(emitMock).not.toHaveBeenCalled()
-        })
-
-        it('should not emit editor-jump-line when the prompt is cancelled', () => {
-            promptMock.mockReturnValue(null)
-            HandleMenuAction('baize:menu:edit:go-line')
-            expect(emitMock).not.toHaveBeenCalled()
+            expect(promptMock).not.toHaveBeenCalled()
         })
 
         it('should insert the mermaid basic framework for the mermaid drawing tool', () => {

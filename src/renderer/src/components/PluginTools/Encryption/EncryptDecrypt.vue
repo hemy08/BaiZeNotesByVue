@@ -99,6 +99,8 @@
 import { computed, ref } from 'vue'
 import CryptoJS, { type CipherHelper, type Mode, type Padding, type WordArray } from 'crypto-js'
 import { t } from '../../../common/i18n'
+// alert 应用内化：空输入 → warning，加解密异常 → error（统一走 MessageDialog）
+import { showAppError, showAppWarning } from '../../../common/app-message'
 
 const props = defineProps({
     // 编辑器宽度
@@ -240,7 +242,7 @@ function openUrl(link: string) {
 
 function handleEncrypt() {
     if (!encDecInput.value) {
-        alert(t('toolsConvert.encryptDecrypt.emptyInputAlert'))
+        showAppWarning(t('toolsConvert.encryptDecrypt.emptyInputAlert'))
         return
     }
     const secretKey = CryptoJS.enc.Utf8.parse(encDecSecKey.value)
@@ -257,7 +259,7 @@ function handleEncrypt() {
         })
         EncryptResult.value = CryptoJS.enc.Hex.stringify(iv) + ':' + encrypted.toString()
     } catch (error) {
-        alert(
+        showAppError(
             t('toolsConvert.encryptDecrypt.encryptFailed', {
                 error: error instanceof Error ? error.message : String(error)
             })
@@ -267,7 +269,7 @@ function handleEncrypt() {
 
 function handleDecrypt() {
     if (!EncryptResult.value) {
-        alert(t('toolsConvert.encryptDecrypt.emptyCipherAlert'))
+        showAppWarning(t('toolsConvert.encryptDecrypt.emptyCipherAlert'))
         return
     }
     const secretKey = CryptoJS.enc.Utf8.parse(encDecSecKey.value)
@@ -295,7 +297,7 @@ function handleDecrypt() {
         const decrypted = cryptoAlg[encDecAlg.value].decrypt(cipherText, secretKey, options)
         encDecInput.value = decrypted.toString(CryptoJS.enc.Utf8)
     } catch (error) {
-        alert(
+        showAppError(
             t('toolsConvert.encryptDecrypt.decryptFailed', {
                 error: error instanceof Error ? error.message : String(error)
             })

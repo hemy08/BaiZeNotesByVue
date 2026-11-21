@@ -241,6 +241,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { t } from '../../../common/i18n'
+// alert 应用内化：非法 IP 属输入校验 → warning（统一走 MessageDialog）
+import { showAppWarning } from '../../../common/app-message'
 import * as net from './NetWork'
 
 const props = defineProps({
@@ -354,7 +356,7 @@ function openUrl(link: string) {
 
 function SubnetCalc() {
     if (!net.isValidIPV4(inputIpv4Addr.value)) {
-        alert(t('toolsNetwork.network.ipv4SubnetCalc.invalidIp'))
+        showAppWarning(t('toolsNetwork.network.ipv4SubnetCalc.invalidIp'))
         return
     }
     const netIpv4 = new net.IPV4(inputIpv4Addr.value.join('.'), inputIpv4Cidr.value)

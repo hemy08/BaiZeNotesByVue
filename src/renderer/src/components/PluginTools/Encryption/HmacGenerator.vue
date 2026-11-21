@@ -77,6 +77,8 @@ import { IPC } from '../../../../../shared/ipc-channels'
 // 第 2 批契约重构：HMAC 结果结构统一引用 shared HashResult（与主进程 encrypt-decrypt.ts 同源）
 import type { HashResult } from '../../../../../shared/types'
 import { logger } from '../../../common/logger'
+// alert 应用内化：空输入 → warning，IPC 失败 → error（同一类失败 5s 内只提示一次）
+import { showAppError, showAppWarning } from '../../../common/app-message'
 
 const props = defineProps({
     // 编辑器宽度
@@ -147,10 +149,12 @@ async function getHmacTextResult(): Promise<void> {
         }
         // CQ-05：异步调用必须 catch，失败时提示用户而不是静默
         logger.error('计算 HMAC 失败:', error)
-        alert(
+        showAppError(
             t('toolsConvert.hmac.failedAlert', {
                 error: error instanceof Error ? error.message : String(error)
-            })
+            }),
+            // 输入/密钥 watch 在连续击键时可能反复失败：同键 5s 内只弹一次（日志仍全量记录）
+            { throttleKey: 'toolsConvert.hmac.failedAlert' }
         )
     }
 }
@@ -173,7 +177,7 @@ watch(
     () => encodeType.value,
     () => {
         if (!textInput.value) {
-            alert(t('toolsConvert.hmac.emptyInputAlert'))
+            showAppWarning(t('toolsConvert.hmac.emptyInputAlert'))
             return
         }
         getHmacTextResult()

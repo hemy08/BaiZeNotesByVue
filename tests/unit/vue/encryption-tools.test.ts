@@ -5,6 +5,13 @@ import { nextTick } from 'vue'
 import CryptoJS from 'crypto-js'
 import { setLocale, t } from '@renderer/common/i18n'
 
+// alert 应用内化批次：插件工具失败/校验提示改走 common/app-message（MessageDialog），mock 断言
+const appMessageMocks = vi.hoisted(() => ({
+    showAppError: vi.fn(),
+    showAppWarning: vi.fn()
+}))
+vi.mock('@renderer/common/app-message', () => appMessageMocks)
+
 import TokenGenerator from '@renderer/components/PluginTools/Encryption/TokenGenerator.vue'
 import RSAGenerator from '@renderer/components/PluginTools/Encryption/RSAGenerator.vue'
 import EncryptDecrypt from '@renderer/components/PluginTools/Encryption/EncryptDecrypt.vue'
@@ -13,6 +20,11 @@ import UUIDSGenerator from '@renderer/components/PluginTools/Encryption/UUIDSGen
 import ULIDGenerator from '@renderer/components/PluginTools/Encryption/ULIDGenerator.vue'
 import HashText from '@renderer/components/PluginTools/Encryption/HashText.vue'
 import HmacGenerator from '@renderer/components/PluginTools/Encryption/HmacGenerator.vue'
+
+beforeEach(() => {
+    appMessageMocks.showAppError.mockClear()
+    appMessageMocks.showAppWarning.mockClear()
+})
 
 // jsdom 未实现 navigator.clipboard，统一注入 mock
 function installClipboardMock() {
@@ -188,11 +200,10 @@ describe('EncryptDecrypt（crypto-js 对称加解密）', () => {
         expect(selects[2].findAll('option')).toHaveLength(6)
     })
 
-    it('alerts when encrypting without input text', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('warns in-app when encrypting without input text', async () => {
         const wrapper = mount(EncryptDecrypt, { props: { workAreaWidth: '1000px' } })
         await wrapper.find('#text-encrypt').trigger('click')
-        expect(alertSpy).toHaveBeenCalledWith('请输入要加密的文本...')
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledWith('请输入要加密的文本...')
     })
 
     it('encrypts plain text into a non-empty cipher string', async () => {
@@ -242,11 +253,10 @@ describe('EncryptDecrypt（crypto-js 对称加解密）', () => {
         )
     })
 
-    it('alerts when decrypting with an empty cipher area', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('warns in-app when decrypting with an empty cipher area', async () => {
         const wrapper = mount(EncryptDecrypt, { props: { workAreaWidth: '1000px' } })
         await wrapper.find('#text-decrypt').trigger('click')
-        expect(alertSpy).toHaveBeenCalledWith('请输入要解密的文本...')
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledWith('请输入要解密的文本...')
     })
 })
 
@@ -290,21 +300,21 @@ describe('CryptoEncDec（Node crypto 经 IPC 加解密）', () => {
         expect((selects[3].element as HTMLSelectElement).value).toBe('hex')
     })
 
-    it('alerts when encrypting without input text', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('warns in-app when encrypting without input text', async () => {
         const wrapper = mount(CryptoEncDec, { props: { workAreaWidth: '1000px' } })
         await wrapper.find('#text-encrypt').trigger('click')
-        expect(alertSpy).toHaveBeenCalledWith('请输入要加密/解密的文本...')
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledWith('请输入要加密/解密的文本...')
     })
 
-    it('alerts when the secret key length does not match the algorithm', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('warns in-app when the secret key length does not match the algorithm', async () => {
         const wrapper = mount(CryptoEncDec, { props: { workAreaWidth: '1000px' } })
         await wrapper.find('#crypto-input-text').setValue('hello')
         // aes-256-cbc 需要 32 字节密钥，这里只给 5 个字符
         await wrapper.find('#input-crypto-secret-key').setValue('short')
         await wrapper.find('#text-encrypt').trigger('click')
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('需要秘钥长度'))
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledWith(
+            expect.stringContaining('需要秘钥长度')
+        )
         expect(invoke).not.toHaveBeenCalled()
     })
 
@@ -423,8 +433,7 @@ describe('CryptoEncDec（Node crypto 经 IPC 加解密）', () => {
         )
     })
 
-    it('alerts instead of calling IPC when decrypting GCM without an authTag (AS-13)', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('warns in-app instead of calling IPC when decrypting GCM without an authTag (AS-13)', async () => {
         const wrapper = mount(CryptoEncDec, { props: { workAreaWidth: '1000px' } })
         await wrapper.find('#crypto-input-text').setValue('deadbeef')
         await wrapper.find('#input-crypto-secret-key').setValue('a'.repeat(32))
@@ -432,7 +441,9 @@ describe('CryptoEncDec（Node crypto 经 IPC 加解密）', () => {
         await wrapper.find('#text-decrypt').trigger('click')
         await flushPromises()
 
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('authTag'))
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledWith(
+            expect.stringContaining('authTag')
+        )
         expect(invoke).not.toHaveBeenCalled()
     })
 
@@ -479,8 +490,7 @@ describe('CryptoEncDec（Node crypto 经 IPC 加解密）', () => {
     })
 
     // CQ-05：异步 IPC 失败需 catch 并提示用户（原同步实现无此路径）
-    it('alerts when the encrypt IPC call rejects', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('shows an in-app error when the encrypt IPC call rejects', async () => {
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
         invoke.mockRejectedValueOnce(new Error('cipher broken'))
         const wrapper = mount(CryptoEncDec, { props: { workAreaWidth: '1000px' } })
@@ -489,8 +499,12 @@ describe('CryptoEncDec（Node crypto 经 IPC 加解密）', () => {
         await wrapper.find('#text-encrypt').trigger('click')
         await flushPromises()
 
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('加密失败'))
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('cipher broken'))
+        expect(appMessageMocks.showAppError).toHaveBeenCalledWith(
+            expect.stringContaining('加密失败')
+        )
+        expect(appMessageMocks.showAppError).toHaveBeenCalledWith(
+            expect.stringContaining('cipher broken')
+        )
         expect(consoleError).toHaveBeenCalled()
         consoleError.mockRestore()
     })
@@ -723,24 +737,29 @@ describe('HashText', () => {
         expect(invoke).toHaveBeenLastCalledWith('baize:plugin:hash-text', 'hello', 'base64')
     })
 
-    it('alerts when changing encoding without input text', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('warns in-app when changing encoding without input text', async () => {
         const wrapper = mount(HashText, { props: { workAreaWidth: '1000px' } })
         await wrapper.find('#hash-text-input').setValue('')
         await wrapper.find('#hash-text-encode-type').setValue('Binary')
         await flushPromises()
-        expect(alertSpy).toHaveBeenCalledWith('请先输入要进行Hash的文本....')
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledWith('请先输入要进行Hash的文本....')
     })
 
-    it('alerts when the hash IPC call rejects (CQ-05)', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('shows an in-app error when the hash IPC call rejects (CQ-05)', async () => {
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
         invoke.mockRejectedValueOnce(new Error('hash broken'))
         const wrapper = mount(HashText, { props: { workAreaWidth: '1000px' } })
         await wrapper.find('#hash-text-input').setValue('hello')
         await flushPromises()
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('计算哈希失败'))
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('hash broken'))
+        expect(appMessageMocks.showAppError).toHaveBeenCalledTimes(1)
+        const [message, options] = appMessageMocks.showAppError.mock.calls[0] as [
+            string,
+            { throttleKey?: string }
+        ]
+        expect(message).toContain('计算哈希失败')
+        expect(message).toContain('hash broken')
+        // 输入 watch 反复失败时按同一节流键去重（LOG-08）
+        expect(options.throttleKey).toBe('toolsConvert.hash.failedAlert')
         expect(consoleError).toHaveBeenCalled()
         consoleError.mockRestore()
     })
@@ -837,23 +856,27 @@ describe('HmacGenerator', () => {
         )
     })
 
-    it('alerts when changing encoding without input text', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('warns in-app when changing encoding without input text', async () => {
         const wrapper = mount(HmacGenerator, { props: { workAreaWidth: '1000px' } })
         await wrapper.find('#hmac-text-input').setValue('')
         await wrapper.find('#hmac-text-encode-type').setValue('Binary')
         await flushPromises()
-        expect(alertSpy).toHaveBeenCalledWith('请先输入要进行Hmac的文本....')
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledWith('请先输入要进行Hmac的文本....')
     })
 
-    it('alerts when the HMAC IPC call rejects (CQ-05)', async () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    it('shows an in-app error when the HMAC IPC call rejects (CQ-05)', async () => {
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
         invoke.mockRejectedValueOnce(new Error('hmac broken'))
         const wrapper = mount(HmacGenerator, { props: { workAreaWidth: '1000px' } })
         await wrapper.find('#hmac-text-input').setValue('hello')
         await flushPromises()
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('计算 HMAC 失败'))
+        expect(appMessageMocks.showAppError).toHaveBeenCalledTimes(1)
+        const [message, options] = appMessageMocks.showAppError.mock.calls[0] as [
+            string,
+            { throttleKey?: string }
+        ]
+        expect(message).toContain('计算 HMAC 失败')
+        expect(options.throttleKey).toBe('toolsConvert.hmac.failedAlert')
         expect(consoleError).toHaveBeenCalled()
         consoleError.mockRestore()
     })

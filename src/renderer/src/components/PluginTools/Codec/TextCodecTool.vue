@@ -65,6 +65,8 @@
 import { computed, ref } from 'vue'
 import { t } from '../../../common/i18n'
 import { copyTextToClipboard } from '../../../common/clipboard'
+// alert 应用内化：转换失败 → error（统一走 MessageDialog，与插件工具反馈风格一致）
+import { showAppError } from '../../../common/app-message'
 
 defineOptions({ name: 'TextCodecTool' })
 
@@ -77,7 +79,7 @@ interface TextCodecAction {
     /** 纯变换函数：输入文本 → 输出文本（不产生副作用） */
     transform: (input: string) => string
     /**
-     * 失败提示 i18n key 后缀（可选）：提供时捕获转换异常并 alert；
+     * 失败提示 i18n key 后缀（可选）：提供时捕获转换异常并弹出应用内错误提示；
      * 未提供时保持原实现的行为（异常原样抛出）。
      */
     errorKey?: string
@@ -123,14 +125,14 @@ const clearId = computed(() => `${props.idPrefix}-clear`)
 
 /**
  * 执行转换动作：成功写入输出框；
- * 带 errorKey 的动作（如 URL 解码）异常时弹 i18n 提示并保留原输出，其余异常原样抛出。
+ * 带 errorKey 的动作（如 URL 解码）异常时弹出应用内错误提示并保留原输出，其余异常原样抛出。
  */
 function runAction(action: TextCodecAction): void {
     try {
         outputText.value = action.transform(inputText.value)
     } catch (error) {
         if (!action.errorKey) throw error
-        alert(t(`${props.i18nPrefix}.${action.errorKey}`, { error: String(error) }))
+        showAppError(t(`${props.i18nPrefix}.${action.errorKey}`, { error: String(error) }))
     }
 }
 

@@ -128,7 +128,8 @@ export const EVENT_BUS_CONTRACT: Record<EventBusEventKey, EventBusContractEntry>
         receivers: ['components/Markdown/MarkdownMonacoEditor.vue']
     },
     EDITOR_JUMP_LINE: {
-        payload: '{ line: number }：跳转到指定行',
+        payload:
+            '可选 { line: number }：直接跳转到指定行；无 payload 时唤起 Monaco 原生「跳转到行」快捷输入（菜单兜底路径，替代 window.prompt）',
         emitters: ['components/MenuBar/menu-actions.ts'],
         receivers: ['components/Markdown/MarkdownMonacoEditor.vue']
     },

@@ -25,6 +25,13 @@ const clipboardMocks = vi.hoisted(() => ({
 
 vi.mock('@renderer/common/clipboard', () => clipboardMocks)
 
+// alert 应用内化批次：图片工具超限/读取失败提示改走 common/app-message（MessageDialog），mock 断言
+const appMessageMocks = vi.hoisted(() => ({
+    showAppError: vi.fn(),
+    showAppWarning: vi.fn()
+}))
+vi.mock('@renderer/common/app-message', () => appMessageMocks)
+
 // 图片大小上限缩到 4 字节：使「文件超限 / 解码超限」分支无需构造 20MB 数据
 vi.mock('../../../src/shared/constants/limits', async (importOriginal) => {
     const actual = await importOriginal<Record<string, unknown>>()
@@ -42,6 +49,8 @@ let wrapper: VueWrapper | null = null
 beforeEach(() => {
     setLocale('zh-CN')
     clipboardMocks.copyTextToClipboard.mockClear()
+    appMessageMocks.showAppError.mockClear()
+    appMessageMocks.showAppWarning.mockClear()
 })
 
 afterEach(() => {
@@ -363,7 +372,6 @@ describe('RandomGenerator.vue 随机生成面板', () => {
 describe('ImageBase64.vue 图片 Base64 面板', () => {
     let createObjectUrl: ReturnType<typeof vi.fn>
     let revokeObjectUrl: ReturnType<typeof vi.fn>
-    let alertSpy: ReturnType<typeof vi.spyOn>
     let objectUrlSeed: number
 
     beforeEach(() => {
@@ -374,11 +382,6 @@ describe('ImageBase64.vue 图片 Base64 面板', () => {
             createObjectURL: createObjectUrl,
             revokeObjectURL: revokeObjectUrl
         })
-        alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined)
-    })
-
-    afterEach(() => {
-        alertSpy.mockRestore()
     })
 
     /** 构造最小 File 契约（jsdom 下无需真实 20MB 字节） */
@@ -427,10 +430,11 @@ describe('ImageBase64.vue 图片 Base64 面板', () => {
         ).toBe('blob:mock-1')
     })
 
-    it('文件超过大小上限：提示并复位 input', async () => {
+    it('文件超过大小上限：应用内警告并复位 input', async () => {
         wrapper = mount(ImageBase64)
         await chooseFile(wrapper, fakeFile({ size: 5 }))
-        expect(alertSpy).toHaveBeenCalledTimes(1)
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledTimes(1)
+        expect(appMessageMocks.showAppError).not.toHaveBeenCalled()
         expect((wrapper.find('#image-file-input').element as HTMLInputElement).value).toBe('')
         expect(wrapper.find('#image-preview').exists()).toBe(false)
     })
@@ -439,14 +443,15 @@ describe('ImageBase64.vue 图片 Base64 面板', () => {
         wrapper = mount(ImageBase64)
         await wrapper.find('#image-file-input').trigger('change')
         await flushPromises()
-        expect(alertSpy).not.toHaveBeenCalled()
+        expect(appMessageMocks.showAppWarning).not.toHaveBeenCalled()
+        expect(appMessageMocks.showAppError).not.toHaveBeenCalled()
         expect(createObjectUrl).not.toHaveBeenCalled()
     })
 
-    it('读取文件失败提示错误', async () => {
+    it('读取文件失败提示应用内错误', async () => {
         wrapper = mount(ImageBase64)
         await chooseFile(wrapper, fakeFile({ fail: true }))
-        expect(alertSpy).toHaveBeenCalledTimes(1)
+        expect(appMessageMocks.showAppError).toHaveBeenCalledTimes(1)
     })
 
     it('解码 Base64 生成预览，二次解码 revoke 旧 objectURL', async () => {
@@ -478,21 +483,21 @@ describe('ImageBase64.vue 图片 Base64 面板', () => {
         expect(captured[0].type).toBe('image/jpeg')
     })
 
-    it('空输入 / 非法 Base64 / 字节超限分别提示', async () => {
+    it('空输入 / 非法 Base64 / 字节超限分别给出应用内提示', async () => {
         wrapper = mount(ImageBase64)
         const textarea = wrapper.find('#image-base64-text')
 
         await wrapper.find('#image-base64-to-preview').trigger('click')
-        expect(alertSpy).toHaveBeenCalledTimes(1)
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledTimes(1)
 
         await textarea.setValue('!!!!')
         await wrapper.find('#image-base64-to-preview').trigger('click')
-        expect(alertSpy).toHaveBeenCalledTimes(2)
+        expect(appMessageMocks.showAppError).toHaveBeenCalledTimes(1)
 
         // 5 字节 > 缩小的 4 字节上限
         await textarea.setValue('AQIDBAU=')
         await wrapper.find('#image-base64-to-preview').trigger('click')
-        expect(alertSpy).toHaveBeenCalledTimes(3)
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledTimes(2)
         expect(createObjectUrl).not.toHaveBeenCalled()
     })
 
@@ -501,7 +506,7 @@ describe('ImageBase64.vue 图片 Base64 面板', () => {
         // MAX_BASE64_TEXT_LENGTH = ceil(4/3*4)+1024 = 1030
         await wrapper.find('#image-base64-text').setValue('A'.repeat(1031))
         await wrapper.find('#image-base64-to-preview').trigger('click')
-        expect(alertSpy).toHaveBeenCalledTimes(1)
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledTimes(1)
         expect(createObjectUrl).not.toHaveBeenCalled()
     })
 

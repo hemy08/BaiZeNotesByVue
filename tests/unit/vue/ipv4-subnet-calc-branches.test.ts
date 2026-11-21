@@ -13,16 +13,22 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
+// alert 应用内化批次：非法 IP 提示改走 common/app-message（MessageDialog），mock 断言
+const appMessageMocks = vi.hoisted(() => ({
+    showAppError: vi.fn(),
+    showAppWarning: vi.fn()
+}))
+vi.mock('@renderer/common/app-message', () => appMessageMocks)
+
 import Ipv4SubnetCalc from '@renderer/components/PluginTools/NetWork/Ipv4SubnetCalc.vue'
 
 let wrapper: ReturnType<typeof mount> | null = null
-let alertMock: ReturnType<typeof vi.fn>
 let openMock: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
-    alertMock = vi.fn()
     openMock = vi.fn()
-    vi.stubGlobal('alert', alertMock)
+    appMessageMocks.showAppWarning.mockClear()
+    appMessageMocks.showAppError.mockClear()
     vi.stubGlobal('open', openMock)
 })
 
@@ -83,12 +89,13 @@ describe('Ipv4SubnetCalc：子网计算 / 重置', () => {
         expect(values).toContain('253')
     })
 
-    it('非法 IP 点击计算时告警', async () => {
+    it('非法 IP 点击计算时给出应用内警告', async () => {
         const { buttons } = mountComponent()
         const addrInputs = wrapper!.findAll('input.ipv4-addr-text')
         await addrInputs[0].setValue('999')
         await buttons[0].trigger('click')
-        expect(alertMock).toHaveBeenCalled()
+        expect(appMessageMocks.showAppWarning).toHaveBeenCalledTimes(1)
+        expect(appMessageMocks.showAppError).not.toHaveBeenCalled()
     })
 
     it('重置按钮把子网输出清为 0', async () => {

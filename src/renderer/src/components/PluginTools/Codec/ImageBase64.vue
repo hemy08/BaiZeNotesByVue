@@ -60,6 +60,8 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { t } from '../../../common/i18n'
 import { copyTextToClipboard } from '../../../common/clipboard'
+// alert 应用内化：超限/空输入 → warning，读取/解码失败 → error（统一走 MessageDialog）
+import { showAppError, showAppWarning } from '../../../common/app-message'
 import { MAX_IMAGE_BASE64_SIZE } from '../../../../../shared/constants/limits'
 import { base64ToBytes, bytesToBase64 } from './image-base64-lib'
 
@@ -105,7 +107,7 @@ async function handleFileChange(event: Event) {
     const file = input.files && input.files[0]
     if (!file) return
     if (file.size > MAX_IMAGE_BYTES) {
-        alert(t('toolsConvert.imageBase64.sizeLimitAlert'))
+        showAppWarning(t('toolsConvert.imageBase64.sizeLimitAlert'))
         input.value = ''
         return
     }
@@ -117,7 +119,7 @@ async function handleFileChange(event: Event) {
         fileName.value = file.name
         showImageFromBytes(bytes, file.type)
     } catch (error) {
-        alert(t('toolsConvert.imageBase64.readFailedAlert', { error: String(error) }))
+        showAppError(t('toolsConvert.imageBase64.readFailedAlert', { error: String(error) }))
     }
 }
 
@@ -127,22 +129,22 @@ function handleDecode() {
         const text = base64Text.value
         // P3 修复：先按长度预检（20MB 上限对应约 26.7M 字符的 Base64），超限不进入 atob
         if (text.length > MAX_BASE64_TEXT_LENGTH) {
-            alert(t('toolsConvert.imageBase64.sizeLimitAlert'))
+            showAppWarning(t('toolsConvert.imageBase64.sizeLimitAlert'))
             return
         }
         const bytes = base64ToBytes(text)
         if (bytes.length === 0) {
-            alert(t('toolsConvert.imageBase64.emptyInputAlert'))
+            showAppWarning(t('toolsConvert.imageBase64.emptyInputAlert'))
             return
         }
         if (bytes.length > MAX_IMAGE_BYTES) {
-            alert(t('toolsConvert.imageBase64.sizeLimitAlert'))
+            showAppWarning(t('toolsConvert.imageBase64.sizeLimitAlert'))
             return
         }
         const mime = detectMime(text)
         showImageFromBytes(bytes, mime)
     } catch (error) {
-        alert(t('toolsConvert.imageBase64.decodeFailedAlert', { error: String(error) }))
+        showAppError(t('toolsConvert.imageBase64.decodeFailedAlert', { error: String(error) }))
     }
 }
 

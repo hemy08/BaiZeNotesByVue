@@ -7,9 +7,13 @@
  * 封装行为：
  * - navigator.clipboard 不可用（非安全上下文 / 旧环境）或 writeText 被拒绝时，
  *   弹出 i18n 通用提示（common.clipboard.writeFailed），不再静默失败；
+ * - 失败提示走 common/app-message 的应用内消息对话框（MessageDialog），不再使用
+ *   浏览器原生 alert（alert 应用内化批次；本模块为纯函数模块，helper 只依赖模块级
+ *   全局 store，不引入 Vue 组件上下文）；
  * - 返回 Promise<boolean> 供调用方/测试判断结果；
  * - 空文本直接返回 false（不弹提示，与各组件「有内容才复制」的既有判断兼容）。
  */
+import { showAppError } from './app-message'
 import { t } from './i18n'
 
 /**
@@ -29,7 +33,7 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
         throw new Error('navigator.clipboard.writeText unavailable')
     } catch {
         // 权限拒绝 / API 缺失：给出可见反馈（通用词条），不抛出打断调用方
-        alert(t('common.clipboard.writeFailed'))
+        showAppError(t('common.clipboard.writeFailed'))
         return false
     }
 }
