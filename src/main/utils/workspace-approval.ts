@@ -53,7 +53,12 @@ function toApprovalKey(absolutePath: string): string {
 async function resolveCanonicalPath(candidate: string): Promise<string> {
     const resolved = path.resolve(candidate)
     try {
-        return await fs.promises.realpath(resolved)
+        // 2026-11-21（CI Windows Runner）：与测试/Windows API 保持一致，使用同步
+        // realpathSync 归一化。GitHub Runner 的 %TEMP% 是 8.3 短路径
+        // （C:\Users\RUNNER~1\...），fs.promises.realpath 返回长路径而 realpathSync
+        // 返回短路径；两者混用会导致同一目录在「批准集合 / 渲染层回传路径 / 测试
+        // 期望」之间产生大小写别名差异。统一使用 realpathSync 保证比较键稳定。
+        return fs.realpathSync(resolved)
     } catch {
         return resolved
     }

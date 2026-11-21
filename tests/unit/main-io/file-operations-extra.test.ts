@@ -13,7 +13,8 @@
  * - Reopen/Convert 编码：无活动文件、越界、成功写盘与广播；
  * - OpenFile / OpenDirectory / GetSelectDir / Rename / Delete：取消、异常兜底与删除失败提示。
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest'
+import * as os from 'os'
 import * as path from 'path'
 
 const electronMocks = vi.hoisted(() => ({
@@ -238,8 +239,24 @@ const mainWindow = {
     webContents: { id: 1, send: mainSend, isDestroyed: () => false },
     isDestroyed: () => false
 }
-const WORKSPACE = 'E:\\workspace'
+const WORKSPACE = path.join(
+    os.tmpdir(),
+    `baize-file-ops-extra-${process.pid}-${Date.now().toString(36)}`
+)
 const OUTSIDE = 'C:\\Windows\\win.ini'
+let actualFs: typeof import('fs') | null = null
+
+beforeAll(async () => {
+    // 本文件把 'fs' 模块整体 mock；用 importActual 拿到真实实现，创建临时工作区。
+    // 不能使用硬编码 E:\workspace：CI 无 E: 盘/目录，真实写盘会失败（本地因目录残留
+    // 而碰巧通过）。临时目录同时使 8.3 短路径/realpath 归一化与 CI 保持一致。
+    actualFs = await vi.importActual<typeof import('fs')>('fs')
+    actualFs.mkdirSync(WORKSPACE, { recursive: true })
+})
+
+afterAll(() => {
+    actualFs?.rmSync(WORKSPACE, { recursive: true, force: true })
+})
 
 /** 收集经 Vue 对话框下发的消息文案（showErrorMessageBox 走 IPC.DIALOG.OPEN_VUE_DIALOG） */
 function dialogMessages(): string[] {

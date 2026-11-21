@@ -153,18 +153,28 @@ function getSensitiveDirectories(): string[] {
  * 合法的临时目录工作区（含单测夹具）会被 AppData 黑名单误伤。豁免不扩大任何读取权限。
  */
 function isWithinSystemTempDirectory(comparablePath: string): boolean {
-    let tempDir: string
-    try {
-        tempDir = os.tmpdir()
-    } catch {
-        return false
+    // Windows GitHub Runner 的 TEMP 可能是 8.3 短路径（C:\Users\RUNNER~1\...），
+    // 而工作区校验传入的是 realpath 后的长路径（C:\Users\runneradmin\...）；
+    // 只比较 os.tmpdir() 原始短路径会把合法临时目录误判为 AppData 敏感目录。
+    // 因此同时登记原始路径 + realpath 归一化路径（再覆盖 TEMP/TMP 环境变量）。
+    const tempCandidates = new Set<string>()
+    const rawCandidates = [os.tmpdir(), process.env.TEMP, process.env.TMP]
+    for (const raw of rawCandidates) {
+        if (typeof raw !== 'string' || raw.trim() === '') {
+            continue
+        }
+        tempCandidates.add(toComparablePath(raw))
+        try {
+            tempCandidates.add(toComparablePath(fs.realpathSync(raw)))
+        } catch {
+            // 临时目录被删除/不可访问时忽略 realpath 候选
+        }
     }
-    if (tempDir.trim() === '') {
-        return false
-    }
-    return isPathWithin(comparablePath, toComparablePath(tempDir), {
-        win32CaseInsensitive: process.platform === 'win32'
-    })
+    return [...tempCandidates].some((tempDir) =>
+        isPathWithin(comparablePath, tempDir, {
+            win32CaseInsensitive: process.platform === 'win32'
+        })
+    )
 }
 
 /**
