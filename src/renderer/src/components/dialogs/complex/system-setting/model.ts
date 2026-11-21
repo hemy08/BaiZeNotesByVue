@@ -53,7 +53,6 @@ export interface SystemDialogSettings {
     writingBubbleEnabled: boolean
     writingSlashEnabled: boolean
     writingStyleCheckEnabled: boolean
-    writingSmartInputEnabled: boolean
 }
 
 /** 左侧页签（顺序即展示顺序；id 与模板中的 activePanel 判定一一对应） */
@@ -117,8 +116,7 @@ export function createDefaultSystemDialogSettings(): SystemDialogSettings {
         writingSessionRestoreEnabled: SYSTEM_SETTING_FALLBACK.writingSessionRestoreEnabled,
         writingBubbleEnabled: SYSTEM_SETTING_FALLBACK.writingBubbleEnabled,
         writingSlashEnabled: SYSTEM_SETTING_FALLBACK.writingSlashEnabled,
-        writingStyleCheckEnabled: SYSTEM_SETTING_FALLBACK.writingStyleCheckEnabled,
-        writingSmartInputEnabled: SYSTEM_SETTING_FALLBACK.writingSmartInputEnabled
+        writingStyleCheckEnabled: SYSTEM_SETTING_FALLBACK.writingStyleCheckEnabled
     }
 }
 

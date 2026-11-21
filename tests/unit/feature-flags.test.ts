@@ -59,7 +59,7 @@ describe('可选能力开关定义', () => {
 })
 
 describe('编写体验开关定义（P0）', () => {
-    it('包含 10 项写作体验能力且默认全部关闭', () => {
+    it('包含 9 项写作体验能力且默认全部关闭', () => {
         expect(WRITING_EXPERIENCE_FLAG_IDS).toEqual([
             'writingMode',
             'writingTypewriter',
@@ -69,8 +69,7 @@ describe('编写体验开关定义（P0）', () => {
             'writingSessionRestore',
             'writingBubble',
             'writingSlash',
-            'writingStyleCheck',
-            'writingSmartInput'
+            'writingStyleCheck'
         ])
         for (const id of WRITING_EXPERIENCE_FLAG_IDS) {
             expect(WRITING_EXPERIENCE_FLAGS[id].defaultValue).toBe(false)

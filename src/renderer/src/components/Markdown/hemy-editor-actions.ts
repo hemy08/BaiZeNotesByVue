@@ -34,9 +34,8 @@ function matchStartWith(
 /**
  * A7 智能输入（opt-in）：普通模式与写作模式共用同一引擎。
  *
- * 开关来源：
- * - 系统设置 →「功能」→ Markdown 智能输入（`smartInput`）；
- * - 系统设置 →「编写体验」→ 智能输入增强（`writingSmartInput`，同样全模式生效）。
+ * 开关来源：系统设置 →「功能」→ Markdown 智能输入（`smartInput`，默认关闭，普通/写作模式通用）。
+ * 编写体验页不再重复提供第二个智能输入开关。
  *
  * 能力：有序列表递增/后续重编号、引用/嵌套/任务列表续行、空列表项回车/退格退出、
  * 标题后空行；中文输入法组合期不介入，所有自动修改合并为一次 executeEdits（一次撤销）。
@@ -47,7 +46,7 @@ const composingEditors = new WeakSet<object>()
 
 function smartInputEnabled(): boolean {
     const { flags } = useFeatureFlags()
-    return flags.smartInput === true || flags.writingSmartInput === true
+    return flags.smartInput === true
 }
 
 function isEditorComposing(editor: monaco.editor.IStandaloneCodeEditor): boolean {

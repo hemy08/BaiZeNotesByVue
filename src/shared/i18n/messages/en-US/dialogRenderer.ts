@@ -235,10 +235,7 @@ const dialogRenderer = {
                 'Type / in the editor to open an insert menu (heading, table, math, image, etc.).',
             styleCheckLabel: 'Writing style check',
             styleCheckDesc:
-                'Check long sentences, repeated words and filler words; suggestions only, never auto-rewrite.',
-            smartInputLabel: 'Smart input',
-            smartInputDesc:
-                'Works in both normal and writing modes: ordered-list renumber, quote/nested/task continuation, empty-list backspace exit and blank line after headings; equivalent to Features → Markdown smart input.'
+                'Check long sentences, repeated words and filler words; suggestions only, never auto-rewrite.'
         },
         panelFeaturesTitle: 'Feature switches',
         panelFeaturesDesc:

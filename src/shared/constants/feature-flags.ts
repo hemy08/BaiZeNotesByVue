@@ -98,7 +98,6 @@ export type WritingExperienceFlagId =
     | 'writingBubble'
     | 'writingSlash'
     | 'writingStyleCheck'
-    | 'writingSmartInput'
 
 /** 单条写作体验开关定义 */
 export interface WritingExperienceFlagDefinition {
@@ -112,7 +111,6 @@ export interface WritingExperienceFlagDefinition {
         | 'writingBubbleEnabled'
         | 'writingSlashEnabled'
         | 'writingStyleCheckEnabled'
-        | 'writingSmartInputEnabled'
     defaultValue: boolean
     labelKey: string
     descKey: string
@@ -175,12 +173,6 @@ export const WRITING_EXPERIENCE_FLAGS: Readonly<
         defaultValue: false,
         labelKey: 'dialogRenderer.systemSetting.writing.styleCheckLabel',
         descKey: 'dialogRenderer.systemSetting.writing.styleCheckDesc'
-    },
-    writingSmartInput: {
-        settingKey: 'writingSmartInputEnabled',
-        defaultValue: false,
-        labelKey: 'dialogRenderer.systemSetting.writing.smartInputLabel',
-        descKey: 'dialogRenderer.systemSetting.writing.smartInputDesc'
     }
 } as const
 
@@ -199,6 +191,5 @@ export const WRITING_EXPERIENCE_DEFAULTS: Readonly<Record<WritingExperienceFlagI
     writingSessionRestore: false,
     writingBubble: false,
     writingSlash: false,
-    writingStyleCheck: false,
-    writingSmartInput: false
+    writingStyleCheck: false
 }

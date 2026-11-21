@@ -93,7 +93,6 @@ export interface SystemSetting {
     writingBubbleEnabled?: boolean
     writingSlashEnabled?: boolean
     writingStyleCheckEnabled?: boolean
-    writingSmartInputEnabled?: boolean
     // 系统设置结构版本（迁移用）：1.3.6 起写入。缺失表示 1.3.1~1.3.5 的旧数据
     // （当时 minimizeToTray / enableAutoBackup 默认 true，保存设置时会被写入 true）。
     settingsSchemaVersion?: number

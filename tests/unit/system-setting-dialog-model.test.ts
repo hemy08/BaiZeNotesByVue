@@ -2,7 +2,7 @@
  * system-setting/model.ts 纯函数单元测试（设置页拆分 P0）
  *
  * 覆盖点：
- * 1. 默认值工厂：34 字段与 shared SYSTEM_SETTING_FALLBACK 真源一致、语言按下拉展示值归一化；
+ * 1. 默认值工厂：33 字段与 shared SYSTEM_SETTING_FALLBACK 真源一致、语言按下拉展示值归一化；
  * 2. mergeStoredSystemSettings：只合并「已定义且类型一致」字段、忽略未知/错误类型、不改入参；
  * 3. normalizeLanguageSelection：历史值归一化（zh-cn / en-* / 非法值）；
  * 4. isSystemSettingsDirty：字段级脏标记（新增，供 composable 契约使用）；
@@ -54,12 +54,11 @@ const EXPECTED_FIELDS: (keyof SystemDialogSettings)[] = [
     'writingSessionRestoreEnabled',
     'writingBubbleEnabled',
     'writingSlashEnabled',
-    'writingStyleCheckEnabled',
-    'writingSmartInputEnabled'
+    'writingStyleCheckEnabled'
 ]
 
 describe('createDefaultSystemDialogSettings', () => {
-    it('应返回完整 34 字段，且值来自 shared SYSTEM_SETTING_FALLBACK 真源', () => {
+    it('应返回完整 33 字段，且值来自 shared SYSTEM_SETTING_FALLBACK 真源', () => {
         const defaults = createDefaultSystemDialogSettings()
         expect(Object.keys(defaults).sort()).toEqual([...EXPECTED_FIELDS].sort())
         expect(defaults.autoOpenLastFile).toBe(SYSTEM_SETTING_FALLBACK.autoOpenLastFile)

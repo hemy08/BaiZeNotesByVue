@@ -241,12 +241,12 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         wrapper.unmount()
     })
 
-    it('编写体验页签：10 项写作能力默认关闭，开启后随保存写入 system 配置', async () => {
+    it('编写体验页签：9 项写作能力默认关闭，开启后随保存写入 system 配置', async () => {
         const wrapper = mountDialog()
         await switchPanel(wrapper, 4)
 
         const checkboxes = panel(wrapper, 4).findAll('.setting-checkbox')
-        expect(checkboxes).toHaveLength(10)
+        expect(checkboxes).toHaveLength(9)
         for (const checkbox of checkboxes) {
             expect((checkbox.element as HTMLInputElement).checked).toBe(false)
         }

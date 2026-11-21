@@ -11,7 +11,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const flagState = vi.hoisted(() => ({ smartInput: false, writingSmartInput: false }))
+const flagState = vi.hoisted(() => ({ smartInput: false }))
 
 vi.mock('../../src/renderer/src/composables/useFeatureFlags', () => ({
     useFeatureFlags: () => ({
@@ -228,7 +228,6 @@ function stubClipboardRead(items: unknown[]): void {
 beforeEach(() => {
     vi.clearAllMocks()
     flagState.smartInput = false
-    flagState.writingSmartInput = false
 })
 
 afterEach(() => {
@@ -385,17 +384,6 @@ describe('A7 Enter 增强（smartInput 开启，普通模式）', () => {
         findAction(actions, 'hemy-custom-enter-action').run(editor as never)
 
         expect(commonMocks.OnInsertAfterCursor).toHaveBeenCalledWith(editor, '\r\n')
-    })
-
-    it('编写体验「智能输入增强」开关在普通模式也生效', () => {
-        flagState.smartInput = false
-        flagState.writingSmartInput = true
-        const { editor, actions, edits } = makeEditor({ lineText: '- 列表项' })
-        MonacoEditorAddActions(editor)
-        findAction(actions, 'hemy-custom-enter-action').run(editor as never)
-
-        expect(edits).toHaveLength(1)
-        expect(edits[0][0].text).toBe('\r\n- ')
     })
 
     it('中文输入法组合期回车不介入（不新增编辑）', () => {

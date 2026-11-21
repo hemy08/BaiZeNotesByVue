@@ -227,10 +227,7 @@ const dialogRenderer = {
             slashLabel: 'Slash 命令',
             slashDesc: '在编辑器输入 / 打开插入命令菜单（标题、表格、公式、图片等）。',
             styleCheckLabel: '写作风格检查',
-            styleCheckDesc: '检查长句、重复词、口头禅等写作问题，只提示不自动修改。',
-            smartInputLabel: '智能输入增强',
-            smartInputDesc:
-                '普通模式与写作模式均生效：有序列表重编号、引用/嵌套/任务列表续行、空列表项退格退出、标题后空行；与「功能 → Markdown 智能输入」等效。'
+            styleCheckDesc: '检查长句、重复词、口头禅等写作问题，只提示不自动修改。'
         },
         panelFeaturesTitle: '功能开关',
         panelFeaturesDesc:

@@ -92,6 +92,5 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     writingSessionRestoreEnabled: false,
     writingBubbleEnabled: false,
     writingSlashEnabled: false,
-    writingStyleCheckEnabled: false,
-    writingSmartInputEnabled: false
+    writingStyleCheckEnabled: false
 }

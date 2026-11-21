@@ -99,8 +99,7 @@ const systemSettingDefaults: SystemSetting = {
     writingSessionRestoreEnabled: false,
     writingBubbleEnabled: false,
     writingSlashEnabled: false,
-    writingStyleCheckEnabled: false,
-    writingSmartInputEnabled: false
+    writingStyleCheckEnabled: false
     // 注意：settingsSchemaVersion 刻意不放入 defaults——electron-store 构造时会把
     // defaults 合并写入存储，若默认写入 2 则旧用户数据无法区分（迁移永远跳过）。
     // 该键仅在 migrateLegacyOptInSettings 迁移完成时写入（原始 store 无此键 = 旧数据）。
