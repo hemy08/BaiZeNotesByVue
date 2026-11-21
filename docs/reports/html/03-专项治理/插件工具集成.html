@@ -472,15 +472,15 @@ F0=(v,I)=&gt;D0(new Date(P(v)+I*8*3600*1000));                           // +8 �
 </table>
 <h4>三、适合作为离线桌面插件实现的优先级排序</h4>
 <ol>
-<li><strong>Base64 / URL 编码 / HTML 编码 / Unicode / JSON 转义（693、695、691、3602、7683）</strong>——全部内联零依赖，几十行即可复刻，无需任何数据表；是最快落地的插件组。</li>
-<li><strong>字数统计（5580）</strong>——纯正则，零依赖，即时可用。</li>
-<li><strong>进制转换（58）</strong>——仅需 bignumber.js（或原生 BigInt 自实现），支持 2–36 进制+小数，算法简单。</li>
-<li><strong>JSON 解析 / 格式化（7438、53）</strong>——宽松解析+格式化仅用原生 <code>JSON.parse/stringify</code>；7438 可直接复刻；53 若只保留格式化/压缩/XML/CSV 也可自写（树编辑器才需要 jsoneditor 1 MB）。</li>
-<li><strong>繁简转换（5579）</strong>——30 KB 映射表（4792 字对），提取为 JSON 即可，无库依赖。</li>
-<li><strong>汉字转拼音（5523）</strong>——125 KB 字库 + 11 KB 工具脚本，离线友好；多音字准确率可用 pinyin-pro 进一步提升。</li>
-<li><strong>时间戳转换（852）</strong>——moment 栈偏重，可改用原生 Date + Intl 实现秒/毫秒、本地/UTC，更轻。</li>
+<li><strong>Base64 / URL 编码 / HTML 编码 / Unicode / JSON 转义（693、695、691、3602、7683）</strong>——全部内联零依赖，几十行即可复刻，无需任何数据表；是最快落地的插件组（✅ 已实现 2026-11-21）。</li>
+<li><strong>字数统计（5580）</strong>——纯正则，零依赖，即时可用（✅ 已实现 2026-11-21）。</li>
+<li><strong>进制转换（58）</strong>——仅需 bignumber.js（或原生 BigInt 自实现），支持 2–36 进制+小数，算法简单（✅ 已实现 2026-11-21）。</li>
+<li><strong>JSON 解析 / 格式化（7438、53）</strong>——宽松解析+格式化仅用原生 <code>JSON.parse/stringify</code>；7438 可直接复刻；53 若只保留格式化/压缩/XML/CSV 也可自写（树编辑器才需要 jsoneditor 1 MB）（✅ 已实现 2026-11-21）。</li>
+<li><strong>繁简转换（5579）</strong>——30 KB 映射表（4792 字对），提取为 JSON 即可，无库依赖（✅ 已实现 2026-11-21）。</li>
+<li><strong>汉字转拼音（5523）</strong>——125 KB 字库 + 11 KB 工具脚本，离线友好；多音字准确率可用 pinyin-pro 进一步提升（✅ 已实现 2026-11-21）。</li>
+<li><strong>时间戳转换（852）</strong>——moment 栈偏重，可改用原生 Date + Intl 实现秒/毫秒、本地/UTC，更轻（✅ 已实现 2026-11-21）。</li>
 <li><strong>HTML 转 JavaScript（846）</strong>——html2js 逻辑小，js-beautifier 单库即可。</li>
-<li><strong>文本比对（8006）</strong>——功能最强但最重（Mergely+CodeMirror ~500 KB、LGPL 许可、Worker 架构）；如降低 UI 要求可换 jsdiff（~15 KB）。</li>
+<li><strong>文本比对（8006）</strong>——功能最强但最重（Mergely+CodeMirror ~500 KB、LGPL 许可、Worker 架构）；如降低 UI 要求可换 jsdiff（~15 KB）（✅ 已实现 2026-11-21）。</li>
 <li><strong>今日日期/中国日历（5672）</strong>——lunar-javascript 344 KB 尚可，但 holidays.json 属<strong>外部网络数据</strong>且需逐年维护，离线化成本最高，建议最后做或只做农历/干支/节气部分。</li>
 </ol>
 <h4>四、附：原始抓取产物清单</h4>
@@ -825,17 +825,17 @@ _stackHelper: function(f,s,op){
 <h4>适合作为离线桌面插件实现的优先级排序</h4>
 <p><strong>P0 — 零/轻依赖、直接移植（1~2 天级）</strong>：</p>
 <ol>
-<li><strong>人民币大写转换</strong>（纯算法 30 行，零依赖）</li>
-<li><strong>长度单位换算</strong>（一张系数表）</li>
-<li><strong>颜色转换全家桶</strong>（6 页合一，公式全在手，含 bug 修正）</li>
-<li><strong>随机四件套</strong>（密码/数/字符串/颜色；颜色可用自写 HSV 随机替代 randomColor）</li>
-<li><strong>在线计算器</strong>（双栈求值自包含，替换 eval 即可）</li>
+<li><strong>人民币大写转换</strong>（纯算法 30 行，零依赖）（✅ 已实现 2026-11-21）</li>
+<li><strong>长度单位换算</strong>（一张系数表）（✅ 已实现 2026-11-21）</li>
+<li><strong>颜色转换全家桶</strong>（6 页合一，公式全在手，含 bug 修正）（✅ 已实现 2026-11-21）</li>
+<li><strong>随机四件套</strong>（密码/数/字符串/颜色；颜色可用自写 HSV 随机替代 randomColor）（✅ 已实现 2026-11-21）</li>
+<li><strong>在线计算器</strong>（双栈求值自包含，替换 eval 即可）（✅ 已实现 2026-11-21）</li>
 </ol>
 <p><strong>P1 — 纯前端但需打包库或适配环境</strong>：
-6. <strong>图片转 Base64</strong>（零库，依赖 Blob/Image API，Electron 渲染层天然支持）
-7. <strong>正则测试</strong>（原生 Worker+RegExp，需处理打包后 worker 路径或改主线程）
-8. <strong>存储单位换算</strong>（打包 UnitOf.js 或自写 ~40 条系数）
-9. <strong>XML 格式化</strong>（自研解析器可直接搬，编辑器降级为 textarea 更省体积）</p>
+6. <strong>图片转 Base64</strong>（零库，依赖 Blob/Image API，Electron 渲染层天然支持）（✅ 已实现 2026-11-21）
+7. <strong>正则测试</strong>（原生 Worker+RegExp，需处理打包后 worker 路径或改主线程）（✅ 已实现 2026-11-21）
+8. <strong>存储单位换算</strong>（打包 UnitOf.js 或自写 ~40 条系数）（✅ 已实现 2026-11-21）
+9. <strong>XML 格式化</strong>（自研解析器可直接搬，编辑器降级为 textarea 更省体积）（✅ 已实现 2026-11-21）</p>
 <p><strong>P2 — 重实现</strong>：
 10. <strong>SQL 格式化/压缩</strong>（原站后端依赖无法离线；必须用前端库 sql-formatter 重写，工作量最大，不建议首期做）</p>
 <h2 id="sec-2">二、插件集成实施报告（37 插件）</h2>
@@ -863,109 +863,109 @@ _stackHelper: function(f,s,op){
 <td>编解码（codec）</td>
 <td>Base64 编码/解码</td>
 <td>/front-end/693</td>
-<td><code>Codec/Base64Codec.vue</code></td>
+<td><code>Codec/Base64Codec.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>编解码（codec）</td>
 <td>URL 编码/解码</td>
 <td>/front-end/695</td>
-<td><code>Codec/UrlCodec.vue</code></td>
+<td><code>Codec/UrlCodec.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>编解码（codec）</td>
 <td>HTML 实体编码/解码</td>
 <td>/front-end/691</td>
-<td><code>Codec/HtmlCodec.vue</code></td>
+<td><code>Codec/HtmlCodec.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>编解码（codec）</td>
 <td>Unicode 与中文互转</td>
 <td>/front-end/3602</td>
-<td><code>Codec/UnicodeConvert.vue</code></td>
+<td><code>Codec/UnicodeConvert.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>编解码（codec）</td>
 <td>图片转 Base64</td>
 <td>/front-end/59</td>
-<td><code>Codec/ImageBase64.vue</code></td>
+<td><code>Codec/ImageBase64.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>格式转换（convert）</td>
 <td>颜色转换（RGB/HEX/HSL/HSV/CMYK）</td>
 <td>55/868/870/873/875/877 六页合一</td>
-<td><code>Convert/ColorConvert.vue</code></td>
+<td><code>Convert/ColorConvert.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>格式转换（convert）</td>
 <td>单位换算（长度 + 存储）</td>
 <td>/front-end/5575 + 9229 合一</td>
-<td><code>Convert/UnitConvert.vue</code></td>
+<td><code>Convert/UnitConvert.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>格式转换（convert）</td>
 <td>人民币大写</td>
 <td>/front-end/6907</td>
-<td><code>Convert/RmbCase.vue</code></td>
+<td><code>Convert/RmbCase.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>格式转换（convert）</td>
 <td>时间戳转换</td>
 <td>/front-end/852</td>
-<td><code>Convert/TimestampConvert.vue</code></td>
+<td><code>Convert/TimestampConvert.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>格式转换（convert）</td>
 <td>进制转换（2-36）</td>
 <td>/front-end/58</td>
-<td><code>Convert/BaseConvert.vue</code></td>
+<td><code>Convert/BaseConvert.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>文本转换（text）</td>
 <td>中文文本工具（繁简 + 拼音）</td>
 <td>/front-end/5579 + 5523 合一</td>
-<td><code>TextTools/ChineseTextTool.vue</code></td>
+<td><code>TextTools/ChineseTextTool.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>文本转换（text）</td>
 <td>字数统计</td>
 <td>/front-end/5580</td>
-<td><code>TextTools/WordCount.vue</code></td>
+<td><code>TextTools/WordCount.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>文本转换（text）</td>
 <td>文本比对</td>
 <td>/front-end/8006</td>
-<td><code>TextTools/TextDiff.vue</code></td>
+<td><code>TextTools/TextDiff.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>格式化（format）</td>
 <td>JSON 工具（格式化/压缩/转义）</td>
 <td>53/7438/7683 三页合一</td>
-<td><code>FormatTools/JsonTool.vue</code></td>
+<td><code>FormatTools/JsonTool.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>格式化（format）</td>
 <td>XML 格式化</td>
 <td>/front-end/710</td>
-<td><code>FormatTools/XmlFormatter.vue</code></td>
+<td><code>FormatTools/XmlFormatter.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>解析器（net）</td>
 <td>正则表达式测试</td>
 <td>/front-end/854</td>
-<td><code>NetWork/RegexTester.vue</code></td>
+<td><code>NetWork/RegexTester.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>常用小工具（misc）</td>
 <td>随机生成器（密码/字符串/数字/颜色）</td>
 <td>686/6680/9111/9072 四页合一</td>
-<td><code>MiscTools/RandomGenerator.vue</code></td>
+<td><code>MiscTools/RandomGenerator.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>常用小工具（misc）</td>
 <td>在线计算器</td>
 <td>/front-end/6904</td>
-<td><code>MiscTools/Calculator.vue</code></td>
+<td><code>MiscTools/Calculator.vue</code>（✅ 已实现 2026-11-21）</td>
 </tr>
 </tbody>
 </table>

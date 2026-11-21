@@ -43,14 +43,14 @@
 </ul>
 <h2 id="sec-2">2. 执行结果（2026-11-20）</h2>
 <ul>
-<li><strong>B1 已完成</strong>：eslint 9.39→10.15、eslint-plugin-vue 9.33→10.12、@electron-toolkit/eslint-config 2→3、eslint-config-ts 3→4；ESLint 10 新增 2 条 recommended 规则命中存量 25 处，暂降 warn（后续清债）。</li>
+<li><strong>B1 ✅ 已完成</strong>：eslint 9.39→10.15、eslint-plugin-vue 9.33→10.12、@electron-toolkit/eslint-config 2→3、eslint-config-ts 3→4；ESLint 10 新增 2 条 recommended 规则命中存量 25 处，暂降 warn（后续清债）。</li>
 <li><strong>B2 部分完成</strong>：@types/node 22→26 已完成（encrypt-decrypt 适配 Node 26 的 Cipheriv/Decipheriv 类型）；<strong>typescript 7 回滚</strong>——vue-tsc 3.3.14 依赖 <code>typescript/lib/tsc</code> 导出，TS7 已移除（ERR_PACKAGE_PATH_NOT_EXPORTED），待 vue-tsc 支持后重试。</li>
-<li><strong>B3 已完成</strong>：vitest 4→5.1.1、@vitest/coverage-v8 4→5.1.1；覆盖率阈值不降。Node 26 下 forks 池 crypto 熵源报错，vitest 改 <code>pool: threads</code> + <code>testTimeout: 15s</code>。</li>
-<li><strong>B4 已完成</strong>：electron-store 11.0.2→12.0.0（ESM-only；store-factory 适配默认值类型，打包启动 E2E 验证通过）；jschardet 3.1.4→4.1.0。</li>
+<li><strong>B3 ✅ 已完成</strong>：vitest 4→5.1.1、@vitest/coverage-v8 4→5.1.1；覆盖率阈值不降。Node 26 下 forks 池 crypto 熵源报错，vitest 改 <code>pool: threads</code> + <code>testTimeout: 15s</code>。</li>
+<li><strong>B4 ✅ 已完成</strong>：electron-store 11.0.2→12.0.0（ESM-only；store-factory 适配默认值类型，打包启动 E2E 验证通过）；jschardet 3.1.4→4.1.0。</li>
 <li><strong>B5 评估后回滚</strong>：electron 43.8.12→45.4.1 后基础门禁通过、打包产物可启动，但 dev E2E <code>-r</code> userData 重定向/欢迎页时序不稳定（9 条用例偶发 1~2 失败），按排期风险策略回滚 43.8.12；待 E2E 夹具升级后再试。</li>
-<li><strong>B8（补充）已完成</strong>：vue 3.5.45→3.5.46；jsdom 29→31 评估失败回滚；ESLint 10 存量 30 条 warning 清理，<code>no-useless-assignment</code> / <code>preserve-caught-error</code> 恢复 error（0 warning）。</li>
+<li><strong>B8（补充）✅ 已完成</strong>：vue 3.5.45→3.5.46；jsdom 29→31 评估失败回滚；ESLint 10 存量 30 条 warning 清理，<code>no-useless-assignment</code> / <code>preserve-caught-error</code> 恢复 error（0 warning）。</li>
 <li><strong>B6/B7 未执行</strong>：katex 0.19 仍受 mermaid <code>^0.18</code> 锁定；发布待 1.5.0 版本内容完成后进行。</li>
-<li>版本：1.5.0（未发布）；Node 运行时已升级 26.13.1。</li>
+<li>版本：1.5.0（已发布，tag release-1.5.0）；Node 运行时已升级 26.13.1。</li>
 </ul>
 <h2 id="sec-3">3. 分批升级计划（原始排期）</h2>
 <table>
@@ -66,7 +66,7 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>B1</strong></td>
+<td><strong>B1</strong> ✅ 已完成</td>
 <td><code>@electron-toolkit/eslint-config</code> 3、<code>eslint-config-ts</code> 4、<code>eslint</code> 10、<code>eslint-plugin-vue</code> 10</td>
 <td>中：flat config/规则变更，可能新增存量报错</td>
 <td>无</td>
@@ -82,7 +82,7 @@
 <td>0.5~1 人日</td>
 </tr>
 <tr>
-<td><strong>B3</strong></td>
+<td><strong>B3</strong> ✅ 已完成</td>
 <td><code>vitest</code> 5、<code>@vitest/coverage-v8</code> 5</td>
 <td>中：测试 API/覆盖率阈值变化</td>
 <td>TS 稳定</td>
@@ -90,7 +90,7 @@
 <td>0.5 人日</td>
 </tr>
 <tr>
-<td><strong>B4</strong></td>
+<td><strong>B4</strong> ✅ 已完成</td>
 <td><code>electron-store</code> 12、<code>jschardet</code> 4</td>
 <td>中：配置读写 API/编码探测行为</td>
 <td>B2（TS）</td>

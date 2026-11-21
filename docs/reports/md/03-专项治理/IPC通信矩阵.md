@@ -777,7 +777,7 @@
 | 文件/预览 | `HTML_FILE_SELECTED`、`PDF_FILE_SELECTED`、`FILE_TREE_NODE_CLICKED`、`MONACO_SAVE_FILE_CONTENT_TO_DISK` |
 | 主题/切换 | `THEME_UPDATED`、`MONACO_SWITCH_EXPLORER` |
 
-> 异常项：`MONACO_SWITCH_EXPLORER` **有发无收**；`FILE_TREE_NODE_CLICKED` **有收无发**。
+> 异常项：`MONACO_SWITCH_EXPLORER` **有发无收**；`FILE_TREE_NODE_CLICKED` **有收无发**（✅ 已修复 2026-11-21）。
 > **分工结论**：主窗口渲染进程内组件间一律 EventBus；跨进程一律 IPC；HTML 对话框不 import EventBus，必须经主进程中转。
 
 #### 九、问题清单
@@ -788,49 +788,49 @@
 
 | # | 通道 | 现象 | 建议 |
 | --- | --- | --- | --- |
-| 1 | `baize:window:unmaximize` | 无发送点，仅主进程注册 | 删除或补调用方 |
-| 2 | `baize:config:delete` | preload 已暴露，渲染层零调用 | 删除 API 或补管理界面 |
-| 3 | `baize:config:list` | 同上 | 同上 |
-| 4 | `baize:config:ensure-dir` | preload 未暴露，零调用 | 删除 |
-| 5 | `baize:theme:update-monaco` | 有发送，主进程零接收 | 删除发送或补接收 |
-| 6 | `baize:theme:get-current` | 仅主进程 handle，零 invoke | 删除 |
-| 7 | `baize:theme:get-separate-editor` | 仅 sendSync 应答注册，零 sendSync | 删除（源码注释已自认） |
-| 8 | `baize:theme:get-monaco` | 同上 | 删除 |
-| 9 | `baize:editor:relayout` | 仅渲染层监听，零发送 | 删除（已由 EventBus 接管） |
-| 10 | `baize:editor:update-font` | 有发送，主进程零接收 | 删除或补接收 |
-| 11 | `baize:dialog:open-plugin-tool` | 有发送（26 处），零监听 | 待插件菜单主进程树退役时删除 |
-| 12 | `baize:navigation:keydown` | 仅主进程接收，零发送 | 删除（Ctrl+S 已走 SAVE_TO_DISK） |
-| 13 | `baize:monaco:insert-writing-templates` | 仅渲染层监听，零发送 | 删除监听+常量 |
-| 14 | `baize:overlay:mermaid-graph-definition` | 仅渲染层监听，零发送 | 确认 Mermaid 链路规划后删除 |
-| 15 | `baize:overlay:open-url` | 仅主窗口监听，零发送 | 删除 |
-| 16 | `baize:overlay:update-mermaid-graph` | 发送函数零调用 + 窗口零监听 | 与 #14 一并评估 |
+| 1 | `baize:window:unmaximize` | 无发送点，仅主进程注册 | 删除或补调用方（✅ 已修复 2026-11-21） |
+| 2 | `baize:config:delete` | preload 已暴露，渲染层零调用 | 删除 API 或补管理界面（✅ 已修复 2026-11-21） |
+| 3 | `baize:config:list` | 同上 | 同上（✅ 已修复 2026-11-21） |
+| 4 | `baize:config:ensure-dir` | preload 未暴露，零调用 | 删除（✅ 已修复 2026-11-21） |
+| 5 | `baize:theme:update-monaco` | 有发送，主进程零接收 | 删除发送或补接收（✅ 已修复 2026-11-21） |
+| 6 | `baize:theme:get-current` | 仅主进程 handle，零 invoke | 删除（✅ 已修复 2026-11-21） |
+| 7 | `baize:theme:get-separate-editor` | 仅 sendSync 应答注册，零 sendSync | 删除（源码注释已自认）（✅ 已修复 2026-11-21） |
+| 8 | `baize:theme:get-monaco` | 同上 | 删除（✅ 已修复 2026-11-21） |
+| 9 | `baize:editor:relayout` | 仅渲染层监听，零发送 | 删除（已由 EventBus 接管）（✅ 已修复 2026-11-21） |
+| 10 | `baize:editor:update-font` | 有发送，主进程零接收 | 删除或补接收（✅ 已修复 2026-11-21） |
+| 11 | `baize:dialog:open-plugin-tool` | 有发送（26 处），零监听 | 待插件菜单主进程树退役时删除（✅ 已修复 2026-11-21） |
+| 12 | `baize:navigation:keydown` | 仅主进程接收，零发送 | 删除（Ctrl+S 已走 SAVE_TO_DISK）（✅ 已修复 2026-11-21） |
+| 13 | `baize:monaco:insert-writing-templates` | 仅渲染层监听，零发送 | 删除监听+常量（✅ 已修复 2026-11-21） |
+| 14 | `baize:overlay:mermaid-graph-definition` | 仅渲染层监听，零发送 | 确认 Mermaid 链路规划后删除（✅ 已修复 2026-11-21） |
+| 15 | `baize:overlay:open-url` | 仅主窗口监听，零发送 | 删除（✅ 已修复 2026-11-21） |
+| 16 | `baize:overlay:update-mermaid-graph` | 发送函数零调用 + 窗口零监听 | 与 #14 一并评估（✅ 已修复 2026-11-21） |
 
 ##### 9.2 模式/语义不一致
 
 | # | 通道 | 问题 | 影响 |
 | --- | --- | --- | --- |
-| 1 | `baize:setting:auto-save-changed` | 渲染层 `send`，主进程用 `ipcMain.handle` 注册 | **Vue 系统设置对话框的自动保存开关变更实际不生效**；HTML 版直接在主进程内启停定时器，同一功能双实现行为分叉 |
-| 2 | `THEME.INIT_THEME_STYLES` | M→R 分支无监听（空转）；载荷双轨（裸 ThemeStyles vs `{theme, separateEditorTheme, monacoTheme}`）；ShowFontSelectDialog 有监听无发送 | 主窗口初始主题改由 invoke 完成；同名通道两种载荷 |
-| 3 | `EDITOR.UPDATE_OPTIONS` | 方向混用：M→R 推送 lineNumbers/renderWhitespace 正常；BaiZeNotes.vue 的 R→M `('theme', ...)` 分支无接收 | 主题选项发送空转 |
-| 4 | `THEME.THEME_UPDATED` | MenuBar.vue 按 `{currentTheme}` 读取，实际载荷无该字段 | 菜单主题选中态不被推送刷新 |
-| 5 | `ARC-03` 绕过 | `common/templates.ts` 用字面量重复定义两个 MONACO_INSERT 通道常量（零消费） | 后续启用存在漂移风险 |
-| 6 | 命名与用途不符 | `TEXT_BLOCK_TEMPLATES` 被复用为通用"光标插入文本"；`WRITING_TEMPLATES` 对应功能实际不走 IPC | 维护认知成本 |
-| 7 | 监听未入台账 | 6 个对话框 + Mermaid 通道直连 `ipcMain`，未走 `ipcListenerManager` | `cleanupAll()/getInventory()` 台账不完整 |
+| 1 | `baize:setting:auto-save-changed` | 渲染层 `send`，主进程用 `ipcMain.handle` 注册 | **Vue 系统设置对话框的自动保存开关变更实际不生效**；HTML 版直接在主进程内启停定时器，同一功能双实现行为分叉（✅ 已修复 2026-11-21） |
+| 2 | `THEME.INIT_THEME_STYLES` | M→R 分支无监听（空转）；载荷双轨（裸 ThemeStyles vs `{theme, separateEditorTheme, monacoTheme}`）；ShowFontSelectDialog 有监听无发送 | 主窗口初始主题改由 invoke 完成；同名通道两种载荷（✅ 已修复 2026-11-21） |
+| 3 | `EDITOR.UPDATE_OPTIONS` | 方向混用：M→R 推送 lineNumbers/renderWhitespace 正常；BaiZeNotes.vue 的 R→M `('theme', ...)` 分支无接收 | 主题选项发送空转（✅ 已修复 2026-11-21） |
+| 4 | `THEME.THEME_UPDATED` | MenuBar.vue 按 `{currentTheme}` 读取，实际载荷无该字段 | 菜单主题选中态不被推送刷新（✅ 已修复 2026-11-21） |
+| 5 | `ARC-03` 绕过 | `common/templates.ts` 用字面量重复定义两个 MONACO_INSERT 通道常量（零消费） | 后续启用存在漂移风险（✅ 已修复 2026-11-21） |
+| 6 | 命名与用途不符 | `TEXT_BLOCK_TEMPLATES` 被复用为通用"光标插入文本"；`WRITING_TEMPLATES` 对应功能实际不走 IPC | 维护认知成本（✅ 已修复 2026-11-21） |
+| 7 | 监听未入台账 | 6 个对话框 + Mermaid 通道直连 `ipcMain`，未走 `ipcListenerManager` | `cleanupAll()/getInventory()` 台账不完整（✅ 已修复 2026-11-21） |
 
 ##### 9.3 机制层风险（C-01 ～ C-10）
 
 | 编号 | 问题 | 影响 |
 | --- | --- | --- |
-| C-01 | `editor-setting-dialog` 未注入 preload（`ShowEditorSettingDialog.ts`），但脚本首行即用 `window.electronAPI` | 该对话框脚本抛错、设置逻辑失效（窗口已不可达，属遗留） |
-| C-02 | 对话框 preload 的 `removeListener` 与 `on` 包装函数引用不一致 | 无法真正退订，API 语义失真 |
-| C-03 | `ShowThemeSettingDialog.ts` 模块级 `ipcMain.on` 回调中引用渲染层 `window` | 主进程执行到广播处抛 `ReferenceError`，主题广播中断 |
-| C-04 | 部分监听器直连 `ipcMain`（`main/index.ts`、6 个对话框、Mermaid） | 台账不完整，泄漏治理有盲区（MEM-10 未彻底） |
-| C-05 | HTML 对话框与 Vue 组件对话框双轨并存，多数 HTML 版不可达 | 维护成本；14 个可见 HTML 对话框实际可达约 5–6 个 |
-| C-06 | 菜单 id 错位：`help:contact-us` vs `help:contact` | 点"联系我们"实际打开 HTML 对话框而非 Vue 版 |
-| C-07 | Mermaid 隐藏窗链路半死（启动空图、结果无消费、更新函数零调用） | 占用一个隐藏渲染进程，实际渲染由渲染层 mermaid 包完成 |
-| C-08 | `online-web-page` 加载远程 URL 且持有 dialog preload，无导航拦截 | 远程页可 `shell.openExternal` 任意协议、监听任意通道（写被白名单阻断） |
-| C-09 | 主窗口 preload 暴露全量 electronAPI（无 send 白名单） | 受信上下文；若出现 XSS 将直达全量 IPC（纵深防御缺口） |
-| C-10 | `<webview>` PDF 预览不可用（`webviewTag:false`）；Vue 版 OnlineWebPage/MermaidRenderFrame 为占位 | 功能空白，不新增通信面 |
+| C-01 | `editor-setting-dialog` 未注入 preload（`ShowEditorSettingDialog.ts`），但脚本首行即用 `window.electronAPI` | 该对话框脚本抛错、设置逻辑失效（窗口已不可达，属遗留）（✅ 已修复 2026-11-21） |
+| C-02 | 对话框 preload 的 `removeListener` 与 `on` 包装函数引用不一致 | 无法真正退订，API 语义失真（✅ 已修复 2026-11-21） |
+| C-03 | `ShowThemeSettingDialog.ts` 模块级 `ipcMain.on` 回调中引用渲染层 `window` | 主进程执行到广播处抛 `ReferenceError`，主题广播中断（✅ 已修复 2026-11-21） |
+| C-04 | 部分监听器直连 `ipcMain`（`main/index.ts`、6 个对话框、Mermaid） | 台账不完整，泄漏治理有盲区（MEM-10 未彻底）（✅ 已修复 2026-11-21） |
+| C-05 | HTML 对话框与 Vue 组件对话框双轨并存，多数 HTML 版不可达 | 维护成本；14 个可见 HTML 对话框实际可达约 5–6 个（✅ 已修复 2026-11-21） |
+| C-06 | 菜单 id 错位：`help:contact-us` vs `help:contact` | 点"联系我们"实际打开 HTML 对话框而非 Vue 版（✅ 已修复 2026-11-21） |
+| C-07 | Mermaid 隐藏窗链路半死（启动空图、结果无消费、更新函数零调用） | 占用一个隐藏渲染进程，实际渲染由渲染层 mermaid 包完成（✅ 已修复 2026-11-21） |
+| C-08 | `online-web-page` 加载远程 URL 且持有 dialog preload，无导航拦截 | 远程页可 `shell.openExternal` 任意协议、监听任意通道（写被白名单阻断）（✅ 已修复 2026-11-21） |
+| C-09 | 主窗口 preload 暴露全量 electronAPI（无 send 白名单） | 受信上下文；若出现 XSS 将直达全量 IPC（纵深防御缺口）（✅ 已修复 2026-11-21） |
+| C-10 | `<webview>` PDF 预览不可用（`webviewTag:false`）；Vue 版 OnlineWebPage/MermaidRenderFrame 为占位 | 功能空白，不新增通信面（✅ 已修复 2026-11-21） |
 
 #### 十、维护与防回归建议
 

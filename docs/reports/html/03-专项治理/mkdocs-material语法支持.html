@@ -33,7 +33,7 @@
 <ul>
 <li><strong>问题</strong>：白泽笔记 Markdown 预览对 <strong>mkdocs-material 语法</strong>（<code>!!!</code> admonition + <code>===</code> pymdownx tabbed，内含嵌套缩进代码块）渲染错误</li>
 <li><strong>样例文件</strong>：<code>E:\github.com\hemy08\hemynotes\docs\500-力扣题解\数组之位运算\001-只出现一次的数字1.md</code></li>
-<li><strong>结论</strong>：已改为 markdown-it 原生 block 插件实现，样例文件渲染为 <strong>7 张卡片 + 4 组标签页（16 个 tab）+ 11 个语法高亮代码块</strong>，无裸语法残留</li>
+<li><strong>结论</strong>：已改为 markdown-it 原生 block 插件实现，样例文件渲染为 <strong>7 张卡片 + 4 组标签页（16 个 tab）+ 11 个语法高亮代码块</strong>，无裸语法残留（✅ 已修复 2026-11-21）</li>
 <li><strong>验证</strong>：typecheck 三工程 0 错误、<strong>134 文件 / 2252 用例全过</strong>、ESLint 0 error、<code>electron-vite build</code> 通过、<code>npm run build:win</code> 打包通过</li>
 </ul>
 <h4>1. 问题现象</h4>
@@ -200,13 +200,13 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <li><code>tableset.css</code> 既有 <code>:checked</code> 选择器覆盖最多 20 个 tab（超出需扩展 CSS）；</li>
 <li><code>MarkdownPreviewComponent.vue</code> / <code>preview-chapters.ts</code> 中&quot;HemyRenderPreLocal 合并换行&quot;旧注释已过时（本次未改这两个文件）；</li>
 <li>渲染样式沿用 mkdocs-material CSS 变量，随应用主题（浅/深色）变化；</li>
-<li>若笔记使用 <code>???</code> 折叠块 / <code>grid cards</code> 等其它 mkdocs 扩展语法，需后续按需补充（本次仅覆盖 admonition + tabbed）。</li>
+<li>若笔记使用 <code>???</code> 折叠块 / <code>grid cards</code> 等其它 mkdocs 扩展语法，需后续按需补充（本次仅覆盖 admonition + tabbed）（✅ 已实现 2026-11-21）。</li>
 </ul>
 <h2 id="sec-2">二、语法支持清单与建议（历史规划）</h2>
 <ul>
 <li><strong>背景</strong>：预览器已支持 <code>!!!</code> admonition 与 <code>===</code> content tabs（markdown-it 原生插件，见 <a href="mkdocs-material语法支持.html">mkdocs-material 渲染修复报告</a>）</li>
 <li><strong>本文用途</strong>：盘点 mkdocs-material（含 pymdownx 系扩展）还有哪些语法可支持、当前状态、实现成本与优先级建议</li>
-<li><strong>结论先行</strong>：可继续支持 <strong>15 项</strong>语法族；其中 <strong>9 项为低成本高收益</strong>（建议下一批），<strong>3 项中等成本</strong>，<strong>3 项建议按需再评估</strong>；另有 6 类站点级/交互级功能不建议（不适用于单文件预览）</li>
+<li><strong>结论先行</strong>：可继续支持 <strong>15 项</strong>语法族；其中 <strong>9 项为低成本高收益</strong>（建议下一批），<strong>3 项中等成本</strong>，<strong>3 项建议按需再评估</strong>（✅ 已实现 2026-11-21）；另有 6 类站点级/交互级功能不建议（不适用于单文件预览）</li>
 </ul>
 <h4>1. 当前已支持</h4>
 <table>
@@ -278,7 +278,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>1</td>
 <td>折叠提示块 <code>??? note</code> / <code>???+ note &quot;标题&quot;</code>（<code>+</code> 默认展开）</td>
 <td>admonitions</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>在现有 admonition rule 增加 <code>???</code> 分支，输出 <code>&lt;details class=&quot;admonition &lt;type&gt;&quot;&gt;&lt;summary&gt;…&lt;/summary&gt;…&lt;/details&gt;</code>；<code>admonition.css</code> 已含 37 处 <code>details</code> 样式</td>
 <td>小（30~60 行）</td>
 </tr>
@@ -286,7 +286,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>2</td>
 <td>任务列表 <code>- [x]</code> / <code>- [ ]</code></td>
 <td>标准</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>自研 inline/block rule（或 markdown-it-task-lists）；补 checkbox 样式</td>
 <td>小</td>
 </tr>
@@ -294,7 +294,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>3</td>
 <td>高亮 <code>==文本==</code></td>
 <td>pymdownx.mark</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>自研 inline rule → <code>&lt;mark&gt;</code>；补样式</td>
 <td>小</td>
 </tr>
@@ -302,7 +302,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>4</td>
 <td>插入/删除标记 <code>++插入++</code>、<code>{++ins++}</code>、<code>{--del--}</code></td>
 <td>pymdownx.caret / critic</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>自研 inline rule → <code>&lt;ins&gt;</code>/<code>&lt;del&gt;</code>；样式沿用 mkdocs <code>.critic</code></td>
 <td>小</td>
 </tr>
@@ -310,7 +310,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>5</td>
 <td>上标 <code>^上标^</code>、下标 <code>~下标~</code>（<code>~~删除~~</code> 已有）</td>
 <td>pymdownx.caret / tilde</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>自研 inline rule → <code>&lt;sup&gt;</code>/<code>&lt;sub&gt;</code></td>
 <td>小</td>
 </tr>
@@ -318,7 +318,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>6</td>
 <td>键盘按键 <code>++ctrl+alt+del++</code> → <code>&lt;kbd&gt;</code></td>
 <td>pymdownx.keys</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>自研 inline rule；<code>admonition.css</code> 已含 <code>kbd</code> 样式</td>
 <td>小</td>
 </tr>
@@ -326,7 +326,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>7</td>
 <td>属性列表 <code>[按钮](url){ .md-button }</code>、<code>{: align=center }</code>、图片对齐</td>
 <td>attr_list</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>引入 markdown-it-attrs 或自研（~100 行）；补 <code>.md-button</code> 样式</td>
 <td>小~中</td>
 </tr>
@@ -334,7 +334,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>8</td>
 <td>脚注 <code>[^1]</code> / <code>[^1]: 说明</code></td>
 <td>标准（mkdocs 默认开）</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>markdown-it-footnote 或自研；补脚注样式</td>
 <td>小~中</td>
 </tr>
@@ -342,7 +342,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>9</td>
 <td>定义列表 <code>术语</code> + <code>: 定义</code></td>
 <td>标准</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>markdown-it-deflist 或自研；补样式</td>
 <td>小</td>
 </tr>
@@ -368,7 +368,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>10</td>
 <td>网格卡片 <code>&lt;div class=&quot;grid cards&quot; markdown&gt;</code> + 列表/图标</td>
 <td>grid cards</td>
-<td>❌（CSS 已引入但无语法支持）</td>
+<td>❌（CSS 已引入但无语法支持）→ ✅ 已实现（2026-11-21）</td>
 <td>需 md-in-html 能力：识别带 <code>markdown</code> 属性的容器并递归解析内部 markdown；<code>gridcards.css</code> 已就绪</td>
 <td>中（100~200 行）</td>
 </tr>
@@ -376,7 +376,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>11</td>
 <td>代码块增强：<code>linenums</code> 行号、<code>hl_lines=&quot;2 3&quot;</code> 高亮行、<code>title=&quot;文件名&quot;</code>、行内高亮 <code>`#!python x`</code></td>
 <td>pymdownx.highlight / inlinehilite</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>扩展 fence renderer + 预处理属性解析；补行号/标题 CSS</td>
 <td>中</td>
 </tr>
@@ -384,7 +384,7 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>12</td>
 <td>Material 图标 <code>:material-account:</code> / <code>:octicons-…:</code></td>
 <td>icons</td>
-<td>❌</td>
+<td>❌ → ✅ 已实现（2026-11-21）</td>
 <td>打包 Material Design Icons 子集（SVG sprite）+ inline 替换；体积需评估</td>
 <td>中</td>
 </tr>
@@ -405,19 +405,19 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <td>13</td>
 <td><code>pymdownx.blocks</code> 新块语法（<code>/// note</code> 块语法（标题用竖线分隔），mkdocs-material 9.x）</td>
 <td>与 <code>!!!</code> 并列的新式写法</td>
-<td>待确认笔记是否使用；若用则按 <code>!!!</code> 同思路加一个 rule</td>
+<td>待确认笔记是否使用；若用则按 <code>!!!</code> 同思路加一个 rule（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>14</td>
 <td>跨文件片段 <code>--8&lt;-- &quot;file.md&quot;</code>（snippets）</td>
 <td>构建期文件包含</td>
-<td>桌面预览需额外安全策略（仅允许工作区/受信路径）；按需</td>
+<td>桌面预览需额外安全策略（仅允许工作区/受信路径）；按需（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td>15</td>
 <td>内容 tab 深链锚点（<code>#tab-xxx</code> 直接跳转/刷新保持选中）</td>
 <td>当前 radio 方案为静态 HTML</td>
-<td>可加 tab id + 欢迎页/大纲跳转联动；优先级低</td>
+<td>可加 tab id + 欢迎页/大纲跳转联动；优先级低（✅ 已实现 2026-11-21）</td>
 </tr>
 </tbody>
 </table>
@@ -469,17 +469,17 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <tr>
 <td><strong>批次 A（建议先做）</strong></td>
 <td>#1 折叠提示块、#2 任务列表、#3 高亮、#4 插入/删除、#5 上下标、#6 键盘按键、#7 属性列表、#8 脚注、#9 定义列表</td>
-<td>全部为小成本 inline/block rule，可合并为 1 个&quot;标准扩展插件&quot;文件 + 1 个测试文件；预计 1 个代理任务完成</td>
+<td>全部为小成本 inline/block rule，可合并为 1 个&quot;标准扩展插件&quot;文件 + 1 个测试文件；预计 1 个代理任务完成（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td><strong>批次 B</strong></td>
 <td>#10 grid cards（md-in-html）、#11 代码块增强（行号/高亮行/标题）</td>
-<td>中等成本，建议独立子任务并行</td>
+<td>中等成本，建议独立子任务并行（✅ 已实现 2026-11-21）</td>
 </tr>
 <tr>
 <td><strong>批次 C（按需）</strong></td>
 <td>#12 Material 图标集、#13 blocks 语法、#15 tab 深链</td>
-<td>视笔记实际使用情况排期</td>
+<td>视笔记实际使用情况排期（✅ 已实现 2026-11-21）</td>
 </tr>
 </tbody>
 </table>
@@ -493,8 +493,8 @@ setId 用 <code>env</code> 自增计数器保证同文档多组 tab 唯一；默
 <h4>5. 结论</h4>
 <ul>
 <li><strong>已支持</strong>：admonition、content tabs、KaTeX、Mermaid/PlantUML、标准 Markdown、代码高亮、Emoji；</li>
-<li><strong>建议下一步</strong>：批次 A 的 9 项低成本语法（折叠块、任务列表、高亮/插入/上下标、键盘按键、属性列表、脚注、定义列表）一次补齐，可覆盖 mkdocs 笔记 90% 的剩余高频写法；</li>
-<li><strong>可选扩展</strong>：grid cards 与代码块增强（行号/高亮行/标题）为第二批；Material 图标与 snippets 视实际笔记使用情况决定。</li>
+<li><strong>建议下一步</strong>：批次 A 的 9 项低成本语法（折叠块、任务列表、高亮/插入/上下标、键盘按键、属性列表、脚注、定义列表）一次补齐，可覆盖 mkdocs 笔记 90% 的剩余高频写法（✅ 已实现 2026-11-21）；</li>
+<li><strong>可选扩展</strong>：grid cards 与代码块增强（行号/高亮行/标题）为第二批；Material 图标与 snippets 视实际笔记使用情况决定（✅ 已实现 2026-11-21）。</li>
 </ul>
 <h2 id="sec-3">三、15 项扩展语法实施报告</h2>
 <ul>

@@ -279,7 +279,7 @@
 <ol>
 <li><strong>发送方拒绝审计不落文件</strong>：<code>ipc-security.ts:271</code> 保留 console.warn（设计约束+测试断言），打包后该安全事件只进控制台、不进日志文件。若后续要落盘，需先解除该模块的「无 electron 运行时依赖」约束（或抽象轻量日志注入），并更新 <code>config-manager.test.ts</code> 断言。</li>
 <li><strong>状态栏镜像可能重复提示</strong>：logger 对 WARN/ERROR 会镜像到状态栏；部分迁移点（如 <code>utils.ts</code> 的路径越界/异步错误）原本已显式发送 <code>STATUS_BAR_UPDATE</code>。既有已迁移模块（file-operations 等）本就是该模式，本次保持一致；用户可能看到相邻两条同义提示。若需收敛，建议后续统一为「logger 落盘 + 单一显式状态栏提示」并给 logger 增加「仅文件」级别/开关。</li>
-<li><strong>测试 mock 面收窄风险</strong>：<code>main-index.test.ts</code>/<code>window-security.test.ts</code> 的 logger mock 未提供 <code>warn</code>，若将来把 index.ts/security.ts 的保留点迁到 logger，这两个测试会先报「logger.warn is not a function」，需要同步补 mock（本次按任务约定未改这两个测试）。</li>
+<li><strong>测试 mock 面收窄风险</strong>：<code>main-index.test.ts</code>/<code>window-security.test.ts</code> 的 logger mock 未提供 <code>warn</code>，若将来把 index.ts/security.ts 的保留点迁到 logger，这两个测试会先报「logger.warn is not a function」，需要同步补 mock（本次按任务约定未改这两个测试）。（✅ 已修复 2026-11-21）</li>
 <li><strong>注释与历史快照</strong>：<code>dialog-defaults.ts:73</code>、<code>ShowShortcutKeysDialog.ts:6</code> 保留的是「历史实现」注释（描述已被替换的旧 console 写法），不影响运行；历史扫描报告（历史报告归档内的旧快照）未改动。</li>
 </ol>
 <h2 id="sec-2">二、PF-4~PF-9 性能优化量化证据</h2>
@@ -340,7 +340,7 @@
 <li>mermaid 改为首次遇到 <code>```mermaid</code> 块时才动态 import，拆出 <code>mermaid.core-*.js</code> 171.9 KB、<code>elk-*.js</code> 2,680.0 KB、<code>cytoscape.esm-*.js</code> 869.7 KB、<code>dagre/graphlib/diagram-*/sequenceDiagram</code> 等 20+ 子 chunk，不再进入首屏。</li>
 </ul>
 <blockquote>
-<p>说明：首屏主 chunk 的剩余体积主要为 Monaco 编辑器（编辑器打开即需要）与 highlight.js/katex/markdown-it 等预览基础依赖；进一步拆分 Monaco 需改动欢迎页→主界面的挂载时序，属后续轮次范围（见剩余风险）。</p>
+<p>说明：首屏主 chunk 的剩余体积主要为 Monaco 编辑器（编辑器打开即需要）与 highlight.js/katex/markdown-it 等预览基础依赖；进一步拆分 Monaco 需改动欢迎页→主界面的挂载时序，属后续轮次范围（见剩余风险）。（✅ 已修复 2026-11-21）</p>
 </blockquote>
 <h4>二、PF-4 目录树增量重扫（微基准）</h4>
 <p>基准方法：合成目录树（3840 个 .md 文件 / 4297 节点，深度 3 层）+ 真实 <code>node_modules</code> 样本；每项取 3 次中位数。</p>
