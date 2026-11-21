@@ -160,6 +160,54 @@ export default {
         fixesTitle: 'Bug fixes',
         improvementsTitle: 'Improvements',
         techStackTitle: 'Tech stack',
+        v150: {
+            title: '1.5.0 Scroll Sync and Security Engineering',
+            highlights: {
+                h1: 'Editor-to-preview scroll sync follows input and scrolling',
+                h2: 'Native dialogs replaced: close confirm, messages, alerts and unified buttons',
+                h3: 'On-demand first screen and preview: i18n split, KaTeX/hljs lazy loading',
+                h4: 'Security and engineering depth: app:// + 8 Fuses + full gates'
+            },
+            features: {
+                f1: 'Editor-to-preview scroll sync (heading/paragraph/list/table anchors)',
+                f2: 'In-app unsaved-changes close dialog (save and close / discard / cancel)',
+                f3: 'In-app message confirmation service replacing 6 native prompts',
+                f4: 'alert/prompt moved in-app; unified dialog button styles'
+            },
+            improvements: {
+                i1: 'First-screen JS 487.5→321.9 KiB; dictionaries load per language',
+                i2: 'Word import/export moved to workers; main-thread blocking greatly reduced',
+                i3: 'Large-document staged degradation; KaTeX CSS / hljs on demand',
+                i4: 'asar trimming + lazy loading of startup dependencies'
+            },
+            fixes: {
+                x1: 'Cursor/new line no longer hidden by the status bar when the page is full',
+                x2: 'Fixed empty theme list on first open and other first-open issues'
+            }
+        },
+        v139: {
+            title: '1.3.9 Structural Governance and Engineering Optimization',
+            highlights: {
+                h1: 'Electron locales 55→2, installer significantly slimmer',
+                h2: 'Broader E2E coverage and better startup stability',
+                h3: 'Bilingual dictionary gaps closed and BaseDialog accessibility'
+            },
+            features: {
+                f1: 'Unsaved-changes confirmation on close/exit (save and close / discard / cancel)',
+                f2: 'Auto-save off by default; existing configs migrated',
+                f3: 'HTML viewer navigation and path switching fixed'
+            },
+            improvements: {
+                i1: 'Setup 109.98 MiB / portable 99.83 MiB (locales 55→2)',
+                i2: 'Startup performance baseline (dev/packaged preview-ready)',
+                i3: 'CI bundle budget; E2E startup restore/settings persistence/packaged launch',
+                i4: 'Bilingual dictionary gaps closed; hardcoded strings removed'
+            },
+            fixes: {
+                x1: 'HTML viewer top navigation no longer disappears after navigation; path updates',
+                x2: 'Intermittent missing preload in E2E traced to an upstream Electron race'
+            }
+        },
         v135: {
             title: '1.3.5 Jyshare Common Tools Plugins',
             highlights: {

@@ -10,6 +10,10 @@ import { openExternalSafely } from '../utils/security'
  */
 export const helpMenuHandlers = {
     'release-notes': {
+        'v1.5.0': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.5.0'),
+        'v1.3.9': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.3.9'),
         'v1.3.5': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
             dialogs.RequestReleaseNotesDialog(mainWindow, '1.3.5'),
         'v1.3.0': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>

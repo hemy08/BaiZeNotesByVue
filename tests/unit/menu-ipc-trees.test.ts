@@ -364,13 +364,15 @@ describe('helpMenuHandlers', () => {
         expect(treeMocks.requestReleaseNotesDialog).toHaveBeenCalledWith(win, '1.2.2')
     })
 
-    it('should request the release notes Vue dialog for v1.3.0', () => {
+    // REL-16：CHANGELOG → RELEASE-NOTES → 应用内版本发布三段链路，最新两个版本
+    // 必须能经帮助菜单 handler 打开（与下方 RELEASE_NOTE_VERSIONS 参数化用例互补）。
+    it('should request the release notes Vue dialog for the newest versions (REL-16)', () => {
         const win = makeWindow()
-        const handler = (helpMenuHandlers['release-notes'] as Record<string, unknown>)[
-            'v1.3.0'
-        ] as (w: never) => void
-        handler(win as never)
-        expect(treeMocks.requestReleaseNotesDialog).toHaveBeenCalledWith(win, '1.3.0')
+        const handlers = helpMenuHandlers['release-notes'] as Record<string, (w: never) => void>
+        for (const version of ['1.5.0', '1.3.9']) {
+            handlers[`v${version}`](win as never)
+            expect(treeMocks.requestReleaseNotesDialog).toHaveBeenCalledWith(win, version)
+        }
     })
 
     // FE-07：快捷键说明由空实现（console.warn）改为真实对话框（第 2 批 2.1 起为渲染层 Vue 对话框）

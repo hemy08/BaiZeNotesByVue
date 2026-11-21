@@ -666,6 +666,8 @@ const helpMenu: BaiZeMenuEntry = {
         {
             labelKey: 'menu.help.release',
             submenu: [
+                { label: 'v1.5.0', menuAction: 'baize:menu:help:release-notes:v1.5.0' },
+                { label: 'v1.3.9', menuAction: 'baize:menu:help:release-notes:v1.3.9' },
                 { label: 'v1.3.5', menuAction: 'baize:menu:help:release-notes:v1.3.5' },
                 { label: 'v1.3.0', menuAction: 'baize:menu:help:release-notes:v1.3.0' },
                 { label: 'v1.2.2', menuAction: 'baize:menu:help:release-notes:v1.2.2' },

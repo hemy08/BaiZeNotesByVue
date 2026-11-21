@@ -36,6 +36,42 @@ export interface ReleaseNoteEntry {
 /** 全部版本的发布说明（顺序即帮助菜单版本子菜单顺序，最新在前） */
 export const RELEASE_NOTES: ReleaseNoteEntry[] = [
     {
+        version: '1.5.0',
+        date: '2026-11-21',
+        key: 'v150',
+        highlightKeys: ['highlights.h1', 'highlights.h2', 'highlights.h3', 'highlights.h4'],
+        featureKeys: ['features.f1', 'features.f2', 'features.f3', 'features.f4'],
+        improvementKeys: [
+            'improvements.i1',
+            'improvements.i2',
+            'improvements.i3',
+            'improvements.i4'
+        ],
+        fixKeys: ['fixes.x1', 'fixes.x2'],
+        techStack: [
+            { name: 'Electron', value: '43.8.12' },
+            { name: 'Vue', value: '3.5.46' },
+            { name: 'Vite', value: '8.3.8' },
+            { name: 'TypeScript', value: '6.0.3' },
+            { name: 'Monaco Editor', value: '0.57.0' },
+            { name: 'markdown-it', value: '15.0.3' }
+        ]
+    },
+    {
+        version: '1.3.9',
+        date: '2026-11-20',
+        key: 'v139',
+        highlightKeys: ['highlights.h1', 'highlights.h2', 'highlights.h3'],
+        featureKeys: ['features.f1', 'features.f2', 'features.f3'],
+        improvementKeys: [
+            'improvements.i1',
+            'improvements.i2',
+            'improvements.i3',
+            'improvements.i4'
+        ],
+        fixKeys: ['fixes.x1', 'fixes.x2']
+    },
+    {
         version: '1.3.5',
         date: '2026-11-15',
         key: 'v135',

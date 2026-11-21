@@ -491,16 +491,24 @@ describe('menu-config', () => {
     it('should declare help menu with release notes ordered newest first', () => {
         const helpMenu = menuMap.value.find((item) => displayText(item) === '帮助')!
         const releases = helpMenu.submenu!.find((item) => displayText(item) === '版本发布')
-        expect(releases?.submenu).toHaveLength(13)
+        expect(releases?.submenu).toHaveLength(15)
         expect(resolved(releases!.submenu![0])).toEqual({
+            label: 'v1.5.0',
+            menuAction: 'baize:menu:help:release-notes:v1.5.0'
+        })
+        expect(resolved(releases!.submenu![1])).toEqual({
+            label: 'v1.3.9',
+            menuAction: 'baize:menu:help:release-notes:v1.3.9'
+        })
+        expect(resolved(releases!.submenu![2])).toEqual({
             label: 'v1.3.5',
             menuAction: 'baize:menu:help:release-notes:v1.3.5'
         })
-        expect(resolved(releases!.submenu![1])).toEqual({
+        expect(resolved(releases!.submenu![3])).toEqual({
             label: 'v1.3.0',
             menuAction: 'baize:menu:help:release-notes:v1.3.0'
         })
-        expect(resolved(releases!.submenu![12])).toEqual({
+        expect(resolved(releases!.submenu![14])).toEqual({
             label: 'v1.0.0',
             menuAction: 'baize:menu:help:release-notes:v1.0.0'
         })

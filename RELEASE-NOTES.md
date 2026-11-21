@@ -1,23 +1,128 @@
-## 版本 1.5.0 (2026-11-20)
+## 版本 1.5.0 (2026-11-21)
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+> 本版本承接 1.3.9 之后的全部分批改动（上一发布为 GitHub Release `release-1.3.9`）；各批量化明细与提交记录见 CHANGELOG.md 的 1.5.0 段。
 
 <details>
 <summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
 <blockcode><pre><code>
 
-### 🔧 新版本基线
+### ✍️ 编辑器 → 预览滚动同步
 
-- 全仓版本号 **1.3.9 → 1.5.0**；自本版本起所有修改归入 1.5.0
-- **1.3.9 已发布**：GitHub Release `release-1.3.9`（tag → `1b73d9b`；NSIS 109.98 MB / portable 99.84 MB / latest.yml / blockmap），包含 tag release-1.3.8 之后全部修改
+- 预览按 `data-source-line` 源行锚点定位，滚动 / 输入 / 光标移动三路触发（rAF 合帧 + 内容变化 180ms 尾随防抖 + seq 去重）
+- 滚轮、PageDown、输入自动跟随；在可视区内修改不跳项；无锚点内容按比例兜底，重渲染后重放最后目标
+
+### 🖥️ 页面填满回车时光标可见
+
+- 工作区改为 flex 跟随父容器，修正编辑器底部高度被状态栏裁切的问题；Monaco 底部留 20px 安全距，光标位于最后一行时自动 reveal 下一行
+- 新增布局契约与 E2E 回归：输入填满视口 → Ctrl+End → 回车 → 断言编辑器与光标位于状态栏上方
+
+### 🪟 未保存关闭确认与应用内消息
+
+- 关闭 / 退出未保存确认由 Electron 原生 `showMessageBox` 改为 BaseDialog 风格对话框（保存并关闭 / 不保存 / 取消，默认焦点保存、Esc 取消）；30s 超时、窗口销毁、渲染崩溃按取消安全侧处理，保存失败保留对话框并内联提示
+- 新增通用应用内消息确认服务（requestId / 串行队列 / 30s 超时 / 异常回退原生框），替换更新安装、大文件打开等 6 处原生确认框
+- 23 处浏览器 `alert()` 改为应用内消息对话框（错误 / 警告 / 成功分类）；菜单「跳转到行」的 `prompt` 改为 Monaco 原生跳行（与 Ctrl+G 同源）
+
+### 🎛️ 对话框按钮统一
+
+- 新增共享 `dialog-buttons.css`（30px 高 / 16px 内边距 / 4px 圆角 / 5 种变体），23 个对话框与快捷链接表单、消息对话框完成迁移，删除 4 份重复 `.btn` 样式
 
 ### 🐛 体验修复
 
-- 主题设置首次打开主题列表为空（visible watch 缺 immediate）；同步修复 Editor 设置加载、新建文件/文件夹默认路径、重命名对话框首开聚焦
+- 主题设置首次打开主题列表为空（visible watch 补 immediate）；同步修复 Editor 设置加载、新建文件 / 文件夹默认路径回填、重命名对话框首开聚焦
 
-### ✅ 门禁
+</code></pre></blockcode></details>
 
-- typecheck 0 / ESLint 0 / Prettier 全绿 / vitest 185 文件 / 3,397 用例 / build 成功
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">⚡ 性能与体验</summary>
+<blockcode><pre><code>
+
+### 🌐 首屏与预览按需加载
+
+- i18n 中英词典按语言动态加载，首屏只加载当前语言：首屏初始 JS **487.5 → 321.9 KiB（−34.0%）**（该批实测），当前体积门禁实测首屏初始 JS 338.4 KiB / 预算 512 KiB
+- KaTeX 改为检测到公式才动态加载（跳过代码块）：预览首次加载静态闭包 **1,146,305 → 652,683 B（−43.1%）**，无公式文档 0 加载；KaTeX CSS 同步按需，首屏 CSS −26.3%
+- highlight.js 改为 core + 精选 25 种语言，另有 52 种冷门语言按需预取：预览 chunk **−63.2%**
+
+### 🧵 Word 导入导出与主进程启动
+
+- Word 导入 / 导出移入 `worker_threads`（超时、崩溃、空闲回收 + 失败降级）：事件循环阻塞导入 **418.4 → 16.5 ms**、导出 **99 → 17 ms**
+- 主进程 mammoth / csv-parser / turndown / markdown-it 改为首次使用时惰性加载：启动期外部依赖 **112.75 → 57.63 ms（−48.9%）**
+
+### 📄 大文档分级降级
+
+- > 256 KiB 或 >1 万行进入简化档（跳过 KaTeX / 图表 / 冷门语言）；>512 KiB 或 >2 万行进入渐进档（分块净化 + 首块先显示），任何降级均不绕过 DOMPurify
+- 1 MB 文档首屏正文 **2325.8 → 583.5 ms（−74.9%）**，600 KB −66.6%
+
+### 📦 安装包瘦身
+
+- asar 排除 `jschardet/dist` 与配置示例等无用文件，asar **40.04 MiB**；Setup **111.15 MiB** / portable **100.34 MiB**，均在体积预算（115 / 101 MiB）内
+- Electron locales 保持 2 个（en-US / zh-CN）；另提供 `memory:check` 内存生命周期专项检查
+
+</code></pre></blockcode></details>
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🔒 安全与工程</summary>
+<blockcode><pre><code>
+
+### 🔐 安全边界
+
+- 渲染进程从 `file://` 迁移到自定义 `app://` 协议（资源 / PlantUML / 本地图片经 Path Guard 校验），关闭 `grantFileProtocolExtraPrivileges`
+- Fuses 冻结 **8 项**矩阵（禁用 runAsNode / NODE_OPTIONS / CLI inspect / cookie 加密等；启用 asar 完整性校验与 onlyLoadAppFromAsar），发布产物逐位断言 + 无调试器启动冒烟
+- 默认 session 安装权限处理器且默认拒绝，仅主窗口本地受信页面放行 fullscreen / clipboard 等安全权限；在线网页窗口使用独立 session 全拒绝
+- preload 收敛为受限 `ipcRenderer` + `window.api`（不再暴露 `process.env` / `webFrame` / `webUtils`），未登记通道 fail-closed；生产 CSP 移除 `'unsafe-eval'` 与 localhost
+- 工作区根改为主进程受信登记（realpath + LRU 上限 50），敏感目录黑名单保留；渲染层入口只做只读判定
+
+### ⚙️ 工程与门禁
+
+- CI 与发布流水线对齐：typecheck、ESLint 0 warning、Prettier、vitest 覆盖率、docs:check、质量基线、audit:all、budget:check、Fuses 校验逐条独立步骤
+- 发布流程：按 tag 检出并校验 tag ↔ package.json ↔ appVersion 三方一致；按版本精确匹配产物并校验 tag 维度 latest.yml
+- 供应链与权限：第三方 actions 锁定 40 位 SHA；workflow 最小权限 + 发布单点并发；新增 PR 级 dependency-review
+- 新增首屏体积预算（入口 + modulepreload 静态闭包 ≤512 KiB）、全量依赖审计（含 dev）、启动稳定性量化 job 与性能基线快照
+
+</code></pre></blockcode></details>
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">📦 依赖升级</summary>
+<blockcode><pre><code>
+
+### ⬆️ 已升级
+
+- ESLint **9 → 10.15.0**（eslint-plugin-vue 10.12.1、@electron-toolkit/eslint-config 3、eslint-config-ts 4），ESLint 10 新规则命中的 30 条存量 warning 全部清零
+- @types/node **22 → 26.6.6**（encrypt-decrypt 适配 Cipheriv / Decipheriv）
+- Vitest / @vitest/coverage-v8 **4 → 5.1.1**（Node 26 下改用 threads 池 + testTimeout 15s）
+- electron-store **11 → 12**（ESM-only 适配，打包启动验证）、jschardet **3 → 4.1.0**
+- vue **3.5.45 → 3.5.46**、Vite 8.3.8、TypeScript 6.0.3、Monaco 0.57.0、markdown-it 15.0.3、Mermaid 12.3.0
+- 开发环境 Node 升级至 **26.13.1**；`engines.node` 基线仍为 `>=22`，CI / 发布流水线使用 Node 22
+
+### ⏸️ 评估后暂缓（保持当前版本）
+
+- TypeScript 7：与 vue-tsc 不兼容，保留 6.0.3
+- Electron 45：dev E2E 的 userData / 欢迎页时序不稳定，保留 43.8.12
+- jsdom 31：CSSOM 简写序列化与游离 DOM computedStyle 行为变更导致 3 文件 / 5 用例失败，保留 29.1.1
+- KaTeX 0.19.1：mermaid 12.3.0 锁定 `katex ^0.18`，升级产生双份 KaTeX chunk（+487.6 KiB）且 0.19 含 strict 行为破坏性变更，保留 0.18.x
+
+</code></pre></blockcode></details>
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">✅ 门禁与已知限制</summary>
+<blockcode><pre><code>
+
+### ✅ 门禁（2026-11-21 实测）
+
+- 类型检查：TypeScript / Vue 四个工程（node / web / test / e2e）**0 错误**
+- 测试：**266 文件 / 4,714 用例**（4,711 passed / 3 skipped）；全量覆盖率 **stmts 95.04% / branch 89.77% / func 94.42% / line 95.31%**
+- ESLint **0 error / 0 warning**；Prettier 全绿；`docs:check` 断链 0
+- E2E **28/28** 通过（含关闭确认、滚动同步、编辑器底部、启动恢复、主题首开等）
+- 依赖审计（全量含 dev）**0 漏洞**；体积预算 **9/9 通过**；Fuses **8/8** 与发布矩阵一致
+- 安装包实测：Setup **111.15 MiB** / portable **100.34 MiB** / asar **40.04 MiB**
+
+### ⚠️ 已知限制
+
+- **未代码签名**：当前构建未配置代码签名证书，Windows 可能出现 SmartScreen 提示；本说明不声称已签名发布
+- **尚未发布**：1.5.0 未打 tag、未上传 GitHub Release；站点最新发布版本仍为 `release-1.3.9`
+- **Electron 上游启动竞态**：sandboxed preload 在首次导航偶发未注入（Electron 上游 mojo 竞态），E2E 侧以 `page.reload()` 恢复并由启动稳定性量化 job 以零进程重启把关，非产品逻辑缺陷
+- 完整逐批明细与限制见 [CHANGELOG.md](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
 
 </code></pre></blockcode></details>
 
@@ -686,16 +791,16 @@
 
 ## 技术栈
 
-- **Electron**: 43.8.10
-- **Vue 3**: 3.5.45
+- **Electron**: 43.8.12
+- **Vue 3**: 3.5.46
 - **TypeScript**: 6.0.3
-- **Vite**: 8.2.2
+- **Vite**: 8.3.8
 - **Monaco Editor**: 0.57.0
 - **markdown-it**: 15.0.3
 - **Mermaid**: 12.3.0
 
 ---
 
-**最后更新时间**: 2026-11-14
-**当前版本**: 1.3.0
+**最后更新时间**: 2026-11-21
+**当前版本**: 1.5.0
 **维护者**: hemy08
