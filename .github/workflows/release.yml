@@ -102,6 +102,13 @@ jobs:
                   $remoteRef = git ls-remote --tags --refs origin "refs/tags/$env:TAG"
                   if (-not $remoteRef) { throw "tag 不存在：$env:TAG（请先创建并推送 tag 后再发布）" }
                   $tagSha = ($remoteRef -split '\s+')[0].Trim()
+                  # annotated tag 的 ls-remote --refs 返回 tag 对象 SHA，需解引用到 commit；
+                  # 轻量 tag 没有 peeled ref，保持原值。否则 HEAD（checkout 解析后的 commit）
+                  # 与 tag 对象 SHA 比较会误报不一致（release-1.5.0 首发实测）。
+                  $peeledRef = git ls-remote origin "refs/tags/$env:TAG^{}"
+                  if ($peeledRef) {
+                      $tagSha = (($peeledRef -split '\s+')[0]).Trim()
+                  }
                   $headSha = (git rev-parse HEAD).Trim()
                   if ($headSha -ne $tagSha) {
                       throw "检出提交与 tag 不一致：HEAD=$headSha / tag $env:TAG=$tagSha（dispatch 必须检出该 tag 指向的提交）"
