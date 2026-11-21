@@ -40,6 +40,24 @@
             >
                 {{ t('editorUi.writingMode.typography') }}
             </button>
+            <button
+                type="button"
+                class="writing-chip"
+                :class="{ active: state.showToolbar }"
+                :aria-pressed="state.showToolbar"
+                @click="toggleToolbar"
+            >
+                {{ t('editorUi.writingMode.toolbar') }}
+            </button>
+            <button
+                type="button"
+                class="writing-chip"
+                :class="{ active: state.showPreview }"
+                :aria-pressed="state.showPreview"
+                @click="togglePreview"
+            >
+                {{ t('editorUi.writingMode.preview') }}
+            </button>
             <span class="writing-toolbar-divider" aria-hidden="true"></span>
             <span
                 v-if="flags.writingStats"
@@ -122,6 +140,7 @@ import { t } from '../../common/i18n'
 import { resetWritingModePreferences, updateWritingMode, useWritingMode } from './useWritingMode'
 import { useFeatureFlags } from '../../composables/useFeatureFlags'
 import { saveDailyGoal, writingSessionState } from './useWritingSession'
+import { IPC } from '../../../../shared/ipc-channels'
 
 const { state } = useWritingMode()
 const { flags } = useFeatureFlags()
@@ -174,6 +193,30 @@ function handleExit(): void {
     updateWritingMode({ enabled: false })
 }
 
+/** 通过既有视图菜单动作切换编辑器/预览布局（不新增 IPC 通道） */
+function sendViewMode(action: 'edit-mode' | 'preview-mode' | 'edit-preview-mode'): void {
+    try {
+        window.electron?.ipcRenderer?.send(IPC.MENU.ACTION, `baize:menu:view:${action}`)
+    } catch {
+        // IPC 不可用（测试/极端环境）时仅保留写作模式自身布局，不影响写作
+    }
+}
+
+/** 进入写作模式时默认编辑视图；预览开关开启时切到编辑+预览分屏 */
+function applyViewMode(): void {
+    sendViewMode(state.showPreview ? 'edit-preview-mode' : 'edit-mode')
+}
+
+function toggleToolbar(): void {
+    updateWritingMode({ showToolbar: !state.showToolbar })
+}
+
+function togglePreview(): void {
+    updateWritingMode({ showPreview: !state.showPreview })
+    applyViewMode()
+    applyContentWidth()
+}
+
 /** 进入写作模式前编辑器容器的内联宽度（用于退出恢复；不通过主题 CSS 变量写入） */
 let savedEditorWidth: string | null = null
 
@@ -185,7 +228,7 @@ function applyContentWidth(): void {
     if (typeof document === 'undefined') return
     const editor = document.getElementById('md-edit-component')
     if (!editor) return
-    if (state.enabled && flags.writingTypography) {
+    if (state.enabled && flags.writingTypography && !state.showPreview) {
         if (savedEditorWidth === null) savedEditorWidth = editor.style.width
         editor.style.width = `min(${state.contentWidth}px, 92vw)`
         editor.style.maxWidth = '100%'
@@ -205,12 +248,27 @@ function applyRootClass(enabled: boolean): void {
     if (!root) return
     root.classList.toggle('writing-mode-active', enabled)
     root.classList.toggle('writing-typography-active', enabled && flags.writingTypography)
+    root.classList.toggle('writing-toolbar-visible', enabled && state.showToolbar)
+    root.classList.toggle('writing-preview-active', enabled && state.showPreview)
     applyContentWidth()
 }
 
 watch(
     () => state.enabled,
-    (enabled) => applyRootClass(enabled)
+    (enabled) => {
+        applyRootClass(enabled)
+        if (enabled) {
+            applyViewMode()
+        } else {
+            // 退出写作模式恢复默认「编辑 + 预览」布局
+            sendViewMode('edit-preview-mode')
+        }
+    }
+)
+
+watch(
+    () => [state.showToolbar, state.showPreview],
+    () => applyRootClass(state.enabled)
 )
 
 // 设置页关闭「写作模式」时立即退出，避免隐藏的布局残留
@@ -241,7 +299,12 @@ watch(
     }
 )
 
-onMounted(() => applyRootClass(state.enabled && flags.writingMode))
+onMounted(() => {
+    applyRootClass(state.enabled && flags.writingMode)
+    if (state.enabled && flags.writingMode) {
+        applyViewMode()
+    }
+})
 
 onBeforeUnmount(() => {
     const root = document.getElementById('editor-container')
@@ -369,8 +432,27 @@ onBeforeUnmount(() => {
 #editor-container.writing-mode-active #resource-manager,
 #editor-container.writing-mode-active .resizer-main,
 #editor-container.writing-mode-active #resizer-md,
+#editor-container.writing-mode-active #md-edit-tools-bar,
 #editor-container.writing-mode-active #md-preview {
     display: none !important;
+}
+
+/* 写作模式默认隐藏格式工具栏；控制条「工具栏」可临时唤回 */
+#editor-container.writing-mode-active.writing-toolbar-visible #md-edit-tools-bar {
+    display: flex !important;
+}
+
+/* 写作模式默认纯编辑；控制条「预览」开启后使用编辑+预览分屏 */
+#editor-container.writing-mode-active.writing-preview-active #md-preview {
+    display: flex !important;
+    width: 42% !important;
+    left: auto !important;
+}
+
+#editor-container.writing-mode-active.writing-preview-active #md-edit-component {
+    width: 58% !important;
+    max-width: none !important;
+    margin: 0 !important;
 }
 
 #editor-container.writing-mode-active #workspace-area {
@@ -387,9 +469,6 @@ onBeforeUnmount(() => {
 #editor-container.writing-mode-active.writing-typography-active #md-edit-component {
     max-width: 100%;
     margin: 0 auto;
-    box-shadow:
-        0 0 0 1px var(--border-color),
-        0 12px 40px rgb(0 0 0 / 6%);
 }
 
 #editor-container.writing-mode-active .status-bar {

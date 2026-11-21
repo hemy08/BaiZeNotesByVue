@@ -270,6 +270,8 @@ export default {
         typewriter: 'Typewriter',
         focusParagraph: 'Paragraph Focus',
         typography: 'Typography',
+        toolbar: 'Toolbar',
+        preview: 'Preview',
         goalHint: 'Today’s writing goal and progress',
         contentWidth: 'Text width',
         fontSize: 'Font size',

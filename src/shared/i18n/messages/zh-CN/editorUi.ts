@@ -264,6 +264,8 @@ export default {
         typewriter: '打字机',
         focusParagraph: '段落聚焦',
         typography: '排版',
+        toolbar: '工具栏',
+        preview: '预览',
         goalHint: '今日写作目标与完成情况',
         contentWidth: '正文宽度',
         fontSize: '字号',

@@ -72,11 +72,26 @@ describe('WritingModeHost', () => {
                 .getElementById('editor-container')
                 ?.classList.contains('writing-typography-active')
         ).toBe(true)
-        expect(wrapper.findAll('.writing-chip')).toHaveLength(3)
+        expect(wrapper.findAll('.writing-chip')).toHaveLength(5)
         expect(wrapper.find('.writing-goal').text()).toContain('300')
         // 排版设置面板可打开
         await wrapper.findAll('.writing-chip')[2].trigger('click')
         expect(wrapper.find('.writing-settings').exists()).toBe(true)
+        // 工具栏/预览为写作模式内可切换项，默认关闭
+        await wrapper.findAll('.writing-chip')[3].trigger('click')
+        expect(writingModeState.showToolbar).toBe(true)
+        expect(
+            document
+                .getElementById('editor-container')
+                ?.classList.contains('writing-toolbar-visible')
+        ).toBe(true)
+        await wrapper.findAll('.writing-chip')[4].trigger('click')
+        expect(writingModeState.showPreview).toBe(true)
+        expect(
+            document
+                .getElementById('editor-container')
+                ?.classList.contains('writing-preview-active')
+        ).toBe(true)
         // 退出按钮关闭写作模式并移除布局 class
         await wrapper.find('.writing-exit').trigger('click')
         await flushPromises()

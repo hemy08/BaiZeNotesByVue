@@ -26,6 +26,10 @@ export interface WritingModeState {
     lineHeight: number
     /** 每日写作目标（字符数） */
     dailyGoal: number
+    /** 写作模式内是否显示格式工具栏（默认隐藏，保持沉浸） */
+    showToolbar: boolean
+    /** 写作模式内是否显示预览（默认关闭，可按需分屏预览） */
+    showPreview: boolean
 }
 
 const STORAGE_KEY = 'baize:writing-mode:v1'
@@ -37,7 +41,9 @@ export const WRITING_MODE_DEFAULTS: Readonly<WritingModeState> = {
     contentWidth: 760,
     fontSize: 16,
     lineHeight: 30,
-    dailyGoal: 1000
+    dailyGoal: 1000,
+    showToolbar: false,
+    showPreview: false
 }
 
 /** 数值范围（防 localStorage 被写入异常值） */
@@ -86,7 +92,9 @@ export function normalizeWritingModeState(raw: unknown): WritingModeState {
             WRITING_MODE_DEFAULTS.dailyGoal,
             RANGES.dailyGoal.min,
             RANGES.dailyGoal.max
-        )
+        ),
+        showToolbar: source.showToolbar === true,
+        showPreview: source.showPreview === true
     }
 }
 
