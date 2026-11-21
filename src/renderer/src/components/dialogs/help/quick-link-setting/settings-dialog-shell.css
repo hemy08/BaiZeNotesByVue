@@ -5,7 +5,8 @@
  * 引入方式：QuickLinkSettingDialog.vue 在 `<style scoped>` 内 @import 本文件，
  * 构建时随组件 scoped 样式内联并加上该组件 `[data-v-*]` 属性，因此不会泄漏到
  * 其它对话框的同名类（与 settings-panel.css / plugin-tools-theme.css 同一既有模式）。
- * 列表样式见 link-list.css，按钮样式见 dialog-buttons.css。
+ * 列表样式见 link-list.css；底栏按钮视觉见全局 assets/dialog-buttons.css
+ * （模板类 dialog-btn dialog-btn--*）。
  *
  * 主题：全部沿用 var(--...) 主题变量，不引入硬编码色值。
  * ========================================================================== */

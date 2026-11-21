@@ -51,10 +51,13 @@
             </div>
 
             <div class="btn-style">
-                <button class="btn" @click="handleCancel">
+                <button class="dialog-btn dialog-btn--secondary btn" @click="handleCancel">
                     {{ t('common.cancel') }}
                 </button>
-                <button class="btn btn-primary" @click="handleInsert">
+                <button
+                    class="dialog-btn dialog-btn--primary btn btn-primary"
+                    @click="handleInsert"
+                >
                     {{ t('dialogRenderer.common.insert') }}
                 </button>
             </div>
@@ -134,7 +137,8 @@ function handleInsert() {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/close-btn/过渡动画）已抽到 BaseDialog；
-   这里只保留正文与按钮样式。 */
+   正文操作按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
+   这里只保留正文与按钮排布（.btn-style 居中/间距）样式。 */
 .content {
     flex: 1;
     padding: 24px 28px;
@@ -231,39 +235,5 @@ function handleInsert() {
     justify-content: center;
     align-items: center;
     gap: 60px;
-}
-
-.btn {
-    padding: 10px 24px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--card-bg);
-    color: var(--text-color);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-weight: 500;
-}
-
-.btn:hover {
-    background: var(--hover-bg);
-    border-color: var(--accent-color);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.btn:active {
-    transform: translateY(0);
-}
-
-.btn-primary {
-    background: var(--accent-color);
-    color: #fff;
-    border-color: var(--accent-color);
-}
-
-.btn-primary:hover {
-    background: var(--accent-color);
-    opacity: 0.9;
 }
 </style>

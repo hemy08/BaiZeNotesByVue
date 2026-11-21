@@ -1,0 +1,148 @@
+/* ============================================================================
+ * 对话框底部操作按钮 —— 全局统一样式层（对话框按钮统一样式批次）
+ *
+ * 背景：25 个用户对话框都复用 BaseDialog.vue 外壳，但每个对话框各自在 scoped 样式里
+ * 复制了一份 `.btn` / `.btn-*` 规则，高度/内边距/圆角/语义色已经分叉（30px+4px 与
+ * 44px+6px 两派），危险色、强调色、边框 hover 也各不相同。
+ *
+ * 本文件是应用内对话框「底部操作按钮」的唯一视觉真源（UI-11 的按钮补充层）：
+ * - 所有规则都限定在 `.dialog-container` 内，因此不会影响非对话框场景的 `.btn`；
+ * - 颜色全部走主题变量（`--accent-color` / `--card-bg` / `--border-color` /
+ *   `--text-color` / `--button-text-color` / `--hover-bg`），不写死主题色（UI-01）；
+ * - 基础尺寸按统一视觉规范：高 30px、水平内边距 16px、圆角 4px、1px 边框、
+ *   13px 字号、`all 0.2s ease` 过渡、focus-visible 强调色轮廓（UI-09/UI-10）。
+ *
+ * 用法（模板类名）：
+ * - 基础类：`dialog-btn`（必选）；
+ * - 语义变体：`dialog-btn--primary`（主操作/确定/插入/创建/保存）、
+ *   `dialog-btn--secondary`（取消/次要）、`dialog-btn--danger`（删除/不保存等破坏性）、
+ *   `dialog-btn--ghost`（纯关闭/链接式）、`dialog-btn--apply`（应用：强调色描边）。
+ *
+ * 兼容约定：各模板同时保留迁移前的 `.btn` / `.btn-confirm` / `.btn-cancel` /
+ * `.btn-danger` / `.btn-save` / `.btn-discard` / `.btn-apply` / `.btn-insert` /
+ * `.btn-close` / `.btn-primary` / `.btn-create-file` / `.btn-create-folder` /
+ * `.btn-select-path` 等 class 作为**选择器兼容层**（E2E 与既有单测依赖
+ * `button.btn-confirm`、`.btn-save`、`.btn-discard` 等），这些旧 class 不再承载
+ * 视觉声明，只保留语义与测试锚点作用。
+ *
+ * 主题：全部沿用 var(--...) 主题变量，不引入硬编码主题色值。
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 破坏性语义色：主题调色板未提供「危险色」字段（28 套主题只有 10 个配色字段），
+ * 沿用迁移前 ConfirmDeleteDialog / AppMessageDialog / UnsavedChangesDialog 三处
+ * 一致的 #e74c3c（同一语义、同一色值），收敛为单一副本；若后续主题新增危险色变量，
+ * 只需在该变量上覆盖，无需改规则。
+ * ------------------------------------------------------------------------- */
+.dialog-container {
+    --dialog-btn-danger-bg: #e74c3c;
+}
+
+/* ==================== 基础按钮 ==================== */
+.dialog-container .dialog-btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    padding: 0 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--card-bg);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dialog-container .dialog-btn:hover:not(:disabled) {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* 按下反馈：轻微下沉，与 UI-10「hover/active 有反馈」一致；不改布局尺寸 */
+.dialog-container .dialog-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.dialog-container .dialog-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 键盘可达性：移除默认 outline，改用主题强调色 2px 轮廓（UI-10 focus 强调色） */
+.dialog-container .dialog-btn:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* ==================== 主操作（确定/插入/创建/保存） ==================== */
+.dialog-container .dialog-btn--primary {
+    border-color: transparent;
+    background: var(--accent-color);
+    color: var(--button-text-color, #fff);
+}
+
+.dialog-container .dialog-btn--primary:hover:not(:disabled) {
+    border-color: transparent;
+    background: var(--accent-color);
+    color: var(--button-text-color, #fff);
+    opacity: 0.9;
+}
+
+/* ==================== 次要操作（取消/关闭对话框的默认动作） ==================== */
+.dialog-container .dialog-btn--secondary {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.dialog-container .dialog-btn--secondary:hover:not(:disabled) {
+    background: var(--hover-bg);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* ==================== 破坏性操作（删除/不保存） ==================== */
+.dialog-container .dialog-btn--danger {
+    border-color: transparent;
+    background: var(--dialog-btn-danger-bg);
+    color: var(--button-text-color, #fff);
+}
+
+.dialog-container .dialog-btn--danger:hover:not(:disabled) {
+    border-color: transparent;
+    background: var(--dialog-btn-danger-bg);
+    color: var(--button-text-color, #fff);
+    opacity: 0.9;
+}
+
+/* ==================== 纯关闭/链接式（仅关闭、无变更语义） ==================== */
+.dialog-container .dialog-btn--ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--secondary-text-color, var(--text-color));
+}
+
+.dialog-container .dialog-btn--ghost:hover:not(:disabled) {
+    border-color: transparent;
+    background: var(--hover-bg);
+    color: var(--accent-color);
+}
+
+/* ==================== 应用（保留变更但暂不关闭：强调色描边） ==================== */
+.dialog-container .dialog-btn--apply {
+    background: var(--card-bg);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.dialog-container .dialog-btn--apply:hover:not(:disabled) {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: var(--button-text-color, #fff);
+}

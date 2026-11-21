@@ -37,22 +37,22 @@
             </div>
 
             <div class="btn-list">
-                <button class="btn" @click="handleInsertLine">
+                <button class="dialog-btn dialog-btn--primary btn" @click="handleInsertLine">
                     {{ t('dialogRenderer.mathText.insertInline') }}
                 </button>
-                <button class="btn" @click="handleInsertBlock">
+                <button class="dialog-btn dialog-btn--primary btn" @click="handleInsertBlock">
                     {{ t('dialogRenderer.mathText.insertBlock') }}
                 </button>
-                <button class="btn" @click="handleInsertMath">
+                <button class="dialog-btn dialog-btn--primary btn" @click="handleInsertMath">
                     {{ t('dialogRenderer.mathText.insertMath') }}
                 </button>
-                <button class="btn" @click="handleInsertKatex">
+                <button class="dialog-btn dialog-btn--primary btn" @click="handleInsertKatex">
                     {{ t('dialogRenderer.mathText.insertKatex') }}
                 </button>
-                <button class="btn" @click="handleInsertLatex">
+                <button class="dialog-btn dialog-btn--primary btn" @click="handleInsertLatex">
                     {{ t('dialogRenderer.mathText.insertLatex') }}
                 </button>
-                <button class="btn" @click="handleCancel">
+                <button class="dialog-btn dialog-btn--secondary btn" @click="handleCancel">
                     {{ t('dialogRenderer.mathText.cancelEdit') }}
                 </button>
             </div>
@@ -161,7 +161,8 @@ function handleInsertLatex() {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/close-btn/过渡动画）已抽到 BaseDialog；
-   这里只保留正文、公式编辑与按钮样式。 */
+   正文 .btn-list 内的操作按钮视觉见全局 assets/dialog-buttons.css
+   （模板类 dialog-btn dialog-btn--*），这里只保留正文、公式编辑与按钮排布样式。 */
 .main-content {
     flex: 1;
     padding: 15px 20px;
@@ -242,21 +243,5 @@ function handleInsertLatex() {
     justify-content: center;
     align-items: center;
     gap: 15px;
-}
-
-.btn {
-    padding: 8px 20px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--card-bg);
-    color: var(--text-color);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn:hover {
-    background: var(--hover-bg);
-    border-color: var(--accent-color);
 }
 </style>

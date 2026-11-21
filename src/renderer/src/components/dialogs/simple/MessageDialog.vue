@@ -95,7 +95,11 @@
             <!-- P2 功能错误处理修复：可重试错误（如编码转换/按编码重开失败）由宿主经本插槽
                  注入「重试」按钮；普通消息框不传插槽，外观与行为保持不变。 -->
             <slot name="footer-extra" />
-            <button class="btn-confirm" :style="buttonStyle" @click="handleClose">
+            <button
+                class="dialog-btn dialog-btn--primary btn-confirm"
+                :style="buttonStyle"
+                @click="handleClose"
+            >
                 {{ t('common.ok') }}
             </button>
         </template>
@@ -167,7 +171,8 @@ function handleClose() {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
-   这里只保留 MessageDialog 正文与按钮样式。 */
+   底栏按钮基础视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
+   这里只保留 MessageDialog 正文（图标/文案）样式。 */
 .container {
     flex: 1;
     display: flex;
@@ -202,20 +207,5 @@ function handleClose() {
     line-height: 1.6;
     max-width: 380px;
     word-wrap: break-word;
-}
-
-.btn-confirm {
-    padding: 8px 30px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-    color: #fff;
-}
-
-.btn-confirm:hover {
-    opacity: 0.9;
 }
 </style>

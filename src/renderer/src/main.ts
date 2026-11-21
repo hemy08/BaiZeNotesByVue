@@ -17,6 +17,10 @@
 // 懒加载打开时同样走该加载器。首屏 CSS 因此不含任何 KaTeX 选择器/字体引用（预算门禁守护）。
 import './assets/main.css'
 import './styles/theme.css'
+// 对话框底部按钮统一样式层（唯一视觉真源）：必须在 theme.css 之后引入，
+// 用 `.dialog-container .dialog-btn`（0,2,0）覆盖主题全局 `button` 的基础声明；
+// 详见 assets/dialog-buttons.css 顶部说明与 tests/unit/vue/dialog-buttons-style.test.ts。
+import './assets/dialog-buttons.css'
 import '@renderer/styles/preview_font/atom-one-light.css'
 import '@renderer/styles/sheet_dialog/normalize.css'
 import '@renderer/styles/material/admonition.css'

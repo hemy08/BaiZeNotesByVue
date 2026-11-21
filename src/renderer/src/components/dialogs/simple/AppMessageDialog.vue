@@ -104,11 +104,20 @@ const resolvedCancelId = computed(() => {
     return ids.includes(props.cancelId) ? props.cancelId : (ids[ids.length - 1] ?? '')
 })
 
-/** 按钮 class：kind 决定主操作/破坏性/普通三种视觉语义 */
+/**
+ * 按钮 class：`dialog-btn` 基础类 + 语义变体（统一视觉见全局 assets/dialog-buttons.css）；
+ * 同时保留迁移前的 `btn` / `btn-primary` / `btn-danger` class 作为选择器兼容层
+ * （应用内消息框单测与既有调用方按这些 class 断言，行为/语义不变）。
+ */
 function buttonClass(button: AppMessageBoxButton): string[] {
-    const classes = ['btn']
-    if (button.kind === 'primary' || button.kind === 'danger') {
-        classes.push(`btn-${button.kind}`)
+    const classes = ['dialog-btn', 'btn']
+    if (button.kind === 'primary') {
+        classes.push('dialog-btn--primary', 'btn-primary')
+    } else if (button.kind === 'danger') {
+        classes.push('dialog-btn--danger', 'btn-danger')
+    } else {
+        // 未指定 kind 的按钮等价于旧版普通按钮（卡背景 + 边框），映射为次要按钮
+        classes.push('dialog-btn--secondary')
     }
     return classes
 }
@@ -174,52 +183,5 @@ function handleCancel(): void {
     opacity: 0.85;
     white-space: pre-wrap;
     word-break: break-word;
-}
-
-.btn {
-    min-width: 78px;
-    height: 30px;
-    padding: 0 16px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    background: var(--card-bg);
-    color: var(--text-color);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn:hover:not(:disabled) {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* 主操作：主题强调色，文字白色（深色底上的白字例外，见 UI-01；与既有对话框一致） */
-.btn-primary {
-    border: none;
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn-primary:hover:not(:disabled) {
-    opacity: 0.9;
-    color: #fff;
-}
-
-/* 破坏性操作：危险色（与 ConfirmDeleteDialog / UnsavedChangesDialog 同一既有约定） */
-.btn-danger {
-    border: none;
-    background: #e74c3c;
-    color: #fff;
-}
-
-.btn-danger:hover:not(:disabled) {
-    opacity: 0.9;
-    color: #fff;
 }
 </style>

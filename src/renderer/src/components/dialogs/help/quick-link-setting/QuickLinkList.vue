@@ -56,7 +56,7 @@ const emit = defineEmits<{
 </script>
 
 <style scoped>
-/* 列表样式见 link-list.css；新增按钮复用 dialog-buttons.css 公共样式。 */
+/* 列表样式（含 .add-btn / .action-btn）见 link-list.css；底栏按钮视觉见全局
+   assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*）。 */
 @import './link-list.css';
-@import './dialog-buttons.css';
 </style>

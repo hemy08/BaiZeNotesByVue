@@ -41,10 +41,10 @@
         </div>
 
         <template #footer>
-            <button class="btn btn-cancel" @click="handleCancel">
+            <button class="dialog-btn dialog-btn--secondary btn btn-cancel" @click="handleCancel">
                 {{ t('mainMsg.dialog.cancel') }}
             </button>
-            <button class="btn btn-confirm" @click="handleConfirm">
+            <button class="dialog-btn dialog-btn--primary btn btn-confirm" @click="handleConfirm">
                 {{ t('mainMsg.dialog.confirm') }}
             </button>
         </template>
@@ -121,6 +121,7 @@ function handleConfirm(): void {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）由 BaseDialog 承担；
+   底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
    这里仅保留正文与输入区样式，尺寸/配色对齐迁移前 JSDOM ShowRenameDialog。 */
 .content {
     padding: 15px 20px;
@@ -178,34 +179,5 @@ function handleConfirm(): void {
 
 .error-tip.visible {
     display: block;
-}
-
-.btn {
-    min-width: 78px;
-    height: 30px;
-    padding: 0 16px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    background: var(--card-bg);
-    color: var(--text-color);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn:hover {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-}
-
-.btn-confirm {
-    border: none;
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn-confirm:hover {
-    opacity: 0.9;
-    color: #fff;
 }
 </style>

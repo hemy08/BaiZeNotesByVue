@@ -32,7 +32,7 @@
 
         <template #footer>
             <span class="footer-hint">{{ t('dialogMain.shortcutKeys.close') }}</span>
-            <button class="btn btn-close" @click="handleClose">
+            <button class="dialog-btn dialog-btn--ghost btn btn-close" @click="handleClose">
                 {{ t('common.close') }}
             </button>
         </template>
@@ -189,29 +189,11 @@ kbd {
     color: var(--text-color);
 }
 
-/* 底栏：左侧只读说明 + 右侧关闭按钮（保留迁移前 footer 的说明文案） */
+/* 底栏：左侧只读说明 + 右侧关闭按钮（按钮视觉见全局 assets/dialog-buttons.css） */
 .footer-hint {
     flex: 1;
     font-size: 12px;
     color: var(--secondary-text-color);
     align-self: center;
-}
-
-.btn {
-    min-width: 78px;
-    height: 30px;
-    padding: 0 16px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    background: var(--card-bg);
-    color: var(--text-color);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn:hover {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
 }
 </style>

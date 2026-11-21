@@ -5,7 +5,8 @@
  * 引入方式：SystemSettingDialog.vue 在 `<style scoped>` 内 @import 本文件，
  * 构建时随组件 scoped 样式内联并加上该组件 `[data-v-*]` 属性，因此不会泄漏到
  * 其它对话框的同名类（与 PluginTools 各组件 @import plugin-tools-theme.css 同一模式）。
- * 设置项公共样式（标题/分组卡片/设置行/输入控件）见 settings-panel.css。
+ * 设置项公共样式（标题/分组卡片/设置行/输入控件）见 settings-panel.css；
+ * 底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*）。
  *
  * 主题：全部沿用 var(--...) 主题变量，不引入硬编码色值。
  * ========================================================================== */
@@ -62,45 +63,4 @@
     flex: 1;
     padding: 24px;
     overflow-y: auto;
-}
-
-/* 底栏按钮（取消 / 应用 / 确定） */
-.btn {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-cancel {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
-}
-
-.btn-cancel:hover {
-    background: var(--border-color);
-}
-
-.btn-apply {
-    background: var(--card-bg);
-    border: 1px solid var(--accent-color);
-    color: var(--accent-color);
-}
-
-.btn-apply:hover {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn-confirm {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn:hover {
-    opacity: 0.9;
 }

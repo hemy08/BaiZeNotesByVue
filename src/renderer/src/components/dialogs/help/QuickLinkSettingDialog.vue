@@ -58,13 +58,13 @@
         </div>
 
         <template #footer>
-            <button class="btn btn-cancel" @click="handleCancel">
+            <button class="dialog-btn dialog-btn--secondary btn btn-cancel" @click="handleCancel">
                 {{ t('common.cancel') }}
             </button>
-            <button class="btn btn-apply" @click="handleApply">
+            <button class="dialog-btn dialog-btn--apply btn btn-apply" @click="handleApply">
                 {{ t('common.apply') }}
             </button>
-            <button class="btn btn-confirm" @click="handleConfirm">
+            <button class="dialog-btn dialog-btn--primary btn btn-confirm" @click="handleConfirm">
                 {{ t('common.ok') }}
             </button>
         </template>
@@ -218,7 +218,8 @@ function handleCancel(): void {
 </script>
 
 <style scoped>
-/* 壳层骨架/空状态见 settings-dialog-shell.css；按钮见 dialog-buttons.css。 */
+/* 壳层骨架/空状态见 settings-dialog-shell.css；空状态「新增」按钮复用 link-list.css 的
+   .add-btn；底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*）。 */
 @import './quick-link-setting/settings-dialog-shell.css';
-@import './quick-link-setting/dialog-buttons.css';
+@import './quick-link-setting/link-list.css';
 </style>

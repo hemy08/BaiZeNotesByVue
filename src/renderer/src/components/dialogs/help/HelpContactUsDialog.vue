@@ -100,7 +100,7 @@
         </div>
 
         <template #footer>
-            <button class="btn btn-cancel" @click="handleClose">
+            <button class="dialog-btn dialog-btn--ghost btn btn-cancel" @click="handleClose">
                 {{ t('common.close') }}
             </button>
         </template>
@@ -164,7 +164,8 @@ function handleClose() {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/title-text/close-btn/footer/过渡动画）已抽到 BaseDialog；
-   这里只保留正文（联系卡片/社交链接）与按钮样式。 */
+   底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
+   这里只保留正文（联系卡片/社交链接）样式。 */
 .main-content {
     flex: 1;
     padding: 30px;
@@ -263,24 +264,5 @@ function handleClose() {
 .social-icon span:last-child {
     font-size: 13px;
     color: var(--text-color);
-}
-
-.btn {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-cancel {
-    background: var(--button-bg);
-    color: var(--text-color);
-}
-
-.btn:hover {
-    opacity: 0.9;
 }
 </style>

@@ -94,10 +94,10 @@
         </div>
 
         <template #footer>
-            <button class="btn btn-cancel" @click="handleClose">
+            <button class="dialog-btn dialog-btn--secondary btn btn-cancel" @click="handleClose">
                 {{ t('common.cancel') }}
             </button>
-            <button class="btn btn-primary" @click="handleInsert">
+            <button class="dialog-btn dialog-btn--primary btn btn-primary" @click="handleInsert">
                 {{ t('dialogRenderer.common.insertChart') }}
             </button>
         </template>
@@ -177,7 +177,8 @@ function handleInsert() {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/title-text/close-btn/footer/过渡动画）已抽到 BaseDialog；
-   这里只保留正文（编辑区 / 源码预览区 / 底栏按钮）样式。 */
+   底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
+   这里只保留正文（编辑区 / 源码预览区 / 工具栏 tool-btn）样式。 */
 .main-container {
     flex: 1;
     display: flex;
@@ -290,29 +291,5 @@ function handleInsert() {
     font-style: italic;
     text-align: center;
     margin-top: 100px;
-}
-
-.btn {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-cancel {
-    background: var(--button-bg);
-    color: var(--text-color);
-}
-
-.btn-primary {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn:hover {
-    opacity: 0.9;
 }
 </style>

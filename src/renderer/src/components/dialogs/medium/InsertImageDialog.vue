@@ -94,10 +94,17 @@
             </div>
 
             <div class="footer">
-                <button class="btn btn-cancel" @click="handleCancel">
+                <button
+                    class="dialog-btn dialog-btn--secondary btn btn-cancel"
+                    @click="handleCancel"
+                >
                     {{ t('common.cancel') }}
                 </button>
-                <button class="btn btn-confirm" :disabled="!canInsert" @click="handleInsert">
+                <button
+                    class="dialog-btn dialog-btn--primary btn btn-confirm"
+                    :disabled="!canInsert"
+                    @click="handleInsert"
+                >
                     {{ t('dialogRenderer.common.insert') }}
                 </button>
             </div>
@@ -211,7 +218,8 @@ function handleInsert() {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/close-btn/过渡动画）已抽到 BaseDialog；
-   这里只保留正文、表单、内嵌底栏与按钮样式。 */
+   底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
+   这里只保留正文、表单、页签与内嵌底栏布局样式。 */
 .content {
     padding: 20px;
     display: flex;
@@ -321,7 +329,8 @@ function handleInsert() {
     border: 1px solid var(--border-color);
 }
 
-/* 原 .footer 嵌在 .content 内（见模板注释），结构与声明保持迁移前不变。 */
+/* 原 .footer 嵌在 .content 内（见模板注释），结构与声明保持迁移前不变；
+   内嵌底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*）。 */
 .footer {
     padding: 15px 20px;
     display: flex;
@@ -329,34 +338,5 @@ function handleInsert() {
     gap: 10px;
     border-top: 1px solid var(--border-color);
     background: var(--card-bg);
-}
-
-.btn {
-    padding: 8px 20px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-cancel {
-    background: var(--border-color);
-    color: var(--text-color);
-}
-
-.btn-confirm {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn:hover:not(:disabled) {
-    opacity: 0.9;
-}
-
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 </style>

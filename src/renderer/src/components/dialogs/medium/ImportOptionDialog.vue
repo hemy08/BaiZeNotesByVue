@@ -37,10 +37,14 @@
         </div>
 
         <template #footer>
-            <button class="btn btn-cancel" @click="handleCancel">
+            <button class="dialog-btn dialog-btn--secondary btn btn-cancel" @click="handleCancel">
                 {{ t('common.cancel') }}
             </button>
-            <button class="btn btn-confirm" :disabled="!selectedOption" @click="handleConfirm">
+            <button
+                class="dialog-btn dialog-btn--primary btn btn-confirm"
+                :disabled="!selectedOption"
+                @click="handleConfirm"
+            >
                 {{ t('common.ok') }}
             </button>
         </template>
@@ -106,7 +110,8 @@ function handleConfirm() {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
-   这里只保留正文与按钮样式。 */
+   底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
+   这里只保留正文（选项卡片）样式。 */
 .container {
     flex: 1;
     padding: 20px;
@@ -185,38 +190,5 @@ function handleConfirm() {
 .option-desc {
     font-size: 12px;
     color: var(--secondary-text-color);
-}
-
-.btn {
-    padding: 8px 20px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-cancel {
-    background: var(--border-color);
-    color: var(--text-color);
-}
-
-.btn-cancel:hover {
-    opacity: 0.9;
-}
-
-.btn-confirm {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn-confirm:hover {
-    opacity: 0.9;
-}
-
-.btn-confirm:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 </style>

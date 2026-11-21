@@ -61,13 +61,21 @@
         </div>
 
         <template #footer>
-            <button class="btn btn-cancel" @click="handleCancel">
+            <button class="dialog-btn dialog-btn--secondary btn btn-cancel" @click="handleCancel">
                 {{ t('common.cancel') }}
             </button>
-            <button class="btn btn-apply" :disabled="isSaving" @click="handleApply">
+            <button
+                class="dialog-btn dialog-btn--apply btn btn-apply"
+                :disabled="isSaving"
+                @click="handleApply"
+            >
                 {{ t('common.apply') }}
             </button>
-            <button class="btn btn-confirm" :disabled="isSaving" @click="handleConfirm">
+            <button
+                class="dialog-btn dialog-btn--primary btn btn-confirm"
+                :disabled="isSaving"
+                @click="handleConfirm"
+            >
                 {{ t('common.ok') }}
             </button>
         </template>

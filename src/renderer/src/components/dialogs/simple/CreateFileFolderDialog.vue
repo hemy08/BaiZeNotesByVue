@@ -35,14 +35,18 @@
         </div>
 
         <template #footer>
-            <button class="btn btn-cancel" @click="handleCancel">
+            <button class="dialog-btn dialog-btn--secondary btn btn-cancel" @click="handleCancel">
                 {{ t('common.cancel') }}
             </button>
-            <button class="btn btn-create-file" :disabled="!name.trim()" @click="handleCreateFile">
+            <button
+                class="dialog-btn dialog-btn--primary btn btn-create-file"
+                :disabled="!name.trim()"
+                @click="handleCreateFile"
+            >
                 {{ t('dialogRenderer.createFileFolder.createFile') }}
             </button>
             <button
-                class="btn btn-create-folder"
+                class="dialog-btn dialog-btn--primary btn btn-create-folder"
                 :disabled="!name.trim()"
                 @click="handleCreateFolder"
             >
@@ -131,7 +135,8 @@ function handleCreateFolder() {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
-   这里只保留正文、输入框与底部按钮样式。 */
+   底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
+   这里只保留正文、输入框与「选择路径」输入区按钮样式。 */
 .content {
     padding: 20px;
 }
@@ -202,39 +207,5 @@ function handleCreateFolder() {
 
 .name-input:focus {
     border-color: var(--accent-color);
-}
-
-.btn {
-    padding: 8px 20px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-cancel {
-    background: var(--button-bg);
-    color: var(--text-color);
-}
-
-.btn-create-file {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn-create-folder {
-    background: var(--secondary-accent-color, #4caf50);
-    color: #fff;
-}
-
-.btn:hover:not(:disabled) {
-    opacity: 0.9;
-}
-
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 </style>

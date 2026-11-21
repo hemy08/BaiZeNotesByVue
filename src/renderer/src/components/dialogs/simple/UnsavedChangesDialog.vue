@@ -27,16 +27,26 @@
             <button
                 ref="saveButton"
                 type="button"
-                class="btn btn-save"
+                class="dialog-btn dialog-btn--primary btn btn-save"
                 :disabled="busy"
                 @click="emit('save')"
             >
                 {{ busy ? t('mainMsg.closeConfirm.saving') : saveText }}
             </button>
-            <button type="button" class="btn btn-discard" :disabled="busy" @click="emit('discard')">
+            <button
+                type="button"
+                class="dialog-btn dialog-btn--danger btn btn-discard"
+                :disabled="busy"
+                @click="emit('discard')"
+            >
                 {{ t('mainMsg.closeConfirm.discard') }}
             </button>
-            <button type="button" class="btn btn-cancel" :disabled="busy" @click="emit('cancel')">
+            <button
+                type="button"
+                class="dialog-btn dialog-btn--secondary btn btn-cancel"
+                :disabled="busy"
+                @click="emit('cancel')"
+            >
                 {{ t('mainMsg.closeConfirm.cancel') }}
             </button>
         </template>
@@ -153,58 +163,11 @@ function handleCloseRequest(): void {
     opacity: 0.85;
 }
 
-/* 保存失败提示：使用破坏性操作语义色（与 ConfirmDeleteDialog 的 .btn-danger 同一约定） */
+/* 保存失败提示：使用破坏性操作语义色（与 ConfirmDeleteDialog 的 dialog-btn--danger 同一约定） */
 .error {
     margin: 0;
     font-size: 13px;
     line-height: 1.6;
-    color: #e74c3c;
-}
-
-.btn {
-    min-width: 78px;
-    height: 30px;
-    padding: 0 16px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    background: var(--card-bg);
-    color: var(--text-color);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn:hover:not(:disabled) {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* 主操作：保存并关闭（默认焦点）——使用主题强调色，文字白色（深色底上的白字例外，见 UI-01） */
-.btn-save {
-    border: none;
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn-save:hover:not(:disabled) {
-    opacity: 0.9;
-    color: #fff;
-}
-
-/* 破坏性操作：不保存（丢弃修改）——与迁移前原生框的语义一致 */
-.btn-discard {
-    border: none;
-    background: #e74c3c;
-    color: #fff;
-}
-
-.btn-discard:hover:not(:disabled) {
-    opacity: 0.9;
-    color: #fff;
+    color: var(--dialog-btn-danger-bg, #e74c3c);
 }
 </style>

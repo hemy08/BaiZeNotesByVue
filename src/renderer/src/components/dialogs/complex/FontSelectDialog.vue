@@ -181,13 +181,13 @@
         </div>
 
         <template #footer>
-            <button class="btn btn-cancel" @click="handleCancel">
+            <button class="dialog-btn dialog-btn--secondary btn btn-cancel" @click="handleCancel">
                 {{ t('common.cancel') }}
             </button>
-            <button class="btn btn-insert" @click="handleInsert">
+            <button class="dialog-btn dialog-btn--primary btn btn-insert" @click="handleInsert">
                 {{ t('common.insert') }}
             </button>
-            <button class="btn btn-confirm" @click="handleConfirm">
+            <button class="dialog-btn dialog-btn--apply btn btn-confirm" @click="handleConfirm">
                 {{ t('common.ok') }}
             </button>
         </template>
@@ -406,7 +406,8 @@ function generateHtml(): string {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/title-text/close-btn/footer/过渡动画）已抽到 BaseDialog；
-   这里只保留正文（配置面板/预览区）与按钮样式。 */
+   底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
+   这里只保留正文（配置面板/预览区）样式。 */
 .main-content {
     flex: 1;
     padding: 20px 24px;
@@ -586,45 +587,5 @@ function generateHtml(): string {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 12px;
-}
-
-.btn {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-cancel {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
-}
-
-.btn-cancel:hover {
-    background: var(--border-color);
-}
-
-.btn-insert {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn-insert:hover {
-    opacity: 0.9;
-}
-
-.btn-confirm {
-    background: var(--card-bg);
-    border: 1px solid var(--accent-color);
-    color: var(--accent-color);
-}
-
-.btn-confirm:hover {
-    background: var(--accent-color);
-    color: #fff;
 }
 </style>

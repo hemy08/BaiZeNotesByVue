@@ -100,10 +100,10 @@
         </div>
 
         <template #footer>
-            <button class="btn btn-cancel" @click="handleCancel">
+            <button class="dialog-btn dialog-btn--secondary btn btn-cancel" @click="handleCancel">
                 {{ t('common.cancel') }}
             </button>
-            <button class="btn btn-insert" @click="handleInsert">
+            <button class="dialog-btn dialog-btn--primary btn btn-insert" @click="handleInsert">
                 {{ t('dialogRenderer.common.insert') }}
             </button>
         </template>
@@ -287,7 +287,8 @@ function handleInsert(): void {
 
 <style scoped>
 /* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）已抽到 BaseDialog；
-   这里只保留正文（功能列表/表单/预览）与按钮样式。 */
+   底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
+   这里只保留正文（功能列表/表单/预览）样式。 */
 .main-content {
     flex: 1;
     min-height: 0;
@@ -454,29 +455,5 @@ function handleInsert(): void {
 .preview.empty {
     color: var(--secondary-text-color);
     font-style: italic;
-}
-
-.btn {
-    padding: 8px 20px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-cancel {
-    background: var(--border-color);
-    color: var(--text-color);
-}
-
-.btn-insert {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.btn:hover {
-    opacity: 0.9;
 }
 </style>

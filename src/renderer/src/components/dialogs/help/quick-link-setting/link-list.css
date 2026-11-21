@@ -2,9 +2,27 @@
  * 快捷链接设置对话框 —— 链接列表样式（设置对话框二期拆分从 QuickLinkSettingDialog.vue
  * 的 scoped 样式中按归属拆分到 QuickLinkList.vue 的部分）
  *
- * 按钮样式（.add-btn / .action-btn 之外的底栏按钮）见 dialog-buttons.css。
+ * 按钮：列表内 .add-btn（新增入口，列表头部与空状态共用）与 .action-btn（行内编辑/删除）
+ * 属于正文局部按钮，继续在本文件维护；对话框底部操作按钮统一走全局
+ * assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*）。
  * 主题：全部沿用 var(--...) 主题变量，不引入硬编码色值。
  * ========================================================================== */
+
+/* 新增按钮（列表头部 / 空状态共用） */
+.add-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background: var(--accent-color);
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.add-btn:hover {
+    opacity: 0.9;
+}
 
 /* 列表容器（与右侧编辑表单并排，占满剩余宽度） */
 .link-list {

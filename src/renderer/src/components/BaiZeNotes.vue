@@ -58,12 +58,14 @@
             @close="handleMessageDialogClose"
         >
             <!-- P2 功能错误处理修复：可重试错误（编码转换/按编码重开失败等）显示「重试」按钮；
-                 重试动作由 store 的 messageDialogRetry 保存（不污染 messageDialog data 契约）。 -->
+                 重试动作由 store 的 messageDialogRetry 保存（不污染 messageDialog data 契约）。
+                 按钮视觉统一走全局 assets/dialog-buttons.css（dialog-btn / dialog-btn--*），
+                 保留 .btn-message-retry 作为既有选择器锚点。 -->
             <template #footer-extra>
                 <button
                     v-if="hasMessageDialogRetry"
                     type="button"
-                    class="btn-message-retry"
+                    class="dialog-btn dialog-btn--secondary btn-message-retry"
                     @click="handleMessageDialogRetry"
                 >
                     {{ t('dialogRenderer.common.retry') }}
@@ -565,25 +567,6 @@ onBeforeUnmount(() => {
     flex-shrink: 0;
     user-select: none;
     -webkit-app-region: drag;
-}
-
-/* P2 功能错误处理修复：消息对话框「重试」按钮（经 MessageDialog #footer-extra 插槽注入，
-   与 MessageDialog 内 .btn-confirm 同排；颜色不随消息类型变化，使用主题强调色）。 */
-.btn-message-retry {
-    padding: 8px 22px;
-    border: 1px solid var(--theme-border-color, #d9d9d9);
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--theme-text-color, #333333);
-    background: var(--theme-card-background, #f5f5f5);
-    transition: all 0.2s;
-}
-
-.btn-message-retry:hover {
-    border-color: var(--theme-accent-color, #764ba2);
-    color: var(--theme-accent-color, #764ba2);
 }
 
 .title-left {

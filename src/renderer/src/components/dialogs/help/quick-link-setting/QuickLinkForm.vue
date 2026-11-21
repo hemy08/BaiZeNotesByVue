@@ -44,10 +44,10 @@
         </div>
 
         <div class="form-actions">
-            <button class="btn btn-cancel" @click="emit('cancel')">
+            <button class="dialog-btn dialog-btn--secondary btn btn-cancel" @click="emit('cancel')">
                 {{ t('common.cancel') }}
             </button>
-            <button class="btn btn-primary" @click="handleSave">
+            <button class="dialog-btn dialog-btn--primary btn btn-primary" @click="handleSave">
                 {{ t('common.save') }}
             </button>
         </div>
@@ -94,8 +94,8 @@ function handleSave(): void {
 </script>
 
 <style scoped>
-/* 按钮公共样式（.btn / .btn-cancel）见 dialog-buttons.css */
-@import './dialog-buttons.css';
+/* 表单内按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
+   本文件只保留编辑表单卡片与输入控件样式。 */
 
 /* 编辑表单卡片（固定宽度，与左侧列表并排） */
 .link-form {

@@ -21,10 +21,10 @@
         </div>
 
         <template #footer>
-            <button class="btn btn-cancel" @click="handleCancel">
+            <button class="dialog-btn dialog-btn--secondary btn btn-cancel" @click="handleCancel">
                 {{ t('dialogMain.confirmDelete.no') }}
             </button>
-            <button class="btn btn-danger" @click="handleConfirm">
+            <button class="dialog-btn dialog-btn--danger btn btn-danger" @click="handleConfirm">
                 {{ t('dialogMain.confirmDelete.yes') }}
             </button>
         </template>
@@ -77,6 +77,8 @@ function handleConfirm(): void {
 </script>
 
 <style scoped>
+/* 外壳（overlay/container/title-bar/close-btn/footer/过渡动画）与底栏按钮视觉分别由
+   BaseDialog 和全局 assets/dialog-buttons.css 承担；这里只保留正文文案样式。 */
 .content {
     padding: 20px;
 }
@@ -86,35 +88,5 @@ function handleConfirm(): void {
     line-height: 1.6;
     color: var(--text-color);
     word-break: break-all;
-}
-
-.btn {
-    min-width: 78px;
-    height: 30px;
-    padding: 0 16px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    background: var(--card-bg);
-    color: var(--text-color);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn:hover {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-}
-
-/* 删除为破坏性操作：确认按钮用危险色（与迁移前原生消息框的语义一致） */
-.btn-danger {
-    border: none;
-    background: #e74c3c;
-    color: #fff;
-}
-
-.btn-danger:hover {
-    opacity: 0.9;
-    color: #fff;
 }
 </style>
