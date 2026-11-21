@@ -59,8 +59,8 @@ const NAV_REPORT_DATA = {
         { file: '全量扫描与审查报告', title: '全量扫描与审查报告（合并）' },
         { file: '代码整体结构分析报告', title: '代码整体结构分析报告' },
         {
-            file: '2026-11-21-Markdown编辑器能力补全选项报告',
-            title: 'Markdown 编辑器能力补全选项报告（2026-11-21）'
+            file: 'Markdown编辑器能力补全选项报告',
+            title: 'Markdown 编辑器能力补全选项报告'
         }
     ],
     '02-修复与实施': [
