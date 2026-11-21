@@ -163,7 +163,20 @@ export const IPC = {
         DELETE_FILE_FOLDER_CONFIRM: 'baize:dialog:delete-file-folder-confirm',
         OPEN_VUE_DIALOG: 'baize:dialog:open-vue',
         UNSAVED_CLOSE_REQUEST: 'baize:dialog:unsaved-close-request',
-        UNSAVED_CLOSE_SUBMIT: 'baize:dialog:unsaved-close-submit'
+        UNSAVED_CLOSE_SUBMIT: 'baize:dialog:unsaved-close-submit',
+        // 2026-11-21（应用内消息/确认对话框通用服务）：替换主进程全部用户可见原生
+        // dialog.showMessageBox（关闭确认的原生兜底除外）。四通道显式双通道协议：
+        // - APP_MESSAGE_REQUEST（主进程 → 渲染层）：请求展示应用内消息框（含 requestId /
+        //   kind / 标题 / 正文 / 详情 / 按钮列表 / 默认/取消按钮 / 超时）；
+        // - APP_MESSAGE_SUBMIT（渲染层 → 主进程 invoke）：回传用户选择（requestId + choiceId）；
+        // - APP_MESSAGE_DISMISS（主进程 → 渲染层）：超时回退原生前撤销应用内框
+        //   （避免「应用内框 + 原生框」双弹）；
+        // - APP_MESSAGE_HOST_READY（渲染层 → 主进程 send）：消息框宿主挂载/卸载握手，
+        //   宿主未就绪（欢迎页未进入主界面）时主进程直接回退原生框，不白等超时。
+        APP_MESSAGE_REQUEST: 'baize:dialog:app-message-request',
+        APP_MESSAGE_SUBMIT: 'baize:dialog:app-message-submit',
+        APP_MESSAGE_DISMISS: 'baize:dialog:app-message-dismiss',
+        APP_MESSAGE_HOST_READY: 'baize:dialog:app-message-host-ready'
     } as const,
 
     // ============ 导航 ============

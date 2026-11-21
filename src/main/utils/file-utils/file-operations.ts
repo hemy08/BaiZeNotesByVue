@@ -26,6 +26,9 @@ import { MARKDOWN_EXTENSIONS } from '../../../shared/constants/file-extensions'
 // ARC-11：直接依赖无反向边的 file-state-store（避免 file-state → file-utils 循环依赖）
 import { saveLastOpenedDirectory, saveLastOpenedFile } from '../file-state-store'
 import { logger } from '../logger'
+// 2026-11-21（应用内消息/确认对话框通用服务）：大文件打开确认改走应用内 BaseDialog
+// （渲染层不可用/超时时服务内部自动回退原生框，语义与历史原生框一致）
+import { showAppMessageBox } from '../app-message-box'
 import { ParseDirectoryPath, ParserFileName } from './path-utils'
 import * as fileExport from './export'
 import { showErrorMessageBox } from './dialog-helpers'
@@ -497,30 +500,30 @@ export async function OpenSelectFile(fileProperties: FileProperties): Promise<vo
             // 公共接口归位第 2 批：日志内联大小格式化改为 shared 的 formatFileSize
             logger.warn('Open Large File ', formatFileSize(fileSize), fileProperties.path)
             // FUN-30：大文件确认改为异步对话框，不再用 showMessageBoxSync 阻塞主进程；
-            // 文案统一中文。注意：对话框文案模板 `largeFileMessage` 自带固定的 `MB`
-            // 单位占位（`文件大小为 {size} MB`），因此这里仍传「MB 数值」，不能直接
-            // 换成带单位的 formatFileSize（否则会输出「5.00 MB MB」）。
-            const messageBoxOptions = {
-                type: 'warning' as const,
+            // 2026-11-21：原生消息框改为通用应用内消息框服务（渲染层不可用/超时时自动回退原生框）。
+            // 文案保持中文原文，`largeFileMessage` 自带固定 `MB` 单位占位
+            // （`文件大小为 {size} MB`），因此这里仍传「MB 数值」，不能直接换成带单位的
+            // formatFileSize（否则会输出「5.00 MB MB」）。
+            const largeFileResult = await showAppMessageBox({
+                kind: 'warning',
                 title: tMain('mainMsg.dialog.largeFileTitle'),
                 message: tMain('mainMsg.dialog.largeFileMessage', {
                     size: (fileSize / 1024 / 1024).toFixed(2)
                 }),
                 buttons: [
-                    tMain('mainMsg.dialog.largeFileContinue'),
-                    tMain('mainMsg.dialog.cancel')
+                    {
+                        id: 'continue',
+                        label: tMain('mainMsg.dialog.largeFileContinue'),
+                        kind: 'primary'
+                    },
+                    { id: 'cancel', label: tMain('mainMsg.dialog.cancel') }
                 ],
-                defaultId: 0,
-                cancelId: 1
-            }
-            // P2 非空断言治理：取存活主窗口作为对话框父窗口；窗口已销毁时退化为
-            // 无父窗口对话框（Electron 支持无父窗口调用），避免 TypeError 崩溃主进程。
-            const dialogWindow = getLiveMainWindow()
-            const result = dialogWindow
-                ? await dialog.showMessageBox(dialogWindow, messageBoxOptions)
-                : await dialog.showMessageBox(messageBoxOptions)
-
-            if (result.response === 1) {
+                defaultId: 'continue',
+                cancelId: 'cancel',
+                // 主窗口已销毁时服务内部会回退为无父窗口原生框，避免 TypeError 崩溃主进程
+                parentWindow: getLiveMainWindow()
+            })
+            if (largeFileResult.choiceId !== 'continue') {
                 logger.info('用户取消打开大文件 ', fileProperties.path)
                 return
             }

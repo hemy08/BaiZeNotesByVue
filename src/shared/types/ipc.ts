@@ -3,12 +3,12 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（61 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（63 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（29 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（30 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
- *   白名单**完全相等**（26 个通道）。
+ *   白名单**完全相等**（28 个通道）。
  *
  * ## 键的写法（可静态校验）
  * 三张表统一用计算属性名 `[IPC.<组>.<键>]` 引用 `src/shared/ipc-channels.ts` 常量，
@@ -202,6 +202,76 @@ export interface HashResult {
     [algorithm: string]: string
 }
 
+/* ----------------------------------------------------------------------------
+ * 通用应用内消息/确认对话框服务（2026-11-21：替换主进程全部用户可见原生
+ * dialog.showMessageBox，关闭确认的原生兜底除外）
+ *
+ * 通信链路（显式双通道协议，复用关闭确认已建立模式；见 src/main/utils/app-message-box.ts）：
+ *   1. 主进程 `showAppMessageBox()` 经 `webContents.send(IPC.DIALOG.APP_MESSAGE_REQUEST, payload)`
+ *      请求渲染层展示 BaseDialog 风格消息框（requestId 关联本次请求）；
+ *   2. 渲染层 `AppMessageBoxHost` 驱动 `AppMessageDialog.vue`，用户选择后
+ *      `invoke(IPC.DIALOG.APP_MESSAGE_SUBMIT, requestId, choiceId)` 回传；
+ *   3. 主进程在超时（默认 30s）/ 窗口销毁 / 渲染进程崩溃 / 重复回执等场景统一兜底：
+ *      超时先发 `APP_MESSAGE_DISMISS` 撤销应用内框再回退原生 `dialog.showMessageBox`；
+ *   4. 宿主挂载/卸载经 `IPC.DIALOG.APP_MESSAGE_HOST_READY` 发送 ready 握手，
+ *      宿主未就绪（欢迎页/加载中）时主进程直接回退原生框并记录 warn。
+ * -------------------------------------------------------------------------- */
+
+/** 应用内消息框类型（对应原生 MessageBox type） */
+export type AppMessageBoxKind = 'info' | 'warning' | 'error' | 'confirm'
+
+/** 按钮语义样式：primary=主操作（强调色）/ danger=破坏性操作（危险色）/ default=普通 */
+export type AppMessageBoxButtonKind = 'primary' | 'danger' | 'default'
+
+/** 应用内消息框按钮（id 为回传选择的稳定标识，不随语言变化） */
+export interface AppMessageBoxButton {
+    /** 按钮稳定标识（回传主进程的 choiceId；同一次请求内唯一） */
+    id: string
+    /** 按钮文案（主进程已按当前语言本地化） */
+    label: string
+    /** 视觉语义（可选；缺省为普通按钮） */
+    kind?: AppMessageBoxButtonKind
+}
+
+/**
+ * APP_MESSAGE_REQUEST 广播载荷（主进程 → 渲染层）。
+ *
+ * 渲染层只负责展示与回传 choiceId；语义动作（打开可执行程序 / 继续打开大文件 /
+ * 安装更新等）始终由主进程在拿到结果后执行。
+ */
+export interface AppMessageBoxRequestPayload {
+    /** 请求唯一标识（回执必须原样带回，用于匹配等待中的请求） */
+    requestId: string
+    /** 消息框类型（决定视觉语义与原生兜底的 type） */
+    kind: AppMessageBoxKind
+    /** 标题（主进程已本地化） */
+    title: string
+    /** 正文（主进程已本地化） */
+    message: string
+    /** 补充说明（可选，支持换行） */
+    detail?: string
+    /** 按钮列表（至少 1 个；支持单按钮 info/error 与双/三按钮 confirm） */
+    buttons: AppMessageBoxButton[]
+    /** 默认聚焦/回车触发的按钮 id（缺省取第一个按钮） */
+    defaultId: string
+    /** 取消语义按钮 id：Esc / 标题栏关闭 / 超时兜底均映射到它（缺省取最后一个按钮） */
+    cancelId: string
+    /** 等待渲染层回执的超时（毫秒，可选；主进程另有默认 30s 与钳制） */
+    timeoutMs?: number
+}
+
+/**
+ * APP_MESSAGE_SUBMIT 返回结构（渲染层 invoke → 主进程）。
+ * - `ok: true`：选择已受理并结算等待中的请求；
+ * - `ok: false, stale: true`：主进程侧等待已结束（超时/窗口销毁/重复回执），
+ *   渲染层应直接收起对话框（本次请求已由主进程兜底处理）。
+ */
+export interface AppMessageBoxSubmitResult {
+    ok: boolean
+    /** true = 主进程已无匹配的等待中请求（过期/重复回执） */
+    stale?: boolean
+}
+
 /**
  * QUICK_LINKS.SAVE 返回结构：
  * - 主进程归一化校验通过：{ ok: true, links }（已落盘并已广播 UPDATED）；
@@ -365,6 +435,10 @@ export interface IpcRequests {
      * save 分支由主进程执行保存并返回 ok/失败（失败保留对话框供重试）。
      */
     [IPC.DIALOG.UNSAVED_CLOSE_SUBMIT]: [choice: UnsavedCloseChoice]
+    /** 通用应用内消息框选择回执（invoke；requestId 用于匹配等待中的请求） */
+    [IPC.DIALOG.APP_MESSAGE_SUBMIT]: [requestId: string, choiceId: string]
+    /** 通用应用内消息框宿主就绪握手（send；挂载 true / 卸载 false） */
+    [IPC.DIALOG.APP_MESSAGE_HOST_READY]: [ready: boolean]
 
     // ============ 插件工具 ============
     /** 生成 RSA 密钥对（send；bits 仅接受 1024/2048/3072/4096，非法回退 2048） */
@@ -439,6 +513,7 @@ export interface IpcResponses {
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult
     [IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM]: DialogActionResult
     [IPC.DIALOG.UNSAVED_CLOSE_SUBMIT]: UnsavedCloseSubmitResult
+    [IPC.DIALOG.APP_MESSAGE_SUBMIT]: AppMessageBoxSubmitResult
 
     // ============ 插件工具 ============
     [IPC.PLUGIN.HASH_TEXT]: HashResult
@@ -475,6 +550,16 @@ export interface IpcEvents {
      * UnsavedChangesDialog，用户选择经 UNSAVED_CLOSE_SUBMIT invoke 回传。
      */
     [IPC.DIALOG.UNSAVED_CLOSE_REQUEST]: [payload: UnsavedCloseRequestPayload]
+    /**
+     * 通用应用内消息/确认框请求（主进程 → 渲染层）：渲染层收到后打开
+     * AppMessageDialog，用户选择经 APP_MESSAGE_SUBMIT invoke 回传。
+     */
+    [IPC.DIALOG.APP_MESSAGE_REQUEST]: [payload: AppMessageBoxRequestPayload]
+    /**
+     * 撤销应用内消息框（主进程 → 渲染层）：主进程等待超时、即将回退原生框或
+     * 渲染层宿主卸载时发送，渲染层按 requestId 关闭对应消息框（无匹配则忽略）。
+     */
+    [IPC.DIALOG.APP_MESSAGE_DISMISS]: [requestId: string]
 
     // ============ 编辑器 ============
     /** 关闭/退出落盘协议：主进程请求渲染层立即同步内容（渲染层回发 FLUSH_CONTENT_DONE） */

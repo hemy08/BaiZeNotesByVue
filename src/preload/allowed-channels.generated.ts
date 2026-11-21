@@ -24,7 +24,7 @@ type AllIpcChannel = {
 /** window.api.* 直连通道键类型（来源 IpcPreloadApiRequests） */
 type PreloadApiChannel = keyof IpcPreloadApiRequests
 
-/** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 61 个 */
+/** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 63 个 */
 export const RENDERER_SEND_CHANNELS = [
     IPC.WINDOW.MINIMIZE,
     IPC.WINDOW.MAXIMIZE,
@@ -75,6 +75,8 @@ export const RENDERER_SEND_CHANNELS = [
     IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT,
     IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM,
     IPC.DIALOG.UNSAVED_CLOSE_SUBMIT,
+    IPC.DIALOG.APP_MESSAGE_SUBMIT,
+    IPC.DIALOG.APP_MESSAGE_HOST_READY,
     IPC.PLUGIN.RSA_GENERATE,
     IPC.PLUGIN.HASH_TEXT,
     IPC.PLUGIN.HMAC_TEXT,
@@ -89,10 +91,12 @@ export const RENDERER_SEND_CHANNELS = [
     IPC.QUICK_LINKS.SAVE
 ] as const satisfies readonly IpcSendChannel[]
 
-/** 主进程 → 渲染层（on / once）白名单：来源 IpcEvents，共 26 个 */
+/** 主进程 → 渲染层（on / once）白名单：来源 IpcEvents，共 28 个 */
 export const RENDERER_RECEIVE_CHANNELS = [
     IPC.DIALOG.OPEN_VUE_DIALOG,
     IPC.DIALOG.UNSAVED_CLOSE_REQUEST,
+    IPC.DIALOG.APP_MESSAGE_REQUEST,
+    IPC.DIALOG.APP_MESSAGE_DISMISS,
     IPC.EDITOR.FLUSH_CONTENT,
     IPC.EDITOR.INIT_SETTING,
     IPC.EDITOR.UPDATE_OPTIONS,

@@ -47,6 +47,13 @@ vi.mock('../../src/main/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }))
 
+// 2026-11-21（应用内消息/确认对话框通用服务）：大文件打开确认改走 showAppMessageBox，
+// 这里注入替身断言「文案/按钮/返回选择」接线（服务自身行为由 app-message-box.test.ts 覆盖）。
+const appMessageMocks = vi.hoisted(() => ({
+    showAppMessageBox: vi.fn()
+}))
+vi.mock('../../src/main/utils/app-message-box', () => appMessageMocks)
+
 // file-state-store 依赖 electron-store（ESM + electron 环境），用桩替换并捕获调用
 // （ARC-11：file-operations 已改为直接依赖 file-state-store，打破循环依赖）
 vi.mock('../../src/main/utils/file-state-store', () => ({
@@ -130,8 +137,13 @@ beforeEach(() => {
     electronMocks.showSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined })
     electronMocks.showOpenDialog.mockResolvedValue({ canceled: true, filePaths: [] })
     electronMocks.showMessageBoxSync.mockReturnValue(0)
-    // FUN-30：大文件确认已改为异步对话框，默认继续打开
+    // FUN-30/2026-11-21：大文件确认默认继续打开（service 返回 continue）
     electronMocks.showMessageBox.mockResolvedValue({ response: 0, checkboxChecked: false })
+    appMessageMocks.showAppMessageBox.mockReset()
+    appMessageMocks.showAppMessageBox.mockResolvedValue({
+        choiceId: 'continue',
+        canceled: false
+    })
 })
 
 describe('getMathRandom', () => {
@@ -1022,17 +1034,25 @@ describe('OpenSelectFile', () => {
         const bigPath = path.join(caseDir, 'big.md')
         // 5MB + 1 字节，超过 LARGE_FILE_THRESHOLD
         await fs.writeFile(bigPath, Buffer.alloc(5 * 1024 * 1024 + 1, 97))
-        // FUN-30：异步确认对话框，response 1 表示取消
-        electronMocks.showMessageBox.mockResolvedValue({ response: 1, checkboxChecked: false })
+        // 2026-11-21：应用内消息框服务返回取消选择
+        appMessageMocks.showAppMessageBox.mockResolvedValueOnce({
+            choiceId: 'cancel',
+            canceled: true
+        })
 
         await OpenSelectFile({ name: 'big.md', path: bigPath, type: 'file', content: '' })
 
-        expect(electronMocks.showMessageBox).toHaveBeenCalledWith(
-            expect.anything(),
+        expect(appMessageMocks.showAppMessageBox).toHaveBeenCalledWith(
             expect.objectContaining({
-                type: 'warning',
+                kind: 'warning',
                 title: '大文件提示',
-                buttons: ['继续打开', '取消']
+                message: expect.stringContaining('文件大小为'),
+                buttons: [
+                    { id: 'continue', label: '继续打开', kind: 'primary' },
+                    { id: 'cancel', label: '取消' }
+                ],
+                defaultId: 'continue',
+                cancelId: 'cancel'
             })
         )
         expect(logger.warn).toHaveBeenCalled()
@@ -1044,11 +1064,10 @@ describe('OpenSelectFile', () => {
         const bigPath = path.join(caseDir, 'big.md')
         // 5MB + 1 字节，超过 LARGE_FILE_THRESHOLD
         await fs.writeFile(bigPath, Buffer.alloc(5 * 1024 * 1024 + 1, 97))
-        electronMocks.showMessageBox.mockResolvedValue({ response: 0, checkboxChecked: false })
 
         await OpenSelectFile({ name: 'big.md', path: bigPath, type: 'file', content: '' })
 
-        expect(electronMocks.showMessageBox).toHaveBeenCalled()
+        expect(appMessageMocks.showAppMessageBox).toHaveBeenCalled()
         expect(appState.currentActiveFile?.path).toBe(bigPath)
         // PF-10：大文件走流式读取，内容完整（5MB+1 个 'a'）
         expect(appState.currentActiveFile?.content?.length).toBe(5 * 1024 * 1024 + 1)

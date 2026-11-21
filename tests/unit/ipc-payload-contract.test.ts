@@ -5,9 +5,9 @@
  * 与「通道真源 + preload 白名单 + 主进程注册点」保持双向一致，防止后续新增/删除通道时
  * 契约静默漂移。全部为纯文件级静态扫描（fs 读源码 + 正则解析，不 import 运行时模块）：
  *
- * 1. IpcRequests 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（61，双向）；
- * 2. IpcEvents 键集合 == preload ALLOWED_RENDERER_RECEIVE_CHANNELS（26，双向）；
- * 3. IpcResponses 键集合 == IpcRequests ∩ 主进程 registerHandleOnce 注册通道（29）；
+ * 1. IpcRequests 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（63，双向）；
+ * 2. IpcEvents 键集合 == preload ALLOWED_RENDERER_RECEIVE_CHANNELS（28，双向）；
+ * 3. IpcResponses 键集合 == IpcRequests ∩ 主进程 registerHandleOnce 注册通道（30）；
  * 4. IpcEvents 的每个通道在主进程都有真实发送点（webContents.send / sendToMainWindow /
  *    sendToLiveWindow，含 main/index.ts 的通道常量别名）；
  * 5. 渲染层全部 ipcRenderer.send/invoke 调用的通道都落在 IpcRequests 内；
@@ -322,18 +322,18 @@ describe('IPC 载荷契约：请求/响应（渲染层 → 主进程）', () => 
         expect(ALL_CHANNEL_VALUES.size).toBe(IPC_ENTRIES.length)
     })
 
-    it('IpcRequests 键集合应与 preload send/invoke 白名单完全一致（61 个，双向）', () => {
-        expect(SEND_WHITELIST.size).toBe(61)
-        expect(REQUEST_KEYS.size).toBe(61)
+    it('IpcRequests 键集合应与 preload send/invoke 白名单完全一致（63 个，双向）', () => {
+        expect(SEND_WHITELIST.size).toBe(63)
+        expect(REQUEST_KEYS.size).toBe(63)
         expect(diff(SEND_WHITELIST, REQUEST_KEYS)).toEqual([])
     })
 
-    it('IpcResponses 键集合应等于「invoke 注册通道 ∩ send 白名单」（29 个）', () => {
+    it('IpcResponses 键集合应等于「invoke 注册通道 ∩ send 白名单」（30 个）', () => {
         const invokeInWhitelist = new Set(
             [...MAIN_INVOKE_CHANNELS].filter((channel) => SEND_WHITELIST.has(channel))
         )
-        expect(invokeInWhitelist.size).toBe(29)
-        expect(RESPONSE_KEYS.size).toBe(29)
+        expect(invokeInWhitelist.size).toBe(30)
+        expect(RESPONSE_KEYS.size).toBe(30)
         expect(diff(invokeInWhitelist, RESPONSE_KEYS)).toEqual([])
     })
 
@@ -357,9 +357,9 @@ describe('IPC 载荷契约：请求/响应（渲染层 → 主进程）', () => 
 })
 
 describe('IPC 载荷契约：广播事件（主进程 → 渲染层）', () => {
-    it('IpcEvents 键集合应与 preload on/once 白名单完全一致（26 个，双向）', () => {
-        expect(RECEIVE_WHITELIST.size).toBe(26)
-        expect(EVENT_KEYS.size).toBe(26)
+    it('IpcEvents 键集合应与 preload on/once 白名单完全一致（28 个，双向）', () => {
+        expect(RECEIVE_WHITELIST.size).toBe(28)
+        expect(EVENT_KEYS.size).toBe(28)
         expect(diff(RECEIVE_WHITELIST, EVENT_KEYS)).toEqual([])
     })
 
@@ -380,7 +380,7 @@ describe('IPC 载荷契约：preload 受限高层 API 直连通道', () => {
                 .sort()
         ).toEqual([])
         // 这 6 个通道由 preload 闭包直接用原始 ipcRenderer 调用，不暴露给渲染层直接 invoke，
-        // 因此必须不在 60 通道渲染层白名单内（避免出现「两套放行口径」）。
+        // 因此必须不在 63 通道渲染层白名单内（避免出现「两套放行口径」）。
         expect(
             [...PRELOAD_API_REQUEST_KEYS].filter((channel) => SEND_WHITELIST.has(channel)).sort()
         ).toEqual([])

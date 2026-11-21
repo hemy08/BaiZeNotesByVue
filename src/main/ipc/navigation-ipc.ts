@@ -8,7 +8,7 @@
  * 3) AS-7 扩展名白名单（.exe/.com 与脚本/快捷方式/安装包类扩展名）；
  * 4) P3-2 一律弹主进程级确认（系统敏感目录/用户可写目录使用强化文案与审计日志）。
  */
-import { dialog, shell } from 'electron'
+import { shell } from 'electron'
 import type { BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -18,6 +18,9 @@ import {
     isSensitiveSystemExecutablePath,
     isUserWritableExecutablePath
 } from '../utils/utils'
+// 2026-11-21（应用内消息确认服务）：安全确认由原生 dialog.showMessageBox 改为应用内
+// BaseDialog（渲染层不可用/超时时自动回退原生框），返回码语义保持不变。
+import { showAppMessageBox } from '../utils/app-message-box'
 import { ipcListenerManager } from './ipc-listener-manager'
 import { notifyIpcAsyncError } from '../utils/error-report'
 import { assertTrustedSender } from '../utils/ipc-security'
@@ -98,22 +101,28 @@ export function registerNavigationIpc(mainWindow: BrowserWindow, componentId: st
                         exePath
                     )
                 }
-                const { response } = await dialog.showMessageBox(mainWindow, {
-                    type: 'warning',
-                    buttons: [
-                        tMain('mainMsg.dialog.cancel'),
-                        tMain('mainMsg.security.openExeConfirm')
-                    ],
-                    defaultId: 0,
-                    cancelId: 0,
-                    noLink: true,
+                const { choiceId } = await showAppMessageBox({
+                    kind: 'warning',
                     title: tMain('mainMsg.security.openExeTitle'),
                     message: tMain('mainMsg.security.openExeMessage'),
                     detail: sensitiveSystemPath
                         ? tMain('mainMsg.security.openExeDetailSystem', { path: exePath })
-                        : tMain('mainMsg.security.openExeDetail', { path: exePath })
+                        : tMain('mainMsg.security.openExeDetail', { path: exePath }),
+                    buttons: [
+                        { id: 'cancel', label: tMain('mainMsg.dialog.cancel') },
+                        {
+                            id: 'confirm',
+                            label: tMain('mainMsg.security.openExeConfirm'),
+                            kind: 'danger'
+                        }
+                    ],
+                    // 与历史原生框语义等价：默认焦点/取消/Esc 都是「取消」（defaultId=0/cancelId=0）
+                    defaultId: 'cancel',
+                    cancelId: 'cancel',
+                    parentWindow: mainWindow
                 })
-                if (response !== 1) {
+                // 只有显式点击「确认打开」才继续执行；取消/超时/兜底取消一律不拉起
+                if (choiceId !== 'confirm') {
                     return
                 }
 

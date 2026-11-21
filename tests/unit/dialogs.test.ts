@@ -83,6 +83,14 @@ const fileUtilsMocks = vi.hoisted(() => ({
 }))
 vi.mock('../../src/main/utils/file-utils', () => fileUtilsMocks)
 
+// 2026-11-21（应用内消息/确认对话框通用服务）：dialogs.ts 只做“校验发送方 + 转交”，
+// 服务内部逻辑由 app-message-box.test.ts 覆盖，这里注入替身断言接线。
+const appMessageMocks = vi.hoisted(() => ({
+    submitAppMessageChoice: vi.fn(),
+    notifyAppMessageHostReady: vi.fn()
+}))
+vi.mock('../../src/main/utils/app-message-box', () => appMessageMocks)
+
 import { IPC } from '../../src/shared/ipc-channels'
 import {
     CleanupMainWindowDialogsEvent,
@@ -122,6 +130,7 @@ beforeEach(() => {
     // 确认动作 handle 为进程级持久注册：清理台账中的持久项，保证每个用例重新注册成功
     ipcListenerManager.cleanupChannel(IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT)
     ipcListenerManager.cleanupChannel(IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM)
+    ipcListenerManager.cleanupChannel(IPC.DIALOG.APP_MESSAGE_SUBMIT)
     ipcListenerManager.cleanupComponent('main-window-dialogs')
     mainWindowStub = {
         webContents: { send: vi.fn(), id: 1 },
@@ -130,6 +139,9 @@ beforeEach(() => {
     fileUtilsMocks.DeleteFileFolder.mockResolvedValue(undefined)
     fileUtilsMocks.RenameFileFolder.mockResolvedValue(undefined)
     fileUtilsMocks.InsertImportFormFile.mockResolvedValue(undefined)
+    appMessageMocks.submitAppMessageChoice.mockReset()
+    appMessageMocks.submitAppMessageChoice.mockReturnValue({ ok: true })
+    appMessageMocks.notifyAppMessageHostReady.mockReset()
 })
 
 describe('帮助类 Vue 对话框请求（原 JSDOM 帮助对话框 → OPEN_VUE_DIALOG）', () => {
@@ -386,5 +398,64 @@ describe('Vue 对话框确认动作（invoke → 主进程执行文件操作）'
         MainWindowListenDialogsEvent(mainWindowStub as never)
         expect(eState.handleListeners.has(IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT)).toBe(true)
         expect(eState.handleListeners.has(IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM)).toBe(true)
+    })
+})
+
+describe('通用应用内消息/确认对话框（2026-11-21：回执与宿主就绪握手）', () => {
+    it('应注册 APP_MESSAGE_SUBMIT（handle，进程级）与 APP_MESSAGE_HOST_READY（on，窗口级）', () => {
+        MainWindowListenDialogsEvent(mainWindowStub as never)
+        const inventory = ipcListenerManager.getInventory()
+        const submitEntry = inventory.find((item) => item.channel === IPC.DIALOG.APP_MESSAGE_SUBMIT)
+        expect(submitEntry).toMatchObject({ kind: 'handle', persistent: true })
+        expect(eState.handleListeners.has(IPC.DIALOG.APP_MESSAGE_SUBMIT)).toBe(true)
+        const readyEntry = inventory.find(
+            (item) => item.channel === IPC.DIALOG.APP_MESSAGE_HOST_READY
+        )
+        expect(readyEntry).toMatchObject({ kind: 'on', persistent: false })
+        expect(readyEntry?.components).toEqual(['main-window-dialogs'])
+    })
+
+    it('APP_MESSAGE_HOST_READY：受信主窗口 → 转交宿主就绪状态', () => {
+        MainWindowListenDialogsEvent(mainWindowStub as never)
+        triggerIpc(IPC.DIALOG.APP_MESSAGE_HOST_READY, true)
+        expect(appMessageMocks.notifyAppMessageHostReady).toHaveBeenCalledWith(true)
+        triggerIpc(IPC.DIALOG.APP_MESSAGE_HOST_READY, false)
+        expect(appMessageMocks.notifyAppMessageHostReady).toHaveBeenCalledWith(false)
+    })
+
+    it('APP_MESSAGE_HOST_READY：不受信发送方 → 忽略', () => {
+        const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        MainWindowListenDialogsEvent(mainWindowStub as never)
+        triggerIpcWithSender({ sender: { id: 999 } }, IPC.DIALOG.APP_MESSAGE_HOST_READY, true)
+        expect(appMessageMocks.notifyAppMessageHostReady).not.toHaveBeenCalled()
+        expect(consoleWarn).toHaveBeenCalled()
+        consoleWarn.mockRestore()
+    })
+
+    it('APP_MESSAGE_SUBMIT：受信主窗口 → 转交 requestId/choiceId 并返回服务结果', async () => {
+        appMessageMocks.submitAppMessageChoice.mockReturnValue({ ok: false, stale: true })
+        MainWindowListenDialogsEvent(mainWindowStub as never)
+        const result = await triggerHandle(IPC.DIALOG.APP_MESSAGE_SUBMIT, 'app-msg-1', 'confirm')
+        expect(appMessageMocks.submitAppMessageChoice).toHaveBeenCalledWith('app-msg-1', 'confirm')
+        expect(result).toEqual({ ok: false, stale: true })
+    })
+
+    it('APP_MESSAGE_SUBMIT：不受信发送方 → 返回拒绝对象且不执行业务', async () => {
+        const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        MainWindowListenDialogsEvent(mainWindowStub as never)
+        const handler = eState.handleListeners.get(IPC.DIALOG.APP_MESSAGE_SUBMIT)!
+        const result = await handler({ sender: { id: 999 } }, 'app-msg-1', 'confirm')
+        expect(result).toMatchObject({ ok: false, code: 'untrusted-sender' })
+        expect(appMessageMocks.submitAppMessageChoice).not.toHaveBeenCalled()
+        expect(consoleWarn).toHaveBeenCalled()
+        consoleWarn.mockRestore()
+    })
+
+    it('窗口关闭清理时复位宿主就绪状态（避免向已销毁渲染层继续请求）', () => {
+        MainWindowListenDialogsEvent(mainWindowStub as never)
+        CleanupMainWindowDialogsEvent()
+        expect(appMessageMocks.notifyAppMessageHostReady).toHaveBeenCalledWith(false)
+        expect(eState.handleListeners.has(IPC.DIALOG.APP_MESSAGE_SUBMIT)).toBe(false)
+        expect(eState.ipcListeners.get(IPC.DIALOG.APP_MESSAGE_HOST_READY)?.length ?? 0).toBe(0)
     })
 })

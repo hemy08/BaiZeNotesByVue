@@ -195,6 +195,14 @@
             （不进入 150 KiB 入口 chunk 预算）。
         -->
         <UnsavedCloseConfirmHost />
+        <!--
+            2026-11-21（应用内消息/确认对话框通用服务）：通用消息框宿主。
+            主进程 showAppMessageBox() 经 IPC.DIALOG.APP_MESSAGE_REQUEST 请求，宿主驱动
+            AppMessageDialog（BaseDialog 外壳）展示并回传选择；挂载/卸载经
+            APP_MESSAGE_HOST_READY 通知主进程（宿主未就绪时主进程回退原生框）。
+            代码随本异步 chunk 加载，不进入 150 KiB 渲染入口 chunk 预算。
+        -->
+        <AppMessageBoxHost />
     </div>
 </template>
 
@@ -209,6 +217,8 @@ import type { DialogActionResult, SelectImageResult, SystemSetting } from '../..
 import * as BaiZeDialogs from './dialogs'
 // 2026-11-20（关闭确认应用内对话框）：主界面常驻的关闭确认宿主（监听主进程请求 + 展示确认框）
 import UnsavedCloseConfirmHost from './dialogs/UnsavedCloseConfirmHost.vue'
+// 2026-11-21（应用内消息/确认对话框通用服务）：通用消息框宿主（OPEN_EXE / 大文件 / 更新提示）
+import AppMessageBoxHost from './dialogs/AppMessageBoxHost.vue'
 // 配置 Store
 import { getConfigStore } from '../common/useConfigStore'
 import type { DialogName } from '../common/useConfigStore'

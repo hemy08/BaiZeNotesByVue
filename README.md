@@ -343,10 +343,10 @@ BaiZeNotesByVue/
 │   ├── preload/                          # 预加载脚本（4 个文件）
 │   │   ├── index.ts                      # 主窗口 API 暴露（受限 ipcRenderer + window.api）
 │   │   ├── dialog.ts                     # 对话框 preload（send 通道白名单）
-│   │   ├── allowed-channels.generated.ts # 生成的通道白名单常量（send 61 / receive 26 / window.api 6）
+│   │   ├── allowed-channels.generated.ts # 生成的通道白名单常量（send 63 / receive 28 / window.api 6）
 │   │   └── index.d.ts                    # 类型声明
 │   ├── shared/                           # 主进程 / 渲染层共享代码（65 个 .ts）
-│   │   ├── ipc-channels.ts               # IPC 通道常量唯一真源（93 个通道 / 17 组）
+│   │   ├── ipc-channels.ts               # IPC 通道常量唯一真源（97 个通道 / 17 组）
 │   │   ├── i18n/                         # 中英词典（12 个命名空间 × 2 语言 = 26 个文件）
 │   │   ├── types/                        # 共享类型定义（14 个模块）
 │   │   └── constants/                    # 共享常量（13 个模块）
@@ -374,7 +374,7 @@ BaiZeNotesByVue/
 │   ├── plantuml/                         # PlantUML 本地 teaVM 渲染资源
 │   ├── icon/                             # 应用图标（ico/svg）
 │   └── config/                           # 配置文件（version.json 构建时生成）
-├── tests/                                # 单元测试（260 个 .test.ts / 4,622 个用例）
+├── tests/                                # 单元测试（265 个 .test.ts / 4,685 个用例）
 ├── docs/                                 # 项目文档
 │   ├── wiki/                             # 知识库文档（4 类 25 篇）
 │   │   ├── README.md                     # 文档索引
@@ -459,7 +459,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成                        | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.1 | Electron 应用打包工具                       | [官网](https://www.electron.build/)                    |
-|               Vitest               |  5.1.1  | 单元测试框架（260 个测试文件 / 4,622 用例） | [官网](https://vitest.dev/)                            |
+|               Vitest               |  5.1.1  | 单元测试框架（265 个测试文件 / 4,685 用例） | [官网](https://vitest.dev/)                            |
 |               ESLint               | 10.15.0 | JavaScript 代码检查工具                     | [官网](https://eslint.org/)                            |
 |              Prettier              | 3.10.1  | 代码格式化工具                              | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  3.0.0  | Electron ESLint 配置                        | [GitHub](https://github.com/alex8088/electron-toolkit) |
@@ -487,10 +487,10 @@ BaiZeNotesByVue/
 |  主进程对话框  |                         2 个文件                         | src/main/dialogs（JSDOM HTML 对话框已下线，仅剩 Vue 对话框转发与在线网页窗口）                                                                                                                        |
 |    应用主题    |                          28 种                           | src/main/config/theme-config.ts（编译进主进程，无资源 JSON；旧 app_themes 已删除）                                                                                                                    |
 |   编辑器主题   |                          57 种                           | Monaco 主题（内置 3 + 磁盘 54；themes 目录含 54 个主题 json + themelist 索引）                                                                                                                        |
-|    IPC 通道    |                          93 个                           | `baize:<domain>:<name>`（93 个 / 17 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                                                                   |
-| preload 白名单 |               send 61 / receive 26 / api 6               | `src/preload/allowed-channels.generated.ts`（send/invoke 61、on/once 26 通道；`window.api` 6 方法 / 3 组）                                                                                            |
+|    IPC 通道    |                          97 个                           | `baize:<domain>:<name>`（97 个 / 17 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                                                                   |
+| preload 白名单 |               send 63 / receive 28 / api 6               | `src/preload/allowed-channels.generated.ts`（send/invoke 63、on/once 28 通道；`window.api` 6 方法 / 3 组）                                                                                            |
 |    插件工具    |                          38 个                           | src/shared/constants/plugin-tools-manifest.ts（单一 manifest，异步按需加载）                                                                                                                          |
-|    单元测试    |                       4,622 个用例                       | 260 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                              |
+|    单元测试    |                       4,685 个用例                       | 265 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                              |
 |    声明依赖    |                          49 个                           | 生产依赖 11 + 开发依赖 38（package.json 实测）                                                                                                                                                        |
 |    依赖审计    |                          0 漏洞                          | 生产与全量依赖均为 0 漏洞（2026-11-20 官方 registry 实测，`npm ls` 干净；Dependabot 254 条告警全量分类 0 条可复现）                                                                                   |
 |   安装包体积   |                        ≈114.0 MiB                        | NSIS 安装包 111.13 MiB / 便携版 100.33 MiB（app.asar 39.96 MiB、locales 2；2026-11-20 当前 dist 实测，发布前需从 HEAD 重建复验）                                                                      |
@@ -506,7 +506,7 @@ BaiZeNotesByVue/
 |    Vue SFC (.vue)    |   96    |   22,777   |
 |     **源码合计**     | **357** | **97,434** |
 |         CSS          |   22    |   3,563    |
-| 单元测试（.test.ts） |   260   |   84,280   |
+| 单元测试（.test.ts） |   265   |   85,634   |
 |   静态资源（.svg）   |   60    |    447     |
 
 ### 关键源码文件行数（实测）
@@ -595,7 +595,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层 + 测试三工程）
 npm run typecheck
 
-# 运行单元测试（260 个测试文件 / 4,622 个用例）
+# 运行单元测试（265 个测试文件 / 4,685 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
@@ -719,7 +719,7 @@ npm run clean
 - [x] 新版本基线：全仓版本号 1.3.9 → 1.5.0；自本版本起所有修改归入 1.5.0
 - [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
 - [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
-- [x] 文档口径统一（2026-11-20）：测试 260 文件 / 4,622 用例、IPC 93 通道 / 17 组、preload 白名单 send 61 / receive 26 / window.api 6、报告 md 26 篇 / HTML Wiki 27 页
+- [x] 文档口径统一（2026-11-20）：测试 265 文件 / 4,685 用例、IPC 97 通道 / 17 组、preload 白名单 send 63 / receive 28 / window.api 6、报告 md 26 篇 / HTML Wiki 27 页
 - [ ] 长期计划：macOS 和 Linux 版本支持、协作编辑、插件系统、云同步
 
 ### v1.3.9

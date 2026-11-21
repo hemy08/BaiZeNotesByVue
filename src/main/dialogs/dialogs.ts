@@ -40,6 +40,8 @@ import {
     showErrorMessageBox
 } from '../utils/file-utils'
 import { submitUnsavedCloseChoice } from '../utils/close-confirm'
+// 2026-11-21（应用内消息/确认对话框通用服务）：选择回执与宿主就绪握手的转交
+import { notifyAppMessageHostReady, submitAppMessageChoice } from '../utils/app-message-box'
 import { ipcListenerManager } from '../ipc/ipc-listener-manager'
 import { tMain } from '../utils/i18n'
 // P1/N-05：文件管理器右键通道统一校验发送方必须为主窗口
@@ -170,6 +172,7 @@ export function MainWindowListenDialogsEvent(mainWindow: BrowserWindow): void {
     registerRenameSubmitHandler()
     registerDeleteConfirmHandler()
     registerUnsavedCloseSubmitHandler()
+    registerAppMessageHandlers()
 }
 
 /**
@@ -260,6 +263,37 @@ function registerUnsavedCloseSubmitHandler(): void {
 }
 
 /**
+ * 通用应用内消息/确认对话框的渲染层回执与宿主就绪握手（2026-11-21）。
+ *
+ * - `APP_MESSAGE_SUBMIT`（invoke）：渲染层用户选择 → 校验 requestId/choiceId 后结算
+ *   主进程 `utils/app-message-box` 中等待中的请求（过期/重复回执返回 stale）；
+ * - `APP_MESSAGE_HOST_READY`（send）：渲染层消息框宿主挂载/卸载 → 主进程据此判断
+ *   走应用内框还是直接回退原生框（欢迎页未挂载宿主时不让用户白等 30s 超时）。
+ *
+ * 安全：两条通道与其余对话框通道同级，仅受信主窗口可触发（withSenderCheck；
+ * 非受信 invoke 返回 `UNTRUSTED_SENDER_RESULT`，不执行业务）。
+ */
+function registerAppMessageHandlers(): void {
+    ipcListenerManager.registerHandleOnce(
+        IPC.DIALOG.APP_MESSAGE_SUBMIT,
+        withSenderCheck(
+            IPC.DIALOG.APP_MESSAGE_SUBMIT,
+            async (_event: Electron.IpcMainInvokeEvent, requestId: unknown, choiceId: unknown) =>
+                submitAppMessageChoice(requestId, choiceId),
+            { kind: 'handle' }
+        ),
+        MAIN_WINDOW_DIALOGS_COMPONENT_ID
+    )
+    ipcListenerManager.register(
+        IPC.DIALOG.APP_MESSAGE_HOST_READY,
+        withSenderCheck(IPC.DIALOG.APP_MESSAGE_HOST_READY, (_event, ready: unknown) => {
+            notifyAppMessageHostReady(ready)
+        }),
+        MAIN_WINDOW_DIALOGS_COMPONENT_ID
+    )
+}
+
+/**
  * 清理主窗口对话框相关的 on 通道监听与确认动作 handle 注册。
  *
  * 说明：确认动作（ipcMain.handle）经 registerHandleOnce 注册，防重复注册；
@@ -267,5 +301,8 @@ function registerUnsavedCloseSubmitHandler(): void {
  * MainWindowListenDialogsEvent 再次执行会重新注册，保证重建后仍可用。
  */
 export function CleanupMainWindowDialogsEvent(): void {
+    // 窗口关闭后应用内消息框宿主必然不可用：复位就绪握手，避免主进程继续把
+    // 消息框请求发给已销毁/重建中的渲染层（重建后由宿主重新发送 true）。
+    notifyAppMessageHostReady(false)
     ipcListenerManager.cleanupComponent(MAIN_WINDOW_DIALOGS_COMPONENT_ID)
 }

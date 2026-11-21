@@ -18,8 +18,8 @@
  * - 全程 try/catch，异常一律转为用户可见提示，不向菜单分发层抛出。
  */
 
-import { app, dialog, BrowserWindow } from 'electron'
-import type { MessageBoxOptions, MessageBoxReturnValue } from 'electron'
+import { app, BrowserWindow } from 'electron'
+import type { AppMessageBoxButton, AppMessageBoxKind } from '../../shared/types'
 import { autoUpdater } from 'electron-updater'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -34,6 +34,9 @@ import { appState } from './app-state'
 import { getAppContext } from '../app-context'
 import { confirmUnsavedChangesClose } from './close-confirm'
 import { SaveActiveFile } from './file-utils/file-operations'
+// 2026-11-21（应用内消息/确认对话框通用服务）：更新结果提示由原生 dialog.showMessageBox
+// 改为应用内 BaseDialog（渲染层不可用/超时时服务内部自动回退原生框）
+import { showAppMessageBox } from './app-message-box'
 
 /** 检查更新的结果状态 */
 export type UpdateCheckResult =
@@ -402,12 +405,38 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
     }
 }
 
-/** 弹出更新结果对话框（统一入口，兼容有无父窗口） */
-function showUpdateDialog(
+/**
+ * 更新提示按钮：单按钮「确定」（info/error 提示）或「立即重启安装 / 稍后」（选择询问）。
+ * 按钮文案统一由 tMain 本地化，id 与语言无关（供调用方判选择语义）。
+ */
+function buildUpdateButtons(options: { restartable?: boolean } = {}): AppMessageBoxButton[] {
+    if (options.restartable === true) {
+        return [
+            { id: 'restart', label: tMain('mainMsg.update.restartNow'), kind: 'primary' },
+            { id: 'later', label: tMain('mainMsg.update.later') }
+        ]
+    }
+    return [{ id: 'ok', label: tMain('common.ok'), kind: 'primary' }]
+}
+
+/**
+ * 弹出更新结果提示（统一入口，应用内 BaseDialog；渲染层不可用/超时时自动回退原生框，
+ * 兼容有无父窗口）。
+ */
+function showUpdateMessage(
     win: BrowserWindow | undefined,
-    options: MessageBoxOptions
-): Promise<MessageBoxReturnValue> {
-    return win ? dialog.showMessageBox(win, options) : dialog.showMessageBox(options)
+    options: { kind: AppMessageBoxKind; message: string; detail?: string }
+): Promise<void> {
+    return showAppMessageBox({
+        kind: options.kind,
+        title: tMain('mainMsg.update.title'),
+        message: options.message,
+        detail: options.detail,
+        buttons: buildUpdateButtons(),
+        defaultId: 'ok',
+        cancelId: 'ok',
+        parentWindow: win ?? null
+    }).then(() => undefined)
 }
 
 /**
@@ -420,16 +449,18 @@ async function promptRestartAndInstall(
     mainWindow: BrowserWindow | undefined,
     version: string
 ): Promise<void> {
-    const choice = await showUpdateDialog(mainWindow, {
-        type: 'info',
+    const { choiceId } = await showAppMessageBox({
+        kind: 'info',
         title: tMain('mainMsg.update.title'),
         message: tMain('mainMsg.update.availableMessage', { version }),
         detail: tMain('mainMsg.update.availableDetail'),
-        buttons: [tMain('mainMsg.update.restartNow'), tMain('mainMsg.update.later')],
-        defaultId: 0,
-        cancelId: 1
+        buttons: buildUpdateButtons({ restartable: true }),
+        // 与历史原生框语义等价：默认焦点「立即重启安装」、Esc/关闭 =「稍后」
+        defaultId: 'restart',
+        cancelId: 'later',
+        parentWindow: mainWindow ?? null
     })
-    if (choice.response === 0) {
+    if (choiceId === 'restart') {
         await installDownloadedUpdate(mainWindow)
     }
 }
@@ -456,9 +487,8 @@ async function installDownloadedUpdate(mainWindow: BrowserWindow | undefined): P
         if (choice === 'save' && !(await SaveActiveFile())) {
             // 保存失败/另存为被取消：不安装，避免静默丢内容；更新保持待安装可重试
             logger.warn('[auto-updater] 安装前保存未保存修改失败，已取消本次安装')
-            await showUpdateDialog(mainWindow, {
-                type: 'error',
-                title: tMain('mainMsg.update.title'),
+            await showUpdateMessage(mainWindow, {
+                kind: 'error',
                 message: tMain('mainMsg.update.saveBeforeInstallFailedMessage'),
                 detail: tMain('mainMsg.update.saveBeforeInstallFailedDetail')
             })
@@ -503,18 +533,16 @@ export async function checkForUpdatesAndNotify(
         const result = await checkForUpdates()
         switch (result.status) {
             case 'not-configured':
-                await showUpdateDialog(mainWindow, {
-                    type: 'info',
-                    title: tMain('mainMsg.update.title'),
+                await showUpdateMessage(mainWindow, {
+                    kind: 'info',
                     message: tMain('mainMsg.update.notConfiguredMessage'),
                     detail: tMain('mainMsg.update.notConfiguredDetail')
                 })
                 break
 
             case 'up-to-date':
-                await showUpdateDialog(mainWindow, {
-                    type: 'info',
-                    title: tMain('mainMsg.update.title'),
+                await showUpdateMessage(mainWindow, {
+                    kind: 'info',
                     message: tMain('mainMsg.update.upToDateMessage'),
                     detail: tMain('mainMsg.update.upToDateDetail', { version: result.version })
                 })
@@ -527,9 +555,8 @@ export async function checkForUpdatesAndNotify(
                 break
 
             case 'error':
-                await showUpdateDialog(mainWindow, {
-                    type: 'error',
-                    title: tMain('mainMsg.update.title'),
+                await showUpdateMessage(mainWindow, {
+                    kind: 'error',
                     message: tMain('mainMsg.update.failedMessage'),
                     detail: result.message
                 })
@@ -538,14 +565,13 @@ export async function checkForUpdatesAndNotify(
     } catch (error) {
         // 兜底：任何异常都转为对话框提示，不向菜单分发层抛出
         try {
-            await showUpdateDialog(mainWindow, {
-                type: 'error',
-                title: tMain('mainMsg.update.title'),
+            await showUpdateMessage(mainWindow, {
+                kind: 'error',
                 message: tMain('mainMsg.update.failedMessage'),
                 detail: toUserError(error)
             })
         } catch (dialogError) {
-            logger.error('[auto-updater] 弹出更新结果对话框失败:', dialogError)
+            logger.error('[auto-updater] 弹出更新结果提示失败:', dialogError)
         }
     } finally {
         checking = false

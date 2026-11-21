@@ -25,8 +25,7 @@ vi.mock('../../src/main/config/system-setting', () => ({
 
 const electronState = vi.hoisted(() => ({
     appPath: '',
-    version: '1.2.2',
-    dialogShowMessageBox: vi.fn()
+    version: '1.2.2'
 }))
 
 vi.mock('electron', () => ({
@@ -37,9 +36,18 @@ vi.mock('electron', () => ({
             return false
         }
     },
-    dialog: { showMessageBox: electronState.dialogShowMessageBox },
     BrowserWindow: class {}
 }))
+
+/**
+ * 2026-11-21（应用内消息/确认对话框通用服务）：更新结果提示改走 showAppMessageBox，
+ * 这里注入替身断言「文案/按钮/父窗口/选择语义」接线（服务自身行为由
+ * tests/unit/app-message-box.test.ts 覆盖）。
+ */
+const appMessageMocks = vi.hoisted(() => ({
+    showAppMessageBox: vi.fn()
+}))
+vi.mock('../../src/main/utils/app-message-box', () => appMessageMocks)
 
 /**
  * P1 F-01：安装前置协调依赖的 app-state / close-confirm / SaveActiveFile 全部以 mock 隔离
@@ -132,8 +140,9 @@ beforeEach(() => {
     fs.mkdirSync(resourcesConfigDir, { recursive: true })
     electronState.appPath = appRoot
     electronState.version = '1.2.2'
-    electronState.dialogShowMessageBox.mockReset()
-    electronState.dialogShowMessageBox.mockResolvedValue({ response: 1 })
+    // 更新结果提示默认选择「立即重启安装」（仅显式声明的用例改变选择）
+    appMessageMocks.showAppMessageBox.mockReset()
+    appMessageMocks.showAppMessageBox.mockResolvedValue({ choiceId: 'restart', canceled: false })
 
     updaterState.listeners.clear()
     updaterState.setFeedURL.mockReset()
@@ -338,8 +347,8 @@ describe('checkForUpdatesAndNotify', () => {
     it('should honestly prompt not-configured and point to update.json', async () => {
         await checkForUpdatesAndNotify(undefined)
 
-        expect(electronState.dialogShowMessageBox).toHaveBeenCalledTimes(1)
-        const options = electronState.dialogShowMessageBox.mock.calls[0][0] as {
+        expect(appMessageMocks.showAppMessageBox).toHaveBeenCalledTimes(1)
+        const options = appMessageMocks.showAppMessageBox.mock.calls[0][0] as {
             message: string
             detail: string
         }
@@ -413,21 +422,24 @@ function mockUpdateAvailable(): void {
     })
 }
 
-/** 取最近一次对话框参数 */
-function lastDialogOptions(): { message?: string; detail?: string; buttons?: string[] } {
-    const calls = electronState.dialogShowMessageBox.mock.calls
+/** 取最近一次应用内消息框参数 */
+function lastMessageOptions(): {
+    message?: string
+    detail?: string
+    buttons?: Array<{ id: string; label: string }>
+} {
+    const calls = appMessageMocks.showAppMessageBox.mock.calls
     return (calls[calls.length - 1]?.[0] ?? {}) as {
         message?: string
         detail?: string
-        buttons?: string[]
+        buttons?: Array<{ id: string; label: string }>
     }
 }
 
 describe('install coordination with unsaved changes (P1 F-01)', () => {
     beforeEach(() => {
         mockUpdateAvailable()
-        // 第一层对话框「立即重启安装 / 稍后」默认选择安装
-        electronState.dialogShowMessageBox.mockResolvedValue({ response: 0 })
+        // 第一层对话框「立即重启安装 / 稍后」默认选择安装（beforeEach 已设默认 restart）
     })
 
     it('should install directly when the active file is clean', async () => {
@@ -488,11 +500,11 @@ describe('install coordination with unsaved changes (P1 F-01)', () => {
         expect(getAppContext().update.installing).toBe(false)
         // 保存失败：保留「已下载待安装」可重试，并给出明确错误提示
         expect(getPendingInstallVersion()).toBe('1.3.0')
-        expect(lastDialogOptions().message).toBe('保存未完成的修改失败，本次更新安装已取消')
+        expect(lastMessageOptions().message).toBe('保存未完成的修改失败，本次更新安装已取消')
     })
 
     it('should keep the update pending when the user chooses later', async () => {
-        electronState.dialogShowMessageBox.mockResolvedValue({ response: 1 })
+        appMessageMocks.showAppMessageBox.mockResolvedValue({ choiceId: 'later', canceled: true })
 
         await checkForUpdatesAndNotify(undefined)
 
@@ -509,8 +521,11 @@ describe('install coordination with unsaved changes (P1 F-01)', () => {
 
         // 第二次「帮助 → 检查更新」：直接进入安装询问，不重新检查/下载
         installMocks.isDirty.mockReturnValue(false)
-        electronState.dialogShowMessageBox.mockClear()
-        electronState.dialogShowMessageBox.mockResolvedValue({ response: 0 })
+        appMessageMocks.showAppMessageBox.mockClear()
+        appMessageMocks.showAppMessageBox.mockResolvedValue({
+            choiceId: 'restart',
+            canceled: false
+        })
         await checkForUpdatesAndNotify(undefined)
 
         expect(updaterState.checkForUpdates).toHaveBeenCalledTimes(1)
@@ -526,8 +541,8 @@ describe('install coordination with unsaved changes (P1 F-01)', () => {
         await checkForUpdatesAndNotify(undefined)
 
         expect(getAppContext().update.installing).toBe(false)
-        expect(lastDialogOptions().message).toBe('检查更新失败')
-        expect(lastDialogOptions().detail).toContain('installer failed')
+        expect(lastMessageOptions().message).toBe('检查更新失败')
+        expect(lastMessageOptions().detail).toContain('installer failed')
         // 安装失败仍保留已下载更新，可重试
         expect(getPendingInstallVersion()).toBe('1.3.0')
     })
@@ -615,11 +630,10 @@ describe('checkForUpdatesAndNotify 结果对话框分支', () => {
     it('已是最新版本时弹「已是最新」提示', async () => {
         writeUpdateJson('{ "provider": "generic", "url": "https://updates.baize.test/app/" }')
         updaterState.checkForUpdates.mockResolvedValue(null)
-        electronState.dialogShowMessageBox.mockResolvedValue({ response: 0 })
 
         await checkForUpdatesAndNotify(undefined)
 
-        const options = lastDialogOptions()
+        const options = lastMessageOptions()
         expect(options.message).toBe('已是最新版本')
         expect(options.detail).toContain('1.2.2')
     })
@@ -627,47 +641,46 @@ describe('checkForUpdatesAndNotify 结果对话框分支', () => {
     it('检查失败（error 状态）时弹「检查更新失败」提示', async () => {
         writeUpdateJson('{ "provider": "generic", "url": "https://updates.baize.test/app/" }')
         updaterState.checkForUpdates.mockRejectedValue(new Error('boom'))
-        electronState.dialogShowMessageBox.mockResolvedValue({ response: 0 })
 
         await checkForUpdatesAndNotify(undefined)
 
-        const options = lastDialogOptions()
+        const options = lastMessageOptions()
         expect(options.message).toBe('检查更新失败')
         expect(options.detail).toContain('boom')
     })
 
-    it('传入主窗口时对话框以窗口为父窗口调用', async () => {
+    it('传入主窗口时以窗口为父窗口展示应用内消息框', async () => {
         const mainWindow = {} as Electron.BrowserWindow
         await checkForUpdatesAndNotify(mainWindow)
-        expect(electronState.dialogShowMessageBox).toHaveBeenCalledWith(
-            mainWindow,
-            expect.objectContaining({ message: '未配置更新源' })
+        expect(appMessageMocks.showAppMessageBox).toHaveBeenCalledWith(
+            expect.objectContaining({ message: '未配置更新源', parentWindow: mainWindow })
         )
     })
 
     it('检查进行中时重复请求被忽略（checking 防重入）', async () => {
-        let resolveDialog: (value: { response: number }) => void = () => undefined
-        electronState.dialogShowMessageBox.mockReturnValue(
-            new Promise<{ response: number }>((resolve) => {
-                resolveDialog = resolve
+        let resolveMessage: (value: { choiceId: string; canceled: boolean }) => void = () =>
+            undefined
+        appMessageMocks.showAppMessageBox.mockReturnValue(
+            new Promise<{ choiceId: string; canceled: boolean }>((resolve) => {
+                resolveMessage = resolve
             })
         )
 
         const first = checkForUpdatesAndNotify(undefined)
         await Promise.resolve()
-        // 第一次仍停留在结果对话框：第二次请求直接返回、不重复弹框
+        // 第一次仍停留在结果提示：第二次请求直接返回、不重复弹框
         await expect(checkForUpdatesAndNotify(undefined)).resolves.toBeUndefined()
-        expect(electronState.dialogShowMessageBox).toHaveBeenCalledTimes(1)
+        expect(appMessageMocks.showAppMessageBox).toHaveBeenCalledTimes(1)
 
-        resolveDialog({ response: 0 })
+        resolveMessage({ choiceId: 'ok', canceled: false })
         await first
     })
 
-    it('结果对话框自身抛错时静默兜底，不向上抛出', async () => {
-        electronState.dialogShowMessageBox.mockRejectedValue(new Error('dialog destroyed'))
+    it('结果提示自身抛错时静默兜底，不向上抛出', async () => {
+        appMessageMocks.showAppMessageBox.mockRejectedValue(new Error('dialog destroyed'))
         await expect(checkForUpdatesAndNotify(undefined)).resolves.toBeUndefined()
-        // 外层 catch 再次尝试弹错误框，同样失败但不抛
-        expect(electronState.dialogShowMessageBox).toHaveBeenCalledTimes(2)
+        // 外层 catch 再次尝试错误提示，同样失败但不抛
+        expect(appMessageMocks.showAppMessageBox).toHaveBeenCalledTimes(2)
     })
 })
 
@@ -675,7 +688,6 @@ describe('安装标志兜底计时器（P1 F-01 防御深度）', () => {
     it('应用已退出（installing 已复位）时兜底计时器不重复复位', async () => {
         vi.useFakeTimers()
         mockUpdateAvailable()
-        electronState.dialogShowMessageBox.mockResolvedValue({ response: 0 })
 
         const pending = checkForUpdatesAndNotify(undefined)
         await vi.advanceTimersByTimeAsync(0)
