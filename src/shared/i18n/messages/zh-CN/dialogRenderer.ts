@@ -228,9 +228,9 @@ const dialogRenderer = {
             slashDesc: '在编辑器输入 / 打开插入命令菜单（标题、表格、公式、图片等）。',
             styleCheckLabel: '写作风格检查',
             styleCheckDesc: '检查长句、重复词、口头禅等写作问题，只提示不自动修改。',
-            smartInputLabel: '写作智能输入',
+            smartInputLabel: '智能输入增强',
             smartInputDesc:
-                '写作模式下启用列表/引用/标题续行增强，不改变全局 Markdown 智能输入开关。'
+                '普通模式与写作模式均生效：有序列表重编号、引用/嵌套/任务列表续行、空列表项退格退出、标题后空行；与「功能 → Markdown 智能输入」等效。'
         },
         panelFeaturesTitle: '功能开关',
         panelFeaturesDesc:
@@ -255,7 +255,8 @@ const dialogRenderer = {
             spellcheckLabel: '拼写检查',
             spellcheckDesc: '在编辑器中启用系统拼写检查（浏览器/系统词典），关闭后不加载拼写检查。',
             smartInputLabel: 'Markdown 智能输入',
-            smartInputDesc: '有序列表自动编号、引用块续行、标题后自动空行等 Markdown 编辑辅助。',
+            smartInputDesc:
+                '有序列表递增/后续重编号、引用/嵌套/任务列表续行、空列表项回车/退格退出、标题后空行；输入法组合期不介入，自动修改可一次撤销。',
             outlinePlusLabel: '大纲增强',
             outlinePlusDesc: '大纲支持 setext 标题、层级缩进和快速过滤，便于长文档导航。'
         },

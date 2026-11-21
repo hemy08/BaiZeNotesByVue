@@ -2,8 +2,11 @@ import { OnInsertAfterCursor, replaceSelection } from './hemy-editor-common'
 import * as monaco from 'monaco-editor'
 import { t } from '../../common/i18n'
 import { useFeatureFlags } from '../../composables/useFeatureFlags'
-import { writingModeState } from './useWritingMode'
-import { computeSmartEnterPlan } from './editor-smart-input'
+import {
+    computeSmartBackspacePlan,
+    computeSmartEnterPlan,
+    type SmartEnterPlan
+} from './editor-smart-input'
 import {
     attachPasteEnhance,
     pasteFromSystemClipboard,
@@ -29,19 +32,122 @@ function matchStartWith(
 }
 
 /**
- * A7 智能输入（opt-in，`flags.smartInput`）：在光标行尾按列表/引用/标题规则增强回车。
+ * A7 智能输入（opt-in）：普通模式与写作模式共用同一引擎。
  *
- * @returns 已处理（调用方不应再走原 EnterAction 逻辑）；未开启/未命中返回 false，
- *          由调用方继续执行「逐字保持现状」的原有回车逻辑。
+ * 开关来源：
+ * - 系统设置 →「功能」→ Markdown 智能输入（`smartInput`）；
+ * - 系统设置 →「编写体验」→ 智能输入增强（`writingSmartInput`，同样全模式生效）。
+ *
+ * 能力：有序列表递增/后续重编号、引用/嵌套/任务列表续行、空列表项回车/退格退出、
+ * 标题后空行；中文输入法组合期不介入，所有自动修改合并为一次 executeEdits（一次撤销）。
+ */
+
+/** 正在输入法组合中的编辑器（组合期完全不干预 Enter/Backspace） */
+const composingEditors = new WeakSet<object>()
+
+function smartInputEnabled(): boolean {
+    const { flags } = useFeatureFlags()
+    return flags.smartInput === true || flags.writingSmartInput === true
+}
+
+function isEditorComposing(editor: monaco.editor.IStandaloneCodeEditor): boolean {
+    return composingEditors.has(editor)
+}
+
+/** 注册组合期监听；编辑器能力缺失（测试替身）时安全跳过 */
+function attachCompositionGuards(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    disposables: monaco.IDisposable[]
+): void {
+    if (typeof editor.onDidCompositionStart === 'function') {
+        const disposable = editor.onDidCompositionStart(() => {
+            composingEditors.add(editor)
+        })
+        if (disposable) disposables.push(disposable)
+    }
+    if (typeof editor.onDidCompositionEnd === 'function') {
+        const disposable = editor.onDidCompositionEnd(() => {
+            composingEditors.delete(editor)
+        })
+        if (disposable) disposables.push(disposable)
+    }
+}
+
+/** 按插入文本计算执行后的光标位置（文本从光标处开始插入，仅含换行） */
+/** 单次提交编辑并显式包裹 undo stop，确保用户一次 Ctrl+Z 即可整体撤销 */
+function executeSmartEdits(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    edits: monaco.editor.IIdentifiedSingleEditOperation[]
+): void {
+    if (!editor.executeEdits) return
+    editor.pushUndoStop?.()
+    editor.executeEdits('smart-input', edits)
+    editor.pushUndoStop?.()
+}
+
+function resolveCursorAfterInsert(
+    position: monaco.Position,
+    insertText: string
+): { lineNumber: number; column: number } {
+    const lines = insertText.split('\n')
+    return {
+        lineNumber: position.lineNumber + lines.length - 1,
+        column: lines[lines.length - 1].length + 1
+    }
+}
+
+/**
+ * 为有序列表后续同缩进/同分隔符项生成重编号编辑。
+ *
+ * 仅处理紧邻连续的有序列表项（遇到空行、普通文本、不同层级/分隔符即停止），
+ * 编辑与插入合并到同一个 executeEdits，用户一次 Ctrl+Z 可整体撤销。
+ */
+function buildOrderedRenumberEdits(
+    model: monaco.editor.ITextModel,
+    startLineNumber: number,
+    plan: SmartEnterPlan
+): monaco.editor.IIdentifiedSingleEditOperation[] {
+    const renumber = plan.orderedRenumber
+    if (!renumber) return []
+    const lineCount =
+        typeof model.getLineCount === 'function' ? model.getLineCount() : startLineNumber
+    const edits: monaco.editor.IIdentifiedSingleEditOperation[] = []
+    let expected = renumber.nextNumber
+    for (let lineNumber = startLineNumber; lineNumber <= lineCount; lineNumber++) {
+        const lineText = model.getLineContent(lineNumber)
+        const match = lineText.match(/^(\s*)(\d+)([.)])([ \t]+)\S/)
+        if (!match) break
+        if (match[1] !== renumber.indent || match[3] !== renumber.delimiter) break
+        const indent = match[1] ?? ''
+        const digits = match[2] ?? ''
+        edits.push({
+            range: new monaco.Range(
+                lineNumber,
+                indent.length + 1,
+                lineNumber,
+                indent.length + digits.length + 1
+            ),
+            text: String(expected),
+            forceMoveMarkers: true
+        })
+        expected++
+        // 防御异常超长列表：一次自动编辑最多重编号 500 行
+        if (edits.length >= 500) break
+    }
+    return edits
+}
+
+/**
+ * 应用智能回车计划（单次 executeEdits，保证一次撤销）。
+ *
+ * @returns 已处理返回 true；开关关闭/组合期/未命中返回 false，由调用方继续原逻辑。
  */
 function applySmartEnter(
     editor: monaco.editor.IStandaloneCodeEditor,
     position: monaco.Position
 ): boolean {
-    const { flags } = useFeatureFlags()
-    // 写作模式是显式的沉浸写作预设：临时启用智能输入，不修改系统能力开关
-    if (!flags.smartInput && !(writingModeState.enabled && flags.writingSmartInput)) {
-        // 开关关闭：不读取 model、不改变任何行为（与原 EnterAction 完全一致）
+    // 开关关闭或输入法组合中：不读取 model、不改变任何行为
+    if (!smartInputEnabled() || isEditorComposing(editor)) {
         return false
     }
     const model = editor.getModel()
@@ -53,22 +159,84 @@ function applySmartEnter(
     if (!plan) {
         return false
     }
+    if (typeof editor.executeEdits !== 'function') {
+        return false
+    }
+
     const insertText = plan.insertText.replace(/\n/g, '\r\n')
+    const edits: monaco.editor.IIdentifiedSingleEditOperation[] = []
     if (plan.deletePrefixChars && plan.deletePrefixChars > 0) {
         // 空列表项回车退出列表：删除行首标记后插入换行（光标落到下一行行首）
-        replaceSelection(
-            editor,
-            insertText,
-            true,
-            new monaco.Range(position.lineNumber, 1, position.lineNumber, position.column)
-        )
-        return true
+        edits.push({
+            range: new monaco.Range(position.lineNumber, 1, position.lineNumber, position.column),
+            text: insertText,
+            forceMoveMarkers: true
+        })
+    } else {
+        edits.push({
+            range: new monaco.Range(
+                position.lineNumber,
+                position.column,
+                position.lineNumber,
+                position.column
+            ),
+            text: insertText,
+            forceMoveMarkers: true
+        })
+        // 新行插入后，后续行整体下移 1 行
+        edits.push(...buildOrderedRenumberEdits(model, position.lineNumber + 1, plan))
     }
-    OnInsertAfterCursor(editor, insertText)
+    executeSmartEdits(editor, edits)
+    if (typeof editor.setPosition === 'function') {
+        const cursor = plan.deletePrefixChars
+            ? { lineNumber: position.lineNumber + 1, column: 1 }
+            : resolveCursorAfterInsert(position, plan.insertText)
+        editor.setPosition(cursor)
+    }
+    return true
+}
+
+/**
+ * 应用「空列表项退格退出」：仅在 Backspace 时拦截，其他情况放行 Monaco 原生行为。
+ *
+ * @returns 已处理返回 true（调用方需 preventDefault/stopPropagation）。
+ */
+function applySmartBackspace(editor: monaco.editor.IStandaloneCodeEditor): boolean {
+    if (!smartInputEnabled() || isEditorComposing(editor)) {
+        return false
+    }
+    if (typeof editor.getPosition !== 'function' || typeof editor.executeEdits !== 'function') {
+        return false
+    }
+    const position = editor.getPosition()
+    const model = editor.getModel()
+    if (!position || !model) return false
+    const lineText = model.getLineContent(position.lineNumber)
+    const plan = computeSmartBackspacePlan(lineText, position.column)
+    if (!plan) return false
+    executeSmartEdits(editor, [
+        {
+            range: new monaco.Range(
+                position.lineNumber,
+                1,
+                position.lineNumber,
+                lineText.length + 1
+            ),
+            text: '',
+            forceMoveMarkers: true
+        }
+    ])
+    if (typeof editor.setPosition === 'function') {
+        editor.setPosition({ lineNumber: position.lineNumber, column: plan.cursorColumn })
+    }
     return true
 }
 
 function EnterAction(editor: monaco.editor.IStandaloneCodeEditor) {
+    // 输入法组合期：回车用于确认候选词，所有自动回车逻辑均不介入
+    if (isEditorComposing(editor)) {
+        return
+    }
     // 获取鼠标当前位置
     const position = editor.getPosition()
     if (!position) return
@@ -194,6 +362,29 @@ export function MonacoEditorAddActions(
     editor: monaco.editor.IStandaloneCodeEditor
 ): monaco.IDisposable[] {
     const disposables: monaco.IDisposable[] = []
+
+    // 中文输入法组合期守卫：组合期 Enter/Backspace 完全交给 IME / Monaco 原生逻辑
+    attachCompositionGuards(editor, disposables)
+
+    // 空列表项退格退出：onKeyDown 先于 Monaco 默认 Backspace，未命中时完全放行
+    if (typeof editor.onKeyDown === 'function') {
+        const backspaceDisposable = editor.onKeyDown((event) => {
+            if (event.keyCode !== monaco.KeyCode.Backspace) {
+                return
+            }
+            if ((event as unknown as { isComposing?: boolean }).isComposing === true) {
+                return
+            }
+            if (!applySmartBackspace(editor)) {
+                return
+            }
+            event.preventDefault?.()
+            event.stopPropagation?.()
+        })
+        if (backspaceDisposable) {
+            disposables.push(backspaceDisposable)
+        }
+    }
 
     addActionSafely(
         editor,

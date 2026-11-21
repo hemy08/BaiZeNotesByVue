@@ -11,7 +11,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const flagState = vi.hoisted(() => ({ smartInput: false }))
+const flagState = vi.hoisted(() => ({ smartInput: false, writingSmartInput: false }))
 
 vi.mock('../../src/renderer/src/composables/useFeatureFlags', () => ({
     useFeatureFlags: () => ({
@@ -41,7 +41,7 @@ const monacoMocks = vi.hoisted(() => ({
     Range: vi.fn(function MockRange(this: { args: unknown[] }, ...args: unknown[]) {
         this.args = args
     }),
-    KeyCode: { Enter: 3, KeyC: 33, KeyM: 77, KeyV: 55 },
+    KeyCode: { Enter: 3, Backspace: 8, KeyC: 33, KeyM: 77, KeyV: 55 },
     KeyMod: { CtrlCmd: 2048, Shift: 1024, Alt: 512 }
 }))
 
@@ -82,31 +82,54 @@ interface FakeEditorOptions {
     lineNumber?: number
     column?: number
     lineText?: string
+    lineTexts?: string[]
     documentText?: string
     selectionEmpty?: boolean
     domNode?: HTMLElement | null
     modelNull?: boolean
 }
 
-/** 构造最小编辑器替身：记录 addAction / addCommand，供动作契约断言与手动触发 */
-function makeEditor(options: FakeEditorOptions = {}): {
+interface ExecutedEdit {
+    range: { args: unknown[] }
+    text: string
+}
+
+interface FakeEditorHandle {
     editor: monaco.editor.IStandaloneCodeEditor
     actions: CapturedAction[]
     commands: Array<{ keybinding: number; handler: () => void }>
-} {
-    const lineText = options.lineText ?? '普通正文'
+    edits: ExecutedEdit[][]
+    keydownHandlers: Array<(event: Record<string, unknown>) => void>
+    compositionStart: () => void
+    compositionEnd: () => void
+    position: { lineNumber: number; column: number }
+}
+
+/** 构造最小编辑器替身：记录 addAction / addCommand / executeEdits，供动作契约断言与手动触发 */
+function makeEditor(options: FakeEditorOptions = {}): FakeEditorHandle {
+    const lineTexts = options.lineTexts ?? [options.lineText ?? '普通正文']
     const lineNumber = options.lineNumber ?? 3
+    const lineText = lineTexts[0] ?? ''
     const column = options.column ?? lineText.length + 1
-    const documentText = options.documentText ?? lineText
+    const documentText = options.documentText ?? lineTexts.join('\n')
     const actions: CapturedAction[] = []
     const commands: Array<{ keybinding: number; handler: () => void }> = []
+    const edits: ExecutedEdit[][] = []
+    const keydownHandlers: Array<(event: Record<string, unknown>) => void> = []
+    const position = { lineNumber, column }
+    const compositionStartHandlers: Array<() => void> = []
+    const compositionEndHandlers: Array<() => void> = []
     const editor = {
-        getPosition: () => ({ lineNumber, column }),
+        getPosition: () => position,
         getModel: () =>
             options.modelNull
                 ? null
                 : {
-                      getLineContent: () => lineText,
+                      getLineContent: (line?: number) =>
+                          line && line >= lineNumber
+                              ? (lineTexts[line - lineNumber] ?? lineText)
+                              : lineText,
+                      getLineCount: () => lineNumber + lineTexts.length - 1,
                       getValue: () => documentText,
                       getValueInRange: () => documentText,
                       getEOL: () => '\n'
@@ -120,9 +143,41 @@ function makeEditor(options: FakeEditorOptions = {}): {
             commands.push({ keybinding, handler })
             return 'command-id'
         },
+        executeEdits: (_source: string, executed: ExecutedEdit[]) => {
+            edits.push(executed)
+        },
+        setPosition: (next: { lineNumber: number; column: number }) => {
+            position.lineNumber = next.lineNumber
+            position.column = next.column
+        },
+        onKeyDown: (handler: (event: Record<string, unknown>) => void) => {
+            keydownHandlers.push(handler)
+            return { dispose: vi.fn() }
+        },
+        onDidCompositionStart: (handler: () => void) => {
+            compositionStartHandlers.push(handler)
+            return { dispose: vi.fn() }
+        },
+        onDidCompositionEnd: (handler: () => void) => {
+            compositionEndHandlers.push(handler)
+            return { dispose: vi.fn() }
+        },
         getDomNode: () => options.domNode ?? null
     } as unknown as monaco.editor.IStandaloneCodeEditor
-    return { editor, actions, commands }
+    return {
+        editor,
+        actions,
+        commands,
+        edits,
+        keydownHandlers,
+        compositionStart: () => {
+            for (const handler of compositionStartHandlers) handler()
+        },
+        compositionEnd: () => {
+            for (const handler of compositionEndHandlers) handler()
+        },
+        position
+    }
 }
 
 /** 从动作列表里取指定 id 的动作 */
@@ -173,6 +228,7 @@ function stubClipboardRead(items: unknown[]): void {
 beforeEach(() => {
     vi.clearAllMocks()
     flagState.smartInput = false
+    flagState.writingSmartInput = false
 })
 
 afterEach(() => {
@@ -255,43 +311,58 @@ describe('A7 Enter 增强（smartInput 关闭时逐字保持原实现）', () =>
     })
 })
 
-describe('A7 Enter 增强（smartInput 开启）', () => {
-    it('有序列表自动递增并保留缩进', () => {
+describe('A7 Enter 增强（smartInput 开启，普通模式）', () => {
+    it('有序列表自动递增并保留缩进，单次 executeEdits', () => {
         flagState.smartInput = true
-        const { editor, actions } = makeEditor({ lineText: '  1. 第一项' })
+        const { editor, actions, edits } = makeEditor({ lineText: '  1. 第一项' })
         MonacoEditorAddActions(editor)
         findAction(actions, 'hemy-custom-enter-action').run(editor as never)
 
-        expect(commonMocks.OnInsertAfterCursor).toHaveBeenCalledWith(editor, '\r\n  2. ')
-        expect(commonMocks.replaceSelection).not.toHaveBeenCalled()
+        expect(edits).toHaveLength(1)
+        expect(edits[0][0].text).toBe('\r\n  2. ')
+        expect(commonMocks.OnInsertAfterCursor).not.toHaveBeenCalled()
     })
 
-    it('引用块续行 / 任务列表续行 / 标题补空行', () => {
+    it('有序列表后续同缩进项自动重编号（插入 + 重编号合并为一次编辑）', () => {
+        flagState.smartInput = true
+        const { editor, actions, edits } = makeEditor({
+            lineTexts: ['1. 第一项', '2. 第二项', '4. 第四项']
+        })
+        MonacoEditorAddActions(editor)
+        findAction(actions, 'hemy-custom-enter-action').run(editor as never)
+
+        expect(edits).toHaveLength(1)
+        expect(edits[0].map((edit) => edit.text)).toEqual(['\r\n2. ', '3', '4'])
+        expect(commonMocks.OnInsertAfterCursor).not.toHaveBeenCalled()
+    })
+
+    it('引用块 / 任务列表 / 嵌套无序列表 / 标题补空行', () => {
         flagState.smartInput = true
         const cases: Array<{ lineText: string; expected: string }> = [
             { lineText: '> 引用内容', expected: '\r\n> ' },
             { lineText: '- [ ] 待办', expected: '\r\n- [ ] ' },
+            { lineText: '  - 嵌套列表', expected: '\r\n  - ' },
             { lineText: '# 标题', expected: '\r\n\r\n' }
         ]
         for (const testCase of cases) {
-            commonMocks.OnInsertAfterCursor.mockClear()
-            const { editor, actions } = makeEditor({ lineText: testCase.lineText })
+            const { editor, actions, edits } = makeEditor({ lineText: testCase.lineText })
             MonacoEditorAddActions(editor)
             findAction(actions, 'hemy-custom-enter-action').run(editor as never)
-            expect(commonMocks.OnInsertAfterCursor).toHaveBeenCalledWith(editor, testCase.expected)
+            expect(edits).toHaveLength(1)
+            expect(edits[0][0].text).toBe(testCase.expected)
+            expect(commonMocks.OnInsertAfterCursor).not.toHaveBeenCalled()
         }
     })
 
     it('空列表项回车退出列表：删除行首标记并换行', () => {
         flagState.smartInput = true
-        const { editor, actions } = makeEditor({ lineText: '- ' })
+        const { editor, actions, edits } = makeEditor({ lineText: '- ' })
         MonacoEditorAddActions(editor)
         findAction(actions, 'hemy-custom-enter-action').run(editor as never)
 
-        expect(commonMocks.replaceSelection).toHaveBeenCalledTimes(1)
-        const [, text, , range] = commonMocks.replaceSelection.mock.calls[0]
-        expect(text).toBe('\r\n')
-        expect((range as { args: unknown[] }).args).toEqual([3, 1, 3, 3])
+        expect(edits).toHaveLength(1)
+        expect(edits[0][0].text).toBe('\r\n')
+        expect(edits[0][0].range.args).toEqual([3, 1, 3, 3])
     })
 
     it('行中间回车仍回退原实现（不插入列表前缀）', () => {
@@ -314,6 +385,77 @@ describe('A7 Enter 增强（smartInput 开启）', () => {
         findAction(actions, 'hemy-custom-enter-action').run(editor as never)
 
         expect(commonMocks.OnInsertAfterCursor).toHaveBeenCalledWith(editor, '\r\n')
+    })
+
+    it('编写体验「智能输入增强」开关在普通模式也生效', () => {
+        flagState.smartInput = false
+        flagState.writingSmartInput = true
+        const { editor, actions, edits } = makeEditor({ lineText: '- 列表项' })
+        MonacoEditorAddActions(editor)
+        findAction(actions, 'hemy-custom-enter-action').run(editor as never)
+
+        expect(edits).toHaveLength(1)
+        expect(edits[0][0].text).toBe('\r\n- ')
+    })
+
+    it('中文输入法组合期回车不介入（不新增编辑）', () => {
+        flagState.smartInput = true
+        const handle = makeEditor({ lineText: '1. 第一项' })
+        MonacoEditorAddActions(handle.editor)
+        handle.compositionStart()
+        findAction(handle.actions, 'hemy-custom-enter-action').run(handle.editor as never)
+
+        expect(handle.edits).toHaveLength(0)
+        expect(commonMocks.OnInsertAfterCursor).not.toHaveBeenCalled()
+        expect(commonMocks.replaceSelection).not.toHaveBeenCalled()
+    })
+
+    it('空列表项退格退出：拦截 Backspace 并一次删除整行标记', () => {
+        flagState.smartInput = true
+        const handle = makeEditor({ lineText: '- ' })
+        MonacoEditorAddActions(handle.editor)
+        const preventDefault = vi.fn()
+        const stopPropagation = vi.fn()
+        handle.keydownHandlers[0]({
+            keyCode: monacoMocks.KeyCode.Backspace,
+            preventDefault,
+            stopPropagation
+        })
+
+        expect(handle.edits).toHaveLength(1)
+        expect(handle.edits[0][0].range.args).toEqual([3, 1, 3, 3])
+        expect(handle.edits[0][0].text).toBe('')
+        expect(preventDefault).toHaveBeenCalledTimes(1)
+        expect(stopPropagation).toHaveBeenCalledTimes(1)
+    })
+
+    it('普通文本的 Backspace 完全放行', () => {
+        flagState.smartInput = true
+        const handle = makeEditor({ lineText: '普通正文' })
+        MonacoEditorAddActions(handle.editor)
+        const preventDefault = vi.fn()
+        handle.keydownHandlers[0]({
+            keyCode: monacoMocks.KeyCode.Backspace,
+            preventDefault
+        })
+
+        expect(handle.edits).toHaveLength(0)
+        expect(preventDefault).not.toHaveBeenCalled()
+    })
+
+    it('组合期 Backspace 不介入', () => {
+        flagState.smartInput = true
+        const handle = makeEditor({ lineText: '- ' })
+        MonacoEditorAddActions(handle.editor)
+        handle.compositionStart()
+        const preventDefault = vi.fn()
+        handle.keydownHandlers[0]({
+            keyCode: monacoMocks.KeyCode.Backspace,
+            preventDefault
+        })
+
+        expect(handle.edits).toHaveLength(0)
+        expect(preventDefault).not.toHaveBeenCalled()
     })
 })
 

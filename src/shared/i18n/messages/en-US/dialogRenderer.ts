@@ -236,9 +236,9 @@ const dialogRenderer = {
             styleCheckLabel: 'Writing style check',
             styleCheckDesc:
                 'Check long sentences, repeated words and filler words; suggestions only, never auto-rewrite.',
-            smartInputLabel: 'Writing smart input',
+            smartInputLabel: 'Smart input',
             smartInputDesc:
-                'Enable list/quote/heading continuation in Writing Mode without changing the global Markdown smart-input switch.'
+                'Works in both normal and writing modes: ordered-list renumber, quote/nested/task continuation, empty-list backspace exit and blank line after headings; equivalent to Features → Markdown smart input.'
         },
         panelFeaturesTitle: 'Feature switches',
         panelFeaturesDesc:
@@ -266,7 +266,7 @@ const dialogRenderer = {
                 'Enable the system/browser spellchecker in the editor; disabled means no spellchecker is loaded.',
             smartInputLabel: 'Smart Markdown input',
             smartInputDesc:
-                'Auto-number ordered lists, continue blockquotes and add blank lines after headings.',
+                'Ordered-list increment/renumber, quote/nested/task continuation, empty-list backspace exit, blank line after headings; IME-safe and one-step undo.',
             outlinePlusLabel: 'Enhanced outline',
             outlinePlusDesc:
                 'Outline supports setext headings, indentation and quick filtering for long documents.'

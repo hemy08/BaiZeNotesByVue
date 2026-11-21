@@ -7,7 +7,10 @@
  * markdown-editor-blindspots 回归用例共同覆盖；本文件只校验纯函数契约。
  */
 import { describe, expect, it } from 'vitest'
-import { computeSmartEnterPlan } from '../../src/renderer/src/components/Markdown/editor-smart-input'
+import {
+    computeSmartBackspacePlan,
+    computeSmartEnterPlan
+} from '../../src/renderer/src/components/Markdown/editor-smart-input'
 
 /** 行尾光标列（Monaco 口径 1 基） */
 function endColumn(lineText: string): number {
@@ -33,13 +36,17 @@ describe('空列表项回车退出列表', () => {
 
 describe('有序列表自动递增', () => {
     it.each([
-        ['1. 第一项', '\n2. '],
-        ['9) 第九项', '\n10) '],
-        ['  3. 缩进项', '\n  4. '],
-        ['01. 前导零项', '\n2. ']
-    ])('「%s」续行 → %j', (lineText, expected) => {
-        expect(computeSmartEnterPlan(lineText, endColumn(lineText))).toEqual({
-            insertText: expected
+        ['1. 第一项', '\n2. ', 3],
+        ['9) 第九项', '\n10) ', 11],
+        ['  3. 缩进项', '\n  4. ', 5],
+        ['01. 前导零项', '\n2. ', 3]
+    ])('「%s」续行 → %j，后续项从 %i 起重编号', (lineText, expected, nextNumber) => {
+        const plan = computeSmartEnterPlan(lineText, endColumn(lineText))
+        expect(plan?.insertText).toBe(expected)
+        expect(plan?.orderedRenumber).toMatchObject({
+            indent: lineText.match(/^\s*/)?.[0] ?? '',
+            delimiter: lineText.includes(')') ? ')' : '.',
+            nextNumber
         })
     })
 
@@ -93,13 +100,46 @@ describe('标题后回车补空行', () => {
     })
 })
 
+describe('无序列表 / 嵌套列表续行', () => {
+    it.each([
+        ['- 列表项', '\n- '],
+        ['* 星号项', '\n* '],
+        ['+ 加号项', '\n+ '],
+        ['  - 嵌套项', '\n  - '],
+        ['    * 三层嵌套', '\n    * ']
+    ])('「%s」续行 → %j', (lineText, expected) => {
+        expect(computeSmartEnterPlan(lineText, endColumn(lineText))).toEqual({
+            insertText: expected
+        })
+    })
+})
+
+describe('空列表项退格退出', () => {
+    it.each(['- ', '* ', '  - ', '1. ', '12) ', '- [ ] ', '- [x] '])(
+        '「%s」在标记后按退格返回删除整行计划',
+        (lineText) => {
+            expect(computeSmartBackspacePlan(lineText, endColumn(lineText))).toEqual({
+                deletePrefixChars: lineText.length,
+                cursorColumn: 1
+            })
+        }
+    )
+
+    it.each(['普通正文', '# 标题', '- 非空列表项', '', '> 引用'])(
+        '「%s」不拦截退格',
+        (lineText) => {
+            expect(computeSmartBackspacePlan(lineText, lineText.length + 1)).toBeNull()
+        }
+    )
+
+    it('光标在行首时不拦截（交由原生退格合并上一行）', () => {
+        expect(computeSmartBackspacePlan('- ', 1)).toBeNull()
+    })
+})
+
 describe('回退场景（返回 null 交由原 EnterAction 处理）', () => {
     it('普通正文行', () => {
         expect(computeSmartEnterPlan('普通正文', endColumn('普通正文'))).toBeNull()
-    })
-
-    it('无序列表续行保持原实现（不在增强规则内重复处理）', () => {
-        expect(computeSmartEnterPlan('- 列表项', endColumn('- 列表项'))).toBeNull()
     })
 
     it('光标不在行尾时不增强（避免破坏行中间内容）', () => {
