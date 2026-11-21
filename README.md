@@ -393,7 +393,7 @@ BaiZeNotesByVue/
 │   │   └── 04-优化与专项报告/             # 优化专项报告（7 篇）
 │   ├── reports/                          # 报告归档（Markdown 版 + 独立 HTML Wiki）
 │   │   ├── README.md                     # 报告总索引（含口径说明与合并记录）
-│   │   ├── md/                           # Markdown 报告（27 篇：01 检查 11 / 02 修复 8 / 03 专项 8）
+│   │   ├── md/                           # Markdown 报告（28 篇：01 检查 12 / 02 修复 8 / 03 专项 8）
 │   │   └── html/                         # HTML 报告 Wiki（首页 + 侧边栏 + 27 份带悬浮目录页面，共 28 页）
 │   ├── images/                           # 文档配图
 │   ├── 历史归档/                          # 历史文档归档（非当前实现，见「文档导航」说明）
@@ -505,7 +505,7 @@ BaiZeNotesByVue/
 |   安装包体积   |                        ≈114.0 MiB                        | NSIS 安装包 111.13 MiB / 便携版 100.33 MiB（app.asar 39.96 MiB、locales 2；2026-11-20 当前 dist 实测，发布前需从 HEAD 重建复验）                                                                                                                             |
 |   主进程产物   |                        ≈0.62 MiB                         | `out/build/main/index.js`（655,183 B；2026-11-20 构建实测）                                                                                                                                                                                                  |
 |  主渲染 chunk  | 149.5 KiB（入口）+ 490.1 KiB（主界面壳）；首屏 328.6 KiB | 入口 `index-*.js`（约 153,088 B）；主界面壳 `BaiZeNotes-*.js`（约 501,862 B）；首屏实际 = 入口 + modulepreload 共享 chunk 328.6 KiB（2026-11-21 构建实测）；Monaco/highlight.js/KaTeX 在异步 chunk 按需加载；欢迎页窗口控制条为异步 chunk，保证入口 ≤150 KiB |
-|    文档规模    |       wiki 4 类 25 篇 / 报告 md 27 篇 / HTML 28 页       | 报告分类：01 检查与扫描 11 / 02 修复与实施 8 / 03 专项治理 8；HTML Wiki = 1 首页 + 27 份报告                                                                                                                                                                 |
+|    文档规模    |       wiki 4 类 25 篇 / 报告 md 28 篇 / HTML 29 页       | 报告分类：01 检查与扫描 12 / 02 修复与实施 8 / 03 专项治理 8；HTML Wiki = 1 首页 + 28 份报告                                                                                                                                                                 |
 
 ### 代码规模分布（实测）
 
@@ -735,7 +735,7 @@ npm run clean
 - [x] 1.5.0 已发布 GitHub Release（2026-11-21，tag `release-1.5.0`；NSIS 安装包 / portable / latest.yml / blockmap）
 - [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
 - [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
-- [x] 文档口径统一（2026-11-20），2026-11-21 复核刷新测试数：测试 304 文件 / 5,497 用例、IPC 99 通道 / 17 组、preload 白名单 send 65 / receive 28 / window.api 6、报告 md 27 篇 / HTML Wiki 28 页
+- [x] 文档口径统一（2026-11-20），2026-11-21 复核刷新测试数：测试 304 文件 / 5,497 用例、IPC 99 通道 / 17 组、preload 白名单 send 65 / receive 28 / window.api 6、报告 md 28 篇 / HTML Wiki 29 页
 - [ ] 长期计划：macOS 和 Linux 版本支持、协作编辑、插件系统、云同步
 
 ### v1.3.9

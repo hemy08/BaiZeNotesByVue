@@ -61,6 +61,10 @@ const NAV_REPORT_DATA = {
         {
             file: 'Markdown编辑器能力补全选项报告',
             title: 'Markdown 编辑器能力补全选项报告'
+        },
+        {
+            file: 'Monaco与WYSIWYG双编辑器技术评估报告',
+            title: 'Monaco 与 WYSIWYG 双编辑器技术评估报告'
         }
     ],
     '02-修复与实施': [

@@ -57,6 +57,10 @@
                         "file": "01-检查与扫描/Markdown编辑器能力补全选项报告.html"
                     },
                     {
+                        "title": "Monaco 与 WYSIWYG 双编辑器技术评估报告",
+                        "file": "01-检查与扫描/Monaco与WYSIWYG双编辑器技术评估报告.html"
+                    },
+                    {
                         "title": "2026-11-20-全量代码扫描报告",
                         "file": "01-检查与扫描/2026-11-20-全量代码扫描报告.html"
                     }

@@ -2,7 +2,7 @@
 
 > 更新于 2026-11-20
 >
-> 本目录是 BaiZeNotesByVue（白泽笔记）的文档中心，共 **4 个分类 / 26 篇 Markdown 文档**（另有本 README 与 `_sidebar.md` 导航）。分类与文件清单均按 2026-11-20 实际目录核对；检查/修复/专项报告不在本 Wiki 内，统一归档于 [docs/reports](../reports/README.md)（Markdown 版 27 篇 + 独立 [HTML Wiki](../reports/html/README.md) 28 个页面：1 首页 + 27 份报告）。
+> 本目录是 BaiZeNotesByVue（白泽笔记）的文档中心，共 **4 个分类 / 26 篇 Markdown 文档**（另有本 README 与 `_sidebar.md` 导航）。分类与文件清单均按 2026-11-20 实际目录核对；检查/修复/专项报告不在本 Wiki 内，统一归档于 [docs/reports](../reports/README.md)（Markdown 版 28 篇 + 独立 [HTML Wiki](../reports/html/README.md) 29 个页面：1 首页 + 28 份报告）。
 
 ---
 
@@ -41,7 +41,7 @@
 | 单元测试 | **304 个 `.test.ts` 文件 / 5,497 个用例**（vitest 全通过） |
 | 构建产物 | 主进程 `out/build/main/index.js` ≈**0.62 MiB**（655,183 B）；入口 chunk `out/build/renderer/assets/index-*.js` ≈**149.5 KiB**；主界面异步 chunk `BaiZeNotes-*.js` ≈**490.1 KiB**（Monaco/highlight.js/KaTeX 在异步 chunk 按需加载）；首屏实际 ≈**328.6 KiB**（入口 + modulepreload 共享 chunk；i18n 词典已按语言按需加载；欢迎页为异步 chunk） |
 | 安装包 | Setup **111.29 MiB** / portable **100.43 MiB** / app.asar **40.59 MiB** / locales **2**（2026-11-21 当前 dist，1.5.1 构建） |
-| 报告规模 | **md 27 篇（01 类 11 / 02 类 8 / 03 类 8）/ HTML Wiki 28 页（1 首页 + 27 报告）** |
+| 报告规模 | **md 28 篇（01 类 12 / 02 类 8 / 03 类 8）/ HTML Wiki 29 页（1 首页 + 28 报告）** |
 | 覆盖率 | Statements 84.79% / Branch 77.99% / Functions 80.75% / Lines 85.09%（2026-11-15 历史基线，当前以最新 `npm run test:coverage` 为准） |
 
 > **口径说明**：以 [报告总索引](../reports/README.md) 的「当前基线」与 [IPC 通信矩阵](../reports/md/03-专项治理/IPC通信矩阵.md) 为准；待办跟踪见 [当前遗留问题清单](../reports/md/03-专项治理/当前遗留问题清单.md)（**22 项：21 ✅ / 0 🟡 / 1 ⏸️**；#15 保持现状）。
@@ -146,7 +146,7 @@ docs/wiki/
 | --- | --- |
 | [docs/reports/README.md](../reports/README.md) | 检查/修复/专项报告总索引（**md/ 27 篇**，已去日期并按主题合并；**当前 IPC 口径见 IPC 通信矩阵**） |
 | [docs/reports/md/](../reports/md/) | 报告 Markdown 版（按 01-检查与扫描 / 02-修复与实施 / 03-专项治理 分类） |
-| [docs/reports/html/](../reports/html/README.md) | 报告 **HTML Wiki**（首页 + 侧边栏导航 + **28 个页面**：1 首页 + 27 份带固定悬浮目录的报告页面） |
+| [docs/reports/html/](../reports/html/README.md) | 报告 **HTML Wiki**（首页 + 侧边栏导航 + **29 个页面**：1 首页 + 28 份带固定悬浮目录的报告页面） |
 | [docs/md/](../md/) | 单元测试补充报告等 |
 | [docs/images/](../images/) | 欢迎页/主界面/主题设置截图（位图） |
 | [AGENTS.md](../../AGENTS.md) | 智能体协作规则 + 项目规格摘要（原 `specs/` 已并入此处，`specs/` 目录已删除） |
