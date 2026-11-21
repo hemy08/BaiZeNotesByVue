@@ -24,6 +24,23 @@
 - 兜底：30s 超时、窗口销毁、渲染进程崩溃均按取消安全侧处理；preload 不可用回退原生框并记录；保存失败保留对话框并展示内联错误
 - E2E：`e2e/close-confirm.spec.ts` 覆盖自定义框、取消/不保存、保存失败路径（3/3）
 
+### 🪟 应用内消息确认服务（2026-11-21）
+
+- 新增通用双通道 IPC `DIALOG.APP_MESSAGE_REQUEST/SUBMIT/DISMISS/HOST_READY`（IPC 93→97；preload 白名单 send 63 / receive 28）
+- 主进程 `showAppMessageBox()`：requestId、串行队列、30s 超时、窗口销毁/渲染崩溃安全结算、无父窗口降级；异常回退原生框并记录
+- 渲染层 `AppMessageDialog` 复用 BaseDialog 外壳（默认焦点/Esc/a11y）；替换 OPEN_EXE、大文件打开、自动更新 6 个原生 `showMessageBox` 调用
+
+### 🔔 工具提示去原生化（2026-11-21）
+
+- 23 处浏览器 `alert()` 替换为应用内 MessageDialog（错误/警告/成功分类），新增 `common/app-message.ts` 与静态扫描门禁
+- 菜单「跳转到行」的 `window.prompt` 改为触发 Monaco 原生 `editor.action.gotoLine`，与 Ctrl+G 同源
+
+### 🎛️ 对话框按钮样式统一（2026-11-21）
+
+- 新增 `assets/dialog-buttons.css`：30px 高/16px 内边距/4px 圆角/13px 字号 + primary/secondary/danger/ghost/apply 5 变体，限定 `.dialog-container`
+- 23 个对话框 + QuickLinkForm/MessageDialog 迁移，删除 4 份重复 `.btn` 样式；保留 `.btn-confirm/.btn-cancel` 兼容选择器
+- E2E 28/28（settings-persistence/close-confirm/theme-first-open 选择器零改动）
+
 ### 🔧 版本与发布
 
 - **全仓版本号升级 1.3.9 → 1.5.0**：`package.json` / `package-lock.json` / `resources/config/version.json` / README 徽章与路线图 / docs 当前状态标注统一

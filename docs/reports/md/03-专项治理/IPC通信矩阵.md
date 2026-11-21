@@ -12,7 +12,7 @@
 - **编制日期**：2026-11-18 首次编制，2026-11-19 补录 `FILE.OPEN_IN_BROWSER` / `FILE.READ_BINARY` 后复核（基于当前工作区源码；取代 `2026-11-15-IPC通信矩阵.md` 历史快照）
 - **唯一真源**：`src/shared/ipc-channels.ts`（**91 个通道常量 / 17 个分组**，全部以 `baize:<domain>:<name>` 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）
 - **方法**：对每个通道常量在 `src/main/**`、`src/preload/**`、`src/renderer/**` 全量 grep 实际发送点/接收点，只按源码事实填写；行号均为当前源码行号
-- **统计摘要**：91 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）
+- **统计摘要**：97 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）
 
 #### 一、方向记号
 
@@ -38,7 +38,7 @@
 
 | 指标 | 数量 | 说明 |
 | --- | --- | --- |
-| IPC 通道常量 | **91** | WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 24 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 3 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 2 / QUICK_LINKS 3 / EVENTS 4 |
+| IPC 通道常量 | **97** | WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 24 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 7 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 2 / QUICK_LINKS 3 / EVENTS 4 |
 | BrowserWindow 创建点 | **4** | 主窗口、windowManager 通用容器（5 个 JSDOM 对话框 + 在线网页窗口）、PDF 导出隐藏窗、PlantUML 渲染隐藏窗 |
 | preload 入口 | **2** | `src/preload/index.ts`（主窗口）、`src/preload/dialog.ts`（对话框/隐藏窗） |
 | `window.electron` 成员 | **1 对象（受限）** | 受限 `ipcRenderer`：`send`/`invoke` 白名单 **60** 通道、`on`/`once` 白名单 **25** 通道（未知通道丢弃/拒绝并告警；`removeListener`/`removeAllListeners` 不限制）+ `webFrame`{insertCSS,setZoomFactor,setZoomLevel}、`webUtils`{getPathForFile}、`process`{platform,versions,env}；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露 |
@@ -73,7 +73,7 @@
 - **单主进程**，每个 BrowserWindow 一个渲染进程；未使用 utilityProcess / MessageChannelMain / MessagePort / BrowserView / WebContentsView。
 - **preload 单文件约束**：`electron.vite.config.ts` 的 `isolatedEntries: true` + `externalizeDeps: false`，产物 `out/build/preload/index.js` / `dialog.js`（主窗口与对话框均 `sandbox:true`，preload 必须自包含）。
 
-#### 四、通道矩阵（91 通道 / 17 组）
+#### 四、通道矩阵（97 通道 / 17 组）
 
 ##### 4.1 WINDOW（8）
 
@@ -189,13 +189,17 @@
 | PLANTUML_LOCAL | `baize:render:plantuml-local` | R→M invoke | PlantUML 本地离线渲染（隐藏窗，10s/12s 超时，LRU 50） | plantuml-local.ts:520 registerHandleOnce（index.ts:473 调用） | hemy-editor-render.ts:475（常量 :230） |
 | READY | `baize:render:ready` | R→M send | 渲染层就绪握手（主进程收到后才执行启动恢复；3s 超时兜底） | index.ts:445 registerOnce（withSenderCheck） | preload `api.app.notifyRendererReady`（index.ts:43）→ App.vue:141 |
 
-##### 4.10 DIALOG（3）
+##### 4.10 DIALOG（7）
 
 | 常量 | 字符串 | 方向 | 作用 | 主进程侧 | 渲染层侧 |
 | --- | --- | --- | --- | --- | --- |
 | CREATE_FILE_FOLDER_ENTER | `baize:dialog:create-file-folder-enter` | D→M send | 新建对话框提交名称 | ShowCreateFileFolderDialog.ts:92 register（scope=dialog）；dialog preload 白名单 | 内联脚本 ShowCreateFileFolderDialog.ts:336 |
 | RENAME_FILE_FOLDER_ENTER | `baize:dialog:rename-file-folder-enter` | D→M send | 重命名对话框提交新名 | ShowRenameDialog.ts:75 register（scope=dialog）；dialog preload 白名单 | 内联脚本 ShowRenameDialog.ts:207 |
 | OPEN_VUE_DIALOG | `baize:dialog:open-vue` | M→R send | 主进程请求渲染层打开 Vue 对话框（17 个发送点：菜单/快捷键/导入/另存为/消息框等） | menu-file.ts:26/31、menu-tools.ts:57-66、menu-view.ts:103-113、short-key-register.ts:124、import.ts:313、file-operations.ts:241/248、dialog-helpers.ts:28/44/61 | BaiZeNotes.vue:589（handleOpenVueDialog）/625 |
+| APP_MESSAGE_REQUEST | `baize:dialog:app-message-request` | M→R send | 主进程请求渲染层展示应用内消息/确认框（requestId + 类型 + 按钮列表） | app-message-box.ts `showAppMessageBox` | AppMessageBoxHost.vue / useAppMessageBox.ts |
+| APP_MESSAGE_SUBMIT | `baize:dialog:app-message-submit` | R→M invoke | 渲染层回传用户选择（requestId + choiceId） | app-message-box.ts submit handler（withSenderCheck） | useAppMessageBox.ts |
+| APP_MESSAGE_DISMISS | `baize:dialog:app-message-dismiss` | M→R send | 超时/异常时撤销应用内框，随后回退原生框 | app-message-box.ts 超时兜底 | useAppMessageBox.ts / AppMessageBoxHost.vue |
+| APP_MESSAGE_HOST_READY | `baize:dialog:app-message-host-ready` | R→M send | 宿主挂载/卸载就绪握手，主进程据此决定应用内/原生 | app-message-box.ts host-ready 注册 | AppMessageBoxHost.vue |
 
 ##### 4.11 NAVIGATION（1）
 
@@ -255,7 +259,7 @@
 
 #### 五、异常与风险清单（已清零）
 
-> **统计口径**：91 通道 / 17 组（2026-11-19 第 5 批复核：删除 `SYSTEM.OPEN_EXTERNAL_LINK` 死通道；含 2026-11-18 补录的 `FILE.OPEN_IN_BROWSER`、`FILE.READ_BINARY`）。
+> **统计口径**：97 通道 / 17 组（2026-11-19 第 5 批复核：删除 `SYSTEM.OPEN_EXTERNAL_LINK` 死通道；含 2026-11-18 补录的 `FILE.OPEN_IN_BROWSER`、`FILE.READ_BINARY`）。
 
 > **2026-11-18 复核：异常清单已清零**。历史已处理项：① 空转/死分支 4 项（`WINDOW.START_DRAG` 空实现、`THEME.INIT_THEME_STYLES` 半死、`EDITOR.UPDATE_OPTIONS` R→M 死分支、`EVENTS.STATUS_BAR_UPDATE` 反向 send）；② 语义错用 1 项（`SYSTEM.OPEN_EXTERNAL_LINK` 的本地文件调用已改走 `FILE.OPEN_IN_BROWSER`，遗留清单 #1）；③ 载荷不一致 1 项（`THEME.THEME_UPDATED`，MenuBar 改读配置，遗留清单 #2）；④ 域错配 10 通道 / 5 组（分组与 domain 已统一为 17 组，遗留清单 #3/#7）；⑤ 第 5 批（2026-11-19）：删除 `SYSTEM.OPEN_EXTERNAL_LINK` 零发送方死通道（IPC 92 → 91），SYSTEM 组由 3 → 2 个通道。详见 [当前遗留问题清单](当前遗留问题清单.md)。
 

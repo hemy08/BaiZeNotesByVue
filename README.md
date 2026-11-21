@@ -539,7 +539,7 @@ BaiZeNotesByVue/
 - [报告总索引](docs/reports/README.md) - 检查/修复/专项报告（26 篇：01 检查与扫描 10 / 02 修复与实施 8 / 03 专项治理 8，已去日期并按主题合并，含口径说明）
 - [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md) - **问题跟踪台账**（22 项，19 ✅ / 2 🟡 / 1 ⏸️；修复后更新状态）
 - [报告 HTML Wiki](docs/reports/html/README.html) - HTML 版报告（首页 + 侧边栏 + 每页顶部整体导航 + 26 份带悬浮目录页面，共 27 页）
-- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（93 通道 / 17 组 + 白名单 send 61 + receive 26 + 窗口/preload 结构）
+- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（97 通道 / 17 组 + 白名单 send 63 + receive 28 + 窗口/preload 结构）
 - [IPC 通信治理报告](docs/reports/md/03-专项治理/IPC通信治理报告.md) - 通信检查 + 修复计划 + 命名方案（历史）
 
 ### 项目分析与架构

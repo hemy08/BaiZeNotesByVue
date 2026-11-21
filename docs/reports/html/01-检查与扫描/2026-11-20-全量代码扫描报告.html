@@ -61,8 +61,8 @@
 </tr>
 <tr>
 <td>测试</td>
-<td style="text-align:right">260 文件 / 4,622 用例（4,619 通过 / 3 skipped）</td>
-<td>覆盖率：stmts 95.10% / branch 89.83% / func 94.32% / line 95.37%</td>
+<td style="text-align:right">266 文件 / 4,714 用例（4,711 通过 / 3 skipped）</td>
+<td>覆盖率：stmts 95.04% / branch 89.77% / func 94.42% / line 95.31%</td>
 </tr>
 <tr>
 <td>静态依赖图</td>
@@ -71,12 +71,12 @@
 </tr>
 <tr>
 <td>IPC</td>
-<td style="text-align:right">93 通道 / 17 组</td>
-<td>preload 白名单 send/invoke 61 / receive 26 / window.api 6</td>
+<td style="text-align:right">97 通道 / 17 组</td>
+<td>preload 白名单 send/invoke 63 / receive 28 / window.api 6</td>
 </tr>
 <tr>
 <td>首屏初始 JS</td>
-<td style="text-align:right"><strong>338.2 KiB</strong>（入口 148.4 + modulepreload 189.8）</td>
+<td style="text-align:right"><strong>338.4 KiB</strong>（入口 148.4 + modulepreload 190.0）</td>
 <td>P1-3 已修复：i18n 中英词典按语言动态加载；<code>budget:check</code> 增加「首屏 + 词典不得进首屏」双重断言</td>
 </tr>
 <tr>
@@ -91,7 +91,7 @@
 </tr>
 <tr>
 <td>安装包</td>
-<td style="text-align:right">Setup 111.14 MiB / portable 100.34 MiB / asar 40.01 MiB</td>
+<td style="text-align:right">Setup 111.15 MiB / portable 100.34 MiB / asar 40.04 MiB</td>
 <td>asar 已裁剪 jschardet/dist 与 config 示例；app:// 迁移 + fuses 硬化</td>
 </tr>
 <tr>
@@ -780,6 +780,37 @@
 <td><code>2494ed7</code></td>
 <td>体验</td>
 <td>原生 <code>dialog.showMessageBox</code> → BaseDialog 风格 <code>UnsavedChangesDialog</code>；新增 <code>DIALOG.UNSAVED_CLOSE_REQUEST/SUBMIT</code> 双通道（IPC 91→93，白名单 send 61/receive 26）；30s 超时、窗口关闭、渲染进程崩溃均安全取消；渲染层不可用回退原生框；保存失败保留对话框+内联错误；E2E <code>close-confirm.spec.ts</code> 3/3</td>
+</tr>
+</tbody>
+</table>
+<p><strong>第十一批 对话框一致性改造（2026-11-21）</strong></p>
+<table>
+<thead>
+<tr>
+<th>改造批次</th>
+<th>提交</th>
+<th>内容</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>alert/prompt 应用内化</td>
+<td><code>da614d2</code></td>
+<td>23 处浏览器 <code>alert()</code> 全部改应用内 MessageDialog（错误/警告/成功分类）；菜单「跳转到行」<code>window.prompt</code> 改触发 Monaco <code>editor.action.gotoLine</code>；新增 <code>common/app-message.ts</code> 与静态扫描门禁</td>
+<td>触发条件/文案/控制流不变；插件工具与剪贴板不再出现原生弹窗</td>
+</tr>
+<tr>
+<td>应用内消息确认服务</td>
+<td><code>f312926</code></td>
+<td>新增 4 通道双通道 IPC（<code>APP_MESSAGE_REQUEST/SUBMIT/DISMISS/HOST_READY</code>，IPC 93→97、白名单 send 63/receive 28）；主进程 <code>showAppMessageBox()</code> 串行队列/30s 超时/窗口销毁/崩溃安全结算/无父窗口降级；渲染层 <code>AppMessageDialog</code>（BaseDialog 外壳）</td>
+<td>替换 OPEN_EXE、大文件打开、自动更新 6 个原生 <code>showMessageBox</code> 调用；正常路径无双弹，异常回退原生并记录；文件选择器保留原生</td>
+</tr>
+<tr>
+<td>对话框按钮样式统一</td>
+<td><code>dc9ba78</code></td>
+<td>新增 <code>assets/dialog-buttons.css</code>（30px 高/16px 内边距/4px 圆角/13px，primary/secondary/danger/ghost/apply 5 变体，仅作用 <code>.dialog-container</code>）；23 个对话框 + QuickLinkForm/MessageDialog 迁移；保留 <code>.btn-confirm/.btn-cancel</code> 兼容选择器</td>
+<td>删除 4 份重复 <code>.btn</code> 样式副本；E2E 28/28（settings-persistence/close-confirm/theme-first-open 选择器零改动）</td>
 </tr>
 </tbody>
 </table>
