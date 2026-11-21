@@ -44,7 +44,12 @@ export default {
         label: '编辑',
         goLine: '跳转到行',
         find: '查找',
-        replace: '替换'
+        replace: '替换',
+        workspaceSearch: '在工作区中搜索',
+        commandPalette: '命令面板',
+        quickOpen: '快速打开文件',
+        documentHistory: '文档历史…',
+        markdownLint: 'Markdown 检查/格式化…'
     },
     view: {
         label: '视图',

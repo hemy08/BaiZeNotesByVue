@@ -77,8 +77,8 @@ export const EVENT_BUS_CONTRACT: Record<EventBusEventKey, EventBusContractEntry>
         receivers: ['components/Markdown/MarkdownMonacoEditor.vue']
     },
     MONACO_REPLACE_TEXT: {
-        payload: 'string：全文替换（文件导入路径）',
-        emitters: ['components/BaiZeNotes.vue'],
+        payload: 'string：全文替换（文件导入路径 / A3 文档历史恢复 / A4 格式化应用）',
+        emitters: ['components/BaiZeNotes.vue', 'composables/useDocumentHistory.ts'],
         receivers: ['components/Markdown/MarkdownEditComponent.vue']
     },
     THEME_UPDATED: {
@@ -130,7 +130,12 @@ export const EVENT_BUS_CONTRACT: Record<EventBusEventKey, EventBusContractEntry>
     EDITOR_JUMP_LINE: {
         payload:
             '可选 { line: number }：直接跳转到指定行；无 payload 时唤起 Monaco 原生「跳转到行」快捷输入（菜单兜底路径，替代 window.prompt）',
-        emitters: ['components/MenuBar/menu-actions.ts'],
+        emitters: [
+            'components/MenuBar/menu-actions.ts',
+            'composables/useDocumentHistory.ts',
+            // A2 全工作区搜索：点击搜索结果打开文件后跳转到命中行
+            'composables/useWorkspaceSearch.ts'
+        ],
         receivers: ['components/Markdown/MarkdownMonacoEditor.vue']
     },
     MONACO_GET_CHAPTERS: {

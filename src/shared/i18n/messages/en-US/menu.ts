@@ -42,7 +42,12 @@ export default {
         label: 'Edit',
         goLine: 'Go to Line',
         find: 'Find',
-        replace: 'Replace'
+        replace: 'Replace',
+        workspaceSearch: 'Search in Workspace',
+        commandPalette: 'Command Palette',
+        quickOpen: 'Quick Open File',
+        documentHistory: 'Document History…',
+        markdownLint: 'Markdown Lint/Format…'
     },
     view: {
         label: 'View',

@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { VNode } from 'vue'
 import { menuMap } from './MenuBar/menu-config'
 import type { BaiZeMenuEntry } from './MenuBar/menu-config'
@@ -41,6 +41,7 @@ import { HandleMenuAction } from './MenuBar/menu-actions'
 import { t } from '../common/i18n'
 import { getBaseName } from '../../../shared/utils/path'
 import { logger } from '../common/logger'
+import { useFeatureFlags } from '../composables/useFeatureFlags'
 
 // ---------------------------------------------------------------------------------------------
 // 菜单数据响应式副本
@@ -52,6 +53,44 @@ import { logger } from '../common/logger'
 // ---------------------------------------------------------------------------------------------
 const menuData = ref<BaiZeMenuEntry[]>(structuredClone(menuMap.value))
 
+/**
+ * 1.5.1 可选能力菜单过滤：featureFlag 关闭时从运行时菜单树移除该叶子项。
+ * 静态 menuMap 保持完整（配置/测试/命令面板引用不受影响），只影响 MenuBar 展示。
+ */
+const { flags } = useFeatureFlags()
+
+function filterFeatureMenu(items: BaiZeMenuEntry[]): BaiZeMenuEntry[] {
+    const filtered: BaiZeMenuEntry[] = []
+    for (const item of items) {
+        if (item.featureFlag && !flags[item.featureFlag]) {
+            continue
+        }
+        if (item.submenu) {
+            const submenu = filterFeatureMenu(item.submenu)
+            if (submenu.length === 0 && !item.recentMenuPlaceholder) {
+                continue
+            }
+            filtered.push({ ...item, submenu })
+        } else {
+            filtered.push(item)
+        }
+    }
+    return filtered
+}
+
+onMounted(() => {
+    // 首帧按当前开关过滤一次（useFeatureFlags 的配置读取可能在挂载后才完成）
+    menuData.value = filterFeatureMenu(structuredClone(menuMap.value))
+})
+
+watch(
+    () => [flags.documentHistory, flags.markdownLint],
+    () => {
+        // 开关变化时重建运行时菜单；最近文件/文件夹占位项会由既有逻辑在打开菜单时重新注入
+        menuData.value = filterFeatureMenu(structuredClone(menuMap.value))
+        activeMenu.value = null
+    }
+)
 /** 「文件」顶层菜单的 i18n key（用于定位并动态刷新最近文件/最近文件夹子菜单） */
 const FILE_MENU_LABEL_KEY = 'menu.file.label'
 /** 两个动态子菜单的占位项 id（与 menu-config.ts 保持一致） */

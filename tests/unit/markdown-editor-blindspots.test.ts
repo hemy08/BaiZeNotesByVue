@@ -17,24 +17,29 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 const commonMocks = vi.hoisted(() => ({
     OnInsertAfterCursor: vi.fn(),
     replaceSelection: vi.fn(),
-    UpdateContextFormat: vi.fn()
+    UpdateContextFormat: vi.fn(),
+    // A8：粘贴增强复用既有图片/纯文本粘贴能力（本文件仅验证注册契约，不触发调用）
+    EventHandleMaps: { insertimage: vi.fn(), paste: vi.fn() }
 }))
 
 vi.mock('../../src/renderer/src/components/Markdown/hemy-editor-common', () => ({
     OnInsertAfterCursor: commonMocks.OnInsertAfterCursor,
     replaceSelection: commonMocks.replaceSelection,
-    UpdateContextFormat: commonMocks.UpdateContextFormat
+    UpdateContextFormat: commonMocks.UpdateContextFormat,
+    EventHandleMaps: commonMocks.EventHandleMaps
 }))
 
 const monacoMocks = vi.hoisted(() => ({
     Range: vi.fn(function MockRange(this: { args: unknown[] }, ...args: unknown[]) {
         this.args = args
     }),
-    KeyCode: { Enter: 3 }
+    KeyCode: { Enter: 3, KeyC: 33, KeyM: 77, KeyV: 55 },
+    KeyMod: { CtrlCmd: 2048, Shift: 1024, Alt: 512 }
 }))
 
 vi.mock('monaco-editor', () => ({
     KeyCode: monacoMocks.KeyCode,
+    KeyMod: monacoMocks.KeyMod,
     Range: monacoMocks.Range
 }))
 
@@ -107,15 +112,15 @@ async function getEnterAction(): Promise<(editor: FakeEditor) => void> {
         await import('../../src/renderer/src/components/Markdown/hemy-editor-actions')
     const editor = makeEditor()
     MonacoEditorAddActions(editor as never)
-    expect(editor.addAction).toHaveBeenCalledTimes(1)
-    const action = (editor.addAction as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
-        id: string
-        keybindings: unknown[]
-        run: (e: FakeEditor) => void
-    }
-    expect(action.id).toBe('hemy-custom-enter-action')
-    expect(action.keybindings).toEqual([monacoMocks.KeyCode.Enter])
-    return action.run
+    // A8：除 Enter 动作外还注册「复制为 Markdown / 复制为 HTML」两个命令
+    expect(editor.addAction).toHaveBeenCalledTimes(3)
+    const actions = (editor.addAction as unknown as ReturnType<typeof vi.fn>).mock.calls.map(
+        (call) => call[0]
+    ) as Array<{ id: string; keybindings?: number[]; run: (e: FakeEditor) => void }>
+    const action = actions.find((item) => item.id === 'hemy-custom-enter-action')
+    expect(action).toBeTruthy()
+    expect(action!.keybindings).toEqual([monacoMocks.KeyCode.Enter])
+    return action!.run
 }
 
 beforeEach(() => {

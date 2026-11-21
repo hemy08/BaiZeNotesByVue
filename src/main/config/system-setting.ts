@@ -82,7 +82,14 @@ const systemSettingDefaults: SystemSetting = {
     // AS-9（P3 隐私）：默认不自动加载 Markdown 预览中的远程图片（防跟踪像素/IP 泄露）。
     // 写入路径：渲染层 SystemSettingDialog → config:write('system') → 本模块，
     // 读取方：MarkdownPreviewComponent（经 config:read('system') 与 SYSTEM_SETTING_UPDATE 广播）。
-    allowRemoteImages: false
+    allowRemoteImages: false,
+    // 2026-11-21（用户选定）：可选能力全部 opt-in、默认关闭；A2/A8/A9 为默认能力不在此列。
+    featureTabs: false,
+    featureDocumentHistory: false,
+    featureMarkdownLint: false,
+    featureSpellcheck: false,
+    featureSmartInput: false,
+    featureOutlinePlus: false
     // 注意：settingsSchemaVersion 刻意不放入 defaults——electron-store 构造时会把
     // defaults 合并写入存储，若默认写入 2 则旧用户数据无法区分（迁移永远跳过）。
     // 该键仅在 migrateLegacyOptInSettings 迁移完成时写入（原始 store 无此键 = 旧数据）。

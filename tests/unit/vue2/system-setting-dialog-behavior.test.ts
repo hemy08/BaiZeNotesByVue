@@ -3,11 +3,11 @@
  * 系统设置对话框行为基线（设置页拆分 P0：拆分前后等价的行为契约）
  *
  * 覆盖点（只断言用户可见行为 / 对外 emit / IPC 载荷，不依赖组件内部状态形状）：
- * 1. 4 个页签 × 4 个面板的切换（active 类与 v-show 可见性同步）；
+ * 1. 5 个页签 × 5 个面板的切换（active 类与 v-show 可见性同步）；
  * 2. 草稿语义：修改不落盘、跨页签保留、取消丢弃并恢复打开时的值；
- * 3. 保存语义：应用写入 18 字段完整快照并 emit apply（不关闭）；确定 apply + close；
+ * 3. 保存语义：应用写入完整快照并 emit apply（不关闭）；确定 apply + close；
  *    取消不写配置；写入被主进程拒绝（返回 false）时不抛异常、不改变既有 emit 契约；
- * 4. 加载语义：打开时读取 system 配置并把值映射到 4 个面板（含语言历史值归一化）；
+ * 4. 加载语义：打开时读取 system 配置并把值映射到 5 个面板（含语言历史值归一化）；
  *    首挂即打开（lazyDialog 首次打开才挂载、挂载时 visible 已为 true）也要回填；
  *    加载失败回退默认值并记录错误；重复打开重新加载；
  * 5. 保存/校验失败契约：自动保存 IPC 返回 ok:false 时弹错误提示并回滚开关（不再静默）。
@@ -30,8 +30,8 @@ import { resetActionFailureThrottleForTesting } from '@renderer/common/action-fe
 
 const dialogMountOptions = { global: { stubs: { teleport: true } } }
 
-/** 面板在 DOM 中的固定顺序（与侧边栏 4 项 1:1，拆分前后一致） */
-const PANEL_ORDER = ['general', 'file', 'appearance', 'backup'] as const
+/** 面板在 DOM 中的固定顺序（与侧边栏 5 项 1:1，拆分前后一致） */
+const PANEL_ORDER = ['general', 'file', 'appearance', 'features', 'backup'] as const
 
 function mountDialog(visible = true): VueWrapper {
     return mount(SystemSettingDialog, {
@@ -96,13 +96,13 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         vi.restoreAllMocks()
     })
 
-    it('渲染 4 个侧边栏项与 4 个面板，默认仅通用设置面板可见', () => {
+    it('渲染 5 个侧边栏项与 5 个面板，默认仅通用设置面板可见', () => {
         const wrapper = mountDialog()
-        expect(wrapper.findAll('.sidebar-item')).toHaveLength(4)
-        expect(wrapper.findAll('.setting-panel')).toHaveLength(4)
+        expect(wrapper.findAll('.sidebar-item')).toHaveLength(5)
+        expect(wrapper.findAll('.setting-panel')).toHaveLength(5)
         expect(wrapper.findAll('.sidebar-item')[0].classes()).toContain('active')
         expect(isPanelShown(wrapper, 0)).toBe(true)
-        for (const index of [1, 2, 3]) {
+        for (const index of [1, 2, 3, 4]) {
             expect(isPanelShown(wrapper, index)).toBe(false)
         }
         wrapper.unmount()
@@ -139,8 +139,8 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         await switchPanel(wrapper, 2)
         await panel(wrapper, 2).find('input[type="number"]').setValue('16')
         // 备份：保留数量改为 3
-        await switchPanel(wrapper, 3)
-        await panel(wrapper, 3).find('input[max="10"]').setValue('3')
+        await switchPanel(wrapper, 4)
+        await panel(wrapper, 4).find('input[max="10"]').setValue('3')
 
         expect(configWrite).not.toHaveBeenCalled()
 
@@ -157,15 +157,15 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         expect(
             (panel(wrapper, 2).find('input[type="number"]').element as HTMLInputElement).value
         ).toBe('16')
-        await switchPanel(wrapper, 3)
-        expect((panel(wrapper, 3).find('input[max="10"]').element as HTMLInputElement).value).toBe(
+        await switchPanel(wrapper, 4)
+        expect((panel(wrapper, 4).find('input[max="10"]').element as HTMLInputElement).value).toBe(
             '3'
         )
 
         wrapper.unmount()
     })
 
-    it('应用：写入 18 字段完整快照并 emit apply，且不关闭对话框', async () => {
+    it('应用：写入完整快照并 emit apply，且不关闭对话框', async () => {
         const wrapper = mountDialog()
         // 通用：语言 en-US + 允许远程图片（隐私开关）
         await panel(wrapper, 0).find('select.setting-select').setValue('en-US')
@@ -175,8 +175,8 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         await switchPanel(wrapper, 2)
         await panel(wrapper, 2).find('input[type="number"]').setValue('16')
         // 备份：保留数量 3
-        await switchPanel(wrapper, 3)
-        await panel(wrapper, 3).find('input[max="10"]').setValue('3')
+        await switchPanel(wrapper, 4)
+        await panel(wrapper, 4).find('input[max="10"]').setValue('3')
 
         await wrapper.find('.btn-apply').trigger('click')
         await flushPromises()
@@ -218,6 +218,29 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         wrapper.unmount()
     })
 
+    it('功能页签：6 个可选能力默认关闭，开启后随保存写入 system 配置', async () => {
+        const wrapper = mountDialog()
+        await switchPanel(wrapper, 3)
+
+        const checkboxes = panel(wrapper, 3).findAll('.setting-checkbox')
+        expect(checkboxes).toHaveLength(6)
+        for (const checkbox of checkboxes) {
+            expect((checkbox.element as HTMLInputElement).checked).toBe(false)
+        }
+
+        // 开启第一项（多标签/会话恢复）
+        await checkboxes[0].setValue(true)
+        await wrapper.find('.btn-apply').trigger('click')
+        await flushPromises()
+
+        expect(configWrite).toHaveBeenCalledWith(
+            'system',
+            expect.objectContaining({ featureTabs: true })
+        )
+
+        wrapper.unmount()
+    })
+
     it('取消：丢弃草稿、不写配置、恢复打开时的值并 emit close', async () => {
         const wrapper = mountDialog()
         // 首开回填修复：挂载即异步加载持久化配置，先等初始加载完成再模拟用户修改
@@ -235,7 +258,7 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         wrapper.unmount()
     })
 
-    it('打开时加载 system 配置并映射到 4 个面板（含语言历史值归一化）', async () => {
+    it('打开时加载 system 配置并映射到 5 个面板（含语言历史值归一化）', async () => {
         configRead.mockImplementation((name: string) => {
             if (name === 'backup') {
                 return Promise.resolve({ backups: [], latest: null })
@@ -299,14 +322,14 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         ).toBe('16')
 
         // 备份面板：自动备份、间隔、保留数量
-        await switchPanel(wrapper, 3)
+        await switchPanel(wrapper, 4)
         expect(
-            (panel(wrapper, 3).find('.setting-checkbox').element as HTMLInputElement).checked
+            (panel(wrapper, 4).find('.setting-checkbox').element as HTMLInputElement).checked
         ).toBe(true)
-        expect((panel(wrapper, 3).find('input[max="72"]').element as HTMLInputElement).value).toBe(
+        expect((panel(wrapper, 4).find('input[max="72"]').element as HTMLInputElement).value).toBe(
             '12'
         )
-        expect((panel(wrapper, 3).find('input[max="10"]').element as HTMLInputElement).value).toBe(
+        expect((panel(wrapper, 4).find('input[max="10"]').element as HTMLInputElement).value).toBe(
             '3'
         )
 

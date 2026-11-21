@@ -531,17 +531,18 @@ describe('SystemSettingDialog', () => {
         vi.restoreAllMocks()
     })
 
-    it('renders four sidebar items with the general panel visible', () => {
+    it('renders five sidebar items with the general panel visible', () => {
         const wrapper = mount(SystemSettingDialog, {
             ...dialogMountOptions,
             props: { visible: true }
         })
         const items = wrapper.findAll('.sidebar-item')
-        expect(items).toHaveLength(4)
+        expect(items).toHaveLength(5)
         expect(items.map((item) => item.text())).toEqual([
             '⚙️通用设置',
             '📁文件设置',
             '🎨外观设置',
+            '🧩功能',
             '💾备份与恢复'
         ])
         expect(wrapper.findAll('.setting-panel')[0].isVisible()).toBe(true)
@@ -679,8 +680,8 @@ describe('SystemSettingDialog', () => {
             ...dialogMountOptions,
             props: { visible: true }
         })
-        await wrapper.findAll('.sidebar-item')[3].trigger('click')
-        expect(wrapper.findAll('.setting-panel')[3].isVisible()).toBe(true)
+        await wrapper.findAll('.sidebar-item')[4].trigger('click')
+        expect(wrapper.findAll('.setting-panel')[4].isVisible()).toBe(true)
         const actions = wrapper.findAll('.action-btn')
         expect(actions).toHaveLength(2)
         expect(actions.map((btn) => btn.text())).toEqual(['立即备份', '从备份恢复'])
@@ -771,8 +772,8 @@ describe('SystemSettingDialog', () => {
         expect(appearancePanel.find('input[type="number"]').attributes('disabled')).toBeUndefined()
 
         // 备份面板（批次 C #8/#9）：自动备份/间隔已启用（不再禁用），保留数量仍可用
-        await wrapper.findAll('.sidebar-item')[3].trigger('click')
-        const backupPanel = wrapper.findAll('.setting-panel')[3]
+        await wrapper.findAll('.sidebar-item')[4].trigger('click')
+        const backupPanel = wrapper.findAll('.setting-panel')[4]
         expect(backupPanel.findAll('.setting-checkbox:disabled')).toHaveLength(0)
         expect(backupPanel.findAll('input[type="number"]:disabled')).toHaveLength(0)
         expect(backupPanel.findAll('input[type="number"]')).toHaveLength(2)
@@ -825,8 +826,8 @@ describe('SystemSettingDialog', () => {
             ...dialogMountOptions,
             props: { visible: true }
         })
-        await wrapper.findAll('.sidebar-item')[3].trigger('click')
-        const backupPanel = wrapper.findAll('.setting-panel')[3]
+        await wrapper.findAll('.sidebar-item')[4].trigger('click')
+        const backupPanel = wrapper.findAll('.setting-panel')[4]
         expect(backupPanel.text()).toContain('按设定间隔')
 
         const enableCheckbox = backupPanel.find('.setting-checkbox')
@@ -879,7 +880,7 @@ describe('SystemSettingDialog', () => {
             ...dialogMountOptions,
             props: { visible: true }
         })
-        await wrapper.findAll('.sidebar-item')[3].trigger('click')
+        await wrapper.findAll('.sidebar-item')[4].trigger('click')
         await wrapper.findAll('.action-btn')[0].trigger('click')
         await flushPromises()
 
@@ -895,7 +896,7 @@ describe('SystemSettingDialog', () => {
             ...dialogMountOptions,
             props: { visible: true }
         })
-        await wrapper.findAll('.sidebar-item')[3].trigger('click')
+        await wrapper.findAll('.sidebar-item')[4].trigger('click')
         await wrapper.findAll('.action-btn')[1].trigger('click')
         await flushPromises()
 
@@ -919,7 +920,7 @@ describe('SystemSettingDialog', () => {
             ...dialogMountOptions,
             props: { visible: true }
         })
-        await wrapper.findAll('.sidebar-item')[3].trigger('click')
+        await wrapper.findAll('.sidebar-item')[4].trigger('click')
         await wrapper.findAll('.action-btn')[1].trigger('click')
         await flushPromises()
 
@@ -1002,6 +1003,7 @@ describe('SystemSettingDialog i18n', () => {
             '⚙️General',
             '📁Files',
             '🎨Appearance',
+            '🧩Features',
             '💾Backup & restore'
         ])
         expect(wrapper.findAll('.setting-panel')[0].text()).toContain('Interface language')
@@ -1010,10 +1012,10 @@ describe('SystemSettingDialog i18n', () => {
         // 批次 C：主题按钮与自动备份组说明同步英文
         await wrapper.findAll('.sidebar-item')[2].trigger('click')
         expect(wrapper.findAll('.setting-panel')[2].text()).toContain('Open theme settings')
-        await wrapper.findAll('.sidebar-item')[3].trigger('click')
-        expect(wrapper.findAll('.setting-panel')[3].text()).toContain('Enable auto backup')
+        await wrapper.findAll('.sidebar-item')[4].trigger('click')
+        expect(wrapper.findAll('.setting-panel')[4].text()).toContain('Enable auto backup')
         expect(
-            wrapper.findAll('.setting-panel')[3].find('input[min="1"]').attributes('title')
+            wrapper.findAll('.setting-panel')[4].find('input[min="1"]').attributes('title')
         ).toContain('1~72 hours')
         wrapper.unmount()
     })

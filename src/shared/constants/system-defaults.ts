@@ -75,5 +75,12 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     backupCount: 5,
     appTheme: 'baize',
     useSystemTheme: false,
-    allowRemoteImages: false
+    allowRemoteImages: false,
+    // 可选能力（2026-11-21 用户选定）：全部 opt-in、默认关闭
+    featureTabs: false,
+    featureDocumentHistory: false,
+    featureMarkdownLint: false,
+    featureSpellcheck: false,
+    featureSmartInput: false,
+    featureOutlinePlus: false
 }

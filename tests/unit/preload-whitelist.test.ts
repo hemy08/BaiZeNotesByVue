@@ -231,10 +231,10 @@ const DIALOG_USAGE = collectDialogUsage()
 const PRELOAD_API_USAGE = collectPreloadApiUsage()
 
 describe('preload 白名单：生成产物 ↔ shared 契约', () => {
-    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（63，双向）', () => {
+    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（65，双向）', () => {
         const generated = new Set(RENDERER_SEND_CHANNELS)
-        expect(generated.size).toBe(63)
-        expect(CONTRACT_REQUEST_KEYS.size).toBe(63)
+        expect(generated.size).toBe(65)
+        expect(CONTRACT_REQUEST_KEYS.size).toBe(65)
         expect(diff(generated, CONTRACT_REQUEST_KEYS)).toEqual([])
     })
 
@@ -277,8 +277,8 @@ describe('preload 白名单：生成产物 ↔ shared 契约', () => {
 })
 
 describe('preload 白名单：入口镜像 ↔ 生成产物（防两处产物漂移）', () => {
-    it('index.ts 两个生成块应可解析且与生成模块双向一致（63 / 28）', () => {
-        expect(INDEX_SEND_WHITELIST.size).toBe(63)
+    it('index.ts 两个生成块应可解析且与生成模块双向一致（65 / 28）', () => {
+        expect(INDEX_SEND_WHITELIST.size).toBe(65)
         expect(INDEX_RECEIVE_WHITELIST.size).toBe(28)
         expect(diff(INDEX_SEND_WHITELIST, new Set(RENDERER_SEND_CHANNELS))).toEqual([])
         expect(diff(INDEX_RECEIVE_WHITELIST, new Set(RENDERER_RECEIVE_CHANNELS))).toEqual([])

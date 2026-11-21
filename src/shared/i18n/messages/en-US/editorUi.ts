@@ -1,7 +1,9 @@
 /**
  * editorUi namespace (en)
  * Markdown editor UI copy: toolbar tooltips, document outline, diagram rendering fallbacks,
- * quick-insert menu categories.
+ * quick-insert menu categories, plus dialogs/actions added in 1.5.1 (A2 workspace search,
+ * A9 command palette / Quick Open, A3 document history, A4 Markdown lint, A8 copy actions,
+ * A10 outline filter).
  */
 export default {
     toolbar: {
@@ -45,7 +47,8 @@ export default {
         title: 'Document outline',
         lineTitle: 'Line {line}',
         empty: 'No headings found (lines starting with #)',
-        emptyTitle: '(Untitled)'
+        emptyTitle: '(Untitled)',
+        filterPlaceholder: 'Filter headings'
     },
     editor: {
         ariaLabel: 'Baize Notes editor'
@@ -105,5 +108,158 @@ export default {
         tabls1: 'Box drawing ╬',
         tabls2: 'Box drawing ┆',
         tabls3: 'Box drawing ╫'
+    },
+    /**
+     * A8 editor context-menu actions (copy enhancements).
+     * Action ids in `hemy-editor-actions.ts` are fixed as `baize.copyAsMarkdown` / `baize.copyAsHtml`.
+     */
+    editorActions: {
+        copyAsMarkdown: 'Copy as Markdown',
+        copyAsHtml: 'Copy as HTML'
+    },
+    /** A2 workspace search / replace dialog (`components/search/WorkspaceSearchDialog.vue`) */
+    workspaceSearch: {
+        title: 'Search / replace in workspace',
+        placeholder: 'Search for',
+        search: 'Search',
+        caseSensitive: 'Match case',
+        wholeWord: 'Match whole word',
+        useRegex: 'Use regular expression',
+        replacePlaceholder: 'Replace with',
+        replaceAll: 'Replace all',
+        replaceAllConfirm: 'Replace {count} matches? This writes changes to disk.',
+        confirm: 'Replace',
+        cancel: 'Cancel',
+        resultsLabel: 'Search results',
+        searching: 'Searching…',
+        initialHint: 'Enter a keyword to search Markdown files in the workspace',
+        noResults: 'No matches found',
+        replaceOne: 'Replace',
+        truncated: 'Too many results; only part of the matches are shown (narrow your search)',
+        close: 'Close',
+        resultSummary: '{matches} matches in {files} files',
+        resultSummaryTruncated: 'At least {matches} matches in {files} files (truncated)',
+        replacedSummary: 'Replacements completed: {count} matches',
+        error: {
+            noWorkspace: 'Open a workspace folder before searching',
+            invalidQuery: 'The search query is invalid. Check your input.',
+            invalidRegex: 'The regular expression is invalid. Check the syntax.',
+            internal: 'Search failed due to an internal error. Try again later.',
+            searchFailed: 'Search failed. Try again later.',
+            invalidInput: 'The replace parameters are invalid. Check your input.',
+            pathDenied:
+                'The target file is outside the workspace, so the replacement was rejected.',
+            fileChanged: 'The file changed on disk. Search again before replacing.',
+            writeFailed: 'Failed to write the file. Check the file permissions.',
+            noMatch: 'No matches available to replace'
+        }
+    },
+    /** A9 command palette / file Quick Open (`components/search/CommandPalette.vue`) */
+    commandPalette: {
+        placeholder: 'Type a command name or keyword',
+        filePlaceholder: 'Type a file name to open it quickly',
+        noResults: 'No matching commands',
+        loading: 'Loading file list…',
+        noFiles: 'No files available in the workspace',
+        hint: '↑↓ to select, Enter to run, Esc to close',
+        fileHint: '↑↓ to select, Enter to open, Esc to close',
+        ariaLabel: 'Command palette',
+        fileAriaLabel: 'Quick open file',
+        listLabel: 'Command list',
+        fileListLabel: 'File list',
+        executeFailed: 'Command failed',
+        openFileFailed: 'Failed to open the file. Try again later.',
+        command: {
+            save: 'Save',
+            openFolder: 'Open folder',
+            openFile: 'Open file',
+            find: 'Find',
+            replace: 'Replace',
+            gotoLine: 'Go to line',
+            outline: 'Toggle document outline',
+            insertTable: 'Insert Markdown table',
+            insertMath: 'Insert math formula',
+            insertMermaid: 'Insert Mermaid diagram',
+            workspaceSearch: 'Workspace search / replace',
+            quickOpen: 'Quick open file',
+            showCommandPalette: 'Show command palette'
+        },
+        category: {
+            file: 'File',
+            edit: 'Edit',
+            view: 'View',
+            insert: 'Insert',
+            search: 'Search'
+        }
+    },
+    /** A3 document history / diff / restore dialog (`components/Markdown/history/FileHistoryDialog.vue`) */
+    fileHistory: {
+        title: 'Document history',
+        loading: 'Loading history versions…',
+        loadFailed: 'Failed to load history versions. Try again later.',
+        noActiveFile: 'No file is open. History snapshots are created after you save a file.',
+        empty: 'No history versions yet (snapshots are created on save, up to 20 per file)',
+        timeColumn: 'Saved at',
+        sizeColumn: 'Size',
+        latestBadge: 'Latest',
+        compareTitle: 'Version from {time} compared with current content',
+        diffTitle: 'Line-level diff',
+        noDiff: 'This version matches the current editor content',
+        selectHint: 'Select a history version on the left to view the diff',
+        tooLarge: 'The document is too large to generate a line-level diff',
+        gapLines: '… {count} lines omitted',
+        restore: 'Restore this version',
+        deleteVersion: 'Delete this version',
+        restoreConfirm: 'Restore',
+        restoreConfirmMessage:
+            'Restoring overwrites the current editor content with this history version, so unsaved changes are lost. Continue?',
+        clear: 'Clear history for this file',
+        clearConfirm: 'Clear',
+        clearConfirmMessage:
+            'All history versions of the current file will be cleared. This cannot be undone. Continue?',
+        cancel: 'Cancel',
+        close: 'Close',
+        usage: 'History storage {used} / {limit}, {count} versions',
+        pathLabel: 'File: {path}'
+    },
+    /** A4 Markdown lint / one-click format dialog (`components/Markdown/lint/MarkdownLintDialog.vue`) */
+    markdownLint: {
+        title: 'Markdown lint',
+        checking: 'Checking…',
+        loadFailed: 'Failed to read the editor content. Try again later.',
+        noContent: 'No document to check. Open or create a Markdown file first.',
+        tooLarge: 'The document is too large and was skipped (over 512K characters)',
+        noIssues: 'No Markdown style issues found',
+        recheck: 'Check again',
+        applyFormat: 'Format now',
+        issueListTitle: 'Issues',
+        ruleStatsTitle: 'Rule statistics',
+        ruleStatsTotal: '{total} issues: {errors} errors / {warnings} warnings',
+        summary: '{total} issues: {errors} errors / {warnings} warnings, {fixable} auto-fixable',
+        fixableHint: 'Auto-fixable',
+        formatConfirmMessage:
+            'Safe formatting will fix {count} auto-fixable issues (trailing spaces, blank lines, fenced code language) without changing heading levels or table structure. Continue?',
+        formatConfirm: 'Format',
+        cancel: 'Cancel',
+        appliedStatus: 'Formatting applied: {count} auto-fixable issues fixed',
+        nochangeStatus: 'Nothing to auto-fix (the formatted output matches the original)',
+        savedContentHint: 'The editor is not ready, so the saved content is checked instead',
+        targetEditor: 'Target: {path}',
+        targetEditorFallback: 'Current editor',
+        close: 'Close',
+        rules: {
+            headingIncrement:
+                'Heading level skipped: H{previous} → H{current} (headings should increase one level at a time)',
+            trailingSpaces: 'Trailing spaces at the end of the line',
+            multipleBlanks: 'Multiple consecutive blank lines (at most 1 allowed)',
+            blanksAroundHeadings: 'Headings should be surrounded by blank lines',
+            blanksAroundFences: 'Code fences should be surrounded by blank lines',
+            blanksAroundLists: 'Lists should be surrounded by blank lines',
+            fencedCodeLanguage: 'Fenced code block is missing a language tag',
+            tableColumnCount:
+                'Table column count differs from the header ({expected} header columns, {actual} actual columns)',
+            tableSeparator:
+                'Invalid table separator row (each column should be --- / :-- / --: / :-:)'
+        }
     }
 }

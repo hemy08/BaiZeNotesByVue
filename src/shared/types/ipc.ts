@@ -3,9 +3,9 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（63 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（65 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（30 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（32 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
  *   白名单**完全相等**（28 个通道）。
@@ -318,10 +318,145 @@ export interface WelcomeEnterMainPayload {
     path: string
 }
 
+/* ----------------------------------------------------------------------------
+ * A2 全工作区搜索/替换（2026-11-21，默认开启）
+ *
+ * 通信链路（IPC-17 六步链路）：
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.FILE.SEARCH_WORKSPACE / REPLACE_WORKSPACE；
+ *   2. 契约：本段 WorkspaceSearch* / WorkspaceReplace* 类型 + 三表登记；
+ *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
+ *   4. 主进程：ipc/workspace-search-ipc.ts（registry 编排 + withSenderCheck）→
+ *      utils/workspace-search.ts（搜索/替换服务，只信任 appState.rootPath 工作区根）；
+ *   5. 渲染层：composables/useWorkspaceSearch.ts + components/search/**；
+ *   6. 测试：通道命名/契约/白名单/注册 + 服务边界 + 组件交互。
+ *
+ * 安全边界：
+ * - 工作区根只由主进程持有（appState.rootPath），渲染层不传根路径；
+ * - 递归跳过 node_modules/.git 等依赖、VCS 与敏感目录，跳过符号链接（防逃逸/循环）；
+ * - 单文件大小、匹配总数、文件清单数均有上限并用 truncated 标记；
+ * - 替换前重新读取文件、逐路径做「工作区内 + 非符号链接 + realpath 不逃逸」校验，
+ *   任一失败整体拒绝；错误以结构化 code 返回（不向渲染层泄漏堆栈）。
+ * -------------------------------------------------------------------------- */
+
+/** 工作区搜索查询选项（FILE.SEARCH_WORKSPACE 请求载荷） */
+export interface WorkspaceSearchOptions {
+    /** 查询文本；listFilesOnly=true 时可缺省/为空 */
+    query?: string
+    /** 是否区分大小写（默认 false） */
+    caseSensitive?: boolean
+    /** 是否整词匹配（默认 false） */
+    wholeWord?: boolean
+    /** 是否按正则解释查询（默认 false；非法正则返回 INVALID_REGEX） */
+    useRegex?: boolean
+    /** 仅列出工作区文本文件（Quick Open 复用，不执行内容搜索） */
+    listFilesOnly?: boolean
+    /** 期望的匹配结果上限（主进程钳制到实现上限，默认 500） */
+    maxResults?: number
+}
+
+/** 单条匹配（行/列均为 1-based） */
+export interface WorkspaceSearchMatch {
+    /** 匹配所在行号（1-based） */
+    line: number
+    /** 匹配起始列号（1-based） */
+    column: number
+    /** 该行预览文本（可能被截断） */
+    preview: string
+}
+
+/** 工作区文本文件条目（搜索列表/文件清单/替换结果共用） */
+export interface WorkspaceFileEntry {
+    /** 文件绝对路径（主进程生成，可直接用于打开/替换） */
+    filePath: string
+    /** 相对工作区根的路径（正斜杠归一化，用于展示） */
+    relativePath: string
+}
+
+/** 单个文件的搜索结果 */
+export interface WorkspaceSearchFileResult extends WorkspaceFileEntry {
+    /** 该文件内的匹配列表（按行号/列号升序） */
+    matches: WorkspaceSearchMatch[]
+}
+
+/** 工作区搜索结构化错误码（渲染层按 code 映射 i18n 文案） */
+export type WorkspaceSearchErrorCode =
+    'NO_WORKSPACE' | 'INVALID_QUERY' | 'INVALID_REGEX' | 'SEARCH_FAILED' | 'INTERNAL_ERROR'
+
+/** FILE.SEARCH_WORKSPACE 返回结构 */
+export interface WorkspaceSearchResult {
+    /** 是否成功（安全失败不抛异常，返回 ok=false + code） */
+    ok: boolean
+    /** 失败原因（ok=false 时存在） */
+    code?: WorkspaceSearchErrorCode
+    /** 命中文件列表（listFilesOnly=true 时为空数组） */
+    files: WorkspaceSearchFileResult[]
+    /** 工作区文本文件清单（仅 listFilesOnly=true 时返回） */
+    fileList?: WorkspaceFileEntry[]
+    /** 是否因匹配/文件/扫描上限被截断 */
+    truncated: boolean
+    /** 实际收集到的匹配总数 */
+    matchCount: number
+    /** 实际扫描的文本文件数 */
+    scannedFiles: number
+}
+
+/** 工作区替换选项（FILE.REPLACE_WORKSPACE 请求载荷） */
+export interface WorkspaceReplaceOptions {
+    /** 查询文本（与搜索同口径） */
+    query: string
+    /** 是否区分大小写（默认 false） */
+    caseSensitive?: boolean
+    /** 是否整词匹配（默认 false） */
+    wholeWord?: boolean
+    /** 是否按正则解释查询（默认 false） */
+    useRegex?: boolean
+    /** 替换文本（可为空串 = 删除匹配；正则模式支持 $1/$&/$$ 回填） */
+    replacement: string
+    /**
+     * 待替换文件绝对路径列表（必须位于工作区根内）。
+     * 单处替换时传一个文件；全部替换时传搜索结果中的全部文件。
+     */
+    filePaths: string[]
+    /** 单处替换目标行（1-based）；缺省 = 替换 filePaths 中全部匹配 */
+    line?: number
+    /** 单处替换目标列（1-based，匹配起始列）；缺省 = 替换该行全部匹配 */
+    column?: number
+}
+
+/** 单文件替换结果 */
+export interface WorkspaceReplaceFileResult extends WorkspaceFileEntry {
+    /** 该文件实际替换次数 */
+    replacements: number
+}
+
+/** 工作区替换结构化错误码（渲染层按 code 映射 i18n 文案） */
+export type WorkspaceReplaceErrorCode =
+    | 'NO_WORKSPACE'
+    | 'INVALID_QUERY'
+    | 'INVALID_REGEX'
+    | 'INVALID_INPUT'
+    | 'PATH_DENIED'
+    | 'FILE_CHANGED'
+    | 'WRITE_FAILED'
+    | 'NO_MATCH'
+    | 'INTERNAL_ERROR'
+
+/** FILE.REPLACE_WORKSPACE 返回结构（安全失败返回 ok=false + code） */
+export interface WorkspaceReplaceResult {
+    /** 是否成功 */
+    ok: boolean
+    /** 失败原因（ok=false 时存在） */
+    code?: WorkspaceReplaceErrorCode
+    /** 已写入的文件与次数（WRITE_FAILED 时可能部分写入） */
+    files: WorkspaceReplaceFileResult[]
+    /** 实际写入的替换总数 */
+    totalReplacements: number
+}
+
 /* ============================================================================
  * 二、渲染层 → 主进程（send / invoke）请求参数元组
  *
- * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（61 个，双向核对见测试）。
+ * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（65 个，双向核对见测试）。
  * 元组即 ipcRenderer.send/invoke 除通道名之外的实参列表（可为空元组）。
  * ========================================================================== */
 export interface IpcRequests {
@@ -405,6 +540,10 @@ export interface IpcRequests {
     [IPC.FILE.REOPEN_WITH_ENCODING]: [encoding: string]
     /** 按指定编码转码保存当前文件（invoke） */
     [IPC.FILE.CONVERT_SAVE_ENCODING]: [encoding: string]
+    /** A2 搜索工作区文本文件（invoke；只搜主进程持有的工作区根） */
+    [IPC.FILE.SEARCH_WORKSPACE]: [options: WorkspaceSearchOptions]
+    /** A2 替换工作区文本文件内容（invoke；主进程重校验路径后重新读取并写盘） */
+    [IPC.FILE.REPLACE_WORKSPACE]: [options: WorkspaceReplaceOptions]
 
     // ============ 文件管理器右键动作（全部为 send） ============
     [IPC.FILE_MANAGER.COPY_RELATIVE_PATH]: [path: string]
@@ -480,7 +619,7 @@ export interface IpcRequests {
 /* ============================================================================
  * 三、invoke 通道返回类型
  *
- * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（29 个）。
+ * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（32 个）。
  * send 通道无返回值，故不在此表。
  * ========================================================================== */
 export interface IpcResponses {
@@ -508,6 +647,10 @@ export interface IpcResponses {
     [IPC.FILE.READ_BINARY]: Uint8Array
     [IPC.FILE.REOPEN_WITH_ENCODING]: void
     [IPC.FILE.CONVERT_SAVE_ENCODING]: void
+    /** A2 工作区搜索（invoke；安全失败返回 ok=false + code，不抛异常） */
+    [IPC.FILE.SEARCH_WORKSPACE]: WorkspaceSearchResult
+    /** A2 工作区替换（invoke；安全失败返回 ok=false + code，不抛异常） */
+    [IPC.FILE.REPLACE_WORKSPACE]: WorkspaceReplaceResult
 
     // ============ 对话框确认动作 ============
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult

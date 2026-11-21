@@ -205,6 +205,13 @@
             代码随本异步 chunk 加载，不进入 150 KiB 渲染入口 chunk 预算。
         -->
         <AppMessageBoxHost />
+        <!--
+            2026-11-21（A2/A9 默认开启）：全工作区搜索/替换对话框 + 命令面板/Quick Open 宿主。
+            宿主持有 Ctrl+Shift+F / Ctrl+Shift+P / Ctrl+P 全局快捷键监听，卸载时自动清理；
+            两个浮层互斥展示，内部搜索/替换全部走主进程 IPC（只信任工作区根）。
+            代码随主界面异步 chunk 加载，不进入渲染入口 chunk 预算。
+        -->
+        <SearchOverlayHost />
     </div>
 </template>
 
@@ -221,6 +228,10 @@ import * as BaiZeDialogs from './dialogs'
 import UnsavedCloseConfirmHost from './dialogs/UnsavedCloseConfirmHost.vue'
 // 2026-11-21（应用内消息/确认对话框通用服务）：通用消息框宿主（OPEN_EXE / 大文件 / 更新提示）
 import AppMessageBoxHost from './dialogs/AppMessageBoxHost.vue'
+// 2026-11-21（A2/A9 默认开启）：工作区搜索/替换 + 命令面板/Quick Open 宿主
+// （快捷键监听与浮层显隐内聚在宿主；本组件只负责挂载与跟随主界面卸载）
+import SearchOverlayHost from './search/SearchOverlayHost.vue'
+import { initDocumentHistoryFeature } from '../composables/useDocumentHistory'
 // 配置 Store
 import { getConfigStore } from '../common/useConfigStore'
 import type { DialogName } from '../common/useConfigStore'
@@ -534,6 +545,8 @@ onMounted(async () => {
     // 第 4 批 4.2（M4）：主题初始化（配置读盘 → 拉取主题样式 → CSS 变量 + Monaco 应用）
     // 由 useTheme 单例统一实现；错误日志与「初始化只执行一次」的防重入语义均在 composable 内。
     await theme.initializeTheme()
+    // A3（可选能力）：开启时主界面挂载即开始记录保存快照；关闭时内部直接返回
+    void initDocumentHistoryFeature()
     EditorReLayout()
 })
 

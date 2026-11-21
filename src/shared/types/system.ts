@@ -75,6 +75,14 @@ export interface SystemSetting {
     // 默认 false：渲染层把远程图片替换为占位块，不发起任何网络请求（防跟踪像素/IP 泄露）；
     // 本地相对路径、绝对路径与 data:/blob: 图片不受影响。
     allowRemoteImages?: boolean
+    // 可选能力开关（2026-11-21，用户选定）：全部 opt-in、默认关闭；
+    // 定义/默认值/i18n 键见 shared/constants/feature-flags.ts。
+    featureTabs?: boolean // A1 多标签 / 会话恢复
+    featureDocumentHistory?: boolean // A3 文档历史 / diff / 回滚
+    featureMarkdownLint?: boolean // A4 Markdown lint / 格式化
+    featureSpellcheck?: boolean // A6 拼写检查
+    featureSmartInput?: boolean // A7 Markdown 智能输入
+    featureOutlinePlus?: boolean // A10 大纲增强
     // 系统设置结构版本（迁移用）：1.3.6 起写入。缺失表示 1.3.1~1.3.5 的旧数据
     // （当时 minimizeToTray / enableAutoBackup 默认 true，保存设置时会被写入 true）。
     settingsSchemaVersion?: number

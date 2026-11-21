@@ -3,8 +3,21 @@
         v-show="isShowEditArea"
         id="md-edit-component"
         class="md-edit-component"
+        :class="{ 'md-edit-component--tabs': tabsEnabled }"
         :style="{ width: monacoEditorWidth }"
     >
+        <!-- A1 多标签（opt-in，featureTabs 开启且存在已打开文件时才渲染）：
+             标签栏独占编辑区顶部一行，Monaco 经 flex 撑满剩余高度（见 scoped CSS）；
+             关闭态不渲染该节点，DOM/布局与既有单文档行为一致。 -->
+        <DocumentTabs
+            v-if="showDocumentTabs"
+            :tabs="documentTabs"
+            :active-path="activeDocumentPath"
+            :switching="tabsSwitching"
+            :can-close="canCloseDocumentTabs"
+            @select="handleDocumentTabSelect"
+            @close="handleDocumentTabClose"
+        />
         <!-- 结构优化第 2 批 2.2（H4）：Monaco 编辑器改为二级懒加载（独立 chunk），
              加载期间显示轻量骨架，主界面壳与工具栏先完成首帧渲染。 -->
         <MdMonacoEdit
@@ -58,6 +71,10 @@ import { useEventBus } from '../../composables/useEventBus'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { logger } from '../../common/logger'
+// A1 多标签 / 会话恢复（opt-in）：能力开关 + 标签栏 + 纯逻辑控制器
+import { useFeatureFlags } from '../../composables/useFeatureFlags'
+import DocumentTabs from './DocumentTabs.vue'
+import { useDocumentTabs } from './useDocumentTabs'
 // P2 功能错误处理修复：用户主动操作失败统一反馈（编码转换/按编码重开）
 import { describeActionError, reportActionFailure } from '../../common/action-feedback'
 import type { PreviewScrollTarget } from './preview-scroll-sync'
@@ -246,6 +263,135 @@ function resetSyncScrollTarget(): void {
 // 异步化后可能错过首条事件）。
 const activeFilePath = ref('')
 
+/* ==================== A1 多标签 / 会话恢复（opt-in，featureTabs） ====================
+ * 设计边界：不新增 IPC、不改主进程单活动文档状态，只在渲染层把「本次会话打开过文件」
+ * 组织成标签。
+ * - 打开文件：仍走既有 SHOW_SELECTED_FILE_CONTEXT / USER_SELECT_FILE 链路，收到路径后登记标签；
+ * - 切换标签：先经既有 flush 链路把全文同步给主进程，再经既有 OPEN_SELECT_FILE 打开目标
+ *   （主进程会先按既有行为自动保存当前 .md，内容不丢）；
+ * - 关闭活动标签：先走既有保存链路落盘，再切到相邻标签；
+ * - 会话恢复：只把路径 + 活动标签写入 localStorage（不存正文），主界面挂载后恢复。
+ * flag 关闭时：不渲染标签栏、不注册快捷键/保存监听、不读写 localStorage，既有行为不变。
+ */
+const { flags } = useFeatureFlags()
+const tabsEnabled = computed(() => flags.tabs === true)
+/** 编辑器是否已装载当前文件内容（切换标签前据此决定是否同步全文，防止空内容覆盖磁盘） */
+const documentLoaded = ref(false)
+
+const documentTabsController = useDocumentTabs({
+    getActivePath: () => activeFilePath.value,
+    getCurrentContent: () => markdownEditorContent.value,
+    hasLoadedDocument: () => documentLoaded.value,
+    flushContent: () => {
+        // 复用既有 flush 链路：取消防抖并立即把最新全文同步给主进程
+        flushContentSync()
+    },
+    saveContent: () => {
+        // 复用既有保存链路（SAVE_TO_DISK）：关闭活动标签前先把内容落盘
+        saveContentToDisk()
+    },
+    openFile: (tab) => {
+        // 复用既有文件打开链路（文件树/最近文件同一通道），主进程 OPEN 前自动保存当前文件
+        window.electron.ipcRenderer.send(IPC.FILE.OPEN_SELECT_FILE, {
+            name: tab.name,
+            path: tab.path,
+            type: 'file',
+            content: ''
+        })
+    },
+    warn: (...args: unknown[]) => {
+        // 渲染层统一日志出口（诊断用；用户可见失败仍由主进程状态栏/对话框提示）
+        logger.warn(...args)
+    }
+})
+const documentTabs = documentTabsController.tabs
+const activeDocumentPath = documentTabsController.activePath
+const tabsSwitching = documentTabsController.switching
+const canCloseDocumentTabs = documentTabsController.canCloseTabs
+/** 标签栏只有「开关开启 + 至少一个已打开文件」时才渲染（避免空条占用编辑区高度） */
+const showDocumentTabs = computed(() => tabsEnabled.value && documentTabs.value.length > 0)
+
+/** 开关联动运行态：避免 watch 中重复注册/注销监听 */
+let documentTabsRuntimeReady = false
+
+/** A1：用户点击标签（控制器负责同步当前内容 + 经既有打开链路切换） */
+const handleDocumentTabSelect = (path: string): void => {
+    documentTabsController.selectTab(path)
+}
+
+/** A1：用户关闭标签（活动标签会先落盘再切走；最后一个标签不可关闭） */
+const handleDocumentTabClose = (path: string): void => {
+    documentTabsController.closeTab(path)
+}
+
+/** A1：主进程保存成功（FILE_SAVED_SUCCESS）→ 清除活动标签脏标记 */
+const handleFileSavedSuccess = (): void => {
+    documentTabsController.handleSaved()
+}
+
+/**
+ * A1：标签快捷键（仅开关开启时注册）。
+ * Ctrl+Tab / Ctrl+Shift+Tab 循环切换；Ctrl+W 关闭当前标签（最后一个标签时无动作）。
+ * 对话框打开时让位，不抢占对话框内按键。
+ */
+const handleDocumentTabsKeyDown = (event: KeyboardEvent): void => {
+    if (!tabsEnabled.value) {
+        return
+    }
+    if (event.isComposing || event.keyCode === 229) {
+        return
+    }
+    if (!event.ctrlKey || event.altKey || event.metaKey) {
+        return
+    }
+    if (document.querySelector('[aria-modal="true"]')) {
+        return
+    }
+    if (event.key === 'Tab') {
+        event.preventDefault()
+        documentTabsController.cycleTab(event.shiftKey ? -1 : 1)
+        return
+    }
+    if ((event.key === 'w' || event.key === 'W') && !event.shiftKey) {
+        if (documentTabsController.closeTab(activeDocumentPath.value)) {
+            event.preventDefault()
+        }
+    }
+}
+
+/** A1：开关联动（开启时恢复会话并注册监听，关闭时彻底撤销副作用） */
+function syncDocumentTabsRuntime(enabled: boolean): void {
+    if (enabled === documentTabsRuntimeReady) {
+        return
+    }
+    documentTabsRuntimeReady = enabled
+    if (enabled) {
+        window.electron.ipcRenderer.on(IPC.EVENTS.FILE_SAVED_SUCCESS, handleFileSavedSuccess)
+        window.addEventListener('keydown', handleDocumentTabsKeyDown)
+        documentTabsController.setEnabled(true)
+    } else {
+        documentTabsController.setEnabled(false)
+        window.removeEventListener('keydown', handleDocumentTabsKeyDown)
+        window.electron.ipcRenderer.removeListener(
+            IPC.EVENTS.FILE_SAVED_SUCCESS,
+            handleFileSavedSuccess
+        )
+    }
+    // 标签栏出现/隐藏会改变 Monaco 容器高度，复用既有重排通知重新布局
+    scheduleRelayout(150)
+}
+
+// 设置保存后 flags.tabs 即时切换：标签栏与快捷键随之启用/停用（无需重启）
+watch(tabsEnabled, (enabled) => {
+    syncDocumentTabsRuntime(enabled)
+})
+
+// 标签栏出现/消失会改变 Monaco 容器高度（automaticLayout=false），需主动通知重排；
+// 首次打开文件（空标签栏 → 有标签栏）同样命中该监听，避免编辑器底部被裁切。
+watch(showDocumentTabs, () => {
+    scheduleRelayout(150)
+})
+
 const windowWidthValue = computed(() => {
     return parseFloat(windowWidth.value)
 })
@@ -364,6 +510,10 @@ function clearContentSyncTimer() {
 function handleMarkdownCodeUpdate(newValue: string) {
     // 预览区与保存所需内容立即本地更新（不等待 IPC）
     markdownEditorContent.value = newValue
+    // A1 多标签（opt-in）：同步活动标签脏标记（内容与最近落盘/装载基准不同即为脏）
+    if (tabsEnabled.value) {
+        documentTabsController.handleEditorContent(newValue)
+    }
 
     // 新内容与上次已同步内容一致（如加载文件触发的 setValue 回传）时不重复发送
     if (newValue === lastSyncedContent) {
@@ -429,20 +579,32 @@ const handleFlushContent = () => {
     }
 }
 
-function onHandleNewContent(content: string) {
+/**
+ * 应用主进程下发的内容。
+ * @param content 主进程下发的文件内容
+ * @param kind open=打开新文件（含启动恢复/新建）；reload=主进程主动从磁盘重读当前文件
+ */
+function onHandleNewContent(content: string, kind: 'open' | 'reload' = 'open') {
     // 1.5.0（滚动同步）：新文件不继承上一文件的同步目标（否则预览会重放旧行号）
     resetSyncScrollTarget()
+    // A1 多标签（opt-in）：切回「曾处于未保存状态」的标签时，若磁盘内容与内存快照不同
+    //（落盘异常等），优先用快照恢复；关闭开关时返回原内容，既有行为不变。
+    const effectiveContent = tabsEnabled.value
+        ? documentTabsController.handleLoadedContent(content, kind)
+        : content
     // FE-13：空文件必须保持空内容。
     // 原实现在 content 为空时走 handleMarkdownCodeUpdate('\r\n')：编辑器被注入一行空行，
     // 500ms 后同步回主进程 → appState 内容与保存快照不一致 → isDirty() 为 true，
     // 自动保存/关闭时把空文件写成 2 字节的 '\r\n'。现在空内容与普通内容同样处理：
     // 记为已同步基准、清空编辑器、不触发任何 IPC。
     clearContentSyncTimer()
-    lastSyncedContent = content
-    markdownEditorContent.value = content
+    lastSyncedContent = effectiveContent
+    markdownEditorContent.value = effectiveContent
+    // A1：标记「编辑器已装载当前文件内容」，切换标签前才允许同步全文（防空内容覆盖磁盘）
+    documentLoaded.value = true
     // 编辑区域显示时，传入（空字符串同样下发，让 Monaco 清空为真正的空文档）
     if (isShowEditArea.value) {
-        initialCodeContent.value = content
+        initialCodeContent.value = effectiveContent
     }
     // 文件加载后通知编辑器重新布局
     scheduleRelayout(150)
@@ -473,7 +635,8 @@ const handleShowFileContext = (_event: unknown, content: string) => {
 }
 
 const handleFileReloaded = (_event: unknown, data: { path: string; content: string }) => {
-    onHandleNewContent(data.content)
+    // 目录刷新/重读：磁盘内容为准（不触发标签内存快照恢复）
+    onHandleNewContent(data.content, 'reload')
 }
 
 const handleClearEditor = () => {
@@ -490,6 +653,8 @@ const handleClearEditor = () => {
     // 相同也会被跳过，不会产生 UPDATE_SELECT_FILE_CONTENT IPC。
     lastSyncedContent = ''
     markdownEditorContent.value = ''
+    // A1 多标签（opt-in）：编辑器已清空，不再代表任何文件内容；切换标签前禁止同步全文
+    documentLoaded.value = false
     if (isShowEditArea.value) {
         initialCodeContent.value = ''
     }
@@ -607,6 +772,11 @@ const handleConvertToEncoding = (_event: unknown, encoding: string): void => {
  */
 const handleActiveFileChange = (_event: unknown, filePath: string) => {
     activeFilePath.value = typeof filePath === 'string' ? filePath : ''
+    // A1 多标签（opt-in）：任何来源的文件激活（文件树/最近文件/新建/启动恢复）都登记为标签；
+    // flag 关闭时该分支不执行，活动文件路径透传行为与既有实现一致。
+    if (tabsEnabled.value && activeFilePath.value.length > 0) {
+        documentTabsController.handleFileActivated(activeFilePath.value)
+    }
 }
 
 onMounted(() => {
@@ -638,6 +808,9 @@ onMounted(() => {
 
     window.addEventListener('resize', handleResize)
     window.addEventListener('keydown', handleKeyDownEvent)
+
+    // A1 多标签（opt-in）：挂载后按当前开关状态启用控制器（关闭时为零副作用）
+    syncDocumentTabsRuntime(tabsEnabled.value)
 })
 
 // 销毁编辑器实例
@@ -677,6 +850,10 @@ onBeforeUnmount(() => {
         handleConvertToEncoding
     )
     window.electron.ipcRenderer.removeListener(IPC.FILE.USER_SELECT_FILE, handleActiveFileChange)
+
+    // A1 多标签（opt-in）：撤销快捷键/保存监听并清理切换定时器；开启状态下落一次会话
+    syncDocumentTabsRuntime(false)
+    documentTabsController.dispose()
 })
 </script>
 
@@ -689,6 +866,19 @@ onBeforeUnmount(() => {
     top: 0;
     height: 100%;
     overflow: hidden;
+}
+
+/* A1 多标签（opt-in）：标签栏位于编辑区顶部并占据一行高度，Monaco 用 flex 撑满剩余空间。
+   仅开关开启时挂上 .md-edit-component--tabs 类；关闭态不命中以下规则，DOM/布局零变化。 */
+#md-edit-component.md-edit-component--tabs {
+    display: flex;
+    flex-direction: column;
+}
+
+#md-edit-component.md-edit-component--tabs :deep(.monaco-editor-container) {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
 }
 
 #resizer-md {

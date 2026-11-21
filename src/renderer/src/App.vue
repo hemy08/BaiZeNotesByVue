@@ -368,6 +368,9 @@ onMounted(async () => {
     // 读取欢迎页配置与系统设置（后者用于判断主进程是否会在 READY 后自动进入主界面）。
     // 两个读取互不影响（allSettled）：任一失败都不阻塞启动——show-welcome 读取失败沿用
     // 历史行为「显示欢迎页、立即握手」，system 读取失败按「无自动打开」处理。
+    // 能力开关与上面 system 读取并行初始化（不阻塞欢迎页/主界面挂载）。
+    // 动态 import：开关模块只在欢迎页/主界面启动后加载，避免把 IPC/配置开关表打进首屏入口。
+    void import('./composables/useFeatureFlags').then(({ initFeatureFlags }) => initFeatureFlags())
     let showWelcomeConfig: unknown = undefined
     let systemSetting: Partial<SystemSetting> | null = null
     const [welcomeResult, systemResult] = await Promise.allSettled([
@@ -427,6 +430,10 @@ onBeforeUnmount(() => {
     // FE-35：移除配置 flush 监听，并在卸载前兜底落盘待写配置
     window.electron.ipcRenderer.removeListener(IPC.EDITOR.FLUSH_CONTENT, handleFlushConfigWrites)
     window.removeEventListener('beforeunload', handleBeforeUnload)
+    // 能力开关单例监听随应用卸载解绑（动态 import 与 onMounted 的加载路径对应）
+    void import('./composables/useFeatureFlags').then((module) =>
+        module.disposeFeatureFlagsListener()
+    )
     void flushConfigWrites()
 })
 </script>

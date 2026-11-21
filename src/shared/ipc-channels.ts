@@ -102,7 +102,13 @@ export const IPC = {
         // 2026-11-19（命名统一）：原值 `file:convert-encoding` 与 CONVERT_TO_ENCODING
         // （`file:convert-to-encoding`）仅差 "to"，语义易混——改为 convert-save-encoding
         // （按指定编码转码保存），全端同步（utils.ts / preload 白名单 / 渲染层 / 文档）。
-        CONVERT_SAVE_ENCODING: 'baize:file:convert-save-encoding'
+        CONVERT_SAVE_ENCODING: 'baize:file:convert-save-encoding',
+        // A2（2026-11-21）：全工作区搜索/替换（默认开启）。
+        // 两个通道均为 invoke：主进程只搜索 appState.rootPath 工作区根（不信任渲染层传入根路径），
+        // 递归 .md/.markdown/.txt 并做上限/忽略目录/符号链接防护；替换由主进程重新读取文件并写盘。
+        // Quick Open 的文件清单复用 SEARCH_WORKSPACE 的 listFilesOnly 选项（不额外新增通道）。
+        SEARCH_WORKSPACE: 'baize:file:search-workspace',
+        REPLACE_WORKSPACE: 'baize:file:replace-workspace'
     } as const,
 
     // ============ 文件管理器右键菜单 ============

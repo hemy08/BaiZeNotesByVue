@@ -48,6 +48,7 @@ describe('WelcomeScreen 窗口控制按钮', () => {
     it('renders exactly three window control buttons', async () => {
         wrapper = mount(WelcomeScreen)
         await flushPromises()
+        await vi.waitFor(() => expect(wrapper!.find('.window-controls').exists()).toBe(true))
         expect(wrapper.find('.window-controls').exists()).toBe(true)
         expect(wrapper.findAll('.window-btn')).toHaveLength(3)
     })
@@ -55,6 +56,7 @@ describe('WelcomeScreen 窗口控制按钮', () => {
     it('sends WINDOW.MINIMIZE when the minimize button is clicked', async () => {
         wrapper = mount(WelcomeScreen)
         await flushPromises()
+        await vi.waitFor(() => expect(wrapper!.find('.window-btn.minimize').exists()).toBe(true))
         await wrapper.find('.window-btn.minimize').trigger('click')
         expect(sendMock).toHaveBeenCalledWith(IPC.WINDOW.MINIMIZE)
     })
@@ -62,6 +64,7 @@ describe('WelcomeScreen 窗口控制按钮', () => {
     it('sends WINDOW.TOGGLE_MAXIMIZE when the maximize button is clicked (二次点击还原)', async () => {
         wrapper = mount(WelcomeScreen)
         await flushPromises()
+        await vi.waitFor(() => expect(wrapper!.find('.window-btn.maximize').exists()).toBe(true))
         await wrapper.find('.window-btn.maximize').trigger('click')
         // 2026-11-18（用户反馈）：最大化按钮需支持再次点击还原——
         // 原实现发 MAXIMIZE（仅最大化，二次点击无效），改为发送 TOGGLE_MAXIMIZE。

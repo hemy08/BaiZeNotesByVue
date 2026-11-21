@@ -1,22 +1,31 @@
 <template>
     <div id="monaco-editor-container" ref="monacoEditorContainer" class="monaco-editor-container">
         <!-- FUN-09（editor-toggle-outline）：简易大纲下拉——
-             从当前文档正则提取 ATX 标题行，点击项经 setPosition 跳转到对应行 -->
+             从当前文档正则提取 ATX 标题行，点击项经 setPosition 跳转到对应行。
+             A10（outlinePlus，opt-in）：额外支持 setext 标题、层级缩进归一化与过滤输入框 -->
         <div v-if="isOutlineVisible" class="monaco-outline-popup" @click.stop @mousedown.stop>
             <div class="monaco-outline-title">{{ t('editorUi.monacoOutline.title') }}</div>
+            <input
+                v-if="flags.outlinePlus"
+                v-model="outlineFilterText"
+                class="monaco-outline-filter"
+                type="search"
+                :placeholder="t('editorUi.monacoOutline.filterPlaceholder')"
+                :aria-label="t('editorUi.monacoOutline.filterPlaceholder')"
+            />
             <ul class="monaco-outline-list">
                 <li
-                    v-for="item in outlineItems"
+                    v-for="item in visibleOutlineItems"
                     :key="item.line"
                     class="monaco-outline-item"
-                    :style="{ paddingLeft: 8 + (item.level - 1) * 14 + 'px' }"
+                    :style="{ paddingLeft: item.paddingLeft + 'px' }"
                     :title="t('editorUi.monacoOutline.lineTitle', { line: item.line })"
                     @click="handleOutlineItemClick(item)"
                 >
                     <span class="monaco-outline-level">H{{ item.level }}</span>
                     <span class="monaco-outline-text">{{ item.text }}</span>
                 </li>
-                <li v-if="outlineItems.length === 0" class="monaco-outline-empty">
+                <li v-if="visibleOutlineItems.length === 0" class="monaco-outline-empty">
                     {{ t('editorUi.monacoOutline.empty') }}
                 </li>
             </ul>
@@ -39,7 +48,7 @@ let markdownFoldingProviderRegistered = false
 import './monaco-worker-setup'
 import { registerCustomLanguages } from './register-languages'
 import * as monaco from 'monaco-editor'
-import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
+import { ref, onMounted, watch, onBeforeUnmount, computed } from 'vue'
 import EventBus from '../../common/event-bus/event-bus'
 import * as editor from './hemy-editor'
 import type { MarkdownTOC } from '../../../../shared/types'
@@ -49,6 +58,14 @@ import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import { useEventBus } from '../../composables/useEventBus'
 import { logger } from '../../common/logger'
 import { toFileUrl } from '../../../../shared/utils/path'
+// 1.5.1（可选能力开关）：A6 拼写检查 / A10 大纲增强按设置运行时切换（默认关闭）
+import { useFeatureFlags } from '../../composables/useFeatureFlags'
+import {
+    OUTLINE_PLUS_DEFAULT_LIMITS,
+    extractOutlinePlus,
+    filterOutlineItems
+} from './editor-outline-plus'
+import { applyEditorSpellcheck, resolveSpellcheckLanguage } from './editor-spellcheck'
 // 1.5.0（编辑器 → 预览滚动同步）：锚点归一化纯函数（与预览侧同一模块，口径唯一）
 import { ComputeEditorScrollAnchor, type EditorScrollAnchor } from './preview-scroll-sync'
 // P1 性能基线：Monaco 编辑器就绪阶段标记（默认关闭，诊断开关下才输出）
@@ -80,6 +97,30 @@ const props = defineProps({
 
 const monacoEditorContainer = ref<HTMLElement | null>(null)
 let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
+
+// 1.5.1 可选能力开关（A6/A7/A10；A8 为默认能力不受开关控制）
+const { flags } = useFeatureFlags()
+
+/* ==================== A6 拼写检查（opt-in，spellcheck） ====================
+ * 不引入词典依赖：给 Monaco 实际输入 textarea 设置 spellcheck/lang，使用
+ * Chromium / 操作系统自带拼写检查。开关变化、编辑器创建、延迟布局后各同步一次；
+ * 关闭时恢复 spellcheck="false" 并移除 lang，不在关闭态保留开启属性。
+ */
+const spellcheckLanguage = resolveSpellcheckLanguage()
+
+/** 按当前开关同步编辑器 textarea 的拼写检查属性（编辑器未就绪时安全跳过） */
+function syncSpellcheckAttributes(): void {
+    applyEditorSpellcheck(editorInstance, flags.spellcheck, spellcheckLanguage)
+}
+
+// A6：开关变化时即时切换（设置保存后主进程广播 -> useFeatureFlags 更新 -> 此处响应）
+watch(
+    () => flags.spellcheck,
+    () => syncSpellcheckAttributes()
+)
+
+/** A7/A8：AddActions 返回的显式释放句柄（原生 paste 监听等），卸载时统一 dispose */
+const editorEnhanceDisposables: Array<{ dispose(): void } | undefined> = []
 
 /* ==================== 1.5.0 编辑器 → 预览单向滚动同步（触发端） ====================
  * 三条触发路径统一收敛为一个 `sync-scroll` 事件（父组件再补 seq 并透传给预览）：
@@ -655,13 +696,22 @@ interface OutlineItem {
     line: number
     level: number
     text: string
+    /** 条目左内边距（px）：普通模式按 ATX 层级；A10 增强模式按归一化层级 */
+    paddingLeft: number
 }
 const isOutlineVisible = ref(false)
 const outlineItems = ref<OutlineItem[]>([])
+// A10（outlinePlus，opt-in）：过滤输入框关键词（开关关闭时不渲染输入框）
+const outlineFilterText = ref('')
 // 大文件保护：最多扫描的行数（超出部分不进大纲）
 const OUTLINE_MAX_SCAN_LINES = 100000
 // ATX 标题正则（与折叠提供器一致）
 const OUTLINE_HEADING_REGEX = /^(\s{0,3})(#{1,6})(?:[ \t]+)(.*)$/
+
+/** 原实现的 ATX 层级缩进：首级 8px，每级 +14px */
+function computeAtxOutlinePadding(level: number): number {
+    return 8 + (level - 1) * 14
+}
 
 function extractOutlineItems(): OutlineItem[] {
     const items: OutlineItem[] = []
@@ -671,6 +721,25 @@ function extractOutlineItems(): OutlineItem[] {
     const model = editorInstance.getModel()
     if (!model) {
         return items
+    }
+    // A10：增强大纲（setext 标题 / 围栏内标题排除 / 层级缩进归一化 / 上限）
+    if (flags.outlinePlus) {
+        return extractOutlinePlus(
+            {
+                lineCount: model.getLineCount(),
+                getLineContent: (lineNumber: number) => model.getLineContent(lineNumber)
+            },
+            t('editorUi.monacoOutline.emptyTitle'),
+            {
+                ...OUTLINE_PLUS_DEFAULT_LIMITS,
+                maxScanLines: OUTLINE_MAX_SCAN_LINES
+            }
+        ).map((item) => ({
+            line: item.line,
+            level: item.level,
+            text: item.text,
+            paddingLeft: 8 + item.indent * 14
+        }))
     }
     const scanEnd = Math.min(model.getLineCount(), OUTLINE_MAX_SCAN_LINES)
     for (let i = 1; i <= scanEnd; i++) {
@@ -685,10 +754,34 @@ function extractOutlineItems(): OutlineItem[] {
         const level = match[2].length
         // 去掉标题文本末尾的闭合 #（如 "## 标题 ##" → "标题"）
         const text = match[3].replace(/#+\s*$/, '').trim()
-        items.push({ line: i, level, text: text || t('editorUi.monacoOutline.emptyTitle') })
+        items.push({
+            line: i,
+            level,
+            text: text || t('editorUi.monacoOutline.emptyTitle'),
+            paddingLeft: computeAtxOutlinePadding(level)
+        })
     }
     return items
 }
+
+// A10：开关关闭时展示原始条目列表（与原实现一致）；开启时按关键词过滤
+const visibleOutlineItems = computed(() => {
+    if (!flags.outlinePlus) {
+        return outlineItems.value
+    }
+    return filterOutlineItems(outlineItems.value, outlineFilterText.value)
+})
+
+// A10：开关在运行时切换时，若大纲打开则重新提取；同时清空过滤词
+watch(
+    () => flags.outlinePlus,
+    () => {
+        outlineFilterText.value = ''
+        if (isOutlineVisible.value) {
+            outlineItems.value = extractOutlineItems()
+        }
+    }
+)
 
 function handleToggleOutline() {
     if (!editorInstance) {
@@ -698,6 +791,7 @@ function handleToggleOutline() {
         isOutlineVisible.value = false
         return
     }
+    outlineFilterText.value = ''
     outlineItems.value = extractOutlineItems()
     isOutlineVisible.value = true
 }
@@ -784,7 +878,14 @@ onMounted(async () => {
 
         editor.DidChange(editorInstance)
         editor.KeyMaps(editorInstance)
-        editor.AddActions(editorInstance)
+        // A7/A8：AddActions 返回的显式句柄（原生 paste 监听等）随组件卸载释放
+        const actionDisposables = editor.AddActions(editorInstance)
+        if (actionDisposables) {
+            editorEnhanceDisposables.push(...actionDisposables)
+        }
+
+        // A6：编辑器创建后按当前开关同步拼写检查属性（默认关闭 -> spellcheck=false）
+        syncSpellcheckAttributes()
 
         // 初始化后立即布局，确保编辑器尺寸正确
         editorInstance.layout()
@@ -797,6 +898,8 @@ onMounted(async () => {
         setTimeout(() => {
             if (editorInstance) {
                 editorInstance.layout()
+                // A6：Monaco 可能在初始化/重排后重建输入 textarea，延迟再同步一次属性
+                syncSpellcheckAttributes()
             }
         }, 100)
 
@@ -868,6 +971,15 @@ onBeforeUnmount(() => {
     }
     scrollSyncDisposables.length = 0
 
+    // A6：清除拼写检查开启态属性（编辑器即将销毁，不保留 spellcheck=true/lang）
+    applyEditorSpellcheck(editorInstance, false, spellcheckLanguage)
+
+    // A7/A8：释放 AddActions 返回的显式句柄（原生 paste 监听等；action 随 editor.dispose 释放）
+    for (const disposable of editorEnhanceDisposables) {
+        disposable?.dispose()
+    }
+    editorEnhanceDisposables.length = 0
+
     // 4. 完整清理 Monaco Editor
     if (editorInstance) {
         const model = editorInstance.getModel()
@@ -920,6 +1032,22 @@ onBeforeUnmount(() => {
     padding: 8px 12px;
     font-weight: 600;
     border-bottom: 1px solid var(--theme-border-color, #e0e0e0);
+}
+
+/* A10（outlinePlus）：大纲过滤输入框（仅开关开启时渲染） */
+.monaco-outline-filter {
+    margin: 6px 8px 0;
+    padding: 4px 8px;
+    border: 1px solid var(--theme-border-color, #e0e0e0);
+    border-radius: 4px;
+    background: var(--theme-card-background, #ffffff);
+    color: var(--theme-text-color, #333333);
+    font-size: 12px;
+    outline: none;
+}
+
+.monaco-outline-filter:focus {
+    border-color: var(--theme-accent-color, #00b0ff);
 }
 
 .monaco-outline-list {

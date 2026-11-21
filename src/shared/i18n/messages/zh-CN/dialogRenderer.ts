@@ -201,6 +201,34 @@ const dialogRenderer = {
         sidebarFile: '文件设置',
         sidebarAppearance: '外观设置',
         sidebarBackup: '备份与恢复',
+        sidebarFeatures: '功能',
+        panelFeaturesTitle: '功能开关',
+        panelFeaturesDesc:
+            '默认能力始终开启；可选能力按需开启，关闭时不注册界面与编辑行为，不增加启动负担。',
+        groupDefaultFeatures: '默认能力',
+        hintDefaultFeatures: '以下能力随编辑器提供，无需配置：',
+        groupOptionalFeatures: '可选能力',
+        hintOptionalFeatures:
+            '默认关闭。开启后立即生效；涉及文件/历史的能力会写入本机应用数据目录。',
+        features: {
+            workspaceSearchLabel: '全工作区搜索 / 替换',
+            pasteEnhanceLabel: '粘贴 / 复制增强',
+            commandPaletteLabel: '命令面板 / Quick Open',
+            tabsLabel: '多标签 / 会话恢复',
+            tabsDesc:
+                '在编辑器顶部打开多个文件标签，切换文件不丢失编辑状态；重启后恢复上次打开的标签列表。',
+            documentHistoryLabel: '文档历史 / diff / 回滚',
+            documentHistoryDesc: '保存时记录文档快照，可查看历史版本、行级 diff 并恢复为当前内容。',
+            markdownLintLabel: 'Markdown 检查 / 格式化',
+            markdownLintDesc:
+                '检查标题层级、列表/代码块空行、行尾空格等常见问题，并支持一键格式化。',
+            spellcheckLabel: '拼写检查',
+            spellcheckDesc: '在编辑器中启用系统拼写检查（浏览器/系统词典），关闭后不加载拼写检查。',
+            smartInputLabel: 'Markdown 智能输入',
+            smartInputDesc: '有序列表自动编号、引用块续行、标题后自动空行等 Markdown 编辑辅助。',
+            outlinePlusLabel: '大纲增强',
+            outlinePlusDesc: '大纲支持 setext 标题、层级缩进和快速过滤，便于长文档导航。'
+        },
         panelGeneralTitle: '通用设置',
         panelGeneralDesc: '应用程序的基本配置',
         groupStartup: '启动选项',

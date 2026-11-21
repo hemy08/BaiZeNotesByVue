@@ -6,6 +6,11 @@ import { IPC } from '../../../../shared/ipc-channels'
 import { logger } from '../../common/logger'
 // ARC-14：插件工具显示事件名收敛至 EventBus 集中常量（menu-consts 仅保留兼容 re-export）
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import {
+    openCommandPalette,
+    openQuickOpen,
+    openWorkspaceSearch
+} from '../search/search-overlay-state'
 // M3（结构优化第 5 批）：15 项 Material 扩展语法 id 由 shared 单一 manifest 派生，
 // 不再维护本文件内的字面量数组（与 menu-config 菜单、MaterialSyntaxDialog 功能项同源）。
 import {
@@ -304,6 +309,31 @@ export function HandleMenuAction(action: string) {
     // （与资源管理器开关串线），现改为独立大纲事件，由 Monaco 代理实现监听。
     if (action === 'baize:menu:view:toggle-outline') {
         EventBus.$emit(EVENT_BUS.EDITOR_TOGGLE_OUTLINE)
+        return
+    }
+
+    // ========== 1.5.1 默认能力：全工作区搜索 / 命令面板 ==========
+    if (action === 'baize:menu:edit:workspace-search') {
+        openWorkspaceSearch()
+        return
+    }
+    if (action === 'baize:menu:edit:command-palette') {
+        openCommandPalette()
+        return
+    }
+    if (action === 'baize:menu:edit:quick-open') {
+        openQuickOpen()
+        return
+    }
+
+    // ========== 1.5.1 可选能力：文档历史 / Markdown lint ==========
+    // 能力开关关闭时入口直接返回 false（不挂载宿主）；动态 import 保证不进首屏静态闭包。
+    if (action === 'baize:menu:edit:document-history') {
+        void import('../Markdown/history').then((module) => module.openFileHistory())
+        return
+    }
+    if (action === 'baize:menu:edit:markdown-lint') {
+        void import('../Markdown/lint').then((module) => module.openMarkdownLint())
         return
     }
 

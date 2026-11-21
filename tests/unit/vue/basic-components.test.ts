@@ -177,6 +177,8 @@ describe('WelcomeScreen', () => {
 
     it('sends window control IPC messages when clicking the window buttons', async () => {
         const wrapper = mount(WelcomeScreen)
+        await flushPromises()
+        await vi.waitFor(() => expect(wrapper.find('.window-btn.minimize').exists()).toBe(true))
         await wrapper.find('.window-btn.minimize').trigger('click')
         await wrapper.find('.window-btn.maximize').trigger('click')
         await wrapper.find('.window-btn.close').trigger('click')

@@ -36,6 +36,13 @@ export interface SystemDialogSettings {
     backupCount: number
     // AS-9（P3 隐私）：允许预览加载文档中的远程图片（默认 false，仅本地图片）
     allowRemoteImages: boolean
+    // 可选能力开关（A1/A3/A4/A6/A7/A10）：全部默认关闭，见 shared/constants/feature-flags.ts
+    featureTabs: boolean
+    featureDocumentHistory: boolean
+    featureMarkdownLint: boolean
+    featureSpellcheck: boolean
+    featureSmartInput: boolean
+    featureOutlinePlus: boolean
 }
 
 /** 左侧页签（顺序即展示顺序；id 与模板中的 activePanel 判定一一对应） */
@@ -43,6 +50,7 @@ export const SYSTEM_SETTING_SIDEBAR_ITEMS = [
     { id: 'general', nameKey: 'dialogRenderer.systemSetting.sidebarGeneral', icon: '⚙️' },
     { id: 'file', nameKey: 'dialogRenderer.systemSetting.sidebarFile', icon: '📁' },
     { id: 'appearance', nameKey: 'dialogRenderer.systemSetting.sidebarAppearance', icon: '🎨' },
+    { id: 'features', nameKey: 'dialogRenderer.systemSetting.sidebarFeatures', icon: '🧩' },
     { id: 'backup', nameKey: 'dialogRenderer.systemSetting.sidebarBackup', icon: '💾' }
 ] as const
 
@@ -82,7 +90,13 @@ export function createDefaultSystemDialogSettings(): SystemDialogSettings {
         backupInterval: SYSTEM_SETTING_FALLBACK.backupInterval,
         backupCount: SYSTEM_SETTING_FALLBACK.backupCount,
         // AS-9（P3 隐私）：安全默认——不加载远程图片
-        allowRemoteImages: SYSTEM_SETTING_FALLBACK.allowRemoteImages
+        allowRemoteImages: SYSTEM_SETTING_FALLBACK.allowRemoteImages,
+        featureTabs: SYSTEM_SETTING_FALLBACK.featureTabs,
+        featureDocumentHistory: SYSTEM_SETTING_FALLBACK.featureDocumentHistory,
+        featureMarkdownLint: SYSTEM_SETTING_FALLBACK.featureMarkdownLint,
+        featureSpellcheck: SYSTEM_SETTING_FALLBACK.featureSpellcheck,
+        featureSmartInput: SYSTEM_SETTING_FALLBACK.featureSmartInput,
+        featureOutlinePlus: SYSTEM_SETTING_FALLBACK.featureOutlinePlus
     }
 }
 

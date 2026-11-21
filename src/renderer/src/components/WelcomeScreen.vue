@@ -60,14 +60,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { defineAsyncComponent, ref, onMounted } from 'vue'
 // 固定使用深色图标
 import logoDarkUltra from '../assets/icons/dark/baize_mirror_dark.svg'
 import { t } from '../common/i18n'
 import { logger } from '../common/logger'
 import { clampRecentFilesLimit } from '../../../shared/constants/recent-files'
 // 第 3 批组件化：窗口控制按钮统一为公共组件（内部复用 useWindowManagement）
-import WindowControls from './common/WindowControls.vue'
+// 首屏预算：窗口控制条异步加载，减少欢迎页静态入口 chunk；主界面另有同一组件实例。
+const WindowControls = defineAsyncComponent(() => import('./common/WindowControls.vue'))
 
 const emit = defineEmits(['openFile', 'openFolder', 'openRecentFolder'])
 

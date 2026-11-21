@@ -22,7 +22,7 @@
  *    可能读到迁移前的旧值（行为回归）。因此该阶段必须保持在 createWindow 之前。
  * 2. registerAll(mainWindow, hooks)：**主窗口创建之后**的一次性注册阶段，按改造前
  *    main/index.ts 的调用顺序逐项迁移（主题更新广播 → 渲染层就绪握手 → 对话框右键通道
- *    → utils 通道 → handlers 通道 → PlantUML 本地渲染）。
+ *    → utils 通道 → handlers 通道 → PlantUML 本地渲染 → A2 工作区搜索/替换）。
  *
  * 窗口重建（macOS activate）不会再次调用本文件：全局注册为进程级 persistent
  * （ipcListenerManager.registerOnce/registerHandleOnce），窗口重建只需刷新
@@ -58,6 +58,8 @@ import { setTrustedMainWindow, withSenderCheck } from '../utils/ipc-security'
 // P2 IPC 注册收口：原 utils/utils.ts 的 29 处注册已按域拆分到同目录模块，
 // 由 utils-ipc.ts 按拆分前顺序统一编排（本文件只负责阶段与调用位置）
 import { registerUtilsIpcHandlers } from './utils-ipc'
+// A2（2026-11-21）：全工作区搜索/替换（独立域模块，不并入 utils 侧 29 通道清单）
+import { registerWorkspaceSearchIpc } from './workspace-search-ipc'
 import { logger } from '../utils/logger'
 import { IPC } from '../../shared/ipc-channels'
 
@@ -67,6 +69,12 @@ import { IPC } from '../../shared/ipc-channels'
  * 保证台账（inventory）与既有诊断/测试口径不变。
  */
 const GLOBAL_MAIN_INDEX_COMPONENT_ID = 'global-main-index'
+
+/**
+ * A2 工作区搜索/替换 IPC 的监听台账组件 ID。
+ * 独立于 utils 侧通道清单（那是 29 个历史通道的冻结台账），便于诊断定位。
+ */
+const WORKSPACE_SEARCH_COMPONENT_ID = 'global-workspace-search-ipc'
 
 /** registerAll 的入口钩子：由 main/index.ts 提供的跨模块行为（避免 registry 反向依赖入口） */
 export interface RegisterAllHooks {
@@ -163,7 +171,7 @@ function registerRendererReadyIpc(onRendererReady?: () => void): void {
  *
  * 调用顺序 = 改造前 main/index.ts 的实际注册顺序，禁止调整：
  *   主题更新广播 → 渲染层就绪握手 → 对话框右键通道 → utils 通道 → handlers 通道 →
- *   PlantUML 本地渲染。
+ *   PlantUML 本地渲染 → A2 工作区搜索/替换。
  * 其中主题/就绪握手两条 persistent 注册改造前位于 createWindow 之前，M2 收口后
  * 统一在此执行；createWindow 返回后的同步调用仍早于渲染进程任何 IPC 消息
  * （页面加载是异步的），同通道注册顺序与语义不变。
@@ -185,4 +193,7 @@ export function registerAll(mainWindow: BrowserWindow, hooks: RegisterAllHooks =
     registerIpcHandlers(mainWindow)
     // 6) PF-08：PlantUML 本地离线渲染（隐藏窗口 + 串行队列 + LRU 缓存，原 main/index.ts:539）
     registerPlantumlLocalRenderIpc()
+    // 7) A2（2026-11-21）：全工作区搜索/替换（含 Quick Open 文件清单），默认开启。
+    //    仅主窗口可信；搜索/替换服务只信任 appState.rootPath 工作区根。
+    registerWorkspaceSearchIpc(mainWindow, WORKSPACE_SEARCH_COMPONENT_ID)
 }

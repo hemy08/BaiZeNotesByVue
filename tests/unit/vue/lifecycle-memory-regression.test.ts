@@ -73,6 +73,24 @@ vi.mock('@renderer/components/Markdown/hemy-editor', () => ({
     OptMaps: {}
 }))
 
+// 1.5.1 可选能力开关：真实 useFeatureFlags 是「应用级单例」——首次调用会注册一次
+// SYSTEM_SETTING_UPDATE IPC 订阅并常驻到应用退出（生产由 App.vue 在启动时初始化），
+// 不属于组件每次挂载/卸载的资源。本用例只守「组件自身监听成对释放」，
+// 故以静态开关 mock 隔离应用级单例（否则会多计入 1 条与挂载轮次无关的 IPC 订阅）。
+vi.mock('@renderer/composables/useFeatureFlags', () => ({
+    useFeatureFlags: () => ({
+        flags: {
+            tabs: false,
+            documentHistory: false,
+            markdownLint: false,
+            spellcheck: false,
+            smartInput: false,
+            outlinePlus: false
+        },
+        isFeatureEnabled: () => false
+    })
+}))
+
 import MarkdownMonacoEditor from '@renderer/components/Markdown/MarkdownMonacoEditor.vue'
 import BaseDialog from '@renderer/components/dialogs/BaseDialog.vue'
 import { getOpenDialogCount } from '@renderer/components/dialogs/dialog-stack'

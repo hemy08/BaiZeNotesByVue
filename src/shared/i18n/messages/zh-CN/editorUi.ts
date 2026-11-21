@@ -1,6 +1,8 @@
 /**
  * editorUi 命名空间（中）
- * Markdown 编辑器区 UI 文案：工具栏提示、文档大纲、图表渲染降级提示、快捷插入菜单分类。
+ * Markdown 编辑器区 UI 文案：工具栏提示、文档大纲、图表渲染降级提示、快捷插入菜单分类，
+ * 以及 1.5.1 新增能力（A2 工作区搜索、A9 命令面板 / Quick Open、A3 文档历史、A4 Markdown
+ * 检查、A8 复制增强、A10 大纲过滤）的对话框与操作文案。
  */
 export default {
     toolbar: {
@@ -44,7 +46,8 @@ export default {
         title: '文档大纲',
         lineTitle: '第 {line} 行',
         empty: '未检测到标题（# 开头的行）',
-        emptyTitle: '(空标题)'
+        emptyTitle: '(空标题)',
+        filterPlaceholder: '过滤标题'
     },
     editor: {
         ariaLabel: '白泽笔记编辑器'
@@ -104,5 +107,153 @@ export default {
         tabls1: '制表符 ╬',
         tabls2: '制表符 ┆',
         tabls3: '制表符 ╫'
+    },
+    /**
+     * A8 编辑器右键菜单动作（复制增强）。
+     * 源码 `hemy-editor-actions.ts` 的动作 id 固定为 `baize.copyAsMarkdown` / `baize.copyAsHtml`。
+     */
+    editorActions: {
+        copyAsMarkdown: '复制为 Markdown',
+        copyAsHtml: '复制为 HTML'
+    },
+    /** A2 全工作区搜索 / 替换对话框（`components/search/WorkspaceSearchDialog.vue`） */
+    workspaceSearch: {
+        title: '全工作区搜索 / 替换',
+        placeholder: '输入要搜索的内容',
+        search: '搜索',
+        caseSensitive: '区分大小写',
+        wholeWord: '全字匹配',
+        useRegex: '使用正则表达式',
+        replacePlaceholder: '输入替换内容',
+        replaceAll: '全部替换',
+        replaceAllConfirm: '确认替换 {count} 处匹配？该操作会写入磁盘。',
+        confirm: '确认替换',
+        cancel: '取消',
+        resultsLabel: '搜索结果',
+        searching: '正在搜索…',
+        initialHint: '输入关键词开始搜索工作区中的 Markdown 文件',
+        noResults: '未找到匹配项',
+        replaceOne: '替换',
+        truncated: '匹配结果过多，仅显示前一部分（请缩小搜索范围）',
+        close: '关闭',
+        resultSummary: '在 {files} 个文件中找到 {matches} 处匹配',
+        resultSummaryTruncated: '在 {files} 个文件中找到至少 {matches} 处匹配（结果已截断）',
+        replacedSummary: '已完成替换：{count} 处匹配',
+        error: {
+            noWorkspace: '请先打开工作区文件夹再搜索',
+            invalidQuery: '搜索内容无效，请检查输入',
+            invalidRegex: '正则表达式无效，请检查语法',
+            internal: '搜索失败：内部错误，请稍后重试',
+            searchFailed: '搜索失败，请稍后重试',
+            invalidInput: '替换参数无效，请检查输入',
+            pathDenied: '目标文件不在工作区内，已拒绝替换',
+            fileChanged: '文件内容已在磁盘上变化，请重新搜索后再替换',
+            writeFailed: '写入文件失败，请检查文件权限',
+            noMatch: '未找到可替换的匹配项'
+        }
+    },
+    /** A9 命令面板 / 文件 Quick Open（`components/search/CommandPalette.vue`） */
+    commandPalette: {
+        placeholder: '输入命令名称或关键词',
+        filePlaceholder: '输入文件名，快速打开工作区文件',
+        noResults: '没有匹配的命令',
+        loading: '正在加载文件列表…',
+        noFiles: '工作区中没有可打开的文件',
+        hint: '↑↓ 选择，Enter 执行，Esc 关闭',
+        fileHint: '↑↓ 选择，Enter 打开文件，Esc 关闭',
+        ariaLabel: '命令面板',
+        fileAriaLabel: '快速打开文件',
+        listLabel: '命令列表',
+        fileListLabel: '文件列表',
+        executeFailed: '命令执行失败',
+        openFileFailed: '打开文件失败，请稍后重试',
+        command: {
+            save: '保存',
+            openFolder: '打开文件夹',
+            openFile: '打开文件',
+            find: '查找',
+            replace: '替换',
+            gotoLine: '跳转到行',
+            outline: '显示/隐藏文章大纲',
+            insertTable: '插入 Markdown 表格',
+            insertMath: '插入数学公式',
+            insertMermaid: '插入 Mermaid 图表',
+            workspaceSearch: '工作区搜索/替换',
+            quickOpen: '快速打开文件',
+            showCommandPalette: '显示命令面板'
+        },
+        category: {
+            file: '文件',
+            edit: '编辑',
+            view: '视图',
+            insert: '插入',
+            search: '搜索'
+        }
+    },
+    /** A3 文档历史 / diff / 回滚对话框（`components/Markdown/history/FileHistoryDialog.vue`） */
+    fileHistory: {
+        title: '文档历史',
+        loading: '正在加载历史版本…',
+        loadFailed: '加载历史版本失败，请稍后重试',
+        noActiveFile: '当前没有打开的文件，保存文件后才会生成历史快照',
+        empty: '暂无历史版本（保存文件后自动生成快照，最多保留 20 版/文件）',
+        timeColumn: '保存时间',
+        sizeColumn: '大小',
+        latestBadge: '最新',
+        compareTitle: '版本 {time} 与当前内容比对',
+        diffTitle: '行级差异',
+        noDiff: '该版本与当前编辑内容一致',
+        selectHint: '请选择左侧历史版本查看差异',
+        tooLarge: '文档过大，无法生成行级 diff',
+        gapLines: '… 省略 {count} 行',
+        restore: '恢复此版本',
+        deleteVersion: '删除此版本',
+        restoreConfirm: '确认恢复',
+        restoreConfirmMessage:
+            '恢复将用该历史版本覆盖编辑器当前内容，未保存的修改会丢失。是否继续？',
+        clear: '清空该文件历史',
+        clearConfirm: '确认清空',
+        clearConfirmMessage: '将清空当前文件的全部历史版本，此操作不可撤销。是否继续？',
+        cancel: '取消',
+        close: '关闭',
+        usage: '历史占用 {used} / {limit}，共 {count} 个版本',
+        pathLabel: '文件：{path}'
+    },
+    /** A4 Markdown 检查 / 一键格式化对话框（`components/Markdown/lint/MarkdownLintDialog.vue`） */
+    markdownLint: {
+        title: 'Markdown 检查',
+        checking: '正在检查…',
+        loadFailed: '读取编辑器内容失败，请稍后重试',
+        noContent: '当前没有可检查的文档，请先打开或新建 Markdown 文件',
+        tooLarge: '文档过大，已跳过检查（超过 512K 字符）',
+        noIssues: '未发现 Markdown 规范问题',
+        recheck: '重新检查',
+        applyFormat: '一键格式化',
+        issueListTitle: '问题列表',
+        ruleStatsTitle: '规则统计',
+        ruleStatsTotal: '共 {total} 项：错误 {errors} / 警告 {warnings}',
+        summary: '共 {total} 项：错误 {errors} / 警告 {warnings}，可自动修复 {fixable} 项',
+        fixableHint: '可自动修复',
+        formatConfirmMessage:
+            '将对文档执行安全格式化：修复 {count} 项可自动修复问题（行尾空格、空行、围栏语言），不改标题层级/表格结构。是否继续？',
+        formatConfirm: '确认格式化',
+        cancel: '取消',
+        appliedStatus: '已应用格式化，修复 {count} 项可自动修复问题',
+        nochangeStatus: '没有可自动修复的内容（格式化结果与原文一致）',
+        savedContentHint: '编辑器未就绪，当前检查基于已保存内容',
+        targetEditor: '目标：{path}',
+        targetEditorFallback: '当前编辑器',
+        close: '关闭',
+        rules: {
+            headingIncrement: '标题层级跳跃：H{previous} → H{current}（标题应逐级递增）',
+            trailingSpaces: '行尾存在多余空格',
+            multipleBlanks: '存在连续多个空行（最多允许 1 个空行）',
+            blanksAroundHeadings: '标题前后需要空行',
+            blanksAroundFences: '代码围栏前后需要空行',
+            blanksAroundLists: '列表前后需要空行',
+            fencedCodeLanguage: '代码围栏缺少语言标识',
+            tableColumnCount: '表格列数与表头不一致（表头 {expected} 列，实际 {actual} 列）',
+            tableSeparator: '表格分隔行格式不正确（每列应为 --- / :-- / --: / :-:）'
+        }
     }
 }

@@ -201,6 +201,38 @@ const dialogRenderer = {
         sidebarFile: 'Files',
         sidebarAppearance: 'Appearance',
         sidebarBackup: 'Backup & restore',
+        sidebarFeatures: 'Features',
+        panelFeaturesTitle: 'Feature switches',
+        panelFeaturesDesc:
+            'Default capabilities are always on. Optional capabilities are off by default and only register their UI/behavior when enabled.',
+        groupDefaultFeatures: 'Default capabilities',
+        hintDefaultFeatures: 'Always available without configuration:',
+        groupOptionalFeatures: 'Optional capabilities',
+        hintOptionalFeatures:
+            'Off by default. Enabled changes take effect immediately; file/history features store data in the local app data directory.',
+        features: {
+            workspaceSearchLabel: 'Workspace search / replace',
+            pasteEnhanceLabel: 'Paste / copy enhancements',
+            commandPaletteLabel: 'Command palette / Quick Open',
+            tabsLabel: 'Tabs / session restore',
+            tabsDesc:
+                'Open multiple file tabs above the editor and restore the tab list after restart.',
+            documentHistoryLabel: 'Document history / diff / restore',
+            documentHistoryDesc:
+                'Save snapshots on save, view line-level diffs and restore a previous version into the editor.',
+            markdownLintLabel: 'Markdown lint / format',
+            markdownLintDesc:
+                'Check heading levels, blank lines around lists/code fences and trailing spaces, with one-click formatting.',
+            spellcheckLabel: 'Spellcheck',
+            spellcheckDesc:
+                'Enable the system/browser spellchecker in the editor; disabled means no spellchecker is loaded.',
+            smartInputLabel: 'Smart Markdown input',
+            smartInputDesc:
+                'Auto-number ordered lists, continue blockquotes and add blank lines after headings.',
+            outlinePlusLabel: 'Enhanced outline',
+            outlinePlusDesc:
+                'Outline supports setext headings, indentation and quick filtering for long documents.'
+        },
         panelGeneralTitle: 'General settings',
         panelGeneralDesc: 'Basic application settings',
         groupStartup: 'Startup',

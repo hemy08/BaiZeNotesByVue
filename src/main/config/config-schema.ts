@@ -175,7 +175,14 @@ const SYSTEM_BOOLEAN_FIELDS: ReadonlySet<string> = new Set([
     'mermaidEditModal',
     'quickLinkSettingModal',
     'techStackModal',
-    'webUrlModal'
+    'webUrlModal',
+    // 可选能力开关（A1/A3/A4/A6/A7/A10；默认 false，见 shared/constants/feature-flags.ts）
+    'featureTabs',
+    'featureDocumentHistory',
+    'featureMarkdownLint',
+    'featureSpellcheck',
+    'featureSmartInput',
+    'featureOutlinePlus'
 ])
 
 /** 系统设置中的数值字段范围（超范围钳制而非拒绝，避免一个越界值导致整次保存失败） */

@@ -37,6 +37,8 @@ const implementationMocks = vi.hoisted(() => ({
     registerUtilsIpcHandlers: vi.fn(),
     registerIpcHandlers: vi.fn(),
     registerPlantumlLocalRenderIpc: vi.fn(),
+    // A2（2026-11-21）：全工作区搜索/替换独立域注册入口
+    registerWorkspaceSearchIpc: vi.fn(),
     // 主题广播依赖
     getCurrentThemeStyles: vi.fn(),
     getThemeStylesByType: vi.fn(),
@@ -70,6 +72,11 @@ vi.mock('../../src/main/ipc/handlers', () => ({
 
 vi.mock('../../src/main/renders/plantuml-local', () => ({
     registerPlantumlLocalRenderIpc: implementationMocks.registerPlantumlLocalRenderIpc
+}))
+
+// A2（2026-11-21）：工作区搜索/替换为独立域模块（本文件只验证编排，不加载真实实现）
+vi.mock('../../src/main/ipc/workspace-search-ipc', () => ({
+    registerWorkspaceSearchIpc: implementationMocks.registerWorkspaceSearchIpc
 }))
 
 // P1-1：主题广播实现已迁到中性层 utils/theme-broadcast（config 不再 import ipc/**）
@@ -161,6 +168,9 @@ beforeEach(() => {
     implementationMocks.registerPlantumlLocalRenderIpc.mockImplementation(() => {
         callOrder.push('plantuml')
     })
+    implementationMocks.registerWorkspaceSearchIpc.mockImplementation(() => {
+        callOrder.push('workspace-search')
+    })
     implementationMocks.getCurrentThemeStyles.mockReturnValue({ name: 'baize' })
     implementationMocks.getThemeStylesByType.mockImplementation((themeType: string) => ({
         name: themeType
@@ -194,12 +204,17 @@ describe('registerAll（建窗后一次性注册清单）', () => {
         registerAll(mainWindow as never, { onRendererReady })
 
         // 改造前 main/index.ts 的注册顺序：对话框 → utils → handlers → PlantUML
-        // （主题/握手为 persistent 注册，见下一条用例；它们不进入 callOrder）
-        expect(callOrder).toEqual(['dialogs', 'utils', 'handlers', 'plantuml'])
+        // （A2 工作区搜索/替换为新增独立域，追加在 PlantUML 之后；主题/握手为 persistent 注册，
+        //  见下一条用例；它们不进入 callOrder）
+        expect(callOrder).toEqual(['dialogs', 'utils', 'handlers', 'plantuml', 'workspace-search'])
         expect(implementationMocks.mainWindowListenDialogsEvent).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerUtilsIpcHandlers).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerIpcHandlers).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerPlantumlLocalRenderIpc).toHaveBeenCalledTimes(1)
+        expect(implementationMocks.registerWorkspaceSearchIpc).toHaveBeenCalledWith(
+            mainWindow,
+            'global-workspace-search-ipc'
+        )
     })
 
     it('should register the persistent theme/ready listeners before the window-level registrations', () => {

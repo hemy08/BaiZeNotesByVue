@@ -107,6 +107,7 @@ describe('WelcomeScreen i18n', () => {
 
         setLocale('en-US')
         await wrapper.vm.$nextTick()
+        await vi.waitFor(() => expect(wrapper!.find('.window-btn.minimize').exists()).toBe(true))
         expect(wrapper.find('.welcome-title').text()).toBe('BaiZeNotes')
         expect(wrapper.findAll('.welcome-btn')[0].text()).toBe('Open File')
         expect(wrapper.find('.welcome-btn.minimize' as never).exists()).toBe(false)
