@@ -222,6 +222,10 @@ const editMenu: BaiZeMenuEntry = {
                 {
                     labelKey: 'menu.edit.knowledgeBacklinks',
                     menuAction: 'baize:menu:edit:knowledge-backlinks'
+                },
+                {
+                    labelKey: 'menu.edit.attachments',
+                    menuAction: 'baize:menu:edit:attachments'
                 }
             ]
         }

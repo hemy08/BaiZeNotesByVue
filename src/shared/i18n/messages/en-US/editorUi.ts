@@ -186,7 +186,8 @@ export default {
             frontMatter: 'Edit document properties',
             knowledgeTags: 'Browse tag index',
             knowledgeLinks: 'Check missing/ambiguous links',
-            knowledgeBacklinks: 'Show backlinks for current file'
+            knowledgeBacklinks: 'Show backlinks for current file',
+            attachments: 'Attachment manager'
         },
         category: {
             file: 'File',
@@ -388,5 +389,33 @@ export default {
         tagFilesLabel: 'Files with this tag',
         linkListLabel: 'Link issue list',
         backlinkListLabel: 'Backlink list'
+    },
+    /** B5 attachment manager dialog */
+    attachments: {
+        title: 'Attachment Manager',
+        loading: 'Loading workspace index (attachments)…',
+        loadFailed: 'Failed to load workspace index (attachments). Try again later.',
+        noWorkspace: 'No workspace open; open a folder to scan attachments',
+        unsupported: 'The current index does not include attachment data; refresh or upgrade',
+        empty: 'No attachments referenced in this workspace',
+        retry: 'Retry',
+        refresh: 'Refresh index',
+        refreshing: 'Refreshing workspace index…',
+        refreshFailed: 'Index refresh failed; showing the previous result',
+        reveal: 'Show in Explorer',
+        revealFailed: 'Cannot reveal in Explorer (IPC unavailable or path not trusted)',
+        close: 'Close',
+        summary:
+            '{total} attachments: {missing} missing / {available} available, {references} references',
+        missingSection: 'Missing attachments',
+        missingSectionLabel: 'Missing attachment list',
+        missingBadge: 'Missing',
+        availableSection: 'Available attachments',
+        availableSectionLabel: 'Available attachment list',
+        refCount: '{count} references',
+        refToggleLabel: 'Toggle source references',
+        refListLabel: 'Source files',
+        targetWorkspace: 'Workspace: {path}',
+        targetWorkspaceUnknown: 'Workspace index'
     }
 }

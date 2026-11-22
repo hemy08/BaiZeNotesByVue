@@ -121,4 +121,40 @@ describe('WritingModeHost', () => {
         ).toBe(false)
         wrapper.unmount()
     })
+
+    it('打字机/段落聚焦可切换，排版面板可调参数并恢复默认', async () => {
+        flags.writingMode = true
+        flags.writingTypewriter = true
+        flags.writingFocus = true
+        flags.writingTypography = true
+        flags.writingStats = true
+        writingModeState.enabled = true
+        const wrapper = mount(WritingModeHost)
+        await flushPromises()
+
+        const chips = wrapper.findAll('.writing-chip')
+        await chips[0].trigger('click')
+        await chips[1].trigger('click')
+        expect(writingModeState.typewriter).toBe(false)
+        expect(writingModeState.focusParagraph).toBe(false)
+
+        await chips[2].trigger('click')
+        const inputs = wrapper.findAll('.writing-field input')
+        expect(inputs.length).toBe(4)
+        await inputs[0].setValue('900')
+        await inputs[1].setValue('18')
+        await inputs[2].setValue('36')
+        await inputs[3].setValue('1500')
+        await flushPromises()
+        expect(writingModeState.contentWidth).toBe(900)
+        expect(writingModeState.fontSize).toBe(18)
+        expect(writingModeState.lineHeight).toBe(36)
+
+        await wrapper.find('.writing-reset').trigger('click')
+        await flushPromises()
+        expect(writingModeState.contentWidth).toBe(WRITING_MODE_DEFAULTS.contentWidth)
+        expect(writingModeState.fontSize).toBe(WRITING_MODE_DEFAULTS.fontSize)
+        expect(writingModeState.lineHeight).toBe(WRITING_MODE_DEFAULTS.lineHeight)
+        wrapper.unmount()
+    })
 })

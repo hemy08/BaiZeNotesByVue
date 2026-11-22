@@ -184,7 +184,8 @@ export default {
             frontMatter: '编辑文档属性',
             knowledgeTags: '浏览标签索引',
             knowledgeLinks: '检查缺失/歧义链接',
-            knowledgeBacklinks: '查看当前文件反向链接'
+            knowledgeBacklinks: '查看当前文件反向链接',
+            attachments: '附件管理'
         },
         category: {
             file: '文件',
@@ -381,5 +382,32 @@ export default {
         tagFilesLabel: '包含该标签的文件',
         linkListLabel: '链接问题列表',
         backlinkListLabel: '反向链接列表'
+    },
+    /** B5 附件管理对话框 */
+    attachments: {
+        title: '附件管理',
+        loading: '正在加载工作区索引（附件）…',
+        loadFailed: '加载工作区索引失败（附件索引），请稍后重试',
+        noWorkspace: '尚未打开工作区，无法扫描附件（请先打开一个文件夹）',
+        unsupported: '当前索引版本不支持附件信息，请升级或刷新索引',
+        empty: '工作区中没有引用任何附件',
+        retry: '重试',
+        refresh: '刷新索引',
+        refreshing: '正在刷新工作区索引…',
+        refreshFailed: '刷新索引失败，以下为上次索引结果',
+        reveal: '在资源管理器中显示',
+        revealFailed: '无法在资源管理器中显示（主进程不可用或路径不受信任）',
+        close: '关闭',
+        summary: '共 {total} 个附件：缺失 {missing} / 正常 {available}，引用 {references} 处',
+        missingSection: '缺失附件',
+        missingSectionLabel: '缺失附件列表',
+        missingBadge: '缺失',
+        availableSection: '正常附件',
+        availableSectionLabel: '正常附件列表',
+        refCount: '{count} 处引用',
+        refToggleLabel: '展开/收起引用来源',
+        refListLabel: '引用来源文件',
+        targetWorkspace: '工作区：{path}',
+        targetWorkspaceUnknown: '工作区索引'
     }
 }

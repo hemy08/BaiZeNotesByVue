@@ -1,7 +1,7 @@
 /**
  * 工作区索引服务单测（tests/unit/workspace-index.test.ts）
  *
- * 覆盖口径（task-9）：
+ * 覆盖口径（task-9 + task-12）：
  * - 根校验：空/不存在/非目录/非法路径 → 空快照；
  * - 扫描过滤：扩展名、忽略目录、符号链接、2 MiB 上限、深度上限；
  * - front matter：标题 / 标签（数组、字符串、逗号分隔）、CRLF/BOM；
@@ -9,8 +9,11 @@
  * - 标签：正文行内 `#tag`、heading 行与代码（围栏/行内）排除、大小写不敏感去重、聚合；
  * - Wiki 链接：基础/别名/heading、扩展名补全、相对源文件目录、缺失、歧义、title 消歧、
  *   代码内忽略、越出根目录不解析；
+ * - task-12 摘要：front matter/围栏代码/行内标记清理、空白压缩、240 码点截断、空正文；
+ * - task-12 附件：图片/普通链接引用、相对源文件目录、存在性、缺失计数、referencedBy
+ *   去重、外链/协议/绝对路径/锚点/越界忽略、代码块忽略、确定性排序；
  * - 查询 API：findBacklinks（含 Windows 大小写口径）、findLinkIssues、findFilesByTag；
- * - 快照确定性与统计字段。
+ * - 快照确定性与统计字段（含 attachmentCount / missingAttachmentCount）。
  *
  * 说明：全部用例使用 `os.tmpdir()` 下的独立 `baize-workspace-index-*` 临时目录，
  * 每个用例自建隔离根并在 afterAll 统一清理（不依赖 Electron/appState）。
@@ -20,6 +23,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import {
+    WORKSPACE_INDEX_EXCERPT_MAX_LENGTH,
     buildWorkspaceIndex,
     findBacklinks,
     findFilesByTag,
@@ -68,11 +72,14 @@ describe('buildWorkspaceIndex：根校验与降级', () => {
             expect(snapshot.files).toEqual([])
             expect(snapshot.tags).toEqual([])
             expect(snapshot.missingLinks).toEqual([])
+            expect(snapshot.attachments).toEqual([])
             expect(snapshot.stats).toEqual({
                 fileCount: 0,
                 linkCount: 0,
                 missingCount: 0,
-                ambiguousCount: 0
+                ambiguousCount: 0,
+                attachmentCount: 0,
+                missingAttachmentCount: 0
             })
             expect(typeof snapshot.generatedAt).toBe('number')
         }
@@ -83,7 +90,9 @@ describe('buildWorkspaceIndex：根校验与降级', () => {
         const snapshot = await buildWorkspaceIndex(missingRoot)
         expect(snapshot.rootPath).toBe('')
         expect(snapshot.files).toEqual([])
+        expect(snapshot.attachments).toEqual([])
         expect(snapshot.stats.fileCount).toBe(0)
+        expect(snapshot.stats.missingAttachmentCount).toBe(0)
     })
 
     it('根指向普通文件时返回空快照', async () => {
@@ -182,7 +191,7 @@ describe('buildWorkspaceIndex：扫描过滤', () => {
         expect(relativePaths[0]).toBe(`${withinDepth}/deep.md`)
     })
 
-    it('空文件也纳入索引（标题回退文件名、无标签/链接）', async () => {
+    it('空文件也纳入索引（标题回退文件名、无标签/链接/摘要）', async () => {
         const root = createWorkspaceRoot()
         writeWorkspaceFile(root, 'empty-note.md', '')
         const snapshot = await buildWorkspaceIndex(root)
@@ -190,6 +199,7 @@ describe('buildWorkspaceIndex：扫描过滤', () => {
         expect(file?.title).toBe('empty-note')
         expect(file?.tags).toEqual([])
         expect(file?.links).toEqual([])
+        expect(file?.excerpt).toBe('')
         expect(file?.size).toBe(0)
     })
 })
@@ -501,6 +511,246 @@ describe('buildWorkspaceIndex：Wiki 链接解析', () => {
         } finally {
             fs.rmSync(outside, { force: true })
         }
+    })
+})
+
+describe('buildWorkspaceIndex：正文摘要 excerpt（task-12 / E10）', () => {
+    it('去 front matter/标题/强调/链接/行内代码标记并压缩空白', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(
+            root,
+            'excerpt.md',
+            [
+                '---',
+                'title: 摘要测试',
+                'tags: [summary]',
+                '---',
+                '# 一级标题',
+                '正文   **加粗**   与 [链接文字](https://example.com/a) 以及 `行内代码`。',
+                ''
+            ].join('\n')
+        )
+        const snapshot = await buildWorkspaceIndex(root)
+        expect(findIndexedFile(snapshot, 'excerpt.md')?.excerpt).toBe(
+            '一级标题 正文 加粗 与 链接文字 以及 行内代码。'
+        )
+    })
+
+    it('整块丢弃围栏代码块内容，图片引用不进摘要', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(
+            root,
+            'fenced-excerpt.md',
+            [
+                '可见文字',
+                '```js',
+                'const hidden = 1',
+                '![隐藏图片](images/hidden.png)',
+                '```',
+                '![示意图](images/diagram.png)',
+                '结束语',
+                ''
+            ].join('\n')
+        )
+        const snapshot = await buildWorkspaceIndex(root)
+        expect(findIndexedFile(snapshot, 'fenced-excerpt.md')?.excerpt).toBe('可见文字 结束语')
+    })
+
+    it('清理引用/列表/表格/Wiki 链接标记', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(root, 'target.md', '# 目标')
+        writeWorkspaceFile(root, 'other.md', '# 其他')
+        writeWorkspaceFile(
+            root,
+            'markers.md',
+            [
+                '> 引用文字',
+                '- 列表项 **粗**',
+                '| 列一 | 列二 |',
+                '| --- | --- |',
+                '[[target|别名]] 与 [[other]]',
+                ''
+            ].join('\n')
+        )
+        const snapshot = await buildWorkspaceIndex(root)
+        expect(findIndexedFile(snapshot, 'markers.md')?.excerpt).toBe(
+            '引用文字 列表项 粗 列一 列二 别名 与 other'
+        )
+    })
+
+    it('空正文与仅 front matter 的文件摘要为空串', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(
+            root,
+            'empty-body.md',
+            ['---', 'title: 只有元数据', '---', ''].join('\n')
+        )
+        writeWorkspaceFile(root, 'empty-file.md', '')
+        const snapshot = await buildWorkspaceIndex(root)
+        expect(findIndexedFile(snapshot, 'empty-body.md')?.excerpt).toBe('')
+        expect(findIndexedFile(snapshot, 'empty-file.md')?.excerpt).toBe('')
+    })
+
+    it('长正文按 Unicode 码点截断到最多 240 字符且不切断代理对', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(root, 'long.md', '长'.repeat(300))
+        writeWorkspaceFile(root, 'emoji.md', '😀'.repeat(300))
+        const snapshot = await buildWorkspaceIndex(root)
+        const longExcerpt = findIndexedFile(snapshot, 'long.md')?.excerpt ?? ''
+        expect([...longExcerpt].length).toBe(WORKSPACE_INDEX_EXCERPT_MAX_LENGTH)
+        expect(longExcerpt).toBe('长'.repeat(WORKSPACE_INDEX_EXCERPT_MAX_LENGTH))
+        const emojiExcerpt = findIndexedFile(snapshot, 'emoji.md')?.excerpt ?? ''
+        expect([...emojiExcerpt].length).toBe(WORKSPACE_INDEX_EXCERPT_MAX_LENGTH)
+        expect(emojiExcerpt).toBe('😀'.repeat(WORKSPACE_INDEX_EXCERPT_MAX_LENGTH))
+        // 代理对成对保留（240 个 emoji = 480 个 UTF-16 码元，未出现半个代理对）
+        expect(emojiExcerpt.length).toBe(WORKSPACE_INDEX_EXCERPT_MAX_LENGTH * 2)
+    })
+})
+
+describe('buildWorkspaceIndex：附件引用（task-12 / B5）', () => {
+    it('图片/附件引用按绝对路径聚合，exists 与 referencedBy 正确', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(root, 'images/logo.png', 'png')
+        writeWorkspaceFile(root, 'docs/manual.pdf', 'pdf')
+        writeWorkspaceFile(
+            root,
+            'note.md',
+            [
+                '![图](images/logo.png)',
+                '[说明书](docs/manual.pdf)',
+                '再次引用 ![图2](./images/logo.png)',
+                ''
+            ].join('\n')
+        )
+        writeWorkspaceFile(root, 'sub/other.md', '![上级](../images/logo.png)\n')
+        const snapshot = await buildWorkspaceIndex(root)
+        const attachments = snapshot.attachments ?? []
+        expect(attachments.map((item) => item.relativePath)).toEqual([
+            'docs/manual.pdf',
+            'images/logo.png'
+        ])
+        expect(attachments.every((item) => item.exists)).toBe(true)
+        const logo = attachments.find((item) => item.relativePath === 'images/logo.png')
+        expect(logo?.path).toBe(path.resolve(root, 'images/logo.png'))
+        expect(logo?.referencedBy).toEqual([
+            path.resolve(root, 'note.md'),
+            path.resolve(root, 'sub/other.md')
+        ])
+        expect(snapshot.stats.attachmentCount).toBe(2)
+        expect(snapshot.stats.missingAttachmentCount).toBe(0)
+    })
+
+    it('缺失附件 exists=false 且计入 missingAttachmentCount', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(root, 'images/ok.png', 'png')
+        writeWorkspaceFile(
+            root,
+            'note.md',
+            [
+                '![存在](images/ok.png)',
+                '![缺失](images/missing.png)',
+                '[报告](assets/report.docx)',
+                ''
+            ].join('\n')
+        )
+        const snapshot = await buildWorkspaceIndex(root)
+        const attachments = snapshot.attachments ?? []
+        expect(attachments.map((item) => item.relativePath)).toEqual([
+            'assets/report.docx',
+            'images/missing.png',
+            'images/ok.png'
+        ])
+        expect(attachments.find((item) => item.relativePath === 'images/ok.png')?.exists).toBe(true)
+        expect(attachments.find((item) => item.relativePath === 'images/missing.png')?.exists).toBe(
+            false
+        )
+        expect(attachments.find((item) => item.relativePath === 'assets/report.docx')?.exists).toBe(
+            false
+        )
+        expect(snapshot.stats.attachmentCount).toBe(3)
+        expect(snapshot.stats.missingAttachmentCount).toBe(2)
+    })
+
+    it('忽略外链/协议/绝对路径/锚点/越界路径与非附件扩展名', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(root, 'images/ok.png', 'png')
+        writeWorkspaceFile(root, 'other.md', '# 其他笔记')
+        const outsidePath = path.join(path.dirname(root), 'baize-attachment-outside.png')
+        fs.writeFileSync(outsidePath, 'png', 'utf-8')
+        try {
+            writeWorkspaceFile(
+                root,
+                'note.md',
+                [
+                    '![外链](https://example.com/a.png)',
+                    '![数据](data:image/png;base64,AAAA)',
+                    '![应用](app://resource/icon.png)',
+                    '![盘符](C:/Windows/logo.png)',
+                    '![绝对](/absolute/logo.png)',
+                    '![协议相对](//cdn.example.com/logo.png)',
+                    '![锚点](#section)',
+                    '![越界](../baize-attachment-outside.png)',
+                    '[普通笔记](other.md)',
+                    '![有效](images/ok.png)',
+                    ''
+                ].join('\n')
+            )
+            const snapshot = await buildWorkspaceIndex(root)
+            expect(snapshot.attachments?.map((item) => item.relativePath)).toEqual([
+                'images/ok.png'
+            ])
+            expect(snapshot.stats.attachmentCount).toBe(1)
+            expect(snapshot.stats.missingAttachmentCount).toBe(0)
+        } finally {
+            fs.rmSync(outsidePath, { force: true })
+        }
+    })
+
+    it('围栏代码块与行内代码中的附件引用不参与索引', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(root, 'images/real.png', 'png')
+        writeWorkspaceFile(
+            root,
+            'note.md',
+            [
+                '```md',
+                '![代码内](images/code-only.png)',
+                '```',
+                '`![行内](images/inline-only.png)`',
+                '![真实](images/real.png)',
+                ''
+            ].join('\n')
+        )
+        const snapshot = await buildWorkspaceIndex(root)
+        expect(snapshot.attachments?.map((item) => item.relativePath)).toEqual(['images/real.png'])
+        expect(snapshot.stats.attachmentCount).toBe(1)
+    })
+
+    it('同一文件多次引用同一附件时 referencedBy 去重', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(root, 'images/logo.png', 'png')
+        writeWorkspaceFile(
+            root,
+            'note.md',
+            [
+                '![a](images/logo.png)',
+                '[b](./images/logo.png)',
+                '[c](images/../images/logo.png)',
+                ''
+            ].join('\n')
+        )
+        const snapshot = await buildWorkspaceIndex(root)
+        expect(snapshot.attachments).toHaveLength(1)
+        expect(snapshot.attachments?.[0]?.referencedBy).toEqual([path.resolve(root, 'note.md')])
+    })
+
+    it('无附件引用时 attachments 为空数组、统计为 0', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(root, 'plain.md', '没有附件引用的正文\n')
+        const snapshot = await buildWorkspaceIndex(root)
+        expect(snapshot.attachments).toEqual([])
+        expect(snapshot.stats.attachmentCount).toBe(0)
+        expect(snapshot.stats.missingAttachmentCount).toBe(0)
     })
 })
 

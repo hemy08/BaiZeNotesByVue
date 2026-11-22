@@ -55,7 +55,8 @@ export default {
         knowledge: '知识库',
         knowledgeTags: '标签索引…',
         knowledgeLinks: '链接检查…',
-        knowledgeBacklinks: '反向链接…'
+        knowledgeBacklinks: '反向链接…',
+        attachments: '附件管理…'
     },
     view: {
         label: '视图',

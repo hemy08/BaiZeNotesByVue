@@ -76,7 +76,8 @@ describe('buildPaletteCommands：命令清单', () => {
             'front-matter',
             'knowledge-tags',
             'knowledge-links',
-            'knowledge-backlinks'
+            'knowledge-backlinks',
+            'attachments'
         ])
         expect(new Set(ids).size).toBe(ids.length)
     })

@@ -195,6 +195,13 @@ export function buildPaletteCommands(handlers: PaletteCommandHandlers): PaletteC
             'editorUi.commandPalette.category.knowledge',
             'baize:menu:edit:knowledge-backlinks',
             ['backlink', 'reference', '反向链接', '反链']
+        ),
+        menuCommand(
+            'attachments',
+            'editorUi.commandPalette.command.attachments',
+            'editorUi.commandPalette.category.knowledge',
+            'baize:menu:edit:attachments',
+            ['attachment', 'image', 'orphan', '附件', '图片', '孤儿']
         )
     ]
 }

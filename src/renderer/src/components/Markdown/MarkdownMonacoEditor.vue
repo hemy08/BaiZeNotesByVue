@@ -583,6 +583,44 @@ function revealCursorLineWithBreathingRoom(): void {
     const targetLine = Math.min(position.lineNumber + 1, model.getLineCount())
     editorInstance.revealLineInCenterIfOutsideViewport(targetLine, monaco.editor.ScrollType.Smooth)
 }
+
+/* ==================== E10 Wiki 链接悬浮预览（1.5.1） ====================
+ * 悬停 `[[target]]` / `[[target|alias]]` / `[[target#heading]]` 展示目标标题、
+ * 相对路径、摘要与反链数量；数据源为工作区索引快照（复用既有 IPC，不新增通道）。
+ *
+ * 接线约束：
+ * - 本模块按需动态 import（Monaco 已就绪后才加载），不增加首屏静态依赖；
+ * - 文案在悬停时经 t() 求值（语言切换即时生效），解析/格式化逻辑全部在
+ *   wiki-link-hover.ts；这里只做注册与释放；
+ * - 任何失败（动态加载/注册）都静默降级，不影响编辑器主链路。
+ */
+/** hover provider 注册句柄（组件卸载时释放；null = 未注册/已释放） */
+let wikiLinkHoverHandle: { dispose(): void } | null = null
+/** 组件是否已卸载（动态 import 期间卸载时不再补注册） */
+let wikiLinkHoverUnmounted = false
+
+/** 动态加载并注册 Wiki 链接悬浮预览（编辑器创建后调用一次） */
+async function setupWikiLinkHover(): Promise<void> {
+    if (!editorInstance) {
+        return
+    }
+    try {
+        const { registerWikiLinkHover } = await import('./wiki-link-hover')
+        if (wikiLinkHoverUnmounted || !editorInstance) {
+            return
+        }
+        wikiLinkHoverHandle = registerWikiLinkHover(editorInstance, monaco, {
+            labels: () => ({
+                missing: t('editorUi.knowledge.statusMissing'),
+                ambiguous: t('editorUi.knowledge.statusAmbiguous'),
+                backlinks: (count: number) => t('editorUi.knowledge.summaryBacklinks', { count })
+            })
+        })
+    } catch (error) {
+        logger.warn('[E10] Wiki 链接悬浮预览注册失败，已跳过:', error)
+    }
+}
+
 //let model: monaco.editor.ITextModel | null = null
 //const registeredActions: string[] = []
 //const registeredDecorations: string[] = []
@@ -1215,6 +1253,9 @@ onMounted(async () => {
         // 1.5.0（滚动同步）：滚动/光标兜底两条订阅（内容变化在上一行回调内触发）
         registerScrollSyncListeners()
 
+        // E10（Wiki 链接悬浮预览）：Monaco 就绪后按需动态加载并注册（不增加首屏依赖）
+        void setupWikiLinkHover()
+
         editor.DidChange(editorInstance)
         editor.KeyMaps(editorInstance)
         // A7/A8：AddActions 返回的显式句柄（原生 paste 监听等）随组件卸载释放
@@ -1324,6 +1365,11 @@ onBeforeUnmount(() => {
         disposable?.dispose()
     }
     editorEnhanceDisposables.length = 0
+
+    // E10（Wiki 链接悬浮预览）：标记卸载并释放 hover provider（幂等；须先于 Monaco 销毁）
+    wikiLinkHoverUnmounted = true
+    wikiLinkHoverHandle?.dispose()
+    wikiLinkHoverHandle = null
 
     // 4. 完整清理 Monaco Editor
     if (editorInstance) {

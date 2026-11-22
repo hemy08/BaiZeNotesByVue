@@ -372,6 +372,10 @@ export function HandleMenuAction(action: string) {
         )
         return
     }
+    if (action === 'baize:menu:edit:attachments') {
+        void import('../Markdown/attachments').then((module) => module.openAttachmentDialog())
+        return
+    }
 
     // 编辑 → 查找（在文件中查找）
     // 事件名契约（勿改）：'editor-trigger-find'

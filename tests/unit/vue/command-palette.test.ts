@@ -76,7 +76,7 @@ describe('CommandPalette：命令模式', () => {
     it('渲染全部命令并按分类分组', async () => {
         const wrapper = mountPalette()
         await flushPromises()
-        expect(wrapper.findAll('.palette-option')).toHaveLength(17)
+        expect(wrapper.findAll('.palette-option')).toHaveLength(18)
         expect(wrapper.findAll('.palette-group-title').length).toBeGreaterThanOrEqual(4)
     })
 

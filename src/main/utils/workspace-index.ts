@@ -7,7 +7,9 @@
  *   输出可跨进程传输的 `WorkspaceIndexSnapshot`；
  * - `findBacklinks()`：按链接 `resolvedPath` 反查来源行/列（反链面板）；
  * - `findLinkIssues()`：缺失 + 歧义链接合并清单（链接检查面板）；
- * - `findFilesByTag()`：按标签查文件（标签面板）。
+ * - `findFilesByTag()`：按标签查文件（标签面板）；
+ * - task-12（B5/E10）：为每个文件生成正文纯文本摘要 `excerpt`（≤240 字符），
+ *   并聚合 Markdown 图片/附件引用为 `attachments`（含存在性、来源文件）。
  *
  * ## 边界与安全口径
  * 1. **根由调用方传入**（主进程 IPC 取 `appState.rootPath`），本服务不读 `appState`、
@@ -20,6 +22,8 @@
  *    返回空快照（`rootPath === ''`），整体异常兜底同样降级为空快照；
  * 5. 不新增依赖：front matter 解析复用 shared 层 `parseFrontMatter`（纯函数），
  *    路径比较复用 `shared/utils/path.ts` 的纯函数。
+ * 6. 附件解析只做「词法相对路径 + 工作区 containment + `stat` 存在性检查」，
+ *    不读取附件内容、不解析符号链接真实目标；`../` 越界与协议/绝对路径一律忽略。
  *
  * ## 解析口径（与 task-9 冻结要求一致）
  * - 标题：front matter `title` > 第一个 H1 > 去掉扩展名的文件名；
@@ -30,12 +34,19 @@
  *   ① 工作区根相对路径（无扩展名时依次补 `.md`/`.markdown`/`.txt`）；
  *   ② 相对源文件所在目录；
  *   ③ 全库 basename（去扩展名）唯一匹配，再 title 唯一匹配；
- * - 行/列 1-based，行号相对整个文件（含 front matter 行）。
+ * - 行/列 1-based，行号相对整个文件（含 front matter 行）；
+ * - 摘要（task-12）：front matter 之后的正文，去掉围栏代码块与 Markdown 标记
+ *   （标题/列表/引用/强调/链接/图片/表格/HTML），压缩空白后按 Unicode 码点截断到 240；
+ * - 附件（task-12）：`![alt](path)` 与 `[text](path)` 中扩展名属于附件集合的本地相对路径，
+ *   按源文件目录解析为绝对路径，按绝对路径聚合 `referencedBy`，缺失者 `exists === false`。
  *
  * ## 已知限制
  * - 仅支持围栏代码块（``` / ~~~）与行内代码，不识别四空格缩进代码块与 setext 标题；
  * - Wiki 链接不解析 `![[embed]]` 嵌入语义、不展开别名/heading 跳转；
- * - 文件数达到上限后按目录名/文件名排序截断（快照无 truncated 字段，属既定 API）。
+ * - 文件数达到上限后按目录名/文件名排序截断（快照无 truncated 字段，属既定 API）；
+ * - 摘要会整块丢弃围栏代码块内容；不解析 reference 式链接定义（`[label]: url`）与
+ *   HTML `<img>`；附件引用不解析 `<...>` 之外含未编码空格的路径、不跟随 `?query`/`#fragment`；
+ * - 附件存在性按 `stat`（跟随符号链接）判定，符号链接断链/指向目录按缺失处理。
  */
 import * as fs from 'fs'
 import type { Dirent, Stats } from 'fs'
@@ -48,6 +59,7 @@ import {
     normalizeSlashes
 } from '../../shared/utils/path'
 import type {
+    WorkspaceAttachment,
     WorkspaceIndexBacklink,
     WorkspaceIndexFile,
     WorkspaceIndexLink,
@@ -60,6 +72,68 @@ import type {
 
 /** 允许索引的文本扩展名（小写带点，大小写不敏感比较；与 workspace-search 同口径） */
 export const WORKSPACE_INDEX_EXTENSIONS: readonly string[] = ['.md', '.markdown', '.txt']
+
+/**
+ * 附件引用识别的扩展名集合（小写、不含点；task-12）。
+ *
+ * 只收录「非索引文本」的图片/文档/压缩包/音视频等常见附件：`.md/.markdown/.txt`
+ * 属于笔记正文，不当作附件；清单可按 B5 需求继续扩充，不影响已有行为。
+ */
+export const WORKSPACE_ATTACHMENT_EXTENSIONS: ReadonlySet<string> = new Set([
+    // 图片
+    'png',
+    'jpg',
+    'jpeg',
+    'gif',
+    'webp',
+    'svg',
+    'bmp',
+    'ico',
+    'tif',
+    'tiff',
+    'avif',
+    'heic',
+    'heif',
+    // 文档
+    'pdf',
+    'doc',
+    'docx',
+    'xls',
+    'xlsx',
+    'ppt',
+    'pptx',
+    'csv',
+    'rtf',
+    'odt',
+    'ods',
+    'odp',
+    'epub',
+    // 压缩包 / 安装包
+    'zip',
+    'rar',
+    '7z',
+    'tar',
+    'gz',
+    'tgz',
+    'bz2',
+    'xz',
+    'dmg',
+    'exe',
+    'msi',
+    'apk',
+    // 音视频
+    'mp3',
+    'wav',
+    'ogg',
+    'flac',
+    'mp4',
+    'webm',
+    'mov',
+    'mkv'
+])
+
+/** 摘要最大字符数（按 Unicode 码点计，避免截断代理对；task-12 / E10） */
+export const WORKSPACE_INDEX_EXCERPT_MAX_LENGTH = 240
 
 /** 扫描时跳过的目录名（依赖/VCS/IDE/凭据类目录；命中任意层级即跳过） */
 export const WORKSPACE_INDEX_IGNORED_DIRS: ReadonlySet<string> = new Set([
@@ -112,6 +186,58 @@ const H1_PATTERN = /^\s{0,3}#[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/
 /** 行内代码片段（Backtick 数量成对匹配；用于扫描前等长替换为空格） */
 const INLINE_CODE_PATTERN = /(`+)[\s\S]*?\1/g
 
+/* --------------------- task-12：摘要 / 附件引用解析用模式 --------------------- */
+
+/**
+ * Markdown 行内图片/链接：`![alt](dest)` / `[text](dest)`。
+ *
+ * 分组：1=`!` 或空串（区分图片与普通链接）；2=链接文字；3=目标原文（可含尖括号与标题）。
+ * 目标允许一层配对的圆括号（如 `a(1).png`），避免被首个 `)` 截断；不支持嵌套两层以上。
+ * 同一模式同时供摘要（保留文字、丢弃图片）与附件引用（取目标）使用，保证口径一致。
+ */
+const MARKDOWN_INLINE_LINK_PATTERN =
+    /(!?)\[([^[\]\r\n]*)\]\(([^()\r\n]*(?:\([^()\r\n]*\)[^()\r\n]*)*)\)/g
+
+/** 外部协议前缀（http/https/data/app/file/mailto 等，含 Windows 盘符 `C:`）：附件解析一律忽略 */
+const EXTERNAL_PROTOCOL_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:/
+
+/** HTML 注释（摘要时整段丢弃） */
+const HTML_COMMENT_PATTERN = /<!--[\s\S]*?-->/g
+
+/** HTML 标签（摘要时丢弃标签、保留文字） */
+const HTML_TAG_PATTERN = /<[^<>\r\n]+>/g
+
+/** Markdown reference 式链接 `[text][label]`（摘要时保留文字；不解析定义行） */
+const MD_REFERENCE_LINK_PATTERN = /\[([^[\]\r\n]*)\]\[[^[\]\r\n]*\]/g
+
+/** Wiki 链接 `[[target|alias]]`（摘要时取展示文字） */
+const MD_WIKI_LINK_PATTERN = /\[\[([^[\]\r\n]+)\]\]/g
+
+/** 加粗/斜体/删除线标记（摘要时去标记、保留文字；下划线斜体要求词边界） */
+const MD_BOLD_PATTERN = /\*\*([^*\r\n]+)\*\*/g
+const MD_ITALIC_STAR_PATTERN = /\*([^*\r\n]+)\*/g
+const MD_BOLD_UNDERSCORE_PATTERN = /__([^_\r\n]+)__/g
+const MD_ITALIC_UNDERSCORE_PATTERN = /(^|[\s(])_([^_\r\n]+)_(?=$|[\s).,;:!?])/g
+const MD_STRIKETHROUGH_PATTERN = /~~([^~\r\n]+)~~/g
+
+/** 水平分割线行（摘要时整行丢弃） */
+const MD_HORIZONTAL_RULE_PATTERN = /^\s{0,3}([-*_])(?:\s*\1){2,}\s*$/
+
+/** 引用块前缀 `>`（摘要时去掉标记） */
+const MD_BLOCKQUOTE_PREFIX_PATTERN = /^\s{0,3}(?:>\s?)+/
+
+/** 标题前缀 `#` ~ `######`（摘要时去掉标记；`#标题` 无空格不算标题） */
+const MD_HEADING_PREFIX_PATTERN = /^\s{0,3}#{1,6}\s+/
+
+/** 标题尾部的闭合 `#` 序列（`# 标题 ##` → `标题`） */
+const MD_HEADING_TRAILING_PATTERN = /(?:\s+#+)\s*$/
+
+/** 列表项前缀（无序 / 有序 / 任务列表复选框；摘要时去掉标记） */
+const MD_LIST_MARKER_PATTERN = /^\s*(?:[-*+]|\d{1,9}[.)])\s+(?:\[[ xX]\]\s+)?/
+
+/** 表格分隔行单元格（`---` / `:---:` / `---:`；摘要时整行丢弃） */
+const MD_TABLE_SEPARATOR_CELL_PATTERN = /^:?-{3,}:?$/
+
 /* ============================ 内部类型 ============================ */
 
 /** 工作区根（词法绝对路径 + realpath 物理路径） */
@@ -134,7 +260,18 @@ interface RawLink {
     column: number
 }
 
-/** 单文件解析结果（front matter / 标题 / 标签 / 原始链接） */
+/**
+ * 单条 Markdown 图片/链接的原始附件目标（task-12）。
+ *
+ * 收集阶段只保存目标原文（已去尖括号/标题），解析为工作区绝对路径在扫描完成后统一进行
+ * （需要工作区根与来源文件目录）；非附件扩展名/外链在解析阶段过滤。
+ */
+interface RawAttachmentReference {
+    /** 目标原文（可能含 URL 编码，如 `images/a%20b.png`） */
+    target: string
+}
+
+/** 单文件解析结果（front matter / 标题 / 标签 / 原始链接 / 摘要 / 附件引用） */
 interface ParsedFileContent {
     /** front matter title 或第一个 H1；未命中时为空串（由调用方回退文件名） */
     title: string
@@ -142,12 +279,17 @@ interface ParsedFileContent {
     tags: string[]
     /** 原始链接清单 */
     links: RawLink[]
+    /** 正文纯文本摘要（≤240 字符；空正文为空串） */
+    excerpt: string
+    /** 原始附件引用清单（正文出现顺序） */
+    attachmentReferences: RawAttachmentReference[]
 }
 
-/** 扫描条目：文件元数据 + 待解析的原始链接 */
+/** 扫描条目：文件元数据 + 待解析的原始链接/附件引用 */
 interface ScannedEntry {
     file: WorkspaceIndexFile
     rawLinks: RawLink[]
+    rawAttachmentReferences: RawAttachmentReference[]
 }
 
 /** 目录递归状态 */
@@ -260,6 +402,132 @@ function addTag(tags: string[], seenTags: Set<string>, candidate: string): void 
     tags.push(normalized)
 }
 
+/* ============================ 摘要生成（task-12 / E10） ============================ */
+
+/** 按 Unicode 码点截断（不切断代理对，保证输出仍是合法字符串） */
+function truncateToCodePoints(text: string, maxLength: number): string {
+    if (text.length <= maxLength) {
+        return text
+    }
+    const codePoints = Array.from(text)
+    return codePoints.length <= maxLength ? text : codePoints.slice(0, maxLength).join('')
+}
+
+/** 去掉围栏代码块（含围栏标记行与块内代码），返回保留下来的正文行 */
+function stripFencedCodeBlocks(body: string): string[] {
+    const kept: string[] = []
+    let fence: FenceMarker | null = null
+    for (const line of body.split(/\r\n|\r|\n/)) {
+        const marker = readFenceMarker(line)
+        if (fence !== null) {
+            if (
+                marker !== null &&
+                marker.char === fence.char &&
+                marker.length >= fence.length &&
+                marker.bare
+            ) {
+                fence = null
+            }
+            continue
+        }
+        if (marker !== null) {
+            fence = marker
+            continue
+        }
+        kept.push(line)
+    }
+    return kept
+}
+
+/** 是否为 Markdown 表格分隔行（`| --- | :---: |` 等；摘要时整行丢弃） */
+function isTableSeparatorLine(line: string): boolean {
+    const cells = line
+        .split('|')
+        .map((cell) => cell.trim())
+        .filter((cell) => cell.length > 0)
+    if (cells.length === 0) {
+        return false
+    }
+    return cells.every((cell) => MD_TABLE_SEPARATOR_CELL_PATTERN.test(cell))
+}
+
+/** 清理单行行首 Markdown 结构标记（标题/引用/列表/表格分隔），返回剩余文字 */
+function cleanExcerptLine(line: string): string {
+    if (MD_HORIZONTAL_RULE_PATTERN.test(line) || isTableSeparatorLine(line)) {
+        return ''
+    }
+    let text = line.replace(MD_BLOCKQUOTE_PREFIX_PATTERN, '')
+    if (MD_HEADING_PREFIX_PATTERN.test(text)) {
+        text = text.replace(MD_HEADING_PREFIX_PATTERN, '').replace(MD_HEADING_TRAILING_PATTERN, '')
+    }
+    text = text.replace(MD_LIST_MARKER_PATTERN, '')
+    // 表格竖线转空格：保留单元格文字、避免 `|` 混入摘要
+    if (text.includes('|')) {
+        text = text.replace(/\|/g, ' ')
+    }
+    return text
+}
+
+/** 把 Wiki 链接内层 `target|alias` / `target#heading` 转为摘要展示文字 */
+function getWikiLinkDisplayText(inner: string): string {
+    const pipeIndex = inner.indexOf('|')
+    if (pipeIndex >= 0) {
+        return inner.slice(pipeIndex + 1).trim()
+    }
+    const hashIndex = inner.indexOf('#')
+    return (hashIndex >= 0 ? inner.slice(0, hashIndex) : inner).trim()
+}
+
+/**
+ * 去掉单行文本中的 Markdown 行内标记（摘要用）。
+ *
+ * 处理顺序：图片整段丢弃 → 普通/reference 链接保留文字 → Wiki 链接取展示文字 →
+ * HTML 标签丢弃 → 加粗/斜体/删除线保留文字 → 行内代码去反引号保留内容。
+ * 必须在行级表格竖线归一化**之前**调用，否则 `[[target|alias]]` 的 `|` 会被误当表格分隔符。
+ */
+function stripInlineMarkdown(text: string): string {
+    let result = text.replace(
+        MARKDOWN_INLINE_LINK_PATTERN,
+        (_matched, imageFlag: string, label: string) => (imageFlag === '!' ? '' : ` ${label} `)
+    )
+    result = result.replace(MD_REFERENCE_LINK_PATTERN, (_matched, label: string) => ` ${label} `)
+    result = result.replace(MD_WIKI_LINK_PATTERN, (_matched, inner: string) => {
+        const display = getWikiLinkDisplayText(inner)
+        return display.length > 0 ? ` ${display} ` : ''
+    })
+    result = result.replace(HTML_TAG_PATTERN, ' ')
+    result = result.replace(MD_BOLD_PATTERN, '$1')
+    result = result.replace(MD_BOLD_UNDERSCORE_PATTERN, '$1')
+    result = result.replace(MD_STRIKETHROUGH_PATTERN, '$1')
+    result = result.replace(MD_ITALIC_STAR_PATTERN, '$1')
+    result = result.replace(MD_ITALIC_UNDERSCORE_PATTERN, '$1$2')
+    // 行内代码：去掉反引号、保留内容；未配对的散落反引号一并清除
+    return result.replace(INLINE_CODE_PATTERN, (matched) => matched.slice(1, -1)).replace(/`/g, '')
+}
+
+/**
+ * 生成正文纯文本摘要（task-12 / E10）。
+ *
+ * 处理顺序：
+ * 1. 输入为 `parseFrontMatter()` 的 body（front matter 已剔除）；
+ * 2. 去 HTML 注释；整块丢弃围栏代码块（含块内代码）；
+ * 3. 逐行先去行内标记（{@link stripInlineMarkdown}），再去行级结构标记：
+ *    水平分割线/表格分隔行整行丢弃，引用/标题/列表/任务项去前缀，表格竖线转空格；
+ * 4. 压缩连续空白为单个空格并 trim，最后按 Unicode 码点截断到 240 字符。
+ *
+ * @param body front matter 之后的正文
+ * @returns 摘要（空正文返回空串；长度按码点 ≤ {@link WORKSPACE_INDEX_EXCERPT_MAX_LENGTH}）
+ */
+function buildExcerpt(body: string): string {
+    if (body.length === 0) {
+        return ''
+    }
+    const lines = stripFencedCodeBlocks(body.replace(HTML_COMMENT_PATTERN, ' '))
+    const text = lines.map((line) => cleanExcerptLine(stripInlineMarkdown(line))).join('\n')
+    const compressed = text.replace(/\s+/g, ' ').trim()
+    return truncateToCodePoints(compressed, WORKSPACE_INDEX_EXCERPT_MAX_LENGTH)
+}
+
 /* ============================ front matter / 标题 / 标签 / 链接解析 ============================ */
 
 /** 读取 front matter `title`（字符串；数字转为字符串；其余忽略） */
@@ -330,9 +598,56 @@ function collectWikiLinks(line: string, lineNumber: number, links: RawLink[]): v
 }
 
 /**
- * 解析单个文件的 front matter / 标题 / 标签 / Wiki 链接。
+ * 从 Markdown 行内链接的圆括号内容中提取目标路径（task-12）。
  *
- * 行号以整个文件为基准（front matter 行计入）；围栏代码块与行内代码内的内容一律忽略。
+ * 支持两种写法：`(<path with space>)` 尖括号形式（原样返回内部路径）与普通形式
+ * `(path "title")`（去掉可选 title，取首个空白之前的部分）。
+ *
+ * @returns 目标原文（未做 URL 解码）；为空返回 null
+ */
+function extractMarkdownLinkDestination(rawDestination: string): string | null {
+    let destination = rawDestination.trim()
+    if (destination.startsWith('<')) {
+        const end = destination.indexOf('>')
+        if (end < 0) {
+            return null
+        }
+        destination = destination.slice(1, end).trim()
+        return destination.length > 0 ? destination : null
+    }
+    const spaceIndex = destination.search(/\s/)
+    if (spaceIndex >= 0) {
+        destination = destination.slice(0, spaceIndex)
+    }
+    return destination.length > 0 ? destination : null
+}
+
+/**
+ * 收集单行正文中的 Markdown 图片/附件引用候选（task-12；调用方已屏蔽行内代码）。
+ *
+ * 这里只收集目标原文（图片与普通链接一视同仁），扩展名过滤/路径解析/存在性检查
+ * 统一在扫描完成后的附件解析阶段进行，便于按工作区根与来源文件目录解析。
+ */
+function collectAttachmentReferences(line: string, references: RawAttachmentReference[]): void {
+    if (!line.includes('](')) {
+        return
+    }
+    MARKDOWN_INLINE_LINK_PATTERN.lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = MARKDOWN_INLINE_LINK_PATTERN.exec(line)) !== null) {
+        const destination = extractMarkdownLinkDestination(match[3])
+        if (destination === null) {
+            continue
+        }
+        references.push({ target: destination })
+    }
+}
+
+/**
+ * 解析单个文件的 front matter / 标题 / 标签 / Wiki 链接 / 摘要 / 附件引用。
+ *
+ * 行号以整个文件为基准（front matter 行计入）；围栏代码块与行内代码内的内容一律忽略
+ * （摘要另行整块丢弃围栏代码，见 {@link buildExcerpt}）。
  */
 function parseFileContent(content: string): ParsedFileContent {
     const parsed = parseFrontMatter(content)
@@ -345,6 +660,7 @@ function parseFileContent(content: string): ParsedFileContent {
     const bodyStartOffset = resolveBodyStartOffset(content, parsed)
     const lineOffset = countLineBreaks(content.slice(0, bodyStartOffset))
     const links: RawLink[] = []
+    const attachmentReferences: RawAttachmentReference[] = []
     const lines = parsed.body.split(/\r\n|\r|\n/)
     /** 当前围栏代码块状态（null 表示不在围栏内） */
     let fence: FenceMarker | null = null
@@ -378,8 +694,15 @@ function parseFileContent(content: string): ParsedFileContent {
             collectInlineTags(maskedLine, tags, seenTags)
         }
         collectWikiLinks(maskedLine, lineOffset + index + 1, links)
+        collectAttachmentReferences(maskedLine, attachmentReferences)
     }
-    return { title, tags, links }
+    return {
+        title,
+        tags,
+        links,
+        excerpt: buildExcerpt(parsed.body),
+        attachmentReferences
+    }
 }
 
 /* ============================ 根解析与目录扫描 ============================ */
@@ -458,12 +781,14 @@ async function readIndexedFile(root: IndexedRoot, filePath: string): Promise<Sca
             relativePath: normalizeSlashes(path.relative(root.lexical, filePath)),
             name,
             title: parsedContent.title.length > 0 ? parsedContent.title : getFileStem(name),
+            excerpt: parsedContent.excerpt,
             tags: parsedContent.tags,
             links: [],
             size: stats.size,
             mtimeMs: stats.mtimeMs
         },
-        rawLinks: parsedContent.links
+        rawLinks: parsedContent.links,
+        rawAttachmentReferences: parsedContent.attachmentReferences
     }
 }
 
@@ -654,6 +979,160 @@ function resolveLinkTarget(
     return resolveByBasenameOrTitle(target, lookup)
 }
 
+/* ============================ 附件引用解析（task-12 / B5） ============================ */
+
+/**
+ * 把 Markdown 链接目标归一化为本地相对路径（task-12）。
+ *
+ * 依次处理：去协议/盘符（http/https/data/app/file/C: 等一律忽略）→ 反斜杠归一化 →
+ * 去 `#fragment` 与 `?query` → 安全 URL 解码 → 拒绝空目标、NUL、绝对路径与 UNC。
+ *
+ * @returns 本地相对路径；外部引用/绝对路径/非法解码返回 null
+ */
+function decodeAttachmentPath(rawTarget: string): string | null {
+    let value = rawTarget.trim()
+    if (value.length === 0) {
+        return null
+    }
+    // 协议 / 盘符开头一律视为外部引用（`C:` 与 `http:` 同属「带 scheme」形态）
+    if (EXTERNAL_PROTOCOL_PATTERN.test(value)) {
+        return null
+    }
+    value = normalizeSlashes(value)
+    // 片段（#anchor）与查询串（?raw=1）不属于本地文件路径
+    const boundary = value.search(/[?#]/)
+    if (boundary >= 0) {
+        value = value.slice(0, boundary)
+    }
+    if (value.includes('%')) {
+        try {
+            value = decodeURIComponent(value)
+        } catch {
+            return null
+        }
+    }
+    value = value.trim()
+    // 空目标、NUL、POSIX 绝对路径 / UNC（`//server/...`）一律忽略
+    if (value.length === 0 || value.includes('\u0000') || value.startsWith('/')) {
+        return null
+    }
+    return value
+}
+
+/**
+ * 解析单条附件引用为工作区内的绝对路径（task-12）。
+ *
+ * 相对源文件所在目录词法解析，拒绝 `../` 越界与工作区外路径；扩展名必须属于
+ * {@link WORKSPACE_ATTACHMENT_EXTENSIONS}。此函数不做 IO（存在性在聚合阶段统一检查）。
+ *
+ * @returns 绝对路径 + 相对工作区根展示路径；非附件/外链/越界返回 null
+ */
+function resolveAttachmentReference(
+    root: IndexedRoot,
+    sourceRelativePath: string,
+    rawTarget: string
+): { absolutePath: string; relativePath: string } | null {
+    const target = decodeAttachmentPath(rawTarget)
+    if (target === null || !WORKSPACE_ATTACHMENT_EXTENSIONS.has(getExtension(target))) {
+        return null
+    }
+    const sourceDirectory = getParentRelativePath(sourceRelativePath)
+    const combined = path.posix.normalize(
+        sourceDirectory.length > 0 ? `${sourceDirectory}/${target}` : target
+    )
+    if (combined === '.' || combined === '..' || combined.startsWith('../')) {
+        return null
+    }
+    const absolutePath = path.resolve(root.lexical, combined)
+    const withinRoot = isPathWithin(absolutePath, root.lexical, {
+        win32CaseInsensitive: WIN32_CASE_INSENSITIVE
+    })
+    if (!withinRoot) {
+        return null
+    }
+    return {
+        absolutePath,
+        relativePath: normalizeSlashes(path.relative(root.lexical, absolutePath))
+    }
+}
+
+/** 附件是否存在且为普通文件（stat 跟随符号链接；权限/竞态错误按缺失处理） */
+async function attachmentFileExists(absolutePath: string): Promise<boolean> {
+    try {
+        const stats = await fs.promises.stat(absolutePath)
+        return stats.isFile()
+    } catch {
+        return false
+    }
+}
+
+/** 附件聚合中间态（referencedBy 去重需额外键集合，不进入跨进程契约） */
+interface PendingAttachment {
+    path: string
+    relativePath: string
+    referencedBy: string[]
+    referencedKeys: Set<string>
+}
+
+/**
+ * 聚合全部文件的附件引用（task-12 / B5 附件管理）。
+ *
+ * - 按绝对路径聚合（Windows 下大小写不敏感），同一附件只输出一条；
+ * - `referencedBy` 去重，顺序与快照 `files` 顺序（relativePath 升序）一致；
+ * - 逐条 `stat` 检查存在性，缺失附件保留（`exists === false`）；
+ * - 输出按 `relativePath` 升序、同路径按绝对路径升序，保证快照确定性。
+ */
+async function buildAttachmentIndex(
+    root: IndexedRoot,
+    entries: readonly ScannedEntry[]
+): Promise<WorkspaceAttachment[]> {
+    const pending = new Map<string, PendingAttachment>()
+    for (const entry of entries) {
+        for (const reference of entry.rawAttachmentReferences) {
+            const resolved = resolveAttachmentReference(
+                root,
+                entry.file.relativePath,
+                reference.target
+            )
+            if (resolved === null) {
+                continue
+            }
+            const key = normalizePathForCompare(resolved.absolutePath, WIN32_CASE_INSENSITIVE)
+            let item = pending.get(key)
+            if (item === undefined) {
+                item = {
+                    path: resolved.absolutePath,
+                    relativePath: resolved.relativePath,
+                    referencedBy: [],
+                    referencedKeys: new Set()
+                }
+                pending.set(key, item)
+            }
+            const sourceKey = normalizePathForCompare(entry.file.path, WIN32_CASE_INSENSITIVE)
+            if (item.referencedKeys.has(sourceKey)) {
+                continue
+            }
+            item.referencedKeys.add(sourceKey)
+            item.referencedBy.push(entry.file.path)
+        }
+    }
+    const attachments: WorkspaceAttachment[] = []
+    for (const item of pending.values()) {
+        attachments.push({
+            path: item.path,
+            relativePath: item.relativePath,
+            exists: await attachmentFileExists(item.path),
+            referencedBy: item.referencedBy
+        })
+    }
+    attachments.sort(
+        (left, right) =>
+            left.relativePath.localeCompare(right.relativePath) ||
+            left.path.localeCompare(right.path)
+    )
+    return attachments
+}
+
 /* ============================ 快照构建 ============================ */
 
 /** 构建标签聚合清单（数量降序 → 标签名升序，保证快照确定性） */
@@ -684,7 +1163,15 @@ function createEmptySnapshot(rootPath = ''): WorkspaceIndexSnapshot {
         files: [],
         tags: [],
         missingLinks: [],
-        stats: { fileCount: 0, linkCount: 0, missingCount: 0, ambiguousCount: 0 }
+        attachments: [],
+        stats: {
+            fileCount: 0,
+            linkCount: 0,
+            missingCount: 0,
+            ambiguousCount: 0,
+            attachmentCount: 0,
+            missingAttachmentCount: 0
+        }
     }
 }
 
@@ -754,17 +1241,24 @@ export async function buildWorkspaceIndex(rootPath: string): Promise<WorkspaceIn
             })
             entry.file.links = links
         }
+        const attachments = await buildAttachmentIndex(root, state.entries)
+        const missingAttachmentCount = attachments.filter(
+            (attachment) => attachment.exists !== true
+        ).length
         return {
             rootPath: root.lexical,
             generatedAt: Date.now(),
             files,
             tags: buildTagIndex(files),
             missingLinks,
+            attachments,
             stats: {
                 fileCount: files.length,
                 linkCount,
                 missingCount,
-                ambiguousCount
+                ambiguousCount,
+                attachmentCount: attachments.length,
+                missingAttachmentCount
             }
         }
     } catch {

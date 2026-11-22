@@ -53,7 +53,8 @@ export default {
         knowledge: 'Knowledge Base',
         knowledgeTags: 'Tag Index…',
         knowledgeLinks: 'Link Check…',
-        knowledgeBacklinks: 'Backlinks…'
+        knowledgeBacklinks: 'Backlinks…',
+        attachments: 'Attachment Manager…'
     },
     view: {
         label: 'View',
