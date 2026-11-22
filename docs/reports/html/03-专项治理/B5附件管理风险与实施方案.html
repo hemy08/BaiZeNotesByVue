@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B5附件管理风险与实施方案</title>
+<link rel="stylesheet" href="../assets/report.css">
+</head>
+<body>
+<!-- baize-report-nav-slot -->
+<div id="report-nav"></div>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">1. 现状与事实</a>
+    <a class="toc-l3" href="#sub-1">1.1 已具备</a>
+    <a class="toc-l3" href="#sub-2">1.2 未具备</a>
+    <a class="toc-l3" href="#sub-3">1.3 当前索引边界</a>
+    <a class="toc-l2" href="#sec-2">2. 风险矩阵</a>
+    <a class="toc-l2" href="#sec-3">3. 设计原则</a>
+    <a class="toc-l2" href="#sec-4">4. 方案对比</a>
+    <a class="toc-l2" href="#sec-5">5. 推荐方案</a>
+    <a class="toc-l3" href="#sub-4">5.1 阶段一：只读孤儿审计</a>
+    <a class="toc-l3" href="#sub-5">5.2 阶段二：安全清理</a>
+    <a class="toc-l3" href="#sub-6">5.3 阶段三：附件重命名</a>
+    <a class="toc-l3" href="#sub-7">5.4 新增 IPC（阶段二/三）</a>
+    <a class="toc-l2" href="#sec-6">6. 安全与数据保护</a>
+    <a class="toc-l2" href="#sec-7">7. 分阶段实施</a>
+    <a class="toc-l2" href="#sec-8">8. 测试与验收</a>
+    <a class="toc-l3" href="#sub-8">8.1 单元测试</a>
+    <a class="toc-l3" href="#sub-9">8.2 E2E</a>
+    <a class="toc-l3" href="#sub-10">8.3 验收指标</a>
+    <a class="toc-l2" href="#sec-9">9. 不在本阶段范围</a>
+    <a class="toc-l2" href="#sec-10">10. 待决策</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>B5附件管理风险与实施方案</h1>
+    <p>报告归档 · 03-专项治理</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>B5 附件管理风险与实施方案</h1>
+<blockquote>
+<p><strong>性质</strong>：风险分析与实施方案（只读评估，未改代码）。
+<strong>项目基线</strong>：v1.5.1（开发中）；当前门禁实测 312 测试文件 / 5,741 用例，IPC 100 通道 / 17 组，preload 白名单 send 66 + receive 28。
+<strong>评估对象</strong>：孤儿附件清理、附件重命名、附件引用更新。
+<strong>结论先行</strong>：B5 已具备“附件引用审计/定位”，但删除与重命名属于<strong>高数据风险操作</strong>；应先做只读孤儿审计，再以系统回收站做安全清理，最后做事务式重命名，禁止默认永久删除。</p>
+</blockquote>
+<h2 id="sec-1">1. 现状与事实</h2>
+<h3 id="sub-1">1.1 已具备</h3>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>当前实现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>附件引用索引</td>
+<td>工作区索引解析 <code>![](...)</code> / <code>[](...)</code> 的图片/附件相对路径</td>
+</tr>
+<tr>
+<td>存在性检查</td>
+<td>聚合 <code>attachments</code>，标记 <code>exists</code>、<code>referencedBy</code>、缺失数量</td>
+</tr>
+<tr>
+<td>附件管理对话框</td>
+<td>缺失/正常分组、引用来源展开、在资源管理器中定位</td>
+</tr>
+<tr>
+<td>编码支持</td>
+<td>索引/链接更新复用编码探测；B4 已支持按原编码写回</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-2">1.2 未具备</h3>
+<ul>
+<li>未被任何 Markdown 引用的附件清单（孤儿清单）；</li>
+<li>孤儿附件删除/移入回收站；</li>
+<li>附件重命名；</li>
+<li>附件重命名后的 Markdown 引用更新；</li>
+<li>删除/重命名的事务、回滚与审计记录。</li>
+</ul>
+<h3 id="sub-3">1.3 当前索引边界</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>当前口径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文本索引</td>
+<td><code>.md</code> / <code>.markdown</code> / <code>.txt</code>，单文件 2 MiB</td>
+</tr>
+<tr>
+<td>文件数上限</td>
+<td>20,000</td>
+</tr>
+<tr>
+<td>目录深度上限</td>
+<td>32</td>
+</tr>
+<tr>
+<td>忽略目录</td>
+<td><code>node_modules</code>、<code>.git</code>、<code>.ssh</code> 等工作区忽略目录</td>
+</tr>
+<tr>
+<td>符号链接</td>
+<td>跳过</td>
+</tr>
+<tr>
+<td>附件解析</td>
+<td>仅 Markdown 内联式图片/链接；HTML <code>&lt;img&gt;</code>、引用式定义暂不解析</td>
+</tr>
+<tr>
+<td>渲染层权限</td>
+<td>不直接读写文件；附件定位经既有 <code>FILE_MANAGER.OPEN_IN_EXPLORER</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-2">2. 风险矩阵</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>风险</th>
+<th>触发条件</th>
+<th>影响</th>
+<th>等级</th>
+<th>处置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B5-R1</td>
+<td>误删仍被引用的附件</td>
+<td>索引过期、解析漏项、删除前未复核</td>
+<td>笔记图片/附件永久丢失</td>
+<td><strong>高</strong></td>
+<td>删除前强制刷新 + 重新扫描 + 移入回收站</td>
+</tr>
+<tr>
+<td>B5-R2</td>
+<td>删除无法恢复</td>
+<td>直接 <code>unlink</code>/递归删除</td>
+<td>用户资料不可恢复</td>
+<td><strong>高</strong></td>
+<td>只使用系统回收站 <code>shell.trashItem</code>，不提供硬删</td>
+</tr>
+<tr>
+<td>B5-R3</td>
+<td>目录/符号链接逃逸</td>
+<td>传入目录、symlink、<code>..</code></td>
+<td>删除工作区外文件</td>
+<td><strong>高</strong></td>
+<td>仅普通文件、Path Guard、realpath containment</td>
+</tr>
+<tr>
+<td>B5-R4</td>
+<td>重命名断链</td>
+<td>附件被多篇笔记引用</td>
+<td>图片/附件打不开</td>
+<td>高</td>
+<td>事务式两阶段：计划 → 改名 → 写回</td>
+</tr>
+<tr>
+<td>B5-R5</td>
+<td>重命名部分失败</td>
+<td>某来源文件不可读/编码异常/被占用</td>
+<td>一半链接已改、一半未改</td>
+<td>高</td>
+<td>先计划、失败回滚或整体中止；逐文件报告</td>
+</tr>
+<tr>
+<td>B5-R6</td>
+<td>覆盖同名附件</td>
+<td>目标已存在</td>
+<td>原附件被覆盖</td>
+<td>高</td>
+<td>排他检查/<code>wx</code> 写入；冲突要求改名或取消</td>
+</tr>
+<tr>
+<td>B5-R7</td>
+<td>引用解析漏项</td>
+<td>HTML <code>&lt;img&gt;</code>、reference 式链接、代码块内引用</td>
+<td>误判为孤儿</td>
+<td>高</td>
+<td>删除前保守复核；漏项一律不删</td>
+</tr>
+<tr>
+<td>B5-R8</td>
+<td>索引体积/扫描卡顿</td>
+<td>附件数量大、目录深</td>
+<td>打开对话框慢、内存上涨</td>
+<td>中</td>
+<td>分页/上限/懒扫描/缓存 TTL</td>
+</tr>
+<tr>
+<td>B5-R9</td>
+<td>非 UTF-8 来源文件</td>
+<td>GBK/UTF-16 Markdown</td>
+<td>更新引用时损坏文本</td>
+<td>中</td>
+<td>复用 B4 编码探测与 BOM 保留</td>
+</tr>
+<tr>
+<td>B5-R10</td>
+<td>并发操作</td>
+<td>删除/重命名同时保存/外部改文件</td>
+<td>状态不一致</td>
+<td>中</td>
+<td>主进程串行队列 + 操作前二次校验</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-3">3. 设计原则</h2>
+<ol>
+<li><strong>只读优先</strong>：先做孤儿审计，不直接把“候选”变成“可删除”；</li>
+<li><strong>可恢复</strong>：清理只进系统回收站；应用内不提供永久删除；</li>
+<li><strong>双重确认</strong>：UI 预览 + 主进程二次校验；</li>
+<li><strong>保守判定</strong>：任何解析不确定/编码失败/状态异常，一律不删；</li>
+<li><strong>事务化</strong>：重命名先计划、后改名、再写回；失败可回滚；</li>
+<li><strong>主进程唯一写盘</strong>：渲染层只发结构化请求；不新增文件系统权限。</li>
+</ol>
+<h2 id="sec-4">4. 方案对比</h2>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>内容</th>
+<th>优点</th>
+<th>缺点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A. 只做审计</td>
+<td>孤儿清单/大小/引用数</td>
+<td>零数据风险</td>
+<td>不解决磁盘占用</td>
+<td>第一阶段必做</td>
+</tr>
+<tr>
+<td>B. 审计 + 移入回收站</td>
+<td>多选、确认、<code>shell.trashItem</code></td>
+<td>可恢复、满足清理需求</td>
+<td>需新增受控 IPC</td>
+<td><strong>推荐</strong></td>
+</tr>
+<tr>
+<td>C. 审计 + 永久删除</td>
+<td>直接 <code>unlink</code></td>
+<td>彻底释放</td>
+<td>不可恢复、误删代价高</td>
+<td>不采用</td>
+</tr>
+<tr>
+<td>D. 事务式重命名</td>
+<td>改名 + 全量引用更新</td>
+<td>不断链</td>
+<td>实现复杂，失败需回滚</td>
+<td>第三阶段</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-5">5. 推荐方案</h2>
+<h3 id="sub-4">5.1 阶段一：只读孤儿审计</h3>
+<p><strong>附件全集</strong></p>
+<ul>
+<li>扫描工作区内所有附件扩展名：图片、PDF、Office、压缩包、音视频等；</li>
+<li>复用忽略目录/大小/数量/深度限制；</li>
+<li>跳过符号链接、目录、隐藏的系统目录；</li>
+<li>只读元数据（大小、mtime），不读内容。</li>
+</ul>
+<p><strong>引用集合</strong></p>
+<ul>
+<li>来自工作区索引 <code>attachments[].path</code> 的并集；</li>
+<li>仅信任“成功解析”的引用；</li>
+<li>对解析失败/无法读取的 Markdown，记录“未完成引用分析”，并<strong>禁止</strong>其目录下附件进入可删除候选。</li>
+</ul>
+<p><strong>孤儿判定</strong></p>
+<pre><code class="language-text">孤儿候选 = 附件全集 - 引用集合 - 保守排除集合
+</code></pre>
+<p>保守排除集合包括：</p>
+<ul>
+<li>引用解析失败的文件；</li>
+<li>代码块/HTML/reference 式链接可能漏解析的文件；</li>
+<li>索引构建失败或超限截断；</li>
+<li>隐藏目录、模板目录、用户配置的保留目录。</li>
+</ul>
+<p><strong>UI</strong></p>
+<ul>
+<li>标签页：全部 / 缺失引用 / 孤儿候选；</li>
+<li>展示相对路径、大小、mtime、引用数（候选必为 0）；</li>
+<li>汇总“可释放空间”；</li>
+<li>只读，不提供删除入口（阶段一）。</li>
+</ul>
+<h3 id="sub-5">5.2 阶段二：安全清理</h3>
+<p><strong>流程</strong></p>
+<ol>
+<li>用户勾选候选；</li>
+<li>点击“移入回收站”；</li>
+<li>弹出确认框：数量、总大小、路径列表、不可恢复提示；</li>
+<li>主进程强制刷新索引并重新扫描引用；</li>
+<li>逐项校验：工作区内、普通文件、非 symlink、重新确认为孤儿；</li>
+<li>使用 <code>shell.trashItem</code> 移入回收站；</li>
+<li>返回逐项结果；部分失败可见，不整体回滚已成功项；</li>
+<li>刷新索引、记录审计日志（不含正文）。</li>
+</ol>
+<p><strong>限制</strong></p>
+<ul>
+<li>单次最多 N 个（建议 100）与总大小上限（建议 500 MiB）；</li>
+<li>不允许删除目录；</li>
+<li>不允许删除 <code>.md</code> 笔记；</li>
+<li>不允许删除仍被任何 Markdown 引用的附件；</li>
+<li>不允许永久删除；系统回收站不可用时直接失败并提示。</li>
+</ul>
+<h3 id="sub-6">5.3 阶段三：附件重命名</h3>
+<p><strong>两阶段事务</strong></p>
+<pre><code class="language-text">阶段 A（改名前）：
+  构建附件引用更新计划
+  - 找所有引用 oldPath 的 Markdown 来源
+  - 生成新相对引用（保留原有写法风格）
+  - 校验目标名/路径/冲突
+阶段 B（改名后）：
+  1. 文件改名为 newPath
+  2. 按计划更新来源 Markdown
+  3. 任一步失败：记录失败清单
+     - 改名成功但写回失败：提供回滚改名或保留新文件+手动修复入口
+</code></pre>
+<p><strong>引用更新</strong></p>
+<ul>
+<li>解析 <code>![alt](path)</code>、<code>[text](path)</code> 中的本地路径；</li>
+<li>保留 <code>./</code>、<code>&lt;...&gt;</code> 空格写法、相对路径风格；</li>
+<li>忽略 http/data/app/绝对路径/越界路径；</li>
+<li>复用 B4 的编码探测与 BOM 保留；</li>
+<li>不更新代码块内文本；</li>
+<li>不可解码文件跳过并报告，不强行覆盖。</li>
+</ul>
+<p><strong>并发与冲突</strong></p>
+<ul>
+<li>主进程串行队列；</li>
+<li>目标已存在：拒绝并提示；</li>
+<li>改名后写回期间文件被外部修改：检测 mtime，跳过并报告；</li>
+<li>失败时提供“回滚改名”动作（再次校验旧路径不存在）。</li>
+</ul>
+<h3 id="sub-7">5.4 新增 IPC（阶段二/三）</h3>
+<p>原则：新增通道必须完整走链路，不新增例外。</p>
+<table>
+<thead>
+<tr>
+<th>通道建议</th>
+<th>方向</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FILE.GET_ATTACHMENT_AUDIT</code></td>
+<td>R→M invoke</td>
+<td>只读扫描孤儿/引用/大小</td>
+</tr>
+<tr>
+<td><code>FILE.TRASH_ATTACHMENTS</code></td>
+<td>R→M invoke</td>
+<td>批量移入回收站（重校验）</td>
+</tr>
+<tr>
+<td><code>FILE.RENAME_ATTACHMENT</code></td>
+<td>R→M invoke</td>
+<td>事务式重命名 + 引用更新计划</td>
+</tr>
+<tr>
+<td><code>FILE.APPLY_ATTACHMENT_RENAME</code></td>
+<td>R→M invoke</td>
+<td>改名后应用引用更新/回滚</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>全部经 <code>withSenderCheck</code>；</li>
+<li>路径由主进程从工作区根拼接，渲染层不传根；</li>
+<li>返回结构化 <code>{ ok, code, items }</code>；</li>
+<li>通道名最终以 <code>ipc-channels.ts</code> 三段式为准。</li>
+</ul>
+<h2 id="sec-6">6. 安全与数据保护</h2>
+<table>
+<thead>
+<tr>
+<th>边界</th>
+<th>措施</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Path Guard</td>
+<td><code>isPathAllowed</code> + realpath containment；拒绝越界/UNC/设备名</td>
+</tr>
+<tr>
+<td>文件类型</td>
+<td>只允许附件扩展名白名单；禁止目录/笔记删除</td>
+</tr>
+<tr>
+<td>符号链接</td>
+<td><code>lstat</code> 拒绝 symlink；改名目标再校验</td>
+</tr>
+<tr>
+<td>删除</td>
+<td>只用 <code>shell.trashItem</code>；系统回收站不可用则失败</td>
+</tr>
+<tr>
+<td>并发</td>
+<td>主进程队列 + 操作前二次 stat/索引刷新</td>
+</tr>
+<tr>
+<td>编码</td>
+<td>复用 <code>decodeFileContent</code> / <code>encodeFileContent</code>，保留 BOM</td>
+</tr>
+<tr>
+<td>日志</td>
+<td>审计动作与结果；不记录笔记正文</td>
+</tr>
+<tr>
+<td>例外</td>
+<td>不新增 KNOWN_EXCEPTIONS / CSP / allowlist</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-7">7. 分阶段实施</h2>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>内容</th>
+<th>交付</th>
+<th>预估</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td>附件全集扫描 + 孤儿审计（只读）</td>
+<td>标签页/大小/候选/保守排除</td>
+<td>1.5～2.5 人日</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>批量移入回收站</td>
+<td>确认、重校验、结果、审计</td>
+<td>1～2 人日</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>附件重命名 + 引用计划</td>
+<td>改名、写回、失败清单</td>
+<td>2～3 人日</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>回滚/并发/编码/E2E</td>
+<td>回滚、冲突、编码回归</td>
+<td>1～1.5 人日</td>
+</tr>
+</tbody>
+</table>
+<p><strong>合计</strong>：约 5.5～9 人日；建议按 P0 → P1 → P2 独立发版，不一次性上线。</p>
+<h2 id="sec-8">8. 测试与验收</h2>
+<h3 id="sub-8">8.1 单元测试</h3>
+<ul>
+<li>孤儿判定：全引用、部分引用、无引用、缺失引用；</li>
+<li>保守排除：解析失败、超限、忽略目录、代码块；</li>
+<li>删除：目录、symlink、越界、仍被引用、已不存在、回收站失败；</li>
+<li>重命名：冲突、目录、symlink、编码、BOM、别名/相对路径、部分失败；</li>
+<li>并发：操作中文件变化、mtime 变化；</li>
+<li>批量上限：数量/总大小截断。</li>
+</ul>
+<h3 id="sub-9">8.2 E2E</h3>
+<ul>
+<li>孤儿附件可被列出且不显示为可删除（P0）；</li>
+<li>移入回收站后文件从工作区消失、索引刷新；</li>
+<li>仍被引用附件即使被勾选也拒绝删除；</li>
+<li>附件重命名后 Markdown 图片正常显示；</li>
+<li>失败项有明确提示，不出现半更新且无提示。</li>
+</ul>
+<h3 id="sub-10">8.3 验收指标</h3>
+<ul>
+<li>误删仍被引用附件 = 0；</li>
+<li>永久删除入口 = 0；</li>
+<li>重命名后引用断链 = 0（测试集）；</li>
+<li>主进程二次校验覆盖 100% 删除/重命名请求；</li>
+<li>现有 312 文件 / 5,741 用例门禁不退化。</li>
+</ul>
+<h2 id="sec-9">9. 不在本阶段范围</h2>
+<ul>
+<li>附件内容预览/OCR/全文检索；</li>
+<li>附件去重（内容 hash）与合并；</li>
+<li>自动清理；</li>
+<li>云同步/回收站保留策略；</li>
+<li>附件版本历史。</li>
+</ul>
+<h2 id="sec-10">10. 待决策</h2>
+<ol>
+<li>孤儿附件是否允许“移入回收站”之外提供“永久删除”（建议不提供）？</li>
+<li>单次批量上限与总大小上限取多少？</li>
+<li>重命名后若引用更新失败，默认“回滚改名”还是“保留新文件 + 手动修复”？</li>
+<li>是否允许创建子目录/移动附件到其他目录（建议先只改名、不移动）？</li>
+</ol>
+<blockquote>
+<p>未决策前建议默认：只移入回收站、单次 100 个/500 MiB、失败默认回滚、只改名不移动。</p>
+</blockquote>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+<script src="../assets/report-nav.js" defer></script>
+</body>
+</html>

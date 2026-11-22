@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B2全文索引风险与实施方案</title>
+<link rel="stylesheet" href="../assets/report.css">
+</head>
+<body>
+<!-- baize-report-nav-slot -->
+<div id="report-nav"></div>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">1. 现状与事实</a>
+    <a class="toc-l3" href="#sub-1">1.1 当前全文检索</a>
+    <a class="toc-l3" href="#sub-2">1.2 知识库索引与全文检索的关系</a>
+    <a class="toc-l2" href="#sec-2">2. 风险矩阵</a>
+    <a class="toc-l2" href="#sec-3">3. 方案对比</a>
+    <a class="toc-l3" href="#sub-3">3.1 为什么暂不选 SQLite FTS5</a>
+    <a class="toc-l3" href="#sub-4">3.2 纯 JS 索引候选</a>
+    <a class="toc-l2" href="#sec-4">4. 推荐方案</a>
+    <a class="toc-l3" href="#sub-5">4.1 先量化，不先建索引（阶段 0）</a>
+    <a class="toc-l3" href="#sub-6">4.2 达到阈值后的架构（阶段 1+）</a>
+    <a class="toc-l3" href="#sub-7">4.3 隐私与安全</a>
+    <a class="toc-l2" href="#sec-5">5. 分阶段实施</a>
+    <a class="toc-l2" href="#sec-6">6. 测试与验收</a>
+    <a class="toc-l3" href="#sub-8">6.1 单元/集成</a>
+    <a class="toc-l3" href="#sub-9">6.2 性能验收</a>
+    <a class="toc-l3" href="#sub-10">6.3 门禁</a>
+    <a class="toc-l2" href="#sec-7">7. 不在本阶段范围</a>
+    <a class="toc-l2" href="#sec-8">8. 待决策</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>B2全文索引风险与实施方案</h1>
+    <p>报告归档 · 03-专项治理</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<h1>B2 全文索引风险与实施方案</h1>
+<blockquote>
+<p><strong>性质</strong>：风险分析与实施方案（只读评估，未改代码）。
+<strong>项目基线</strong>：v1.5.1（开发中）；当前门禁实测 312 测试文件 / 5,741 用例，IPC 100 通道 / 17 组，preload 白名单 send 66 + receive 28。
+<strong>评估对象</strong>：是否新建持久全文索引；当前全文检索复用 A2 按需搜索。
+<strong>结论先行</strong>：当前 A2 搜索在中小工作区可用且安全，<strong>不建议立即新建持久索引</strong>；先用指标判断是否需要，达到阈值后采用“worker_threads + 纯 JS 索引 + 可重建快照”，不优先引入 SQLite/原生依赖。</p>
+</blockquote>
+<h2 id="sec-1">1. 现状与事实</h2>
+<h3 id="sub-1">1.1 当前全文检索</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>当前实现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>入口</td>
+<td>全工作区搜索/替换（A2）</td>
+</tr>
+<tr>
+<td>范围</td>
+<td>当前工作区 <code>.md</code> / <code>.markdown</code> / <code>.txt</code></td>
+</tr>
+<tr>
+<td>方式</td>
+<td>主进程按需扫描文件并匹配</td>
+</tr>
+<tr>
+<td>选项</td>
+<td>大小写、整词、正则</td>
+</tr>
+<tr>
+<td>结果</td>
+<td>文件/行/列/预览，支持跳转与批量替换</td>
+</tr>
+<tr>
+<td>持久化</td>
+<td>无；每次搜索重新扫描</td>
+</tr>
+<tr>
+<td>上限</td>
+<td>文件数 20,000、单文件 2 MiB、结果 500 条（以现有实现为准）</td>
+</tr>
+<tr>
+<td>安全</td>
+<td>只搜工作区根；忽略目录/符号链接；主进程受控</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-2">1.2 知识库索引与全文检索的关系</h3>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>数据</th>
+<th>是否持久</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>工作区索引</td>
+<td>标题/标签/Wiki 链接/摘要/附件引用</td>
+<td>否（内存快照，5s TTL）</td>
+<td>标签、反链、链接检查、悬浮预览</td>
+</tr>
+<tr>
+<td>A2 全文搜索</td>
+<td>文件内容按需匹配</td>
+<td>否</td>
+<td>全文查找/替换</td>
+</tr>
+<tr>
+<td>B2 持久全文索引（候选）</td>
+<td>分词/倒排/位置</td>
+<td>是</td>
+<td>大工作区低延迟全文检索</td>
+</tr>
+</tbody>
+</table>
+<p>当前 B2 的“全文索引”实际是“工作区索引 + A2 按需搜索”，不是独立的持久倒排索引。</p>
+<h2 id="sec-2">2. 风险矩阵</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>风险</th>
+<th>触发条件</th>
+<th>影响</th>
+<th>等级</th>
+<th>处置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B2-R1</td>
+<td>大工作区搜索慢</td>
+<td>文件数多/磁盘慢</td>
+<td>搜索延迟高、UI 等待</td>
+<td>中</td>
+<td>指标量化；必要时持久索引</td>
+</tr>
+<tr>
+<td>B2-R2</td>
+<td>重复扫盘/IO 放大</td>
+<td>频繁搜索、无缓存</td>
+<td>磁盘占用与能耗上升</td>
+<td>中</td>
+<td>请求合并/短期缓存；持久索引</td>
+</tr>
+<tr>
+<td>B2-R3</td>
+<td>结果上限截断</td>
+<td>命中超过 500 条</td>
+<td>用户误以为没有更多结果</td>
+<td>中</td>
+<td>明确“已截断”提示；分页/提高上限需评估</td>
+</tr>
+<tr>
+<td>B2-R4</td>
+<td>与知识库视图不一致</td>
+<td>标签/反链用索引、全文用 A2</td>
+<td>同一文件两套结果口径</td>
+<td>低</td>
+<td>统一数据源/结果字段</td>
+</tr>
+<tr>
+<td>B2-R5</td>
+<td>索引损坏/过期</td>
+<td>崩溃、异常退出、外部改文件</td>
+<td>搜不到/搜到旧内容</td>
+<td>高（若做持久索引）</td>
+<td>版本化、校验、可重建、失败回退 A2</td>
+</tr>
+<tr>
+<td>B2-R6</td>
+<td>索引占磁盘/内存</td>
+<td>大量长文/附件误入</td>
+<td>体积膨胀</td>
+<td>中</td>
+<td>索引大小上限、排除规则、压缩</td>
+</tr>
+<tr>
+<td>B2-R7</td>
+<td>隐私/安全</td>
+<td>索引写到错误位置/跨工作区</td>
+<td>笔记内容泄露</td>
+<td>高</td>
+<td>按工作区隔离、应用数据目录、Path Guard、清理策略</td>
+</tr>
+<tr>
+<td>B2-R8</td>
+<td>中文分词质量</td>
+<td>中文无空格</td>
+<td>召回低/误命中</td>
+<td>中</td>
+<td><code>Intl.Segmenter</code> + 保守子串兜底</td>
+</tr>
+<tr>
+<td>B2-R9</td>
+<td>原生依赖风险</td>
+<td>选 SQLite FTS5</td>
+<td>Electron ABI/打包/审计成本</td>
+<td>高</td>
+<td>优先纯 JS；原生方案需专项评估</td>
+</tr>
+<tr>
+<td>B2-R10</td>
+<td>索引构建阻塞</td>
+<td>主进程同步构建</td>
+<td>启动/搜索卡顿</td>
+<td>高</td>
+<td>worker_threads、分片、可取消</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sec-3">3. 方案对比</h2>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>内容</th>
+<th>优点</th>
+<th>缺点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A. 维持 A2 按需搜索</td>
+<td>现状 + 指标</td>
+<td>零新依赖、零持久化风险</td>
+<td>大工作区慢、重复 IO</td>
+<td><strong>当前默认</strong></td>
+</tr>
+<tr>
+<td>B. 纯 JS 持久索引（推荐候选）</td>
+<td>worker + FlexSearch/MiniSearch + JSON/二进制快照</td>
+<td>无原生依赖、可重建、跨会话</td>
+<td>需处理分词/增量/体积</td>
+<td>达到阈值再做</td>
+</tr>
+<tr>
+<td>C. SQLite FTS5</td>
+<td>原生数据库 + FTS5</td>
+<td>查询强、成熟</td>
+<td>Electron ABI、打包、审计、加密/迁移成本</td>
+<td>暂不推荐</td>
+</tr>
+<tr>
+<td>D. 渲染层索引</td>
+<td>浏览器 IndexedDB/WASM</td>
+<td>主进程压力小</td>
+<td>渲染层读盘/权限边界破坏、不可接受</td>
+<td><strong>禁止</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-3">3.1 为什么暂不选 SQLite FTS5</h3>
+<ul>
+<li>需要 Electron 原生模块重建/分发，影响打包与 Fuses 冒烟；</li>
+<li>需要审计新原生依赖与安全边界；</li>
+<li>数据库文件迁移/损坏恢复/加密策略复杂；</li>
+<li>当前工作区规模尚未证明必须使用数据库级方案。</li>
+</ul>
+<h3 id="sub-4">3.2 纯 JS 索引候选</h3>
+<ul>
+<li><strong>FlexSearch</strong>：倒排/分词/增量友好，体积可控；</li>
+<li><strong>MiniSearch</strong>：API 简洁、序列化方便，适合中小规模；</li>
+<li>二者均需评估许可证、体积、维护状态与中文分词效果；</li>
+<li>不在本报告阶段引入依赖，先做 PoC/基准。</li>
+</ul>
+<h2 id="sec-4">4. 推荐方案</h2>
+<h3 id="sub-5">4.1 先量化，不先建索引（阶段 0）</h3>
+<p>在 A2 搜索增加可观测指标（只记录聚合，不记录正文）：</p>
+<ul>
+<li>搜索耗时 P50/P95；</li>
+<li>扫描文件数、读取字节数；</li>
+<li>命中数、是否截断；</li>
+<li>缓存命中/重复查询；</li>
+<li>工作区文件数、总大小。</li>
+</ul>
+<p><strong>触发持久索引的参考阈值</strong>（需产品确认）：</p>
+<ul>
+<li>工作区文件数 &gt; 2,000 或总文本 &gt; 100 MiB；</li>
+<li>搜索 P95 &gt; 2s；</li>
+<li>用户日均搜索次数较高且重复扫描明显。</li>
+</ul>
+<p>未达到阈值时，保持 A2，避免为“可能的需求”增加持久化复杂度。</p>
+<h3 id="sub-6">4.2 达到阈值后的架构（阶段 1+）</h3>
+<pre><code class="language-text">渲染层 Knowledge/Search UI
+  → 主进程 IPC（查询/重建/状态）
+  → FullTextIndexService（主进程，串行）
+  → worker_threads（构建/查询）
+  → 索引快照（应用数据目录，按工作区隔离）
+  → 失败/未就绪回退 A2 按需搜索
+</code></pre>
+<p><strong>索引数据</strong></p>
+<ul>
+<li>文档：路径、mtime、size、内容 hash、标题；</li>
+<li>词项：英文按词、中文按 <code>Intl.Segmenter</code>，保留位置用于高亮；</li>
+<li>只索引工作区根内文件；忽略目录/符号链接规则复用现有索引；</li>
+<li>索引版本号 + 工作区标识；不跨工作区复用。</li>
+</ul>
+<p><strong>构建与更新</strong></p>
+<ul>
+<li>首次搜索/手动重建时后台构建，不阻塞 UI；</li>
+<li>增量：mtime + size 变化才重建单文件；</li>
+<li>文件删除：标记删除并清理倒排；</li>
+<li>索引损坏：校验失败 → 删除/重建 → 回退 A2；</li>
+<li>并发：主进程串行队列，worker 可取消；</li>
+<li>上限：文件数/索引大小/单文件大小，超限回退 A2。</li>
+</ul>
+<p><strong>查询</strong></p>
+<ul>
+<li>支持普通关键词/短语/大小写/整词；</li>
+<li>正则默认回退 A2（正则不适合倒排）；</li>
+<li>返回文件/行/列/预览，保持与 A2 相同字段，便于 UI 复用；</li>
+<li>结果截断明确提示。</li>
+</ul>
+<h3 id="sub-7">4.3 隐私与安全</h3>
+<ul>
+<li>索引只写应用数据目录，不写工作区；</li>
+<li>按工作区隔离；关闭/切换工作区时释放；</li>
+<li>不记录笔记正文到日志；</li>
+<li>查询接口只接受查询串/选项，不接受任意根路径；</li>
+<li>新增 IPC 必须走完整链路，不新增例外；</li>
+<li>索引文件权限按当前用户，避免多用户共享泄露。</li>
+</ul>
+<h2 id="sec-5">5. 分阶段实施</h2>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>内容</th>
+<th>交付</th>
+<th>预估</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td>A2 指标与阈值判定</td>
+<td>指标、基准脚本、决策记录</td>
+<td>0.5～1 人日</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>索引服务 PoC（worker + 小规模）</td>
+<td>建/查/增量/回退，基准报告</td>
+<td>2～3 人日</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>持久化/恢复/上限</td>
+<td>快照、版本、损坏重建、隔离</td>
+<td>1.5～2 人日</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>UI 接入与回退</td>
+<td>查询复用 A2 结果 UI，失败降级</td>
+<td>1～1.5 人日</td>
+</tr>
+<tr>
+<td>P4</td>
+<td>大工作区/E2E/性能</td>
+<td>2k/5k 文件、冷/热启动、内存</td>
+<td>1～1.5 人日</td>
+</tr>
+</tbody>
+</table>
+<p><strong>合计</strong>：约 6～9 人日（仅在 P0 证明需要后启动）。</p>
+<h2 id="sec-6">6. 测试与验收</h2>
+<h3 id="sub-8">6.1 单元/集成</h3>
+<ul>
+<li>分词：中英混合、标点、代码块、大小写；</li>
+<li>增量：新增/修改/删除/重命名；</li>
+<li>编码：GBK/UTF-16/BOM 文件可被索引；</li>
+<li>恢复：索引损坏/版本不匹配/工作区切换；</li>
+<li>上限：文件数/单文件/索引大小截断；</li>
+<li>回退：worker 失败/索引未就绪时走 A2；</li>
+<li>安全：越界路径/符号链接/忽略目录不索引。</li>
+</ul>
+<h3 id="sub-9">6.2 性能验收</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>目标（建议）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>冷构建 2,000 文件</td>
+<td>≤ 10s（后台，不阻塞 UI）</td>
+</tr>
+<tr>
+<td>热查询 P95</td>
+<td>≤ 150ms</td>
+</tr>
+<tr>
+<td>增量单文件更新</td>
+<td>≤ 50ms</td>
+</tr>
+<tr>
+<td>索引体积</td>
+<td>≤ 工作区文本大小的 50%</td>
+</tr>
+<tr>
+<td>内存</td>
+<td>空闲 ≤ 100 MiB；构建峰值 ≤ 300 MiB</td>
+</tr>
+<tr>
+<td>回退</td>
+<td>索引不可用 100% 回退 A2</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-10">6.3 门禁</h3>
+<ul>
+<li>现有 312 文件 / 5,741 用例不退化；</li>
+<li>新增 IPC 契约/白名单/安全测试齐全；</li>
+<li>体积预算：索引依赖不得进入首屏（动态/worker chunk）；</li>
+<li>不新增 CSP/allowlist 例外。</li>
+</ul>
+<h2 id="sec-7">7. 不在本阶段范围</h2>
+<ul>
+<li>语义搜索/向量检索；</li>
+<li>跨工作区全局索引；</li>
+<li>云端索引/同步；</li>
+<li>正则全文索引（继续 A2）；</li>
+<li>附件内容/OCR 检索（属于 E2/E3）；</li>
+<li>索引加密/多用户共享。</li>
+</ul>
+<h2 id="sec-8">8. 待决策</h2>
+<ol>
+<li>是否接受“暂不建持久索引”，先以 A2 指标驱动？</li>
+<li>触发阈值（文件数/耗时/使用频率）取多少？</li>
+<li>纯 JS 索引选 FlexSearch 还是 MiniSearch（需 PoC 对比）？</li>
+<li>索引文件是否允许超过工作区文本大小 50%？</li>
+<li>是否需要在 1.5.x 内完成，还是列入 1.6 知识库增强？</li>
+</ol>
+<blockquote>
+<p>未决策前建议默认：先做 P0 指标，不引入依赖；1.5.x 不承诺持久全文索引。</p>
+</blockquote>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+<script src="../assets/report-nav.js" defer></script>
+</body>
+</html>

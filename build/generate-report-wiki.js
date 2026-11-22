@@ -83,6 +83,18 @@ const NAV_REPORT_DATA = {
         { file: 'mkdocs-material语法支持', title: 'mkdocs-material 语法支持（合并）' },
         { file: '插件工具集成', title: '插件工具集成（合并）' },
         { file: '专项验证记录', title: '专项验证记录（合并）' },
+        {
+            file: 'B1Wiki链接交互风险与实施方案',
+            title: 'B1 Wiki 链接交互风险与实施方案'
+        },
+        {
+            file: 'B5附件管理风险与实施方案',
+            title: 'B5 附件管理风险与实施方案'
+        },
+        {
+            file: 'B2全文索引风险与实施方案',
+            title: 'B2 全文索引风险与实施方案'
+        },
         { file: '当前遗留问题清单', title: '当前遗留问题清单（跟踪台账）' }
     ]
 }
