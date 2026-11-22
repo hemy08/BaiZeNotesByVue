@@ -32,8 +32,9 @@ if (!htmlPath || !pdfPath) {
             await win.loadFile(htmlPath)
             const data = await win.webContents.printToPDF({
                 pageSize: 'A4',
-                printBackground: true,
-                generateDocumentOutline: true
+                // 帮助文档以正文/表格为主；不打印大面积背景色，减小 PDF 体积并提升纸张可读性
+                printBackground: false,
+                generateDocumentOutline: false
             })
             fs.mkdirSync(require('path').dirname(pdfPath), { recursive: true })
             fs.writeFileSync(pdfPath, data)

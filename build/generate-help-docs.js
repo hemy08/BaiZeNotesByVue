@@ -19,6 +19,8 @@ const ROOT = path.resolve(__dirname, '..')
 const MD_PATH = path.join(ROOT, 'docs', 'help', 'usage-guide.md')
 const HTML_PATH = path.join(ROOT, 'src', 'renderer', 'public', 'usage-guide.html')
 const PDF_PATH = path.join(ROOT, 'resources', 'help', 'usage-guide.pdf')
+/** PDF 打印字体（可经 HELP_PDF_FONT 覆盖，用于体积/字形测试） */
+const PRINT_FONT = process.env.HELP_PDF_FONT || '"DengXian","Microsoft YaHei",sans-serif'
 
 const md = new MarkdownIt({ html: true, linkify: false, typographer: false })
 
@@ -108,20 +110,20 @@ blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--brand);bac
 footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
 @media(max-width:760px){.layout{display:block}.side{width:auto;height:auto;position:static;border-right:0;border-bottom:1px solid var(--line)}main{padding:20px 18px 50px}}
 @media print{
-  body{background:#fff;font-size:10.5pt;line-height:1.65}
+  body{background:#fff;font-family:${PRINT_FONT};font-size:9pt;line-height:1.42}
   .layout{display:block}
   .side{display:none}
   main{max-width:none;padding:0}
   .print-toc{display:block;page-break-after:always;padding:8mm 0}
   .print-toc h2{border-top:0;margin-top:0}
   .print-toc a{color:var(--text)}
-  h1{page-break-after:avoid}
-  h2{page-break-after:avoid;border-top:0;margin-top:16pt}
-  h3{page-break-after:avoid}
-  table,pre,blockquote{page-break-inside:avoid}
+  h1{font-size:18pt;page-break-after:avoid}
+  h2{font-size:13pt;page-break-after:avoid;border-top:0;margin-top:12pt}
+  h3{font-size:10.5pt;page-break-after:avoid;margin:9pt 0 4pt}
+  table,pre,blockquote{page-break-inside:avoid;font-size:8.4pt}
   a{color:var(--text);text-decoration:none}
   pre{white-space:pre-wrap}
-  @page{size:A4;margin:16mm 15mm 18mm}
+  @page{size:A4;margin:12mm 12mm 14mm}
 }
 </style>
 </head>
