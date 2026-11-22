@@ -50,7 +50,12 @@ export default {
         quickOpen: '快速打开文件',
         documentHistory: '文档历史…',
         markdownLint: 'Markdown 检查/格式化…',
-        writingStyleCheck: '写作风格检查…'
+        writingStyleCheck: '写作风格检查…',
+        frontMatter: '文档属性…',
+        knowledge: '知识库',
+        knowledgeTags: '标签索引…',
+        knowledgeLinks: '链接检查…',
+        knowledgeBacklinks: '反向链接…'
     },
     view: {
         label: '视图',

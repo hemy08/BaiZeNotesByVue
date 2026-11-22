@@ -353,6 +353,26 @@ export function HandleMenuAction(action: string) {
         return
     }
 
+    // ========== 1.5.1 本地知识库基座：属性 / 标签 / 链接 / 反链 ==========
+    if (action === 'baize:menu:edit:front-matter') {
+        void import('../Markdown/front-matter').then((module) => module.openFrontMatterDialog())
+        return
+    }
+    if (action === 'baize:menu:edit:knowledge-tags') {
+        void import('../Markdown/knowledge').then((module) => module.openKnowledgeDialog('tags'))
+        return
+    }
+    if (action === 'baize:menu:edit:knowledge-links') {
+        void import('../Markdown/knowledge').then((module) => module.openKnowledgeDialog('links'))
+        return
+    }
+    if (action === 'baize:menu:edit:knowledge-backlinks') {
+        void import('../Markdown/knowledge').then((module) =>
+            module.openKnowledgeDialog('backlinks')
+        )
+        return
+    }
+
     // 编辑 → 查找（在文件中查找）
     // 事件名契约（勿改）：'editor-trigger-find'
     if (action === 'baize:menu:edit:find-in-file') {

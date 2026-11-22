@@ -77,8 +77,13 @@ export const EVENT_BUS_CONTRACT: Record<EventBusEventKey, EventBusContractEntry>
         receivers: ['components/Markdown/MarkdownMonacoEditor.vue']
     },
     MONACO_REPLACE_TEXT: {
-        payload: 'string：全文替换（文件导入路径 / A3 文档历史恢复 / A4 格式化应用）',
-        emitters: ['components/BaiZeNotes.vue', 'composables/useDocumentHistory.ts'],
+        payload:
+            'string：全文替换（文件导入路径 / A3 文档历史恢复 / A4 格式化应用 / A5 Front matter 保存）',
+        emitters: [
+            'components/BaiZeNotes.vue',
+            'composables/useDocumentHistory.ts',
+            'components/Markdown/front-matter/FrontMatterDialog.vue'
+        ],
         receivers: ['components/Markdown/MarkdownEditComponent.vue']
     },
     THEME_UPDATED: {

@@ -76,7 +76,7 @@ describe('CommandPalette：命令模式', () => {
     it('渲染全部命令并按分类分组', async () => {
         const wrapper = mountPalette()
         await flushPromises()
-        expect(wrapper.findAll('.palette-option')).toHaveLength(13)
+        expect(wrapper.findAll('.palette-option')).toHaveLength(17)
         expect(wrapper.findAll('.palette-group-title').length).toBeGreaterThanOrEqual(4)
     })
 
@@ -116,9 +116,10 @@ describe('CommandPalette：命令模式', () => {
     it('↑ 从首项循环到末项', async () => {
         const wrapper = mountPalette()
         const input = wrapper.find('input.palette-input')
-        await input.trigger('keydown', { key: 'ArrowUp' })
+        // 过滤到「命令面板」命令（模式切换，不关闭面板）；它不再依赖列表末项位置
+        await input.setValue('command-palette')
+        await nextTick()
         await input.trigger('keydown', { key: 'Enter' })
-        // 末项为「命令面板」命令（模式切换，不关闭面板）
         expect(handleMenuActionMock).not.toHaveBeenCalled()
         expect(wrapper.emitted('close')).toBeFalsy()
     })

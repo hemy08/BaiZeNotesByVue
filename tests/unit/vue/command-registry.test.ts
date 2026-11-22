@@ -72,7 +72,11 @@ describe('buildPaletteCommands：命令清单', () => {
             'insert-mermaid',
             'workspace-search',
             'quick-open',
-            'command-palette'
+            'command-palette',
+            'front-matter',
+            'knowledge-tags',
+            'knowledge-links',
+            'knowledge-backlinks'
         ])
         expect(new Set(ids).size).toBe(ids.length)
     })

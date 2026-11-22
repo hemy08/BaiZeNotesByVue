@@ -39,6 +39,8 @@ const implementationMocks = vi.hoisted(() => ({
     registerPlantumlLocalRenderIpc: vi.fn(),
     // A2（2026-11-21）：全工作区搜索/替换独立域注册入口
     registerWorkspaceSearchIpc: vi.fn(),
+    // 1.5.1：工作区索引独立域注册入口
+    registerWorkspaceIndexIpc: vi.fn(),
     // 主题广播依赖
     getCurrentThemeStyles: vi.fn(),
     getThemeStylesByType: vi.fn(),
@@ -79,13 +81,19 @@ vi.mock('../../src/main/ipc/workspace-search-ipc', () => ({
     registerWorkspaceSearchIpc: implementationMocks.registerWorkspaceSearchIpc
 }))
 
+// 1.5.1：工作区索引独立域模块（本文件只验证编排，不加载真实实现）
+vi.mock('../../src/main/ipc/workspace-index-ipc', () => ({
+    registerWorkspaceIndexIpc: implementationMocks.registerWorkspaceIndexIpc
+}))
+
 // P1-1：主题广播实现已迁到中性层 utils/theme-broadcast（config 不再 import ipc/**）
 vi.mock('../../src/main/utils/theme-broadcast', () => ({
     broadcastThemeToAllWindows: implementationMocks.broadcastThemeToAllWindows,
     buildThemeBroadcastPayload: implementationMocks.buildThemeBroadcastPayload
 }))
 
-// 台账 mock：只保留 registerOnce（registry 注册主题/握手两条 persistent 监听）
+// 台账 mock：registerOnce（registry 注册主题/握手两条 persistent 监听）+
+// registerHandleOnce（工作区索引 IPC 由 registry 调用注册函数，函数内部会访问台账）
 vi.mock('../../src/main/ipc/ipc-listener-manager', () => ({
     ipcListenerManager: {
         registerOnce: vi.fn(
@@ -97,7 +105,8 @@ vi.mock('../../src/main/ipc/ipc-listener-manager', () => ({
                 listenerRegistry.set(channel, { channel, listener, componentId })
                 return `${channel}:once`
             }
-        )
+        ),
+        registerHandleOnce: vi.fn(() => 'mock-handle-id')
     }
 }))
 
@@ -171,6 +180,9 @@ beforeEach(() => {
     implementationMocks.registerWorkspaceSearchIpc.mockImplementation(() => {
         callOrder.push('workspace-search')
     })
+    implementationMocks.registerWorkspaceIndexIpc.mockImplementation(() => {
+        callOrder.push('workspace-index')
+    })
     implementationMocks.getCurrentThemeStyles.mockReturnValue({ name: 'baize' })
     implementationMocks.getThemeStylesByType.mockImplementation((themeType: string) => ({
         name: themeType
@@ -204,9 +216,16 @@ describe('registerAll（建窗后一次性注册清单）', () => {
         registerAll(mainWindow as never, { onRendererReady })
 
         // 改造前 main/index.ts 的注册顺序：对话框 → utils → handlers → PlantUML
-        // （A2 工作区搜索/替换为新增独立域，追加在 PlantUML 之后；主题/握手为 persistent 注册，
-        //  见下一条用例；它们不进入 callOrder）
-        expect(callOrder).toEqual(['dialogs', 'utils', 'handlers', 'plantuml', 'workspace-search'])
+        // （A2 工作区搜索/替换、1.5.1 工作区索引为新增独立域，依次追加在 PlantUML 之后；
+        //  主题/握手为 persistent 注册，见下一条用例；它们不进入 callOrder）
+        expect(callOrder).toEqual([
+            'dialogs',
+            'utils',
+            'handlers',
+            'plantuml',
+            'workspace-search',
+            'workspace-index'
+        ])
         expect(implementationMocks.mainWindowListenDialogsEvent).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerUtilsIpcHandlers).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerIpcHandlers).toHaveBeenCalledWith(mainWindow)
@@ -214,6 +233,10 @@ describe('registerAll（建窗后一次性注册清单）', () => {
         expect(implementationMocks.registerWorkspaceSearchIpc).toHaveBeenCalledWith(
             mainWindow,
             'global-workspace-search-ipc'
+        )
+        expect(implementationMocks.registerWorkspaceIndexIpc).toHaveBeenCalledWith(
+            mainWindow,
+            'global-workspace-index-ipc'
         )
     })
 

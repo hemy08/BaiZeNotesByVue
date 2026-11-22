@@ -3,9 +3,9 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（65 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（66 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（32 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（33 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
  *   白名单**完全相等**（28 个通道）。
@@ -43,6 +43,7 @@ import type { FileProperties, OpenRecentPayload, OpenRecentResult, RecentListRes
 import type { QuickLinkItem } from './quick-link'
 import type { StatusBarUpdatePayload } from './status-bar'
 import type { SystemSetting, WindowBounds } from './system'
+import type { WorkspaceIndexSnapshot } from './workspace-index'
 // 第 2 批契约重构：主题领域类型以 shared/types/theme.ts 为唯一真源，本表只做 IPC 载荷引用
 import type {
     MonacoThemeData,
@@ -51,6 +52,29 @@ import type {
     ThemeStyles,
     ThemeUpdateData
 } from './theme'
+
+/** FILE.GET_WORKSPACE_INDEX 请求载荷 */
+export interface WorkspaceIndexQuery {
+    /** true 时强制重建索引；false/缺省使用主进程缓存（根变化会自动重建） */
+    force?: boolean
+}
+
+/** FILE.GET_WORKSPACE_INDEX 成功结果 */
+export interface WorkspaceIndexSuccess {
+    ok: true
+    snapshot: WorkspaceIndexSnapshot
+    /** 是否命中主进程缓存 */
+    cached: boolean
+}
+
+/** FILE.GET_WORKSPACE_INDEX 安全失败结果（不向渲染层抛异常） */
+export interface WorkspaceIndexFailure {
+    ok: false
+    code: 'NO_WORKSPACE' | 'INVALID_PAYLOAD' | 'INDEX_ERROR' | 'UNTRUSTED_SENDER'
+    message?: string
+}
+
+export type WorkspaceIndexResult = WorkspaceIndexSuccess | WorkspaceIndexFailure
 
 /* ============================================================================
  * 一、请求/响应/事件共用的载荷结构（按主进程实际实现镜像，仅类型）
@@ -544,6 +568,8 @@ export interface IpcRequests {
     [IPC.FILE.SEARCH_WORKSPACE]: [options: WorkspaceSearchOptions]
     /** A2 替换工作区文本文件内容（invoke；主进程重校验路径后重新读取并写盘） */
     [IPC.FILE.REPLACE_WORKSPACE]: [options: WorkspaceReplaceOptions]
+    /** 1.5.1 工作区索引查询（invoke；force 触发重建） */
+    [IPC.FILE.GET_WORKSPACE_INDEX]: [query?: WorkspaceIndexQuery]
 
     // ============ 文件管理器右键动作（全部为 send） ============
     [IPC.FILE_MANAGER.COPY_RELATIVE_PATH]: [path: string]
@@ -619,7 +645,7 @@ export interface IpcRequests {
 /* ============================================================================
  * 三、invoke 通道返回类型
  *
- * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（32 个）。
+ * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（33 个）。
  * send 通道无返回值，故不在此表。
  * ========================================================================== */
 export interface IpcResponses {
@@ -651,6 +677,8 @@ export interface IpcResponses {
     [IPC.FILE.SEARCH_WORKSPACE]: WorkspaceSearchResult
     /** A2 工作区替换（invoke；安全失败返回 ok=false + code，不抛异常） */
     [IPC.FILE.REPLACE_WORKSPACE]: WorkspaceReplaceResult
+    /** 1.5.1 工作区索引（invoke；安全失败返回 ok=false + code，不抛异常） */
+    [IPC.FILE.GET_WORKSPACE_INDEX]: WorkspaceIndexResult
 
     // ============ 对话框确认动作 ============
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult

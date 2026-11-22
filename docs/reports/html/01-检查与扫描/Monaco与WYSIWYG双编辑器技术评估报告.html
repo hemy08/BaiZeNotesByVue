@@ -51,9 +51,10 @@
 <h1>Monaco 与 WYSIWYG 双编辑器技术评估报告</h1>
 <blockquote>
 <p><strong>性质</strong>：技术可行性评估与方案决策，<strong>不含实现代码</strong>。
+<strong>决策状态</strong>：<strong>暂不实施双编辑器</strong>（用户 2026-11-21 决定）。保留 Monaco 源码模式 + 分栏预览现状；本报告仅作为评估存档，不进入 PoC/实现排期。
 <strong>项目基线</strong>：v1.5.1（开发中；最新发布版本为 v1.5.0，tag <code>release-1.5.0</code>）。
 <strong>评估时间</strong>：2026-11-21。
-<strong>结论先行</strong>：<strong>技术可行，但必须采用「可插拔编辑器适配层 + 同一时间只挂载一个编辑器」的方案</strong>，不能把 Monaco 与 WYSIWYG 同时显示、同时编辑；也不建议在 1.5.1 内直接替换 Monaco。建议先做 2～3 天 PoC 选型，再决定是否进入 MVP。</p>
+<strong>结论先行</strong>：<strong>技术可行，但需采用「可插拔编辑器适配层 + 同一时间只挂载一个编辑器」的方案</strong>；不能把 Monaco 与 WYSIWYG 同时显示、同时编辑。经评估当前<strong>暂不实施</strong>，也不在 1.5.1 内替换 Monaco。</p>
 </blockquote>
 <h2 id="sec-1">1. 需求定义</h2>
 <p>用户期望：</p>
@@ -602,6 +603,9 @@ interface SystemSetting {
 <li>[ ] 安全评审：HTML、链接、图片、粘贴、剪贴板是否全部受控？</li>
 </ul>
 <h2 id="sec-12">12. 结论与建议</h2>
+<blockquote>
+<p><strong>当前决策（2026-11-21）：暂不实施双编辑器。</strong> 以下为未来若重启评估时的结论与建议，不构成本迭代任务。</p>
+</blockquote>
 <ol>
 <li><strong>可以实现 Monaco 与 WYSIWYG 双模式、配置切换</strong>，但应做成“可插拔编辑器适配层”，<strong>同一时间只挂载一个编辑器</strong>；</li>
 <li><strong>不建议</strong>双编辑器同时挂载/叠加，也不建议 1.5.1 直接替换 Monaco；</li>

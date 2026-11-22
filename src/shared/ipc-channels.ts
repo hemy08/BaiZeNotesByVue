@@ -108,7 +108,10 @@ export const IPC = {
         // 递归 .md/.markdown/.txt 并做上限/忽略目录/符号链接防护；替换由主进程重新读取文件并写盘。
         // Quick Open 的文件清单复用 SEARCH_WORKSPACE 的 listFilesOnly 选项（不额外新增通道）。
         SEARCH_WORKSPACE: 'baize:file:search-workspace',
-        REPLACE_WORKSPACE: 'baize:file:replace-workspace'
+        REPLACE_WORKSPACE: 'baize:file:replace-workspace',
+        // 1.5.1 本地知识库基座：工作区索引（front matter/标签/Wiki 链接）查询。
+        // 主进程只索引 appState.rootPath；渲染层传 force 可触发重建（仍由主进程校验 sender）。
+        GET_WORKSPACE_INDEX: 'baize:file:get-workspace-index'
     } as const,
 
     // ============ 文件管理器右键菜单 ============

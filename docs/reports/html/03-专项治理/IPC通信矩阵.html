@@ -33,7 +33,7 @@
 <li><strong>编制日期</strong>：2026-11-18 首次编制，2026-11-19 补录 <code>FILE.OPEN_IN_BROWSER</code> / <code>FILE.READ_BINARY</code> 后复核（基于当前工作区源码；取代 <code>2026-11-15-IPC通信矩阵.md</code> 历史快照）</li>
 <li><strong>唯一真源</strong>：<code>src/shared/ipc-channels.ts</code>（<strong>91 个通道常量 / 17 个分组</strong>，全部以 <code>baize:&lt;domain&gt;:&lt;name&gt;</code> 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）</li>
 <li><strong>方法</strong>：对每个通道常量在 <code>src/main/**</code>、<code>src/preload/**</code>、<code>src/renderer/**</code> 全量 grep 实际发送点/接收点，只按源码事实填写；行号均为当前源码行号</li>
-<li><strong>统计摘要</strong>：99 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）</li>
+<li><strong>统计摘要</strong>：100 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）</li>
 </ul>
 <h4>一、方向记号</h4>
 <table>
@@ -111,8 +111,8 @@
 <tbody>
 <tr>
 <td>IPC 通道常量</td>
-<td><strong>99</strong></td>
-<td>WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 26 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 7 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 2 / QUICK_LINKS 3 / EVENTS 4</td>
+<td><strong>100</strong></td>
+<td>WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 27 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 7 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 2 / QUICK_LINKS 3 / EVENTS 4</td>
 </tr>
 <tr>
 <td>BrowserWindow 创建点</td>
@@ -127,7 +127,7 @@
 <tr>
 <td><code>window.electron</code> 成员</td>
 <td><strong>1 对象（受限）</strong></td>
-<td>受限 <code>ipcRenderer</code>：<code>send</code>/<code>invoke</code> 白名单 <strong>60</strong> 通道、<code>on</code>/<code>once</code> 白名单 <strong>25</strong> 通道（未知通道丢弃/拒绝并告警；<code>removeListener</code>/<code>removeAllListeners</code> 不限制）+ <code>webFrame</code>{insertCSS,setZoomFactor,setZoomLevel}、<code>webUtils</code>{getPathForFile}、<code>process</code>{platform,versions,env}；<code>sendTo</code>/<code>sendSync</code>/<code>sendToHost</code>/<code>postMessage</code> 不暴露</td>
+<td>受限 <code>ipcRenderer</code>：<code>send</code>/<code>invoke</code> 白名单 <strong>66</strong> 通道、<code>on</code>/<code>once</code> 白名单 <strong>28</strong> 通道（未知通道丢弃/拒绝并告警；<code>removeListener</code>/<code>removeAllListeners</code> 不限制）+ <code>webFrame</code>{insertCSS,setZoomFactor,setZoomLevel}、<code>webUtils</code>{getPathForFile}、<code>process</code>{platform,versions,env}；<code>sendTo</code>/<code>sendSync</code>/<code>sendToHost</code>/<code>postMessage</code> 不暴露</td>
 </tr>
 <tr>
 <td><code>window.api</code> 成员</td>
@@ -175,7 +175,7 @@
 <li><strong>单主进程</strong>，每个 BrowserWindow 一个渲染进程；未使用 utilityProcess / MessageChannelMain / MessagePort / BrowserView / WebContentsView。</li>
 <li><strong>preload 单文件约束</strong>：<code>electron.vite.config.ts</code> 的 <code>isolatedEntries: true</code> + <code>externalizeDeps: false</code>，产物 <code>out/build/preload/index.js</code> / <code>dialog.js</code>（主窗口与对话框均 <code>sandbox:true</code>，preload 必须自包含）。</li>
 </ul>
-<h4>四、通道矩阵（99 通道 / 17 组）</h4>
+<h4>四、通道矩阵（100 通道 / 17 组）</h4>
 <h5>4.1 WINDOW（8）</h5>
 <table>
 <thead>
@@ -427,7 +427,7 @@
 </tr>
 </tbody>
 </table>
-<h5>4.6 FILE（26）</h5>
+<h5>4.6 FILE（27）</h5>
 <table>
 <thead>
 <tr>
@@ -631,6 +631,14 @@
 <td>按指定编码转码写盘（广播 FILE_SAVED_SUCCESS）</td>
 <td>utils.ts:655 registerHandleOnce</td>
 <td>MarkdownEditComponent.vue:333</td>
+</tr>
+<tr>
+<td>GET_WORKSPACE_INDEX</td>
+<td><code>baize:file:get-workspace-index</code></td>
+<td>R→M invoke</td>
+<td>1.5.1 工作区索引（front matter/标签/Wiki 链接）；只索引 appState.rootPath，内存缓存，force 触发重建</td>
+<td>workspace-index-ipc.ts registerWorkspaceIndexIpc（withSenderCheck）</td>
+<td>useWorkspaceIndex.ts → KnowledgeDialog / FrontMatterDialog</td>
 </tr>
 </tbody>
 </table>
@@ -1186,7 +1194,7 @@
 </table>
 <h4>五、异常与风险清单（已清零）</h4>
 <blockquote>
-<p><strong>统计口径</strong>：99 通道 / 17 组（2026-11-19 第 5 批复核：删除 <code>SYSTEM.OPEN_EXTERNAL_LINK</code> 死通道；含 2026-11-18 补录的 <code>FILE.OPEN_IN_BROWSER</code>、<code>FILE.READ_BINARY</code>）。</p>
+<p><strong>统计口径</strong>：100 通道 / 17 组（2026-11-22 补录 <code>FILE.GET_WORKSPACE_INDEX</code>；历史 99 通道口径见各时点报告）。</p>
 </blockquote>
 <blockquote>
 <p><strong>2026-11-18 复核：异常清单已清零</strong>。历史已处理项：① 空转/死分支 4 项（<code>WINDOW.START_DRAG</code> 空实现、<code>THEME.INIT_THEME_STYLES</code> 半死、<code>EDITOR.UPDATE_OPTIONS</code> R→M 死分支、<code>EVENTS.STATUS_BAR_UPDATE</code> 反向 send）；② 语义错用 1 项（<code>SYSTEM.OPEN_EXTERNAL_LINK</code> 的本地文件调用已改走 <code>FILE.OPEN_IN_BROWSER</code>，遗留清单 #1）；③ 载荷不一致 1 项（<code>THEME.THEME_UPDATED</code>，MenuBar 改读配置，遗留清单 #2）；④ 域错配 10 通道 / 5 组（分组与 domain 已统一为 17 组，遗留清单 #3/#7）；⑤ 第 5 批（2026-11-19）：删除 <code>SYSTEM.OPEN_EXTERNAL_LINK</code> 零发送方死通道（IPC 92 → 91），SYSTEM 组由 3 → 2 个通道。详见 <a href="当前遗留问题清单.html">当前遗留问题清单</a>。</p>
@@ -1258,7 +1266,7 @@
 <tr>
 <td><code>src/preload/index.ts</code></td>
 <td><code>window.electron</code></td>
-<td>受限 electronAPI：ipcRenderer（send/invoke 白名单 <strong>60</strong> 通道、on/once 白名单 <strong>25</strong> 通道；sendTo/sendSync/sendToHost/postMessage 不暴露）+ webFrame / webUtils / process</td>
+<td>受限 electronAPI：ipcRenderer（send/invoke 白名单 <strong>66</strong> 通道、on/once 白名单 <strong>28</strong> 通道；sendTo/sendSync/sendToHost/postMessage 不暴露）+ webFrame / webUtils / process</td>
 </tr>
 <tr>
 <td><code>src/preload/index.ts</code></td>

@@ -231,10 +231,10 @@ const DIALOG_USAGE = collectDialogUsage()
 const PRELOAD_API_USAGE = collectPreloadApiUsage()
 
 describe('preload 白名单：生成产物 ↔ shared 契约', () => {
-    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（65，双向）', () => {
+    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（66，双向）', () => {
         const generated = new Set(RENDERER_SEND_CHANNELS)
-        expect(generated.size).toBe(65)
-        expect(CONTRACT_REQUEST_KEYS.size).toBe(65)
+        expect(generated.size).toBe(66)
+        expect(CONTRACT_REQUEST_KEYS.size).toBe(66)
         expect(diff(generated, CONTRACT_REQUEST_KEYS)).toEqual([])
     })
 
@@ -277,8 +277,8 @@ describe('preload 白名单：生成产物 ↔ shared 契约', () => {
 })
 
 describe('preload 白名单：入口镜像 ↔ 生成产物（防两处产物漂移）', () => {
-    it('index.ts 两个生成块应可解析且与生成模块双向一致（65 / 28）', () => {
-        expect(INDEX_SEND_WHITELIST.size).toBe(65)
+    it('index.ts 两个生成块应可解析且与生成模块双向一致（66 / 28）', () => {
+        expect(INDEX_SEND_WHITELIST.size).toBe(66)
         expect(INDEX_RECEIVE_WHITELIST.size).toBe(28)
         expect(diff(INDEX_SEND_WHITELIST, new Set(RENDERER_SEND_CHANNELS))).toEqual([])
         expect(diff(INDEX_RECEIVE_WHITELIST, new Set(RENDERER_RECEIVE_CHANNELS))).toEqual([])
@@ -299,12 +299,15 @@ describe('preload 白名单：入口镜像 ↔ 生成产物（防两处产物漂
     })
 
     it('生成器 --check 应通过（契约/主进程源码已改但产物未重新生成 → 失败）', () => {
+        // 生成器需启动独立 Node 并对 src 全量扫描；低配/杀软环境可能超过默认 15s，
+        // 这里给 60s 上限，避免门禁因环境抖动误报（产物一致性仍由前序测试严格断言）。
         const output = execFileSync(process.execPath, [GENERATOR_FILE, '--check'], {
             cwd: ROOT,
-            encoding: 'utf8'
+            encoding: 'utf8',
+            timeout: 60_000
         })
         expect(output).toContain('preload 白名单生成产物与契约一致')
-    })
+    }, 60_000)
 
     it('生成模块文件头应标注自动生成 + 生成命令（避免被当作手写文件维护）', () => {
         const source = readSource(GENERATED_FILE)

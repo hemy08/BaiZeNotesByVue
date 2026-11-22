@@ -48,7 +48,12 @@ export default {
         quickOpen: 'Quick Open File',
         documentHistory: 'Document History…',
         markdownLint: 'Markdown Lint/Format…',
-        writingStyleCheck: 'Writing Style Check…'
+        writingStyleCheck: 'Writing Style Check…',
+        frontMatter: 'Document Properties…',
+        knowledge: 'Knowledge Base',
+        knowledgeTags: 'Tag Index…',
+        knowledgeLinks: 'Link Check…',
+        knowledgeBacklinks: 'Backlinks…'
     },
     view: {
         label: 'View',

@@ -84,8 +84,11 @@ beforeEach(() => {
     writeFixture('empty.md', '')
     writeFixture('crlf.md', 'hello\r\nworld\r\n')
     writeFixture('word.md', 'helloWorld hello\r\n')
-    // 超过单文件大小上限（2 MiB）的文件：内容含 hello 但必须被跳过
-    writeFixture('big.md', `hello ${'x'.repeat(2 * 1024 * 1024)}`)
+    // 超过单文件大小上限（2 MiB）的文件：内容含 hello 但必须被跳过。
+    // 用 truncate 构造稀疏文件，避免每个用例真实写入 2 MiB 触发磁盘/杀软抖动。
+    const bigFilePath = path.join(workspaceRoot, 'big.md')
+    fs.writeFileSync(bigFilePath, 'hello', 'utf-8')
+    fs.truncateSync(bigFilePath, 2 * 1024 * 1024 + 1)
     if (symlinkSupported) {
         // 指向工作区外的符号链接：搜索必须跳过、替换必须拒绝
         fs.symlinkSync(symlinkProbeTarget, path.join(workspaceRoot, 'link.md'), 'file')

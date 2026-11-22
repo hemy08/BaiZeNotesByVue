@@ -182,14 +182,19 @@ export default {
             insertMermaid: 'Insert Mermaid diagram',
             workspaceSearch: 'Workspace search / replace',
             quickOpen: 'Quick open file',
-            showCommandPalette: 'Show command palette'
+            showCommandPalette: 'Show command palette',
+            frontMatter: 'Edit document properties',
+            knowledgeTags: 'Browse tag index',
+            knowledgeLinks: 'Check missing/ambiguous links',
+            knowledgeBacklinks: 'Show backlinks for current file'
         },
         category: {
             file: 'File',
             edit: 'Edit',
             view: 'View',
             insert: 'Insert',
-            search: 'Search'
+            search: 'Search',
+            knowledge: 'Knowledge base'
         }
     },
     /** A3 document history / diff / restore dialog (`components/Markdown/history/FileHistoryDialog.vue`) */
@@ -321,5 +326,67 @@ export default {
             mixedScriptSpacing: 'Mixed script spacing',
             punctuationWidthMix: 'Punctuation width mix'
         }
+    },
+    /** A5 Front matter properties dialog */
+    frontMatter: {
+        title: 'Document properties',
+        loading: 'Reading document properties…',
+        loadFailed: 'Failed to read current document. Try again later.',
+        noContent: 'No editable Markdown document',
+        retry: 'Retry',
+        target: 'Target: {path}',
+        targetFallback: 'Current editor',
+        savedContentHint: 'Editor unavailable; using saved content',
+        presentHint: 'Front matter found; saving updates the file header only',
+        absentHint: 'No front matter; filling fields inserts a front matter block',
+        scalarPlaceholder: 'Enter a value',
+        listPlaceholder: 'Separate values with commas',
+        customTitle: 'Custom properties',
+        customEmpty: 'No other custom properties',
+        remove: 'Remove property',
+        save: 'Save',
+        saveFailed: 'Save failed. Try again later.',
+        cancel: 'Cancel',
+        fields: {
+            title: 'Title',
+            date: 'Date',
+            tags: 'Tags',
+            status: 'Status',
+            summary: 'Summary',
+            aliases: 'Aliases'
+        }
+    },
+    /** B2/B1/B4 knowledge base query dialog */
+    knowledge: {
+        titleTags: 'Tags',
+        titleLinks: 'Link issues',
+        titleBacklinks: 'Backlinks',
+        loading: 'Loading workspace index…',
+        loadFailed: 'Failed to load workspace index. Try again later.',
+        noWorkspace: 'No workspace open; open a folder to query the knowledge base',
+        emptyWorkspace: 'No indexable Markdown / TXT files in the workspace',
+        emptyTags: 'No tags in the workspace yet',
+        emptyLinks: 'No missing or ambiguous Wiki links',
+        noActiveFile: 'No file is currently open',
+        emptyBacklinks: 'The current file has no backlinks yet',
+        retry: 'Retry',
+        refresh: 'Refresh index',
+        refreshing: 'Refreshing workspace index…',
+        refreshFailed: 'Index refresh failed; showing the previous result',
+        openFailed: 'Failed to open the file. Try again later.',
+        close: 'Close',
+        statusMissing: 'Missing',
+        statusAmbiguous: 'Ambiguous',
+        summaryTags: '{tags} tags / {files} files',
+        summaryLinks: '{missing} missing / {ambiguous} ambiguous',
+        summaryBacklinks: '{count} backlinks',
+        targetWorkspace: 'Workspace: {path}',
+        targetWorkspaceUnknown: 'Workspace index',
+        targetActiveFile: 'Current file: {path}',
+        targetNoActiveFile: 'No file is currently open',
+        tagListLabel: 'Tag list',
+        tagFilesLabel: 'Files with this tag',
+        linkListLabel: 'Link issue list',
+        backlinkListLabel: 'Backlink list'
     }
 }

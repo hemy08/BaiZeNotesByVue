@@ -166,7 +166,36 @@ export function buildPaletteCommands(handlers: PaletteCommandHandlers): PaletteC
             keywords: ['command', 'palette', 'commands', '命令', '面板'],
             run: () => handlers.switchMode('command'),
             closeOnRun: false
-        }
+        },
+        // ========== 1.5.1 本地知识库基座 ==========
+        menuCommand(
+            'front-matter',
+            'editorUi.commandPalette.command.frontMatter',
+            'editorUi.commandPalette.category.knowledge',
+            'baize:menu:edit:front-matter',
+            ['frontmatter', 'property', 'meta', '属性', '元数据']
+        ),
+        menuCommand(
+            'knowledge-tags',
+            'editorUi.commandPalette.command.knowledgeTags',
+            'editorUi.commandPalette.category.knowledge',
+            'baize:menu:edit:knowledge-tags',
+            ['tag', 'knowledge', '标签', '索引']
+        ),
+        menuCommand(
+            'knowledge-links',
+            'editorUi.commandPalette.command.knowledgeLinks',
+            'editorUi.commandPalette.category.knowledge',
+            'baize:menu:edit:knowledge-links',
+            ['link', 'broken', 'missing', '链接', '死链', '检查']
+        ),
+        menuCommand(
+            'knowledge-backlinks',
+            'editorUi.commandPalette.command.knowledgeBacklinks',
+            'editorUi.commandPalette.category.knowledge',
+            'baize:menu:edit:knowledge-backlinks',
+            ['backlink', 'reference', '反向链接', '反链']
+        )
     ]
 }
 

@@ -180,14 +180,19 @@ export default {
             insertMermaid: '插入 Mermaid 图表',
             workspaceSearch: '工作区搜索/替换',
             quickOpen: '快速打开文件',
-            showCommandPalette: '显示命令面板'
+            showCommandPalette: '显示命令面板',
+            frontMatter: '编辑文档属性',
+            knowledgeTags: '浏览标签索引',
+            knowledgeLinks: '检查缺失/歧义链接',
+            knowledgeBacklinks: '查看当前文件反向链接'
         },
         category: {
             file: '文件',
             edit: '编辑',
             view: '视图',
             insert: '插入',
-            search: '搜索'
+            search: '搜索',
+            knowledge: '知识库'
         }
     },
     /** A3 文档历史 / diff / 回滚对话框（`components/Markdown/history/FileHistoryDialog.vue`） */
@@ -314,5 +319,67 @@ export default {
             mixedScriptSpacing: '中英混排空格',
             punctuationWidthMix: '全半角标点混用'
         }
+    },
+    /** A5 Front matter 属性对话框 */
+    frontMatter: {
+        title: '文档属性',
+        loading: '正在读取文档属性…',
+        loadFailed: '读取当前文档内容失败，请稍后重试',
+        noContent: '没有可编辑的 Markdown 文档',
+        retry: '重试',
+        target: '目标：{path}',
+        targetFallback: '当前编辑器',
+        savedContentHint: '编辑器未就绪，当前基于已保存内容',
+        presentHint: '已有 front matter 属性；修改后保存到文件头部，正文保持不变',
+        absentHint: '没有 front matter；填写后自动在正文前插入',
+        scalarPlaceholder: '输入值',
+        listPlaceholder: '多个值用逗号分隔',
+        customTitle: '自定义属性',
+        customEmpty: '没有其他自定义属性',
+        remove: '删除属性',
+        save: '保存',
+        saveFailed: '保存失败，请稍后重试',
+        cancel: '取消',
+        fields: {
+            title: '标题',
+            date: '日期',
+            tags: '标签',
+            status: '状态',
+            summary: '摘要',
+            aliases: '别名'
+        }
+    },
+    /** B2/B1/B4 知识库查询对话框 */
+    knowledge: {
+        titleTags: '标签浏览',
+        titleLinks: '链接问题',
+        titleBacklinks: '反向链接',
+        loading: '正在加载工作区索引…',
+        loadFailed: '加载工作区索引失败，请稍后重试',
+        noWorkspace: '尚未打开工作区，无法查询知识库（请先打开一个文件夹）',
+        emptyWorkspace: '工作区中没有可索引的 Markdown / TXT 文件',
+        emptyTags: '工作区中还没有任何标签',
+        emptyLinks: '没有缺失或歧义的 Wiki 链接',
+        noActiveFile: '当前没有打开的文件',
+        emptyBacklinks: '当前文件还没有反向链接',
+        retry: '重试',
+        refresh: '刷新索引',
+        refreshing: '正在刷新工作区索引…',
+        refreshFailed: '刷新索引失败，以下为上次索引结果',
+        openFailed: '打开文件失败，请稍后重试',
+        close: '关闭',
+        statusMissing: '缺失',
+        statusAmbiguous: '歧义',
+        summaryTags: '共 {tags} 个标签 / {files} 个文件',
+        summaryLinks: '缺失 {missing} 个 / 歧义 {ambiguous} 个',
+        summaryBacklinks: '共 {count} 条反向链接',
+        targetWorkspace: '工作区：{path}',
+        targetWorkspaceUnknown: '工作区索引',
+        targetActiveFile: '当前文件：{path}',
+        targetNoActiveFile: '当前没有打开的文件',
+        tagListLabel: '标签列表',
+        tagFilesLabel: '包含该标签的文件',
+        linkListLabel: '链接问题列表',
+        backlinkListLabel: '反向链接列表'
     }
 }

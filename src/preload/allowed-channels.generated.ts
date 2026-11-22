@@ -24,7 +24,7 @@ type AllIpcChannel = {
 /** window.api.* 直连通道键类型（来源 IpcPreloadApiRequests） */
 type PreloadApiChannel = keyof IpcPreloadApiRequests
 
-/** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 65 个 */
+/** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 66 个 */
 export const RENDERER_SEND_CHANNELS = [
     IPC.WINDOW.MINIMIZE,
     IPC.WINDOW.MAXIMIZE,
@@ -61,6 +61,7 @@ export const RENDERER_SEND_CHANNELS = [
     IPC.FILE.CONVERT_SAVE_ENCODING,
     IPC.FILE.SEARCH_WORKSPACE,
     IPC.FILE.REPLACE_WORKSPACE,
+    IPC.FILE.GET_WORKSPACE_INDEX,
     IPC.FILE_MANAGER.COPY_RELATIVE_PATH,
     IPC.FILE_MANAGER.COPY_IMAGELINK,
     IPC.FILE_MANAGER.COPY_FILELINK,

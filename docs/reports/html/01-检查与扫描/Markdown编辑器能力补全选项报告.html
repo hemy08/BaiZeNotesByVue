@@ -17,14 +17,15 @@
     <a class="toc-l3" href="#sub-2">2.1 对标对象与代表性能力</a>
     <a class="toc-l3" href="#sub-3">2.2 可借鉴能力总览</a>
     <a class="toc-l3" href="#sub-4">2.3 对本项目的判断</a>
+    <a class="toc-l3" href="#sub-5">2.4 基于当前架构的适配评估（2026-11-21）</a>
     <a class="toc-l2" href="#sec-3">3. 能力候选矩阵</a>
-    <a class="toc-l3" href="#sub-5">A. 编辑器与工作流</a>
-    <a class="toc-l3" href="#sub-6">B. 知识库与文档关系（均未落地）</a>
-    <a class="toc-l3" href="#sub-7">C. 发布与导出（均未落地）</a>
-    <a class="toc-l3" href="#sub-8">D. 平台、扩展与协作（均未落地）</a>
-    <a class="toc-l3" href="#sub-9">E. 工作流扩展新增候选（本次外部对标新增）</a>
+    <a class="toc-l3" href="#sub-6">A. 编辑器与工作流</a>
+    <a class="toc-l3" href="#sub-7">B. 知识库与文档关系（均未落地）</a>
+    <a class="toc-l3" href="#sub-8">C. 发布与导出（均未落地）</a>
+    <a class="toc-l3" href="#sub-9">D. 平台、扩展与协作（均未落地）</a>
+    <a class="toc-l3" href="#sub-10">E. 工作流扩展新增候选（本次外部对标新增）</a>
     <a class="toc-l2" href="#sec-4">4. 推荐套餐与版本路线</a>
-    <a class="toc-l3" href="#sub-10">推荐实施顺序</a>
+    <a class="toc-l3" href="#sub-11">推荐实施顺序</a>
     <a class="toc-l2" href="#sec-5">5. 决策勾选表（只列未落地能力）</a>
     <a class="toc-l2" href="#sec-6">6. 关键风险与依赖提示</a>
     <a class="toc-l2" href="#sec-7">7. 建议验收标准（选定后补）</a>
@@ -46,7 +47,7 @@
 <strong>项目基线</strong>：v1.5.1（开发中；最新发布版本为 v1.5.0，tag <code>release-1.5.0</code>）。
 <strong>整理时间</strong>：2026-11-21；本次补充 Obsidian / iA Writer / Logseq / Joplin / 思源 / Notion / Zettlr 的外部能力对标。
 <strong>结论先行</strong>：v1.5.1 已补齐搜索、命令面板、多标签、历史、lint、拼写、智能输入、大纲等编辑器基础能力；下一阶段最值得借鉴的是 <strong>文档关系、属性/查询、捕获输入、发布与回顾</strong>，而不是立刻做完整数据库或实时协作。
-<strong>本次完成状态</strong>：A1、A2、A3、A4、A6、A7、A8、A9、A10 已完成（A2/A8/A9 默认开启，A1/A3/A4/A6/A7/A10 为可选能力、默认关闭）；A5（Front matter）与 B/C/D/E 系列仍为候选。
+<strong>本次完成状态</strong>：A1、A2、A3、A4、A6、A7、A8、A9、A10 已完成（A2/A8/A9 默认开启，A1/A3/A4/A6/A7/A10 为可选能力、默认关闭）；A7 已扩展为普通/写作模式通用；E9 的 Focus/Typewriter、写作目标、Style Check 已在 1.5.1 写作体验 P0 落地（可选、默认关闭）；A5 与 B/C/D/E 系列仍为候选。
 <strong>使用方式</strong>：§5 勾选未落地能力，或直接回复套餐编号（如 <code>套餐 B + E1</code>）。</p>
 </blockquote>
 <h2 id="sec-1">1. 当前能力基线（v1.5.1）</h2>
@@ -269,7 +270,7 @@
 <td>所见即所得、Focus/Typewriter、写作目标、Style Check</td>
 <td>Typora、iA Writer</td>
 <td>降低「源码↔预览」切换成本，提升长文体验</td>
-<td>⏳ 部分（拼写/lint 已有；Focus/Style 未做，E9）</td>
+<td>✅ Focus/Typewriter/目标/Style 已落地（可选）；真 WYSIWYG 暂缓（E9/独立评估）</td>
 </tr>
 <tr>
 <td>写作</td>
@@ -329,11 +330,326 @@
 <li><strong>最容易形成差异化的能力</strong>：<strong>E1 网页剪藏 + E2 PDF 标注 + E3 OCR</strong>，与现有本地文件/安全架构契合；</li>
 <li><strong>不建议照搬</strong>：完整数据库、实时协作、云同步、全文 WYSIWYG 替换 Monaco；这些是产品级/团队级工程，不是单个版本能稳妥交付的。</li>
 </ul>
+<h3 id="sub-5">2.4 基于当前架构的适配评估（2026-11-21）</h3>
+<h4>2.4.1 当前架构对能力落地的约束</h4>
+<table>
+<thead>
+<tr>
+<th>架构事实</th>
+<th>对新增能力的影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主进程负责文件读写、Path Guard、目录树；渲染层通过 IPC 白名单访问</td>
+<td>搜索、索引、链接重命名、附件扫描应放主进程或 worker；不要在渲染层直接读磁盘</td>
+</tr>
+<tr>
+<td>主进程仍是“单活动文档”语义；多标签是视图层 + localStorage</td>
+<td>多文档、后台索引、页面预览不能依赖“当前文件”隐式状态，必须显式传路径</td>
+</tr>
+<tr>
+<td>全工作区搜索当前按需扫描，没有持久索引/数据库</td>
+<td>B2/B1/B4 需要先补一个可增量更新的工作区索引层；不要把索引塞进 electron-store</td>
+</tr>
+<tr>
+<td>预览是独立 markdown-it 渲染链，编辑器是 Monaco</td>
+<td>属性面板、悬浮预览、块引用可在预览/索引层做，不必替换 Monaco；真正 WYSIWYG 成本高（已单独评估并暂缓）</td>
+</tr>
+<tr>
+<td>配置存 electron-store，UI 偏好在 localStorage</td>
+<td>大型索引/缓存应放应用数据目录并定义重建策略，不能依赖 localStorage 容量</td>
+</tr>
+<tr>
+<td>命令面板、菜单动作、EventBus 已统一</td>
+<td>E6、E11、C3/C4 等可复用命令/菜单/设置链路，属于低风险增量</td>
+</tr>
+<tr>
+<td>Windows-only、安装包/入口体积预算紧</td>
+<td>OCR/PDF/富文本等重依赖必须懒加载并重新实测预算；跨平台成本另计</td>
+</tr>
+<tr>
+<td>插件系统目前是内置工具集合，没有插件 SDK/沙箱</td>
+<td>D1 属长期工程；先用命令/菜单扩展点满足内部能力</td>
+</tr>
+</tbody>
+</table>
+<h4>2.4.2 按架构适配度分层</h4>
+<p><strong>第一层：复用现有链路即可落地（低风险，优先）</strong></p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>能力</th>
+<th>可复用部分</th>
+<th>需要新增</th>
+<th>难度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A5</td>
+<td>Front matter/属性面板</td>
+<td>文件读写、预览定制容器、系统设置</td>
+<td>YAML front matter 解析（源文本保持不变）、表单 UI</td>
+<td>S~M</td>
+</tr>
+<tr>
+<td>E6</td>
+<td>日记/模板/快速收件箱</td>
+<td>模板菜单、命令面板、文件创建、目录树</td>
+<td>日期命名、收件箱目录约定、模板变量</td>
+<td>S~M</td>
+</tr>
+<tr>
+<td>C3</td>
+<td>打印/打印预览</td>
+<td>现有 markdown-it 预览</td>
+<td>打印 CSS、分页处理、Electron print API</td>
+<td>S</td>
+</tr>
+<tr>
+<td>C4</td>
+<td>主题化/自包含 HTML 导出</td>
+<td>预览渲染 + 主题 CSS</td>
+<td>资源内联、安全路径校验</td>
+<td>S~M</td>
+</tr>
+<tr>
+<td>E11</td>
+<td>工作区布局/多配置</td>
+<td>系统设置、窗口状态</td>
+<td>配置 profile、布局序列化</td>
+<td>S~M</td>
+</tr>
+<tr>
+<td>E10</td>
+<td>页面悬浮预览</td>
+<td>预览渲染、命令/链接事件</td>
+<td>链接索引、悬浮卡片、定位</td>
+<td>S~M（依赖 B1/B2）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>第二层：需要新增共享索引或文件语义（中风险）</strong></p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>能力</th>
+<th>关键改造</th>
+<th>主要风险</th>
+<th>难度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B2</td>
+<td>标签与全文索引</td>
+<td>主进程增量索引、忽略规则、查询 API</td>
+<td>索引与文件监听一致性；索引存储选型</td>
+<td>M~L</td>
+</tr>
+<tr>
+<td>B1</td>
+<td>Wiki 双链/反向链接</td>
+<td>wikilink 解析、链接索引、跳转/创建、重命名</td>
+<td>链接歧义、大小写、相对路径、缺失链接</td>
+<td>L</td>
+</tr>
+<tr>
+<td>B4</td>
+<td>链接检查/重命名自动更新</td>
+<td>在 B1 索引上做事务式重命名</td>
+<td>回滚、路径安全、批量更新一致性</td>
+<td>M</td>
+</tr>
+<tr>
+<td>B5</td>
+<td>附件管理器</td>
+<td>附件扫描、引用扫描、重命名/清理</td>
+<td>路径安全、孤儿判定、与粘贴链路整合</td>
+<td>M</td>
+</tr>
+<tr>
+<td>E1</td>
+<td>Web Clipper/剪藏</td>
+<td>HTML→Markdown（已有 Turndown）、本地接收端</td>
+<td>本地端口/令牌安全、网页清洗、图片下载</td>
+<td>M~L</td>
+</tr>
+<tr>
+<td>E8</td>
+<td>幻灯片/演示导出</td>
+<td>Marp/reveal 渲染或导出 HTML</td>
+<td>主题/分页/依赖体积</td>
+<td>M</td>
+</tr>
+<tr>
+<td>C1</td>
+<td>EPUB 导出</td>
+<td>渲染结果打包、资源内嵌</td>
+<td>样式兼容、资源路径</td>
+<td>M</td>
+</tr>
+<tr>
+<td>D2</td>
+<td>文件关联/多窗口</td>
+<td><code>fileAssociations</code>、second-instance、多窗口状态</td>
+<td>Windows 行为、窗口状态隔离</td>
+<td>M</td>
+</tr>
+<tr>
+<td>D6</td>
+<td>AI 写作辅助</td>
+<td>API/本地模型、流式 UI、隐私开关</td>
+<td>密钥安全、隐私、成本</td>
+<td>M~L</td>
+</tr>
+</tbody>
+</table>
+<p><strong>第三层：需要编辑器/存储内核改造（高风险，后置）</strong></p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>能力</th>
+<th>为什么要慎重</th>
+<th>难度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B3</td>
+<td>关系图谱</td>
+<td>全库关系数据 + 布局/渲染性能</td>
+<td>M~L</td>
+</tr>
+<tr>
+<td>E2</td>
+<td>PDF 标注与摘录</td>
+<td>PDF.js、标注坐标/持久化、附件安全</td>
+<td>L</td>
+</tr>
+<tr>
+<td>E3</td>
+<td>图片 OCR/搜索</td>
+<td>OCR 模型/API、索引、准确率与体积</td>
+<td>L</td>
+</tr>
+<tr>
+<td>E4</td>
+<td>块引用/内容嵌入</td>
+<td>稳定块 ID、块模型、复制/移动/删除语义</td>
+<td>L</td>
+</tr>
+<tr>
+<td>E5</td>
+<td>数据库/查询视图</td>
+<td>属性 schema + 查询引擎 + 多视图，接近产品级</td>
+<td>XL</td>
+</tr>
+<tr>
+<td>E7</td>
+<td>Canvas/白板</td>
+<td>新文件格式、画布交互、性能</td>
+<td>M~L</td>
+</tr>
+<tr>
+<td>C2</td>
+<td>静态站点导出</td>
+<td>路由/资源/主题/部署契约</td>
+<td>L</td>
+</tr>
+<tr>
+<td>D1</td>
+<td>插件/模板 SDK</td>
+<td>沙箱、API 稳定性、版本兼容</td>
+<td>L~XL</td>
+</tr>
+<tr>
+<td>D3</td>
+<td>macOS/Linux</td>
+<td>签名/打包/平台测试/权限</td>
+<td>L</td>
+</tr>
+<tr>
+<td>D4</td>
+<td>Git 集成</td>
+<td>Git 二进制/认证/diff 冲突处理</td>
+<td>L</td>
+</tr>
+<tr>
+<td>D5</td>
+<td>云同步/实时协作</td>
+<td>后端、账号、冲突合并、隐私</td>
+<td>XL</td>
+</tr>
+<tr>
+<td>D8</td>
+<td>真 WYSIWYG</td>
+<td>需替换/并行富文本编辑器；Markdown 往返保真、安全、体积、功能平权风险高</td>
+<td>XL（已评估暂缓）</td>
+</tr>
+</tbody>
+</table>
+<h4>2.4.3 最值得借鉴的五个能力</h4>
+<ol>
+<li><strong>A5 Front matter/属性面板</strong>：把文件从“纯文本”变成“带元数据的数据”，为标签、查询、模板打基础；不改编辑器内核。</li>
+<li><strong>B2 + B1（索引基础 + Wiki 双链/反向链接）</strong>：这是 Obsidian/Logseq/思源最核心的知识库闭环；需要先补主进程工作区索引，但不需要 WYSIWYG 或块模型。</li>
+<li><strong>B4/B5（链接检查、附件管理）</strong>：建立在 B1/B5 索引之上的低边际成本能力，直接解决死链和孤儿附件。</li>
+<li><strong>E6 日记/模板/快速收件箱</strong>：S~M 成本即可形成日常使用入口，与现有模板/命令面板/文件树高度契合。</li>
+<li><strong>E1 Web Clipper</strong>：外部内容捕获的差异化能力；复用 Turndown，但要把本地接收端的安全边界设计好。</li>
+</ol>
+<h4>2.4.4 推荐版本节奏</h4>
+<table>
+<thead>
+<tr>
+<th>版本</th>
+<th>主题</th>
+<th>建议能力</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1.5.1</strong></td>
+<td>本地知识库基座</td>
+<td>A5 → 工作区索引层 → B2 → B1 → B4/B5 → E10</td>
+<td>当前开发版本继续扩展：先属性，再索引，再双链/反链；不要先做图谱/数据库</td>
+</tr>
+<tr>
+<td><strong>1.5.2</strong></td>
+<td>捕获与日常入口</td>
+<td>E6 → E1 → E2/E3</td>
+<td>先低风险日常入口，再上 Web Clipper/PDF/OCR</td>
+</tr>
+<tr>
+<td><strong>1.5.3</strong></td>
+<td>表达与发布</td>
+<td>C3 → C4 → E8 → C1/C2</td>
+<td>复用现有 Markdown 预览与导出链路；E9 已在 1.5.1 前落地</td>
+</tr>
+<tr>
+<td><strong>1.5.5</strong></td>
+<td>平台与生态</td>
+<td>E7 → D1 → D2 → D3 → D5/D6</td>
+<td>需单独产品决策；D5/D6 不建议默认开启</td>
+</tr>
+</tbody>
+</table>
+<h4>2.4.5 难度重估说明</h4>
+<ul>
+<li>报告 §3 的工作量是“单功能相对估算”；叠加到本项目后，<strong>索引类能力整体上调半级</strong>（主进程增量索引 + 文件监听 + 重建/上限），<strong>涉及文件重命名的能力上调一级</strong>（Path Guard、回滚、事务性），<strong>涉及外部内容的能力另加安全评审</strong>；</li>
+<li>入口体积只有 0.5 KiB 余量，任何重依赖（PDF/OCR/富文本）必须懒加载并重新跑 <code>budget:check</code>；</li>
+<li>Windows-only、无插件沙箱、无持久索引是当前三大架构约束，规划时需一起考虑；</li>
+<li>E9（Focus/Typewriter/写作目标/Style Check）已在 1.5.1 写作体验 P0 中落地（可选、默认关闭），不再是待做项；A7 智能输入已扩展为普通/写作模式通用。</li>
+</ul>
 <h2 id="sec-3">3. 能力候选矩阵</h2>
 <blockquote>
 <p>估算口径：<strong>S</strong> ≤2 人日、<strong>M</strong> 3~5 人日、<strong>L</strong> 8~15 人日、<strong>XL</strong> &gt;15 人日（单人）；实际随交互细节/测试量浮动。状态：✅ 1.5.1 已落地 / ⏳ 未落地。</p>
 </blockquote>
-<h3 id="sub-5">A. 编辑器与工作流</h3>
+<h3 id="sub-6">A. 编辑器与工作流</h3>
 <table>
 <thead>
 <tr>
@@ -450,7 +766,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-6">B. 知识库与文档关系（均未落地）</h3>
+<h3 id="sub-7">B. 知识库与文档关系（均未落地）</h3>
 <table>
 <thead>
 <tr>
@@ -511,7 +827,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-7">C. 发布与导出（均未落地）</h3>
+<h3 id="sub-8">C. 发布与导出（均未落地）</h3>
 <table>
 <thead>
 <tr>
@@ -563,7 +879,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-8">D. 平台、扩展与协作（均未落地）</h3>
+<h3 id="sub-9">D. 平台、扩展与协作（均未落地）</h3>
 <table>
 <thead>
 <tr>
@@ -633,7 +949,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-9">E. 工作流扩展新增候选（本次外部对标新增）</h3>
+<h3 id="sub-10">E. 工作流扩展新增候选（本次外部对标新增）</h3>
 <table>
 <thead>
 <tr>
@@ -763,7 +1079,7 @@
 <td><strong>套餐 A：轻量编辑器增强</strong></td>
 <td>A1、A2、A3、A4、A6、A7、A8、A9、A10</td>
 <td>「更好用的 Markdown 编辑器」</td>
-<td>✅ 1.5.1 已完成；剩余 A5 可补</td>
+<td>✅ 1.5.1 已落地基础能力；A5 并入 1.5.1 知识库基座</td>
 </tr>
 <tr>
 <td><strong>套餐 B：本地知识库</strong></td>
@@ -791,12 +1107,12 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-10">推荐实施顺序</h3>
+<h3 id="sub-11">推荐实施顺序</h3>
 <ol>
-<li><strong>文档关系层（1.6）</strong>：A5 属性 → B1 双链/反向链接 → B4 链接检查 → B2 标签/索引 → E10 悬浮预览；</li>
-<li><strong>捕获与复用（1.7）</strong>：E1 Web Clipper → E2 PDF 标注 → E3 OCR → E4 块引用/嵌入 → E6 日记/模板/收件箱；</li>
-<li><strong>表达与发布（1.8）</strong>：E9 写作体验 → C3 打印/C4 主题 HTML → E8 幻灯片 → C1 EPUB/C2 静态站点；</li>
-<li><strong>平台与智能（后续）</strong>：E7 Canvas → D1 插件 SDK → D2 文件关联/多窗口 → D3 跨平台 → D5/D6 同步/AI；</li>
+<li><strong>文档关系层（1.5.1）</strong>：A5 属性 → B1 双链/反向链接 → B4 链接检查 → B2 标签/索引 → E10 悬浮预览；</li>
+<li><strong>捕获与复用（1.5.2）</strong>：E1 Web Clipper → E2 PDF 标注 → E3 OCR → E4 块引用/嵌入 → E6 日记/模板/收件箱；</li>
+<li><strong>表达与发布（1.5.3）</strong>：C3 打印/C4 主题 HTML → E8 幻灯片 → C1 EPUB/C2 静态站点（E9 已于写作体验 P0 落地）；</li>
+<li><strong>平台与智能（1.5.5）</strong>：E7 Canvas → D1 插件 SDK → D2 文件关联/多窗口 → D3 跨平台 → D5/D6 同步/AI；</li>
 <li><strong>数据库（E5）不要先做</strong>：先完成属性 + 索引 + 查询，再评估是否需要完整数据库视图。</li>
 </ol>
 <h2 id="sec-5">5. 决策勾选表（只列未落地能力）</h2>

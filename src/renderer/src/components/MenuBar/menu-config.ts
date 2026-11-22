@@ -201,6 +201,29 @@ const editMenu: BaiZeMenuEntry = {
             labelKey: 'menu.edit.writingStyleCheck',
             menuAction: 'baize:menu:edit:writing-style-check',
             writingFlag: 'writingStyleCheck'
+        },
+        { type: 'separator' },
+        // 1.5.1 本地知识库基座：属性 / 标签 / 链接 / 反链
+        {
+            labelKey: 'menu.edit.frontMatter',
+            menuAction: 'baize:menu:edit:front-matter'
+        },
+        {
+            labelKey: 'menu.edit.knowledge',
+            submenu: [
+                {
+                    labelKey: 'menu.edit.knowledgeTags',
+                    menuAction: 'baize:menu:edit:knowledge-tags'
+                },
+                {
+                    labelKey: 'menu.edit.knowledgeLinks',
+                    menuAction: 'baize:menu:edit:knowledge-links'
+                },
+                {
+                    labelKey: 'menu.edit.knowledgeBacklinks',
+                    menuAction: 'baize:menu:edit:knowledge-backlinks'
+                }
+            ]
         }
         // FUN-09：在文件中查找/替换（Ctrl+Shift+F/H）需要主进程目录遍历与结果面板，
         // 本轮无法低成本实现，暂时从菜单隐藏（A-4 模式，数据保留）。

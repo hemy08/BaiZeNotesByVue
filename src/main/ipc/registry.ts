@@ -60,6 +60,8 @@ import { setTrustedMainWindow, withSenderCheck } from '../utils/ipc-security'
 import { registerUtilsIpcHandlers } from './utils-ipc'
 // A2（2026-11-21）：全工作区搜索/替换（独立域模块，不并入 utils 侧 29 通道清单）
 import { registerWorkspaceSearchIpc } from './workspace-search-ipc'
+// 1.5.1 本地知识库基座：工作区索引（front matter/标签/Wiki 链接）
+import { registerWorkspaceIndexIpc } from './workspace-index-ipc'
 import { logger } from '../utils/logger'
 import { IPC } from '../../shared/ipc-channels'
 
@@ -75,6 +77,9 @@ const GLOBAL_MAIN_INDEX_COMPONENT_ID = 'global-main-index'
  * 独立于 utils 侧通道清单（那是 29 个历史通道的冻结台账），便于诊断定位。
  */
 const WORKSPACE_SEARCH_COMPONENT_ID = 'global-workspace-search-ipc'
+
+/** 1.5.1 工作区索引 IPC 的监听台账组件 ID */
+const WORKSPACE_INDEX_COMPONENT_ID = 'global-workspace-index-ipc'
 
 /** registerAll 的入口钩子：由 main/index.ts 提供的跨模块行为（避免 registry 反向依赖入口） */
 export interface RegisterAllHooks {
@@ -196,4 +201,7 @@ export function registerAll(mainWindow: BrowserWindow, hooks: RegisterAllHooks =
     // 7) A2（2026-11-21）：全工作区搜索/替换（含 Quick Open 文件清单），默认开启。
     //    仅主窗口可信；搜索/替换服务只信任 appState.rootPath 工作区根。
     registerWorkspaceSearchIpc(mainWindow, WORKSPACE_SEARCH_COMPONENT_ID)
+    // 8) 1.5.1 本地知识库基座：工作区索引（front matter/标签/Wiki 链接）。
+    //    只索引 appState.rootPath，缓存按根失效；供标签/反链/链接检查面板查询。
+    registerWorkspaceIndexIpc(mainWindow, WORKSPACE_INDEX_COMPONENT_ID)
 }
