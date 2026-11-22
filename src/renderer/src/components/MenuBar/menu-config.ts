@@ -442,7 +442,20 @@ const toolsMenu: BaiZeMenuEntry = {
                     menuAction: 'baize:menu:tools:drawing:plantuml'
                 }
             ]
-        }
+        },
+        // 1.5.2 E6：今日日记 / 快速收件箱（可选能力 dailyNotes，默认关闭）。
+        // 菜单项保持可见以便用户发现；动作执行时由 menu-actions 校验开关并提示开启，
+        // 关闭状态下不产生任何文件行为（命令面板侧则按开关不注册入口）。
+        { labelKey: 'menu.tools.dailyNote', menuAction: 'baize:menu:tools:daily-note' },
+        { labelKey: 'menu.tools.inboxCapture', menuAction: 'baize:menu:tools:inbox-capture' },
+        // 1.5.2 E1：剪贴板剪藏（可选能力 clipCapture，默认关闭）。
+        // 关闭时同样保持菜单可见，执行前由 menu-actions 提示开启，且不会读取系统剪贴板。
+        { labelKey: 'menu.tools.clipToNote', menuAction: 'baize:menu:tools:clip-to-note' },
+        { labelKey: 'menu.tools.clipToEditor', menuAction: 'baize:menu:tools:clip-to-editor' },
+        // 1.5.2 E3：图片 OCR（可选能力 imageOcr，默认关闭，MVP 仅识别剪贴板截图）。
+        // 关闭时保持菜单可见，执行前由 menu-actions 提示开启，且不会读取剪贴板/加载引擎。
+        { labelKey: 'menu.tools.imageOcrInsert', menuAction: 'baize:menu:tools:ocr-insert' },
+        { labelKey: 'menu.tools.imageOcrCopy', menuAction: 'baize:menu:tools:ocr-copy' }
     ]
 }
 
@@ -766,6 +779,13 @@ const helpMenu: BaiZeMenuEntry = {
         { type: 'separator' },
         { labelKey: 'menu.help.shortkeys', menuAction: 'baize:menu:help:shortkeys' },
         { labelKey: 'menu.help.usage', menuAction: 'baize:menu:help:usage' },
+        {
+            labelKey: 'menu.help.guide',
+            submenu: [
+                { labelKey: 'menu.help.guideHtml', menuAction: 'baize:menu:help:guide-html' },
+                { labelKey: 'menu.help.guidePdf', menuAction: 'baize:menu:help:guide-pdf' }
+            ]
+        },
         { labelKey: 'menu.help.issues', menuAction: 'baize:menu:help:issues' },
         { type: 'separator' },
         { labelKey: 'menu.help.techStack', menuAction: 'baize:menu:help:tech-stack' },

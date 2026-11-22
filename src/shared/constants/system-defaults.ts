@@ -83,6 +83,14 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     featureSpellcheck: false,
     featureSmartInput: false,
     featureOutlinePlus: false,
+    // 1.5.2 E6：今日日记 / 快速收件箱（默认关闭）
+    featureDailyNotes: false,
+    // 1.5.2 E1：剪贴板剪藏（默认关闭）
+    featureClipCapture: false,
+    // 1.5.2 E2：PDF 标注与摘录（第 9 项，默认关闭）
+    featurePdfAnnotations: false,
+    // 1.5.2 E3：图片 OCR（第 10 项，默认关闭）
+    featureImageOcr: false,
     // 写作体验（P0）默认全部关闭
     writingModeEnabled: false,
     writingTypewriterEnabled: false,

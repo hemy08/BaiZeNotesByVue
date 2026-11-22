@@ -135,6 +135,10 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import BaseDialog from '../dialogs/BaseDialog.vue'
 import { t } from '../../common/i18n'
+import { openOrCreateCaptureEntry } from '../../common/capture-actions'
+import { captureClipToEditor, captureClipToNote } from '../../common/clip-capture-actions'
+import { ocrClipboardToClipboard, ocrClipboardToEditor } from '../../common/ocr-actions'
+import { useFeatureFlags } from '../../composables/useFeatureFlags'
 import { HandleMenuAction } from '../MenuBar/menu-actions'
 import {
     buildPaletteCommands,
@@ -187,14 +191,30 @@ const containerStyle = {
     maxWidth: '92vw'
 }
 
-/** 命令面板命令（注册表单真源；执行动作复用菜单分发/模式切换） */
-const commands: PaletteCommand[] = buildPaletteCommands({
-    runMenuAction: (menuAction: string) => HandleMenuAction(menuAction),
-    openWorkspaceSearch: () => emit('open-workspace-search'),
-    switchMode: (next: PaletteMode) => switchMode(next)
-} satisfies PaletteCommandHandlers)
+/** 能力开关（1.5.2 E6：命令注册按开关过滤，开关热切换后命令列表即时更新） */
+const { flags } = useFeatureFlags()
 
-const filteredCommands = computed(() => filterPaletteCommands(commands, query.value, t))
+/**
+ * 命令面板命令（注册表单真源；执行动作复用菜单分发/模式切换）。
+ * E6：`openOrCreateCaptureEntry` 与「工具」菜单共用同一渲染层入口动作（不复制 IPC 调用）。
+ */
+const commands = computed<PaletteCommand[]>(() =>
+    buildPaletteCommands(
+        {
+            runMenuAction: (menuAction: string) => HandleMenuAction(menuAction),
+            openWorkspaceSearch: () => emit('open-workspace-search'),
+            switchMode: (next: PaletteMode) => switchMode(next),
+            openOrCreateCaptureEntry: (kind) => openOrCreateCaptureEntry(kind),
+            captureClipToNote: () => captureClipToNote(),
+            captureClipToEditor: () => captureClipToEditor(),
+            ocrClipboardToEditor: () => ocrClipboardToEditor(),
+            ocrClipboardToClipboard: () => ocrClipboardToClipboard()
+        } satisfies PaletteCommandHandlers,
+        { isFeatureEnabled: (id) => flags[id] }
+    )
+)
+
+const filteredCommands = computed(() => filterPaletteCommands(commands.value, query.value, t))
 
 /** 命令模式：按分类分组（保持注册顺序；index 为全局扁平索引，供键盘选择使用） */
 const commandGroups = computed(() => {

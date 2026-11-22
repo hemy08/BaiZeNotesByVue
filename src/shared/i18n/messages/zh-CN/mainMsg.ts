@@ -188,5 +188,14 @@ export default {
         renderException: 'PlantUML 本地渲染异常：{message}',
         emptySource: 'PlantUML 源码为空',
         invalidSourceParam: 'PlantUML 源码参数无效（期望字符串）'
+    },
+    // 1.5.2 E3 图片 OCR（剪贴板截图识别）：语言包下载与识别阶段的状态栏提示
+    ocr: {
+        preparing: '正在下载 OCR 语言包（首次使用，约 10 MB）…',
+        preparingProgress: '正在下载 OCR 语言包… {percent}%',
+        ready: 'OCR 语言包已就绪',
+        recognizing: '正在识别剪贴板图片文字…',
+        recognizeDone: '已识别图片文字（{elapsed} ms）',
+        failed: '图片文字识别失败'
     }
 }

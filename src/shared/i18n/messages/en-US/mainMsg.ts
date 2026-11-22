@@ -192,5 +192,15 @@ export default {
         renderException: 'PlantUML local rendering error: {message}',
         emptySource: 'PlantUML source is empty',
         invalidSourceParam: 'Invalid PlantUML source parameter (a string is expected)'
+    },
+    // 1.5.2 E3 image OCR (clipboard screenshot recognition): status bar messages for
+    // language data download and recognition stages
+    ocr: {
+        preparing: 'Downloading OCR language data (first use, about 10 MB)…',
+        preparingProgress: 'Downloading OCR language data… {percent}%',
+        ready: 'OCR language data is ready',
+        recognizing: 'Recognizing text in the clipboard image…',
+        recognizeDone: 'Recognized image text ({elapsed} ms)',
+        failed: 'Failed to recognize text in the image'
     }
 }

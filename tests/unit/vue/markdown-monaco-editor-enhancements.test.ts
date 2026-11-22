@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 /**
- * MarkdownMonacoEditor 可选能力接线单测（A10 大纲增强 + A6 拼写检查 + A8 disposable 清理）：
+ * MarkdownMonacoEditor 可选能力接线单测（A10 大纲增强 + A6 拼写检查 + A8 disposable 清理
+ * + 1.5.2 E1 活动编辑器登记）：
  * - flags.outlinePlus 关闭：保持原 ATX 大纲与样式（无过滤框、setext 不识别）；
  * - flags.outlinePlus 开启：setext 标题/层级缩进/过滤输入框/空结果提示，运行时切换即时刷新；
  * - flags.spellcheck 开启：给 Monaco 实际 textarea 设置 spellcheck/lang，关闭时恢复并移除 lang；
- * - hemy-editor AddActions 返回的句柄在卸载时 dispose。
+ * - hemy-editor AddActions 返回的句柄在卸载时 dispose；
+ * - 1.5.2 E1：编辑器创建后登记为活动编辑器、焦点回调更新登记、卸载时清除登记
+ *   （命令面板/工具菜单「剪藏并插入当前笔记」依赖该登记）。
  *
  * 说明：monaco 与 hemy-editor 均以边界 mock，组件内真实逻辑（开关分发/大纲提取/属性切换）
  * 不替换；真实 Monaco 渲染与系统拼写词典由 E2E 覆盖。
@@ -58,6 +61,7 @@ const M = vi.hoisted(() => {
         currentModel: null as ModelLike | null,
         container: null as HTMLElement | null,
         changeHandlers: [] as Array<() => void>,
+        focusHandlers: [] as Array<() => void>,
         ipcHandlers: new Map<string, (...args: unknown[]) => unknown>()
     }
     return state
@@ -79,6 +83,11 @@ function makeModel(lines: string[], attached = false): ModelLike {
 const editorStub = {
     onDidChangeModelContent: (callback: () => void) => {
         M.changeHandlers.push(callback)
+    },
+    // 1.5.2 E1：活动编辑器登记依赖焦点回调（组件创建时注册）
+    onDidFocusEditorText: (callback: () => void) => {
+        M.focusHandlers.push(callback)
+        return { dispose: vi.fn() }
     },
     onDidScrollChange: vi.fn(),
     onDidChangeCursorPosition: vi.fn(),
@@ -190,6 +199,7 @@ vi.mock('@renderer/composables/useFeatureFlags', async () => {
 import { nextTick } from 'vue'
 import EventBus from '@renderer/common/event-bus/event-bus'
 import { EVENT_BUS } from '@renderer/common/event-bus/event-bus-events'
+import { getActiveEditor } from '@renderer/common/active-editor'
 import { setLocale } from '@renderer/common/i18n'
 import type MarkdownMonacoEditorType from '@renderer/components/Markdown/MarkdownMonacoEditor.vue'
 
@@ -255,6 +265,7 @@ beforeEach(() => {
     M.currentModel = null
     M.container = null
     M.changeHandlers.length = 0
+    M.focusHandlers.length = 0
     M.getModels.mockReturnValue([])
     M.getModelByUri.mockReturnValue(null)
     M.invoke.mockResolvedValue(null)
@@ -375,5 +386,23 @@ describe('A8 disposable 清理', () => {
         wrapper!.unmount()
         wrapper = null
         expect(M.addActionsDispose).toHaveBeenCalledTimes(1)
+    })
+})
+
+describe('1.5.2 E1 活动编辑器登记（剪藏插入当前笔记）', () => {
+    it('创建后登记、焦点回调更新登记、卸载时清除登记', async () => {
+        await mountEditor()
+        // 编辑器创建后即登记为活动编辑器（命令/菜单动作据此取得插入目标）
+        expect(getActiveEditor()).toBe(editorStub)
+
+        // 焦点回调触发后仍登记同一实例（覆盖组件内的焦点更新分支）
+        expect(M.focusHandlers.length).toBeGreaterThan(0)
+        M.focusHandlers[0]()
+        expect(getActiveEditor()).toBe(editorStub)
+
+        wrapper!.unmount()
+        wrapper = null
+        // 卸载后不再向已销毁实例写入
+        expect(getActiveEditor()).toBeNull()
     })
 })

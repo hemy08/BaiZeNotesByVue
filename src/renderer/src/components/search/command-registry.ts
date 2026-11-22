@@ -8,12 +8,16 @@
  * - 命令数据只存 `labelKey`（i18n 键），由组件渲染时 `t(key)` 输出（I18N-08），
  *   过滤时用「translated label + category + id + keywords」联合匹配；
  * - 菜单动作 id 与 `menu-config.ts` 的菜单树一致性由单测守护（不在本文件写死第二份
- *   可执行逻辑，只登记引用）。
+ *   可执行逻辑，只登记引用）；
+ * - 可选能力命令带 `featureFlag`：开关关闭时**不注册**（由 `buildPaletteCommands` 的
+ *   options.isFeatureEnabled 过滤，CommandPalette 注入响应式开关）。
  *
  * 新增命令只需在 `buildPaletteCommands` 的数组里加一条（titleKey 走
  * `editorUi.commandPalette.*` 命名空间，最终由词典统一补齐）。
  */
 
+import type { OptionalFeatureFlagId } from '../../../../shared/constants/feature-flags'
+import type { DailyEntryKind } from '../../../../shared/constants/daily-entries'
 import { isSubsequenceMatch } from './workspace-search-utils'
 
 /** 命令执行依赖（组件注入；单测可传替身） */
@@ -24,6 +28,25 @@ export interface PaletteCommandHandlers {
     openWorkspaceSearch: () => void
     /** 切换命令面板模式（command = 命令列表，file = 文件 Quick Open） */
     switchMode: (mode: PaletteMode) => void
+    /** 1.5.2 E6：打开/创建今日日记或快速收件箱（主进程白名单能力，渲染层只传 kind） */
+    openOrCreateCaptureEntry: (kind: DailyEntryKind) => void
+    /** 1.5.2 E1：从剪贴板剪藏为新笔记（读取剪贴板 + 既有 OPEN_OR_CREATE_ENTRY 通道） */
+    captureClipToNote: () => void
+    /** 1.5.2 E1：从剪贴板剪藏并插入当前笔记（复用 A8 insertMarkdownAtSelection） */
+    captureClipToEditor: () => void
+    /** 1.5.2 E3：识别剪贴板图片文字并插入当前笔记（无编辑器时回退复制） */
+    ocrClipboardToEditor: () => void
+    /** 1.5.2 E3：识别剪贴板图片文字并复制到剪贴板 */
+    ocrClipboardToClipboard: () => void
+}
+
+/** 命令注册可选能力过滤（E6：开关关闭时不注册入口） */
+export interface PaletteCommandBuildOptions {
+    /**
+     * 能力开关判定：返回 false 的命令不进入注册列表。
+     * 缺省视为全部开启（单测/其他调用方无需关心开关）。
+     */
+    isFeatureEnabled?: (id: OptionalFeatureFlagId) => boolean
 }
 
 /** 命令面板模式：命令列表 / 文件 Quick Open */
@@ -45,15 +68,23 @@ export interface PaletteCommand {
     run?: () => void
     /** 执行后是否关闭命令面板（缺省 true；模式切换类命令保持面板打开） */
     closeOnRun?: boolean
+    /** 可选能力开关（E6 起）：开关关闭时该命令不注册（buildPaletteCommands 过滤） */
+    featureFlag?: OptionalFeatureFlagId
 }
 
 /**
  * 构建命令面板命令列表。
  *
  * 命令 = 既有能力（保存/打开文件夹/查找/替换/跳行/大纲/插入表格·数学·Mermaid）
- * + A2 工作区搜索 + 面板自身（命令列表/Quick Open 切换）。
+ * + A2 工作区搜索 + 面板自身（命令列表/Quick Open 切换）+ 1.5.2 E6 日常记录（可选能力）。
+ *
+ * @param handlers 执行依赖（组件注入，单测传替身）
+ * @param options  可选能力过滤（缺省全部注册；CommandPalette 注入运行时开关）
  */
-export function buildPaletteCommands(handlers: PaletteCommandHandlers): PaletteCommand[] {
+export function buildPaletteCommands(
+    handlers: PaletteCommandHandlers,
+    options: PaletteCommandBuildOptions = {}
+): PaletteCommand[] {
     const menuCommand = (
         id: string,
         labelKey: string,
@@ -67,7 +98,7 @@ export function buildPaletteCommands(handlers: PaletteCommandHandlers): PaletteC
         keywords,
         menuAction
     })
-    return [
+    const commands: PaletteCommand[] = [
         // ========== 文件 ==========
         menuCommand(
             'save',
@@ -202,8 +233,100 @@ export function buildPaletteCommands(handlers: PaletteCommandHandlers): PaletteC
             'editorUi.commandPalette.category.knowledge',
             'baize:menu:edit:attachments',
             ['attachment', 'image', 'orphan', '附件', '图片', '孤儿']
-        )
+        ),
+        // ========== 1.5.2 E6 日常记录（可选能力 dailyNotes，默认关闭） ==========
+        {
+            id: 'daily-note',
+            labelKey: 'editorUi.commandPalette.command.dailyNote',
+            categoryKey: 'editorUi.commandPalette.category.capture',
+            keywords: ['daily', 'diary', 'journal', 'today', '日记', '今日', '笔记'],
+            featureFlag: 'dailyNotes',
+            run: () => handlers.openOrCreateCaptureEntry('daily')
+        },
+        {
+            id: 'inbox-capture',
+            labelKey: 'editorUi.commandPalette.command.inboxCapture',
+            categoryKey: 'editorUi.commandPalette.category.capture',
+            keywords: ['inbox', 'capture', 'quick', 'note', '收件箱', '快速', '收集', '笔记'],
+            featureFlag: 'dailyNotes',
+            run: () => handlers.openOrCreateCaptureEntry('inbox')
+        },
+        // ========== 1.5.2 E1 剪贴板剪藏（可选能力 clipCapture，默认关闭） ==========
+        {
+            id: 'clip-to-note',
+            labelKey: 'editorUi.commandPalette.command.clipToNote',
+            categoryKey: 'editorUi.commandPalette.category.capture',
+            keywords: ['clip', 'clipboard', 'capture', 'note', '剪藏', '剪贴板', '网页', '笔记'],
+            featureFlag: 'clipCapture',
+            run: () => handlers.captureClipToNote()
+        },
+        {
+            id: 'clip-to-editor',
+            labelKey: 'editorUi.commandPalette.command.clipToEditor',
+            categoryKey: 'editorUi.commandPalette.category.capture',
+            keywords: [
+                'clip',
+                'clipboard',
+                'insert',
+                'caret',
+                '剪藏',
+                '剪贴板',
+                '插入',
+                '当前笔记'
+            ],
+            featureFlag: 'clipCapture',
+            run: () => handlers.captureClipToEditor()
+        },
+        // ========== 1.5.2 E3 图片 OCR（可选能力 imageOcr，默认关闭；MVP 仅剪贴板截图） ==========
+        {
+            id: 'ocr-insert',
+            labelKey: 'editorUi.commandPalette.command.ocrInsert',
+            categoryKey: 'editorUi.commandPalette.category.capture',
+            keywords: [
+                'ocr',
+                'image',
+                'picture',
+                'screenshot',
+                'clipboard',
+                'text',
+                '识别',
+                '图片',
+                '截图',
+                '文字',
+                '插入'
+            ],
+            featureFlag: 'imageOcr',
+            run: () => handlers.ocrClipboardToEditor()
+        },
+        {
+            id: 'ocr-copy',
+            labelKey: 'editorUi.commandPalette.command.ocrCopy',
+            categoryKey: 'editorUi.commandPalette.category.capture',
+            keywords: [
+                'ocr',
+                'image',
+                'picture',
+                'screenshot',
+                'clipboard',
+                'copy',
+                '识别',
+                '图片',
+                '截图',
+                '文字',
+                '复制'
+            ],
+            featureFlag: 'imageOcr',
+            run: () => handlers.ocrClipboardToClipboard()
+        }
     ]
+    // 可选能力开关过滤：关闭时命令**不注册**（命令面板不出现入口，也无执行副作用）。
+    const isFeatureEnabled = options.isFeatureEnabled
+    if (typeof isFeatureEnabled !== 'function') {
+        return commands
+    }
+    return commands.filter(
+        (command) => command.featureFlag === undefined || isFeatureEnabled(command.featureFlag)
+    )
 }
 
 /** 命令显示名（渲染/过滤统一走 i18n；翻译缺失时 t 返回键名，不抛异常） */

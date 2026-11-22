@@ -42,7 +42,10 @@
         "src/renderer/src/components/Markdown/markdown-it-plantuml.d.ts",
         "src/renderer/src/components/Markdown/markdown-it-highlightjs-core.d.ts",
         "src/renderer/src/components/Markdown/turndown.d.ts",
-        "src/renderer/src/components/PluginTools/Encryption/crypto-js.d.ts"
+        "src/renderer/src/components/PluginTools/Encryption/crypto-js.d.ts",
+        // 1.5.2 E3：OCR worker 使用的 tesseract.js 内部模块/单变体 core 的环境声明
+        // （测试直接 import ocr-tesseract-runtime，需与主进程 tsconfig.node 同样可见）
+        "src/main/utils/ocr/ocr-tesseract-internals.d.ts"
     ],
     "exclude": ["node_modules", "out", "dist"]
 }

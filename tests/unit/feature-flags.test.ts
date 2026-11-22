@@ -1,6 +1,7 @@
 /**
- * 1.5.1 能力开关基础测试：
- * - 能力定义表（6 项可选能力）与默认值、持久化字段一一对应；
+ * 1.5.1 / 1.5.2 能力开关基础测试：
+ * - 能力定义表（10 项可选能力，含 1.5.2 E6 dailyNotes、E1 clipCapture、E2 pdfAnnotations
+ *   与 E3 imageOcr）与默认值、持久化字段一一对应；
  * - 系统设置默认值/渲染层兜底常量一致；
  * - config-schema 对 featureXxx 布尔字段的接受/拒绝行为。
  */
@@ -16,14 +17,18 @@ import {
 import { SYSTEM_SETTING_FALLBACK } from '../../src/shared/constants/system-defaults'
 
 describe('可选能力开关定义', () => {
-    it('包含用户选定的 6 项可选能力且默认全部关闭', () => {
+    it('包含用户选定的 10 项可选能力（1.5.2 E6/E1/E2/E3 增补 dailyNotes、clipCapture、pdfAnnotations、imageOcr）且默认全部关闭', () => {
         expect(OPTIONAL_FEATURE_FLAG_IDS).toEqual([
             'tabs',
             'documentHistory',
             'markdownLint',
             'spellcheck',
             'smartInput',
-            'outlinePlus'
+            'outlinePlus',
+            'dailyNotes',
+            'clipCapture',
+            'pdfAnnotations',
+            'imageOcr'
         ])
         for (const id of OPTIONAL_FEATURE_FLAG_IDS) {
             expect(OPTIONAL_FEATURE_FLAGS[id].defaultValue).toBe(false)

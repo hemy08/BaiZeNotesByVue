@@ -180,7 +180,21 @@ export default {
             zoomOut: 'Zoom out',
             prevPage: 'Previous page',
             nextPage: 'Next page',
-            unreadable: 'Unable to read the PDF file'
+            unreadable: 'Unable to read the PDF file',
+            // 1.5.2 E2: PDF annotations and excerpts (hidden when featurePdfAnnotations is off)
+            annotations: {
+                addAnnotation: 'Add annotation',
+                annotationList: 'Annotations',
+                annotationListTitle: 'Annotations ({count})',
+                annotationEmpty:
+                    'This PDF has no annotations yet. Select text on the page and click "Add annotation" to create one.',
+                annotationSelectHint: 'Select some text first, then click "Add annotation"',
+                annotationPageChip: 'Page {page}',
+                annotationJump: 'Go to page {page}',
+                annotationDelete: 'Delete annotation',
+                annotationExcerpt: 'Excerpt into current note',
+                annotationPanelClose: 'Close annotation list'
+            }
         },
         htmlView: {
             loading: 'Loading HTML file...',

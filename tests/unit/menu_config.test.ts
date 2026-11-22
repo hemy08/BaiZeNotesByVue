@@ -245,6 +245,62 @@ describe('menu-config', () => {
         expect(actions).not.toContain('baize:menu:tools:drawing')
     })
 
+    // 1.5.2 E6：工具菜单新增今日日记 / 快速收件箱两项（能力开关 featureDailyNotes 默认关闭，
+    // 菜单项保持可见，动作执行时由 menu-actions 校验开关并提示开启）。
+    it('should declare daily note / inbox capture entries in tools menu (E6)', () => {
+        const toolsMenu = menuMap.value.find((item) => displayText(item) === '工具')!
+        const dailyNote = toolsMenu.submenu!.find(
+            (item) => item.labelKey === 'menu.tools.dailyNote'
+        )
+        const inboxCapture = toolsMenu.submenu!.find(
+            (item) => item.labelKey === 'menu.tools.inboxCapture'
+        )
+        expect(dailyNote?.menuAction).toBe('baize:menu:tools:daily-note')
+        expect(inboxCapture?.menuAction).toBe('baize:menu:tools:inbox-capture')
+        expect(displayText(dailyNote!)).toBe('今日日记')
+        expect(displayText(inboxCapture!)).toBe('快速收件箱')
+        expect(displayText(dailyNote!, 'en-US')).toBe('Daily Note')
+        expect(displayText(inboxCapture!, 'en-US')).toBe('Quick Inbox')
+    })
+
+    // 1.5.2 E1：工具菜单新增剪贴板剪藏两项（能力开关 featureClipCapture 默认关闭，
+    // 菜单项保持可见，动作执行时由 menu-actions 校验开关并提示开启）。
+    it('should declare clipboard capture entries in tools menu (E1)', () => {
+        const toolsMenu = menuMap.value.find((item) => displayText(item) === '工具')!
+        const clipToNote = toolsMenu.submenu!.find(
+            (item) => item.labelKey === 'menu.tools.clipToNote'
+        )
+        const clipToEditor = toolsMenu.submenu!.find(
+            (item) => item.labelKey === 'menu.tools.clipToEditor'
+        )
+        expect(clipToNote?.menuAction).toBe('baize:menu:tools:clip-to-note')
+        expect(clipToEditor?.menuAction).toBe('baize:menu:tools:clip-to-editor')
+        expect(displayText(clipToNote!)).toBe('剪藏为新笔记')
+        expect(displayText(clipToEditor!)).toBe('剪藏并插入当前笔记')
+        expect(displayText(clipToNote!, 'en-US')).toBe('Clip to Note')
+        expect(displayText(clipToEditor!, 'en-US')).toBe('Clip into Current Note')
+    })
+
+    // 1.5.2 E3：工具菜单新增图片 OCR 两项（能力开关 featureImageOcr 默认关闭，
+    // 菜单项保持可见，动作执行时由 menu-actions 校验开关并提示开启）。
+    it('should declare image OCR entries in tools menu (E3)', () => {
+        const toolsMenu = menuMap.value.find((item) => displayText(item) === '工具')!
+        const imageOcrInsert = toolsMenu.submenu!.find(
+            (item) => item.labelKey === 'menu.tools.imageOcrInsert'
+        )
+        const imageOcrCopy = toolsMenu.submenu!.find(
+            (item) => item.labelKey === 'menu.tools.imageOcrCopy'
+        )
+        expect(imageOcrInsert?.menuAction).toBe('baize:menu:tools:ocr-insert')
+        expect(imageOcrCopy?.menuAction).toBe('baize:menu:tools:ocr-copy')
+        expect(displayText(imageOcrInsert!)).toBe('识别剪贴板图片文字并插入')
+        expect(displayText(imageOcrCopy!)).toBe('识别剪贴板图片文字并复制')
+        expect(displayText(imageOcrInsert!, 'en-US')).toBe(
+            'Recognize Clipboard Image Text and Insert'
+        )
+        expect(displayText(imageOcrCopy!, 'en-US')).toBe('Recognize Clipboard Image Text and Copy')
+    })
+
     it('should hide unimplemented insert template items (FUN-09)', () => {
         const insertMenu = menuMap.value.find((item) => displayText(item) === '插入')!
         const actions = collectActions(insertMenu.submenu!)
@@ -515,6 +571,25 @@ describe('menu-config', () => {
         expect(resolved(releases!.submenu![15])).toEqual({
             label: 'v1.0.0',
             menuAction: 'baize:menu:help:release-notes:v1.0.0'
+        })
+    })
+
+    it('should expose hemy08.github.io and HTML/PDF usage guide entries', () => {
+        const helpMenu = menuMap.value.find((item) => displayText(item) === '帮助')!
+        const usage = helpMenu.submenu!.find((item) => displayText(item) === 'hemy08.github.io')
+        expect(resolved(usage!)).toEqual({
+            label: 'hemy08.github.io',
+            menuAction: 'baize:menu:help:usage'
+        })
+        const guide = helpMenu.submenu!.find((item) => displayText(item) === '使用指导')
+        expect(guide?.submenu).toHaveLength(2)
+        expect(resolved(guide!.submenu![0])).toEqual({
+            label: 'HTML 版',
+            menuAction: 'baize:menu:help:guide-html'
+        })
+        expect(resolved(guide!.submenu![1])).toEqual({
+            label: 'PDF 版',
+            menuAction: 'baize:menu:help:guide-pdf'
         })
     })
 

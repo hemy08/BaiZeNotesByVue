@@ -33,7 +33,7 @@
 <li><strong>编制日期</strong>：2026-11-18 首次编制，2026-11-19 补录 <code>FILE.OPEN_IN_BROWSER</code> / <code>FILE.READ_BINARY</code> 后复核（基于当前工作区源码；取代 <code>2026-11-15-IPC通信矩阵.md</code> 历史快照）</li>
 <li><strong>唯一真源</strong>：<code>src/shared/ipc-channels.ts</code>（<strong>91 个通道常量 / 17 个分组</strong>，全部以 <code>baize:&lt;domain&gt;:&lt;name&gt;</code> 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）</li>
 <li><strong>方法</strong>：对每个通道常量在 <code>src/main/**</code>、<code>src/preload/**</code>、<code>src/renderer/**</code> 全量 grep 实际发送点/接收点，只按源码事实填写；行号均为当前源码行号</li>
-<li><strong>统计摘要</strong>：103 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）</li>
+<li><strong>统计摘要</strong>：108 通道 / 18 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）</li>
 </ul>
 <h4>一、方向记号</h4>
 <table>
@@ -127,7 +127,7 @@
 <tr>
 <td><code>window.electron</code> 成员</td>
 <td><strong>1 对象（受限）</strong></td>
-<td>受限 <code>ipcRenderer</code>：<code>send</code>/<code>invoke</code> 白名单 <strong>69</strong> 通道、<code>on</code>/<code>once</code> 白名单 <strong>28</strong> 通道（未知通道丢弃/拒绝并告警；<code>removeListener</code>/<code>removeAllListeners</code> 不限制）+ <code>webFrame</code>{insertCSS,setZoomFactor,setZoomLevel}、<code>webUtils</code>{getPathForFile}、<code>process</code>{platform,versions,env}；<code>sendTo</code>/<code>sendSync</code>/<code>sendToHost</code>/<code>postMessage</code> 不暴露</td>
+<td>受限 <code>ipcRenderer</code>：<code>send</code>/<code>invoke</code> 白名单 <strong>74</strong> 通道、<code>on</code>/<code>once</code> 白名单 <strong>28</strong> 通道（未知通道丢弃/拒绝并告警；<code>removeListener</code>/<code>removeAllListeners</code> 不限制）+ <code>webFrame</code>{insertCSS,setZoomFactor,setZoomLevel}、<code>webUtils</code>{getPathForFile}、<code>process</code>{platform,versions,env}；<code>sendTo</code>/<code>sendSync</code>/<code>sendToHost</code>/<code>postMessage</code> 不暴露</td>
 </tr>
 <tr>
 <td><code>window.api</code> 成员</td>
@@ -175,7 +175,7 @@
 <li><strong>单主进程</strong>，每个 BrowserWindow 一个渲染进程；未使用 utilityProcess / MessageChannelMain / MessagePort / BrowserView / WebContentsView。</li>
 <li><strong>preload 单文件约束</strong>：<code>electron.vite.config.ts</code> 的 <code>isolatedEntries: true</code> + <code>externalizeDeps: false</code>，产物 <code>out/build/preload/index.js</code> / <code>dialog.js</code>（主窗口与对话框均 <code>sandbox:true</code>，preload 必须自包含）。</li>
 </ul>
-<h4>四、通道矩阵（103 通道 / 17 组）</h4>
+<h4>四、通道矩阵（108 通道 / 18 组）</h4>
 <h5>4.1 WINDOW（8）</h5>
 <table>
 <thead>
@@ -663,6 +663,30 @@
 <td>1.5.1 B5 附件重命名 + Markdown 引用更新；两阶段计划/写回，保留原编码/BOM</td>
 <td>attachment-ipc.ts registerAttachmentIpc（串行队列）</td>
 <td>AttachmentDialog.vue → attachment-dialog-state.ts</td>
+</tr>
+<tr>
+<td>OPEN_OR_CREATE_ENTRY</td>
+<td><code>baize:file:open-or-create-entry</code></td>
+<td>R→M invoke</td>
+<td>1.5.2 E6/E1 日常记录与剪藏：主进程按约定生成 <code>diary/YYYY-MM-DD.md</code> / <code>inbox/YYYY-MM-DD-HHmmss.md</code> / <code>inbox/YYYY-MM-DD-HHmmss-clip.md</code>（渲染层<strong>不传路径</strong>）；kind 白名单 <code>daily|inbox|clip</code>，clip 载荷可选 <code>content</code>（≤512 KiB）/<code>title</code>（≤120）/<code>sourceUrl</code>（仅 http/https），超限返回 <code>content-too-large</code>；目录递归创建、<code>wx</code> 独占创建不覆盖、复用 OpenSelectFile 打开</td>
+<td>capture-ipc.ts registerCaptureIpc（registerHandleOnce + withSenderCheck）</td>
+<td>capture-actions.ts / clip-capture-actions.ts → 命令面板 / 工具菜单</td>
+</tr>
+<tr>
+<td>LOAD_PDF_ANNOTATIONS</td>
+<td><code>baize:file:load-pdf-annotations</code></td>
+<td>R→M invoke</td>
+<td>1.5.2 E2 PDF 标注读取：入参 <code>pdfPath</code>（绝对路径 + <code>.pdf</code> 扩展名 + Path Guard），主进程读取同目录侧车 <code>&lt;pdf&gt;.annotations.json</code>（缺失/损坏→空数组 + WARN，≤10 MiB）；返回归一化标注列表</td>
+<td>pdf-annotations-ipc.ts registerPdfAnnotationsIpc（withSenderCheck）</td>
+<td>ShowPdfEditor.vue → pdf-annotations-actions.ts</td>
+</tr>
+<tr>
+<td>SAVE_PDF_ANNOTATIONS</td>
+<td><code>baize:file:save-pdf-annotations</code></td>
+<td>R→M invoke</td>
+<td>1.5.2 E2 PDF 标注保存：两侧路径校验后 shared 归一化（排序/去重/上限）→ <code>tmp + rename</code> 原子写侧车；失败清理 tmp 并返回结构化错误</td>
+<td>pdf-annotations-ipc.ts registerPdfAnnotationsIpc（串行队列）</td>
+<td>ShowPdfEditor.vue → pdf-annotations-actions.ts</td>
 </tr>
 </tbody>
 </table>
@@ -1216,9 +1240,40 @@
 </tr>
 </tbody>
 </table>
+<h5>4.18 OCR（2，1.5.2 E3 新增域）</h5>
+<table>
+<thead>
+<tr>
+<th>常量</th>
+<th>字符串</th>
+<th>方向</th>
+<th>作用</th>
+<th>主进程侧</th>
+<th>渲染层侧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PREPARE_LANG</td>
+<td><code>baize:ocr:prepare-lang</code></td>
+<td>R→M invoke</td>
+<td>语言包准备：lang 白名单（MVP 仅 <code>eng</code>）→ 检查 <code>&lt;userData&gt;/ocr/tessdata/&lt;lang&gt;.traineddata.gz</code> → 缺失时从固定 https 源下载（大小/gzip/超时校验 + 临时文件原子 rename + 坏缓存自愈）；返回本地路径</td>
+<td>ocr-ipc.ts registerOcrIpc（withSenderCheck）</td>
+<td>ocr-actions.ts → 命令面板 / 工具菜单</td>
+</tr>
+<tr>
+<td>RECOGNIZE_IMAGE</td>
+<td><code>baize:ocr:recognize-image</code></td>
+<td>R→M invoke</td>
+<td>剪贴板图片 OCR：<code>imageBytes</code>（PNG 魔数 + ≤20 MiB）+ lang → 主进程串行队列交 worker_threads（tesseract.js 单 LSTM 变体 wasm）本地识别，图片不上传；返回 <code>{ ok, text, elapsedMs }</code></td>
+<td>ocr-ipc.ts registerOcrIpc（串行队列 + 超时/回收）</td>
+<td>ocr-actions.ts → 命令面板 / 工具菜单</td>
+</tr>
+</tbody>
+</table>
 <h4>五、异常与风险清单（已清零）</h4>
 <blockquote>
-<p><strong>统计口径</strong>：103 通道 / 17 组（2026-11-22 补录 <code>FILE.GET_ATTACHMENT_AUDIT</code> / <code>TRASH_ATTACHMENTS</code> / <code>RENAME_ATTACHMENT</code>；历史 100/99 通道口径见各时点报告）。</p>
+<p><strong>统计口径</strong>：108 通道 / 18 组（2026-11-22 补录 <code>FILE.GET_ATTACHMENT_AUDIT</code> / <code>TRASH_ATTACHMENTS</code> / <code>RENAME_ATTACHMENT</code>；2026-11-22 1.5.2 新增 E6 <code>FILE.OPEN_OR_CREATE_ENTRY</code>、E2 <code>FILE.LOAD_PDF_ANNOTATIONS</code> / <code>FILE.SAVE_PDF_ANNOTATIONS</code>、E3 新域 <code>OCR.PREPARE_LANG</code> / <code>OCR.RECOGNIZE_IMAGE</code>；历史 100/99 通道口径见各时点报告）。</p>
 </blockquote>
 <blockquote>
 <p><strong>2026-11-18 复核：异常清单已清零</strong>。历史已处理项：① 空转/死分支 4 项（<code>WINDOW.START_DRAG</code> 空实现、<code>THEME.INIT_THEME_STYLES</code> 半死、<code>EDITOR.UPDATE_OPTIONS</code> R→M 死分支、<code>EVENTS.STATUS_BAR_UPDATE</code> 反向 send）；② 语义错用 1 项（<code>SYSTEM.OPEN_EXTERNAL_LINK</code> 的本地文件调用已改走 <code>FILE.OPEN_IN_BROWSER</code>，遗留清单 #1）；③ 载荷不一致 1 项（<code>THEME.THEME_UPDATED</code>，MenuBar 改读配置，遗留清单 #2）；④ 域错配 10 通道 / 5 组（分组与 domain 已统一为 17 组，遗留清单 #3/#7）；⑤ 第 5 批（2026-11-19）：删除 <code>SYSTEM.OPEN_EXTERNAL_LINK</code> 零发送方死通道（IPC 92 → 91），SYSTEM 组由 3 → 2 个通道。详见 <a href="当前遗留问题清单.html">当前遗留问题清单</a>。</p>
@@ -1290,7 +1345,7 @@
 <tr>
 <td><code>src/preload/index.ts</code></td>
 <td><code>window.electron</code></td>
-<td>受限 electronAPI：ipcRenderer（send/invoke 白名单 <strong>69</strong> 通道、on/once 白名单 <strong>28</strong> 通道；sendTo/sendSync/sendToHost/postMessage 不暴露）+ webFrame / webUtils / process</td>
+<td>受限 electronAPI：ipcRenderer（send/invoke 白名单 <strong>74</strong> 通道、on/once 白名单 <strong>28</strong> 通道；sendTo/sendSync/sendToHost/postMessage 不暴露）+ webFrame / webUtils / process</td>
 </tr>
 <tr>
 <td><code>src/preload/index.ts</code></td>

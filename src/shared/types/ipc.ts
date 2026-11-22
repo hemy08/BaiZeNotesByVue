@@ -3,9 +3,9 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（66 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（74 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（33 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（41 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
  *   白名单**完全相等**（28 个通道）。
@@ -19,7 +19,7 @@
  * ## 类型依据（逐一读取主进程实现，不修改任何 handler）
  * - `src/main/ipc/handlers.ts`、`src/main/ipc/{file-editor,crypto,theme,system}-ipc.ts`
  *   （原 `utils/utils.ts` 的 29 处注册已按域迁入）、`src/main/config/config-manager.ts`、
- *   `src/main/renders/plantuml-local.ts`：31 个 handle 注册点的入参/返回值；
+ *   `src/main/renders/plantuml-local.ts`：39 个 handle 注册点的入参/返回值；
  * - `src/main/ipc/*`（menu-*）、`src/main/utils/file-utils/*`、`src/main/dialogs/*`、
  *   `src/main/utils/encrypt-decrypt.ts`：on 通道的入参与广播载荷；
  * - `src/renderer/**` 的 75 处实际调用点：确认渲染层实参个数与类型。
@@ -41,6 +41,19 @@ import type { MainProcessDialogData, MainProcessDialogName } from './dialog'
 import type { EditorSetting } from './editor'
 import type { FileProperties, OpenRecentPayload, OpenRecentResult, RecentListResult } from './file'
 import type { QuickLinkItem } from './quick-link'
+// 1.5.2 E2：PDF 标注与摘录（侧车文件类型 + 两个 FILE 通道返回结构）
+import type {
+    PdfAnnotation,
+    PdfAnnotationsLoadResult,
+    PdfAnnotationsSaveResult
+} from './pdf-annotations'
+// 1.5.2 E3：图片 OCR（语言包准备 / 剪贴板图片识别两个 OCR 通道的请求与返回结构）
+import type {
+    OcrPrepareLanguageRequest,
+    OcrPrepareLanguageResult,
+    OcrRecognizeImageRequest,
+    OcrRecognizeImageResult
+} from './ocr'
 import type { StatusBarUpdatePayload } from './status-bar'
 import type { SystemSetting, WindowBounds } from './system'
 import type { WorkspaceIndexSnapshot } from './workspace-index'
@@ -559,10 +572,143 @@ export interface WorkspaceReplaceResult {
     totalReplacements: number
 }
 
+/* ----------------------------------------------------------------------------
+ * 1.5.2 E6/E1 日常记录 + 剪藏（FILE.OPEN_OR_CREATE_ENTRY，invoke）
+ *
+ * 通信链路（IPC-17 六步）：
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.FILE.OPEN_OR_CREATE_ENTRY；
+ *   2. 契约：本段 OpenOrCreateEntry* 类型 + IpcRequests / IpcResponses 登记；
+ *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
+ *   4. 主进程：ipc/capture-ipc.ts（registry 编排 + withSenderCheck）→
+ *      E6 由 shared/constants/daily-entries.ts、E1 由 shared/constants/clip-capture.ts
+ *      生成目录/文件名/模板，写入后复用既有 file-utils.OpenSelectFile 打开链路；
+ *   5. 渲染层：E6 common/capture-actions.ts；E1 common/clip-capture-actions.ts
+ *      （命令面板 / 工具菜单共用）；
+ *   6. 测试：daily-entries / clip-capture / capture-ipc / capture-actions /
+ *      clip-capture-actions + 通道命名/契约/白名单。
+ *
+ * 安全边界：
+ * - 渲染层**只能**传 kind 白名单，不得传任意路径/目录/文件名；
+ * - 工作区根只取 appState.rootPath，路径经 path.resolve + path.relative 校验必须位于根内；
+ * - 文件已存在时直接打开（created=false），绝不覆盖已有内容；
+ * - E1 扩展（不新增 IPC 通道）：kind='clip' 时附带 `content/title/sourceUrl`，
+ *   主进程按 shared/constants/clip-capture.ts 的常量做长度/协议校验并生成 front matter；
+ * - 失败以结构化 reason 返回（不向渲染层抛堆栈）。
+ * -------------------------------------------------------------------------- */
+
+/**
+ * 入口类型（kind 白名单，渲染层不得传任意路径）：
+ * - daily = 今日日记；inbox = 快速收件箱（1.5.2 E6）；
+ * - clip = 剪贴板剪藏笔记（1.5.2 E1，落在 inbox/ 目录，文件名带 `-clip` 后缀）。
+ */
+export type OpenOrCreateEntryKind = 'daily' | 'inbox' | 'clip'
+
+/** FILE.OPEN_OR_CREATE_ENTRY 请求载荷 */
+export interface OpenOrCreateEntryRequest {
+    /** 入口类型：daily = 今日日记；inbox = 快速收件箱；clip = 剪贴板剪藏 */
+    kind: OpenOrCreateEntryKind
+    /**
+     * 剪藏 Markdown 正文（**仅 kind='clip' 使用**）。
+     *
+     * 主进程按 `CLIP_CONTENT_MAX_BYTES`（512 KiB）校验 UTF-8 字节数，超限返回
+     * `content-too-large`；非 clip 载荷携带本字段时**忽略**（不读取、不落盘）。
+     * 为空/缺省时模板写入占位正文（正常由渲染层在剪贴板为空时先行拦截）。
+     */
+    content?: string
+    /**
+     * 剪藏可选标题（**仅 kind='clip' 使用**）。
+     *
+     * 主进程剥离控制字符并截断到 `CLIP_TITLE_MAX_LENGTH`（120）；缺省时由
+     * clip-capture 模板生成兜底标题；非 clip 载荷携带本字段时**忽略**。
+     */
+    title?: string
+    /**
+     * 剪藏可选来源 URL（**仅 kind='clip' 使用**）。
+     *
+     * 主进程只接受绝对 http/https 地址（其余值忽略，不写入 front matter）；
+     * 非 clip 载荷携带本字段时**忽略**。该字段为 E1 在「content/title」之外的
+     * 最小必要扩展：E1 需求要求 front matter 含可选 `sourceUrl`，而渲染层转换后
+     * 主进程已无法从 Markdown 反推来源地址。
+     */
+    sourceUrl?: string
+}
+
+/**
+ * FILE.OPEN_OR_CREATE_ENTRY 结构化失败原因（渲染层按 reason 映射 i18n 文案）：
+ * - no-workspace：未打开工作区；
+ * - invalid-kind：kind 不在白名单；
+ * - write-failed：目录/文件写入失败或路径复核失败；
+ * - content-too-large：E1 剪藏正文超过 `CLIP_CONTENT_MAX_BYTES`。
+ */
+export type OpenOrCreateEntryFailureReason =
+    'no-workspace' | 'invalid-kind' | 'write-failed' | 'content-too-large'
+
+/** FILE.OPEN_OR_CREATE_ENTRY 返回结构（安全失败不抛异常） */
+export interface OpenOrCreateEntryResult {
+    /** 是否成功打开（含新建后打开 / 已存在直接打开） */
+    ok: boolean
+    /** 本次是否新建了文件（false = 文件已存在，直接打开，未覆盖） */
+    created?: boolean
+    /** 文件绝对路径（ok=true 时存在；已由主进程写入/确认存在） */
+    filePath?: string
+    /** 失败原因（ok=false 时存在） */
+    reason?: OpenOrCreateEntryFailureReason
+}
+
+/* ----------------------------------------------------------------------------
+ * 1.5.2 E2 PDF 标注与摘录（FILE.LOAD_PDF_ANNOTATIONS / FILE.SAVE_PDF_ANNOTATIONS，invoke）
+ *
+ * 通信链路（IPC-17 六步）：
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.FILE.LOAD_PDF_ANNOTATIONS / SAVE_PDF_ANNOTATIONS；
+ *   2. 契约：pdf-annotations.ts 的类型（PdfAnnotation / PdfAnnotationRect /
+ *      CreatePdfAnnotationInput / 两个结果结构）+ 本文件 IpcRequests / IpcResponses 登记；
+ *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
+ *   4. 主进程：ipc/pdf-annotations-ipc.ts（registry 编排 + withSenderCheck）→
+ *      Path Guard + .pdf 扩展名校验 + 侧车路径复核 + 原子写/容错读；
+ *   5. 渲染层：common/pdf-annotations-actions.ts（load/save/摘录/失败提示）+
+ *      components/HemyTools/ShowPdfEditor.vue（文本层/高亮/列表 UI，能力开关默认关闭）；
+ *   6. 测试：pdf-annotations（shared 纯函数）/ pdf-annotations-ipc（主进程）/
+ *      pdf-annotations-actions（渲染层）+ 通道命名/契约/白名单/注册门禁。
+ *
+ * 安全边界：
+ * - 渲染层只传「PDF 绝对路径 + 标注数组」，侧车路径一律由主进程在 PDF 同目录生成；
+ * - 两个通道都做 Path Guard（PDF 与侧车路径均须在受信根内）与 `.pdf` 扩展名校验；
+ * - 写入采用 `<sidecar>.tmp` + `rename` 原子替换，失败清理临时文件；
+ * - 侧车缺失 / JSON 损坏 / 超限按「空数组 + WARN 日志」容错返回（不崩溃、不阻塞预览），
+ *   其余失败以结构化 code 返回（不向渲染层泄漏堆栈）。
+ * -------------------------------------------------------------------------- */
+
+/** FILE.LOAD_PDF_ANNOTATIONS / FILE.SAVE_PDF_ANNOTATIONS 的路径参数与结果结构见
+ *  `shared/types/pdf-annotations.ts`（PdfAnnotationsLoadResult / PdfAnnotationsSaveResult）。 */
+
+/* ----------------------------------------------------------------------------
+ * 1.5.2 E3 图片 OCR（OCR.PREPARE_LANG / OCR.RECOGNIZE_IMAGE，invoke）
+ *
+ * 通信链路（IPC-17 六步）：
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.OCR.PREPARE_LANG / RECOGNIZE_IMAGE；
+ *   2. 契约：ocr.ts 的类型（请求/返回/错误码）+ 本文件 IpcRequests / IpcResponses 登记；
+ *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
+ *   4. 主进程：ipc/ocr-ipc.ts（registry 编排 + withSenderCheck）→ utils/ocr/**：
+ *      ocr-tessdata（https 官方源下载 + gzip/大小校验 + 原子写缓存）、
+ *      ocr-worker-client（worker_threads 串行队列 + 超时/空闲回收）、
+ *      ocr-worker（tesseract.js LSTM wasm 本地识别，图片不上传）；
+ *   5. 渲染层：common/ocr-actions.ts（读剪贴板 PNG → 插入当前笔记 / 复制到剪贴板），
+ *      命令面板与「工具」菜单共用；能力开关 featureImageOcr 默认关闭；
+ *   6. 测试：ocr（shared 纯函数）/ ocr-ipc（主进程校验、下载、worker mock）/
+ *      ocr-actions（渲染层流程）+ 通道命名/契约/白名单/注册门禁。
+ *
+ * 安全边界：
+ * - 渲染层只能传「白名单语言 + PNG 图片字节」，不能传任意路径/URL/语言；
+ * - 语言包下载地址由 shared/constants/ocr.ts 的固定 https 官方源生成（https + 大小上限
+ *   + gzip 魔数 + 失败清理临时文件 + 原子 rename）；
+ * - 图片字节只在主进程 worker（tesseract.js wasm）中处理，**不上传**；
+ * - 所有失败以结构化 error code 返回，不向渲染层抛堆栈。
+ * -------------------------------------------------------------------------- */
+
 /* ============================================================================
  * 二、渲染层 → 主进程（send / invoke）请求参数元组
  *
- * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（65 个，双向核对见测试）。
+ * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（72 个，双向核对见测试）。
  * 元组即 ipcRenderer.send/invoke 除通道名之外的实参列表（可为空元组）。
  * ========================================================================== */
 export interface IpcRequests {
@@ -658,6 +804,12 @@ export interface IpcRequests {
     [IPC.FILE.TRASH_ATTACHMENTS]: [paths: string[]]
     /** B5 附件重命名 + Markdown 引用更新（invoke；主进程两阶段执行） */
     [IPC.FILE.RENAME_ATTACHMENT]: [oldPath: string, newName: string]
+    /** 1.5.2 E6 打开/创建今日日记或快速收件箱（invoke；渲染层只传 kind 白名单） */
+    [IPC.FILE.OPEN_OR_CREATE_ENTRY]: [payload: OpenOrCreateEntryRequest]
+    /** 1.5.2 E2 读取 PDF 标注侧车文件（invoke；缺失/损坏 JSON 返回空数组） */
+    [IPC.FILE.LOAD_PDF_ANNOTATIONS]: [pdfPath: string]
+    /** 1.5.2 E2 保存 PDF 标注侧车文件（invoke；主进程归一化后原子写） */
+    [IPC.FILE.SAVE_PDF_ANNOTATIONS]: [pdfPath: string, annotations: PdfAnnotation[]]
 
     // ============ 文件管理器右键动作（全部为 send） ============
     [IPC.FILE_MANAGER.COPY_RELATIVE_PATH]: [path: string]
@@ -705,6 +857,12 @@ export interface IpcRequests {
     /** 对称解密（invoke；返回明文字符串） */
     [IPC.PLUGIN.CRYPTO_DECRYPT]: [data: CryptoData]
 
+    // ============ 1.5.2 E3 图片 OCR（invoke；能力开关 featureImageOcr 默认关闭） ============
+    /** 准备 OCR 语言包（invoke；下载/校验到 userData 缓存，幂等，安全失败返回 ok=false + code） */
+    [IPC.OCR.PREPARE_LANG]: [payload: OcrPrepareLanguageRequest]
+    /** 识别剪贴板 PNG 图片文字（invoke；本地 wasm 识别，图片不上传，安全失败返回 ok=false + code） */
+    [IPC.OCR.RECOGNIZE_IMAGE]: [payload: OcrRecognizeImageRequest]
+
     // ============ 渲染 ============
     /** 插入图片（send；context 为图片 data URL 或粘贴载荷，主进程写入 images/） */
     [IPC.RENDER.INSERT_IMAGE]: [context: string]
@@ -733,7 +891,7 @@ export interface IpcRequests {
 /* ============================================================================
  * 三、invoke 通道返回类型
  *
- * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（33 个）。
+ * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（39 个）。
  * send 通道无返回值，故不在此表。
  * ========================================================================== */
 export interface IpcResponses {
@@ -773,6 +931,12 @@ export interface IpcResponses {
     [IPC.FILE.TRASH_ATTACHMENTS]: AttachmentTrashResult
     /** B5 附件重命名 */
     [IPC.FILE.RENAME_ATTACHMENT]: AttachmentRenameResult
+    /** 1.5.2 E6 打开/创建今日日记或快速收件箱（invoke；安全失败返回 ok=false + reason） */
+    [IPC.FILE.OPEN_OR_CREATE_ENTRY]: OpenOrCreateEntryResult
+    /** 1.5.2 E2 读取 PDF 标注侧车文件（invoke；安全失败返回 ok=false + error code） */
+    [IPC.FILE.LOAD_PDF_ANNOTATIONS]: PdfAnnotationsLoadResult
+    /** 1.5.2 E2 保存 PDF 标注侧车文件（invoke；安全失败返回 ok=false + error code） */
+    [IPC.FILE.SAVE_PDF_ANNOTATIONS]: PdfAnnotationsSaveResult
 
     // ============ 对话框确认动作 ============
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult
@@ -785,6 +949,12 @@ export interface IpcResponses {
     [IPC.PLUGIN.HMAC_TEXT]: HashResult
     [IPC.PLUGIN.CRYPTO_ENCRYPT]: CryptoResult
     [IPC.PLUGIN.CRYPTO_DECRYPT]: string
+
+    // ============ 1.5.2 E3 图片 OCR ============
+    /** 准备 OCR 语言包（invoke；缓存命中或下载成功返回 ok=true） */
+    [IPC.OCR.PREPARE_LANG]: OcrPrepareLanguageResult
+    /** 识别剪贴板 PNG 图片文字（invoke；安全失败返回 ok=false + error code） */
+    [IPC.OCR.RECOGNIZE_IMAGE]: OcrRecognizeImageResult
 
     // ============ 渲染 ============
     [IPC.RENDER.PLANTUML_LOCAL]: PlantumlRenderResponse
@@ -803,7 +973,7 @@ export interface IpcResponses {
 /* ============================================================================
  * 四、主进程 → 渲染层广播（on / once）监听回调参数元组
  *
- * 键集合 == preload ALLOWED_RENDERER_RECEIVE_CHANNELS（26 个，双向核对见测试）。
+ * 键集合 == preload ALLOWED_RENDERER_RECEIVE_CHANNELS（28 个，双向核对见测试）。
  * 元组即 ipcRenderer.on 回调除 event 之外的参数列表（单载荷 = 一元元组）。
  * ========================================================================== */
 export interface IpcEvents {
@@ -900,7 +1070,7 @@ export interface IpcEvents {
  *
  * 这些通道不经过渲染层白名单（preload 在自身闭包内直接用原始 ipcRenderer 调用，
  * 不向渲染层暴露），单独建表以完整覆盖「渲染层 → 主进程」方向的全部通道；
- * 不计入 IpcRequests 的 58 通道统计（白名单键集合以第 2 节为准）。
+ * 不计入 IpcRequests 的 74 通道统计（白名单键集合以第 2 节为准）。
  * 对应实现：src/preload/index.ts 的 api.config / api.app / api.file。
  * ========================================================================== */
 export interface IpcPreloadApiRequests {

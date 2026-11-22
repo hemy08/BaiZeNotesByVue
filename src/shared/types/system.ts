@@ -83,6 +83,14 @@ export interface SystemSetting {
     featureSpellcheck?: boolean // A6 拼写检查
     featureSmartInput?: boolean // A7 Markdown 智能输入
     featureOutlinePlus?: boolean // A10 大纲增强
+    // 1.5.2 E6：今日日记 / 快速收件箱（默认关闭；定义见 shared/constants/feature-flags.ts）
+    featureDailyNotes?: boolean
+    // 1.5.2 E1：剪贴板剪藏（默认关闭；定义见 shared/constants/feature-flags.ts）
+    featureClipCapture?: boolean
+    // 1.5.2 E2：PDF 标注与摘录（第 9 项，默认关闭；定义见 shared/constants/feature-flags.ts）
+    featurePdfAnnotations?: boolean
+    // 1.5.2 E3：图片 OCR（第 10 项，默认关闭；定义见 shared/constants/feature-flags.ts）
+    featureImageOcr?: boolean
     // 写作体验开关（P0，系统设置「编写体验」页签；全部 opt-in、默认关闭）
     writingModeEnabled?: boolean
     writingTypewriterEnabled?: boolean

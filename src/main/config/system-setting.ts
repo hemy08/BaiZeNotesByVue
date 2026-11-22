@@ -90,6 +90,14 @@ const systemSettingDefaults: SystemSetting = {
     featureSpellcheck: false,
     featureSmartInput: false,
     featureOutlinePlus: false,
+    // 1.5.2 E6：今日日记 / 快速收件箱（默认关闭；工具菜单/命令面板入口按开关注册）
+    featureDailyNotes: false,
+    // 1.5.2 E1：剪贴板剪藏（默认关闭；工具菜单/命令面板入口按开关注册，关闭时不读剪贴板）
+    featureClipCapture: false,
+    // 1.5.2 E2：PDF 标注与摘录（第 9 项，默认关闭；关闭时 PDF 预览零行为变化）
+    featurePdfAnnotations: false,
+    // 1.5.2 E3：图片 OCR（第 10 项，默认关闭；关闭时不加载 worker、不下载语言包）
+    featureImageOcr: false,
     // 写作体验（P0）全部 opt-in、默认关闭
     writingModeEnabled: false,
     writingTypewriterEnabled: false,

@@ -12,7 +12,7 @@
 - **编制日期**：2026-11-18 首次编制，2026-11-19 补录 `FILE.OPEN_IN_BROWSER` / `FILE.READ_BINARY` 后复核（基于当前工作区源码；取代 `2026-11-15-IPC通信矩阵.md` 历史快照）
 - **唯一真源**：`src/shared/ipc-channels.ts`（**91 个通道常量 / 17 个分组**，全部以 `baize:<domain>:<name>` 命名；分组与 domain 一一对应，域错配已随遗留清单 #3/#7 统一）
 - **方法**：对每个通道常量在 `src/main/**`、`src/preload/**`、`src/renderer/**` 全量 grep 实际发送点/接收点，只按源码事实填写；行号均为当前源码行号
-- **统计摘要**：103 通道 / 17 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）
+- **统计摘要**：108 通道 / 18 组 ｜ 4 个 BrowserWindow 创建点 ｜ 2 个 preload 入口 ｜ 对话框 send 白名单 2 通道 ｜ 异常已清零（见 §五）
 
 #### 一、方向记号
 
@@ -41,7 +41,7 @@
 | IPC 通道常量 | **103** | WINDOW 8 / CONFIG 2 / THEME 6 / MENU 1 / EDITOR 5 / FILE 30 / FILE_MANAGER 14 / PLUGIN 6 / RENDER 3 / DIALOG 7 / NAVIGATION 1 / VIEW 4 / MONACO 3 / SETTING 2 / SYSTEM 2 / QUICK_LINKS 3 / EVENTS 4 |
 | BrowserWindow 创建点 | **4** | 主窗口、windowManager 通用容器（5 个 JSDOM 对话框 + 在线网页窗口）、PDF 导出隐藏窗、PlantUML 渲染隐藏窗 |
 | preload 入口 | **2** | `src/preload/index.ts`（主窗口）、`src/preload/dialog.ts`（对话框/隐藏窗） |
-| `window.electron` 成员 | **1 对象（受限）** | 受限 `ipcRenderer`：`send`/`invoke` 白名单 **69** 通道、`on`/`once` 白名单 **28** 通道（未知通道丢弃/拒绝并告警；`removeListener`/`removeAllListeners` 不限制）+ `webFrame`{insertCSS,setZoomFactor,setZoomLevel}、`webUtils`{getPathForFile}、`process`{platform,versions,env}；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露 |
+| `window.electron` 成员 | **1 对象（受限）** | 受限 `ipcRenderer`：`send`/`invoke` 白名单 **74** 通道、`on`/`once` 白名单 **28** 通道（未知通道丢弃/拒绝并告警；`removeListener`/`removeAllListeners` 不限制）+ `webFrame`{insertCSS,setZoomFactor,setZoomLevel}、`webUtils`{getPathForFile}、`process`{platform,versions,env}；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露 |
 | `window.api` 成员 | **6 方法 / 3 组** | `config.read/write`、`app.notifyRendererReady/getVersion`、`file.recentList/openRecent` |
 | 对话框 send 白名单 | **2** | `baize:dialog:create-file-folder-enter`、`baize:dialog:rename-file-folder-enter` |
 | 发现异常 | **0 类** | 语义错用（#1）、载荷不一致（#2）、域错配 10 通道（#3/#7）均已修复，见 §五修复记录 |
@@ -73,7 +73,7 @@
 - **单主进程**，每个 BrowserWindow 一个渲染进程；未使用 utilityProcess / MessageChannelMain / MessagePort / BrowserView / WebContentsView。
 - **preload 单文件约束**：`electron.vite.config.ts` 的 `isolatedEntries: true` + `externalizeDeps: false`，产物 `out/build/preload/index.js` / `dialog.js`（主窗口与对话框均 `sandbox:true`，preload 必须自包含）。
 
-#### 四、通道矩阵（103 通道 / 17 组）
+#### 四、通道矩阵（108 通道 / 18 组）
 
 ##### 4.1 WINDOW（8）
 
@@ -154,6 +154,9 @@
 | GET_ATTACHMENT_AUDIT | `baize:file:get-attachment-audit` | R→M invoke | 1.5.1 B5 孤儿附件只读审计；扫描工作区附件全集并与索引引用集合求差 | attachment-ipc.ts registerAttachmentIpc（withSenderCheck） | AttachmentDialog.vue → attachment-dialog-state.ts |
 | TRASH_ATTACHMENTS | `baize:file:trash-attachments` | R→M invoke | 1.5.1 B5 批量移入系统回收站；主进程重新校验路径/引用，仅 `shell.trashItem` | attachment-ipc.ts registerAttachmentIpc（串行队列） | AttachmentDialog.vue → attachment-dialog-state.ts |
 | RENAME_ATTACHMENT | `baize:file:rename-attachment` | R→M invoke | 1.5.1 B5 附件重命名 + Markdown 引用更新；两阶段计划/写回，保留原编码/BOM | attachment-ipc.ts registerAttachmentIpc（串行队列） | AttachmentDialog.vue → attachment-dialog-state.ts |
+| OPEN_OR_CREATE_ENTRY | `baize:file:open-or-create-entry` | R→M invoke | 1.5.2 E6/E1 日常记录与剪藏：主进程按约定生成 `diary/YYYY-MM-DD.md` / `inbox/YYYY-MM-DD-HHmmss.md` / `inbox/YYYY-MM-DD-HHmmss-clip.md`（渲染层**不传路径**）；kind 白名单 `daily\|inbox\|clip`，clip 载荷可选 `content`（≤512 KiB）/`title`（≤120）/`sourceUrl`（仅 http/https），超限返回 `content-too-large`；目录递归创建、`wx` 独占创建不覆盖、复用 OpenSelectFile 打开 | capture-ipc.ts registerCaptureIpc（registerHandleOnce + withSenderCheck） | capture-actions.ts / clip-capture-actions.ts → 命令面板 / 工具菜单 |
+| LOAD_PDF_ANNOTATIONS | `baize:file:load-pdf-annotations` | R→M invoke | 1.5.2 E2 PDF 标注读取：入参 `pdfPath`（绝对路径 + `.pdf` 扩展名 + Path Guard），主进程读取同目录侧车 `<pdf>.annotations.json`（缺失/损坏→空数组 + WARN，≤10 MiB）；返回归一化标注列表 | pdf-annotations-ipc.ts registerPdfAnnotationsIpc（withSenderCheck） | ShowPdfEditor.vue → pdf-annotations-actions.ts |
+| SAVE_PDF_ANNOTATIONS | `baize:file:save-pdf-annotations` | R→M invoke | 1.5.2 E2 PDF 标注保存：两侧路径校验后 shared 归一化（排序/去重/上限）→ `tmp + rename` 原子写侧车；失败清理 tmp 并返回结构化错误 | pdf-annotations-ipc.ts registerPdfAnnotationsIpc（串行队列） | ShowPdfEditor.vue → pdf-annotations-actions.ts |
 
 ##### 4.7 FILE_MANAGER（14，右键菜单）
 
@@ -261,9 +264,16 @@
 | FILE_CONTENT_RELOADED | `baize:file:content-reloaded` | M→R send | 磁盘内容变化且非脏时重载编辑器 | directory-tree.ts:1024 | MarkdownEditComponent.vue:351/388 |
 | SHOW_SELECTED_FILE_CONTEXT | `baize:fs:show-selected-file-context` | M→R send | 推送当前活动文件内容（新建/打开/重载/清空） | file-operations.ts:342/489/538/657 | MarkdownEditComponent.vue:350/384 |
 
+##### 4.18 OCR（2，1.5.2 E3 新增域）
+
+| 常量 | 字符串 | 方向 | 作用 | 主进程侧 | 渲染层侧 |
+| --- | --- | --- | --- | --- | --- |
+| PREPARE_LANG | `baize:ocr:prepare-lang` | R→M invoke | 语言包准备：lang 白名单（MVP 仅 `eng`）→ 检查 `<userData>/ocr/tessdata/<lang>.traineddata.gz` → 缺失时从固定 https 源下载（大小/gzip/超时校验 + 临时文件原子 rename + 坏缓存自愈）；返回本地路径 | ocr-ipc.ts registerOcrIpc（withSenderCheck） | ocr-actions.ts → 命令面板 / 工具菜单 |
+| RECOGNIZE_IMAGE | `baize:ocr:recognize-image` | R→M invoke | 剪贴板图片 OCR：`imageBytes`（PNG 魔数 + ≤20 MiB）+ lang → 主进程串行队列交 worker_threads（tesseract.js 单 LSTM 变体 wasm）本地识别，图片不上传；返回 `{ ok, text, elapsedMs }` | ocr-ipc.ts registerOcrIpc（串行队列 + 超时/回收） | ocr-actions.ts → 命令面板 / 工具菜单 |
+
 #### 五、异常与风险清单（已清零）
 
-> **统计口径**：103 通道 / 17 组（2026-11-22 补录 `FILE.GET_ATTACHMENT_AUDIT` / `TRASH_ATTACHMENTS` / `RENAME_ATTACHMENT`；历史 100/99 通道口径见各时点报告）。
+> **统计口径**：108 通道 / 18 组（2026-11-22 补录 `FILE.GET_ATTACHMENT_AUDIT` / `TRASH_ATTACHMENTS` / `RENAME_ATTACHMENT`；2026-11-22 1.5.2 新增 E6 `FILE.OPEN_OR_CREATE_ENTRY`、E2 `FILE.LOAD_PDF_ANNOTATIONS` / `FILE.SAVE_PDF_ANNOTATIONS`、E3 新域 `OCR.PREPARE_LANG` / `OCR.RECOGNIZE_IMAGE`；历史 100/99 通道口径见各时点报告）。
 
 > **2026-11-18 复核：异常清单已清零**。历史已处理项：① 空转/死分支 4 项（`WINDOW.START_DRAG` 空实现、`THEME.INIT_THEME_STYLES` 半死、`EDITOR.UPDATE_OPTIONS` R→M 死分支、`EVENTS.STATUS_BAR_UPDATE` 反向 send）；② 语义错用 1 项（`SYSTEM.OPEN_EXTERNAL_LINK` 的本地文件调用已改走 `FILE.OPEN_IN_BROWSER`，遗留清单 #1）；③ 载荷不一致 1 项（`THEME.THEME_UPDATED`，MenuBar 改读配置，遗留清单 #2）；④ 域错配 10 通道 / 5 组（分组与 domain 已统一为 17 组，遗留清单 #3/#7）；⑤ 第 5 批（2026-11-19）：删除 `SYSTEM.OPEN_EXTERNAL_LINK` 零发送方死通道（IPC 92 → 91），SYSTEM 组由 3 → 2 个通道。详见 [当前遗留问题清单](当前遗留问题清单.md)。
 
@@ -284,7 +294,7 @@
 
 | 入口 | 全局对象 | 成员 |
 | --- | --- | --- |
-| `src/preload/index.ts` | `window.electron` | 受限 electronAPI：ipcRenderer（send/invoke 白名单 **69** 通道、on/once 白名单 **28** 通道；sendTo/sendSync/sendToHost/postMessage 不暴露）+ webFrame / webUtils / process |
+| `src/preload/index.ts` | `window.electron` | 受限 electronAPI：ipcRenderer（send/invoke 白名单 **74** 通道、on/once 白名单 **28** 通道；sendTo/sendSync/sendToHost/postMessage 不暴露）+ webFrame / webUtils / process |
 | `src/preload/index.ts` | `window.api` | config{read,write}、app{notifyRendererReady,getVersion}、file{recentList,openRecent} |
 | `src/preload/dialog.ts` | `window.electronAPI` | ipcRenderer{send(白名单),on,removeListener}、shell{openExternal(仅 http/https)} |
 

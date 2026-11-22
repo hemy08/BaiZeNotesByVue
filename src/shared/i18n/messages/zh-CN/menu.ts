@@ -152,6 +152,15 @@ export default {
         katex: '公式编辑器',
         table: '电子表格',
         images: '配图制作',
+        // 1.5.2 E6：日常记录（可选能力 featureDailyNotes，默认关闭）
+        dailyNote: '今日日记',
+        inboxCapture: '快速收件箱',
+        // 1.5.2 E1：剪贴板剪藏（可选能力 featureClipCapture，默认关闭）
+        clipToNote: '剪藏为新笔记',
+        clipToEditor: '剪藏并插入当前笔记',
+        // 1.5.2 E3：图片 OCR（可选能力 featureImageOcr，默认关闭；MVP 仅剪贴板截图）
+        imageOcrInsert: '识别剪贴板图片文字并插入',
+        imageOcrCopy: '识别剪贴板图片文字并复制',
         drawing: {
             label: '绘图工具',
             mermaid: 'Mermaid 绘图',
@@ -433,7 +442,10 @@ export default {
         updateLog: '修改日志',
         updateLogItem: '重大版本升级',
         shortkeys: '键盘快捷方式',
-        usage: '使用文档',
+        usage: 'hemy08.github.io',
+        guide: '使用指导',
+        guideHtml: 'HTML 版',
+        guidePdf: 'PDF 版',
         issues: '提交创意/意见',
         techStack: '技术栈',
         about: '关于',

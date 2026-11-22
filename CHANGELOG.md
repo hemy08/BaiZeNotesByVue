@@ -1,4 +1,60 @@
-## 2026年11月21日 - 版本 1.5.1（能力开关与编辑器增强，开发中）
+## 2026年11月22日 - 版本 1.5.2（捕获与日常入口，开发中）
+
+> 自本版本起，**发布前所有开发归入 1.5.2**（版本号固定，不再每批变更）。
+> 范围依据 [Markdown 编辑器能力补全选项报告](docs/reports/md/01-检查与扫描/Markdown编辑器能力补全选项报告.md) §2.4.4 / §4 的 1.5.2 推荐路线（捕获与日常入口）；最终能力清单以维护者勾选为准，功能按批次回写本节。
+
+### 🧩 用户选定范围（E6 + E1 + E2 + E3）
+
+| 批次   | 能力                                             | 状态                    |
+| ------ | ------------------------------------------------ | ----------------------- |
+| 批次 1 | E6 日记 / 模板 / 快速收件箱                      | ✅ 已完成（2026-11-22） |
+| 批次 2 | E1 剪藏（仅剪贴板/文件导入增强，不新增本地端口） | ✅ 已完成（2026-11-22） |
+| 批次 3 | E2 PDF 标注与摘录                                | ✅ 已完成（2026-11-22） |
+| 批次 4 | E3 图片 OCR / 图片文字搜索                       | ✅ 已完成（2026-11-22） |
+
+### ✅ 批次 1：E6 日记 / 模板 / 快速收件箱（2026-11-22 已完成）
+
+- 新增 `shared/constants/daily-entries.ts`：目录约定（`diary/`、`inbox/`）、文件名生成（`YYYY-MM-DD.md` / `YYYY-MM-DD-HHmmss.md`）、模板变量展开（`{{date}}/{{time}}/{{datetime}}/{{year}}/{{month}}/{{day}}/{{weekday}}/{{title}}`，未知占位原样保留，纯函数零依赖）
+- 新增 IPC `FILE.OPEN_OR_CREATE_ENTRY`（104 通道；白名单 send 70）：渲染层只传 `kind`，主进程按约定生成路径、`path.relative` 内根校验、目录递归创建、`fs.open('wx')` 独占创建不覆盖，复用既有 `OpenSelectFile` 链路打开；registry 编排 + `withSenderCheck` + 错误日志
+- 入口：命令面板新增「捕获」分类 2 条命令（开关关闭不注册）、工具菜单 2 项（关闭时提示去设置开启）；能力开关 `featureDailyNotes` 第 7 项（默认关闭，「功能」页签即时生效）
+- 门禁：新增 45 用例（daily-entries 22 / capture-ipc 13 / capture-actions 10）；全量 **322 文件 / 5,999 用例**全通过；typecheck 四段 / ESLint / Prettier / coverage 阈值 / docs:check / quality:check / preload 白名单 `--check` 全绿
+
+### ✅ 批次 2：E1 剪藏（2026-11-22 已完成）
+
+- 新增 `shared/constants/clip-capture.ts`：元数据提取（title 三级回退 `<title>`→首个 `<h1>`→首行 60 字；sourceUrl 仅 `<base href>` 或首个绝对 http(s) 链接）、YAML 安全转义（引号/反斜杠/换行/冒号/控制字符）、front matter + 正文模板、clip 文件名 `inbox/YYYY-MM-DD-HHmmss-clip.md`
+- 复用 A8 粘贴增强链路：`sanitizeClipboardHtml` + `htmlToMarkdown`（严禁第二套转换）；A8 模块改为按需动态 import，首屏预算不受影响（实测首屏 329.6 KiB / 512 KiB）
+- **未新增 IPC 通道**（保持 104/17、白名单 send 70）：扩展 `FILE.OPEN_OR_CREATE_ENTRY` —— kind 增加 `clip`，可选 `content`（≤512 KiB）/`title`（≤120）/`sourceUrl`（仅 http/https），新增 `content-too-large` reason；非 clip 载荷携带内容一律忽略；写入仍走内根校验 + `wx` 独占创建 + 复用打开链路
+- 两条入口：「剪藏到新笔记」「剪藏并插入当前笔记」（新增 `common/active-editor.ts` 活动编辑器注册表）；命令面板「捕获」分类 +2、工具菜单 +2；能力开关 `featureClipCapture` 第 8 项（默认关闭，关闭时命令不注册/菜单提示开启）
+- 剪贴板读取：`navigator.clipboard.read()` 优先 `text/html`（+`text/plain`），不可用/拒绝/条目为空回退 `readText()`；空剪贴板/不可用/被拒/超限（HTML 1 MiB、正文 512 KiB）均有明确文案，禁止静默失败
+- 门禁：新增 71 用例（clip-capture 29 / clip-capture-actions 26 / 既有测试扩展 16）；全量 **324 文件 / 6,070 用例**全通过；typecheck 四段 / ESLint / Prettier / coverage（93.83/88.41/94.39/94.18）/ 白名单 `--check` / docs:check / bundle budget 全绿
+
+### ✅ 批次 3：E2 PDF 标注与摘录（2026-11-22 已完成）
+
+- 新增 IPC（FILE 组，106 通道；白名单 send 72）：`FILE.LOAD_PDF_ANNOTATIONS` / `FILE.SAVE_PDF_ANNOTATIONS`——入参 `pdfPath` 需绝对路径 + `.pdf` 扩展名 + Path Guard（PDF 与侧车路径双侧校验），侧车路径由主进程生成，`tmp + rename` 原子写、缺失/损坏容错（空数组 + WARN），`withSenderCheck` + registry 编排
+- PDF 文本层：pdfjs-dist 6.5.438 的 `TextLayer`（无兼容回退成本），按页渲染、切页/缩放取消、失败仅 WARN 不影响 canvas 预览；选中文本 → 归一化 rects（0~1，clamp/去零面积/≤200）
+- 标注：`{ id, page, text, createdAt, note?, rects }` 存侧车 `<pdf>.annotations.json`（version 1）；工具栏「添加标注 / 标注列表」、半透明矩形 overlay 高亮、列表跳页/删除/摘录
+- 摘录：shared 纯函数生成 `> 摘录文本` + `> —— <文件名> · 第 N 页`；有活动编辑器插入光标处，无编辑器回退剪贴板并提示
+- 能力开关 `featurePdfAnnotations` 第 9 项（默认关闭）；关闭时 PDF 预览与既有通道调用零差异
+- 门禁：新增 98 用例（pdf-annotations 25 / pdf-annotations-ipc 23 / pdf-annotations-actions 22 / 组件 28）+ 同步 6 套既有测试；全量 **328 文件 / 6,169 用例**全通过；typecheck 四段 / ESLint / Prettier / coverage（HemyTools 94.28/87.75/100/94.35）/ 白名单 `--check`（72+28+6）/ docs:check 全绿
+
+### ✅ 批次 4：E3 图片 OCR（MVP：剪贴板截图识别，2026-11-22 已完成）
+
+- 架构：**主进程 + worker_threads + tesseract.js**（v7 `worker-script` 直接驱动，不嵌套二级线程；自定义 `getCore` 固定 baseline LSTM 变体），OCR 串行队列 + 超时/回收；图片仅在本地 wasm 识别、**不上传**
+- 新增 IPC 域 `ocr`（第 18 组，108 通道；白名单 send 74）：`OCR.PREPARE_LANG`（语言包检查/下载）与 `OCR.RECOGNIZE_IMAGE`（PNG 魔数 + ≤20 MiB + lang 白名单 → `{ ok, text, elapsedMs }`），registry 编排 + `withSenderCheck` + 结构化错误
+- 语言包：首次使用从固定 https 源下载 `eng.traineddata.gz`（≈2.95 MB，主源 jsdelivr / 备用 projectnaptha）到 `<userData>/ocr/tessdata`，https/大小/gzip 魔数/超时校验 + 临时文件原子 rename + 坏缓存自愈；进度经既有 `STATUS_BAR_UPDATE` 推送
+- 体积治理（不放宽任何预算）：tesseract 本体只保留 `src/`、core 仅保留 `tesseract-core-lstm.js + .wasm`（排除其余 10 个变体与全部 `*.wasm.js`）、依赖树裁剪（zlibjs/idb-keyval/node-fetch/wasm-feature-detect/opencollective-postinstall）；同时回收既有生产依赖运行期不可达死重 5.36 MiB → **asar 39.14 MiB（−1.92）/ Setup 111.54 MiB（−0.23）/ portable 100.93 MiB（+0.04）**，9 项预算全过
+- 入口：命令面板「识别并插入当前笔记 / 识别并复制」（capture 分类）、工具菜单 2 项；能力开关 `featureImageOcr` 第 10 项（默认关闭，关闭时不读剪贴板、不加载引擎、不触发下载）
+- 门禁：新增 113 用例（8 文件）；全量 **336 文件 / 6,290 用例**全通过；typecheck 四段 / ESLint 全仓 0 / Prettier / coverage（93.76/88.32/94.4/94.11）/ 白名单 `--check`（74+28+6）/ docs:check / memory:check / audit:all 0 漏洞 / `build:unpack`+`build:win:all` / `budget:check` 9/9 / `verify:fuses` 8/8 + 启动冒烟全绿；asar 内 OCR worker 冒烟识别通过（129ms）
+- 已知边界：MVP 仅 `eng`（chi_sim 后续）；首次使用需联网下载语言包（缓存后离线可用）；portable 预算余量仅 74.6 KiB（后续依赖增量需先回收死重）
+
+### 📋 开发基线
+
+- 起点：**1.5.1 已发布**（2026-11-22，tag `release-1.5.1`）；当前基线（批次 4 后）：测试 336 文件 / 6,290 用例、IPC 108 通道 / 18 组、preload 白名单 send 74 + receive 28 + window.api 6、报告 md 32 篇 / HTML 33 页
+- 门禁：沿用 1.5.1 全部门禁（typecheck 四段 / ESLint 0 warning / Prettier / vitest+coverage / E2E / budget / fuses / audit / docs / quality），每批功能回写本节与 [1.5.2 版本计划](docs/reports/md/02-修复与实施/1.5.2版本计划.md)
+
+---
+
+## 2026年11月21日 - 版本 1.5.1（能力开关与编辑器增强，已发布 2026-11-22）
 
 > 用户选定：A2 全工作区搜索/替换、A8 粘贴/复制增强、A9 命令面板/Quick Open 作为默认能力；A1 多标签/会话恢复、A3 文档历史/diff、A4 Markdown lint/format、A6 拼写检查、A7 智能输入、A10 大纲增强作为系统设置可选能力，默认关闭。
 

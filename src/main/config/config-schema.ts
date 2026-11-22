@@ -183,6 +183,14 @@ const SYSTEM_BOOLEAN_FIELDS: ReadonlySet<string> = new Set([
     'featureSpellcheck',
     'featureSmartInput',
     'featureOutlinePlus',
+    // 1.5.2 E6：今日日记 / 快速收件箱（默认 false，仅接受布尔值）
+    'featureDailyNotes',
+    // 1.5.2 E1：剪贴板剪藏（默认 false，仅接受布尔值）
+    'featureClipCapture',
+    // 1.5.2 E2：PDF 标注与摘录（第 9 项，默认 false，仅接受布尔值）
+    'featurePdfAnnotations',
+    // 1.5.2 E3：图片 OCR（第 10 项，默认 false，仅接受布尔值）
+    'featureImageOcr',
     // 写作体验（P0）
     'writingModeEnabled',
     'writingTypewriterEnabled',

@@ -5,12 +5,25 @@
  * - 键名与 SystemSetting 的持久化字段一一对应（featureXxx），默认 false；
  * - 本文件同时被主进程（默认值/校验）与渲染层（设置页/运行时开关）引用，
  *   不依赖 Vue/Electron，保持纯数据 + 类型；
- * - A2/A8/A9 是默认能力，不进入本开关集合。
+ * - A2/A8/A9 是默认能力，不进入本开关集合；
+ * - 1.5.2 E6 起新增 `dailyNotes`（今日日记 / 快速收件箱，默认关闭）；
+ * - 1.5.2 E1 起新增 `clipCapture`（剪贴板剪藏：新笔记 / 插入当前笔记，默认关闭）；
+ * - 1.5.2 E2 起新增 `pdfAnnotations`（PDF 标注与摘录，第 9 项，默认关闭）；
+ * - 1.5.2 E3 起新增 `imageOcr`（图片 OCR：识别剪贴板截图文字，第 10 项，默认关闭）。
  */
 
 /** 可选能力标识（与菜单/组件/测试中的能力编号语义一致） */
 export type OptionalFeatureFlagId =
-    'tabs' | 'documentHistory' | 'markdownLint' | 'spellcheck' | 'smartInput' | 'outlinePlus'
+    | 'tabs'
+    | 'documentHistory'
+    | 'markdownLint'
+    | 'spellcheck'
+    | 'smartInput'
+    | 'outlinePlus'
+    | 'dailyNotes'
+    | 'clipCapture'
+    | 'pdfAnnotations'
+    | 'imageOcr'
 
 /** 单个开关定义：持久化字段、默认值、i18n 文案键 */
 export interface OptionalFeatureFlagDefinition {
@@ -22,6 +35,10 @@ export interface OptionalFeatureFlagDefinition {
         | 'featureSpellcheck'
         | 'featureSmartInput'
         | 'featureOutlinePlus'
+        | 'featureDailyNotes'
+        | 'featureClipCapture'
+        | 'featurePdfAnnotations'
+        | 'featureImageOcr'
     /** 默认值（全部 opt-in，默认关闭） */
     defaultValue: boolean
     /** 设置页标题键（dialogRenderer.systemSetting.features.*） */
@@ -69,6 +86,37 @@ export const OPTIONAL_FEATURE_FLAGS: Readonly<
         defaultValue: false,
         labelKey: 'dialogRenderer.systemSetting.features.outlinePlusLabel',
         descKey: 'dialogRenderer.systemSetting.features.outlinePlusDesc'
+    },
+    // 1.5.2 E6：今日日记 / 快速收件箱（工具菜单 + 命令面板两个入口，默认关闭）
+    dailyNotes: {
+        settingKey: 'featureDailyNotes',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.features.dailyNotesLabel',
+        descKey: 'dialogRenderer.systemSetting.features.dailyNotesDesc'
+    },
+    // 1.5.2 E1：剪贴板剪藏（工具菜单 + 命令面板两个入口，默认关闭；
+    // 关闭时不注册命令、菜单执行提示开启，且不会读取系统剪贴板）
+    clipCapture: {
+        settingKey: 'featureClipCapture',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.features.clipCaptureLabel',
+        descKey: 'dialogRenderer.systemSetting.features.clipCaptureDesc'
+    },
+    // 1.5.2 E2：PDF 标注与摘录（第 9 项，默认关闭；
+    // 关闭时 PDF 预览与现状零行为变化：不渲染文本层、不显示标注 UI、不调用新通道）
+    pdfAnnotations: {
+        settingKey: 'featurePdfAnnotations',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.features.pdfAnnotationsLabel',
+        descKey: 'dialogRenderer.systemSetting.features.pdfAnnotationsDesc'
+    },
+    // 1.5.2 E3：图片 OCR（剪贴板截图识别，第 10 项，默认关闭；
+    // 关闭时零行为差异：不注册命令/菜单入口、不加载 OCR worker、不下载语言包）
+    imageOcr: {
+        settingKey: 'featureImageOcr',
+        defaultValue: false,
+        labelKey: 'dialogRenderer.systemSetting.features.imageOcrLabel',
+        descKey: 'dialogRenderer.systemSetting.features.imageOcrDesc'
     }
 } as const
 
@@ -84,7 +132,11 @@ export const OPTIONAL_FEATURE_FLAG_DEFAULTS: Readonly<Record<OptionalFeatureFlag
     markdownLint: false,
     spellcheck: false,
     smartInput: false,
-    outlinePlus: false
+    outlinePlus: false,
+    dailyNotes: false,
+    clipCapture: false,
+    pdfAnnotations: false,
+    imageOcr: false
 }
 
 /** 写作体验能力标识（P0；系统设置「编写体验」页签，默认全部关闭） */

@@ -266,7 +266,23 @@ const dialogRenderer = {
                 'Ordered-list increment/renumber, quote/nested/task continuation, empty-list backspace exit, blank line after headings; IME-safe and one-step undo.',
             outlinePlusLabel: 'Enhanced outline',
             outlinePlusDesc:
-                'Outline supports setext headings, indentation and quick filtering for long documents.'
+                'Outline supports setext headings, indentation and quick filtering for long documents.',
+            // 1.5.2 E6: daily note / quick inbox (workspace diary/ and inbox/ folders)
+            dailyNotesLabel: 'Daily notes / quick inbox',
+            dailyNotesDesc:
+                "Open or create today's note under diary/ and create timestamped quick inbox notes under inbox/ in the workspace with one click; off by default, and the Tools menu and command palette entries appear when enabled.",
+            // 1.5.2 E1: clipboard capture (new note / insert into current note)
+            clipCaptureLabel: 'Clipboard capture (new note / insert)',
+            clipCaptureDesc:
+                'Turn clipboard HTML or text into Markdown: create a timestamped inbox/...-clip.md note or insert it at the caret in the current note with a source reference; the clipboard is read only when you invoke the command. Off by default.',
+            // 1.5.2 E2: PDF annotations and excerpts (9th optional feature)
+            pdfAnnotationsLabel: 'PDF annotations and excerpts',
+            pdfAnnotationsDesc:
+                'Enable text selection in the PDF preview, add annotations for the current page (stored in a .annotations.json sidecar next to the PDF) with highlights, and jump/delete/excerpt them from the annotation list; when off, the PDF preview behaves exactly as before. Off by default.',
+            // 1.5.2 E3: image OCR (10th optional feature, MVP: clipboard screenshot recognition)
+            imageOcrLabel: 'Image text recognition (OCR)',
+            imageOcrDesc:
+                'Recognize text from a clipboard screenshot via Tools → Image OCR or the command palette, then insert the result into the current note or copy it to the clipboard. Images are recognized locally with tesseract.js and are never uploaded; the first use downloads about 10 MB of English language data from the official https source and caches it in the local user data directory. Off by default: when disabled the OCR engine is not loaded and no language data is downloaded.'
         },
         panelGeneralTitle: 'General settings',
         panelGeneralDesc: 'Basic application settings',

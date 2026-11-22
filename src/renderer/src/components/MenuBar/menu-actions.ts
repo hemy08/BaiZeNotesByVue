@@ -6,6 +6,20 @@ import { IPC } from '../../../../shared/ipc-channels'
 import { logger } from '../../common/logger'
 // ARC-14：插件工具显示事件名收敛至 EventBus 集中常量（menu-consts 仅保留兼容 re-export）
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+// 1.5.2 E6：日常记录入口（今日日记 / 快速收件箱）统一走渲染层 common/capture-actions
+import { openOrCreateCaptureEntry, showCaptureFeatureDisabled } from '../../common/capture-actions'
+// 1.5.2 E1：剪贴板剪藏入口（新笔记 / 插入当前笔记）统一走渲染层 common/clip-capture-actions
+import {
+    captureClipToEditor,
+    captureClipToNote,
+    showClipCaptureFeatureDisabled
+} from '../../common/clip-capture-actions'
+// 1.5.2 E3：图片 OCR 入口（识别剪贴板图片文字并插入 / 复制）统一走 common/ocr-actions
+import {
+    ocrClipboardToClipboard,
+    ocrClipboardToEditor,
+    showImageOcrFeatureDisabled
+} from '../../common/ocr-actions'
 import { toggleWritingMode } from '../Markdown/useWritingMode'
 import { useFeatureFlags } from '../../composables/useFeatureFlags'
 import {
@@ -220,6 +234,12 @@ export function HandleMenuAction(action: string) {
         return
     }
 
+    // 使用指导（随安装包分发的本地 HTML，动态加载独立对话框，避免进入首屏）
+    if (action === 'baize:menu:help:guide-html') {
+        void import('../dialogs/help/usage-guide').then((module) => module.openUsageGuideDialog())
+        return
+    }
+
     // 联系我们
     // P1/C-06：统一 contact 动作 id——menu-config.ts 实际发送的是
     // 'baize:menu:help:contact-us'，而本文件历史分支拦截的是 'baize:menu:help:contact'
@@ -417,6 +437,56 @@ export function HandleMenuAction(action: string) {
             (item) => item.menuAction === 'baize:menu:insert:plantuml:basic'
         )
         EventBus.$emit(EVENT_BUS.MONACO_INSERT_TEXT, item?.context)
+        return
+    }
+
+    // ========== 1.5.2 E6：今日日记 / 快速收件箱（可选能力 dailyNotes，默认关闭） ==========
+    // 菜单项保持可见；开关关闭时直接给出「去设置开启」提示，不产生任何文件行为；
+    // 开启后经 common/capture-actions 调用主进程白名单通道（渲染层只传 kind）。
+    if (action === 'baize:menu:tools:daily-note' || action === 'baize:menu:tools:inbox-capture') {
+        const { flags } = useFeatureFlags()
+        if (!flags.dailyNotes) {
+            showCaptureFeatureDisabled()
+            return
+        }
+        openOrCreateCaptureEntry(action === 'baize:menu:tools:daily-note' ? 'daily' : 'inbox')
+        return
+    }
+
+    // ========== 1.5.2 E1：剪贴板剪藏（可选能力 clipCapture，默认关闭） ==========
+    // 菜单项保持可见；开关关闭时直接给出「去设置开启」提示，**不读取系统剪贴板**；
+    // 开启后经 common/clip-capture-actions 读取剪贴板并复用 A8 转换/插入能力。
+    if (
+        action === 'baize:menu:tools:clip-to-note' ||
+        action === 'baize:menu:tools:clip-to-editor'
+    ) {
+        const { flags } = useFeatureFlags()
+        if (!flags.clipCapture) {
+            showClipCaptureFeatureDisabled()
+            return
+        }
+        if (action === 'baize:menu:tools:clip-to-note') {
+            captureClipToNote()
+        } else {
+            captureClipToEditor()
+        }
+        return
+    }
+
+    // ========== 1.5.2 E3：图片 OCR（可选能力 imageOcr，默认关闭） ==========
+    // 菜单项保持可见；开关关闭时提示开启，**不读取剪贴板、不调用 OCR 通道、不下载语言包**；
+    // 开启后经 common/ocr-actions 读取剪贴板 PNG → 主进程本地 wasm 识别 → 插入/复制。
+    if (action === 'baize:menu:tools:ocr-insert' || action === 'baize:menu:tools:ocr-copy') {
+        const { flags } = useFeatureFlags()
+        if (!flags.imageOcr) {
+            showImageOcrFeatureDisabled()
+            return
+        }
+        if (action === 'baize:menu:tools:ocr-insert') {
+            ocrClipboardToEditor()
+        } else {
+            ocrClipboardToClipboard()
+        }
         return
     }
 

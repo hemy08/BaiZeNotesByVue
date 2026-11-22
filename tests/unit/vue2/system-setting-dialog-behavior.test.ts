@@ -218,12 +218,12 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         wrapper.unmount()
     })
 
-    it('功能页签：6 个可选能力默认关闭，开启后随保存写入 system 配置', async () => {
+    it('功能页签：10 个可选能力（1.5.2 E6/E1/E2/E3 增补日常记录、剪贴板剪藏、PDF 标注与摘录、图片 OCR）默认关闭，开启后随保存写入 system 配置', async () => {
         const wrapper = mountDialog()
         await switchPanel(wrapper, 3)
 
         const checkboxes = panel(wrapper, 3).findAll('.setting-checkbox')
-        expect(checkboxes).toHaveLength(6)
+        expect(checkboxes).toHaveLength(10)
         for (const checkbox of checkboxes) {
             expect((checkbox.element as HTMLInputElement).checked).toBe(false)
         }

@@ -255,7 +255,23 @@ const dialogRenderer = {
             smartInputDesc:
                 '有序列表递增/后续重编号、引用/嵌套/任务列表续行、空列表项回车/退格退出、标题后空行；输入法组合期不介入，自动修改可一次撤销。',
             outlinePlusLabel: '大纲增强',
-            outlinePlusDesc: '大纲支持 setext 标题、层级缩进和快速过滤，便于长文档导航。'
+            outlinePlusDesc: '大纲支持 setext 标题、层级缩进和快速过滤，便于长文档导航。',
+            // 1.5.2 E6：今日日记 / 快速收件箱（工作区 diary/ 与 inbox/ 目录）
+            dailyNotesLabel: '日常记录（今日日记 / 快速收件箱）',
+            dailyNotesDesc:
+                '一键在工作区 diary/ 目录打开或创建今日日记、在 inbox/ 目录创建带时间戳的快速收件笔记；默认关闭，开启后「工具」菜单与命令面板出现入口。',
+            // 1.5.2 E1：剪贴板剪藏（新笔记 / 插入当前笔记）
+            clipCaptureLabel: '剪贴板剪藏（新笔记 / 插入当前）',
+            clipCaptureDesc:
+                '开启后可通过「工具 → 剪藏」或命令面板把剪贴板 HTML/文本转为 Markdown：在 inbox/ 新建带时间戳的剪藏笔记，或插入当前笔记光标处并附来源引用；剪贴板仅在手动触发时读取，默认关闭。',
+            // 1.5.2 E2：PDF 标注与摘录（第 9 项）
+            pdfAnnotationsLabel: 'PDF 标注与摘录',
+            pdfAnnotationsDesc:
+                '开启后 PDF 预览支持文本选择、为当前页添加标注（保存在 PDF 同目录的 .annotations.json 侧车文件）并显示高亮，标注列表可跳页、删除或一键摘录到当前笔记；关闭时 PDF 预览与现状完全一致，默认关闭。',
+            // 1.5.2 E3：图片 OCR（第 10 项，MVP 仅剪贴板截图识别）
+            imageOcrLabel: '图片文字识别（OCR）',
+            imageOcrDesc:
+                '开启后可通过「工具 → 图片文字识别」或命令面板识别剪贴板截图中的文字，并把结果插入当前笔记或复制到剪贴板；图片只在本地用 tesseract.js 识别、不会上传，首次使用需联网下载约 10 MB 的英文语言包（缓存在本机用户数据目录）。默认关闭，关闭时不加载识别引擎、不下载语言包。'
         },
         panelGeneralTitle: '通用设置',
         panelGeneralDesc: '应用程序的基本配置',

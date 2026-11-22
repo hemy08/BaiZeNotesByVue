@@ -1,9 +1,36 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // mock 依赖：配置 store 与事件总线；window.electron.ipcRenderer 通过 stubGlobal 提供
-const { showDialogMock, emitMock } = vi.hoisted(() => ({
+const {
+    showDialogMock,
+    emitMock,
+    captureOpenMock,
+    captureDisabledMock,
+    clipNoteMock,
+    clipEditorMock,
+    clipDisabledMock,
+    ocrInsertMock,
+    ocrCopyMock,
+    ocrDisabledMock,
+    featureFlagsMock
+} = vi.hoisted(() => ({
     showDialogMock: vi.fn(),
-    emitMock: vi.fn()
+    emitMock: vi.fn(),
+    // 1.5.2 E6：日常记录入口动作与能力开关（菜单动作执行前的开关校验）
+    captureOpenMock: vi.fn(),
+    captureDisabledMock: vi.fn(),
+    // 1.5.2 E1：剪贴板剪藏入口动作与能力开关
+    clipNoteMock: vi.fn(),
+    clipEditorMock: vi.fn(),
+    clipDisabledMock: vi.fn(),
+    // 1.5.2 E3：图片 OCR 入口动作与能力开关
+    ocrInsertMock: vi.fn(),
+    ocrCopyMock: vi.fn(),
+    ocrDisabledMock: vi.fn(),
+    featureFlagsMock: { dailyNotes: false, clipCapture: false, imageOcr: false } as Record<
+        string,
+        boolean
+    >
 }))
 
 vi.mock('@renderer/common/useConfigStore', () => ({
@@ -12,6 +39,30 @@ vi.mock('@renderer/common/useConfigStore', () => ({
 
 vi.mock('@renderer/common/event-bus/event-bus', () => ({
     default: { $emit: emitMock }
+}))
+
+vi.mock('@renderer/common/capture-actions', () => ({
+    openOrCreateCaptureEntry: captureOpenMock,
+    showCaptureFeatureDisabled: captureDisabledMock
+}))
+
+vi.mock('@renderer/common/clip-capture-actions', () => ({
+    captureClipToNote: clipNoteMock,
+    captureClipToEditor: clipEditorMock,
+    showClipCaptureFeatureDisabled: clipDisabledMock
+}))
+
+vi.mock('@renderer/common/ocr-actions', () => ({
+    ocrClipboardToEditor: ocrInsertMock,
+    ocrClipboardToClipboard: ocrCopyMock,
+    showImageOcrFeatureDisabled: ocrDisabledMock
+}))
+
+vi.mock('@renderer/composables/useFeatureFlags', () => ({
+    useFeatureFlags: () => ({
+        flags: featureFlagsMock,
+        isFeatureEnabled: (id: string) => featureFlagsMock[id] === true
+    })
 }))
 
 import { HandleMenuAction } from '../../src/renderer/src/components/MenuBar/menu-actions'
@@ -27,6 +78,17 @@ const openRecentMock = vi.fn()
 beforeEach(() => {
     showDialogMock.mockReset()
     emitMock.mockReset()
+    captureOpenMock.mockReset()
+    captureDisabledMock.mockReset()
+    clipNoteMock.mockReset()
+    clipEditorMock.mockReset()
+    clipDisabledMock.mockReset()
+    ocrInsertMock.mockReset()
+    ocrCopyMock.mockReset()
+    ocrDisabledMock.mockReset()
+    featureFlagsMock.dailyNotes = false
+    featureFlagsMock.clipCapture = false
+    featureFlagsMock.imageOcr = false
     ipcSend.mockReset()
     ipcInvoke.mockReset()
     promptMock.mockReset()
@@ -493,6 +555,192 @@ describe('HandleMenuAction', () => {
                 'baize:notes:monaco-editor:insert-text',
                 template?.context
             )
+        })
+    })
+
+    // 1.5.2 E6：工具菜单 → 今日日记 / 快速收件箱（可选能力 featureDailyNotes，默认关闭）
+    describe('daily entries actions (E6)', () => {
+        /** 递归收集菜单树中 E6 动作 id */
+        function collectCaptureActions(): string[] {
+            const actions: string[] = []
+            const walk = (items: unknown[]): void => {
+                for (const item of items as Array<{ menuAction?: string; submenu?: unknown[] }>) {
+                    if (
+                        item.menuAction === 'baize:menu:tools:daily-note' ||
+                        item.menuAction === 'baize:menu:tools:inbox-capture'
+                    ) {
+                        actions.push(item.menuAction)
+                    }
+                    if (item.submenu) {
+                        walk(item.submenu)
+                    }
+                }
+            }
+            walk(menuMap.value)
+            return actions
+        }
+
+        it('开关关闭时提示开启，不调用主进程通道（不产生任何文件行为）', () => {
+            HandleMenuAction('baize:menu:tools:daily-note')
+            HandleMenuAction('baize:menu:tools:inbox-capture')
+
+            expect(captureDisabledMock).toHaveBeenCalledTimes(2)
+            expect(captureOpenMock).not.toHaveBeenCalled()
+            expect(ipcSend).not.toHaveBeenCalled()
+            expect(showDialogMock).not.toHaveBeenCalled()
+        })
+
+        it('开关开启后分别以 daily / inbox 调用统一入口，不转发 MENU.ACTION', () => {
+            featureFlagsMock.dailyNotes = true
+
+            HandleMenuAction('baize:menu:tools:daily-note')
+            HandleMenuAction('baize:menu:tools:inbox-capture')
+
+            expect(captureDisabledMock).not.toHaveBeenCalled()
+            expect(captureOpenMock).toHaveBeenNthCalledWith(1, 'daily')
+            expect(captureOpenMock).toHaveBeenNthCalledWith(2, 'inbox')
+            expect(ipcSend).not.toHaveBeenCalled()
+        })
+
+        it('menu-config 声明的日常记录动作均在渲染层被拦截（菜单树 ↔ 动作分发一致）', () => {
+            const actions = collectCaptureActions()
+            expect(actions).toEqual([
+                'baize:menu:tools:daily-note',
+                'baize:menu:tools:inbox-capture'
+            ])
+
+            featureFlagsMock.dailyNotes = true
+            for (const action of actions) {
+                captureOpenMock.mockReset()
+                ipcSend.mockReset()
+                HandleMenuAction(action)
+                expect(captureOpenMock).toHaveBeenCalledTimes(1)
+                expect(ipcSend).not.toHaveBeenCalled()
+            }
+        })
+    })
+
+    // 1.5.2 E1：工具菜单 → 剪贴板剪藏（新笔记 / 插入当前笔记，可选能力 featureClipCapture 默认关闭）
+    describe('clip capture actions (E1)', () => {
+        /** 递归收集菜单树中 E1 动作 id */
+        function collectClipActions(): string[] {
+            const actions: string[] = []
+            const walk = (items: unknown[]): void => {
+                for (const item of items as Array<{ menuAction?: string; submenu?: unknown[] }>) {
+                    if (
+                        item.menuAction === 'baize:menu:tools:clip-to-note' ||
+                        item.menuAction === 'baize:menu:tools:clip-to-editor'
+                    ) {
+                        actions.push(item.menuAction)
+                    }
+                    if (item.submenu) {
+                        walk(item.submenu)
+                    }
+                }
+            }
+            walk(menuMap.value)
+            return actions
+        }
+
+        it('开关关闭时提示开启，不读取剪贴板/不调用剪藏入口', () => {
+            HandleMenuAction('baize:menu:tools:clip-to-note')
+            HandleMenuAction('baize:menu:tools:clip-to-editor')
+
+            expect(clipDisabledMock).toHaveBeenCalledTimes(2)
+            expect(clipNoteMock).not.toHaveBeenCalled()
+            expect(clipEditorMock).not.toHaveBeenCalled()
+            expect(ipcSend).not.toHaveBeenCalled()
+        })
+
+        it('开关开启后分别调用「新笔记 / 插入当前笔记」入口，不转发 MENU.ACTION', () => {
+            featureFlagsMock.clipCapture = true
+
+            HandleMenuAction('baize:menu:tools:clip-to-note')
+            HandleMenuAction('baize:menu:tools:clip-to-editor')
+
+            expect(clipDisabledMock).not.toHaveBeenCalled()
+            expect(clipNoteMock).toHaveBeenCalledTimes(1)
+            expect(clipEditorMock).toHaveBeenCalledTimes(1)
+            expect(ipcSend).not.toHaveBeenCalled()
+        })
+
+        it('menu-config 声明的剪藏动作均在渲染层被拦截（菜单树 ↔ 动作分发一致）', () => {
+            const actions = collectClipActions()
+            expect(actions).toEqual([
+                'baize:menu:tools:clip-to-note',
+                'baize:menu:tools:clip-to-editor'
+            ])
+
+            featureFlagsMock.clipCapture = true
+            for (const action of actions) {
+                clipNoteMock.mockReset()
+                clipEditorMock.mockReset()
+                ipcSend.mockReset()
+                HandleMenuAction(action)
+                expect(clipNoteMock.mock.calls.length + clipEditorMock.mock.calls.length).toBe(1)
+                expect(ipcSend).not.toHaveBeenCalled()
+            }
+        })
+    })
+
+    // 1.5.2 E3：工具菜单 → 图片 OCR（插入当前笔记 / 复制到剪贴板，可选能力 featureImageOcr 默认关闭）
+    describe('image OCR actions (E3)', () => {
+        /** 递归收集菜单树中 E3 动作 id */
+        function collectOcrActions(): string[] {
+            const actions: string[] = []
+            const walk = (items: unknown[]): void => {
+                for (const item of items as Array<{ menuAction?: string; submenu?: unknown[] }>) {
+                    if (
+                        item.menuAction === 'baize:menu:tools:ocr-insert' ||
+                        item.menuAction === 'baize:menu:tools:ocr-copy'
+                    ) {
+                        actions.push(item.menuAction)
+                    }
+                    if (item.submenu) {
+                        walk(item.submenu)
+                    }
+                }
+            }
+            walk(menuMap.value)
+            return actions
+        }
+
+        it('开关关闭时提示开启，不读取剪贴板/不调用 OCR 入口/不转发主进程', () => {
+            HandleMenuAction('baize:menu:tools:ocr-insert')
+            HandleMenuAction('baize:menu:tools:ocr-copy')
+
+            expect(ocrDisabledMock).toHaveBeenCalledTimes(2)
+            expect(ocrInsertMock).not.toHaveBeenCalled()
+            expect(ocrCopyMock).not.toHaveBeenCalled()
+            expect(ipcSend).not.toHaveBeenCalled()
+            expect(showDialogMock).not.toHaveBeenCalled()
+        })
+
+        it('开关开启后分别调用「插入当前笔记 / 复制到剪贴板」入口，不转发 MENU.ACTION', () => {
+            featureFlagsMock.imageOcr = true
+
+            HandleMenuAction('baize:menu:tools:ocr-insert')
+            HandleMenuAction('baize:menu:tools:ocr-copy')
+
+            expect(ocrDisabledMock).not.toHaveBeenCalled()
+            expect(ocrInsertMock).toHaveBeenCalledTimes(1)
+            expect(ocrCopyMock).toHaveBeenCalledTimes(1)
+            expect(ipcSend).not.toHaveBeenCalled()
+        })
+
+        it('menu-config 声明的 OCR 动作均在渲染层被拦截（菜单树 ↔ 动作分发一致）', () => {
+            const actions = collectOcrActions()
+            expect(actions).toEqual(['baize:menu:tools:ocr-insert', 'baize:menu:tools:ocr-copy'])
+
+            featureFlagsMock.imageOcr = true
+            for (const action of actions) {
+                ocrInsertMock.mockReset()
+                ocrCopyMock.mockReset()
+                ipcSend.mockReset()
+                HandleMenuAction(action)
+                expect(ocrInsertMock.mock.calls.length + ocrCopyMock.mock.calls.length).toBe(1)
+                expect(ipcSend).not.toHaveBeenCalled()
+            }
         })
     })
 })

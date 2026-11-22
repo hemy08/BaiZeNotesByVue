@@ -185,7 +185,16 @@ export default {
             knowledgeTags: '浏览标签索引',
             knowledgeLinks: '检查缺失/歧义链接',
             knowledgeBacklinks: '查看当前文件反向链接',
-            attachments: '附件管理'
+            attachments: '附件管理',
+            // 1.5.2 E6：日常记录（可选能力 featureDailyNotes，默认关闭）
+            dailyNote: '打开今日日记',
+            inboxCapture: '新建快速收件箱笔记',
+            // 1.5.2 E1：剪贴板剪藏（可选能力 featureClipCapture，默认关闭）
+            clipToNote: '剪藏剪贴板为新笔记',
+            clipToEditor: '剪藏剪贴板并插入当前笔记',
+            // 1.5.2 E3：图片 OCR（可选能力 featureImageOcr，默认关闭；MVP 仅剪贴板截图）
+            ocrInsert: '识别剪贴板图片文字并插入当前笔记',
+            ocrCopy: '识别剪贴板图片文字并复制到剪贴板'
         },
         category: {
             file: '文件',
@@ -193,8 +202,97 @@ export default {
             view: '视图',
             insert: '插入',
             search: '搜索',
-            knowledge: '知识库'
+            knowledge: '知识库',
+            // 1.5.2 E6：日常记录（今日日记 / 快速收件箱）
+            capture: '日常记录'
         }
+    },
+    /** 1.5.2 E6 今日日记 / 快速收件箱（工具菜单 + 命令面板共用入口与失败提示） */
+    dailyEntries: {
+        disabledTitle: '功能未开启',
+        disabledMessage:
+            '「今日日记 / 快速收件箱」当前处于关闭状态，请在「系统设置 → 功能」页签开启「日常记录」后重试。',
+        failedTitle: '打开或创建笔记失败',
+        failedMessage: '主进程返回了未识别的失败原因，请稍后重试。',
+        noWorkspace: '请先打开工作区文件夹，再创建日记或收件箱笔记。',
+        invalidKind: '请求类型无效，请通过「工具」菜单或命令面板重试。',
+        writeFailed: '写入笔记文件失败，请检查工作区目录权限后重试。',
+        invokeFailed: '调用主进程失败：{error}',
+        unavailable: '应用 IPC 通道不可用，请重启应用后重试。'
+    },
+    /** 1.5.2 E1 剪贴板剪藏（工具菜单 + 命令面板共用入口与失败提示） */
+    clipCapture: {
+        disabledTitle: '功能未开启',
+        disabledMessage:
+            '「剪贴板剪藏」当前处于关闭状态，请在「系统设置 → 功能」页签开启「剪贴板剪藏」后重试。',
+        failedTitle: '剪藏失败',
+        emptyClipboard: '剪贴板中没有可剪藏的文本或 HTML 内容，请先复制一段内容后重试。',
+        unavailable: '剪贴板接口不可用，请先在编辑器内按 Ctrl+V 粘贴，或重启应用后重试。',
+        readFailed:
+            '读取剪贴板失败，请检查系统剪贴板权限后重试（也可先在编辑器内按 Ctrl+V 粘贴）。',
+        contentTooLarge: '剪贴板内容超过剪藏上限（{max}），请缩小复制范围后重试。',
+        noWorkspace: '请先打开工作区文件夹，再剪藏到新笔记。',
+        invalidKind: '请求类型无效，请通过「工具」菜单或命令面板重试。',
+        writeFailed: '写入剪藏笔记失败，请检查工作区目录权限后重试。',
+        failedMessage: '主进程返回了未识别的失败原因，请稍后重试。',
+        editorUnavailable: '当前没有可用的编辑器，请先打开一篇笔记后再执行「剪藏并插入当前笔记」。',
+        insertFailed: '插入当前笔记失败，请确认编辑器处于可编辑状态后重试。',
+        invokeFailed: '调用主进程失败：{error}',
+        sourceLine: '剪藏自：{source} · {date}'
+    },
+    /** 1.5.2 E3 图片 OCR（剪贴板截图识别：命令面板 / 工具菜单共用入口与失败提示） */
+    imageOcr: {
+        disabledTitle: '功能未开启',
+        disabledMessage:
+            '「图片文字识别（OCR）」当前处于关闭状态，请在「系统设置 → 功能」页签开启「图片文字识别（OCR）」后重试。',
+        failedTitle: '图片文字识别失败',
+        noImage: '剪贴板中没有图片，请先截图或复制一张图片后再试。',
+        unavailable: '剪贴板接口不可用，请重启应用后重试。',
+        readFailed: '读取剪贴板图片失败，请检查系统剪贴板权限后重试（也可先重新截图复制）。',
+        tooLarge: '剪贴板图片超过大小上限（{max}），请缩小截图范围后重试。',
+        notPng: '剪贴板图片格式不受支持（仅支持 PNG 截图），请重新截图后重试。',
+        downloadFailed:
+            'OCR 语言包下载失败（首次使用需联网下载约 10 MB），请检查网络后重试；识别在本地进行，图片不会上传。',
+        initFailed: 'OCR 语言包损坏，已自动清除缓存；请重试（将重新下载语言包）。',
+        recognitionFailed: '图片文字识别失败，请重试；若反复失败可重启应用后再试。',
+        engineUnavailable: 'OCR 识别引擎不可用，请重启应用后重试。',
+        invalidLanguage: 'OCR 语言设置无效，请检查系统语言设置后重试。',
+        failedMessage: '识别失败，请稍后重试。',
+        invokeFailed: '调用主进程失败：{error}',
+        emptyTitle: '未识别到文字',
+        emptyMessage: '截图中未识别到可提取的文字，请确认图片清晰、包含文字后重试。',
+        copyFailed: '写入剪贴板失败，请重试。',
+        insertFailed: '插入当前笔记失败，请确认编辑器处于可编辑状态后重试。',
+        copiedTitle: '已复制到剪贴板',
+        copiedMessage: '图片文字识别结果已复制到剪贴板，可直接粘贴到需要的位置。',
+        noEditorCopiedMessage:
+            '当前没有可插入的编辑器，识别结果已复制到剪贴板，可直接粘贴到需要的位置。',
+        sourceLine: '来自图片文字识别'
+    },
+    /** 1.5.2 E2 PDF 标注与摘录（ShowPdfEditor 标注列表 / 摘录动作共用失败提示） */
+    pdfAnnotations: {
+        loadFailedTitle: '读取 PDF 标注失败',
+        loadFailed: '读取标注文件失败，本次以空白标注打开：{error}',
+        saveFailedTitle: '保存 PDF 标注失败',
+        saveFailed: '写入标注文件失败，请检查 PDF 所在目录的写入权限后重试：{error}',
+        addFailedTitle: '添加标注失败',
+        addInvalid: '选中的文本为空或页码无效，请重新选择 PDF 文本后再试。',
+        failedMessage: '主进程返回了未识别的失败原因，请稍后重试。',
+        invalidPath: 'PDF 路径无效，无法读取或保存标注。',
+        invalidExtension: '仅支持为 .pdf 文件保存标注。',
+        pathDenied: 'PDF 所在位置不在受信任范围内，无法读写标注。',
+        invalidPayload: '标注数据格式无效，已取消保存。',
+        tooLarge: '标注数据超过大小上限，已取消保存。',
+        readFailed: '读取标注文件失败，请稍后重试。',
+        writeFailed: '写入标注文件失败，请稍后重试。',
+        invokeFailed: '调用主进程失败：{error}',
+        unavailable: '应用 IPC 通道不可用，请重启应用后重试。',
+        excerptFailedTitle: '摘录失败',
+        excerptInvalid: '当前标注没有可摘录的文本。',
+        excerptInsertFailed: '插入当前笔记失败，且复制到剪贴板也失败；请先打开一篇笔记后重试。',
+        copiedTitle: '已复制到剪贴板',
+        copiedMessage:
+            '当前没有可插入的 Markdown 编辑器，摘录内容已复制到剪贴板，可直接粘贴到需要的位置。'
     },
     /** A3 文档历史 / diff / 回滚对话框（`components/Markdown/history/FileHistoryDialog.vue`） */
     fileHistory: {

@@ -148,6 +148,15 @@ export default {
         katex: 'Formula Editor',
         table: 'Spreadsheet',
         images: 'Image Creation',
+        // 1.5.2 E6: daily entries (optional feature featureDailyNotes, off by default)
+        dailyNote: 'Daily Note',
+        inboxCapture: 'Quick Inbox',
+        // 1.5.2 E1: clipboard capture (optional feature featureClipCapture, off by default)
+        clipToNote: 'Clip to Note',
+        clipToEditor: 'Clip into Current Note',
+        // 1.5.2 E3: image OCR (optional feature featureImageOcr, off by default; MVP clipboard screenshots)
+        imageOcrInsert: 'Recognize Clipboard Image Text and Insert',
+        imageOcrCopy: 'Recognize Clipboard Image Text and Copy',
         drawing: {
             label: 'Drawing Tools',
             mermaid: 'Mermaid Drawing',
@@ -426,7 +435,10 @@ export default {
         updateLog: 'Changelog',
         updateLogItem: 'Major Version Upgrade',
         shortkeys: 'Keyboard Shortcuts',
-        usage: 'Documentation',
+        usage: 'hemy08.github.io',
+        guide: 'Usage Guide',
+        guideHtml: 'HTML version',
+        guidePdf: 'PDF version',
         issues: 'Submit Ideas/Feedback',
         techStack: 'Tech Stack',
         about: 'About',

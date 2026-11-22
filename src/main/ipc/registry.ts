@@ -22,7 +22,9 @@
  *    可能读到迁移前的旧值（行为回归）。因此该阶段必须保持在 createWindow 之前。
  * 2. registerAll(mainWindow, hooks)：**主窗口创建之后**的一次性注册阶段，按改造前
  *    main/index.ts 的调用顺序逐项迁移（主题更新广播 → 渲染层就绪握手 → 对话框右键通道
- *    → utils 通道 → handlers 通道 → PlantUML 本地渲染 → A2 工作区搜索/替换）。
+ *    → utils 通道 → handlers 通道 → PlantUML 本地渲染 → A2 工作区搜索/替换 →
+ *    1.5.1 工作区索引 → 1.5.1 B5 附件管理 → 1.5.2 E6 今日日记/快速收件箱 →
+ *    1.5.2 E2 PDF 标注与摘录 → 1.5.2 E3 图片 OCR（剪贴板识别）。
  *
  * 窗口重建（macOS activate）不会再次调用本文件：全局注册为进程级 persistent
  * （ipcListenerManager.registerOnce/registerHandleOnce），窗口重建只需刷新
@@ -64,6 +66,12 @@ import { registerWorkspaceSearchIpc } from './workspace-search-ipc'
 import { registerWorkspaceIndexIpc } from './workspace-index-ipc'
 // 1.5.1 B5：附件孤儿审计 / 移入回收站 / 附件重命名
 import { registerAttachmentIpc } from './attachment-ipc'
+// 1.5.2 E6：今日日记 / 快速收件箱（工作区 diary/ 与 inbox/ 一键打开或创建）
+import { registerCaptureIpc } from './capture-ipc'
+// 1.5.2 E2：PDF 标注与摘录（侧车文件读写，能力开关 featurePdfAnnotations 默认关闭）
+import { registerPdfAnnotationsIpc } from './pdf-annotations-ipc'
+// 1.5.2 E3：图片 OCR（剪贴板截图识别；本地 wasm，语言包按需下载，能力开关默认关闭）
+import { registerOcrIpc } from './ocr-ipc'
 import { logger } from '../utils/logger'
 import { IPC } from '../../shared/ipc-channels'
 
@@ -85,6 +93,15 @@ const WORKSPACE_INDEX_COMPONENT_ID = 'global-workspace-index-ipc'
 
 /** 1.5.1 B5 附件管理 IPC 的监听台账组件 ID */
 const ATTACHMENT_COMPONENT_ID = 'global-attachment-ipc'
+
+/** 1.5.2 E6 今日日记 / 快速收件箱 IPC 的监听台账组件 ID */
+const CAPTURE_COMPONENT_ID = 'global-capture-ipc'
+
+/** 1.5.2 E2 PDF 标注与摘录 IPC 的监听台账组件 ID */
+const PDF_ANNOTATIONS_COMPONENT_ID = 'global-pdf-annotations-ipc'
+
+/** 1.5.2 E3 图片 OCR IPC 的监听台账组件 ID */
+const OCR_COMPONENT_ID = 'global-ocr-ipc'
 
 /** registerAll 的入口钩子：由 main/index.ts 提供的跨模块行为（避免 registry 反向依赖入口） */
 export interface RegisterAllHooks {
@@ -212,4 +229,18 @@ export function registerAll(mainWindow: BrowserWindow, hooks: RegisterAllHooks =
     // 9) 1.5.1 B5：附件孤儿审计 / 批量移入回收站 / 附件重命名。
     //    只操作 appState.rootPath 内普通附件；删除走系统回收站，重命名先计划后写回。
     registerAttachmentIpc(mainWindow, ATTACHMENT_COMPONENT_ID)
+    // 10) 1.5.2 E6：今日日记 / 快速收件箱。
+    //     只接受 kind 白名单，目录/文件名由主进程在 appState.rootPath 下生成并复核根内；
+    //     文件已存在时复用既有打开链路直接打开，绝不覆盖。
+    registerCaptureIpc(mainWindow, CAPTURE_COMPONENT_ID)
+    // 11) 1.5.2 E2：PDF 标注与摘录（侧车文件 `<pdfPath>.annotations.json`）。
+    //     PDF 与侧车路径均做 Path Guard + .pdf 扩展名校验；读取容错、写入 tmp+rename 原子替换。
+    //     渲染层按能力开关 featurePdfAnnotations（默认关闭）决定是否调用这两个通道。
+    registerPdfAnnotationsIpc(mainWindow, PDF_ANNOTATIONS_COMPONENT_ID)
+    // 12) 1.5.2 E3：图片 OCR（剪贴板截图识别，MVP）。
+    //     两个 invoke 通道：PREPARE_LANG（语言包 https 下载/校验/原子写缓存，幂等）、
+    //     RECOGNIZE_IMAGE（仅接受 PNG 字节 + 20 MiB 上限；worker_threads 串行队列内用
+    //     tesseract.js wasm 本地识别，图片不上传）。渲染层按能力开关 featureImageOcr
+    //     （默认关闭）决定是否注册入口/调用通道，关闭时零行为差异、不下载语言包。
+    registerOcrIpc(mainWindow, OCR_COMPONENT_ID)
 }

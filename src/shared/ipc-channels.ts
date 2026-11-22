@@ -5,7 +5,7 @@
  * - 主进程 / preload / 渲染层的 ipcMain、ipcRenderer、webContents.send、
  *   ipcListenerManager 注册一律引用本文件常量，禁止再写通道字符串字面量；
  * - 通道字符串统一为 `baize:<domain>:<name>`（2026-11-15 命名统一后 100% 带 `baize:`
- *   前缀，domain 限定 17 个白名单，见 tests/unit/ipc-channel-naming.test.ts）；
+ *   前缀，domain 限定 18 个白名单（1.5.2 E3 新增 ocr 域），见 tests/unit/ipc-channel-naming.test.ts）；
  * - 常量分组与通道 domain 一一对应（2026-11-18 遗留清单 #3/#7 修复：原 CQ-13 的
  *   10 个「域错配」通道已归位——编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、
  *   设置类 2 通道新建 SETTING 组、Monaco 类 2 通道并入 MONACO 组）；
@@ -116,7 +116,18 @@ export const IPC = {
         // 所有路径由主进程基于 appState.rootPath 重新校验，渲染层不能指定扫描根。
         GET_ATTACHMENT_AUDIT: 'baize:file:get-attachment-audit',
         TRASH_ATTACHMENTS: 'baize:file:trash-attachments',
-        RENAME_ATTACHMENT: 'baize:file:rename-attachment'
+        RENAME_ATTACHMENT: 'baize:file:rename-attachment',
+        // 1.5.2 E6 今日日记 / 快速收件箱（invoke，能力开关 featureDailyNotes 默认关闭）：
+        // 渲染层只传 kind 白名单（daily / inbox），目录与文件名（diary/inbox + 日期时间）
+        // 全部由主进程在 appState.rootPath 下生成并做「路径必须在工作区根内」校验；
+        // 文件已存在时直接走既有「主进程读取并通知渲染层」链路打开，绝不覆盖。
+        OPEN_OR_CREATE_ENTRY: 'baize:file:open-or-create-entry',
+        // 1.5.2 E2 PDF 标注与摘录（invoke，能力开关 featurePdfAnnotations 默认关闭）：
+        // 侧车文件 `<pdfPath>.annotations.json`（与 PDF 同目录）的读取/保存。
+        // 主进程做 Path Guard + .pdf 扩展名双向校验，侧车路径由主进程由 pdfPath 生成并复核
+        // 在受信根内；写入走「tmp + rename」原子替换，读取对缺失/损坏 JSON 容错为空数组。
+        LOAD_PDF_ANNOTATIONS: 'baize:file:load-pdf-annotations',
+        SAVE_PDF_ANNOTATIONS: 'baize:file:save-pdf-annotations'
     } as const,
 
     // ============ 文件管理器右键菜单 ============
@@ -246,6 +257,18 @@ export const IPC = {
         // UPDATED，NaviTab 监听后刷新——设置对话框与导航栏共用同一数据源。
         SAVE: 'baize:quick-links:save',
         UPDATED: 'baize:quick-links:updated'
+    } as const,
+
+    // ============ 1.5.2 E3 图片 OCR（MVP：剪贴板截图识别，domain=ocr） ============
+    // 能力开关 featureImageOcr（默认关闭）：关闭时渲染层不注册命令/不调用本组通道，
+    // 主进程不加载 worker、不下载语言包。两个通道均为 invoke：
+    // - PREPARE_LANG：下载/校验语言包到 userData/ocr/tessdata（幂等，失败结构化返回）；
+    // - RECOGNIZE_IMAGE：本地 worker_threads + tesseract.js wasm 识别 PNG 字节（图片不上传）。
+    // 渲染层只能传「白名单语言 + 图片字节」，不能传任意路径/URL；语言白名单与下载源
+    // 均在 shared/constants/ocr.ts 唯一维护。
+    OCR: {
+        PREPARE_LANG: 'baize:ocr:prepare-lang',
+        RECOGNIZE_IMAGE: 'baize:ocr:recognize-image'
     } as const,
 
     // ============ 主进程 → 渲染层广播事件 ============

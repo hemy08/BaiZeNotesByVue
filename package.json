@@ -1,6 +1,6 @@
 {
     "name": "baize-notes",
-    "version": "1.5.1",
+    "version": "1.5.2",
     "private": true,
     "description": "白泽笔记（BaiZeNotes）：基于 Electron + Vue 3 + Monaco 的本地 Markdown 笔记与预览桌面应用",
     "main": "./out/build/main/index.js",
@@ -29,6 +29,7 @@
         "start": "electron-vite preview",
         "generate-version": "node build/generate-version-config.js",
         "generate-preload-whitelist": "node build/generate-preload-whitelist.js",
+        "generate:help-docs": "node build/generate-help-docs.js",
         "quality:baseline": "node build/generate-quality-baseline.js",
         "quality:check": "node build/generate-quality-baseline.js --check",
         "docs:check": "node build/check-doc-links.js",
@@ -72,6 +73,8 @@
         "mammoth": "^1.13.0",
         "markdown-it": "^15.0.3",
         "officegen": "^0.6.5",
+        "tesseract.js": "^7.0.0",
+        "tesseract.js-core": "^7.0.0",
         "turndown": "^7.2.5"
     },
     "devDependencies": {

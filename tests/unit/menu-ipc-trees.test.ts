@@ -5,6 +5,7 @@
  * task-50 追加：AI 导航菜单动作 ↔ aiMenuHandlers 双向一致 + 末跳 URL 契约（https / 唯一 / 无推广参数）
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import path from 'node:path'
 
 const treeMocks = vi.hoisted(() => ({
     relaunch: vi.fn(),
@@ -12,6 +13,7 @@ const treeMocks = vi.hoisted(() => ({
     // P2-7：「重启应用」只登记意图并请求退出，真正 relaunch 在 before-quit 确认放行后执行
     requestRelaunch: vi.fn(),
     openExternal: vi.fn(),
+    openPath: vi.fn(),
     openOnlineWebPage: vi.fn(),
     openFile: vi.fn(),
     openDirectory: vi.fn(),
@@ -45,8 +47,13 @@ const editorSettingMocks = vi.hoisted(() => ({
 vi.mock('../../src/main/config/editor-setting', () => editorSettingMocks)
 
 vi.mock('electron', () => ({
-    app: { relaunch: treeMocks.relaunch, quit: treeMocks.quit },
-    shell: { openExternal: treeMocks.openExternal }
+    app: {
+        relaunch: treeMocks.relaunch,
+        quit: treeMocks.quit,
+        isPackaged: false,
+        getAppPath: () => process.cwd()
+    },
+    shell: { openExternal: treeMocks.openExternal, openPath: treeMocks.openPath }
 }))
 
 vi.mock('../../src/main/utils/file-utils/file-operations', () => ({
@@ -319,7 +326,17 @@ describe('viewMenuHandlers', () => {
 describe('helpMenuHandlers', () => {
     it('should open the usage page externally', () => {
         ;(helpMenuHandlers['usage'] as () => void)()
-        expect(treeMocks.openExternal).toHaveBeenCalledWith('https://hemy08.github.io/hemynotes/')
+        expect(treeMocks.openExternal).toHaveBeenCalledWith('https://hemy08.github.io/')
+    })
+
+    it('should open the packaged PDF guide from fixed resources path', async () => {
+        treeMocks.openPath.mockResolvedValue('')
+        ;(helpMenuHandlers['guide-pdf'] as () => void)()
+        await vi.waitFor(() => {
+            expect(treeMocks.openPath).toHaveBeenCalledWith(
+                path.join(process.cwd(), 'resources', 'help', 'usage-guide.pdf')
+            )
+        })
     })
 
     it('should open the issues page externally', () => {

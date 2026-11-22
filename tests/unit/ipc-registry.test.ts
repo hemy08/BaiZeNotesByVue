@@ -43,6 +43,12 @@ const implementationMocks = vi.hoisted(() => ({
     registerWorkspaceIndexIpc: vi.fn(),
     // 1.5.1 B5：附件管理独立域注册入口
     registerAttachmentIpc: vi.fn(),
+    // 1.5.2 E6：今日日记 / 快速收件箱独立域注册入口
+    registerCaptureIpc: vi.fn(),
+    // 1.5.2 E2：PDF 标注与摘录独立域注册入口
+    registerPdfAnnotationsIpc: vi.fn(),
+    // 1.5.2 E3：图片 OCR 独立域注册入口
+    registerOcrIpc: vi.fn(),
     // 主题广播依赖
     getCurrentThemeStyles: vi.fn(),
     getThemeStylesByType: vi.fn(),
@@ -91,6 +97,21 @@ vi.mock('../../src/main/ipc/workspace-index-ipc', () => ({
 // 1.5.1 B5：附件管理独立域模块（本文件只验证编排）
 vi.mock('../../src/main/ipc/attachment-ipc', () => ({
     registerAttachmentIpc: implementationMocks.registerAttachmentIpc
+}))
+
+// 1.5.2 E6：今日日记 / 快速收件箱独立域模块（本文件只验证编排）
+vi.mock('../../src/main/ipc/capture-ipc', () => ({
+    registerCaptureIpc: implementationMocks.registerCaptureIpc
+}))
+
+// 1.5.2 E2：PDF 标注与摘录独立域模块（本文件只验证编排）
+vi.mock('../../src/main/ipc/pdf-annotations-ipc', () => ({
+    registerPdfAnnotationsIpc: implementationMocks.registerPdfAnnotationsIpc
+}))
+
+// 1.5.2 E3：图片 OCR 独立域模块（本文件只验证编排）
+vi.mock('../../src/main/ipc/ocr-ipc', () => ({
+    registerOcrIpc: implementationMocks.registerOcrIpc
 }))
 
 // P1-1：主题广播实现已迁到中性层 utils/theme-broadcast（config 不再 import ipc/**）
@@ -193,6 +214,15 @@ beforeEach(() => {
     implementationMocks.registerAttachmentIpc.mockImplementation(() => {
         callOrder.push('attachment')
     })
+    implementationMocks.registerCaptureIpc.mockImplementation(() => {
+        callOrder.push('capture')
+    })
+    implementationMocks.registerPdfAnnotationsIpc.mockImplementation(() => {
+        callOrder.push('pdf-annotations')
+    })
+    implementationMocks.registerOcrIpc.mockImplementation(() => {
+        callOrder.push('ocr')
+    })
     implementationMocks.getCurrentThemeStyles.mockReturnValue({ name: 'baize' })
     implementationMocks.getThemeStylesByType.mockImplementation((themeType: string) => ({
         name: themeType
@@ -235,7 +265,10 @@ describe('registerAll（建窗后一次性注册清单）', () => {
             'plantuml',
             'workspace-search',
             'workspace-index',
-            'attachment'
+            'attachment',
+            'capture',
+            'pdf-annotations',
+            'ocr'
         ])
         expect(implementationMocks.mainWindowListenDialogsEvent).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerUtilsIpcHandlers).toHaveBeenCalledWith(mainWindow)
@@ -252,6 +285,18 @@ describe('registerAll（建窗后一次性注册清单）', () => {
         expect(implementationMocks.registerAttachmentIpc).toHaveBeenCalledWith(
             mainWindow,
             'global-attachment-ipc'
+        )
+        expect(implementationMocks.registerCaptureIpc).toHaveBeenCalledWith(
+            mainWindow,
+            'global-capture-ipc'
+        )
+        expect(implementationMocks.registerPdfAnnotationsIpc).toHaveBeenCalledWith(
+            mainWindow,
+            'global-pdf-annotations-ipc'
+        )
+        expect(implementationMocks.registerOcrIpc).toHaveBeenCalledWith(
+            mainWindow,
+            'global-ocr-ipc'
         )
     })
 

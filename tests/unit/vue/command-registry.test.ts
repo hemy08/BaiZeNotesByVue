@@ -1,12 +1,14 @@
 // @vitest-environment node
 /**
- * A9 命令注册表单测（2026-11-21）
+ * A9 命令注册表单测（2026-11-21，1.5.2 增补 E6 日常记录 / E1 剪贴板剪藏）
  *
  * 覆盖点：
- * 1. 命令清单完整性（既有能力复用 menuAction + A2/A9 自身动作）；
+ * 1. 命令清单完整性（既有能力复用 menuAction + A2/A9 自身动作 + E6/E1 可选能力命令）；
  * 2. 命令的 labelKey/categoryKey 命名空间统一（`editorUi.commandPalette.*`）；
  * 3. **菜单动作 id 与 menu-config 菜单树一致**（防止命令面板与菜单栏漂移）；
- * 4. 过滤逻辑：空查询、翻译名匹配、关键词匹配、子序列兜底、无结果。
+ * 4. 过滤逻辑：空查询、翻译名匹配、关键词匹配、子序列兜底、无结果；
+ * 5. 1.5.2 E6/E1：`featureDailyNotes` / `featureClipCapture` 关闭时对应命令**不注册**
+ *    （isFeatureEnabled 过滤），开启时注册且执行函数把动作交给注入处理器。
  */
 import { describe, it, expect } from 'vitest'
 
@@ -24,7 +26,12 @@ import { menuMap } from '../../../src/renderer/src/components/MenuBar/menu-confi
 const handlers: PaletteCommandHandlers = {
     runMenuAction: () => {},
     openWorkspaceSearch: () => {},
-    switchMode: () => {}
+    switchMode: () => {},
+    openOrCreateCaptureEntry: () => {},
+    captureClipToNote: () => {},
+    captureClipToEditor: () => {},
+    ocrClipboardToEditor: () => {},
+    ocrClipboardToClipboard: () => {}
 }
 
 const commands = buildPaletteCommands(handlers)
@@ -77,7 +84,13 @@ describe('buildPaletteCommands：命令清单', () => {
             'knowledge-tags',
             'knowledge-links',
             'knowledge-backlinks',
-            'attachments'
+            'attachments',
+            'daily-note',
+            'inbox-capture',
+            'clip-to-note',
+            'clip-to-editor',
+            'ocr-insert',
+            'ocr-copy'
         ])
         expect(new Set(ids).size).toBe(ids.length)
     })
@@ -118,13 +131,159 @@ describe('buildPaletteCommands：命令清单', () => {
         const customHandlers: PaletteCommandHandlers = {
             runMenuAction: (action: string) => calls.push(`menu:${action}`),
             openWorkspaceSearch: () => calls.push('workspace-search'),
-            switchMode: (mode: string) => calls.push(`mode:${mode}`)
+            switchMode: (mode: string) => calls.push(`mode:${mode}`),
+            openOrCreateCaptureEntry: (kind: string) => calls.push(`capture:${kind}`),
+            captureClipToNote: () => calls.push('clip:note'),
+            captureClipToEditor: () => calls.push('clip:editor'),
+            ocrClipboardToEditor: () => calls.push('ocr:editor'),
+            ocrClipboardToClipboard: () => calls.push('ocr:clipboard')
         }
         const customCommands = buildPaletteCommands(customHandlers)
         customCommands.find((command) => command.id === 'workspace-search')?.run?.()
         customCommands.find((command) => command.id === 'quick-open')?.run?.()
         customCommands.find((command) => command.id === 'command-palette')?.run?.()
-        expect(calls).toEqual(['workspace-search', 'mode:file', 'mode:command'])
+        customCommands.find((command) => command.id === 'daily-note')?.run?.()
+        customCommands.find((command) => command.id === 'inbox-capture')?.run?.()
+        customCommands.find((command) => command.id === 'clip-to-note')?.run?.()
+        customCommands.find((command) => command.id === 'clip-to-editor')?.run?.()
+        customCommands.find((command) => command.id === 'ocr-insert')?.run?.()
+        customCommands.find((command) => command.id === 'ocr-copy')?.run?.()
+        expect(calls).toEqual([
+            'workspace-search',
+            'mode:file',
+            'mode:command',
+            'capture:daily',
+            'capture:inbox',
+            'clip:note',
+            'clip:editor',
+            'ocr:editor',
+            'ocr:clipboard'
+        ])
+    })
+})
+
+describe('1.5.2 E6 可选能力过滤：featureDailyNotes', () => {
+    const captureIds = ['daily-note', 'inbox-capture']
+
+    it('开关关闭时日常记录命令不注册（命令面板不出现入口）', () => {
+        const filtered = buildPaletteCommands(handlers, { isFeatureEnabled: () => false })
+        const ids = filtered.map((command) => command.id)
+        for (const id of captureIds) {
+            expect(ids).not.toContain(id)
+        }
+        // 非可选能力命令不受影响
+        expect(ids).toContain('save')
+        expect(ids).toContain('attachments')
+    })
+
+    it('仅开启 dailyNotes 时注册两条日常记录命令，且分类为 capture', () => {
+        const filtered = buildPaletteCommands(handlers, {
+            isFeatureEnabled: (id) => id === 'dailyNotes'
+        })
+        for (const id of captureIds) {
+            const command = filtered.find((item) => item.id === id) as PaletteCommand
+            expect(command).toBeDefined()
+            expect(command.featureFlag).toBe('dailyNotes')
+            expect(command.categoryKey).toBe('editorUi.commandPalette.category.capture')
+            expect(command.labelKey.startsWith('editorUi.commandPalette.command.')).toBe(true)
+            expect(command.menuAction).toBeUndefined()
+            expect(typeof command.run).toBe('function')
+        }
+    })
+
+    it('未提供 isFeatureEnabled 时视为全部开启（兼容既有调用方/单测）', () => {
+        const ids = buildPaletteCommands(handlers).map((command) => command.id)
+        for (const id of captureIds) {
+            expect(ids).toContain(id)
+        }
+    })
+})
+
+describe('1.5.2 E1 可选能力过滤：featureClipCapture', () => {
+    const clipCommandIds = ['clip-to-note', 'clip-to-editor']
+
+    it('开关关闭时剪藏命令不注册（命令面板不出现入口）', () => {
+        const filtered = buildPaletteCommands(handlers, { isFeatureEnabled: () => false })
+        const ids = filtered.map((command) => command.id)
+        for (const id of clipCommandIds) {
+            expect(ids).not.toContain(id)
+        }
+        expect(ids).toContain('save')
+        expect(ids).toContain('attachments')
+    })
+
+    it('仅开启 clipCapture 时注册两条剪藏命令，且分类为 capture', () => {
+        const filtered = buildPaletteCommands(handlers, {
+            isFeatureEnabled: (id) => id === 'clipCapture'
+        })
+        for (const id of clipCommandIds) {
+            const command = filtered.find((item) => item.id === id) as PaletteCommand
+            expect(command).toBeDefined()
+            expect(command.featureFlag).toBe('clipCapture')
+            expect(command.categoryKey).toBe('editorUi.commandPalette.category.capture')
+            expect(command.labelKey.startsWith('editorUi.commandPalette.command.')).toBe(true)
+            expect(command.menuAction).toBeUndefined()
+            expect(typeof command.run).toBe('function')
+        }
+        // 未开启的能力命令仍不注册（开关互相独立）
+        const ids = filtered.map((command) => command.id)
+        expect(ids).not.toContain('daily-note')
+        expect(ids).not.toContain('inbox-capture')
+    })
+
+    it('同时开启 dailyNotes 与 clipCapture 时四条捕获命令按注册顺序排列', () => {
+        const filtered = buildPaletteCommands(handlers, { isFeatureEnabled: () => true })
+        const captureIds = filtered
+            .filter((command) => command.categoryKey === 'editorUi.commandPalette.category.capture')
+            .map((command) => command.id)
+        expect(captureIds).toEqual([
+            'daily-note',
+            'inbox-capture',
+            'clip-to-note',
+            'clip-to-editor',
+            'ocr-insert',
+            'ocr-copy'
+        ])
+    })
+})
+
+describe('1.5.2 E3 可选能力过滤：featureImageOcr', () => {
+    const ocrCommandIds = ['ocr-insert', 'ocr-copy']
+
+    it('开关关闭时图片 OCR 命令不注册（命令面板不出现入口，无执行副作用）', () => {
+        const filtered = buildPaletteCommands(handlers, { isFeatureEnabled: () => false })
+        const ids = filtered.map((command) => command.id)
+        for (const id of ocrCommandIds) {
+            expect(ids).not.toContain(id)
+        }
+        expect(ids).toContain('save')
+        expect(ids).toContain('attachments')
+    })
+
+    it('仅开启 imageOcr 时注册两条 OCR 命令，且分类为 capture', () => {
+        const filtered = buildPaletteCommands(handlers, {
+            isFeatureEnabled: (id) => id === 'imageOcr'
+        })
+        for (const id of ocrCommandIds) {
+            const command = filtered.find((item) => item.id === id) as PaletteCommand
+            expect(command).toBeDefined()
+            expect(command.featureFlag).toBe('imageOcr')
+            expect(command.categoryKey).toBe('editorUi.commandPalette.category.capture')
+            expect(command.labelKey.startsWith('editorUi.commandPalette.command.')).toBe(true)
+            expect(command.menuAction).toBeUndefined()
+            expect(typeof command.run).toBe('function')
+        }
+        // 未开启的能力命令仍不注册（开关互相独立）
+        const ids = filtered.map((command) => command.id)
+        expect(ids).not.toContain('daily-note')
+        expect(ids).not.toContain('clip-to-note')
+    })
+
+    it('未提供 isFeatureEnabled 时视为全部开启（兼容既有调用方/单测）', () => {
+        const ids = buildPaletteCommands(handlers).map((command) => command.id)
+        for (const id of ocrCommandIds) {
+            expect(ids).toContain(id)
+        }
     })
 })
 

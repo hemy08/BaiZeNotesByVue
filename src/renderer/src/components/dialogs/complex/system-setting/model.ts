@@ -43,6 +43,14 @@ export interface SystemDialogSettings {
     featureSpellcheck: boolean
     featureSmartInput: boolean
     featureOutlinePlus: boolean
+    // 1.5.2 E6：今日日记 / 快速收件箱（默认关闭，见 shared/constants/feature-flags.ts）
+    featureDailyNotes: boolean
+    // 1.5.2 E1：剪贴板剪藏（默认关闭，见 shared/constants/feature-flags.ts）
+    featureClipCapture: boolean
+    // 1.5.2 E2：PDF 标注与摘录（第 9 项，默认关闭，见 shared/constants/feature-flags.ts）
+    featurePdfAnnotations: boolean
+    // 1.5.2 E3：图片 OCR（第 10 项，默认关闭，见 shared/constants/feature-flags.ts）
+    featureImageOcr: boolean
     // 写作体验（P0，默认全部关闭）
     writingModeEnabled: boolean
     writingTypewriterEnabled: boolean
@@ -108,6 +116,10 @@ export function createDefaultSystemDialogSettings(): SystemDialogSettings {
         featureSpellcheck: SYSTEM_SETTING_FALLBACK.featureSpellcheck,
         featureSmartInput: SYSTEM_SETTING_FALLBACK.featureSmartInput,
         featureOutlinePlus: SYSTEM_SETTING_FALLBACK.featureOutlinePlus,
+        featureDailyNotes: SYSTEM_SETTING_FALLBACK.featureDailyNotes,
+        featureClipCapture: SYSTEM_SETTING_FALLBACK.featureClipCapture,
+        featurePdfAnnotations: SYSTEM_SETTING_FALLBACK.featurePdfAnnotations,
+        featureImageOcr: SYSTEM_SETTING_FALLBACK.featureImageOcr,
         writingModeEnabled: SYSTEM_SETTING_FALLBACK.writingModeEnabled,
         writingTypewriterEnabled: SYSTEM_SETTING_FALLBACK.writingTypewriterEnabled,
         writingFocusEnabled: SYSTEM_SETTING_FALLBACK.writingFocusEnabled,

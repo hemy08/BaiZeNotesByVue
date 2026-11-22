@@ -68,6 +68,126 @@ files:
     # `build/index.cjs`（Node 端入口），build/ 内无任何 ../dist 引用，渲染层也不 import
     # jschardet。因此 dist/ 运行期不可达，精确排除；build/（编码探测实现）完整保留。
     - '!**/node_modules/jschardet/dist/**'
+    # ===== 1.5.2 E3 图片 OCR：tesseract.js / tesseract.js-core 体积裁剪（PERF-01/PERF-02） =====
+    # 背景：tesseract.js-core 的 12 个 wasm/wasm.js 变体合计 43.17 MiB，远超 asar 预算。
+    # 本项目 OCR worker 通过自建 adapter **固定加载 baseline LSTM 变体**
+    # （tesseract.js v7 Node 端 getCore 按 CPU 特性在多变体间选择且忽略 corePath，
+    #  体积预算只允许保留 1 个变体 → 由 utils/ocr/ocr-tesseract-runtime.ts 接管 core 加载）。
+    # 保留：tesseract-core-lstm.js（约 87 KiB glue）+ tesseract-core-lstm.wasm（约 2.72 MiB）。
+    # 排除：其余 5 个变体（含 relaxedSimd/simd 的 LSTM 与非 LSTM 版）与全部 *.wasm.js
+    # （内联 base64 版本，Node 端 glue 直接读取同名 .wasm 文件，不会加载 .wasm.js）：
+    - '!**/node_modules/tesseract.js-core/tesseract-core.js'
+    - '!**/node_modules/tesseract.js-core/tesseract-core.wasm'
+    - '!**/node_modules/tesseract.js-core/tesseract-core.wasm.js'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-lstm.wasm.js'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-simd.js'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-simd.wasm'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-simd.wasm.js'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-simd-lstm.js'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-relaxedsimd.js'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-relaxedsimd.wasm'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-relaxedsimd.wasm.js'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-relaxedsimd-lstm.js'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-relaxedsimd-lstm.wasm'
+    - '!**/node_modules/tesseract.js-core/tesseract-core-relaxedsimd-lstm.wasm.js'
+    # 根入口 index.js require 非 LSTM 变体，本项目按子路径强制加载单变体，根入口运行期不可达
+    - '!**/node_modules/tesseract.js-core/index.js'
+    # tesseract.js 本体：Node 只 require src/（worker-script + 常量/工具）；dist（浏览器构建 876 KiB）、
+    # docs（403 KiB）、examples/scripts、karma 配置与 README 运行期均不可达（同 jschardet dist 口径）
+    - '!**/node_modules/tesseract.js/dist/**'
+    - '!**/node_modules/tesseract.js/docs/**'
+    - '!**/node_modules/tesseract.js/examples/**'
+    - '!**/node_modules/tesseract.js/scripts/**'
+    - '!**/node_modules/tesseract.js/karma.conf.js'
+    - '!**/node_modules/tesseract.js/README.md'
+    # tesseract.js 生产依赖树裁剪（逐条理由，均为本项目 OCR 路径运行期不可达）：
+    # - zlibjs：仅 worker-script/browser/gunzip.js（浏览器端）使用；Node 端用 node:zlib（裁 3.56 MiB）
+    # - idb-keyval：仅浏览器端缓存；Node 端缓存走 fs
+    # - node-fetch：tesseract.js 按 `global.fetch || require('node-fetch')` 回退；Electron 43（Node 22）
+    #   自带 global.fetch，运行期不会 require
+    # - wasm-feature-detect：仅 tesseract.js 默认 getCore 的 SIMD 探测使用；本项目固定单变体不走该分支
+    # - opencollective-postinstall：npm 安装期脚本依赖，运行期无 require
+    - '!**/node_modules/zlibjs/**'
+    - '!**/node_modules/idb-keyval/**'
+    - '!**/node_modules/node-fetch/**'
+    - '!**/node_modules/wasm-feature-detect/**'
+    - '!**/node_modules/opencollective-postinstall/**'
+    # bmp-js：setImage 在模块加载期 require（保留包本体），仅排除其测试图片（约 0.6 MiB）
+    - '!**/node_modules/bmp-js/test/**'
+    # ===== 1.5.2 E3 附带：主进程生产依赖「运行期不可达死重」回收 =====
+    # 背景：OCR（tesseract.js-core baseline LSTM ~2.8 MiB）使 portable 逼近 101 MiB 预算上限，
+    # 按 PERF-01/PERF-02 不得放宽阈值，改为回收既有依赖中运行期不可达的文件（每条均注明依据，
+    # 并由 `out/tmp` 一次性 Electron asar 功能冒烟验证 Word/编码/JSON 链路仍可用）：
+    # - @mixmark-io/domino/.yarn：npm 包内遗留的 yarn 插件（1.0 MiB），turndown 只 require 包入口 lib/；
+    - '!**/node_modules/@mixmark-io/domino/.yarn/**'
+    # - mammoth 浏览器构建：Node 端 require 解析 package.json#main = lib/index.js；
+    #   mammoth.browser*.js 仅供浏览器打包器（package.json#browser 字段）使用；
+    - '!**/node_modules/mammoth/mammoth.browser.js'
+    - '!**/node_modules/mammoth/mammoth.browser.min.js'
+    - '!**/node_modules/mammoth/NEWS'
+    # - lodash：officegen 只 require 包入口 lodash.js；fp / core / min 变体运行期不可达；
+    - '!**/node_modules/lodash/fp/**'
+    - '!**/node_modules/lodash/fp.js'
+    - '!**/node_modules/lodash/core.js'
+    - '!**/node_modules/lodash/core.min.js'
+    - '!**/node_modules/lodash/lodash.min.js'
+    # - officegen：入口 index.js + lib/ 为唯一运行链，logos/（文档配图）、manual/（手册）、
+    #   内置 xmlbuilder 的 perf/（性能基准脚本）均无 require 引用；
+    - '!**/node_modules/officegen/logos/**'
+    - '!**/node_modules/officegen/manual/**'
+    - '!**/node_modules/officegen/node_modules/xmlbuilder/perf/**'
+    # - jszip：仅 lib/（package.json#main）运行期可达；jekyll 站点元数据/依赖图 SVG/变更日志/许可文本
+    #   均非运行期文件（README/CHANGELOG 类同 jschardet dist 裁剪口径）；
+    - '!**/node_modules/jszip/.jekyll-metadata'
+    - '!**/node_modules/jszip/graph.svg'
+    - '!**/node_modules/jszip/CHANGES.md'
+    - '!**/node_modules/jszip/LICENSE.markdown'
+    - '!**/node_modules/jszip/tsconfig.json'
+    # - pako：jszip/lib/flate.js 只 require 包入口（index.js → lib/），dist/ 为浏览器 UMD 构建；
+    - '!**/node_modules/pako/dist/**'
+    # - ajv：conf/electron-store 经包入口 dist/ajv.js（自包含构建）消费，lib/ 为同功能 TS 源构建；
+    - '!**/node_modules/ajv/lib/**'
+    # —— 第二批（同为运行期不可达产物；由 out/tmp 一次性 Electron asar 功能冒烟逐包验证）——
+    # jszip：main=./lib/index；dist/（jszip.js/jszip.min.js 浏览器 UMD，约 450 KiB）不参与 Node 解析；
+    - '!**/node_modules/jszip/dist/**'
+    # turndown：main=lib/turndown.cjs.js；dist/ 为浏览器构建；
+    - '!**/node_modules/turndown/dist/**'
+    # js-yaml：main=index.js → lib/；dist/ 为浏览器构建（electron-updater/conf 均走 CJS 入口）；
+    - '!**/node_modules/js-yaml/dist/**'
+    # async：main=dist/async.js（自包含，无 require）；顶层按方法拆分的 *.js 与 internal/ 仅供
+    # `require('async/<method>')` 消费（本项目依赖链 archiver → require('async') 只走主入口），
+    # dist/async.mjs 为 ESM 变体、async.min.js 为压缩版；
+    - '!**/node_modules/async/[a-z]*.js'
+    - '!**/node_modules/async/internal/**'
+    - '!**/node_modules/async/dist/async.mjs'
+    - '!**/node_modules/async/dist/async.min.js'
+    # markdown-it：main=dist/markdown-it.cjs.js；browser/ 与 .mjs/.d.* 为其他产物；
+    - '!**/node_modules/markdown-it/browser/**'
+    - '!**/node_modules/markdown-it/dist/markdown-it.mjs'
+    - '!**/node_modules/markdown-it/dist/markdown-it.d.mts'
+    - '!**/node_modules/markdown-it/dist/markdown-it.d.cts'
+    # node-fetch 已被排除（tesseract.js Node 端走 global.fetch），其独占依赖
+    # whatwg-url / tr46 / webidl-conversions 不会被任何运行时代码 require（jsdom 属 devDependencies 不进包）；
+    - '!**/node_modules/whatwg-url/**'
+    - '!**/node_modules/tr46/**'
+    - '!**/node_modules/webidl-conversions/**'
+    # mammoth：lib/ 不 require argparse（仅 bin/ CLI 使用），排除嵌套 argparse 与 CLI 入口；
+    - '!**/node_modules/mammoth/node_modules/argparse/**'
+    - '!**/node_modules/mammoth/bin/**'
+    # officegen：test_files/（测试夹具）、CHANGELOG、根目录 logo*.png 均无 require 引用；
+    - '!**/node_modules/officegen/test_files/**'
+    - '!**/node_modules/officegen/CHANGELOG'
+    - '!**/node_modules/officegen/logo*.png'
+    # tesseract.js：浏览器 worker 目录不参与本项目 Node worker 链路（主进程只 require worker-script 子集）；
+    - '!**/node_modules/tesseract.js/src/worker/**'
+    - '!**/node_modules/tesseract.js/src/worker-script/browser/**'
+    # lodash：唯一消费方 officegen 只 require 包入口 lodash.js（全仓生产依赖闭包内
+    # `lodash/<子路径>` 引用实测 0 处），按方法拆分与私有 helper 文件运行期不可达；
+    - '!**/node_modules/lodash/[a-k]*.js'
+    - '!**/node_modules/lodash/[m-z]*.js'
+    - '!**/node_modules/lodash/_*.js'
     - '!**/.vscode/*'
     - '!src/*'
     - '!electron.vite.config.{js,ts,mjs,cjs}'
@@ -85,9 +205,13 @@ extraResources:
       to: 'config'
       filter: ['naviConfig.json', 'version.json']
     # 应用图标（安装器与运行时引用，保留）
+    # 1.5.2 E3：仅打包运行期真实引用的两枚图标——主窗口用 512、托盘用 256
+    # （src/main/index.ts MAIN_WINDOW_ICON_FILE_NAME / utils/tray.ts TRAY_ICON_FILE_NAME）；
+    # baize_clear_icon.ico 全仓无运行期引用（历史清理遗留资产），不再随包分发（节省约 0.09 MiB）。
+    # 安装器图标在 electron-builder#win/n sis 段单独引用，不依赖本 extraResources 条目。
     - from: 'resources/icon'
       to: 'icon'
-      filter: ['**/*']
+      filter: ['baize_mirror_dark_256x256.ico', 'baize_mirror_dark_512x512.ico']
     # Monaco 编辑器主题（monaco-themes/themes 55 个，theme-registry 动态扫描，保留）
     # 应用主题（原 resources/themes/app_themes 下 24 个 json）为死资产，已随 2026-11-15 死资产清理删除；
     # 应用主题真源是 src/main/config/theme-config.ts 的 28 套（编译进主进程产物），无需打包资源文件。
@@ -97,6 +221,10 @@ extraResources:
     # PlantUML Web 资源（src/main/utils/app-paths.ts getPlantumlPath 仍引用，目录实测存在，保留）
     - from: 'resources/plantuml'
       to: 'plantuml'
+      filter: ['**/*']
+    # 帮助 → 使用指导 PDF（主进程固定路径经 getAppResourcesPath()/help/usage-guide.pdf 打开）
+    - from: 'resources/help'
+      to: 'help'
       filter: ['**/*']
     # ARC-20 说明：resources/katex、resources/mermaid 目录实测不存在，对应条目已删除；
     # KaTeX/Mermaid 均从 node_modules 导入（KatexRender.ts 与渲染层入口），无需作为 extraResources 打包

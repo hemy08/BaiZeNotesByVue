@@ -32,13 +32,19 @@ export default defineConfig({
         // 不再被 100ms 级同步计算冻结。产物固定为 out/build/main/word-worker.js
         // （与主入口 index.js 同目录，主进程按 __dirname 解析加载）；electron-builder 的
         // files 白名单已包含 out/build/main/**，该文件随 app.asar 打包，E2E 打包启动用例守护。
+        // 1.5.2 E3（2026-11-22）：图片 OCR 新增第二个 worker 入口 `ocr-worker`
+        // （src/main/utils/ocr/ocr-worker.ts）——tesseract.js wasm 识别与 10 MiB 语言包解压
+        // 全部在 worker_threads 内执行，主进程只做消息编排与 IPC 校验。
+        // 产物固定为 out/build/main/ocr-worker.js（与主入口 index.js 同目录，按 __dirname 加载）；
+        // electron-builder 的 files 白名单已包含 out/build/main/**，随 app.asar 打包。
         build: {
             externalizeDeps: true,
             outDir: resolve(__dirname, 'out/build/main'),
             rollupOptions: {
                 input: {
                     index: resolve(__dirname, 'src/main/index.ts'),
-                    'word-worker': resolve(__dirname, 'src/main/utils/file-utils/word-worker.ts')
+                    'word-worker': resolve(__dirname, 'src/main/utils/file-utils/word-worker.ts'),
+                    'ocr-worker': resolve(__dirname, 'src/main/utils/ocr/ocr-worker.ts')
                 }
             }
         }

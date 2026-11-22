@@ -175,7 +175,21 @@ export default {
             zoomOut: '缩小',
             prevPage: '上一页',
             nextPage: '下一页',
-            unreadable: '无法读取 PDF 文件内容'
+            unreadable: '无法读取 PDF 文件内容',
+            // 1.5.2 E2：PDF 标注与摘录（能力开关 featurePdfAnnotations 默认关闭，关闭时以下入口不渲染）
+            annotations: {
+                addAnnotation: '添加标注',
+                annotationList: '标注列表',
+                annotationListTitle: '标注列表（{count}）',
+                annotationEmpty:
+                    '当前 PDF 还没有标注。用鼠标选择页面文本后点击「添加标注」即可创建。',
+                annotationSelectHint: '请先选择文本，再点击「添加标注」',
+                annotationPageChip: '第 {page} 页',
+                annotationJump: '跳转到第 {page} 页',
+                annotationDelete: '删除标注',
+                annotationExcerpt: '摘录到当前笔记',
+                annotationPanelClose: '关闭标注列表'
+            }
         },
         htmlView: {
             loading: '正在加载 HTML 文件...',

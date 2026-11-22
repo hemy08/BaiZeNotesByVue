@@ -1,5 +1,9 @@
 import * as dialogs from '../dialogs/dialogs'
 import { openExternalSafely } from '../utils/security'
+import { shell } from 'electron'
+import path from 'path'
+import { getAppResourcesPath } from '../utils/app-paths'
+import { logger } from '../utils/logger'
 
 /**
  * 帮助菜单 handler（结构优化第 2 批 2.1：原主进程 JSDOM 对话框已迁移为渲染层 Vue 对话框）。
@@ -54,7 +58,17 @@ export const helpMenuHandlers = {
     // P0 安全：帮助菜单的外部链接统一走 shell 协议白名单封装（固定 https 也走同一实现，
     // 保证主进程所有 openExternal 调用点行为一致、可审计）
     usage: () => {
-        void openExternalSafely('https://hemy08.github.io/hemynotes/')
+        void openExternalSafely('https://hemy08.github.io/')
+    },
+    // 使用指导 PDF：固定随包资源路径（不接受渲染层入参），交系统 PDF 阅读器打开；
+    // HTML 版由渲染层 menu-actions 拦截并在应用内展示，不进入主进程。
+    'guide-pdf': () => {
+        const pdfPath = path.join(getAppResourcesPath(), 'help', 'usage-guide.pdf')
+        void shell.openPath(pdfPath).then((errorMessage) => {
+            if (errorMessage) {
+                logger.warn('[UsageGuide] 打开 PDF 使用指导失败：', errorMessage)
+            }
+        })
     },
     issues: () => {
         void openExternalSafely('https://github.com/hemy08/BaiZeNotesByVue/issues')

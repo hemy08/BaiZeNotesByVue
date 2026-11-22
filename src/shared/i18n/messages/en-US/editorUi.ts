@@ -187,7 +187,16 @@ export default {
             knowledgeTags: 'Browse tag index',
             knowledgeLinks: 'Check missing/ambiguous links',
             knowledgeBacklinks: 'Show backlinks for current file',
-            attachments: 'Attachment manager'
+            attachments: 'Attachment manager',
+            // 1.5.2 E6: daily entries (optional feature featureDailyNotes, off by default)
+            dailyNote: "Open today's daily note",
+            inboxCapture: 'Create a quick inbox note',
+            // 1.5.2 E1: clipboard capture (optional feature featureClipCapture, off by default)
+            clipToNote: 'Clip clipboard to a new note',
+            clipToEditor: 'Clip clipboard into the current note',
+            // 1.5.2 E3: image OCR (optional feature featureImageOcr, off by default; MVP clipboard screenshots)
+            ocrInsert: 'Recognize clipboard image text and insert into the current note',
+            ocrCopy: 'Recognize clipboard image text and copy it'
         },
         category: {
             file: 'File',
@@ -195,8 +204,116 @@ export default {
             view: 'View',
             insert: 'Insert',
             search: 'Search',
-            knowledge: 'Knowledge base'
+            knowledge: 'Knowledge base',
+            // 1.5.2 E6: daily entries (daily note / quick inbox)
+            capture: 'Daily entries'
         }
+    },
+    /** 1.5.2 E6 daily note / quick inbox (shared entry + failure prompts for the Tools menu and command palette) */
+    dailyEntries: {
+        disabledTitle: 'Feature disabled',
+        disabledMessage:
+            'Daily notes and quick inbox are turned off. Enable "Daily notes" in Settings → Features and try again.',
+        failedTitle: 'Failed to open or create the note',
+        failedMessage: 'The main process returned an unknown failure reason. Try again later.',
+        noWorkspace: 'Open a workspace folder before creating a daily note or inbox note.',
+        invalidKind: 'Invalid request type. Try again from the Tools menu or the command palette.',
+        writeFailed:
+            'Failed to write the note file. Check the workspace folder permissions and try again.',
+        invokeFailed: 'Main process call failed: {error}',
+        unavailable: 'The app IPC channel is unavailable. Restart the app and try again.'
+    },
+    /** 1.5.2 E1 clipboard capture (shared entry + failure prompts for the Tools menu and command palette) */
+    clipCapture: {
+        disabledTitle: 'Feature disabled',
+        disabledMessage:
+            'Clipboard capture is turned off. Enable "Clipboard capture" in Settings → Features and try again.',
+        failedTitle: 'Clip capture failed',
+        emptyClipboard:
+            'The clipboard has no text or HTML to clip. Copy some content first and try again.',
+        unavailable:
+            'Clipboard access is unavailable. Press Ctrl+V in the editor first, or restart the app and try again.',
+        readFailed:
+            'Failed to read the clipboard. Check the system clipboard permission and try again (you can also paste with Ctrl+V in the editor first).',
+        contentTooLarge:
+            'Clipboard content exceeds the clip limit ({max}). Copy a smaller range and try again.',
+        noWorkspace: 'Open a workspace folder before clipping to a new note.',
+        invalidKind: 'Invalid request type. Try again from the Tools menu or the command palette.',
+        writeFailed:
+            'Failed to write the clip note. Check the workspace folder permissions and try again.',
+        failedMessage: 'The main process returned an unknown failure reason. Try again later.',
+        editorUnavailable:
+            'No editable note is available. Open a note first, then run "Clip into current note".',
+        insertFailed:
+            'Failed to insert into the current note. Make sure the editor is editable and try again.',
+        invokeFailed: 'Main process call failed: {error}',
+        sourceLine: 'Clipped from: {source} · {date}'
+    },
+    /** 1.5.2 E3 image OCR (clipboard screenshot recognition: entries and failure prompts) */
+    imageOcr: {
+        disabledTitle: 'Feature disabled',
+        disabledMessage:
+            'Image text recognition (OCR) is currently disabled. Enable "Image text recognition (OCR)" in System Settings → Features and try again.',
+        failedTitle: 'Image text recognition failed',
+        noImage:
+            'The clipboard does not contain an image. Take a screenshot or copy an image first.',
+        unavailable: 'The clipboard API is unavailable. Restart the application and try again.',
+        readFailed:
+            'Failed to read the clipboard image. Check the system clipboard permission and try again (or copy the screenshot again).',
+        tooLarge:
+            'The clipboard image exceeds the size limit ({max}). Reduce the screenshot area and try again.',
+        notPng: 'Unsupported clipboard image format (only PNG screenshots are supported). Take the screenshot again.',
+        downloadFailed:
+            'Failed to download the OCR language data (about 10 MB on first use). Check your network and try again; recognition runs locally and images are never uploaded.',
+        initFailed:
+            'The OCR language data is corrupted and the cache has been cleared. Try again to download it again.',
+        recognitionFailed:
+            'Failed to recognize the image text. Try again, or restart the application if it keeps failing.',
+        engineUnavailable: 'The OCR engine is unavailable. Restart the application and try again.',
+        invalidLanguage:
+            'Invalid OCR language setting. Check the system language settings and try again.',
+        failedMessage: 'Recognition failed. Try again later.',
+        invokeFailed: 'Main process call failed: {error}',
+        emptyTitle: 'No text recognized',
+        emptyMessage:
+            'No extractable text was recognized in the screenshot. Make sure the image is clear and contains text.',
+        copyFailed: 'Failed to write to the clipboard. Try again.',
+        insertFailed:
+            'Failed to insert into the current note. Make sure the editor is editable and try again.',
+        copiedTitle: 'Copied to clipboard',
+        copiedMessage:
+            'The recognized text has been copied to the clipboard and can be pasted anywhere.',
+        noEditorCopiedMessage:
+            'There is no editor available to insert into, so the recognized text has been copied to the clipboard.',
+        sourceLine: 'From image text recognition'
+    },
+    /** 1.5.2 E2 PDF annotations and excerpts (failure prompts shared by the viewer and excerpt action) */
+    pdfAnnotations: {
+        loadFailedTitle: 'Failed to read PDF annotations',
+        loadFailed: 'Failed to read the annotations file; opened with no annotations: {error}',
+        saveFailedTitle: 'Failed to save PDF annotations',
+        saveFailed:
+            'Failed to write the annotations file. Check write permission of the PDF folder and try again: {error}',
+        addFailedTitle: 'Failed to add annotation',
+        addInvalid: 'The selected text is empty or the page number is invalid. Select text again.',
+        failedMessage: 'The main process returned an unknown failure reason. Try again later.',
+        invalidPath: 'The PDF path is invalid, so annotations cannot be read or saved.',
+        invalidExtension: 'Annotations can only be saved for .pdf files.',
+        pathDenied:
+            'The PDF location is outside the trusted roots; annotations cannot be read or saved.',
+        invalidPayload: 'The annotation payload is invalid, so the save was cancelled.',
+        tooLarge: 'The annotation data exceeds the size limit, so the save was cancelled.',
+        readFailed: 'Failed to read the annotations file. Try again later.',
+        writeFailed: 'Failed to write the annotations file. Try again later.',
+        invokeFailed: 'Main process call failed: {error}',
+        unavailable: 'The app IPC channel is unavailable. Restart the app and try again.',
+        excerptFailedTitle: 'Excerpt failed',
+        excerptInvalid: 'This annotation has no text to excerpt.',
+        excerptInsertFailed:
+            'Failed to insert into the current note and failed to copy to the clipboard. Open a note first and try again.',
+        copiedTitle: 'Copied to clipboard',
+        copiedMessage:
+            'No Markdown editor is available to insert into, so the excerpt was copied to the clipboard. Paste it where you need it.'
     },
     /** A3 document history / diff / restore dialog (`components/Markdown/history/FileHistoryDialog.vue`) */
     fileHistory: {

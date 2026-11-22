@@ -89,6 +89,8 @@ import {
 import { ComputeEditorScrollAnchor, type EditorScrollAnchor } from './preview-scroll-sync'
 // P1 性能基线：Monaco 编辑器就绪阶段标记（默认关闭，诊断开关下才输出）
 import { PERF_MARK, perfMark, perfMeasure } from '../../common/perf'
+// 1.5.2 E1：登记当前活动编辑器，供命令面板/工具菜单「剪藏并插入当前笔记」使用
+import { clearActiveEditor, setActiveEditor } from '../../common/active-editor'
 
 // 定义 emit 函数（sync-scroll：编辑器 → 预览单向滚动同步的触发端事件）
 const emit = defineEmits(['update:code', 'sync-scroll'])
@@ -1254,6 +1256,16 @@ onMounted(async () => {
             editor.Override
         )
         bubbleEditorRef.value = editorInstance
+        // 1.5.2 E1：编辑器创建即登记为活动编辑器；获得焦点时更新（多编辑器场景取最近聚焦者）
+        setActiveEditor(editorInstance)
+        const focusDisposable = editorInstance.onDidFocusEditorText?.(() => {
+            if (editorInstance) {
+                setActiveEditor(editorInstance)
+            }
+        })
+        if (focusDisposable && typeof focusDisposable.dispose === 'function') {
+            editorEnhanceDisposables.push(focusDisposable)
+        }
 
         // 结构优化第 2 批 2.2（H4）：编辑器改为二级懒加载后，「打开文件 / 启动恢复」的
         // SHOW_SELECTED_FILE_CONTEXT 可能先于编辑器挂载到达（父组件已把内容写入 code prop）。
@@ -1418,6 +1430,8 @@ onBeforeUnmount(() => {
 
     // 4. 完整清理 Monaco Editor
     if (editorInstance) {
+        // 1.5.2 E1：编辑器销毁前先注销活动编辑器登记，避免剪藏动作向已销毁实例写入
+        clearActiveEditor(editorInstance)
         const model = editorInstance.getModel()
         if (model) {
             // 先分离模型，再销毁

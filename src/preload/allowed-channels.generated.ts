@@ -24,7 +24,7 @@ type AllIpcChannel = {
 /** window.api.* 直连通道键类型（来源 IpcPreloadApiRequests） */
 type PreloadApiChannel = keyof IpcPreloadApiRequests
 
-/** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 69 个 */
+/** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 74 个 */
 export const RENDERER_SEND_CHANNELS = [
     IPC.WINDOW.MINIMIZE,
     IPC.WINDOW.MAXIMIZE,
@@ -65,6 +65,9 @@ export const RENDERER_SEND_CHANNELS = [
     IPC.FILE.GET_ATTACHMENT_AUDIT,
     IPC.FILE.TRASH_ATTACHMENTS,
     IPC.FILE.RENAME_ATTACHMENT,
+    IPC.FILE.OPEN_OR_CREATE_ENTRY,
+    IPC.FILE.LOAD_PDF_ANNOTATIONS,
+    IPC.FILE.SAVE_PDF_ANNOTATIONS,
     IPC.FILE_MANAGER.COPY_RELATIVE_PATH,
     IPC.FILE_MANAGER.COPY_IMAGELINK,
     IPC.FILE_MANAGER.COPY_FILELINK,
@@ -88,6 +91,8 @@ export const RENDERER_SEND_CHANNELS = [
     IPC.PLUGIN.HMAC_TEXT,
     IPC.PLUGIN.CRYPTO_ENCRYPT,
     IPC.PLUGIN.CRYPTO_DECRYPT,
+    IPC.OCR.PREPARE_LANG,
+    IPC.OCR.RECOGNIZE_IMAGE,
     IPC.RENDER.INSERT_IMAGE,
     IPC.RENDER.PLANTUML_LOCAL,
     IPC.NAVIGATION.OPEN_EXE,

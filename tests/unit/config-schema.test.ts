@@ -188,6 +188,66 @@ describe('AS-4 validateSystemConfig', () => {
         expect(rejected.adjusted).toEqual([expect.stringContaining('allowRemoteImages')])
     })
 
+    // 1.5.2 E6：日常记录开关是布尔字段——true/false 均可写入，非布尔值丢弃（不写坏 store）
+    it('should accept the featureDailyNotes boolean and drop non-boolean values (E6)', () => {
+        const accepted = validateSystemConfig({ featureDailyNotes: true, language: 'zh-CN' })
+        expect(accepted.ok).toBe(true)
+        expect((accepted.value as Record<string, unknown>).featureDailyNotes).toBe(true)
+
+        const disabled = validateSystemConfig({ featureDailyNotes: false })
+        expect((disabled.value as Record<string, unknown>).featureDailyNotes).toBe(false)
+
+        const rejected = validateSystemConfig({ featureDailyNotes: 'yes' })
+        expect(rejected.ok).toBe(true)
+        expect((rejected.value as Record<string, unknown>).featureDailyNotes).toBeUndefined()
+        expect(rejected.adjusted).toEqual([expect.stringContaining('featureDailyNotes')])
+    })
+
+    // 1.5.2 E1：剪贴板剪藏开关是布尔字段——true/false 均可写入，非布尔值丢弃（不写坏 store）
+    it('should accept the featureClipCapture boolean and drop non-boolean values (E1)', () => {
+        const accepted = validateSystemConfig({ featureClipCapture: true, language: 'zh-CN' })
+        expect(accepted.ok).toBe(true)
+        expect((accepted.value as Record<string, unknown>).featureClipCapture).toBe(true)
+
+        const disabled = validateSystemConfig({ featureClipCapture: false })
+        expect((disabled.value as Record<string, unknown>).featureClipCapture).toBe(false)
+
+        const rejected = validateSystemConfig({ featureClipCapture: 'yes' })
+        expect(rejected.ok).toBe(true)
+        expect((rejected.value as Record<string, unknown>).featureClipCapture).toBeUndefined()
+        expect(rejected.adjusted).toEqual([expect.stringContaining('featureClipCapture')])
+    })
+
+    // 1.5.2 E2：PDF 标注与摘录开关是布尔字段——true/false 均可写入，非布尔值丢弃（不写坏 store）
+    it('should accept the featurePdfAnnotations boolean and drop non-boolean values (E2)', () => {
+        const accepted = validateSystemConfig({ featurePdfAnnotations: true, language: 'zh-CN' })
+        expect(accepted.ok).toBe(true)
+        expect((accepted.value as Record<string, unknown>).featurePdfAnnotations).toBe(true)
+
+        const disabled = validateSystemConfig({ featurePdfAnnotations: false })
+        expect((disabled.value as Record<string, unknown>).featurePdfAnnotations).toBe(false)
+
+        const rejected = validateSystemConfig({ featurePdfAnnotations: 'yes' })
+        expect(rejected.ok).toBe(true)
+        expect((rejected.value as Record<string, unknown>).featurePdfAnnotations).toBeUndefined()
+        expect(rejected.adjusted).toEqual([expect.stringContaining('featurePdfAnnotations')])
+    })
+
+    // 1.5.2 E3：图片 OCR 开关是布尔字段——true/false 均可写入，非布尔值丢弃（不写坏 store）
+    it('should accept the featureImageOcr boolean and drop non-boolean values (E3)', () => {
+        const accepted = validateSystemConfig({ featureImageOcr: true, language: 'zh-CN' })
+        expect(accepted.ok).toBe(true)
+        expect((accepted.value as Record<string, unknown>).featureImageOcr).toBe(true)
+
+        const disabled = validateSystemConfig({ featureImageOcr: false })
+        expect((disabled.value as Record<string, unknown>).featureImageOcr).toBe(false)
+
+        const rejected = validateSystemConfig({ featureImageOcr: 'yes' })
+        expect(rejected.ok).toBe(true)
+        expect((rejected.value as Record<string, unknown>).featureImageOcr).toBeUndefined()
+        expect(rejected.adjusted).toEqual([expect.stringContaining('featureImageOcr')])
+    })
+
     // 批次 A：#4 最近文件列表数量范围收紧为 5~20（越界钳制而非拒绝）
     it('should clamp recentFilesCount into the 5~20 range', () => {
         const low = validateSystemConfig({ recentFilesCount: 2 })

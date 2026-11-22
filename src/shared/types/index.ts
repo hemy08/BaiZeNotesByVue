@@ -31,6 +31,9 @@
  * - config.ts      ConfigName / ConfigReadMap / ConfigWriteMap + AppThemeConfig /
  *                  RendererEditorConfig / 备份契约（第 2 批：配置读写契约）
  * - dialog.ts      VueDialogName / MainProcessDialogName / 各对话框 data 契约（第 2 批）
+ * - pdf-annotations.ts
+ *                  1.5.2 E2 PDF 标注与摘录：PdfAnnotation / PdfAnnotationRect /
+ *                  CreatePdfAnnotationInput / 加载与保存结果（侧车文件契约）
  *
  * 主题明暗分组清单（非类型）见 src/shared/constants/theme.ts 的 THEME_GROUPS。
  *
@@ -57,3 +60,7 @@ export * from './status-bar'
 export type * from './ipc'
 export type * from './config'
 export type * from './dialog'
+// 1.5.2 E2：PDF 标注与摘录契约（侧车文件数据结构 + 两个 FILE 通道的返回结构）。
+export type * from './pdf-annotations'
+// 1.5.2 E3：图片 OCR 契约（语言包准备 / 剪贴板图片识别两个 OCR 通道的请求与返回结构）。
+export type * from './ocr'
