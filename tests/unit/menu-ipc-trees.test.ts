@@ -388,7 +388,7 @@ describe('helpMenuHandlers', () => {
     it('should request the release notes Vue dialog for the newest versions (REL-16)', () => {
         const win = makeWindow()
         const handlers = helpMenuHandlers['release-notes'] as Record<string, (w: never) => void>
-        for (const version of ['1.5.1', '1.5.0']) {
+        for (const version of ['1.5.2', '1.5.1']) {
             handlers[`v${version}`](win as never)
             expect(treeMocks.requestReleaseNotesDialog).toHaveBeenCalledWith(win, version)
         }

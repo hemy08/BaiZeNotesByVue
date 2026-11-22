@@ -1,3 +1,75 @@
+## 版本 1.5.2 (2026-11-22)
+
+> **发布状态**：**已发布**（2026-11-22）｜tag：[`release-1.5.2`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.2)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+> 本版本聚焦**捕获与日常入口**，并补齐第一层（打印/自包含 HTML/布局配置）与第二层可安全交付项（EPUB/幻灯片/文件关联）。仍为 Windows x64、未代码签名产物（与 1.5.1 一致）。
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 📥 捕获与日常入口（E6/E1/E2/E3）
+
+- **E6 今日日记/快速收件箱**：工具菜单与命令面板入口；`diary/YYYY-MM-DD.md`、`inbox/YYYY-MM-DD-HHmmss.md`；模板变量展开；独占创建不覆盖
+- **E1 剪贴板剪藏**：剪藏到新笔记 / 剪藏并插入当前笔记；HTML→Markdown；来源/标题/捕获时间元数据；剪贴板读取仅用户显式触发
+- **E2 PDF 标注与摘录**：PDF 文本层选择、高亮、标注列表、备注、摘录插入当前笔记；侧车 JSON 原子持久化
+- **E3 图片 OCR（MVP）**：剪贴板截图本地识别、识别并插入/复制；首次按需下载英文语言包，图片不上传
+
+### 📚 帮助与使用指导
+
+- 帮助 → **hemy08.github.io** 在线文档
+- 帮助 → 使用指导 → **HTML 版 / PDF 版**，均带导航；覆盖全部功能、配置矩阵、功能联动与典型工作流
+
+### 🧰 第一/第二层能力
+
+- **C3 打印/打印预览**：文件菜单打印与打印预览；复用主题化渲染与硬化隐藏窗口
+- **C4 自包含 HTML 导出**：主题 CSS、目录、本地图片 Base64；工作区路径与体积上限校验
+- **E11 工作区布局**：视图 → 布局配置；内置写作/研究/项目 + 自定义 profile 保存/应用/删除
+- **C1 EPUB 导出**：EPUB3 容器（mimetype/container/opf/nav/ncx/XHTML/CSS/图片）
+- **E8 幻灯片 HTML**：按 `---` 分页、键盘/按钮翻页、打印或另存 PDF；代码围栏内不拆页
+- **D2 文件关联（部分）**：`.md/.markdown/.txt` 关联；启动参数与 second-instance 复用受信打开链路
+- **预览修复**：移除右侧固定空白带与 40px 导航间距；无缩进 `===` 内容正确归组，不再生成空 Tab
+
+</code></pre></blockcode></details>
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🔒 安全与工程</summary>
+<blockcode><pre><code>
+
+### 🔐 安全边界
+
+- 主窗口/对话框/隐藏导出窗口 sandbox + contextIsolation；生产 CSP 收紧
+- 文件写入统一 Path Guard；打印/EPUB/HTML 本地图片读取经 realpath + 工作区边界校验
+- 剪藏不新增本地 HTTP 端口/浏览器扩展；OCR 图片仅在本地 worker/wasm 识别
+- 文件关联打开复用既有 OpenSelectFile 受信路径链路；未放宽 CSP/IPC/文件白名单
+
+### ⚙️ 工程与门禁
+
+- IPC **108 通道 / 18 组**，preload 白名单 send 74 + receive 28
+- 测试 **341 文件 / 6,331 用例（6,326 通过 + 5 跳过）**；覆盖率 **93.64 / 88.22 / 94.21 / 94.01**
+- typecheck / ESLint / Prettier / docs / quality / audit / fuses / budget 全绿
+- 体积：入口 **143.2 KiB** / 首屏 **329.9 KiB** / Setup **111.60 MiB** / portable **100.99 MiB** / asar **39.23 MiB**
+- 发布产物硬化：Fuses 8 项 + 无调试器启动冒烟通过
+
+</code></pre></blockcode></details>
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">📌 已知限制</summary>
+<blockcode><pre><code>
+
+- E3 OCR MVP 仅英文 `eng`，首次使用需联网下载语言包；中文语言包与图片文字索引未做
+- B2 持久全文索引未做，全文检索继续使用 A2 按需扫描；E1 浏览器扩展/本地接收端按已选范围未做
+- D2 仅完成文件关联 + 单实例打开文件，独立多窗口未做
+- C2 静态站点、B3 关系图谱、E4 块引用、E5 数据库视图、E7 Canvas、D1 插件 SDK、D3 macOS/Linux、D4 Git、D5 云同步、D8 WYSIWYG 仍为后续候选
+- PDF 标注、OCR、剪藏、日记/收件箱等可选能力默认关闭，需在系统设置中开启
+- 未接入代码签名，发布产物未签名；仅提供 Windows x64 安装包
+
+</code></pre></blockcode></details>
+
+---
+
 ## 版本 1.5.1 (2026-11-22)
 
 > **发布状态**：**已发布**（2026-11-22）｜tag：[`release-1.5.1`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.1)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap

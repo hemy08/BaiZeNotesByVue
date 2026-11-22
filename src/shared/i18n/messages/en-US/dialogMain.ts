@@ -160,6 +160,31 @@ export default {
         fixesTitle: 'Bug fixes',
         improvementsTitle: 'Improvements',
         techStackTitle: 'Tech stack',
+        v152: {
+            title: '1.5.2 Capture and Daily Entry',
+            highlights: {
+                h1: 'E6 daily note / quick inbox: template variables, directory conventions, exclusive create without overwrite',
+                h2: 'E1 clipboard clip + E2 PDF annotations and excerpts: source metadata, text-layer annotations, excerpt insertion',
+                h3: 'E3 image OCR (MVP): local clipboard screenshot recognition, insert/copy, first-use English language pack download',
+                h4: 'HTML/PDF usage guides; first/second-layer capabilities: print, self-contained HTML, layouts, EPUB, slides, file associations'
+            },
+            features: {
+                f1: 'Daily note / quick inbox entries in Tools menu and command palette; optional features default off',
+                f2: 'Clip to new note / insert into current note; PDF highlights, annotation list, notes and excerpts',
+                f3: 'Image OCR: recognize and insert or copy; recognition runs locally in worker/wasm and never uploads images',
+                f4: 'File → Print/Print Preview; export self-contained HTML/EPUB/slides; View → Layout Configurations; open associated files by double-click'
+            },
+            improvements: {
+                i1: 'HTML/PDF usage guides with navigation, covering all features, configuration matrix and interactions',
+                i2: 'Full-width preview with on-demand scrollbar; fixed empty unindented === tabs and right sidebar gap',
+                i3: '108 IPC channels / 18 groups; preload whitelist send 74 + receive 28; all size budgets pass',
+                i4: 'Workspace layouts: built-in writing/research/project plus custom profile save/apply/delete'
+            },
+            fixes: {
+                x1: 'Removed the fixed preview right gutter and the duplicate 40px gap between scrollbar and right sidebar',
+                x2: 'Fixed empty tab panels and content falling outside tabs for unindented === blocks'
+            }
+        },
         v151: {
             title: '1.5.1 Local Knowledge Base Foundation',
             highlights: {

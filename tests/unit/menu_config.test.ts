@@ -559,28 +559,32 @@ describe('menu-config', () => {
     it('should declare help menu with release notes ordered newest first', () => {
         const helpMenu = menuMap.value.find((item) => displayText(item) === '帮助')!
         const releases = helpMenu.submenu!.find((item) => displayText(item) === '版本发布')
-        expect(releases?.submenu).toHaveLength(16)
+        expect(releases?.submenu).toHaveLength(17)
         expect(resolved(releases!.submenu![0])).toEqual({
+            label: 'v1.5.2',
+            menuAction: 'baize:menu:help:release-notes:v1.5.2'
+        })
+        expect(resolved(releases!.submenu![1])).toEqual({
             label: 'v1.5.1',
             menuAction: 'baize:menu:help:release-notes:v1.5.1'
         })
-        expect(resolved(releases!.submenu![1])).toEqual({
+        expect(resolved(releases!.submenu![2])).toEqual({
             label: 'v1.5.0',
             menuAction: 'baize:menu:help:release-notes:v1.5.0'
         })
-        expect(resolved(releases!.submenu![2])).toEqual({
+        expect(resolved(releases!.submenu![3])).toEqual({
             label: 'v1.3.9',
             menuAction: 'baize:menu:help:release-notes:v1.3.9'
         })
-        expect(resolved(releases!.submenu![3])).toEqual({
+        expect(resolved(releases!.submenu![4])).toEqual({
             label: 'v1.3.5',
             menuAction: 'baize:menu:help:release-notes:v1.3.5'
         })
-        expect(resolved(releases!.submenu![4])).toEqual({
+        expect(resolved(releases!.submenu![5])).toEqual({
             label: 'v1.3.0',
             menuAction: 'baize:menu:help:release-notes:v1.3.0'
         })
-        expect(resolved(releases!.submenu![15])).toEqual({
+        expect(resolved(releases!.submenu![16])).toEqual({
             label: 'v1.0.0',
             menuAction: 'baize:menu:help:release-notes:v1.0.0'
         })

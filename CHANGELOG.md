@@ -1,4 +1,6 @@
-## 2026年11月22日 - 版本 1.5.2（捕获与日常入口，开发中）
+## 2026年11月22日 - 版本 1.5.2（捕获与日常入口，已发布 2026-11-22）
+
+> **发布状态**：**已发布**（2026-11-22）｜tag：[`release-1.5.2`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.2)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
 
 > 自本版本起，**发布前所有开发归入 1.5.2**（版本号固定，不再每批变更）。
 > 范围依据 [Markdown 编辑器能力补全选项报告](docs/reports/md/01-检查与扫描/Markdown编辑器能力补全选项报告.md) §2.4.4 / §4 的 1.5.2 推荐路线（捕获与日常入口）；最终能力清单以维护者勾选为准，功能按批次回写本节。
@@ -64,7 +66,7 @@
 - **E8 幻灯片导出**：文件 → 导出到文件 → 幻灯片（HTML）；按独立 `---` 行分页（代码围栏内不拆页），生成单文件 HTML 幻灯片，支持键盘/按钮翻页、打印或另存 PDF
 - **D2 文件关联（部分）**：安装包注册 `.md/.markdown/.txt` 关联；启动参数/`second-instance` 解析文件路径并复用既有 `OpenSelectFile` 受信链路打开；**独立多窗口未做**（需按窗口隔离 appState/IPC/菜单/未保存状态，另行架构批次）
 - 明确未做：B2 **持久全文索引**（当前仅标签索引 + A2 按需搜索）；E1 浏览器扩展/本地接收端（按用户选定范围只做剪贴板/文件剪藏）；D2 独立多窗口
-- 门禁/基线（第二层累计）：全量 **341 文件 / 6,331 用例（6,326 通过 + 5 跳过）**；覆盖率 **93.64 / 88.22 / 94.22 / 94.01**；typecheck / ESLint / Prettier / docs:check / quality:check / audit:all / fuses / budget 全绿
+- 门禁/基线（第二层累计）：全量 **341 文件 / 6,331 用例（6,326 通过 + 5 跳过）**；覆盖率 **93.64 / 88.22 / 94.21 / 94.01**；typecheck / ESLint / Prettier / docs:check / quality:check / audit:all / fuses / budget 全绿
 - 体积：Setup **111.60 MiB** / portable **100.99 MiB** / asar **39.23 MiB**（EPUB 使用 jszip 生产依赖；帮助 PDF 目录压缩后 portable 保留 14.6 KiB 余量）
 
 ### 📋 开发基线
