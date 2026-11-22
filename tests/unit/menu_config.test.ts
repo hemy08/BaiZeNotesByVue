@@ -208,7 +208,7 @@ describe('menu-config', () => {
         const importMenu = fileMenu.submenu!.find((item) => displayText(item) === '从文件导入')
         const exportMenu = fileMenu.submenu!.find((item) => displayText(item) === '导出到文件')
         expect(importMenu?.submenu).toHaveLength(6)
-        expect(exportMenu?.submenu).toHaveLength(6)
+        expect(exportMenu?.submenu).toHaveLength(8)
         expect(resolvedList(importMenu!.submenu!)).toContainEqual({
             label: '从 Word 导入',
             menuAction: 'baize:menu:file:import:word'
@@ -216,6 +216,14 @@ describe('menu-config', () => {
         expect(resolvedList(exportMenu!.submenu!)).toContainEqual({
             label: '导出为PDF',
             menuAction: 'baize:menu:file:export:pdf'
+        })
+        expect(resolvedList(exportMenu!.submenu!)).toContainEqual({
+            label: '导出为EPUB电子书',
+            menuAction: 'baize:menu:file:export:epub'
+        })
+        expect(resolvedList(exportMenu!.submenu!)).toContainEqual({
+            label: '导出为幻灯片（HTML）',
+            menuAction: 'baize:menu:file:export:slides'
         })
     })
 

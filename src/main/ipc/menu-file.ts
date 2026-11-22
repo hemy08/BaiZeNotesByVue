@@ -77,7 +77,11 @@ export const fileMenuHandlers = {
         html: (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
             ExportToFile(mainWindow, 'html'),
         pdf: (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
-            ExportToFile(mainWindow, 'pdf')
+            ExportToFile(mainWindow, 'pdf'),
+        epub: (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            ExportToFile(mainWindow, 'epub'),
+        slides: (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            ExportToFile(mainWindow, 'slides')
     },
 
     'print-preview': () => PrintActiveFile('preview'),

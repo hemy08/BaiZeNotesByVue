@@ -82,7 +82,9 @@ const exportMenu: BaiZeMenuEntry = {
         { labelKey: 'menu.file.export.xml', menuAction: 'baize:menu:file:export:xml' },
         { labelKey: 'menu.file.export.yaml', menuAction: 'baize:menu:file:export:yaml' },
         { labelKey: 'menu.file.export.html', menuAction: 'baize:menu:file:export:html' },
-        { labelKey: 'menu.file.export.pdf', menuAction: 'baize:menu:file:export:pdf' }
+        { labelKey: 'menu.file.export.pdf', menuAction: 'baize:menu:file:export:pdf' },
+        { labelKey: 'menu.file.export.epub', menuAction: 'baize:menu:file:export:epub' },
+        { labelKey: 'menu.file.export.slides', menuAction: 'baize:menu:file:export:slides' }
     ]
 }
 

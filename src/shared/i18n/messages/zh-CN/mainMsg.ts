@@ -143,6 +143,8 @@ export default {
         html: 'HTML 文件',
         json: 'JSON 文件',
         pdf: 'PDF 文件',
+        epub: 'EPUB 电子书',
+        slides: '幻灯片 HTML',
         xml: 'XML 文件',
         yaml: 'YAML 文件'
     },

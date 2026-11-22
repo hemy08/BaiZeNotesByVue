@@ -21,6 +21,8 @@ const HTML_PATH = path.join(ROOT, 'src', 'renderer', 'public', 'usage-guide.html
 const PDF_PATH = path.join(ROOT, 'resources', 'help', 'usage-guide.pdf')
 /** PDF 打印字体（可经 HELP_PDF_FONT 覆盖，用于体积/字形测试） */
 const PRINT_FONT = process.env.HELP_PDF_FONT || '"DengXian","Microsoft YaHei",sans-serif'
+/** PDF 正文字号（可经 HELP_PDF_FONT_SIZE 覆盖，用于体积/分页测试） */
+const PRINT_FONT_SIZE = process.env.HELP_PDF_FONT_SIZE || '9'
 
 const md = new MarkdownIt({ html: true, linkify: false, typographer: false })
 
@@ -40,8 +42,8 @@ md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
         : self.renderToken(tokens, idx, options)
 }
 
-/** TOC 嵌套渲染 */
-function renderToc() {
+/** TOC 嵌套渲染；printOnly 时只输出二级标题，压缩 PDF 目录页体积。 */
+function renderToc(maxLevel = 3) {
     let html = ''
     let open = false
     for (const heading of headings) {
@@ -50,7 +52,7 @@ function renderToc() {
             html += `<li class="toc-h2"><a href="#${heading.id}">${escapeHtml(heading.text)}</a>`
             html += '<ul class="toc-sub">'
             open = true
-        } else {
+        } else if (heading.level <= maxLevel) {
             html += `<li class="toc-h3"><a href="#${heading.id}">${escapeHtml(heading.text)}</a></li>`
         }
     }
@@ -68,6 +70,8 @@ function escapeHtml(text) {
 
 function buildHtml(body) {
     const toc = renderToc()
+    // PDF 目录只保留二级标题：章节级导航仍完整，减少目录页与 PDF 体积
+    const printToc = renderToc(2)
     return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -110,7 +114,7 @@ blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--brand);bac
 footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
 @media(max-width:760px){.layout{display:block}.side{width:auto;height:auto;position:static;border-right:0;border-bottom:1px solid var(--line)}main{padding:20px 18px 50px}}
 @media print{
-  body{background:#fff;font-family:${PRINT_FONT};font-size:9pt;line-height:1.42}
+  body{background:#fff;font-family:${PRINT_FONT};font-size:${PRINT_FONT_SIZE}pt;line-height:1.42}
   .layout{display:block}
   .side{display:none}
   main{max-width:none;padding:0}
@@ -138,7 +142,7 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:v
   <main>
     <section class="print-toc" aria-label="打印目录">
       <h2>目录</h2>
-      ${toc}
+      ${printToc}
     </section>
     ${body}
     <footer>白泽笔记 · 使用指导 · 随安装包分发 · 在线文档 https://hemy08.github.io</footer>

@@ -72,6 +72,7 @@ vi.mock('electron', () => {
 })
 
 import { appState } from '../../src/main/utils/app-state'
+import { setThemeApiProvider } from '../../src/main/utils/providers'
 import {
     ToJson,
     ToXml,
@@ -79,6 +80,8 @@ import {
     ToHtml,
     ToWord,
     ToPdf,
+    ToEpub,
+    ToSlidesHtml,
     PrintActiveFile,
     ExportToFile,
     getSupportedExportFormats,
@@ -118,7 +121,16 @@ beforeEach(() => {
 describe('format registry', () => {
     it('should list default supported export formats', () => {
         // 必须放在注册自定义格式之前执行（文件内用例顺序执行）
-        expect(getSupportedExportFormats()).toEqual(['word', 'json', 'xml', 'yaml', 'html', 'pdf'])
+        expect(getSupportedExportFormats()).toEqual([
+            'word',
+            'json',
+            'xml',
+            'yaml',
+            'html',
+            'pdf',
+            'epub',
+            'slides'
+        ])
     })
 })
 
@@ -238,7 +250,8 @@ describe('ToHtml', () => {
             type: 'file',
             content: ''
         }
-        await ToHtml('![越界](images/../../secret.png)', filePath, {
+        const outsideRelative = path.relative(workspace, outsideImage).replace(/\\/g, '/')
+        await ToHtml(`![越界](${outsideRelative})`, filePath, {
             sourceFilePath: sourcePath,
             workspaceRoot: workspace
         })
@@ -261,6 +274,116 @@ describe('ToHtml', () => {
         expect(html).toContain('https://example.com/a.png')
         expect(html).not.toContain('data:image/')
         expect(html).not.toContain('class="export-toc"')
+    })
+})
+
+describe('C1 ToEpub', () => {
+    it('生成合法 EPUB3 zip：mimetype/container/opf/content/toc 齐全', async () => {
+        const caseDir = await fs.mkdtemp(path.join(tmpDir, 'case-'))
+        const filePath = path.join(caseDir, 'out.epub')
+        await ToEpub('# 电子书标题\n\n正文段落', filePath)
+        const buffer = await fs.readFile(filePath)
+        const JSZip = (await import('jszip')).default
+        const zip = await JSZip.loadAsync(buffer)
+        expect(zip.file('mimetype')).toBeTruthy()
+        expect(await zip.file('mimetype')!.async('string')).toBe('application/epub+zip')
+        expect(zip.file('META-INF/container.xml')).toBeTruthy()
+        expect(zip.file('OEBPS/content.opf')).toBeTruthy()
+        expect(zip.file('OEBPS/content.xhtml')).toBeTruthy()
+        expect(zip.file('OEBPS/nav.xhtml')).toBeTruthy()
+        const opf = await zip.file('OEBPS/content.opf')!.async('string')
+        expect(opf).toContain('version="3.0"')
+        const contentXhtml = await zip.file('OEBPS/content.xhtml')!.async('string')
+        expect(contentXhtml).toContain('电子书标题')
+    })
+
+    it('EPUB 内联工作区内本地图片并写入 manifest', async () => {
+        const workspace = await fs.mkdtemp(path.join(tmpDir, 'epub-workspace-'))
+        const imagesDir = path.join(workspace, 'images')
+        await fs.mkdir(imagesDir, { recursive: true })
+        await fs.writeFile(
+            path.join(imagesDir, 'dot.png'),
+            Buffer.from(
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lVn3WQAAAABJRU5ErkJggg==',
+                'base64'
+            )
+        )
+        const sourcePath = path.join(workspace, 'book.md')
+        const filePath = path.join(workspace, 'book.epub')
+        await ToEpub('# 图册\n\n![点](images/dot.png)', filePath, {
+            sourceFilePath: sourcePath,
+            workspaceRoot: workspace
+        })
+        const JSZip = (await import('jszip')).default
+        const zip = await JSZip.loadAsync(await fs.readFile(filePath))
+        expect(zip.file('OEBPS/images/image-1.png')).toBeTruthy()
+        const contentXhtml = await zip.file('OEBPS/content.xhtml')!.async('string')
+        expect(contentXhtml).toContain('images/image-1.png')
+    })
+
+    it('EPUB 跳过远程/工作区外/非图片资源，保留正文', async () => {
+        const workspace = await fs.mkdtemp(path.join(tmpDir, 'epub-safe-'))
+        const outside = await fs.mkdtemp(path.join(tmpDir, 'epub-outside-'))
+        const outsideImage = path.join(outside, 'secret.png')
+        await fs.writeFile(outsideImage, Buffer.from('secret'))
+        await fs.writeFile(path.join(workspace, 'note.txt'), 'text')
+        const sourcePath = path.join(workspace, 'book.md')
+        const filePath = path.join(workspace, 'book.epub')
+        const outsideRelative = path.relative(workspace, outsideImage).replace(/\\/g, '/')
+        await ToEpub(
+            `# 安全\n\n![远程](https://example.com/a.png)\n\n![越界](${outsideRelative})\n\n![文本](note.txt)`,
+            filePath,
+            { sourceFilePath: sourcePath, workspaceRoot: workspace }
+        )
+        const JSZip = (await import('jszip')).default
+        const zip = await JSZip.loadAsync(await fs.readFile(filePath))
+        expect(Object.keys(zip.files).some((name) => name.startsWith('OEBPS/images/'))).toBe(false)
+        expect(await zip.file('OEBPS/content.xhtml')!.async('string')).toContain('安全')
+    })
+
+    it('无标题/无来源路径时使用安全兜底标题；主题读取异常回退默认色', async () => {
+        const caseDir = await fs.mkdtemp(path.join(tmpDir, 'case-'))
+        const epubPath = path.join(caseDir, 'plain.epub')
+        const slidesPath = path.join(caseDir, 'plain.html')
+        const htmlPath = path.join(caseDir, 'plain-out.html')
+        await ToEpub('普通段落', epubPath)
+        await ToSlidesHtml('普通段落', slidesPath)
+        setThemeApiProvider({
+            getCurrentThemeStyles: () => {
+                throw new Error('theme unavailable')
+            }
+        })
+        try {
+            await ToHtml('普通段落', htmlPath)
+        } finally {
+            setThemeApiProvider(null)
+        }
+        expect(await fs.readFile(slidesPath, 'utf8')).toContain('普通段落')
+        expect(await fs.readFile(htmlPath, 'utf8')).toContain('#764ba2')
+    })
+})
+
+describe('E8 ToSlidesHtml', () => {
+    it('按 --- 分页生成自包含幻灯片 HTML，含键盘导航与打印', async () => {
+        const caseDir = await fs.mkdtemp(path.join(tmpDir, 'case-'))
+        const filePath = path.join(caseDir, 'slides.html')
+        await ToSlidesHtml('# 第一页\n\n---\n\n## 第二页\n\n内容', filePath)
+        const html = await fs.readFile(filePath, 'utf8')
+        expect(html).toContain('class="slide active"')
+        expect(html).toContain('data-index="1"')
+        expect(html).toContain('<h2>第二页</h2>')
+        expect(html).toContain('ArrowRight')
+        expect(html).toContain('window.print()')
+        expect(html).toContain('@media print')
+    })
+
+    it('代码围栏内的 --- 不拆页', async () => {
+        const caseDir = await fs.mkdtemp(path.join(tmpDir, 'case-'))
+        const filePath = path.join(caseDir, 'slides-code.html')
+        await ToSlidesHtml('# 一页\n\n```md\n---\n```', filePath)
+        const html = await fs.readFile(filePath, 'utf8')
+        expect(html).not.toContain('data-index="1"')
+        expect(html).toContain('---')
     })
 })
 

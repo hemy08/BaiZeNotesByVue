@@ -84,6 +84,12 @@ import { attachWindowBoundsPersistence, resolveInitialWindowOptions } from './ut
 // - 关闭时最小化到系统托盘（minimizeToTray）
 //   （showMainWindow 复用为单实例锁 second-instance 的窗口恢复路径）
 import { disposeTray, ensureTrayCreated, notifyMinimizedToTray, showMainWindow } from './utils/tray'
+// D2：文件关联 / second-instance 打开文件（单实例链路）
+import {
+    getStartupAssociationFile,
+    openAssociatedFile,
+    resolveFileAssociationArg
+} from './utils/file-open-args'
 // - 跟随系统主题（useSystemTheme）：nativeTheme 监听 + 应用/广播
 import { startSystemThemeWatcher, stopSystemThemeWatcher } from './config/system-theme'
 // 系统设置补充实现批次 C：
@@ -454,14 +460,24 @@ function createWindow(): BrowserWindow {
 // 未获得锁说明已有实例在运行：本实例立即退出（whenReady 内短路，不创建窗口、
 // 不注册监听），由既有实例的 second-instance 回调恢复并聚焦主窗口——
 // 防止二次启动造成双实例双写配置、双份自动保存/备份定时器。
+// D2：启动参数中的关联文件（打包版第二个参数/开发版任意文件参数）。
+// 在单实例锁之后由 runStartupRestore 统一打开，确保渲染层已注册事件监听。
+const startupAssociationFile = getStartupAssociationFile()
+let startupAssociationFileOpened = false
+
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
 if (!gotSingleInstanceLock) {
     app.quit()
 } else {
     // 复用托盘「显示主窗口」的恢复路径（getLiveMainWindow + show/restore/focus）：
     // 主窗口可能隐藏到托盘或最小化，先恢复再聚焦
-    app.on('second-instance', () => {
+    app.on('second-instance', (_event, commandLine) => {
         showMainWindow()
+        // D2：用户双击关联文件再次启动时，把文件交给已有窗口打开。
+        const filePath = resolveFileAssociationArg(commandLine)
+        if (filePath) {
+            void openAssociatedFile(filePath)
+        }
     })
 }
 
@@ -497,6 +513,11 @@ async function runStartupRestore(win: BrowserWindow): Promise<void> {
         }
     } else {
         await restoreLastOpenedFile()
+    }
+    // D2：启动参数指定关联文件时，最后打开该文件（优先于自动恢复的最近项）。
+    if (!startupAssociationFileOpened && startupAssociationFile) {
+        startupAssociationFileOpened = true
+        await openAssociatedFile(startupAssociationFile)
     }
 }
 

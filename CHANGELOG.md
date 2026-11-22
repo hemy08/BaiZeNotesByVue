@@ -56,6 +56,17 @@
 - **E11 工作区布局 / 多配置**：视图菜单新增「布局配置…」；内置写作/研究/项目 3 套布局，支持保存当前「视图模式 + 资源管理器显隐/宽度」为自定义 profile、应用/删除；布局经渲染层 CustomEvent 联动 WorkSpace 与编辑区，只影响 UI，不修改笔记
 - 测试/门禁：全量 **340 文件 / 6,318 用例（6,313 通过 + 5 跳过）**；覆盖率 **93.63 / 88.21 / 94.24 / 94.00**；typecheck / ESLint / Prettier / docs:check / quality:check / audit 全绿；build:unpack + portable/NSIS 构建；预算通过（Setup 111.59 MiB / portable 100.99 MiB / asar 39.22 MiB）
 
+### ✅ 第二层能力补齐（2026-11-22）
+
+> 依据能力报告 §2.4.2 第二层（中风险）。B1/B4/B5、E1（剪贴板/文件剪藏范围）、B2 标签索引与 A2 按需搜索已在 1.5.1/1.5.2 落地；本次补齐 C1/E8 与 D2 文件关联部分。
+
+- **C1 EPUB 导出**：文件 → 导出到文件 → EPUB 电子书；生成 EPUB3 包（mimetype / META-INF/container.xml / content.opf / nav.xhtml / toc.ncx / XHTML 正文 / 主题 CSS / 工作区内本地图片），本地图片按工作区 realpath 与体积上限收集
+- **E8 幻灯片导出**：文件 → 导出到文件 → 幻灯片（HTML）；按独立 `---` 行分页（代码围栏内不拆页），生成单文件 HTML 幻灯片，支持键盘/按钮翻页、打印或另存 PDF
+- **D2 文件关联（部分）**：安装包注册 `.md/.markdown/.txt` 关联；启动参数/`second-instance` 解析文件路径并复用既有 `OpenSelectFile` 受信链路打开；**独立多窗口未做**（需按窗口隔离 appState/IPC/菜单/未保存状态，另行架构批次）
+- 明确未做：B2 **持久全文索引**（当前仅标签索引 + A2 按需搜索）；E1 浏览器扩展/本地接收端（按用户选定范围只做剪贴板/文件剪藏）；D2 独立多窗口
+- 门禁/基线（第二层累计）：全量 **341 文件 / 6,331 用例（6,326 通过 + 5 跳过）**；覆盖率 **93.64 / 88.22 / 94.22 / 94.01**；typecheck / ESLint / Prettier / docs:check / quality:check / audit:all / fuses / budget 全绿
+- 体积：Setup **111.60 MiB** / portable **100.99 MiB** / asar **39.23 MiB**（EPUB 使用 jszip 生产依赖；帮助 PDF 目录压缩后 portable 保留 14.6 KiB 余量）
+
 ### 📋 开发基线
 
 - 起点：**1.5.1 已发布**（2026-11-22，tag `release-1.5.1`）；当前基线（批次 4 后）：测试 336 文件 / 6,290 用例、IPC 108 通道 / 18 组、preload 白名单 send 74 + receive 28 + window.api 6、报告 md 32 篇 / HTML 33 页

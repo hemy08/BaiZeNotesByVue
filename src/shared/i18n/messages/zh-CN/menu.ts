@@ -33,7 +33,9 @@ export default {
             xml: '导出为XML',
             yaml: '导出为YAML',
             html: '导出为HTML（自包含）',
-            pdf: '导出为PDF'
+            pdf: '导出为PDF',
+            epub: '导出为EPUB电子书',
+            slides: '导出为幻灯片（HTML）'
         },
         printPreview: '打印预览',
         print: '打印',

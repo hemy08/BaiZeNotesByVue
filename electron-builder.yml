@@ -228,6 +228,16 @@ extraResources:
       filter: ['**/*']
     # ARC-20 说明：resources/katex、resources/mermaid 目录实测不存在，对应条目已删除；
     # KaTeX/Mermaid 均从 node_modules 导入（KatexRender.ts 与渲染层入口），无需作为 extraResources 打包
+fileAssociations:
+    # D2：Windows 安装包注册 Markdown/文本文件关联；双击文件时经单实例链路打开。
+    - ext: [md, markdown]
+      name: Markdown Document
+      description: Markdown note
+      role: Editor
+    - ext: [txt]
+      name: Text Document
+      description: Plain text note
+      role: Editor
 win:
     executableName: BaiZeNotes
     icon: resources/icon/baize_mirror_dark_256x256.ico

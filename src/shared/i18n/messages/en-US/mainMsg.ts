@@ -144,6 +144,8 @@ export default {
         html: 'HTML files',
         json: 'JSON files',
         pdf: 'PDF files',
+        epub: 'EPUB books',
+        slides: 'Slide decks (HTML)',
         xml: 'XML files',
         yaml: 'YAML files'
     },

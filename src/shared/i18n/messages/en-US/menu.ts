@@ -31,7 +31,9 @@ export default {
             xml: 'Export as XML',
             yaml: 'Export as YAML',
             html: 'Export as HTML (self-contained)',
-            pdf: 'Export as PDF'
+            pdf: 'Export as PDF',
+            epub: 'Export as EPUB',
+            slides: 'Export as Slides (HTML)'
         },
         printPreview: 'Print Preview',
         print: 'Print',

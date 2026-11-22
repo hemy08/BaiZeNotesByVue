@@ -431,7 +431,7 @@ function pickHandler(tree: unknown, ...keys: string[]): (...args: never[]) => un
 }
 
 const IMPORT_FILE_TYPES = ['word', 'html', 'json', 'yaml', 'xml', 'text'] as const
-const EXPORT_FILE_TYPES = ['word', 'json', 'xml', 'yaml', 'html', 'pdf'] as const
+const EXPORT_FILE_TYPES = ['word', 'json', 'xml', 'yaml', 'html', 'pdf', 'epub', 'slides'] as const
 const FILE_ENCODINGS = [
     'utf8',
     'utf16-le',

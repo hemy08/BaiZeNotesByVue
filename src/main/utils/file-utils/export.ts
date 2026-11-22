@@ -290,9 +290,304 @@ ${toc}
 </html>`
 }
 
+/* ============================================================================
+ * C1：EPUB 导出 / E8：幻灯片 HTML 导出
+ * ========================================================================== */
+
+/** 去掉 Markdown 顶部 YAML front matter（仅用于 EPUB/幻灯片正文，不改变原文件）。 */
+function stripMarkdownFrontMatter(content: string): string {
+    return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
+}
+
+/** 读取并收集 HTML 中的本地图片，替换为 EPUB 内相对路径。 */
+async function collectEpubImages(
+    html: string,
+    options: HtmlExportOptions
+): Promise<{ html: string; images: Array<{ name: string; mime: string; data: Buffer }> }> {
+    const sourceFilePath = options.sourceFilePath ?? null
+    const workspaceRoot = options.workspaceRoot ?? appState.rootPath ?? ''
+    if (!workspaceRoot) {
+        return { html, images: [] }
+    }
+    const sourceDir = sourceFilePath ? path.dirname(sourceFilePath) : workspaceRoot
+    const images: Array<{ name: string; mime: string; data: Buffer }> = []
+    const matches = Array.from(html.matchAll(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi))
+    for (const match of matches) {
+        const rawSrc = match[2]
+        if (
+            !rawSrc ||
+            /^(?:data:|https?:|\/\/|blob:|app:|file:)/i.test(rawSrc) ||
+            rawSrc.startsWith('#')
+        ) {
+            continue
+        }
+        const withoutQuery = rawSrc.split(/[?#]/, 1)[0]
+        const decoded = decodeExportImageSrc(withoutQuery)
+        const candidate = path.isAbsolute(decoded)
+            ? path.normalize(decoded)
+            : path.resolve(sourceDir, decoded)
+        let realCandidate: string
+        try {
+            realCandidate = await fs.realpath(candidate)
+        } catch {
+            continue
+        }
+        if (!isSameOrWithin(realCandidate, workspaceRoot)) {
+            continue
+        }
+        const ext = path.extname(realCandidate).toLowerCase()
+        const mime = EXPORT_IMAGE_MIME[ext]
+        if (!mime) {
+            continue
+        }
+        try {
+            const stat = await fs.stat(realCandidate)
+            if (!stat.isFile() || stat.size <= 0 || stat.size > EXPORT_IMAGE_MAX_BYTES) {
+                continue
+            }
+            const data = await fs.readFile(realCandidate)
+            const name = `images/image-${images.length + 1}${ext}`
+            images.push({ name, mime, data })
+            html = html.replace(match[0], `${match[1]}${name}${match[3]}`)
+        } catch {
+            // 单张图片不可读时跳过，保留原 src
+        }
+    }
+    return { html, images }
+}
+
+/** 构建 EPUB3 包（mimetype 必须第一个且不压缩）。 */
+export async function ToEpub(
+    content: string,
+    filePath: string,
+    options: HtmlExportOptions = {}
+): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- EPUB 导出低频，首次使用时才加载 jszip
+    const JSZip = require('jszip') as typeof import('jszip')
+    const MarkdownIt = loadMarkdownItConstructor()
+    const md = new MarkdownIt({ html: false, linkify: true, typographer: false, xhtmlOut: true })
+    const bodyMarkdown = stripMarkdownFrontMatter(content)
+    const rendered = md.render(bodyMarkdown)
+    const collected = await collectEpubImages(rendered, options)
+    const title = (() => {
+        const heading = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(rendered)
+        if (heading) return heading[1].replace(/<[^>]+>/g, '').trim() || 'BaiZeNotes'
+        return options.sourceFilePath
+            ? path.basename(options.sourceFilePath, path.extname(options.sourceFilePath))
+            : 'BaiZeNotes'
+    })()
+    const version = await getAppVersionForExport()
+    const escapedTitle = escapeExportHtml(title)
+    const bookId = `urn:uuid:baizenotes-${Date.now()}`
+    const zip = new JSZip()
+    zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' })
+    zip.file(
+        'META-INF/container.xml',
+        `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+</container>`
+    )
+    zip.file('OEBPS/style.css', EPUB_STYLE_CSS)
+    zip.file(
+        'OEBPS/content.xhtml',
+        `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-CN" lang="zh-CN">
+<head><meta charset="UTF-8"/><title>${escapedTitle}</title><link rel="stylesheet" type="text/css" href="style.css"/></head>
+<body><h1>${escapedTitle}</h1>${collected.html}</body>
+</html>`
+    )
+    zip.file(
+        'OEBPS/nav.xhtml',
+        `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="zh-CN" lang="zh-CN">
+<head><meta charset="UTF-8"/><title>目录</title></head>
+<body><nav epub:type="toc" id="toc"><h1>目录</h1><ol><li><a href="content.xhtml">${escapedTitle}</a></li></ol></nav></body>
+</html>`
+    )
+    zip.file(
+        'OEBPS/toc.ncx',
+        `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+<head><meta name="dtb:uid" content="${bookId}"/><meta name="dtb:depth" content="1"/><meta name="dtb:totalPageCount" content="0"/><meta name="dtb:maxPageNumber" content="0"/></head>
+<docTitle><text>${escapedTitle}</text></docTitle>
+<navMap><navPoint id="navpoint-1" playOrder="1"><navLabel><text>${escapedTitle}</text></navLabel><content src="content.xhtml"/></navPoint></navMap>
+</ncx>`
+    )
+    const imageManifest = collected.images
+        .map(
+            (image) =>
+                `<item id="${image.name.replace(/[^a-z0-9]/gi, '_')}" href="${image.name}" media-type="${image.mime}"/>`
+        )
+        .join('\n    ')
+    zip.file(
+        'OEBPS/content.opf',
+        `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="zh-CN">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bookid">${bookId}</dc:identifier>
+    <dc:title>${escapedTitle}</dc:title>
+    <dc:language>zh-CN</dc:language>
+    <dc:creator>BaiZeNotes</dc:creator>
+    <dc:description>由白泽笔记 v${escapeExportHtml(version)} 导出</dc:description>
+    <meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')}</meta>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+    <item id="content" href="content.xhtml" media-type="application/xhtml+xml"/>
+    <item id="style" href="style.css" media-type="text/css"/>
+    ${imageManifest}
+  </manifest>
+  <spine toc="ncx"><itemref idref="content"/></spine>
+</package>`
+    )
+    for (const image of collected.images) {
+        zip.file(`OEBPS/${image.name}`, image.data)
+    }
+    const buffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
+    await fs.writeFile(filePath, buffer)
+}
+
+const EPUB_STYLE_CSS = `body{font-family:serif;line-height:1.7;margin:1.2em;color:#222}
+h1,h2,h3{font-family:sans-serif;line-height:1.3}
+pre{background:#f4f4f4;padding:.6em;overflow-x:auto;white-space:pre-wrap}
+code{background:#f4f4f4;padding:.1em .3em}
+blockquote{border-left:3px solid #999;margin:0;padding-left:1em;color:#555}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:.4em}
+img{max-width:100%;height:auto}`
+
 /**
- * 导出配置接口
+ * E8：把 Markdown 按 `---` 分页导出为单文件 HTML 幻灯片。
+ * - 不依赖 reveal/Marp 运行时，离线可打开；
+ * - 键盘 ←/→/PageUp/PageDown/空格 翻页，也支持点击左右按钮；
+ * - 打印时每张幻灯片一页（@media print）。
  */
+export async function ToSlidesHtml(
+    content: string,
+    filePath: string,
+    options: HtmlExportOptions = {}
+): Promise<void> {
+    const MarkdownIt = loadMarkdownItConstructor()
+    const md = new MarkdownIt({ html: false, linkify: true, typographer: false, xhtmlOut: true })
+    const source = stripMarkdownFrontMatter(content)
+    const rawSlides = splitSlideMarkdown(source)
+    const slides = rawSlides
+        .map((slide) => md.render(slide))
+        .filter((html) => html.trim().length > 0)
+    const finalSlides = slides.length > 0 ? slides : ['<p>（空文档）</p>']
+    const title = (() => {
+        const firstHeading = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(finalSlides[0])
+        if (firstHeading) return firstHeading[1].replace(/<[^>]+>/g, '').trim() || 'BaiZeNotes'
+        return options.sourceFilePath
+            ? path.basename(options.sourceFilePath, path.extname(options.sourceFilePath))
+            : 'BaiZeNotes'
+    })()
+    const body = finalSlides
+        .map(
+            (slide, index) =>
+                `<section class="slide${index === 0 ? ' active' : ''}" data-index="${index}">${slide}</section>`
+        )
+        .join('\n')
+    const htmlWithImages = await inlineLocalExportImages(
+        `<div class="slides">${body}</div>`,
+        options
+    )
+    const escapedTitle = escapeExportHtml(title)
+    const version = await getAppVersionForExport()
+    const deck = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapedTitle} · 幻灯片</title>
+<style>
+:root{--slide-bg:#1f1833;--slide-fg:#f7f3ff;--slide-accent:#b79cff;--slide-card:#2e2545}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--slide-bg);color:var(--slide-fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+body{overflow:hidden}
+.deck-toolbar{position:fixed;right:18px;bottom:16px;z-index:20;display:flex;gap:8px;align-items:center;font-size:13px;color:#cfc4e8}
+.deck-toolbar button{border:1px solid #6f5d97;background:#31264d;color:inherit;border-radius:6px;padding:5px 12px;cursor:pointer}
+.deck-toolbar button:hover{border-color:var(--slide-accent)}
+.slides{height:100%;position:relative}
+.slide{position:absolute;inset:0;display:none;overflow:auto;padding:8vh 10vw;line-height:1.7;font-size:clamp(20px,2.4vw,38px)}
+.slide.active{display:block}
+.slide h1{font-size:clamp(36px,5vw,72px);line-height:1.2;margin:0 0 .6em;color:#fff;border-bottom:2px solid var(--slide-accent);padding-bottom:.2em}
+.slide h2{font-size:1.35em;color:var(--slide-accent);margin:1.2em 0 .4em}
+.slide p{margin:.6em 0}
+.slide ul,.slide ol{margin:.5em 0;padding-left:1.4em}
+.slide li{margin:.3em 0}
+.slide a{color:var(--slide-accent)}
+.slide img{max-width:100%;max-height:58vh;object-fit:contain}
+.slide pre{background:#130f20;border:1px solid #4c3e6b;border-radius:8px;padding:.7em;overflow:auto;font-size:.68em}
+.slide code{background:#130f20;border:1px solid #4c3e6b;padding:.08em .3em;border-radius:4px}
+.slide pre code{border:0;padding:0}
+.slide blockquote{border-left:4px solid var(--slide-accent);margin:.8em 0;padding:.3em 1em;background:var(--slide-card);color:#d9d0ee}
+.slide table{border-collapse:collapse;width:100%;font-size:.8em}.slide th,.slide td{border:1px solid #5a4b7a;padding:.4em}
+.deck-footer{position:fixed;left:22px;bottom:16px;font-size:12px;color:#8f83aa;z-index:20}
+@media print{
+  html,body{overflow:visible;background:#fff;color:#111}
+  .deck-toolbar,.deck-footer{display:none}
+  .slides{height:auto;position:static}
+  .slide{position:static;display:block!important;page-break-after:always;padding:12mm 14mm;color:#111;font-size:15pt}
+  .slide h1{color:#111;border-color:#764ba2}
+  .slide h2{color:#5b3e8f}
+  .slide pre{background:#f5f5f5;color:#111;border-color:#ddd}
+  .slide code{background:#f5f5f5;color:#111;border-color:#ddd}
+  .slide blockquote{background:#f5f5f5;color:#444}
+  .slide table th,.slide td{border-color:#bbb}
+}
+@page{size:A4 landscape;margin:0}
+</style>
+</head>
+<body>
+<div class="slides" id="slides">${htmlWithImages}</div>
+<div class="deck-toolbar"><button type="button" id="prev" aria-label="上一页">←</button><span id="counter">1 / ${finalSlides.length}</span><button type="button" id="next" aria-label="下一页">→</button><button type="button" id="print">打印/导出 PDF</button></div>
+<div class="deck-footer">白泽笔记 v${escapeExportHtml(version)} · 幻灯片</div>
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide'));var index=0;
+  var counter=document.getElementById('counter');
+  function show(next){index=Math.max(0,Math.min(slides.length-1,next));slides.forEach(function(s,i){s.classList.toggle('active',i===index)});counter.textContent=(index+1)+' / '+slides.length;}
+  document.getElementById('prev').onclick=function(){show(index-1)};
+  document.getElementById('next').onclick=function(){show(index+1)};
+  document.getElementById('print').onclick=function(){window.print()};
+  document.addEventListener('keydown',function(e){if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(index-1)}else if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(index+1)}});
+  show(0);
+})();
+</script>
+</body>
+</html>`
+    await fs.writeFile(filePath, deck, 'utf-8')
+}
+
+/** 按独立 `---` 行拆分幻灯片，跳过代码围栏内部的 `---`。 */
+function splitSlideMarkdown(markdown: string): string[] {
+    const slides: string[] = []
+    let current: string[] = []
+    let fence: string | null = null
+    for (const line of markdown.split(/\r?\n/)) {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+            const marker = trimmed.slice(0, 3)
+            if (fence === null) fence = marker
+            else if (fence === marker) fence = null
+            current.push(line)
+            continue
+        }
+        if (fence === null && /^---\s*$/.test(trimmed)) {
+            slides.push(current.join('\n'))
+            current = []
+            continue
+        }
+        current.push(line)
+    }
+    slides.push(current.join('\n'))
+    return slides
+}
+
 interface ExportConfig {
     name: string // 格式名称
     extensions: string[] // 文件扩展名
@@ -347,6 +642,22 @@ const exportConfigs: Record<string, ExportConfig> = {
         extensions: ['pdf'],
         defaultName: 'untitled.pdf',
         exporter: ToPdf
+    },
+    epub: {
+        get name() {
+            return tMain('mainMsg.filters.epub')
+        },
+        extensions: ['epub'],
+        defaultName: 'untitled.epub',
+        exporter: ToEpub
+    },
+    slides: {
+        get name() {
+            return tMain('mainMsg.filters.slides')
+        },
+        extensions: ['html', 'htm'],
+        defaultName: 'untitled-slides.html',
+        exporter: ToSlidesHtml
     }
 }
 
