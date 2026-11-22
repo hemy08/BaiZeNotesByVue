@@ -62,6 +62,8 @@ import {
 } from './file-encoding'
 // CQ-7：目录刷新调度/目录树遍历（实现已迁移到 directory-tree.ts）
 import { ReloadDirFromDisk, ScheduleReloadFromDisk, stopDirectoryWatcher } from './directory-tree'
+// 1.5.1 B4：重命名后自动更新其他 Markdown 文件中的 Wiki 链接（两阶段，重命名失败不改链接）
+import { applyWikiLinkRenamePlan, buildWikiLinkRenamePlan } from '../wiki-link-rename'
 // CQ-7：路径守卫提示 / 自身写入窗口 / 当前文件磁盘签名（实现已迁移到 shared.ts）
 import {
     beginSelfWrite,
@@ -901,10 +903,36 @@ async function RenameFileFolder(name: string, newName: string, isFile: boolean):
 
     // PF-05：标记自身改目录，watcher 回环事件合并到下方 ScheduleReloadFromDisk
     beginSelfWrite()
+    let wikiRenamePlan: Awaited<ReturnType<typeof buildWikiLinkRenamePlan>> | null = null
+    if (isFile && /\.(md|markdown|txt)$/i.test(name) && appState.rootPath) {
+        try {
+            // 必须在 rename 前构建：旧链接此时仍能解析到旧路径
+            wikiRenamePlan = await buildWikiLinkRenamePlan(appState.rootPath, name, newFullPath)
+        } catch (error) {
+            logger.warn('[B4] 重命名前构建 Wiki 链接更新计划失败（已跳过链接更新）：', error)
+        }
+    }
     try {
         await fs.rename(name, newFullPath)
     } finally {
         endSelfWrite()
+    }
+
+    // B4：重命名成功后再写回链接，失败时不产生半更新
+    if (wikiRenamePlan && wikiRenamePlan.updates.length > 0) {
+        try {
+            const applied = await applyWikiLinkRenamePlan(wikiRenamePlan)
+            if (applied.updatedFiles > 0) {
+                logger.info(
+                    `[B4] 重命名后已更新 ${applied.updatedFiles} 个文件/${applied.replacements} 处 Wiki 链接`
+                )
+            }
+            if (applied.failedFiles.length > 0) {
+                logger.warn(`[B4] 有 ${applied.failedFiles.length} 个文件链接更新失败（已跳过）`)
+            }
+        } catch (error) {
+            logger.warn('[B4] 应用 Wiki 链接更新计划失败（已跳过）：', error)
+        }
     }
 
     // PF-05：统一走 ScheduleReloadFromDisk，同一批目录变更只触发一次全量刷新

@@ -30,12 +30,21 @@ import { ipcListenerManager } from './ipc-listener-manager'
 
 let cachedSnapshot: WorkspaceIndexSnapshot | null = null
 let cachedRootPath = ''
+let cachedAt = 0
 let inFlightBuild: Promise<WorkspaceIndexSnapshot> | null = null
+
+/**
+ * 索引缓存 TTL：文件保存/重命名/外部变更不会显式通知索引层，
+ * 超过 5s 后下次查询自动重建，避免 B1/B5/E10 长期展示过期快照；
+ * UI 的显式刷新仍可 force 立即重建。
+ */
+const INDEX_CACHE_TTL_MS = 5000
 
 /** 清理缓存（工作区切换/测试用；根变化本身也会触发重建） */
 export function invalidateWorkspaceIndexCache(): void {
     cachedSnapshot = null
     cachedRootPath = ''
+    cachedAt = 0
     inFlightBuild = null
 }
 
@@ -44,7 +53,12 @@ async function getOrBuildWorkspaceIndex(
     rootPath: string,
     force: boolean
 ): Promise<WorkspaceIndexSuccess> {
-    if (!force && cachedSnapshot !== null && cachedRootPath === rootPath) {
+    if (
+        !force &&
+        cachedSnapshot !== null &&
+        cachedRootPath === rootPath &&
+        Date.now() - cachedAt < INDEX_CACHE_TTL_MS
+    ) {
         return { ok: true, snapshot: cachedSnapshot, cached: true }
     }
     if (inFlightBuild === null || cachedRootPath !== rootPath) {
@@ -56,6 +70,7 @@ async function getOrBuildWorkspaceIndex(
     const snapshot = await inFlightBuild
     cachedSnapshot = snapshot
     cachedRootPath = rootPath
+    cachedAt = Date.now()
     return { ok: true, snapshot, cached: false }
 }
 

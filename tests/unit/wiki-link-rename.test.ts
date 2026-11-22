@@ -1,0 +1,203 @@
+/**
+ * B4 Wiki 链接重命名自动更新单测（临时工作区，不启动 Electron）：
+ * - 重命名前计划收集、重命名后应用；
+ * - `[[target]]` / `[[target|alias]]` / `[[target#heading]]` 保留 alias/heading；
+ * - 目录相对写法、扩展名保留、BOM/CRLF 保留；
+ * - 无引用/越界/旧文件自身/重复位置跳过；
+ * - 上限与失败降级语义。
+ */
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
+import {
+    applyWikiLinkRenamePlan,
+    buildWikiLinkRenamePlan,
+    findSourcesForRename,
+    updateWikiLinksForRename,
+    wikiLinkRenameInternals
+} from '../../src/main/utils/wiki-link-rename'
+import { buildWorkspaceIndex } from '../../src/main/utils/workspace-index'
+
+let root = ''
+
+function write(relativePath: string, content: string): string {
+    const fullPath = path.join(root, relativePath)
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true })
+    fs.writeFileSync(fullPath, content, 'utf8')
+    return fullPath
+}
+
+function read(relativePath: string): string {
+    return fs.readFileSync(path.join(root, relativePath), 'utf8')
+}
+
+beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'baize-wiki-rename-'))
+})
+
+afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true })
+})
+
+describe('buildWikiLinkRenamePlan + applyWikiLinkRenamePlan', () => {
+    it('重命名后更新 basename 链接，保留 alias/heading', async () => {
+        write('old.md', '# Old')
+        write(
+            'source.md',
+            ['[[old]]', '[[old|别名]]', '[[old#标题]]', '[[old#标题|别名]]', '[[other]]'].join('\n')
+        )
+        write('other.md', '# Other')
+
+        const oldPath = path.join(root, 'old.md')
+        const newPath = path.join(root, 'new-name.md')
+        const plan = await buildWikiLinkRenamePlan(root, oldPath, newPath)
+        const applied = await applyWikiLinkRenamePlan(plan)
+
+        expect(applied.updatedFiles).toBe(1)
+        expect(applied.replacements).toBe(4)
+        const content = read('source.md')
+        expect(content).toContain('[[new-name]]')
+        expect(content).toContain('[[new-name|别名]]')
+        expect(content).toContain('[[new-name#标题]]')
+        expect(content).toContain('[[new-name#标题|别名]]')
+        expect(content).toContain('[[other]]')
+        fs.renameSync(oldPath, newPath)
+    })
+
+    it('目录相对链接使用源目录到新路径的相对写法', async () => {
+        write('a/old.md', '# Old')
+        write('source.md', '[[a/old]]')
+        write('b/new-place.md', '# New')
+        const plan = await buildWikiLinkRenamePlan(
+            root,
+            path.join(root, 'a/old.md'),
+            path.join(root, 'b/new-place.md')
+        )
+        expect(plan.updates.length).toBe(1)
+        expect(plan.updates[0].content).toContain('[[b/new-place]]')
+    })
+
+    it('原标题含目录时保留目录相对写法；带扩展名则保留扩展名', async () => {
+        write('a/old.md', '# Old')
+        write('a/source.md', ['[[sub/old]]', '[[sub/old.md]]'].join('\n'))
+        write('a/sub/old.md', '# dup')
+        const plan = await buildWikiLinkRenamePlan(
+            root,
+            path.join(root, 'a/old.md'),
+            path.join(root, 'a/new.md')
+        )
+        // 快照中第一条 [[sub/old]] 解析到 a/sub/old.md，不应被更新；第二条同理。
+        expect(plan.updates).toEqual([])
+    })
+
+    it('保留 BOM 与 CRLF', async () => {
+        write('old.md', '# Old')
+        write('source.md', '\uFEFF[[old]]\r\n第二行\r\n')
+        const plan = await buildWikiLinkRenamePlan(
+            root,
+            path.join(root, 'old.md'),
+            path.join(root, 'new.md')
+        )
+        expect(plan.updates).toHaveLength(1)
+        const content = plan.updates[0].content
+        expect(content.startsWith('\uFEFF')).toBe(true)
+        expect(content).toContain('\r\n')
+        expect(content).toContain('[[new]]')
+    })
+
+    it('无引用时不产生更新', async () => {
+        write('old.md', '# Old')
+        write('source.md', 'plain text')
+        const plan = await buildWikiLinkRenamePlan(
+            root,
+            path.join(root, 'old.md'),
+            path.join(root, 'new.md')
+        )
+        expect(plan.updates).toEqual([])
+        expect(plan.replacementCount).toBe(0)
+    })
+
+    it('old 文件自身链接不被写入（重命名后旧路径不存在）', async () => {
+        write('old.md', '# Old\n[[old]]')
+        const plan = await buildWikiLinkRenamePlan(
+            root,
+            path.join(root, 'old.md'),
+            path.join(root, 'new.md')
+        )
+        expect(plan.updates).toEqual([])
+        expect(plan.skipped).toContain('source-renamed:old.md')
+    })
+
+    it('越界 old/new 路径返回空计划', async () => {
+        write('a.md', '# A')
+        const outside = path.join(os.tmpdir(), 'outside-wiki.md')
+        const plan1 = await buildWikiLinkRenamePlan(root, outside, path.join(root, 'b.md'))
+        expect(plan1.updates).toEqual([])
+        expect(plan1.skipped).toContain('old-path-outside-root')
+        const plan2 = await buildWikiLinkRenamePlan(root, path.join(root, 'a.md'), outside)
+        expect(plan2.updates).toEqual([])
+        expect(plan2.skipped).toContain('new-path-outside-root')
+    })
+
+    it('一站式 updateWikiLinksForRename 应用计划', async () => {
+        write('old.md', '# Old')
+        write('source.md', '[[old]]')
+        const result = await updateWikiLinksForRename(
+            root,
+            path.join(root, 'old.md'),
+            path.join(root, 'renamed.md')
+        )
+        expect(result.plan.updates).toHaveLength(1)
+        expect(result.applied.updatedFiles).toBe(1)
+        expect(read('source.md')).toBe('[[renamed]]')
+    })
+
+    it('findSourcesForRename 返回命中来源', async () => {
+        write('old.md', '# Old')
+        write('source.md', '[[old]]')
+        write('other.md', '[[other]]')
+        const snapshot = await buildWorkspaceIndex(root)
+        const sources = findSourcesForRename(snapshot, path.join(root, 'old.md'))
+        expect(sources.map((file) => file.relativePath)).toEqual(['source.md'])
+    })
+})
+
+describe('纯 helper 边界', () => {
+    it('splitWikiLinkRaw / buildReplacementLink', () => {
+        const split = wikiLinkRenameInternals.splitWikiLinkRaw('[[old#h|别名]]')
+        expect(split).toEqual({ target: 'old', heading: '#h', alias: '|别名' })
+        expect(
+            wikiLinkRenameInternals.buildReplacementLink(
+                '[[old#h|别名]]',
+                path.join(root, 'a.md'),
+                path.join(root, 'b.md')
+            )
+        ).toBe('[[b#h|别名]]')
+    })
+
+    it('非法链接返回 null', () => {
+        expect(wikiLinkRenameInternals.buildReplacementLink('old', 'a.md', 'b.md')).toBeNull()
+        expect(wikiLinkRenameInternals.buildReplacementLink('[[]]', 'a.md', 'b.md')).toBeNull()
+    })
+
+    it('applyLinksToContent 位置不匹配时跳过（防旧快照误改）', () => {
+        const applied = wikiLinkRenameInternals.applyLinksToContent(
+            'no link',
+            path.join(root, 'a.md'),
+            [
+                {
+                    target: 'old',
+                    raw: '[[old]]',
+                    line: 1,
+                    column: 1,
+                    status: 'resolved',
+                    resolvedPath: path.join(root, 'old.md')
+                }
+            ],
+            path.join(root, 'new.md')
+        )
+        expect(applied.count).toBe(0)
+        expect(applied.content).toBe('no link')
+    })
+})
