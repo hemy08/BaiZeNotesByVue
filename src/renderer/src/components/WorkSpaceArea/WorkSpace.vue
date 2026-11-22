@@ -24,7 +24,7 @@
         v-show="isShowMdContainer"
         id="md-container"
         class="md-container"
-        :style="{ width: workAreaWidth, marginRight: naviTabWidth }"
+        :style="{ width: workAreaWidth }"
     >
         <MdContainer :md-container-width="workAreaWidth" />
     </div>

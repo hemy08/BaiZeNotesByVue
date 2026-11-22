@@ -11,6 +11,10 @@ const source = fs.readFileSync(
     path.join(process.cwd(), 'src/renderer/src/components/Markdown/MarkdownPreviewComponent.vue'),
     'utf8'
 )
+const workspaceSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/renderer/src/components/WorkSpaceArea/WorkSpace.vue'),
+    'utf8'
+)
 
 describe('MarkdownPreviewComponent 预览布局', () => {
     it('预览根节点应全宽，不再预留右侧空白', () => {
@@ -31,5 +35,12 @@ describe('MarkdownPreviewComponent 预览布局', () => {
         expect(css).not.toContain('overflow-y: scroll')
         expect(css).toContain('display: block')
         expect(css).not.toContain('display: inline-block')
+    })
+
+    it('工作区 md-container 不应重复预留右侧导航宽度', () => {
+        // flex 布局中右侧导航本身占 40px；md-container 再 margin-right:40px
+        // 会在预览滚动条与右侧导航之间留下固定空白。
+        expect(workspaceSource).not.toContain('marginRight: naviTabWidth')
+        expect(workspaceSource).toContain(':style="{ width: workAreaWidth }"')
     })
 })
