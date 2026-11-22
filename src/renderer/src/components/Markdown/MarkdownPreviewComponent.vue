@@ -895,12 +895,17 @@ onBeforeUnmount(() => {
    katex.min.css 内容等价），已删除，避免同一份 KaTeX 样式被打包两次。 */
 
 .markdown-preview-html {
-    width: calc(100% - 15px);
+    /* 全宽承载预览内容：此前 calc(100% - 15px) + margin-left 会在右侧永久留下
+       一条 15px 空白带（截图红框处），且 overflow-y: scroll 会始终保留滚动条槽位。
+       改为 border-box 全宽 + 左侧内边距，滚动条仅在内容溢出时出现。 */
+    width: 100%;
     height: 100%;
-    margin-left: 15px;
-    overflow-y: scroll;
+    margin-left: 0;
+    padding-left: 15px;
+    box-sizing: border-box;
+    overflow-y: auto;
     overflow-x: auto;
-    display: inline-block;
+    display: block;
 }
 
 /* 1.5.0（编辑器 → 预览滚动同步）：源行锚点标记（preview-source-anchor.ts 注入的 <span>）。

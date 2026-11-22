@@ -74,6 +74,19 @@ describe('mkdocs-material admonition block rule', () => {
         expect(result).toContain('<p>two</p>')
     })
 
+    it('should render a tabbed set with unindented content (user-friendly fallback)', () => {
+        const result = render(
+            '=== "计算机"\n\n- 计算机基础\n- 计算机网络\n\n=== "操作系统"\n\n- 进程与线程\n\n## 下一节'
+        )
+        expect(result.match(/class="tabbed-set tabbed-alternate"/g)).toHaveLength(1)
+        expect(result).toContain('data-tabs="1:2"')
+        expect(result).toContain('<label for="__tabbed_1_1">计算机</label>')
+        expect(result).toContain('<label for="__tabbed_1_2">操作系统</label>')
+        expect(result).toContain('<li>计算机基础</li>')
+        expect(result).toContain('<li>进程与线程</li>')
+        expect(result).toContain('<h2>下一节</h2>')
+    })
+
     it('should render multiple admonitions in one text', () => {
         const result = render('!!! note "a"\n    x\n\n!!! tip "b"\n    y')
         expect(result).toContain('admonition note')

@@ -179,6 +179,15 @@ function matchTabbedHeader(lineText: string): string | null {
     return match ? match[1] : null
 }
 
+/** 无缩进 tab 内容兼容分支的段边界：标题或分隔线（避免吞掉后续正文）。 */
+function isTabContentSectionBoundary(lineText: string): boolean {
+    const trimmed = lineText.trim()
+    if (/^#{1,6}(?:\s|$)/.test(trimmed)) {
+        return true
+    }
+    return /^(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$/.test(trimmed)
+}
+
 /**
  * 分配下一个 tabbed set 序号（从 1 开始）。
  * 计数器挂在 env 上，同一次解析（含递归子解析）内自增，保证多组 tab 的 radio name/id 不冲突。
@@ -287,10 +296,35 @@ function tabbedSetBlockRule(
             }
             break
         }
+        const contentEnd = lastContentLine + 1
+        let content = getIndentedBlockContent(state, headerLine + 1, contentEnd)
+        // 兼容用户常见写法：`=== "标签"` 下内容没有缩进（严格 mkdocs 要求缩进 4 格）。
+        // 若没有任何缩进内容，则把后续非空行收集到下一个 tab 头部 / 标题 / 分隔线之前，
+        // 避免整段内容落到 tab 外、tab 面板显示为空白。
+        if (lastContentLine === headerLine) {
+            let unindentedEnd = headerLine + 1
+            while (unindentedEnd < endLine) {
+                if (matchTabbedHeader(getLineText(state, unindentedEnd)) !== null) {
+                    break
+                }
+                if (isTabContentSectionBoundary(getLineText(state, unindentedEnd))) {
+                    break
+                }
+                unindentedEnd += 1
+            }
+            // 内容裁掉段尾空行，但 nextLine 必须停在下一个 tab 头部/段边界，
+            // 否则会把下一段误判为普通内容而拆成多个 tabbed set。
+            let contentEnd = unindentedEnd
+            while (contentEnd > headerLine + 1 && state.isEmpty(contentEnd - 1)) {
+                contentEnd -= 1
+            }
+            nextLine = unindentedEnd
+            content = state.getLines(headerLine + 1, contentEnd, state.blkIndent, false)
+        }
         segments.push({
             label,
-            // 缩进口径 A：tab 内容相对容器缩进 4 列
-            content: getIndentedBlockContent(state, headerLine + 1, lastContentLine + 1),
+            // 缩进口径 A：tab 内容相对容器缩进 4 列；无缩进兼容分支已按 blkIndent 取原文
+            content,
             contentStartLine: headerLine + 1
         })
         // 下一个 tab 段：要求下一行仍是（相对缩进 <4 的）tab 头部，否则本组结束
