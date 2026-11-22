@@ -114,6 +114,7 @@ export default {
         },
         readErrorWithDetail: '{reason} ({message})',
         noExportContent: 'There is no content to export',
+        printFailed: 'Printing failed: {error}',
         unsupportedExportFormat: 'Exporting to {format} is not supported yet',
         excelImportUnsupported:
             'Importing .xls/.xlsx directly is not supported. Export the sheet as CSV first.',

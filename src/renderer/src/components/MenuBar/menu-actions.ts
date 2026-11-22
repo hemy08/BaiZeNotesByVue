@@ -360,6 +360,13 @@ export function HandleMenuAction(action: string) {
     }
 
     // ========== P0 写作体验：写作模式 / 风格检查 ==========
+    if (action === 'baize:menu:view:layout-profiles') {
+        void import('../dialogs/workspace-layout').then((module) =>
+            module.openWorkspaceLayoutDialog()
+        )
+        return
+    }
+
     if (action === 'baize:menu:view:writing-mode') {
         const { flags } = useFeatureFlags()
         if (!flags.writingMode) return

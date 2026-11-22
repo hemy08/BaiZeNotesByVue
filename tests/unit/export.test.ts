@@ -24,13 +24,16 @@ const electronMocks = vi.hoisted(() => ({
     showSaveDialog: vi.fn(),
     mainSend: vi.fn(),
     printToPDF: vi.fn(),
+    print: vi.fn(),
     loadURL: vi.fn(),
     close: vi.fn(),
     isDestroyed: vi.fn(),
     // P3-1：记录隐藏导出窗的构造参数与导航/开窗拦截器，便于断言安全基线
     windowOptions: [] as unknown[],
     webContentsOn: vi.fn(),
-    setWindowOpenHandler: vi.fn()
+    setWindowOpenHandler: vi.fn(),
+    openPath: vi.fn(),
+    tempPath: vi.fn()
 }))
 
 vi.mock('electron', () => {
@@ -38,6 +41,7 @@ vi.mock('electron', () => {
         webContents = {
             send: electronMocks.mainSend,
             printToPDF: electronMocks.printToPDF,
+            print: electronMocks.print,
             on: electronMocks.webContentsOn,
             setWindowOpenHandler: electronMocks.setWindowOpenHandler
         }
@@ -56,10 +60,14 @@ vi.mock('electron', () => {
             showOpenDialog: vi.fn(),
             showMessageBoxSync: vi.fn()
         },
-        shell: { showItemInFolder: vi.fn() },
+        shell: { showItemInFolder: vi.fn(), openPath: electronMocks.openPath },
         clipboard: { writeText: vi.fn() },
         // FUN-15：getAppPath 指向项目根目录，版本号从 package.json 动态读取
-        app: { getAppPath: () => process.cwd(), getVersion: () => PKG_VERSION }
+        app: {
+            getAppPath: () => process.cwd(),
+            getVersion: () => PKG_VERSION,
+            getPath: electronMocks.tempPath
+        }
     }
 })
 
@@ -71,6 +79,7 @@ import {
     ToHtml,
     ToWord,
     ToPdf,
+    PrintActiveFile,
     ExportToFile,
     getSupportedExportFormats,
     registerExportFormat
@@ -96,6 +105,14 @@ beforeEach(() => {
     electronMocks.showSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined })
     // FUN-15：ToPdf finally 中检查 isDestroyed，默认窗口存活
     electronMocks.isDestroyed.mockReturnValue(false)
+    // C3：打印预览临时目录默认放到测试临时目录；默认窗口加载成功
+    electronMocks.tempPath.mockReturnValue(tmpDir)
+    electronMocks.openPath.mockResolvedValue('')
+    electronMocks.loadURL.mockResolvedValue(undefined)
+    electronMocks.print.mockImplementation(
+        (_options: unknown, callback: (success: boolean, reason: string) => void) =>
+            callback(true, '')
+    )
 })
 
 describe('format registry', () => {
@@ -171,6 +188,79 @@ describe('ToHtml', () => {
         expect(html).toContain('<html lang="zh-CN">')
         expect(html).toContain('<h1>标题</h1>')
         expect(html).toContain('<p>正文段落</p>')
+    })
+
+    it('C4：主题 CSS、目录与工作区内本地图片应内联为自包含 HTML', async () => {
+        const workspace = await fs.mkdtemp(path.join(tmpDir, 'workspace-'))
+        const imagesDir = path.join(workspace, 'images')
+        await fs.mkdir(imagesDir, { recursive: true })
+        const imagePath = path.join(imagesDir, 'dot.png')
+        // 1x1 PNG（固定字节，确保 MIME/Base64 断言稳定）
+        await fs.writeFile(
+            imagePath,
+            Buffer.from(
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lVn3WQAAAABJRU5ErkJggg==',
+                'base64'
+            )
+        )
+        const sourcePath = path.join(workspace, 'note.md')
+        const filePath = path.join(workspace, 'out.html')
+        appState.rootPath = workspace
+        appState.currentActiveFile = {
+            name: 'note.md',
+            path: sourcePath,
+            type: 'file',
+            content: ''
+        }
+        await ToHtml('# 标题\n\n## 小节\n\n![点](images/dot.png)', filePath, {
+            sourceFilePath: sourcePath,
+            workspaceRoot: workspace
+        })
+        const html = await fs.readFile(filePath, 'utf8')
+        expect(html).toContain('--export-accent')
+        expect(html).toContain('class="export-toc"')
+        expect(html).toContain('href="#section-2"')
+        expect(html).toContain('data:image/png;base64,')
+        expect(html).not.toContain('<script')
+    })
+
+    it('C4：工作区外的本地图片不读取/不内联', async () => {
+        const workspace = await fs.mkdtemp(path.join(tmpDir, 'workspace-safe-'))
+        const outside = await fs.mkdtemp(path.join(tmpDir, 'outside-'))
+        const outsideImage = path.join(outside, 'secret.png')
+        await fs.writeFile(outsideImage, Buffer.from('outside-image'))
+        const sourcePath = path.join(workspace, 'note.md')
+        const filePath = path.join(workspace, 'out.html')
+        appState.rootPath = workspace
+        appState.currentActiveFile = {
+            name: 'note.md',
+            path: sourcePath,
+            type: 'file',
+            content: ''
+        }
+        await ToHtml('![越界](images/../../secret.png)', filePath, {
+            sourceFilePath: sourcePath,
+            workspaceRoot: workspace
+        })
+        const html = await fs.readFile(filePath, 'utf8')
+        expect(html).not.toContain('data:image/png;base64,')
+    })
+
+    it('C4：远程图片/不支持的图片扩展/纯文本无目录时不内联且不生成目录', async () => {
+        const workspace = await fs.mkdtemp(path.join(tmpDir, 'workspace-misc-'))
+        const filePath = path.join(workspace, 'out.html')
+        const sourcePath = path.join(workspace, 'note.md')
+        await fs.writeFile(path.join(workspace, 'not-image.txt'), 'text')
+        appState.rootPath = workspace
+        await ToHtml(
+            '![远程](https://example.com/a.png)\n\n![文本](not-image.txt)\n\n普通段落',
+            filePath,
+            { sourceFilePath: sourcePath, workspaceRoot: workspace }
+        )
+        const html = await fs.readFile(filePath, 'utf8')
+        expect(html).toContain('https://example.com/a.png')
+        expect(html).not.toContain('data:image/')
+        expect(html).not.toContain('class="export-toc"')
     })
 })
 
@@ -260,6 +350,83 @@ describe('ToPdf', () => {
         }) => { action: string }
         expect(openHandler({ url: 'https://evil.example.com/' })).toEqual({ action: 'deny' })
         expect(openHandler({ url: 'file:///C:/Windows/win.ini' })).toEqual({ action: 'deny' })
+    })
+})
+
+describe('C3 PrintActiveFile', () => {
+    function seedPrintableFile(): void {
+        appState.rootPath = tmpDir
+        appState.currentActiveFile = {
+            name: 'print.md',
+            path: path.join(tmpDir, 'print.md'),
+            type: 'file',
+            content: '# 打印标题\n\n正文内容'
+        }
+    }
+
+    it('print：应加载安全隐藏窗口并调用系统打印 API', async () => {
+        seedPrintableFile()
+        await PrintActiveFile('print')
+        expect(electronMocks.loadURL).toHaveBeenCalledWith(
+            expect.stringMatching(/^data:text\/html;charset=utf-8,/)
+        )
+        expect(electronMocks.print).toHaveBeenCalledWith(
+            expect.objectContaining({ silent: false, printBackground: true }),
+            expect.any(Function)
+        )
+        expect(electronMocks.close).toHaveBeenCalled()
+    })
+
+    it('preview：应生成临时 PDF 并交给系统默认阅读器打开', async () => {
+        seedPrintableFile()
+        electronMocks.printToPDF.mockResolvedValue(Buffer.from('PREVIEW-PDF'))
+        await PrintActiveFile('preview')
+        const previewCall = electronMocks.openPath.mock.calls[0][0] as string
+        expect(previewCall).toMatch(/BaiZeNotes-print-preview-\d+\.pdf$/)
+        expect(await fs.readFile(previewCall, 'utf8')).toBe('PREVIEW-PDF')
+        expect(electronMocks.close).toHaveBeenCalled()
+    })
+
+    it('no content：不应创建隐藏窗口', async () => {
+        await PrintActiveFile('print')
+        expect(electronMocks.windowOptions).toHaveLength(0)
+        expect(electronMocks.print).not.toHaveBeenCalled()
+    })
+
+    it('print 失败/取消回调：失败提示、取消不提示，并关闭窗口', async () => {
+        seedPrintableFile()
+        electronMocks.print.mockImplementation(
+            (_options: unknown, callback: (success: boolean, reason: string) => void) =>
+                callback(false, 'printer unavailable')
+        )
+        await PrintActiveFile('print')
+        expect(electronMocks.mainSend).toHaveBeenCalledWith(
+            'baize:dialog:open-vue',
+            'message',
+            expect.objectContaining({ message: expect.stringContaining('打印失败') })
+        )
+        expect(electronMocks.close).toHaveBeenCalled()
+
+        electronMocks.mainSend.mockClear()
+        electronMocks.print.mockImplementation(
+            (_options: unknown, callback: (success: boolean, reason: string) => void) =>
+                callback(false, 'cancelled')
+        )
+        await PrintActiveFile('print')
+        expect(electronMocks.mainSend).not.toHaveBeenCalled()
+    })
+
+    it('preview 打开失败：提示错误并关闭窗口', async () => {
+        seedPrintableFile()
+        electronMocks.printToPDF.mockResolvedValue(Buffer.from('PREVIEW-PDF'))
+        electronMocks.openPath.mockResolvedValue('no pdf reader')
+        await PrintActiveFile('preview')
+        expect(electronMocks.mainSend).toHaveBeenCalledWith(
+            'baize:dialog:open-vue',
+            'message',
+            expect.objectContaining({ message: expect.stringContaining('打印失败') })
+        )
+        expect(electronMocks.close).toHaveBeenCalled()
     })
 })
 

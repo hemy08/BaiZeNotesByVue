@@ -14,7 +14,7 @@
 
 import { promises as fs } from 'fs'
 import * as path from 'path'
-import { dialog, BrowserWindow, app } from 'electron'
+import { dialog, BrowserWindow, app, shell } from 'electron'
 // P1-7：markdown-it 改为首次 HTML/PDF 导出时惰性 require，这里只保留类型导入（编译期擦除）
 import type MarkdownItType from 'markdown-it'
 import { showErrorMessageBox, showInfoMessageBox } from './dialog-helpers'
@@ -23,7 +23,8 @@ import { tMain } from '../i18n'
 import { logger } from '../logger'
 // P1-AS-1：导出目标来自系统保存对话框（用户显式选择），返回后登记为受信精确文件；
 // 导出器只写该路径，避免渲染层通过其它入口驱动任意写
-import { registerTrustedPath } from '../security'
+import { registerTrustedPath, isSameOrWithin } from '../security'
+import { getThemeApiFromProvider } from '../providers'
 // P2-2：Word 重计算改由 worker 线程执行；基础设施不可用时降级为进程内导出
 import {
     exportMarkdownToWordWithWorker,
@@ -51,19 +52,253 @@ function loadMarkdownItConstructor(): MarkdownItConstructor {
 }
 
 /**
+ * C4：自包含 HTML 导出的可选上下文。
+ * - sourceFilePath：当前活动文件路径，用于把相对图片解析到文件所在目录；
+ * - workspaceRoot：工作区根；图片 realpath 必须落在根内（防止导出时越界读取）；
+ * - 两者缺省时退化为只导出 Markdown 正文，不内联本地图片。
+ */
+export interface HtmlExportOptions {
+    sourceFilePath?: string | null
+    workspaceRoot?: string | null
+}
+
+/** 导出文档图片内联上限：单张 5 MiB、整篇 20 MiB，避免导出文件失控。 */
+const EXPORT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+const EXPORT_IMAGES_TOTAL_MAX_BYTES = 20 * 1024 * 1024
+
+const EXPORT_IMAGE_MIME: Readonly<Record<string, string>> = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+    '.bmp': 'image/bmp',
+    '.ico': 'image/x-icon'
+}
+
+interface ExportHeading {
+    level: number
+    text: string
+    id: string
+}
+
+interface ExportThemeStyles {
+    name: string
+    backgroundColor: string
+    cardBackground: string
+    textColor: string
+    secondaryTextColor: string
+    borderColor: string
+    accentColor: string
+}
+
+const FALLBACK_EXPORT_THEME: ExportThemeStyles = {
+    name: 'baize',
+    backgroundColor: '#fbf9fe',
+    cardBackground: '#ffffff',
+    textColor: '#252233',
+    secondaryTextColor: '#6d6980',
+    borderColor: '#e7e2ef',
+    accentColor: '#764ba2'
+}
+
+/** 读取当前应用主题（失败时回退内置默认色，不阻塞导出）。 */
+function loadExportTheme(): ExportThemeStyles {
+    try {
+        const styles = getThemeApiFromProvider().getCurrentThemeStyles()
+        return styles && typeof styles === 'object'
+            ? { ...FALLBACK_EXPORT_THEME, ...styles }
+            : FALLBACK_EXPORT_THEME
+    } catch {
+        return FALLBACK_EXPORT_THEME
+    }
+}
+
+function escapeExportHtml(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+}
+
+function decodeExportImageSrc(value: string): string {
+    let decoded = value.replace(/&amp;/g, '&')
+    try {
+        decoded = decodeURIComponent(decoded)
+    } catch {
+        // 非法百分号编码保持原值，后续按路径解析失败即跳过
+    }
+    return decoded
+}
+
+/**
+ * 把 Markdown 中的相对本地图片内联为 data URI。
+ * 安全口径：只读取 realpath 落在工作区根内的文件；远程/data/协议 URL 原样保留，不发起读取。
+ */
+async function inlineLocalExportImages(html: string, options: HtmlExportOptions): Promise<string> {
+    const sourceFilePath = options.sourceFilePath ?? null
+    const workspaceRoot = options.workspaceRoot ?? appState.rootPath ?? ''
+    if (!workspaceRoot) {
+        return html
+    }
+    const sourceDir = sourceFilePath ? path.dirname(sourceFilePath) : workspaceRoot
+    let totalBytes = 0
+    const matches = Array.from(html.matchAll(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi))
+    for (const match of matches) {
+        const rawSrc = match[2]
+        if (
+            !rawSrc ||
+            /^(?:data:|https?:|\/\/|blob:|app:|file:)/i.test(rawSrc) ||
+            rawSrc.startsWith('#')
+        ) {
+            continue
+        }
+        const withoutQuery = rawSrc.split(/[?#]/, 1)[0]
+        const decoded = decodeExportImageSrc(withoutQuery)
+        const candidate = path.isAbsolute(decoded)
+            ? path.normalize(decoded)
+            : path.resolve(sourceDir, decoded)
+        let realCandidate: string
+        try {
+            realCandidate = await fs.realpath(candidate)
+        } catch {
+            continue
+        }
+        if (!isSameOrWithin(realCandidate, workspaceRoot)) {
+            continue
+        }
+        const ext = path.extname(realCandidate).toLowerCase()
+        const mime = EXPORT_IMAGE_MIME[ext]
+        if (!mime) {
+            continue
+        }
+        try {
+            const stat = await fs.stat(realCandidate)
+            if (!stat.isFile() || stat.size <= 0 || stat.size > EXPORT_IMAGE_MAX_BYTES) {
+                continue
+            }
+            if (totalBytes + stat.size > EXPORT_IMAGES_TOTAL_MAX_BYTES) {
+                break
+            }
+            const data = await fs.readFile(realCandidate)
+            totalBytes += data.byteLength
+            html = html.replace(
+                match[0],
+                `${match[1]}data:${mime};base64,${data.toString('base64')}${match[3]}`
+            )
+        } catch {
+            // 单张图片不可读时跳过，不影响整篇导出
+        }
+    }
+    return html
+}
+
+/**
+ * 构建主题化、自包含的 HTML 文档（HTML 导出 / 打印预览共用）。
+ * - 标题加稳定锚点并生成可点击目录；
+ * - 内联当前主题 CSS；本地图片按安全路径校验后内联 base64；
+ * - 不引入脚本、不加载外部 CSS/字体，导出文件可离线打开。
+ */
+export async function BuildStandaloneHtml(
+    content: string,
+    options: HtmlExportOptions = {}
+): Promise<string> {
+    const MarkdownIt = loadMarkdownItConstructor()
+    const md = new MarkdownIt({ html: false, linkify: true, typographer: false })
+    const env: Record<string, unknown> = {}
+    const tokens = md.parse(content, env)
+    const headings: ExportHeading[] = []
+    for (const token of tokens) {
+        if (token.type !== 'heading_open' || !/^h[1-6]$/.test(token.tag)) {
+            continue
+        }
+        const inline = tokens[tokens.indexOf(token) + 1]
+        const text = inline && inline.type === 'inline' ? inline.content : ''
+        const level = Number(token.tag.slice(1))
+        const id = `section-${headings.length + 1}`
+        token.attrSet('id', id)
+        headings.push({ level, text, id })
+    }
+    const body = md.renderer.render(tokens, md.options, env)
+    const titleHeading = headings.find((heading) => heading.level === 1)
+    const title =
+        titleHeading?.text ||
+        (options.sourceFilePath
+            ? path.basename(options.sourceFilePath, path.extname(options.sourceFilePath))
+            : 'BaiZeNotes')
+    const tocHeadings = headings.filter((heading) => heading.level === 2 || heading.level === 3)
+    const toc = tocHeadings.length
+        ? `<nav class="export-toc" aria-label="目录"><h2>目录</h2>${tocHeadings
+              .map(
+                  (heading) =>
+                      `<a class="export-toc-level-${heading.level}" href="#${heading.id}">${escapeExportHtml(heading.text)}</a>`
+              )
+              .join('')}</nav>`
+        : ''
+    const theme = loadExportTheme()
+    const version = await getAppVersionForExport()
+    const exportedAt = new Date().toLocaleString('zh-CN')
+    const htmlWithImages = await inlineLocalExportImages(body, options)
+    const footer = `由白泽笔记 v${escapeExportHtml(version)} 导出于 ${escapeExportHtml(exportedAt)}`
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="BaiZeNotes v${escapeExportHtml(version)}">
+<title>${escapeExportHtml(title)}</title>
+<style>
+:root{--export-bg:${theme.backgroundColor};--export-card:${theme.cardBackground};--export-text:${theme.textColor};--export-muted:${theme.secondaryTextColor};--export-border:${theme.borderColor};--export-accent:${theme.accentColor};}
+*{box-sizing:border-box}
+body{margin:0;background:var(--export-bg);color:var(--export-text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif;line-height:1.75}
+.export-layout{max-width:980px;margin:0 auto;padding:32px 24px 56px}
+.export-header{border-bottom:1px solid var(--export-border);padding-bottom:14px;margin-bottom:24px}
+.export-header h1{margin:0;font-size:2rem}
+.export-toc{background:var(--export-card);border:1px solid var(--export-border);border-radius:10px;padding:14px 18px;margin:0 0 24px}
+.export-toc h2{margin:0 0 8px;font-size:1.05rem;color:var(--export-muted)}
+.export-toc a{display:block;color:var(--export-accent);text-decoration:none;padding:2px 0}
+.export-toc a:hover{text-decoration:underline}
+.export-toc-level-3{padding-left:18px!important;font-size:.92em}
+.export-content h1,.export-content h2,.export-content h3{scroll-margin-top:16px;line-height:1.35}
+.export-content h2{border-bottom:1px solid var(--export-border);padding-bottom:6px;margin-top:1.8em}
+.export-content h3{margin-top:1.4em}
+.export-content a{color:var(--export-accent)}
+.export-content img{max-width:100%;height:auto}
+.export-content pre{background:var(--export-card);border:1px solid var(--export-border);border-radius:8px;padding:12px;overflow:auto}
+.export-content code{background:var(--export-card);border:1px solid var(--export-border);border-radius:4px;padding:1px 5px}
+.export-content pre code{border:0;padding:0}
+.export-content blockquote{border-left:4px solid var(--export-accent);margin:1em 0;padding:6px 16px;background:var(--export-card);color:var(--export-muted)}
+.export-content table{border-collapse:collapse;width:100%;margin:1em 0}
+.export-content th,.export-content td{border:1px solid var(--export-border);padding:8px 10px;text-align:left}
+.export-content th{background:var(--export-card)}
+.export-footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--export-border);color:var(--export-muted);font-size:12px}
+@media print{body{background:#fff;color:#111}.export-layout{max-width:none;padding:0}.export-toc{break-inside:avoid}.export-content a{color:#111}.export-footer{color:#666}}
+@page{size:A4;margin:16mm 15mm 18mm}
+</style>
+</head>
+<body>
+<div class="export-layout">
+<header class="export-header"><h1>${escapeExportHtml(title)}</h1></header>
+${toc}
+<main class="export-content">${htmlWithImages}</main>
+<footer class="export-footer">${footer}</footer>
+</div>
+</body>
+</html>`
+}
+
+/**
  * 导出配置接口
  */
 interface ExportConfig {
     name: string // 格式名称
     extensions: string[] // 文件扩展名
     defaultName: string // 默认文件名
-    exporter: (content: string, filePath: string) => Promise<void> // 导出函数
+    exporter: (content: string, filePath: string, options?: HtmlExportOptions) => Promise<void> // 导出函数（HTML/PDF 打印类导出可读取图片上下文）
 }
-
-/**
- * 导出配置表
- * CMP-30：内置格式名称经 getter 按当前语言实时翻译（自定义注册格式仍直接使用 name 字面量）
- */
 const exportConfigs: Record<string, ExportConfig> = {
     word: {
         get name() {
@@ -148,7 +383,10 @@ export async function ExportToFile(mainWindow: BrowserWindow, fileType: string):
     registerTrustedPath(result.filePath)
 
     try {
-        await config.exporter(currentContent, result.filePath)
+        await config.exporter(currentContent, result.filePath, {
+            sourceFilePath: appState.currentActiveFile?.path ?? null,
+            workspaceRoot: appState.rootPath || null
+        })
         showInfoMessageBox(tMain('mainMsg.dialog.exportSuccess', { path: result.filePath }))
     } catch (error) {
         showErrorMessageBox(tMain('mainMsg.dialog.exportFailed', { error: String(error) }))
@@ -283,67 +521,17 @@ metadata:
 }
 
 /**
- * 导出为 HTML 文件
+ * 导出为 HTML 文件（C4：主题化 / 自包含）
+ *
+ * 输出单个可离线打开的 HTML：内联主题 CSS、标题目录、本地图片 data URI；
+ * 图片读取遵守工作区边界与单张/总量上限，远程图片不做网络读取。
  */
-export async function ToHtml(content: string, filePath: string): Promise<void> {
-    // P1-7：首次 HTML 导出时才加载 markdown-it
-    const MarkdownIt = loadMarkdownItConstructor()
-    const md = new MarkdownIt()
-
-    const htmlContent = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exported from BaiZeNotes</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            color: #333;
-        }
-        pre {
-            background-color: #f4f4f4;
-            padding: 10px;
-            border-radius: 4px;
-            overflow-x: auto;
-        }
-        code {
-            background-color: #f4f4f4;
-            padding: 2px 4px;
-            border-radius: 2px;
-        }
-        blockquote {
-            border-left: 4px solid #ddd;
-            margin: 0;
-            padding-left: 16px;
-            color: #666;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f4f4f4;
-        }
-    </style>
-</head>
-<body>
-${md.render(content)}
-<footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 12px;">
-    Exported from BaiZeNotes at ${new Date().toLocaleString('zh-CN')}
-</footer>
-</body>
-</html>`
-
+export async function ToHtml(
+    content: string,
+    filePath: string,
+    options: HtmlExportOptions = {}
+): Promise<void> {
+    const htmlContent = await BuildStandaloneHtml(content, options)
     await fs.writeFile(filePath, htmlContent, 'utf-8')
 }
 
@@ -416,6 +604,88 @@ ${md.render(content)}
     } finally {
         // FUN-15/MEM-07：加载、打印或写盘任一步失败都必须关闭隐藏窗口，
         // 避免导出失败时窗口泄漏累积
+        if (!win.isDestroyed()) {
+            win.close()
+        }
+    }
+}
+
+/**
+ * C3：打印当前 Markdown 文件。
+ *
+ * - print：经 Electron print API 打开系统打印对话框（用户可预览/选打印机）；
+ * - preview：先用 printToPDF 生成临时 PDF，再交给系统默认 PDF 阅读器预览分页。
+ *
+ * 渲染使用与 C4 相同的主题化 HTML；隐藏窗口沿用 ToPdf 的安全基线（sandbox /
+ * contextIsolation / 禁止 preload / 禁止导航与新窗口）。
+ */
+export async function PrintActiveFile(mode: 'print' | 'preview' = 'print'): Promise<void> {
+    const currentContent = appState.currentActiveFile?.content || ''
+    if (!currentContent) {
+        showErrorMessageBox(tMain('mainMsg.file.noExportContent'))
+        return
+    }
+
+    const html = await BuildStandaloneHtml(currentContent, {
+        sourceFilePath: appState.currentActiveFile?.path ?? null,
+        workspaceRoot: appState.rootPath || null
+    })
+    const win = new BrowserWindow({
+        width: 800,
+        height: 600,
+        show: false,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true,
+            webSecurity: true
+        }
+    })
+    win.webContents.on('will-navigate', (event) => event.preventDefault())
+    win.webContents.on('will-redirect', (event) => event.preventDefault())
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+
+    try {
+        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+        if (mode === 'preview') {
+            const pdfData = await win.webContents.printToPDF({
+                printBackground: true,
+                pageSize: 'A4'
+            })
+            // 每次预览使用唯一临时文件：系统 PDF 阅读器可能锁定上次文件，
+            // 复用固定文件名会导致第二次预览 EBUSY。
+            const previewPath = path.join(
+                app.getPath('temp'),
+                `BaiZeNotes-print-preview-${Date.now()}.pdf`
+            )
+            await fs.writeFile(previewPath, pdfData)
+            const openError = await shell.openPath(previewPath)
+            if (openError) {
+                throw new Error(openError)
+            }
+            return
+        }
+
+        await new Promise<void>((resolve, reject) => {
+            win.webContents.print(
+                {
+                    silent: false,
+                    printBackground: true
+                },
+                (success, failureReason) => {
+                    // 用户取消打印不是失败，不弹错误框
+                    if (success || failureReason === 'cancelled') {
+                        resolve()
+                        return
+                    }
+                    reject(new Error(failureReason || 'print failed'))
+                }
+            )
+        })
+    } catch (error) {
+        logger.error('[Export] 打印失败：', error)
+        showErrorMessageBox(tMain('mainMsg.file.printFailed', { error: String(error) }))
+    } finally {
         if (!win.isDestroyed()) {
             win.close()
         }

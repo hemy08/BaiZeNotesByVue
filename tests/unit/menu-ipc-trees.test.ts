@@ -22,6 +22,7 @@ const treeMocks = vi.hoisted(() => ({
     reloadDirFromDisk: vi.fn(),
     insertImportFormFile: vi.fn(),
     exportToFile: vi.fn(),
+    printActiveFile: vi.fn(),
     // 结构优化第 2 批 2.1（H3）：帮助类 JSDOM 对话框已迁移为渲染层 Vue 对话框，
     // menu-help 改为调用 Request*Dialog(mainWindow, ...) 发送 OPEN_VUE_DIALOG 请求。
     requestReleaseNotesDialog: vi.fn(),
@@ -69,7 +70,8 @@ vi.mock('../../src/main/utils/file-utils/import', () => ({
 }))
 
 vi.mock('../../src/main/utils/file-utils/export', () => ({
-    ExportToFile: treeMocks.exportToFile
+    ExportToFile: treeMocks.exportToFile,
+    PrintActiveFile: treeMocks.printActiveFile
 }))
 
 vi.mock('../../src/main/dialogs/dialogs', () => ({
@@ -479,6 +481,14 @@ describe('fileMenuHandlers 全量 handler（ET-7）', () => {
         const win = makeWindow()
         pickHandler(fileMenuHandlers, 'export', fileType)(win as never)
         expect(treeMocks.exportToFile).toHaveBeenCalledWith(win, fileType)
+    })
+
+    it('should trigger print preview and print via PrintActiveFile', () => {
+        const handlers = fileMenuHandlers as unknown as Record<string, () => void>
+        handlers['print-preview']()
+        expect(treeMocks.printActiveFile).toHaveBeenCalledWith('preview')
+        handlers['print']()
+        expect(treeMocks.printActiveFile).toHaveBeenCalledWith('print')
     })
 
     it.each(FILE_ENCODINGS)('should request reopening with encoding %s', (encoding) => {

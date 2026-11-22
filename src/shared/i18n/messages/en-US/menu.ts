@@ -30,9 +30,11 @@ export default {
             json: 'Export as JSON',
             xml: 'Export as XML',
             yaml: 'Export as YAML',
-            html: 'Export as HTML',
+            html: 'Export as HTML (self-contained)',
             pdf: 'Export as PDF'
         },
+        printPreview: 'Print Preview',
+        print: 'Print',
         saveAs: 'Save As',
         reload: 'Reload from Disk',
         relaunch: 'Restart Application',
@@ -67,6 +69,7 @@ export default {
         toggleWhitespace: 'Show/Hide Whitespace',
         toggleOutline: 'Show/Hide Outline',
         writingMode: 'Writing Mode',
+        layoutProfiles: 'Layout Configurations…',
         fold: {
             label: 'Collapse/Expand Headings',
             allFold: 'Collapse All',

@@ -114,6 +114,7 @@ export default {
         },
         readErrorWithDetail: '{reason}（{message}）',
         noExportContent: '当前没有可导出的内容',
+        printFailed: '打印失败: {error}',
         unsupportedExportFormat: '暂不支持导出为 {format} 格式',
         excelImportUnsupported: '暂不支持直接导入 .xls/.xlsx 文件，请先将表格导出为 CSV 格式再导入',
         htmlToMarkdownFailed: 'HTML 转 Markdown 失败: {error}',

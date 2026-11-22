@@ -177,6 +177,39 @@ describe('MarkdownEditComponent：视图模式切换', () => {
             emitSpy.mock.calls.filter((call) => call[0] === EVENT_BUS.MONACO_RELAYOUT).length
         ).toBeGreaterThanOrEqual(3)
     })
+
+    it('E11 布局事件切换三种视图并回写当前布局状态', async () => {
+        const { currentWorkspaceLayout } =
+            await import('@renderer/components/Markdown/workspace-layout')
+        await mountEditor()
+        const dispatch = (viewMode: 'edit' | 'preview' | 'edit-preview') => {
+            window.dispatchEvent(
+                new CustomEvent('baize:workspace-layout:apply', {
+                    detail: {
+                        id: 'test',
+                        viewMode,
+                        resourceManagerVisible: true,
+                        resourceManagerWidth: 300
+                    }
+                })
+            )
+        }
+        dispatch('edit')
+        await nextTick()
+        expect(getResizer().style.display).toBe('none')
+        expect(currentWorkspaceLayout.viewMode).toBe('edit')
+        dispatch('preview')
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('preview')
+        dispatch('edit-preview')
+        await nextTick()
+        expect(getResizer().style.display).not.toBe('none')
+        expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
+        // 非法/无 detail 事件直接忽略，不改变当前布局
+        window.dispatchEvent(new CustomEvent('baize:workspace-layout:apply'))
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
+    })
 })
 
 describe('MarkdownEditComponent：文件事件与编辑区可见性', () => {

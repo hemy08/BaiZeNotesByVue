@@ -331,6 +331,10 @@ describe('menu-config', () => {
             accelerator: 'F12',
             menuAction: 'baize:menu:view:dev-tools'
         })
+        expect(submenu).toContainEqual({
+            label: '布局配置…',
+            menuAction: 'baize:menu:view:layout-profiles'
+        })
         const fold = viewMenu.submenu!.find((item) => displayText(item) === '折叠/展开标题')
         expect(fold?.submenu).toHaveLength(8)
         expect(resolved(fold!.submenu![0])).toEqual({

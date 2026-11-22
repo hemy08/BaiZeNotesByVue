@@ -47,6 +47,15 @@
 - 门禁：新增 113 用例（8 文件）；全量 **336 文件 / 6,290 用例**全通过；typecheck 四段 / ESLint 全仓 0 / Prettier / coverage（93.76/88.32/94.4/94.11）/ 白名单 `--check`（74+28+6）/ docs:check / memory:check / audit:all 0 漏洞 / `build:unpack`+`build:win:all` / `budget:check` 9/9 / `verify:fuses` 8/8 + 启动冒烟全绿；asar 内 OCR worker 冒烟识别通过（129ms）
 - 已知边界：MVP 仅 `eng`（chi_sim 后续）；首次使用需联网下载语言包（缓存后离线可用）；portable 预算余量仅 74.6 KiB（后续依赖增量需先回收死重）
 
+### ✅ 第一层能力补齐（2026-11-22）
+
+> 依据 `docs/reports/md/01-检查与扫描/Markdown编辑器能力补全选项报告.md` §2.4.2 第一层（复用现有链路、低风险优先）。
+
+- **C3 打印 / 打印预览**：文件菜单新增「打印预览」「打印」（`Ctrl+Alt+P`）；复用主题化 Markdown 渲染，Electron `webContents.print` 打开系统打印对话框；打印预览生成临时 PDF 交系统阅读器分页预览；隐藏窗口沿用 PDF 导出的 sandbox/禁导航安全基线
+- **C4 主题化/自包含 HTML 导出**：「导出为 HTML」升级为单文件自包含：当前主题 CSS、稳定标题目录、本地图片 Base64 内联（工作区 realpath 校验、单张 5 MiB/整篇 20 MiB 上限），远程图片不做网络读取；导出入口/提示词保持兼容
+- **E11 工作区布局 / 多配置**：视图菜单新增「布局配置…」；内置写作/研究/项目 3 套布局，支持保存当前「视图模式 + 资源管理器显隐/宽度」为自定义 profile、应用/删除；布局经渲染层 CustomEvent 联动 WorkSpace 与编辑区，只影响 UI，不修改笔记
+- 测试/门禁：全量 **340 文件 / 6,318 用例（6,313 通过 + 5 跳过）**；覆盖率 **93.63 / 88.21 / 94.24 / 94.00**；typecheck / ESLint / Prettier / docs:check / quality:check / audit 全绿；build:unpack + portable/NSIS 构建；预算通过（Setup 111.59 MiB / portable 100.99 MiB / asar 39.22 MiB）
+
 ### 📋 开发基线
 
 - 起点：**1.5.1 已发布**（2026-11-22，tag `release-1.5.1`）；当前基线（批次 4 后）：测试 336 文件 / 6,290 用例、IPC 108 通道 / 18 组、preload 白名单 send 74 + receive 28 + window.api 6、报告 md 32 篇 / HTML 33 页

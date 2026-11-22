@@ -79,6 +79,12 @@ import { useDocumentTabs } from './useDocumentTabs'
 // P2 功能错误处理修复：用户主动操作失败统一反馈（编码转换/按编码重开）
 import { describeActionError, reportActionFailure } from '../../common/action-feedback'
 import type { PreviewScrollTarget } from './preview-scroll-sync'
+import {
+    WORKSPACE_LAYOUT_APPLY_EVENT,
+    updateCurrentWorkspaceViewMode,
+    type WorkspaceLayoutProfile,
+    type WorkspaceLayoutViewMode
+} from './workspace-layout'
 
 // M5：保存/模板/导入替换 3 个进程内事件订阅统一经 useEventBus 注册，卸载时自动清理
 const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownEditComponent' })
@@ -614,6 +620,9 @@ function onHandleNewContent(content: string, kind: 'open' | 'reload' = 'open') {
 function onHandleEditorShow(edit: boolean, preview: boolean) {
     isShowEditArea.value = edit
     isShowPreviewArea.value = preview
+    const viewMode: WorkspaceLayoutViewMode =
+        edit && preview ? 'edit-preview' : preview ? 'preview' : 'edit'
+    updateCurrentWorkspaceViewMode(viewMode)
     if (edit && preview) {
         isShowResizer.value = true
         resizerPosition.value = '50%'
@@ -671,6 +680,21 @@ const handlePreviewModel = () => {
 
 const handleEditPreviewModel = () => {
     onHandleEditorShow(true, true)
+}
+
+/** E11：应用布局 profile 的视图模式部分（资源管理器部分由 WorkSpace 响应） */
+function handleApplyWorkspaceLayout(event: Event): void {
+    const detail = (event as CustomEvent<WorkspaceLayoutProfile>).detail
+    if (!detail) {
+        return
+    }
+    if (detail.viewMode === 'edit') {
+        onHandleEditorShow(true, false)
+    } else if (detail.viewMode === 'preview') {
+        onHandleEditorShow(false, true)
+    } else {
+        onHandleEditorShow(true, true)
+    }
 }
 
 watch(
@@ -786,6 +810,8 @@ onMounted(() => {
     if (parentElement) {
         windowWidth.value = parentElement.clientWidth.toString()
     }
+    // E11：监听布局 profile 应用事件（与 WorkSpace 同事件源，互不直接依赖）
+    window.addEventListener(WORKSPACE_LAYOUT_APPLY_EVENT, handleApplyWorkspaceLayout)
 
     onEventBus(EVENT_BUS.MONACO_SAVE_FILE_CONTENT_TO_DISK, handleSaveFileContent)
     onEventBus(EVENT_BUS.MONACO_USE_TEMPLATE, handleUseTemplate)
@@ -816,6 +842,7 @@ onMounted(() => {
 
 // 销毁编辑器实例
 onBeforeUnmount(() => {
+    window.removeEventListener(WORKSPACE_LAYOUT_APPLY_EVENT, handleApplyWorkspaceLayout)
     // 内存与生命周期治理（P3）：先摘除拖拽期间挂在 document 上的全局监听
     //（尚未结束的拖拽不再留有 mousemove/mouseup 回调），并取消未执行的重排通知计时器
     isResizing = false

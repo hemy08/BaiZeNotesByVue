@@ -580,6 +580,32 @@ const dialogRenderer = {
             blocksTabLabel: '标签一',
             tabLinkText: '查看标签页'
         }
+    },
+    workspaceLayout: {
+        title: '工作区布局',
+        description:
+            '把当前视图模式与资源管理器状态保存为布局，在写作、研究、项目之间快速切换。布局只影响界面，不修改笔记内容。',
+        current: '当前布局',
+        viewMode: '视图模式',
+        resourceManager: '资源管理器',
+        viewModes: {
+            edit: '仅编辑',
+            preview: '仅预览',
+            'edit-preview': '编辑 + 预览'
+        },
+        resourceVisible: '显示',
+        resourceHidden: '隐藏',
+        width: '宽度 {width}px',
+        apply: '应用',
+        delete: '删除',
+        builtin: '内置',
+        savePlaceholder: '输入布局名称，例如：长文写作',
+        saveCurrent: '保存当前布局',
+        saved: '已保存布局「{name}」',
+        saveFailed: '保存布局失败（名称不能为空、超长或数量已达上限）',
+        deleted: '已删除布局「{name}」',
+        deleteFailed: '删除布局失败',
+        noCustom: '还没有自定义布局，保存当前布局后会显示在这里。'
     }
 }
 

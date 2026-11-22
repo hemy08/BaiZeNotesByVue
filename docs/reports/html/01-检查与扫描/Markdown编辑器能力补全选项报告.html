@@ -22,7 +22,7 @@
     <a class="toc-l2" href="#sec-3">3. 能力候选矩阵</a>
     <a class="toc-l3" href="#sub-7">A. 编辑器与工作流</a>
     <a class="toc-l3" href="#sub-8">B. 知识库与文档关系（B1/B2/B4/B5 已于 1.5.1 方案 A 落地；B3 未落地）</a>
-    <a class="toc-l3" href="#sub-9">C. 发布与导出（均未落地）</a>
+    <a class="toc-l3" href="#sub-9">C. 发布与导出（C3/C4 已落地；C1/C2 候选）</a>
     <a class="toc-l3" href="#sub-10">D. 平台、扩展与协作（均未落地）</a>
     <a class="toc-l3" href="#sub-11">E. 工作流扩展新增候选（本次外部对标新增）</a>
     <a class="toc-l2" href="#sec-4">4. 推荐套餐与版本路线</a>
@@ -50,7 +50,7 @@
 <strong>项目基线</strong>：v1.5.1（开发中；最新发布版本为 v1.5.0，tag <code>release-1.5.0</code>）。
 <strong>整理时间</strong>：2026-11-21；本次补充 Obsidian / iA Writer / Logseq / Joplin / 思源 / Notion / Zettlr 的外部能力对标。
 <strong>结论先行</strong>：v1.5.1 已补齐搜索、命令面板、多标签、历史、lint、拼写、智能输入、大纲等编辑器基础能力；下一阶段最值得借鉴的是 <strong>文档关系、属性/查询、捕获输入、发布与回顾</strong>，而不是立刻做完整数据库或实时协作。
-<strong>本次完成状态</strong>：A1、A2、A3、A4、A6、A7、A8、A9、A10 已完成；A5 与知识库基座（索引层、B1、B2 标签、B4、B5、E10）已于 2026-11-22 按方案 A 落地（A2/A5/A8/A9 默认开启，A1/A3/A4/A6/A7/A10 为可选能力、默认关闭）；A7 已扩展为普通/写作模式通用；E9 的 Focus/Typewriter、写作目标、Style Check 已在 1.5.1 写作体验 P0 落地（可选、默认关闭）；B2 的持久全文索引在 1.5.1 明确不做，只保留 A2 按需搜索与指标；B3/C/D/E 其余系列仍为候选。
+<strong>本次完成状态</strong>：A1、A2、A3、A4、A6、A7、A8、A9、A10 已完成；A5 与知识库基座（索引层、B1、B2 标签、B4、B5、E10）已于 2026-11-22 按方案 A 落地（A2/A5/A8/A9 默认开启，A1/A3/A4/A6/A7/A10 为可选能力、默认关闭）；A7 已扩展为普通/写作模式通用；E9 的 Focus/Typewriter、写作目标、Style Check 已在 1.5.1 写作体验 P0 落地（可选、默认关闭）；B2 的持久全文索引在 1.5.1 明确不做，只保留 A2 按需搜索与指标；B3/C/D/E 其余系列仍为候选；<strong>第一层的 C3 打印/打印预览、C4 主题化自包含 HTML 导出、E11 工作区布局/多配置已于 2026-11-22 补齐</strong>。
 <strong>使用方式</strong>：§5 勾选未落地能力，或直接回复套餐编号（如 <code>套餐 B + E1</code>）。</p>
 </blockquote>
 <h2 id="sec-1">1. 当前能力基线（v1.5.1）</h2>
@@ -430,7 +430,7 @@
 </tbody>
 </table>
 <h4>2.4.2 按架构适配度分层</h4>
-<p><strong>第一层：复用现有链路即可落地（低风险，优先）</strong></p>
+<p><strong>第一层：复用现有链路即可落地（低风险，优先）</strong>\n\n&gt; 实现状态（2026-11-22）：A5、E6、E10 已于 1.5.1 落地；C3（文件 → 打印 / 打印预览）、C4（导出 → HTML 自包含）、E11（视图 → 布局配置…）已于 1.5.2 补齐。</p>
 <table>
 <thead>
 <tr>
@@ -882,7 +882,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-9">C. 发布与导出（均未落地）</h3>
+<h3 id="sub-9">C. 发布与导出（C3/C4 已落地；C1/C2 候选）</h3>
 <table>
 <thead>
 <tr>
@@ -918,7 +918,7 @@
 <td>C3</td>
 <td><strong>打印 / 打印预览</strong></td>
 <td>直接打印或预览分页</td>
-<td>打印样式；Electron print API</td>
+<td>✅ 2026-11-22：文件菜单「打印预览/打印」；Electron print API + 临时 PDF 预览</td>
 <td>与 PDF 导出一致性</td>
 <td>S</td>
 <td>★★★☆☆</td>
@@ -927,7 +927,7 @@
 <td>C4</td>
 <td><strong>主题化/自包含 HTML 导出</strong></td>
 <td>保留样式/图片/目录</td>
-<td>内联 CSS/图片；TOC；主题</td>
+<td>✅ 2026-11-22：主题 CSS/TOC/本地图片 Base64 内联；工作区路径校验</td>
 <td>资源体积/外链安全</td>
 <td>S~M</td>
 <td>★★★☆☆</td>
@@ -1112,7 +1112,7 @@
 <td>E11</td>
 <td><strong>工作区布局 / 多配置</strong></td>
 <td>写作/研究/项目切换</td>
-<td>布局保存；最近工作区；配置 profile</td>
+<td>✅ 2026-11-22：视图 → 布局配置（内置 3 套 + 自定义保存/应用/删除）</td>
 <td>状态管理/文件监听</td>
 <td>S~M</td>
 <td>★★★☆☆</td>
@@ -1224,12 +1224,12 @@
 <tr>
 <td>C3</td>
 <td>打印/打印预览</td>
-<td></td>
+<td>✅</td>
 </tr>
 <tr>
 <td>C4</td>
 <td>主题化/自包含 HTML 导出</td>
-<td></td>
+<td>✅</td>
 </tr>
 <tr>
 <td>D1</td>
@@ -1314,7 +1314,7 @@
 <tr>
 <td>E11</td>
 <td>工作区布局/多配置</td>
-<td></td>
+<td>✅</td>
 </tr>
 </tbody>
 </table>

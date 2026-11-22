@@ -599,6 +599,32 @@ const dialogRenderer = {
             blocksTabLabel: 'Tab one',
             tabLinkText: 'Go to tab'
         }
+    },
+    workspaceLayout: {
+        title: 'Workspace Layouts',
+        description:
+            'Save the current view mode and resource manager state as a layout, then switch quickly between writing, research, and project setups. Layouts only affect the UI and never modify note content.',
+        current: 'Current layout',
+        viewMode: 'View mode',
+        resourceManager: 'Resource manager',
+        viewModes: {
+            edit: 'Editor only',
+            preview: 'Preview only',
+            'edit-preview': 'Editor + Preview'
+        },
+        resourceVisible: 'Visible',
+        resourceHidden: 'Hidden',
+        width: 'Width {width}px',
+        apply: 'Apply',
+        delete: 'Delete',
+        builtin: 'Built-in',
+        savePlaceholder: 'Layout name, for example: Long-form writing',
+        saveCurrent: 'Save current layout',
+        saved: 'Saved layout "{name}"',
+        saveFailed: 'Failed to save layout (empty/too long name or limit reached)',
+        deleted: 'Deleted layout "{name}"',
+        deleteFailed: 'Failed to delete layout',
+        noCustom: 'No custom layouts yet. Save the current layout to see it here.'
     }
 }
 

@@ -119,6 +119,13 @@ const fileMenu: BaiZeMenuEntry = {
         importMenu,
         exportMenu,
         { type: 'separator' },
+        { labelKey: 'menu.file.printPreview', menuAction: 'baize:menu:file:print-preview' },
+        {
+            labelKey: 'menu.file.print',
+            menuAction: 'baize:menu:file:print',
+            accelerator: 'Ctrl+Alt+P'
+        },
+        { type: 'separator' },
         // FUN-26：Ctrl+S 已由编辑器侧绑定（hemy-editor-shortcut.ts 的 Monaco addCommand
         // + MarkdownEditComponent.vue 窗口级监听），菜单标注如实保留，不再全局重复注册。
         { labelKey: 'common.save', accelerator: 'Ctrl+S', menuAction: 'baize:menu:file:save' },
@@ -278,6 +285,10 @@ const viewMenu: BaiZeMenuEntry = {
             labelKey: 'menu.view.writingMode',
             menuAction: 'baize:menu:view:writing-mode',
             writingFlag: 'writingMode'
+        },
+        {
+            labelKey: 'menu.view.layoutProfiles',
+            menuAction: 'baize:menu:view:layout-profiles'
         },
         { type: 'separator' },
         {

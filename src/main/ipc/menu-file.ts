@@ -7,7 +7,7 @@ import {
     ReloadDirFromDisk
 } from '../utils/file-utils/file-operations'
 import { InsertImportFormFile } from '../utils/file-utils/import'
-import { ExportToFile } from '../utils/file-utils/export'
+import { ExportToFile, PrintActiveFile } from '../utils/file-utils/export'
 import { requestRelaunch } from '../utils/app-relaunch'
 import { IPC } from '../../shared/ipc-channels'
 
@@ -78,7 +78,10 @@ export const fileMenuHandlers = {
             ExportToFile(mainWindow, 'html'),
         pdf: (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
             ExportToFile(mainWindow, 'pdf')
-    }
+    },
+
+    'print-preview': () => PrintActiveFile('preview'),
+    print: () => PrintActiveFile('print')
 }
 
 export const codingMenuHandlers = {

@@ -32,9 +32,11 @@ export default {
             json: '导出为JSON',
             xml: '导出为XML',
             yaml: '导出为YAML',
-            html: '导出为HTML',
+            html: '导出为HTML（自包含）',
             pdf: '导出为PDF'
         },
+        printPreview: '打印预览',
+        print: '打印',
         saveAs: '另存为',
         reload: '从磁盘重新加载',
         relaunch: '重启应用',
@@ -69,6 +71,7 @@ export default {
         toggleWhitespace: '显示/隐藏空白字符',
         toggleOutline: '显示/隐藏文章大纲',
         writingMode: '写作模式',
+        layoutProfiles: '布局配置…',
         fold: {
             label: '折叠/展开标题',
             allFold: '全部折叠',

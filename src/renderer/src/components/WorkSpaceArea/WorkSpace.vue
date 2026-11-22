@@ -77,6 +77,7 @@ import {
     computed,
     onMounted,
     onBeforeUnmount,
+    watch,
     defineAsyncComponent,
     defineComponent,
     h
@@ -91,6 +92,12 @@ import PluginTools from '@renderer/components/PluginTools/PluginTools.vue'
 import HemyTools from '@renderer/components/HemyTools/HemyTools.vue'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import {
+    WORKSPACE_LAYOUT_APPLY_EVENT,
+    normalizeWorkspaceLayoutWidth,
+    updateCurrentWorkspaceResourceState,
+    type WorkspaceLayoutProfile
+} from '@renderer/components/Markdown/workspace-layout'
 
 // 2026-11-18（遗留清单 #9/#11）：HTML 查看器与 PDF 预览按需加载——
 // PDF 预览内含 pdfjs-dist（较大），静态导入会打进入口 chunk；改为异步组件后
@@ -325,9 +332,35 @@ function onWindowResized() {
     windowWidth.value = window.innerWidth
 }
 
+/** E11：应用布局 profile（仅调整资源管理器显隐/宽度，不改变编辑器内容） */
+function handleApplyWorkspaceLayout(event: Event): void {
+    const detail = (event as CustomEvent<WorkspaceLayoutProfile>).detail
+    if (!detail) {
+        return
+    }
+    isShowResourceMgrArea.value = detail.resourceManagerVisible === true
+    resMgrWidth.value = `${normalizeWorkspaceLayoutWidth(detail.resourceManagerWidth)}px`
+    updateCurrentWorkspaceResourceState(
+        isShowResourceMgrArea.value,
+        normalizeWorkspaceLayoutWidth(detail.resourceManagerWidth)
+    )
+}
+
+watch([isShowResourceMgrArea, resMgrWidth], () => {
+    updateCurrentWorkspaceResourceState(
+        isShowResourceMgrArea.value,
+        parseInt(resMgrWidth.value, 10)
+    )
+})
+
 onMounted(() => {
     windowWidth.value = window.innerWidth
     window.addEventListener('resize', onWindowResized)
+    window.addEventListener(WORKSPACE_LAYOUT_APPLY_EVENT, handleApplyWorkspaceLayout)
+    updateCurrentWorkspaceResourceState(
+        isShowResourceMgrArea.value,
+        parseInt(resMgrWidth.value, 10)
+    )
 
     onEventBus(EVENT_BUS.PLUGIN_TOOLS_CONTAINER_SHOW, handlePluginToolsContainerShow)
     onEventBus(EVENT_BUS.WORKSPACE_SHOW, handleWorkAreaContainerShow)
@@ -339,6 +372,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     window.removeEventListener('resize', onWindowResized)
+    window.removeEventListener(WORKSPACE_LAYOUT_APPLY_EVENT, handleApplyWorkspaceLayout)
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)
     window.electron.ipcRenderer.removeListener(
