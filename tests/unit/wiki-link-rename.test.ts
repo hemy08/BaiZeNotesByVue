@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
+import * as iconv from 'iconv-lite'
 import {
     applyWikiLinkRenamePlan,
     buildWikiLinkRenamePlan,
@@ -91,7 +92,7 @@ describe('buildWikiLinkRenamePlan + applyWikiLinkRenamePlan', () => {
         expect(plan.updates).toEqual([])
     })
 
-    it('保留 BOM 与 CRLF', async () => {
+    it('保留 BOM 与 CRLF，并按原编码写回', async () => {
         write('old.md', '# Old')
         write('source.md', '\uFEFF[[old]]\r\n第二行\r\n')
         const plan = await buildWikiLinkRenamePlan(
@@ -100,10 +101,33 @@ describe('buildWikiLinkRenamePlan + applyWikiLinkRenamePlan', () => {
             path.join(root, 'new.md')
         )
         expect(plan.updates).toHaveLength(1)
-        const content = plan.updates[0].content
-        expect(content.startsWith('\uFEFF')).toBe(true)
-        expect(content).toContain('\r\n')
-        expect(content).toContain('[[new]]')
+        expect(plan.updates[0].content).toContain('\r\n')
+        expect(plan.updates[0].content).toContain('[[new]]')
+        expect(plan.updates[0].bom).toBe('utf-8')
+        await applyWikiLinkRenamePlan(plan)
+        const bytes = fs.readFileSync(path.join(root, 'source.md'))
+        expect(bytes[0]).toBe(0xef)
+        expect(bytes[1]).toBe(0xbb)
+        expect(bytes[2]).toBe(0xbf)
+        expect(bytes.subarray(3).toString('utf8')).toBe('[[new]]\r\n第二行\r\n')
+    })
+
+    it('GBK 来源文件按原编码写回，不损坏中文', async () => {
+        write('old.md', '# Old')
+        const sourcePath = path.join(root, 'source.md')
+        fs.writeFileSync(sourcePath, iconv.encode('中文[[old]]结尾', 'gbk'))
+        const plan = await buildWikiLinkRenamePlan(
+            root,
+            path.join(root, 'old.md'),
+            path.join(root, 'new.md')
+        )
+        expect(plan.updates).toHaveLength(1)
+        expect(plan.updates[0].encoding).toBe('gbk')
+        await applyWikiLinkRenamePlan(plan)
+        const bytes = fs.readFileSync(sourcePath)
+        expect(iconv.decode(bytes, 'gbk')).toBe('中文[[new]]结尾')
+        // 若不是 GBK 而是 UTF-8，中文会被解码成替换字符/长度不同
+        expect(bytes.includes(Buffer.from('中文', 'utf8'))).toBe(false)
     })
 
     it('无引用时不产生更新', async () => {

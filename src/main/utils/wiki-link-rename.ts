@@ -27,6 +27,7 @@ import type {
 import { normalizeSlashes } from '../../shared/utils/path'
 import { logger } from './logger'
 import { buildWorkspaceIndex } from './workspace-index'
+import { decodeFileContent, encodeFileContent } from './file-utils/file-encoding'
 
 /** 可被 Wiki 链接更新的文本扩展名 */
 const WIKI_TEXT_EXTENSIONS = new Set(['.md', '.markdown', '.txt'])
@@ -39,8 +40,12 @@ export const MAX_RENAME_LINK_REPLACEMENTS = 5000
 export interface WikiLinkFileUpdate {
     /** 来源文件绝对路径 */
     sourcePath: string
-    /** 写入后的完整内容 */
+    /** 解码后的完整文本（BOM 已剥离） */
     content: string
+    /** 原文件编码（decodeFileContent 归一化结果；写回保持原编码） */
+    encoding: string
+    /** 原文件 BOM 类型；null 表示无 BOM */
+    bom: 'utf-8' | 'utf-16le' | 'utf-16be' | null
     /** 替换处数 */
     replacementCount: number
 }
@@ -77,6 +82,35 @@ function isWithinRoot(rootPath: string, filePath: string): boolean {
 
 function isWikiTextPath(filePath: string): boolean {
     return WIKI_TEXT_EXTENSIONS.has(path.extname(filePath).toLowerCase())
+}
+
+/** 识别原文件 BOM（与 file-encoding 的 BOM 口径一致） */
+function detectBom(buffer: Buffer): WikiLinkFileUpdate['bom'] {
+    if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
+        return 'utf-8'
+    }
+    if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+        return 'utf-16le'
+    }
+    if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+        return 'utf-16be'
+    }
+    return null
+}
+
+/** 原编码 + 原 BOM 写回（BOM 不重复添加；编码模块保证非 UTF-8 可转码） */
+function encodeUpdateBuffer(update: WikiLinkFileUpdate): Buffer {
+    const encoded = encodeFileContent(update.content, update.encoding)
+    if (update.bom === null) return encoded
+    const bom =
+        update.bom === 'utf-8'
+            ? Buffer.from([0xef, 0xbb, 0xbf])
+            : update.bom === 'utf-16le'
+              ? Buffer.from([0xff, 0xfe])
+              : Buffer.from([0xfe, 0xff])
+    const alreadyHasBom =
+        encoded.length >= bom.length && bom.every((byte, index) => encoded[index] === byte)
+    return alreadyHasBom ? encoded : Buffer.concat([bom, encoded])
 }
 
 /** 从链接原文提取 `|alias` 与 `#heading`（alias 优先按第一个 | 分割） */
@@ -206,17 +240,23 @@ export async function buildWikiLinkRenamePlan(
         const key = file.path.toLowerCase()
         if (touchedFiles.has(key)) continue
         touchedFiles.add(key)
-        let raw: string
+        let buffer: Buffer
         try {
-            raw = await fs.readFile(file.path, 'utf8')
+            buffer = await fs.readFile(file.path)
         } catch (error) {
             logger.warn(`[B4] 读取来源文件失败，跳过链接更新：${file.path}`, error)
             plan.skipped.push(`source-read-failed:${file.relativePath}`)
             continue
         }
-        const hasBom = raw.charCodeAt(0) === 0xfeff
-        const body = hasBom ? raw.slice(1) : raw
-        const applied = applyLinksToContent(body, file.path, matching, plan.newPath)
+        let decoded: { content: string; encoding: string }
+        try {
+            decoded = decodeFileContent(buffer)
+        } catch (error) {
+            logger.warn(`[B4] 解码来源文件失败，跳过链接更新：${file.path}`, error)
+            plan.skipped.push(`source-decode-failed:${file.relativePath}`)
+            continue
+        }
+        const applied = applyLinksToContent(decoded.content, file.path, matching, plan.newPath)
         if (applied.count === 0) continue
         const remaining = MAX_RENAME_LINK_REPLACEMENTS - plan.replacementCount
         if (remaining <= 0) {
@@ -225,7 +265,9 @@ export async function buildWikiLinkRenamePlan(
         }
         plan.updates.push({
             sourcePath: file.path,
-            content: (hasBom ? '\uFEFF' : '') + applied.content,
+            content: applied.content,
+            encoding: decoded.encoding,
+            bom: detectBom(buffer),
             replacementCount: applied.count
         })
         plan.replacementCount += applied.count
@@ -249,7 +291,7 @@ export async function applyWikiLinkRenamePlan(
     }
     for (const update of plan.updates) {
         try {
-            await fs.writeFile(update.sourcePath, update.content, 'utf8')
+            await fs.writeFile(update.sourcePath, encodeUpdateBuffer(update))
             result.updatedFiles++
             result.replacements += update.replacementCount
         } catch (error) {
@@ -280,7 +322,9 @@ export const wikiLinkRenameInternals = {
     buildReplacementLink,
     applyLinksToContent,
     isWithinRoot,
-    isWikiTextPath
+    isWikiTextPath,
+    detectBom,
+    encodeUpdateBuffer
 }
 
 /** 类型守卫：快照文件数组中的可更新文件（保留导出，便于未来 UI 使用） */

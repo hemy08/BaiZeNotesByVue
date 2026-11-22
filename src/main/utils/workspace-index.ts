@@ -52,6 +52,7 @@ import * as fs from 'fs'
 import type { Dirent, Stats } from 'fs'
 import * as path from 'path'
 import { parseFrontMatter } from '../../shared/utils/front-matter'
+import { decodeFileContent } from './file-utils/file-encoding'
 import {
     getExtension,
     isPathWithin,
@@ -763,7 +764,9 @@ async function readIndexedFile(root: IndexedRoot, filePath: string): Promise<Sca
     }
     let content: string
     try {
-        content = await fs.promises.readFile(filePath, 'utf-8')
+        // 与文件打开/编码转换共用同一解码真源：GBK/UTF-16 等文件按探测编码解码，
+        // 避免 Wiki 链接行列按 UTF-8 错误解码而错位（B4 重命名更新依赖该行列）。
+        content = decodeFileContent(await fs.promises.readFile(filePath)).content
     } catch {
         return null
     }
