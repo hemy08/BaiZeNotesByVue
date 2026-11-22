@@ -30,6 +30,7 @@
     <a class="toc-l3" href="#sub-10">7.3 验收指标</a>
     <a class="toc-l2" href="#sec-8">8. 不做什么（本阶段）</a>
     <a class="toc-l2" href="#sec-9">9. 待决策</a>
+    <a class="toc-l2" href="#sec-10">10. 1.5.1 实施结果（2026-11-22）</a>
   </nav>
 
 <div class="wrap">
@@ -42,10 +43,10 @@
 
 <h1>B1 Wiki 链接交互风险与实施方案</h1>
 <blockquote>
-<p><strong>性质</strong>：风险分析与实施方案（只读评估，未改代码）。
+<p><strong>性质</strong>：风险分析与实施方案；<strong>1.5.1 方案 A 已实施</strong>。
 <strong>项目基线</strong>：v1.5.1（开发中）；当前门禁实测 312 测试文件 / 5,741 用例，IPC 100 通道 / 17 组，preload 白名单 send 66 + receive 28。
 <strong>评估对象</strong>：<code>[[target]]</code>、<code>[[target|alias]]</code>、<code>[[target#heading]]</code> 的编辑器内点击跳转、歧义选择与缺失页创建。
-<strong>结论先行</strong>：当前 B1 已具备“解析 + 反链 + 悬浮预览”的只读能力，但缺少“点击—跳转—创建”的写读闭环；建议优先补点击跳转和缺失页创建，不先做块引用/图谱等重能力。</p>
+<strong>结论先行</strong>：当前 B1 已具备“解析 + 反链 + 悬浮预览”的只读能力；1.5.1 方案 A 已补齐 Ctrl/Cmd+Click 跳转、歧义候选与缺失页受控创建，形成“点击—跳转—创建”的最小闭环。</p>
 </blockquote>
 <h2 id="sec-1">1. 现状与事实</h2>
 <h3 id="sub-1">1.1 已具备</h3>
@@ -428,6 +429,22 @@
 <blockquote>
 <p>未决策前建议默认：<code>Ctrl/Cmd+Click</code>、不自动建目录、不自动写 front matter、按最近修改排序。</p>
 </blockquote>
+<h2 id="sec-10">10. 1.5.1 实施结果（2026-11-22）</h2>
+<p>已按方案 A 落地：</p>
+<ul>
+<li>编辑器内 <code>Ctrl/Cmd+Click</code> 唯一命中打开；普通点击保持编辑；</li>
+<li>歧义：对话框展示候选（标题 + 相对路径），选择后打开；</li>
+<li>缺失：确认框展示将创建的相对路径；确认后复用既有 <code>FILE.CREATE_FILE_FOLDER</code> 主进程受控创建；</li>
+<li>目录不存在时拒绝并提示，不递归建目录；目标已存在只打开不覆盖；非法 target 拒绝；</li>
+<li>新增纯逻辑/对话框/宿主测试 <strong>40 个</strong>，覆盖链接定位、三态、路径安全、创建参数与失败降级。</li>
+</ul>
+<p>已知限制：</p>
+<ul>
+<li>heading 暂不跳转到具体标题，只打开目标文件；</li>
+<li>空目录不在索引快照内，无法判定为“目录已存在”；</li>
+<li>创建成功后索引刷新依赖主进程缓存策略，若快照滞后可手动刷新；</li>
+<li>不新增 IPC 通道，不改变现有 Markdown 链接行为。</li>
+</ul>
 
   <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
 </div>

@@ -13,22 +13,25 @@
     <h4>目录</h4>
     <a class="toc-l2" href="#sec-1">1. 当前能力基线（v1.5.1）</a>
     <a class="toc-l3" href="#sub-1">1.1 v1.5.1 已落地能力</a>
+    <a class="toc-l3" href="#sub-2">1.2 v1.5.1 知识库基座落地状态（2026-11-22 方案 A）</a>
     <a class="toc-l2" href="#sec-2">2. 外部对标：主流 Markdown 编辑器/知识库</a>
-    <a class="toc-l3" href="#sub-2">2.1 对标对象与代表性能力</a>
-    <a class="toc-l3" href="#sub-3">2.2 可借鉴能力总览</a>
-    <a class="toc-l3" href="#sub-4">2.3 对本项目的判断</a>
-    <a class="toc-l3" href="#sub-5">2.4 基于当前架构的适配评估（2026-11-21）</a>
+    <a class="toc-l3" href="#sub-3">2.1 对标对象与代表性能力</a>
+    <a class="toc-l3" href="#sub-4">2.2 可借鉴能力总览</a>
+    <a class="toc-l3" href="#sub-5">2.3 对本项目的判断</a>
+    <a class="toc-l3" href="#sub-6">2.4 基于当前架构的适配评估（2026-11-21）</a>
     <a class="toc-l2" href="#sec-3">3. 能力候选矩阵</a>
-    <a class="toc-l3" href="#sub-6">A. 编辑器与工作流</a>
-    <a class="toc-l3" href="#sub-7">B. 知识库与文档关系（均未落地）</a>
-    <a class="toc-l3" href="#sub-8">C. 发布与导出（均未落地）</a>
-    <a class="toc-l3" href="#sub-9">D. 平台、扩展与协作（均未落地）</a>
-    <a class="toc-l3" href="#sub-10">E. 工作流扩展新增候选（本次外部对标新增）</a>
+    <a class="toc-l3" href="#sub-7">A. 编辑器与工作流</a>
+    <a class="toc-l3" href="#sub-8">B. 知识库与文档关系（B1/B2/B4/B5 已于 1.5.1 方案 A 落地；B3 未落地）</a>
+    <a class="toc-l3" href="#sub-9">C. 发布与导出（均未落地）</a>
+    <a class="toc-l3" href="#sub-10">D. 平台、扩展与协作（均未落地）</a>
+    <a class="toc-l3" href="#sub-11">E. 工作流扩展新增候选（本次外部对标新增）</a>
     <a class="toc-l2" href="#sec-4">4. 推荐套餐与版本路线</a>
-    <a class="toc-l3" href="#sub-11">推荐实施顺序</a>
+    <a class="toc-l3" href="#sub-12">推荐实施顺序</a>
     <a class="toc-l2" href="#sec-5">5. 决策勾选表（只列未落地能力）</a>
     <a class="toc-l2" href="#sec-6">6. 关键风险与依赖提示</a>
-    <a class="toc-l2" href="#sec-7">7. 建议验收标准（选定后补）</a>
+    <a class="toc-l2" href="#sec-7">7. 验收标准</a>
+    <a class="toc-l3" href="#sub-13">7.1 通用</a>
+    <a class="toc-l3" href="#sub-14">7.2 v1.5.1 方案 A 验收（2026-11-22）</a>
     <a class="toc-l2" href="#sec-8">8. 下一步</a>
     <a class="toc-l2" href="#sec-9">9. 参考资料</a>
   </nav>
@@ -47,7 +50,7 @@
 <strong>项目基线</strong>：v1.5.1（开发中；最新发布版本为 v1.5.0，tag <code>release-1.5.0</code>）。
 <strong>整理时间</strong>：2026-11-21；本次补充 Obsidian / iA Writer / Logseq / Joplin / 思源 / Notion / Zettlr 的外部能力对标。
 <strong>结论先行</strong>：v1.5.1 已补齐搜索、命令面板、多标签、历史、lint、拼写、智能输入、大纲等编辑器基础能力；下一阶段最值得借鉴的是 <strong>文档关系、属性/查询、捕获输入、发布与回顾</strong>，而不是立刻做完整数据库或实时协作。
-<strong>本次完成状态</strong>：A1、A2、A3、A4、A6、A7、A8、A9、A10 已完成（A2/A8/A9 默认开启，A1/A3/A4/A6/A7/A10 为可选能力、默认关闭）；A7 已扩展为普通/写作模式通用；E9 的 Focus/Typewriter、写作目标、Style Check 已在 1.5.1 写作体验 P0 落地（可选、默认关闭）；A5 与 B/C/D/E 系列仍为候选。
+<strong>本次完成状态</strong>：A1、A2、A3、A4、A6、A7、A8、A9、A10 已完成；A5 与知识库基座（索引层、B1、B2 标签、B4、B5、E10）已于 2026-11-22 按方案 A 落地（A2/A5/A8/A9 默认开启，A1/A3/A4/A6/A7/A10 为可选能力、默认关闭）；A7 已扩展为普通/写作模式通用；E9 的 Focus/Typewriter、写作目标、Style Check 已在 1.5.1 写作体验 P0 落地（可选、默认关闭）；B2 的持久全文索引在 1.5.1 明确不做，只保留 A2 按需搜索与指标；B3/C/D/E 其余系列仍为候选。
 <strong>使用方式</strong>：§5 勾选未落地能力，或直接回复套餐编号（如 <code>套餐 B + E1</code>）。</p>
 </blockquote>
 <h2 id="sec-1">1. 当前能力基线（v1.5.1）</h2>
@@ -131,8 +134,8 @@
 <tr>
 <td>A5</td>
 <td>Front matter/元数据面板</td>
-<td>⏳ 未实现</td>
-<td>—</td>
+<td>✅ 解析/编辑/保存，BOM/CRLF/正文保真</td>
+<td>默认开</td>
 </tr>
 <tr>
 <td>A6</td>
@@ -167,10 +170,62 @@
 </tbody>
 </table>
 <blockquote>
-<p>状态说明：A1/A3/A4/A6/A7/A10 通过「系统设置 → 功能」开关控制；A2/A8/A9 为默认能力。A3 当前为渲染层 localStorage 历史，不是磁盘级历史库；A1 主进程仍保持单活动文档语义。</p>
+<p>状态说明：A1/A3/A4/A6/A7/A10 通过「系统设置 → 功能」开关控制；A2/A5/A8/A9 为默认能力。A3 当前为渲染层 localStorage 历史，不是磁盘级历史库；A1 主进程仍保持单活动文档语义。</p>
+</blockquote>
+<h3 id="sub-2">1.2 v1.5.1 知识库基座落地状态（2026-11-22 方案 A）</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>能力</th>
+<th>状态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>索引层</td>
+<td>主进程工作区索引</td>
+<td>✅</td>
+<td>标题/标签/Wiki 链接/摘要/附件引用；内存缓存 + 5s TTL</td>
+</tr>
+<tr>
+<td>B2</td>
+<td>标签索引 + 全文检索</td>
+<td>✅ 标签 / ⏳ 持久全文索引</td>
+<td>标签索引已落地；全文继续复用 A2 按需搜索，仅补 <code>elapsedMs</code> 指标与慢搜索日志，1.5.1 不建持久索引</td>
+</tr>
+<tr>
+<td>B1</td>
+<td>Wiki 双链/反向链接</td>
+<td>✅</td>
+<td>解析、反链、悬浮预览 + Ctrl/Cmd+Click 跳转、歧义选择、缺失页受控创建</td>
+</tr>
+<tr>
+<td>B4</td>
+<td>链接检查/重命名自动更新</td>
+<td>✅</td>
+<td>缺失/歧义检查；Markdown 文件重命名后按原编码更新其他文档 Wiki 链接</td>
+</tr>
+<tr>
+<td>B5</td>
+<td>附件管理器</td>
+<td>✅</td>
+<td>引用审计/定位 + 孤儿审计 + 移入系统回收站 + 事务式附件重命名</td>
+</tr>
+<tr>
+<td>E10</td>
+<td>页面悬浮预览</td>
+<td>✅</td>
+<td>Wiki 链接 hover：标题/路径/摘要/反链数量</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>边界：B1 heading 暂不跳转；B5 不做永久删除、只改名不移动、HTML/reference 式引用不参与孤儿判定；B2 不在 1.5.1 持久化全文索引。</p>
 </blockquote>
 <h2 id="sec-2">2. 外部对标：主流 Markdown 编辑器/知识库</h2>
-<h3 id="sub-2">2.1 对标对象与代表性能力</h3>
+<h3 id="sub-3">2.1 对标对象与代表性能力</h3>
 <table>
 <thead>
 <tr>
@@ -218,7 +273,7 @@
 </tbody>
 </table>
 <p>参考来源见 §9；各产品能力以其官方/用户文档为准。</p>
-<h3 id="sub-3">2.2 可借鉴能力总览</h3>
+<h3 id="sub-4">2.2 可借鉴能力总览</h3>
 <table>
 <thead>
 <tr>
@@ -256,7 +311,7 @@
 <td>Front matter/属性、标签索引、保存查询</td>
 <td>Obsidian、思源、Notion</td>
 <td>从「文件」升级为「可筛选数据」</td>
-<td>❌ 未开始（A5/B2）</td>
+<td>✅ 1.5.1 已落地（A5/B2 标签；全文按需）</td>
 </tr>
 <tr>
 <td>整理</td>
@@ -284,7 +339,7 @@
 <td>Wiki 双链、反向链接、未链接提及、悬浮预览</td>
 <td>Obsidian、Logseq、思源</td>
 <td>形成知识网络，发现隐性关联</td>
-<td>❌ 未开始（B1/E10）</td>
+<td>✅ 1.5.1 已落地（B1/E10）</td>
 </tr>
 <tr>
 <td>连接</td>
@@ -323,14 +378,14 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-4">2.3 对本项目的判断</h3>
+<h3 id="sub-5">2.3 对本项目的判断</h3>
 <ul>
 <li><strong>已经对齐</strong>：搜索、命令面板、多标签、历史、lint、拼写、智能输入、大纲，这些在 1.5.1 已落地，说明编辑器基础层不再是主要差距；</li>
 <li><strong>最自然的下一步</strong>：先做 <strong>A5 属性 + B1/B2/B4 关系与索引</strong>，把「文件树」升级成「可查询的本地知识库」；</li>
 <li><strong>最容易形成差异化的能力</strong>：<strong>E1 网页剪藏 + E2 PDF 标注 + E3 OCR</strong>，与现有本地文件/安全架构契合；</li>
 <li><strong>不建议照搬</strong>：完整数据库、实时协作、云同步、全文 WYSIWYG 替换 Monaco；这些是产品级/团队级工程，不是单个版本能稳妥交付的。</li>
 </ul>
-<h3 id="sub-5">2.4 基于当前架构的适配评估（2026-11-21）</h3>
+<h3 id="sub-6">2.4 基于当前架构的适配评估（2026-11-21）</h3>
 <h4>2.4.1 当前架构对能力落地的约束</h4>
 <table>
 <thead>
@@ -649,7 +704,7 @@
 <blockquote>
 <p>估算口径：<strong>S</strong> ≤2 人日、<strong>M</strong> 3~5 人日、<strong>L</strong> 8~15 人日、<strong>XL</strong> &gt;15 人日（单人）；实际随交互细节/测试量浮动。状态：✅ 1.5.1 已落地 / ⏳ 未落地。</p>
 </blockquote>
-<h3 id="sub-6">A. 编辑器与工作流</h3>
+<h3 id="sub-7">A. 编辑器与工作流</h3>
 <table>
 <thead>
 <tr>
@@ -766,7 +821,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-7">B. 知识库与文档关系（均未落地）</h3>
+<h3 id="sub-8">B. 知识库与文档关系（B1/B2/B4/B5 已于 1.5.1 方案 A 落地；B3 未落地）</h3>
 <table>
 <thead>
 <tr>
@@ -784,7 +839,7 @@
 <td>B1</td>
 <td><strong>Wiki 双链 / 反向链接</strong></td>
 <td><code>[[页面]]</code> 链接、被引用列表，知识库核心</td>
-<td>解析 wikilink；链接索引；点击创建/跳转；重命名更新</td>
+<td>✅ 1.5.1：解析/索引/反链/悬浮预览/Ctrl+Click 跳转/歧义选择/缺失页创建</td>
 <td>文件树/搜索/重命名联动；链接歧义</td>
 <td>L</td>
 <td>★★★★★</td>
@@ -793,7 +848,7 @@
 <td>B2</td>
 <td><strong>标签与全文索引</strong></td>
 <td>按标签聚合、全文快速检索</td>
-<td>front matter/行内标签；索引存储；筛选视图</td>
+<td>✅ 1.5.1：标签索引；全文复用 A2 按需搜索 + 指标；持久全文索引暂不做</td>
 <td>索引持久化/增量更新；与 A2 共用</td>
 <td>M~L</td>
 <td>★★★★★</td>
@@ -811,7 +866,7 @@
 <td>B4</td>
 <td><strong>链接检查与重命名自动更新</strong></td>
 <td>避免死链</td>
-<td>链接解析；重命名事务；检查报告</td>
+<td>✅ 1.5.1：缺失/歧义检查 + 重命名自动更新 Wiki 链接（原编码/BOM）</td>
 <td>B1/B5 联动；相对路径/锚点</td>
 <td>M</td>
 <td>★★★★☆</td>
@@ -820,14 +875,14 @@
 <td>B5</td>
 <td><strong>附件管理器</strong></td>
 <td>图片/附件重命名、孤儿清理</td>
-<td>附件索引；引用扫描；操作 UI</td>
+<td>✅ 1.5.1：附件引用审计/孤儿审计/移入系统回收站/事务式重命名</td>
 <td>安全路径；与粘贴/插入整合</td>
 <td>M</td>
 <td>★★★☆☆</td>
 </tr>
 </tbody>
 </table>
-<h3 id="sub-8">C. 发布与导出（均未落地）</h3>
+<h3 id="sub-9">C. 发布与导出（均未落地）</h3>
 <table>
 <thead>
 <tr>
@@ -879,7 +934,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-9">D. 平台、扩展与协作（均未落地）</h3>
+<h3 id="sub-10">D. 平台、扩展与协作（均未落地）</h3>
 <table>
 <thead>
 <tr>
@@ -949,7 +1004,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-10">E. 工作流扩展新增候选（本次外部对标新增）</h3>
+<h3 id="sub-11">E. 工作流扩展新增候选（本次外部对标新增）</h3>
 <table>
 <thead>
 <tr>
@@ -1048,7 +1103,7 @@
 <td>E10</td>
 <td><strong>页面悬浮预览 / 链接预览</strong></td>
 <td>不离开当前文档看引用</td>
-<td>预览卡片；链接解析；定位</td>
+<td>✅ 1.5.1：Wiki 链接 hover（标题/路径/摘要/反链数）</td>
 <td>性能/安全</td>
 <td>S~M</td>
 <td>★★★★☆</td>
@@ -1085,7 +1140,7 @@
 <td><strong>套餐 B：本地知识库</strong></td>
 <td>A5、B1、B2、B4、B5、E10</td>
 <td>「本地 Markdown 笔记/知识库」</td>
-<td>下一阶段主线；先关系/属性，后图谱/数据库</td>
+<td>✅ 1.5.1 已落地基座 MVP；B2 持久全文索引未做，B3 图谱/数据库仍为后续</td>
 </tr>
 <tr>
 <td><strong>套餐 C：捕获与创作</strong></td>
@@ -1107,7 +1162,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="sub-11">推荐实施顺序</h3>
+<h3 id="sub-12">推荐实施顺序</h3>
 <ol>
 <li><strong>文档关系层（1.5.1）</strong>：A5 属性 → B1 双链/反向链接 → B4 链接检查 → B2 标签/索引 → E10 悬浮预览；</li>
 <li><strong>捕获与复用（1.5.2）</strong>：E1 Web Clipper → E2 PDF 标注 → E3 OCR → E4 块引用/嵌入 → E6 日记/模板/收件箱；</li>
@@ -1274,7 +1329,8 @@
 <li><strong>D5/D6</strong> 涉及后端、隐私与成本，建议先明确产品定位；AI 默认应离线/可关闭；</li>
 <li>当前 <strong>单文件架构、Windows-only、未签名</strong> 是长期约束，规划时需一起考虑。</li>
 </ul>
-<h2 id="sec-7">7. 建议验收标准（选定后补）</h2>
+<h2 id="sec-7">7. 验收标准</h2>
+<h3 id="sub-13">7.1 通用</h3>
 <ul>
 <li>每一批功能必须有：单元测试 + 关键 E2E + 不降低现有覆盖率阈值；</li>
 <li>不破坏现有门禁：typecheck / ESLint 0 warning / Prettier / vitest / E2E / audit / budget / fuses；</li>
@@ -1282,6 +1338,53 @@
 <li>涉及文件语义的能力（链接、重命名、历史、剪藏）必须有回滚方案与失败提示；</li>
 <li>外部内容（剪藏/PDF/OCR/AI）必须有明确隐私开关与本地优先策略。</li>
 </ul>
+<h3 id="sub-14">7.2 v1.5.1 方案 A 验收（2026-11-22）</h3>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>验收点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A5</td>
+<td>有/无 front matter 均可读写；BOM/CRLF/正文保真；自定义属性可编辑/删除</td>
+</tr>
+<tr>
+<td>索引层</td>
+<td>只索引工作区根；忽略目录/符号链接/大小/文件数上限生效；缓存可强制刷新</td>
+</tr>
+<tr>
+<td>B1</td>
+<td>Ctrl/Cmd+Click 唯一命中打开；歧义有候选；缺失可在确认后创建；非法/已存在/目录不存在拒绝</td>
+</tr>
+<tr>
+<td>B2</td>
+<td>标签索引可用；全文搜索继续可用并返回 <code>elapsedMs</code>；1.5.1 不建持久全文索引</td>
+</tr>
+<tr>
+<td>B4</td>
+<td>缺失/歧义链接可定位；重命名 Markdown 文件后其他文档 Wiki 链接自动更新；原编码/BOM 保真</td>
+</tr>
+<tr>
+<td>B5</td>
+<td>孤儿附件只读审计；清理只移入系统回收站；附件重命名后 Markdown 引用更新；禁止永久删除</td>
+</tr>
+<tr>
+<td>E10</td>
+<td>Wiki 链接 hover 显示标题/路径/摘要/反链数量；索引失败静默降级</td>
+</tr>
+<tr>
+<td>安全</td>
+<td>不新增例外/CSP/allowlist；新增 IPC 全链路契约/白名单/sender 校验；Path Guard 覆盖写操作</td>
+</tr>
+<tr>
+<td>门禁</td>
+<td>全量测试、覆盖率、E2E、构建、体积预算、Fuses、docs/quality 全绿</td>
+</tr>
+</tbody>
+</table>
 <h2 id="sec-8">8. 下一步</h2>
 <ol>
 <li>维护者按 §5 勾选并确认套餐；</li>

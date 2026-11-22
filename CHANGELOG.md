@@ -29,10 +29,11 @@
 
 - **A5 文档属性**：识别/编辑 YAML front matter（title/date/tags/status/summary/aliases + 自定义键），正文与 BOM/CRLF 逐字保留；保存经既有全文替换事件写回编辑器
 - **工作区索引层**：主进程扫描 `.md/.markdown/.txt`，提取标题、front matter 标签、正文 `#tag`、Wiki 链接；复用工作区根/忽略目录/符号链接/大小/数量/深度上限与结构化失败
-- **B2 标签索引**：按标签聚合文件，点击打开；**B1 双链/反向链接**：解析 `[[target]]` / `[[target|alias]]` / `[[target#heading]]`，展示当前文件反链；**B4 链接检查**：缺失/歧义链接清单，点击定位来源行；重命名 Markdown 文件后自动更新其他文档中的 Wiki 链接（两阶段：重命名成功后才写回，失败不改链接；按原文件编码解码/写回并保留 BOM，索引与更新链路统一使用编码探测）
-- **B5 附件管理**：索引 Markdown 图片/附件引用，分组展示缺失/正常附件、引用来源，支持在资源管理器中定位；**E10 Wiki 链接悬浮预览**：悬停 Wiki 链接显示目标标题、路径、摘要与反链数量
-- 新增 `FILE.GET_WORKSPACE_INDEX` IPC（主进程只索引 appState.rootPath；sender 校验 + force 白名单；内存缓存）；
-- 入口：编辑菜单「文档属性… / 知识库（标签/链接/反链）」与命令面板；无新增依赖。
+- **B2 标签索引**：按标签聚合文件，点击打开；**B1 双链/反向链接**：解析 `[[target]]` / `[[target|alias]]` / `[[target#heading]]`，展示当前文件反链；编辑器内 Ctrl/Cmd+Click 唯一命中打开、歧义候选选择、缺失页确认后受控创建；**B4 链接检查**：缺失/歧义链接清单，点击定位来源行；重命名 Markdown 文件后自动更新其他文档中的 Wiki 链接（两阶段：重命名成功后才写回，失败不改链接；按原文件编码解码/写回并保留 BOM，索引与更新链路统一使用编码探测）
+- **B5 附件管理**：索引 Markdown 图片/附件引用，分组展示缺失/正常附件、引用来源，支持在资源管理器中定位；新增孤儿附件只读审计、批量移入系统回收站（仅 `shell.trashItem`，不提供永久删除）、事务式附件重命名 + Markdown 引用更新；**E10 Wiki 链接悬浮预览**：悬停 Wiki 链接显示目标标题、路径、摘要与反链数量
+- **B2 全文索引决策**：1.5.1 不新建持久全文索引/数据库；A2 搜索新增 `elapsedMs` 指标与 ≥500ms 慢搜索聚合日志，后续按文件数/P95 阈值再评估 worker + 纯 JS 索引
+- 新增 `FILE.GET_WORKSPACE_INDEX` / `GET_ATTACHMENT_AUDIT` / `TRASH_ATTACHMENTS` / `RENAME_ATTACHMENT` IPC（主进程只操作 appState.rootPath；sender 校验 + 既有 Path Guard；内存缓存/串行队列）；
+- 入口：编辑菜单「文档属性… / 知识库（标签/链接/反链/附件管理）」与命令面板；无新增依赖。
 
 ### 🔍 默认能力
 
@@ -48,9 +49,9 @@
 ### ✅ 门禁
 
 - 类型检查 TypeScript / Vue 四工程 **0 错误**；ESLint **0 error / 0 warning**；Prettier 全绿
-- 测试 **312 文件 / 5,741 用例（5,737 passed / 4 skipped）**；覆盖率 **93.85 / 88.41 / 94.28 / 94.21**
+- 测试 **317 文件 / 5,932 用例（5,927 passed / 5 skipped）**；覆盖率 **93.85 / 88.42 / 94.43 / 94.20**
 - E2E **28/28**；构建 / 体积预算 / Fuses 8/8 / audit / memory 检查通过
-- 体积：入口 **143.2 KiB**（≤150）、首屏 **329.4 KiB**（≤512）、Setup **111.33 MiB**、portable **100.47 MiB**、asar **40.82 MiB**
+- 体积：入口 **143.2 KiB**（≤150）、首屏 **329.5 KiB**（≤512）、Setup **111.36 MiB**、portable **100.49 MiB**、asar **40.97 MiB**
 - 编写体验 9 项开关均默认关闭；关闭时不注册界面/监听，默认启动与编辑链路保持旧行为
 
 ## 2026年11月20日 - 版本 1.5.0（新版本基线 / 主题设置首开修复）
@@ -610,7 +611,7 @@
 - **目录树**：fs.watch（500ms 合并）增量重扫，单文件变更 28.6ms → 1.5ms（-94.8%）；node_modules/.git 排除监听
 - **首屏**：11.80MiB → 10.08MiB，modulepreload 18 → 1；对话框与插件工具全部 defineAsyncComponent 懒加载
 - **懒加载**：jsdom 首次调用才 require；mermaid 动态 import；PlantUML 本地渲染窗口按需创建
-- **rAF 合帧**：窗口拖拽/缩放 IPC 1000/s → 60/s；分栏拖拽不再触发 Monaco 全量 layout
+- **rAF 合帧**：窗口拖拽/缩放 IPC 1030/s → 60/s；分栏拖拽不再触发 Monaco 全量 layout
 - **日志开销**：字节计数估算替代逐条 statSync
 - **包体积**：安装包 233MB → 109.8MB（app.asar 51.93MB）；files 白名单 + *.map 排除 + 图标清理；1.2.1 旧包清理
 - **sendSync 清零**：4 处同步 IPC 全部改 invoke

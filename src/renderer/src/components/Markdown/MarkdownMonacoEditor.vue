@@ -621,6 +621,43 @@ async function setupWikiLinkHover(): Promise<void> {
     }
 }
 
+/* ==================== B1 Wiki 链接 Ctrl/Cmd+Click（1.5.1） ====================
+ * 接线约束：
+ * - 本模块按需动态 import（Monaco 已就绪后才加载），不增加首屏静态依赖；
+ * - 宿主内部注册 `editor.onMouseDown`（仅 Ctrl/Cmd + 左键）与一个命令动作，
+ *   普通点击不跳转；注册/动态加载失败静默降级，不影响编辑器主链路；
+ * - 卸载时必须先 dispose 句柄（释放鼠标监听 / 命令 / 对话框宿主），再销毁 Monaco。
+ */
+/** B1 动作注册句柄（null = 未注册/已释放） */
+let wikiLinkActionsHandle: { dispose(): void } | null = null
+/** 组件是否已卸载（动态 import 期间卸载时不再补注册） */
+let wikiLinkActionsUnmounted = false
+
+/** 动态加载并注册 Wiki 链接 Ctrl/Cmd+Click 动作（编辑器创建后调用一次） */
+async function setupWikiLinkActionsFeature(): Promise<void> {
+    if (!editorInstance) {
+        return
+    }
+    try {
+        const { setupWikiLinkActions } = await import('./wiki-link-actions.index')
+        if (wikiLinkActionsUnmounted || !editorInstance) {
+            return
+        }
+        const handle = await setupWikiLinkActions(editorInstance, {
+            // 源文件路径用于「相对源文件目录」解析阶段（与工作区索引同口径）
+            getSourcePath: () => props.filePath
+        })
+        // setup 期间组件已卸载：立即释放，避免监听/命令悬挂
+        if (wikiLinkActionsUnmounted) {
+            handle?.dispose()
+            return
+        }
+        wikiLinkActionsHandle = handle
+    } catch (error) {
+        logger.warn('[B1] Wiki 链接跳转注册失败，已跳过:', error)
+    }
+}
+
 //let model: monaco.editor.ITextModel | null = null
 //const registeredActions: string[] = []
 //const registeredDecorations: string[] = []
@@ -1256,6 +1293,9 @@ onMounted(async () => {
         // E10（Wiki 链接悬浮预览）：Monaco 就绪后按需动态加载并注册（不增加首屏依赖）
         void setupWikiLinkHover()
 
+        // B1（Wiki 链接 Ctrl/Cmd+Click）：Monaco 就绪后按需动态加载并注册
+        void setupWikiLinkActionsFeature()
+
         editor.DidChange(editorInstance)
         editor.KeyMaps(editorInstance)
         // A7/A8：AddActions 返回的显式句柄（原生 paste 监听等）随组件卸载释放
@@ -1370,6 +1410,11 @@ onBeforeUnmount(() => {
     wikiLinkHoverUnmounted = true
     wikiLinkHoverHandle?.dispose()
     wikiLinkHoverHandle = null
+
+    // B1（Wiki 链接 Ctrl/Cmd+Click）：标记卸载并释放动作句柄（监听/命令/对话框宿主）
+    wikiLinkActionsUnmounted = true
+    wikiLinkActionsHandle?.dispose()
+    wikiLinkActionsHandle = null
 
     // 4. 完整清理 Monaco Editor
     if (editorInstance) {

@@ -62,6 +62,8 @@ import { registerUtilsIpcHandlers } from './utils-ipc'
 import { registerWorkspaceSearchIpc } from './workspace-search-ipc'
 // 1.5.1 本地知识库基座：工作区索引（front matter/标签/Wiki 链接）
 import { registerWorkspaceIndexIpc } from './workspace-index-ipc'
+// 1.5.1 B5：附件孤儿审计 / 移入回收站 / 附件重命名
+import { registerAttachmentIpc } from './attachment-ipc'
 import { logger } from '../utils/logger'
 import { IPC } from '../../shared/ipc-channels'
 
@@ -80,6 +82,9 @@ const WORKSPACE_SEARCH_COMPONENT_ID = 'global-workspace-search-ipc'
 
 /** 1.5.1 工作区索引 IPC 的监听台账组件 ID */
 const WORKSPACE_INDEX_COMPONENT_ID = 'global-workspace-index-ipc'
+
+/** 1.5.1 B5 附件管理 IPC 的监听台账组件 ID */
+const ATTACHMENT_COMPONENT_ID = 'global-attachment-ipc'
 
 /** registerAll 的入口钩子：由 main/index.ts 提供的跨模块行为（避免 registry 反向依赖入口） */
 export interface RegisterAllHooks {
@@ -204,4 +209,7 @@ export function registerAll(mainWindow: BrowserWindow, hooks: RegisterAllHooks =
     // 8) 1.5.1 本地知识库基座：工作区索引（front matter/标签/Wiki 链接）。
     //    只索引 appState.rootPath，缓存按根失效；供标签/反链/链接检查面板查询。
     registerWorkspaceIndexIpc(mainWindow, WORKSPACE_INDEX_COMPONENT_ID)
+    // 9) 1.5.1 B5：附件孤儿审计 / 批量移入回收站 / 附件重命名。
+    //    只操作 appState.rootPath 内普通附件；删除走系统回收站，重命名先计划后写回。
+    registerAttachmentIpc(mainWindow, ATTACHMENT_COMPONENT_ID)
 }

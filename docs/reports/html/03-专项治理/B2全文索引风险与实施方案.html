@@ -29,6 +29,7 @@
     <a class="toc-l3" href="#sub-10">6.3 门禁</a>
     <a class="toc-l2" href="#sec-7">7. 不在本阶段范围</a>
     <a class="toc-l2" href="#sec-8">8. 待决策</a>
+    <a class="toc-l2" href="#sec-9">9. 1.5.1 实施结果与决策（2026-11-22）</a>
   </nav>
 
 <div class="wrap">
@@ -41,10 +42,10 @@
 
 <h1>B2 全文索引风险与实施方案</h1>
 <blockquote>
-<p><strong>性质</strong>：风险分析与实施方案（只读评估，未改代码）。
+<p><strong>性质</strong>：风险分析与实施方案；<strong>1.5.1 方案 A 决策已完成：暂不建持久索引，只做指标</strong>。
 <strong>项目基线</strong>：v1.5.1（开发中）；当前门禁实测 312 测试文件 / 5,741 用例，IPC 100 通道 / 17 组，preload 白名单 send 66 + receive 28。
 <strong>评估对象</strong>：是否新建持久全文索引；当前全文检索复用 A2 按需搜索。
-<strong>结论先行</strong>：当前 A2 搜索在中小工作区可用且安全，<strong>不建议立即新建持久索引</strong>；先用指标判断是否需要，达到阈值后采用“worker_threads + 纯 JS 索引 + 可重建快照”，不优先引入 SQLite/原生依赖。</p>
+<strong>结论先行</strong>：当前 A2 搜索在中小工作区可用且安全，<strong>1.5.1 不新建持久索引</strong>；已补 <code>elapsedMs</code> 指标与慢搜索日志，后续达到阈值再采用“worker_threads + 纯 JS 索引 + 可重建快照”，不优先引入 SQLite/原生依赖。</p>
 </blockquote>
 <h2 id="sec-1">1. 现状与事实</h2>
 <h3 id="sub-1">1.1 当前全文检索</h3>
@@ -447,6 +448,22 @@
 <blockquote>
 <p>未决策前建议默认：先做 P0 指标，不引入依赖；1.5.x 不承诺持久全文索引。</p>
 </blockquote>
+<h2 id="sec-9">9. 1.5.1 实施结果与决策（2026-11-22）</h2>
+<p><strong>决策：1.5.1 不新建持久全文索引，不引入数据库。</strong></p>
+<p>已落地：</p>
+<ul>
+<li>A2 搜索成功结果新增 <code>elapsedMs</code>（主进程按需搜索耗时，不改变既有结果字段/上限）；</li>
+<li>慢搜索（≥500ms）记录聚合日志：耗时 / 扫描文件数 / 命中数 / truncated，不记录查询词和正文；</li>
+<li>现有标签/反链/链接检查继续使用工作区内存索引，全文搜索继续复用 A2；</li>
+<li>不新增 IPC、不新增依赖、不改变服务启动/关闭链路。</li>
+</ul>
+<p>后续触发持久索引的条件（任一）：</p>
+<ul>
+<li>常用工作区文件数 &gt; 2,000 或总文本 &gt; 100 MiB；</li>
+<li>搜索 P95 &gt; 2s；</li>
+<li>用户频繁搜索且重复扫描明显影响体验。</li>
+</ul>
+<p>达到条件后再进入“worker_threads + 纯 JS 索引 + 可重建快照”的 PoC，不直接上数据库。</p>
 
   <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
 </div>

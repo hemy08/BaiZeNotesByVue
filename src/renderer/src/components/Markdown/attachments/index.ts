@@ -14,12 +14,15 @@
  * - `openAttachmentDialog()` 首次调用时动态 import `AttachmentDialog.vue`（独立异步
  *   chunk，不进首屏），用 `createApp` 挂到 body 下的独立容器；对话框内部走 BaseDialog
  *   的 Teleport + 模态焦点管理；关闭只切换显隐，不反复重建（再次打开不重新 createApp）；
- * - 不新增 IPC / EventBus 事件：附件清单来自既有 `FILE.GET_WORKSPACE_INDEX`（经
- *   `useWorkspaceIndex`）；「在资源管理器中显示」复用既有
- *   `IPC.FILE_MANAGER.OPEN_IN_EXPLORER` send 通道（主进程负责 Path Guard 校验）。
+ * - 附件清单来自既有 `FILE.GET_WORKSPACE_INDEX`（经 `useWorkspaceIndex`）；
+ *   2026-11-22 B5 扩展新增三个受控 invoke 通道（均在 preload 白名单 / 主进程 sender 校验内）：
+ *   - `IPC.FILE.GET_ATTACHMENT_AUDIT`：只读孤儿审计（相对路径 / 大小 / mtime）；
+ *   - `IPC.FILE.TRASH_ATTACHMENTS`：批量移入系统回收站（主进程重校验路径与引用）；
+ *   - `IPC.FILE.RENAME_ATTACHMENT`：附件重命名 + Markdown 引用更新（事务式）；
+ *   「在资源管理器中显示」复用既有 `IPC.FILE_MANAGER.OPEN_IN_EXPLORER` send 通道。
  *
- * 能力开关：附件管理为默认能力，不新增 feature flag；主进程不可用/旧索引版本时
- * 对话框内部展示对应空态，入口本身不抛错（返回 false 仅代表宿主挂载失败）。
+ * 能力开关：附件管理为默认能力，不新增 feature flag；主进程不可用/旧索引版本/旧主进程
+ * 无审计字段时对话框内部展示对应空态，入口本身不抛错（返回 false 仅代表宿主挂载失败）。
  */
 import { createApp, type App } from 'vue'
 import { logger } from '../../../common/logger'
@@ -101,15 +104,45 @@ export function disposeAttachmentHost(): void {
 
 // 便于主控 / 测试直接从本入口取对话框状态与纯查询辅助
 export {
+    ATTACHMENT_AUDIT_FAILURE_CODES,
+    ATTACHMENT_RENAME_FAILURE_CODES,
+    ATTACHMENT_TRASH_FAILURE_CODES,
+    ATTACHMENT_TRASH_FAILURE_REASONS,
     attachmentDialogState,
     buildAttachmentGroups,
     closeAttachmentDialogState,
     countAttachmentReferences,
+    defaultRenameBaseName,
+    describeAttachmentRenameFailure,
+    describeAttachmentTrashFailure,
+    formatAttachmentMtime,
+    formatAttachmentSize,
+    isAllOrphanSelected,
+    normalizeAttachmentAuditEntry,
+    normalizeAttachmentAuditResult,
     normalizeAttachmentPathKey,
+    normalizeAttachmentRenameResult,
+    normalizeAttachmentTrashFailure,
+    normalizeAttachmentTrashResult,
     openAttachmentDialogState,
+    orphanSelectionKey,
+    prepareAttachmentRename,
+    pruneSelectedKeys,
     resolveAttachmentReferences,
+    selectAllOrphanKeys,
+    sumAttachmentSizes,
     supportsAttachmentIndex,
+    toggleOrphanSelected,
+    type AttachmentAuditFailureCode,
+    type AttachmentAuditView,
     type AttachmentDialogState,
     type AttachmentGroup,
-    type AttachmentReferenceView
+    type AttachmentMessageDescriptor,
+    type AttachmentReferenceView,
+    type AttachmentRenameFailureCode,
+    type AttachmentRenameInput,
+    type AttachmentRenameView,
+    type AttachmentTrashFailureReason,
+    type AttachmentTrashFailureView,
+    type AttachmentTrashView
 } from './attachment-dialog-state'

@@ -76,6 +76,86 @@ export interface WorkspaceIndexFailure {
 
 export type WorkspaceIndexResult = WorkspaceIndexSuccess | WorkspaceIndexFailure
 
+/** B5 附件审计条目（只读） */
+export interface AttachmentAuditEntry {
+    /** 文件绝对路径 */
+    path: string
+    /** 相对工作区根路径（统一 `/`） */
+    relativePath: string
+    /** 文件字节数 */
+    size: number
+    /** 修改时间（ms） */
+    mtimeMs: number
+}
+
+/** B5 附件审计成功结果 */
+export interface AttachmentAuditSuccess {
+    ok: true
+    /** 未被任何 Markdown 引用的附件候选（保守排除后） */
+    orphans: AttachmentAuditEntry[]
+    /** 被引用的附件数量 */
+    referencedCount: number
+    /** 扫描到的附件总数（含孤儿/被引用/缺失引用不计入） */
+    totalCount: number
+    /** 是否因上限截断 */
+    truncated: boolean
+}
+
+/** B5 附件审计安全失败结果 */
+export interface AttachmentAuditFailure {
+    ok: false
+    code: 'NO_WORKSPACE' | 'INVALID_PAYLOAD' | 'AUDIT_ERROR' | 'UNTRUSTED_SENDER'
+    message?: string
+}
+
+export type AttachmentAuditResult = AttachmentAuditSuccess | AttachmentAuditFailure
+
+/** B5 批量移入回收站的单条失败 */
+export interface AttachmentTrashFailure {
+    path: string
+    reason: 'PATH_DENIED' | 'NOT_FILE' | 'STILL_REFERENCED' | 'TRASH_FAILED' | 'LIMIT_EXCEEDED'
+}
+
+/** B5 批量移入回收站结果 */
+export type AttachmentTrashResult =
+    | {
+          ok: true
+          trashed: number
+          failed: AttachmentTrashFailure[]
+      }
+    | {
+          ok: false
+          code: 'NO_WORKSPACE' | 'INVALID_PAYLOAD' | 'TRASH_ERROR' | 'UNTRUSTED_SENDER'
+          message?: string
+      }
+
+/** B5 附件重命名结果 */
+export type AttachmentRenameResult =
+    | {
+          ok: true
+          /** 新文件绝对路径 */
+          newPath: string
+          /** 已更新引用来源文件数 */
+          updatedFiles: number
+          /** 已更新引用处数 */
+          replacements: number
+          /** 写回失败的来源文件（已改名，需手动处理） */
+          failedFiles: string[]
+      }
+    | {
+          ok: false
+          code:
+              | 'NO_WORKSPACE'
+              | 'INVALID_PAYLOAD'
+              | 'PATH_DENIED'
+              | 'INVALID_NAME'
+              | 'ALREADY_EXISTS'
+              | 'NOT_FILE'
+              | 'RENAME_FAILED'
+              | 'UNTRUSTED_SENDER'
+          message?: string
+      }
+
 /* ============================================================================
  * 一、请求/响应/事件共用的载荷结构（按主进程实际实现镜像，仅类型）
  * ========================================================================== */
@@ -422,6 +502,8 @@ export interface WorkspaceSearchResult {
     matchCount: number
     /** 实际扫描的文本文件数 */
     scannedFiles: number
+    /** B2 指标：本次按需搜索耗时（ms；仅在成功搜索时返回，可观测不参与业务判断） */
+    elapsedMs?: number
 }
 
 /** 工作区替换选项（FILE.REPLACE_WORKSPACE 请求载荷） */
@@ -570,6 +652,12 @@ export interface IpcRequests {
     [IPC.FILE.REPLACE_WORKSPACE]: [options: WorkspaceReplaceOptions]
     /** 1.5.1 工作区索引查询（invoke；force 触发重建） */
     [IPC.FILE.GET_WORKSPACE_INDEX]: [query?: WorkspaceIndexQuery]
+    /** B5 附件孤儿审计（invoke；主进程只扫描 appState.rootPath） */
+    [IPC.FILE.GET_ATTACHMENT_AUDIT]: []
+    /** B5 批量移入系统回收站（invoke；主进程重新校验引用/路径） */
+    [IPC.FILE.TRASH_ATTACHMENTS]: [paths: string[]]
+    /** B5 附件重命名 + Markdown 引用更新（invoke；主进程两阶段执行） */
+    [IPC.FILE.RENAME_ATTACHMENT]: [oldPath: string, newName: string]
 
     // ============ 文件管理器右键动作（全部为 send） ============
     [IPC.FILE_MANAGER.COPY_RELATIVE_PATH]: [path: string]
@@ -679,6 +767,12 @@ export interface IpcResponses {
     [IPC.FILE.REPLACE_WORKSPACE]: WorkspaceReplaceResult
     /** 1.5.1 工作区索引（invoke；安全失败返回 ok=false + code，不抛异常） */
     [IPC.FILE.GET_WORKSPACE_INDEX]: WorkspaceIndexResult
+    /** B5 附件孤儿审计 */
+    [IPC.FILE.GET_ATTACHMENT_AUDIT]: AttachmentAuditResult
+    /** B5 批量移入回收站 */
+    [IPC.FILE.TRASH_ATTACHMENTS]: AttachmentTrashResult
+    /** B5 附件重命名 */
+    [IPC.FILE.RENAME_ATTACHMENT]: AttachmentRenameResult
 
     // ============ 对话框确认动作 ============
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult

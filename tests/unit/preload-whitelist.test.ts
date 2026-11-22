@@ -165,6 +165,14 @@ function collectRendererUsage(): { send: Set<string>; receive: Set<string> } {
 
     const send = new Set<string>()
     const receive = new Set<string>()
+    // 渲染层附件管理用 invokeRenderer() 包装 ipcRenderer.invoke；该包装同样属于实际调用点，
+    // 不能因为没有直接写 `.invoke` 就被误判为“白名单多余放行”。
+    const helperCallRe = new RegExp(
+        '\\binvokeRenderer\\s*\\(\\s*[\\s\\S]{0,160}?(?:IPC\\.([A-Z_]+)\\.([A-Z_]+)' +
+            aliasAlt +
+            ')',
+        'g'
+    )
     for (const file of files) {
         const source = readSource(file)
         for (const match of source.matchAll(callRe)) {
@@ -178,6 +186,15 @@ function collectRendererUsage(): { send: Set<string>; receive: Set<string> } {
             if (!channel) continue
             if (method === 'send' || method === 'invoke') send.add(channel)
             else receive.add(channel)
+        }
+        for (const match of source.matchAll(helperCallRe)) {
+            const channel =
+                match[1] && match[2]
+                    ? GROUPS[match[1]]?.[match[2]]
+                    : match[3]
+                      ? alias.get(match[3])
+                      : undefined
+            if (channel) send.add(channel)
         }
     }
     return { send, receive }
@@ -231,10 +248,10 @@ const DIALOG_USAGE = collectDialogUsage()
 const PRELOAD_API_USAGE = collectPreloadApiUsage()
 
 describe('preload 白名单：生成产物 ↔ shared 契约', () => {
-    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（66，双向）', () => {
+    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（69，双向）', () => {
         const generated = new Set(RENDERER_SEND_CHANNELS)
-        expect(generated.size).toBe(66)
-        expect(CONTRACT_REQUEST_KEYS.size).toBe(66)
+        expect(generated.size).toBe(69)
+        expect(CONTRACT_REQUEST_KEYS.size).toBe(69)
         expect(diff(generated, CONTRACT_REQUEST_KEYS)).toEqual([])
     })
 
@@ -277,8 +294,8 @@ describe('preload 白名单：生成产物 ↔ shared 契约', () => {
 })
 
 describe('preload 白名单：入口镜像 ↔ 生成产物（防两处产物漂移）', () => {
-    it('index.ts 两个生成块应可解析且与生成模块双向一致（66 / 28）', () => {
-        expect(INDEX_SEND_WHITELIST.size).toBe(66)
+    it('index.ts 两个生成块应可解析且与生成模块双向一致（69 / 28）', () => {
+        expect(INDEX_SEND_WHITELIST.size).toBe(69)
         expect(INDEX_RECEIVE_WHITELIST.size).toBe(28)
         expect(diff(INDEX_SEND_WHITELIST, new Set(RENDERER_SEND_CHANNELS))).toEqual([])
         expect(diff(INDEX_RECEIVE_WHITELIST, new Set(RENDERER_RECEIVE_CHANNELS))).toEqual([])

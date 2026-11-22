@@ -106,7 +106,7 @@ const api = {
 
 // <preload-whitelist:renderer-send>
 /**
- * 渲染层 → 主进程（send / invoke）允许通道：66 个。
+ * 渲染层 → 主进程（send / invoke）允许通道：69 个。
  * 由 build/generate-preload-whitelist.js 从 shared/types/ipc.ts 的 IpcRequests 生成，禁止手改。
  */
 const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
@@ -146,6 +146,9 @@ const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
     IPC.FILE.SEARCH_WORKSPACE,
     IPC.FILE.REPLACE_WORKSPACE,
     IPC.FILE.GET_WORKSPACE_INDEX,
+    IPC.FILE.GET_ATTACHMENT_AUDIT,
+    IPC.FILE.TRASH_ATTACHMENTS,
+    IPC.FILE.RENAME_ATTACHMENT,
     IPC.FILE_MANAGER.COPY_RELATIVE_PATH,
     IPC.FILE_MANAGER.COPY_IMAGELINK,
     IPC.FILE_MANAGER.COPY_FILELINK,

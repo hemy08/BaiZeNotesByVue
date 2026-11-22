@@ -111,7 +111,12 @@ export const IPC = {
         REPLACE_WORKSPACE: 'baize:file:replace-workspace',
         // 1.5.1 本地知识库基座：工作区索引（front matter/标签/Wiki 链接）查询。
         // 主进程只索引 appState.rootPath；渲染层传 force 可触发重建（仍由主进程校验 sender）。
-        GET_WORKSPACE_INDEX: 'baize:file:get-workspace-index'
+        GET_WORKSPACE_INDEX: 'baize:file:get-workspace-index',
+        // 1.5.1 B5 附件管理（invoke）：只读孤儿审计 / 批量移入系统回收站 / 附件重命名+引用更新。
+        // 所有路径由主进程基于 appState.rootPath 重新校验，渲染层不能指定扫描根。
+        GET_ATTACHMENT_AUDIT: 'baize:file:get-attachment-audit',
+        TRASH_ATTACHMENTS: 'baize:file:trash-attachments',
+        RENAME_ATTACHMENT: 'baize:file:rename-attachment'
     } as const,
 
     // ============ 文件管理器右键菜单 ============

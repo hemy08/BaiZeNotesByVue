@@ -244,6 +244,15 @@ describe('searchWorkspace：匹配选项', () => {
         expect(relativePaths(result)).toContain('sub/deep/d.md')
     })
 
+    it('B2 指标：成功搜索返回 elapsedMs，且不改变既有结果', async () => {
+        const result = await searchWorkspace({ query: 'hello' })
+        expect(result.ok).toBe(true)
+        expect(typeof result.elapsedMs).toBe('number')
+        expect(result.elapsedMs).toBeGreaterThanOrEqual(0)
+        expect(result.scannedFiles).toBeGreaterThan(0)
+        expect(result.matchCount).toBeGreaterThan(0)
+    })
+
     it('caseSensitive 只命中大小写完全一致的文本', async () => {
         const result = await searchWorkspace({ query: 'hello', caseSensitive: true })
         const aFile = result.files.find((file) => file.relativePath === 'a.md')

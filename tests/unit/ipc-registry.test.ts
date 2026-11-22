@@ -41,6 +41,8 @@ const implementationMocks = vi.hoisted(() => ({
     registerWorkspaceSearchIpc: vi.fn(),
     // 1.5.1：工作区索引独立域注册入口
     registerWorkspaceIndexIpc: vi.fn(),
+    // 1.5.1 B5：附件管理独立域注册入口
+    registerAttachmentIpc: vi.fn(),
     // 主题广播依赖
     getCurrentThemeStyles: vi.fn(),
     getThemeStylesByType: vi.fn(),
@@ -84,6 +86,11 @@ vi.mock('../../src/main/ipc/workspace-search-ipc', () => ({
 // 1.5.1：工作区索引独立域模块（本文件只验证编排，不加载真实实现）
 vi.mock('../../src/main/ipc/workspace-index-ipc', () => ({
     registerWorkspaceIndexIpc: implementationMocks.registerWorkspaceIndexIpc
+}))
+
+// 1.5.1 B5：附件管理独立域模块（本文件只验证编排）
+vi.mock('../../src/main/ipc/attachment-ipc', () => ({
+    registerAttachmentIpc: implementationMocks.registerAttachmentIpc
 }))
 
 // P1-1：主题广播实现已迁到中性层 utils/theme-broadcast（config 不再 import ipc/**）
@@ -183,6 +190,9 @@ beforeEach(() => {
     implementationMocks.registerWorkspaceIndexIpc.mockImplementation(() => {
         callOrder.push('workspace-index')
     })
+    implementationMocks.registerAttachmentIpc.mockImplementation(() => {
+        callOrder.push('attachment')
+    })
     implementationMocks.getCurrentThemeStyles.mockReturnValue({ name: 'baize' })
     implementationMocks.getThemeStylesByType.mockImplementation((themeType: string) => ({
         name: themeType
@@ -224,7 +234,8 @@ describe('registerAll（建窗后一次性注册清单）', () => {
             'handlers',
             'plantuml',
             'workspace-search',
-            'workspace-index'
+            'workspace-index',
+            'attachment'
         ])
         expect(implementationMocks.mainWindowListenDialogsEvent).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerUtilsIpcHandlers).toHaveBeenCalledWith(mainWindow)
@@ -237,6 +248,10 @@ describe('registerAll（建窗后一次性注册清单）', () => {
         expect(implementationMocks.registerWorkspaceIndexIpc).toHaveBeenCalledWith(
             mainWindow,
             'global-workspace-index-ipc'
+        )
+        expect(implementationMocks.registerAttachmentIpc).toHaveBeenCalledWith(
+            mainWindow,
+            'global-attachment-ipc'
         )
     })
 

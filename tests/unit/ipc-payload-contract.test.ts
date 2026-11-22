@@ -322,18 +322,18 @@ describe('IPC 载荷契约：请求/响应（渲染层 → 主进程）', () => 
         expect(ALL_CHANNEL_VALUES.size).toBe(IPC_ENTRIES.length)
     })
 
-    it('IpcRequests 键集合应与 preload send/invoke 白名单完全一致（66 个，双向）', () => {
-        expect(SEND_WHITELIST.size).toBe(66)
-        expect(REQUEST_KEYS.size).toBe(66)
+    it('IpcRequests 键集合应与 preload send/invoke 白名单完全一致（69 个，双向）', () => {
+        expect(SEND_WHITELIST.size).toBe(69)
+        expect(REQUEST_KEYS.size).toBe(69)
         expect(diff(SEND_WHITELIST, REQUEST_KEYS)).toEqual([])
     })
 
-    it('IpcResponses 键集合应等于「invoke 注册通道 ∩ send 白名单」（33 个）', () => {
+    it('IpcResponses 键集合应等于「invoke 注册通道 ∩ send 白名单」（36 个）', () => {
         const invokeInWhitelist = new Set(
             [...MAIN_INVOKE_CHANNELS].filter((channel) => SEND_WHITELIST.has(channel))
         )
-        expect(invokeInWhitelist.size).toBe(33)
-        expect(RESPONSE_KEYS.size).toBe(33)
+        expect(invokeInWhitelist.size).toBe(36)
+        expect(RESPONSE_KEYS.size).toBe(36)
         expect(diff(invokeInWhitelist, RESPONSE_KEYS)).toEqual([])
     })
 

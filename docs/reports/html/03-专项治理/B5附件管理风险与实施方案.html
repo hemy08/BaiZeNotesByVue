@@ -31,6 +31,7 @@
     <a class="toc-l3" href="#sub-10">8.3 验收指标</a>
     <a class="toc-l2" href="#sec-9">9. 不在本阶段范围</a>
     <a class="toc-l2" href="#sec-10">10. 待决策</a>
+    <a class="toc-l2" href="#sec-11">11. 1.5.1 实施结果（2026-11-22）</a>
   </nav>
 
 <div class="wrap">
@@ -43,10 +44,10 @@
 
 <h1>B5 附件管理风险与实施方案</h1>
 <blockquote>
-<p><strong>性质</strong>：风险分析与实施方案（只读评估，未改代码）。
+<p><strong>性质</strong>：风险分析与实施方案；<strong>1.5.1 方案 A 已实施</strong>。
 <strong>项目基线</strong>：v1.5.1（开发中）；当前门禁实测 312 测试文件 / 5,741 用例，IPC 100 通道 / 17 组，preload 白名单 send 66 + receive 28。
 <strong>评估对象</strong>：孤儿附件清理、附件重命名、附件引用更新。
-<strong>结论先行</strong>：B5 已具备“附件引用审计/定位”，但删除与重命名属于<strong>高数据风险操作</strong>；应先做只读孤儿审计，再以系统回收站做安全清理，最后做事务式重命名，禁止默认永久删除。</p>
+<strong>结论先行</strong>：B5 已具备“附件引用审计/定位”；1.5.1 方案 A 已补齐“孤儿审计 + 移入系统回收站 + 事务式附件重命名”，删除仍坚持只进回收站、不做永久删除。</p>
 </blockquote>
 <h2 id="sec-1">1. 现状与事实</h2>
 <h3 id="sub-1">1.1 已具备</h3>
@@ -514,6 +515,26 @@
 <blockquote>
 <p>未决策前建议默认：只移入回收站、单次 100 个/500 MiB、失败默认回滚、只改名不移动。</p>
 </blockquote>
+<h2 id="sec-11">11. 1.5.1 实施结果（2026-11-22）</h2>
+<p>已按方案 A 落地三个阶段：</p>
+<ul>
+<li><strong>只读孤儿审计</strong>：新增主进程审计，扫描工作区附件全集并与索引引用集合求差；引用解析不完整/超限时保守返回空候选 + <code>truncated</code>；</li>
+<li><strong>安全清理</strong>：UI 多选 + 内联二次确认；主进程重新校验路径/类型/引用后仅 <code>shell.trashItem</code>，单批 100 个、累计 500 MiB；逐项失败返回；</li>
+<li><strong>附件重命名</strong>：两阶段“构建引用计划 → 改名 → 写回”；保留相对路径/<code>./</code>/尖括号/锚点/查询串风格，按原编码写回并保留 BOM；冲突、越界、非法名、仍被引用均结构化拒绝。</li>
+</ul>
+<p>验证：</p>
+<ul>
+<li>主进程服务/IPC 测试 <strong>78 个（1 跳过）</strong>，UI 测试 <strong>63 个</strong>；</li>
+<li>新增 IPC：<code>GET_ATTACHMENT_AUDIT</code>、<code>TRASH_ATTACHMENTS</code>、<code>RENAME_ATTACHMENT</code>，均经 sender 校验、Path Guard 与主进程串行队列；</li>
+<li>不提供永久删除入口。</li>
+</ul>
+<p>已知限制：</p>
+<ul>
+<li>HTML <code>&lt;img&gt;</code>、reference 式链接、代码块内引用不参与孤儿判定，可能仍被判为候选（保守审计原则下宁少报不误删）；</li>
+<li>重命名后若部分来源文件写回失败，主进程不回滚改名，UI 提示需手动修复；</li>
+<li>文件符号链接测试在 Windows 需开发者模式，部分环境 skip（目录 junction 分支已覆盖）；</li>
+<li>只改名，不移动附件到其他目录。</li>
+</ul>
 
   <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
 </div>

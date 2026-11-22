@@ -76,6 +76,9 @@ export const MAX_WORKSPACE_REPLACE_TEXT_LENGTH = 4096
 /** 搜索结果行预览最大字符数 */
 export const WORKSPACE_SEARCH_PREVIEW_MAX = 200
 
+/** B2 指标：慢搜索日志阈值（仅观测；不改变搜索结果/上限） */
+export const SLOW_WORKSPACE_SEARCH_LOG_MS = 500
+
 /** Windows 下路径比较大小写不敏感（与 app 其余路径判定口径一致） */
 const WIN32_CASE_INSENSITIVE = process.platform === 'win32'
 /** 设备命名空间前缀（\\?\ / \\.\ 等一律拒绝，防绕过路径校验） */
@@ -523,6 +526,7 @@ async function listWorkspaceTextFiles(roots: WorkspaceRoots): Promise<WorkspaceS
  * @returns 结构化结果；所有可预期失败以 `ok:false + code` 返回，不抛异常
  */
 export async function searchWorkspace(rawOptions: unknown): Promise<WorkspaceSearchResult> {
+    const startedAt = Date.now()
     try {
         const roots = resolveWorkspaceRoots()
         if (!roots) {
@@ -548,12 +552,20 @@ export async function searchWorkspace(rawOptions: unknown): Promise<WorkspaceSea
             maxResults: options.maxResults
         }
         await walkSearchDirectory(roots.lexical, roots, state, compiled.matcher, 0)
+        const elapsedMs = Date.now() - startedAt
+        // B2 指标：只记录聚合耗时，不记录查询词/文件内容；慢搜索用于判断是否需要持久索引
+        if (elapsedMs >= SLOW_WORKSPACE_SEARCH_LOG_MS) {
+            logger.info(
+                `[B2] 工作区按需搜索较慢：${elapsedMs}ms / 扫描 ${state.scannedFiles} 文件 / 命中 ${state.matchCount} / truncated=${state.truncated}`
+            )
+        }
         return {
             ok: true,
             files: state.files,
             truncated: state.truncated,
             matchCount: state.matchCount,
-            scannedFiles: state.scannedFiles
+            scannedFiles: state.scannedFiles,
+            elapsedMs
         }
     } catch (error) {
         logger.error('[WorkspaceSearch] 工作区搜索异常：', error)
