@@ -144,6 +144,13 @@ async function inlineLocalExportImages(html: string, options: HtmlExportOptions)
     if (!workspaceRoot) {
         return html
     }
+    // CI/Windows 短路径（RUNNER~1）与 realpath 全路径可能不同：比较前统一 realpath。
+    let realWorkspaceRoot = workspaceRoot
+    try {
+        realWorkspaceRoot = await fs.realpath(workspaceRoot)
+    } catch {
+        // 根不可解析时保持原值，后续 realpath 候选仍会失败并被跳过
+    }
     const sourceDir = sourceFilePath ? path.dirname(sourceFilePath) : workspaceRoot
     let totalBytes = 0
     const matches = Array.from(html.matchAll(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi))
@@ -167,7 +174,7 @@ async function inlineLocalExportImages(html: string, options: HtmlExportOptions)
         } catch {
             continue
         }
-        if (!isSameOrWithin(realCandidate, workspaceRoot)) {
+        if (!isSameOrWithin(realCandidate, realWorkspaceRoot)) {
             continue
         }
         const ext = path.extname(realCandidate).toLowerCase()
@@ -309,6 +316,12 @@ async function collectEpubImages(
     if (!workspaceRoot) {
         return { html, images: [] }
     }
+    let realWorkspaceRoot = workspaceRoot
+    try {
+        realWorkspaceRoot = await fs.realpath(workspaceRoot)
+    } catch {
+        // 根不可解析时保持原值，后续 realpath 候选仍会失败并被跳过
+    }
     const sourceDir = sourceFilePath ? path.dirname(sourceFilePath) : workspaceRoot
     const images: Array<{ name: string; mime: string; data: Buffer }> = []
     const matches = Array.from(html.matchAll(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi))
@@ -332,7 +345,7 @@ async function collectEpubImages(
         } catch {
             continue
         }
-        if (!isSameOrWithin(realCandidate, workspaceRoot)) {
+        if (!isSameOrWithin(realCandidate, realWorkspaceRoot)) {
             continue
         }
         const ext = path.extname(realCandidate).toLowerCase()

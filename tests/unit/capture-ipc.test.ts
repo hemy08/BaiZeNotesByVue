@@ -12,7 +12,7 @@
  * 7. 路径校验 helper（目标必须位于工作区根内）与注册形状（registerHandleOnce + sender 校验包装）。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { IPC } from '../../src/shared/ipc-channels'
@@ -62,7 +62,7 @@ let workspaceRoot = ''
 beforeEach(async () => {
     vi.clearAllMocks()
     mocks.openSelectFile.mockResolvedValue(undefined)
-    workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'baize-capture-'))
+    workspaceRoot = await realpath(await mkdtemp(path.join(os.tmpdir(), 'baize-capture-')))
     mocks.appState.rootPath = workspaceRoot
 })
 

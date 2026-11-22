@@ -18,6 +18,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import type { VueWrapper } from '@vue/test-utils'
+import { formatDateTime } from '../../../src/shared/utils/date'
 
 const pdfjsMocks = vi.hoisted(() => ({
     getDocument: vi.fn(),
@@ -375,7 +376,9 @@ describe('标注列表面板', () => {
         expect(editor.find('.pdf-annotation-empty').exists()).toBe(false)
         expect(editor.findAll('.pdf-annotation-item')).toHaveLength(1)
         expect(editor.find('.pdf-annotation-text').text()).toContain('第一页的标注文本')
-        expect(editor.find('.pdf-annotation-time').text()).toBe('2026-01-04 17:05')
+        expect(editor.find('.pdf-annotation-time').text()).toBe(
+            formatDateTime(new Date('2026-01-04T09:05:06.000Z'), 'YYYY-MM-DD HH:mm')
+        )
         expect(editor.find('.pdf-annotation-action').exists()).toBe(true)
 
         // 摘录：把当前标注 + 文件名交给 actions（插入/剪贴板回退由 actions 单测覆盖）
