@@ -160,6 +160,31 @@ export default {
         fixesTitle: '问题修复',
         improvementsTitle: '优化改进',
         techStackTitle: '技术栈',
+        v151: {
+            title: '1.5.1 本地知识库基座',
+            highlights: {
+                h1: 'A5 文档属性 + 主进程工作区索引：标题/标签/Wiki 链接/摘要/附件引用',
+                h2: 'B1 双链与反链：Ctrl/Cmd+Click 跳转、歧义选择、缺失页创建',
+                h3: 'B4/B5：链接检查与重命名自动更新；附件审计、回收站清理、附件重命名',
+                h4: 'E10 Wiki 链接悬浮预览；B2 全文检索继续走 A2 按需搜索'
+            },
+            features: {
+                f1: '文档属性面板：front matter 字段编辑，正文/BOM/CRLF 保真',
+                f2: '标签索引、链接检查、反向链接、Wiki 链接点击/创建',
+                f3: '附件管理：孤儿审计、批量移入系统回收站、事务式重命名',
+                f4: 'Wiki 链接 hover：标题/路径/摘要/反链数量'
+            },
+            improvements: {
+                i1: '工作区索引改为主进程内存缓存，5s TTL + 显式刷新',
+                i2: '重命名链接更新按原编码写回并保留 BOM，避免 GBK/UTF-16 损坏',
+                i3: 'A2 搜索新增 elapsedMs 指标与慢搜索日志',
+                i4: 'IPC 103 通道 / 17 组，白名单 send 69 + receive 28，门禁全覆盖'
+            },
+            fixes: {
+                x1: 'front matter 保存不再破坏正文、BOM 与 CRLF',
+                x2: '索引/附件操作增加工作区边界、路径与 symlink 校验'
+            }
+        },
         v150: {
             title: '1.5.0 滚动同步与安全工程升级',
             highlights: {

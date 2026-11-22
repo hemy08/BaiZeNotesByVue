@@ -1,3 +1,60 @@
+## 版本 1.5.1 (2026-11-22)
+
+> **发布状态**：**已发布**（2026-11-22）｜tag：[`release-1.5.1`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.1)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+> 本版本聚焦**本地 Markdown 知识库基座**：文档属性、工作区索引、标签/双链/反链、链接检查、附件管理与链接悬浮预览。仍为 Windows 平台、未代码签名产物（与 1.5.0 一致）。
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### 🗂️ 本地知识库基座
+
+- **A5 文档属性**：编辑 YAML front matter（标题/日期/标签/状态/摘要/别名 + 自定义键）；保存只改文件头，正文、BOM、CRLF 保持不变
+- **工作区索引层**：主进程按需扫描 `.md/.markdown/.txt`，提取标题、标签、Wiki 链接、摘要、附件引用；只索引当前工作区根，跳过忽略目录/符号链接，受文件数/大小/深度上限约束
+- **B2 标签索引**：按标签聚合文件并点击打开；全文检索继续复用 A2 按需搜索，新增 `elapsedMs` 指标与慢搜索日志；1.5.1 不建持久全文索引/数据库
+- **B1 Wiki 双链/反链**：解析 `[[页面]]`、`[[页面|别名]]`、`[[页面#标题]]`；展示当前文件反链；编辑器内 `Ctrl/Cmd+Click` 唯一命中打开，歧义候选选择，缺失页确认后受控创建
+- **B4 链接检查/重命名**：缺失/歧义链接清单可定位来源行；重命名 Markdown 文件后自动更新其他文档中的 Wiki 链接，两阶段执行、失败不改链接
+- **B5 附件管理**：附件引用审计、孤儿附件只读审计、批量移入系统回收站、事务式附件重命名 + Markdown 引用更新；不提供永久删除
+- **E10 Wiki 链接悬浮预览**：悬停展示目标标题、相对路径、摘要与反链数量
+
+</code></pre></blockcode></details>
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🔒 安全与工程</summary>
+<blockcode><pre><code>
+
+### 🔐 安全边界
+
+- 新增 `FILE.GET_ATTACHMENT_AUDIT` / `TRASH_ATTACHMENTS` / `RENAME_ATTACHMENT` 三个受控 IPC：`withSenderCheck` + Path Guard + 主进程串行队列
+- 孤儿删除仅使用系统回收站 `shell.trashItem`，主进程重新校验路径/类型/引用，单批 100 个/500 MiB 上限
+- 附件重命名保留原编码/BOM，拒绝越界、目录、symlink、非法名与被引用附件；不做永久删除
+- 工作区索引/附件操作只信任 `appState.rootPath`，渲染层不直接读盘；不新增 CSP/allowlist 例外
+
+### ⚙️ 工程与门禁
+
+- IPC **103 通道 / 17 组**，preload 白名单 send 69 + receive 28
+- 测试 **317 文件 / 5,932 用例**；覆盖率 **93.85 / 88.42 / 94.43 / 94.20**
+- typecheck / ESLint / Prettier / docs / quality / memory / audit 全绿
+- E2E **28/28**；构建、体积预算、Fuses 8 项、audit、memory 检查通过
+- 体积：入口 **143.2 KiB** / 首屏 **329.5 KiB** / Setup **111.36 MiB** / portable **100.49 MiB** / asar **40.97 MiB**
+
+</code></pre></blockcode></details>
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">📌 已知限制</summary>
+<blockcode><pre><code>
+
+- Wiki 链接 heading 目前只打开目标文件，不跳到具体标题
+- B2 无持久全文索引，全文检索继续按需扫描
+- B5 不提供永久删除、只改名不移动附件；HTML `<img>`、reference 式链接、代码块内引用不参与孤儿判定
+- 附件重命名后若部分来源文件写回失败，不回滚改名，界面提示需手动修复
+- 未接入代码签名，发布产物未签名；仅提供 Windows x64 安装包
+
+</code></pre></blockcode></details>
+
 ## 版本 1.5.0 (2026-11-21)
 
 > **发布状态**：**已发布**（2026-11-21）｜tag：[`release-1.5.0`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.0)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap

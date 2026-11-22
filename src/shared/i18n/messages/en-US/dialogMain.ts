@@ -160,6 +160,31 @@ export default {
         fixesTitle: 'Bug fixes',
         improvementsTitle: 'Improvements',
         techStackTitle: 'Tech stack',
+        v151: {
+            title: '1.5.1 Local Knowledge Base Foundation',
+            highlights: {
+                h1: 'A5 document properties + main-process workspace index: title/tags/Wiki links/excerpt/attachments',
+                h2: 'B1 wiki links and backlinks: Ctrl/Cmd+Click, ambiguity picker, missing-page creation',
+                h3: 'B4/B5: link checks and rename updates; attachment audit, Recycle Bin cleanup, attachment rename',
+                h4: 'E10 wiki link hover; B2 full-text search continues to use on-demand A2 search'
+            },
+            features: {
+                f1: 'Document properties panel with front matter editing and body/BOM/CRLF preservation',
+                f2: 'Tag index, link checks, backlinks, wiki link click/create',
+                f3: 'Attachment manager: orphan audit, batch move to Recycle Bin, transactional rename',
+                f4: 'Wiki link hover: title/path/excerpt/backlink count'
+            },
+            improvements: {
+                i1: 'Workspace index cached in main process with 5s TTL and explicit refresh',
+                i2: 'Rename link updates preserve source encoding and BOM (GBK/UTF-16 safe)',
+                i3: 'A2 search adds elapsedMs metric and slow-search logging',
+                i4: '103 IPC channels / 17 groups; preload whitelist send 69 + receive 28'
+            },
+            fixes: {
+                x1: 'Front matter saves no longer damage body, BOM, or CRLF',
+                x2: 'Index/attachment operations enforce workspace, path, and symlink boundaries'
+            }
+        },
         v150: {
             title: '1.5.0 Scroll Sync and Security Engineering',
             highlights: {
