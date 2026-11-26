@@ -192,11 +192,13 @@ export function HandleMenuAction(action: string) {
         return
     }
 
-    // 插入表格
-    // A-2/ARC-07：菜单实际 id 为 insert:md-table（原分支误写 insert:table）；
-    // 主进程树中对应 handler 已删除。
+    // 插入/编辑表格：与工具栏共用统一表格编辑器（光标在表格内为编辑，否则插入）
     if (action === 'baize:menu:insert:md-table') {
-        configStore.showDialog('mdSheet')
+        void import('../dialogs/medium/table-editor')
+            .then((module) => module.openTableEditorForActiveEditor())
+            .catch((error) => {
+                logger.warn('[table] 菜单打开统一表格编辑器失败', error)
+            })
         return
     }
 

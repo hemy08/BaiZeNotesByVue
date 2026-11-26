@@ -134,10 +134,7 @@ vi.mock('@renderer/components/dialogs', async () => {
             { cls: 'stub-browse', event: 'browse-file', payload: undefined },
             { cls: 'stub-insert', event: 'insert', payload: '![img](./a.png)' }
         ]),
-        MdSheetDialog: makeStub('MdSheetDialog', [
-            { cls: 'stub-close', event: 'close' },
-            { cls: 'stub-insert', event: 'insert', payload: '| a | b |' }
-        ]),
+
         WebUrlDialog: makeStub('WebUrlDialog', [
             { cls: 'stub-close', event: 'close' },
             { cls: 'stub-insert', event: 'insert', payload: '[链接](https://x.com)' }
@@ -294,7 +291,6 @@ describe('BaiZeNotes 对话框 close 处理器', () => {
             ['MaterialSyntaxDialog', 'materialSyntax'],
             ['MathTextDialog', 'mathText'],
             ['InsertImageDialog', 'insertImage'],
-            ['MdSheetDialog', 'mdSheet'],
             ['WebUrlDialog', 'insertLink'],
             ['CreateFileFolderDialog', 'createFileFolder'],
             ['RenameFileFolderDialog', 'renameFileFolder'],

@@ -120,11 +120,6 @@
             @browse-file="handleBrowseImageFile"
             @insert="handleDialogInsert"
         />
-        <BaiZeDialogs.MdSheetDialog
-            :visible="configStore.dialogs.mdSheet.visible"
-            @close="configStore.hideDialog('mdSheet')"
-            @insert="handleDialogInsert"
-        />
         <BaiZeDialogs.WebUrlDialog
             :visible="configStore.dialogs.insertLink.visible"
             @close="configStore.hideDialog('insertLink')"
@@ -519,6 +514,15 @@ const handleOpenVueDialog = (
     dialogName: string,
     data?: Record<string, unknown>
 ) => {
+    // P0：主进程菜单/工具入口的「表格」统一走可视化表格编辑器，不再打开旧 mdSheet 对话框
+    if (dialogName === 'mdSheet') {
+        void import('./dialogs/medium/table-editor')
+            .then((module) => module.openTableEditorForActiveEditor())
+            .catch((error) => {
+                logger.warn('[table] 主进程入口打开统一表格编辑器失败', error)
+            })
+        return
+    }
     if (data) {
         configStore.showDialog(dialogName as DialogName, data)
     } else {

@@ -109,7 +109,6 @@ export const AdmonitionDialog = lazyDialog(() => import('./medium/AdmonitionDial
 export const ImportOptionDialog = lazyDialog(() => import('./medium/ImportOptionDialog.vue'))
 export const InsertImageDialog = lazyDialog(() => import('./medium/InsertImageDialog.vue'))
 export const MathTextDialog = lazyDialog(() => import('./medium/MathTextDialog.vue'))
-export const MdSheetDialog = lazyDialog(() => import('./medium/MdSheetDialog.vue'))
 
 export const EditorSettingDialog = lazyDialog(() => import('./complex/EditorSettingDialog.vue'))
 export const FontSelectDialog = lazyDialog(() => import('./complex/FontSelectDialog.vue'))

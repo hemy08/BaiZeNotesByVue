@@ -104,18 +104,11 @@ function onFontFormat(_event: Event, context: string) {
 }
 
 function onInsertTable() {
-    // P0：光标在 GFM 表格内 → 打开可视化表格编辑器；否则回退原有插入表格对话框。
+    // P0：统一入口——光标在表格内进入编辑模式，不在表格内进入插入模式。
     void import('../dialogs/medium/table-editor')
         .then((module) => module.openTableEditorForActiveEditor())
-        .then((opened) => {
-            if (!opened) {
-                logger.info('[table] 当前光标不在标准 GFM 表格内，回退插入表格对话框')
-                getConfigStore().showDialog('mdSheet')
-            }
-        })
         .catch((error) => {
-            logger.warn('[table] 可视化表格编辑器加载失败，回退插入表格对话框', error)
-            getConfigStore().showDialog('mdSheet')
+            logger.warn('[table] 统一表格编辑器加载失败', error)
         })
 }
 

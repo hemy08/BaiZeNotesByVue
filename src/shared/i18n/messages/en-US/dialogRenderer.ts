@@ -107,11 +107,15 @@ const dialogRenderer = {
         syntaxError: 'Formula syntax error'
     },
     tableEditor: {
-        title: 'Edit Table',
-        hint: 'Edit headers, cells and column alignment; add or remove rows/columns (GFM does not support merged cells).',
+        title: 'Table Editor',
+        insertTitle: 'Insert Table',
+        editTitle: 'Edit Table',
+        insertHint: 'Fill in the table; it will be inserted at the current cursor position.',
+        editHint: 'Edit headers, cells and alignment; the current table will be replaced on apply.',
         header: 'Header',
         cell: 'Cell',
         column: 'Column',
+        row: 'Row',
         alignment: 'Column alignment',
         alignDefault: 'Default',
         alignLeft: 'Left',
@@ -120,7 +124,12 @@ const dialogRenderer = {
         addRow: 'Add row',
         addColumn: 'Add column',
         deleteRow: 'Delete row',
-        deleteColumn: 'Delete column'
+        deleteColumn: 'Delete column',
+        applyInsert: 'Insert table',
+        applyEdit: 'Apply changes',
+        rowsCount: '{count} rows',
+        columnsCount: '{count} cols',
+        shortcutHint: 'Ctrl + Enter to apply, Esc to cancel'
     },
     mdSheet: {
         title: 'Insert table',

@@ -140,10 +140,11 @@ describe('HandleMenuAction', () => {
             expect(showDialogMock).toHaveBeenCalledWith('mathText')
         })
 
-        it('should open table insert dialog', () => {
+        it('should route table insertion to the unified table editor', async () => {
             // A-2/ARC-07：菜单实际 id 为 insert:md-table，由渲染层直接接管
             HandleMenuAction('baize:menu:insert:md-table')
-            expect(showDialogMock).toHaveBeenCalledWith('mdSheet')
+            await new Promise((resolve) => setTimeout(resolve, 80))
+            expect(showDialogMock).not.toHaveBeenCalledWith('mdSheet')
         })
 
         it('should open about dialog', () => {

@@ -110,20 +110,29 @@ const dialogRenderer = {
         syntaxError: '公式语法错误'
     },
     tableEditor: {
-        title: '编辑表格',
-        hint: '编辑表头、单元格与列对齐；支持增删行列（GFM 表格不支持合并单元格）。',
+        title: '表格编辑器',
+        insertTitle: '插入表格',
+        editTitle: '编辑表格',
+        insertHint: '填写表格内容，应用后插入到当前光标位置。',
+        editHint: '修改表头、单元格与列对齐，应用后替换当前表格。',
         header: '表头',
         cell: '单元格',
         column: '列',
+        row: '行',
         alignment: '列对齐',
-        alignDefault: '默认',
+        alignDefault: '默认对齐',
         alignLeft: '左对齐',
         alignCenter: '居中',
         alignRight: '右对齐',
         addRow: '添加行',
         addColumn: '添加列',
         deleteRow: '删除行',
-        deleteColumn: '删除列'
+        deleteColumn: '删除列',
+        applyInsert: '插入表格',
+        applyEdit: '应用修改',
+        rowsCount: '{count} 行',
+        columnsCount: '{count} 列',
+        shortcutHint: 'Ctrl + Enter 应用，Esc 取消'
     },
     mdSheet: {
         title: '插入表格',
