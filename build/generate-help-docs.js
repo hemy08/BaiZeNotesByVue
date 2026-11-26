@@ -118,7 +118,9 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:v
   .layout{display:block}
   .side{display:none}
   main{max-width:none;padding:0}
-  .print-toc{display:block;page-break-after:always;padding:8mm 0}
+  .print-toc{display:block;page-break-after:always;padding:6mm 0}
+    .print-toc .toc-root{column-count:2;column-gap:16mm}
+    .print-toc li{break-inside:avoid;font-size:9pt;line-height:1.5}
   .print-toc h2{border-top:0;margin-top:0}
   .print-toc a{color:var(--text)}
   h1{font-size:18pt;page-break-after:avoid}

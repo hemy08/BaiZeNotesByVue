@@ -42,13 +42,13 @@ function splitTableRow(line: string): string[] {
             continue
         }
         if (char === '|') {
-            cells.push(current.trim())
+            cells.push(current.trim().replace(/<br\s*\/?>/gi, '\n'))
             current = ''
             continue
         }
         current += char
     }
-    cells.push(current.trim())
+    cells.push(current.trim().replace(/<br\s*\/?>/gi, '\n'))
     return cells
 }
 
@@ -67,7 +67,7 @@ function isDelimiterRow(cells: string[]): boolean {
 }
 
 function escapeCell(value: string): string {
-    return value.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
+    return value.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>')
 }
 
 /** 从全文行数组中解析以 startLine 开始的表格；失败返回 null */
@@ -136,6 +136,54 @@ export function parseMarkdownTableAtOffset(text: string, offset: number): Markdo
     return null
 }
 
+/** 转置表格：表头与首列互换，数据行按列重排 */
+export function transposeMarkdownTable(table: MarkdownTable): MarkdownTable {
+    const matrix = [table.headers, ...table.rows]
+    const columnCount = Math.max(table.headers.length, ...table.rows.map((row) => row.length))
+    const transposed: string[][] = []
+    for (let column = 0; column < columnCount; column += 1) {
+        transposed.push(matrix.map((row) => row[column] ?? ''))
+    }
+    return {
+        headers: transposed[0] ?? [],
+        rows: transposed.slice(1),
+        alignments: (transposed[0] ?? []).map(() => 'default'),
+        startLine: table.startLine,
+        endLine: table.endLine
+    }
+}
+
+/** 按某一列排序整张表格（数字优先，其次不区分大小写字典序；稳定排序） */
+export function sortMarkdownTableRows(
+    table: MarkdownTable,
+    columnIndex: number,
+    direction: 'asc' | 'desc'
+): MarkdownTable {
+    const indexed = table.rows.map((row, index) => ({ row, index }))
+    const factor = direction === 'asc' ? 1 : -1
+    indexed.sort((left, right) => {
+        const leftValue = (left.row[columnIndex] ?? '').trim()
+        const rightValue = (right.row[columnIndex] ?? '').trim()
+        const leftNumber = Number(leftValue)
+        const rightNumber = Number(rightValue)
+        const leftNumeric = leftValue !== '' && Number.isFinite(leftNumber)
+        const rightNumeric = rightValue !== '' && Number.isFinite(rightNumber)
+        if (leftNumeric && rightNumeric) {
+            return (leftNumber - rightNumber) * factor || left.index - right.index
+        }
+        if (leftNumeric !== rightNumeric) {
+            return leftNumeric ? -1 * factor : 1 * factor
+        }
+        return (
+            leftValue.localeCompare(rightValue, 'zh-CN', { sensitivity: 'base' }) * factor ||
+            left.index - right.index
+        )
+    })
+    return {
+        ...table,
+        rows: indexed.map((item) => [...item.row])
+    }
+}
 /** 序列化为标准 GFM 表格（对齐行按列输出） */
 export function serializeMarkdownTable(table: MarkdownTable): string {
     const columns = table.headers.length

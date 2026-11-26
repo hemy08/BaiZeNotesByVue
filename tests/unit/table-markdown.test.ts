@@ -3,7 +3,9 @@ import {
     createEmptyTable,
     parseMarkdownTableAtLine,
     parseMarkdownTableAtOffset,
-    serializeMarkdownTable
+    serializeMarkdownTable,
+    sortMarkdownTableRows,
+    transposeMarkdownTable
 } from '../../src/renderer/src/components/Markdown/table-markdown'
 
 const TABLE = ['| 名称 | 数量 |', '| :--- | ---: |', '| 苹果 | 3 |', '| 香蕉 | 5 |'].join('\n')
@@ -64,5 +66,42 @@ describe('P0 GFM 表格解析/序列化', () => {
         expect(empty.headers).toHaveLength(4)
         expect(empty.rows).toHaveLength(2)
         expect(empty.alignments.every((alignment) => alignment === 'default')).toBe(true)
+    })
+})
+
+describe('电子表格能力：多行、排序、转置', () => {
+    it('单元格换行序列化为 <br>，解析时还原为换行', () => {
+        const table = parseMarkdownTableAtLine(
+            ['| A | B |', '| --- | --- |', '| x | 1 |'].join('\n').split('\n'),
+            0
+        )!
+        table.rows[0][0] = '第一行\n第二行'
+        const serialized = serializeMarkdownTable(table)
+        expect(serialized).toContain('第一行<br>第二行')
+        const parsed = parseMarkdownTableAtLine(serialized.split('\n'), 0)
+        expect(parsed?.rows[0][0]).toBe('第一行\n第二行')
+    })
+
+    it('按列排序整行：数字优先，支持升降序', () => {
+        const table = parseMarkdownTableAtLine(
+            ['| 名称 | 数量 |', '| --- | --- |', '| A | 10 |', '| B | 2 |', '| C | 30 |']
+                .join('\n')
+                .split('\n'),
+            0
+        )!
+        const ascending = sortMarkdownTableRows(table, 1, 'asc')
+        expect(ascending.rows.map((row) => row[0])).toEqual(['B', 'A', 'C'])
+        const descending = sortMarkdownTableRows(table, 1, 'desc')
+        expect(descending.rows.map((row) => row[0])).toEqual(['C', 'A', 'B'])
+    })
+
+    it('行列互换', () => {
+        const table = parseMarkdownTableAtLine(
+            ['| A | B |', '| --- | --- |', '| 1 | 2 |', '| 3 | 4 |'].join('\n').split('\n'),
+            0
+        )!
+        const transposed = transposeMarkdownTable(table)
+        expect(transposed.headers).toEqual(['A', '1', '3'])
+        expect(transposed.rows).toEqual([['B', '2', '4']])
     })
 })

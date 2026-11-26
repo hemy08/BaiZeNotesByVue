@@ -225,7 +225,16 @@
                 .print-toc {
                     display: block;
                     page-break-after: always;
-                    padding: 8mm 0;
+                    padding: 6mm 0;
+                }
+                .print-toc .toc-root {
+                    column-count: 2;
+                    column-gap: 16mm;
+                }
+                .print-toc li {
+                    break-inside: avoid;
+                    font-size: 9pt;
+                    line-height: 1.5;
                 }
                 .print-toc h2 {
                     border-top: 0;
@@ -321,153 +330,120 @@
                         </ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-23">6. 标签索引</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-24">6.1 标签配置建议</a></li>
-                            <li class="toc-h3"><a href="#sec-25">6.2 联动场景</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-26">7. Wiki 双链与反向链接</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-27">7.1 链接写法</a></li>
-                            <li class="toc-h3"><a href="#sec-28">7.2 点击跳转</a></li>
-                            <li class="toc-h3"><a href="#sec-29">7.3 反向链接</a></li>
-                            <li class="toc-h3"><a href="#sec-30">7.4 命名与解析规则</a></li>
-                            <li class="toc-h3"><a href="#sec-31">7.5 联动工作流</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-32">8. 链接检查与重命名</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-33">8.1 重命名自动更新</a></li>
-                            <li class="toc-h3"><a href="#sec-34">8.2 联动注意事项</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-35">9. 附件管理</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-36">9.1 引用审计</a></li>
-                            <li class="toc-h3"><a href="#sec-37">9.2 孤儿附件</a></li>
-                            <li class="toc-h3"><a href="#sec-38">9.3 附件重命名</a></li>
-                            <li class="toc-h3"><a href="#sec-39">9.4 配置与联动</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-40">10. Wiki 链接悬浮预览</a>
+                        <a href="#sec-23">6. 知识管理功能（可选）</a>
                         <ul class="toc-sub"></ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-41">11. 写作体验</a>
+                        <a href="#sec-24">11. 写作体验</a>
                         <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-42">11.1 配置与联动</a></li>
-                            <li class="toc-h3"><a href="#sec-43">11.2 工作流</a></li>
+                            <li class="toc-h3"><a href="#sec-25">11.1 配置与联动</a></li>
+                            <li class="toc-h3"><a href="#sec-26">11.2 工作流</a></li>
                         </ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-44">12. 系统设置与配置矩阵</a>
+                        <a href="#sec-27">12. 系统设置与配置矩阵</a>
                         <ul class="toc-sub">
                             <li class="toc-h3">
-                                <a href="#sec-45">12.1 「功能」页签（可选能力，默认关闭）</a>
+                                <a href="#sec-28">12.1 「功能」页签（可选能力，默认关闭）</a>
                             </li>
-                            <li class="toc-h3"><a href="#sec-46">12.2 「编写体验」页签</a></li>
-                            <li class="toc-h3"><a href="#sec-47">12.3 「编辑器」页签</a></li>
-                            <li class="toc-h3"><a href="#sec-48">12.4 「主题」页签</a></li>
-                            <li class="toc-h3"><a href="#sec-49">12.5 「文件」页签</a></li>
-                            <li class="toc-h3"><a href="#sec-50">12.6 配置推荐</a></li>
-                            <li class="toc-h3"><a href="#sec-51">13.1 入口与行为</a></li>
-                            <li class="toc-h3"><a href="#sec-52">13.2 模板变量</a></li>
-                            <li class="toc-h3"><a href="#sec-53">13.3 与知识库联动</a></li>
+                            <li class="toc-h3"><a href="#sec-29">12.2 「编写体验」页签</a></li>
+                            <li class="toc-h3"><a href="#sec-30">12.3 「编辑器」页签</a></li>
+                            <li class="toc-h3"><a href="#sec-31">12.4 「主题」页签</a></li>
+                            <li class="toc-h3"><a href="#sec-32">12.5 「文件」页签</a></li>
+                            <li class="toc-h3"><a href="#sec-33">12.6 配置推荐</a></li>
+                            <li class="toc-h3"><a href="#sec-34">13.1 入口与行为</a></li>
+                            <li class="toc-h3"><a href="#sec-35">13.2 模板变量</a></li>
+                            <li class="toc-h3"><a href="#sec-36">13.3 与知识库联动</a></li>
                         </ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-54">14. 1.5.2 捕获与日常入口：E1 剪藏</a>
+                        <a href="#sec-37">14. 1.5.2 捕获与日常入口：E1 剪藏</a>
                         <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-55">14.1 操作流程</a></li>
-                            <li class="toc-h3"><a href="#sec-56">14.2 配置与限制</a></li>
-                            <li class="toc-h3"><a href="#sec-57">14.3 联动示例</a></li>
+                            <li class="toc-h3"><a href="#sec-38">14.1 操作流程</a></li>
+                            <li class="toc-h3"><a href="#sec-39">14.2 配置与限制</a></li>
+                            <li class="toc-h3"><a href="#sec-40">14.3 联动示例</a></li>
                         </ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-58">15. 1.5.2 捕获与日常入口：E2 PDF 标注与摘录</a>
+                        <a href="#sec-41">15. 1.5.2 捕获与日常入口：E2 PDF 标注与摘录</a>
                         <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-59">15.1 操作流程</a></li>
-                            <li class="toc-h3"><a href="#sec-60">15.2 配置与安全</a></li>
-                            <li class="toc-h3"><a href="#sec-61">15.3 联动</a></li>
+                            <li class="toc-h3"><a href="#sec-42">15.1 操作流程</a></li>
+                            <li class="toc-h3"><a href="#sec-43">15.2 配置与安全</a></li>
+                            <li class="toc-h3"><a href="#sec-44">15.3 联动</a></li>
                         </ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-62">16. 1.5.2 捕获与日常入口：E3 图片 OCR</a>
+                        <a href="#sec-45">16. 1.5.2 捕获与日常入口：E3 图片 OCR</a>
                         <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-63">16.1 操作流程</a></li>
-                            <li class="toc-h3"><a href="#sec-64">16.2 配置与限制</a></li>
-                            <li class="toc-h3"><a href="#sec-65">16.3 联动</a></li>
+                            <li class="toc-h3"><a href="#sec-46">16.1 操作流程</a></li>
+                            <li class="toc-h3"><a href="#sec-47">16.2 配置与限制</a></li>
+                            <li class="toc-h3"><a href="#sec-48">16.3 联动</a></li>
                         </ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-66">17. 插件工具（38 项）操作详解</a>
+                        <a href="#sec-49">17. 插件工具（38 项）操作详解</a>
                         <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-67">17.1 加解密（8）</a></li>
-                            <li class="toc-h3"><a href="#sec-68">17.2 编解码（5）</a></li>
-                            <li class="toc-h3"><a href="#sec-69">17.3 格式转换（5）</a></li>
-                            <li class="toc-h3"><a href="#sec-70">17.4 文本转换（3）</a></li>
-                            <li class="toc-h3"><a href="#sec-71">17.5 格式化（2）</a></li>
-                            <li class="toc-h3"><a href="#sec-72">17.6 常用小工具（3）</a></li>
-                            <li class="toc-h3"><a href="#sec-73">17.7 网络计算（4）</a></li>
-                            <li class="toc-h3"><a href="#sec-74">17.8 常用对照表（8）</a></li>
-                            <li class="toc-h3"><a href="#sec-75">17.9 插件工具的组合使用</a></li>
+                            <li class="toc-h3"><a href="#sec-50">17.1 加解密（8）</a></li>
+                            <li class="toc-h3"><a href="#sec-51">17.2 编解码（5）</a></li>
+                            <li class="toc-h3"><a href="#sec-52">17.3 格式转换（5）</a></li>
+                            <li class="toc-h3"><a href="#sec-53">17.4 文本转换（3）</a></li>
+                            <li class="toc-h3"><a href="#sec-54">17.5 格式化（2）</a></li>
+                            <li class="toc-h3"><a href="#sec-55">17.6 常用小工具（3）</a></li>
+                            <li class="toc-h3"><a href="#sec-56">17.7 网络计算（4）</a></li>
+                            <li class="toc-h3"><a href="#sec-57">17.8 常用对照表（8）</a></li>
+                            <li class="toc-h3"><a href="#sec-58">17.9 插件工具的组合使用</a></li>
                         </ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-76">18. 在线资源与 AI 导航</a>
+                        <a href="#sec-59">18. 在线资源与 AI 导航</a>
                         <ul class="toc-sub"></ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-77">19. 主题与国际化</a>
+                        <a href="#sec-60">19. 主题与国际化</a>
                         <ul class="toc-sub"></ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-78">20. 帮助、版本与使用指导</a>
+                        <a href="#sec-61">20. 帮助、版本与使用指导</a>
                         <ul class="toc-sub"></ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-79">21. 功能交互矩阵</a>
+                        <a href="#sec-62">21. 功能交互矩阵</a>
                         <ul class="toc-sub"></ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-80">22. 推荐配置方案</a>
+                        <a href="#sec-63">22. 推荐配置方案</a>
                         <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-81">22.1 首次使用</a></li>
-                            <li class="toc-h3"><a href="#sec-82">22.2 写作者</a></li>
-                            <li class="toc-h3"><a href="#sec-83">22.3 研究者</a></li>
-                            <li class="toc-h3"><a href="#sec-84">22.4 多项目/多文档</a></li>
+                            <li class="toc-h3"><a href="#sec-64">22.1 首次使用</a></li>
+                            <li class="toc-h3"><a href="#sec-65">22.2 写作者</a></li>
+                            <li class="toc-h3"><a href="#sec-66">22.3 研究者</a></li>
+                            <li class="toc-h3"><a href="#sec-67">22.4 多项目/多文档</a></li>
                         </ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-85">23. 安全与隐私</a>
+                        <a href="#sec-68">23. 安全与隐私</a>
                         <ul class="toc-sub"></ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-86">24. 常见问题</a>
+                        <a href="#sec-69">24. 常见问题</a>
                         <ul class="toc-sub">
                             <li class="toc-h3">
-                                <a href="#sec-87">24.1 帮助菜单是空的 / 知识库没有数据</a>
+                                <a href="#sec-70">24.1 帮助菜单是空的 / 知识库没有数据</a>
                             </li>
-                            <li class="toc-h3"><a href="#sec-88">24.2 文件修改后索引没更新</a></li>
-                            <li class="toc-h3"><a href="#sec-89">24.3 Wiki 链接点击无反应</a></li>
-                            <li class="toc-h3"><a href="#sec-90">24.4 附件删除能恢复吗</a></li>
-                            <li class="toc-h3"><a href="#sec-91">24.5 捕获功能菜单不可见</a></li>
-                            <li class="toc-h3"><a href="#sec-92">24.6 OCR 首次失败</a></li>
-                            <li class="toc-h3"><a href="#sec-93">24.7 PDF 标注看不到</a></li>
-                            <li class="toc-h3"><a href="#sec-94">24.8 剪藏内容不完整</a></li>
-                            <li class="toc-h3"><a href="#sec-95">24.9 导入/导出失败</a></li>
+                            <li class="toc-h3"><a href="#sec-71">24.2 文件修改后索引没更新</a></li>
+                            <li class="toc-h3"><a href="#sec-72">24.3 Wiki 链接点击无反应</a></li>
+                            <li class="toc-h3"><a href="#sec-73">24.4 附件删除能恢复吗</a></li>
+                            <li class="toc-h3"><a href="#sec-74">24.5 捕获功能菜单不可见</a></li>
+                            <li class="toc-h3"><a href="#sec-75">24.6 OCR 首次失败</a></li>
+                            <li class="toc-h3"><a href="#sec-76">24.7 PDF 标注看不到</a></li>
+                            <li class="toc-h3"><a href="#sec-77">24.8 剪藏内容不完整</a></li>
+                            <li class="toc-h3"><a href="#sec-78">24.9 导入/导出失败</a></li>
                             <li class="toc-h3">
-                                <a href="#sec-96">24.10 文档历史/多标签在哪里</a>
+                                <a href="#sec-79">24.10 文档历史/多标签在哪里</a>
                             </li>
                         </ul>
                     </li>
                     <li class="toc-h2">
-                        <a href="#sec-97">25. 已知限制</a>
+                        <a href="#sec-80">25. 已知限制</a>
                         <ul class="toc-sub"></ul>
                     </li>
                 </ul>
@@ -497,79 +473,63 @@
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-23">6. 标签索引</a>
+                            <a href="#sec-23">6. 知识管理功能（可选）</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-26">7. Wiki 双链与反向链接</a>
+                            <a href="#sec-24">11. 写作体验</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-32">8. 链接检查与重命名</a>
+                            <a href="#sec-27">12. 系统设置与配置矩阵</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-35">9. 附件管理</a>
+                            <a href="#sec-37">14. 1.5.2 捕获与日常入口：E1 剪藏</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-40">10. Wiki 链接悬浮预览</a>
+                            <a href="#sec-41">15. 1.5.2 捕获与日常入口：E2 PDF 标注与摘录</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-41">11. 写作体验</a>
+                            <a href="#sec-45">16. 1.5.2 捕获与日常入口：E3 图片 OCR</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-44">12. 系统设置与配置矩阵</a>
+                            <a href="#sec-49">17. 插件工具（38 项）操作详解</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-54">14. 1.5.2 捕获与日常入口：E1 剪藏</a>
+                            <a href="#sec-59">18. 在线资源与 AI 导航</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-58">15. 1.5.2 捕获与日常入口：E2 PDF 标注与摘录</a>
+                            <a href="#sec-60">19. 主题与国际化</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-62">16. 1.5.2 捕获与日常入口：E3 图片 OCR</a>
+                            <a href="#sec-61">20. 帮助、版本与使用指导</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-66">17. 插件工具（38 项）操作详解</a>
+                            <a href="#sec-62">21. 功能交互矩阵</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-76">18. 在线资源与 AI 导航</a>
+                            <a href="#sec-63">22. 推荐配置方案</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-77">19. 主题与国际化</a>
+                            <a href="#sec-68">23. 安全与隐私</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-78">20. 帮助、版本与使用指导</a>
+                            <a href="#sec-69">24. 常见问题</a>
                             <ul class="toc-sub"></ul>
                         </li>
                         <li class="toc-h2">
-                            <a href="#sec-79">21. 功能交互矩阵</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-80">22. 推荐配置方案</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-85">23. 安全与隐私</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-86">24. 常见问题</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-97">25. 已知限制</a>
+                            <a href="#sec-80">25. 已知限制</a>
                             <ul class="toc-sub"></ul>
                         </li>
                     </ul>
@@ -728,7 +688,10 @@
                     <li>
                         <p>
                             <strong>表格、图片与格式</strong
-                            >：工具栏「表格」打开统一表格编辑器（光标在表格内为编辑，否则插入）；插入图片可设宽度、对齐、图注；格式按钮会高亮当前光标格式，粗体+斜体可组合。
+                            >：工具栏「表格」打开统一表格编辑器（表格内为编辑、否则插入）。顶部“表格设置”可直接指定行列数、统一所有列对齐，并导入
+                            Excel(.xlsx)/CSV；支持拖动列宽、行列重排、任意位置增删、按列排序、行列互换；每列对齐用下拉框；单元格支持多行
+                            Markdown 与 - [ ]
+                            任务；右下角可拖拽调整窗口。插入图片可设宽度、对齐、图注；格式按钮高亮当前光标格式，粗体+斜体可组合。
                         </p>
                     </li>
                 </ul>
@@ -870,137 +833,25 @@ aliases:
                         <code>[[相关笔记]]</code>，形成引用关系。
                     </li>
                 </ul>
-                <h2 id="sec-23">6. 标签索引</h2>
-                <p>入口：<strong>编辑 → 知识库 → 标签索引…</strong> 或命令面板「浏览标签索引」。</p>
-                <p>标签来源：</p>
-                <ul>
-                    <li>front matter 的 <code>tags</code>；</li>
-                    <li>正文行内标签，例如 <code>#项目</code>。</li>
-                </ul>
-                <p>操作：</p>
-                <ol>
-                    <li>点击标签展开包含该标签的文件；</li>
-                    <li>点击文件打开；</li>
-                    <li>文件修改后点「刷新索引」。</li>
-                </ol>
-                <h3 id="sec-24">6.1 标签配置建议</h3>
+                <h2 id="sec-23">6. 知识管理功能（可选）</h2>
+                <p>以下能力属于附加知识管理，不是 Markdown 编辑器主线；需要时可在工作区使用：</p>
                 <ul>
                     <li>
-                        用少量稳定标签（如
-                        <code>#项目</code>、<code>#读书</code>、<code>#待办</code>）而不是同义标签；
+                        <strong>标签</strong>：<code>#标签</code> 或 Front matter
+                        <code>tags</code>；标签面板可筛选，支持主题/计数配置。
                     </li>
-                    <li>标签大小写不敏感去重，展示首次出现的写法；</li>
-                    <li>front matter 标签支持数组；行内标签适合快速标注；</li>
-                    <li>标签与 Wiki 链接互补：标签做分类，双链做关系。</li>
-                </ul>
-                <h3 id="sec-25">6.2 联动场景</h3>
-                <ul>
-                    <li>搜索后按标签筛选思路；</li>
-                    <li>反链看“谁引用了我”，标签看“同类还有哪些”；</li>
-                    <li>附件管理按文件路径定位；标签不直接管理附件。</li>
-                </ul>
-                <h2 id="sec-26">7. Wiki 双链与反向链接</h2>
-                <h3 id="sec-27">7.1 链接写法</h3>
-                <pre><code class="language-markdown">参见 [[项目计划]]
-参见 [[项目计划|计划书]]
-参见 [[项目计划#目标]]
-</code></pre>
-                <h3 id="sec-28">7.2 点击跳转</h3>
-                <p>在编辑器中按住 <code>Ctrl</code>/<code>Cmd</code> 再单击：</p>
-                <ul>
-                    <li>唯一命中：打开目标文件；</li>
-                    <li>目标歧义：弹出候选列表，选择后打开；</li>
-                    <li>目标缺失：弹出创建确认，确认后在当前工作区创建缺失笔记；</li>
-                    <li>目录不存在、目标已存在、路径非法时提示，不覆盖已有文件。</li>
-                </ul>
-                <p>普通点击保持文本编辑；悬停会显示目标预览。</p>
-                <h3 id="sec-29">7.3 反向链接</h3>
-                <p>
-                    入口：<strong>编辑 → 知识库 → 反向链接…</strong
-                    >，显示当前文件被哪些文件引用；点击来源定位。
-                </p>
-                <h3 id="sec-30">7.4 命名与解析规则</h3>
-                <ul>
                     <li>
-                        优先按工作区根相对路径解析，再按来源文件目录相对路径，最后按文件名/标题唯一匹配；
+                        <strong>Wiki 双链与反向链接</strong>：<code>[[笔记名]]</code> /
+                        <code>[[笔记名|显示文本]]</code>；点击跳转，反向链接面板显示引用来源。
                     </li>
-                    <li>多个同名目标按歧义处理，必须选择；</li>
-                    <li>标题锚点 <code>#heading</code> 当前只展示/打开文件，不跳到具体标题；</li>
-                    <li>文件重命名会自动更新其他文档中的 Wiki 链接（保留别名/锚点，编码安全）。</li>
-                </ul>
-                <h3 id="sec-31">7.5 联动工作流</h3>
-                <ol>
-                    <li>在文档属性写标题/别名；</li>
-                    <li>正文用 <code>[[...]]</code> 建立关系；</li>
-                    <li>用反链确认关系方向；</li>
-                    <li>用链接检查修复缺失/歧义；</li>
-                    <li>重命名文件后等待索引缓存刷新或手动刷新。</li>
-                </ol>
-                <h2 id="sec-32">8. 链接检查与重命名</h2>
-                <p>入口：<strong>编辑 → 知识库 → 链接检查…</strong>。</p>
-                <ul>
-                    <li><strong>缺失</strong>：链接目标文件不存在；</li>
-                    <li><strong>歧义</strong>：多个文件都能匹配目标；</li>
-                    <li>点击问题定位来源行，修复后点「刷新索引」。</li>
-                </ul>
-                <h3 id="sec-33">8.1 重命名自动更新</h3>
-                <p>重命名 Markdown 文件后，其他文档中的 Wiki 链接会自动更新：</p>
-                <ul>
-                    <li>保留 <code>|别名</code> 和 <code>#标题</code>；</li>
-                    <li>按原文件编码写回并保留 BOM；</li>
-                    <li>先计划、重命名成功后写回，失败不产生半更新；</li>
                     <li>
-                        只更新 Wiki 链接 <code>[[...]]</code>，普通 Markdown
-                        链接/图片链接不在该链路。
+                        <strong>链接检查与重命名</strong
+                        >：重命名文件时自动更新引用；链接检查可定位失效目标。
                     </li>
+                    <li><strong>附件管理</strong>：附件面板查看引用审计、孤儿附件与重命名。</li>
+                    <li><strong>悬浮预览</strong>：悬停 Wiki 链接可预览目标笔记摘要。</li>
                 </ul>
-                <h3 id="sec-34">8.2 联动注意事项</h3>
-                <ul>
-                    <li>重命名后知识库索引有约 5 秒缓存，必要时刷新；</li>
-                    <li>若来源文件编码异常/读取失败，更新会报告失败清单；</li>
-                    <li>链接检查不能自动修复所有问题，只提供定位；</li>
-                    <li>与附件管理器分工：Wiki 链接用链接检查，图片/附件引用用附件管理器。</li>
-                </ul>
-                <h2 id="sec-35">9. 附件管理</h2>
-                <p>入口：<strong>编辑 → 知识库 → 附件管理…</strong>。</p>
-                <p>应用识别 Markdown 中的图片/附件引用：</p>
-                <pre><code class="language-markdown">![截图](images/shot.png)
-[PDF 文档](files/spec.pdf)
-</code></pre>
-                <h3 id="sec-36">9.1 引用审计</h3>
-                <ul>
-                    <li><strong>缺失附件</strong>：被引用但磁盘上不存在；</li>
-                    <li><strong>正常附件</strong>：文件存在；</li>
-                    <li>可展开查看引用来源，点击「在资源管理器中显示」定位。</li>
-                </ul>
-                <h3 id="sec-37">9.2 孤儿附件</h3>
-                <ul>
-                    <li>孤儿指工作区中未被任何 Markdown 引用的附件；审计做保守排除；</li>
-                    <li>可多选后「移入回收站」；</li>
-                    <li>只调用系统回收站，不提供永久删除；回收站不可用时失败提示，不强行删除。</li>
-                </ul>
-                <h3 id="sec-38">9.3 附件重命名</h3>
-                <ul>
-                    <li>在正常附件行点击「重命名」，输入新名称（不含扩展名）；</li>
-                    <li>应用更新 Markdown 引用；目标已存在、路径非法、仍被引用时拒绝；</li>
-                    <li>只改文件名，不移动附件到其他目录。</li>
-                </ul>
-                <h3 id="sec-39">9.4 配置与联动</h3>
-                <ul>
-                    <li>附件引用大小写不敏感比较（Windows），但仍建议统一命名；</li>
-                    <li>代码块/HTML <code>&lt;img&gt;</code>/reference 式链接不参与孤儿判定；</li>
-                    <li>与粘贴增强联动：粘贴图片会写入 <code>images/</code>，随后可在此审计；</li>
-                    <li>与搜索联动：附件路径也可作为普通文本被搜索到。</li>
-                </ul>
-                <h2 id="sec-40">10. Wiki 链接悬浮预览</h2>
-                <p>悬停 <code>[[...]]</code> 显示目标标题、相对路径、正文摘要和反链数量。</p>
-                <ul>
-                    <li>索引不可用时静默降级；</li>
-                    <li>当前标题锚点只展示，不跳转；</li>
-                    <li>与反链/标签/链接检查共用同一工作区索引，数据口径一致；</li>
-                    <li>悬停预览不修改文件，不触发写入。</li>
-                </ul>
-                <h2 id="sec-41">11. 写作体验</h2>
+                <h2 id="sec-24">11. 写作体验</h2>
                 <p>入口：<strong>系统设置 → 编写体验</strong>，以下能力默认关闭：</p>
                 <ul>
                     <li>写作模式：隐藏侧栏/菜单/标题栏，正文限宽；</li>
@@ -1010,7 +861,7 @@ aliases:
                     <li>选中文本气泡工具栏、Slash 命令；</li>
                     <li>轻量写作风格检查（只提示，不自动改）。</li>
                 </ul>
-                <h3 id="sec-42">11.1 配置与联动</h3>
+                <h3 id="sec-25">11.1 配置与联动</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1067,7 +918,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-43">11.2 工作流</h3>
+                <h3 id="sec-26">11.2 工作流</h3>
                 <ol>
                     <li>开启写作模式、打字机、段落聚焦、写作统计；</li>
                     <li>设置每日目标；</li>
@@ -1076,8 +927,8 @@ aliases:
                     <li>用风格检查/拼写检查复盘；</li>
                     <li>退出写作模式后布局恢复，内容自动保留。</li>
                 </ol>
-                <h2 id="sec-44">12. 系统设置与配置矩阵</h2>
-                <h3 id="sec-45">12.1 「功能」页签（可选能力，默认关闭）</h3>
+                <h2 id="sec-27">12. 系统设置与配置矩阵</h2>
+                <h3 id="sec-28">12.1 「功能」页签（可选能力，默认关闭）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1153,28 +1004,28 @@ aliases:
                 <p>
                     关闭任一开关时：不注册对应命令/菜单/监听，默认编辑链路零行为变化。开关保存后即时生效。
                 </p>
-                <h3 id="sec-46">12.2 「编写体验」页签</h3>
+                <h3 id="sec-29">12.2 「编写体验」页签</h3>
                 <p>
                     9 项开关默认关闭，全部按“当前文件/当前会话”工作；写作模式布局只影响
                     UI，不改文件内容。
                 </p>
-                <h3 id="sec-47">12.3 「编辑器」页签</h3>
+                <h3 id="sec-30">12.3 「编辑器」页签</h3>
                 <p>
                     字体、字号、行高、自动换行、缩略图、光标样式、渲染空白等。编辑器设置影响所有
                     Markdown 文档；主题设置与应用主题独立。
                 </p>
-                <h3 id="sec-48">12.4 「主题」页签</h3>
+                <h3 id="sec-31">12.4 「主题」页签</h3>
                 <ul>
                     <li>28 套应用主题、57 套 Monaco 主题；</li>
                     <li>应用主题控制侧栏/对话框/预览等 UI，Monaco 主题控制代码区；</li>
                     <li>支持取消回滚；主题切换不修改文档内容；</li>
                     <li>写作模式会叠加自己的排版样式，退出后恢复。</li>
                 </ul>
-                <h3 id="sec-49">12.5 「文件」页签</h3>
+                <h3 id="sec-32">12.5 「文件」页签</h3>
                 <p>
                     自动保存、备份、编码、最近文件等；自动保存与文档历史可同时开启，但历史快照不是备份替代品。
                 </p>
-                <h3 id="sec-50">12.6 配置推荐</h3>
+                <h3 id="sec-33">12.6 配置推荐</h3>
                 <ul>
                     <li><strong>轻量笔记</strong>：默认能力 + 自动保存 + 智能输入；</li>
                     <li>
@@ -1211,7 +1062,7 @@ aliases:
                 </ul>
                 <p>'## 13. 1.5.2 捕获与日常入口：E6 日记/收件箱</p>
                 <p>开关：系统设置 → 功能 →「今日日记 / 快速收件箱」（默认关闭）。</p>
-                <h3 id="sec-51">13.1 入口与行为</h3>
+                <h3 id="sec-34">13.1 入口与行为</h3>
                 <ul>
                     <li>工具菜单/命令面板：今日日记、快速收件箱；</li>
                     <li>今日日记：<code>diary/YYYY-MM-DD.md</code>；已存在则直接打开，不覆盖；</li>
@@ -1219,13 +1070,13 @@ aliases:
                     <li>目录不存在时主进程递归创建；文件用独占创建，避免并发覆盖；</li>
                     <li>无工作区时明确提示先打开文件夹。</li>
                 </ul>
-                <h3 id="sec-52">13.2 模板变量</h3>
+                <h3 id="sec-35">13.2 模板变量</h3>
                 <p>
                     <code>{{date}}</code
                     >、<code>{{time}}</code>、<code>{{datetime}}</code>、<code>{{year}}</code>、<code>{{month}}</code>、<code>{{day}}</code>、<code>{{weekday}}</code>、<code>{{title}}</code>；未知变量原样保留。模板在
                     shared 纯函数中展开，不执行脚本。
                 </p>
-                <h3 id="sec-53">13.3 与知识库联动</h3>
+                <h3 id="sec-36">13.3 与知识库联动</h3>
                 <ul>
                     <li>日记/收件箱文件会自动进入工作区索引；</li>
                     <li>
@@ -1235,9 +1086,9 @@ aliases:
                     <li>收件箱适合先捕获，再用文档属性整理、用 Wiki 链接连接到项目笔记；</li>
                     <li>日记可以反链到项目/人物/主题笔记，形成时间线。</li>
                 </ul>
-                <h2 id="sec-54">14. 1.5.2 捕获与日常入口：E1 剪藏</h2>
+                <h2 id="sec-37">14. 1.5.2 捕获与日常入口：E1 剪藏</h2>
                 <p>开关：系统设置 → 功能 →「剪贴板剪藏」（默认关闭）。</p>
-                <h3 id="sec-55">14.1 操作流程</h3>
+                <h3 id="sec-38">14.1 操作流程</h3>
                 <ol>
                     <li>在浏览器/其他应用复制网页内容（HTML 或纯文本）；</li>
                     <li>命令面板/工具菜单选择「剪藏到新笔记」或「剪藏并插入当前笔记」；</li>
@@ -1248,7 +1099,7 @@ aliases:
                     </li>
                     <li>插入当前笔记时，内容插入活动编辑器光标处（无活动编辑器则提示）。</li>
                 </ol>
-                <h3 id="sec-56">14.2 配置与限制</h3>
+                <h3 id="sec-39">14.2 配置与限制</h3>
                 <ul>
                     <li>HTML 片段、正文大小、标题/来源有上限；超限给出明确提示；</li>
                     <li>只接受 http/https 来源，防止本地/危险协议；</li>
@@ -1256,7 +1107,7 @@ aliases:
                     <li>剪贴板读取仅在用户显式触发时发生；拒绝权限时回退纯文本/提示；</li>
                     <li>剪藏后建议用文档属性补标签，用 Wiki 链接连接到主题笔记。</li>
                 </ul>
-                <h3 id="sec-57">14.3 联动示例</h3>
+                <h3 id="sec-40">14.3 联动示例</h3>
                 <ul>
                     <li>剪藏到收件箱 → 加标签/摘要 → 与项目笔记双链 → 定期从收件箱清空；</li>
                     <li>剪藏并插入当前笔记 → 用于“资料卡片”式笔记，插入后补来源引用；</li>
@@ -1264,9 +1115,9 @@ aliases:
                         与附件管理：剪藏内容中的远程图片默认不下载/不加载，需手动保存为本地附件。
                     </li>
                 </ul>
-                <h2 id="sec-58">15. 1.5.2 捕获与日常入口：E2 PDF 标注与摘录</h2>
+                <h2 id="sec-41">15. 1.5.2 捕获与日常入口：E2 PDF 标注与摘录</h2>
                 <p>开关：系统设置 → 功能 →「PDF 标注与摘录」（默认关闭）。</p>
-                <h3 id="sec-59">15.1 操作流程</h3>
+                <h3 id="sec-42">15.1 操作流程</h3>
                 <ol>
                     <li>打开工作区内的 PDF（应用内 PDF 查看器）；</li>
                     <li>开启开关后出现文本层/标注工具；</li>
@@ -1280,7 +1131,7 @@ aliases:
                         文件名/页码；无编辑器时回退剪贴板并提示。
                     </li>
                 </ol>
-                <h3 id="sec-60">15.2 配置与安全</h3>
+                <h3 id="sec-43">15.2 配置与安全</h3>
                 <ul>
                     <li>sidecar 路径由主进程生成，PDF/侧车双侧 Path Guard；</li>
                     <li>写盘使用临时文件 + 原子 rename；</li>
@@ -1288,7 +1139,7 @@ aliases:
                     <li>标注在本地文件，不上传网络；</li>
                     <li>关闭开关时 PDF 预览与普通能力零差异，不注册文本层/标注 UI。</li>
                 </ul>
-                <h3 id="sec-61">15.3 联动</h3>
+                <h3 id="sec-44">15.3 联动</h3>
                 <ul>
                     <li>
                         PDF 摘录 → Markdown 引用块 → 在摘录下补 <code>[[相关笔记]]</code> →
@@ -1297,9 +1148,9 @@ aliases:
                     <li>与 OCR 配合：扫描版 PDF 无文本层时，先用截图 OCR 再整理；</li>
                     <li>与附件管理：PDF 作为附件被引用时可审计缺失/重命名。</li>
                 </ul>
-                <h2 id="sec-62">16. 1.5.2 捕获与日常入口：E3 图片 OCR</h2>
+                <h2 id="sec-45">16. 1.5.2 捕获与日常入口：E3 图片 OCR</h2>
                 <p>开关：系统设置 → 功能 →「图片 OCR」（默认关闭）。</p>
-                <h3 id="sec-63">16.1 操作流程</h3>
+                <h3 id="sec-46">16.1 操作流程</h3>
                 <ol>
                     <li>复制一张包含文字的截图/图片到剪贴板；</li>
                     <li>命令面板/工具菜单选择「识别并插入当前笔记」或「识别并复制」；</li>
@@ -1310,7 +1161,7 @@ aliases:
                     <li>识别在本地 wasm/worker 完成，不上传图片；</li>
                     <li>结果插入活动编辑器光标处，或复制到剪贴板；失败有结构化提示。</li>
                 </ol>
-                <h3 id="sec-64">16.2 配置与限制</h3>
+                <h3 id="sec-47">16.2 配置与限制</h3>
                 <ul>
                     <li>当前 MVP 仅英文 <code>eng</code>；中文 <code>chi_sim</code> 为后续；</li>
                     <li>首次识别需联网下载语言包；企业网络受限时可能失败；</li>
@@ -1318,19 +1169,19 @@ aliases:
                     <li>OCR 引擎与语言包懒加载，不进入首屏；</li>
                     <li>识别结果不写库，需用户插入/复制后自行保存。</li>
                 </ul>
-                <h3 id="sec-65">16.3 联动</h3>
+                <h3 id="sec-48">16.3 联动</h3>
                 <ul>
                     <li>截图 OCR → 插入笔记 → 用文档属性补来源/标签；</li>
                     <li>OCR 文本可被 A2 搜索检索（保存后）；</li>
                     <li>与 PDF 标注配合处理扫描 PDF；</li>
                     <li>与附件管理配合：原始截图可保存为附件并保留引用。</li>
                 </ul>
-                <h2 id="sec-66">17. 插件工具（38 项）操作详解</h2>
+                <h2 id="sec-49">17. 插件工具（38 项）操作详解</h2>
                 <p>
                     入口：<strong>插件</strong>
                     菜单。所有插件工具为本地独立面板，输入/输出以剪贴板或文本框为主；部分工具需用户手动复制结果。
                 </p>
-                <h3 id="sec-67">17.1 加解密（8）</h3>
+                <h3 id="sec-50">17.1 加解密（8）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1391,7 +1242,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-68">17.2 编解码（5）</h3>
+                <h3 id="sec-51">17.2 编解码（5）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1434,7 +1285,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-69">17.3 格式转换（5）</h3>
+                <h3 id="sec-52">17.3 格式转换（5）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1477,7 +1328,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-70">17.4 文本转换（3）</h3>
+                <h3 id="sec-53">17.4 文本转换（3）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1508,7 +1359,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-71">17.5 格式化（2）</h3>
+                <h3 id="sec-54">17.5 格式化（2）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1533,7 +1384,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-72">17.6 常用小工具（3）</h3>
+                <h3 id="sec-55">17.6 常用小工具（3）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1564,7 +1415,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-73">17.7 网络计算（4）</h3>
+                <h3 id="sec-56">17.7 网络计算（4）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1601,12 +1452,12 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-74">17.8 常用对照表（8）</h3>
+                <h3 id="sec-57">17.8 常用对照表（8）</h3>
                 <p>
                     ASCII 码、文件扩展名、希腊字母、HTML
                     实体、数学符号、物理常数、数字大小写、常见字体样式；均为查询型工具，结果可复制到笔记。
                 </p>
-                <h3 id="sec-75">17.9 插件工具的组合使用</h3>
+                <h3 id="sec-58">17.9 插件工具的组合使用</h3>
                 <ul>
                     <li>JSON/XML 格式化 → 复制到代码块笔记；</li>
                     <li>正则测试 → 与全工作区搜索的正则语法互相验证；</li>
@@ -1615,7 +1466,7 @@ aliases:
                     <li>颜色/单位/进制等工具 → 适合与 Markdown 表格组合成“速查笔记”；</li>
                     <li>PDF 预览/OCR/PDF 标注 → 研究场景组合。</li>
                 </ul>
-                <h2 id="sec-76">18. 在线资源与 AI 导航</h2>
+                <h2 id="sec-59">18. 在线资源与 AI 导航</h2>
                 <ul>
                     <li>在线工具导航：菜鸟工具、编程狮、在线编解码、在线 IDE、开发者工具等；</li>
                     <li>AI 导航：ChatGPT、DeepSeek、Claude、Midjourney、Suno 等分组入口；</li>
@@ -1627,7 +1478,7 @@ aliases:
                         与本地笔记的联动：从在线工具复制结果 → 粘贴到 Markdown → 用代码块/表格整理。
                     </li>
                 </ul>
-                <h2 id="sec-77">19. 主题与国际化</h2>
+                <h2 id="sec-60">19. 主题与国际化</h2>
                 <ul>
                     <li>应用主题 28 套、Monaco 主题 57 套；</li>
                     <li>主题实时切换、可取消回滚；</li>
@@ -1635,7 +1486,7 @@ aliases:
                     <li>主题/语言不影响 Markdown 内容与知识库索引；</li>
                     <li>写作模式叠加排版样式，退出恢复原主题布局。</li>
                 </ul>
-                <h2 id="sec-78">20. 帮助、版本与使用指导</h2>
+                <h2 id="sec-61">20. 帮助、版本与使用指导</h2>
                 <ul>
                     <li><strong>帮助 → hemy08.github.io</strong>：在线文档；</li>
                     <li>
@@ -1651,7 +1502,7 @@ aliases:
                     <li><strong>帮助 → 检查更新</strong>：检查更新源；</li>
                     <li><strong>帮助 → 关于</strong>：版本/系统信息。</li>
                 </ul>
-                <h2 id="sec-79">21. 功能交互矩阵</h2>
+                <h2 id="sec-62">21. 功能交互矩阵</h2>
                 <table>
                     <thead>
                         <tr>
@@ -1718,20 +1569,20 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h2 id="sec-80">22. 推荐配置方案</h2>
-                <h3 id="sec-81">22.1 首次使用</h3>
+                <h2 id="sec-63">22. 推荐配置方案</h2>
+                <h3 id="sec-64">22.1 首次使用</h3>
                 <ul>
                     <li>默认能力即可；</li>
                     <li>打开工作区，试一篇 Markdown；</li>
                     <li>需要知识库时再开启标签/双链相关（这些能力默认可用，依赖工作区）。</li>
                 </ul>
-                <h3 id="sec-82">22.2 写作者</h3>
+                <h3 id="sec-65">22.2 写作者</h3>
                 <ul>
                     <li>编写体验：写作模式、打字机、段落聚焦、写作统计、写作排版、风格检查；</li>
                     <li>功能：智能输入、拼写检查、文档历史；</li>
                     <li>建议每日目标 + 自动保存。</li>
                 </ul>
-                <h3 id="sec-83">22.3 研究者</h3>
+                <h3 id="sec-66">22.3 研究者</h3>
                 <ul>
                     <li>功能：PDF 标注、OCR、剪贴板剪藏、文档历史；</li>
                     <li>知识库：标签、Wiki 双链/反链、链接检查、附件管理；</li>
@@ -1741,13 +1592,13 @@ aliases:
                     </li>
                     <li>流程：捕获 → 标注/OCR → 摘录 → 双链 → 反链回顾。</li>
                 </ul>
-                <h3 id="sec-84">22.4 多项目/多文档</h3>
+                <h3 id="sec-67">22.4 多项目/多文档</h3>
                 <ul>
                     <li>功能：多标签、文档历史、智能输入、大纲增强；</li>
                     <li>编写体验：光标/滚动恢复；</li>
                     <li>配置：自动保存 + 备份；标签/双链按项目组织。</li>
                 </ul>
-                <h2 id="sec-85">23. 安全与隐私</h2>
+                <h2 id="sec-68">23. 安全与隐私</h2>
                 <ul>
                     <li>主窗口/对话框/隐藏窗口启用 sandbox 与 contextIsolation，生产 CSP 收紧；</li>
                     <li>文件写入经主进程 Path Guard，工作区外路径/符号链接/设备命名空间拒绝；</li>
@@ -1758,41 +1609,41 @@ aliases:
                     <li>剪贴板只在用户显式触发时读取；</li>
                     <li>在线页面无 preload、权限隔离，不要粘贴敏感信息。</li>
                 </ul>
-                <h2 id="sec-86">24. 常见问题</h2>
-                <h3 id="sec-87">24.1 帮助菜单是空的 / 知识库没有数据</h3>
+                <h2 id="sec-69">24. 常见问题</h2>
+                <h3 id="sec-70">24.1 帮助菜单是空的 / 知识库没有数据</h3>
                 <p>
                     先打开工作区文件夹，确认目录内有
                     <code>.md</code
                     >/<code>.markdown</code>/<code>.txt</code>。标签/反链/链接检查依赖工作区索引。
                 </p>
-                <h3 id="sec-88">24.2 文件修改后索引没更新</h3>
+                <h3 id="sec-71">24.2 文件修改后索引没更新</h3>
                 <p>索引约 5 秒缓存；点击「刷新索引」；重命名后等待缓存刷新或手动刷新。</p>
-                <h3 id="sec-89">24.3 Wiki 链接点击无反应</h3>
+                <h3 id="sec-72">24.3 Wiki 链接点击无反应</h3>
                 <p>
                     按住 <code>Ctrl</code>/<code>Cmd</code>
                     再点击；普通点击保持编辑。目标缺失时会询问创建。
                 </p>
-                <h3 id="sec-90">24.4 附件删除能恢复吗</h3>
+                <h3 id="sec-73">24.4 附件删除能恢复吗</h3>
                 <p>能。只移入系统回收站，请从 Windows 回收站恢复；应用不提供永久删除。</p>
-                <h3 id="sec-91">24.5 捕获功能菜单不可见</h3>
+                <h3 id="sec-74">24.5 捕获功能菜单不可见</h3>
                 <p>确认系统设置 → 功能中对应开关已开启；E6/E1/E2/E3 默认关闭，保存后即时生效。</p>
-                <h3 id="sec-92">24.6 OCR 首次失败</h3>
+                <h3 id="sec-75">24.6 OCR 首次失败</h3>
                 <p>
                     首次需下载
                     <code>eng</code> 语言包；检查网络/代理后重试。已缓存后可离线。当前只支持英文。
                 </p>
-                <h3 id="sec-93">24.7 PDF 标注看不到</h3>
+                <h3 id="sec-76">24.7 PDF 标注看不到</h3>
                 <p>
                     确认「PDF 标注与摘录」开关已开启，且打开的是工作区内的 PDF；扫描版 PDF
                     无文本层，不能选择文本。
                 </p>
-                <h3 id="sec-94">24.8 剪藏内容不完整</h3>
+                <h3 id="sec-77">24.8 剪藏内容不完整</h3>
                 <p>剪贴板可能只有纯文本或权限被拒绝；尝试先复制网页选区再剪藏；超限内容会提示。</p>
-                <h3 id="sec-95">24.9 导入/导出失败</h3>
+                <h3 id="sec-78">24.9 导入/导出失败</h3>
                 <p>检查文件是否被占用、目标目录权限；查看状态栏/对话框错误。</p>
-                <h3 id="sec-96">24.10 文档历史/多标签在哪里</h3>
+                <h3 id="sec-79">24.10 文档历史/多标签在哪里</h3>
                 <p>属于可选能力，需在「系统设置 → 功能」开启；默认关闭。</p>
-                <h2 id="sec-97">25. 已知限制</h2>
+                <h2 id="sec-80">25. 已知限制</h2>
                 <ul>
                     <li>Wiki 标题锚点只打开文件，不跳到具体标题；</li>
                     <li>全文检索为按需扫描，1.5.x 不建持久全文索引；</li>
