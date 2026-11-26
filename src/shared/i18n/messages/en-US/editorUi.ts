@@ -115,7 +115,8 @@ export default {
      */
     editorActions: {
         copyAsMarkdown: 'Copy as Markdown',
-        copyAsHtml: 'Copy as HTML'
+        copyAsHtml: 'Copy as HTML',
+        editTable: 'Edit current table'
     },
     /** A2 workspace search / replace dialog (`components/search/WorkspaceSearchDialog.vue`) */
     workspaceSearch: {

@@ -22,6 +22,8 @@ import { logger } from '../../common/logger'
  */
 export const COPY_AS_MARKDOWN_ACTION_ID = 'baize.copyAsMarkdown'
 export const COPY_AS_HTML_ACTION_ID = 'baize.copyAsHtml'
+/** P0：从源码编辑器右键菜单打开当前 GFM 表格编辑器 */
+export const EDIT_TABLE_ACTION_ID = 'baize.editTable'
 
 function matchStartWith(
     str: string,
@@ -393,6 +395,30 @@ export function MonacoEditorAddActions(
             keybindings: [monaco.KeyCode.Enter], // 例如，绑定到 Shift + Enter
             // 回调函数
             run: EnterAction
+        },
+        disposables
+    )
+
+    // P0：可视化表格编辑（源码编辑器右键菜单入口；光标必须位于 GFM 表格内）
+    addActionSafely(
+        editor,
+        {
+            id: EDIT_TABLE_ACTION_ID,
+            label: t('editorUi.editorActions.editTable'),
+            contextMenuGroupId: 'navigation',
+            contextMenuOrder: 0.5,
+            run: (target) => {
+                // 懒加载：表格编辑器依赖 Vue/BaseDialog，避免进入编辑器主 chunk
+                void import('../dialogs/medium/table-editor')
+                    .then((module) =>
+                        module.openTableEditorForEditor(
+                            target as monaco.editor.IStandaloneCodeEditor
+                        )
+                    )
+                    .catch((error) => {
+                        logger.warn('[table] 编辑器右键菜单加载表格编辑器失败', error)
+                    })
+            }
         },
         disposables
     )

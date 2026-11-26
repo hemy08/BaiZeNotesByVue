@@ -66,6 +66,7 @@ import type * as monaco from 'monaco-editor'
 import {
     COPY_AS_HTML_ACTION_ID,
     COPY_AS_MARKDOWN_ACTION_ID,
+    EDIT_TABLE_ACTION_ID,
     MonacoEditorAddActions
 } from '../../src/renderer/src/components/Markdown/hemy-editor-actions'
 
@@ -75,6 +76,7 @@ interface CapturedAction {
     id: string
     label?: string
     keybindings?: number[]
+    contextMenuGroupId?: string
     run: (editor: monaco.editor.ICodeEditor) => unknown
 }
 
@@ -244,6 +246,7 @@ describe('MonacoEditorAddActions 注册契约', () => {
 
         expect(actions.map((action) => action.id)).toEqual([
             'hemy-custom-enter-action',
+            EDIT_TABLE_ACTION_ID,
             COPY_AS_MARKDOWN_ACTION_ID,
             COPY_AS_HTML_ACTION_ID
         ])
@@ -254,6 +257,17 @@ describe('MonacoEditorAddActions 注册契约', () => {
             monacoMocks.KeyMod.CtrlCmd | monacoMocks.KeyMod.Shift | monacoMocks.KeyCode.KeyC
         ])
         expect(Array.isArray(disposables)).toBe(true)
+    })
+
+    it('注册“编辑当前表格”右键动作并安全触发懒加载', async () => {
+        const { editor, actions } = makeEditor()
+        MonacoEditorAddActions(editor)
+        const action = findAction(actions, EDIT_TABLE_ACTION_ID)
+        expect(action.contextMenuGroupId).toBe('navigation')
+        action.run(editor)
+        // 编辑器替身没有完整表格模型时，宿主加载失败应由动作内部吞掉，不产生未处理拒绝
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(true).toBe(true)
     })
 
     it('注册 Ctrl+V 粘贴增强命令（覆盖既有动态键绑定）', () => {

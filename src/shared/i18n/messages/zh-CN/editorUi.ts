@@ -114,7 +114,8 @@ export default {
      */
     editorActions: {
         copyAsMarkdown: '复制为 Markdown',
-        copyAsHtml: '复制为 HTML'
+        copyAsHtml: '复制为 HTML',
+        editTable: '编辑当前表格'
     },
     /** A2 全工作区搜索 / 替换对话框（`components/search/WorkspaceSearchDialog.vue`） */
     workspaceSearch: {

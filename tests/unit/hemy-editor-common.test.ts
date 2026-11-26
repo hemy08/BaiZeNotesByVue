@@ -51,7 +51,8 @@ import {
     replaceSelection,
     OnInsertAfterCursor,
     EventHandleMaps,
-    UpdateContextFormat
+    UpdateContextFormat,
+    GetInlineMarkdownFormats
 } from '../../src/renderer/src/components/Markdown/hemy-editor-common'
 
 interface FakeSelection {
@@ -286,6 +287,68 @@ describe('EventHandleMaps header conversion', () => {
         })
         EventHandleMaps.h6(editor as never)
         expect(lastEdit(editor).text).toBe('###### 标题')
+    })
+})
+
+describe('P0 内联格式状态（工具栏高亮）', () => {
+    it('无模型/无选区时返回全 false，不抛错', () => {
+        expect(GetInlineMarkdownFormats({ getModel: () => null } as never)).toEqual({
+            bold: false,
+            italic: false,
+            strike: false,
+            code: false
+        })
+        const { editor } = makeEditor({ lines: ['hello'], selection: null })
+        expect(GetInlineMarkdownFormats(editor as never)).toEqual({
+            bold: false,
+            italic: false,
+            strike: false,
+            code: false
+        })
+    })
+
+    it('能识别加粗/斜体/删除线/行内代码', () => {
+        const cases: Array<[string, Record<string, boolean>]> = [
+            ['**hello**', { bold: true, italic: false, strike: false, code: false }],
+            ['*hello*', { bold: false, italic: true, strike: false, code: false }],
+            ['~~hello~~', { bold: false, italic: false, strike: true, code: false }],
+            ['`hello`', { bold: false, italic: false, strike: false, code: true }]
+        ]
+        for (const [line, expected] of cases) {
+            const { editor } = makeEditor({
+                lines: [line],
+                selection: {
+                    startLineNumber: 1,
+                    startColumn: 1,
+                    endLineNumber: 1,
+                    endColumn: line.length + 1
+                }
+            })
+            expect(GetInlineMarkdownFormats(editor as never)).toEqual(expected)
+        }
+    })
+})
+
+describe('EventHandleMaps 其余格式处理器', () => {
+    it('上标/下标/对齐/列表/公式块/链接等在选区上执行不抛错', () => {
+        const { editor } = makeEditor({
+            lines: ['text'],
+            selection: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 5 }
+        })
+        const handlers = EventHandleMaps as unknown as Record<string, (target: unknown) => void>
+        for (const key of [
+            'fontsub',
+            'alignleft',
+            'aligncenter',
+            'alignjustify',
+            'alignright',
+            'listbulleted',
+            'lineenter',
+            'mathblock',
+            'linelinks'
+        ]) {
+            expect(() => handlers[key](editor)).not.toThrow()
+        }
     })
 })
 

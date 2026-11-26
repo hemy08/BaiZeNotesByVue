@@ -109,22 +109,25 @@ export function parseMarkdownTableAtLine(
 /** 根据全文与光标字符偏移解析光标所在表格 */
 export function parseMarkdownTableAtOffset(text: string, offset: number): MarkdownTable | null {
     const lines = text.split(/\r?\n/)
-    let lineIndex = 0
-    let consumed = 0
     const safeOffset = Math.max(0, Math.min(offset, text.length))
-    for (; lineIndex < lines.length; lineIndex += 1) {
-        const lineLength = lines[lineIndex].length
-        const lineEnd = consumed + lineLength + (lineIndex < lines.length - 1 ? 1 : 0)
-        if (safeOffset <= lineEnd) {
-            break
+    // 关键：Monaco 模型可能保留 CRLF；不能按「行长 + 1」累加偏移（CRLF 是 2 个字符），
+    // 否则表格位于多个 CRLF 行之后时光标行号会前移，导致误判“不在表格内”。
+    // 直接统计光标前已出现的 LF 数量即可兼容 LF/CRLF。
+    let lineIndex = 0
+    for (let i = 0; i < safeOffset; i += 1) {
+        if (text.charCodeAt(i) === 10) {
+            lineIndex += 1
         }
-        consumed = lineEnd
     }
     if (lineIndex >= lines.length) {
         return null
     }
-    // 光标可能落在表格中间行：向上找最近的表头（前一行是分隔行）
-    for (let start = lineIndex; start >= 0 && start >= lineIndex - 100; start -= 1) {
+    // 光标可能落在表格中间行：向上找「下一行是分隔行」的表头候选，再校验光标落在表体内。
+    // 不设固定行数上限，避免长表格（>100 行）光标在后半段时误判为“不在表格内”。
+    for (let start = lineIndex; start >= 0; start -= 1) {
+        if (start + 1 >= lines.length || !isDelimiterRow(splitTableRow(lines[start + 1]))) {
+            continue
+        }
         const table = parseMarkdownTableAtLine(lines, start)
         if (table && lineIndex >= table.startLine && lineIndex <= table.endLine) {
             return table

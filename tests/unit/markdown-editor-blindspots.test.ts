@@ -112,8 +112,8 @@ async function getEnterAction(): Promise<(editor: FakeEditor) => void> {
         await import('../../src/renderer/src/components/Markdown/hemy-editor-actions')
     const editor = makeEditor()
     MonacoEditorAddActions(editor as never)
-    // A8：除 Enter 动作外还注册「复制为 Markdown / 复制为 HTML」两个命令
-    expect(editor.addAction).toHaveBeenCalledTimes(3)
+    // P0：Enter + 编辑当前表格 + A8 复制为 Markdown / HTML，共 4 个动作
+    expect(editor.addAction).toHaveBeenCalledTimes(4)
     const actions = (editor.addAction as unknown as ReturnType<typeof vi.fn>).mock.calls.map(
         (call) => call[0]
     ) as Array<{ id: string; keybindings?: number[]; run: (e: FakeEditor) => void }>

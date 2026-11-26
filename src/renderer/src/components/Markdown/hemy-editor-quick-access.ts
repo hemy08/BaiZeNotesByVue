@@ -5,6 +5,7 @@ import * as Templates from '../../common/templates'
 import ContextMenu, { MenuItem } from '@imengyu/vue3-context-menu'
 import EventBus from '../../common/event-bus/event-bus'
 import { getConfigStore } from '../../common/useConfigStore'
+import { logger } from '../../common/logger'
 import {
     SVG_HEADER_1,
     SVG_HEADER_2,
@@ -108,10 +109,12 @@ function onInsertTable() {
         .then((module) => module.openTableEditorForActiveEditor())
         .then((opened) => {
             if (!opened) {
+                logger.info('[table] 当前光标不在标准 GFM 表格内，回退插入表格对话框')
                 getConfigStore().showDialog('mdSheet')
             }
         })
-        .catch(() => {
+        .catch((error) => {
+            logger.warn('[table] 可视化表格编辑器加载失败，回退插入表格对话框', error)
             getConfigStore().showDialog('mdSheet')
         })
 }

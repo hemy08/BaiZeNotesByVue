@@ -31,13 +31,14 @@ function disposeHost(): void {
 }
 
 /**
- * 打开当前光标所在表格的可视化编辑器。
+ * 打开指定编辑器光标所在表格的可视化编辑器。
  * @returns true 已打开；false 当前光标不在表格内（调用方回退插入对话框）
  */
-export async function openTableEditorForActiveEditor(): Promise<boolean> {
-    const editor = getActiveEditor()
-    const model = editor?.getModel()
-    if (!editor || !model) {
+export async function openTableEditorForEditor(
+    editor: monaco.editor.IStandaloneCodeEditor
+): Promise<boolean> {
+    const model = editor.getModel()
+    if (!model) {
         return false
     }
     const selection = editor.getSelection()
@@ -47,6 +48,7 @@ export async function openTableEditorForActiveEditor(): Promise<boolean> {
     }
     const table = parseMarkdownTableAtOffset(model.getValue(), model.getOffsetAt(position))
     if (!table) {
+        logger.info('[TableEditor] 当前光标不在标准 GFM 表格内，跳过可视化编辑')
         return false
     }
 
@@ -75,6 +77,12 @@ export async function openTableEditorForActiveEditor(): Promise<boolean> {
         disposeHost()
         return false
     }
+}
+
+/** 工具栏入口：从当前活动编辑器打开表格编辑器 */
+export async function openTableEditorForActiveEditor(): Promise<boolean> {
+    const editor = getActiveEditor()
+    return editor ? openTableEditorForEditor(editor) : false
 }
 
 /** 测试/页面卸载时释放宿主（幂等） */

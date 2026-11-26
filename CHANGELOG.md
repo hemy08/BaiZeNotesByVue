@@ -8,7 +8,7 @@
 - **可视化 GFM 表格编辑**：光标在表格内时从工具栏打开网格编辑器，支持增删行列、编辑单元格、列对齐并回写
 - **图片插入增强**：支持宽度、对齐、图注，输出 `figure/img/figcaption`；默认仍输出标准 Markdown
 - **粘贴/复制 Markdown**：复用 A8 HTML→Markdown 与复制为 Markdown/HTML 能力，纳入 P0 回归
-- **门禁**：346 测试文件 / 6,349 用例通过；覆盖率 93.60 / 88.14 / 94.12 / 93.98；typecheck、ESLint、Prettier、docs、quality、audit、构建与预算均通过
+- **门禁**：346 测试文件 / 6,355 用例通过；覆盖率 93.62 / 88.14 / 94.29 / 94.01；typecheck、ESLint、Prettier、docs、quality、audit、构建与预算均通过
 
 ## 2026年11月22日 - 版本 1.5.2（捕获与日常入口，已发布 2026-11-22）
 

@@ -30,6 +30,18 @@ describe('P0 GFM 表格解析/序列化', () => {
         expect(parseMarkdownTableAtOffset(text, text.indexOf('后文'))).toBeNull()
     })
 
+    it('CRLF 文档中表格位于多行之后仍能定位（Monaco 模型偏移兼容）', () => {
+        const text = `第一段\r\n\r\n第二段\r\n\r\n${TABLE.replace(/\n/g, '\r\n')}\r\n\r\n后文`
+        expect(parseMarkdownTableAtOffset(text, text.indexOf('苹果'))).not.toBeNull()
+        expect(parseMarkdownTableAtOffset(text, text.indexOf('香蕉'))).not.toBeNull()
+    })
+
+    it('长表格（>100 行）光标在后半段仍能定位表头', () => {
+        const rows = Array.from({ length: 150 }, (_, index) => `| 行 ${index + 1} | ${index} |`)
+        const text = ['| 名称 | 数值 |', '| --- | --- |', ...rows].join('\n')
+        expect(parseMarkdownTableAtOffset(text, text.indexOf('行 140'))).not.toBeNull()
+    })
+
     it('支持单元格内转义管道', () => {
         const text = ['| 表达式 | 说明 |', '| --- | --- |', '| a \\| b | 或 |'].join('\n')
         const table = parseMarkdownTableAtLine(text.split('\n'), 0)
