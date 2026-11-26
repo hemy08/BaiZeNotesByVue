@@ -13,6 +13,12 @@ vi.mock('monaco-editor', () => {
             this.endLineNumber = el
             this.endColumn = ec
         }
+        static fromPositions(
+            start: { lineNumber: number; column: number },
+            end: { lineNumber: number; column: number }
+        ) {
+            return new MockRange(start.lineNumber, start.column, end.lineNumber, end.column)
+        }
     }
     class MockPosition {
         lineNumber: number
@@ -22,7 +28,23 @@ vi.mock('monaco-editor', () => {
             this.column = column
         }
     }
-    return { Range: MockRange, Position: MockPosition }
+    class MockSelection extends MockRange {
+        constructor(sl: number, sc: number, el: number, ec: number) {
+            super(sl, sc, el, ec)
+        }
+        getStartPosition() {
+            return new MockPosition(this.startLineNumber, this.startColumn)
+        }
+        getEndPosition() {
+            return new MockPosition(this.endLineNumber, this.endColumn)
+        }
+        isEmpty() {
+            return (
+                this.startLineNumber === this.endLineNumber && this.startColumn === this.endColumn
+            )
+        }
+    }
+    return { Range: MockRange, Position: MockPosition, Selection: MockSelection }
 })
 
 import {
@@ -45,6 +67,25 @@ function makeLineModel(lines: string[]) {
         getLineContent: (n: number) => lines[n - 1] ?? '',
         getLineMaxColumn: (n: number) => (lines[n - 1] ?? '').length + 1,
         getLineLength: (n: number) => (lines[n - 1] ?? '').length,
+        getValue: () => lines.join('\n'),
+        getOffsetAt: (position: { lineNumber: number; column: number }) => {
+            let offset = 0
+            for (let line = 1; line < position.lineNumber; line += 1) {
+                offset += (lines[line - 1] ?? '').length + 1
+            }
+            return offset + Math.max(0, position.column - 1)
+        },
+        getPositionAt: (offset: number) => {
+            let remaining = Math.max(0, offset)
+            for (let line = 1; line <= lines.length; line += 1) {
+                const length = (lines[line - 1] ?? '').length
+                if (remaining <= length) {
+                    return { lineNumber: line, column: remaining + 1 }
+                }
+                remaining -= length + 1
+            }
+            return { lineNumber: lines.length, column: (lines.at(-1) ?? '').length + 1 }
+        },
         getValueInRange: (range: {
             startLineNumber: number
             startColumn: number
@@ -79,6 +120,14 @@ function makeLineModel(lines: string[]) {
 function withIsEmpty(selection: FakeSelection) {
     return {
         ...selection,
+        getStartPosition: () => ({
+            lineNumber: selection.startLineNumber,
+            column: selection.startColumn
+        }),
+        getEndPosition: () => ({
+            lineNumber: selection.endLineNumber,
+            column: selection.endColumn
+        }),
         isEmpty: () =>
             selection.startLineNumber === selection.endLineNumber &&
             selection.startColumn === selection.endColumn
@@ -98,7 +147,8 @@ function makeEditor(
         getSelection: vi.fn(() => (options.selection ? withIsEmpty(options.selection) : null)),
         getPosition: vi.fn(() => options.position ?? null),
         getModel: vi.fn(() => model),
-        executeEdits: vi.fn()
+        executeEdits: vi.fn(),
+        setSelection: vi.fn()
     }
     return { editor, model }
 }
@@ -258,10 +308,10 @@ describe('EventHandleMaps font formats', () => {
         expect(lastEdit(editor).text).toBe('text')
     })
 
-    it('should insert four asterisks at the cursor when nothing is selected', () => {
+    it('should wrap the word at the cursor with bold markers when nothing is selected', () => {
         const { editor } = makeEditor({ lines: ['ab'], position: { lineNumber: 1, column: 2 } })
         EventHandleMaps.bold(editor as never)
-        expect(lastEdit(editor).text).toBe('****')
+        expect(lastEdit(editor).text).toBe('**ab**')
     })
 
     it('should turn a plain selection into italic', () => {
@@ -276,10 +326,10 @@ describe('EventHandleMaps font formats', () => {
     it('should upgrade a bold selection to bold-italic', () => {
         const { editor } = makeEditor({
             lines: ['**text**'],
-            selection: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 9 }
+            selection: { startLineNumber: 1, startColumn: 3, endLineNumber: 1, endColumn: 7 }
         })
         EventHandleMaps.italic(editor as never)
-        // 对粗体文字执行斜体得到粗斜体（三个星号）
+        // 选区为粗体内部文字：斜体与粗体组合为粗斜体
         expect(lastEdit(editor).text).toBe('***text***')
     })
 
@@ -301,10 +351,10 @@ describe('EventHandleMaps font formats', () => {
         expect(lastEdit(editor).text).toBe('text')
     })
 
-    it('should insert two asterisks at the cursor when italic has no selection', () => {
+    it('should wrap the word at the cursor with italic marker when nothing is selected', () => {
         const { editor } = makeEditor({ lines: ['ab'], position: { lineNumber: 1, column: 2 } })
         EventHandleMaps.italic(editor as never)
-        expect(lastEdit(editor).text).toBe('**')
+        expect(lastEdit(editor).text).toBe('*ab*')
     })
 
     it('should wrap a selection with strikethrough markers', () => {

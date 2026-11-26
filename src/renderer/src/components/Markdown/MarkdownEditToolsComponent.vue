@@ -9,7 +9,7 @@
             :id="items.id"
             :key="index"
             :title="t(items.titleKey)"
-            :class="['tool-btn', items.class]"
+            :class="['tool-btn', items.class, { 'tool-btn--active': isFormatActive(items.param) }]"
             :style="{ width: buttonSize + 'px', height: buttonSize + 'px' }"
             @click="items.clickFn($event, items.param)"
         ></button>
@@ -18,9 +18,39 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, watch, ref, nextTick } from 'vue'
 import { t } from '../../common/i18n'
+import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import { useEventBus } from '../../composables/useEventBus'
 // 结构优化第 2 批 2.2（H4）：直接从功能模块引入 QuickAccess，避免经 `hemy-editor`
 // 聚合桶把 Monaco/编辑器动作等重型依赖带进工具栏 chunk（该组件已改为按需加载）。
 import { MdEditQuickAccess as QuickAccess } from './hemy-editor-quick-access'
+
+type InlineFormatState = {
+    bold: boolean
+    italic: boolean
+    strike: boolean
+    code: boolean
+}
+
+const activeFormats = ref<InlineFormatState>({
+    bold: false,
+    italic: false,
+    strike: false,
+    code: false
+})
+
+function isFormatActive(param: string): boolean {
+    const key = (
+        { bold: 'bold', italic: 'italic', deleteline: 'strike', codeline: 'code' } as const
+    )[param as 'bold' | 'italic' | 'deleteline' | 'codeline']
+    return key ? activeFormats.value[key] : false
+}
+
+const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownEditTools' })
+onEventBus(EVENT_BUS.MONACO_FORMAT_STATE_CHANGED, (state: unknown) => {
+    if (state && typeof state === 'object') {
+        activeFormats.value = state as InlineFormatState
+    }
+})
 
 const showWidth = ref('')
 const toolbarContainer = ref<HTMLElement | null>(null)
@@ -147,6 +177,14 @@ watch(
 
 .tool-btn:hover {
     background-color: var(--theme-hover-background, #eeffff);
+}
+
+/* P0：光标/选区处于粗体、斜体、删除线、行内代码时高亮对应按钮 */
+.tool-btn--active {
+    background-color: var(--theme-accent-color, #764ba2);
+    color: var(--theme-button-text-color, #fff);
+    fill: var(--theme-button-text-color, #fff);
+    box-shadow: inset 0 0 0 1px var(--theme-border-color, #e7e2ef);
 }
 
 /* 确保 SVG 图标自适应按钮大小 */

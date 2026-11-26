@@ -1,5 +1,10 @@
 import * as monaco from 'monaco-editor'
 import { IPC } from '../../../../shared/ipc-channels'
+import {
+    detectInlineMarkdownFormats,
+    planInlineMarkdownFormat,
+    type InlineMarkdownFormat
+} from './editor-markdown-format'
 
 export function replaceSelection(
     editor: monaco.editor.IStandaloneCodeEditor,
@@ -114,45 +119,63 @@ function updateSelection(
     replaceSelection(editor, newText, false, selectRange)
 }
 
-function editorOnSetFontItalic(editor: monaco.editor.IStandaloneCodeEditor) {
-    // 获取当前的选择范围
+function applyInlineMarkdownFormat(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    format: InlineMarkdownFormat
+): void {
+    const model = editor.getModel()
     const selection = editor.getSelection()
-    if (!selection || selection.isEmpty()) {
-        // 没有选择，则直接插入字符串
-        OnInsertAfterCursor(editor, '**')
+    if (!model) {
         return
     }
-    // 获取编辑器模型, 确保模型存在
-    const model = editor.getModel()
-    if (!model) return
-    const { startLineNumber, startColumn, endLineNumber, endColumn } = selection
-    let selectRange: monaco.Range = selection
-    const selectedText = model.getValueInRange(selection)
-    // 选择的部分就有*
-    let newText: string
-    if (selectedText.startsWith('***') && selectedText.endsWith('***')) {
-        newText = selectedText.substring(1, selectedText.length - 1)
-    } else if (selectedText.startsWith('**') && selectedText.endsWith('**')) {
-        newText = `*${selectedText}*`
-    } else if (selectedText.startsWith('*') && selectedText.endsWith('*')) {
-        newText = selectedText.substring(1, selectedText.length - 1)
-    } else {
-        // 选择的部分没有*，向前后增加三个字符
-        const lineLength = model.getLineLength(endLineNumber)
-        const start = Math.max(1, startColumn - 3)
-        const end = Math.min(lineLength + 1, endColumn + 3)
-        selectRange = new monaco.Range(startLineNumber, start, endLineNumber, end)
-        const content = model.getValueInRange(selectRange)
-        // 三个*，说明文字本来是加粗倾斜的，去掉倾斜
-        if (content.startsWith('***') && content.endsWith('***')) {
-            newText = content.substring(1, content.length - 1)
-        } else {
-            updateSelection(editor, selection, model, '*', '*')
-            return
-        }
+    // 极端测试/宿主环境可能无选区对象：降级为光标位置的空选区
+    const fallbackPosition = selection ?? editor.getPosition()
+    if (!fallbackPosition) {
+        return
     }
+    const selectionStart = selection
+        ? selection.getStartPosition()
+        : (fallbackPosition as monaco.Position)
+    const selectionEnd = selection
+        ? selection.getEndPosition()
+        : (fallbackPosition as monaco.Position)
+    const text = model.getValue()
+    const start = model.getOffsetAt(selectionStart)
+    const end = model.getOffsetAt(selectionEnd)
+    const plan = planInlineMarkdownFormat(text, start, end, format)
+    const replaceRange = monaco.Range.fromPositions(
+        model.getPositionAt(plan.replaceStart),
+        model.getPositionAt(plan.replaceEnd)
+    )
+    editor.executeEdits('markdown-format', [
+        { range: replaceRange, text: plan.replacement, forceMoveMarkers: true }
+    ])
+    const nextStart = model.getPositionAt(plan.selectionStart)
+    const nextEnd = model.getPositionAt(plan.selectionEnd)
+    editor.setSelection(
+        new monaco.Selection(
+            nextStart.lineNumber,
+            nextStart.column,
+            nextEnd.lineNumber,
+            nextEnd.column
+        )
+    )
+}
 
-    replaceSelection(editor, newText, false, selectRange)
+/** 当前光标/选区的内联格式状态（供工具栏高亮）。 */
+export function GetInlineMarkdownFormats(
+    editor: monaco.editor.IStandaloneCodeEditor
+): Record<InlineMarkdownFormat, boolean> {
+    const model = editor.getModel?.()
+    const selection = editor.getSelection?.()
+    if (!model || !selection) {
+        return { bold: false, italic: false, strike: false, code: false }
+    }
+    return detectInlineMarkdownFormats(
+        model.getValue(),
+        model.getOffsetAt(selection.getStartPosition()),
+        model.getOffsetAt(selection.getEndPosition())
+    )
 }
 
 function editorOnUpdateFontStyle(
@@ -282,13 +305,13 @@ export const EventHandleMaps = {
         editorOnChangeHeaderLevel(editor, 'h6')
     },
     bold(editor: monaco.editor.IStandaloneCodeEditor) {
-        editorOnUpdateFontStyle(editor, ctxMaps['bold'].prefix, ctxMaps['bold'].suffix)
+        applyInlineMarkdownFormat(editor, 'bold')
     },
     italic(editor: monaco.editor.IStandaloneCodeEditor) {
-        editorOnSetFontItalic(editor)
+        applyInlineMarkdownFormat(editor, 'italic')
     },
     deleteline(editor: monaco.editor.IStandaloneCodeEditor) {
-        editorOnUpdateFontStyle(editor, ctxMaps['deleteline'].prefix, ctxMaps['deleteline'].suffix)
+        applyInlineMarkdownFormat(editor, 'strike')
     },
     underline(editor: monaco.editor.IStandaloneCodeEditor) {
         editorOnUpdateFontStyle(editor, ctxMaps['underline'].prefix, ctxMaps['underline'].suffix)
@@ -327,7 +350,7 @@ export const EventHandleMaps = {
         OnInsertAfterCursor(editor, ctxMaps['lineenter'].prefix)
     },
     codeline(editor: monaco.editor.IStandaloneCodeEditor) {
-        editorOnUpdateFontStyle(editor, ctxMaps['codeline'].prefix, ctxMaps['codeline'].suffix)
+        applyInlineMarkdownFormat(editor, 'code')
     },
     codeblock(editor: monaco.editor.IStandaloneCodeEditor) {
         editorOnPrefixSuffix(editor, ctxMaps['codeblock'].prefix, ctxMaps['codeblock'].suffix)

@@ -85,6 +85,15 @@ const dialogRenderer = {
         altText: 'Alt 文本',
         altPlaceholder: '图片描述',
         titlePlaceholder: '可选的图片标题',
+        width: '宽度（px）',
+        widthPlaceholder: '留空则使用原始尺寸',
+        alignment: '对齐方式',
+        alignNone: '默认',
+        alignLeft: '左对齐',
+        alignCenter: '居中',
+        alignRight: '右对齐',
+        caption: '图注',
+        captionPlaceholder: '可选的图片说明',
         localFile: '本地文件',
         networkImage: '网络图片'
     },
@@ -99,6 +108,22 @@ const dialogRenderer = {
         insertLatex: '插入Latex',
         cancelEdit: '取消编辑',
         syntaxError: '公式语法错误'
+    },
+    tableEditor: {
+        title: '编辑表格',
+        hint: '编辑表头、单元格与列对齐；支持增删行列（GFM 表格不支持合并单元格）。',
+        header: '表头',
+        cell: '单元格',
+        column: '列',
+        alignment: '列对齐',
+        alignDefault: '默认',
+        alignLeft: '左对齐',
+        alignCenter: '居中',
+        alignRight: '右对齐',
+        addRow: '添加行',
+        addColumn: '添加列',
+        deleteRow: '删除行',
+        deleteColumn: '删除列'
     },
     mdSheet: {
         title: '插入表格',

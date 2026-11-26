@@ -1,4 +1,9 @@
-import { OnInsertAfterCursor, replaceSelection, UpdateContextFormat } from './hemy-editor-common'
+import {
+    GetInlineMarkdownFormats,
+    OnInsertAfterCursor,
+    replaceSelection,
+    UpdateContextFormat
+} from './hemy-editor-common'
 import { MdEditQuickAccess } from './hemy-editor-quick-access'
 import { MonacoEditorDidChange, MonacoEditorKeyMaps } from './hemy-editor-shortcut'
 import { MonacoEditorAddActions } from './hemy-editor-actions'
@@ -28,6 +33,7 @@ const AddActions = MonacoEditorAddActions
 
 export {
     UpdateContext,
+    GetInlineMarkdownFormats,
     InsertAfterCursor,
     KeyMaps,
     DidChange,

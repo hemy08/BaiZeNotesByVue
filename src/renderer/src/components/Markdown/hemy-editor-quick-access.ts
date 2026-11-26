@@ -103,8 +103,17 @@ function onFontFormat(_event: Event, context: string) {
 }
 
 function onInsertTable() {
-    const configStore = getConfigStore()
-    configStore.showDialog('mdSheet')
+    // P0：光标在 GFM 表格内 → 打开可视化表格编辑器；否则回退原有插入表格对话框。
+    void import('../dialogs/medium/table-editor')
+        .then((module) => module.openTableEditorForActiveEditor())
+        .then((opened) => {
+            if (!opened) {
+                getConfigStore().showDialog('mdSheet')
+            }
+        })
+        .catch(() => {
+            getConfigStore().showDialog('mdSheet')
+        })
 }
 
 function onInsertWebLinks() {

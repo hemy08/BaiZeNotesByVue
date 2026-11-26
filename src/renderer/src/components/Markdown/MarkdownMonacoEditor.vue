@@ -58,6 +58,7 @@ import * as monaco from 'monaco-editor'
 import { ref, onMounted, watch, onBeforeUnmount, computed, nextTick, shallowRef } from 'vue'
 import EventBus from '../../common/event-bus/event-bus'
 import * as editor from './hemy-editor'
+import { GetInlineMarkdownFormats } from './hemy-editor-common'
 import type { MarkdownTOC } from '../../../../shared/types'
 import { IPC } from '../../../../shared/ipc-channels'
 import { t } from '../../common/i18n'
@@ -812,7 +813,17 @@ function cancelScheduledMonacoLayout(): void {
 const handleUpdateContext = (value: string) => {
     if (editorInstance) {
         editor.UpdateContext(editorInstance, value)
+        // 格式命令执行后同步高亮状态（选区变化监听通常也会触发，这里保证一次即时更新）
+        emitInlineFormatState()
     }
+}
+
+/** P0：把光标/选区的内联格式状态广播给工具栏 */
+const emitInlineFormatState = () => {
+    if (!editorInstance) {
+        return
+    }
+    EventBus.$emit(EVENT_BUS.MONACO_FORMAT_STATE_CHANGED, GetInlineMarkdownFormats(editorInstance))
 }
 
 const handleRelayout = () => {
@@ -1266,6 +1277,13 @@ onMounted(async () => {
         if (focusDisposable && typeof focusDisposable.dispose === 'function') {
             editorEnhanceDisposables.push(focusDisposable)
         }
+        const formatStateDisposable = editorInstance.onDidChangeCursorSelection?.(() => {
+            emitInlineFormatState()
+        })
+        if (formatStateDisposable && typeof formatStateDisposable.dispose === 'function') {
+            editorEnhanceDisposables.push(formatStateDisposable)
+        }
+        emitInlineFormatState()
 
         // 结构优化第 2 批 2.2（H4）：编辑器改为二级懒加载后，「打开文件 / 启动恢复」的
         // SHOW_SELECTED_FILE_CONTEXT 可能先于编辑器挂载到达（父组件已把内容写入 code prop）。

@@ -192,6 +192,11 @@ export const EVENT_BUS_CONTRACT: Record<EventBusEventKey, EventBusContractEntry>
         emitters: ['components/Markdown/hemy-editor-quick-access.ts'],
         receivers: ['components/Markdown/MarkdownMonacoEditor.vue']
     },
+    MONACO_FORMAT_STATE_CHANGED: {
+        payload: '{ bold: boolean; italic: boolean; strike: boolean; code: boolean }：内联格式状态',
+        emitters: ['components/Markdown/MarkdownMonacoEditor.vue'],
+        receivers: ['components/Markdown/MarkdownEditToolsComponent.vue']
+    },
     MONACO_SAVE_FILE_CONTENT_TO_DISK: {
         payload: 'true：请求保存文件内容到磁盘（编辑器内部触发）',
         emitters: ['components/Markdown/hemy-editor-shortcut.ts'],

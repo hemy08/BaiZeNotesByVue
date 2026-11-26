@@ -1,3 +1,15 @@
+## 2026年11月26日 - 版本 1.5.3（Markdown 编辑器 P0，开发中）
+
+> **开发版本**：1.5.3（基于 1.5.2 已发布能力）；本版本聚焦 Markdown 编辑器本身的体验与内置工具能力，不扩展知识库主线。
+
+### ✅ P0 编辑器体验（2026-11-26 已完成）
+
+- **内联格式工具栏**：选中文本/光标所在词切换粗体、斜体、删除线、行内代码；粗体+斜体组合；工具栏按当前选区状态高亮
+- **可视化 GFM 表格编辑**：光标在表格内时从工具栏打开网格编辑器，支持增删行列、编辑单元格、列对齐并回写
+- **图片插入增强**：支持宽度、对齐、图注，输出 `figure/img/figcaption`；默认仍输出标准 Markdown
+- **粘贴/复制 Markdown**：复用 A8 HTML→Markdown 与复制为 Markdown/HTML 能力，纳入 P0 回归
+- **门禁**：346 测试文件 / 6,349 用例通过；覆盖率 93.60 / 88.14 / 94.12 / 93.98；typecheck、ESLint、Prettier、docs、quality、audit、构建与预算均通过
+
 ## 2026年11月22日 - 版本 1.5.2（捕获与日常入口，已发布 2026-11-22）
 
 > **发布状态**：**已发布**（2026-11-22）｜tag：[`release-1.5.2`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.2)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap

@@ -15,6 +15,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 const monacoMocks = vi.hoisted(() => {
     class Range {
+        static fromPositions(
+            start: { lineNumber: number; column: number },
+            end: { lineNumber: number; column: number }
+        ) {
+            return new Range(start.lineNumber, start.column, end.lineNumber, end.column)
+        }
         constructor(
             public startLineNumber: number,
             public startColumn: number,
@@ -22,7 +28,8 @@ const monacoMocks = vi.hoisted(() => {
             public endColumn: number
         ) {}
     }
-    return { Range }
+    class Selection extends Range {}
+    return { Range, Selection }
 })
 
 vi.mock('monaco-editor', () => ({
@@ -44,6 +51,7 @@ vi.mock('monaco-editor', () => ({
         KeyV: 52
     },
     Range: monacoMocks.Range,
+    Selection: monacoMocks.Selection,
     editor: {}
 }))
 
@@ -60,6 +68,8 @@ type CommandCallback = (...args: unknown[]) => unknown
 let commands: CommandCallback[]
 let selection: {
     isEmpty: () => boolean
+    getStartPosition: () => { lineNumber: number; column: number }
+    getEndPosition: () => { lineNumber: number; column: number }
     startLineNumber: number
     startColumn: number
     endLineNumber: number
@@ -83,11 +93,15 @@ function makeEditor() {
             getLineContent: () => '正文内容',
             getLineMaxColumn: () => 5,
             getLineLength: () => 4,
-            getValueInRange: () => '选中'
+            getValueInRange: () => '选中',
+            getValue: () => '正文内容',
+            getOffsetAt: (position: { column: number }) => Math.max(0, position.column - 1),
+            getPositionAt: (offset: number) => ({ lineNumber: 1, column: offset + 1 })
         }),
         getSelection: () => selection,
         executeEdits,
         setPosition,
+        setSelection: vi.fn(),
         onDidChangeCursorPosition: (listener: typeof cursorListener) => {
             cursorListener = listener
             return { dispose: vi.fn() }
@@ -108,6 +122,8 @@ beforeEach(() => {
     commands = []
     selection = {
         isEmpty: () => false,
+        getStartPosition: () => ({ lineNumber: 1, column: 1 }),
+        getEndPosition: () => ({ lineNumber: 1, column: 5 }),
         startLineNumber: 1,
         startColumn: 1,
         endLineNumber: 1,

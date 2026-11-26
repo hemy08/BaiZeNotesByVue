@@ -82,6 +82,15 @@ const dialogRenderer = {
         altText: 'Alt text',
         altPlaceholder: 'Image description',
         titlePlaceholder: 'Optional image title',
+        width: 'Width (px)',
+        widthPlaceholder: 'Leave empty for original size',
+        alignment: 'Alignment',
+        alignNone: 'Default',
+        alignLeft: 'Left',
+        alignCenter: 'Center',
+        alignRight: 'Right',
+        caption: 'Caption',
+        captionPlaceholder: 'Optional image caption',
         localFile: 'Local file',
         networkImage: 'Network image'
     },
@@ -96,6 +105,22 @@ const dialogRenderer = {
         insertLatex: 'Insert LaTeX',
         cancelEdit: 'Cancel editing',
         syntaxError: 'Formula syntax error'
+    },
+    tableEditor: {
+        title: 'Edit Table',
+        hint: 'Edit headers, cells and column alignment; add or remove rows/columns (GFM does not support merged cells).',
+        header: 'Header',
+        cell: 'Cell',
+        column: 'Column',
+        alignment: 'Column alignment',
+        alignDefault: 'Default',
+        alignLeft: 'Left',
+        alignCenter: 'Center',
+        alignRight: 'Right',
+        addRow: 'Add row',
+        addColumn: 'Add column',
+        deleteRow: 'Delete row',
+        deleteColumn: 'Delete column'
     },
     mdSheet: {
         title: 'Insert table',

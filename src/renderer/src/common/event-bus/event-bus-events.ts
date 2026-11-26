@@ -60,6 +60,8 @@ export const EVENT_BUS = {
     MONACO_UPDATE_HEADER_FORMAT: 'monaco-editor-update-header-format',
     // 字体格式更新
     MONACO_UPDATE_FONT_FORMAT: 'monaco-editor-update-font-format',
+    // P0：内联格式状态（bold/italic/strike/code）同步给工具栏
+    MONACO_FORMAT_STATE_CHANGED: 'monaco-editor-format-state-changed',
     // 请求保存文件内容到磁盘（编辑器内部触发）
     MONACO_SAVE_FILE_CONTENT_TO_DISK: 'monaco-editor-save-file-content-to-disk'
 } as const

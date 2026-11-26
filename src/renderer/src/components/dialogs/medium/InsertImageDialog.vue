@@ -82,6 +82,51 @@
                     />
                 </div>
 
+                <div class="input-group image-layout-row">
+                    <div class="image-layout-field">
+                        <label class="input-label">{{
+                            t('dialogRenderer.insertImage.width')
+                        }}</label>
+                        <input
+                            v-model.number="imageWidth"
+                            type="number"
+                            min="0"
+                            max="4000"
+                            class="text-input image-width-input"
+                            :placeholder="t('dialogRenderer.insertImage.widthPlaceholder')"
+                        />
+                    </div>
+                    <div class="image-layout-field">
+                        <label class="input-label">{{
+                            t('dialogRenderer.insertImage.alignment')
+                        }}</label>
+                        <select v-model="imageAlign" class="text-input image-align-select">
+                            <option value="none">
+                                {{ t('dialogRenderer.insertImage.alignNone') }}
+                            </option>
+                            <option value="left">
+                                {{ t('dialogRenderer.insertImage.alignLeft') }}
+                            </option>
+                            <option value="center">
+                                {{ t('dialogRenderer.insertImage.alignCenter') }}
+                            </option>
+                            <option value="right">
+                                {{ t('dialogRenderer.insertImage.alignRight') }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">{{ t('dialogRenderer.insertImage.caption') }}</label>
+                    <input
+                        v-model="imageCaption"
+                        type="text"
+                        class="text-input image-caption-input"
+                        :placeholder="t('dialogRenderer.insertImage.captionPlaceholder')"
+                    />
+                </div>
+
                 <div v-if="previewUrl" class="preview-section">
                     <label class="preview-label">{{ t('dialogRenderer.common.preview') }}</label>
                     <img
@@ -147,6 +192,9 @@ const localImageSrc = ref('')
 const imageUrl = ref('')
 const altText = ref('')
 const imageTitle = ref('')
+const imageWidth = ref<number | null>(null)
+const imageAlign = ref<'none' | 'left' | 'center' | 'right'>('none')
+const imageCaption = ref('')
 // 预览图片加载失败时隐藏预览区（computed 只读，需独立状态位；切换来源后重置）。
 const previewLoadFailed = ref(false)
 
@@ -206,13 +254,50 @@ function handleInsert() {
         src = imageUrl.value
     }
 
-    let markdown = '![' + (altText.value || 'image') + '](' + src
-    if (imageTitle.value) {
-        markdown += ' "' + imageTitle.value + '"'
+    const alt = altText.value || 'image'
+    const width = imageWidth.value && imageWidth.value > 0 ? Math.round(imageWidth.value) : 0
+    const hasLayout = width > 0 || imageAlign.value !== 'none' || imageCaption.value.trim()
+    if (!hasLayout) {
+        let markdown = '![' + alt + '](' + src
+        if (imageTitle.value) {
+            markdown += ' "' + imageTitle.value + '"'
+        }
+        markdown += ')'
+        emit('insert', markdown)
+        return
     }
-    markdown += ')'
 
-    emit('insert', markdown)
+    // P0：宽度/对齐/图注需要 HTML；Markdown 预览由 markdown-it html:true 渲染。
+    const escapeAttr = (value: string): string =>
+        value
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+    const styleParts = ['max-width:100%', 'height:auto']
+    if (width > 0) styleParts.push(`width:${width}px`)
+    if (imageAlign.value !== 'none') styleParts.push('display:block;margin:0 auto')
+    const imgAttrs = [
+        `src="${escapeAttr(src)}"`,
+        `alt="${escapeAttr(alt)}"`,
+        `title="${escapeAttr(imageTitle.value)}"`,
+        `style="${styleParts.join(';')}"`
+    ]
+    let html = `<figure${
+        imageAlign.value === 'left'
+            ? ' style="text-align:left"'
+            : imageAlign.value === 'right'
+              ? ' style="text-align:right"'
+              : imageAlign.value === 'center'
+                ? ' style="text-align:center"'
+                : ''
+    }>`
+    html += `<img ${imgAttrs.join(' ')}>`
+    if (imageCaption.value.trim()) {
+        html += `<figcaption>${escapeAttr(imageCaption.value.trim())}</figcaption>`
+    }
+    html += '</figure>'
+    emit('insert', html)
 }
 </script>
 
@@ -338,5 +423,23 @@ function handleInsert() {
     gap: 10px;
     border-top: 1px solid var(--border-color);
     background: var(--card-bg);
+}
+
+.image-layout-row {
+    display: flex;
+    gap: 12px;
+}
+
+.image-layout-field {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.image-layout-field .text-input {
+    width: 100%;
+    box-sizing: border-box;
 }
 </style>

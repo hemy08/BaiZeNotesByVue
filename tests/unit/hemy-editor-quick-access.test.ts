@@ -126,10 +126,11 @@ describe('MdEditQuickAccess font format events', () => {
         expect(emitSpy).toHaveBeenCalledWith('monaco-editor-update-font-format', 'bold')
     })
 
-    it('should open the mdSheet dialog from the table button', () => {
+    it('should open the mdSheet dialog from the table button', async () => {
         const store = getConfigStore()
         MdEditQuickAccess['insert-table'].clickFn(fakeEvent(0, 0), '')
-        expect(store.dialogs.mdSheet.visible).toBe(true)
+        // P0：先尝试可视化表格编辑；无活动编辑器/不在表格内时异步回退到插入对话框
+        await vi.waitFor(() => expect(store.dialogs.mdSheet.visible).toBe(true))
     })
 
     it('should open the insertImage dialog from the image button', () => {
