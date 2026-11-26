@@ -37,18 +37,13 @@
                     v-model="mermaidCode"
                     class="code-editor"
                     :placeholder="t('dialogRenderer.mermaidEdit.codePlaceholder')"
-                    @input="updatePreview"
+                    @input="schedulePreview"
                 ></textarea>
             </div>
 
             <div class="preview-section">
                 <div class="section-header">
-                    <!-- FE-15：原「预览」文案会让用户误以为此处应渲染图形，实际本对话框是
-                       源码预览（渲染在插入后由编辑器完成）。文案改为「源码预览」并附说明。
-                       安全约束（task-17 / P1-CQ-2 / AS-3）：预览区保持 <pre> 文本插值，
-                       严禁恢复 v-html；若未来要改为 SVG 渲染，必须 DOMPurify.sanitize
-                       + mermaid.initialize({ securityLevel: 'strict' }) 并保留 XSS 回归测试。 -->
-                    <h3>{{ t('dialogRenderer.mermaidEdit.sourcePreview') }}</h3>
+                    <h3>{{ t('dialogRenderer.mermaidEdit.chartPreview') }}</h3>
                     <div class="toolbar">
                         <select v-model="chartType" class="chart-select">
                             <option value="graph">
@@ -76,19 +71,26 @@
                         </select>
                     </div>
                 </div>
-                <!-- P1-CQ-2 / AS-3：预览区改为纯文本渲染。
-                     Mermaid 源码本身是纯文本而非 HTML，用文本插值（Vue 自动转义）
-                     放入 <pre> 展示，从根上消除「用户输入拼 HTML 再注入 DOM」的 XSS 面。
-                     注意：保留 .mermaid 类名以维持既有 DOM 选择器契约。 -->
+                <!-- 安全边界：Mermaid 使用 strict + htmlLabels:false；SVG 输出必须经
+                     SanitizePreviewHtml（DOMPurify 唯一入口）后再 v-html。 -->
                 <div class="preview-area">
-                    <!-- FE-15：UI 明确标注「仅源码预览」，避免用户误判预览功能损坏。 -->
                     <p class="preview-hint">
-                        {{ t('dialogRenderer.mermaidEdit.sourcePreviewHint') }}
+                        {{ t('dialogRenderer.mermaidEdit.chartPreviewHint') }}
                     </p>
-                    <p v-if="!previewCode" class="placeholder">
+                    <p v-if="!normalizedCode" class="placeholder">
                         {{ t('dialogRenderer.common.previewPlaceholder') }}
                     </p>
-                    <pre v-else class="mermaid preview-code">{{ previewCode }}</pre>
+                    <div v-else-if="rendering" class="preview-loading">
+                        {{ t('dialogRenderer.mermaidEdit.rendering') }}
+                    </div>
+                    <div v-else-if="renderError" class="preview-error">
+                        <p class="preview-error-title">
+                            {{ t('dialogRenderer.mermaidEdit.renderFailed') }}
+                        </p>
+                        <pre class="preview-error-detail">{{ renderError }}</pre>
+                    </div>
+                    <!-- eslint-disable-next-line vue/no-v-html -- Mermaid SVG 已经 SanitizePreviewHtml(DOMPurify) 消毒，且 securityLevel=strict -->
+                    <div v-else class="mermaid-preview" v-html="renderedSvg"></div>
                 </div>
             </div>
         </div>
@@ -105,16 +107,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
 import BaseDialog from '../BaseDialog.vue'
+import { SanitizePreviewHtml } from '../../Markdown/preview-sanitize'
 
 interface Props {
     visible: boolean
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const emit = defineEmits<{
     (e: 'close'): void
     (e: 'insert', data: string): void
@@ -134,8 +137,7 @@ const titleTextStyle: CSSProperties = { fontSize: '16px', fontWeight: 600 }
 const closeButtonStyle: CSSProperties = { fontSize: '18px' }
 const footerStyle: CSSProperties = { padding: '15px 24px', gap: '12px', flexShrink: 0 }
 
-const mermaidCode = ref(`mermaid
-    graph TD
+const mermaidCode = ref(`graph TD
     A[Start] --> B{Decision}
     B -->|Yes| C[Do Something]
     B -->|No| D[Do Something Else]
@@ -143,24 +145,106 @@ const mermaidCode = ref(`mermaid
     D --> E`)
 
 const chartType = ref('graph')
-// P1-CQ-2 / AS-3：只保存「待展示的源码文本」，由模板以文本插值渲染（自动转义）。
-// 不再拼接 HTML 字符串注入 DOM；初始为空串时显示占位提示（保持原有交互）。
-const previewCode = ref('')
+const PREVIEW_DEBOUNCE_MS = 260
+const MERMAID_PREVIEW_INIT = {
+    startOnLoad: false,
+    securityLevel: 'strict',
+    htmlLabels: false
+} as const
 
-function updatePreview() {
-    previewCode.value = mermaidCode.value
+let mermaidPromise: Promise<typeof import('mermaid').default> | null = null
+let previewTimer: ReturnType<typeof setTimeout> | null = null
+let previewSeq = 0
+let renderSeq = 0
+const renderedSvg = ref('')
+const renderError = ref('')
+const rendering = ref(false)
+
+/** 去掉代码围栏与遗留的 mermaid 语言标记行，得到可渲染的图表定义 */
+function normalizeMermaidCode(raw: string): string {
+    let code = raw.trim()
+    const fenced = code.match(/^```(?:mermaid)?\s*\n([\s\S]*?)\n```$/i)
+    if (fenced) code = fenced[1].trim()
+    const lines = code.split(/\r?\n/)
+    if (lines[0]?.trim().toLowerCase() === 'mermaid') {
+        code = lines.slice(1).join('\n').trim()
+    }
+    return code
 }
 
+const normalizedCode = computed(() => normalizeMermaidCode(mermaidCode.value))
+
+async function getMermaid() {
+    if (!mermaidPromise) {
+        mermaidPromise = import('mermaid').then((module) => {
+            const instance = module.default
+            instance.initialize(MERMAID_PREVIEW_INIT)
+            return instance
+        })
+    }
+    return mermaidPromise
+}
+
+async function renderDiagram() {
+    const seq = ++renderSeq
+    const code = normalizedCode.value
+    renderError.value = ''
+    if (!code) {
+        renderedSvg.value = ''
+        rendering.value = false
+        return
+    }
+    rendering.value = true
+    try {
+        const mermaid = await getMermaid()
+        const id = `mermaidPreview${Date.now()}${previewSeq++}`
+        const result = await mermaid.render(id, code)
+        document.getElementById(`d${id}`)?.remove()
+        if (seq !== renderSeq) return
+        renderedSvg.value = SanitizePreviewHtml(result.svg)
+        if (!renderedSvg.value) {
+            throw new Error(t('dialogRenderer.mermaidEdit.renderFailed'))
+        }
+    } catch (error) {
+        if (seq !== renderSeq) return
+        renderedSvg.value = ''
+        renderError.value = error instanceof Error ? error.message : String(error)
+    } finally {
+        if (seq === renderSeq) rendering.value = false
+    }
+}
+
+function schedulePreview() {
+    if (previewTimer) clearTimeout(previewTimer)
+    previewTimer = setTimeout(() => {
+        previewTimer = null
+        void renderDiagram()
+    }, PREVIEW_DEBOUNCE_MS)
+}
+
+onMounted(schedulePreview)
+watch(
+    () => props.visible,
+    (visible) => {
+        if (visible) schedulePreview()
+    }
+)
+onBeforeUnmount(() => {
+    if (previewTimer) clearTimeout(previewTimer)
+    previewTimer = null
+    renderSeq += 1
+})
+
 function handleFormat() {
-    const lines = mermaidCode.value.split('\n')
+    const lines = normalizedCode.value.split('\n')
     const formatted = '```mermaid\n' + lines.map((line) => '    ' + line).join('\n')
     mermaidCode.value = formatted + '\n```\n'
-    updatePreview()
+    schedulePreview()
 }
 
 function handleClear() {
     mermaidCode.value = ''
-    updatePreview()
+    schedulePreview()
 }
 
 function handleClose() {
@@ -272,6 +356,48 @@ function handleInsert() {
     color: var(--text-color);
     white-space: pre-wrap;
     word-break: break-word;
+}
+
+.mermaid-preview {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 160px;
+    overflow: auto;
+}
+
+.mermaid-preview :deep(svg) {
+    max-width: 100%;
+    height: auto;
+}
+
+.preview-loading {
+    padding: 24px;
+    color: var(--secondary-text-color);
+    text-align: center;
+}
+
+.preview-error {
+    padding: 12px;
+    border: 1px solid #d97706;
+    border-radius: 6px;
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.preview-error-title {
+    margin: 0 0 8px;
+    font-weight: 600;
+}
+
+.preview-error-detail {
+    margin: 0;
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
 }
 
 /* FE-15：源码预览说明文案（灰色小字，位于预览区顶部）。 */

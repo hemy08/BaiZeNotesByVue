@@ -244,8 +244,12 @@ const dialogRenderer = {
         definition: '图表定义',
         // FE-15：预览区只做「源码」展示（不渲染 SVG，避免把用户输入交给 HTML/SVG 渲染面），
         // 文案明确标注为源码预览，避免用户误以为此处应出现图形。
-        sourcePreview: '源码预览',
-        sourcePreviewHint: '此处仅预览 Mermaid 源码文本；插入后由编辑器渲染图形。',
+        sourcePreview: '图表预览',
+        sourcePreviewHint: '实时渲染 Mermaid 图表；错误会显示在下方。',
+        chartPreview: '图表预览',
+        chartPreviewHint: '实时渲染 Mermaid 图表；错误会显示在下方。',
+        rendering: '正在渲染…',
+        renderFailed: 'Mermaid 渲染失败',
         codePlaceholder: '输入 Mermaid 图表代码...',
         chartGraph: '流程图',
         chartSequence: '时序图',

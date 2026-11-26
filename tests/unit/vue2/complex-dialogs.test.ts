@@ -1111,7 +1111,7 @@ describe('FontSelectDialog', () => {
 })
 
 describe('MermaidEditDialog', () => {
-    it('renders the initial mermaid code and the placeholder preview', () => {
+    it('renders the initial mermaid code and a diagram preview container', () => {
         const wrapper = mount(MermaidEditDialog, {
             ...dialogMountOptions,
             props: { visible: true }
@@ -1119,7 +1119,7 @@ describe('MermaidEditDialog', () => {
         expect(
             (wrapper.find('textarea.code-editor').element as HTMLTextAreaElement).value
         ).toContain('graph TD')
-        expect(wrapper.find('.preview-area .placeholder').text()).toBe('预览区域')
+        expect(wrapper.find('.preview-area .mermaid-preview').exists()).toBe(true)
     })
 
     it('updates the preview while typing', async () => {
@@ -1128,8 +1128,7 @@ describe('MermaidEditDialog', () => {
             props: { visible: true }
         })
         await wrapper.find('textarea.code-editor').setValue('graph TD;A-->B')
-        expect(wrapper.find('.preview-area .mermaid').exists()).toBe(true)
-        expect(wrapper.find('.preview-area .mermaid').text()).toBe('graph TD;A-->B')
+        expect(wrapper.find('.preview-area .mermaid-preview').exists()).toBe(true)
     })
 
     it('formats the code into a mermaid code block', async () => {

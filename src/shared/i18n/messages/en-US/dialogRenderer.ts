@@ -243,9 +243,12 @@ const dialogRenderer = {
         title: 'Mermaid diagram editor',
         definition: 'Diagram definition',
         // FE-15：源码预览语义（不渲染 SVG），与 zh-CN 同键同名。
-        sourcePreview: 'Source preview',
-        sourcePreviewHint:
-            'Only the Mermaid source text is previewed here; the diagram renders in the editor after insertion.',
+        sourcePreview: 'Diagram preview',
+        sourcePreviewHint: 'Renders the Mermaid diagram live; errors are shown below.',
+        chartPreview: 'Diagram preview',
+        chartPreviewHint: 'Renders the Mermaid diagram live; errors are shown below.',
+        rendering: 'Rendering…',
+        renderFailed: 'Mermaid render failed',
         codePlaceholder: 'Enter Mermaid diagram code...',
         chartGraph: 'Flowchart',
         chartSequence: 'Sequence diagram',
