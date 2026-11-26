@@ -13,39 +13,10 @@
             @keydown.ctrl.enter.prevent="handleApply"
             @keydown.meta.enter.prevent="handleApply"
         >
-            <header class="table-editor-head">
-                <div class="table-editor-head-main">
-                    <span class="mode-badge" :class="`mode-badge--${mode}`">
-                        {{
-                            mode === 'insert'
-                                ? t('dialogRenderer.tableEditor.insertTitle')
-                                : t('dialogRenderer.tableEditor.editTitle')
-                        }}
-                    </span>
-                    <p class="table-editor-hint">{{ hintText }}</p>
-                </div>
-                <div class="table-editor-stats" aria-live="polite">
-                    <span class="stat-chip">
-                        {{ t('dialogRenderer.tableEditor.rowsCount', { count: rows.length }) }}
-                    </span>
-                    <span class="stat-chip">
-                        {{
-                            t('dialogRenderer.tableEditor.columnsCount', {
-                                count: headers.length
-                            })
-                        }}
-                    </span>
-                </div>
-            </header>
-
             <section
                 class="table-settings"
                 :aria-label="t('dialogRenderer.tableEditor.settingsTitle')"
             >
-                <div class="settings-title">
-                    <span class="settings-title-icon" aria-hidden="true">⚙</span>
-                    {{ t('dialogRenderer.tableEditor.settingsTitle') }}
-                </div>
                 <div class="settings-controls">
                     <label class="setting-field">
                         <span>{{ t('dialogRenderer.tableEditor.rows') }}</span>
@@ -410,13 +381,6 @@ let draggedColumnIndex: number | null = null
 let columnResizeCleanup: (() => void) | null = null
 
 const dialogTitle = computed(() => t('dialogRenderer.tableEditor.title'))
-const hintText = computed(() =>
-    t(
-        props.mode === 'insert'
-            ? 'dialogRenderer.tableEditor.insertHint'
-            : 'dialogRenderer.tableEditor.editHint'
-    )
-)
 
 const alignOptions = computed(() => [
     {
@@ -447,7 +411,9 @@ const panelSize = reactive<{ width: number | null; height: number | null }>({
     height: null
 })
 const panelContainerStyle = computed<CSSProperties>(() => {
-    const style: CSSProperties = {}
+    const style: CSSProperties = {
+        border: '1px solid var(--border-color, #d8d3e2)'
+    }
     if (panelSize.width) style.width = `${panelSize.width}px`
     if (panelSize.height) style.height = `${panelSize.height}px`
     return style

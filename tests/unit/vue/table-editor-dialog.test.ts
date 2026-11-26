@@ -54,7 +54,6 @@ describe('TableEditorDialog 统一界面', () => {
 
     it('插入模式：从空白表格开始，应用按钮为“插入表格”', async () => {
         const { wrapper, onApply } = mountDialog('insert')
-        expect(wrapper.find('.mode-badge').text()).toContain('插入表格')
         expect(wrapper.findAll('.table-editor-actions .dialog-btn')[1].text()).toBe('插入表格')
         const inputs = wrapper.findAll('.cell-input')
         await inputs[0].setValue('名称')
