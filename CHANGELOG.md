@@ -8,7 +8,7 @@
 - **统一 GFM 表格编辑器**：插入与编辑共用同一界面；顶部设置区可指定行列、统一对齐、导入 Excel(.xlsx)/CSV；支持拖动列宽/行列重排、任意位置增删、按列排序、行列互换、多行 Markdown 与任务清单；每列对齐下拉框；带边框与拖拽缩放窗口
 - **图片插入增强**：支持宽度、对齐、图注，输出 `figure/img/figcaption`；默认仍输出标准 Markdown
 - **粘贴/复制 Markdown**：复用 A8 HTML→Markdown 与复制为 Markdown/HTML 能力，纳入 P0 回归
-- **门禁**：347 测试文件 / 6,374 用例通过；覆盖率 93.29 / 87.75 / 93.89 / 93.72；typecheck、ESLint、Prettier、docs、quality、audit、构建与预算均通过
+- **门禁**：347 测试文件 / 6,378 用例通过；覆盖率 93.20 / 87.73 / 93.82 / 93.63；typecheck、ESLint、Prettier、docs、quality、audit、构建与预算均通过
 
 ## 2026年11月22日 - 版本 1.5.2（捕获与日常入口，已发布 2026-11-22）
 

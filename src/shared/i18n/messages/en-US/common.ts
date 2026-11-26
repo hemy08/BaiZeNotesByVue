@@ -4,6 +4,7 @@
 export default {
     ok: 'OK',
     cancel: 'Cancel',
+    resize: 'Drag to resize window',
     save: 'Save',
     close: 'Close',
     open: 'Open',

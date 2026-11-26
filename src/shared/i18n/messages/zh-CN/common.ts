@@ -5,6 +5,7 @@
 export default {
     ok: '确定',
     cancel: '取消',
+    resize: '拖动调整窗口大小',
     save: '保存',
     close: '关闭',
     open: '打开',

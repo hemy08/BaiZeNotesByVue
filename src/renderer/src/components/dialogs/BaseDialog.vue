@@ -16,7 +16,7 @@
                         :class="containerClass"
                         :style="containerStyles"
                         role="dialog"
-                        aria-modal="true"
+                        :aria-modal="modal ? 'true' : 'false'"
                         :aria-labelledby="ariaLabelledby"
                         :aria-label="ariaLabelValue"
                         :aria-describedby="ariaDescribedbyValue"
@@ -115,7 +115,7 @@
  * 4. 按标题栏拖拽移动对话框（`draggable`，复用 useDialogDrag；关闭按钮/正文不触发拖拽）；
  * 5. `resetPositionOnOpen` 为 true 时每次打开重置到初始居中位置（默认沿用上次拖拽位置）；
  * 6. 可访问性（P2 新增，纯增量，不改变视觉与既有交互）：容器 `role="dialog"` +
- *    `aria-modal="true"` + 标题关联（默认标题用 aria-labelledby；无标题场景可传 `ariaLabel`）、
+ *    `:aria-modal="modal ? 'true' : 'false'"` + 标题关联（默认标题用 aria-labelledby；无标题场景可传 `ariaLabel`）、
  *    可选描述关联（`ariaDescribedby`，如消息框正文/确认文案）、关闭按钮 aria-label；
  *    打开时聚焦容器、关闭时归还打开前焦点；Esc 关闭；Tab / Shift+Tab 在对话框内循环
  *    （焦点陷阱，跳过 disabled / hidden / inert / aria-hidden / iframe / tabindex=-1）；
@@ -181,6 +181,10 @@ interface Props {
     resetPositionOnOpen?: boolean
     /** 点击遮罩空白处是否触发 close，默认 true */
     closeOnOverlay?: boolean
+    /** 是否允许 Esc 关闭（默认 true；非模态工具窗可关闭） */
+    closeOnEscape?: boolean
+    /** 是否为模态对话框：false 时不启用焦点陷阱、aria-modal=false（默认 true） */
+    modal?: boolean
     /** 容器附加 class（如 MessageDialog 需要 `${type}-dialog` 供外部/测试识别消息类型） */
     containerClass?: ClassValue
     /** 遮罩内联样式覆盖（MessageDialog 迁移前遮罩为更深的 rgba(0,0,0,0.5)） */
@@ -218,7 +222,9 @@ const props = withDefaults(defineProps<Props>(), {
     animation: 'quick',
     draggable: true,
     resetPositionOnOpen: false,
-    closeOnOverlay: true
+    closeOnOverlay: true,
+    closeOnEscape: true,
+    modal: true
 })
 
 const emit = defineEmits<{
@@ -372,12 +378,20 @@ function handleDocumentKeyDown(event: KeyboardEvent): void {
         // 现代浏览器组合事件的 isComposing 为 true（Chrome 另以 keyCode 229 标记），
         // 两种标记都放行，避免用户取消候选时误关对话框。
         if (event.isComposing || event.keyCode === 229) return
+        // 非模态工具窗可关闭 Esc 关闭（如 Mermaid 编辑器）
+        if (!props.closeOnEscape) {
+            event.preventDefault()
+            event.stopPropagation()
+            return
+        }
         // 阻止 Esc 继续冒泡到编辑器（如 Monaco 大纲）等全局快捷键
         event.preventDefault()
         event.stopPropagation()
         emit('close')
         return
     }
+    // 非模态对话框不拦截底层编辑器的 Tab 导航
+    if (!props.modal) return
     if (event.key !== 'Tab') return
 
     const focusables = getFocusableElements()

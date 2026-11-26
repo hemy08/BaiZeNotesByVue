@@ -148,3 +148,37 @@ describe('MermaidEditDialog 预览区文案', () => {
         expect(dialog.find('.preview-area .preview-hint').text()).toContain('实时渲染 Mermaid 图表')
     })
 })
+
+describe('MermaidEditDialog 非模态工具窗', () => {
+    it('点击遮罩不关闭，点击关闭按钮才关闭', async () => {
+        const dialog = mountDialog()
+        await dialog.find('.dialog-overlay').trigger('click')
+        expect(dialog.emitted('close')).toBeUndefined()
+
+        await dialog.find('.close-btn').trigger('click')
+        expect(dialog.emitted('close')).toHaveLength(1)
+    })
+
+    it('点击外部可穿透（遮罩 pointer-events:none、背景透明）', () => {
+        const dialog = mountDialog()
+        const overlayStyle = dialog.find('.dialog-overlay').attributes('style') ?? ''
+        expect(overlayStyle).toContain('pointer-events: none')
+        expect(overlayStyle).toContain('background: transparent')
+        expect(dialog.find('.dialog-container').attributes('aria-modal')).toBe('false')
+        expect(dialog.find('.dialog-container').attributes('style') ?? '').toContain(
+            'pointer-events: auto'
+        )
+    })
+
+    it('Esc 不关闭，只有关闭按钮/插入才关闭', async () => {
+        const dialog = mountDialog()
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+        await flushPromises()
+        expect(dialog.emitted('close')).toBeUndefined()
+    })
+
+    it('右下角提供拖拽缩放柄', () => {
+        const dialog = mountDialog()
+        expect(dialog.find('.main-container .resize-grip').exists()).toBe(true)
+    })
+})

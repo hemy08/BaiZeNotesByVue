@@ -446,7 +446,10 @@ describe('C-4 迁移对话框关闭行为', () => {
     it.each(SHELL_CASES)('$name 点击遮罩空白处只 emit 一次 close', async (shellCase) => {
         const wrapper = mountDialog(shellCase.component)
         await wrapper.find('.dialog-overlay').trigger('click')
-        expect(wrapper.emitted('close')).toHaveLength(1)
+        // Mermaid 编辑器为非模态工具窗：点击外部不关闭，便于继续编辑 Markdown
+        expect(wrapper.emitted('close') ?? []).toHaveLength(
+            shellCase.name === 'MermaidEditDialog' ? 0 : 1
+        )
     })
 
     it.each(SHELL_CASES)('$name 点击关闭按钮只 emit 一次 close', async (shellCase) => {

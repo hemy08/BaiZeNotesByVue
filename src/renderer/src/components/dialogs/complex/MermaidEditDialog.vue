@@ -14,6 +14,10 @@
         close-button-variant="rounded"
         width="1400px"
         :container-style="containerStyle"
+        :overlay-style="overlayStyle"
+        :close-on-overlay="false"
+        :close-on-escape="false"
+        :modal="false"
         :title-bar-style="titleBarStyle"
         :title-text-style="titleTextStyle"
         :close-button-style="closeButtonStyle"
@@ -93,6 +97,14 @@
                     <div v-else class="mermaid-preview" v-html="renderedSvg"></div>
                 </div>
             </div>
+            <div
+                class="resize-grip"
+                :title="t('common.resize')"
+                @pointerdown.stop.prevent="startResize"
+                @mousedown.stop.prevent
+            >
+                <span></span><span></span><span></span>
+            </div>
         </div>
 
         <template #footer>
@@ -107,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
 import BaseDialog from '../BaseDialog.vue'
@@ -131,7 +143,55 @@ const emit = defineEmits<{
  * - 关闭按钮：rounded 变体提供 32px 圆角按钮，旧外壳字号 18px（无 app-region 声明）；
  * - 底栏：旧外壳 15px 24px 内边距、12px 间距、flex-shrink: 0（默认壳为 15px 20px / gap 10px）。
  */
-const containerStyle: CSSProperties = { height: '900px' }
+/** 非模态工具窗：遮罩不拦截底层编辑器点击，点击外部不关闭 */
+const overlayStyle: CSSProperties = {
+    pointerEvents: 'none',
+    background: 'transparent'
+}
+const panelSize = reactive<{ width: number | null; height: number }>({
+    width: null,
+    height: 900
+})
+const containerStyle = computed<CSSProperties>(() => ({
+    pointerEvents: 'auto',
+    ...(panelSize.width ? { width: `${panelSize.width}px` } : {}),
+    height: `${panelSize.height}px`
+}))
+let resizeCleanup: (() => void) | null = null
+
+function startResize(event: PointerEvent): void {
+    const handle = event.currentTarget as HTMLElement | null
+    const container = handle?.closest('.dialog-container') as HTMLElement | null
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const startX = event.clientX
+    const startY = event.clientY
+    const startWidth = rect.width
+    const startHeight = rect.height
+    const minWidth = 760
+    const minHeight = 520
+    const maxWidth = Math.max(minWidth, window.innerWidth - 20)
+    const maxHeight = Math.max(minHeight, window.innerHeight - 20)
+    const onMove = (moveEvent: PointerEvent): void => {
+        panelSize.width = Math.min(
+            maxWidth,
+            Math.max(minWidth, startWidth + moveEvent.clientX - startX)
+        )
+        panelSize.height = Math.min(
+            maxHeight,
+            Math.max(minHeight, startHeight + moveEvent.clientY - startY)
+        )
+    }
+    const cleanup = (): void => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', cleanup)
+        resizeCleanup = null
+    }
+    resizeCleanup?.()
+    resizeCleanup = cleanup
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', cleanup)
+}
 const titleBarStyle: CSSProperties = { flexShrink: 0 }
 const titleTextStyle: CSSProperties = { fontSize: '16px', fontWeight: 600 }
 const closeButtonStyle: CSSProperties = { fontSize: '18px' }
@@ -233,6 +293,7 @@ onBeforeUnmount(() => {
     if (previewTimer) clearTimeout(previewTimer)
     previewTimer = null
     renderSeq += 1
+    resizeCleanup?.()
 })
 
 function handleFormat() {
@@ -264,11 +325,52 @@ function handleInsert() {
    底栏按钮视觉见全局 assets/dialog-buttons.css（模板类 dialog-btn dialog-btn--*），
    这里只保留正文（编辑区 / 源码预览区 / 工具栏 tool-btn）样式。 */
 .main-container {
+    position: relative;
     flex: 1;
     display: flex;
     gap: 1px;
     background: var(--border-color);
     overflow: hidden;
+}
+
+.resize-grip {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 2px;
+    width: 22px;
+    height: 22px;
+    padding: 4px;
+    cursor: nwse-resize;
+    opacity: 0.6;
+    z-index: 10;
+}
+
+.resize-grip span {
+    display: block;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--secondary-text-color);
+}
+
+.resize-grip span:nth-child(1) {
+    width: 6px;
+}
+
+.resize-grip span:nth-child(2) {
+    width: 10px;
+}
+
+.resize-grip span:nth-child(3) {
+    width: 14px;
+}
+
+.resize-grip:hover {
+    opacity: 1;
 }
 
 .editor-section,
