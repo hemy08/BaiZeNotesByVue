@@ -84,8 +84,8 @@ const emit = defineEmits<{
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background-color: var(--theme-background-color, #ffffff);
-    color: var(--theme-text-color, #2d2d2d);
+    background-color: var(--theme-background-color);
+    color: var(--theme-text-color);
 }
 
 /* 加载 / 错误 / 空态容器（共享） */
@@ -104,8 +104,8 @@ const emit = defineEmits<{
 .loading-spinner {
     width: 40px;
     height: 40px;
-    border: 4px solid var(--theme-border-color, #e0e0e0);
-    border-top: 4px solid var(--theme-accent-color, #764ba2);
+    border: 4px solid var(--theme-border-color);
+    border-top: 4px solid var(--theme-accent-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 16px;
@@ -135,8 +135,8 @@ const emit = defineEmits<{
 /* 重试按钮（共享） */
 .retry-button {
     padding: 8px 16px;
-    background-color: var(--theme-accent-color, #764ba2);
-    color: var(--theme-button-text-color, #ffffff);
+    background-color: var(--theme-accent-color);
+    color: var(--theme-button-text-color);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -144,7 +144,7 @@ const emit = defineEmits<{
 }
 
 .retry-button:hover {
-    background-color: var(--theme-hover-background, #f0e8ff);
+    background-color: var(--theme-hover-background);
 }
 
 /* 内容态包装容器（共享）：列布局 + 隐藏溢出，内容区自行滚动 */
@@ -164,7 +164,7 @@ const emit = defineEmits<{
     align-items: center;
     padding: 8px 16px;
     background-color: var(--theme-toolbar-background, #f5f5f5);
-    border-bottom: 1px solid var(--theme-border-color, #e0e0e0);
+    border-bottom: 1px solid var(--theme-border-color);
 }
 
 /* 文件名（共享，超长省略） */
@@ -195,11 +195,11 @@ const emit = defineEmits<{
     height: 32px;
     padding: 4px;
     background-color: transparent;
-    border: 1px solid var(--theme-border-color, #e0e0e0);
+    border: 1px solid var(--theme-border-color);
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
-    color: var(--theme-text-color, #2d2d2d);
+    color: var(--theme-text-color);
 }
 
 .file-viewer-shell :deep(.toolbar-btn:disabled) {
@@ -208,8 +208,8 @@ const emit = defineEmits<{
 }
 
 .file-viewer-shell :deep(.toolbar-btn:hover:not(:disabled)) {
-    background-color: var(--theme-hover-background, #f0e8ff);
-    border-color: var(--theme-accent-color, #764ba2);
+    background-color: var(--theme-hover-background);
+    border-color: var(--theme-accent-color);
 }
 
 /* 空态说明文字（共享） */

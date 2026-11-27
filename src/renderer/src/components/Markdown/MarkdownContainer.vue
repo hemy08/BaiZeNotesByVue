@@ -70,7 +70,7 @@ const MdEditTools = defineAsyncComponent({
     width: 100%;
     height: auto;
     flex: 0 0 auto;
-    background-color: var(--theme-background-color, #f2f2f2);
+    background-color: var(--theme-background-color);
     color: var(--theme-text-color, black);
     display: flex;
     flex-wrap: wrap;
@@ -96,16 +96,16 @@ const MdEditTools = defineAsyncComponent({
     border-radius: 2px;
     background: linear-gradient(
         90deg,
-        var(--theme-hover-background, rgba(0, 0, 0, 0.04)) 25%,
-        var(--theme-border-color, rgba(0, 0, 0, 0.08)) 37%,
-        var(--theme-hover-background, rgba(0, 0, 0, 0.04)) 63%
+        var(--theme-hover-background) 25%,
+        var(--theme-border-color) 37%,
+        var(--theme-hover-background) 63%
     );
     background-size: 400% 100%;
     animation: md-edit-tools-skeleton-shimmer 1.2s ease infinite;
 }
 
 .md-edit-tools-skeleton.is-error {
-    background: var(--theme-border-color, rgba(0, 0, 0, 0.08));
+    background: var(--theme-border-color);
     animation: none;
 }
 

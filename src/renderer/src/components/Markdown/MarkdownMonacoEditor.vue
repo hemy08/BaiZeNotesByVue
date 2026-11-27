@@ -1510,9 +1510,9 @@ onBeforeUnmount(() => {
     max-height: 60%;
     display: flex;
     flex-direction: column;
-    background: var(--theme-card-background, #ffffff);
-    color: var(--theme-text-color, #333333);
-    border: 1px solid var(--theme-border-color, #00b0ff);
+    background: var(--theme-card-background);
+    color: var(--theme-text-color);
+    border: 1px solid var(--theme-border-color);
     border-radius: 6px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
     font-size: 13px;
@@ -1521,23 +1521,23 @@ onBeforeUnmount(() => {
 .monaco-outline-title {
     padding: 8px 12px;
     font-weight: 600;
-    border-bottom: 1px solid var(--theme-border-color, #e0e0e0);
+    border-bottom: 1px solid var(--theme-border-color);
 }
 
 /* A10（outlinePlus）：大纲过滤输入框（仅开关开启时渲染） */
 .monaco-outline-filter {
     margin: 6px 8px 0;
     padding: 4px 8px;
-    border: 1px solid var(--theme-border-color, #e0e0e0);
+    border: 1px solid var(--theme-border-color);
     border-radius: 4px;
-    background: var(--theme-card-background, #ffffff);
-    color: var(--theme-text-color, #333333);
+    background: var(--theme-card-background);
+    color: var(--theme-text-color);
     font-size: 12px;
     outline: none;
 }
 
 .monaco-outline-filter:focus {
-    border-color: var(--theme-accent-color, #00b0ff);
+    border-color: var(--theme-accent-color);
 }
 
 .monaco-outline-list {

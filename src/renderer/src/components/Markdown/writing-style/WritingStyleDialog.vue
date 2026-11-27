@@ -13,7 +13,7 @@
         tool-window
         :visible="state.visible"
         :title="tOr(UI.title, '写作风格检查')"
-        width="960px"
+        :width-size="WRITING_STYLE_WIDTH_SIZE"
         reset-position-on-open
         @close="handleClose"
     >
@@ -159,6 +159,10 @@ import {
     type WritingStyleRuleId
 } from './writing-style-check'
 import { closeWritingStyleDialog, writingStyleDialogState } from './writing-style-dialog-state'
+import type { DialogWidthSize } from '../../dialogs/dialog-metrics'
+
+/** 宽度档位（T12 等值迁移：960px = 语义阶梯 `complex`，宽度真源在 dialog-metrics.ts） */
+const WRITING_STYLE_WIDTH_SIZE: DialogWidthSize = 'complex'
 
 /** 对话框 UI 文案建议键（主控补 `editorUi.writingStyle.*` 词典后自动生效） */
 const UI = {

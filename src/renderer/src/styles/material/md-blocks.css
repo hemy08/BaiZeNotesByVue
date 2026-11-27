@@ -25,7 +25,7 @@
 }
 
 .md-typeset details.admonition.details > summary:focus-visible {
-    outline: 2px solid var(--md-accent-fg-color, #526cfe);
+    outline: 2px solid var(--md-accent-fg-color);
     outline-offset: 2px;
 }
 
@@ -40,7 +40,7 @@
  * md.render 时才会出现占位。可见文本与原文一致（已转义），此处只做轻量等宽提示，不改变文本。
  */
 .md-typeset .mdx-snippet-placeholder {
-    color: var(--md-default-fg-color--light, #0000008a);
+    color: var(--md-default-fg-color--light);
     font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
     font-size: 0.9em;
     white-space: pre-wrap;
@@ -106,16 +106,16 @@
 .md-typeset .tabbed-set > input:nth-child(19):target ~ .tabbed-labels > :nth-child(19),
 .md-typeset .tabbed-set > input:nth-child(20):target ~ .tabbed-labels > :nth-child(20) {
     color: var(--md-default-fg-color);
-    border-color: var(--md-primary-fg-color, #1976d2);
+    border-color: var(--md-primary-fg-color);
     background-color: var(--md-primary-fg-color--transparent, rgba(25, 118, 210, 0.08));
 }
 
 /* --- 3.3 hash 直接指向 label id（#__tabbed_x_y_label）：高亮该 label --- */
 .md-typeset .tabbed-labels > label:target {
     color: var(--md-default-fg-color);
-    border-color: var(--md-primary-fg-color, #1976d2);
+    border-color: var(--md-primary-fg-color);
     background-color: var(--md-primary-fg-color--transparent, rgba(25, 118, 210, 0.08));
-    outline: 2px solid var(--md-primary-fg-color, #1976d2);
+    outline: 2px solid var(--md-primary-fg-color);
     outline-offset: -2px;
 }
 
@@ -129,7 +129,7 @@
 /* --- 3.5 预览组件点击委托选中 label 后追加的高亮 class（与 :target 视觉一致） --- */
 .md-typeset .tabbed-labels > label.mdx-tab-deep-link-active {
     color: var(--md-default-fg-color);
-    border-color: var(--md-primary-fg-color, #1976d2);
+    border-color: var(--md-primary-fg-color);
     background-color: var(--md-primary-fg-color--transparent, rgba(25, 118, 210, 0.08));
 }
 

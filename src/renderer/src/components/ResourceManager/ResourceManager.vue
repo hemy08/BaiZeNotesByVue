@@ -25,9 +25,9 @@
             style="
                 width: 1px;
                 height: 100%;
-                background-color: var(--theme-border-color, #00b0ff);
-                color: var(--theme-border-color, #00b0ff);
-                fill: var(--theme-border-color, #00b0ff);
+                background-color: var(--theme-border-color);
+                color: var(--theme-border-color);
+                fill: var(--theme-border-color);
             "
         ></div>
         <div id="markdown-toc-heading">
@@ -208,9 +208,9 @@ onBeforeUnmount(() => {
 .resizer-navi-tab-file-manager {
     width: 1px;
     height: 100%;
-    background-color: var(--theme-border-color, #00b0ff);
-    color: var(--theme-border-color, #00b0ff);
-    fill: var(--theme-border-color, #00b0ff);
+    background-color: var(--theme-border-color);
+    color: var(--theme-border-color);
+    fill: var(--theme-border-color);
 }
 
 .file-manager {
@@ -255,6 +255,6 @@ onBeforeUnmount(() => {
 }
 
 .markdown-toc-title:hover {
-    background-color: var(--theme-hover-background, #9dddff);
+    background-color: var(--theme-hover-background);
 }
 </style>

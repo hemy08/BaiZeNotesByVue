@@ -12,7 +12,8 @@
  * 1. 4 个区域组件消费的 --ui-* 令牌清单（颜色 / 材质 / 密度 / 焦点 / 层级 / 动效）；
  * 2. 组件内不得出现 data-style / data-density 分支（唯一入口是 useTheme）；
  * 3. 不得新增硬编码主题色（var() 兜底值除外）；胶囊圆角 999px 是 DESIGN.md 唯一允许字面量；
- * 4. 菜单栏高度 = 控件高令牌 + 4px（compact 32 / default 36 / spacious 40）单一实现；
+ * 4. 菜单栏高度 = 控件高令牌 + 4px（compact 32 / default 36 / spacious 40）单一实现
+ *    （T12 收敛后由宿主 BaiZeNotes.vue 的 `.menu-bar` 消费 --ui-control-height，组件不再全局覆盖）；
  * 5. 状态栏高度 24 / 字号 12 由宿主容器提供（跨文件不变量，防止后续改动漂移）；
  * 6. 键盘可达语义属性（menubar/menu/menuitem/separator、aria-expanded/haspopup）。
  */
@@ -40,7 +41,6 @@ const REQUIRED_TOKENS: Record<keyof typeof SOURCE_FILES, readonly string[]> = {
     // 颜色（悬停软底）、焦点环、下拉层级、动效节奏
     menuBar: [
         '--ui-row-height',
-        '--ui-control-height',
         '--ui-pad',
         '--ui-font-size',
         '--ui-radius-sm',
@@ -211,10 +211,17 @@ describe('B2 组件令牌消费契约（四风格 × 三密度）', () => {
 })
 
 describe('菜单栏尺寸/可访问性契约', () => {
-    it('菜单栏壳高度 = 控件高令牌 + 4px（32 / 36 / 40 三档密度）', () => {
-        const source = readSource(SOURCE_FILES.menuBar)
-        expect(source).toContain('#menu-bar {')
-        expect(source).toMatch(/height:\s*calc\(var\(--ui-control-height,\s*32px\)\s*\+\s*4px\)/)
+    it('菜单栏壳高度 = 控件高令牌 + 4px（32 / 36 / 40 三档密度，唯一实现）', () => {
+        // T12 收敛：高度真源从 MenuBar.vue 的非 scoped `#menu-bar` 覆盖移回宿主
+        // BaiZeNotes.vue 的 `.menu-bar`（避免跨组件全局样式覆盖），MenuBar 组件自身不再写壳高度。
+        const host = readSource(path.join(RENDERER, 'BaiZeNotes.vue'))
+        const hostMenuBarBlock = host.match(/\.menu-bar\s*\{[\s\S]*?\}/)?.[0] ?? ''
+        expect(hostMenuBarBlock).toMatch(
+            /height:\s*calc\(var\(--ui-control-height,\s*32px\)\s*\+\s*4px\)/
+        )
+        const menuBar = readSource(SOURCE_FILES.menuBar)
+        expect(menuBar).not.toContain('#menu-bar {')
+        expect(menuBar).toContain('height: 100%')
     })
 
     it('渲染 menubar/menu/menuitem/separator 语义与展开状态属性', () => {
@@ -295,9 +302,16 @@ describe('状态栏 / 空态契约', () => {
 })
 
 describe('命令面板视觉契约', () => {
-    it('外壳宽度 720 + 圆角/阴影/透明度令牌通过 containerStyle 写入', () => {
+    it('外壳宽度 720 = 语义阶梯 medium（T12 等值迁移）+ 圆角/阴影/透明度令牌通过 containerStyle 写入', () => {
         const palette = readSource(SOURCE_FILES.commandPalette)
-        expect(palette).toContain('width="720px"')
+        // T12：宽度由调用点自由像素值迁移到 T9 语义阶梯（720px 恰为 medium，像素零变化）
+        expect(palette).toContain("PALETTE_WIDTH_SIZE: DialogWidthSize = 'medium'")
+        expect(palette).toContain(':width-size="PALETTE_WIDTH_SIZE"')
+        expect(palette).not.toContain('width="720px"')
+        const shell = readSource(
+            path.join(ROOT, 'src', 'renderer', 'src', 'components', 'dialogs', 'dialog-metrics.ts')
+        )
+        expect(shell).toContain("medium: '720px'")
         expect(palette).toContain("borderRadius: 'var(--ui-radius-lg")
         expect(palette).toContain('var(--ui-shadow-3)')
         expect(palette).toContain('--ui-surface-opacity')

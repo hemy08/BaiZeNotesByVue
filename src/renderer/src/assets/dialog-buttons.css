@@ -86,7 +86,7 @@
 /* 键盘可达性：移除默认 outline，改用语义焦点环令牌（--ui-focus-shadow = accent 30% 3px） */
 .dialog-container .dialog-btn:focus-visible {
     outline: none;
-    box-shadow: var(--ui-focus-shadow, 0 0 0 3px var(--ui-focus-ring, rgba(118, 75, 162, 0.3)));
+    box-shadow: var(--ui-focus-shadow);
 }
 
 /* ==================== 主操作（确定/插入/创建/保存） ==================== */

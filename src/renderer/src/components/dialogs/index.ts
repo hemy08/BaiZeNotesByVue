@@ -32,7 +32,7 @@ const DialogLoading = defineComponent({
                 'div',
                 {
                     class: 'dialog-async-loading',
-                    style: 'display:flex;align-items:center;justify-content:center;padding:16px;color:var(--theme-secondary-text-color,#888);font-size:13px;'
+                    style: 'display:flex;align-items:center;justify-content:center;padding:16px;color:var(--theme-secondary-text-color);font-size:13px;'
                 },
                 t('common.loading')
             )

@@ -266,7 +266,7 @@ function handleClose() {
 .icon-container {
     width: 150px;
     height: 150px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-title-bar-gradient);
     border-radius: 30px;
     display: flex;
     align-items: center;

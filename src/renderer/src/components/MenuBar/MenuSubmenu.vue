@@ -342,7 +342,7 @@ function handleKeydown(event: KeyboardEvent): void {
     /* glass 高光边（alpha 为 0 时不可见）+ 二级阴影 */
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0)),
-        var(--ui-shadow-2, 0 6px 24px rgba(0, 0, 0, 0.12));
+        var(--ui-shadow-2);
     z-index: var(--ui-z-dropdown, 40);
 }
 

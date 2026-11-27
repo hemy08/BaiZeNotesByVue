@@ -28,7 +28,7 @@ const ToolLoading = defineComponent({
                 'div',
                 {
                     class: 'plugin-tool-async-loading',
-                    style: 'display:flex;align-items:center;justify-content:center;width:100%;min-height:120px;padding:16px;color:var(--theme-secondary-text-color,#888);font-size:14px;'
+                    style: 'display:flex;align-items:center;justify-content:center;width:100%;min-height:120px;padding:16px;color:var(--theme-secondary-text-color);font-size:14px;'
                 },
                 t('common.loading')
             )

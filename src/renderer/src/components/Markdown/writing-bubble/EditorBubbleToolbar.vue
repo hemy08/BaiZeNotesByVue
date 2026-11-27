@@ -612,7 +612,7 @@ defineExpose({
 
 .writing-bubble__btn:hover {
     border-color: var(--border-color);
-    background: var(--hover-bg, var(--theme-hover-background, rgba(0, 0, 0, 0.08)));
+    background: var(--hover-bg, var(--theme-hover-background));
     color: var(--accent-color);
 }
 

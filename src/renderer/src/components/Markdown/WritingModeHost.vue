@@ -480,4 +480,74 @@ onBeforeUnmount(() => {
     background: var(--accent-bg, rgb(118 75 162 / 10%));
     border-radius: 3px;
 }
+
+/* ============================================================================
+ * 视觉升级 P2 / T13：paper / hybrid 下的写作模式正文纸感版式
+ *
+ * ## 作用域
+ * - 只在「写作模式 + 内容区材质 = paper」（data-style=paper | hybrid）时生效；
+ *   glass / workbench 的内容区材质不是 paper，正文保持视觉升级前的默认版式；
+ * - 只作用于 Markdown 预览正文（`.md-typeset`），**不触碰 Monaco**：编辑器主题仍由 57 套
+ *   Monaco 主题独立决定，风格层只影响正文排版（DESIGN.md §6 / 方案 §5.1）。
+ *
+ * ## 令牌
+ * 全部消费 `ui-style.css` 在 `[data-style='paper'|'hybrid']` 下声明的 `--ui-content-*`
+ * 版式令牌（行高 1.75 / 段落 0.75em / 标题上 1.5em 下 0.5em / 引用条 3px accent-30% /
+ * 代码块圆角 6 + 内边距 12 / 列表缩进 1.25em），组件内不写任何风格分支。
+ * ========================================================================== */
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset {
+    font-size: var(--ui-content-font-size, 16px);
+    line-height: var(--ui-content-line-height, 1.75);
+}
+
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset p,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset p {
+    margin: 0 0 var(--ui-content-paragraph-gap, 0.75em);
+}
+
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset h1,
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset h2,
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset h3,
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset h4,
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset h5,
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset h6,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset h1,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset h2,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset h3,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset h4,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset h5,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset h6 {
+    margin-top: var(--ui-content-heading-gap-top, 1.5em);
+    margin-bottom: var(--ui-content-heading-gap-bottom, 0.5em);
+}
+
+/* 引用条：3px accent-30%（方案 §4.7；颜色令牌由 accent 30% 派生） */
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset blockquote,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset blockquote {
+    border-left-width: var(--ui-content-blockquote-width, 3px);
+    border-left-style: solid;
+    border-left-color: var(--ui-content-blockquote-color, var(--ui-focus-ring));
+}
+
+/* 代码块：圆角 6 + 内边距 12（行内 code 不受影响） */
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset pre,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset pre {
+    border-radius: var(--ui-content-code-radius, 6px);
+    padding: var(--ui-content-code-padding, 12px);
+}
+
+/* 列表缩进 1.25em（正文层级更清晰，不改变列表标记样式） */
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset ul,
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset ol,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset ul,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset ol {
+    padding-left: var(--ui-content-list-indent, 1.25em);
+}
+
+/* 正文选区：accent-15% 令牌（纸感正文的选中态与 UI 统一） */
+[data-style='paper'] #editor-container.writing-mode-active #md-preview .md-typeset ::selection,
+[data-style='hybrid'] #editor-container.writing-mode-active #md-preview .md-typeset ::selection {
+    background: var(--ui-selection);
+}
 </style>

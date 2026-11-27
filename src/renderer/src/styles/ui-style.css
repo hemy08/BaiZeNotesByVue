@@ -82,6 +82,14 @@
     --ui-z-palette: 60;
     --ui-z-toast: 70;
     --ui-z-guide: 80;
+
+    /* ---------- 应用层兼容层级（T12） ----------
+       语义 rank（--ui-z-dialog: 50 / --ui-z-palette: 60）是相对阶梯，但既有高层浮层
+       （欢迎页 9999 / 写作模式 3000 / 窗口缩放热区 9999~10000）尚未迁移，直接使用相对值
+       会破坏既有栈序。此处给出「应用层等值映射」，唯一真源是同名 TS 常量
+       UI_Z_INDEX_APP_COMPAT（src/shared/constants/ui-style.ts）；迁移完成后改本处即可。 */
+    --ui-z-dialog-app: 9999;
+    --ui-z-palette-app: 10000;
 }
 
 /* ============================================================================
@@ -189,6 +197,39 @@
     --ui-content-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
     --ui-content-shadow-2: 0 6px 24px rgba(0, 0, 0, 0.08);
     --ui-content-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.12);
+}
+
+/* ============================================================================
+ * 内容区纸感版式令牌（视觉升级 P2 / T13）
+ *
+ * 仅「内容区材质 = paper」的风格（paper / hybrid）声明：正文行高 1.75、段落间距 0.75em、
+ * 标题留白上 1.5em / 下 0.5em、引用条 3px accent-30%、代码块圆角 6 + 内边距 12、列表缩进 1.25em。
+ * 消费方：`WritingModeHost.vue` 的全局样式（仅写作模式且内容区材质为 paper 时生效）。
+ * 约束：本层只声明变量，**不改 Monaco 主题**（编辑器主题仍由 57 套 Monaco 主题独立决定，
+ * 风格层只影响预览/写作模式的正文排版）。
+ * ========================================================================== */
+[data-style='paper'],
+[data-style='hybrid'] {
+    /** 正文行高（方案 §4.7 纸感正文：16 / 1.75） */
+    --ui-content-line-height: 1.75;
+    /** 正文字号（16px；与浏览器默认一致，仅显式化保证与行高/间距成套） */
+    --ui-content-font-size: 16px;
+    /** 段落间距（0.75em，行高之外的段间留白） */
+    --ui-content-paragraph-gap: 0.75em;
+    /** 标题上留白（1.5em，区分章节层级） */
+    --ui-content-heading-gap-top: 1.5em;
+    /** 标题下留白（0.5em，贴近所属正文） */
+    --ui-content-heading-gap-bottom: 0.5em;
+    /** 引用条宽度（3px） */
+    --ui-content-blockquote-width: 3px;
+    /** 引用条颜色（accent 30%，= --ui-focus-ring 同源口径；用 color-mix 从强调色派生） */
+    --ui-content-blockquote-color: color-mix(in srgb, var(--ui-accent) 30%, transparent);
+    /** 代码块圆角（6；取内容区圆角中档，paper 与 hybrid 内容区均为 6） */
+    --ui-content-code-radius: var(--ui-content-radius-md, 6px);
+    /** 代码块内边距（12，与间距档位一致） */
+    --ui-content-code-padding: 12px;
+    /** 列表缩进（1.25em） */
+    --ui-content-list-indent: 1.25em;
 }
 
 /* ============================================================================

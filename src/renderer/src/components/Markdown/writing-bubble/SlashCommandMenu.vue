@@ -1,4 +1,4 @@
-﻿<template>
+<template>
     <!--
         Slash 命令菜单（纯展示 + 键盘/鼠标选择回传）：
         - 键盘 ↑↓/Enter/Esc 由宿主 EditorBubbleToolbar 经 Monaco 的 onKeyDown 拦截处理，
@@ -111,7 +111,7 @@ function activateCommand(index: number): void {
 
 .writing-slash-menu__option:hover,
 .writing-slash-menu__option--active {
-    background: var(--hover-bg, var(--theme-hover-background, rgba(0, 0, 0, 0.08)));
+    background: var(--hover-bg, var(--theme-hover-background));
     color: var(--accent-color);
 }
 

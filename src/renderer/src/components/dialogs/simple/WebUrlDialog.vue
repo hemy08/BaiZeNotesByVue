@@ -3,7 +3,7 @@
         tool-window
         :visible="visible"
         :title="title || t('dialogRenderer.webUrl.defaultTitle')"
-        width="520px"
+        :width-size="WEB_URL_WIDTH_SIZE"
         reset-position-on-open
         @close="handleCancel"
     >
@@ -49,6 +49,10 @@
 import { ref, watch } from 'vue'
 import { t } from '../../../common/i18n'
 import BaseDialog from '../BaseDialog.vue'
+import type { DialogWidthSize } from '../dialog-metrics'
+
+/** 宽度档位（T12 等值迁移：520px = 语义阶梯 `form`，宽度真源在 dialog-metrics.ts） */
+const WEB_URL_WIDTH_SIZE: DialogWidthSize = 'form'
 
 interface Props {
     visible: boolean

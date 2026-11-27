@@ -20,16 +20,10 @@
 
 .md-typeset {
     /* 卡片主题色（无主题变量时的 mkdocs 浅色兜底） */
-    --mdx-media-card-border: var(
-        --theme-border-color,
-        var(--md-default-fg-color--lightest, rgba(0, 0, 0, 0.12))
-    );
-    --mdx-media-card-bg: var(--theme-card-background, var(--md-default-bg-color, #ffffff));
-    --mdx-media-text-color: var(--theme-text-color, var(--md-default-fg-color, #2d2d2d));
-    --mdx-media-muted-color: var(
-        --theme-secondary-text-color,
-        var(--md-default-fg-color--light, rgba(0, 0, 0, 0.54))
-    );
+    --mdx-media-card-border: var(--theme-border-color);
+    --mdx-media-card-bg: var(--theme-card-background);
+    --mdx-media-text-color: var(--theme-text-color);
+    --mdx-media-muted-color: var(--theme-secondary-text-color);
     --mdx-media-code-font:
         var(--md-code-font-family), 'SF Mono', Monaco, 'Cascadia Code', monospace;
 }
@@ -50,7 +44,7 @@
     background-color: var(--mdx-media-card-bg);
     border: 1px solid var(--mdx-media-card-border);
     border-radius: 0.4rem;
-    box-shadow: var(--md-shadow-z1, 0 0.2rem 0.5rem rgba(0, 0, 0, 0.05));
+    box-shadow: var(--md-shadow-z1);
     line-height: 1.6;
     padding: 0.9rem 1rem;
 }
@@ -58,8 +52,8 @@
 .md-typeset .grid.cards > ul > li:hover,
 .md-typeset .grid.cards > ol > li:hover,
 .md-typeset .grid > .card:hover {
-    border-color: var(--md-primary-fg-color, rgba(0, 0, 0, 0.12));
-    box-shadow: var(--md-shadow-z2, 0 0.2rem 0.5rem rgba(0, 0, 0, 0.12));
+    border-color: var(--md-primary-fg-color);
+    box-shadow: var(--md-shadow-z2);
 }
 
 /* 卡片内段落 / 列表间距收紧（gridcards.css 已处理首尾元素边距） */
@@ -89,7 +83,7 @@
 
 /* 卡片内链接颜色（沿用主题强调色） */
 .md-typeset .grid.cards a {
-    color: var(--md-typeset-a-color, var(--md-primary-fg-color, #4051b5));
+    color: var(--md-typeset-a-color);
 }
 
 /* ============================== 二、Material 图标 ============================== */
@@ -133,9 +127,9 @@
 }
 
 .md-typeset .highlight .filename {
-    background-color: var(--md-code-bg-color, #f5f5f5);
-    border-bottom: 1px solid var(--md-code-bg-color--light, rgba(0, 0, 0, 0.06));
-    color: var(--md-code-fg-color, #36464e);
+    background-color: var(--md-code-bg-color);
+    border-bottom: 1px solid var(--md-code-bg-color--light);
+    color: var(--md-code-fg-color);
     display: block;
     font-family: var(--mdx-media-code-font);
     font-size: 0.8rem;
@@ -162,7 +156,7 @@
 /* 行号：固定宽度、右对齐、不参与复制（user-select: none） */
 .md-typeset .highlight .lineno {
     box-sizing: border-box;
-    color: var(--md-code-hl-comment-color, var(--md-default-fg-color--lighter, #a0a1a7));
+    color: var(--md-code-hl-comment-color);
     display: inline-block;
     min-width: 2.75em;
     padding-right: 0.75em;
@@ -180,16 +174,16 @@
 
 /* hl_lines 高亮行 */
 .md-typeset .highlight .line.hll {
-    background-color: var(--md-code-hl-color--light, rgba(66, 135, 255, 0.1));
-    box-shadow: inset 2px 0 0 var(--md-code-hl-color, #4287ff);
+    background-color: var(--md-code-hl-color--light);
+    box-shadow: inset 2px 0 0 var(--md-code-hl-color);
 }
 
 /* ============================== 四、行内高亮（inlinehilite） ============================== */
 
 .md-typeset code.highlight {
-    background-color: var(--md-code-bg-color, #f5f5f5);
+    background-color: var(--md-code-bg-color);
     border-radius: 0.1rem;
-    color: var(--md-code-fg-color, #36464e);
+    color: var(--md-code-fg-color);
     padding: 0.1em 0.35em;
 }
 

@@ -155,7 +155,8 @@ const dialogRenderer = {
         cellRichHint:
             'Cells support Markdown: line breaks, bold, italic, inline code, links, images, math; use - [ ] / - [x] for tasks',
         resizeHint: 'Drag to resize dialog',
-        shortcutHint: 'Ctrl + Enter to apply, Esc to cancel'
+        shortcutHint: 'Ctrl + Enter to apply, Esc to cancel',
+        keyboardHint: 'Arrow keys / Tab move between cells, Enter or F2 edits, Esc cancels'
     },
     mdSheet: {
         title: 'Insert table',

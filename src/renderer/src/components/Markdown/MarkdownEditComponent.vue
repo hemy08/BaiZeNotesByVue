@@ -982,7 +982,7 @@ onBeforeUnmount(() => {
     position: absolute;
     top: 0;
     height: 100%;
-    background-color: var(--theme-border-color, #00b0ff);
+    background-color: var(--theme-border-color);
     width: 4px;
     z-index: 10;
 }
@@ -1006,9 +1006,9 @@ onBeforeUnmount(() => {
     box-sizing: border-box;
     background: linear-gradient(
         90deg,
-        var(--theme-card-background, rgba(0, 0, 0, 0.03)) 25%,
-        var(--theme-hover-background, rgba(0, 0, 0, 0.06)) 37%,
-        var(--theme-card-background, rgba(0, 0, 0, 0.03)) 63%
+        var(--theme-card-background) 25%,
+        var(--theme-hover-background) 37%,
+        var(--theme-card-background) 63%
     );
     background-size: 400% 100%;
     animation: md-pane-skeleton-shimmer 1.2s ease infinite;
@@ -1036,7 +1036,7 @@ onBeforeUnmount(() => {
     padding: 16px;
     box-sizing: border-box;
     text-align: center;
-    color: var(--theme-text-color, #333);
+    color: var(--theme-text-color);
     background: var(--theme-background-color, transparent);
 }
 
@@ -1050,7 +1050,7 @@ onBeforeUnmount(() => {
     margin: 0;
     max-width: 480px;
     font-size: 12px;
-    color: var(--theme-secondary-text-color, #888);
+    color: var(--theme-secondary-text-color);
     word-break: break-all;
 }
 
@@ -1058,8 +1058,8 @@ onBeforeUnmount(() => {
     padding: 4px 14px;
     font-size: 12px;
     cursor: pointer;
-    color: var(--theme-button-text-color, #fff);
-    background: var(--theme-button-background, var(--theme-accent-color, #764ba2));
+    color: var(--theme-button-text-color);
+    background: var(--theme-button-background);
     border: 1px solid var(--theme-border-color, transparent);
     border-radius: 4px;
 }

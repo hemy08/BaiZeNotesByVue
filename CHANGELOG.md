@@ -1,3 +1,40 @@
+## 2026年11月27日 - 版本 1.5.5（视觉升级，开发中）
+
+> **发布状态**：**开发中**（版本号仍为 1.5.3，未发布；发布窗口与 tag 待维护者确认，发布前不更新 `package.json` 版本、不发布 RELEASE-NOTES）。
+>
+> **范围**：视觉升级 1.5.5（[方案](docs/wiki/04-优化与专项报告/视觉升级方案-1.5.5.md) P0 → P1 → P2），共 4 种界面风格（paper / glass / workbench / hybrid）× 3 档密度（compact / default / spacious）× 28 套应用主题，全部由语义令牌层驱动；编辑器 Monaco 主题（57 套）仍独立、不参与风格切换。
+>
+> **验收记录**：[P2-VERIFICATION.md](docs/design/P2-VERIFICATION.md)（T12~T17 结论、证据路径与剩余清单）｜规格：[DESIGN.md](docs/design/DESIGN.md) / [COMPONENTS.md](docs/design/COMPONENTS.md) / [MOTION.md](docs/design/MOTION.md)。
+
+### ✅ P0 令牌层与框架（已完成）
+
+- **18 组语义颜色令牌**（`--ui-*`）：`shared/theme-tokens.ts` 从 28 套主题的 10 个基础配色字段唯一派生（页面/卡片/凹陷底色、两级边框、三级文字、强调色三态、4 状态色、焦点环、选区），附非法色值兜底与 WCAG 对比度工具函数
+- **4 种界面风格**：paper（静默纸感）/ glass（轻玻璃，8px 小面积模糊 + 高光边）/ workbench（高密度工作台，默认）/ hybrid（外壳 workbench + 内容区 paper 双材质），经根元素 `data-style` 切换
+- **3 档界面密度**：compact / default / spacious，经 `data-density` 切换（default = 升级前现状尺寸）
+- **三项配置**：`uiStyle` / `uiDensity` / `uiReduceTransparency`（系统设置 → 外观页签，含 i18n）
+- **glass 降级**：高饱和/护眼主题与「减少透明」回退 paper；深色主题进入 steady 稳健模式（0.94 不透明 + 关模糊）
+- **规范文档**：`docs/design/{DESIGN,MOTION,COMPONENTS}.md` + `ui-style-tokens.test.ts` 单一真源守护
+
+### ✅ P1 六组件升级（已完成）
+
+- **B1 非模态工具窗 + 对话框**：`BaseDialog` 统一壳（标题栏密度令牌 / 拖拽把手 / Esc 只关最顶层 / 玻璃面 + 小面积模糊）；宽度语义阶梯 360/520/720/960/全宽（`dialog-metrics.ts`）；遮罩浅 .32 / 深 .48
+- **B2 菜单栏 + 命令面板 + 状态栏/空态**：菜单栏 `role=menubar/menu/menuitem` + 方向键/Enter/Esc/Home/End 键盘可达（`menu-keyboard.ts`）；命令面板行高/选中条/快捷键 chip 令牌化；状态栏 secondary 文字 + hairline；空态统一组件 6 变体（24 网格 / stroke 1.5 / currentColor SVG）
+- **B3 表格编辑器**：行高令牌、列头 `bg-elevated`、hairline 单元格、accent-soft 选区、列宽拖拽手柄、数字右对齐与空单元格占位（`table-style.ts` / `table-values.ts`）
+
+### ✅ P2 收尾批次（已完成）
+
+- **T12 跨组件回归**：z-index 收敛（`BaseDialog` → `--ui-z-dialog-app` 9999；命令面板 → `--ui-z-palette-app` 10000，不再依赖 DOM 渲染顺序）；菜单栏高度收敛为宿主 `calc(var(--ui-control-height) + 4px)` 单一实现（删除组件全局覆盖）；4 个像素等值调用点迁移到宽度阶梯（520/720/960）；`BaseDialog` 新增可选 `contentPadding` 包裹层（默认关闭，零像素变化，c4 节点契约不变）
+- **T13 编辑器正文纸感**：paper/hybrid 写作模式正文 16/1.75、段落 0.75em、标题上 1.5em 下 0.5em、引用条 3px accent-30%、代码块圆角 6 + 内边距 12、列表缩进 1.25em（`--ui-content-*` 令牌；不覆盖 Monaco 主题）
+- **T14 图标统一**：HemyTools 查看器 11 处 stroke/尺寸不一致修正（10 处 stroke 2→1.5、1 处 14→16）；完成 57 个 SVG 资产 + 70 处内联 SVG 审计；占位圆资产（34 个）与 12 个 emoji 功能图标列入后续清单
+- **T15 硬编码色清理**：3 批共 161 处（批次 1/2 删除 154 处「静态 CSS 真源变量的冗余颜色兜底」= 零视觉变化；批次 3 等值令牌映射 7 处）；同口径（git 基线 vs 当前）总量 **944 → 775（−17.9%）**、白名单外可治理 **479 → 332（−30.7%）**；剩余 332 处按类别登记（固定状态色板/预览代码高亮/欢迎页/主题预览数据/插件工具等），完整清单可重复生成
+- **T16 验收矩阵**：真实 Electron 截图 36 张（4 风格 × 3 密度主窗口 + 对话框 + 命令面板 + 非模态工具窗 + glass 降级 + 深色主题），归档 `out/visual-1.5.5-p2/`（不入库）；静态矩阵 48+18+12+6 组合数、144 组组件观测点、28 主题 × 4 风格对比度扫描（正文 ≥4.5:1、次要文字 ≥3:1，0 失败）
+- **T17 E2E 视觉软门禁**：新增 `e2e/visual-matrix.spec.ts`（`E2E_VISUAL=1` 触发；像素差异只写 annotation/warn 不阻塞；同环境基线复跑 **36/36 张一致、0 diff**）
+- **T18 文档收尾**：开发规范 UI-01/UI-09/UI-10 令牌化口径升级 + 新增 UI-15「风格/密度只经 data-* + 令牌消费」；COMPONENTS 待实现项回写；表格键盘提示中英双语；产品体验优化方案视觉线标注「已由视觉升级方案实施」
+
+### ✅ 门禁（2026-11-27）
+
+- typecheck 四段（node / web / test / e2e）、ESLint `--max-warnings=0`、Prettier `--check`、全量 vitest（**364 文件 / 6,693 用例**，6,688 通过 / 5 跳过）、coverage（93.08 / 87.53 / 93.79 / 93.55，阈值 80 / 75 / 73 / 80）、`docs:check`（986 链接）、`build:unpack` + bundle budget（全部预算项通过：壳 654.7 KiB / app.asar 39.46 MiB / NSIS 111.59 MiB / portable 100.98 MiB）、`verify:fuses`（8 项 fuse 位 + 硬化启动冒烟）全部通过；quality 基线因新增 1 个测试文件（364 文件 / 6,693 用例 / 测试代码 120,079 行）与三份对外文档现有数字（363 / 6,669 / 119,541）不一致而预期为红，待维护者统一回写
+
 ## 2026年11月27日 - 版本 1.5.3（Markdown 编辑器 P0，已发布 2026-11-27）
 
 > **发布状态**：**已发布**（2026-11-27）｜tag：[`release-1.5.3`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.3)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap

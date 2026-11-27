@@ -340,7 +340,13 @@
 
             <footer class="table-editor-footer">
                 <span class="shortcut-hint">
-                    {{ t('dialogRenderer.tableEditor.shortcutHint') }}
+                    <span class="shortcut-hint-primary">
+                        {{ t('dialogRenderer.tableEditor.shortcutHint') }}
+                    </span>
+                    <!-- 键盘提示（视觉升级 P2 / T18 i18n 补齐）：电子表格化导航的完整按键说明 -->
+                    <span class="keyboard-hint">
+                        {{ t('dialogRenderer.tableEditor.keyboardHint') }}
+                    </span>
                 </span>
                 <div class="table-editor-actions">
                     <button
@@ -1790,8 +1796,18 @@ tbody tr:hover .row-delete,
 }
 
 .shortcut-hint {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     font-size: 11px;
     color: var(--ui-text-tertiary, var(--text-secondary));
+}
+
+/* 键盘提示（T18 i18n）：比主快捷键提示再弱一档，避免与 Ctrl+Enter 主操作抢视觉权重 */
+.keyboard-hint {
+    font-size: 11px;
+    color: var(--ui-text-tertiary, var(--text-secondary));
+    opacity: 0.82;
 }
 
 .table-editor-actions {

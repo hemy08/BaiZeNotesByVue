@@ -158,7 +158,8 @@ const dialogRenderer = {
         cellRichHint:
             '单元格支持 Markdown：换行、加粗、斜体、行内代码、链接、图片、公式；也可用 - [ ] / - [x] 写任务',
         resizeHint: '拖动调整窗口大小',
-        shortcutHint: 'Ctrl + Enter 应用，Esc 取消'
+        shortcutHint: 'Ctrl + Enter 应用，Esc 取消',
+        keyboardHint: '方向键 / Tab 移动单元格，Enter 或 F2 进入编辑，Esc 取消编辑'
     },
     mdSheet: {
         title: '插入表格',

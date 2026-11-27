@@ -2,10 +2,11 @@
     <BaseDialog
         :visible="visible"
         :aria-label="dialogAriaLabel"
-        width="720px"
+        :width-size="PALETTE_WIDTH_SIZE"
         title-bar-variant="plain"
         :draggable="false"
         :container-style="containerStyle"
+        :overlay-style="overlayStyle"
         @close="handleClose"
     >
         <!-- 标题栏插槽内直接放搜索输入（命令面板无独立标题，输入即焦点） -->
@@ -170,7 +171,14 @@ import {
 import { buildCommandAcceleratorMap, toAriaKeyshortcuts } from './command-shortcuts'
 import { filterWorkspaceFileEntries, moveListSelection } from './workspace-search-utils'
 import { openWorkspaceFileAtLine, useWorkspaceSearch } from '../../composables/useWorkspaceSearch'
+import type { DialogWidthSize } from '../dialogs/dialog-metrics'
 import type { WorkspaceFileEntry } from '../../../../shared/types/ipc'
+
+/**
+ * 命令面板宽度档位（T12 宽度阶梯迁移）：720px 恰为语义阶梯 `medium`，等值迁移；
+ * 宽度真源仍是 `dialog-metrics.ts` 的 DIALOG_WIDTH_LADDER（组件不写死像素）。
+ */
+const PALETTE_WIDTH_SIZE: DialogWidthSize = 'medium'
 
 interface Props {
     /** 显隐开关（真源在宿主组件） */
@@ -219,9 +227,10 @@ const actionError = ref('')
  *   颜色仍取既有 --bg-color，保证默认主题观感连续）；
  * - 背景模糊仅用于本悬浮层（禁止整窗大面积 blur，DESIGN.md §3）。
  *
- * z-index：BaseDialog 遮罩层为 9999（全对话框统一栈序，属 B1 写域），本批不覆盖；
- * `--ui-z-palette` 的落地留待 T12 跨组件回归统一收敛，功能上命令面板仍是最后打开的
- * 顶层对话框（同 z-index 下后渲染者在上）。
+ * z-index（T12 层级收敛）：不再依赖「与其它对话框同为 9999、后渲染者在上」的 DOM 顺序，
+ * 改为把遮罩层内联 z-index 提升到应用层命令面板层级 `--ui-z-palette-app`（10000，比对话框
+ * 9999 高一档），保证命令面板永远位于其它对话框/工具窗之上（含嵌套打开场景）。
+ * 语义相对阶梯 `--ui-z-palette`（60）与 9999 基数的关系见 ui-style.css 的 T12 兼容层注释。
  */
 const containerStyle = computed(() => ({
     maxWidth: '92vw',
@@ -231,6 +240,11 @@ const containerStyle = computed(() => ({
     background:
         'color-mix(in srgb, var(--bg-color) calc(var(--ui-surface-opacity, 1) * 100%), transparent)',
     backdropFilter: 'blur(var(--ui-surface-blur, 0px))'
+}))
+
+/** 命令面板遮罩层级：应用层兼容令牌（T12；唯一真源 UI_Z_INDEX_APP_COMPAT） */
+const overlayStyle = computed(() => ({
+    zIndex: 'var(--ui-z-palette-app, 10000)'
 }))
 
 /** 能力开关（1.5.2 E6：命令注册按开关过滤，开关热切换后命令列表即时更新） */
@@ -579,7 +593,7 @@ watch(
 }
 
 .palette-hint--error {
-    color: var(--ui-danger, #c62828);
+    color: var(--ui-danger);
 }
 
 .palette-hint--footer {

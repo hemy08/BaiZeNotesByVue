@@ -123,8 +123,8 @@ watch(
     overflow-x: auto;
     overflow-y: hidden;
     user-select: none;
-    background-color: var(--theme-card-background, #ffffff);
-    border-bottom: 1px solid var(--theme-border-color, #e0e0e0);
+    background-color: var(--theme-card-background);
+    border-bottom: 1px solid var(--theme-border-color);
     scrollbar-width: thin;
 }
 
@@ -137,7 +137,7 @@ watch(
     padding: 0 4px 0 10px;
     box-sizing: border-box;
     cursor: pointer;
-    color: var(--theme-secondary-text-color, #666666);
+    color: var(--theme-secondary-text-color);
     background-color: transparent;
     border: 1px solid transparent;
     border-bottom: none;
@@ -146,20 +146,20 @@ watch(
 }
 
 .document-tab:hover {
-    background-color: var(--theme-hover-background, #f0e8ff);
-    color: var(--theme-text-color, #2d2d2d);
+    background-color: var(--theme-hover-background);
+    color: var(--theme-text-color);
 }
 
 .document-tab.is-active {
-    color: var(--theme-text-color, #2d2d2d);
-    background-color: var(--theme-background-color, #f5f0ff);
-    border-color: var(--theme-border-color, #e0e0e0);
-    border-bottom: 2px solid var(--theme-accent-color, #764ba2);
+    color: var(--theme-text-color);
+    background-color: var(--theme-background-color);
+    border-color: var(--theme-border-color);
+    border-bottom: 2px solid var(--theme-accent-color);
 }
 
 .document-tab:focus-visible {
     outline: none;
-    box-shadow: inset 0 0 0 2px var(--theme-accent-color, #764ba2);
+    box-shadow: inset 0 0 0 2px var(--theme-accent-color);
 }
 
 .document-tab.is-switching {
@@ -171,7 +171,7 @@ watch(
     flex: 0 0 auto;
     font-size: 10px;
     line-height: 1;
-    color: var(--theme-accent-color, #764ba2);
+    color: var(--theme-accent-color);
 }
 
 .document-tab-name {
@@ -202,8 +202,8 @@ watch(
 }
 
 .document-tab-close:hover:not(:disabled) {
-    color: var(--theme-button-text-color, #ffffff);
-    background-color: var(--theme-accent-color, #764ba2);
+    color: var(--theme-button-text-color);
+    background-color: var(--theme-accent-color);
 }
 
 .document-tab-close:disabled {
@@ -213,6 +213,6 @@ watch(
 
 .document-tab-close:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--theme-accent-color, #764ba2);
+    box-shadow: 0 0 0 2px var(--theme-accent-color);
 }
 </style>

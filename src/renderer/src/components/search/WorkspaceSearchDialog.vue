@@ -562,7 +562,7 @@ onBeforeUnmount(() => {
 }
 
 .hint--error {
-    color: var(--ui-danger, #c62828);
+    color: var(--ui-danger);
 }
 
 /* 空态统一组件（T11）：结果区内的居中留白 */

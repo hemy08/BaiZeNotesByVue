@@ -11,7 +11,7 @@
         tool-window
         :visible="state.dialogVisible"
         :title="tOr(UI.title, '文档历史')"
-        width="960px"
+        :width-size="FILE_HISTORY_WIDTH_SIZE"
         reset-position-on-open
         @close="handleClose"
     >
@@ -234,6 +234,10 @@ import {
 import { DOCUMENT_HISTORY_MAX_TOTAL_BYTES, type DocumentHistoryVersion } from './history-storage'
 import { computeHistoryDiff, type HistoryDiffLineRow, type HistoryDiffResult } from './history-diff'
 import BaseDialog from '../../dialogs/BaseDialog.vue'
+import type { DialogWidthSize } from '../../dialogs/dialog-metrics'
+
+/** 宽度档位（T12 等值迁移：960px = 语义阶梯 `complex`，宽度真源在 dialog-metrics.ts） */
+const FILE_HISTORY_WIDTH_SIZE: DialogWidthSize = 'complex'
 
 /** 对话框文案建议键（主控补 editorUi.fileHistory.* 词典后自动生效；未补时用中文兜底） */
 const UI = {

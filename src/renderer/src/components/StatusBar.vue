@@ -438,15 +438,15 @@ onBeforeUnmount(() => {
 }
 
 #status-bar-console.success {
-    color: var(--ui-success, #2e7d32);
+    color: var(--ui-success);
 }
 
 #status-bar-console.warning {
-    color: var(--ui-warning, #b45309);
+    color: var(--ui-warning);
 }
 
 #status-bar-console.error {
-    color: var(--ui-danger, #c62828);
+    color: var(--ui-danger);
 }
 
 #status-bar-console.loading {
@@ -489,7 +489,7 @@ onBeforeUnmount(() => {
     width: 6px;
     height: 6px;
     border-radius: 999px;
-    background-color: var(--ui-danger, #c62828);
+    background-color: var(--ui-danger);
 }
 
 /* 错误触发按钮：把整行消息变成可点击区域（点击打开详情） */
@@ -532,7 +532,7 @@ onBeforeUnmount(() => {
     border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
     border-radius: var(--ui-radius-lg, 6px);
     background: var(--ui-bg-elevated, var(--card-bg));
-    box-shadow: var(--ui-shadow-2, 0 6px 24px rgba(0, 0, 0, 0.12));
+    box-shadow: var(--ui-shadow-2);
 }
 
 .status-error-popover:focus-visible {
@@ -549,7 +549,7 @@ onBeforeUnmount(() => {
 }
 
 .status-error-popover__title {
-    color: var(--ui-danger, #c62828);
+    color: var(--ui-danger);
     font-size: 13px;
     font-weight: 600;
 }
@@ -597,7 +597,7 @@ onBeforeUnmount(() => {
 
 .saved-indicator {
     font-size: 10px;
-    color: var(--ui-success, #2e7d32);
+    color: var(--ui-success);
 }
 
 @keyframes pulse {

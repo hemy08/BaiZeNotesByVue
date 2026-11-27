@@ -16,7 +16,7 @@
                  逻辑内聚在组件复用的 useWindowManagement 中；布局回调经 re-layout 上抛） -->
             <WindowControls @re-layout="EditorReLayout" />
         </div>
-        <!-- 菜单栏区域，高度24px，宽度与app一致 -->
+        <!-- 菜单栏区域（高度由密度令牌派生：控件高 + 4px = 32/36/40），宽度与 app 一致 -->
         <div v-show="electronMenu" id="menu-bar" class="menu-bar"><MenuBar /></div>
         <!-- 应用工具栏和下方区域分割部分，2px高度，宽度与app一致 -->
         <div id="file-bar"></div>
@@ -574,12 +574,15 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .menu-bar {
-    height: 35px;
+    /* 视觉升级 T12：菜单栏宿主高度 = 控件高令牌 + 4px 纵向留白（compact 32 / default 36 /
+       spacious 40）。此前写死 35px，且由 MenuBar.vue 的非 scoped `#menu-bar` 全局规则
+       反向覆盖；现收敛为唯一实现（MenuBar.vue 的全局覆盖已移除）。 */
+    height: calc(var(--ui-control-height, 32px) + 4px);
     flex-shrink: 0;
 }
 
 .title-bar {
-    background: var(--theme-title-bar-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+    background: var(--theme-title-bar-gradient);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -647,13 +650,13 @@ onBeforeUnmount(() => {
     align-items: center;
     padding: 0 12px;
     font-size: 12px;
-    border-top: 1px solid var(--theme-border-color, #e0e0e0);
+    border-top: 1px solid var(--theme-border-color);
 }
 
 #file-bar {
     height: 2px;
     flex-shrink: 0;
-    background: var(--theme-accent-color, #764ba2);
+    background: var(--theme-accent-color);
 }
 
 #editor-container {
@@ -664,8 +667,8 @@ onBeforeUnmount(() => {
     position: relative;
     /* 第 4 批 4.2：原 :style="containerStyles" 内联主题色改为 CSS 变量（与主题单真源一致；
        styles/theme.css 的 :root 默认值提供未应用主题时的兜底） */
-    background-color: var(--theme-background-color, #f5f0ff);
-    color: var(--theme-text-color, #2d2d2d);
+    background-color: var(--theme-background-color);
+    color: var(--theme-text-color);
 }
 
 /* 窗口大小调整边框 */

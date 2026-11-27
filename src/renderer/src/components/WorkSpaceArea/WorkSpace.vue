@@ -390,7 +390,7 @@ onBeforeUnmount(() => {
     display: flex;
     float: left;
     width: 40px;
-    border-right: 1px solid var(--theme-border-color, #e0e0e0);
+    border-right: 1px solid var(--theme-border-color);
 }
 
 /* 2026-11-20（编辑器底部光标不可见修复）：工作区子容器统一跟随父容器高度，
@@ -408,14 +408,14 @@ onBeforeUnmount(() => {
     margin-right: 2px;
     flex-direction: column;
     background: var(--theme-background-color, whitesmoke);
-    border-right: 1px solid var(--theme-border-color, #e0e0e0);
+    border-right: 1px solid var(--theme-border-color);
 }
 
 #resizer-main {
     cursor: ew-resize;
     color: var(--theme-accent-color, blue);
     width: 2px;
-    background-color: var(--theme-border-color, #f0dc4e);
+    background-color: var(--theme-border-color);
     height: 100%;
     float: left;
     /* Other styles... */
@@ -428,7 +428,7 @@ onBeforeUnmount(() => {
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    background-color: var(--theme-background-color, #ffffff);
+    background-color: var(--theme-background-color);
 }
 
 /* 2026-11-19（UI 实测修复）：HTML/PDF 查看器容器此前缺少布局样式（md/plugin/tool 均有），
@@ -442,7 +442,7 @@ onBeforeUnmount(() => {
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    background-color: var(--theme-background-color, #ffffff);
+    background-color: var(--theme-background-color);
 }
 
 #plugin-containers {
@@ -453,7 +453,7 @@ onBeforeUnmount(() => {
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
-    background-color: var(--theme-background-color, #ffffff);
+    background-color: var(--theme-background-color);
 }
 
 #tool-containers {
@@ -464,7 +464,7 @@ onBeforeUnmount(() => {
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
-    background-color: var(--theme-background-color, #ffffff);
+    background-color: var(--theme-background-color);
 }
 
 /* 按需挂载的 HTML/PDF 异步组件占位（加载中 / 加载失败） */
@@ -481,21 +481,21 @@ onBeforeUnmount(() => {
 
 /* 应用主题到所有子元素 */
 * {
-    color: var(--theme-text-color, #2d2d2d);
+    color: var(--theme-text-color);
 }
 
 /* 链接颜色 */
 a {
-    color: var(--theme-accent-color, #764ba2);
+    color: var(--theme-accent-color);
 }
 
 /* 按钮样式 */
 button {
-    background-color: var(--theme-button-background, #764ba2);
-    color: var(--theme-button-text-color, #ffffff);
+    background-color: var(--theme-button-background);
+    color: var(--theme-button-text-color);
 }
 
 button:hover {
-    background-color: var(--theme-hover-background, #f0e8ff);
+    background-color: var(--theme-hover-background);
 }
 </style>

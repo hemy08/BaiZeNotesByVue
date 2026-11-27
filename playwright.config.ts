@@ -28,6 +28,8 @@
  * - e2e/settings-persistence.spec.ts 系统设置保存与跨重启持久化
  * - e2e/packaged-launch.spec.ts    打包产物（win-unpacked/BaiZeNotes.exe）直接启动
  * - e2e/startup-stability.spec.ts  启动链稳定性独立量化（`@startup-stability`，CI 独立 job）
+ * - e2e/visual-matrix.spec.ts      视觉验收矩阵 + 像素软门禁（默认跳过；`E2E_VISUAL=1` 触发，
+ *                                  截图归档 out/visual-1.5.5-p2/，像素差异只告警不阻塞）
  *
  * ## 启动稳定性与重试口径（P1-4：E2E 自动恢复掩盖启动稳定性）
  * - 所有功能 spec 启动后经 helpers/app-ui.ts 的 `recordStartupMetrics()` 把

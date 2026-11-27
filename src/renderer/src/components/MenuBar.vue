@@ -606,7 +606,7 @@ onBeforeUnmount(() => {
     height: 100%;
     padding: 0 4px;
     user-select: none;
-    background-color: var(--ui-bg, var(--theme-background-color, #fff));
+    background-color: var(--ui-bg);
 }
 
 .menu-item {
@@ -619,7 +619,7 @@ onBeforeUnmount(() => {
     border-radius: var(--ui-radius-sm, 2px);
     background: transparent;
     appearance: none;
-    color: var(--ui-text, var(--theme-text-color, #333));
+    color: var(--ui-text);
     font-family: inherit;
     font-size: var(--ui-font-size, 13px);
     line-height: 1;
@@ -680,19 +680,5 @@ onBeforeUnmount(() => {
     .submenu-fade-leave-active {
         transition-duration: 100ms;
     }
-}
-</style>
-
-<style>
-/* ============================================================================
- * 菜单栏壳高度（非 scoped，仅命中宿主 #menu-bar）
- *
- * 宿主 BaiZeNotes.vue 的 `#menu-bar` 只是 flex 占位容器（旧值写死 35px）。
- * 视觉升级要求高度按密度档 32 / 36 / 40 变化，且该宿主文件属其他并行批次的写域，
- * 故由组件自持壳高度：控件高令牌 + 4px 纵向留白 = 32 / 36 / 40，与 COMPONENTS.md §2 一致。
- * 选择器带 id 保证覆盖宿主 scoped 的 `.menu-bar`（组件挂载后生效）。
- * ========================================================================== */
-#menu-bar {
-    height: calc(var(--ui-control-height, 32px) + 4px);
 }
 </style>

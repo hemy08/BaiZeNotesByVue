@@ -59,7 +59,17 @@
                             </button>
                         </div>
 
-                        <slot></slot>
+                        <!--
+                            T6 内容内边距（T12 提供可选包裹层，默认关闭）：
+                            默认插槽不包 DOM，保持 25 个已迁移对话框「prepend → title-bar →
+                            正文 → footer」的直接子节点契约（ThemeSettingDialog 的 c4 契约）；
+                            传 contentPadding 时才包裹 `.dialog-body`（padding 消费 --ui-pad），
+                            供后续批次在正文自身没有内边距的工具窗上逐步启用。
+                        -->
+                        <div v-if="contentPadding" class="dialog-body">
+                            <slot></slot>
+                        </div>
+                        <slot v-else></slot>
 
                         <div
                             v-if="hasFooter"
@@ -131,8 +141,9 @@
  *   `--ui-surface-blur`、hairline 边框、`--ui-shadow-2`、打开聚焦内容首个交互元素、
  *   Esc 只关最顶层（焦点在工具窗内时）、不锁 body 滚动、外部点击不关闭（保持 1.5.3）。
  *   说明：T6 规格中的「最小化按钮」1.5.3 现有工具窗均未提供该功能，本批不新增交互
- *   能力（避免功能范围外扩），列为后续批次候选；「内容内边距 --ui-pad」同理由各工具窗
- *   正文容器自行消费（外壳不包裹默认插槽，见样式块内说明）。
+ *   能力（避免功能范围外扩），列为后续批次候选；「内容内边距 --ui-pad」由可选
+ *   `contentPadding` 包裹层提供（T12 落地、默认关闭，不改变既有 25 个对话框的 DOM 子节点
+ *   契约），后续批次在正文自身无内边距的工具窗上逐个启用。
  *
  * 行为与迁移前单个对话框的外壳保持一致：
  * 1. `<Teleport to="body">` 默认开启，可用 `teleport` 关闭 / 指定目标（测试用 teleport stub）；
@@ -239,6 +250,13 @@ interface Props {
     overlayStyle?: DialogStyleProperties
     /** 容器内联样式覆盖（背景/阴影/自适应宽度/绝对定位基准等现状差异） */
     containerStyle?: DialogStyleProperties
+    /**
+     * 是否给默认插槽包一层 `.dialog-body`（padding 消费 `--ui-pad`，T6「内容内边距」）。
+     * 默认 false：25 个已迁移对话框的正文根节点自带内边距，且 ThemeSettingDialog 依赖
+     * 「prepend → title-bar → 正文 → footer」直接子节点顺序（c4 契约）；后续批次可在正文
+     * 自身没有内边距的工具窗上逐个启用，避免本批产生像素变化。
+     */
+    contentPadding?: boolean
     /** 标题栏内联样式覆盖（MessageDialog 动态渐变背景；help 对话框 flex-end/padding/app-region drag） */
     titleBarStyle?: DialogStyleProperties
     /** 标题文字内联样式覆盖（字距/字号/字重等现状差异；使用 title 插槽时由插槽内容自行控制） */
@@ -274,7 +292,8 @@ const props = withDefaults(defineProps<Props>(), {
     closeOnOverlay: true,
     closeOnEscape: true,
     modal: true,
-    nonModal: false
+    nonModal: false,
+    contentPadding: false
 })
 
 const { flags } = useFeatureFlags()
@@ -705,7 +724,13 @@ function handleContainerMouseDown(event: MouseEvent): void {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 9999;
+    /*
+     * T12 层级收敛：不再写死 9999，改为应用层兼容令牌 `--ui-z-dialog-app`（= 既有 9999）。
+     * 语义相对阶梯 `--ui-z-dialog`（50）暂不可直接用——既有高层浮层（欢迎页 9999 /
+     * 写作模式 3000 / 窗口缩放热区 9999~10000）不在本批写域内，直接降为 50 会被写作模式
+     * 全屏层遮挡。等这些浮层统一迁移到相对阶梯后再改 `ui-style.css` 一处即可（组件不改）。
+     */
+    z-index: var(--ui-z-dialog-app, 9999);
     /* 动效令牌：对话框主体 240ms、遮罩 200ms（MOTION.md §1；减少动效时由令牌降级） */
     --dialog-fade-duration: var(--ui-duration-overlay, 0.2s);
     --dialog-scale-transition: transform var(--ui-duration-dialog, 0.2s)
@@ -725,7 +750,7 @@ function handleContainerMouseDown(event: MouseEvent): void {
     width: 500px;
     background: var(--ui-surface, var(--bg-color));
     border-radius: var(--ui-radius-lg, 8px);
-    box-shadow: var(--ui-shadow-3, 0 10px 40px rgba(0, 0, 0, 0.25));
+    box-shadow: var(--ui-shadow-3);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -748,18 +773,23 @@ function handleContainerMouseDown(event: MouseEvent): void {
     border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
     border-radius: var(--ui-radius-lg, 8px);
     box-shadow:
-        var(--ui-shadow-2, 0 6px 24px rgba(0, 0, 0, 0.12)),
+        var(--ui-shadow-2),
         inset 0 0 0 1px rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0));
     backdrop-filter: blur(var(--ui-surface-blur, 0px));
     -webkit-backdrop-filter: blur(var(--ui-surface-blur, 0px));
 }
 
 /*
- * 正文内容区：BaseDialog 不为默认插槽额外包一层容器——25 个已迁移对话框的正文根节点
- * 自带内边距，且 ThemeSettingDialog 依赖「prepend → title-bar → 正文 → footer」直接
- * 子节点顺序（c4 契约）。因此 T9/T6 的「内容内边距」由各对话框正文容器消费
- * `--ui-pad` 落地（P1 批次不改变 DOM 结构；跨组件统一在 P2 T12 回归批次处理）。
+ * 正文内容区：默认不为默认插槽额外包一层容器——25 个已迁移对话框的正文根节点自带内边距，
+ * 且 ThemeSettingDialog 依赖「prepend → title-bar → 正文 → footer」直接子节点顺序（c4 契约）。
+ * T6/T9 的「内容内边距」通过可选 `contentPadding` 包裹层提供（默认关闭），由后续批次在正文
+ * 自身无内边距的工具窗上逐个启用；启用后 padding 统一消费 `--ui-pad`（8/12/16）。
  */
+.dialog-body {
+    padding: var(--ui-pad, 12px);
+    min-height: 0;
+    overflow: auto;
+}
 
 /* ==================== 标题栏 ==================== */
 .title-bar {
@@ -900,7 +930,7 @@ function handleContainerMouseDown(event: MouseEvent): void {
 /* 键盘焦点环：统一用 --ui-focus-shadow（DESIGN.md §6，替代浏览器 outline） */
 .close-btn:focus-visible {
     outline: none;
-    box-shadow: var(--ui-focus-shadow, 0 0 0 3px var(--ui-focus-ring, rgba(118, 75, 162, 0.3)));
+    box-shadow: var(--ui-focus-shadow);
 }
 
 /* T6 工具窗关闭按钮：28×28 中性色（标题栏为浅色悬浮面，白字不可用） */
@@ -916,7 +946,7 @@ function handleContainerMouseDown(event: MouseEvent): void {
 
 .title-bar--tool-window .close-btn:hover {
     background: var(--ui-accent-soft, var(--hover-bg));
-    color: var(--ui-danger, #c62828);
+    color: var(--ui-danger);
 }
 
 /* ==================== 底部操作区 ==================== */

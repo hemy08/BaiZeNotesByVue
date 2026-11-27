@@ -154,16 +154,26 @@
 | `--ui-z-toast`      | 70  | Toast        |
 | `--ui-z-guide`      | 80  | 引导层       |
 
+**应用层兼容层级（P2 / T12，与语义阶梯并存）**：语义阶梯是 0~80 的**相对**层级，但既有高层浮层（欢迎页 9999 / 写作模式 3000 / 窗口缩放热区 9999~10000）尚未迁移，直接使用相对值会破坏既有栈序。因此 `ui-style.css` 另有两个应用层变量（真源 `UI_Z_INDEX_APP_COMPAT`）：
+
+| 变量                 | 值    | 用途 / 与语义阶梯的关系                             |
+| -------------------- | ----- | --------------------------------------------------- |
+| `--ui-z-dialog-app`  | 9999  | 对话框 / 非模态工具窗遮罩层（= 既有值，零行为变化） |
+| `--ui-z-palette-app` | 10000 | 命令面板（比对话框高一档，恒在最上层）              |
+
+迁移完成后把这两个变量改为相对阶梯值即可，组件不需要再改。
+
 ## 6. 使用规则（必须 / 禁止）
 
 **必须**
 
 - 颜色一律使用语义令牌：`var(--ui-text)`、`var(--ui-accent-soft)` 等；历史组件可继续使用 `var(--theme-*)` / 无前缀别名，两者并存。
-- 尺寸节奏（行高 / 控件高 / 内边距）使用密度变量，不要写死像素。
-- 材质（阴影 / 圆角 / 模糊 / 透明度）使用风格变量，不要写死。
+- 尺寸节奏（行高 / 控件高 / 内边距）使用密度变量，不要写死像素；间距档位只允许 §5.1 的 7 档。
+- 材质（阴影 / 圆角 / 模糊 / 透明度）使用风格变量，不要写死；圆角只允许 §5.2 的 5 档。
+- **风格 / 密度只经根元素 `data-style` / `data-density` + 令牌消费生效**：组件内不写 `data-style` / `data-density` 分支、不读用户设置、不手写风格判断（唯一写入方是 `useTheme.applyUiAppearance`）；需要新材质/尺寸差异时先加令牌，再加消费点。
 - 焦点状态使用 `--ui-focus-shadow` + `--ui-focus-ring`，不依赖浏览器默认 outline。
 - 危险/成功/警告/信息语义使用 `--ui-danger` 等固定状态色，不借用主题强调色。
-- 内容区（正文/预览）使用 `--ui-content-*`，以便 hybrid 双材质正确分界。
+- 内容区（正文/预览）使用 `--ui-content-*`（含 T13 纸感版式令牌 `--ui-content-line-height` 等），以便 hybrid 双材质正确分界。
 
 **禁止**
 
@@ -176,16 +186,15 @@
 
 ## 7. 反例对照
 
-| 反例                                      | 问题                                  | 正确写法                                                                        |
-| ----------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------- |
-| `background: #ffffff;`                    | 深色主题下白底刺眼、主题切换不跟随    | `background: var(--ui-surface);`                                                |
-| `color: #e74c3c;`                         | 硬编码状态色，深色主题对比度不足      | `color: var(--ui-danger);`                                                      |
-| `border-radius: 7px;`                     | 圆角自由值，界面出现「差 2px」        | `border-radius: var(--ui-radius-lg);`                                           |
-| `transition: all 0.2s ease;`              | 动效无节奏，且 `all` 触发无关属性动画 | `transition: background-color var(--ui-duration-fast) var(--ui-ease-standard);` |
-| `padding: 10px 14px;`                     | 间距脱离 4px 阶梯                     | `padding: 8px 16px;`（§5.1 档位）                                               |
-| `box-shadow: 0 0 6px rgba(0,0,0,.3);`     | 阴影无分级、过重                      | `box-shadow: var(--ui-shadow-2);`                                               |
-| `z-index: 9999;`                          | 层级失控                              | `z-index: var(--ui-z-dialog);`                                                  |
-| 在组件内 `if (theme === 'dark')` 改透明度 | 绕过降级规则与主题正交设计            | 由 `useTheme.applyUiAppearance` 计算 `data-style` / `data-glass-mode`           |
+| 反例                                  | 问题                                  | 正确写法                                                                                   |
+| ------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `background: #ffffff;`                | 深色主题下白底刺眼、主题切换不跟随    | `background: var(--ui-surface);`                                                           |
+| `color: #e74c3c;`                     | 硬编码状态色，深色主题对比度不足      | `color: var(--ui-danger);`                                                                 |
+| `border-radius: 7px;`                 | 圆角自由值，界面出现「差 2px」        | `border-radius: var(--ui-radius-lg);`                                                      |
+| `transition: all 0.2s ease;`          | 动效无节奏，且 `all` 触发无关属性动画 | `transition: background-color var(--ui-duration-fast) var(--ui-ease-standard);`            |
+| `padding: 10px 14px;`                 | 间距脱离 4px 阶梯                     | `padding: 8px 16px;`（§5.1 档位）                                                          |
+| `box-shadow: 0 0 6px rgba(0,0,0,.3);` | 阴影无分级、过重                      | `box-shadow: var(--ui-shadow-2);`                                                          |
+| `z-index: 9999;`                      | 层级失控                              | `z-index: var(--ui-z-dialog-app);`（应用层兼容变量；新组件优先用相对阶梯 `var(--ui-z-*)`） |
 
 ## 8. 验收与守护
 
@@ -193,6 +202,9 @@
 - 28 主题覆盖：`tests/unit/theme-contract.test.ts`（28 × 18 完整性、分组、`theme.css` 默认值）。
 - 风格/密度：`tests/unit/ui-style-tokens.test.ts`（4 × 3 令牌完整性、CSS 与 TS 单一真源、默认值 = 既有观感）。
 - 主题单真源：`tests/unit/composables/useTheme.test.ts`（20 + 18 变量写入、幂等、降级路径）。
+- P2 跨组件验收：`tests/unit/visual-p2-acceptance.test.ts`（层级收敛 / 菜单栏高度单一实现 / 宽度阶梯迁移 / 纸感版式 / 图标规范 / 硬编码清理不变量 / 78 张矩阵组合数 / 28 主题对比度扫描）。
+- 真实截图软门禁：`e2e/visual-matrix.spec.ts`（`E2E_VISUAL=1` 触发，截图归档 `out/visual-1.5.5-p2/`，像素差异只告警不阻塞）。
+- 清理清单：`docs/design/P2-VERIFICATION.md`（T15 剩余硬编码分类与处置）。
 
 ## 9. 相关文件
 

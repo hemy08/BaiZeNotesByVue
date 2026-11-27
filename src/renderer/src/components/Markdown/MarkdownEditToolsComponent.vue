@@ -163,7 +163,7 @@ watch(
 
 .tool-btn {
     border: none;
-    background-color: var(--theme-background-color, #f2f2f2);
+    background-color: var(--theme-background-color);
     color: var(--theme-text-color, black);
     fill: var(--theme-text-color, black);
     place-items: center;
@@ -176,15 +176,15 @@ watch(
 }
 
 .tool-btn:hover {
-    background-color: var(--theme-hover-background, #eeffff);
+    background-color: var(--theme-hover-background);
 }
 
 /* P0：光标/选区处于粗体、斜体、删除线、行内代码时高亮对应按钮 */
 .tool-btn--active {
-    background-color: var(--theme-accent-color, #764ba2);
-    color: var(--theme-button-text-color, #fff);
-    fill: var(--theme-button-text-color, #fff);
-    box-shadow: inset 0 0 0 1px var(--theme-border-color, #e7e2ef);
+    background-color: var(--theme-accent-color);
+    color: var(--theme-button-text-color);
+    fill: var(--theme-button-text-color);
+    box-shadow: inset 0 0 0 1px var(--theme-border-color);
 }
 
 /* 确保 SVG 图标自适应按钮大小 */

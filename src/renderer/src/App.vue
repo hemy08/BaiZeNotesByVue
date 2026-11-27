@@ -453,7 +453,7 @@ onBeforeUnmount(() => {
     gap: 12px;
     width: 100%;
     height: 100vh;
-    color: var(--theme-secondary-text-color, #888);
+    color: var(--theme-secondary-text-color);
     font-size: 13px;
     background: var(--theme-background-color, transparent);
 }
@@ -461,8 +461,8 @@ onBeforeUnmount(() => {
 .main-view-loading-spinner {
     width: 22px;
     height: 22px;
-    border: 2px solid var(--theme-border-color, rgba(0, 0, 0, 0.15));
-    border-top-color: var(--theme-accent-color, #764ba2);
+    border: 2px solid var(--theme-border-color);
+    border-top-color: var(--theme-accent-color);
     border-radius: 50%;
     animation: main-view-loading-spin 0.8s linear infinite;
 }
@@ -485,7 +485,7 @@ onBeforeUnmount(() => {
     padding: 24px;
     box-sizing: border-box;
     text-align: center;
-    color: var(--theme-text-color, #333);
+    color: var(--theme-text-color);
     background: var(--theme-background-color, transparent);
 }
 
@@ -499,7 +499,7 @@ onBeforeUnmount(() => {
     margin: 0;
     max-width: 560px;
     font-size: 12px;
-    color: var(--theme-secondary-text-color, #888);
+    color: var(--theme-secondary-text-color);
     word-break: break-all;
 }
 
@@ -507,8 +507,8 @@ onBeforeUnmount(() => {
     padding: 6px 18px;
     font-size: 13px;
     cursor: pointer;
-    color: var(--theme-button-text-color, #fff);
-    background: var(--theme-button-background, var(--theme-accent-color, #764ba2));
+    color: var(--theme-button-text-color);
+    background: var(--theme-button-background);
     border: 1px solid var(--theme-border-color, transparent);
     border-radius: 4px;
 }

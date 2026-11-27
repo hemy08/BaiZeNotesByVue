@@ -131,7 +131,7 @@ onMounted(() => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-title-bar-gradient);
     z-index: 9999;
     overflow: hidden;
 }
@@ -177,7 +177,7 @@ onMounted(() => {
     font-size: 48px;
     font-weight: 700;
     margin: 0 0 10px 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-title-bar-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -185,7 +185,7 @@ onMounted(() => {
 
 .welcome-subtitle {
     font-size: 18px;
-    color: #666;
+    color: var(--ui-text-secondary);
     margin: 0;
 }
 
@@ -212,7 +212,7 @@ onMounted(() => {
 }
 
 .welcome-btn.primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-title-bar-gradient);
     color: white;
     box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
 }
@@ -295,7 +295,7 @@ onMounted(() => {
 }
 
 .history-item svg {
-    color: #764ba2;
+    color: var(--ui-accent);
     flex-shrink: 0;
 }
 

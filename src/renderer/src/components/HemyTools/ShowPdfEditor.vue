@@ -28,7 +28,7 @@
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2"
+                    stroke-width="1.5"
                 >
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
@@ -46,7 +46,7 @@
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2"
+                    stroke-width="1.5"
                 >
                     <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>
@@ -65,7 +65,7 @@
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        stroke-width="2"
+                        stroke-width="1.5"
                     >
                         <path d="M12 20h9"></path>
                         <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
@@ -83,7 +83,7 @@
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        stroke-width="2"
+                        stroke-width="1.5"
                     >
                         <line x1="8" y1="6" x2="21" y2="6"></line>
                         <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -105,7 +105,7 @@
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2"
+                    stroke-width="1.5"
                 >
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -124,7 +124,7 @@
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2"
+                    stroke-width="1.5"
                 >
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -143,7 +143,7 @@
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2"
+                    stroke-width="1.5"
                 >
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                     <polyline points="15 3 21 3 21 9"></polyline>
@@ -209,12 +209,12 @@
                             @click="showAnnotationPanel = false"
                         >
                             <svg
-                                width="14"
-                                height="14"
+                                width="16"
+                                height="16"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                stroke-width="2"
+                                stroke-width="1.5"
                             >
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                 <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -951,8 +951,8 @@ watch(annotationsEnabled, (enabled) => {
 
 /* 标注工具栏按钮激活态（列表展开时） */
 .pdf-annotation-list-btn.active {
-    background-color: var(--theme-hover-background, #f0e8ff);
-    border-color: var(--theme-accent-color, #764ba2);
+    background-color: var(--theme-hover-background);
+    border-color: var(--theme-accent-color);
 }
 
 /* 内容区：滚动区 + 标注面板的共同定位容器 */
@@ -970,7 +970,7 @@ watch(annotationsEnabled, (enabled) => {
     min-height: 0;
     overflow: auto;
     padding: 16px;
-    background-color: var(--theme-background-color, #f0f0f0);
+    background-color: var(--theme-background-color);
 }
 
 /* 页面定位容器：canvas / 文本层 / 标注 overlay 的共同坐标系。
@@ -1066,8 +1066,8 @@ watch(annotationsEnabled, (enabled) => {
     max-width: calc(100% - 32px);
     display: flex;
     flex-direction: column;
-    background-color: var(--theme-background-color, #ffffff);
-    border: 1px solid var(--theme-border-color, #e0e0e0);
+    background-color: var(--theme-background-color);
+    border: 1px solid var(--theme-border-color);
     border-radius: 6px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
     z-index: 10;
@@ -1080,14 +1080,14 @@ watch(annotationsEnabled, (enabled) => {
     justify-content: space-between;
     gap: 8px;
     padding: 8px 12px;
-    border-bottom: 1px solid var(--theme-border-color, #e0e0e0);
+    border-bottom: 1px solid var(--theme-border-color);
     background-color: var(--theme-toolbar-background, #f5f5f5);
 }
 
 .pdf-annotation-panel-title {
     font-size: 13px;
     font-weight: 500;
-    color: var(--theme-text-color, #2d2d2d);
+    color: var(--theme-text-color);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1125,9 +1125,9 @@ watch(annotationsEnabled, (enabled) => {
     gap: 8px;
     padding: 8px;
     border-radius: 6px;
-    border: 1px solid var(--theme-border-color, #e0e0e0);
+    border: 1px solid var(--theme-border-color);
     margin-bottom: 8px;
-    background-color: var(--theme-background-color, #ffffff);
+    background-color: var(--theme-background-color);
 }
 
 .pdf-annotation-item:last-child {
@@ -1139,15 +1139,15 @@ watch(annotationsEnabled, (enabled) => {
     padding: 2px 8px;
     font-size: 12px;
     border-radius: 10px;
-    border: 1px solid var(--theme-accent-color, #764ba2);
+    border: 1px solid var(--theme-accent-color);
     background-color: transparent;
-    color: var(--theme-accent-color, #764ba2);
+    color: var(--theme-accent-color);
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .pdf-annotation-page-chip:hover {
-    background-color: var(--theme-hover-background, #f0e8ff);
+    background-color: var(--theme-hover-background);
 }
 
 .pdf-annotation-item-body {
@@ -1159,7 +1159,7 @@ watch(annotationsEnabled, (enabled) => {
     margin: 0 0 6px;
     font-size: 12px;
     line-height: 1.5;
-    color: var(--theme-text-color, #2d2d2d);
+    color: var(--theme-text-color);
     white-space: pre-wrap;
     word-break: break-word;
     display: -webkit-box;
@@ -1185,17 +1185,17 @@ watch(annotationsEnabled, (enabled) => {
 .pdf-annotation-action {
     padding: 2px 8px;
     font-size: 12px;
-    border: 1px solid var(--theme-border-color, #e0e0e0);
+    border: 1px solid var(--theme-border-color);
     border-radius: 4px;
     background-color: transparent;
-    color: var(--theme-text-color, #2d2d2d);
+    color: var(--theme-text-color);
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .pdf-annotation-action:hover:not(:disabled) {
-    background-color: var(--theme-hover-background, #f0e8ff);
-    border-color: var(--theme-accent-color, #764ba2);
+    background-color: var(--theme-hover-background);
+    border-color: var(--theme-accent-color);
 }
 
 .pdf-annotation-action:disabled {

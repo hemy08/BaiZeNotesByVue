@@ -193,8 +193,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 #navi-tab {
-    border-right: 1px solid var(--theme-border-color, #e0e0e0);
-    border-left: 1px solid var(--theme-border-color, #e0e0e0);
+    border-right: 1px solid var(--theme-border-color);
+    border-left: 1px solid var(--theme-border-color);
 }
 
 .navi-tab-item-btn {
@@ -226,7 +226,7 @@ onBeforeUnmount(() => {
     justify-content: center;
     width: 30px;
     height: 30px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-title-bar-gradient);
     border-radius: 6px;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
