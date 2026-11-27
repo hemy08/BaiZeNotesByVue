@@ -325,7 +325,10 @@ onBeforeUnmount(() => {
     position: fixed;
     top: 12px;
     right: 20px;
-    z-index: 3000;
+    /* 应用层写作模式层（P2 遗留项 4）：原裸值 3000 → 命名令牌 --ui-z-writing-mode-app，
+       数值不变；恒低于对话框/工具窗（9999），保证写作模式上的弹窗始终可见。
+       变量真源 UI_Z_INDEX_APP_BASE.writingMode。 */
+    z-index: var(--ui-z-writing-mode-app);
     display: flex;
     flex-direction: column;
     align-items: flex-end;

@@ -160,7 +160,7 @@ function handleClose(): void {
     display: inline-block;
     padding: 4px 12px;
     background: var(--accent-color);
-    color: #fff;
+    color: var(--theme-button-text-color);
     border-radius: 4px;
     font-size: 14px;
     font-weight: 600;

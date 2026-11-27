@@ -800,11 +800,11 @@ export const REMOTE_IMAGE_BLOCKED_CLASS = 'remote-image-blocked'
 /** AS-9：未传入文案时的兜底拦截提示（渲染层实际传入当前语言的 i18n 文案） */
 const DEFAULT_REMOTE_IMAGE_BLOCKED_LABEL = '远程图片已拦截（可在设置中开启加载）'
 
-/** AS-9：占位块内联样式（灰底虚线块；优先使用主题 CSS 变量，浅色兜底） */
+/** AS-9：占位块内联样式（灰底虚线块；颜色全部走主题 CSS 变量，运行时由 useTheme 写入） */
 const REMOTE_IMAGE_BLOCKED_STYLE =
     'display:inline-block;min-width:120px;max-width:100%;padding:10px 12px;margin:4px 0;' +
-    'border:1px dashed var(--border-color,#c0c4cc);border-radius:4px;' +
-    'background:var(--card-bg,#f5f5f5);color:var(--secondary-text-color,#909399);' +
+    'border:1px dashed var(--border-color);border-radius:4px;' +
+    'background:var(--card-bg);color:var(--secondary-text-color);' +
     'font-size:12px;line-height:1.5;'
 
 /** AS-9：是否允许预览加载远程图片（安全默认 false；由预览组件从系统设置同步） */

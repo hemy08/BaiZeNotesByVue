@@ -163,7 +163,10 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         description: '护眼深色主题',
         descKey: 'themeNames.app.dark.description',
         titleBarGradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        backgroundColor: '#fff0f0',
+        // 2026-11-27 数据修复：历史值误用 rose 主题的浅粉 #fff0f0（与深色卡片 #1a1a2e 明暗相反，
+        // 正文 #e0e0e0/页面底仅 1.19:1 不可读）。按「深邃夜空」设计意图改为与卡片同色相（240°）
+        // 的更深底色（页面底暗于卡片面，保持悬浮层次；正文 14.6:1、次要文字 5.44:1）。
+        backgroundColor: '#0d0d1a',
         cardBackground: '#1a1a2e',
         textColor: '#e0e0e0',
         secondaryTextColor: '#888888',

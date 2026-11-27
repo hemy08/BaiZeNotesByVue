@@ -168,6 +168,6 @@ function handleCloseRequest(): void {
     margin: 0;
     font-size: 13px;
     line-height: 1.6;
-    color: var(--dialog-btn-danger-bg, #e74c3c);
+    color: var(--dialog-btn-danger-bg);
 }
 </style>

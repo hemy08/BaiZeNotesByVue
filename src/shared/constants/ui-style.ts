@@ -233,13 +233,18 @@ export const UI_Z_INDEX_TOKENS = {
  * 应用层兼容层级（视觉升级 P2 / T12 收敛，语义令牌 → 既有高层浮层数值的唯一映射）。
  *
  * ## 为什么需要「语义 rank」之外的映射
- * `UI_Z_INDEX_TOKENS` 是 0~80 的**语义相对阶梯**（新组件一律按相对层级消费），但当前应用
- * 存在若干 P2 写域之外的既有高层浮层，它们直接写死大数值、且必须与对话框的相对顺序保持
+ * `UI_Z_INDEX_TOKENS` 是 0~80 的**语义相对阶梯**（新组件一律按相对层级消费），但应用层
+ * 存在若干既有高层浮层，它们历史上直接写死大数值、且必须与对话框的相对顺序保持
  * 不变（任何调整都可能在写作模式/欢迎页/窗口缩放热区上产生真实回归）：
- * - 欢迎页 `WelcomeScreen.vue`：`z-index: 9999`（全屏欢迎层）；
- * - 写作模式 `WritingModeHost.vue`：`z-index: 3000`（全屏写作层，必须被对话框/工具窗压住）；
+ * - 欢迎页 `WelcomeScreen.vue`：全屏欢迎层（既有值 9999，已收敛为 `UI_Z_INDEX_APP_BASE.welcome`）；
+ * - 写作模式 `WritingModeHost.vue`：全屏写作层（既有值 3000，必须被对话框/工具窗压住，
+ *   已收敛为 `UI_Z_INDEX_APP_BASE.writingMode`）；
  * - 窗口缩放热区 `BaiZeNotes.vue`：`.resize-edge` 9999 / `.resize-corner` 10000（无边框窗口
- *   拖拽缩放热区，位于视口四周，需保持在最上层）。
+ *   拖拽缩放热区，位于视口四周，需保持在最上层；已收敛为 `UI_Z_INDEX_APP_BASE.resize`，
+ *   热区「边」= resize - 1）。
+ * 上述三个基座的裸值已全部迁移为命名令牌（P2 遗留项 4，见下方 `UI_Z_INDEX_APP_BASE`），
+ * 组件内不再出现 `9999 / 10000 / 3000`；数值仍保持迁移前的既有大数值（尚未改用相对阶梯），
+ * 因此栈序零变化。
  *
  * 因此 T12 采用「保留既有栈序 + 收敛为单一命名令牌」策略：
  * - 对话框/非模态工具窗 = 9999（与既有 9999 完全等值，全部浮层行为零变化）；
@@ -247,14 +252,51 @@ export const UI_Z_INDEX_TOKENS = {
  *   不再依赖「同 z-index 下后渲染者在上」的 DOM 顺序巧合；同时仍低于 `.resize-corner`
  *   的 10000 同值不覆盖——热区只有 12px 边缘，命中优先级不变）。
  *
- * 后续把欢迎页/写作模式/缩放热区统一迁移到 `UI_Z_INDEX_TOKENS` 相对阶梯时，只需把本表
- * 与 `styles/ui-style.css` 的 `--ui-z-*-app` 变量改为相对值即可，组件无需再改。
+ * 后续若把应用层统一迁移到 `UI_Z_INDEX_TOKENS` 相对阶梯，只需改本表、`UI_Z_INDEX_APP_BASE`
+ * 与 `styles/ui-style.css` 的 `--ui-z-*-app` 变量值即可，消费组件无需再改。
  */
 export const UI_Z_INDEX_APP_COMPAT = {
     /** 对话框 / 非模态工具窗遮罩层（= 既有 9999） */
     dialog: 9999,
     /** 命令面板（= 对话框 + 1，保证命令面板恒在其它对话框之上） */
     commandPalette: 10000
+} as const
+
+/**
+ * 应用层基座层级（视觉升级 P2 遗留项 4：z-index 应用层基座迁移；数值与迁移前逐项等值 = 零回归）。
+ *
+ * ## 为什么单独一张表，而不是直接用 `UI_Z_INDEX_TOKENS` 相对阶梯
+ * `UI_Z_INDEX_TOKENS` 是 0~80 的**语义相对阶梯**（新组件按相对层级消费），但欢迎页 / 写作模式 /
+ * 窗口缩放热区是既有应用层基座层，直接换成相对阶梯会改变既有栈序（写作模式 3000 降为相对值会被
+ * 工具窗遮住、欢迎页/缩放热区降为相对值会被对话框盖住）。因此本阶段只做「裸值 → 命名令牌」的
+ * 等值迁移：组件不再写大数值，数值本身保持既有值不变，栈序与迁移前完全一致：
+ * - `welcome` 9999：与对话框/工具窗同层（`UI_Z_INDEX_APP_COMPAT.dialog` 9999）。二者互斥渲染
+ *   （`App.vue` 中欢迎页与主界面为 `v-if` / `v-else`），等值不会产生竞争，视觉栈序与迁移前一致；
+ * - `resize` 10000：应用内最高层级（与 `UI_Z_INDEX_APP_COMPAT.commandPalette` 同值）。缩放热区
+ *   `.resize-corner` 取本值、`.resize-edge` 取本值 - 1（9999），角 12px 略高于边 6px，与迁移前
+ *   的 10000 / 9999 完全等值（热区只有 6~12px 边缘，同值时命中优先级不变）；
+ * - `writingMode` 3000：全屏写作模式浮层，恒低于对话框/工具窗（9999），保证写作模式上的弹窗
+ *   始终可见（迁移前语义不变）。
+ *
+ * ## 组内派生关系（保持「三值真源」，不额外扩表）
+ * - 欢迎页内部窗口控制条 = welcome + 1（原裸值 10000；仅在本层 stacking context 内参与局部排序，
+ *   `WelcomeScreen.vue` 以 `calc(var(--ui-z-welcome-app) + 1)` 表达）；
+ * - 缩放热区「边」= resize - 1（原裸值 9999；`BaiZeNotes.vue` 以
+ *   `calc(var(--ui-z-resize-app) - 1)` 表达）。
+ *
+ * ## 消费方式（唯一真源）
+ * CSS 变量在 `styles/ui-style.css` 的 `:root` 逐项声明：`--ui-z-welcome-app` /
+ * `--ui-z-resize-app` / `--ui-z-writing-mode-app`；三个基座组件只消费变量，不再出现
+ * `9999 / 10000 / 3000` 裸值。本表与 CSS 变量的逐项一致性由
+ * `tests/unit/visual-p2-acceptance.test.ts` 静态校验（改一处必须同步改另一处，否则测试失败）。
+ */
+export const UI_Z_INDEX_APP_BASE = {
+    /** 写作模式全屏层（= 既有 3000；恒低于对话框/工具窗） */
+    writingMode: 3000,
+    /** 全屏欢迎层（= 既有 9999；与对话框同值，靠互斥渲染保证覆盖） */
+    welcome: 9999,
+    /** 窗口缩放热区最高层（角 = 10000；边 = 本值 - 1 = 9999） */
+    resize: 10000
 } as const
 
 /** 玻璃材质模式：normal（常规）/ steady（深色主题稳健模式：降透明度、关模糊）/ flat（已回退纸感） */

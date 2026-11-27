@@ -295,12 +295,13 @@ function bindIframeLinkGuard(): void {
 
 <style scoped>
 /* HTML 查看器特有：iframe 占满剩余空间；min-height:0 允许 flex 收缩，
-   由 iframe 文档自身滚动（避免内容撑动外层布局） */
+   由 iframe 文档自身滚动（避免内容撑动外层布局）；底色走主题悬浮面令牌
+   （默认主题 #ffffff 与历史硬编码等值，深色主题下不再露白） */
 .html-iframe {
     flex: 1;
     min-height: 0;
     width: 100%;
     border: none;
-    background-color: #ffffff;
+    background-color: var(--ui-bg-elevated);
 }
 </style>

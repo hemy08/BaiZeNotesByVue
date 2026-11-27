@@ -2,11 +2,13 @@
     <div
         ref="menuBarRef"
         class="menu-bar"
+        :class="{ 'menu-bar--alt-active': altActivated }"
         role="menubar"
         aria-orientation="horizontal"
         :aria-label="menubarAriaLabel"
         @mouseleave="handleMenuBarLeave"
         @keydown="handleMenubarKeydown"
+        @focusout="handleMenubarFocusOut"
     >
         <!--
             顶层菜单项（视觉升级 P1-B2 / T7）：
@@ -65,7 +67,12 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { menuMap } from './MenuBar/menu-config'
 import type { BaiZeMenuEntry } from './MenuBar/menu-config'
 import MenuSubmenu from './MenuBar/MenuSubmenu.vue'
-import { hasMenuSubmenu, moveMenubarIndex, resolveMenubarKeyAction } from './MenuBar/menu-keyboard'
+import {
+    hasMenuSubmenu,
+    isMenuActivationAltKey,
+    moveMenubarIndex,
+    resolveMenubarKeyAction
+} from './MenuBar/menu-keyboard'
 import { resolveTopSubmenuPosition } from './MenuBar/menu-position'
 import { t } from '../common/i18n'
 import { getBaseName } from '../../../shared/utils/path'
@@ -233,6 +240,18 @@ const closeTimer = ref<number | null>(null)
 const isSubmenuHovered = ref(false)
 
 /**
+ * Alt 激活态（Windows 惯例：单独按 Alt 聚焦菜单栏，再方向键导航）。
+ *
+ * true 时根节点带 `menu-bar--alt-active` 类：浏览器对「键盘事件触发的程序化聚焦」
+ * 通常仍匹配 :focus-visible，但不能依赖它，激活态用同一 focus-ring 令牌兜底，
+ * 保证按 Alt 一定有可见反馈（未激活时样式与既有契约完全一致）。
+ * 退出路径：Esc / 再次按 Alt（exitAltActivation）、下拉被关闭（closeMenu 统一清理）。
+ */
+const altActivated = ref(false)
+/** Alt 激活前的焦点元素（退出激活时归还，Windows 习惯；元素已卸载时忽略） */
+let altFocusBeforeActivation: HTMLElement | null = null
+
+/**
  * 键盘激活防抖守卫（T7 键盘可达）：
  * 顶层按钮是原生 `<button>`，Enter/Space 在部分平台会由浏览器补发一次合成 click
  * （detail=0）。键盘 keydown 已经打开菜单，若再让该合成 click 进入 toggleMenu 会把
@@ -398,6 +417,14 @@ function handleMenubarKeydown(event: KeyboardEvent): void {
     }
     const action = resolveMenubarKeyAction(event.key, activeMenu.value !== null)
     if (!action) {
+        // Alt 激活后（下拉未展开）按 Esc：退出激活并归还激活前焦点（Windows 习惯：
+        // 第一次 Esc 把键盘焦点从菜单栏收回；下拉展开状态的 Esc 由下面的 'close'
+        // 动作处理，沿用既有「关闭下拉并归还焦点」语义，不新增第二套按键映射）。
+        if (event.key === 'Escape' && altActivated.value && activeMenu.value === null) {
+            event.preventDefault()
+            event.stopPropagation()
+            exitAltActivation()
+        }
         return
     }
     event.preventDefault()
@@ -441,9 +468,151 @@ function handleMenubarKeydown(event: KeyboardEvent): void {
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+// Alt 键激活菜单栏（Windows 惯例，1.5.5 遗留项补齐）
+//
+// 契约：
+// - 只接管「单独 Alt」一个按键（判定收敛在 menu-keyboard.ts 的 isMenuActivationAltKey：
+//   带 Ctrl/Shift/Meta 的组合键、Alt+F4/Alt+Tab/Alt+字母、输入法组字、按住重复均放行）；
+// - 激活后不新增按键映射：方向键/Enter/Esc 完全复用既有 menubar/submenu 键盘语义；
+// - 退出三条路径：未展开时 Esc、再次按 Alt（都归还激活前焦点）、下拉被关闭
+//   （closeMenu 统一清理激活态，焦点按既有「关闭下拉」契约落回顶层菜单项）。
+// ---------------------------------------------------------------------------------------------
+
+/** 焦点是否位于对话框/工具窗内（浮层自己管理焦点，菜单栏不抢） */
+function isFocusInsideDialog(): boolean {
+    const activeElement = document.activeElement
+    return activeElement instanceof HTMLElement && activeElement.closest('[role="dialog"]') !== null
+}
+
+/**
+ * 菜单栏是否被宿主隐藏。
+ *
+ * 系统设置「菜单栏样式」为 Windows 原生时，宿主 `#menu-bar` 用 v-show 收起自绘菜单栏；
+ * 此时 Alt 不激活，避免对不可见菜单产生空操作并抢走编辑器焦点。用内联
+ * display/visibility 向上回溯判断：与宿主 v-show 的实现一致，且不依赖排版
+ * （jsdom 中元素矩形恒为 0，不能用 getClientRects 判定）。
+ */
+function isMenuBarHidden(): boolean {
+    let node: HTMLElement | null = menuBarRef.value
+    while (node) {
+        if (node.style.display === 'none' || node.style.visibility === 'hidden') {
+            return true
+        }
+        node = node.parentElement
+    }
+    return false
+}
+
+/** 激活菜单栏：聚焦第一个顶层菜单项，并记录原焦点供退出时归还 */
+function activateMenuBarByAlt(): void {
+    const activeElement = document.activeElement
+    altFocusBeforeActivation = activeElement instanceof HTMLElement ? activeElement : null
+    altActivated.value = true
+    focusTopLevel(0)
+}
+
+/**
+ * 退出 Alt 激活：关闭已展开下拉，并把焦点归还激活前元素（Windows 习惯）。
+ *
+ * 激活前元素已卸载（如切换视图）时退化为「关闭下拉并聚焦对应顶层菜单项」，
+ * 与既有 Esc 的焦点落点一致，不把焦点丢在 body 上。
+ */
+function exitAltActivation(): void {
+    const restoreTarget = altFocusBeforeActivation
+    altFocusBeforeActivation = null
+    const wasMenuOpen = activeMenu.value !== null
+    const focusIndex = activeMenu.value ?? focusedMenuIndex.value
+    altActivated.value = false
+    closeMenu()
+    if (restoreTarget?.isConnected) {
+        restoreTarget.focus()
+        // 原焦点不可聚焦（如 body）时 focus() 不生效：主动把焦点移出菜单栏，避免残留焦点环
+        const activeElement = document.activeElement
+        if (
+            activeElement instanceof HTMLElement &&
+            activeElement !== restoreTarget &&
+            menuBarRef.value?.contains(activeElement)
+        ) {
+            activeElement.blur()
+        }
+        return
+    }
+    if (wasMenuOpen) {
+        focusTopLevel(focusIndex)
+    }
+}
+
+/** Alt 切换激活态：未激活且无展开下拉 → 激活；已激活/有展开下拉 → 退出并归还焦点 */
+function toggleAltActivation(): void {
+    if (altActivated.value || activeMenu.value !== null) {
+        exitAltActivation()
+        return
+    }
+    activateMenuBarByAlt()
+}
+
+/**
+ * 全局 keydown：Windows 惯例「单独按 Alt 激活菜单栏」。
+ *
+ * 只消费「单独 Alt」：Alt+其它键（Alt+F4/Alt+Tab/Alt+字母）以及带 Ctrl/Shift/Meta 的
+ * 组合键一律不 preventDefault，交还系统/其它快捷键处理；焦点在对话框内或菜单栏被
+ * 隐藏时不响应。方向键/Enter/Esc 仍由菜单栏与下拉的既有处理器负责，本监听不参与。
+ */
+function handleGlobalKeydown(event: KeyboardEvent): void {
+    // Alt+其它键：若当前只是「单独 Alt 激活、下拉未展开」，且该键不属于菜单栏键盘
+    // 契约（←→/Home/End/Enter/空格等），视为组合键前缀——撤销激活并归还焦点，但
+    // 不消费按键。这样 Alt+F4 / Alt+Tab / Alt+字母不会把焦点留在菜单栏；按住 Alt
+    // 继续用方向键导航（Windows 菜单习惯）时方向键属契约键，激活态不会被撤销。
+    if (event.altKey && event.key !== 'Alt') {
+        if (
+            altActivated.value &&
+            activeMenu.value === null &&
+            resolveMenubarKeyAction(event.key, false) === null
+        ) {
+            exitAltActivation()
+        }
+        return
+    }
+    if (!isMenuActivationAltKey(event)) {
+        return
+    }
+    // 其它组件已消费（preventDefault）时让位，避免与既有全局快捷键冲突
+    if (event.defaultPrevented) {
+        return
+    }
+    if (isFocusInsideDialog() || isMenuBarHidden()) {
+        return
+    }
+    event.preventDefault()
+    toggleAltActivation()
+}
+
 /** 顶层菜单项获得焦点：同步 roving tabindex（不切换展开状态，避免与点击语义冲突） */
 function handleMenuFocus(index: number): void {
     focusedMenuIndex.value = index
+}
+
+/**
+ * 焦点离开菜单栏时退出 Alt 激活态（例如激活后按 Tab 移出菜单栏）。
+ *
+ * 不清除会让下一次按 Alt 变成「退出上一次激活」并抢回旧焦点；下拉面板 teleport 到
+ * body、不属于本节点子树，焦点进入下拉仍算「菜单内」，不清除激活态。
+ */
+function handleMenubarFocusOut(event: FocusEvent): void {
+    const next = event.relatedTarget
+    const root = menuBarRef.value
+    if (!root) {
+        return
+    }
+    if (
+        next instanceof HTMLElement &&
+        (root.contains(next) || next.closest('.submenu-container'))
+    ) {
+        return
+    }
+    altActivated.value = false
+    altFocusBeforeActivation = null
 }
 
 function toggleMenu(index: number) {
@@ -568,6 +737,10 @@ function updateSubmenuPosition(index: number) {
 function closeMenu() {
     activeMenu.value = null
     isSubmenuHovered.value = false
+    // 关闭下拉同时退出 Alt 激活态（Windows 惯例：菜单收回后菜单栏不再占用键盘焦点；
+    // 焦点落点由各关闭入口按既有契约处理，例如 Esc/Tab 归还顶层菜单项）。
+    altActivated.value = false
+    altFocusBeforeActivation = null
     if (closeTimer.value) {
         clearTimeout(closeTimer.value)
         closeTimer.value = null
@@ -591,6 +764,8 @@ function handleResize() {
 onMounted(() => {
     document.addEventListener('click', handleClickOutside)
     window.addEventListener('resize', handleResize)
+    // Alt 激活菜单栏（Windows 惯例）：全局监听覆盖编辑器/工作区等菜单栏之外的焦点场景
+    window.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onBeforeUnmount(() => {
@@ -603,6 +778,8 @@ onBeforeUnmount(() => {
         suppressKeyboardActivationTimer = null
     }
     window.removeEventListener('resize', handleResize)
+    window.removeEventListener('keydown', handleGlobalKeydown)
+    altFocusBeforeActivation = null
 })
 </script>
 
@@ -674,6 +851,19 @@ onBeforeUnmount(() => {
 
 /* 键盘焦点必须可见（focus-ring 令牌；不依赖浏览器默认 outline） */
 .menu-item:focus-visible {
+    outline: none;
+    background-color: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    box-shadow: var(--ui-focus-shadow);
+}
+
+/*
+ * Alt 激活态（Windows 惯例，1.5.5 遗留项补齐）：
+ * 激活由 keydown 脚本化聚焦触发，浏览器对「键盘事件触发的程序化聚焦」通常仍匹配
+ * :focus-visible，但不能依赖——激活期间用同一 focus-ring 令牌兜底，保证「按 Alt 一定
+ * 有可见反馈」；未激活时不生效，既有焦点样式（:focus-visible）零改动。
+ */
+.menu-bar--alt-active .menu-item:focus {
     outline: none;
     background-color: var(--ui-accent-soft);
     color: var(--ui-accent);

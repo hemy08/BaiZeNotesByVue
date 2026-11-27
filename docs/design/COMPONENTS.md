@@ -104,17 +104,47 @@
 | 按钮   | 主操作使用 `--ui-accent` 实色                                    |
 | 约束   | 不使用大段占位文字；插图统一 24 网格 / stroke 1.5 / currentColor |
 
-## 8. 待实现项与验收
+## 8. 图标资产规范
+
+### 8.1 三档口径
+
+| 档位               | 网格 / 形态                                                                     | 适用                                                                                     | 约束                                                                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 功能图标（线框）   | 24 网格、`fill="none"`、`stroke="currentColor"`、`stroke-width="1.5"`、16/20/24 | 工具栏、空态、按钮、对话框类型选择器等 UI 图标                                           | 不得使用 emoji 作功能图标；不得用 fill 型图形库替代手写线框图标                                                                          |
+| 图形库图标（MDI）  | 24 网格、`fill="currentColor"`、单段 `path d`、无 stroke                        | mkdocs-material `:material-xxx:` 行内图标；`AdmonitionDialog` 等「图标集」               | fill 型例外：不适用 stroke 1.5 规则，也不得逐条改写成线框；数据须来自上游 `@mdi/js`（当前 7.4.47，Apache-2.0 / MIT），按图标名字母序维护 |
+| 品牌大图标（例外） | 512 网格、渐变 / 多色、非 `currentColor`                                        | `logo-baize-dark-A-ultra.svg` / `logo-baize-light-A-large.svg` / `baize_mirror_dark.svg` | 白名单仅这 3 个文件；不得按 24 网格重绘，也不得用作品牌以外场景                                                                          |
+
+### 8.2 MDI fill 型图标库例外口径
+
+- **数据真源**：`mdi-icons-core.ts`（首屏核心子集 77 个，同步内嵌零异步等待）+ `mdi-icons-data.ts`（全量 133 个，由 `mdi-icons-loader.ts` 动态 import 懒加载，95KB 不进主 chunk）。
+- **渲染约定**：`viewBox="0 0 24 24"` + `<path :d="...">` + `fill="currentColor"`（颜色随文本/父级 `color`）；装饰性图标必须 `aria-hidden="true"`，可访问名由相邻可见文案承载。
+- **使用边界**：
+    - 预览管线（mkdocs-material 行内图标）通过 `getMdiIconPath` / `getMdiIconNames` 查询，未收录图标降级为可见文本；
+    - 普通组件只需少量 MDI 图标时，只允许**内联所需少量 path**（示例：`AdmonitionDialog` 内联 12 条），禁止整包 import `mdi-icons-data.ts`，避免 95KB 数据进入组件 chunk；
+    - MDI 图标与线框功能图标并存，不得为「风格统一」把 fill 型路径改写成 stroke 线框（会损失图形库的可维护性与上游可替换性）。
+- **维护约定**：核心子集由 `out/tmp/gen-mdi-icons-core.mjs` 从全量数据一次性抽取生成，禁止手工编辑；修改核心清单后须重跑生成器，并保持核心子集与全量数据的同名校验通过。
+
+### 8.3 资产清理原则
+
+- **引用为唯一准入**：`assets/**` 中的 SVG 必须在 `src/` 有静态引用（`import` / 文件名 / 可证动态引用）；仅出现在文档/报告中的资产视为未引用。
+- **删除前必须扫描**：新增或删除资产前先按上述四类引用口径扫描 `src/` / `tests/` / `e2e/` / `resources/` / `build/` + 根配置（字符串 / import / glob / 动态拼接），确认零运行时引用后再 `git rm`；本批临时扫描脚本与扫描结果为 `out/tmp/scan-unreferenced-icons.mjs`、`out/tmp/icons-cleanup-evidence.md`（证据工具，不入库）。
+- **占位资产零容忍**：不得提交「占位圆 / 占位图」（单 `<circle cx="12" cy="12" r="10">`、`stroke-width="2"`、无 `<path>`）；`visual-p2-acceptance.test.ts` 已加静态指纹守卫。
+- **数量冻结**：`src/renderer/src/assets/icons/**` 固定 **23 个**（20 个 24 网格功能图标 + 3 个品牌），增删资产必须同步测试断言与本节。
+- **存量零引用冻结**：本次遗留项 5 只删除 34 个占位圆；剩余 20 个 24 网格功能图标当前零引用，已在 `visual-p2-acceptance.test.ts` 冻结为「只减不增」清单——后续批次要么在代码中引用，要么删除并同步收缩清单。
+- **删除方式**：使用 `git rm`，不保留重复占位文件归档（确需留档时归档到 `out/archive/`，不入库）。
+
+## 9. 待实现项与验收
 
 - 已实现（P1~P2，2026-11-27）：
     - 菜单栏键盘角色与子菜单焦点管理（§2，`menu-keyboard.ts`）；
     - 6 组件 × 4 风格 × 3 密度的视觉落地（§2~§7 全部尺寸/材质取值由令牌覆盖自动生效）；
-    - 对话框宽度阶梯的等值调用点迁移（§5）；工具窗可选内边距包裹层（§3，默认关闭）。
+    - 对话框宽度阶梯的等值调用点迁移（§5）；工具窗可选内边距包裹层（§3，默认关闭）；
+    - 图标统一遗留项收口（§8）：删除 34 个未引用「占位圆」资产；`AdmonitionDialog` 12 个 emoji 功能图标替换为 MDI fill 型 SVG；MDI fill 型例外口径与资产清理原则入规范。
 - 待实现（后续批次，已在 P2-VERIFICATION 记录）：
     - 对话框剩余 `width` 调用点继续迁移到语义阶梯（风险较大的 860/900/980/1280/1400 等自定义宽度需先确认视觉等价）；
     - 工具窗逐个启用 `contentPadding`（需先移除对应正文容器的自有内边距，避免双重留白）；
-    - 应用层 z-index 基座（欢迎页 9999 / 写作模式 3000 / 窗口缩放热区 10000）统一迁移到 `UI_Z_INDEX_TOKENS` 相对阶梯；
-    - 图标统一剩余项（34 个占位圆资产、12 个 emoji 功能图标、MDI fill 型图标库口径归一）。
+    - ~~应用层 z-index 基座（欢迎页 9999 / 写作模式 3000 / 窗口缩放热区 10000）统一迁移到 `UI_Z_INDEX_TOKENS` 相对阶梯~~ → ✅ **P2 遗留项 4 已完成命名令牌化**（欢迎页/写作模式/缩放热区消费 `--ui-z-*-app`，数值不变、栈序零变化；相对阶梯化留待后续，只需改变量值）；
+    - 20 个历史零引用 24 网格功能图标（§8.3 冻结清单）：后续批次确认用途后引用，或删除并同步收缩清单。
 - 验收口径：
     - 每组件在 4 种风格 × 3 档密度下截图走查（真实截图归档 `out/visual-1.5.5-p2/`，不入库；软门禁见 `e2e/visual-matrix.spec.ts`）；
     - 键盘走查：Tab 顺序、焦点可见、`Esc` 语义一致（`dialog-a11y.test.ts` / `menu-keyboard` 测试守护）；
@@ -122,10 +152,13 @@
     - 静态矩阵断言：`tests/unit/visual-p2-acceptance.test.ts`（48 + 18 + 12 + 6 组合数、144 组组件观测点、28 主题对比度扫描）；
     - 门禁：类型检查、ESLint、Prettier、全量单测、覆盖率、文档链接检查全绿。
 
-## 9. 相关文件
+## 10. 相关文件
 
 - 令牌与降级规则：[设计令牌规范](DESIGN.md)
 - 动效规则：[动效规范](MOTION.md)
 - 视觉方向稿：视觉升级方案（`docs/wiki/04-优化与专项报告/`）
 - 对话框外壳：[`src/renderer/src/components/dialogs/BaseDialog.vue`](../../src/renderer/src/components/dialogs/BaseDialog.vue)
 - 风格/密度变量：[`src/renderer/src/styles/ui-style.css`](../../src/renderer/src/styles/ui-style.css)
+- 图标资产目录：[`src/renderer/src/assets/icons/`](../../src/renderer/src/assets/icons/)
+- MDI 核心子集：[`mdi-icons-core.ts`](../../src/renderer/src/components/Markdown/mdi-icons-core.ts) ｜ 全量数据：[`mdi-icons-data.ts`](../../src/renderer/src/components/Markdown/mdi-icons-data.ts) ｜ 懒加载器：[`mdi-icons-loader.ts`](../../src/renderer/src/components/Markdown/mdi-icons-loader.ts)
+- 本批图标清理证据（临时产物，不入库）：`out/tmp/icons-cleanup-evidence.md`、`out/tmp/unreferenced-icons-report.json`

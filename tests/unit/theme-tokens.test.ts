@@ -366,9 +366,11 @@ describe('resolveSemanticThemeGroup：主题分组判定', () => {
         ).toBe('light')
     })
 
-    it('页面底浅但卡片面深（深邃夜空历史数据）→ 按表面判深色，保证状态色对比度', () => {
-        // 现存主题 'dark' 的 backgroundColor 为 #fff0f0（页面底浅）、cardBackground 为 #1a1a2e（表面深），
-        // 语义色主要绘制在卡片/工具窗面上，因此按 surface 判定为深色（该页面底色异常已作为风险项上报）。
+    it('页面底浅但卡片面深（历史异常快照）→ 按表面判深色，保证状态色对比度', () => {
+        // 历史快照：dark（深邃夜空）曾误用 rose 的 backgroundColor #fff0f0（页面底浅）、
+        // cardBackground #1a1a2e（表面深），该异常已于 2026-11-27 修复为 #0d0d1a 深色页面底。
+        // 本用例保留该合成样本，锁定「表面亮度优先于 isDarkThemeType 分组」的判定顺序：
+        // 即便未来再次出现页面底与卡片面异明暗的主题（或历史配置），语义色仍按实际表面选深色套。
         expect(
             resolveSemanticThemeGroup('dark', {
                 backgroundColor: '#fff0f0',

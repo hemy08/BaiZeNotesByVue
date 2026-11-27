@@ -156,14 +156,15 @@ const illustrationPaths = computed<readonly string[]>(() => {
     margin-top: 4px;
 }
 
-/* 主按钮：--ui-accent 实色 + 主题按钮文字色（白字属既有主题按钮配色，注释豁免） */
+/* 主按钮：--ui-accent 实色 + 主题按钮文字色（--button-text-color 由 useTheme 运行时写入，
+   首屏静态默认值已在 theme.css 的 --theme-button-text-color 提供，无需颜色兜底） */
 .empty-state__action {
     height: var(--ui-control-height, 32px);
     padding: 0 16px;
     border: none;
     border-radius: var(--ui-radius-md, 4px);
     background: var(--ui-accent, var(--accent-color));
-    color: var(--button-text-color, #fff);
+    color: var(--button-text-color);
     font-family: inherit;
     font-size: var(--ui-font-size, 13px);
     cursor: pointer;

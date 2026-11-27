@@ -83,13 +83,21 @@
     --ui-z-toast: 70;
     --ui-z-guide: 80;
 
-    /* ---------- 应用层兼容层级（T12） ----------
-       语义 rank（--ui-z-dialog: 50 / --ui-z-palette: 60）是相对阶梯，但既有高层浮层
-       （欢迎页 9999 / 写作模式 3000 / 窗口缩放热区 9999~10000）尚未迁移，直接使用相对值
-       会破坏既有栈序。此处给出「应用层等值映射」，唯一真源是同名 TS 常量
-       UI_Z_INDEX_APP_COMPAT（src/shared/constants/ui-style.ts）；迁移完成后改本处即可。 */
+    /* ---------- 应用层层级：兼容映射（T12）+ 基座层（P2 遗留项 4） ----------
+       语义 rank（--ui-z-dialog: 50 / --ui-z-palette: 60）是相对阶梯；既有高层浮层必须保持原有
+       栈序，故此处声明「应用层等值映射」，唯一真源是 TS 常量（src/shared/constants/ui-style.ts）：
+       - UI_Z_INDEX_APP_COMPAT（T12）：对话框 9999 / 命令面板 10000，已由 BaseDialog、
+         CommandPalette 消费；
+       - UI_Z_INDEX_APP_BASE（P2 遗留项 4，本批迁移完成）：欢迎页 9999 / 窗口缩放热区 10000 /
+         写作模式 3000。WelcomeScreen / BaiZeNotes / WritingModeHost 已改为消费下列变量，
+         组件内不再出现 9999 / 10000 / 3000 裸值；数值与迁移前逐项等值（零回归）。
+       组内派生（不新增变量）：欢迎页内部窗口控制条 = welcome + 1；缩放热区「边」= resize - 1。
+       后续若要统一改用相对阶梯，只改本处与 TS 常量，消费组件无需改动。 */
     --ui-z-dialog-app: 9999;
     --ui-z-palette-app: 10000;
+    --ui-z-writing-mode-app: 3000;
+    --ui-z-welcome-app: 9999;
+    --ui-z-resize-app: 10000;
 }
 
 /* ============================================================================

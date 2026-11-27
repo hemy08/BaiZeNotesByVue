@@ -932,7 +932,7 @@ onBeforeUnmount(() => {
 .preview-rendering-skeleton__title {
     margin-bottom: 16px;
     font-size: 13px;
-    color: var(--secondary-text-color, #909399);
+    color: var(--secondary-text-color);
 }
 
 .preview-rendering-skeleton__line {

@@ -337,7 +337,7 @@ function handleInsert() {
 
 .tab-btn.active {
     background: var(--accent-color);
-    color: #fff;
+    color: var(--theme-button-text-color);
 }
 
 .tab-content {
@@ -384,7 +384,7 @@ function handleInsert() {
     border: none;
     border-radius: 6px;
     background: var(--accent-color);
-    color: #fff;
+    color: var(--theme-button-text-color);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;

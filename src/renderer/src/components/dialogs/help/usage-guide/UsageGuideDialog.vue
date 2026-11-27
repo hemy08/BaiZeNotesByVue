@@ -68,7 +68,7 @@ function handleClose(): void {
     min-height: 68vh;
     border: 0;
     display: block;
-    background: var(--bg-primary, #fff);
+    background: var(--ui-bg-elevated);
 }
 
 .btn-usage-guide-close {

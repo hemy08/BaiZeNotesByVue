@@ -32,6 +32,40 @@ describe('AdmonitionDialog', () => {
         expect(cards[11].text()).toContain('Quote')
     })
 
+    it('renders 12 SVG type icons (24 grid / currentColor / decorative) instead of emoji', () => {
+        const wrapper = mount(AdmonitionDialog, {
+            ...dialogMountOptions,
+            props: { visible: true }
+        })
+        // P2 T14 遗留项 5：12 个 emoji 功能图标替换为 MDI fill 型 SVG
+        const icons = wrapper.findAll('.type-icon svg')
+        expect(icons).toHaveLength(12)
+        for (const icon of icons) {
+            expect(icon.attributes('viewBox')).toBe('0 0 24 24')
+            expect(icon.attributes('fill')).toBe('currentColor')
+            expect(icon.attributes('aria-hidden')).toBe('true')
+            expect(icon.find('path').attributes('d')).toBeTruthy()
+        }
+        // 不得残留 emoji 功能图标；可访问名由可见的 type-name 文案承载
+        expect(wrapper.find('.type-grid').text()).not.toMatch(
+            /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u
+        )
+        expect(wrapper.findAll('.type-name').map((name) => name.text())).toEqual([
+            'Note',
+            'Tip',
+            'Warning',
+            'Danger',
+            'Info',
+            'Abstract',
+            'Todo',
+            'Success',
+            'Question',
+            'Bug',
+            'Example',
+            'Quote'
+        ])
+    })
+
     it('selects a type when clicking its card', async () => {
         const wrapper = mount(AdmonitionDialog, {
             ...dialogMountOptions,

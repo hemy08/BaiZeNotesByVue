@@ -10,7 +10,8 @@
  * 2. 标题栏 / 状态栏 / 侧栏 / 导航条 / 工区内容区分别消费壳层（`--ui-*`）与内容区
  *    （`--ui-content-*`）令牌 —— hybrid 双材质边界由此成立：外壳 = workbench、内容区 = paper；
  * 3. 组件内不得出现 data-style / data-density 分支或读取用户外观设置（唯一入口 useTheme）；
- * 4. 禁止整窗 backdrop-filter（glass 性能约束）、禁止新增硬编码主题色（既有遗留值白名单）。
+ * 4. 禁止整窗 backdrop-filter（glass 性能约束）、禁止新增硬编码主题色（既有遗留值白名单）；
+ * 5. 窗口缩放热区层级走应用层命名令牌 `--ui-z-resize-app`（P2 遗留项 4，不再写裸值 9999/10000）。
  *
  * 真实 Electron 真机截图（4 风格主窗口两两不同 + 默认 workbench 基线不变）由
  * `e2e/visual-matrix.spec.ts` 的 `assertStyleVariantsDiffer` 硬断言保证。
@@ -215,6 +216,18 @@ describe('壳层材质派生（BaiZeNotes.vue）：只从 P0 冻结令牌计算�
         expect(fileBar).toContain('var(--ui-accent, var(--theme-accent-color))')
         expect(fileBar).toContain('var(--ui-border, var(--theme-border-color))')
         expect(fileBar).toContain('var(--bz-style-on, 0)')
+    })
+})
+
+describe('层级：窗口缩放热区消费应用层命名令牌（P2 遗留项 4）', () => {
+    it('.resize-corner 取 --ui-z-resize-app、.resize-edge = resize - 1，不再写裸值 9999 / 10000', () => {
+        const source = css('shell')
+        // 数值与迁移前逐项等值：角 = 10000、边 = 9999（源值真源 UI_Z_INDEX_APP_BASE.resize）
+        expect(ruleBlock(source, '.resize-edge')).toContain(
+            'z-index: calc(var(--ui-z-resize-app) - 1)'
+        )
+        expect(ruleBlock(source, '.resize-corner')).toContain('z-index: var(--ui-z-resize-app)')
+        expect(source).not.toMatch(/z-index:\s*(9999|10000)\b/)
     })
 })
 

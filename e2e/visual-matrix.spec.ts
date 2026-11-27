@@ -22,8 +22,9 @@
  * - 主窗口（菜单栏 + 工作区 + 状态栏）× 4 风格 × 3 密度 = 12；
  * - 对话框（设置 → 主题设置）× 4 风格 = 4；密度 × 3（workbench）= 3；
  * - 命令面板（编辑 → 命令面板）× 4 风格 = 4；密度 × 3 = 3；
- * - 表格编辑器（工具 → Markdown表格，非模态工具窗）× 4 风格 = 4（打开失败时记录 annotation
- *   跳过该组，不伪造证据）；
+ * - 表格编辑器（工具 → Markdown表格，非模态工具窗）× 4 风格 = 4；密度 × 3（workbench）= 3；
+ *   外观（风格/密度）经「系统设置写入 → 主进程 SYSTEM_SETTING_UPDATE 广播 →
+ *   useTheme.applyUiAppearance」真实链路切换（表格编辑器内部令牌消费 currentUiAppearance）；
  * - glass 降级专项：减少透明（paper 回退）+ 深色 steady 稳健模式 = 2；
  * - 深色主题（`baize-text`）× 4 风格主窗口 = 4（第二次启动，隔离 userData）。
  *
@@ -97,7 +98,17 @@ function ensureDirs(): void {
     }
 }
 
-/** 通过根元素 data-* 切换风格/密度（与 useTheme.applyUiAppearance 写同一属性，真实 CSS 生效） */
+/**
+ * 通过根元素 data-* 切换风格/密度（与 useTheme.applyUiAppearance 写同一属性，真实 CSS 生效）。
+ *
+ * 适用面：只消费 CSS 变量（`[data-style]` / `[data-density]` 选择器）的组件，切换后浏览器
+ * 重新计算即可生效，所以截图前直接写属性即可（快、无需 IPC，基线稳定）。
+ *
+ * **不适用面**：直接读 `useTheme().currentUiAppearance` 响应式状态派生内联 CSS 变量的组件
+ * （表格编辑器：`--table-row-height` / `--table-header-bg` 等由 currentUiAppearance 计算）。
+ * 只写 data-* 不会更新该模块级 ref，组件内部令牌会停留在打开时的值；这类区域必须走
+ * `applyAppearanceViaSettings` 真实链路（见下）。
+ */
 async function applyAppearance(
     page: Page,
     style: string,
@@ -115,6 +126,97 @@ async function applyAppearance(
         { style, density, options }
     )
     // 等待样式/过渡稳定（动效令牌最长 240ms；这里只用于截图前稳定，不替代断言等待）
+    await page.waitForTimeout(300)
+}
+
+/**
+ * 经真实产品链路应用界面外观（风格 + 密度）。
+ *
+ * 链路：`window.api.config.write('system', { uiStyle, uiDensity })`（真实 IPC）→ 主进程
+ * `applySystemSettings` 落盘 + 广播 `IPC.SETTING.SYSTEM_SETTING_UPDATE` → 渲染层
+ * `BaiZeNotes.handleSystemSettingUpdate` → `useTheme.applyUiAppearance` 更新模块级
+ * `currentUiAppearance` 并重写根元素 data-*。与用户在「设置 → 系统设置 → 外观」保存设置
+ * 完全同一条产品路径（不 mock、不绕过）。
+ *
+ * 为什么表格编辑器截图必须用它：TableEditorDialog 用 `useTheme().currentUiAppearance`
+ * 派生表格专属 `--table-*` 内联变量（行高/列头高/网格线/列头底色），仅写根元素 data-*
+ * 会让表格内部令牌停留在打开时的 workbench/default——4 风格 × 3 密度会截到同一张表格。
+ *
+ * 断言：轮询直到「根元素 data-*」与「表格编辑器根节点 data-table-*」同时等于期望值，
+ * 证明组件内部状态确实已随真实链路更新（不是只改了外层 CSS）。
+ */
+async function applyAppearanceViaSettings(
+    page: Page,
+    requested: { style: (typeof STYLES)[number]; density: (typeof DENSITIES)[number] }
+): Promise<void> {
+    const written = await page.evaluate(
+        async (patch) => {
+            const api = (
+                window as unknown as {
+                    api: {
+                        config: { write: (name: string, data: unknown) => Promise<boolean> }
+                    }
+                }
+            ).api
+            // 只写本 spec 需要的外观字段：主进程 saveSystemSetting 按字段合并，其余设置保持不变；
+            // 同时也避免 E2E 触碰 autoStart 等有系统副作用（登录项）的字段。
+            return api.config.write('system', patch)
+        },
+        { uiStyle: requested.style, uiDensity: requested.density }
+    )
+    if (!written) {
+        throw new Error(
+            `系统设置写入失败（表格编辑器外观链路）：${requested.style}/${requested.density}`
+        )
+    }
+
+    // glass 在「减少透明 / 系统偏好减少透明」环境会按 P0 规格降级为 paper，断言接受降级结果；
+    // 其余风格必须与请求值一致。
+    const expectedStyles: string[] =
+        requested.style === 'glass' ? ['glass', 'paper'] : [requested.style]
+    await expect
+        .poll(
+            () =>
+                page.evaluate(() => {
+                    const tableBody = document.querySelector('.table-editor-body')
+                    const rootStyle = document.documentElement.dataset.style ?? null
+                    const rootDensity = document.documentElement.dataset.density ?? null
+                    const tableStyle = tableBody?.getAttribute('data-table-style') ?? null
+                    const tableDensity = tableBody?.getAttribute('data-table-density') ?? null
+                    return {
+                        // 根元素（外壳 CSS 变量）与表格组件内部令牌必须同步到同一状态
+                        synced:
+                            rootStyle !== null &&
+                            rootDensity === tableDensity &&
+                            rootStyle === tableStyle,
+                        rootStyle,
+                        rootDensity,
+                        tableStyle,
+                        tableDensity
+                    }
+                }),
+            {
+                timeout: 10_000,
+                message:
+                    `外观未经真实设置链路生效（系统设置写入 → 广播 → applyUiAppearance）：` +
+                    `${requested.style}/${requested.density}`
+            }
+        )
+        .toMatchObject({ synced: true, rootDensity: requested.density })
+    const finalProbe = await page.evaluate(() => ({
+        rootStyle: document.documentElement.dataset.style ?? null,
+        tableStyle:
+            document.querySelector('.table-editor-body')?.getAttribute('data-table-style') ?? null
+    }))
+    for (const value of [finalProbe.rootStyle, finalProbe.tableStyle]) {
+        if (value === null || !expectedStyles.includes(value)) {
+            throw new Error(
+                `外观风格与请求值不一致（请求 ${requested.style}，实际 ${String(value)}；` +
+                    `仅 glass 允许按规格降级为 paper）`
+            )
+        }
+    }
+    // 等待样式/过渡稳定（动效令牌最长 240ms；不替代上面的条件等待）
     await page.waitForTimeout(300)
 }
 
@@ -179,15 +281,6 @@ async function closeTopDialog(page: Page): Promise<void> {
     await page.waitForTimeout(200)
 }
 
-/** 判断某个选择器是否可见（不等待超时膨胀） */
-async function isVisible(page: Page, selector: string, timeout = 5_000): Promise<boolean> {
-    return page
-        .locator(selector)
-        .first()
-        .isVisible({ timeout })
-        .catch(() => false)
-}
-
 /**
  * 截图稳定性注入（每次应用启动后都要调用一次；深色主题是第二次启动，不能漏）。
  *
@@ -223,7 +316,9 @@ async function captureMainMatrix(page: Page, testInfo: TestInfo): Promise<void> 
 /**
  * 为工具窗截图准备一个打开的 Markdown 文件。
  *
- * 表格编辑器（插入 → Markdown表格）依赖活动编辑器；E2E 通过真实主进程链路打开
+ * 表格编辑器（工具 → Markdown表格）依赖活动编辑器：MarkdownMonacoEditor 在 Monaco
+ * `onMounted` 时即调用 `setActiveEditor`（common/active-editor.ts），所以本函数等到
+ * `.monaco-editor` 可见时注册链路已就绪，无需额外等待/点击。文件通过真实主进程链路打开
  * 预置的 .md（seedFileState + OPEN_RECENT），不 mock 产品行为。
  *
  * 稳定性：示例文件放在**固定路径**（`out/visual-1.5.5-p2/fixtures/`）而不是每次随机的
@@ -308,55 +403,50 @@ async function captureComponentRegions(page: Page, testInfo: TestInfo): Promise<
     }
     await closeTopDialog(page)
 
-    // 3) 表格编辑器（非模态工具窗）：插入 → Markdown表格
-    //    该入口依赖活动编辑器；E2E 未打开文件时可能不会弹窗，此时记录 annotation 跳过（不伪造）
+    // 3) 表格编辑器（非模态工具窗）：工具 → Markdown表格
+    //
+    // 入口依赖「活动编辑器」注册链路：MarkdownMonacoEditor 在 Monaco onMounted 时即调用
+    // setActiveEditor（见 common/active-editor.ts），因此打开示例文档后（本 spec 已通过
+    // openSampleDocument 真实打开）链路已就绪；这里再补一次真实用户操作——点击编辑器正文，
+    // 让光标/焦点就位，保证工具窗以稳定的「插入模式」打开（光标不在 GFM 表格内）。
+    //
+    // 历史问题（本区域曾回退「工具 → 特殊字体」并记录 skip）：旧实现点击菜单后立即用
+    // `locator.isVisible({ timeout })` 判定工具窗。Playwright 的 isVisible **不等待**
+    // （types.d.ts 中 timeout 标注为 `@deprecated This option is ignored`），而表格编辑器是
+    // 点击后动态 import + 异步挂载（本地真实 Electron 探针实测点击→可见约 40ms），
+    // 因此旧实现必然在挂载完成前误判失败。现改为等待型断言：表格编辑器必须真实弹出，
+    // 不再回退、不记录 skip（SKIP 记录在 summary.json 中应保持为空）。
     await applyAppearance(page, 'workbench', 'default')
     // 先重置菜单状态（命令面板刚以 Esc 关闭，菜单栏可能仍处于「已展开」状态）
     await page.keyboard.press('Escape')
     await page.waitForTimeout(300)
-    try {
-        // 「Markdown表格」入口在 P1 菜单重组后已迁入「工具」菜单（见 menu-config.ts insertMenu 注释）
-        await openMenuSubmenu(page, '工具', 'Markdown表格')
-    } catch (error) {
-        const message = `表格编辑器入口点击失败（打开文件后再试）：${String(error)}`
-        skips.push(message)
-        testInfo.annotations.push({ type: 'visual-skip', description: message })
-        return
-    }
-    const toolWindowSelector = '.dialog-container--tool-window, [data-dialog-shell="tool-window"]'
-    let toolWindowReady = await isVisible(page, toolWindowSelector, 10_000)
-    let toolWindowRegion = '非模态工具窗（表格编辑器）'
-    if (!toolWindowReady) {
-        // 表格编辑器需要「活动编辑器」注册链路（E2E 打开文件后该链路未注册活动编辑器时不会弹窗，
-        // 属测试环境可达性限制而非产品缺陷）。改用一个不依赖活动编辑器的工具窗
-        // （工具 → 特殊字体 = FontSelectDialog，P1 菜单重组后与 Markdown表格 同在「工具」菜单）
-        // 捕获同一「非模态工具窗」壳的 4 风格 × 3 密度。
-        const skipMessage =
-            '表格编辑器工具窗未弹出（E2E 无活动编辑器注册）；改由「工具 → 特殊字体」工具窗捕获，' +
-            '表格编辑器令牌/键盘契约由 table-editor 单测覆盖'
-        skips.push(skipMessage)
-        testInfo.annotations.push({ type: 'visual-skip', description: skipMessage })
-        await page.keyboard.press('Escape')
-        await page.waitForTimeout(300)
-        try {
-            await openMenuSubmenu(page, '工具', '特殊字体')
-        } catch (error) {
-            const message = `工具窗替代入口打开失败，本区域无真实截图：${String(error)}`
-            skips.push(message)
-            testInfo.annotations.push({ type: 'visual-skip', description: message })
-            return
-        }
-        toolWindowReady = await isVisible(page, toolWindowSelector, 10_000)
-        toolWindowRegion = '非模态工具窗（特殊字体；表格编辑器 E2E 不可达）'
-        if (!toolWindowReady) {
-            const message = '工具窗未弹出，本区域无真实截图（改由静态矩阵断言覆盖）'
-            skips.push(message)
-            testInfo.annotations.push({ type: 'visual-skip', description: message })
-            return
-        }
-    }
+    await expect(page.locator('.monaco-editor').first()).toBeVisible({ timeout: 15_000 })
+    await page
+        .locator('.monaco-editor .view-lines')
+        .first()
+        .click({ position: { x: 40, y: 22 } })
+    await expect
+        .poll(
+            () => page.evaluate(() => document.activeElement?.closest('.monaco-editor') !== null),
+            { timeout: 10_000, message: '点击编辑器正文后焦点应进入 Monaco（活动编辑器就绪）' }
+        )
+        .toBe(true)
+    // 「Markdown表格」入口在 P1 菜单重组后已迁入「工具」菜单（见 menu-config.ts insertMenu 注释）
+    await openMenuSubmenu(page, '工具', 'Markdown表格')
+    // 等待型断言：必须等到表格编辑器自身（.table-editor-grid）可见，而不是「某个工具窗壳」
+    // 可见——后者可能被其它浮层/残留 DOM 满足，无法证明表格编辑器真的打开。
+    const tableEditorGrid = page
+        .locator('.dialog-container--tool-window .table-editor-grid')
+        .first()
+    await expect(
+        tableEditorGrid,
+        '表格编辑器工具窗必须真实弹出（工具 → Markdown表格；依赖 Monaco 挂载时的活动编辑器注册）'
+    ).toBeVisible({ timeout: 15_000 })
+    const toolWindowRegion = '非模态工具窗（表格编辑器）'
+    // 表格编辑器内部令牌（行高/列头/网格线/列头底色）由 useTheme().currentUiAppearance 派生，
+    // 必须经真实设置链路切换外观（只写根元素 data-* 会让表格内部停留在 workbench/default）。
     for (const style of STYLES) {
-        await applyAppearance(page, style, 'default')
+        await applyAppearanceViaSettings(page, { style, density: 'default' })
         await capture(page, testInfo, `toolwindow__${style}__default`, {
             style,
             density: 'default',
@@ -364,19 +454,20 @@ async function captureComponentRegions(page: Page, testInfo: TestInfo): Promise<
         })
     }
     for (const density of DENSITIES) {
-        await applyAppearance(page, 'workbench', density)
+        await applyAppearanceViaSettings(page, { style: 'workbench', density })
         await capture(page, testInfo, `toolwindow__workbench__${density}`, {
             style: 'workbench',
             density,
             region: toolWindowRegion
         })
     }
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-        await closeTopDialog(page)
-        if (!(await isVisible(page, toolWindowSelector, 1_000))) break
-    }
-    // 兜底：显式关闭残留浮层（非模态工具窗 Esc 依赖焦点，不可靠），避免拦截后续菜单 hover
+    // 恢复默认外观（同样走真实链路），避免影响后续菜单区域截图的组件内部状态
+    await applyAppearanceViaSettings(page, { style: 'workbench', density: 'default' })
+    // 关闭工具窗：非模态工具窗的 Esc 语义是「焦点位于窗内时才关闭」，此时焦点可能在编辑器上，
+    // 因此直接走「点关闭按钮」的兜底清理（closeAllFloatingLayers），并断言确实已关闭，
+    // 避免残留浮层拦截后续菜单 hover。
     await closeAllFloatingLayers(page)
+    await expect(tableEditorGrid).toBeHidden({ timeout: 10_000 })
 }
 
 /** glass 降级专项截图 */
@@ -650,7 +741,7 @@ test.describe('视觉验收矩阵（真实截图软门禁）', () => {
             assertStyleVariantsDiffer(testInfo, 'main', 'default', '主窗口（浅色）')
             assertStyleVariantsDiffer(testInfo, 'dialog', 'default', '对话框')
             assertStyleVariantsDiffer(testInfo, 'palette', 'default', '命令面板')
-            assertStyleVariantsDiffer(testInfo, 'toolwindow', 'default', '工具窗', 3)
+            assertStyleVariantsDiffer(testInfo, 'toolwindow', 'default', '表格编辑器工具窗', 3)
             assertStyleVariantsDiffer(testInfo, 'menu', 'default', '菜单栏', 3)
         } finally {
             await teardown(launch, sandbox)

@@ -821,10 +821,12 @@ onBeforeUnmount(() => {
         );
 }
 
-/* 窗口大小调整边框 */
+/* 窗口大小调整边框（P2 遗留项 4：原裸值 9999/10000 → 命名令牌 --ui-z-resize-app，
+   数值不变。热区「角」取 resize 最高层（10000），「边」取 resize - 1（9999），
+   与迁移前完全等值；变量真源 UI_Z_INDEX_APP_BASE.resize）。 */
 .resize-edge {
     position: absolute;
-    z-index: 9999;
+    z-index: calc(var(--ui-z-resize-app) - 1);
 }
 
 .resize-top {
@@ -861,7 +863,7 @@ onBeforeUnmount(() => {
 
 .resize-corner {
     position: absolute;
-    z-index: 10000;
+    z-index: var(--ui-z-resize-app);
     width: 12px;
     height: 12px;
 }

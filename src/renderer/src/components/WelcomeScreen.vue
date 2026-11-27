@@ -132,7 +132,9 @@ onMounted(() => {
     align-items: center;
     justify-content: center;
     background: var(--theme-title-bar-gradient);
-    z-index: 9999;
+    /* 应用层欢迎层（P2 遗留项 4）：原裸值 9999 → 命名令牌 --ui-z-welcome-app，数值不变。
+       变量真源 UI_Z_INDEX_APP_BASE.welcome（styles/ui-style.css 的 :root 声明）。 */
+    z-index: var(--ui-z-welcome-app);
     overflow: hidden;
 }
 
@@ -146,7 +148,9 @@ onMounted(() => {
     justify-content: flex-end;
     -webkit-app-region: drag;
     flex-shrink: 0;
-    z-index: 10000;
+    /* 欢迎层内部窗口控制条：恒比欢迎层高 1 档（原裸值 10000 = 9999 + 1，数值不变）。
+       仅在本层 stacking context 内参与局部排序，不改变与对话框/缩放热区的既有栈序。 */
+    z-index: calc(var(--ui-z-welcome-app) + 1);
 }
 
 .welcome-content {

@@ -10,7 +10,9 @@
  * 4. 渲染层消费方（主题设置对话框 / 标题栏 logo / config store）确实引用 shared 清单，
  *    且不再保留硬编码主题 id 数组（防回归：避免又回到三处各自维护）；
  * 5. 视觉升级 P0：28 套主题 × 18 个语义令牌全部可派生 / 全部合法、语义色分组正确、
- *    theme.css :root 默认值与 baize 主题派生结果逐项一致、useTheme 真正写入 --ui-* 变量。
+ *    theme.css :root 默认值与 baize 主题派生结果逐项一致、useTheme 真正写入 --ui-* 变量；
+ * 6. 主题配色自洽性：页面底与卡片面不得明暗相反、正文/次要文字在页面底上达到 AA 基线
+ *    （2026-11-27 dark 主题历史数据修复的回归护栏）。
  */
 import { describe, it, expect } from 'vitest'
 import * as fs from 'fs'
@@ -25,7 +27,10 @@ import {
 import {
     buildSemanticCssVariables,
     buildSemanticTokens,
+    contrastRatio,
+    isDarkColor,
     parseColor,
+    relativeLuminance,
     resolveSemanticThemeGroup,
     SEMANTIC_STATUS_COLORS,
     SEMANTIC_TOKEN_CSS_BINDINGS,
@@ -399,7 +404,7 @@ describe('CSS 单次注入（第 4 批 4.5 / M6）', () => {
 // 的 themes 注册表，对每套主题实际调用共享派生函数，验证「28 × 18 = 504」个令牌全部可得
 // 且全部是合法 CSS 颜色；同时锁定语义色分组、theme.css :root 默认值、useTheme 写入路径。
 // =============================================================================================
-describe('28 套主题 × 18 语义令牌派生完整性（视觉升级 P0）', () => {
+describe('28 套主题 × 18 语义令牌派生完整性 + 配色自洽性（视觉升级 P0）', () => {
     /** 主题注册表中参与语义令牌派生的 7 个配色字段 */
     const TOKEN_COLOR_FIELDS = [
         'backgroundColor',
@@ -555,5 +560,55 @@ describe('28 套主题 × 18 语义令牌派生完整性（视觉升级 P0）', 
         expect(useThemeSource).toContain('...buildSemanticCssVariables(theme, semanticGroup)')
         // 旧变量清单仍是 10 个配色字段（20 变量）的唯一真源
         expect(useThemeSource).toContain('export const THEME_CSS_VARIABLE_BINDINGS')
+    })
+
+    // =========================================================================================
+    // 主题配色自洽性（2026-11-27 遗留项 1：dark 主题历史配色数据异常修正的回归护栏）
+    //
+    // 历史缺陷：dark（深邃夜空）的 backgroundColor 误用 rose 主题的浅粉 #fff0f0，而
+    // cardBackground #1a1a2e / textColor #e0e0e0 为深色主题配色 → 页面底与卡片面明暗相反，
+    // 正文 #e0e0e0 在 #fff0f0 上仅 1.19:1（不可读）。P0 令牌派生只对 cardBackground 表面做
+    // 亮度兜底，因此该异常被掩盖。以下两条用例锁定「页面底自洽」：以后任意主题再把背景色
+    // 改成与卡片相反明暗（或页面底正文不可读）都会被静态契约直接拦截。
+    // =========================================================================================
+
+    it('28 套主题页面底与卡片面明暗一致，且正文/次要文字在页面底上可读（AA 基线）', () => {
+        for (const entry of THEME_ENTRIES) {
+            const source = entry.colors as unknown as SemanticTokenSource
+            const group = resolveSemanticThemeGroup(entry.type, source)
+            // 语义分组按「卡片面亮度」判定：页面底必须与其同明暗，禁止出现 dark 历史数据的
+            // 「浅粉页面底 + 深色卡片」组合（深色主题下卡片面更亮、浅色主题下页面底更亮）
+            expect(isDarkColor(source.backgroundColor), `${entry.type}.backgroundColor`).toBe(
+                group === 'dark'
+            )
+            const textContrast = contrastRatio(source.textColor, source.backgroundColor) ?? 0
+            const secondaryContrast =
+                contrastRatio(source.secondaryTextColor, source.backgroundColor) ?? 0
+            expect(textContrast, `${entry.type} 正文/页面底对比度`).toBeGreaterThanOrEqual(4.5)
+            expect(secondaryContrast, `${entry.type} 次要文字/页面底对比度`).toBeGreaterThanOrEqual(
+                3
+            )
+        }
+    })
+
+    it('深邃夜空（dark）已修正为自洽深色：深色页面底 + 卡片悬浮层次 + 可读文字', () => {
+        const darkEntry = THEME_ENTRIES.find((entry) => entry.type === 'dark')
+        expect(darkEntry, '应能解析 dark 主题条目').toBeDefined()
+        const source = darkEntry?.colors as unknown as SemanticTokenSource
+        expect(isDarkColor(source.backgroundColor), 'dark.backgroundColor 必须是深色').toBe(true)
+        expect(isDarkColor(source.cardBackground), 'dark.cardBackground 必须是深色').toBe(true)
+        // 页面底应比卡片面更暗，保证卡片/工具窗是「悬浮面」而不是「凹陷面」
+        const pageLuminance = relativeLuminance(source.backgroundColor)
+        const cardLuminance = relativeLuminance(source.cardBackground)
+        expect(pageLuminance).not.toBeNull()
+        expect(cardLuminance).not.toBeNull()
+        expect(pageLuminance as number).toBeLessThan(cardLuminance as number)
+        // 正文 ≥4.5:1、次要文字 ≥3:1（历史值正文仅 1.19:1）
+        expect(contrastRatio(source.textColor, source.backgroundColor) ?? 0).toBeGreaterThanOrEqual(
+            4.5
+        )
+        expect(
+            contrastRatio(source.secondaryTextColor, source.backgroundColor) ?? 0
+        ).toBeGreaterThanOrEqual(3)
     })
 })

@@ -40,6 +40,18 @@
 - **体积治理（死重回收，不放宽预算）**：复核发现 `resources/plantuml/logos.min.js`（**5.3 MB**）从未被任何资源引用（`index.html` 仅加载 `viz-global.js` + `plantuml.js`，`plantuml.js` 中 "logos" 出现 0 次），予以回收；NSIS 111.78→**111.29 MiB**、portable 101.16→**100.67 MiB**（预算 115 / 101.1，全部通过）；此前按 PERF-02 评估将 portable 预算 101→101.1 的调整保留（发布说明数据增量），其余阈值未动
 - **门禁**：修复后全量 **367 文件 / 6,738 用例**、coverage 93.07/87.52/93.81/93.54、docs:check 986 链接、E2E 视觉矩阵通过；质量基线已同步为 **367 / 6,738 / 121,178**
 
+### 🧹 发布前遗留项清理（2026-11-27，6 项全部处理）
+
+- **dark 主题配色数据异常**：`backgroundColor` 历史笔误（`#fff0f0`，误用 rose 主题值）→ `#0d0d1a`；正文对比度 1.19:1 → 14.6:1；28 主题扫描 0 套明暗相反；+2 回归用例（含红→绿验证）
+- **Alt 键激活菜单栏**：单独 Alt 激活/聚焦首项、再次 Alt 或 Esc 退出并归还焦点、组合键（Alt+F4/Alt+Tab/Alt+字母）不劫持、对话框内/菜单隐藏时不激活；+14 用例；帮助文档 §8.1/§8.5/§24.12/§25 与 HTML/PDF 同步
+- **z-index 应用层基座迁移**：欢迎页/写作模式/缩放热区 5 处裸值 → `--ui-z-*-app` 命名令牌（`UI_Z_INDEX_APP_BASE`，数值等值、栈序零变化）；`visual-p2-acceptance.test.ts` 全仓护栏（裸值 0 处）
+- **未引用图标清理 + emoji 替换**：删除 34 个占位圆 SVG（`assets/icons` 57→23，引用扫描 34/34 零命中）；`AdmonitionDialog` 12 个 emoji → MDI fill 型 SVG（类型/文案/A11y 不变）；`COMPONENTS.md` 新增 §8 图标资产规范
+- **表格编辑器 E2E 截图链路**：根因为 Playwright `isVisible({timeout})` 不等待（竞态）+ E2E 绕过真实外观链路；E2E 改用真实配置写入链路 + 等待型断言；**真实截图 40 张、`skips=[]`**（连续两次 40/40 一致），删除"特殊字体"替代回退
+- **剩余硬编码清理**：实测起点 338 → **314**（−24，等值令牌映射/兜底清理 12 文件）；剩余 289 按类别保留（vendored 固定主题/参考数据/内容色/写域）+ 25 待补令牌（`--ui-highlight-color` 等）；新增 `visual-t15b-cleanup.test.ts`（18 用例：数量棘轮 + 白名单清单锁定 + 等值前提）
+- **帮助文档配图（并行会话合并）**：使用指导新增 22 张真实界面截图（1.48 MiB，`docs/help/images` → `src/renderer/public/help-images`，生成链 `copyHelpImages`）+ 帮助 PDF 重新生成（610KB→1.82MB，图文并茂）；应用内 HTML/PDF 同步
+- **体积预算（PERF-02 流程）**：帮助配图使 portable 100.67→103.21 MiB，经评估阈值 101.1→104.0 MiB（余 804 KiB）；NSIS 113.84/115、asar 41.07/47、入口/首屏均满足，其余 8 项不变
+- **门禁**：全量 **368 文件 / 6,786 用例**、coverage 93.07/87.52/93.82/93.54、typecheck 四段、ESLint 0、Prettier、docs:check 990 链接、quality 基线已同步（368 / 6,786 / 122,101）
+
 ### ✅ 门禁（2026-11-27）
 
 - typecheck 四段（node / web / test / e2e）、ESLint `--max-warnings=0`、Prettier `--check`、全量 vitest（修复后 **367 文件 / 6,738 用例**，6,733 通过 / 5 跳过）、coverage（93.07 / 87.52 / 93.81 / 93.54，阈值 80 / 75 / 73 / 80）、`docs:check`（986 链接）、**E2E 视觉矩阵（40 张真实截图，风格差异/菜单三级/无滚动断言通过）**、`build:unpack` + bundle budget（全部预算项通过：壳 661.4 KiB / app.asar 39.54 MiB / NSIS 111.29 MiB / portable 100.67 MiB；回收 plantuml/logos.min.js 5.3 MB 死重后 portable 余量 440 KiB）、`verify:fuses`（8 项 fuse 位 + 硬化启动冒烟）全部通过；quality 基线已同步为 **367 文件 / 6,738 用例 / 121,178 行**（三份对外文档一致）

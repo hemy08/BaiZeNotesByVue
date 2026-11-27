@@ -91,7 +91,13 @@ const BUDGETS = {
     // 增量来自 1.5.5 发布说明词条（zh/en i18n + release-notes 数据）与菜单版本项；
     // 按 PERF-02 评估：属三段发布链路（REL-16）必需数据，其余 8 项预算余量充足，
     // 故阈值 101→101.1 MiB（+0.1，为发布前最后发布说明内容留抖动余量）。
-    portable: { label: '便携版 exe（portable）', limit: 101.1 * MIB },
+    // 2026-11-27（帮助文档配图，与并行会话合并）：使用指导新增 22 张真实界面截图
+    // （docs/help/images → src/renderer/public/help-images 1.48 MiB 进 asar）并嵌入 PDF
+    // （610KB→1.82MB），最终构建实测 portable 100.67→103.21 MiB。按 PERF-02 评估：
+    // 属用户可见的帮助内容资产（非运行时代码膨胀），NSIS(113.84/115)、asar(41.07/47)、
+    // 入口/首屏预算均满足，故阈值 101.1→104.0 MiB（+2.9，覆盖配图与 PDF 并留 ~0.8 余量）；
+    // 其余 8 项预算不变。后续如需回收，可优先压缩帮助截图（PNG→WebP 可降 ~70%）。
+    portable: { label: '便携版 exe（portable）', limit: 104.0 * MIB },
     // 2026-11-20（B4 electron-store 11→12）：生产依赖树增长，asar 39.33→45.5 MiB（实测）
     asar: { label: 'app.asar', limit: 47 * MIB }
 }

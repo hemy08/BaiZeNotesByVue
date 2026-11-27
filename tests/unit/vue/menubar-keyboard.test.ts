@@ -8,6 +8,9 @@
  * - 顶层：方向键移动 + 回绕、Home/End、Enter/空格/ArrowDown 打开并移入焦点、Esc 关闭归还焦点；
  * - 下拉：上下方向键（跳过分隔符/禁用项）、Home/End、Enter 执行动作、
  *   ArrowRight 展开嵌套并进入、ArrowLeft 返回父层、Tab 关闭并归还焦点；
+ * - Alt 键激活菜单栏（Windows 惯例，1.5.5 遗留项补齐）：单独按 Alt 激活/再次 Alt 或
+ *   Esc 退出并归还原焦点；组合键（Alt+F4/Alt+Tab/Alt+字母/AltGr）与对话框内焦点不劫持，
+ *   激活后的方向键/Enter/Esc 完全沿用既有菜单键盘语义；
  * - 既有鼠标语义不变（悬停展开嵌套）。菜单数据/动作分发链路（MENU-01~13）未改动，
  *   动作执行仍走 HandleMenuAction（此处以替身断言接线）。
  */
@@ -21,6 +24,7 @@ vi.mock('@renderer/components/MenuBar/menu-actions', () => ({
 }))
 
 import MenuBar from '@renderer/components/MenuBar.vue'
+import { isMenuActivationAltKey } from '@renderer/components/MenuBar/menu-keyboard'
 
 let wrapper: VueWrapper | null = null
 
@@ -91,6 +95,21 @@ function pressKey(target: Element, key: string, init: KeyboardEventInit = {}): K
 async function openFileMenuByKeyboard(target: VueWrapper): Promise<void> {
     await topItems(target)[0].trigger('keydown', { key: 'Enter' })
     await flushPromises()
+}
+
+/** 在菜单栏之外创建一个可聚焦控件并聚焦（模拟编辑器/其它控件的既有焦点） */
+function createOutsideFocusTarget(): HTMLButtonElement {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.textContent = '编辑区'
+    document.body.appendChild(button)
+    button.focus()
+    return button
+}
+
+/** 菜单栏根节点（激活态 class 断言用） */
+function menubarRoot(target: VueWrapper): DOMWrapper<Element> {
+    return target.find('[role="menubar"]')
 }
 
 describe('MenuBar 键盘语义与 roving tabindex', () => {
@@ -325,5 +344,230 @@ describe('MenuBar 子菜单焦点管理（嵌套层）', () => {
         const separators = document.querySelectorAll('.submenu-container [role="separator"]')
         expect(separators.length).toBeGreaterThan(0)
         expect(separators[0].getAttribute('aria-orientation')).toBe('horizontal')
+    })
+})
+
+describe('MenuBar Alt 键激活菜单栏（Windows 惯例）', () => {
+    it('单独按 Alt 激活菜单栏：聚焦第一个顶层菜单、消费按键并给出激活态', async () => {
+        const w = mountMenuBar()
+        const items = topItems(w)
+        const event = pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+
+        expect(event.defaultPrevented).toBe(true)
+        expect(document.activeElement).toBe(items[0].element)
+        // 激活态 class 是可视反馈（focus-ring 令牌）的挂载点
+        expect(menubarRoot(w).classes()).toContain('menu-bar--alt-active')
+    })
+
+    it('激活后方向键/Enter 沿用既有菜单键盘语义（不新增第二套导航）', async () => {
+        const w = mountMenuBar()
+        const items = topItems(w)
+        pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+        expect(document.activeElement).toBe(items[0].element)
+
+        // 方向键：与既有 roving tabindex 语义一致
+        pressKey(items[0].element, 'ArrowRight')
+        await nextTick()
+        expect(document.activeElement).toBe(items[1].element)
+
+        // Enter：打开「编辑」菜单并把焦点移入下拉第一项
+        pressKey(items[1].element, 'Enter')
+        await flushPromises()
+        expect(document.querySelector('.submenu-container')).not.toBeNull()
+        expect(items[1].attributes('aria-expanded')).toBe('true')
+        expect(document.activeElement).toBe(topLevelRows()[0])
+    })
+
+    it('再次按 Alt 退出激活并把焦点归还激活前控件', async () => {
+        const w = mountMenuBar()
+        const items = topItems(w)
+        const outside = createOutsideFocusTarget()
+        expect(document.activeElement).toBe(outside)
+
+        pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+        expect(document.activeElement).toBe(items[0].element)
+
+        // 真实事件目标是当前聚焦的菜单项（菜单栏区域内按下 Alt）也要能退出
+        const secondEvent = pressKey(items[0].element, 'Alt', { altKey: true })
+        await nextTick()
+        expect(secondEvent.defaultPrevented).toBe(true)
+        expect(document.activeElement).toBe(outside)
+        expect(menubarRoot(w).classes()).not.toContain('menu-bar--alt-active')
+    })
+
+    it('激活后按 Esc 退出激活并归还焦点（未展开下拉时由激活态消费 Esc）', async () => {
+        const w = mountMenuBar()
+        const items = topItems(w)
+        const outside = createOutsideFocusTarget()
+        pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+        expect(document.activeElement).toBe(items[0].element)
+
+        const event = pressKey(items[0].element, 'Escape')
+        await nextTick()
+        expect(event.defaultPrevented).toBe(true)
+        expect(document.activeElement).toBe(outside)
+        expect(menubarRoot(w).classes()).not.toContain('menu-bar--alt-active')
+    })
+
+    it('Alt 打开下拉后按 Esc：沿用既有「关闭下拉并归还顶层按钮」语义并退出激活', async () => {
+        const w = mountMenuBar()
+        const items = topItems(w)
+        pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+        pressKey(items[0].element, 'Enter')
+        await flushPromises()
+
+        pressKey(document.activeElement ?? items[0].element, 'Escape')
+        await flushPromises()
+        expect(document.querySelector('.submenu-container')).toBeNull()
+        expect(document.activeElement).toBe(items[0].element)
+        expect(menubarRoot(w).classes()).not.toContain('menu-bar--alt-active')
+    })
+
+    it('焦点离开菜单栏时退出激活态（Tab 移出后再按 Alt 不会抢回旧焦点）', async () => {
+        const w = mountMenuBar()
+        const items = topItems(w)
+        const outside = createOutsideFocusTarget()
+
+        pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+        expect(document.activeElement).toBe(items[0].element)
+        expect(menubarRoot(w).classes()).toContain('menu-bar--alt-active')
+
+        // Tab 的焦点移动由浏览器完成（jsdom 不实现），这里直接聚焦外部控件模拟移出
+        outside.focus()
+        await nextTick()
+        expect(menubarRoot(w).classes()).not.toContain('menu-bar--alt-active')
+
+        // 再次 Alt 应重新激活，而不是「退出上一次激活」并抢回旧焦点
+        pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+        expect(document.activeElement).toBe(items[0].element)
+        expect(menubarRoot(w).classes()).toContain('menu-bar--alt-active')
+    })
+
+    it('Alt+其它键/带修饰键的组合键不被劫持（Alt+F4、Alt+Tab、AltGr 等放行）', async () => {
+        const w = mountMenuBar()
+        const outside = createOutsideFocusTarget()
+        const combos: KeyboardEventInit[] = [
+            { key: 'f', altKey: true }, // Alt+字母（当前无 Alt 助记符映射）
+            { key: 'Tab', altKey: true }, // Alt+Tab（系统切换窗口）
+            { key: 'F4', altKey: true }, // Alt+F4（系统关闭窗口）
+            { key: 'Alt', altKey: true, ctrlKey: true }, // AltGr / Ctrl+Alt
+            { key: 'Alt', altKey: true, shiftKey: true },
+            { key: 'Alt', altKey: true, metaKey: true }
+        ]
+        for (const init of combos) {
+            const event = pressKey(document.body, init.key ?? '', init)
+            expect(event.defaultPrevented, `组合键 ${init.key} 不应被菜单栏消费`).toBe(false)
+        }
+        await nextTick()
+        expect(document.activeElement).toBe(outside)
+        expect(menubarRoot(w).classes()).not.toContain('menu-bar--alt-active')
+    })
+
+    it('按住 Alt 的自动重复不重复切换激活态', async () => {
+        const w = mountMenuBar()
+        const items = topItems(w)
+        pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+        expect(document.activeElement).toBe(items[0].element)
+
+        const repeatEvent = pressKey(document.body, 'Alt', { altKey: true, repeat: true })
+        await nextTick()
+        expect(repeatEvent.defaultPrevented).toBe(false)
+        expect(document.activeElement).toBe(items[0].element)
+        expect(menubarRoot(w).classes()).toContain('menu-bar--alt-active')
+    })
+
+    it('激活后按 Alt+其它键（Alt+F4/Alt+Tab/Alt+字母）撤销激活且不消费按键', async () => {
+        const w = mountMenuBar()
+        const items = topItems(w)
+        const outside = createOutsideFocusTarget()
+
+        for (const key of ['f', 'Tab', 'F4']) {
+            pressKey(document.body, 'Alt', { altKey: true })
+            await nextTick()
+            expect(document.activeElement).toBe(items[0].element)
+
+            const event = pressKey(document.body, key, { altKey: true })
+            await nextTick()
+            expect(event.defaultPrevented, `Alt+${key} 不应被菜单栏消费`).toBe(false)
+            expect(document.activeElement).toBe(outside)
+            expect(menubarRoot(w).classes()).not.toContain('menu-bar--alt-active')
+        }
+    })
+
+    it('按住 Alt 继续用方向键导航时激活态保留（Windows 菜单习惯）', async () => {
+        const w = mountMenuBar()
+        const items = topItems(w)
+        pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+        expect(document.activeElement).toBe(items[0].element)
+
+        pressKey(items[0].element, 'ArrowRight', { altKey: true })
+        await nextTick()
+        expect(document.activeElement).toBe(items[1].element)
+        expect(menubarRoot(w).classes()).toContain('menu-bar--alt-active')
+    })
+
+    it('焦点在对话框内时 Alt 不激活菜单栏（不抢模态浮层焦点）', async () => {
+        const w = mountMenuBar()
+        const dialog = document.createElement('div')
+        dialog.setAttribute('role', 'dialog')
+        dialog.setAttribute('aria-modal', 'true')
+        const dialogButton = document.createElement('button')
+        dialog.appendChild(dialogButton)
+        document.body.appendChild(dialog)
+        dialogButton.focus()
+
+        const event = pressKey(dialogButton, 'Alt', { altKey: true })
+        await nextTick()
+        expect(event.defaultPrevented).toBe(false)
+        expect(document.activeElement).toBe(dialogButton)
+        expect(menubarRoot(w).classes()).not.toContain('menu-bar--alt-active')
+    })
+
+    it('菜单栏被宿主隐藏（Windows 原生菜单样式）时 Alt 不激活', async () => {
+        const host = document.createElement('div')
+        host.style.display = 'none'
+        document.body.appendChild(host)
+        wrapper = mount(MenuBar, { attachTo: host })
+
+        const event = pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+        expect(event.defaultPrevented).toBe(false)
+        expect(wrapper.find('[role="menubar"]').classes()).not.toContain('menu-bar--alt-active')
+    })
+
+    it('卸载后移除全局 Alt 监听（不再消费按键、不抛错）', async () => {
+        const w = mountMenuBar()
+        w.unmount()
+        wrapper = null
+        const outside = createOutsideFocusTarget()
+
+        const event = pressKey(document.body, 'Alt', { altKey: true })
+        await nextTick()
+        expect(event.defaultPrevented).toBe(false)
+        expect(document.activeElement).toBe(outside)
+    })
+})
+
+describe('isMenuActivationAltKey（Alt 激活判定纯函数）', () => {
+    it('只认「单独 Alt」：组合键、输入法组字与自动重复一律放行', () => {
+        expect(isMenuActivationAltKey({ key: 'Alt' })).toBe(true)
+        expect(isMenuActivationAltKey({ key: 'f' })).toBe(false)
+        expect(isMenuActivationAltKey({ key: 'Tab' })).toBe(false)
+        expect(isMenuActivationAltKey({ key: 'F4' })).toBe(false)
+        expect(isMenuActivationAltKey({ key: 'Alt', ctrlKey: true })).toBe(false)
+        expect(isMenuActivationAltKey({ key: 'Alt', metaKey: true })).toBe(false)
+        expect(isMenuActivationAltKey({ key: 'Alt', shiftKey: true })).toBe(false)
+        expect(isMenuActivationAltKey({ key: 'Alt', repeat: true })).toBe(false)
+        expect(isMenuActivationAltKey({ key: 'Alt', isComposing: true })).toBe(false)
+        expect(isMenuActivationAltKey({ key: 'Alt', keyCode: 229 })).toBe(false)
     })
 })

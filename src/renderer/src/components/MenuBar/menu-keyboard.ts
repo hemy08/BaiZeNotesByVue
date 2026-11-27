@@ -208,3 +208,57 @@ export function resolveSubmenuKeyAction(
             return null
     }
 }
+
+/**
+ * Alt 键激活菜单栏的事件判定（Windows 惯例，1.5.5 遗留项补齐）。
+ *
+ * ## 为什么是「纯判定 + 组件接线」
+ * 「单独按 Alt 激活菜单栏」属于按键识别，不涉及焦点落点；与上面的按键映射一样抽成
+ * 纯函数后，组件只负责「激活/退出」的状态与焦点，键位边界（组合键、输入法组字、
+ * 自动重复）可在单测里直接覆盖，不必为每个边界写一遍组件用例。
+ *
+ * ## 只认「单独 Alt」
+ * - `key` 必须是 `Alt`：Alt+F4 / Alt+Tab / Alt+字母的字母键事件一律不消费；
+ * - 带 Ctrl/Meta/Shift 修饰时不是「单独 Alt」：AltGr（Windows 上表现为 Ctrl+Alt）、
+ *   `Ctrl+Alt+P` 等既有组合键原样放行；
+ * - 输入法组字期（`isComposing` / keyCode 229）不响应；
+ * - 按住 Alt 的自动重复（`repeat`）不重复切换，避免激活态被按住时序闪断。
+ */
+export interface MenuAltKeyEvent {
+    /** KeyboardEvent.key */
+    key: string
+    /** 是否按住 Ctrl（AltGr 在 Windows 上同时带 Ctrl+Alt） */
+    ctrlKey?: boolean
+    /** 是否按住 Meta（macOS Cmd） */
+    metaKey?: boolean
+    /** 是否按住 Shift */
+    shiftKey?: boolean
+    /** 按住不放产生的自动重复事件 */
+    repeat?: boolean
+    /** 输入法组字中 */
+    isComposing?: boolean
+    /** 旧内核/Chrome 在组字期给出的 229 标记 */
+    keyCode?: number
+}
+
+/**
+ * 是否为「单独按下 Alt」——菜单栏据此在全局 keydown 中激活/退出激活。
+ *
+ * 返回 true 时组件才会 `preventDefault`；返回 false 表示不消费（系统组合键、
+ * 其它修饰组合或输入法按键原样放行）。
+ */
+export function isMenuActivationAltKey(event: MenuAltKeyEvent): boolean {
+    if (event.key !== 'Alt') {
+        return false
+    }
+    if (event.ctrlKey === true || event.metaKey === true || event.shiftKey === true) {
+        return false
+    }
+    if (event.repeat === true) {
+        return false
+    }
+    if (event.isComposing === true || event.keyCode === 229) {
+        return false
+    }
+    return true
+}

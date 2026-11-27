@@ -404,7 +404,7 @@ async function CryptoDecryptResult(): Promise<void> {
     border: 1px solid #d97706;
     border-radius: 4px;
     background-color: rgba(217, 119, 6, 0.12);
-    color: #b45309;
+    color: var(--ui-warning);
     font-size: 13px;
     line-height: 1.5;
 }

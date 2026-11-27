@@ -19,6 +19,9 @@ const ROOT = path.resolve(__dirname, '..')
 const MD_PATH = path.join(ROOT, 'docs', 'help', 'usage-guide.md')
 const HTML_PATH = path.join(ROOT, 'src', 'renderer', 'public', 'usage-guide.html')
 const PDF_PATH = path.join(ROOT, 'resources', 'help', 'usage-guide.pdf')
+/** 帮助文档截图源目录与随 HTML 分发的副本目录（Markdown 中以 images/ 引用） */
+const HELP_IMAGES_SRC = path.join(ROOT, 'docs', 'help', 'images')
+const HELP_IMAGES_OUT = path.join(ROOT, 'src', 'renderer', 'public', 'help-images')
 /** PDF 打印字体（可经 HELP_PDF_FONT 覆盖，用于体积/字形测试） */
 const PRINT_FONT = process.env.HELP_PDF_FONT || '"DengXian","Microsoft YaHei",sans-serif'
 /** PDF 正文字号（可经 HELP_PDF_FONT_SIZE 覆盖，用于体积/分页测试） */
@@ -68,6 +71,22 @@ function escapeHtml(text) {
         .replace(/"/g, '&quot;')
 }
 
+/** 把帮助文档截图复制到 renderer public，供 HTML 页面直接引用 */
+function copyHelpImages() {
+    if (!fs.existsSync(HELP_IMAGES_SRC)) {
+        return
+    }
+    fs.rmSync(HELP_IMAGES_OUT, { recursive: true, force: true })
+    fs.mkdirSync(HELP_IMAGES_OUT, { recursive: true })
+    fs.cpSync(HELP_IMAGES_SRC, HELP_IMAGES_OUT, { recursive: true })
+    const copied = fs
+        .readdirSync(HELP_IMAGES_OUT)
+        .filter((name) => /\.(png|jpe?g|webp|gif|svg)$/i.test(name))
+    console.log(
+        `[help-docs] 截图复制：${copied.length} 个 → ${path.relative(ROOT, HELP_IMAGES_OUT)}`
+    )
+}
+
 function buildHtml(body) {
     const toc = renderToc()
     // PDF 目录只保留二级标题：章节级导航仍完整，减少目录页与 PDF 体积
@@ -109,6 +128,9 @@ pre code{background:transparent;padding:0;color:inherit}
 table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
 th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
 th{background:#f7f3fb}
+.shot{margin:14px 0;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.shot img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:4px}
+.shot figcaption{margin:7px 0 0;color:var(--muted);font-size:12px;text-align:center}
 blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--brand);background:var(--brand-soft);color:#4b4560}
 .print-toc{display:none}
 footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
@@ -126,7 +148,10 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:v
   h1{font-size:18pt;page-break-after:avoid}
   h2{font-size:13pt;page-break-after:avoid;border-top:0;margin-top:12pt}
   h3{font-size:10.5pt;page-break-after:avoid;margin:9pt 0 4pt}
-  table,pre,blockquote{page-break-inside:avoid;font-size:8.4pt}
+  table,pre,blockquote,figure.shot{page-break-inside:avoid;font-size:8.4pt}
+  .shot{margin:3mm 0;padding:2mm;border:0;background:transparent}
+  .shot figcaption{font-size:8pt;margin-top:2mm}
+  .shot img{max-height:150mm;width:auto;max-width:100%}
   a{color:var(--text);text-decoration:none}
   pre{white-space:pre-wrap}
   @page{size:A4;margin:12mm 12mm 14mm}
@@ -174,7 +199,9 @@ async function formatHtml(rawHtml) {
 
 async function main() {
     const markdown = fs.readFileSync(MD_PATH, 'utf8')
-    const body = md.render(markdown)
+    // Markdown 中的 images/ 是帮助截图源目录；生成 HTML 时指向 public 副本
+    const body = md.render(markdown).replace(/src="images\//g, 'src="help-images/')
+    copyHelpImages()
     fs.mkdirSync(path.dirname(HTML_PATH), { recursive: true })
     fs.mkdirSync(path.dirname(PDF_PATH), { recursive: true })
     fs.writeFileSync(HTML_PATH, await formatHtml(buildHtml(body)), 'utf8')

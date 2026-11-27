@@ -7,10 +7,13 @@
  * 守护「P2 改动的实现契约与矩阵完整性」：
  * 1. T12 层级收敛 / 菜单栏高度单一实现 / 宽度阶梯迁移 / 工具窗可选内边距包裹层；
  * 2. T13 paper/hybrid 写作模式正文版式令牌与消费点，且不触碰 Monaco 主题；
- * 3. T14 图标统一（24 网格 / stroke 1.5 / currentColor / 16-20-24 三档）与品牌大图标例外；
+ * 3. T14 图标统一（24 网格 / stroke 1.5 / currentColor / 16-20-24 三档；MDI fill 型库与
+ *    品牌 512 网格为例外）、图标资产引用守卫与 AdmonitionDialog 12 类图标替换契约；
  * 4. T15 硬编码清理不变量（静态 CSS 真源变量不再保留冗余颜色兜底）；
  * 5. T16 验收矩阵（4 风格 × 2 主题 × 6 组件 48 + 密度 18 + 主题类别 12 + glass 6）的
- *    组合数与令牌覆盖，以及 28 主题对比度扫描。
+ *    组合数与令牌覆盖，以及 28 主题对比度扫描；
+ * 6. P2 遗留项 4：z-index 应用层基座迁移（欢迎页 / 窗口缩放热区 / 写作模式裸值清零，
+ *    常量与 CSS 变量单一真源，数值与迁移前逐项等值）。
  *
  * 真实截图的软门禁见 `e2e/visual-matrix.spec.ts`（E2E_VISUAL=1），静态矩阵补充说明核对
  * `docs/design/P2-VERIFICATION.md`。
@@ -30,6 +33,7 @@ import {
     UI_DENSITY_VALUES,
     UI_STYLE_TOKENS,
     UI_STYLE_VALUES,
+    UI_Z_INDEX_APP_BASE,
     UI_Z_INDEX_APP_COMPAT,
     UI_Z_INDEX_TOKENS
 } from '../../src/shared/constants/ui-style'
@@ -100,6 +104,82 @@ describe('T12 层级收敛：对话框 / 命令面板应用层兼容令牌', () 
         const source = readSource(COMMAND_PALETTE)
         expect(source).toContain('var(--ui-z-palette-app')
         expect(source).toContain('overlay-style="overlayStyle"')
+    })
+})
+
+// =============================================================================================
+// P2 遗留项 4：z-index 应用层基座迁移（欢迎页 / 窗口缩放热区 / 写作模式）
+// 裸值 9999 / 10000 / 3000 → 命名令牌 UI_Z_INDEX_APP_BASE + --ui-z-*-app 变量（数值零变化）
+// =============================================================================================
+
+describe('P2 遗留项 4 z-index 应用层基座迁移', () => {
+    const UI_STYLE_CSS_FILE = path.join(RENDERER, 'styles', 'ui-style.css')
+    const WELCOME_SCREEN = path.join(COMPONENTS, 'WelcomeScreen.vue')
+    const HOST_SHELL = path.join(COMPONENTS, 'BaiZeNotes.vue')
+    const WRITING_MODE_HOST = path.join(COMPONENTS, 'Markdown', 'WritingModeHost.vue')
+
+    it('UI_Z_INDEX_APP_BASE 数值与迁移前逐项等值，且保持与 T12 兼容层级的既有栈序关系', () => {
+        // 迁移前：欢迎页 9999 / 窗口缩放热区 9999~10000 / 写作模式 3000（数值不得漂移）
+        expect(UI_Z_INDEX_APP_BASE).toEqual({ welcome: 9999, resize: 10000, writingMode: 3000 })
+        // 欢迎页与对话框同层（二者互斥渲染：App.vue 中 v-if / v-else，等值不产生竞争）
+        expect(UI_Z_INDEX_APP_BASE.welcome).toBe(UI_Z_INDEX_APP_COMPAT.dialog)
+        // 缩放热区「角」与命令面板同层 = 应用内最高层；「边」= resize - 1 = 9999（原值）
+        expect(UI_Z_INDEX_APP_BASE.resize).toBe(UI_Z_INDEX_APP_COMPAT.commandPalette)
+        expect(UI_Z_INDEX_APP_BASE.resize).toBeGreaterThan(UI_Z_INDEX_APP_COMPAT.dialog)
+        expect(UI_Z_INDEX_APP_BASE.resize - 1).toBe(UI_Z_INDEX_APP_COMPAT.dialog)
+        // 写作模式恒低于对话框/工具窗（原语义：写作模式上的弹窗必须可见）
+        expect(UI_Z_INDEX_APP_BASE.writingMode).toBeLessThan(UI_Z_INDEX_APP_COMPAT.dialog)
+        // 欢迎页内部窗口控制条 = welcome + 1（原 10000），仅在本层 stacking context 内排序
+        expect(UI_Z_INDEX_APP_BASE.welcome + 1).toBe(UI_Z_INDEX_APP_BASE.resize)
+    })
+
+    it('ui-style.css :root 声明三个基座变量，值与 UI_Z_INDEX_APP_BASE 逐项一致（单一真源）', () => {
+        const source = readSource(UI_STYLE_CSS_FILE)
+        expect(source).toContain(`--ui-z-welcome-app: ${UI_Z_INDEX_APP_BASE.welcome};`)
+        expect(source).toContain(`--ui-z-resize-app: ${UI_Z_INDEX_APP_BASE.resize};`)
+        expect(source).toContain(`--ui-z-writing-mode-app: ${UI_Z_INDEX_APP_BASE.writingMode};`)
+    })
+
+    it('三个基座组件不再出现 9999 / 10000 / 3000 裸值（样式声明级）', () => {
+        for (const file of [WELCOME_SCREEN, HOST_SHELL, WRITING_MODE_HOST]) {
+            const css = stripComments(readSource(file))
+            const bare = css.match(/z-index:\s*(?:9999|10000|3000)\b/g) ?? []
+            expect(bare, path.relative(ROOT, file)).toEqual([])
+        }
+    })
+
+    it('欢迎页：全屏层消费 --ui-z-welcome-app，内部控制条 = welcome + 1（原 10000）', () => {
+        const css = stripComments(readSource(WELCOME_SCREEN))
+        expect(css).toMatch(/\.welcome-screen\s*\{[\s\S]*?z-index:\s*var\(--ui-z-welcome-app\);/)
+        expect(css).toMatch(
+            /\.window-controls\s*\{[\s\S]*?z-index:\s*calc\(var\(--ui-z-welcome-app\)\s*\+\s*1\);/
+        )
+    })
+
+    it('宿主窗口：缩放热区「角」= --ui-z-resize-app，「边」= resize - 1（原 10000 / 9999）', () => {
+        const css = stripComments(readSource(HOST_SHELL))
+        expect(css).toMatch(
+            /\.resize-edge\s*\{[\s\S]*?z-index:\s*calc\(var\(--ui-z-resize-app\)\s*-\s*1\);/
+        )
+        expect(css).toMatch(/\.resize-corner\s*\{[\s\S]*?z-index:\s*var\(--ui-z-resize-app\);/)
+    })
+
+    it('写作模式：全屏层消费 --ui-z-writing-mode-app（原 3000，恒低于对话框）', () => {
+        const css = stripComments(readSource(WRITING_MODE_HOST))
+        expect(css).toMatch(
+            /\.writing-mode-host\s*\{[\s\S]*?z-index:\s*var\(--ui-z-writing-mode-app\);/
+        )
+    })
+
+    it('渲染层不再有组件直接写 9999 / 10000 / 3000 的 z-index 裸值（全局静态护栏）', () => {
+        const offenders: string[] = []
+        for (const file of walkFiles(RENDERER, ['.vue', '.css'])) {
+            const css = stripComments(readSource(file))
+            for (const match of css.matchAll(/z-index:\s*(9999|10000|3000)\b/g)) {
+                offenders.push(`${path.relative(ROOT, file)}: z-index: ${match[1]}`)
+            }
+        }
+        expect(offenders).toEqual([])
     })
 })
 
@@ -270,6 +350,7 @@ describe('T13 paper/hybrid 写作模式正文纸感版式', () => {
 
 // =============================================================================================
 // T14 图标统一：24 网格 / stroke 1.5 / currentColor / 16-20-24 三档
+// + 图标资产引用守卫（34 个占位圆已删 / 20 个历史零引用冻结）+ MDI fill 型例外与 12 类 emoji 替换
 // =============================================================================================
 
 describe('T14 图标统一', () => {
@@ -299,10 +380,12 @@ describe('T14 图标统一', () => {
         }
     })
 
-    it('品牌大图标（512 网格）与功能图标（24 网格）分档：assets/icons 仅 3 个品牌文件例外', () => {
+    it('品牌大图标（512 网格）与功能图标（24 网格）分档：assets/icons 固定 23 个资产（20 功能 + 3 品牌）', () => {
         const iconsDir = path.join(RENDERER, 'assets', 'icons')
         const svgFiles = walkFiles(iconsDir, ['.svg'])
-        expect(svgFiles.length).toBeGreaterThan(0)
+        // P2 T14 遗留项 5：34 个未引用「占位圆」已删除（dark/light 各 17），剩余 20 个 24 网格
+        // 功能图标 + 3 个 512 网格品牌文件；资产数冻结，增删资产必须同步本断言与 COMPONENTS.md §8。
+        expect(svgFiles.length).toBe(23)
         const largeGrid: string[] = []
         for (const file of svgFiles) {
             const source = readSource(file)
@@ -325,13 +408,91 @@ describe('T14 图标统一', () => {
         )
     })
 
-    it('禁用 emoji 作功能图标的已知遗留：AdmonitionDialog 类型选择器仍有 12 个 emoji（已记录待后续）', () => {
+    it('assets/icons 不得再出现「占位圆」资产（单 circle + stroke-width 2 + 无 path）', () => {
+        // P2 T14 审计的 34 个占位圆均为同一 200 字节文件：24 网格 + 单个 stroke 2 的 r=10 圆。
+        // 该模式是「占位资产」的静态指纹，后续批次不得以任何形式重新引入。
+        const iconsDir = path.join(RENDERER, 'assets', 'icons')
+        const placeholders = walkFiles(iconsDir, ['.svg']).filter((file) => {
+            const source = readSource(file)
+            return (
+                (source.match(/<circle\b/g) ?? []).length === 1 &&
+                !/<path\b/.test(source) &&
+                source.includes('stroke-width="2"')
+            )
+        })
+        expect(placeholders.map((file) => path.relative(ROOT, file))).toEqual([])
+    })
+
+    it('assets/icons 不得引入未引用资产：新资产必须被 src 引用（20 个历史零引用仅冻结待后续）', () => {
+        const iconsDir = path.join(RENDERER, 'assets', 'icons')
+        // 遗留项 5 只删除 34 个占位圆；以下 20 个 24 网格功能图标当前仍零静态引用
+        // （P2-VERIFICATION §4.5 记录的历史存量），冻结为「只减不增」清单：
+        // 新增资产必须被 src 引用；本清单只允许在后续批次删除资产时同步收缩。
+        const FROZEN_UNREFERENCED = new Set([
+            'icon-html-convert.svg',
+            'icon-html-convert-light.svg',
+            'icon-import-export.svg',
+            'icon-import-export-light.svg',
+            'icon-katex.svg',
+            'icon-katex-light.svg',
+            'icon-live-preview.svg',
+            'icon-live-preview-light.svg',
+            'icon-md-edit.svg',
+            'icon-md-edit-light.svg',
+            'icon-mermaid.svg',
+            'icon-mermaid-light.svg',
+            'icon-multi-cursor.svg',
+            'icon-multi-cursor-light.svg',
+            'icon-multi-format.svg',
+            'icon-multi-format-light.svg',
+            'icon-search.svg',
+            'icon-search-light.svg',
+            'icon-theme-switch.svg',
+            'icon-theme-switch-light.svg'
+        ])
+        const svgFiles = walkFiles(iconsDir, ['.svg'])
+        const assetNames = new Set(svgFiles.map((file) => path.basename(file)))
+        // 冻结清单只减不增：清单内每个文件必须仍存在（删除资产后必须同步收缩清单）
+        for (const frozen of FROZEN_UNREFERENCED) {
+            expect(assetNames.has(frozen), `冻结清单已失效，请同步收缩: ${frozen}`).toBe(true)
+        }
+        // 引用判定（静态可实现的弱守卫）：资产文件名（不含 .svg）出现在渲染层源码中即视为被引用。
+        // 严格的 import 语法级校验见 out/tmp/scan-unreferenced-icons.mjs（本批证据脚本）。
+        const rendererSource = walkFiles(RENDERER, ['.ts', '.vue', '.json', '.css'])
+            .map(readSource)
+            .join('\n')
+        const unreferenced: string[] = []
+        for (const file of svgFiles) {
+            const name = path.basename(file)
+            if (
+                rendererSource.includes(name.replace(/\.svg$/, '')) ||
+                FROZEN_UNREFERENCED.has(name)
+            ) {
+                continue
+            }
+            unreferenced.push(path.relative(ROOT, file))
+        }
+        expect(unreferenced).toEqual([])
+    })
+
+    it('AdmonitionDialog 类型选择器：12 个 emoji 已替换为 MDI fill 型 SVG（无 emoji / 24 网格 / currentColor / aria-hidden）', () => {
         const source = readSource(
             path.join(COMPONENTS, 'dialogs', 'medium', 'AdmonitionDialog.vue')
         )
-        const emojis = source.match(/icon: '([^']+)'/g) ?? []
-        // 该文件为「待替换为 SVG 图标集」的已知遗留（非新增违规）：数量固定 12，防止继续扩散
-        expect(emojis.length).toBe(12)
+        // 不得再出现 emoji 功能图标（渲染层统一 SVG 图标）
+        expect(source).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u)
+        // 12 个类型各有一条 MDI path 数据（fill 型图形库，24×24，取自 mdi-icons-data.ts）
+        const iconPaths = source.match(
+            /^\s+(?:note|tip|warning|danger|info|abstract|todo|success|question|bug|example|quote):\s*'M/gm
+        )
+        expect(iconPaths?.length ?? 0).toBe(12)
+        // 模板内联 SVG：24 网格 + currentColor + 装饰性 aria-hidden；可访问名由可见 type-name 承载
+        expect(source).toContain('viewBox="0 0 24 24"')
+        expect(source).toContain('fill="currentColor"')
+        expect(source).toContain('aria-hidden="true"')
+        // 类型 id / 顺序 / 文案保持 12 项不变（替换图标不得改动数据契约）
+        const typeEntries = source.match(/id: '([a-z]+)', name: '([A-Za-z]+)'/g) ?? []
+        expect(typeEntries).toHaveLength(12)
     })
 })
 
