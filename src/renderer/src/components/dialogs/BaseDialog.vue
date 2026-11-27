@@ -749,6 +749,9 @@ function handleContainerMouseDown(event: MouseEvent): void {
 .dialog-container {
     width: 500px;
     background: var(--ui-surface, var(--bg-color));
+    /* 视觉升级收口（用户反馈 2026-11-27）：对话框需要清晰边界——
+       1px hairline 边框 + shadow-3 共同界定浮层；标题栏/正文/footer 在边框内留白。 */
+    border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
     border-radius: var(--ui-radius-lg, 8px);
     box-shadow: var(--ui-shadow-3);
     overflow: hidden;
