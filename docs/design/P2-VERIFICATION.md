@@ -153,7 +153,7 @@
 ### 5.4 剩余清单（332 处，未强制归零）
 
 完整逐条清单（文件 + 行号 + 上下文 + 白名单标记）：
-[`out/visual-1.5.5-p2/hardcoded-colors-inventory.json`](../../out/visual-1.5.5-p2/hardcoded-colors-inventory.json)（产物目录，不入库；可重复生成）。
+`out/visual-1.5.5-p2/hardcoded-colors-inventory.json`（产物目录，不入库；可重复生成）。
 
 按处置分类：
 
