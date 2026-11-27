@@ -377,6 +377,22 @@ const dialogRenderer = {
         fontMicrosoftYaHei: '微软雅黑',
         fontPingFang: '苹方',
         labelFontSize: '字体大小',
+        // 视觉升级（P0）：界面风格 / 界面密度 / 减少透明效果（默认 workbench + default = 现状）
+        groupUiAppearance: '界面风格与密度',
+        hintUiAppearance:
+            '默认「高密度工作台 + 默认密度」与当前外观一致；玻璃风格为实验性（仅悬浮层小面积模糊），深色、护眼与高饱和主题会自动降级为纸感材质。',
+        labelUiStyle: '界面风格',
+        uiStylePaper: '静默纸感',
+        uiStyleGlass: '轻玻璃',
+        uiStyleWorkbench: '高密度工作台',
+        uiStyleHybrid: '混合（正文纸感）',
+        labelUiDensity: '界面密度',
+        uiDensityCompact: '紧凑',
+        uiDensityDefault: '默认',
+        uiDensitySpacious: '宽松',
+        labelReduceTransparency: '减少透明效果',
+        hintReduceTransparency:
+            '开启后玻璃风格不使用半透明与模糊，回退为不透明纸感材质（性能与可读性优先）',
         panelBackupTitle: '备份与恢复',
         panelBackupDesc: '数据备份和恢复选项',
         groupAutoBackup: '自动备份',

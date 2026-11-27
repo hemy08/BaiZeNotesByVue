@@ -91,6 +91,63 @@
                 />
             </div>
         </div>
+        <div class="settings-group">
+            <div class="group-title">
+                {{ t('dialogRenderer.systemSetting.groupUiAppearance') }}
+            </div>
+            <!-- 视觉升级（P0）：三项外观配置默认 workbench + default = 升级前现状，
+                 用户主动切换后才改变材质/密度；glass 标注实验性（小面积模糊，性能提示）。 -->
+            <p class="ui-style-hint">
+                {{ t('dialogRenderer.systemSetting.hintUiAppearance') }}
+            </p>
+            <div class="setting-row">
+                <label class="setting-label">{{
+                    t('dialogRenderer.systemSetting.labelUiStyle')
+                }}</label>
+                <select v-model="uiStyle" class="setting-select" data-testid="ui-style-select">
+                    <option value="paper">
+                        {{ t('dialogRenderer.systemSetting.uiStylePaper') }}
+                    </option>
+                    <option value="glass">
+                        {{ t('dialogRenderer.systemSetting.uiStyleGlass') }}
+                    </option>
+                    <option value="workbench">
+                        {{ t('dialogRenderer.systemSetting.uiStyleWorkbench') }}
+                    </option>
+                    <option value="hybrid">
+                        {{ t('dialogRenderer.systemSetting.uiStyleHybrid') }}
+                    </option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label class="setting-label">{{
+                    t('dialogRenderer.systemSetting.labelUiDensity')
+                }}</label>
+                <select v-model="uiDensity" class="setting-select" data-testid="ui-density-select">
+                    <option value="compact">
+                        {{ t('dialogRenderer.systemSetting.uiDensityCompact') }}
+                    </option>
+                    <option value="default">
+                        {{ t('dialogRenderer.systemSetting.uiDensityDefault') }}
+                    </option>
+                    <option value="spacious">
+                        {{ t('dialogRenderer.systemSetting.uiDensitySpacious') }}
+                    </option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label class="setting-label">{{
+                    t('dialogRenderer.systemSetting.labelReduceTransparency')
+                }}</label>
+                <input
+                    v-model="uiReduceTransparency"
+                    type="checkbox"
+                    class="setting-checkbox"
+                    data-testid="ui-reduce-transparency"
+                    :title="t('dialogRenderer.systemSetting.hintReduceTransparency')"
+                />
+            </div>
+        </div>
     </div>
 </template>
 
@@ -131,6 +188,10 @@ const field = usePanelFields(
 const useSystemTheme = field('useSystemTheme')
 const fontFamily = field('fontFamily')
 const fontSize = field('fontSize')
+// 视觉升级（P0）：界面风格 / 界面密度 / 减少透明效果
+const uiStyle = field('uiStyle')
+const uiDensity = field('uiDensity')
+const uiReduceTransparency = field('uiReduceTransparency')
 
 /** 批次 C #10：请求壳层先关闭本对话框（避免两个模态叠加）再打开主题设置 */
 function emitOpenThemeSetting(): void {
@@ -162,6 +223,14 @@ function emitOpenThemeSetting(): void {
 /* P2 剩余静默失败提示：主题显示名读取失败的内联降级提示（非阻断，跟随主题变量） */
 .theme-display-fallback-hint {
     margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--secondary-text-color);
+}
+
+/* 视觉升级（P0）：界面风格分组说明（次要文字，随主题变量） */
+.ui-style-hint {
+    margin: -8px 0 12px;
     font-size: 12px;
     line-height: 1.5;
     color: var(--secondary-text-color);

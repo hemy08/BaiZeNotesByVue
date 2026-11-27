@@ -1,5 +1,5 @@
 /* ============================================================================
- * 对话框底部操作按钮 —— 全局统一样式层（对话框按钮统一样式批次）
+ * 对话框底部操作按钮 —— 全局统一样式层（对话框按钮统一样式批次 → 视觉升级 1.5.5）
  *
  * 背景：25 个用户对话框都复用 BaseDialog.vue 外壳，但每个对话框各自在 scoped 样式里
  * 复制了一份 `.btn` / `.btn-*` 规则，高度/内边距/圆角/语义色已经分叉（30px+4px 与
@@ -7,10 +7,12 @@
  *
  * 本文件是应用内对话框「底部操作按钮」的唯一视觉真源（UI-11 的按钮补充层）：
  * - 所有规则都限定在 `.dialog-container` 内，因此不会影响非对话框场景的 `.btn`；
- * - 颜色全部走主题变量（`--accent-color` / `--card-bg` / `--border-color` /
- *   `--text-color` / `--button-text-color` / `--hover-bg`），不写死主题色（UI-01）；
- * - 基础尺寸按统一视觉规范：高 30px、水平内边距 16px、圆角 4px、1px 边框、
- *   13px 字号、`all 0.2s ease` 过渡、focus-visible 强调色轮廓（UI-09/UI-10）。
+ * - 颜色全部走语义令牌（`--ui-accent` / `--ui-bg-elevated` / `--ui-border` / `--ui-text` /
+ *   `--ui-danger` / `--ui-accent-soft`），不写死主题色（UI-01）；历史主题变量仅作兜底；
+ * - 尺寸/形状/动效走视觉升级令牌（DESIGN.md §4~§6）：
+ *   高 `--ui-control-height`（28/32/36）、圆角 `--ui-radius-md`、字号 `--ui-font-size`、
+ *   过渡 `--ui-duration-fast` + `--ui-ease-standard`、焦点环 `--ui-focus-shadow`；
+ *   默认 workbench + default 密度下按钮高 32px（T9 规格），其余风格/密度自动跟随。
  *
  * 用法（模板类名）：
  * - 基础类：`dialog-btn`（必选）；
@@ -25,17 +27,19 @@
  * `button.btn-confirm`、`.btn-save`、`.btn-discard` 等），这些旧 class 不再承载
  * 视觉声明，只保留语义与测试锚点作用。
  *
- * 主题：全部沿用 var(--...) 主题变量，不引入硬编码主题色值。
+ * 主题：语义色全部走 `--ui-*` 令牌（28 套主题 × 4 风格 × 3 密度自动适配），不引入
+ * 硬编码主题色值；危险色也不再直写具体色值，统一由 `--ui-danger` 提供（浅色/深色主题
+ * 各一档，由 shared/theme-tokens 派生）。
  * ========================================================================== */
 
 /* ---------------------------------------------------------------------------
- * 破坏性语义色：主题调色板未提供「危险色」字段（28 套主题只有 10 个配色字段），
- * 沿用迁移前 ConfirmDeleteDialog / AppMessageDialog / UnsavedChangesDialog 三处
- * 一致的 #e74c3c（同一语义、同一色值），收敛为单一副本；若后续主题新增危险色变量，
- * 只需在该变量上覆盖，无需改规则。
+ * 破坏性语义色：历史上主题调色板无「危险色」字段，三个确认对话框直写同一红色色值。
+ * 视觉升级后 `--ui-danger` 已是 18 组语义令牌之一（浅色/深色各一档，由主题明暗派生），
+ * 这里保留 `--dialog-btn-danger-bg` 自定义属性作为二次覆盖点（主题扩展/单测锚点），
+ * 取值指向令牌，不再是硬编码色值。
  * ------------------------------------------------------------------------- */
 .dialog-container {
-    --dialog-btn-danger-bg: #e74c3c;
+    --dialog-btn-danger-bg: var(--ui-danger);
 }
 
 /* ==================== 基础按钮 ==================== */
@@ -44,24 +48,29 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 30px;
+    height: var(--ui-control-height, 32px);
     padding: 0 16px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--card-bg);
-    color: var(--text-color);
+    border: 1px solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-md, 4px);
+    background: var(--ui-bg-elevated, var(--card-bg));
+    color: var(--ui-text, var(--text-color));
     font-family: inherit;
-    font-size: 13px;
+    font-size: var(--ui-font-size, 13px);
     font-weight: 500;
     line-height: 1;
     white-space: nowrap;
     cursor: pointer;
-    transition: all 0.2s ease;
+    /* MOTOIN.md 反例：禁止 transition: all；只过渡会变化的合成/颜色属性 */
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        border-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        box-shadow var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
 .dialog-container .dialog-btn:hover:not(:disabled) {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
+    border-color: var(--ui-accent, var(--accent-color));
+    color: var(--ui-accent, var(--accent-color));
 }
 
 /* 按下反馈：轻微下沉，与 UI-10「hover/active 有反馈」一致；不改布局尺寸 */
@@ -74,37 +83,36 @@
     cursor: not-allowed;
 }
 
-/* 键盘可达性：移除默认 outline，改用主题强调色 2px 轮廓（UI-10 focus 强调色） */
+/* 键盘可达性：移除默认 outline，改用语义焦点环令牌（--ui-focus-shadow = accent 30% 3px） */
 .dialog-container .dialog-btn:focus-visible {
-    outline: 2px solid var(--accent-color);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: var(--ui-focus-shadow, 0 0 0 3px var(--ui-focus-ring, rgba(118, 75, 162, 0.3)));
 }
 
 /* ==================== 主操作（确定/插入/创建/保存） ==================== */
 .dialog-container .dialog-btn--primary {
     border-color: transparent;
-    background: var(--accent-color);
+    background: var(--ui-accent, var(--accent-color));
     color: var(--button-text-color, #fff);
 }
 
 .dialog-container .dialog-btn--primary:hover:not(:disabled) {
     border-color: transparent;
-    background: var(--accent-color);
+    background: var(--ui-accent-hover, var(--ui-accent, var(--accent-color)));
     color: var(--button-text-color, #fff);
-    opacity: 0.9;
 }
 
 /* ==================== 次要操作（取消/关闭对话框的默认动作） ==================== */
 .dialog-container .dialog-btn--secondary {
-    background: var(--card-bg);
-    border-color: var(--border-color);
-    color: var(--text-color);
+    background: var(--ui-bg-elevated, var(--card-bg));
+    border-color: var(--ui-border, var(--border-color));
+    color: var(--ui-text, var(--text-color));
 }
 
 .dialog-container .dialog-btn--secondary:hover:not(:disabled) {
-    background: var(--hover-bg);
-    border-color: var(--accent-color);
-    color: var(--accent-color);
+    background: var(--ui-accent-soft, var(--hover-bg));
+    border-color: var(--ui-accent, var(--accent-color));
+    color: var(--ui-accent, var(--accent-color));
 }
 
 /* ==================== 破坏性操作（删除/不保存） ==================== */
@@ -125,24 +133,24 @@
 .dialog-container .dialog-btn--ghost {
     border-color: transparent;
     background: transparent;
-    color: var(--secondary-text-color, var(--text-color));
+    color: var(--ui-text-secondary, var(--secondary-text-color, var(--text-color)));
 }
 
 .dialog-container .dialog-btn--ghost:hover:not(:disabled) {
     border-color: transparent;
-    background: var(--hover-bg);
-    color: var(--accent-color);
+    background: var(--ui-accent-soft, var(--hover-bg));
+    color: var(--ui-accent, var(--accent-color));
 }
 
 /* ==================== 应用（保留变更但暂不关闭：强调色描边） ==================== */
 .dialog-container .dialog-btn--apply {
-    background: var(--card-bg);
-    border-color: var(--accent-color);
-    color: var(--accent-color);
+    background: var(--ui-bg-elevated, var(--card-bg));
+    border-color: var(--ui-accent, var(--accent-color));
+    color: var(--ui-accent, var(--accent-color));
 }
 
 .dialog-container .dialog-btn--apply:hover:not(:disabled) {
-    background: var(--accent-color);
-    border-color: var(--accent-color);
+    background: var(--ui-accent, var(--accent-color));
+    border-color: var(--ui-accent, var(--accent-color));
     color: var(--button-text-color, #fff);
 }

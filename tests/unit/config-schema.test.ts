@@ -188,6 +188,44 @@ describe('AS-4 validateSystemConfig', () => {
         expect(rejected.adjusted).toEqual([expect.stringContaining('allowRemoteImages')])
     })
 
+    // 视觉升级（P0）：界面风格/密度为枚举字段，减少透明为布尔字段——
+    // 合法值写入，非法值丢弃并记 adjusted（不写坏 store）。
+    it('should accept uiStyle/uiDensity enums and uiReduceTransparency boolean (visual P0)', () => {
+        const accepted = validateSystemConfig({
+            uiStyle: 'glass',
+            uiDensity: 'compact',
+            uiReduceTransparency: true,
+            language: 'zh-CN'
+        })
+        expect(accepted.ok).toBe(true)
+        const value = accepted.value as Record<string, unknown>
+        expect(value.uiStyle).toBe('glass')
+        expect(value.uiDensity).toBe('compact')
+        expect(value.uiReduceTransparency).toBe(true)
+
+        const rejected = validateSystemConfig({
+            uiStyle: 'fancy',
+            uiDensity: 'wide',
+            uiReduceTransparency: 'yes'
+        })
+        expect(rejected.ok).toBe(true)
+        expect((rejected.value as Record<string, unknown>).uiStyle).toBeUndefined()
+        expect((rejected.value as Record<string, unknown>).uiDensity).toBeUndefined()
+        expect((rejected.value as Record<string, unknown>).uiReduceTransparency).toBeUndefined()
+        expect(rejected.adjusted?.length).toBeGreaterThanOrEqual(3)
+    })
+
+    it('should accept every allowed uiStyle/uiDensity value from the shared whitelist', () => {
+        for (const uiStyle of ['paper', 'glass', 'workbench', 'hybrid']) {
+            const result = validateSystemConfig({ uiStyle })
+            expect((result.value as Record<string, unknown>).uiStyle, uiStyle).toBe(uiStyle)
+        }
+        for (const uiDensity of ['compact', 'default', 'spacious']) {
+            const result = validateSystemConfig({ uiDensity })
+            expect((result.value as Record<string, unknown>).uiDensity, uiDensity).toBe(uiDensity)
+        }
+    })
+
     // 1.5.2 E6：日常记录开关是布尔字段——true/false 均可写入，非布尔值丢弃（不写坏 store）
     it('should accept the featureDailyNotes boolean and drop non-boolean values (E6)', () => {
         const accepted = validateSystemConfig({ featureDailyNotes: true, language: 'zh-CN' })

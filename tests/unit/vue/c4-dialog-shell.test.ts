@@ -5,9 +5,11 @@
  * 本组迁移前的外壳分叉点（迁移后必须等价）：
  * 1. 容器尺寸由对话框固定（EditorSetting 900×700、Mermaid 1400×900、ThemeSetting 900×600、
  *    HelpAbout 750×600）：BaseDialog 默认 500px 宽且无固定高，故统一经 width / containerStyle 覆盖；
- * 2. 标题栏：前三个是「标题文字 + 关闭按钮」标准结构（高度 48 / 48 / 40px），HelpAbout 则是
- *    「仅关闭按钮 + flex-end + padding 0 10px + Electron app-region drag」特殊结构，且不使用
- *    自定义拖拽（迁移前模板无 @mousedown，只能靠原生标题栏拖拽）；
+ * 2. 标题栏：前三个是「标题文字 + 关闭按钮」标准结构（迁移前高度 48 / 48 / 40px；
+ *    视觉升级 1.5.5 起统一由密度令牌 --ui-titlebar-height 提供，本文件仍锁定变体 class
+ *    与各对话框的内联覆盖），HelpAbout 则是「仅关闭按钮 + flex-end + padding 0 10px +
+ *    Electron app-region drag」特殊结构，且不使用自定义拖拽（迁移前模板无 @mousedown，
+ *    只能靠原生标题栏拖拽）；
  * 3. 底栏：前三个是右对齐操作按钮行（15px 24px 内边距 + 12px 间距 + flex-shrink:0），
  *    HelpAbout 是居中信息条（块级布局 + 10px 20px + 11px 次要文字）；
  * 4. ThemeSetting 的 8 个 resize-handle 必须仍渲染在 `.dialog-container` 内、`.title-bar` 之前
@@ -101,6 +103,8 @@ interface ShellCase {
     height: string
     /** 标题文字（HelpAboutDialog 为「仅关闭按钮」场景，没有标题文字，故为空串） */
     titleText: string
+    /** 容器内联样式必须包含的片段（尺寸/可视区边界覆盖） */
+    containerStyleIncludes?: string[]
     /** 标题栏内联样式必须包含的片段（高度/padding/flex-shrink 等覆盖） */
     titleBarStyleIncludes: string[]
     /** 标题文字内联样式必须包含的片段（字号/字重覆盖） */
@@ -108,7 +112,7 @@ interface ShellCase {
     /** 关闭按钮内联样式必须包含的片段（字号覆盖） */
     closeButtonStyleIncludes?: string[]
     /** 底栏内联样式必须包含的片段（padding/gap/布局覆盖） */
-    footerStyleIncludes: string[]
+    footerStyleIncludes?: string[]
     /** 标题栏 / 关闭按钮的 Electron app-region 覆盖（jsdom 用扩展键读取） */
     titleBarAppRegion?: 'drag' | 'no-drag'
     closeButtonAppRegion?: 'drag' | 'no-drag'
@@ -131,7 +135,9 @@ const SHELL_CASES: ShellCase[] = [
         closeButtonAppRegion: 'no-drag'
     },
     {
-        // 迁移前：48px 标题栏 / 16px 600 标题 / rounded 18px 关闭按钮 / 1400×900
+        // 迁移前：48px 标题栏 / 16px 600 标题 / rounded 18px 关闭按钮 / 1400×900。
+        // 视觉升级 1.5.5（T6）：标题栏/标题/关闭按钮/底栏改由工具窗壳消费密度令牌，
+        // 仅保留「不随内容压缩」的 flex-shrink 迁移契约；容器额外限制在可视区内。
         name: 'MermaidEditDialog',
         component: MermaidEditDialog,
         titleBarClass: 'title-bar--large',
@@ -140,9 +146,7 @@ const SHELL_CASES: ShellCase[] = [
         height: '900px',
         titleText: 'Mermaid 图表编辑',
         titleBarStyleIncludes: ['flex-shrink: 0'],
-        titleTextStyleIncludes: ['font-size: 16px', 'font-weight: 600'],
-        closeButtonStyleIncludes: ['font-size: 18px'],
-        footerStyleIncludes: ['padding: 15px 24px', 'gap: 12px', 'flex-shrink: 0']
+        containerStyleIncludes: ['max-width: calc(100vw - 20px)', 'max-height: calc(100vh - 20px)']
     },
     {
         // 迁移前：40px 标题栏 / 14px 500 标题 / rounded 16px 关闭按钮 / 900×600（可 resize）
@@ -201,10 +205,13 @@ describe('C-4 迁移对话框外壳结构', () => {
         expect(titleText.exists()).toBe(true)
         expect(titleText.text()).toBe(shellCase.titleText)
 
-        // 4) 容器内联宽高（迁移前固定在各自 scoped .dialog-container 中）
+        // 4) 容器内联宽高（迁移前固定在各自 scoped .dialog-container 中）+ 视觉升级边界覆盖
         const containerStyle = wrapper.find('.dialog-container').attributes('style') ?? ''
         expect(containerStyle).toContain(`width: ${shellCase.width}`)
         expect(containerStyle).toContain(`height: ${shellCase.height}`)
+        for (const fragment of shellCase.containerStyleIncludes ?? []) {
+            expect(containerStyle).toContain(fragment)
+        }
 
         // 5) 标题栏 / 标题文字 / 关闭按钮内联覆盖
         const titleBarStyle = wrapper.find('.title-bar').attributes('style') ?? ''
@@ -225,7 +232,7 @@ describe('C-4 迁移对话框外壳结构', () => {
         expect(footer.exists()).toBe(true)
         expect(footer.classes()).toContain('footer--end')
         const footerStyle = footer.attributes('style') ?? ''
-        for (const fragment of shellCase.footerStyleIncludes) {
+        for (const fragment of shellCase.footerStyleIncludes ?? []) {
             expect(footerStyle).toContain(fragment)
         }
 

@@ -25,6 +25,26 @@ export interface WindowBounds {
     height: number
 }
 
+/**
+ * 界面风格标识（视觉升级：互斥单选，只改变材质/装饰层，不改变主题色相）。
+ *
+ * - `paper`：静默纸感（不透明面、hairline、弱阴影、小圆角）；
+ * - `glass`：轻玻璃（半透明面 + 小面积模糊，深色/高饱和/护眼主题自动降级）；
+ * - `workbench`：高密度工作台（默认，与视觉升级前观感一致）；
+ * - `hybrid`：混合（正文/预览走纸感，外壳/工具区走工作台密度）。
+ *
+ * 取值白名单唯一真源：`src/shared/constants/ui-style.ts` 的 `UI_STYLE_VALUES`
+ * （主进程 config-schema 校验与渲染层下拉共用）。
+ */
+export type UiStyle = 'paper' | 'glass' | 'workbench' | 'hybrid'
+
+/**
+ * 界面密度标识（独立于风格）：只改变行高/控件高/内边距等尺寸节奏。
+ *
+ * 取值白名单唯一真源：`src/shared/constants/ui-style.ts` 的 `UI_DENSITY_VALUES`。
+ */
+export type UiDensity = 'compact' | 'default' | 'spacious'
+
 export interface SystemSetting {
     language: string
     resourceManager: string
@@ -71,6 +91,12 @@ export interface SystemSetting {
     backupCount?: number // 保留备份数量
     appTheme?: string // 应用主题（对话框下拉值）
     useSystemTheme?: boolean // 使用系统主题
+    // ===== 视觉升级（P0）三项外观配置：风格层 / 密度层 / 减少透明 =====
+    // 均由「系统设置 → 外观」页签写入本 store，渲染层 useTheme 读取后写根元素
+    // data-style / data-density 属性并解析生效材质；默认 workbench + default 即现状观感。
+    uiStyle?: UiStyle // 界面风格（默认 'workbench'）
+    uiDensity?: UiDensity // 界面密度（默认 'default'）
+    uiReduceTransparency?: boolean // 减少透明效果（默认 false；glass 强制回退纸感材质）
     // AS-9（P3 隐私）：是否允许 Markdown 预览加载文档中的远程（http/https/协议相对）图片。
     // 默认 false：渲染层把远程图片替换为占位块，不发起任何网络请求（防跟踪像素/IP 泄露）；
     // 本地相对路径、绝对路径与 data:/blob: 图片不受影响。

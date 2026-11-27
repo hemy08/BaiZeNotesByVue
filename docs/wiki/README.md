@@ -2,7 +2,7 @@
 
 > 更新于 2026-11-20
 >
-> 本目录是 BaiZeNotesByVue（白泽笔记）的文档中心，共 **4 个分类 / 27 篇 Markdown 文档**（另有本 README 与 `_sidebar.md` 导航）。分类与文件清单均按 2026-11-20 实际目录核对；检查/修复/专项报告不在本 Wiki 内，统一归档于 [docs/reports](../reports/README.md)（Markdown 版 32 篇 + 独立 [HTML Wiki](../reports/html/README.md) 33 个页面：1 首页 + 32 份报告）。
+> 本目录是 BaiZeNotesByVue（白泽笔记）的文档中心，共 **4 个分类 / 29 篇 Markdown 文档**（另有本 README 与 `_sidebar.md` 导航）。分类与文件清单均按 2026-11-27 实际目录核对；检查/修复/专项报告不在本 Wiki 内，统一归档于 [docs/reports](../reports/README.md)（Markdown 版 32 篇 + 独立 [HTML Wiki](../reports/html/README.md) 33 个页面：1 首页 + 32 份报告）。
 
 ---
 
@@ -38,7 +38,7 @@
 | 插件工具组件 | **38 个**（加密 8 / 信息 8 / 网络 4 / 编解码 5 / 格式转换 5 / 小工具 3 / 文本 3 / 格式化 2，全部注册为菜单工具） |
 | IPC 通道常量 | **108 个 / 18 组**（唯一真源 `src/shared/ipc-channels.ts`；第 5 批删除 `SYSTEM.OPEN_EXTERNAL_LINK` 死通道；关闭确认新增 `UNSAVED_CLOSE_REQUEST` / `UNSAVED_CLOSE_SUBMIT` 双通道；应用内消息框服务新增四通道；1.5.1 知识库基座新增 `FILE.GET_WORKSPACE_INDEX`） |
 | preload 白名单 | send/invoke **74** 个、on/once **28** 个、`window.api` **6** 个；`window.electron` 为**受限 ipcRenderer**（仅 send/invoke/on/once/removeListener/removeAllListeners + webFrame/webUtils/process；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露） |
-| 单元测试 | **351 个 `.test.ts` 文件 / 6,406 个用例**（vitest 全通过） |
+| 单元测试 | **363 个 `.test.ts` 文件 / 6,669 个用例**（vitest 全通过） |
 | 构建产物 | 主进程 `out/build/main/index.js` ≈**0.62 MiB**（655,183 B）；入口 chunk `out/build/renderer/assets/index-*.js` ≈**143.2 KiB**；主界面异步 chunk `BaiZeNotes-*.js` ≈**490.1 KiB**（Monaco/highlight.js/KaTeX 在异步 chunk 按需加载）；首屏实际 ≈**329.5 KiB**（入口 + modulepreload 共享 chunk；i18n 词典已按语言按需加载；欢迎页为异步 chunk） |
 | 安装包 | Setup **111.36 MiB** / portable **100.49 MiB** / app.asar **40.98 MiB** / locales **2**（2026-11-21 当前 dist，1.5.1 构建） |
 | 报告规模 | **md 32 篇（01 类 12 / 02 类 9 / 03 类 11）/ HTML Wiki 33 页（1 首页 + 32 报告）** |
@@ -46,7 +46,7 @@
 
 > **口径说明**：以 [报告总索引](../reports/README.md) 的「当前基线」与 [IPC 通信矩阵](../reports/md/03-专项治理/IPC通信矩阵.md) 为准；待办跟踪见 [当前遗留问题清单](../reports/md/03-专项治理/当前遗留问题清单.md)（**22 项：21 ✅ / 0 🟡 / 1 ⏸️**；#15 保持现状）。
 >
-> **门禁（2026-11-20 全量实测，2026-11-22 复核）**：typecheck 四工程 0 错误、ESLint 0/0、Prettier 全绿、vitest 351 文件 / 6,406 用例全通过、全量依赖（含 dev）audit 0 漏洞（`npm run audit:all`，含渲染层运行时库）。
+> **门禁（2026-11-20 全量实测，2026-11-22 复核）**：typecheck 四工程 0 错误、ESLint 0/0、Prettier 全绿、vitest 363 文件 / 6,669 用例全通过、全量依赖（含 dev）audit 0 漏洞（`npm run audit:all`，含渲染层运行时库）。
 
 ---
 
@@ -113,12 +113,14 @@ docs/wiki/
 | [文件导入功能说明](03-功能说明/文件导入功能说明.md) | 9 个导入格式模型、编码探测、导入/插入模式、3 选项去向、CSV 已知问题 |
 | [文件导出功能说明](03-功能说明/文件导出功能说明.md) | 6 种导出格式、保存路径与用户选择、PDF 隐藏窗口 `printToPDF`、元数据版本 |
 
-### 3.4 04-优化与专项报告（8 篇）
+### 3.4 04-优化与专项报告（10 篇）
 
 | 文档 | 说明 |
 | --- | --- |
 | [白泽笔记优化计划](04-优化与专项报告/白泽笔记优化计划.md) | 优化计划与完成状态（2026-08-22） |
 | [ECC 能力驱动的项目优化方案](04-优化与专项报告/ECC能力驱动的项目优化方案.md) | **只读方案**：contract-first / module-governance / design-system / click-path-audit / ADR 五方向优化项、批次计划与验收 |
+| [产品体验优化方案](04-优化与专项报告/产品体验优化方案.md) | **只读方案（v1.5.3 基线）**：视觉统一（802 硬编码色/21 种圆角清理）、交互手感（a11y/键盘/动效/引导）、功能闭环（剪藏/OCR/PDF/表格）三线计划 |
+| [视觉升级方案（1.5.5）](04-优化与专项报告/视觉升级方案-1.5.5.md) | **设计方向稿**：A 纸感 / B 轻玻璃 / C 工作台 / D 混合四风格（开关切换）+ 三档密度；令牌层（16 色/7 间距/5 圆角/3 阴影/动效表）+ 6 组件升级规格 + 72 张截图验收矩阵；含 SVG 预览图与 HTML 版 |
 | [主题优化方案](04-优化与专项报告/主题优化方案.md) | 主题系统性能优化 |
 | [事件监听器优化总结](04-优化与专项报告/事件监听器优化总结.md) | EventBus/IPC/Vue 监听器治理 |
 | [事件监听器内存泄漏分析报告](04-优化与专项报告/事件监听器内存泄漏分析报告.md) | 泄漏风险分析 |
@@ -127,6 +129,16 @@ docs/wiki/
 | [配置路径优化报告](04-优化与专项报告/配置路径优化报告.md) | 配置文件路径统一 |
 
 > 检查/修复/专项报告（**md/ 32 篇**，含合并稿与问题跟踪台账）见 [docs/reports/README.md](../reports/README.md)。
+
+### 3.5 设计规范（docs/design，3 篇）
+
+| 文档 | 说明 |
+| --- | --- |
+| [DESIGN.md](../design/DESIGN.md) | 视觉令牌：18 组语义令牌派生表、使用规则、反例 |
+| [MOTION.md](../design/MOTION.md) | 动效时长/缓动规范、reduced-motion 降级 |
+| [COMPONENTS.md](../design/COMPONENTS.md) | 6 个核心组件 × 4 风格规格 |
+
+> 设计规范与主题令牌由 `src/shared/theme-tokens.ts`、`src/shared/constants/ui-style.ts`、`src/renderer/src/styles/ui-style.css` 单一真源驱动；新增/调整令牌先改上述真源再同步本目录文档。
 
 ---
 
@@ -163,7 +175,7 @@ docs/wiki/
 2. **数字口径**：版本、技术栈、组件/测试/覆盖率等数字以 [报告总索引](../reports/README.md) 的「当前基线」与 [IPC 通信矩阵](../reports/md/03-专项治理/IPC通信矩阵.md) 为准，不凭记忆填写；`out/` 下的旧版事实基线（2026-11-15 旧基线快照）**不再作为当前基线**。
 3. **功能一致性**：功能说明必须与当前源码一致；不确定处标注「需人工确认」并写明依据文件与行号。
 4. **新增文档**：放进对应分类后，同步更新本 README 的「目录结构 / 文档清单」与 `_sidebar.md`，并更新文档计数。
-5. **链接检查**：分类间引用使用相对路径；改文件名后全量检查 Markdown 相对链接是否仍能解析（当前 27 篇文档 0 处失效链接，2026-11-27 自检）。
+5. **链接检查**：分类间引用使用相对路径；改文件名后全量检查 Markdown 相对链接是否仍能解析（当前 29 篇文档 0 处失效链接，2026-11-27 自检）。
 6. **格式约定**：优先表格/列表；图使用 SVG；Markdown 与 HTML 报告分目录存放（见 `AGENTS.md`）。
 
 ---
@@ -172,7 +184,7 @@ docs/wiki/
 
 本次为**全量扫描后的文档口径统一**（P1-10 修复，仅改文档）：
 
-- **统计口径统一**：`docs/wiki` 当前状态类文档统一到 2026-11-20 实测口径（2026-11-22 复核刷新测试数/IPC）——测试 **351 文件 / 6,406 用例**、IPC **108 通道 / 18 组**、preload 白名单 **send 74 + receive 28 + `window.api` 6**、源码 **357 个代码文件 / 97,434 行**、Vue 对话框 **24 个**、插件工具 **38 个**、Monaco 主题 **57 个（内置 3 + 磁盘 54）**；台账 **22 项（19 ✅ / 2 🟡 / 1 ⏸️）**。
+- **统计口径统一**：`docs/wiki` 当前状态类文档统一到 2026-11-20 实测口径（2026-11-22 复核刷新测试数/IPC）——测试 **363 文件 / 6,669 用例**、IPC **108 通道 / 18 组**、preload 白名单 **send 74 + receive 28 + `window.api` 6**、源码 **357 个代码文件 / 97,434 行**、Vue 对话框 **24 个**、插件工具 **38 个**、Monaco 主题 **57 个（内置 3 + 磁盘 54）**；台账 **22 项（19 ✅ / 2 🟡 / 1 ⏸️）**。
 - **02-设计与架构 4 篇校准**：[架构文档](02-设计与架构/架构文档.md)、[设计文档](02-设计与架构/设计文档.md)、[规格文档](02-设计与架构/规格文档.md)、[项目详细文档](02-设计与架构/项目详细文档.md) 同步技术栈版本（Electron 43.8.12 / Vue 3.5.46 / Vitest 5.1.1 / ESLint 10.15.0）、代码规模、测试数、IPC/白名单、对话框与主题口径；历史章节保留时点数字并标注。
 - **03-功能说明**：[文件导入功能说明](03-功能说明/文件导入功能说明.md) 的 IPC 口径 92 → 91、白名单 58 → 60。
 - **报告与台账**：[报告总索引](../reports/README.md)、[HTML Wiki 首页](../reports/html/README.md)、[当前遗留问题清单](../reports/md/03-专项治理/当前遗留问题清单.md) 与 [IPC 通信矩阵](../reports/md/03-专项治理/IPC通信矩阵.md) 统一为 99 通道 / 17 组、白名单 65+28、报告 md 27 篇 / HTML Wiki 28 页、台账 22 项。
@@ -202,4 +214,4 @@ docs/wiki/
 
 ---
 
-**维护者**：hemy08 ｜ **最后核对**：2026-11-27 ｜ **文档总数**：27 篇（不含 README / `_sidebar.md`；报告归档见 [docs/reports](../reports/README.md)）
+**维护者**：hemy08 ｜ **最后核对**：2026-11-27 ｜ **文档总数**：29 篇（不含 README / `_sidebar.md`；报告归档见 [docs/reports](../reports/README.md)）

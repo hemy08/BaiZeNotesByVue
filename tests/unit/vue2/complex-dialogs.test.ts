@@ -761,8 +761,12 @@ describe('SystemSettingDialog', () => {
         await wrapper.findAll('.sidebar-item')[2].trigger('click')
         const appearancePanel = wrapper.findAll('.setting-panel')[2]
         const selects = appearancePanel.findAll('select.setting-select')
-        expect(selects).toHaveLength(1)
+        // 视觉升级（P0）：字体下拉 + 界面风格下拉 + 界面密度下拉（共 3 个，均可用）
+        expect(selects).toHaveLength(3)
         expect(selects[0].attributes('disabled')).toBeUndefined()
+        expect(appearancePanel.find('[data-testid="ui-style-select"]').exists()).toBe(true)
+        expect(appearancePanel.find('[data-testid="ui-density-select"]').exists()).toBe(true)
+        expect(appearancePanel.find('[data-testid="ui-reduce-transparency"]').exists()).toBe(true)
         expect(appearancePanel.find('.theme-current-name').exists()).toBe(true)
         const themeButtons = appearancePanel.findAll('.browse-btn')
         expect(themeButtons).toHaveLength(1)

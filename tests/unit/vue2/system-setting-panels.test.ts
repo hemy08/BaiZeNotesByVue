@@ -274,6 +274,47 @@ describe('AppearancePanel（外观设置页签）', () => {
         expect(wrapper.emitted('open-theme-setting')).toHaveLength(1)
     })
 
+    // 视觉升级（P0）：界面风格风格/密度/减少透明三项控件（数据真源默认 workbench + default）
+    it('界面风格/密度下拉与减少透明开关：渲染当前值并 emit 字段补丁', async () => {
+        const wrapper = mount(AppearancePanel, {
+            props: {
+                settings: draft({
+                    uiStyle: 'workbench',
+                    uiDensity: 'default',
+                    uiReduceTransparency: false
+                }),
+                themeDisplay: '白泽紫韵'
+            }
+        })
+
+        const styleSelect = wrapper.find('[data-testid="ui-style-select"]')
+        const densitySelect = wrapper.find('[data-testid="ui-density-select"]')
+        const reduceCheckbox = wrapper.find('[data-testid="ui-reduce-transparency"]')
+
+        // 4 风格 / 3 密度选项齐全（互斥单选）
+        expect(styleSelect.findAll('option').map((option) => option.attributes('value'))).toEqual([
+            'paper',
+            'glass',
+            'workbench',
+            'hybrid'
+        ])
+        expect(densitySelect.findAll('option').map((option) => option.attributes('value'))).toEqual(
+            ['compact', 'default', 'spacious']
+        )
+        expect((styleSelect.element as HTMLSelectElement).value).toBe('workbench')
+        expect((densitySelect.element as HTMLSelectElement).value).toBe('default')
+        expect((reduceCheckbox.element as HTMLInputElement).checked).toBe(false)
+
+        await styleSelect.setValue('glass')
+        expect(wrapper.emitted('update')![0]).toEqual([{ uiStyle: 'glass' }])
+
+        await densitySelect.setValue('compact')
+        expect(wrapper.emitted('update')![1]).toEqual([{ uiDensity: 'compact' }])
+
+        await reduceCheckbox.setValue(true)
+        expect(wrapper.emitted('update')![2]).toEqual([{ uiReduceTransparency: true }])
+    })
+
     // P2 剩余静默失败提示（本批）：主题显示名读取失败时显示内联降级提示（非阻断）
     it('themeDisplayFallback 为 true 时显示内联降级提示，默认不显示', () => {
         const normal = mount(AppearancePanel, {

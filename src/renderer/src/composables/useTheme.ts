@@ -19,7 +19,12 @@
  *   同一窗口重复调用不会二次读盘/二次 invoke；
  * - `changeTheme`：主题设置对话框切换入口（更新配置 → 拉取样式 → 应用 → 请求主进程广播）；
  * - `handleThemeBroadcast` / `subscribeThemeUpdates`：`THEME_UPDATED` 广播的唯一订阅实现
- *   （主进程多窗口广播 / 跟随系统主题路径在渲染层的唯一落点）。
+ *   （主进程多窗口广播 / 跟随系统主题路径在渲染层的唯一落点）；
+ * - 视觉升级 P0（视觉升级方案 T1~T3）：`applyThemeStyles` 在既有 20 个主题变量之外追加
+ *   18 个语义颜色令牌（`--ui-*`，shared/theme-tokens 派生）；`applyUiAppearance` 把
+ *   界面风格（paper/glass/workbench/hybrid）与界面密度（compact/default/spacious）写到
+ *   根元素 `data-style` / `data-density` 等属性，并按主题类别解析 glass 降级材质；二者与
+ *   28 套主题正交，默认 workbench + default 密度与视觉升级前观感完全一致。
  *
  * ## 行为保持（与收敛前逐项等价）
  * - 初始主题：欢迎页不应用主题（与收敛前一致，主界面挂载后才初始化）；
@@ -41,9 +46,30 @@
  */
 import { computed, ref } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
-import type { ThemeStyles, ThemeUpdateData } from '../../../shared/types'
+import type {
+    SystemSetting,
+    ThemeStyles,
+    ThemeUpdateData,
+    UiDensity,
+    UiStyle
+} from '../../../shared/types'
 import { IPC } from '../../../shared/ipc-channels'
-import { isDarkThemeType } from '../../../shared/constants/theme'
+import {
+    isDarkThemeType,
+    isEyecareThemeType,
+    isSaturatedThemeType
+} from '../../../shared/constants/theme'
+import { buildSemanticCssVariables, resolveSemanticThemeGroup } from '../../../shared/theme-tokens'
+import {
+    DEFAULT_UI_DENSITY,
+    DEFAULT_UI_REDUCE_TRANSPARENCY,
+    DEFAULT_UI_STYLE,
+    normalizeUiDensity,
+    normalizeUiReduceTransparency,
+    normalizeUiStyle,
+    resolveEffectiveUiStyle
+} from '../../../shared/constants/ui-style'
+import type { GlassMode, UiStyleContext } from '../../../shared/constants/ui-style'
 import { getConfigStore } from '../common/useConfigStore'
 import EventBus from '../common/event-bus/event-bus'
 import { EVENT_BUS } from '../common/event-bus/event-bus-events'
@@ -160,6 +186,153 @@ const separateEditorTheme = ref(false)
 /** 当前 Monaco 编辑器主题标识（与 config store 同步） */
 const monacoEditorTheme = ref('vs')
 
+/**
+ * 系统设置中的三项外观配置（视觉升级 P0）。
+ * 字段可选：调用方可以只传变更项（其余沿用上一次生效值），启动路径传完整 SystemSetting。
+ */
+export type UiAppearanceSetting = Partial<
+    Pick<SystemSetting, 'uiStyle' | 'uiDensity' | 'uiReduceTransparency'>
+>
+
+/** 当前生效的界面外观状态（风格层 + 密度层；供调试、单测与后续 P1 组件读取） */
+export interface UiAppearanceState {
+    /** 用户请求的风格（可能因主题类别被降级） */
+    requestedStyle: UiStyle
+    /** 实际生效材质（写根元素 data-style） */
+    effectiveStyle: UiStyle
+    /** 生效密度（写根元素 data-density） */
+    density: UiDensity
+    /** 用户是否开启「减少透明效果」 */
+    reduceTransparency: boolean
+    /** 系统是否偏好减少透明（prefers-reduced-transparency: reduce） */
+    preferReducedTransparency: boolean
+    /** 玻璃材质模式（normal / steady / flat） */
+    glassMode: GlassMode
+}
+
+/** 默认外观状态（workbench + default + 不减少透明 = 视觉升级前现状） */
+function createDefaultUiAppearance(): UiAppearanceState {
+    return {
+        requestedStyle: DEFAULT_UI_STYLE,
+        effectiveStyle: DEFAULT_UI_STYLE,
+        density: DEFAULT_UI_DENSITY,
+        reduceTransparency: DEFAULT_UI_REDUCE_TRANSPARENCY,
+        preferReducedTransparency: false,
+        glassMode: 'normal'
+    }
+}
+
+/** 当前生效外观状态（模块级单例 ref） */
+const currentUiAppearance = ref<UiAppearanceState>(createDefaultUiAppearance())
+/** 上一次应用的完整外观设置（主题切换/广播后按新主题重新解析降级材质） */
+let lastUiAppearanceSetting: Required<UiAppearanceSetting> | null = null
+
+/** 默认外观设置（未读配置/配置缺字段时兜底；与主进程 systemSettingDefaults 一致） */
+function createDefaultUiAppearanceSetting(): Required<UiAppearanceSetting> {
+    return {
+        uiStyle: DEFAULT_UI_STYLE,
+        uiDensity: DEFAULT_UI_DENSITY,
+        uiReduceTransparency: DEFAULT_UI_REDUCE_TRANSPARENCY
+    }
+}
+
+/**
+ * 系统是否偏好「减少透明」。
+ *
+ * `prefers-reduced-transparency` 是 Chromium/系统级可访问性偏好；jsdom/老环境可能没有
+ * `matchMedia`，任何异常都按「不偏好」处理（回退默认观感，不阻塞启动）。
+ * 同时导出供单测替换/断言。
+ */
+export function detectReducedTransparencyPreference(): boolean {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+        return false
+    }
+    try {
+        return window.matchMedia('(prefers-reduced-transparency: reduce)').matches === true
+    } catch {
+        return false
+    }
+}
+
+/** 是否按「深色材质」处理：优先按实际表面亮度（修正 baize-text / forest 等归属偏差），无法解析时回退主题分组 */
+function isDarkMaterialTheme(themeType: string, styles: ThemeStyles | null): boolean {
+    if (styles) {
+        const darkByBackground = resolveSemanticThemeGroup(themeType, styles) === 'dark'
+        return darkByBackground
+    }
+    return isDarkThemeType(themeType)
+}
+
+/**
+ * 解析实际生效的界面风格（visual P0 风格层纯函数封装）。
+ *
+ * 降级规则见 `shared/constants/ui-style.ts` 的 `resolveEffectiveUiStyle`：
+ * glass 在「减少透明 / 系统偏好 / 高饱和 / 护眼」时回退 paper 材质，
+ * 在深色主题下进入 steady 稳健模式（降透明度 + 关模糊）。
+ */
+export function resolveEffectiveStyle(requested: UiStyle, context: UiStyleContext): UiStyle {
+    return resolveEffectiveUiStyle(requested, context).style
+}
+
+/**
+ * 应用界面外观（风格 + 密度 + 减少透明）到根元素 data-* 属性。
+ *
+ * - 只写 `document.documentElement.dataset`，不写任何 CSS 变量（颜色仍由 applyThemeStyles 负责）；
+ * - 三项配置缺省/非法时归一化为默认值（workbench / default / false），保证首次启动
+ *   「默认观感零变化」；
+ * - 主题切换或主进程广播后会以最新主题重新解析（glass 的 dark/高饱和/护眼降级可能随之变化）。
+ *
+ * @param setting 外观配置（部分字段也可）
+ * @param themeStyles 主题样式（缺省取当前已应用主题）
+ * @param themeType 主题标识（缺省取 config store 当前主题）
+ */
+function applyUiAppearance(
+    setting: UiAppearanceSetting,
+    themeStyles?: ThemeStyles | null,
+    themeType?: string
+): void {
+    const previous = lastUiAppearanceSetting ?? createDefaultUiAppearanceSetting()
+    const nextSetting: Required<UiAppearanceSetting> = {
+        uiStyle: normalizeUiStyle(setting.uiStyle ?? previous.uiStyle),
+        uiDensity: normalizeUiDensity(setting.uiDensity ?? previous.uiDensity),
+        uiReduceTransparency: normalizeUiReduceTransparency(
+            setting.uiReduceTransparency ?? previous.uiReduceTransparency
+        )
+    }
+    lastUiAppearanceSetting = nextSetting
+
+    const styles = themeStyles ?? currentThemeStyles.value
+    const resolvedThemeType = themeType ?? getConfigStore().themeConfig.value.currentTheme
+    const preferReducedTransparency = detectReducedTransparencyPreference()
+    const context: UiStyleContext = {
+        isDark: isDarkMaterialTheme(resolvedThemeType, styles),
+        isSaturated: isSaturatedThemeType(resolvedThemeType),
+        isEyecare: isEyecareThemeType(resolvedThemeType),
+        reduceTransparency: nextSetting.uiReduceTransparency,
+        preferReducedTransparency
+    }
+    const effective = resolveEffectiveUiStyle(nextSetting.uiStyle, context)
+    const state: UiAppearanceState = {
+        requestedStyle: nextSetting.uiStyle,
+        effectiveStyle: effective.style,
+        density: nextSetting.uiDensity,
+        reduceTransparency: nextSetting.uiReduceTransparency,
+        preferReducedTransparency,
+        glassMode: effective.glassMode
+    }
+    currentUiAppearance.value = state
+
+    if (typeof document === 'undefined' || !document.documentElement) {
+        return
+    }
+    const dataset = document.documentElement.dataset
+    dataset.style = state.effectiveStyle
+    dataset.density = state.density
+    dataset.glassMode = state.glassMode
+    dataset.transparency =
+        state.reduceTransparency || state.preferReducedTransparency ? 'reduced' : 'normal'
+}
+
 /** 上一次真正写入 DOM 的变量签名（幂等短路用；模块级单例状态） */
 let lastAppliedSignature: string | null = null
 /** 初始化单例 Promise（同一窗口只读盘/应用一次） */
@@ -201,13 +374,27 @@ async function fetchCurrentThemeStyles(themeType: string): Promise<ThemeStyles |
 /**
  * 应用主题到 DOM（CSS 变量）——幂等：同一份变量重复调用直接返回 false，不触碰 DOM。
  *
- * 说明：CSS 变量统一写在 `document.documentElement`，`:root` 规则（styles/theme.css 的
- * 默认值）随组件 CSS 变量消费自动生效；不再做任何元素级 querySelector 内联样式直改。
+ * 写入内容（共 38 个变量）：
+ * - 既有 20 个主题变量（`THEME_CSS_VARIABLE_BINDINGS`：10 个 `--theme-*` 主变量 +
+ *   10 个无前缀历史别名）——**完全不变**（UI-03 兼容）；
+ * - 视觉升级新增 18 个语义变量（`--ui-*`，由 shared/theme-tokens 派生），
+ *   供 P1 组件与 ui-style.css 消费；与旧变量正交，不覆盖旧变量。
  *
+ * 说明：CSS 变量统一写在 `document.documentElement`，`:root` 规则（styles/theme.css 的
+ * 默认值 + styles/ui-style.css 的风格/密度默认值）随组件消费自动生效；不做任何元素级
+ * querySelector 内联样式直改。
+ *
+ * @param theme 主进程返回的完整主题样式
+ * @param themeType 主题标识（缺省取 config store 当前主题；用于判定语义色分组）
  * @returns 是否真正写入了 DOM（签名变化 = true；重复 apply 同一主题 = false）
  */
-function applyThemeStyles(theme: ThemeStyles): boolean {
-    const variables = buildThemeCssVariables(theme)
+function applyThemeStyles(theme: ThemeStyles, themeType?: string): boolean {
+    const resolvedThemeType = themeType ?? getConfigStore().themeConfig.value.currentTheme
+    const semanticGroup = resolveSemanticThemeGroup(resolvedThemeType, theme)
+    const variables: Record<string, string> = {
+        ...buildThemeCssVariables(theme),
+        ...buildSemanticCssVariables(theme, semanticGroup)
+    }
     const signature = JSON.stringify(variables)
     if (signature === lastAppliedSignature) {
         return false
@@ -342,17 +529,24 @@ async function applyMonacoEditorTheme(
  *
  * 调用方：启动初始化、主题切换、主进程 `THEME_UPDATED` 广播、跟随系统主题。
  * 顺序与收敛前一致：先同步状态 → 应用界面主题 → 再异步应用编辑器主题。
+ * 视觉升级 P0：界面主题应用后，若已读过外观配置则按新主题重新解析玻璃降级材质
+ * （深色/高饱和/护眼主题切换会改变生效材质）。
  *
+ * @param themeType 主题标识（可选；缺省取 config store 当前主题，用于语义色分组判定）
  * @returns Monaco 编辑器主题是否成功应用（界面主题此时已应用；供用户主动切换路径提示）
  */
 async function applyThemeUpdate(
     themeStyles: ThemeStyles,
     separate: boolean,
-    monacoThemeName: string
+    monacoThemeName: string,
+    themeType?: string
 ): Promise<boolean> {
     separateEditorTheme.value = separate
     monacoEditorTheme.value = monacoThemeName
-    applyThemeStyles(themeStyles)
+    applyThemeStyles(themeStyles, themeType)
+    if (lastUiAppearanceSetting) {
+        applyUiAppearance(lastUiAppearanceSetting, themeStyles, themeType)
+    }
     return applyMonacoEditorTheme(themeStyles, separate, monacoThemeName)
 }
 
@@ -385,8 +579,19 @@ async function initializeTheme(): Promise<void> {
                 await applyThemeUpdate(
                     styles,
                     themeConfig.separateEditorTheme,
-                    themeConfig.editorTheme || 'vs'
+                    themeConfig.editorTheme || 'vs',
+                    themeConfig.currentTheme
                 )
+            }
+            // 视觉升级（P0）：读取系统设置中的界面风格/密度/减少透明并写根元素 data-* 属性。
+            // 独立 try/catch：系统设置读取失败不得影响主题初始化（回退 workbench + default，
+            // 即升级前现状观感）。读到的设置同时缓存，供后续主题切换重新解析降级材质。
+            try {
+                const systemSetting = await window.api.config.read<SystemSetting>('system')
+                applyUiAppearance(systemSetting ?? {}, styles ?? null, themeConfig.currentTheme)
+            } catch (error) {
+                logger.warn('读取系统外观设置失败，已使用默认界面风格/密度:', error)
+                applyUiAppearance({}, styles ?? null, themeConfig.currentTheme)
             }
         } catch (error) {
             logger.error('Failed to load configs:', error)
@@ -461,7 +666,12 @@ async function changeTheme(
             return
         }
 
-        const monacoApplied = await applyThemeUpdate(styles, targetSeparate, targetMonacoTheme)
+        const monacoApplied = await applyThemeUpdate(
+            styles,
+            targetSeparate,
+            targetMonacoTheme,
+            targetTheme
+        )
         if (!monacoApplied) {
             // 界面主题已应用，仅编辑器主题回退：单独提示，不影响下方主进程广播
             reportActionFailure({
@@ -511,7 +721,15 @@ async function handleThemeBroadcast(_event: unknown, data: ThemeUpdateData): Pro
         return
     }
     // 后台广播忽略 Monaco 主题应用结果（失败已回退默认主题，不打断当前编辑）
-    await applyThemeUpdate(data.themeStyles, data.separateEditorTheme, data.monacoTheme)
+    // 主题标识：历史载荷不带 themeType（可选字段），缺省取 config store 当前主题用于
+    // 语义色分组判定；material 降级另有「按背景亮度」兜底，不会因主题名过期而错配。
+    const broadcastThemeType = data.themeType ?? getConfigStore().themeConfig.value.currentTheme
+    await applyThemeUpdate(
+        data.themeStyles,
+        data.separateEditorTheme,
+        data.monacoTheme,
+        broadcastThemeType
+    )
 }
 
 /** 订阅主进程主题广播（单例订阅；返回清理函数，重复订阅返回同一清理函数） */
@@ -535,6 +753,8 @@ function subscribeThemeUpdates(): () => void {
 export interface ThemeApi {
     /** 当前已应用的主题样式（只读状态） */
     currentThemeStyles: Ref<ThemeStyles | null>
+    /** 当前生效的界面外观状态（风格层 + 密度层；视觉升级 P0） */
+    currentUiAppearance: Ref<UiAppearanceState>
     /** 当前应用主题标识（来自 config store，单一状态源） */
     currentThemeType: ComputedRef<string>
     /** 当前主题是否属于深色系（shared DARK_THEME_TYPES 唯一口径） */
@@ -547,6 +767,10 @@ export interface ThemeApi {
     changeTheme: typeof changeTheme
     applyThemeStyles: typeof applyThemeStyles
     applyThemeUpdate: typeof applyThemeUpdate
+    /** 应用界面外观（风格/密度/减少透明）到根元素 data-* 属性 */
+    applyUiAppearance: typeof applyUiAppearance
+    /** 解析实际生效风格（glass 降级规则封装） */
+    resolveEffectiveStyle: typeof resolveEffectiveStyle
     handleThemeBroadcast: typeof handleThemeBroadcast
     subscribeThemeUpdates: typeof subscribeThemeUpdates
 }
@@ -555,6 +779,7 @@ export interface ThemeApi {
 function createThemeApi(): ThemeApi {
     return {
         currentThemeStyles,
+        currentUiAppearance,
         currentThemeType: computed(() => getConfigStore().themeConfig.value.currentTheme),
         isDarkTheme: computed(() =>
             isDarkThemeType(getConfigStore().themeConfig.value.currentTheme)
@@ -565,6 +790,8 @@ function createThemeApi(): ThemeApi {
         changeTheme,
         applyThemeStyles,
         applyThemeUpdate,
+        applyUiAppearance,
+        resolveEffectiveStyle,
         handleThemeBroadcast,
         subscribeThemeUpdates
     }
@@ -603,4 +830,14 @@ export function resetThemeStateForTesting(): void {
     initializePromise = null
     monacoModulePromise = null
     themeApi = null
+    // 视觉升级（P0）：外观状态与根元素 data-* 属性一并复位，避免跨用例串扰
+    currentUiAppearance.value = createDefaultUiAppearance()
+    lastUiAppearanceSetting = null
+    if (typeof document !== 'undefined' && document.documentElement) {
+        const dataset = document.documentElement.dataset
+        delete dataset.style
+        delete dataset.density
+        delete dataset.glassMode
+        delete dataset.transparency
+    }
 }

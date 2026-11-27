@@ -1,0 +1,249 @@
+/* ============================================================================
+ * 界面风格层 / 密度层变量表（视觉升级 P0）
+ *
+ * ## 分层关系
+ * - 颜色：由主题（28 套）+ `useTheme.applyThemeStyles` 写入的 `--ui-*` 语义颜色令牌提供；
+ * - 材质（本文件 data-style）：透明度 / 模糊 / 阴影 / 圆角 / 高光边；
+ * - 尺寸节奏（本文件 data-density）：行高 / 控件高 / 内边距 / 工具窗标题栏高 / UI 字号；
+ * - 动效与层级（本文件 :root）：时长/缓动、z-index 阶梯。
+ *
+ * ## 数值唯一真源
+ * 风格与密度数值的真源是同源的 TS 常量：
+ * - `src/shared/constants/ui-style.ts` 的 UI_STYLE_TOKENS / UI_DENSITY_TOKENS / UI_MOTION_TOKENS；
+ * 本文件的变量块必须与之一致（由 `tests/unit/ui-style-tokens.test.ts` 静态逐项校验）。
+ *
+ * ## 默认观感零变化（硬约束）
+ * - `:root` = 默认 `workbench` 材质 + `default` 密度 = 视觉升级前现状；
+ * - 默认数据下根元素会带 `data-style="workbench" data-density="default"`，命中下方同名块，
+ *   与本文件 :root 默认值完全一致，因此未初始化/初始化完成两种时机观感一致；
+ * - 本文件只声明 CSS 变量，不对任何既有组件选择器声明样式（P0 不改变现有界面外观，
+ *   组件消费这些变量发生在 P1/P2 批次）。
+ *
+ * ## 双材质边界（hybrid 风格）
+ * - 外壳区（标题栏/菜单栏/侧栏/状态栏/工具窗/对话框/命令面板）：消费 `--ui-*` 变量；
+ * - 内容区（编辑器正文 / Markdown 预览）：消费 `--ui-content-*` 变量；
+ * - hybrid 下外壳 = workbench、内容区 = paper；其余风格两者同材质。
+ *
+ * ## glass 降级（运行时由 useTheme 计算后写 data-style / data-glass-mode / data-transparency）
+ * - 深色主题：保留 glass，进入 steady 稳健模式（不透明度 0.94、关闭模糊）；
+ * - 高饱和/护眼主题、用户「减少透明」开关、系统 prefers-reduced-transparency：
+ *   回退 paper 材质（data-style 直接写 paper，本文件无需额外处理）。
+ * ========================================================================== */
+
+:root {
+    /* ---------- 默认材质：workbench（= 现状基准） ---------- */
+    --ui-surface-opacity: 1;
+    --ui-surface-blur: 0px;
+    --ui-highlight-border-alpha: 0;
+    --ui-radius-sm: 2px;
+    --ui-radius-md: 4px;
+    --ui-radius-lg: 6px;
+    --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --ui-shadow-2: 0 6px 24px rgba(0, 0, 0, 0.12);
+    --ui-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.18);
+
+    /* 默认内容区材质（workbench 与外壳同材质） */
+    --ui-content-surface-opacity: 1;
+    --ui-content-surface-blur: 0px;
+    --ui-content-radius-sm: 2px;
+    --ui-content-radius-md: 4px;
+    --ui-content-radius-lg: 6px;
+    --ui-content-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --ui-content-shadow-2: 0 6px 24px rgba(0, 0, 0, 0.12);
+    --ui-content-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.18);
+
+    /* ---------- 默认密度：default（= 现状尺寸节奏） ---------- */
+    --ui-row-height: 28px;
+    --ui-control-height: 32px;
+    --ui-pad: 12px;
+    --ui-titlebar-height: 40px;
+    --ui-font-size: 13px;
+
+    /* ---------- 边框：1px hairline + 焦点环 ---------- */
+    --ui-hairline-width: 1px;
+    --ui-focus-shadow: 0 0 0 3px var(--ui-focus-ring, rgba(118, 75, 162, 0.3));
+
+    /* ---------- 动效（视觉升级方案 §3.4） ---------- */
+    --ui-duration-fast: 120ms;
+    --ui-duration-pop: 180ms;
+    --ui-duration-dialog: 240ms;
+    --ui-duration-overlay: 200ms;
+    --ui-duration-page: 300ms;
+    --ui-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ui-ease-page: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ---------- z-index 层级（禁止组件各自定义） ---------- */
+    --ui-z-content: 0;
+    --ui-z-sidebar: 10;
+    --ui-z-drag: 20;
+    --ui-z-toolwindow: 30;
+    --ui-z-dropdown: 40;
+    --ui-z-dialog: 50;
+    --ui-z-palette: 60;
+    --ui-z-toast: 70;
+    --ui-z-guide: 80;
+}
+
+/* ============================================================================
+ * 风格层：4 种材质（属性由渲染层 useTheme 写根元素；默认 workbench）
+ * ========================================================================== */
+
+/* A. 静默纸感：不透明面 + 弱阴影 + 小圆角（长文写作/阅读） */
+[data-style='paper'] {
+    --ui-surface-opacity: 1;
+    --ui-surface-blur: 0px;
+    --ui-highlight-border-alpha: 0;
+    --ui-radius-sm: 4px;
+    --ui-radius-md: 6px;
+    --ui-radius-lg: 8px;
+    --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --ui-shadow-2: 0 6px 24px rgba(0, 0, 0, 0.08);
+    --ui-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.12);
+    --ui-content-surface-opacity: 1;
+    --ui-content-surface-blur: 0px;
+    --ui-content-radius-sm: 4px;
+    --ui-content-radius-md: 6px;
+    --ui-content-radius-lg: 8px;
+    --ui-content-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --ui-content-shadow-2: 0 6px 24px rgba(0, 0, 0, 0.08);
+    --ui-content-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.12);
+}
+
+/* B. 轻玻璃：半透明悬浮面 + 8px 小面积模糊 + 高光边 + 大圆角（现代桌面工具感） */
+[data-style='glass'] {
+    --ui-surface-opacity: 0.86;
+    --ui-surface-blur: 8px;
+    --ui-highlight-border-alpha: 0.14;
+    --ui-radius-sm: 8px;
+    --ui-radius-md: 8px;
+    --ui-radius-lg: 12px;
+    --ui-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --ui-shadow-2: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --ui-shadow-3: 0 20px 60px rgba(0, 0, 0, 0.16);
+    --ui-content-surface-opacity: 0.86;
+    --ui-content-surface-blur: 8px;
+    --ui-content-radius-sm: 8px;
+    --ui-content-radius-md: 8px;
+    --ui-content-radius-lg: 12px;
+    --ui-content-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --ui-content-shadow-2: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --ui-content-shadow-3: 0 20px 60px rgba(0, 0, 0, 0.16);
+}
+
+/* glass 深色主题稳健模式：提高不透明度、关闭模糊（避免深底叠色发灰） */
+[data-style='glass'][data-glass-mode='steady'] {
+    --ui-surface-opacity: 0.94;
+    --ui-surface-blur: 0px;
+    --ui-highlight-border-alpha: 0.1;
+    --ui-content-surface-opacity: 0.94;
+    --ui-content-surface-blur: 0px;
+}
+
+/* glass 减少透明兜底（用户开关或系统偏好的 JS 侧已回退 paper，此处防御式兜底） */
+[data-style='glass'][data-transparency='reduced'] {
+    --ui-surface-opacity: 1;
+    --ui-surface-blur: 0px;
+    --ui-highlight-border-alpha: 0;
+    --ui-content-surface-opacity: 1;
+    --ui-content-surface-blur: 0px;
+}
+
+/* C. 高密度工作台：不透明 + 紧凑圆角 + 克制阴影（= 默认现状；知识管理/高信息密度） */
+[data-style='workbench'] {
+    --ui-surface-opacity: 1;
+    --ui-surface-blur: 0px;
+    --ui-highlight-border-alpha: 0;
+    --ui-radius-sm: 2px;
+    --ui-radius-md: 4px;
+    --ui-radius-lg: 6px;
+    --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --ui-shadow-2: 0 6px 24px rgba(0, 0, 0, 0.12);
+    --ui-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.18);
+    --ui-content-surface-opacity: 1;
+    --ui-content-surface-blur: 0px;
+    --ui-content-radius-sm: 2px;
+    --ui-content-radius-md: 4px;
+    --ui-content-radius-lg: 6px;
+    --ui-content-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --ui-content-shadow-2: 0 6px 24px rgba(0, 0, 0, 0.12);
+    --ui-content-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+/* D. 混合：外壳 = workbench 材质、内容区 = paper 纸感材质（写作 + 知识管理兼顾） */
+[data-style='hybrid'] {
+    --ui-surface-opacity: 1;
+    --ui-surface-blur: 0px;
+    --ui-highlight-border-alpha: 0;
+    --ui-radius-sm: 2px;
+    --ui-radius-md: 4px;
+    --ui-radius-lg: 6px;
+    --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --ui-shadow-2: 0 6px 24px rgba(0, 0, 0, 0.12);
+    --ui-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.18);
+    /* 内容区（正文/预览）切纸感 */
+    --ui-content-surface-opacity: 1;
+    --ui-content-surface-blur: 0px;
+    --ui-content-radius-sm: 4px;
+    --ui-content-radius-md: 6px;
+    --ui-content-radius-lg: 8px;
+    --ui-content-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --ui-content-shadow-2: 0 6px 24px rgba(0, 0, 0, 0.08);
+    --ui-content-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.12);
+}
+
+/* ============================================================================
+ * 密度层：3 档尺寸节奏（属性由渲染层 useTheme 写根元素；默认 default）
+ *
+ * 口径：行高 / 控件高 / 内边距基准 / 工具窗标题栏高 / UI 字号。
+ * default 档 = 视觉升级前现状（硬约束：所有数值不得漂移）。
+ * ========================================================================== */
+
+[data-density='compact'] {
+    --ui-row-height: 24px;
+    --ui-control-height: 28px;
+    --ui-pad: 8px;
+    --ui-titlebar-height: 36px;
+    --ui-font-size: 12px;
+}
+
+[data-density='default'] {
+    --ui-row-height: 28px;
+    --ui-control-height: 32px;
+    --ui-pad: 12px;
+    --ui-titlebar-height: 40px;
+    --ui-font-size: 13px;
+}
+
+[data-density='spacious'] {
+    --ui-row-height: 32px;
+    --ui-control-height: 36px;
+    --ui-pad: 16px;
+    --ui-titlebar-height: 44px;
+    --ui-font-size: 13px;
+}
+
+/* ============================================================================
+ * 系统偏好降级（CSS 侧兜底；JS 侧 useTheme 已按同一偏好计算生效材质）
+ * ========================================================================== */
+
+/* 系统「减少透明」：glass 一律回退不透明（不改变布局，只关透明度/模糊） */
+@media (prefers-reduced-transparency: reduce) {
+    [data-style='glass'] {
+        --ui-surface-opacity: 1;
+        --ui-surface-blur: 0px;
+        --ui-highlight-border-alpha: 0;
+        --ui-content-surface-opacity: 1;
+        --ui-content-surface-blur: 0px;
+    }
+}
+
+/* 系统「减少动效」：全部时长降为 0，仅保留 100ms 淡入（方案 §3.4） */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --ui-duration-fast: 0ms;
+        --ui-duration-pop: 0ms;
+        --ui-duration-dialog: 0ms;
+        --ui-duration-overlay: 100ms;
+        --ui-duration-page: 0ms;
+    }
+}

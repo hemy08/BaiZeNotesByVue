@@ -117,9 +117,13 @@
                 <p v-else-if="!appliedSearch" class="hint">
                     {{ t('editorUi.workspaceSearch.initialHint') }}
                 </p>
-                <p v-else-if="state.files.length === 0" class="hint">
-                    {{ t('editorUi.workspaceSearch.noResults') }}
-                </p>
+                <!-- 空态统一组件（T11 首批替换点）：有查询但无匹配 -->
+                <EmptyState
+                    v-else-if="state.files.length === 0"
+                    class="results-empty"
+                    variant="no-search"
+                    :title="t('editorUi.workspaceSearch.noResults')"
+                />
                 <template v-else>
                     <div
                         v-for="file in state.files"
@@ -189,6 +193,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import BaseDialog from '../dialogs/BaseDialog.vue'
+import EmptyState from '../common/ui/EmptyState.vue'
 import { t } from '../../common/i18n'
 import type {
     WorkspaceReplaceResult,
@@ -557,7 +562,12 @@ onBeforeUnmount(() => {
 }
 
 .hint--error {
-    color: #e74c3c;
+    color: var(--ui-danger, #c62828);
+}
+
+/* 空态统一组件（T11）：结果区内的居中留白 */
+.results-empty {
+    padding: 48px 16px;
 }
 
 .hint--truncated {

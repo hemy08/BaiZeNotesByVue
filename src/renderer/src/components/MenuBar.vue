@@ -1,30 +1,58 @@
 <template>
-    <div class="menu-bar" @mouseleave="handleMenuBarLeave">
-        <div
+    <div
+        ref="menuBarRef"
+        class="menu-bar"
+        role="menubar"
+        aria-orientation="horizontal"
+        :aria-label="menubarAriaLabel"
+        @mouseleave="handleMenuBarLeave"
+        @keydown="handleMenubarKeydown"
+    >
+        <!--
+            顶层菜单项（视觉升级 P1-B2 / T7）：
+            - 用 button 承载 role=menuitem（原生可聚焦、可被读屏识别），roving tabindex 保证
+              Tab 进出菜单栏只占一个焦点位；
+            - aria-haspopup/aria-expanded 表达下拉展开状态；菜单数据与动作分发机制不变
+              （MENU-01~13：只消费 labelKey + menuAction，不在组件内解析动作）。
+        -->
+        <button
             v-for="(menu, index) in menuData"
             :key="index"
+            type="button"
             class="menu-item"
             :class="{ active: activeMenu === index }"
+            role="menuitem"
+            :aria-haspopup="hasSubmenu(menu) ? 'true' : undefined"
+            :aria-expanded="
+                hasSubmenu(menu) ? (activeMenu === index ? 'true' : 'false') : undefined
+            "
+            :tabindex="focusedMenuIndex === index ? 0 : -1"
+            :data-menu-index="index"
             @click="toggleMenu(index)"
             @mouseenter="handleMenuEnter(index)"
+            @focus="handleMenuFocus(index)"
         >
             <span class="menu-label">{{ menu.labelKey ? t(menu.labelKey) : menu.label }}</span>
-        </div>
+        </button>
 
-        <!-- 子菜单容器 -->
+        <!-- 子菜单容器（teleport 到 body：位置跟随菜单项，层级走 --ui-z-dropdown） -->
         <teleport to="body">
             <transition name="submenu-fade">
                 <div
-                    v-if="activeMenu !== null && menuData[activeMenu].submenu"
+                    v-if="activeMenu !== null && menuData[activeMenu]?.submenu"
                     class="submenu-container"
                     :style="submenuStyle"
                     @mouseleave="handleSubmenuLeave"
                     @mouseenter="handleSubmenuEnter"
                 >
-                    <BaiZeSubMenuItem
+                    <MenuSubmenu
                         :items="menuData[activeMenu].submenu || []"
                         :level="0"
-                        @close="closeMenu"
+                        :aria-label="activeMenuAriaLabel"
+                        @activate="handleSubmenuActivate"
+                        @close="handleSubmenuClose"
+                        @tab="handleSubmenuTab"
+                        @switch-menu="handleSubmenuSwitchMenu"
                     />
                 </div>
             </transition>
@@ -33,11 +61,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { VNode } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { menuMap } from './MenuBar/menu-config'
 import type { BaiZeMenuEntry } from './MenuBar/menu-config'
-import { HandleMenuAction } from './MenuBar/menu-actions'
+import MenuSubmenu from './MenuBar/MenuSubmenu.vue'
+import { hasMenuSubmenu, moveMenubarIndex, resolveMenubarKeyAction } from './MenuBar/menu-keyboard'
 import { t } from '../common/i18n'
 import { getBaseName } from '../../../shared/utils/path'
 import { logger } from '../common/logger'
@@ -187,15 +215,75 @@ function refreshRecentMenusIfFileMenu(index: number): void {
 // 状态与广播订阅统一由 `composables/useTheme` 单例负责，本组件仅通过 CSS 变量消费主题。
 // 2026-11-18（遗留清单 #2）原注释中「菜单主题选中态不刷新」的问题随死状态删除不再存在。
 
+/** 菜单栏根节点（键盘焦点查询范围，避免跨实例误命中） */
+const menuBarRef = ref<HTMLElement | null>(null)
+/** 当前展开的顶层菜单索引（null = 未展开） */
 const activeMenu = ref<number | null>(null)
+/** roving tabindex：菜单栏内只有一项 tabindex=0，方向键移动时同步更新 */
+const focusedMenuIndex = ref(0)
 const submenuPosition = ref({ x: 0, y: 0 })
 const closeTimer = ref<number | null>(null)
 const isSubmenuHovered = ref(false)
 
+/**
+ * 键盘激活防抖守卫（T7 键盘可达）：
+ * 顶层按钮是原生 `<button>`，Enter/Space 在部分平台会由浏览器补发一次合成 click
+ * （detail=0）。键盘 keydown 已经打开菜单，若再让该合成 click 进入 toggleMenu 会把
+ * 刚打开的菜单立即关掉。故键盘打开时短暂抑制紧随其后的点击一次；真实鼠标点击
+ * （detail≥1）不受影响。
+ */
+let suppressKeyboardActivationClick = false
+let suppressKeyboardActivationTimer: ReturnType<typeof setTimeout> | null = null
+
+/** 键盘打开菜单后抑制一次合成 click（300ms 内有效，覆盖按键保持时间） */
+function suppressNextKeyboardActivationClick(): void {
+    suppressKeyboardActivationClick = true
+    if (suppressKeyboardActivationTimer !== null) {
+        clearTimeout(suppressKeyboardActivationTimer)
+    }
+    suppressKeyboardActivationTimer = setTimeout(() => {
+        suppressKeyboardActivationClick = false
+        suppressKeyboardActivationTimer = null
+    }, 300)
+}
+
+/** 消费一次键盘合成 click（真实鼠标点击返回 false，正常走 toggle 逻辑） */
+function consumeKeyboardActivationClick(): boolean {
+    if (!suppressKeyboardActivationClick) {
+        return false
+    }
+    suppressKeyboardActivationClick = false
+    if (suppressKeyboardActivationTimer !== null) {
+        clearTimeout(suppressKeyboardActivationTimer)
+        suppressKeyboardActivationTimer = null
+    }
+    return true
+}
+
+/** 菜单栏可访问名称（中英词典 menu.menubar.label） */
+const menubarAriaLabel = computed(() => t('menu.menubar.label'))
+
+/** 当前展开菜单的可访问名称（传给 role=menu 的下拉面板） */
+const activeMenuAriaLabel = computed(() => {
+    const index = activeMenu.value
+    if (index === null) {
+        return ''
+    }
+    const menu = menuData.value[index]
+    if (!menu) {
+        return ''
+    }
+    return menu.labelKey ? t(menu.labelKey) : (menu.label ?? '')
+})
+
+/** 顶级菜单项是否有非空下拉（空 submenu 按叶子渲染，与既有渲染语义一致） */
+function hasSubmenu(menu: BaiZeMenuEntry): boolean {
+    return hasMenuSubmenu(menu)
+}
+
 // 计算子菜单位置，确保不超出屏幕
 function calculateSubmenuPosition(x: number, y: number) {
     const screenWidth = window.innerWidth
-    // const screenHeight = window.innerHeight
     const menuWidth = 220
     const padding = 8
 
@@ -220,123 +308,157 @@ function calculateSubmenuPosition(x: number, y: number) {
     return { x: posX, y: posY }
 }
 
-// 子菜单项组件（递归）
-const BaiZeSubMenuItem = defineComponent({
-    name: 'BaiZeSubMenuItem',
-    props: {
-        items: {
-            type: Array as () => BaiZeMenuEntry[],
-            required: true
-        },
-        level: {
-            type: Number,
-            default: 0
-        }
-    },
-    emits: ['close'],
-    setup(props, { emit }) {
-        const activeSubmenu = ref<number | null>(null)
-
-        const handleItemClick = (item: BaiZeMenuEntry) => {
-            if (item.menuAction && !item.submenu) {
-                HandleMenuAction(item.menuAction)
-                emit('close')
-            }
-        }
-
-        const handleItemEnter = (index: number, item: BaiZeMenuEntry) => {
-            if (item.submenu) {
-                activeSubmenu.value = index
-            } else {
-                activeSubmenu.value = null
-            }
-        }
-
-        return () => {
-            const children: VNode[] = []
-
-            props.items.forEach((item: BaiZeMenuEntry, index: number) => {
-                if (item.type === 'separator') {
-                    children.push(h('div', { class: 'menu-separator', key: `sep-${index}` }))
-                    return
-                }
-
-                const hasSubmenu = item.submenu && item.submenu.length > 0
-                const isActive = activeSubmenu.value === index
-
-                const itemChildren = [
-                    h(
-                        'span',
-                        { class: 'menu-item-label' },
-                        item.labelKey ? t(item.labelKey) : item.label
-                    ),
-                    item.accelerator
-                        ? h('span', { class: 'menu-item-accelerator' }, item.accelerator)
-                        : null,
-                    hasSubmenu ? h('span', { class: 'menu-item-arrow' }, '▶') : null
-                ]
-
-                const itemElement = h(
-                    'div',
-                    {
-                        class: [
-                            'menu-submenu-item',
-                            {
-                                disabled: item.enabled === false,
-                                'has-submenu': hasSubmenu,
-                                active: isActive
-                            }
-                        ],
-                        key: index,
-                        onClick: (e: Event) => {
-                            e.stopPropagation()
-                            handleItemClick(item)
-                        },
-                        onMouseenter: () => handleItemEnter(index, item)
-                    },
-                    itemChildren
-                )
-
-                if (hasSubmenu && isActive) {
-                    const nestedSubmenu = h('div', { class: 'nested-submenu' }, [
-                        h(BaiZeSubMenuItem, {
-                            items: item.submenu || [],
-                            level: props.level + 1,
-                            onClose: () => emit('close')
-                        })
-                    ])
-                    children.push(
-                        h('div', { class: 'submenu-item-wrapper', key: `wrapper-${index}` }, [
-                            itemElement,
-                            nestedSubmenu
-                        ])
-                    )
-                } else {
-                    children.push(itemElement)
-                }
-            })
-
-            return h('div', { class: 'submenu-list' }, children)
-        }
-    }
-})
-
 const submenuStyle = computed(() => ({
     left: `${submenuPosition.value.x}px`,
     top: `${submenuPosition.value.y}px`
 }))
 
+/** 聚焦顶层菜单项（索引取模回绕，保持 roving tabindex 同步） */
+function focusTopLevel(index: number): void {
+    const total = menuData.value.length
+    if (total === 0) {
+        return
+    }
+    const safeIndex = ((index % total) + total) % total
+    focusedMenuIndex.value = safeIndex
+    menuBarRef.value?.querySelector<HTMLElement>(`[data-menu-index="${safeIndex}"]`)?.focus()
+}
+
+/**
+ * 打开指定顶层菜单。
+ *
+ * @param index 顶层菜单索引
+ * @param keyboard 是否由键盘触发（true 时把焦点移入下拉第一项）
+ */
+function openMenuAt(index: number, keyboard: boolean): void {
+    if (!menuData.value[index]) {
+        return
+    }
+    // 「文件」菜单：打开时异步刷新最近文件/最近文件夹子菜单（失败静默，不阻塞打开）
+    refreshRecentMenusIfFileMenu(index)
+    activeMenu.value = index
+    void nextTick(() => {
+        updateSubmenuPosition(index)
+        if (keyboard) {
+            focusFirstSubmenuItem()
+        }
+    })
+}
+
+/** 键盘打开菜单时把焦点交给下拉第一项（跳过禁用占位项） */
+function focusFirstSubmenuItem(): void {
+    const rows = document.querySelectorAll<HTMLElement>(
+        '.submenu-container > .submenu-list > .menu-submenu-item, ' +
+            '.submenu-container > .submenu-list > .submenu-item-wrapper > .menu-submenu-item'
+    )
+    for (const row of rows) {
+        if (!row.classList.contains('disabled')) {
+            row.focus()
+            return
+        }
+    }
+}
+
+/** 横向切换顶层菜单（焦点跟随；已展开时同步切换下拉内容） */
+function switchTopLevelMenu(fromIndex: number, direction: -1 | 1): void {
+    const nextIndex = moveMenubarIndex(fromIndex, direction, menuData.value.length)
+    if (nextIndex < 0) {
+        return
+    }
+    focusTopLevel(nextIndex)
+    if (activeMenu.value !== null) {
+        openMenuAt(nextIndex, true)
+    }
+}
+
+/**
+ * 菜单栏键盘事件（事件委托到根节点）：仅处理来自顶层菜单按钮的按键。
+ * 下拉面板的键盘事件由 MenuSubmenu 处理——它 teleport 到 body，不在本节点事件流内。
+ */
+function handleMenubarKeydown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement | null
+    const itemElement = target?.closest<HTMLElement>('.menu-item') ?? null
+    if (!itemElement || !menuBarRef.value?.contains(itemElement)) {
+        return
+    }
+    // Tab 离开菜单栏时收起已展开的下拉（保持键盘用户的焦点与浮层状态一致；
+    // 不 preventDefault —— 浏览器按 roving tabindex 正常把焦点移出菜单栏）
+    if (event.key === 'Tab' && activeMenu.value !== null) {
+        closeMenu()
+        return
+    }
+    const index = Number(itemElement.dataset.menuIndex)
+    if (Number.isNaN(index)) {
+        return
+    }
+    const action = resolveMenubarKeyAction(event.key, activeMenu.value !== null)
+    if (!action) {
+        return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+
+    switch (action) {
+        case 'previous':
+            switchTopLevelMenu(index, -1)
+            return
+        case 'next':
+            switchTopLevelMenu(index, 1)
+            return
+        case 'first': {
+            const nextIndex = 0
+            focusTopLevel(nextIndex)
+            if (activeMenu.value !== null) {
+                openMenuAt(nextIndex, true)
+            }
+            return
+        }
+        case 'last': {
+            const nextIndex = menuData.value.length - 1
+            focusTopLevel(nextIndex)
+            if (activeMenu.value !== null) {
+                openMenuAt(nextIndex, true)
+            }
+            return
+        }
+        case 'open':
+            // 键盘打开：抑制浏览器可能补发的合成 click，再把焦点移入下拉第一项
+            suppressNextKeyboardActivationClick()
+            openMenuAt(index, true)
+            return
+        case 'close': {
+            closeMenu()
+            focusTopLevel(index)
+            return
+        }
+        default:
+            return
+    }
+}
+
+/** 顶层菜单项获得焦点：同步 roving tabindex（不切换展开状态，避免与点击语义冲突） */
+function handleMenuFocus(index: number): void {
+    focusedMenuIndex.value = index
+}
+
 function toggleMenu(index: number) {
+    // 键盘 keydown 已处理打开时，忽略浏览器补发的合成 click（见 suppressNextKeyboardActivationClick）
+    if (consumeKeyboardActivationClick()) {
+        return
+    }
     if (activeMenu.value === index) {
         closeMenu()
     } else {
-        // 「文件」菜单：打开时异步刷新最近文件/最近文件夹子菜单（失败静默，不阻塞打开）
-        refreshRecentMenusIfFileMenu(index)
-        activeMenu.value = index
-        nextTick(() => {
-            updateSubmenuPosition(index)
-        })
+        focusedMenuIndex.value = index
+        // 点击打开：焦点留在按钮上（鼠标用户不强制移入下拉）
+        openMenuAt(index, false)
     }
+}
+
+/** 键盘焦点当前是否落在下拉面板内（鼠标离开时不能因此关掉键盘正在操作的菜单） */
+function isKeyboardFocusInSubmenu(): boolean {
+    const active = document.activeElement
+    return active instanceof HTMLElement && active.closest('.submenu-container') !== null
 }
 
 function handleMenuEnter(index: number) {
@@ -347,20 +469,21 @@ function handleMenuEnter(index: number) {
     }
 
     if (activeMenu.value !== null && activeMenu.value !== index) {
-        // 已打开菜单间悬停切换时同样刷新（最近列表可能在两次打开之间发生变化）
-        refreshRecentMenusIfFileMenu(index)
-        activeMenu.value = index
-        nextTick(() => {
-            updateSubmenuPosition(index)
-        })
+        // 已打开菜单间悬停切换（最近列表可能在两次打开之间发生变化）。
+        // 若切换前键盘焦点在下拉内，切换后把焦点交回新菜单第一项（不丢失键盘位置）。
+        const focusWasInSubmenu = isKeyboardFocusInSubmenu()
+        openMenuAt(index, false)
+        if (focusWasInSubmenu) {
+            void nextTick(() => focusFirstSubmenuItem())
+        }
     }
 }
 
 function handleMenuBarLeave() {
-    // 如果子菜单打开，延迟关闭
+    // 如果子菜单打开，延迟关闭（键盘焦点在下拉内时保持打开，避免鼠标划过误关）
     if (activeMenu.value !== null && !isSubmenuHovered.value) {
         closeTimer.value = window.setTimeout(() => {
-            if (!isSubmenuHovered.value) {
+            if (!isSubmenuHovered.value && !isKeyboardFocusInSubmenu()) {
                 closeMenu()
             }
         }, 100)
@@ -377,22 +500,53 @@ function handleSubmenuEnter() {
 }
 
 function handleSubmenuLeave() {
-    // 鼠标离开子菜单，延迟关闭
+    // 鼠标离开子菜单，延迟关闭（键盘焦点仍在下拉内时不关闭）
     isSubmenuHovered.value = false
     closeTimer.value = window.setTimeout(() => {
-        if (!isSubmenuHovered.value) {
+        if (!isSubmenuHovered.value && !isKeyboardFocusInSubmenu()) {
             closeMenu()
         }
     }, 100)
+}
+
+/** 关闭当前菜单并把键盘焦点归还对应顶层按钮（Esc / Tab / 动作执行后的统一落点） */
+function closeMenuAndFocusTopLevel(): void {
+    const index = activeMenu.value ?? focusedMenuIndex.value
+    closeMenu()
+    focusTopLevel(index)
+}
+
+/** 下拉内叶子动作已执行：关闭菜单并归还焦点 */
+function handleSubmenuActivate(): void {
+    closeMenuAndFocusTopLevel()
+}
+
+/** 下拉内按 Esc：关闭菜单并归还焦点 */
+function handleSubmenuClose(): void {
+    closeMenuAndFocusTopLevel()
+}
+
+/** 下拉内按 Tab：关闭菜单并归还焦点（不把焦点留在即将卸载的 teleport 节点） */
+function handleSubmenuTab(): void {
+    closeMenuAndFocusTopLevel()
+}
+
+/** 下拉内方向键横向切换顶层菜单 */
+function handleSubmenuSwitchMenu(direction: -1 | 1): void {
+    const index = activeMenu.value
+    if (index === null) {
+        return
+    }
+    switchTopLevelMenu(index, direction)
 }
 
 function updateSubmenuPosition(index: number) {
     const menuBar = document.querySelector('.menu-bar')
     if (!menuBar) return
 
-    const BaiZeMenuItems = menuBar.querySelectorAll('.menu-item')
-    if (BaiZeMenuItems[index]) {
-        const rect = BaiZeMenuItems[index].getBoundingClientRect()
+    const menuItems = menuBar.querySelectorAll('.menu-item')
+    if (menuItems[index]) {
+        const rect = menuItems[index].getBoundingClientRect()
         const position = calculateSubmenuPosition(rect.left, rect.bottom)
         submenuPosition.value = position
     }
@@ -431,184 +585,114 @@ onBeforeUnmount(() => {
     if (closeTimer.value) {
         clearTimeout(closeTimer.value)
     }
+    if (suppressKeyboardActivationTimer !== null) {
+        clearTimeout(suppressKeyboardActivationTimer)
+        suppressKeyboardActivationTimer = null
+    }
     window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style scoped>
+/* ============================ 菜单栏（外壳/工具区） ============================
+ * 视觉升级 P1-B2 / T7：颜色走 --ui-* 语义令牌，尺寸走密度令牌（--ui-row-height /
+ * --ui-pad / --ui-font-size），材质走风格令牌（--ui-radius-sm / --ui-shadow-2 /
+ * --ui-accent-soft）。组件内不写 data-style / data-density 分支——四风格 × 三密度
+ * 全部由根元素属性下的变量覆盖自动生效（DESIGN.md §6）。
+ * ========================================================================== */
 .menu-bar {
     display: flex;
     align-items: center;
     height: 100%;
     padding: 0 4px;
     user-select: none;
-    background-color: var(--theme-background-color, #fff);
+    background-color: var(--ui-bg, var(--theme-background-color, #fff));
 }
 
 .menu-item {
-    position: relative;
-    padding: 6px 12px;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    height: var(--ui-row-height, 28px);
+    padding: 0 var(--ui-pad, 12px);
+    border: none;
+    border-radius: var(--ui-radius-sm, 2px);
+    background: transparent;
+    appearance: none;
+    color: var(--ui-text, var(--theme-text-color, #333));
+    font-family: inherit;
+    font-size: var(--ui-font-size, 13px);
+    line-height: 1;
+    cursor: default;
+    /* 状态反馈统一走 120ms 标准缓动（视觉升级方案 §3.4） */
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
-.menu-icon {
-    width: 16px;
-    height: 16px;
-    object-fit: contain;
-    opacity: 0.9;
-    transition: opacity 0.2s;
-}
-
-.menu-item:hover .menu-icon {
-    opacity: 1;
-}
-
-.menu-item:hover {
-    background-color: var(--theme-hover-background, rgba(0, 0, 0, 0.06));
-}
-
+/* 悬停 / 展开态统一使用强调色软底 + 强调色文字（COMPONENTS.md §2） */
+.menu-item:hover,
 .menu-item.active {
-    background-color: var(--theme-active-background, rgba(0, 0, 0, 0.1));
+    background-color: var(--ui-accent-soft);
+    color: var(--ui-accent);
+}
+
+/* 键盘焦点必须可见（focus-ring 令牌；不依赖浏览器默认 outline） */
+.menu-item:focus-visible {
+    outline: none;
+    background-color: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    box-shadow: var(--ui-focus-shadow);
 }
 
 .menu-label {
-    font-size: 14px;
+    font-size: inherit;
     font-weight: 500;
-    color: var(--theme-text-color, #333);
+    color: inherit;
     letter-spacing: 0.02em;
 }
 
-/* 子菜单动画 */
+/* 子菜单定位容器（fixed 跟随菜单项；Teleport 到 body 后仍受本 scoped 样式约束） */
+.submenu-container {
+    position: fixed;
+    /* 下拉层级走统一 z-index 令牌（替代旧值 10000） */
+    z-index: var(--ui-z-dropdown, 40);
+    pointer-events: auto;
+}
+
+/* 下拉弹出动效：180ms 淡入 + 4px 位移（视觉升级方案 §3.4） */
 .submenu-fade-enter-active,
 .submenu-fade-leave-active {
     transition:
-        opacity 0.15s ease,
-        transform 0.15s ease;
+        opacity var(--ui-duration-pop, 180ms) var(--ui-ease-standard, ease),
+        transform var(--ui-duration-pop, 180ms) var(--ui-ease-standard, ease);
 }
 
-.submenu-fade-enter-from {
-    opacity: 0;
-    transform: translateY(-4px);
-}
-
+.submenu-fade-enter-from,
 .submenu-fade-leave-to {
     opacity: 0;
     transform: translateY(-4px);
 }
+
+/* 系统「减少动效」：仅保留极短淡入 */
+@media (prefers-reduced-motion: reduce) {
+    .submenu-fade-enter-active,
+    .submenu-fade-leave-active {
+        transition-duration: 100ms;
+    }
+}
 </style>
 
 <style>
-/* 全局样式，用于teleport的子菜单 */
-.submenu-container {
-    position: fixed;
-    z-index: 10000;
-    pointer-events: auto;
-}
-
-.submenu-list {
-    min-width: 220px;
-    max-width: 400px;
-    background-color: var(--theme-card-background, #fff);
-    border: 1px solid var(--theme-border-color, #e0e0e0);
-    border-radius: 4px;
-    box-shadow:
-        0 8px 24px rgba(0, 0, 0, 0.15),
-        0 2px 8px rgba(0, 0, 0, 0.1);
-    padding: 2px 0;
-    backdrop-filter: blur(8px);
-}
-
-.menu-submenu-item {
-    display: flex; /* 使用 Flex 布局，便于内部内容水平排列和垂直居中 */
-    align-items: center; /* 垂直居中子元素（如文字、图标） */
-    padding: 6px 16px; /* 上下内边距 4px，左右 16px，增加可点击区域 */
-    cursor: pointer; /* 鼠标悬浮时显示手型，提示可点击 */
-    position: relative; /* 相对定位，为伪元素（如 hover 下划线、涟漪效果）提供参考 */
-    transition: all 0.15s ease; /* 所有属性变化在 0.15 秒内缓动过渡，增强交互反馈 */
-    margin: 0; /* 左右外边距 1px，避免项之间紧贴，但可能引起布局偏移 */
-    border-radius: 4px; /* 圆角 4px，常见于现代 UI 设计 */
-    white-space: nowrap; /* 文本不换行，适合水平菜单或下拉菜单项 */
-}
-
-.menu-submenu-item:hover:not(.disabled) {
-    background-color: var(--theme-hover-background, rgba(0, 0, 0, 0.06));
-}
-
-.menu-submenu-item.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.menu-submenu-item.active {
-    background-color: var(--theme-active-background, rgba(0, 0, 0, 0.08));
-}
-
-.menu-item-label {
-    flex: 1;
-    font-size: 14px;
-    color: var(--theme-text-color, #333);
-}
-
-.menu-item-accelerator {
-    font-size: 12px;
-    color: var(--theme-secondary-text-color, #888);
-    margin-left: 32px;
-    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-    flex-shrink: 0;
-}
-
-.menu-item-arrow {
-    font-size: 8px;
-    color: var(--theme-secondary-text-color, #888);
-    margin-left: 12px;
-    transition: transform 0.2s ease;
-    flex-shrink: 0;
-}
-
-.menu-submenu-item:hover .menu-item-arrow {
-    transform: translateX(2px);
-}
-
-.menu-separator {
-    height: 1px;
-    background-color: var(--theme-border-color, #e0e0e0);
-    margin: 6px 12px;
-}
-
-.submenu-item-wrapper {
-    position: relative;
-}
-
-.nested-submenu {
-    position: absolute;
-    left: 100%;
-    top: -6px;
-    margin-left: -4px;
-    animation: slideIn 0.15s ease;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* 深色主题适配 */
-@media (prefers-color-scheme: dark) {
-    .submenu-list {
-        box-shadow:
-            0 8px 24px rgba(0, 0, 0, 0.4),
-            0 2px 8px rgba(0, 0, 0, 0.3);
-    }
+/* ============================================================================
+ * 菜单栏壳高度（非 scoped，仅命中宿主 #menu-bar）
+ *
+ * 宿主 BaiZeNotes.vue 的 `#menu-bar` 只是 flex 占位容器（旧值写死 35px）。
+ * 视觉升级要求高度按密度档 32 / 36 / 40 变化，且该宿主文件属其他并行批次的写域，
+ * 故由组件自持壳高度：控件高令牌 + 4px 纵向留白 = 32 / 36 / 40，与 COMPONENTS.md §2 一致。
+ * 选择器带 id 保证覆盖宿主 scoped 的 `.menu-bar`（组件挂载后生效）。
+ * ========================================================================== */
+#menu-bar {
+    height: calc(var(--ui-control-height, 32px) + 4px);
 }
 </style>

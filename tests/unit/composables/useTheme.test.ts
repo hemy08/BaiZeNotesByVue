@@ -36,6 +36,11 @@ import { t } from '../../../src/renderer/src/common/i18n'
 import EventBus from '../../../src/renderer/src/common/event-bus/event-bus'
 import { EVENT_BUS } from '../../../src/renderer/src/common/event-bus/event-bus-events'
 import { IPC } from '../../../src/shared/ipc-channels'
+import {
+    buildSemanticCssVariables,
+    SEMANTIC_STATUS_COLORS,
+    SEMANTIC_TOKEN_CSS_BINDINGS
+} from '../../../src/shared/theme-tokens'
 import type { ThemeStyles, ThemeUpdateData } from '../../../src/shared/types'
 
 const invokeMock = vi.fn()
@@ -78,6 +83,13 @@ function themeConfig(overrides: Partial<typeof defaultThemeConfig> = {}) {
     return { ...defaultThemeConfig, ...overrides }
 }
 
+/** 默认系统外观设置（config:read('system') 返回值；视觉升级 P0 三项配置） */
+const DEFAULT_SYSTEM_APPEARANCE = {
+    uiStyle: 'workbench',
+    uiDensity: 'default',
+    uiReduceTransparency: false
+}
+
 function installIpcStubs(): void {
     vi.stubGlobal('electron', {
         ipcRenderer: {
@@ -113,9 +125,11 @@ function resetAll(): void {
     configWriteMock.mockReset()
     configWriteMock.mockResolvedValue(true)
 
-    configReadMock.mockImplementation(async (name: string) =>
-        name === 'theme' ? themeConfig() : null
-    )
+    configReadMock.mockImplementation(async (name: string) => {
+        if (name === 'theme') return themeConfig()
+        if (name === 'system') return { ...DEFAULT_SYSTEM_APPEARANCE }
+        return null
+    })
     invokeMock.mockImplementation(async (channel: string) =>
         channel === IPC.THEME.GET_CURRENT_THEME_STYLES ? BAIZE_STYLES : null
     )
@@ -165,10 +179,26 @@ describe('useTheme 单例与 CSS 变量映射', () => {
         expect(variables['--theme-accent-color']).toBe('#764ba2')
         expect(variables['--accent-color']).toBe('#764ba2')
     })
+
+    it('语义令牌：buildSemanticCssVariables 生成 18 个 --ui-* 变量（视觉升级 P0 T1）', () => {
+        const variables = buildSemanticCssVariables(BAIZE_STYLES, 'light')
+        expect(Object.keys(variables)).toHaveLength(18)
+        expect([...Object.keys(variables)].sort()).toEqual(
+            SEMANTIC_TOKEN_CSS_BINDINGS.map((binding) => binding.cssVariable).sort()
+        )
+        expect(variables['--ui-bg']).toBe(BAIZE_STYLES.backgroundColor)
+        expect(variables['--ui-accent-soft']).toBe('rgba(118, 75, 162, 0.12)')
+        expect(variables['--ui-focus-ring']).toBe('rgba(118, 75, 162, 0.3)')
+        // 旧 20 变量与 18 语义变量集合互不重叠（前缀正交，不破坏既有机制）
+        const legacyNames = new Set(Object.keys(buildThemeCssVariables(BAIZE_STYLES)))
+        for (const name of Object.keys(variables)) {
+            expect(legacyNames.has(name), `${name} 与旧主题变量重复`).toBe(false)
+        }
+    })
 })
 
 describe('applyThemeStyles：DOM 应用与幂等', () => {
-    it('把主题写入 documentElement 的 20 个 CSS 变量', () => {
+    it('把主题写入 documentElement 的 38 个 CSS 变量（旧 20 + 语义 18）', () => {
         const theme = useTheme()
         const applied = theme.applyThemeStyles(BAIZE_STYLES)
         expect(applied).toBe(true)
@@ -185,6 +215,13 @@ describe('applyThemeStyles：DOM 应用与幂等', () => {
         expect(root.style.getPropertyValue('--title-bar-gradient')).toBe(
             BAIZE_STYLES.titleBarGradient
         )
+        // 视觉升级 P0：语义变量随主题应用一并写入（供 P1 组件消费）
+        expect(root.style.getPropertyValue('--ui-bg')).toBe(BAIZE_STYLES.backgroundColor)
+        expect(root.style.getPropertyValue('--ui-accent')).toBe(BAIZE_STYLES.accentColor)
+        expect(root.style.getPropertyValue('--ui-accent-soft')).toBe('rgba(118, 75, 162, 0.12)')
+        expect(root.style.getPropertyValue('--ui-success')).toBe(
+            SEMANTIC_STATUS_COLORS.light.success
+        )
     })
 
     it('同一份主题重复 apply 幂等：第二次返回 false 且不再调用 setProperty', () => {
@@ -192,22 +229,27 @@ describe('applyThemeStyles：DOM 应用与幂等', () => {
         const setPropertySpy = vi.spyOn(CSSStyleDeclaration.prototype, 'setProperty')
 
         expect(theme.applyThemeStyles(BAIZE_STYLES)).toBe(true)
-        expect(setPropertySpy).toHaveBeenCalledTimes(20)
+        // 视觉升级 P0：20 个旧主题变量 + 18 个语义变量
+        expect(setPropertySpy).toHaveBeenCalledTimes(38)
 
         // 新对象、同内容：仍应短路（按变量值签名比对，而不是对象引用）
         expect(theme.applyThemeStyles({ ...BAIZE_STYLES })).toBe(false)
-        expect(setPropertySpy).toHaveBeenCalledTimes(20)
+        expect(setPropertySpy).toHaveBeenCalledTimes(38)
     })
 
-    it('主题变化时重新写入 DOM（值随新主题更新）', () => {
+    it('主题变化时重新写入 DOM（旧变量与语义变量同步更新）', () => {
         const theme = useTheme()
         theme.applyThemeStyles(BAIZE_STYLES)
-        expect(theme.applyThemeStyles(DARK_NAME_STYLES)).toBe(true)
+        expect(theme.applyThemeStyles(DARK_NAME_STYLES, 'deepdark')).toBe(true)
         expect(document.documentElement.style.getPropertyValue('--theme-background-color')).toBe(
             DARK_NAME_STYLES.backgroundColor
         )
         expect(document.documentElement.style.getPropertyValue('--bg-color')).toBe(
             DARK_NAME_STYLES.backgroundColor
+        )
+        // 深色主题分组 → 语义状态色切换为深色一套
+        expect(document.documentElement.style.getPropertyValue('--ui-success')).toBe(
+            SEMANTIC_STATUS_COLORS.dark.success
         )
     })
 })
@@ -494,5 +536,202 @@ describe('主题状态派生（config store 单一状态源）', () => {
         store.themeConfig.value = { ...defaultThemeConfig, currentTheme: 'deepdark' }
         expect(theme.currentThemeType.value).toBe('deepdark')
         expect(theme.isDarkTheme.value).toBe(true)
+    })
+})
+
+// =============================================================================================
+// 视觉升级 P0（T2/T3）：界面风格层 / 密度层 / 减少透明
+//
+// 覆盖：根元素 data-* 属性写入、默认 workbench+default、glass 深色 steady / 高饱和·护眼·
+// 减少透明回退 paper、非法配置归一化、部分字段更新沿用上次值、主题切换后重新解析、
+// 启动路径读取系统设置、系统设置读取失败回退、resolveEffectiveStyle 纯函数。
+// =============================================================================================
+describe('applyUiAppearance：界面风格/密度/减少透明（视觉升级 P0）', () => {
+    /** jsdom 下读取根元素 data-* 属性 */
+    function rootDataset(): DOMStringMap {
+        return document.documentElement.dataset
+    }
+
+    /** 风格解析上下文的默认值（浅色普通主题、未开启减少透明） */
+    function styleContext(overrides: Record<string, boolean> = {}) {
+        return {
+            isDark: false,
+            isSaturated: false,
+            isEyecare: false,
+            reduceTransparency: false,
+            preferReducedTransparency: false,
+            ...overrides
+        }
+    }
+
+    it('默认配置：data-style=workbench + data-density=default + 不减少透明（= 升级前观感）', () => {
+        const theme = useTheme()
+        theme.applyUiAppearance({}, BAIZE_STYLES, 'baize')
+
+        expect(rootDataset().style).toBe('workbench')
+        expect(rootDataset().density).toBe('default')
+        expect(rootDataset().glassMode).toBe('normal')
+        expect(rootDataset().transparency).toBe('normal')
+        expect(theme.currentUiAppearance.value).toEqual({
+            requestedStyle: 'workbench',
+            effectiveStyle: 'workbench',
+            density: 'default',
+            reduceTransparency: false,
+            preferReducedTransparency: false,
+            glassMode: 'normal'
+        })
+    })
+
+    it('glass + 浅色普通主题：保留 glass 常规模式', () => {
+        const theme = useTheme()
+        theme.applyUiAppearance(
+            { uiStyle: 'glass', uiDensity: 'compact', uiReduceTransparency: false },
+            BAIZE_STYLES,
+            'baize'
+        )
+        expect(rootDataset().style).toBe('glass')
+        expect(rootDataset().density).toBe('compact')
+        expect(rootDataset().glassMode).toBe('normal')
+        expect(rootDataset().transparency).toBe('normal')
+    })
+
+    it('glass + 深色主题：保留 glass 并进入 steady 稳健模式', () => {
+        const theme = useTheme()
+        theme.applyUiAppearance({ uiStyle: 'glass' }, DARK_NAME_STYLES, 'deepdark')
+        expect(rootDataset().style).toBe('glass')
+        expect(rootDataset().glassMode).toBe('steady')
+    })
+
+    it('glass + 护眼主题：回退 paper 材质（flat）', () => {
+        const theme = useTheme()
+        theme.applyUiAppearance({ uiStyle: 'glass' }, BAIZE_STYLES, 'eyecare-green')
+        expect(rootDataset().style).toBe('paper')
+        expect(rootDataset().glassMode).toBe('flat')
+        expect(theme.currentUiAppearance.value.requestedStyle).toBe('glass')
+        expect(theme.currentUiAppearance.value.effectiveStyle).toBe('paper')
+    })
+
+    it('glass + 高饱和主题：回退 paper 材质（flat）', () => {
+        const theme = useTheme()
+        theme.applyUiAppearance({ uiStyle: 'glass' }, BAIZE_STYLES, 'coral')
+        expect(rootDataset().style).toBe('paper')
+        expect(rootDataset().glassMode).toBe('flat')
+    })
+
+    it('glass + 减少透明开关：回退 paper 材质', () => {
+        const theme = useTheme()
+        theme.applyUiAppearance(
+            { uiStyle: 'glass', uiReduceTransparency: true },
+            BAIZE_STYLES,
+            'baize'
+        )
+        expect(rootDataset().style).toBe('paper')
+        expect(rootDataset().glassMode).toBe('flat')
+        expect(rootDataset().transparency).toBe('reduced')
+    })
+
+    it('系统 prefers-reduced-transparency：glass 回退 paper 材质', () => {
+        const matchMediaMock = vi.fn().mockReturnValue({ matches: true })
+        vi.stubGlobal('matchMedia', matchMediaMock)
+        const theme = useTheme()
+        theme.applyUiAppearance({ uiStyle: 'glass' }, BAIZE_STYLES, 'baize')
+
+        expect(matchMediaMock).toHaveBeenCalledWith('(prefers-reduced-transparency: reduce)')
+        expect(rootDataset().style).toBe('paper')
+        expect(rootDataset().glassMode).toBe('flat')
+        expect(rootDataset().transparency).toBe('reduced')
+        expect(theme.currentUiAppearance.value.preferReducedTransparency).toBe(true)
+    })
+
+    it('非法配置归一化为默认值（workbench / default / false）', () => {
+        const theme = useTheme()
+        theme.applyUiAppearance(
+            {
+                uiStyle: 'fancy',
+                uiDensity: 'wide',
+                uiReduceTransparency: 'yes'
+            } as never,
+            BAIZE_STYLES,
+            'baize'
+        )
+        expect(rootDataset().style).toBe('workbench')
+        expect(rootDataset().density).toBe('default')
+        expect(rootDataset().transparency).toBe('normal')
+    })
+
+    it('部分字段更新沿用上一次请求值（系统设置广播只带变更项也不丢风格）', () => {
+        const theme = useTheme()
+        theme.applyUiAppearance(
+            { uiStyle: 'glass', uiDensity: 'compact', uiReduceTransparency: false },
+            BAIZE_STYLES,
+            'baize'
+        )
+        theme.applyUiAppearance({ uiDensity: 'spacious' }, BAIZE_STYLES, 'baize')
+        expect(theme.currentUiAppearance.value.requestedStyle).toBe('glass')
+        expect(rootDataset().density).toBe('spacious')
+    })
+
+    it('主题切换后按新主题重新解析降级材质（浅色 glass → 深色 steady）', async () => {
+        const theme = useTheme()
+        theme.applyUiAppearance({ uiStyle: 'glass' }, BAIZE_STYLES, 'baize')
+        expect(rootDataset().glassMode).toBe('normal')
+
+        await theme.applyThemeUpdate(DARK_NAME_STYLES, false, 'vs', 'deepdark')
+        expect(rootDataset().style).toBe('glass')
+        expect(rootDataset().glassMode).toBe('steady')
+    })
+
+    it('initializeTheme 读取系统设置并应用风格/密度（启动路径）', async () => {
+        configReadMock.mockImplementation(async (name: string) => {
+            if (name === 'theme') return themeConfig()
+            if (name === 'system') {
+                return { uiStyle: 'glass', uiDensity: 'compact', uiReduceTransparency: false }
+            }
+            return null
+        })
+        const theme = useTheme()
+        await theme.initializeTheme()
+
+        expect(configReadMock).toHaveBeenCalledWith('system')
+        expect(rootDataset().style).toBe('glass')
+        expect(rootDataset().density).toBe('compact')
+        expect(theme.currentUiAppearance.value.density).toBe('compact')
+    })
+
+    it('系统设置读取失败时回退默认外观并记 warn，不影响主题初始化', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        configReadMock.mockImplementation(async (name: string) => {
+            if (name === 'theme') return themeConfig()
+            if (name === 'system') throw new Error('系统配置不可读')
+            return null
+        })
+        const theme = useTheme()
+        await theme.initializeTheme()
+
+        expect(warnSpy).toHaveBeenCalled()
+        expect(rootDataset().style).toBe('workbench')
+        expect(rootDataset().density).toBe('default')
+        // 主题本身仍正常应用（系统设置读取失败不阻塞视觉主题）
+        expect(document.documentElement.style.getPropertyValue('--theme-background-color')).toBe(
+            BAIZE_STYLES.backgroundColor
+        )
+        expect(theme.currentThemeStyles.value).toEqual(BAIZE_STYLES)
+    })
+
+    it('resolveEffectiveStyle 纯函数：glass 降级规则与共享常量一致', () => {
+        const theme = useTheme()
+        expect(theme.resolveEffectiveStyle('paper', styleContext())).toBe('paper')
+        expect(theme.resolveEffectiveStyle('hybrid', styleContext({ isDark: true }))).toBe('hybrid')
+        expect(theme.resolveEffectiveStyle('glass', styleContext())).toBe('glass')
+        expect(theme.resolveEffectiveStyle('glass', styleContext({ isDark: true }))).toBe('glass')
+        expect(theme.resolveEffectiveStyle('glass', styleContext({ isSaturated: true }))).toBe(
+            'paper'
+        )
+        expect(theme.resolveEffectiveStyle('glass', styleContext({ isEyecare: true }))).toBe(
+            'paper'
+        )
+        expect(
+            theme.resolveEffectiveStyle('glass', styleContext({ reduceTransparency: true }))
+        ).toBe('paper')
     })
 })

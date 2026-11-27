@@ -38,9 +38,14 @@
                 role="listbox"
                 :aria-label="listAriaLabel"
             >
-                <p v-if="filteredCommands.length === 0" class="palette-hint" role="status">
-                    {{ t('editorUi.commandPalette.noResults') }}
-                </p>
+                <!-- 空态统一组件（T10/T11）：无匹配命令 -->
+                <EmptyState
+                    v-if="filteredCommands.length === 0"
+                    class="palette-empty"
+                    variant="no-search"
+                    size="compact"
+                    :title="t('editorUi.commandPalette.noResults')"
+                />
                 <template v-else>
                     <div
                         v-for="group in commandGroups"
@@ -59,11 +64,20 @@
                             :class="{ 'palette-option--active': item.index === selectedIndex }"
                             role="option"
                             :aria-selected="item.index === selectedIndex"
+                            :aria-keyshortcuts="ariaShortcutOf(item.command)"
                             :data-flat-index="item.index"
                             @click="executeCommandByIndex(item.index)"
                             @mousemove="selectIndex(item.index)"
                         >
                             <span class="option-label">{{ t(item.command.labelKey) }}</span>
+                            <!-- 快捷键 chip：键位来自菜单树真源（command-shortcuts.ts），不复制键位表 -->
+                            <span
+                                v-if="shortcutOf(item.command)"
+                                class="option-shortcut"
+                                aria-hidden="true"
+                            >
+                                {{ shortcutOf(item.command) }}
+                            </span>
                             <span class="option-category">{{ t(item.command.categoryKey) }}</span>
                         </div>
                     </div>
@@ -82,13 +96,18 @@
                 <p v-if="filesLoading" class="palette-hint" role="status">
                     {{ t('editorUi.commandPalette.loading') }}
                 </p>
-                <p v-else-if="filteredFiles.length === 0" class="palette-hint" role="status">
-                    {{
+                <!-- 空态统一组件（T10/T11）：无文件 / 无搜索结果 -->
+                <EmptyState
+                    v-else-if="filteredFiles.length === 0"
+                    class="palette-empty"
+                    variant="no-search"
+                    size="compact"
+                    :title="
                         filesLoaded
                             ? t('editorUi.commandPalette.noFiles')
                             : t('editorUi.commandPalette.noResults')
-                    }}
-                </p>
+                    "
+                />
                 <template v-else>
                     <div
                         v-for="(entry, index) in filteredFiles"
@@ -134,6 +153,7 @@
  */
 import { computed, nextTick, ref, watch } from 'vue'
 import BaseDialog from '../dialogs/BaseDialog.vue'
+import EmptyState from '../common/ui/EmptyState.vue'
 import { t } from '../../common/i18n'
 import { openOrCreateCaptureEntry } from '../../common/capture-actions'
 import { captureClipToEditor, captureClipToNote } from '../../common/clip-capture-actions'
@@ -147,6 +167,7 @@ import {
     type PaletteCommandHandlers,
     type PaletteMode
 } from './command-registry'
+import { buildCommandAcceleratorMap, toAriaKeyshortcuts } from './command-shortcuts'
 import { filterWorkspaceFileEntries, moveListSelection } from './workspace-search-utils'
 import { openWorkspaceFileAtLine, useWorkspaceSearch } from '../../composables/useWorkspaceSearch'
 import type { WorkspaceFileEntry } from '../../../../shared/types/ipc'
@@ -187,9 +208,30 @@ const filesLoaded = ref(false)
 /** 执行失败提示（打开文件超时等） */
 const actionError = ref('')
 
-const containerStyle = {
-    maxWidth: '92vw'
-}
+/**
+ * 命令面板外壳材质（视觉升级 P1-B2 / T10）。
+ *
+ * 外壳由 BaseDialog 提供（属视觉升级 P1-B1 写域，本批不改动它），命令面板通过
+ * `containerStyle` 内联覆盖所需的令牌：
+ * - 圆角 --ui-radius-lg（workbench 6 / paper 8 / glass 12）；
+ * - 阴影 --ui-shadow-3 + glass 高光边（alpha 为 0 时不可见）；
+ * - 背景按 --ui-surface-opacity 走半透明（仅 glass 半透明；其余风格 100% 不透明，
+ *   颜色仍取既有 --bg-color，保证默认主题观感连续）；
+ * - 背景模糊仅用于本悬浮层（禁止整窗大面积 blur，DESIGN.md §3）。
+ *
+ * z-index：BaseDialog 遮罩层为 9999（全对话框统一栈序，属 B1 写域），本批不覆盖；
+ * `--ui-z-palette` 的落地留待 T12 跨组件回归统一收敛，功能上命令面板仍是最后打开的
+ * 顶层对话框（同 z-index 下后渲染者在上）。
+ */
+const containerStyle = computed(() => ({
+    maxWidth: '92vw',
+    borderRadius: 'var(--ui-radius-lg, 6px)',
+    boxShadow:
+        'inset 0 1px 0 rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0)), var(--ui-shadow-3)',
+    background:
+        'color-mix(in srgb, var(--bg-color) calc(var(--ui-surface-opacity, 1) * 100%), transparent)',
+    backdropFilter: 'blur(var(--ui-surface-blur, 0px))'
+}))
 
 /** 能力开关（1.5.2 E6：命令注册按开关过滤，开关热切换后命令列表即时更新） */
 const { flags } = useFeatureFlags()
@@ -215,6 +257,23 @@ const commands = computed<PaletteCommand[]>(() =>
 )
 
 const filteredCommands = computed(() => filterPaletteCommands(commands.value, query.value, t))
+
+/**
+ * 「命令 id → 快捷键标注」映射（T10 快捷键 chip）。
+ * 键位真源是菜单树 accelerator（MENU-10），本组件只做展示，不新增第二份键位表。
+ */
+const commandAccelerators = computed(() => buildCommandAcceleratorMap(commands.value))
+
+/** 命令的快捷键标注（无绑定返回空串，不渲染 chip） */
+function shortcutOf(command: PaletteCommand): string {
+    return commandAccelerators.value.get(command.id) ?? ''
+}
+
+/** 快捷键的 aria-keyshortcuts 语法（无绑定返回 undefined，属性不渲染） */
+function ariaShortcutOf(command: PaletteCommand): string | undefined {
+    const shortcut = shortcutOf(command)
+    return shortcut.length > 0 ? toAriaKeyshortcuts(shortcut) : undefined
+}
 
 /** 命令模式：按分类分组（保持注册顺序；index 为全局扁平索引，供键盘选择使用） */
 const commandGroups = computed(() => {
@@ -411,14 +470,27 @@ watch(
 </script>
 
 <style scoped>
-/* 外壳（遮罩/焦点陷阱/Esc/关闭按钮/动画）由 BaseDialog 提供，这里只保留面板内容样式。 */
+/* ============================================================================
+ * 命令面板（外壳/工具区）视觉规格 —— 视觉升级 P1-B2 / T10
+ *
+ * 消费视觉升级 P0 的语义令牌与风格/密度变量：
+ * - 宽度 720 由 BaseDialog `width` 提供；圆角/阴影/背景/模糊见 script 的 containerStyle；
+ * - 行高 --ui-control-height（compact 28 / default 32 / spacious 36）；
+ * - 左右内边距 --ui-pad、UI 字号 --ui-font-size（密度驱动）；
+ * - 选中行 --ui-accent-soft + 左侧 2px --ui-accent 竖条；
+ * - 快捷键 chip 走 --ui-radius-sm + --ui-border hairline + 11px。
+ * 组件内不写 data-style / data-density 分支（四风格 × 三密度由根元素变量自动生效）。
+ * ========================================================================== */
+
+/* 搜索输入即面板标题：字号 15（强调档），焦点由光标体现（不再叠加 outline） */
 .palette-input {
     flex: 1 1 auto;
     min-width: 0;
     padding: 8px 4px;
     border: none;
     background: transparent;
-    color: var(--text-color);
+    color: var(--ui-text, var(--text-color));
+    caret-color: var(--ui-accent, var(--accent-color));
     font-size: 15px;
     font-family: inherit;
     outline: none;
@@ -438,32 +510,38 @@ watch(
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
-    padding: 4px 0;
+    padding: 6px 0;
 }
 
+/* 分组标题：11 / 600 / 大写 / 三级文字（COMPONENTS.md §6） */
 .palette-group-title {
-    padding: 8px 16px 4px;
+    padding: 8px var(--ui-pad, 12px) 4px;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--secondary-text-color, var(--text-color));
+    color: var(--ui-text-tertiary, var(--secondary-text-color, var(--text-color)));
 }
 
+/* 命令行：行高 32（密度档变量）、左右内边距 12 */
 .palette-option {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 16px;
-    font-size: 13px;
-    color: var(--text-color);
-    cursor: pointer;
+    height: var(--ui-control-height, 32px);
+    padding: 0 var(--ui-pad, 12px);
     border-left: 2px solid transparent;
+    border-radius: var(--ui-radius-sm, 2px);
+    color: var(--ui-text, var(--text-color));
+    font-size: var(--ui-font-size, 13px);
+    cursor: pointer;
+    transition: background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
+/* 选中行：强调色软底 + 左侧 2px 强调色竖条 */
 .palette-option--active {
-    background: var(--hover-bg);
-    border-left-color: var(--accent-color);
+    background: var(--ui-accent-soft);
+    border-left-color: var(--ui-accent);
 }
 
 .option-label {
@@ -474,25 +552,43 @@ watch(
     white-space: nowrap;
 }
 
+/* 快捷键 chip：圆角 2 / hairline 边框 / 11px（COMPONENTS.md §6） */
+.option-shortcut {
+    flex: 0 0 auto;
+    padding: 2px 6px;
+    border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-sm, 2px);
+    background: var(--ui-bg-sunken, var(--hover-bg));
+    color: var(--ui-text-tertiary, var(--secondary-text-color, var(--text-color)));
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    font-size: 11px;
+    line-height: 1.2;
+}
+
 .option-category {
     flex: 0 0 auto;
     font-size: 11px;
-    color: var(--secondary-text-color, var(--text-color));
+    color: var(--ui-text-tertiary, var(--secondary-text-color, var(--text-color)));
 }
 
 .palette-hint {
     margin: 0;
-    padding: 8px 16px;
+    padding: 8px var(--ui-pad, 12px);
     font-size: 12px;
-    color: var(--secondary-text-color, var(--text-color));
+    color: var(--ui-text-secondary, var(--secondary-text-color, var(--text-color)));
 }
 
 .palette-hint--error {
-    color: #e74c3c;
+    color: var(--ui-danger, #c62828);
 }
 
 .palette-hint--footer {
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
+    border-top: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
+    background: var(--ui-bg-elevated, var(--card-bg));
+}
+
+/* 空态嵌入列表时的留白（与命令行视觉节奏一致） */
+.palette-empty {
+    padding: 16px 12px;
 }
 </style>

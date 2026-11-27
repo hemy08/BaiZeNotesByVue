@@ -10,6 +10,29 @@
     --theme-button-text-color: #ffffff;
     --theme-hover-background: #f0e8ff;
     --theme-title-bar-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+    /* 视觉升级（P0）：18 个语义颜色令牌默认值（默认 baize 主题派生结果）。
+       运行时由 composables/useTheme.applyThemeStyles 按当前主题覆盖写入根元素；
+       这里的 :root 默认值保证「主题尚未应用的首屏」也不会出现空变量。
+       派生规则/唯一真源：src/shared/theme-tokens.ts 的 buildSemanticTokens。 */
+    --ui-bg: #f5f0ff;
+    --ui-bg-elevated: #ffffff;
+    --ui-bg-sunken: #ddd5eb;
+    --ui-surface: #ffffff;
+    --ui-border: #e0d4f0;
+    --ui-border-strong: #cec3dd;
+    --ui-text: #2d2d2d;
+    --ui-text-secondary: #666666;
+    --ui-text-tertiary: #838285;
+    --ui-accent: #764ba2;
+    --ui-accent-soft: rgba(118, 75, 162, 0.12);
+    --ui-accent-hover: #68428f;
+    --ui-success: #2e7d32;
+    --ui-warning: #b45309;
+    --ui-danger: #c62828;
+    --ui-info: #1565c0;
+    --ui-focus-ring: rgba(118, 75, 162, 0.3);
+    --ui-selection: rgba(118, 75, 162, 0.15);
 }
 
 /* 全局主题应用 */

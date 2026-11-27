@@ -13,13 +13,15 @@
                         v-if="visible"
                         ref="containerRef"
                         class="dialog-container"
-                        :class="containerClass"
+                        :class="containerClassList"
                         :style="containerStyles"
                         role="dialog"
                         :aria-modal="isModal ? 'true' : 'false'"
                         :aria-labelledby="ariaLabelledby"
                         :aria-label="ariaLabelValue"
                         :aria-describedby="ariaDescribedbyValue"
+                        :data-dialog-shell="isNonModal ? 'tool-window' : 'dialog'"
+                        :data-dialog-size="props.widthSize || undefined"
                         tabindex="-1"
                         @mousedown="handleContainerMouseDown"
                     >
@@ -29,11 +31,17 @@
                         -->
                         <slot name="prepend"></slot>
 
-                        <div
-                            class="title-bar"
-                            :class="`title-bar--${titleBarVariant}`"
-                            :style="titleBarStyle"
-                        >
+                        <div class="title-bar" :class="titleBarClassList" :style="titleBarStyle">
+                            <!--
+                                T6 工具窗拖拽把手：仅非模态工具窗渲染（模态对话框标题栏即拖拽区，
+                                无需额外纹理）。6 点纹理由 CSS 绘制，aria-hidden 不进无障碍树；
+                                把手位于标题栏内部，按下后由 useDialogDrag 统一接管拖拽（含边界）。
+                            -->
+                            <span
+                                v-if="isNonModal"
+                                class="tool-window-drag-handle"
+                                aria-hidden="true"
+                            ></span>
                             <slot name="title">
                                 <span :id="titleId" class="title-text" :style="titleTextStyle">
                                     {{ title }}
@@ -70,7 +78,7 @@
 
 <script setup lang="ts">
 /**
- * BaseDialog —— 渲染层对话框统一外壳（第 3 批组件化子任务 C，保守抽层）
+ * BaseDialog —— 渲染层对话框 / 非模态工具窗统一外壳（第 3 批组件化子任务 C，保守抽层）
  *
  * 抽层目标：18 个对话框各自复制了 `.dialog-overlay` / `.dialog-container` / `.title-bar` /
  * `.title-text` / `.close-btn` / `dialog-fade-*` / `dialog-scale-*` 结构与 CSS，
@@ -80,10 +88,12 @@
  * - 默认变体（`titleBarVariant="compact"` + `animation="quick"` + `closeButtonVariant="circle"`）
  *   与 simple 对话框（CreateFileFolderDialog / WebUrlDialog）迁移前的 scoped 外壳 CSS 逐属性一致；
  * - 其余当前存在的壳风格以「变体 + 内联样式覆盖」两档能力保留：
- *   - 标题栏高度/字号：compact(32px/13px) / regular(40px/14px) / large(48px/16px) / plain(无固定高度，透明背景)；
+ *   - 标题栏高度/字号：compact / regular / large 统一消费视觉升级密度令牌
+ *     `--ui-titlebar-height`（36/40/44）与 `--ui-font-size + 2px`（15 默认），
+ *     plain（无固定高度，透明背景）保持迁移前形态；
  *   - 关闭按钮：circle(28px 圆形) / rounded(32px 圆角)；
  *   - 底部对齐：start / center / end；
- *   - 动画：quick(0.2s) / smooth(0.3s，缩放同时淡入，MessageDialog 迁移前动画)；
+ *   - 动画：quick / smooth（时长/缓动消费 `--ui-duration-*` / `--ui-ease-*` 动效令牌）；
  *   - 任何未覆盖到的细节（padding/阴影/背景/宽度/标题文字/关闭按钮等）通过 `overlayStyle` /
  *     `containerStyle` / `titleBarStyle` / `footerStyle` / `titleTextStyle` / `closeButtonStyle`
  *     内联覆盖（内联样式优先级最高，与迁移前各对话框把特殊值写在模板 `:style` 上的行为一致）。
@@ -108,9 +118,26 @@
  *   与迁移前 flex-end/padding 0 10/app-region 的标题栏等价；其余 14 个待迁移对话框标题栏
  *   均为「标题文字 + 关闭按钮」标准结构，同样无需新 prop。
  *
+ * ## 视觉升级 1.5.5（P1-B1：T9 对话框 + T6 非模态工具窗）
+ * 外壳改为**只消费令牌**，四风格（paper/glass/workbench/hybrid）与三密度
+ * （compact/default/spacious）差异全部来自根元素 `data-style` / `data-density` 下的
+ * `--ui-*` 变量，组件内**不写任何风格/密度分支**（DESIGN.md §6）：
+ * - T9 对话框：宽度语义阶梯 `widthSize`（360/520/720/960/全宽，`width` 优先以兼容既有
+ *   调用点）、标题栏 `--ui-titlebar-height` + 标题 15/600、圆角 `--ui-radius-lg`、
+ *   阴影 `--ui-shadow-3`、遮罩浅色 `rgba(0,0,0,.32)` / 深色 `rgba(0,0,0,.48)`、
+ *   底栏按钮高 `--ui-control-height`（按钮视觉真源仍为 `assets/dialog-buttons.css`）；
+ * - T6 工具窗：`data-dialog-shell="tool-window"` 统一壳——标题栏 `--ui-titlebar-height`
+ *   + 6 点拖拽把手、面 `--ui-surface` × `--ui-surface-opacity` + glass 小面积
+ *   `--ui-surface-blur`、hairline 边框、`--ui-shadow-2`、打开聚焦内容首个交互元素、
+ *   Esc 只关最顶层（焦点在工具窗内时）、不锁 body 滚动、外部点击不关闭（保持 1.5.3）。
+ *   说明：T6 规格中的「最小化按钮」1.5.3 现有工具窗均未提供该功能，本批不新增交互
+ *   能力（避免功能范围外扩），列为后续批次候选；「内容内边距 --ui-pad」同理由各工具窗
+ *   正文容器自行消费（外壳不包裹默认插槽，见样式块内说明）。
+ *
  * 行为与迁移前单个对话框的外壳保持一致：
  * 1. `<Teleport to="body">` 默认开启，可用 `teleport` 关闭 / 指定目标（测试用 teleport stub）；
  * 2. 遮罩空白处点击（`@click.self`）触发 `close`，可用 `closeOnOverlay` 关闭该行为；
+ *    非模态工具窗的遮罩透明且点击穿透（`pointer-events: none`），外部点击不关闭；
  * 3. 关闭按钮点击触发 `close`（`.stop` 阻止冒泡到遮罩）；
  * 4. 按标题栏拖拽移动对话框（`draggable`，复用 useDialogDrag；关闭按钮/正文不触发拖拽）；
  * 5. `resetPositionOnOpen` 为 true 时每次打开重置到初始居中位置（默认沿用上次拖拽位置）；
@@ -121,6 +148,9 @@
  *    （焦点陷阱，跳过 disabled / hidden / inert / aria-hidden / iframe / tabindex=-1）；
  *    打开期间锁定 body 滚动，最后一个对话框关闭后恢复（模块级引用计数，嵌套对话框安全）。
  *    多个对话框同时打开时只有顶层响应 Esc/Tab（模块级栈），避免一次按键同时关闭多层。
+ *    **非模态工具窗扩展**：打开时聚焦内容首个可交互元素（优先输入控件）；不锁 body 滚动
+ *    （与编辑器滚动互不干扰）；Esc 仅在焦点位于工具窗内时关闭（焦点在编辑器时交还编辑器）；
+ *    关闭时若用户已把焦点移到编辑器则不抢回。
  *
  * 说明：本组件样式使用 scoped 而非全局 `styles/dialog.css`——避免非 scoped 外壳类
  * （`.dialog-overlay` 等）在 15 个尚未迁移的对话框上产生全局样式泄漏，符合本任务
@@ -131,6 +161,14 @@ import type { ClassValue, CSSProperties } from 'vue'
 import { t } from '../../common/i18n'
 import { useDialogDrag } from '../../composables/useDialogDrag'
 import { useFeatureFlags } from '../../composables/useFeatureFlags'
+import { useTheme } from '../../composables/useTheme'
+import { isDarkColor } from '../../../../shared/theme-tokens'
+import {
+    TOOL_WINDOW_PREFERRED_FOCUS_SELECTOR,
+    resolveDialogOverlayColor,
+    resolveDialogWidth
+} from './dialog-metrics'
+import type { DialogWidthSize } from './dialog-metrics'
 import { isTopmostDialog, pushOpenDialog, removeOpenDialog } from './dialog-stack'
 import { lockDialogScroll, unlockDialogScroll } from './dialog-scroll-lock'
 
@@ -150,13 +188,13 @@ interface DialogStyleProperties extends CSSProperties {
     WebkitAppRegion?: 'drag' | 'no-drag'
 }
 
-/** 标题栏视觉变体（取值来自 18 个对话框现状归类，未强行统一） */
+/** 标题栏视觉变体（取值来自 18 个对话框现状归类，未强行统一结构） */
 type TitleBarVariant = 'compact' | 'regular' | 'large' | 'plain'
 /** 关闭按钮视觉变体（现状两大派系） */
 type CloseButtonVariant = 'circle' | 'rounded'
 /** 底部插槽对齐方式 */
 type FooterAlign = 'start' | 'center' | 'end'
-/** 过渡动画预设：quick=0.2s 缩放；smooth=0.3s 缩放 + 透明度（MessageDialog 迁移前动画） */
+/** 过渡动画预设：quick=标准节奏；smooth=0.3s 缩放 + 透明度（MessageDialog 迁移前动画） */
 type DialogAnimation = 'quick' | 'smooth'
 
 interface Props {
@@ -166,8 +204,13 @@ interface Props {
     title?: string
     /** Teleport 目标：默认 true=body；false=不传送；字符串=自定义 CSS 选择器 */
     teleport?: boolean | string
-    /** 对话框宽度（覆盖默认壳 500px；留空则使用默认壳宽度） */
+    /** 对话框宽度（覆盖默认壳 500px；留空则使用默认壳宽度）——兼容既有调用点，优先于 widthSize */
     width?: string
+    /**
+     * 语义化宽度阶梯（T9）：confirm 360 / form 520 / medium 720 / complex 960 / full 全宽。
+     * `width` 传值时优先（保证既有 25 个对话框迁移语义不变）。
+     */
+    widthSize?: DialogWidthSize
     /** 标题栏视觉变体，默认 compact（simple 对话框迁移前的 32px 标准壳） */
     titleBarVariant?: TitleBarVariant
     /** 关闭按钮视觉变体，默认 circle（simple 对话框迁移前的 28px 圆形按钮） */
@@ -186,7 +229,7 @@ interface Props {
     closeOnEscape?: boolean
     /** 是否为模态对话框：false 时不启用焦点陷阱、aria-modal=false（默认 true） */
     modal?: boolean
-    /** 强制非模态工具窗：遮罩透明且点击穿透，禁止遮罩/Esc 关闭（默认 false） */
+    /** 强制非模态工具窗：遮罩透明且点击穿透，禁止遮罩关闭（默认 false） */
     nonModal?: boolean
     /** 工具窗：受系统设置「非模态工具对话框」开关控制（默认 false） */
     toolWindow?: boolean
@@ -221,6 +264,7 @@ const props = withDefaults(defineProps<Props>(), {
     title: '',
     teleport: true,
     width: '',
+    widthSize: undefined,
     titleBarVariant: 'compact',
     closeButtonVariant: 'circle',
     footerAlign: 'end',
@@ -245,6 +289,13 @@ const slots = useSlots()
 // 不能凭空多出一条带边框的空白底栏（后续批次迁移时必须保持该结构差异）。
 const hasFooter = computed(() => Boolean(slots.footer))
 
+/** 是否实际启用非模态：显式 non-modal 或工具窗开关打开（两处入口语义等价） */
+const isNonModal = computed(
+    () => props.nonModal || (props.toolWindow && flags.nonModalDialogs === true)
+)
+/** 是否为真正的模态外壳：模态 prop 且未启用非模态（决定焦点陷阱/aria-modal/滚动锁） */
+const isModal = computed(() => props.modal && !isNonModal.value)
+
 // ==================== 可访问性（a11y）契约 ====================
 // 1) role="dialog" + aria-modal + 标题关联（aria-labelledby / aria-label）+ 可选描述关联
 //    （aria-describedby，由调用方传描述节点 id）；
@@ -253,7 +304,8 @@ const hasFooter = computed(() => Boolean(slots.footer))
 // 4) Tab / Shift+Tab 在对话框内循环（焦点陷阱），跳过不可 Tab 到达的元素，无可见焦点
 //    元素时回到容器；
 // 5) 关闭按钮补 aria-label（图标 × 对读屏无意义）；
-// 6) 打开期间锁定 body 滚动，最后一个对话框关闭后恢复（模块级引用计数，嵌套安全）。
+// 6) 打开期间锁定 body 滚动，最后一个对话框关闭后恢复（模块级引用计数，嵌套安全）；
+//    非模态工具窗锁定语义不适用（会阻塞编辑器滚动），见 registerOpen。
 // 样式/结构不变，仅新增语义属性与键盘行为；jsdom 下均可测试。
 
 const containerRef = ref<HTMLElement | null>(null)
@@ -295,13 +347,19 @@ const NON_FOCUSABLE_TAGS = new Set(['IFRAME', 'OBJECT', 'EMBED'])
  */
 const dialogToken = Symbol('baize-dialog')
 let registered = false
+/** 本实例是否真正对 body 滚动加过锁（非模态工具窗不加锁，关闭时也不能错误解锁） */
+let scrollLocked = false
 let restoreFocusTarget: HTMLElement | null = null
 
 function registerOpen(): void {
     if (registered) return
     registered = true
-    // 先锁 body 滚动再登记栈：无论焦点/键盘逻辑如何，模态打开期间背景不应可滚动
-    lockDialogScroll()
+    // 模态对话框先锁 body 滚动再登记栈：模态打开期间背景不应可滚动。
+    // 非模态工具窗（T6）不锁滚动：用户需要继续滚动/编辑背后的编辑器。
+    if (!isNonModal.value) {
+        lockDialogScroll()
+        scrollLocked = true
+    }
     pushOpenDialog(dialogToken)
     const active = document.activeElement
     // body/html 作为焦点目标无意义，不记录（关闭后不强行聚焦 body）
@@ -312,9 +370,24 @@ function unregister(): void {
     if (!registered) return
     registered = false
     removeOpenDialog(dialogToken)
-    // 引用计数归零（最后一个对话框关闭）时才恢复 body 滚动
-    unlockDialogScroll()
+    // 引用计数归零（最后一个模态对话框关闭）时才恢复 body 滚动
+    if (scrollLocked) {
+        unlockDialogScroll()
+        scrollLocked = false
+    }
 }
+
+// 运行中「非模态工具对话框」开关切换时同步 body 滚动锁（打开期间即时生效，与 1.5.3 开关语义一致）
+watch(isNonModal, (nonModal) => {
+    if (!registered) return
+    if (nonModal && scrollLocked) {
+        unlockDialogScroll()
+        scrollLocked = false
+    } else if (!nonModal && !scrollLocked) {
+        lockDialogScroll()
+        scrollLocked = true
+    }
+})
 
 function isTopmost(): boolean {
     return isTopmostDialog(dialogToken)
@@ -357,12 +430,35 @@ function getFocusableElements(): HTMLElement[] {
     )
 }
 
-/** 打开时聚焦入口：优先把焦点放到容器本身（读屏会先播报对话框名称），再按 Tab 进入内容 */
+/** 收集正文区（排除标题栏/底栏外壳控件）的可 Tab 到达元素 */
+function getContentFocusableElements(): HTMLElement[] {
+    return getFocusableElements().filter(
+        (element) => !element.closest('.title-bar') && !element.closest('.footer')
+    )
+}
+
+/**
+ * 打开时聚焦入口：
+ * - 模态对话框：优先把焦点放到容器本身（读屏会先播报对话框名称），再按 Tab 进入内容；
+ * - 非模态工具窗（T6）：聚焦正文首个可交互元素（优先输入控件），让用户打开即可编辑，
+ *   没有任何交互元素时退回容器；
+ * - 子组件（如重命名输入框）已在打开时自行聚焦时不抢焦点。
+ */
 function focusDialog(): void {
     const root = containerRef.value
     if (!root) return
-    // 子组件（如重命名输入框）已在打开时自行聚焦时不抢焦点
     if (document.activeElement && root.contains(document.activeElement)) return
+    if (isNonModal.value) {
+        const contentFocusables = getContentFocusableElements()
+        const preferred = contentFocusables.find((element) =>
+            element.matches(TOOL_WINDOW_PREFERRED_FOCUS_SELECTOR)
+        )
+        const target = preferred ?? contentFocusables[0]
+        if (target) {
+            target.focus()
+            return
+        }
+    }
     root.focus()
 }
 
@@ -371,6 +467,13 @@ async function restoreFocus(): Promise<void> {
     restoreFocusTarget = null
     if (!target) return
     await nextTick()
+    // 非模态工具窗：用户可能已把焦点移到编辑器，此时不抢回（与编辑器焦点互不干扰）
+    if (isNonModal.value) {
+        const active = document.activeElement
+        if (active instanceof HTMLElement && active !== document.body && active !== target) {
+            return
+        }
+    }
     if (document.contains(target) && typeof target.focus === 'function') {
         target.focus()
     }
@@ -386,8 +489,10 @@ function handleDocumentKeyDown(event: KeyboardEvent): void {
         // 现代浏览器组合事件的 isComposing 为 true（Chrome 另以 keyCode 229 标记），
         // 两种标记都放行，避免用户取消候选时误关对话框。
         if (event.isComposing || event.keyCode === 229) return
-        // 非模态工具窗/Esc 禁用时不关闭（如 Mermaid 编辑器）
-        if (isNonModal.value || !props.closeOnEscape) {
+        // 非模态工具窗 + 焦点不在窗内：Esc 属于编辑器/其他区域的语义，不拦截也不关闭
+        // （T6「与编辑器焦点互不干扰」；焦点在窗内时 Esc 只关最顶层工具窗）。
+        if (isNonModal.value && !root.contains(document.activeElement)) return
+        if (!props.closeOnEscape) {
             event.preventDefault()
             event.stopPropagation()
             return
@@ -488,28 +593,70 @@ watch(
 /** `:style` 绑定的数组形态（Vue 的 StyleValue 数组，显式声明避免模板推断成 never） */
 type StyleValueList = CSSProperties[]
 
-/** 是否实际启用非模态：显式 non-modal 或工具窗开关打开 */
-const isNonModal = computed(
-    () => props.nonModal || (props.toolWindow && flags.nonModalDialogs === true)
-)
-const isModal = computed(() => props.modal && !isNonModal.value)
+// ==================== 视觉升级 1.5.5：材质 / 遮罩 / 宽度令牌 ====================
+const theme = useTheme()
 
-/** 非模态工具窗的遮罩：透明且不拦截底层编辑器事件 */
-const overlayStyles = computed<StyleValueList>(() => [
-    (props.overlayStyle ?? {}) as CSSProperties,
-    ...(isNonModal.value ? [{ pointerEvents: 'none' as const, background: 'transparent' }] : [])
-])
-// 容器内联样式：width 属性是低频常用覆盖项，其余细节由 containerStyle 全权覆盖
-// （containerStyle 放在后面，允许显式覆盖 width，语义与迁移前各对话框在模板里
-//  直接写 `:style` 覆盖外壳 CSS 一致）。
-const containerStyles = computed<StyleValueList>(() => [
-    dialogStyle.value,
-    {
-        ...(isNonModal.value ? { pointerEvents: 'auto' } : {}),
-        ...(props.width ? { width: props.width } : {}),
-        ...(props.containerStyle ?? {})
+/**
+ * 当前主题是否深色（用于 T9 遮罩 .32 / .48 两档）。
+ *
+ * 取值口径与语义令牌分组一致：按主题实际背景亮度判定（`shared/theme-tokens.isDarkColor`），
+ * 主题样式尚未初始化（启动早期/极简测试环境）时按浅色处理（默认主题 baize 为浅色）。
+ */
+const isDarkOverlay = computed(() => {
+    const styles = theme.currentThemeStyles.value
+    return styles ? isDarkColor(styles.backgroundColor) : false
+})
+
+/** 容器实际宽度：width（兼容既有调用点）优先，其次 widthSize 语义阶梯，留空用默认壳 */
+const resolvedWidth = computed(() => resolveDialogWidth(props.width, props.widthSize))
+
+/**
+ * 遮罩内联样式：
+ * 1. 主题遮罩色（浅 .32 / 深 .48，唯一真源 dialog-metrics）；
+ * 2. 调用方 overlayStyle（迁移兼容，内联优先级最高）；
+ * 3. 非模态工具窗：透明 + 点击穿透（1.5.3 行为保持不变）。
+ */
+const overlayStyles = computed<StyleValueList>(() => {
+    const styles: StyleValueList = [
+        { backgroundColor: resolveDialogOverlayColor(isDarkOverlay.value) }
+    ]
+    if (props.overlayStyle) {
+        styles.push(props.overlayStyle as CSSProperties)
     }
+    if (isNonModal.value) {
+        styles.push({ pointerEvents: 'none', background: 'transparent' })
+    }
+    return styles
+})
+
+/** 容器 class：调用方自定义 class + 工具窗壳标记（T6） */
+const containerClassList = computed<ClassValue[]>(() => [
+    props.containerClass ?? {},
+    { 'dialog-container--tool-window': isNonModal.value }
 ])
+
+/** 标题栏 class：变体 + 工具窗标记（T6 统一壳，密度/风格全部来自令牌变量） */
+const titleBarClassList = computed(() => [
+    `title-bar--${props.titleBarVariant}`,
+    ...(isNonModal.value ? ['title-bar--tool-window'] : [])
+])
+
+// 容器内联样式：dialogStyle（定位）→ 宽度（width/widthSize）→ 非模态点击可交互 →
+// containerStyle 全权覆盖（containerStyle 放在最后，允许显式覆盖 width，语义与迁移前一致）。
+const containerStyles = computed<StyleValueList>(() => {
+    const styles: StyleValueList = [dialogStyle.value]
+    const width = resolvedWidth.value
+    if (width) {
+        styles.push({ width })
+    }
+    if (isNonModal.value) {
+        styles.push({ pointerEvents: 'auto' })
+    }
+    if (props.containerStyle) {
+        styles.push(props.containerStyle as CSSProperties)
+    }
+    return styles
+})
 
 function handleOverlayClick(): void {
     if (!isNonModal.value && props.closeOnOverlay) {
@@ -530,6 +677,22 @@ function handleContainerMouseDown(event: MouseEvent): void {
 </script>
 
 <style scoped>
+/* ============================================================================
+ * 外壳视觉（视觉升级 1.5.5 P1-B1）
+ *
+ * ## 令牌消费口径
+ * - 颜色 / 材质：`--ui-surface` / `--ui-bg-sunken` / `--ui-border` / `--ui-shadow-*` /
+ *   `--ui-radius-*` / `--ui-surface-opacity` / `--ui-surface-blur` / `--ui-focus-shadow`，
+ *   全部由根元素 `data-style` 下的风格变量提供（paper/glass/workbench/hybrid）；
+ * - 尺寸节奏：`--ui-titlebar-height` / `--ui-control-height` / `--ui-pad` / `--ui-font-size`，
+ *   由根元素 `data-density` 提供（compact 36/28/8/12、default 40/32/12/13、spacious 44/36/16/13）；
+ * - 组件内**不写** data-style / data-density 分支（DESIGN.md §6：风格差异只由变量自动生效）。
+ *
+ * ## UI-01 例外（仅遮罩/阴影/深色渐变上的白字）
+ * 遮罩色由 `dialog-metrics.resolveDialogOverlayColor` 以内联样式写入；本文件的 rgba 仅用于
+ * 阴影兜底（令牌缺失时）与深色标题栏渐变上的白字/白描边，均有注释。
+ * ========================================================================== */
+
 /* ==================== 遮罩 ==================== */
 .dialog-overlay {
     position: fixed;
@@ -537,14 +700,16 @@ function handleContainerMouseDown(event: MouseEvent): void {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4);
+    /* 遮罩兜底色：运行时由 overlayStyles 内联写入主题感知值（浅 .32 / 深 .48） */
+    background: rgba(0, 0, 0, 0.32);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 9999;
-    /* 动画预设变量：默认 quick（simple 对话框迁移前动画），smooth 由下方类覆盖。 */
-    --dialog-fade-duration: 0.2s;
-    --dialog-scale-transition: transform 0.2s ease;
+    /* 动效令牌：对话框主体 240ms、遮罩 200ms（MOTION.md §1；减少动效时由令牌降级） */
+    --dialog-fade-duration: var(--ui-duration-overlay, 0.2s);
+    --dialog-scale-transition: transform var(--ui-duration-dialog, 0.2s)
+        var(--ui-ease-standard, ease);
     --dialog-scale-from-opacity: 1;
 }
 
@@ -555,16 +720,46 @@ function handleContainerMouseDown(event: MouseEvent): void {
     --dialog-scale-from-opacity: 0;
 }
 
-/* ==================== 容器 ==================== */
+/* ==================== 容器（T9 对话框壳） ==================== */
 .dialog-container {
     width: 500px;
-    background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    background: var(--ui-surface, var(--bg-color));
+    border-radius: var(--ui-radius-lg, 8px);
+    box-shadow: var(--ui-shadow-3, 0 10px 40px rgba(0, 0, 0, 0.25));
     overflow: hidden;
     display: flex;
     flex-direction: column;
 }
+
+/*
+ * T6 非模态工具窗统一壳：
+ * - 面：`--ui-surface` × `--ui-surface-opacity`（glass 0.86 半透明；其余 1 = 不透明）；
+ * - 玻璃模糊：`--ui-surface-blur` 仅在 glass 非 0（其余 0px，等于关闭模糊）；
+ * - 边框：1px hairline；阴影：悬浮层 `--ui-shadow-2`；glass 高光边由
+ *   `--ui-highlight-border-alpha` 控制（其余风格为 0，不产生可见高光）。
+ * 风格差异全部来自根元素 data-style 下的变量，组件不做风格判断。
+ */
+.dialog-container--tool-window {
+    background: color-mix(
+        in srgb,
+        var(--ui-surface, var(--bg-color)) calc(var(--ui-surface-opacity, 1) * 100%),
+        transparent
+    );
+    border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-lg, 8px);
+    box-shadow:
+        var(--ui-shadow-2, 0 6px 24px rgba(0, 0, 0, 0.12)),
+        inset 0 0 0 1px rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0));
+    backdrop-filter: blur(var(--ui-surface-blur, 0px));
+    -webkit-backdrop-filter: blur(var(--ui-surface-blur, 0px));
+}
+
+/*
+ * 正文内容区：BaseDialog 不为默认插槽额外包一层容器——25 个已迁移对话框的正文根节点
+ * 自带内边距，且 ThemeSettingDialog 依赖「prepend → title-bar → 正文 → footer」直接
+ * 子节点顺序（c4 契约）。因此 T9/T6 的「内容内边距」由各对话框正文容器消费
+ * `--ui-pad` 落地（P1 批次不改变 DOM 结构；跨组件统一在 P2 T12 回归批次处理）。
+ */
 
 /* ==================== 标题栏 ==================== */
 .title-bar {
@@ -574,52 +769,91 @@ function handleContainerMouseDown(event: MouseEvent): void {
     background: var(--title-bar-gradient);
     cursor: move;
     user-select: none;
+    /* 密度令牌：标题栏高 36/40/44（compact/default/spacious），默认 = T9/T6 规格 40 */
+    height: var(--ui-titlebar-height, 40px);
+    /* 标题栏背景为深色渐变：白色文字/描边属 UI-01 明文例外 */
+    color: #fff;
 }
 
-/* 32px 标题栏 + 13px 标题：simple 对话框（CreateFileFolderDialog / WebUrlDialog 等）。 */
+/* compact：simple 对话框默认壳（水平内边距随密度令牌走 4px 阶梯） */
 .title-bar--compact {
-    height: 32px;
-    padding: 0 15px;
+    padding: 0 calc(var(--ui-pad, 12px) + 4px);
 }
 
-/* 40px 标题栏 + 14px 标题：medium/complex 对话框现状中占比最高的一档。 */
+/* regular：medium/complex 对话框现状中占比最高的一档 */
 .title-bar--regular {
-    height: 40px;
-    padding: 0 16px;
+    padding: 0 calc(var(--ui-pad, 12px) + 4px);
 }
 
-/* 48px 标题栏 + 16px 标题：复杂/帮助对话框现状的一档。 */
+/* large：复杂/帮助对话框的一档（高度与字号同样统一到令牌，保留更大水平留白） */
 .title-bar--large {
-    height: 48px;
     padding: 0 24px;
 }
 
-/* 无固定高度、背景透明：MessageDialog 迁移前形态，背景由调用方 titleBarStyle 提供。 */
+/* 无固定高度、背景透明：MessageDialog / CommandPalette 形态，背景由调用方 titleBarStyle 提供 */
 .title-bar--plain {
+    height: auto;
     padding: 12px 16px;
     background: transparent;
 }
 
 .title-text {
+    /* 标题栏背景为深色渐变：白色文字属 UI-01 明文例外 */
     color: #fff;
-    font-weight: 500;
+    font-weight: 600;
 }
 
-.title-bar--compact .title-text {
-    font-size: 13px;
-}
-
-.title-bar--regular .title-text {
-    font-size: 14px;
-}
-
+/* T9：对话框标题 15 / 字重 600（`--ui-font-size` 13 + 2；密度档自动微调 14~15） */
+.title-bar--compact .title-text,
+.title-bar--regular .title-text,
 .title-bar--large .title-text {
-    font-size: 16px;
+    font-size: calc(var(--ui-font-size, 13px) + 2px);
     font-weight: 600;
 }
 
 .title-bar--plain .title-text {
     font-size: 14px;
+}
+
+/*
+ * T6 工具窗标题栏：中性悬浮面（不沿用主题渐变），标题栏与正文之间 hairline 分隔，
+ * 与设计预览（docs/design/preview/style-*.svg）一致；四风格下颜色仍来自主题令牌
+ * （workbench/paper 不透明、glass 半透明面叠在主题背景上、hybrid 走 workbench 令牌）。
+ */
+.title-bar--tool-window {
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 0 var(--ui-pad, 12px);
+    background: var(--ui-bg-sunken, var(--card-bg));
+    border-bottom: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
+    color: var(--ui-text, var(--text-color));
+    cursor: grab;
+}
+
+.title-bar--tool-window:active {
+    cursor: grabbing;
+}
+
+.title-bar--tool-window .title-text {
+    color: var(--ui-text, var(--text-color));
+    font-size: var(--ui-font-size, 13px);
+    font-weight: 600;
+}
+
+/* T6 拖拽把手：标题栏左侧 6 点纹理（2 列 × 3 行，CSS 绘制，不进无障碍树） */
+.tool-window-drag-handle {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 20px;
+    border-radius: var(--ui-radius-sm, 2px);
+    background-image: radial-gradient(
+        circle,
+        var(--ui-text-tertiary, currentColor) 1.2px,
+        transparent 1.3px
+    );
+    background-size: 6px 6px;
+    background-position: 1px 2px;
+    opacity: 0.9;
 }
 
 /* ==================== 关闭按钮 ==================== */
@@ -629,8 +863,12 @@ function handleContainerMouseDown(event: MouseEvent): void {
     display: flex;
     align-items: center;
     justify-content: center;
+    /* 标题栏背景为深色渐变：白色文字属 UI-01 明文例外 */
     color: #fff;
-    transition: all 0.2s;
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        box-shadow var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
 /* 28px 圆形按钮：simple 对话框等现状变体。 */
@@ -651,7 +889,7 @@ function handleContainerMouseDown(event: MouseEvent): void {
     width: 32px;
     height: 32px;
     background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
+    border-radius: var(--ui-radius-md, 6px);
     font-size: 16px;
 }
 
@@ -659,13 +897,36 @@ function handleContainerMouseDown(event: MouseEvent): void {
     background: rgba(255, 80, 80, 0.95);
 }
 
+/* 键盘焦点环：统一用 --ui-focus-shadow（DESIGN.md §6，替代浏览器 outline） */
+.close-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--ui-focus-shadow, 0 0 0 3px var(--ui-focus-ring, rgba(118, 75, 162, 0.3)));
+}
+
+/* T6 工具窗关闭按钮：28×28 中性色（标题栏为浅色悬浮面，白字不可用） */
+.title-bar--tool-window .close-btn {
+    margin-left: auto;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--ui-radius-md, 4px);
+    background: transparent;
+    color: var(--ui-text-secondary, var(--secondary-text-color));
+    font-size: 16px;
+}
+
+.title-bar--tool-window .close-btn:hover {
+    background: var(--ui-accent-soft, var(--hover-bg));
+    color: var(--ui-danger, #c62828);
+}
+
 /* ==================== 底部操作区 ==================== */
 .footer {
-    padding: 15px 20px;
+    padding: var(--ui-pad, 12px) 16px;
     display: flex;
-    gap: 10px;
-    border-top: 1px solid var(--border-color);
-    background: var(--card-bg);
+    align-items: center;
+    gap: 8px;
+    border-top: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
+    background: var(--ui-bg-elevated, var(--card-bg));
 }
 
 .footer--start {

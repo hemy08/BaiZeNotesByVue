@@ -16,9 +16,6 @@
         :container-style="containerStyle"
         tool-window
         :title-bar-style="titleBarStyle"
-        :title-text-style="titleTextStyle"
-        :close-button-style="closeButtonStyle"
-        :footer-style="footerStyle"
         @close="handleClose"
     >
         <div class="main-container">
@@ -133,12 +130,14 @@ const emit = defineEmits<{
 }>()
 
 /**
- * C-4 迁移：外壳覆盖（其余外壳声明与 BaseDialog 默认壳逐项一致）。
+ * C-4 迁移 + 视觉升级 1.5.5（T6 非模态工具窗）：
  * - 容器：宽度 1400px 由 width 属性承载，固定高 900px 经 containerStyle 覆盖；
- * - 标题栏：48px 高 / 0 24px 内边距由 large 变体提供，旧外壳另声明 flex-shrink: 0；
- * - 标题文字：16px / 600（large 变体同值，显式传入以固定契约）；
- * - 关闭按钮：rounded 变体提供 32px 圆角按钮，旧外壳字号 18px（无 app-region 声明）；
- * - 底栏：旧外壳 15px 24px 内边距、12px 间距、flex-shrink: 0（默认壳为 15px 20px / gap 10px）。
+ *   额外用 max-width/max-height 把窗口限制在可视区内（T6「缩放边界限制」），
+ *   小屏/低分辨率下不会溢出屏幕，宽高在拖动右下角缩放柄时按可视区钳制（startResize）；
+ * - 标题栏/标题文字/关闭按钮/底栏：统一由 BaseDialog 工具窗壳消费密度与风格令牌
+ *   （标题栏 `--ui-titlebar-height`、标题 `--ui-font-size` 13/600、关闭 28×28、
+ *   底栏内边距 `--ui-pad`），不再逐项内联覆盖——四风格 × 三密度自动生效；
+ *   仅保留标题栏 flex-shrink: 0（防内容压缩的迁移契约）。
  */
 /** 非模态工具窗：遮罩不拦截底层编辑器点击，点击外部不关闭 */
 const panelSize = reactive<{ width: number | null; height: number }>({
@@ -147,7 +146,10 @@ const panelSize = reactive<{ width: number | null; height: number }>({
 })
 const containerStyle = computed<CSSProperties>(() => ({
     ...(panelSize.width ? { width: `${panelSize.width}px` } : {}),
-    height: `${panelSize.height}px`
+    height: `${panelSize.height}px`,
+    // T6 缩放边界：窗口不超出可视区（20px 安全边距），与 startResize 的钳制口径一致
+    maxWidth: 'calc(100vw - 20px)',
+    maxHeight: 'calc(100vh - 20px)'
 }))
 let resizeCleanup: (() => void) | null = null
 
@@ -185,9 +187,6 @@ function startResize(event: PointerEvent): void {
     window.addEventListener('pointerup', cleanup)
 }
 const titleBarStyle: CSSProperties = { flexShrink: 0 }
-const titleTextStyle: CSSProperties = { fontSize: '16px', fontWeight: 600 }
-const closeButtonStyle: CSSProperties = { fontSize: '18px' }
-const footerStyle: CSSProperties = { padding: '15px 24px', gap: '12px', flexShrink: 0 }
 
 const mermaidCode = ref(`graph TD
     A[Start] --> B{Decision}

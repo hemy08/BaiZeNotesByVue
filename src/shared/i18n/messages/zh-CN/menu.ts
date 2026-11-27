@@ -7,6 +7,11 @@
  * 切换语言即时生效；中文值必须与抽取前界面文案逐字一致。
  */
 export default {
+    // 菜单栏自身的可访问名称（视觉升级 P1-B2：role=menubar 需要可访问名称；
+    // 只由 MenuBar.vue 的 aria-label 消费，不出现在可见文案中）
+    menubar: {
+        label: '菜单栏'
+    },
     file: {
         label: '文件',
         new: '新建',

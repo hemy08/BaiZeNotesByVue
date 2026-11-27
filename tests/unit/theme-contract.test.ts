@@ -8,7 +8,9 @@
  *    light 14 / dark 7 / eyecare 7（值来自主题设置对话框迁移前的 UI 分类基线）；
  * 3. 分组标题 i18n key 在 zh-CN / en-US 词典中均存在；
  * 4. 渲染层消费方（主题设置对话框 / 标题栏 logo / config store）确实引用 shared 清单，
- *    且不再保留硬编码主题 id 数组（防回归：避免又回到三处各自维护）。
+ *    且不再保留硬编码主题 id 数组（防回归：避免又回到三处各自维护）；
+ * 5. 视觉升级 P0：28 套主题 × 18 个语义令牌全部可派生 / 全部合法、语义色分组正确、
+ *    theme.css :root 默认值与 baize 主题派生结果逐项一致、useTheme 真正写入 --ui-* 变量。
  */
 import { describe, it, expect } from 'vitest'
 import * as fs from 'fs'
@@ -20,6 +22,16 @@ import {
     LIGHT_THEME_TYPES,
     THEME_GROUPS
 } from '../../src/shared/constants/theme'
+import {
+    buildSemanticCssVariables,
+    buildSemanticTokens,
+    parseColor,
+    resolveSemanticThemeGroup,
+    SEMANTIC_STATUS_COLORS,
+    SEMANTIC_TOKEN_CSS_BINDINGS,
+    SEMANTIC_TOKEN_KEYS,
+    type SemanticTokenSource
+} from '../../src/shared/theme-tokens'
 
 const ROOT = path.resolve(__dirname, '../..')
 const THEME_TYPES_FILE = path.join(ROOT, 'src', 'shared', 'types', 'theme.ts')
@@ -377,5 +389,171 @@ describe('CSS 单次注入（第 4 批 4.5 / M6）', () => {
         // 生效副本保留（main.ts 唯一引入，由上一个用例锁定）。
         expect(fs.existsSync(assetsDuplicate)).toBe(false)
         expect(fs.existsSync(effectiveStylesCopy)).toBe(true)
+    })
+})
+
+// =============================================================================================
+// 视觉升级 P0（T1）：28 套主题 × 18 个语义令牌完整性
+//
+// 目标：不 import 主进程运行时模块（避免 electron-store 依赖链），静态解析 theme-config.ts
+// 的 themes 注册表，对每套主题实际调用共享派生函数，验证「28 × 18 = 504」个令牌全部可得
+// 且全部是合法 CSS 颜色；同时锁定语义色分组、theme.css :root 默认值、useTheme 写入路径。
+// =============================================================================================
+describe('28 套主题 × 18 语义令牌派生完整性（视觉升级 P0）', () => {
+    /** 主题注册表中参与语义令牌派生的 7 个配色字段 */
+    const TOKEN_COLOR_FIELDS = [
+        'backgroundColor',
+        'cardBackground',
+        'textColor',
+        'secondaryTextColor',
+        'borderColor',
+        'accentColor',
+        'hoverBackground'
+    ] as const
+    const THEME_CSS_FILE = path.join(ROOT, 'src', 'renderer', 'src', 'styles', 'theme.css')
+
+    interface ParsedThemeEntry {
+        type: string
+        colors: Record<string, string>
+    }
+
+    /**
+     * 静态解析主进程 theme-config.ts 的 themes 注册表（键 + 7 个配色字段）。
+     * 形状约束与 parseThemeRegistryKeys 一致：4 空格缩进的 `key: {` 开始一个条目，
+     * 8 空格缩进的 `field: 'value'` 为字段；注册表顶格 `}` 结束。
+     */
+    function parseThemeColorEntries(): ParsedThemeEntry[] {
+        const source = readSource(THEME_CONFIG_FILE)
+        const marker = 'export const themes: Record<ThemeType, ThemeStyles> = {'
+        const start = source.indexOf(marker)
+        expect(start, '主进程 theme-config.ts 应定义 themes 注册表').toBeGreaterThanOrEqual(0)
+        const entries: ParsedThemeEntry[] = []
+        let current: ParsedThemeEntry | null = null
+        for (const line of source.slice(start + marker.length).split('\n')) {
+            if (line === '}') {
+                break
+            }
+            const keyMatch = line.match(/^ {4}(?:'([^']+)'|([A-Za-z][\w-]*)): \{$/)
+            if (keyMatch) {
+                current = { type: keyMatch[1] ?? keyMatch[2], colors: {} }
+                entries.push(current)
+                continue
+            }
+            if (!current) {
+                continue
+            }
+            const fieldMatch = line.match(/^ {8}([A-Za-z]+): '([^']*)'/)
+            if (fieldMatch && (TOKEN_COLOR_FIELDS as readonly string[]).includes(fieldMatch[1])) {
+                current.colors[fieldMatch[1]] = fieldMatch[2]
+            }
+        }
+        return entries
+    }
+
+    const THEME_ENTRIES = parseThemeColorEntries()
+
+    it('静态解析出 28 个主题条目，每个条目 7 个配色字段均为合法颜色', () => {
+        expect(THEME_ENTRIES).toHaveLength(28)
+        expect(THEME_ENTRIES.map((entry) => entry.type).sort()).toEqual(
+            [...THEME_TYPE_UNION].sort()
+        )
+        for (const entry of THEME_ENTRIES) {
+            expect(Object.keys(entry.colors).sort(), entry.type).toEqual(
+                [...TOKEN_COLOR_FIELDS].sort()
+            )
+            for (const field of TOKEN_COLOR_FIELDS) {
+                expect(parseColor(entry.colors[field]), `${entry.type}.${field}`).not.toBeNull()
+            }
+        }
+    })
+
+    it('每套主题都能派生全部 18 个语义令牌，且全部是合法 CSS 颜色（28 × 18 = 504 项）', () => {
+        let checkedTokens = 0
+        for (const entry of THEME_ENTRIES) {
+            const source = entry.colors as unknown as SemanticTokenSource
+            const group = resolveSemanticThemeGroup(entry.type, source)
+            const tokens = buildSemanticTokens(source, group)
+            expect(Object.keys(tokens).sort(), entry.type).toEqual([...SEMANTIC_TOKEN_KEYS].sort())
+            for (const key of SEMANTIC_TOKEN_KEYS) {
+                expect(
+                    parseColor(tokens[key]),
+                    `${entry.type}.${key}=${tokens[key]}`
+                ).not.toBeNull()
+                checkedTokens += 1
+            }
+            // CSS 变量映射同为 18 项且变量名保持 --ui- 前缀
+            const variables = buildSemanticCssVariables(source, group)
+            expect(Object.keys(variables)).toHaveLength(18)
+        }
+        expect(checkedTokens).toBe(28 * 18)
+    })
+
+    it('语义色分组：护眼组全部 eyecare，深色/浅色按表面亮度判定，已知归属偏差被修正', () => {
+        const groupByType = new Map(
+            THEME_ENTRIES.map((entry) => [
+                entry.type,
+                resolveSemanticThemeGroup(
+                    entry.type,
+                    entry.colors as unknown as SemanticTokenSource
+                )
+            ])
+        )
+        for (const type of EYECARE_THEME_TYPES) {
+            expect(groupByType.get(type), type).toBe('eyecare')
+        }
+        for (const type of DARK_THEME_TYPES) {
+            // 历史归属与真实配色相反：forest 实为浅底（分组深色，语义色按浅色套）
+            const expectedGroup = type === 'forest' ? 'light' : 'dark'
+            expect(groupByType.get(type), type).toBe(expectedGroup)
+        }
+        // 归入浅色分组但真实为深色底的两套：语义色必须按深色套
+        for (const type of ['baize-text', 'baize-starry']) {
+            expect(groupByType.get(type), type).toBe('dark')
+        }
+        for (const type of LIGHT_THEME_TYPES) {
+            expect(['light', 'dark', 'eyecare'], type).toContain(groupByType.get(type))
+        }
+    })
+
+    it('深色分组使用深色语义状态色，浅色/护眼分组使用浅色语义状态色', () => {
+        for (const entry of THEME_ENTRIES) {
+            const source = entry.colors as unknown as SemanticTokenSource
+            const group = resolveSemanticThemeGroup(entry.type, source)
+            const tokens = buildSemanticTokens(source, group)
+            const expectedPalette =
+                group === 'dark' ? SEMANTIC_STATUS_COLORS.dark : SEMANTIC_STATUS_COLORS.light
+            expect(tokens.success, `${entry.type}.success`).toBe(expectedPalette.success)
+            expect(tokens.warning, `${entry.type}.warning`).toBe(expectedPalette.warning)
+            expect(tokens.danger, `${entry.type}.danger`).toBe(expectedPalette.danger)
+            expect(tokens.info, `${entry.type}.info`).toBe(expectedPalette.info)
+        }
+    })
+
+    it('theme.css :root 的 18 个 --ui-* 默认值 == baize 主题派生结果（首屏兜底与运行时一致）', () => {
+        const baizeEntry = THEME_ENTRIES.find((entry) => entry.type === 'baize')
+        expect(baizeEntry, '应能解析 baize 主题条目').toBeDefined()
+        const source = baizeEntry?.colors as unknown as SemanticTokenSource
+        const variables = buildSemanticCssVariables(source, 'light')
+        const cssSource = readSource(THEME_CSS_FILE)
+        for (const binding of SEMANTIC_TOKEN_CSS_BINDINGS) {
+            expect(
+                cssSource,
+                `theme.css :root 缺少与派生结果一致的 ${binding.cssVariable}`
+            ).toContain(`${binding.cssVariable}: ${variables[binding.cssVariable]};`)
+        }
+    })
+
+    it('useTheme 在应用主题时追加语义变量，且既有 20 变量映射机制保持不变（UI-03）', () => {
+        const useThemeSource = readSource(USE_THEME)
+        // 追加：20 个旧变量仍由 buildThemeCssVariables 生成；语义变量由 buildSemanticCssVariables 生成
+        expect(useThemeSource).toContain('buildThemeCssVariables')
+        expect(useThemeSource).toContain('buildSemanticCssVariables')
+        expect(useThemeSource).toContain("from '../../../shared/theme-tokens'")
+        expect(useThemeSource).toContain('THEME_CSS_VARIABLE_BINDINGS')
+        // 语义变量必须与旧变量合并后统一写入（否则会覆盖/漏写其中一套）
+        expect(useThemeSource).toContain('...buildThemeCssVariables(theme)')
+        expect(useThemeSource).toContain('...buildSemanticCssVariables(theme, semanticGroup)')
+        // 旧变量清单仍是 10 个配色字段（20 变量）的唯一真源
+        expect(useThemeSource).toContain('export const THEME_CSS_VARIABLE_BINDINGS')
     })
 })

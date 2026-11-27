@@ -21,6 +21,8 @@
  * system-setting（buildFontCss 渲染兜底）复用。
  */
 import { isKnownThemeType } from './theme-config'
+// 视觉升级（P0）：界面风格/密度枚举白名单唯一真源在 shared 常量（CFG-10 白名单归一化）。
+import { UI_DENSITY_VALUES, UI_STYLE_VALUES } from '../../shared/constants/ui-style'
 // 公共接口归位第 2 批：纯校验函数统一引用 shared/utils/validate 真源
 import {
     clampNumber as clampNumberBase,
@@ -159,6 +161,8 @@ const SYSTEM_BOOLEAN_FIELDS: ReadonlySet<string> = new Set([
     'rememberWindowSize',
     'enableAutoBackup',
     'useSystemTheme',
+    // 视觉升级（P0）：减少透明效果开关（默认 false，仅接受布尔值）
+    'uiReduceTransparency',
     // AS-9：远程图片隐私开关（默认 false，仅接受布尔值；非布尔值丢弃并记录 adjusted）
     'allowRemoteImages',
     'editorSettingModal',
@@ -218,7 +222,10 @@ const SYSTEM_NUMBER_LIMITS: Readonly<Record<string, { min: number; max: number }
 /** 系统设置中的枚举字段（未知值丢弃） */
 const SYSTEM_ENUM_FIELDS: Readonly<Record<string, readonly string[]>> = {
     menuBarStyle: ['electron', 'default', 'windows-native'],
-    renderWhitespace: ['none', 'boundary', 'selection', 'all']
+    renderWhitespace: ['none', 'boundary', 'selection', 'all'],
+    // 视觉升级（P0）：界面风格 / 界面密度（白名单引用 shared 常量，禁止在此另写一份）
+    uiStyle: UI_STYLE_VALUES,
+    uiDensity: UI_DENSITY_VALUES
 }
 
 /** 系统设置中的短标识字段（资源管理器/编辑器模型/插件打开方式/应用主题） */

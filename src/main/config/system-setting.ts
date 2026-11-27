@@ -79,6 +79,12 @@ const systemSettingDefaults: SystemSetting = {
     backupCount: 5,
     appTheme: 'baize',
     useSystemTheme: false,
+    // 视觉升级（P0）：界面风格 / 界面密度 / 减少透明效果。
+    // 默认 workbench + default 与升级前观感完全一致（默认观感零变化是硬约束）；
+    // 真源同 shared/constants/system-defaults.ts 的 SYSTEM_SETTING_FALLBACK（两处必须一致）。
+    uiStyle: 'workbench',
+    uiDensity: 'default',
+    uiReduceTransparency: false,
     // AS-9（P3 隐私）：默认不自动加载 Markdown 预览中的远程图片（防跟踪像素/IP 泄露）。
     // 写入路径：渲染层 SystemSettingDialog → config:write('system') → 本模块，
     // 读取方：MarkdownPreviewComponent（经 config:read('system') 与 SYSTEM_SETTING_UPDATE 广播）。

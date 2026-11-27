@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>视觉升级方案（1.5.5）· 三风格预览</title>
+        <style>
+            :root {
+                --accent: #764ba2;
+                --accent-2: #667eea;
+                --border: #e5e7eb;
+                --bg-soft: #f6f7fb;
+                --text: #24292f;
+                --text-soft: #57606a;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                font-family:
+                    'Microsoft YaHei',
+                    'PingFang SC',
+                    -apple-system,
+                    'Segoe UI',
+                    sans-serif;
+                color: var(--text);
+                background: #fff;
+                line-height: 1.7;
+            }
+            .toc {
+                position: fixed;
+                top: 16px;
+                left: 16px;
+                width: 240px;
+                max-height: calc(100vh - 32px);
+                overflow-y: auto;
+                background: #fff;
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                padding: 12px 14px;
+                box-shadow: 0 6px 24px rgba(31, 35, 40, 0.08);
+                z-index: 100;
+                font-size: 13px;
+            }
+            .toc h4 {
+                margin: 0 0 8px;
+                color: var(--accent);
+                font-size: 14px;
+            }
+            .toc a {
+                display: block;
+                color: var(--text-soft);
+                text-decoration: none;
+                padding: 3px 6px;
+                border-radius: 6px;
+            }
+            .toc a:hover {
+                background: var(--bg-soft);
+                color: var(--accent);
+            }
+            main {
+                margin-left: 296px;
+                padding: 28px 40px 60px;
+                max-width: 1080px;
+            }
+            h1 {
+                color: var(--accent);
+                border-bottom: 2px solid var(--accent-2);
+                padding-bottom: 8px;
+            }
+            h2 {
+                color: var(--accent-2);
+                margin-top: 2.2em;
+                border-left: 4px solid var(--accent);
+                padding-left: 10px;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 14px 0;
+                font-size: 14px;
+            }
+            th,
+            td {
+                border: 1px solid var(--border);
+                padding: 7px 10px;
+                text-align: left;
+                vertical-align: top;
+            }
+            th {
+                background: var(--bg-soft);
+                color: var(--accent);
+            }
+            tr:nth-child(even) td {
+                background: #fafbfd;
+            }
+            code {
+                background: var(--bg-soft);
+                padding: 1px 6px;
+                border-radius: 4px;
+                font-family: Consolas, monospace;
+                font-size: 13px;
+            }
+            .badge {
+                display: inline-block;
+                padding: 2px 10px;
+                border-radius: 999px;
+                font-size: 12px;
+                color: #fff;
+                background: linear-gradient(135deg, var(--accent-2), var(--accent));
+                margin-right: 6px;
+            }
+            .note {
+                background: var(--bg-soft);
+                border-left: 4px solid var(--accent);
+                padding: 10px 14px;
+                border-radius: 0 8px 8px 0;
+                font-size: 14px;
+            }
+            .style-card {
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 14px;
+                margin: 18px 0;
+            }
+            .style-card h3 {
+                margin: 4px 0 8px;
+                font-size: 16px;
+            }
+            .style-card img {
+                width: 100%;
+                height: auto;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+            }
+            .swatch {
+                display: inline-block;
+                width: 14px;
+                height: 14px;
+                border-radius: 3px;
+                margin-right: 4px;
+                vertical-align: -2px;
+                border: 1px solid rgba(0, 0, 0, 0.08);
+            }
+            ul {
+                padding-left: 22px;
+            }
+            li {
+                margin: 3px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <nav class="toc" aria-label="目录">
+            <h4>📑 目录</h4>
+            <a href="#overview">一、概览</a>
+            <a href="#preview">二、三风格预览图</a>
+            <a href="#layers">三、三层正交结构</a>
+            <a href="#theme-fit">四、主题适配（28 主题）</a>
+            <a href="#tokens">五、令牌摘要</a>
+            <a href="#components">六、组件规格</a>
+            <a href="#batch">七、批次与验收</a>
+            <a href="#plan">八、开发计划</a>
+            <a href="#files">九、文件与链接</a>
+        </nav>
+        <main>
+            <h1>视觉升级方案（v1.5.5）· 三风格预览</h1>
+            <p>
+                <span class="badge">1.5.5 版本</span><span class="badge">2026-11-27</span
+                ><span class="badge">设计方向稿</span>
+            </p>
+
+            <h2 id="overview">一、概览</h2>
+            <ul>
+                <li>
+                    <b>背景</b>：1.5.3 已发布；体验优化线整体排入 <b>1.5.5</b>。实测现状：<b
+                        >802 处硬编码色值（80 文件）</b
+                    >、<b>21 种圆角</b>、91 处动效无统一节奏、菜单栏无键盘可达。
+                </li>
+                <li>
+                    <b>已确认</b>：A/B/C 三种基础风格<b>全部实现</b>，另加
+                    <b>Hybrid 混合</b>（正文纸感 + 外壳工作台）共 4
+                    种可选风格，开关切换；新增<b>三档密度</b>；<b>6 个组件全部升级</b>。
+                </li>
+                <li>
+                    <b>原则</b
+                    >：风格只改「材质与装饰」（透明度/模糊/阴影/边框/圆角），<b>不改变主题色相</b>——与
+                    28 套主题正交；密度只改「尺寸节奏」，不改布局结构。
+                </li>
+            </ul>
+
+            <h2 id="preview">二、三风格预览图</h2>
+
+            <div class="style-card">
+                <h3>
+                    A · Paper 纸感
+                    <span style="font-weight: 400; color: #8a919c; font-size: 13px"
+                        >（默认以外可选；写作/阅读优先）</span
+                    >
+                </h3>
+                <ul>
+                    <li>
+                        暖白纸面 <span class="swatch" style="background: #f7f5f0"></span>#f7f5f0 ·
+                        hairline <span class="swatch" style="background: #e8e3d8"></span>#e8e3d8 ·
+                        正文 16/1.75
+                    </li>
+                    <li>材质：不透明表面 · 阴影减弱 30~40% · 无模糊 · 圆角 4/6</li>
+                </ul>
+                <img src="./style-paper.svg" alt="A 纸感风格预览" />
+            </div>
+
+            <div class="style-card">
+                <h3>
+                    B · Glass 轻玻璃
+                    <span style="font-weight: 400; color: #8a919c; font-size: 13px"
+                        >（实验性；悬浮层质感）</span
+                    >
+                </h3>
+                <ul>
+                    <li>
+                        半透明面板 + 高光描边 + 柔和阴影；blur
+                        <b>仅用于悬浮层</b>（工具窗/下拉/命令面板），禁整窗模糊
+                    </li>
+                    <li>
+                        材质：surface 0.86 透明 · 8px blur · 阴影 dy12/blur32 · 圆角 8/12 ·
+                        提供「减少透明」开关与自动降级
+                    </li>
+                </ul>
+                <img src="./style-glass.svg" alt="B 轻玻璃风格预览" />
+            </div>
+
+            <div class="style-card">
+                <h3>
+                    C · Workbench 高密度工作台
+                    <span style="font-weight: 400; color: #8a919c; font-size: 13px"
+                        >（默认；知识管理优先）</span
+                    >
+                </h3>
+                <ul>
+                    <li>
+                        紧凑行高 24/28、分区线
+                        <span class="swatch" style="background: #cfd5dc"></span
+                        >#cfd5dc、单档阴影、圆角 2/4/6
+                    </li>
+                    <li>材质：信息层级靠字号/字重与分区线，不依赖大留白与重阴影</li>
+                </ul>
+                <img src="./style-workbench.svg" alt="C 工作台风格预览" />
+            </div>
+
+            <div class="note">
+                三张预览图使用同一布局与同一主题色（baize 紫
+                #764ba2），仅材质/装饰/密度不同——用于对比三风格差异，<b>不代表最终主题配色</b>。
+            </div>
+
+            <div class="style-card">
+                <h3>
+                    D · Hybrid 混合
+                    <span style="font-weight: 400; color: #8a919c; font-size: 13px"
+                        >（正文纸感 + 工具区工作台，写作与知识管理兼顾）</span
+                    >
+                </h3>
+                <ul>
+                    <li>
+                        正文/预览区走 <b>paper</b>：暖白纸面、16/1.75 排版、引用条 3px、纸内表格
+                        hairline
+                    </li>
+                    <li>
+                        外壳与工具区走 <b>workbench</b>：36 高顶栏、紧凑行高
+                        24/28、分区线、单档阴影、圆角 2/4/6
+                    </li>
+                    <li>两种材质在内容区边界自然分界：<b>内容是一张纸，外壳是一套工作台</b></li>
+                </ul>
+                <img src="./style-hybrid.svg" alt="D 混合风格预览" />
+            </div>
+
+            <h2 id="layers">三、三层正交结构</h2>
+            <table>
+                <tr>
+                    <th>层</th>
+                    <th>控制什么</th>
+                    <th>取值</th>
+                    <th>实现</th>
+                </tr>
+                <tr>
+                    <td>主题（28 套，不变）</td>
+                    <td>颜色（18 组语义令牌）</td>
+                    <td>用户现有主题</td>
+                    <td>CSS 变量（现有机制）</td>
+                </tr>
+                <tr>
+                    <td><b>风格（新增开关）</b></td>
+                    <td>材质/装饰：透明度、模糊、阴影、边框强度、圆角档位</td>
+                    <td>paper / glass / workbench / hybrid（互斥单选，默认 workbench）</td>
+                    <td><code>data-style</code> + 变量覆盖</td>
+                </tr>
+                <tr>
+                    <td><b>密度（新增开关）</b></td>
+                    <td>尺寸节奏：行高、控件高、内边距、字号微调</td>
+                    <td>compact / default / spacious（默认 default）</td>
+                    <td><code>data-density</code> + 变量覆盖</td>
+                </tr>
+            </table>
+            <ul>
+                <li>
+                    28 主题 × 4 风格 × 3 密度 = 336 组合；验收按<b>代表性采样</b>（78
+                    张截图矩阵），不全测。
+                </li>
+                <li>
+                    hybrid 规则：内容区（正文/预览）使用 paper
+                    令牌，外壳（顶栏/左栏/状态栏）与工具区（工具窗/表格/命令面板）使用 workbench
+                    令牌；material 切换不影响主题色。
+                </li>
+                <li>
+                    glass 降级：<code>uiReduceTransparency</code> 开关 +
+                    <code>prefers-reduced-transparency</code> 自动回退 paper 材质。
+                </li>
+            </ul>
+
+            <h2 id="theme-fit">四、主题适配（28 套主题 × 4 风格）</h2>
+            <p>
+                28 套主题当前每套只定义
+                <b>10 个基础颜色字段</b>（bg/card/text/border/accent/button/hover + 渐变），没有 16
+                组语义令牌。风格层不改颜色，因此需要先在 P0
+                建立派生映射，之后四种风格对全部主题自动适用：
+            </p>
+            <table>
+                <tr>
+                    <th>语义令牌</th>
+                    <th>派生规则（28 套通用）</th>
+                </tr>
+                <tr>
+                    <td>bg / bg-elevated / bg-sunken</td>
+                    <td>backgroundColor / cardBackground / hoverBackground 加深</td>
+                </tr>
+                <tr>
+                    <td>border / border-strong</td>
+                    <td>borderColor / borderColor 加深 8%</td>
+                </tr>
+                <tr>
+                    <td>text / text-secondary / text-tertiary</td>
+                    <td>textColor / secondaryTextColor / 派生降低 20%</td>
+                </tr>
+                <tr>
+                    <td>accent / accent-soft / accent-hover</td>
+                    <td>accentColor / +12% alpha / 加深</td>
+                </tr>
+                <tr>
+                    <td>success / warning / danger / info</td>
+                    <td>全主题共用语义色（浅/深各一套）</td>
+                </tr>
+                <tr>
+                    <td>focus-ring / selection</td>
+                    <td>accentColor 30% / 15%</td>
+                </tr>
+            </table>
+            <table>
+                <tr>
+                    <th>主题类别</th>
+                    <th>glass</th>
+                    <th>paper</th>
+                    <th>备注</th>
+                </tr>
+                <tr>
+                    <td>浅色主题（多数）</td>
+                    <td>正常：0.86 + 8px blur</td>
+                    <td>正常：主题浅色面 + hairline</td>
+                    <td>预览图基准</td>
+                </tr>
+                <tr>
+                    <td><b>深色主题</b>（dark / deepdark / 白泽数据深色 / 白泽镜像深色）</td>
+                    <td>
+                        <b>surface 用主题深色面 + 透明度</b>（非固定白）；高光边降为 10~18%
+                        白；自动降低透明度
+                    </td>
+                    <td><b>不强制暖白</b>：主题深色面 + hairline + 轻阴影</td>
+                    <td>严禁固定白底破坏深色主题</td>
+                </tr>
+                <tr>
+                    <td><b>高饱和/渐变主题</b>（珊瑚暖阳 / 日落余晖 / 森林秘境等）</td>
+                    <td><b>自动降级</b>：透明度 ≥0.94 或关 blur（玻璃稳健模式）</td>
+                    <td>正常</td>
+                    <td>半透明叠彩色渐变会视觉混乱</td>
+                </tr>
+                <tr>
+                    <td><b>护眼主题（7 套）</b></td>
+                    <td>降低透明度、提高对比</td>
+                    <td>正常</td>
+                    <td>本身低对比，不得进一步降低对比度</td>
+                </tr>
+                <tr>
+                    <td>Monaco 编辑器（57 套）</td>
+                    <td>不参与</td>
+                    <td>不参与</td>
+                    <td>风格不改编辑器主题；paper 只改 UI 正文排版</td>
+                </tr>
+            </table>
+            <div class="note">
+                <b>结论</b>：四种风格<b>适用于全部 28 套主题</b>——前提是 ① 16
+                组语义令牌派生落地（P0）；② 深色/高饱和/护眼主题按上表自动降级；③
+                预览图中的暖白/白色面板仅作示意，实施以主题色驱动。
+            </div>
+
+            <h2 id="tokens">五、令牌摘要</h2>
+            <table>
+                <tr>
+                    <th>类</th>
+                    <th>档位</th>
+                </tr>
+                <tr>
+                    <td>颜色</td>
+                    <td>
+                        语义 18 组：bg / bg-elevated / bg-sunken / surface / border / border-strong
+                        / text / text-secondary / text-tertiary / accent / accent-hover /
+                        accent-soft / success / warning / danger / info / focus-ring / selection
+                    </td>
+                </tr>
+                <tr>
+                    <td>间距</td>
+                    <td>4 / 8 / 12 / 16 / 24 / 32 / 48（7 档）</td>
+                </tr>
+                <tr>
+                    <td>圆角</td>
+                    <td>2 / 4 / 6 / 8 / 999（<b>21 种 → 5 档</b>）</td>
+                </tr>
+                <tr>
+                    <td>阴影</td>
+                    <td>
+                        shadow-1（卡片）/ shadow-2（悬浮层）/ shadow-3（对话框）/ focus-ring 3px
+                    </td>
+                </tr>
+                <tr>
+                    <td>动效</td>
+                    <td>
+                        120ms 状态 · 180ms 弹出 · 240ms 对话框 · 300ms 切换；reduced-motion 降级
+                    </td>
+                </tr>
+                <tr>
+                    <td>密度</td>
+                    <td>compact 24 / default 28 / spacious 32（行高）；控件 28/32/36</td>
+                </tr>
+            </table>
+
+            <h2 id="components">六、组件规格（6 个全部升级）</h2>
+            <table>
+                <tr>
+                    <th>组件</th>
+                    <th>关键规格</th>
+                    <th>三风格差异</th>
+                </tr>
+                <tr>
+                    <td>非模态工具窗</td>
+                    <td>
+                        标题栏 40（密度档 36/40/44）· 圆角 8 · shadow-2 · 拖拽把手 · Esc 只关顶层
+                    </td>
+                    <td>paper 减弱阴影；glass 8px blur；workbench 圆角 6 + 单档阴影</td>
+                </tr>
+                <tr>
+                    <td>菜单栏</td>
+                    <td>
+                        高 36（密度档 32/36/40）· 行高 28 · 下拉 shadow-2 · 悬停 accent-soft · 键盘
+                        role/方向键
+                    </td>
+                    <td>paper hairline；glass 半透明；workbench 强分区线</td>
+                </tr>
+                <tr>
+                    <td>表格编辑器</td>
+                    <td>行高 28/32 · 列头 32 · hairline 网格 · 选中 accent-soft · 列宽拖拽 4px</td>
+                    <td>paper 边框轻；glass 透背景；workbench 列头底色 + 网格线</td>
+                </tr>
+                <tr>
+                    <td>对话框</td>
+                    <td>宽度阶梯 360/520/720/960 · 标题 15/600 · 底部按钮 32 · shadow-3</td>
+                    <td>paper 弱阴影；glass 高光边；workbench 方角</td>
+                </tr>
+                <tr>
+                    <td>命令面板</td>
+                    <td>宽 720 · 行高 32 · 分组标题 11/600 · 选中左侧 2px accent 条</td>
+                    <td>glass 半透明；workbench 选中条更明显</td>
+                </tr>
+                <tr>
+                    <td>状态栏 / 空态</td>
+                    <td>状态栏高 24 · 空态 6 类统一 SVG 插图 + 主标题 15 + 描述 13</td>
+                    <td>按风格调整边框与底色</td>
+                </tr>
+            </table>
+
+            <h2 id="batch">七、批次与验收</h2>
+            <table>
+                <tr>
+                    <th>批次</th>
+                    <th>内容</th>
+                    <th>预估</th>
+                    <th>验收</th>
+                </tr>
+                <tr>
+                    <td>P0</td>
+                    <td>
+                        令牌层（18 色/7 间距/5 圆角/3 阴影/动效表）+ <b>28 主题语义令牌派生</b> +
+                        风格/密度框架（<code>data-style</code>/<code>data-density</code>）+ 3
+                        项配置（uiStyle / uiDensity / uiReduceTransparency）+ DESIGN.md / MOTION.md
+                    </td>
+                    <td>3~4 人日</td>
+                    <td>框架落地；28 主题全部获得 18 组令牌；三档密度可切换、默认观感不变</td>
+                </tr>
+                <tr>
+                    <td>P1</td>
+                    <td>6 组件 × 4 风格升级</td>
+                    <td>10~14 人日</td>
+                    <td>每组件四风格 + 密度矩阵截图；hybrid 双材质边界一致；键盘/Esc 语义一致</td>
+                </tr>
+                <tr>
+                    <td>P2</td>
+                    <td>
+                        编辑器纸感、图标统一、802 处硬编码清理、336 组合抽样矩阵、E2E 视觉软门禁
+                    </td>
+                    <td>5~7 人日</td>
+                    <td>硬编码外露 0；78 张基线通过；评分 +20%</td>
+                </tr>
+            </table>
+            <ul>
+                <li><b>合计</b>：约 16~24 人日。</li>
+                <li>
+                    <b>默认执行</b>：默认 workbench + default 密度；paper 下正文启用纸感排版；glass
+                    默认 0.86 + 8px blur、减少透明默认关；设置放「外观」页签、glass 标"实验性"。
+                </li>
+            </ul>
+
+            <h2 id="plan">八、开发计划</h2>
+            <h3>里程碑</h3>
+            <table>
+                <tr>
+                    <th>里程碑</th>
+                    <th>时间点</th>
+                    <th>判定标准</th>
+                </tr>
+                <tr>
+                    <td><b>M1（P0）</b></td>
+                    <td>第 1 周中</td>
+                    <td>
+                        28 主题 × 18 组令牌派生；四风格 × 三密度可切换且默认观感不变；3 项配置可用
+                    </td>
+                </tr>
+                <tr>
+                    <td><b>M2（P1）</b></td>
+                    <td>第 2 周末</td>
+                    <td>6 组件 × 4 风格；键盘可达；每组件四风格 + 密度截图通过</td>
+                </tr>
+                <tr>
+                    <td><b>M3（P2）</b></td>
+                    <td>第 3 周末</td>
+                    <td>编辑器纸感 + 图标统一 + 802 处硬编码清理；78 张基线通过；E2E 软门禁接入</td>
+                </tr>
+                <tr>
+                    <td><b>M4（发布前）</b></td>
+                    <td>1.5.5 发布窗口</td>
+                    <td>发布三段链路 + tag <code>release-1.5.5</code> + 全量门禁绿</td>
+                </tr>
+            </table>
+            <h3>WBS 任务（约 21.5 人日）</h3>
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <th>任务</th>
+                    <th>依赖</th>
+                    <th>人日</th>
+                </tr>
+                <tr>
+                    <td>T1</td>
+                    <td>语义令牌派生（28 主题 × 18 组）+ theme-contract 扩测</td>
+                    <td>—</td>
+                    <td>2.0</td>
+                </tr>
+                <tr>
+                    <td>T2</td>
+                    <td>风格层框架（data-style + 4 风格 + 深色/高饱和/护眼降级）</td>
+                    <td>T1</td>
+                    <td>1.0</td>
+                </tr>
+                <tr>
+                    <td>T3</td>
+                    <td>密度层框架（data-density + 3 档）</td>
+                    <td>T1</td>
+                    <td>0.5</td>
+                </tr>
+                <tr>
+                    <td>T4</td>
+                    <td>三项配置（schema/白名单/默认值/设置页/i18n）</td>
+                    <td>T2,T3</td>
+                    <td>0.5</td>
+                </tr>
+                <tr>
+                    <td>T5</td>
+                    <td>DESIGN.md / MOTION.md / 组件规格表 + 令牌单测</td>
+                    <td>T1~T4</td>
+                    <td>0.5</td>
+                </tr>
+                <tr>
+                    <td>T6</td>
+                    <td>工具窗升级（× 四风格）</td>
+                    <td>M1</td>
+                    <td>1.5</td>
+                </tr>
+                <tr>
+                    <td>T7</td>
+                    <td>菜单栏升级（视觉 + 键盘可达 × 四风格）</td>
+                    <td>M1</td>
+                    <td>1.5</td>
+                </tr>
+                <tr>
+                    <td>T8</td>
+                    <td>表格编辑器升级（× 四风格）</td>
+                    <td>M1</td>
+                    <td>1.5</td>
+                </tr>
+                <tr>
+                    <td>T9</td>
+                    <td>对话框升级（× 四风格）</td>
+                    <td>M1</td>
+                    <td>1.0</td>
+                </tr>
+                <tr>
+                    <td>T10</td>
+                    <td>命令面板升级（× 四风格）</td>
+                    <td>M1</td>
+                    <td>1.0</td>
+                </tr>
+                <tr>
+                    <td>T11</td>
+                    <td>状态栏 + 空态组件（× 四风格）</td>
+                    <td>M1</td>
+                    <td>1.0</td>
+                </tr>
+                <tr>
+                    <td>T12</td>
+                    <td>跨组件回归 + 样式冲突修复 + 截图矩阵</td>
+                    <td>T6~T11</td>
+                    <td>1.5</td>
+                </tr>
+                <tr>
+                    <td>T13</td>
+                    <td>编辑器正文纸感（写作模式版式）</td>
+                    <td>M2</td>
+                    <td>1.0</td>
+                </tr>
+                <tr>
+                    <td>T14</td>
+                    <td>图标统一（24 网格/stroke 1.5）</td>
+                    <td>M2</td>
+                    <td>1.0</td>
+                </tr>
+                <tr>
+                    <td>T15</td>
+                    <td>802 处硬编码清理（分批 ≤100 处/批 + 白名单）</td>
+                    <td>M2</td>
+                    <td>2.0</td>
+                </tr>
+                <tr>
+                    <td>T16</td>
+                    <td>78 张基线 + 对比度扫描 + 键盘走查</td>
+                    <td>T12~T15</td>
+                    <td>2.0</td>
+                </tr>
+                <tr>
+                    <td>T17</td>
+                    <td>E2E 视觉软门禁 + 全量回归</td>
+                    <td>T16</td>
+                    <td>1.0</td>
+                </tr>
+                <tr>
+                    <td>T18</td>
+                    <td>文档/变量迁移收尾</td>
+                    <td>T13~T17</td>
+                    <td>1.0</td>
+                </tr>
+            </table>
+            <h3>排期（3 周 / 单人；并行可压缩至 2 周）</h3>
+            <table>
+                <tr>
+                    <th>周</th>
+                    <th>内容</th>
+                    <th>并行度</th>
+                </tr>
+                <tr>
+                    <td>第 1 周</td>
+                    <td>T1→T5（P0，周三 M1）→ 启动 T6/T7/T9</td>
+                    <td>P0 串行；P1 三组件并行</td>
+                </tr>
+                <tr>
+                    <td>第 2 周</td>
+                    <td>T8/T10/T11 并行 → T12 回归；周末 M2</td>
+                    <td>P1 三组并行</td>
+                </tr>
+                <tr>
+                    <td>第 3 周</td>
+                    <td>T13~T18（P2 收尾）；周末 M3；发布窗口 M4</td>
+                    <td>主要串行</td>
+                </tr>
+            </table>
+            <h3>并行拆分（写域不相交）</h3>
+            <ul>
+                <li><b>Wave A（P0，串行）</b>：tokens/主题派生/配置/设置页</li>
+                <li><b>Wave B1</b>：T6 工具窗 + T9 对话框（<code>components/dialogs/**</code>）</li>
+                <li>
+                    <b>Wave B2</b>：T7 菜单栏 + T10 命令面板 + T11 状态栏/空态（MenuBar.vue /
+                    search/** / StatusBar.vue / common/ui/**）
+                </li>
+                <li><b>Wave B3</b>：T8 表格编辑器（<code>table-editor/**</code>）</li>
+                <li><b>Wave C（P2，串行）</b>：T13~T18 跨文件清理</li>
+            </ul>
+            <h3>每阶段验收</h3>
+            <ul>
+                <li>
+                    <b>每任务合入</b>：typecheck 四段 / ESLint 全仓 0 / Prettier / vitest / coverage
+                    / docs:check
+                </li>
+                <li>
+                    <b>M1</b>：28×18 令牌完整性测试 + 四风格 × 三密度切换 smoke + 默认观感对比截图
+                </li>
+                <li><b>M2</b>：每组件四风格 + 密度截图 + 键盘走查 + a11y 对比度</li>
+                <li>
+                    <b>M3</b>：78 张基线 + 对比度扫描（18 色 × 4 风格 × 3 类主题）+ quality:check /
+                    budget:check / fuses / build
+                </li>
+                <li><b>M4</b>：CHANGELOG / RELEASE-NOTES / 应用内发布说明三段一致 + tag 守卫</li>
+            </ul>
+            <div class="note">
+                计划全文（含 WBS/排期/并行拆分/风险）见
+                <a
+                    href="../../wiki/04-优化与专项报告/视觉升级方案-1.5.5.md#9-开发计划wbs--里程碑--排期"
+                    >视觉升级方案 §9 开发计划</a
+                >。确认后从 <b>T1 语义令牌派生</b>开始，每个任务独立提交便于回滚。
+            </div>
+
+            <h2 id="files">九、文件与链接</h2>
+            <ul>
+                <li>
+                    方案全文（Markdown）：<a
+                        href="../../wiki/04-优化与专项报告/视觉升级方案-1.5.5.md"
+                        >视觉升级方案-1.5.5.md</a
+                    >
+                </li>
+                <li>
+                    预览图：<a href="./style-paper.svg">style-paper.svg</a> ·
+                    <a href="./style-glass.svg">style-glass.svg</a> ·
+                    <a href="./style-workbench.svg">style-workbench.svg</a> ·
+                    <a href="./style-hybrid.svg">style-hybrid.svg</a>
+                </li>
+                <li>
+                    关联方案：<a href="../../wiki/04-优化与专项报告/产品体验优化方案.md"
+                        >产品体验优化方案（三线总纲）</a
+                    >
+                    ·
+                    <a href="../../wiki/04-优化与专项报告/ECC能力驱动的项目优化方案.md"
+                        >ECC 能力驱动优化方案（工程治理）</a
+                    >
+                </li>
+                <li>本次为设计方向稿：<b>未改动任何产品代码</b>。</li>
+            </ul>
+        </main>
+    </body>
+</html>

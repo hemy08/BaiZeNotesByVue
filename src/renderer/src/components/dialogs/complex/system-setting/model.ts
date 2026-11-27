@@ -14,6 +14,7 @@
  */
 
 import { SYSTEM_SETTING_FALLBACK } from '../../../../../../shared/constants/system-defaults'
+import type { UiDensity, UiStyle } from '../../../../../../shared/types/system'
 
 /** 系统设置对话框的全部字段（含渲染层扩展字段，与主进程 systemSetting.json 同源持久化） */
 export interface SystemDialogSettings {
@@ -29,6 +30,12 @@ export interface SystemDialogSettings {
     recentFilesCount: number
     appTheme: string
     useSystemTheme: boolean
+    // ===== 视觉升级（P0）三项外观配置（系统设置 → 外观）=====
+    // 与原 systemSetting.json 同源持久化；主进程 config-schema 白名单校验；
+    // 渲染层 useTheme.applyUiAppearance 消费后写根元素 data-style / data-density。
+    uiStyle: UiStyle
+    uiDensity: UiDensity
+    uiReduceTransparency: boolean
     fontFamily: string
     fontSize: number
     enableAutoBackup: boolean
@@ -105,6 +112,10 @@ export function createDefaultSystemDialogSettings(): SystemDialogSettings {
         recentFilesCount: SYSTEM_SETTING_FALLBACK.recentFilesCount,
         appTheme: SYSTEM_SETTING_FALLBACK.appTheme,
         useSystemTheme: SYSTEM_SETTING_FALLBACK.useSystemTheme,
+        // 视觉升级（P0）：默认 workbench + default = 升级前观感；减少透明默认关闭
+        uiStyle: SYSTEM_SETTING_FALLBACK.uiStyle,
+        uiDensity: SYSTEM_SETTING_FALLBACK.uiDensity,
+        uiReduceTransparency: SYSTEM_SETTING_FALLBACK.uiReduceTransparency,
         fontFamily: SYSTEM_SETTING_FALLBACK.fontFamily,
         fontSize: SYSTEM_SETTING_FALLBACK.fontSize,
         enableAutoBackup: SYSTEM_SETTING_FALLBACK.enableAutoBackup,

@@ -500,6 +500,9 @@ async function handleConfirmDelete() {
 
 function handleSystemSettingUpdate(_event: unknown, setting: SystemSetting) {
     electronMenu.value = setting.menuBarStyle === 'electron' || setting.menuBarStyle === 'default'
+    // 视觉升级（P0）：界面风格/密度/减少透明变更后即时生效（保存设置 → 主进程广播 →
+    // useTheme 写根元素 data-style/data-density，无需重启）。
+    theme.applyUiAppearance(setting)
 }
 
 function EditorReLayout() {

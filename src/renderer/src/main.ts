@@ -17,6 +17,10 @@
 // 懒加载打开时同样走该加载器。首屏 CSS 因此不含任何 KaTeX 选择器/字体引用（预算门禁守护）。
 import './assets/main.css'
 import './styles/theme.css'
+// 视觉升级（P0）：界面风格层/密度层变量表（4 风格 × 3 密度 + 动效/z-index 阶梯）。
+// 只声明 CSS 变量、不覆盖任何既有选择器，因此默认观感与升级前完全一致（P1 组件才消费）；
+// 必须在 theme.css 之后引入（主题色语义变量默认值先就位，ui-style.css 的变量引用才稳定）。
+import './styles/ui-style.css'
 // 对话框底部按钮统一样式层（唯一视觉真源）：必须在 theme.css 之后引入，
 // 用 `.dialog-container .dialog-btn`（0,2,0）覆盖主题全局 `button` 的基础声明；
 // 详见 assets/dialog-buttons.css 顶部说明与 tests/unit/vue/dialog-buttons-style.test.ts。

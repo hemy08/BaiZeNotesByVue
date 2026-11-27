@@ -10,7 +10,9 @@
     >
         <div
             class="table-editor-body"
-            :class="{ 'is-resized': panelSize.height !== null }"
+            :style="tableCssVariables"
+            :data-table-style="uiStyle"
+            :data-table-density="uiDensity"
             @keydown.ctrl.enter.prevent="handleApply"
             @keydown.meta.enter.prevent="handleApply"
         >
@@ -120,27 +122,46 @@
             </section>
 
             <div class="table-editor-scroll">
-                <table class="table-editor-grid" :style="{ width: `${tableWidth}px` }">
+                <!--
+                    电子表格化网格（1.5.5 / T8）：
+                    - 导航态：单元格为只读显示，方向键/Tab 移动选区，Enter / F2 / 双击进入编辑；
+                    - 编辑态：单元格内渲染 textarea（保留 1.5.3 的 Markdown 富文本编辑能力），
+                      Enter / Tab 提交并移动、Shift+Enter 换行、Esc 取消并还原。
+                    - role=grid + aria-activedescendant：读屏可感知当前选区。
+                -->
+                <table
+                    ref="gridRef"
+                    class="table-editor-grid"
+                    role="grid"
+                    tabindex="0"
+                    :aria-label="gridLabel"
+                    :aria-activedescendant="activeCellId"
+                    aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Home End Enter F2 Delete"
+                    :style="{ width: `${tableWidth}px` }"
+                    @keydown="handleGridKeydown"
+                    @focus="handleGridFocus"
+                >
                     <colgroup>
-                        <col style="width: 96px" />
+                        <col :style="{ width: `${densityTokens.rowHeadWidth}px` }" />
                         <col
                             v-for="(_width, columnIndex) in columnWidths"
                             :key="`col-${columnIndex}`"
                             :style="{ width: `${columnWidths[columnIndex]}px` }"
                         />
-                        <col style="width: 54px" />
+                        <col :style="{ width: `${densityTokens.addColumnWidth}px` }" />
                     </colgroup>
-                    <thead>
-                        <tr>
-                            <th class="corner-cell" aria-hidden="true"></th>
+                    <thead role="rowgroup">
+                        <tr role="row">
+                            <th class="corner-cell" role="columnheader" aria-hidden="true"></th>
                             <th
                                 v-for="(_header, columnIndex) in headers"
                                 :key="`h-${columnIndex}`"
                                 class="column-head"
+                                role="columnheader"
                                 @dragover.prevent
                                 @drop="dropColumn(columnIndex)"
                             >
-                                <div class="column-head-row">
+                                <div class="column-head-main">
                                     <span
                                         class="drag-grip"
                                         draggable="true"
@@ -153,44 +174,52 @@
                                     <input
                                         v-model="headers[columnIndex]"
                                         class="cell-input header-input"
+                                        :style="headerInputStyle(columnIndex)"
                                         :aria-label="t('dialogRenderer.tableEditor.header')"
                                         :placeholder="`${t('dialogRenderer.tableEditor.column')} ${columnIndex + 1}`"
                                     />
-                                    <button
-                                        type="button"
-                                        class="icon-btn"
-                                        :title="t('dialogRenderer.tableEditor.insertColumnRight')"
-                                        :aria-label="
-                                            t('dialogRenderer.tableEditor.insertColumnRight')
-                                        "
-                                        @click="insertColumnAt(columnIndex + 1)"
-                                    >
-                                        <span aria-hidden="true">+</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="icon-btn icon-btn--danger"
-                                        :title="t('dialogRenderer.tableEditor.deleteColumn')"
-                                        :aria-label="t('dialogRenderer.tableEditor.deleteColumn')"
-                                        :disabled="headers.length <= 1"
-                                        @click="deleteColumn(columnIndex)"
-                                    >
-                                        <span aria-hidden="true">×</span>
-                                    </button>
+                                    <div class="column-actions">
+                                        <select
+                                            v-model="alignments[columnIndex]"
+                                            class="column-align-select"
+                                            :title="alignmentTitle(columnIndex)"
+                                            :aria-label="alignmentTitle(columnIndex)"
+                                        >
+                                            <option
+                                                v-for="option in alignOptions"
+                                                :key="option.value"
+                                                :value="option.value"
+                                            >
+                                                {{ option.shortLabel }}
+                                            </option>
+                                        </select>
+                                        <button
+                                            type="button"
+                                            class="icon-btn"
+                                            :title="
+                                                t('dialogRenderer.tableEditor.insertColumnRight')
+                                            "
+                                            :aria-label="
+                                                t('dialogRenderer.tableEditor.insertColumnRight')
+                                            "
+                                            @click="insertColumnAt(columnIndex + 1)"
+                                        >
+                                            <span aria-hidden="true">+</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="icon-btn icon-btn--danger"
+                                            :title="t('dialogRenderer.tableEditor.deleteColumn')"
+                                            :aria-label="
+                                                t('dialogRenderer.tableEditor.deleteColumn')
+                                            "
+                                            :disabled="headers.length <= 1"
+                                            @click="deleteColumn(columnIndex)"
+                                        >
+                                            <span aria-hidden="true">×</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <select
-                                    v-model="alignments[columnIndex]"
-                                    class="column-align-select"
-                                    :aria-label="t('dialogRenderer.tableEditor.alignment')"
-                                >
-                                    <option
-                                        v-for="option in alignOptions"
-                                        :key="option.value"
-                                        :value="option.value"
-                                    >
-                                        {{ option.shortLabel }}
-                                    </option>
-                                </select>
                                 <span
                                     class="col-resizer"
                                     :title="t('dialogRenderer.tableEditor.resizeColumn')"
@@ -200,11 +229,12 @@
                                     @mousedown.stop.prevent
                                 ></span>
                             </th>
-                            <th class="add-column-cell">
+                            <th class="add-column-cell" role="columnheader">
                                 <button
                                     type="button"
                                     class="add-column-btn"
                                     :title="t('dialogRenderer.tableEditor.addColumn')"
+                                    :aria-label="t('dialogRenderer.tableEditor.addColumn')"
                                     @click="addColumn"
                                 >
                                     <span aria-hidden="true">+</span>
@@ -215,14 +245,15 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody role="rowgroup">
                         <tr
                             v-for="(_row, rowIndex) in rows"
                             :key="`r-${rowIndex}`"
+                            role="row"
                             @dragover.prevent
                             @drop="dropRow(rowIndex)"
                         >
-                            <td class="row-head">
+                            <td class="row-head" role="rowheader">
                                 <span
                                     class="drag-grip row-grip"
                                     draggable="true"
@@ -253,35 +284,50 @@
                             </td>
                             <td
                                 v-for="(_cell, columnIndex) in headers"
+                                :id="cellDomId(rowIndex, columnIndex)"
                                 :key="`c-${rowIndex}-${columnIndex}`"
                                 class="body-cell"
+                                role="gridcell"
+                                :class="cellClass(rowIndex, columnIndex)"
+                                :aria-selected="isActiveCell(rowIndex, columnIndex)"
+                                @click="activateCell(rowIndex, columnIndex)"
+                                @dblclick="startEditCell(rowIndex, columnIndex)"
                             >
-                                <div class="cell-editor">
+                                <div
+                                    v-if="!isEditingCell(rowIndex, columnIndex)"
+                                    class="cell-display"
+                                    :title="cellRawTitle(rowIndex, columnIndex)"
+                                >
                                     <input
                                         v-if="taskState(rows[rowIndex][columnIndex]) !== null"
                                         type="checkbox"
                                         class="task-checkbox"
+                                        tabindex="-1"
                                         :checked="taskState(rows[rowIndex][columnIndex]) === 'done'"
                                         :title="t('dialogRenderer.tableEditor.taskToggle')"
+                                        @click.stop
                                         @change="toggleTask(rowIndex, columnIndex)"
                                     />
-                                    <textarea
-                                        :ref="
-                                            (element: unknown) =>
-                                                setCellRef(rowIndex, columnIndex, element)
-                                        "
-                                        v-model="rows[rowIndex][columnIndex]"
-                                        class="cell-input cell-textarea"
-                                        rows="2"
-                                        :aria-label="t('dialogRenderer.tableEditor.cell')"
-                                        :title="t('dialogRenderer.tableEditor.cellRichHint')"
-                                        @keydown.tab.prevent="
-                                            handleCellTab($event, rowIndex, columnIndex)
-                                        "
-                                    ></textarea>
+                                    <span class="cell-text">{{
+                                        cellDisplayText(rowIndex, columnIndex)
+                                    }}</span>
                                 </div>
+                                <textarea
+                                    v-else
+                                    :ref="
+                                        (element: unknown) =>
+                                            setCellRef(rowIndex, columnIndex, element)
+                                    "
+                                    v-model="rows[rowIndex][columnIndex]"
+                                    class="cell-input cell-textarea"
+                                    rows="2"
+                                    :aria-label="t('dialogRenderer.tableEditor.cell')"
+                                    :title="t('dialogRenderer.tableEditor.cellRichHint')"
+                                    @keydown="handleCellEditKeydown($event, rowIndex, columnIndex)"
+                                    @blur="handleCellEditBlur"
+                                ></textarea>
                             </td>
-                            <td class="add-column-cell body-add-column"></td>
+                            <td class="add-column-cell body-add-column" aria-hidden="true"></td>
                         </tr>
                     </tbody>
                 </table>
@@ -337,12 +383,23 @@
  * - insert 模式：从空白 3×3 开始，应用后在光标处插入 Markdown 表格；
  * - edit 模式：光标位于已有 GFM 表格时打开，应用后替换原表格。
  * 顶部设置区支持直接指定行列、统一列对齐、导入 CSV/XLSX；
- * 窗口右下角可拖拽改变宽高；每列对齐使用下拉框。
+ * 窗口右下角可拖拽改变宽高。
+ *
+ * 1.5.5 视觉升级（P1-B3 / T8）：基于 P0 冻结令牌层实现四风格 × 三密度的
+ * **电子表格化编辑器**：
+ * - 尺寸/材质令牌由 `table-style.ts` 单表派生（行高 24/28/32、列头 28/32/36、
+ *   列头底色 `--ui-bg-elevated`、hairline 网格、选区 `--ui-accent-soft`、拖拽手柄 4px）；
+ * - 生效风格/密度读取 P0 的组件消费 API `useTheme().currentUiAppearance`，
+ *   组件根节点写 `--table-*` 变量，CSS 只消费变量、不写 `[data-style=…]` 分支；
+ * - 显示层规则：数字/日期右对齐、文本左对齐、日期统一 `YYYY-MM-DD`、空单元格不显示 0；
+ * - 键盘：方向键/Tab 移动选区，Enter/F2/双击进入编辑，Enter/Tab 提交并移动，
+ *   Shift+Enter 换行，Esc 取消编辑并还原（既有 Ctrl+Enter 应用、Esc 取消对话框语义保留）。
  */
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import BaseDialog from '../../BaseDialog.vue'
 import { t } from '../../../../common/i18n'
+import { useTheme } from '../../../../composables/useTheme'
 import {
     serializeMarkdownTable,
     sortMarkdownTableRows,
@@ -351,6 +408,8 @@ import {
     type TableAlignment
 } from '../../../Markdown/table-markdown'
 import { parseTableFile } from './table-import'
+import { buildTableCssVariables, resolveTableDensityTokens } from './table-style'
+import { formatTableCellDisplay, resolveTableCellAlign, type TableCellAlign } from './table-values'
 
 const props = defineProps<{
     mode: 'insert' | 'edit'
@@ -361,6 +420,7 @@ const props = defineProps<{
 
 const MAX_ROWS = 200
 const MAX_COLUMNS = 50
+
 const headers = reactive<string[]>([...props.table.headers])
 const rows = reactive<string[][]>(props.table.rows.map((row) => [...row]))
 const alignments = reactive<TableAlignment[]>([
@@ -376,12 +436,32 @@ const importError = ref('')
 const importMessage = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 const cellRefs = new Map<string, HTMLTextAreaElement>()
-const tableWidth = computed(() => 96 + 54 + columnWidths.reduce((total, width) => total + width, 0))
 let draggedRowIndex: number | null = null
 let draggedColumnIndex: number | null = null
 let columnResizeCleanup: (() => void) | null = null
 
+// ---------- 视觉令牌（四风格 × 三密度） ----------
+/**
+ * 生效界面风格/密度（P0 冻结层提供的组件消费入口）。
+ *
+ * 只读 `currentUiAppearance`：glass 在深色/高饱和/护眼主题下的降级结果已是
+ * `effectiveStyle`，组件不再做任何主题/风格判断（DESIGN.md §6）。
+ */
+const { currentUiAppearance } = useTheme()
+const uiStyle = computed(() => currentUiAppearance.value.effectiveStyle)
+const uiDensity = computed(() => currentUiAppearance.value.density)
+const densityTokens = computed(() => resolveTableDensityTokens(uiDensity.value))
+const tableCssVariables = computed(
+    () =>
+        buildTableCssVariables(
+            uiStyle.value,
+            uiDensity.value,
+            currentUiAppearance.value.glassMode
+        ) as unknown as CSSProperties
+)
+
 const dialogTitle = computed(() => t('dialogRenderer.tableEditor.title'))
+const gridLabel = computed(() => t('dialogRenderer.tableEditor.title'))
 
 const alignOptions = computed(() => [
     {
@@ -406,6 +486,308 @@ const alignOptions = computed(() => [
     }
 ])
 
+const tableWidth = computed(
+    () =>
+        densityTokens.value.rowHeadWidth +
+        densityTokens.value.addColumnWidth +
+        columnWidths.reduce((total, width) => total + width, 0)
+)
+
+// ---------- 选区 / 编辑态（电子表格化键盘导航） ----------
+/** 当前选区（导航态焦点单元格；编辑态即正在编辑的单元格） */
+const activeCell = ref<{ row: number; column: number } | null>(null)
+/** 是否处于单元格编辑态（textarea 已渲染） */
+const editing = ref(false)
+/** 进入编辑态时的原始值（Esc 取消时还原） */
+let editSnapshot = ''
+const gridRef = ref<HTMLElement | null>(null)
+
+/** 单元格 DOM id（供 role=grid 的 aria-activedescendant 引用） */
+function cellDomId(rowIndex: number, columnIndex: number): string {
+    return `table-editor-cell-${rowIndex}-${columnIndex}`
+}
+
+const activeCellId = computed(() =>
+    activeCell.value ? cellDomId(activeCell.value.row, activeCell.value.column) : undefined
+)
+
+function isActiveCell(rowIndex: number, columnIndex: number): boolean {
+    const cell = activeCell.value
+    return cell !== null && cell.row === rowIndex && cell.column === columnIndex
+}
+
+function isEditingCell(rowIndex: number, columnIndex: number): boolean {
+    return editing.value && isActiveCell(rowIndex, columnIndex)
+}
+
+/** 把焦点交还网格（导航态键盘操作都发生在 <table> 自身） */
+function focusGrid(): void {
+    void nextTick(() => {
+        gridRef.value?.focus()
+    })
+}
+
+/** 设置选区并滚动到可视区域（编写时不影响对话框焦点陷阱） */
+function setActiveCell(rowIndex: number, columnIndex: number): void {
+    activeCell.value = { row: rowIndex, column: columnIndex }
+    focusGrid()
+    scrollActiveCellIntoView()
+}
+
+/** 选中单元格并滚动到可视区（jsdom 未实现 scrollIntoView 时安全跳过） */
+function scrollActiveCellIntoView(): void {
+    void nextTick(() => {
+        const cell = activeCell.value
+        if (!cell) return
+        const element = gridRef.value?.querySelector<HTMLElement>(
+            `#${cellDomId(cell.row, cell.column)}`
+        )
+        if (element && typeof element.scrollIntoView === 'function') {
+            element.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        }
+    })
+}
+
+/** 进入编辑态：记录快照并聚焦单元格 textarea（光标置于末尾） */
+function startEditCell(rowIndex: number, columnIndex: number): void {
+    if (rowIndex < 0 || rowIndex >= rows.length) return
+    if (columnIndex < 0 || columnIndex >= headers.length) return
+    // 已在编辑同一单元格（双击编辑框内文字等）：不重复进入，避免重置 Esc 快照
+    if (isEditingCell(rowIndex, columnIndex)) return
+    activeCell.value = { row: rowIndex, column: columnIndex }
+    editSnapshot = rows[rowIndex][columnIndex] ?? ''
+    editing.value = true
+    void nextTick(() => {
+        const textarea = cellRefs.get(`${rowIndex}:${columnIndex}`)
+        if (!textarea) return
+        textarea.focus()
+        const end = textarea.value.length
+        textarea.setSelectionRange?.(end, end)
+    })
+}
+
+/** 提交编辑（值已由 v-model 写入，无需额外处理） */
+function commitEdit(): void {
+    if (!editing.value) return
+    editing.value = false
+}
+
+/** 取消编辑：还原进入编辑前的原始值 */
+function cancelEdit(): void {
+    if (!editing.value) return
+    const cell = activeCell.value
+    if (cell) {
+        rows[cell.row][cell.column] = editSnapshot
+    }
+    editing.value = false
+    focusGrid()
+}
+
+/** 点击单元格：选中并把焦点交给网格（键盘导航立即可用） */
+function activateCell(rowIndex: number, columnIndex: number): void {
+    // 点击正在编辑的单元格内部（编辑框区域）：保持编辑态与焦点，不提交/不打断输入
+    if (isEditingCell(rowIndex, columnIndex)) return
+    if (editing.value) commitEdit()
+    activeCell.value = { row: rowIndex, column: columnIndex }
+    gridRef.value?.focus()
+}
+
+/** Tab/编辑态移动：列内前后移动，跨行首尾回绕，最后一格继续向前沿用 1.5.3「自动新增一行」 */
+function moveHorizontal(rowIndex: number, columnIndex: number, step: 1 | -1): boolean {
+    if (step === 1) {
+        if (columnIndex + 1 < headers.length) {
+            setActiveCell(rowIndex, columnIndex + 1)
+            return true
+        }
+        if (rowIndex + 1 < rows.length) {
+            setActiveCell(rowIndex + 1, 0)
+            return true
+        }
+        if (rows.length >= MAX_ROWS) return false
+        addRow()
+        setActiveCell(rows.length - 1, 0)
+        return true
+    }
+    if (columnIndex > 0) {
+        setActiveCell(rowIndex, columnIndex - 1)
+        return true
+    }
+    if (rowIndex > 0) {
+        setActiveCell(rowIndex - 1, headers.length - 1)
+        return true
+    }
+    return false
+}
+
+/** 方向键上下移动（行边界截断，不跨行列换行） */
+function moveVertical(rowIndex: number, columnIndex: number, delta: number): void {
+    const nextRow = Math.min(rows.length - 1, Math.max(0, rowIndex + delta))
+    setActiveCell(nextRow, columnIndex)
+}
+
+/** 方向键左右移动（列边界截断） */
+function moveLateral(rowIndex: number, columnIndex: number, delta: number): void {
+    const nextColumn = Math.min(headers.length - 1, Math.max(0, columnIndex + delta))
+    setActiveCell(rowIndex, nextColumn)
+}
+
+/** 清空当前选区（Delete/Backspace，电子表格通用行为；不影响表头） */
+function clearActiveCell(): void {
+    const cell = activeCell.value
+    if (!cell) return
+    rows[cell.row][cell.column] = ''
+}
+
+/** 导航态键盘：只处理焦点在 <table> 自身时的按键，表头输入框/下拉保持原生行为 */
+function handleGridKeydown(event: KeyboardEvent): void {
+    if (editing.value) return
+    if (event.target !== gridRef.value) return
+    if (event.isComposing || event.keyCode === 229) return
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+    if (rows.length === 0 || headers.length === 0) return
+    const current = activeCell.value ?? { row: 0, column: 0 }
+    switch (event.key) {
+        case 'ArrowUp':
+            event.preventDefault()
+            moveVertical(current.row, current.column, -1)
+            break
+        case 'ArrowDown':
+            event.preventDefault()
+            moveVertical(current.row, current.column, 1)
+            break
+        case 'ArrowLeft':
+            event.preventDefault()
+            moveLateral(current.row, current.column, -1)
+            break
+        case 'ArrowRight':
+            event.preventDefault()
+            moveLateral(current.row, current.column, 1)
+            break
+        case 'Tab':
+            if (moveHorizontal(current.row, current.column, event.shiftKey ? -1 : 1)) {
+                event.preventDefault()
+            }
+            break
+        case 'Home':
+            event.preventDefault()
+            setActiveCell(current.row, 0)
+            break
+        case 'End':
+            event.preventDefault()
+            setActiveCell(current.row, headers.length - 1)
+            break
+        case 'Enter':
+        case 'F2':
+            event.preventDefault()
+            startEditCell(current.row, current.column)
+            break
+        case 'Delete':
+        case 'Backspace':
+            event.preventDefault()
+            clearActiveCell()
+            break
+        default:
+            break
+    }
+}
+
+/** 编辑态键盘：Esc 取消、Enter/Tab 提交并移动、Shift+Enter 换行（Ctrl+Enter 冒泡给应用） */
+function handleCellEditKeydown(event: KeyboardEvent, rowIndex: number, columnIndex: number): void {
+    if (event.isComposing || event.keyCode === 229) return
+    if (event.key === 'Escape') {
+        // 阻止冒泡：BaseDialog 的文档级 Esc 监听会关闭对话框，这里 Esc 只取消编辑
+        event.preventDefault()
+        event.stopPropagation()
+        cancelEdit()
+        return
+    }
+    if (event.key === 'Tab') {
+        event.preventDefault()
+        event.stopPropagation()
+        commitEdit()
+        if (!moveHorizontal(rowIndex, columnIndex, event.shiftKey ? -1 : 1)) {
+            // 首格 Shift+Tab（无上一格）：把焦点留在网格，避免编辑框销毁后焦点丢到 body
+            focusGrid()
+        }
+        return
+    }
+    if (event.key !== 'Enter') return
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+    if (event.shiftKey) return
+    event.preventDefault()
+    event.stopPropagation()
+    commitEdit()
+    moveVertical(rowIndex, columnIndex, 1)
+}
+
+/** 编辑框失焦：提交编辑（点击其他单元格/对话框控件时保持已输入内容） */
+function handleCellEditBlur(): void {
+    if (!editing.value) return
+    commitEdit()
+}
+
+/** 网格获得焦点：无选区时默认选中首格（Tab 进入网格即可用方向键） */
+function handleGridFocus(): void {
+    if (!activeCell.value && rows.length > 0 && headers.length > 0) {
+        activeCell.value = { row: 0, column: 0 }
+    }
+}
+
+function setCellRef(rowIndex: number, columnIndex: number, element: unknown): void {
+    const key = `${rowIndex}:${columnIndex}`
+    if (element instanceof HTMLTextAreaElement) {
+        cellRefs.set(key, element)
+    } else {
+        cellRefs.delete(key)
+    }
+}
+
+// ---------- 单元格显示（数字右对齐 / 日期归一化 / 空值占位） ----------
+/** 单元格显示文本（空值 → 空串，绝不显示 0；日期统一 YYYY-MM-DD） */
+function cellDisplayText(rowIndex: number, columnIndex: number): string {
+    return formatTableCellDisplay(rows[rowIndex]?.[columnIndex] ?? '')
+}
+
+/** 单元格原始值（作为 title 展示，编辑时仍看到用户输入原文） */
+function cellRawTitle(rowIndex: number, columnIndex: number): string | undefined {
+    const value = rows[rowIndex]?.[columnIndex] ?? ''
+    return value.trim().length > 0 ? value : undefined
+}
+
+/** 单元格 class：选区/编辑态 + 对齐（数字右对齐、文本左对齐、显式对齐优先） */
+function cellClass(rowIndex: number, columnIndex: number): Record<string, boolean> {
+    const value = rows[rowIndex]?.[columnIndex] ?? ''
+    const alignment: TableCellAlign = resolveTableCellAlign(
+        value,
+        alignments[columnIndex] ?? 'default'
+    )
+    return {
+        'is-align-left': alignment === 'left',
+        'is-align-center': alignment === 'center',
+        'is-align-right': alignment === 'right',
+        'is-empty': cellDisplayText(rowIndex, columnIndex) === '',
+        'is-task': taskState(value) !== null,
+        'is-active': isActiveCell(rowIndex, columnIndex),
+        'is-editing': isEditingCell(rowIndex, columnIndex)
+    }
+}
+
+// ---------- 列对齐（列头操作区下拉框：hover/聚焦时浮现，保持 32px 列头高度） ----------
+/** 列头输入框对齐：跟随该列对齐设置（默认左对齐） */
+function headerInputStyle(columnIndex: number): CSSProperties {
+    const alignment = alignments[columnIndex] ?? 'default'
+    return { textAlign: alignment === 'default' ? 'left' : alignment }
+}
+
+/** 列对齐下拉框 title/aria-label：「列对齐：左对齐」 */
+function alignmentTitle(columnIndex: number): string {
+    const alignment = alignments[columnIndex] ?? 'default'
+    const label =
+        alignOptions.value.find((option) => option.value === alignment)?.label ??
+        t('dialogRenderer.tableEditor.alignDefault')
+    return `${t('dialogRenderer.tableEditor.alignment')}: ${label}`
+}
+
 // ---------- 窗口调整大小 ----------
 const panelSize = reactive<{ width: number | null; height: number | null }>({
     width: null,
@@ -413,7 +795,7 @@ const panelSize = reactive<{ width: number | null; height: number | null }>({
 })
 const panelContainerStyle = computed<CSSProperties>(() => {
     const style: CSSProperties = {
-        border: '1px solid var(--border-color, #d8d3e2)'
+        border: '1px solid var(--ui-border, var(--border-color))'
     }
     if (panelSize.width) style.width = `${panelSize.width}px`
     if (panelSize.height) style.height = `${panelSize.height}px`
@@ -626,43 +1008,6 @@ function endDrag(): void {
     draggedColumnIndex = null
 }
 
-// ---------- 单元格 ----------
-function setCellRef(rowIndex: number, columnIndex: number, element: unknown): void {
-    const key = `${rowIndex}:${columnIndex}`
-    if (element instanceof HTMLTextAreaElement) {
-        cellRefs.set(key, element)
-    } else {
-        cellRefs.delete(key)
-    }
-}
-
-function focusCell(rowIndex: number, columnIndex: number): void {
-    void nextTick(() => {
-        cellRefs.get(`${rowIndex}:${columnIndex}`)?.focus()
-    })
-}
-
-function handleCellTab(event: KeyboardEvent, rowIndex: number, columnIndex: number): void {
-    if (event.shiftKey) {
-        if (columnIndex > 0) {
-            focusCell(rowIndex, columnIndex - 1)
-        } else if (rowIndex > 0) {
-            focusCell(rowIndex - 1, headers.length - 1)
-        }
-        return
-    }
-    if (columnIndex + 1 < headers.length) {
-        focusCell(rowIndex, columnIndex + 1)
-        return
-    }
-    if (rowIndex + 1 < rows.length) {
-        focusCell(rowIndex + 1, 0)
-        return
-    }
-    addRow()
-    focusCell(rowIndex + 1, 0)
-}
-
 function taskState(value: string): 'todo' | 'done' | null {
     const match = value.match(/^\s*- \[([ xX])\]/)
     if (!match) return null
@@ -701,6 +1046,18 @@ watch(
     ([rowCount, columnCount]) => {
         rowTarget.value = rowCount
         columnTarget.value = columnCount
+        // 行列被删减后收敛选区，避免 aria-activedescendant 指向不存在的单元格
+        const cell = activeCell.value
+        if (!cell) return
+        if (cell.row < rowCount && cell.column < columnCount) return
+        editing.value = false
+        activeCell.value =
+            rowCount > 0 && columnCount > 0
+                ? {
+                      row: Math.min(cell.row, rowCount - 1),
+                      column: Math.min(cell.column, columnCount - 1)
+                  }
+                : null
     }
 )
 
@@ -750,6 +1107,7 @@ function handleClose(): void {
 }
 
 function handleApply(): void {
+    commitEdit()
     ensureColumnCells()
     props.onApply(
         serializeMarkdownTable({
@@ -764,120 +1122,42 @@ function handleApply(): void {
 </script>
 
 <style scoped>
+/**
+ * 表格编辑器样式（视觉升级 P1-B3 / T8）
+ *
+ * 约定：
+ * - 所有尺寸/颜色只消费令牌：`--table-*`（本组件在 table-style.ts 派生，根节点内联绑定）
+ *   + P0 冻结的 `--ui-*`（颜色/材质/动效/圆角/阴影）；
+ * - 不写 `[data-style=…]` / `[data-density=…]` 分支：风格/密度差异已由变量值携带；
+ * - 表格根变量均带默认值兜底（主题未初始化/快照渲染时仍可读）。
+ */
 .table-editor-body {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--ui-pad, 12px);
     width: 100%;
     min-width: 0;
     min-height: 0;
     flex: 1;
-    color: var(--text-primary, var(--text-color, #252233));
+    color: var(--ui-text, var(--text-primary, var(--text-color)));
+    font-size: var(--table-font-size, 13px);
 }
 
-/* ---------- 顶部说明 ---------- */
-.table-editor-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 10px 14px;
-    border: 1px solid color-mix(in srgb, var(--accent-color, #764ba2) 24%, transparent);
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--accent-color, #764ba2) 7%, var(--bg-primary, #fff));
-    flex-shrink: 0;
-}
-
-.table-editor-head-main {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    min-width: 0;
-}
-
-.mode-badge {
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 9px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.4;
-}
-
-.mode-badge--insert {
-    color: var(--accent-color, #764ba2);
-    background: color-mix(in srgb, var(--accent-color, #764ba2) 14%, transparent);
-}
-
-.mode-badge--edit {
-    color: var(--text-primary, #252233);
-    background: color-mix(in srgb, var(--text-primary, #252233) 9%, transparent);
-}
-
-.table-editor-hint {
-    margin: 0;
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--text-secondary, #6d6980);
-}
-
-.table-editor-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    justify-content: flex-end;
-    flex-shrink: 0;
-}
-
-.stat-chip {
-    padding: 4px 9px;
-    border: 1px solid var(--border-color, #e7e2ef);
-    border-radius: 999px;
-    background: var(--bg-primary, #fff);
-    font-size: 11px;
-    color: var(--text-secondary, #6d6980);
-    white-space: nowrap;
-}
-
-/* ---------- 表格设置 ---------- */
+/* ---------- 表格设置区 ---------- */
 .table-settings {
     flex-shrink: 0;
-    padding: 10px 12px;
-    border: 1px solid var(--border-color, #e7e2ef);
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--text-primary, #252233) 2%, var(--bg-primary, #fff));
-}
-
-.settings-title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary, #252233);
-}
-
-.settings-title-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
-    background: color-mix(in srgb, var(--accent-color, #764ba2) 12%, transparent);
-    color: var(--accent-color, #764ba2);
-    font-size: 12px;
+    padding: var(--ui-pad, 12px);
+    border: 1px solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-md, 4px);
+    background: var(--table-body-bg, var(--ui-bg-elevated, var(--bg-primary)));
 }
 
 .settings-controls {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 10px;
+    gap: 8px;
 }
 
 .setting-field {
@@ -885,7 +1165,7 @@ function handleApply(): void {
     flex-direction: column;
     gap: 4px;
     font-size: 11px;
-    color: var(--text-secondary, #6d6980);
+    color: var(--ui-text-secondary, var(--text-secondary));
 }
 
 .setting-field--wide {
@@ -894,14 +1174,14 @@ function handleApply(): void {
 
 .setting-input,
 .setting-select {
-    height: 30px;
+    height: var(--table-control-height, var(--ui-control-height, 32px));
     padding: 0 8px;
-    border: 1px solid var(--border-color, #d8d3e2);
-    border-radius: 6px;
-    background: var(--bg-primary, #fff);
-    color: inherit;
+    border: 1px solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-sm, 2px);
+    background: var(--ui-bg, var(--bg-primary));
+    color: var(--ui-text, var(--text-primary));
     font: inherit;
-    font-size: 12px;
+    font-size: var(--table-font-size, 13px);
 }
 
 .setting-input {
@@ -910,29 +1190,40 @@ function handleApply(): void {
 
 .setting-input:focus,
 .setting-select:focus {
-    border-color: var(--accent-color, #764ba2);
+    border-color: var(--ui-accent, var(--accent-color));
     outline: none;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color, #764ba2) 15%, transparent);
+    box-shadow: var(--ui-focus-shadow, 0 0 0 3px var(--ui-focus-ring));
 }
 
 .import-btn {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    height: 30px;
+    gap: 4px;
+    height: var(--table-control-height, var(--ui-control-height, 32px));
     margin-left: auto;
-    padding: 0 11px;
-    border: 1px solid color-mix(in srgb, var(--accent-color, #764ba2) 45%, transparent);
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--accent-color, #764ba2) 9%, var(--bg-primary, #fff));
-    color: var(--accent-color, #764ba2);
-    font-size: 12px;
+    padding: 0 12px;
+    border: 1px solid color-mix(in srgb, var(--ui-accent, var(--accent-color)) 45%, transparent);
+    border-radius: var(--ui-radius-sm, 2px);
+    background: color-mix(
+        in srgb,
+        var(--ui-accent, var(--accent-color)) 9%,
+        var(--ui-bg-elevated, var(--bg-primary))
+    );
+    color: var(--ui-accent, var(--accent-color));
+    font-size: var(--table-font-size, 13px);
     cursor: pointer;
     white-space: nowrap;
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        border-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
 .import-btn:hover {
-    background: color-mix(in srgb, var(--accent-color, #764ba2) 15%, var(--bg-primary, #fff));
+    background: color-mix(
+        in srgb,
+        var(--ui-accent, var(--accent-color)) 15%,
+        var(--ui-bg-elevated, var(--bg-primary))
+    );
 }
 
 .import-btn:disabled {
@@ -955,87 +1246,125 @@ function handleApply(): void {
     line-height: 1.45;
 }
 
+.import-message--error {
+    color: var(--ui-danger, var(--danger-color));
+}
+
+.import-message--success {
+    color: var(--ui-success, var(--success-color));
+}
+
 .settings-tools {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
     gap: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px dashed var(--border-color, #e7e2ef);
+    margin-top: var(--ui-pad, 12px);
+    padding-top: var(--ui-pad, 12px);
+    border-top: 1px dashed var(--ui-border, var(--border-color));
 }
 
 .tool-btn {
-    height: 30px;
-    padding: 0 11px;
-    border: 1px solid var(--border-color, #d8d3e2);
-    border-radius: 6px;
-    background: var(--bg-primary, #fff);
-    color: var(--text-primary, #252233);
+    height: var(--table-control-height, var(--ui-control-height, 32px));
+    padding: 0 12px;
+    border: 1px solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-sm, 2px);
+    background: var(--ui-bg, var(--bg-primary));
+    color: var(--ui-text, var(--text-primary));
     font: inherit;
-    font-size: 12px;
+    font-size: var(--table-font-size, 13px);
     cursor: pointer;
+    transition:
+        border-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
 .tool-btn:hover {
-    border-color: var(--accent-color, #764ba2);
-    color: var(--accent-color, #764ba2);
-    background: color-mix(in srgb, var(--accent-color, #764ba2) 8%, var(--bg-primary, #fff));
+    border-color: var(--ui-accent, var(--accent-color));
+    color: var(--ui-accent, var(--accent-color));
+    background: color-mix(
+        in srgb,
+        var(--ui-accent, var(--accent-color)) 8%,
+        var(--ui-bg-elevated, var(--bg-primary))
+    );
 }
 
 .cell-rich-hint {
     margin: 8px 0 0;
     font-size: 11px;
     line-height: 1.5;
-    color: var(--text-secondary, #6d6980);
+    color: var(--ui-text-secondary, var(--text-secondary));
 }
 
-.import-message--error {
-    color: var(--danger-color, #e74c3c);
-}
-
-.import-message--success {
-    color: var(--success-color, #2ecc71);
-}
-
-/* ---------- 网格 ---------- */
+/* ---------- 网格壳 ---------- */
 .table-editor-body.is-resized .table-editor-scroll {
     max-height: none;
 }
+
 .table-editor-scroll {
     flex: 1 1 auto;
     min-height: 140px;
     max-height: 52vh;
     overflow: auto;
-    border: 1px solid var(--border-color, #d8d3e2);
-    border-radius: 10px;
-    background: var(--bg-primary, #fff);
+    border: 1px solid var(--table-border-color, var(--ui-border));
+    border-radius: var(--ui-radius-lg, 8px);
+    background: var(--table-body-bg, var(--ui-bg-elevated));
+    box-shadow: var(--ui-shadow-1, none);
 }
 
 .table-editor-grid {
     border-collapse: separate;
     border-spacing: 0;
     table-layout: fixed;
-    border: 1px solid var(--border-color, #d8d3e2);
+    outline: none;
+    font-size: var(--table-font-size, 13px);
 }
 
-.table-editor-grid th,
-.table-editor-grid td {
-    border-right: 1px solid var(--border-color, #d8d3e2);
-    border-bottom: 1px solid var(--border-color, #d8d3e2);
-    padding: 7px;
-    vertical-align: middle;
-}
-
+/* 列头：列头高 32（密度同步）、字重 600、底色 bg-elevated、hairline 网格 */
 .table-editor-grid thead th {
     position: sticky;
     top: 0;
     z-index: 3;
-    background: color-mix(in srgb, var(--accent-color, #764ba2) 7%, var(--bg-primary, #fff));
+    height: var(--table-header-height, 32px);
+    padding: 0 var(--table-cell-pad-x, 6px);
+    border-right: 1px solid var(--table-grid-color, var(--ui-border));
+    border-bottom: 1px solid var(--table-header-border-color, var(--ui-border-strong));
+    background: var(--table-header-bg, var(--ui-bg-elevated));
+    /* glass 高光边：强度由冻结令牌 --ui-highlight-border-alpha 控制（其余风格为 0 → 透明） */
+    box-shadow:
+        inset 0 1px 0
+            color-mix(
+                in srgb,
+                #ffffff calc(var(--ui-highlight-border-alpha, 0) * 100%),
+                transparent
+            ),
+        inset 0 -1px 0 color-mix(in srgb, var(--table-header-border-color) 45%, transparent);
+    color: var(--ui-text-secondary, var(--text-secondary));
+    font-weight: 600;
+    font-size: var(--table-font-size, 13px);
+    vertical-align: middle;
+    backdrop-filter: var(--table-header-backdrop, none);
+}
+
+/* 表体单元格：行高 24/28/32、hairline 网格、内容单行垂直居中 */
+.table-editor-grid tbody td {
+    height: var(--table-row-height, 28px);
+    padding: 0 var(--table-cell-pad-x, 6px);
+    border-right: 1px solid var(--table-grid-color, var(--ui-border));
+    border-bottom: 1px solid var(--table-grid-color, var(--ui-border));
+    background: var(--table-body-bg, var(--ui-bg-elevated));
+    font-size: var(--table-font-size, 13px);
+    color: var(--ui-text, var(--text-primary));
+    vertical-align: middle;
 }
 
 .table-editor-grid tbody tr:nth-child(even) td {
-    background: color-mix(in srgb, var(--text-primary, #252233) 2.5%, var(--bg-primary, #fff));
+    background: color-mix(
+        in srgb,
+        var(--ui-text, var(--text-primary)) 2.5%,
+        var(--table-body-bg, var(--ui-bg-elevated))
+    );
 }
 
 .table-editor-grid th:last-child,
@@ -1047,33 +1376,50 @@ function handleApply(): void {
     border-bottom: 0;
 }
 
-.corner-cell,
-.row-head {
+.table-editor-grid tbody tr:last-child .row-head {
+    border-bottom: 0;
+}
+
+/* 行头 / 左上角：粘性左列（背景必须不透明，滚动时覆盖下方单元格）。
+   选择器提高特异性以覆盖 thead th / tbody td / 偶数行斑马线的背景规则。 */
+.table-editor-grid thead tr th.corner-cell,
+.table-editor-grid tbody tr td.row-head {
     position: sticky;
     left: 0;
     z-index: 4;
-    width: 96px;
-    min-width: 96px;
-    max-width: 96px;
-    background: color-mix(in srgb, var(--text-primary, #252233) 4%, var(--bg-primary, #fff));
+    width: var(--table-row-head-width, 96px);
+    min-width: var(--table-row-head-width, 96px);
+    max-width: var(--table-row-head-width, 96px);
+    padding: 0 4px;
+    background: color-mix(
+        in srgb,
+        var(--ui-text, var(--text-primary)) 4%,
+        var(--ui-bg-elevated, var(--bg-primary))
+    );
     text-align: center;
     white-space: nowrap;
-    border-right: 1px solid var(--border-color, #d8d3e2) !important;
+    border-right: 1px solid var(--table-header-border-color, var(--ui-border-strong)) !important;
 }
 
-.corner-cell {
+.table-editor-grid thead tr th.corner-cell {
     z-index: 6;
 }
 
+.row-head > .icon-btn {
+    vertical-align: middle;
+}
+
+/* ---------- 列头内部 ---------- */
 .column-head {
     position: relative;
     min-width: 0;
 }
 
-.column-head-row {
+.column-head-main {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
+    height: 100%;
 }
 
 .drag-grip {
@@ -1081,9 +1427,9 @@ function handleApply(): void {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 12px;
-    height: 24px;
-    color: var(--text-secondary, #9b96a8);
+    width: 10px;
+    height: 100%;
+    color: var(--ui-text-tertiary, var(--text-secondary));
     font-size: 10px;
     letter-spacing: -2px;
     cursor: grab;
@@ -1092,7 +1438,7 @@ function handleApply(): void {
 }
 
 .drag-grip:hover {
-    color: var(--accent-color, #764ba2);
+    color: var(--ui-accent, var(--accent-color));
     opacity: 1;
 }
 
@@ -1103,45 +1449,64 @@ function handleApply(): void {
 .col-resizer {
     position: absolute;
     top: 0;
-    right: -3px;
+    right: calc(var(--table-resizer-width, 4px) * -0.5);
     bottom: 0;
-    width: 7px;
+    width: var(--table-resizer-width, 4px);
     cursor: col-resize;
     z-index: 5;
+    background: transparent;
 }
 
+/* 列宽拖拽手柄：4px，悬停/拖拽才显强调色（规格） */
 .col-resizer:hover,
 .col-resizer:active {
-    background: color-mix(in srgb, var(--accent-color, #764ba2) 45%, transparent);
+    background: var(--ui-accent, var(--accent-color));
 }
 
 .header-input {
     flex: 1;
     min-width: 0;
+    height: calc(var(--table-header-height, 32px) - 8px);
+    padding: 0 4px;
+    border: 1px solid transparent;
+    border-radius: var(--ui-radius-sm, 2px);
+    background: transparent;
+    color: var(--ui-text, var(--text-primary));
+    font-weight: 600;
+    font-size: var(--table-font-size, 13px);
 }
 
-.cell-editor {
+.header-input:hover {
+    border-color: color-mix(in srgb, var(--ui-accent, var(--accent-color)) 35%, transparent);
+}
+
+.header-input:focus {
+    border-color: var(--ui-accent, var(--accent-color));
+    background: var(--ui-bg-elevated, var(--bg-primary));
+    outline: none;
+}
+
+/* 列头操作区：默认隐藏、悬停/聚焦时浮现，避免挤占 32px 列头宽度 */
+.column-actions {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
     display: flex;
-    align-items: flex-start;
-    gap: 5px;
+    align-items: center;
+    gap: 2px;
+    padding: 0 2px;
+    border-radius: var(--ui-radius-sm, 2px);
+    background: var(--table-header-bg, var(--ui-bg-elevated));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
-.task-checkbox {
-    flex-shrink: 0;
-    width: 14px;
-    height: 14px;
-    margin: 9px 0 0;
-    accent-color: var(--accent-color, #764ba2);
-    cursor: pointer;
-}
-
-.cell-textarea {
-    min-height: 52px;
-    max-height: 180px;
-    resize: vertical;
-    line-height: 1.45;
-    font-family: inherit;
-    field-sizing: content;
+.column-head:hover .column-actions,
+.column-head:focus-within .column-actions {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .column-index,
@@ -1150,79 +1515,14 @@ function handleApply(): void {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 4px;
-    border-radius: 4px;
-    background: color-mix(in srgb, var(--text-primary, #252233) 8%, transparent);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 2px;
+    border-radius: var(--ui-radius-sm, 2px);
+    background: color-mix(in srgb, var(--ui-text, var(--text-primary)) 8%, transparent);
     font-size: 10px;
     font-weight: 600;
-    color: var(--text-secondary, #6d6980);
-}
-
-.row-index {
-    margin-right: 2px;
-}
-
-.column-align-select {
-    width: 100%;
-    margin-top: 6px;
-    height: 24px;
-    padding: 0 5px;
-    border: 1px solid var(--border-color, #d8d3e2);
-    border-radius: 4px;
-    background: var(--bg-primary, #fff);
-    color: inherit;
-    font: inherit;
-    font-size: 11px;
-    cursor: pointer;
-}
-
-.column-align-select:focus {
-    border-color: var(--accent-color, #764ba2);
-    outline: none;
-}
-
-.body-cell {
-    min-width: 0;
-}
-
-.cell-input {
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    padding: 6px 8px;
-    border: 1px solid color-mix(in srgb, var(--border-color, #d8d3e2) 70%, transparent);
-    border-radius: 5px;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    line-height: 1.45;
-    transition:
-        border-color 0.15s ease,
-        background 0.15s ease,
-        box-shadow 0.15s ease;
-}
-
-.cell-input::placeholder {
-    color: var(--text-secondary, #9b96a8);
-    opacity: 0.7;
-}
-
-.cell-input:hover {
-    border-color: color-mix(in srgb, var(--accent-color, #764ba2) 38%, transparent);
-    background: var(--bg-primary, #fff);
-}
-
-.cell-input:focus {
-    border-color: var(--accent-color, #764ba2);
-    background: var(--bg-primary, #fff);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color, #764ba2) 18%, transparent);
-    outline: none;
-}
-
-.header-input {
-    font-weight: 600;
+    color: var(--ui-text-secondary, var(--text-secondary));
 }
 
 /* ---------- 图标按钮 ---------- */
@@ -1231,30 +1531,54 @@ function handleApply(): void {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 22px;
-    height: 22px;
+    width: var(--table-icon-size, 20px);
+    height: var(--table-icon-size, 20px);
     padding: 0;
     border: 1px solid transparent;
-    border-radius: 5px;
+    border-radius: var(--ui-radius-sm, 2px);
     background: transparent;
-    color: var(--text-secondary, #6d6980);
-    font-size: 15px;
+    color: var(--ui-text-secondary, var(--text-secondary));
+    font-size: calc(var(--table-icon-size, 20px) - 5px);
     line-height: 1;
     cursor: pointer;
     transition:
-        color 0.15s ease,
-        background 0.15s ease,
-        border-color 0.15s ease;
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
 .icon-btn:hover {
-    color: var(--danger-color, #e74c3c);
-    background: color-mix(in srgb, var(--danger-color, #e74c3c) 10%, transparent);
+    color: var(--ui-danger, var(--danger-color));
+    background: color-mix(in srgb, var(--ui-danger, var(--danger-color)) 10%, transparent);
+}
+
+.icon-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--ui-focus-shadow, 0 0 0 3px var(--ui-focus-ring));
 }
 
 .icon-btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;
+}
+
+/* 列对齐下拉框：收在列头操作区内，控件高随列头高（不撑高 32px 列头） */
+.column-align-select {
+    flex-shrink: 0;
+    width: 42px;
+    height: calc(var(--table-header-height, 32px) - 8px);
+    padding: 0 2px;
+    border: 1px solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-sm, 2px);
+    background: var(--ui-bg-elevated, var(--bg-primary));
+    color: var(--ui-text-secondary, var(--text-secondary));
+    font: inherit;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.column-align-select:focus {
+    border-color: var(--ui-accent, var(--accent-color));
+    outline: none;
 }
 
 .row-delete {
@@ -1266,13 +1590,126 @@ tbody tr:hover .row-delete,
     opacity: 1;
 }
 
-/* ---------- 行列新增 ---------- */
-.add-column-cell {
-    width: 54px;
-    min-width: 54px;
+/* ---------- 单元格：显示态 / 编辑态 / 选区 ---------- */
+.body-cell {
+    position: relative;
+    min-width: 0;
+    cursor: cell;
+}
+
+.cell-display {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: calc(var(--table-row-height, 28px) - 2px);
+    overflow: hidden;
+}
+
+.cell-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+}
+
+/* 空单元格占位：显示淡化的「—」而不是 0（视觉升级方案 §4.3；任务单元格保留复选框不占位） */
+.body-cell.is-empty:not(.is-task) .cell-text:empty::before {
+    content: '—';
+    color: var(--ui-text-tertiary, var(--text-secondary));
+    opacity: 0.4;
+}
+
+/* 对齐：显式列对齐优先，default 下数字/日期右对齐、文本左对齐（table-values.ts 判定） */
+.is-align-left .cell-text {
+    text-align: left;
+}
+
+.is-align-center .cell-text {
     text-align: center;
-    vertical-align: middle !important;
-    background: color-mix(in srgb, var(--text-primary, #252233) 2%, var(--bg-primary, #fff));
+}
+
+.is-align-right .cell-text {
+    text-align: right;
+}
+
+.is-align-center .cell-display {
+    justify-content: center;
+}
+
+.is-align-right .cell-display {
+    justify-content: flex-end;
+}
+
+.task-checkbox {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    accent-color: var(--ui-accent, var(--accent-color));
+    cursor: pointer;
+}
+
+/* 选区：背景 accent-soft + 2px accent 边框（规格 §4.3） */
+.table-editor-grid tbody td.body-cell.is-active {
+    background: var(--ui-accent-soft, var(--selection-bg));
+    box-shadow: inset 0 0 0 2px var(--ui-accent, var(--accent-color));
+}
+
+.table-editor-grid tbody td.body-cell.is-active .cell-text {
+    color: var(--ui-text, var(--text-primary));
+}
+
+/* 编辑态：单元格内渲染 textarea，覆盖选区边框并允许行高临时增高 */
+.table-editor-grid tbody td.body-cell.is-editing {
+    padding: 0 2px;
+    background: var(--table-body-bg, var(--ui-bg-elevated));
+    box-shadow: inset 0 0 0 2px var(--ui-accent, var(--accent-color));
+    cursor: text;
+}
+
+.cell-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    color: inherit;
+    font: inherit;
+}
+
+.cell-textarea {
+    display: block;
+    min-height: calc(var(--table-row-height, 28px) * 2);
+    max-height: 180px;
+    padding: 4px 6px;
+    border: 1px solid color-mix(in srgb, var(--ui-border, var(--border-color)) 70%, transparent);
+    border-radius: var(--ui-radius-sm, 2px);
+    background: var(--ui-bg-elevated, var(--bg-primary));
+    font-size: var(--table-font-size, 13px);
+    line-height: 1.5;
+    resize: vertical;
+    field-sizing: content;
+}
+
+.cell-textarea:focus {
+    border-color: var(--ui-accent, var(--accent-color));
+    box-shadow: var(--ui-focus-shadow, 0 0 0 3px var(--ui-focus-ring));
+    outline: none;
+}
+
+/* ---------- 行列新增 ---------- */
+/* 提高特异性以覆盖 thead th / tbody td 的背景与对齐规则 */
+.table-editor-grid thead tr th.add-column-cell,
+.table-editor-grid tbody tr td.add-column-cell {
+    width: var(--table-add-column-width, 54px);
+    min-width: var(--table-add-column-width, 54px);
+    text-align: center;
+    vertical-align: middle;
+    background: color-mix(
+        in srgb,
+        var(--ui-text, var(--text-primary)) 2%,
+        var(--table-body-bg, var(--ui-bg-elevated, var(--bg-primary)))
+    );
 }
 
 .add-column-btn {
@@ -1281,28 +1718,28 @@ tbody tr:hover .row-delete,
     align-items: center;
     justify-content: center;
     gap: 2px;
-    width: 40px;
-    height: 44px;
+    width: calc(var(--table-add-column-width, 54px) - 14px);
+    height: calc(var(--table-row-height, 28px) * 1.4);
     padding: 0;
-    border: 1px dashed var(--border-color, #cfc8dd);
-    border-radius: 8px;
+    border: 1px dashed var(--table-border-color, var(--ui-border));
+    border-radius: var(--ui-radius-md, 4px);
     background: transparent;
-    color: var(--text-secondary, #6d6980);
+    color: var(--ui-text-secondary, var(--text-secondary));
     cursor: pointer;
     transition:
-        border-color 0.15s ease,
-        color 0.15s ease,
-        background 0.15s ease;
+        border-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
 .add-column-btn:hover {
-    border-color: var(--accent-color, #764ba2);
-    color: var(--accent-color, #764ba2);
-    background: color-mix(in srgb, var(--accent-color, #764ba2) 8%, transparent);
+    border-color: var(--ui-accent, var(--accent-color));
+    color: var(--ui-accent, var(--accent-color));
+    background: color-mix(in srgb, var(--ui-accent, var(--accent-color)) 8%, transparent);
 }
 
 .add-column-btn > span:first-child {
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1;
 }
 
@@ -1316,24 +1753,25 @@ tbody tr:hover .row-delete,
     align-self: flex-start;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 12px;
-    border: 1px dashed var(--border-color, #cfc8dd);
-    border-radius: 8px;
+    gap: 4px;
+    height: var(--table-control-height, var(--ui-control-height, 32px));
+    padding: 0 12px;
+    border: 1px dashed var(--table-border-color, var(--ui-border));
+    border-radius: var(--ui-radius-md, 4px);
     background: transparent;
-    color: var(--text-secondary, #6d6980);
-    font-size: 12px;
+    color: var(--ui-text-secondary, var(--text-secondary));
+    font-size: var(--table-font-size, 13px);
     cursor: pointer;
     transition:
-        border-color 0.15s ease,
-        color 0.15s ease,
-        background 0.15s ease;
+        border-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
 .add-row-btn:hover {
-    border-color: var(--accent-color, #764ba2);
-    color: var(--accent-color, #764ba2);
-    background: color-mix(in srgb, var(--accent-color, #764ba2) 8%, transparent);
+    border-color: var(--ui-accent, var(--accent-color));
+    color: var(--ui-accent, var(--accent-color));
+    background: color-mix(in srgb, var(--ui-accent, var(--accent-color)) 8%, transparent);
 }
 
 .add-row-plus {
@@ -1353,7 +1791,7 @@ tbody tr:hover .row-delete,
 
 .shortcut-hint {
     font-size: 11px;
-    color: var(--text-secondary, #9b96a8);
+    color: var(--ui-text-tertiary, var(--text-secondary));
 }
 
 .table-editor-actions {
@@ -1382,7 +1820,7 @@ tbody tr:hover .row-delete,
     display: block;
     height: 2px;
     border-radius: 1px;
-    background: var(--text-secondary, #8f8a9e);
+    background: var(--ui-text-secondary, var(--text-secondary));
 }
 
 .resize-grip span:nth-child(1) {
@@ -1403,27 +1841,8 @@ tbody tr:hover .row-delete,
 
 /* 窄屏：隐藏新增列文字，保留加号 */
 @media (max-width: 760px) {
-    .table-editor-head {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .table-editor-stats {
-        justify-content: flex-start;
-    }
-
     .add-column-label {
         display: none;
-    }
-
-    .add-column-cell {
-        width: 40px;
-        min-width: 40px;
-    }
-
-    .add-column-btn {
-        width: 30px;
-        height: 30px;
     }
 
     .shortcut-hint {

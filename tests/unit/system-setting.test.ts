@@ -97,6 +97,26 @@ describe('system-setting', () => {
             expect(getSystemSetting().allowRemoteImages).toBe(false)
         })
 
+        // 视觉升级（P0）：三项外观配置默认 workbench + default + 不减少透明（= 升级前观感）
+        it('should default uiStyle/uiDensity/uiReduceTransparency (visual P0)', () => {
+            const setting = getSystemSetting()
+            expect(setting.uiStyle).toBe('workbench')
+            expect(setting.uiDensity).toBe('default')
+            expect(setting.uiReduceTransparency).toBe(false)
+        })
+
+        it('should persist visual P0 appearance settings via saveSystemSetting', () => {
+            saveSystemSetting({
+                uiStyle: 'glass',
+                uiDensity: 'spacious',
+                uiReduceTransparency: true
+            })
+            const setting = getSystemSetting()
+            expect(setting.uiStyle).toBe('glass')
+            expect(setting.uiDensity).toBe('spacious')
+            expect(setting.uiReduceTransparency).toBe(true)
+        })
+
         // P2-10：关闭时最小化到托盘默认关闭（opt-in）——存量用户「关闭即退出」语义不突变
         it('should default minimizeToTray to false (P2-10 opt-in)', () => {
             expect(getSystemSetting().minimizeToTray).toBe(false)

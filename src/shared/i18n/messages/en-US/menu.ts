@@ -5,6 +5,11 @@
  * Menu data files store only labelKey; MenuBar.vue resolves them via t(labelKey).
  */
 export default {
+    // Accessible name of the menubar itself (visual upgrade P1-B2; consumed by
+    // MenuBar.vue aria-label only, never rendered as visible copy)
+    menubar: {
+        label: 'Menu bar'
+    },
     file: {
         label: 'File',
         new: 'New',

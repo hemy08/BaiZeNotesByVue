@@ -282,6 +282,28 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         wrapper.unmount()
     })
 
+    it('外观页签：界面风格/密度/减少透明随保存写入 system 配置（视觉升级 P0）', async () => {
+        const wrapper = mountDialog()
+        await flushPromises()
+        await switchPanel(wrapper, 2)
+
+        await panel(wrapper, 2).find('[data-testid="ui-style-select"]').setValue('hybrid')
+        await panel(wrapper, 2).find('[data-testid="ui-density-select"]').setValue('compact')
+        await panel(wrapper, 2).find('[data-testid="ui-reduce-transparency"]').setValue(true)
+        await wrapper.find('.btn-apply').trigger('click')
+        await flushPromises()
+
+        expect(configWrite).toHaveBeenCalledWith(
+            'system',
+            expect.objectContaining({
+                uiStyle: 'hybrid',
+                uiDensity: 'compact',
+                uiReduceTransparency: true
+            })
+        )
+        wrapper.unmount()
+    })
+
     it('打开时加载 system 配置并映射到 6 个面板（含语言历史值归一化）', async () => {
         configRead.mockImplementation((name: string) => {
             if (name === 'backup') {

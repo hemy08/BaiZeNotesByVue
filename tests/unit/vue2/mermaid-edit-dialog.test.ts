@@ -23,7 +23,12 @@ vi.mock('mermaid', () => ({
 
 import MermaidEditDialog from '@renderer/components/dialogs/complex/MermaidEditDialog.vue'
 
-const dialogMountOptions = { global: { stubs: { teleport: true } } }
+const dialogMountOptions = {
+    global: { stubs: { teleport: true } },
+    // 挂在 document.body 上：非模态工具窗「打开聚焦首个可交互元素 / Esc 焦点语义」
+    // 依赖真实 document.activeElement（游离 DOM 的 focus() 不会写入 activeElement）。
+    attachTo: document.body
+}
 let wrapper: VueWrapper | null = null
 
 function mountDialog(): VueWrapper {
@@ -51,6 +56,8 @@ beforeEach(() => {
 afterEach(() => {
     wrapper?.unmount()
     wrapper = null
+    document.body.innerHTML = ''
+    document.body.style.removeProperty('overflow')
     vi.useRealTimers()
 })
 
@@ -170,11 +177,47 @@ describe('MermaidEditDialog 非模态工具窗', () => {
         )
     })
 
-    it('Esc 不关闭，只有关闭按钮/插入才关闭', async () => {
+    it('Esc 仅在焦点位于工具窗内时关闭（焦点在编辑器时不打断）', async () => {
         const dialog = mountDialog()
+        // 打开聚焦内容首个可交互元素（源码输入框，T6 焦点契约）
+        await flushPromises()
+        const textarea = dialog.find('textarea.code-editor').element as HTMLTextAreaElement
+        expect(document.activeElement).toBe(textarea)
+
+        // 焦点在编辑器（工具窗外）时，Esc 属于编辑器语义：不拦截、不关闭
+        const editorButton = document.createElement('button')
+        document.body.appendChild(editorButton)
+        editorButton.focus()
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
         await flushPromises()
         expect(dialog.emitted('close')).toBeUndefined()
+
+        // 焦点回到工具窗内：Esc 关闭最顶层工具窗（焦点陷阱不适用，但顶层层级语义保留）
+        textarea.focus()
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+        await flushPromises()
+        expect(dialog.emitted('close')).toHaveLength(1)
+    })
+
+    it('工具窗统一壳：拖拽把手 + 工具窗标题栏 + aria-modal=false', () => {
+        const dialog = mountDialog()
+        expect(dialog.find('.dialog-container').classes()).toContain(
+            'dialog-container--tool-window'
+        )
+        expect(dialog.find('.dialog-container').attributes('data-dialog-shell')).toBe('tool-window')
+        expect(dialog.find('.title-bar').classes()).toContain('title-bar--tool-window')
+        // T6 标题栏左侧 6 点拖拽把手（aria-hidden，不进无障碍树）
+        const handle = dialog.find('.tool-window-drag-handle')
+        expect(handle.exists()).toBe(true)
+        expect(handle.attributes('aria-hidden')).toBe('true')
+        expect(dialog.find('.dialog-container').attributes('aria-modal')).toBe('false')
+    })
+
+    it('容器宽高限制在窗口可视区内（T6 缩放边界）', () => {
+        const dialog = mountDialog()
+        const style = dialog.find('.dialog-container').attributes('style') ?? ''
+        expect(style).toContain('max-width: calc(100vw - 20px)')
+        expect(style).toContain('max-height: calc(100vh - 20px)')
     })
 
     it('右下角提供拖拽缩放柄', () => {

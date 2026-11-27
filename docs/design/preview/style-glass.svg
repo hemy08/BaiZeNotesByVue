@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" font-family="'Microsoft YaHei','PingFang SC','Segoe UI',sans-serif">
+  <defs>
+    <linearGradient id="gBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef1f9"/><stop offset="1" stop-color="#e4e9f6"/>
+    </linearGradient>
+    <linearGradient id="gGlass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.86"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.62"/>
+    </linearGradient>
+    <filter id="gBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="28"/></filter>
+    <filter id="gSh" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="32" flood-color="#46527a" flood-opacity="0.16"/>
+    </filter>
+    <filter id="gSh1" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#46527a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="800" fill="url(#gBg)"/>
+  <!-- 背景光斑（模拟透过玻璃的模糊背景） -->
+  <circle cx="1010" cy="300" r="180" fill="#a99bd8" opacity="0.35" filter="url(#gBlur)"/>
+  <circle cx="300" cy="640" r="160" fill="#8fb7e8" opacity="0.30" filter="url(#gBlur)"/>
+
+  <!-- 顶栏：半透明 + 高光边 -->
+  <rect x="0" y="0" width="1280" height="52" fill="url(#gGlass)" stroke="#ffffff" stroke-opacity="0.7"/>
+  <line x1="0" y1="52" x2="1280" y2="52" stroke="#ffffff" stroke-opacity="0.8"/>
+  <circle cx="28" cy="26" r="8" fill="#764ba2"/>
+  <text x="46" y="32" font-size="14" font-weight="600" fill="#232733">白泽笔记</text>
+  <g font-size="13" fill="#232733">
+    <text x="168" y="32">文件</text><text x="216" y="32">编辑</text><text x="264" y="32">视图</text>
+    <text x="312" y="32">插入</text><text x="360" y="32">设置</text><text x="408" y="32">工具</text>
+    <text x="456" y="32">插件</text><text x="504" y="32">帮助</text>
+  </g>
+  <rect x="952" y="14" width="212" height="26" rx="13" fill="#ffffff" fill-opacity="0.55" stroke="#ffffff" stroke-opacity="0.9"/>
+  <text x="968" y="31" font-size="12" fill="#6f7485">搜索或输入命令</text>
+  <rect x="1174" y="14" width="80" height="26" rx="8" fill="#ffffff" fill-opacity="0.55" stroke="#ffffff" stroke-opacity="0.9"/>
+  <text x="1214" y="31" font-size="11" fill="#5f6472" text-anchor="middle">⌘K</text>
+
+  <!-- 左栏（玻璃面板） -->
+  <rect x="8" y="60" width="232" height="700" rx="12" fill="url(#gGlass)" stroke="#ffffff" stroke-opacity="0.75" filter="url(#gSh1)"/>
+  <text x="24" y="88" font-size="12" font-weight="600" fill="#6f7485">笔记</text>
+  <rect x="18" y="100" width="212" height="28" rx="8" fill="#764ba2" fill-opacity="0.14"/>
+  <text x="30" y="119" font-size="13" fill="#4a2f66">视觉升级方案</text>
+  <g font-size="13" fill="#232733">
+    <text x="30" y="147">1.5.2 版本计划</text>
+    <text x="30" y="175">代码结构优化计划</text>
+    <text x="30" y="203">产品体验优化方案</text>
+    <text x="30" y="231">开发规范</text>
+    <text x="30" y="259">架构文档</text>
+  </g>
+
+  <!-- 编辑区 -->
+  <text x="280" y="112" font-size="22" font-weight="600" fill="#1d2130">BaiZe Notes · 视觉升级</text>
+  <g font-size="16" fill="#232733">
+    <text x="280" y="152">轻玻璃：半透明悬浮层、柔和阴影、柔和高光边。</text>
+    <text x="280" y="178">blur 仅用于小面积悬浮层，不做整窗模糊。</text>
+  </g>
+  <rect x="280" y="200" width="3" height="52" fill="#764ba2" opacity="0.45"/>
+  <g font-size="13" fill="#5f6472">
+    <text x="296" y="216">层次来自“玻璃 + 阴影 + 高光描边”，而非重边框。</text>
+    <text x="296" y="238">深色主题下降低透明度，保证可读性。</text>
+  </g>
+  <g font-size="13" fill="#232733">
+    <text x="280" y="286">• 圆角 8/12 两档，悬浮层更圆</text>
+    <text x="280" y="310">• 阴影柔化、扩散更大（dy12/blur32）</text>
+    <text x="280" y="334">• 提供“减少透明”开关与自动降级</text>
+  </g>
+  <rect x="280" y="356" width="440" height="62" rx="8" fill="#ffffff" fill-opacity="0.55" stroke="#ffffff" stroke-opacity="0.9"/>
+  <g font-size="11" fill="#5f6472" font-family="Consolas, monospace">
+    <text x="296" y="378">const style = 'glass'</text>
+    <text x="296" y="396">// surface 0.86 + blur 8px（仅悬浮层）</text>
+  </g>
+  <rect x="280" y="440" width="440" height="120" rx="8" fill="#ffffff" fill-opacity="0.62" stroke="#ffffff" stroke-opacity="0.9"/>
+  <line x1="280" y1="472" x2="720" y2="472" stroke="#ffffff" stroke-opacity="0.9"/>
+  <g font-size="11" fill="#6f7485"><text x="292" y="460">组件</text><text x="420" y="460">规格</text><text x="580" y="460">玻璃差异</text></g>
+  <g font-size="11" fill="#232733">
+    <text x="292" y="492">菜单栏</text><text x="420" y="492">高 40 / 行高 30</text><text x="580" y="492">半透明 + 高光边</text>
+    <text x="292" y="524">工具窗</text><text x="420" y="524">圆角 12 / 标题 44</text><text x="580" y="524">8px blur 悬浮</text>
+    <text x="292" y="556">表格</text><text x="420" y="556">行高 30 / 列头 30</text><text x="580" y="556">透出背景层次</text>
+  </g>
+
+  <!-- 工具窗：玻璃材质 + 大阴影 -->
+  <rect x="760" y="132" width="440" height="400" rx="12" fill="url(#gGlass)" stroke="#ffffff" stroke-opacity="0.85" filter="url(#gSh)"/>
+  <line x1="760" y1="176" x2="1200" y2="176" stroke="#ffffff" stroke-opacity="0.8"/>
+  <g fill="#8b90a0"><circle cx="780" cy="154" r="2"/><circle cx="788" cy="154" r="2"/><circle cx="796" cy="154" r="2"/><circle cx="780" cy="161" r="2"/><circle cx="788" cy="161" r="2"/><circle cx="796" cy="161" r="2"/></g>
+  <text x="814" y="161" font-size="13" font-weight="600" fill="#1d2130">Mermaid 工具窗</text>
+  <circle cx="1156" cy="154" r="11" fill="#ffffff" fill-opacity="0.7"/>
+  <text x="1156" y="159" font-size="12" fill="#5f6472" text-anchor="middle">–</text>
+  <circle cx="1180" cy="154" r="11" fill="#ffffff" fill-opacity="0.7"/>
+  <text x="1180" y="159" font-size="12" fill="#5f6472" text-anchor="middle">×</text>
+
+  <rect x="776" y="192" width="408" height="216" rx="8" fill="#ffffff" fill-opacity="0.55" stroke="#ffffff" stroke-opacity="0.9"/>
+  <line x1="776" y1="222" x2="1184" y2="222" stroke="#ffffff" stroke-opacity="0.9"/>
+  <g font-size="11" fill="#6f7485"><text x="788" y="211">标题</text><text x="920" y="211">状态</text><text x="1060" y="211">更新</text></g>
+  <g font-size="11" fill="#232733">
+    <text x="788" y="246">纸感正文</text><text x="920" y="246">已就绪</text><text x="1060" y="246">11-27</text>
+    <text x="788" y="276">轻玻璃悬浮层</text><text x="920" y="276">实验</text><text x="1060" y="276">11-27</text>
+    <text x="788" y="306">工作台密度</text><text x="920" y="306">已就绪</text><text x="1060" y="306">11-27</text>
+  </g>
+  <line x1="776" y1="330" x2="1184" y2="330" stroke="#ffffff" stroke-opacity="0.9"/>
+  <rect x="1004" y="352" width="84" height="34" rx="8" fill="#764ba2"/>
+  <text x="1046" y="374" font-size="13" fill="#ffffff" text-anchor="middle">插入</text>
+  <rect x="1100" y="352" width="84" height="34" rx="8" fill="#ffffff" fill-opacity="0.6" stroke="#ffffff" stroke-opacity="0.9"/>
+  <text x="1142" y="374" font-size="13" fill="#3d4250" text-anchor="middle">取消</text>
+
+  <!-- 状态栏 -->
+  <rect x="0" y="770" width="1280" height="30" fill="#ffffff" fill-opacity="0.5"/>
+  <line x1="0" y1="770" x2="1280" y2="770" stroke="#ffffff" stroke-opacity="0.8"/>
+  <text x="16" y="789" font-size="12" fill="#6f7485">已保存 · UTF-8 · 1,234 字</text>
+  <text x="1264" y="789" font-size="12" fill="#6f7485" text-anchor="end">Markdown · 预览同步</text>
+
+  <rect x="1086" y="66" width="180" height="28" rx="14" fill="#764ba2" fill-opacity="0.16"/>
+  <text x="1176" y="85" font-size="12" font-weight="600" fill="#4a2f66" text-anchor="middle">B · Glass 轻玻璃</text>
+</svg>

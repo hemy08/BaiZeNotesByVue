@@ -389,6 +389,23 @@ const dialogRenderer = {
         fontMicrosoftYaHei: 'Microsoft YaHei',
         fontPingFang: 'PingFang',
         labelFontSize: 'Font size',
+        // Visual upgrade (P0): interface style / density / reduce transparency
+        // (default workbench + default equals the previous look)
+        groupUiAppearance: 'Interface style & density',
+        hintUiAppearance:
+            'The defaults (workbench + default density) match the previous look. Light glass is experimental and uses blur only on small floating layers; dark, eyecare and high-saturation themes automatically fall back to the paper material.',
+        labelUiStyle: 'Interface style',
+        uiStylePaper: 'Quiet paper',
+        uiStyleGlass: 'Light glass',
+        uiStyleWorkbench: 'High-density workbench',
+        uiStyleHybrid: 'Hybrid (paper content)',
+        labelUiDensity: 'Interface density',
+        uiDensityCompact: 'Compact',
+        uiDensityDefault: 'Default',
+        uiDensitySpacious: 'Spacious',
+        labelReduceTransparency: 'Reduce transparency',
+        hintReduceTransparency:
+            'When enabled, the glass style drops translucency and blur and falls back to an opaque paper material (performance and readability first)',
         panelBackupTitle: 'Backup & restore',
         panelBackupDesc: 'Data backup and restore options',
         groupAutoBackup: 'Auto backup',

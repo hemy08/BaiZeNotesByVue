@@ -76,6 +76,11 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     appTheme: 'baize',
     useSystemTheme: false,
     allowRemoteImages: false,
+    // 视觉升级（P0）三项外观配置：默认 workbench + default = 与升级前观感一致；
+    // 减少透明默认关闭（glass 默认启用透明度）。真源同主进程 system-setting.ts。
+    uiStyle: 'workbench',
+    uiDensity: 'default',
+    uiReduceTransparency: false,
     // 可选能力（2026-11-21 用户选定）：全部 opt-in、默认关闭
     featureTabs: false,
     featureDocumentHistory: false,

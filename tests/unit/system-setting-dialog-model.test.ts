@@ -34,6 +34,10 @@ const EXPECTED_FIELDS: (keyof SystemDialogSettings)[] = [
     'recentFilesCount',
     'appTheme',
     'useSystemTheme',
+    // 视觉升级（P0）：界面风格 / 界面密度 / 减少透明效果
+    'uiStyle',
+    'uiDensity',
+    'uiReduceTransparency',
     'fontFamily',
     'fontSize',
     'enableAutoBackup',
@@ -63,7 +67,7 @@ const EXPECTED_FIELDS: (keyof SystemDialogSettings)[] = [
 ]
 
 describe('createDefaultSystemDialogSettings', () => {
-    it('应返回完整 38 字段，且值来自 shared SYSTEM_SETTING_FALLBACK 真源', () => {
+    it('应返回完整 41 字段，且值来自 shared SYSTEM_SETTING_FALLBACK 真源', () => {
         const defaults = createDefaultSystemDialogSettings()
         expect(Object.keys(defaults).sort()).toEqual([...EXPECTED_FIELDS].sort())
         expect(defaults.autoOpenLastFile).toBe(SYSTEM_SETTING_FALLBACK.autoOpenLastFile)
@@ -75,6 +79,16 @@ describe('createDefaultSystemDialogSettings', () => {
         expect(defaults.backupInterval).toBe(SYSTEM_SETTING_FALLBACK.backupInterval)
         expect(defaults.backupCount).toBe(SYSTEM_SETTING_FALLBACK.backupCount)
         expect(defaults.allowRemoteImages).toBe(SYSTEM_SETTING_FALLBACK.allowRemoteImages)
+    })
+
+    it('视觉升级三项外观默认值 = workbench + default + 不减少透明（升级前观感）', () => {
+        const defaults = createDefaultSystemDialogSettings()
+        expect(defaults.uiStyle).toBe('workbench')
+        expect(defaults.uiDensity).toBe('default')
+        expect(defaults.uiReduceTransparency).toBe(false)
+        expect(defaults.uiStyle).toBe(SYSTEM_SETTING_FALLBACK.uiStyle)
+        expect(defaults.uiDensity).toBe(SYSTEM_SETTING_FALLBACK.uiDensity)
+        expect(defaults.uiReduceTransparency).toBe(SYSTEM_SETTING_FALLBACK.uiReduceTransparency)
     })
 
     it('语言按下拉展示值归一化为 zh-CN（主进程默认 zh-cn 小写）', () => {
@@ -115,6 +129,27 @@ describe('mergeStoredSystemSettings', () => {
             backupInterval: null
         })
         expect(merged).toEqual(current)
+    })
+
+    it('合并视觉升级三项外观字段（类型一致才覆盖，字符串枚举由主进程 schema 兜底）', () => {
+        const current = createDefaultSystemDialogSettings()
+        const merged = mergeStoredSystemSettings(current, {
+            uiStyle: 'glass',
+            uiDensity: 'compact',
+            uiReduceTransparency: true
+        })
+        expect(merged.uiStyle).toBe('glass')
+        expect(merged.uiDensity).toBe('compact')
+        expect(merged.uiReduceTransparency).toBe(true)
+        // 类型不一致时保持默认值（不做运行时枚举校验，主进程 AS-4 才是强制校验）
+        const ignored = mergeStoredSystemSettings(current, {
+            uiStyle: 42,
+            uiDensity: null,
+            uiReduceTransparency: 'true'
+        })
+        expect(ignored.uiStyle).toBe('workbench')
+        expect(ignored.uiDensity).toBe('default')
+        expect(ignored.uiReduceTransparency).toBe(false)
     })
 
     it('stored 非对象/为空时返回当前值的浅拷贝（不修改入参）', () => {

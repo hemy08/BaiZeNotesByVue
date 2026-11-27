@@ -6,14 +6,17 @@
  * 样式里复制 `.btn` / `.btn-*` 规则，已分叉出 30px+4px 与 44px+6px 两派尺寸、三种
  * 危险色/强调色写法。本批次新增全局 `src/renderer/src/assets/dialog-buttons.css` 作为
  * 唯一视觉真源，并把所有对话框底部/正文操作按钮迁移为 `dialog-btn dialog-btn--*`。
+ * 视觉升级 1.5.5（P1-B1 T9）把按钮尺寸/形状/语义色/动效切换到 `--ui-*` 令牌：
+ * 默认（workbench + default 密度）高 32px，compact 28 / spacious 36，颜色走语义令牌。
  *
  * 本文件锁定（TEST-03 / TEST-09 / TEST-16：契约 + 自检）：
  * 1. 共享样式层存在且被渲染层入口唯一引入（在 theme.css 之后，级联顺序正确）；
- * 2. 基础按钮视觉契约（高 30px / 水平 padding 16px / 圆角 4px / 1px 边框 / 13px 字号 /
- *    all 0.2s ease / focus-visible 强调色轮廓 / disabled 视觉）；
+ * 2. 基础按钮视觉契约（高 `--ui-control-height`（默认 32px）/ 水平 padding 16px /
+ *    圆角 `--ui-radius-md` / 1px 边框 / 字号 `--ui-font-size` / 动效令牌 / focus-visible
+ *    语义焦点环 / disabled 视觉）；
  * 3. 五个语义变体齐全（primary / secondary / danger / ghost / apply）；
  * 4. 全部规则限定在 `.dialog-container` 作用域内，避免影响非对话框 `.btn`；
- * 5. 颜色一律走主题变量（无写死主题色，唯一例外是集中收敛的破坏性语义色变量）；
+ * 5. 颜色一律走 `--ui-*` 语义令牌/主题变量（无写死主题色；危险色由 `--ui-danger` 派生）；
  * 6. 迁移完整性：23 个含操作按钮的对话框组件全部使用统一类名，且各对话框/.css 中
  *    不再残留重复的 `.btn` / `.btn-*` 基础样式块；无按钮的 2 个对话框不做强制；
  * 7. 兼容层：E2E（settings-persistence / close-confirm / theme-first-open）与既有单测
@@ -215,18 +218,27 @@ describe('对话框按钮统一样式层：视觉契约', () => {
         return rules.find((rule) => rule.selector === selector)
     }
 
-    it('基础按钮尺寸/排版：30px 高、0 16px 内边距、4px 圆角、1px 边框、13px 字号、all 0.2s ease', () => {
+    it('基础按钮尺寸/排版：控件高/圆角/字号走视觉升级令牌，内边距 0 16px、1px 边框、动效令牌', () => {
         const base = findRule('.dialog-container .dialog-btn')
         expect(base, '缺少基础按钮规则 .dialog-container .dialog-btn').toBeDefined()
-        expect(declarationValue(base!.declarations, 'height')).toBe('30px')
+        // 视觉升级 1.5.5（T9）：高 32（default 密度）/ 圆角 --ui-radius-md / 字号 --ui-font-size
+        expect(declarationValue(base!.declarations, 'height')).toBe(
+            'var(--ui-control-height, 32px)'
+        )
         expect(declarationValue(base!.declarations, 'padding')).toBe('0 16px')
-        expect(declarationValue(base!.declarations, 'border-radius')).toBe('4px')
+        expect(declarationValue(base!.declarations, 'border-radius')).toBe(
+            'var(--ui-radius-md, 4px)'
+        )
         expect(declarationValue(base!.declarations, 'border')).toMatch(/^1px solid /)
-        expect(declarationValue(base!.declarations, 'font-size')).toBe('13px')
-        expect(declarationValue(base!.declarations, 'transition')).toBe('all 0.2s ease')
+        expect(declarationValue(base!.declarations, 'font-size')).toBe('var(--ui-font-size, 13px)')
+        // MOTION.md：禁止 transition: all；过渡只覆盖会变化的颜色/阴影属性并引用动效令牌
+        const transition = declarationValue(base!.declarations, 'transition') ?? ''
+        expect(transition).not.toContain('all ')
+        expect(transition).toContain('var(--ui-duration-fast, 120ms)')
+        expect(transition).toContain('var(--ui-ease-standard, ease)')
     })
 
-    it('交互状态：hover 反馈、disabled 视觉、focus-visible 强调色轮廓（UI-10）', () => {
+    it('交互状态：hover 反馈、disabled 视觉、focus-visible 语义焦点环（UI-10）', () => {
         const hover = findRule('.dialog-container .dialog-btn:hover:not(:disabled)')
         expect(hover, '缺少基础按钮 hover 规则').toBeDefined()
         expect(hover!.declarations.length).toBeGreaterThan(0)
@@ -238,7 +250,10 @@ describe('对话框按钮统一样式层：视觉契约', () => {
         const focus = rules.find((rule) => rule.selector.includes('.dialog-btn:focus-visible'))
         expect(focus, '缺少 focus-visible 规则').toBeDefined()
         expect(focus!.selector).toContain('.dialog-container')
-        expect(declarationValue(focus!.declarations, 'outline')).toContain('var(--accent-color)')
+        expect(declarationValue(focus!.declarations, 'outline')).toBe('none')
+        expect(declarationValue(focus!.declarations, 'box-shadow')).toContain(
+            'var(--ui-focus-shadow'
+        )
     })
 
     it('语义变体齐全：primary / secondary / danger / ghost / apply（含 hover 态）', () => {
@@ -252,9 +267,9 @@ describe('对话框按钮统一样式层：视觉契约', () => {
             expect(hover, `缺少语义变体 hover ${selector}:hover:not(:disabled)`).toBeDefined()
         }
 
-        // primary 用主题强调色 + 按钮文字主题色；danger 用集中收敛的破坏性语义色变量
+        // primary 用语义强调色 + 按钮文字主题色；danger 用集中收敛的破坏性语义色变量
         expect(findRule('.dialog-container .dialog-btn--primary')!.declarations).toContain(
-            'var(--accent-color)'
+            'var(--ui-accent, var(--accent-color))'
         )
         expect(findRule('.dialog-container .dialog-btn--danger')!.declarations).toContain(
             'var(--dialog-btn-danger-bg)'
@@ -279,7 +294,7 @@ describe('对话框按钮统一样式层：视觉契约', () => {
         }
     })
 
-    it('颜色契约：视觉属性走主题变量（无写死主题色），危险色为唯一集中例外', () => {
+    it('颜色契约：视觉属性走语义令牌（无写死主题色），危险色由 --ui-danger 派生', () => {
         const colorProperties = ['background', 'background-color', 'color', 'border-color']
         const buttonRules = rules.filter((rule) => rule.selector.includes('.dialog-btn'))
         for (const rule of buttonRules) {
@@ -288,19 +303,20 @@ describe('对话框按钮统一样式层：视觉契约', () => {
                 if (value === undefined) continue
                 expect(
                     /^(var\(|transparent$|none$|inherit$)/.test(value),
-                    `${rule.selector} 的 ${property} 必须使用主题变量，实际为 ${value}`
+                    `${rule.selector} 的 ${property} 必须使用语义主题变量，实际为 ${value}`
                 ).toBe(true)
             }
             const border = declarationValue(rule.declarations, 'border')
             if (border !== undefined) {
                 expect(
                     /^(1px solid (?:var\(|transparent)|none$)/.test(border),
-                    `${rule.selector} 的 border 必须使用主题变量，实际为 ${border}`
+                    `${rule.selector} 的 border 必须使用语义主题变量，实际为 ${border}`
                 ).toBe(true)
             }
         }
-        // 唯一允许的直写色值：集中定义的破坏性语义色（主题调色板无对应字段，沿用既有 #e74c3c）
-        expect(cssSource).toContain('--dialog-btn-danger-bg: #e74c3c')
+        // 破坏性语义色不再直写色值：集中变量指向 18 组语义令牌中的 --ui-danger
+        expect(cssSource).toContain('--dialog-btn-danger-bg: var(--ui-danger')
+        expect(cssSource).not.toContain('#e74c3c')
         expect(cssSource).not.toContain('--accent-color: #')
         expect(cssSource).not.toContain('#764ba2')
     })

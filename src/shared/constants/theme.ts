@@ -124,3 +124,34 @@ export const THEME_GROUPS: readonly ThemeGroup[] = [
 export function isDarkThemeType(themeType: string): boolean {
     return (DARK_THEME_TYPES as readonly string[]).includes(themeType)
 }
+
+/** 是否为护眼系主题（语义令牌分组 / 玻璃材质降级判定使用） */
+export function isEyecareThemeType(themeType: string): boolean {
+    return (EYECARE_THEME_TYPES as readonly string[]).includes(themeType)
+}
+
+/**
+ * 高饱和/渐变主题清单（玻璃材质自动降级依据，视觉升级方案 §5.1）。
+ *
+ * 判定依据（背景或卡片色相饱和度高、且与顶栏渐变同色系）：
+ * - `coral`（珊瑚暖阳）：背景/卡片为高饱和珊瑚粉紫，半透明叠加后层次混乱；
+ * - `sunset`（日落余晖）：暖橙渐变底，玻璃模糊会把渐变糊成脏黄色；
+ * - `rose`（玫瑰花园）：高饱和粉底，半透明叠色后文字对比度下降；
+ * - `mint`（薄荷清风）：高饱和薄荷绿底，模糊面与正文底同色易失去层次；
+ * - `forest`（森林秘境）：深绿强调色 + 浅绿底，透明叠加后分区线不可辨。
+ *
+ * 其余主题（含 28 套中的中性浅色/深色主题与 7 套护眼主题）不在此列；护眼主题单独按
+ * 「降低透明度、提高对比」处理（见 ui-style 常量与视觉升级方案 §5.1 表格）。
+ */
+export const SATURATED_THEME_TYPES = [
+    'coral',
+    'sunset',
+    'rose',
+    'mint',
+    'forest'
+] as const satisfies readonly ThemeType[]
+
+/** 是否为高饱和/渐变主题（玻璃材质自动降级为纸感材质的判定口径） */
+export function isSaturatedThemeType(themeType: string): boolean {
+    return (SATURATED_THEME_TYPES as readonly string[]).includes(themeType)
+}
