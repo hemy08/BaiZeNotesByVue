@@ -1148,6 +1148,10 @@ function handleApply(): void {
     flex: 1;
     color: var(--ui-text, var(--text-primary, var(--text-color)));
     font-size: var(--table-font-size, 13px);
+    /* 用户反馈（2026-11-27）：表格编辑器内容与边框要多留白——
+       正文根节点统一内边距（密度档 12/16/20 + 4px 呼吸量），设置区/网格/底部按钮
+       均与工具窗边框保持 16px 及以上间距（边框 1px 另计）。 */
+    padding: calc(var(--ui-pad, 12px) + 4px);
 }
 
 /* ---------- 表格设置区 ---------- */

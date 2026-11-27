@@ -8,6 +8,7 @@
  * - 显示层规则：数字右对齐、文本左对齐、日期统一 YYYY-MM-DD、空单元格不显示 0。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as fs from 'node:fs'
 import { nextTick } from 'vue'
 import type { VueWrapper } from '@vue/test-utils'
 import { mount } from '@vue/test-utils'
@@ -503,5 +504,16 @@ describe('TableEditorDialog 显示层规则（数字/文本/日期/空值）', (
         expect(cells[0].classes()).toContain('is-align-left')
         expect(cells[1].classes()).toContain('is-align-right')
         wrapper.unmount()
+    })
+})
+
+describe('表格编辑器留白（用户反馈 2026-11-27）', () => {
+    it('正文根节点 .table-editor-body 通过 --ui-pad 令牌提供内容与边框留白', () => {
+        const source = fs.readFileSync(
+            'src/renderer/src/components/dialogs/medium/table-editor/TableEditorDialog.vue',
+            'utf8'
+        )
+        const rule = source.match(/\.table-editor-body\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+        expect(rule).toContain('padding: calc(var(--ui-pad')
     })
 })
