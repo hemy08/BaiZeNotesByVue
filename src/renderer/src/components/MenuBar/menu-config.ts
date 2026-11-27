@@ -398,9 +398,10 @@ const insertPlantUML: BaiZeMenuEntry = {
     ]
 }
 
-const drawingTools: BaiZeMenuEntry = {
-    labelKey: 'menu.tools.drawing.label',
+const insertMenu: BaiZeMenuEntry = {
+    labelKey: 'menu.insert.label',
     submenu: [
+        // 绘图入口（从「工具 → 绘图工具」提升为插入菜单一级项，单独分组）
         {
             labelKey: 'menu.tools.drawing.mermaid',
             menuAction: 'baize:menu:tools:drawing:mermaid'
@@ -408,21 +409,15 @@ const drawingTools: BaiZeMenuEntry = {
         {
             labelKey: 'menu.tools.drawing.plantuml',
             menuAction: 'baize:menu:tools:drawing:plantuml'
-        }
-    ]
-}
-const insertMenu: BaiZeMenuEntry = {
-    labelKey: 'menu.insert.label',
-    submenu: [
+        },
+        { type: 'separator' },
         { labelKey: 'menu.insert.writing', submenu: Templates.Writing },
         { labelKey: 'menu.insert.textBlock', submenu: Templates.TextBlock },
         { labelKey: 'menu.insert.fromFile', submenu: Templates.InsertFromFiles },
         { type: 'separator' },
         insertMaterial,
         insertMermaid, // 编码
-        insertPlantUML, // 切换编码
-        // 绘图工具（从「工具」菜单迁入；动作链路保持 tools:drawing:* 不变）
-        drawingTools
+        insertPlantUML // 切换编码
         // FUN-09：自定义模板/模板管理原为主进程 console.warn 空实现（点击无任何反应），
         // 完整模板编辑与管理体系无法低成本实现，暂时从菜单隐藏（A-4 模式，数据保留）。
         // Roadmap：自定义模板编辑与模板管理界面。

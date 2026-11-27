@@ -241,14 +241,22 @@ describe('menu-config', () => {
         expect(actions).not.toContain('baize:menu:edit:replace-in-dir')
     })
 
-    it('should declare drawing template submenu inside the insert menu (moved from tools)', () => {
+    it('should promote drawing entries before writing templates as a separate group', () => {
         const insertMenu = menuMap.value.find((item) => displayText(item) === '插入')!
-        const drawing = insertMenu.submenu!.find((item) => displayText(item) === '绘图工具')
-        expect(resolvedList(drawing!.submenu!)).toEqual([
-            { label: 'Mermaid 绘图', menuAction: 'baize:menu:tools:drawing:mermaid' },
-            { label: 'PlantUML 绘图', menuAction: 'baize:menu:tools:drawing:plantuml' }
+        expect(insertMenu.submenu!.slice(0, 4)).toMatchObject([
+            {
+                labelKey: 'menu.tools.drawing.mermaid',
+                menuAction: 'baize:menu:tools:drawing:mermaid'
+            },
+            {
+                labelKey: 'menu.tools.drawing.plantuml',
+                menuAction: 'baize:menu:tools:drawing:plantuml'
+            },
+            { type: 'separator' },
+            { labelKey: 'menu.insert.writing' }
         ])
-        // 原 tools 树的绘图子菜单应已迁出
+        expect(insertMenu.submenu!.find((item) => displayText(item) === '绘图工具')).toBeUndefined()
+
         const toolsMenu = menuMap.value.find((item) => displayText(item) === '工具')!
         expect(toolsMenu.submenu!.find((item) => displayText(item) === '绘图工具')).toBeUndefined()
     })
@@ -376,7 +384,8 @@ describe('menu-config', () => {
         // 特殊字体/数学公式/Markdown 表格/网页链接已迁至工具菜单
         expect(labels).not.toContain('特殊字体')
         expect(labels).not.toContain('数学公式')
-        expect(labels).toContain('绘图工具')
+        expect(labels).toContain('Mermaid 绘图')
+        expect(labels).toContain('PlantUML 绘图')
         expect(labels).toContain('写作模板')
         expect(labels).toContain('文本块')
         expect(labels).toContain('Material')
