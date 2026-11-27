@@ -241,16 +241,16 @@ describe('menu-config', () => {
         expect(actions).not.toContain('baize:menu:edit:replace-in-dir')
     })
 
-    it('should declare tools menu with the drawing template submenu (FUN-09)', () => {
-        const toolsMenu = menuMap.value.find((item) => displayText(item) === '工具')!
-        const drawing = toolsMenu.submenu!.find((item) => displayText(item) === '绘图工具')
+    it('should declare drawing template submenu inside the insert menu (moved from tools)', () => {
+        const insertMenu = menuMap.value.find((item) => displayText(item) === '插入')!
+        const drawing = insertMenu.submenu!.find((item) => displayText(item) === '绘图工具')
         expect(resolvedList(drawing!.submenu!)).toEqual([
             { label: 'Mermaid 绘图', menuAction: 'baize:menu:tools:drawing:mermaid' },
             { label: 'PlantUML 绘图', menuAction: 'baize:menu:tools:drawing:plantuml' }
         ])
-        // 原单条目 'baize:menu:tools:drawing'（'OpenFile' 死通道）已移除
-        const actions = collectActions(toolsMenu.submenu!)
-        expect(actions).not.toContain('baize:menu:tools:drawing')
+        // 原 tools 树的绘图子菜单应已迁出
+        const toolsMenu = menuMap.value.find((item) => displayText(item) === '工具')!
+        expect(toolsMenu.submenu!.find((item) => displayText(item) === '绘图工具')).toBeUndefined()
     })
 
     // 1.5.2 E6：工具菜单新增今日日记 / 快速收件箱两项（能力开关 featureDailyNotes 默认关闭，
@@ -370,16 +370,32 @@ describe('menu-config', () => {
         })
     })
 
-    it('should declare insert menu with material/mermaid/plantuml groups', () => {
+    it('should declare insert menu with material/mermaid/plantuml/drawing groups', () => {
         const insertMenu = menuMap.value.find((item) => displayText(item) === '插入')!
         const labels = insertMenu.submenu!.map((item) => displayText(item))
-        expect(labels).toContain('特殊字体')
-        expect(labels).toContain('数学公式')
+        // 特殊字体/数学公式/Markdown 表格/网页链接已迁至工具菜单
+        expect(labels).not.toContain('特殊字体')
+        expect(labels).not.toContain('数学公式')
+        expect(labels).toContain('绘图工具')
         expect(labels).toContain('写作模板')
         expect(labels).toContain('文本块')
         expect(labels).toContain('Material')
         expect(labels).toContain('Mermaid')
         expect(labels).toContain('PlantUML')
+    })
+
+    it('should move insert content tools into tools menu and remove duplicate entries', () => {
+        const toolsMenu = menuMap.value.find((item) => displayText(item) === '工具')!
+        const actions = collectActions(toolsMenu.submenu!)
+        expect(actions).toContain('baize:menu:insert:special-text')
+        expect(actions).toContain('baize:menu:insert:math')
+        expect(actions).toContain('baize:menu:insert:md-table')
+        expect(actions).toContain('baize:menu:insert:web-link')
+        // 旧重复入口已合并
+        expect(actions).not.toContain('baize:menu:tools:katex')
+        expect(actions).not.toContain('baize:menu:tools:table')
+        expect(actions).not.toContain('baize:menu:tools:drawing:mermaid')
+        expect(actions).not.toContain('baize:menu:tools:drawing:plantuml')
     })
 
     it('should declare plugins menu with encrypt/network/info groups (FE-16：空组已剔除)', () => {

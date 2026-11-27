@@ -398,21 +398,31 @@ const insertPlantUML: BaiZeMenuEntry = {
     ]
 }
 
+const drawingTools: BaiZeMenuEntry = {
+    labelKey: 'menu.tools.drawing.label',
+    submenu: [
+        {
+            labelKey: 'menu.tools.drawing.mermaid',
+            menuAction: 'baize:menu:tools:drawing:mermaid'
+        },
+        {
+            labelKey: 'menu.tools.drawing.plantuml',
+            menuAction: 'baize:menu:tools:drawing:plantuml'
+        }
+    ]
+}
 const insertMenu: BaiZeMenuEntry = {
     labelKey: 'menu.insert.label',
     submenu: [
-        { labelKey: 'menu.insert.specialText', menuAction: 'baize:menu:insert:special-text' },
-        { labelKey: 'menu.insert.math', menuAction: 'baize:menu:insert:math' },
-        { labelKey: 'menu.insert.mdTable', menuAction: 'baize:menu:insert:md-table' },
-        { labelKey: 'menu.insert.webLink', menuAction: 'baize:menu:insert:web-link' },
-        { type: 'separator' },
         { labelKey: 'menu.insert.writing', submenu: Templates.Writing },
         { labelKey: 'menu.insert.textBlock', submenu: Templates.TextBlock },
         { labelKey: 'menu.insert.fromFile', submenu: Templates.InsertFromFiles },
         { type: 'separator' },
         insertMaterial,
         insertMermaid, // 编码
-        insertPlantUML // 切换编码
+        insertPlantUML, // 切换编码
+        // 绘图工具（从「工具」菜单迁入；动作链路保持 tools:drawing:* 不变）
+        drawingTools
         // FUN-09：自定义模板/模板管理原为主进程 console.warn 空实现（点击无任何反应），
         // 完整模板编辑与管理体系无法低成本实现，暂时从菜单隐藏（A-4 模式，数据保留）。
         // Roadmap：自定义模板编辑与模板管理界面。
@@ -437,25 +447,14 @@ const toolsMenu: BaiZeMenuEntry = {
     labelKey: 'menu.tools.label',
     submenu: [
         { labelKey: 'menu.tools.mermaid', menuAction: 'baize:menu:tools:mermaid' },
-        { labelKey: 'menu.tools.katex', menuAction: 'baize:menu:tools:katex' },
-        { labelKey: 'menu.tools.table', menuAction: 'baize:menu:tools:table' },
         { labelKey: 'menu.tools.images', menuAction: 'baize:menu:tools:images' },
-        // FUN-09：原"绘图工具"单条目 send 'OpenFile' 通道全库无监听（点击无反应）。
-        // 改为插入 mermaid/plantuml 基础框架模板，复用模板插入事件链路
-        // （menu_actions.ts emit 'baize:notes:monaco-editor:insert-text'）。
-        {
-            labelKey: 'menu.tools.drawing.label',
-            submenu: [
-                {
-                    labelKey: 'menu.tools.drawing.mermaid',
-                    menuAction: 'baize:menu:tools:drawing:mermaid'
-                },
-                {
-                    labelKey: 'menu.tools.drawing.plantuml',
-                    menuAction: 'baize:menu:tools:drawing:plantuml'
-                }
-            ]
-        },
+        { type: 'separator' },
+        // 从「插入」菜单迁入的内容工具；公式/表格与原 tools:katex/table 重复项已合并
+        { labelKey: 'menu.insert.specialText', menuAction: 'baize:menu:insert:special-text' },
+        { labelKey: 'menu.insert.math', menuAction: 'baize:menu:insert:math' },
+        { labelKey: 'menu.insert.mdTable', menuAction: 'baize:menu:insert:md-table' },
+        { labelKey: 'menu.insert.webLink', menuAction: 'baize:menu:insert:web-link' },
+        { type: 'separator' },
         // 1.5.2 E6：今日日记 / 快速收件箱（可选能力 dailyNotes，默认关闭）。
         // 菜单项保持可见以便用户发现；动作执行时由 menu-actions 校验开关并提示开启，
         // 关闭状态下不产生任何文件行为（命令面板侧则按开关不注册入口）。
