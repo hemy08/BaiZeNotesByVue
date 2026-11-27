@@ -1,6 +1,6 @@
 ## 版本 1.5.5 (2026-11-27)
 
-> **发布状态**：**开发中（待发布）**｜tag：`release-1.5.5`（发布时创建）｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
+> **发布状态**：**已发布**（2026-11-27）｜tag：[`release-1.5.5`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.5)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
 
 [更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
 

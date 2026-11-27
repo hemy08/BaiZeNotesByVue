@@ -31,9 +31,7 @@ test.skip(
 const EXIT_TIMEOUT_MS = 15_000
 
 /** 启动主界面 + 隔离配置；返回清理函数 */
-async function launchIsolated(
-    description: string
-): Promise<{
+async function launchIsolated(description: string): Promise<{
     launch: MainViewLaunch
     profile: TempProfile
     sandbox: ConfigSandbox

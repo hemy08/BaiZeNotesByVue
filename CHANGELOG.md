@@ -1,6 +1,6 @@
 ## 2026年11月27日 - 版本 1.5.5（视觉升级，开发中）
 
-> **发布状态**：**开发中（待发布）**（版本号已升级为 `1.5.5`；RELEASE-NOTES 1.5.5 段已就绪，GitHub Release 与 tag `release-1.5.5` 待发布窗口创建）。
+> **发布状态**：**已发布**（2026-11-27）｜tag：[`release-1.5.5`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.5)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
 >
 > **范围**：视觉升级 1.5.5（[方案](docs/wiki/04-优化与专项报告/视觉升级方案-1.5.5.md) P0 → P1 → P2），共 4 种界面风格（paper / glass / workbench / hybrid）× 3 档密度（compact / default / spacious）× 28 套应用主题，全部由语义令牌层驱动；编辑器 Monaco 主题（57 套）仍独立、不参与风格切换。
 >
