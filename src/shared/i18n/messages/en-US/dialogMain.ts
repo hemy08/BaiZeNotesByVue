@@ -11,6 +11,16 @@ export default {
             detail: 'A dialog of the same kind is already open. Please close it first!'
         }
     },
+    // Feedback 2026-11-27: minimize / maximize / restore buttons in the top-right of non-modal tool windows (BaseDialog)
+    toolWindow: {
+        minimize: 'Minimize',
+        maximize: 'Maximize',
+        restore: 'Restore'
+    },
+    // Feedback 2026-11-27: plugin tools panel top bar title (PluginTools)
+    pluginTools: {
+        title: 'Plugin Tools'
+    },
     confirmDelete: {
         title: 'Confirm',
         message: 'Are you sure you want to delete [{path}]?',

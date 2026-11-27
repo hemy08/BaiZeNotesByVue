@@ -11,6 +11,16 @@ export default {
             detail: '已经有一个相同的对话框，请先关闭！！！'
         }
     },
+    // 用户反馈 2026-11-27：非模态工具窗右上角新增最小化 / 最大化 / 还原按钮（BaseDialog）
+    toolWindow: {
+        minimize: '最小化',
+        maximize: '最大化',
+        restore: '还原'
+    },
+    // 用户反馈 2026-11-27：插件工具面板顶部工具条标题（PluginTools）
+    pluginTools: {
+        title: '插件工具'
+    },
     confirmDelete: {
         title: '确认',
         message: '确定要删除[{path}]吗？',

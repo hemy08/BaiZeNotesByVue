@@ -22,6 +22,7 @@
                         :aria-describedby="ariaDescribedbyValue"
                         :data-dialog-shell="isNonModal ? 'tool-window' : 'dialog'"
                         :data-dialog-size="props.widthSize || undefined"
+                        :data-tool-window-state="toolWindowStateAttr"
                         tabindex="-1"
                         @mousedown="handleContainerMouseDown"
                     >
@@ -47,6 +48,72 @@
                                     {{ title }}
                                 </span>
                             </slot>
+                            <!--
+                                用户反馈 2026-11-27：非模态工具窗右上角 [最小化][最大化/还原][关闭]。
+                                - 最小化：容器收为「仅标题栏」（正文/footer/prepend 隐藏，按钮保留可还原）；
+                                - 最大化：容器宽高撑满主窗口可用区域（containerStyles 末位覆盖定位，
+                                  再次点击恢复原尺寸与拖拽位置）；
+                                - 两者互斥，由同一个 toolWindowState 状态机保证；模态对话框不渲染。
+                                图标为内联 SVG（24 网格 / stroke 1.5 / currentColor），按钮尺寸与关闭按钮
+                                一致（28×28）、悬停 --ui-accent-soft、键盘焦点环 --ui-focus-shadow。
+                                按钮在标题栏右侧顺序：最小化 → 最大化 → 关闭。
+                            -->
+                            <div v-if="isNonModal" class="tool-window-controls">
+                                <button
+                                    class="tool-window-control-btn"
+                                    type="button"
+                                    :aria-label="minimizeButtonLabel"
+                                    :title="minimizeButtonLabel"
+                                    @mousedown.stop
+                                    @click.stop="toggleMinimize"
+                                >
+                                    <svg
+                                        class="tool-window-control-icon"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        aria-hidden="true"
+                                        focusable="false"
+                                    >
+                                        <!-- 最小化：横线；已最小化：双框「还原」 -->
+                                        <path v-if="toolWindowState !== 'minimized'" d="M5 12h14" />
+                                        <template v-else>
+                                            <path d="M4 8h12v12H4z" />
+                                            <path d="M8 8V4h12v12h-4" />
+                                        </template>
+                                    </svg>
+                                </button>
+                                <button
+                                    class="tool-window-control-btn"
+                                    type="button"
+                                    :aria-label="maximizeButtonLabel"
+                                    :title="maximizeButtonLabel"
+                                    @mousedown.stop
+                                    @click.stop="toggleMaximize"
+                                >
+                                    <svg
+                                        class="tool-window-control-icon"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        aria-hidden="true"
+                                        focusable="false"
+                                    >
+                                        <!-- 最大化：四角展开；已最大化：四角内缩「还原」 -->
+                                        <path
+                                            v-if="toolWindowState !== 'maximized'"
+                                            d="M4 9V4h5M20 15v5h-5M4 15v5h5M20 9V4h-5"
+                                        />
+                                        <path v-else d="M9 4v5H4M15 20v-5h5M9 20v-5H4M15 4v5h5" />
+                                    </svg>
+                                </button>
+                            </div>
                             <button
                                 class="close-btn"
                                 :class="`close-btn--${closeButtonVariant}`"
@@ -140,10 +207,11 @@
  *   + 6 点拖拽把手、面 `--ui-surface` × `--ui-surface-opacity` + glass 小面积
  *   `--ui-surface-blur`、hairline 边框、`--ui-shadow-2`、打开聚焦内容首个交互元素、
  *   Esc 只关最顶层（焦点在工具窗内时）、不锁 body 滚动、外部点击不关闭（保持 1.5.3）。
- *   说明：T6 规格中的「最小化按钮」1.5.3 现有工具窗均未提供该功能，本批不新增交互
- *   能力（避免功能范围外扩），列为后续批次候选；「内容内边距 --ui-pad」由可选
- *   `contentPadding` 包裹层提供（T12 落地、默认关闭，不改变既有 25 个对话框的 DOM 子节点
- *   契约），后续批次在正文自身无内边距的工具窗上逐个启用。
+ *   说明：用户反馈 2026-11-27 起，非模态工具窗标题栏提供「最小化 / 最大化 / 还原」三个
+ *   控制按钮（状态机 `normal | minimized | maximized`，见下方 toolWindowState）；模态
+ *   对话框不渲染这两个按钮。「内容内边距 --ui-pad」由可选 `contentPadding` 包裹层提供
+ *   （T12 落地、默认关闭，不改变既有 25 个对话框的 DOM 子节点契约），后续批次在正文自身
+ *   无内边距的工具窗上逐个启用。
  *
  * 行为与迁移前单个对话框的外壳保持一致：
  * 1. `<Teleport to="body">` 默认开启，可用 `teleport` 关闭 / 指定目标（测试用 teleport stub）；
@@ -162,6 +230,11 @@
  *    **非模态工具窗扩展**：打开时聚焦内容首个可交互元素（优先输入控件）；不锁 body 滚动
  *    （与编辑器滚动互不干扰）；Esc 仅在焦点位于工具窗内时关闭（焦点在编辑器时交还编辑器）；
  *    关闭时若用户已把焦点移到编辑器则不抢回。
+ * 7. 非模态工具窗标题栏控制（用户反馈 2026-11-27，纯增量，模态对话框零变化）：
+ *    最小化 ↔ 还原（仅标题栏 40px，正文/footer/prepend 隐藏）、最大化 ↔ 还原
+ *    （100vw/100vh − 32px、四周 16px 留白），最大/最小互斥；最大化时从标题栏开始拖拽
+ *    会先把状态复位 normal（避免视口覆盖样式与拖拽定位冲突），恢复后回到原拖拽位置。
+ *    按钮顺序 [最小化][最大化][关闭]，均有 aria-label/title，可 Tab 聚焦并显示焦点环。
  *
  * 说明：本组件样式使用 scoped 而非全局 `styles/dialog.css`——避免非 scoped 外壳类
  * （`.dialog-overlay` 等）在 15 个尚未迁移的对话框上产生全局样式泄漏，符合本任务
@@ -314,6 +387,60 @@ const isNonModal = computed(
 )
 /** 是否为真正的模态外壳：模态 prop 且未启用非模态（决定焦点陷阱/aria-modal/滚动锁） */
 const isModal = computed(() => props.modal && !isNonModal.value)
+
+// ==================== 非模态工具窗：最小化 / 最大化 / 还原（用户反馈 2026-11-27） ====================
+/**
+ * 工具窗标题栏控制状态机（三者互斥，状态内聚在 BaseDialog）。
+ *
+ * - `normal`：默认尺寸与位置（拖拽位置由 useDialogDrag 的 dialogStyle 保持）；
+ * - `minimized`：容器收为「仅标题栏」，高度 = `--ui-titlebar-height`，正文/footer/prepend
+ *   隐藏（`display: none` 同时移出 Tab 次序与无障碍树），标题栏与三个按钮保留；
+ * - `maximized`：宽高撑满主窗口可用区域（`100vw/100vh - 32px`，四周 16px 留白），
+ *   通过 containerStyles **末位**覆盖调用方 containerStyle（TableEditor/Mermaid 的
+ *   resize 尺寸等），恢复时移除覆盖即回到 dialogStyle 的原位置。
+ *
+ * 生命周期：工具窗每次打开由父组件 v-if 重新挂载（状态自然重置）；额外监听
+ * `visible` / `isNonModal` 做兜底复位，避免 v-show 复用或系统开关关闭后残留覆盖样式。
+ */
+type ToolWindowState = 'normal' | 'maximized' | 'minimized'
+const toolWindowState = ref<ToolWindowState>('normal')
+
+/** 最小化按钮文案：正常/最大化时「最小化」，已最小化时「还原」 */
+const minimizeButtonLabel = computed(() =>
+    toolWindowState.value === 'minimized'
+        ? t('dialogMain.toolWindow.restore')
+        : t('dialogMain.toolWindow.minimize')
+)
+/** 最大化按钮文案：正常/最小化时「最大化」，已最大化时「还原」 */
+const maximizeButtonLabel = computed(() =>
+    toolWindowState.value === 'maximized'
+        ? t('dialogMain.toolWindow.restore')
+        : t('dialogMain.toolWindow.maximize')
+)
+
+/** 状态数据属性：仅非模态工具窗输出，便于 E2E/外部样式观察（模态对话框不受影响） */
+const toolWindowStateAttr = computed(() => (isNonModal.value ? toolWindowState.value : undefined))
+
+function toggleMinimize(): void {
+    toolWindowState.value = toolWindowState.value === 'minimized' ? 'normal' : 'minimized'
+}
+
+function toggleMaximize(): void {
+    toolWindowState.value = toolWindowState.value === 'maximized' ? 'normal' : 'maximized'
+}
+
+/** 运行中关闭「非模态工具对话框」开关：复位状态，避免按钮消失后容器仍被覆盖样式撑满 */
+watch(isNonModal, (nonModal) => {
+    if (!nonModal) toolWindowState.value = 'normal'
+})
+
+/** 每次打开复位（正常工具窗由父组件 v-if 重新挂载；此处兜底 v-show 复用场景） */
+watch(
+    () => props.visible,
+    (isVisible) => {
+        if (isVisible) toolWindowState.value = 'normal'
+    }
+)
 
 // ==================== 可访问性（a11y）契约 ====================
 // 1) role="dialog" + aria-modal + 标题关联（aria-labelledby / aria-label）+ 可选描述关联
@@ -648,10 +775,14 @@ const overlayStyles = computed<StyleValueList>(() => {
     return styles
 })
 
-/** 容器 class：调用方自定义 class + 工具窗壳标记（T6） */
+/** 容器 class：调用方自定义 class + 工具窗壳标记（T6）+ 工具窗状态标记（最小化/最大化） */
 const containerClassList = computed<ClassValue[]>(() => [
     props.containerClass ?? {},
-    { 'dialog-container--tool-window': isNonModal.value }
+    { 'dialog-container--tool-window': isNonModal.value },
+    {
+        'dialog-container--minimized': isNonModal.value && toolWindowState.value === 'minimized',
+        'dialog-container--maximized': isNonModal.value && toolWindowState.value === 'maximized'
+    }
 ])
 
 /** 标题栏 class：变体 + 工具窗标记（T6 统一壳，密度/风格全部来自令牌变量） */
@@ -660,8 +791,40 @@ const titleBarClassList = computed(() => [
     ...(isNonModal.value ? ['title-bar--tool-window'] : [])
 ])
 
+/**
+ * 工具窗状态覆盖样式（用户反馈 2026-11-27）：
+ * - 最小化：只改高度（宽度/水平位置沿用原值），正文隐藏由 `.dialog-container--minimized`
+ *   子节点规则负责；内联高度同时覆盖调用方 containerStyle 的 resize/固定高度；
+ * - 最大化：fixed 定位 + 16px 四周留白撑满主窗口；`transform: none` 必须显式清除
+ *   dialogStyle 的居中 `translate(-50%,-50%)`（否则会整体偏移）；`box-sizing: border-box`
+ *   让边框计入宽高，左右/上下留白对称；
+ * - 状态样式在 containerStyles 末位 push，优先级高于调用方 containerStyle（规格要求）。
+ */
+const toolWindowStateStyle = computed<CSSProperties | null>(() => {
+    if (!isNonModal.value) return null
+    if (toolWindowState.value === 'minimized') {
+        return {
+            height: 'var(--ui-titlebar-height, 40px)',
+            minHeight: 'var(--ui-titlebar-height, 40px)'
+        }
+    }
+    if (toolWindowState.value === 'maximized') {
+        return {
+            width: 'calc(100vw - 32px)',
+            height: 'calc(100vh - 32px)',
+            left: '16px',
+            top: '16px',
+            transform: 'none',
+            margin: '0',
+            boxSizing: 'border-box'
+        }
+    }
+    return null
+})
+
 // 容器内联样式：dialogStyle（定位）→ 宽度（width/widthSize）→ 非模态点击可交互 →
-// containerStyle 全权覆盖（containerStyle 放在最后，允许显式覆盖 width，语义与迁移前一致）。
+// containerStyle 全权覆盖（containerStyle 放在最后，允许显式覆盖 width，语义与迁移前一致）→
+// 工具窗最小化/最大化状态覆盖（放在最末位，覆盖调用方 resize/固定尺寸与居中 transform）。
 const containerStyles = computed<StyleValueList>(() => {
     const styles: StyleValueList = [dialogStyle.value]
     const width = resolvedWidth.value
@@ -673,6 +836,10 @@ const containerStyles = computed<StyleValueList>(() => {
     }
     if (props.containerStyle) {
         styles.push(props.containerStyle as CSSProperties)
+    }
+    const stateStyle = toolWindowStateStyle.value
+    if (stateStyle) {
+        styles.push(stateStyle)
     }
     return styles
 })
@@ -689,9 +856,22 @@ function handleClose(): void {
 
 function handleContainerMouseDown(event: MouseEvent): void {
     // 非拖拽模式（如 HelpAboutDialog / 依赖 -webkit-app-region 的标题栏）不启动自定义拖拽。
-    if (props.draggable) {
-        onDialogMouseDown(event)
+    if (!props.draggable) return
+    const target = event.target
+    if (target instanceof Element) {
+        // 标题栏控件按钮（关闭 / 最小化 / 最大化）不触发拖拽（按钮同时用 @mousedown.stop 兜底）。
+        if (target.closest('.title-bar .close-btn, .title-bar .tool-window-control-btn')) return
+        // 最大化时开始拖拽：先把状态复位 normal，避免视口覆盖样式与拖拽定位互相覆盖；
+        // 仅标题栏拖拽触发复位，正文/底栏点击（含最大化窗内编辑）不改变状态。
+        if (
+            target.closest('.title-bar') &&
+            isNonModal.value &&
+            toolWindowState.value === 'maximized'
+        ) {
+            toolWindowState.value = 'normal'
+        }
     }
+    onDialogMouseDown(event)
 }
 </script>
 
@@ -889,6 +1069,64 @@ function handleContainerMouseDown(event: MouseEvent): void {
     opacity: 0.9;
 }
 
+/* ==================== 工具窗最小化 / 最大化按钮（用户反馈 2026-11-27） ==================== */
+/*
+ * 控制按钮组：[最小化][最大化/还原][关闭]。位于标题栏右侧（标题之后、关闭之前），
+ * 用 margin-left: auto 把整组推到右端（关闭按钮不再单独 auto，避免两个 auto 均分空隙）。
+ * 视觉与关闭按钮一致：28×28 方形圆角、透明底、语义文字色，hover 用 --ui-accent-soft，
+ * 键盘焦点环用 --ui-focus-shadow（DESIGN.md §6，替代浏览器 outline）。
+ */
+.tool-window-controls {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tool-window-control-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: var(--ui-radius-md, 4px);
+    background: transparent;
+    color: var(--ui-text-secondary, var(--secondary-text-color));
+    cursor: pointer;
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        box-shadow var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+.tool-window-control-btn:hover {
+    background: var(--ui-accent-soft, var(--hover-bg));
+    color: var(--ui-text, var(--text-color));
+}
+
+.tool-window-control-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--ui-focus-shadow);
+}
+
+.tool-window-control-icon {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+/*
+ * 最小化态：容器只剩标题栏（内联 height = --ui-titlebar-height 由 toolWindowStateStyle 写入，
+ * 用于覆盖调用方 containerStyle 的高度）。直接子节点中除标题栏外全部隐藏——正文/footer/
+ * prepend 装饰层都不再占位，且 display:none 会同时移出 Tab 次序与无障碍树；
+ * 标题栏及三个按钮保留，用户可以再次点击「还原」。
+ */
+.dialog-container--minimized > :not(.title-bar) {
+    display: none;
+}
+
 /* ==================== 关闭按钮 ==================== */
 .close-btn {
     border: none;
@@ -936,9 +1174,10 @@ function handleContainerMouseDown(event: MouseEvent): void {
     box-shadow: var(--ui-focus-shadow);
 }
 
-/* T6 工具窗关闭按钮：28×28 中性色（标题栏为浅色悬浮面，白字不可用） */
+/* T6 工具窗关闭按钮：28×28 中性色（标题栏为浅色悬浮面，白字不可用）
+   margin-left 不再用 auto：右侧由 .tool-window-controls 的 auto 边距整体推到标题栏右端，
+   关闭按钮紧跟控制按钮组，避免两个 auto 边距把空隙均分成两段。 */
 .title-bar--tool-window .close-btn {
-    margin-left: auto;
     width: 28px;
     height: 28px;
     border-radius: var(--ui-radius-md, 4px);

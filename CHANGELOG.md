@@ -1,4 +1,21 @@
-## 2026年11月27日 - 版本 1.5.5（视觉升级，开发中）
+## 开发中（目标 1.5.6）- 工具窗体验与表格编辑器修复
+
+> **发布状态**：**开发中（未发布）**｜范围：表格编辑器窗口缩放修复、非模态工具窗与插件工具面板的最小化/最大化
+
+### ✅ 表格编辑器窗口缩放修复（2026-11-27）
+
+- **根因**：v1.5.5 表格编辑器正文新增内边距后，`.table-editor-body`（content-box + `width:100%`）溢出容器 32px，把右下角 `.resize-grip` 挤出 `.dialog-container` 的 `overflow:hidden` 裁剪区——拖拽命中下层预览（`elementFromPoint` 实测），窗口无法调整大小
+- **修复**：正文根节点显式 `box-sizing: border-box`；`.resize-grip` 由 `right/bottom: -2px` 内缩为 `2px` 并加 `z-index: 2`；E2E 回归实测 **1002×509 → 1164×631**
+- **护栏**：`tests/unit/vue/table-editor-dialog.test.ts` +1 静态契约（border-box/内缩/z-index）；新增 `e2e/table-editor-resize.spec.ts` 真实拖拽回归
+
+### ✅ 非模态工具窗与插件工具面板：最大化/最小化（2026-11-27）
+
+- **工具窗（BaseDialog，8 个非模态工具）**：标题栏右侧新增 **[最小化][最大化][关闭]** 三按钮（28×28、令牌图标、`aria-label`、键盘焦点环）——最小化折叠为仅标题栏（高度=标题栏令牌）、最大化铺满主窗口可用区（视口−32 / 偏移 16），再次点击还原；恢复最大化后回到原拖拽位置
+- **插件工具面板（38 项）**：新增 44px 顶部工具条（标题「插件工具」+ [最小化][最大化][返回编辑器]）；最小化折叠为工具条、最大化让工具内容铺满工作区宽度（内容预留 100→16px）
+- **i18n**：`dialogMain.toolWindow.minimize/maximize/restore`、`dialogMain.pluginTools.title`（中英）
+- **验证**：新增 `tests/unit/vue/tool-window-controls.test.ts`（18 用例）+ `e2e/tool-window-controls.spec.ts`（真实 Electron 2 用例：最小化 42px / 最大化 1248×768@16,16 / 还原偏差 0；插件面板 44px / 内容 798→882px）
+
+## 2026年11月27日 - 版本 1.5.5（视觉升级，已发布）
 
 > **发布状态**：**已发布**（2026-11-27）｜tag：[`release-1.5.5`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.5)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
 >

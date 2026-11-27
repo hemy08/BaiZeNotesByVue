@@ -508,12 +508,22 @@ describe('TableEditorDialog 显示层规则（数字/文本/日期/空值）', (
 })
 
 describe('表格编辑器留白（用户反馈 2026-11-27）', () => {
+    const source = fs.readFileSync(
+        'src/renderer/src/components/dialogs/medium/table-editor/TableEditorDialog.vue',
+        'utf8'
+    )
+
     it('正文根节点 .table-editor-body 通过 --ui-pad 令牌提供内容与边框留白', () => {
-        const source = fs.readFileSync(
-            'src/renderer/src/components/dialogs/medium/table-editor/TableEditorDialog.vue',
-            'utf8'
-        )
         const rule = source.match(/\.table-editor-body\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
         expect(rule).toContain('padding: calc(var(--ui-pad')
+    })
+
+    it('resize-grip 不被容器裁剪（body border-box + 内缩定位 + z-index 三重护栏）', () => {
+        const bodyRule = source.match(/\.table-editor-body\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+        const gripRule = source.match(/\.resize-grip\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+        expect(bodyRule).toContain('box-sizing: border-box')
+        expect(gripRule).toContain('right: 2px')
+        expect(gripRule).toContain('bottom: 2px')
+        expect(gripRule).toContain('z-index: 2')
     })
 })

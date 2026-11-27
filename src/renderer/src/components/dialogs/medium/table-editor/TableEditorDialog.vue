@@ -1143,6 +1143,10 @@ function handleApply(): void {
     flex-direction: column;
     gap: var(--ui-pad, 12px);
     width: 100%;
+    /* 用户反馈（2026-11-27）：本节点为 content-box（全局 border-box 未覆盖），
+       width:100% + padding 会让正文溢出容器 32px，把右下角 resize-grip 挤出
+       overflow:hidden 的裁剪边界导致拖拽不可点——此处显式 border-box。 */
+    box-sizing: border-box;
     min-width: 0;
     min-height: 0;
     flex: 1;
@@ -1822,8 +1826,10 @@ tbody tr:hover .row-delete,
 /* ---------- 右下角缩放 ---------- */
 .resize-grip {
     position: absolute;
-    right: -2px;
-    bottom: -2px;
+    /* 用户反馈（2026-11-27）：内缩 2px 而非 -2px，避免被 .dialog-container 的
+       overflow:hidden 裁剪导致拖拽不可点（out-of-bounds 时 elementFromPoint 命中下层）。 */
+    right: 2px;
+    bottom: 2px;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -1832,8 +1838,11 @@ tbody tr:hover .row-delete,
     width: 20px;
     height: 20px;
     padding: 3px;
+    box-sizing: border-box;
     cursor: nwse-resize;
     opacity: 0.55;
+    /* 拖拽把手置于正文内容之上：设置区/网格/底部按钮不遮挡命中 */
+    z-index: 2;
 }
 
 .resize-grip span {
