@@ -1,3 +1,59 @@
+## 版本 1.5.3 (2026-11-27)
+
+> **发布状态**：**已发布**（2026-11-27）｜tag：[`release-1.5.3`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.3)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+> 本版本聚焦 **Markdown 编辑器 P0 体验**：格式工具栏、非模态工具窗、统一表格编辑器、图片插入增强、菜单重组与未命名草稿保护；不扩展知识库主线。仍为 Windows x64、未代码签名产物。
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">🎉 主要更新</summary>
+<blockcode><pre><code>
+
+### ✍️ 编辑器体验
+
+- **内联格式工具栏**：选中文本或光标所在词时切换粗体、斜体、删除线、行内代码；支持粗体+斜体组合，工具栏按当前选区状态高亮
+- **未命名草稿保护**：未打开文件时输入的内容只写入本地草稿缓存；点击文件先提示「保存并打开 / 不保存 / 取消」，保存走系统另存为，避免草稿覆盖目标文件；重载后可恢复草稿
+- **统一 GFM 表格编辑器**：插入与编辑共用同一界面；支持指定行列、统一对齐、导入 Excel(.xlsx)/CSV、拖动列宽、行列重排、任意位置增删、按列排序、行列互换、多行 Markdown、任务清单与拖拽缩放
+- **图片插入增强**：支持宽度、对齐、图注，输出 `figure/img/figcaption`；默认仍输出标准 Markdown
+- **粘贴/复制 Markdown**：复用 A8 HTML→Markdown 与复制为 Markdown/HTML 能力
+
+### 🧩 工具与菜单
+
+- **菜单重组**：绘图工具（Mermaid/PlantUML）迁入「插入」并提升为一级分组；特殊字体、数学公式、Markdown 表格、网页链接迁入「工具」，合并重复的公式/表格入口
+- **非模态工具窗**：插入菜单与编辑工具对话框打开后，点击外部、悬停或按 Esc 均不关闭，遮罩可穿透以便继续编辑 Markdown；仅关闭按钮与插入/应用等显式操作关闭
+- **非模态开关**：系统设置 → 功能新增「非模态工具对话框」，默认开启，可关闭恢复普通模态行为
+
+### 🔐 稳定性与数据安全
+
+- 未装载文件时的编辑不再同步到主进程活动文件，避免启动恢复的旧文件或目标文件被草稿覆盖
+- 文件树、资源管理器导出、标签切换、预览链接、工作区搜索等打开入口统一接入未命名草稿确认
+- 保持既有 IPC 安全边界：未新增 IPC 通道，路径校验、sender 校验与文件白名单链路不变
+
+### ⚙️ 工程与门禁
+
+- IPC **108 通道 / 18 组**，preload 白名单 send 74 + receive 28
+- 测试 **351 文件 / 6,406 用例（6,401 通过 + 5 跳过）**；覆盖率 **93.17 / 87.73 / 93.79 / 93.59**
+- typecheck / ESLint / Prettier / docs / quality / audit / fuses / budget 全绿
+- 体积：入口 **142.8 KiB** / 首屏 **329.5 KiB** / Setup **111.59 MiB** / portable **100.98 MiB** / asar **39.32 MiB**
+- 发布产物硬化：Fuses 8 项 + 无调试器启动冒烟通过
+
+</code></pre></blockcode></details>
+
+<details>
+<summary style="color:rgb(0,0,255);font-weight:bold">📌 已知限制</summary>
+<blockcode><pre><code>
+
+- 仅提供 Windows x64 安装包；未接入代码签名，发布产物未签名
+- 搜索面板、命令面板与设置/确认类对话框仍保持模态行为
+- PDF 标注、OCR、剪藏、日记/收件箱等可选能力默认关闭，需在系统设置中开启
+- E3 OCR MVP 仅英文 `eng`，首次使用需联网下载语言包；中文语言包与图片文字索引未做
+- C2 静态站点、B3 关系图谱、E4 块引用、E5 数据库视图、E7 Canvas、D1 插件 SDK、D3 macOS/Linux、D4 Git、D5 云同步、D8 WYSIWYG 仍为后续候选
+
+</code></pre></blockcode></details>
+
+---
+
 ## 版本 1.5.2 (2026-11-22)
 
 > **发布状态**：**已发布**（2026-11-22）｜tag：[`release-1.5.2`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.2)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
