@@ -85,6 +85,14 @@ import {
     type WorkspaceLayoutProfile,
     type WorkspaceLayoutViewMode
 } from './workspace-layout'
+// 未打开文件时的编辑属于“未命名草稿”：只落渲染层缓存，绝不写入主进程活动文件
+import {
+    clearUntitledDraft,
+    flushUntitledDraft,
+    readUntitledDraft,
+    writeUntitledDraft
+} from './untitled-draft'
+import { saveUntitledDraftAs, requestOpenFile } from './request-open-file'
 
 // M5：保存/模板/导入替换 3 个进程内事件订阅统一经 useEventBus 注册，卸载时自动清理
 const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownEditComponent' })
@@ -298,8 +306,9 @@ const documentTabsController = useDocumentTabs({
         saveContentToDisk()
     },
     openFile: (tab) => {
-        // 复用既有文件打开链路（文件树/最近文件同一通道），主进程 OPEN 前自动保存当前文件
-        window.electron.ipcRenderer.send(IPC.FILE.OPEN_SELECT_FILE, {
+        // 复用既有文件打开链路（文件树/最近文件同一通道），主进程 OPEN 前自动保存当前文件；
+        // 若当前编辑器处于无文件草稿状态，先走保存确认
+        void requestOpenFile({
             name: tab.name,
             path: tab.path,
             type: 'file',
@@ -522,6 +531,15 @@ function handleMarkdownCodeUpdate(newValue: string) {
         documentTabsController.handleEditorContent(newValue)
     }
 
+    // 尚未装载任何文件：内容属于未命名草稿，只写渲染层缓存。
+    // 绝不能经 UPDATE_SELECT_FILE_CONTENT 同步进主进程当前活动文件——启动恢复的
+    // 旧活动文件可能仍在 appState 中，同步会把草稿覆盖到旧文件/随后打开的文件。
+    if (!documentLoaded.value) {
+        clearContentSyncTimer()
+        writeUntitledDraft(newValue)
+        return
+    }
+
     // 新内容与上次已同步内容一致（如加载文件触发的 setValue 回传）时不重复发送
     if (newValue === lastSyncedContent) {
         clearContentSyncTimer()
@@ -542,6 +560,9 @@ function handleMarkdownCodeUpdate(newValue: string) {
  * @returns 是否真正发送了 IPC
  */
 function syncContentToMain(): boolean {
+    if (!documentLoaded.value) {
+        return false
+    }
     const content = markdownEditorContent.value
     if (content === lastSyncedContent) {
         return false
@@ -554,6 +575,11 @@ function syncContentToMain(): boolean {
 // 立即同步当前内容（保存动作前 / 主进程 flush 请求时调用）
 function flushContentSync() {
     clearContentSyncTimer()
+    // 未装载文件时不向主进程同步，避免把未命名草稿写进旧的活动文件
+    if (!documentLoaded.value) {
+        flushUntitledDraft()
+        return
+    }
     // 直接发送当前内容；IPC 消息有序，主进程收到 'baize:editor:flush-content-done' 前必先收到本条内容
     syncContentToMain()
 }
@@ -569,6 +595,16 @@ function flushContentSync() {
 function saveContentToDisk() {
     clearContentSyncTimer()
     const content = markdownEditorContent.value
+    // 未装载文件（未命名草稿）：Ctrl+S / 菜单保存走“另存为”，不能对主进程的旧活动文件落盘
+    if (!documentLoaded.value) {
+        flushUntitledDraft()
+        void saveUntitledDraftAs(content).then((saved) => {
+            if (saved) {
+                clearUntitledDraft()
+            }
+        })
+        return
+    }
     window.electron.ipcRenderer.send(IPC.FILE.SAVE_TO_DISK, content)
     // 主进程 SAVE handler 已把载荷写入当前活动文件内容，同步推进脏标记基准
     lastSyncedContent = content
@@ -594,6 +630,10 @@ const handleFlushContent = () => {
 function onHandleNewContent(content: string, kind: 'open' | 'reload' = 'open') {
     // 1.5.0（滚动同步）：新文件不继承上一文件的同步目标（否则预览会重放旧行号）
     resetSyncScrollTarget()
+    // 文件已装载：未命名草稿已被保存/放弃，清空缓存，避免下次打开文件误弹确认
+    if (kind === 'open') {
+        clearUntitledDraft()
+    }
     // A1 多标签（opt-in）：切回「曾处于未保存状态」的标签时，若磁盘内容与内存快照不同
     //（落盘异常等），优先用快照恢复；关闭开关时返回原内容，既有行为不变。
     const effectiveContent = tabsEnabled.value
@@ -668,6 +708,16 @@ const handleClearEditor = () => {
     if (isShowEditArea.value) {
         initialCodeContent.value = ''
     }
+    // 未命名草稿缓存恢复：欢迎页/无活动文件时清空显示，但缓存内容仍属于用户，
+    // 回到编辑器时恢复显示；此时 documentLoaded 保持 false，绝不向主进程同步。
+    const cachedDraft = readUntitledDraft()
+    if (cachedDraft) {
+        lastSyncedContent = cachedDraft
+        markdownEditorContent.value = cachedDraft
+        if (isShowEditArea.value) {
+            initialCodeContent.value = cachedDraft
+        }
+    }
 }
 
 const handleEditModel = () => {
@@ -736,6 +786,11 @@ const handleResize = () => {
     if (parentElement) {
         windowWidth.value = parentElement.clientWidth.toString()
     }
+}
+
+/** 页面卸载前立即落草稿缓存（写入本身有防抖） */
+const handleBeforeUnload = () => {
+    flushUntitledDraft()
 }
 
 // FUN-02：编码菜单"以指定编码打开"——收到主进程菜单事件后，
@@ -835,6 +890,18 @@ onMounted(() => {
 
     window.addEventListener('resize', handleResize)
     window.addEventListener('keydown', handleKeyDownEvent)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // 恢复上次未命名草稿（没有活动文件时才恢复；文件打开事件随后会覆盖并清空草稿）。
+    // 注意 documentLoaded 保持 false，确保恢复出来的内容不会被同步到主进程旧活动文件。
+    const cachedDraft = readUntitledDraft()
+    if (cachedDraft && !documentLoaded.value && !activeFilePath.value) {
+        lastSyncedContent = cachedDraft
+        markdownEditorContent.value = cachedDraft
+        if (isShowEditArea.value) {
+            initialCodeContent.value = cachedDraft
+        }
+    }
 
     // A1 多标签（opt-in）：挂载后按当前开关状态启用控制器（关闭时为零副作用）
     syncDocumentTabsRuntime(tabsEnabled.value)
@@ -859,6 +926,7 @@ onBeforeUnmount(() => {
 
     window.removeEventListener('keydown', handleKeyDownEvent)
     window.removeEventListener('resize', handleResize)
+    window.removeEventListener('beforeunload', handleBeforeUnload)
     // EventBus 监听已由 useEventBus 自动清理
 
     window.electron.ipcRenderer.removeListener(

@@ -674,6 +674,14 @@ const dialogRenderer = {
         deleted: '已删除布局「{name}」',
         deleteFailed: '删除布局失败',
         noCustom: '还没有自定义布局，保存当前布局后会显示在这里。'
+    },
+    untitledDraft: {
+        title: '保存未命名内容',
+        message: '当前内容还没有保存到文件。打开所选文件前，是否先保存这些内容？',
+        detail: '选择「保存并打开」会弹出保存位置和文件名；选择「不保存」会清空当前未命名内容。',
+        save: '保存并打开',
+        discard: '不保存',
+        cancel: '取消'
     }
 }
 

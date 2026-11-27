@@ -692,6 +692,15 @@ const dialogRenderer = {
         deleted: 'Deleted layout "{name}"',
         deleteFailed: 'Failed to delete layout',
         noCustom: 'No custom layouts yet. Save the current layout to see it here.'
+    },
+    untitledDraft: {
+        title: 'Save untitled content',
+        message:
+            'The current content has not been saved to a file. Save it before opening the selected file?',
+        detail: 'Save and Open shows a save location/filename dialog. Do Not Save clears the current untitled content.',
+        save: 'Save and Open',
+        discard: 'Do Not Save',
+        cancel: 'Cancel'
     }
 }
 

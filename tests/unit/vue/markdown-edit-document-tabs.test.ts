@@ -196,7 +196,10 @@ describe('featureTabs 默认关闭：既有行为不变', () => {
         await simulateOpenFile('C:\\notes\\a.md', '内容A')
         expect(wrapper!.find('.document-tabs').exists()).toBe(false)
         expect(setItemSpy).not.toHaveBeenCalled()
-        expect(getItemSpy).not.toHaveBeenCalled()
+        // 未命名草稿缓存会读写自己的键；这里只要求标签会话键不被读写
+        expect(
+            getItemSpy.mock.calls.filter(([key]) => key === DOCUMENT_TABS_STORAGE_KEY)
+        ).toHaveLength(0)
 
         // Ctrl+Tab / Ctrl+W 不被拦截，也不发送打开文件 IPC
         const ctrlTab = new KeyboardEvent('keydown', {

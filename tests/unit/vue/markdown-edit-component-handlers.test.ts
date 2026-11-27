@@ -249,6 +249,9 @@ describe('MarkdownEditComponent：文件事件与编辑区可见性', () => {
 describe('MarkdownEditComponent：EventBus 事件与窗口尺寸', () => {
     it('保存到磁盘事件直接发送 SAVE_TO_DISK', async () => {
         await mountEditor()
+        // 先装载文件，进入正常“保存当前文件”语义；未装载文件时走草稿另存为
+        getIpcListener(IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT)({}, '已装载文件')
+        await nextTick()
         mounted_emitCode(wrapper!, '待保存内容')
         EventBus.$emit(EVENT_BUS.MONACO_SAVE_FILE_CONTENT_TO_DISK)
         expect(ipcRenderer.send).toHaveBeenCalledWith(IPC.FILE.SAVE_TO_DISK, '待保存内容')

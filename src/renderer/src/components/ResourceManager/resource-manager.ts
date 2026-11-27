@@ -6,6 +6,7 @@ import { t } from '../../common/i18n'
 import { getConfigStore } from '../../common/useConfigStore'
 import { logger } from '../../common/logger'
 import { FNV_OFFSET_BASIS, fnv1a32Mix } from '../../../../shared/utils/hash'
+import { requestOpenFile } from '../Markdown/request-open-file'
 import {
     MARKDOWN_EXTENSIONS,
     TREE_IMAGE_EXTENSIONS
@@ -487,12 +488,19 @@ function openNodeAndWaitActive(node: FileSysItem): Promise<boolean> {
         }
         const timer = setTimeout(() => finish(false), EXPORT_OPEN_TIMEOUT_MS)
         ipc.on(IPC.FILE.USER_SELECT_FILE, listener)
-        ipc.send(IPC.FILE.OPEN_SELECT_FILE, {
+        // 走未命名草稿保护：有草稿时先确认保存/不保存，再打开节点
+        void requestOpenFile({
             name: node.name,
             path: node.path,
             type: 'file',
             content: ''
         })
+            .then((requested) => {
+                if (!requested) {
+                    finish(false)
+                }
+            })
+            .catch(() => finish(false))
     })
 }
 

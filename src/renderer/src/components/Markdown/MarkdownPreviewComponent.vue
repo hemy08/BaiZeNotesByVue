@@ -70,6 +70,7 @@ import {
     type PreviewAnchorOffset,
     type PreviewScrollTarget
 } from './preview-scroll-sync'
+import { requestOpenFile } from './request-open-file'
 
 // CMP-15：XSS 防护 —— markdown-it 以 html:true 渲染，产物经 v-html 注入前必须消毒。
 // 消毒配置（svg + mathMl + file: URI 白名单）与分块净化统一收敛到 preview-sanitize.ts，
@@ -840,7 +841,8 @@ function handlePreviewClick(event: MouseEvent) {
             type: 'file',
             content: ''
         }
-        window.electron.ipcRenderer.send(IPC.FILE.OPEN_SELECT_FILE, fileInfo)
+        // 有未命名草稿时先弹保存确认，再打开相对链接文件
+        void requestOpenFile(fileInfo)
     } else if (href.startsWith('http')) {
         window.open(href, '_blank', 'noopener, noreferrer')
     }

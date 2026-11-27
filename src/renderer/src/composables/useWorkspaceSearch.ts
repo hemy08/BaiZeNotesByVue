@@ -20,6 +20,7 @@ import type {
 import { EVENT_BUS } from '../common/event-bus/event-bus-events'
 import EventBus from '../common/event-bus/event-bus'
 import { logger } from '../common/logger'
+import { requestOpenFile } from '../components/Markdown/request-open-file'
 import {
     buildReplaceAllOptions,
     buildReplaceOneOptions,
@@ -365,12 +366,32 @@ export async function openWorkspaceFileAtLine(
 
         try {
             ipc.on(IPC.FILE.USER_SELECT_FILE, listener)
-            ipc.send(IPC.FILE.OPEN_SELECT_FILE, {
-                name: getFileName(filePath),
-                path: filePath,
-                type: 'file',
-                content: ''
-            })
+            if (typeof window !== 'undefined' && window.electron?.ipcRenderer) {
+                // 未命名草稿保护：有草稿时先让用户选择保存/不保存，再打开搜索结果
+                void requestOpenFile({
+                    name: getFileName(filePath),
+                    path: filePath,
+                    type: 'file',
+                    content: ''
+                })
+                    .then((requested) => {
+                        if (!requested) {
+                            finish(false)
+                        }
+                    })
+                    .catch((error) => {
+                        logger.error('[WorkspaceSearch] 打开搜索结果文件失败：', error)
+                        finish(false)
+                    })
+            } else {
+                // Node 测试/无 preload 环境：沿用注入的 ipc 替身，便于纯逻辑单测
+                ipc.send(IPC.FILE.OPEN_SELECT_FILE, {
+                    name: getFileName(filePath),
+                    path: filePath,
+                    type: 'file',
+                    content: ''
+                })
+            }
         } catch (error) {
             logger.error('[WorkspaceSearch] 打开搜索结果文件失败：', error)
             finish(false)

@@ -56,6 +56,12 @@ import MarkdownEditComponent from '@renderer/components/Markdown/MarkdownEditCom
 import { getConfigStore } from '@renderer/common/useConfigStore'
 import { t } from '@renderer/common/i18n'
 import { IPC } from '../../../src/shared/ipc-channels'
+import {
+    flushUntitledDraft,
+    readUntitledDraft,
+    resetUntitledDraftForTesting,
+    writeUntitledDraft
+} from '@renderer/components/Markdown/untitled-draft'
 
 type IpcMock = {
     on: ReturnType<typeof vi.fn>
@@ -81,6 +87,7 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
         }
         // 与既有 Vue 组件测试一致：以 preload 暴露形态 stub 全局 electron
         vi.stubGlobal('electron', { ipcRenderer })
+        resetUntitledDraftForTesting()
     })
 
     afterEach(() => {
@@ -123,8 +130,15 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
             .map(([, payload]) => payload)
     }
 
+    /** 模拟主进程已下发文件内容，让编辑器进入“已装载文件”状态 */
+    async function loadFile(content = '已装载文件'): Promise<void> {
+        getIpcListener(IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT)({}, content)
+        await nextTick()
+    }
+
     it('should debounce full-content IPC to a single send after 500ms idle', async () => {
         await mountEditor()
+        await loadFile()
 
         emitCode('第一版')
         expect(ipcRenderer.send).not.toHaveBeenCalled()
@@ -137,8 +151,59 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
         expect(ipcRenderer.send).toHaveBeenCalledTimes(1)
     })
 
+    it('should keep no-document edits in the draft cache and never sync them to main', async () => {
+        await mountEditor()
+
+        emitCode('未点击文件时的草稿')
+        expect(ipcRenderer.send).not.toHaveBeenCalled()
+        expect(readUntitledDraft()).toBe('未点击文件时的草稿')
+
+        vi.advanceTimersByTime(1000)
+        expect(sentPayloads(IPC.FILE.UPDATE_SELECT_FILE_CONTENT)).toEqual([])
+        expect(sentPayloads(IPC.FILE.SAVE_TO_DISK)).toEqual([])
+    })
+
+    it('should save a no-document draft through the Save As flow instead of SAVE_TO_DISK', async () => {
+        await mountEditor()
+        ipcRenderer.invoke.mockResolvedValueOnce({ success: true, filePath: 'D:/draft.md' })
+
+        emitCode('未命名草稿')
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true }))
+        await Promise.resolve()
+        await Promise.resolve()
+
+        expect(ipcRenderer.invoke).toHaveBeenCalledWith(IPC.FILE.IMPORT_NEW_FILE, '未命名草稿')
+        expect(sentPayloads(IPC.FILE.SAVE_TO_DISK)).toEqual([])
+        expect(sentPayloads(IPC.FILE.UPDATE_SELECT_FILE_CONTENT)).toEqual([])
+    })
+
+    it('should not sync no-document draft on the main-process flush request', async () => {
+        await mountEditor()
+        const flushHandler = getIpcListener(IPC.EDITOR.FLUSH_CONTENT)
+
+        emitCode('未命名草稿')
+        flushHandler()
+
+        expect(sentPayloads(IPC.FILE.UPDATE_SELECT_FILE_CONTENT)).toEqual([])
+        expect(ipcRenderer.send).toHaveBeenCalledWith(IPC.EDITOR.FLUSH_CONTENT_DONE)
+        expect(readUntitledDraft()).toBe('未命名草稿')
+    })
+
+    it('should never sync a restored untitled draft to main', async () => {
+        writeUntitledDraft('上次未保存的草稿')
+        flushUntitledDraft()
+        const mounted = await mountEditor()
+        await nextTick()
+
+        const monaco = mounted.findComponent(MdMonacoEdit)
+        expect(monaco.props('code')).toBe('上次未保存的草稿')
+        expect(sentPayloads(IPC.FILE.UPDATE_SELECT_FILE_CONTENT)).toEqual([])
+        expect(sentPayloads(IPC.FILE.SAVE_TO_DISK)).toEqual([])
+    })
+
     it('should skip IPC when the reported content equals the last synced content', async () => {
         await mountEditor()
+        await loadFile()
 
         emitCode('abc')
         vi.advanceTimersByTime(500)
@@ -153,6 +218,7 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
 
     it('should merge Ctrl+S flush+save into a single full-content IPC (PF-3)', async () => {
         await mountEditor()
+        await loadFile()
 
         emitCode('草稿内容')
         // 未等防抖窗口：Ctrl+S 立即保存
@@ -170,6 +236,7 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
 
     it('should keep a single SAVE_TO_DISK IPC when saving an already synced document', async () => {
         await mountEditor()
+        await loadFile()
 
         emitCode('已同步内容')
         vi.advanceTimersByTime(500)
@@ -182,6 +249,7 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
 
     it('should answer the flush contract and only resend content when dirty (PF-3)', async () => {
         await mountEditor()
+        await loadFile()
         const flushHandler = getIpcListener(IPC.EDITOR.FLUSH_CONTENT)
 
         // 内容未变化：主进程已有最新内容，只回执 DONE

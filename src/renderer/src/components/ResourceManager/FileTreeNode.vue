@@ -63,8 +63,8 @@
 import { computed, PropType } from 'vue'
 import { FileSysItem, getFileMgrSvg, handleContextMenu } from './resource-manager'
 import EventBus from '../../common/event-bus/event-bus'
-import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
+import { requestOpenFile } from '../Markdown/request-open-file'
 import {
     MARKDOWN_EXTENSIONS,
     TREE_SUPPORTED_EXTENSIONS
@@ -136,7 +136,8 @@ function handleFileSelect(node: FileSysItem) {
         type: 'file',
         content: ''
     }
-    window.electron.ipcRenderer.send(IPC.FILE.OPEN_SELECT_FILE, fileInfo)
+    // 有未命名草稿时先弹保存确认，避免草稿覆盖目标文件
+    void requestOpenFile(fileInfo)
     EventBus.$emit(EVENT_BUS.PLUGIN_TOOLS_CONTAINER_SHOW, false)
 }
 
