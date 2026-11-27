@@ -10,7 +10,7 @@
         - 所有用户文案走 `editorUi.frontMatter.*` 建议键 + 中文兜底（词典由主控补）。
     -->
     <BaseDialog
-        non-modal
+        tool-window
         :visible="state.visible"
         :title="tOr(UI.title, 'Front matter 属性')"
         width="760px"

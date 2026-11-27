@@ -98,6 +98,8 @@ const systemSettingDefaults: SystemSetting = {
     featurePdfAnnotations: false,
     // 1.5.2 E3：图片 OCR（第 10 项，默认关闭；关闭时不加载 worker、不下载语言包）
     featureImageOcr: false,
+    // 1.5.3：插入/编辑工具对话框非模态（默认开启，可在系统设置关闭）
+    featureNonModalDialogs: true,
     // 写作体验（P0）全部 opt-in、默认关闭
     writingModeEnabled: false,
     writingTypewriterEnabled: false,

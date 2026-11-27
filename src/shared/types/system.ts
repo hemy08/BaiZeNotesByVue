@@ -91,6 +91,8 @@ export interface SystemSetting {
     featurePdfAnnotations?: boolean
     // 1.5.2 E3：图片 OCR（第 10 项，默认关闭；定义见 shared/constants/feature-flags.ts）
     featureImageOcr?: boolean
+    // 1.5.3：插入/编辑工具对话框使用非模态窗口（默认开启）
+    featureNonModalDialogs?: boolean
     // 写作体验开关（P0，系统设置「编写体验」页签；全部 opt-in、默认关闭）
     writingModeEnabled?: boolean
     writingTypewriterEnabled?: boolean

@@ -345,7 +345,11 @@ const dialogRenderer = {
             // 1.5.2 E3: image OCR (10th optional feature, MVP: clipboard screenshot recognition)
             imageOcrLabel: 'Image text recognition (OCR)',
             imageOcrDesc:
-                'Recognize text from a clipboard screenshot via Tools → Image OCR or the command palette, then insert the result into the current note or copy it to the clipboard. Images are recognized locally with tesseract.js and are never uploaded; the first use downloads about 10 MB of English language data from the official https source and caches it in the local user data directory. Off by default: when disabled the OCR engine is not loaded and no language data is downloaded.'
+                'Recognize text from a clipboard screenshot via Tools → Image OCR or the command palette, then insert the result into the current note or copy it to the clipboard. Images are recognized locally with tesseract.js and are never uploaded; the first use downloads about 10 MB of English language data from the official https source and caches it in the local user data directory. Off by default: when disabled the OCR engine is not loaded and no language data is downloaded.',
+            // 1.5.3: non-modal tool dialogs
+            nonModalDialogsLabel: 'Non-modal tool dialogs',
+            nonModalDialogsDesc:
+                'Insert/edit tool dialogs do not block the editor: clicking outside, hovering outside, or pressing Esc will not close them, so Markdown can still be edited. They close only via the close button or an insert/apply action. On by default.'
         },
         panelGeneralTitle: 'General settings',
         panelGeneralDesc: 'Basic application settings',

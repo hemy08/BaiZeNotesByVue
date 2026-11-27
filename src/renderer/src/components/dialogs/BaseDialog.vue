@@ -130,6 +130,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useSlots, w
 import type { ClassValue, CSSProperties } from 'vue'
 import { t } from '../../common/i18n'
 import { useDialogDrag } from '../../composables/useDialogDrag'
+import { useFeatureFlags } from '../../composables/useFeatureFlags'
 import { isTopmostDialog, pushOpenDialog, removeOpenDialog } from './dialog-stack'
 import { lockDialogScroll, unlockDialogScroll } from './dialog-scroll-lock'
 
@@ -185,8 +186,10 @@ interface Props {
     closeOnEscape?: boolean
     /** 是否为模态对话框：false 时不启用焦点陷阱、aria-modal=false（默认 true） */
     modal?: boolean
-    /** 非模态工具窗：遮罩透明且点击穿透，禁止遮罩/Esc 关闭（默认 false） */
+    /** 强制非模态工具窗：遮罩透明且点击穿透，禁止遮罩/Esc 关闭（默认 false） */
     nonModal?: boolean
+    /** 工具窗：受系统设置「非模态工具对话框」开关控制（默认 false） */
+    toolWindow?: boolean
     /** 容器附加 class（如 MessageDialog 需要 `${type}-dialog` 供外部/测试识别消息类型） */
     containerClass?: ClassValue
     /** 遮罩内联样式覆盖（MessageDialog 迁移前遮罩为更深的 rgba(0,0,0,0.5)） */
@@ -229,6 +232,8 @@ const props = withDefaults(defineProps<Props>(), {
     modal: true,
     nonModal: false
 })
+
+const { flags } = useFeatureFlags()
 
 const emit = defineEmits<{
     (e: 'close'): void
@@ -382,7 +387,7 @@ function handleDocumentKeyDown(event: KeyboardEvent): void {
         // 两种标记都放行，避免用户取消候选时误关对话框。
         if (event.isComposing || event.keyCode === 229) return
         // 非模态工具窗/Esc 禁用时不关闭（如 Mermaid 编辑器）
-        if (props.nonModal || !props.closeOnEscape) {
+        if (isNonModal.value || !props.closeOnEscape) {
             event.preventDefault()
             event.stopPropagation()
             return
@@ -483,13 +488,16 @@ watch(
 /** `:style` 绑定的数组形态（Vue 的 StyleValue 数组，显式声明避免模板推断成 never） */
 type StyleValueList = CSSProperties[]
 
-/** 非模态时按普通窗口处理：不设 aria-modal、不锁焦点 */
-const isModal = computed(() => props.modal && !props.nonModal)
+/** 是否实际启用非模态：显式 non-modal 或工具窗开关打开 */
+const isNonModal = computed(
+    () => props.nonModal || (props.toolWindow && flags.nonModalDialogs === true)
+)
+const isModal = computed(() => props.modal && !isNonModal.value)
 
 /** 非模态工具窗的遮罩：透明且不拦截底层编辑器事件 */
 const overlayStyles = computed<StyleValueList>(() => [
     (props.overlayStyle ?? {}) as CSSProperties,
-    ...(props.nonModal ? [{ pointerEvents: 'none' as const, background: 'transparent' }] : [])
+    ...(isNonModal.value ? [{ pointerEvents: 'none' as const, background: 'transparent' }] : [])
 ])
 // 容器内联样式：width 属性是低频常用覆盖项，其余细节由 containerStyle 全权覆盖
 // （containerStyle 放在后面，允许显式覆盖 width，语义与迁移前各对话框在模板里
@@ -497,14 +505,14 @@ const overlayStyles = computed<StyleValueList>(() => [
 const containerStyles = computed<StyleValueList>(() => [
     dialogStyle.value,
     {
-        ...(props.nonModal ? { pointerEvents: 'auto' } : {}),
+        ...(isNonModal.value ? { pointerEvents: 'auto' } : {}),
         ...(props.width ? { width: props.width } : {}),
         ...(props.containerStyle ?? {})
     }
 ])
 
 function handleOverlayClick(): void {
-    if (!props.nonModal && props.closeOnOverlay) {
+    if (!isNonModal.value && props.closeOnOverlay) {
         emit('close')
     }
 }

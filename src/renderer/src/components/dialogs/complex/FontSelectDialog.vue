@@ -9,7 +9,7 @@
         - 拖拽沿用 JS 拖拽（useDialogDrag 的 center 初始位置），由 BaseDialog 默认 draggable 承载。
     -->
     <BaseDialog
-        non-modal
+        tool-window
         :visible="visible"
         :title="t('dialogRenderer.fontSelect.title')"
         title-bar-variant="regular"

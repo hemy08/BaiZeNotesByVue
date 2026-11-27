@@ -91,6 +91,7 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     featurePdfAnnotations: false,
     // 1.5.2 E3：图片 OCR（第 10 项，默认关闭）
     featureImageOcr: false,
+    featureNonModalDialogs: true,
     // 写作体验（P0）默认全部关闭
     writingModeEnabled: false,
     writingTypewriterEnabled: false,

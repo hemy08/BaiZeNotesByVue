@@ -24,6 +24,7 @@ export type OptionalFeatureFlagId =
     | 'clipCapture'
     | 'pdfAnnotations'
     | 'imageOcr'
+    | 'nonModalDialogs'
 
 /** 单个开关定义：持久化字段、默认值、i18n 文案键 */
 export interface OptionalFeatureFlagDefinition {
@@ -39,6 +40,7 @@ export interface OptionalFeatureFlagDefinition {
         | 'featureClipCapture'
         | 'featurePdfAnnotations'
         | 'featureImageOcr'
+        | 'featureNonModalDialogs'
     /** 默认值（全部 opt-in，默认关闭） */
     defaultValue: boolean
     /** 设置页标题键（dialogRenderer.systemSetting.features.*） */
@@ -117,6 +119,13 @@ export const OPTIONAL_FEATURE_FLAGS: Readonly<
         defaultValue: false,
         labelKey: 'dialogRenderer.systemSetting.features.imageOcrLabel',
         descKey: 'dialogRenderer.systemSetting.features.imageOcrDesc'
+    },
+    // 1.5.3：插入/编辑工具对话框非模态（默认开启，保持当前交互；可关闭恢复模态）
+    nonModalDialogs: {
+        settingKey: 'featureNonModalDialogs',
+        defaultValue: true,
+        labelKey: 'dialogRenderer.systemSetting.features.nonModalDialogsLabel',
+        descKey: 'dialogRenderer.systemSetting.features.nonModalDialogsDesc'
     }
 } as const
 
@@ -136,7 +145,8 @@ export const OPTIONAL_FEATURE_FLAG_DEFAULTS: Readonly<Record<OptionalFeatureFlag
     dailyNotes: false,
     clipCapture: false,
     pdfAnnotations: false,
-    imageOcr: false
+    imageOcr: false,
+    nonModalDialogs: true
 }
 
 /** 写作体验能力标识（P0；系统设置「编写体验」页签，默认全部关闭） */

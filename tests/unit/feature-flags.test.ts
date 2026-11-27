@@ -28,11 +28,13 @@ describe('可选能力开关定义', () => {
             'dailyNotes',
             'clipCapture',
             'pdfAnnotations',
-            'imageOcr'
+            'imageOcr',
+            'nonModalDialogs'
         ])
         for (const id of OPTIONAL_FEATURE_FLAG_IDS) {
-            expect(OPTIONAL_FEATURE_FLAGS[id].defaultValue).toBe(false)
-            expect(OPTIONAL_FEATURE_FLAG_DEFAULTS[id]).toBe(false)
+            const expected = id === 'nonModalDialogs'
+            expect(OPTIONAL_FEATURE_FLAGS[id].defaultValue).toBe(expected)
+            expect(OPTIONAL_FEATURE_FLAG_DEFAULTS[id]).toBe(expected)
         }
     })
 
@@ -58,7 +60,7 @@ describe('可选能力开关定义', () => {
     it('渲染层兜底常量与开关默认值一致', () => {
         for (const id of OPTIONAL_FEATURE_FLAG_IDS) {
             const key = OPTIONAL_FEATURE_FLAGS[id].settingKey
-            expect(SYSTEM_SETTING_FALLBACK[key]).toBe(false)
+            expect(SYSTEM_SETTING_FALLBACK[key]).toBe(id === 'nonModalDialogs')
         }
     })
 })

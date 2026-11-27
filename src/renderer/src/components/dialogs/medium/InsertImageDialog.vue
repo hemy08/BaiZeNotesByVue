@@ -7,7 +7,7 @@
         边框宽度与背景位置，故此处保留正文内嵌结构，不提供 footer 插槽（BaseDialog 不渲染底栏）。
     -->
     <BaseDialog
-        non-modal
+        tool-window
         :visible="visible"
         :title="t('dialogRenderer.insertImage.title')"
         title-bar-variant="regular"

@@ -8,7 +8,7 @@
     -->
     <BaseDialog
         v-if="flags.documentHistory"
-        non-modal
+        tool-window
         :visible="state.dialogVisible"
         :title="tOr(UI.title, '文档历史')"
         width="960px"

@@ -51,6 +51,8 @@ export interface SystemDialogSettings {
     featurePdfAnnotations: boolean
     // 1.5.2 E3：图片 OCR（第 10 项，默认关闭，见 shared/constants/feature-flags.ts）
     featureImageOcr: boolean
+    // 1.5.3：工具对话框非模态（默认开启）
+    featureNonModalDialogs: boolean
     // 写作体验（P0，默认全部关闭）
     writingModeEnabled: boolean
     writingTypewriterEnabled: boolean
@@ -120,6 +122,7 @@ export function createDefaultSystemDialogSettings(): SystemDialogSettings {
         featureClipCapture: SYSTEM_SETTING_FALLBACK.featureClipCapture,
         featurePdfAnnotations: SYSTEM_SETTING_FALLBACK.featurePdfAnnotations,
         featureImageOcr: SYSTEM_SETTING_FALLBACK.featureImageOcr,
+        featureNonModalDialogs: SYSTEM_SETTING_FALLBACK.featureNonModalDialogs,
         writingModeEnabled: SYSTEM_SETTING_FALLBACK.writingModeEnabled,
         writingTypewriterEnabled: SYSTEM_SETTING_FALLBACK.writingTypewriterEnabled,
         writingFocusEnabled: SYSTEM_SETTING_FALLBACK.writingFocusEnabled,

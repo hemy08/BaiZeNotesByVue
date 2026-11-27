@@ -39,11 +39,11 @@ let listenerRegistered = false
 function applySettings(settings: Partial<SystemSetting> | null | undefined): void {
     for (const id of OPTIONAL_FEATURE_FLAG_IDS) {
         const value = settings?.[OPTIONAL_FEATURE_FLAGS[id].settingKey]
-        flags[id] = value === true
+        flags[id] = typeof value === 'boolean' ? value : OPTIONAL_FEATURE_FLAGS[id].defaultValue
     }
     for (const id of WRITING_EXPERIENCE_FLAG_IDS) {
         const value = settings?.[WRITING_EXPERIENCE_FLAGS[id].settingKey]
-        flags[id] = value === true
+        flags[id] = typeof value === 'boolean' ? value : WRITING_EXPERIENCE_FLAGS[id].defaultValue
     }
 }
 
@@ -70,7 +70,12 @@ export async function initFeatureFlags(): Promise<void> {
         return initPromise ?? Promise.resolve()
     }
     initialized = true
-    if (!listenerRegistered && typeof window !== 'undefined' && window.electron?.ipcRenderer) {
+    if (
+        !listenerRegistered &&
+        typeof window !== 'undefined' &&
+        window.electron?.ipcRenderer &&
+        typeof window.electron.ipcRenderer.on === 'function'
+    ) {
         window.electron.ipcRenderer.on(IPC.SETTING.SYSTEM_SETTING_UPDATE, handleSystemSettingUpdate)
         listenerRegistered = true
     }
@@ -97,7 +102,12 @@ export function useFeatureFlags(): {
  * 否则测试/热重载场景会累积监听（MEM 静态门禁也要求订阅/退订配对）。
  */
 export function disposeFeatureFlagsListener(): void {
-    if (!listenerRegistered || typeof window === 'undefined' || !window.electron?.ipcRenderer) {
+    if (
+        !listenerRegistered ||
+        typeof window === 'undefined' ||
+        !window.electron?.ipcRenderer ||
+        typeof window.electron.ipcRenderer.removeListener !== 'function'
+    ) {
         return
     }
     window.electron.ipcRenderer.removeListener(

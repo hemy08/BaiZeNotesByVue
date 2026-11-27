@@ -191,6 +191,7 @@ const SYSTEM_BOOLEAN_FIELDS: ReadonlySet<string> = new Set([
     'featurePdfAnnotations',
     // 1.5.2 E3：图片 OCR（第 10 项，默认 false，仅接受布尔值）
     'featureImageOcr',
+    'featureNonModalDialogs',
     // 写作体验（P0）
     'writingModeEnabled',
     'writingTypewriterEnabled',

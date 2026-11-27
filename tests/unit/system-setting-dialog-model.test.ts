@@ -50,6 +50,7 @@ const EXPECTED_FIELDS: (keyof SystemDialogSettings)[] = [
     'featureClipCapture',
     'featurePdfAnnotations',
     'featureImageOcr',
+    'featureNonModalDialogs',
     'writingModeEnabled',
     'writingTypewriterEnabled',
     'writingFocusEnabled',
@@ -62,7 +63,7 @@ const EXPECTED_FIELDS: (keyof SystemDialogSettings)[] = [
 ]
 
 describe('createDefaultSystemDialogSettings', () => {
-    it('应返回完整 37 字段，且值来自 shared SYSTEM_SETTING_FALLBACK 真源', () => {
+    it('应返回完整 38 字段，且值来自 shared SYSTEM_SETTING_FALLBACK 真源', () => {
         const defaults = createDefaultSystemDialogSettings()
         expect(Object.keys(defaults).sort()).toEqual([...EXPECTED_FIELDS].sort())
         expect(defaults.autoOpenLastFile).toBe(SYSTEM_SETTING_FALLBACK.autoOpenLastFile)

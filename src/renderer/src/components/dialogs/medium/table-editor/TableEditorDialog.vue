@@ -1,6 +1,6 @@
 <template>
     <BaseDialog
-        non-modal
+        tool-window
         :visible="true"
         :title="dialogTitle"
         width="min(1000px, 95vw)"

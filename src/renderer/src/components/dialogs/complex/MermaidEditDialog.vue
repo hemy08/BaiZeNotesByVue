@@ -14,7 +14,7 @@
         close-button-variant="rounded"
         width="1400px"
         :container-style="containerStyle"
-        non-modal
+        tool-window
         :title-bar-style="titleBarStyle"
         :title-text-style="titleTextStyle"
         :close-button-style="closeButtonStyle"
