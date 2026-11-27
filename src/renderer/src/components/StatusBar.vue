@@ -368,6 +368,12 @@ onBeforeUnmount(() => {
  * - 高度 24 / 字号 12 由宿主容器提供（状态栏高度不随密度档变化，属固定外壳）；
  * - 文字 --ui-text-secondary、分隔 1px --ui-border hairline、错误 --ui-danger 点；
  * - 四风格 × 三密度差异全部来自根元素下的 --ui-* 变量，组件不写风格/密度分支。
+ *
+ * 1.5.5 主窗口可见性修复：外壳表面（背景 / 上边框 / 顶部圆角 / glass 高光边）由宿主
+ * `.status-bar` 消费 --ui-surface-opacity / --ui-hairline-width / --ui-radius-lg /
+ * --ui-highlight-border-alpha 派生（paper 纸感不透明无阴影、glass 半透明 + 顶部高光、
+ * workbench 现状）；本组件只负责内层材质收口（圆角衔接 + glass 高光上边），
+ * workbench 下两者均为 0 / alpha 0 → 默认观感零变化。
  * ========================================================================== */
 #status-bar-container {
     display: flex;
@@ -378,6 +384,9 @@ onBeforeUnmount(() => {
     color: var(--ui-text-secondary, var(--secondary-text-color));
     /* 错误详情弹层定位基准（向上弹出，不裁剪在工作区内） */
     position: relative;
+    /* glass 顶部高光边（--ui-highlight-border-alpha：glass 0.14 / 其余 0 → 默认观感零变化）；
+       外壳表面、上边框 hairline 与顶部圆角由宿主 .status-bar 统一提供。 */
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0));
 }
 
 #status-bar-file-path {

@@ -193,21 +193,25 @@ onBeforeUnmount(() => {
 
 <style scoped>
 #navi-tab {
-    border-right: 1px solid var(--theme-border-color);
-    border-left: 1px solid var(--theme-border-color);
+    border-right: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+    border-left: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
 }
 
 .navi-tab-item-btn {
     width: 100%;
     display: flex;
     flex-direction: column;
+    /* 视觉升级（主窗口可见性修复）：按钮面随外壳材质切换（paper 纸感 / glass 半透明 /
+       workbench 与 hybrid 保持既有卡片底 --ui-bg-elevated = --theme-card-background）。 */
     background-color: var(--theme-card-background, white);
+    background-color: var(--bz-shell-surface, var(--theme-card-background, white));
     margin: 1px;
 }
 
 .navi-tab-item {
     width: 100%;
     background-color: var(--theme-card-background, white);
+    background-color: var(--bz-shell-surface, var(--theme-card-background, white));
     color: white;
     fill: #986801;
     border: none; /* 去掉外边框 */

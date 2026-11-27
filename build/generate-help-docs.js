@@ -137,7 +137,7 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:v
 <div class="layout">
   <nav class="side" aria-label="使用指导导航">
     <strong>白泽笔记 · 使用指导</strong>
-    <div class="ver">v1.5.2 开发版 · 基于 v1.5.1 能力</div>
+    <div class="ver">Windows x64 · 随安装包分发</div>
     <a class="online" href="https://hemy08.github.io" target="_blank" rel="noreferrer">在线文档 hemy08.github.io</a>
     ${toc}
   </nav>
@@ -154,12 +154,30 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:v
 </html>`
 }
 
+/**
+ * 按仓库 Prettier 配置格式化生成的 HTML。
+ *
+ * 为什么需要：`src/renderer/public/usage-guide.html` 是随仓库提交的交付物，
+ * `npm run format:check`（prettier --check .）会覆盖它；若直接写入模板字符串原文，
+ * 重新生成后格式门禁会红。格式化失败只告警并回退原文，不阻塞 HTML/PDF 产出。
+ */
+async function formatHtml(rawHtml) {
+    try {
+        const prettier = require('prettier')
+        const config = (await prettier.resolveConfig(HTML_PATH)) ?? {}
+        return await prettier.format(rawHtml, { ...config, filepath: HTML_PATH })
+    } catch (error) {
+        console.warn('[help-docs] Prettier 格式化失败，写入未格式化 HTML：', error)
+        return rawHtml
+    }
+}
+
 async function main() {
     const markdown = fs.readFileSync(MD_PATH, 'utf8')
     const body = md.render(markdown)
     fs.mkdirSync(path.dirname(HTML_PATH), { recursive: true })
     fs.mkdirSync(path.dirname(PDF_PATH), { recursive: true })
-    fs.writeFileSync(HTML_PATH, buildHtml(body), 'utf8')
+    fs.writeFileSync(HTML_PATH, await formatHtml(buildHtml(body)), 'utf8')
     console.log(`[help-docs] HTML 生成：${path.relative(ROOT, HTML_PATH)}`)
 
     const electronRuntime = path.join(ROOT, 'out', 'tmp', 'e2e-electron-runtime', 'electron.exe')

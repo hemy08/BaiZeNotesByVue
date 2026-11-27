@@ -25,9 +25,9 @@
             style="
                 width: 1px;
                 height: 100%;
-                background-color: var(--theme-border-color);
-                color: var(--theme-border-color);
-                fill: var(--theme-border-color);
+                background-color: var(--ui-border, var(--theme-border-color));
+                color: var(--ui-border, var(--theme-border-color));
+                fill: var(--ui-border, var(--theme-border-color));
             "
         ></div>
         <div id="markdown-toc-heading">
@@ -198,24 +198,58 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* ============================================================================
+ * 资源管理器 / 大纲（侧栏，外壳区）四风格材质 —— 视觉升级 1.5.5 主窗口可见性修复
+ *
+ * 消费 #editor-container 从 P0 冻结令牌派生的 --bz-shell-*（组件内不写风格分支）：
+ * - 表面：glass 半透明（--ui-surface-opacity 0.86）/ paper 纸感底（--ui-bg-elevated +
+ *   主题色低饱和薄雾）/ workbench 与 hybrid 壳层保持既有 --theme-card-background（零变化）；
+ * - 圆角由 --ui-radius-lg 派生（workbench 0 = 现状）、描边 1px hairline、glass 顶部高光边、
+ *   纸感/玻璃弱阴影（--ui-shadow-1）；workbench 下全部为 0 / 不可见。
+ * ========================================================================== */
 .resource-manager-component {
     display: flex;
     flex-direction: row;
     width: 100%;
     height: 100%;
+    /* 供侧栏材质描边/阴影层（::after）定位 */
+    position: relative;
+}
+
+/* 侧栏材质收口层：描边 + glass 高光边 + 弱阴影；workbench / hybrid 壳层 opacity 0 不绘制 */
+.resource-manager-component::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    opacity: var(--bz-style-on, 0);
+    border-radius: var(--bz-shell-radius, 0);
+    box-shadow:
+        inset 0 0 0 var(--bz-shell-hairline, 0) var(--ui-border, var(--theme-border-color)),
+        inset 0 1px 0 rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0)),
+        var(--ui-shadow-1);
 }
 
 .resizer-navi-tab-file-manager {
     width: 1px;
     height: 100%;
-    background-color: var(--theme-border-color);
-    color: var(--theme-border-color);
-    fill: var(--theme-border-color);
+    background-color: var(--ui-border, var(--theme-border-color));
+    color: var(--ui-border, var(--theme-border-color));
+    fill: var(--ui-border, var(--theme-border-color));
 }
 
 .file-manager {
-    background: var(--theme-card-background, ghostwhite);
-    color: var(--theme-text-color, black);
+    /* 表面：workbench 下 --bz-shell-surface 即 --theme-card-background（零变化）；
+       paper 为纸感卡片底、glass 为半透明面（透出窗口底色/渐层）。 */
+    background-color: var(--theme-card-background, ghostwhite);
+    background-color: var(--bz-shell-surface, var(--theme-card-background, ghostwhite));
+    background-image: linear-gradient(
+        var(--bz-shell-veil, transparent),
+        var(--bz-shell-veil, transparent)
+    );
+    color: var(--ui-text, var(--theme-text-color, black));
+    border-radius: var(--bz-shell-radius, 0);
     overflow: auto;
     height: 100%;
     width: calc(100% - 1px);
@@ -229,8 +263,15 @@ onBeforeUnmount(() => {
 .markdown-toc-component {
     display: flex;
     flex-direction: row;
-    background: var(--theme-card-background, ghostwhite);
-    color: var(--theme-text-color, black);
+    /* 大纲面板与文件树同属侧栏外壳：共用同一套 --bz-shell-* 材质 */
+    background-color: var(--theme-card-background, ghostwhite);
+    background-color: var(--bz-shell-surface, var(--theme-card-background, ghostwhite));
+    background-image: linear-gradient(
+        var(--bz-shell-veil, transparent),
+        var(--bz-shell-veil, transparent)
+    );
+    color: var(--ui-text, var(--theme-text-color, black));
+    border-radius: var(--bz-shell-radius, 0);
     width: 100%;
     height: 100%;
 }

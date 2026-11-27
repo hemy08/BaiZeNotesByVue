@@ -66,6 +66,7 @@ import { menuMap } from './MenuBar/menu-config'
 import type { BaiZeMenuEntry } from './MenuBar/menu-config'
 import MenuSubmenu from './MenuBar/MenuSubmenu.vue'
 import { hasMenuSubmenu, moveMenubarIndex, resolveMenubarKeyAction } from './MenuBar/menu-keyboard'
+import { resolveTopSubmenuPosition } from './MenuBar/menu-position'
 import { t } from '../common/i18n'
 import { getBaseName } from '../../../shared/utils/path'
 import { logger } from '../common/logger'
@@ -197,6 +198,12 @@ async function refreshRecentMenus(): Promise<void> {
             : []
         injectRecentEntries(RECENT_FILES_MENU_ID, files.map(toRecentFileEntry))
         injectRecentEntries(RECENT_FOLDERS_MENU_ID, folders.map(toRecentFolderEntry))
+        // 最近列表注入会改变下拉面板的实测宽高（列表可达 20 项）：已展开时按新尺寸重新夹取定位，
+        // 避免异步数据把面板顶出视口（滚动容器已按用户反馈移除，定位 clamp 是唯一兜底）。
+        const openedIndex = activeMenu.value
+        if (openedIndex !== null) {
+            void nextTick(() => updateSubmenuPosition(openedIndex))
+        }
     } catch (error) {
         logger.warn('[MenuBar] 刷新最近文件/最近文件夹菜单失败（保留上次数据）:', error)
     }
@@ -281,31 +288,29 @@ function hasSubmenu(menu: BaiZeMenuEntry): boolean {
     return hasMenuSubmenu(menu)
 }
 
-// 计算子菜单位置，确保不超出屏幕
-function calculateSubmenuPosition(x: number, y: number) {
-    const screenWidth = window.innerWidth
-    const menuWidth = 220
-    const padding = 8
-
-    let posX = x
-    let posY = y
-
-    // 水平方向：如果超出右侧，向左调整
-    if (x + menuWidth + padding > screenWidth) {
-        posX = screenWidth - menuWidth - padding
-    }
-
-    // 确保不超出顶部
-    if (posY < padding) {
-        posY = padding
-    }
-
-    // 确保不超出左侧
-    if (posX < padding) {
-        posX = padding
-    }
-
-    return { x: posX, y: posY }
+/**
+ * 计算子菜单位置，确保不超出屏幕。
+ *
+ * 几何计算收敛到纯函数 `menu-position.ts`（jsdom 可单测），组件只负责取实测矩形：
+ * - 顶级下拉宽度由内容决定（`.submenu-list` 220~400px），因此必须用**实测宽度**夹取，
+ *   而不是固定 220——1.5.5 用户反馈中靠右的「AI 导航」等菜单越界被裁剪即由此导致；
+ * - 实测高度用于纵向夹取（长菜单如「版本发布」18 项），替代已移除的滚动容器；
+ * - jsdom 不排版（矩形为 0）时纯函数回落到最窄宽度，既有定位用例可复现。
+ */
+function calculateSubmenuPosition(
+    x: number,
+    y: number,
+    submenuWidth?: number,
+    submenuHeight?: number
+) {
+    return resolveTopSubmenuPosition({
+        anchorX: x,
+        anchorY: y,
+        submenuWidth,
+        submenuHeight,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight
+    })
 }
 
 const submenuStyle = computed(() => ({
@@ -541,15 +546,23 @@ function handleSubmenuSwitchMenu(direction: -1 | 1): void {
 }
 
 function updateSubmenuPosition(index: number) {
-    const menuBar = document.querySelector('.menu-bar')
+    const menuBar = menuBarRef.value ?? document.querySelector<HTMLElement>('.menu-bar')
     if (!menuBar) return
 
-    const menuItems = menuBar.querySelectorAll('.menu-item')
-    if (menuItems[index]) {
-        const rect = menuItems[index].getBoundingClientRect()
-        const position = calculateSubmenuPosition(rect.left, rect.bottom)
-        submenuPosition.value = position
-    }
+    const menuItems = menuBar.querySelectorAll<HTMLElement>('.menu-item')
+    const item = menuItems[index]
+    if (!item) return
+
+    const rect = item.getBoundingClientRect()
+    // 下拉面板可能尚未渲染/不可见：矩形为 0 时交由纯函数按最窄宽度兜底
+    const container = document.querySelector<HTMLElement>('.submenu-container')
+    const measured = container?.getBoundingClientRect()
+    submenuPosition.value = calculateSubmenuPosition(
+        rect.left,
+        rect.bottom,
+        measured?.width,
+        measured?.height
+    )
 }
 
 function closeMenu() {
@@ -595,18 +608,40 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* ============================ 菜单栏（外壳/工具区） ============================
- * 视觉升级 P1-B2 / T7：颜色走 --ui-* 语义令牌，尺寸走密度令牌（--ui-row-height /
- * --ui-pad / --ui-font-size），材质走风格令牌（--ui-radius-sm / --ui-shadow-2 /
- * --ui-accent-soft）。组件内不写 data-style / data-density 分支——四风格 × 三密度
- * 全部由根元素属性下的变量覆盖自动生效（DESIGN.md §6）。
+ * 视觉升级 P1-B2 / T7 + 1.5.5 用户反馈修复：
+ * - 颜色走 --ui-* 语义令牌，尺寸走密度令牌（--ui-row-height / --ui-pad /
+ *   --ui-font-size），材质走风格令牌（--ui-surface / --ui-surface-opacity /
+ *   --ui-border / --ui-radius-* / --ui-shadow-*）；
+ * - 组件内不写 data-style / data-density 分支——四风格 × 三密度全部由根元素属性下的
+ *   变量覆盖自动生效（DESIGN.md §6、UI-15）；
+ * - 菜单栏属「外壳」而非悬浮层，按 DESIGN.md §3 不启用 backdrop-filter（玻璃模糊
+ *   只允许用于悬浮层），glass 的差异由面不透明度 + 圆角/阴影体现。
  * ========================================================================== */
 .menu-bar {
     display: flex;
     align-items: center;
     height: 100%;
+    /* 壳高真源在宿主（控件高 + 4px）：border-box 保证新增的 1px 下边框
+       不把组件撑出宿主 1px（base.css 的全局 border-box 规则处于注释状态）。 */
+    box-sizing: border-box;
     padding: 0 4px;
     user-select: none;
-    background-color: var(--ui-bg);
+    /* 面：--ui-surface × --ui-surface-opacity（glass 0.86 半透明；其余 1 = 不透明）。
+       先给不支持 color-mix 的环境一个不透明兜底，再用变量驱动透明度。 */
+    background-color: var(--ui-surface, var(--ui-bg));
+    background-color: color-mix(
+        in srgb,
+        var(--ui-surface, var(--ui-bg)) calc(var(--ui-surface-opacity, 1) * 100%),
+        transparent
+    );
+    /* 边框 / 圆角 / 阴影：四风格材质差异的来源（paper 弱阴影小圆角、glass 大圆角、
+       workbench/hybrid 外壳紧凑圆角；hybrid 外壳与 workbench 同材质属规格口径）。 */
+    border-bottom: var(--ui-hairline-width, 1px) solid var(--ui-border, transparent);
+    border-radius: 0 0 var(--ui-radius-lg, 6px) var(--ui-radius-lg, 6px);
+    box-shadow: var(--ui-shadow-1);
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        box-shadow var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
 }
 
 .menu-item {

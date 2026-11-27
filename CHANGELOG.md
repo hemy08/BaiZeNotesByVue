@@ -31,9 +31,18 @@
 - **T17 E2E 视觉软门禁**：新增 `e2e/visual-matrix.spec.ts`（`E2E_VISUAL=1` 触发；像素差异只写 annotation/warn 不阻塞；同环境基线复跑 **36/36 张一致、0 diff**）
 - **T18 文档收尾**：开发规范 UI-01/UI-09/UI-10 令牌化口径升级 + 新增 UI-15「风格/密度只经 data-* + 令牌消费」；COMPONENTS 待实现项回写；表格键盘提示中英双语；产品体验优化方案视觉线标注「已由视觉升级方案实施」
 
+### 🔧 用户反馈修复（2026-11-27）
+
+- **界面风格切换无可见效果**：定位为「主窗口未消费材质令牌」（页面/标题栏/状态栏/侧栏/工作区外壳/菜单栏均不随风格变化）；修复后主窗口四风格截图像素差异 27%~64%（paper/glass/hybrid vs workbench），深色主题同样生效；新增 `tests/unit/visual-main-shell.test.ts`（13 条静态契约）
+- **菜单栏三级子菜单不显示 + 出现滚动条**：根因 `.submenu-list` 的 `max-height + overflow-y:auto` 裁剪了绝对定位的嵌套子菜单；修复为 `overflow: visible` + 视口 clamp（顶级下拉右缘/底部）+ 嵌套子菜单按空间自动翻转（`menu-position.ts` 纯函数）；菜单栏主栏改为消费 `--ui-*` 材质令牌
+- **帮助文档缺少新增能力说明**：`docs/help/usage-guide.md` 新增第 7~10 章（界面风格与密度 / 菜单栏键盘操作 / 非模态工具窗与命令面板 / 写作模式纸感）+ 更新系统设置配置矩阵；`usage-guide.html`（137 KB）与 `usage-guide.pdf`（21 页 614 KB）已重新生成
+- **E2E 验收加固**：`e2e/visual-matrix.spec.ts` 新增「风格间必须可见差异」硬断言（主窗口/对话框/命令面板要求 4 种唯一 hash；工具窗/菜单栏按 hybrid=workbench 规格允许 3 种）+ 菜单三级子菜单可见/无滚动条断言 + 菜单区域四风格截图（合计 40 张）；`E2E_VISUAL=1` 运行通过（36.1s）
+- **体积治理（死重回收，不放宽预算）**：复核发现 `resources/plantuml/logos.min.js`（**5.3 MB**）从未被任何资源引用（`index.html` 仅加载 `viz-global.js` + `plantuml.js`，`plantuml.js` 中 "logos" 出现 0 次），予以回收；NSIS 111.78→**111.29 MiB**、portable 101.16→**100.67 MiB**（预算 115 / 101.1，全部通过）；此前按 PERF-02 评估将 portable 预算 101→101.1 的调整保留（发布说明数据增量），其余阈值未动
+- **门禁**：修复后全量 **367 文件 / 6,738 用例**、coverage 93.07/87.52/93.81/93.54、docs:check 986 链接、E2E 视觉矩阵通过；质量基线已同步为 **367 / 6,738 / 121,178**
+
 ### ✅ 门禁（2026-11-27）
 
-- typecheck 四段（node / web / test / e2e）、ESLint `--max-warnings=0`、Prettier `--check`、全量 vitest（**364 文件 / 6,693 用例**，6,688 通过 / 5 跳过）、coverage（93.08 / 87.53 / 93.79 / 93.55，阈值 80 / 75 / 73 / 80）、`docs:check`（986 链接）、`build:unpack` + bundle budget（全部预算项通过：壳 654.7 KiB / app.asar 39.46 MiB / NSIS 111.59 MiB / portable 100.98 MiB）、`verify:fuses`（8 项 fuse 位 + 硬化启动冒烟）全部通过；quality 基线因新增 1 个测试文件（364 文件 / 6,693 用例 / 测试代码 120,079 行）与三份对外文档现有数字（363 / 6,669 / 119,541）不一致而预期为红，待维护者统一回写
+- typecheck 四段（node / web / test / e2e）、ESLint `--max-warnings=0`、Prettier `--check`、全量 vitest（修复后 **367 文件 / 6,738 用例**，6,733 通过 / 5 跳过）、coverage（93.07 / 87.52 / 93.81 / 93.54，阈值 80 / 75 / 73 / 80）、`docs:check`（986 链接）、**E2E 视觉矩阵（40 张真实截图，风格差异/菜单三级/无滚动断言通过）**、`build:unpack` + bundle budget（全部预算项通过：壳 661.4 KiB / app.asar 39.54 MiB / NSIS 111.29 MiB / portable 100.67 MiB；回收 plantuml/logos.min.js 5.3 MB 死重后 portable 余量 440 KiB）、`verify:fuses`（8 项 fuse 位 + 硬化启动冒烟）全部通过；quality 基线已同步为 **367 文件 / 6,738 用例 / 121,178 行**（三份对外文档一致）
 
 ## 2026年11月27日 - 版本 1.5.3（Markdown 编辑器 P0，已发布 2026-11-27）
 

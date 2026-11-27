@@ -587,12 +587,52 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: space-between;
     padding: 0 0 0 12px;
-    color: #fff;
+    /* 视觉升级（主窗口可见性修复）：paper / glass 标题栏切换为纸感/玻璃面（--bz-shell-*），
+       workbench / hybrid 壳层强度为 0 → color-mix 取 100% #fff，与既有白字完全一致。 */
+    color: color-mix(
+        in srgb,
+        var(--ui-text, var(--theme-text-color)) calc(var(--bz-style-on, 0) * 100%),
+        #fff
+    );
     font-size: 13px;
     height: 30px;
     flex-shrink: 0;
     user-select: none;
     -webkit-app-region: drag;
+    /* 为标题栏材质覆盖层（::after）建立局部层叠上下文：覆盖层位于渐变背景之上、文字/按钮之下 */
+    position: relative;
+    z-index: 0;
+}
+
+/* paper / glass 标题栏面：纸感底 + 主题色薄雾 + 底部 hairline + glass 顶部高光边。
+   workbench / hybrid（壳层强度 0）时 opacity 0 → 完全不参与绘制（默认观感零变化）。 */
+.title-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    opacity: var(--bz-style-on, 0);
+    background-color: transparent;
+    background-color: var(--bz-shell-surface, transparent);
+    background-image: linear-gradient(
+        var(--bz-shell-veil, transparent),
+        var(--bz-shell-veil, transparent)
+    );
+    box-shadow:
+        inset 0 calc(-1 * var(--bz-shell-hairline, 0)) 0 var(--ui-border, var(--theme-border-color)),
+        inset 0 1px 0 rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0));
+}
+
+/* 窗口控制按钮图标跟随标题栏文字颜色：paper / glass 浅色标题栏需要深色描边；
+   workbench / hybrid 下 color-mix 取 100% #fff = 既有白描边（默认观感零变化）。 */
+.title-bar :deep(.window-btn svg) {
+    stroke: color-mix(
+        in srgb,
+        var(--ui-text, var(--theme-text-color)) calc(var(--bz-style-on, 0) * 100%),
+        #fff
+    );
 }
 
 .title-left {
@@ -650,13 +690,99 @@ onBeforeUnmount(() => {
     align-items: center;
     padding: 0 12px;
     font-size: 12px;
-    border-top: 1px solid var(--theme-border-color);
+    /* 视觉升级（主窗口可见性修复）：上边框走 1px hairline 令牌（--ui-border 与既有
+       --theme-border-color 同值，workbench 观感不变）；表面按风格切换（paper 纸感底 /
+       glass 半透明 / workbench 现状），顶部圆角由 --ui-radius-lg 派生（workbench 0 = 现状）。 */
+    border-top: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+    background-color: var(--theme-card-background);
+    background-color: var(--bz-shell-surface, var(--theme-card-background));
+    background-image: linear-gradient(
+        var(--bz-shell-veil, transparent),
+        var(--bz-shell-veil, transparent)
+    );
+    border-radius: var(--bz-shell-radius, 0) var(--bz-shell-radius, 0) 0 0;
 }
 
 #file-bar {
     height: 2px;
     flex-shrink: 0;
-    background: var(--theme-accent-color);
+    /* 视觉升级（主窗口可见性修复）：paper / glass 收为主题分区线色，workbench / hybrid
+       保持 --ui-accent 分隔条（与既有 --theme-accent-color 同值，默认观感零变化）。 */
+    background: color-mix(
+        in srgb,
+        var(--ui-accent, var(--theme-accent-color)) calc(100% - var(--bz-style-on, 0) * 100%),
+        var(--ui-border, var(--theme-border-color))
+    );
+}
+
+@supports (width: calc(1px / 1px * 1px)) and
+    (color: color-mix(in srgb, currentColor 0%, transparent)) {
+    #editor-container {
+        /* ========================================================================
+     * 主窗口壳层材质派生（视觉升级 1.5.5 修复：四风格主窗口可见差异）
+     *
+     * 只读消费 P0 冻结层令牌（ui-style.css / useTheme / shared 常量），**不写 style/density
+     * 分支**：四风格差异全部由令牌数值经 calc/color-mix 连续派生，组件内不含风格判断。
+     * - 风格强度 = 大圆角令牌相对 workbench 基准 6px 的差值（paper 2 / glass 6 / workbench 0 /
+     *   hybrid 壳层 0、内容区 2）→ workbench 下所有派生值为 0，默认观感基线零变化；
+     * - 玻璃强度 = 高光边 alpha 令牌（glass 0.14 / 深色 steady 0.10 / 其余 0）；
+     * - 依赖 CSS 类型化除法与 color-mix（Electron 43 = Chromium 150 已支持）；整块用
+     *   @supports 包裹：不支持时变量不定义，各消费点 var(--bz-*, 兜底) 回退升级前观感
+     *   （workbench 默认观感不变），不会出现半套材质。
+     * 变量定义在本元素、经自定义属性继承供标题栏 / 状态栏 / 侧栏 / 内容区消费。
+     * ====================================================================== */
+        --bz-style-ratio: calc((var(--ui-radius-lg, 6px) - 6px) / 1px);
+        --bz-content-ratio: calc((var(--ui-content-radius-lg, 6px) - 6px) / 1px);
+        --bz-style-on: min(1, var(--bz-style-ratio));
+        --bz-content-on: min(1, var(--bz-content-ratio));
+        --bz-glass-alpha: var(--ui-highlight-border-alpha, 0);
+
+        /* 壳层表面：glass 半透明（--ui-surface-opacity 0.86）/ 其余不透明（1 = 现状卡片底） */
+        --bz-shell-surface: color-mix(
+            in srgb,
+            var(--ui-bg-elevated, var(--theme-card-background))
+                calc(var(--ui-surface-opacity, 1) * 100%),
+            transparent
+        );
+        /* 主题色低饱和薄雾（叠在壳层表面/窗口底色上）：paper 4% / glass 12% / 其余 0% */
+        --bz-shell-veil: color-mix(
+            in srgb,
+            var(--ui-accent) calc(var(--bz-style-ratio) * 2%),
+            transparent
+        );
+        /* 壳层圆角 / hairline 线宽（由 --ui-radius-lg 与 --ui-hairline-width 派生；workbench 0） */
+        --bz-shell-radius: calc((var(--ui-radius-lg, 6px) - 6px) * 1.5);
+        --bz-shell-hairline: calc(var(--ui-hairline-width, 1px) * var(--bz-style-on));
+
+        /* 内容区表面/薄雾：hybrid 内容区 = paper，故一律消费 --ui-content-* 令牌 */
+        --bz-content-surface: color-mix(
+            in srgb,
+            var(--ui-bg, var(--theme-background-color))
+                calc(var(--ui-content-surface-opacity, 1) * 100%),
+            transparent
+        );
+        --bz-content-veil: color-mix(
+            in srgb,
+            var(--ui-accent) calc(var(--bz-content-ratio) * 2%),
+            transparent
+        );
+        /* 内容区卡片面（编辑器工具栏 / 预览区）：workbench 取 --ui-bg-elevated = 既有
+       --theme-card-background（零变化）；paper / hybrid 叠主题色低饱和薄雾（4%），
+       glass 再乘内容区不透明度变成半透明面。 */
+        --bz-content-card: color-mix(
+            in srgb,
+            var(--ui-bg-elevated, var(--theme-card-background))
+                calc(100% - var(--bz-content-ratio) * 2%),
+            var(--ui-accent) calc(var(--bz-content-ratio) * 2%)
+        );
+        --bz-content-card-surface: color-mix(
+            in srgb,
+            var(--bz-content-card) calc(var(--ui-content-surface-opacity, 1) * 100%),
+            transparent
+        );
+        --bz-content-radius: calc((var(--ui-content-radius-lg, 6px) - 6px) * 2);
+        --bz-content-hairline: calc(var(--ui-hairline-width, 1px) * var(--bz-content-on));
+    }
 }
 
 #editor-container {
@@ -667,8 +793,32 @@ onBeforeUnmount(() => {
     position: relative;
     /* 第 4 批 4.2：原 :style="containerStyles" 内联主题色改为 CSS 变量（与主题单真源一致；
        styles/theme.css 的 :root 默认值提供未应用主题时的兜底） */
-    background-color: var(--theme-background-color);
     color: var(--theme-text-color);
+
+    /* 窗口底色：workbench / hybrid 保持既有 --theme-background-color（--ui-bg 与它同值）；
+       paper 叠主题色低饱和薄雾（本次派生 4%）；glass 叠主题强调色/信息色渐层光斑（α 由高光边
+       令牌放大，非 glass 时为 0 → 不绘制）。不使用整窗 backdrop-filter（DESIGN.md §3 性能约束）。 */
+    background-color: var(--theme-background-color);
+    background-color: var(--ui-bg, var(--theme-background-color));
+    background-image:
+        radial-gradient(
+            1100px 620px at 8% -12%,
+            color-mix(in srgb, var(--ui-accent) calc(var(--bz-glass-alpha, 0) * 55%), transparent),
+            transparent 70%
+        ),
+        radial-gradient(
+            900px 520px at 92% 112%,
+            color-mix(
+                in srgb,
+                var(--ui-info, var(--ui-accent)) calc(var(--bz-glass-alpha, 0) * 28%),
+                transparent
+            ),
+            transparent 72%
+        ),
+        linear-gradient(
+            color-mix(in srgb, var(--ui-accent) calc(var(--bz-style-ratio, 0) * 2%), transparent),
+            color-mix(in srgb, var(--ui-accent) calc(var(--bz-style-ratio, 0) * 2%), transparent)
+        );
 }
 
 /* 窗口大小调整边框 */

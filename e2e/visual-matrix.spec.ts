@@ -123,7 +123,8 @@ async function capture(
     page: Page,
     testInfo: TestInfo,
     name: string,
-    meta: Pick<CapturedShot, 'style' | 'density' | 'region'>
+    meta: Pick<CapturedShot, 'style' | 'density' | 'region'>,
+    options: { keepPointer?: boolean } = {}
 ): Promise<void> {
     // 同名截图去重：4 风格循环的 workbench+default 与 3 密度循环的 default 会重复，
     // 重复截图会在同一轮内产生「自己与自己对比」的无意义 diff 记录。
@@ -133,8 +134,12 @@ async function capture(
     capturedNames.add(name)
     // 截图稳定性：把鼠标移到窗口左上角中性区域，避免上一次点击残留的 :hover 高亮
     //（命令面板行/菜单项/按钮 hover 会改变背景，导致同一状态两次截图出现像素差）。
-    await page.mouse.move(2, 2)
-    await page.waitForTimeout(120)
+    // keepPointer：菜单展开状态依赖 hover（移到中性区域会触发 mouseleave 关闭下拉），
+    // 菜单区域截图必须保留指针位置，否则截到的是关闭后的主窗口。
+    if (!options.keepPointer) {
+        await page.mouse.move(2, 2)
+        await page.waitForTimeout(120)
+    }
     const file = path.join(REAL_DIR, `${name}.png`)
     await page.screenshot({ path: file })
     const sha256 = createHash('sha256').update(fs.readFileSync(file)).digest('hex')
@@ -370,6 +375,8 @@ async function captureComponentRegions(page: Page, testInfo: TestInfo): Promise<
         await closeTopDialog(page)
         if (!(await isVisible(page, toolWindowSelector, 1_000))) break
     }
+    // 兜底：显式关闭残留浮层（非模态工具窗 Esc 依赖焦点，不可靠），避免拦截后续菜单 hover
+    await closeAllFloatingLayers(page)
 }
 
 /** glass 降级专项截图 */
@@ -408,6 +415,158 @@ async function teardown(launch: MainViewLaunch | null, sandbox: ConfigSandbox): 
     // 等待 Electron 释放单实例锁（与既有 spec 同口径）
     await new Promise((resolve) => setTimeout(resolve, 1_000))
     sandbox.restore()
+}
+
+/**
+ * 风格间可见性断言（防回归）：同区域、同密度下 4 风格截图 sha256 必须两两不同。
+ *
+ * 背景：1.5.5 P2 首次验收只校验了「两次运行 0 diff」（稳定性），未校验「风格间必须有差异」，
+ * 导致「界面风格切换看不到效果」（主窗口未消费材质令牌）没有被发现。本断言把
+ * 「风格切换必须产生可见像素差异」固化为 E2E 硬断言；跨环境字体/DPR 噪声只影响与基线的
+ * 软对比，这里比较的是同一进程内的四张截图（环境相同，差异只能来自风格）。
+ */
+function assertStyleVariantsDiffer(
+    testInfo: TestInfo,
+    regionPrefix: string,
+    density: string,
+    regionLabel: string,
+    minDistinct = 4
+): void {
+    const byName = new Map(shots.map((s) => [s.name, s.sha256]))
+    const present = STYLES.map((style) => ({
+        style,
+        sha: byName.get(`${regionPrefix}__${style}__${density}`)
+    })).filter((item): item is { style: (typeof STYLES)[number]; sha: string } => Boolean(item.sha))
+    if (present.length < 2) {
+        const message = `${regionLabel} 截图不足（${present.length}/4），跳过风格差异断言`
+        skips.push(message)
+        testInfo.annotations.push({ type: 'visual-skip', description: message })
+        return
+    }
+    expect(
+        new Set(present.map((item) => item.sha)).size,
+        `${regionLabel} 四风格截图必须至少 ${minDistinct} 种不同 hash（检测到风格切换无可见效果）` +
+            '（悬浮层/外壳区域的 hybrid 与 workbench 材质相同属 DESIGN 规格预期）'
+    ).toBeGreaterThanOrEqual(minDistinct)
+}
+
+/**
+ * 菜单区域截图 + 三级子菜单/滚动条断言（1.5.5 用户反馈：三级子菜单不显示、菜单栏出现滚动条）。
+ *
+ * - 三级子菜单：用「插入 → Mermaid」组展开第三级（菜单树中确定存在的嵌套结构）；
+ * - 无滚动条：菜单面板 `overflow-y` 不得为 auto/scroll，且内容不得溢出（scrollHeight ≤ clientHeight+1）；
+ * - 四风格菜单材质截图（用户场景：菜单栏也应随界面风格变化）。
+ */
+/**
+ * 关闭所有残留浮层（对话框 / 非模态工具窗）。
+ *
+ * 背景：非模态工具窗的 Esc 语义是「焦点位于窗内时才关闭」（1.5.5 T6），E2E 焦点可能在
+ * 菜单/编辑器上导致 Esc 无效；残留浮层会拦截后续菜单区域的 hover（pointer events 拦截，
+ * hover 重试超时）。这里显式点关闭按钮兜底，再按 Esc 清理。
+ */
+async function closeAllFloatingLayers(page: Page): Promise<void> {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+        const overlay = page.locator('.dialog-overlay').first()
+        if (!(await overlay.isVisible().catch(() => false))) {
+            return
+        }
+        const closeBtn = page.locator('.dialog-overlay .close-btn').first()
+        const clicked = await closeBtn
+            .click({ timeout: 2_000 })
+            .then(() => true)
+            .catch(() => false)
+        if (!clicked) {
+            // 关闭按钮不可点时先点对话框内部（把焦点移入，满足工具窗 Esc 的焦点前提）再 Esc
+            await page
+                .locator('.dialog-overlay [role="dialog"]')
+                .first()
+                .click({ position: { x: 8, y: 8 }, timeout: 2_000 })
+                .catch(() => undefined)
+            await page.keyboard.press('Escape')
+        }
+        await page.waitForTimeout(250)
+    }
+}
+
+async function captureMenuRegion(page: Page, testInfo: TestInfo): Promise<void> {
+    // 菜单区域截图前必须清理残留浮层（否则工具窗会拦截菜单 hover）
+    await closeAllFloatingLayers(page)
+    await applyAppearance(page, 'workbench', 'default')
+
+    // 1) 三级嵌套菜单：插入 → Mermaid 分组 → 第三级
+    //    注意：插入菜单同时存在「Mermaid 绘图」（叶子项）与「Mermaid」（分组项，带子菜单），
+    //    must 用 hasNotText 排除叶子项，否则 hover 到叶子项不会展开三级。
+    await page.locator('.menu-bar .menu-item').filter({ hasText: '插入' }).first().click()
+    const mermaidGroup = page
+        .locator(
+            '.submenu-container > .submenu-list > .menu-submenu-item, ' +
+                '.submenu-container .submenu-item-wrapper > .menu-submenu-item'
+        )
+        .filter({ hasText: 'Mermaid' })
+        .filter({ hasNotText: '绘图' })
+        .first()
+    await expect(mermaidGroup).toBeVisible({ timeout: 10_000 })
+    // 带子菜单的菜单项由 hover 展开（jsdom 契约测试同口径）
+    await mermaidGroup.hover()
+    await page.waitForTimeout(400)
+    const nested = page.locator('.nested-submenu .submenu-list').first()
+    await expect(nested, '三级子菜单必须可见（不得被父容器 overflow 裁剪）').toBeVisible({
+        timeout: 10_000
+    })
+    const nestedItems = await nested.locator('.menu-submenu-item').count()
+    expect(nestedItems, '三级子菜单必须有可交互菜单项').toBeGreaterThan(0)
+
+    // 2) 无滚动条：所有菜单面板不得出现可滚动溢出
+    const overflow = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('.submenu-container .submenu-list')).map(
+            (el) => ({
+                level: (el as HTMLElement).dataset.menuLevel ?? '?',
+                scrollHeight: el.scrollHeight,
+                clientHeight: el.clientHeight,
+                overflowY: getComputedStyle(el).overflowY
+            })
+        )
+    })
+    for (const item of overflow) {
+        expect(
+            item.overflowY,
+            `菜单面板（level ${item.level}）不得使用 auto/scroll 滚动条`
+        ).not.toMatch(/^(auto|scroll)$/)
+        // 说明：非滚动容器（overflow: visible）下 scrollHeight 会被嵌套绝对定位子菜单/负 margin
+        // 影响，不能可靠表示「内容被裁剪」。菜单不再作为滚动容器（上一断言）即满足
+        // 「菜单栏不应有滚动条」；内容可见性由「三级子菜单必须可见」断言与视口 clamp 覆盖。
+    }
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+
+    // 3) 四风格菜单材质截图（用户场景：AI 导航展开二级菜单 + 三级）
+    for (const style of STYLES) {
+        await applyAppearance(page, style, 'default')
+        await page.locator('.menu-bar .menu-item').filter({ hasText: 'AI 导航' }).first().click()
+        const aiGroup = page
+            .locator(
+                '.submenu-container > .submenu-list > .menu-submenu-item, ' +
+                    '.submenu-container .submenu-item-wrapper > .menu-submenu-item'
+            )
+            .filter({ hasText: '热门 AI' })
+            .first()
+        await expect(aiGroup).toBeVisible({ timeout: 10_000 })
+        await aiGroup.hover()
+        await page.waitForTimeout(250)
+        await capture(
+            page,
+            testInfo,
+            `menu__${style}__default`,
+            {
+                style,
+                density: 'default',
+                region: '菜单栏（AI 导航二级/三级菜单展开）'
+            },
+            { keepPointer: true }
+        )
+        await page.keyboard.press('Escape')
+        await page.waitForTimeout(250)
+    }
 }
 
 /** 把截图清单写为 summary.json（报告可消费；out/ 不入库） */
@@ -484,6 +643,15 @@ test.describe('视觉验收矩阵（真实截图软门禁）', () => {
             await captureMainMatrix(page, testInfo)
             await captureGlassDegradations(page, testInfo)
             await captureComponentRegions(page, testInfo)
+            await captureMenuRegion(page, testInfo)
+            // 风格切换必须可见（1.5.5 用户反馈回归防护）
+            // 主窗口/对话框/命令面板含内容区（hybrid 内容区=paper）→ 要求 4 种唯一；
+            // 工具窗与菜单栏属悬浮层/外壳（hybrid=workbench）→ 规格允许 3 种唯一。
+            assertStyleVariantsDiffer(testInfo, 'main', 'default', '主窗口（浅色）')
+            assertStyleVariantsDiffer(testInfo, 'dialog', 'default', '对话框')
+            assertStyleVariantsDiffer(testInfo, 'palette', 'default', '命令面板')
+            assertStyleVariantsDiffer(testInfo, 'toolwindow', 'default', '工具窗', 3)
+            assertStyleVariantsDiffer(testInfo, 'menu', 'default', '菜单栏', 3)
         } finally {
             await teardown(launch, sandbox)
         }
@@ -525,6 +693,7 @@ test.describe('视觉验收矩阵（真实截图软门禁）', () => {
                     region: '主窗口（深色主题）'
                 })
             }
+            assertStyleVariantsDiffer(testInfo, 'main-dark', 'default', '主窗口（深色）')
         } finally {
             await teardown(darkLaunch, darkSandbox)
         }

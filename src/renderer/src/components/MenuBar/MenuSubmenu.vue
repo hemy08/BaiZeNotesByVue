@@ -50,7 +50,7 @@
                     @hover="handleItemHover(index)"
                     @focus="handleItemFocus(index)"
                 />
-                <div class="nested-submenu">
+                <div class="nested-submenu" :class="{ 'nested-submenu--flipped': nestedFlipped }">
                     <MenuSubmenu
                         :items="item.submenu || []"
                         :level="level + 1"
@@ -79,9 +79,10 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { t } from '../../common/i18n'
 import { HandleMenuAction } from './menu-actions'
+import { resolveNestedSubmenuSide } from './menu-position'
 import type { BaiZeMenuEntry } from './menu-config'
 import {
     findFirstNavigableIndex,
@@ -125,8 +126,12 @@ const emit = defineEmits<{
 const rootRef = ref<HTMLElement | null>(null)
 /** 当前展开的嵌套子菜单所属项索引（null = 未展开） */
 const openSubmenuIndex = ref<number | null>(null)
+/** 当前展开的嵌套子菜单是否翻转至父项左侧（右侧空间不足） */
+const nestedFlipped = ref(false)
 /** 最近一次键盘焦点项索引（无焦点时的兜底起点） */
 const lastFocusedIndex = ref(-1)
+/** 视口变化重算的节流句柄（合并高频 scroll/resize；非响应式，无需触发渲染） */
+let placementTimer: ReturnType<typeof setTimeout> | null = null
 
 /** 当前层第 index 项的菜单数据 */
 function itemAt(index: number): BaiZeMenuEntry | undefined {
@@ -162,6 +167,77 @@ function focusItem(index: number): void {
 /** 关闭当前展开的嵌套子菜单（不改变焦点） */
 function closeNestedSubmenu(): void {
     openSubmenuIndex.value = null
+    nestedFlipped.value = false
+    if (placementTimer !== null) {
+        clearTimeout(placementTimer)
+        placementTimer = null
+    }
+}
+
+/**
+ * 测量当前展开的嵌套子菜单并更新「右侧展开 / 翻转左侧」。
+ *
+ * 为什么在打开后 nextTick 再量：嵌套面板由 v-if 渲染，宽度取决于内容
+ * （`.submenu-list` min-width 220 / max-width 400），必须等 DOM 更新后取实测矩形；
+ * 右侧空间不足时给 `.nested-submenu` 加翻转 class（`right: 100%`），避免被窗口右缘裁剪。
+ * jsdom 不排版（矩形恒为 0）时由纯函数用最窄宽度兜底，不产生副作用。
+ */
+function updateNestedPlacement(): void {
+    if (openSubmenuIndex.value === null) {
+        nestedFlipped.value = false
+        return
+    }
+    const wrapper = rootRef.value?.querySelector<HTMLElement>(':scope > .submenu-item-wrapper')
+    const nested = wrapper?.querySelector<HTMLElement>(':scope > .nested-submenu > .submenu-list')
+    if (!wrapper || !nested) {
+        nestedFlipped.value = false
+        return
+    }
+    const triggerRect = wrapper.getBoundingClientRect()
+    const nestedRect = nested.getBoundingClientRect()
+    nestedFlipped.value =
+        resolveNestedSubmenuSide({
+            triggerLeft: triggerRect.left,
+            triggerRight: triggerRect.right,
+            submenuWidth: nestedRect.width,
+            viewportWidth: window.innerWidth
+        }) === 'left'
+}
+
+/** 视口变化（resize / 任意滚动容器滚动）时重算嵌套层展开方向（已展开时） */
+function handleViewportChange(): void {
+    scheduleNestedPlacement()
+}
+
+/**
+ * 合并高频 resize/scroll 事件后重算（32ms 节流 ≈ 两帧）。
+ *
+ * 为什么节流：scroll 监听挂在 document 捕获阶段，编辑器/工作区滚动会高频触发；
+ * 每次重算都要 `getBoundingClientRect()` 强制同步布局，逐事件重算会在菜单打开时
+ * 拖慢滚动（PERF 口径）。节流后最多每 ~2 帧测一次，且仅在嵌套层展开时才真正执行。
+ */
+function scheduleNestedPlacement(): void {
+    if (openSubmenuIndex.value === null || placementTimer !== null) {
+        return
+    }
+    placementTimer = setTimeout(() => {
+        placementTimer = null
+        updateNestedPlacement()
+    }, 32)
+}
+
+/** 把焦点移入当前嵌套层第一个可导航项（跳过禁用项） */
+function focusFirstNestedItem(): void {
+    const nestedRoot = rootRef.value?.querySelector<HTMLElement>('.nested-submenu > .submenu-list')
+    if (!nestedRoot) {
+        return
+    }
+    const rows = Array.from(
+        nestedRoot.querySelectorAll<HTMLElement>(
+            ':scope > .menu-submenu-item, :scope > .submenu-item-wrapper > .menu-submenu-item'
+        )
+    )
+    rows.find((row) => !row.classList.contains('disabled'))?.focus()
 }
 
 /** 展开指定项的嵌套子菜单；keyboard=true 时把焦点移入子层第一项 */
@@ -171,22 +247,12 @@ function openNestedSubmenu(index: number, keyboard: boolean): void {
         return
     }
     openSubmenuIndex.value = index
-    if (!keyboard) {
-        return
-    }
+    nestedFlipped.value = false
     void nextTick(() => {
-        const nestedRoot = rootRef.value?.querySelector<HTMLElement>(
-            '.nested-submenu > .submenu-list'
-        )
-        if (!nestedRoot) {
-            return
+        updateNestedPlacement()
+        if (keyboard) {
+            focusFirstNestedItem()
         }
-        const rows = Array.from(
-            nestedRoot.querySelectorAll<HTMLElement>(
-                ':scope > .menu-submenu-item, :scope > .submenu-item-wrapper > .menu-submenu-item'
-            )
-        )
-        rows.find((row) => !row.classList.contains('disabled'))?.focus()
     })
 }
 
@@ -316,6 +382,23 @@ function handleKeydown(event: KeyboardEvent): void {
             return
     }
 }
+
+// 视口变化重算嵌套层展开方向（窗口 resize / 任意滚动容器滚动）。
+// 捕获阶段监听 scroll：下拉面板本身不再滚动（已移除 overflow-y: auto），但内部
+// 可滚动区域（如长快捷键列表未来扩展）滚动时同样需要重算，避免翻转判断过期。
+onMounted(() => {
+    window.addEventListener('resize', handleViewportChange)
+    document.addEventListener('scroll', handleViewportChange, true)
+})
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', handleViewportChange)
+    document.removeEventListener('scroll', handleViewportChange, true)
+    if (placementTimer !== null) {
+        clearTimeout(placementTimer)
+        placementTimer = null
+    }
+})
 </script>
 
 <style scoped>
@@ -323,8 +406,15 @@ function handleKeydown(event: KeyboardEvent): void {
     position: relative;
     min-width: 220px;
     max-width: 400px;
-    max-height: calc(100vh - 96px);
-    overflow-y: auto;
+    /*
+     * 1.5.5 用户反馈修复（菜单滚动条 / 三级子菜单「没展示」）：
+     * 本面板**不再作为滚动容器**——原 max-height + overflow-y: auto 有双重副作用：
+     * ① 菜单内容稍长就出现滚动条；② overflow 会裁剪绝对定位的嵌套（三级）子菜单，
+     * 用户看到的是「嵌套子菜单不显示」。
+     * 超长菜单改由 MenuBar 的视口 clamp 定位解决（`menu-position.ts`：
+     * 顶级下拉按实测宽高夹取到视口内），而不是滚动容器；嵌套层由翻转逻辑保证可见。
+     */
+    overflow: visible;
     margin: 0;
     /* 内边距 6（COMPONENTS.md §2；下拉面板专用值，不属于 4px 阶梯的内边距档） */
     padding: 6px;
@@ -365,10 +455,35 @@ function handleKeydown(event: KeyboardEvent): void {
     animation: menu-slide-in var(--ui-duration-pop, 180ms) var(--ui-ease-standard, ease);
 }
 
+/*
+ * 右侧空间不足时翻转至父项左侧（1.5.5 用户反馈：靠右菜单展开三级子菜单时被窗口右缘裁剪）。
+ * class 由 MenuSubmenu 按实测矩形（menu-position.ts 纯函数）写入，组件内不做风格分支判断。
+ */
+.nested-submenu--flipped {
+    left: auto;
+    right: 100%;
+    margin-left: 0;
+    margin-right: -4px;
+    animation-name: menu-slide-in-flipped;
+}
+
 @keyframes menu-slide-in {
     from {
         opacity: 0;
         transform: translateX(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 翻转层的入场位移方向与展开方向一致（从右向左滑入） */
+@keyframes menu-slide-in-flipped {
+    from {
+        opacity: 0;
+        transform: translateX(4px);
     }
 
     to {

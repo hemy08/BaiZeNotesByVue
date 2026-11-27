@@ -386,15 +386,26 @@ onBeforeUnmount(() => {
 <style scoped>
 #navi-tab {
     height: 100%;
+    /* 视觉升级（主窗口可见性修复）：左右导航条按风格切换表面（paper 纸感 / glass 半透明 /
+       workbench 与 hybrid 壳层保持现状卡片底；圆角与高光边在 workbench 恒为 0）。 */
     background-color: var(--theme-card-background, white);
+    background-color: var(--bz-shell-surface, var(--theme-card-background, white));
+    background-image: linear-gradient(
+        var(--bz-shell-veil, transparent),
+        var(--bz-shell-veil, transparent)
+    );
     display: flex;
     float: left;
     width: 40px;
-    border-right: 1px solid var(--theme-border-color);
+    border-right: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+    border-radius: var(--bz-shell-radius, 0);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0));
 }
 
 /* 2026-11-20（编辑器底部光标不可见修复）：工作区子容器统一跟随父容器高度，
-   禁止各自用 100vh 推算；编辑器/预览滚动容器必须能收缩（min-height:0）。 */
+   禁止各自用 100vh 推算；编辑器/预览滚动容器必须能收缩（min-height:0）。
+   1.5.5 主窗口可见性修复：侧栏表面材质由 ResourceManager 组件消费 --bz-shell-* 提供，
+   本容器保持透明，避免半透明面叠加导致 glass 透明感下降。 */
 #resource-manager {
     height: 100%;
     min-height: 0;
@@ -415,7 +426,7 @@ onBeforeUnmount(() => {
     cursor: ew-resize;
     color: var(--theme-accent-color, blue);
     width: 2px;
-    background-color: var(--theme-border-color);
+    background-color: var(--ui-border, var(--theme-border-color));
     height: 100%;
     float: left;
     /* Other styles... */
@@ -428,12 +439,12 @@ onBeforeUnmount(() => {
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    background-color: var(--theme-background-color);
 }
 
 /* 2026-11-19（UI 实测修复）：HTML/PDF 查看器容器此前缺少布局样式（md/plugin/tool 均有），
    导致容器高度不受控：iframe 内文档变化或锚点导航时内容可撑动布局，出现"显示区域上移、
-   被菜单栏遮挡"。这里与其它容器对齐并固定高度/裁剪溢出，保证查看器内容只在自身区域滚动。 */
+   被菜单栏遮挡"。这里与其它容器对齐并固定高度/裁剪溢出，保证查看器内容只在自身区域滚动。
+   背景/圆角/描边统一由上方内容区材质规则提供（避免此处覆盖导致四风格失真）。 */
 #html-containers,
 #pdf-containers {
     display: flex;
@@ -442,7 +453,6 @@ onBeforeUnmount(() => {
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    background-color: var(--theme-background-color);
 }
 
 #plugin-containers {
@@ -453,7 +463,6 @@ onBeforeUnmount(() => {
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
-    background-color: var(--theme-background-color);
 }
 
 #tool-containers {
@@ -464,7 +473,77 @@ onBeforeUnmount(() => {
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
+}
+
+/* ============================================================================
+ * 内容区（工区）容器：四风格材质（视觉升级 1.5.5 修复）
+ *
+ * 消费 --bz-content-*（由 #editor-container 从 P0 冻结令牌派生；hybrid 内容区 = paper）：
+ * - 表面：glass 半透明（--ui-content-surface-opacity 0.86）/ paper 与 hybrid 纸感底 /
+ *   workbench 保持既有 --theme-background-color（--ui-bg 同值）；
+ * - 圆角/描边/阴影：workbench 下全部为 0 或不可见，默认观感零变化。
+ * ::after 负责描边与阴影（paint 在子内容之上，1px hairline 不会被 Monaco 覆盖）；
+ * workbench 时 opacity 0 不参与绘制。
+ *
+ * 注：本组材质规则放在各容器「布局规则」之后，避免改变既有布局契约静态测试
+ * （tests/unit/viewer-layout-contract.test.ts 以「首个选择器出现位置」取布局块）的解析口径。
+ * ========================================================================== */
+#md-container,
+#plugin-containers,
+#tool-containers,
+#html-containers,
+#pdf-containers {
     background-color: var(--theme-background-color);
+    background-color: var(--bz-content-surface, var(--theme-background-color));
+    background-image: linear-gradient(
+        var(--bz-content-veil, transparent),
+        var(--bz-content-veil, transparent)
+    );
+    border-radius: var(--bz-content-radius, 0);
+    /* 仅供内容区材质描边/阴影层（::after）定位，不改变子元素既有绝对定位基准 */
+    position: relative;
+}
+
+#md-container::after,
+#plugin-containers::after,
+#tool-containers::after,
+#html-containers::after,
+#pdf-containers::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    opacity: var(--bz-content-on, 0);
+    border-radius: var(--bz-content-radius, 0);
+    box-shadow:
+        inset 0 0 0 var(--bz-content-hairline, 0) var(--ui-border, var(--theme-border-color)),
+        inset 0 1px 0 rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0)),
+        var(--ui-shadow-1);
+}
+
+/* 内容区表面延伸到编辑器工具栏条（MarkdownContainer 内 #md-edit-tools-bar）：paper / hybrid
+   下编辑区顶部条与内容区同底，workbench 下取 --ui-bg = 既有 --theme-background-color（零变化）。
+   本规则只接管背景材质，不改动布局/字号/文字色。 */
+#md-container :deep(#md-edit-tools-bar) {
+    background-color: var(--bz-content-surface, var(--theme-background-color));
+    background-image: linear-gradient(
+        var(--bz-content-veil, transparent),
+        var(--bz-content-veil, transparent)
+    );
+}
+
+/* 预览区纸感底（内容区 = paper / hybrid 的素材边界）：workbench 下 --bz-content-card-surface
+   计算为 --theme-card-background（与既有预览底完全同值，零变化）；paper / hybrid 叠主题色
+   低饱和薄雾、glass 为半透明面。只接管背景材质，不改变预览正文/代码/表格的既有配色。 */
+#md-container :deep(.md-preview) {
+    background-color: var(--theme-card-background);
+    background-color: var(--bz-content-card-surface, var(--theme-card-background));
+}
+
+#md-container :deep(#markdown-preview-html) {
+    background-color: var(--theme-card-background);
+    background-color: var(--bz-content-card-surface, var(--theme-card-background));
 }
 
 /* 按需挂载的 HTML/PDF 异步组件占位（加载中 / 加载失败） */
