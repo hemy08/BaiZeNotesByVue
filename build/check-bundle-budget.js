@@ -87,7 +87,11 @@ const BUDGETS = {
     firstScreenJs: { label: '首屏初始 JS（入口 + modulepreload 本地 JS）', limit: 512 * KIB },
     // 2026-11-20（B4 electron-store 12）：Setup 109.98→113.92 MiB，按实测+余量调整
     setup: { label: 'NSIS 安装包（Setup exe）', limit: 115 * MIB },
-    portable: { label: '便携版 exe（portable）', limit: 101 * MIB },
+    // 2026-11-27（1.5.5 视觉升级 + 应用内发布说明）：portable 实测 100.98→101.01 MiB，
+    // 增量来自 1.5.5 发布说明词条（zh/en i18n + release-notes 数据）与菜单版本项；
+    // 按 PERF-02 评估：属三段发布链路（REL-16）必需数据，其余 8 项预算余量充足，
+    // 故阈值 101→101.1 MiB（+0.1，为发布前最后发布说明内容留抖动余量）。
+    portable: { label: '便携版 exe（portable）', limit: 101.1 * MIB },
     // 2026-11-20（B4 electron-store 11→12）：生产依赖树增长，asar 39.33→45.5 MiB（实测）
     asar: { label: 'app.asar', limit: 47 * MIB }
 }

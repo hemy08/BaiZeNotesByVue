@@ -160,6 +160,31 @@ export default {
         fixesTitle: 'Bug fixes',
         improvementsTitle: 'Improvements',
         techStackTitle: 'Tech stack',
+        v155: {
+            title: '1.5.5 Visual Upgrade',
+            highlights: {
+                h1: '4 UI styles × 3 densities: Paper / Glass / Workbench / Hybrid, switchable in Settings → Appearance',
+                h2: '18 semantic color tokens across 28 themes, all derived from the active theme with automatic fallback for dark, high-saturation and eye-care themes',
+                h3: '6 core components upgraded together: menu bar, non-modal tool windows, dialogs, command palette, status bar & empty states, table editor',
+                h4: 'Keyboard-accessible menu bar (arrows / Enter / Esc) and paper-style writing mode'
+            },
+            features: {
+                f1: 'New Appearance options: UI style, UI density and reduce transparency',
+                f2: 'Keyboard navigation and visible focus for the menu bar; command palette and tool windows are now fully keyboard-operable',
+                f3: 'Unified radius / shadow / border / motion rules across all four styles (DESIGN / MOTION / COMPONENTS docs)',
+                f4: 'Paper-style writing mode: 1.75 line height, quote bars, rounded code blocks; Monaco editor themes stay independent'
+            },
+            improvements: {
+                i1: 'Cleaned up 161 hardcoded colors (−17.9%); colors now flow through --ui-* tokens',
+                i2: 'Verified with 37 real Electron screenshots (4 styles × 3 densities), 0 diff across two consecutive runs',
+                i3: 'Contrast scan passes for 28 themes × 4 styles (body text ≥ 4.5:1)',
+                i4: 'Converged menu bar height, width scale and z-index handling'
+            },
+            fixes: {
+                x1: 'Fixed tool-window Esc semantics: closes the topmost window only when focus is inside it',
+                x2: 'Fixed hierarchy and sizing inconsistencies in the menu bar and writing mode'
+            }
+        },
         v152: {
             title: '1.5.2 Capture and Daily Entry',
             highlights: {

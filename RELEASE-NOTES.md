@@ -1,3 +1,35 @@
+## 版本 1.5.5 (2026-11-27)
+
+> **发布状态**：**开发中（待发布）**｜tag：`release-1.5.5`（发布时创建）｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+> 本版本聚焦**界面视觉升级**：4 种界面风格 × 3 档密度 × 28 套应用主题全量适配，6 个核心组件统一升级，菜单栏键盘可达与写作模式纸感；不新增 IPC 通道与运行时依赖。
+
+### 🎨 视觉升级
+
+- 4 种界面风格（paper 纸感 / glass 轻玻璃 / workbench 高密度 / hybrid 混合）× 3 档密度（紧凑 / 默认 / 宽松），设置 → 外观切换
+- 18 组语义颜色令牌由 28 套主题派生（`--ui-*`），深色 / 高饱和 / 护眼主题自动降级（glass 稳健模式）
+- 6 个核心组件升级：菜单栏、非模态工具窗、对话框、命令面板、状态栏 / 空态、表格编辑器
+- 统一圆角 / 阴影 / 边框 / 动效规范（DESIGN / MOTION / COMPONENTS 三篇设计规范）
+
+### ✨ 体验改进
+
+- 菜单栏键盘可达（role / 方向键 / Enter / Esc / 焦点可视）；命令面板与工具窗键盘操作补齐
+- 编辑器写作模式纸感版式（paper / hybrid）：行高 1.75、引用条、代码块圆角；Monaco 57 套编辑器主题仍独立
+- 清理 161 处硬编码颜色（−17.9%），真实 Electron 截图 37 张验收（连续两次 0 diff）
+- 28 主题 × 4 风格对比度扫描全部通过（正文 ≥4.5:1）
+
+### 🐛 问题修复
+
+- 工具窗 Esc 语义：焦点在窗内时只关闭最顶层
+- 菜单栏高度、宽度阶梯、z-index 收敛统一
+
+### ⚠️ 已知事项
+
+- 部分主题（如深邃夜空）历史配色数据中背景与卡片明暗不一致，令牌派生已按表面亮度兜底，建议后续版本修正主题数据
+- 视觉升级为默认外观显式变更（workbench 默认档按新规格），如需旧观感可通过外观设置切换风格
+
 ## 版本 1.5.3 (2026-11-27)
 
 > **发布状态**：**已发布**（2026-11-27）｜tag：[`release-1.5.3`](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.3)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap

@@ -271,3 +271,16 @@
 - 真实截图软门禁：[`e2e/visual-matrix.spec.ts`](../../e2e/visual-matrix.spec.ts)
 - 清理清单（产物）：`out/visual-1.5.5-p2/hardcoded-colors-inventory.json`（不入库）
 - 截图产物（不入库）：`out/visual-1.5.5-p2/real/` ｜ `out/visual-1.5.5-p2/baseline/`
+
+## 11. 发布准备记录（2026-11-27）
+
+P2 验收后，1.5.5 进入发布准备（版本号此前保持 1.5.3，现正式升级）：
+
+| 项 | 内容 |
+| --- | --- |
+| 版本升级 | `package.json` 1.5.3 → **1.5.5**；`resources/config/version.json` appVersion 1.5.5（`generate-version` 生成）；产物 exe `ProductVersion 1.5.5.0 / FileVersion 1.5.5` |
+| 应用内发布说明 | `release-notes-data.ts` 新增 v155 条目；`menu-help.ts` 新增 v1.5.5 handler；`menu-config.ts` 版本发布子菜单新增 v1.5.5（18 项）；`dialogMain` zh/en 新增 v155 词条（title/highlights×4/features×4/improvements×4/fixes×2） |
+| 发布文档 | `RELEASE-NOTES.md` 新增 1.5.5 段（开发中/待发布）；`CHANGELOG.md` 1.5.5 状态更新；`README.md` 路线图与当前版本、`docs/reports/README.md` 当前基线版本、开发规范附录 C 项目版本同步 1.5.5 |
+| 构建实测 | `BaiZeNotes_Setup_1.5.5_windows_x64.exe` **111.62 MiB**（预算 115）/ `BaiZeNotes_1.5.5_windows_x64.exe`（portable）**101.01 MiB** / app.asar **39.47 MiB**（预算 47）/ 入口 144.4 KiB（预算 150）/ 首屏 331.1 KiB（预算 512） |
+| **预算调整（PERF-02）** | portable 100.98 → **101.01 MiB** 超原阈值 101.00（+10 KiB）：增量为 1.5.5 发布说明词条（zh/en i18n + release-notes 数据）与菜单版本项，属三段发布链路（REL-16）必需数据；其余 8 项预算余量充足。经评估将阈值 101 → **101.1 MiB**（+0.1 抖动余量），已在 `build/check-bundle-budget.js` 注释记录依据。**其余预算阈值未放宽** |
+| 发布状态 | 版本/RELEASE-NOTES/应用内说明三段链路已就绪；GitHub Release 与 tag `release-1.5.5` 待发布窗口创建 |
