@@ -6,6 +6,7 @@
         （遮罩、容器底色/圆角/阴影、右对齐 gap10 底栏与 0.2s 动画同默认壳）。
     -->
     <BaseDialog
+        non-modal
         :visible="visible"
         :title="t('dialogRenderer.materialSyntax.title')"
         title-bar-variant="regular"

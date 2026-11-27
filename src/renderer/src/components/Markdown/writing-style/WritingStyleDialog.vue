@@ -10,6 +10,7 @@
     -->
     <BaseDialog
         v-if="flags.writingStyleCheck"
+        non-modal
         :visible="state.visible"
         :title="tOr(UI.title, '写作风格检查')"
         width="960px"

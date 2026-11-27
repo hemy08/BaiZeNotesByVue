@@ -5,7 +5,7 @@
                 v-if="visible"
                 class="dialog-overlay"
                 :class="`dialog-anim--${animation}`"
-                :style="overlayStyle"
+                :style="overlayStyles"
                 @click.self="handleOverlayClick"
             >
                 <Transition name="dialog-scale">
@@ -16,7 +16,7 @@
                         :class="containerClass"
                         :style="containerStyles"
                         role="dialog"
-                        :aria-modal="modal ? 'true' : 'false'"
+                        :aria-modal="isModal ? 'true' : 'false'"
                         :aria-labelledby="ariaLabelledby"
                         :aria-label="ariaLabelValue"
                         :aria-describedby="ariaDescribedbyValue"
@@ -185,6 +185,8 @@ interface Props {
     closeOnEscape?: boolean
     /** 是否为模态对话框：false 时不启用焦点陷阱、aria-modal=false（默认 true） */
     modal?: boolean
+    /** 非模态工具窗：遮罩透明且点击穿透，禁止遮罩/Esc 关闭（默认 false） */
+    nonModal?: boolean
     /** 容器附加 class（如 MessageDialog 需要 `${type}-dialog` 供外部/测试识别消息类型） */
     containerClass?: ClassValue
     /** 遮罩内联样式覆盖（MessageDialog 迁移前遮罩为更深的 rgba(0,0,0,0.5)） */
@@ -224,7 +226,8 @@ const props = withDefaults(defineProps<Props>(), {
     resetPositionOnOpen: false,
     closeOnOverlay: true,
     closeOnEscape: true,
-    modal: true
+    modal: true,
+    nonModal: false
 })
 
 const emit = defineEmits<{
@@ -378,8 +381,8 @@ function handleDocumentKeyDown(event: KeyboardEvent): void {
         // 现代浏览器组合事件的 isComposing 为 true（Chrome 另以 keyCode 229 标记），
         // 两种标记都放行，避免用户取消候选时误关对话框。
         if (event.isComposing || event.keyCode === 229) return
-        // 非模态工具窗可关闭 Esc 关闭（如 Mermaid 编辑器）
-        if (!props.closeOnEscape) {
+        // 非模态工具窗/Esc 禁用时不关闭（如 Mermaid 编辑器）
+        if (props.nonModal || !props.closeOnEscape) {
             event.preventDefault()
             event.stopPropagation()
             return
@@ -391,7 +394,7 @@ function handleDocumentKeyDown(event: KeyboardEvent): void {
         return
     }
     // 非模态对话框不拦截底层编辑器的 Tab 导航
-    if (!props.modal) return
+    if (!isModal.value) return
     if (event.key !== 'Tab') return
 
     const focusables = getFocusableElements()
@@ -480,19 +483,28 @@ watch(
 /** `:style` 绑定的数组形态（Vue 的 StyleValue 数组，显式声明避免模板推断成 never） */
 type StyleValueList = CSSProperties[]
 
+/** 非模态时按普通窗口处理：不设 aria-modal、不锁焦点 */
+const isModal = computed(() => props.modal && !props.nonModal)
+
+/** 非模态工具窗的遮罩：透明且不拦截底层编辑器事件 */
+const overlayStyles = computed<StyleValueList>(() => [
+    (props.overlayStyle ?? {}) as CSSProperties,
+    ...(props.nonModal ? [{ pointerEvents: 'none' as const, background: 'transparent' }] : [])
+])
 // 容器内联样式：width 属性是低频常用覆盖项，其余细节由 containerStyle 全权覆盖
 // （containerStyle 放在后面，允许显式覆盖 width，语义与迁移前各对话框在模板里
 //  直接写 `:style` 覆盖外壳 CSS 一致）。
 const containerStyles = computed<StyleValueList>(() => [
     dialogStyle.value,
     {
+        ...(props.nonModal ? { pointerEvents: 'auto' } : {}),
         ...(props.width ? { width: props.width } : {}),
         ...(props.containerStyle ?? {})
     }
 ])
 
 function handleOverlayClick(): void {
-    if (props.closeOnOverlay) {
+    if (!props.nonModal && props.closeOnOverlay) {
         emit('close')
     }
 }

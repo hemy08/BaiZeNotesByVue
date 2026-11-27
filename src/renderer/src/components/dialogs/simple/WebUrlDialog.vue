@@ -1,5 +1,6 @@
 <template>
     <BaseDialog
+        non-modal
         :visible="visible"
         :title="title || t('dialogRenderer.webUrl.defaultTitle')"
         width="520px"

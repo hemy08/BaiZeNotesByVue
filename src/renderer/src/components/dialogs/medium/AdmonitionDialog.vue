@@ -5,6 +5,7 @@
         故无需 footerStyle；遮罩、容器底色/圆角/阴影、0.2s 动画同默认壳。
     -->
     <BaseDialog
+        non-modal
         :visible="visible"
         :title="t('dialogRenderer.admonition.title')"
         title-bar-variant="regular"

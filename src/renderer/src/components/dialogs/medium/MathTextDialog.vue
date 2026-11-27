@@ -7,6 +7,7 @@
         （等价于迁移前 visible 监听内调用的 resetPosition）。
     -->
     <BaseDialog
+        non-modal
         :visible="visible"
         :title="t('dialogRenderer.mathText.title')"
         title-bar-variant="regular"

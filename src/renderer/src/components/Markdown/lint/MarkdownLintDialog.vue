@@ -9,6 +9,7 @@
     -->
     <BaseDialog
         v-if="flags.markdownLint"
+        non-modal
         :visible="state.visible"
         :title="tOr(UI.title, 'Markdown 检查')"
         width="920px"
@@ -83,6 +84,7 @@
                             <span class="issue-message">{{ ruleMessageText(issue) }}</span>
                             <span
                                 v-if="issue.fix !== undefined"
+                                non-modal
                                 class="issue-fixable"
                                 :title="tOr(UI.fixableHint, '可自动修复')"
                             >

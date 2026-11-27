@@ -11,6 +11,7 @@
         - IPC 调用全部容错：渲染层 IPC 不可用 / 主进程异常只给对话框内可见提示，不抛错。
     -->
     <BaseDialog
+        non-modal
         :visible="state.visible"
         :title="tOr(UI.title, '附件管理')"
         width="980px"

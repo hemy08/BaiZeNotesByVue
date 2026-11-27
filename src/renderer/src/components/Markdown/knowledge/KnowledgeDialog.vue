@@ -7,6 +7,7 @@
         - 所有用户文案走 `editorUi.knowledge.*` 建议键 + 中文兜底（词典由主控补）。
     -->
     <BaseDialog
+        non-modal
         :visible="state.visible"
         :title="dialogTitle"
         width="860px"

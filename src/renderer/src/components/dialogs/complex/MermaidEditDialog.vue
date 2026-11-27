@@ -14,10 +14,7 @@
         close-button-variant="rounded"
         width="1400px"
         :container-style="containerStyle"
-        :overlay-style="overlayStyle"
-        :close-on-overlay="false"
-        :close-on-escape="false"
-        :modal="false"
+        non-modal
         :title-bar-style="titleBarStyle"
         :title-text-style="titleTextStyle"
         :close-button-style="closeButtonStyle"
@@ -144,16 +141,11 @@ const emit = defineEmits<{
  * - 底栏：旧外壳 15px 24px 内边距、12px 间距、flex-shrink: 0（默认壳为 15px 20px / gap 10px）。
  */
 /** 非模态工具窗：遮罩不拦截底层编辑器点击，点击外部不关闭 */
-const overlayStyle: CSSProperties = {
-    pointerEvents: 'none',
-    background: 'transparent'
-}
 const panelSize = reactive<{ width: number | null; height: number }>({
     width: null,
     height: 900
 })
 const containerStyle = computed<CSSProperties>(() => ({
-    pointerEvents: 'auto',
     ...(panelSize.width ? { width: `${panelSize.width}px` } : {}),
     height: `${panelSize.height}px`
 }))

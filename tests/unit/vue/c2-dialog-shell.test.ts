@@ -207,7 +207,15 @@ describe('C-2 迁移对话框关闭行为', () => {
     it.each(SHELL_CASES)('$name 点击遮罩空白处 emit close', async (shellCase) => {
         const wrapper = mountDialog(shellCase.component)
         await wrapper.find('.dialog-overlay').trigger('click')
-        expect(wrapper.emitted('close')).toHaveLength(1)
+        const nonModal = [
+            'AdmonitionDialog',
+            'InsertImageDialog',
+            'MathTextDialog',
+            'MaterialSyntaxDialog'
+        ]
+        expect(wrapper.emitted('close') ?? []).toHaveLength(
+            nonModal.includes(shellCase.name) ? 0 : 1
+        )
     })
 
     it.each(SHELL_CASES)('$name 点击关闭按钮 emit close 且不重复触发', async (shellCase) => {
