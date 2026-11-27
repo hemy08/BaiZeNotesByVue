@@ -166,13 +166,13 @@ jobs:
               run: npx --no-install prettier --check .
 
             - name: Gate · Vitest with coverage thresholds
-              run: npx --no-install vitest run --coverage
+              run: npx --no-install vitest run --coverage --reporter=default --reporter=json --outputFile.json=out/test-results/vitest.json
 
             - name: Gate · Docs link check
               run: npm run docs:check
 
             - name: Gate · Quality baseline
-              run: node build/generate-quality-baseline.js --check
+              run: node build/generate-quality-baseline.js --check --test-json=out/test-results/vitest.json
 
             # P2-5：发布门禁与 CI 对齐为「全量依赖树（含 dev）」审计——
             # 渲染层运行时安全库（dompurify/mermaid/katex/highlight.js 等）位于 devDependencies
