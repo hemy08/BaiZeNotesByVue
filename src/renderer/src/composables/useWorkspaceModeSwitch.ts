@@ -1,48 +1,73 @@
 /**
- * 工作区模式快速切换（1.5.7 体验微调，用户反馈批次 A4）。
+ * 工作区模式切换（1.5.7 迁移批次：统一迁移弹窗 + 初始化 + 写配置）。
  *
  * ## 背景
- * 用户要求工作区模式入口不仅要能在「系统设置 → 功能」里切换，还要能在写笔记时直接触达：
- * - 右侧边栏 AI 入口（`WorkSpace.vue` 的 `#llm-ai-sidebar-entry`）：传统模式下点击
- *   「默认用户要切换到 LLM Wiki 模式」；
- * - 编辑工具条右侧的模式快速切换按钮（`MarkdownEditToolsComponent.vue`）。
- * 两处入口共用本 composable，**与系统设置里的工作区模式切换走同样处理**（同一套确认 +
- * 初始化 + 配置写入链路），避免出现「工具条切了但 raw/ 与 wiki/ 没初始化」的半成品状态。
+ * 1.5.7 A4 批次的确认对话框只做「初始化 + 写配置」；迁移批次要求把**所有用户决策**
+ * （迁移方式 / 迁移范围 / 是否编译 / 编译范围）合并到**单个迁移弹窗**，并让三处入口统一：
+ * - 设置页「功能 → 工作区模式」下拉（`FeaturesPanel.vue`）；
+ * - 顶部菜单栏模式切换按钮（`MenuBar.vue`）；
+ * - 右侧边栏 AI 入口（传统模式下点击，`WorkSpace.vue`）。
  *
- * ## 流程（traditional → llm-wiki，与 FeaturesPanel 的确认流程等价）
- * 1. `requestSwitchToLlmWiki()`：打开确认对话框（复用 FeaturesPanel 的确认文案键）；
- * 2. `confirmSwitchToLlmWiki()`：确认后先调 `initializeLlmWiki()`（主进程白名单通道
- *    `IPC.FILE.INITIALIZE_LLM_WIKI`，成功/失败均给用户可见提示）；
- * 3. 初始化成功才把 `workspaceMode: 'llm-wiki'` 合并写入系统配置（`config:write('system')`，
- *    主进程 store-backed 路由 + `SYSTEM_SETTING_UPDATE` 广播 → `useWorkspaceMode` 即时切换布局）；
- * 4. 写入成功后确保右侧 AI 面板处于展开态（清空用户上次的「收起」偏好）；
- * 5. 取消 / Esc / 关闭按钮：不初始化、不写配置，保持原模式。
+ * ## 流程（traditional → llm-wiki，由迁移弹窗驱动）
+ * 1. `requestSwitchToLlmWiki()`：打开迁移弹窗（状态为模块单例，宿主 `WorkSpace.vue` 挂载）；
+ * 2. `completeSwitchToLlmWiki(decision)`（弹窗「开始迁移 / 完成初始化」）：
+ *    ① 若选择迁移，先调用 `LLM_WIKI.MIGRATE`（复制/移动到 raw/；逐项结果交给弹窗展示）；
+ *    ② 调 `initializeLlmWiki()`（幂等创建 raw/、wiki/、schema.md）；
+ *    ③ 初始化成功才把 `workspaceMode: 'llm-wiki'` 合并写入系统配置；
+ *    ④ 确保右侧 AI 面板展开，并通知完成监听方（设置页草稿同步）。
+ *    整批前置条件失败（无工作区/参数非法）→ 返回 `switched:false`，保持原模式；
+ * 3. `finishWorkspaceModeSwitch()`：结果页「完成 / 关闭」关闭弹窗（不重复初始化/写配置）；
+ * 4. 取消 / Esc / 关闭按钮（表单阶段）：不初始化、不写配置，保持原模式。
  *
  * ## 流程（llm-wiki → traditional）
  * `switchToTraditional()`：读当前系统配置 → 合并 `workspaceMode: 'traditional'` → 写回
  * （直接生效；不删除已创建的 raw/ 与 wiki/ 目录，与系统设置口径一致）。
  *
  * ## 边界
- * - **不新增 IPC 通道**：全部复用既有 `config:read` / `config:write`（preload 受限 API）与
- *   `IPC.FILE.INITIALIZE_LLM_WIKI`；
+ * - **不新增 IPC**：迁移复用 `IPC.LLM_WIKI.*`（3 个迁移批次通道），编译选择经 EventBus
+ *   `LLM_WIKI_COMPILE_REQUEST` 交接给 M2 批量编译批次（本模块不执行编译）；
  * - 写配置失败/异常必须给用户可见反馈（CFG-04 禁止静默失败），由 `reportActionFailure` 统一
- *   弹错误对话框；失败时保持原模式（不写半成品配置、不展开面板）；
- * - 状态为模块单例（与 `useWorkspaceMode` / `llm-wiki-workbench` 同口径），对话框组件只读
+ *   弹错误对话框；失败时保持原模式；
+ * - 状态为模块单例（与 `useWorkspaceMode` / `llm-wiki-workbench` 同口径），弹窗组件只读
  *   消费 `visible` / `busy`。
  */
 import { reactive } from 'vue'
 import type { SystemSetting } from '../../../shared/types'
+import type { LlmWikiMigratableFormatId, LlmWikiMigrateResult } from '../../../shared/types/ipc'
 import { WORKSPACE_MODE, type WorkspaceMode } from '../../../shared/constants/workspace-mode'
 import { initializeLlmWiki } from '../common/llm-wiki-actions'
+import { runWorkspaceMigration } from '../common/llm-wiki-migration-actions'
 import { describeActionError, reportActionFailure } from '../common/action-feedback'
 import { t } from '../common/i18n'
+import { logger } from '../common/logger'
 import { ensureLlmWikiAiPanelExpanded } from '../components/llm-wiki/llm-wiki-workbench'
 
-/** 工作区模式切换确认对话框状态（模块单例；对话框组件只读消费） */
+/** 迁移方式（不迁移 / 复制到 raw / 移动到 raw） */
+export type LlmWikiMigrationChoice = 'none' | 'copy' | 'move'
+
+/** 弹窗提交的切换决策（用户现场选择，不预置隐藏默认） */
+export interface LlmWikiSwitchDecision {
+    /** 迁移方式 */
+    mode: LlmWikiMigrationChoice
+    /** 迁移范围（按格式多选；mode=none 时忽略） */
+    formats: LlmWikiMigratableFormatId[]
+}
+
+/** 切换结果（供弹窗结果视图展示；本 composable 不抛异常） */
+export interface LlmWikiSwitchOutcome {
+    /** 是否已完成模式切换（初始化成功 + 写配置成功） */
+    switched: boolean
+    /** 迁移结果（选择迁移时存在；含逐项 moved/copied/skipped/failed 明细） */
+    migration?: LlmWikiMigrateResult
+    /** 失败原因（可读文案；成功时缺省） */
+    error?: string
+}
+
+/** 工作区模式切换状态（模块单例；迁移弹窗只读消费） */
 export interface WorkspaceModeSwitchState {
-    /** 传统 → LLM Wiki 的确认对话框是否展开 */
+    /** 迁移弹窗是否展开 */
     visible: boolean
-    /** 初始化 / 写配置进行中（禁用确认与取消按钮，防重复提交） */
+    /** 迁移/初始化/写配置进行中（禁用按钮与关闭，防重复提交） */
     busy: boolean
 }
 
@@ -51,6 +76,33 @@ export const workspaceModeSwitchState = reactive<WorkspaceModeSwitchState>({
     visible: false,
     busy: false
 })
+
+/** 完成监听器（设置页草稿同步等；迁移弹窗结果出来后通知） */
+type SwitchCompletedListener = (outcome: LlmWikiSwitchOutcome) => void
+const completedListeners = new Set<SwitchCompletedListener>()
+
+/**
+ * 订阅「切换到 LLM Wiki 完成」事件（仅 switched=true 时回调）。
+ *
+ * @returns 取消订阅函数（组件卸载时调用，避免模块单例长期持有组件闭包）
+ */
+export function onWorkspaceModeSwitchCompleted(listener: SwitchCompletedListener): () => void {
+    completedListeners.add(listener)
+    return () => {
+        completedListeners.delete(listener)
+    }
+}
+
+/** 通知完成监听方（监听器异常不影响切换结果，记录日志后继续） */
+function notifyCompleted(outcome: LlmWikiSwitchOutcome): void {
+    for (const listener of completedListeners) {
+        try {
+            listener(outcome)
+        } catch (error) {
+            logger.warn('[WorkspaceModeSwitch] 完成监听器执行异常：', error)
+        }
+    }
+}
 
 /** preload 受限配置 API 的最小结构（便于单测注入替身，不新增 IPC 契约） */
 interface ConfigApiLike {
@@ -117,8 +169,8 @@ async function writeWorkspaceMode(mode: WorkspaceMode): Promise<boolean> {
 }
 
 /**
- * 请求切换到 LLM Wiki 模式：打开确认对话框（实际切换在用户确认后执行）。
- * 重复点击（对话框已展开 / 切换进行中）不重复打开。
+ * 请求切换到 LLM Wiki 模式：打开迁移弹窗（实际切换在弹窗提交后执行）。
+ * 重复点击（弹窗已展开 / 切换进行中）不重复打开。
  */
 export function requestSwitchToLlmWiki(): void {
     if (workspaceModeSwitchState.busy) {
@@ -127,7 +179,7 @@ export function requestSwitchToLlmWiki(): void {
     workspaceModeSwitchState.visible = true
 }
 
-/** 取消切换：关闭对话框，不初始化、不写配置（保持原模式） */
+/** 取消切换（表单阶段）：关闭弹窗，不初始化、不写配置（保持原模式） */
 export function cancelWorkspaceModeSwitch(): void {
     if (workspaceModeSwitchState.busy) {
         return
@@ -135,36 +187,80 @@ export function cancelWorkspaceModeSwitch(): void {
     workspaceModeSwitchState.visible = false
 }
 
-/**
- * 确认切换到 LLM Wiki 模式（对话框「确认初始化」按钮）。
- *
- * 顺序说明（与系统设置页一致）：初始化成功是切换模式的前提，失败说明工作区不可用/未打开，
- * 保持原模式并由 `initializeLlmWiki` 给出可见错误提示；初始化成功后写配置，写入成功才展开
- * AI 面板。无论成功/失败/异常，对话框都会关闭并复位 busy（用户可重试）。
- *
- * @returns 是否完成切换
- */
-export async function confirmSwitchToLlmWiki(): Promise<boolean> {
+/** 关闭弹窗（结果页「完成」/ 右上角关闭；不重复执行任何切换动作） */
+export function finishWorkspaceModeSwitch(): void {
     if (workspaceModeSwitchState.busy) {
-        // 防重复提交：初始化/写配置进行中直接忽略重复确认
-        return false
+        return
+    }
+    workspaceModeSwitchState.visible = false
+}
+
+/**
+ * 完成切换到 LLM Wiki 模式（迁移弹窗「开始迁移 / 完成初始化」按钮）。
+ *
+ * 顺序说明：迁移是用户显式选择的可选步骤（失败即中止切换并保留原模式，避免「文件已搬走但
+ * 模式没切」的半成品状态）；初始化成功是切换模式的前提；写入成功才展开 AI 面板。
+ * 无论成功/失败，弹窗保持打开以展示结果（由调用方在结果页关闭）。
+ *
+ * @returns 结构化结果；**不抛异常**
+ */
+export async function completeSwitchToLlmWiki(
+    decision: LlmWikiSwitchDecision
+): Promise<LlmWikiSwitchOutcome> {
+    if (workspaceModeSwitchState.busy) {
+        // 防重复提交：迁移/初始化/写配置进行中直接忽略重复确认
+        return { switched: false, error: t('editorUi.llmWikiPanel.workspaceModeSwitchBusy') }
     }
     workspaceModeSwitchState.busy = true
     try {
+        let migration: LlmWikiMigrateResult | undefined
+        if (decision.mode !== 'none') {
+            migration = await runWorkspaceMigration({
+                mode: decision.mode,
+                formats: decision.formats
+            })
+            if (!migration.ok) {
+                // 迁移整批前置条件失败（无工作区/参数非法/raw 不可用）：中止切换，保持原模式
+                return {
+                    switched: false,
+                    migration,
+                    error: migration.error ?? t('common.unknown')
+                }
+            }
+        }
         const initialized = await initializeLlmWiki()
         if (!initialized) {
-            return false
+            // 初始化失败提示由 initializeLlmWiki 负责，状态为「未切换」但迁移结果保留供用户查看/回滚
+            return {
+                switched: false,
+                ...(migration ? { migration } : {}),
+                error: t('editorUi.llmWikiPanel.workspaceModeSwitchInitFailed')
+            }
         }
         const switched = await writeWorkspaceMode(WORKSPACE_MODE.LLM_WIKI)
         if (!switched) {
-            return false
+            return {
+                switched: false,
+                ...(migration ? { migration } : {}),
+                error: t('editorUi.llmWikiPanel.workspaceModeSwitchConfigFailed')
+            }
         }
         // 布局经主进程广播切换；同时清掉用户上次的「收起」偏好，保证切换后 AI 面板已展开
         ensureLlmWikiAiPanelExpanded()
-        return true
+        const outcome: LlmWikiSwitchOutcome = {
+            switched: true,
+            ...(migration ? { migration } : {})
+        }
+        notifyCompleted(outcome)
+        return outcome
+    } catch (error) {
+        logger.error('[WorkspaceModeSwitch] 切换到 LLM Wiki 异常：', error)
+        return {
+            switched: false,
+            error: describeActionError(error, t('common.unknown'))
+        }
     } finally {
         workspaceModeSwitchState.busy = false
-        workspaceModeSwitchState.visible = false
     }
 }
 
@@ -177,8 +273,13 @@ export async function switchToTraditional(): Promise<boolean> {
     return writeWorkspaceMode(WORKSPACE_MODE.TRADITIONAL)
 }
 
-/** 仅供单元测试：复位模块单例状态 */
+/** 仅供单元测试：复位模块单例状态（不清空完成监听器，避免影响已挂载组件） */
 export function resetWorkspaceModeSwitchForTesting(): void {
     workspaceModeSwitchState.visible = false
     workspaceModeSwitchState.busy = false
+}
+
+/** 仅供单元测试：清空完成监听器（用例间隔离） */
+export function clearWorkspaceModeSwitchListenersForTesting(): void {
+    completedListeners.clear()
 }

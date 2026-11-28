@@ -686,7 +686,12 @@ export default {
         workspaceModeSwitchFailedMessage:
             'Failed to save the workspace mode configuration: {error}. The previous mode is still active; please try again.',
         workspaceModeSwitchUnavailable:
-            'The system configuration cannot be read or written in this environment, so the workspace mode was not switched'
+            'The system configuration cannot be read or written in this environment, so the workspace mode was not switched',
+        workspaceModeSwitchBusy: 'Switching the workspace mode; please wait',
+        workspaceModeSwitchInitFailed:
+            'Failed to initialize the LLM Wiki workspace, so the workspace mode was not switched',
+        workspaceModeSwitchConfigFailed:
+            'Failed to save the workspace mode configuration, so the workspace mode was not switched'
     },
     /**
      * 1.5.7 UX tuning (user feedback batch A6): three-state "editor / preview / editor+preview"

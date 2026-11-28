@@ -849,7 +849,8 @@ export interface McpSetEnabledResult {
  *      LlmWikiRollbackResult + IpcRequests / IpcResponses 登记；
  *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
  *   4. 主进程：ipc/llm-wiki-migration-ipc.ts（registry 编排 + withSenderCheck）→
- *      utils/llm-wiki-migrate.ts（扫描统计 / 复制 / 移动 / 操作日志 / 回滚）；
+ *      utils/llm-wiki-migrate.ts（扫描统计 + Markdown 链接影响 / 复制 / 移动 /
+ *      操作日志（含完成状态与目标指纹）/ 回滚）；
  *   5. 渲染层：common/llm-wiki-migration-actions.ts + 迁移弹窗 MigrationWizardDialog.vue
  *      （三处模式切换入口统一走该弹窗）；
  *   6. 测试：llm-wiki-migrate / llm-wiki-migration-ipc / llm-wiki-migration-actions /
@@ -876,7 +877,34 @@ export interface LlmWikiFormatStat {
 }
 
 /**
- * `LLM_WIKI.SCAN_FILES` 返回结构（invoke；只读统计，**不读取文件内容**）。
+ * 迁移后可能失效的 Markdown 链接（迁移前影响扫描）。
+ *
+ * 判定口径：只解析 Markdown 文件中的 `[[Wiki 链接]]` 与相对 Markdown/图片引用，
+ * 目标解析到「本次可迁移文件集合」内的文件时计入；绝对路径/远程 URL/锚点链接忽略。
+ */
+export interface LlmWikiLinkImpact {
+    /** 引用所在的 Markdown 文件（工作区相对路径，POSIX 分隔符） */
+    file: string
+    /** 行号（1-based） */
+    line: number
+    /** 原始链接目标文本（截断展示用，不展开锚点） */
+    target: string
+    /** 被引用的文件（工作区相对路径，POSIX 分隔符） */
+    targetFile: string
+    /** 被引用文件的格式分类（弹窗按用户所选格式过滤） */
+    format: LlmWikiMigratableFormatId
+}
+
+/** 链接影响汇总（items 最多 200 条，total 为完整计数） */
+export interface LlmWikiLinkImpactSummary {
+    /** 迁移后可能失效的链接总数 */
+    total: number
+    /** 明细（受上限截断；UI 展示「文件:行 → 目标」） */
+    items: LlmWikiLinkImpact[]
+}
+
+/**
+ * `LLM_WIKI.SCAN_FILES` 返回结构（invoke；只按扩展名/大小统计 + Markdown 链接影响扫描）。
  * `formats` 恒包含全部 5 类（无匹配时 count=0），便于弹窗稳定渲染格式多选。
  */
 export interface LlmWikiScanResult {
@@ -886,6 +914,8 @@ export interface LlmWikiScanResult {
     formats: LlmWikiFormatStat[]
     /** 可迁移文件总数（= formats 各 count 之和） */
     total: number
+    /** 迁移后可能失效的 Markdown 链接（只读扫描；用于弹窗预警与结果页断链清单） */
+    links: LlmWikiLinkImpactSummary
     /** 是否因文件数上限被截断（超大工作区安全降级，仍可迁移已扫描部分） */
     truncated?: boolean
     /** 失败原因（可读文案；成功时缺省） */

@@ -1,18 +1,15 @@
 // @vitest-environment jsdom
 /**
- * 1.5.7 LLM Wiki L1 —— 设置页「工作区模式」下拉 + 模式切换确认对话框单测
+ * 1.5.7 迁移批次：设置页「工作区模式」入口统一到迁移弹窗。
  *
- * 覆盖点（T1.4 / T1.5 渲染层验收）：
- * 1. 下拉渲染：默认 traditional，两个选项值/文案走 i18n（工作区模式标签 + 说明收进 ⓘ 由
- *    `system-setting-panels.test.ts` 覆盖）；
- * 2. traditional → llm-wiki：先弹确认对话框（标题/正文/按钮中英词典），**不立即写草稿、
- *    不调用主进程**，下拉回退为当前草稿值；
- * 3. 取消：关闭确认框、不写草稿、不调通道；
- * 4. 确认成功：调用白名单通道 `IPC.FILE.INITIALIZE_LLM_WIKI`，成功才写入工作区模式草稿
- *    （保存沿用设置页既有 config:write('system') 通道），并展示成功提示；
- * 5. 确认失败/异常：保持 traditional 不写草稿，展示含错误详情的失败提示；
- * 6. llm-wiki → traditional：直接写草稿（不弹确认、不调通道、不删除已创建目录）；
- * 7. 初始化进行中：下拉与确认/取消按钮禁用，防重复提交。
+ * 覆盖点：
+ * 1. 下拉渲染：默认 traditional，两个选项值/文案走 i18n；
+ * 2. traditional → llm-wiki：**不再弹面板内联确认框**，而是打开统一迁移弹窗
+ *    （`workspaceModeSwitchState.visible = true`），不立即写草稿、不调用主进程；
+ * 3. 取消（关闭弹窗）：下拉回退为当前草稿值，不写草稿；
+ * 4. 弹窗完成切换后：完成监听把工作区模式同步进设置页草稿（保存仍走设置页既有通道）；
+ * 5. 弹窗切换进行中（busy）：下拉禁用，防重复切换；
+ * 6. llm-wiki → traditional：直接写草稿（不弹窗、不调通道、不删除已创建目录）。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
@@ -25,7 +22,22 @@ import {
 } from '@renderer/components/dialogs/complex/system-setting/model'
 import { getConfigStore } from '@renderer/common/useConfigStore'
 import { t } from '@renderer/common/i18n'
-import { IPC } from '../../../src/shared/ipc-channels'
+import {
+    cancelWorkspaceModeSwitch,
+    clearWorkspaceModeSwitchListenersForTesting,
+    completeSwitchToLlmWiki,
+    finishWorkspaceModeSwitch,
+    resetWorkspaceModeSwitchForTesting,
+    workspaceModeSwitchState
+} from '../../../src/renderer/src/composables/useWorkspaceModeSwitch'
+
+const { initializeLlmWikiMock } = vi.hoisted(() => ({
+    initializeLlmWikiMock: vi.fn()
+}))
+
+vi.mock('@renderer/common/llm-wiki-actions', () => ({
+    initializeLlmWiki: initializeLlmWikiMock
+}))
 
 /** 全局配置 store 单例（断言成功/失败提示） */
 const store = getConfigStore()
@@ -45,7 +57,7 @@ function track(wrapper: VueWrapper): VueWrapper {
 
 /**
  * 像壳层（SystemSettingDialog）一样把 FeaturesPanel 的 update 补丁合并回 props，
- * 这样才能断言「确认成功后才写入工作区模式草稿」以及下拉的最终展示值。
+ * 这样才能断言「弹窗完成切换后才写入工作区模式草稿」以及下拉的最终展示值。
  */
 function mountPanel(initial: SystemDialogSettings = draft()) {
     const settings = ref<SystemDialogSettings>({ ...initial })
@@ -80,35 +92,18 @@ function selectValue(wrapper: VueWrapper): string {
     return (workspaceModeSelect(wrapper).element as HTMLSelectElement).value
 }
 
-/** 模式切换确认对话框（FeaturesPanel 传入 container-class="workspace-mode-confirm-dialog"） */
-function confirmDialog(wrapper: VueWrapper) {
-    return wrapper.find('.workspace-mode-confirm-dialog')
-}
-
-/** 打开「traditional → llm-wiki」确认框（切下拉并等待渲染） */
-async function openConfirm(wrapper: VueWrapper): Promise<void> {
-    await workspaceModeSelect(wrapper).setValue('llm-wiki')
-    await flushPromises()
-}
-
-let invoke: ReturnType<typeof vi.fn>
-
-/**
- * 1.5.7 体验升级 B：FeaturesPanel 已不再挂载读取 MCP/AI 配置（两个分组迁出「功能」页签；
- * 1.5.7 体验微调后只存在于菜单「设置 → AI 助手」独立对话框），本文件只需工作区初始化
- * 通道的桩；涉及「是否调用过主进程」的断言统一只统计工作区初始化通道。
- */
-const INITIALIZE_LLM_WIKI_CHANNEL = IPC.FILE.INITIALIZE_LLM_WIKI
-
-/** 只取「工作区初始化」通道的 invoke 调用 */
-function initializeInvokeCalls(): unknown[][] {
-    return invoke.mock.calls.filter((call) => call[0] === INITIALIZE_LLM_WIKI_CHANNEL)
-}
+let readMock: ReturnType<typeof vi.fn>
+let writeMock: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
-    invoke = vi.fn().mockResolvedValue({ success: true })
-    vi.stubGlobal('electron', { ipcRenderer: { invoke } })
+    resetWorkspaceModeSwitchForTesting()
+    clearWorkspaceModeSwitchListenersForTesting()
     store.hideDialog('message')
+    initializeLlmWikiMock.mockReset()
+    initializeLlmWikiMock.mockResolvedValue(true)
+    readMock = vi.fn().mockResolvedValue({ language: 'zh-CN', workspaceMode: 'traditional' })
+    writeMock = vi.fn().mockResolvedValue(true)
+    vi.stubGlobal('api', { config: { read: readMock, write: writeMock } })
 })
 
 afterEach(() => {
@@ -118,6 +113,8 @@ afterEach(() => {
         }
     }
     wrappers = []
+    resetWorkspaceModeSwitchForTesting()
+    clearWorkspaceModeSwitchListenersForTesting()
     store.hideDialog('message')
     document.body.innerHTML = ''
     // BaseDialog 打开期间锁定 body 滚动；卸载后清理残留，避免用例间串扰
@@ -153,151 +150,105 @@ describe('FeaturesPanel 工作区模式：下拉渲染', () => {
     })
 })
 
-describe('FeaturesPanel 工作区模式：traditional → llm-wiki 确认', () => {
-    it('切换时不立即写草稿/不调主进程，先弹确认框，且下拉回退为当前值', async () => {
+describe('FeaturesPanel 工作区模式：traditional → llm-wiki 走统一迁移弹窗', () => {
+    it('切换时打开迁移弹窗（不写草稿、不调通道），下拉回退为当前值', async () => {
         const { wrapper, patches } = mountPanel()
-        await openConfirm(wrapper)
 
-        expect(confirmDialog(wrapper).exists()).toBe(true)
-        expect(confirmDialog(wrapper).find('.title-text').text()).toBe(
-            t('dialogRenderer.systemSetting.features.workspaceModeConfirmTitle')
-        )
-        expect(confirmDialog(wrapper).find('.workspace-mode-confirm-message').text()).toBe(
-            t('dialogRenderer.systemSetting.features.workspaceModeConfirmMessage')
-        )
-        // 确认框两个按钮文案（取消复用 common.cancel；确认走独立词条）
-        const footerButtons = confirmDialog(wrapper).findAll('.footer .dialog-btn')
-        expect(footerButtons.map((button) => button.text())).toEqual([
-            t('common.cancel'),
-            t('dialogRenderer.systemSetting.features.workspaceModeConfirmOk')
-        ])
-        // 未确认前：草稿不变、不调用工作区初始化、下拉回退
-        expect(patches).toEqual([])
-        expect(initializeInvokeCalls()).toEqual([])
-        expect(selectValue(wrapper)).toBe('traditional')
-    })
-
-    it('取消：关闭确认框，不写草稿、不调主进程，下拉保持原值', async () => {
-        const { wrapper, patches, settings } = mountPanel()
-        await openConfirm(wrapper)
-
-        await confirmDialog(wrapper).find('.btn-cancel').trigger('click')
+        await workspaceModeSelect(wrapper).setValue('llm-wiki')
         await flushPromises()
 
-        expect(confirmDialog(wrapper).exists()).toBe(false)
+        expect(workspaceModeSwitchState.visible).toBe(true)
+        expect(initializeLlmWikiMock).not.toHaveBeenCalled()
         expect(patches).toEqual([])
-        expect(initializeInvokeCalls()).toEqual([])
+        expect(selectValue(wrapper)).toBe('traditional')
+        // 面板内不再渲染自己的确认框（统一由 WorkSpace 挂载迁移弹窗）
+        expect(wrapper.find('.workspace-mode-confirm-dialog').exists()).toBe(false)
+    })
+
+    it('取消（关闭迁移弹窗）：不写草稿、不调通道，下拉保持原值', async () => {
+        const { wrapper, patches, settings } = mountPanel()
+        await workspaceModeSelect(wrapper).setValue('llm-wiki')
+        await flushPromises()
+
+        cancelWorkspaceModeSwitch()
+        await flushPromises()
+
+        expect(workspaceModeSwitchState.visible).toBe(false)
+        expect(patches).toEqual([])
+        expect(initializeLlmWikiMock).not.toHaveBeenCalled()
         expect(settings.value.workspaceMode).toBe('traditional')
         expect(selectValue(wrapper)).toBe('traditional')
     })
 
-    it('确认成功：调用白名单通道，成功后才写入草稿并展示成功提示', async () => {
+    it('弹窗完成切换后：完成监听把模式同步进草稿，下拉展示 llm-wiki', async () => {
         const { wrapper, patches, settings } = mountPanel()
-        await openConfirm(wrapper)
-
-        await confirmDialog(wrapper).find('.btn-confirm').trigger('click')
+        await workspaceModeSelect(wrapper).setValue('llm-wiki')
         await flushPromises()
 
-        expect(initializeInvokeCalls()).toHaveLength(1)
-        expect(initializeInvokeCalls()[0][0]).toBe('baize:file:initialize-llm-wiki')
+        // 模拟迁移弹窗提交完成（初始化 + 写配置成功）
+        const outcome = await completeSwitchToLlmWiki({ mode: 'none', formats: [] })
+        await flushPromises()
+
+        expect(outcome.switched).toBe(true)
+        expect(initializeLlmWikiMock).toHaveBeenCalledTimes(1)
+        expect(writeMock).toHaveBeenCalledWith(
+            'system',
+            expect.objectContaining({ workspaceMode: 'llm-wiki' })
+        )
         expect(patches).toContainEqual({ workspaceMode: 'llm-wiki' })
         expect(settings.value.workspaceMode).toBe('llm-wiki')
         expect(selectValue(wrapper)).toBe('llm-wiki')
-        expect(confirmDialog(wrapper).exists()).toBe(false)
-        // 成功提示复用应用内消息对话框（标题为菜单动作名，正文为初始化成功文案）
-        expect(store.dialogs.messageDialog.visible).toBe(true)
-        expect(store.dialogs.messageDialog.type).toBe('success')
-        expect(store.dialogs.messageDialog.title).toBe(t('menu.file.initializeLlmWiki'))
-        expect(store.dialogs.messageDialog.message).toBe(
-            t('dialogRenderer.systemSetting.features.workspaceModeInitSuccess')
-        )
     })
 
-    it('确认失败（success=false）：保持 traditional，不写草稿，展示含主进程原因的失败提示', async () => {
-        const reason = '尚未打开工作区，无法初始化 LLM Wiki。'
-        invoke.mockResolvedValue({ success: false, error: reason })
-        const { wrapper, patches, settings } = mountPanel()
-        await openConfirm(wrapper)
-
-        await confirmDialog(wrapper).find('.btn-confirm').trigger('click')
-        await flushPromises()
-
-        expect(initializeInvokeCalls()).toHaveLength(1)
-        expect(initializeInvokeCalls()[0][0]).toBe('baize:file:initialize-llm-wiki')
-        expect(patches).toEqual([])
-        expect(settings.value.workspaceMode).toBe('traditional')
-        expect(selectValue(wrapper)).toBe('traditional')
-        expect(confirmDialog(wrapper).exists()).toBe(false)
-        expect(store.dialogs.messageDialog.visible).toBe(true)
-        expect(store.dialogs.messageDialog.type).toBe('error')
-        expect(store.dialogs.messageDialog.message).toContain(reason)
-        expect(store.dialogs.messageDialog.message).toContain(
-            t('dialogRenderer.systemSetting.features.workspaceModeInitFailed', { error: reason })
-        )
-    })
-
-    it('确认时 IPC 异常：归一化错误详情并展示失败提示，保持 traditional', async () => {
-        invoke.mockRejectedValue(
-            new Error(
-                "Error invoking remote method 'baize:file:initialize-llm-wiki': Error: IPC 通道不可用"
-            )
-        )
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    it('切换失败（初始化失败）时不同步草稿：下拉保持 traditional', async () => {
+        initializeLlmWikiMock.mockResolvedValue(false)
         const { wrapper, patches } = mountPanel()
-        await openConfirm(wrapper)
-
-        await confirmDialog(wrapper).find('.btn-confirm').trigger('click')
+        await workspaceModeSelect(wrapper).setValue('llm-wiki')
         await flushPromises()
 
+        const outcome = await completeSwitchToLlmWiki({ mode: 'none', formats: [] })
+        await flushPromises()
+
+        expect(outcome.switched).toBe(false)
         expect(patches).toEqual([])
         expect(selectValue(wrapper)).toBe('traditional')
-        expect(errorSpy).toHaveBeenCalled()
-        expect(store.dialogs.messageDialog.visible).toBe(true)
-        expect(store.dialogs.messageDialog.type).toBe('error')
-        // describeActionError 去掉 Electron invoke 包装前缀，只展示原始原因
-        expect(store.dialogs.messageDialog.message).toContain('IPC 通道不可用')
-        expect(store.dialogs.messageDialog.message).not.toContain('Error invoking remote method')
+        finishWorkspaceModeSwitch()
     })
 
-    it('初始化进行中：下拉与确认/取消按钮禁用，防重复提交', async () => {
-        let resolveInvoke: (value: unknown) => void = () => {}
-        invoke.mockImplementation(
-            () =>
-                new Promise((resolve) => {
-                    resolveInvoke = resolve
-                })
-        )
+    it('弹窗切换进行中（busy）：下拉禁用，防重复切换', async () => {
         const { wrapper } = mountPanel()
-        await openConfirm(wrapper)
-
-        await confirmDialog(wrapper).find('.btn-confirm').trigger('click')
+        workspaceModeSwitchState.busy = true
         await flushPromises()
 
-        expect(initializeInvokeCalls()).toHaveLength(1)
         expect((workspaceModeSelect(wrapper).element as HTMLSelectElement).disabled).toBe(true)
-        expect(
-            (confirmDialog(wrapper).find('.btn-confirm').element as HTMLButtonElement).disabled
-        ).toBe(true)
-        expect(
-            (confirmDialog(wrapper).find('.btn-cancel').element as HTMLButtonElement).disabled
-        ).toBe(true)
 
-        resolveInvoke({ success: true })
+        workspaceModeSwitchState.busy = false
         await flushPromises()
         expect((workspaceModeSelect(wrapper).element as HTMLSelectElement).disabled).toBe(false)
+    })
+
+    it('面板卸载后取消完成监听（不再写草稿/不抛异常）', async () => {
+        const { wrapper, patches } = mountPanel()
+        wrapper.unmount()
+        wrappers = []
+        workspaceModeSwitchState.visible = true
+
+        await completeSwitchToLlmWiki({ mode: 'none', formats: [] })
+
+        expect(patches).toEqual([])
     })
 })
 
 describe('FeaturesPanel 工作区模式：llm-wiki → traditional', () => {
-    it('直接写草稿：不弹确认、不调主进程（不删除已创建目录）', async () => {
+    it('直接写草稿：不弹窗、不调主进程（不删除已创建目录）', async () => {
         const { wrapper, patches, settings } = mountPanel(draft({ workspaceMode: 'llm-wiki' }))
         expect(selectValue(wrapper)).toBe('llm-wiki')
 
         await workspaceModeSelect(wrapper).setValue('traditional')
         await flushPromises()
 
-        expect(confirmDialog(wrapper).exists()).toBe(false)
-        expect(initializeInvokeCalls()).toEqual([])
+        expect(workspaceModeSwitchState.visible).toBe(false)
+        expect(initializeLlmWikiMock).not.toHaveBeenCalled()
         expect(patches).toEqual([{ workspaceMode: 'traditional' }])
         expect(settings.value.workspaceMode).toBe('traditional')
         expect(selectValue(wrapper)).toBe('traditional')

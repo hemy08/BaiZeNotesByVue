@@ -78,14 +78,14 @@ vi.mock('@renderer/composables/useWorkspaceModeSwitch', async () => {
     }
 })
 
-// ============ 确认对话框桩（对话框自身渲染/交互由 workspace-mode-switch-dialog 用例覆盖） ============
-vi.mock('@renderer/components/dialogs/simple/WorkspaceModeSwitchDialog.vue', async () => {
+// ============ 迁移弹窗桩（对话框自身渲染/交互由 migration-wizard-dialog 用例覆盖） ============
+vi.mock('@renderer/components/dialogs/simple/MigrationWizardDialog.vue', async () => {
     const { defineComponent } = await import('vue')
     return {
         // eslint-disable-next-line vue/one-component-per-file -- 测试用对话框桩组件（vi.mock 工厂内联定义）
         default: defineComponent({
-            name: 'WorkspaceModeSwitchDialogStub',
-            template: '<div class="workspace-mode-switch-dialog-stub" />'
+            name: 'MigrationWizardDialogStub',
+            template: '<div class="migration-wizard-dialog-stub" />'
         })
     }
 })
@@ -234,14 +234,14 @@ describe('WorkSpace 右侧边栏 AI 入口：传统模式（用户反馈批次 A
         expect(widthOf(wrapper, '#md-container')).toBe('818px')
     })
 
-    it('传统模式点击入口：请求统一切换流程（确认 → 初始化 → 写配置 → 展开面板），不直接展开面板', async () => {
+    it('传统模式点击入口：请求统一切换流程（迁移弹窗 → 初始化 → 写配置 → 展开面板），不直接展开面板', async () => {
         wrapper = await mountWorkspace()
         expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
 
         await wrapper.find('#llm-ai-sidebar-entry').trigger('click')
         await flushPromises()
 
-        // 复用系统设置同款切换链路：只请求切换（弹确认框），不写渲染层面板状态
+        // 复用系统设置同款切换链路：只请求切换（弹迁移弹窗），不写渲染层面板状态
         expect(workspaceModeSwitchMock.requestSwitchToLlmWiki).toHaveBeenCalledTimes(1)
         expect(workspaceModeSwitchMock.switchToTraditional).not.toHaveBeenCalled()
         expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
@@ -262,17 +262,17 @@ describe('WorkSpace 右侧边栏 AI 入口：传统模式（用户反馈批次 A
         expect(widthOf(wrapper, '#md-container')).toBe('818px')
     })
 
-    it('切换确认对话框按模块单例状态挂载（右侧边栏与工具条两个入口共用）', async () => {
+    it('迁移弹窗按模块单例状态挂载（三处入口共用）', async () => {
         wrapper = await mountWorkspace()
-        expect(wrapper.find('.workspace-mode-switch-dialog-stub').exists()).toBe(false)
+        expect(wrapper.find('.migration-wizard-dialog-stub').exists()).toBe(false)
 
         workspaceModeSwitchMock.__testWorkspaceModeSwitchState.visible = true
         await flushPromises()
-        expect(wrapper.find('.workspace-mode-switch-dialog-stub').exists()).toBe(true)
+        expect(wrapper.find('.migration-wizard-dialog-stub').exists()).toBe(true)
 
         workspaceModeSwitchMock.__testWorkspaceModeSwitchState.visible = false
         await flushPromises()
-        expect(wrapper.find('.workspace-mode-switch-dialog-stub').exists()).toBe(false)
+        expect(wrapper.find('.migration-wizard-dialog-stub').exists()).toBe(false)
     })
 })
 
@@ -887,9 +887,9 @@ describe('WorkSpace 右侧边栏 AI 入口：键盘可达与契约', () => {
         // 点击分派：传统模式走统一切换 composable（确认 + 初始化 + 写配置），LLM Wiki 展开面板
         expect(rightNaviBlock).toContain('handleLlmAiSidebarEntryClick')
         expect(workspaceSource).toContain('requestSwitchToLlmWiki()')
-        // 确认对话框由 WorkSpace 按模块单例状态挂载（两处入口共用）
+        // 迁移弹窗由 WorkSpace 按模块单例状态挂载（三处入口共用）
         expect(workspaceSource).toContain(
-            'WorkspaceModeSwitchDialog v-if="workspaceModeSwitchState.visible"'
+            'MigrationWizardDialog v-if="workspaceModeSwitchState.visible"'
         )
         expect(workspaceSource).toContain('v-if="showLlmAiSidebarEntry"')
         // 样式：图标按钮走令牌 + focus-visible 焦点环，不写死颜色

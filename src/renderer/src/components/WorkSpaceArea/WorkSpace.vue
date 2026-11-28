@@ -166,10 +166,10 @@
         </button>
         <NaviTab position="right" @update:navi:tab="onSwitchLeftNaviTab" />
     </div>
-    <!-- 1.5.7 体验微调（用户反馈批次 A4）：工作区模式切换确认对话框。
-         由右侧边栏入口 / 编辑工具条按钮经 `useWorkspaceModeSwitch` 的状态触发；
+    <!-- 1.5.7 迁移批次：工作区模式切换迁移弹窗（设置页/菜单栏/边栏三处入口共用）。
+         由 `useWorkspaceModeSwitch` 的模块单例状态触发；
          v-if 保证未打开时零 DOM/零副作用（传统模式下不新增常驻对话框节点）。 -->
-    <WorkspaceModeSwitchDialog v-if="workspaceModeSwitchState.visible" />
+    <MigrationWizardDialog v-if="workspaceModeSwitchState.visible" />
 </template>
 
 <script setup lang="ts">
@@ -194,7 +194,7 @@ import MdContainer from '@renderer/components/Markdown/MarkdownContainer.vue'
 import PluginTools from '@renderer/components/PluginTools/PluginTools.vue'
 import HemyTools from '@renderer/components/HemyTools/HemyTools.vue'
 import LlmAiPanel from '@renderer/components/llm-wiki/LlmAiPanel.vue'
-import WorkspaceModeSwitchDialog from '@renderer/components/dialogs/simple/WorkspaceModeSwitchDialog.vue'
+import MigrationWizardDialog from '@renderer/components/dialogs/simple/MigrationWizardDialog.vue'
 import {
     requestSwitchToLlmWiki,
     workspaceModeSwitchState
@@ -556,8 +556,9 @@ function handleResetLlmWikiAiPanelWidth(): void {
  * - LLM Wiki 模式（面板已收起）：展开面板（隐藏入口按钮）；
  *   宽度沿用持久化的上次宽度 / 窗口分档默认值（不重置用户宽度偏好）；
  *   清空拖动临时态，避免上一次拖动的内存值覆盖持久化宽度；
- * - 传统模式：与系统设置「功能」页签走同样处理——弹确认框，确认后初始化 raw/ 与 wiki/、
- *   写系统配置（主进程广播 → 布局切到 LLM Wiki），成功后 AI 面板处于展开态。
+ * - 传统模式：与系统设置「功能」页签、菜单栏模式按钮走同样处理——打开迁移弹窗，
+ *   用户选择迁移方式/范围/编译选项后：迁移（可选）→ 初始化 raw/ 与 wiki/ → 写系统配置
+ *   （主进程广播 → 布局切到 LLM Wiki），成功后 AI 面板处于展开态。
  */
 function handleLlmAiSidebarEntryClick(): void {
     if (!isLlmWikiMode.value) {

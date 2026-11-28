@@ -651,7 +651,10 @@ export default {
         workspaceModeSwitchFailedTitle: '工作区模式切换失败',
         workspaceModeSwitchFailedMessage:
             '保存工作区模式配置失败：{error}。当前仍保持原模式，请重试。',
-        workspaceModeSwitchUnavailable: '当前环境无法读写系统配置，工作区模式未切换'
+        workspaceModeSwitchUnavailable: '当前环境无法读写系统配置，工作区模式未切换',
+        workspaceModeSwitchBusy: '正在切换工作区模式，请稍候',
+        workspaceModeSwitchInitFailed: '初始化 LLM Wiki 工作区失败，工作区模式未切换',
+        workspaceModeSwitchConfigFailed: '保存工作区模式配置失败，工作区模式未切换'
     },
     /**
      * 1.5.7 体验修正（用户反馈批次 A6）：「编辑 / 预览 / 编辑+预览」三态视图切换按钮

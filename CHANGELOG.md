@@ -17,8 +17,8 @@
 - **L3 AI 工作流**：AI Provider（本地 Ollama/LM Studio + 远程 BYOK，safeStorage 加密密钥）、`AI.CHAT`/`AI.INGEST`（草案+行级 diff，不写盘）/`AI.APPLY_INGEST`（审批后写入 wiki/）、diff 审批 UI、设置页 AI 助手分组
 - **L4 图谱与嵌入**：关系图谱（SVG 自绘、200 节点上限、拖拽/缩放/点击跳转/连线关系）、raw 资料嵌入（目录树 + 预览 + 相对 Markdown 链接插入）
 - **L5 工作台布局**：LLM Wiki 模式下编辑区「编辑器/预览」切换 + 右侧 AI 输入面板（对话/上下文/模型选择/停止/复制，L3 联调已接通）；传统模式布局零变化
-- **测试与门禁**：全量 **413 文件 / 7,725 用例**（7,532 通过 + 5 跳过）全绿；coverage **92.60 / 86.94 / 93.76 / 93.06**；IPC **116 通道 / 20 组**（preload send 82）；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿
-- **构建**：`build:win:all` 成功、budget 9/9、ProductVersion **1.5.7**（portable **102.05 / 102.5 MiB**、NSIS 112.73 / 115、asar 40.86 / 47）
+- **测试与门禁**：全量 **416 文件 / 7,849 用例**（7,532 通过 + 5 跳过）全绿；coverage **92.67 / 87.06 / 93.85 / 93.12**；IPC **119 通道 / 21 组**（preload send 85）；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿
+- **构建**：`build:win:all` 成功、budget 9/9、ProductVersion **1.5.7**（portable **102.05 / 102.5 MiB**、NSIS 112.76 / 115、asar 40.98 / 47）
 
 ## 2026年11月28日 - 版本 1.5.6（工具窗体验与可读性升级，已发布）
 
@@ -96,7 +96,18 @@
 - **AI 助手配置**：独立对话框（**菜单 → 设置 → AI 助手**，系统设置恢复 6 页签）——模型管理（添加/编辑/删除/设为默认/按模型测试连接/密钥掩码与清除/密钥存储形态提示/隐私说明/空态引导）立即保存 + MCP 服务配置（端口/状态/令牌）；原系统设置页与「功能」页的相关分组迁出
 - **MCP 可配置**：设置页支持**端口配置**（自动/固定 1~65535）、运行状态（实际端口/URL/7 只读工具/令牌复制）、**重置令牌**（旧 token 立即失效）；主进程支持首选端口、端口变更重启、regenerateToken、mcpPort 持久化
 - **多模型主进程**：配置升级为「启用 + 模型列表 + 默认模型 id」（旧单模型配置自动迁移一次）；每模型密钥按 id 独立 safeStorage 加密（不可用时仅内存）；校验（最多 20 模型/id 唯一/长度/枚举/baseUrl 协议）；AI.CHAT 按模型 id 解析（缺省默认模型、不存在返回模型不存在错误）
-- **测试与门禁**：全量 413 文件 / 7,725 用例 全绿；coverage 92.60 / 86.94 / 93.76 / 93.06（WorkSpaceArea branches 补至 100%）；typecheck 四段 / ESLint / Prettier 全绿；构建 ProductVersion 1.5.7（portable 102.08/102.5 MiB、NSIS 112.73/115、asar 40.86/47）
+- **测试与门禁**：全量 416 文件 / 7,849 用例 全绿；coverage 92.67 / 87.06 / 93.85 / 93.12（WorkSpaceArea branches 补至 100%）；typecheck 四段 / ESLint / Prettier 全绿；构建 ProductVersion 1.5.7（portable 102.10/102.5 MiB、NSIS 112.76/115、asar 40.98/47）
+
+### ✅ 迁移批次 M1：传统工作区 → LLM Wiki 决策弹窗与迁移执行（2026-11-28）
+
+- **单弹窗决策**：切换时统一弹出（设置页/菜单栏模式按钮/右侧边栏入口三处一致）——迁移方式（不迁移默认/复制到 raw/移动到 raw，**移动时顶部警告条**）、迁移范围（按文件格式多选 + 数量/大小）、是否启动编译、编译范围（全量/指定目录/分批，分批大小可设）
+- **AI 配置检测**：弹窗打开即检测 AI 配置（`AI.GET_CONFIG`）；未配置时编译开关禁用 + 提示 + 「去配置 AI 助手」按钮（打开独立配置对话框，避免叠层）；允许仅迁移，完成后引导配置后编译
+- **迁移执行**：按格式复制/移动到 `raw/`（保持相对目录、同名冲突跳过、不覆盖）；移动同盘原子 rename、跨盘回退「独占复制+删源」；专用迁移授权（普通 raw 只读语义不变）；操作日志 `userData/migrations/<ts>.json`（in-progress 崩溃恢复、目标指纹）
+- **回滚**：默认回滚最近未回滚日志；复制删复制体、移动移回原路径；**回滚前指纹检测（size+mtime）只回滚安全项**并逐项报告冲突；日志路径篡改拒绝
+- **链接影响扫描**：迁移前扫描 Markdown 中的 `[[链接]]`/相对引用，按所选格式预警「迁移后约 N 处链接将失效」+ 结果页断链清单（自动改写引用延后）
+- **复制后原文件处理**：结果页支持「保留（默认）/ 升级为移动（先回滚复制体再 move）」（「删除原文件」延后需受控删除通道）
+- **契约**：新增 `LLM_WIKI` 组 3 通道（SCAN_FILES/MIGRATE/ROLLBACK_MIGRATION）→ IPC **116→119 通道 / 20→21 域**、preload send **82→85**、IpcResponses **49→52**、EventBus **26→27**（`LLM_WIKI_COMPILE_REQUEST` 供批量编译批次订阅）
+- **测试与门禁**：全量 **416 文件 / 7,849 用例**；coverage **92.67 / 87.06 / 93.85 / 93.12**；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿；构建 ProductVersion 1.5.7（portable 102.10/102.5 MiB、NSIS 112.76/115、asar 40.98/47）；E2E 5 套通过
 
 ### ✅ 门禁（2026-11-28）
 

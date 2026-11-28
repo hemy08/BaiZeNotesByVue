@@ -10,10 +10,10 @@
         </div>
 
         <!--
-            1.5.7 LLM Wiki L1：工作区模式（传统模式 / LLM Wiki 模式）。
-            说明：切到 llm-wiki 前必须确认（会创建 raw/ 与 wiki/ 并开启 raw 只读），
-            确认后先经主进程白名单通道初始化成功，才把模式写入共享草稿（保存仍走设置页
-            既有 config:write('system') 通道）；取消则下拉回退、不写草稿不调通道。
+            1.5.7 LLM Wiki L1 / 迁移批次：工作区模式（传统模式 / LLM Wiki 模式）。
+            说明：切到 llm-wiki 时打开统一迁移弹窗（三处入口共用），用户在弹窗内选择迁移方式/
+            范围/编译选项后由弹窗执行「迁移（可选）→ 初始化 raw/ 与 wiki/ → 写系统配置」；
+            取消则下拉回退、不写草稿不调通道。成功后由完成监听同步本面板草稿。
         -->
         <div class="settings-group">
             <div class="group-title">
@@ -33,7 +33,7 @@
                     id="workspace-mode-select"
                     class="setting-select workspace-mode-select"
                     :value="currentWorkspaceMode"
-                    :disabled="initializing"
+                    :disabled="workspaceModeSwitchState.busy"
                     @change="handleWorkspaceModeChange"
                 >
                     <option value="traditional">
@@ -97,46 +97,6 @@
             「AI 助手」（system-setting/AiAssistantPanel.vue）；本页只保留纯功能开关，
             避免「功能」页承载需要独立保存/多模型管理的配置。
         -->
-
-        <!--
-            1.5.7 T1.5：模式切换确认对话框（复用 BaseDialog 外壳，不复制外壳结构与 a11y 行为）。
-            确认 = 先初始化 raw/ 与 wiki/（主进程白名单通道），成功才写入工作区模式草稿；
-            Esc / 关闭按钮 / 「取消」= 取消切换（下拉已回退到草稿值，不写草稿不调通道）。
-        -->
-        <BaseDialog
-            :visible="confirmVisible"
-            :title="t('dialogRenderer.systemSetting.features.workspaceModeConfirmTitle')"
-            width-size="confirm"
-            reset-position-on-open
-            :close-on-overlay="false"
-            container-class="workspace-mode-confirm-dialog"
-            @close="cancelWorkspaceModeSwitch"
-        >
-            <div class="workspace-mode-confirm">
-                <p class="workspace-mode-confirm-message">
-                    {{ t('dialogRenderer.systemSetting.features.workspaceModeConfirmMessage') }}
-                </p>
-            </div>
-
-            <template #footer>
-                <button
-                    type="button"
-                    class="dialog-btn dialog-btn--secondary btn btn-cancel"
-                    :disabled="initializing"
-                    @click="cancelWorkspaceModeSwitch"
-                >
-                    {{ t('common.cancel') }}
-                </button>
-                <button
-                    type="button"
-                    class="dialog-btn dialog-btn--primary btn btn-confirm"
-                    :disabled="initializing"
-                    @click="confirmWorkspaceModeSwitch"
-                >
-                    {{ t('dialogRenderer.systemSetting.features.workspaceModeConfirmOk') }}
-                </button>
-            </template>
-        </BaseDialog>
     </div>
 </template>
 
@@ -145,19 +105,24 @@
  * 功能开关页签（2026-11-21 用户选定）：
  * - A2 全工作区搜索、A8 粘贴/复制增强、A9 命令面板为默认能力，只展示不可关闭；
  * - A1/A3/A4/A6/A7/A10 为可选能力，默认关闭，开关按 shared/constants/feature-flags.ts 驱动；
- * - 1.5.7 LLM Wiki L1：新增「工作区」分组的工作区模式下拉（traditional / llm-wiki），
- *   从 traditional 切到 llm-wiki 前弹确认对话框，确认后先调主进程初始化 raw/ 与 wiki/，
- *   成功才把模式写入共享草稿（保存沿用设置页既有 config:write('system') 通道）。
+ * - 1.5.7 LLM Wiki L1：新增「工作区」分组的工作区模式下拉（traditional / llm-wiki）；
+ * - 1.5.7 迁移批次：从 traditional 切到 llm-wiki 不再使用本面板内联确认框，而是打开统一
+ *   迁移弹窗（`MigrationWizardDialog`，三处入口共用）：用户选择迁移方式/范围/编译选项后，
+ *   弹窗执行「迁移（可选）→ 初始化 → 写系统配置」，成功后经完成监听把模式同步到本面板草稿，
+ *   「保存」仍沿用设置页既有 config:write('system') 通道。
  * - 1.5.7 体验升级 B：原「MCP 服务」「AI 助手」分组已整组迁移至「AI 助手」独立页签
  *   （AiAssistantPanel.vue），本页不再直接调用 MCP/AI IPC。
  *
  * 契约与其它 panel 一致：settings 只读，修改经 emit('update') 回壳层共享草稿。
  */
-import { computed, ref } from 'vue'
-import { initializeLlmWiki } from '../../../../common/llm-wiki-actions'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { t } from '../../../../common/i18n'
-import BaseDialog from '../../BaseDialog.vue'
 import InfoTip from '../../../common/InfoTip.vue'
+import {
+    onWorkspaceModeSwitchCompleted,
+    requestSwitchToLlmWiki,
+    workspaceModeSwitchState
+} from '../../../../composables/useWorkspaceModeSwitch'
 import {
     OPTIONAL_FEATURE_FLAGS,
     OPTIONAL_FEATURE_FLAG_IDS
@@ -203,15 +168,11 @@ const currentWorkspaceMode = computed<WorkspaceMode>(() =>
     normalizeWorkspaceMode(props.settings.workspaceMode)
 )
 
-/** traditional → llm-wiki 切换确认对话框显隐 */
-const confirmVisible = ref(false)
-/** 初始化调用中：下拉与确认/取消按钮禁用，防重复提交与并发切换 */
-const initializing = ref(false)
-
 /**
  * 下拉变更：
  * - llm-wiki → traditional：直接写入草稿（不删除已创建目录，符合产品约定）；
- * - traditional → llm-wiki：不立即写草稿，先弹确认对话框（确认且初始化成功后才写草稿）；
+ * - traditional → llm-wiki：不立即写草稿，打开统一迁移弹窗（三处入口共用同一流程：
+ *   迁移方式/范围/编译选项 → 迁移 → 初始化 → 写系统配置），成功后由完成监听同步草稿；
  * - 其余（非法值/未变化）：还原下拉展示值。
  *
  * 说明：`:value` 绑定的是草稿值，草稿未变化时 Vue 不会重写 DOM value（仅新旧 vnode 值
@@ -226,41 +187,32 @@ function handleWorkspaceModeChange(event: Event): void {
         return
     }
     if (next === WORKSPACE_MODE_LLM_WIKI) {
-        confirmVisible.value = true
+        requestSwitchToLlmWiki()
         return
     }
     workspaceMode.value = WORKSPACE_MODE_TRADITIONAL
 }
 
-/** 取消模式切换：不写草稿、不调用主进程（下拉已回退到草稿值） */
-function cancelWorkspaceModeSwitch(): void {
-    if (initializing.value) {
-        return
-    }
-    confirmVisible.value = false
-}
-
 /**
- * 确认模式切换：先调主进程初始化 raw/ 与 wiki/，成功才把工作区模式写入共享草稿。
+ * 迁移弹窗完成监听：模式已写入系统配置后，把草稿同步为 llm-wiki。
  *
- * 顺序说明：初始化是切换模式的前提（失败说明工作区不可用/未打开），失败时保持原模式并
- * 由 initializeLlmWiki 给出可见错误提示，避免出现「模式已切换但目录未创建」的半成品状态。
+ * 说明：弹窗本身已把模式写入系统配置（与菜单栏/边栏入口一致，无需再点「保存」）；
+ * 同步草稿只为避免本面板仍显示旧值、以及用户随后点「保存」时用旧草稿覆盖配置。
  */
-async function confirmWorkspaceModeSwitch(): Promise<void> {
-    if (initializing.value) {
-        return
-    }
-    initializing.value = true
-    try {
-        const initialized = await initializeLlmWiki()
-        if (initialized) {
+let unsubscribeSwitchCompleted: (() => void) | null = null
+
+onMounted(() => {
+    unsubscribeSwitchCompleted = onWorkspaceModeSwitchCompleted((outcome) => {
+        if (outcome.switched) {
             workspaceMode.value = WORKSPACE_MODE_LLM_WIKI
         }
-        confirmVisible.value = false
-    } finally {
-        initializing.value = false
-    }
-}
+    })
+})
+
+onBeforeUnmount(() => {
+    unsubscribeSwitchCompleted?.()
+    unsubscribeSwitchCompleted = null
+})
 </script>
 
 <style scoped>
@@ -270,18 +222,6 @@ async function confirmWorkspaceModeSwitch(): Promise<void> {
 /* 工作区模式下拉：复用 .setting-select 宽度，不额外覆盖尺寸（UI-09/UI-10 令牌口径） */
 .workspace-mode-select {
     flex: 0 0 auto;
-}
-
-/* 确认对话框正文（BaseDialog 外壳提供标题栏/底栏/遮罩） */
-.workspace-mode-confirm {
-    padding: 20px;
-}
-
-.workspace-mode-confirm-message {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--text-color);
 }
 
 .feature-fixed-list {

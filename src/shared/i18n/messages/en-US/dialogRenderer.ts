@@ -843,6 +843,110 @@ const dialogRenderer = {
         searchEmpty: 'No matching sections. Press Esc to clear.',
         searchMatches: 'Matched {count} sections',
         searchMatchesCapped: 'Matched {count} sections; showing the first {limit}'
+    },
+    // 1.5.7 migration batch: migration wizard dialog (shown when switching traditional -> LLM Wiki;
+    // all three entry points share it). Keys use the migrationWizard.* namespace and are appended
+    // as one block at the end of the file for easier parallel batch merges and block moves.
+    migrationWizard: {
+        title: 'Switch to LLM Wiki',
+        subtitle:
+            'Choose how and what to migrate. Migration writes an operation log and can be rolled back at any time.',
+        loading: 'Scanning migratable files...',
+        scanFailed: 'Failed to scan migratable files: {error}',
+        noFiles: 'No migratable files were detected. You can finish the initialization directly.',
+        truncated:
+            'The file count exceeded the scan limit: only the scanned files are handled this time; run the migration again later to continue.',
+        stepMigrationMode: '① Migration method',
+        modeNone: 'Do not migrate',
+        modeNoneHint:
+            'Keep existing files where they are; only initialize the raw/ and wiki/ folders.',
+        modeCopy: 'Copy to raw/',
+        modeCopyHint:
+            'Keep the original files and create copies under raw/. Safe and rollbackable.',
+        modeMove: 'Move to raw/',
+        modeMoveHint:
+            'Original paths stop existing (rollbackable). Read the warning at the top first.',
+        moveWarningTitle: 'Original paths stop existing after moving to raw/',
+        moveWarningBody:
+            'Historical links, recent files and bookmarks may stop working. The migration writes an operation log and can be rolled back at any time.',
+        linkImpactTitle: 'About {count} links will break after migration',
+        linkImpactHint:
+            'Those references must be updated to raw/ paths afterwards. Automatic link rewriting is planned for a later batch; for now keep the originals or fix them manually.',
+        linkItem: '{file}:{line} → {target}',
+        linkMore: 'Showing the first {limit} of {total} items.',
+        stepScope: '② Migration scope',
+        scopeHint:
+            'Select file formats (file count and size are shown for each format); at least one format is required.',
+        formatMarkdown: 'Markdown',
+        formatImage: 'Images',
+        formatPdf: 'PDF',
+        formatHtml: 'HTML',
+        formatText: 'Other text',
+        formatCount: '{count} files · {size}',
+        scopeRequired: 'Select at least one file format.',
+        stepCompile: '③ Start compilation',
+        compileEnable: 'Start compilation after migration (generate wiki/ pages)',
+        aiNotConfiguredTitle: 'No configured AI model was detected',
+        aiNotConfiguredBody:
+            'You can migrate files now; after configuring a model, use "AI Compile" from the command palette to generate wiki/ pages.',
+        aiConfigFailed:
+            'Failed to read the AI configuration; treating it as not configured. Configure a model later before compiling.',
+        aiConfigure: 'Configure AI assistant',
+        aiConfigureHint:
+            'This closes the migration settings and opens the AI Assistant configuration dialog; you can switch again afterwards.',
+        compileUnavailable:
+            'Compilation runs after migration through the batch compile queue (provided by a later batch).',
+        stepCompileScope: '④ Compilation scope',
+        compileScopeAll: 'Compile everything',
+        compileScopeDirectory: 'Compile a specific directory',
+        compileScopeBatch: 'Compile in batches',
+        compileDirectoryLabel: 'Directory (workspace-relative path)',
+        compileDirectoryPlaceholder: 'e.g. notes/ or notes/subfolder',
+        compileDirectoryInvalid:
+            'The directory must be a workspace-relative path (no leading / and no ..).',
+        compileBatchSizeLabel: 'Files per batch',
+        compileBatchSizeInvalid: 'Files per batch must be an integer between 1 and 500.',
+        startMigrate: 'Start migration',
+        startInit: 'Finish initialization',
+        submitting: 'Migrating and initializing the workspace...',
+        resultTitle: 'Migration finished',
+        resultSummary:
+            'Migrated {migrated} files (copied {copied} / moved {moved}), skipped {skipped}, failed {failed}.',
+        resultSkipped: 'Skipped items',
+        resultFailed: 'Failed items',
+        rollback: 'Roll back migration',
+        rollbackConfirmTitle: 'Roll back this migration?',
+        rollbackConfirmBody:
+            'This moves {move} files back to their original paths and deletes {copy} copied files. Files modified after migration are skipped and reported individually.',
+        rollbackRunning: 'Rolling back...',
+        rollbackSuccess: 'Rollback finished: {restored} files restored.',
+        rollbackPartial:
+            'Rollback partially finished: {restored} restored, {failed} conflicts not rolled back.',
+        viewResult: 'View details',
+        hideResult: 'Hide details',
+        copyFollowUpTitle: '② What should happen to the original files?',
+        copyFollowUpKeep: 'Keep the original files (recommended)',
+        copyFollowUpMove: 'Move the original files to raw/ (upgrade to the move method)',
+        copyFollowUpDelete:
+            'Delete the original files (not supported yet; planned for a later batch)',
+        copyFollowUpHint:
+            'Choosing "Move to raw" deletes this run\'s copies first and then moves the originals to raw/; this upgrade is rollbackable.',
+        copyFollowUpMoveConfirm: 'Confirm upgrade to the move method',
+        copyFollowUpMoveConfirmBody:
+            'This deletes the {count} copies created under raw/ this time and moves the original files to raw/.',
+        copyFollowUpMoving: 'Upgrading to the move method...',
+        copyFollowUpKeepDone:
+            'The original files were kept; the copies under raw/ can be used for compilation.',
+        copyGuide:
+            'Files were migrated to raw/. After configuring a model, use "AI Compile" from the command palette to generate wiki/ pages.',
+        compileRequestRecorded:
+            'Compilation choice recorded: {scope}; the batch compile queue runs in a later batch.',
+        switchFailed: 'Failed to switch to LLM Wiki: {error}',
+        resultGuide:
+            'Migrated files are under raw/ (read-only); compiled wiki/ pages appear in the resource manager. To undo, use "Roll back migration" on this result page (move method) or reopen the dialog and choose copy.',
+        ipcUnavailable:
+            'The migration channels are unavailable in this environment. Restart the app and try again.',
+        unknownError: 'Unknown error'
     }
 }
 
