@@ -9,6 +9,16 @@
 - 实施计划（用户既有、任务级、单一真源）：[LLM-Wiki-Implementation-Plan.md](docs/wiki/02-设计与架构/LLM-Wiki-Implementation-Plan.md)（L0~L4 五阶段、22 个任务，L1+L2 预估 2~3 周）
 - 基线：1.5.6 已发布（375 文件 / 7,041 用例、IPC 108/18、CSP/fuses 8 项、体积预算 9 项）
 
+### ✅ 实施完成（2026-11-28）
+
+- **L1 工作区模式**：初始化命令（文件菜单/命令面板/IPC）、`raw/` 只读写入守卫（14 类写盘入口）、索引/搜索/反链忽略 `raw/`、设置页「工作区模式」+ 切换确认、i18n
+- **L2 MCP 只读桥**：HTTP 传输（仅 127.0.0.1 + 随机 Bearer token + 无 CORS、默认关闭、设置页启停/状态/token 复制）、7 个只读工具（`search_wiki`/`read_page`/`list_pages`/`read_schema`/`list_tags`/`get_backlinks`/`read_raw`）+ Path Guard；stdio 需独立 CLI，留待后续批次
+- **L3 AI 工作流**：AI Provider（本地 Ollama/LM Studio + 远程 BYOK，safeStorage 加密密钥）、`AI.CHAT`/`AI.INGEST`（草案+行级 diff，不写盘）/`AI.APPLY_INGEST`（审批后写入 wiki/）、diff 审批 UI、设置页 AI 助手分组
+- **L4 图谱与嵌入**：关系图谱（SVG 自绘、200 节点上限、拖拽/缩放/点击跳转/连线关系）、raw 资料嵌入（目录树 + 预览 + 相对 Markdown 链接插入）
+- **L5 工作台布局**：LLM Wiki 模式下编辑区「编辑器/预览」切换 + 右侧 AI 输入面板（对话/上下文/模型选择/停止/复制，L3 联调已接通）；传统模式布局零变化
+- **测试与门禁**：全量 **404 文件 / 7,537 用例**（7,532 通过 + 5 跳过）全绿；coverage **92.55 / 86.83 / 93.58 / 93.02**；IPC **116 通道 / 20 组**（preload send 82）；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿
+- **构建**：`build:win:all` 成功、budget 9/9、ProductVersion **1.5.7**（portable **101.99 / 102.5 MiB**、NSIS 112.64 / 115、asar 40.74 / 47）
+
 ## 2026年11月28日 - 版本 1.5.6（工具窗体验与可读性升级，已发布）
 
 > **发布状态**：**已发布**（2026-11-28）｜tag：[release-1.5.6](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.6)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap｜范围：表格编辑器窗口缩放修复、非模态工具窗与插件工具面板的最小化/最大化、主题可读性治理（14 套对比度 + 分组修正 + 硬门禁）、插件工具搜索/最近/收藏、插件菜单「插件搜索」入口、编辑器主题设置修复、帮助文档配图重采集与瘦身

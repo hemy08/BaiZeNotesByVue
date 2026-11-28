@@ -86,6 +86,8 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     // 1.5.7 LLM Wiki L1：工作区模式默认 traditional（对既有工作区零影响，
     // llm-wiki 需用户在设置页显式选择）。真源同主进程 system-setting.ts。
     workspaceMode: DEFAULT_WORKSPACE_MODE,
+    // 1.5.7 LLM Wiki L2：MCP 只读桥启用偏好默认关闭（opt-in；token 不落盘、不跨重启自动启动）
+    mcpEnabled: false,
     // 可选能力（2026-11-21 用户选定）：全部 opt-in、默认关闭
     featureTabs: false,
     featureDocumentHistory: false,

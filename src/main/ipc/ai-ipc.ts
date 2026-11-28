@@ -1,0 +1,318 @@
+/**
+ * 1.5.7 LLM Wiki L3：AI Provider / AI ingest / diff 审批 IPC（主进程侧）
+ *
+ * 链路（IPC-17 六步）：
+ *   1. 常量：`IPC.AI.CHAT / INGEST / APPLY_INGEST / GET_CONFIG / SAVE_CONFIG`（5 个 invoke）；
+ *   2. 契约：shared/types/ai.ts（请求/返回/错误码）+ shared/types/ipc.ts 三张契约表登记；
+ *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
+ *   4. 主进程：本模块注册 handler（withSenderCheck）→ main/ai/**（配置存储/Provider/ingest/apply）；
+ *   5. 渲染层：设置页「AI 助手」分组（配置/密钥/连接测试）、命令面板「AI 编译」+
+ *      `Markdown/llm-ingest-diff.vue`（diff 审批 UI）；L5 AI 面板复用 AI.CHAT；
+ *   6. 测试：ai-ipc（参数校验/未配置/写盘守卫/sender）+ ai-provider / ai-ingest /
+ *      ai-config-store + 通道命名/契约/白名单/注册门禁。
+ *
+ * 安全边界：
+ * - 仅主窗口可信调用（withSenderCheck，`kind: 'handle'` 拒绝返回统一错误对象）；
+ * - 渲染层不持有工作区根/API Key：工作区根只取 `appState.rootPath`，密钥只存在主进程；
+ * - 所有失败返回结构化 `{ ok:false, code, message }`（不向渲染层抛异常/堆栈）；
+ * - 日志只记录 provider/模型/路径/耗时，不记录密钥与笔记正文（SEC-16）。
+ */
+import { IPC } from '../../shared/ipc-channels'
+import type {
+    AiApplyIngestResult,
+    AiChatRequest,
+    AiChatResult,
+    AiConfigSnapshot,
+    AiGetConfigResult,
+    AiIngestResult,
+    AiSaveConfigResult
+} from '../../shared/types/ai'
+import { AI_CHAT_CONTEXT_MAX_CHARS, AI_DEFAULT_CONFIG } from '../../shared/constants/ai'
+import { appState } from '../utils/app-state'
+import { withSenderCheck } from '../utils/ipc-security'
+import { logger } from '../utils/logger'
+import { runAiApplyIngest } from '../ai/apply'
+import { getAiRuntime, loadConfiguredAiProviderWith, type AiRuntimeDeps } from '../ai/runtime'
+import { AiProviderError, aiFailure, sanitizeErrorMessage, toAiFailure } from '../ai/errors'
+import { runAiIngest } from '../ai/ingest'
+import type { AiConfigStore } from '../ai/config-store'
+import type { AiFetchLike } from '../ai/providers/types'
+import {
+    normalizeAiApplyIngestRequest,
+    normalizeAiChatRequest,
+    normalizeAiIngestRequest,
+    normalizeAiSaveConfigRequest
+} from '../ai/validation'
+import { ipcListenerManager } from './ipc-listener-manager'
+
+/** 监听台账组件 ID（与各独立域模块口径一致：global-<domain>-ipc） */
+export const AI_IPC_COMPONENT_ID = 'global-ai-ipc'
+
+/** AI IPC 业务入口的可注入依赖（生产缺省走 appState / 运行时单例；单测注入替身） */
+export interface AiIpcDeps {
+    /** 工作区根（缺省 `appState.rootPath`；只由主进程持有，渲染层不可传） */
+    rootPath?: string
+    /** 配置存储（缺省：运行时单例） */
+    store?: AiConfigStore
+    /** fetch 实现（缺省：运行时单例/globalThis.fetch；单测注入替身） */
+    fetchImpl?: AiFetchLike
+    /** 时间源（ingest front matter 日期；单测固定） */
+    now?: () => Date
+}
+
+/** 取工作区根（生产只信任主进程 appState；单测可注入） */
+function resolveRootPath(deps: AiIpcDeps): string {
+    return deps.rootPath !== undefined ? deps.rootPath : appState.rootPath
+}
+
+/** 取配置存储（生产缺省为运行时单例） */
+async function resolveStore(deps: AiIpcDeps): Promise<AiConfigStore> {
+    if (deps.store) {
+        return deps.store
+    }
+    return getAiRuntime().store
+}
+
+/** 取运行时依赖（store + fetch）；用于 Provider 装载 */
+async function resolveRuntime(deps: AiIpcDeps): Promise<AiRuntimeDeps> {
+    if (deps.store) {
+        return { store: deps.store, fetchImpl: deps.fetchImpl }
+    }
+    const current = getAiRuntime()
+    return { store: current.store, fetchImpl: deps.fetchImpl ?? current.fetchImpl }
+}
+
+/** 构造对话上下文系统提示（当前文档标题/选中文本；不含正文其它内容） */
+function buildChatContextPrompt(context: AiChatRequest['context']): string | null {
+    if (!context) {
+        return null
+    }
+    const parts: string[] = []
+    if (typeof context.title === 'string' && context.title.trim().length > 0) {
+        parts.push(`当前文档标题：${context.title.trim()}`)
+    }
+    if (typeof context.selection === 'string' && context.selection.trim().length > 0) {
+        const selection = context.selection.trim()
+        parts.push(`当前选中文本（可能被截断）：\n${selection.slice(0, AI_CHAT_CONTEXT_MAX_CHARS)}`)
+    }
+    if (parts.length === 0) {
+        return null
+    }
+    return `以下是用户当前编辑上下文，供你理解问题背景（不要复述本段说明）：\n${parts.join('\n\n')}`
+}
+
+/** 默认配置快照（配置读取失败/首次使用时的安全兜底，不返回失败结构） */
+function buildDefaultConfigSnapshot(): AiConfigSnapshot {
+    return {
+        ...AI_DEFAULT_CONFIG,
+        apiKeyConfigured: false,
+        apiKeyStorage: 'memory'
+    }
+}
+
+/**
+ * `AI.CHAT` 业务入口。
+ *
+ * - 非空 messages：调用 Provider 非流式对话，返回助手回复；
+ * - `messages: []`：连接测试（设置页「测试连接」按钮），返回可读测试结果文本；
+ * - AI 未启用/配置不完整：返回 `AI_NOT_CONFIGURED` 结构化失败（不发起请求）。
+ */
+export async function aiChat(payload: unknown, deps: AiIpcDeps = {}): Promise<AiChatResult> {
+    let request: AiChatRequest
+    try {
+        request = normalizeAiChatRequest(payload)
+    } catch (error) {
+        return toAiFailure(error, 'AI_INVALID_PAYLOAD')
+    }
+    try {
+        const runtime = await resolveRuntime(deps)
+        const { provider, config } = await loadConfiguredAiProviderWith(runtime, {
+            fetchImpl: deps.fetchImpl
+        })
+        if (request.messages.length === 0) {
+            const startedAt = Date.now()
+            const result = await provider.testConnection()
+            logger.info(
+                `[AI] 连接测试成功：provider=${config.provider}/${config.localProvider} ` +
+                    `model=${result.model} 耗时=${Date.now() - startedAt}ms`
+            )
+            return {
+                ok: true,
+                content: `连接成功（模型：${result.model}，耗时 ${result.latencyMs}ms）`,
+                model: result.model
+            }
+        }
+        const contextPrompt = buildChatContextPrompt(request.context)
+        const messages = contextPrompt
+            ? [{ role: 'system' as const, content: contextPrompt }, ...request.messages]
+            : request.messages
+        const startedAt = Date.now()
+        const result = await provider.chat(messages)
+        logger.info(
+            `[AI] chat 完成：provider=${config.provider}/${config.localProvider} ` +
+                `model=${result.model} messages=${request.messages.length} ` +
+                `耗时=${Date.now() - startedAt}ms`
+        )
+        return { ok: true, content: result.content, model: result.model }
+    } catch (error) {
+        if (error instanceof AiProviderError) {
+            logger.warn(`[AI] chat 失败（${error.code}）：${sanitizeErrorMessage(error.message)}`)
+        } else {
+            logger.warn('[AI] chat 失败：', error)
+        }
+        return toAiFailure(error, 'AI_HTTP_ERROR')
+    }
+}
+
+/**
+ * `AI.INGEST` 业务入口：扫描/读取 raw/ → 调 Provider → 生成 wiki 页面草案 + 行级 diff。
+ * **不写盘**；失败返回结构化 code（未启用 → AI_NOT_CONFIGURED，无 raw/ → AI_WORKSPACE_UNAVAILABLE）。
+ */
+export async function aiIngest(payload: unknown, deps: AiIpcDeps = {}): Promise<AiIngestResult> {
+    let request
+    try {
+        request = normalizeAiIngestRequest(payload)
+    } catch (error) {
+        return toAiFailure(error, 'AI_INVALID_PAYLOAD')
+    }
+    const rootPath = resolveRootPath(deps)
+    if (typeof rootPath !== 'string' || rootPath.trim().length === 0) {
+        return aiFailure('AI_WORKSPACE_UNAVAILABLE', '尚未打开工作区，无法执行 AI 编译')
+    }
+    try {
+        const runtime = await resolveRuntime(deps)
+        return await runAiIngest(request, {
+            rootPath,
+            providerLoader: () =>
+                loadConfiguredAiProviderWith(runtime, { fetchImpl: deps.fetchImpl }),
+            now: deps.now
+        })
+    } catch (error) {
+        if (error instanceof AiProviderError) {
+            logger.warn(`[AI] ingest 失败（${error.code}）：${sanitizeErrorMessage(error.message)}`)
+        } else {
+            logger.warn('[AI] ingest 失败：', error)
+        }
+        return toAiFailure(error, 'AI_HTTP_ERROR')
+    }
+}
+
+/**
+ * `AI.APPLY_INGEST` 业务入口：用户显式审批后写入 wiki/（Path Guard + raw 只读守卫 + 原子写）。
+ */
+export async function aiApplyIngest(
+    payload: unknown,
+    deps: AiIpcDeps = {}
+): Promise<AiApplyIngestResult> {
+    let request
+    try {
+        request = normalizeAiApplyIngestRequest(payload)
+    } catch (error) {
+        return toAiFailure(error, 'AI_INVALID_PAYLOAD')
+    }
+    const rootPath = resolveRootPath(deps)
+    if (typeof rootPath !== 'string' || rootPath.trim().length === 0) {
+        return aiFailure('AI_WORKSPACE_UNAVAILABLE', '尚未打开工作区，无法写入 wiki 页面')
+    }
+    try {
+        return await runAiApplyIngest(request, { rootPath })
+    } catch (error) {
+        if (error instanceof AiProviderError) {
+            logger.warn(`[AI] apply 失败（${error.code}）：${sanitizeErrorMessage(error.message)}`)
+        } else {
+            logger.warn('[AI] apply 失败：', error)
+        }
+        return toAiFailure(error, 'AI_APPLY_FAILED')
+    }
+}
+
+/** `AI.GET_CONFIG` 业务入口：读取配置快照（失败回退默认值，不返回失败结构） */
+export async function getAiConfig(deps: AiIpcDeps = {}): Promise<AiGetConfigResult> {
+    try {
+        const store = await resolveStore(deps)
+        return await store.getSnapshot()
+    } catch (error) {
+        logger.warn('[AI] 读取 AI 配置失败，按默认值返回：', error)
+        return buildDefaultConfigSnapshot()
+    }
+}
+
+/**
+ * `AI.SAVE_CONFIG` 业务入口：保存 AI 非敏感配置 + API Key（safeStorage 加密落盘）。
+ *
+ * 非法载荷/写入失败返回结构化失败；成功返回最新快照（不含密钥明文）。
+ */
+export async function saveAiConfig(
+    payload: unknown,
+    deps: AiIpcDeps = {}
+): Promise<AiSaveConfigResult> {
+    let request
+    try {
+        request = normalizeAiSaveConfigRequest(payload)
+    } catch (error) {
+        return toAiFailure(error, 'AI_INVALID_PAYLOAD')
+    }
+    try {
+        const store = await resolveStore(deps)
+        const config = await store.save(request)
+        return { ok: true, config }
+    } catch (error) {
+        if (error instanceof AiProviderError) {
+            logger.warn(
+                `[AI] 保存 AI 配置失败（${error.code}）：${sanitizeErrorMessage(error.message)}`
+            )
+        } else {
+            logger.warn('[AI] 保存 AI 配置失败：', error)
+        }
+        return toAiFailure(error, 'AI_CONFIG_STORE_FAILED')
+    }
+}
+
+/**
+ * 注册 AI IPC（5 个 invoke 通道）。
+ *
+ * @param componentId 监听台账组件 ID（来源 registry 编排；缺省用本域常量）
+ */
+export function registerAiIpc(componentId: string = AI_IPC_COMPONENT_ID): void {
+    ipcListenerManager.registerHandleOnce(
+        IPC.AI.CHAT,
+        withSenderCheck(
+            IPC.AI.CHAT,
+            async (_event: Electron.IpcMainInvokeEvent, payload: unknown) => aiChat(payload),
+            { kind: 'handle' }
+        ),
+        componentId
+    )
+    ipcListenerManager.registerHandleOnce(
+        IPC.AI.INGEST,
+        withSenderCheck(
+            IPC.AI.INGEST,
+            async (_event: Electron.IpcMainInvokeEvent, payload: unknown) => aiIngest(payload),
+            { kind: 'handle' }
+        ),
+        componentId
+    )
+    ipcListenerManager.registerHandleOnce(
+        IPC.AI.APPLY_INGEST,
+        withSenderCheck(
+            IPC.AI.APPLY_INGEST,
+            async (_event: Electron.IpcMainInvokeEvent, payload: unknown) => aiApplyIngest(payload),
+            { kind: 'handle' }
+        ),
+        componentId
+    )
+    ipcListenerManager.registerHandleOnce(
+        IPC.AI.GET_CONFIG,
+        withSenderCheck(IPC.AI.GET_CONFIG, async () => getAiConfig(), { kind: 'handle' }),
+        componentId
+    )
+    ipcListenerManager.registerHandleOnce(
+        IPC.AI.SAVE_CONFIG,
+        withSenderCheck(
+            IPC.AI.SAVE_CONFIG,
+            async (_event: Electron.IpcMainInvokeEvent, payload: unknown) => saveAiConfig(payload),
+            { kind: 'handle' }
+        ),
+        componentId
+    )
+}

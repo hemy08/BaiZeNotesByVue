@@ -110,6 +110,18 @@ describe('system-setting', () => {
             expect(getSystemSetting().workspaceMode).toBe('traditional')
         })
 
+        // 1.5.7 LLM Wiki L2：MCP 只读桥启用偏好默认关闭（opt-in；token 不落盘、不自动启动）
+        it('should default mcpEnabled to false (LLM Wiki L2 opt-in)', () => {
+            expect(getSystemSetting().mcpEnabled).toBe(false)
+        })
+
+        it('should persist the mcpEnabled preference when explicitly enabled (LLM Wiki L2)', () => {
+            saveSystemSetting({ mcpEnabled: true })
+            expect(getSystemSetting().mcpEnabled).toBe(true)
+            saveSystemSetting({ mcpEnabled: false })
+            expect(getSystemSetting().mcpEnabled).toBe(false)
+        })
+
         it('should persist visual P0 appearance settings via saveSystemSetting', () => {
             saveSystemSetting({
                 uiStyle: 'glass',

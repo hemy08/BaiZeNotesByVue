@@ -355,7 +355,66 @@ const dialogRenderer = {
             // 1.5.3：非模态工具对话框
             nonModalDialogsLabel: '非模态工具对话框',
             nonModalDialogsDesc:
-                '插入/编辑工具对话框打开后不阻塞底层编辑器：点击外部、悬停或按 Esc 不关闭，可继续编辑 Markdown；仅通过关闭按钮和插入/应用操作关闭。默认开启。'
+                '插入/编辑工具对话框打开后不阻塞底层编辑器：点击外部、悬停或按 Esc 不关闭，可继续编辑 Markdown；仅通过关闭按钮和插入/应用操作关闭。默认开启。',
+            // 1.5.7 LLM Wiki L2：MCP 只读桥（设置页开关 + 运行状态 + 安全说明）
+            mcpServerGroupTitle: 'MCP 服务',
+            mcpServerEnabled: '启用 MCP 服务（只读桥）',
+            mcpServerHint:
+                '让外部 AI Agent（Claude Code、DSH、Cursor 等）通过 MCP 协议读取当前 LLM Wiki 工作区：仅绑定本机回环地址、需 Bearer 令牌、只提供只读工具。默认关闭；开关立即生效（无需点「应用」保存）。',
+            mcpServerRunning: '运行中',
+            mcpServerStopped: '已停止',
+            mcpServerPort: '端口',
+            mcpServerUrl: 'MCP 地址',
+            mcpServerToken: '访问令牌',
+            mcpServerCopyToken: '复制令牌',
+            mcpServerTokenCopied: '已复制',
+            mcpServerToolCount: '只读工具：{count} 个',
+            mcpServerSecurityNote:
+                '安全说明：服务只监听本机回环地址（127.0.0.1），每次请求都必须携带 Bearer 令牌；7 个工具全部只读（检索、读取页面/约定/原始资料、标签、反链），不接受绝对路径，不会写入、重命名或删除任何文件。令牌不落盘，关闭服务或重启应用后立即失效。',
+            mcpServerRestartHint:
+                '重启应用后需在本页重新启用（会生成新令牌），请同步更新外部 Agent 的 MCP 配置。',
+            mcpServerToggleFailed: 'MCP 服务操作失败：{error}',
+            mcpServerCopyFailed: '复制令牌失败，请手动选择令牌文本后复制。',
+            mcpServerUnavailable: '当前环境不支持 MCP 服务控制，请重启应用后重试。',
+            // 1.5.7 LLM Wiki L3：AI 助手（本地 Ollama/LM Studio + 远程 BYOK，独立保存）
+            aiGroupTitle: 'AI 助手',
+            aiGroupHint:
+                '本地模型（Ollama / LM Studio）请求只发往本机，隐私友好；远程 API 会把内容发送到所配置的服务商。API Key 经系统安全存储加密，不落明文。AI 配置独立保存（不随本页「应用」保存），保存后立即生效。',
+            aiEnabled: '启用 AI 助手',
+            aiProvider: 'Provider 类型',
+            aiProviderLocal: '本地模型',
+            aiProviderRemote: '远程 API（BYOK）',
+            aiLocalProvider: '本地 Provider',
+            aiLocalOllama: 'Ollama',
+            aiLocalLmStudio: 'LM Studio',
+            aiBaseUrl: '接口基址（baseUrl）',
+            aiBaseUrlPlaceholderOllama: '默认 http://127.0.0.1:11434',
+            aiBaseUrlPlaceholderLmStudio: '默认 http://127.0.0.1:1234/v1',
+            aiBaseUrlPlaceholderRemote: '例如 https://api.openai.com/v1',
+            aiBaseUrlHint: '本地留空使用默认基址；远程 BYOK 必填（建议 https）。',
+            aiModel: '模型（model）',
+            aiModelPlaceholder: '例如 qwen2.5 / deepseek-chat',
+            aiModelHint: '本地 Ollama 需先 ollama pull 对应模型；远程填服务商模型 id。',
+            aiApiKey: 'API Key',
+            aiApiKeyPlaceholder: '输入远程 API Key（保存后不回显明文）',
+            aiApiKeyConfigured: '已配置',
+            aiApiKeyNotConfigured: '未配置',
+            aiApiKeyStorageSafe: '系统安全存储加密',
+            aiApiKeyStorageMemory: '仅本次会话内存（不落盘）',
+            aiClearKey: '清除密钥',
+            aiSave: '保存 AI 配置',
+            aiSaved: 'AI 配置已保存。',
+            aiTest: '测试连接',
+            aiTesting: '正在测试连接…',
+            aiTestSuccess: '连接成功：{detail}',
+            aiTestFailed: '连接测试失败：{error}',
+            aiSaveFailed: '保存 AI 配置失败：{error}',
+            aiLoadFailed: '读取 AI 配置失败：{error}',
+            aiUnavailable: '当前环境不支持 AI 配置，请重启应用后重试。',
+            aiKeyUnavailable:
+                '当前环境 safeStorage 不可用：API Key 仅保存在内存，重启后需重新输入。',
+            aiPrivacyNote:
+                '隐私提示：本地模型的请求只发送到本机服务；使用远程 API 时，对话内容与原始资料会发送到所配置的服务商，请自行确认其隐私政策与数据处理方式。'
         },
         panelGeneralTitle: '通用设置',
         panelGeneralDesc: '应用程序的基本配置',

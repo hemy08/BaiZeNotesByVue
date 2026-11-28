@@ -37,9 +37,29 @@
             v-show="isShowMdContainer || isPluginPanelDocked"
             id="md-container"
             class="md-container"
-            :style="{ width: workAreaWidth }"
+            :style="{ width: mdContainerWidth }"
         >
-            <MdContainer :md-container-width="workAreaWidth" />
+            <!-- 1.5.7 LLM Wiki L5：单栏工作台模式下，编辑区顶部提供「编辑器 / 预览」切换。
+                 传统模式 v-if=false 不渲染（DOM/布局零变化）。 -->
+            <LlmWikiEditorTabs v-if="isLlmWikiMode" />
+            <MdContainer :md-container-width="mdContainerWidth" />
+        </div>
+        <!-- 1.5.7 LLM Wiki L5：右侧 AI 输入面板（仅 LLM Wiki 模式 + 编辑区可见时占位；
+             切换其它工作区容器时用 v-show 隐藏，保留对话状态；传统模式不渲染）。 -->
+        <div
+            v-if="isLlmWikiMode"
+            v-show="showLlmAiPanel"
+            id="llm-ai-panel-container"
+            class="llm-ai-panel-container"
+            :style="{ width: llmAiPanelWidth }"
+        >
+            <LlmAiPanel
+                :document-name="llmWikiEditorContext.documentName"
+                :selection-text="llmWikiEditorContext.selectionText"
+                :collapsed="isLlmWikiAiPanelCollapsed"
+                :can-expand="!isLlmWikiAiPanelAutoCollapsed"
+                @toggle-collapse="toggleLlmWikiAiPanelCollapsed"
+            />
         </div>
         <div
             v-show="isShowPluginsContainer"
@@ -97,6 +117,7 @@ import {
     onMounted,
     onBeforeUnmount,
     watch,
+    provide,
     defineAsyncComponent,
     defineComponent,
     h
@@ -109,6 +130,20 @@ import ResManager from '@renderer/components/ResourceManager/ResourceManager.vue
 import MdContainer from '@renderer/components/Markdown/MarkdownContainer.vue'
 import PluginTools from '@renderer/components/PluginTools/PluginTools.vue'
 import HemyTools from '@renderer/components/HemyTools/HemyTools.vue'
+import LlmWikiEditorTabs from '@renderer/components/llm-wiki/LlmWikiEditorTabs.vue'
+import LlmAiPanel from '@renderer/components/llm-wiki/LlmAiPanel.vue'
+import {
+    disposeWorkspaceModeListener,
+    useWorkspaceMode
+} from '@renderer/composables/useWorkspaceMode'
+import {
+    ensureLlmWikiWorkbenchStateLoaded,
+    llmWikiWorkbenchState,
+    toggleLlmWikiAiPanelCollapsed
+} from '@renderer/components/llm-wiki/llm-wiki-workbench'
+import { llmWikiEditorContext } from '@renderer/components/llm-wiki/llm-wiki-context'
+import { LLM_AI_TRANSPORT_INJECTION_KEY } from '@renderer/components/llm-wiki/llm-ai-transport'
+import { createLlmAiIpcTransport } from '@renderer/components/llm-wiki/llm-ai-ipc-transport'
 import { IPC } from '../../../../shared/ipc-channels'
 import { EVENT_BUS } from '../../common/event-bus/event-bus-events'
 import {
@@ -230,6 +265,77 @@ const workAreaWidth = computed(() => {
         containerWidth = windowWidth.value - naviTabWidthValue * 2 - resMgrWidthValue - 2
     }
     return containerWidth + 'px'
+})
+
+/* ============================================================================
+ * 1.5.7 LLM Wiki L5：工作台布局（编辑区单栏 + 右侧 AI 输入面板）
+ *
+ * - traditional（默认）：布局与 1.5.6 完全一致（左编辑 + 右预览并排，AI 面板不渲染）；
+ * - llm-wiki：左侧编辑区内部用 tab 在「编辑器 / 预览」间切换（不常驻并排），右侧渲染
+ *   `LlmAiPanel`。宽度仍由 workAreaWidth 派生：编辑区 = 可用宽度 − AI 面板宽度。
+ * - 窄窗口（可用宽度不足以同时容纳最小编辑区与最小展开面板）时 AI 面板自动折叠为
+ *   48px 侧栏；用户也可随时手动折叠，折叠状态经 llm-wiki-workbench 持久化。
+ * ========================================================================== */
+const { isLlmWikiMode } = useWorkspaceMode()
+
+// L3↔L5 联调：AI 面板经注入的 transport 调用主进程 AI.CHAT（不可用时面板内显示提示）
+provide(LLM_AI_TRANSPORT_INJECTION_KEY, createLlmAiIpcTransport())
+// 首帧即恢复持久化 UI 状态（编辑区 tab / AI 面板折叠），避免布局二次跳变
+ensureLlmWikiWorkbenchStateLoaded()
+
+/** AI 面板展开宽度（常规 / 窄窗口两档）与折叠侧栏宽度（px） */
+const AI_PANEL_WIDTH_EXPANDED = 360
+const AI_PANEL_WIDTH_NARROW = 280
+const AI_PANEL_WIDTH_COLLAPSED = 48
+/** 窗口宽度不超过该值时用窄档面板宽度（与 window.innerWidth 比较的简单 CSS 断点口径） */
+const AI_PANEL_NARROW_WINDOW_WIDTH = 1100
+/** 编辑区最小可用宽度 / AI 面板最小展开宽度（窄于此自动折叠，保证编辑区可用） */
+const AI_PANEL_MIN_EDITOR_WIDTH = 320
+const AI_PANEL_MIN_EXPANDED_WIDTH = 240
+
+/** 工作区可用宽度（数值 px；workAreaWidth 的解析结果） */
+const workAreaWidthPx = computed(() => parseInt(workAreaWidth.value, 10) || 0)
+
+/** 是否展示 AI 面板：LLM Wiki 模式 + 编辑区容器可见 + 插件面板未折叠停靠 */
+const showLlmAiPanel = computed(
+    () => isLlmWikiMode.value && isShowMdContainer.value && !isPluginPanelDocked.value
+)
+
+/** 窄窗口自动折叠：可用宽度不足以同时容纳「最小编辑区 + 最小展开面板」 */
+const isLlmWikiAiPanelAutoCollapsed = computed(
+    () => workAreaWidthPx.value < AI_PANEL_MIN_EDITOR_WIDTH + AI_PANEL_MIN_EXPANDED_WIDTH
+)
+
+/** 面板折叠态（用户手动折叠 或 窄窗口自动折叠；自动折叠不写回持久化状态） */
+const isLlmWikiAiPanelCollapsed = computed(
+    () => llmWikiWorkbenchState.aiPanelCollapsed || isLlmWikiAiPanelAutoCollapsed.value
+)
+
+/** AI 面板宽度（px）：折叠 48 / 展开按窗口分档，并始终保证编辑区最小宽度 */
+const llmWikiAiPanelWidthPx = computed(() => {
+    if (isLlmWikiAiPanelCollapsed.value) {
+        return AI_PANEL_WIDTH_COLLAPSED
+    }
+    const desired =
+        windowWidth.value <= AI_PANEL_NARROW_WINDOW_WIDTH
+            ? AI_PANEL_WIDTH_NARROW
+            : AI_PANEL_WIDTH_EXPANDED
+    const maxByEditorWidth = workAreaWidthPx.value - AI_PANEL_MIN_EDITOR_WIDTH
+    return Math.max(AI_PANEL_MIN_EXPANDED_WIDTH, Math.min(desired, maxByEditorWidth))
+})
+
+/** AI 面板容器内联宽度（非 LLM Wiki 模式不占位） */
+const llmAiPanelWidth = computed(
+    () => `${showLlmAiPanel.value ? llmWikiAiPanelWidthPx.value : 0}px`
+)
+
+/** 编辑区容器宽度：LLM Wiki 模式扣除右侧 AI 面板宽度；传统模式保持既有 workAreaWidth */
+const mdContainerWidth = computed(() => {
+    if (!showLlmAiPanel.value) {
+        return workAreaWidth.value
+    }
+    const remaining = workAreaWidthPx.value - llmWikiAiPanelWidthPx.value
+    return `${Math.max(0, remaining)}px`
 })
 
 // 定义事件处理函数
@@ -414,6 +520,9 @@ onBeforeUnmount(() => {
         IPC.VIEW.TOGGLE_RES_MANAGER,
         handleHideDisplayResManager
     )
+    // 1.5.7 LLM Wiki L5：工作区模式广播监听为应用级单例，随主工作区卸载显式释放
+    //（与 useFeatureFlags 在 App 卸载时释放同口径；内存生命周期静态检查要求订阅/退订配对）
+    disposeWorkspaceModeListener()
     // EventBus 监听已由 useEventBus 自动清理（本组件在 setup 内注册，先于此处执行）
 })
 </script>
@@ -632,6 +741,33 @@ onBeforeUnmount(() => {
     font-size: 14px;
     /* 历史令牌 --theme-text-secondary 已由 styles/content-tokens.css 等值补定义（原兜底 #757575） */
     color: var(--theme-text-secondary);
+}
+
+/* ============================================================================
+ * 1.5.7 LLM Wiki L5：右侧 AI 面板容器
+ *
+ * - 材质走上壳层材质（--bz-shell-*，由 #editor-container 从 P0 冻结令牌派生）：workbench
+ *   下与既有卡片底同值（观感零变化），paper / glass / hybrid 自动获得风格化表面；
+ * - 宽度由父组件内联 style 提供（展开 / 窄档 / 折叠三态），本规则只负责材质、可收缩与分隔；
+ * - 四风格 × 三密度差异全部由 --ui-* / --bz-* 令牌派生，不写风格分支。
+ * ========================================================================== */
+.llm-ai-panel-container {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    position: relative;
+    background-color: var(--theme-card-background);
+    background-color: var(--bz-shell-surface, var(--theme-card-background));
+    background-image: linear-gradient(
+        var(--bz-shell-veil, transparent),
+        var(--bz-shell-veil, transparent)
+    );
+    border-left: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+    border-radius: var(--bz-shell-radius, 0);
 }
 
 /* 应用主题到所有子元素 */

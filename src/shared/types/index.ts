@@ -34,6 +34,9 @@
  * - pdf-annotations.ts
  *                  1.5.2 E2 PDF 标注与摘录：PdfAnnotation / PdfAnnotationRect /
  *                  CreatePdfAnnotationInput / 加载与保存结果（侧车文件契约）
+ * - ai.ts         1.5.7 LLM Wiki L3：AI Provider / ingest / diff 审批契约
+ *                  （AiStoredConfig / AiConfigSnapshot / AiChatRequest / AiIngestResult /
+ *                  AiApplyIngestRequest / AiErrorCode 等，见 shared/types/ai.ts）
  *
  * 主题明暗分组清单（非类型）见 src/shared/constants/theme.ts 的 THEME_GROUPS。
  *
@@ -64,3 +67,5 @@ export type * from './dialog'
 export type * from './pdf-annotations'
 // 1.5.2 E3：图片 OCR 契约（语言包准备 / 剪贴板图片识别两个 OCR 通道的请求与返回结构）。
 export type * from './ocr'
+// 1.5.7 LLM Wiki L3：AI Provider / AI ingest / diff 审批契约（AI 组 5 个 invoke 通道）。
+export type * from './ai'

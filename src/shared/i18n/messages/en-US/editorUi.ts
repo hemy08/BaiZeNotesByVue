@@ -204,7 +204,12 @@ export default {
             clipToEditor: 'Clip clipboard into the current note',
             // 1.5.2 E3: image OCR (optional feature featureImageOcr, off by default; MVP clipboard screenshots)
             ocrInsert: 'Recognize clipboard image text and insert into the current note',
-            ocrCopy: 'Recognize clipboard image text and copy it'
+            ocrCopy: 'Recognize clipboard image text and copy it',
+            // 1.5.7 LLM Wiki L3: AI compile (raw/ source material -> wiki/ draft + diff approval)
+            llmIngest: 'AI compile (raw -> wiki)',
+            // 1.5.7 LLM Wiki L4: relationship graph / embed raw source material
+            openGraph: 'Open relationship graph',
+            insertRawEmbed: 'Embed raw source material'
         },
         category: {
             file: 'File',
@@ -617,6 +622,192 @@ export default {
         cancel: 'Cancel',
         create: 'Create',
         creating: 'Creating…',
+        close: 'Close'
+    },
+    /**
+     * 1.5.7 LLM Wiki L5: workbench AI input panel + editor/preview tab switch.
+     * UI skeleton batch only; AI calls go through an injectable transport (placeholder by default).
+     */
+    llmWikiPanel: {
+        ariaLabel: 'AI input panel',
+        title: 'AI Assistant',
+        modelLabel: 'Model',
+        modelDefault: 'Default model',
+        modelLocalMock: 'Local model (not connected)',
+        modelRemoteMock: 'Remote model (not connected)',
+        modelHint: 'Model selection is a placeholder; real models arrive in the L3 batch',
+        clear: 'Clear conversation',
+        contextTitle: 'Context',
+        contextDocument: 'Current document',
+        contextSelection: 'Selected text',
+        contextEmpty: 'No context yet (open a document or select text to reference it)',
+        emptyTitle: 'Start a conversation with AI',
+        emptyHint:
+            'Type a question or instruction; results can be copied or applied to the editor (apply is not connected yet).',
+        userRole: 'You',
+        assistantRole: 'AI Assistant',
+        thinking: 'Generating…',
+        messageListLabel: 'AI conversation messages',
+        inputLabel: 'AI input',
+        inputPlaceholder:
+            'Type a question or instruction (Enter to send, Shift+Enter for a new line)',
+        inputHint: 'Enter to send / Shift+Enter for a new line',
+        send: 'Send',
+        stop: 'Stop',
+        copy: 'Copy',
+        copied: 'Copied',
+        copyFailed: 'Copy failed',
+        apply: 'Apply to editor',
+        applyComingSoon: 'Applying results is not connected yet (available in the L3 batch)',
+        notConnected: 'AI features are not connected yet (available in the L3 batch)',
+        emptyReply: 'AI returned no content. Try again later.',
+        transportError: 'AI request failed. Try again later.',
+        aiNotConfigured:
+            'The AI assistant is not enabled yet. Configure it in Settings > System Settings > Features > AI assistant and try again.',
+        aiUnavailable: 'Unavailable in this environment: the AI service channel cannot be reached.',
+        aiError: 'AI request failed. Try again later.',
+        collapse: 'Collapse AI panel',
+        expand: 'Expand AI panel',
+        narrowCollapsedHint:
+            'The window is too narrow, so the AI panel is collapsed; widen the window to expand it',
+        editorTabsLabel: 'Editor view switch',
+        tabEditor: 'Editor',
+        tabPreview: 'Preview'
+    },
+    /**
+     * 1.5.7 LLM Wiki L3: AI compile diff approval UI (Markdown/llm-ingest-diff.vue).
+     * Appended after L5's llmWikiPanel block so the two AI surfaces stay independent.
+     */
+    llmIngest: {
+        title: 'AI compile approval',
+        loading: 'Compiling the raw source and generating a draft…',
+        preparing: 'Preparing…',
+        sourceLabel: 'Source material',
+        targetLabel: 'Target page',
+        newBadge: 'New page',
+        updateBadge: 'Update existing page',
+        diffLabel: 'Diff between the draft and the target file',
+        addCount: '+{count} lines',
+        delCount: '-{count} lines',
+        truncated:
+            'The diff is large, showing the first {count} lines; the full draft will be written.',
+        empty: 'The draft is empty and cannot be approved.',
+        apply: 'Approve and apply',
+        applying: 'Writing…',
+        cancel: 'Cancel',
+        applied: 'Written to {path}',
+        applyFailed: 'Failed to write: {error}',
+        loadFailed: 'AI compile failed: {error}',
+        notConfiguredHint:
+            'Enable the AI assistant and finish its configuration in System Settings -> Features -> AI Assistant first.',
+        noWorkspaceHint:
+            'Open an LLM Wiki workspace and initialize the raw/ and wiki/ directories first.',
+        ipcUnavailable:
+            'The main process is unavailable, so AI compile cannot run. Restart the app and try again.',
+        close: 'Close',
+        retry: 'Retry'
+    },
+    /**
+     * 1.5.7 LLM Wiki L4: relationship graph dialog (components/Graph/GraphDialog.vue).
+     * Appended after L3 llmIngest so existing knowledge-base / AI panel entries stay untouched.
+     */
+    graphDialog: {
+        title: 'Relationship graph',
+        menuLabel: 'Relationship graph',
+        filterLabel: 'Scope',
+        filterAll: 'All files',
+        filterWiki: 'Wiki pages only',
+        summary: '{files} files · {edges} relationships',
+        summaryFiltered: 'Showing {shown}/{total} files · {edges} relationships',
+        truncated:
+            'Too many nodes/relationships, so the graph is truncated by link count ({shownNodes}/{totalNodes} nodes, {omittedEdges} relationships omitted); switch to "Wiki pages only" to narrow the scope.',
+        loading: 'Loading the workspace index and computing the graph…',
+        noWorkspace: 'Open a workspace folder before viewing the relationship graph',
+        emptyWorkspace: 'The workspace has no indexable Markdown / TXT files',
+        emptyWiki:
+            'No pages under wiki/ in this workspace (switch to "All files" to browse everything)',
+        emptyGraph: 'No file nodes to display in the current scope',
+        emptyLinks:
+            'No resolvable Wiki links in this workspace yet (use [[page name]] in a note to create links)',
+        loadFailed: 'Failed to load the workspace index. Try again later.',
+        retry: 'Retry',
+        refresh: 'Refresh index',
+        refreshing: 'Refreshing the workspace index…',
+        refreshFailed: 'Failed to refresh the index; showing the previous snapshot',
+        openFailed: 'Failed to open the file. Try again later.',
+        opened: 'Opened: {title}',
+        close: 'Close',
+        canvasLabel:
+            'Relationship graph canvas: drag to pan, scroll to zoom, click a node to open the file',
+        panelLabel: 'Graph relationship details',
+        edgePanelTitle: 'Link relationship',
+        edgeSource: 'Source',
+        edgeTarget: 'Target',
+        edgeOccurrenceCount: 'Occurrences',
+        edgeOccurrenceListLabel: 'Link occurrence list',
+        nodePanelTitle: 'Node details',
+        nodeDegree: 'Connections: {count}',
+        nodeTags: 'Tags',
+        legendTitle: 'How to use',
+        legendPan: 'Drag empty space to pan the canvas',
+        legendZoom: 'Scroll or use the buttons at the top right to zoom',
+        legendNodeClick: 'Click a node to open the corresponding file',
+        legendEdge: 'Hover or click a line to inspect the relationship',
+        legendWikiFilter: 'Switch to "Wiki pages only" to focus on pages under wiki/',
+        zoomGroupLabel: 'Graph zoom',
+        zoomIn: 'Zoom in',
+        zoomOut: 'Zoom out',
+        zoomReset: 'Reset zoom'
+    },
+    /**
+     * 1.5.7 LLM Wiki L4: embed raw/ source material dialog
+     * (components/Markdown/embed/EmbedDialog.vue). The file list comes from the existing
+     * directory-tree IPC event, preview reuses FILE.READ_HTML, insertion reuses A8.
+     */
+    embedDialog: {
+        title: 'Embed raw source material',
+        workspace: 'Workspace: {path}',
+        workspaceUnknown: 'Workspace file tree',
+        summary: '{count} embeddable files',
+        loading: 'Reading the workspace file tree…',
+        timeout:
+            'Timed out while reading the workspace file tree (the workspace may not be open). Open a workspace and try again.',
+        ipcUnavailable:
+            'The main process is unavailable, so the file tree cannot be read. Restart the app and try again.',
+        invalidTree: 'The workspace file tree payload is invalid. Refresh and try again.',
+        loadFailed: 'Failed to read the workspace file tree. Try again later.',
+        retry: 'Retry',
+        noWorkspace: 'Open a workspace folder before reading raw/ files',
+        emptyRaw:
+            'This workspace has not initialized the raw/ directory yet. Run "Initialize LLM Wiki" first.',
+        emptyFiles:
+            'No embeddable files in raw/ yet (Markdown / text / image / PDF / HTML are supported)',
+        listLabel: 'raw/ file list',
+        previewTitle: 'Read-only preview',
+        previewEmpty: 'Select a file on the left to preview it',
+        previewLoading: 'Reading file content…',
+        previewFailed: 'Failed to read the file content. Try again later.',
+        previewTruncated: 'The file is long, so only the first {count} characters are shown',
+        previewOther: 'This file type cannot be previewed inline; insert a reference link instead',
+        activeFile: 'Insert into: {path}',
+        noActiveFileHint: 'No file open: open a wiki/ page before inserting a reference',
+        noActiveFile: 'Open a wiki/ page before inserting a raw/ reference',
+        differentDrive:
+            'The raw/ file and the current file are on different drives, so a relative path cannot be built',
+        editorUnavailable: 'No editor is available. Open and focus a note first.',
+        insert: 'Insert into editor',
+        inserted: 'Inserted the Markdown reference into the current editor',
+        insertFailed: 'Insert failed. Make sure the editor is editable and try again.',
+        copy: 'Copy Markdown',
+        copied: 'Copied',
+        copyFailed: 'Copy failed. Check the system clipboard permission.',
+        kindText: 'Text',
+        kindImage: 'Image',
+        kindOther: 'Other',
+        kindTextBadge: 'T',
+        kindImageBadge: 'I',
+        kindOtherBadge: 'O',
+        refresh: 'Refresh list',
         close: 'Close'
     }
 }

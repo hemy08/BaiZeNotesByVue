@@ -110,6 +110,10 @@ export interface SystemSetting {
     // 1.5.7 LLM Wiki L1：工作区模式（默认 'traditional'，对既有工作区零影响）。
     // 由「系统设置 → 功能」页签写入；主进程据此决定是否启用 raw/ 只读写入守卫。
     workspaceMode?: WorkspaceMode
+    // 1.5.7 LLM Wiki L2：MCP 只读桥启用偏好（默认 false，opt-in）。
+    // 由「系统设置 → 功能 → MCP 服务」开关经主进程 MCP.SET_ENABLED 写入；仅记录用户偏好，
+    // 服务本身不跨重启自动启动（Bearer token 不落盘，重启后需在设置页重新启用）。
+    mcpEnabled?: boolean
     // AS-9（P3 隐私）：是否允许 Markdown 预览加载文档中的远程（http/https/协议相对）图片。
     // 默认 false：渲染层把远程图片替换为占位块，不发起任何网络请求（防跟踪像素/IP 泄露）；
     // 本地相对路径、绝对路径与 data:/blob: 图片不受影响。

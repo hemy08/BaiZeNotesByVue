@@ -2,14 +2,14 @@
  * preload 白名单单一来源（H2）回归测试
  *
  * ## 背景
- * preload 此前维护三份手工通道白名单（主窗口 75 send + 28 on、对话框 0 + 0、
+ * preload 此前维护三份手工通道白名单（主窗口 77 send + 28 on、对话框 0 + 0、
  * `window.api` 直连 6），与 shared 契约没有生成期对应关系：新增 IPC 时若漏登记，
  * 渲染层调用会被 preload **静默丢弃**。H2 把白名单改为由共享契约驱动、
  * `build/generate-preload-whitelist.js` 统一生成（产物见
  * `src/preload/allowed-channels.generated.ts` 与 `src/preload/index.ts` 的生成标记块）。
  *
  * ## 本测试的双向核对
- * 1. 生成产物 ↔ shared 契约：`IpcRequests` 75 / `IpcEvents` 28 / `IpcPreloadApiRequests` 6；
+ * 1. 生成产物 ↔ shared 契约：`IpcRequests` 82 / `IpcEvents` 28 / `IpcPreloadApiRequests` 6；
  * 2. 入口镜像 ↔ 生成模块：`index.ts` 两个生成块必须与生成模块完全一致（防两处产物漂移）；
  * 3. 生成器 `--check`：契约已改但产物未重新生成 → 失败（杜绝「漏登记即静默丢弃」）；
  * 4. 对话框白名单 ↔ `src/main/dialogs` 实际调用点（结构优化第 2 批 2.1 后为 0 + 0，双向）；
@@ -248,10 +248,10 @@ const DIALOG_USAGE = collectDialogUsage()
 const PRELOAD_API_USAGE = collectPreloadApiUsage()
 
 describe('preload 白名单：生成产物 ↔ shared 契约', () => {
-    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（75，双向）', () => {
+    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（82，双向）', () => {
         const generated = new Set(RENDERER_SEND_CHANNELS)
-        expect(generated.size).toBe(75)
-        expect(CONTRACT_REQUEST_KEYS.size).toBe(75)
+        expect(generated.size).toBe(82)
+        expect(CONTRACT_REQUEST_KEYS.size).toBe(82)
         expect(diff(generated, CONTRACT_REQUEST_KEYS)).toEqual([])
     })
 
@@ -294,8 +294,8 @@ describe('preload 白名单：生成产物 ↔ shared 契约', () => {
 })
 
 describe('preload 白名单：入口镜像 ↔ 生成产物（防两处产物漂移）', () => {
-    it('index.ts 两个生成块应可解析且与生成模块双向一致（75 / 28）', () => {
-        expect(INDEX_SEND_WHITELIST.size).toBe(75)
+    it('index.ts 两个生成块应可解析且与生成模块双向一致（82 / 28）', () => {
+        expect(INDEX_SEND_WHITELIST.size).toBe(82)
         expect(INDEX_RECEIVE_WHITELIST.size).toBe(28)
         expect(diff(INDEX_SEND_WHITELIST, new Set(RENDERER_SEND_CHANNELS))).toEqual([])
         expect(diff(INDEX_RECEIVE_WHITELIST, new Set(RENDERER_RECEIVE_CHANNELS))).toEqual([])

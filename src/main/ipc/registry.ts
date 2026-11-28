@@ -25,7 +25,8 @@
  *    → utils 通道 → handlers 通道 → PlantUML 本地渲染 → A2 工作区搜索/替换 →
  *    1.5.1 工作区索引 → 1.5.1 B5 附件管理 → 1.5.2 E6 今日日记/快速收件箱 →
  *    1.5.2 E2 PDF 标注与摘录 → 1.5.2 E3 图片 OCR（剪贴板识别）→
- *    1.5.7 LLM Wiki L1 工作区初始化）。
+ *    1.5.7 LLM Wiki L1 工作区初始化 → 1.5.7 LLM Wiki L2 MCP 只读桥 →
+ *    1.5.7 LLM Wiki L3 AI Provider / AI ingest / diff 审批）。
  *
  * 窗口重建（macOS activate）不会再次调用本文件：全局注册为进程级 persistent
  * （ipcListenerManager.registerOnce/registerHandleOnce），窗口重建只需刷新
@@ -75,6 +76,10 @@ import { registerPdfAnnotationsIpc } from './pdf-annotations-ipc'
 import { registerOcrIpc } from './ocr-ipc'
 // 1.5.7 LLM Wiki L1：工作区初始化（创建 raw/、wiki/ 目录与 schema.md 约定模板）
 import { registerLlmWikiIpc } from './llm-wiki-ipc'
+// 1.5.7 LLM Wiki L2：MCP 只读桥（设置页状态/开关；HTTP 服务默认关闭、仅 127.0.0.1 + token）
+import { registerMcpIpc } from './mcp-ipc'
+// 1.5.7 LLM Wiki L3：AI Provider（本地 + 远程 BYOK）/ AI ingest / diff 审批（5 个 invoke 通道）
+import { registerAiIpc } from './ai-ipc'
 import { logger } from '../utils/logger'
 import { IPC } from '../../shared/ipc-channels'
 
@@ -108,6 +113,12 @@ const OCR_COMPONENT_ID = 'global-ocr-ipc'
 
 /** 1.5.7 LLM Wiki L1 工作区初始化 IPC 的监听台账组件 ID */
 const LLM_WIKI_COMPONENT_ID = 'global-llm-wiki-ipc'
+
+/** 1.5.7 LLM Wiki L2 MCP 只读桥 IPC 的监听台账组件 ID */
+const MCP_COMPONENT_ID = 'global-mcp-ipc'
+
+/** 1.5.7 LLM Wiki L3 AI Provider / ingest / diff 审批 IPC 的监听台账组件 ID */
+const AI_COMPONENT_ID = 'global-ai-ipc'
 
 /** registerAll 的入口钩子：由 main/index.ts 提供的跨模块行为（避免 registry 反向依赖入口） */
 export interface RegisterAllHooks {
@@ -252,4 +263,13 @@ export function registerAll(mainWindow: BrowserWindow, hooks: RegisterAllHooks =
     // 13) 1.5.7 LLM Wiki L1：工作区初始化（创建 raw/、wiki/ 与 schema.md 约定模板）。
     //     无参 invoke，根路径只取 appState.rootPath；幂等且绝不覆盖既有 schema.md。
     registerLlmWikiIpc(LLM_WIKI_COMPONENT_ID)
+    // 14) 1.5.7 LLM Wiki L2：MCP 只读桥（设置页状态/开关）。
+    //     两个 invoke 通道仅主窗口可信；HTTP 服务默认关闭，启用时只绑定 127.0.0.1 +
+    //     随机 Bearer token + 7 个只读工具；注册时回落上次会话的启用偏好（token 不落盘）。
+    registerMcpIpc(MCP_COMPONENT_ID)
+    // 15) 1.5.7 LLM Wiki L3：AI Provider（本地 Ollama/LM Studio + 远程 BYOK）。
+    //     5 个 invoke 通道仅主窗口可信：AI.CHAT（对话/连接测试）、AI.INGEST（raw → wiki 草案 +
+    //     行级 diff，不写盘）、AI.APPLY_INGEST（审批后写 wiki/，Path Guard + raw 只读守卫）、
+    //     AI.GET_CONFIG / AI.SAVE_CONFIG（设置页 AI 分组；密钥经 safeStorage 加密落独立文件）。
+    registerAiIpc(AI_COMPONENT_ID)
 }

@@ -947,6 +947,35 @@
                                     <a href="#sec-116">25. 已知限制</a>
                                     <ul class="toc-sub"></ul>
                                 </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-117">26. LLM Wiki 工作模式</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3">
+                                            <a href="#sec-118">26.1 初始化与工作区模式</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-119"
+                                                >26.2 工作台布局（编辑器 / 预览 / AI 面板）</a
+                                            >
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-120">26.3 AI 助手配置（本地 / 远程）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-121"
+                                                >26.4 AI 编译（ingest）与 diff 审批</a
+                                            >
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-122"
+                                                >26.5 MCP 只读桥（给外部 AI Agent 使用）</a
+                                            >
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-123">26.6 关系图谱与 raw 资料嵌入</a>
+                                        </li>
+                                    </ul>
+                                </li>
                             </ul>
                         </nav>
                         <noscript>
@@ -988,6 +1017,7 @@
                         <li class="toc-h2"><a href="#sec-100">23. 安全与隐私</a></li>
                         <li class="toc-h2"><a href="#sec-101">24. 常见问题</a></li>
                         <li class="toc-h2"><a href="#sec-116">25. 已知限制</a></li>
+                        <li class="toc-h2"><a href="#sec-117">26. LLM Wiki 工作模式</a></li>
                     </ul>
                 </section>
                 <h1 id="sec-1">白泽笔记使用指导</h1>
@@ -3787,6 +3817,120 @@ aliases:
                 </ul>
                 <hr />
                 <p>白泽笔记 · 使用指导 · 随安装包分发 · 在线文档 https://hemy08.github.io</p>
+                <h2 id="sec-117">26. LLM Wiki 工作模式</h2>
+                <blockquote>
+                    <p>
+                        <strong>1.5.7 起支持。</strong> LLM Wiki 是一种「原始资料 +
+                        编译知识」的知识管理方式：<code>raw/</code> 存放不可变的原始资料，<code
+                            >wiki/</code
+                        >
+                        存放 AI 与用户共同维护的编译态知识，<code>schema.md</code> 记录工作区约定。
+                    </p>
+                </blockquote>
+                <h3 id="sec-118">26.1 初始化与工作区模式</h3>
+                <ul>
+                    <li>
+                        <strong>入口</strong>：文件菜单「初始化 LLM
+                        Wiki」，或命令面板搜索「初始化」；也可在
+                        <strong>设置 → 系统设置 → 功能 → 工作区模式</strong> 中选择「LLM Wiki
+                        模式」（切换时会先确认再初始化）。
+                    </li>
+                    <li>
+                        初始化会在工作区根目录创建 <code>raw/</code>、<code>wiki/</code> 目录与
+                        <code>schema.md</code> 模板（已存在时不覆盖）。
+                    </li>
+                    <li>
+                        <strong><code>raw/</code> 只读</strong>：对
+                        <code>raw/</code> 内文件的新建、保存、重命名、删除会被拒绝并提示；<code
+                            >wiki/</code
+                        >
+                        可正常编辑。
+                    </li>
+                    <li>
+                        <code>raw/</code>
+                        不参与工作区索引、搜索、反链与图谱（保持资料原始性；需要引用时用
+                        <code>wiki/</code> 页面）。
+                    </li>
+                    <li>切回「传统模式」不会删除已创建的目录，编辑行为恢复为普通 Markdown。</li>
+                </ul>
+                <h3 id="sec-119">26.2 工作台布局（编辑器 / 预览 / AI 面板）</h3>
+                <ul>
+                    <li>
+                        切到 LLM Wiki
+                        模式后，工作区布局变为：<strong>左侧编辑区</strong>（顶部「编辑器 /
+                        预览」切换，编辑与预览统一在编辑区）+ <strong>右侧 AI 输入面板</strong>。
+                    </li>
+                    <li>编辑区切换会保留光标与滚动位置；选择状态会记住，下次打开沿用。</li>
+                    <li>AI 面板可手动收起/展开；窗口过窄时自动收起，加宽后可展开。</li>
+                    <li>传统模式下布局保持「左编辑 + 右预览」并排，不受影响。</li>
+                </ul>
+                <h3 id="sec-120">26.3 AI 助手配置（本地 / 远程）</h3>
+                <ul>
+                    <li>
+                        <strong>入口</strong>：设置 → 系统设置 → 功能 → <strong>AI 助手</strong>。
+                    </li>
+                    <li>
+                        <strong>本地模型</strong>：Ollama（默认
+                        <code>http://127.0.0.1:11434</code>）或 LM Studio（默认
+                        <code>http://127.0.0.1:1234/v1</code>），隐私友好、可离线。
+                    </li>
+                    <li>
+                        <strong>远程 API</strong>：OpenAI 兼容接口（填 Base URL、模型名与 API
+                        Key）；密钥使用系统安全存储加密保存（不可用时仅本次会话有效），启用前会提示数据将发送到所配置的服务。
+                    </li>
+                    <li>
+                        配置后可点「测试连接」验证；AI 未启用时相关功能会给出提示，不阻塞正常编辑。
+                    </li>
+                </ul>
+                <h3 id="sec-121">26.4 AI 编译（ingest）与 diff 审批</h3>
+                <ul>
+                    <li><strong>入口</strong>：命令面板搜索「AI 编译」/「ingest」。</li>
+                    <li>
+                        流程：选择或自动扫描 <code>raw/</code> 资料 → AI 生成
+                        <code>wiki/</code> 页面草案 → 展示<strong>行级 diff</strong
+                        >（新增/删除/上下文高亮）→ 点「确认应用」才写入
+                        <code>wiki/</code>，取消/关闭不写盘。
+                    </li>
+                    <li>
+                        写入前会再次校验：仅允许写入 <code>wiki/</code> 下的 Markdown 文件，<code
+                            >raw/</code
+                        >
+                        只读边界不可突破。
+                    </li>
+                </ul>
+                <h3 id="sec-122">26.5 MCP 只读桥（给外部 AI Agent 使用）</h3>
+                <ul>
+                    <li>
+                        <strong>入口</strong>：设置 → 系统设置 → 功能 →
+                        <strong>MCP 服务</strong>（默认关闭，需手动启用）。
+                    </li>
+                    <li>
+                        启用后仅监听本机回环（<code>127.0.0.1</code>），每次启用生成新的访问
+                        token；设置页会显示实际端口、MCP 地址与 token 复制按钮。
+                    </li>
+                    <li>
+                        提供
+                        <strong>7 个只读工具</strong
+                        >：<code>search_wiki</code>、<code>read_page</code>、<code>list_pages</code>、<code>read_schema</code>、<code>list_tags</code>、<code>get_backlinks</code>、<code>read_raw</code>；不提供任何写操作。
+                    </li>
+                    <li>
+                        在支持 MCP 的客户端中把「MCP 地址 + Bearer
+                        token」填入即可连接；退出应用或关闭服务后 token 失效，重启应用后需重新启用。
+                    </li>
+                </ul>
+                <h3 id="sec-123">26.6 关系图谱与 raw 资料嵌入</h3>
+                <ul>
+                    <li>
+                        <strong>关系图谱</strong>：视图菜单「关系图谱」或命令面板搜索「图谱」；展示
+                        <code>wiki/</code>
+                        页面之间的链接关系（节点=文件、连线=链接），可拖拽/缩放、点击节点跳转文件、点击连线查看来源与位置。
+                    </li>
+                    <li>
+                        <strong>嵌入 raw 资料</strong>：命令面板搜索「嵌入 raw 资料」；选择
+                        <code>raw/</code> 下的文件（可预览文本/图片），插入标准 Markdown
+                        相对链接到当前文档，插入后预览中可点击打开。
+                    </li>
+                </ul>
 
                 <footer>
                     白泽笔记 · 使用指导 · 随安装包分发 · 在线文档 https://hemy08.github.io

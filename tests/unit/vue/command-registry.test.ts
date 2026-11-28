@@ -87,6 +87,11 @@ describe('buildPaletteCommands：命令清单', () => {
             'knowledge-links',
             'knowledge-backlinks',
             'attachments',
+            // 1.5.7 LLM Wiki L3：AI 编译（raw → wiki 草案 + diff 审批）
+            'llm-ingest',
+            // 1.5.7 LLM Wiki L4：关系图谱 / 嵌入 raw 资料
+            'open-graph',
+            'insert-raw-embed',
             'daily-note',
             'inbox-capture',
             'clip-to-note',
@@ -136,6 +141,98 @@ describe('buildPaletteCommands：命令清单', () => {
         expect(filterPaletteCommands(commands, '初始化', translate).map((c) => c.id)).toContain(
             'initialize-llm-wiki'
         )
+    })
+
+    // 1.5.7 LLM Wiki L3：AI 编译命令（自定义动作 → 打开 diff 审批 UI）
+    it('注册「AI 编译」命令：id/分类/关键词/自定义动作契约', () => {
+        const command = commands.find((item) => item.id === 'llm-ingest')
+        expect(command).toBeDefined()
+        expect(command!.labelKey).toBe('editorUi.commandPalette.command.llmIngest')
+        expect(command!.categoryKey).toBe('editorUi.commandPalette.category.knowledge')
+        expect(command!.keywords).toEqual(['llm', 'ingest', 'raw', 'wiki', '编译'])
+        expect(command!.menuAction).toBeUndefined()
+        expect(typeof command!.run).toBe('function')
+        expect(filterPaletteCommands(commands, '编译', translate).map((c) => c.id)).toContain(
+            'llm-ingest'
+        )
+        expect(filterPaletteCommands(commands, 'ingest', translate).map((c) => c.id)).toContain(
+            'llm-ingest'
+        )
+    })
+
+    it('「AI 编译」命令执行时调用注入的 openLlmIngestDiff（未注入时不抛错）', () => {
+        let openCount = 0
+        const customHandlers: PaletteCommandHandlers = {
+            ...handlers,
+            openLlmIngestDiff: () => {
+                openCount += 1
+            }
+        }
+        buildPaletteCommands(customHandlers)
+            .find((command) => command.id === 'llm-ingest')
+            ?.run?.()
+        expect(openCount).toBe(1)
+        // 缺省未注入时 exec 不抛错（命令仍可见，但点击无副作用；由宿主决定是否注入）
+        expect(() =>
+            buildPaletteCommands(handlers)
+                .find((command) => command.id === 'llm-ingest')
+                ?.run?.()
+        ).not.toThrow()
+    })
+
+    // 1.5.7 LLM Wiki L4：关系图谱 / 嵌入 raw 资料命令（自定义动作 → 打开对应对话框）
+    it('注册「关系图谱」命令：id/分类/关键词/自定义动作契约', () => {
+        const command = commands.find((item) => item.id === 'open-graph')
+        expect(command).toBeDefined()
+        expect(command!.labelKey).toBe('editorUi.commandPalette.command.openGraph')
+        expect(command!.categoryKey).toBe('editorUi.commandPalette.category.view')
+        expect(command!.keywords).toEqual(['图谱', '关系', 'graph', 'wiki'])
+        expect(command!.menuAction).toBeUndefined()
+        expect(typeof command!.run).toBe('function')
+        expect(filterPaletteCommands(commands, '图谱', translate).map((c) => c.id)).toContain(
+            'open-graph'
+        )
+        expect(filterPaletteCommands(commands, 'graph', translate).map((c) => c.id)).toContain(
+            'open-graph'
+        )
+    })
+
+    it('注册「嵌入 raw 资料」命令：id/分类/关键词/自定义动作契约', () => {
+        const command = commands.find((item) => item.id === 'insert-raw-embed')
+        expect(command).toBeDefined()
+        expect(command!.labelKey).toBe('editorUi.commandPalette.command.insertRawEmbed')
+        expect(command!.categoryKey).toBe('editorUi.commandPalette.category.insert')
+        expect(command!.keywords).toEqual(['嵌入', 'embed', 'raw', '资料'])
+        expect(command!.menuAction).toBeUndefined()
+        expect(typeof command!.run).toBe('function')
+        expect(filterPaletteCommands(commands, '嵌入', translate).map((c) => c.id)).toContain(
+            'insert-raw-embed'
+        )
+        expect(filterPaletteCommands(commands, 'embed', translate).map((c) => c.id)).toContain(
+            'insert-raw-embed'
+        )
+    })
+
+    it('「关系图谱 / 嵌入 raw 资料」命令执行时调用注入的打开动作（未注入时不抛错）', () => {
+        const calls: string[] = []
+        const customHandlers: PaletteCommandHandlers = {
+            ...handlers,
+            openGraphDialog: () => calls.push('graph'),
+            openEmbedDialog: () => calls.push('embed')
+        }
+        const customCommands = buildPaletteCommands(customHandlers)
+        customCommands.find((command) => command.id === 'open-graph')?.run?.()
+        customCommands.find((command) => command.id === 'insert-raw-embed')?.run?.()
+        expect(calls).toEqual(['graph', 'embed'])
+        // 缺省未注入时不抛错（命令仍可见，由宿主决定是否注入打开动作）
+        expect(() => {
+            buildPaletteCommands(handlers)
+                .find((command) => command.id === 'open-graph')
+                ?.run?.()
+            buildPaletteCommands(handlers)
+                .find((command) => command.id === 'insert-raw-embed')
+                ?.run?.()
+        }).not.toThrow()
     })
 
     it('自定义命令（工作区搜索/模式切换）提供 run 函数且不提供 menuAction', () => {

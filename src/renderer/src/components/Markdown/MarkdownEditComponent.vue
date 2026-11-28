@@ -1,10 +1,10 @@
 <template>
     <div
-        v-show="isShowEditArea"
+        v-show="showEditPane"
         id="md-edit-component"
         class="md-edit-component"
         :class="{ 'md-edit-component--tabs': tabsEnabled }"
-        :style="{ width: monacoEditorWidth }"
+        :style="{ width: editPaneWidth }"
     >
         <!-- A1 多标签（opt-in，featureTabs 开启且存在已打开文件时才渲染）：
              标签栏独占编辑区顶部一行，Monaco 经 flex 撑满剩余高度（见 scoped CSS）；
@@ -23,31 +23,31 @@
         <MdMonacoEdit
             v-model="markdownEditorCode"
             :code="initialCodeContent"
-            :editor-area-width="monacoEditorWidthPx"
+            :editor-area-width="editorAreaWidthProp"
             :file-path="activeFilePath"
             @update:code="handleMarkdownCodeUpdate"
             @sync-scroll="handleEditorSyncScroll"
         />
     </div>
     <div
-        v-show="isShowResizer"
+        v-show="showResizerPane"
         id="resizer-md"
         class="resizer-md"
         :style="{ left: resizerPosition }"
         @mousedown="startResizing"
     ></div>
     <div
-        v-show="isShowPreviewArea"
+        v-show="showPreviewPane"
         id="md-preview"
         class="md-preview"
-        :style="{ width: editPreviewAreaWidth, left: editPreviewAreaLeft }"
+        :style="{ width: previewPaneWidth, left: previewPaneLeft }"
     >
         <!-- 结构优化第 2 批 2.2（H4）：预览管线（markdown-it/highlight.js/KaTeX 等）独立
              按需 chunk；活动文件路径由本组件经 IPC 监听后透传，兼容「预览挂载晚于打开文件」
              的启动恢复时序。 -->
         <MdPreview
             :editor-content="markdownEditorContent"
-            :active="isShowPreviewArea"
+            :active="showPreviewPane"
             :active-file-path="activeFilePath"
             :sync-scroll-target="visibleSyncScrollTarget"
         />
@@ -93,6 +93,14 @@ import {
     writeUntitledDraft
 } from './untitled-draft'
 import { saveUntitledDraftAs, requestOpenFile } from './request-open-file'
+// 1.5.7 LLM Wiki L5：单栏工作台（编辑区「编辑器/预览」tab + 右侧 AI 面板）联动
+import { useWorkspaceMode } from '../../composables/useWorkspaceMode'
+import {
+    ensureLlmWikiWorkbenchStateLoaded,
+    llmWikiWorkbenchState,
+    setLlmWikiEditorTab
+} from '../llm-wiki/llm-wiki-workbench'
+import { setLlmWikiActiveDocument } from '../llm-wiki/llm-wiki-context'
 
 // M5：保存/模板/导入替换 3 个进程内事件订阅统一经 useEventBus 注册，卸载时自动清理
 const { on: onEventBus } = useEventBus({ componentIdPrefix: 'MarkdownEditComponent' })
@@ -229,6 +237,34 @@ const initialCodeContent = ref('')
 const markdownEditorCode = ref('')
 const markdownEditorContent = ref('')
 
+/* ============================================================================
+ * 1.5.7 LLM Wiki L5：单栏工作台视图（编辑区「编辑器 / 预览」tab）
+ *
+ * - traditional：沿用既有「编辑 + 预览并排」布局，本组 computed 与 refs 等值；
+ * - llm-wiki：两个窗格都保持挂载（v-show，保留光标/滚动/预览滚动位置），同一时刻只显示
+ *   tab 选中的窗格并占满编辑区宽度；分隔条隐藏，布局由共享 tab 状态驱动
+ *   （状态真源 `components/llm-wiki/llm-wiki-workbench.ts`，localStorage 持久化）。
+ * ========================================================================== */
+const { isLlmWikiMode } = useWorkspaceMode()
+// 首帧即恢复持久化 tab（幂等；WorkSpace 亦会调用，二者顺序无关）
+ensureLlmWikiWorkbenchStateLoaded()
+
+/** 当前是否为「预览」tab（仅 llm-wiki 模式有意义） */
+const isLlmWikiPreviewTab = computed(() => llmWikiWorkbenchState.editorTab === 'preview')
+
+/** 是否显示编辑器窗格（传统模式 = 既有 isShowEditArea；LLM Wiki 模式 = tab 选中编辑器） */
+const showEditPane = computed(() =>
+    isLlmWikiMode.value ? !isLlmWikiPreviewTab.value : isShowEditArea.value
+)
+
+/** 是否显示预览窗格（传统模式 = 既有 isShowPreviewArea；LLM Wiki 模式 = tab 选中预览） */
+const showPreviewPane = computed(() =>
+    isLlmWikiMode.value ? isLlmWikiPreviewTab.value : isShowPreviewArea.value
+)
+
+/** 是否显示分栏拖拽条（LLM Wiki 单栏模式恒隐藏） */
+const showResizerPane = computed(() => !isLlmWikiMode.value && isShowResizer.value)
+
 /* ==================== 1.5.0 编辑器 → 预览单向滚动同步（父组件编排） ====================
  * 数据流：MarkdownMonacoEditor 发 `sync-scroll`（{ line, ratio }）
  *   → 本组件补单调递增 seq → 经 prop 透传 MarkdownPreviewComponent（仅预览可见时）。
@@ -238,9 +274,9 @@ const markdownEditorContent = ref('')
  */
 const syncScrollTarget = ref<PreviewScrollTarget | null>(null)
 let syncScrollSeq = 0
-/** 传给预览的同步目标：预览不可见时恒为 null（隐藏预览不同步） */
+/** 传给预览的同步目标：预览窗格不可见时恒为 null（隐藏预览不同步） */
 const visibleSyncScrollTarget = computed(() =>
-    isShowPreviewArea.value ? syncScrollTarget.value : null
+    showPreviewPane.value ? syncScrollTarget.value : null
 )
 
 /**
@@ -250,7 +286,7 @@ const visibleSyncScrollTarget = computed(() =>
 function handleEditorSyncScroll(
     anchor: { line?: number; ratio?: number } | null | undefined
 ): void {
-    if (!isShowPreviewArea.value || !anchor) {
+    if (!showPreviewPane.value || !anchor) {
         return
     }
     if (typeof anchor.line !== 'number' || typeof anchor.ratio !== 'number') {
@@ -434,6 +470,25 @@ const editPreviewAreaLeft = computed(() => {
         windowWidthValue.value
     )
 })
+
+/* ---------------- 1.5.7 LLM Wiki L5：窗格宽度（单栏模式占满编辑区） ---------------- */
+
+/** 编辑器窗格宽度：LLM Wiki 单栏模式占满编辑区；传统模式沿用分隔条位置（既有行为） */
+const editPaneWidth = computed(() => (isLlmWikiMode.value ? '100%' : monacoEditorWidth.value))
+
+/** 预览窗格宽度：LLM Wiki 单栏模式占满编辑区；传统模式沿用并排计算（既有行为） */
+const previewPaneWidth = computed(() => (isLlmWikiMode.value ? '100%' : editPreviewAreaWidth.value))
+
+/** 预览窗格左偏移：LLM Wiki 单栏模式从 0 开始；传统模式跟随分隔条 */
+const previewPaneLeft = computed(() => (isLlmWikiMode.value ? '0' : editPreviewAreaLeft.value))
+
+/**
+ * 传给 Monaco 的容器宽度信号（仅作为「需要重新 layout」的触发器）：
+ * LLM Wiki 模式随编辑区实际宽度（AI 面板折叠/展开会改变它）变化，传统模式保持既有口径。
+ */
+const editorAreaWidthProp = computed(() =>
+    isLlmWikiMode.value ? props.editorPreviewWidth : monacoEditorWidthPx.value
+)
 
 function pxToPercent(px: number, totalPx: number): string {
     return `${(px / totalPx) * 100}%`
@@ -658,6 +713,10 @@ function onHandleNewContent(content: string, kind: 'open' | 'reload' = 'open') {
 }
 
 function onHandleEditorShow(edit: boolean, preview: boolean) {
+    if (isLlmWikiMode.value) {
+        applyLlmWikiViewMode(edit, preview)
+        return
+    }
     isShowEditArea.value = edit
     isShowPreviewArea.value = preview
     const viewMode: WorkspaceLayoutViewMode =
@@ -678,6 +737,61 @@ function onHandleEditorShow(edit: boolean, preview: boolean) {
     // 视图切换后，通知Monaco编辑器重新布局
     scheduleRelayout(100)
 }
+
+/**
+ * 1.5.7 LLM Wiki L5：把「视图模式」请求映射为单栏工作台的 tab 选择。
+ *
+ * - 单栏工作台不存在并排视图：视图菜单/布局 profile 的 edit / preview 分别映射到
+ *   编辑区 tab；edit-preview（双栏）请求保留当前 tab（无并排可切换）；
+ * - 两窗格 refs 始终保持 true（都挂载、由 v-show 控制显示），保证「预览 tab 下打开
+ *   新文件时编辑器内容仍会注入」，切回编辑器无需重建实例。
+ */
+function applyLlmWikiViewMode(edit: boolean, preview: boolean): void {
+    if (edit && !preview) {
+        setLlmWikiEditorTab('editor')
+    } else if (!edit && preview) {
+        setLlmWikiEditorTab('preview')
+    }
+    isShowEditArea.value = true
+    isShowPreviewArea.value = true
+    isShowResizer.value = false
+    updateCurrentWorkspaceViewMode(isLlmWikiPreviewTab.value ? 'preview' : 'edit')
+    // 视图切换后通知 Monaco 重新布局（与既有视图菜单同口径）
+    scheduleRelayout(100)
+}
+
+/**
+ * 1.5.7 LLM Wiki L5：编辑区 tab 变化（组件内点击/外部设置）→ 同步布局状态并通知重排。
+ * 传统模式不消费该状态（tab 仅在 llm-wiki 模式渲染）。
+ */
+watch(
+    () => llmWikiWorkbenchState.editorTab,
+    (tab) => {
+        if (!isLlmWikiMode.value) {
+            return
+        }
+        updateCurrentWorkspaceViewMode(tab === 'preview' ? 'preview' : 'edit')
+        // v-show 切换后 Monaco 容器尺寸已确定，延迟一帧通知重排（与既有视图切换同口径）
+        scheduleRelayout(100)
+    }
+)
+
+/**
+ * 1.5.7 LLM Wiki L5：工作区模式切换（系统设置保存后广播）。
+ * - 进入 LLM Wiki：两窗格保持挂载，布局由 tab 决定；
+ * - 退出 LLM Wiki：恢复既有「编辑 + 预览并排」布局（视图菜单/分隔条状态复位）。
+ */
+watch(isLlmWikiMode, (enabled) => {
+    if (enabled) {
+        isShowEditArea.value = true
+        isShowPreviewArea.value = true
+        isShowResizer.value = false
+        updateCurrentWorkspaceViewMode(isLlmWikiPreviewTab.value ? 'preview' : 'edit')
+    } else {
+        onHandleEditorShow(true, true)
+    }
+    scheduleRelayout(100)
+})
 
 const handleShowFileContext = (_event: unknown, content: string) => {
     EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'md')
@@ -852,6 +966,9 @@ const handleConvertToEncoding = (_event: unknown, encoding: string): void => {
  */
 const handleActiveFileChange = (_event: unknown, filePath: string) => {
     activeFilePath.value = typeof filePath === 'string' ? filePath : ''
+    // 1.5.7 LLM Wiki L5：同步当前文档到 AI 面板上下文 chips（纯渲染层 UI 状态；
+    // 不新增 IPC，传统模式不渲染 AI 面板时该状态无消费者）
+    setLlmWikiActiveDocument(activeFilePath.value)
     // A1 多标签（opt-in）：任何来源的文件激活（文件树/最近文件/新建/启动恢复）都登记为标签；
     // flag 关闭时该分支不执行，活动文件路径透传行为与既有实现一致。
     if (tabsEnabled.value && activeFilePath.value.length > 0) {

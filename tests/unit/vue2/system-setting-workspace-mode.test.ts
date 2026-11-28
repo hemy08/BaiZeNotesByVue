@@ -25,6 +25,7 @@ import {
 } from '@renderer/components/dialogs/complex/system-setting/model'
 import { getConfigStore } from '@renderer/common/useConfigStore'
 import { t } from '@renderer/common/i18n'
+import { IPC } from '../../../src/shared/ipc-channels'
 
 /** 全局配置 store 单例（断言成功/失败提示） */
 const store = getConfigStore()
@@ -92,8 +93,35 @@ async function openConfirm(wrapper: VueWrapper): Promise<void> {
 
 let invoke: ReturnType<typeof vi.fn>
 
+/**
+ * 1.5.7 LLM Wiki L2：FeaturesPanel 挂载即调用 MCP.GET_STATUS 读取 MCP 服务状态，
+ * 因此本文件的 invoke 桩按通道分流（MCP 状态返回「已停止」，其余返回初始化成功），
+ * 涉及「是否调用过主进程」的断言统一只统计工作区初始化通道。
+ */
+const MCP_GET_STATUS_CHANNEL = IPC.MCP.GET_STATUS
+const INITIALIZE_LLM_WIKI_CHANNEL = IPC.FILE.INITIALIZE_LLM_WIKI
+const STOPPED_MCP_STATUS = {
+    enabled: false,
+    running: false,
+    port: 0,
+    token: '',
+    url: '',
+    toolCount: 7
+}
+
+/** 只取「工作区初始化」通道的 invoke 调用（排除 MCP 状态读取） */
+function initializeInvokeCalls(): unknown[][] {
+    return invoke.mock.calls.filter((call) => call[0] === INITIALIZE_LLM_WIKI_CHANNEL)
+}
+
 beforeEach(() => {
-    invoke = vi.fn().mockResolvedValue({ success: true })
+    invoke = vi
+        .fn()
+        .mockImplementation((channel: string) =>
+            channel === MCP_GET_STATUS_CHANNEL
+                ? Promise.resolve(STOPPED_MCP_STATUS)
+                : Promise.resolve({ success: true })
+        )
     vi.stubGlobal('electron', { ipcRenderer: { invoke } })
     store.hideDialog('message')
 })
@@ -158,9 +186,9 @@ describe('FeaturesPanel 工作区模式：traditional → llm-wiki 确认', () =
             t('common.cancel'),
             t('dialogRenderer.systemSetting.features.workspaceModeConfirmOk')
         ])
-        // 未确认前：草稿不变、不调主进程、下拉回退
+        // 未确认前：草稿不变、不调用工作区初始化、下拉回退
         expect(patches).toEqual([])
-        expect(invoke).not.toHaveBeenCalled()
+        expect(initializeInvokeCalls()).toEqual([])
         expect(selectValue(wrapper)).toBe('traditional')
     })
 
@@ -173,7 +201,7 @@ describe('FeaturesPanel 工作区模式：traditional → llm-wiki 确认', () =
 
         expect(confirmDialog(wrapper).exists()).toBe(false)
         expect(patches).toEqual([])
-        expect(invoke).not.toHaveBeenCalled()
+        expect(initializeInvokeCalls()).toEqual([])
         expect(settings.value.workspaceMode).toBe('traditional')
         expect(selectValue(wrapper)).toBe('traditional')
     })
@@ -185,8 +213,8 @@ describe('FeaturesPanel 工作区模式：traditional → llm-wiki 确认', () =
         await confirmDialog(wrapper).find('.btn-confirm').trigger('click')
         await flushPromises()
 
-        expect(invoke).toHaveBeenCalledTimes(1)
-        expect(invoke).toHaveBeenCalledWith('baize:file:initialize-llm-wiki')
+        expect(initializeInvokeCalls()).toHaveLength(1)
+        expect(initializeInvokeCalls()[0][0]).toBe('baize:file:initialize-llm-wiki')
         expect(patches).toContainEqual({ workspaceMode: 'llm-wiki' })
         expect(settings.value.workspaceMode).toBe('llm-wiki')
         expect(selectValue(wrapper)).toBe('llm-wiki')
@@ -209,7 +237,8 @@ describe('FeaturesPanel 工作区模式：traditional → llm-wiki 确认', () =
         await confirmDialog(wrapper).find('.btn-confirm').trigger('click')
         await flushPromises()
 
-        expect(invoke).toHaveBeenCalledWith('baize:file:initialize-llm-wiki')
+        expect(initializeInvokeCalls()).toHaveLength(1)
+        expect(initializeInvokeCalls()[0][0]).toBe('baize:file:initialize-llm-wiki')
         expect(patches).toEqual([])
         expect(settings.value.workspaceMode).toBe('traditional')
         expect(selectValue(wrapper)).toBe('traditional')
@@ -259,7 +288,7 @@ describe('FeaturesPanel 工作区模式：traditional → llm-wiki 确认', () =
         await confirmDialog(wrapper).find('.btn-confirm').trigger('click')
         await flushPromises()
 
-        expect(invoke).toHaveBeenCalledTimes(1)
+        expect(initializeInvokeCalls()).toHaveLength(1)
         expect((workspaceModeSelect(wrapper).element as HTMLSelectElement).disabled).toBe(true)
         expect(
             (confirmDialog(wrapper).find('.btn-confirm').element as HTMLButtonElement).disabled
@@ -283,7 +312,7 @@ describe('FeaturesPanel 工作区模式：llm-wiki → traditional', () => {
         await flushPromises()
 
         expect(confirmDialog(wrapper).exists()).toBe(false)
-        expect(invoke).not.toHaveBeenCalled()
+        expect(initializeInvokeCalls()).toEqual([])
         expect(patches).toEqual([{ workspaceMode: 'traditional' }])
         expect(settings.value.workspaceMode).toBe('traditional')
         expect(selectValue(wrapper)).toBe('traditional')

@@ -6,13 +6,23 @@
 
 > 本版本聚焦 **LLM Wiki 集成**（P0：L1 工作区模板 + `raw/` 只读、L2 MCP 只读桥）：按《LLM Wiki 集成实施计划（完整版）》推进；不复制 LLM Wiki 桌面应用的全部 UI，白泽只做**编辑、审阅、检索、管理工作台**。
 
-### 📋 规划（实现中）
+### 📋 规划（2026-11-28 确认）
 
 - **L1 工作区模板 + `raw/` 只读**：初始化命令、索引忽略 `raw/`、写入守卫（`raw/` 只读）、设置页「工作区模式」、模式切换确认、文档更新
 - **L2 MCP 桥**：MCP IPC 通道常量、只读 handlers（4 个工具）、IPC 注册、主进程 MCP Server、通道安全校验
 - **P1（待拍板）**：L3 内置 AI 工作流（AI ingest + diff 审批 UI）、L4 图谱与嵌入 UI
 - 需求清单：[1.5.7 需求清单与方案](docs/wiki/04-优化与专项报告/1.5.7-需求清单与方案.md)；实施计划（单一真源）：[LLM-Wiki-Implementation-Plan.md](docs/wiki/02-设计与架构/LLM-Wiki-Implementation-Plan.md)
 - 基线：1.5.6 已发布（375 文件 / 7,041 用例、IPC 108 通道 / 18 组、CSP/fuses 8 项）
+
+### ✅ 实施完成（2026-11-28）
+
+- **L1 工作区模式**：初始化命令（文件菜单/命令面板/IPC）、`raw/` 只读写入守卫（14 类写盘入口）、索引/搜索/反链忽略 `raw/`、设置页「工作区模式」+ 切换确认、i18n
+- **L2 MCP 只读桥**：HTTP 传输（仅 127.0.0.1 + 随机 Bearer token + 无 CORS、默认关闭、设置页启停/状态/token 复制）、7 个只读工具（`search_wiki`/`read_page`/`list_pages`/`read_schema`/`list_tags`/`get_backlinks`/`read_raw`）+ Path Guard；stdio 需独立 CLI，留待后续批次
+- **L3 AI 工作流**：AI Provider（本地 Ollama/LM Studio + 远程 BYOK，safeStorage 加密密钥）、`AI.CHAT`/`AI.INGEST`（草案+行级 diff，不写盘）/`AI.APPLY_INGEST`（审批后写入 wiki/）、diff 审批 UI、设置页 AI 助手分组
+- **L4 图谱与嵌入**：关系图谱（SVG 自绘、200 节点上限、拖拽/缩放/点击跳转/连线关系）、raw 资料嵌入（目录树 + 预览 + 相对 Markdown 链接插入）
+- **L5 工作台布局**：LLM Wiki 模式下编辑区「编辑器/预览」切换 + 右侧 AI 输入面板（对话/上下文/模型选择/停止/复制，L3 联调已接通）；传统模式布局零变化
+- **测试与门禁**：全量 **404 文件 / 7,537 用例**（7,532 通过 + 5 跳过）全绿；coverage **92.55 / 86.83 / 93.58 / 93.02**；IPC **116 通道 / 20 组**（preload send 82）；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿
+- **构建**：`build:win:all` 成功、budget 9/9、ProductVersion **1.5.7**（portable **101.99 / 102.5 MiB**、NSIS 112.64 / 115、asar 40.74 / 47）
 
 ## 版本 1.5.6 (2026-11-28)
 

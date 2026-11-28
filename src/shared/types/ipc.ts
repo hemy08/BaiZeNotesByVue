@@ -3,9 +3,9 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（75 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（82 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（42 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（49 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
  *   白名单**完全相等**（28 个通道）。
@@ -35,6 +35,18 @@
  *    主进程不校验枚举，本文件按 string 标注，枚举收敛留待渲染层 Monaco 契约批次。
  */
 import type { IPC } from '../ipc-channels'
+// 1.5.7 LLM Wiki L3：AI Provider / ingest / diff 审批契约（独立类型文件，本表只做通道引用）
+import type {
+    AiApplyIngestRequest,
+    AiApplyIngestResult,
+    AiChatRequest,
+    AiChatResult,
+    AiGetConfigResult,
+    AiIngestRequest,
+    AiIngestResult,
+    AiSaveConfigRequest,
+    AiSaveConfigResult
+} from './ai'
 import type { ConfigName, ConfigReadMap, ConfigWriteMap } from './config'
 import type { CryptoData, CryptoResult } from './crypto'
 import type { MainProcessDialogData, MainProcessDialogName } from './dialog'
@@ -710,6 +722,67 @@ export interface InitializeLlmWikiResult {
 }
 
 /* ----------------------------------------------------------------------------
+ * 1.5.7 LLM Wiki L2：MCP 只读桥（MCP.GET_STATUS / MCP.SET_ENABLED，invoke）
+ *
+ * 通信链路（IPC-17 六步）：
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.MCP.GET_STATUS / SET_ENABLED；
+ *   2. 契约：本段 McpServerStatus / McpSetEnabledPayload / McpSetEnabledResult +
+ *      IpcRequests / IpcResponses 登记；
+ *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
+ *   4. 主进程：ipc/mcp-ipc.ts（registry 编排 + withSenderCheck）→ mcp/server.ts
+ *      （自实现最小 MCP HTTP 服务：仅 127.0.0.1 + Bearer token + 7 个只读工具）；
+ *   5. 渲染层：system-setting/FeaturesPanel.vue「MCP 服务」分组（状态展示/启停/复制 token）；
+ *   6. 测试：mcp-auth / mcp-tools / mcp-protocol / mcp-server / mcp-ipc / 设置页 UI +
+ *      通道命名/契约/白名单/注册门禁。
+ *
+ * 安全边界：
+ * - MCP Server 默认关闭，仅用户显式启用后启动监听；只绑定 127.0.0.1（不对外网暴露）；
+ * - 鉴权 token 每次启用随机生成（≥32 字节），**不落盘**，重启后需重新启用；
+ * - token 仅主窗口可读（withSenderCheck 拒绝非主窗口 sender）；
+ * - 7 个工具全部只读，只接受 workspace 相对路径并走 Path Guard，无任何写操作。
+ * -------------------------------------------------------------------------- */
+
+/**
+ * MCP 服务运行状态（`MCP.GET_STATUS` 返回；`MCP.SET_ENABLED` 的 `status` 同构）。
+ *
+ * `token` 为当前会话的 Bearer 访问令牌（仅主窗口可读；服务停止时为空串）。
+ * 字段全部为主进程实时状态，没有持久化读取语义——重启后 `enabled/running` 为 false。
+ */
+export interface McpServerStatus {
+    /** 用户是否已启用（= 服务是否处于运行态；停止/启动失败时为 false） */
+    enabled: boolean
+    /** HTTP 服务是否正在监听 */
+    running: boolean
+    /** 实际监听端口（0 = 未运行；启用时自动选择，优先 3847） */
+    port: number
+    /** 当前会话 Bearer 访问令牌（未运行时为空串） */
+    token: string
+    /** 外部 Agent 应配置的 MCP 端点 URL（形如 http://127.0.0.1:<port>/mcp；未运行时为空串） */
+    url: string
+    /** 暴露的只读工具数量（固定 7） */
+    toolCount: number
+}
+
+/** `MCP.SET_ENABLED` 请求载荷 */
+export interface McpSetEnabledPayload {
+    /** true = 启动服务并生成新 token；false = 停止服务并清空 token */
+    enabled: boolean
+}
+
+/**
+ * `MCP.SET_ENABLED` 返回结构（安全失败返回 ok=false + error，不向渲染层抛堆栈）。
+ * `status` 恒为操作后的实时状态，供设置页直接刷新展示。
+ */
+export interface McpSetEnabledResult {
+    /** 目标状态是否已生效 */
+    ok: boolean
+    /** 失败原因（可读文案；成功时缺省） */
+    error?: string
+    /** 操作后的实时状态 */
+    status: McpServerStatus
+}
+
+/* ----------------------------------------------------------------------------
  * 1.5.2 E3 图片 OCR（OCR.PREPARE_LANG / OCR.RECOGNIZE_IMAGE，invoke）
  *
  * 通信链路（IPC-17 六步）：
@@ -733,10 +806,38 @@ export interface InitializeLlmWikiResult {
  * - 所有失败以结构化 error code 返回，不向渲染层抛堆栈。
  * -------------------------------------------------------------------------- */
 
+/* ----------------------------------------------------------------------------
+ * 1.5.7 LLM Wiki L3：AI Provider（本地 + 远程 BYOK）/ AI ingest / diff 审批
+ * （AI.CHAT / AI.INGEST / AI.APPLY_INGEST / AI.GET_CONFIG / AI.SAVE_CONFIG，invoke）
+ *
+ * 通信链路（IPC-17 六步）：
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.AI.*（5 个 invoke 通道）；
+ *   2. 契约：shared/types/ai.ts（请求/返回/错误码）+ 本文件 IpcRequests / IpcResponses 登记；
+ *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
+ *   4. 主进程：ipc/ai-ipc.ts（registry 编排 + withSenderCheck）→ main/ai/**：
+ *      config-store（safeStorage 加密持久化 + 内存退化）/ providers（Ollama 原生
+ *      /api/chat + OpenAI 兼容 /chat/completions）/ ingest（raw 扫描 + 提示词 + 行级 diff）/
+ *      apply（Path Guard + raw 只读守卫 + 原子写）；
+ *   5. 渲染层：设置页「AI 助手」分组（配置/密钥/测试连接）+ 命令面板「AI 编译」
+ *      + Markdown/llm-ingest-diff.vue（diff 审批 UI）；L5 AI 面板可复用 AI.CHAT；
+ *   6. 测试：ai-provider / ai-config-store / ai-ingest / ai-ipc / diff UI / 设置页 AI 分组
+ *      + 通道命名/契约/白名单/注册门禁。
+ *
+ * 安全边界：
+ * - 请求统一走主进程 fetch（渲染层不直连、不持有 API Key；兼容 CSP 与密钥安全）；
+ * - API Key 经 Electron safeStorage 加密后写入独立文件 `~/.baizenotes/config/ai-config.json`；
+ *   safeStorage 不可用时**仅会话内存**（不落盘），**禁止明文落盘**；日志不记录密钥/正文；
+ * - AI.CHAT 载荷做结构/长度/枚举校验（消息 ≤50 条、总长 ≤64k 字符、上下文 ≤4k 字符）；
+ * - AI.INGEST 只读 `raw/`（工作区相对路径 + 扩展名白名单）且**不写盘**；
+ * - AI.APPLY_INGEST 必须 `approved === true`，目标只允许 `wiki/` 下 `.md/.markdown`，
+ *   经 Path Guard + `assertWorkspaceWritable`（llm-wiki 模式 raw/ 只读）复核后原子写；
+ * - 所有失败返回结构化 `{ ok:false, code, message }`，不向渲染层抛异常/堆栈。
+ * -------------------------------------------------------------------------- */
+
 /* ============================================================================
  * 二、渲染层 → 主进程（send / invoke）请求参数元组
  *
- * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（75 个，双向核对见测试）。
+ * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（82 个，双向核对见测试）。
  * 元组即 ipcRenderer.send/invoke 除通道名之外的实参列表（可为空元组）。
  * ========================================================================== */
 export interface IpcRequests {
@@ -841,6 +942,27 @@ export interface IpcRequests {
     /** 1.5.7 LLM Wiki L1 初始化工作区（invoke；无参，根路径取主进程 appState.rootPath） */
     [IPC.FILE.INITIALIZE_LLM_WIKI]: []
 
+    // ============ 1.5.7 LLM Wiki L2：MCP 只读桥（invoke；仅设置页状态/开关） ============
+    /** 读取 MCP 服务状态（invoke；token 仅主窗口可读） */
+    [IPC.MCP.GET_STATUS]: []
+    /** 启用/停用 MCP 服务（invoke；启用时自动选端口并生成新 token） */
+    [IPC.MCP.SET_ENABLED]: [payload: McpSetEnabledPayload]
+
+    // ============ 1.5.7 LLM Wiki L3：AI Provider / ingest / diff 审批（invoke） ============
+    /**
+     * AI 对话（invoke；`messages: []` 表示连接测试，返回 content 为可读测试结果文本）。
+     * 契约稳定，供 L5 AI 面板联调；失败返回 `{ ok:false, code, message }`。
+     */
+    [IPC.AI.CHAT]: [payload: AiChatRequest]
+    /** AI 编译：扫描 raw/ 生成 wiki 页面草案 + 行级 diff（invoke；**不写盘**） */
+    [IPC.AI.INGEST]: [payload: AiIngestRequest]
+    /** 审批通过后写入 wiki/（invoke；approved 必须为 true，raw/ 只读守卫 + Path Guard） */
+    [IPC.AI.APPLY_INGEST]: [payload: AiApplyIngestRequest]
+    /** 读取 AI 配置快照（invoke；无参，不含密钥明文） */
+    [IPC.AI.GET_CONFIG]: []
+    /** 保存 AI 配置（invoke；可选字段增量更新，密钥经 safeStorage 加密后落独立文件） */
+    [IPC.AI.SAVE_CONFIG]: [payload: AiSaveConfigRequest]
+
     // ============ 文件管理器右键动作（全部为 send） ============
     [IPC.FILE_MANAGER.COPY_RELATIVE_PATH]: [path: string]
     [IPC.FILE_MANAGER.COPY_IMAGELINK]: [path: string]
@@ -921,7 +1043,7 @@ export interface IpcRequests {
 /* ============================================================================
  * 三、invoke 通道返回类型
  *
- * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（42 个）。
+ * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（49 个）。
  * send 通道无返回值，故不在此表。
  * ========================================================================== */
 export interface IpcResponses {
@@ -969,6 +1091,24 @@ export interface IpcResponses {
     [IPC.FILE.SAVE_PDF_ANNOTATIONS]: PdfAnnotationsSaveResult
     /** 1.5.7 LLM Wiki L1 初始化工作区（invoke；安全失败返回 success=false + error） */
     [IPC.FILE.INITIALIZE_LLM_WIKI]: InitializeLlmWikiResult
+
+    // ============ 1.5.7 LLM Wiki L2：MCP 只读桥 ============
+    /** 读取 MCP 服务状态（invoke；运行态实时值，token 仅主窗口可读） */
+    [IPC.MCP.GET_STATUS]: McpServerStatus
+    /** 启用/停用 MCP 服务（invoke；安全失败返回 ok=false + error + 实时状态） */
+    [IPC.MCP.SET_ENABLED]: McpSetEnabledResult
+
+    // ============ 1.5.7 LLM Wiki L3：AI Provider / ingest / diff 审批 ============
+    /** AI 对话（invoke；成功返回 content，失败返回结构化 code；messages=[] 为连接测试） */
+    [IPC.AI.CHAT]: AiChatResult
+    /** AI 编译草案（invoke；成功返回 draftPath/content/diff/sourcePath，**未写盘**） */
+    [IPC.AI.INGEST]: AiIngestResult
+    /** 审批写盘（invoke；成功返回写入字节数，失败返回结构化 code） */
+    [IPC.AI.APPLY_INGEST]: AiApplyIngestResult
+    /** 读取 AI 配置快照（invoke；读取失败时主进程回退默认值，不返回失败结构） */
+    [IPC.AI.GET_CONFIG]: AiGetConfigResult
+    /** 保存 AI 配置（invoke；成功返回最新快照，失败返回结构化 code） */
+    [IPC.AI.SAVE_CONFIG]: AiSaveConfigResult
 
     // ============ 对话框确认动作 ============
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult
@@ -1102,7 +1242,7 @@ export interface IpcEvents {
  *
  * 这些通道不经过渲染层白名单（preload 在自身闭包内直接用原始 ipcRenderer 调用，
  * 不向渲染层暴露），单独建表以完整覆盖「渲染层 → 主进程」方向的全部通道；
- * 不计入 IpcRequests 的 75 通道统计（白名单键集合以第 2 节为准）。
+ * 不计入 IpcRequests 的 77 通道统计（白名单键集合以第 2 节为准）。
  * 对应实现：src/preload/index.ts 的 api.config / api.app / api.file。
  * ========================================================================== */
 export interface IpcPreloadApiRequests {

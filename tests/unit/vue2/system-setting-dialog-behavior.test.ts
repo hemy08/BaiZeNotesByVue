@@ -222,7 +222,15 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         const wrapper = mountDialog()
         await switchPanel(wrapper, 3)
 
-        const checkboxes = panel(wrapper, 3).findAll('.setting-checkbox')
+        const allCheckboxes = panel(wrapper, 3).findAll('.setting-checkbox')
+        // 1.5.7 LLM Wiki L2：功能页签新增「MCP 服务」开关（第 12 个 checkbox，不写入设置草稿，
+        // 由 IPC.MCP.SET_ENABLED 立即生效），能力开关仍为 11 项。
+        // 1.5.7 LLM Wiki L3：新增「AI 助手」启用开关（第 13 个 checkbox，独立经 AI.SAVE_CONFIG
+        // 立即保存，同样不写设置草稿），能力开关仍为 11 项。
+        expect(allCheckboxes).toHaveLength(13)
+        const checkboxes = allCheckboxes.filter((checkbox) =>
+            (checkbox.attributes('id') ?? '').startsWith('feature-')
+        )
         expect(checkboxes).toHaveLength(11)
         for (const [index, checkbox] of checkboxes.entries()) {
             // 最后一项 nonModalDialogs 默认开启

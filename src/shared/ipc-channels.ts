@@ -5,7 +5,8 @@
  * - 主进程 / preload / 渲染层的 ipcMain、ipcRenderer、webContents.send、
  *   ipcListenerManager 注册一律引用本文件常量，禁止再写通道字符串字面量；
  * - 通道字符串统一为 `baize:<domain>:<name>`（2026-11-15 命名统一后 100% 带 `baize:`
- *   前缀，domain 限定 18 个白名单（1.5.2 E3 新增 ocr 域），见 tests/unit/ipc-channel-naming.test.ts）；
+ *   前缀，domain 限定 20 个白名单（1.5.2 E3 新增 ocr 域、1.5.7 L2 新增 mcp 域、
+ *   1.5.7 L3 新增 ai 域），见 tests/unit/ipc-channel-naming.test.ts）；
  * - 常量分组与通道 domain 一一对应（2026-11-18 遗留清单 #3/#7 修复：原 CQ-13 的
  *   10 个「域错配」通道已归位——编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、
  *   设置类 2 通道新建 SETTING 组、Monaco 类 2 通道并入 MONACO 组）；
@@ -274,6 +275,35 @@ export const IPC = {
     OCR: {
         PREPARE_LANG: 'baize:ocr:prepare-lang',
         RECOGNIZE_IMAGE: 'baize:ocr:recognize-image'
+    } as const,
+
+    // ============ 1.5.7 LLM Wiki L2：MCP 只读桥（domain=mcp） ============
+    // 自实现最小 MCP HTTP 服务（JSON-RPC 2.0 over HTTP POST；仅绑定 127.0.0.1 + Bearer
+    // token，默认关闭，用户在设置页显式启用）。两个通道只服务设置页 UI 的状态展示与
+    // 启停控制；外部 Agent **不经**渲染层 IPC，而是由主进程 MCP Server 直接调用工作区
+    // 索引/搜索服务（实施计划 §4.6.3：contextBridge 仅用于状态/开关，不作为 Agent 入口）。
+    // 安全口径：两个通道均为 invoke + 仅主窗口可信调用（withSenderCheck）；
+    // GET_STATUS 返回的 token 仅主窗口可读，且 token 不落盘（每次启用随机生成）。
+    MCP: {
+        GET_STATUS: 'baize:mcp:get-status',
+        SET_ENABLED: 'baize:mcp:set-enabled'
+    } as const,
+
+    // ============ 1.5.7 LLM Wiki L3：AI Provider（本地 + 远程 BYOK，domain=ai） ============
+    // 五通道全部为 invoke + 仅主窗口可信（withSenderCheck）。请求统一走主进程 fetch
+    // （渲染层不直连、不持有 API Key；兼容 CSP 与密钥安全），支持超时（默认 60s）/取消/
+    // 错误归一化；API Key 经 safeStorage 加密后落独立文件 `config/ai-config.json`，
+    // safeStorage 不可用时退化为仅会话内存（不落盘），禁止明文落盘。
+    // - CHAT：稳定对话契约（供 L5 AI 面板联调）；messages 为空数组时执行连接测试；
+    // - INGEST：扫描 raw/ → 生成 wiki/ 页面草案 + 行级 diff（**不写盘**）；
+    // - APPLY_INGEST：用户在 diff 审批 UI 显式确认后写入 wiki/（raw/ 只读守卫 + Path Guard）；
+    // - GET_CONFIG / SAVE_CONFIG：设置页 AI 分组的配置读取/保存（返回快照不含密钥明文）。
+    AI: {
+        CHAT: 'baize:ai:chat',
+        INGEST: 'baize:ai:ingest',
+        APPLY_INGEST: 'baize:ai:apply-ingest',
+        GET_CONFIG: 'baize:ai:get-config',
+        SAVE_CONFIG: 'baize:ai:save-config'
     } as const,
 
     // ============ 主进程 → 渲染层广播事件 ============

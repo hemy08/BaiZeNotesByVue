@@ -39,6 +39,22 @@ export interface PaletteCommandHandlers {
     ocrClipboardToEditor: () => void
     /** 1.5.2 E3：识别剪贴板图片文字并复制到剪贴板 */
     ocrClipboardToClipboard: () => void
+    /**
+     * 1.5.7 LLM Wiki L3：打开「AI 编译」diff 审批 UI（生成 raw → wiki 草案并展示 diff）。
+     * 可选依赖：缺省时不注册可执行入口之外的副作用（命令仍可见，点击无操作）；
+     * 由 CommandPalette 注入宿主（SearchOverlayHost）的对话框打开动作。
+     */
+    openLlmIngestDiff?: () => void
+    /**
+     * 1.5.7 LLM Wiki L4：打开「关系图谱」对话框（工作区索引 wiki 链接的只读可视化）。
+     * 可选依赖：由 CommandPalette 注入宿主（SearchOverlayHost）的对话框打开动作。
+     */
+    openGraphDialog?: () => void
+    /**
+     * 1.5.7 LLM Wiki L4：打开「嵌入 raw 资料」对话框（列出 raw/ 文件并插入 Markdown 引用）。
+     * 可选依赖：由 CommandPalette 注入宿主（SearchOverlayHost）的对话框打开动作。
+     */
+    openEmbedDialog?: () => void
 }
 
 /** 命令注册可选能力过滤（E6：开关关闭时不注册入口） */
@@ -246,6 +262,34 @@ export function buildPaletteCommands(
             'baize:menu:edit:attachments',
             ['attachment', 'image', 'orphan', '附件', '图片', '孤儿']
         ),
+        // ========== 1.5.7 LLM Wiki L3：AI 编译（raw/ → wiki/ 草案 + diff 审批） ==========
+        // 自定义动作：打开 diff 审批 UI（主进程生成草案并计算 diff，用户确认后才写盘）；
+        // AI 未启用/无工作区时由 AI.INGEST 返回结构化错误，由审批 UI 显示引导文案。
+        {
+            id: 'llm-ingest',
+            labelKey: 'editorUi.commandPalette.command.llmIngest',
+            categoryKey: 'editorUi.commandPalette.category.knowledge',
+            keywords: ['llm', 'ingest', 'raw', 'wiki', '编译'],
+            run: () => handlers.openLlmIngestDiff?.()
+        },
+        // ========== 1.5.7 LLM Wiki L4：关系图谱（B3 只读可视化） ==========
+        // 自定义动作：宿主（SearchOverlayHost）挂载 GraphDialog；数据来自既有工作区索引。
+        {
+            id: 'open-graph',
+            labelKey: 'editorUi.commandPalette.command.openGraph',
+            categoryKey: 'editorUi.commandPalette.category.view',
+            keywords: ['图谱', '关系', 'graph', 'wiki'],
+            run: () => handlers.openGraphDialog?.()
+        },
+        // ========== 1.5.7 LLM Wiki L4：嵌入 raw/ 资料（E4） ==========
+        // 自定义动作：宿主（SearchOverlayHost）挂载 EmbedDialog；插入复用既有 A8 插入链路。
+        {
+            id: 'insert-raw-embed',
+            labelKey: 'editorUi.commandPalette.command.insertRawEmbed',
+            categoryKey: 'editorUi.commandPalette.category.insert',
+            keywords: ['嵌入', 'embed', 'raw', '资料'],
+            run: () => handlers.openEmbedDialog?.()
+        },
         // ========== 1.5.2 E6 日常记录（可选能力 dailyNotes，默认关闭） ==========
         {
             id: 'daily-note',

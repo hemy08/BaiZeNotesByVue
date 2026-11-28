@@ -51,6 +51,10 @@ const implementationMocks = vi.hoisted(() => ({
     registerOcrIpc: vi.fn(),
     // 1.5.7 LLM Wiki L1：工作区初始化独立域注册入口
     registerLlmWikiIpc: vi.fn(),
+    // 1.5.7 LLM Wiki L2：MCP 只读桥（设置页状态/开关）独立域注册入口
+    registerMcpIpc: vi.fn(),
+    // 1.5.7 LLM Wiki L3：AI Provider / AI ingest / diff 审批（5 个 invoke 通道）独立域注册入口
+    registerAiIpc: vi.fn(),
     // 主题广播依赖
     getCurrentThemeStyles: vi.fn(),
     getThemeStylesByType: vi.fn(),
@@ -119,6 +123,16 @@ vi.mock('../../src/main/ipc/ocr-ipc', () => ({
 // 1.5.7 LLM Wiki L1：工作区初始化独立域模块（本文件只验证编排）
 vi.mock('../../src/main/ipc/llm-wiki-ipc', () => ({
     registerLlmWikiIpc: implementationMocks.registerLlmWikiIpc
+}))
+
+// 1.5.7 LLM Wiki L2：MCP 只读桥独立域模块（本文件只验证编排）
+vi.mock('../../src/main/ipc/mcp-ipc', () => ({
+    registerMcpIpc: implementationMocks.registerMcpIpc
+}))
+
+// 1.5.7 LLM Wiki L3：AI Provider / ingest / diff 审批独立域模块（本文件只验证编排）
+vi.mock('../../src/main/ipc/ai-ipc', () => ({
+    registerAiIpc: implementationMocks.registerAiIpc
 }))
 
 // P1-1：主题广播实现已迁到中性层 utils/theme-broadcast（config 不再 import ipc/**）
@@ -233,6 +247,12 @@ beforeEach(() => {
     implementationMocks.registerLlmWikiIpc.mockImplementation(() => {
         callOrder.push('llm-wiki')
     })
+    implementationMocks.registerMcpIpc.mockImplementation(() => {
+        callOrder.push('mcp')
+    })
+    implementationMocks.registerAiIpc.mockImplementation(() => {
+        callOrder.push('ai')
+    })
     implementationMocks.getCurrentThemeStyles.mockReturnValue({ name: 'baize' })
     implementationMocks.getThemeStylesByType.mockImplementation((themeType: string) => ({
         name: themeType
@@ -279,7 +299,9 @@ describe('registerAll（建窗后一次性注册清单）', () => {
             'capture',
             'pdf-annotations',
             'ocr',
-            'llm-wiki'
+            'llm-wiki',
+            'mcp',
+            'ai'
         ])
         expect(implementationMocks.mainWindowListenDialogsEvent).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerUtilsIpcHandlers).toHaveBeenCalledWith(mainWindow)
@@ -311,6 +333,10 @@ describe('registerAll（建窗后一次性注册清单）', () => {
         )
         // 1.5.7 LLM Wiki L1：工作区初始化 handler（无窗口参数，仅台账组件 ID）
         expect(implementationMocks.registerLlmWikiIpc).toHaveBeenCalledWith('global-llm-wiki-ipc')
+        // 1.5.7 LLM Wiki L2：MCP 只读桥状态/开关 handler（无窗口参数，仅台账组件 ID）
+        expect(implementationMocks.registerMcpIpc).toHaveBeenCalledWith('global-mcp-ipc')
+        // 1.5.7 LLM Wiki L3：AI Provider / ingest / diff 审批 handler（无窗口参数，仅台账组件 ID）
+        expect(implementationMocks.registerAiIpc).toHaveBeenCalledWith('global-ai-ipc')
     })
 
     it('should register the persistent theme/ready listeners before the window-level registrations', () => {

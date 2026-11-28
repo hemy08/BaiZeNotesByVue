@@ -91,6 +91,10 @@ const systemSettingDefaults: SystemSetting = {
     // llm-wiki 由用户在系统设置「功能」页签显式选择后，主进程启用 raw/ 只读写入守卫）。
     // 默认值真源：shared/constants/workspace-mode.ts 的 DEFAULT_WORKSPACE_MODE。
     workspaceMode: DEFAULT_WORKSPACE_MODE,
+    // 1.5.7 LLM Wiki L2：MCP 只读桥启用偏好（默认关闭 = 不监听任何端口）。
+    // 仅记录用户上次显式启用的偏好：Bearer token 不落盘，服务不跨重启自动启动，
+    // 应用启动时由 ipc/mcp-ipc.ts 的 reconcile 逻辑回落 false 并记审计日志。
+    mcpEnabled: false,
     // AS-9（P3 隐私）：默认不自动加载 Markdown 预览中的远程图片（防跟踪像素/IP 泄露）。
     // 写入路径：渲染层 SystemSettingDialog → config:write('system') → 本模块，
     // 读取方：MarkdownPreviewComponent（经 config:read('system') 与 SYSTEM_SETTING_UPDATE 广播）。

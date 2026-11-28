@@ -311,6 +311,21 @@ describe('AS-4 validateSystemConfig', () => {
         expect(rejected.adjusted).toEqual([expect.stringContaining('featureImageOcr')])
     })
 
+    // 1.5.7 LLM Wiki L2：MCP 启用偏好是布尔字段——true/false 均可写入，非布尔值丢弃（不写坏 store）
+    it('should accept the mcpEnabled boolean and drop non-boolean values (LLM Wiki L2)', () => {
+        const accepted = validateSystemConfig({ mcpEnabled: true, language: 'zh-CN' })
+        expect(accepted.ok).toBe(true)
+        expect((accepted.value as Record<string, unknown>).mcpEnabled).toBe(true)
+
+        const disabled = validateSystemConfig({ mcpEnabled: false })
+        expect((disabled.value as Record<string, unknown>).mcpEnabled).toBe(false)
+
+        const rejected = validateSystemConfig({ mcpEnabled: 'yes' })
+        expect(rejected.ok).toBe(true)
+        expect((rejected.value as Record<string, unknown>).mcpEnabled).toBeUndefined()
+        expect(rejected.adjusted).toEqual([expect.stringContaining('mcpEnabled')])
+    })
+
     // 批次 A：#4 最近文件列表数量范围收紧为 5~20（越界钳制而非拒绝）
     it('should clamp recentFilesCount into the 5~20 range', () => {
         const low = validateSystemConfig({ recentFilesCount: 2 })

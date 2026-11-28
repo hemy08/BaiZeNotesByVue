@@ -39,6 +39,8 @@ import { PLUGIN_TOOL_ACTION_PREFIX } from '../../../../shared/constants/plugin-t
 import { INITIALIZE_LLM_WIKI_MENU_ACTION, PLUGIN_SEARCH_MENU_ACTION } from './menu-config'
 // 1.5.7 LLM Wiki L1：初始化工作区（raw/ 与 wiki/）渲染层入口动作（菜单/命令面板/设置页共用）
 import { initializeLlmWiki } from '../../common/llm-wiki-actions'
+// 1.5.7 LLM Wiki L4：关系图谱对话框（视图菜单入口；显隐状态为模块单例，宿主 SearchOverlayHost 挂载）
+import { GRAPH_DIALOG_MENU_ACTION, openGraphDialogState } from '../Graph/graph-dialog-state'
 
 /**
  * mkdocs-material 扩展语法插入入口（15 项，对应 menu-config.ts 的 Material 子菜单，
@@ -130,6 +132,14 @@ export function HandleMenuAction(action: string) {
     // 不向主进程转发 IPC.MENU.ACTION（主进程无该菜单动作处理器）。
     if (action === INITIALIZE_LLM_WIKI_MENU_ACTION) {
         void initializeLlmWiki()
+        return
+    }
+
+    // ========== 1.5.7 LLM Wiki L4：视图 → 关系图谱 ==========
+    // 纯渲染层只读对话框：只切模块单例显隐（宿主 SearchOverlayHost 挂载 GraphDialog），
+    // 数据来自既有 FILE.GET_WORKSPACE_INDEX；不向主进程转发 IPC.MENU.ACTION。
+    if (action === GRAPH_DIALOG_MENU_ACTION) {
+        openGraphDialogState()
         return
     }
 

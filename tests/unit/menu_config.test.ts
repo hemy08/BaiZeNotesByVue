@@ -8,6 +8,7 @@ import {
 } from '../../src/renderer/src/components/MenuBar/menu-config'
 import type { BaiZeMenuEntry } from '../../src/renderer/src/components/MenuBar/menu-config'
 import { PLUGIN_TOOL_ACTION_IDS } from '../../src/shared/constants/plugin-tools-manifest'
+import { GRAPH_DIALOG_MENU_ACTION } from '../../src/renderer/src/components/Graph/graph-dialog-state'
 
 // CMP-30：菜单数据只存 labelKey，渲染时由 MenuBar.vue 调用 t(labelKey) 输出。
 // 测试辅助：按指定语言还原「渲染后文本」，并对非 labelKey 的存量 label（品牌名/版本号等）原样使用。
@@ -387,6 +388,19 @@ describe('menu-config', () => {
             label: '六级标题',
             menuAction: 'baize:menu:view:fold:level6'
         })
+    })
+
+    it('should declare relationship graph entry in view menu (L4)', () => {
+        const viewMenu = menuMap.value.find((item) => item.labelKey === 'menu.view.label')!
+        const graphItem = viewMenu.submenu!.find(
+            (item) => item.menuAction === GRAPH_DIALOG_MENU_ACTION
+        )
+        expect(graphItem).toBeDefined()
+        expect(graphItem!.labelKey).toBe('editorUi.graphDialog.menuLabel')
+        expect(displayText(graphItem!)).toBe('关系图谱')
+        expect(displayText(graphItem!, 'en-US')).toBe('Relationship graph')
+        // 动作 id 为视图域四段式，且不占用主进程菜单动作处理器（纯渲染层对话框）
+        expect(GRAPH_DIALOG_MENU_ACTION).toBe('baize:menu:view:graph')
     })
 
     it('should declare encoding menu with two nested encoding groups', () => {

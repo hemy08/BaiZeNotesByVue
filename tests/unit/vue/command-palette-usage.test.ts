@@ -140,8 +140,10 @@ describe('REQ-10 空查询「最近使用」分区', () => {
         const options = wrapper.findAll('.palette-option')
         expect(options[0].text()).toContain('保存')
         expect(options[1].text()).toContain('Markdown 表格')
-        // 共 19 条命令（1.5.7 LLM Wiki L1 起）：2 条置顶 + 其余分组仍为 19 条（置顶项从分组中移除，不重复）
-        expect(options).toHaveLength(19)
+        // 共 22 条命令（1.5.7 LLM Wiki L1 起 19 条；L3 新增「AI 编译」后 20 条；
+        // L4 新增「关系图谱」「嵌入 raw 资料」后 22 条）：
+        // 2 条置顶 + 其余分组仍为 22 条（置顶项从分组中移除，不重复）
+        expect(options).toHaveLength(22)
         expect(options.filter((option) => option.text().includes('保存'))).toHaveLength(1)
     })
 
@@ -215,7 +217,7 @@ describe('REQ-11 分组折叠', () => {
         // 展开时 aria-controls 指向分区内容容器（折叠后容器不渲染，属性同步省略）
         expect(buttons[0].attributes('aria-controls')).toBeTruthy()
         const before = wrapper.findAll('.palette-option').length
-        expect(before).toBe(19)
+        expect(before).toBe(22)
 
         await buttons[0].trigger('click')
         expect(wrapper.findAll('button.palette-group-title')[0].attributes('aria-expanded')).toBe(
@@ -238,8 +240,8 @@ describe('REQ-11 分组折叠', () => {
             'false'
         )
         expect(groupTitleTexts(reopened)[0]).toBe('文件')
-        // 19 条 - 文件分组 4 条 = 15 条仍在展开分组中
-        expect(reopened.findAll('.palette-option')).toHaveLength(15)
+        // 22 条 - 文件分组 4 条 = 18 条仍在展开分组中
+        expect(reopened.findAll('.palette-option')).toHaveLength(18)
     })
 
     it('折叠后键盘选择只经过可见行（不执行被折叠项）', async () => {
@@ -255,7 +257,7 @@ describe('REQ-11 分组折叠', () => {
     it('折叠状态存储损坏时容错为全部展开', () => {
         window.localStorage.setItem(COMMAND_COLLAPSED_GROUPS_STORAGE_KEY, 'not-json')
         const wrapper = mountPalette()
-        expect(wrapper.findAll('.palette-option')).toHaveLength(19)
+        expect(wrapper.findAll('.palette-option')).toHaveLength(22)
         expect(wrapper.findAll('button.palette-group-title')[0].attributes('aria-expanded')).toBe(
             'true'
         )
@@ -323,8 +325,10 @@ describe('键盘行为不回归', () => {
         const input = wrapper.find('input.palette-input')
         await input.trigger('keydown', { key: 'ArrowUp' })
         await input.trigger('keydown', { key: 'Enter' })
-        // 19 条命令末项为「附件管理」（1.5.7 新增的初始化 LLM Wiki 在文件分组内，不改末项）
-        expect(handleMenuActionMock).toHaveBeenCalledWith('baize:menu:edit:attachments')
+        // 22 条命令（含 6 条可选能力命令默认隐藏）按分类分组渲染，末项仍为知识库分组的「AI 编译」
+        // （1.5.7 L3 自定义动作 → 通知宿主打开审批 UI；L4 新增命令位于视图/插入分组）
+        expect(handleMenuActionMock).not.toHaveBeenCalled()
+        expect(wrapper.emitted('open-llm-ingest')).toBeTruthy()
     })
 
     it('↓ 移动选择后回车执行下一项', async () => {
@@ -345,7 +349,7 @@ describe('键盘行为不回归', () => {
     it('使用历史存储损坏时静默降级（面板照常渲染、无最近分区）', () => {
         window.localStorage.setItem(COMMAND_USAGE_STORAGE_KEY, '{broken-json')
         const wrapper = mountPalette()
-        expect(wrapper.findAll('.palette-option')).toHaveLength(19)
+        expect(wrapper.findAll('.palette-option')).toHaveLength(22)
         expect(groupTitleTexts(wrapper)[0]).toBe('文件')
     })
 

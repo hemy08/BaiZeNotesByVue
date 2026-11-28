@@ -79,8 +79,10 @@ describe('CommandPalette：命令模式', () => {
     it('渲染全部命令并按分类分组', async () => {
         const wrapper = mountPalette()
         await flushPromises()
-        // 1.5.7 LLM Wiki L1 起为 19 条（新增「初始化 LLM Wiki」）
-        expect(wrapper.findAll('.palette-option')).toHaveLength(19)
+        // 1.5.7 LLM Wiki L1 起为 19 条（新增「初始化 LLM Wiki」）；
+        // L3 新增「AI 编译（raw → wiki）」后为 20 条；
+        // L4 新增「关系图谱」「嵌入 raw 资料」后为 22 条
+        expect(wrapper.findAll('.palette-option')).toHaveLength(22)
         expect(wrapper.findAll('.palette-group-title').length).toBeGreaterThanOrEqual(4)
     })
 

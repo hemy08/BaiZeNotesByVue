@@ -293,6 +293,12 @@ const emit = defineEmits<{
     (e: 'close'): void
     /** 请求宿主打开 A2 工作区搜索对话框（命令面板随后自行关闭） */
     (e: 'open-workspace-search'): void
+    /** 1.5.7 LLM Wiki L3：请求宿主打开 AI 编译 diff 审批对话框（命令面板随后自行关闭） */
+    (e: 'open-llm-ingest'): void
+    /** 1.5.7 LLM Wiki L4：请求宿主打开关系图谱对话框（命令面板随后自行关闭） */
+    (e: 'open-graph'): void
+    /** 1.5.7 LLM Wiki L4：请求宿主打开嵌入 raw/ 资料对话框（命令面板随后自行关闭） */
+    (e: 'open-raw-embed'): void
 }>()
 
 /** 列表容器固定 id（aria-controls 关联） */
@@ -362,7 +368,12 @@ const commands = computed<PaletteCommand[]>(() =>
             captureClipToNote: () => captureClipToNote(),
             captureClipToEditor: () => captureClipToEditor(),
             ocrClipboardToEditor: () => ocrClipboardToEditor(),
-            ocrClipboardToClipboard: () => ocrClipboardToClipboard()
+            ocrClipboardToClipboard: () => ocrClipboardToClipboard(),
+            // 1.5.7 LLM Wiki L3：AI 编译 diff 审批由宿主（SearchOverlayHost）挂载与显示
+            openLlmIngestDiff: () => emit('open-llm-ingest'),
+            // 1.5.7 LLM Wiki L4：关系图谱 / 嵌入 raw 资料对话框同样由宿主挂载与显示
+            openGraphDialog: () => emit('open-graph'),
+            openEmbedDialog: () => emit('open-raw-embed')
         } satisfies PaletteCommandHandlers,
         { isFeatureEnabled: (id) => flags[id] }
     )

@@ -11,6 +11,14 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 import SearchOverlayHost from '@renderer/components/search/SearchOverlayHost.vue'
+import {
+    closeGraphDialogState,
+    openGraphDialogState
+} from '@renderer/components/Graph/graph-dialog-state'
+import {
+    closeEmbedDialogState,
+    openEmbedDialogState
+} from '@renderer/components/Markdown/embed/embed-dialog-state'
 import { IPC } from '../../../src/shared/ipc-channels'
 
 const fileListResult = {
@@ -147,5 +155,26 @@ describe('SearchOverlayHost：快捷键 ↔ 浮层', () => {
         // 卸载后再派发快捷键不应抛异常
         expect(() => pressKey('p', { ctrlKey: true })).not.toThrow()
         removeSpy.mockRestore()
+    })
+
+    // 1.5.7 LLM Wiki L4：关系图谱 / 嵌入 raw 资料对话框由宿主挂载，显隐真源为模块单例
+    it('L4：图谱/嵌入对话框按模块状态显隐（命令面板与菜单动作共用同一状态）', async () => {
+        const wrapper = mountHost()
+
+        openGraphDialogState()
+        await nextTick()
+        await flushPromises()
+        expect(wrapper.find('.graph-dialog').exists()).toBe(true)
+        closeGraphDialogState()
+        await nextTick()
+        expect(wrapper.find('.graph-dialog').exists()).toBe(false)
+
+        openEmbedDialogState()
+        await nextTick()
+        await flushPromises()
+        expect(wrapper.find('.embed-dialog').exists()).toBe(true)
+        closeEmbedDialogState()
+        await nextTick()
+        expect(wrapper.find('.embed-dialog').exists()).toBe(false)
     })
 })

@@ -71,6 +71,11 @@ import {
     INITIALIZE_LLM_WIKI_MENU_ACTION,
     PLUGIN_SEARCH_MENU_ACTION
 } from '../../src/renderer/src/components/MenuBar/menu-config'
+import {
+    GRAPH_DIALOG_MENU_ACTION,
+    closeGraphDialogState,
+    graphDialogState
+} from '../../src/renderer/src/components/Graph/graph-dialog-state'
 import { translate } from '../../src/shared/i18n'
 import * as Templates from '@renderer/common/templates'
 
@@ -850,6 +855,40 @@ describe('HandleMenuAction', () => {
             // 动作 id 沿用 baize:<domain>:<name> 三段式（不占用 baize:menu: 前缀）
             expect(INITIALIZE_LLM_WIKI_MENU_ACTION).toBe('baize:file:initialize-llm-wiki')
             expect(INITIALIZE_LLM_WIKI_MENU_ACTION).not.toContain('baize:menu:')
+        })
+    })
+
+    // 1.5.7 LLM Wiki L4：视图 → 关系图谱（纯渲染层对话框，不转发主进程 MENU.ACTION）
+    describe('relationship graph action (L4)', () => {
+        it('精确拦截：只切渲染层对话框状态，不转发 MENU.ACTION、不弹其他对话框', () => {
+            closeGraphDialogState()
+            HandleMenuAction(GRAPH_DIALOG_MENU_ACTION)
+            expect(graphDialogState.visible).toBe(true)
+            expect(ipcSend).not.toHaveBeenCalled()
+            expect(showDialogMock).not.toHaveBeenCalled()
+            // 关闭后可再次打开（幂等切换显隐）
+            closeGraphDialogState()
+            expect(graphDialogState.visible).toBe(false)
+            HandleMenuAction(GRAPH_DIALOG_MENU_ACTION)
+            expect(graphDialogState.visible).toBe(true)
+            closeGraphDialogState()
+        })
+
+        it('menu-config 声明的图谱动作与拦截常量一致（菜单树 ↔ 动作分发单真源）', () => {
+            const actions: string[] = []
+            const walk = (items: unknown[]): void => {
+                for (const item of items as Array<{ menuAction?: string; submenu?: unknown[] }>) {
+                    if (item.menuAction === GRAPH_DIALOG_MENU_ACTION) {
+                        actions.push(item.menuAction)
+                    }
+                    if (item.submenu) {
+                        walk(item.submenu)
+                    }
+                }
+            }
+            walk(menuMap.value)
+            expect(actions).toEqual([GRAPH_DIALOG_MENU_ACTION])
+            expect(GRAPH_DIALOG_MENU_ACTION).toBe('baize:menu:view:graph')
         })
     })
 })

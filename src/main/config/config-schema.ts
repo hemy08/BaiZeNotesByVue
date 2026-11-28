@@ -167,6 +167,8 @@ const SYSTEM_BOOLEAN_FIELDS: ReadonlySet<string> = new Set([
     'uiReduceTransparency',
     // AS-9：远程图片隐私开关（默认 false，仅接受布尔值；非布尔值丢弃并记录 adjusted）
     'allowRemoteImages',
+    // 1.5.7 LLM Wiki L2：MCP 只读桥启用偏好（默认 false；仅接受布尔值）
+    'mcpEnabled',
     'editorSettingModal',
     'systemSettingModal',
     'themeSettingModal',

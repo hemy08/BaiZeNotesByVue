@@ -15,6 +15,9 @@ import {
     getPluginToolMenuAction
 } from '../../../../shared/constants/plugin-tools-manifest'
 import type { PluginToolMenuNode } from '../../../../shared/constants/plugin-tools-manifest'
+// 1.5.7 LLM Wiki L4：关系图谱入口动作 id 与图谱对话框状态模块同源（菜单数据/渲染层拦截共用）；
+// 该动作不转发主进程 IPC.MENU.ACTION（纯渲染层对话框）。
+import { GRAPH_DIALOG_MENU_ACTION } from '../Graph/graph-dialog-state'
 
 // CMP-30：菜单数据只存 labelKey（menu 命名空间键，见 shared/i18n/messages/*/menu.ts），
 // 由 MenuBar.vue 在渲染时调用 t(labelKey) 输出，切换语言即时生效；
@@ -324,6 +327,11 @@ const viewMenu: BaiZeMenuEntry = {
         {
             labelKey: 'menu.view.layoutProfiles',
             menuAction: 'baize:menu:view:layout-profiles'
+        },
+        // 1.5.7 LLM Wiki L4：关系图谱（工作区索引 wiki 链接的只读可视化；纯渲染层对话框）
+        {
+            labelKey: 'editorUi.graphDialog.menuLabel',
+            menuAction: GRAPH_DIALOG_MENU_ACTION
         },
         { type: 'separator' },
         {

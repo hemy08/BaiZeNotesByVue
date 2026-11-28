@@ -367,7 +367,72 @@ const dialogRenderer = {
             // 1.5.3: non-modal tool dialogs
             nonModalDialogsLabel: 'Non-modal tool dialogs',
             nonModalDialogsDesc:
-                'Insert/edit tool dialogs do not block the editor: clicking outside, hovering outside, or pressing Esc will not close them, so Markdown can still be edited. They close only via the close button or an insert/apply action. On by default.'
+                'Insert/edit tool dialogs do not block the editor: clicking outside, hovering outside, or pressing Esc will not close them, so Markdown can still be edited. They close only via the close button or an insert/apply action. On by default.',
+            // 1.5.7 LLM Wiki L2: MCP read-only bridge (settings switch + runtime status + security notes)
+            mcpServerGroupTitle: 'MCP server',
+            mcpServerEnabled: 'Enable MCP server (read-only bridge)',
+            mcpServerHint:
+                'Let external AI agents (Claude Code, DSH, Cursor, ...) read the current LLM Wiki workspace over MCP: loopback-only, Bearer token required, read-only tools only. Off by default; the switch takes effect immediately (no need to press Apply).',
+            mcpServerRunning: 'Running',
+            mcpServerStopped: 'Stopped',
+            mcpServerPort: 'Port',
+            mcpServerUrl: 'MCP URL',
+            mcpServerToken: 'Access token',
+            mcpServerCopyToken: 'Copy token',
+            mcpServerTokenCopied: 'Copied',
+            mcpServerToolCount: 'Read-only tools: {count}',
+            mcpServerSecurityNote:
+                'Security: the server listens on the loopback interface only (127.0.0.1) and every request must carry a Bearer token. All 7 tools are read-only (search, read pages/schema/raw sources, tags, backlinks); they reject absolute paths and never write, rename or delete files. The token is never persisted and becomes invalid as soon as the server stops or the app restarts.',
+            mcpServerRestartHint:
+                'After restarting the app, re-enable the server on this page to get a new token, then update your MCP client configuration.',
+            mcpServerToggleFailed: 'MCP server operation failed: {error}',
+            mcpServerCopyFailed:
+                'Failed to copy the token. Select the token text and copy it manually.',
+            mcpServerUnavailable:
+                'MCP server control is unavailable in the current environment. Restart the app and try again.',
+            // 1.5.7 LLM Wiki L3: AI assistant (local Ollama/LM Studio + remote BYOK, saved independently)
+            aiGroupTitle: 'AI assistant',
+            aiGroupHint:
+                'Local models (Ollama / LM Studio) only talk to this machine and are privacy friendly; remote APIs send content to the configured provider. The API key is encrypted with the OS secure storage and never stored in plain text. AI settings are saved independently of this page\u2019s Apply button and take effect immediately.',
+            aiEnabled: 'Enable AI assistant',
+            aiProvider: 'Provider type',
+            aiProviderLocal: 'Local model',
+            aiProviderRemote: 'Remote API (BYOK)',
+            aiLocalProvider: 'Local provider',
+            aiLocalOllama: 'Ollama',
+            aiLocalLmStudio: 'LM Studio',
+            aiBaseUrl: 'Base URL',
+            aiBaseUrlPlaceholderOllama: 'Default http://127.0.0.1:11434',
+            aiBaseUrlPlaceholderLmStudio: 'Default http://127.0.0.1:1234/v1',
+            aiBaseUrlPlaceholderRemote: 'e.g. https://api.openai.com/v1',
+            aiBaseUrlHint:
+                'Leave empty to use the default base URL for local providers; required for remote BYOK (prefer https).',
+            aiModel: 'Model',
+            aiModelPlaceholder: 'e.g. qwen2.5 / deepseek-chat',
+            aiModelHint:
+                'For local Ollama, run ollama pull for the model first; for remote, enter the provider model id.',
+            aiApiKey: 'API Key',
+            aiApiKeyPlaceholder:
+                'Enter the remote API key (never echoed in plain text after saving)',
+            aiApiKeyConfigured: 'Configured',
+            aiApiKeyNotConfigured: 'Not configured',
+            aiApiKeyStorageSafe: 'Encrypted by OS secure storage',
+            aiApiKeyStorageMemory: 'This session only (not saved to disk)',
+            aiClearKey: 'Clear key',
+            aiSave: 'Save AI settings',
+            aiSaved: 'AI settings saved.',
+            aiTest: 'Test connection',
+            aiTesting: 'Testing connection…',
+            aiTestSuccess: 'Connection succeeded: {detail}',
+            aiTestFailed: 'Connection test failed: {error}',
+            aiSaveFailed: 'Failed to save AI settings: {error}',
+            aiLoadFailed: 'Failed to read AI settings: {error}',
+            aiUnavailable:
+                'AI settings are unavailable in the current environment. Restart the app and try again.',
+            aiKeyUnavailable:
+                'safeStorage is unavailable: the API key is kept in memory only and must be re-entered after restart.',
+            aiPrivacyNote:
+                'Privacy note: local model requests go only to the local service; with a remote API, chat content and raw material are sent to the configured provider — check its privacy policy and data processing terms.'
         },
         panelGeneralTitle: 'General settings',
         panelGeneralDesc: 'Basic application settings',
