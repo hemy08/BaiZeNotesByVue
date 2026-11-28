@@ -353,7 +353,7 @@ BaiZeNotesByVue/
 │   ├── preload/                          # 预加载脚本（4 个文件）
 │   │   ├── index.ts                      # 主窗口 API 暴露（受限 ipcRenderer + window.api）
 │   │   ├── dialog.ts                     # 对话框 preload（send 通道白名单）
-│   │   ├── allowed-channels.generated.ts # 生成的通道白名单常量（send 91 / receive 28 / window.api 6）
+│   │   ├── allowed-channels.generated.ts # 生成的通道白名单常量（send 91 / receive 30 / window.api 6）
 │   │   └── index.d.ts                    # 类型声明
 │   ├── shared/                           # 主进程 / 渲染层共享代码（65 个 .ts）
 │   │   ├── ipc-channels.ts               # IPC 通道常量唯一真源（127 个通道 / 22 组）
@@ -498,7 +498,7 @@ BaiZeNotesByVue/
 |    应用主题    |                          28 种                           | src/main/config/theme-config.ts（编译进主进程，无资源 JSON；旧 app_themes 已删除）                                                                                                                                                                           |
 |   编辑器主题   |                          57 种                           | Monaco 主题（内置 3 + 磁盘 54；themes 目录含 54 个主题 json + themelist 索引）                                                                                                                                                                               |
 |    IPC 通道    |                          116 个                          | `baize:<domain>:<name>`（127 个 / 22 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                                                                                                                         |
-| preload 白名单 |               send 91 / receive 28 / api 6               | `src/preload/allowed-channels.generated.ts`（send/invoke 91、on/once 28 通道；`window.api` 6 方法 / 3 组）                                                                                                                                                   |
+| preload 白名单 |               send 91 / receive 30 / api 6               | `src/preload/allowed-channels.generated.ts`（send/invoke 91、on/once 30 通道；`window.api` 6 方法 / 3 组）                                                                                                                                                   |
 |    插件工具    |                          38 个                           | src/shared/constants/plugin-tools-manifest.ts（单一 manifest，异步按需加载）                                                                                                                                                                                 |
 |    单元测试    |                       8,218 个用例                       | 432 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                                                                                     |
 |    声明依赖    |                          49 个                           | 生产依赖 11 + 开发依赖 38（package.json 实测）                                                                                                                                                                                                               |
@@ -549,7 +549,7 @@ BaiZeNotesByVue/
 - [报告总索引](docs/reports/README.md) - 检查/修复/专项报告（34 篇：01 检查与扫描 13 / 02 修复与实施 10 / 03 专项治理 11，已去日期并按主题合并，含口径说明）
 - [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md) - **问题跟踪台账**（22 项，21 ✅ / 0 🟡 / 1 ⏸️；修复后更新状态）
 - [报告 HTML Wiki](docs/reports/html/README.html) - HTML 版报告（首页 + 侧边栏 + 每页顶部整体导航 + 33 份带悬浮目录页面，共 35 页）
-- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（127 通道 / 21 组 + 白名单 send 91 + receive 28 + window.api 6 + 窗口/preload 结构）
+- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（127 通道 / 22 组 + 白名单 send 91 + receive 30 + window.api 6 + 窗口/preload 结构）
 - [IPC 通信治理报告](docs/reports/md/03-专项治理/IPC通信治理报告.md) - 通信检查 + 修复计划 + 命名方案（历史）
 
 ### 项目分析与架构
@@ -783,7 +783,7 @@ npm run clean
 - [x] 1.5.0 已发布 GitHub Release（2026-11-21，tag `release-1.5.0`；NSIS 安装包 / portable / latest.yml / blockmap）
 - [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
 - [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
-- [x] 文档口径统一（2026-11-20），2026-11-22 复核刷新测试数：测试 432 文件 / 8,218 用例、IPC 127 通道 / 21 组、preload 白名单 send 91 / receive 28 / window.api 6、报告 md 34 篇 / HTML Wiki 35 页
+- [x] 文档口径统一（2026-11-20），2026-11-22 复核刷新测试数：测试 432 文件 / 8,218 用例、IPC 127 通道 / 22 组、preload 白名单 send 91 / receive 30 / window.api 6、报告 md 34 篇 / HTML Wiki 35 页
 - [ ] 长期计划：macOS 和 Linux 版本支持、协作编辑、插件系统、云同步
 
 ### v1.3.9
