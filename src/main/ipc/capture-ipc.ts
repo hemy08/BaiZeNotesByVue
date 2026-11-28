@@ -57,6 +57,8 @@ import type { OpenOrCreateEntryKind, OpenOrCreateEntryResult } from '../../share
 import { appState } from '../utils/app-state'
 import { OpenSelectFile } from '../utils/file-utils/index'
 import { withSenderCheck } from '../utils/ipc-security'
+// 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读——日记/收件箱/剪藏不得写入 raw/
+import { assertWorkspaceWritable, PathAccessDeniedError } from '../utils/security'
 import { logger } from '../utils/logger'
 import { withHandleErrorLog } from './handle-error-log'
 import { ipcListenerManager } from './ipc-listener-manager'
@@ -190,6 +192,17 @@ export async function openOrCreateCaptureEntry(
         // 目录名/文件名均为代码常量，正常不可达；仍保留复核防止未来改动引入目录穿越。
         logger.error('[IPC] 日常记录：目标路径越出工作区根，已拒绝：', filePath)
         return { ok: false, reason: PATH_DENIED_REASON }
+    }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读——目标目录/文件不得位于 raw/
+    try {
+        assertWorkspaceWritable(realRootPath, directoryPath)
+        assertWorkspaceWritable(realRootPath, filePath)
+    } catch (error) {
+        if (error instanceof PathAccessDeniedError) {
+            logger.warn('[IPC] LLM Wiki 模式：已拒绝在 raw/ 只读目录创建笔记（T1.3）：', filePath)
+            return { ok: false, reason: PATH_DENIED_REASON }
+        }
+        throw error
     }
 
     try {

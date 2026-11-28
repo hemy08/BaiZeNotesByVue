@@ -16,6 +16,8 @@
  * 写入 defaults（否则旧用户数据无法与迁移后数据区分），本常量同样不包含该字段。
  */
 import type { SystemSetting } from '../types/system'
+// 1.5.7 LLM Wiki L1：工作区模式默认值单一真源（shared/constants/workspace-mode.ts）
+import { DEFAULT_WORKSPACE_MODE } from './workspace-mode'
 
 /**
  * 系统默认值类型：SystemSetting 去掉迁移标记后的「全字段必有值」版本，
@@ -81,6 +83,9 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     uiStyle: 'workbench',
     uiDensity: 'default',
     uiReduceTransparency: false,
+    // 1.5.7 LLM Wiki L1：工作区模式默认 traditional（对既有工作区零影响，
+    // llm-wiki 需用户在设置页显式选择）。真源同主进程 system-setting.ts。
+    workspaceMode: DEFAULT_WORKSPACE_MODE,
     // 可选能力（2026-11-21 用户选定）：全部 opt-in、默认关闭
     featureTabs: false,
     featureDocumentHistory: false,

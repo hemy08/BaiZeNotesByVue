@@ -23,6 +23,8 @@ import { clampFontSize, DEFAULT_FONT_FAMILY, sanitizeFontFamily } from './config
 // （file-state-store 是叶子模块，不能反向 import 本模块，故采用注入方向）
 import { setRecentFilesLimitProvider } from '../utils/file-state-store'
 import { clampRecentFilesLimit } from '../../shared/constants/recent-files'
+// 1.5.7 LLM Wiki L1：工作区模式默认值单一真源（shared 常量）
+import { DEFAULT_WORKSPACE_MODE } from '../../shared/constants/workspace-mode'
 
 // D-6/FUN-11：Store 读取损坏时备份原文件并重建默认值
 const systemSettingDefaults: SystemSetting = {
@@ -85,6 +87,10 @@ const systemSettingDefaults: SystemSetting = {
     uiStyle: 'workbench',
     uiDensity: 'default',
     uiReduceTransparency: false,
+    // 1.5.7 LLM Wiki L1：工作区模式（默认 traditional = 对既有工作区零影响；
+    // llm-wiki 由用户在系统设置「功能」页签显式选择后，主进程启用 raw/ 只读写入守卫）。
+    // 默认值真源：shared/constants/workspace-mode.ts 的 DEFAULT_WORKSPACE_MODE。
+    workspaceMode: DEFAULT_WORKSPACE_MODE,
     // AS-9（P3 隐私）：默认不自动加载 Markdown 预览中的远程图片（防跟踪像素/IP 泄露）。
     // 写入路径：渲染层 SystemSettingDialog → config:write('system') → 本模块，
     // 读取方：MarkdownPreviewComponent（经 config:read('system') 与 SYSTEM_SETTING_UPDATE 广播）。

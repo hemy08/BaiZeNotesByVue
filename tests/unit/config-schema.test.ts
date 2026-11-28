@@ -226,6 +226,31 @@ describe('AS-4 validateSystemConfig', () => {
         }
     })
 
+    // 1.5.7 LLM Wiki L1：workspaceMode 为枚举字段（traditional | llm-wiki），
+    // 合法值写入；非法值丢弃并记 adjusted（不写坏 store，读取侧回落默认 traditional）。
+    it('should accept workspaceMode enum values and drop invalid ones (LLM Wiki L1)', () => {
+        for (const workspaceMode of ['traditional', 'llm-wiki']) {
+            const result = validateSystemConfig({ workspaceMode })
+            expect(result.ok).toBe(true)
+            expect((result.value as Record<string, unknown>).workspaceMode, workspaceMode).toBe(
+                workspaceMode
+            )
+            expect(result.adjusted ?? []).toEqual([])
+        }
+
+        const rejected = validateSystemConfig({ workspaceMode: 'wiki-only' })
+        expect(rejected.ok).toBe(true)
+        expect((rejected.value as Record<string, unknown>).workspaceMode).toBeUndefined()
+        expect(rejected.adjusted).toEqual([expect.stringContaining('workspaceMode')])
+
+        // 非字符串同样按非法枚举丢弃（不产生写入）
+        for (const invalid of [42, null, true, {}]) {
+            const dropped = validateSystemConfig({ workspaceMode: invalid })
+            expect(dropped.ok).toBe(true)
+            expect((dropped.value as Record<string, unknown>).workspaceMode).toBeUndefined()
+        }
+    })
+
     // 1.5.2 E6：日常记录开关是布尔字段——true/false 均可写入，非布尔值丢弃（不写坏 store）
     it('should accept the featureDailyNotes boolean and drop non-boolean values (E6)', () => {
         const accepted = validateSystemConfig({ featureDailyNotes: true, language: 'zh-CN' })

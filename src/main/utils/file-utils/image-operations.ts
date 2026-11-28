@@ -10,11 +10,17 @@ import { showErrorMessageBox } from './dialog-helpers'
 // 4.4（M2）：图片路径越界提示与 file-utils/shared 的 notifyPathAccessDenied 是同一条
 // 文案/类型，原独立实现 notifyImagePathDenied 已删除，统一复用共享 helper
 // （name 参数非法时复用 notifyInvalidFileName，状态栏文案与原实现逐字一致、日志更准确）。
-import { notifyInvalidFileName, notifyPathAccessDenied } from './shared'
+import { notifyInvalidFileName, notifyPathAccessDenied, notifyWorkspaceRawReadOnly } from './shared'
 import { appState } from '../app-state'
 import { tMain } from '../i18n'
 // P1-AS-1：图片落盘同样受文件路径守卫约束（活动文件目录之外一律拒绝）
-import { isPathAllowed, isSafeFileName } from '../security'
+// 1.5.7 LLM Wiki L1：llm-wiki 模式下 raw/ 只读，图片写入同样受 T1.3 写入守卫约束
+import {
+    assertWorkspaceWritable,
+    isPathAllowed,
+    isSafeFileName,
+    PathAccessDeniedError
+} from '../security'
 // 公共接口归位第 2 批：纯数字随机串迁移到 shared/utils/random（字符集与循环语义逐字对齐）
 import { randomDigits } from '../../../shared/utils/random'
 // 第 4 批 P3 清理：分隔符归一化复用 shared/utils/path.normalizeSlashes
@@ -66,6 +72,16 @@ async function CreateImagesDir(): Promise<string> {
         notifyPathAccessDenied(outDir)
         return ''
     }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读——禁止在 raw/ 内创建 images 目录
+    try {
+        assertWorkspaceWritable(appState.rootPath, outDir)
+    } catch (error) {
+        if (error instanceof PathAccessDeniedError) {
+            notifyWorkspaceRawReadOnly(outDir)
+            return ''
+        }
+        throw error
+    }
     try {
         await fs.access(outDir)
     } catch {
@@ -89,7 +105,9 @@ async function CreateImagesDir(): Promise<string> {
  * @returns 是否保存成功
  */
 async function SaveImagesFile(outFilePath: string, base64Image: string): Promise<boolean> {
-    // P1-AS-1：写入目标必须在受信范围内（文件名由调用方经白名单校验，这里再守一层）
+    // P1-AS-1：写入目标必须在受信范围内（文件名由调用方经白名单校验，这里再守一层）。
+    // 1.5.7 LLM Wiki L1（T1.3）：raw/ 只读守卫已在 CreateImagesDir 对 images 目录整体
+    // 拦截（outFilePath 必位于 outDir 下），此处不再重复判定。
     if (!isPathAllowed(outFilePath)) {
         notifyPathAccessDenied(outFilePath)
         return false

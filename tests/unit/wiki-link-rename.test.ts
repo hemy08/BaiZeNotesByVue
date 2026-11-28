@@ -19,6 +19,10 @@ import {
     wikiLinkRenameInternals
 } from '../../src/main/utils/wiki-link-rename'
 import { buildWorkspaceIndex } from '../../src/main/utils/workspace-index'
+// 1.5.7 LLM Wiki L1（T1.3）：注入工作区模式，验证 raw/ 只读目录不写回链接
+import { setSystemSettingProvider } from '../../src/main/utils/providers'
+import { SYSTEM_SETTING_FALLBACK } from '../../src/shared/constants/system-defaults'
+import type { SystemSetting } from '../../src/shared/types/system'
 
 let root = ''
 
@@ -223,5 +227,68 @@ describe('纯 helper 边界', () => {
         )
         expect(applied.count).toBe(0)
         expect(applied.content).toBe('no link')
+    })
+})
+
+describe('LLM Wiki 模式：raw/ 只读目录不写回 Wiki 链接（T1.3）', () => {
+    /** 构造一条指向 updates 的计划（仅覆盖应用阶段，不依赖索引） */
+    function buildApplyPlan(): Parameters<typeof applyWikiLinkRenamePlan>[0] {
+        const rawSource = write('raw/source.md', '[[old]]')
+        const wikiSource = write('wiki/source.md', '[[old]]')
+        return {
+            rootPath: root,
+            oldPath: path.join(root, 'old.md'),
+            newPath: path.join(root, 'new.md'),
+            updates: [
+                {
+                    sourcePath: rawSource,
+                    content: '[[new]]',
+                    encoding: 'utf-8',
+                    bom: null,
+                    replacementCount: 1
+                },
+                {
+                    sourcePath: wikiSource,
+                    content: '[[new]]',
+                    encoding: 'utf-8',
+                    bom: null,
+                    replacementCount: 2
+                }
+            ],
+            skipped: [],
+            replacementCount: 3,
+            truncated: false
+        }
+    }
+
+    it('llm-wiki 模式：raw/ 来源跳过写回并计入 failedFiles，wiki/ 来源正常写回', async () => {
+        setSystemSettingProvider(
+            () =>
+                ({
+                    ...SYSTEM_SETTING_FALLBACK,
+                    workspaceMode: 'llm-wiki'
+                }) as unknown as SystemSetting
+        )
+        try {
+            const plan = buildApplyPlan()
+            const applied = await applyWikiLinkRenamePlan(plan)
+            expect(applied.updatedFiles).toBe(1)
+            expect(applied.replacements).toBe(2)
+            expect(applied.failedFiles).toHaveLength(1)
+            expect(applied.failedFiles[0]).toBe(path.join(root, 'raw/source.md'))
+            expect(read('raw/source.md')).toBe('[[old]]')
+            expect(read('wiki/source.md')).toBe('[[new]]')
+        } finally {
+            setSystemSettingProvider(null)
+        }
+    })
+
+    it('traditional 模式：raw/wiki 来源均照常写回（行为与 1.5.6 一致）', async () => {
+        const plan = buildApplyPlan()
+        const applied = await applyWikiLinkRenamePlan(plan)
+        expect(applied.updatedFiles).toBe(2)
+        expect(applied.failedFiles).toEqual([])
+        expect(read('raw/source.md')).toBe('[[new]]')
+        expect(read('wiki/source.md')).toBe('[[new]]')
     })
 })

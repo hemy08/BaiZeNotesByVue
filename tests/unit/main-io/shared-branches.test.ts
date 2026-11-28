@@ -48,9 +48,11 @@ import {
     beginSelfWrite,
     describePathDeniedError,
     endSelfWrite,
+    ensureWorkspaceWritable,
     isSelfWriteWindow,
     notifyInvalidFileName,
     notifyPathAccessDenied,
+    notifyWorkspaceRawReadOnly,
     refreshActiveFileDiskStamp,
     rememberActiveFileDiskStamp,
     resetSelfWriteWindow
@@ -58,6 +60,12 @@ import {
 import { appState } from '../../../src/main/utils/app-state'
 import { logger } from '../../../src/main/utils/logger'
 import { isPathAllowed, PathAccessDeniedError } from '../../../src/main/utils/security'
+// 1.5.7 LLM Wiki L1（T1.3）：守卫异常分支需要 spying 安全模块导出
+import * as securityModule from '../../../src/main/utils/security'
+// 1.5.7 LLM Wiki L1（T1.3）：注入工作区模式，验证 raw/ 只读守卫 helper
+import { setSystemSettingProvider } from '../../../src/main/utils/providers'
+import { SYSTEM_SETTING_FALLBACK } from '../../../src/shared/constants/system-defaults'
+import type { SystemSetting } from '../../../src/shared/types/system'
 
 let tmpDir = ''
 let mainSend = vi.fn()
@@ -237,5 +245,63 @@ describe('「最近打开」受信历史收集', () => {
         storeMocks.getLastOpenedFile.mockReturnValue('')
         storeMocks.getRecentFiles.mockReturnValue([])
         expect(isPathAllowed(path.join(tmpDir, 'notes', 'a.md'))).toBe(true) // 临时目录本身受信
+    })
+})
+
+describe('LLM Wiki raw/ 只读守卫 helper（T1.3）', () => {
+    it('非字符串/空串目标按可写透传（交由既有 Path Guard 处理）', () => {
+        expect(ensureWorkspaceWritable(42)).toBe(true)
+        expect(ensureWorkspaceWritable('')).toBe(true)
+        expect(ensureWorkspaceWritable('   ')).toBe(true)
+    })
+
+    it('llm-wiki 模式：raw/ 目标返回 false 并提示；wiki/ 目标放行', () => {
+        appState.rootPath = tmpDir
+        setSystemSettingProvider(
+            () =>
+                ({
+                    ...SYSTEM_SETTING_FALLBACK,
+                    workspaceMode: 'llm-wiki'
+                }) as unknown as SystemSetting
+        )
+        try {
+            expect(ensureWorkspaceWritable(path.join(tmpDir, 'raw', 'a.png'))).toBe(false)
+            expect(notifyMocks.notifyStatus).toHaveBeenCalledTimes(1)
+            expect(logger.warn).toHaveBeenCalled()
+            expect(ensureWorkspaceWritable(path.join(tmpDir, 'wiki', 'a.png'))).toBe(true)
+        } finally {
+            setSystemSettingProvider(null)
+        }
+    })
+
+    it('notifyWorkspaceRawReadOnly：字符串/非字符串均给出状态栏 error 提示', () => {
+        notifyWorkspaceRawReadOnly(path.join(tmpDir, 'raw', 'a.png'))
+        const payload = notifyMocks.notifyStatus.mock.calls[0][0] as {
+            message: string
+            type: string
+        }
+        expect(payload.type).toBe('error')
+        expect(payload.message).toContain('a.png')
+
+        notifyWorkspaceRawReadOnly(42)
+        const numberPayload = notifyMocks.notifyStatus.mock.calls[1][0] as { message: string }
+        expect(numberPayload.message).toContain('42')
+
+        // 空串同样按 String() 兜底（不抛异常）
+        notifyWorkspaceRawReadOnly('')
+        expect(notifyMocks.notifyStatus).toHaveBeenCalledTimes(3)
+    })
+
+    it('守卫抛出非 PathAccessDeniedError 异常时原样上抛（不吞异常）', () => {
+        const spy = vi.spyOn(securityModule, 'assertWorkspaceWritable').mockImplementation(() => {
+            throw new Error('unexpected-guard-error')
+        })
+        try {
+            expect(() => ensureWorkspaceWritable(path.join(tmpDir, 'a.md'))).toThrow(
+                'unexpected-guard-error'
+            )
+        } finally {
+            spy.mockRestore()
+        }
     })
 })

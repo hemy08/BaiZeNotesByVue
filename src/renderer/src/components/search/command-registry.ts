@@ -122,6 +122,17 @@ export function buildPaletteCommands(
             'baize:menu:file:open-file',
             ['open', 'file', '打开', '文件']
         ),
+        // ========== 1.5.7 LLM Wiki L1：初始化工作区（raw/ 与 wiki/） ==========
+        // 动作 id 与 menu-config.ts 的「文件 → 初始化 LLM Wiki」菜单项一致（单测守护），
+        // 执行经注入的 runMenuAction → menu-actions.ts 精确拦截 → 主进程白名单 invoke 通道；
+        // 本命令始终注册（L1 基座能力，不挂可选能力开关）。
+        menuCommand(
+            'initialize-llm-wiki',
+            'editorUi.commandPalette.command.initializeLlmWiki',
+            'editorUi.commandPalette.category.file',
+            'baize:file:initialize-llm-wiki',
+            ['llm', 'wiki', 'raw', '初始化']
+        ),
         // ========== 编辑 ==========
         menuCommand(
             'find',

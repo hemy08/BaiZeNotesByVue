@@ -23,7 +23,14 @@ import { tMain } from '../i18n'
 import { logger } from '../logger'
 // P1-AS-1：导出目标来自系统保存对话框（用户显式选择），返回后登记为受信精确文件；
 // 导出器只写该路径，避免渲染层通过其它入口驱动任意写
-import { registerTrustedPath, isSameOrWithin } from '../security'
+// P1-AS-1：登记用户选择的导出目标为受信路径（放行「导出到用户选择的位置」）；
+// 1.5.7 LLM Wiki L1：导出写盘同样受 raw/ 只读守卫约束（T1.3）
+import {
+    assertWorkspaceWritable,
+    isSameOrWithin,
+    PathAccessDeniedError,
+    registerTrustedPath
+} from '../security'
 import { getThemeApiFromProvider } from '../providers'
 // P2-2：Word 重计算改由 worker 线程执行；基础设施不可用时降级为进程内导出
 import {
@@ -705,6 +712,16 @@ export async function ExportToFile(mainWindow: BrowserWindow, fileType: string):
 
     // P1-AS-1：登记用户选择的导出目标为受信路径（放行「导出到用户选择的位置」）
     registerTrustedPath(result.filePath)
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读，禁止导出写入 raw/
+    try {
+        assertWorkspaceWritable(appState.rootPath, result.filePath)
+    } catch (error) {
+        if (error instanceof PathAccessDeniedError) {
+            showErrorMessageBox(tMain('mainMsg.file.readError.eacces'))
+            return
+        }
+        throw error
+    }
 
     try {
         await config.exporter(currentContent, result.filePath, {

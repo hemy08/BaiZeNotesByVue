@@ -15,6 +15,8 @@ export default {
         new: 'New',
         openFile: 'Open File',
         openFolder: 'Open Folder',
+        // 1.5.7 LLM Wiki L1: File → Initialize LLM Wiki (creates workspace raw/ and wiki/, idempotent)
+        initializeLlmWiki: 'Initialize LLM Wiki',
         // File menu → recent files/folders (submenu injected dynamically when opened,
         // max 20 each; shows a disabled recentEmpty placeholder when the list is empty)
         recentFiles: 'Recent Files',

@@ -404,14 +404,17 @@ describe('AppearancePanel（外观设置页签）', () => {
 
 describe('FeaturesPanel（功能页签）', () => {
     // 1.5.6 UI 简洁化：11 项可选能力的多行 Desc 全部收进标签旁 ⓘ，开关行恢复单行高度。
+    // 1.5.7 LLM Wiki L1：新增「工作区」分组的工作区模式下拉，其说明同样收进 ⓘ。
     it('分组说明与各能力 Desc 收进 ⓘ，不再常显', () => {
         const wrapper = mount(FeaturesPanel, { props: { settings: draft() } })
 
         const tipTexts = wrapper.findAllComponents(InfoTip).map((tip) => tip.props('text'))
-        expect(tipTexts).toHaveLength(OPTIONAL_FEATURE_FLAG_IDS.length + 2)
-        expect(tipTexts[0]).toBe(t('dialogRenderer.systemSetting.hintDefaultFeatures'))
-        expect(tipTexts[1]).toBe(t('dialogRenderer.systemSetting.hintOptionalFeatures'))
-        expect(tipTexts.slice(2)).toEqual(
+        expect(tipTexts).toHaveLength(OPTIONAL_FEATURE_FLAG_IDS.length + 3)
+        // DOM 顺序：工作区模式说明 → 默认能力分组说明 → 可选能力分组说明 → 各能力 Desc
+        expect(tipTexts[0]).toBe(t('dialogRenderer.systemSetting.features.workspaceModeHint'))
+        expect(tipTexts[1]).toBe(t('dialogRenderer.systemSetting.hintDefaultFeatures'))
+        expect(tipTexts[2]).toBe(t('dialogRenderer.systemSetting.hintOptionalFeatures'))
+        expect(tipTexts.slice(3)).toEqual(
             OPTIONAL_FEATURE_FLAG_IDS.map((id) => t(OPTIONAL_FEATURE_FLAGS[id].descKey))
         )
         // 原常显 Desc 容器与分组说明段落均已移除

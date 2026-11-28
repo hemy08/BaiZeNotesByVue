@@ -70,6 +70,8 @@ describe('buildPaletteCommands：命令清单', () => {
             'save',
             'open-folder',
             'open-file',
+            // 1.5.7 LLM Wiki L1：初始化工作区（raw/ 与 wiki/）
+            'initialize-llm-wiki',
             'find',
             'replace',
             'goto-line',
@@ -109,6 +111,31 @@ describe('buildPaletteCommands：命令清单', () => {
         for (const command of menuCommands) {
             expect(MENU_ACTIONS.has(command.menuAction as string), command.menuAction).toBe(true)
         }
+    })
+
+    // 1.5.7 LLM Wiki L1：初始化工作区命令（动作 id 与 menu-config 的「文件 → 初始化 LLM Wiki」一致）
+    it('注册「初始化 LLM Wiki」命令：id/分类/关键词/menuAction 契约', () => {
+        const command = commands.find((item) => item.id === 'initialize-llm-wiki')
+        expect(command).toBeDefined()
+        expect(command!.menuAction).toBe('baize:file:initialize-llm-wiki')
+        expect(command!.categoryKey).toBe('editorUi.commandPalette.category.file')
+        expect(command!.keywords).toEqual(['llm', 'wiki', 'raw', '初始化'])
+        expect(command!.labelKey.startsWith('editorUi.commandPalette.command.')).toBe(true)
+        // 动作 id 已存在于菜单树（命令与会菜单共用同一分发链路）
+        expect(MENU_ACTIONS.has(command!.menuAction as string)).toBe(true)
+    })
+
+    it('「初始化 LLM Wiki」命令可按英文/中文关键词命中', () => {
+        const byWiki = filterPaletteCommands(commands, 'wiki', translate).map(
+            (command) => command.id
+        )
+        expect(byWiki).toContain('initialize-llm-wiki')
+        expect(filterPaletteCommands(commands, 'llm', translate).map((c) => c.id)).toContain(
+            'initialize-llm-wiki'
+        )
+        expect(filterPaletteCommands(commands, '初始化', translate).map((c) => c.id)).toContain(
+            'initialize-llm-wiki'
+        )
     })
 
     it('自定义命令（工作区搜索/模式切换）提供 run 函数且不提供 menuAction', () => {

@@ -19,7 +19,12 @@ import { notifyStatus } from '../status-notify'
 // ARC-11：直接依赖无反向边的 file-state-store（避免 file-state → file-utils 循环依赖）
 import { getLastOpenedDirectory, getLastOpenedFile, getRecentFiles } from '../file-state-store'
 // P1-AS-1：「最近打开」历史作为受信来源注入 security（由本模块统一注册一次）
-import { PathAccessDeniedError, setTrustedHistoryProvider } from '../security'
+// 1.5.7 LLM Wiki L1：写盘入口统一复用 security 的 raw/ 只读写入守卫
+import {
+    assertWorkspaceWritable,
+    PathAccessDeniedError,
+    setTrustedHistoryProvider
+} from '../security'
 
 // ==================== PF-05：应用自身写入/改目录抑制窗口 ====================
 // watcher（directory-tree）在该窗口内收到的事件视为自身写入回环并忽略；
@@ -125,6 +130,56 @@ export function notifyPathAccessDenied(
 /** P1-AS-1：把路径校验异常转换为用户可读提示（非路径异常返回 null） */
 export function describePathDeniedError(error: unknown): string | null {
     return error instanceof PathAccessDeniedError ? tMain('mainMsg.file.readError.eacces') : null
+}
+
+/* ==================== 1.5.7 LLM Wiki L1：raw/ 只读写入守卫 ====================
+ * 背景：LLM Wiki 工作区中 `raw/` 存放原始资料且不可变（T1.3）。所有写盘入口在通过
+ * Path Guard 之后、真正访问磁盘之前调用 security.assertWorkspaceWritable：
+ * traditional 模式零影响；llm-wiki 模式下目标位于工作区 `raw/` 子树时抛
+ * PathAccessDeniedError。本组 helper 负责「守卫 + 用户可见提示」，供 file-utils 各
+ * 写盘模块复用（提示复用既有 i18n 词条，不新增词典键）。
+ */
+
+/**
+ * LLM Wiki 模式 `raw/` 只读拒绝提示（状态栏；与 Path Guard 同一文案口径）。
+ * 文案复用既有「没有读取权限」词条，日志中明确区分「raw/ 只读」原因。
+ */
+export function notifyWorkspaceRawReadOnly(filePath: unknown): void {
+    const display =
+        typeof filePath === 'string' && filePath.trim().length > 0 ? filePath : String(filePath)
+    logger.warn('[Security] LLM Wiki 模式：raw/ 目录只读，已拒绝写入/删除（T1.3）：', display)
+    notifyStatus(
+        {
+            message: tMain('mainMsg.status.operationFailed', {
+                message: `${tMain('mainMsg.file.readError.eacces')}: ${display}`
+            }),
+            type: 'error'
+        },
+        appState.mainWindow
+    )
+}
+
+/**
+ * LLM Wiki L1 写盘前置守卫：目标可写返回 true；`llm-wiki` 模式下位于 `raw/` 子树时
+ * 提示「只读」并返回 false（调用方直接 return / 返回失败结果，不执行写盘）。
+ *
+ * @param targetPath 本次写/改/删的目标路径（字符串；非字符串按可写透传，交由既有守卫处理）
+ */
+export function ensureWorkspaceWritable(targetPath: unknown): boolean {
+    if (typeof targetPath !== 'string' || targetPath.trim().length === 0) {
+        return true
+    }
+    try {
+        assertWorkspaceWritable(appState.rootPath, targetPath)
+        return true
+    } catch (error) {
+        // assertWorkspaceWritable 只会抛 PathAccessDeniedError；其他异常原样上抛
+        if (error instanceof PathAccessDeniedError) {
+            notifyWorkspaceRawReadOnly(targetPath)
+            return false
+        }
+        throw error
+    }
 }
 
 /** 文件名非法时的统一提示（CREATE/新建/重命名/图片保存的 name 参数） */

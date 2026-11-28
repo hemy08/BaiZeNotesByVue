@@ -150,6 +150,24 @@ describe('buildWorkspaceIndex：扫描过滤', () => {
         expect(snapshot.files.map((file) => file.relativePath)).toEqual(['notes/keep.md'])
     })
 
+    // 1.5.7 LLM Wiki L1（T1.2）：原始资料目录 raw/ 不参与索引（无标题/标签/链接/摘要/
+    // 附件条目），编译态知识目录 wiki/ 与工作区其余目录正常索引。
+    it('跳过 raw/ 原始资料目录，wiki/ 正常索引', async () => {
+        const root = createWorkspaceRoot()
+        writeWorkspaceFile(root, 'raw/2026-11-28-article.md', '# 原始资料\n\n#tag [[wiki目标]]')
+        writeWorkspaceFile(root, 'raw/nested/source.md', '# 嵌套原始资料')
+        writeWorkspaceFile(root, 'wiki/topic.md', '---\ntitle: 主题\ntags: [知识管理]\n---\n# 主题')
+        writeWorkspaceFile(root, 'notes/daily.md', '# 日常笔记')
+        const snapshot = await buildWorkspaceIndex(root)
+
+        const relativePaths = snapshot.files.map((file) => file.relativePath)
+        expect(relativePaths).toEqual(['notes/daily.md', 'wiki/topic.md'])
+        expect(relativePaths.some((item) => item.startsWith('raw/'))).toBe(false)
+        // raw/ 内的标签/链接不得污染工作区标签聚合与链接索引
+        expect(snapshot.tags.some((tag) => tag.tag === 'tag')).toBe(false)
+        expect(findIndexedFile(snapshot, 'wiki/topic.md')?.title).toBe('主题')
+    })
+
     it('跳过目录符号链接（junction），不读取链接目标', async (context) => {
         const root = createWorkspaceRoot()
         const realDirectory = path.join(root, 'real')

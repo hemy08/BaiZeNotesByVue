@@ -28,6 +28,10 @@ vi.mock('../../../src/main/utils/logger', () => ({
 }))
 
 import { appState } from '../../../src/main/utils/app-state'
+// 1.5.7 LLM Wiki L1（T1.3）：注入工作区模式，验证 raw/ 只读写入守卫分支
+import { setSystemSettingProvider } from '../../../src/main/utils/providers'
+import { SYSTEM_SETTING_FALLBACK } from '../../../src/shared/constants/system-defaults'
+import type { SystemSetting } from '../../../src/shared/types/system'
 import {
     expandReplacementText,
     replaceWorkspace,
@@ -154,6 +158,55 @@ describe('searchWorkspace：工作区范围', () => {
         // fileList 项应携带绝对路径
         const entry = (result.fileList ?? []).find((item) => item.relativePath === 'a.md')
         expect(entry?.filePath).toBe(path.join(workspaceRoot, 'a.md'))
+    })
+
+    it('忽略 raw/ 原始资料目录（LLM Wiki L1）：搜索/文件清单/替换均不返回 raw 内容', async () => {
+        writeFixture('raw/2026-11-28-article.md', '# 原始资料 hello')
+        writeFixture('raw/nested/source.txt', 'nested hello')
+        writeFixture('wiki/topic.md', '# 编译态 hello')
+
+        const result = await searchWorkspace({ query: 'hello' })
+        const paths = relativePaths(result)
+        expect(paths).toContain('wiki/topic.md')
+        expect(paths.some((item) => item.startsWith('raw/'))).toBe(false)
+
+        const listed = await searchWorkspace({ listFilesOnly: true })
+        const listedPaths = (listed.fileList ?? []).map((entry) => entry.relativePath)
+        expect(listedPaths).toContain('wiki/topic.md')
+        expect(listedPaths.some((item) => item.startsWith('raw/'))).toBe(false)
+
+        // 替换同样拒绝 raw/ 目标（默认 traditional 模式由忽略目录规则拦截）
+        const rawFile = path.join(workspaceRoot, 'raw/2026-11-28-article.md')
+        const replaced = await replaceWorkspace({
+            query: 'hello',
+            replacement: 'world',
+            filePaths: [rawFile]
+        })
+        expect(replaced.code).toBe('PATH_DENIED')
+        expect(readFixture('raw/2026-11-28-article.md')).toContain('hello')
+    })
+
+    it('LLM Wiki 模式：替换 raw/ 目标被写入守卫拒绝且不写盘（T1.3）', async () => {
+        writeFixture('raw/source.md', 'hello raw')
+        setSystemSettingProvider(
+            () =>
+                ({
+                    ...SYSTEM_SETTING_FALLBACK,
+                    workspaceMode: 'llm-wiki'
+                }) as unknown as SystemSetting
+        )
+        try {
+            const rawFile = path.join(workspaceRoot, 'raw/source.md')
+            const result = await replaceWorkspace({
+                query: 'hello',
+                replacement: 'world',
+                filePaths: [rawFile]
+            })
+            expect(result.code).toBe('PATH_DENIED')
+            expect(readFixture('raw/source.md')).toBe('hello raw')
+        } finally {
+            setSystemSettingProvider(null)
+        }
     })
 
     it('未开启 listFilesOnly 时不返回 fileList', async () => {

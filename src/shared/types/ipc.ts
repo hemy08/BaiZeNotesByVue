@@ -3,9 +3,9 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（74 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（75 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（41 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（42 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
  *   白名单**完全相等**（28 个通道）。
@@ -19,7 +19,7 @@
  * ## 类型依据（逐一读取主进程实现，不修改任何 handler）
  * - `src/main/ipc/handlers.ts`、`src/main/ipc/{file-editor,crypto,theme,system}-ipc.ts`
  *   （原 `utils/utils.ts` 的 29 处注册已按域迁入）、`src/main/config/config-manager.ts`、
- *   `src/main/renders/plantuml-local.ts`：39 个 handle 注册点的入参/返回值；
+ *   `src/main/renders/plantuml-local.ts`：42 个 handle 注册点的入参/返回值；
  * - `src/main/ipc/*`（menu-*）、`src/main/utils/file-utils/*`、`src/main/dialogs/*`、
  *   `src/main/utils/encrypt-decrypt.ts`：on 通道的入参与广播载荷；
  * - `src/renderer/**` 的 75 处实际调用点：确认渲染层实参个数与类型。
@@ -682,6 +682,34 @@ export interface OpenOrCreateEntryResult {
  *  `shared/types/pdf-annotations.ts`（PdfAnnotationsLoadResult / PdfAnnotationsSaveResult）。 */
 
 /* ----------------------------------------------------------------------------
+ * 1.5.7 LLM Wiki L1：工作区初始化（FILE.INITIALIZE_LLM_WIKI，invoke）
+ *
+ * 通信链路（IPC-17 六步）：
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.FILE.INITIALIZE_LLM_WIKI；
+ *   2. 契约：本文件的 InitializeLlmWikiResult + IpcRequests / IpcResponses 登记
+ *      （无参调用，`[]` 元组）；
+ *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
+ *   4. 主进程：ipc/llm-wiki-ipc.ts（registry 编排 + withSenderCheck）→
+ *      utils/llm-wiki-workspace.ts（根目录校验 + 创建 raw/、wiki/ 与 schema.md 模板）；
+ *   5. 渲染层：菜单动作 `baize:file:initialize-llm-wiki` / 命令面板 / 设置页调用；
+ *   6. 测试：llm-wiki-ipc / llm-wiki-workspace + 通道命名/契约/白名单/注册门禁。
+ *
+ * 安全边界：
+ * - 渲染层不传任何参数，工作区根只取主进程持有的 appState.rootPath（不信任渲染层）；
+ * - 仅主窗口可信调用（withSenderCheck）；无工作区/根非法返回结构化失败；
+ * - 目录与 schema.md 全部落在工作区根内（路径由主进程拼接并复核）；
+ * - 幂等：目录已存在不报错；schema.md 已存在**绝不覆盖**（可多次调用）。
+ * -------------------------------------------------------------------------- */
+
+/** FILE.INITIALIZE_LLM_WIKI 返回结构（invoke；失败返回可读原因，不向渲染层抛堆栈） */
+export interface InitializeLlmWikiResult {
+    /** 是否初始化成功（目录已存在时同样返回 true，语义为「工作区已就绪」） */
+    success: boolean
+    /** 失败原因（可读中文文案；成功时缺省） */
+    error?: string
+}
+
+/* ----------------------------------------------------------------------------
  * 1.5.2 E3 图片 OCR（OCR.PREPARE_LANG / OCR.RECOGNIZE_IMAGE，invoke）
  *
  * 通信链路（IPC-17 六步）：
@@ -708,7 +736,7 @@ export interface OpenOrCreateEntryResult {
 /* ============================================================================
  * 二、渲染层 → 主进程（send / invoke）请求参数元组
  *
- * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（72 个，双向核对见测试）。
+ * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（75 个，双向核对见测试）。
  * 元组即 ipcRenderer.send/invoke 除通道名之外的实参列表（可为空元组）。
  * ========================================================================== */
 export interface IpcRequests {
@@ -810,6 +838,8 @@ export interface IpcRequests {
     [IPC.FILE.LOAD_PDF_ANNOTATIONS]: [pdfPath: string]
     /** 1.5.2 E2 保存 PDF 标注侧车文件（invoke；主进程归一化后原子写） */
     [IPC.FILE.SAVE_PDF_ANNOTATIONS]: [pdfPath: string, annotations: PdfAnnotation[]]
+    /** 1.5.7 LLM Wiki L1 初始化工作区（invoke；无参，根路径取主进程 appState.rootPath） */
+    [IPC.FILE.INITIALIZE_LLM_WIKI]: []
 
     // ============ 文件管理器右键动作（全部为 send） ============
     [IPC.FILE_MANAGER.COPY_RELATIVE_PATH]: [path: string]
@@ -891,7 +921,7 @@ export interface IpcRequests {
 /* ============================================================================
  * 三、invoke 通道返回类型
  *
- * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（39 个）。
+ * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（42 个）。
  * send 通道无返回值，故不在此表。
  * ========================================================================== */
 export interface IpcResponses {
@@ -937,6 +967,8 @@ export interface IpcResponses {
     [IPC.FILE.LOAD_PDF_ANNOTATIONS]: PdfAnnotationsLoadResult
     /** 1.5.2 E2 保存 PDF 标注侧车文件（invoke；安全失败返回 ok=false + error code） */
     [IPC.FILE.SAVE_PDF_ANNOTATIONS]: PdfAnnotationsSaveResult
+    /** 1.5.7 LLM Wiki L1 初始化工作区（invoke；安全失败返回 success=false + error） */
+    [IPC.FILE.INITIALIZE_LLM_WIKI]: InitializeLlmWikiResult
 
     // ============ 对话框确认动作 ============
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult
@@ -1070,7 +1102,7 @@ export interface IpcEvents {
  *
  * 这些通道不经过渲染层白名单（preload 在自身闭包内直接用原始 ipcRenderer 调用，
  * 不向渲染层暴露），单独建表以完整覆盖「渲染层 → 主进程」方向的全部通道；
- * 不计入 IpcRequests 的 74 通道统计（白名单键集合以第 2 节为准）。
+ * 不计入 IpcRequests 的 75 通道统计（白名单键集合以第 2 节为准）。
  * 对应实现：src/preload/index.ts 的 api.config / api.app / api.file。
  * ========================================================================== */
 export interface IpcPreloadApiRequests {

@@ -30,8 +30,13 @@ const mocks = vi.hoisted(() => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }))
 
-// Path Guard 自身由 security 单测覆盖；本文件只验证「校验被调用 + 拒绝分支返回码」
-vi.mock('../../src/main/utils/security', () => ({ isPathAllowed: mocks.isPathAllowed }))
+// Path Guard 自身由 security 单测覆盖；本文件只验证「校验被调用 + 拒绝分支返回码」。
+// 1.5.7 LLM Wiki L1：handler 新增 raw/ 只读写入守卫（assertWorkspaceWritable /
+// PathAccessDeniedError），mock 采用「真实模块 + 覆盖 Path Guard」避免遗漏新导出。
+vi.mock('../../src/main/utils/security', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../src/main/utils/security')>()
+    return { ...actual, isPathAllowed: mocks.isPathAllowed }
+})
 // sender 校验由 ipc-security 单测覆盖；本文件直接放行以验证 handler 形状
 vi.mock('../../src/main/utils/ipc-security', () => ({
     withSenderCheck: (_channel: string, handler: unknown) => handler
@@ -47,6 +52,11 @@ import {
     resolvePdfAnnotationPaths,
     savePdfAnnotationsForPath
 } from '../../src/main/ipc/pdf-annotations-ipc'
+// 1.5.7 LLM Wiki L1（T1.3）：注入工作区模式 + 工作区根，验证 raw/ 只读写入守卫分支
+import { appState } from '../../src/main/utils/app-state'
+import { setSystemSettingProvider } from '../../src/main/utils/providers'
+import { SYSTEM_SETTING_FALLBACK } from '../../src/shared/constants/system-defaults'
+import type { SystemSetting } from '../../src/shared/types/system'
 
 /** 临时目录（测试统一 baize- 前缀，afterEach 清理） */
 let tempDir = ''
@@ -318,6 +328,31 @@ describe('savePdfAnnotationsForPath：校验 / 归一化 / 原子写', () => {
         })
         await expect(access(sidecarPath)).rejects.toThrow()
         expect(mocks.logger.warn).toHaveBeenCalled()
+    })
+
+    it('LLM Wiki 模式：PDF 位于 raw/ 时保存被拒（path-denied）且不写盘（T1.3）', async () => {
+        const rawDir = path.join(tempDir, 'raw')
+        await mkdir(rawDir, { recursive: true })
+        const rawPdfPath = path.join(rawDir, 'manual.pdf')
+        await writeFile(rawPdfPath, '%PDF-1.4', 'utf8')
+        const rawSidecarPath = `${rawPdfPath}${PDF_ANNOTATIONS_SUFFIX}`
+        appState.rootPath = tempDir
+        setSystemSettingProvider(
+            () =>
+                ({
+                    ...SYSTEM_SETTING_FALLBACK,
+                    workspaceMode: 'llm-wiki'
+                }) as unknown as SystemSetting
+        )
+        try {
+            await expect(
+                savePdfAnnotationsForPath(rawPdfPath, [makeAnnotation()])
+            ).resolves.toEqual({ ok: false, error: 'path-denied' })
+            await expect(access(rawSidecarPath)).rejects.toThrow()
+        } finally {
+            setSystemSettingProvider(null)
+            appState._resetForTesting()
+        }
     })
 })
 

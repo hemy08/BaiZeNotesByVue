@@ -35,7 +35,9 @@ vi.mock('../../../src/main/utils/file-utils/dialog-helpers', () => dialogMocks)
 
 const sharedMocks = vi.hoisted(() => ({
     notifyInvalidFileName: vi.fn(),
-    notifyPathAccessDenied: vi.fn()
+    notifyPathAccessDenied: vi.fn(),
+    // 1.5.7 LLM Wiki L1：图片写盘新增 raw/ 只读守卫提示（默认路径不触发）
+    notifyWorkspaceRawReadOnly: vi.fn()
 }))
 vi.mock('../../../src/main/utils/file-utils/shared', () => sharedMocks)
 
@@ -49,7 +51,12 @@ const securityMocks = vi.hoisted(() => ({
         return true
     })
 }))
-vi.mock('../../../src/main/utils/security', () => securityMocks)
+// 1.5.7 LLM Wiki L1：图片写盘新增 assertWorkspaceWritable / PathAccessDeniedError 消费，
+// mock 保留真实其余实现（traditional 模式下守卫零影响）
+vi.mock('../../../src/main/utils/security', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../src/main/utils/security')>()
+    return { ...actual, ...securityMocks }
+})
 
 const randomMocks = vi.hoisted(() => ({ randomDigits: vi.fn(() => '0000000000000000') }))
 vi.mock('../../../src/shared/utils/random', () => randomMocks)

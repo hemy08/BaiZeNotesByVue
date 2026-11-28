@@ -99,6 +99,16 @@ const exportMenu: BaiZeMenuEntry = {
     ]
 }
 
+/**
+ * 1.5.7 LLM Wiki L1：「文件 → 初始化 LLM Wiki」动作 id（单一真源，菜单数据/渲染层拦截共用）。
+ *
+ * 动作 id 命名沿用 `baize:<domain>:<name>` 三段式（不占用 `baize:menu:` 前缀），对应
+ * 主进程白名单 invoke 通道 `IPC.FILE.INITIALIZE_LLM_WIKI`（'baize:file:initialize-llm-wiki'，
+ * 见 shared/ipc-channels.ts）。与其它菜单动作不同：本动作**不转发 IPC.MENU.ACTION**，
+ * 而是由 menu-actions.ts 在通用分发之前精确拦截，直接 invoke 主进程初始化通道。
+ */
+export const INITIALIZE_LLM_WIKI_MENU_ACTION = 'baize:file:initialize-llm-wiki'
+
 const fileMenu: BaiZeMenuEntry = {
     labelKey: 'menu.file.label',
     // REQ-13（1.5.6）：顶层菜单 Alt+字母助记符（文件 → Alt+F）
@@ -112,6 +122,12 @@ const fileMenu: BaiZeMenuEntry = {
             labelKey: 'menu.file.openFolder',
             accelerator: 'Ctrl+O',
             menuAction: 'baize:menu:file:open-folder'
+        },
+        // 1.5.7 LLM Wiki L1：初始化工作区（在工作区根下创建 raw/ 与 wiki/，幂等）；
+        // 与「打开文件/打开文件夹」同组，方便用户在工作区就绪后立即初始化。
+        {
+            labelKey: 'menu.file.initializeLlmWiki',
+            menuAction: INITIALIZE_LLM_WIKI_MENU_ACTION
         },
         { type: 'separator' },
         // 「最近文件 / 最近文件夹」：占位子菜单，子项由 MenuBar.vue 打开「文件」菜单时

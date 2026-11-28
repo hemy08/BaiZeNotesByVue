@@ -17,6 +17,8 @@ export default {
         new: '新建',
         openFile: '打开文件',
         openFolder: '打开文件夹',
+        // 1.5.7 LLM Wiki L1：文件 → 初始化 LLM Wiki（创建工作区 raw/ 与 wiki/ 目录，幂等）
+        initializeLlmWiki: '初始化 LLM Wiki',
         // 「文件」菜单 → 最近文件/最近文件夹（子菜单内容由 MenuBar.vue 打开菜单时动态注入，
         // 各最多 20 项；无记录时显示 recentEmpty 禁用占位项）
         recentFiles: '最近文件',

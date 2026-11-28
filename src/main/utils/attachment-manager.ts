@@ -60,7 +60,8 @@ import {
 } from '../../shared/utils/path'
 import { decodeFileContent, encodeFileContent } from './file-utils/file-encoding'
 import { logger } from './logger'
-import { isSafeFileName } from './security'
+// 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读——附件移入回收站/重命名不得变更 raw/ 内容
+import { assertWorkspaceWritable, isSafeFileName, PathAccessDeniedError } from './security'
 import {
     MAX_WORKSPACE_INDEX_FILES,
     MAX_WORKSPACE_INDEX_SCAN_DEPTH,
@@ -499,6 +500,17 @@ async function inspectAttachmentPath(
         })
     ) {
         return { ok: false, reason: 'PATH_DENIED' }
+    }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读——禁止把 raw/ 内附件
+    // 移入回收站或重命名（属变更操作），返回既有结构化 PATH_DENIED 原因
+    try {
+        assertWorkspaceWritable(root.lexical, absolutePath)
+    } catch (error) {
+        if (error instanceof PathAccessDeniedError) {
+            logger.warn('[B5] LLM Wiki 模式：已拒绝变更 raw/ 只读目录附件（T1.3）：', absolutePath)
+            return { ok: false, reason: 'PATH_DENIED' }
+        }
+        throw error
     }
     // 笔记正文（.md/.markdown/.txt）与未知扩展名一律拒绝：附件管理只处理附件
     if (isIndexableTextFile(absolutePath) || !isAttachmentFileName(absolutePath)) {

@@ -143,6 +143,10 @@ vi.mock('../../src/main/ipc/utils-ipc', () => ({
 }))
 
 import { appState } from '../../src/main/utils/app-state'
+// 1.5.7 LLM Wiki L1（T1.3）：注入工作区模式，验证 raw/ 只读图片落盘分支
+import { setSystemSettingProvider } from '../../src/main/utils/providers'
+import { SYSTEM_SETTING_FALLBACK } from '../../src/shared/constants/system-defaults'
+import type { SystemSetting } from '../../src/shared/types/system'
 // P1-1：工作区受信根集合（OPEN_SPECIFIC_FOLDER 来源收敛断言）
 import {
     approveWorkspaceRoot,
@@ -1393,6 +1397,35 @@ describe('P1-FE-03 select image handler', () => {
         expect(fs.existsSync(path.join(process.cwd(), 'untrusted-workspace', 'images'))).toBe(false)
         expect(consoleWarn).toHaveBeenCalled()
         consoleWarn.mockRestore()
+    })
+
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读——图片不得复制进 raw/images，
+    // 与 Path Guard 拒绝分支一致回退为选中图片的绝对路径（不阻断插入）。
+    it('should fall back to the absolute path when copying into raw/ images dir (LLM Wiki mode)', async () => {
+        electronMocks.showOpenDialog.mockResolvedValue({
+            canceled: false,
+            filePaths: [existingImagePath]
+        })
+        appState.rootPath = validWorkspace
+        appState.currentActiveFile = {
+            name: 'note.md',
+            path: path.join(validWorkspace, 'raw', 'note.md'),
+            type: 'file'
+        }
+        setSystemSettingProvider(
+            () =>
+                ({
+                    ...SYSTEM_SETTING_FALLBACK,
+                    workspaceMode: 'llm-wiki'
+                }) as unknown as SystemSetting
+        )
+        try {
+            const result = await callSelectImage()
+            expect(result.imageSrc).toBe(existingImagePath)
+            expect(fs.existsSync(path.join(validWorkspace, 'raw', 'images'))).toBe(false)
+        } finally {
+            setSystemSettingProvider(null)
+        }
     })
 
     it('should reject untrusted senders without opening the dialog', async () => {

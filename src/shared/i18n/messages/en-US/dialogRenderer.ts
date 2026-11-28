@@ -309,10 +309,27 @@ const dialogRenderer = {
         groupOptionalFeatures: 'Optional capabilities',
         hintOptionalFeatures:
             'Off by default. Enabled changes take effect immediately; file/history features store data in the local app data directory.',
+        // 1.5.7 LLM Wiki L1: workspace mode (top "Workspace" group in the Features tab)
+        groupWorkspace: 'Workspace',
         features: {
             workspaceSearchLabel: 'Workspace search / replace',
             pasteEnhanceLabel: 'Paste / copy enhancements',
             commandPaletteLabel: 'Command palette / Quick Open',
+            // 1.5.7 LLM Wiki L1: workspace mode selector + switch confirmation / init feedback
+            workspaceMode: 'Workspace mode',
+            workspaceModeTraditional: 'Traditional',
+            workspaceModeLlmWiki: 'LLM Wiki',
+            workspaceModeHint:
+                'LLM Wiki mode creates raw/ (read-only source material) and wiki/ (structured knowledge base) directories in the current workspace.',
+            workspaceModeConfirmTitle: 'Switch to LLM Wiki mode',
+            workspaceModeConfirmMessage:
+                'The raw/ and wiki/ directories will be created and raw/ will become read-only. Continue?',
+            workspaceModeConfirmOk: 'Initialize',
+            workspaceModeInitSuccess:
+                'LLM Wiki workspace initialized: raw/ and wiki/ directories are ready.',
+            workspaceModeInitFailed: 'Failed to initialize the LLM Wiki workspace: {error}',
+            workspaceModeInitUnavailable:
+                'Initializing LLM Wiki is unavailable in the current environment. Restart the app and try again.',
             tabsLabel: 'Tabs / session restore',
             tabsDesc:
                 'Open multiple file tabs above the editor and restore the tab list after restart.',

@@ -41,8 +41,10 @@ import type {
     PdfAnnotationsSaveResult
 } from '../../shared/types/pdf-annotations'
 import { withSenderCheck } from '../utils/ipc-security'
+import { appState } from '../utils/app-state'
 import { logger } from '../utils/logger'
-import { isPathAllowed } from '../utils/security'
+// 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读——禁止在 raw/ 内写标注侧车文件
+import { assertWorkspaceWritable, isPathAllowed, PathAccessDeniedError } from '../utils/security'
 import { ipcListenerManager } from './ipc-listener-manager'
 
 /** 侧车临时文件后缀（写入后 rename 覆盖目标；失败时清理） */
@@ -226,6 +228,19 @@ export async function savePdfAnnotationsForPath(
     }
     const sidecarPath = resolved.paths.sidecarPath
     const tempPath = `${sidecarPath}${SIDECAR_TMP_SUFFIX}`
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读，禁止在 raw/ 内写标注侧车文件
+    try {
+        assertWorkspaceWritable(appState.rootPath, sidecarPath)
+    } catch (error) {
+        if (error instanceof PathAccessDeniedError) {
+            logger.warn(
+                '[IPC] LLM Wiki 模式：已拒绝在 raw/ 只读目录写入 PDF 标注（T1.3）：',
+                sidecarPath
+            )
+            return { ok: false, error: 'path-denied' }
+        }
+        throw error
+    }
     try {
         await fs.writeFile(tempPath, serialized, 'utf8')
         await fs.rename(tempPath, sidecarPath)

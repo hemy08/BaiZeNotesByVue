@@ -3,6 +3,7 @@ import { translate } from '../../src/shared/i18n'
 import {
     menuMap,
     pruneEmptySubmenus,
+    INITIALIZE_LLM_WIKI_MENU_ACTION,
     PLUGIN_SEARCH_MENU_ACTION
 } from '../../src/renderer/src/components/MenuBar/menu-config'
 import type { BaiZeMenuEntry } from '../../src/renderer/src/components/MenuBar/menu-config'
@@ -176,6 +177,7 @@ describe('menu-config', () => {
 
     // 「文件」菜单 → 最近文件 / 最近文件夹：占位子菜单（运行时由 MenuBar.vue 注入，
     // 初始 submenu 为空，pruneEmptySubmenus 必须豁免 recentMenuPlaceholder 项）。
+    // 1.5.7 LLM Wiki L1：打开文件夹与最近项之间新增「初始化 LLM Wiki」（与打开类动作同组）。
     it('should declare recent-files/recent-folders placeholders after open-folder', () => {
         const fileMenu = menuMap.value.find((item) => item.labelKey === 'menu.file.label')!
         const labels = fileMenu.submenu!.map((item) => displayText(item))
@@ -201,11 +203,30 @@ describe('menu-config', () => {
         expect(displayText(recentFiles!, 'en-US')).toBe('Recent Files')
         expect(displayText(recentFolders!, 'en-US')).toBe('Recent Folders')
 
-        // 顺序契约：打开文件夹之后、从文件导入之前，且前面紧跟一个分隔符
+        // 顺序契约：打开文件夹之后（1.5.7 起中间为「初始化 LLM Wiki」）紧跟分隔符，
+        // 分隔符后是最近文件/最近文件夹，且二者相邻。
         const recentFilesIndex = fileMenu.submenu!.indexOf(recentFiles!)
-        expect(recentFilesIndex).toBe(openFolderIndex + 2)
-        expect(fileMenu.submenu![openFolderIndex + 1].type).toBe('separator')
+        expect(recentFilesIndex).toBe(openFolderIndex + 3)
+        expect(fileMenu.submenu![openFolderIndex + 2].type).toBe('separator')
         expect(fileMenu.submenu![recentFilesIndex + 1]).toBe(recentFolders)
+    })
+
+    // 1.5.7 LLM Wiki L1：文件 → 初始化 LLM Wiki（动作 id 沿用 baize:file:* 三段式，
+    // 由渲染层 menu-actions.ts 在通用分发前精确拦截 → 主进程白名单 invoke 通道）。
+    it('should declare initialize LLM Wiki entry in file menu (L1)', () => {
+        const fileMenu = menuMap.value.find((item) => item.labelKey === 'menu.file.label')!
+        const initializeItem = fileMenu.submenu!.find(
+            (item) => item.labelKey === 'menu.file.initializeLlmWiki'
+        )
+        expect(initializeItem).toBeDefined()
+        // 动作 id 单一真源：menu-config 导出的常量与菜单项一致（menu-actions 拦截同源）
+        expect(initializeItem!.menuAction).toBe(INITIALIZE_LLM_WIKI_MENU_ACTION)
+        expect(initializeItem!.menuAction).toBe('baize:file:initialize-llm-wiki')
+        expect(displayText(initializeItem!)).toBe('初始化 LLM Wiki')
+        expect(displayText(initializeItem!, 'en-US')).toBe('Initialize LLM Wiki')
+        // 与打开文件/打开文件夹同组（位于打开文件夹之后、最近项分隔符之前）
+        const labels = fileMenu.submenu!.map((item) => displayText(item))
+        expect(labels.indexOf('初始化 LLM Wiki')).toBe(labels.indexOf('打开文件夹') + 1)
     })
 
     it('should declare import and export submenus inside file menu', () => {

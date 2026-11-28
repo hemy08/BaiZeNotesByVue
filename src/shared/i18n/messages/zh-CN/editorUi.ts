@@ -177,6 +177,8 @@ export default {
             save: '保存',
             openFolder: '打开文件夹',
             openFile: '打开文件',
+            // 1.5.7 LLM Wiki L1：初始化工作区（raw/ 与 wiki/）
+            initializeLlmWiki: '初始化 LLM Wiki',
             find: '查找',
             replace: '替换',
             gotoLine: '跳转到行',

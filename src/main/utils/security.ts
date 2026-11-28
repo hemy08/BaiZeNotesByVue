@@ -25,9 +25,18 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
 import { appState } from './app-state'
+// 1.5.7 LLM Wiki L1：工作区模式经依赖倒置 provider 读取系统设置
+// （utils 层禁止 import config/**，ARCH-07 硬门禁；providers 是 utils 侧叶子模块）
+import { getSystemSettingFromProvider } from './providers'
 // 公共接口归位第 2 批：控制字符校验与路径比较纯函数统一引用 shared 真源
 import { hasControlChars } from '../../shared/utils/validate'
 import { isPathWithin, normalizePathForCompare } from '../../shared/utils/path'
+// 1.5.7 LLM Wiki L1：模式枚举与 raw 目录名唯一真源在 shared 常量
+import {
+    DEFAULT_WORKSPACE_MODE,
+    LLM_WIKI_RAW_DIR_NAME
+} from '../../shared/constants/workspace-mode'
+import type { WorkspaceMode } from '../../shared/types/system'
 // 2026-11-20（file:// → app:// 迁移）：renderer 入口 URL 判定（app://baize/index.html）
 import { isAppRendererIndexUrl } from '../../shared/protocol/app-protocol'
 // P3 安全剩余项：READ_HTML 文本扩展名白名单与渲染层 snippets 白名单同源（shared 真源）
@@ -534,6 +543,85 @@ export function assertSafePath(input: unknown): string {
         throw new PathAccessDeniedError(input)
     }
     return candidate
+}
+
+/* ============================================================================
+ * 1.5.7 LLM Wiki L1：工作区写入守卫（`raw/` 只读）
+ *
+ * 背景：LLM Wiki 工作区中 `raw/` 存放原始资料且语义上**不可变**（T1.3）。渲染层/主进程
+ * 所有写盘入口（保存、另存为、新建、重命名、删除、图片落盘、附件删除/重命名、
+ * Wiki 链接回写、全文替换等）在执行前统一调用 {@link assertWorkspaceWritable}：
+ * - `traditional` 模式（默认）：零影响（不改变任何既有行为）；
+ * - `llm-wiki` 模式：目标路径等于 `rootPath/raw` 或位于其子树内时抛
+ *   {@link PathAccessDeniedError}（沿用既有路径拒绝错误类型，调用方按现有
+ *   Path Guard 拒绝分支提示/返回结构化失败）。
+ *
+ * 判定口径：
+ * - 词法归一化（分隔符/`.`/`..`）后比较；Windows 大小写不敏感（与 Path Guard 同口径），
+ *   防止 `RAW/` 大小写变体绕过；
+ * - 只拦「写/改/删」目标，不拦读取：`raw/` 中文件仍可打开、预览、被 `wiki/` 引用；
+ * - 工作区根非法/为空、目标非法时不做额外拦截（交由调用方既有的 Path Guard 处理）。
+ * ========================================================================== */
+
+/**
+ * 解析当前工作区模式（读取系统设置单一真源；未注入/读取异常/非法值一律回落
+ * `traditional`，保证既有工作区行为不变）。
+ */
+export function resolveWorkspaceMode(): WorkspaceMode {
+    try {
+        const mode = getSystemSettingFromProvider().workspaceMode
+        return mode === 'llm-wiki' ? 'llm-wiki' : DEFAULT_WORKSPACE_MODE
+    } catch {
+        // 配置读取异常不应阻断任何写盘路径：按 traditional 模式放行（失败开放仅限模式判定，
+        // 路径安全仍由 Path Guard 保证）
+        return DEFAULT_WORKSPACE_MODE
+    }
+}
+
+/**
+ * 判断目标路径是否等于工作区根下的 `raw/` 目录本身或位于其子树内。
+ *
+ * @param rootPath 工作区根（非法形态返回 false）
+ * @param targetPath 待写入/重命名/删除的目标路径
+ */
+export function isWorkspaceRawTarget(rootPath: unknown, targetPath: unknown): boolean {
+    const root = normalizeLocalPath(rootPath)
+    if (root === null) {
+        return false
+    }
+    const target = normalizeLocalPath(targetPath)
+    if (target === null) {
+        return false
+    }
+    const rawRoot = path.join(root, LLM_WIKI_RAW_DIR_NAME)
+    return isSameOrWithin(target, rawRoot)
+}
+
+/**
+ * LLM Wiki L1 写入守卫：`llm-wiki` 模式下拒绝写入/重命名/删除 `raw/` 及其子树。
+ *
+ * 调用约定：所有写盘入口在通过 Path Guard（`isPathAllowed`/`assertSafePath`）之后、
+ * 真正访问磁盘之前调用；拒绝时抛 {@link PathAccessDeniedError}，由调用方按既有
+ * 路径拒绝分支转换为用户提示或结构化失败。
+ *
+ * @param rootPath 工作区根（生产调用传 `appState.rootPath`）
+ * @param targetPath 本次写/改/删的目标路径
+ * @param workspaceMode 工作区模式；缺省实时读取系统设置（未注入时回退 traditional）
+ * @throws PathAccessDeniedError 目标位于 `raw/` 下且模式为 `llm-wiki`
+ */
+export function assertWorkspaceWritable(
+    rootPath: string,
+    targetPath: string,
+    workspaceMode: WorkspaceMode = resolveWorkspaceMode()
+): void {
+    if (workspaceMode !== 'llm-wiki') {
+        return
+    }
+    if (!isWorkspaceRawTarget(rootPath, targetPath)) {
+        return
+    }
+    logger.warn(`[Security] LLM Wiki 模式：已拒绝写入 raw/ 只读目录（T1.3）：${String(targetPath)}`)
+    throw new PathAccessDeniedError(targetPath)
 }
 
 /**

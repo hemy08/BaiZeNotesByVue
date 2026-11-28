@@ -14,6 +14,13 @@
  */
 
 import { SYSTEM_SETTING_FALLBACK } from '../../../../../../shared/constants/system-defaults'
+// 1.5.7 LLM Wiki L1：工作区模式真源（枚举/类型/默认值唯一来源，主进程与渲染层共用）
+import {
+    DEFAULT_WORKSPACE_MODE,
+    WORKSPACE_MODE_VALUES,
+    normalizeWorkspaceMode,
+    type WorkspaceMode
+} from '../../../../../../shared/constants/workspace-mode'
 import type { UiDensity, UiStyle } from '../../../../../../shared/types/system'
 
 /** 系统设置对话框的全部字段（含渲染层扩展字段，与主进程 systemSetting.json 同源持久化） */
@@ -24,6 +31,9 @@ export interface SystemDialogSettings {
     minimizeToTray: boolean
     rememberWindowSize: boolean
     language: string
+    // 1.5.7 LLM Wiki L1：工作区模式（traditional 传统工作区 / llm-wiki LLM Wiki 工作台）。
+    // 默认 traditional；切换为 llm-wiki 时由 FeaturesPanel 先弹确认框初始化 raw/ 与 wiki/。
+    workspaceMode: WorkspaceMode
     defaultFilePath: string
     autoSaveEnabled: boolean
     autoSaveInterval: number
@@ -106,6 +116,8 @@ export function createDefaultSystemDialogSettings(): SystemDialogSettings {
         rememberWindowSize: SYSTEM_SETTING_FALLBACK.rememberWindowSize,
         // 主进程默认 'zh-cn'（小写），本对话框下拉选项为 'zh-CN' / 'en-US'，按展示值归一化
         language: 'zh-CN',
+        // 1.5.7 LLM Wiki L1：工作区模式默认传统模式（真源 shared/constants/workspace-mode）
+        workspaceMode: DEFAULT_WORKSPACE_MODE,
         defaultFilePath: SYSTEM_SETTING_FALLBACK.defaultFilePath,
         autoSaveEnabled: SYSTEM_SETTING_FALLBACK.autoSaveEnabled,
         autoSaveInterval: SYSTEM_SETTING_FALLBACK.autoSaveInterval,
@@ -166,6 +178,9 @@ export function mergeStoredSystemSettings(
             ;(merged as unknown as Record<string, unknown>)[key] = value
         }
     }
+    // 1.5.7 LLM Wiki：workspaceMode 为枚举字段，损坏/未知值回落默认（防御性兜底；
+    // 主进程 config-schema 的枚举校验才是强制真源，这里只保证界面不出现非法选项）。
+    merged.workspaceMode = normalizeWorkspaceMode(merged.workspaceMode)
     return merged
 }
 
@@ -179,6 +194,17 @@ export function normalizeLanguageSelection(value: unknown): string {
         .startsWith('en')
         ? 'en-US'
         : 'zh-CN'
+}
+
+/**
+ * 1.5.7 LLM Wiki L1：判断是否为合法工作区模式（枚举真源 shared/constants/workspace-mode）。
+ *
+ * 渲染层只做运行时守卫（损坏配置/旧版本主进程返回未知值时界面不出现非法选项）；
+ * 强制校验仍由主进程 config-schema 的 system 枚举白名单承担（CFG-03/CFG-10）。
+ * 归一化实现直接复用 shared 的 `normalizeWorkspaceMode`（GEN-03 单一真源），不另写一份。
+ */
+export function isWorkspaceMode(value: unknown): value is WorkspaceMode {
+    return (WORKSPACE_MODE_VALUES as readonly unknown[]).includes(value)
 }
 
 /**
@@ -247,6 +273,14 @@ export function validateDialogSettings(
     }
     if (settings.language !== 'zh-CN' && settings.language !== 'en-US') {
         issues.push({ field: 'language', reason: `未知语言选项：${String(settings.language)}` })
+    }
+    // 1.5.7 LLM Wiki：工作区模式必须是 shared 枚举值之一（界面下拉只有两个选项，此处
+    // 仅防御「持久化值/测试注入值」越界；不阻断保存，主进程 AS-4 才是强制校验）。
+    if (!isWorkspaceMode(settings.workspaceMode)) {
+        issues.push({
+            field: 'workspaceMode',
+            reason: `未知工作区模式：${String(settings.workspaceMode)}`
+        })
     }
     return issues
 }

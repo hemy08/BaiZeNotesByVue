@@ -24,7 +24,8 @@
  *    main/index.ts 的调用顺序逐项迁移（主题更新广播 → 渲染层就绪握手 → 对话框右键通道
  *    → utils 通道 → handlers 通道 → PlantUML 本地渲染 → A2 工作区搜索/替换 →
  *    1.5.1 工作区索引 → 1.5.1 B5 附件管理 → 1.5.2 E6 今日日记/快速收件箱 →
- *    1.5.2 E2 PDF 标注与摘录 → 1.5.2 E3 图片 OCR（剪贴板识别）。
+ *    1.5.2 E2 PDF 标注与摘录 → 1.5.2 E3 图片 OCR（剪贴板识别）→
+ *    1.5.7 LLM Wiki L1 工作区初始化）。
  *
  * 窗口重建（macOS activate）不会再次调用本文件：全局注册为进程级 persistent
  * （ipcListenerManager.registerOnce/registerHandleOnce），窗口重建只需刷新
@@ -72,6 +73,8 @@ import { registerCaptureIpc } from './capture-ipc'
 import { registerPdfAnnotationsIpc } from './pdf-annotations-ipc'
 // 1.5.2 E3：图片 OCR（剪贴板截图识别；本地 wasm，语言包按需下载，能力开关默认关闭）
 import { registerOcrIpc } from './ocr-ipc'
+// 1.5.7 LLM Wiki L1：工作区初始化（创建 raw/、wiki/ 目录与 schema.md 约定模板）
+import { registerLlmWikiIpc } from './llm-wiki-ipc'
 import { logger } from '../utils/logger'
 import { IPC } from '../../shared/ipc-channels'
 
@@ -102,6 +105,9 @@ const PDF_ANNOTATIONS_COMPONENT_ID = 'global-pdf-annotations-ipc'
 
 /** 1.5.2 E3 图片 OCR IPC 的监听台账组件 ID */
 const OCR_COMPONENT_ID = 'global-ocr-ipc'
+
+/** 1.5.7 LLM Wiki L1 工作区初始化 IPC 的监听台账组件 ID */
+const LLM_WIKI_COMPONENT_ID = 'global-llm-wiki-ipc'
 
 /** registerAll 的入口钩子：由 main/index.ts 提供的跨模块行为（避免 registry 反向依赖入口） */
 export interface RegisterAllHooks {
@@ -243,4 +249,7 @@ export function registerAll(mainWindow: BrowserWindow, hooks: RegisterAllHooks =
     //     tesseract.js wasm 本地识别，图片不上传）。渲染层按能力开关 featureImageOcr
     //     （默认关闭）决定是否注册入口/调用通道，关闭时零行为差异、不下载语言包。
     registerOcrIpc(mainWindow, OCR_COMPONENT_ID)
+    // 13) 1.5.7 LLM Wiki L1：工作区初始化（创建 raw/、wiki/ 与 schema.md 约定模板）。
+    //     无参 invoke，根路径只取 appState.rootPath；幂等且绝不覆盖既有 schema.md。
+    registerLlmWikiIpc(LLM_WIKI_COMPONENT_ID)
 }

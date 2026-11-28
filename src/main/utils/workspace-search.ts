@@ -26,6 +26,8 @@ import type { Dirent } from 'fs'
 import * as path from 'path'
 import { appState } from './app-state'
 import { logger } from './logger'
+// 1.5.7 LLM Wiki L1（T1.3）：替换写盘目标额外受 raw/ 只读写入守卫约束（llm-wiki 模式）
+import { assertWorkspaceWritable, PathAccessDeniedError } from './security'
 import { isPathWithin, normalizeSlashes } from '../../shared/utils/path'
 import type {
     WorkspaceFileEntry,
@@ -54,7 +56,10 @@ export const WORKSPACE_SEARCH_IGNORED_DIRS: ReadonlySet<string> = new Set([
     '.aws',
     '.azure',
     '.kube',
-    '.docker'
+    '.docker',
+    // 1.5.7 LLM Wiki L1（T1.2）：`raw/` 原始资料不参与全工作区搜索与替换
+    // （只读证据层；替换写盘同样经 hasIgnoredDirectorySegment 拒绝）。
+    'raw'
 ])
 
 /** 匹配结果总上限（跨文件累计） */
@@ -714,6 +719,17 @@ function resolveReplaceCandidate(input: unknown, roots: WorkspaceRoots): Replace
     const relative = path.relative(roots.lexical, resolved)
     if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
         return null
+    }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读——替换写盘目标不得位于 raw/
+    // （先于通用忽略目录判定，命中时给出明确的 raw 只读告警，便于诊断）
+    try {
+        assertWorkspaceWritable(roots.lexical, resolved)
+    } catch (error) {
+        if (error instanceof PathAccessDeniedError) {
+            logger.warn('[WorkspaceSearch] LLM Wiki 模式：已拒绝替换 raw/ 只读目录文件：', resolved)
+            return null
+        }
+        throw error
     }
     if (hasIgnoredDirectorySegment(relative)) {
         return null

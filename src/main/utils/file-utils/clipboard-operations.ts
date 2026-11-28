@@ -20,6 +20,9 @@ import { appState } from '../app-state'
 import { logger } from '../logger'
 import { tMain } from '../i18n'
 import { isPathAllowed, isSafeFileName } from '../security'
+// 1.5.7 LLM Wiki L1（T1.3）：粘贴/剪切同属写盘入口（复制写入目标 + 剪切删除源），
+// llm-wiki 模式下 raw/ 只读守卫在此统一拦截
+import { ensureWorkspaceWritable } from './shared'
 
 const reloadFromDiskTime = 100
 
@@ -113,6 +116,14 @@ export async function FileManagerContextMenuPaste(toPath: string, isFile: boolea
     const destPath = join(toPath, srcBaseName)
     if (!isPathAllowed(destPath)) {
         notifyPathAccessDenied(destPath, 'mainMsg.status.operationFailed')
+        return
+    }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读——
+    // ① 目标目录/目标路径（粘贴写入）不得位于 raw/；② 剪切动作会删除源，源不得位于 raw/
+    if (!ensureWorkspaceWritable(toPath) || !ensureWorkspaceWritable(destPath)) {
+        return
+    }
+    if (appState.isCopyOrCut === 'cut' && !ensureWorkspaceWritable(src)) {
         return
     }
     try {

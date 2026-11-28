@@ -2,18 +2,22 @@
  * system-setting/model.ts 纯函数单元测试（设置页拆分 P0）
  *
  * 覆盖点：
- * 1. 默认值工厂：35 字段与 shared SYSTEM_SETTING_FALLBACK 真源一致、语言按下拉展示值归一化；
- * 2. mergeStoredSystemSettings：只合并「已定义且类型一致」字段、忽略未知/错误类型、不改入参；
+ * 1. 默认值工厂：42 字段与 shared SYSTEM_SETTING_FALLBACK 真源一致、语言按下拉展示值归一化、
+ *    工作区模式默认 traditional（1.5.7 LLM Wiki L1，真源 shared/constants/workspace-mode）；
+ * 2. mergeStoredSystemSettings：只合并「已定义且类型一致」字段、忽略未知/错误类型、不改入参、
+ *    工作区模式非法值归一化（5.7 LLM Wiki）；
  * 3. normalizeLanguageSelection：历史值归一化（zh-cn / en-* / 非法值）；
  * 4. isSystemSettingsDirty：字段级脏标记（新增，供 composable 契约使用）；
- * 5. validateDialogSettings：界面输入范围/语言枚举的诊断校验（不阻断保存）。
+ * 5. validateDialogSettings：界面输入范围/语言枚举/工作区模式枚举的诊断校验（不阻断保存）。
  */
 import { describe, it, expect } from 'vitest'
 
 import { SYSTEM_SETTING_FALLBACK } from '../../src/shared/constants/system-defaults'
+import { DEFAULT_WORKSPACE_MODE } from '../../src/shared/constants/workspace-mode'
 import {
     createDefaultSystemDialogSettings,
     isSystemSettingsDirty,
+    isWorkspaceMode,
     mergeStoredSystemSettings,
     normalizeLanguageSelection,
     SYSTEM_SETTING_NUMBER_LIMITS,
@@ -28,6 +32,8 @@ const EXPECTED_FIELDS: (keyof SystemDialogSettings)[] = [
     'minimizeToTray',
     'rememberWindowSize',
     'language',
+    // 1.5.7 LLM Wiki L1：工作区模式（traditional / llm-wiki）
+    'workspaceMode',
     'defaultFilePath',
     'autoSaveEnabled',
     'autoSaveInterval',
@@ -67,7 +73,7 @@ const EXPECTED_FIELDS: (keyof SystemDialogSettings)[] = [
 ]
 
 describe('createDefaultSystemDialogSettings', () => {
-    it('应返回完整 41 字段，且值来自 shared SYSTEM_SETTING_FALLBACK 真源', () => {
+    it('应返回完整 42 字段，且值来自 shared SYSTEM_SETTING_FALLBACK 真源', () => {
         const defaults = createDefaultSystemDialogSettings()
         expect(Object.keys(defaults).sort()).toEqual([...EXPECTED_FIELDS].sort())
         expect(defaults.autoOpenLastFile).toBe(SYSTEM_SETTING_FALLBACK.autoOpenLastFile)
@@ -79,6 +85,12 @@ describe('createDefaultSystemDialogSettings', () => {
         expect(defaults.backupInterval).toBe(SYSTEM_SETTING_FALLBACK.backupInterval)
         expect(defaults.backupCount).toBe(SYSTEM_SETTING_FALLBACK.backupCount)
         expect(defaults.allowRemoteImages).toBe(SYSTEM_SETTING_FALLBACK.allowRemoteImages)
+    })
+
+    it('工作区模式默认 traditional（1.5.7 LLM Wiki L1：真源 shared/constants/workspace-mode）', () => {
+        const defaults = createDefaultSystemDialogSettings()
+        expect(defaults.workspaceMode).toBe(DEFAULT_WORKSPACE_MODE)
+        expect(defaults.workspaceMode).toBe('traditional')
     })
 
     it('视觉升级三项外观默认值 = workbench + default + 不减少透明（升级前观感）', () => {
@@ -150,6 +162,36 @@ describe('mergeStoredSystemSettings', () => {
         expect(ignored.uiStyle).toBe('workbench')
         expect(ignored.uiDensity).toBe('default')
         expect(ignored.uiReduceTransparency).toBe(false)
+    })
+
+    // 1.5.7 LLM Wiki L1：工作区模式枚举合并 + 非法值归一化（防御损坏配置/旧版本主进程）
+    it('合并工作区模式：合法枚举覆盖，非法/错误类型回落默认 traditional', () => {
+        const current = createDefaultSystemDialogSettings()
+        expect(
+            mergeStoredSystemSettings(current, { workspaceMode: 'llm-wiki' }).workspaceMode
+        ).toBe('llm-wiki')
+        expect(
+            mergeStoredSystemSettings(current, { workspaceMode: 'traditional' }).workspaceMode
+        ).toBe('traditional')
+        // 非法字符串：类型一致会先被并入，随后由枚举归一化回落默认值
+        expect(mergeStoredSystemSettings(current, { workspaceMode: 'bogus' }).workspaceMode).toBe(
+            DEFAULT_WORKSPACE_MODE
+        )
+        // 错误类型：类型不一致直接忽略，保持当前值
+        expect(mergeStoredSystemSettings(current, { workspaceMode: 42 }).workspaceMode).toBe(
+            DEFAULT_WORKSPACE_MODE
+        )
+        expect(mergeStoredSystemSettings(current, { workspaceMode: null }).workspaceMode).toBe(
+            DEFAULT_WORKSPACE_MODE
+        )
+    })
+
+    it('isWorkspaceMode：仅接受 shared 枚举值（traditional / llm-wiki）', () => {
+        expect(isWorkspaceMode('traditional')).toBe(true)
+        expect(isWorkspaceMode('llm-wiki')).toBe(true)
+        for (const value of ['LLM-Wiki', 'llm wiki', '', null, undefined, 1, {}]) {
+            expect(isWorkspaceMode(value)).toBe(false)
+        }
     })
 
     it('stored 非对象/为空时返回当前值的浅拷贝（不修改入参）', () => {
@@ -231,5 +273,22 @@ describe('validateDialogSettings（保存前诊断校验）', () => {
             language: 'ja'
         })
         expect(issues.map((issue) => issue.field).sort()).toEqual(['autoSaveInterval', 'language'])
+    })
+
+    // 1.5.7 LLM Wiki L1：工作区模式枚举诊断（界面下拉只有两个选项，仅防御注入/损坏值）
+    it('未知工作区模式记录为诊断问题（不阻断保存）', () => {
+        const issues = validateDialogSettings({
+            ...createDefaultSystemDialogSettings(),
+            workspaceMode: 'bogus' as unknown as SystemDialogSettings['workspaceMode']
+        })
+        expect(issues.map((issue) => issue.field)).toEqual(['workspaceMode'])
+        expect(issues[0].reason).toContain('bogus')
+        // 合法枚举不产生问题项
+        expect(
+            validateDialogSettings({
+                ...createDefaultSystemDialogSettings(),
+                workspaceMode: 'llm-wiki'
+            })
+        ).toEqual([])
     })
 })

@@ -23,6 +23,8 @@
 import { isKnownThemeType } from './theme-config'
 // 视觉升级（P0）：界面风格/密度枚举白名单唯一真源在 shared 常量（CFG-10 白名单归一化）。
 import { UI_DENSITY_VALUES, UI_STYLE_VALUES } from '../../shared/constants/ui-style'
+// 1.5.7 LLM Wiki L1：工作区模式枚举白名单唯一真源在 shared 常量（CFG-10 白名单归一化）。
+import { WORKSPACE_MODE_VALUES } from '../../shared/constants/workspace-mode'
 // 公共接口归位第 2 批：纯校验函数统一引用 shared/utils/validate 真源
 import {
     clampNumber as clampNumberBase,
@@ -225,7 +227,9 @@ const SYSTEM_ENUM_FIELDS: Readonly<Record<string, readonly string[]>> = {
     renderWhitespace: ['none', 'boundary', 'selection', 'all'],
     // 视觉升级（P0）：界面风格 / 界面密度（白名单引用 shared 常量，禁止在此另写一份）
     uiStyle: UI_STYLE_VALUES,
-    uiDensity: UI_DENSITY_VALUES
+    uiDensity: UI_DENSITY_VALUES,
+    // 1.5.7 LLM Wiki L1：工作区模式（traditional | llm-wiki；白名单引用 shared 常量）
+    workspaceMode: WORKSPACE_MODE_VALUES
 }
 
 /** 系统设置中的短标识字段（资源管理器/编辑器模型/插件打开方式/应用主题） */

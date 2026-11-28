@@ -58,8 +58,10 @@ import {
 // P1-AS-1：对话框选择路径登记（受信来源）——欢迎页打开的单文件/目录可能在工作区外，
 // 登记后 file-operations 的路径守卫（security.ts）才会允许读取（task-13/task-15 交接）。
 import {
+    assertWorkspaceWritable,
     isPathAllowed,
     isSafeFileName,
+    PathAccessDeniedError,
     registerTrustedDirectory,
     registerTrustedPath
 } from '../utils/security'
@@ -386,6 +388,16 @@ async function copyLocalImageToImagesDir(sourcePath: string): Promise<string | n
         if (!isPathAllowed(imagesDirectory)) {
             logger.warn('[Security] 已拒绝写入不受信的图片目录：', imagesDirectory)
             return null
+        }
+        // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读，禁止向 raw/images 复制图片
+        try {
+            assertWorkspaceWritable(appState.rootPath, imagesDirectory)
+        } catch (error) {
+            if (error instanceof PathAccessDeniedError) {
+                logger.warn('[LLM Wiki] 已拒绝向 raw/ 只读目录复制图片（T1.3）：', imagesDirectory)
+                return null
+            }
+            throw error
         }
         await fs.promises.mkdir(imagesDirectory, { recursive: true })
         const fileName = buildLocalImageFileName(sourcePath)

@@ -28,6 +28,9 @@ import { normalizeSlashes } from '../../shared/utils/path'
 import { logger } from './logger'
 import { buildWorkspaceIndex } from './workspace-index'
 import { decodeFileContent, encodeFileContent } from './file-utils/file-encoding'
+// 1.5.7 LLM Wiki L1（T1.3）：链接回写目标受 raw/ 只读写入守卫约束（llm-wiki 模式下
+// 来源文件若位于 raw/ 则不写回，计入失败清单）
+import { assertWorkspaceWritable, PathAccessDeniedError } from './security'
 
 /** 可被 Wiki 链接更新的文本扩展名 */
 const WIKI_TEXT_EXTENSIONS = new Set(['.md', '.markdown', '.txt'])
@@ -291,11 +294,20 @@ export async function applyWikiLinkRenamePlan(
     }
     for (const update of plan.updates) {
         try {
+            // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读，不写回 raw/ 内文件
+            assertWorkspaceWritable(plan.rootPath, update.sourcePath)
             await fs.writeFile(update.sourcePath, encodeUpdateBuffer(update))
             result.updatedFiles++
             result.replacements += update.replacementCount
         } catch (error) {
-            logger.warn(`[B4] 写入链接更新失败：${update.sourcePath}`, error)
+            if (error instanceof PathAccessDeniedError) {
+                logger.warn(
+                    '[B4] LLM Wiki 模式：已跳过 raw/ 只读目录的 Wiki 链接回写（T1.3）：',
+                    update.sourcePath
+                )
+            } else {
+                logger.warn(`[B4] 写入链接更新失败：${update.sourcePath}`, error)
+            }
             result.failedFiles.push(update.sourcePath)
         }
     }

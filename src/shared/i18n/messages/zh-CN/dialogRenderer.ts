@@ -302,10 +302,25 @@ const dialogRenderer = {
         groupOptionalFeatures: '可选能力',
         hintOptionalFeatures:
             '默认关闭。开启后立即生效；涉及文件/历史的能力会写入本机应用数据目录。',
+        // 1.5.7 LLM Wiki L1：工作区模式（功能页签顶部「工作区」分组）
+        groupWorkspace: '工作区',
         features: {
             workspaceSearchLabel: '全工作区搜索 / 替换',
             pasteEnhanceLabel: '粘贴 / 复制增强',
             commandPaletteLabel: '命令面板 / Quick Open',
+            // 1.5.7 LLM Wiki L1：工作区模式下拉 + 切换确认/初始化反馈
+            workspaceMode: '工作区模式',
+            workspaceModeTraditional: '传统模式',
+            workspaceModeLlmWiki: 'LLM Wiki 模式',
+            workspaceModeHint:
+                'LLM Wiki 模式会在当前工作区创建 raw/（只读原始资料）与 wiki/（结构化知识库）目录。',
+            workspaceModeConfirmTitle: '切换到 LLM Wiki 模式',
+            workspaceModeConfirmMessage:
+                '将创建 raw/ 与 wiki/ 目录，并开启 raw 只读模式。是否继续？',
+            workspaceModeConfirmOk: '确认初始化',
+            workspaceModeInitSuccess: '已初始化 LLM Wiki 工作区：raw/ 与 wiki/ 目录已就绪。',
+            workspaceModeInitFailed: '初始化 LLM Wiki 失败：{error}',
+            workspaceModeInitUnavailable: '当前环境不支持初始化 LLM Wiki，请重启应用后重试。',
             tabsLabel: '多标签 / 会话恢复',
             tabsDesc:
                 '在编辑器顶部打开多个文件标签，切换文件不丢失编辑状态；重启后恢复上次打开的标签列表。',

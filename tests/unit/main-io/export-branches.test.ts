@@ -43,9 +43,12 @@ const dialogMocks = vi.hoisted(() => ({
 }))
 vi.mock('../../../src/main/utils/file-utils/dialog-helpers', () => dialogMocks)
 
-vi.mock('../../../src/main/utils/security', () => ({
-    registerTrustedPath: vi.fn()
-}))
+// 1.5.7 LLM Wiki L1：导出写盘新增 raw/ 只读写入守卫（assertWorkspaceWritable /
+// PathAccessDeniedError），mock 保留真实其余实现（traditional 模式下守卫零影响）
+vi.mock('../../../src/main/utils/security', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../src/main/utils/security')>()
+    return { ...actual, registerTrustedPath: vi.fn() }
+})
 
 const workerMocks = vi.hoisted(() => ({
     exportMarkdownToWordWithWorker: vi.fn(async () => undefined),

@@ -49,6 +49,9 @@ function mountPalette(initialMode: 'command' | 'file' = 'command'): VueWrapper {
 
 beforeEach(() => {
     vi.clearAllMocks()
+    // 用例隔离：命令「最近使用」持久化在 localStorage，上一用例执行过的命令会改变
+    // 面板首项顺序（后续 ↑↓ 用例按注册顺序断言，必须从干净历史开始）。
+    window.localStorage.clear()
     invoke = vi.fn(async (channel: string) => {
         if (channel === IPC.FILE.SEARCH_WORKSPACE) {
             return fileListResult
@@ -76,7 +79,8 @@ describe('CommandPalette：命令模式', () => {
     it('渲染全部命令并按分类分组', async () => {
         const wrapper = mountPalette()
         await flushPromises()
-        expect(wrapper.findAll('.palette-option')).toHaveLength(18)
+        // 1.5.7 LLM Wiki L1 起为 19 条（新增「初始化 LLM Wiki」）
+        expect(wrapper.findAll('.palette-option')).toHaveLength(19)
         expect(wrapper.findAll('.palette-group-title').length).toBeGreaterThanOrEqual(4)
     })
 
@@ -87,6 +91,21 @@ describe('CommandPalette：命令模式', () => {
         const options = wrapper.findAll('.palette-option')
         expect(options).toHaveLength(1)
         expect(options[0].text()).toContain('Mermaid')
+    })
+
+    // 1.5.7 LLM Wiki L1：命令面板可按关键词命中「初始化 LLM Wiki」并复用菜单动作链路
+    it('输入 wiki 命中「初始化 LLM Wiki」，回车执行对应菜单动作', async () => {
+        const wrapper = mountPalette()
+        const input = wrapper.find('input.palette-input')
+        await input.setValue('wiki')
+        await nextTick()
+
+        const options = wrapper.findAll('.palette-option')
+        expect(options.length).toBeGreaterThan(0)
+        expect(options[0].text()).toContain('初始化 LLM Wiki')
+
+        await input.trigger('keydown', { key: 'Enter' })
+        expect(handleMenuActionMock).toHaveBeenCalledWith('baize:file:initialize-llm-wiki')
     })
 
     it('无命中时显示空状态提示', async () => {

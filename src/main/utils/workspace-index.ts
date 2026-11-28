@@ -151,7 +151,11 @@ export const WORKSPACE_INDEX_IGNORED_DIRS: ReadonlySet<string> = new Set([
     '.aws',
     '.azure',
     '.kube',
-    '.docker'
+    '.docker',
+    // 1.5.7 LLM Wiki L1（T1.2）：`raw/` 存放原始资料（pdf/网页剪藏/截图等），
+    // 属「证据层」而非「编译态知识」——不参与工作区索引（标题/标签/链接/摘要/附件），
+    // 避免原始资料污染知识检索结果；`wiki/` 与工作区其余目录正常索引。
+    'raw'
 ])
 
 /** 单次索引最多包含的文件数（防超大工作区长时间占用主进程） */

@@ -60,6 +60,10 @@ import {
     trashAttachments
 } from '../../src/main/utils/attachment-manager'
 import { MAX_WORKSPACE_INDEX_FILES } from '../../src/main/utils/workspace-index'
+// 1.5.7 LLM Wiki L1（T1.3）：注入工作区模式，验证 raw/ 只读守卫的附件变更分支
+import { setSystemSettingProvider } from '../../src/main/utils/providers'
+import { SYSTEM_SETTING_FALLBACK } from '../../src/shared/constants/system-defaults'
+import type { SystemSetting } from '../../src/shared/types/system'
 import type { WorkspaceIndexSnapshot } from '../../src/shared/types/workspace-index'
 
 /** 构造最小工作区索引快照（用于覆盖索引异常/超限分支） */
@@ -591,6 +595,27 @@ describe('trashAttachments：逐项路径校验', () => {
             expect(result.failed).toEqual([{ path: notePath, reason: 'PATH_DENIED' }])
         }
     })
+
+    it('LLM Wiki 模式：raw/ 内附件移入回收站被拒且文件保留（T1.3）', async () => {
+        const rawPng = write('raw/source.png', 'png')
+        setSystemSettingProvider(
+            () =>
+                ({
+                    ...SYSTEM_SETTING_FALLBACK,
+                    workspaceMode: 'llm-wiki'
+                }) as unknown as SystemSetting
+        )
+        try {
+            const result = await trashAttachments(root, [rawPng], { trashItem: rmTrashItem })
+            expect(result.ok).toBe(true)
+            if (!result.ok) return
+            expect(result.trashed).toBe(0)
+            expect(result.failed).toEqual([{ path: rawPng, reason: 'PATH_DENIED' }])
+            expect(fs.existsSync(rawPng)).toBe(true)
+        } finally {
+            setSystemSettingProvider(null)
+        }
+    })
 })
 
 describe('trashAttachments：引用复核与回收站执行', () => {
@@ -738,6 +763,25 @@ describe('renameAttachment：旧路径校验', () => {
         }
         const result = await renameAttachment(root, linkPath, 'renamed.png')
         expect(result).toEqual({ ok: false, code: 'NOT_FILE' })
+    })
+
+    it('LLM Wiki 模式：raw/ 内附件重命名被拒且文件保持原名（T1.3）', async () => {
+        const rawPng = write('raw/source.png', 'png')
+        setSystemSettingProvider(
+            () =>
+                ({
+                    ...SYSTEM_SETTING_FALLBACK,
+                    workspaceMode: 'llm-wiki'
+                }) as unknown as SystemSetting
+        )
+        try {
+            const result = await renameAttachment(root, rawPng, 'renamed.png')
+            expect(result).toEqual({ ok: false, code: 'PATH_DENIED' })
+            expect(fs.existsSync(rawPng)).toBe(true)
+            expect(fs.existsSync(path.join(root, 'raw/renamed.png'))).toBe(false)
+        } finally {
+            setSystemSettingProvider(null)
+        }
     })
 })
 

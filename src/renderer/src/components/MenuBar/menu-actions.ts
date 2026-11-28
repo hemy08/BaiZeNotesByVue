@@ -36,7 +36,9 @@ import {
 // M3（结构优化收尾）：插件工具动作前缀与 38 项 id 由 shared 单一 manifest 派生。
 import { PLUGIN_TOOL_ACTION_PREFIX } from '../../../../shared/constants/plugin-tools-manifest'
 // 1.5.6：「插件 → 插件搜索」入口动作 id 与菜单数据同源（menu-config.ts 声明并导出）
-import { PLUGIN_SEARCH_MENU_ACTION } from './menu-config'
+import { INITIALIZE_LLM_WIKI_MENU_ACTION, PLUGIN_SEARCH_MENU_ACTION } from './menu-config'
+// 1.5.7 LLM Wiki L1：初始化工作区（raw/ 与 wiki/）渲染层入口动作（菜单/命令面板/设置页共用）
+import { initializeLlmWiki } from '../../common/llm-wiki-actions'
 
 /**
  * mkdocs-material 扩展语法插入入口（15 项，对应 menu-config.ts 的 Material 子菜单，
@@ -118,6 +120,16 @@ export function HandleMenuAction(action: string) {
     // 也不转发主进程 MENU.ACTION；主进程侧仅暴露受白名单约束的 OPEN_RECENT 通道）。
     if (isRecentMenuAction(action)) {
         handleRecentMenuAction(action)
+        return
+    }
+
+    // ========== 1.5.7 LLM Wiki L1：文件 → 初始化 LLM Wiki ==========
+    // 动作 id 为 `baize:file:initialize-llm-wiki`（不走 baize:menu: 前缀），必须在通用
+    // 前缀/主进程回退分发之前精确命中：调用主进程白名单 invoke 通道创建工作区 raw/ 与
+    // wiki/ 目录（幂等），成功/失败由 initializeLlmWiki 统一给出可见提示（LOG-08），
+    // 不向主进程转发 IPC.MENU.ACTION（主进程无该菜单动作处理器）。
+    if (action === INITIALIZE_LLM_WIKI_MENU_ACTION) {
+        void initializeLlmWiki()
         return
     }
 

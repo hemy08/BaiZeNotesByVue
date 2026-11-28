@@ -57,7 +57,12 @@ const securityMocks = vi.hoisted(() => ({
     }),
     registerTrustedPath: vi.fn()
 }))
-vi.mock('../../../src/main/utils/security', () => securityMocks)
+// 1.5.7 LLM Wiki L1：导入写盘新增 raw/ 只读写入守卫（ensureWorkspaceWritable →
+// security.assertWorkspaceWritable / PathAccessDeniedError），mock 保留真实其余实现
+vi.mock('../../../src/main/utils/security', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../src/main/utils/security')>()
+    return { ...actual, ...securityMocks }
+})
 
 const workerMocks = vi.hoisted(() => ({
     convertDocxToMarkdownWithWorker: vi.fn(async () => '# from worker'),

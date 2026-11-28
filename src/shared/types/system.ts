@@ -45,6 +45,16 @@ export type UiStyle = 'paper' | 'glass' | 'workbench' | 'hybrid'
  */
 export type UiDensity = 'compact' | 'default' | 'spacious'
 
+/**
+ * 工作区模式标识（1.5.7 LLM Wiki L1）。
+ *
+ * - `traditional`：传统笔记工作区（默认，行为与 1.5.6 一致）；
+ * - `llm-wiki`：LLM Wiki 工作区（`raw/` 原始资料只读、`wiki/` 编译态知识可写）。
+ *
+ * 取值白名单唯一真源：`src/shared/constants/workspace-mode.ts` 的 `WORKSPACE_MODE_VALUES`。
+ */
+export type WorkspaceMode = 'traditional' | 'llm-wiki'
+
 export interface SystemSetting {
     language: string
     resourceManager: string
@@ -97,6 +107,9 @@ export interface SystemSetting {
     uiStyle?: UiStyle // 界面风格（默认 'workbench'）
     uiDensity?: UiDensity // 界面密度（默认 'default'）
     uiReduceTransparency?: boolean // 减少透明效果（默认 false；glass 强制回退纸感材质）
+    // 1.5.7 LLM Wiki L1：工作区模式（默认 'traditional'，对既有工作区零影响）。
+    // 由「系统设置 → 功能」页签写入；主进程据此决定是否启用 raw/ 只读写入守卫。
+    workspaceMode?: WorkspaceMode
     // AS-9（P3 隐私）：是否允许 Markdown 预览加载文档中的远程（http/https/协议相对）图片。
     // 默认 false：渲染层把远程图片替换为占位块，不发起任何网络请求（防跟踪像素/IP 泄露）；
     // 本地相对路径、绝对路径与 data:/blob: 图片不受影响。

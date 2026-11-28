@@ -133,6 +133,8 @@ vi.mock('../../../src/main/utils/file-utils/directory-tree', () => directoryTree
 const sharedMocks = vi.hoisted(() => ({
     beginSelfWrite: vi.fn(),
     endSelfWrite: vi.fn(),
+    // 1.5.7 LLM Wiki L1（T1.3）：写盘入口统一调用 raw/ 只读守卫（本文件默认放行）
+    ensureWorkspaceWritable: vi.fn(() => true),
     notifyInvalidFileName: vi.fn(),
     notifyPathAccessDenied: vi.fn(),
     refreshActiveFileDiskStamp: vi.fn(async () => undefined),

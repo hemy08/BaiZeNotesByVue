@@ -127,7 +127,12 @@ export const IPC = {
         // 主进程做 Path Guard + .pdf 扩展名双向校验，侧车路径由主进程由 pdfPath 生成并复核
         // 在受信根内；写入走「tmp + rename」原子替换，读取对缺失/损坏 JSON 容错为空数组。
         LOAD_PDF_ANNOTATIONS: 'baize:file:load-pdf-annotations',
-        SAVE_PDF_ANNOTATIONS: 'baize:file:save-pdf-annotations'
+        SAVE_PDF_ANNOTATIONS: 'baize:file:save-pdf-annotations',
+        // 1.5.7 LLM Wiki L1（invoke）：初始化当前工作区为 LLM Wiki 工作区——
+        // 在 appState.rootPath 下创建 raw/（原始资料，只读）与 wiki/（编译态知识）目录，
+        // 并生成 schema.md 工作区约定模板（已存在时不覆盖）。渲染层不传任何参数，
+        // 根路径只取主进程持有的工作区根；无工作区时返回结构化失败。
+        INITIALIZE_LLM_WIKI: 'baize:file:initialize-llm-wiki'
     } as const,
 
     // ============ 文件管理器右键菜单 ============

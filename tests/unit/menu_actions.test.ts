@@ -68,8 +68,10 @@ vi.mock('@renderer/composables/useFeatureFlags', () => ({
 import { HandleMenuAction } from '../../src/renderer/src/components/MenuBar/menu-actions'
 import {
     menuMap,
+    INITIALIZE_LLM_WIKI_MENU_ACTION,
     PLUGIN_SEARCH_MENU_ACTION
 } from '../../src/renderer/src/components/MenuBar/menu-config'
+import { translate } from '../../src/shared/i18n'
 import * as Templates from '@renderer/common/templates'
 
 const ipcSend = vi.fn()
@@ -784,6 +786,70 @@ describe('HandleMenuAction', () => {
                 expect(ocrInsertMock.mock.calls.length + ocrCopyMock.mock.calls.length).toBe(1)
                 expect(ipcSend).not.toHaveBeenCalled()
             }
+        })
+    })
+
+    // 1.5.7 LLM Wiki L1：文件 → 初始化 LLM Wiki（渲染层精确拦截 → 主进程白名单 invoke 通道）
+    describe('initialize LLM Wiki action (L1)', () => {
+        /** 递归收集菜单树中「初始化 LLM Wiki」动作 id */
+        function collectInitializeActions(): string[] {
+            const actions: string[] = []
+            const walk = (items: unknown[]): void => {
+                for (const item of items as Array<{ menuAction?: string; submenu?: unknown[] }>) {
+                    if (item.menuAction === INITIALIZE_LLM_WIKI_MENU_ACTION) {
+                        actions.push(item.menuAction)
+                    }
+                    if (item.submenu) {
+                        walk(item.submenu)
+                    }
+                }
+            }
+            walk(menuMap.value)
+            return actions
+        }
+
+        it('精确拦截：invoke 白名单通道，不转发主进程 MENU.ACTION，成功提示可见', async () => {
+            ipcInvoke.mockResolvedValue({ success: true })
+            HandleMenuAction(INITIALIZE_LLM_WIKI_MENU_ACTION)
+            await flushMicrotasks()
+
+            expect(ipcInvoke).toHaveBeenCalledTimes(1)
+            expect(ipcInvoke).toHaveBeenCalledWith('baize:file:initialize-llm-wiki')
+            // 不向主进程转发 IPC.MENU.ACTION（主进程无该菜单动作处理器）
+            expect(ipcSend).not.toHaveBeenCalled()
+            expect(showDialogMock).toHaveBeenCalledWith('success', {
+                title: translate('menu.file.initializeLlmWiki', 'zh-CN'),
+                message: translate(
+                    'dialogRenderer.systemSetting.features.workspaceModeInitSuccess',
+                    'zh-CN'
+                )
+            })
+        })
+
+        it('主进程返回 success=false：展示含原因的失败提示，不抛异常', async () => {
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+            const reason = '尚未打开工作区，无法初始化 LLM Wiki。'
+            ipcInvoke.mockResolvedValue({ success: false, error: reason })
+            HandleMenuAction(INITIALIZE_LLM_WIKI_MENU_ACTION)
+            await flushMicrotasks()
+
+            expect(ipcSend).not.toHaveBeenCalled()
+            expect(errorSpy).toHaveBeenCalled()
+            expect(showDialogMock).toHaveBeenCalledWith('error', {
+                title: translate('menu.file.initializeLlmWiki', 'zh-CN'),
+                message: translate(
+                    'dialogRenderer.systemSetting.features.workspaceModeInitFailed',
+                    'zh-CN',
+                    { error: reason }
+                )
+            })
+        })
+
+        it('menu-config 声明的初始化动作与拦截常量一致（菜单树 ↔ 动作分发单真源）', () => {
+            expect(collectInitializeActions()).toEqual([INITIALIZE_LLM_WIKI_MENU_ACTION])
+            // 动作 id 沿用 baize:<domain>:<name> 三段式（不占用 baize:menu: 前缀）
+            expect(INITIALIZE_LLM_WIKI_MENU_ACTION).toBe('baize:file:initialize-llm-wiki')
+            expect(INITIALIZE_LLM_WIKI_MENU_ACTION).not.toContain('baize:menu:')
         })
     })
 })

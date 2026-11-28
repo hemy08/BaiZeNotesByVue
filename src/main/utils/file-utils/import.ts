@@ -34,6 +34,8 @@ import { tMain } from '../i18n'
 // P1-AS-1：导入/另存导入文件均涉及文件读写，路径必须位于受信范围；
 // 系统对话框返回的路径在返回后登记为受信来源
 import { isPathAllowed, registerTrustedPath } from '../security'
+// 1.5.7 LLM Wiki L1（T1.3）：导入写盘同样受 raw/ 只读守卫约束
+import { ensureWorkspaceWritable } from './shared'
 // P2-2：Word 重计算改由 worker 线程执行；基础设施不可用时降级为进程内转换
 import {
     convertDocxToMarkdownWithWorker,
@@ -404,6 +406,10 @@ export async function ImportCreateNewFile(
     registerTrustedPath(filePath)
     if (!isPathAllowed(filePath)) {
         notifyPathAccessDenied(filePath, 'mainMsg.status.saveFailed')
+        return { success: false }
+    }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读，导入另存不许写入 raw/
+    if (!ensureWorkspaceWritable(filePath)) {
         return { success: false }
     }
 

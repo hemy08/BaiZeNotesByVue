@@ -105,6 +105,11 @@ describe('system-setting', () => {
             expect(setting.uiReduceTransparency).toBe(false)
         })
 
+        // 1.5.7 LLM Wiki L1：工作区模式默认 traditional（对既有工作区零影响）
+        it('should default workspaceMode to traditional (LLM Wiki L1)', () => {
+            expect(getSystemSetting().workspaceMode).toBe('traditional')
+        })
+
         it('should persist visual P0 appearance settings via saveSystemSetting', () => {
             saveSystemSetting({
                 uiStyle: 'glass',

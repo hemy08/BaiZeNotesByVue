@@ -49,6 +49,8 @@ const implementationMocks = vi.hoisted(() => ({
     registerPdfAnnotationsIpc: vi.fn(),
     // 1.5.2 E3：图片 OCR 独立域注册入口
     registerOcrIpc: vi.fn(),
+    // 1.5.7 LLM Wiki L1：工作区初始化独立域注册入口
+    registerLlmWikiIpc: vi.fn(),
     // 主题广播依赖
     getCurrentThemeStyles: vi.fn(),
     getThemeStylesByType: vi.fn(),
@@ -112,6 +114,11 @@ vi.mock('../../src/main/ipc/pdf-annotations-ipc', () => ({
 // 1.5.2 E3：图片 OCR 独立域模块（本文件只验证编排）
 vi.mock('../../src/main/ipc/ocr-ipc', () => ({
     registerOcrIpc: implementationMocks.registerOcrIpc
+}))
+
+// 1.5.7 LLM Wiki L1：工作区初始化独立域模块（本文件只验证编排）
+vi.mock('../../src/main/ipc/llm-wiki-ipc', () => ({
+    registerLlmWikiIpc: implementationMocks.registerLlmWikiIpc
 }))
 
 // P1-1：主题广播实现已迁到中性层 utils/theme-broadcast（config 不再 import ipc/**）
@@ -223,6 +230,9 @@ beforeEach(() => {
     implementationMocks.registerOcrIpc.mockImplementation(() => {
         callOrder.push('ocr')
     })
+    implementationMocks.registerLlmWikiIpc.mockImplementation(() => {
+        callOrder.push('llm-wiki')
+    })
     implementationMocks.getCurrentThemeStyles.mockReturnValue({ name: 'baize' })
     implementationMocks.getThemeStylesByType.mockImplementation((themeType: string) => ({
         name: themeType
@@ -268,7 +278,8 @@ describe('registerAll（建窗后一次性注册清单）', () => {
             'attachment',
             'capture',
             'pdf-annotations',
-            'ocr'
+            'ocr',
+            'llm-wiki'
         ])
         expect(implementationMocks.mainWindowListenDialogsEvent).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerUtilsIpcHandlers).toHaveBeenCalledWith(mainWindow)
@@ -298,6 +309,8 @@ describe('registerAll（建窗后一次性注册清单）', () => {
             mainWindow,
             'global-ocr-ipc'
         )
+        // 1.5.7 LLM Wiki L1：工作区初始化 handler（无窗口参数，仅台账组件 ID）
+        expect(implementationMocks.registerLlmWikiIpc).toHaveBeenCalledWith('global-llm-wiki-ipc')
     })
 
     it('should register the persistent theme/ready listeners before the window-level registrations', () => {

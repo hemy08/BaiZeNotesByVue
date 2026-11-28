@@ -68,6 +68,7 @@ import { applyWikiLinkRenamePlan, buildWikiLinkRenamePlan } from '../wiki-link-r
 import {
     beginSelfWrite,
     endSelfWrite,
+    ensureWorkspaceWritable,
     notifyInvalidFileName,
     notifyPathAccessDenied,
     refreshActiveFileDiskStamp,
@@ -159,6 +160,10 @@ export async function SaveActiveFile(options: SaveActiveFileOptions = {}): Promi
     // 越界时只提示不写盘（currentActiveFile 由本次运行期校验过的入口设置，正常不会越界）
     if (!isPathAllowed(curFile.path)) {
         notifyPathAccessDenied(curFile.path, 'mainMsg.status.saveFailed')
+        return false
+    }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读，保存一律拒绝（状态栏提示）
+    if (!ensureWorkspaceWritable(curFile.path)) {
         return false
     }
     try {
@@ -260,6 +265,10 @@ export async function SaveActiveFileAs(): Promise<void> {
     registerTrustedPath(filePath)
     if (!isPathAllowed(filePath)) {
         notifyPathAccessDenied(filePath, 'mainMsg.status.operationFailed')
+        return
+    }
+    // 1.5.7 LLM Wiki L1（T1.3）：另存为目标同样受 raw/ 只读守卫约束
+    if (!ensureWorkspaceWritable(filePath)) {
         return
     }
     const ext = path.extname(filePath).toLowerCase()
@@ -368,6 +377,10 @@ export async function CreateFileFolder(
         notifyPathAccessDenied(fullName, 'mainMsg.status.operationFailed')
         return
     }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下禁止在 raw/ 内新建文件/目录
+    if (!ensureWorkspaceWritable(fullName)) {
+        return
+    }
     if (isFolder) {
         try {
             await fs.access(fullName)
@@ -463,6 +476,9 @@ export async function OpenSelectFile(fileProperties: FileProperties): Promise<vo
         // P1-AS-1：切换文件前的自动保存同样受路径约束（活动文件路径失效时跳过而非越权写盘）
         if (!isPathAllowed(currentFile.path)) {
             logger.warn('[Security] 已跳过越界活动文件的自动保存（P1-AS-1）：', currentFile.path)
+        } else if (!ensureWorkspaceWritable(currentFile.path)) {
+            // 1.5.7 LLM Wiki L1（T1.3）：raw/ 只读目录中的文件不执行切换前自动保存
+            logger.warn('[LLM Wiki] 已跳过 raw/ 只读目录的自动保存（T1.3）：', currentFile.path)
         } else {
             try {
                 // D-4：切换文件时按原编码写回
@@ -639,6 +655,10 @@ export async function ConvertActiveFileEncoding(encoding: string): Promise<void>
         notifyPathAccessDenied(curFile.path, 'mainMsg.status.saveFailed')
         throw new PathAccessDeniedError(curFile.path)
     }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读，转码写盘一律拒绝
+    if (!ensureWorkspaceWritable(curFile.path)) {
+        throw new PathAccessDeniedError(curFile.path)
+    }
     const normalized = normalizeEncoding(encoding)
     const buffer = encodeFileContent(curFile.content ?? '', normalized)
     // PF-05：标记自身写盘（转码不改变目录树），抑制 watcher 回环刷新
@@ -710,6 +730,10 @@ export async function CreateFile(dirPath: string, name: string, extension: strin
     const fullName = path.join(path.resolve(dirPath), name + extension)
     if (!isPathAllowed(fullName)) {
         notifyPathAccessDenied(fullName, 'mainMsg.status.operationFailed')
+        return
+    }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下禁止在 raw/ 内新建文件
+    if (!ensureWorkspaceWritable(fullName)) {
         return
     }
     // FUN-29：磁盘内容为空（只写一次空内容），内存内容同样为空，
@@ -835,6 +859,10 @@ export async function CreateDirectory(dirPath: string, name: string): Promise<vo
         notifyPathAccessDenied(fullName, 'mainMsg.status.operationFailed')
         return
     }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下禁止在 raw/ 内新建目录
+    if (!ensureWorkspaceWritable(fullName)) {
+        return
+    }
     try {
         await fs.access(fullName)
         showErrorMessageBox(tMain('mainMsg.file.alreadyExists', { path: fullName }))
@@ -900,6 +928,11 @@ async function RenameFileFolder(name: string, newName: string, isFile: boolean):
         notifyPathAccessDenied(newFullPath, 'mainMsg.status.operationFailed')
         return
     }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读——源（改名/移出）落在 raw/
+    // 子树内一律拒绝。目标路径与源同目录（本实现只改文件名、不移动目录），源守卫已覆盖。
+    if (!ensureWorkspaceWritable(name)) {
+        return
+    }
 
     // PF-05：标记自身改目录，watcher 回环事件合并到下方 ScheduleReloadFromDisk
     beginSelfWrite()
@@ -958,6 +991,10 @@ async function DeleteFileFolder(name: string, isFile: boolean): Promise<void> {
     // P1-AS-1：删除目标必须在受信范围内，越界直接提示并 return（不触碰文件系统）
     if (!isPathAllowed(name)) {
         notifyPathAccessDenied(name, 'mainMsg.status.operationFailed')
+        return
+    }
+    // 1.5.7 LLM Wiki L1（T1.3）：llm-wiki 模式下 raw/ 只读，禁止删除 raw/ 及其内容
+    if (!ensureWorkspaceWritable(name)) {
         return
     }
     // PF-05：标记自身改目录，watcher 回环事件合并到下方 ScheduleReloadFromDisk

@@ -179,6 +179,8 @@ export default {
             save: 'Save',
             openFolder: 'Open folder',
             openFile: 'Open file',
+            // 1.5.7 LLM Wiki L1: initialize workspace (raw/ and wiki/)
+            initializeLlmWiki: 'Initialize LLM Wiki',
             find: 'Find',
             replace: 'Replace',
             gotoLine: 'Go to line',
