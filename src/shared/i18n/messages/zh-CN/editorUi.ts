@@ -648,6 +648,12 @@ export default {
         switchToLlmWiki: '切换到 LLM Wiki 模式',
         switchToTraditional: '切换到传统模式',
         switchToLlmWikiEntry: '切换到 LLM Wiki 模式并打开 AI 助手',
+        // 1.5.7 迁移批次 M3：工作区已初始化过 LLM Wiki 时再次切换 → 不弹迁移问询，直接切换
+        switchAlreadyInitializedTitle: '已切换到 LLM Wiki 模式',
+        switchAlreadyInitializedMessage:
+            '本工作区此前已初始化（raw/ 与 wiki/ 已就绪），无需再次迁移。可随时手动编译：打开命令面板执行「AI 编译」；需要按目录/批量编译时请使用「批量编译」。',
+        // 1.5.7 体验优化（减少弹窗）：LLM Wiki → 传统模式切换成功用轻量 Toast 提示（非模态）
+        switchToTraditionalSuccess: '已切换回传统模式',
         workspaceModeSwitchFailedTitle: '工作区模式切换失败',
         workspaceModeSwitchFailedMessage:
             '保存工作区模式配置失败：{error}。当前仍保持原模式，请重试。',

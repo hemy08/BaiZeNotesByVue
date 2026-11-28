@@ -682,6 +682,14 @@ export default {
         switchToLlmWiki: 'Switch to LLM Wiki mode',
         switchToTraditional: 'Switch to traditional mode',
         switchToLlmWikiEntry: 'Switch to LLM Wiki mode and open the AI assistant',
+        // 1.5.7 migration batch M3: workspace already initialized → switch directly without the
+        // migration questionnaire and remind the user to compile manually.
+        switchAlreadyInitializedTitle: 'Switched to LLM Wiki mode',
+        switchAlreadyInitializedMessage:
+            'This workspace was already initialized (raw/ and wiki/ are ready), so no migration was needed. You can compile manually at any time: run "AI Compile" from the command palette, and use "Batch Compile" for directory/batch compilation.',
+        // 1.5.7 UX tuning (fewer modals): switching back to traditional mode uses a lightweight
+        // non-modal toast instead of a modal confirmation dialog.
+        switchToTraditionalSuccess: 'Switched back to Traditional mode',
         workspaceModeSwitchFailedTitle: 'Failed to switch workspace mode',
         workspaceModeSwitchFailedMessage:
             'Failed to save the workspace mode configuration: {error}. The previous mode is still active; please try again.',

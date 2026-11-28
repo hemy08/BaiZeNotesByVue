@@ -2,9 +2,10 @@
  * 1.5.7 迁移批次：文件迁移 IPC handler 单测（`src/main/ipc/llm-wiki-migration-ipc.ts`）
  *
  * 覆盖：
- * 1. 注册形状：3 个 invoke 通道经 `ipcListenerManager.registerHandleOnce` 注册
+ * 1. 注册形状：4 个 invoke 通道经 `ipcListenerManager.registerHandleOnce` 注册
  *    （withSenderCheck 包装），componentId 透传（缺省 `global-llm-wiki-migration-ipc`）；
- * 2. 业务入口：无工作区返回结构化失败；有工作区委托迁移服务（扫描/迁移/回滚）；
+ * 2. 业务入口：无工作区返回结构化失败/全 false 状态；有工作区委托迁移服务
+ *    （状态检测/扫描/迁移/回滚）；
  * 3. sender 校验：受信主窗口调用成功；不受信发送方返回统一拒绝对象且不写盘。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
@@ -43,6 +44,7 @@ vi.mock('../../src/main/ipc/ipc-listener-manager', () => ({
 import { IPC } from '../../src/shared/ipc-channels'
 import {
     LLM_WIKI_MIGRATION_IPC_COMPONENT_ID,
+    llmWikiGetStatus,
     llmWikiMigrateFiles,
     llmWikiRollbackMigration,
     llmWikiScanFiles,
@@ -95,9 +97,10 @@ async function writeWorkspaceFile(relativePath: string, content = 'content'): Pr
 }
 
 describe('registerLlmWikiMigrationIpc：注册形状', () => {
-    it('缺省 componentId 时注册 3 个 invoke 通道', () => {
+    it('缺省 componentId 时注册 4 个 invoke 通道', () => {
         registerLlmWikiMigrationIpc()
         expect(registers.calls.map((item) => item.channel)).toEqual([
+            IPC.LLM_WIKI.GET_STATUS,
             IPC.LLM_WIKI.SCAN_FILES,
             IPC.LLM_WIKI.MIGRATE,
             IPC.LLM_WIKI.ROLLBACK_MIGRATION
@@ -115,8 +118,16 @@ describe('registerLlmWikiMigrationIpc：注册形状', () => {
 })
 
 describe('业务入口：无工作区与委托服务', () => {
-    it('未打开工作区时扫描/迁移/回滚均返回结构化失败', async () => {
+    it('未打开工作区时状态检测全 false、扫描/迁移/回滚均返回结构化失败', async () => {
         appState.rootPath = ''
+        const status = await llmWikiGetStatus({ logDir })
+        expect(status).toEqual({
+            initialized: false,
+            hasRaw: false,
+            hasWiki: false,
+            hasSchema: false
+        })
+
         const scan = await llmWikiScanFiles({ logDir })
         expect(scan.ok).toBe(false)
         expect(scan.error).toBeTruthy()
@@ -130,6 +141,51 @@ describe('业务入口：无工作区与委托服务', () => {
         const rollback = await llmWikiRollbackMigration(undefined, { logDir })
         expect(rollback.ok).toBe(false)
         expect(rollback.restored).toBe(0)
+    })
+
+    it('工作区无 LLM Wiki 结构：初始化状态为 false（不读内容）', async () => {
+        await writeWorkspaceFile('a.md', 'a')
+        appState.rootPath = workspaceRoot
+
+        await expect(llmWikiGetStatus({ logDir })).resolves.toEqual({
+            initialized: false,
+            hasRaw: false,
+            hasWiki: false,
+            hasSchema: false
+        })
+    })
+
+    it('工作区已有 raw/ + wiki/ + schema.md：initialized=true 且逐项可见', async () => {
+        await fs.mkdir(path.join(workspaceRoot, 'raw'), { recursive: true })
+        await fs.mkdir(path.join(workspaceRoot, 'wiki'), { recursive: true })
+        await writeWorkspaceFile('schema.md', '# 约定')
+        appState.rootPath = workspaceRoot
+
+        await expect(llmWikiGetStatus({ logDir })).resolves.toEqual({
+            initialized: true,
+            hasRaw: true,
+            hasWiki: true,
+            hasSchema: true
+        })
+    })
+
+    it('仅 schema.md 存在也算已初始化；同名目录而非文件不算 hasSchema', async () => {
+        await writeWorkspaceFile('schema.md', '# 约定')
+        appState.rootPath = workspaceRoot
+        await expect(llmWikiGetStatus({ logDir })).resolves.toMatchObject({
+            initialized: true,
+            hasRaw: false,
+            hasWiki: false,
+            hasSchema: true
+        })
+
+        // schema.md 位置换成目录：hasSchema 必须为 false（只认普通文件）
+        await fs.rm(path.join(workspaceRoot, 'schema.md'))
+        await fs.mkdir(path.join(workspaceRoot, 'schema.md'))
+        await expect(llmWikiGetStatus({ logDir })).resolves.toMatchObject({
+            initialized: false,
+            hasSchema: false
+        })
     })
 
     it('缺省读取 appState.rootPath：扫描可迁移文件并返回格式统计', async () => {
@@ -162,6 +218,24 @@ describe('业务入口：无工作区与委托服务', () => {
 })
 
 describe('handler：sender 校验', () => {
+    it('受信主窗口调用状态检测成功；不受信发送方返回统一拒绝对象', async () => {
+        await fs.mkdir(path.join(workspaceRoot, 'raw'), { recursive: true })
+        appState.rootPath = workspaceRoot
+        registerLlmWikiMigrationIpc()
+
+        const trustedResult = (await registeredListener(IPC.LLM_WIKI.GET_STATUS)(trustedEvent)) as {
+            initialized: boolean
+            hasRaw: boolean
+        }
+        expect(trustedResult.initialized).toBe(true)
+        expect(trustedResult.hasRaw).toBe(true)
+
+        const untrusted = await registeredListener(IPC.LLM_WIKI.GET_STATUS)({
+            sender: { id: 999 }
+        })
+        expect(isUntrustedSenderResult(untrusted)).toBe(true)
+    })
+
     it('受信主窗口调用扫描成功；不受信发送方返回统一拒绝对象', async () => {
         await writeWorkspaceFile('a.md', 'a')
         appState.rootPath = workspaceRoot

@@ -2,11 +2,13 @@
  * 1.5.7 LLM Wiki 迁移批次：迁移动作（渲染层）
  *
  * ## 职责边界
- * - 只做三件事：调用主进程白名单通道（`IPC.LLM_WIKI.*`）、把返回值做**运行时结构归一化**、
- *   读取 AI 配置判断编译是否可用；不复制主进程的扫描/复制/回滚逻辑；
+ * - 只做三件事：调用主进程白名单通道（`IPC.LLM_WIKI.*`：状态检测 / 扫描 / 迁移 / 回滚）、
+ *   把返回值做**运行时结构归一化**、读取 AI 配置判断编译是否可用；不复制主进程的
+ *   扫描/复制/回滚逻辑；
  * - 供迁移弹窗 `MigrationWizardDialog.vue` 与 `useWorkspaceModeSwitch` 共用（三处模式切换
  *   入口统一走同一套动作）；
- * - **不新增 IPC**：编译选择经 EventBus `LLM_WIKI_COMPILE_REQUEST` 交接给 M2 批量编译批次。
+ * - **编译不新增 IPC**：编译选择经 EventBus `LLM_WIKI_COMPILE_REQUEST` 交接给 M2 批量
+ *   编译批次（状态检测复用 `IPC.LLM_WIKI.GET_STATUS`，不新增其它通道）。
  *
  * ## 失败口径（LOG-08 禁止静默失败）
  * - 受限 ipcRenderer 不可用 / invoke 抛异常 / 返回结构非法：统一返回 `ok=false` 的结构化结果
@@ -25,7 +27,8 @@ import type {
     LlmWikiMigrationIssue,
     LlmWikiRollbackFailure,
     LlmWikiRollbackResult,
-    LlmWikiScanResult
+    LlmWikiScanResult,
+    LlmWikiWorkspaceStatus
 } from '../../../shared/types/ipc'
 import { readLlmAiModelCatalog } from '../components/llm-wiki/llm-ai-config'
 import { t } from './i18n'
@@ -90,9 +93,23 @@ function readText(value: unknown): string | undefined {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined
 }
 
-/** IPC 不可用 / 通道异常时的统一可读文案 */
-function ipcUnavailableMessage(): string {
-    return t('dialogRenderer.migrationWizard.ipcUnavailable')
+/** 错误对象 → 可读原因（用于把 IPC 失败原因透给用户） */
+function describeError(error: unknown): string | undefined {
+    if (error instanceof Error) {
+        return error.message
+    }
+    return typeof error === 'string' && error.trim().length > 0 ? error.trim() : undefined
+}
+
+/**
+ * IPC 不可用 / 通道异常时的统一可读文案：
+ * - 传入 `reason`（具体失败原因）时显示原因，便于用户判断是旧版本、未重启还是主进程异常；
+ * - 未传原因时回退通用文案。
+ */
+function ipcUnavailableMessage(reason?: string): string {
+    return reason
+        ? t('dialogRenderer.migrationWizard.ipcUnavailableReason', { reason })
+        : t('dialogRenderer.migrationWizard.ipcUnavailable')
 }
 
 /** 归一化单个格式统计（非法 id 丢弃；缺失格式补 0，保证 5 类齐全） */
@@ -299,6 +316,57 @@ export function normalizeLlmWikiRollbackResult(raw: unknown): LlmWikiRollbackRes
 }
 
 /**
+ * 归一化「工作区 LLM Wiki 状态」检测结果（`LLM_WIKI.GET_STATUS`）。
+ *
+ * 四个字段必须全为布尔：结构非法（旧 preload / 非受信返回对象 / 字段缺失）返回 null，
+ * 由调用方按「状态未知」保守处理（弹迁移弹窗），避免把非法结构误判为已初始化而跳过问询。
+ */
+export function normalizeLlmWikiWorkspaceStatus(raw: unknown): LlmWikiWorkspaceStatus | null {
+    if (!isRecord(raw)) {
+        return null
+    }
+    if (
+        typeof raw.initialized !== 'boolean' ||
+        typeof raw.hasRaw !== 'boolean' ||
+        typeof raw.hasWiki !== 'boolean' ||
+        typeof raw.hasSchema !== 'boolean'
+    ) {
+        return null
+    }
+    return {
+        initialized: raw.initialized,
+        hasRaw: raw.hasRaw,
+        hasWiki: raw.hasWiki,
+        hasSchema: raw.hasSchema
+    }
+}
+
+/**
+ * 检测当前工作区是否已初始化 LLM Wiki（只读，不读文件内容）。
+ *
+ * @returns 归一化状态；受限 ipcRenderer 不可用 / invoke 异常 / 结构非法 → null
+ *          （调用方按「状态未知」保守回退到迁移弹窗，失败不阻断模式切换入口）
+ */
+export async function getLlmWikiWorkspaceStatus(): Promise<LlmWikiWorkspaceStatus | null> {
+    const ipcRenderer = getIpcRenderer()
+    if (!ipcRenderer) {
+        logger.error('[LlmWiki迁移] 受限 ipcRenderer 不可用，无法检测工作区 LLM Wiki 状态')
+        return null
+    }
+    try {
+        const raw = await ipcRenderer.invoke(IPC.LLM_WIKI.GET_STATUS)
+        const status = normalizeLlmWikiWorkspaceStatus(raw)
+        if (status === null) {
+            logger.error('[LlmWiki迁移] 工作区 LLM Wiki 状态返回结构非法，按状态未知处理')
+        }
+        return status
+    } catch (error) {
+        logger.error('[LlmWiki迁移] 检测工作区 LLM Wiki 状态 IPC 调用异常：', error)
+        return null
+    }
+}
+
+/**
  * 扫描当前工作区可迁移文件（只读统计 + Markdown 链接影响）。
  * 失败返回 `ok=false` + 可读错误文案，供弹窗内联提示并重试。
  */
@@ -306,7 +374,13 @@ export async function scanWorkspaceMigratableFiles(): Promise<LlmWikiScanResult>
     const ipcRenderer = getIpcRenderer()
     if (!ipcRenderer) {
         logger.error('[LlmWiki迁移] 受限 ipcRenderer 不可用，无法扫描可迁移文件')
-        return normalizeLlmWikiScanResult(null)
+        return {
+            ok: false,
+            formats: normalizeFormatStats([]),
+            total: 0,
+            links: { total: 0, items: [] },
+            error: t('dialogRenderer.migrationWizard.ipcUnavailableBridge')
+        }
     }
     try {
         const raw = await ipcRenderer.invoke(IPC.LLM_WIKI.SCAN_FILES)
@@ -318,7 +392,7 @@ export async function scanWorkspaceMigratableFiles(): Promise<LlmWikiScanResult>
             formats: normalizeFormatStats([]),
             total: 0,
             links: { total: 0, items: [] },
-            error: ipcUnavailableMessage()
+            error: ipcUnavailableMessage(describeError(error))
         }
     }
 }
@@ -330,7 +404,16 @@ export async function runWorkspaceMigration(
     const ipcRenderer = getIpcRenderer()
     if (!ipcRenderer) {
         logger.error('[LlmWiki迁移] 受限 ipcRenderer 不可用，无法执行迁移')
-        return normalizeLlmWikiMigrateResult(null)
+        return {
+            ok: false,
+            mode: request.mode,
+            moved: [],
+            copied: [],
+            skipped: [],
+            failed: [],
+            logId: null,
+            error: t('dialogRenderer.migrationWizard.ipcUnavailableBridge')
+        }
     }
     try {
         const raw = await ipcRenderer.invoke(IPC.LLM_WIKI.MIGRATE, request)
@@ -349,7 +432,7 @@ export async function runWorkspaceMigration(
             skipped: [],
             failed: [],
             logId: null,
-            error: ipcUnavailableMessage()
+            error: ipcUnavailableMessage(describeError(error))
         }
     }
 }
@@ -364,7 +447,12 @@ export async function rollbackWorkspaceMigration(
     const ipcRenderer = getIpcRenderer()
     if (!ipcRenderer) {
         logger.error('[LlmWiki迁移] 受限 ipcRenderer 不可用，无法回滚迁移')
-        return normalizeLlmWikiRollbackResult(null)
+        return {
+            ok: false,
+            restored: 0,
+            failed: [],
+            error: t('dialogRenderer.migrationWizard.ipcUnavailableBridge')
+        }
     }
     try {
         const payload = logId ? { logId } : undefined
@@ -380,7 +468,7 @@ export async function rollbackWorkspaceMigration(
             ok: false,
             restored: 0,
             failed: [],
-            error: ipcUnavailableMessage()
+            error: ipcUnavailableMessage(describeError(error))
         }
     }
 }

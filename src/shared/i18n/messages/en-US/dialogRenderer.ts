@@ -946,6 +946,10 @@ const dialogRenderer = {
             'Migrated files are under raw/ (read-only); compiled wiki/ pages appear in the resource manager. To undo, use "Roll back migration" on this result page (move method) or reopen the dialog and choose copy.',
         ipcUnavailable:
             'The migration channels are unavailable in this environment. Restart the app and try again.',
+        ipcUnavailableReason:
+            'The migration channels are unavailable in this environment: {reason}. Restart the app and try again.',
+        ipcUnavailableBridge:
+            'The migration channels are unavailable in this environment (the preload bridge is missing). Restart the app and try again.',
         unknownError: 'Unknown error'
     }
 }

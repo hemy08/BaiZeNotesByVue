@@ -1111,6 +1111,7 @@ async function submit(): Promise<void> {
     compileError.value = null
     submittedFormats.value = migrationMode.value === 'none' ? [] : [...selectedFormats.value]
     view.value = 'submitting'
+    let closeImmediately = false
     try {
         const result = await completeSwitchToLlmWiki({
             mode: migrationMode.value,
@@ -1125,11 +1126,17 @@ async function submit(): Promise<void> {
                 EventBus.$emit(EVENT_BUS.LLM_WIKI_COMPILE_REQUEST, request)
             }
         }
+        // 不迁移模式没有迁移内容可展示：切换成功后直接关闭弹窗，不进入「迁移完成」结果页
+        closeImmediately = migrationMode.value === 'none' && result.switched
     } catch (error) {
         logger.error('[LlmWiki迁移] 提交切换异常：', error)
         outcome.value = { switched: false, error: t('common.unknown') }
     } finally {
-        view.value = 'result'
+        if (closeImmediately) {
+            finishWorkspaceModeSwitch()
+        } else {
+            view.value = 'result'
+        }
     }
 }
 

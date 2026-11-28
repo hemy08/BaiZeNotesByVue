@@ -210,6 +210,11 @@
         -->
         <AppMessageBoxHost />
         <!--
+            1.5.7 体验优化（减少弹窗）：轻量 Toast 宿主（非模态、自动消失）。
+            与对话框宿主同级、Teleport 到 body，随主界面异步 chunk 加载；主界面卸载时复位。
+        -->
+        <ToastHost />
+        <!--
             2026-11-21（A2/A9 默认开启）：全工作区搜索/替换对话框 + 命令面板/Quick Open 宿主。
             宿主持有 Ctrl+Shift+F / Ctrl+Shift+P / Ctrl+P 全局快捷键监听，卸载时自动清理；
             两个浮层互斥展示，内部搜索/替换全部走主进程 IPC（只信任工作区根）。
@@ -243,6 +248,9 @@ import AppMessageBoxHost from './dialogs/AppMessageBoxHost.vue'
 // （快捷键监听与浮层显隐内聚在宿主；本组件只负责挂载与跟随主界面卸载）
 import SearchOverlayHost from './search/SearchOverlayHost.vue'
 import WritingModeHost from './Markdown/WritingModeHost.vue'
+// 1.5.7 体验优化（减少弹窗）：轻量 Toast 宿主（消息队列真源在 common/toast.ts 模块单例）
+import ToastHost from './common/ToastHost.vue'
+import { dismissAllToasts } from '../common/toast'
 import { initDocumentHistoryFeature } from '../composables/useDocumentHistory'
 // 配置 Store
 import { getConfigStore } from '../common/useConfigStore'
@@ -585,6 +593,8 @@ onBeforeUnmount(() => {
     cleanupWindowEvents()
     // 主界面卸载时收起 AI 助手对话框，避免模块级显隐状态残留到下一次挂载
     closeAiAssistantDialogState()
+    // 主界面卸载时复位轻量 Toast（清空队列 + 回收自动消失定时器），避免残留到下一次挂载
+    dismissAllToasts()
 })
 </script>
 

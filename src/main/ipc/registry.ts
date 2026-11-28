@@ -268,9 +268,10 @@ export function registerAll(mainWindow: BrowserWindow, hooks: RegisterAllHooks =
     // 13) 1.5.7 LLM Wiki L1：工作区初始化（创建 raw/、wiki/ 与 schema.md 约定模板）。
     //     无参 invoke，根路径只取 appState.rootPath；幂等且绝不覆盖既有 schema.md。
     registerLlmWikiIpc(LLM_WIKI_COMPONENT_ID)
-    // 14) 1.5.7 LLM Wiki 迁移批次：扫描可迁移文件 / 复制或移动到 raw/ / 按日志回滚。
-    //     3 个 invoke 通道仅主窗口可信；工作区根只取 appState.rootPath，迁移服务内部做
+    // 14) 1.5.7 LLM Wiki 迁移批次：状态检测 / 扫描可迁移文件 / 复制或移动到 raw/ / 按日志回滚。
+    //     4 个 invoke 通道仅主窗口可信；工作区根只取 appState.rootPath，迁移服务内部做
     //     源/目标路径校验、符号链接拒绝、raw/ 目标限定与同名冲突跳过，操作日志写 userData。
+    //     GET_STATUS 只做 stat 探测（raw/、wiki/、schema.md），供渲染层决定是否弹迁移问询。
     registerLlmWikiMigrationIpc(LLM_WIKI_MIGRATION_COMPONENT_ID)
     // 15) 1.5.7 LLM Wiki L2：MCP 只读桥（设置页状态/开关）。
     //     两个 invoke 通道仅主窗口可信；HTTP 服务默认关闭，启用时只绑定 127.0.0.1 +

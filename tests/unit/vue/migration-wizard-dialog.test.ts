@@ -9,7 +9,8 @@
  * 3. 迁移范围：按格式多选（显示数量与大小）；至少选一种格式才可提交；
  * 4. 编译选项：AI 未配置 → 开关禁用 + 提示条 + 「去配置 AI 助手」；已配置 → 开关可用，
  *    开启后显示范围（全量/指定目录/分批）+ 目录/批量大小校验；
- * 5. 提交：载荷正确（mode/formats）；完成视图展示迁移结果/跳过/失败明细/断链清单；
+ * 5. 提交：载荷正确（mode/formats）；不迁移模式成功即直接关闭（不进入结果页），
+ *    复制/移动进入结果页展示迁移结果/跳过/失败明细/断链清单，失败仍进结果页展示错误；
  * 6. 复制后「原文件如何处理」：保留 / 升级为移动（回滚复制 + 执行移动）；
  * 7. move 结果页回滚：二次确认 → 回滚动作 → 结果提示；
  * 8. 编译选择经 EventBus 交接（不新增 IPC）；取消/关闭语义。
@@ -450,7 +451,7 @@ describe('MigrationWizardDialog：AI 配置检测与编译选项', () => {
 })
 
 describe('MigrationWizardDialog：提交与结果视图', () => {
-    it('不迁移 + 不编译：提交 {mode:none,formats:[]} → 结果视图摘要 → 完成关闭', async () => {
+    it('不迁移 + 不编译：提交 {mode:none,formats:[]} → 成功即直接关闭（不进入结果页）', async () => {
         completeSwitchMock.mockResolvedValue({ switched: true })
         const wrapper = await mountDialog()
 
@@ -458,15 +459,32 @@ describe('MigrationWizardDialog：提交与结果视图', () => {
         await flushPromises()
 
         expect(completeSwitchMock).toHaveBeenCalledWith({ mode: 'none', formats: [] })
-        expect(wrapper.find('[data-testid="result-summary"]').exists()).toBe(false)
-        expect(wrapper.find('.migration-result').exists()).toBe(true)
-        expect(wrapper.find('[data-testid="result-guide"]').text()).toBe(
-            t('dialogRenderer.migrationWizard.resultGuide')
-        )
+        // 不迁移模式没有迁移内容可展示：切换成功后直接 finishWorkspaceModeSwitch
+        expect(finishSwitchMock).toHaveBeenCalledTimes(1)
+        expect(cancelSwitchMock).not.toHaveBeenCalled()
+        expect(wrapper.find('.migration-result').exists()).toBe(false)
+        expect(wrapper.find('[data-testid="result-guide"]').exists()).toBe(false)
+        expect(wrapper.find('[data-action="finish"]').exists()).toBe(false)
         expect(eventEmitSpy).not.toHaveBeenCalled()
 
-        await wrapper.find('[data-action="finish"]').trigger('click')
+        // 已关闭（父级 v-if 会卸载）；再点关闭按钮不应重复 finish
+        await wrapper.find('.close-btn').trigger('click')
         expect(finishSwitchMock).toHaveBeenCalledTimes(1)
+        expect(cancelSwitchMock).not.toHaveBeenCalled()
+    })
+
+    it('不迁移但切换失败：仍进入结果页展示失败原因（role=alert）', async () => {
+        completeSwitchMock.mockResolvedValue({
+            switched: false,
+            error: '初始化 LLM Wiki 工作区失败，工作区模式未切换'
+        })
+        const wrapper = await mountDialog()
+        await wrapper.find('.btn-confirm').trigger('click')
+        await flushPromises()
+
+        expect(finishSwitchMock).not.toHaveBeenCalled()
+        expect(wrapper.find('.migration-result').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="switch-failed"]').text()).toContain('初始化 LLM Wiki')
     })
 
     it('移动到 raw：提交迁移与格式范围；结果展示摘要/跳过/失败明细/断链清单', async () => {
@@ -525,7 +543,7 @@ describe('MigrationWizardDialog：提交与结果视图', () => {
         expect(failed.text()).toContain('尚未打开工作区')
     })
 
-    it('编译选择经 EventBus 交接（不新增 IPC），结果页明确提示由后续批次执行', async () => {
+    it('编译选择经 EventBus 交接（不新增 IPC）；不迁移模式成功后直接关闭不展示结果页', async () => {
         const wrapper = await mountDialog()
         await wrapper.find('[data-testid="compile-enabled"]').setValue(true)
         await wrapper.find('[data-testid="compile-batch-size"]').setValue('20')
@@ -538,9 +556,26 @@ describe('MigrationWizardDialog：提交与结果视图', () => {
             scope: 'batch',
             batchSize: 20
         })
+        // 不迁移模式：没有迁移内容可展示，成功即关闭弹窗（编译选择已交接给 M2 队列）
+        expect(wrapper.find('[data-testid="compile-request-recorded"]').exists()).toBe(false)
+        expect(finishSwitchMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('复制迁移 + 勾选编译：结果页明确提示编译选择已记录、由后续批次执行', async () => {
+        const wrapper = await mountDialog()
+        await wrapper.find('[data-testid="migration-mode-copy"]').setValue(true)
+        await flushPromises()
+        await wrapper.find('[data-testid="compile-enabled"]').setValue(true)
+        await wrapper.find('[data-testid="compile-batch-size"]').setValue('20')
+        await flushPromises()
+
+        await wrapper.find('.btn-confirm').trigger('click')
+        await flushPromises()
+
         const recorded = wrapper.find('[data-testid="compile-request-recorded"]')
         expect(recorded.exists()).toBe(true)
         expect(recorded.text()).toContain(t('dialogRenderer.migrationWizard.compileScopeBatch'))
+        expect(finishSwitchMock).not.toHaveBeenCalled()
     })
 
     it('全量编译/指定目录编译的交接载荷', async () => {
@@ -694,10 +729,12 @@ describe('MigrationWizardDialog：取消与关闭', () => {
     })
 
     it('结果阶段右上角关闭 = 完成（不重复调用取消）', async () => {
-        completeSwitchMock.mockResolvedValue({ switched: true })
         const wrapper = await mountDialog()
+        await wrapper.find('[data-testid="migration-mode-move"]').setValue(true)
+        await flushPromises()
         await wrapper.find('.btn-confirm').trigger('click')
         await flushPromises()
+        expect(wrapper.find('.migration-result').exists()).toBe(true)
 
         await wrapper.find('.close-btn').trigger('click')
         expect(finishSwitchMock).toHaveBeenCalledTimes(1)

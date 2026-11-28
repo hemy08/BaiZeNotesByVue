@@ -3881,9 +3881,14 @@ aliases:
                     </li>
                     <li>
                         右侧边栏的 AI 按钮在<strong>传统模式和 LLM Wiki 模式</strong
-                        >都显示：传统模式下点击会按与「设置 → 工作区模式」相同的流程（确认 → 初始化
-                        → 切换）进入 LLM Wiki 模式并打开 AI
+                        >都显示：传统模式下点击会切换到 LLM Wiki 模式并打开 AI
                         面板；也可以在顶部菜单栏右侧用图标按钮快速切换。
+                    </li>
+                    <li>
+                        <strong>已初始化过的工作区</strong>（已有
+                        <code>raw/</code
+                        >、<code>wiki/</code>、<code>schema.md</code>）再次切换时<strong>不会再弹迁移询问</strong>：直接完成切换，并在右下角用轻提示告知（可随时手动编译）；只有<strong>首次</strong>切换（工作区还没有
+                        LLM Wiki 结构）才弹出迁移弹窗。
                     </li>
                     <li>
                         切换视图不会打断编辑（光标与滚动位置保留）；当前视图模式在同一次运行内保持一致，重启后恢复默认「编辑+预览」。
@@ -4102,8 +4107,9 @@ updated: 2026-11-28
                 </ul>
                 <h3 id="sec-125">26.8 切换与迁移（传统工作区 → LLM Wiki）</h3>
                 <p>
-                    在「设置 → 工作区模式」、顶部菜单栏模式按钮或右侧边栏 AI 入口切换到 LLM Wiki
-                    时，会弹出<strong>迁移弹窗</strong>（所有决策集中在一个弹窗里）：
+                    <strong>首次</strong>切换到 LLM Wiki（工作区还没有
+                    <code>raw/</code
+                    >/<code>wiki/</code>/<code>schema.md</code>）时，会弹出<strong>迁移弹窗</strong>（所有决策集中在一个弹窗里）：
                 </p>
                 <ul>
                     <li>
@@ -4158,6 +4164,9 @@ updated: 2026-11-28
                     <p>
                         提示：迁移不依赖
                         AI（只做文件复制/移动）；编译才需要已配置的模型。迁移/编译均可回滚或逐项重试。
+                    </p>
+                    <p>
+                        已初始化过的工作区再次切换<strong>不会弹迁移窗</strong>，直接完成切换并用轻提示告知。
                     </p>
                 </blockquote>
 

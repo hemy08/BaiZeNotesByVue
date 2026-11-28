@@ -41,7 +41,11 @@ import { app } from 'electron'
 import { appState } from './app-state'
 import { logger } from './logger'
 import { isSameOrWithin, normalizeLocalPath } from './security'
-import { LLM_WIKI_RAW_DIR_NAME } from '../../shared/constants/workspace-mode'
+import {
+    LLM_WIKI_RAW_DIR_NAME,
+    LLM_WIKI_SCHEMA_FILE_NAME,
+    LLM_WIKI_WIKI_DIR_NAME
+} from '../../shared/constants/workspace-mode'
 import type {
     LlmWikiFormatStat,
     LlmWikiLinkImpact,
@@ -55,7 +59,8 @@ import type {
     LlmWikiRollbackFailure,
     LlmWikiRollbackRequest,
     LlmWikiRollbackResult,
-    LlmWikiScanResult
+    LlmWikiScanResult,
+    LlmWikiWorkspaceStatus
 } from '../../shared/types/ipc'
 
 // ============================ 常量（单一真源，供扫描/迁移/测试共用） ============================
@@ -381,6 +386,58 @@ function resolveMigrationLogDir(deps: LlmWikiMigrationDeps): string | null {
 /** 取当前时间（单测注入固定时间源） */
 function resolveNow(deps: LlmWikiMigrationDeps): Date {
     return deps.now ? deps.now() : new Date()
+}
+
+// ============================ 工作区 LLM Wiki 状态检测 ============================
+
+/** 未初始化状态（无工作区 / 根不可访问 / 三项均不存在时共用，避免重复对象字面量） */
+function emptyLlmWikiWorkspaceStatus(): LlmWikiWorkspaceStatus {
+    return { initialized: false, hasRaw: false, hasWiki: false, hasSchema: false }
+}
+
+/**
+ * 判断目标路径是否存在且为指定类型（目录 / 普通文件）。
+ *
+ * 语义：`stat` 抛错（不存在/不可访问）一律按「不存在」处理——状态检测是**只读探测**，
+ * 失败时保守回退「未初始化」（渲染层据此仍弹迁移弹窗，不会误判为已初始化而跳过问询）。
+ */
+async function candidateExists(target: string, kind: 'directory' | 'file'): Promise<boolean> {
+    try {
+        const stats = await fs.stat(target)
+        return kind === 'directory' ? stats.isDirectory() : stats.isFile()
+    } catch (error) {
+        logger.debug('[LLM Wiki 迁移] 状态检测路径不可用，按不存在处理：', target, error)
+        return false
+    }
+}
+
+/**
+ * 检测当前工作区是否已初始化 LLM Wiki（`LLM_WIKI.GET_STATUS` 业务入口）。
+ *
+ * 判定口径：`raw/`、`wiki/`、`schema.md` 任一存在即 `initialized=true`（对应「曾初始化/
+ * 迁移过」）；三者全不存在或工作区根不可用 → 全部 false（渲染层保守弹出迁移弹窗）。
+ * 只做 `stat` 探测，不读取目录内容/文件内容；无工作区根时不访问任何路径。
+ *
+ * @returns 结构化状态；**不抛异常**
+ */
+export async function inspectLlmWikiWorkspaceStatus(
+    deps: LlmWikiMigrationDeps = {}
+): Promise<LlmWikiWorkspaceStatus> {
+    const resolution = await resolveWorkspaceRoot(resolveRootInput(deps))
+    if (!resolution.ok) {
+        return emptyLlmWikiWorkspaceStatus()
+    }
+    const [hasRaw, hasWiki, hasSchema] = await Promise.all([
+        candidateExists(path.join(resolution.root, LLM_WIKI_RAW_DIR_NAME), 'directory'),
+        candidateExists(path.join(resolution.root, LLM_WIKI_WIKI_DIR_NAME), 'directory'),
+        candidateExists(path.join(resolution.root, LLM_WIKI_SCHEMA_FILE_NAME), 'file')
+    ])
+    return {
+        initialized: hasRaw || hasWiki || hasSchema,
+        hasRaw,
+        hasWiki,
+        hasSchema
+    }
 }
 
 // ============================ 扫描：文件清单 ============================

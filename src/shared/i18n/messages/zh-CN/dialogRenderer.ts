@@ -897,6 +897,8 @@ const dialogRenderer = {
         resultGuide:
             '迁移的文件位于 raw/（只读）；编译生成的 wiki/ 页面可在资源管理器中查看。如需撤销，可按结果页的「回滚迁移」恢复（移动方式），或重新打开弹窗选择复制方式。',
         ipcUnavailable: '当前环境无法访问迁移通道，请重启应用后重试。',
+        ipcUnavailableReason: '当前环境无法访问迁移通道：{reason}。请重启应用后重试。',
+        ipcUnavailableBridge: '当前环境无法访问迁移通道（preload 桥不可用），请重启应用后重试。',
         unknownError: '未知错误'
     }
 }

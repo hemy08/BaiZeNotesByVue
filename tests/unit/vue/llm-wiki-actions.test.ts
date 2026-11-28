@@ -8,7 +8,8 @@
  * 3. 失败但无 error 字段：回退通用「未知」文案；
  * 4. 非对象/非法返回：按失败处理（结构守卫）；
  * 5. 受限 ipcRenderer 不可用：不抛异常，展示「环境不支持」提示；
- * 6. invoke 抛异常：错误详情去掉 Electron 包装前缀后展示。
+ * 6. invoke 抛异常：错误详情去掉 Electron 包装前缀后展示；
+ * 7. 1.5.7 体验优化：`silent: true` 成功不弹模态提示（供模式直切复用），失败仍弹错误提示。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -58,6 +59,30 @@ describe('initializeLlmWiki：渲染层入口动作', () => {
         invoke.mockResolvedValue({ success: false, error: reason })
 
         const ok = await initializeLlmWiki()
+
+        expect(ok).toBe(false)
+        expect(errorSpy).toHaveBeenCalled()
+        expect(messageDialog().visible).toBe(true)
+        expect(messageDialog().type).toBe('error')
+        expect(messageDialog().message).toBe(
+            t('dialogRenderer.systemSetting.features.workspaceModeInitFailed', { error: reason })
+        )
+    })
+
+    it('silent: true 成功：不弹模态提示（供模式直切后用 Toast 反馈），仍返回 true', async () => {
+        const ok = await initializeLlmWiki({ silent: true })
+
+        expect(ok).toBe(true)
+        expect(invoke).toHaveBeenCalledWith('baize:file:initialize-llm-wiki')
+        expect(messageDialog().visible).toBe(false)
+    })
+
+    it('silent: true 失败：错误提示仍弹出（silent 只抑制成功模态框，失败必须可见）', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const reason = '磁盘空间不足'
+        invoke.mockResolvedValue({ success: false, error: reason })
+
+        const ok = await initializeLlmWiki({ silent: true })
 
         expect(ok).toBe(false)
         expect(errorSpy).toHaveBeenCalled()

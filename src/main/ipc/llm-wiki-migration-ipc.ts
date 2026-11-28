@@ -1,32 +1,37 @@
 /**
- * 1.5.7 LLM Wiki 迁移批次：文件迁移 IPC（主进程侧，domain=llm-wiki，3 个 invoke）
+ * 1.5.7 LLM Wiki 迁移批次：文件迁移 IPC（主进程侧，domain=llm-wiki，4 个 invoke）
  *
  * 链路（IPC-17 六步）：
- *   1. 常量：`IPC.LLM_WIKI.SCAN_FILES / MIGRATE / ROLLBACK_MIGRATION`（shared/ipc-channels.ts）；
- *   2. 契约：`LlmWikiScanResult / LlmWikiMigrateResult / LlmWikiRollbackResult` +
- *      IpcRequests / IpcResponses（shared/types/ipc.ts）；
+ *   1. 常量：`IPC.LLM_WIKI.GET_STATUS / SCAN_FILES / MIGRATE / ROLLBACK_MIGRATION`
+ *      （shared/ipc-channels.ts）；
+ *   2. 契约：`LlmWikiWorkspaceStatus / LlmWikiScanResult / LlmWikiMigrateResult /
+ *      LlmWikiRollbackResult` + IpcRequests / IpcResponses（shared/types/ipc.ts）；
  *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
  *   4. 主进程：本模块注册 handler（withSenderCheck）→ utils/llm-wiki-migrate.ts
- *      （扫描统计 / 复制 / 移动 / 操作日志 / 回滚；专用迁移授权 + 路径/符号链接校验）；
+ *      （工作区初始化状态检测 / 扫描统计 / 复制 / 移动 / 操作日志 / 回滚；
+ *      专用迁移授权 + 路径/符号链接校验）；
  *   5. 渲染层：common/llm-wiki-migration-actions.ts + MigrationWizardDialog.vue
- *      （三处模式切换入口统一走迁移弹窗）；
+ *      + composables/useWorkspaceModeSwitch.ts（已初始化直接切换 / 首次切换弹迁移弹窗）；
  *   6. 测试：llm-wiki-migration-ipc / llm-wiki-migrate / llm-wiki-migration-actions /
- *      migration-wizard-dialog + 通道命名/契约/白名单/注册门禁。
+ *      use-workspace-mode-switch / migration-wizard-dialog + 通道命名/契约/白名单/注册门禁。
  *
  * 安全边界：
  * - 仅主窗口可信调用（withSenderCheck，`kind: 'handle'` 拒绝返回统一错误对象）；
  * - 工作区根只取主进程 `appState.rootPath`（渲染层不传根，无法指定任意目录）；
  * - 迁移/回滚的路径校验、符号链接拒绝、raw/ 目标限定全部在迁移服务内部完成；
+ * - 状态检测只做 `stat` 探测（不读目录/文件内容），无工作区时全部 false；
  * - 所有失败返回结构化结果（`ok:false` + `error`），不向渲染层抛异常/堆栈。
  */
 import { IPC } from '../../shared/ipc-channels'
 import type {
     LlmWikiMigrateResult,
     LlmWikiRollbackResult,
-    LlmWikiScanResult
+    LlmWikiScanResult,
+    LlmWikiWorkspaceStatus
 } from '../../shared/types/ipc'
 import { withSenderCheck } from '../utils/ipc-security'
 import {
+    inspectLlmWikiWorkspaceStatus,
     migrateLlmWikiFiles,
     rollbackLlmWikiMigration,
     scanLlmWikiMigratableFiles,
@@ -54,6 +59,17 @@ function toServiceDeps(deps: LlmWikiMigrationIpcDeps): LlmWikiMigrationDeps {
         logDir: deps.logDir,
         now: deps.now
     }
+}
+
+/**
+ * `LLM_WIKI.GET_STATUS` 业务入口（导出便于单测直接断言）。
+ *
+ * @returns 工作区 LLM Wiki 状态；无工作区/根不可访问时全部 false（不抛异常）
+ */
+export async function llmWikiGetStatus(
+    deps: LlmWikiMigrationIpcDeps = {}
+): Promise<LlmWikiWorkspaceStatus> {
+    return inspectLlmWikiWorkspaceStatus(toServiceDeps(deps))
 }
 
 /**
@@ -88,13 +104,20 @@ export async function llmWikiRollbackMigration(
 }
 
 /**
- * 注册 LLM Wiki 迁移 IPC（3 个 invoke 通道）。
+ * 注册 LLM Wiki 迁移 IPC（4 个 invoke 通道）。
  *
  * @param componentId 监听台账组件 ID（来源 registry 编排；缺省用本域常量）
  */
 export function registerLlmWikiMigrationIpc(
     componentId: string = LLM_WIKI_MIGRATION_IPC_COMPONENT_ID
 ): void {
+    ipcListenerManager.registerHandleOnce(
+        IPC.LLM_WIKI.GET_STATUS,
+        withSenderCheck(IPC.LLM_WIKI.GET_STATUS, async () => llmWikiGetStatus(), {
+            kind: 'handle'
+        }),
+        componentId
+    )
     ipcListenerManager.registerHandleOnce(
         IPC.LLM_WIKI.SCAN_FILES,
         withSenderCheck(IPC.LLM_WIKI.SCAN_FILES, async () => llmWikiScanFiles(), {

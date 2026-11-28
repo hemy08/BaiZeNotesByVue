@@ -41,7 +41,7 @@ const DOMAINS = new Set([
     'mcp',
     // 1.5.7 LLM Wiki L3：AI Provider（chat / ingest / apply-ingest / get-config / save-config）
     'ai',
-    // 1.5.7 LLM Wiki 迁移批次：文件迁移（scan-files / migrate / rollback-migration）
+    // 1.5.7 LLM Wiki 迁移批次：文件迁移（get-status / scan-files / migrate / rollback-migration）
     'llm-wiki'
 ])
 
@@ -72,7 +72,7 @@ describe('IPC 通道命名规范', () => {
         // 1.5.2 E3：新增 `ocr` 域（图片 OCR 两个 invoke 通道），白名单 17 → 18；
         // 1.5.7 L2：新增 `mcp` 域（MCP 只读桥两个 invoke 通道），白名单 18 → 19；
         // 1.5.7 L3：新增 `ai` 域（AI Provider 5 个 invoke 通道），白名单 19 → 20；
-        // 1.5.7 迁移批次：新增 `llm-wiki` 域（扫描/迁移/回滚 3 个 invoke 通道），白名单 20 → 21；
+        // 1.5.7 迁移批次：新增 `llm-wiki` 域（状态检测/扫描/迁移/回滚 4 个 invoke 通道），白名单 20 → 21；
         // 用断言锁定口径，避免后续增删 domain 时再次出现注释与实现脱节。
         expect(DOMAINS.size).toBe(21)
     })

@@ -308,13 +308,16 @@ export const IPC = {
     } as const,
 
     // ============ 1.5.7 LLM Wiki 迁移批次（传统工作区 → LLM Wiki，domain=llm-wiki） ============
-    // 三个 invoke 通道，仅主窗口可信（withSenderCheck），工作区根只取主进程 appState.rootPath：
+    // 四个 invoke 通道，仅主窗口可信（withSenderCheck），工作区根只取主进程 appState.rootPath：
+    // - GET_STATUS：只读检测当前工作区是否已初始化 LLM Wiki（raw/、wiki/、schema.md 是否存在），
+    //   供渲染层决定「首次切换弹迁移弹窗 / 已初始化直接切换」；无工作区/根不可访问时全部 false；
     // - SCAN_FILES：只读扫描可迁移文件（按格式统计数量/字节，不读文件内容）；
     // - MIGRATE：用户确认后复制/移动到 raw/（保持原相对目录；同名冲突跳过；**专用迁移授权**
     //   不放开普通 raw 只读守卫语义：仅本流程、路径校验、目标限定在 raw/ 内）；
     // - ROLLBACK_MIGRATION：按操作日志回滚最近一次迁移（move→移回原路径 / copy→删除复制体）。
     // 操作日志写在 app.getPath('userData')/migrations/<timestamp>.json，不写工作区。
     LLM_WIKI: {
+        GET_STATUS: 'baize:llm-wiki:get-status',
         SCAN_FILES: 'baize:llm-wiki:scan-files',
         MIGRATE: 'baize:llm-wiki:migrate',
         ROLLBACK_MIGRATION: 'baize:llm-wiki:rollback-migration'

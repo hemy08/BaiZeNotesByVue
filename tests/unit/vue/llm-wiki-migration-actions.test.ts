@@ -4,15 +4,18 @@
  *
  * 覆盖：
  * 1. 扫描/迁移/回滚：正常结果归一化（缺失字段补默认、非法条目丢弃、total 重算）；
- *    受限 ipcRenderer 不可用 / invoke 抛异常 → 结构化失败（不抛异常、文案可读）；
- * 2. 归一化函数对「主进程未受信返回对象」等异常结构的降级；
- * 3. AI 编译可用性检测：enabled + models 判定、配置读取失败降级为未配置；
- * 4. 纯工具函数：字节格式化、指定目录归一化、分批数量归一化（边界与非法值）。
+ *    受限 ipcRenderer 不可用 / invoke 抛异常 → 结构化失败（不抛异常、文案可读，
+ *    含原因时走 ipcUnavailableReason 模板、桥缺失走 ipcUnavailableBridge）；
+ * 2. 工作区 LLM Wiki 状态检测（GET_STATUS）：正常归一化；结构非法/异常/桥缺失 → null；
+ * 3. 归一化函数对「主进程未受信返回对象」等异常结构的降级；
+ * 4. AI 编译可用性检测：enabled + models 判定、配置读取失败降级为未配置；
+ * 5. 纯工具函数：字节格式化、指定目录归一化、分批数量归一化（边界与非法值）。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { IPC } from '../../../src/shared/ipc-channels'
 import {
     formatLlmWikiMigrationBytes,
+    getLlmWikiWorkspaceStatus,
     LLM_WIKI_COMPILE_BATCH_SIZE_DEFAULT,
     LLM_WIKI_COMPILE_BATCH_SIZE_MAX,
     LLM_WIKI_COMPILE_BATCH_SIZE_MIN,
@@ -21,6 +24,7 @@ import {
     normalizeLlmWikiMigrateResult,
     normalizeLlmWikiRollbackResult,
     normalizeLlmWikiScanResult,
+    normalizeLlmWikiWorkspaceStatus,
     readLlmWikiAiCompileStatus,
     rollbackWorkspaceMigration,
     runWorkspaceMigration,
@@ -105,19 +109,22 @@ describe('scanWorkspaceMigratableFiles：调用与归一化', () => {
         expect(result.total).toBe(0)
     })
 
-    it('invoke 抛异常：记录错误日志并返回结构化失败', async () => {
+    it('invoke 抛异常：记录错误日志并返回结构化失败（含具体原因）', async () => {
         invokeMock.mockRejectedValue(new Error('channel closed'))
         const result = await scanWorkspaceMigratableFiles()
         expect(result.ok).toBe(false)
-        expect(result.error).toBe(t('dialogRenderer.migrationWizard.ipcUnavailable'))
+        expect(result.error).toBe(
+            t('dialogRenderer.migrationWizard.ipcUnavailableReason', { reason: 'channel closed' })
+        )
+        expect(result.error).toContain('channel closed')
         expect(loggerErrorMock).toHaveBeenCalled()
     })
 
-    it('受限 ipcRenderer 不可用（无 window.electron）：返回结构化失败', async () => {
+    it('受限 ipcRenderer 不可用（无 window.electron）：返回结构化失败（桥缺失文案）', async () => {
         vi.unstubAllGlobals()
         const result = await scanWorkspaceMigratableFiles()
         expect(result.ok).toBe(false)
-        expect(result.error).toBe(t('dialogRenderer.migrationWizard.ipcUnavailable'))
+        expect(result.error).toBe(t('dialogRenderer.migrationWizard.ipcUnavailableBridge'))
     })
 
     it('主进程返回截断标记与 error 时透传', async () => {
@@ -177,19 +184,21 @@ describe('runWorkspaceMigration：调用与归一化', () => {
         expect(result.copied).toEqual([])
     })
 
-    it('invoke 抛异常：记录错误日志并返回结构化失败', async () => {
+    it('invoke 抛异常：记录错误日志并返回结构化失败（含具体原因）', async () => {
         invokeMock.mockRejectedValue(new Error('ipc broken'))
         const result = await runWorkspaceMigration({ mode: 'move', formats: ['pdf'] })
         expect(result.ok).toBe(false)
         expect(result.mode).toBe('move')
-        expect(result.error).toBe(t('dialogRenderer.migrationWizard.ipcUnavailable'))
+        expect(result.error).toBe(
+            t('dialogRenderer.migrationWizard.ipcUnavailableReason', { reason: 'ipc broken' })
+        )
     })
 
-    it('无 ipcRenderer：返回结构化失败', async () => {
+    it('无 ipcRenderer：返回结构化失败（桥缺失文案）', async () => {
         vi.unstubAllGlobals()
         const result = await runWorkspaceMigration({ mode: 'copy', formats: ['markdown'] })
         expect(result.ok).toBe(false)
-        expect(result.error).toBe(t('dialogRenderer.migrationWizard.ipcUnavailable'))
+        expect(result.error).toBe(t('dialogRenderer.migrationWizard.ipcUnavailableBridge'))
     })
 })
 
@@ -223,16 +232,83 @@ describe('rollbackWorkspaceMigration：调用与归一化', () => {
         expect(result.error).toBe('未找到可回滚的迁移记录。')
     })
 
-    it('invoke 抛异常 / 无 ipcRenderer：结构化失败', async () => {
+    it('invoke 抛异常 / 无 ipcRenderer：结构化失败（分别带原因与桥缺失文案）', async () => {
         invokeMock.mockRejectedValue(new Error('boom'))
         const thrown = await rollbackWorkspaceMigration()
         expect(thrown.ok).toBe(false)
-        expect(thrown.error).toBe(t('dialogRenderer.migrationWizard.ipcUnavailable'))
+        expect(thrown.error).toBe(
+            t('dialogRenderer.migrationWizard.ipcUnavailableReason', { reason: 'boom' })
+        )
 
         vi.unstubAllGlobals()
         const unavailable = await rollbackWorkspaceMigration()
         expect(unavailable.ok).toBe(false)
         expect(unavailable.restored).toBe(0)
+        expect(unavailable.error).toBe(t('dialogRenderer.migrationWizard.ipcUnavailableBridge'))
+    })
+})
+
+describe('getLlmWikiWorkspaceStatus：工作区初始化状态检测', () => {
+    it('正常返回：invoke GET_STATUS 且四字段归一化', async () => {
+        invokeMock.mockResolvedValue({
+            initialized: true,
+            hasRaw: true,
+            hasWiki: true,
+            hasSchema: true,
+            extra: 'ignored'
+        })
+
+        await expect(getLlmWikiWorkspaceStatus()).resolves.toEqual({
+            initialized: true,
+            hasRaw: true,
+            hasWiki: true,
+            hasSchema: true
+        })
+        expect(invokeMock).toHaveBeenCalledWith(IPC.LLM_WIKI.GET_STATUS)
+    })
+
+    it('返回结构非法（非对象/缺字段/类型错误）→ null 且记录错误日志', async () => {
+        invokeMock.mockResolvedValueOnce(null)
+        await expect(getLlmWikiWorkspaceStatus()).resolves.toBeNull()
+
+        invokeMock.mockResolvedValueOnce({ initialized: 'yes', hasRaw: true })
+        await expect(getLlmWikiWorkspaceStatus()).resolves.toBeNull()
+
+        invokeMock.mockResolvedValueOnce({
+            initialized: true,
+            hasRaw: true,
+            hasWiki: true
+        })
+        await expect(getLlmWikiWorkspaceStatus()).resolves.toBeNull()
+        expect(loggerErrorMock).toHaveBeenCalled()
+    })
+
+    it('invoke 抛异常 → null（按状态未知保守处理，不抛给调用方）', async () => {
+        invokeMock.mockRejectedValue(new Error('get-status boom'))
+        await expect(getLlmWikiWorkspaceStatus()).resolves.toBeNull()
+        expect(loggerErrorMock).toHaveBeenCalled()
+    })
+
+    it('受限 ipcRenderer 不可用/无 window → null', async () => {
+        vi.unstubAllGlobals()
+        await expect(getLlmWikiWorkspaceStatus()).resolves.toBeNull()
+
+        vi.stubGlobal('window', undefined)
+        await expect(getLlmWikiWorkspaceStatus()).resolves.toBeNull()
+    })
+
+    it('normalizeLlmWikiWorkspaceStatus：非法结构返回 null，合法结构透传', () => {
+        expect(normalizeLlmWikiWorkspaceStatus(null)).toBeNull()
+        expect(normalizeLlmWikiWorkspaceStatus([])).toBeNull()
+        expect(normalizeLlmWikiWorkspaceStatus({ initialized: false })).toBeNull()
+        expect(
+            normalizeLlmWikiWorkspaceStatus({
+                initialized: false,
+                hasRaw: false,
+                hasWiki: false,
+                hasSchema: false
+            })
+        ).toEqual({ initialized: false, hasRaw: false, hasWiki: false, hasSchema: false })
     })
 })
 

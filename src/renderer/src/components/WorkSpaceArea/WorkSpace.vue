@@ -168,10 +168,14 @@
     </div>
     <!-- 1.5.7 迁移批次：工作区模式切换迁移弹窗（设置页/菜单栏/边栏三处入口共用）。
          由 `useWorkspaceModeSwitch` 的模块单例状态触发；
-         v-if 保证未打开时零 DOM/零副作用（传统模式下不新增常驻对话框节点）。 -->
+         v-if 保证未打开时零 DOM/零副作用（传统模式下不新增常驻对话框节点）；
+         1.5.7 构建预算修复：改为异步组件——弹窗体积大（含迁移/编译全部子视图），
+         只在首次打开时加载其 chunk，不随主界面壳 chunk 一起加载（v-if 未打开时零请求）。 -->
     <MigrationWizardDialog v-if="workspaceModeSwitchState.visible" />
     <!-- 1.5.7 迁移批次 M2：批量编译对话框宿主（常驻；订阅 LLM_WIKI_COMPILE_REQUEST 后
-         等迁移弹窗关闭再打开对话框；未打开时零可见 DOM）。 -->
+         等迁移弹窗关闭再打开对话框；未打开时零可见 DOM）。
+         1.5.7 构建预算修复：改为异步组件——宿主零可见 UI（异步加载期间不渲染任何占位），
+         其依赖的批量编译对话框/队列/运行时模块不进入主界面壳 chunk。 -->
     <BatchCompileHost />
 </template>
 
@@ -197,8 +201,6 @@ import MdContainer from '@renderer/components/Markdown/MarkdownContainer.vue'
 import PluginTools from '@renderer/components/PluginTools/PluginTools.vue'
 import HemyTools from '@renderer/components/HemyTools/HemyTools.vue'
 import LlmAiPanel from '@renderer/components/llm-wiki/LlmAiPanel.vue'
-import BatchCompileHost from '@renderer/components/llm-wiki/BatchCompileHost.vue'
-import MigrationWizardDialog from '@renderer/components/dialogs/simple/MigrationWizardDialog.vue'
 import {
     requestSwitchToLlmWiki,
     workspaceModeSwitchState
@@ -259,6 +261,51 @@ const ShowPdfEditor = defineAsyncComponent({
     loadingComponent: AsyncLoadingPlaceholder,
     errorComponent: AsyncLoadErrorPlaceholder,
     delay: 200
+})
+
+// 1.5.7 构建预算修复（迁移批次 M1/M2 组件懒加载）：迁移弹窗与批量编译宿主此前同步 import，
+// 其整棵依赖（迁移编排 / 批量编译队列 / 编译对话框等，合计约 100 KiB）会进入主界面壳 chunk，
+// 每次进入主界面都要解析/编译。两者都只在「用户切换工作区模式」时才需要，改为异步组件：
+// - MigrationWizardDialog：`v-if` 控制，未打开时零加载；首次打开才拉取本地 chunk。
+//   加载中占位渲染 null（不闪「加载中」文本），打开时仅比同步组件晚一个 chunk 加载时延；
+//   加载失败时记录日志并走既有「加载失败，请重试」占位，不静默。
+// - BatchCompileHost：常驻但零可见 DOM，异步加载期间不渲染加载占位（AsyncSilentPlaceholder），
+//   订阅在 loader 完成后注册——编译请求只可能由用户操作（迁移结果页确认）触发，远晚于启动加载。
+// 事件订阅/卸载清理仍在各组件内部 onMounted/onBeforeUnmount，异步加载不改变其生命周期语义。
+const loadMigrationWizardDialog = () =>
+    import('@renderer/components/dialogs/simple/MigrationWizardDialog.vue')
+const loadBatchCompileHost = () => import('@renderer/components/llm-wiki/BatchCompileHost.vue')
+
+/** 无可见 UI 的异步组件占位（加载中/失败都不渲染，避免常驻宿主出现占位文本） */
+// eslint-disable-next-line vue/one-component-per-file -- 占位组件仅用于 defineAsyncComponent 的 loading 展示
+const AsyncSilentPlaceholder = defineComponent({
+    name: 'AsyncSilentPlaceholder',
+    render: () => null
+})
+
+const MigrationWizardDialog = defineAsyncComponent({
+    loader: loadMigrationWizardDialog,
+    loadingComponent: AsyncSilentPlaceholder,
+    errorComponent: AsyncLoadErrorPlaceholder,
+    // 占位组件渲染 null（无任何可见 UI），delay: 0 让加载中态同步存在、无需 200ms 延迟防闪烁
+    delay: 0,
+    // 自定义 onError 必须显式 fail()（否则 Vue 不会落到 errorComponent / 也不会抛错）；
+    // 语义与默认行为一致：不自动重试，记录日志后展示「加载失败，请重试」占位。
+    onError: (error: Error, _retry: () => void, fail: () => void) => {
+        logger.error('迁移弹窗组件加载失败:', error)
+        fail()
+    }
+})
+const BatchCompileHost = defineAsyncComponent({
+    loader: loadBatchCompileHost,
+    loadingComponent: AsyncSilentPlaceholder,
+    errorComponent: AsyncSilentPlaceholder,
+    delay: 0,
+    // 宿主无可见 UI：失败时仅记录日志并 fail()（编译入口能力缺失属于异常，需可诊断）
+    onError: (error: Error, _retry: () => void, fail: () => void) => {
+        logger.error('批量编译宿主组件加载失败:', error)
+        fail()
+    }
 })
 
 // 使用 ref 来创建响应式引用

@@ -17,6 +17,9 @@
  * - 受限 ipcRenderer 不可用 / 主进程返回 `success=false` / invoke 抛异常，三种失败都记
  *   error 日志并经应用内消息对话框给用户可见提示（标题取菜单动作名，正文带可读原因）；
  * - 成功统一展示「已初始化 raw/ 与 wiki/」提示，让用户明确目录已就绪；
+ * - 1.5.7 体验优化：调用方可用 `silent: true` 抑制**成功**模态提示——模式直切场景（工作区
+ *   已初始化）随后会展示轻量 Toast，若再弹一次「已初始化」模态框就是多余弹窗；失败提示
+ *   不受 silent 影响（失败必须可见）；
  * - 本函数不抛异常：菜单动作/设置页确认流程可直接 `void` 调用或 `await` 结果。
  */
 import { IPC } from '../../../shared/ipc-channels'
@@ -28,6 +31,15 @@ import { logger } from './logger'
 /** 渲染层受限 ipcRenderer 的最小结构（便于单测注入替身，不直接依赖 Electron 类型） */
 interface LlmWikiIpcRendererLike {
     invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
+}
+
+/** 初始化动作可选配置 */
+export interface LlmWikiInitializeOptions {
+    /**
+     * 静默模式：成功时不弹模态提示（供模式直切等「随后另有轻量反馈」的场景复用）；
+     * 失败提示不受影响，保证失败始终可见。
+     */
+    silent?: boolean
 }
 
 /** 取受限 ipcRenderer；非 Electron 环境（测试桩/旧 preload）返回 null */
@@ -69,10 +81,12 @@ function readInitializeResult(raw: unknown): { success: boolean; error?: string 
 /**
  * 初始化 LLM Wiki 工作区（在已打开的工作区根下创建 raw/ 与 wiki/ 目录，幂等）。
  *
+ * @param options.silent 为 true 时成功不弹模态提示（失败提示仍保留）；
+ *        模式直切场景传入，避免「已初始化」模态框与随后的 Toast 重复反馈。
  * @returns 是否初始化成功；**失败时已给出可见提示**，调用方只需据此决定是否继续
  *          （设置页：成功才把工作区模式写入草稿；菜单/命令面板：忽略返回值）。
  */
-export async function initializeLlmWiki(): Promise<boolean> {
+export async function initializeLlmWiki(options: LlmWikiInitializeOptions = {}): Promise<boolean> {
     const ipcRenderer = getIpcRenderer()
     if (!ipcRenderer) {
         logger.error('[LlmWiki] 受限 ipcRenderer 不可用，无法初始化 LLM Wiki 工作区')
@@ -86,9 +100,16 @@ export async function initializeLlmWiki(): Promise<boolean> {
         const raw: unknown = await ipcRenderer.invoke(IPC.FILE.INITIALIZE_LLM_WIKI)
         const result = readInitializeResult(raw)
         if (result.success) {
-            showAppSuccess(t('dialogRenderer.systemSetting.features.workspaceModeInitSuccess'), {
-                title: feedbackTitle()
-            })
+            // 静默模式（模式直切）不弹模态成功框：随后由调用方给轻量 Toast；
+            // 默认（菜单/命令面板）保留成功模态提示，让用户明确目录已就绪。
+            if (options.silent !== true) {
+                showAppSuccess(
+                    t('dialogRenderer.systemSetting.features.workspaceModeInitSuccess'),
+                    {
+                        title: feedbackTitle()
+                    }
+                )
+            }
             return true
         }
         const detail = result.error ?? t('common.unknown')

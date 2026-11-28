@@ -31,6 +31,7 @@ import {
     extractMarkdownLinkTargets,
     formatLlmWikiMigratableFile,
     formatLlmWikiMigrationLogTimestamp,
+    inspectLlmWikiWorkspaceStatus,
     isSkippedLlmWikiMigrationDirectory,
     isSkippedLlmWikiMigrationFile,
     LLM_WIKI_MIGRATION_ERROR_INVALID_PAYLOAD,
@@ -151,6 +152,83 @@ describe('格式归类与忽略口径', () => {
 
     it('日志时间戳格式为 Windows 文件名安全的 YYYYMMDD-HHmmss-SSS', () => {
         expect(formatLlmWikiMigrationLogTimestamp(fixedNow())).toBe('20261128-120000-123')
+    })
+})
+
+describe('inspectLlmWikiWorkspaceStatus：工作区初始化状态检测', () => {
+    it('根不可用（空/相对/不存在/非目录）时全部 false（保守回退弹窗）', async () => {
+        const empty = { initialized: false, hasRaw: false, hasWiki: false, hasSchema: false }
+        await expect(inspectLlmWikiWorkspaceStatus({ rootPath: '' })).resolves.toEqual(empty)
+        await expect(inspectLlmWikiWorkspaceStatus({ rootPath: 'relative/path' })).resolves.toEqual(
+            empty
+        )
+        await expect(
+            inspectLlmWikiWorkspaceStatus({ rootPath: path.join(workspaceRoot, 'missing') })
+        ).resolves.toEqual(empty)
+
+        const fileRoot = await writeWorkspaceFile('not-a-dir.md', '# x')
+        await expect(inspectLlmWikiWorkspaceStatus({ rootPath: fileRoot })).resolves.toEqual(empty)
+    })
+
+    it('三项均不存在：initialized=false', async () => {
+        await writeWorkspaceFile('notes/a.md', '# a')
+        await expect(inspectLlmWikiWorkspaceStatus({ rootPath: workspaceRoot })).resolves.toEqual({
+            initialized: false,
+            hasRaw: false,
+            hasWiki: false,
+            hasSchema: false
+        })
+    })
+
+    it('raw/ + wiki/ + schema.md 齐全：逐项 true 且 initialized=true', async () => {
+        await fs.mkdir(path.join(workspaceRoot, 'raw'), { recursive: true })
+        await fs.mkdir(path.join(workspaceRoot, 'wiki'), { recursive: true })
+        await writeWorkspaceFile('schema.md', '# 约定')
+        await expect(inspectLlmWikiWorkspaceStatus({ rootPath: workspaceRoot })).resolves.toEqual({
+            initialized: true,
+            hasRaw: true,
+            hasWiki: true,
+            hasSchema: true
+        })
+    })
+
+    it('仅存在部分结构：initialized 为「任一存在」，且按目录/普通文件类型精确判定', async () => {
+        // 仅 wiki/ 目录：已初始化
+        await fs.mkdir(path.join(workspaceRoot, 'wiki'), { recursive: true })
+        await expect(inspectLlmWikiWorkspaceStatus({ rootPath: workspaceRoot })).resolves.toEqual({
+            initialized: true,
+            hasRaw: false,
+            hasWiki: true,
+            hasSchema: false
+        })
+
+        // raw 位置是普通文件、schema.md 位置是目录：两者都不算存在（只认类型匹配）
+        await writeWorkspaceFile('raw', 'not a dir')
+        await fs.mkdir(path.join(workspaceRoot, 'schema.md'))
+        await expect(inspectLlmWikiWorkspaceStatus({ rootPath: workspaceRoot })).resolves.toEqual({
+            initialized: true,
+            hasRaw: false,
+            hasWiki: true,
+            hasSchema: false
+        })
+    })
+
+    it('缺省 rootPath 读取 appState.rootPath（未打开工作区时为 false）', async () => {
+        const { appState } = await import('../../src/main/utils/app-state')
+        appState._resetForTesting()
+        await expect(inspectLlmWikiWorkspaceStatus()).resolves.toEqual({
+            initialized: false,
+            hasRaw: false,
+            hasWiki: false,
+            hasSchema: false
+        })
+        appState.rootPath = workspaceRoot
+        await fs.mkdir(path.join(workspaceRoot, 'raw'), { recursive: true })
+        await expect(inspectLlmWikiWorkspaceStatus()).resolves.toMatchObject({
+            initialized: true,
+            hasRaw: true
+        })
+        appState._resetForTesting()
     })
 })
 

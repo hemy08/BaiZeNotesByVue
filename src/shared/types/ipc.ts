@@ -841,20 +841,21 @@ export interface McpSetEnabledResult {
  * -------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------------
- * 1.5.7 LLM Wiki 迁移批次：传统工作区 → LLM Wiki 文件迁移（domain=llm-wiki，3 个 invoke）
+ * 1.5.7 LLM Wiki 迁移批次：传统工作区 → LLM Wiki 文件迁移（domain=llm-wiki，4 个 invoke）
  *
  * 通信链路（IPC-17 六步）：
- *   1. 常量：shared/ipc-channels.ts 的 IPC.LLM_WIKI.SCAN_FILES / MIGRATE / ROLLBACK_MIGRATION；
- *   2. 契约：本段 LlmWikiScanResult / LlmWikiMigrateRequest / LlmWikiMigrateResult /
- *      LlmWikiRollbackResult + IpcRequests / IpcResponses 登记；
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.LLM_WIKI.GET_STATUS / SCAN_FILES / MIGRATE /
+ *      ROLLBACK_MIGRATION；
+ *   2. 契约：本段 LlmWikiWorkspaceStatus / LlmWikiScanResult / LlmWikiMigrateRequest /
+ *      LlmWikiMigrateResult / LlmWikiRollbackResult + IpcRequests / IpcResponses 登记；
  *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
  *   4. 主进程：ipc/llm-wiki-migration-ipc.ts（registry 编排 + withSenderCheck）→
- *      utils/llm-wiki-migrate.ts（扫描统计 + Markdown 链接影响 / 复制 / 移动 /
- *      操作日志（含完成状态与目标指纹）/ 回滚）；
+ *      utils/llm-wiki-migrate.ts（工作区初始化状态检测 / 扫描统计 + Markdown 链接影响 /
+ *      复制 / 移动 / 操作日志（含完成状态与目标指纹）/ 回滚）；
  *   5. 渲染层：common/llm-wiki-migration-actions.ts + 迁移弹窗 MigrationWizardDialog.vue
- *      （三处模式切换入口统一走该弹窗）；
+ *      + composables/useWorkspaceModeSwitch.ts（已初始化直接切换 / 首次切换弹迁移弹窗）；
  *   6. 测试：llm-wiki-migrate / llm-wiki-migration-ipc / llm-wiki-migration-actions /
- *      migration-wizard-dialog + 通道命名/契约/白名单/注册门禁。
+ *      use-workspace-mode-switch / migration-wizard-dialog + 通道命名/契约/白名单/注册门禁。
  *
  * 安全边界：
  * - 工作区根**只取主进程 appState.rootPath**（渲染层不传根；断言源/目标均在根内）；
@@ -865,6 +866,24 @@ export interface McpSetEnabledResult {
  * - 操作日志仅记录路径/动作/结果，不记录文件内容；写入 userData/migrations（不写工作区）；
  * - 所有可预期失败返回结构化结果，不向渲染层抛异常/堆栈。
  * -------------------------------------------------------------------------- */
+
+/**
+ * `LLM_WIKI.GET_STATUS` 返回结构（invoke；只读检测工作区是否已初始化 LLM Wiki）。
+ *
+ * 判定口径：`hasRaw` / `hasWiki` 为目录存在，`hasSchema` 为普通文件存在；
+ * `initialized = hasRaw || hasWiki || hasSchema`（任一存在即视为「迁移过一次」，
+ * 再次切换时不再弹迁移问询）。无工作区 / 根不可访问等安全失败全部 false（保守回退弹窗）。
+ */
+export interface LlmWikiWorkspaceStatus {
+    /** 工作区是否已初始化 LLM Wiki（raw/、wiki/、schema.md 任一存在） */
+    initialized: boolean
+    /** 工作区根下是否存在 raw/ 目录 */
+    hasRaw: boolean
+    /** 工作区根下是否存在 wiki/ 目录 */
+    hasWiki: boolean
+    /** 工作区根下是否存在 schema.md 普通文件 */
+    hasSchema: boolean
+}
 
 /** 可迁移文件格式分类（弹窗按格式多选；主进程按扩展名归类） */
 export type LlmWikiMigratableFormatId = 'markdown' | 'image' | 'pdf' | 'html' | 'text'
@@ -1131,6 +1150,8 @@ export interface IpcRequests {
     [IPC.AI.SAVE_CONFIG]: [payload: AiSaveConfigRequest]
 
     // ============ 1.5.7 LLM Wiki 迁移批次（invoke；工作区根取主进程 appState.rootPath） ============
+    /** 检测工作区是否已初始化 LLM Wiki（invoke；无参，只做 stat 不读内容） */
+    [IPC.LLM_WIKI.GET_STATUS]: []
     /** 扫描可迁移文件（invoke；只按扩展名/大小统计，不读内容） */
     [IPC.LLM_WIKI.SCAN_FILES]: []
     /** 复制/移动到 raw/（invoke；用户确认后执行，同名冲突跳过，写 userData 操作日志） */
@@ -1286,6 +1307,8 @@ export interface IpcResponses {
     [IPC.AI.SAVE_CONFIG]: AiSaveConfigResult
 
     // ============ 1.5.7 LLM Wiki 迁移批次（invoke） ============
+    /** 检测工作区是否已初始化 LLM Wiki（invoke；安全失败/无工作区全部 false） */
+    [IPC.LLM_WIKI.GET_STATUS]: LlmWikiWorkspaceStatus
     /** 扫描可迁移文件（invoke；安全失败返回 ok=false + error） */
     [IPC.LLM_WIKI.SCAN_FILES]: LlmWikiScanResult
     /** 复制/移动到 raw/（invoke；安全失败返回 ok=false + error，明细逐项返回） */

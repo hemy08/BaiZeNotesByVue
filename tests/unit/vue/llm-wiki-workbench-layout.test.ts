@@ -79,9 +79,13 @@ vi.mock('@renderer/composables/useWorkspaceModeSwitch', async () => {
 })
 
 // ============ 迁移弹窗桩（对话框自身渲染/交互由 migration-wizard-dialog 用例覆盖） ============
+// 1.5.7 构建预算修复：WorkSpace 改为 defineAsyncComponent 动态 import 本组件，
+// 动态 import 的 mock 模块会被 defineAsyncComponent 直接消费，需补 __esModule 标记
+// 让它走 .default 分支（否则组件命名空间对象会被当作组件类型渲染）。
 vi.mock('@renderer/components/dialogs/simple/MigrationWizardDialog.vue', async () => {
     const { defineComponent } = await import('vue')
     return {
+        __esModule: true,
         // eslint-disable-next-line vue/one-component-per-file -- 测试用对话框桩组件（vi.mock 工厂内联定义）
         default: defineComponent({
             name: 'MigrationWizardDialogStub',
