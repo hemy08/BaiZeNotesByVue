@@ -51,6 +51,8 @@ const implementationMocks = vi.hoisted(() => ({
     registerOcrIpc: vi.fn(),
     // 1.5.7 LLM Wiki L1：工作区初始化独立域注册入口
     registerLlmWikiIpc: vi.fn(),
+    // 1.5.7 LLM Wiki 迁移批次：文件迁移（扫描/复制移动/回滚）独立域注册入口
+    registerLlmWikiMigrationIpc: vi.fn(),
     // 1.5.7 LLM Wiki L2：MCP 只读桥（设置页状态/开关）独立域注册入口
     registerMcpIpc: vi.fn(),
     // 1.5.7 LLM Wiki L3：AI Provider / AI ingest / diff 审批（5 个 invoke 通道）独立域注册入口
@@ -123,6 +125,11 @@ vi.mock('../../src/main/ipc/ocr-ipc', () => ({
 // 1.5.7 LLM Wiki L1：工作区初始化独立域模块（本文件只验证编排）
 vi.mock('../../src/main/ipc/llm-wiki-ipc', () => ({
     registerLlmWikiIpc: implementationMocks.registerLlmWikiIpc
+}))
+
+// 1.5.7 LLM Wiki 迁移批次：文件迁移独立域模块（本文件只验证编排）
+vi.mock('../../src/main/ipc/llm-wiki-migration-ipc', () => ({
+    registerLlmWikiMigrationIpc: implementationMocks.registerLlmWikiMigrationIpc
 }))
 
 // 1.5.7 LLM Wiki L2：MCP 只读桥独立域模块（本文件只验证编排）
@@ -247,6 +254,9 @@ beforeEach(() => {
     implementationMocks.registerLlmWikiIpc.mockImplementation(() => {
         callOrder.push('llm-wiki')
     })
+    implementationMocks.registerLlmWikiMigrationIpc.mockImplementation(() => {
+        callOrder.push('llm-wiki-migration')
+    })
     implementationMocks.registerMcpIpc.mockImplementation(() => {
         callOrder.push('mcp')
     })
@@ -300,6 +310,7 @@ describe('registerAll（建窗后一次性注册清单）', () => {
             'pdf-annotations',
             'ocr',
             'llm-wiki',
+            'llm-wiki-migration',
             'mcp',
             'ai'
         ])
@@ -333,6 +344,10 @@ describe('registerAll（建窗后一次性注册清单）', () => {
         )
         // 1.5.7 LLM Wiki L1：工作区初始化 handler（无窗口参数，仅台账组件 ID）
         expect(implementationMocks.registerLlmWikiIpc).toHaveBeenCalledWith('global-llm-wiki-ipc')
+        // 1.5.7 LLM Wiki 迁移批次：扫描/复制移动/回滚 handler（无窗口参数，仅台账组件 ID）
+        expect(implementationMocks.registerLlmWikiMigrationIpc).toHaveBeenCalledWith(
+            'global-llm-wiki-migration-ipc'
+        )
         // 1.5.7 LLM Wiki L2：MCP 只读桥状态/开关 handler（无窗口参数，仅台账组件 ID）
         expect(implementationMocks.registerMcpIpc).toHaveBeenCalledWith('global-mcp-ipc')
         // 1.5.7 LLM Wiki L3：AI Provider / ingest / diff 审批 handler（无窗口参数，仅台账组件 ID）

@@ -3,8 +3,8 @@
  *
  * 规则（见 ../../docs/wiki/06-历史报告/md/14-IPC通道命名统一方案.md）：
  * 1. 统一格式 `baize:<domain>:<name>`（三段、全小写 kebab-case）；
- * 2. domain 必须属于白名单（20 个；1.5.2 E3 新增 ocr 域、1.5.7 L2 新增 mcp 域、
- *    1.5.7 L3 新增 ai 域）；
+ * 2. domain 必须属于白名单（21 个；1.5.2 E3 新增 ocr 域、1.5.7 L2 新增 mcp 域、
+ *    1.5.7 L3 新增 ai 域、1.5.7 迁移批次新增 llm-wiki 域）；
  * 3. 禁止历史前缀（`baize-notes:` / `baize:notes:`）与无前缀通道；
  * 4. 通道值唯一（与 ipc-channel-constants.test.ts 互为补充）。
  *
@@ -40,7 +40,9 @@ const DOMAINS = new Set([
     // 1.5.7 LLM Wiki L2：MCP 只读桥（get-status / set-enabled）
     'mcp',
     // 1.5.7 LLM Wiki L3：AI Provider（chat / ingest / apply-ingest / get-config / save-config）
-    'ai'
+    'ai',
+    // 1.5.7 LLM Wiki 迁移批次：文件迁移（scan-files / migrate / rollback-migration）
+    'llm-wiki'
 ])
 
 /** 统一格式：baize:<domain>:<name> */
@@ -66,12 +68,13 @@ function flattenChannels(): Entry[] {
 const channels = flattenChannels()
 
 describe('IPC 通道命名规范', () => {
-    it('白名单领域数量为 20（与 ipc-channels.ts 注释口径一致）', () => {
+    it('白名单领域数量为 21（与 ipc-channels.ts 注释口径一致）', () => {
         // 1.5.2 E3：新增 `ocr` 域（图片 OCR 两个 invoke 通道），白名单 17 → 18；
         // 1.5.7 L2：新增 `mcp` 域（MCP 只读桥两个 invoke 通道），白名单 18 → 19；
         // 1.5.7 L3：新增 `ai` 域（AI Provider 5 个 invoke 通道），白名单 19 → 20；
+        // 1.5.7 迁移批次：新增 `llm-wiki` 域（扫描/迁移/回滚 3 个 invoke 通道），白名单 20 → 21；
         // 用断言锁定口径，避免后续增删 domain 时再次出现注释与实现脱节。
-        expect(DOMAINS.size).toBe(20)
+        expect(DOMAINS.size).toBe(21)
     })
 
     it('解析到完整的通道常量表（P2 清理后 ≥80 个）', () => {
@@ -86,7 +89,7 @@ describe('IPC 通道命名规范', () => {
         ).toEqual([])
     })
 
-    it('所有通道 domain 属于 20 个白名单', () => {
+    it('所有通道 domain 属于 21 个白名单', () => {
         const invalid = channels.filter((c) => !DOMAINS.has(c.value.split(':')[1]))
         expect(
             invalid,

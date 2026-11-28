@@ -5,8 +5,9 @@
  * - 主进程 / preload / 渲染层的 ipcMain、ipcRenderer、webContents.send、
  *   ipcListenerManager 注册一律引用本文件常量，禁止再写通道字符串字面量；
  * - 通道字符串统一为 `baize:<domain>:<name>`（2026-11-15 命名统一后 100% 带 `baize:`
- *   前缀，domain 限定 20 个白名单（1.5.2 E3 新增 ocr 域、1.5.7 L2 新增 mcp 域、
- *   1.5.7 L3 新增 ai 域），见 tests/unit/ipc-channel-naming.test.ts）；
+ *   前缀，domain 限定 21 个白名单（1.5.2 E3 新增 ocr 域、1.5.7 L2 新增 mcp 域、
+ *   1.5.7 L3 新增 ai 域、1.5.7 迁移批次新增 llm-wiki 域），
+ *   见 tests/unit/ipc-channel-naming.test.ts）；
  * - 常量分组与通道 domain 一一对应（2026-11-18 遗留清单 #3/#7 修复：原 CQ-13 的
  *   10 个「域错配」通道已归位——编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、
  *   设置类 2 通道新建 SETTING 组、Monaco 类 2 通道并入 MONACO 组）；
@@ -304,6 +305,19 @@ export const IPC = {
         APPLY_INGEST: 'baize:ai:apply-ingest',
         GET_CONFIG: 'baize:ai:get-config',
         SAVE_CONFIG: 'baize:ai:save-config'
+    } as const,
+
+    // ============ 1.5.7 LLM Wiki 迁移批次（传统工作区 → LLM Wiki，domain=llm-wiki） ============
+    // 三个 invoke 通道，仅主窗口可信（withSenderCheck），工作区根只取主进程 appState.rootPath：
+    // - SCAN_FILES：只读扫描可迁移文件（按格式统计数量/字节，不读文件内容）；
+    // - MIGRATE：用户确认后复制/移动到 raw/（保持原相对目录；同名冲突跳过；**专用迁移授权**
+    //   不放开普通 raw 只读守卫语义：仅本流程、路径校验、目标限定在 raw/ 内）；
+    // - ROLLBACK_MIGRATION：按操作日志回滚最近一次迁移（move→移回原路径 / copy→删除复制体）。
+    // 操作日志写在 app.getPath('userData')/migrations/<timestamp>.json，不写工作区。
+    LLM_WIKI: {
+        SCAN_FILES: 'baize:llm-wiki:scan-files',
+        MIGRATE: 'baize:llm-wiki:migrate',
+        ROLLBACK_MIGRATION: 'baize:llm-wiki:rollback-migration'
     } as const,
 
     // ============ 主进程 → 渲染层广播事件 ============

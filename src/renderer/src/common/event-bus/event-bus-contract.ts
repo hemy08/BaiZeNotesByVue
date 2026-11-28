@@ -6,7 +6,7 @@
  * - 事件常量仍被引用，但接收方已删除（静默空发，如 MONACO_SWITCH_EXPLORER）；
  * - 新增发射点未登记，排查链路时漏看。
  *
- * 本文件把 EVENT_BUS 全部事件的收发关系写成机器可读契约（当前 26 个），由
+ * 本文件把 EVENT_BUS 全部事件的收发关系写成机器可读契约（当前 27 个），由
  * `tests/unit/event-bus-contract.test.ts` 静态扫描 `src/renderer/src` 交叉核对：
  * 1. 常量表与契约表键集合必须完全一致（新增事件必须补契约）；
  * 2. 契约中每个 emitters / receivers 文件必须真实存在且确实出现对应事件名；
@@ -38,8 +38,9 @@ export interface EventBusContractEntry {
 }
 
 /**
- * EVENT_BUS 全部事件的收发契约（当前 26 个，顺序与 EVENT_BUS 常量表一致）。
- * 1.5.6 新增 PLUGIN_SEARCH_SHOW（插件搜索入口，菜单动作 → 面板搜索视图）。
+ * EVENT_BUS 全部事件的收发契约（当前 27 个，顺序与 EVENT_BUS 常量表一致）。
+ * 1.5.6 新增 PLUGIN_SEARCH_SHOW（插件搜索入口，菜单动作 → 面板搜索视图）；
+ * 1.5.7 迁移批次新增 LLM_WIKI_COMPILE_REQUEST（迁移弹窗 → 批量编译批次，M2 实现订阅方）。
  *
  * 类型 `Record<EventBusEventKey, ...>` 在编译期强制「每个常量都有契约」，
  * 测试再做运行时双向核对。
@@ -208,5 +209,15 @@ export const EVENT_BUS_CONTRACT: Record<EventBusEventKey, EventBusContractEntry>
         payload: 'true：请求保存文件内容到磁盘（编辑器内部触发）',
         emitters: ['components/Markdown/hemy-editor-shortcut.ts'],
         receivers: ['components/Markdown/MarkdownEditComponent.vue']
+    },
+    LLM_WIKI_COMPILE_REQUEST: {
+        payload:
+            "{ scope: 'all' | 'directory' | 'batch'; directory?: string; batchSize?: number }：" +
+            '迁移弹窗把用户的编译选择交接给批量编译批次（M1 只派发不执行）',
+        emitters: ['components/dialogs/simple/MigrationWizardDialog.vue'],
+        receivers: [],
+        note:
+            '无订阅方（M1 迁移批次只交接选择）：批量编译任务队列由 M2 批次实现并新增订阅方；' +
+            'EventBus 派发无副作用，不阻塞迁移完成'
     }
 }

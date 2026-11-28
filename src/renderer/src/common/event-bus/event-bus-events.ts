@@ -67,7 +67,11 @@ export const EVENT_BUS = {
     // P0：内联格式状态（bold/italic/strike/code）同步给工具栏
     MONACO_FORMAT_STATE_CHANGED: 'monaco-editor-format-state-changed',
     // 请求保存文件内容到磁盘（编辑器内部触发）
-    MONACO_SAVE_FILE_CONTENT_TO_DISK: 'monaco-editor-save-file-content-to-disk'
+    MONACO_SAVE_FILE_CONTENT_TO_DISK: 'monaco-editor-save-file-content-to-disk',
+    // 1.5.7 LLM Wiki 迁移批次：迁移弹窗把「是否编译 + 编译范围」选择交接给批量编译批次
+    // （payload：{ scope: 'all' | 'directory' | 'batch', directory?: string, batchSize?: number }）。
+    // M1 只记录/派发，不执行编译；M2 批量编译任务队列批次负责新增订阅方（当前无订阅方）。
+    LLM_WIKI_COMPILE_REQUEST: 'llm-wiki-compile-request'
 } as const
 
 // ARC-14 兼容别名：menu-consts 与历史测试通过该名字引用

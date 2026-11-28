@@ -3,9 +3,9 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（82 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（85 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（49 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（52 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
  *   白名单**完全相等**（28 个通道）。
@@ -840,10 +840,141 @@ export interface McpSetEnabledResult {
  * - 所有失败返回结构化 `{ ok:false, code, message }`，不向渲染层抛异常/堆栈。
  * -------------------------------------------------------------------------- */
 
+/* ----------------------------------------------------------------------------
+ * 1.5.7 LLM Wiki 迁移批次：传统工作区 → LLM Wiki 文件迁移（domain=llm-wiki，3 个 invoke）
+ *
+ * 通信链路（IPC-17 六步）：
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.LLM_WIKI.SCAN_FILES / MIGRATE / ROLLBACK_MIGRATION；
+ *   2. 契约：本段 LlmWikiScanResult / LlmWikiMigrateRequest / LlmWikiMigrateResult /
+ *      LlmWikiRollbackResult + IpcRequests / IpcResponses 登记；
+ *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
+ *   4. 主进程：ipc/llm-wiki-migration-ipc.ts（registry 编排 + withSenderCheck）→
+ *      utils/llm-wiki-migrate.ts（扫描统计 / 复制 / 移动 / 操作日志 / 回滚）；
+ *   5. 渲染层：common/llm-wiki-migration-actions.ts + 迁移弹窗 MigrationWizardDialog.vue
+ *      （三处模式切换入口统一走该弹窗）；
+ *   6. 测试：llm-wiki-migrate / llm-wiki-migration-ipc / llm-wiki-migration-actions /
+ *      migration-wizard-dialog + 通道命名/契约/白名单/注册门禁。
+ *
+ * 安全边界：
+ * - 工作区根**只取主进程 appState.rootPath**（渲染层不传根；断言源/目标均在根内）；
+ * - 目标路径必须位于 `<root>/raw/` 子树；符号链接/junction 一律拒绝/跳过；
+ * - 复制/移动**绝不覆盖**已存在文件（同名冲突记入 skipped，不报错中断）；
+ * - **专用迁移授权**：仅本服务内部使用，不改变 `assertWorkspaceWritable` 的普通 raw
+ *   只读语义（其他 14 类写盘入口仍被守卫拦截）；
+ * - 操作日志仅记录路径/动作/结果，不记录文件内容；写入 userData/migrations（不写工作区）；
+ * - 所有可预期失败返回结构化结果，不向渲染层抛异常/堆栈。
+ * -------------------------------------------------------------------------- */
+
+/** 可迁移文件格式分类（弹窗按格式多选；主进程按扩展名归类） */
+export type LlmWikiMigratableFormatId = 'markdown' | 'image' | 'pdf' | 'html' | 'text'
+
+/** 单一格式的扫描统计（count = 文件数；bytes = 文件总字节数） */
+export interface LlmWikiFormatStat {
+    id: LlmWikiMigratableFormatId
+    count: number
+    bytes: number
+}
+
+/**
+ * `LLM_WIKI.SCAN_FILES` 返回结构（invoke；只读统计，**不读取文件内容**）。
+ * `formats` 恒包含全部 5 类（无匹配时 count=0），便于弹窗稳定渲染格式多选。
+ */
+export interface LlmWikiScanResult {
+    /** 是否扫描成功（无工作区/根非法等安全失败为 false + error） */
+    ok: boolean
+    /** 各格式统计（固定顺序：markdown / image / pdf / html / text） */
+    formats: LlmWikiFormatStat[]
+    /** 可迁移文件总数（= formats 各 count 之和） */
+    total: number
+    /** 是否因文件数上限被截断（超大工作区安全降级，仍可迁移已扫描部分） */
+    truncated?: boolean
+    /** 失败原因（可读文案；成功时缺省） */
+    error?: string
+}
+
+/** 迁移方式：copy = 复制到 raw/（原文件保留）；move = 移动到 raw/（原路径失效，可回滚） */
+export type LlmWikiMigrationMode = 'copy' | 'move'
+
+/** `LLM_WIKI.MIGRATE` 请求载荷（formats 非空且均为合法格式 id；主进程按格式过滤） */
+export interface LlmWikiMigrateRequest {
+    mode: LlmWikiMigrationMode
+    formats: LlmWikiMigratableFormatId[]
+}
+
+/** 单条成功迁移的文件记录（用于结果清单与操作日志） */
+export interface LlmWikiMigratedFile {
+    /** 原文件绝对路径（move 后已不存在，日志中保留用于回滚） */
+    path: string
+    /** 原文件相对工作区根的路径（POSIX 分隔符，用于展示/回滚定位） */
+    relativePath: string
+    /** raw/ 下的目标绝对路径 */
+    targetPath: string
+    /** 文件字节数（扫描时统计，不读内容） */
+    bytes: number
+}
+
+/** 跳过/失败条目（结构化原因，UI 逐项展示；不含文件内容） */
+export interface LlmWikiMigrationIssue {
+    /** 相对工作区根的路径（POSIX 分隔符，避免向渲染层暴露绝对路径细节） */
+    path: string
+    /** 可读原因（同名冲突/路径越界/符号链接/IO 错误等） */
+    reason: string
+}
+
+/** `LLM_WIKI.MIGRATE` 返回结构（invoke；安全失败 ok=false + error，不抛异常） */
+export interface LlmWikiMigrateResult {
+    ok: boolean
+    /** 本次实际执行的迁移方式（非法载荷时为 null） */
+    mode: LlmWikiMigrationMode | null
+    /** 已移动文件清单（mode=move） */
+    moved: LlmWikiMigratedFile[]
+    /** 已复制文件清单（mode=copy） */
+    copied: LlmWikiMigratedFile[]
+    /** 跳过清单（目标已存在同名文件等；不视为失败） */
+    skipped: LlmWikiMigrationIssue[]
+    /** 失败清单（IO 错误/路径越界/符号链接拒绝等） */
+    failed: LlmWikiMigrationIssue[]
+    /** 操作日志 id（= userData/migrations/<timestamp>.json 的文件名去扩展名；写日志失败为 null） */
+    logId: string | null
+    /** 扫描是否因上限截断（true = 仅迁移已扫描到的文件，可再次执行继续） */
+    truncated?: boolean
+    /** 失败原因（可读文案；成功时缺省） */
+    error?: string
+}
+
+/** `LLM_WIKI.ROLLBACK_MIGRATION` 请求载荷（缺省 = 回滚最近一次未回滚的迁移） */
+export interface LlmWikiRollbackRequest {
+    /** 指定操作日志 id；缺省时回滚最近一次未回滚的迁移 */
+    logId?: string | null
+}
+
+/** 回滚失败条目（逐项报告，便于用户手工处理） */
+export interface LlmWikiRollbackFailure {
+    /** 相对工作区根的路径（POSIX 分隔符） */
+    path: string
+    /** 可读原因（目标缺失/原位置已被占用/路径越界等） */
+    reason: string
+}
+
+/** `LLM_WIKI.ROLLBACK_MIGRATION` 返回结构（invoke；安全失败 ok=false + error，不抛异常） */
+export interface LlmWikiRollbackResult {
+    ok: boolean
+    /** 被回滚迁移的方式（copy / move；无可用日志时缺省） */
+    mode?: LlmWikiMigrationMode
+    /** 成功恢复的文件数（move 移回原位 / copy 删除复制体） */
+    restored: number
+    /** 失败清单（逐项报告；ok=false 时可能为非空） */
+    failed: LlmWikiRollbackFailure[]
+    /** 实际回滚的操作日志 id（无可用日志时缺省） */
+    logId?: string | null
+    /** 失败原因（可读文案；成功时缺省） */
+    error?: string
+}
+
 /* ============================================================================
  * 二、渲染层 → 主进程（send / invoke）请求参数元组
  *
- * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（82 个，双向核对见测试）。
+ * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（85 个，双向核对见测试）。
  * 元组即 ipcRenderer.send/invoke 除通道名之外的实参列表（可为空元组）。
  * ========================================================================== */
 export interface IpcRequests {
@@ -969,6 +1100,14 @@ export interface IpcRequests {
     /** 保存 AI 配置（invoke；可选字段增量更新，密钥经 safeStorage 加密后落独立文件） */
     [IPC.AI.SAVE_CONFIG]: [payload: AiSaveConfigRequest]
 
+    // ============ 1.5.7 LLM Wiki 迁移批次（invoke；工作区根取主进程 appState.rootPath） ============
+    /** 扫描可迁移文件（invoke；只按扩展名/大小统计，不读内容） */
+    [IPC.LLM_WIKI.SCAN_FILES]: []
+    /** 复制/移动到 raw/（invoke；用户确认后执行，同名冲突跳过，写 userData 操作日志） */
+    [IPC.LLM_WIKI.MIGRATE]: [payload: LlmWikiMigrateRequest]
+    /** 回滚最近一次迁移（invoke；缺省回滚最近未回滚的日志） */
+    [IPC.LLM_WIKI.ROLLBACK_MIGRATION]: [payload?: LlmWikiRollbackRequest]
+
     // ============ 文件管理器右键动作（全部为 send） ============
     [IPC.FILE_MANAGER.COPY_RELATIVE_PATH]: [path: string]
     [IPC.FILE_MANAGER.COPY_IMAGELINK]: [path: string]
@@ -1049,7 +1188,7 @@ export interface IpcRequests {
 /* ============================================================================
  * 三、invoke 通道返回类型
  *
- * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（49 个）。
+ * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（52 个）。
  * send 通道无返回值，故不在此表。
  * ========================================================================== */
 export interface IpcResponses {
@@ -1115,6 +1254,14 @@ export interface IpcResponses {
     [IPC.AI.GET_CONFIG]: AiGetConfigResult
     /** 保存 AI 配置（invoke；成功返回最新快照，失败返回结构化 code） */
     [IPC.AI.SAVE_CONFIG]: AiSaveConfigResult
+
+    // ============ 1.5.7 LLM Wiki 迁移批次（invoke） ============
+    /** 扫描可迁移文件（invoke；安全失败返回 ok=false + error） */
+    [IPC.LLM_WIKI.SCAN_FILES]: LlmWikiScanResult
+    /** 复制/移动到 raw/（invoke；安全失败返回 ok=false + error，明细逐项返回） */
+    [IPC.LLM_WIKI.MIGRATE]: LlmWikiMigrateResult
+    /** 回滚最近一次迁移（invoke；安全失败返回 ok=false + error，失败逐项返回） */
+    [IPC.LLM_WIKI.ROLLBACK_MIGRATION]: LlmWikiRollbackResult
 
     // ============ 对话框确认动作 ============
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult
@@ -1248,7 +1395,7 @@ export interface IpcEvents {
  *
  * 这些通道不经过渲染层白名单（preload 在自身闭包内直接用原始 ipcRenderer 调用，
  * 不向渲染层暴露），单独建表以完整覆盖「渲染层 → 主进程」方向的全部通道；
- * 不计入 IpcRequests 的 77 通道统计（白名单键集合以第 2 节为准）。
+ * 不计入 IpcRequests 的 85 通道统计（白名单键集合以第 2 节为准）。
  * 对应实现：src/preload/index.ts 的 api.config / api.app / api.file。
  * ========================================================================== */
 export interface IpcPreloadApiRequests {

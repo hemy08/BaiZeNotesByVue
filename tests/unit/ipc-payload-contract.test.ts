@@ -5,9 +5,9 @@
  * 与「通道真源 + preload 白名单 + 主进程注册点」保持双向一致，防止后续新增/删除通道时
  * 契约静默漂移。全部为纯文件级静态扫描（fs 读源码 + 正则解析，不 import 运行时模块）：
  *
- * 1. IpcRequests 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（82，双向）；
+ * 1. IpcRequests 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（85，双向）；
  * 2. IpcEvents 键集合 == preload ALLOWED_RENDERER_RECEIVE_CHANNELS（28，双向）；
- * 3. IpcResponses 键集合 == IpcRequests ∩ 主进程 registerHandleOnce 注册通道（49）；
+ * 3. IpcResponses 键集合 == IpcRequests ∩ 主进程 registerHandleOnce 注册通道（52）；
  * 4. IpcEvents 的每个通道在主进程都有真实发送点（webContents.send / sendToMainWindow /
  *    sendToLiveWindow，含 main/index.ts 的通道常量别名）；
  * 5. 渲染层全部 ipcRenderer.send/invoke 调用的通道都落在 IpcRequests 内；
@@ -322,18 +322,18 @@ describe('IPC 载荷契约：请求/响应（渲染层 → 主进程）', () => 
         expect(ALL_CHANNEL_VALUES.size).toBe(IPC_ENTRIES.length)
     })
 
-    it('IpcRequests 键集合应与 preload send/invoke 白名单完全一致（82 个，双向）', () => {
-        expect(SEND_WHITELIST.size).toBe(82)
-        expect(REQUEST_KEYS.size).toBe(82)
+    it('IpcRequests 键集合应与 preload send/invoke 白名单完全一致（85 个，双向）', () => {
+        expect(SEND_WHITELIST.size).toBe(85)
+        expect(REQUEST_KEYS.size).toBe(85)
         expect(diff(SEND_WHITELIST, REQUEST_KEYS)).toEqual([])
     })
 
-    it('IpcResponses 键集合应等于「invoke 注册通道 ∩ send 白名单」（49 个）', () => {
+    it('IpcResponses 键集合应等于「invoke 注册通道 ∩ send 白名单」（52 个）', () => {
         const invokeInWhitelist = new Set(
             [...MAIN_INVOKE_CHANNELS].filter((channel) => SEND_WHITELIST.has(channel))
         )
-        expect(invokeInWhitelist.size).toBe(49)
-        expect(RESPONSE_KEYS.size).toBe(49)
+        expect(invokeInWhitelist.size).toBe(52)
+        expect(RESPONSE_KEYS.size).toBe(52)
         expect(diff(invokeInWhitelist, RESPONSE_KEYS)).toEqual([])
     })
 
