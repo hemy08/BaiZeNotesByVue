@@ -1,13 +1,18 @@
 // @vitest-environment jsdom
 /**
- * 1.5.7 LLM Wiki L5 / T5.1：编辑区单栏切换（`MarkdownEditComponent`）。
+ * 1.5.7 体验微调（用户反馈批次 A5）：编辑区三态视图（`MarkdownEditComponent`）。
+ *
+ * 单一真源：`workspace-layout` 的 `currentWorkspaceLayout.viewMode`（与视图菜单 F9/F10/F11、
+ * 布局 profile、编辑工具条右侧三态按钮共用）；传统模式与 LLM Wiki 模式语义完全一致。
  *
  * 覆盖：
- * 1. llm-wiki 模式：编辑/预览窗格保持挂载（v-show），同一时刻单栏占满编辑区、分隔条隐藏；
- * 2. tab 切换：两窗格显示状态互换、宽度/偏移切换为单栏口径（实例不重建）；
- * 3. 既有视图菜单 IPC（EDIT_MODE / PREVIEW_MODE / EDIT_PREVIEW_MODE）在单栏模式下的映射；
- * 4. 退回 traditional 模式恢复既有「编辑 + 预览并排」布局（分隔条/宽度复位）；
- * 5. 活动文件路径同步到 AI 面板上下文（文件名 chip 数据源）。
+ * 1. LLM Wiki 模式三态渲染：edit = 仅编辑器、preview = 仅预览、edit-preview = 编辑器+预览并排
+ *    （分隔条可拖动，两个窗格实例始终挂载，v-show 保留光标/滚动状态）；
+ * 2. 单一真源外部变化（工具条三态按钮路径 / 视图菜单 IPC / 布局 profile）→ 编辑区布局联动；
+ * 3. 工作区模式切换不重置用户已选视图（传统 ↔ LLM Wiki 三态语义一致）；
+ * 4. 旧 LLM Wiki 专属「编辑区 tab」状态（localStorage `baize:llm-wiki:editor-tab`）不再消费；
+ * 5. 编辑区右上角旧「编辑器 / 预览」分段控件已移除（三态入口在编辑工具条右侧）；
+ * 6. 既有清空/卸载行为与 AI 面板上下文同步不受影响。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -67,15 +72,14 @@ import MdPreview from '@renderer/components/Markdown/MarkdownPreviewComponent.vu
 import MarkdownEditComponent from '@renderer/components/Markdown/MarkdownEditComponent.vue'
 import * as workspaceModeModule from '@renderer/composables/useWorkspaceMode'
 import {
-    LLM_WIKI_EDITOR_TAB_STORAGE_KEY,
-    resetLlmWikiWorkbenchStateForTesting,
-    setLlmWikiEditorTab
-} from '../../../src/renderer/src/components/llm-wiki/llm-wiki-workbench'
+    currentWorkspaceLayout,
+    updateCurrentWorkspaceViewMode
+} from '@renderer/components/Markdown/workspace-layout'
 import {
     llmWikiEditorContext,
     resetLlmWikiEditorContextForTesting
 } from '../../../src/renderer/src/components/llm-wiki/llm-wiki-context'
-import { currentWorkspaceLayout } from '@renderer/components/Markdown/workspace-layout'
+import { resetLlmWikiWorkbenchStateForTesting } from '../../../src/renderer/src/components/llm-wiki/llm-wiki-workbench'
 import {
     clearUntitledDraft,
     resetUntitledDraftForTesting,
@@ -83,6 +87,9 @@ import {
     UNTITLED_DRAFT_STORAGE_KEY
 } from '@renderer/components/Markdown/untitled-draft'
 import { IPC } from '../../../src/shared/ipc-channels'
+
+/** 旧 LLM Wiki 单栏工作台的编辑区 tab 持久化键（A5 起不再消费，仅用于回归断言） */
+const LEGACY_LLM_WIKI_EDITOR_TAB_STORAGE_KEY = 'baize:llm-wiki:editor-tab'
 
 /** 测试用工作区模式开关（与 mock 工厂共享同一 reactive state） */
 const testWorkspaceModeState = (
@@ -107,6 +114,7 @@ let host: HTMLDivElement | null = null
 beforeEach(() => {
     testWorkspaceModeState.llmWiki = false
     window.localStorage.clear()
+    currentWorkspaceLayout.viewMode = 'edit-preview'
     resetLlmWikiWorkbenchStateForTesting()
     resetLlmWikiEditorContextForTesting()
     ipcRenderer = {
@@ -125,25 +133,27 @@ afterEach(() => {
     host = null
     clearUntitledDraft()
     resetUntitledDraftForTesting()
+    currentWorkspaceLayout.viewMode = 'edit-preview'
     resetLlmWikiWorkbenchStateForTesting()
     resetLlmWikiEditorContextForTesting()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
 })
 
-/** 挂载编辑器编排层（等待异步子组件就绪） */
+/**
+ * 挂载编辑器编排层（等待异步子组件就绪）。
+ * 挂载后通过 prop 注入确定的容器宽度（jsdom clientWidth 恒为 0，避免分栏百分比出现 NaN）。
+ */
 async function mountEditor(mode: 'traditional' | 'llm-wiki'): Promise<ReturnType<typeof mount>> {
     testWorkspaceModeState.llmWiki = mode === 'llm-wiki'
     host = document.createElement('div')
-    host.style.width = '800px'
+    host.style.width = '1000px'
     document.body.appendChild(host)
-    wrapper = mount(MarkdownEditComponent, {
-        props: { editorPreviewWidth: '1000px' },
-        attachTo: host
-    })
+    wrapper = mount(MarkdownEditComponent, { attachTo: host })
     await new Promise<void>((resolve) => {
         setImmediate(resolve)
     })
+    await wrapper.setProps({ editorPreviewWidth: '1000px' })
     await nextTick()
     return wrapper
 }
@@ -167,133 +177,224 @@ function resizerElement(): HTMLElement {
     return document.getElementById('resizer-md') as HTMLElement
 }
 
-describe('MarkdownEditComponent：LLM Wiki 单栏编辑区', () => {
-    it('默认编辑器 tab：编辑器占满编辑区，预览隐藏但保持挂载，分隔条隐藏', async () => {
+/** 解析内联百分比宽度（NaN/空 → NaN） */
+function parsePercent(value: string): number {
+    return Number.parseFloat(value)
+}
+
+describe('MarkdownEditComponent：三态视图（传统模式既有行为保留）', () => {
+    it('默认 edit-preview：编辑器与预览并排可见，分隔条显示', async () => {
+        await mountEditor('traditional')
+
+        expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
+        expect(editorElement().style.display).not.toBe('none')
+        expect(previewElement().style.display).not.toBe('none')
+        expect(resizerElement().style.display).not.toBe('none')
+        expect(editorElement().style.width).toBe('50%')
+    })
+
+    it('视图菜单 IPC 切换三态：单栏时隐藏对应窗格与分隔条，双栏恢复并排', async () => {
+        await mountEditor('traditional')
+        getIpcListener(IPC.VIEW.EDIT_MODE)({})
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('edit')
+        expect(editorElement().style.display).not.toBe('none')
+        expect(editorElement().style.width).toBe('100%')
+        expect(previewElement().style.display).toBe('none')
+        expect(resizerElement().style.display).toBe('none')
+
+        getIpcListener(IPC.VIEW.PREVIEW_MODE)({})
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('preview')
+        expect(editorElement().style.display).toBe('none')
+        expect(previewElement().style.display).not.toBe('none')
+        expect(previewElement().style.width).toBe('100%')
+        expect(previewElement().style.left).toMatch(/^0(px)?$/)
+
+        getIpcListener(IPC.VIEW.EDIT_PREVIEW_MODE)({})
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
+        expect(editorElement().style.display).not.toBe('none')
+        expect(previewElement().style.display).not.toBe('none')
+        expect(resizerElement().style.display).not.toBe('none')
+        expect(editorElement().style.width).toBe('50%')
+    })
+})
+
+describe('MarkdownEditComponent：LLM Wiki 模式统一三态视图', () => {
+    it('默认 edit-preview：编辑区内部并排（编辑器 + 预览），右侧 AI 面板布局不受影响', async () => {
         const mounted = await mountEditor('llm-wiki')
 
+        expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
+        expect(editorElement().style.width).toBe('50%')
+        expect(editorElement().style.display).not.toBe('none')
+        expect(previewElement().style.display).not.toBe('none')
+        expect(parsePercent(previewElement().style.width)).toBeCloseTo(49.6, 1)
+        expect(parsePercent(previewElement().style.left)).toBeCloseTo(50.4, 1)
+        // 双栏视图分隔条显示（编辑区内部可拖动；AI 面板 split 由 WorkSpace 负责）
+        expect(resizerElement().style.display).not.toBe('none')
+        // 两窗格实例均保持挂载（v-show 保留光标/滚动状态）
+        expect(mounted.findComponent(MdMonacoEdit).exists()).toBe(true)
+        expect(mounted.findComponent(MdPreview).exists()).toBe(true)
+        expect(mounted.findComponent(MdPreview).props('active')).toBe(true)
+    })
+
+    it('edit：仅编辑器占满编辑区，预览隐藏但保持挂载，分隔条隐藏', async () => {
+        const mounted = await mountEditor('llm-wiki')
+
+        getIpcListener(IPC.VIEW.EDIT_MODE)({})
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('edit')
         expect(editorElement().style.width).toBe('100%')
         expect(editorElement().style.display).not.toBe('none')
         expect(previewElement().style.display).toBe('none')
         expect(resizerElement().style.display).toBe('none')
-        // 两窗格实例均保持挂载（v-show 保留光标/滚动状态）
-        expect(mounted.findComponent(MdMonacoEdit).exists()).toBe(true)
         expect(mounted.findComponent(MdPreview).exists()).toBe(true)
         expect(mounted.findComponent(MdPreview).props('active')).toBe(false)
     })
 
-    it('切到预览 tab：预览占满编辑区，编辑器隐藏但实例保留', async () => {
+    it('preview：仅预览占满编辑区，编辑器隐藏但实例保留', async () => {
         const mounted = await mountEditor('llm-wiki')
 
-        setLlmWikiEditorTab('preview')
+        getIpcListener(IPC.VIEW.PREVIEW_MODE)({})
         await nextTick()
-        await nextTick()
-
+        expect(currentWorkspaceLayout.viewMode).toBe('preview')
         expect(editorElement().style.display).toBe('none')
         expect(previewElement().style.display).not.toBe('none')
         expect(previewElement().style.width).toBe('100%')
         expect(previewElement().style.left).toMatch(/^0(px)?$/)
         expect(mounted.findComponent(MdPreview).props('active')).toBe(true)
         expect(mounted.findComponent(MdMonacoEdit).exists()).toBe(true)
-
-        // 切回编辑器：预览隐藏、编辑器恢复可见（实例未重建）
-        setLlmWikiEditorTab('editor')
-        await nextTick()
-        await nextTick()
-        expect(editorElement().style.display).not.toBe('none')
-        expect(previewElement().style.display).toBe('none')
     })
 
-    it('视图菜单 IPC 在单栏模式下映射为 tab 选择（双栏请求保留当前 tab）', async () => {
+    it('edit-preview：恢复并排、分隔条显示并可拖动调整编辑/预览比例', async () => {
         await mountEditor('llm-wiki')
-        const previewMode = getIpcListener(IPC.VIEW.PREVIEW_MODE)
-        const editMode = getIpcListener(IPC.VIEW.EDIT_MODE)
-        const editPreviewMode = getIpcListener(IPC.VIEW.EDIT_PREVIEW_MODE)
-
-        previewMode()
-        await nextTick()
-        expect(window.localStorage.getItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)).toBe('preview')
-        expect(currentWorkspaceLayout.viewMode).toBe('preview')
-
-        editMode()
-        await nextTick()
-        expect(window.localStorage.getItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)).toBe('editor')
-        expect(currentWorkspaceLayout.viewMode).toBe('edit')
-
-        // 双栏请求在单栏工作台中没有并排可切换：保留当前 tab，不退回并排
-        editPreviewMode()
-        await nextTick()
-        expect(window.localStorage.getItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)).toBe('editor')
-        expect(resizerElement().style.display).toBe('none')
-    })
-
-    it('切回 traditional 模式恢复既有并排布局（分隔条显示、宽度复位）', async () => {
-        const mounted = await mountEditor('llm-wiki')
-        // 先切到预览 tab，验证退出后并排视图不受影响
-        setLlmWikiEditorTab('preview')
+        getIpcListener(IPC.VIEW.PREVIEW_MODE)({})
         await nextTick()
 
-        await mounted.setProps({ editorPreviewWidth: '1000px' })
-        testWorkspaceModeState.llmWiki = false
+        getIpcListener(IPC.VIEW.EDIT_PREVIEW_MODE)({})
         await nextTick()
-        await nextTick()
-
-        expect(editorElement().style.width).toBe('50%')
+        expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
         expect(editorElement().style.display).not.toBe('none')
         expect(previewElement().style.display).not.toBe('none')
         expect(resizerElement().style.display).not.toBe('none')
+        expect(editorElement().style.width).toBe('50%')
+
+        // 拖动编辑区/预览分隔条：仅编辑器宽度变化，视图模式保持 edit-preview
+        resizerElement().dispatchEvent(new MouseEvent('mousedown', { clientX: 400, bubbles: true }))
+        document.dispatchEvent(new MouseEvent('mousemove', { clientX: 520 }))
+        await nextTick()
+        document.dispatchEvent(new MouseEvent('mouseup'))
+        expect(parsePercent(editorElement().style.width)).toBeGreaterThan(50)
         expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
     })
 
-    it('traditional 启动后切换到 llm-wiki：单栏布局即时生效（无需重挂载）', async () => {
-        const mounted = await mountEditor('traditional')
-        // 初始并排
-        expect(editorElement().style.width).toBe('50%')
-        expect(resizerElement().style.display).not.toBe('none')
-        // 传统与 LLM Wiki 模式编辑区都不再渲染右上角切换 dock（1.5.7 体验微调：入口在工具条）
-        expect(document.querySelector('.llm-wiki-editor-tabs-dock')).toBeNull()
+    it('单一真源外部变化（工具条三态按钮路径）→ 编辑区布局即时联动', async () => {
+        await mountEditor('llm-wiki')
 
+        // 工具条按钮只调用 updateCurrentWorkspaceViewMode；本组件 watch 同一真源应用布局
+        updateCurrentWorkspaceViewMode('preview')
+        await nextTick()
+        expect(editorElement().style.display).toBe('none')
+        expect(previewElement().style.display).not.toBe('none')
+        expect(resizerElement().style.display).toBe('none')
+
+        updateCurrentWorkspaceViewMode('edit')
+        await nextTick()
+        expect(editorElement().style.display).not.toBe('none')
+        expect(previewElement().style.display).toBe('none')
+
+        updateCurrentWorkspaceViewMode('edit-preview')
+        await nextTick()
+        expect(editorElement().style.display).not.toBe('none')
+        expect(previewElement().style.display).not.toBe('none')
+        expect(resizerElement().style.display).not.toBe('none')
+    })
+
+    it('布局 profile 应用事件（非法 viewMode 缺省兜底 edit-preview）同样驱动三态', async () => {
+        await mountEditor('llm-wiki')
+
+        window.dispatchEvent(
+            new CustomEvent('baize:workspace-layout:apply', {
+                detail: {
+                    id: 'custom-1',
+                    name: '仅预览布局',
+                    viewMode: 'preview',
+                    resourceManagerVisible: true,
+                    resourceManagerWidth: 300,
+                    updatedAt: 1
+                }
+            })
+        )
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('preview')
+        expect(previewElement().style.display).not.toBe('none')
+
+        // 损坏的 viewMode：回落默认「编辑+预览」，不抛错
+        window.dispatchEvent(
+            new CustomEvent('baize:workspace-layout:apply', {
+                detail: {
+                    id: 'broken',
+                    name: '损坏布局',
+                    viewMode: 'not-a-view-mode',
+                    resourceManagerVisible: true,
+                    resourceManagerWidth: 300,
+                    updatedAt: 1
+                }
+            })
+        )
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
+        expect(editorElement().style.display).not.toBe('none')
+        expect(previewElement().style.display).not.toBe('none')
+    })
+
+    it('工作区模式切换不重置用户已选视图（传统 ↔ LLM Wiki 语义一致）', async () => {
+        const mounted = await mountEditor('traditional')
+        getIpcListener(IPC.VIEW.PREVIEW_MODE)({})
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('preview')
+
+        // 传统 → LLM Wiki：仍为「仅预览」，不强制切回并排 / 编辑器
         testWorkspaceModeState.llmWiki = true
         await nextTick()
         await nextTick()
-
-        // 单栏：编辑器占满、分隔条与预览隐藏（默认编辑器 tab）
-        expect(editorElement().style.width).toBe('100%')
+        expect(currentWorkspaceLayout.viewMode).toBe('preview')
+        expect(editorElement().style.display).toBe('none')
+        expect(previewElement().style.display).not.toBe('none')
         expect(resizerElement().style.display).toBe('none')
-        expect(previewElement().style.display).toBe('none')
         expect(mounted.findComponent(MdPreview).exists()).toBe(true)
-        expect(currentWorkspaceLayout.viewMode).toBe('edit')
-        // 切换控件已迁移到编辑工具条右侧：编辑区不再为悬浮 dock 预留顶部安全间距
-        expect(document.querySelector('.llm-wiki-editor-tabs-dock')).toBeNull()
-        expect(editorElement().style.top).toBe('')
-        expect(editorElement().style.height).toBe('')
+
+        // LLM Wiki → 传统：视图保持，不重置
+        testWorkspaceModeState.llmWiki = false
+        await nextTick()
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('preview')
+        expect(previewElement().style.display).not.toBe('none')
+        expect(resizerElement().style.display).toBe('none')
     })
 
-    it('traditional 模式下 tab 状态变化不改变并排布局（watch 提前返回）', async () => {
-        await mountEditor('traditional')
-        const viewModeBefore = currentWorkspaceLayout.viewMode
+    it('LLM Wiki 模式下不再消费旧「编辑器 / 预览」tab 持久化状态', async () => {
+        window.localStorage.setItem(LEGACY_LLM_WIKI_EDITOR_TAB_STORAGE_KEY, 'preview')
+        await mountEditor('llm-wiki')
 
-        setLlmWikiEditorTab('preview')
-        await nextTick()
-        await nextTick()
-
-        // 传统模式不消费共享 tab 状态：并排布局与视图模式保持不变
-        expect(resizerElement().style.display).not.toBe('none')
-        expect(editorElement().style.width).toBe('50%')
-        expect(currentWorkspaceLayout.viewMode).toBe(viewModeBefore)
+        // 旧 tab 键不再影响视图：统一真源仍为默认 edit-preview（编辑器与预览都可见）
+        expect(editorElement().style.display).not.toBe('none')
+        expect(previewElement().style.display).not.toBe('none')
+        expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
     })
 })
 
-describe('MarkdownEditComponent：编辑区右上角旧「编辑器 / 预览」分段控件已移除（体验微调 A4）', () => {
-    it('llm-wiki 模式不再渲染右上角 dock / 分段按钮（切换入口在编辑工具条右侧）', async () => {
+describe('MarkdownEditComponent：编辑区右上角旧「编辑器 / 预览」分段控件已移除（体验微调 A5）', () => {
+    it('llm-wiki 模式不再渲染右上角 dock / 分段按钮（三态切换入口在编辑工具条右侧）', async () => {
         await mountEditor('llm-wiki')
 
         expect(document.querySelector('.llm-wiki-editor-tabs-dock')).toBeNull()
         expect(document.querySelector('.llm-wiki-editor-tabs')).toBeNull()
-        // 两个窗格回到编辑区顶部无预留的既有布局（单栏时各自占满编辑区高度）
+        // 两个窗格回到编辑区顶部无预留的既有布局
         expect(editorElement().style.top).toBe('')
         expect(editorElement().style.height).toBe('')
         expect(previewElement().style.top).toBe('')
-        expect(previewElement().style.height).toBe('')
     })
 
     it('传统模式同样无 dock/分段控件（DOM 与布局零变化）', async () => {
@@ -303,7 +404,7 @@ describe('MarkdownEditComponent：编辑区右上角旧「编辑器 / 预览」�
         expect(editorElement().style.top).toBe('')
     })
 
-    it('静态契约：MarkdownEditComponent 不再引用旧分段控件；工具条承接图标按钮', () => {
+    it('静态契约：MarkdownEditComponent 只用统一三态真源；工具条承接图标按钮', () => {
         const root = path.resolve(__dirname, '../../..')
         const editSource = fs.readFileSync(
             path.join(root, 'src/renderer/src/components/Markdown/MarkdownEditComponent.vue'),
@@ -312,16 +413,25 @@ describe('MarkdownEditComponent：编辑区右上角旧「编辑器 / 预览」�
         expect(editSource).not.toContain('LlmWikiEditorTabs')
         expect(editSource).not.toContain('llm-wiki-editor-tabs-dock')
         expect(editSource).not.toContain('llmWikiPaneOffsetStyle')
+        // 旧 LLM Wiki 单栏 tab 状态已删除：不再引用 llm-wiki-workbench / setLlmWikiEditorTab
+        expect(editSource).not.toContain('llm-wiki-workbench')
+        expect(editSource).not.toContain('setLlmWikiEditorTab')
+        expect(editSource).not.toContain('applyLlmWikiViewMode')
+        // 统一三态真源：workspace-layout 的 viewMode + 外部变化 watch
+        expect(editSource).toContain('currentWorkspaceLayout.viewMode')
+        expect(editSource).toContain('updateCurrentWorkspaceViewMode')
+        expect(editSource).toContain('resolveViewMode')
 
         const toolsSource = fs.readFileSync(
             path.join(root, 'src/renderer/src/components/Markdown/MarkdownEditToolsComponent.vue'),
             'utf8'
         )
-        // 工具条右侧纯图标按钮：编辑器/预览切换 + 工作区模式快速切换
-        expect(toolsSource).toContain('data-editor-view-toggle="true"')
+        // 工具条右侧纯图标按钮：编辑视图三态切换 + 工作区模式快速切换（两模式都渲染）
+        expect(toolsSource).toContain('data-workspace-view-mode-toggle="true"')
         expect(toolsSource).toContain('data-workspace-mode-toggle="true"')
-        expect(toolsSource).toContain('id="llm-editor-view-toggle"')
+        expect(toolsSource).toContain('id="workspace-view-mode-toggle"')
         expect(toolsSource).toContain('id="llm-workspace-mode-toggle"')
+        expect(toolsSource).toContain(':data-view-mode="currentViewMode"')
         // 图标：24 网格 / stroke 1.5 / currentColor（纯图标无文字）
         expect(toolsSource).toContain('viewBox="0 0 24 24"')
         expect(toolsSource).toContain('stroke-width="1.5"')
@@ -345,7 +455,7 @@ describe('MarkdownEditComponent：编辑区右上角旧「编辑器 / 预览」�
     })
 })
 
-describe('MarkdownEditComponent：既有清空/卸载行为回归（LLM Wiki 改动不影响）', () => {
+describe('MarkdownEditComponent：既有清空/卸载行为回归（三态视图改动不影响）', () => {
     it('CLEAR_EDITOR_PREVIEW 时恢复未命名草稿缓存（既有行为不变）', async () => {
         const mounted = await mountEditor('traditional')
         writeUntitledDraft('未命名草稿内容')

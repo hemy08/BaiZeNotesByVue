@@ -384,7 +384,7 @@ BaiZeNotesByVue/
 │   ├── plantuml/                         # PlantUML 本地 teaVM 渲染资源
 │   ├── icon/                             # 应用图标（ico/svg）
 │   └── config/                           # 配置文件（version.json 构建时生成）
-├── tests/                                # 单元测试（412 个 .test.ts / 7,716 个用例）
+├── tests/                                # 单元测试（412 个 .test.ts / 7,719 个用例）
 ├── docs/                                 # 项目文档
 │   ├── wiki/                             # 知识库文档（4 类 25 篇）
 │   │   ├── README.md                     # 文档索引
@@ -469,7 +469,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成                        | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.1 | Electron 应用打包工具                       | [官网](https://www.electron.build/)                    |
-|               Vitest               |  5.1.1  | 单元测试框架（412 个测试文件 / 7,716 用例） | [官网](https://vitest.dev/)                            |
+|               Vitest               |  5.1.1  | 单元测试框架（412 个测试文件 / 7,719 用例） | [官网](https://vitest.dev/)                            |
 |               ESLint               | 10.15.0 | JavaScript 代码检查工具                     | [官网](https://eslint.org/)                            |
 |              Prettier              | 3.10.1  | 代码格式化工具                              | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  3.0.0  | Electron ESLint 配置                        | [GitHub](https://github.com/alex8088/electron-toolkit) |
@@ -500,7 +500,7 @@ BaiZeNotesByVue/
 |    IPC 通道    |                          116 个                          | `baize:<domain>:<name>`（116 个 / 20 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                                                                                                                         |
 | preload 白名单 |               send 82 / receive 28 / api 6               | `src/preload/allowed-channels.generated.ts`（send/invoke 82、on/once 28 通道；`window.api` 6 方法 / 3 组）                                                                                                                                                   |
 |    插件工具    |                          38 个                           | src/shared/constants/plugin-tools-manifest.ts（单一 manifest，异步按需加载）                                                                                                                                                                                 |
-|    单元测试    |                       7,716 个用例                       | 412 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                                                                                     |
+|    单元测试    |                       7,719 个用例                       | 412 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                                                                                     |
 |    声明依赖    |                          49 个                           | 生产依赖 11 + 开发依赖 38（package.json 实测）                                                                                                                                                                                                               |
 |    依赖审计    |                          0 漏洞                          | 生产与全量依赖均为 0 漏洞（2026-11-20 官方 registry 实测，`npm ls` 干净；Dependabot 254 条告警全量分类 0 条可复现）                                                                                                                                          |
 |   安装包体积   |                        ≈114.0 MiB                        | NSIS 安装包 111.13 MiB / 便携版 100.33 MiB（app.asar 39.96 MiB、locales 2；2026-11-20 当前 dist 实测，发布前需从 HEAD 重建复验）                                                                                                                             |
@@ -516,7 +516,7 @@ BaiZeNotesByVue/
 |    Vue SFC (.vue)    |   96    |   22,777   |
 |     **源码合计**     | **357** | **97,434** |
 |         CSS          |   22    |   3,563    |
-| 单元测试（.test.ts） |   412   |  141,288   |
+| 单元测试（.test.ts） |   412   |  141,499   |
 |   静态资源（.svg）   |   60    |    447     |
 
 ### 关键源码文件行数（实测）
@@ -605,7 +605,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层 + 测试三工程）
 npm run typecheck
 
-# 运行单元测试（412 个测试文件 / 7,716 个用例）
+# 运行单元测试（412 个测试文件 / 7,719 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
@@ -731,10 +731,10 @@ npm run clean
 - [x] **L3 AI 工作流**：AI Provider（本地 Ollama/LM Studio + 远程 BYOK，safeStorage 加密）+ AI ingest → 行级 diff 审批 → 写入 wiki/ + 设置页 AI 分组
 - [x] **L4 图谱与嵌入**：关系图谱（SVG、200 节点上限、拖拽/缩放/点击跳转）+ raw 资料嵌入（预览 + 相对链接插入）
 - [x] **L5 工作台布局**：LLM Wiki 模式下编辑区「编辑器/预览」切换 + 右侧 AI 输入面板（已联调 AI.CHAT）；传统模式零变化
-- [x] **工作台与工具条**：编辑器/预览切换 = 工具条右侧图标按钮；新增传统/LLM Wiki 模式快速切换图标按钮；可拖动分隔条（宽度无限制 0~可用宽、双击复位、键盘可调、宽度持久化）；AI 面板收起进右侧边栏
+- [x] **工作台与工具条**：工具条右侧**视图模式按钮**（编辑/预览/编辑+预览三态，两模式都显示）+ 传统/LLM Wiki **快速切换图标按钮**；可拖动分隔条（宽度无限制、双击复位、键盘可调、宽度持久化）；AI 面板收起进右侧边栏
 - [x] **AI 助手入口跨模式**：右侧边栏 AI 按钮传统模式与 LLM Wiki 模式均显示（传统模式点击 = 按系统设置同样流程切换并打开面板；LLM Wiki 模式 = 展开面板）；AI 助手配置独立为「菜单 → 设置 → AI 助手」对话框
 - [x] **设置页「AI 助手」页签**：多模型管理（添加/编辑/删除/默认/逐模型测试连接/密钥掩码）+ MCP 配置（端口/状态/令牌复制/重置令牌）
-- [x] 门禁：全量 **412 文件 / 7,716 用例**、coverage 92.62/86.93/93.76/93.08、IPC **116 通道/20 组**、typecheck/ESLint/Prettier/docs:check/quality 全绿；构建 ProductVersion 1.5.7（portable 102.04/102.5 MiB）
+- [x] 门禁：全量 **412 文件 / 7,719 用例**、coverage 92.61/86.92/93.75/93.08、IPC **116 通道/20 组**、typecheck/ESLint/Prettier/docs:check/quality 全绿；构建 ProductVersion 1.5.7（portable 102.05/102.5 MiB）
 - 需求清单：[1.5.7 需求清单与方案](docs/wiki/04-优化与专项报告/1.5.7-需求清单与方案.md)；实施计划（单一真源）：[LLM-Wiki-Implementation-Plan.md](docs/wiki/02-设计与架构/LLM-Wiki-Implementation-Plan.md)
 
 ### v1.5.6 (2026-11-28 已发布)
@@ -749,7 +749,7 @@ npm run clean
 - [x] **P2 体验批次**：插件分类折叠 + 38 工具图标 + 20 零引用图标清理；命令面板最近命令/折叠/建议；菜单 Alt+字母助记符（12 项）；插件面板最小化联动工作区；玻璃质感增强；帮助悬浮目录/内文搜索（含应用内代理）
 - [x] **工程收口**：硬编码颜色 314→272（新增 content-tokens.css 等值令牌）；z-index 应用层相对阶梯化（100/110/120，真机 9/9 PASS）
 - [x] **UI 简洁化**：新增统一 ⓘ 悬停/点击提示组件；设置面板 13 类详细解释改为按需查看（保留顶部说明/错误提示/操作指引）；主题卡片紧凑 −28%；表格编辑器界面重设计（紧凑工具条 + 提示收纳 + 网格占满）
-- [x] 门禁：全量 412 文件 / 7,716 用例、coverage 92.62/86.93/93.76/93.08、typecheck / ESLint / Prettier / docs:check / quality 全绿、E2E 套件通过
+- [x] 门禁：全量 412 文件 / 7,719 用例、coverage 92.61/86.92/93.75/93.08、typecheck / ESLint / Prettier / docs:check / quality 全绿、E2E 套件通过
 
 ### v1.5.5 (2026-11-27 已发布)
 
@@ -783,7 +783,7 @@ npm run clean
 - [x] 1.5.0 已发布 GitHub Release（2026-11-21，tag `release-1.5.0`；NSIS 安装包 / portable / latest.yml / blockmap）
 - [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
 - [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
-- [x] 文档口径统一（2026-11-20），2026-11-22 复核刷新测试数：测试 412 文件 / 7,716 用例、IPC 116 通道 / 20 组、preload 白名单 send 82 / receive 28 / window.api 6、报告 md 34 篇 / HTML Wiki 35 页
+- [x] 文档口径统一（2026-11-20），2026-11-22 复核刷新测试数：测试 412 文件 / 7,719 用例、IPC 116 通道 / 20 组、preload 白名单 send 82 / receive 28 / window.api 6、报告 md 34 篇 / HTML Wiki 35 页
 - [ ] 长期计划：macOS 和 Linux 版本支持、协作编辑、插件系统、云同步
 
 ### v1.3.9

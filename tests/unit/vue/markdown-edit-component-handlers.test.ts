@@ -51,6 +51,7 @@ vi.mock('@renderer/components/Markdown/MarkdownPreviewComponent.vue', async () =
 import MdMonacoEdit from '@renderer/components/Markdown/MarkdownMonacoEditor.vue'
 import MdPreview from '@renderer/components/Markdown/MarkdownPreviewComponent.vue'
 import MarkdownEditComponent from '@renderer/components/Markdown/MarkdownEditComponent.vue'
+import { currentWorkspaceLayout } from '@renderer/components/Markdown/workspace-layout'
 import EventBus from '@renderer/common/event-bus/event-bus'
 import { EVENT_BUS } from '@renderer/common/event-bus/event-bus-events'
 import { IPC } from '../../../src/shared/ipc-channels'
@@ -70,6 +71,9 @@ let host: HTMLDivElement | null = null
 
 beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    // 1.5.7 体验微调（A5）：视图三态改为单一真源（workspace-layout），用例间需复位默认
+    // 「编辑+预览」，避免上一个用例切换后的视图影响下一个用例的初始 DOM。
+    currentWorkspaceLayout.viewMode = 'edit-preview'
     ipcRenderer = {
         on: vi.fn(),
         send: vi.fn(),

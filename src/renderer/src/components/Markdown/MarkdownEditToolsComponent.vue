@@ -2,8 +2,9 @@
     <!-- 标题 | 字体 加粗 倾斜 删除线 下划线 颜色 引用 | 文字左对齐 文字居中 文字右对齐 |
        有序列表 无序列表 水平线 段内换行 | 行内代码 代码块 行内公式 公式块 | 超链接 锚点链接 任务列表 |
        插入图片 图片居中 Emoji 表格 标记 分类 | material mermaid plantuml |
-       1.5.7 体验微调（用户反馈批次 A4）工具条右侧：
-       编辑器/预览切换（仅 LLM Wiki 模式）+ 传统模式 ↔ LLM Wiki 模式快速切换（两模式都显示），
+       1.5.7 体验微调（用户反馈批次 A5）工具条右侧：
+       编辑视图三态切换（编辑 / 预览 / 编辑+预览，传统模式与 LLM Wiki 模式都渲染）
+       + 传统模式 ↔ LLM Wiki 模式快速切换（两模式都显示），
        均为纯图标按钮（内联 SVG / currentColor / 24 网格 stroke 1.5），不占用左侧格式按钮的可收缩区。
   -->
     <div ref="toolbarContainer" class="toolbar-container">
@@ -25,18 +26,17 @@
         </div>
         <!-- 右侧视图/模式入口：flex 0 0 auto + margin-left:auto，工具条变窄时始终可见（不参与裁剪） -->
         <div ref="toolbarActions" class="toolbar-actions" data-toolbar-llm-wiki-actions>
-            <!-- 编辑器 / 预览切换：仅 LLM Wiki 单栏工作台（传统模式为并排视图，无此概念） -->
+            <!-- 编辑视图三态切换：两模式都渲染；图标 = 当前视图，点击循环切换
+                 （编辑 → 预览 → 编辑+预览 → 编辑），状态真源为 workspace-layout 的 viewMode。 -->
             <button
-                v-if="isLlmWikiMode"
-                id="llm-editor-view-toggle"
+                id="workspace-view-mode-toggle"
                 type="button"
                 class="toolbar-action-btn"
-                data-editor-view-toggle="true"
-                :data-active-tab="llmWikiWorkbenchState.editorTab"
-                :title="editorViewToggleLabel"
-                :aria-label="editorViewToggleLabel"
-                :aria-pressed="isPreviewTab"
-                @click="toggleLlmWikiEditorView"
+                data-workspace-view-mode-toggle="true"
+                :data-view-mode="currentViewMode"
+                :title="viewModeToggleLabel"
+                :aria-label="viewModeToggleLabel"
+                @click="cycleWorkspaceViewMode"
             >
                 <svg
                     viewBox="0 0 24 24"
@@ -48,14 +48,20 @@
                     aria-hidden="true"
                     focusable="false"
                 >
-                    <!-- 当前显示编辑器 → 按钮动作「预览」（眼睛）；当前显示预览 → 动作「编辑器」（铅笔） -->
-                    <template v-if="!isPreviewTab">
+                    <!-- 当前「仅编辑」→ 铅笔 -->
+                    <template v-if="currentViewMode === 'edit'">
+                        <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
+                        <path d="M13.5 6.5l4 4" />
+                    </template>
+                    <!-- 当前「仅预览」→ 眼睛 -->
+                    <template v-else-if="currentViewMode === 'preview'">
                         <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
                         <circle cx="12" cy="12" r="3" />
                     </template>
+                    <!-- 当前「编辑+预览」→ 分栏（左右两个窗格） -->
                     <template v-else>
-                        <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
-                        <path d="M13.5 6.5l4 4" />
+                        <rect x="3" y="4" width="18" height="16" rx="2" />
+                        <path d="M12 4v16" />
                     </template>
                 </svg>
             </button>
@@ -111,11 +117,11 @@ import {
 // 聚合桶把 Monaco/编辑器动作等重型依赖带进工具栏 chunk（该组件已改为按需加载）。
 import { MdEditQuickAccess as QuickAccess } from './hemy-editor-quick-access'
 import {
-    LLM_WIKI_EDITOR_TAB,
-    ensureLlmWikiWorkbenchStateLoaded,
-    llmWikiWorkbenchState,
-    setLlmWikiEditorTab
-} from '../llm-wiki/llm-wiki-workbench'
+    currentWorkspaceLayout,
+    isWorkspaceLayoutViewMode,
+    updateCurrentWorkspaceViewMode,
+    type WorkspaceLayoutViewMode
+} from './workspace-layout'
 
 type InlineFormatState = {
     bold: boolean
@@ -146,31 +152,61 @@ onEventBus(EVENT_BUS.MONACO_FORMAT_STATE_CHANGED, (state: unknown) => {
 })
 
 /* ============================================================================
- * 1.5.7 体验微调（用户反馈批次 A4）：工具条右侧视图/模式图标按钮
+ * 1.5.7 体验微调（用户反馈批次 A5）：工具条右侧视图/模式图标按钮
  *
- * - 编辑器/预览切换：仅 LLM Wiki 单栏工作台渲染，图标/文案随当前 tab 指向目标动作；
- *   点击复用共享 UI 状态（`llm-wiki-workbench` 的 editorTab，localStorage 持久化），
- *   两个窗格由 `MarkdownEditComponent` 用 v-show 承接（实例不重建）；
+ * - 编辑视图三态切换：传统模式与 LLM Wiki 模式都渲染；状态真源为 `workspace-layout`
+ *   的 `currentWorkspaceLayout.viewMode`（与视图菜单 F9/F10/F11、布局 profile 共用，
+ *   不新增第二份视图状态）。点击按「编辑 → 预览 → 编辑+预览 → 编辑」循环，
+ *   图标显示当前视图，title/aria-label 说明「当前视图 + 点击后的目标视图」；
+ *   两个窗格由 `MarkdownEditComponent` 按同一真源用 v-show 承接（实例不重建）；
  * - 模式快速切换：两模式都渲染；传统 → LLM Wiki 与系统设置同样处理（确认 + 初始化 +
  *   写配置，见 `useWorkspaceModeSwitch`）；LLM Wiki → 传统直接写配置生效；
  * - 全部为纯图标按钮（title/aria-label 走 i18n），四风格 × 三密度由 --ui-* 令牌派生。
  * ========================================================================== */
 const { isLlmWikiMode } = useWorkspaceMode()
-// 首帧即恢复持久化的编辑区 tab（幂等；WorkSpace 亦会调用，二者顺序无关），
-// 保证工具条按钮图标/文案在挂载首帧就与单栏视图一致。
-ensureLlmWikiWorkbenchStateLoaded()
 
-/** 当前是否处于「预览」tab（仅 LLM Wiki 模式有意义；此处只驱动按钮图标/文案） */
-const isPreviewTab = computed(() => llmWikiWorkbenchState.editorTab === LLM_WIKI_EDITOR_TAB.PREVIEW)
+/** 三态视图的循环顺序（编辑 → 预览 → 编辑+预览 → 编辑） */
+const VIEW_MODE_CYCLE: readonly WorkspaceLayoutViewMode[] = ['edit', 'preview', 'edit-preview']
 
-/** 编辑器/预览切换按钮文案：描述点击后的目标视图 */
-const editorViewToggleLabel = computed(() =>
-    t(
-        isPreviewTab.value
-            ? 'editorUi.llmWikiPanel.switchToEditor'
-            : 'editorUi.llmWikiPanel.switchToPreview'
-    )
+/** i18n：当前视图描述键 */
+const VIEW_MODE_CURRENT_LABEL_KEYS: Record<WorkspaceLayoutViewMode, string> = {
+    edit: 'editorUi.viewModeToggle.currentEdit',
+    preview: 'editorUi.viewModeToggle.currentPreview',
+    'edit-preview': 'editorUi.viewModeToggle.currentEditPreview'
+}
+
+/** i18n：点击后的目标视图描述键 */
+const VIEW_MODE_NEXT_LABEL_KEYS: Record<WorkspaceLayoutViewMode, string> = {
+    edit: 'editorUi.viewModeToggle.switchToPreview',
+    preview: 'editorUi.viewModeToggle.switchToEditPreview',
+    'edit-preview': 'editorUi.viewModeToggle.switchToEdit'
+}
+
+/** 当前视图模式（单一真源；非法/损坏值回落默认「编辑+预览」，保证按钮文案可解析） */
+const currentViewMode = computed<WorkspaceLayoutViewMode>(() =>
+    isWorkspaceLayoutViewMode(currentWorkspaceLayout.viewMode)
+        ? currentWorkspaceLayout.viewMode
+        : 'edit-preview'
 )
+
+/** 下一个循环到的视图模式（indexOf 返回 -1 时 `(index + 1) % 3 = 0`，回落「仅编辑」） */
+const nextViewMode = computed<WorkspaceLayoutViewMode>(() => {
+    const index = VIEW_MODE_CYCLE.indexOf(currentViewMode.value)
+    return VIEW_MODE_CYCLE[(index + 1) % VIEW_MODE_CYCLE.length]
+})
+
+/** 视图切换按钮文案：当前视图 + 点击后的目标视图 */
+const viewModeToggleLabel = computed(() =>
+    t('editorUi.viewModeToggle.title', {
+        current: t(VIEW_MODE_CURRENT_LABEL_KEYS[currentViewMode.value]),
+        next: t(VIEW_MODE_NEXT_LABEL_KEYS[currentViewMode.value])
+    })
+)
+
+/** 循环切换编辑视图：写入单一真源，由 MarkdownEditComponent 按状态渲染三态布局 */
+function cycleWorkspaceViewMode(): void {
+    updateCurrentWorkspaceViewMode(nextViewMode.value)
+}
 
 /** 工作区模式快速切换按钮文案：描述点击后的目标模式 */
 const workspaceModeToggleLabel = computed(() =>
@@ -180,16 +216,6 @@ const workspaceModeToggleLabel = computed(() =>
             : 'editorUi.llmWikiPanel.switchToLlmWiki'
     )
 )
-
-/** 编辑器 / 预览切换（仅 LLM Wiki 模式消费；状态模块负责归一化与持久化） */
-function toggleLlmWikiEditorView(): void {
-    if (!isLlmWikiMode.value) {
-        return
-    }
-    setLlmWikiEditorTab(
-        isPreviewTab.value ? LLM_WIKI_EDITOR_TAB.EDITOR : LLM_WIKI_EDITOR_TAB.PREVIEW
-    )
-}
 
 /** 工作区模式快速切换：传统 → LLM Wiki 走确认+初始化；LLM Wiki → 传统直接写配置 */
 function handleWorkspaceModeToggle(): void {
@@ -302,13 +328,8 @@ watch(
     }
 )
 
-// LLM Wiki 模式切换会增删「编辑器/预览」按钮（右侧区域宽度变化）：重新计算左侧按钮大小，
-// 保证格式按钮与右侧图标按钮始终完整可见。
-watch(isLlmWikiMode, () => {
-    nextTick(() => {
-        calculateButtonSize()
-    })
-})
+// 1.5.7 体验微调（A5）：三态视图按钮与模式按钮在传统 / LLM Wiki 两模式都常驻，
+// 右侧按钮区宽度不随模式变化（不再需要模式切换时重算左侧按钮大小）。
 </script>
 
 <style scoped>
@@ -375,10 +396,12 @@ watch(isLlmWikiMode, () => {
 }
 
 /* ============================================================================
- * 1.5.7 体验微调（用户反馈批次 A4）：工具条右侧纯图标按钮
+ * 1.5.7 体验微调（用户反馈批次 A5）：工具条右侧纯图标按钮
  *
  * - 尺寸随界面密度派生（--ui-row-height 紧凑 24 / 标准 28 / 宽松 32），与工具条同行；
- * - 表面透明、hover 走 --ui-accent-soft、激活态（预览 tab / LLM Wiki 模式）走强调色；
+ * - 表面透明、hover 走 --ui-accent-soft；视图切换按钮的当前态由图标 + `data-view-mode`
+ *   表达（循环式三态按钮不使用 aria-pressed——它不是开/关语义），模式按钮的激活态
+ *   （LLM Wiki 模式）走 aria-pressed + 强调色；
  * - 键盘焦点环走 --ui-focus-shadow（UI-10），不写任何固定色值。
  * ========================================================================== */
 .toolbar-action-btn {
@@ -405,7 +428,7 @@ watch(isLlmWikiMode, () => {
     background-color: var(--ui-accent-soft, var(--theme-hover-background));
 }
 
-/* 激活态：编辑器/预览按钮表示「预览视图当前生效」；模式按钮表示「当前处于 LLM Wiki 模式」 */
+/* 激活态：工作区模式按钮表示「当前处于 LLM Wiki 模式」 */
 .toolbar-action-btn[aria-pressed='true'] {
     color: var(--ui-accent, var(--theme-accent-color));
     border-color: var(--ui-accent, var(--theme-accent-color));

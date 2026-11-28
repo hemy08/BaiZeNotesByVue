@@ -22,9 +22,10 @@
  *    （可用宽度不足 360+5 时夹到可用宽度−5）；持久化宽度在挂载 / resize 时按可用宽度夹取；
  * 8. 切到其它工作区容器时面板与入口隐藏（v-show 保留实例）；传统模式仅面板零渲染。
  *
- * 说明：编辑区「编辑器 / 预览」切换已从「右上角悬浮分段控件」迁移到编辑工具条右侧图标
- * 按钮（`MarkdownEditToolsComponent`），对应渲染/切换/持久化行为由
- * `markdown-edit-tools-llm-wiki.test.ts` 与 `markdown-edit-llm-wiki-layout.test.ts` 覆盖。
+ * 说明：编辑区内部视图（编辑 / 预览 / 编辑+预览）已统一为 `workspace-layout` 三态单一真源
+ * （体验微调批次 A5），入口在编辑工具条右侧图标按钮（`MarkdownEditToolsComponent`），
+ * 对应渲染/切换行为由 `markdown-edit-tools-llm-wiki.test.ts` 与
+ * `markdown-edit-llm-wiki-layout.test.ts` 覆盖；旧「编辑区单栏 tab」状态已删除。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
@@ -290,7 +291,7 @@ describe('WorkSpace 布局：llm-wiki 模式（单栏编辑 + 右侧 AI 面板�
         expect(wrapper.find('.md-container-stub').attributes('data-width')).toBe('453px')
         // 展开态入口不渲染（收起按钮在面板头部）
         expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(false)
-        // 编辑区顶部不再有 tab 行（切换控件已移到编辑区右上角悬浮 dock）
+        // 编辑区内部视图由统一三态真源驱动（入口在编辑工具条右侧），无旧 tab 行节点
         expect(wrapper.find('.llm-wiki-editor-tabs').exists()).toBe(false)
     })
 

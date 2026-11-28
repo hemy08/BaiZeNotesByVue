@@ -625,11 +625,11 @@ export default {
         close: 'Close'
     },
     /**
-     * 1.5.7 LLM Wiki L5: workbench AI input panel + editor/preview tab switch.
+     * 1.5.7 LLM Wiki L5: workbench AI input panel.
      * UI skeleton batch only; AI calls go through an injectable transport (placeholder by default).
-     * 1.5.7 UX fine-tuning (user feedback batch A4): the editor/preview switch and the workspace
-     * mode quick switch become icon-only buttons at the right of the edit toolbar; the right
-     * sidebar AI entry switches to LLM Wiki mode when clicked in traditional mode.
+     * 1.5.7 UX fine-tuning (user feedback batch A4): the workspace mode quick switch becomes an
+     * icon-only button at the right of the edit toolbar; the right sidebar AI entry switches to
+     * LLM Wiki mode when clicked in traditional mode.
      */
     llmWikiPanel: {
         ariaLabel: 'AI input panel',
@@ -679,8 +679,6 @@ export default {
         aiError: 'AI request failed. Try again later.',
         collapse: 'Collapse AI panel',
         expand: 'Expand AI panel',
-        switchToPreview: 'Switch to preview',
-        switchToEditor: 'Switch to editor',
         switchToLlmWiki: 'Switch to LLM Wiki mode',
         switchToTraditional: 'Switch to traditional mode',
         switchToLlmWikiEntry: 'Switch to LLM Wiki mode and open the AI assistant',
@@ -689,6 +687,21 @@ export default {
             'Failed to save the workspace mode configuration: {error}. The previous mode is still active; please try again.',
         workspaceModeSwitchUnavailable:
             'The system configuration cannot be read or written in this environment, so the workspace mode was not switched'
+    },
+    /**
+     * 1.5.7 UX fine-tuning (user feedback batch A5): three-state "editor / preview / editor+preview"
+     * view switch at the right of the edit toolbar. Shared by traditional and LLM Wiki modes
+     * (single source of truth: workspace-layout's currentWorkspaceLayout.viewMode, kept in sync
+     * with the View menu F9/F10/F11); the title shows the current view and the click target.
+     */
+    viewModeToggle: {
+        title: '{current}. Click to {next}.',
+        currentEdit: 'Current: editor only',
+        currentPreview: 'Current: preview only',
+        currentEditPreview: 'Current: editor + preview',
+        switchToEdit: 'switch to editor only',
+        switchToPreview: 'switch to preview only',
+        switchToEditPreview: 'switch to editor + preview'
     },
     /**
      * 1.5.7 LLM Wiki L3: AI compile diff approval UI (Markdown/llm-ingest-diff.vue).

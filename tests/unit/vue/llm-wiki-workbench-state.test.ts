@@ -1,31 +1,34 @@
 // @vitest-environment jsdom
 /**
- * 1.5.7 LLM Wiki 工作台 UI 状态（编辑区 tab / AI 面板折叠 / AI 面板宽度）持久化。
+ * 1.5.7 LLM Wiki 工作台 UI 状态（AI 面板折叠 / AI 面板宽度）持久化。
  *
- * 覆盖：默认值、localStorage 容错读取（损坏值/存储异常）、写入与恢复、重置接口，
- * 以及编辑区 tab 分段控件的渲染/切换/无障碍属性。
+ * 1.5.7 体验微调（批次 A5）：原「编辑区单栏 tab」状态（`editorTab` /
+ * `baize:llm-wiki:editor-tab`）已被统一三态视图真源
+ * （`components/Markdown/workspace-layout` 的 `currentWorkspaceLayout.viewMode`）取代并删除；
+ * 本模块只保留 AI 面板收起 / 宽度这两项工作台状态。
+ *
+ * 覆盖：默认值、localStorage 容错读取（损坏值/存储异常）、写入与恢复、重置接口、
+ * 旧 tab 状态删除的回归契约。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-    DEFAULT_LLM_WIKI_EDITOR_TAB,
     LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY,
     LLM_WIKI_AI_PANEL_WIDTH,
     LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY,
-    LLM_WIKI_EDITOR_TAB,
-    LLM_WIKI_EDITOR_TAB_STORAGE_KEY,
     clampLlmWikiAiPanelWidth,
     ensureLlmWikiAiPanelExpanded,
     ensureLlmWikiWorkbenchStateLoaded,
     llmWikiWorkbenchState,
     normalizeLlmWikiAiPanelWidth,
-    normalizeLlmWikiEditorTab,
     resetLlmWikiAiPanelWidth,
     resetLlmWikiWorkbenchStateForTesting,
     setLlmWikiAiPanelCollapsed,
     setLlmWikiAiPanelWidth,
-    setLlmWikiEditorTab,
     toggleLlmWikiAiPanelCollapsed
 } from '../../../src/renderer/src/components/llm-wiki/llm-wiki-workbench'
+
+/** 旧「编辑区 tab」持久化键（A5 起已删除，仅用于回归断言） */
+const LEGACY_EDITOR_TAB_STORAGE_KEY = 'baize:llm-wiki:editor-tab'
 
 beforeEach(() => {
     window.localStorage.clear()
@@ -39,27 +42,27 @@ afterEach(() => {
 })
 
 describe('llm-wiki-workbench 状态默认值与归一化', () => {
-    it('未持久化时默认编辑器 tab、AI 面板展开且宽度未自定义', () => {
+    it('未持久化时 AI 面板展开且宽度未自定义', () => {
         ensureLlmWikiWorkbenchStateLoaded()
-        expect(llmWikiWorkbenchState.editorTab).toBe(DEFAULT_LLM_WIKI_EDITOR_TAB)
-        expect(DEFAULT_LLM_WIKI_EDITOR_TAB).toBe(LLM_WIKI_EDITOR_TAB.EDITOR)
         expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
         // null = 未自定义宽度：布局层按窗口宽度分档取默认值
         expect(llmWikiWorkbenchState.aiPanelWidth).toBeNull()
     })
 
-    it('normalizeLlmWikiEditorTab 只接受 preview，其余回落 editor', () => {
-        expect(normalizeLlmWikiEditorTab('preview')).toBe('preview')
-        expect(normalizeLlmWikiEditorTab('editor')).toBe('editor')
-        expect(normalizeLlmWikiEditorTab('garbage')).toBe('editor')
-        expect(normalizeLlmWikiEditorTab(undefined)).toBe('editor')
-        expect(normalizeLlmWikiEditorTab(42)).toBe('editor')
-    })
+    it('旧「编辑区 tab」状态已被统一 viewMode 取代并删除（无字段、无持久化键、无写入路径）', async () => {
+        const module =
+            (await import('../../../src/renderer/src/components/llm-wiki/llm-wiki-workbench')) as typeof import('../../../src/renderer/src/components/llm-wiki/llm-wiki-workbench')
+        expect('editorTab' in module.llmWikiWorkbenchState).toBe(false)
+        expect('LLM_WIKI_EDITOR_TAB_STORAGE_KEY' in module).toBe(false)
+        expect('LLM_WIKI_EDITOR_TAB' in module).toBe(false)
+        expect('DEFAULT_LLM_WIKI_EDITOR_TAB' in module).toBe(false)
+        expect('normalizeLlmWikiEditorTab' in module).toBe(false)
+        expect('setLlmWikiEditorTab' in module).toBe(false)
 
-    it('localStorage 中的损坏值回落默认（容错读取）', () => {
-        window.localStorage.setItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY, 'not-a-tab')
         ensureLlmWikiWorkbenchStateLoaded()
-        expect(llmWikiWorkbenchState.editorTab).toBe('editor')
+        toggleLlmWikiAiPanelCollapsed()
+        setLlmWikiAiPanelWidth(420)
+        expect(window.localStorage.getItem(LEGACY_EDITOR_TAB_STORAGE_KEY)).toBeNull()
     })
 
     it('localStorage 读取异常时回落默认且不抛错', () => {
@@ -67,7 +70,6 @@ describe('llm-wiki-workbench 状态默认值与归一化', () => {
             throw new Error('storage blocked')
         })
         expect(() => ensureLlmWikiWorkbenchStateLoaded()).not.toThrow()
-        expect(llmWikiWorkbenchState.editorTab).toBe('editor')
         expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
         getItemSpy.mockRestore()
     })
@@ -76,8 +78,6 @@ describe('llm-wiki-workbench 状态默认值与归一化', () => {
         const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
             throw new Error('quota exceeded')
         })
-        expect(() => setLlmWikiEditorTab('preview')).not.toThrow()
-        expect(llmWikiWorkbenchState.editorTab).toBe('preview')
         expect(() => toggleLlmWikiAiPanelCollapsed()).not.toThrow()
         expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(true)
         setItemSpy.mockRestore()
@@ -86,10 +86,7 @@ describe('llm-wiki-workbench 状态默认值与归一化', () => {
     it('无 window 的极端环境（typeof window === undefined）读写安全降级', () => {
         vi.stubGlobal('window', undefined)
         expect(() => ensureLlmWikiWorkbenchStateLoaded()).not.toThrow()
-        expect(llmWikiWorkbenchState.editorTab).toBe('editor')
         expect(llmWikiWorkbenchState.aiPanelWidth).toBeNull()
-        expect(() => setLlmWikiEditorTab('preview')).not.toThrow()
-        expect(llmWikiWorkbenchState.editorTab).toBe('preview')
         expect(() => toggleLlmWikiAiPanelCollapsed()).not.toThrow()
         expect(() => setLlmWikiAiPanelWidth(420)).not.toThrow()
         expect(llmWikiWorkbenchState.aiPanelWidth).toBe(420)
@@ -101,17 +98,6 @@ describe('llm-wiki-workbench 状态默认值与归一化', () => {
 })
 
 describe('llm-wiki-workbench 状态写入与恢复', () => {
-    it('切换编辑区 tab 写入 localStorage，重复设置不重复写', () => {
-        setLlmWikiEditorTab('preview')
-        expect(llmWikiWorkbenchState.editorTab).toBe('preview')
-        expect(window.localStorage.getItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)).toBe('preview')
-
-        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
-        setLlmWikiEditorTab('preview')
-        expect(setItemSpy).not.toHaveBeenCalled()
-        setItemSpy.mockRestore()
-    })
-
     it('切换 AI 面板折叠写入 localStorage', () => {
         toggleLlmWikiAiPanelCollapsed()
         expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(true)
@@ -123,27 +109,22 @@ describe('llm-wiki-workbench 状态写入与恢复', () => {
     })
 
     it('新模块实例从 localStorage 恢复上次状态（模拟重启后恢复）', async () => {
-        window.localStorage.setItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY, 'preview')
         window.localStorage.setItem(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY, 'true')
         window.localStorage.setItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY, '420')
         vi.resetModules()
         const fresh =
             (await import('../../../src/renderer/src/components/llm-wiki/llm-wiki-workbench')) as typeof import('../../../src/renderer/src/components/llm-wiki/llm-wiki-workbench')
         fresh.ensureLlmWikiWorkbenchStateLoaded()
-        expect(fresh.llmWikiWorkbenchState.editorTab).toBe('preview')
         expect(fresh.llmWikiWorkbenchState.aiPanelCollapsed).toBe(true)
         expect(fresh.llmWikiWorkbenchState.aiPanelWidth).toBe(420)
     })
 
     it('resetLlmWikiWorkbenchStateForTesting 清除内存状态与持久化键', () => {
-        setLlmWikiEditorTab('preview')
         toggleLlmWikiAiPanelCollapsed()
         setLlmWikiAiPanelWidth(420)
         resetLlmWikiWorkbenchStateForTesting()
-        expect(llmWikiWorkbenchState.editorTab).toBe('editor')
         expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
         expect(llmWikiWorkbenchState.aiPanelWidth).toBeNull()
-        expect(window.localStorage.getItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)).toBeNull()
         expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY)).toBeNull()
         expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBeNull()
     })

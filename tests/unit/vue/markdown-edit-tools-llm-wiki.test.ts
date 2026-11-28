@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 /**
- * 1.5.7 体验微调（用户反馈批次 A4）：编辑工具条右侧图标按钮。
+ * 1.5.7 体验微调（用户反馈批次 A5）：编辑工具条右侧图标按钮。
  *
  * 覆盖：
- * 1. 编辑器/预览切换按钮：仅 LLM Wiki 模式下渲染，纯图标（无文字），title/aria 随当前
- *    tab 指向目标动作，点击切换共享 tab 状态并持久化；
+ * 1. 编辑视图三态切换按钮：**传统模式与 LLM Wiki 模式都渲染**，纯图标（无文字），
+ *    图标 = 当前视图（编辑=铅笔 / 预览=眼睛 / 编辑+预览=分栏），title/aria-label 同时说明
+ *    「当前视图 + 点击后的目标视图」；点击按 编辑 → 预览 → 编辑+预览 → 编辑 循环，
+ *    单一真源写入 `workspace-layout` 的 `updateCurrentWorkspaceViewMode`（不新增状态）；
  * 2. 工作区模式快速切换按钮：两模式都渲染，传统模式点击请求统一确认流程（初始化+写配置），
  *    LLM Wiki 模式点击直接切换到传统模式；
  * 3. 右侧按钮区不参与左侧格式按钮的收缩裁剪（宽度计算扣除右侧区，右侧始终可见）；
@@ -16,12 +18,27 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { nextTick } from 'vue'
 import { t } from '../../../src/renderer/src/common/i18n'
-import {
-    LLM_WIKI_EDITOR_TAB_STORAGE_KEY,
-    llmWikiWorkbenchState,
-    resetLlmWikiWorkbenchStateForTesting,
-    setLlmWikiEditorTab
-} from '../../../src/renderer/src/components/llm-wiki/llm-wiki-workbench'
+
+// ============ 工作区布局单一真源 mock：记录 updateCurrentWorkspaceViewMode 调用 ============
+// 保留真实 reactive 状态（组件与断言共用），只把写入函数包一层记录调用参数，
+// 以验证「点击只写单一真源、不新增第二份视图状态」。
+const layoutMock = vi.hoisted(() => ({ updateCalls: [] as string[] }))
+
+vi.mock('@renderer/components/Markdown/workspace-layout', async (importOriginal) => {
+    const actual =
+        await importOriginal<
+            typeof import('../../../src/renderer/src/components/Markdown/workspace-layout')
+        >()
+    return {
+        ...actual,
+        updateCurrentWorkspaceViewMode: (
+            mode: import('../../../src/renderer/src/components/Markdown/workspace-layout').WorkspaceLayoutViewMode
+        ) => {
+            layoutMock.updateCalls.push(mode)
+            actual.updateCurrentWorkspaceViewMode(mode)
+        }
+    }
+})
 
 // ============ 工作区模式 mock（测试内可切换 llm-wiki / traditional） ============
 vi.mock('@renderer/composables/useWorkspaceMode', async () => {
@@ -75,6 +92,7 @@ vi.mock('@renderer/components/Markdown/hemy-editor-quick-access', () => ({
 }))
 
 import MarkdownEditToolsComponent from '@renderer/components/Markdown/MarkdownEditToolsComponent.vue'
+import { currentWorkspaceLayout } from '@renderer/components/Markdown/workspace-layout'
 import * as workspaceModeModule from '@renderer/composables/useWorkspaceMode'
 import * as workspaceModeSwitchModule from '@renderer/composables/useWorkspaceModeSwitch'
 
@@ -114,7 +132,8 @@ let wrapper: VueWrapper | null = null
 beforeEach(() => {
     testWorkspaceModeState.llmWiki = false
     window.localStorage.clear()
-    resetLlmWikiWorkbenchStateForTesting()
+    currentWorkspaceLayout.viewMode = 'edit-preview'
+    layoutMock.updateCalls.length = 0
     switchMock.requestSwitchToLlmWiki.mockClear()
     switchMock.switchToTraditional.mockClear()
     switchMock.__testWorkspaceModeSwitchState.visible = false
@@ -127,7 +146,8 @@ afterEach(() => {
     wrapper?.unmount()
     wrapper = null
     document.body.innerHTML = ''
-    resetLlmWikiWorkbenchStateForTesting()
+    currentWorkspaceLayout.viewMode = 'edit-preview'
+    layoutMock.updateCalls.length = 0
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
 })
@@ -146,15 +166,144 @@ function buttonText(w: VueWrapper, selector: string): string {
     return w.find(selector).text()
 }
 
-describe('MarkdownEditToolsComponent：传统模式（仅模式快速切换按钮）', () => {
-    it('只渲染模式切换图标按钮：无文字、aria/title 指向「切换到 LLM Wiki 模式」', async () => {
+/** 当前视图切换按钮的图标 SVG 源码 */
+function viewToggleIcon(w: VueWrapper): string {
+    return w.find('#workspace-view-mode-toggle svg').html()
+}
+
+/** 期望的视图按钮 title：当前 + 目标视图（中英词典对称，按 i18n 实际值断言） */
+function expectedViewToggleTitle(
+    currentKey: 'currentEdit' | 'currentPreview' | 'currentEditPreview',
+    nextKey: 'switchToEdit' | 'switchToPreview' | 'switchToEditPreview'
+): string {
+    return t('editorUi.viewModeToggle.title', {
+        current: t(`editorUi.viewModeToggle.${currentKey}`),
+        next: t(`editorUi.viewModeToggle.${nextKey}`)
+    })
+}
+
+describe('MarkdownEditToolsComponent：视图三态切换按钮（两模式都渲染）', () => {
+    it('传统模式：渲染视图按钮与模式按钮；默认 edit-preview → 图标分栏、title 指向「切换到仅编辑」', async () => {
         const w = await mountToolbar()
 
-        expect(w.find('#llm-editor-view-toggle').exists()).toBe(false)
+        const toggle = w.find('#workspace-view-mode-toggle')
+        expect(toggle.exists()).toBe(true)
+        expect(toggle.element.tagName).toBe('BUTTON')
+        expect(toggle.attributes('type')).toBe('button')
+        expect(toggle.attributes('data-workspace-view-mode-toggle')).toBe('true')
+        expect(toggle.attributes('data-view-mode')).toBe('edit-preview')
+        expect(toggle.attributes('title')).toBe(
+            expectedViewToggleTitle('currentEditPreview', 'switchToEdit')
+        )
+        expect(toggle.attributes('aria-label')).toBe(toggle.attributes('title'))
+        // 循环式三态按钮不使用 aria-pressed（非开/关语义），当前态由图标 + data-view-mode 表达
+        expect(toggle.attributes('aria-pressed')).toBeUndefined()
+        // 纯图标：按钮内只有 svg，无文本；默认「编辑+预览」= 分栏图标（rect + 竖分隔线）
+        expect(buttonText(w, '#workspace-view-mode-toggle')).toBe('')
+        expect(toggle.find('svg').exists()).toBe(true)
+        expect(viewToggleIcon(w)).toContain('<rect')
+        expect(viewToggleIcon(w)).toContain('M12 4v16')
+
+        // 模式按钮同时渲染在右侧
+        expect(w.find('#llm-workspace-mode-toggle').exists()).toBe(true)
+    })
+
+    it('点击循环切换 edit-preview → edit → preview → edit-preview：只写单一真源并刷新图标/文案', async () => {
+        const w = await mountToolbar()
+        const toggle = w.find('#workspace-view-mode-toggle')
+
+        // → 仅编辑（铅笔图标）
+        await toggle.trigger('click')
+        await nextTick()
+        expect(layoutMock.updateCalls).toEqual(['edit'])
+        expect(currentWorkspaceLayout.viewMode).toBe('edit')
+        expect(w.find('#workspace-view-mode-toggle').attributes('data-view-mode')).toBe('edit')
+        expect(w.find('#workspace-view-mode-toggle').attributes('title')).toBe(
+            expectedViewToggleTitle('currentEdit', 'switchToPreview')
+        )
+        expect(viewToggleIcon(w)).toContain('M4 20h4L18.5 9.5')
+        expect(viewToggleIcon(w)).not.toContain('<rect')
+
+        // → 仅预览（眼睛图标）
+        await toggle.trigger('click')
+        await nextTick()
+        expect(layoutMock.updateCalls).toEqual(['edit', 'preview'])
+        expect(currentWorkspaceLayout.viewMode).toBe('preview')
+        expect(w.find('#workspace-view-mode-toggle').attributes('data-view-mode')).toBe('preview')
+        expect(w.find('#workspace-view-mode-toggle').attributes('title')).toBe(
+            expectedViewToggleTitle('currentPreview', 'switchToEditPreview')
+        )
+        expect(viewToggleIcon(w)).toContain('<circle')
+        expect(viewToggleIcon(w)).not.toContain('<rect')
+
+        // → 回到编辑+预览（分栏图标）
+        await toggle.trigger('click')
+        await nextTick()
+        expect(layoutMock.updateCalls).toEqual(['edit', 'preview', 'edit-preview'])
+        expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
+        expect(w.find('#workspace-view-mode-toggle').attributes('title')).toBe(
+            expectedViewToggleTitle('currentEditPreview', 'switchToEdit')
+        )
+        expect(viewToggleIcon(w)).toContain('<rect')
+
+        // 第四次点击继续循环回「仅编辑」
+        await toggle.trigger('click')
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('edit')
+        expect(layoutMock.updateCalls).toEqual(['edit', 'preview', 'edit-preview', 'edit'])
+    })
+
+    it('LLM Wiki 模式：视图按钮同样渲染且循环切换语义一致（不依赖 LLM Wiki 专属 tab 状态）', async () => {
+        testWorkspaceModeState.llmWiki = true
+        currentWorkspaceLayout.viewMode = 'edit'
+        const w = await mountToolbar()
+
+        const toggle = w.find('#workspace-view-mode-toggle')
+        expect(toggle.exists()).toBe(true)
+        expect(toggle.attributes('data-view-mode')).toBe('edit')
+
+        await toggle.trigger('click')
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('preview')
+        expect(layoutMock.updateCalls).toEqual(['preview'])
+        // 旧「LLM Wiki 编辑区 tab」持久化键不再被写入（状态已由统一 viewMode 取代）
+        expect(window.localStorage.getItem('baize:llm-wiki:editor-tab')).toBeNull()
+    })
+
+    it('单一真源被外部改动（视图菜单 F9/F10/F11）时按钮图标/文案同步更新', async () => {
+        const w = await mountToolbar()
+        expect(w.find('#workspace-view-mode-toggle').attributes('data-view-mode')).toBe(
+            'edit-preview'
+        )
+
+        currentWorkspaceLayout.viewMode = 'preview'
+        await nextTick()
+        expect(w.find('#workspace-view-mode-toggle').attributes('data-view-mode')).toBe('preview')
+        expect(w.find('#workspace-view-mode-toggle').attributes('title')).toBe(
+            expectedViewToggleTitle('currentPreview', 'switchToEditPreview')
+        )
+    })
+
+    it('非法/损坏的 viewMode 兜底「编辑+预览」，点击后回到合法循环', async () => {
+        ;(currentWorkspaceLayout as unknown as { viewMode: string }).viewMode = 'broken-mode'
+        const w = await mountToolbar()
+
+        expect(w.find('#workspace-view-mode-toggle').attributes('data-view-mode')).toBe(
+            'edit-preview'
+        )
+
+        await w.find('#workspace-view-mode-toggle').trigger('click')
+        await nextTick()
+        expect(currentWorkspaceLayout.viewMode).toBe('edit')
+        expect(layoutMock.updateCalls).toEqual(['edit'])
+    })
+})
+
+describe('MarkdownEditToolsComponent：工作区模式快速切换按钮', () => {
+    it('传统模式：title=切换到 LLM Wiki 模式，点击请求统一切换流程（确认 + 初始化 + 写配置）', async () => {
+        const w = await mountToolbar()
         const modeButton = w.find('#llm-workspace-mode-toggle')
-        expect(modeButton.exists()).toBe(true)
-        expect(modeButton.element.tagName).toBe('BUTTON')
-        expect(modeButton.attributes('type')).toBe('button')
+
         expect(modeButton.attributes('title')).toBe(t('editorUi.llmWikiPanel.switchToLlmWiki'))
         expect(modeButton.attributes('aria-label')).toBe(t('editorUi.llmWikiPanel.switchToLlmWiki'))
         expect(modeButton.attributes('aria-pressed')).toBe('false')
@@ -162,61 +311,16 @@ describe('MarkdownEditToolsComponent：传统模式（仅模式快速切换按�
         // 纯图标：按钮内只有 svg，无文本
         expect(buttonText(w, '#llm-workspace-mode-toggle')).toBe('')
         expect(modeButton.find('svg').exists()).toBe(true)
-    })
 
-    it('点击模式按钮：请求统一切换流程（确认 + 初始化 + 写配置），不直接切换配置', async () => {
-        const w = await mountToolbar()
-
-        await w.find('#llm-workspace-mode-toggle').trigger('click')
+        await modeButton.trigger('click')
         await flushPromises()
 
         expect(switchMock.requestSwitchToLlmWiki).toHaveBeenCalledTimes(1)
         expect(switchMock.switchToTraditional).not.toHaveBeenCalled()
     })
-})
 
-describe('MarkdownEditToolsComponent：LLM Wiki 模式（编辑器/预览 + 模式切换）', () => {
-    beforeEach(() => {
+    it('LLM Wiki 模式：title=切换到传统模式，点击直接切换到传统模式', async () => {
         testWorkspaceModeState.llmWiki = true
-    })
-
-    it('默认编辑器 tab：切换按钮 title=切换到预览，点击切到预览并持久化', async () => {
-        const w = await mountToolbar()
-        const toggle = w.find('#llm-editor-view-toggle')
-        expect(toggle.exists()).toBe(true)
-        expect(toggle.attributes('title')).toBe(t('editorUi.llmWikiPanel.switchToPreview'))
-        expect(toggle.attributes('aria-label')).toBe(t('editorUi.llmWikiPanel.switchToPreview'))
-        expect(toggle.attributes('aria-pressed')).toBe('false')
-        expect(toggle.attributes('data-active-tab')).toBe('editor')
-        expect(buttonText(w, '#llm-editor-view-toggle')).toBe('')
-
-        await toggle.trigger('click')
-        await nextTick()
-        await nextTick()
-
-        expect(llmWikiWorkbenchState.editorTab).toBe('preview')
-        expect(window.localStorage.getItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)).toBe('preview')
-        const updated = w.find('#llm-editor-view-toggle')
-        expect(updated.attributes('title')).toBe(t('editorUi.llmWikiPanel.switchToEditor'))
-        expect(updated.attributes('aria-pressed')).toBe('true')
-        expect(updated.attributes('data-active-tab')).toBe('preview')
-    })
-
-    it('预览 tab 下点击切换回编辑器（tab 状态双向切换）', async () => {
-        setLlmWikiEditorTab('preview')
-        const w = await mountToolbar()
-
-        expect(w.find('#llm-editor-view-toggle').attributes('title')).toBe(
-            t('editorUi.llmWikiPanel.switchToEditor')
-        )
-        await w.find('#llm-editor-view-toggle').trigger('click')
-        await nextTick()
-
-        expect(llmWikiWorkbenchState.editorTab).toBe('editor')
-        expect(window.localStorage.getItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)).toBe('editor')
-    })
-
-    it('模式切换按钮：title=切换到传统模式，点击直接切换到传统模式', async () => {
         const w = await mountToolbar()
         const modeButton = w.find('#llm-workspace-mode-toggle')
 
@@ -230,20 +334,6 @@ describe('MarkdownEditToolsComponent：LLM Wiki 模式（编辑器/预览 + 模�
         expect(switchMock.switchToTraditional).toHaveBeenCalledTimes(1)
         expect(switchMock.requestSwitchToLlmWiki).not.toHaveBeenCalled()
     })
-
-    it('模式切换为传统后按钮即时卸载（状态变化防御分支：传统模式下 tab 按钮不生效）', async () => {
-        const w = await mountToolbar()
-        const toggle = w.find('#llm-editor-view-toggle').element as HTMLButtonElement
-
-        // 同一 tick 内切回传统模式：按钮尚未从 DOM 移除，点击命中「非 LLM Wiki 模式」防御分支
-        testWorkspaceModeState.llmWiki = false
-        toggle.click()
-        await nextTick()
-        await nextTick()
-
-        expect(llmWikiWorkbenchState.editorTab).toBe('editor')
-        expect(w.find('#llm-editor-view-toggle').exists()).toBe(false)
-    })
 })
 
 describe('MarkdownEditToolsComponent：右侧按钮区布局与自适应', () => {
@@ -256,6 +346,11 @@ describe('MarkdownEditToolsComponent：右侧按钮区布局与自适应', () =>
         // 快捷访问按钮数量不变（既有格式按钮全保留）
         expect(w.findAll('.tool-btn')).toHaveLength(3)
         expect(w.find('.toolbar-actions').attributes('data-toolbar-llm-wiki-actions')).toBe('')
+        // 右侧两个图标按钮：视图三态切换 + 工作区模式切换（顺序稳定）
+        const actions = Array.from(w.find('.toolbar-actions').element.children).map(
+            (child) => child.id
+        )
+        expect(actions).toEqual(['workspace-view-mode-toggle', 'llm-workspace-mode-toggle'])
     })
 
     it('按钮尺寸计算扣除右侧按钮区宽度（右侧区始终可见，不被工具栏裁剪）', async () => {
@@ -297,7 +392,7 @@ describe('MarkdownEditToolsComponent：右侧按钮区布局与自适应', () =>
     })
 })
 
-describe('MarkdownEditToolsComponent：图标与令牌静态契约（体验微调 A4）', () => {
+describe('MarkdownEditToolsComponent：图标与令牌静态契约（体验微调 A5）', () => {
     it('右侧按钮为纯图标（24 网格 / stroke 1.5 / currentColor），布局与交互走 --ui-* 令牌', () => {
         const source = fs.readFileSync(
             path.resolve(
@@ -306,12 +401,28 @@ describe('MarkdownEditToolsComponent：图标与令牌静态契约（体验微�
             ),
             'utf8'
         )
-        // 两个按钮均无文字内容节点：模板中按钮内只有 svg 与注释
-        expect(source).not.toMatch(/>\s*(切换到|编辑器|预览|传统|LLM Wiki)\s*</)
+        // 按钮均无文字内容节点：模板中按钮内只有 svg 与注释
+        expect(source).not.toMatch(/>\s*(切换到|编辑器|预览|传统|LLM Wiki|仅编辑)\s*</)
         expect(source).toContain('viewBox="0 0 24 24"')
         expect(source).toContain('stroke-width="1.5"')
         expect(source).toContain('stroke="currentColor"')
         expect(source).toContain('aria-hidden="true"')
+        // 视图三态按钮：两模式都渲染（无 v-if="isLlmWikiMode" 包裹），点击只写单一真源
+        expect(source).toContain('id="workspace-view-mode-toggle"')
+        expect(source).toContain('data-workspace-view-mode-toggle="true"')
+        expect(source).toContain(':data-view-mode="currentViewMode"')
+        expect(source).toContain('@click="cycleWorkspaceViewMode"')
+        expect(source).toContain('updateCurrentWorkspaceViewMode(nextViewMode.value)')
+        // 三种当前视图图标：铅笔 / 眼睛 / 分栏
+        expect(source).toContain('M4 20h4L18.5 9.5')
+        expect(source).toContain('M2 12s3.5-7 10-7')
+        expect(source).toContain('<rect x="3" y="4" width="18" height="16" rx="2" />')
+        // 模式切换复用统一 composable（与系统设置同样处理）
+        expect(source).toContain('requestSwitchToLlmWiki')
+        expect(source).toContain('switchToTraditional')
+        // 旧 LLM Wiki 专属 tab 依赖已彻底移除
+        expect(source).not.toContain('llm-wiki-workbench')
+        expect(source).not.toContain('llm-editor-view-toggle')
         // 右侧区域布局：不收缩 + 靠右；左侧区域可收缩
         const actionsBlock = source.slice(source.indexOf('.toolbar-actions {'))
         expect(actionsBlock).toContain('flex: 0 0 auto')

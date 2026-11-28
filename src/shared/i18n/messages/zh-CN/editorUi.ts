@@ -596,10 +596,10 @@ export default {
         close: '关闭'
     },
     /**
-     * 1.5.7 LLM Wiki L5：工作台 AI 输入面板 + 编辑区「编辑器 / 预览」切换。
+     * 1.5.7 LLM Wiki L5：工作台 AI 输入面板。
      * 本批次只交付 UI 骨架，AI 调用经可注入 transport（默认「尚未接入」提示）。
-     * 1.5.7 体验微调（用户反馈批次 A4）：编辑器/预览切换与工作区模式快速切换改为编辑
-     * 工具条右侧纯图标按钮；右侧边栏 AI 入口在传统模式下点击切换到 LLM Wiki 模式。
+     * 1.5.7 体验微调（用户反馈批次 A4）：工作区模式快速切换改为编辑工具条右侧纯图标按钮；
+     * 右侧边栏 AI 入口在传统模式下点击切换到 LLM Wiki 模式。
      */
     llmWikiPanel: {
         ariaLabel: 'AI 输入面板',
@@ -644,8 +644,6 @@ export default {
         aiError: 'AI 请求失败，请稍后重试',
         collapse: '收起 AI 面板',
         expand: '展开 AI 面板',
-        switchToPreview: '切换到预览',
-        switchToEditor: '切换到编辑器',
         switchToLlmWiki: '切换到 LLM Wiki 模式',
         switchToTraditional: '切换到传统模式',
         switchToLlmWikiEntry: '切换到 LLM Wiki 模式并打开 AI 助手',
@@ -653,6 +651,20 @@ export default {
         workspaceModeSwitchFailedMessage:
             '保存工作区模式配置失败：{error}。当前仍保持原模式，请重试。',
         workspaceModeSwitchUnavailable: '当前环境无法读写系统配置，工作区模式未切换'
+    },
+    /**
+     * 1.5.7 体验微调（用户反馈批次 A5）：编辑工具条右侧「编辑 / 预览 / 编辑+预览」三态视图切换。
+     * 传统模式与 LLM Wiki 模式共用（状态真源为 workspace-layout 的 currentWorkspaceLayout.viewMode，
+     * 与视图菜单 F9/F10/F11 同步）；title 同时说明当前视图与点击后的目标视图。
+     */
+    viewModeToggle: {
+        title: '{current}；点击{next}',
+        currentEdit: '当前：仅编辑',
+        currentPreview: '当前：仅预览',
+        currentEditPreview: '当前：编辑 + 预览',
+        switchToEdit: '切换到仅编辑',
+        switchToPreview: '切换到仅预览',
+        switchToEditPreview: '切换到编辑 + 预览'
     },
     /**
      * 1.5.7 LLM Wiki L3：AI 编译 diff 审批 UI（Markdown/llm-ingest-diff.vue）。

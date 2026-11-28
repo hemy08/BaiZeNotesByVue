@@ -1,11 +1,15 @@
 /**
- * LLM Wiki 工作台 UI 状态（编辑区「编辑器 / 预览」tab、右侧 AI 面板收起与宽度）。
+ * LLM Wiki 工作台 UI 状态（右侧 AI 面板收起与宽度）。
  *
  * ## 背景（1.5.7 LLM Wiki L5 / 体验升级批次 A / 体验调整 / 体验微调）
- * `workspaceMode === 'llm-wiki'` 时工作台采用「左侧单栏编辑区 + 右侧 AI 面板」布局：
- * - 编辑区内部用 tab 在 Monaco 编辑器与 Markdown 预览之间切换（`v-show` 保留两实例状态）；
- *   1.5.7 体验微调（用户反馈）起切换按钮从「编辑区右上角悬浮分段控件」迁移到
- *   编辑工具条右侧（`MarkdownEditToolsComponent.vue`，仅图标；原 `LlmWikiEditorTabs.vue` 已删除）；
+ * `workspaceMode === 'llm-wiki'` 时工作台采用「左侧编辑区 + 右侧 AI 面板」布局：
+ * - 编辑区内部视图由**统一三态真源** `components/Markdown/workspace-layout` 的
+ *   `currentWorkspaceLayout.viewMode` 驱动（1.5.7 体验微调批次 A5 起）：
+ *   `edit` = 仅编辑器、`preview` = 仅预览、`edit-preview` = 编辑器 + 预览并排；
+ *   传统模式与 LLM Wiki 模式语义完全一致，入口在编辑工具条右侧三态按钮
+ *   （`MarkdownEditToolsComponent.vue`）与视图菜单（F9/F10/F11）；
+ *   原「编辑区单栏 tab」状态（`editorTab` / `baize:llm-wiki:editor-tab`）已被统一
+ *   viewMode 取代并删除；
  * - 右侧 AI 面板的收起只由用户手动触发：收起后容器完全不占编辑区宽度，展开入口渲染在
  *   工作区右侧边栏（`WorkSpace.vue` 的 `#llm-ai-sidebar-entry`；传统模式下该入口用于
  *   切换到 LLM Wiki 模式并展开面板）；
@@ -20,18 +24,6 @@
  * - 状态为模块单例（与 `untitled-draft` / `workspace-layout` 等渲染层 UI 状态同口径）。
  */
 import { reactive } from 'vue'
-
-/** 编辑区 tab 标识 */
-export type LlmWikiEditorTab = 'editor' | 'preview'
-
-/** 编辑区 tab 的合法取值（枚举唯一真源；组件与测试共用） */
-export const LLM_WIKI_EDITOR_TAB = {
-    EDITOR: 'editor',
-    PREVIEW: 'preview'
-} as const satisfies Record<string, LlmWikiEditorTab>
-
-/** 默认 tab：编辑器（用户进入 LLM Wiki 模式后先看到可编辑内容） */
-export const DEFAULT_LLM_WIKI_EDITOR_TAB: LlmWikiEditorTab = LLM_WIKI_EDITOR_TAB.EDITOR
 
 /**
  * AI 面板宽度常量（px）。
@@ -51,14 +43,11 @@ export const LLM_WIKI_AI_PANEL_WIDTH = {
 } as const
 
 /** localStorage 键（版本化，便于以后清理不兼容旧状态） */
-export const LLM_WIKI_EDITOR_TAB_STORAGE_KEY = 'baize:llm-wiki:editor-tab'
 export const LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY = 'baize:llm-wiki:ai-panel-collapsed'
 export const LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY = 'baize:llm-wiki:ai-panel-width'
 
 /** LLM Wiki 工作台 UI 状态（组件只读消费，写入统一走本模块函数） */
 export interface LlmWikiWorkbenchState {
-    /** 编辑区当前 tab（编辑器 / 预览） */
-    editorTab: LlmWikiEditorTab
     /** 右侧 AI 面板是否已由用户手动收起（持久化；收起后入口在右侧边栏，不占编辑区宽度） */
     aiPanelCollapsed: boolean
     /**
@@ -70,7 +59,6 @@ export interface LlmWikiWorkbenchState {
 
 /** 运行时状态单例（惰性从 localStorage 恢复） */
 export const llmWikiWorkbenchState = reactive<LlmWikiWorkbenchState>({
-    editorTab: DEFAULT_LLM_WIKI_EDITOR_TAB,
     aiPanelCollapsed: false,
     aiPanelWidth: null
 })
@@ -116,13 +104,6 @@ function writeStoredValue(key: string, value: string): void {
     }
 }
 
-/** 归一化编辑区 tab：只接受 'preview'，其余（含未知/损坏值）回落 'editor' */
-export function normalizeLlmWikiEditorTab(value: unknown): LlmWikiEditorTab {
-    return value === LLM_WIKI_EDITOR_TAB.PREVIEW
-        ? LLM_WIKI_EDITOR_TAB.PREVIEW
-        : DEFAULT_LLM_WIKI_EDITOR_TAB
-}
-
 /**
  * 归一化面板宽度：四舍五入为非负整数（0 合法 = 面板宽 0，仍保留挂载、可再拖回）。
  * 非有限数值（持久化损坏 / NaN）回落默认宽度，避免损坏值把布局打成 NaN。
@@ -159,25 +140,11 @@ export function ensureLlmWikiWorkbenchStateLoaded(): void {
         return
     }
     storageLoaded = true
-    llmWikiWorkbenchState.editorTab = normalizeLlmWikiEditorTab(
-        readStoredValue(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)
-    )
     llmWikiWorkbenchState.aiPanelCollapsed =
         readStoredValue(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY) === 'true'
     llmWikiWorkbenchState.aiPanelWidth = normalizeLlmWikiAiPanelWidth(
         readStoredValue(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)
     )
-}
-
-/** 切换编辑区 tab（写入内存状态并持久化；非法值归一化） */
-export function setLlmWikiEditorTab(tab: LlmWikiEditorTab): void {
-    ensureLlmWikiWorkbenchStateLoaded()
-    const next = normalizeLlmWikiEditorTab(tab)
-    if (llmWikiWorkbenchState.editorTab === next) {
-        return
-    }
-    llmWikiWorkbenchState.editorTab = next
-    writeStoredValue(LLM_WIKI_EDITOR_TAB_STORAGE_KEY, next)
 }
 
 /**
@@ -229,7 +196,6 @@ export function resetLlmWikiAiPanelWidth(): void {
 /** 仅供单元测试：重置模块状态与测试写入的 localStorage 键 */
 export function resetLlmWikiWorkbenchStateForTesting(): void {
     storageLoaded = false
-    llmWikiWorkbenchState.editorTab = DEFAULT_LLM_WIKI_EDITOR_TAB
     llmWikiWorkbenchState.aiPanelCollapsed = false
     llmWikiWorkbenchState.aiPanelWidth = null
     const storage = resolveStorage()
@@ -237,7 +203,6 @@ export function resetLlmWikiWorkbenchStateForTesting(): void {
         return
     }
     try {
-        storage.removeItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)
         storage.removeItem(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY)
         storage.removeItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)
     } catch {

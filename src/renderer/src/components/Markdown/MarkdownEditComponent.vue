@@ -52,8 +52,10 @@
             :sync-scroll-target="visibleSyncScrollTarget"
         />
     </div>
-    <!-- 1.5.7 体验微调（用户反馈批次 A4）：编辑区右上角「编辑器 / 预览」切换分段控件已移除，
-         改为编辑工具条右侧的纯图标按钮（MarkdownEditToolsComponent，仅 LLM Wiki 模式渲染）。 -->
+    <!-- 1.5.7 体验微调（用户反馈批次 A5）：编辑区右上角「编辑器 / 预览」切换分段控件已移除；
+         编辑视图三态（编辑 / 预览 / 编辑+预览）由编辑工具条右侧纯图标按钮
+         （MarkdownEditToolsComponent，传统模式与 LLM Wiki 模式都渲染）与视图菜单共同驱动，
+         本组件只按单一真源 `workspace-layout` 的 viewMode 用 v-show 切换两个窗格。 -->
 </template>
 
 <script setup lang="ts">
@@ -83,6 +85,8 @@ import { describeActionError, reportActionFailure } from '../../common/action-fe
 import type { PreviewScrollTarget } from './preview-scroll-sync'
 import {
     WORKSPACE_LAYOUT_APPLY_EVENT,
+    currentWorkspaceLayout,
+    isWorkspaceLayoutViewMode,
     updateCurrentWorkspaceViewMode,
     type WorkspaceLayoutProfile,
     type WorkspaceLayoutViewMode
@@ -95,15 +99,11 @@ import {
     writeUntitledDraft
 } from './untitled-draft'
 import { saveUntitledDraftAs, requestOpenFile } from './request-open-file'
-// 1.5.7 LLM Wiki L5：单栏工作台（编辑区「编辑器/预览」tab + 右侧 AI 面板）联动
-// 1.5.7 体验微调（用户反馈批次 A4）：tab 切换入口迁移到编辑工具条右侧图标按钮，
-// 本组件只负责按共享 tab 状态用 v-show 切换两个窗格（实例不重建）。
+// 1.5.7 LLM Wiki L5：工作区模式（llm-wiki 模式右侧仍由 WorkSpace 渲染 AI 面板；
+// 编辑区内部视图由下方三态 viewMode 统一驱动）。
+// 1.5.7 体验微调（用户反馈批次 A5）：编辑区「编辑器 / 预览」不再使用 LLM Wiki 专属 tab，
+// 改为传统 / LLM Wiki 两模式统一的三态视图（单一真源 workspace-layout）。
 import { useWorkspaceMode } from '../../composables/useWorkspaceMode'
-import {
-    ensureLlmWikiWorkbenchStateLoaded,
-    llmWikiWorkbenchState,
-    setLlmWikiEditorTab
-} from '../llm-wiki/llm-wiki-workbench'
 import { setLlmWikiActiveDocument } from '../llm-wiki/llm-wiki-context'
 
 // M5：保存/模板/导入替换 3 个进程内事件订阅统一经 useEventBus 注册，卸载时自动清理
@@ -232,9 +232,6 @@ const MdPreview = defineAsyncComponent({
 })
 
 const windowWidth = ref(props.editorPreviewWidth)
-const isShowEditArea = ref(true)
-const isShowPreviewArea = ref(true)
-const isShowResizer = ref(true)
 const resizerWidth = ref(4)
 const resizerPosition = ref('50%')
 const initialCodeContent = ref('')
@@ -242,32 +239,37 @@ const markdownEditorCode = ref('')
 const markdownEditorContent = ref('')
 
 /* ============================================================================
- * 1.5.7 LLM Wiki L5：单栏工作台视图（编辑区「编辑器 / 预览」tab）
+ * 1.5.7 体验微调（用户反馈批次 A5）：编辑区三态视图（编辑 / 预览 / 编辑+预览）
  *
- * - traditional：沿用既有「编辑 + 预览并排」布局，本组 computed 与 refs 等值；
- * - llm-wiki：两个窗格都保持挂载（v-show，保留光标/滚动/预览滚动位置），同一时刻只显示
- *   tab 选中的窗格并占满编辑区宽度；分隔条隐藏，布局由共享 tab 状态驱动
- *   （状态真源 `components/llm-wiki/llm-wiki-workbench.ts`，localStorage 持久化）。
+ * - 单一真源：`workspace-layout` 的 `currentWorkspaceLayout.viewMode`（视图菜单 F9/F10/F11、
+ *   布局 profile、编辑工具条右侧三态按钮三处入口都写同一个状态，不新增第二份视图状态）；
+ * - 传统模式与 LLM Wiki 模式语义完全一致：edit = 仅编辑器、preview = 仅预览、
+ *   edit-preview = 编辑器与预览并排（LLM Wiki 模式下右侧 AI 面板仍由 WorkSpace 渲染，
+ *   三态只影响编辑区内部排布）；
+ * - 两个窗格始终保持挂载（v-show 切换），不重建 Monaco / 预览实例，保留光标、滚动位置与
+ *   预览滚动同步状态；scroll-sync 只在预览可见时透传（见下方 visibleSyncScrollTarget）。
  * ========================================================================== */
 const { isLlmWikiMode } = useWorkspaceMode()
-// 首帧即恢复持久化 tab（幂等；WorkSpace 亦会调用，二者顺序无关）
-ensureLlmWikiWorkbenchStateLoaded()
 
-/** 当前是否为「预览」tab（仅 llm-wiki 模式有意义） */
-const isLlmWikiPreviewTab = computed(() => llmWikiWorkbenchState.editorTab === 'preview')
+/**
+ * 归一化视图模式：只接受合法三态，其它（运行时损坏 / 旧 profile）回落默认「编辑+预览」
+ * （与 1.5.6 既有默认布局一致）。
+ */
+function normalizeViewMode(value: unknown): WorkspaceLayoutViewMode {
+    return isWorkspaceLayoutViewMode(value) ? value : 'edit-preview'
+}
 
-/** 是否显示编辑器窗格（传统模式 = 既有 isShowEditArea；LLM Wiki 模式 = tab 选中编辑器） */
-const showEditPane = computed(() =>
-    isLlmWikiMode.value ? !isLlmWikiPreviewTab.value : isShowEditArea.value
-)
+/** 当前视图模式（单一真源；渲染与后续切换都从这里派生） */
+const currentViewMode = computed(() => normalizeViewMode(currentWorkspaceLayout.viewMode))
 
-/** 是否显示预览窗格（传统模式 = 既有 isShowPreviewArea；LLM Wiki 模式 = tab 选中预览） */
-const showPreviewPane = computed(() =>
-    isLlmWikiMode.value ? isLlmWikiPreviewTab.value : isShowPreviewArea.value
-)
+/** 是否显示编辑器窗格（仅「预览」视图隐藏，实例保留） */
+const showEditPane = computed(() => currentViewMode.value !== 'preview')
 
-/** 是否显示分栏拖拽条（LLM Wiki 单栏模式恒隐藏） */
-const showResizerPane = computed(() => !isLlmWikiMode.value && isShowResizer.value)
+/** 是否显示预览窗格（仅「编辑」视图隐藏，实例保留） */
+const showPreviewPane = computed(() => currentViewMode.value !== 'edit')
+
+/** 是否显示分栏拖拽条（仅「编辑+预览」视图；传统 / LLM Wiki 两模式一致） */
+const showResizerPane = computed(() => currentViewMode.value === 'edit-preview')
 
 /* ==================== 1.5.0 编辑器 → 预览单向滚动同步（父组件编排） ====================
  * 数据流：MarkdownMonacoEditor 发 `sync-scroll`（{ line, ratio }）
@@ -475,23 +477,30 @@ const editPreviewAreaLeft = computed(() => {
     )
 })
 
-/* ---------------- 1.5.7 LLM Wiki L5：窗格宽度（单栏模式占满编辑区） ---------------- */
+/* ---------------- 1.5.7 体验微调（A5）：三态视图窗格宽度 ---------------- */
 
-/** 编辑器窗格宽度：LLM Wiki 单栏模式占满编辑区；传统模式沿用分隔条位置（既有行为） */
-const editPaneWidth = computed(() => (isLlmWikiMode.value ? '100%' : monacoEditorWidth.value))
+/** 编辑器窗格宽度：双栏视图跟随分隔条；单栏视图占满编辑区（对齐既有单栏口径） */
+const editPaneWidth = computed(() => (showResizerPane.value ? monacoEditorWidth.value : '100%'))
 
-/** 预览窗格宽度：LLM Wiki 单栏模式占满编辑区；传统模式沿用并排计算（既有行为） */
-const previewPaneWidth = computed(() => (isLlmWikiMode.value ? '100%' : editPreviewAreaWidth.value))
+/** 预览窗格宽度：双栏视图按剩余宽度计算；单栏视图占满编辑区 */
+const previewPaneWidth = computed(() =>
+    showResizerPane.value ? editPreviewAreaWidth.value : '100%'
+)
 
-/** 预览窗格左偏移：LLM Wiki 单栏模式从 0 开始；传统模式跟随分隔条 */
-const previewPaneLeft = computed(() => (isLlmWikiMode.value ? '0' : editPreviewAreaLeft.value))
+/** 预览窗格左偏移：双栏视图跟随分隔条；单栏视图从 0 开始 */
+const previewPaneLeft = computed(() => (showResizerPane.value ? editPreviewAreaLeft.value : '0'))
 
 /**
  * 传给 Monaco 的容器宽度信号（仅作为「需要重新 layout」的触发器）：
- * LLM Wiki 模式随编辑区实际宽度（AI 面板折叠/展开会改变它）变化，传统模式保持既有口径。
+ * - 传统模式沿用既有口径（分隔条位置即编辑器宽度）；
+ * - LLM Wiki 模式编辑区实际宽度还会随右侧 AI 面板（折叠 / 拖拽）变化，因此把编辑区宽度
+ *   与分隔条位置一起带入，任一变化都触发 Monaco 重排；
+ * - 单栏视图两窗格都占满编辑区，分隔条位置变化不影响宽度（但信号变化仍会触发一次无害重排）。
  */
 const editorAreaWidthProp = computed(() =>
-    isLlmWikiMode.value ? props.editorPreviewWidth : monacoEditorWidthPx.value
+    isLlmWikiMode.value
+        ? `${props.editorPreviewWidth}|${resizerPosition.value}`
+        : monacoEditorWidthPx.value
 )
 
 function pxToPercent(px: number, totalPx: number): string {
@@ -709,91 +718,63 @@ function onHandleNewContent(content: string, kind: 'open' | 'reload' = 'open') {
     // A1：标记「编辑器已装载当前文件内容」，切换标签前才允许同步全文（防空内容覆盖磁盘）
     documentLoaded.value = true
     // 编辑区域显示时，传入（空字符串同样下发，让 Monaco 清空为真正的空文档）
-    if (isShowEditArea.value) {
+    if (showEditPane.value) {
         initialCodeContent.value = effectiveContent
     }
     // 文件加载后通知编辑器重新布局
     scheduleRelayout(150)
 }
 
-function onHandleEditorShow(edit: boolean, preview: boolean) {
-    if (isLlmWikiMode.value) {
-        applyLlmWikiViewMode(edit, preview)
-        return
-    }
-    isShowEditArea.value = edit
-    isShowPreviewArea.value = preview
-    const viewMode: WorkspaceLayoutViewMode =
-        edit && preview ? 'edit-preview' : preview ? 'preview' : 'edit'
+/** 由「编辑 / 预览」两个布尔位推导三态视图模式（视图菜单 IPC / 布局 profile 复用） */
+function resolveViewMode(edit: boolean, preview: boolean): WorkspaceLayoutViewMode {
+    return edit && preview ? 'edit-preview' : preview ? 'preview' : 'edit'
+}
+
+/**
+ * 应用视图模式（1.5.7 体验微调 A5：传统 / LLM Wiki 两模式统一三态）。
+ *
+ * - 写入单一真源 `currentWorkspaceLayout.viewMode`，再同步分隔条位置；
+ * - edit-preview 恢复 50:50 分栏；单栏视图把分隔条推到边界（隐藏时不影响渲染；
+ *   再次进入双栏时重新回到 50:50，与既有视图菜单行为一致）；
+ * - 视图切换后通知 Monaco 重新布局（与既有视图菜单同口径）。
+ */
+function applyViewMode(viewMode: WorkspaceLayoutViewMode): void {
     updateCurrentWorkspaceViewMode(viewMode)
-    if (edit && preview) {
-        isShowResizer.value = true
+    if (viewMode === 'edit-preview') {
         resizerPosition.value = '50%'
     } else {
-        isShowResizer.value = false
-        if (edit) {
-            resizerPosition.value = '100%'
-        } else {
-            resizerPosition.value = '0%'
-        }
+        resizerPosition.value = viewMode === 'edit' ? '100%' : '0%'
     }
-
     // 视图切换后，通知Monaco编辑器重新布局
     scheduleRelayout(100)
 }
 
-/**
- * 1.5.7 LLM Wiki L5：把「视图模式」请求映射为单栏工作台的 tab 选择。
- *
- * - 单栏工作台不存在并排视图：视图菜单/布局 profile 的 edit / preview 分别映射到
- *   编辑区 tab；edit-preview（双栏）请求保留当前 tab（无并排可切换）；
- * - 两窗格 refs 始终保持 true（都挂载、由 v-show 控制显示），保证「预览 tab 下打开
- *   新文件时编辑器内容仍会注入」，切回编辑器无需重建实例。
- */
-function applyLlmWikiViewMode(edit: boolean, preview: boolean): void {
-    if (edit && !preview) {
-        setLlmWikiEditorTab('editor')
-    } else if (!edit && preview) {
-        setLlmWikiEditorTab('preview')
-    }
-    isShowEditArea.value = true
-    isShowPreviewArea.value = true
-    isShowResizer.value = false
-    updateCurrentWorkspaceViewMode(isLlmWikiPreviewTab.value ? 'preview' : 'edit')
-    // 视图切换后通知 Monaco 重新布局（与既有视图菜单同口径）
-    scheduleRelayout(100)
+/** 既有视图菜单 / 布局 profile 入口：把「编辑 / 预览」布尔位映射为三态视图并应用 */
+function onHandleEditorShow(edit: boolean, preview: boolean) {
+    applyViewMode(resolveViewMode(edit, preview))
 }
 
 /**
- * 1.5.7 LLM Wiki L5：编辑区 tab 变化（组件内点击/外部设置）→ 同步布局状态并通知重排。
- * 传统模式不消费该状态（tab 仅在 llm-wiki 模式渲染）。
+ * 1.5.7 体验微调（A5）：外部视图模式变化 → 应用布局。
+ *
+ * 编辑工具条右侧三态按钮与视图菜单 / 布局 profile 共用同一真源
+ * （`currentWorkspaceLayout.viewMode`），因此这里只需 watch 状态：任一入口切换后，
+ * 编辑区立即按新视图渲染，无需额外事件通道或第二份状态。
  */
 watch(
-    () => llmWikiWorkbenchState.editorTab,
-    (tab) => {
-        if (!isLlmWikiMode.value) {
-            return
-        }
-        updateCurrentWorkspaceViewMode(tab === 'preview' ? 'preview' : 'edit')
-        // v-show 切换后 Monaco 容器尺寸已确定，延迟一帧通知重排（与既有视图切换同口径）
-        scheduleRelayout(100)
+    () => currentWorkspaceLayout.viewMode,
+    (viewMode) => {
+        applyViewMode(normalizeViewMode(viewMode))
     }
 )
 
 /**
- * 1.5.7 LLM Wiki L5：工作区模式切换（系统设置保存后广播）。
- * - 进入 LLM Wiki：两窗格保持挂载，布局由 tab 决定；
- * - 退出 LLM Wiki：恢复既有「编辑 + 预览并排」布局（视图菜单/分隔条状态复位）。
+ * 1.5.7 体验微调（A5）：工作区模式切换（系统设置保存后广播）。
+ *
+ * 三态视图是传统 / LLM Wiki 两模式的统一语义，切换模式**不重置**用户已选视图
+ * （仅右侧 AI 面板随模式增删、编辑区可用宽度变化）；这里只通知 Monaco 重新布局。
  */
-watch(isLlmWikiMode, (enabled) => {
-    if (enabled) {
-        isShowEditArea.value = true
-        isShowPreviewArea.value = true
-        isShowResizer.value = false
-        updateCurrentWorkspaceViewMode(isLlmWikiPreviewTab.value ? 'preview' : 'edit')
-    } else {
-        onHandleEditorShow(true, true)
-    }
+watch(isLlmWikiMode, () => {
     scheduleRelayout(100)
 })
 
@@ -823,7 +804,7 @@ const handleClearEditor = () => {
     markdownEditorContent.value = ''
     // A1 多标签（opt-in）：编辑器已清空，不再代表任何文件内容；切换标签前禁止同步全文
     documentLoaded.value = false
-    if (isShowEditArea.value) {
+    if (showEditPane.value) {
         initialCodeContent.value = ''
     }
     // 未命名草稿缓存恢复：欢迎页/无活动文件时清空显示，但缓存内容仍属于用户，
@@ -832,7 +813,7 @@ const handleClearEditor = () => {
     if (cachedDraft) {
         lastSyncedContent = cachedDraft
         markdownEditorContent.value = cachedDraft
-        if (isShowEditArea.value) {
+        if (showEditPane.value) {
             initialCodeContent.value = cachedDraft
         }
     }
@@ -856,13 +837,8 @@ function handleApplyWorkspaceLayout(event: Event): void {
     if (!detail) {
         return
     }
-    if (detail.viewMode === 'edit') {
-        onHandleEditorShow(true, false)
-    } else if (detail.viewMode === 'preview') {
-        onHandleEditorShow(false, true)
-    } else {
-        onHandleEditorShow(true, true)
-    }
+    // 损坏 / 旧版本 profile 的非法 viewMode 回落默认「编辑+预览」（与 1.5.6 既有行为一致）
+    applyViewMode(normalizeViewMode(detail.viewMode))
 }
 
 watch(
@@ -886,7 +862,7 @@ const handleUseTemplate = (value: string) => {
 }
 
 const handleFileImportReplace = (value: string) => {
-    if (isShowEditArea.value) {
+    if (showEditPane.value) {
         initialCodeContent.value = value
     }
     handleMarkdownCodeUpdate(value)
@@ -1019,7 +995,7 @@ onMounted(() => {
     if (cachedDraft && !documentLoaded.value && !activeFilePath.value) {
         lastSyncedContent = cachedDraft
         markdownEditorContent.value = cachedDraft
-        if (isShowEditArea.value) {
+        if (showEditPane.value) {
             initialCodeContent.value = cachedDraft
         }
     }
@@ -1098,9 +1074,9 @@ onBeforeUnmount(() => {
     height: auto;
 }
 
-/* 1.5.7 体验微调（用户反馈批次 A4）：原「编辑器 / 预览」悬浮 dock 的样式已移除——
-   切换按钮改到编辑工具条右侧（MarkdownEditToolsComponent，仅图标）。两个窗格回到
-   编辑区顶部无预留的既有布局（单栏时各自占满编辑区）。 */
+/* 1.5.7 体验微调（用户反馈批次 A5）：原「编辑器 / 预览」悬浮 dock 的样式已移除——
+   三态视图切换入口在编辑工具条右侧（MarkdownEditToolsComponent，纯图标，两模式都渲染）。
+   两个窗格回到编辑区顶部无预留的既有布局（单栏时各自占满编辑区，双栏时分隔条可拖动）。 */
 #resizer-md {
     cursor: ew-resize;
     position: absolute;

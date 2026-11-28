@@ -39,8 +39,8 @@
             class="md-container"
             :style="{ width: mdContainerWidth }"
         >
-            <!-- 1.5.7 体验升级：编辑区「编辑器 / 预览」切换改为悬浮在编辑区右上角，
-                 由 MarkdownEditComponent 作为窗格同级节点渲染；本容器不再占用顶部一行。 -->
+            <!-- 1.5.7 体验微调（A5）：编辑区内部三态视图（编辑 / 预览 / 编辑+预览）由统一真源
+                 `workspace-layout` 的 viewMode 驱动；切换入口在编辑工具条右侧（本容器不占额外行）。 -->
             <MdContainer :md-container-width="mdContainerWidth" />
         </div>
         <!-- 1.5.7 体验升级：编辑区与 AI 面板之间的可拖动分隔条（split）。
@@ -339,11 +339,13 @@ const workAreaWidth = computed(() => {
 })
 
 /* ============================================================================
- * 1.5.7 LLM Wiki 工作台布局（编辑区单栏 + 右侧 AI 输入面板）
+ * 1.5.7 LLM Wiki 工作台布局（左侧编辑区 + 右侧 AI 输入面板）
  *
- * - traditional（默认）：布局与 1.5.6 完全一致（左编辑 + 右预览并排，AI 面板不渲染）；
- * - llm-wiki：左侧编辑区内部用 tab 在「编辑器 / 预览」间切换（不常驻并排），右侧渲染
- *   `LlmAiPanel`。宽度由 workAreaWidth 派生：编辑区 = 可用宽度 − AI 面板宽度 − 分隔条宽度。
+ * - traditional（默认）：布局与 1.5.6 一致（AI 面板不渲染）；编辑区内部视图由统一三态
+ *   真源 `workspace-layout` 的 viewMode 驱动（编辑 / 预览 / 编辑+预览）；
+ * - llm-wiki：左侧编辑区内部同样使用统一三态视图（单一真源，入口在编辑工具条右侧），
+ *   右侧渲染 `LlmAiPanel`。宽度由 workAreaWidth 派生：
+ *   编辑区 = 可用宽度 − AI 面板宽度 − 分隔条宽度。
  * - split 可拖动：编辑区与 AI 面板之间渲染 5px 垂直分隔条，拖动实时改 AI 面板宽度；
  *   面板宽度持久化在 llm-wiki-workbench（`baize:llm-wiki:ai-panel-width`），布局层按
  *   「[0, 当前可用宽度 − 分隔条宽度]」夹取。体验微调（用户反馈「往左拖一点就拖不动」）：
@@ -358,7 +360,7 @@ const { isLlmWikiMode } = useWorkspaceMode()
 
 // L3↔L5 联调：AI 面板经注入的 transport 调用主进程 AI.CHAT（不可用时面板内显示提示）
 provide(LLM_AI_TRANSPORT_INJECTION_KEY, createLlmAiIpcTransport())
-// 首帧即恢复持久化 UI 状态（编辑区 tab / AI 面板收起 / AI 面板宽度），避免布局二次跳变
+// 首帧即恢复持久化 UI 状态（AI 面板收起 / AI 面板宽度），避免布局二次跳变
 ensureLlmWikiWorkbenchStateLoaded()
 
 /** 未自定义宽度时的窗口分档默认值：宽窗 360 / 窄窗 280（px） */

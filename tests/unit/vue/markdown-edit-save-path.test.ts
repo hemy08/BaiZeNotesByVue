@@ -53,6 +53,7 @@ vi.mock('@renderer/components/Markdown/MarkdownPreviewComponent.vue', async () =
 import MdMonacoEdit from '@renderer/components/Markdown/MarkdownMonacoEditor.vue'
 import MdPreview from '@renderer/components/Markdown/MarkdownPreviewComponent.vue'
 import MarkdownEditComponent from '@renderer/components/Markdown/MarkdownEditComponent.vue'
+import { currentWorkspaceLayout } from '@renderer/components/Markdown/workspace-layout'
 import { getConfigStore } from '@renderer/common/useConfigStore'
 import { t } from '@renderer/common/i18n'
 import { IPC } from '../../../src/shared/ipc-channels'
@@ -88,6 +89,9 @@ describe('MarkdownEditComponent 击键/保存热路径（PF-3）', () => {
         // 与既有 Vue 组件测试一致：以 preload 暴露形态 stub 全局 electron
         vi.stubGlobal('electron', { ipcRenderer })
         resetUntitledDraftForTesting()
+        // 1.5.7 体验微调（A5）：视图三态为单一真源（workspace-layout），用例间复位默认
+        // 「编辑+预览」，避免 PF-2 用例切到纯预览后影响后续用例的编辑器初始渲染。
+        currentWorkspaceLayout.viewMode = 'edit-preview'
     })
 
     afterEach(() => {
