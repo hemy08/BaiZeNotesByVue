@@ -42,9 +42,9 @@ test.skip(
     '缺少 out/build/main/index.js：请先执行 npx electron-vite build'
 )
 
-/** 应用主题分类（与 shared/constants/theme.ts 的 THEME_GROUPS 单一真源一致：14 / 7 / 7） */
+/** 应用主题分类（与 shared/constants/theme.ts 的 THEME_GROUPS 单一真源一致：13 / 8 / 7） */
 const EXPECTED_CATEGORY_TITLES = ['浅色主题', '深色主题', '护眼主题']
-const EXPECTED_CATEGORY_CARD_COUNTS = [14, 7, 7]
+const EXPECTED_CATEGORY_CARD_COUNTS = [13, 8, 7]
 const EXPECTED_APP_THEME_CARD_TOTAL = 28
 /** 默认应用主题（主进程 theme-config 默认 currentTheme='baize'）的 i18n 显示名 */
 const DEFAULT_APP_THEME_NAME = '白泽紫韵'
@@ -132,7 +132,7 @@ test.describe('主题设置首开与取消回滚', () => {
             await expect(dialog.locator('.theme-category')).toHaveCount(3, { timeout: 15_000 })
             await expect(dialog.locator('.category-title')).toHaveText(EXPECTED_CATEGORY_TITLES)
 
-            // 3) 28 张主题卡片按 14 / 7 / 7 分组渲染（首开空列表缺陷的回归防线）
+            // 3) 28 张主题卡片按 13 / 8 / 7 分组渲染（首开空列表缺陷的回归防线）
             await expect(dialog.locator('.theme-list .theme-card')).toHaveCount(
                 EXPECTED_APP_THEME_CARD_TOTAL
             )

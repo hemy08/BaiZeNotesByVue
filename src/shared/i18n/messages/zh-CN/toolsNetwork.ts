@@ -13,7 +13,22 @@ export default {
         openInBrowser: '在浏览器中打开'
     },
     pluginTools: {
-        placeholder: '请选择其他工具，当前工具正在开发中，敬请期待。。。'
+        placeholder: '请选择其他工具，当前工具正在开发中，敬请期待。。。',
+        // 1.5.6 批次 B（REQ-04/05）：面板工具搜索 + 收藏/最近使用
+        searchPlaceholder: '搜索工具名称 / 分类 / 关键词',
+        searchAriaLabel: '搜索插件工具',
+        searchClear: '清空搜索',
+        searchResultCount: '找到 {count} 个工具',
+        noResult: '没有找到匹配的工具',
+        noResultHint: '试试工具名称、分类（如「加解密」）或关键词（如「哈希」「Base64」）',
+        favorites: '收藏',
+        recent: '最近使用',
+        allTools: '全部工具',
+        addFavorite: '收藏该工具',
+        removeFavorite: '取消收藏',
+        favoritesLimitReached: '收藏已达上限（最多 {count} 个）',
+        backToToolList: '工具列表',
+        homeHint: '浏览全部工具、收藏与最近使用'
     },
     infoTables: {
         /** 对照表通用搜索框占位符（10 个查询表复用，避免英文硬编码） */

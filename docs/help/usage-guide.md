@@ -44,22 +44,22 @@
 本节先回答“功能在哪里”，第 12 节再给出每个开关的开启/关闭差异。截图中的红框与编号为入口标注，实际界面会随主题、界面风格和密度变化。
 
 <figure class="shot">
-  <img src="images/entry-top-menu.png" alt="菜单栏入口标注截图" />
+  <img src="images/entry-top-menu.webp" alt="菜单栏入口标注截图" />
   <figcaption>图 1-1 顶层菜单入口：①插入 ②设置 ③工具；常用内容工具集中在插入/工具，配置集中在设置。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/entry-insert-menu.png" alt="插入菜单分组标注截图" />
+  <img src="images/entry-insert-menu.webp" alt="插入菜单分组标注截图" />
   <figcaption>图 1-2 插入菜单分组：①绘图入口 ②写作模板/文本块/来自文件 ③Material/Mermaid/PlantUML 模板。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/entry-tools-menu.png" alt="工具菜单内容工具标注截图" />
+  <img src="images/entry-tools-menu.webp" alt="工具菜单内容工具标注截图" />
   <figcaption>图 1-3 工具菜单：①mermaid绘图/配图制作 ②特殊字体/数学公式/Markdown 表格/网页链接。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/entry-toolbar.png" alt="编辑器工具栏入口标注截图" />
+  <img src="images/entry-toolbar.webp" alt="编辑器工具栏入口标注截图" />
   <figcaption>图 1-4 编辑器工具栏：①标题 ②行内格式 ③列表/引用 ④代码块/公式/表格/图片/链接等插入按钮。</figcaption>
 </figure>
 
@@ -182,67 +182,67 @@
 以下截图均来自真实应用窗口，用于快速定位菜单入口与工具窗结构。菜单路径在不同版本中可能微调，但工具窗的字段与操作方式一致。
 
 <figure class="shot">
-  <img src="images/insert-menu.png" alt="插入菜单截图" />
+  <img src="images/insert-menu.webp" alt="插入菜单截图" />
   <figcaption>图 3-1 插入菜单：最上方是 Mermaid 绘图、PlantUML 绘图入口，下方为写作模板、Material 与各模板分组。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/tools-menu.png" alt="工具菜单截图" />
+  <img src="images/tools-menu.webp" alt="工具菜单截图" />
   <figcaption>图 3-2 工具菜单：特殊字体、数学公式、Markdown 表格、网页链接集中在菜单上半区。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/insert-material-menu.png" alt="插入菜单 Material 子菜单截图" />
+  <img src="images/insert-material-menu.webp" alt="插入菜单 Material 子菜单截图" />
   <figcaption>图 3-3 Material 子菜单：Admonition 与 15 项 Material 语法入口，随菜单逐级展开。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/insert-mermaid-templates.png" alt="插入菜单 Mermaid 模板子菜单截图" />
+  <img src="images/insert-mermaid-templates.webp" alt="插入菜单 Mermaid 模板子菜单截图" />
   <figcaption>图 3-4 Mermaid 模板：按第一部分/第二部分分组，继续展开可选择具体模板。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/insert-writing-templates.png" alt="插入菜单写作模板子菜单截图" />
+  <img src="images/insert-writing-templates.webp" alt="插入菜单写作模板子菜单截图" />
   <figcaption>图 3-5 写作模板：在光标处插入模板，不覆盖全文。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/insert-from-file-menu.png" alt="插入菜单来自文件子菜单截图" />
+  <img src="images/insert-from-file-menu.webp" alt="插入菜单来自文件子菜单截图" />
   <figcaption>图 3-6 来自文件：从文件系统导入内容并插入当前笔记。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/special-text-dialog.png" alt="特殊文字编辑窗口截图" />
+  <img src="images/special-text-dialog.webp" alt="特殊文字编辑窗口截图" />
   <figcaption>图 3-7 特殊文字编辑：选择字体/字号/对齐与颜色后，右侧实时预览并插入光标处。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/math-dialog.png" alt="数学公式编辑器截图" />
+  <img src="images/math-dialog.webp" alt="数学公式编辑器截图" />
   <figcaption>图 3-8 数学公式：上方为 KaTeX 实时预览，下方为公式源码编辑区。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/table-editor-dialog.png" alt="Markdown 表格编辑器截图" />
+  <img src="images/table-editor-dialog.webp" alt="Markdown 表格编辑器截图" />
   <figcaption>图 3-9 Markdown 表格编辑器：顶部设置行列与对齐，中部按列排序，底部为表格画布。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/mermaid-dialog.png" alt="Mermaid 图表编辑器截图" />
+  <img src="images/mermaid-dialog.webp" alt="Mermaid 图表编辑器截图" />
   <figcaption>图 3-10 Mermaid 图表编辑：左侧定义图表源码，右侧实时渲染 SVG 预览。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/admonition-dialog.png" alt="Admonition 提示块窗口截图" />
+  <img src="images/admonition-dialog.webp" alt="Admonition 提示块窗口截图" />
   <figcaption>图 3-11 Admonition：选择提示类型、标题与内容，底部提供插入预览。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/insert-image-dialog.png" alt="插入图片窗口截图" />
+  <img src="images/insert-image-dialog.webp" alt="插入图片窗口截图" />
   <figcaption>图 3-12 插入图片：可填写文件路径/Alt/标题，并设置宽度、对齐方式与图注。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/web-link-dialog.png" alt="插入链接窗口截图" />
+  <img src="images/web-link-dialog.webp" alt="插入链接窗口截图" />
   <figcaption>图 3-13 插入链接：分别填写链接文本与 URL 地址，确认后插入当前光标处。</figcaption>
 </figure>
 
@@ -490,7 +490,7 @@ aliases:
 6. 关闭「非模态工具对话框」后恢复模态行为：遮罩拦截背景操作、`Tab` 焦点限制在窗内、点击遮罩或按 `Esc` 关闭（以窗口实际行为为准）。
 
 <figure class="shot">
-  <img src="images/nonmodal-compare.png" alt="非模态开关开启与关闭对比截图" />
+  <img src="images/nonmodal-compare.webp" alt="非模态开关开启与关闭对比截图" />
   <figcaption>图 9-1 同一表格工具窗：左侧开启非模态（背景仍可操作），右侧关闭后遮罩变暗并拦截背景。</figcaption>
 </figure>
 
@@ -505,7 +505,7 @@ aliases:
 面板内通用按键：`↑` / `↓` 循环选择，`Enter` 执行选中命令或打开选中文件，`Esc` 关闭面板，`Tab` / `Shift + Tab` 在面板内循环移动焦点（不会跑到背后的编辑器）。
 
 <figure class="shot">
-  <img src="images/command-palette.png" alt="命令面板截图" />
+  <img src="images/command-palette.webp" alt="命令面板截图" />
   <figcaption>图 9-2 命令面板：输入即过滤，按功能域分组，右侧显示同款快捷键。</figcaption>
 </figure>
 
@@ -620,17 +620,17 @@ aliases:
 关闭任一开关时：不注册对应命令/菜单/监听，默认编辑链路零行为变化。开关保存后即时生效。「非模态工具对话框」是唯一默认开启的功能开关。
 
 <figure class="shot">
-  <img src="images/entry-settings-switch.png" alt="系统设置功能页签入口标注截图" />
+  <img src="images/entry-settings-switch.webp" alt="系统设置功能页签入口标注截图" />
   <figcaption>图 12-1 设置路径：设置 → 系统设置 → 左侧「功能」→ 可选能力底部；红框为非模态开关。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/settings-features.png" alt="系统设置功能页签截图" />
+  <img src="images/settings-features.webp" alt="系统设置功能页签截图" />
   <figcaption>图 12-2 「功能」页签：分默认能力与可选能力两组，可选能力逐项开关。</figcaption>
 </figure>
 
 <figure class="shot">
-  <img src="images/settings-nonmodal-switch.png" alt="系统设置功能页签中的非模态工具对话框开关截图" />
+  <img src="images/settings-nonmodal-switch.webp" alt="系统设置功能页签中的非模态工具对话框开关截图" />
   <figcaption>图 12-3 「功能」页签底部：「非模态工具对话框」默认开启，关闭后恢复模态行为。</figcaption>
 </figure>
 
@@ -862,6 +862,7 @@ aliases:
 3. 查看右侧/下方输出，按工具按钮复制、转换或生成；
 4. 结果如需进笔记，回到编辑器用 `Ctrl+V` 粘贴；不要把密钥、令牌写进笔记正文。
 5. 面板顶部工具条左侧为「插件工具」标题，右侧为 **[最小化][最大化][返回编辑器]**：最小化把面板折叠为 44px 工具条（再次点击还原）、最大化让工具内容铺满工作区宽度、返回编辑器回到编辑视图。
+6. **快速找工具**：工具条中的搜索框输入名称 / 分类 / 关键词（中英文均可），`↑` / `↓` 选择、`Enter` 打开、`Esc` 清空；工具行右侧星标可**收藏**。点工具条左侧「工具列表」可查看「收藏 → 最近使用 → 全部工具」三个分区（最近使用自动记录最近 5 个工具）。
 
 开关差异：38 项插件工具不使用系统设置开关，默认始终可用；在线/AI 导航等联网入口需要网络。各工具的输入/输出边界见下表。
 

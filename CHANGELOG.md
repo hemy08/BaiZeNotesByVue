@@ -1,6 +1,6 @@
-## 开发中（目标 1.5.6）- 工具窗体验与表格编辑器修复
+## 2026年11月28日 - 版本 1.5.6（工具窗体验与可读性升级，开发中）
 
-> **发布状态**：**开发中（未发布）**｜范围：表格编辑器窗口缩放修复、非模态工具窗与插件工具面板的最小化/最大化
+> **发布状态**：**开发中（待发布）**（版本号已升级为 `1.5.6`；RELEASE-NOTES 1.5.6 段已就绪，GitHub Release 与 tag `release-1.5.6` 待发布窗口创建）｜范围：表格编辑器窗口缩放修复、非模态工具窗与插件工具面板的最小化/最大化、主题可读性治理（14 套对比度 + 分组修正 + 硬门禁）、插件工具搜索/最近/收藏、帮助文档配图重采集与瘦身
 
 ### ✅ 表格编辑器窗口缩放修复（2026-11-27）
 
@@ -14,6 +14,31 @@
 - **插件工具面板（38 项）**：新增 44px 顶部工具条（标题「插件工具」+ [最小化][最大化][返回编辑器]）；最小化折叠为工具条、最大化让工具内容铺满工作区宽度（内容预留 100→16px）
 - **i18n**：`dialogMain.toolWindow.minimize/maximize/restore`、`dialogMain.pluginTools.title`（中英）
 - **验证**：新增 `tests/unit/vue/tool-window-controls.test.ts`（18 用例）+ `e2e/tool-window-controls.spec.ts`（真实 Electron 2 用例：最小化 42px / 最大化 1248×768@16,16 / 还原偏差 0；插件面板 44px / 内容 798→882px）
+
+### ✅ 主题可读性治理（2026-11-28）
+
+- **14 套主题按钮文字对比度修复**：原 2.30~4.23:1 → 全部 **≥4.56:1**（修法：保留白字、仅把 accent/buttonBackground 同值压暗——最大色相偏移 0.44°、饱和度偏移 0.52%，主色观感保留）；附带修复 baize-clear 强调色（1.17→4.56）
+- **3 套主题分组声明修正**（只改声明、不改颜色）：forest → 浅色组、baize-text / baize-starry → 深色组，声明分组=实测明暗（浅 13 / 深 8 / 护眼 7）
+- **对比度硬门禁**：新增 `build/check-theme-contrast.js`（28 主题 × 6 组合 + 28 分组一致性，失败 exit 1）+ `npm run quality:contrast`，并接入 `quality:check`；新增 `tests/unit/theme-contrast.test.ts`（19 用例，含红→绿验证）
+
+### ✅ 插件工具（38 项）可发现性（2026-11-28）
+
+- **搜索**：面板工具条新增搜索框，按工具名/分类/关键词（中英双语、多词 AND）过滤 38 项，`↑/↓` 选择、`Enter` 打开、`Esc` 清空，无结果空态
+- **最近使用 + 收藏**：打开即记录最近 5 个（去重置顶）；工具行星标收藏（上限 10）；默认列表视图「收藏 → 最近使用 → 全部工具」三分区；`localStorage` 持久化（无新增 IPC/配置文件，读取容错）
+- **验证**：新增 `tests/unit/vue/plugin-tools-search.test.ts`（31 用例）+ `e2e/plugin-tools-search.spec.ts`（真实 Electron：搜索"哈希"、Enter 打开、收藏、reload 后持久、最小化互斥）
+
+### ✅ 帮助文档配图重采集与瘦身（2026-11-28）
+
+- **截图脚本入库**：`build/capture-help-screenshots.js`（`npm run capture:help-shots`，1962 行，22 场景真实 Electron 截取 + 标注 + 裁剪 + 稳定化；连续 3 次复跑 sha256 逐字节一致）
+- **配图重采**：22 张全部更新为 1.5.6 真实 UI（7 张工具窗图含新最小化/最大化按钮）；PNG 1.47 MiB → WebP **474 KiB（−68.5%）**；PDF 打印链改用无损 PNG（`docs/help/images/print/`），PDF 1.91MB → **1.44MB**
+- **安装包体积回收**：asa/portable 内帮助资源合计 **−1.46 MiB**（预算评估见门禁）
+
+### ✅ 门禁（2026-11-28）
+
+- typecheck 四段（node / web / test / e2e）、ESLint `--max-warnings=0`、Prettier `--check`、`docs:check`（998 链接）、`quality:check` 全绿
+- 全量 vitest **371 文件 / 6,857 用例**（6,852 通过 / 5 跳过）；coverage **93.03 / 87.52 / 93.76 / 93.5**（阈值 80 / 75 / 73 / 80）
+- E2E 套件通过（smoke / tool-window-controls / table-editor-resize / plugin-tools-search / theme-first-open / visual-matrix）；`build:win:all` 产物 ProductVersion **1.5.6**、`budget:check` 9/9 全过（portable **101.86 / 102.5 MiB**，帮助配图 WebP 化后回收 1.37 MiB；NSIS 112.49 / 115、asar 40.14 / 47）
+- 质量基线 **371 文件 / 6,857 用例 / 123,861 行**（与三份对外文档、开发规范附录 C 一致）
 
 ## 2026年11月27日 - 版本 1.5.5（视觉升级，已发布）
 

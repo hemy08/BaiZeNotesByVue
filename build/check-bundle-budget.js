@@ -97,7 +97,11 @@ const BUDGETS = {
     // 属用户可见的帮助内容资产（非运行时代码膨胀），NSIS(113.84/115)、asar(41.07/47)、
     // 入口/首屏预算均满足，故阈值 101.1→104.0 MiB（+2.9，覆盖配图与 PDF 并留 ~0.8 余量）；
     // 其余 8 项预算不变。后续如需回收，可优先压缩帮助截图（PNG→WebP 可降 ~70%）。
-    portable: { label: '便携版 exe（portable）', limit: 104.0 * MIB },
+    // 2026-11-28（1.5.6 帮助配图重采集 + WebP 瘦身）：帮助图 1.47 MiB→474 KiB（−68.5%）、
+    // 帮助 PDF 1.91MB→1.44MB，portable 实测 103.23→**101.86 MiB**（回收 1.37 MiB）。
+    // 按 PERF-02「预算只减不增」：阈值 104.0→**102.5 MiB**（实测+0.64 余量），
+    // 其余 8 项预算不变。
+    portable: { label: '便携版 exe（portable）', limit: 102.5 * MIB },
     // 2026-11-20（B4 electron-store 11→12）：生产依赖树增长，asar 39.33→45.5 MiB（实测）
     asar: { label: 'app.asar', limit: 47 * MIB }
 }

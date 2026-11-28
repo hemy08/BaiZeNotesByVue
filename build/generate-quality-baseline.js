@@ -37,10 +37,15 @@
  * - 不传 `--test-json` 时除「用例数」外行为与旧版一致，`npm run quality:check` 仍可直接使用；
  * - 传了 `--test-json` 但文件不存在 / JSON 非法 / 无有效 testResults 时**直接报错**
  *   （旧版会静默降级为不校验，正是 CI 路径写错时口径失守的根因，故不再静默）；
- * - 生成模式（默认）只写产物、不校验文档；`--check` 模式才做文档比对，两种模式互不破坏。
+ * - 生成模式（默认）只写产物、不校验文档；`--check` 模式才做文档比对，两种模式互不破坏；
+ * - `--check` 模式额外执行 28 套主题对比度硬门禁（build/check-theme-contrast.js，1.5.6
+ *   REQ-03）：对比度/分组一致性失败与本脚本其它失败同一语义（退出码 1），生成模式不执行。
  */
 const fs = require('fs')
 const path = require('path')
+// 1.5.6 方案一批次 A（REQ-03）：主题对比度硬门禁与质量基线共用同一失败语义（--check 时纳入）。
+// 门禁脚本为同目录纯 Node 模块（不依赖 TS 构建产物），require 不会触发其 CLI main。
+const { checkThemeContrast } = require('./check-theme-contrast.js')
 
 const ROOT = path.resolve(__dirname, '..')
 const OUT_DIR = path.join(ROOT, 'out', 'analysis')
@@ -743,6 +748,31 @@ function printUsage() {
     )
 }
 
+/**
+ * 执行 28 套主题对比度硬门禁（1.5.6 方案一批次 A / REQ-03）。
+ * 失败时返回 false 并向 stderr 打印失败明细，由 main 统一 exit 1。
+ * @returns {boolean} 门禁是否通过
+ */
+function runThemeContrastGate() {
+    let result
+    try {
+        result = checkThemeContrast()
+    } catch (error) {
+        console.error(`[quality-baseline] ❌ 主题对比度门禁执行失败：${error.message}`)
+        return false
+    }
+    if (!result.ok) {
+        console.error('[quality-baseline] ❌ 主题对比度门禁未通过：')
+        for (const failure of result.failures) console.error(`  - ${failure.message}`)
+        return false
+    }
+    console.log(
+        `[quality-baseline] ✅ 主题对比度门禁通过（${result.themeCount} 套主题 / ` +
+            `${result.contrastCheckCount} 项对比度组合 / ${result.groupCheckCount} 项分组一致性）`
+    )
+    return true
+}
+
 function main() {
     const parsed = parseArgs(process.argv.slice(2))
     if (parsed.error) {
@@ -828,6 +858,11 @@ function main() {
     if (!check) {
         console.log('[quality-baseline] 生成模式完成（未校验文档；加 --check 执行口径校验）')
         return
+    }
+
+    // 1.5.6 REQ-03：对比度硬门禁先于文档口径校验执行，失败即退出（与文档口径失败同一语义）
+    if (!runThemeContrastGate()) {
+        process.exit(1)
     }
 
     const result = validateDocs(expected, docsRootAbs)

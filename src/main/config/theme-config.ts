@@ -28,6 +28,24 @@ import type { MonacoThemeConfig } from './theme-registry'
 // ARC-13：re-export 保持既有 `import type { ThemeStyles } from '../config'` 等引用路径不变
 export type { MonacoThemeType, ThemeConfig, ThemeStyles, ThemeType }
 
+/**
+ * 28 套应用主题配色真源（1.5.6 方案一批次 A：主题可读性治理 / REQ-01、REQ-03）
+ *
+ * 2026-11-28 对比度修复（依据 out/tmp/fix-dark-theme/theme-consistency-scan.json 实测）：
+ * - 14 套浅色主题的「按钮文字（白）/按钮底（原强调色）」对比度仅 2.30~4.23:1，不足 WCAG AA。
+ *   按「对比度优先 + 主色尽量保留」策略，把这 14 套的 accentColor 与 buttonBackground 同步压暗
+ *   （保持 HSL 色相与饱和度、只降低亮度），白字对比度提升到 ≥4.55:1，色相仍可识别为原主题强调色；
+ *   buttonTextColor 保持白色——它同时被 `--button-text-color` 用于 `--ui-danger`（深红）等
+ *   固定底色按钮，若改为深色会让危险按钮（浅色组 danger #c62828 + 深字）不可读。
+ * - baize-clear 的 accentColor（原亮金 #ffed4e）在浅底上仅 1.17:1；且对话框主按钮以
+ *   `--ui-accent`（= accentColor）为底色、`--button-text-color` 为文字色（白），亮金 + 白字
+ *   仅 1.20:1。本次把 accentColor 压暗为深金 #827500（强调/底 4.56、白字 4.67），保留「金色
+ *   强调」语义；其 buttonBackground 紫色已达标（6.37）故不动。
+ * - 其余 14 套主题的 buttonBackground/buttonTextColor 实测已达标，未改动；主题 id/name/
+ *   nameKey/descKey 均保持不变（三套主题的分组声明修正见 shared/constants/theme.ts）。
+ * - 防回退硬门禁：build/check-theme-contrast.js（28 主题 × 6 组对比度 + 声明分组一致性），
+ *   已接入质量基线 --check 与 tests/unit/theme-contrast.test.ts。
+ */
 export const themes: Record<ThemeType, ThemeStyles> = {
     baize: {
         name: '白泽紫韵',
@@ -56,8 +74,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#3d3d3d',
         secondaryTextColor: '#777777',
         borderColor: '#e8e0d8',
-        accentColor: '#e07a5f',
-        buttonBackground: '#e07a5f',
+        accentColor: '#cd4a28',
+        buttonBackground: '#cd4a28',
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5f0eb'
     },
@@ -88,8 +106,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#3a3550',
         secondaryTextColor: '#6a6580',
         borderColor: '#d0c8e8',
-        accentColor: '#8b7ec8',
-        buttonBackground: '#8b7ec8',
+        accentColor: '#7869bf',
+        buttonBackground: '#7869bf',
         buttonTextColor: '#ffffff',
         hoverBackground: '#ebe8f5'
     },
@@ -104,8 +122,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#4a3530',
         secondaryTextColor: '#7a6555',
         borderColor: '#f5d8d0',
-        accentColor: '#e07850',
-        buttonBackground: '#e07850',
+        accentColor: '#c55023',
+        buttonBackground: '#c55023',
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5e8e5'
     },
@@ -120,8 +138,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#2a4a3a',
         secondaryTextColor: '#5a7a6a',
         borderColor: '#c8e8d8',
-        accentColor: '#3cb371',
-        buttonBackground: '#3cb371',
+        accentColor: '#2c8453',
+        buttonBackground: '#2c8453',
         buttonTextColor: '#ffffff',
         hoverBackground: '#e0f5ea'
     },
@@ -136,8 +154,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#4a3a2a',
         secondaryTextColor: '#7a6a5a',
         borderColor: '#f0e0c8',
-        accentColor: '#e08840',
-        buttonBackground: '#e08840',
+        accentColor: '#b2601d',
+        buttonBackground: '#b2601d',
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5f0e8'
     },
@@ -251,8 +269,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#2e4a2f',
         secondaryTextColor: '#5a7a5b',
         borderColor: '#c8e6c9',
-        accentColor: '#4caf50',
-        buttonBackground: '#4caf50',
+        accentColor: '#3a853d',
+        buttonBackground: '#3a853d',
         buttonTextColor: '#ffffff',
         hoverBackground: '#d4edda'
     },
@@ -267,8 +285,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#4a4035',
         secondaryTextColor: '#7a7065',
         borderColor: '#e5ddd0',
-        accentColor: '#c9a66b',
-        buttonBackground: '#c9a66b',
+        accentColor: '#926f35',
+        buttonBackground: '#926f35',
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5efe5'
     },
@@ -283,8 +301,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#2c4a5e',
         secondaryTextColor: '#5a7a8e',
         borderColor: '#d0e4f0',
-        accentColor: '#5c9ece',
-        buttonBackground: '#5c9ece',
+        accentColor: '#347bae',
+        buttonBackground: '#347bae',
         buttonTextColor: '#ffffff',
         hoverBackground: '#e0eff8'
     },
@@ -299,8 +317,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#4a2a35',
         secondaryTextColor: '#7a5a65',
         borderColor: '#f5d8e0',
-        accentColor: '#e08090',
-        buttonBackground: '#e08090',
+        accentColor: '#d04058',
+        buttonBackground: '#d04058',
         buttonTextColor: '#ffffff',
         hoverBackground: '#f8e8ec'
     },
@@ -315,8 +333,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#4a3a20',
         secondaryTextColor: '#7a6a50',
         borderColor: '#f0e5d0',
-        accentColor: '#d4a050',
-        buttonBackground: '#d4a050',
+        accentColor: '#9a6c26',
+        buttonBackground: '#9a6c26',
         buttonTextColor: '#ffffff',
         hoverBackground: '#f8f0e0'
     },
@@ -331,8 +349,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#2a4a45',
         secondaryTextColor: '#5a7a75',
         borderColor: '#c8e8e0',
-        accentColor: '#26a69a',
-        buttonBackground: '#26a69a',
+        accentColor: '#1e8379',
+        buttonBackground: '#1e8379',
         buttonTextColor: '#ffffff',
         hoverBackground: '#e0f5f0'
     },
@@ -347,8 +365,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#3a2a40',
         secondaryTextColor: '#6a5a70',
         borderColor: '#e8d8e8',
-        accentColor: '#9a70a0',
-        buttonBackground: '#9a70a0',
+        accentColor: '#936699',
+        buttonBackground: '#936699',
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5e8f5'
     },
@@ -411,7 +429,7 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#1a1a1a',
         secondaryTextColor: '#4a4a4a',
         borderColor: '#f0e8d8',
-        accentColor: '#ffed4e',
+        accentColor: '#827500',
         buttonBackground: '#764ba2',
         buttonTextColor: '#ffffff',
         hoverBackground: '#f5f0ff'
@@ -427,8 +445,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#1E293B',
         secondaryTextColor: '#64748B',
         borderColor: '#E2E8F0',
-        accentColor: '#0EA5E9',
-        buttonBackground: '#0EA5E9',
+        accentColor: '#0B7CB0',
+        buttonBackground: '#0B7CB0',
         buttonTextColor: '#FFFFFF',
         hoverBackground: '#F0F9FF'
     },
@@ -443,8 +461,8 @@ export const themes: Record<ThemeType, ThemeStyles> = {
         textColor: '#0F172A',
         secondaryTextColor: '#475569',
         borderColor: '#CBD5E1',
-        accentColor: '#8B5CF6',
-        buttonBackground: '#8B5CF6',
+        accentColor: '#8553F6',
+        buttonBackground: '#8553F6',
         buttonTextColor: '#FFFFFF',
         hoverBackground: '#F5F3FF'
     },

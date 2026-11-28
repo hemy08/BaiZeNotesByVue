@@ -170,6 +170,31 @@ export default {
         fixesTitle: 'Bug fixes',
         improvementsTitle: 'Improvements',
         techStackTitle: 'Tech stack',
+        v156: {
+            title: '1.5.6 Tool Window Usability',
+            highlights: {
+                h1: 'Minimize / maximize / close buttons added to 8 non-modal tool windows: collapse to the title bar, fill the main window, restore to the previous position',
+                h2: '38-tool plugin panel gains a 44px top toolbar: minimize, maximize the tool content, and return to the editor in one click',
+                h3: 'Table editor resize fixed: the content-box overflow pushed the resize grip out of the clipped area, and the window can be resized by dragging again',
+                h4: 'Usage guide chapters 9/17 updated and the HTML/PDF regenerated; no new IPC channels or runtime dependencies'
+            },
+            features: {
+                f1: 'Tool-window title-bar buttons use 28×28 token icons with aria-label and a keyboard focus ring; minimized windows keep only the title bar (42px measured)',
+                f2: 'Maximize fills the main window work area (viewport −32 / offset 16; 1248×768@16,16 measured); click again to restore to the previous drag position',
+                f3: 'The plugin panel collapses to a 44px toolbar and expands the tool content across the workspace (padding 100→16px, 798→882px measured)',
+                f4: 'The table editor supports the same minimize/maximize controls; the bottom-right resize grip drags normally again (E2E 1002×509→1164×631)'
+            },
+            improvements: {
+                i1: 'Unified minimize / maximize / restore states and bilingual labels for all non-modal tool windows, compatible with existing drag, resize and Esc behavior',
+                i2: 'The plugin panel toolbar adapts to the workspace width; tool inputs/outputs and existing IPC call chains are unchanged',
+                i3: 'Help docs synced: usage guide chapters 9 (non-modal tool windows) and 17 (plugin tools) describe the new buttons; HTML/PDF regenerated',
+                i4: 'Regression: 18 new tool-window-controls unit cases + 2 real-Electron E2E specs; table editor test +1 static contract'
+            },
+            fixes: {
+                f1: 'Fixed the table editor window being impossible to resize: the content-box + padding overflowed by 32px and pushed the bottom-right resize grip outside the overflow:hidden clip area',
+                f2: 'The body root now uses box-sizing: border-box and the grip is inset by 2px with a higher z-index; E2E window size 1002×509→1164×631'
+            }
+        },
         v155: {
             title: '1.5.5 Visual Upgrade',
             highlights: {

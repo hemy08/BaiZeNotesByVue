@@ -133,12 +133,14 @@ describe('useConfigStore computed', () => {
         expect(store.isDarkTheme.value).toBe(false)
         store.themeConfig.value.currentTheme = 'deepdark'
         expect(store.isDarkTheme.value).toBe(true)
-        // UI 分类基线：forest 属「深色主题」分组
+        // REQ-02（2026-11-28）：forest 实测为浅色底，按「声明分组 = 实测明暗」归入浅色主题分组
         store.themeConfig.value.currentTheme = 'forest'
-        expect(store.isDarkTheme.value).toBe(true)
-        // UI 分类基线：baize-starry 属「浅色主题」分组（配色争议见 shared/constants/theme 注释）
-        store.themeConfig.value.currentTheme = 'baize-starry'
         expect(store.isDarkTheme.value).toBe(false)
+        // REQ-02（2026-11-28）：baize-text / baize-starry 实测为深色底，归入深色主题分组
+        store.themeConfig.value.currentTheme = 'baize-text'
+        expect(store.isDarkTheme.value).toBe(true)
+        store.themeConfig.value.currentTheme = 'baize-starry'
+        expect(store.isDarkTheme.value).toBe(true)
     })
 
     it('should treat unknown theme ids as non-dark (第 2 批)', () => {

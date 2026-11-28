@@ -14,7 +14,23 @@ export default {
         openInBrowser: 'Open in browser'
     },
     pluginTools: {
-        placeholder: 'Please select another tool. This tool is under development — stay tuned.'
+        placeholder: 'Please select another tool. This tool is under development — stay tuned.',
+        // 1.5.6 batch B (REQ-04/05): panel search + favorites/recently used
+        searchPlaceholder: 'Search tools by name, category or keyword',
+        searchAriaLabel: 'Search plugin tools',
+        searchClear: 'Clear search',
+        searchResultCount: '{count} tools found',
+        noResult: 'No matching tools',
+        noResultHint:
+            'Try a tool name, a category (e.g. "Encrypt") or a keyword (e.g. "hash", "Base64")',
+        favorites: 'Favorites',
+        recent: 'Recently used',
+        allTools: 'All tools',
+        addFavorite: 'Add to favorites',
+        removeFavorite: 'Remove from favorites',
+        favoritesLimitReached: 'Favorites limit reached (up to {count})',
+        backToToolList: 'Tool list',
+        homeHint: 'Browse all tools, favorites and recently used'
     },
     infoTables: {
         /** Shared search placeholder for the 10 lookup tables */

@@ -584,36 +584,36 @@ describe('menu-config', () => {
     it('should declare help menu with release notes ordered newest first', () => {
         const helpMenu = menuMap.value.find((item) => displayText(item) === '帮助')!
         const releases = helpMenu.submenu!.find((item) => displayText(item) === '版本发布')
-        expect(releases?.submenu).toHaveLength(18)
-        expect(resolved(releases!.submenu![0])).toEqual({
+        expect(releases?.submenu).toHaveLength(19)
+        const versions = releases!.submenu!.map((item) => resolved(item))
+        expect(versions[0]).toEqual({
+            label: 'v1.5.6',
+            menuAction: 'baize:menu:help:release-notes:v1.5.6'
+        })
+        expect(versions[1]).toEqual({
             label: 'v1.5.5',
             menuAction: 'baize:menu:help:release-notes:v1.5.5'
         })
-        expect(resolved(releases!.submenu![1])).toEqual({
-            label: 'v1.5.2',
-            menuAction: 'baize:menu:help:release-notes:v1.5.2'
-        })
-        expect(resolved(releases!.submenu![2])).toEqual({
-            label: 'v1.5.1',
-            menuAction: 'baize:menu:help:release-notes:v1.5.1'
-        })
-        expect(resolved(releases!.submenu![3])).toEqual({
-            label: 'v1.5.0',
-            menuAction: 'baize:menu:help:release-notes:v1.5.0'
-        })
-        expect(resolved(releases!.submenu![4])).toEqual({
-            label: 'v1.3.9',
-            menuAction: 'baize:menu:help:release-notes:v1.3.9'
-        })
-        expect(resolved(releases!.submenu![5])).toEqual({
-            label: 'v1.3.5',
-            menuAction: 'baize:menu:help:release-notes:v1.3.5'
-        })
-        expect(resolved(releases!.submenu![6])).toEqual({
-            label: 'v1.3.0',
-            menuAction: 'baize:menu:help:release-notes:v1.3.0'
-        })
-        expect(resolved(releases!.submenu![17])).toEqual({
+        expect(versions.slice(2).map((item) => item.label)).toEqual([
+            'v1.5.2',
+            'v1.5.1',
+            'v1.5.0',
+            'v1.3.9',
+            'v1.3.5',
+            'v1.3.0',
+            'v1.2.2',
+            'v1.2.1',
+            'v1.2.0',
+            'v1.1.5',
+            'v1.1.3',
+            'v1.1.2',
+            'v1.1.1',
+            'v1.1.0',
+            'v1.0.2',
+            'v1.0.1',
+            'v1.0.0'
+        ])
+        expect(versions[18]).toEqual({
             label: 'v1.0.0',
             menuAction: 'baize:menu:help:release-notes:v1.0.0'
         })

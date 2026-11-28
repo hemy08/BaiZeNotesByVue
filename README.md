@@ -384,7 +384,7 @@ BaiZeNotesByVue/
 │   ├── plantuml/                         # PlantUML 本地 teaVM 渲染资源
 │   ├── icon/                             # 应用图标（ico/svg）
 │   └── config/                           # 配置文件（version.json 构建时生成）
-├── tests/                                # 单元测试（369 个 .test.ts / 6,806 个用例）
+├── tests/                                # 单元测试（371 个 .test.ts / 6,857 个用例）
 ├── docs/                                 # 项目文档
 │   ├── wiki/                             # 知识库文档（4 类 25 篇）
 │   │   ├── README.md                     # 文档索引
@@ -469,7 +469,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成                        | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.1 | Electron 应用打包工具                       | [官网](https://www.electron.build/)                    |
-|               Vitest               |  5.1.1  | 单元测试框架（369 个测试文件 / 6,806 用例） | [官网](https://vitest.dev/)                            |
+|               Vitest               |  5.1.1  | 单元测试框架（371 个测试文件 / 6,857 用例） | [官网](https://vitest.dev/)                            |
 |               ESLint               | 10.15.0 | JavaScript 代码检查工具                     | [官网](https://eslint.org/)                            |
 |              Prettier              | 3.10.1  | 代码格式化工具                              | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  3.0.0  | Electron ESLint 配置                        | [GitHub](https://github.com/alex8088/electron-toolkit) |
@@ -486,7 +486,7 @@ BaiZeNotesByVue/
 
 ## 📊 项目统计
 
-> 以下数据为 **2026-11-21 实测**（1.5.1 发布版本基线，当前最新发布版本 1.5.5；唯一真值以 [报告总索引](docs/reports/README.md) 的「当前基线」与 [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) 为准；历史版本数据保留在各报告时点）。
+> 以下数据为 **2026-11-21 实测**（1.5.1 发布版本基线，当前最新发布版本 1.5.5、当前开发版本 1.5.6；唯一真值以 [报告总索引](docs/reports/README.md) 的「当前基线」与 [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) 为准；历史版本数据保留在各报告时点）。
 
 |      指标      |                           数量                           | 说明                                                                                                                                                                                                                                                         |
 | :------------: | :------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -500,7 +500,7 @@ BaiZeNotesByVue/
 |    IPC 通道    |                          108 个                          | `baize:<domain>:<name>`（108 个 / 18 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                                                                                                                         |
 | preload 白名单 |               send 74 / receive 28 / api 6               | `src/preload/allowed-channels.generated.ts`（send/invoke 74、on/once 28 通道；`window.api` 6 方法 / 3 组）                                                                                                                                                   |
 |    插件工具    |                          38 个                           | src/shared/constants/plugin-tools-manifest.ts（单一 manifest，异步按需加载）                                                                                                                                                                                 |
-|    单元测试    |                       6,806 个用例                       | 369 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                                                                                     |
+|    单元测试    |                       6,857 个用例                       | 371 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                                                                                     |
 |    声明依赖    |                          49 个                           | 生产依赖 11 + 开发依赖 38（package.json 实测）                                                                                                                                                                                                               |
 |    依赖审计    |                          0 漏洞                          | 生产与全量依赖均为 0 漏洞（2026-11-20 官方 registry 实测，`npm ls` 干净；Dependabot 254 条告警全量分类 0 条可复现）                                                                                                                                          |
 |   安装包体积   |                        ≈114.0 MiB                        | NSIS 安装包 111.13 MiB / 便携版 100.33 MiB（app.asar 39.96 MiB、locales 2；2026-11-20 当前 dist 实测，发布前需从 HEAD 重建复验）                                                                                                                             |
@@ -516,7 +516,7 @@ BaiZeNotesByVue/
 |    Vue SFC (.vue)    |   96    |   22,777   |
 |     **源码合计**     | **357** | **97,434** |
 |         CSS          |   22    |   3,563    |
-| 单元测试（.test.ts） |   369   |  122,636   |
+| 单元测试（.test.ts） |   371   |  123,861   |
 |   静态资源（.svg）   |   60    |    447     |
 
 ### 关键源码文件行数（实测）
@@ -605,7 +605,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层 + 测试三工程）
 npm run typecheck
 
-# 运行单元测试（369 个测试文件 / 6,806 个用例）
+# 运行单元测试（371 个测试文件 / 6,857 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
@@ -646,7 +646,7 @@ npm run clean
 | 项       | 说明                                                                                                                                                                                                                                                |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 测量项   | **bundle**：首屏初始 JS、渲染入口、主界面壳、预览 chunk、主进程入口、preload 入口、渲染层 assets、app.asar、win-unpacked、locales、NSIS/portable（存在时）；**冷启动**：开发构建 6 个 performance marks + 打包版 6 项 marks + 窗口可见 + 进程总耗时 |
-| 基线快照 | [build/perf-baseline.snapshot.json](./build/perf-baseline.snapshot.json)（入库；2026-11-20 本地实测：首屏 321.9 KiB、开发 preview-ready 478.7ms、打包版 preview-ready 476.8ms / 窗口可见 369.8ms）                                                  |
+| 基线快照 | [build/perf-baseline.snapshot.json](./build/perf-baseline.snapshot.json)（入库；2026-11-20 本地实测：首屏 321.9 KiB、开发 preview-ready 478.7ms、打包版 preview-ready 476.8ms / 窗口可见 371.8ms）                                                  |
 | 阈值     | 相对基线偏离 **>20%** 输出 `::warning` annotation；下降 >20% 记为改善；不改变退出码                                                                                                                                                                 |
 | CI 接入  | `.github/workflows/ci.yml` 的 `perf-baseline` job：`build:unpack` 后运行 `npm run perf:ci:startup`，`continue-on-error: true`，报告上传 artifact（14 天）并写入 GitHub Step Summary                                                                 |
 | 产物     | `out/analysis/perf-baseline-ci.json`、`out/analysis/perf-baseline-ci.md`（另含冷启动原始报告 `perf-baseline.json` / `perf-baseline-packaged.json`）                                                                                                 |
@@ -724,6 +724,15 @@ npm run clean
 
 ## 🗺️ 开发路线图
 
+### v1.5.6 (当前版本，开发中)
+
+- [x] 非模态工具窗（8 个）与插件工具面板（38 项）新增最小化/最大化：工具窗折叠 42px、最大化 1248×768；面板顶栏 44px、内容 798→882px
+- [x] 表格编辑器窗口缩放修复（content-box 溢出 32px → border-box + 手柄内缩 + z-index）；帮助文档第 9/17 章同步（HTML/PDF 重新生成）
+- [x] **主题可读性治理**：14 套主题按钮对比度 2.30~4.23 → ≥4.56:1；3 套主题分组修正（13/8/7）；新增对比度硬门禁 `quality:contrast`
+- [x] **插件工具可发现性**：面板搜索（中英/分类/关键词）、最近使用 5、收藏 10、三分区视图；localStorage 持久化
+- [x] **帮助文档配图重采集与瘦身**：`npm run capture:help-shots` 脚本入库（22 场景可复跑）、22 张 WebP（1.47MiB→474KiB）、PDF 1.91→1.44MB、安装包帮助资源 −1.46MiB
+- [x] 门禁：全量 371 文件 / 6,857 用例、coverage 93.03/87.52/93.76/93.5、typecheck / ESLint / Prettier / docs:check / quality 全绿、E2E 套件通过
+
 ### v1.5.5 (2026-11-27 已发布)
 
 - [x] 视觉升级：4 种界面风格 × 3 档密度 × 28 套主题（18 组语义令牌驱动），6 个核心组件统一升级
@@ -756,7 +765,7 @@ npm run clean
 - [x] 1.5.0 已发布 GitHub Release（2026-11-21，tag `release-1.5.0`；NSIS 安装包 / portable / latest.yml / blockmap）
 - [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
 - [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
-- [x] 文档口径统一（2026-11-20），2026-11-22 复核刷新测试数：测试 369 文件 / 6,806 用例、IPC 108 通道 / 18 组、preload 白名单 send 74 / receive 28 / window.api 6、报告 md 32 篇 / HTML Wiki 33 页
+- [x] 文档口径统一（2026-11-20），2026-11-22 复核刷新测试数：测试 371 文件 / 6,857 用例、IPC 108 通道 / 18 组、preload 白名单 send 74 / receive 28 / window.api 6、报告 md 32 篇 / HTML Wiki 33 页
 - [ ] 长期计划：macOS 和 Linux 版本支持、协作编辑、插件系统、云同步
 
 ### v1.3.9

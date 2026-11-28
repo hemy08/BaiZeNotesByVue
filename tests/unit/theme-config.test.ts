@@ -113,7 +113,9 @@ describe('theme-config', () => {
             expect(themes.baize.accentColor).toBe('#764ba2')
             expect(themes.deepdark.backgroundColor).toBe('#000000')
             expect(themes.deepdark.cardBackground).toBe('#121212')
-            expect(themes['eyecare-green'].accentColor).toBe('#4caf50')
+            // 1.5.6 REQ-01：accentColor 为满足「按钮文字/按钮底 ≥4.5」「强调/页面底 ≥3」已压暗
+            // （保持色相，原 #4caf50 白字仅 2.78；详见 src/main/config/theme-config.ts 注册表注释）
+            expect(themes['eyecare-green'].accentColor).toBe('#3a853d')
             expect(themes['baize-data-dark'].backgroundColor).toBe('#020617')
         })
     })

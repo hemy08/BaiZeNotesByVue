@@ -172,17 +172,17 @@ describe('三级（嵌套）子菜单完整渲染与展开', () => {
         }
     })
 
-    it('长菜单（帮助 → 版本发布 18 项）完整渲染，不依赖滚动容器/虚拟滚动', async () => {
+    it('长菜单（帮助 → 版本发布 19 项）完整渲染，不依赖滚动容器/虚拟滚动', async () => {
         mountMenuBar()
         await clickTopMenu('帮助')
         await hoverRow(findRow(document.body, '版本发布'))
 
         const nested = document.querySelector<HTMLElement>('.nested-submenu > .submenu-list')
         expect(nested).not.toBeNull()
-        // 18 个版本叶子全部在 DOM 中（不是滚动懒加载；移除 max-height 后由视口 clamp 保证可见）
+        // 19 个版本叶子全部在 DOM 中（不是滚动懒加载；移除 max-height 后由视口 clamp 保证可见）
         const items = [...nested!.querySelectorAll<HTMLElement>(':scope > .menu-submenu-item')]
-        expect(items).toHaveLength(18)
-        expect(findRow(nested!, 'v1.5.5')).toBeTruthy()
+        expect(items).toHaveLength(19)
+        expect(findRow(nested!, 'v1.5.6')).toBeTruthy()
         expect(findRow(nested!, 'v1.0.0')).toBeTruthy()
     })
 

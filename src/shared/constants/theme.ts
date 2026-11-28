@@ -15,12 +15,23 @@
  *   没有应用主题的 JSON/CSS 配置——即不存在结构化明暗标志真源；
  * - 因此按任务约定「无真源时以主题设置对话框 UI 分类为准」：本文件的 3 组清单**逐项照抄**
  *   `ThemeSettingDialog.vue` 迁移前的 3 组硬编码清单（浅色 14 / 深色 7 / 护眼 7），
- *   值保持不变，仅把「清单维护的位置」从渲染层组件收敛到 shared 常量；
- * - 遗留待产品确认：按主题配色（背景/文字色）计算，`baize-text`、`baize-starry` 实际为
- *   深色底浅色字（其描述也自述「深色主题」），`forest` 实际为浅色底深色字——与 UI 分组
- *   相反。若产品确认以配色为准，只需调整本文件 `DARK_THEME_TYPES` 与 `THEME_GROUPS` 一次，
- *   渲染层全部消费方（主题设置对话框分组 / 标题栏 logo / isDarkTheme）自动同步，
- *   并由 `tests/unit/theme-contract.test.ts` 守住 28 项覆盖不重不漏。
+ *   值保持不变，仅把「清单维护的位置」从渲染层组件收敛到 shared 常量。
+ *
+ * ## 分组声明修正（2026-11-28，1.5.6 方案一批次 A / REQ-02）
+ * 上述 2026-11-19 遗留的「声明分组与实测明暗相反」问题已由产品口径确认：**以配色的实测
+ * 明暗为准修正声明分组**（不改任何主题颜色，避免改变用户已选择的观感）。修正内容：
+ * - `forest`（森林秘境）：实测浅色底（backgroundColor #f5f8f5 / cardBackground #ffffff），
+ *   由「深色主题」移入「浅色主题」；
+ * - `baize-text`（白泽文字）：实测深色底（#1a1625 / #2d2640，描述自述「深色主题」），
+ *   由「浅色主题」移入「深色主题」；
+ * - `baize-starry`（白泽星空）：实测深色底（#0d1421 / #1a237e，描述「深蓝星空」），
+ *   由「浅色主题」移入「深色主题」；
+ * - 修正后三组为 **浅色 13 / 深色 8 / 护眼 7**（合计 28）；明暗判定口径与
+ *   `shared/theme-tokens.ts#resolveSemanticThemeGroup` 一致（按卡片面相对亮度 < 0.45 判深色），
+ *   `build/check-theme-contrast.js` 已把「声明分组 = 实测明暗」纳入硬门禁防回退。
+ *
+ * 修正后本文件同时是主题设置对话框分组、标题栏 logo 明暗变体（`isDarkThemeType`）与
+ * `useConfigStore.isDarkTheme` 的单一真源。
  *
  * ## 消费方
  * - `ThemeSettingDialog.vue`：按 `THEME_GROUPS` 生成主题设置对话框的 3 个分组；
@@ -46,8 +57,9 @@ export interface ThemeGroup {
 }
 
 /**
- * 浅色系主题（14 项，主题设置对话框「浅色主题」分组；迁移前基线为
- * ThemeSettingDialog.vue 的 lightThemes 清单）。
+ * 浅色系主题（13 项，主题设置对话框「浅色主题」分组）。
+ * 2026-11-28 REQ-02：`baize-text` / `baize-starry`（实测深色底）移入深色组，
+ * `forest`（实测浅色底）由深色组移入本组；其余 12 项沿用迁移前 UI 分类基线。
  */
 export const LIGHT_THEME_TYPES = [
     'baize',
@@ -58,24 +70,25 @@ export const LIGHT_THEME_TYPES = [
     'mint',
     'sunset',
     'rose',
+    'forest',
     'baize-beast',
     'baize-clear',
-    'baize-text',
-    'baize-starry',
     'baize-data-light',
     'baize-mirror-light'
 ] as const satisfies readonly ThemeType[]
 
 /**
- * 深色系主题（7 项，主题设置对话框「深色主题」分组；迁移前基线为
- * ThemeSettingDialog.vue 的 darkThemes 清单）。
+ * 深色系主题（8 项，主题设置对话框「深色主题」分组）。
+ * 2026-11-28 REQ-02：`forest`（实测浅色底）移出本组；`baize-text` / `baize-starry`
+ * （实测深色底，描述也自述深色主题）移入本组；其余 6 项沿用迁移前 UI 分类基线。
  */
 export const DARK_THEME_TYPES = [
     'dark',
     'deepdark',
     'icon',
     'ocean',
-    'forest',
+    'baize-text',
+    'baize-starry',
     'baize-data-dark',
     'baize-mirror-dark'
 ] as const satisfies readonly ThemeType[]

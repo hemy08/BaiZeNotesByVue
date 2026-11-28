@@ -5,7 +5,8 @@
  * 1. shared/types/theme.ts 的 ThemeType 联合 == 主进程 theme-config.ts 的 themes 注册表键
  *    （28 项，双向核对）——主题标识只有这一处真源；
  * 2. shared/constants/theme.ts 的 THEME_GROUPS 覆盖全部 28 项、不重不漏，分组为
- *    light 14 / dark 7 / eyecare 7（值来自主题设置对话框迁移前的 UI 分类基线）；
+ *    light 13 / dark 8 / eyecare 7（2026-11-28 REQ-02 按实测明暗修正后；历史 UI 分类基线为
+ *    14 / 7 / 7，因 forest / baize-text / baize-starry 三套声明与实测明暗相反已校正）；
  * 3. 分组标题 i18n key 在 zh-CN / en-US 词典中均存在；
  * 4. 渲染层消费方（主题设置对话框 / 标题栏 logo / config store）确实引用 shared 清单，
  *    且不再保留硬编码主题 id 数组（防回归：避免又回到三处各自维护）；
@@ -181,9 +182,9 @@ describe('主题明暗分组清单（THEME_GROUPS）', () => {
         expect(THEME_GROUPS.map((group) => group.id)).toEqual(['light', 'dark', 'eyecare'])
     })
 
-    it('三组数量应为 14 / 7 / 7（主题设置对话框 UI 分类基线）', () => {
-        expect(LIGHT_THEME_TYPES).toHaveLength(14)
-        expect(DARK_THEME_TYPES).toHaveLength(7)
+    it('三组数量应为 13 / 8 / 7（REQ-02 按实测明暗修正后的分组基线）', () => {
+        expect(LIGHT_THEME_TYPES).toHaveLength(13)
+        expect(DARK_THEME_TYPES).toHaveLength(8)
         expect(EYECARE_THEME_TYPES).toHaveLength(7)
     })
 
@@ -493,7 +494,7 @@ describe('28 套主题 × 18 语义令牌派生完整性 + 配色自洽性（视
         expect(checkedTokens).toBe(28 * 18)
     })
 
-    it('语义色分组：护眼组全部 eyecare，深色/浅色按表面亮度判定，已知归属偏差被修正', () => {
+    it('语义色分组：护眼组全部 eyecare，浅色/深色组与表面亮度判定一致（REQ-02 修正后）', () => {
         const groupByType = new Map(
             THEME_ENTRIES.map((entry) => [
                 entry.type,
@@ -503,20 +504,41 @@ describe('28 套主题 × 18 语义令牌派生完整性 + 配色自洽性（视
                 )
             ])
         )
+        // 2026-11-28 REQ-02 后「声明分组 = 实测明暗」：浅色组必须按浅色套语义色、深色组必须按
+        // 深色套；不再有历史归属偏差（forest / baize-text / baize-starry 已修正声明）。
         for (const type of EYECARE_THEME_TYPES) {
             expect(groupByType.get(type), type).toBe('eyecare')
         }
         for (const type of DARK_THEME_TYPES) {
-            // 历史归属与真实配色相反：forest 实为浅底（分组深色，语义色按浅色套）
-            const expectedGroup = type === 'forest' ? 'light' : 'dark'
-            expect(groupByType.get(type), type).toBe(expectedGroup)
-        }
-        // 归入浅色分组但真实为深色底的两套：语义色必须按深色套
-        for (const type of ['baize-text', 'baize-starry']) {
             expect(groupByType.get(type), type).toBe('dark')
         }
         for (const type of LIGHT_THEME_TYPES) {
-            expect(['light', 'dark', 'eyecare'], type).toContain(groupByType.get(type))
+            expect(groupByType.get(type), type).toBe('light')
+        }
+    })
+
+    it('REQ-02：三套历史归属相反主题已按实测明暗修正声明分组（不改颜色）', () => {
+        // 2026-11-28 产品口径：以配色的实测明暗为准修正声明分组，不改任何主题颜色。
+        // 历史问题：forest 声明深色但实测浅底；baize-text / baize-starry 声明浅色但实测深底。
+        expect(LIGHT_THEME_TYPES).toContain('forest')
+        expect(DARK_THEME_TYPES).toContain('baize-text')
+        expect(DARK_THEME_TYPES).toContain('baize-starry')
+        expect(isDarkThemeType('forest')).toBe(false)
+        expect(isDarkThemeType('baize-text')).toBe(true)
+        expect(isDarkThemeType('baize-starry')).toBe(true)
+        const expectedClass: Record<string, 'light' | 'dark'> = {
+            forest: 'light',
+            'baize-text': 'dark',
+            'baize-starry': 'dark'
+        }
+        for (const [type, expected] of Object.entries(expectedClass)) {
+            const entry = THEME_ENTRIES.find((item) => item.type === type)
+            expect(entry, `应能解析 ${type} 主题条目`).toBeDefined()
+            const source = entry?.colors as unknown as SemanticTokenSource
+            expect(isDarkColor(source.cardBackground), `${type}.cardBackground 实测明暗`).toBe(
+                expected === 'dark'
+            )
+            expect(resolveSemanticThemeGroup(type, source), type).toBe(expected)
         }
     })
 

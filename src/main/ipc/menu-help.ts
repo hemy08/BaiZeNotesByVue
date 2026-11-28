@@ -14,6 +14,8 @@ import { logger } from '../utils/logger'
  */
 export const helpMenuHandlers = {
     'release-notes': {
+        'v1.5.6': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
+            dialogs.RequestReleaseNotesDialog(mainWindow, '1.5.6'),
         'v1.5.5': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>
             dialogs.RequestReleaseNotesDialog(mainWindow, '1.5.5'),
         'v1.5.2': (mainWindow: Electron.CrossProcessExports.BrowserWindow) =>

@@ -9,6 +9,11 @@
  *
  * 要求：HTML/PDF 都有导航；PDF 由 Chromium 打印，开启 outline（书签）/tagged，
  * 并在正文前生成可点击目录页。PDF 是构建产物，脚本可重复执行。
+ *
+ * 图片两套来源（均由 build/capture-help-screenshots.js 生成）：
+ *   - docs/help/images/*.webp：显示用有损图，复制到 renderer public 随 HTML 进入 asar；
+ *   - docs/help/images/print/*.png：PDF 打印专用无损图，只在打印临时目录使用，不进安装包。
+ *     （Chromium printToPDF 以无损 Flate 嵌入图片，WebP 噪点会让 PDF 反向膨胀。）
  */
 const fs = require('fs')
 const path = require('path')
@@ -22,6 +27,15 @@ const PDF_PATH = path.join(ROOT, 'resources', 'help', 'usage-guide.pdf')
 /** 帮助文档截图源目录与随 HTML 分发的副本目录（Markdown 中以 images/ 引用） */
 const HELP_IMAGES_SRC = path.join(ROOT, 'docs', 'help', 'images')
 const HELP_IMAGES_OUT = path.join(ROOT, 'src', 'renderer', 'public', 'help-images')
+/**
+ * PDF 打印专用无损截图目录（由 build/capture-help-screenshots.js 生成）。
+ * 为什么 PDF 单独用一套图：Chromium printToPDF 会把页面图片以无损 Flate 流嵌入 PDF，
+ * WebP 有损噪点会被完整记录导致 PDF 反向膨胀；用干净的无损 PNG 打印，PDF 更小更清晰。
+ * 该目录**不**复制到 renderer public，因此不增加安装包体积。
+ */
+const HELP_PRINT_IMAGES_SRC = path.join(HELP_IMAGES_SRC, 'print')
+/** PDF 打印工作目录（临时；生成后清理；不入库） */
+const PRINT_WORK_DIR = path.join(ROOT, 'out', 'tmp', 'help-print')
 /** PDF 打印字体（可经 HELP_PDF_FONT 覆盖，用于体积/字形测试） */
 const PRINT_FONT = process.env.HELP_PDF_FONT || '"DengXian","Microsoft YaHei",sans-serif'
 /** PDF 正文字号（可经 HELP_PDF_FONT_SIZE 覆盖，用于体积/分页测试） */
@@ -78,13 +92,66 @@ function copyHelpImages() {
     }
     fs.rmSync(HELP_IMAGES_OUT, { recursive: true, force: true })
     fs.mkdirSync(HELP_IMAGES_OUT, { recursive: true })
-    fs.cpSync(HELP_IMAGES_SRC, HELP_IMAGES_OUT, { recursive: true })
-    const copied = fs
-        .readdirSync(HELP_IMAGES_OUT)
-        .filter((name) => /\.(png|jpe?g|webp|gif|svg)$/i.test(name))
+    // 只复制显示用图片（顶层文件）；`print/` 是 PDF 专用无损图，不进入安装包
+    const copied = []
+    for (const entry of fs.readdirSync(HELP_IMAGES_SRC, { withFileTypes: true })) {
+        if (!entry.isFile()) continue
+        if (!/\.(png|jpe?g|webp|gif|svg)$/i.test(entry.name)) continue
+        fs.copyFileSync(
+            path.join(HELP_IMAGES_SRC, entry.name),
+            path.join(HELP_IMAGES_OUT, entry.name)
+        )
+        copied.push(entry.name)
+    }
     console.log(
         `[help-docs] 截图复制：${copied.length} 个 → ${path.relative(ROOT, HELP_IMAGES_OUT)}`
     )
+}
+
+/**
+ * 组装 PDF 打印页面：把显示用 WebP/JPEG 引用替换为打印专用无损 PNG。
+ *
+ * 输入为已生成的 HTML（图片引用形如 `help-images/<name>.webp`），输出到临时工作目录：
+ * `out/tmp/help-print/usage-guide.html` + 同目录 `help-images/*.png`，
+ * 让 HTML 的相对引用原样生效（打印完由调用方清理）。缺打印图时回退直接打印显示版 HTML
+ * 并告警（PDF 体积会偏大，但不会阻断生成链）。
+ * @param {string} html 已渲染/格式化的帮助 HTML
+ * @returns {{htmlPath: string, cleanup: () => void}}
+ */
+function preparePrintWorkspace(html) {
+    const printNames = fs.existsSync(HELP_PRINT_IMAGES_SRC)
+        ? fs
+              .readdirSync(HELP_PRINT_IMAGES_SRC, { withFileTypes: true })
+              .filter((entry) => entry.isFile() && /\.png$/i.test(entry.name))
+              .map((entry) => entry.name)
+        : []
+    if (printNames.length === 0) {
+        console.warn(
+            '[help-docs] 未找到 PDF 打印专用截图（docs/help/images/print/），' +
+                '直接使用显示版截图打印：PDF 体积会偏大（可先运行截图采集脚本）'
+        )
+        return { htmlPath: HTML_PATH, cleanup: () => undefined }
+    }
+    fs.rmSync(PRINT_WORK_DIR, { recursive: true, force: true })
+    const printImagesDir = path.join(PRINT_WORK_DIR, 'help-images')
+    fs.mkdirSync(printImagesDir, { recursive: true })
+    for (const name of printNames) {
+        fs.copyFileSync(path.join(HELP_PRINT_IMAGES_SRC, name), path.join(printImagesDir, name))
+    }
+    const printHtml = html.replace(
+        /help-images\/([A-Za-z0-9-]+)\.(?:webp|jpe?g|png)/g,
+        'help-images/$1.png'
+    )
+    const htmlPath = path.join(PRINT_WORK_DIR, 'usage-guide.html')
+    fs.writeFileSync(htmlPath, printHtml, 'utf8')
+    console.log(
+        `[help-docs] PDF 打印图：${printNames.length} 张无损 PNG → ` +
+            path.relative(ROOT, printImagesDir)
+    )
+    return {
+        htmlPath,
+        cleanup: () => fs.rmSync(PRINT_WORK_DIR, { recursive: true, force: true })
+    }
 }
 
 function buildHtml(body) {
@@ -204,7 +271,8 @@ async function main() {
     copyHelpImages()
     fs.mkdirSync(path.dirname(HTML_PATH), { recursive: true })
     fs.mkdirSync(path.dirname(PDF_PATH), { recursive: true })
-    fs.writeFileSync(HTML_PATH, await formatHtml(buildHtml(body)), 'utf8')
+    const formattedHtml = await formatHtml(buildHtml(body))
+    fs.writeFileSync(HTML_PATH, formattedHtml, 'utf8')
     console.log(`[help-docs] HTML 生成：${path.relative(ROOT, HTML_PATH)}`)
 
     const electronRuntime = path.join(ROOT, 'out', 'tmp', 'e2e-electron-runtime', 'electron.exe')
@@ -212,13 +280,19 @@ async function main() {
     const printScript = path.join(ROOT, 'build', 'print-help-pdf.js')
     const printEnv = { ...process.env }
     delete printEnv.ELECTRON_RUN_AS_NODE
-    const result = spawnSync(electronPath, [printScript, HTML_PATH, PDF_PATH], {
-        cwd: ROOT,
-        stdio: 'inherit',
-        env: printEnv
-    })
-    if (result.status !== 0) {
-        throw new Error(`Electron 打印 PDF 失败（exit=${result.status ?? 'null'}）`)
+    // PDF 用打印专用无损 PNG（见 preparePrintWorkspace 注释）；工作目录用完即清理
+    const printWorkspace = preparePrintWorkspace(formattedHtml)
+    try {
+        const result = spawnSync(electronPath, [printScript, printWorkspace.htmlPath, PDF_PATH], {
+            cwd: ROOT,
+            stdio: 'inherit',
+            env: printEnv
+        })
+        if (result.status !== 0) {
+            throw new Error(`Electron 打印 PDF 失败（exit=${result.status ?? 'null'}）`)
+        }
+    } finally {
+        printWorkspace.cleanup()
     }
     console.log(`[help-docs] PDF 生成：${path.relative(ROOT, PDF_PATH)}`)
 }
