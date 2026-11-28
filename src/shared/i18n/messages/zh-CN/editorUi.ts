@@ -642,7 +642,6 @@ export default {
         aiError: 'AI 请求失败，请稍后重试',
         collapse: '收起 AI 面板',
         expand: '展开 AI 面板',
-        narrowCollapsedHint: '窗口过窄，AI 面板已自动收起；请加宽窗口后再展开',
         editorTabsLabel: '编辑区视图切换',
         tabEditor: '编辑器',
         tabPreview: '预览'

@@ -1,33 +1,12 @@
 <template>
     <section
         class="llm-ai-panel"
-        :class="{ 'llm-ai-panel--collapsed': collapsed }"
         :data-collapsed="collapsed ? 'true' : 'false'"
         :aria-label="t('editorUi.llmWikiPanel.ariaLabel')"
     >
-        <!-- 折叠态：48px 侧栏，仅保留展开入口（窄窗口自动折叠时不可展开，提示加宽窗口） -->
-        <template v-if="collapsed">
-            <button
-                type="button"
-                class="llm-ai-panel-expand"
-                :disabled="!canExpand"
-                :title="
-                    canExpand
-                        ? t('editorUi.llmWikiPanel.expand')
-                        : t('editorUi.llmWikiPanel.narrowCollapsedHint')
-                "
-                :aria-label="
-                    canExpand
-                        ? t('editorUi.llmWikiPanel.expand')
-                        : t('editorUi.llmWikiPanel.narrowCollapsedHint')
-                "
-                @click="emit('toggle-collapse')"
-            >
-                <span class="llm-ai-panel-expand-mark" aria-hidden="true">«</span>
-                <span class="llm-ai-panel-expand-text" aria-hidden="true">AI</span>
-            </button>
-        </template>
-        <template v-else>
+        <!-- 展开态内容。收起态（体验调整）：由 WorkSpace 把面板容器 v-show=false（完全不占
+             编辑区宽度），展开入口渲染在工作区右侧边栏；面板自身不再渲染 48px 折叠侧栏。 -->
+        <template v-if="!collapsed">
             <header class="llm-ai-panel-header">
                 <h2 class="llm-ai-panel-title">{{ t('editorUi.llmWikiPanel.title') }}</h2>
                 <label class="llm-ai-panel-model">
@@ -187,9 +166,12 @@
  *
  * ## 交互与状态
  * - 消息为纯文本渲染（不做 HTML 解析）；发送请求带递增序号，停止/清空后迟到的响应被丢弃；
- * - 折叠态由父组件（WorkSpace）驱动：props `collapsed` + emit `toggle-collapse`，
- *   面板自身不持久化折叠状态（状态真源见 `llm-wiki-workbench.ts`）；
- * - 面板宽度由父组件（WorkSpace）的分隔条拖拽控制，`reset-width` 事件请求恢复默认宽度。
+ * - 收起态由父组件（WorkSpace）驱动：props `collapsed` + emit `toggle-collapse`。
+ *   收起后父组件把面板容器整体隐藏（`v-show=false`，不占编辑区宽度），展开入口在
+ *   工作区右侧边栏（`#llm-ai-sidebar-entry`）；面板自身不持久化收起状态
+ *   （状态真源见 `llm-wiki-workbench.ts`）；
+ * - 面板宽度由父组件（WorkSpace）的分隔条拖拽控制（编辑区不设最小宽度），
+ *   `reset-width` 事件请求恢复默认宽度。
  *
  * ## 模型配置刷新时机（设置页保存后无需重启）
  * 1. 面板挂载时读取一次；
@@ -219,7 +201,10 @@ import {
 } from './llm-ai-config'
 
 const props = defineProps({
-    /** 是否折叠为 48px 侧栏（由 WorkSpace 控制） */
+    /**
+     * 是否处于收起态（由 WorkSpace 控制；收起时本组件不渲染面板内容，整个容器由父组件隐藏，
+     * 展开入口渲染在工作区右侧边栏）。
+     */
     collapsed: {
         type: Boolean,
         default: false
@@ -241,11 +226,6 @@ const props = defineProps({
     transport: {
         type: Function as PropType<LlmAiTransport>,
         default: undefined
-    },
-    /** 折叠态是否允许展开（窄窗口自动折叠时为 false） */
-    canExpand: {
-        type: Boolean,
-        default: true
     }
 })
 
@@ -661,57 +641,6 @@ onBeforeUnmount(() => {
     /* 容器查询：面板宽度由 WorkSpace 分隔条拖拽决定（与窗口宽度无关） */
     container-type: inline-size;
     color: var(--ui-text, var(--theme-text-color));
-}
-
-/* ---------------- 折叠态侧栏 ---------------- */
-.llm-ai-panel--collapsed {
-    align-items: center;
-    padding: 8px 0;
-}
-
-.llm-ai-panel-expand {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    width: 32px;
-    padding: 8px 0;
-    font-family: inherit;
-    color: var(--ui-text-secondary, var(--theme-secondary-text-color));
-    cursor: pointer;
-    background: transparent;
-    border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
-    border-radius: var(--ui-radius-sm, 2px);
-    transition:
-        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
-        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
-}
-
-.llm-ai-panel-expand:hover:not(:disabled) {
-    color: var(--ui-text, var(--theme-text-color));
-    background: var(--ui-accent-soft, var(--theme-hover-background));
-}
-
-.llm-ai-panel-expand:focus-visible {
-    outline: none;
-    box-shadow: var(--ui-focus-shadow);
-}
-
-.llm-ai-panel-expand:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
-.llm-ai-panel-expand-mark {
-    font-size: 14px;
-    line-height: 1;
-}
-
-.llm-ai-panel-expand-text {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    writing-mode: vertical-rl;
 }
 
 /* ---------------- 头部：标题 / 模型选择 / 清空 / 折叠 ---------------- */

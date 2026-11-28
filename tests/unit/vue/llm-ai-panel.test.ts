@@ -9,7 +9,7 @@
  * 3. 未启用/无模型：展示「未配置模型」占位、禁用发送、可见配置提示；
  * 4. 配置读取失败降级：「默认模型」占位、仍允许发送且载荷不带 modelId；
  * 5. 配置刷新时机：SYSTEM_SETTING_UPDATE 广播 / 折叠恢复展开 / 发送前静默刷新；
- * 6. 发送与停止、错误转发、复制/应用占位/清空、折叠态与恢复宽度事件。
+ * 6. 发送与停止、错误转发、复制/应用占位/清空、收起态渲染与恢复宽度事件。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -613,20 +613,21 @@ describe('LlmAiPanel：结果操作与折叠', () => {
         expect(wrapper.find('.llm-ai-message-empty-title').exists()).toBe(true)
     })
 
-    it('折叠态渲染 48px 侧栏：点击展开上抛 toggle-collapse；不可展开时按钮禁用', async () => {
+    it('收起态不渲染面板内容（展开入口在工作区右侧边栏，由 WorkSpace 渲染）', async () => {
         const wrapper = await mountPanelReady({ collapsed: true })
-        expect(wrapper.find('.llm-ai-panel--collapsed').exists()).toBe(true)
+        expect(wrapper.find('.llm-ai-panel').attributes('data-collapsed')).toBe('true')
         expect(wrapper.find('.llm-ai-panel-header').exists()).toBe(false)
+        expect(wrapper.find('textarea').exists()).toBe(false)
+        expect(wrapper.find('.llm-ai-panel-collapse').exists()).toBe(false)
+        // 面板自身不再渲染 48px 折叠侧栏（入口已移到 WorkSpace 右侧边栏）
+        expect(wrapper.find('.llm-ai-panel--collapsed').exists()).toBe(false)
+        expect(wrapper.find('.llm-ai-panel-expand').exists()).toBe(false)
 
-        await wrapper.find('.llm-ai-panel-expand').trigger('click')
-        expect(wrapper.emitted('toggle-collapse')).toHaveLength(1)
-
-        const disabledWrapper = await mountPanelReady({ collapsed: true, canExpand: false })
-        const expandButton = disabledWrapper.find('.llm-ai-panel-expand')
-        expect(expandButton.attributes('disabled')).toBeDefined()
-        expect(expandButton.attributes('title')).toBe(
-            t('editorUi.llmWikiPanel.narrowCollapsedHint')
-        )
+        // 展开后内容恢复渲染（收起/展开由父组件 WorkSpace 驱动）
+        await wrapper.setProps({ collapsed: false })
+        await flushPromises()
+        expect(wrapper.find('.llm-ai-panel').attributes('data-collapsed')).toBe('false')
+        expect(wrapper.find('.llm-ai-panel-header').exists()).toBe(true)
     })
 
     it('展开态点击折叠按钮上抛 toggle-collapse', async () => {

@@ -1,13 +1,14 @@
 /**
- * LLM Wiki 工作台 UI 状态（编辑区「编辑器 / 预览」tab、右侧 AI 面板折叠与宽度）。
+ * LLM Wiki 工作台 UI 状态（编辑区「编辑器 / 预览」tab、右侧 AI 面板收起与宽度）。
  *
- * ## 背景（1.5.7 LLM Wiki L5 / 体验升级批次 A）
+ * ## 背景（1.5.7 LLM Wiki L5 / 体验升级批次 A / 体验调整）
  * `workspaceMode === 'llm-wiki'` 时工作台采用「左侧单栏编辑区 + 右侧 AI 面板」布局：
  * - 编辑区内部用 tab 在 Monaco 编辑器与 Markdown 预览之间切换（`v-show` 保留两实例状态）；
  *   体验升级批次 A 起该分段控件悬浮于编辑区右上角（`MarkdownEditComponent` 负责定位）；
- * - 右侧 AI 面板可在窄窗口下折叠为 48px 侧栏；
+ * - 右侧 AI 面板的收起只由用户手动触发：收起后容器完全不占编辑区宽度，展开入口渲染在
+ *   工作区右侧边栏（`WorkSpace.vue` 的 `#llm-ai-sidebar-entry`）；
  * - 编辑区与 AI 面板之间的 split 可拖动：面板宽度持久化在本模块（键
- *   `baize:llm-wiki:ai-panel-width`），布局层只做可用宽度/编辑区最小宽度夹取。
+ *   `baize:llm-wiki:ai-panel-width`），布局层只做可用宽度夹取——**不为编辑区保留最小宽度**。
  *
  * ## 边界
  * - 只存 UI 状态，不触达笔记内容、不新增 IPC、不写系统配置；
@@ -30,7 +31,8 @@ export const DEFAULT_LLM_WIKI_EDITOR_TAB: LlmWikiEditorTab = LLM_WIKI_EDITOR_TAB
 
 /**
  * AI 面板宽度约束（px）：拖拽分隔条 / 键盘微调 / 持久化恢复共用同一区间。
- * 窗口可用宽度不足时由布局层（`WorkSpace.vue`）再按「编辑区最小宽度」二次夹取。
+ * 窗口可用宽度不足时由布局层（`WorkSpace.vue`）再按「当前工作区可用宽度」二次夹取
+ * （不为编辑区保留最小宽度，编辑区可被压到 0）。
  */
 export const LLM_WIKI_AI_PANEL_WIDTH = {
     /** 展开态最小宽度 */
@@ -50,7 +52,7 @@ export const LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY = 'baize:llm-wiki:ai-panel-widt
 export interface LlmWikiWorkbenchState {
     /** 编辑区当前 tab（编辑器 / 预览） */
     editorTab: LlmWikiEditorTab
-    /** 右侧 AI 面板是否折叠为侧栏（持久化；窄窗口自动折叠由 WorkSpace 计算，不写回本状态） */
+    /** 右侧 AI 面板是否已由用户手动收起（持久化；收起后入口在右侧边栏，不占编辑区宽度） */
     aiPanelCollapsed: boolean
     /**
      * 右侧 AI 面板宽度（px）。

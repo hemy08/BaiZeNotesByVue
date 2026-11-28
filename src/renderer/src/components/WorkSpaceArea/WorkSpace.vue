@@ -44,11 +44,12 @@
             <MdContainer :md-container-width="mdContainerWidth" />
         </div>
         <!-- 1.5.7 体验升级：编辑区与 AI 面板之间的可拖动分隔条（split）。
-             - 仅 LLM Wiki 模式且面板处于展开态时渲染；折叠态 / 传统模式不渲染（零布局变化）；
-             - 拖动实时改变 AI 面板宽度（编辑区自动让位）；←/→ 键盘微调，双击恢复默认宽度；
+             - 仅 LLM Wiki 模式且面板处于展开态时渲染；收起态 / 传统模式不渲染（零布局变化）；
+             - 拖动实时改变 AI 面板宽度（编辑区自动让位；**不设编辑区最小宽度**，编辑区可被压到 0）；
+             - ←/→ 键盘微调，双击恢复默认宽度；
              - 无障碍：role=separator + aria-orientation=vertical + aria-valuenow/min/max。 -->
         <div
-            v-if="isLlmWikiMode && showLlmAiSplitter"
+            v-if="showLlmAiSplitter"
             id="llm-ai-splitter"
             class="llm-ai-splitter"
             role="separator"
@@ -58,7 +59,7 @@
             :title="t('editorUi.llmWikiPanel.splitterHint')"
             :tabindex="0"
             :aria-valuenow="llmWikiAiPanelWidthPx"
-            :aria-valuemin="LLM_WIKI_AI_PANEL_WIDTH.MIN"
+            :aria-valuemin="llmWikiAiPanelMinWidthPx"
             :aria-valuemax="llmWikiAiPanelMaxWidthPx"
             :style="{ width: `${LLM_WIKI_SPLITTER_WIDTH}px` }"
             @mousedown="startLlmWikiPanelResize"
@@ -66,7 +67,9 @@
             @keydown="handleLlmWikiSplitterKeydown"
         ></div>
         <!-- 1.5.7 LLM Wiki L5：右侧 AI 输入面板（仅 LLM Wiki 模式 + 编辑区可见时占位；
-             切换其它工作区容器时用 v-show 隐藏，保留对话状态；传统模式不渲染）。 -->
+             切换其它工作区容器时用 v-show 隐藏，保留对话状态；传统模式不渲染）。
+             体验调整：用户收起后容器 v-show=false 且宽度 0（完全不占编辑区宽度），
+             展开入口移到工作区右侧边栏（见 #right-navi 的 #llm-ai-sidebar-entry）。 -->
         <div
             v-if="isLlmWikiMode"
             v-show="showLlmAiPanel"
@@ -78,7 +81,6 @@
                 :document-name="llmWikiEditorContext.documentName"
                 :selection-text="llmWikiEditorContext.selectionText"
                 :collapsed="isLlmWikiAiPanelCollapsed"
-                :can-expand="!isLlmWikiAiPanelAutoCollapsed"
                 @toggle-collapse="toggleLlmWikiAiPanelCollapsed"
                 @reset-width="handleResetLlmWikiAiPanelWidth"
             />
@@ -126,8 +128,33 @@
             <ShowPdfEditor :pds-area-width="workAreaWidth" />
         </div>
     </div>
-    <!-- 最右侧边框 -->
-    <div id="right-navi" class="navi-tab" :style="{ width: naviTabWidth, float: 'right' }">
+    <!-- 最右侧边框：1.5.7 体验调整——AI 面板收起后入口按钮落在这里（不再占编辑区宽度）。
+         入口仅「LLM Wiki 模式 + 编辑区可见 + 面板已收起」时渲染；展开态不渲染（面板内自带收起按钮）。 -->
+    <div
+        id="right-navi"
+        class="navi-tab"
+        :data-llm-ai-entry-visible="showLlmAiSidebarEntry ? 'true' : 'false'"
+        :style="{ width: naviTabWidth, float: 'right' }"
+    >
+        <button
+            v-if="showLlmAiSidebarEntry"
+            id="llm-ai-sidebar-entry"
+            type="button"
+            class="llm-ai-sidebar-entry"
+            data-llm-ai-entry="true"
+            :title="t('editorUi.llmWikiPanel.expand')"
+            :aria-label="t('editorUi.llmWikiPanel.expand')"
+            aria-controls="llm-ai-panel-container"
+            :aria-expanded="false"
+            @click="handleOpenLlmWikiAiPanel"
+        >
+            <!-- 星芒图标（当前色填充，颜色由 .llm-ai-sidebar-entry 的 --ui-accent 令牌驱动） -->
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path
+                    d="M12 2l1.9 5.4a2 2 0 0 0 1.2 1.2L20.5 10.5a.7.7 0 0 1 0 1.3l-5.4 1.9a2 2 0 0 0-1.2 1.2L12 20.3a.7.7 0 0 1-1.3 0L8.8 14.9a2 2 0 0 0-1.2-1.2L2.2 11.8a.7.7 0 0 1 0-1.3l5.4-1.9a2 2 0 0 0 1.2-1.2L11.4 2a.7.7 0 0 1 1.2 0z"
+                />
+            </svg>
+        </button>
         <NaviTab position="right" @update:navi:tab="onSwitchLeftNaviTab" />
     </div>
 </template>
@@ -294,85 +321,92 @@ const workAreaWidth = computed(() => {
 })
 
 /* ============================================================================
- * 1.5.7 LLM Wiki 工作台布局（编辑区单栏 + 右侧 AI 输入面板；体验升级批次 A）
+ * 1.5.7 LLM Wiki 工作台布局（编辑区单栏 + 右侧 AI 输入面板）
  *
  * - traditional（默认）：布局与 1.5.6 完全一致（左编辑 + 右预览并排，AI 面板不渲染）；
  * - llm-wiki：左侧编辑区内部用 tab 在「编辑器 / 预览」间切换（不常驻并排），右侧渲染
  *   `LlmAiPanel`。宽度由 workAreaWidth 派生：编辑区 = 可用宽度 − AI 面板宽度 − 分隔条宽度。
  * - split 可拖动：编辑区与 AI 面板之间渲染 5px 垂直分隔条，拖动实时改 AI 面板宽度；
  *   面板宽度持久化在 llm-wiki-workbench（`baize:llm-wiki:ai-panel-width`），布局层只做
- *   「面板 [240, 560] + 编辑区最小 320」夹取；双击分隔条 / 面板按钮恢复默认 360px。
- * - 窄窗口（可用宽度不足以同时容纳最小编辑区 + 最小展开面板 + 分隔条）时 AI 面板自动
- *   折叠为 48px 侧栏（不渲染分隔条、不写回持久化宽度）；用户也可随时手动折叠。
+ *   「面板 [240, 560] + 当前可用宽度」夹取。体验调整（用户要求）：**不再为编辑区保留
+ *   最小宽度**，编辑区可被压到 0、AI 面板可拉宽到 560；双击分隔条 / 面板按钮恢复默认 360px。
+ * - 收起只由用户手动触发（面板内按钮）：收起后容器 v-show=false 且宽度 0（完全不占
+ *   编辑区宽度），展开入口渲染在工作区右侧边栏（`#right-navi` 的 `#llm-ai-sidebar-entry`），
+ *   不再有「窗口过窄自动收起」；收起状态持久化（`baize:llm-wiki:ai-panel-collapsed`）。
  * ========================================================================== */
 const { isLlmWikiMode } = useWorkspaceMode()
 
 // L3↔L5 联调：AI 面板经注入的 transport 调用主进程 AI.CHAT（不可用时面板内显示提示）
 provide(LLM_AI_TRANSPORT_INJECTION_KEY, createLlmAiIpcTransport())
-// 首帧即恢复持久化 UI 状态（编辑区 tab / AI 面板折叠 / AI 面板宽度），避免布局二次跳变
+// 首帧即恢复持久化 UI 状态（编辑区 tab / AI 面板收起 / AI 面板宽度），避免布局二次跳变
 ensureLlmWikiWorkbenchStateLoaded()
 
-/** 未自定义宽度时的窗口分档默认值：宽窗 360 / 窄窗 280 / 折叠侧栏 48（px） */
+/** 未自定义宽度时的窗口分档默认值：宽窗 360 / 窄窗 280（px） */
 const AI_PANEL_WIDTH_NARROW = 280
-const AI_PANEL_WIDTH_COLLAPSED = 48
 /** 编辑区与 AI 面板之间的分隔条宽度（px；5px 热区，视觉线由 CSS 绘制） */
 const LLM_WIKI_SPLITTER_WIDTH = 5
 /** 分隔条键盘微调步长（px；← 变宽 / → 变窄） */
 const LLM_WIKI_PANEL_KEYBOARD_STEP = 16
 /** 窗口宽度不超过该值时用窄档默认面板宽度（仅用户尚未自定义宽度时生效） */
 const AI_PANEL_NARROW_WINDOW_WIDTH = 1100
-/** 编辑区最小可用宽度（保证单栏编辑始终可用） */
-const AI_PANEL_MIN_EDITOR_WIDTH = 320
 
 /** 工作区可用宽度（数值 px；workAreaWidth 的解析结果） */
 const workAreaWidthPx = computed(() => parseInt(workAreaWidth.value, 10) || 0)
 
-/** 是否展示 AI 面板：LLM Wiki 模式 + 编辑区容器可见 + 插件面板未折叠停靠 */
-const showLlmAiPanel = computed(
+/** 面板是否处于用户手动收起态（状态真源：llm-wiki-workbench，localStorage 持久化） */
+const isLlmWikiAiPanelCollapsed = computed(() => llmWikiWorkbenchState.aiPanelCollapsed)
+
+/** AI 面板可用上下文：LLM Wiki 模式 + 编辑区容器可见 + 插件面板未折叠停靠 */
+const isLlmAiPanelAvailable = computed(
     () => isLlmWikiMode.value && isShowMdContainer.value && !isPluginPanelDocked.value
 )
 
-/** 窄窗口自动折叠：可用宽度不足以同时容纳「最小编辑区 + 最小展开面板 + 分隔条」 */
-const isLlmWikiAiPanelAutoCollapsed = computed(
-    () =>
-        workAreaWidthPx.value <
-        AI_PANEL_MIN_EDITOR_WIDTH + LLM_WIKI_AI_PANEL_WIDTH.MIN + LLM_WIKI_SPLITTER_WIDTH
+/** 面板是否展开显示：可用上下文 + 未收起（收起仅由用户手动控制，无窗口自动收起） */
+const showLlmAiPanel = computed(
+    () => isLlmAiPanelAvailable.value && !isLlmWikiAiPanelCollapsed.value
 )
 
-/** 面板折叠态（用户手动折叠 或 窄窗口自动折叠；自动折叠不写回持久化状态） */
-const isLlmWikiAiPanelCollapsed = computed(
-    () => llmWikiWorkbenchState.aiPanelCollapsed || isLlmWikiAiPanelAutoCollapsed.value
+/** 右侧边栏 AI 入口按钮：面板可用但已收起时渲染（展开态不渲染） */
+const showLlmAiSidebarEntry = computed(
+    () => isLlmAiPanelAvailable.value && isLlmWikiAiPanelCollapsed.value
 )
 
 /** 拖动中的临时面板宽度：仅内存态，mouseup 时才写回持久化状态（避免高频写 localStorage） */
 const llmWikiAiPanelDragWidth = ref<number | null>(null)
 
-/**
- * 把目标宽度夹取到「面板合法区间 [MIN, MAX] + 编辑区最小宽度」内。
- * 可用宽度过窄时（理论上会先自动折叠）至少返回面板最小宽度。
- */
-function clampLlmWikiAiPanelWidthToAvailable(desired: number): number {
-    const maxByEditor = workAreaWidthPx.value - AI_PANEL_MIN_EDITOR_WIDTH - LLM_WIKI_SPLITTER_WIDTH
-    const upper = Math.max(
-        LLM_WIKI_AI_PANEL_WIDTH.MIN,
-        Math.min(LLM_WIKI_AI_PANEL_WIDTH.MAX, maxByEditor)
-    )
-    return Math.max(LLM_WIKI_AI_PANEL_WIDTH.MIN, Math.min(clampLlmWikiAiPanelWidth(desired), upper))
-}
+/** 当前可用宽度下面板能达到的最大值（扣除分隔条；编辑区可压到 0） */
+const llmWikiAiPanelMaxAvailablePx = computed(() =>
+    Math.max(0, workAreaWidthPx.value - LLM_WIKI_SPLITTER_WIDTH)
+)
+
+/** 面板宽度下界（常规为 MIN 240；窗口窄到连 240 都放不下时随可用宽度收缩） */
+const llmWikiAiPanelMinWidthPx = computed(() =>
+    Math.min(LLM_WIKI_AI_PANEL_WIDTH.MIN, llmWikiAiPanelMaxAvailablePx.value)
+)
 
 /** 当前可用宽度下允许的面板最大宽度（分隔条 aria-valuemax 与键盘 End 共用） */
 const llmWikiAiPanelMaxWidthPx = computed(() =>
-    clampLlmWikiAiPanelWidthToAvailable(LLM_WIKI_AI_PANEL_WIDTH.MAX)
+    Math.min(LLM_WIKI_AI_PANEL_WIDTH.MAX, llmWikiAiPanelMaxAvailablePx.value)
 )
 
 /**
- * AI 面板宽度（px）：折叠 48 / 展开取「拖动临时值 > 持久化宽度 > 窗口分档默认值」，
+ * 把目标宽度夹取到「面板合法区间 [MIN, MAX] + 当前工作区可用宽度」内。
+ * 体验调整后不再为编辑区保留最小宽度：只要可用宽度允许，面板可一路拉宽到 MAX（560）；
+ * 窗口窄到连面板最小宽度都容不下时按剩余可用宽度收缩（编辑区宽度下限 0）。
+ */
+function clampLlmWikiAiPanelWidthToAvailable(desired: number): number {
+    return Math.max(
+        llmWikiAiPanelMinWidthPx.value,
+        Math.min(clampLlmWikiAiPanelWidth(desired), llmWikiAiPanelMaxWidthPx.value)
+    )
+}
+
+/**
+ * AI 面板展开态宽度（px）：取「拖动临时值 > 持久化宽度 > 窗口分档默认值」，
  * 并始终夹取到可用区间（窗口 resize 时自动夹取，不破坏用户已保存的宽度偏好）。
+ * 收起态不读取本值：面板容器宽度由 `llmAiPanelWidth` 直接置 0（不占编辑区宽度）。
  */
 const llmWikiAiPanelWidthPx = computed(() => {
-    if (isLlmWikiAiPanelCollapsed.value) {
-        return AI_PANEL_WIDTH_COLLAPSED
-    }
     const desired =
         llmWikiAiPanelDragWidth.value ??
         llmWikiWorkbenchState.aiPanelWidth ??
@@ -382,21 +416,20 @@ const llmWikiAiPanelWidthPx = computed(() => {
     return clampLlmWikiAiPanelWidthToAvailable(desired)
 })
 
-/** AI 面板容器内联宽度（非 LLM Wiki 模式不占位） */
+/** AI 面板容器内联宽度（收起 / 非 LLM Wiki 上下文不占位） */
 const llmAiPanelWidth = computed(
     () => `${showLlmAiPanel.value ? llmWikiAiPanelWidthPx.value : 0}px`
 )
 
-/** 分隔条是否渲染（仅展开态；折叠 / 自动折叠 / 传统模式 / 其它工作区容器下不渲染） */
-const showLlmAiSplitter = computed(() => showLlmAiPanel.value && !isLlmWikiAiPanelCollapsed.value)
+/** 分隔条是否渲染（仅展开态；收起 / 传统模式 / 其它工作区容器下不渲染） */
+const showLlmAiSplitter = computed(() => showLlmAiPanel.value)
 
-/** 编辑区容器宽度：LLM Wiki 模式扣除 AI 面板与分隔条；传统模式保持既有 workAreaWidth */
+/** 编辑区容器宽度：面板展开时扣除面板与分隔条（编辑区最小 0）；收起/其它容器/传统模式保持既有宽度 */
 const mdContainerWidth = computed(() => {
     if (!showLlmAiPanel.value) {
         return workAreaWidth.value
     }
-    const splitterWidth = isLlmWikiAiPanelCollapsed.value ? 0 : LLM_WIKI_SPLITTER_WIDTH
-    const remaining = workAreaWidthPx.value - llmWikiAiPanelWidthPx.value - splitterWidth
+    const remaining = workAreaWidthPx.value - llmWikiAiPanelWidthPx.value - LLM_WIKI_SPLITTER_WIDTH
     return `${Math.max(0, remaining)}px`
 })
 
@@ -478,6 +511,16 @@ function handleLlmWikiSplitterKeydown(event: KeyboardEvent): void {
 function handleResetLlmWikiAiPanelWidth(): void {
     llmWikiAiPanelDragWidth.value = null
     resetLlmWikiAiPanelWidth()
+}
+
+/**
+ * 右侧边栏 AI 入口：展开面板（隐藏入口按钮）。
+ * 宽度沿用持久化的上次宽度 / 窗口分档默认值（不重置用户宽度偏好）；
+ * 清空拖动临时态，避免上一次拖动的内存值覆盖持久化宽度。
+ */
+function handleOpenLlmWikiAiPanel(): void {
+    llmWikiAiPanelDragWidth.value = null
+    toggleLlmWikiAiPanelCollapsed()
 }
 
 // 定义事件处理函数
@@ -958,6 +1001,66 @@ onBeforeUnmount(() => {
 .llm-ai-splitter:focus-visible {
     outline: none;
     box-shadow: var(--ui-focus-shadow);
+}
+
+/* ============================================================================
+ * 1.5.7 体验调整：AI 面板收起后的右侧边栏入口
+ *
+ * - 入口按钮渲染在工作区右侧导航条（#right-navi）顶部，宽度跟随右侧栏（40px），
+ *   **不占编辑区宽度**；面板展开态不渲染（收起按钮在 AI 面板头部）；
+ * - 图标按钮：title / aria-label 走 i18n「展开 AI 面板」，原生 button 可 Tab 聚焦；
+ * - 四风格 × 三密度差异全部由 --ui-* / --bz-* 令牌派生，不写风格分支；
+ * - #right-navi 改纵向 flex：入口固定顶部、NaviTab 内容区占据剩余高度并可滚动，
+ *   保证入口按钮不会因右侧快捷链接数量而移出可视区（传统模式零变化：仅一个子节点）。
+ * ========================================================================== */
+#right-navi {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow: hidden;
+}
+
+#right-navi :deep(#navi-tab) {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.llm-ai-sidebar-entry {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    /* 三密度：入口行高与图标尺寸随 --ui-row-height（紧凑 24 / 标准 28 / 宽松 32）派生 */
+    height: calc(var(--ui-row-height, 28px) + 8px);
+    padding: 0;
+    color: var(--ui-accent, var(--theme-accent-color));
+    cursor: pointer;
+    background-color: var(--theme-card-background);
+    background-color: var(--bz-shell-surface, var(--theme-card-background));
+    border: none;
+    border-bottom: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+.llm-ai-sidebar-entry:hover {
+    background-color: var(--ui-accent-soft, var(--theme-hover-background));
+}
+
+.llm-ai-sidebar-entry:focus-visible {
+    outline: none;
+    box-shadow: var(--ui-focus-shadow);
+}
+
+.llm-ai-sidebar-entry svg {
+    width: calc(var(--ui-row-height, 28px) - 6px);
+    height: calc(var(--ui-row-height, 28px) - 6px);
+    fill: currentColor;
 }
 
 /* 应用主题到所有子元素 */

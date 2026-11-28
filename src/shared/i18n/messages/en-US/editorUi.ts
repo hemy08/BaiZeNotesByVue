@@ -676,8 +676,6 @@ export default {
         aiError: 'AI request failed. Try again later.',
         collapse: 'Collapse AI panel',
         expand: 'Expand AI panel',
-        narrowCollapsedHint:
-            'The window is too narrow, so the AI panel is collapsed; widen the window to expand it',
         editorTabsLabel: 'Editor view switch',
         tabEditor: 'Editor',
         tabPreview: 'Preview'

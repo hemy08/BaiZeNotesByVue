@@ -21,7 +21,7 @@
 - **L3 AI 工作流**：AI Provider（本地 Ollama/LM Studio + 远程 BYOK，safeStorage 加密密钥）、`AI.CHAT`/`AI.INGEST`（草案+行级 diff，不写盘）/`AI.APPLY_INGEST`（审批后写入 wiki/）、diff 审批 UI、设置页 AI 助手分组
 - **L4 图谱与嵌入**：关系图谱（SVG 自绘、200 节点上限、拖拽/缩放/点击跳转/连线关系）、raw 资料嵌入（目录树 + 预览 + 相对 Markdown 链接插入）
 - **L5 工作台布局**：LLM Wiki 模式下编辑区「编辑器/预览」切换 + 右侧 AI 输入面板（对话/上下文/模型选择/停止/复制，L3 联调已接通）；传统模式布局零变化
-- **测试与门禁**：全量 **408 文件 / 7,657 用例**（7,532 通过 + 5 跳过）全绿；coverage **92.59 / 86.91 / 93.71 / 93.05**；IPC **116 通道 / 20 组**（preload send 82）；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿
+- **测试与门禁**：全量 **408 文件 / 7,663 用例**（7,532 通过 + 5 跳过）全绿；coverage **92.59 / 86.9 / 93.73 / 93.05**；IPC **116 通道 / 20 组**（preload send 82）；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿
 - **构建**：`build:win:all` 成功、budget 9/9、ProductVersion **1.5.7**（portable **102.04 / 102.5 MiB**、NSIS 112.69 / 115、asar 40.83 / 47）
 
 ## 版本 1.5.6 (2026-11-28)

@@ -38,7 +38,7 @@
 | 插件工具组件 | **38 个**（加密 8 / 信息 8 / 网络 4 / 编解码 5 / 格式转换 5 / 小工具 3 / 文本 3 / 格式化 2，全部注册为菜单工具） |
 | IPC 通道常量 | **116 个 / 20 组**（唯一真源 `src/shared/ipc-channels.ts`；第 5 批删除 `SYSTEM.OPEN_EXTERNAL_LINK` 死通道；关闭确认新增 `UNSAVED_CLOSE_REQUEST` / `UNSAVED_CLOSE_SUBMIT` 双通道；应用内消息框服务新增四通道；1.5.1 知识库基座新增 `FILE.GET_WORKSPACE_INDEX`） |
 | preload 白名单 | send/invoke **82** 个、on/once **28** 个、`window.api` **6** 个；`window.electron` 为**受限 ipcRenderer**（仅 send/invoke/on/once/removeListener/removeAllListeners + webFrame/webUtils/process；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露） |
-| 单元测试 | **408 个 `.test.ts` 文件 / 7,657 个用例**（vitest 全通过） |
+| 单元测试 | **408 个 `.test.ts` 文件 / 7,663 个用例**（vitest 全通过） |
 | 构建产物 | 主进程 `out/build/main/index.js` ≈**1.22 MiB**（1,276,869 B）；入口 chunk `out/build/renderer/assets/index-*.js` ≈**144.7 KiB**；主界面异步 chunk `BaiZeNotes-*.js` ≈**919.0 KiB**（Monaco/highlight.js/KaTeX 在异步 chunk 按需加载）；首屏实际 ≈**331.7 KiB**（入口 + modulepreload 共享 chunk；i18n 词典已按语言按需加载；欢迎页为异步 chunk） |
 | 安装包 | Setup **112.64 MiB** / portable **101.99 MiB** / app.asar **40.74 MiB** / locales **2**（2026-11-28 当前 dist，1.5.7 构建） |
 | 报告规模 | **md 34 篇（01 类 13 / 02 类 10 / 03 类 11）/ HTML Wiki 35 页（1 首页 + 34 报告）** |
@@ -46,7 +46,7 @@
 
 > **口径说明**：以 [报告总索引](../reports/README.md) 的「当前基线」与 [IPC 通信矩阵](../reports/md/03-专项治理/IPC通信矩阵.md) 为准；待办跟踪见 [当前遗留问题清单](../reports/md/03-专项治理/当前遗留问题清单.md)（**22 项：21 ✅ / 0 🟡 / 1 ⏸️**；#15 保持现状）。
 >
-> **门禁（2026-11-20 全量实测，2026-11-22 复核）**：typecheck 四工程 0 错误、ESLint 0/0、Prettier 全绿、vitest 408 文件 / 7,657 用例全通过、全量依赖（含 dev）audit 0 漏洞（`npm run audit:all`，含渲染层运行时库）。
+> **门禁（2026-11-20 全量实测，2026-11-22 复核）**：typecheck 四工程 0 错误、ESLint 0/0、Prettier 全绿、vitest 408 文件 / 7,663 用例全通过、全量依赖（含 dev）audit 0 漏洞（`npm run audit:all`，含渲染层运行时库）。
 
 ---
 
@@ -187,7 +187,7 @@ docs/wiki/
 
 本次为**全量扫描后的文档口径统一**（P1-10 修复，仅改文档）：
 
-- **统计口径统一**：`docs/wiki` 当前状态类文档统一到 2026-11-20 实测口径（2026-11-22 复核刷新测试数/IPC）——测试 **408 文件 / 7,657 用例**、IPC **116 通道 / 20 组**、preload 白名单 **send 82 + receive 28 + `window.api` 6**、源码 **357 个代码文件 / 97,434 行**、Vue 对话框 **24 个**、插件工具 **38 个**、Monaco 主题 **57 个（内置 3 + 磁盘 54）**；台账 **22 项（19 ✅ / 2 🟡 / 1 ⏸️）**。
+- **统计口径统一**：`docs/wiki` 当前状态类文档统一到 2026-11-20 实测口径（2026-11-22 复核刷新测试数/IPC）——测试 **408 文件 / 7,663 用例**、IPC **116 通道 / 20 组**、preload 白名单 **send 82 + receive 28 + `window.api` 6**、源码 **357 个代码文件 / 97,434 行**、Vue 对话框 **24 个**、插件工具 **38 个**、Monaco 主题 **57 个（内置 3 + 磁盘 54）**；台账 **22 项（19 ✅ / 2 🟡 / 1 ⏸️）**。
 - **02-设计与架构 4 篇校准**：[架构文档](02-设计与架构/架构文档.md)、[设计文档](02-设计与架构/设计文档.md)、[规格文档](02-设计与架构/规格文档.md)、[项目详细文档](02-设计与架构/项目详细文档.md) 同步技术栈版本（Electron 43.8.12 / Vue 3.5.46 / Vitest 5.1.1 / ESLint 10.15.0）、代码规模、测试数、IPC/白名单、对话框与主题口径；历史章节保留时点数字并标注。
 - **03-功能说明**：[文件导入功能说明](03-功能说明/文件导入功能说明.md) 的 IPC 口径 92 → 91、白名单 58 → 60。
 - **报告与台账**：[报告总索引](../reports/README.md)、[HTML Wiki 首页](../reports/html/README.md)、[当前遗留问题清单](../reports/md/03-专项治理/当前遗留问题清单.md) 与 [IPC 通信矩阵](../reports/md/03-专项治理/IPC通信矩阵.md) 统一为 99 通道 / 17 组、白名单 65+28、报告 md 27 篇 / HTML Wiki 28 页、台账 22 项。
