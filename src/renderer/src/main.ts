@@ -21,6 +21,11 @@ import './styles/theme.css'
 // 只声明 CSS 变量、不覆盖任何既有选择器，因此默认观感与升级前完全一致（P1 组件才消费）；
 // 必须在 theme.css 之后引入（主题色语义变量默认值先就位，ui-style.css 的变量引用才稳定）。
 import './styles/ui-style.css'
+// 视觉升级 1.5.6（REQ-16 收口）：内容/查看器层补充令牌（玻璃高光边基色 + 历史查看器/
+// 布局消费点缺失令牌的等值补定义）。只声明 :root 变量，必须排在 ui-style.css 之后
+// （其 --ui-highlight-border-color 依赖 ui-style.css 的 --ui-highlight-border-alpha）。
+// 唯一引入点与顺序由 tests/unit/visual-t15b-cleanup.test.ts 静态锁定。
+import './styles/content-tokens.css'
 // 对话框底部按钮统一样式层（唯一视觉真源）：必须在 theme.css 之后引入，
 // 用 `.dialog-container .dialog-btn`（0,2,0）覆盖主题全局 `button` 的基础声明；
 // 详见 assets/dialog-buttons.css 顶部说明与 tests/unit/vue/dialog-buttons-style.test.ts。

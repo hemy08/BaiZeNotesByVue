@@ -18,6 +18,7 @@
 
 import type { OptionalFeatureFlagId } from '../../../../shared/constants/feature-flags'
 import type { DailyEntryKind } from '../../../../shared/constants/daily-entries'
+import { compareCommandUsage, type CommandUsageMap } from './command-palette-storage'
 import { isSubsequenceMatch } from './workspace-search-utils'
 
 /** 命令执行依赖（组件注入；单测可传替身） */
@@ -356,57 +357,115 @@ function buildSearchTokens(command: PaletteCommand, translate: (key: string) => 
 }
 
 /**
+ * 匹配层级（REQ-10 搜索排序第一权重：完全匹配 > 前缀 > 其他匹配）。
+ * 「其他匹配」覆盖显示名子串 / 分类·id·关键词子串 / 子序列兜底（与 1.5.5 过滤语义一致）。
+ */
+const MATCH_TIER = {
+    /** 显示名与查询完全一致 */
+    exact: 3,
+    /** 显示名前缀命中 */
+    prefix: 2,
+    /** 其他命中（显示名子串、分类/id/关键词、子序列） */
+    other: 1
+} as const
+
+/** 单条命令的匹配结果（层级 + 同层级精度 + 原始注册顺序） */
+interface PaletteCommandMatch {
+    command: PaletteCommand
+    tier: number
+    /** 匹配精度（同层级内：显示名子串 > 分类/id/关键词子串 > 子序列） */
+    precision: number
+    /** 原始注册顺序（最终稳定排序权重，对应 REQ-10「原始顺序」） */
+    order: number
+}
+
+/** 计算单条命令的匹配层级/精度；不命中返回 null（只做打分，不做排序） */
+function matchPaletteCommand(
+    command: PaletteCommand,
+    normalizedQuery: string,
+    translate: (key: string) => string,
+    order: number
+): PaletteCommandMatch | null {
+    const tokens = buildSearchTokens(command, translate)
+    const label = tokens[0]
+    // 1) 显示名完全匹配（REQ-10 最高权重）
+    if (label === normalizedQuery) {
+        return { command, tier: MATCH_TIER.exact, precision: 1000, order }
+    }
+    // 2) 显示名前缀命中（查询越接近完整显示名越靠前）
+    if (label.startsWith(normalizedQuery)) {
+        return {
+            command,
+            tier: MATCH_TIER.prefix,
+            precision: 1000 - (label.length - normalizedQuery.length),
+            order
+        }
+    }
+    // 3) 其他匹配：沿用既有「显示名子串 > 分类/id/关键词子串 > 子序列」的相关度语义
+    const labelIndex = label.indexOf(normalizedQuery)
+    if (labelIndex >= 0) {
+        return { command, tier: MATCH_TIER.other, precision: 1000 - labelIndex, order }
+    }
+    let bestSecondaryIndex = -1
+    for (const token of tokens.slice(1)) {
+        const index = token.indexOf(normalizedQuery)
+        if (index >= 0 && (bestSecondaryIndex < 0 || index < bestSecondaryIndex)) {
+            bestSecondaryIndex = index
+        }
+    }
+    if (bestSecondaryIndex >= 0) {
+        return { command, tier: MATCH_TIER.other, precision: 500 - bestSecondaryIndex, order }
+    }
+    // 单个片段内的子序列兜底（`wsp` → `workspace-search`；不跨片段拼接，避免误命中）
+    if (tokens.some((token) => isSubsequenceMatch(token, normalizedQuery))) {
+        return { command, tier: MATCH_TIER.other, precision: 100, order }
+    }
+    return null
+}
+
+/**
  * 命令面板过滤（大小写不敏感）：
- * 1. 空查询返回全部（保持注册顺序）；
- * 2. 显示名子串命中优先，其次分类/id/关键词子串命中；
- * 3. 子串均不命中时，退化为「单个可搜索片段内的子序列匹配」
- *    （如 `wsp` 命中 `workspace-search`；不跨片段拼接，避免误命中无关命令）；
- * 4. 同分按显示名排序，保证结果稳定可测。
+ * 1. 空查询返回全部（保持注册顺序；空查询的「最近使用」分区由组件单独处理）；
+ * 2. 匹配层级：显示名完全匹配 > 显示名前缀 > 其他命中（显示名子串 / 分类/id/关键词 / 子序列）；
+ * 3. 同一层级内按 REQ-10 使用权重排序：最近使用（lastUsed 新者优先）> 使用频率
+ *    （count 大者优先）> 匹配精度 > 原始注册顺序（稳定可测）。
+ *
+ * @param usage 命令使用历史（可选；缺省时退化为「匹配层级 > 匹配精度 > 注册顺序」，
+ *              与未接入使用历史前的调用方/单测保持兼容）。
  */
 export function filterPaletteCommands(
     commands: readonly PaletteCommand[],
     query: string,
-    translate: (key: string) => string
+    translate: (key: string) => string,
+    usage?: CommandUsageMap
 ): PaletteCommand[] {
     const normalizedQuery = query.trim().toLowerCase()
     if (normalizedQuery.length === 0) {
         return [...commands]
     }
-    const scored: Array<{ command: PaletteCommand; score: number }> = []
-    for (const command of commands) {
-        const tokens = buildSearchTokens(command, translate)
-        const label = tokens[0]
-        // 显示名命中优先级最高（命中位置越靠前分越高；前缀命中额外加分）
-        const labelIndex = label.indexOf(normalizedQuery)
-        if (labelIndex >= 0) {
-            const prefixBonus = label.startsWith(normalizedQuery) ? 50 : 0
-            scored.push({ command, score: 1000 - labelIndex + prefixBonus })
-            continue
+    const matched: PaletteCommandMatch[] = []
+    commands.forEach((command, order) => {
+        const match = matchPaletteCommand(command, normalizedQuery, translate, order)
+        if (match) {
+            matched.push(match)
         }
-        // 分类/id/关键词子串命中次之
-        let bestSecondaryIndex = -1
-        for (const token of tokens.slice(1)) {
-            const index = token.indexOf(normalizedQuery)
-            if (index >= 0 && (bestSecondaryIndex < 0 || index < bestSecondaryIndex)) {
-                bestSecondaryIndex = index
-            }
-        }
-        if (bestSecondaryIndex >= 0) {
-            scored.push({ command, score: 500 - bestSecondaryIndex })
-            continue
-        }
-        // 单个片段内的子序列兜底（`wsp` → `workspace-search`）
-        if (tokens.some((token) => isSubsequenceMatch(token, normalizedQuery))) {
-            scored.push({ command, score: 100 })
-        }
-    }
-    scored.sort((left, right) => {
-        if (right.score !== left.score) {
-            return right.score - left.score
-        }
-        return getPaletteCommandLabel(left.command, translate).localeCompare(
-            getPaletteCommandLabel(right.command, translate)
-        )
     })
-    return scored.map((item) => item.command)
+    matched.sort((left, right) => {
+        // 1) 匹配层级：完全匹配 > 前缀 > 其他
+        if (left.tier !== right.tier) {
+            return right.tier - left.tier
+        }
+        // 2) 最近使用 > 使用频率（compareCommandUsage 内部按 lastUsed / count 比较）
+        const usageCompare = compareCommandUsage(left.command.id, right.command.id, usage)
+        if (usageCompare !== 0) {
+            return usageCompare
+        }
+        // 3) 匹配精度（同层级内的既有相关度顺序）
+        if (left.precision !== right.precision) {
+            return right.precision - left.precision
+        }
+        // 4) 原始注册顺序（稳定可测）
+        return left.order - right.order
+    })
+    return matched.map((item) => item.command)
 }

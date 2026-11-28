@@ -432,7 +432,7 @@ describe('静态样式契约：无滚动条 / 翻转样式 / 菜单栏材质令�
 
     it('四风格材质令牌确有差异：菜单栏消费的令牌足以产生可见变化', () => {
         expect(UI_STYLE_VALUES).toHaveLength(4)
-        // 面不透明度：glass 0.86 半透明，其余 1（透明差异可见）
+        // 面不透明度：glass 0.72 半透明（1.5.6 增强），其余 1（透明差异可见）
         const opacities = UI_STYLE_VALUES.map((style) => UI_STYLE_TOKENS[style].surfaceOpacity)
         expect(new Set(opacities).size).toBeGreaterThanOrEqual(2)
         expect(UI_STYLE_TOKENS.glass.surfaceOpacity).toBeLessThan(1)

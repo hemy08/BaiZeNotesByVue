@@ -83,21 +83,20 @@
     --ui-z-toast: 70;
     --ui-z-guide: 80;
 
-    /* ---------- 应用层层级：兼容映射（T12）+ 基座层（P2 遗留项 4） ----------
-       语义 rank（--ui-z-dialog: 50 / --ui-z-palette: 60）是相对阶梯；既有高层浮层必须保持原有
-       栈序，故此处声明「应用层等值映射」，唯一真源是 TS 常量（src/shared/constants/ui-style.ts）：
-       - UI_Z_INDEX_APP_COMPAT（T12）：对话框 9999 / 命令面板 10000，已由 BaseDialog、
-         CommandPalette 消费；
-       - UI_Z_INDEX_APP_BASE（P2 遗留项 4，本批迁移完成）：欢迎页 9999 / 窗口缩放热区 10000 /
-         写作模式 3000。WelcomeScreen / BaiZeNotes / WritingModeHost 已改为消费下列变量，
-         组件内不再出现 9999 / 10000 / 3000 裸值；数值与迁移前逐项等值（零回归）。
-       组内派生（不新增变量）：欢迎页内部窗口控制条 = welcome + 1；缩放热区「边」= resize - 1。
-       后续若要统一改用相对阶梯，只改本处与 TS 常量，消费组件无需改动。 */
-    --ui-z-dialog-app: 9999;
-    --ui-z-palette-app: 10000;
-    --ui-z-writing-mode-app: 3000;
-    --ui-z-welcome-app: 9999;
-    --ui-z-resize-app: 10000;
+    /* ---------- 应用层相对阶梯（1.5.6 P2-E：z-index 相对阶梯化） ----------
+       语义 rank（--ui-z-dialog: 50 / --ui-z-palette: 60）是 0~80 的相对阶梯；应用层高层浮层
+       在 0~80 之上占 100~120 一段，唯一真源是 TS 常量（src/shared/constants/ui-style.ts）：
+       - UI_Z_INDEX_APP_COMPAT：对话框 110 / 命令面板 120（旧 9999 / 10000，层序关系保持）；
+       - UI_Z_INDEX_APP_BASE：写作模式 100 / 欢迎页 110 / 窗口缩放热区 120
+         （旧 3000 / 9999 / 10000，层序关系保持）。WelcomeScreen / BaiZeNotes /
+         WritingModeHost 只消费下列变量，组件内不再出现 9999 / 10000 / 3000 裸值。
+       组内派生（不新增变量）：欢迎页控制条 = welcome + 1（111）；缩放热区「边」= resize - 1（119）。
+       旧值 → 新值的逐项层序保持论证见 UI_Z_INDEX_APP_BASE 注释与 DESIGN.md §5.4。 */
+    --ui-z-dialog-app: 110;
+    --ui-z-palette-app: 120;
+    --ui-z-writing-mode-app: 100;
+    --ui-z-welcome-app: 110;
+    --ui-z-resize-app: 120;
 }
 
 /* ============================================================================
@@ -125,18 +124,22 @@
     --ui-content-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.12);
 }
 
-/* B. 轻玻璃：半透明悬浮面 + 8px 小面积模糊 + 高光边 + 大圆角（现代桌面工具感） */
+/* B. 轻玻璃：低透明度悬浮面 + 8px 小面积模糊 + 强高光边 + 大圆角（现代桌面工具感）。
+   REQ-14 弱效果增强：整窗 backdrop-filter 不启用（性能），改为增强非模糊表达——
+   不透明度 0.86 → 0.72（窗口背景主题光斑透出更明显）+ 高光边 alpha 0.14 → 0.30
+   （消费方 inset 白高光线更清晰，同时放大窗口径向光斑强度）；模糊半径保持 8px 不回归。
+   纸感 paper / 混合 hybrid / 工作台 workbench 本块数值不变（样式差异仍只来自 data-style）。 */
 [data-style='glass'] {
-    --ui-surface-opacity: 0.86;
+    --ui-surface-opacity: 0.72;
     --ui-surface-blur: 8px;
-    --ui-highlight-border-alpha: 0.14;
+    --ui-highlight-border-alpha: 0.3;
     --ui-radius-sm: 8px;
     --ui-radius-md: 8px;
     --ui-radius-lg: 12px;
     --ui-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.05);
     --ui-shadow-2: 0 8px 32px rgba(0, 0, 0, 0.1);
     --ui-shadow-3: 0 20px 60px rgba(0, 0, 0, 0.16);
-    --ui-content-surface-opacity: 0.86;
+    --ui-content-surface-opacity: 0.72;
     --ui-content-surface-blur: 8px;
     --ui-content-radius-sm: 8px;
     --ui-content-radius-md: 8px;
@@ -146,7 +149,8 @@
     --ui-content-shadow-3: 0 20px 60px rgba(0, 0, 0, 0.16);
 }
 
-/* glass 深色主题稳健模式：提高不透明度、关闭模糊（避免深底叠色发灰） */
+/* glass 深色主题稳健模式：提高不透明度、关闭模糊（避免深底叠色发灰）。
+   steady 参数保持不变（REQ-14 只增强常规档；深色降级规则不得随增强漂移）。 */
 [data-style='glass'][data-glass-mode='steady'] {
     --ui-surface-opacity: 0.94;
     --ui-surface-blur: 0px;

@@ -36,7 +36,10 @@ export default {
         searchEntryHint:
             'Search by tool name, category or keyword, then press Enter; recently used and all tools are listed below',
         searchEntryRecentEmpty:
-            'No recently used tools yet. Tools opened from the Plugins menu will appear here; you can also pick one from All tools below.'
+            'No recently used tools yet. Tools opened from the Plugins menu will appear here; you can also pick one from All tools below.',
+        // 1.5.6 batch A (REQ-06): category group collapse/expand (title hint of the group row)
+        collapseGroup: 'Collapse this group',
+        expandGroup: 'Expand this group'
     },
     infoTables: {
         /** Shared search placeholder for the 10 lookup tables */

@@ -1,0 +1,71 @@
+/* ============================================================================
+ * 内容/查看器层补充令牌表（视觉升级 1.5.6 · REQ-16 剩余硬编码颜色收口）
+ *
+ * ## 为什么单独成一个文件
+ * `styles/theme.css`（主题色真源）与 `styles/ui-style.css`（P0 风格/密度层真源）在
+ * 1.5.6 并行波次中由其他任务独占写域；本批新增的「玻璃高光边基色」与「历史查看器/
+ * 布局消费点缺失令牌」不属于风格/密度层，单独收敛到本文件，避免改动冻结真源。
+ *
+ * ## 引入方式
+ * 渲染层入口 `src/renderer/src/main.ts` 在 `styles/ui-style.css` 之后引入一次；
+ * `tests/unit/visual-t15b-cleanup.test.ts` 锁定唯一引入点与顺序（只允许 main.ts 引用）。
+ *
+ * ## 内容
+ * 1. 玻璃高光边令牌（2 个）：P2 glass 材质的高光边写法
+ *    `rgba(255, 255, 255, var(--ui-highlight-border-alpha))` 中，白色基色是唯一没有令牌的
+ *    硬编码值（ui-style.css 只提供透明度）。此处定义为固定白基色 `--ui-highlight-color`
+ *    + 由基色与材质透明度派生的完整色 `--ui-highlight-border-color`。
+ *    该基色**固定不随主题**（玻璃高光的语义就是白色高光，浅色/深色主题一致），
+ *    因此不能用 `--ui-bg-elevated` 等随主题变化的语义色替代（深色主题会变成深色高光）。
+ * 2. 历史消费点缺失令牌（9 个）：PDF 查看器 / 文件查看器外壳 / 工作区布局对话框 /
+ *    使用指导历史上引用了 `--theme-text-secondary`、`--text-primary`、`--bg-secondary` 等
+ *    变量名，但主题层从未定义 —— 组件内兜底字面量即运行时实际生效值。本批按「等值」
+ *    补定义（值 = 各消费点原兜底值），默认主题与 28 套主题均零观感漂移；
+ *    后续主题适配批次再逐步改为 `var(--ui-*)` 语义派生（届时属有意的观感变更，需产品确认）。
+ *
+ * ## 硬约束
+ * - 本文件是**令牌定义真源**（与 theme.css / ui-style.css 同性质），是颜色字面量唯一
+ *   允许出现的位置；消费组件只允许 `var(--令牌)`，不得保留字面量或颜色兜底。
+ * - 只允许在 `:root` 声明 CSS 变量，不得声明任何组件/元素样式选择器。
+ * - 等值前提由 `tests/unit/visual-t15b-cleanup.test.ts` 逐项锁定（值漂移立即报警），
+ *   并对 `--ui-highlight-color` / 历史令牌的消费点做「禁止回退字面量」断言。
+ * ========================================================================== */
+
+:root {
+    /* ---------- 玻璃高光边（P2 glass 材质） ---------- */
+    /* 高光边基色：固定白 #ffffff（glass 的「玻璃高光」语义，不随主题明暗变化） */
+    --ui-highlight-color: #ffffff;
+    /* 高光边完整色 = 基色 × 当前材质高光透明度（透明度唯一真源是 ui-style.css 的
+       --ui-highlight-border-alpha：glass / steady 非 0，其余风格 0）。
+       color-mix 在 sRGB 预乘空间混合：白 α% + transparent = rgba(255, 255, 255, α)，
+       与 P2 各消费点原写法逐像素等值（透明度 0 时 = transparent，与 rgba(...,0) 等价）。 */
+    --ui-highlight-border-color: color-mix(
+        in srgb,
+        var(--ui-highlight-color) calc(var(--ui-highlight-border-alpha, 0) * 100%),
+        transparent
+    );
+
+    /* ---------- PDF 查看器 / 文件查看器外壳历史令牌 ---------- */
+    /* 原兜底 `var(--theme-text-secondary, #757575)`：页码/缩放指示、标注元信息、空态说明 */
+    --theme-text-secondary: #757575;
+    /* 原兜底 `var(--theme-error-color, #d32f2f)`：查看器错误容器文字与错误操作描边 */
+    --theme-error-color: #d32f2f;
+    /* 原兜底 `var(--theme-toolbar-background, #f5f5f5)`：查看器工具栏底色 */
+    --theme-toolbar-background: #f5f5f5;
+
+    /* ---------- 工作区布局对话框历史令牌 ---------- */
+    /* 原兜底 `var(--text-primary, #252233)`：对话框正文/输入框文字 */
+    --text-primary: #252233;
+    /* 原兜底 `var(--text-secondary, #6d6980)`：描述/详情/提示文字 */
+    --text-secondary: #6d6980;
+    /* 原兜底 `var(--bg-secondary, #f7f3fb)`：当前布局条底色 */
+    --bg-secondary: #f7f3fb;
+    /* 内置布局卡片底色（原兜底 #fbf9fe，与 --bg-primary 同值，按语义派生引用） */
+    --bg-secondary-raised: var(--bg-primary);
+    /* 内置布局徽标浅强调底（原兜底 #f1ebf9） */
+    --bg-secondary-accent: #f1ebf9;
+
+    /* ---------- 使用指导对话框历史令牌 ---------- */
+    /* 原兜底 `var(--bg-primary, #fbf9fe)`：使用指导正文容器底色 */
+    --bg-primary: #fbf9fe;
+}

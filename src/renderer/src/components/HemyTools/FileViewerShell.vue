@@ -128,7 +128,7 @@ const emit = defineEmits<{
 }
 
 .error-container p {
-    color: var(--theme-error-color, #d32f2f);
+    color: var(--theme-error-color);
     margin-bottom: 16px;
 }
 
@@ -163,7 +163,7 @@ const emit = defineEmits<{
     justify-content: space-between;
     align-items: center;
     padding: 8px 16px;
-    background-color: var(--theme-toolbar-background, #f5f5f5);
+    background-color: var(--theme-toolbar-background);
     border-bottom: 1px solid var(--theme-border-color);
 }
 
@@ -214,7 +214,7 @@ const emit = defineEmits<{
 
 /* 空态说明文字（共享） */
 .empty-container p {
-    color: var(--theme-text-secondary, #757575);
+    color: var(--theme-text-secondary);
     font-size: 14px;
 }
 </style>

@@ -1,5 +1,7 @@
 /**
  * 插件工具可发现性纯逻辑（1.5.6 批次 B / REQ-04 搜索 + REQ-05 最近使用/收藏）
+ * 1.5.6 批次 A 增补：REQ-06 分类分组 + 折叠状态持久化、每工具图标接线（图标数据见
+ * plugin-tools-icons.ts），保持本文件「纯函数 + 注入存储」的既有边界。
  *
  * 设计约束（与开发规范对齐）：
  * - PLUGIN-08：算法/数据逻辑抽成本目录 `*-lib` 风格的纯函数模块，不依赖 Vue/DOM/localStorage，
@@ -19,6 +21,7 @@ import {
     getPluginToolMenuAction
 } from '../../../../shared/constants/plugin-tools-manifest'
 import type { PluginToolMenuNode } from '../../../../shared/constants/plugin-tools-manifest'
+import { PLUGIN_TOOL_ITEM_ICON_PATHS } from './plugin-tools-icons'
 
 // ==================== 存储契约（localStorage 键 / 容量上限） ====================
 
@@ -27,6 +30,13 @@ export const PLUGIN_TOOLS_RECENT_STORAGE_KEY = 'baize:plugin-tools:recent'
 
 /** 收藏工具（≤10）的本机存储键 */
 export const PLUGIN_TOOLS_FAVORITES_STORAGE_KEY = 'baize:plugin-tools:favorites'
+
+/**
+ * 分类折叠状态的本机存储键（1.5.6 REQ-06）：
+ * 值为「已折叠的分类 id 数组」（如 `["encrypt","net"]`），未出现的分类 = 展开。
+ * 与最近使用/收藏一致：只落本机 localStorage、无 IPC / 无配置文件，读取容错。
+ */
+export const PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY = 'baize:plugin-tools:collapsed-groups'
 
 /**
  * 最近使用上限（1.5.6：需求「空白查询展示最近使用的 20 个插件」→ 5 调整为 20）。
@@ -185,6 +195,35 @@ export function getPluginToolIconPaths(sectionId: string): readonly string[] {
     return PLUGIN_TOOL_SECTION_ICON_PATHS[sectionId] ?? PLUGIN_TOOL_ICON_FALLBACK_PATHS
 }
 
+/**
+ * 8 个分类（分区）id：顺序 = 分区图标表声明顺序（与 manifest 工具分组顺序一致）。
+ * 用途：①「全部工具」分区分组渲染；② 折叠状态 localStorage 的合法值集合（读取时过滤旧值）。
+ */
+export const PLUGIN_TOOL_SECTION_IDS: readonly string[] = Object.keys(
+    PLUGIN_TOOL_SECTION_ICON_PATHS
+)
+
+/**
+ * 分类（分区）标题的 i18n 键：复用菜单分组词条（menu.plugins.group.*），不新增重复文案。
+ * 说明：section id 由工具 id 前缀派生（encrypt/codec/convert/format/text/misc/net/info），
+ * 与菜单树分组 id 不完全同名（如 convert → formatConvert、misc → miscTools），故需显式映射。
+ */
+const PLUGIN_TOOL_SECTION_LABEL_KEYS: Readonly<Record<string, string>> = {
+    encrypt: 'menu.plugins.group.encrypt',
+    codec: 'menu.plugins.group.codec',
+    convert: 'menu.plugins.group.formatConvert',
+    format: 'menu.plugins.group.formatTools',
+    text: 'menu.plugins.group.textConvert',
+    misc: 'menu.plugins.group.miscTools',
+    net: 'menu.plugins.group.network',
+    info: 'menu.plugins.group.cheatSheets'
+}
+
+/** 取分类标题 i18n 键；未知分类返回 undefined（渲染层回退到条目分类路径末级 / 分区 id） */
+export function getPluginToolSectionLabelKey(sectionId: string): string | undefined {
+    return PLUGIN_TOOL_SECTION_LABEL_KEYS[sectionId]
+}
+
 /** 把工具短 id 拆成可检索词（`encrypt:hash-text` → encrypt / hash / text） */
 function splitToolIdWords(toolId: string): string[] {
     return toolId
@@ -260,9 +299,9 @@ export interface PluginToolSearchEntry {
     readonly categoryPath: readonly string[]
     /** 额外关键词（中英双语） */
     readonly keywords: readonly string[]
-    /** 分区 id（决定列表图标） */
+    /** 分区 id（决定分类分组与图标兜底） */
     readonly sectionId: string
-    /** 列表图标 path 集合 */
+    /** 列表图标 path 集合（每工具专属 24 网格线框；未知工具回退所属分类图标） */
     readonly iconPaths: readonly string[]
     /** 预拼接的小写检索串（名称/分类/短 id/动作 id/关键词） */
     readonly haystack: string
@@ -297,7 +336,8 @@ export function createPluginToolSearchEntry(
         categoryPath,
         keywords,
         sectionId,
-        iconPaths: getPluginToolIconPaths(sectionId),
+        // REQ-06：每工具专属图标（plugin-tools-icons.ts）；未知工具回退分类图标，避免行缺图标
+        iconPaths: PLUGIN_TOOL_ITEM_ICON_PATHS[toolId] ?? getPluginToolIconPaths(sectionId),
         haystack
     }
 }
@@ -317,6 +357,53 @@ export function resolvePluginToolSearchEntries(
             translate
         )
     )
+}
+
+// ==================== 分类分组 / 折叠状态（REQ-06） ====================
+
+/** 分类分组视图（折叠最小单元：同一 section 的工具集合；sectionId 为空串表示「不分组的伪分组」） */
+export interface PluginToolSectionGroup {
+    readonly sectionId: string
+    readonly tools: readonly PluginToolSearchEntry[]
+}
+
+/**
+ * 把工具条目按 section 分组（1.5.6 REQ-06「全部工具」8 分类折叠）：
+ * - 组顺序 = 各 section 在入参中首次出现的顺序（入参来自 manifest 派生顺序 → 与菜单一致）；
+ * - 未知 section（如单测桩工具 id / 未来新增分区未登记图标）也各自成组，不丢行、不抛错；
+ * - 纯函数：不读写 DOM/localStorage，渲染层与单测共用同一口径。
+ */
+export function groupPluginToolEntriesBySection(
+    entries: readonly PluginToolSearchEntry[]
+): PluginToolSectionGroup[] {
+    const groups: Array<{ sectionId: string; tools: PluginToolSearchEntry[] }> = []
+    const groupIndex = new Map<string, number>()
+    for (const entry of entries) {
+        const existingIndex = groupIndex.get(entry.sectionId)
+        if (existingIndex === undefined) {
+            groupIndex.set(entry.sectionId, groups.length)
+            groups.push({ sectionId: entry.sectionId, tools: [entry] })
+            continue
+        }
+        groups[existingIndex].tools.push(entry)
+    }
+    return groups
+}
+
+/**
+ * 切换某分类的折叠状态（纯函数，返回新数组，不修改入参）：
+ * 已折叠 → 从清单移除（展开）；未折叠 → 追加（折叠）。空 sectionId（伪分组/未知）忽略。
+ */
+export function toggleCollapsedPluginToolGroup(
+    current: readonly string[],
+    sectionId: string
+): string[] {
+    if (sectionId.length === 0) {
+        return [...current]
+    }
+    return current.includes(sectionId)
+        ? current.filter((id) => id !== sectionId)
+        : [...current, sectionId]
 }
 
 // ==================== 搜索匹配 ====================

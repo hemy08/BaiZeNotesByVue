@@ -287,6 +287,85 @@ describe('1.5.2 E3 可选能力过滤：featureImageOcr', () => {
     })
 })
 
+describe('filterPaletteCommands：REQ-10 使用权重排序', () => {
+    /** 排序测试用伪翻译（标签语义清晰，便于断言匹配层级） */
+    const SORT_LABELS: Record<string, string> = {
+        'test.exact': 'Save',
+        'test.prefix': 'Save As',
+        'test.other': 'Open Save',
+        'test.other2': 'Auto Save',
+        'test.other3': 'Quick Save',
+        'test.category': 'Test'
+    }
+    const sortTranslate = (key: string): string => SORT_LABELS[key] ?? key
+
+    /** 构造排序测试命令（id 与 labelKey 一致，便于断言） */
+    function sortCommand(id: string): PaletteCommand {
+        return {
+            id,
+            labelKey: `test.${id}`,
+            categoryKey: 'test.category',
+            keywords: []
+        }
+    }
+
+    const sortCommands: PaletteCommand[] = [
+        sortCommand('exact'),
+        sortCommand('prefix'),
+        sortCommand('other'),
+        sortCommand('other2'),
+        sortCommand('other3')
+    ]
+
+    it('匹配层级优先：完全匹配 > 前缀 > 其他（其他命令最近使用也不能越层）', () => {
+        const usage = { other: { lastUsed: 9_999, count: 99 } }
+        const ids = filterPaletteCommands(sortCommands, 'save', sortTranslate, usage).map(
+            (command) => command.id
+        )
+        expect(ids.slice(0, 2)).toEqual(['exact', 'prefix'])
+        expect(ids).toContain('other')
+    })
+
+    it('同层级内最近使用优先（lastUsed 新者更靠前）', () => {
+        const usage = {
+            other3: { lastUsed: 300, count: 1 },
+            other2: { lastUsed: 100, count: 1 }
+        }
+        const ids = filterPaletteCommands(sortCommands, 'save', sortTranslate, usage).map(
+            (command) => command.id
+        )
+        expect(ids).toEqual(['exact', 'prefix', 'other3', 'other2', 'other'])
+    })
+
+    it('同层级且 lastUsed 相同时按使用频率（count 大者优先）', () => {
+        const usage = {
+            other: { lastUsed: 100, count: 1 },
+            other2: { lastUsed: 100, count: 8 }
+        }
+        const ids = filterPaletteCommands(sortCommands, 'save', sortTranslate, usage).map(
+            (command) => command.id
+        )
+        expect(ids.slice(2)).toEqual(['other2', 'other', 'other3'])
+    })
+
+    it('无使用历史时按匹配精度后原始注册顺序（稳定可测）', () => {
+        const ids = filterPaletteCommands(sortCommands, 'save', sortTranslate).map(
+            (command) => command.id
+        )
+        expect(ids).toEqual(['exact', 'prefix', 'other', 'other2', 'other3'])
+    })
+
+    it('未传 usage 与传 undefined 行为一致（向后兼容既有调用方）', () => {
+        expect(
+            filterPaletteCommands(sortCommands, 'save', sortTranslate).map((command) => command.id)
+        ).toEqual(
+            filterPaletteCommands(sortCommands, 'save', sortTranslate, undefined).map(
+                (command) => command.id
+            )
+        )
+    })
+})
+
 describe('filterPaletteCommands：过滤', () => {
     it('空查询返回全部且保持注册顺序', () => {
         expect(filterPaletteCommands(commands, '', translate).map((command) => command.id)).toEqual(

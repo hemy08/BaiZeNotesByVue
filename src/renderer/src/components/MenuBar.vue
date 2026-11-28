@@ -28,6 +28,8 @@
             :aria-expanded="
                 hasSubmenu(menu) ? (activeMenu === index ? 'true' : 'false') : undefined
             "
+            :aria-keyshortcuts="menu.accessKey ? `Alt+${menu.accessKey}` : undefined"
+            :data-mnemonic="menu.accessKey || undefined"
             :tabindex="focusedMenuIndex === index ? 0 : -1"
             :data-menu-index="index"
             @click="toggleMenu(index)"
@@ -68,9 +70,11 @@ import { menuMap } from './MenuBar/menu-config'
 import type { BaiZeMenuEntry } from './MenuBar/menu-config'
 import MenuSubmenu from './MenuBar/MenuSubmenu.vue'
 import {
+    findMenuIndexByMnemonic,
     hasMenuSubmenu,
     isMenuActivationAltKey,
     moveMenubarIndex,
+    resolveMenuMnemonicLetter,
     resolveMenubarKeyAction
 } from './MenuBar/menu-keyboard'
 import { resolveTopSubmenuPosition } from './MenuBar/menu-position'
@@ -469,12 +473,16 @@ function handleMenubarKeydown(event: KeyboardEvent): void {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Alt 键激活菜单栏（Windows 惯例，1.5.5 遗留项补齐）
+// Alt 键：菜单栏键盘激活（Windows 惯例，1.5.5 补齐）与 Alt+字母助记符（REQ-13，1.5.6）
 //
 // 契约：
-// - 只接管「单独 Alt」一个按键（判定收敛在 menu-keyboard.ts 的 isMenuActivationAltKey：
-//   带 Ctrl/Shift/Meta 的组合键、Alt+F4/Alt+Tab/Alt+字母、输入法组字、按住重复均放行）；
-// - 激活后不新增按键映射：方向键/Enter/Esc 完全复用既有 menubar/submenu 键盘语义；
+// - 单独 Alt：激活菜单栏并把焦点落到第一个顶层菜单（判定收敛在 menu-keyboard.ts 的
+//   isMenuActivationAltKey：带 Ctrl/Shift/Meta 的组合键、Alt+F4/Alt+Tab、输入法组字、
+//   按住重复均放行）；
+// - Alt+字母（1.5.6）：命中顶层菜单 `accessKey` 时激活菜单栏并直接打开/切换对应下拉；
+//   字母表来自 menu-config.ts（由顶层菜单 accessKey 派生的 TOP_MENU_ACCESS_KEYS），
+//   未映射字母不劫持，仍走 1.5.5 既有的「Alt+其它键放行」规则；
+// - 激活后不新增导航按键：方向键/Enter/Esc 完全复用既有 menubar/submenu 键盘语义；
 // - 退出三条路径：未展开时 Esc、再次按 Alt（都归还激活前焦点）、下拉被关闭
 //   （closeMenu 统一清理激活态，焦点按既有「关闭下拉」契约落回顶层菜单项）。
 // ---------------------------------------------------------------------------------------------
@@ -504,12 +512,16 @@ function isMenuBarHidden(): boolean {
     return false
 }
 
-/** 激活菜单栏：聚焦第一个顶层菜单项，并记录原焦点供退出时归还 */
-function activateMenuBarByAlt(): void {
+/**
+ * 激活菜单栏：记录原焦点供退出时归还，并聚焦指定顶层菜单（默认第一个）。
+ *
+ * @param index 激活后聚焦的顶层菜单索引（单独 Alt = 0；Alt+字母 = 对应菜单索引）
+ */
+function activateMenuBarByAlt(index = 0): void {
     const activeElement = document.activeElement
     altFocusBeforeActivation = activeElement instanceof HTMLElement ? activeElement : null
     altActivated.value = true
-    focusTopLevel(0)
+    focusTopLevel(index)
 }
 
 /**
@@ -553,17 +565,58 @@ function toggleAltActivation(): void {
 }
 
 /**
- * 全局 keydown：Windows 惯例「单独按 Alt 激活菜单栏」。
+ * Alt+字母助记符：激活菜单栏并打开对应顶层菜单（REQ-13，1.5.6）。
  *
- * 只消费「单独 Alt」：Alt+其它键（Alt+F4/Alt+Tab/Alt+字母）以及带 Ctrl/Shift/Meta 的
- * 组合键一律不 preventDefault，交还系统/其它快捷键处理；焦点在对话框内或菜单栏被
- * 隐藏时不响应。方向键/Enter/Esc 仍由菜单栏与下拉的既有处理器负责，本监听不参与。
+ * - 未激活：先记录原焦点进入 Alt 激活态（与单独 Alt 的退出归还语义一致），再聚焦目标菜单；
+ * - 已激活/已有下拉展开：直接切换到目标菜单（下拉内容随 activeMenu 切换）；
+ * - 展开方式复用 openMenuAt(index, true)：焦点进入下拉第一项，与 Enter/↓ 打开完全一致，
+ *   不新增第二套键盘语义。
+ */
+function openMenuByMnemonic(index: number): void {
+    if (index < 0 || index >= menuData.value.length) {
+        return
+    }
+    if (!altActivated.value) {
+        activateMenuBarByAlt(index)
+    } else {
+        focusTopLevel(index)
+    }
+    openMenuAt(index, true)
+}
+
+/**
+ * 全局 keydown：Windows 惯例「单独按 Alt 激活菜单栏」+「Alt+字母打开对应菜单」。
+ *
+ * 消费规则（与 1.5.5 既有契约兼容，不新增对系统组合键的劫持）：
+ * 1. Alt+字母命中顶层菜单 `accessKey` → preventDefault，激活菜单栏并打开/切换该菜单；
+ * 2. 未映射的 Alt+字母、Alt+F4 / Alt+Tab 等组合键 → 不消费：若当前只是「单独 Alt
+ *    激活、下拉未展开」则撤销激活并归还焦点（1.5.5 既有规则），按键继续交给系统/
+ *    其它快捷键处理；
+ * 3. 带 Ctrl/Shift/Meta 的组合键（含 AltGr）、输入法组字、按住自动重复、焦点在对话框内、
+ *    菜单栏被宿主隐藏 → 一律不响应；方向键/Enter/Esc 仍由菜单栏与下拉的既有处理器负责。
  */
 function handleGlobalKeydown(event: KeyboardEvent): void {
+    // REQ-13：Alt+字母助记符（优先于下面的「Alt+其它键放行」分支）
+    const mnemonicLetter = resolveMenuMnemonicLetter(event)
+    if (mnemonicLetter !== null) {
+        const mnemonicMenuIndex = findMenuIndexByMnemonic(menuData.value, mnemonicLetter)
+        // 命中映射且未被其它组件消费、焦点不在对话框、菜单栏可见时才接管；
+        // 否则不消费，继续走下面既有的「Alt+其它键」放行规则（不劫持系统组合键）。
+        if (
+            mnemonicMenuIndex >= 0 &&
+            !event.defaultPrevented &&
+            !isFocusInsideDialog() &&
+            !isMenuBarHidden()
+        ) {
+            event.preventDefault()
+            openMenuByMnemonic(mnemonicMenuIndex)
+            return
+        }
+    }
     // Alt+其它键：若当前只是「单独 Alt 激活、下拉未展开」，且该键不属于菜单栏键盘
     // 契约（←→/Home/End/Enter/空格等），视为组合键前缀——撤销激活并归还焦点，但
-    // 不消费按键。这样 Alt+F4 / Alt+Tab / Alt+字母不会把焦点留在菜单栏；按住 Alt
-    // 继续用方向键导航（Windows 菜单习惯）时方向键属契约键，激活态不会被撤销。
+    // 不消费按键。这样 Alt+F4 / Alt+Tab / 未映射的 Alt+字母不会把焦点留在菜单栏；
+    // 按住 Alt 继续用方向键导航（Windows 菜单习惯）时方向键属契约键，激活态不会被撤销。
     if (event.altKey && event.key !== 'Alt') {
         if (
             altActivated.value &&
@@ -803,7 +856,7 @@ onBeforeUnmount(() => {
     box-sizing: border-box;
     padding: 0 4px;
     user-select: none;
-    /* 面：--ui-surface × --ui-surface-opacity（glass 0.86 半透明；其余 1 = 不透明）。
+    /* 面：--ui-surface × --ui-surface-opacity（glass 0.72 半透明（1.5.6 增强）；其余 1 = 不透明）。
        先给不支持 color-mix 的环境一个不透明兜底，再用变量驱动透明度。 */
     background-color: var(--ui-surface, var(--ui-bg));
     background-color: color-mix(
@@ -875,6 +928,27 @@ onBeforeUnmount(() => {
     font-weight: 500;
     color: inherit;
     letter-spacing: 0.02em;
+}
+
+/*
+ * Alt+字母助记符提示（REQ-13，1.5.6）：
+ * - 仅 Alt 激活态下显示（Windows 菜单惯例：按住 Alt 时字母助记符变为可见）；
+ * - 用 ::after + attr(data-mnemonic) 生成「字母下划线」，不写入菜单 DOM 文案、
+ *   不改变可访问名称（读屏通过按钮的 aria-keyshortcuts="Alt+F" 获知）；
+ * - 未激活时 content: none，不占位、不改变既有菜单布局（默认态与 1.5.5 完全一致）。
+ */
+.menu-item::after {
+    content: none;
+}
+
+.menu-bar--alt-active .menu-item::after {
+    content: attr(data-mnemonic);
+    display: inline;
+    margin-left: 2px;
+    font-size: 0.92em;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }
 
 /* 子菜单定位容器（fixed 跟随菜单项；Teleport 到 body 后仍受本 scoped 样式约束） */

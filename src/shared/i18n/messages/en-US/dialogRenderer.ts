@@ -727,6 +727,22 @@ const dialogRenderer = {
         save: 'Save and Open',
         discard: 'Do Not Save',
         cancel: 'Cancel'
+    },
+    // 1.5.6：使用指导对话框（应用内搜索由父页面代理实现，见 UsageGuideDialog.vue）。
+    // 键名统一 usageGuide.*，单独成块追加在文件末尾，便于并行批次合入与整块搬移。
+    usageGuide: {
+        loading: 'Loading the usage guide...',
+        unavailable:
+            'The usage guide is unavailable: in-app search is disabled for now. Close the dialog and retry, or open the PDF version from Help > Usage Guide.',
+        noIndex:
+            'Could not read the usage guide outline: in-app search is disabled for now. Use the static outline inside the page to jump between sections.',
+        searchPlaceholder: 'Search titles and body text, Enter to jump, Esc to clear',
+        searchAriaLabel: 'Search usage guide content',
+        searchClear: 'Clear search',
+        searchResults: 'Search results',
+        searchEmpty: 'No matching sections. Press Esc to clear.',
+        searchMatches: 'Matched {count} sections',
+        searchMatchesCapped: 'Matched {count} sections; showing the first {limit}'
     }
 }
 

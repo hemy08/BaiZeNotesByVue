@@ -16,6 +16,8 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import * as fs from 'fs'
+import * as path from 'path'
 
 // ============ 子组件最小 mock（只保留 props/事件契约） ============
 // 右侧/左侧导航：点击时按 naviState.nextTab 上抛 update:navi:tab，模拟真实 NaviTab。
@@ -88,12 +90,27 @@ vi.mock('@renderer/components/PluginTools/PluginTools.vue', async () => {
         default: defineComponent({
             name: 'PluginToolsStub',
             props: { pluginsAreaWidth: { type: String, default: '' } },
-            setup(props) {
+            // REQ-12：面板折叠状态经 emit 上抛给 WorkSpace（真实组件契约）
+            emits: ['window-state-change'],
+            setup(props, { emit }) {
                 return () =>
-                    h('div', {
-                        class: 'plugin-tools-stub',
-                        'data-width': props.pluginsAreaWidth
-                    })
+                    h(
+                        'div',
+                        {
+                            class: 'plugin-tools-stub',
+                            'data-width': props.pluginsAreaWidth
+                        },
+                        [
+                            h('button', {
+                                class: 'plugin-tools-minimize-stub',
+                                onClick: () => emit('window-state-change', true)
+                            }),
+                            h('button', {
+                                class: 'plugin-tools-restore-stub',
+                                onClick: () => emit('window-state-change', false)
+                            })
+                        ]
+                    )
             }
         })
     }
@@ -589,5 +606,105 @@ describe('WorkSpace 资源管理器宽度拖拽', () => {
         await flushPromises()
 
         expect(widthOf(wrapper, '#resource-manager')).toBe('300px')
+    })
+})
+
+// =============================================================================================
+// REQ-12 插件面板最小化联动工作区：折叠 → 插件区域只占 44px 工具条 + 编辑器让位；还原 → 互斥视图
+// =============================================================================================
+
+describe('REQ-12 插件面板最小化联动工作区（收起空白 / 编辑器让位）', () => {
+    const WORKSPACE_SOURCE = fs.readFileSync(
+        path.resolve(__dirname, '../../../src/renderer/src/components/WorkSpaceArea/WorkSpace.vue'),
+        'utf8'
+    )
+
+    /** 显示插件容器（真实链路：菜单/事件 → WORKSPACE_SHOW 'plugins'） */
+    async function showPlugins(): Promise<void> {
+        EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'plugins')
+        await flushPromises()
+    }
+
+    it('面板折叠（window-state-change=true）→ 舞台纵向排布、插件区域 44px、编辑器可见', async () => {
+        wrapper = await mountWorkspace()
+        await showPlugins()
+        expect(wrapper.find('#plugin-containers').isVisible()).toBe(true)
+        expect(wrapper.find('#md-container').isVisible()).toBe(false)
+        expect(wrapper.find('.workspace-stage').attributes('data-plugin-panel-docked')).toBe(
+            'false'
+        )
+
+        await wrapper.find('.plugin-tools-minimize-stub').trigger('click')
+        await flushPromises()
+
+        // 舞台切纵向 + 插件容器收缩为 44px 工具条（class/data 双标记供 E2E 断言）
+        expect(wrapper.find('.workspace-stage').classes()).toContain(
+            'workspace-stage--plugin-docked'
+        )
+        expect(wrapper.find('.workspace-stage').attributes('data-plugin-panel-docked')).toBe('true')
+        expect(wrapper.find('#plugin-containers').classes()).toContain(
+            'plugin-containers--panel-docked'
+        )
+        expect(wrapper.find('#plugin-containers').attributes('data-plugin-panel-docked')).toBe(
+            'true'
+        )
+        // 编辑器容器不再隐藏（占满工具条之外的剩余高度）
+        expect(wrapper.find('#md-container').isVisible()).toBe(true)
+        expect(wrapper.find('#plugin-containers').isVisible()).toBe(true)
+
+        // 还原（window-state-change=false）→ 回到既有「同一时刻只显示一个容器」的互斥视图
+        await wrapper.find('.plugin-tools-restore-stub').trigger('click')
+        await flushPromises()
+        expect(wrapper.find('.workspace-stage').classes()).not.toContain(
+            'workspace-stage--plugin-docked'
+        )
+        expect(wrapper.find('.workspace-stage').attributes('data-plugin-panel-docked')).toBe(
+            'false'
+        )
+        expect(wrapper.find('#md-container').isVisible()).toBe(false)
+        expect(wrapper.find('#plugin-containers').isVisible()).toBe(true)
+    })
+
+    it('联动只在插件容器显示时生效：切走再切回不残留 docked 态', async () => {
+        wrapper = await mountWorkspace()
+        await showPlugins()
+        await wrapper.find('.plugin-tools-minimize-stub').trigger('click')
+        await flushPromises()
+        expect(wrapper.find('.workspace-stage').classes()).toContain(
+            'workspace-stage--plugin-docked'
+        )
+
+        // 返回编辑器：编辑器正常显示，插件容器隐藏（docked class 不再生效）
+        EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'md')
+        await flushPromises()
+        expect(wrapper.find('#md-container').isVisible()).toBe(true)
+        expect(wrapper.find('#plugin-containers').isVisible()).toBe(false)
+        expect(wrapper.find('.workspace-stage').classes()).not.toContain(
+            'workspace-stage--plugin-docked'
+        )
+
+        // 切到 HTML 查看器同样不受影响
+        EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'tools')
+        await flushPromises()
+        expect(wrapper.find('#tool-containers').isVisible()).toBe(true)
+        expect(wrapper.find('#md-container').isVisible()).toBe(false)
+    })
+
+    it('工作区模板/样式契约：window-state-change 接线 + 44px 工具条 + 编辑器 flex 占满（静态断言）', () => {
+        // 模板：父组件监听子组件事件（Props/emit 直连，不新增 EventBus 契约）
+        expect(WORKSPACE_SOURCE).toContain('@window-state-change="onPluginToolsWindowStateChange"')
+        expect(WORKSPACE_SOURCE).toContain('data-plugin-panel-docked')
+        // 舞台：默认横向（既有互斥视图），折叠时纵向
+        expect(WORKSPACE_SOURCE).toMatch(/\.workspace-stage\s*\{[\s\S]*?flex-direction: row;/)
+        expect(WORKSPACE_SOURCE).toMatch(
+            /\.workspace-stage--plugin-docked\s*\{[\s\S]*?flex-direction: column;/
+        )
+        // 折叠态：插件容器固定 44px 工具条并置顶；编辑器占满剩余高度
+        expect(WORKSPACE_SOURCE).toMatch(
+            /\.workspace-stage--plugin-docked #plugin-containers\s*\{[\s\S]*?order: -1;[\s\S]*?height: 44px;/
+        )
+        expect(WORKSPACE_SOURCE).toMatch(
+            /\.workspace-stage--plugin-docked #md-container\s*\{[\s\S]*?flex: 1 1 auto;/
+        )
     })
 })

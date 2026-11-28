@@ -9,7 +9,9 @@
  * 4. 默认档位 = 视觉升级前现状尺寸（行高 28 / 控件 32 / 内边距 12）；
  * 5. 双材质边界：hybrid 内容区 = paper，外壳 = workbench；其余风格内容区与外壳同材质；
  * 6. glass 降级：深色 steady（0.94 + 关模糊）、减少透明/系统偏好回退 paper；
- * 7. 动效与 z-index 令牌表完整；prefers-reduced-motion 降级存在。
+ * 7. 动效与 z-index 令牌表完整；prefers-reduced-motion 降级存在；
+ * 8. REQ-14 glass 弱效果增强：0.72 低透明度 + 0.30 高光边 + 模糊半径不回归，且不波及
+ *    paper / workbench / hybrid 与 steady / 减少透明降级档（「平坦背景可感知」的参数断言）。
  */
 import { describe, it, expect } from 'vitest'
 import * as fs from 'fs'
@@ -225,12 +227,34 @@ describe('风格层令牌：4 种材质 = 数值单一真源 = CSS', () => {
         })
     })
 
-    it('glass 材质：0.86 不透明度 + 8px 模糊 + 高光边 + 大圆角', () => {
-        expect(UI_STYLE_TOKENS.glass.surfaceOpacity).toBe(0.86)
+    it('glass 材质（REQ-14 增强档）：0.72 低透明度 + 8px 模糊 + 0.30 高光边 + 大圆角', () => {
+        // 1.5.6 REQ-14：整窗模糊不启用（性能），在平坦背景上只增强「低透明度面 + 高光边」两个非模糊参数
+        expect(UI_STYLE_TOKENS.glass.surfaceOpacity).toBe(0.72)
+        // 模糊半径不回归（性能预算：仍为悬浮层 8px 小面积模糊，未提升）
         expect(UI_STYLE_TOKENS.glass.surfaceBlur).toBe(8)
+        // 高光边增强：0.14 → 0.30（消费方 inset 白高光线 + 窗口径向光斑强度同步放大）
+        expect(UI_STYLE_TOKENS.glass.highlightBorderAlpha).toBe(0.3)
         expect(UI_STYLE_TOKENS.glass.highlightBorderAlpha).toBeGreaterThan(0)
-        expect(UI_STYLE_TOKENS.glass.highlightBorderAlpha).toBeLessThanOrEqual(0.18)
+        expect(UI_STYLE_TOKENS.glass.highlightBorderAlpha).toBeLessThanOrEqual(0.4)
         expect(UI_STYLE_TOKENS.glass.radiusLg).toBeGreaterThan(UI_STYLE_TOKENS.workbench.radiusLg)
+    })
+
+    it('REQ-14 平坦背景可感知：低透明度面（opacity < 1）、高光边 alpha > 0，且不波及纸感/混合/工作台', () => {
+        const { paper, glass, workbench, hybrid } = UI_STYLE_TOKENS
+        // 可感知三要素（静态可断言部分；真实像素由 out/tmp/req-e-glass 截图与 E2E 视觉矩阵佐证）
+        expect(glass.surfaceOpacity).toBeLessThan(1)
+        expect(glass.surfaceOpacity).toBeLessThan(paper.surfaceOpacity)
+        expect(glass.highlightBorderAlpha).toBeGreaterThan(0)
+        // 内容区材质随内容区材质表联动（glass 内容区 = glass → 同样低透明度）
+        expect(UI_CONTENT_MATERIAL.glass).toBe('glass')
+        // 纸感 / 混合 / 工作台不受本批影响：不透明、无高光边（避免 glass 增强泄漏到其它风格）
+        for (const style of ['paper', 'workbench', 'hybrid'] as const) {
+            expect(UI_STYLE_TOKENS[style].surfaceOpacity, style).toBe(1)
+            expect(UI_STYLE_TOKENS[style].highlightBorderAlpha, style).toBe(0)
+            expect(UI_STYLE_TOKENS[style].surfaceBlur, style).toBe(0)
+        }
+        // hybrid 外壳仍 = workbench 材质（双材质边界不变）
+        expect(hybrid).toEqual(workbench)
     })
 
     it('paper 材质：不透明、无模糊、阴影弱于 workbench', () => {
@@ -373,11 +397,15 @@ describe('默认观感零变化：ui-style.css 只声明变量，不覆盖既有
 })
 
 describe('glass 降级路径（CSS 兜底 + 纯函数规则）', () => {
-    it('深色主题 steady 模式：不透明度提高、模糊关闭', () => {
+    it('深色主题 steady 模式：不透明度提高、模糊关闭、高光边回落（REQ-14 增强不波及降级档）', () => {
         const source = readSource(UI_STYLE_CSS)
         const steady = readRuleVariables(source, "[data-style='glass'][data-glass-mode='steady']")
         expect(steady['--ui-surface-opacity']).toBe('0.94')
         expect(steady['--ui-surface-blur']).toBe('0px')
+        // 增强档 0.30 只在 normal 生效；steady 保持 0.10（深色稳健降级规则不随增强漂移）
+        expect(steady['--ui-highlight-border-alpha']).toBe('0.1')
+        expect(steady['--ui-content-surface-opacity']).toBe('0.94')
+        expect(steady['--ui-content-surface-blur']).toBe('0px')
     })
 
     it('减少透明兜底：glass 回退不透明、无模糊', () => {
@@ -472,7 +500,7 @@ describe('resolveEffectiveUiStyle：glass 降级规则', () => {
         }
     })
 
-    it('glass 浅色普通主题：常规模式（0.86 + 8px 模糊）', () => {
+    it('glass 浅色普通主题：常规模式（0.72 + 8px 模糊，REQ-14 增强档）', () => {
         expect(resolveEffectiveUiStyle('glass', context())).toEqual({
             style: 'glass',
             glassMode: 'normal'

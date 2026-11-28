@@ -1345,14 +1345,10 @@ function handleApply(): void {
     border-right: 1px solid var(--table-grid-color, var(--ui-border));
     border-bottom: 1px solid var(--table-header-border-color, var(--ui-border-strong));
     background: var(--table-header-bg, var(--ui-bg-elevated));
-    /* glass 高光边：强度由冻结令牌 --ui-highlight-border-alpha 控制（其余风格为 0 → 透明） */
+    /* glass 高光边：--ui-highlight-border-color = 固定白基色 × --ui-highlight-border-alpha
+       （glass / steady 按材质透明度生效，其余风格 0 → transparent；原 color-mix 写法等价迁移） */
     box-shadow:
-        inset 0 1px 0
-            color-mix(
-                in srgb,
-                #ffffff calc(var(--ui-highlight-border-alpha, 0) * 100%),
-                transparent
-            ),
+        inset 0 1px 0 var(--ui-highlight-border-color),
         inset 0 -1px 0 color-mix(in srgb, var(--table-header-border-color) 45%, transparent);
     color: var(--ui-text-secondary, var(--text-secondary));
     font-weight: 600;

@@ -218,7 +218,8 @@ export function resolveSubmenuKeyAction(
  * 自动重复）可在单测里直接覆盖，不必为每个边界写一遍组件用例。
  *
  * ## 只认「单独 Alt」
- * - `key` 必须是 `Alt`：Alt+F4 / Alt+Tab / Alt+字母的字母键事件一律不消费；
+ * - `key` 必须是 `Alt`：Alt+F4 / Alt+Tab / Alt+Shift+字母等组合键一律不消费；
+ *   Alt+字母助记符由 `resolveMenuMnemonicLetter()` 单独解析（REQ-13），本函数不参与；
  * - 带 Ctrl/Meta/Shift 修饰时不是「单独 Alt」：AltGr（Windows 上表现为 Ctrl+Alt）、
  *   `Ctrl+Alt+P` 等既有组合键原样放行；
  * - 输入法组字期（`isComposing` / keyCode 229）不响应；
@@ -261,4 +262,80 @@ export function isMenuActivationAltKey(event: MenuAltKeyEvent): boolean {
         return false
     }
     return true
+}
+
+// ---------------------------------------------------------------------------------------------
+// Alt + 字母助记符（REQ-13，1.5.6）
+//
+// 与「单独 Alt 激活」是两条并行能力：
+// - 单独 Alt：激活菜单栏并把焦点落到第一个顶层菜单（既有 1.5.5 语义，保持不变）；
+// - Alt+字母：命中映射时直接激活并打开/切换对应顶层菜单（Windows 菜单助记符惯例）。
+//
+// 字母表不在本文件维护：菜单数据的 `accessKey` 字段是唯一真源（menu-config.ts 的
+// TOP_MENU_ACCESS_KEYS 由其派生），这里只做「按键 → 字母」与「字母 → 菜单索引」的纯计算。
+// ---------------------------------------------------------------------------------------------
+
+/** Alt+字母助记符按键事件的最小结构（便于单测直接构造，不依赖真实 KeyboardEvent） */
+export interface MenuMnemonicKeyEvent {
+    /** KeyboardEvent.key（字母按键为 'f' / 'F' 等单字符） */
+    key: string
+    /** 是否按住 Alt（助记符必须带 Alt） */
+    altKey?: boolean
+    /** 是否按住 Ctrl（AltGr 在 Windows 上同时带 Ctrl+Alt，不作为助记符） */
+    ctrlKey?: boolean
+    /** 是否按住 Meta（macOS Cmd） */
+    metaKey?: boolean
+    /** 是否按住 Shift（Alt+Shift+字母 不是助记符） */
+    shiftKey?: boolean
+    /** 按住不放产生的自动重复事件 */
+    repeat?: boolean
+    /** 输入法组字中 */
+    isComposing?: boolean
+    /** 旧内核/Chrome 在组字期给出的 229 标记 */
+    keyCode?: number
+}
+
+/**
+ * 解析 `Alt + 单个字母` 助记符：命中返回小写字母，否则返回 null（不消费事件）。
+ *
+ * 只认「Alt + A-Z 单字母」：
+ * - 必须带 Alt；带 Ctrl/Meta/Shift 的组合（AltGr、Ctrl+Alt+X、Alt+Shift+X）交回既有
+ *   快捷键/系统处理，不做助记符；
+ * - `Alt+F4` / `Alt+Tab` 等非单字母按键返回 null，继续走既有「组合键放行」规则；
+ * - 输入法组字期（`isComposing` / keyCode 229）与按住自动重复不响应。
+ *
+ * 注意：返回字母只代表「按键形态像助记符」，是否真正消费按键由组件按 `accessKey`
+ * 映射表判定——未映射字母仍不劫持（见 MenuBar.vue 的全局 keydown）。
+ */
+export function resolveMenuMnemonicLetter(event: MenuMnemonicKeyEvent): string | null {
+    if (event.altKey !== true) {
+        return null
+    }
+    if (event.ctrlKey === true || event.metaKey === true || event.shiftKey === true) {
+        return null
+    }
+    if (event.repeat === true) {
+        return null
+    }
+    if (event.isComposing === true || event.keyCode === 229) {
+        return null
+    }
+    if (event.key.length !== 1 || !/[a-z]/i.test(event.key)) {
+        return null
+    }
+    return event.key.toLowerCase()
+}
+
+/**
+ * 在顶层菜单数据中按助记符字母查找菜单索引（大小写不敏感，未命中返回 -1）。
+ *
+ * 字母唯一性由 menu-config.ts 的数据约定 + 映射表测试守护；本函数不维护第二份字母表，
+ * 同一字母重复声明时返回首个匹配（数据缺陷会被测试拦截，运行期保持确定性）。
+ */
+export function findMenuIndexByMnemonic(
+    items: readonly Pick<BaiZeMenuEntry, 'accessKey'>[],
+    letter: string
+): number {
+    const normalized = letter.toLowerCase()
+    return items.findIndex((item) => item.accessKey?.toLowerCase() === normalized)
 }

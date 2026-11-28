@@ -737,7 +737,7 @@ onBeforeUnmount(() => {
         --bz-content-on: min(1, var(--bz-content-ratio));
         --bz-glass-alpha: var(--ui-highlight-border-alpha, 0);
 
-        /* 壳层表面：glass 半透明（--ui-surface-opacity 0.86）/ 其余不透明（1 = 现状卡片底） */
+        /* 壳层表面：glass 半透明（--ui-surface-opacity 0.72，1.5.6 增强）/ 其余不透明（1 = 现状卡片底） */
         --bz-shell-surface: color-mix(
             in srgb,
             var(--ui-bg-elevated, var(--theme-card-background))
@@ -821,9 +821,9 @@ onBeforeUnmount(() => {
         );
 }
 
-/* 窗口大小调整边框（P2 遗留项 4：原裸值 9999/10000 → 命名令牌 --ui-z-resize-app，
-   数值不变。热区「角」取 resize 最高层（10000），「边」取 resize - 1（9999），
-   与迁移前完全等值；变量真源 UI_Z_INDEX_APP_BASE.resize）。 */
+/* 窗口大小调整边框（1.5.6 P2-E：z-index 相对阶梯化，原裸值 9999/10000 → 相对阶梯 119/120）。
+   热区「角」取 --ui-z-resize-app（= 120，应用内最高层），「边」取 resize - 1（= 119，恒低于角、
+   高于对话框遮罩 110）；变量真源 UI_Z_INDEX_APP_BASE.resize，层序保持论证见 DESIGN.md §5.4。 */
 .resize-edge {
     position: absolute;
     z-index: calc(var(--ui-z-resize-app) - 1);

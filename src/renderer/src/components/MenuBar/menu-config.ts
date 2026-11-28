@@ -41,6 +41,17 @@ export interface BaiZeMenuEntry extends BaiZeMenuItem {
      */
     id?: string
     /**
+     * 顶层菜单 `Alt + 字母` 助记符（REQ-13，1.5.6）：单个 A-Z 字母，大小写不敏感。
+     *
+     * 仅顶层菜单声明：MenuBar.vue 在全局 keydown 中把 `Alt + 该字母` 映射到对应下拉
+     * （激活菜单栏并打开/切换菜单）；Alt 激活态下由 CSS 在菜单标签末尾以「字母下划线」
+     * 提示（`:data-mnemonic` + `::after`，不改变菜单 DOM 文案与可访问名称）。
+     *
+     * 映射表真源：导出后由 `TOP_MENU_ACCESS_KEYS` 从本字段派生，交互/测试/帮助文档
+     * 共用一份数据；同一菜单栏内字母必须唯一（`tests/unit/vue/menubar-keyboard.test.ts`）。
+     */
+    accessKey?: string
+    /**
      * 「动态子菜单占位项」标记：初始 submenu 为空数组，由 MenuBar.vue 打开「文件」
      * 菜单时按最近列表注入真实子项（无记录时注入禁用占位项）。
      * pruneEmptySubmenus 对该标记项豁免空组剪枝，避免占位项在导出前被剪掉。
@@ -90,6 +101,8 @@ const exportMenu: BaiZeMenuEntry = {
 
 const fileMenu: BaiZeMenuEntry = {
     labelKey: 'menu.file.label',
+    // REQ-13（1.5.6）：顶层菜单 Alt+字母助记符（文件 → Alt+F）
+    accessKey: 'F',
     // FUN-26：原 accelerator 'Alt+N' 未绑定任何快捷键且顶层菜单不渲染 accelerator
     // 文案（MenuBar.vue 仅子菜单项展示），属误导性标注，已移除。
     submenu: [
@@ -150,6 +163,8 @@ const fileMenu: BaiZeMenuEntry = {
 
 const editMenu: BaiZeMenuEntry = {
     labelKey: 'menu.edit.label',
+    // REQ-13：编辑 → Alt+E
+    accessKey: 'E',
     submenu: [
         { labelKey: 'common.undo', accelerator: 'Ctrl+Z', menuAction: 'baize:menu:edit:undo' },
         { labelKey: 'common.redo', accelerator: 'Ctrl+Y', menuAction: 'baize:menu:edit:redo' },
@@ -248,6 +263,8 @@ const editMenu: BaiZeMenuEntry = {
 
 const viewMenu: BaiZeMenuEntry = {
     labelKey: 'menu.view.label',
+    // REQ-13：视图 → Alt+V
+    accessKey: 'V',
     submenu: [
         {
             labelKey: 'menu.view.editMode',
@@ -349,6 +366,8 @@ const switchEncodingMenu: BaiZeMenuEntry = {
 }
 const codingMenu: BaiZeMenuEntry = {
     labelKey: 'menu.coding.label',
+    // REQ-13：编码 → Alt+C（Coding / Character encoding 首字母）
+    accessKey: 'C',
     submenu: [
         opeFileEncoding, // 编码
         switchEncodingMenu // 切换编码
@@ -400,6 +419,8 @@ const insertPlantUML: BaiZeMenuEntry = {
 
 const insertMenu: BaiZeMenuEntry = {
     labelKey: 'menu.insert.label',
+    // REQ-13：插入 → Alt+I
+    accessKey: 'I',
     submenu: [
         // 绘图入口（从「工具 → 绘图工具」提升为插入菜单一级项，单独分组）
         {
@@ -429,6 +450,8 @@ const insertMenu: BaiZeMenuEntry = {
 
 const settingMenu: BaiZeMenuEntry = {
     labelKey: 'menu.setting.label',
+    // REQ-13：设置 → Alt+S
+    accessKey: 'S',
     submenu: [
         { labelKey: 'menu.setting.system', menuAction: 'baize:menu:setting:system' },
         { labelKey: 'menu.setting.theme', menuAction: 'baize:menu:setting:theme' },
@@ -440,6 +463,8 @@ const settingMenu: BaiZeMenuEntry = {
 
 const toolsMenu: BaiZeMenuEntry = {
     labelKey: 'menu.tools.label',
+    // REQ-13：工具 → Alt+T
+    accessKey: 'T',
     submenu: [
         { labelKey: 'menu.tools.mermaid', menuAction: 'baize:menu:tools:mermaid' },
         { labelKey: 'menu.tools.images', menuAction: 'baize:menu:tools:images' },
@@ -518,6 +543,8 @@ function toPluginMenuEntry(node: PluginToolMenuNode): BaiZeMenuEntry {
 
 const pluginsMenu: BaiZeMenuEntry = {
     labelKey: 'menu.plugins.label',
+    // REQ-13：插件 → Alt+P
+    accessKey: 'P',
     submenu: [
         // 1.5.6 插件搜索入口：作为「插件」菜单首项（置顶）单独声明。
         // MENU-08 边界说明：38 项工具仍 100% 由 manifest 投影生成（下方展开），本项是
@@ -576,6 +603,8 @@ export function pruneEmptySubmenus(items: BaiZeMenuEntry[]): BaiZeMenuEntry[] {
 // 工具网站菜单
 const onlineMenu: BaiZeMenuEntry = {
     labelKey: 'menu.online.label',
+    // REQ-13：在线 → Alt+O
+    accessKey: 'O',
     submenu: [
         {
             labelKey: 'menu.online.group.cainiao',
@@ -759,6 +788,8 @@ const aiMenuGroups: AiMenuGroupDef[] = [
 
 const aiMenu: BaiZeMenuEntry = {
     labelKey: 'menu.ai.label',
+    // REQ-13：AI 导航 → Alt+A
+    accessKey: 'A',
     submenu: aiMenuGroups.map((group) => ({
         labelKey: group.labelKey,
         submenu: group.items.map((item) => ({
@@ -771,11 +802,15 @@ const aiMenu: BaiZeMenuEntry = {
 // FE-28：GitHub 为品牌名，按 i18n 约定保留原文 label（不翻译，故不设 menu key）。
 const gitHubMenu: BaiZeMenuEntry = {
     label: 'GitHub',
+    // REQ-13：GitHub → Alt+G（品牌名不翻译，助记符固定 G）
+    accessKey: 'G',
     submenu: generateMenuItems(MenuConst.GitHubUrlMaps)
 }
 
 const helpMenu: BaiZeMenuEntry = {
     labelKey: 'menu.help.label',
+    // REQ-13：帮助 → Alt+H
+    accessKey: 'H',
     submenu: [
         {
             labelKey: 'menu.help.release',
@@ -849,3 +884,39 @@ export const menuMap = ref<BaiZeMenuEntry[]>(
         ])
     )
 )
+
+// ---------------------------------------------------------------------------------------------
+// REQ-13（1.5.6）：顶层菜单 Alt+字母助记符映射表
+//
+// 单一真源：字母声明在顶层菜单定义的 `accessKey` 字段上，本表只做派生投影，顺序与菜单栏
+// 完全一致（文件 F → 帮助 H）。MenuBar.vue 的键盘交互、帮助文档与门禁测试都消费这一份数据，
+// 不允许在别处再手写一份字母表（避免菜单增删后助记符漂移）。
+//
+// 冲突约定：字母取英文语义首字母（文件 File→F、编辑 Edit→E、视图 View→V、编码 Coding→C、
+// 插入 Insert→I、设置 Settings→S、工具 Tools→T、插件 Plugins→P、在线 Online→O、
+// AI 导航→A、GitHub→G、帮助 Help→H），当前 12 个字母无冲突；若未来新增顶层菜单发生
+// 冲突，必须在菜单定义处重新分配，并由 tests/unit/vue/menubar-keyboard.test.ts 的
+// 「映射表」用例拦截（覆盖全部顶层菜单 + 字母唯一）。
+// ---------------------------------------------------------------------------------------------
+
+/** 顶层菜单 Alt+字母助记符条目（菜单标识 + 单个大写字母） */
+export interface TopMenuAccessKeyEntry {
+    /** 顶层菜单 i18n key（品牌名 GitHub 等用 label 原样展示时为 undefined） */
+    labelKey?: string
+    /** 不翻译的顶层菜单文案（当前仅 GitHub） */
+    label?: string
+    /** `Alt + accessKey` 打开/切换到该顶层菜单（单个 A-Z 字母） */
+    accessKey: string
+}
+
+/** 顶层菜单 Alt+字母助记符表（由 menuMap 顶层项的 accessKey 派生，顺序即菜单栏顺序） */
+export const TOP_MENU_ACCESS_KEYS: readonly TopMenuAccessKeyEntry[] = menuMap.value
+    .filter(
+        (item): item is BaiZeMenuEntry & { accessKey: string } =>
+            typeof item.accessKey === 'string' && item.accessKey.length > 0
+    )
+    .map((item) => ({
+        labelKey: item.labelKey,
+        label: item.label,
+        accessKey: item.accessKey
+    }))

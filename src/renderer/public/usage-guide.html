@@ -43,64 +43,6 @@
                 display: flex;
                 min-height: 100vh;
             }
-            .side {
-                width: 250px;
-                flex: 0 0 250px;
-                padding: 24px 18px;
-                background: var(--panel);
-                border-right: 1px solid var(--line);
-                position: sticky;
-                top: 0;
-                height: 100vh;
-                overflow: auto;
-            }
-            .side strong {
-                display: block;
-                font-size: 17px;
-                margin-bottom: 4px;
-            }
-            .side .ver {
-                color: var(--muted);
-                font-size: 12px;
-                margin-bottom: 16px;
-            }
-            .side .online {
-                display: inline-block;
-                margin-bottom: 14px;
-                font-size: 12px;
-                padding: 2px 8px;
-                background: var(--brand-soft);
-                border-radius: 999px;
-            }
-            .side .toc-root {
-                list-style: none;
-                margin: 0;
-                padding: 0;
-            }
-            .side .toc-root ul {
-                list-style: none;
-                margin: 0;
-                padding: 0;
-            }
-            .side .toc-h2 > a {
-                display: block;
-                padding: 5px 8px;
-                border-radius: 6px;
-                font-size: 14px;
-                color: var(--text);
-                font-weight: 600;
-            }
-            .side .toc-h3 > a {
-                display: block;
-                padding: 3px 8px 3px 20px;
-                border-radius: 6px;
-                font-size: 12px;
-                color: var(--muted);
-            }
-            .side a:hover {
-                background: var(--brand-soft);
-                text-decoration: none;
-            }
             main {
                 flex: 1;
                 min-width: 0;
@@ -116,10 +58,12 @@
                 margin: 34px 0 10px;
                 padding-top: 6px;
                 border-top: 1px solid var(--line);
+                scroll-margin-top: 14px;
             }
             h3 {
                 font-size: 17px;
                 margin: 22px 0 8px;
+                scroll-margin-top: 14px;
             }
             h4 {
                 font-size: 15px;
@@ -210,6 +154,268 @@
                 color: var(--muted);
                 font-size: 12px;
             }
+
+            /* 悬浮目录侧栏：sticky 固定，目录/搜索在侧栏内部滚动，不遮挡正文 */
+            .side {
+                width: 250px;
+                flex: 0 0 250px;
+                padding: 0;
+                background: var(--panel);
+                border-right: 1px solid var(--line);
+                position: sticky;
+                top: 0;
+                height: 100vh;
+                overflow: hidden;
+                display: flex;
+            }
+            .side-panel {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                min-height: 0;
+                padding: 18px 16px 12px;
+            }
+            .side-summary {
+                display: block;
+                cursor: default;
+                list-style: none;
+                margin: 0 0 8px;
+                outline: none;
+                pointer-events: none;
+                user-select: none;
+            }
+            .side-summary::-webkit-details-marker {
+                display: none;
+            }
+            .side-summary::marker {
+                content: '';
+            }
+            .side-title {
+                display: block;
+                font-size: 16px;
+                font-weight: 700;
+                color: var(--text);
+                line-height: 1.4;
+            }
+            .side-hint {
+                display: none;
+                font-size: 12px;
+                color: var(--muted);
+                line-height: 1.6;
+            }
+            .side-body {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                min-height: 0;
+            }
+            .side .ver {
+                color: var(--muted);
+                font-size: 12px;
+                margin: 0 0 8px;
+            }
+            .side .online {
+                display: inline-block;
+                margin: 0 0 10px;
+                font-size: 12px;
+                padding: 2px 8px;
+                background: var(--brand-soft);
+                border-radius: 999px;
+            }
+            /* 内文搜索（脚本可用时显示） */
+            .help-tools {
+                display: none;
+                flex: 0 0 auto;
+                margin: 2px 0 10px;
+            }
+            .js .help-tools {
+                display: block;
+            }
+            .help-search-label {
+                display: block;
+                font-size: 12px;
+                color: var(--muted);
+                margin: 0 0 5px;
+            }
+            .help-search-input {
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+                padding: 7px 10px;
+                border: 1px solid var(--line);
+                border-radius: 7px;
+                background: #fff;
+                color: var(--text);
+                font-size: 13px;
+                line-height: 1.5;
+                outline: none;
+            }
+            .help-search-input:focus {
+                border-color: var(--brand);
+                box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.16);
+            }
+            .help-search-meta {
+                margin: 6px 2px 0;
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+            }
+            .help-search-meta:empty {
+                display: none;
+            }
+            .help-search-results {
+                display: none;
+                list-style: none;
+                margin: 4px 0 0;
+                padding: 0;
+                max-height: 46vh;
+                overflow: auto;
+            }
+            .help-search-results.is-open {
+                display: block;
+            }
+            .search-result {
+                margin: 1px 0;
+            }
+            .search-result-link {
+                display: block;
+                padding: 6px 8px;
+                border-radius: 6px;
+                border: 1px solid transparent;
+                color: var(--text);
+            }
+            .search-result-link:hover {
+                background: var(--brand-soft);
+                text-decoration: none;
+            }
+            .search-result-link.is-active {
+                background: var(--brand-soft);
+                border-color: #e0d4f1;
+                text-decoration: none;
+            }
+            .search-result-title {
+                display: block;
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1.45;
+            }
+            .search-result-snippet {
+                display: block;
+                margin-top: 1px;
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+                word-break: break-word;
+            }
+            .search-result-link mark {
+                background: #ffe28a;
+                color: inherit;
+                border-radius: 2px;
+                padding: 0 1px;
+            }
+            /* 目录：侧栏内独立滚动，当前章节高亮 */
+            .toc {
+                flex: 1;
+                min-height: 0;
+                overflow: auto;
+                margin-top: 2px;
+                padding-right: 2px;
+                scrollbar-width: thin;
+            }
+            .side .toc-root {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+            .side .toc-root ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+            .side .toc-h2 > a {
+                display: block;
+                padding: 5px 8px;
+                border-radius: 6px;
+                font-size: 14px;
+                color: var(--text);
+                font-weight: 600;
+            }
+            .side .toc-h3 > a {
+                display: block;
+                padding: 3px 8px 3px 20px;
+                border-radius: 6px;
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .side .toc-root a:hover {
+                background: var(--brand-soft);
+                text-decoration: none;
+            }
+            .side .toc-root a.toc-active {
+                background: var(--brand-soft);
+                color: var(--brand);
+                font-weight: 700;
+                box-shadow: inset 3px 0 0 var(--brand);
+            }
+            /* 搜索进行中隐藏目录（结果列表与目录共用侧栏空间） */
+            body.searching .toc {
+                display: none;
+            }
+            .noscript-hint {
+                margin: 10px 0 0;
+                padding: 8px 10px;
+                border: 1px dashed var(--line);
+                border-radius: 6px;
+                color: var(--muted);
+                font-size: 12px;
+                line-height: 1.6;
+            }
+            /* 正文命中词临时高亮（2.6s 后由脚本移除 mark） */
+            .search-hit {
+                background: #ffdf75;
+                color: inherit;
+                border-radius: 2px;
+                padding: 0 1px;
+                box-shadow: 0 0 0 2px #ffdf75;
+                animation: help-hit-flash 2.6s ease-out 1;
+            }
+            @keyframes help-hit-flash {
+                0% {
+                    background: #ffd54a;
+                    box-shadow: 0 0 0 3px #ffd54a;
+                }
+                100% {
+                    background: transparent;
+                    box-shadow: none;
+                }
+            }
+            /* 窄屏：侧栏折叠为顶部折叠面板 + 右下角悬浮按钮（按钮仅脚本可用时显示） */
+            .side-fab {
+                display: none;
+                position: fixed;
+                right: 16px;
+                bottom: 18px;
+                z-index: 30;
+                align-items: center;
+                gap: 6px;
+                padding: 9px 14px;
+                border: 1px solid var(--line);
+                border-radius: 999px;
+                background: var(--panel);
+                color: var(--text);
+                font-size: 13px;
+                font-weight: 600;
+                box-shadow: 0 6px 18px rgba(37, 34, 51, 0.18);
+                cursor: pointer;
+            }
+            .side-fab:hover {
+                background: var(--brand-soft);
+                border-color: #e0d4f1;
+            }
+            .side-fab:focus-visible {
+                outline: 2px solid var(--brand);
+                outline-offset: 2px;
+            }
             @media (max-width: 760px) {
                 .layout {
                     display: block;
@@ -220,11 +426,33 @@
                     position: static;
                     border-right: 0;
                     border-bottom: 1px solid var(--line);
+                    overflow: visible;
+                }
+                .side-panel {
+                    height: auto;
+                    padding: 12px 16px 14px;
+                }
+                .side-summary {
+                    cursor: pointer;
+                    pointer-events: auto;
+                }
+                .side-hint {
+                    display: block;
+                }
+                .side-body {
+                    display: block;
+                }
+                .toc {
+                    max-height: 46vh;
                 }
                 main {
                     padding: 20px 18px 50px;
                 }
+                .js .side-fab {
+                    display: inline-flex;
+                }
             }
+
             @media print {
                 body {
                     background: #fff;
@@ -235,8 +463,25 @@
                 .layout {
                     display: block;
                 }
-                .side {
-                    display: none;
+                .side,
+                .side-fab,
+                .help-tools,
+                .help-search-results,
+                .noscript-hint,
+                .search-result {
+                    display: none !important;
+                }
+                .search-hit,
+                mark {
+                    background: transparent;
+                    color: inherit;
+                    box-shadow: none;
+                    padding: 0;
+                    animation: none;
+                }
+                .toc-active {
+                    background: transparent;
+                    box-shadow: none;
                 }
                 main {
                     max-width: none;
@@ -316,354 +561,433 @@
     </head>
     <body>
         <div class="layout">
-            <nav class="side" aria-label="使用指导导航">
-                <strong>白泽笔记 · 使用指导</strong>
-                <div class="ver">Windows x64 · 随安装包分发</div>
-                <a class="online" href="https://hemy08.github.io" target="_blank" rel="noreferrer"
-                    >在线文档 hemy08.github.io</a
-                >
-                <ul class="toc-root">
-                    <li class="toc-h2">
-                        <a href="#sec-1">1. 快速开始</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-2">1.1 打开工作区</a></li>
-                            <li class="toc-h3"><a href="#sec-3">1.2 新建、保存与恢复</a></li>
-                            <li class="toc-h3"><a href="#sec-4">1.3 推荐目录结构</a></li>
-                            <li class="toc-h3">
-                                <a href="#sec-5">1.4 功能入口总览（截图指示）</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-6">2. 文件管理</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-7">2.1 支持的文件</a></li>
-                            <li class="toc-h3"><a href="#sec-8">2.2 打印与自包含 HTML</a></li>
-                            <li class="toc-h3"><a href="#sec-9">2.2.1 EPUB 与幻灯片导出</a></li>
-                            <li class="toc-h3"><a href="#sec-10">2.2.2 文件关联与双击打开</a></li>
-                            <li class="toc-h3"><a href="#sec-11">2.3 编码与换行</a></li>
-                            <li class="toc-h3"><a href="#sec-12">2.4 自动保存、备份与历史</a></li>
-                            <li class="toc-h3"><a href="#sec-13">2.5 与知识库的联动</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-14">3. 编辑与预览</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-15">3.1 编辑器</a></li>
-                            <li class="toc-h3"><a href="#sec-16">3.2 智能输入</a></li>
-                            <li class="toc-h3"><a href="#sec-17">3.3 预览</a></li>
-                            <li class="toc-h3"><a href="#sec-18">3.4 推荐组合</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-19">4. 搜索、替换与命令面板</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-20">4.1 搜索配置与联动</a></li>
-                            <li class="toc-h3"><a href="#sec-21">4.2 命令面板与搜索协作</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-22">5. 文档属性（Front matter）</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-23">5.1 可编辑字段</a></li>
-                            <li class="toc-h3"><a href="#sec-24">5.2 行为与联动</a></li>
-                            <li class="toc-h3"><a href="#sec-25">5.3 与捕获功能的联动</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-26">6. 知识管理功能（可选）</a>
-                        <ul class="toc-sub"></ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-27">7. 界面风格与密度</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-28">7.1 界面风格（4 种）</a></li>
-                            <li class="toc-h3"><a href="#sec-29">7.2 界面密度（3 档）</a></li>
-                            <li class="toc-h3">
-                                <a href="#sec-30">7.3 减少透明效果（开关，默认关）</a>
-                            </li>
-                            <li class="toc-h3"><a href="#sec-31">7.4 玻璃风格的自动降级</a></li>
-                            <li class="toc-h3"><a href="#sec-32">7.5 推荐组合与排障</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-33">8. 菜单栏键盘操作</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-34">8.1 进入菜单栏</a></li>
-                            <li class="toc-h3">
-                                <a href="#sec-35">8.2 顶层菜单（菜单栏这一行）</a>
-                            </li>
-                            <li class="toc-h3"><a href="#sec-36">8.3 下拉菜单内</a></li>
-                            <li class="toc-h3"><a href="#sec-37">8.4 三级子菜单的展开规则</a></li>
-                            <li class="toc-h3"><a href="#sec-38">8.5 焦点、鼠标与限制</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-39">9. 非模态工具窗、对话框与命令面板</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-40">9.1 非模态工具窗怎么用</a></li>
-                            <li class="toc-h3">
-                                <a href="#sec-41">9.2 命令面板与快速打开（键盘）</a>
-                            </li>
-                            <li class="toc-h3">
-                                <a href="#sec-42">9.3 对话框的宽度、遮罩与键盘</a>
-                            </li>
-                            <li class="toc-h3"><a href="#sec-43">9.4 表格编辑器</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-44">10. 写作模式纸感版式</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-45">10.1 生效条件</a></li>
-                            <li class="toc-h3">
-                                <a href="#sec-46">10.2 版式变化（仅预览正文）</a>
-                            </li>
-                            <li class="toc-h3"><a href="#sec-47">10.3 不改变的部分</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-48">11. 写作体验</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-49">11.1 配置与联动</a></li>
-                            <li class="toc-h3"><a href="#sec-50">11.2 工作流</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-51">12. 系统设置与配置矩阵</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3">
-                                <a href="#sec-52">12.1 「功能」页签（可选能力，默认关闭）</a>
-                            </li>
-                            <li class="toc-h3"><a href="#sec-53">12.2 「编写体验」页签</a></li>
-                            <li class="toc-h3"><a href="#sec-54">12.3 「外观设置」页签</a></li>
-                            <li class="toc-h3">
-                                <a href="#sec-55">12.4 编辑器设置（独立对话框）</a>
-                            </li>
-                            <li class="toc-h3">
-                                <a href="#sec-56">12.5 主题设置（独立对话框）</a>
-                            </li>
-                            <li class="toc-h3">
-                                <a href="#sec-57">12.6 「文件」页签与通用开关</a>
-                            </li>
-                            <li class="toc-h3"><a href="#sec-58">12.7 配置推荐</a></li>
-                            <li class="toc-h3"><a href="#sec-59">12.8 工作区布局配置</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-60">13. 日记 / 快速收件箱</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-61">13.1 入口与行为</a></li>
-                            <li class="toc-h3"><a href="#sec-62">13.2 模板变量</a></li>
-                            <li class="toc-h3"><a href="#sec-63">13.3 与知识库联动</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-64">14. 剪藏</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-65">14.1 操作流程</a></li>
-                            <li class="toc-h3"><a href="#sec-66">14.2 配置与限制</a></li>
-                            <li class="toc-h3"><a href="#sec-67">14.3 联动示例</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-68">15. PDF 标注与摘录</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-69">15.1 操作流程</a></li>
-                            <li class="toc-h3"><a href="#sec-70">15.2 配置与安全</a></li>
-                            <li class="toc-h3"><a href="#sec-71">15.3 联动</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-72">16. 图片文字识别（OCR）</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-73">16.1 操作流程</a></li>
-                            <li class="toc-h3"><a href="#sec-74">16.2 配置与限制</a></li>
-                            <li class="toc-h3"><a href="#sec-75">16.3 联动</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-76">17. 插件工具（38 项）操作详解</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-77">17.1 加解密（8）</a></li>
-                            <li class="toc-h3"><a href="#sec-78">17.2 编解码（5）</a></li>
-                            <li class="toc-h3"><a href="#sec-79">17.3 格式转换（5）</a></li>
-                            <li class="toc-h3"><a href="#sec-80">17.4 文本转换（3）</a></li>
-                            <li class="toc-h3"><a href="#sec-81">17.5 格式化（2）</a></li>
-                            <li class="toc-h3"><a href="#sec-82">17.6 常用小工具（3）</a></li>
-                            <li class="toc-h3"><a href="#sec-83">17.7 网络计算（4）</a></li>
-                            <li class="toc-h3"><a href="#sec-84">17.8 常用对照表（8）</a></li>
-                            <li class="toc-h3"><a href="#sec-85">17.9 插件工具的组合使用</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-86">18. 在线资源与 AI 导航</a>
-                        <ul class="toc-sub"></ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-87">19. 主题与国际化</a>
-                        <ul class="toc-sub"></ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-88">20. 帮助、版本与使用指导</a>
-                        <ul class="toc-sub"></ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-89">21. 功能交互矩阵</a>
-                        <ul class="toc-sub"></ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-90">22. 推荐配置方案</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3"><a href="#sec-91">22.1 首次使用</a></li>
-                            <li class="toc-h3"><a href="#sec-92">22.2 写作者</a></li>
-                            <li class="toc-h3"><a href="#sec-93">22.3 研究者</a></li>
-                            <li class="toc-h3"><a href="#sec-94">22.4 多项目/多文档</a></li>
-                            <li class="toc-h3"><a href="#sec-95">22.5 低配设备/远程桌面</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-96">23. 安全与隐私</a>
-                        <ul class="toc-sub"></ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-97">24. 常见问题</a>
-                        <ul class="toc-sub">
-                            <li class="toc-h3">
-                                <a href="#sec-98">24.1 帮助菜单是空的 / 知识库没有数据</a>
-                            </li>
-                            <li class="toc-h3"><a href="#sec-99">24.2 文件修改后索引没更新</a></li>
-                            <li class="toc-h3"><a href="#sec-100">24.3 Wiki 链接点击无反应</a></li>
-                            <li class="toc-h3"><a href="#sec-101">24.4 附件删除能恢复吗</a></li>
-                            <li class="toc-h3"><a href="#sec-102">24.5 捕获功能菜单不可见</a></li>
-                            <li class="toc-h3"><a href="#sec-103">24.6 OCR 首次失败</a></li>
-                            <li class="toc-h3"><a href="#sec-104">24.7 PDF 标注看不到</a></li>
-                            <li class="toc-h3"><a href="#sec-105">24.8 剪藏内容不完整</a></li>
-                            <li class="toc-h3"><a href="#sec-106">24.9 导入/导出失败</a></li>
-                            <li class="toc-h3">
-                                <a href="#sec-107">24.10 文档历史/多标签在哪里</a>
-                            </li>
-                            <li class="toc-h3">
-                                <a href="#sec-108">24.11 换了界面风格/密度但看起来没变化</a>
-                            </li>
-                            <li class="toc-h3">
-                                <a href="#sec-109">24.12 菜单栏用键盘打不开 / 看不到焦点</a>
-                            </li>
-                            <li class="toc-h3">
-                                <a href="#sec-110">24.13 写作模式正文的行高为什么变了</a>
-                            </li>
-                            <li class="toc-h3"><a href="#sec-111">24.14 工具窗按 Esc 关不掉</a></li>
-                        </ul>
-                    </li>
-                    <li class="toc-h2">
-                        <a href="#sec-112">25. 已知限制</a>
-                        <ul class="toc-sub"></ul>
-                    </li>
-                </ul>
-            </nav>
+            <aside class="side" aria-label="使用指导导航">
+                <details class="side-panel" id="help-side-panel" open>
+                    <summary class="side-summary">
+                        <span class="side-title">白泽笔记 · 使用指导</span>
+                        <span class="side-hint">目录与搜索（点击展开/收起）</span>
+                    </summary>
+                    <div class="side-body">
+                        <div class="ver">Windows x64 · 随安装包分发</div>
+                        <a
+                            class="online"
+                            href="https://hemy08.github.io"
+                            target="_blank"
+                            rel="noreferrer"
+                            >在线文档 hemy08.github.io</a
+                        >
+                        <div class="help-tools" id="help-tools">
+                            <label class="help-search-label" for="help-search"
+                                >搜索使用指导（标题与正文，Ctrl+K）</label
+                            >
+                            <input
+                                class="help-search-input"
+                                id="help-search"
+                                type="search"
+                                placeholder="输入关键词，Enter 跳转"
+                                autocomplete="off"
+                                spellcheck="false"
+                                role="combobox"
+                                aria-autocomplete="list"
+                                aria-expanded="false"
+                                aria-controls="help-search-results"
+                                aria-label="搜索使用指导内容"
+                            />
+                            <p
+                                class="help-search-meta"
+                                id="help-search-meta"
+                                role="status"
+                                aria-live="polite"
+                            ></p>
+                            <ul
+                                class="help-search-results"
+                                id="help-search-results"
+                                role="listbox"
+                                aria-label="搜索结果"
+                            ></ul>
+                        </div>
+                        <nav class="toc" id="help-toc" aria-label="目录">
+                            <ul class="toc-root">
+                                <li class="toc-h2">
+                                    <a href="#sec-2">1. 快速开始</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3"><a href="#sec-3">1.1 打开工作区</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-4">1.2 新建、保存与恢复</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-5">1.3 推荐目录结构</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-6">1.4 功能入口总览（截图指示）</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-9">2. 文件管理</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3"><a href="#sec-10">2.1 支持的文件</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-11">2.2 打印与自包含 HTML</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-12">2.2.1 EPUB 与幻灯片导出</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-13">2.2.2 文件关联与双击打开</a>
+                                        </li>
+                                        <li class="toc-h3"><a href="#sec-14">2.3 编码与换行</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-15">2.4 自动保存、备份与历史</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-16">2.5 与知识库的联动</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-17">3. 编辑与预览</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3"><a href="#sec-18">3.1 编辑器</a></li>
+                                        <li class="toc-h3"><a href="#sec-20">3.2 智能输入</a></li>
+                                        <li class="toc-h3"><a href="#sec-21">3.3 预览</a></li>
+                                        <li class="toc-h3"><a href="#sec-22">3.4 推荐组合</a></li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-23">4. 搜索、替换与命令面板</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3">
+                                            <a href="#sec-24">4.1 搜索配置与联动</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-25">4.2 命令面板与搜索协作</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-26">5. 文档属性（Front matter）</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3"><a href="#sec-27">5.1 可编辑字段</a></li>
+                                        <li class="toc-h3"><a href="#sec-28">5.2 行为与联动</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-29">5.3 与捕获功能的联动</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-30">6. 知识管理功能（可选）</a>
+                                    <ul class="toc-sub"></ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-31">7. 界面风格与密度</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3">
+                                            <a href="#sec-32">7.1 界面风格（4 种）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-33">7.2 界面密度（3 档）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-34">7.3 减少透明效果（开关，默认关）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-35">7.4 玻璃风格的自动降级</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-36">7.5 推荐组合与排障</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-37">8. 菜单栏键盘操作</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3"><a href="#sec-38">8.1 进入菜单栏</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-39">8.2 顶层菜单（菜单栏这一行）</a>
+                                        </li>
+                                        <li class="toc-h3"><a href="#sec-40">8.3 下拉菜单内</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-41">8.4 三级子菜单的展开规则</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-42">8.5 焦点、鼠标与限制</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-43">9. 非模态工具窗、对话框与命令面板</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3">
+                                            <a href="#sec-44">9.1 非模态工具窗怎么用</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-45">9.2 命令面板与快速打开（键盘）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-46">9.3 对话框的宽度、遮罩与键盘</a>
+                                        </li>
+                                        <li class="toc-h3"><a href="#sec-47">9.4 表格编辑器</a></li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-48">10. 写作模式纸感版式</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3"><a href="#sec-49">10.1 生效条件</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-50">10.2 版式变化（仅预览正文）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-51">10.3 不改变的部分</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-52">11. 写作体验</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3">
+                                            <a href="#sec-53">11.1 配置与联动</a>
+                                        </li>
+                                        <li class="toc-h3"><a href="#sec-54">11.2 工作流</a></li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-55">12. 系统设置与配置矩阵</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3">
+                                            <a href="#sec-56"
+                                                >12.1 「功能」页签（可选能力，默认关闭）</a
+                                            >
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-57">12.2 「编写体验」页签</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-58">12.3 「外观设置」页签</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-59">12.4 编辑器设置（独立对话框）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-60">12.5 主题设置（独立对话框）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-61">12.6 「文件」页签与通用开关</a>
+                                        </li>
+                                        <li class="toc-h3"><a href="#sec-62">12.7 配置推荐</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-63">12.8 工作区布局配置</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-64">13. 日记 / 快速收件箱</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3">
+                                            <a href="#sec-65">13.1 入口与行为</a>
+                                        </li>
+                                        <li class="toc-h3"><a href="#sec-66">13.2 模板变量</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-67">13.3 与知识库联动</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-68">14. 剪藏</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3"><a href="#sec-69">14.1 操作流程</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-70">14.2 配置与限制</a>
+                                        </li>
+                                        <li class="toc-h3"><a href="#sec-71">14.3 联动示例</a></li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-72">15. PDF 标注与摘录</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3"><a href="#sec-73">15.1 操作流程</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-74">15.2 配置与安全</a>
+                                        </li>
+                                        <li class="toc-h3"><a href="#sec-75">15.3 联动</a></li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-76">16. 图片文字识别（OCR）</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3"><a href="#sec-77">16.1 操作流程</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-78">16.2 配置与限制</a>
+                                        </li>
+                                        <li class="toc-h3"><a href="#sec-79">16.3 联动</a></li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-80">17. 插件工具（38 项）操作详解</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3">
+                                            <a href="#sec-81">17.1 加解密（8）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-82">17.2 编解码（5）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-83">17.3 格式转换（5）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-84">17.4 文本转换（3）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-85">17.5 格式化（2）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-86">17.6 常用小工具（3）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-87">17.7 网络计算（4）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-88">17.8 常用对照表（8）</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-89">17.9 插件工具的组合使用</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-90">18. 在线资源与 AI 导航</a>
+                                    <ul class="toc-sub"></ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-91">19. 主题与国际化</a>
+                                    <ul class="toc-sub"></ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-92">20. 帮助、版本与使用指导</a>
+                                    <ul class="toc-sub"></ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-93">21. 功能交互矩阵</a>
+                                    <ul class="toc-sub"></ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-94">22. 推荐配置方案</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3"><a href="#sec-95">22.1 首次使用</a></li>
+                                        <li class="toc-h3"><a href="#sec-96">22.2 写作者</a></li>
+                                        <li class="toc-h3"><a href="#sec-97">22.3 研究者</a></li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-98">22.4 多项目/多文档</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-99">22.5 低配设备/远程桌面</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-100">23. 安全与隐私</a>
+                                    <ul class="toc-sub"></ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-101">24. 常见问题</a>
+                                    <ul class="toc-sub">
+                                        <li class="toc-h3">
+                                            <a href="#sec-102"
+                                                >24.1 帮助菜单是空的 / 知识库没有数据</a
+                                            >
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-103">24.2 文件修改后索引没更新</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-104">24.3 Wiki 链接点击无反应</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-105">24.4 附件删除能恢复吗</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-106">24.5 捕获功能菜单不可见</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-107">24.6 OCR 首次失败</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-108">24.7 PDF 标注看不到</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-109">24.8 剪藏内容不完整</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-110">24.9 导入/导出失败</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-111">24.10 文档历史/多标签在哪里</a>
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-112"
+                                                >24.11 换了界面风格/密度但看起来没变化</a
+                                            >
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-113"
+                                                >24.12 菜单栏用键盘打不开 / 看不到焦点</a
+                                            >
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-114"
+                                                >24.13 写作模式正文的行高为什么变了</a
+                                            >
+                                        </li>
+                                        <li class="toc-h3">
+                                            <a href="#sec-115">24.14 工具窗按 Esc 关不掉</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="toc-h2">
+                                    <a href="#sec-116">25. 已知限制</a>
+                                    <ul class="toc-sub"></ul>
+                                </li>
+                            </ul>
+                        </nav>
+                        <noscript>
+                            <p class="noscript-hint">
+                                当前查看环境未启用脚本：内文搜索与滚动高亮不可用，可直接使用上方目录跳转章节。
+                            </p>
+                        </noscript>
+                    </div>
+                </details>
+            </aside>
             <main>
                 <section class="print-toc" aria-label="打印目录">
                     <h2>目录</h2>
                     <ul class="toc-root">
+                        <li class="toc-h2"><a href="#sec-2">1. 快速开始</a></li>
+                        <li class="toc-h2"><a href="#sec-9">2. 文件管理</a></li>
+                        <li class="toc-h2"><a href="#sec-17">3. 编辑与预览</a></li>
+                        <li class="toc-h2"><a href="#sec-23">4. 搜索、替换与命令面板</a></li>
+                        <li class="toc-h2"><a href="#sec-26">5. 文档属性（Front matter）</a></li>
+                        <li class="toc-h2"><a href="#sec-30">6. 知识管理功能（可选）</a></li>
+                        <li class="toc-h2"><a href="#sec-31">7. 界面风格与密度</a></li>
+                        <li class="toc-h2"><a href="#sec-37">8. 菜单栏键盘操作</a></li>
                         <li class="toc-h2">
-                            <a href="#sec-1">1. 快速开始</a>
-                            <ul class="toc-sub"></ul>
+                            <a href="#sec-43">9. 非模态工具窗、对话框与命令面板</a>
                         </li>
-                        <li class="toc-h2">
-                            <a href="#sec-6">2. 文件管理</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-14">3. 编辑与预览</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-19">4. 搜索、替换与命令面板</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-22">5. 文档属性（Front matter）</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-26">6. 知识管理功能（可选）</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-27">7. 界面风格与密度</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-33">8. 菜单栏键盘操作</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-39">9. 非模态工具窗、对话框与命令面板</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-44">10. 写作模式纸感版式</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-48">11. 写作体验</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-51">12. 系统设置与配置矩阵</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-60">13. 日记 / 快速收件箱</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-64">14. 剪藏</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-68">15. PDF 标注与摘录</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-72">16. 图片文字识别（OCR）</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-76">17. 插件工具（38 项）操作详解</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-86">18. 在线资源与 AI 导航</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-87">19. 主题与国际化</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-88">20. 帮助、版本与使用指导</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-89">21. 功能交互矩阵</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-90">22. 推荐配置方案</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-96">23. 安全与隐私</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-97">24. 常见问题</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
-                        <li class="toc-h2">
-                            <a href="#sec-112">25. 已知限制</a>
-                            <ul class="toc-sub"></ul>
-                        </li>
+                        <li class="toc-h2"><a href="#sec-48">10. 写作模式纸感版式</a></li>
+                        <li class="toc-h2"><a href="#sec-52">11. 写作体验</a></li>
+                        <li class="toc-h2"><a href="#sec-55">12. 系统设置与配置矩阵</a></li>
+                        <li class="toc-h2"><a href="#sec-64">13. 日记 / 快速收件箱</a></li>
+                        <li class="toc-h2"><a href="#sec-68">14. 剪藏</a></li>
+                        <li class="toc-h2"><a href="#sec-72">15. PDF 标注与摘录</a></li>
+                        <li class="toc-h2"><a href="#sec-76">16. 图片文字识别（OCR）</a></li>
+                        <li class="toc-h2"><a href="#sec-80">17. 插件工具（38 项）操作详解</a></li>
+                        <li class="toc-h2"><a href="#sec-90">18. 在线资源与 AI 导航</a></li>
+                        <li class="toc-h2"><a href="#sec-91">19. 主题与国际化</a></li>
+                        <li class="toc-h2"><a href="#sec-92">20. 帮助、版本与使用指导</a></li>
+                        <li class="toc-h2"><a href="#sec-93">21. 功能交互矩阵</a></li>
+                        <li class="toc-h2"><a href="#sec-94">22. 推荐配置方案</a></li>
+                        <li class="toc-h2"><a href="#sec-100">23. 安全与隐私</a></li>
+                        <li class="toc-h2"><a href="#sec-101">24. 常见问题</a></li>
+                        <li class="toc-h2"><a href="#sec-116">25. 已知限制</a></li>
                     </ul>
                 </section>
                 <h1 id="sec-1">白泽笔记使用指导</h1>
@@ -683,8 +1007,8 @@
                     文档按「能力域 +
                     使用流程」组织，不绑定具体版本号；各节正文以「版本说明」标注能力的起始支持版本，未特别标注的能力在当前版本均可用。
                 </p>
-                <h2 id="sec-1">1. 快速开始</h2>
-                <h3 id="sec-2">1.1 打开工作区</h3>
+                <h2 id="sec-2">1. 快速开始</h2>
+                <h3 id="sec-3">1.1 打开工作区</h3>
                 <ol>
                     <li>启动应用，在欢迎页选择「打开文件夹」，或使用「文件 → 打开文件夹」。</li>
                     <li>左侧资源管理器显示工作区内的 Markdown、TXT、图片、PDF、HTML 等文件。</li>
@@ -693,7 +1017,7 @@
                 <p>
                     知识库、标签、反链、链接检查、附件管理都依赖工作区根目录。建议先打开文件夹，而不是只打开单个文件。
                 </p>
-                <h3 id="sec-3">1.2 新建、保存与恢复</h3>
+                <h3 id="sec-4">1.2 新建、保存与恢复</h3>
                 <ul>
                     <li>新建文件/文件夹：文件菜单或资源管理器右键。</li>
                     <li>保存：<code>Ctrl + S</code>；另存为：文件菜单。</li>
@@ -701,7 +1025,7 @@
                     <li>「文件」菜单可查看最近文件和最近文件夹。</li>
                     <li>开启「文档历史」后，可查看快照、diff 并回滚；关闭时可编辑链路零变化。</li>
                 </ul>
-                <h3 id="sec-4">1.3 推荐目录结构</h3>
+                <h3 id="sec-5">1.3 推荐目录结构</h3>
                 <pre><code class="language-text">我的笔记/
 ├── diary/                 # 今日日记（E6，开启后自动创建）
 ├── inbox/                 # 快速收件箱/剪藏（E6/E1，开启后自动创建）
@@ -711,7 +1035,7 @@
 └── 读书笔记.md
 </code></pre>
                 <p>目录约定不是强制的，但统一后标签、附件引用、Wiki 链接和重命名更新更稳定。</p>
-                <h3 id="sec-5">1.4 功能入口总览（截图指示）</h3>
+                <h3 id="sec-6">1.4 功能入口总览（截图指示）</h3>
                 <p>
                     本节先回答“功能在哪里”，第 12
                     节再给出每个开关的开启/关闭差异。截图中的红框与编号为入口标注，实际界面会随主题、界面风格和密度变化。
@@ -744,7 +1068,7 @@
                         ④代码块/公式/表格/图片/链接等插入按钮。
                     </figcaption>
                 </figure>
-                <h4 id="sec-6">1.4.1 常用功能入口与操作步骤</h4>
+                <h4 id="sec-7">1.4.1 常用功能入口与操作步骤</h4>
                 <table>
                     <thead>
                         <tr>
@@ -946,7 +1270,7 @@
                         </tr>
                     </tbody>
                 </table>
-                <h4 id="sec-6">1.4.2 找不到入口时怎么排查</h4>
+                <h4 id="sec-8">1.4.2 找不到入口时怎么排查</h4>
                 <ol>
                     <li>
                         先确认功能是否属于<strong>可选能力</strong>：系统设置 →
@@ -960,8 +1284,8 @@
                         最后看菜单位置是否随版本调整：插入/工具的归属可能变化，但均可从命令面板按名称搜索。
                     </li>
                 </ol>
-                <h2 id="sec-6">2. 文件管理</h2>
-                <h3 id="sec-7">2.1 支持的文件</h3>
+                <h2 id="sec-9">2. 文件管理</h2>
+                <h3 id="sec-10">2.1 支持的文件</h3>
                 <ul>
                     <li>
                         编辑与预览：Markdown（<code>.md</code> /
@@ -981,7 +1305,7 @@
                         交给系统阅读器）。
                     </li>
                 </ul>
-                <h3 id="sec-8">2.2 打印与自包含 HTML</h3>
+                <h3 id="sec-11">2.2 打印与自包含 HTML</h3>
                 <blockquote>
                     <p>
                         版本说明：打印、打印预览与自包含 HTML 导出自 <strong>1.5.2</strong> 起支持。
@@ -999,7 +1323,7 @@
                     </li>
                     <li>打印/导出都只读取当前活动文件；未打开文件时提示无可导出内容。</li>
                 </ul>
-                <h3 id="sec-9">2.2.1 EPUB 与幻灯片导出</h3>
+                <h3 id="sec-12">2.2.1 EPUB 与幻灯片导出</h3>
                 <blockquote>
                     <p>
                         版本说明：EPUB 与幻灯片 HTML 导出自
@@ -1019,7 +1343,7 @@
                     </li>
                     <li>两者都只读取当前活动文件；本地图片遵守工作区路径与单张/整篇体积上限。</li>
                 </ul>
-                <h3 id="sec-10">2.2.2 文件关联与双击打开</h3>
+                <h3 id="sec-13">2.2.2 文件关联与双击打开</h3>
                 <blockquote>
                     <p>
                         版本说明：Windows 文件关联与单实例打开自
@@ -1041,7 +1365,7 @@
                         单实例打开文件”；真正独立多窗口仍需按窗口隔离应用状态，属于后续架构批次。
                     </li>
                 </ul>
-                <h3 id="sec-11">2.3 编码与换行</h3>
+                <h3 id="sec-14">2.3 编码与换行</h3>
                 <ul>
                     <li>自动探测 UTF-8、GBK、GB2312 等编码。</li>
                     <li>文件菜单可按指定编码重新打开或转码保存。</li>
@@ -1051,7 +1375,7 @@
                         UTF-8。
                     </li>
                 </ul>
-                <h3 id="sec-12">2.4 自动保存、备份与历史</h3>
+                <h3 id="sec-15">2.4 自动保存、备份与历史</h3>
                 <ul>
                     <li>系统设置 → 文件：可开启自动保存并设置间隔。</li>
                     <li>自动备份由主进程管理；异常退出后可检查备份目录。</li>
@@ -1062,7 +1386,7 @@
                     </li>
                     <li>「文档历史」是可选能力：按文件保存快照，支持 diff 与恢复；默认关闭。</li>
                 </ul>
-                <h3 id="sec-13">2.5 与知识库的联动</h3>
+                <h3 id="sec-16">2.5 与知识库的联动</h3>
                 <ul>
                     <li>新文件创建后，下一次知识库查询/刷新即可进入索引。</li>
                     <li>
@@ -1071,8 +1395,8 @@
                     </li>
                     <li>附件重命名走附件管理器，会同步更新 Markdown 图片/附件引用。</li>
                 </ul>
-                <h2 id="sec-14">3. 编辑与预览</h2>
-                <h3 id="sec-15">3.1 编辑器</h3>
+                <h2 id="sec-17">3. 编辑与预览</h2>
+                <h3 id="sec-18">3.1 编辑器</h3>
                 <ul>
                     <li>
                         <p>Monaco：语法高亮、多光标、查找替换、代码折叠、跳转行。</p>
@@ -1102,7 +1426,7 @@
                         </p>
                     </li>
                 </ul>
-                <h4 id="sec-16">3.1.1 插入工具界面参考</h4>
+                <h4 id="sec-19">3.1.1 插入工具界面参考</h4>
                 <blockquote>
                     <p>
                         版本说明：以下插入工具窗自
@@ -1202,7 +1526,7 @@
                         图 3-13 插入链接：分别填写链接文本与 URL 地址，确认后插入当前光标处。
                     </figcaption>
                 </figure>
-                <h3 id="sec-16">3.2 智能输入</h3>
+                <h3 id="sec-20">3.2 智能输入</h3>
                 <p>系统设置 →「功能」→ Markdown 智能输入（唯一开关，默认关闭）：</p>
                 <ul>
                     <li>有序列表回车自动递增，并重编号后续同缩进列表项；</li>
@@ -1215,7 +1539,7 @@
                 <p>
                     智能输入在普通模式与写作模式通用；打开写作模式不会自动打开智能输入，需要单独开启。
                 </p>
-                <h3 id="sec-17">3.3 预览</h3>
+                <h3 id="sec-21">3.3 预览</h3>
                 <ul>
                     <li>编辑/预览/分屏；编辑↔预览滚动同步。</li>
                     <li>数学公式 KaTeX、流程图 Mermaid、PlantUML 本地渲染。</li>
@@ -1226,14 +1550,14 @@
                     </li>
                     <li>预览顶部/侧边可查看标题大纲（大纲增强为可选能力）。</li>
                 </ul>
-                <h3 id="sec-18">3.4 推荐组合</h3>
+                <h3 id="sec-22">3.4 推荐组合</h3>
                 <ul>
                     <li>长文写作：写作模式 + 打字机 + 段落聚焦 + 写作统计；</li>
                     <li>代码/配置笔记：Markdown lint + 智能输入 + 代码高亮；</li>
                     <li>校对：拼写检查 + 风格检查 + 搜索/替换；</li>
                     <li>多文档：多标签 + 文档历史 + 自动保存。</li>
                 </ul>
-                <h2 id="sec-19">4. 搜索、替换与命令面板</h2>
+                <h2 id="sec-23">4. 搜索、替换与命令面板</h2>
                 <table>
                     <thead>
                         <tr>
@@ -1270,7 +1594,7 @@
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-20">4.1 搜索配置与联动</h3>
+                <h3 id="sec-24">4.1 搜索配置与联动</h3>
                 <ul>
                     <li>大小写、整词、正则可组合；正则非法时返回错误，不执行替换。</li>
                     <li>
@@ -1286,7 +1610,7 @@
                         搜索结果可跳到来源行；与标签/反链配合：先搜关键词，再用标签/反链确认上下文。
                     </li>
                 </ul>
-                <h3 id="sec-21">4.2 命令面板与搜索协作</h3>
+                <h3 id="sec-25">4.2 命令面板与搜索协作</h3>
                 <ul>
                     <li>
                         命令面板可执行「今日日记」「快速收件箱」「剪藏」「识别图片文字」等捕获命令（对应能力开启后）。
@@ -1297,14 +1621,14 @@
                     </li>
                     <li>命令面板的分类按功能域组织；输入关键词（中/英文均可）过滤。</li>
                 </ul>
-                <h2 id="sec-22">5. 文档属性（Front matter）</h2>
+                <h2 id="sec-26">5. 文档属性（Front matter）</h2>
                 <p>入口：<strong>编辑 → 文档属性…</strong> 或命令面板「编辑文档属性」。</p>
-                <h3 id="sec-23">5.1 可编辑字段</h3>
+                <h3 id="sec-27">5.1 可编辑字段</h3>
                 <ul>
                     <li>标题、日期、标签、状态、摘要、别名；</li>
                     <li>已有自定义属性可编辑/删除；新增自定义键需直接手写 YAML。</li>
                 </ul>
-                <h3 id="sec-24">5.2 行为与联动</h3>
+                <h3 id="sec-28">5.2 行为与联动</h3>
                 <ul>
                     <li>没有 front matter 时，保存会在正文前插入；</li>
                     <li>已有 front matter 时，只修改头部，正文、BOM、CRLF 保持不变；</li>
@@ -1326,7 +1650,7 @@ aliases:
     - 计划书
 ---
 </code></pre>
-                <h3 id="sec-25">5.3 与捕获功能的联动</h3>
+                <h3 id="sec-29">5.3 与捕获功能的联动</h3>
                 <ul>
                     <li>
                         「今日日记/快速收件箱」创建的笔记自带 front
@@ -1341,7 +1665,7 @@ aliases:
                         <code>[[相关笔记]]</code>，形成引用关系。
                     </li>
                 </ul>
-                <h2 id="sec-26">6. 知识管理功能（可选）</h2>
+                <h2 id="sec-30">6. 知识管理功能（可选）</h2>
                 <p>以下能力属于附加知识管理，不是 Markdown 编辑器主线；需要时可在工作区使用：</p>
                 <ul>
                     <li>
@@ -1359,7 +1683,7 @@ aliases:
                     <li><strong>附件管理</strong>：附件面板查看引用审计、孤儿附件与重命名。</li>
                     <li><strong>悬浮预览</strong>：悬停 Wiki 链接可预览目标笔记摘要。</li>
                 </ul>
-                <h2 id="sec-27">7. 界面风格与密度</h2>
+                <h2 id="sec-31">7. 界面风格与密度</h2>
                 <blockquote>
                     <p>
                         版本说明：界面风格（4 种）、界面密度（3 档）与「减少透明效果」自
@@ -1377,7 +1701,7 @@ aliases:
                     档密度可以自由组合，不会互相覆盖；编辑器主题（57 套 Monaco
                     主题）始终独立，不受风格/密度影响。
                 </p>
-                <h3 id="sec-28">7.1 界面风格（4 种）</h3>
+                <h3 id="sec-32">7.1 界面风格（4 种）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1463,7 +1787,7 @@ aliases:
                         7.4；开启「减少透明效果」时玻璃自动回退纸感。
                     </li>
                 </ul>
-                <h3 id="sec-29">7.2 界面密度（3 档）</h3>
+                <h3 id="sec-33">7.2 界面密度（3 档）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1519,7 +1843,7 @@ aliases:
                         字号仍为 13px。
                     </li>
                 </ul>
-                <h3 id="sec-30">7.3 减少透明效果（开关，默认关）</h3>
+                <h3 id="sec-34">7.3 减少透明效果（开关，默认关）</h3>
                 <ul>
                     <li>关闭（默认）：玻璃风格按 7.1 呈现半透明与模糊。</li>
                     <li>
@@ -1532,7 +1856,7 @@ aliases:
                     </li>
                     <li>建议在远程桌面/虚拟机/低配设备、或觉得半透明影响阅读时开启。</li>
                 </ul>
-                <h3 id="sec-31">7.4 玻璃风格的自动降级</h3>
+                <h3 id="sec-35">7.4 玻璃风格的自动降级</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1574,7 +1898,7 @@ aliases:
                     </li>
                     <li>切换主题或修改外观设置后会重新计算降级结果。</li>
                 </ul>
-                <h3 id="sec-32">7.5 推荐组合与排障</h3>
+                <h3 id="sec-36">7.5 推荐组合与排障</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1627,11 +1951,12 @@ aliases:
                         想恢复默认：风格选「高密度工作台」、密度选「默认」、关闭「减少透明效果」。
                     </li>
                 </ul>
-                <h2 id="sec-33">8. 菜单栏键盘操作</h2>
+                <h2 id="sec-37">8. 菜单栏键盘操作</h2>
                 <blockquote>
                     <p>
                         版本说明：完整菜单栏键盘操作、可见焦点与三级子菜单导航自
-                        <strong>1.5.5</strong> 起支持。
+                        <strong>1.5.5</strong> 起支持；顶层菜单 <code>Alt + 字母</code> 助记符自
+                        <strong>1.5.6</strong> 起支持。
                     </p>
                 </blockquote>
                 <p>
@@ -1640,12 +1965,18 @@ aliases:
                     <code>menu</code> /
                     <code>menuitem</code> 无障碍角色，读屏软件可识别菜单名与展开状态。
                 </p>
-                <h3 id="sec-34">8.1 进入菜单栏</h3>
+                <h3 id="sec-38">8.1 进入菜单栏</h3>
                 <ul>
                     <li>
                         按一下 <code>Alt</code> 即可激活菜单栏（Windows
                         惯例）：焦点落到第一个顶层菜单，之后用方向键、<code>Enter</code> 操作；按
                         <code>Esc</code> 或再次按 <code>Alt</code> 退出激活，焦点交回激活前的控件。
+                    </li>
+                    <li>
+                        也可以直接按 <code>Alt + 字母</code> 打开指定顶层菜单（如
+                        <code>Alt + F</code> 打开「文件」、<code>Alt + E</code>
+                        打开「编辑」，完整字母表见
+                        8.2）：若菜单栏尚未激活，会先激活并展开对应下拉；若已激活或已有下拉展开，则直接切换过去。
                     </li>
                     <li>
                         也可以把焦点移到菜单栏：不在编辑区时按 <code>Tab</code> /
@@ -1661,7 +1992,7 @@ aliases:
                     </li>
                     <li>鼠标点击顶层菜单同样会聚焦并展开，鼠标与键盘可以混用。</li>
                 </ul>
-                <h3 id="sec-35">8.2 顶层菜单（菜单栏这一行）</h3>
+                <h3 id="sec-39">8.2 顶层菜单（菜单栏这一行）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1694,7 +2025,111 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-36">8.3 下拉菜单内</h3>
+                <p>顶层菜单助记符（<code>Alt + 字母</code>，1.5.6 起）：</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>顶层菜单</th>
+                            <th>助记符</th>
+                            <th>字母来源（英文语义）</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>文件</td>
+                            <td><code>Alt + F</code></td>
+                            <td>File</td>
+                        </tr>
+                        <tr>
+                            <td>编辑</td>
+                            <td><code>Alt + E</code></td>
+                            <td>Edit</td>
+                        </tr>
+                        <tr>
+                            <td>视图</td>
+                            <td><code>Alt + V</code></td>
+                            <td>View</td>
+                        </tr>
+                        <tr>
+                            <td>编码</td>
+                            <td><code>Alt + C</code></td>
+                            <td>Coding</td>
+                        </tr>
+                        <tr>
+                            <td>插入</td>
+                            <td><code>Alt + I</code></td>
+                            <td>Insert</td>
+                        </tr>
+                        <tr>
+                            <td>设置</td>
+                            <td><code>Alt + S</code></td>
+                            <td>Settings</td>
+                        </tr>
+                        <tr>
+                            <td>工具</td>
+                            <td><code>Alt + T</code></td>
+                            <td>Tools</td>
+                        </tr>
+                        <tr>
+                            <td>插件</td>
+                            <td><code>Alt + P</code></td>
+                            <td>Plugins</td>
+                        </tr>
+                        <tr>
+                            <td>在线</td>
+                            <td><code>Alt + O</code></td>
+                            <td>Online</td>
+                        </tr>
+                        <tr>
+                            <td>AI 导航</td>
+                            <td><code>Alt + A</code></td>
+                            <td>AI</td>
+                        </tr>
+                        <tr>
+                            <td>GitHub</td>
+                            <td><code>Alt + G</code></td>
+                            <td>GitHub</td>
+                        </tr>
+                        <tr>
+                            <td>帮助</td>
+                            <td><code>Alt + H</code></td>
+                            <td>Help</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p>使用说明：</p>
+                <ul>
+                    <li>
+                        未激活菜单栏时按
+                        <code>Alt + 字母</code
+                        >：先激活菜单栏并展开对应下拉，焦点落在下拉第一项，后续方向键、<code>Enter</code>、<code
+                            >Esc</code
+                        >
+                        与 8.3 的规则完全一致。
+                    </li>
+                    <li>
+                        已激活或已有下拉展开时按
+                        <code>Alt + 字母</code
+                        >：直接切换到目标菜单（下拉内容随焦点同步切换），无需先按
+                        <code>Esc</code> 回到菜单栏。
+                    </li>
+                    <li>
+                        只认 <code>Alt + 单个字母</code>：<code>Alt + Shift + 字母</code>、<code
+                            >Ctrl + Alt + 字母</code
+                        >（含 AltGr）、<code>Alt + F4</code>、<code>Alt + Tab</code>
+                        以及未映射的字母都不会被菜单栏拦截，仍按系统/原有快捷键处理。
+                    </li>
+                    <li>
+                        按 <code>Alt</code> 激活后，菜单标签末尾会显示助记符字母下划线（Windows
+                        菜单惯例）；按 <code>Esc</code>、再次
+                        <code>Alt</code> 或关闭菜单后提示隐藏。
+                    </li>
+                    <li>
+                        输入法组字期间、焦点在对话框/工具窗内、菜单栏被隐藏（系统设置为 Windows
+                        原生菜单）时，<code>Alt + 字母</code> 不响应。
+                    </li>
+                </ul>
+                <h3 id="sec-40">8.3 下拉菜单内</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1739,7 +2174,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-37">8.4 三级子菜单的展开规则</h3>
+                <h3 id="sec-41">8.4 三级子菜单的展开规则</h3>
                 <ul>
                     <li>
                         层级：顶层菜单 → 下拉（一级）→ 分组子菜单（二级）→
@@ -1760,7 +2195,7 @@ aliases:
                         空间与滚动：下拉菜单不再出现纵向滚动条；三级子菜单完整显示、不再被裁剪；靠近窗口右缘时顶级下拉会自动向左收进窗口，展开三级子菜单时若右侧空间不足会自动向左翻转；调整窗口大小后重新定位。
                     </li>
                 </ul>
-                <h3 id="sec-38">8.5 焦点、鼠标与限制</h3>
+                <h3 id="sec-42">8.5 焦点、鼠标与限制</h3>
                 <ul>
                     <li>键盘焦点与鼠标悬停使用同一套高亮样式；焦点环只在键盘操作时出现。</li>
                     <li>鼠标移开时若键盘焦点仍在下拉内，菜单会保持打开，不会被误关。</li>
@@ -1771,15 +2206,23 @@ aliases:
                         <code>Esc</code> 或再次按 <code>Alt</code> 退出激活并把焦点交回原控件。
                     </li>
                     <li>
-                        不提供 <code>Alt + 字母</code> 助记符；<code>Alt+F4</code>、<code
+                        <code>Alt + 字母</code> 助记符（1.5.6 起）：按住
+                        <code>Alt</code> 再按顶层菜单助记符字母（如
+                        <code>Alt + F</code> 打开「文件」，字母表见
+                        8.2）即可激活菜单栏并打开对应菜单；未映射字母、<code>Alt+F4</code>、<code
                             >Alt+Tab</code
                         >
-                        等系统组合键不会被菜单栏拦截，<code>Ctrl+Alt+P</code>
+                        等系统组合键以及带 <code>Ctrl</code>/<code>Shift</code>/<code>Meta</code>
+                        的组合不会被菜单栏拦截，<code>Ctrl+Alt+P</code>
                         等既有组合键仍按原快捷键处理。
                     </li>
+                    <li>
+                        输入法组字期间、焦点在对话框/工具窗内、菜单栏被宿主隐藏（系统设置为 Windows
+                        原生菜单）时，<code>Alt + 字母</code> 不响应，避免抢走输入法或浮层焦点。
+                    </li>
                 </ul>
-                <h2 id="sec-39">9. 非模态工具窗、对话框与命令面板</h2>
-                <h3 id="sec-40">9.1 非模态工具窗怎么用</h3>
+                <h2 id="sec-43">9. 非模态工具窗、对话框与命令面板</h2>
+                <h3 id="sec-44">9.1 非模态工具窗怎么用</h3>
                 <blockquote>
                     <p>
                         版本说明：非模态工具窗自 <strong>1.5.3</strong> 起支持；<strong
@@ -1824,7 +2267,7 @@ aliases:
                         同一表格工具窗：左侧开启非模态（背景仍可操作），右侧关闭后遮罩变暗并拦截背景。
                     </figcaption>
                 </figure>
-                <h3 id="sec-41">9.2 命令面板与快速打开（键盘）</h3>
+                <h3 id="sec-45">9.2 命令面板与快速打开（键盘）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1868,7 +2311,7 @@ aliases:
                     </li>
                     <li>无匹配结果时显示空态提示，不会误执行旧选中项。</li>
                 </ul>
-                <h3 id="sec-42">9.3 对话框的宽度、遮罩与键盘</h3>
+                <h3 id="sec-46">9.3 对话框的宽度、遮罩与键盘</h3>
                 <ul>
                     <li>
                         宽度按内容分档统一：确认类 360px、表单类 520px、中等 720px、复杂
@@ -1888,7 +2331,7 @@ aliases:
                     </li>
                     <li>标题栏可拖动移动对话框；关闭后焦点归还到打开前的控件。</li>
                 </ul>
-                <h3 id="sec-43">9.4 表格编辑器</h3>
+                <h3 id="sec-47">9.4 表格编辑器</h3>
                 <blockquote>
                     <p>
                         版本说明：统一表格编辑器自 <strong>1.5.3</strong> 起支持；<strong
@@ -1903,14 +2346,14 @@ aliases:
                     Markdown 与任务清单；右下角可拖拽调整窗口大小；标题栏右上角支持最小化/最大化（见
                     9.1）。
                 </p>
-                <h2 id="sec-44">10. 写作模式纸感版式</h2>
+                <h2 id="sec-48">10. 写作模式纸感版式</h2>
                 <blockquote>
                     <p>
                         版本说明：写作模式的纸感版式自
                         <strong>1.5.5</strong> 起支持；写作模式本身为既有能力。
                     </p>
                 </blockquote>
-                <h3 id="sec-45">10.1 生效条件</h3>
+                <h3 id="sec-49">10.1 生效条件</h3>
                 <p>同时满足以下三条才会看到纸感版式：</p>
                 <ol>
                     <li>界面风格为「静默纸感」或「混合」（见第 7 节）；</li>
@@ -1920,7 +2363,7 @@ aliases:
                         Markdown <strong>预览正文</strong>。
                     </li>
                 </ol>
-                <h3 id="sec-46">10.2 版式变化（仅预览正文）</h3>
+                <h3 id="sec-50">10.2 版式变化（仅预览正文）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -1959,7 +2402,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-47">10.3 不改变的部分</h3>
+                <h3 id="sec-51">10.3 不改变的部分</h3>
                 <ul>
                     <li>
                         <strong>Monaco 编辑区不受界面风格影响</strong
@@ -1970,7 +2413,7 @@ aliases:
                     <li>「高密度工作台」「轻玻璃」风格的内容区不套用纸感版式。</li>
                     <li>退出写作模式即恢复正常预览排版；关闭预览后回到纯编辑界面。</li>
                 </ul>
-                <h2 id="sec-48">11. 写作体验</h2>
+                <h2 id="sec-52">11. 写作体验</h2>
                 <p>入口：<strong>系统设置 → 编写体验</strong>，以下能力默认关闭：</p>
                 <ul>
                     <li>写作模式：隐藏侧栏/菜单/标题栏，正文限宽；</li>
@@ -1984,7 +2427,7 @@ aliases:
                     补充：写作模式的预览正文在界面风格为「静默纸感 / 混合」时会套用纸感版式（见第 10
                     节），这不是独立开关，由界面风格决定；「写作排版」仍控制编辑器正文的限宽、字号与行高。
                 </p>
-                <h3 id="sec-49">11.1 配置与联动</h3>
+                <h3 id="sec-53">11.1 配置与联动</h3>
                 <table>
                     <thead>
                         <tr>
@@ -2041,7 +2484,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-50">11.2 工作流</h3>
+                <h3 id="sec-54">11.2 工作流</h3>
                 <ol>
                     <li>开启写作模式、打字机、段落聚焦、写作统计；</li>
                     <li>设置每日目标；</li>
@@ -2050,7 +2493,7 @@ aliases:
                     <li>用风格检查/拼写检查复盘；</li>
                     <li>退出写作模式后布局恢复，内容自动保留。</li>
                 </ol>
-                <h2 id="sec-51">12. 系统设置与配置矩阵</h2>
+                <h2 id="sec-55">12. 系统设置与配置矩阵</h2>
                 <p>
                     入口：<strong>设置 → 系统设置</strong>。左侧共 6
                     个页签：通用设置、文件设置、外观设置、功能、编写体验、备份与恢复。另有「设置 →
@@ -2062,7 +2505,7 @@ aliases:
                 <p>
                     各页签要点：通用设置（自动打开上次文件/文件夹、开机自启动、关闭时最小化到托盘、记住窗口位置和大小、允许加载远程图片）；备份与恢复（自动备份开关/间隔/保留数量、立即备份、从备份恢复）。
                 </p>
-                <h3 id="sec-52">12.1 「功能」页签（可选能力，默认关闭）</h3>
+                <h3 id="sec-56">12.1 「功能」页签（可选能力，默认关闭）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -2188,7 +2631,7 @@ aliases:
                         图 12-3 「功能」页签底部：「非模态工具对话框」默认开启，关闭后恢复模态行为。
                     </figcaption>
                 </figure>
-                <h3 id="sec-53">12.2 「编写体验」页签</h3>
+                <h3 id="sec-57">12.2 「编写体验」页签</h3>
                 <p>
                     入口：<strong>设置 → 系统设置 → 编写体验</strong>。9
                     项开关默认关闭，全部按“当前文件/当前会话”工作；写作模式布局只影响
@@ -2274,7 +2717,7 @@ aliases:
                     写作模式预览在「静默纸感 / 混合」界面风格下的纸感版式见第 10
                     节（不是开关，由界面风格决定）。
                 </p>
-                <h3 id="sec-54">12.3 「外观设置」页签</h3>
+                <h3 id="sec-58">12.3 「外观设置」页签</h3>
                 <blockquote>
                     <p>
                         版本说明：「界面风格」「界面密度」「减少透明效果」三项配置自
@@ -2374,14 +2817,14 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-55">12.4 编辑器设置（独立对话框）</h3>
+                <h3 id="sec-59">12.4 编辑器设置（独立对话框）</h3>
                 <p>
                     入口：<strong>设置 → 编辑器设置</strong>。共 4
                     个页签：基础设置（自动保存与间隔、代码折叠、行号、自动补全）、外观设置（光标样式与宽度、字体大小、行高）、Markdown
                     设置（实时预览与延迟、代码块/链接高亮）、高级设置（性能、实验性功能）。基础/外观页签保存后立即应用到当前编辑器；Markdown/高级页签中部分选项当前标注「该选项暂未接入实际功能」，以界面提示为准。编辑器设置影响所有
                     Markdown 文档的编辑区，与应用主题、界面风格/密度独立，Monaco 主题另行切换。
                 </p>
-                <h3 id="sec-56">12.5 主题设置（独立对话框）</h3>
+                <h3 id="sec-60">12.5 主题设置（独立对话框）</h3>
                 <p>入口：<strong>设置 → 主题设置</strong>。</p>
                 <ul>
                     <li>28 套应用主题、57 套 Monaco 主题；</li>
@@ -2398,7 +2841,7 @@ aliases:
                         7 节）。
                     </li>
                 </ul>
-                <h3 id="sec-57">12.6 「文件」页签与通用开关</h3>
+                <h3 id="sec-61">12.6 「文件」页签与通用开关</h3>
                 <p>
                     入口：<strong>设置 → 系统设置 → 文件 / 通用设置 / 备份与恢复</strong
                     >。默认文件保存路径、启用自动保存与间隔（秒）、最近文件列表数量在这里配置。
@@ -2510,7 +2953,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-58">12.7 配置推荐</h3>
+                <h3 id="sec-62">12.7 配置推荐</h3>
                 <ul>
                     <li><strong>轻量笔记</strong>：默认能力 + 自动保存 + 智能输入；</li>
                     <li>
@@ -2531,7 +2974,7 @@ aliases:
                     </li>
                 </ul>
                 <p>外观相关的推荐组合（风格/密度）见第 7.5 节与第 22 节。</p>
-                <h3 id="sec-59">12.8 工作区布局配置</h3>
+                <h3 id="sec-63">12.8 工作区布局配置</h3>
                 <p>入口：<strong>视图 → 布局配置…</strong>（不需要新增工作区或重启）。</p>
                 <ul>
                     <li>
@@ -2546,7 +2989,7 @@ aliases:
                     <li>布局保存在本机 localStorage，卸载/清理应用数据后需重新保存；</li>
                     <li>适合写作、研究、项目管理之间快速切换。</li>
                 </ul>
-                <h2 id="sec-60">13. 日记 / 快速收件箱</h2>
+                <h2 id="sec-64">13. 日记 / 快速收件箱</h2>
                 <blockquote>
                     <p>
                         版本说明：今日日记与快速收件箱自
@@ -2560,7 +3003,7 @@ aliases:
                     目录；开启时：两个入口立即出现，点击后按文件名约定创建或打开文件。入口路径：工具
                     → 今日日记 / 快速收件箱，或命令面板搜索「日记」「收件箱」。
                 </p>
-                <h3 id="sec-61">13.1 入口与行为</h3>
+                <h3 id="sec-65">13.1 入口与行为</h3>
                 <ul>
                     <li>工具菜单/命令面板：今日日记、快速收件箱；</li>
                     <li>今日日记：<code>diary/YYYY-MM-DD.md</code>；已存在则直接打开，不覆盖；</li>
@@ -2568,13 +3011,13 @@ aliases:
                     <li>目录不存在时主进程递归创建；文件用独占创建，避免并发覆盖；</li>
                     <li>无工作区时明确提示先打开文件夹。</li>
                 </ul>
-                <h3 id="sec-62">13.2 模板变量</h3>
+                <h3 id="sec-66">13.2 模板变量</h3>
                 <p>
                     <code>{{date}}</code
                     >、<code>{{time}}</code>、<code>{{datetime}}</code>、<code>{{year}}</code>、<code>{{month}}</code>、<code>{{day}}</code>、<code>{{weekday}}</code>、<code>{{title}}</code>；未知变量原样保留。模板在
                     shared 纯函数中展开，不执行脚本。
                 </p>
-                <h3 id="sec-63">13.3 与知识库联动</h3>
+                <h3 id="sec-67">13.3 与知识库联动</h3>
                 <ul>
                     <li>日记/收件箱文件会自动进入工作区索引；</li>
                     <li>
@@ -2584,7 +3027,7 @@ aliases:
                     <li>收件箱适合先捕获，再用文档属性整理、用 Wiki 链接连接到项目笔记；</li>
                     <li>日记可以反链到项目/人物/主题笔记，形成时间线。</li>
                 </ul>
-                <h2 id="sec-64">14. 剪藏</h2>
+                <h2 id="sec-68">14. 剪藏</h2>
                 <blockquote>
                     <p>
                         版本说明：剪贴板剪藏自
@@ -2597,7 +3040,7 @@ aliases:
                     / 剪藏并插入当前笔记」两个入口，只有手动触发时才读取剪贴板。入口路径：工具 →
                     剪藏，或命令面板搜索「剪藏」。
                 </p>
-                <h3 id="sec-65">14.1 操作流程</h3>
+                <h3 id="sec-69">14.1 操作流程</h3>
                 <ol>
                     <li>在浏览器/其他应用复制网页内容（HTML 或纯文本）；</li>
                     <li>命令面板/工具菜单选择「剪藏到新笔记」或「剪藏并插入当前笔记」；</li>
@@ -2608,7 +3051,7 @@ aliases:
                     </li>
                     <li>插入当前笔记时，内容插入活动编辑器光标处（无活动编辑器则提示）。</li>
                 </ol>
-                <h3 id="sec-66">14.2 配置与限制</h3>
+                <h3 id="sec-70">14.2 配置与限制</h3>
                 <ul>
                     <li>HTML 片段、正文大小、标题/来源有上限；超限给出明确提示；</li>
                     <li>只接受 http/https 来源，防止本地/危险协议；</li>
@@ -2616,7 +3059,7 @@ aliases:
                     <li>剪贴板读取仅在用户显式触发时发生；拒绝权限时回退纯文本/提示；</li>
                     <li>剪藏后建议用文档属性补标签，用 Wiki 链接连接到主题笔记。</li>
                 </ul>
-                <h3 id="sec-67">14.3 联动示例</h3>
+                <h3 id="sec-71">14.3 联动示例</h3>
                 <ul>
                     <li>剪藏到收件箱 → 加标签/摘要 → 与项目笔记双链 → 定期从收件箱清空；</li>
                     <li>剪藏并插入当前笔记 → 用于“资料卡片”式笔记，插入后补来源引用；</li>
@@ -2624,7 +3067,7 @@ aliases:
                         与附件管理：剪藏内容中的远程图片默认不下载/不加载，需手动保存为本地附件。
                     </li>
                 </ul>
-                <h2 id="sec-68">15. PDF 标注与摘录</h2>
+                <h2 id="sec-72">15. PDF 标注与摘录</h2>
                 <blockquote>
                     <p>
                         版本说明：PDF 文本层、标注与摘录自 <strong>1.5.2</strong> 起支持；扫描版 PDF
@@ -2638,7 +3081,7 @@ aliases:
                     预览出现文本选择与标注工具，可摘录到当前笔记。入口路径：资源管理器打开 PDF → PDF
                     预览工具栏/标注列表。
                 </p>
-                <h3 id="sec-69">15.1 操作流程</h3>
+                <h3 id="sec-73">15.1 操作流程</h3>
                 <ol>
                     <li>打开工作区内的 PDF（应用内 PDF 查看器）；</li>
                     <li>开启开关后出现文本层/标注工具；</li>
@@ -2652,7 +3095,7 @@ aliases:
                         文件名/页码；无编辑器时回退剪贴板并提示。
                     </li>
                 </ol>
-                <h3 id="sec-70">15.2 配置与安全</h3>
+                <h3 id="sec-74">15.2 配置与安全</h3>
                 <ul>
                     <li>sidecar 路径由主进程生成，PDF/侧车双侧 Path Guard；</li>
                     <li>写盘使用临时文件 + 原子 rename；</li>
@@ -2660,7 +3103,7 @@ aliases:
                     <li>标注在本地文件，不上传网络；</li>
                     <li>关闭开关时 PDF 预览与普通能力零差异，不注册文本层/标注 UI。</li>
                 </ul>
-                <h3 id="sec-71">15.3 联动</h3>
+                <h3 id="sec-75">15.3 联动</h3>
                 <ul>
                     <li>
                         PDF 摘录 → Markdown 引用块 → 在摘录下补 <code>[[相关笔记]]</code> →
@@ -2669,7 +3112,7 @@ aliases:
                     <li>与 OCR 配合：扫描版 PDF 无文本层时，先用截图 OCR 再整理；</li>
                     <li>与附件管理：PDF 作为附件被引用时可审计缺失/重命名。</li>
                 </ul>
-                <h2 id="sec-72">16. 图片文字识别（OCR）</h2>
+                <h2 id="sec-76">16. 图片文字识别（OCR）</h2>
                 <blockquote>
                     <p>
                         版本说明：图片 OCR MVP 自
@@ -2682,7 +3125,7 @@ aliases:
                     与语言包，工具菜单/命令面板不出现入口；开启时：出现「识别并插入当前笔记」「识别并复制」两个入口。入口路径：工具
                     → 图片文字识别，或命令面板搜索「OCR / 图片文字」。
                 </p>
-                <h3 id="sec-73">16.1 操作流程</h3>
+                <h3 id="sec-77">16.1 操作流程</h3>
                 <ol>
                     <li>复制一张包含文字的截图/图片到剪贴板；</li>
                     <li>命令面板/工具菜单选择「识别并插入当前笔记」或「识别并复制」；</li>
@@ -2693,7 +3136,7 @@ aliases:
                     <li>识别在本地 wasm/worker 完成，不上传图片；</li>
                     <li>结果插入活动编辑器光标处，或复制到剪贴板；失败有结构化提示。</li>
                 </ol>
-                <h3 id="sec-74">16.2 配置与限制</h3>
+                <h3 id="sec-78">16.2 配置与限制</h3>
                 <ul>
                     <li>当前 MVP 仅英文 <code>eng</code>；中文 <code>chi_sim</code> 为后续；</li>
                     <li>首次识别需联网下载语言包；企业网络受限时可能失败；</li>
@@ -2701,14 +3144,14 @@ aliases:
                     <li>OCR 引擎与语言包懒加载，不进入首屏；</li>
                     <li>识别结果不写库，需用户插入/复制后自行保存。</li>
                 </ul>
-                <h3 id="sec-75">16.3 联动</h3>
+                <h3 id="sec-79">16.3 联动</h3>
                 <ul>
                     <li>截图 OCR → 插入笔记 → 用文档属性补来源/标签；</li>
                     <li>OCR 文本可被 A2 搜索检索（保存后）；</li>
                     <li>与 PDF 标注配合处理扫描 PDF；</li>
                     <li>与附件管理配合：原始截图可保存为附件并保留引用。</li>
                 </ul>
-                <h2 id="sec-76">17. 插件工具（38 项）操作详解</h2>
+                <h2 id="sec-80">17. 插件工具（38 项）操作详解</h2>
                 <p>
                     入口：<strong>插件</strong>
                     菜单。所有插件工具为本地独立面板，输入/输出以剪贴板或文本框为主；部分工具需用户手动复制结果。
@@ -2754,7 +3197,7 @@ aliases:
                     开关差异：38 项插件工具不使用系统设置开关，默认始终可用；在线/AI
                     导航等联网入口需要网络。各工具的输入/输出边界见下表。
                 </p>
-                <h3 id="sec-77">17.1 加解密（8）</h3>
+                <h3 id="sec-81">17.1 加解密（8）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -2815,7 +3258,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-78">17.2 编解码（5）</h3>
+                <h3 id="sec-82">17.2 编解码（5）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -2858,7 +3301,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-79">17.3 格式转换（5）</h3>
+                <h3 id="sec-83">17.3 格式转换（5）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -2901,7 +3344,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-80">17.4 文本转换（3）</h3>
+                <h3 id="sec-84">17.4 文本转换（3）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -2932,7 +3375,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-81">17.5 格式化（2）</h3>
+                <h3 id="sec-85">17.5 格式化（2）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -2957,7 +3400,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-82">17.6 常用小工具（3）</h3>
+                <h3 id="sec-86">17.6 常用小工具（3）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -2988,7 +3431,7 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-83">17.7 网络计算（4）</h3>
+                <h3 id="sec-87">17.7 网络计算（4）</h3>
                 <table>
                     <thead>
                         <tr>
@@ -3025,12 +3468,12 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h3 id="sec-84">17.8 常用对照表（8）</h3>
+                <h3 id="sec-88">17.8 常用对照表（8）</h3>
                 <p>
                     ASCII 码、文件扩展名、希腊字母、HTML
                     实体、数学符号、物理常数、数字大小写、常见字体样式；均为查询型工具，结果可复制到笔记。
                 </p>
-                <h3 id="sec-85">17.9 插件工具的组合使用</h3>
+                <h3 id="sec-89">17.9 插件工具的组合使用</h3>
                 <ul>
                     <li>JSON/XML 格式化 → 复制到代码块笔记；</li>
                     <li>正则测试 → 与全工作区搜索的正则语法互相验证；</li>
@@ -3039,7 +3482,7 @@ aliases:
                     <li>颜色/单位/进制等工具 → 适合与 Markdown 表格组合成“速查笔记”；</li>
                     <li>PDF 预览/OCR/PDF 标注 → 研究场景组合。</li>
                 </ul>
-                <h2 id="sec-86">18. 在线资源与 AI 导航</h2>
+                <h2 id="sec-90">18. 在线资源与 AI 导航</h2>
                 <ul>
                     <li>在线工具导航：菜鸟工具、编程狮、在线编解码、在线 IDE、开发者工具等；</li>
                     <li>AI 导航：ChatGPT、DeepSeek、Claude、Midjourney、Suno 等分组入口；</li>
@@ -3051,7 +3494,7 @@ aliases:
                         与本地笔记的联动：从在线工具复制结果 → 粘贴到 Markdown → 用代码块/表格整理。
                     </li>
                 </ul>
-                <h2 id="sec-87">19. 主题与国际化</h2>
+                <h2 id="sec-91">19. 主题与国际化</h2>
                 <ul>
                     <li>应用主题 28 套、Monaco 主题 57 套；</li>
                     <li>主题实时切换、可取消回滚；</li>
@@ -3063,7 +3506,7 @@ aliases:
                     </li>
                     <li>写作模式叠加排版样式，退出恢复原主题布局。</li>
                 </ul>
-                <h2 id="sec-88">20. 帮助、版本与使用指导</h2>
+                <h2 id="sec-92">20. 帮助、版本与使用指导</h2>
                 <ul>
                     <li><strong>帮助 → hemy08.github.io</strong>：在线文档；</li>
                     <li>
@@ -3079,7 +3522,26 @@ aliases:
                     <li><strong>帮助 → 检查更新</strong>：检查更新源；</li>
                     <li><strong>帮助 → 关于</strong>：版本/系统信息。</li>
                 </ul>
-                <h2 id="sec-89">21. 功能交互矩阵</h2>
+                <p>
+                    应用内查看 HTML 版时（<strong>1.5.6</strong>
+                    起），对话框顶部提供「搜索使用指导」输入框，用于在应用内直接定位章节：
+                </p>
+                <ul>
+                    <li>
+                        输入关键词后按章节标题与正文匹配，结果显示章节名与命中摘要；<code>↑</code> /
+                        <code>↓</code> 选择结果，<code>Enter</code> 跳到对应章节并临时高亮命中词（约
+                        2.6 秒后自动恢复），<code>Esc</code> 清空搜索且不会关闭对话框；
+                    </li>
+                    <li>
+                        搜索结果收起后关键词仍保留，重新聚焦输入框即可再次展开；点击对话框内使用指导页面自带的静态目录也能跳转章节，目录与搜索互不干扰；
+                    </li>
+                    <li>
+                        浏览器打开的 HTML 版与 PDF
+                        版仍使用页面内自带搜索与目录；若对话框顶部提示「使用指导内容不可用」，说明指南未加载成功，可关闭对话框后重试或改看
+                        PDF 版。
+                    </li>
+                </ul>
+                <h2 id="sec-93">21. 功能交互矩阵</h2>
                 <table>
                     <thead>
                         <tr>
@@ -3164,21 +3626,21 @@ aliases:
                         </tr>
                     </tbody>
                 </table>
-                <h2 id="sec-90">22. 推荐配置方案</h2>
-                <h3 id="sec-91">22.1 首次使用</h3>
+                <h2 id="sec-94">22. 推荐配置方案</h2>
+                <h3 id="sec-95">22.1 首次使用</h3>
                 <ul>
                     <li>默认能力即可（界面风格「高密度工作台」+ 密度「默认」= 升级前观感）；</li>
                     <li>打开工作区，试一篇 Markdown；</li>
                     <li>需要知识库时再开启标签/双链相关（这些能力默认可用，依赖工作区）。</li>
                 </ul>
-                <h3 id="sec-92">22.2 写作者</h3>
+                <h3 id="sec-96">22.2 写作者</h3>
                 <ul>
                     <li>外观：界面风格「静默纸感」或「混合」+ 界面密度「默认/宽松」；</li>
                     <li>编写体验：写作模式、打字机、段落聚焦、写作统计、写作排版、风格检查；</li>
                     <li>功能：智能输入、拼写检查、文档历史；</li>
                     <li>建议每日目标 + 自动保存；写作时打开预览可看到纸感版式（第 10 节）。</li>
                 </ul>
-                <h3 id="sec-93">22.3 研究者</h3>
+                <h3 id="sec-97">22.3 研究者</h3>
                 <ul>
                     <li>功能：PDF 标注、OCR、剪贴板剪藏、文档历史；</li>
                     <li>外观：界面风格「高密度工作台」+ 界面密度「紧凑」，一屏显示更多条目；</li>
@@ -3189,21 +3651,21 @@ aliases:
                     </li>
                     <li>流程：捕获 → 标注/OCR → 摘录 → 双链 → 反链回顾。</li>
                 </ul>
-                <h3 id="sec-94">22.4 多项目/多文档</h3>
+                <h3 id="sec-98">22.4 多项目/多文档</h3>
                 <ul>
                     <li>功能：多标签、文档历史、智能输入、大纲增强；</li>
                     <li>编写体验：光标/滚动恢复；</li>
                     <li>外观：界面密度「紧凑」或「默认」；</li>
                     <li>配置：自动保存 + 备份；标签/双链按项目组织。</li>
                 </ul>
-                <h3 id="sec-95">22.5 低配设备/远程桌面</h3>
+                <h3 id="sec-99">22.5 低配设备/远程桌面</h3>
                 <ul>
                     <li>外观：界面风格「高密度工作台」或「静默纸感」，并开启「减少透明效果」；</li>
                     <li>
                         不需要玻璃材质时不必切换；玻璃在深色主题自动进入稳健模式（降透明度、关模糊）。
                     </li>
                 </ul>
-                <h2 id="sec-96">23. 安全与隐私</h2>
+                <h2 id="sec-100">23. 安全与隐私</h2>
                 <ul>
                     <li>主窗口/对话框/隐藏窗口启用 sandbox 与 contextIsolation，生产 CSP 收紧；</li>
                     <li>文件写入经主进程 Path Guard，工作区外路径/符号链接/设备命名空间拒绝；</li>
@@ -3218,49 +3680,51 @@ aliases:
                     <li>界面风格/密度/减少透明只写入本机配置，不影响笔记内容与网络请求；</li>
                     <li>在线页面无 preload、权限隔离，不要粘贴敏感信息。</li>
                 </ul>
-                <h2 id="sec-97">24. 常见问题</h2>
-                <h3 id="sec-98">24.1 帮助菜单是空的 / 知识库没有数据</h3>
+                <h2 id="sec-101">24. 常见问题</h2>
+                <h3 id="sec-102">24.1 帮助菜单是空的 / 知识库没有数据</h3>
                 <p>
                     先打开工作区文件夹，确认目录内有
                     <code>.md</code
                     >/<code>.markdown</code>/<code>.txt</code>。标签/反链/链接检查依赖工作区索引。
                 </p>
-                <h3 id="sec-99">24.2 文件修改后索引没更新</h3>
+                <h3 id="sec-103">24.2 文件修改后索引没更新</h3>
                 <p>索引约 5 秒缓存；点击「刷新索引」；重命名后等待缓存刷新或手动刷新。</p>
-                <h3 id="sec-100">24.3 Wiki 链接点击无反应</h3>
+                <h3 id="sec-104">24.3 Wiki 链接点击无反应</h3>
                 <p>
                     按住 <code>Ctrl</code>/<code>Cmd</code>
                     再点击；普通点击保持编辑。目标缺失时会询问创建。
                 </p>
-                <h3 id="sec-101">24.4 附件删除能恢复吗</h3>
+                <h3 id="sec-105">24.4 附件删除能恢复吗</h3>
                 <p>能。只移入系统回收站，请从 Windows 回收站恢复；应用不提供永久删除。</p>
-                <h3 id="sec-102">24.5 捕获功能菜单不可见</h3>
+                <h3 id="sec-106">24.5 捕获功能菜单不可见</h3>
                 <p>确认系统设置 → 功能中对应开关已开启；E6/E1/E2/E3 默认关闭，保存后即时生效。</p>
-                <h3 id="sec-103">24.6 OCR 首次失败</h3>
+                <h3 id="sec-107">24.6 OCR 首次失败</h3>
                 <p>
                     首次需下载
                     <code>eng</code> 语言包；检查网络/代理后重试。已缓存后可离线。当前只支持英文。
                 </p>
-                <h3 id="sec-104">24.7 PDF 标注看不到</h3>
+                <h3 id="sec-108">24.7 PDF 标注看不到</h3>
                 <p>
                     确认「PDF 标注与摘录」开关已开启，且打开的是工作区内的 PDF；扫描版 PDF
                     无文本层，不能选择文本。
                 </p>
-                <h3 id="sec-105">24.8 剪藏内容不完整</h3>
+                <h3 id="sec-109">24.8 剪藏内容不完整</h3>
                 <p>剪贴板可能只有纯文本或权限被拒绝；尝试先复制网页选区再剪藏；超限内容会提示。</p>
-                <h3 id="sec-106">24.9 导入/导出失败</h3>
+                <h3 id="sec-110">24.9 导入/导出失败</h3>
                 <p>检查文件是否被占用、目标目录权限；查看状态栏/对话框错误。</p>
-                <h3 id="sec-107">24.10 文档历史/多标签在哪里</h3>
+                <h3 id="sec-111">24.10 文档历史/多标签在哪里</h3>
                 <p>属于可选能力，需在「系统设置 → 功能」开启；默认关闭。</p>
-                <h3 id="sec-108">24.11 换了界面风格/密度但看起来没变化</h3>
+                <h3 id="sec-112">24.11 换了界面风格/密度但看起来没变化</h3>
                 <p>
                     先确认点了对话框底部「应用」或「确定」（点「取消」不会保存）。若选的是「轻玻璃」，在深色、高饱和/渐变、护眼主题下或开启「减少透明效果」时会自动降级为纸感材质（见
                     7.4），属于预期行为，切回浅色中性主题或关闭「减少透明效果」即可恢复玻璃。
                 </p>
-                <h3 id="sec-109">24.12 菜单栏用键盘打不开 / 看不到焦点</h3>
+                <h3 id="sec-113">24.12 菜单栏用键盘打不开 / 看不到焦点</h3>
                 <p>
-                    先按一下 <code>Alt</code> 激活菜单栏（焦点落到第一个顶层菜单），或先用
-                    <code>Tab</code> /
+                    先说一句：也可以直接按 <code>Alt + 字母</code> 打开对应顶层菜单（如
+                    <code>Alt + F</code> 打开「文件」、<code>Alt + E</code> 打开「编辑」，字母表见
+                    8.2）。否则先按一下
+                    <code>Alt</code> 激活菜单栏（焦点落到第一个顶层菜单），或先用 <code>Tab</code> /
                     <code>Shift + Tab</code>
                     把焦点移到菜单栏，再用方向键、<code>Enter</code>、<code>Esc</code>、<code>Home</code>/<code
                         >End</code
@@ -3268,13 +3732,13 @@ aliases:
                     操作（见第 8 节）。激活后按 <code>Esc</code> 或再次按
                     <code>Alt</code> 即可退出激活并把焦点交回原来的控件。
                 </p>
-                <h3 id="sec-110">24.13 写作模式正文的行高为什么变了</h3>
+                <h3 id="sec-114">24.13 写作模式正文的行高为什么变了</h3>
                 <p>
                     界面风格为「静默纸感 / 混合」时，写作模式的预览正文会套用纸感版式（16px / 行高
                     1.75，见第 10 节）。这是外观行为，不修改文件内容；Monaco
                     编辑区的字号/行高仍由「编辑器设置」与 Monaco 主题决定，不会随界面风格变化。
                 </p>
-                <h3 id="sec-111">24.14 工具窗按 Esc 关不掉</h3>
+                <h3 id="sec-115">24.14 工具窗按 Esc 关不掉</h3>
                 <p>
                     非模态工具窗的
                     <code>Esc</code>
@@ -3283,7 +3747,7 @@ aliases:
                     <code>Esc</code>
                     留给编辑器。也可以直接点右上角关闭按钮，或执行「插入/应用」等显式操作关闭。
                 </p>
-                <h2 id="sec-112">25. 已知限制</h2>
+                <h2 id="sec-116">25. 已知限制</h2>
                 <ul>
                     <li>Wiki 标题锚点只打开文件，不跳到具体标题；</li>
                     <li>全文检索为按需扫描，1.5.x 不建持久全文索引；</li>
@@ -3298,7 +3762,8 @@ aliases:
                     <li>发布安装包未接入代码签名，仅提供 Windows x64；</li>
                     <li>插件工具/在线内容以对应服务为准；</li>
                     <li>
-                        菜单栏为应用内自绘菜单，没有 <code>Alt + 字母</code> 助记符；单独按
+                        菜单栏为应用内自绘菜单，<code>Alt + 字母</code> 助记符覆盖 12
+                        个顶层菜单（字母见 8.2），但不支持自定义助记符字母或子菜单项助记符；单独按
                         <code>Alt</code> 可激活菜单栏（激活后方向键选择、<code>Enter</code>
                         打开、<code>Esc</code>/再次 <code>Alt</code> 退出）；
                     </li>
@@ -3321,5 +3786,581 @@ aliases:
                 </footer>
             </main>
         </div>
+        <button
+            class="side-fab"
+            id="help-side-fab"
+            type="button"
+            aria-controls="help-side-panel"
+            aria-expanded="true"
+        >
+            目录与搜索
+        </button>
+        <script>
+            ;(function () {
+                'use strict'
+                var doc = document
+                var main = doc.querySelector('main')
+                var toc = doc.getElementById('help-toc')
+                var sidePanel = doc.getElementById('help-side-panel')
+                var searchInput = doc.getElementById('help-search')
+                var searchBox = doc.getElementById('help-tools')
+                var searchMeta = doc.getElementById('help-search-meta')
+                var resultList = doc.getElementById('help-search-results')
+                var fab = doc.getElementById('help-side-fab')
+                if (!main || !toc || !searchInput || !resultList) return
+                // 标记脚本可用：CSS 据此显示搜索 UI（应用内 iframe 禁用脚本时保持静态目录）
+                doc.documentElement.classList.add('js')
+
+                var MAX_RESULTS = 20
+                var MAX_HIGHLIGHTS = 60
+                var HIGHLIGHT_MS = 2600
+                var NARROW_QUERY = '(max-width: 760px)'
+                var SEARCH_DELAY = 120
+
+                var tocLinks = Array.prototype.slice.call(toc.querySelectorAll('a[href^="#"]'))
+                var linkById = {}
+                for (var linkIndex = 0; linkIndex < tocLinks.length; linkIndex++) {
+                    var tocLink = tocLinks[linkIndex]
+                    var tocId = tocLink.getAttribute('href').slice(1)
+                    if (tocId) linkById[tocId] = tocLink
+                }
+
+                function normalize(text) {
+                    return String(text == null ? '' : text)
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                }
+
+                // ---- 章节索引：h2/h3 标题 + 标题到下一个 h2/h3 之间的正文文本 -------------------
+                var sections = []
+                var sectionHeadings = []
+                var printToc = doc.querySelector('.print-toc')
+                var mainChildren = Array.prototype.slice.call(main.children)
+                var currentSection = null
+                for (var childIndex = 0; childIndex < mainChildren.length; childIndex++) {
+                    var child = mainChildren[childIndex]
+                    if (child === printToc) continue
+                    var headingLevel = child.tagName === 'H2' ? 2 : child.tagName === 'H3' ? 3 : 0
+                    if (headingLevel && child.id && linkById[child.id]) {
+                        currentSection = {
+                            id: child.id,
+                            level: headingLevel,
+                            title: normalize(child.textContent),
+                            text: '',
+                            elements: [],
+                            heading: child,
+                            order: sections.length
+                        }
+                        sections.push(currentSection)
+                        sectionHeadings.push(child)
+                        continue
+                    }
+                    if (!currentSection) continue
+                    currentSection.elements.push(child)
+                    currentSection.text += ' ' + normalize(child.textContent)
+                }
+                for (var sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+                    sections[sectionIndex].text = normalize(sections[sectionIndex].text)
+                }
+
+                function clearHighlights() {
+                    if (highlightTimer) {
+                        window.clearTimeout(highlightTimer)
+                        highlightTimer = 0
+                    }
+                    for (var i = 0; i < highlightMarks.length; i++) {
+                        var mark = highlightMarks[i]
+                        var parent = mark.parentNode
+                        if (!parent) continue
+                        while (mark.firstChild) parent.insertBefore(mark.firstChild, mark)
+                        parent.removeChild(mark)
+                        parent.normalize()
+                    }
+                    highlightMarks = []
+                }
+
+                function setMeta(text) {
+                    if (searchMeta) searchMeta.textContent = text
+                }
+
+                function clearSearchView() {
+                    currentResults = []
+                    activeIndex = -1
+                    queryTerms = []
+                    if (resultList) {
+                        resultList.textContent = ''
+                        resultList.classList.remove('is-open')
+                    }
+                    doc.body.classList.remove('searching')
+                    searchInput.setAttribute('aria-expanded', 'false')
+                    searchInput.removeAttribute('aria-activedescendant')
+                    setMeta('')
+                    clearHighlights()
+                }
+
+                // 安全地在文本中插入 <mark>（不拼 HTML，纯 DOM 构建，命中词由调用方保证非空）
+                function appendHighlighted(container, text, terms) {
+                    var lower = text.toLowerCase()
+                    var position = 0
+                    while (position < text.length) {
+                        var best = -1
+                        var bestLength = 0
+                        for (var i = 0; i < terms.length; i++) {
+                            var hit = lower.indexOf(terms[i], position)
+                            if (
+                                hit !== -1 &&
+                                (best === -1 ||
+                                    hit < best ||
+                                    (hit === best && terms[i].length > bestLength))
+                            ) {
+                                best = hit
+                                bestLength = terms[i].length
+                            }
+                        }
+                        if (best === -1 || bestLength === 0) {
+                            container.appendChild(doc.createTextNode(text.slice(position)))
+                            return
+                        }
+                        if (best > position)
+                            container.appendChild(doc.createTextNode(text.slice(position, best)))
+                        var mark = doc.createElement('mark')
+                        mark.textContent = text.slice(best, best + bestLength)
+                        container.appendChild(mark)
+                        position = best + bestLength
+                    }
+                }
+
+                function makeSnippet(text, terms) {
+                    var lower = text.toLowerCase()
+                    var firstHit = -1
+                    for (var i = 0; i < terms.length; i++) {
+                        var hit = lower.indexOf(terms[i])
+                        if (hit !== -1 && (firstHit === -1 || hit < firstHit)) firstHit = hit
+                    }
+                    if (firstHit === -1) return text.slice(0, 72) + (text.length > 72 ? '…' : '')
+                    var start = Math.max(0, firstHit - 26)
+                    var end = Math.min(text.length, firstHit + 70)
+                    return (
+                        (start > 0 ? '…' : '') +
+                        text.slice(start, end) +
+                        (end < text.length ? '…' : '')
+                    )
+                }
+
+                function optionElements() {
+                    return resultList.querySelectorAll('.search-result')
+                }
+
+                function updateActiveOption() {
+                    var options = optionElements()
+                    for (var i = 0; i < options.length; i++) {
+                        var selected = i === activeIndex
+                        options[i].setAttribute('aria-selected', selected ? 'true' : 'false')
+                        var optionLink = options[i].firstChild
+                        if (optionLink && optionLink.classList)
+                            optionLink.classList.toggle('is-active', selected)
+                    }
+                    if (activeIndex >= 0 && activeIndex < currentResults.length) {
+                        searchInput.setAttribute(
+                            'aria-activedescendant',
+                            'help-search-option-' + activeIndex
+                        )
+                        var activeOption = options[activeIndex]
+                        if (activeOption) {
+                            var optionRect = activeOption.getBoundingClientRect()
+                            var listRect = resultList.getBoundingClientRect()
+                            if (optionRect.top < listRect.top)
+                                resultList.scrollTop -= listRect.top - optionRect.top
+                            else if (optionRect.bottom > listRect.bottom)
+                                resultList.scrollTop += optionRect.bottom - listRect.bottom
+                        }
+                    } else {
+                        searchInput.removeAttribute('aria-activedescendant')
+                    }
+                }
+
+                function renderResults() {
+                    resultList.textContent = ''
+                    if (!currentResults.length) {
+                        resultList.classList.remove('is-open')
+                        doc.body.classList.remove('searching')
+                        searchInput.setAttribute('aria-expanded', 'false')
+                        searchInput.removeAttribute('aria-activedescendant')
+                        return
+                    }
+                    for (var i = 0; i < currentResults.length; i++) {
+                        ;(function (item, index) {
+                            var option = doc.createElement('li')
+                            option.className = 'search-result'
+                            option.id = 'help-search-option-' + index
+                            option.setAttribute('role', 'option')
+                            option.setAttribute('aria-selected', 'false')
+                            var optionLink = doc.createElement('a')
+                            optionLink.className = 'search-result-link'
+                            optionLink.href = '#' + item.section.id
+                            optionLink.tabIndex = -1
+                            var titleEl = doc.createElement('span')
+                            titleEl.className = 'search-result-title'
+                            appendHighlighted(titleEl, item.section.title, queryTerms)
+                            optionLink.appendChild(titleEl)
+                            var snippetText = item.section.text
+                                ? makeSnippet(item.section.text, queryTerms)
+                                : ''
+                            if (snippetText) {
+                                var snippetEl = doc.createElement('span')
+                                snippetEl.className = 'search-result-snippet'
+                                appendHighlighted(snippetEl, snippetText, queryTerms)
+                                optionLink.appendChild(snippetEl)
+                            }
+                            optionLink.addEventListener('click', function (event) {
+                                event.preventDefault()
+                                activateResult(index)
+                            })
+                            option.appendChild(optionLink)
+                            resultList.appendChild(option)
+                        })(currentResults[i], i)
+                    }
+                    resultList.classList.add('is-open')
+                    doc.body.classList.add('searching')
+                    searchInput.setAttribute('aria-expanded', 'true')
+                    updateActiveOption()
+                }
+
+                function runSearch(raw) {
+                    var query = normalize(raw).toLowerCase()
+                    queryTerms = query ? query.split(' ') : []
+                    clearHighlights()
+                    if (!queryTerms.length) {
+                        clearSearchView()
+                        return
+                    }
+                    var scored = []
+                    for (var i = 0; i < sections.length; i++) {
+                        var section = sections[i]
+                        var title = section.title.toLowerCase()
+                        var haystack = title + ' ' + section.text.toLowerCase()
+                        var matched = true
+                        var titleHits = 0
+                        for (var termIndex = 0; termIndex < queryTerms.length; termIndex++) {
+                            var term = queryTerms[termIndex]
+                            if (haystack.indexOf(term) === -1) {
+                                matched = false
+                                break
+                            }
+                            if (title.indexOf(term) !== -1) titleHits++
+                        }
+                        if (matched) scored.push({ section: section, titleHits: titleHits })
+                    }
+                    scored.sort(function (left, right) {
+                        if (right.titleHits !== left.titleHits)
+                            return right.titleHits - left.titleHits
+                        return left.section.order - right.section.order
+                    })
+                    var total = scored.length
+                    currentResults = scored.slice(0, MAX_RESULTS)
+                    activeIndex = currentResults.length ? 0 : -1
+                    renderResults()
+                    if (!total) setMeta('没有找到匹配的章节，按 Esc 清空搜索')
+                    else if (total > MAX_RESULTS)
+                        setMeta('匹配 ' + total + ' 个章节，仅显示前 ' + MAX_RESULTS + ' 个')
+                    else setMeta('匹配 ' + total + ' 个章节')
+                }
+
+                var highlightMarks = []
+                var highlightTimer = 0
+                var SKIP_TAGS = {
+                    SCRIPT: true,
+                    STYLE: true,
+                    NOSCRIPT: true,
+                    TEXTAREA: true,
+                    MARK: true
+                }
+
+                function markTextNode(textNode, budget) {
+                    var text = textNode.nodeValue
+                    var lower = text.toLowerCase()
+                    var fragments = []
+                    var position = 0
+                    while (position < text.length && budget.left > 0) {
+                        var best = -1
+                        var bestLength = 0
+                        for (var i = 0; i < queryTerms.length; i++) {
+                            var hit = lower.indexOf(queryTerms[i], position)
+                            if (
+                                hit !== -1 &&
+                                (best === -1 ||
+                                    hit < best ||
+                                    (hit === best && queryTerms[i].length > bestLength))
+                            ) {
+                                best = hit
+                                bestLength = queryTerms[i].length
+                            }
+                        }
+                        if (best === -1 || bestLength === 0) break
+                        if (best > position)
+                            fragments.push({ text: text.slice(position, best), mark: false })
+                        fragments.push({ text: text.slice(best, best + bestLength), mark: true })
+                        budget.left--
+                        position = best + bestLength
+                    }
+                    if (!fragments.length) return
+                    if (position < text.length)
+                        fragments.push({ text: text.slice(position), mark: false })
+                    var fragment = doc.createDocumentFragment()
+                    for (var fragmentIndex = 0; fragmentIndex < fragments.length; fragmentIndex++) {
+                        var piece = fragments[fragmentIndex]
+                        if (piece.mark) {
+                            var mark = doc.createElement('mark')
+                            mark.className = 'search-hit'
+                            mark.textContent = piece.text
+                            fragment.appendChild(mark)
+                            highlightMarks.push(mark)
+                        } else {
+                            fragment.appendChild(doc.createTextNode(piece.text))
+                        }
+                    }
+                    textNode.parentNode.replaceChild(fragment, textNode)
+                }
+
+                function highlightElement(element, budget) {
+                    if (!element || budget.left <= 0) return
+                    if (!doc.createTreeWalker && !window.NodeFilter) return
+                    var walker = doc.createTreeWalker(element, window.NodeFilter.SHOW_TEXT, {
+                        acceptNode: function (node) {
+                            var parent = node.parentNode
+                            if (!parent || SKIP_TAGS[parent.tagName])
+                                return window.NodeFilter.FILTER_REJECT
+                            if (!node.nodeValue || !node.nodeValue.trim())
+                                return window.NodeFilter.FILTER_REJECT
+                            return window.NodeFilter.FILTER_ACCEPT
+                        }
+                    })
+                    var textNodes = []
+                    var node = walker.nextNode()
+                    while (node) {
+                        textNodes.push(node)
+                        node = walker.nextNode()
+                    }
+                    for (var i = 0; i < textNodes.length && budget.left > 0; i++)
+                        markTextNode(textNodes[i], budget)
+                }
+
+                function highlightSection(section) {
+                    if (!section || !queryTerms.length) return
+                    clearHighlights()
+                    var budget = { left: MAX_HIGHLIGHTS }
+                    // 标题命中也要高亮（搜索可能只命中章节标题，正文元素里没有该词）
+                    highlightElement(section.heading, budget)
+                    for (var i = 0; i < section.elements.length && budget.left > 0; i++) {
+                        highlightElement(section.elements[i], budget)
+                    }
+                    if (!highlightMarks.length) return
+                    highlightTimer = window.setTimeout(clearHighlights, HIGHLIGHT_MS)
+                }
+
+                function collapseOnNarrow() {
+                    if (!sidePanel) return
+                    try {
+                        if (window.matchMedia && window.matchMedia(NARROW_QUERY).matches)
+                            sidePanel.open = false
+                    } catch (error) {
+                        sidePanel.open = false
+                    }
+                }
+
+                function activateResult(index) {
+                    var item = currentResults[index]
+                    if (!item) return
+                    var target = item.section.heading
+                    var reduceMotion = false
+                    try {
+                        reduceMotion = !!(
+                            window.matchMedia &&
+                            window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                        )
+                    } catch (error) {
+                        reduceMotion = false
+                    }
+                    if (target && target.scrollIntoView) {
+                        target.scrollIntoView({
+                            behavior: reduceMotion ? 'auto' : 'smooth',
+                            block: 'start'
+                        })
+                    }
+                    try {
+                        window.history.replaceState(null, '', '#' + item.section.id)
+                    } catch (error) {
+                        // 受限 URL 环境（file:// 等）忽略，滚动定位已完成
+                    }
+                    highlightSection(item.section)
+                    collapseOnNarrow()
+                }
+
+                var searchTimer = 0
+                function scheduleSearch() {
+                    if (searchTimer) window.clearTimeout(searchTimer)
+                    searchTimer = window.setTimeout(function () {
+                        searchTimer = 0
+                        runSearch(searchInput.value)
+                    }, SEARCH_DELAY)
+                }
+
+                var currentResults = []
+                var activeIndex = -1
+                var queryTerms = []
+                searchInput.addEventListener('input', scheduleSearch)
+                searchInput.addEventListener('search', function () {
+                    if (!searchInput.value) clearSearchView()
+                })
+                searchInput.addEventListener('keydown', function (event) {
+                    var key = event.key
+                    if (key === 'Escape') {
+                        event.preventDefault()
+                        searchInput.value = ''
+                        clearSearchView()
+                        return
+                    }
+                    if (key === 'ArrowDown' || key === 'ArrowUp') {
+                        if (!currentResults.length) return
+                        event.preventDefault()
+                        var step = key === 'ArrowDown' ? 1 : -1
+                        activeIndex =
+                            (activeIndex + step + currentResults.length) % currentResults.length
+                        updateActiveOption()
+                        return
+                    }
+                    if (key === 'Enter') {
+                        if (!currentResults.length) return
+                        event.preventDefault()
+                        activateResult(activeIndex >= 0 ? activeIndex : 0)
+                    }
+                })
+                doc.addEventListener('keydown', function (event) {
+                    if (
+                        (event.ctrlKey || event.metaKey) &&
+                        (event.key === 'k' || event.key === 'K')
+                    ) {
+                        event.preventDefault()
+                        if (sidePanel) sidePanel.open = true
+                        if (searchBox) searchBox.scrollIntoView({ block: 'nearest' })
+                        searchInput.focus()
+                        searchInput.select()
+                    }
+                })
+
+                // ---- 滚动高亮：IntersectionObserver 触发 + 位置计算兜底（长章节无标题进入视口时） ----
+                var activeHeadingId = ''
+                function setActiveHeading(id) {
+                    if (!id || id === activeHeadingId) return
+                    var previous = activeHeadingId ? linkById[activeHeadingId] : null
+                    if (previous) {
+                        previous.classList.remove('toc-active')
+                        previous.removeAttribute('aria-current')
+                    }
+                    activeHeadingId = id
+                    var activeLink = linkById[id]
+                    if (!activeLink) return
+                    activeLink.classList.add('toc-active')
+                    activeLink.setAttribute('aria-current', 'location')
+                    var linkRect = activeLink.getBoundingClientRect()
+                    var tocRect = toc.getBoundingClientRect()
+                    if (linkRect.top < tocRect.top) toc.scrollTop += linkRect.top - tocRect.top - 8
+                    else if (linkRect.bottom > tocRect.bottom)
+                        toc.scrollTop += linkRect.bottom - tocRect.bottom + 8
+                }
+
+                function updateActiveByPosition() {
+                    if (!sectionHeadings.length) return
+                    var offset = 88
+                    var current = sectionHeadings[0]
+                    for (var i = 0; i < sectionHeadings.length; i++) {
+                        if (sectionHeadings[i].getBoundingClientRect().top <= offset)
+                            current = sectionHeadings[i]
+                        else break
+                    }
+                    if (current) setActiveHeading(current.id)
+                }
+
+                var scrollTicking = false
+                function scheduleScrollSpy() {
+                    if (scrollTicking) return
+                    scrollTicking = true
+                    var raf =
+                        window.requestAnimationFrame ||
+                        function (callback) {
+                            return window.setTimeout(callback, 16)
+                        }
+                    raf(function () {
+                        scrollTicking = false
+                        updateActiveByPosition()
+                    })
+                }
+
+                window.addEventListener('scroll', scheduleScrollSpy, { passive: true })
+                window.addEventListener('resize', scheduleScrollSpy)
+                if (typeof window.IntersectionObserver === 'function') {
+                    var observer = new window.IntersectionObserver(
+                        function () {
+                            updateActiveByPosition()
+                        },
+                        {
+                            rootMargin: '-88px 0px -62% 0px',
+                            threshold: [0, 1]
+                        }
+                    )
+                    for (
+                        var headingIndex = 0;
+                        headingIndex < sectionHeadings.length;
+                        headingIndex++
+                    ) {
+                        observer.observe(sectionHeadings[headingIndex])
+                    }
+                }
+                updateActiveByPosition()
+
+                // ---- 窄屏折叠面板：原生 <details> 保证无脚本时仍可展开；悬浮按钮由脚本可用时显示 ----
+                function syncFabState() {
+                    if (fab && sidePanel)
+                        fab.setAttribute('aria-expanded', sidePanel.open ? 'true' : 'false')
+                }
+
+                if (fab && sidePanel) {
+                    fab.addEventListener('click', function () {
+                        sidePanel.open = !sidePanel.open
+                        syncFabState()
+                        if (sidePanel.open) {
+                            try {
+                                window.scrollTo({ top: 0, behavior: 'smooth' })
+                            } catch (error) {
+                                window.scrollTo(0, 0)
+                            }
+                        }
+                    })
+                    sidePanel.addEventListener('toggle', syncFabState)
+                    syncFabState()
+                }
+
+                var narrowViewport = false
+                try {
+                    narrowViewport = !!(
+                        window.matchMedia && window.matchMedia(NARROW_QUERY).matches
+                    )
+                } catch (error) {
+                    narrowViewport = false
+                }
+                if (narrowViewport && sidePanel) sidePanel.open = false
+                window.addEventListener('resize', function () {
+                    var narrow = false
+                    try {
+                        narrow = !!(window.matchMedia && window.matchMedia(NARROW_QUERY).matches)
+                    } catch (error) {
+                        narrow = false
+                    }
+                    if (narrow === narrowViewport || !sidePanel) return
+                    narrowViewport = narrow
+                    sidePanel.open = !narrow
+                })
+            })()
+        </script>
     </body>
 </html>

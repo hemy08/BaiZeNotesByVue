@@ -20,50 +20,69 @@
         @mousedown="startCursorPosition($event)"
     ></div>
     <!-- 右侧编辑区域 -->
+    <!--
+        REQ-12 工作区舞台：承载内容区各容器（md / 插件 / 工具 / HTML / PDF）。
+        - 默认横向排布：各容器沿用既有内联宽度（workAreaWidth 已扣左右导航/资源管理器），
+          v-show 保证同一时刻只显示一个容器（既有互斥切换契约不变）；
+        - 插件面板最小化（44px 工具条）时切纵向排布：工具条在上（44px）+ 编辑器在下（占满剩余
+          高度），收起插件区域空白并让编辑器可见；还原/返回编辑器时恢复默认排布。
+          折叠状态由 PluginTools 的 window-state-change 事件上抛（无新增 EventBus/IPC 契约）。
+    -->
     <div
-        v-show="isShowMdContainer"
-        id="md-container"
-        class="md-container"
-        :style="{ width: workAreaWidth }"
+        class="workspace-stage"
+        :class="{ 'workspace-stage--plugin-docked': isPluginPanelDocked }"
+        :data-plugin-panel-docked="isPluginPanelDocked ? 'true' : 'false'"
     >
-        <MdContainer :md-container-width="workAreaWidth" />
-    </div>
-    <div
-        v-show="isShowPluginsContainer"
-        id="plugin-containers"
-        class="plugin-containers"
-        :style="{ width: workAreaWidth }"
-    >
-        <PluginTools :plugins-area-width="workAreaWidth" />
-    </div>
-    <div
-        v-show="isShowToolsContainer"
-        id="tool-containers"
-        class="tool-containers"
-        :style="{ width: workAreaWidth }"
-    >
-        <HemyTools :tools-area-width="workAreaWidth" />
-    </div>
-    <!-- HTML 查看器：按需挂载——首次切换到该容器才渲染（避免进入主界面即加载其 chunk），
-         激活后仅用 v-show 切换，保留内部状态 -->
-    <div
-        v-if="htmlContainerActivated"
-        v-show="isShowHtmlContainer"
-        id="html-containers"
-        class="html-containers"
-        :style="{ width: workAreaWidth }"
-    >
-        <ShowHtmlView :html-area-width="workAreaWidth" />
-    </div>
-    <!-- PDF 预览：同上，首次切换到该容器才挂载，避免主界面初始化即加载 pdfjs-dist -->
-    <div
-        v-if="pdfContainerActivated"
-        v-show="isShowPdfContainer"
-        id="pdf-containers"
-        class="pdf-containers"
-        :style="{ width: workAreaWidth }"
-    >
-        <ShowPdfEditor :pds-area-width="workAreaWidth" />
+        <div
+            v-show="isShowMdContainer || isPluginPanelDocked"
+            id="md-container"
+            class="md-container"
+            :style="{ width: workAreaWidth }"
+        >
+            <MdContainer :md-container-width="workAreaWidth" />
+        </div>
+        <div
+            v-show="isShowPluginsContainer"
+            id="plugin-containers"
+            class="plugin-containers"
+            :class="{ 'plugin-containers--panel-docked': isPluginPanelDocked }"
+            :data-plugin-panel-docked="isPluginPanelDocked ? 'true' : 'false'"
+            :style="{ width: workAreaWidth }"
+        >
+            <PluginTools
+                :plugins-area-width="workAreaWidth"
+                @window-state-change="onPluginToolsWindowStateChange"
+            />
+        </div>
+        <div
+            v-show="isShowToolsContainer"
+            id="tool-containers"
+            class="tool-containers"
+            :style="{ width: workAreaWidth }"
+        >
+            <HemyTools :tools-area-width="workAreaWidth" />
+        </div>
+        <!-- HTML 查看器：按需挂载——首次切换到该容器才渲染（避免进入主界面即加载其 chunk），
+             激活后仅用 v-show 切换，保留内部状态 -->
+        <div
+            v-if="htmlContainerActivated"
+            v-show="isShowHtmlContainer"
+            id="html-containers"
+            class="html-containers"
+            :style="{ width: workAreaWidth }"
+        >
+            <ShowHtmlView :html-area-width="workAreaWidth" />
+        </div>
+        <!-- PDF 预览：同上，首次切换到该容器才挂载，避免主界面初始化即加载 pdfjs-dist -->
+        <div
+            v-if="pdfContainerActivated"
+            v-show="isShowPdfContainer"
+            id="pdf-containers"
+            class="pdf-containers"
+            :style="{ width: workAreaWidth }"
+        >
+            <ShowPdfEditor :pds-area-width="workAreaWidth" />
+        </div>
     </div>
     <!-- 最右侧边框 -->
     <div id="right-navi" class="navi-tab" :style="{ width: naviTabWidth, float: 'right' }">
@@ -147,6 +166,22 @@ const isShowPdfContainer = ref(false)
 // 激活后只切换 v-show，保证来回切换时组件状态（当前文件、页码、缩放）不丢失。
 const htmlContainerActivated = ref(false)
 const pdfContainerActivated = ref(false)
+
+/**
+ * REQ-12：插件工具面板折叠状态（由子组件 PluginTools 的 window-state-change 事件上抛）。
+ * - 仅在插件容器显示（isShowPluginsContainer）时生效；
+ * - 折叠 → 插件区域只占 44px 工具条 + 编辑器占据剩余高度（收起空白、可见面积扩大）；
+ * - 还原（normal/maximized）或「返回编辑器」→ 回到既有容器互斥视图（零回归）。
+ */
+const isPluginPanelMinimized = ref(false)
+const isPluginPanelDocked = computed(
+    () => isPluginPanelMinimized.value && isShowPluginsContainer.value
+)
+
+/** 插工具面板折叠状态变化（true = 仅保留 44px 工具条） */
+function onPluginToolsWindowStateChange(minimized: boolean): void {
+    isPluginPanelMinimized.value = minimized
+}
 
 // EventBus 注册器（M5）：监听随组件卸载自动清理，替代手写 $on/$off 配对
 const { on: onEventBus } = useEventBus({ componentIdPrefix: 'WorkSpace' })
@@ -399,7 +434,9 @@ onBeforeUnmount(() => {
     width: 40px;
     border-right: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
     border-radius: var(--bz-shell-radius, 0);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0));
+    /* glass 顶部高光边：基色与透明度由 content-tokens.css 的 --ui-highlight-border-color 派生
+       （workbench/paper/hybrid 的透明度为 0 → transparent，默认观感零变化）。 */
+    box-shadow: inset 0 1px 0 var(--ui-highlight-border-color);
 }
 
 /* 2026-11-20（编辑器底部光标不可见修复）：工作区子容器统一跟随父容器高度，
@@ -476,10 +513,48 @@ onBeforeUnmount(() => {
 }
 
 /* ============================================================================
+ * REQ-12 工作区舞台：插件面板最小化联动（收起插件区域空白，给编辑器让位）
+ *
+ * - 默认（.workspace-stage）：横向 flex，仍是「同一时刻只显示一个容器」的既有互斥视图；
+ *   各容器内联宽度 = workAreaWidth（父容器宽度契约不变）。
+ * - 插件面板最小化（.workspace-stage--plugin-docked）：切纵向，插件容器固定 44px 工具条
+ *   （order:-1 置顶），编辑器占满剩余高度；插件容器内联宽度仍为 workAreaWidth。
+ * - 只做布局排布，颜色/描边/材质仍由 --ui-* / --bz-content-* 令牌提供（四风格 × 三密度零硬编码）。
+ * ========================================================================== */
+.workspace-stage {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.workspace-stage--plugin-docked {
+    flex-direction: column;
+}
+
+.workspace-stage--plugin-docked #plugin-containers {
+    order: -1;
+    flex: 0 0 44px;
+    height: 44px;
+    min-height: 44px;
+    overflow: hidden;
+}
+
+.workspace-stage--plugin-docked #md-container {
+    order: 0;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+}
+
+/* ============================================================================
  * 内容区（工区）容器：四风格材质（视觉升级 1.5.5 修复）
  *
  * 消费 --bz-content-*（由 #editor-container 从 P0 冻结令牌派生；hybrid 内容区 = paper）：
- * - 表面：glass 半透明（--ui-content-surface-opacity 0.86）/ paper 与 hybrid 纸感底 /
+ * - 表面：glass 半透明（--ui-content-surface-opacity 0.72，1.5.6 增强）/ paper 与 hybrid 纸感底 /
  *   workbench 保持既有 --theme-background-color（--ui-bg 同值）；
  * - 圆角/描边/阴影：workbench 下全部为 0 或不可见，默认观感零变化。
  * ::after 负责描边与阴影（paint 在子内容之上，1px hairline 不会被 Monaco 覆盖）；
@@ -518,7 +593,7 @@ onBeforeUnmount(() => {
     border-radius: var(--bz-content-radius, 0);
     box-shadow:
         inset 0 0 0 var(--bz-content-hairline, 0) var(--ui-border, var(--theme-border-color)),
-        inset 0 1px 0 rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0)),
+        inset 0 1px 0 var(--ui-highlight-border-color),
         var(--ui-shadow-1);
 }
 
@@ -555,7 +630,8 @@ onBeforeUnmount(() => {
     height: 100%;
     min-height: 120px;
     font-size: 14px;
-    color: var(--theme-text-secondary, #757575);
+    /* 历史令牌 --theme-text-secondary 已由 styles/content-tokens.css 等值补定义（原兜底 #757575） */
+    color: var(--theme-text-secondary);
 }
 
 /* 应用主题到所有子元素 */

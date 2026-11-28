@@ -33,7 +33,10 @@ export default {
         searchEntryTitle: '插件搜索',
         searchEntryHint: '输入工具名称、分类或关键词后回车即可打开；下方为最近使用与全部工具',
         searchEntryRecentEmpty:
-            '暂无最近使用记录：从「插件」菜单选择工具后会自动出现在这里，也可以直接从下方全部工具中选择'
+            '暂无最近使用记录：从「插件」菜单选择工具后会自动出现在这里，也可以直接从下方全部工具中选择',
+        // 1.5.6 批次 A（REQ-06）：分类分组折叠/展开（8 分类标题行按钮 title 提示）
+        collapseGroup: '折叠该分类',
+        expandGroup: '展开该分类'
     },
     infoTables: {
         /** 对照表通用搜索框占位符（10 个查询表复用，避免英文硬编码） */

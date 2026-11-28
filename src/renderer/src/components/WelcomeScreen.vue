@@ -132,8 +132,8 @@ onMounted(() => {
     align-items: center;
     justify-content: center;
     background: var(--theme-title-bar-gradient);
-    /* 应用层欢迎层（P2 遗留项 4）：原裸值 9999 → 命名令牌 --ui-z-welcome-app，数值不变。
-       变量真源 UI_Z_INDEX_APP_BASE.welcome（styles/ui-style.css 的 :root 声明）。 */
+    /* 应用层欢迎层：相对阶梯令牌 --ui-z-welcome-app（1.5.6 P2-E：9999 → 110，与对话框同层；
+       二者互斥渲染不竞争）。变量真源 UI_Z_INDEX_APP_BASE.welcome（ui-style.css :root 声明）。 */
     z-index: var(--ui-z-welcome-app);
     overflow: hidden;
 }
@@ -148,8 +148,9 @@ onMounted(() => {
     justify-content: flex-end;
     -webkit-app-region: drag;
     flex-shrink: 0;
-    /* 欢迎层内部窗口控制条：恒比欢迎层高 1 档（原裸值 10000 = 9999 + 1，数值不变）。
-       仅在本层 stacking context 内参与局部排序，不改变与对话框/缩放热区的既有栈序。 */
+    /* 欢迎层内部窗口控制条：恒比欢迎层高 1 档（welcome + 1 = 111）。
+       .welcome-screen 为 fixed + z-index 的独立层叠上下文，控制条仅在本层内参与局部排序，
+       不改变与对话框/缩放热区的既有栈序（相对阶梯化前后关系一致）。 */
     z-index: calc(var(--ui-z-welcome-app) + 1);
 }
 

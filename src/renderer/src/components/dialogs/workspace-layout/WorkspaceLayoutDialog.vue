@@ -190,17 +190,17 @@ function handleDelete(profile: WorkspaceLayoutProfile): void {
 </script>
 
 <style scoped>
-/* 遗留项 6 说明（2026-11-27）：本文件历史样式引用了 --text-primary / --bg-primary /
-   --bg-secondary 等从未在主题层定义过的变量名（实际生效值是兜底色），本轮只清理
-   已定义令牌（--border-color / --accent-color）的冗余颜色兜底，并把与 --ui-bg-elevated
-   默认值等值的白底兜底改为语义令牌；其余未定义变量名的迁移需先补主题令牌定义，见
-   《硬编码颜色清理-1.5.5-P2B》报告的「未定义令牌兜底」类别。 */
+/* 遗留项 6 收口（1.5.6 / REQ-16）：本文件历史样式引用的 --text-primary / --text-secondary /
+   --bg-secondary 等变量名已由 `styles/content-tokens.css` 按「等值」补定义（值 = 原兜底
+   字面量，默认主题零观感漂移），因此组件内的颜色兜底全部移除，只保留 var(--令牌)。
+   --bg-secondary 历史上在三处使用了三个不同兜底值，拆分为 --bg-secondary（当前布局条）/
+   --bg-secondary-raised（内置卡片）/ --bg-secondary-accent（内置徽标）三个等值令牌。 */
 .layout-dialog-body {
     display: flex;
     flex-direction: column;
     gap: 14px;
     width: 100%;
-    color: var(--text-primary, #252233);
+    color: var(--text-primary);
 }
 
 .layout-description,
@@ -209,7 +209,7 @@ function handleDelete(profile: WorkspaceLayoutProfile): void {
     margin: 0;
     font-size: 13px;
     line-height: 1.6;
-    color: var(--text-secondary, #6d6980);
+    color: var(--text-secondary);
 }
 
 .current-layout {
@@ -219,7 +219,7 @@ function handleDelete(profile: WorkspaceLayoutProfile): void {
     padding: 10px 12px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    background: var(--bg-secondary, #f7f3fb);
+    background: var(--bg-secondary);
     font-size: 13px;
 }
 
@@ -243,7 +243,7 @@ function handleDelete(profile: WorkspaceLayoutProfile): void {
 }
 
 .profile-card--builtin {
-    background: var(--bg-secondary, #fbf9fe);
+    background: var(--bg-secondary-raised);
 }
 
 .profile-main {
@@ -264,11 +264,11 @@ function handleDelete(profile: WorkspaceLayoutProfile): void {
     padding: 1px 6px;
     border-radius: 999px;
     color: var(--accent-color);
-    background: var(--bg-secondary, #f1ebf9);
+    background: var(--bg-secondary-accent);
 }
 
 .profile-detail {
-    color: var(--text-secondary, #6d6980);
+    color: var(--text-secondary);
     overflow-wrap: anywhere;
 }
 
@@ -290,6 +290,6 @@ function handleDelete(profile: WorkspaceLayoutProfile): void {
     border: 1px solid var(--border-color);
     border-radius: 6px;
     background: var(--ui-bg-elevated);
-    color: var(--text-primary, #252233);
+    color: var(--text-primary);
 }
 </style>

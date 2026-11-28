@@ -905,12 +905,12 @@ function handleContainerMouseDown(event: MouseEvent): void {
     align-items: center;
     justify-content: center;
     /*
-     * T12 层级收敛：不再写死 9999，改为应用层兼容令牌 `--ui-z-dialog-app`（= 既有 9999）。
-     * 语义相对阶梯 `--ui-z-dialog`（50）暂不可直接用——既有高层浮层（欢迎页 9999 /
-     * 写作模式 3000 / 窗口缩放热区 9999~10000）不在本批写域内，直接降为 50 会被写作模式
-     * 全屏层遮挡。等这些浮层统一迁移到相对阶梯后再改 `ui-style.css` 一处即可（组件不改）。
+     * T12 层级收敛：不再写死数值，改为应用层令牌 `--ui-z-dialog-app`。
+     * 1.5.6 起应用层已相对阶梯化（真源 UI_Z_INDEX_APP_COMPAT / UI_Z_INDEX_APP_BASE）：
+     * 写作模式 100 < 对话框/欢迎页 110（互斥渲染）< 命令面板/缩放热区 120；
+     * 兜底值与令牌当前值一致，样式表缺失时仍保持正确层序。
      */
-    z-index: var(--ui-z-dialog-app, 9999);
+    z-index: var(--ui-z-dialog-app, 110);
     /* 动效令牌：对话框主体 240ms、遮罩 200ms（MOTION.md §1；减少动效时由令牌降级） */
     --dialog-fade-duration: var(--ui-duration-overlay, 0.2s);
     --dialog-scale-transition: transform var(--ui-duration-dialog, 0.2s)
@@ -941,10 +941,11 @@ function handleContainerMouseDown(event: MouseEvent): void {
 
 /*
  * T6 非模态工具窗统一壳：
- * - 面：`--ui-surface` × `--ui-surface-opacity`（glass 0.86 半透明；其余 1 = 不透明）；
+ * - 面：`--ui-surface` × `--ui-surface-opacity`（glass 半透明；其余 1 = 不透明）；
  * - 玻璃模糊：`--ui-surface-blur` 仅在 glass 非 0（其余 0px，等于关闭模糊）；
  * - 边框：1px hairline；阴影：悬浮层 `--ui-shadow-2`；glass 高光边由
- *   `--ui-highlight-border-alpha` 控制（其余风格为 0，不产生可见高光）。
+ *   `--ui-highlight-border-color` 提供（= 固定白基色 --ui-highlight-color ×
+ *   --ui-highlight-border-alpha；其余风格 alpha 为 0 → transparent，不产生可见高光）。
  * 风格差异全部来自根元素 data-style 下的变量，组件不做风格判断。
  */
 .dialog-container--tool-window {
@@ -957,7 +958,7 @@ function handleContainerMouseDown(event: MouseEvent): void {
     border-radius: var(--ui-radius-lg, 8px);
     box-shadow:
         var(--ui-shadow-2),
-        inset 0 0 0 1px rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0));
+        inset 0 0 0 1px var(--ui-highlight-border-color);
     backdrop-filter: blur(var(--ui-surface-blur, 0px));
     -webkit-backdrop-filter: blur(var(--ui-surface-blur, 0px));
 }

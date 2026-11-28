@@ -170,6 +170,11 @@ export default {
         fileListLabel: 'File list',
         executeFailed: 'Command failed',
         openFileFailed: 'Failed to open the file. Try again later.',
+        // 1.5.6 P2 batch C: REQ-10 recently used section / REQ-11 related command suggestions
+        recentTitle: 'Recently used',
+        suggestionsTitle: 'Related commands',
+        suggestionsHint: 'No exact match. These related suggestions run with Enter.',
+        suggestionBadge: 'Suggestion',
         command: {
             save: 'Save',
             openFolder: 'Open folder',

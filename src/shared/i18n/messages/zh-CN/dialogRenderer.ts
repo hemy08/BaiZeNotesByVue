@@ -705,6 +705,21 @@ const dialogRenderer = {
         save: '保存并打开',
         discard: '不保存',
         cancel: '取消'
+    },
+    // 1.5.6：使用指导对话框（应用内搜索由父页面代理实现，见 UsageGuideDialog.vue）。
+    // 键名统一 usageGuide.*，单独成块追加在文件末尾，便于并行批次合入与整块搬移。
+    usageGuide: {
+        loading: '正在加载使用指导…',
+        unavailable:
+            '使用指导内容不可用：应用内搜索暂不可用，可关闭对话框后重试，或从「帮助 → 使用指导」查看 PDF 版。',
+        noIndex: '未能读取使用指导目录：应用内搜索暂不可用，可直接点击页面内的静态目录跳转章节。',
+        searchPlaceholder: '搜索标题与正文，Enter 跳转，Esc 清空',
+        searchAriaLabel: '搜索使用指导内容',
+        searchClear: '清空搜索',
+        searchResults: '搜索结果',
+        searchEmpty: '没有找到匹配的章节，按 Esc 清空',
+        searchMatches: '匹配 {count} 个章节',
+        searchMatchesCapped: '匹配 {count} 个章节，仅显示前 {limit} 个'
     }
 }
 

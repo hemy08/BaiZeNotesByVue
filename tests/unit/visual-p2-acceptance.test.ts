@@ -8,12 +8,18 @@
  * 1. T12 层级收敛 / 菜单栏高度单一实现 / 宽度阶梯迁移 / 工具窗可选内边距包裹层；
  * 2. T13 paper/hybrid 写作模式正文版式令牌与消费点，且不触碰 Monaco 主题；
  * 3. T14 图标统一（24 网格 / stroke 1.5 / currentColor / 16-20-24 三档；MDI fill 型库与
- *    品牌 512 网格为例外）、图标资产引用守卫与 AdmonitionDialog 12 类图标替换契约；
+ *    品牌 512 网格为例外）、图标资产引用守卫（1.5.6 REQ-15：20 个历史零引用功能图标已删除，
+ *    assets/icons 只剩 3 个品牌文件，功能图标统一为组件内联 SVG）与 AdmonitionDialog 12 类
+ *    图标替换契约；
  * 4. T15 硬编码清理不变量（静态 CSS 真源变量不再保留冗余颜色兜底）；
  * 5. T16 验收矩阵（4 风格 × 2 主题 × 6 组件 48 + 密度 18 + 主题类别 12 + glass 6）的
  *    组合数与令牌覆盖，以及 28 主题对比度扫描；
- * 6. P2 遗留项 4：z-index 应用层基座迁移（欢迎页 / 窗口缩放热区 / 写作模式裸值清零，
- *    常量与 CSS 变量单一真源，数值与迁移前逐项等值）。
+ * 6. P2 遗留项 4：z-index 应用层相对阶梯化（欢迎页 / 窗口缩放热区 / 写作模式 / 对话框 /
+ *    命令面板从 3000/9999/10000 大数值迁移到 100~120 相对档位，层序逐对保持、常量与 CSS
+ *    变量单一真源、组件裸值清零；测试断言「相对关系与单一真源」而不锁死大数值）；
+ * 7. 1.5.6 REQ-14：glass 弱效果增强（低透明度面 0.72 + 高光边 0.30 + 模糊半径不回归、
+ *    不启用整窗 backdrop-filter），且 paper / hybrid / workbench 与 steady / 减少透明降级档
+ *    不受影响；平坦背景可感知的实现链（窗口光斑强度由高光边令牌派生）静态守护。
  *
  * 真实截图的软门禁见 `e2e/visual-matrix.spec.ts`（E2E_VISUAL=1），静态矩阵补充说明核对
  * `docs/design/P2-VERIFICATION.md`。
@@ -29,6 +35,7 @@ import {
 } from '../../src/shared/theme-tokens'
 import type { SemanticTokenSource } from '../../src/shared/theme-tokens'
 import {
+    UI_CONTENT_MATERIAL,
     UI_DENSITY_TOKENS,
     UI_DENSITY_VALUES,
     UI_STYLE_TOKENS,
@@ -78,12 +85,13 @@ describe('T12 层级收敛：对话框 / 命令面板应用层兼容令牌', () 
     const BASE_DIALOG = path.join(COMPONENTS, 'dialogs', 'BaseDialog.vue')
     const COMMAND_PALETTE = path.join(COMPONENTS, 'search', 'CommandPalette.vue')
 
-    it('应用层兼容层级 = 既有 9999 / 10000，语义相对阶梯保持 50 / 60 不变', () => {
-        expect(UI_Z_INDEX_APP_COMPAT).toEqual({ dialog: 9999, commandPalette: 10000 })
+    it('应用层相对阶梯 = 110 / 120（旧 9999 / 10000），语义相对阶梯保持 50 / 60 不变', () => {
+        expect(UI_Z_INDEX_APP_COMPAT).toEqual({ dialog: 110, commandPalette: 120 })
         // 语义阶梯保持不变（设计文档 §3.3 的 0~80 相对层级）
         expect(UI_Z_INDEX_TOKENS.dialog).toBe(50)
         expect(UI_Z_INDEX_TOKENS.commandPalette).toBe(60)
-        // 应用层映射比语义 rank 高，保证「命令面板恒在对话框之上」
+        // 应用层整体位于语义阶梯（0~80）之上，且命令面板恒在对话框之上（与旧栈序一致）
+        expect(UI_Z_INDEX_APP_COMPAT.dialog).toBeGreaterThan(UI_Z_INDEX_TOKENS.guide)
         expect(UI_Z_INDEX_APP_COMPAT.commandPalette).toBeGreaterThan(UI_Z_INDEX_APP_COMPAT.dialog)
     })
 
@@ -108,36 +116,61 @@ describe('T12 层级收敛：对话框 / 命令面板应用层兼容令牌', () 
 })
 
 // =============================================================================================
-// P2 遗留项 4：z-index 应用层基座迁移（欢迎页 / 窗口缩放热区 / 写作模式）
-// 裸值 9999 / 10000 / 3000 → 命名令牌 UI_Z_INDEX_APP_BASE + --ui-z-*-app 变量（数值零变化）
+// P2 遗留项 4：z-index 应用层相对阶梯化（欢迎页 / 窗口缩放热区 / 写作模式 / 对话框 / 命令面板）
+// 旧大数值 3000 / 9999 / 10000 → 相对阶梯 100~120；断言「相对关系 + 单一真源」，不锁死具体大数
 // =============================================================================================
 
-describe('P2 遗留项 4 z-index 应用层基座迁移', () => {
+describe('P2 遗留项 4 z-index 应用层相对阶梯化', () => {
     const UI_STYLE_CSS_FILE = path.join(RENDERER, 'styles', 'ui-style.css')
     const WELCOME_SCREEN = path.join(COMPONENTS, 'WelcomeScreen.vue')
     const HOST_SHELL = path.join(COMPONENTS, 'BaiZeNotes.vue')
     const WRITING_MODE_HOST = path.join(COMPONENTS, 'Markdown', 'WritingModeHost.vue')
 
-    it('UI_Z_INDEX_APP_BASE 数值与迁移前逐项等值，且保持与 T12 兼容层级的既有栈序关系', () => {
-        // 迁移前：欢迎页 9999 / 窗口缩放热区 9999~10000 / 写作模式 3000（数值不得漂移）
-        expect(UI_Z_INDEX_APP_BASE).toEqual({ welcome: 9999, resize: 10000, writingMode: 3000 })
-        // 欢迎页与对话框同层（二者互斥渲染：App.vue 中 v-if / v-else，等值不产生竞争）
+    it('应用层基座 = 相对阶梯 100 / 110 / 120，与迁移前逐对层序关系保持一致', () => {
+        // 旧值：写作模式 3000 / 欢迎页 9999 / 缩放热区 10000（对话框 9999 / 命令面板 10000 见 T12）
+        expect(UI_Z_INDEX_APP_BASE).toEqual({ writingMode: 100, welcome: 110, resize: 120 })
+        // 同值关系保持：欢迎页 = 对话框（互斥渲染不竞争）；缩放热区 = 命令面板（应用内最高层）
         expect(UI_Z_INDEX_APP_BASE.welcome).toBe(UI_Z_INDEX_APP_COMPAT.dialog)
-        // 缩放热区「角」与命令面板同层 = 应用内最高层；「边」= resize - 1 = 9999（原值）
         expect(UI_Z_INDEX_APP_BASE.resize).toBe(UI_Z_INDEX_APP_COMPAT.commandPalette)
-        expect(UI_Z_INDEX_APP_BASE.resize).toBeGreaterThan(UI_Z_INDEX_APP_COMPAT.dialog)
-        expect(UI_Z_INDEX_APP_BASE.resize - 1).toBe(UI_Z_INDEX_APP_COMPAT.dialog)
-        // 写作模式恒低于对话框/工具窗（原语义：写作模式上的弹窗必须可见）
+        // 严格小于关系保持：写作模式 < 对话框（其上弹窗可见）；对话框 < 命令面板 / 缩放热区
         expect(UI_Z_INDEX_APP_BASE.writingMode).toBeLessThan(UI_Z_INDEX_APP_COMPAT.dialog)
-        // 欢迎页内部窗口控制条 = welcome + 1（原 10000），仅在本层 stacking context 内排序
-        expect(UI_Z_INDEX_APP_BASE.welcome + 1).toBe(UI_Z_INDEX_APP_BASE.resize)
+        expect(UI_Z_INDEX_APP_COMPAT.commandPalette).toBeGreaterThan(UI_Z_INDEX_APP_COMPAT.dialog)
+        // 应用层整体高于语义阶梯（旧值 3000/9999/10000 远大于 0~80，关系一致）
+        for (const value of [
+            UI_Z_INDEX_APP_BASE.writingMode,
+            UI_Z_INDEX_APP_BASE.welcome,
+            UI_Z_INDEX_APP_BASE.resize,
+            UI_Z_INDEX_APP_COMPAT.dialog,
+            UI_Z_INDEX_APP_COMPAT.commandPalette
+        ]) {
+            expect(value).toBeGreaterThan(UI_Z_INDEX_TOKENS.guide)
+        }
+        // 相对阶梯口径：应用层 = 100 起、10 一档（同档允许同值：对话框/欢迎页、命令面板/缩放热区）
+        expect([
+            UI_Z_INDEX_APP_BASE.writingMode,
+            UI_Z_INDEX_APP_COMPAT.dialog,
+            UI_Z_INDEX_APP_COMPAT.commandPalette
+        ]).toEqual([100, 110, 120])
     })
 
-    it('ui-style.css :root 声明三个基座变量，值与 UI_Z_INDEX_APP_BASE 逐项一致（单一真源）', () => {
+    it('组内派生值落在相对阶梯档位之间，且不改变局部排序 / 边缘命中关系', () => {
+        // 欢迎页控制条 = welcome + 1 = 111（仅在 .welcome-screen 独立层叠上下文内排序）
+        expect(UI_Z_INDEX_APP_BASE.welcome + 1).toBe(111)
+        expect(UI_Z_INDEX_APP_BASE.welcome + 1).toBeLessThan(UI_Z_INDEX_APP_BASE.resize)
+        // 缩放热区「边」= resize - 1 = 119：恒低于「角」120 与命令面板 120，高于对话框遮罩 110
+        expect(UI_Z_INDEX_APP_BASE.resize - 1).toBe(119)
+        expect(UI_Z_INDEX_APP_BASE.resize - 1).toBeLessThan(UI_Z_INDEX_APP_BASE.resize)
+        expect(UI_Z_INDEX_APP_BASE.resize - 1).toBeGreaterThan(UI_Z_INDEX_APP_COMPAT.dialog)
+        expect(UI_Z_INDEX_APP_BASE.resize - 1).toBeLessThan(UI_Z_INDEX_APP_COMPAT.commandPalette)
+    })
+
+    it('ui-style.css :root 声明五个应用层变量，值与常量逐项一致（单一真源）', () => {
         const source = readSource(UI_STYLE_CSS_FILE)
         expect(source).toContain(`--ui-z-welcome-app: ${UI_Z_INDEX_APP_BASE.welcome};`)
         expect(source).toContain(`--ui-z-resize-app: ${UI_Z_INDEX_APP_BASE.resize};`)
         expect(source).toContain(`--ui-z-writing-mode-app: ${UI_Z_INDEX_APP_BASE.writingMode};`)
+        expect(source).toContain(`--ui-z-dialog-app: ${UI_Z_INDEX_APP_COMPAT.dialog};`)
+        expect(source).toContain(`--ui-z-palette-app: ${UI_Z_INDEX_APP_COMPAT.commandPalette};`)
     })
 
     it('三个基座组件不再出现 9999 / 10000 / 3000 裸值（样式声明级）', () => {
@@ -148,7 +181,7 @@ describe('P2 遗留项 4 z-index 应用层基座迁移', () => {
         }
     })
 
-    it('欢迎页：全屏层消费 --ui-z-welcome-app，内部控制条 = welcome + 1（原 10000）', () => {
+    it('欢迎页：全屏层消费 --ui-z-welcome-app，内部控制条 = welcome + 1', () => {
         const css = stripComments(readSource(WELCOME_SCREEN))
         expect(css).toMatch(/\.welcome-screen\s*\{[\s\S]*?z-index:\s*var\(--ui-z-welcome-app\);/)
         expect(css).toMatch(
@@ -156,7 +189,7 @@ describe('P2 遗留项 4 z-index 应用层基座迁移', () => {
         )
     })
 
-    it('宿主窗口：缩放热区「角」= --ui-z-resize-app，「边」= resize - 1（原 10000 / 9999）', () => {
+    it('宿主窗口：缩放热区「角」= --ui-z-resize-app，「边」= resize - 1（相对阶梯 120 / 119）', () => {
         const css = stripComments(readSource(HOST_SHELL))
         expect(css).toMatch(
             /\.resize-edge\s*\{[\s\S]*?z-index:\s*calc\(var\(--ui-z-resize-app\)\s*-\s*1\);/
@@ -164,14 +197,14 @@ describe('P2 遗留项 4 z-index 应用层基座迁移', () => {
         expect(css).toMatch(/\.resize-corner\s*\{[\s\S]*?z-index:\s*var\(--ui-z-resize-app\);/)
     })
 
-    it('写作模式：全屏层消费 --ui-z-writing-mode-app（原 3000，恒低于对话框）', () => {
+    it('写作模式：全屏层消费 --ui-z-writing-mode-app（相对阶梯 100，恒低于对话框）', () => {
         const css = stripComments(readSource(WRITING_MODE_HOST))
         expect(css).toMatch(
             /\.writing-mode-host\s*\{[\s\S]*?z-index:\s*var\(--ui-z-writing-mode-app\);/
         )
     })
 
-    it('渲染层不再有组件直接写 9999 / 10000 / 3000 的 z-index 裸值（全局静态护栏）', () => {
+    it('渲染层不再有组件直接写 z-index 大数值裸值（全局静态护栏）', () => {
         const offenders: string[] = []
         for (const file of walkFiles(RENDERER, ['.vue', '.css'])) {
             const css = stripComments(readSource(file))
@@ -180,6 +213,87 @@ describe('P2 遗留项 4 z-index 应用层基座迁移', () => {
             }
         }
         expect(offenders).toEqual([])
+    })
+})
+
+// =============================================================================================
+// 1.5.6 REQ-14：glass 弱效果增强（不启用整窗 backdrop-filter，只增强非模糊参数）
+// 「平坦背景可感知」= 低透明度面（透出窗口主题光斑）+ 高光边（inset 白高光线 / 光斑强度放大）
+// =============================================================================================
+
+describe('REQ-14 glass 弱效果增强（平坦背景可感知 + 其它风格与降级档不受影响）', () => {
+    const UI_STYLE_CSS_FILE = path.join(RENDERER, 'styles', 'ui-style.css')
+    const HOST_SHELL = path.join(COMPONENTS, 'BaiZeNotes.vue')
+
+    /** 取 CSS 中某选择器块的声明文本（第一个 `选择器 {` 起至首个 `}`） */
+    function ruleBlock(source: string, selectorLine: string): string {
+        const start = source.indexOf(selectorLine)
+        expect(start, `ui-style.css 缺少 ${selectorLine}`).toBeGreaterThanOrEqual(0)
+        const end = source.indexOf('}', start)
+        return source.slice(start, end)
+    }
+
+    it('glass 参数档：低透明度面 0.72 + 高光边 0.30；模糊半径保持 8px（性能不回归）', () => {
+        expect(UI_STYLE_TOKENS.glass.surfaceOpacity).toBe(0.72)
+        expect(UI_STYLE_TOKENS.glass.highlightBorderAlpha).toBe(0.3)
+        expect(UI_STYLE_TOKENS.glass.surfaceBlur).toBe(8)
+        // 可感知三要素（静态可断言部分）：不透明度 < 1、高光边 alpha > 0、内容区材质联动
+        expect(UI_STYLE_TOKENS.glass.surfaceOpacity).toBeLessThan(1)
+        expect(UI_STYLE_TOKENS.glass.highlightBorderAlpha).toBeGreaterThan(0.2)
+        const source = readSource(UI_STYLE_CSS_FILE)
+        const glass = ruleBlock(source, "[data-style='glass'] {")
+        expect(glass).toContain('--ui-surface-opacity: 0.72;')
+        expect(glass).toContain('--ui-highlight-border-alpha: 0.3;')
+        expect(glass).toContain('--ui-surface-blur: 8px;')
+        // 内容区材质 = glass（单令牌联动，同样低透明度），hybrid 内容区纸感不受影响
+        expect(glass).toContain('--ui-content-surface-opacity: 0.72;')
+        expect(UI_CONTENT_MATERIAL.glass).toBe('glass')
+        expect(UI_CONTENT_MATERIAL.hybrid).toBe('paper')
+    })
+
+    it('平坦背景可感知实现链：窗口主题光斑强度由高光边令牌派生，增强直接放大可感知度', () => {
+        const shell = stripComments(readSource(HOST_SHELL))
+        // 玻璃强度 = 高光边 alpha 令牌（glass 0.30 / steady 0.10 / 其余 0）
+        expect(shell).toContain('--bz-glass-alpha: var(--ui-highlight-border-alpha, 0)')
+        // 窗口背景两处径向光斑 + 低饱和薄雾消费该强度（alpha 提升 → 平坦底色上出现可见渐变）
+        expect(shell).toMatch(/radial-gradient\([\s\S]*?var\(--bz-glass-alpha, 0\)/)
+        expect(shell).toContain('calc(var(--bz-glass-alpha, 0) * 55%)')
+        expect(shell).toContain('calc(var(--bz-glass-alpha, 0) * 28%)')
+        // 壳层表面半透明由不透明度令牌派生（0.72 → 透出上述光斑）
+        expect(shell).toContain('calc(var(--ui-surface-opacity, 1) * 100%)')
+        // 高光边同时是消费方 inset 白高光线的强度（inset box-shadow），且不启用整窗模糊
+        expect(shell).toMatch(
+            /inset 0 1px 0 rgba\(255, 255, 255, var\(--ui-highlight-border-alpha, 0\)\)/
+        )
+        expect(shell).not.toContain('backdrop-filter')
+        // 1.5.6 起部分消费方统一走 content-tokens.css 的派生高光色（白基色 × alpha，随增强放大）
+        const derivedTokensFile = path.join(RENDERER, 'styles', 'content-tokens.css')
+        if (fs.existsSync(derivedTokensFile)) {
+            const derived = stripComments(readSource(derivedTokensFile))
+            expect(derived).toContain('--ui-highlight-border-color')
+            expect(derived).toContain('var(--ui-highlight-border-alpha')
+        }
+    })
+
+    it('纸感 / 混合 / 工作台与降级档不受本批影响（改动只在 glass 常规档）', () => {
+        const source = readSource(UI_STYLE_CSS_FILE)
+        for (const style of ['paper', 'workbench', 'hybrid'] as const) {
+            const block = ruleBlock(source, `[data-style='${style}'] {`)
+            expect(block, style).toContain('--ui-surface-opacity: 1;')
+            expect(block, style).toContain('--ui-highlight-border-alpha: 0;')
+            expect(block, style).toContain('--ui-surface-blur: 0px;')
+            expect(UI_STYLE_TOKENS[style].surfaceOpacity, style).toBe(1)
+            expect(UI_STYLE_TOKENS[style].highlightBorderAlpha, style).toBe(0)
+        }
+        // 深色 steady：0.94 + 关模糊 + 高光 0.10（降级规则不随增强漂移）
+        const steady = ruleBlock(source, "[data-style='glass'][data-glass-mode='steady'] {")
+        expect(steady).toContain('--ui-surface-opacity: 0.94;')
+        expect(steady).toContain('--ui-surface-blur: 0px;')
+        expect(steady).toContain('--ui-highlight-border-alpha: 0.1;')
+        // 减少透明兜底（CSS 兜底路径）：回退不透明、无高光
+        const reduced = ruleBlock(source, "[data-style='glass'][data-transparency='reduced'] {")
+        expect(reduced).toContain('--ui-surface-opacity: 1;')
+        expect(reduced).toContain('--ui-highlight-border-alpha: 0;')
     })
 })
 
@@ -350,7 +464,8 @@ describe('T13 paper/hybrid 写作模式正文纸感版式', () => {
 
 // =============================================================================================
 // T14 图标统一：24 网格 / stroke 1.5 / currentColor / 16-20-24 三档
-// + 图标资产引用守卫（34 个占位圆已删 / 20 个历史零引用冻结）+ MDI fill 型例外与 12 类 emoji 替换
+// + 图标资产引用守卫（34 个占位圆 + 20 个历史零引用功能图标均已删除，assets/icons 只剩 3 个品牌）
+// + MDI fill 型例外与 12 类 emoji 替换
 // =============================================================================================
 
 describe('T14 图标统一', () => {
@@ -380,32 +495,33 @@ describe('T14 图标统一', () => {
         }
     })
 
-    it('品牌大图标（512 网格）与功能图标（24 网格）分档：assets/icons 固定 23 个资产（20 功能 + 3 品牌）', () => {
+    it('品牌大图标（512 网格）与内联功能图标（24 网格）分档：assets/icons 固定 3 个品牌资产', () => {
         const iconsDir = path.join(RENDERER, 'assets', 'icons')
         const svgFiles = walkFiles(iconsDir, ['.svg'])
-        // P2 T14 遗留项 5：34 个未引用「占位圆」已删除（dark/light 各 17），剩余 20 个 24 网格
-        // 功能图标 + 3 个 512 网格品牌文件；资产数冻结，增删资产必须同步本断言与 COMPONENTS.md §8。
-        expect(svgFiles.length).toBe(23)
-        const largeGrid: string[] = []
-        for (const file of svgFiles) {
-            const source = readSource(file)
-            const viewBox = /viewBox="([^"]+)"/.exec(source)?.[1]
-            expect(viewBox, `缺少 viewBox: ${file}`).toBeTruthy()
-            // 图标只允许两种网格：功能图标 24 / 品牌大图标 512
-            expect(['0 0 24 24', '0 0 512 512'], `viewBox: ${file}`).toContain(viewBox)
-            if (viewBox === '0 0 512 512') {
-                largeGrid.push(path.basename(file))
-            }
-        }
-        // 三个品牌/logo 文件使用 512 网格（logo-baize-dark-A-ultra / logo-baize-light-A-large /
-        // baize_mirror_dark），属「不得按 24 功能图标网格重绘」的例外，已在 P2-VERIFICATION 记录
-        expect(largeGrid.sort()).toEqual(
+        // P2 T14 遗留项 5：34 个未引用「占位圆」已删除（dark/light 各 17）；
+        // 1.5.6 REQ-15：20 个历史零引用 24 网格功能图标（html-convert / import-export / katex /
+        // live-preview / md-edit / mermaid / multi-cursor / multi-format / search / theme-switch
+        // × dark/light）因「编辑器功能语义与 38 项插件工具不匹配 + 写死双主题颜色无法消费
+        // currentColor/--ui-* 令牌」全部删除 → 目录只剩 3 个 512 网格品牌文件。
+        // 功能图标不再以资产文件形式存在：统一为组件内联 SVG（24 网格 / stroke 1.5 / currentColor）。
+        const iconFileNames = svgFiles.map((file) => path.basename(file)).sort()
+        expect(iconFileNames).toEqual(
             [
                 'baize_mirror_dark.svg',
                 'logo-baize-dark-A-ultra.svg',
                 'logo-baize-light-A-large.svg'
             ].sort()
         )
+        for (const file of svgFiles) {
+            const source = readSource(file)
+            const viewBox = /viewBox="([^"]+)"/.exec(source)?.[1]
+            expect(viewBox, `品牌资产应为 512 网格: ${file}`).toBe('0 0 512 512')
+        }
+        // 反回归：资产目录不得再引入 24 网格功能图标文件（功能图标只允许内联 SVG）
+        const grid24Files = svgFiles.filter((file) =>
+            readSource(file).includes('viewBox="0 0 24 24"')
+        )
+        expect(grid24Files.map((file) => path.relative(ROOT, file))).toEqual([])
     })
 
     it('assets/icons 不得再出现「占位圆」资产（单 circle + stroke-width 2 + 无 path）', () => {
@@ -423,55 +539,20 @@ describe('T14 图标统一', () => {
         expect(placeholders.map((file) => path.relative(ROOT, file))).toEqual([])
     })
 
-    it('assets/icons 不得引入未引用资产：新资产必须被 src 引用（20 个历史零引用仅冻结待后续）', () => {
+    it('assets/icons 不得存在未引用资产：目录内每个 SVG 必须在渲染层源码被静态引用', () => {
         const iconsDir = path.join(RENDERER, 'assets', 'icons')
-        // 遗留项 5 只删除 34 个占位圆；以下 20 个 24 网格功能图标当前仍零静态引用
-        // （P2-VERIFICATION §4.5 记录的历史存量），冻结为「只减不增」清单：
-        // 新增资产必须被 src 引用；本清单只允许在后续批次删除资产时同步收缩。
-        const FROZEN_UNREFERENCED = new Set([
-            'icon-html-convert.svg',
-            'icon-html-convert-light.svg',
-            'icon-import-export.svg',
-            'icon-import-export-light.svg',
-            'icon-katex.svg',
-            'icon-katex-light.svg',
-            'icon-live-preview.svg',
-            'icon-live-preview-light.svg',
-            'icon-md-edit.svg',
-            'icon-md-edit-light.svg',
-            'icon-mermaid.svg',
-            'icon-mermaid-light.svg',
-            'icon-multi-cursor.svg',
-            'icon-multi-cursor-light.svg',
-            'icon-multi-format.svg',
-            'icon-multi-format-light.svg',
-            'icon-search.svg',
-            'icon-search-light.svg',
-            'icon-theme-switch.svg',
-            'icon-theme-switch-light.svg'
-        ])
         const svgFiles = walkFiles(iconsDir, ['.svg'])
-        const assetNames = new Set(svgFiles.map((file) => path.basename(file)))
-        // 冻结清单只减不增：清单内每个文件必须仍存在（删除资产后必须同步收缩清单）
-        for (const frozen of FROZEN_UNREFERENCED) {
-            expect(assetNames.has(frozen), `冻结清单已失效，请同步收缩: ${frozen}`).toBe(true)
-        }
+        // 引用为唯一准入（COMPONENTS.md §8.3）：没有冻结例外清单——新增资产必须被 src 引用，
+        // 否则本断言失败；REQ-15 已把历史 20 个零引用功能图标删除，此语义不再有豁免。
+        expect(svgFiles.length).toBe(3)
         // 引用判定（静态可实现的弱守卫）：资产文件名（不含 .svg）出现在渲染层源码中即视为被引用。
         // 严格的 import 语法级校验见 out/tmp/scan-unreferenced-icons.mjs（本批证据脚本）。
         const rendererSource = walkFiles(RENDERER, ['.ts', '.vue', '.json', '.css'])
             .map(readSource)
             .join('\n')
-        const unreferenced: string[] = []
-        for (const file of svgFiles) {
-            const name = path.basename(file)
-            if (
-                rendererSource.includes(name.replace(/\.svg$/, '')) ||
-                FROZEN_UNREFERENCED.has(name)
-            ) {
-                continue
-            }
-            unreferenced.push(path.relative(ROOT, file))
-        }
+        const unreferenced = svgFiles
+            .filter((file) => !rendererSource.includes(path.basename(file).replace(/\.svg$/, '')))
+            .map((file) => path.relative(ROOT, file))
         expect(unreferenced).toEqual([])
     })
 

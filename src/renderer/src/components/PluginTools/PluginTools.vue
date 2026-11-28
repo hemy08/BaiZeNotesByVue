@@ -309,71 +309,150 @@
                     :data-plugin-tool-section="section.key"
                 >
                     <h2 class="plugin-tool-section-title">{{ section.title }}</h2>
+                    <!--
+                        REQ-06：`全部工具` 分区按 8 个分类分组渲染（收藏/最近/搜索结果仍为单一平铺列表）。
+                        - 分类标题行 = 分类图标 + 分类名 + 折叠箭头（整行按钮，aria-expanded）；
+                        - 折叠状态持久化到 localStorage（baize:plugin-tools:collapsed-groups）；
+                        - 折叠只隐藏行（v-show），不卸载 DOM：搜索过滤/键盘高亮/收藏状态零回归。
+                    -->
                     <ul class="plugin-tool-list">
                         <li
-                            v-for="(tool, index) in section.tools"
-                            :key="`${section.key}-${tool.actionId}`"
-                            class="plugin-tool-item"
+                            v-for="group in sectionGroups(section)"
+                            :key="`${section.key}-${group.sectionId || 'flat'}`"
+                            class="plugin-tool-group"
                             :class="{
-                                'plugin-tool-item--active': isActiveSearchItem(tool)
+                                'plugin-tool-group--collapsed': isGroupCollapsed(group.sectionId)
                             }"
-                            :data-tool-action-id="tool.actionId"
+                            :data-plugin-tool-group="group.sectionId || undefined"
+                            :data-plugin-tool-group-collapsed="
+                                group.sectionId
+                                    ? String(isGroupCollapsed(group.sectionId))
+                                    : undefined
+                            "
                         >
-                            <button
-                                class="plugin-tool-item-main"
-                                type="button"
-                                @click="openTool(tool.actionId)"
-                                @mouseenter="handleToolItemHover(index)"
-                            >
-                                <svg
-                                    class="plugin-tool-item-icon"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.5"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    aria-hidden="true"
-                                    focusable="false"
+                            <h3 v-if="group.sectionId" class="plugin-tool-group-title">
+                                <button
+                                    class="plugin-tool-group-toggle"
+                                    type="button"
+                                    :aria-expanded="!isGroupCollapsed(group.sectionId)"
+                                    :aria-controls="groupListId(group.sectionId)"
+                                    :title="groupToggleTitle(group.sectionId)"
+                                    @click="toggleGroupCollapsed(group.sectionId)"
                                 >
-                                    <path
-                                        v-for="(iconPath, iconIndex) in tool.iconPaths"
-                                        :key="iconIndex"
-                                        :d="iconPath"
-                                    />
-                                </svg>
-                                <span class="plugin-tool-item-name">{{ tool.name }}</span>
-                                <span v-if="tool.category" class="plugin-tool-item-category">
-                                    {{ tool.category }}
-                                </span>
-                            </button>
-                            <button
-                                class="plugin-tool-item-favorite"
-                                :class="{
-                                    'plugin-tool-item-favorite--active': isFavorite(tool.actionId)
-                                }"
-                                type="button"
-                                :aria-pressed="isFavorite(tool.actionId)"
-                                :aria-label="favoriteButtonLabel(tool.actionId)"
-                                :title="favoriteButtonLabel(tool.actionId)"
-                                @click.stop="toggleFavorite(tool.actionId)"
+                                    <svg
+                                        class="plugin-tool-group-icon"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        aria-hidden="true"
+                                        focusable="false"
+                                    >
+                                        <path
+                                            v-for="(iconPath, iconIndex) in getPluginToolIconPaths(
+                                                group.sectionId
+                                            )"
+                                            :key="iconIndex"
+                                            :d="iconPath"
+                                        />
+                                    </svg>
+                                    <span class="plugin-tool-group-name">{{ group.title }}</span>
+                                    <svg
+                                        class="plugin-tool-group-chevron"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        aria-hidden="true"
+                                        focusable="false"
+                                    >
+                                        <path d="M6 9l6 6 6-6" />
+                                    </svg>
+                                </button>
+                            </h3>
+                            <ul
+                                v-show="!isGroupCollapsed(group.sectionId)"
+                                :id="group.sectionId ? groupListId(group.sectionId) : undefined"
+                                class="plugin-tool-list plugin-tool-group-list"
                             >
-                                <svg
-                                    class="plugin-tool-item-favorite-icon"
-                                    viewBox="0 0 24 24"
-                                    :fill="isFavorite(tool.actionId) ? 'currentColor' : 'none'"
-                                    stroke="currentColor"
-                                    stroke-width="1.5"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    aria-hidden="true"
-                                    focusable="false"
+                                <li
+                                    v-for="(tool, index) in group.tools"
+                                    :key="`${section.key}-${tool.actionId}`"
+                                    class="plugin-tool-item"
+                                    :class="{
+                                        'plugin-tool-item--active': isActiveSearchItem(tool)
+                                    }"
+                                    :data-tool-action-id="tool.actionId"
                                 >
-                                    <path
-                                        d="M12 3.6l2.6 5.4 5.9.9-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.9l5.9-.9L12 3.6z"
-                                    />
-                                </svg>
-                            </button>
+                                    <button
+                                        class="plugin-tool-item-main"
+                                        type="button"
+                                        @click="openTool(tool.actionId)"
+                                        @mouseenter="handleToolItemHover(index)"
+                                    >
+                                        <!-- REQ-06：每工具 24 网格线框图标（currentColor，随 --ui-* 令牌） -->
+                                        <svg
+                                            class="plugin-tool-item-icon"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.5"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            aria-hidden="true"
+                                            focusable="false"
+                                        >
+                                            <path
+                                                v-for="(iconPath, iconIndex) in tool.iconPaths"
+                                                :key="iconIndex"
+                                                :d="iconPath"
+                                            />
+                                        </svg>
+                                        <span class="plugin-tool-item-name">{{ tool.name }}</span>
+                                        <span
+                                            v-if="tool.category"
+                                            class="plugin-tool-item-category"
+                                        >
+                                            {{ tool.category }}
+                                        </span>
+                                    </button>
+                                    <button
+                                        class="plugin-tool-item-favorite"
+                                        :class="{
+                                            'plugin-tool-item-favorite--active': isFavorite(
+                                                tool.actionId
+                                            )
+                                        }"
+                                        type="button"
+                                        :aria-pressed="isFavorite(tool.actionId)"
+                                        :aria-label="favoriteButtonLabel(tool.actionId)"
+                                        :title="favoriteButtonLabel(tool.actionId)"
+                                        @click.stop="toggleFavorite(tool.actionId)"
+                                    >
+                                        <svg
+                                            class="plugin-tool-item-favorite-icon"
+                                            viewBox="0 0 24 24"
+                                            :fill="
+                                                isFavorite(tool.actionId) ? 'currentColor' : 'none'
+                                            "
+                                            stroke="currentColor"
+                                            stroke-width="1.5"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            aria-hidden="true"
+                                            focusable="false"
+                                        >
+                                            <path
+                                                d="M12 3.6l2.6 5.4 5.9.9-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.9l5.9-.9L12 3.6z"
+                                            />
+                                        </svg>
+                                    </button>
+                                </li>
+                            </ul>
                         </li>
                     </ul>
                 </section>
@@ -393,17 +472,24 @@ import { t } from '../../common/i18n'
 import { logger } from '../../common/logger'
 import { pluginTools } from './plugin-tools-const'
 import {
+    PLUGIN_TOOL_SECTION_IDS,
+    PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY,
     PLUGIN_TOOLS_FAVORITES_LIMIT,
     PLUGIN_TOOLS_FAVORITES_STORAGE_KEY,
     PLUGIN_TOOLS_RECENT_LIMIT,
     PLUGIN_TOOLS_RECENT_STORAGE_KEY,
+    getPluginToolIconPaths,
+    getPluginToolSectionLabelKey,
+    groupPluginToolEntriesBySection,
     readPluginToolIds,
     recordRecentPluginToolId,
     resolvePluginToolSearchEntries,
     searchPluginTools,
+    toggleCollapsedPluginToolGroup,
     toggleFavoritePluginToolId,
     writePluginToolIds,
     type PluginToolSearchEntry,
+    type PluginToolSectionGroup,
     type PluginToolsStorageLike
 } from './plugin-tools-search'
 
@@ -416,6 +502,16 @@ const props = defineProps({
         default: '100%'
     }
 })
+
+/**
+ * REQ-12：面板折叠状态上抛给工作区（父组件 WorkSpace）。
+ * 选择 Props/emit（父子直连）而非新增 EventBus 事件：不产生跨组件契约条目、不涉及 IPC，
+ * 事件本身由「PluginTools emit ↔ WorkSpace 监听」两侧单测锁定（tool-window-controls /
+ * workspace-shell）；WorkSpace 收到 minimized=true 时收起插件区域空白、让编辑器可见。
+ */
+const emit = defineEmits<{
+    (event: 'window-state-change', minimized: boolean): void
+}>()
 
 let isShowPluginToolsContainer = false
 
@@ -652,6 +748,84 @@ const discoverySections = computed<PluginToolSectionView[]>(() => {
     return sections
 })
 
+// ==================== REQ-06 分类折叠（8 分组，状态持久化） ====================
+/**
+ * 已折叠的分类 id（如 `['encrypt','net']`）：读取容错（JSON 损坏/旧分类 id → 自动过滤），
+ * 只落本机 localStorage；写入失败降级为本次会话内存生效（与最近使用/收藏同一错误策略）。
+ */
+const collapsedGroupIds = ref<string[]>(
+    readPluginToolIds(pluginToolsStorage, PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY, {
+        validIds: new Set(PLUGIN_TOOL_SECTION_IDS)
+    })
+)
+
+/** 分组视图（sectionId + 分类标题；标题随语言切换由 computed 重算） */
+interface PluginToolGroupView extends PluginToolSectionGroup {
+    readonly title: string
+}
+
+/** 分类标题：已知分类取菜单分组词条；未知分类回退「分类路径末级 → 分区 id」，不出现空标题 */
+function resolvePluginToolGroupTitle(group: PluginToolSectionGroup): string {
+    const labelKey = getPluginToolSectionLabelKey(group.sectionId)
+    if (labelKey) {
+        return t(labelKey)
+    }
+    const firstEntry = group.tools[0]
+    return firstEntry?.categoryPath[firstEntry.categoryPath.length - 1] ?? group.sectionId
+}
+
+/** 「全部工具」的 8 分类分组（收藏/最近/搜索结果仍为平铺列表，不分折叠） */
+const allToolGroups = computed<PluginToolGroupView[]>(() =>
+    groupPluginToolEntriesBySection(searchEntries.value).map((group) => ({
+        ...group,
+        title: resolvePluginToolGroupTitle(group)
+    }))
+)
+
+/** 分区渲染分组：`全部工具` → 8 分类分组；其余分区 → 单一平铺伪分组（sectionId 为空串、无标题行） */
+function sectionGroups(section: PluginToolSectionView): PluginToolGroupView[] {
+    if (section.key === 'all') {
+        return allToolGroups.value
+    }
+    return [{ sectionId: '', title: '', tools: section.tools }]
+}
+
+/** 某分类是否处于折叠态（空 sectionId 的伪分组恒为展开） */
+function isGroupCollapsed(sectionId: string): boolean {
+    return sectionId.length > 0 && collapsedGroupIds.value.includes(sectionId)
+}
+
+/** 分组列表容器 id（折叠按钮 aria-controls 目标；同屏仅「全部工具」分区带分组，id 唯一） */
+function groupListId(sectionId: string): string {
+    return `plugin-tool-group-list-${sectionId}`
+}
+
+/** 折叠/展开按钮 title（可访问名由可见分类名 + aria-expanded 承载，title 仅作鼠标提示） */
+function groupToggleTitle(sectionId: string): string {
+    return isGroupCollapsed(sectionId)
+        ? t('toolsNetwork.pluginTools.expandGroup')
+        : t('toolsNetwork.pluginTools.collapseGroup')
+}
+
+/** 折叠切换 + 持久化（纯函数计算新清单，组件只负责存储降级提示） */
+function toggleGroupCollapsed(sectionId: string): void {
+    if (sectionId.length === 0) {
+        return
+    }
+    collapsedGroupIds.value = toggleCollapsedPluginToolGroup(collapsedGroupIds.value, sectionId)
+    if (
+        !writePluginToolIds(
+            pluginToolsStorage,
+            PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY,
+            collapsedGroupIds.value
+        )
+    ) {
+        warnStorageFailureOnce(
+            '[插件工具] 分类折叠状态写入 localStorage 失败（本次会话内存内生效）'
+        )
+    }
+}
+
 function isFavorite(actionId: string): boolean {
     return favoriteIds.value.includes(actionId)
 }
@@ -879,6 +1053,8 @@ function handlePluginSearchShow(): void {
 
 // 最小化态搜索不可用：折叠时清空搜索并收起结果（搜索框随 v-if 卸载，含 Tab 次序）
 watch(isMinimized, (minimized) => {
+    // REQ-12：把折叠状态交给父组件（WorkSpace 收起插件区域空白、让编辑器可见）
+    emit('window-state-change', minimized)
     if (minimized) {
         clearSearch()
     }
@@ -1250,6 +1426,85 @@ function applyThemeStyles() {
     margin: 0;
     padding: 0;
     list-style: none;
+}
+
+/* ==================== 8 分类分组（REQ-06：可折叠，状态持久） ==================== */
+/* 分组 = 标题行（分类图标 + 分类名 + 折叠箭头）+ 工具行列表；颜色/圆角/焦点环全部消费 --ui-* 令牌 */
+.plugin-tool-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.plugin-tool-group-title {
+    margin: 0;
+    padding: 0;
+    font-size: var(--ui-font-size, 13px);
+    font-weight: 600;
+}
+
+.plugin-tool-group-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    border-radius: var(--ui-radius-md, 4px);
+    background: transparent;
+    color: var(--ui-text-secondary, var(--theme-secondary-text-color));
+    font-family: inherit;
+    font-size: var(--ui-font-size, 13px);
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        box-shadow var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+.plugin-tool-group-toggle:hover {
+    background: var(--ui-accent-soft, var(--theme-hover-background));
+    color: var(--ui-text, var(--theme-text-color));
+}
+
+.plugin-tool-group-toggle:focus-visible {
+    outline: none;
+    box-shadow: var(--ui-focus-shadow);
+}
+
+.plugin-tool-group-icon {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    color: var(--ui-text-tertiary, var(--theme-secondary-text-color));
+}
+
+.plugin-tool-group-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* 折叠箭头：展开时朝下，折叠时旋转 -90° 朝右（仅图标动画，行本身 v-show 隐藏） */
+.plugin-tool-group-chevron {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    transition: transform var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+.plugin-tool-group--collapsed .plugin-tool-group-chevron {
+    transform: rotate(-90deg);
+}
+
+/* 分组内工具列表：与平铺列表同一套行样式（嵌套 ul 重置默认缩进/标记） */
+.plugin-tool-group-list {
+    padding-left: 0;
 }
 
 .plugin-tool-item {

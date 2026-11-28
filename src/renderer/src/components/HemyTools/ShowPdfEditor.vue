@@ -946,7 +946,7 @@ watch(annotationsEnabled, (enabled) => {
     font-size: 12px;
     min-width: 50px;
     text-align: center;
-    color: var(--theme-text-secondary, #757575);
+    color: var(--theme-text-secondary);
 }
 
 /* 标注工具栏按钮激活态（列表展开时） */
@@ -1081,7 +1081,7 @@ watch(annotationsEnabled, (enabled) => {
     gap: 8px;
     padding: 8px 12px;
     border-bottom: 1px solid var(--theme-border-color);
-    background-color: var(--theme-toolbar-background, #f5f5f5);
+    background-color: var(--theme-toolbar-background);
 }
 
 .pdf-annotation-panel-title {
@@ -1104,7 +1104,7 @@ watch(annotationsEnabled, (enabled) => {
     padding: 16px;
     font-size: 12px;
     line-height: 1.6;
-    color: var(--theme-text-secondary, #757575);
+    color: var(--theme-text-secondary);
 }
 
 .pdf-annotation-panel-empty {
@@ -1174,7 +1174,7 @@ watch(annotationsEnabled, (enabled) => {
     flex-wrap: wrap;
     gap: 8px;
     font-size: 12px;
-    color: var(--theme-text-secondary, #757575);
+    color: var(--theme-text-secondary);
 }
 
 .pdf-annotation-time {
@@ -1204,7 +1204,7 @@ watch(annotationsEnabled, (enabled) => {
 }
 
 .pdf-annotation-action-danger:hover:not(:disabled) {
-    color: var(--theme-error-color, #d32f2f);
-    border-color: var(--theme-error-color, #d32f2f);
+    color: var(--theme-error-color);
+    border-color: var(--theme-error-color);
 }
 </style>

@@ -11,7 +11,10 @@
  *    （`--ui-content-*`）令牌 —— hybrid 双材质边界由此成立：外壳 = workbench、内容区 = paper；
  * 3. 组件内不得出现 data-style / data-density 分支或读取用户外观设置（唯一入口 useTheme）；
  * 4. 禁止整窗 backdrop-filter（glass 性能约束）、禁止新增硬编码主题色（既有遗留值白名单）；
- * 5. 窗口缩放热区层级走应用层命名令牌 `--ui-z-resize-app`（P2 遗留项 4，不再写裸值 9999/10000）。
+ * 5. 窗口缩放热区层级走应用层相对阶梯令牌 `--ui-z-resize-app`（1.5.6 P2-E：相对阶梯 120；
+ *    「边」= resize−1 = 119，不再写裸值 9999/10000）；
+ * 6. 1.5.6 REQ-14 glass 弱效果增强：低透明度面 0.72 + 高光边 0.30 经既有派生链路（壳层表面 /
+ *    窗口径向光斑）生效，不新增组件分支、不启用整窗模糊。
  *
  * 真实 Electron 真机截图（4 风格主窗口两两不同 + 默认 workbench 基线不变）由
  * `e2e/visual-matrix.spec.ts` 的 `assertStyleVariantsDiffer` 硬断言保证。
@@ -43,8 +46,8 @@ const LEGACY_HEX_COLORS: Record<keyof typeof SOURCE_FILES, readonly string[]> = 
     // 标题栏既有白字/白描边（color-mix 的 100% 混合端保持不变）
     shell: ['#fff'],
     statusBar: [],
-    // 异步占位文字的历史兜底色（既有规则）
-    workspace: ['#757575'],
+    // 1.5.6：异步占位文字兜底 #757575 已由 content-tokens.css 的 --theme-text-secondary 等值替代
+    workspace: [],
     // 导航图标既有品牌色 + 白字
     naviTab: ['#fff', '#fe9803', '#ffc10a', '#986801'],
     resourceManager: []
@@ -97,9 +100,9 @@ describe('壳层材质派生（BaiZeNotes.vue）：只从 P0 冻结令牌计算�
         expect(shellBlock).toContain(
             '--bz-content-ratio: calc((var(--ui-content-radius-lg, 6px) - 6px) / 1px)'
         )
-        // 玻璃强度 = 高光边 alpha 令牌（glass 0.14 / steady 0.10 / 其余 0）
+        // 玻璃强度 = 高光边 alpha 令牌（glass 0.30 / steady 0.10 / 其余 0；REQ-14 增强档）
         expect(shellBlock).toContain('--bz-glass-alpha: var(--ui-highlight-border-alpha, 0)')
-        // 壳层表面 = 悬浮面底 × 不透明度（glass 0.86 半透明）
+        // 壳层表面 = 悬浮面底 × 不透明度（glass 0.72 低透明度，贴近平坦背景可感知档位）
         expect(shellBlock).toContain('--bz-shell-surface: color-mix(')
         expect(shellBlock).toContain('var(--ui-bg-elevated, var(--theme-card-background))')
         expect(shellBlock).toContain('calc(var(--ui-surface-opacity, 1) * 100%)')
@@ -207,8 +210,8 @@ describe('壳层材质派生（BaiZeNotes.vue）：只从 P0 冻结令牌计算�
         // paper 无阴影 / workbench 现状：外壳不叠加 box-shadow（glass 高光边由组件内层收口）
         expect(statusBlock).not.toContain('box-shadow')
 
-        // 状态栏组件消费 glass 高光边令牌
-        expect(css('statusBar')).toContain('var(--ui-highlight-border-alpha, 0)')
+        // 状态栏组件消费 glass 高光边令牌（1.5.6 起统一为 content-tokens.css 派生色）
+        expect(css('statusBar')).toContain('var(--ui-highlight-border-color)')
     })
 
     it('分隔条：paper / glass 收为 hairline 语义色，workbench / hybrid 保持主题强调色', () => {
@@ -219,15 +222,33 @@ describe('壳层材质派生（BaiZeNotes.vue）：只从 P0 冻结令牌计算�
     })
 })
 
-describe('层级：窗口缩放热区消费应用层命名令牌（P2 遗留项 4）', () => {
+describe('层级：窗口缩放热区消费应用层相对阶梯令牌（P2 遗留项 4 相对阶梯化）', () => {
     it('.resize-corner 取 --ui-z-resize-app、.resize-edge = resize - 1，不再写裸值 9999 / 10000', () => {
         const source = css('shell')
-        // 数值与迁移前逐项等值：角 = 10000、边 = 9999（源值真源 UI_Z_INDEX_APP_BASE.resize）
+        // 相对阶梯：角 = 120、边 = 119（旧 10000 / 9999 的层序关系保持；真源 UI_Z_INDEX_APP_BASE.resize）
         expect(ruleBlock(source, '.resize-edge')).toContain(
             'z-index: calc(var(--ui-z-resize-app) - 1)'
         )
         expect(ruleBlock(source, '.resize-corner')).toContain('z-index: var(--ui-z-resize-app)')
         expect(source).not.toMatch(/z-index:\s*(9999|10000)\b/)
+    })
+})
+
+describe('REQ-14 glass 弱效果增强：既有派生链路放大（不新增组件分支 / 不启用整窗模糊）', () => {
+    it('玻璃强度 / 壳层半透明 / 高光边三处派生消费点保持，令牌增强即整体放大可感知度', () => {
+        const shell = css('shell')
+        expect(shell).toContain('--bz-glass-alpha: var(--ui-highlight-border-alpha, 0)')
+        expect(shell).toContain('calc(var(--ui-surface-opacity, 1) * 100%)')
+        expect(shell).toMatch(
+            /inset 0 1px 0 rgba\(255, 255, 255, var\(--ui-highlight-border-alpha, 0\)\)/
+        )
+        // 窗口背景径向光斑由玻璃强度派生（REQ-14 平坦背景可感知的主要来源）
+        expect(shell).toContain('calc(var(--bz-glass-alpha, 0) * 55%)')
+        expect(shell).toContain('calc(var(--bz-glass-alpha, 0) * 28%)')
+        // 性能约束：壳层窗口背景仍无整窗 backdrop-filter
+        expect(shell).not.toContain('backdrop-filter')
+        // 组件内不得写 data-style 分支（增强只来自令牌值）
+        expect(shell).not.toMatch(/data-(style|density)\s*[=\]]/)
     })
 })
 
@@ -253,7 +274,7 @@ describe('工区 / 侧栏 / 导航条材质消费（内容区与外壳双材质�
         expect(source).toContain(
             'var(--bz-content-hairline, 0) var(--ui-border, var(--theme-border-color))'
         )
-        expect(source).toContain('rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0))')
+        expect(source).toContain('var(--ui-highlight-border-color)')
         expect(source).toContain('var(--ui-shadow-1)')
         // workbench（内容区强度 0）时材质覆盖层 opacity 0 → 默认观感零变化
         expect(source).toContain('opacity: 0;')
@@ -277,7 +298,7 @@ describe('工区 / 侧栏 / 导航条材质消费（内容区与外壳双材质�
         expect(source).toContain(
             'var(--bz-shell-hairline, 0) var(--ui-border, var(--theme-border-color))'
         )
-        expect(source).toContain('rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0))')
+        expect(source).toContain('var(--ui-highlight-border-color)')
         expect(source).toContain('var(--ui-shadow-1)')
         expect(source).toContain('opacity: var(--bz-style-on, 0);')
         // 既有滚动与宽度契约不漂移
@@ -293,7 +314,7 @@ describe('工区 / 侧栏 / 导航条材质消费（内容区与外壳双材质�
         expect(naviBlock).toContain('background-color: var(--bz-shell-surface')
         expect(naviBlock).toContain('var(--bz-shell-veil, transparent)')
         expect(naviBlock).toContain('border-radius: var(--bz-shell-radius, 0)')
-        expect(naviBlock).toContain('rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0))')
+        expect(naviBlock).toContain('var(--ui-highlight-border-color)')
         expect(naviBlock).toContain('var(--ui-border, var(--theme-border-color))')
 
         const naviTab = css('naviTab')

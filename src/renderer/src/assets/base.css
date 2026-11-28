@@ -1,51 +1,24 @@
-:root {
-    --ev-c-white: #ffffff;
-    --ev-c-white-soft: #f8f8f8;
-    --ev-c-white-mute: #f2f2f2;
+/* ============================================================================
+ * 渲染层全局基础样式（electron-vite 模板遗留清理后的保留部分）
+ *
+ * 1.5.6（REQ-16 硬编码颜色收口）清理说明：
+ * - 删除 electron-vite 模板自带的 `--ev-c-*` 调色板与 `--color-*` 别名（12 个硬编码
+ *   颜色值）：全仓 grep 确认这些变量只被同源的模板演示类（`.logo` / `.creator` /
+ *   `.text` / `.tip` / `.vue` / `.ts` / `.actions` / `.action` / `.versions`，均在
+ *   assets/main.css 中）消费，应用组件零引用，已随演示类一并删除；
+ * - 删除 body 的 `color` / `background` 声明：它们引用的 `--color-text` /
+ *   `--color-background` 随变量块删除；且这两条声明本来就被 styles/theme.css 的
+ *   `body` 规则（同特异性、在 main.ts 中后加载）用主题变量覆盖，计算值不变；
+ * - 保留 body 的尺寸/排版基线（min-height / line-height / 字体栈 / 字体平滑）与
+ *   `ul` 默认符号：它们是全仓唯一的全局排版基线，删除会改变默认观感。
+ * ========================================================================== */
 
-    --ev-c-black: #1b1b1f;
-    --ev-c-black-soft: #222222;
-    --ev-c-black-mute: #282828;
-
-    --ev-c-gray-1: #515c67;
-    --ev-c-gray-2: #414853;
-    --ev-c-gray-3: #32363f;
-
-    --ev-c-text-1: rgba(255, 255, 245, 0.86);
-    --ev-c-text-2: rgba(235, 235, 245, 0.6);
-    --ev-c-text-3: rgba(235, 235, 245, 0.38);
-
-    --ev-button-alt-border: transparent;
-    --ev-button-alt-text: var(--ev-c-text-1);
-    --ev-button-alt-bg: var(--ev-c-gray-3);
-    --ev-button-alt-hover-border: transparent;
-    --ev-button-alt-hover-text: var(--ev-c-text-1);
-    --ev-button-alt-hover-bg: var(--ev-c-gray-2);
-}
-
-:root {
-    --color-background: var(--ev-c-black);
-    --color-background-soft: var(--ev-c-black-soft);
-    --color-background-mute: var(--ev-c-black-mute);
-
-    --color-text: var(--ev-c-text-1);
-}
-
-/**,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  font-weight: normal;
-}*/
 ul {
     list-style: disc;
 }
 
 body {
     min-height: 100vh;
-    color: var(--color-text);
-    background: var(--color-background);
     line-height: 1.6;
     font-family:
         Inter,

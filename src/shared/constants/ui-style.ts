@@ -108,13 +108,28 @@ export const UI_DENSITY_TOKENS: Readonly<Record<UiDensity, UiDensityTokens>> = {
  * - glass 阴影更柔（同透明度下扩散更大），配 8px 小面积模糊与高光边；
  * - hybrid 的「外壳」沿用 workbench（本表取 workbench 值），「内容区」材质见
  *   `UI_CONTENT_MATERIAL`（取 paper 值），二者在内容区边界自然分界。
+ *
+ * ## glass 非模糊弱效果增强（1.5.6 REQ-14）
+ * 背景：整窗 backdrop-filter 因性能约束不启用，glass 只有悬浮层小面积模糊；在纯色/平坦
+ * 背景上透明与质感表达偏弱（用户实测「切到玻璃看不到透明感」）。本批在**不启用整窗模糊、
+ * 不提升模糊半径**的前提下，只增强「低透明度面 + 高光边」两个非模糊参数，让玻璃在平坦背景
+ * 上可感知：
+ * - `surfaceOpacity` 0.86 → 0.72：壳层（标题栏/状态栏/侧栏/工具窗/菜单/对话框）与内容区
+ *   同时更透明，窗口背景的主题渐变光斑（强度同样由高光边令牌派生）可透出，平坦底色上出现
+ *   可见的「透光 + 渐变」而非纯白面；
+ * - `highlightBorderAlpha` 0.14 → 0.30：消费方的 `inset 0 1px 0 rgba(255,255,255,α)`
+ *   白高光线（inset box-shadow）更清晰；该令牌同时放大窗口背景径向光斑强度
+ *   （`BaiZeNotes.vue` 以 `--bz-glass-alpha` 派生 accent 55% / info 28%），是平坦背景上
+ *   最主要的可感知来源。
+ * 纸感 paper / 混合 hybrid / 工作台 workbench 令牌数值不变；深色 steady 稳健模式
+ * （0.94 不透明 + 关闭模糊 + 高光 0.10）与「减少透明」回退规则保持不变（CSS 侧覆盖）。
  */
 export interface UiStyleTokens {
-    /** 悬浮面不透明度（glass 0.86；其余 1 = 不透明） */
+    /** 悬浮面不透明度（glass 0.72 低透明度档；其余 1 = 不透明） */
     surfaceOpacity: number
     /** 悬浮面背景模糊半径（px；仅 glass 非 0，禁止整窗大面积模糊） */
     surfaceBlur: number
-    /** 高光边 alpha（glass 0.14 = 10~18% 白高光；其余 0 = 无高光边） */
+    /** 高光边 alpha（glass 0.30 = 白高光线 + 窗口光斑强度；其余 0 = 无高光边） */
     highlightBorderAlpha: number
     /** 小圆角（chip / 标签 / 菜单项，px） */
     radiusSm: number
@@ -144,9 +159,9 @@ export const UI_STYLE_TOKENS: Readonly<Record<UiStyle, UiStyleTokens>> = {
         shadow3: '0 16px 48px rgba(0, 0, 0, 0.12)'
     },
     glass: {
-        surfaceOpacity: 0.86,
+        surfaceOpacity: 0.72,
         surfaceBlur: 8,
-        highlightBorderAlpha: 0.14,
+        highlightBorderAlpha: 0.3,
         radiusSm: 8,
         radiusMd: 8,
         radiusLg: 12,
@@ -216,7 +231,14 @@ export const UI_MOTION_TOKENS = {
     reducedFadeDuration: '100ms'
 } as const
 
-/** z-index 层级表（视觉升级方案 §3.3；防止组件各自定义层级） */
+/**
+ * z-index 语义相对阶梯（视觉升级方案 §3.3；防止组件各自定义层级）。
+ *
+ * 口径：0~80 的**相对阶梯**，新组件一律按相对层级消费；与主题/风格/密度正交，数值恒定。
+ * 应用层高层浮层（写作模式 / 对话框 / 欢迎页 / 命令面板 / 缩放热区）在 0~80 之上另占
+ * **100~120** 一段（`UI_Z_INDEX_APP_COMPAT` / `UI_Z_INDEX_APP_BASE`，见下），保持
+ * 「语义阶梯整体低于应用层」的既有层级关系，且不改变组件的变量消费方式。
+ */
 export const UI_Z_INDEX_TOKENS = {
     content: 0,
     sidebar: 10,
@@ -230,73 +252,75 @@ export const UI_Z_INDEX_TOKENS = {
 } as const
 
 /**
- * 应用层兼容层级（视觉升级 P2 / T12 收敛，语义令牌 → 既有高层浮层数值的唯一映射）。
+ * 应用层相对阶梯（视觉升级 1.5.6 P2 批次 E：z-index 应用层相对阶梯化）。
  *
- * ## 为什么需要「语义 rank」之外的映射
- * `UI_Z_INDEX_TOKENS` 是 0~80 的**语义相对阶梯**（新组件一律按相对层级消费），但应用层
- * 存在若干既有高层浮层，它们历史上直接写死大数值、且必须与对话框的相对顺序保持
- * 不变（任何调整都可能在写作模式/欢迎页/窗口缩放热区上产生真实回归）：
- * - 欢迎页 `WelcomeScreen.vue`：全屏欢迎层（既有值 9999，已收敛为 `UI_Z_INDEX_APP_BASE.welcome`）；
- * - 写作模式 `WritingModeHost.vue`：全屏写作层（既有值 3000，必须被对话框/工具窗压住，
- *   已收敛为 `UI_Z_INDEX_APP_BASE.writingMode`）；
- * - 窗口缩放热区 `BaiZeNotes.vue`：`.resize-edge` 9999 / `.resize-corner` 10000（无边框窗口
- *   拖拽缩放热区，位于视口四周，需保持在最上层；已收敛为 `UI_Z_INDEX_APP_BASE.resize`，
- *   热区「边」= resize - 1）。
- * 上述三个基座的裸值已全部迁移为命名令牌（P2 遗留项 4，见下方 `UI_Z_INDEX_APP_BASE`），
- * 组件内不再出现 `9999 / 10000 / 3000`；数值仍保持迁移前的既有大数值（尚未改用相对阶梯），
- * 因此栈序零变化。
+ * ## 从「兼容大数值」到「与语义阶梯协调的相对阶梯」
+ * `UI_Z_INDEX_TOKENS` 是 0~80 的**语义相对阶梯**（新组件按相对层级消费）；应用层另有若干
+ * 既有高层浮层，历史上直接写死大数值。视觉升级 P2 遗留项 4 先完成「裸值 → 命名令牌」的等值
+ * 迁移（当时数值保持 9999 / 10000 / 3000，组件消费 `--ui-z-*-app`）；本批再把**令牌数值**
+ * 改为相对档位，消除「大数值与语义阶梯脱节」的遗留：
+ * - 语义阶梯 0~80 之上预留 **100~120** 作为应用层相对阶梯（10 一档，留出后续扩展间隙）；
+ * - 对话框 / 非模态工具窗遮罩 = 110（原 9999）；
+ * - 命令面板 = 120（原 10000，恒高于对话框一档，不依赖「同 z-index 下后渲染者在上」）。
  *
- * 因此 T12 采用「保留既有栈序 + 收敛为单一命名令牌」策略：
- * - 对话框/非模态工具窗 = 9999（与既有 9999 完全等值，全部浮层行为零变化）；
- * - 命令面板 = 10000（比对话框高 1 档，保证后打开的命令面板永远在对话框/工具窗之上，
- *   不再依赖「同 z-index 下后渲染者在上」的 DOM 顺序巧合；同时仍低于 `.resize-corner`
- *   的 10000 同值不覆盖——热区只有 12px 边缘，命中优先级不变）。
+ * ## 层序保持（零回归论证）
+ * 旧栈序：语义 0~80 ＜ 写作模式 3000 ＜ 对话框/欢迎页 9999 ＜ 命令面板/缩放热区 10000；
+ * 新栈序：语义 0~80 ＜ 写作模式 100 ＜ 对话框/欢迎页 110 ＜ 命令面板/缩放热区 120。
+ * 所有「严格小于 / 相等」关系逐对保持（见 `UI_Z_INDEX_APP_BASE`），组件消费的变量名与消费
+ * 方式不变（仍 `var(--ui-z-*-app)`），因此栈序零变化；数值收敛为 3 位相对值后，层级语义与
+ * `UI_Z_INDEX_TOKENS` 的 0~80 阶梯可直接对比阅读。
  *
- * 后续若把应用层统一迁移到 `UI_Z_INDEX_TOKENS` 相对阶梯，只需改本表、`UI_Z_INDEX_APP_BASE`
- * 与 `styles/ui-style.css` 的 `--ui-z-*-app` 变量值即可，消费组件无需再改。
+ * ## 组件兜底值
+ * 消费组件内 `var(--ui-z-dialog-app, 9999)` / `var(--ui-z-palette-app, 10000)` 的兜底只在
+ * 样式表未加载（CSS 变量缺失）时生效，保留旧大数值作为「退化安全值」；正常路径恒命中
+ * `:root` 的相对阶梯值，不影响本批层级收敛，也不参与单一真源校验。
  */
 export const UI_Z_INDEX_APP_COMPAT = {
-    /** 对话框 / 非模态工具窗遮罩层（= 既有 9999） */
-    dialog: 9999,
-    /** 命令面板（= 对话框 + 1，保证命令面板恒在其它对话框之上） */
-    commandPalette: 10000
+    /** 对话框 / 非模态工具窗遮罩层（原 9999 → 相对阶梯 110） */
+    dialog: 110,
+    /** 命令面板（原 10000 → 相对阶梯 120，= 对话框 + 1 档，保证命令面板恒在其它对话框之上） */
+    commandPalette: 120
 } as const
 
 /**
- * 应用层基座层级（视觉升级 P2 遗留项 4：z-index 应用层基座迁移；数值与迁移前逐项等值 = 零回归）。
+ * 应用层基座层级（视觉升级 1.5.6 P2 批次 E：应用层基座相对阶梯化完成版）。
  *
- * ## 为什么单独一张表，而不是直接用 `UI_Z_INDEX_TOKENS` 相对阶梯
- * `UI_Z_INDEX_TOKENS` 是 0~80 的**语义相对阶梯**（新组件按相对层级消费），但欢迎页 / 写作模式 /
- * 窗口缩放热区是既有应用层基座层，直接换成相对阶梯会改变既有栈序（写作模式 3000 降为相对值会被
- * 工具窗遮住、欢迎页/缩放热区降为相对值会被对话框盖住）。因此本阶段只做「裸值 → 命名令牌」的
- * 等值迁移：组件不再写大数值，数值本身保持既有值不变，栈序与迁移前完全一致：
- * - `welcome` 9999：与对话框/工具窗同层（`UI_Z_INDEX_APP_COMPAT.dialog` 9999）。二者互斥渲染
- *   （`App.vue` 中欢迎页与主界面为 `v-if` / `v-else`），等值不会产生竞争，视觉栈序与迁移前一致；
- * - `resize` 10000：应用内最高层级（与 `UI_Z_INDEX_APP_COMPAT.commandPalette` 同值）。缩放热区
- *   `.resize-corner` 取本值、`.resize-edge` 取本值 - 1（9999），角 12px 略高于边 6px，与迁移前
- *   的 10000 / 9999 完全等值（热区只有 6~12px 边缘，同值时命中优先级不变）；
- * - `writingMode` 3000：全屏写作模式浮层，恒低于对话框/工具窗（9999），保证写作模式上的弹窗
- *   始终可见（迁移前语义不变）。
+ * ## 相对阶梯映射（旧值 → 新值；层序逐对保持）
+ * - `writingMode` 3000 → 100：恒低于对话框/工具窗，其上弹窗始终可见（迁移前语义不变）；
+ * - `welcome` 9999 → 110：与对话框同值。`App.vue` 中欢迎页与主界面为 `v-if` / `v-else`
+ *   互斥渲染，等值不产生竞争（迁移前两者同为 9999，等值关系保持）；
+ * - `resize` 10000 → 120：应用内最高层级（与命令面板同值）。`.resize-corner` 取本值、
+ *   `.resize-edge` 取本值 − 1 = 119，角 12px 略高于边 6px（迁移前 10000 / 9999 的关系保持）。
+ * 与语义阶梯的关系：三个基座均 > `UI_Z_INDEX_TOKENS.guide`(80)，即应用层整体位于语义阶梯
+ * 之上——与迁移前「3000 / 9999 / 10000 均远大于 0~80」完全一致。
  *
  * ## 组内派生关系（保持「三值真源」，不额外扩表）
- * - 欢迎页内部窗口控制条 = welcome + 1（原裸值 10000；仅在本层 stacking context 内参与局部排序，
- *   `WelcomeScreen.vue` 以 `calc(var(--ui-z-welcome-app) + 1)` 表达）；
- * - 缩放热区「边」= resize - 1（原裸值 9999；`BaiZeNotes.vue` 以
+ * - 欢迎页内部窗口控制条 = welcome + 1 = 111（迁移前 10000；仅在本层 stacking context 内参与
+ *   局部排序，`WelcomeScreen.vue` 以 `calc(var(--ui-z-welcome-app) + 1)` 表达）；
+ * - 缩放热区「边」= resize − 1 = 119（迁移前 9999；`BaiZeNotes.vue` 以
  *   `calc(var(--ui-z-resize-app) - 1)` 表达）。
+ *
+ * ## 派生值说明（相对化后落在 110 / 120 两档之间，层级关系已评估）
+ * - 111（欢迎页控制条）：`.welcome-screen` 为 fixed + z-index 的独立层叠上下文，控制条仅在本层
+ *   内参与局部排序，+1 与迁移前的局部关系一致，不改变与对话框/缩放热区的既有栈序；
+ * - 119（缩放热区「边」）：严格低于「角」120 与命令面板 120、严格高于对话框遮罩 110。迁移前
+ *   「边」9999 与对话框遮罩 9999 **同值**（依赖 DOM 后绘制者在上，遮罩覆盖窗口边缘）；相对化后
+ *   热区在窗口边缘严格居上——仅影响「模态遮罩打开时窗口 6px 边缘的拖拽缩放命中优先级」（热区为
+ *   透明条带，不遮挡可见内容），风险评估与走查结论见 docs/design/DESIGN.md §5.4。
  *
  * ## 消费方式（唯一真源）
  * CSS 变量在 `styles/ui-style.css` 的 `:root` 逐项声明：`--ui-z-welcome-app` /
- * `--ui-z-resize-app` / `--ui-z-writing-mode-app`；三个基座组件只消费变量，不再出现
- * `9999 / 10000 / 3000` 裸值。本表与 CSS 变量的逐项一致性由
+ * `--ui-z-resize-app` / `--ui-z-writing-mode-app` / `--ui-z-dialog-app` / `--ui-z-palette-app`；
+ * 三个基座组件只消费变量，不再出现 `9999 / 10000 / 3000` 裸值。本表与 CSS 变量的逐项一致性由
  * `tests/unit/visual-p2-acceptance.test.ts` 静态校验（改一处必须同步改另一处，否则测试失败）。
  */
 export const UI_Z_INDEX_APP_BASE = {
-    /** 写作模式全屏层（= 既有 3000；恒低于对话框/工具窗） */
-    writingMode: 3000,
-    /** 全屏欢迎层（= 既有 9999；与对话框同值，靠互斥渲染保证覆盖） */
-    welcome: 9999,
-    /** 窗口缩放热区最高层（角 = 10000；边 = 本值 - 1 = 9999） */
-    resize: 10000
+    /** 写作模式全屏层（原 3000 → 100；恒低于对话框/工具窗） */
+    writingMode: 100,
+    /** 全屏欢迎层（原 9999 → 110；与对话框同值，靠互斥渲染保证覆盖） */
+    welcome: 110,
+    /** 窗口缩放热区最高层（原 10000 → 120；角 = 本值，边 = 本值 - 1 = 119） */
+    resize: 120
 } as const
 
 /** 玻璃材质模式：normal（常规）/ steady（深色主题稳健模式：降透明度、关模糊）/ flat（已回退纸感） */
@@ -332,7 +356,7 @@ export interface EffectiveUiStyle {
  * 2. glass + 「减少透明」开关 或 系统 prefers-reduced-transparency：回退 paper 材质；
  * 3. glass + 高饱和/渐变主题 或 护眼主题：回退 paper 材质（半透明叠彩色/低对比底会失控）；
  * 4. glass + 深色主题：保留 glass 但进入 steady 稳健模式（CSS 降低透明度、关闭模糊）；
- * 5. 其余情况：glass 常规模式（0.86 不透明度 + 8px 小面积模糊）。
+ * 5. 其余情况：glass 常规模式（0.72 低透明度 + 8px 小面积模糊 + 0.30 高光边，REQ-14 增强档）。
  */
 export function resolveEffectiveUiStyle(
     requested: UiStyle,

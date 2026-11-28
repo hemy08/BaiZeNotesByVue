@@ -168,6 +168,11 @@ export default {
         fileListLabel: '文件列表',
         executeFailed: '命令执行失败',
         openFileFailed: '打开文件失败，请稍后重试',
+        // 1.5.6 P2 批次 C：REQ-10 最近使用分区 / REQ-11 空态相关命令建议
+        recentTitle: '最近使用',
+        suggestionsTitle: '相关命令',
+        suggestionsHint: '没有完全匹配的命令，以下为相近建议（回车执行）',
+        suggestionBadge: '建议',
         command: {
             save: '保存',
             openFolder: '打开文件夹',

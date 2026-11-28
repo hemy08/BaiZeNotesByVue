@@ -502,4 +502,41 @@ describe('PluginTools 插件工具面板：窗口控制按钮', () => {
         )
         expect(wrapper.find('#plugin-tool-tool-b').exists()).toBe(true)
     })
+
+    it('REQ-12 折叠状态上抛：最小化/还原/返回编辑器 emit window-state-change（供工作区联动）', async () => {
+        const wrapper = mountPluginTools()
+        expect(wrapper.emitted('window-state-change')).toBeUndefined()
+
+        // 最小化 → true（工作区收起插件区域空白、编辑器让位）
+        await pluginControls(wrapper)[0].trigger('click')
+        await nextTick()
+        expect(wrapper.emitted('window-state-change')).toEqual([[true]])
+
+        // 还原 → false
+        await pluginControls(wrapper)[0].trigger('click')
+        await nextTick()
+        expect(wrapper.emitted('window-state-change')).toEqual([[true], [false]])
+
+        // 再次最小化后点「返回编辑器」：复位 normal 并上抛 false（工作区必须还原）
+        await pluginControls(wrapper)[0].trigger('click')
+        await nextTick()
+        expect(wrapper.emitted('window-state-change')?.at(-1)).toEqual([true])
+        await wrapper.find('#plugin-tool-close').trigger('click')
+        await nextTick()
+        expect(wrapper.emitted('window-state-change')?.at(-1)).toEqual([false])
+        expect(pluginContainer(wrapper).attributes('data-tool-window-state')).toBe('normal')
+    })
+
+    it('REQ-12 最大化解锁折叠联动：最大化不触发 minimized=true，还原后回到互斥视图', async () => {
+        const wrapper = mountPluginTools()
+        await pluginControls(wrapper)[0].trigger('click')
+        await nextTick()
+        expect(wrapper.emitted('window-state-change')?.at(-1)).toEqual([true])
+
+        // 最小化态直接点最大化：状态机切 maximized → 上抛 false（不再占用 44px 联动）
+        await pluginControls(wrapper)[1].trigger('click')
+        await nextTick()
+        expect(pluginContainer(wrapper).classes()).toContain('plugin-tools-container--maximized')
+        expect(wrapper.emitted('window-state-change')?.at(-1)).toEqual([false])
+    })
 })

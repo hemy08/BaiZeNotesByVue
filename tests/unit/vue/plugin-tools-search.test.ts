@@ -22,8 +22,10 @@
  * `e2e/plugin-tools-search.spec.ts` 覆盖（若本批未跑 E2E，会在交付报告中说明原因）。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
+import * as fs from 'fs'
+import * as path from 'path'
 
 /**
  * 桩组件挂载次数：用于断言「搜索/列表视图切换不会卸载当前工具实例」。
@@ -62,18 +64,29 @@ import EventBus from '@renderer/common/event-bus/event-bus'
 import { EVENT_BUS } from '@renderer/common/event-bus/event-bus-events'
 import { setLocale } from '@renderer/common/i18n'
 import { translate } from '../../../src/shared/i18n'
-import { PLUGIN_TOOL_ACTION_IDS } from '../../../src/shared/constants/plugin-tools-manifest'
+import {
+    PLUGIN_TOOL_ACTION_IDS,
+    PLUGIN_TOOL_ITEMS
+} from '../../../src/shared/constants/plugin-tools-manifest'
+import { PLUGIN_TOOL_ITEM_ICON_PATHS } from '@renderer/components/PluginTools/plugin-tools-icons'
 import {
     PLUGIN_TOOL_SEARCH_SOURCES,
+    PLUGIN_TOOL_SECTION_IDS,
+    PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY,
     PLUGIN_TOOLS_FAVORITES_LIMIT,
     PLUGIN_TOOLS_FAVORITES_STORAGE_KEY,
     PLUGIN_TOOLS_RECENT_LIMIT,
     PLUGIN_TOOLS_RECENT_STORAGE_KEY,
+    createPluginToolSearchEntry,
+    getPluginToolIconPaths,
+    getPluginToolSectionLabelKey,
+    groupPluginToolEntriesBySection,
     normalizePluginToolSearchQuery,
     readPluginToolIds,
     recordRecentPluginToolId,
     resolvePluginToolSearchEntries,
     searchPluginTools,
+    toggleCollapsedPluginToolGroup,
     toggleFavoritePluginToolId,
     writePluginToolIds,
     type PluginToolSearchEntry,
@@ -82,6 +95,9 @@ import {
 
 /** 桩注册表（38 项，顺序 = manifest 展开顺序；与 mock 工厂里注入的注册表一致） */
 const STUB_ACTION_IDS = [...PLUGIN_TOOL_ACTION_IDS]
+
+/** 仓库根目录（静态契约断言读取 PluginTools.vue 源码用） */
+const REPO_ROOT = path.resolve(__dirname, '../../..')
 
 const HASH_ID = 'baize:menu:plugins:encrypt:hash-text'
 const TOKEN_ID = 'baize:menu:plugins:encrypt:token-generator'
@@ -895,5 +911,257 @@ describe('1.5.6 插件搜索入口视图（搜索界面 / 最近 20 / 跳转）'
         expect(wrapper.find('[data-plugin-tool-view="search-entry"]').exists()).toBe(false)
         expect(wrapper.find('[data-plugin-tool-view="home"]').exists()).toBe(true)
         expect(wrapper.find('.plugin-tools-search-input').exists()).toBe(true)
+    })
+})
+
+// ==================== 1.5.6 批次 A：REQ-06 分类折叠（8 分组 / 持久化 / 检索互不干扰） ====================
+
+describe('REQ-06 分类分组纯逻辑（manifest 派生 8 分类）', () => {
+    it('38 项工具按 8 分类分组：组顺序/组名/组内计数与 manifest 一致，不丢行不重复', () => {
+        const entries = resolveEntries('zh-CN')
+        const groups = groupPluginToolEntriesBySection(entries)
+        // 8 分类（分区）顺序 = 分区图标表声明顺序 = manifest 工具顺序
+        expect(groups.map((group) => group.sectionId)).toEqual([...PLUGIN_TOOL_SECTION_IDS])
+        expect(PLUGIN_TOOL_SECTION_IDS).toHaveLength(8)
+        // 38 项按分区计数：加解密 8 / 编解码 5 / 格式转换 5 / 格式化 2 / 文本 3 / 小工具 3 / 网络 4 / 对照表 8
+        expect(groups.map((group) => group.tools.length)).toEqual([8, 5, 5, 2, 3, 3, 4, 8])
+        expect(groups.reduce((total, group) => total + group.tools.length, 0)).toBe(38)
+        expect(groups.flatMap((group) => group.tools.map((tool) => tool.actionId))).toEqual(
+            entries.map((entry) => entry.actionId)
+        )
+    })
+
+    it('8 分类标题 i18n 键（复用菜单分组词条）中英均可解析，未知分类返回 undefined', () => {
+        for (const sectionId of PLUGIN_TOOL_SECTION_IDS) {
+            const labelKey = getPluginToolSectionLabelKey(sectionId)
+            expect(labelKey, sectionId).toBeDefined()
+            for (const locale of ['zh-CN', 'en-US'] as const) {
+                const label = translate(labelKey as string, locale)
+                expect(label, `${locale} 缺少 ${labelKey}`).not.toBe(labelKey)
+                expect(label.trim().length).toBeGreaterThan(0)
+            }
+        }
+        expect(getPluginToolSectionLabelKey('not-a-section')).toBeUndefined()
+    })
+
+    it('折叠纯函数：切换幂等、空 id 原样；存储读取容错只保留合法分类 id', () => {
+        expect(toggleCollapsedPluginToolGroup([], 'encrypt')).toEqual(['encrypt'])
+        expect(toggleCollapsedPluginToolGroup(['encrypt', 'net'], 'encrypt')).toEqual(['net'])
+        // 空 sectionId（平铺伪分组/未知）不改变清单，也不修改入参
+        const current = ['net']
+        expect(toggleCollapsedPluginToolGroup(current, '')).toEqual(['net'])
+        expect(current).toEqual(['net'])
+
+        // 读取容错：缺失/损坏 JSON → 空；已下线/未知分类 id 被过滤；重复项去重
+        expect(
+            readPluginToolIds(createMemoryStorage(), PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY)
+        ).toEqual([])
+        const broken = createMemoryStorage({
+            [PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY]: '{broken'
+        })
+        expect(readPluginToolIds(broken, PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY)).toEqual([])
+        const storage = createMemoryStorage({
+            [PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY]: JSON.stringify([
+                'encrypt',
+                'removed-section',
+                'net',
+                'encrypt'
+            ])
+        })
+        expect(
+            readPluginToolIds(storage, PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY, {
+                validIds: new Set(PLUGIN_TOOL_SECTION_IDS)
+            })
+        ).toEqual(['encrypt', 'net'])
+    })
+})
+
+describe('REQ-06 面板分类折叠（8 分组 / aria-expanded / localStorage 持久）', () => {
+    /** 「全部工具」分区内的 8 个分类分组 */
+    function groupNodes(wrapper: VueWrapper): DOMWrapper<Element>[] {
+        return wrapper.findAll('[data-plugin-tool-section="all"] [data-plugin-tool-group]')
+    }
+
+    /** 读取 jsdom localStorage 中已折叠分类清单 */
+    function storedCollapsedGroups(): string[] {
+        const raw = window.localStorage.getItem(PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY)
+        return raw === null ? [] : (JSON.parse(raw) as string[])
+    }
+
+    it('默认视图「全部工具」渲染 8 个分类分组：标题行含分类图标 + 分类名 + 折叠箭头', async () => {
+        const wrapper = mountPluginTools()
+        await nextTick()
+        const groups = groupNodes(wrapper)
+        expect(groups.map((group) => group.attributes('data-plugin-tool-group'))).toEqual([
+            ...PLUGIN_TOOL_SECTION_IDS
+        ])
+        const firstGroup = groups[0]
+        expect(firstGroup.find('.plugin-tool-group-name').text()).toBe('加解密插件')
+        expect(firstGroup.find('.plugin-tool-group-toggle').attributes('aria-expanded')).toBe(
+            'true'
+        )
+        expect(firstGroup.find('.plugin-tool-group-toggle').attributes('aria-controls')).toBe(
+            'plugin-tool-group-list-encrypt'
+        )
+        // 分组标题显示分类图标（24 网格线框），行首显示工具图标
+        expect(firstGroup.findAll('.plugin-tool-group-icon path').length).toBeGreaterThan(0)
+        expect(firstGroup.find('.plugin-tool-group-chevron').exists()).toBe(true)
+        // 8 组工具行合计仍为 38（既有「全部工具」行数与顺序不变）
+        expect(sectionToolIds(wrapper, 'all')).toEqual(STUB_ACTION_IDS)
+    })
+
+    it('点击分类标题折叠/展开：aria-expanded 切换、行隐藏、状态写入 localStorage', async () => {
+        const wrapper = mountPluginTools()
+        await nextTick()
+        const encryptGroup = (): DOMWrapper<Element> => groupNodes(wrapper)[0]
+
+        expect(encryptGroup().find('[data-tool-action-id]').isVisible()).toBe(true)
+        await encryptGroup().find('.plugin-tool-group-toggle').trigger('click')
+        await nextTick()
+        expect(encryptGroup().attributes('data-plugin-tool-group-collapsed')).toBe('true')
+        expect(encryptGroup().find('.plugin-tool-group-toggle').attributes('aria-expanded')).toBe(
+            'false'
+        )
+        // 折叠只隐藏行：DOM 保留（v-show），不影响其它分组
+        expect(encryptGroup().find('[data-tool-action-id]').isVisible()).toBe(false)
+        expect(groupNodes(wrapper)[1].find('[data-tool-action-id]').isVisible()).toBe(true)
+        expect(storedCollapsedGroups()).toEqual(['encrypt'])
+
+        // 再次点击 → 展开并清空持久化折叠状态
+        await encryptGroup().find('.plugin-tool-group-toggle').trigger('click')
+        await nextTick()
+        expect(encryptGroup().find('.plugin-tool-group-toggle').attributes('aria-expanded')).toBe(
+            'true'
+        )
+        expect(encryptGroup().find('[data-tool-action-id]').isVisible()).toBe(true)
+        expect(storedCollapsedGroups()).toEqual([])
+    })
+
+    it('折叠状态跨挂载保持（读取 localStorage；未知分类 id 容错忽略）', async () => {
+        window.localStorage.setItem(
+            PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY,
+            JSON.stringify(['net', 'removed-section'])
+        )
+        const wrapper = mountPluginTools()
+        await nextTick()
+        const groups = groupNodes(wrapper)
+        expect(groups).toHaveLength(8)
+        const collapsed = groups
+            .filter((group) => group.attributes('data-plugin-tool-group-collapsed') === 'true')
+            .map((group) => group.attributes('data-plugin-tool-group'))
+        expect(collapsed).toEqual(['net'])
+        const netGroup = groups.find(
+            (group) => group.attributes('data-plugin-tool-group') === 'net'
+        )
+        expect(netGroup?.find('[data-tool-action-id]').isVisible()).toBe(false)
+    })
+
+    it('折叠状态不影响搜索过滤：全部分类折叠时搜索仍命中并展示平铺结果', async () => {
+        window.localStorage.setItem(
+            PLUGIN_TOOLS_COLLAPSED_GROUPS_STORAGE_KEY,
+            JSON.stringify([...PLUGIN_TOOL_SECTION_IDS])
+        )
+        const wrapper = mountPluginTools()
+        await nextTick()
+        const input = wrapper.find('.plugin-tools-search-input')
+        await input.setValue('哈希')
+        await nextTick()
+        expect(wrapper.find('[data-plugin-tool-view="search"]').exists()).toBe(true)
+        expect(sectionToolIds(wrapper, 'search')).toEqual([HASH_ID])
+        // 搜索结果不分折叠（平铺）
+        expect(
+            wrapper.find('[data-plugin-tool-section="search"] [data-plugin-tool-group]').exists()
+        ).toBe(false)
+        // 清空查询回到默认视图：折叠状态仍保持
+        await input.setValue('')
+        await nextTick()
+        const groups = groupNodes(wrapper)
+        expect(
+            groups.every((group) => group.attributes('data-plugin-tool-group-collapsed') === 'true')
+        ).toBe(true)
+    })
+
+    it('插件搜索入口视图「全部工具」同样按 8 分类分组，输入过滤后切换为平铺结果', async () => {
+        const wrapper = mountPluginTools()
+        await nextTick()
+        await showSearchEntryByMenu()
+        expect(wrapper.find('[data-plugin-tool-view="search-entry"]').exists()).toBe(true)
+        expect(groupNodes(wrapper)).toHaveLength(8)
+        // 入口视图同样可折叠
+        await groupNodes(wrapper)[0].find('.plugin-tool-group-toggle').trigger('click')
+        await nextTick()
+        expect(groupNodes(wrapper)[0].find('[data-tool-action-id]').isVisible()).toBe(false)
+
+        const entryInput = wrapper.find('.plugin-tools-entry-search-input')
+        await entryInput.setValue('base64-codec')
+        await nextTick()
+        expect(wrapper.find('[data-plugin-tool-view="search"]').exists()).toBe(true)
+        expect(
+            wrapper.find('[data-plugin-tool-section="search"] [data-plugin-tool-group]').exists()
+        ).toBe(false)
+        expect(sectionToolIds(wrapper, 'search')).toEqual([BASE64_ID])
+    })
+})
+
+// ==================== 1.5.6 批次 A：REQ-06/15 每工具图标（38 项完整性 + 图标契约） ====================
+
+describe('REQ-06 每工具图标（plugin-tools-icons.ts）', () => {
+    it('38 项工具图标映射完整：键集合 = manifest 工具 id；每个工具至少 1 条 path', () => {
+        const manifestToolIds = PLUGIN_TOOL_ITEMS.map((item) => item.id)
+        expect(manifestToolIds).toHaveLength(38)
+        expect(Object.keys(PLUGIN_TOOL_ITEM_ICON_PATHS).sort()).toEqual([...manifestToolIds].sort())
+        for (const toolId of manifestToolIds) {
+            const paths = PLUGIN_TOOL_ITEM_ICON_PATHS[toolId]
+            expect(paths, `${toolId} 缺少图标`).toBeDefined()
+            expect(paths.length, toolId).toBeGreaterThan(0)
+            for (const pathData of paths) {
+                // 纯路径数据：以 M 起笔，不得夹带 <svg>/fill/stroke/style（否则绕过 currentColor）
+                expect(pathData, toolId).toMatch(/^M/)
+                expect(pathData, toolId).not.toMatch(/<|fill=|stroke=|style=/)
+                // 24 网格：路径数字不得越出 0~24（负数为相对指令的位移量，绝对值同样受限）
+                for (const numeric of pathData.match(/-?\d+(?:\.\d+)?/g) ?? []) {
+                    expect(
+                        Math.abs(Number(numeric)),
+                        `${toolId} 坐标越界: ${pathData}`
+                    ).toBeLessThanOrEqual(24)
+                }
+            }
+        }
+        // 每工具图标互不重复（避免「38 个工具同一图标」式糊弄）
+        const fingerprints = manifestToolIds.map((toolId) =>
+            PLUGIN_TOOL_ITEM_ICON_PATHS[toolId].join('|')
+        )
+        expect(new Set(fingerprints).size).toBe(manifestToolIds.length)
+    })
+
+    it('检索条目使用每工具专属图标；manifest 未登记工具回退所属分类图标', () => {
+        const entries = resolveEntries('zh-CN')
+        const hashEntry = entries.find((entry) => entry.actionId === HASH_ID)
+        expect(hashEntry?.iconPaths).toEqual(PLUGIN_TOOL_ITEM_ICON_PATHS['encrypt:hash-text'])
+        // 不再退化为「同分类所有工具共用一个图标」
+        const encryptEntries = entries.filter((entry) => entry.sectionId === 'encrypt')
+        expect(new Set(encryptEntries.map((entry) => entry.iconPaths.join('|'))).size).toBe(
+            encryptEntries.length
+        )
+        // 未知工具（未登记 manifest）：按 section 回退分类图标，不出现空图标
+        const fallbackEntry = createPluginToolSearchEntry(undefined, 'unknown:tool', (key) => key)
+        expect(fallbackEntry.iconPaths).toEqual(getPluginToolIconPaths('unknown'))
+        expect(fallbackEntry.iconPaths.length).toBeGreaterThan(0)
+    })
+
+    it('PluginTools.vue 工具行/分组标题图标：24 网格 / fill none / stroke 1.5 / currentColor', () => {
+        const source = fs.readFileSync(
+            path.join(REPO_ROOT, 'src/renderer/src/components/PluginTools/PluginTools.vue'),
+            'utf8'
+        )
+        for (const className of ['plugin-tool-item-icon', 'plugin-tool-group-icon']) {
+            const svgTag = new RegExp(`<svg[^>]*class="${className}"[^>]*>`).exec(source)?.[0] ?? ''
+            expect(svgTag, className).not.toBe('')
+            expect(svgTag, className).toContain('viewBox="0 0 24 24"')
+            expect(svgTag, className).toContain('fill="none"')
+            expect(svgTag, className).toContain('stroke="currentColor"')
+            expect(svgTag, className).toContain('stroke-width="1.5"')
+            expect(svgTag, className).toContain('aria-hidden="true"')
+        }
     })
 })

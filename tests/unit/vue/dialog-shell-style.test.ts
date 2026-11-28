@@ -181,7 +181,8 @@ describe('令牌消费契约（静态扫描 BaseDialog.vue）', () => {
             '--ui-surface',
             '--ui-surface-opacity',
             '--ui-surface-blur',
-            '--ui-highlight-border-alpha',
+            // 1.5.6：高光边统一消费 content-tokens.css 的派生色（固定白基色 × 材质透明度）
+            '--ui-highlight-border-color',
             '--ui-shadow-2',
             '--ui-border',
             '--ui-hairline-width',
@@ -250,11 +251,11 @@ describe('T9/T6 关键规格静态落地（CSS 规则级）', () => {
 
     it('T6 工具窗：面不透明度 + glass 小面积模糊 + 高光边 + hairline + shadow-2', () => {
         const toolWindow = extractCssRule(source, '.dialog-container--tool-window')
-        // 面 = --ui-surface × --ui-surface-opacity（glass 0.86 半透明，其余 1 不透明）
+        // 面 = --ui-surface × --ui-surface-opacity（glass 0.72 半透明（1.5.6 增强），其余 1 不透明）
         expect(toolWindow).toContain('color-mix')
         expect(toolWindow).toContain('var(--ui-surface-opacity')
         expect(toolWindow).toContain('backdrop-filter: blur(var(--ui-surface-blur')
-        expect(toolWindow).toContain('var(--ui-highlight-border-alpha')
+        expect(toolWindow).toContain('var(--ui-highlight-border-color')
         expect(toolWindow).toContain('var(--ui-hairline-width, 1px) solid var(--ui-border')
         expect(toolWindow).toContain('var(--ui-shadow-2')
 

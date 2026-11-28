@@ -202,7 +202,7 @@ onBeforeUnmount(() => {
  * 资源管理器 / 大纲（侧栏，外壳区）四风格材质 —— 视觉升级 1.5.5 主窗口可见性修复
  *
  * 消费 #editor-container 从 P0 冻结令牌派生的 --bz-shell-*（组件内不写风格分支）：
- * - 表面：glass 半透明（--ui-surface-opacity 0.86）/ paper 纸感底（--ui-bg-elevated +
+ * - 表面：glass 半透明（--ui-surface-opacity 0.72，1.5.6 增强）/ paper 纸感底（--ui-bg-elevated +
  *   主题色低饱和薄雾）/ workbench 与 hybrid 壳层保持既有 --theme-card-background（零变化）；
  * - 圆角由 --ui-radius-lg 派生（workbench 0 = 现状）、描边 1px hairline、glass 顶部高光边、
  *   纸感/玻璃弱阴影（--ui-shadow-1）；workbench 下全部为 0 / 不可见。
@@ -227,7 +227,7 @@ onBeforeUnmount(() => {
     border-radius: var(--bz-shell-radius, 0);
     box-shadow:
         inset 0 0 0 var(--bz-shell-hairline, 0) var(--ui-border, var(--theme-border-color)),
-        inset 0 1px 0 rgba(255, 255, 255, var(--ui-highlight-border-alpha, 0)),
+        inset 0 1px 0 var(--ui-highlight-border-color),
         var(--ui-shadow-1);
 }
 

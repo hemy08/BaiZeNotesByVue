@@ -384,7 +384,7 @@ BaiZeNotesByVue/
 │   ├── plantuml/                         # PlantUML 本地 teaVM 渲染资源
 │   ├── icon/                             # 应用图标（ico/svg）
 │   └── config/                           # 配置文件（version.json 构建时生成）
-├── tests/                                # 单元测试（371 个 .test.ts / 6,887 个用例）
+├── tests/                                # 单元测试（374 个 .test.ts / 7,018 个用例）
 ├── docs/                                 # 项目文档
 │   ├── wiki/                             # 知识库文档（4 类 25 篇）
 │   │   ├── README.md                     # 文档索引
@@ -469,7 +469,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成                        | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.1 | Electron 应用打包工具                       | [官网](https://www.electron.build/)                    |
-|               Vitest               |  5.1.1  | 单元测试框架（371 个测试文件 / 6,887 用例） | [官网](https://vitest.dev/)                            |
+|               Vitest               |  5.1.1  | 单元测试框架（374 个测试文件 / 7,018 用例） | [官网](https://vitest.dev/)                            |
 |               ESLint               | 10.15.0 | JavaScript 代码检查工具                     | [官网](https://eslint.org/)                            |
 |              Prettier              | 3.10.1  | 代码格式化工具                              | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  3.0.0  | Electron ESLint 配置                        | [GitHub](https://github.com/alex8088/electron-toolkit) |
@@ -500,7 +500,7 @@ BaiZeNotesByVue/
 |    IPC 通道    |                          108 个                          | `baize:<domain>:<name>`（108 个 / 18 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                                                                                                                         |
 | preload 白名单 |               send 74 / receive 28 / api 6               | `src/preload/allowed-channels.generated.ts`（send/invoke 74、on/once 28 通道；`window.api` 6 方法 / 3 组）                                                                                                                                                   |
 |    插件工具    |                          38 个                           | src/shared/constants/plugin-tools-manifest.ts（单一 manifest，异步按需加载）                                                                                                                                                                                 |
-|    单元测试    |                       6,887 个用例                       | 371 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                                                                                     |
+|    单元测试    |                       7,018 个用例                       | 374 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                                                                                     |
 |    声明依赖    |                          49 个                           | 生产依赖 11 + 开发依赖 38（package.json 实测）                                                                                                                                                                                                               |
 |    依赖审计    |                          0 漏洞                          | 生产与全量依赖均为 0 漏洞（2026-11-20 官方 registry 实测，`npm ls` 干净；Dependabot 254 条告警全量分类 0 条可复现）                                                                                                                                          |
 |   安装包体积   |                        ≈114.0 MiB                        | NSIS 安装包 111.13 MiB / 便携版 100.33 MiB（app.asar 39.96 MiB、locales 2；2026-11-20 当前 dist 实测，发布前需从 HEAD 重建复验）                                                                                                                             |
@@ -516,7 +516,7 @@ BaiZeNotesByVue/
 |    Vue SFC (.vue)    |   96    |   22,777   |
 |     **源码合计**     | **357** | **97,434** |
 |         CSS          |   22    |   3,563    |
-| 单元测试（.test.ts） |   371   |  124,544   |
+| 单元测试（.test.ts） |   374   |  127,155   |
 |   静态资源（.svg）   |   60    |    447     |
 
 ### 关键源码文件行数（实测）
@@ -605,7 +605,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层 + 测试三工程）
 npm run typecheck
 
-# 运行单元测试（371 个测试文件 / 6,887 个用例）
+# 运行单元测试（374 个测试文件 / 7,018 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
@@ -646,7 +646,7 @@ npm run clean
 | 项       | 说明                                                                                                                                                                                                                                                |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 测量项   | **bundle**：首屏初始 JS、渲染入口、主界面壳、预览 chunk、主进程入口、preload 入口、渲染层 assets、app.asar、win-unpacked、locales、NSIS/portable（存在时）；**冷启动**：开发构建 6 个 performance marks + 打包版 6 项 marks + 窗口可见 + 进程总耗时 |
-| 基线快照 | [build/perf-baseline.snapshot.json](./build/perf-baseline.snapshot.json)（入库；2026-11-20 本地实测：首屏 321.9 KiB、开发 preview-ready 478.7ms、打包版 preview-ready 476.8ms / 窗口可见 371.8ms）                                                  |
+| 基线快照 | [build/perf-baseline.snapshot.json](./build/perf-baseline.snapshot.json)（入库；2026-11-20 本地实测：首屏 321.9 KiB、开发 preview-ready 478.7ms、打包版 preview-ready 476.8ms / 窗口可见 374.8ms）                                                  |
 | 阈值     | 相对基线偏离 **>20%** 输出 `::warning` annotation；下降 >20% 记为改善；不改变退出码                                                                                                                                                                 |
 | CI 接入  | `.github/workflows/ci.yml` 的 `perf-baseline` job：`build:unpack` 后运行 `npm run perf:ci:startup`，`continue-on-error: true`，报告上传 artifact（14 天）并写入 GitHub Step Summary                                                                 |
 | 产物     | `out/analysis/perf-baseline-ci.json`、`out/analysis/perf-baseline-ci.md`（另含冷启动原始报告 `perf-baseline.json` / `perf-baseline-packaged.json`）                                                                                                 |
@@ -733,7 +733,9 @@ npm run clean
 - [x] **插件搜索入口**：插件菜单首项「插件搜索」→ 工作区搜索界面（自动聚焦，空白显示最近使用 20 个 + 全部工具），Enter/点击打开工具
 - [x] **编辑器主题设置修复**：恢复「独立编辑器主题」开关（点选自动开启）；含空格/括号的 21 套磁盘主题可正常写盘与应用（内部 id 映射）；真机全链路 10/10 PASS
 - [x] **帮助文档配图重采集与瘦身**：`npm run capture:help-shots` 脚本入库（22 场景可复跑）、22 张 WebP（1.47MiB→474KiB）、PDF 1.91→1.44MB、安装包帮助资源 −1.46MiB
-- [x] 门禁：全量 371 文件 / 6,887 用例、coverage 93.04/87.54/93.79/93.51、typecheck / ESLint / Prettier / docs:check / quality 全绿、E2E 套件通过
+- [x] **P2 体验批次**：插件分类折叠 + 38 工具图标 + 20 零引用图标清理；命令面板最近命令/折叠/建议；菜单 Alt+字母助记符（12 项）；插件面板最小化联动工作区；玻璃质感增强；帮助悬浮目录/内文搜索（含应用内代理）
+- [x] **工程收口**：硬编码颜色 314→272（新增 content-tokens.css 等值令牌）；z-index 应用层相对阶梯化（100/110/120，真机 9/9 PASS）
+- [x] 门禁：全量 374 文件 / 7,018 用例、coverage 93.06/87.61/93.89/93.56、typecheck / ESLint / Prettier / docs:check / quality 全绿、E2E 套件通过
 
 ### v1.5.5 (2026-11-27 已发布)
 
@@ -767,7 +769,7 @@ npm run clean
 - [x] 1.5.0 已发布 GitHub Release（2026-11-21，tag `release-1.5.0`；NSIS 安装包 / portable / latest.yml / blockmap）
 - [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
 - [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
-- [x] 文档口径统一（2026-11-20），2026-11-22 复核刷新测试数：测试 371 文件 / 6,887 用例、IPC 108 通道 / 18 组、preload 白名单 send 74 / receive 28 / window.api 6、报告 md 33 篇 / HTML Wiki 34 页
+- [x] 文档口径统一（2026-11-20），2026-11-22 复核刷新测试数：测试 374 文件 / 7,018 用例、IPC 108 通道 / 18 组、preload 白名单 send 74 / receive 28 / window.api 6、报告 md 33 篇 / HTML Wiki 34 页
 - [ ] 长期计划：macOS 和 Linux 版本支持、协作编辑、插件系统、云同步
 
 ### v1.3.9
