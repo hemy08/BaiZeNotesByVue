@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" width="1000" height="560" role="img" aria-labelledby="roadmapTitle roadmapDesc">
+  <title id="roadmapTitle">12 个月改进路线图</title>
+  <desc id="roadmapDesc">按 0~3、3~6、6~12 个月三阶段推进的改进项路线图。</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 22px; font-weight: 700; fill: #1f2328; }
+      .subtitle { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 13px; fill: #6b7280; }
+      .phase { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 15px; font-weight: 700; fill: #1f2328; }
+      .phaseSub { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 12px; fill: #6b7280; }
+      .cardTitle { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 13px; font-weight: 600; fill: #1f2328; }
+      .cardSub { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 11.5px; fill: #6b7280; }
+      .note { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 11.5px; fill: #6b7280; }
+      .arrow { stroke: #94a3b8; stroke-width: 2; fill: none; }
+      .arrowHead { fill: #94a3b8; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1000" height="560" rx="12"/>
+  <text class="title" x="40" y="44">12 个月改进路线图</text>
+  <text class="subtitle" x="40" y="68">按 0~3 / 3~6 / 6~12 个月三阶段推进；左侧色条对应工作流（底座/编辑/知识/内容/平台/AI）</text>
+
+  <!-- 阶段一 -->
+  <rect x="40" y="96" width="290" height="410" rx="12" fill="#ffffff" stroke="#e5e7eb"/>
+  <text class="phase" x="60" y="126">0~3 个月 · 底座与快赢</text>
+  <text class="phaseSub" x="60" y="146">低成本高感知 + 索引启动</text>
+
+  <g>
+    <rect x="60" y="164" width="250" height="52" rx="8" fill="#fffbeb" stroke="#fde68a"/>
+    <rect x="60" y="164" width="5" height="52" rx="2.5" fill="#ca8a04"/>
+    <text class="cardTitle" x="76" y="186">持久索引 v1（纯 JS worker）</text>
+    <text class="cardSub" x="76" y="204">达阈值启动 · 1 万笔记 P95 &lt; 500ms</text>
+
+    <rect x="60" y="226" width="250" height="52" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
+    <rect x="60" y="226" width="5" height="52" rx="2.5" fill="#2563eb"/>
+    <text class="cardTitle" x="76" y="248">callouts / Markmap / 演示模式</text>
+    <text class="cardSub" x="76" y="266">兼容主流写法，快速提感</text>
+
+    <rect x="60" y="288" width="250" height="52" rx="8" fill="#ecfdf5" stroke="#a7f3d0"/>
+    <rect x="60" y="288" width="5" height="52" rx="2.5" fill="#10b981"/>
+    <text class="cardTitle" x="76" y="310">图床 + 公众号排版 v1</text>
+    <text class="cardSub" x="76" y="328">写作 → 排版 → 发布闭环</text>
+
+    <rect x="60" y="350" width="250" height="52" rx="8" fill="#f5f3ff" stroke="#ddd6fe"/>
+    <rect x="60" y="350" width="5" height="52" rx="2.5" fill="#8b5cf6"/>
+    <text class="cardTitle" x="76" y="372">macOS / Linux 决策</text>
+    <text class="cardSub" x="76" y="390">正式支持或修正“跨平台”口径</text>
+
+    <rect x="60" y="412" width="250" height="52" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <rect x="60" y="412" width="5" height="52" rx="2.5" fill="#64748b"/>
+    <text class="cardTitle" x="76" y="434">搜索历史 / 标签批量</text>
+    <text class="cardSub" x="76" y="452">低成本提效</text>
+  </g>
+
+  <!-- 箭头 1 -->
+  <line class="arrow" x1="334" y1="300" x2="352" y2="300"/>
+  <polygon class="arrowHead" points="352,294 362,300 352,306"/>
+
+  <!-- 阶段二 -->
+  <rect x="365" y="96" width="290" height="410" rx="12" fill="#ffffff" stroke="#e5e7eb"/>
+  <text class="phase" x="385" y="126">3~6 个月 · 战略能力</text>
+  <text class="phaseSub" x="385" y="146">AI、知识网络与数据化</text>
+
+  <g>
+    <rect x="385" y="164" width="250" height="52" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
+    <rect x="385" y="164" width="5" height="52" rx="2.5" fill="#ea580c"/>
+    <text class="cardTitle" x="401" y="186">AI MVP（本地 + BYOK）</text>
+    <text class="cardSub" x="401" y="204">润色 / 摘要 / 文档问答</text>
+
+    <rect x="385" y="226" width="250" height="52" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
+    <rect x="385" y="226" width="5" height="52" rx="2.5" fill="#2563eb"/>
+    <text class="cardTitle" x="401" y="248">关系图谱（B3）</text>
+    <text class="cardSub" x="401" y="266">10k 节点可交互</text>
+
+    <rect x="385" y="288" width="250" height="52" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
+    <rect x="385" y="288" width="5" height="52" rx="2.5" fill="#2563eb"/>
+    <text class="cardTitle" x="401" y="310">aliases / heading / 嵌入</text>
+    <text class="cardSub" x="401" y="328">补全知识网络</text>
+
+    <rect x="385" y="350" width="250" height="52" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
+    <rect x="385" y="350" width="5" height="52" rx="2.5" fill="#2563eb"/>
+    <text class="cardTitle" x="401" y="372">数据库视图 v1（E5）</text>
+    <text class="cardSub" x="401" y="390">属性 → 表格 / 卡片</text>
+
+    <rect x="385" y="412" width="250" height="52" rx="8" fill="#f5f3ff" stroke="#ddd6fe"/>
+    <rect x="385" y="412" width="5" height="52" rx="2.5" fill="#8b5cf6"/>
+    <text class="cardTitle" x="401" y="434">多窗口 + 大库基准</text>
+    <text class="cardSub" x="401" y="452">独立窗口 / 性能预算</text>
+  </g>
+
+  <!-- 箭头 2 -->
+  <line class="arrow" x1="659" y1="300" x2="677" y2="300"/>
+  <polygon class="arrowHead" points="677,294 687,300 677,306"/>
+
+  <!-- 阶段三 -->
+  <rect x="690" y="96" width="270" height="410" rx="12" fill="#ffffff" stroke="#e5e7eb"/>
+  <text class="phase" x="710" y="126">6~12 个月 · 生态与平台</text>
+  <text class="phaseSub" x="710" y="146">扩展、同步与外部集成</text>
+
+  <g>
+    <rect x="710" y="164" width="230" height="52" rx="8" fill="#f5f3ff" stroke="#ddd6fe"/>
+    <rect x="710" y="164" width="5" height="52" rx="2.5" fill="#8b5cf6"/>
+    <text class="cardTitle" x="726" y="186">插件系统 v1（沙箱）</text>
+    <text class="cardSub" x="726" y="204">manifest + 权限 + API</text>
+
+    <rect x="710" y="226" width="230" height="52" rx="8" fill="#f5f3ff" stroke="#ddd6fe"/>
+    <rect x="710" y="226" width="5" height="52" rx="2.5" fill="#8b5cf6"/>
+    <text class="cardTitle" x="726" y="248">同步（WebDAV / S3）</text>
+    <text class="cardSub" x="726" y="266">冲突检测 → E2EE</text>
+
+    <rect x="710" y="288" width="230" height="52" rx="8" fill="#f5f3ff" stroke="#ddd6fe"/>
+    <rect x="710" y="288" width="5" height="52" rx="2.5" fill="#8b5cf6"/>
+    <text class="cardTitle" x="726" y="310">MCP / CLI / URI</text>
+    <text class="cardSub" x="726" y="328">外部助手与自动化</text>
+
+    <rect x="710" y="350" width="230" height="52" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
+    <rect x="710" y="350" width="5" height="52" rx="2.5" fill="#ea580c"/>
+    <text class="cardTitle" x="726" y="372">语义检索</text>
+    <text class="cardSub" x="726" y="390">embedding + 混合排序</text>
+
+    <rect x="710" y="412" width="230" height="52" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <rect x="710" y="412" width="5" height="52" rx="2.5" fill="#64748b"/>
+    <text class="cardTitle" x="726" y="434">移动端只读（可选）</text>
+    <text class="cardSub" x="726" y="452">PWA / 剪藏优先</text>
+  </g>
+
+  <text class="note" x="40" y="536">注：阶段划分是建议节奏，不是承诺排期；每项实施前需单独方案、风险评估与验收指标。</text>
+</svg>

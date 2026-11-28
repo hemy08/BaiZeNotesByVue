@@ -20,6 +20,9 @@
  * - `changeTheme`：主题设置对话框切换入口（更新配置 → 拉取样式 → 应用 → 请求主进程广播）；
  * - `handleThemeBroadcast` / `subscribeThemeUpdates`：`THEME_UPDATED` 广播的唯一订阅实现
  *   （主进程多窗口广播 / 跟随系统主题路径在渲染层的唯一落点）；
+ * - 2026-11-28（用户反馈「编辑器主题设置不生效」修复）：独立编辑器主题的磁盘主题名先经
+ *   `resolveMonacoThemeId` 映射为 Monaco 合法 id 再 defineTheme（22 套含空格/括号/下划线的
+ *   磁盘主题此前会抛 `Illegal theme name!` 并回退 vs）；合法名称映射前后保持一致。
  * - 视觉升级 P0（视觉升级方案 T1~T3）：`applyThemeStyles` 在既有 20 个主题变量之外追加
  *   18 个语义颜色令牌（`--ui-*`，shared/theme-tokens 派生）；`applyUiAppearance` 把
  *   界面风格（paper/glass/workbench/hybrid）与界面密度（compact/default/spacious）写到
@@ -433,10 +436,46 @@ function resolveBaseTheme(themeName: string): 'vs' | 'vs-dark' {
 }
 
 /**
+ * Monaco `defineTheme` 接受的名称白名单（与 monaco-editor 内部硬校验一致：
+ * standaloneThemeService.defineTheme 对不匹配的名称直接抛 `Illegal theme name!`）。
+ */
+const MONACO_THEME_ID_PATTERN = /^[a-z0-9-]+$/i
+
+/**
+ * 磁盘/内置主题标识 → Monaco 内部主题 id（纯函数，便于单测）。
+ *
+ * 2026-11-28（用户反馈「编辑器主题设置不生效」修复）：磁盘主题 id 即
+ * `resources/themes/monaco-themes/themes/<name>.json` 的文件名，其中 54 套里有 **22 套**
+ * 名称不满足 Monaco 的 `[A-Za-z0-9-]` 约束（空格/括号/下划线，如 "All Hallows Eve"、
+ * "MagicWB (Amiga)"、"Xcode_default"）。此前直接把主题标识传给 `defineTheme`，Monaco
+ * 抛 `Illegal theme name!` 后回退 `vs`——即使用户开启了独立编辑器主题，编辑器也毫无变化。
+ *
+ * 映射规则（仅对不合法名称生效，合法名称保持原样 = 既有行为不变）：
+ * - 小写后把非 `[a-z0-9-]` 连续片段折叠为 `-`，去首尾 `-`；
+ * - 加 `baize-disk-` 前缀，避免与内置 vs/vs-dark/hc-black 及用户可能自定义的合法名称冲突。
+ * 不同磁盘主题映射冲突无害：`defineTheme` 每次调用都会以最新数据覆盖定义并在随后
+ * `setTheme` 重新应用，展示名/配置值仍使用原始主题标识。
+ */
+export function resolveMonacoThemeId(themeName: string): string {
+    if (MONACO_THEME_ID_PATTERN.test(themeName)) {
+        return themeName
+    }
+    const sanitized = themeName
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+    return `baize-disk-${sanitized || 'theme'}`
+}
+
+/**
  * 加载磁盘/内置 Monaco 主题（原 BaiZeNotes.loadMonacoTheme 原样迁移）。
  *
  * 内置主题直接 setTheme；扩展主题经 `THEME.LOAD_MONACO_THEME` 从
  * `resources/themes/monaco-themes/` 读取后 defineTheme；失败回退 `vs`。
+ *
+ * 2026-11-28：扩展主题先经 `resolveMonacoThemeId` 映射为 Monaco 合法 id 再
+ * defineTheme/setTheme（修复含空格/括号/下划线的磁盘主题 `Illegal theme name!` 失败）；
+ * 合法名称（字母/数字/连字符）映射前后一致，既有行为不变。
  *
  * P2 剩余静默失败提示：此前失败只记日志并静默回退（用户以为编辑器主题已切换），
  * 现返回是否成功；用户主动切换主题（changeTheme）时由调用方弹错误提示，启动/广播等
@@ -459,8 +498,9 @@ async function loadMonacoTheme(monaco: MonacoModule, themeName: string): Promise
     try {
         const themeData = await ipc.invoke(IPC.THEME.LOAD_MONACO_THEME, themeName)
         if (themeData) {
-            monaco.editor.defineTheme(themeName, themeData)
-            monaco.editor.setTheme(themeName)
+            const monacoThemeId = resolveMonacoThemeId(themeName)
+            monaco.editor.defineTheme(monacoThemeId, themeData)
+            monaco.editor.setTheme(monacoThemeId)
             return true
         }
         logger.error(`Monaco theme not found: ${themeName}`)

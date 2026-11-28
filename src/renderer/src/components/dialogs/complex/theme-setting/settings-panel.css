@@ -17,6 +17,45 @@
     height: 100%;
 }
 
+/* 2026-11-28 用户反馈修复（编辑器主题不生效）：编辑器主题页签顶部的「独立编辑器主题」开关区。
+   开关关闭（默认）= 编辑器跟随应用主题配色；开启 = 使用下方所选 Monaco 主题。
+   全部使用主题变量，暗色/多主题下视觉一致。 */
+.editor-theme-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--theme-border-color);
+    border-radius: 8px;
+    background: var(--theme-card-background);
+}
+
+.editor-theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--theme-text-color);
+}
+
+.editor-theme-toggle-input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--theme-accent-color);
+}
+
+.editor-theme-hint {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--theme-secondary-text-color);
+}
+
 /* 应用主题：分组纵向列表 */
 .theme-list {
     display: flex;

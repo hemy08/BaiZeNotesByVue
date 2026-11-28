@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" width="1000" height="640" role="img" aria-labelledby="matrixTitle matrixDesc">
+  <title id="matrixTitle">改进项优先级矩阵（影响 × 投入）</title>
+  <desc id="matrixDesc">按影响与投入把改进项分为优先、战略投入、顺手做、后置四类。</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 22px; font-weight: 700; fill: #1f2328; }
+      .subtitle { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 13px; fill: #6b7280; }
+      .axis { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 12px; fill: #6b7280; }
+      .qtitle { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 15px; font-weight: 700; }
+      .chip { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 12.5px; fill: #1f2328; text-anchor: middle; }
+      .note { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 11.5px; fill: #6b7280; }
+      .legend { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 12px; fill: #4b5563; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1000" height="640" rx="12"/>
+  <text class="title" x="40" y="44">改进项优先级矩阵（影响 × 投入）</text>
+  <text class="subtitle" x="40" y="68">横轴：投入（左低右高）｜纵轴：影响（下低上高）｜基于 2026-11 业界基线与白泽现状评估</text>
+
+  <!-- 象限背景 -->
+  <rect x="90" y="100" width="420" height="235" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.2"/>
+  <rect x="510" y="100" width="420" height="235" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.2"/>
+  <rect x="90" y="335" width="420" height="235" rx="10" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.2"/>
+  <rect x="510" y="335" width="420" height="235" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="1.2"/>
+
+  <!-- 象限标题 -->
+  <text class="qtitle" x="110" y="130" fill="#047857">优先 · Quick Wins</text>
+  <text class="qtitle" x="530" y="130" fill="#1d4ed8">立项 · 战略投入（Plan）</text>
+  <text class="qtitle" x="110" y="365" fill="#4b5563">顺手做 · Fill-ins</text>
+  <text class="qtitle" x="530" y="365" fill="#b91c1c">后置 / 不做 · Avoid</text>
+
+  <!-- 高影响 / 低投入 -->
+  <g>
+    <rect x="115" y="152" width="96" height="30" rx="15" fill="#ffffff" stroke="#10b981"/>
+    <text class="chip" x="163" y="172">callouts</text>
+
+    <rect x="221" y="152" width="96" height="30" rx="15" fill="#ffffff" stroke="#10b981"/>
+    <text class="chip" x="269" y="172">Markmap</text>
+
+    <rect x="327" y="152" width="64" height="30" rx="15" fill="#ffffff" stroke="#10b981"/>
+    <text class="chip" x="359" y="172">图床</text>
+
+    <rect x="115" y="192" width="136" height="30" rx="15" fill="#ffffff" stroke="#10b981"/>
+    <text class="chip" x="183" y="212">公众号排版 v1</text>
+
+    <rect x="261" y="192" width="140" height="30" rx="15" fill="#ffffff" stroke="#10b981"/>
+    <text class="chip" x="331" y="212">aliases / heading</text>
+
+    <rect x="115" y="232" width="104" height="30" rx="15" fill="#ffffff" stroke="#10b981"/>
+    <text class="chip" x="167" y="252">演示模式</text>
+
+    <rect x="229" y="232" width="104" height="30" rx="15" fill="#ffffff" stroke="#10b981"/>
+    <text class="chip" x="281" y="252">搜索历史</text>
+
+    <rect x="115" y="272" width="62" height="30" rx="15" fill="#ffffff" stroke="#10b981"/>
+    <text class="chip" x="146" y="292">MCP</text>
+
+    <rect x="187" y="272" width="104" height="30" rx="15" fill="#ffffff" stroke="#10b981"/>
+    <text class="chip" x="239" y="292">标准 GFM</text>
+  </g>
+
+  <!-- 高影响 / 高投入 -->
+  <g>
+    <rect x="530" y="152" width="84" height="30" rx="15" fill="#ffffff" stroke="#2563eb"/>
+    <text class="chip" x="572" y="172">AI MVP</text>
+
+    <rect x="624" y="152" width="96" height="30" rx="15" fill="#ffffff" stroke="#2563eb"/>
+    <text class="chip" x="672" y="172">持久索引</text>
+
+    <rect x="730" y="152" width="120" height="30" rx="15" fill="#ffffff" stroke="#2563eb"/>
+    <text class="chip" x="790" y="172">Live Preview</text>
+
+    <rect x="530" y="192" width="100" height="30" rx="15" fill="#ffffff" stroke="#2563eb"/>
+    <text class="chip" x="580" y="212">插件系统</text>
+
+    <rect x="640" y="192" width="64" height="30" rx="15" fill="#ffffff" stroke="#2563eb"/>
+    <text class="chip" x="672" y="212">图谱</text>
+
+    <rect x="714" y="192" width="64" height="30" rx="15" fill="#ffffff" stroke="#2563eb"/>
+    <text class="chip" x="746" y="212">同步</text>
+
+    <rect x="530" y="232" width="110" height="30" rx="15" fill="#ffffff" stroke="#2563eb"/>
+    <text class="chip" x="585" y="252">数据库视图</text>
+
+    <rect x="650" y="232" width="84" height="30" rx="15" fill="#ffffff" stroke="#2563eb"/>
+    <text class="chip" x="692" y="252">块引用</text>
+
+    <rect x="744" y="232" width="96" height="30" rx="15" fill="#ffffff" stroke="#2563eb"/>
+    <text class="chip" x="792" y="252">语义检索</text>
+  </g>
+
+  <!-- 低影响 / 低投入 -->
+  <g>
+    <rect x="115" y="390" width="76" height="30" rx="15" fill="#ffffff" stroke="#9ca3af"/>
+    <text class="chip" x="153" y="410">多语言</text>
+
+    <rect x="201" y="390" width="104" height="30" rx="15" fill="#ffffff" stroke="#9ca3af"/>
+    <text class="chip" x="253" y="410">自定义 CSS</text>
+
+    <rect x="315" y="390" width="58" height="30" rx="15" fill="#ffffff" stroke="#9ca3af"/>
+    <text class="chip" x="344" y="410">Vim</text>
+
+    <rect x="115" y="430" width="76" height="30" rx="15" fill="#ffffff" stroke="#9ca3af"/>
+    <text class="chip" x="153" y="450">无障碍</text>
+
+    <rect x="201" y="430" width="104" height="30" rx="15" fill="#ffffff" stroke="#9ca3af"/>
+    <text class="chip" x="253" y="450">崩溃报告</text>
+  </g>
+
+  <!-- 低影响 / 高投入 -->
+  <g>
+    <rect x="530" y="390" width="76" height="30" rx="15" fill="#ffffff" stroke="#ef4444"/>
+    <text class="chip" x="568" y="410">移动端</text>
+
+    <rect x="616" y="390" width="100" height="30" rx="15" fill="#ffffff" stroke="#ef4444"/>
+    <text class="chip" x="666" y="410">实时协作</text>
+
+    <rect x="530" y="430" width="76" height="30" rx="15" fill="#ffffff" stroke="#ef4444"/>
+    <text class="chip" x="568" y="450">Canvas</text>
+
+    <rect x="616" y="430" width="130" height="30" rx="15" fill="#ffffff" stroke="#ef4444"/>
+    <text class="chip" x="681" y="450">静态站点导出</text>
+  </g>
+
+  <!-- 轴标签 -->
+  <text class="axis" x="300" y="612" text-anchor="middle">投入（低 → 高）</text>
+  <text class="axis" x="60" y="220" transform="rotate(-90 60 220)" text-anchor="middle">影响（低 → 高）</text>
+
+  <!-- 图例 -->
+  <rect x="640" y="590" width="12" height="12" rx="3" fill="#10b981"/>
+  <text class="legend" x="658" y="600">优先</text>
+  <rect x="700" y="590" width="12" height="12" rx="3" fill="#2563eb"/>
+  <text class="legend" x="718" y="600">立项</text>
+  <rect x="760" y="590" width="12" height="12" rx="3" fill="#9ca3af"/>
+  <text class="legend" x="778" y="600">顺手做</text>
+  <rect x="832" y="590" width="12" height="12" rx="3" fill="#ef4444"/>
+  <text class="legend" x="850" y="600">后置</text>
+
+  <text class="note" x="40" y="612">注：投入/影响为相对评估，不是绝对工期；具体工作量见报告附录 A。</text>
+</svg>

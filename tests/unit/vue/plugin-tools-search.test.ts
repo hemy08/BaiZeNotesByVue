@@ -1,40 +1,29 @@
 // @vitest-environment jsdom
 /**
  * 1.5.6 批次 B：插件工具可发现性（REQ-04 面板搜索框 / REQ-05 最近使用 + 收藏）
+ * 1.5.6 续：插件菜单「插件搜索」入口视图（1.5.6 新增，用户需求 2026-11-28）
  *
  * 覆盖两层：
  * 1. **纯逻辑**（`components/PluginTools/plugin-tools-search.ts`，可注入翻译与存储）：
  *    - 检索元数据由 manifest 派生：38 项全覆盖、中英名称/分类均可解析、关键词表无缺失；
  *    - 搜索匹配：中文名 / 英文关键词 / 分类名 / 短 id 均可命中；多 token AND；空查询返回空；
- *    - 最近使用：去重置顶、上限 5、非法 id 忽略；收藏：切换、上限 10 拒绝、增删结果；
+ *    - 最近使用：去重置顶、上限 20、非法 id 忽略；收藏：切换、上限 10 拒绝、增删结果；
  *    - localStorage 读取容错（JSON 损坏 / 非数组 / 非法元素 / 已下线工具 id / 上限截断）
  *      与写入失败降级（不抛错）。
  * 2. **组件接线**（`PluginTools.vue`，用真实 manifest action id 的桩组件替换 38 个懒加载工具）：
  *    - 默认视图分区顺序「收藏 → 最近使用 → 全部工具」；
  *    - 搜索框筛选 + 键盘 ↑/↓/Enter/Esc + 无结果空态 + 打开后清空搜索；
  *    - 收藏星标（工具行 / 工具条当前工具）不触发打开、写 localStorage、取消收藏；
- *    - 最近使用记录去重置顶、跨挂载保持；最小化态搜索框不渲染且搜索态清空。
+ *    - 最近使用记录去重置顶、跨挂载保持；最小化态搜索框不渲染且搜索态清空；
+ *    - 插件搜索入口视图（PLUGIN_SEARCH_SHOW）：内容区大搜索框自动聚焦、空白查询显示
+ *      最近使用 ≤20 + 全部工具、无最近记录空态、输入过滤、Enter/点击跳转打开工具。
  *
  * 说明：单测只断言 DOM 状态与持久化结果；真实 Electron 下的搜索→打开→收藏 链路由
  * `e2e/plugin-tools-search.spec.ts` 覆盖（若本批未跑 E2E，会在交付报告中说明原因）。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
-
-/**
- * 桩注册表：用真实 manifest 的 6 个 action id 替换 38 个 defineAsyncComponent，
- * 既避免 jsdom 加载真实工具 chunk，又让「搜索结果 = 可打开工具」链路走真实 id。
- * 顺序即注册表/菜单顺序，键盘导航断言依赖该顺序。
- */
-const STUB_ACTION_IDS = vi.hoisted(() => [
-    'baize:menu:plugins:encrypt:hash-text',
-    'baize:menu:plugins:encrypt:token-generator',
-    'baize:menu:plugins:codec:base64-codec',
-    'baize:menu:plugins:net:ipv4-subnet-calculator',
-    'baize:menu:plugins:info:ascii-table',
-    'baize:menu:plugins:misc:calculator'
-])
 
 /**
  * 桩组件挂载次数：用于断言「搜索/列表视图切换不会卸载当前工具实例」。
@@ -42,7 +31,14 @@ const STUB_ACTION_IDS = vi.hoisted(() => [
  */
 const STUB_MOUNT_STATE = vi.hoisted(() => ({ mounts: 0 }))
 
+/**
+ * 桩注册表：用 shared manifest 的真实 38 项 action id 替换 defineAsyncComponent，
+ * 既避免 jsdom 加载真实工具 chunk，又让「搜索结果 = 可打开工具」链路走真实 id。
+ * 顺序即注册表/菜单顺序（= manifest 展开顺序），最近使用上限 20 与键盘导航断言依赖该顺序。
+ */
 vi.mock('@renderer/components/PluginTools/plugin-tools-const', async () => {
+    const { PLUGIN_TOOL_ACTION_IDS } =
+        await import('../../../src/shared/constants/plugin-tools-manifest')
     // 测试桩组件：按 props 契约最小 mock，非产品组件
     const ToolStub = defineComponent({
         name: 'PluginToolStub',
@@ -57,7 +53,7 @@ vi.mock('@renderer/components/PluginTools/plugin-tools-const', async () => {
         }
     })
     return {
-        pluginTools: STUB_ACTION_IDS.map((id) => ({ id, component: ToolStub }))
+        pluginTools: PLUGIN_TOOL_ACTION_IDS.map((id) => ({ id, component: ToolStub }))
     }
 })
 
@@ -66,6 +62,7 @@ import EventBus from '@renderer/common/event-bus/event-bus'
 import { EVENT_BUS } from '@renderer/common/event-bus/event-bus-events'
 import { setLocale } from '@renderer/common/i18n'
 import { translate } from '../../../src/shared/i18n'
+import { PLUGIN_TOOL_ACTION_IDS } from '../../../src/shared/constants/plugin-tools-manifest'
 import {
     PLUGIN_TOOL_SEARCH_SOURCES,
     PLUGIN_TOOLS_FAVORITES_LIMIT,
@@ -83,12 +80,15 @@ import {
     type PluginToolsStorageLike
 } from '@renderer/components/PluginTools/plugin-tools-search'
 
-const HASH_ID = STUB_ACTION_IDS[0]
-const TOKEN_ID = STUB_ACTION_IDS[1]
-const BASE64_ID = STUB_ACTION_IDS[2]
-const IPV4_ID = STUB_ACTION_IDS[3]
-const ASCII_ID = STUB_ACTION_IDS[4]
-const CALCULATOR_ID = STUB_ACTION_IDS[5]
+/** 桩注册表（38 项，顺序 = manifest 展开顺序；与 mock 工厂里注入的注册表一致） */
+const STUB_ACTION_IDS = [...PLUGIN_TOOL_ACTION_IDS]
+
+const HASH_ID = 'baize:menu:plugins:encrypt:hash-text'
+const TOKEN_ID = 'baize:menu:plugins:encrypt:token-generator'
+const BASE64_ID = 'baize:menu:plugins:codec:base64-codec'
+const IPV4_ID = 'baize:menu:plugins:net:ipv4-subnet-calculator'
+const ASCII_ID = 'baize:menu:plugins:info:ascii-table'
+const CALCULATOR_ID = 'baize:menu:plugins:misc:calculator'
 
 /** 中文/英文检索条目（真实 manifest 元数据 + 测试 setupFiles 预载的双语词典） */
 function resolveEntries(locale: 'zh-CN' | 'en-US'): PluginToolSearchEntry[] {
@@ -161,6 +161,13 @@ async function clickToolRow(wrapper: VueWrapper, actionId: string): Promise<void
 /** 通过菜单事件打开工具（真实链路：menu-actions → EventBus(PLUGIN_TOOL_SHOW)） */
 async function showToolByMenu(actionId: string): Promise<void> {
     EventBus.$emit(EVENT_BUS.PLUGIN_TOOL_SHOW, actionId)
+    await nextTick()
+}
+
+/** 通过菜单事件打开「插件搜索」入口视图（真实链路：menu-actions → EventBus(PLUGIN_SEARCH_SHOW)） */
+async function showSearchEntryByMenu(): Promise<void> {
+    EventBus.$emit(EVENT_BUS.PLUGIN_SEARCH_SHOW)
+    await flushPromises()
     await nextTick()
 }
 
@@ -299,21 +306,34 @@ describe('REQ-04 搜索匹配（中英/分类/关键词/多 token）', () => {
 
 // ==================== 纯逻辑：最近使用 / 收藏 / 存储容错 ====================
 
-describe('REQ-05 最近使用记录（去重置顶 / 上限 5）', () => {
-    it('新打开置顶、重复打开去重置顶、最多保留 5 个', () => {
+describe('REQ-05 最近使用记录（去重置顶 / 上限 20）', () => {
+    it('新打开置顶、重复打开去重置顶、最多保留 20 个（最旧淘汰）', () => {
         let ids: string[] = []
-        for (const id of ['a', 'b', 'c', 'd', 'e', 'f'] as const) {
+        const opened = Array.from(
+            { length: PLUGIN_TOOLS_RECENT_LIMIT + 1 },
+            (_, index) => `tool-${index}`
+        )
+        for (const id of opened) {
             ids = recordRecentPluginToolId(ids, id)
         }
-        expect(ids).toEqual(['f', 'e', 'd', 'c', 'b'])
         expect(ids).toHaveLength(PLUGIN_TOOLS_RECENT_LIMIT)
+        expect(ids[0]).toBe(`tool-${PLUGIN_TOOLS_RECENT_LIMIT}`)
+        expect(ids).not.toContain('tool-0')
 
-        // 重复打开 b：去重置顶，长度不变
-        expect(recordRecentPluginToolId(ids, 'b')).toEqual(['b', 'f', 'e', 'd', 'c'])
+        // 重复打开已存在项：去重置顶，长度不变、不产生重复
+        const reopened = recordRecentPluginToolId(ids, 'tool-5')
+        expect(reopened).toHaveLength(PLUGIN_TOOLS_RECENT_LIMIT)
+        expect(reopened[0]).toBe('tool-5')
+        expect(reopened.filter((id) => id === 'tool-5')).toHaveLength(1)
         // 非法 id 不改变列表
         expect(recordRecentPluginToolId(ids, '')).toEqual(ids)
         // 不修改入参
-        expect(ids).toEqual(['f', 'e', 'd', 'c', 'b'])
+        expect(ids[0]).toBe(`tool-${PLUGIN_TOOLS_RECENT_LIMIT}`)
+    })
+
+    it('最近使用上限 20 / 收藏上限 10 常量口径（1.5.6 需求）', () => {
+        expect(PLUGIN_TOOLS_RECENT_LIMIT).toBe(20)
+        expect(PLUGIN_TOOLS_FAVORITES_LIMIT).toBe(10)
     })
 })
 
@@ -388,7 +408,7 @@ describe('REQ-05 本机存储容错（JSON 损坏/非法值回退空，不新增
 // ==================== 组件接线：默认视图 / 搜索 / 键盘 / 收藏 / 最小化 ====================
 
 describe('REQ-05 面板默认视图（收藏 → 最近使用 → 全部工具）', () => {
-    it('无激活工具时显示默认视图：全部工具 6 行（分区顺序 default 只有全部工具）', async () => {
+    it('无激活工具时显示默认视图：全部工具 38 行（分区顺序 default 只有全部工具）', async () => {
         const wrapper = mountPluginTools()
         await nextTick()
         expect(wrapper.find('[data-plugin-tool-view="home"]').exists()).toBe(true)
@@ -464,14 +484,15 @@ describe('REQ-04 搜索框（过滤 / 键盘 / 空态 / 打开后清空）', () 
 
         const activeId = (): string | undefined =>
             wrapper.find('.plugin-tool-item--active').attributes('data-tool-action-id')
-        expect(activeId()).toBe(HASH_ID)
+        // 顺序 = 注册表顺序（manifest 展开顺序）：首个为令牌生成器，第二个为哈希文本
+        expect(activeId()).toBe(TOKEN_ID)
 
         await input.trigger('keydown', { key: 'ArrowDown' })
         await nextTick()
-        expect(activeId()).toBe(TOKEN_ID)
+        expect(activeId()).toBe(HASH_ID)
         await input.trigger('keydown', { key: 'ArrowUp' })
         await nextTick()
-        expect(activeId()).toBe(HASH_ID)
+        expect(activeId()).toBe(TOKEN_ID)
         // 上移越界回绕到最后一个
         await input.trigger('keydown', { key: 'ArrowUp' })
         await nextTick()
@@ -636,7 +657,7 @@ describe('REQ-05 收藏（工具行 / 工具条星标 / 持久化 / 取消）', 
     })
 })
 
-describe('REQ-05 最近使用（面板记录 / 去重置顶 / 上限 5 / 跨挂载）', () => {
+describe('REQ-05 最近使用（面板记录 / 去重置顶 / 上限 20 / 跨挂载）', () => {
     it('打开工具即记录最近使用（去重置顶），面板默认视图可见最近分区', async () => {
         const wrapper = mountPluginTools()
         await clickToolRow(wrapper, HASH_ID)
@@ -651,7 +672,7 @@ describe('REQ-05 最近使用（面板记录 / 去重置顶 / 上限 5 / 跨挂�
         expect(renderedSectionKeys(wrapper)).toEqual(['recent', 'all'])
     })
 
-    it('最近使用上限 5：连续打开 6 个工具后只保留最近 5 个（最旧的被淘汰）', async () => {
+    it('最近使用上限 20：连续打开全部 38 个工具后只保留最近 20 个（最旧的被淘汰）', async () => {
         const wrapper = mountPluginTools()
         for (const actionId of STUB_ACTION_IDS) {
             await showToolByMenu(actionId)
@@ -659,7 +680,10 @@ describe('REQ-05 最近使用（面板记录 / 去重置顶 / 上限 5 / 跨挂�
         const stored = readStoredArray(PLUGIN_TOOLS_RECENT_STORAGE_KEY)
         expect(stored).toHaveLength(PLUGIN_TOOLS_RECENT_LIMIT)
         expect(stored).toEqual([...STUB_ACTION_IDS].reverse().slice(0, PLUGIN_TOOLS_RECENT_LIMIT))
+        // 38 - 20 = 18 个最早打开的工具被淘汰
         expect(stored).not.toContain(STUB_ACTION_IDS[0])
+        expect(stored).not.toContain(STUB_ACTION_IDS[17])
+        expect(stored).toContain(STUB_ACTION_IDS[18])
 
         await wrapper.find('.plugin-tools-home-btn').trigger('click')
         await nextTick()
@@ -714,5 +738,162 @@ describe('REQ-04/05 与最小化状态互斥', () => {
         expect(wrapper.find('.plugin-tool-content').attributes('id')).toBe(
             `plugin-tool-${ASCII_ID}`
         )
+    })
+})
+
+// ==================== 1.5.6 插件搜索入口视图（菜单「插件 → 插件搜索」） ====================
+
+describe('1.5.6 插件搜索入口视图（搜索界面 / 最近 20 / 跳转）', () => {
+    it('菜单事件打开入口视图：内容区大搜索框自动聚焦，空白查询显示最近使用 + 全部工具', async () => {
+        window.localStorage.setItem(
+            PLUGIN_TOOLS_RECENT_STORAGE_KEY,
+            JSON.stringify(STUB_ACTION_IDS.slice(0, 3))
+        )
+        const wrapper = mountPluginTools()
+        await nextTick()
+        await showSearchEntryByMenu()
+
+        // 视图状态：入口视图（data 属性供 E2E/单测断言）
+        expect(wrapper.find('[data-plugin-tool-view="search-entry"]').exists()).toBe(true)
+        // 工作区（内容区）大搜索框存在并自动聚焦
+        const entryInput = wrapper.find('.plugin-tools-entry-search-input')
+        expect(entryInput.exists()).toBe(true)
+        expect((entryInput.element as HTMLInputElement).value).toBe('')
+        expect(document.activeElement).toBe(entryInput.element)
+        // 入口视图下工具条搜索框隐藏（避免同屏两个搜索框）
+        expect(wrapper.find('.plugin-tools-search-input').exists()).toBe(false)
+
+        // 空白查询分区：最近使用（按存储顺序）→ 全部工具，不展示收藏分区
+        expect(renderedSectionKeys(wrapper)).toEqual(['recent', 'all'])
+        expect(sectionToolIds(wrapper, 'recent')).toEqual(STUB_ACTION_IDS.slice(0, 3))
+        expect(sectionToolIds(wrapper, 'all')).toEqual(STUB_ACTION_IDS)
+        expect(wrapper.find('.plugin-tool-search-entry-empty').exists()).toBe(false)
+    })
+
+    it('入口事件打开插件工作区（WORKSPACE_SHOW plugins）并还原最小化的面板', async () => {
+        const wrapper = mountPluginTools()
+        await nextTick()
+        // 先最小化：入口事件应先把面板还原为 normal
+        await wrapper.findAll('.plugin-tools-control-btn')[0].trigger('click')
+        await nextTick()
+        expect(wrapper.find('#plugin-tools-container').classes()).toContain(
+            'plugin-tools-container--minimized'
+        )
+
+        const emitSpy = vi.spyOn(EventBus, '$emit')
+        await showSearchEntryByMenu()
+        // 与既有打开工具链路一致：切到插件工作区容器
+        expect(emitSpy).toHaveBeenCalledWith(EVENT_BUS.WORKSPACE_SHOW, 'plugins')
+        expect(wrapper.find('#plugin-tools-container').classes()).not.toContain(
+            'plugin-tools-container--minimized'
+        )
+        expect(wrapper.find('[data-plugin-tool-view="search-entry"]').exists()).toBe(true)
+    })
+
+    it('无最近记录时显示合理空态，同时仍展示全部工具（任何情况下都能选择）', async () => {
+        const wrapper = mountPluginTools()
+        await nextTick()
+        await showSearchEntryByMenu()
+
+        expect(wrapper.find('[data-plugin-tool-view="search-entry"]').exists()).toBe(true)
+        const empty = wrapper.find('.plugin-tool-search-entry-empty')
+        expect(empty.exists()).toBe(true)
+        expect(empty.text()).toContain('暂无最近使用')
+        expect(wrapper.find('[data-plugin-tool-section="recent"]').exists()).toBe(false)
+        expect(sectionToolIds(wrapper, 'all')).toEqual(STUB_ACTION_IDS)
+    })
+
+    it('入口视图空白查询下最近使用分区最多显示 20 项（上限 20）', async () => {
+        const wrapper = mountPluginTools()
+        for (const actionId of STUB_ACTION_IDS) {
+            await showToolByMenu(actionId)
+        }
+        await showSearchEntryByMenu()
+
+        const recentIds = sectionToolIds(wrapper, 'recent')
+        expect(recentIds).toHaveLength(PLUGIN_TOOLS_RECENT_LIMIT)
+        expect(recentIds).toEqual(
+            [...STUB_ACTION_IDS].reverse().slice(0, PLUGIN_TOOLS_RECENT_LIMIT)
+        )
+        expect(sectionToolIds(wrapper, 'all')).toEqual(STUB_ACTION_IDS)
+    })
+
+    it('入口视图输入即过滤，Enter 打开高亮工具、记录最近使用并退出入口视图', async () => {
+        const wrapper = mountPluginTools()
+        await nextTick()
+        await showSearchEntryByMenu()
+        const entryInput = wrapper.find('.plugin-tools-entry-search-input')
+        await entryInput.setValue('哈希')
+        await nextTick()
+
+        expect(wrapper.find('[data-plugin-tool-view="search"]').exists()).toBe(true)
+        expect(sectionToolIds(wrapper, 'search')).toEqual([HASH_ID])
+        // 结果态下大搜索框保持挂载（不因 v-if 切换而丢焦点）
+        expect(wrapper.find('.plugin-tools-entry-search-input').exists()).toBe(true)
+
+        await entryInput.trigger('keydown', { key: 'Enter' })
+        await nextTick()
+        expect(wrapper.find('.plugin-tool-content').attributes('id')).toBe(`plugin-tool-${HASH_ID}`)
+        expect(readStoredArray(PLUGIN_TOOLS_RECENT_STORAGE_KEY)).toEqual([HASH_ID])
+        // 打开工具后退出入口视图，工具条搜索框恢复
+        expect(wrapper.find('[data-plugin-tool-view="search-entry"]').exists()).toBe(false)
+        expect(wrapper.find('.plugin-tools-search-input').exists()).toBe(true)
+    })
+
+    it('入口视图点击结果行打开工具（与搜索列表同一跳转链路）', async () => {
+        const wrapper = mountPluginTools()
+        await showSearchEntryByMenu()
+        await wrapper.find('.plugin-tools-entry-search-input').setValue('base64')
+        await nextTick()
+
+        await clickToolRow(wrapper, BASE64_ID)
+        expect(wrapper.find('.plugin-tool-content').attributes('id')).toBe(
+            `plugin-tool-${BASE64_ID}`
+        )
+        expect(readStoredArray(PLUGIN_TOOLS_RECENT_STORAGE_KEY)).toEqual([BASE64_ID])
+        expect(wrapper.find('.plugin-tools-search-input').exists()).toBe(true)
+    })
+
+    it('已打开工具时进入入口视图：工具内容仅隐藏（实例保留），点工具列表后退出', async () => {
+        const wrapper = mountPluginTools()
+        await clickToolRow(wrapper, CALCULATOR_ID)
+        expect(STUB_MOUNT_STATE.mounts).toBe(1)
+
+        await showSearchEntryByMenu()
+        // 工具内容只隐藏不卸载：v-show，切回工具时内容不丢
+        const toolContent = wrapper.find('.plugin-tool-content')
+        expect(toolContent.exists()).toBe(true)
+        expect(toolContent.isVisible()).toBe(false)
+        expect(STUB_MOUNT_STATE.mounts).toBe(1)
+
+        // 「工具列表」退出入口视图 → 默认视图，工具条搜索框恢复
+        await wrapper.find('.plugin-tools-home-btn').trigger('click')
+        await nextTick()
+        expect(wrapper.find('[data-plugin-tool-view="home"]').exists()).toBe(true)
+        expect(wrapper.find('.plugin-tools-search-input').exists()).toBe(true)
+    })
+
+    it('入口视图下最小化/返回编辑器既有行为不变（搜索状态与视图复位）', async () => {
+        const wrapper = mountPluginTools()
+        await showSearchEntryByMenu()
+        expect(wrapper.find('[data-plugin-tool-view="search-entry"]').exists()).toBe(true)
+
+        // 最小化：容器折叠、工具条搜索框仍不渲染；还原后入口视图保留
+        const minimizeButton = wrapper.findAll('.plugin-tools-control-btn')[0]
+        await minimizeButton.trigger('click')
+        await nextTick()
+        expect(wrapper.find('#plugin-tools-container').classes()).toContain(
+            'plugin-tools-container--minimized'
+        )
+        await minimizeButton.trigger('click')
+        await nextTick()
+        expect(wrapper.find('[data-plugin-tool-view="search-entry"]').exists()).toBe(true)
+
+        // 返回编辑器：退出入口视图并复位为默认视图（既有「返回编辑器」行为）
+        await wrapper.find('#plugin-tool-close button').trigger('click')
+        await nextTick()
+        expect(wrapper.find('[data-plugin-tool-view="search-entry"]').exists()).toBe(false)
+        expect(wrapper.find('[data-plugin-tool-view="home"]').exists()).toBe(true)
+        expect(wrapper.find('.plugin-tools-search-input').exists()).toBe(true)
     })
 })

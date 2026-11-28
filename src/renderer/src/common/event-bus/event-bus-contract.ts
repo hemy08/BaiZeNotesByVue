@@ -6,7 +6,7 @@
  * - 事件常量仍被引用，但接收方已删除（静默空发，如 MONACO_SWITCH_EXPLORER）；
  * - 新增发射点未登记，排查链路时漏看。
  *
- * 本文件把 24 个事件的收发关系写成机器可读契约，由
+ * 本文件把 EVENT_BUS 全部事件的收发关系写成机器可读契约（当前 26 个），由
  * `tests/unit/event-bus-contract.test.ts` 静态扫描 `src/renderer/src` 交叉核对：
  * 1. 常量表与契约表键集合必须完全一致（新增事件必须补契约）；
  * 2. 契约中每个 emitters / receivers 文件必须真实存在且确实出现对应事件名；
@@ -38,7 +38,8 @@ export interface EventBusContractEntry {
 }
 
 /**
- * 24 个 EventBus 事件的收发契约（顺序与 EVENT_BUS 常量表一致）。
+ * EVENT_BUS 全部事件的收发契约（当前 26 个，顺序与 EVENT_BUS 常量表一致）。
+ * 1.5.6 新增 PLUGIN_SEARCH_SHOW（插件搜索入口，菜单动作 → 面板搜索视图）。
  *
  * 类型 `Record<EventBusEventKey, ...>` 在编译期强制「每个常量都有契约」，
  * 测试再做运行时双向核对。
@@ -46,6 +47,12 @@ export interface EventBusContractEntry {
 export const EVENT_BUS_CONTRACT: Record<EventBusEventKey, EventBusContractEntry> = {
     PLUGIN_TOOL_SHOW: {
         payload: '插件工具 id（shared/constants/plugin-tools-manifest.ts 的动作 id）',
+        emitters: ['components/MenuBar/menu-actions.ts'],
+        receivers: ['components/PluginTools/PluginTools.vue']
+    },
+    PLUGIN_SEARCH_SHOW: {
+        payload:
+            '无载荷：打开插件工具面板并进入「插件搜索」入口视图（搜索框聚焦；空白查询展示最近使用 ≤20 项 + 全部工具）',
         emitters: ['components/MenuBar/menu-actions.ts'],
         receivers: ['components/PluginTools/PluginTools.vue']
     },

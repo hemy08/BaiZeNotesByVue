@@ -750,6 +750,23 @@ describe('config-manager', () => {
             ).resolves.toBe(false)
         })
 
+        // 2026-11-28 用户反馈「编辑器主题设置不生效」回归：磁盘主题名允许空格/括号，
+        // 此前 THEME_ID_PATTERN 只允许 [A-Za-z0-9_-]，21 个真实主题在写盘时被整包拒绝。
+        it('accepts real disk monaco theme names (spaces / parentheses) in theme writes', async () => {
+            for (const editorTheme of ['All Hallows Eve', 'MagicWB (Amiga)', 'GitHub Dark']) {
+                await expect(
+                    writeChannel()(trustedEvent, 'theme', {
+                        separateEditorTheme: true,
+                        editorTheme
+                    }),
+                    editorTheme
+                ).resolves.toBe(true)
+            }
+            const stored = (await readChannel()(trustedEvent, 'theme')) as Record<string, unknown>
+            expect(stored.separateEditorTheme).toBe(true)
+            expect(stored.editorTheme).toBe('GitHub Dark')
+        })
+
         it('clamps editor numeric fields and drops unknown editor fields', async () => {
             await expect(
                 writeChannel()(trustedEvent, 'editor', {

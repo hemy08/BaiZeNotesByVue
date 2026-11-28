@@ -95,9 +95,10 @@ function scanEventSites(): {
 const { emitters, receivers } = scanEventSites()
 
 describe('EventBus 事件契约（M5）', () => {
-    it('事件常量与契约键集合完全一致（25 个事件都有收发说明）', () => {
-        // 第 4 批基线：EVENT_BUS 常量表 24 个事件；P0 新增 MONACO_FORMAT_STATE_CHANGED 后为 25；新增/删除事件时必须同步契约与报告
-        expect(eventKeys).toHaveLength(25)
+    it('事件常量与契约键集合完全一致（26 个事件都有收发说明）', () => {
+        // 第 4 批基线：EVENT_BUS 常量表 24 个事件；P0 新增 MONACO_FORMAT_STATE_CHANGED 后为 25；
+        // 1.5.6 新增 PLUGIN_SEARCH_SHOW（插件搜索入口）后为 26；新增/删除事件时必须同步契约与报告
+        expect(eventKeys).toHaveLength(26)
         expect(toSorted(contractKeys)).toEqual(toSorted(eventKeys))
     })
 

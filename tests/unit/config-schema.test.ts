@@ -362,8 +362,43 @@ describe('AS-4 validateThemeConfig', () => {
     })
 
     it('should reject path-like editorTheme values', () => {
-        for (const editorTheme of ['../../evil', 'a/b', 'a\\b', '', 42]) {
+        for (const editorTheme of [
+            '../../evil',
+            'a/b',
+            'a\\b',
+            '',
+            42,
+            'themelist',
+            'Fake..Theme',
+            'a'.repeat(65)
+        ]) {
             expect(validateThemeConfig({ editorTheme }).ok, String(editorTheme)).toBe(false)
+        }
+    })
+
+    // 2026-11-28 用户反馈「编辑器主题设置不生效」回归：磁盘 Monaco 主题名来自
+    // resources/themes/monaco-themes/themes/*.json 的文件名，54 个主题中 21 个含空格/括号
+    // （如 "All Hallows Eve"、"Birds of Paradise"、"MagicWB (Amiga)"）。此前校验只允许
+    // [A-Za-z0-9_-]，选择这些主题点确定会让整个 theme 配置写入被拒（editorTheme 落不了盘）。
+    it('should accept real disk monaco theme names with spaces / parentheses', () => {
+        const diskThemeNames = [
+            'All Hallows Eve',
+            'Birds of Paradise',
+            'MagicWB (Amiga)',
+            'GitHub Dark',
+            'Oceanic Next',
+            'Textmate (Mac Classic)',
+            'Active4D',
+            'vs-dark'
+        ]
+        for (const editorTheme of diskThemeNames) {
+            const result = validateThemeConfig({
+                currentTheme: 'baize',
+                separateEditorTheme: true,
+                editorTheme
+            })
+            expect(result.ok, editorTheme).toBe(true)
+            expect((result.value as Record<string, unknown>).editorTheme).toBe(editorTheme)
         }
     })
 

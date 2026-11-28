@@ -72,9 +72,11 @@
                     v-if="activePanel === 'editor-theme'"
                     :themes="allMonacoThemes"
                     :current-monaco-theme="currentMonacoTheme"
+                    :separate-editor-theme="separateEditorTheme"
                     :loading="isLoading"
                     :error-message="loadError"
                     @select="handleSelectMonacoTheme"
+                    @toggle-separate="handleToggleSeparateEditorTheme"
                     @retry="handleRetryLoadThemes"
                 />
                 <FontSettingsPanel
@@ -209,12 +211,30 @@ function handleSelectTheme(themeType: string): void {
 }
 
 /**
- * 编辑器主题点选：仅更新本地草稿（实际应用走 apply/confirm → @change 链路）。
+ * 编辑器主题点选：更新本地草稿并**自动开启独立编辑器主题**（实际应用走 apply/confirm →
+ * @change 链路）。
+ *
+ * 2026-11-28（用户反馈「编辑器主题设置不生效」修复）：此前点选只更新 currentMonacoTheme，
+ * 而 separateEditorTheme 默认 false 且 Vue 版对话框没有开关可改（JSDOM 时代的
+ * 「是否单独配置编辑区主题」复选框在迁移中丢失），导致编辑器主题选择被保存却永不生效
+ * （编辑器始终跟随应用主题生成的 custom-theme）。现在「选择某个编辑器主题」即表达使用意图，
+ * 自动把开关置为开启；用户仍可在页签顶部显式关闭开关回到「跟随应用主题」。
+ * 仍然只改草稿，取消会经 resetSettings 恢复（取消回滚语义不变）。
+ *
  * P2 死通道清理：原 `selectMonacoTheme` 内的 IPC.THEME.UPDATE_MONACO_THEME 发送点
- * 主进程全仓无监听，已删除，此处保持同样的本地更新语义。
+ * 主进程全仓无监听，已删除，不恢复该通道。
  */
 function handleSelectMonacoTheme(monacoTheme: string): void {
     currentMonacoTheme.value = monacoTheme
+    separateEditorTheme.value = true
+}
+
+/**
+ * 「独立编辑器主题」开关：只更新共享草稿，应用/确定时随 change 提交。
+ * 关闭后编辑器改回跟随应用主题（applyThemeUpdate 会重新 defineTheme custom-theme）。
+ */
+function handleToggleSeparateEditorTheme(value: boolean): void {
+    separateEditorTheme.value = value
 }
 
 /** 字体设置页签 → 共享字体草稿（不参与主题配置保存，与拆分前一致） */

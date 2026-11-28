@@ -380,8 +380,23 @@ export function validateSystemConfig(data: unknown): ConfigValidationResult {
 
 // ============================ theme 配置 schema ============================
 
-/** Monaco 主题标识安全字符集（与 theme-registry 的路径逃逸校验一致） */
-const THEME_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
+/**
+ * Monaco 主题标识安全校验（与 theme-registry.getMonacoThemeData 的路径逃逸校验一致）。
+ *
+ * 2026-11-28（用户反馈「编辑器主题设置不生效」修复）：原实现为
+ * `/^[A-Za-z0-9_-]{1,64}$/`，只允许字母/数字/下划线/连字符，而 `resources/themes/
+ * monaco-themes/themes/` 下 54 个磁盘主题中有 **21 个** 名称含空格或括号
+ * （如 "All Hallows Eve"、"Birds of Paradise"、"MagicWB (Amiga)"、"GitHub Dark"），
+ * 选择这些主题点「确定」时整个 theme 配置包被校验拒绝（config:write 返回 false →
+ * 渲染层弹「配置写入磁盘失败」），editorTheme 根本落不了盘，表现为「编辑器主题设置不生效」。
+ *
+ * 现行规则与主进程主题注册表保持同一口径（防路径逃逸不变）：
+ * - 长度 1~64；
+ * - 禁止路径分隔符 `/` `\`、上级目录序列 `..`、清单文件 `themelist`；
+ * - 允许空格/括号等真实主题名中出现的可打印字符（磁盘主题名即文件名，Windows 文件名
+ *   本身不允许 `<>:"|?*` 与控制字符）。
+ */
+const THEME_ID_PATTERN = /^(?!.*\.\.)(?!themelist$)[A-Za-z0-9 _().-]{1,64}$/
 
 /** 校验 theme 配置写入（currentTheme 必须为已知主题，否则拒绝） */
 export function validateThemeConfig(data: unknown): ConfigValidationResult {

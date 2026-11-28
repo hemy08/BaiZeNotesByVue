@@ -66,7 +66,10 @@ vi.mock('@renderer/composables/useFeatureFlags', () => ({
 }))
 
 import { HandleMenuAction } from '../../src/renderer/src/components/MenuBar/menu-actions'
-import { menuMap } from '../../src/renderer/src/components/MenuBar/menu-config'
+import {
+    menuMap,
+    PLUGIN_SEARCH_MENU_ACTION
+} from '../../src/renderer/src/components/MenuBar/menu-config'
 import * as Templates from '@renderer/common/templates'
 
 const ipcSend = vi.fn()
@@ -319,6 +322,45 @@ describe('HandleMenuAction', () => {
                 'plugin-tools-show',
                 'baize:menu:plugins:net:ipv4-subnet-calculator'
             )
+        })
+
+        // 1.5.6「插件 → 插件搜索」：动作 id 也以插件前缀开头，必须在通用前缀拦截之前
+        // 精确命中并发 PLUGIN_SEARCH_SHOW（打开面板搜索入口视图），不能误发工具显示事件。
+        it('should emit plugin-search-show for the plugin search entry (not a tool action)', () => {
+            HandleMenuAction(PLUGIN_SEARCH_MENU_ACTION)
+            expect(emitMock).toHaveBeenCalledTimes(1)
+            expect(emitMock).toHaveBeenCalledWith('plugin-search-show')
+            // 不得被当作工具动作（'...:search' 不在 38 项注册表中，会形成死入口/脏最近记录）
+            expect(emitMock).not.toHaveBeenCalledWith(
+                'plugin-tools-show',
+                PLUGIN_SEARCH_MENU_ACTION
+            )
+            expect(showDialogMock).not.toHaveBeenCalled()
+            expect(ipcSend).not.toHaveBeenCalled()
+        })
+
+        it('menu-config 声明的插件搜索动作均被渲染层拦截（菜单树 ↔ 动作分发一致）', () => {
+            const actions: string[] = []
+            const walk = (items: unknown[]): void => {
+                for (const item of items as Array<{ menuAction?: string; submenu?: unknown[] }>) {
+                    if (item.menuAction?.startsWith('baize:menu:plugins:search')) {
+                        actions.push(item.menuAction)
+                    }
+                    if (item.submenu) {
+                        walk(item.submenu)
+                    }
+                }
+            }
+            walk(menuMap.value)
+            expect(actions).toEqual([PLUGIN_SEARCH_MENU_ACTION])
+
+            for (const action of actions) {
+                emitMock.mockReset()
+                ipcSend.mockReset()
+                HandleMenuAction(action)
+                expect(emitMock).toHaveBeenCalledWith('plugin-search-show')
+                expect(ipcSend).not.toHaveBeenCalled()
+            }
         })
     })
 

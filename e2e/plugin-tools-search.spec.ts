@@ -1,11 +1,15 @@
 /**
  * E2E：插件工具面板可发现性（1.5.6 批次 B / REQ-04 搜索 + REQ-05 最近使用 / 收藏）
+ *      与插件菜单「插件搜索」入口视图（1.5.6 新增，用户需求 2026-11-28）
  *
  * 覆盖真实 Electron + 真实主进程链路（单测只覆盖 jsdom 状态与纯函数）：
- *   菜单「插件 → 加解密插件 → 令牌生成器」打开面板（同时写入「最近使用」）
- *   → 面板工具条搜索框输入「哈希」→ 搜索结果命中哈希文本 → 无匹配空态 → 回车打开工具
- *   → 工具条星标收藏 → 本地存储写入 → 「工具列表」默认视图分区顺序（收藏 → 最近 → 全部）
- *   → 最小化后搜索框不显示/还原 → 页面重载后收藏与最近使用仍从 localStorage 恢复。
+ *   ① 菜单「插件 → 加解密插件 → 令牌生成器」打开面板（同时写入「最近使用」）
+ *      → 面板工具条搜索框输入「哈希」→ 搜索结果命中哈希文本 → 无匹配空态 → 回车打开工具
+ *      → 工具条星标收藏 → 本地存储写入 → 「工具列表」默认视图分区顺序（收藏 → 最近 → 全部）
+ *      → 最小化后搜索框不显示/还原 → 页面重载后收藏与最近使用仍从 localStorage 恢复。
+ *   ② 先打开 2 个工具制造最近记录 → 菜单「插件 → 插件搜索」（首项）→ 工作区搜索入口视图
+ *      （内容区大搜索框可见且自动聚焦）→ 空白查询显示最近使用 2 项 + 全部工具
+ *      → 输入「哈希」回车 → 打开哈希文本工具并记录最近使用。
  *
  * 运行前提：先构建开发产物 `npx electron-vite build`（缺失时整文件 skip，不假绿）。
  * 启动/菜单/指标复用 e2e/helpers（临时 profile + 配置沙箱 + 启动指标 annotation）。
@@ -48,6 +52,20 @@ async function openPluginTool(page: Page, groupLabel: string, toolLabel: string)
         .first()
     await expect(toolItem).toBeVisible({ timeout: 15_000 })
     await toolItem.click()
+}
+
+/**
+ * 点击「插件」菜单首项「插件搜索」（1.5.6 入口，动作 id：baize:menu:plugins:search）。
+ * 语义：打开插件工具面板并进入搜索入口视图（不是打开某个具体工具）。
+ */
+async function openPluginSearch(page: Page): Promise<void> {
+    await page.locator('.menu-bar .menu-item').filter({ hasText: '插件' }).first().click()
+    const searchItem = page
+        .locator('.submenu-container .menu-submenu-item')
+        .filter({ hasText: '插件搜索' })
+        .first()
+    await expect(searchItem).toBeVisible({ timeout: 15_000 })
+    await searchItem.click()
 }
 
 /** 读取渲染层 localStorage（真实 userData 分区，非 mock） */
@@ -171,6 +189,74 @@ test.describe('插件工具面板可发现性（搜索 / 最近使用 / 收藏�
             ).toBeVisible()
             expect(await readStorage(page, FAVORITES_KEY)).toEqual([HASH_ACTION_ID])
             // 重载后经菜单打开工具会再次记录最近使用（去重置顶）
+            expect(await readStorage(page, RECENT_KEY)).toEqual([HASH_ACTION_ID, TOKEN_ACTION_ID])
+        } finally {
+            await app?.close().catch(() => undefined)
+            await new Promise((resolve) => setTimeout(resolve, 800))
+            sandbox.restore()
+            profile.cleanup()
+        }
+    })
+
+    // 1.5.6（用户需求 2026-11-28）：插件菜单首项「插件搜索」→ 工作区搜索入口视图
+    // （内容区大搜索框自动聚焦 / 空白查询展示最近使用 ≤20 + 全部工具 / 输入关键词回车跳转工具）。
+    test('菜单「插件 → 插件搜索」打开搜索入口视图 → 最近使用 → 搜索回车打开工具', async () => {
+        test.setTimeout(180_000)
+        const profile = createTempProfile('baize-e2e-plugin-search-entry-')
+        const sandbox = createConfigSandbox(profile)
+        let app: ElectronApplication | undefined
+        try {
+            sandbox.seed()
+            seedUserDataConfig(profile, 'show-welcome', false)
+            const launched = await launchToMainView(profile)
+            app = launched.app
+            recordStartupMetrics(launched.launched, test.info(), '插件搜索入口', {
+                compensationReloads: launched.compensationReloads
+            })
+            const { page } = launched
+
+            // ---- 先打开 2 个工具制造「最近使用」记录 ----
+            await openPluginTool(page, '加解密插件', '令牌生成器')
+            const panel = page.locator('#plugin-tools-container')
+            await expect(panel).toBeVisible({ timeout: 15_000 })
+            await openPluginTool(page, '加解密插件', '哈希文本')
+            expect(await readStorage(page, RECENT_KEY)).toEqual([HASH_ACTION_ID, TOKEN_ACTION_ID])
+
+            // ---- 菜单「插件 → 插件搜索」：面板打开并进入搜索入口视图 ----
+            await openPluginSearch(page)
+            await expect(panel).toBeVisible({ timeout: 15_000 })
+            await expect(panel.locator('[data-plugin-tool-view="search-entry"]')).toBeVisible()
+            // 工作区（内容区）大搜索框可见且自动聚焦
+            const entryInput = panel.locator('.plugin-tools-entry-search-input')
+            await expect(entryInput).toBeVisible()
+            await expect(entryInput).toBeFocused()
+            // 入口视图只保留内容区大搜索框（工具条搜索框隐藏）
+            await expect(panel.locator('.plugin-tools-search-input')).toHaveCount(0)
+
+            // ---- 空白查询：最近使用分区（2 项）+ 全部工具分区 ----
+            const recentRows = panel.locator(
+                '[data-plugin-tool-section="recent"] [data-tool-action-id]'
+            )
+            await expect(recentRows).toHaveCount(2)
+            await expect(
+                panel.locator(
+                    `[data-plugin-tool-section="recent"] [data-tool-action-id="${TOKEN_ACTION_ID}"]`
+                )
+            ).toBeVisible()
+            await expect(panel.locator('[data-plugin-tool-section="all"]')).toBeVisible()
+
+            // ---- 输入关键词 → 结果 → Enter 跳转打开工具 ----
+            await entryInput.fill('哈希')
+            const searchRow = panel.locator(
+                `[data-plugin-tool-section="search"] [data-tool-action-id="${HASH_ACTION_ID}"]`
+            )
+            await expect(searchRow).toBeVisible()
+            await entryInput.press('Enter')
+            const toolContent = panel.locator('.plugin-tool-content')
+            await expect(toolContent).toBeVisible({ timeout: 20_000 })
+            await expect(toolContent).toHaveAttribute('id', `plugin-tool-${HASH_ACTION_ID}`)
+            // 打开工具后退出入口视图并记录最近使用（哈希文本已存在 → 去重置顶，顺序不变）
+            await expect(panel.locator('[data-plugin-tool-view="search-entry"]')).toHaveCount(0)
             expect(await readStorage(page, RECENT_KEY)).toEqual([HASH_ACTION_ID, TOKEN_ACTION_ID])
         } finally {
             await app?.close().catch(() => undefined)

@@ -402,6 +402,94 @@ describe('ThemeSettingDialog', () => {
         expect(wrapper.find('.monaco-theme-list .theme-card.selected').text()).toContain('Dark')
     })
 
+    // 2026-11-28 用户反馈「编辑器主题设置不生效」修复回归：
+    // 默认 separateEditorTheme=false 时编辑器跟随应用主题、所选 Monaco 主题永不生效；
+    // 现在点选编辑器主题会自动开启「独立编辑器主题」并在确定时随 change 提交。
+    it('selecting an editor theme auto-enables independent editor theme and applies it', async () => {
+        const wrapper = await mountVisible()
+        await wrapper
+            .findAll('.sidebar-item')
+            .find((item) => item.text().includes('编辑器主题'))!
+            .trigger('click')
+
+        // 初始：跟随应用主题（开关关闭）
+        expect(
+            (wrapper.find('.editor-theme-toggle-input').element as HTMLInputElement).checked
+        ).toBe(false)
+
+        const monacoCards = wrapper.findAll('.monaco-theme-list .theme-card')
+        await monacoCards[1].trigger('click')
+
+        // 点选后自动开启独立编辑器主题（仍只是草稿，不写盘）
+        expect(
+            (wrapper.find('.editor-theme-toggle-input').element as HTMLInputElement).checked
+        ).toBe(true)
+        expect(wrapper.emitted('change')).toBeUndefined()
+
+        // 确定：change 携带所选编辑器主题 + separate=true
+        await wrapper.find('.btn-confirm').trigger('click')
+        const changes = wrapper.emitted('change')!
+        expect(changes).toHaveLength(1)
+        expect(changes[0]).toEqual(['baize', 'vs-dark', true])
+        expect(wrapper.emitted('close')).toHaveLength(1)
+    })
+
+    it('turning the independent editor theme switch off applies follow-app-theme mode', async () => {
+        const wrapper = await mountVisible()
+        await wrapper
+            .findAll('.sidebar-item')
+            .find((item) => item.text().includes('编辑器主题'))!
+            .trigger('click')
+
+        // 先点选主题（自动开启），再显式关闭开关 → 应用时为「跟随应用主题」
+        await wrapper.findAll('.monaco-theme-list .theme-card')[1].trigger('click')
+        await wrapper.find('.editor-theme-toggle-input').setValue(false)
+        await wrapper.find('.btn-apply').trigger('click')
+
+        expect(wrapper.emitted('change')![0]).toEqual(['baize', 'vs-dark', false])
+    })
+
+    // 打开时从配置回填「独立编辑器主题」开关与所选主题（重启后保持的 UI 回归）
+    it('restores the saved independent editor theme selection when opening', async () => {
+        configRead.mockResolvedValue({
+            currentTheme: 'baize',
+            separateEditorTheme: true,
+            editorTheme: 'vs-dark'
+        })
+        const wrapper = await mountVisible()
+        await wrapper
+            .findAll('.sidebar-item')
+            .find((item) => item.text().includes('编辑器主题'))!
+            .trigger('click')
+
+        expect(
+            (wrapper.find('.editor-theme-toggle-input').element as HTMLInputElement).checked
+        ).toBe(true)
+        expect(wrapper.find('.monaco-theme-list .theme-card.selected').text()).toContain('Dark')
+
+        // 未做任何修改直接应用：change 必须携带配置中的编辑器主题与独立开关
+        await wrapper.find('.btn-apply').trigger('click')
+        expect(wrapper.emitted('change')![0]).toEqual(['baize', 'vs-dark', true])
+    })
+
+    // P2 #17 扩展：编辑器主题草稿同样参与取消回滚（此前只覆盖应用主题）
+    it('rolls back the editor theme draft (and auto-enabled switch) when cancelling', async () => {
+        const wrapper = await mountVisible()
+        await wrapper
+            .findAll('.sidebar-item')
+            .find((item) => item.text().includes('编辑器主题'))!
+            .trigger('click')
+
+        await wrapper.findAll('.monaco-theme-list .theme-card')[1].trigger('click')
+        await wrapper.find('.btn-cancel').trigger('click')
+
+        // 草稿偏离初始值（vs-dark + separate=true）→ 取消 emit 一次初始值回滚
+        const changes = wrapper.emitted('change')!
+        expect(changes).toHaveLength(1)
+        expect(changes[0]).toEqual(['baize', 'vs', false])
+        expect(wrapper.emitted('close')).toHaveLength(1)
+    })
+
     it('shows font settings with editable selects', async () => {
         const wrapper = await mountVisible()
         await wrapper

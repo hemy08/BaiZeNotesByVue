@@ -65,6 +65,10 @@ const NAV_REPORT_DATA = {
         {
             file: 'Monaco与WYSIWYG双编辑器技术评估报告',
             title: 'Monaco 与 WYSIWYG 双编辑器技术评估报告'
+        },
+        {
+            file: '业界对标与改进建议报告',
+            title: '业界对标与改进建议报告'
         }
     ],
     '02-修复与实施': [

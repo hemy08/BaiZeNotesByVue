@@ -175,6 +175,8 @@ export default {
     },
     plugins: {
         label: 'Plugins',
+        // 1.5.6: first Plugins-menu item "Plugin Search" (opens the panel search entry view)
+        search: 'Plugin Search',
         group: {
             languageKeywords: 'Language Syntax Keyword Reference',
             encrypt: 'Encryption Plugins',

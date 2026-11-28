@@ -17,7 +17,10 @@ import * as path from 'path'
 
 import { pluginTools } from '../../src/renderer/src/components/PluginTools/plugin-tools-const'
 // FE-16/FE-17：插件工具注册表 ↔ 插件菜单双向一致性校验（菜单数据不依赖 .vue 组件，可安全导入）
-import { menuMap } from '../../src/renderer/src/components/MenuBar/menu-config'
+import {
+    menuMap,
+    PLUGIN_SEARCH_MENU_ACTION
+} from '../../src/renderer/src/components/MenuBar/menu-config'
 // M3：注册表唯一真源（38 项工具清单/组件模块路径）
 import { PLUGIN_TOOL_ITEMS } from '../../src/shared/constants/plugin-tools-manifest'
 
@@ -114,10 +117,12 @@ describe('pluginTools', () => {
 // ① 已注册工具必须有菜单入口（否则功能不可达，FE-17）；
 // ② 插件菜单动作必须映射到已注册工具（否则点击后 PluginTools.vue 只有"开发中"
 //    占位、或被空组剪枝剔除，构成死入口，FE-16）。
+// 1.5.6 例外：'baize:menu:plugins:search' 是「插件搜索」面板入口动作（不是工具），
+// 不属于 38 项注册表，由 menu-actions 的精确分支拦截 → EventBus(PLUGIN_SEARCH_SHOW)。
 describe('pluginTools ↔ 插件菜单一致性（FE-16/FE-17）', () => {
     const menuActions = collectMenuActions(menuMap.value)
-    const pluginMenuActions = menuActions.filter((action) =>
-        action.startsWith('baize:menu:plugins:')
+    const pluginMenuActions = menuActions.filter(
+        (action) => action.startsWith('baize:menu:plugins:') && action !== PLUGIN_SEARCH_MENU_ACTION
     )
     const registeredIds = new Set(pluginTools.map((tool) => tool.id))
 

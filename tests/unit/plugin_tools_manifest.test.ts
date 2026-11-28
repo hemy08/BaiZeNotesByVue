@@ -38,7 +38,10 @@ import {
     pluginTools,
     pluginToolModuleKeys
 } from '../../src/renderer/src/components/PluginTools/plugin-tools-const'
-import { menuMap } from '../../src/renderer/src/components/MenuBar/menu-config'
+import {
+    menuMap,
+    PLUGIN_SEARCH_MENU_ACTION
+} from '../../src/renderer/src/components/MenuBar/menu-config'
 import type { BaiZeMenuEntry } from '../../src/renderer/src/components/MenuBar/menu-config'
 
 const ROOT = path.resolve(__dirname, '../..')
@@ -134,6 +137,16 @@ function getPluginsMenu(): BaiZeMenuEntry {
     return pluginsMenu!
 }
 
+/**
+ * 插件菜单中的「工具动作」集合（剔除 1.5.6 新增的「插件搜索」入口动作）。
+ * 插件搜索是面板级入口动作、不属于 38 项工具，因此 manifest 三处同序比较只针对工具动作。
+ */
+function collectPluginToolActions(): string[] {
+    return collectMenuActions(getPluginsMenu().submenu!).filter(
+        (action) => action !== PLUGIN_SEARCH_MENU_ACTION
+    )
+}
+
 describe('M3 插件工具单一 manifest 一致性', () => {
     describe('manifest 结构契约（38 项覆盖 / 无重复）', () => {
         it('应恰好登记 38 项工具，且菜单树叶子数一致', () => {
@@ -217,17 +230,23 @@ describe('M3 插件工具单一 manifest 一致性', () => {
     describe('菜单生成（menu-config 由 manifest 生成）', () => {
         it('插件菜单动作集合与顺序 == manifest == 注册表（三处同序）', () => {
             const menuActions = collectMenuActions(getPluginsMenu().submenu!)
-            expect(menuActions).toEqual([...PLUGIN_TOOL_ACTION_IDS])
+            // 1.5.6：菜单首项是「插件搜索」面板入口动作，其后才是 38 项工具（manifest 投影）
+            expect(menuActions).toEqual([PLUGIN_SEARCH_MENU_ACTION, ...PLUGIN_TOOL_ACTION_IDS])
+            expect(collectPluginToolActions()).toEqual([...PLUGIN_TOOL_ACTION_IDS])
             expect(pluginTools.map((tool) => tool.id)).toEqual([...PLUGIN_TOOL_ACTION_IDS])
         })
 
         it('插件菜单动作唯一且全部以插件动作前缀开头', () => {
             const actions = collectMenuActions(getPluginsMenu().submenu!)
-            expect(actions.length).toBe(38)
+            // 38 项工具 + 1 个「插件搜索」入口动作 = 39
+            expect(actions.length).toBe(39)
             expect(new Set(actions).size).toBe(actions.length)
             for (const action of actions) {
                 expect(action.startsWith(PLUGIN_TOOL_ACTION_PREFIX)).toBe(true)
             }
+            // 入口动作必须置顶，且不是 38 项工具之一
+            expect(actions[0]).toBe(PLUGIN_SEARCH_MENU_ACTION)
+            expect(PLUGIN_TOOL_ACTION_IDS).not.toContain(PLUGIN_SEARCH_MENU_ACTION)
         })
 
         it('菜单分组结构（层级与顺序）与 manifest 一致，空组不渲染', () => {

@@ -86,6 +86,24 @@ async function clickNestedLeaf(label: string): Promise<void> {
 }
 
 describe('MenuBar 插件菜单（FE-16/FE-17）', () => {
+    // 1.5.6（用户需求 2026-11-28）：插件菜单首项「插件搜索」——点击后发 PLUGIN_SEARCH_SHOW
+    // （打开插件工具面板 + 进入搜索入口视图），与 38 项工具动作（PLUGIN_TOOL_SHOW）区分。
+    it('「插件」菜单首项为「插件搜索」，点击发 plugin-search-show（1.5.6）', async () => {
+        await openPluginsMenu()
+        expect(submenuLabels()[0]).toBe('插件搜索')
+
+        const searchLeaf = [
+            ...document.body.querySelectorAll('.submenu-container .menu-submenu-item')
+        ].find((node) => node.querySelector('.menu-item-label')?.textContent === '插件搜索')
+        expect(searchLeaf, '应存在「插件搜索」一级子菜单项').toBeDefined()
+        searchLeaf!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+        await flushPromises()
+
+        expect(emitSpy).toHaveBeenCalledWith('plugin-search-show')
+        expect(emitSpy).not.toHaveBeenCalledWith('plugin-tools-show', 'baize:menu:plugins:search')
+        expect(showDialogMock).not.toHaveBeenCalled()
+    })
+
     it('空组条目不再渲染（FE-16）', async () => {
         await openPluginsMenu()
         const labels = submenuLabels()

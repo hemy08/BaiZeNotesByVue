@@ -1,5 +1,34 @@
 <template>
     <div class="panel">
+        <!-- 2026-11-28 用户反馈「编辑器主题设置不生效」修复：
+             默认 separateEditorTheme=false 时编辑器跟随应用主题（custom-theme 由应用主题配色派生），
+             下方点选的 Monaco 主题只在「独立编辑器主题」开启后才真正应用。此前 Vue 版主题设置
+             对话框缺少该开关（JSDOM 时代「是否单独配置编辑区主题」复选框在迁移中丢失），
+             editorTheme 只被保存、从不被消费——因此这里恢复开关，并在点选主题时由壳层自动开启。
+             开关始终可见：即使列表加载失败，用户也能切换回「跟随应用主题」。 -->
+        <div class="editor-theme-toolbar">
+            <label class="editor-theme-toggle">
+                <input
+                    class="editor-theme-toggle-input"
+                    type="checkbox"
+                    :checked="separateEditorTheme"
+                    @change="handleToggleSeparate"
+                />
+                <span class="editor-theme-toggle-label">
+                    {{ t('dialogRenderer.themeSetting.separateEditorThemeLabel') }}
+                </span>
+            </label>
+            <p class="editor-theme-hint">
+                {{
+                    t(
+                        separateEditorTheme
+                            ? 'dialogRenderer.themeSetting.separateEditorThemeHintOn'
+                            : 'dialogRenderer.themeSetting.separateEditorThemeHintOff'
+                    )
+                }}
+            </p>
+        </div>
+
         <!-- P2 功能错误处理修复：编辑器主题加载失败/为空时不再空白——错误文案 + 重试。 -->
         <div v-if="errorMessage" class="panel-state panel-state-error" role="alert">
             <p class="panel-state-text">{{ errorMessage }}</p>
@@ -45,6 +74,11 @@
  *
  * P2 功能错误处理修复（F-04）：与 AppThemePanel 一致新增 loading / errorMessage / retry——
  * 主题列表加载失败或为空时显示降级提示，避免首开空白面板无任何反馈。
+ *
+ * 2026-11-28 用户反馈修复（编辑器主题不生效）：新增 `separateEditorTheme` 只读 prop 与
+ * 「独立编辑器主题」开关（emit('toggle-separate', checked)）。开关关闭 = 编辑器跟随应用主题
+ * 配色（与 1.5.5 及以前默认行为一致）；开启 = 使用下方所选 Monaco 主题。页签自身不持有
+ * 任何状态（草稿仍由壳层 composable 唯一持有），点选卡片也只 emit('select')。
  */
 import { t } from '../../../../common/i18n'
 import ThemePreviewCard from './ThemePreviewCard.vue'
@@ -65,18 +99,27 @@ withDefaults(
         themes: MonacoThemeViewItem[]
         /** 当前选中编辑器主题 type */
         currentMonacoTheme: string
+        /** 是否使用独立编辑器主题（开关 checked 状态；true = 应用所选 Monaco 主题） */
+        separateEditorTheme?: boolean
         /** 主题列表是否加载中（可选，默认 false） */
         loading?: boolean
         /** 加载失败文案（可选，默认空串 = 无错误；非空时显示错误态 + 重试） */
         errorMessage?: string
     }>(),
-    { loading: false, errorMessage: '' }
+    { separateEditorTheme: false, loading: false, errorMessage: '' }
 )
 
 const emit = defineEmits<{
     (e: 'select', monacoTheme: string): void
+    (e: 'toggle-separate', value: boolean): void
     (e: 'retry'): void
 }>()
+
+/** 开关切换：只上报新值，草稿由壳层唯一持有（与其它状态的事件上报口径一致） */
+function handleToggleSeparate(event: Event): void {
+    const target = event.target as HTMLInputElement | null
+    emit('toggle-separate', Boolean(target?.checked))
+}
 </script>
 
 <style scoped>

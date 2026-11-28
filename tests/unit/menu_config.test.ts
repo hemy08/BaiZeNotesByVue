@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { translate } from '../../src/shared/i18n'
-import { menuMap, pruneEmptySubmenus } from '../../src/renderer/src/components/MenuBar/menu-config'
+import {
+    menuMap,
+    pruneEmptySubmenus,
+    PLUGIN_SEARCH_MENU_ACTION
+} from '../../src/renderer/src/components/MenuBar/menu-config'
 import type { BaiZeMenuEntry } from '../../src/renderer/src/components/MenuBar/menu-config'
+import { PLUGIN_TOOL_ACTION_IDS } from '../../src/shared/constants/plugin-tools-manifest'
 
 // CMP-30：菜单数据只存 labelKey，渲染时由 MenuBar.vue 调用 t(labelKey) 输出。
 // 测试辅助：按指定语言还原「渲染后文本」，并对非 labelKey 的存量 label（品牌名/版本号等）原样使用。
@@ -422,6 +427,28 @@ describe('menu-config', () => {
         expect(labels).toContain('常用对照表')
         const encrypt = pluginsMenu.submenu!.find((item) => displayText(item) === '加解密插件')
         expect(encrypt?.submenu).toHaveLength(8)
+    })
+
+    // 1.5.6（用户需求 2026-11-28）：插件菜单首项新增「插件搜索」子项——点击打开插件工具
+    // 面板并进入搜索入口视图（不是具体工具动作）；既有 38 项工具结构与顺序不变。
+    it('should declare plugin search entry as the first plugins item (1.5.6)', () => {
+        const pluginsMenu = menuMap.value.find((item) => item.labelKey === 'menu.plugins.label')!
+        const first = pluginsMenu.submenu![0]
+        expect(first).toMatchObject({
+            labelKey: 'menu.plugins.search',
+            menuAction: PLUGIN_SEARCH_MENU_ACTION
+        })
+        // 叶子动作（无子菜单），动作 id 为菜单契约值
+        expect(first.submenu).toBeUndefined()
+        expect(PLUGIN_SEARCH_MENU_ACTION).toBe('baize:menu:plugins:search')
+        // 中英文案均可解析（MENU-01/MENU-03）
+        expect(displayText(first)).toBe('插件搜索')
+        expect(displayText(first, 'en-US')).toBe('Plugin Search')
+
+        // 38 项工具入口在搜索项之后保持 manifest 原顺序（结构/顺序不变）
+        expect(collectActions(pluginsMenu.submenu!.slice(1))).toEqual([...PLUGIN_TOOL_ACTION_IDS])
+        // 搜索入口动作不得与任何工具动作重复
+        expect(PLUGIN_TOOL_ACTION_IDS).not.toContain(PLUGIN_SEARCH_MENU_ACTION)
     })
 
     it('should expose every registered plugin tool in the plugins menu (FE-17)', () => {

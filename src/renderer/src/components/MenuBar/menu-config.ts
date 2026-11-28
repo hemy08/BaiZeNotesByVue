@@ -474,6 +474,8 @@ const toolsMenu: BaiZeMenuEntry = {
 //      —— 渲染层菜单树，MenuBar.vue 按 submenu.length > 0 决定是否有子菜单/箭头；
 //   2) menu-actions.ts —— 对所有 'baize:menu:plugins:*' 动作统一拦截并
 //      EventBus.$emit(PLUGIN_TOOL_SHOW, action)，由 PluginTools.vue 展示组件；
+//      例外（1.5.6）：'baize:menu:plugins:search' 为「插件搜索」入口动作，在通用前缀
+//      拦截之前精确命中并发 PLUGIN_SEARCH_SHOW（打开面板 + 进入搜索入口视图，不打开工具）；
 //   3) main/ipc/menu-tools.ts —— 主进程 pluginsMenuHandlers 已在 P2 死代码清理中删除，
 //      因为其唯一实现是向渲染层零监听的 OPEN_PLUGIN_TOOL 通道 send（双死路径），
 //      插件工具实际链路是「渲染层两跳」（menu-actions → EventBus → PluginTools.vue）。
@@ -489,6 +491,16 @@ const toolsMenu: BaiZeMenuEntry = {
 //
 // 空组（语言关键字/大小写转换/数据和命令对照表）仍在 manifest 中保留 children: []，
 // 导出前由下方 pruneEmptySubmenus 剪除；数据补齐后无需改此处即自动展示（FE-16 语义不变）。
+
+/**
+ * 「插件 → 插件搜索」入口动作 id（1.5.6 新增，用户需求 2026-11-28）。
+ *
+ * 与 38 项插件工具动作的区别：本动作不打开某个具体工具，而是打开插件工具面板并进入
+ * 「搜索入口视图」（搜索框聚焦；空白查询展示最近使用 ≤20 项 + 全部工具）。
+ * menu-actions.ts 必须在通用 `PLUGIN_TOOL_ACTION_PREFIX` 前缀拦截**之前**精确命中本动作，
+ * 否则会被当作工具动作 emit(PLUGIN_TOOL_SHOW, '...:search')，形成无组件的死入口。
+ */
+export const PLUGIN_SEARCH_MENU_ACTION = 'baize:menu:plugins:search'
 
 /** manifest 菜单节点 → 菜单项（组节点递归展开，叶子项按 manifest 生成 menuAction） */
 function toPluginMenuEntry(node: PluginToolMenuNode): BaiZeMenuEntry {
@@ -506,7 +518,16 @@ function toPluginMenuEntry(node: PluginToolMenuNode): BaiZeMenuEntry {
 
 const pluginsMenu: BaiZeMenuEntry = {
     labelKey: 'menu.plugins.label',
-    submenu: PLUGIN_TOOL_MENU.map(toPluginMenuEntry)
+    submenu: [
+        // 1.5.6 插件搜索入口：作为「插件」菜单首项（置顶）单独声明。
+        // MENU-08 边界说明：38 项工具仍 100% 由 manifest 投影生成（下方展开），本项是
+        // 「面板级入口动作」而非插件工具，写入 manifest 会污染工具注册表/懒加载表，故在此声明。
+        {
+            labelKey: 'menu.plugins.search',
+            menuAction: PLUGIN_SEARCH_MENU_ACTION
+        },
+        ...PLUGIN_TOOL_MENU.map(toPluginMenuEntry)
+    ]
 }
 
 /**

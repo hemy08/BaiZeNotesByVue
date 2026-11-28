@@ -16,6 +16,10 @@ export const EVENT_BUS = {
     // 插件工具面板显示（menu-actions 发射，PluginTools 监听；原 menu-consts 的
     // CHANNEL_PLUGIN_TOOL_SHOW 收敛至此）
     PLUGIN_TOOL_SHOW: 'plugin-tools-show',
+    // 插件搜索入口显示（1.5.6：menu-actions 发射，PluginTools 监听）——语义与 PLUGIN_TOOL_SHOW
+    // 不同：无 payload，要求打开插件工具面板并进入「搜索入口视图」（搜索框聚焦；空白查询
+    // 展示最近使用 ≤20 项 + 全部工具），而不是打开某个具体工具组件。
+    PLUGIN_SEARCH_SHOW: 'plugin-search-show',
     // 插件工具容器显示开关（FileTreeNode 发射，WorkSpace 监听）
     PLUGIN_TOOLS_CONTAINER_SHOW: 'plugin-tools-container-show',
     // 工作区容器切换（payload：'md' | 'html' | 'pdf' | 'plugins' | 'tools'）

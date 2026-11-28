@@ -30,7 +30,13 @@ export default {
         removeFavorite: 'Remove from favorites',
         favoritesLimitReached: 'Favorites limit reached (up to {count})',
         backToToolList: 'Tool list',
-        homeHint: 'Browse all tools, favorites and recently used'
+        homeHint: 'Browse all tools, favorites and recently used',
+        // 1.5.6 plugin search entry (search view opened by Plugins → Plugin Search)
+        searchEntryTitle: 'Plugin Search',
+        searchEntryHint:
+            'Search by tool name, category or keyword, then press Enter; recently used and all tools are listed below',
+        searchEntryRecentEmpty:
+            'No recently used tools yet. Tools opened from the Plugins menu will appear here; you can also pick one from All tools below.'
     },
     infoTables: {
         /** Shared search placeholder for the 10 lookup tables */

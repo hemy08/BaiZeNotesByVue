@@ -1,8 +1,8 @@
 # 白泽笔记 Wiki
 
-> 更新于 2026-11-20
+> 更新于 2026-11-28
 >
-> 本目录是 BaiZeNotesByVue（白泽笔记）的文档中心，共 **4 个分类 / 29 篇 Markdown 文档**（另有本 README 与 `_sidebar.md` 导航）。分类与文件清单均按 2026-11-27 实际目录核对；检查/修复/专项报告不在本 Wiki 内，统一归档于 [docs/reports](../reports/README.md)（Markdown 版 32 篇 + 独立 [HTML Wiki](../reports/html/README.md) 33 个页面：1 首页 + 32 份报告）。
+> 本目录是 BaiZeNotesByVue（白泽笔记）的文档中心，共 **4 个分类 / 29 篇 Markdown 文档**（另有本 README 与 `_sidebar.md` 导航）。分类与文件清单均按 2026-11-28 实际目录核对；检查/修复/专项报告不在本 Wiki 内，统一归档于 [docs/reports](../reports/README.md)（Markdown 版 33 篇 + 独立 [HTML Wiki](../reports/html/README.md) 34 个页面：1 首页 + 33 份报告）。
 
 ---
 
@@ -38,15 +38,15 @@
 | 插件工具组件 | **38 个**（加密 8 / 信息 8 / 网络 4 / 编解码 5 / 格式转换 5 / 小工具 3 / 文本 3 / 格式化 2，全部注册为菜单工具） |
 | IPC 通道常量 | **108 个 / 18 组**（唯一真源 `src/shared/ipc-channels.ts`；第 5 批删除 `SYSTEM.OPEN_EXTERNAL_LINK` 死通道；关闭确认新增 `UNSAVED_CLOSE_REQUEST` / `UNSAVED_CLOSE_SUBMIT` 双通道；应用内消息框服务新增四通道；1.5.1 知识库基座新增 `FILE.GET_WORKSPACE_INDEX`） |
 | preload 白名单 | send/invoke **74** 个、on/once **28** 个、`window.api` **6** 个；`window.electron` 为**受限 ipcRenderer**（仅 send/invoke/on/once/removeListener/removeAllListeners + webFrame/webUtils/process；`sendTo`/`sendSync`/`sendToHost`/`postMessage` 不暴露） |
-| 单元测试 | **371 个 `.test.ts` 文件 / 6,857 个用例**（vitest 全通过） |
+| 单元测试 | **371 个 `.test.ts` 文件 / 6,887 个用例**（vitest 全通过） |
 | 构建产物 | 主进程 `out/build/main/index.js` ≈**0.62 MiB**（655,183 B）；入口 chunk `out/build/renderer/assets/index-*.js` ≈**143.2 KiB**；主界面异步 chunk `BaiZeNotes-*.js` ≈**490.1 KiB**（Monaco/highlight.js/KaTeX 在异步 chunk 按需加载）；首屏实际 ≈**329.5 KiB**（入口 + modulepreload 共享 chunk；i18n 词典已按语言按需加载；欢迎页为异步 chunk） |
 | 安装包 | Setup **111.36 MiB** / portable **100.49 MiB** / app.asar **40.98 MiB** / locales **2**（2026-11-21 当前 dist，1.5.1 构建） |
-| 报告规模 | **md 32 篇（01 类 12 / 02 类 9 / 03 类 11）/ HTML Wiki 33 页（1 首页 + 32 报告）** |
+| 报告规模 | **md 33 篇（01 类 13 / 02 类 9 / 03 类 11）/ HTML Wiki 34 页（1 首页 + 33 报告）** |
 | 覆盖率 | Statements 84.79% / Branch 77.99% / Functions 80.75% / Lines 85.09%（2026-11-15 历史基线，当前以最新 `npm run test:coverage` 为准） |
 
 > **口径说明**：以 [报告总索引](../reports/README.md) 的「当前基线」与 [IPC 通信矩阵](../reports/md/03-专项治理/IPC通信矩阵.md) 为准；待办跟踪见 [当前遗留问题清单](../reports/md/03-专项治理/当前遗留问题清单.md)（**22 项：21 ✅ / 0 🟡 / 1 ⏸️**；#15 保持现状）。
 >
-> **门禁（2026-11-20 全量实测，2026-11-22 复核）**：typecheck 四工程 0 错误、ESLint 0/0、Prettier 全绿、vitest 371 文件 / 6,857 用例全通过、全量依赖（含 dev）audit 0 漏洞（`npm run audit:all`，含渲染层运行时库）。
+> **门禁（2026-11-20 全量实测，2026-11-22 复核）**：typecheck 四工程 0 错误、ESLint 0/0、Prettier 全绿、vitest 371 文件 / 6,887 用例全通过、全量依赖（含 dev）audit 0 漏洞（`npm run audit:all`，含渲染层运行时库）。
 
 ---
 
@@ -128,7 +128,7 @@ docs/wiki/
 | [状态管理与 Store 优化报告](04-优化与专项报告/状态管理与Store优化报告.md) | 全局状态收敛 |
 | [配置路径优化报告](04-优化与专项报告/配置路径优化报告.md) | 配置文件路径统一 |
 
-> 检查/修复/专项报告（**md/ 32 篇**，含合并稿与问题跟踪台账）见 [docs/reports/README.md](../reports/README.md)。
+> 检查/修复/专项报告（**md/ 33 篇**，含合并稿与问题跟踪台账）见 [docs/reports/README.md](../reports/README.md)。
 
 ### 3.5 设计规范（docs/design，3 篇）
 
@@ -157,9 +157,9 @@ docs/wiki/
 
 | 目录 / 文件 | 内容 |
 | --- | --- |
-| [docs/reports/README.md](../reports/README.md) | 检查/修复/专项报告总索引（**md/ 27 篇**，已去日期并按主题合并；**当前 IPC 口径见 IPC 通信矩阵**） |
+| [docs/reports/README.md](../reports/README.md) | 检查/修复/专项报告总索引（**md/ 33 篇**，已去日期并按主题合并；**当前 IPC 口径见 IPC 通信矩阵**） |
 | [docs/reports/md/](../reports/md/) | 报告 Markdown 版（按 01-检查与扫描 / 02-修复与实施 / 03-专项治理 分类） |
-| [docs/reports/html/](../reports/html/README.md) | 报告 **HTML Wiki**（首页 + 侧边栏导航 + **33 个页面**：1 首页 + 32 份带固定悬浮目录的报告页面） |
+| [docs/reports/html/](../reports/html/README.md) | 报告 **HTML Wiki**（首页 + 侧边栏导航 + **34 个页面**：1 首页 + 33 份带固定悬浮目录的报告页面） |
 | [docs/md/](../md/) | 单元测试补充报告等 |
 | [docs/images/](../images/) | 欢迎页/主界面/主题设置截图（位图） |
 | [AGENTS.md](../../AGENTS.md) | 智能体协作规则 + 项目规格摘要（原 `specs/` 已并入此处，`specs/` 目录已删除） |
@@ -184,7 +184,7 @@ docs/wiki/
 
 本次为**全量扫描后的文档口径统一**（P1-10 修复，仅改文档）：
 
-- **统计口径统一**：`docs/wiki` 当前状态类文档统一到 2026-11-20 实测口径（2026-11-22 复核刷新测试数/IPC）——测试 **371 文件 / 6,857 用例**、IPC **108 通道 / 18 组**、preload 白名单 **send 74 + receive 28 + `window.api` 6**、源码 **357 个代码文件 / 97,434 行**、Vue 对话框 **24 个**、插件工具 **38 个**、Monaco 主题 **57 个（内置 3 + 磁盘 54）**；台账 **22 项（19 ✅ / 2 🟡 / 1 ⏸️）**。
+- **统计口径统一**：`docs/wiki` 当前状态类文档统一到 2026-11-20 实测口径（2026-11-22 复核刷新测试数/IPC）——测试 **371 文件 / 6,887 用例**、IPC **108 通道 / 18 组**、preload 白名单 **send 74 + receive 28 + `window.api` 6**、源码 **357 个代码文件 / 97,434 行**、Vue 对话框 **24 个**、插件工具 **38 个**、Monaco 主题 **57 个（内置 3 + 磁盘 54）**；台账 **22 项（19 ✅ / 2 🟡 / 1 ⏸️）**。
 - **02-设计与架构 4 篇校准**：[架构文档](02-设计与架构/架构文档.md)、[设计文档](02-设计与架构/设计文档.md)、[规格文档](02-设计与架构/规格文档.md)、[项目详细文档](02-设计与架构/项目详细文档.md) 同步技术栈版本（Electron 43.8.12 / Vue 3.5.46 / Vitest 5.1.1 / ESLint 10.15.0）、代码规模、测试数、IPC/白名单、对话框与主题口径；历史章节保留时点数字并标注。
 - **03-功能说明**：[文件导入功能说明](03-功能说明/文件导入功能说明.md) 的 IPC 口径 92 → 91、白名单 58 → 60。
 - **报告与台账**：[报告总索引](../reports/README.md)、[HTML Wiki 首页](../reports/html/README.md)、[当前遗留问题清单](../reports/md/03-专项治理/当前遗留问题清单.md) 与 [IPC 通信矩阵](../reports/md/03-专项治理/IPC通信矩阵.md) 统一为 99 通道 / 17 组、白名单 65+28、报告 md 27 篇 / HTML Wiki 28 页、台账 22 项。

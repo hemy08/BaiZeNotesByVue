@@ -22,14 +22,20 @@ import type { PluginToolMenuNode } from '../../../../shared/constants/plugin-too
 
 // ==================== 存储契约（localStorage 键 / 容量上限） ====================
 
-/** 最近使用工具（≤5，去重置顶）的本机存储键 */
+/** 最近使用工具（≤20，去重置顶）的本机存储键 */
 export const PLUGIN_TOOLS_RECENT_STORAGE_KEY = 'baize:plugin-tools:recent'
 
 /** 收藏工具（≤10）的本机存储键 */
 export const PLUGIN_TOOLS_FAVORITES_STORAGE_KEY = 'baize:plugin-tools:favorites'
 
-/** 最近使用上限（需求：最近 5 个置顶） */
-export const PLUGIN_TOOLS_RECENT_LIMIT = 5
+/**
+ * 最近使用上限（1.5.6：需求「空白查询展示最近使用的 20 个插件」→ 5 调整为 20）。
+ * 与收藏上限 10 的关系：最近使用是「按打开顺序自动维护的浏览历史」，容量按需求取 20；
+ * 收藏是「用户显式标记的常用清单」，容量保持 10（避免两分区无限膨胀、且不给用户
+ * 制造「收藏越多越难找」的长列表）。两者分别由 recordRecentPluginToolId /
+ * toggleFavoritePluginToolId 的 limit 参数约束，互不影响。
+ */
+export const PLUGIN_TOOLS_RECENT_LIMIT = 20
 
 /** 收藏上限（需求允许「不限或上限 10」，取上限 10 防止分区无限膨胀） */
 export const PLUGIN_TOOLS_FAVORITES_LIMIT = 10
@@ -425,7 +431,7 @@ export function writePluginToolIds(
 }
 
 /**
- * 记录一次「最近使用」：去重置顶，最多保留 PLUGIN_TOOLS_RECENT_LIMIT 个。
+ * 记录一次「最近使用」：去重置顶，最多保留 PLUGIN_TOOLS_RECENT_LIMIT（20）个。
  * 纯函数：返回新数组，不修改入参。
  */
 export function recordRecentPluginToolId(

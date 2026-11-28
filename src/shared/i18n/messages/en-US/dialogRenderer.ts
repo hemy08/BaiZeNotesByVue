@@ -467,6 +467,14 @@ const dialogRenderer = {
         sidebarAppTheme: 'App theme',
         sidebarEditorTheme: 'Editor theme',
         sidebarFontSettings: 'Font settings',
+        // 2026-11-28 fix for the "editor theme setting has no effect" report: independent
+        // editor-theme switch plus the two semantics (off = follow the app theme colors,
+        // on = use the Monaco theme selected below).
+        separateEditorThemeLabel: 'Independent editor theme',
+        separateEditorThemeHintOn:
+            'The editor uses the theme selected below instead of following the app theme.',
+        separateEditorThemeHintOff:
+            'The editor follows the app theme colors; selecting a theme below turns on the independent editor theme automatically.',
         customTheme: 'Custom theme',
         editorThemeFallback: 'Editor theme',
         colorBackground: 'Background color',

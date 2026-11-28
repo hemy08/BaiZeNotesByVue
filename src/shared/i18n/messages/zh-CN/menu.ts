@@ -179,6 +179,8 @@ export default {
     },
     plugins: {
         label: '插件',
+        // 1.5.6：插件菜单首项「插件搜索」（打开面板搜索入口视图，非具体工具）
+        search: '插件搜索',
         group: {
             languageKeywords: '语言语法关键字对照表',
             encrypt: '加解密插件',

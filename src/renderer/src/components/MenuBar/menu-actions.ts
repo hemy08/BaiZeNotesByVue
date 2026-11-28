@@ -35,6 +35,8 @@ import {
 } from '../../../../shared/constants/material-syntax'
 // M3（结构优化收尾）：插件工具动作前缀与 38 项 id 由 shared 单一 manifest 派生。
 import { PLUGIN_TOOL_ACTION_PREFIX } from '../../../../shared/constants/plugin-tools-manifest'
+// 1.5.6：「插件 → 插件搜索」入口动作 id 与菜单数据同源（menu-config.ts 声明并导出）
+import { PLUGIN_SEARCH_MENU_ACTION } from './menu-config'
 
 /**
  * mkdocs-material 扩展语法插入入口（15 项，对应 menu-config.ts 的 Material 子菜单，
@@ -256,6 +258,17 @@ export function HandleMenuAction(action: string) {
     // 技术栈
     if (action === 'baize:menu:help:tech-stack') {
         configStore.showDialog('techStack')
+        return
+    }
+
+    // ========== 1.5.6：插件 → 插件搜索（面板搜索入口视图） ==========
+    // 注意顺序：本动作 id 也以 PLUGIN_TOOL_ACTION_PREFIX 开头，必须**先于**下方通用
+    // 前缀拦截精确命中；否则会被当作某个插件工具 emit(PLUGIN_TOOL_SHOW)，而
+    // '...:search' 不在 38 项注册表中 → 点击无反应/记录脏最近使用，形成死入口。
+    // 语义：打开插件工具面板并进入搜索入口视图（空白查询展示最近使用 ≤20 项 + 全部工具），
+    // 由 PluginTools.vue 监听 PLUGIN_SEARCH_SHOW 处理，不打开具体工具。
+    if (action === PLUGIN_SEARCH_MENU_ACTION) {
+        EventBus.$emit(EVENT_BUS.PLUGIN_SEARCH_SHOW)
         return
     }
 

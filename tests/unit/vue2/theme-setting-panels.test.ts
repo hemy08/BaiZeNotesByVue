@@ -237,6 +237,57 @@ describe('AppThemePanel / EditorThemePanel（主题页签）', () => {
         await emptyWrapper.find('.panel-retry-btn').trigger('click')
         expect(emptyWrapper.emitted('retry')).toHaveLength(1)
     })
+
+    // 2026-11-28 用户反馈「编辑器主题设置不生效」修复：编辑器主题页签恢复「独立编辑器主题」
+    // 开关（Vue 迁移时丢失的 JSDOM「是否单独配置编辑区主题」复选框）。开关状态只读展示
+    // separateEditorTheme prop，切换只 emit('toggle-separate', checked)，不持有状态。
+    it('编辑器主题页签渲染「独立编辑器主题」开关：关闭时显示跟随应用主题说明', async () => {
+        const wrapper = mount(EditorThemePanel, {
+            props: { themes: SAMPLE_MONACO, currentMonacoTheme: 'vs' }
+        })
+        const checkbox = wrapper.find('.editor-theme-toggle-input')
+        expect(checkbox.exists()).toBe(true)
+        expect((checkbox.element as HTMLInputElement).checked).toBe(false)
+        expect(wrapper.find('.editor-theme-toggle-label').text()).toBe(
+            t('dialogRenderer.themeSetting.separateEditorThemeLabel')
+        )
+        expect(wrapper.find('.editor-theme-hint').text()).toBe(
+            t('dialogRenderer.themeSetting.separateEditorThemeHintOff')
+        )
+
+        await checkbox.setValue(true)
+        expect(wrapper.emitted('toggle-separate')).toEqual([[true]])
+    })
+
+    it('编辑器主题页签开关开启时选中态与说明跟随 separateEditorTheme', async () => {
+        const wrapper = mount(EditorThemePanel, {
+            props: {
+                themes: SAMPLE_MONACO,
+                currentMonacoTheme: 'vs-dark',
+                separateEditorTheme: true
+            }
+        })
+        const checkbox = wrapper.find('.editor-theme-toggle-input')
+        expect((checkbox.element as HTMLInputElement).checked).toBe(true)
+        expect(wrapper.find('.editor-theme-hint').text()).toBe(
+            t('dialogRenderer.themeSetting.separateEditorThemeHintOn')
+        )
+        expect(wrapper.find('.monaco-theme-list .theme-card.selected').text()).toContain(
+            'Dark (Visual Studio)'
+        )
+    })
+
+    it('编辑器主题页签在加载失败态下仍渲染开关（可切回跟随应用主题）', () => {
+        const wrapper = mount(EditorThemePanel, {
+            props: {
+                themes: [],
+                currentMonacoTheme: 'vs',
+                errorMessage: '主题列表加载失败：IPC 异常'
+            }
+        })
+        expect(wrapper.find('.editor-theme-toolbar').exists()).toBe(true)
+        expect(wrapper.find('.panel-state-error').exists()).toBe(true)
+    })
 })
 
 describe('FontSettingsPanel（字体设置页签）', () => {
@@ -357,6 +408,74 @@ describe('useThemeSettingForm（共享草稿 composable）', () => {
         expect(form.currentTheme.value).toBe('dark')
         expect(form.separateEditorTheme.value).toBe(true)
         expect(form.currentMonacoTheme.value).toBe('vs-dark')
+    })
+
+    // 2026-11-28 用户反馈「编辑器主题设置不生效」回归：磁盘主题标识含空格（"All Hallows
+    // Eve"）时，读取配置 / 回填草稿必须保持原始标识（Monaco 内部 id 映射在 useTheme 层做，
+    // 对话框与配置值始终使用磁盘主题名，否则选中态与保存值会漂移）。
+    it('loadThemes：含空格的磁盘编辑器主题标识原样回填（不做 Monaco id 映射）', async () => {
+        invoke = vi.fn().mockImplementation((channel: string) => {
+            if (channel === IPC.THEME.GET_ALL_THEMES) return Promise.resolve(ALL_THEMES)
+            if (channel === IPC.THEME.GET_ALL_MONACO_THEMES) {
+                return Promise.resolve([
+                    ...ALL_MONACO,
+                    makeMonacoTheme('All Hallows Eve', {
+                        name: 'All Hallows Eve',
+                        description: 'All Hallows Eve 主题',
+                        isDark: true,
+                        backgroundColor: '#000000',
+                        foregroundColor: '#ffffff'
+                    })
+                ])
+            }
+            return Promise.resolve(null)
+        })
+        vi.stubGlobal('electron', { ipcRenderer: { invoke } })
+        configRead = vi.fn().mockResolvedValue({
+            currentTheme: 'baize',
+            separateEditorTheme: true,
+            editorTheme: 'All Hallows Eve'
+        })
+        vi.stubGlobal('api', { config: { read: configRead } })
+
+        const form = mountForm()
+        await form.loadThemes()
+
+        expect(form.separateEditorTheme.value).toBe(true)
+        expect(form.currentMonacoTheme.value).toBe('All Hallows Eve')
+        const diskTheme = form.allMonacoThemes.value.find((item) => item.type === 'All Hallows Eve')
+        expect(diskTheme).toBeTruthy()
+        expect(diskTheme?.name).toBe('All Hallows Eve')
+        // 预览配色使用注册表返回的深色背景（#000000），而不是按名称猜测
+        expect(diskTheme?.colors.bg).toBe('#000000')
+    })
+
+    it('重置设置：取消时恢复独立编辑器主题开关与含空格的主题草稿', async () => {
+        invoke = vi.fn().mockImplementation((channel: string) => {
+            if (channel === IPC.THEME.GET_ALL_THEMES) return Promise.resolve(ALL_THEMES)
+            if (channel === IPC.THEME.GET_ALL_MONACO_THEMES) return Promise.resolve(ALL_MONACO)
+            return Promise.resolve(null)
+        })
+        vi.stubGlobal('electron', { ipcRenderer: { invoke } })
+        configRead = vi.fn().mockResolvedValue({
+            currentTheme: 'baize',
+            separateEditorTheme: false,
+            editorTheme: 'vs'
+        })
+        vi.stubGlobal('api', { config: { read: configRead } })
+
+        const form = mountForm()
+        await form.loadThemes()
+        form.separateEditorTheme.value = true
+        form.currentMonacoTheme.value = 'All Hallows Eve'
+
+        expect(form.resetSettings()).toEqual({
+            currentTheme: 'baize',
+            separateEditorTheme: false,
+            currentMonacoTheme: 'vs'
+        })
+        expect(form.separateEditorTheme.value).toBe(false)
+        expect(form.currentMonacoTheme.value).toBe('vs')
     })
 
     it('resetSettings：取消时恢复打开时主题选择（字体草稿保持不动）并返回回滚目标', async () => {

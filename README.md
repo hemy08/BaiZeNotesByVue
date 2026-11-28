@@ -384,7 +384,7 @@ BaiZeNotesByVue/
 │   ├── plantuml/                         # PlantUML 本地 teaVM 渲染资源
 │   ├── icon/                             # 应用图标（ico/svg）
 │   └── config/                           # 配置文件（version.json 构建时生成）
-├── tests/                                # 单元测试（371 个 .test.ts / 6,857 个用例）
+├── tests/                                # 单元测试（371 个 .test.ts / 6,887 个用例）
 ├── docs/                                 # 项目文档
 │   ├── wiki/                             # 知识库文档（4 类 25 篇）
 │   │   ├── README.md                     # 文档索引
@@ -394,8 +394,8 @@ BaiZeNotesByVue/
 │   │   └── 04-优化与专项报告/             # 优化专项报告（7 篇）
 │   ├── reports/                          # 报告归档（Markdown 版 + 独立 HTML Wiki）
 │   │   ├── README.md                     # 报告总索引（含口径说明与合并记录）
-│   │   ├── md/                           # Markdown 报告（32 篇：01 检查 12 / 02 修复 9 / 03 专项 11）
-│   │   └── html/                         # HTML 报告 Wiki（首页 + 侧边栏 + 27 份带悬浮目录页面，共 28 页）
+│   │   ├── md/                           # Markdown 报告（33 篇：01 检查 13 / 02 修复 9 / 03 专项 11）
+│   │   └── html/                         # HTML 报告 Wiki（首页 + 侧边栏 + 33 份带悬浮目录页面，共 34 页）
 │   ├── images/                           # 文档配图
 │   ├── 历史归档/                          # 历史文档归档（非当前实现，见「文档导航」说明）
 │   │   └── 架构文档.html                  # 历史版架构文档合辑（非当前；最新见 docs/wiki/02-设计与架构/架构文档.md）
@@ -469,7 +469,7 @@ BaiZeNotesByVue/
 | :--------------------------------: | :-----: | :------------------------------------------ | :----------------------------------------------------- |
 |           electron-vite            |  6.0.0  | Electron + Vite 集成                        | [官网](https://electron-vite.org/)                     |
 |          electron-builder          | 26.18.1 | Electron 应用打包工具                       | [官网](https://www.electron.build/)                    |
-|               Vitest               |  5.1.1  | 单元测试框架（371 个测试文件 / 6,857 用例） | [官网](https://vitest.dev/)                            |
+|               Vitest               |  5.1.1  | 单元测试框架（371 个测试文件 / 6,887 用例） | [官网](https://vitest.dev/)                            |
 |               ESLint               | 10.15.0 | JavaScript 代码检查工具                     | [官网](https://eslint.org/)                            |
 |              Prettier              | 3.10.1  | 代码格式化工具                              | [官网](https://prettier.io/)                           |
 |  @electron-toolkit/eslint-config   |  3.0.0  | Electron ESLint 配置                        | [GitHub](https://github.com/alex8088/electron-toolkit) |
@@ -500,13 +500,13 @@ BaiZeNotesByVue/
 |    IPC 通道    |                          108 个                          | `baize:<domain>:<name>`（108 个 / 18 组常量），唯一真源 `src/shared/ipc-channels.ts`                                                                                                                                                                         |
 | preload 白名单 |               send 74 / receive 28 / api 6               | `src/preload/allowed-channels.generated.ts`（send/invoke 74、on/once 28 通道；`window.api` 6 方法 / 3 组）                                                                                                                                                   |
 |    插件工具    |                          38 个                           | src/shared/constants/plugin-tools-manifest.ts（单一 manifest，异步按需加载）                                                                                                                                                                                 |
-|    单元测试    |                       6,857 个用例                       | 371 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                                                                                     |
+|    单元测试    |                       6,887 个用例                       | 371 个 `.test.ts` 文件（vitest，全通过）                                                                                                                                                                                                                     |
 |    声明依赖    |                          49 个                           | 生产依赖 11 + 开发依赖 38（package.json 实测）                                                                                                                                                                                                               |
 |    依赖审计    |                          0 漏洞                          | 生产与全量依赖均为 0 漏洞（2026-11-20 官方 registry 实测，`npm ls` 干净；Dependabot 254 条告警全量分类 0 条可复现）                                                                                                                                          |
 |   安装包体积   |                        ≈114.0 MiB                        | NSIS 安装包 111.13 MiB / 便携版 100.33 MiB（app.asar 39.96 MiB、locales 2；2026-11-20 当前 dist 实测，发布前需从 HEAD 重建复验）                                                                                                                             |
 |   主进程产物   |                        ≈0.62 MiB                         | `out/build/main/index.js`（655,183 B；2026-11-20 构建实测）                                                                                                                                                                                                  |
 |  主渲染 chunk  | 143.2 KiB（入口）+ 490.1 KiB（主界面壳）；首屏 329.5 KiB | 入口 `index-*.js`（约 153,088 B）；主界面壳 `BaiZeNotes-*.js`（约 501,862 B）；首屏实际 = 入口 + modulepreload 共享 chunk 329.5 KiB（2026-11-21 构建实测）；Monaco/highlight.js/KaTeX 在异步 chunk 按需加载；欢迎页窗口控制条为异步 chunk，保证入口 ≤150 KiB |
-|    文档规模    |       wiki 4 类 25 篇 / 报告 md 32 篇 / HTML 33 页       | 报告分类：01 检查与扫描 12 / 02 修复与实施 9 / 03 专项治理 11；HTML Wiki = 1 首页 + 32 份报告                                                                                                                                                                |
+|    文档规模    |       wiki 4 类 25 篇 / 报告 md 33 篇 / HTML 34 页       | 报告分类：01 检查与扫描 13 / 02 修复与实施 9 / 03 专项治理 11；HTML Wiki = 1 首页 + 33 份报告                                                                                                                                                                |
 
 ### 代码规模分布（实测）
 
@@ -516,7 +516,7 @@ BaiZeNotesByVue/
 |    Vue SFC (.vue)    |   96    |   22,777   |
 |     **源码合计**     | **357** | **97,434** |
 |         CSS          |   22    |   3,563    |
-| 单元测试（.test.ts） |   371   |  123,861   |
+| 单元测试（.test.ts） |   371   |  124,544   |
 |   静态资源（.svg）   |   60    |    447     |
 
 ### 关键源码文件行数（实测）
@@ -546,10 +546,10 @@ BaiZeNotesByVue/
 ### 文档索引
 
 - [知识库文档索引](docs/wiki/README.md) - docs/wiki 全部文档导航（4 类 25 篇）
-- [报告总索引](docs/reports/README.md) - 检查/修复/专项报告（27 篇：01 检查与扫描 11 / 02 修复与实施 8 / 03 专项治理 8，已去日期并按主题合并，含口径说明）
-- [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md) - **问题跟踪台账**（22 项，19 ✅ / 2 🟡 / 1 ⏸️；修复后更新状态）
-- [报告 HTML Wiki](docs/reports/html/README.html) - HTML 版报告（首页 + 侧边栏 + 每页顶部整体导航 + 26 份带悬浮目录页面，共 27 页）
-- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（99 通道 / 17 组 + 白名单 send 65 + receive 28 + 窗口/preload 结构）
+- [报告总索引](docs/reports/README.md) - 检查/修复/专项报告（33 篇：01 检查与扫描 13 / 02 修复与实施 9 / 03 专项治理 11，已去日期并按主题合并，含口径说明）
+- [当前遗留问题清单](docs/reports/md/03-专项治理/当前遗留问题清单.md) - **问题跟踪台账**（22 项，21 ✅ / 0 🟡 / 1 ⏸️；修复后更新状态）
+- [报告 HTML Wiki](docs/reports/html/README.html) - HTML 版报告（首页 + 侧边栏 + 每页顶部整体导航 + 33 份带悬浮目录页面，共 34 页）
+- [IPC 通信矩阵](docs/reports/md/03-专项治理/IPC通信矩阵.md) - **当前 IPC 口径**（108 通道 / 18 组 + 白名单 send 74 + receive 28 + window.api 6 + 窗口/preload 结构）
 - [IPC 通信治理报告](docs/reports/md/03-专项治理/IPC通信治理报告.md) - 通信检查 + 修复计划 + 命名方案（历史）
 
 ### 项目分析与架构
@@ -605,7 +605,7 @@ npm run format:check
 # 类型检查（主进程 + 渲染层 + 测试三工程）
 npm run typecheck
 
-# 运行单元测试（371 个测试文件 / 6,857 个用例）
+# 运行单元测试（371 个测试文件 / 6,887 个用例）
 npm run test
 
 # 运行单元测试并生成覆盖率报告
@@ -729,9 +729,11 @@ npm run clean
 - [x] 非模态工具窗（8 个）与插件工具面板（38 项）新增最小化/最大化：工具窗折叠 42px、最大化 1248×768；面板顶栏 44px、内容 798→882px
 - [x] 表格编辑器窗口缩放修复（content-box 溢出 32px → border-box + 手柄内缩 + z-index）；帮助文档第 9/17 章同步（HTML/PDF 重新生成）
 - [x] **主题可读性治理**：14 套主题按钮对比度 2.30~4.23 → ≥4.56:1；3 套主题分组修正（13/8/7）；新增对比度硬门禁 `quality:contrast`
-- [x] **插件工具可发现性**：面板搜索（中英/分类/关键词）、最近使用 5、收藏 10、三分区视图；localStorage 持久化
+- [x] **插件工具可发现性**：面板搜索（中英/分类/关键词）、最近使用、收藏 10、三分区视图；localStorage 持久化
+- [x] **插件搜索入口**：插件菜单首项「插件搜索」→ 工作区搜索界面（自动聚焦，空白显示最近使用 20 个 + 全部工具），Enter/点击打开工具
+- [x] **编辑器主题设置修复**：恢复「独立编辑器主题」开关（点选自动开启）；含空格/括号的 21 套磁盘主题可正常写盘与应用（内部 id 映射）；真机全链路 10/10 PASS
 - [x] **帮助文档配图重采集与瘦身**：`npm run capture:help-shots` 脚本入库（22 场景可复跑）、22 张 WebP（1.47MiB→474KiB）、PDF 1.91→1.44MB、安装包帮助资源 −1.46MiB
-- [x] 门禁：全量 371 文件 / 6,857 用例、coverage 93.03/87.52/93.76/93.5、typecheck / ESLint / Prettier / docs:check / quality 全绿、E2E 套件通过
+- [x] 门禁：全量 371 文件 / 6,887 用例、coverage 93.04/87.54/93.79/93.51、typecheck / ESLint / Prettier / docs:check / quality 全绿、E2E 套件通过
 
 ### v1.5.5 (2026-11-27 已发布)
 
@@ -765,7 +767,7 @@ npm run clean
 - [x] 1.5.0 已发布 GitHub Release（2026-11-21，tag `release-1.5.0`；NSIS 安装包 / portable / latest.yml / blockmap）
 - [x] 1.3.9 已发布 GitHub Release（tag `release-1.3.9`；NSIS 109.98 MB / portable 99.84 MB / latest.yml），包含 tag release-1.3.8 之后全部修改
 - [x] 主题设置首次打开列表为空修复（visible watch immediate）；同步修复 Editor/新建/重命名对话框首开初始化
-- [x] 文档口径统一（2026-11-20），2026-11-22 复核刷新测试数：测试 371 文件 / 6,857 用例、IPC 108 通道 / 18 组、preload 白名单 send 74 / receive 28 / window.api 6、报告 md 32 篇 / HTML Wiki 33 页
+- [x] 文档口径统一（2026-11-20），2026-11-22 复核刷新测试数：测试 371 文件 / 6,887 用例、IPC 108 通道 / 18 组、preload 白名单 send 74 / receive 28 / window.api 6、报告 md 33 篇 / HTML Wiki 34 页
 - [ ] 长期计划：macOS 和 Linux 版本支持、协作编辑、插件系统、云同步
 
 ### v1.3.9

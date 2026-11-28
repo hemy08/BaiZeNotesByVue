@@ -45,8 +45,9 @@
                         <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
                     </svg>
                 </button>
-                <!-- REQ-04 搜索框：最小化状态不可用/不显示（v-if 直接卸载，含 Tab 次序） -->
-                <div v-if="!isMinimized" class="plugin-tools-search">
+                <!-- REQ-04 搜索框：最小化状态不可用/不显示（v-if 直接卸载，含 Tab 次序）；
+                     1.5.6 插件搜索入口视图下隐藏（内容区已渲染大搜索框，避免同屏两个搜索框） -->
+                <div v-if="!isMinimized && !searchEntryOpen" class="plugin-tools-search">
                     <svg
                         class="plugin-tools-search-icon"
                         viewBox="0 0 24 24"
@@ -218,8 +219,72 @@
                     ? 'plugin-tool-search-panel'
                     : 'plugin-tool-placeholder plugin-tool-home'
             "
-            :data-plugin-tool-view="isSearching ? 'search' : 'home'"
+            :data-plugin-tool-view="discoveryViewKind"
         >
+            <!--
+                1.5.6 插件搜索入口视图（菜单「插件 → 插件搜索」进入）：
+                内容区大搜索框（进入即自动聚焦、占主要视觉空间）；空白查询下方依次展示
+                「最近使用（≤20）」与「全部工具」；输入即过滤，Enter/点击打开工具。
+                输入/结果切换期间本块保持挂载（不做 v-if 切换），否则输入框会被卸载而丢焦点；
+                工具条搜索框在入口视图下隐藏，避免同屏出现两个搜索框。
+            -->
+            <div v-if="searchEntryOpen" class="plugin-tool-search-entry">
+                <h2 class="plugin-tool-search-entry-title">
+                    {{ t('toolsNetwork.pluginTools.searchEntryTitle') }}
+                </h2>
+                <div class="plugin-tool-search-entry-box">
+                    <svg
+                        class="plugin-tool-search-entry-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                        focusable="false"
+                    >
+                        <circle cx="10.5" cy="10.5" r="6.5" />
+                        <path d="M15.3 15.3 20 20" />
+                    </svg>
+                    <input
+                        ref="entrySearchInputRef"
+                        v-model="searchText"
+                        class="plugin-tools-entry-search-input"
+                        type="search"
+                        :placeholder="t('toolsNetwork.pluginTools.searchPlaceholder')"
+                        :aria-label="t('toolsNetwork.pluginTools.searchAriaLabel')"
+                        autocomplete="off"
+                        spellcheck="false"
+                        @keydown="handleSearchKeydown"
+                    />
+                    <button
+                        v-if="searchText.length > 0"
+                        class="plugin-tool-search-entry-clear"
+                        type="button"
+                        :aria-label="t('toolsNetwork.pluginTools.searchClear')"
+                        :title="t('toolsNetwork.pluginTools.searchClear')"
+                        @click="clearSearchAndRefocus"
+                    >
+                        <svg
+                            class="plugin-tool-search-entry-clear-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                            focusable="false"
+                        >
+                            <path d="M6 6l12 12M18 6 6 18" />
+                        </svg>
+                    </button>
+                </div>
+                <p class="plugin-tool-search-entry-hint">
+                    {{ t('toolsNetwork.pluginTools.searchEntryHint') }}
+                </p>
+            </div>
             <div
                 v-if="isSearching && searchResults.length === 0"
                 class="plugin-tool-search-empty"
@@ -233,6 +298,10 @@
                 </p>
             </div>
             <div v-else class="plugin-tool-discovery">
+                <!-- 入口视图且无最近记录：合理空态（不遮挡下方「全部工具」，用户仍可直接选择） -->
+                <p v-if="showEntryRecentEmpty" class="plugin-tool-search-entry-empty" role="status">
+                    {{ t('toolsNetwork.pluginTools.searchEntryRecentEmpty') }}
+                </p>
                 <section
                     v-for="section in discoverySections"
                     :key="section.key"
@@ -410,15 +479,21 @@ const visibleTool = computed(() => {
 // ==================== 1.5.6 批次 B：工具可发现性（REQ-04 搜索 / REQ-05 最近+收藏） ====================
 /**
  * 可发现性视图状态：
- * - `searchText`：工具条搜索框内容（trim 后非空即进入搜索结果模式）；
+ * - `searchText`：工具条/入口视图搜索框内容（trim 后非空即进入搜索结果模式）；
  * - `homeViewOpen`：用户点「工具列表」回到默认视图（工具仍记住，但内容区让位给列表）；
+ * - `searchEntryOpen`（1.5.6 插件搜索）：菜单「插件 → 插件搜索」打开的搜索入口视图，
+ *   内容区渲染大搜索框（自动聚焦）；查询为空时展示「最近使用 ≤20 → 全部工具」；
  * - 默认视图 = 无激活工具 / 用户主动回列表，分区顺序固定「收藏 → 最近使用 → 全部工具」；
  * - 打开任意工具（菜单或列表/搜索结果）会清空搜索并回到工具内容，最近使用随之更新。
  */
 const searchText = ref('')
 const homeViewOpen = ref(false)
+/** 插件搜索入口视图开关（菜单 PLUGIN_SEARCH_SHOW 置位；打开工具 / 工具列表 / 返回编辑器复位） */
+const searchEntryOpen = ref(false)
 const activeSearchIndex = ref(0)
 const searchInputRef = ref<HTMLInputElement | null>(null)
+/** 入口视图内容区大搜索框（自动聚焦目标；与工具条搜索框共用 searchText） */
+const entrySearchInputRef = ref<HTMLInputElement | null>(null)
 const discoveryPanelRef = ref<HTMLElement | null>(null)
 const favoriteLimitNotice = ref('')
 let favoriteLimitNoticeTimer: ReturnType<typeof setTimeout> | null = null
@@ -435,9 +510,22 @@ const searchEntryMap = computed(
 
 /** 是否处于搜索模式（结果列表替换工具内容/默认视图） */
 const isSearching = computed(() => searchText.value.trim().length > 0)
-/** 默认视图是否可见：搜索优先，其次「无激活工具」或用户点了工具列表 */
-const isHomeView = computed(() => !isSearching.value && (!visibleTool.value || homeViewOpen.value))
-const showDiscovery = computed(() => isSearching.value || isHomeView.value)
+/** 是否处于「插件搜索」入口视图（菜单进入且查询为空；输入后切换为搜索结果） */
+const isSearchEntryView = computed(() => searchEntryOpen.value && !isSearching.value)
+/** 默认视图是否可见：搜索优先，其次「无激活工具」或用户点了工具列表（入口视图另算） */
+const isHomeView = computed(
+    () => !isSearching.value && !searchEntryOpen.value && (!visibleTool.value || homeViewOpen.value)
+)
+const showDiscovery = computed(
+    () => isSearching.value || isSearchEntryView.value || isHomeView.value
+)
+/** 可发现性视图种类（供 data-plugin-tool-view 与单测/E2E 断言）：搜索结果 / 插件搜索入口 / 默认工具列表 */
+const discoveryViewKind = computed<'search' | 'search-entry' | 'home'>(() => {
+    if (isSearching.value) {
+        return 'search'
+    }
+    return isSearchEntryView.value ? 'search-entry' : 'home'
+})
 
 /** 搜索结果（空查询返回空数组；相关度排序见 plugin-tools-search.searchPluginTools） */
 const searchResults = computed(() => searchPluginTools(searchEntries.value, searchText.value))
@@ -497,9 +585,16 @@ function resolveStoredTools(ids: readonly string[]): PluginToolSearchEntry[] {
 const favoriteTools = computed(() => resolveStoredTools(favoriteIds.value))
 const recentTools = computed(() => resolveStoredTools(recentIds.value))
 
+/** 入口视图且无最近记录：显示空态提示（下方仍展示全部工具，保证任何情况下都能选择工具） */
+const showEntryRecentEmpty = computed(
+    () => isSearchEntryView.value && recentTools.value.length === 0
+)
+
 /**
- * 渲染分区：搜索模式 → 单一「搜索结果」分区；默认视图 → 收藏/最近（有内容才显示）→ 全部工具。
- * 分区顺序是需求契约（收藏 → 最近使用 → 全部工具）。
+ * 渲染分区：搜索模式 → 单一「搜索结果」分区；插件搜索入口→ 最近使用（≤20）→ 全部工具；
+ * 默认视图 → 收藏/最近（有内容才显示）→ 全部工具。
+ * 默认视图的分区顺序是需求契约（收藏 → 最近使用 → 全部工具）；
+ * 入口视图按 1.5.6 需求口径只展示「最近使用 → 全部工具」（空白区域展示最近 20 个插件）。
  */
 const discoverySections = computed<PluginToolSectionView[]>(() => {
     if (isSearching.value) {
@@ -514,6 +609,22 @@ const discoverySections = computed<PluginToolSectionView[]>(() => {
                   }
               ]
             : []
+    }
+    if (isSearchEntryView.value) {
+        const entrySections: PluginToolSectionView[] = []
+        if (recentTools.value.length > 0) {
+            entrySections.push({
+                key: 'recent',
+                title: t('toolsNetwork.pluginTools.recent'),
+                tools: recentTools.value
+            })
+        }
+        entrySections.push({
+            key: 'all',
+            title: t('toolsNetwork.pluginTools.allTools'),
+            tools: searchEntries.value
+        })
+        return entrySections
     }
     if (!isHomeView.value) {
         return []
@@ -638,19 +749,33 @@ function clearSearch(): void {
     activeSearchIndex.value = 0
 }
 
-/** 清空按钮：清空后用键盘继续输入无需再次点击搜索框 */
-function clearSearchAndRefocus(): void {
-    clearSearch()
+/**
+ * 聚焦「当前可见的搜索框」：入口视图 → 内容区大搜索框；其余状态 → 工具条搜索框。
+ * 等下一次 DOM 更新后再聚焦（面板/视图刚由事件切换，输入框可能尚未挂载或仍在隐藏容器内）。
+ */
+async function focusActiveSearchInput(): Promise<void> {
+    await nextTick()
+    if (searchEntryOpen.value) {
+        entrySearchInputRef.value?.focus()
+        return
+    }
     searchInputRef.value?.focus()
 }
 
-/** 打开默认视图（工具列表）：保留当前工具，但内容区让位给列表 */
+/** 清空按钮：清空后用键盘继续输入无需再次点击搜索框 */
+function clearSearchAndRefocus(): void {
+    clearSearch()
+    void focusActiveSearchInput()
+}
+
+/** 打开默认视图（工具列表）：保留当前工具，但内容区让位给列表（退出插件搜索入口视图） */
 function showToolList(): void {
     clearSearch()
+    searchEntryOpen.value = false
     homeViewOpen.value = true
 }
 
-/** 记录最近使用（去重置顶，≤5）并持久化 */
+/** 记录最近使用（去重置顶，≤20）并持久化 */
 function rememberRecentTool(actionId: string): void {
     const next = recordRecentPluginToolId(recentIds.value, actionId)
     recentIds.value = next
@@ -710,7 +835,7 @@ function ensurePluginPanelVisible(): void {
 
 /**
  * 打开工具（菜单事件 / 搜索点击 / 键盘 Enter / 默认视图点击共用）：
- * 清空搜索 → 退出默认视图 → 保证面板可见 → 设置激活工具 → 记录最近使用。
+ * 清空搜索 → 退出默认视图与插件搜索入口视图 → 保证面板可见 → 设置激活工具 → 记录最近使用。
  */
 function openTool(actionId: string): void {
     if (actionId.length === 0) {
@@ -718,6 +843,7 @@ function openTool(actionId: string): void {
     }
     clearSearch()
     homeViewOpen.value = false
+    searchEntryOpen.value = false
     ensurePluginPanelVisible()
     activeToolId.value = actionId
     rememberRecentTool(actionId)
@@ -731,8 +857,24 @@ function handleClosePluginTools() {
     toolWindowState.value = 'normal'
     activeToolId.value = ''
     homeViewOpen.value = false
+    searchEntryOpen.value = false
     clearSearch()
     EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'md')
+}
+
+/**
+ * 1.5.6「插件 → 插件搜索」入口（EventBus.PLUGIN_SEARCH_SHOW，来自 menu-actions.ts）：
+ * 1) 打开插件工具面板（最小化先还原；工作区切到 plugins）；
+ * 2) 进入搜索入口视图：内容区大搜索框自动聚焦，空白查询展示最近使用（≤20）→ 全部工具；
+ * 3) 不清空 activeToolId —— 工具实例保留（仅被 v-show 隐藏），退出入口视图即可恢复，
+ *    避免用户正在编辑的工具内容因「搜一下」而丢失。
+ */
+function handlePluginSearchShow(): void {
+    ensurePluginPanelVisible()
+    homeViewOpen.value = false
+    searchEntryOpen.value = true
+    clearSearch()
+    void focusActiveSearchInput()
 }
 
 // 最小化态搜索不可用：折叠时清空搜索并收起结果（搜索框随 v-if 卸载，含 Tab 次序）
@@ -750,6 +892,8 @@ watch(searchText, () => {
 onMounted(() => {
     // 监听插件工具显示事件（来自 menu-actions.ts）
     onEventBus(EVENT_BUS.PLUGIN_TOOL_SHOW, handlePluginToolShow)
+    // 监听「插件 → 插件搜索」入口事件（打开面板 + 进入搜索入口视图）
+    onEventBus(EVENT_BUS.PLUGIN_SEARCH_SHOW, handlePluginSearchShow)
     // 监听主题更新事件
     onEventBus(EVENT_BUS.THEME_UPDATED, applyThemeStyles)
 })
@@ -1234,6 +1378,130 @@ function applyThemeStyles() {
 .plugin-tool-search-empty-hint {
     margin: 0;
     color: var(--ui-text-tertiary, var(--theme-secondary-text-color));
+    font-size: var(--ui-font-size, 13px);
+}
+
+/* ==================== 插件搜索入口视图（1.5.6：菜单「插件 → 插件搜索」） ==================== */
+/* 内容区大搜索框：进入即聚焦、占据主要视觉空间；与工具条搜索框共用 searchText 状态。
+   宽度/居中口径与 .plugin-tool-discovery 列表保持一致（正常 760 / 最大化 1040）。 */
+.plugin-tool-search-entry {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 8px;
+    box-sizing: border-box;
+}
+
+.plugin-tools-container--maximized .plugin-tool-search-entry {
+    max-width: 1040px;
+}
+
+.plugin-tool-search-entry-title {
+    margin: 0 0 12px;
+    color: var(--ui-text, var(--theme-text-color));
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.plugin-tool-search-entry-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+    border-radius: var(--ui-radius-md, 4px);
+    background: var(--ui-bg, var(--theme-background-color));
+    color: var(--ui-text-secondary, var(--theme-secondary-text-color));
+    transition:
+        border-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        box-shadow var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+.plugin-tool-search-entry-box:focus-within {
+    border-color: var(--ui-accent, var(--accent-color));
+    box-shadow: var(--ui-focus-shadow);
+}
+
+.plugin-tool-search-entry-icon {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+}
+
+.plugin-tools-entry-search-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--ui-text, var(--theme-text-color));
+    font-family: inherit;
+    font-size: 15px;
+}
+
+.plugin-tools-entry-search-input::placeholder {
+    color: var(--ui-text-tertiary, var(--theme-secondary-text-color));
+}
+
+/* 与工具条搜索框一致：隐藏平台自带清除按钮，使用自绘清除按钮 */
+.plugin-tools-entry-search-input::-webkit-search-cancel-button {
+    display: none;
+}
+
+.plugin-tool-search-entry-clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: var(--ui-radius-md, 4px);
+    background: transparent;
+    color: var(--ui-text-tertiary, var(--theme-secondary-text-color));
+    cursor: pointer;
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        box-shadow var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+.plugin-tool-search-entry-clear:hover {
+    background: var(--ui-accent-soft, var(--theme-hover-background));
+    color: var(--ui-text, var(--theme-text-color));
+}
+
+.plugin-tool-search-entry-clear:focus-visible {
+    outline: none;
+    box-shadow: var(--ui-focus-shadow);
+}
+
+.plugin-tool-search-entry-clear-icon {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+.plugin-tool-search-entry-hint {
+    margin: 8px 2px 0;
+    color: var(--ui-text-tertiary, var(--theme-secondary-text-color));
+    font-size: var(--ui-font-size, 13px);
+}
+
+/* 入口视图无最近记录空态：只提示不遮挡，下方「全部工具」仍可直接选择 */
+.plugin-tool-search-entry-empty {
+    margin: 0;
+    padding: 12px;
+    border-radius: var(--ui-radius-md, 4px);
+    background: var(--ui-bg-sunken, var(--theme-hover-background));
+    color: var(--ui-text-secondary, var(--theme-secondary-text-color));
     font-size: var(--ui-font-size, 13px);
 }
 

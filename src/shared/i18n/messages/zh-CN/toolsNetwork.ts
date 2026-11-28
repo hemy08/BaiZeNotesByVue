@@ -28,7 +28,12 @@ export default {
         removeFavorite: '取消收藏',
         favoritesLimitReached: '收藏已达上限（最多 {count} 个）',
         backToToolList: '工具列表',
-        homeHint: '浏览全部工具、收藏与最近使用'
+        homeHint: '浏览全部工具、收藏与最近使用',
+        // 1.5.6 插件搜索入口（菜单「插件 → 插件搜索」打开的搜索视图）
+        searchEntryTitle: '插件搜索',
+        searchEntryHint: '输入工具名称、分类或关键词后回车即可打开；下方为最近使用与全部工具',
+        searchEntryRecentEmpty:
+            '暂无最近使用记录：从「插件」菜单选择工具后会自动出现在这里，也可以直接从下方全部工具中选择'
     },
     infoTables: {
         /** 对照表通用搜索框占位符（10 个查询表复用，避免英文硬编码） */

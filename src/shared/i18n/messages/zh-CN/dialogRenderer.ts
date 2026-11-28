@@ -450,6 +450,12 @@ const dialogRenderer = {
         sidebarAppTheme: '应用主题',
         sidebarEditorTheme: '编辑器主题',
         sidebarFontSettings: '字体设置',
+        // 2026-11-28 用户反馈「编辑器主题设置不生效」修复：独立编辑器主题开关与两种语义说明。
+        // 关闭（默认）时编辑器跟随应用主题配色；开启时使用下方所选 Monaco 主题。
+        separateEditorThemeLabel: '独立编辑器主题',
+        separateEditorThemeHintOn: '编辑器使用下方所选主题，不再跟随应用主题。',
+        separateEditorThemeHintOff:
+            '编辑器跟随应用主题配色；点选下方主题会自动开启独立编辑器主题。',
         customTheme: '自定义主题',
         editorThemeFallback: '编辑器主题',
         colorBackground: '背景色',

@@ -28,6 +28,7 @@ vi.mock('monaco-editor', () => monacoMock)
 import {
     buildThemeCssVariables,
     resetThemeStateForTesting,
+    resolveMonacoThemeId,
     THEME_CSS_VARIABLE_BINDINGS,
     useTheme
 } from '../../../src/renderer/src/composables/useTheme'
@@ -197,6 +198,38 @@ describe('useTheme 单例与 CSS 变量映射', () => {
     })
 })
 
+describe('resolveMonacoThemeId：磁盘主题名 → Monaco 合法 id', () => {
+    // 2026-11-28 用户反馈「编辑器主题设置不生效」回归：Monaco defineTheme 只接受
+    // [A-Za-z0-9-]，而 54 套磁盘主题中 22 套含空格/括号/下划线，直接传入会抛
+    // Illegal theme name 并回退 vs。这里锁定映射规则与「合法名称不被改写」。
+    it('合法名称（字母/数字/连字符）原样返回（内置主题与既有行为不变）', () => {
+        for (const name of ['vs', 'vs-dark', 'hc-black', 'Active4D', 'Blackboard', 'Cobalt2']) {
+            expect(resolveMonacoThemeId(name), name).toBe(name)
+        }
+    })
+
+    it('含空格/括号/下划线的磁盘主题映射为 baize-disk-<sanitized>', () => {
+        expect(resolveMonacoThemeId('All Hallows Eve')).toBe('baize-disk-all-hallows-eve')
+        expect(resolveMonacoThemeId('MagicWB (Amiga)')).toBe('baize-disk-magicwb-amiga')
+        expect(resolveMonacoThemeId('Xcode_default')).toBe('baize-disk-xcode-default')
+        expect(resolveMonacoThemeId('Birds of Paradise')).toBe('baize-disk-birds-of-paradise')
+    })
+
+    it('映射结果恒满足 Monaco 的 defineTheme 名称约束（[A-Za-z0-9-]）', () => {
+        const diskNames = [
+            'All Hallows Eve',
+            'GitHub Dark',
+            'Textmate (Mac Classic)',
+            'Xcode_default',
+            '~ 非法字符 ~',
+            '   '
+        ]
+        for (const name of diskNames) {
+            expect(resolveMonacoThemeId(name), name).toMatch(/^[a-z0-9-]+$/i)
+        }
+    })
+})
+
 describe('applyThemeStyles：DOM 应用与幂等', () => {
     it('把主题写入 documentElement 的 38 个 CSS 变量（旧 20 + 语义 18）', () => {
         const theme = useTheme()
@@ -341,6 +374,43 @@ describe('initializeTheme：启动初始化单例', () => {
         expect(theme.separateEditorTheme.value).toBe(true)
         expect(theme.monacoEditorTheme.value).toBe('my-monaco-theme')
     })
+
+    // 2026-11-28 用户反馈「编辑器主题设置不生效」回归：磁盘主题名含空格（如
+    // "All Hallows Eve"）时 Monaco defineTheme 会抛 Illegal theme name，必须改用
+    // 合法内部 id；IPC 仍按原始磁盘主题名取数据（配置/展示值不变）。
+    it('独立编辑器主题：含空格的磁盘主题名用 Monaco 合法 id defineTheme', async () => {
+        configReadMock.mockImplementation(async (name: string) =>
+            name === 'theme'
+                ? themeConfig({
+                      separateEditorTheme: true,
+                      editorTheme: 'All Hallows Eve'
+                  })
+                : null
+        )
+        const monacoThemeData = {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [],
+            colors: { 'editor.background': '#000000' }
+        }
+        invokeMock.mockImplementation(async (channel: string) => {
+            if (channel === IPC.THEME.GET_CURRENT_THEME_STYLES) return BAIZE_STYLES
+            if (channel === IPC.THEME.LOAD_MONACO_THEME) return monacoThemeData
+            return null
+        })
+        const theme = useTheme()
+
+        await theme.initializeTheme()
+
+        expect(invokeMock).toHaveBeenCalledWith(IPC.THEME.LOAD_MONACO_THEME, 'All Hallows Eve')
+        expect(monacoMock.editor.defineTheme).toHaveBeenCalledWith(
+            'baize-disk-all-hallows-eve',
+            monacoThemeData
+        )
+        expect(monacoMock.editor.setTheme).toHaveBeenCalledWith('baize-disk-all-hallows-eve')
+        // 原始磁盘主题 id 仍作为运行状态（供对话框选中态/配置使用），不被映射改写
+        expect(theme.monacoEditorTheme.value).toBe('All Hallows Eve')
+    })
 })
 
 describe('changeTheme：主题切换（配置 → 样式 → 应用 → 广播）', () => {
@@ -365,6 +435,67 @@ describe('changeTheme：主题切换（配置 → 样式 → 应用 → 广播�
             'theme',
             expect.objectContaining({ currentTheme: 'dark' })
         )
+    })
+
+    // 2026-11-28 用户反馈「编辑器主题设置不生效」回归（语义锁定）：
+    // separateEditorTheme=false = 编辑器跟随应用主题（custom-theme 由应用主题配色派生），
+    // 此时配置里的 editorTheme 不参与应用；只有开关开启才加载所选 Monaco 主题。
+    it('跟随模式（separate=false）不加载 editorTheme，始终用应用主题派生的 custom-theme', async () => {
+        const theme = useTheme()
+
+        await theme.changeTheme('baize', 'All Hallows Eve', false)
+
+        expect(invokeMock).not.toHaveBeenCalledWith(IPC.THEME.LOAD_MONACO_THEME, expect.anything())
+        expect(monacoMock.editor.defineTheme).toHaveBeenCalledWith(
+            'custom-theme',
+            expect.objectContaining({ base: 'vs' })
+        )
+        expect(monacoMock.editor.setTheme).toHaveBeenCalledWith('custom-theme')
+        expect(sendMock).toHaveBeenCalledWith(
+            IPC.THEME.UPDATE_THEME,
+            'baize',
+            'All Hallows Eve',
+            false
+        )
+        await vi.advanceTimersByTimeAsync(300)
+    })
+
+    // 2026-11-28 用户反馈「编辑器主题设置不生效」回归（主链路）：对话框「选择编辑器主题
+    // → 确定」最终走到 changeTheme(theme, monacoTheme, true)。含空格的真实磁盘主题名
+    // 必须能成功触发应用：IPC 按原始名读取数据、defineTheme 使用 Monaco 合法 id。
+    it('独立模式 + 含空格磁盘主题：按原名取数据、以合法 id 应用并广播', async () => {
+        const monacoThemeData = {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [],
+            colors: { 'editor.background': '#000000' }
+        }
+        invokeMock.mockImplementation(async (channel: string) => {
+            if (channel === IPC.THEME.GET_CURRENT_THEME_STYLES) return BAIZE_STYLES
+            if (channel === IPC.THEME.LOAD_MONACO_THEME) return monacoThemeData
+            return null
+        })
+        const theme = useTheme()
+        const store = getConfigStore()
+
+        await theme.changeTheme('baize', 'All Hallows Eve', true)
+
+        expect(invokeMock).toHaveBeenCalledWith(IPC.THEME.LOAD_MONACO_THEME, 'All Hallows Eve')
+        expect(monacoMock.editor.defineTheme).toHaveBeenCalledWith(
+            'baize-disk-all-hallows-eve',
+            monacoThemeData
+        )
+        expect(monacoMock.editor.setTheme).toHaveBeenCalledWith('baize-disk-all-hallows-eve')
+        expect(store.themeConfig.value.separateEditorTheme).toBe(true)
+        expect(store.themeConfig.value.editorTheme).toBe('All Hallows Eve')
+        expect(sendMock).toHaveBeenCalledWith(
+            IPC.THEME.UPDATE_THEME,
+            'baize',
+            'All Hallows Eve',
+            true
+        )
+        expect(store.dialogs.messageDialog.visible).toBe(false)
+        await vi.advanceTimersByTimeAsync(300)
     })
 
     // P2 剩余静默失败提示（本批）：样式拉取失败此前静默 return，用户误以为主题已切换。
