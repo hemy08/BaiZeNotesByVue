@@ -22,6 +22,7 @@ vi.mock('mermaid', () => ({
 }))
 
 import MermaidEditDialog from '@renderer/components/dialogs/complex/MermaidEditDialog.vue'
+import InfoTip from '@renderer/components/common/InfoTip.vue'
 
 const dialogMountOptions = {
     global: { stubs: { teleport: true } },
@@ -149,10 +150,25 @@ describe('MermaidEditDialog 图表预览', () => {
 })
 
 describe('MermaidEditDialog 预览区文案', () => {
-    it('标题与说明明确为图表预览', () => {
+    it('标题明确为图表预览，说明收进标题旁 ⓘ（不再常显段落）', () => {
         const dialog = mountDialog()
         expect(dialog.find('.preview-section .section-header h3').text()).toBe('图表预览')
-        expect(dialog.find('.preview-area .preview-hint').text()).toContain('实时渲染 Mermaid 图表')
+        // 1.5.6 UI 简洁化：预览说明改为标题旁 InfoTip，原预览区顶部常显段落移除
+        expect(dialog.find('.preview-area .preview-hint').exists()).toBe(false)
+        const tip = dialog.findComponent(InfoTip)
+        expect(tip.exists()).toBe(true)
+        expect(tip.props('text')).toContain('实时渲染 Mermaid 图表')
+        expect(tip.props('ariaLabel')).toContain('图表预览')
+    })
+
+    it('渲染失败等错误提示仍常显（不迁移为 ⓘ）', async () => {
+        mermaidMocks.render.mockRejectedValue(new Error('Parse error: bad diagram'))
+        const dialog = mountDialog()
+        await flushPreview()
+
+        const error = dialog.find('.preview-area .preview-error')
+        expect(error.exists()).toBe(true)
+        expect(error.text()).toContain('Mermaid 渲染失败')
     })
 })
 

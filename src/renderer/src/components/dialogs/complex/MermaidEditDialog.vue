@@ -41,7 +41,15 @@
 
             <div class="preview-section">
                 <div class="section-header">
-                    <h3>{{ t('dialogRenderer.mermaidEdit.chartPreview') }}</h3>
+                    <!-- 1.5.6 UI 简洁化：预览说明由预览区顶部常显段落改为标题旁 ⓘ
+                         （悬停/键盘聚焦/点击查看）；渲染失败等错误提示仍常显。 -->
+                    <div class="section-title-group">
+                        <h3>{{ t('dialogRenderer.mermaidEdit.chartPreview') }}</h3>
+                        <InfoTip
+                            :text="t('dialogRenderer.mermaidEdit.chartPreviewHint')"
+                            :aria-label="`${t('dialogRenderer.mermaidEdit.chartPreview')} - ${t('common.infoTipLabel')}`"
+                        />
+                    </div>
                     <div class="toolbar">
                         <select v-model="chartType" class="chart-select">
                             <option value="graph">
@@ -72,9 +80,6 @@
                 <!-- 安全边界：Mermaid 使用 strict + htmlLabels:false；SVG 输出必须经
                      SanitizePreviewHtml（DOMPurify 唯一入口）后再 v-html。 -->
                 <div class="preview-area">
-                    <p class="preview-hint">
-                        {{ t('dialogRenderer.mermaidEdit.chartPreviewHint') }}
-                    </p>
                     <p v-if="!normalizedCode" class="placeholder">
                         {{ t('dialogRenderer.common.previewPlaceholder') }}
                     </p>
@@ -116,6 +121,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
+import InfoTip from '../../common/InfoTip.vue'
 import BaseDialog from '../BaseDialog.vue'
 import { SanitizePreviewHtml } from '../../Markdown/preview-sanitize'
 
@@ -388,6 +394,14 @@ function handleInsert() {
     color: var(--text-color);
 }
 
+/* 1.5.6 UI 简洁化：预览区标题 + 说明 ⓘ 成组（ⓘ 紧贴标题，不参与 header 两端分布） */
+.section-title-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
 .toolbar {
     display: flex;
     gap: 8px;
@@ -493,17 +507,7 @@ function handleInsert() {
     font-size: 12px;
 }
 
-/* FE-15：源码预览说明文案（灰色小字，位于预览区顶部）。 */
-.preview-hint {
-    margin: 0 0 12px 0;
-    padding: 8px 10px;
-    border-left: 3px solid var(--accent-color);
-    background: var(--bg-color);
-    border-radius: 4px;
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--secondary-text-color);
-}
+/* FE-15 → 1.5.6：源码预览说明已收进标题旁 ⓘ（不再占用预览区首行高度）。 */
 
 .placeholder {
     color: var(--secondary-text-color);

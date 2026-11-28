@@ -4,6 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 
 import { setLocale, t } from '@renderer/common/i18n'
 import { getConfigStore } from '@renderer/common/useConfigStore'
+import InfoTip from '@renderer/components/common/InfoTip.vue'
 import EditorSettingDialog from '@renderer/components/dialogs/complex/EditorSettingDialog.vue'
 import ThemeSettingDialog from '@renderer/components/dialogs/complex/ThemeSettingDialog.vue'
 import SystemSettingDialog from '@renderer/components/dialogs/complex/SystemSettingDialog.vue'
@@ -820,11 +821,19 @@ describe('SystemSettingDialog', () => {
         const generalCheckboxes = wrapper.findAll('.setting-panel')[0].findAll('.setting-checkbox')
         expect(generalCheckboxes).toHaveLength(6)
 
-        // 批次 A + B 已实现：全部 5 项窗口/启动复选框可用（开机自启动带「安装后生效」提示）
+        // 批次 A + B 已实现：全部 5 项窗口/启动复选框可用
         for (const index of [0, 1, 2, 3, 4]) {
             expect(generalCheckboxes[index].attributes('disabled')).toBeUndefined()
         }
-        expect(generalCheckboxes[2].attributes('title')).toContain('安装应用后生效')
+        // 1.5.6 UI 简洁化：开机自启「安装后生效」说明收进标签旁 ⓘ，不再用原生 title
+        expect(generalCheckboxes[2].attributes('title')).toBeUndefined()
+        expect(
+            wrapper
+                .findAll('.setting-panel')[0]
+                .findAll('.setting-row')[2]
+                .find('.info-tip__trigger')
+                .exists()
+        ).toBe(true)
         expect(generalCheckboxes[0].attributes('title')).toBeUndefined()
         // 批次 B #4：最小化到托盘已实现，不再带「暂未实现」tooltip
         expect(generalCheckboxes[3].attributes('title')).toBeUndefined()
@@ -842,7 +851,9 @@ describe('SystemSettingDialog', () => {
         const recentCountInput = filePanel.find('input[min="5"]')
         expect(recentCountInput.exists()).toBe(true)
         expect(recentCountInput.attributes('disabled')).toBeUndefined()
-        expect(recentCountInput.attributes('title')).toContain('最近')
+        // 1.5.6 UI 简洁化：范围/裁剪说明收进标签旁 ⓘ，不再用原生 title
+        expect(recentCountInput.attributes('title')).toBeUndefined()
+        expect(filePanel.findAll('.setting-row')[2].find('.info-tip__trigger').exists()).toBe(true)
 
         // 外观面板（批次 C #10）：应用主题下拉已替换为只读显示名 + 「打开主题设置」
         // 按钮（无禁用下拉）；「使用系统主题」已实现（批次 B #7，带互斥说明 tooltip）
@@ -861,7 +872,11 @@ describe('SystemSettingDialog', () => {
         expect(themeButtons[0].text()).toContain('打开主题设置')
         const useSystemThemeCheckbox = appearancePanel.find('.setting-checkbox')
         expect(useSystemThemeCheckbox.attributes('disabled')).toBeUndefined()
-        expect(useSystemThemeCheckbox.attributes('title')).toContain('跟随系统')
+        // 1.5.6 UI 简洁化：跟随系统说明收进标签旁 ⓘ，不再用原生 title
+        expect(useSystemThemeCheckbox.attributes('title')).toBeUndefined()
+        expect(appearancePanel.findAll('.setting-row')[1].find('.info-tip__trigger').exists()).toBe(
+            true
+        )
         expect(appearancePanel.find('input[type="number"]').attributes('disabled')).toBeUndefined()
 
         // 备份面板（批次 C #8/#9）：自动备份/间隔已启用（不再禁用），保留数量仍可用
@@ -870,7 +885,11 @@ describe('SystemSettingDialog', () => {
         expect(backupPanel.findAll('.setting-checkbox:disabled')).toHaveLength(0)
         expect(backupPanel.findAll('input[type="number"]:disabled')).toHaveLength(0)
         expect(backupPanel.findAll('input[type="number"]')).toHaveLength(2)
-        expect(backupPanel.find('input[min="1"]').attributes('title')).toContain('间隔')
+        // 1.5.6 UI 简洁化：备份间隔说明收进标签旁 ⓘ，不再用原生 title
+        expect(backupPanel.find('input[min="1"]').attributes('title')).toBeUndefined()
+        expect(backupPanel.findAll('.setting-row')[1].find('.info-tip__trigger').exists()).toBe(
+            true
+        )
     })
 
     // 批次 C #10：应用主题收口（方案 A）——只读显示当前主题名（config:read('theme')
@@ -921,7 +940,13 @@ describe('SystemSettingDialog', () => {
         })
         await wrapper.findAll('.sidebar-item')[5].trigger('click')
         const backupPanel = wrapper.findAll('.setting-panel')[5]
-        expect(backupPanel.text()).toContain('按设定间隔')
+        // 1.5.6 UI 简洁化：自动备份行为说明收进分组标题旁 ⓘ，不再常显
+        const backupTips = wrapper
+            .findAllComponents(InfoTip)
+            .map((tip) => String(tip.props('text')))
+        expect(backupTips.some((text) => text.includes('按设定间隔'))).toBe(true)
+        expect(backupPanel.text()).not.toContain('按设定间隔')
+        expect(backupPanel.find('.group-title .info-tip__trigger').exists()).toBe(true)
 
         const enableCheckbox = backupPanel.find('.setting-checkbox')
         // P2-11：默认关闭（opt-in）
@@ -1108,9 +1133,11 @@ describe('SystemSettingDialog i18n', () => {
         expect(wrapper.findAll('.setting-panel')[2].text()).toContain('Open theme settings')
         await wrapper.findAll('.sidebar-item')[5].trigger('click')
         expect(wrapper.findAll('.setting-panel')[5].text()).toContain('Enable auto backup')
-        expect(
-            wrapper.findAll('.setting-panel')[5].find('input[min="1"]').attributes('title')
-        ).toContain('1~72 hours')
+        // 1.5.6 UI 简洁化：备份间隔说明收进 ⓘ（文案随 locale 同步翻译）
+        const backupTips = wrapper
+            .findAllComponents(InfoTip)
+            .map((tip) => String(tip.props('text')))
+        expect(backupTips.some((text) => text.includes('1~72 hours'))).toBe(true)
         wrapper.unmount()
     })
 })

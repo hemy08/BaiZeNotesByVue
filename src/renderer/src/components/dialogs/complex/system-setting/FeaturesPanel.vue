@@ -11,11 +11,12 @@
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupDefaultFeatures') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupDefaultFeatures')
+                }}</span>
+                <!-- 1.5.6 UI 简洁化：默认能力的分组说明 → ⓘ 悬停提示 -->
+                <InfoTip :text="t('dialogRenderer.systemSetting.hintDefaultFeatures')" />
             </div>
-            <p class="group-hint">
-                {{ t('dialogRenderer.systemSetting.hintDefaultFeatures') }}
-            </p>
             <div class="feature-fixed-list">
                 <span class="feature-fixed-item">
                     {{ t('dialogRenderer.systemSetting.features.workspaceSearchLabel') }}
@@ -31,19 +32,19 @@
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupOptionalFeatures') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupOptionalFeatures')
+                }}</span>
+                <!-- 1.5.6 UI 简洁化：可选能力生效时机/数据落盘的分组说明 → ⓘ 悬停提示 -->
+                <InfoTip :text="t('dialogRenderer.systemSetting.hintOptionalFeatures')" />
             </div>
-            <p class="group-hint">
-                {{ t('dialogRenderer.systemSetting.hintOptionalFeatures') }}
-            </p>
-            <div v-for="item in featureRows" :key="item.id" class="setting-row feature-row">
-                <div class="feature-copy">
+            <div v-for="item in featureRows" :key="item.id" class="setting-row">
+                <div class="setting-label-group">
                     <label class="setting-label" :for="`feature-${item.id}`">
                         {{ t(item.labelKey) }}
                     </label>
-                    <p class="feature-desc">
-                        {{ t(item.descKey) }}
-                    </p>
+                    <!-- 1.5.6 UI 简洁化：各能力详细解释 → 标签旁 ⓘ 悬停提示（行高不再被 Desc 撑开） -->
+                    <InfoTip :text="t(item.descKey)" />
                 </div>
                 <input
                     :id="`feature-${item.id}`"
@@ -66,6 +67,7 @@
  */
 import { computed } from 'vue'
 import { t } from '../../../../common/i18n'
+import InfoTip from '../../../common/InfoTip.vue'
 import {
     OPTIONAL_FEATURE_FLAGS,
     OPTIONAL_FEATURE_FLAG_IDS
@@ -114,24 +116,5 @@ const featureRows = computed(() =>
     border: 1px solid var(--border-color);
     border-radius: 6px;
     padding: 4px 10px;
-}
-
-.feature-row {
-    align-items: flex-start;
-}
-
-.feature-copy {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.feature-desc {
-    margin: 0;
-    color: var(--secondary-text-color);
-    font-size: 12px;
-    line-height: 1.5;
 }
 </style>

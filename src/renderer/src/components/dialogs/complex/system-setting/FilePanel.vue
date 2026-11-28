@@ -9,23 +9,20 @@
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupDefaultPath') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupDefaultPath')
+                }}</span>
             </div>
-            <p class="group-hint">
-                {{ t('dialogRenderer.systemSetting.hintDefaultFilePath') }}
-            </p>
             <div class="setting-row">
-                <label class="setting-label">{{
-                    t('dialogRenderer.systemSetting.labelDefaultFilePath')
-                }}</label>
+                <div class="setting-label-group">
+                    <label class="setting-label">{{
+                        t('dialogRenderer.systemSetting.labelDefaultFilePath')
+                    }}</label>
+                    <!-- 1.5.6 UI 简洁化：字段用途说明 → ⓘ 悬停提示，不再常显 -->
+                    <InfoTip :text="t('dialogRenderer.systemSetting.hintDefaultFilePath')" />
+                </div>
                 <div class="path-input-group">
-                    <input
-                        v-model="defaultFilePath"
-                        type="text"
-                        class="setting-input"
-                        readonly
-                        :title="t('dialogRenderer.systemSetting.hintDefaultFilePath')"
-                    />
+                    <input v-model="defaultFilePath" type="text" class="setting-input" readonly />
                     <button class="browse-btn" @click="browseDefaultPath">
                         {{ t('common.browse') }}
                     </button>
@@ -35,7 +32,9 @@
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupFileOperations') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupFileOperations')
+                }}</span>
             </div>
             <div class="setting-row">
                 <label class="setting-label">{{
@@ -61,16 +60,19 @@
                 />
             </div>
             <div class="setting-row">
-                <label class="setting-label">{{
-                    t('dialogRenderer.systemSetting.labelRecentFilesCount')
-                }}</label>
+                <div class="setting-label-group">
+                    <label class="setting-label">{{
+                        t('dialogRenderer.systemSetting.labelRecentFilesCount')
+                    }}</label>
+                    <!-- 1.5.6 UI 简洁化：范围/裁剪行为说明属「是什么」解释 → ⓘ 悬停提示 -->
+                    <InfoTip :text="t('dialogRenderer.systemSetting.hintRecentFilesCount')" />
+                </div>
                 <input
                     v-model.number="recentFilesCount"
                     type="number"
                     class="setting-input"
                     min="5"
                     max="20"
-                    :title="t('dialogRenderer.systemSetting.hintRecentFilesCount')"
                 />
             </div>
         </div>
@@ -92,6 +94,7 @@
  */
 import { IPC } from '../../../../../../shared/ipc-channels'
 import { t } from '../../../../common/i18n'
+import InfoTip from '../../../common/InfoTip.vue'
 import { logger } from '../../../../common/logger'
 import { describeActionError, reportActionFailure } from '../../../../common/action-feedback'
 import type { SystemDialogSettings } from './model'

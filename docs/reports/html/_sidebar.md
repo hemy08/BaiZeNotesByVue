@@ -28,6 +28,7 @@
   - [公共接口归位修复计划](02-修复与实施/公共接口归位修复计划.html)
   - [代码结构优化计划](02-修复与实施/代码结构优化计划.html)
   - [1.5.2版本计划](02-修复与实施/1.5.2版本计划.html)
+  - [LLM-Wiki-Implementation-Plan](02-修复与实施/LLM-Wiki-Implementation-Plan.html)
 
 - **03-专项治理**
   - [IPC 通信矩阵（当前口径）](03-专项治理/IPC通信矩阵.html)

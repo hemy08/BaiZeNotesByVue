@@ -80,7 +80,11 @@ const NAV_REPORT_DATA = {
         { file: '系统设置补充实现', title: '系统设置补充实现' },
         { file: '公共接口归位修复计划', title: '公共接口归位修复计划' },
         { file: '代码结构优化计划', title: '代码结构优化计划' },
-        { file: '1.5.2版本计划', title: '1.5.2 版本计划（捕获与日常入口）' }
+        { file: '1.5.2版本计划', title: '1.5.2 版本计划（捕获与日常入口）' },
+        {
+            file: 'LLM-Wiki-Implementation-Plan',
+            title: 'LLM Wiki 集成实施计划（完整版）'
+        }
     ],
     '03-专项治理': [
         { file: 'IPC通信矩阵', title: 'IPC 通信矩阵（当前口径）' },

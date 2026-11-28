@@ -5,7 +5,8 @@
              下方点选的 Monaco 主题只在「独立编辑器主题」开启后才真正应用。此前 Vue 版主题设置
              对话框缺少该开关（JSDOM 时代「是否单独配置编辑区主题」复选框在迁移中丢失），
              editorTheme 只被保存、从不被消费——因此这里恢复开关，并在点选主题时由壳层自动开启。
-             开关始终可见：即使列表加载失败，用户也能切换回「跟随应用主题」。 -->
+             开关始终可见：即使列表加载失败，用户也能切换回「跟随应用主题」。
+             1.5.6 UI 简洁化：两种语义的详细说明由开启后的常显段落改为开关标签旁 ⓘ 提示。 -->
         <div class="editor-theme-toolbar">
             <label class="editor-theme-toggle">
                 <input
@@ -18,15 +19,18 @@
                     {{ t('dialogRenderer.themeSetting.separateEditorThemeLabel') }}
                 </span>
             </label>
-            <p class="editor-theme-hint">
-                {{
+            <!-- 1.5.6 UI 简洁化：两种语义的详细说明从常显段落收进开关标签旁 ⓘ
+                 （悬停/键盘聚焦/点击查看，文本随开关状态切换），开关行更紧凑。 -->
+            <InfoTip
+                :text="
                     t(
                         separateEditorTheme
                             ? 'dialogRenderer.themeSetting.separateEditorThemeHintOn'
                             : 'dialogRenderer.themeSetting.separateEditorThemeHintOff'
                     )
-                }}
-            </p>
+                "
+                :aria-label="`${t('dialogRenderer.themeSetting.separateEditorThemeLabel')} - ${t('common.infoTipLabel')}`"
+            />
         </div>
 
         <!-- P2 功能错误处理修复：编辑器主题加载失败/为空时不再空白——错误文案 + 重试。 -->
@@ -79,8 +83,13 @@
  * 「独立编辑器主题」开关（emit('toggle-separate', checked)）。开关关闭 = 编辑器跟随应用主题
  * 配色（与 1.5.5 及以前默认行为一致）；开启 = 使用下方所选 Monaco 主题。页签自身不持有
  * 任何状态（草稿仍由壳层 composable 唯一持有），点选卡片也只 emit('select')。
+ *
+ * 1.5.6 UI 简洁化：开关的两种语义说明（separateEditorThemeHintOn/HintOff）由常显段落
+ * 收进开关标签旁的 InfoTip（ⓘ）——悬停/键盘聚焦/点击查看，文本随开关状态切换。
+ * 状态、事件与开关可操作性均不变。
  */
 import { t } from '../../../../common/i18n'
+import InfoTip from '../../../common/InfoTip.vue'
 import ThemePreviewCard from './ThemePreviewCard.vue'
 import {
     getMonacoColorDots,

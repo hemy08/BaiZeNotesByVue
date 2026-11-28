@@ -11,13 +11,12 @@
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupAutoBackup') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupAutoBackup')
+                }}</span>
+                <!-- 1.5.6 UI 简洁化：自动备份行为说明（默认关闭/备份范围/滚动清理）→ ⓘ 悬停提示 -->
+                <InfoTip :text="t('dialogRenderer.systemSetting.hintAutoBackupGroup')" />
             </div>
-            <!-- 批次 C #8/#9：自动备份已实现（主进程 auto-backup.ts），
-                            「暂未实现」提示替换为行为说明 -->
-            <p class="group-hint">
-                {{ t('dialogRenderer.systemSetting.hintAutoBackupGroup') }}
-            </p>
             <div class="setting-row">
                 <label class="setting-label">{{
                     t('dialogRenderer.systemSetting.labelEnableAutoBackup')
@@ -25,36 +24,44 @@
                 <input v-model="enableAutoBackup" type="checkbox" class="setting-checkbox" />
             </div>
             <div class="setting-row">
-                <label class="setting-label">{{
-                    t('dialogRenderer.systemSetting.labelBackupInterval')
-                }}</label>
+                <div class="setting-label-group">
+                    <label class="setting-label">{{
+                        t('dialogRenderer.systemSetting.labelBackupInterval')
+                    }}</label>
+                    <!-- 1.5.6 UI 简洁化：间隔范围与重启定时器行为 → ⓘ 悬停提示 -->
+                    <InfoTip :text="t('dialogRenderer.systemSetting.hintBackupInterval')" />
+                </div>
                 <input
                     v-model.number="backupInterval"
                     type="number"
                     class="setting-input"
                     min="1"
                     max="72"
-                    :title="t('dialogRenderer.systemSetting.hintBackupInterval')"
                 />
             </div>
             <div class="setting-row">
-                <label class="setting-label">{{
-                    t('dialogRenderer.systemSetting.labelBackupCount')
-                }}</label>
+                <div class="setting-label-group">
+                    <label class="setting-label">{{
+                        t('dialogRenderer.systemSetting.labelBackupCount')
+                    }}</label>
+                    <!-- 1.5.6 UI 简洁化：保留数量语义说明 → ⓘ 悬停提示 -->
+                    <InfoTip :text="t('dialogRenderer.systemSetting.hintBackupRetention')" />
+                </div>
                 <input
                     v-model.number="backupCount"
                     type="number"
                     class="setting-input"
                     min="1"
                     max="10"
-                    :title="t('dialogRenderer.systemSetting.hintBackupRetention')"
                 />
             </div>
         </div>
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupOperations') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupOperations')
+                }}</span>
             </div>
             <div class="button-group">
                 <button class="action-btn" @click="handleBackupNow">
@@ -84,6 +91,7 @@
 import { ref } from 'vue'
 import type { ConfigBackupState } from '../../../../../../shared/types'
 import { t } from '../../../../common/i18n'
+import InfoTip from '../../../common/InfoTip.vue'
 import { logger } from '../../../../common/logger'
 import { SYSTEM_BACKUP_CONFIG_NAME, type SystemDialogSettings } from './model'
 import { usePanelFields } from './panel-model'

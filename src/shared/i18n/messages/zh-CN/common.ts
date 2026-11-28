@@ -36,6 +36,7 @@ export default {
     loading: '加载中…',
     noData: '暂无数据',
     unknown: '未知',
+    infoTipLabel: '说明',
     clipboard: {
         writeFailed: '复制到剪贴板失败，请检查剪贴板权限后重试。'
     }

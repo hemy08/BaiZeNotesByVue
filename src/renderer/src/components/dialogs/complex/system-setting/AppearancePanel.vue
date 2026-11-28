@@ -11,23 +11,24 @@
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupTheme') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupTheme')
+                }}</span>
             </div>
             <!-- 批次 C #10：应用主题收口到主题设置对话框（方案 A）——
                              下拉替换为只读显示当前主题 + 「打开主题设置」按钮，
                              复用菜单动作同款调用链（configStore.showDialog('themeSettings')），
                              不新增 IPC；主题切换路径唯一（主题设置对话框）。 -->
             <div class="setting-row">
-                <label class="setting-label">{{
-                    t('dialogRenderer.systemSetting.labelAppTheme')
-                }}</label>
+                <div class="setting-label-group">
+                    <label class="setting-label">{{
+                        t('dialogRenderer.systemSetting.labelAppTheme')
+                    }}</label>
+                    <!-- 1.5.6 UI 简洁化：主题由主题设置对话框托管的说明 → ⓘ 悬停提示 -->
+                    <InfoTip :text="t('dialogRenderer.systemSetting.hintThemeManaged')" />
+                </div>
                 <div class="theme-current-group">
-                    <span
-                        class="theme-current-name"
-                        :title="t('dialogRenderer.systemSetting.hintThemeManaged')"
-                    >
-                        {{ themeDisplay }}
-                    </span>
+                    <span class="theme-current-name">{{ themeDisplay }}</span>
                     <button class="browse-btn" @click="emitOpenThemeSetting">
                         {{ t('dialogRenderer.systemSetting.labelOpenThemeSetting') }}
                     </button>
@@ -47,21 +48,22 @@
                 {{ t('dialogRenderer.systemSetting.themeDisplayFallbackHint') }}
             </p>
             <div class="setting-row">
-                <label class="setting-label">{{
-                    t('dialogRenderer.systemSetting.labelUseSystemTheme')
-                }}</label>
-                <input
-                    v-model="useSystemTheme"
-                    type="checkbox"
-                    class="setting-checkbox"
-                    :title="t('dialogRenderer.systemSetting.hintUseSystemTheme')"
-                />
+                <div class="setting-label-group">
+                    <label class="setting-label">{{
+                        t('dialogRenderer.systemSetting.labelUseSystemTheme')
+                    }}</label>
+                    <!-- 1.5.6 UI 简洁化：跟随系统与手动选主题互斥的语义说明 → ⓘ 悬停提示 -->
+                    <InfoTip :text="t('dialogRenderer.systemSetting.hintUseSystemTheme')" />
+                </div>
+                <input v-model="useSystemTheme" type="checkbox" class="setting-checkbox" />
             </div>
         </div>
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupFont') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupFont')
+                }}</span>
             </div>
             <div class="setting-row">
                 <label class="setting-label">{{
@@ -93,13 +95,14 @@
         </div>
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupUiAppearance') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupUiAppearance')
+                }}</span>
+                <!-- 1.5.6 UI 简洁化：风格/密度默认值与玻璃降级的长说明 → ⓘ 悬停提示 -->
+                <InfoTip :text="t('dialogRenderer.systemSetting.hintUiAppearance')" />
             </div>
             <!-- 视觉升级（P0）：三项外观配置默认 workbench + default = 升级前现状，
                  用户主动切换后才改变材质/密度；glass 标注实验性（小面积模糊，性能提示）。 -->
-            <p class="ui-style-hint">
-                {{ t('dialogRenderer.systemSetting.hintUiAppearance') }}
-            </p>
             <div class="setting-row">
                 <label class="setting-label">{{
                     t('dialogRenderer.systemSetting.labelUiStyle')
@@ -136,15 +139,18 @@
                 </select>
             </div>
             <div class="setting-row">
-                <label class="setting-label">{{
-                    t('dialogRenderer.systemSetting.labelReduceTransparency')
-                }}</label>
+                <div class="setting-label-group">
+                    <label class="setting-label">{{
+                        t('dialogRenderer.systemSetting.labelReduceTransparency')
+                    }}</label>
+                    <!-- 1.5.6 UI 简洁化：减少透明效果的行为解释 → ⓘ 悬停提示 -->
+                    <InfoTip :text="t('dialogRenderer.systemSetting.hintReduceTransparency')" />
+                </div>
                 <input
                     v-model="uiReduceTransparency"
                     type="checkbox"
                     class="setting-checkbox"
                     data-testid="ui-reduce-transparency"
-                    :title="t('dialogRenderer.systemSetting.hintReduceTransparency')"
                 />
             </div>
         </div>
@@ -162,6 +168,7 @@
  *   同款调用链 configStore.showDialog('themeSettings')，不新增 IPC）。
  */
 import { t } from '../../../../common/i18n'
+import InfoTip from '../../../common/InfoTip.vue'
 import type { SystemDialogSettings } from './model'
 import { usePanelFields } from './panel-model'
 
@@ -223,14 +230,6 @@ function emitOpenThemeSetting(): void {
 /* P2 剩余静默失败提示：主题显示名读取失败的内联降级提示（非阻断，跟随主题变量） */
 .theme-display-fallback-hint {
     margin: 6px 0 0;
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--secondary-text-color);
-}
-
-/* 视觉升级（P0）：界面风格分组说明（次要文字，随主题变量） */
-.ui-style-hint {
-    margin: -8px 0 12px;
     font-size: 12px;
     line-height: 1.5;
     color: var(--secondary-text-color);

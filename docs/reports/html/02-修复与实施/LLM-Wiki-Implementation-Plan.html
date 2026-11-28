@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM-Wiki-Implementation-Plan</title>
+<link rel="stylesheet" href="../assets/report.css">
+</head>
+<body>
+<!-- baize-report-nav-slot -->
+<div id="report-nav"></div>
+  <nav class="toc">
+    <h4>目录</h4>
+    <a class="toc-l2" href="#sec-1">1. 背景与目标</a>
+    <a class="toc-l2" href="#sec-2">2. 阶段划分与总览</a>
+    <a class="toc-l2" href="#sec-3">3. 阶段一：L1 工作区模板 + raw/ 只读（P0，1~2 周）</a>
+    <a class="toc-l3" href="#sub-1">3.1 任务 T1.1：创建 LLM Wiki 初始化命令</a>
+    <a class="toc-l3" href="#sub-2">3.2 任务 T1.2：索引服务忽略 raw/ 目录</a>
+    <a class="toc-l3" href="#sub-3">3.3 任务 T1.3：新增 assertWorkspaceWritable 写入守卫</a>
+    <a class="toc-l3" href="#sub-4">3.4 任务 T1.4：设置页“工作区模式”选项</a>
+    <a class="toc-l3" href="#sub-5">3.5 任务 T1.5：模式切换确认对话框</a>
+    <a class="toc-l3" href="#sub-6">3.6 任务 T1.6：文档更新</a>
+    <a class="toc-l2" href="#sec-4">4. 阶段二：L2 MCP 桥（P0，1 周）</a>
+    <a class="toc-l3" href="#sub-7">4.1 任务 T2.1：新增 MCP IPC 通道常量</a>
+    <a class="toc-l3" href="#sub-8">4.2 任务 T2.2：实现 MCP 只读 handlers</a>
+    <a class="toc-l3" href="#sub-9">4.3 任务 T2.3：注册 MCP IPC</a>
+    <a class="toc-l3" href="#sub-10">4.4 任务 T2.4：主进程 MCP Server 初始化</a>
+    <a class="toc-l3" href="#sub-11">4.5 任务 T2.5：MCP 通道安全校验</a>
+    <a class="toc-l2" href="#sec-5">5. 阶段三：L3 内置 AI 工作流（P1，2~3 周）</a>
+    <a class="toc-l3" href="#sub-12">5.1 任务 T3.1：新增 AI ingest 通道</a>
+    <a class="toc-l3" href="#sub-13">5.2 任务 T3.2：实现 AI ingest handler</a>
+    <a class="toc-l3" href="#sub-14">5.3 任务 T3.3：AI ingest diff 审批 UI</a>
+    <a class="toc-l3" href="#sub-15">5.4 任务 T3.4：命令面板注册</a>
+    <a class="toc-l3" href="#sub-16">5.5 任务 T3.5：i18n 键补充</a>
+    <a class="toc-l2" href="#sec-6">6. 阶段四：B3 图谱与 E4 嵌入（P1，3~4 周）</a>
+    <a class="toc-l3" href="#sub-17">6.1 任务 T4.1：图谱 UI 实现</a>
+    <a class="toc-l3" href="#sub-18">6.2 任务 T4.2：嵌入 UI 实现</a>
+    <a class="toc-l3" href="#sub-19">6.3 任务 T4.3：文档更新</a>
+    <a class="toc-l2" href="#sec-7">7. 辅助任务（贯穿所有阶段）</a>
+    <a class="toc-l3" href="#sub-20">7.1 任务 T0.1：文档口径校验</a>
+    <a class="toc-l3" href="#sub-21">7.2 任务 T0.2：链接检查</a>
+    <a class="toc-l3" href="#sub-22">7.3 任务 T0.3：类型检查与单测</a>
+    <a class="toc-l2" href="#sec-8">8. 实施过程（按阶段）</a>
+    <a class="toc-l3" href="#sub-23">阶段一：L1 工作区模板 + raw/ 只读（1~2 周）</a>
+    <a class="toc-l3" href="#sub-24">阶段二：L2 MCP 桥（1 周）</a>
+    <a class="toc-l3" href="#sub-25">阶段三：L3 内置 AI 工作流（2~3 周）</a>
+    <a class="toc-l3" href="#sub-26">阶段四：B3 图谱与 E4 嵌入（3~4 周）</a>
+    <a class="toc-l2" href="#sec-9">9. 风险与依赖</a>
+    <a class="toc-l2" href="#sec-10">10. 附录</a>
+    <a class="toc-l3" href="#sub-27">10.1 参考文档</a>
+    <a class="toc-l3" href="#sub-28">10.2 前置基线</a>
+    <a class="toc-l3" href="#sub-29">10.3 联系方式</a>
+    <a class="toc-l2" href="#sec-11">11. 变更清单汇总</a>
+  </nav>
+
+<div class="wrap">
+  <header>
+    <h1>LLM-Wiki-Implementation-Plan</h1>
+    <p>报告归档 · 02-修复与实施</p>
+    <p>历史快照 · 顶部导航可切换其他报告</p>
+  </header>
+
+
+<blockquote>
+<p>更新于 2026-11-28｜适用版本基线：v1.5.6（开发中）｜文档类型：实施计划</p>
+</blockquote>
+<h2 id="sec-1">1. 背景与目标</h2>
+<p><strong>LLM Wiki 模式</strong>（Karpathy 2026 年 4 月提出）是一种知识管理新范式：把原始资料存放于 <code>raw/</code> 目录并不可变 → LLM 持续将资料“编译”成可被人类与 AI 共同消费的结构化知识库（<code>wiki/</code> + <code>schema.md</code> + <code>CLAUDE.md</code>）。其核心价值是**“编译态知识”**而非“原始资料”的散乱堆积。</p>
+<p><strong>白泽笔记当前定位</strong>：</p>
+<ul>
+<li>Typora 的写作手感 + Obsidian 的知识网络 + 中文内容生产 + 本地优先 AI/隐私。</li>
+<li>已有 B1（Wiki 双链/反链）、B2（标签/部分全文索引）、B3（关系图谱）、B5（附件管理）、D1~D8（编辑器能力补全）等基础能力。</li>
+<li>IPC 通道 108 个 / 18 组、preload 白名单 send/invoke 74 + on/once 28 + <code>window.api</code> 6、工作区索引缓存 TTL 5s、<code>FILE.GET_WORKSPACE_INDEX</code> 为当前知识库基座。</li>
+</ul>
+<p><strong>集成目标</strong>：</p>
+<ul>
+<li>不复制 LLM Wiki 桌面应用的全部 UI（图谱/聊天/审阅），而是做它的<strong>编辑、审阅、检索、管理工作台</strong>。</li>
+<li>用 Markdown 文件 + MCP 对接，比把 LLM Wiki 整个塞进白泽更合理。</li>
+<li>0~3 个月完成 L1（工作区模板 + <code>raw/</code> 只读 + 只读 MCP Server）+ L2（MCP 只读接口），后续按 AI MVP/B3/E5 独立推进。</li>
+</ul>
+<hr>
+<h2 id="sec-2">2. 阶段划分与总览</h2>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>任务数</th>
+<th>预计工期</th>
+<th>优先级</th>
+<th>产出</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L0 直接打开</td>
+<td>0</td>
+<td>0</td>
+<td>无</td>
+<td>无需改动</td>
+</tr>
+<tr>
+<td>L1 工作区模板 + <code>raw/</code> 只读</td>
+<td>9</td>
+<td>1~2 周</td>
+<td>P0</td>
+<td>工作区模板、<code>raw/</code> 只读</td>
+</tr>
+<tr>
+<td>L2 MCP 桥</td>
+<td>5</td>
+<td>1 周</td>
+<td>P0</td>
+<td>4 个只读 MCP 工具</td>
+</tr>
+<tr>
+<td>L3 内置 AI 工作流</td>
+<td>5</td>
+<td>2~3 周</td>
+<td>P1</td>
+<td>AI ingest + diff 审批</td>
+</tr>
+<tr>
+<td>L4 图谱与嵌入</td>
+<td>3</td>
+<td>3~4 周</td>
+<td>P1</td>
+<td>图谱 UI、嵌入 UI</td>
+</tr>
+<tr>
+<td>辅助任务</td>
+<td>4</td>
+<td>并行</td>
+<td>P0</td>
+<td>文档、类型检查、单测</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="sec-3">3. 阶段一：L1 工作区模板 + <code>raw/</code> 只读（P0，1~2 周）</h2>
+<h3 id="sub-1">3.1 任务 T1.1：创建 LLM Wiki 初始化命令</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/shared/ipc-channels.ts</code></li>
+<li><code>src/main/ipc/file-editor-ipc.ts</code></li>
+<li><code>src/renderer/src/components/MenuBar/menu-actions.ts</code></li>
+<li><code>src/renderer/src/components/search/command-registry.ts</code></li>
+<li><code>src/shared/i18n/messages/zh-CN/menu.ts</code></li>
+<li><code>src/shared/i18n/messages/en-US/menu.ts</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ol>
+<li>
+<p><strong>新增 IPC 通道常量</strong>（<code>src/shared/ipc-channels.ts</code>）：</p>
+<pre><code class="language-typescript">FILE: {
+  // ... 现有通道
+  INITIALIZE_LLM_WIKI: 'baize:file:initialize-llm-wiki'
+}
+</code></pre>
+</li>
+<li>
+<p><strong>新增 handler</strong>（<code>src/main/ipc/file-editor-ipc.ts</code>）：</p>
+<ul>
+<li>在 <code>registerFileEditorIpc</code> 中注册 <code>INITIALIZE_LLM_WIKI</code></li>
+<li>实现逻辑：在 <code>appState.rootPath</code> 下创建 <code>raw/</code> 与 <code>wiki/</code> 目录，生成 <code>schema.md</code> 模板</li>
+</ul>
+</li>
+<li>
+<p><strong>菜单动作拦截</strong>（<code>src/renderer/src/components/MenuBar/menu-actions.ts</code>）：</p>
+<ul>
+<li>拦截 <code>baize:file:initialize-llm-wiki</code> 动作</li>
+<li>调用 handler，成功后弹出成功提示</li>
+</ul>
+</li>
+<li>
+<p><strong>命令面板注册</strong>（<code>src/renderer/src/components/search/command-registry.ts</code>）：</p>
+<ul>
+<li>新增命令 <code>id: 'initialize-llm-wiki'</code>、<code>menuAction: 'baize:file:initialize-llm-wiki'</code>、<code>keywords: ['llm', 'wiki', 'raw', '初始化']</code></li>
+</ul>
+</li>
+<li>
+<p><strong>i18n 键补充</strong>（<code>zh-CN/menu.ts</code> 与 <code>en-US/menu.ts</code>）：</p>
+<ul>
+<li>新增 <code>initializeLlmWiki</code> 键</li>
+<li>中文：<code>初始化 LLM Wiki</code>；英文：<code>Initialize LLM Wiki</code></li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3 id="sub-2">3.2 任务 T1.2：索引服务忽略 <code>raw/</code> 目录</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/main/utils/workspace-index.ts</code></li>
+<li><code>src/main/utils/workspace-search.ts</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ol>
+<li>
+<p><strong>扩展忽略目录规则</strong>（<code>workspace-index.ts</code>）：</p>
+<pre><code class="language-typescript">export const WORKSPACE_INDEX_IGNORED_DIRS: ReadonlySet&lt;string&gt; = new Set([
+  'node_modules', '.git', '.svn', '.hg', '.bzr', '.idea', '.vscode',
+  'raw'  // 新增
+])
+</code></pre>
+</li>
+<li>
+<p><strong>扩展忽略目录规则</strong>（<code>workspace-search.ts</code>）：</p>
+<pre><code class="language-typescript">export const WORKSPACE_SEARCH_IGNORED_DIRS: ReadonlySet&lt;string&gt; = new Set([
+  'node_modules', '.git', '.svn', '.hg', '.bzr', '.idea', '.vscode',
+  'raw'  // 新增
+])
+</code></pre>
+</li>
+</ol>
+<p><strong>验收标准</strong>：执行 <code>FILE.GET_WORKSPACE_INDEX</code> 与全工作区搜索后，结果不包含 <code>raw/</code> 下的文件。</p>
+<hr>
+<h3 id="sub-3">3.3 任务 T1.3：新增 <code>assertWorkspaceWritable</code> 写入守卫</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/main/utils/security.ts</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>新增函数 <code>assertWorkspaceWritable(rootPath: string): void</code></li>
+<li>在所有文件写入路径前置调用（包括 <code>file-operations.ts</code>、<code>attachment-manager.ts</code>、<code>wiki-link-rename.ts</code> 等）</li>
+<li>若检测到 <code>raw</code> 子目录，抛 <code>PathAccessDeniedError</code></li>
+</ul>
+<p><strong>前置依赖</strong>：T1.1 完成后，才能在写盘路径中调用此函数。</p>
+<p><strong>验收标准</strong>：在写入任何文件前调用，若 <code>raw/</code> 存在，应抛错并提示“raw 目录只读”。</p>
+<hr>
+<h3 id="sub-4">3.4 任务 T1.4：设置页“工作区模式”选项</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/renderer/src/components/dialogs/complex/system-setting/FeaturesPanel.vue</code></li>
+<li><code>src/main/config/config-schema.ts</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ol>
+<li>
+<p><strong>新增配置字段</strong>（<code>src/main/config/config-schema.ts</code>）：</p>
+<pre><code class="language-typescript">export const ALLOWED_CONFIG_NAMES: ReadonlySet&lt;string&gt; = new Set([
+  // ... 现有
+  'workspaceMode'  // 新增
+])
+
+export function validateConfigData(configName: string, data: unknown): ConfigValidationResult {
+  // 验证 workspaceMode 是否为 'traditional' | 'llm-wiki'
+}
+</code></pre>
+</li>
+<li>
+<p><strong>UI 实现</strong>（<code>FeaturesPanel.vue</code>）：</p>
+<ul>
+<li>在“功能设置”页签新增 <code>workspaceMode</code> 下拉框</li>
+<li>选项：<code>traditional</code>（默认）、<code>llm-wiki</code></li>
+<li>在 <code>handleUpdate</code> 中监听变化</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3 id="sub-5">3.5 任务 T1.5：模式切换确认对话框</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/renderer/src/components/dialogs/complex/system-setting/FeaturesPanel.vue</code></li>
+<li><code>src/renderer/src/components/dialogs/BaseDialog.vue</code>（可选复用）</li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>在 <code>FeaturesPanel.vue</code> 中监听 <code>workspaceMode</code> 变化</li>
+<li>若从 <code>traditional</code> → <code>llm-wiki</code>，弹出 <code>BaseDialog</code> 确认对话框</li>
+<li>对话框内容：“切换到 LLM Wiki 模式会创建 <code>raw/</code> 与 <code>wiki/</code> 目录，并开启只读模式。是否继续？”</li>
+<li>按钮：“取消”、“确认初始化”</li>
+</ul>
+<p><strong>验收标准</strong>：切换到 <code>llm-wiki</code> 模式时，必须先弹出对话框，用户点击“确认”后才会执行初始化。</p>
+<hr>
+<h3 id="sub-6">3.6 任务 T1.6：文档更新</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>docs/wiki/02-设计与架构/LLM-Wiki-Integration-Design.md</code></li>
+<li><code>docs/wiki/README.md</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>在“背景与目标”章节增加“初始化时机”说明</li>
+<li>在“文档维护约定”中说明新增文档路径</li>
+<li>更新文档计数与链接检查</li>
+</ul>
+<hr>
+<h2 id="sec-4">4. 阶段二：L2 MCP 桥（P0，1 周）</h2>
+<h3 id="sub-7">4.1 任务 T2.1：新增 MCP IPC 通道常量</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/shared/ipc-channels.ts</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<pre><code class="language-typescript">MCP: {
+  SEARCH_NOTES: 'baize:mcp:search-notes',
+  READ_NOTE: 'baize:mcp:read-note',
+  LIST_TAGS: 'baize:mcp:list-tags',
+  GET_BACKLINKS: 'baize:mcp:get-backlinks'
+}
+</code></pre>
+<hr>
+<h3 id="sub-8">4.2 任务 T2.2：实现 MCP 只读 handlers</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/main/ipc/mcp-ipc.ts</code>（新建）</li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>实现 <code>searchNotes</code> handler：调用 <code>searchWorkspace</code>，过滤 <code>layer: 'wiki'</code></li>
+<li>实现 <code>readNote</code> handler：从索引快照中返回 file</li>
+<li>实现 <code>listTags</code> handler：返回 tags</li>
+<li>实现 <code>getBacklinks</code> handler：调用 <code>useWorkspaceIndex().findBacklinks()</code></li>
+</ul>
+<p><strong>验收标准</strong>：MCP 通道返回结构符合 <code>WorkspaceIndexSnapshot</code> 与 <code>WorkspaceIndexBacklink</code> 类型。</p>
+<hr>
+<h3 id="sub-9">4.3 任务 T2.3：注册 MCP IPC</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/main/ipc/registry.ts</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<pre><code class="language-typescript">import { registerMcpIpc } from './mcp-ipc'
+// 在 registerAll 中调用 registerMcpIpc(mainWindow, 'global-mcp-ipc')
+</code></pre>
+<hr>
+<h3 id="sub-10">4.4 任务 T2.4：主进程 MCP Server 初始化</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/main/utils/mcp.ts</code>（新建）</li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>使用 <code>@modelcontextprotocol/sdk</code> 或轻量级 HTTP wrapper</li>
+<li>实现 MCP Server，暴露 4 个 tool</li>
+<li>经 <code>contextBridge</code> 暴露 <code>baizeMcp</code> 给渲染层与外部 Agent</li>
+</ul>
+<p><strong>验收标准</strong>：外部 Agent 调用 <code>baizeMcp.search_notes</code> 能返回结果。</p>
+<hr>
+<h3 id="sub-11">4.5 任务 T2.5：MCP 通道安全校验</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/main/utils/ipc-security.ts</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>在 <code>withSenderCheck</code> 中增加 MCP 域的 scope 检查</li>
+<li>确保只有主窗口可调用</li>
+</ul>
+<p><strong>验收标准</strong>：渲染层（非主窗口）调用 MCP 通道应返回 <code>UNTRUSTED_SENDER_RESULT</code>。</p>
+<hr>
+<h2 id="sec-5">5. 阶段三：L3 内置 AI 工作流（P1，2~3 周）</h2>
+<h3 id="sub-12">5.1 任务 T3.1：新增 AI ingest 通道</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/shared/ipc-channels.ts</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<pre><code class="language-typescript">AI: {
+  // ... 现有通道
+  INGEST: 'baize:ai:ingest'
+}
+</code></pre>
+<hr>
+<h3 id="sub-13">5.2 任务 T3.2：实现 AI ingest handler</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/main/ipc/ai-ipc.ts</code>（新建）</li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>调用 AI Provider（本地 Ollama/LM Studio + BYOK）</li>
+<li>扫描 <code>raw/</code>，提取 front matter/标签/摘要</li>
+<li>生成 <code>wiki/</code> 页面</li>
+<li>调用 <code>baize:file:initialize-llm-wiki</code> 写入</li>
+</ul>
+<p><strong>前置依赖</strong>：AI MVP 基线已实现，Provider 可用。</p>
+<p><strong>验收标准</strong>：AI ingest 命令成功后，<code>wiki/</code> 目录下生成 Markdown 页面。</p>
+<hr>
+<h3 id="sub-14">5.3 任务 T3.3：AI ingest diff 审批 UI</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/renderer/src/components/Markdown/llm-ingest-diff.vue</code>（新建）</li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>展示 AI 生成内容的 diff</li>
+<li>提供“确认”、“回滚”按钮</li>
+</ul>
+<p><strong>验收标准</strong>：用户点击确认后，AI 内容写入 <code>wiki/</code>；回滚时恢复旧版本。</p>
+<hr>
+<h3 id="sub-15">5.4 任务 T3.4：命令面板注册</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/renderer/src/components/search/command-registry.ts</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<pre><code class="language-typescript">{
+  id: 'llm-ingest',
+  labelKey: 'menu.file.ingest',
+  categoryKey: 'editorUi.commandPalette.category.file',
+  menuAction: 'baize:ai:ingest',
+  keywords: ['ingest', 'ai', '编译']
+}
+</code></pre>
+<hr>
+<h3 id="sub-16">5.5 任务 T3.5：i18n 键补充</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/shared/i18n/messages/zh-CN/menu.ts</code></li>
+<li><code>src/shared/i18n/messages/en-US/menu.ts</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<pre><code class="language-typescript">// zh-CN/menu.ts
+ingest: 'AI 编译'
+
+// en-US/menu.ts
+ingest: 'AI Compile'
+</code></pre>
+<hr>
+<h2 id="sec-6">6. 阶段四：B3 图谱与 E4 嵌入（P1，3~4 周）</h2>
+<h3 id="sub-17">6.1 任务 T4.1：图谱 UI 实现</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/renderer/src/components/Graph/GraphDialog.vue</code>（新建）</li>
+<li><code>src/main/utils/graph.ts</code>（新建，如需）</li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>调用 B3 关系图谱数据</li>
+<li>展示节点/边</li>
+<li>点击节点可跳转文件</li>
+</ul>
+<p><strong>前置依赖</strong>：B3 关系图谱数据已实现。</p>
+<p><strong>验收标准</strong>：点击节点可跳转文件，点击边显示关系。</p>
+<hr>
+<h3 id="sub-18">6.2 任务 T4.2：嵌入 UI 实现</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>src/renderer/src/components/Markdown/embed/EmbedDialog.vue</code>（新建）</li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>支持在 <code>wiki/</code> 中嵌入 <code>raw/</code> 资料链接</li>
+</ul>
+<p><strong>验收标准</strong>：嵌入框能显示 <code>raw/</code> 中的文件预览。</p>
+<hr>
+<h3 id="sub-19">6.3 任务 T4.3：文档更新</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>docs/wiki/02-设计与架构/LLM-Wiki-Integration-Design.md</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>在“下一步行动”中记录 B3/E5 进度</li>
+</ul>
+<hr>
+<h2 id="sec-7">7. 辅助任务（贯穿所有阶段）</h2>
+<h3 id="sub-20">7.1 任务 T0.1：文档口径校验</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>docs/reports/README.md</code></li>
+<li><code>docs/wiki/README.md</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>更新文档计数为 34 页（1 首页 + 33 报告）</li>
+</ul>
+<p><strong>验收标准</strong>：<code>npm run docs:check</code> 通过。</p>
+<hr>
+<h3 id="sub-21">7.2 任务 T0.2：链接检查</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li><code>docs/wiki/README.md</code></li>
+<li><code>docs/wiki/02-设计与架构/LLM-Wiki-Integration-Design.md</code></li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>补齐所有相对链接</li>
+</ul>
+<p><strong>验收标准</strong>：<code>npm run docs:check</code> 通过。</p>
+<hr>
+<h3 id="sub-22">7.3 任务 T0.3：类型检查与单测</h3>
+<p><strong>涉及文件</strong>：</p>
+<ul>
+<li>所有新增/修改的文件</li>
+</ul>
+<p><strong>变更内容</strong>：</p>
+<ul>
+<li>确保新增类型、handler、工具函数有对应测试</li>
+</ul>
+<p><strong>验收标准</strong>：<code>npm run typecheck</code> 通过，新增单测通过。</p>
+<hr>
+<h2 id="sec-8">8. 实施过程（按阶段）</h2>
+<h3 id="sub-23">阶段一：L1 工作区模板 + <code>raw/</code> 只读（1~2 周）</h3>
+<ol>
+<li><strong>T1.1</strong>（1 天）：创建 <code>INITIALIZE_LLM_WIKI</code> 通道常量、handler、菜单动作、命令面板注册、i18n 键。</li>
+<li><strong>T1.2</strong>（0.5 天）：修改索引与搜索服务，忽略 <code>raw/</code> 目录。</li>
+<li><strong>T1.3</strong>（1 天）：新增 <code>assertWorkspaceWritable</code> 写入守卫，在所有写盘路径前置调用。</li>
+<li><strong>T1.4</strong>（1 天）：在 <code>config-schema.ts</code> 中新增 <code>workspaceMode</code> 字段，在设置页添加下拉框。</li>
+<li><strong>T1.5</strong>（0.5 天）：在设置页切换时弹出确认对话框。</li>
+<li><strong>T1.6</strong>（0.5 天）：更新文档，补充 i18n 与测试。</li>
+</ol>
+<h3 id="sub-24">阶段二：L2 MCP 桥（1 周）</h3>
+<ol>
+<li><strong>T2.1</strong>（0.5 天）：新增 MCP 通道常量。</li>
+<li><strong>T2.2</strong>（2 天）：实现 4 个 MCP 只读 handlers。</li>
+<li><strong>T2.3</strong>（0.5 天）：注册 MCP IPC。</li>
+<li><strong>T2.4</strong>（2 天）：实现 MCP Server 与 <code>contextBridge</code> 暴露。</li>
+<li><strong>T2.5</strong>（1 天）：增加 MCP 域的 scope 检查。</li>
+</ol>
+<h3 id="sub-25">阶段三：L3 内置 AI 工作流（2~3 周）</h3>
+<ol>
+<li><strong>T3.1</strong>（0.5 天）：新增 <code>AI.INGEST</code> 通道常量。</li>
+<li><strong>T3.2</strong>（5 天）：实现 AI ingest handler，调用 AI Provider，生成 <code>wiki/</code> 页面。</li>
+<li><strong>T3.3</strong>（3 天）：实现 AI ingest diff 审批 UI。</li>
+<li><strong>T3.4</strong>（0.5 天）：命令面板注册。</li>
+<li><strong>T3.5</strong>（0.5 天）：补充 i18n 键。</li>
+</ol>
+<h3 id="sub-26">阶段四：B3 图谱与 E4 嵌入（3~4 周）</h3>
+<ol>
+<li><strong>T4.1</strong>（5 天）：实现图谱 UI。</li>
+<li><strong>T4.2</strong>（3 天）：实现嵌入 UI。</li>
+<li><strong>T4.3</strong>（1 天）：更新文档。</li>
+</ol>
+<hr>
+<h2 id="sec-9">9. 风险与依赖</h2>
+<table>
+<thead>
+<tr>
+<th>风险</th>
+<th>影响</th>
+<th>缓解措施</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>raw/</code> 只读导致用户困惑</td>
+<td>高</td>
+<td>初始化文档说明；设置页提示</td>
+</tr>
+<tr>
+<td>MCP Server 调试成本高</td>
+<td>中</td>
+<td>提供 PoC，外部 Agent 验证</td>
+</tr>
+<tr>
+<td>AI ingest 性能问题</td>
+<td>中</td>
+<td>先做小规模 <code>raw/</code> 测试，设置批量阈值</td>
+</tr>
+<tr>
+<td>图谱 UI 不够好，重复造轮子</td>
+<td>中</td>
+<td>图谱与知识库查询对话框分离，图谱按 B3 独立推进</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="sec-10">10. 附录</h2>
+<h3 id="sub-27">10.1 参考文档</h3>
+<ul>
+<li>《LLM Wiki 集成设计方案》（同一目录下）</li>
+<li>《业界对标与改进建议报告》</li>
+<li>《Markdown 编辑器能力补全选项报告》</li>
+<li>《B2 全文索引风险与实施方案》</li>
+<li>《Monaco 与 WYSIWYG 双编辑器技术评估报告》</li>
+</ul>
+<h3 id="sub-28">10.2 前置基线</h3>
+<table>
+<thead>
+<tr>
+<th>基线项</th>
+<th>版本/基线</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>白泽笔记版本</td>
+<td>v1.5.6</td>
+<td>开发中</td>
+</tr>
+<tr>
+<td>IPC 通道</td>
+<td>108 个 / 18 组</td>
+<td>白名单 send 74 + on/once 28 + <code>window.api</code> 6</td>
+</tr>
+<tr>
+<td>preload 白名单</td>
+<td>74+28+6</td>
+<td>工作区索引缓存 TTL 5s</td>
+</tr>
+<tr>
+<td>测试覆盖率</td>
+<td>84.79% statements / 77.99% branches</td>
+<td>371 测试文件 / 6,857 用例</td>
+</tr>
+<tr>
+<td>文档计数</td>
+<td>33 篇 md / 34 页 HTML</td>
+<td>01 类 13 / 02 类 9 / 03 类 11</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sub-29">10.3 联系方式</h3>
+<ul>
+<li><strong>维护者</strong>：hemy08</li>
+<li><strong>最后核对</strong>：2026-11-28</li>
+<li><strong>文档类型</strong>：实施计划（完整版）</li>
+</ul>
+<hr>
+<h2 id="sec-11">11. 变更清单汇总</h2>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>文件数量</th>
+<th>主要改动</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L1</td>
+<td>7</td>
+<td>新增 IPC 通道、handler、菜单动作、命令面板、i18n 键、索引服务、安全守卫、设置页 UI</td>
+</tr>
+<tr>
+<td>L2</td>
+<td>3</td>
+<td>新增 MCP IPC 通道、handler、MCP Server</td>
+</tr>
+<tr>
+<td>L3</td>
+<td>3</td>
+<td>新增 AI ingest 通道、handler、diff 审批 UI</td>
+</tr>
+<tr>
+<td>L4</td>
+<td>2</td>
+<td>新增图谱 UI、嵌入 UI</td>
+</tr>
+<tr>
+<td>辅助</td>
+<td>4</td>
+<td>文档口径校验、链接检查、类型检查、单测</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><strong>维护者</strong>：hemy08｜<strong>最后核对</strong>：2026-11-28｜<strong>文档类型</strong>：实施计划（完整版）</p>
+
+  <footer>由 build/build-html-report.js 从 Markdown 生成 · 报告内容以源码静态扫描为准</footer>
+</div>
+<script src="../assets/report-nav.js" defer></script>
+</body>
+</html>

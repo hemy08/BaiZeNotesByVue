@@ -35,6 +35,7 @@ export default {
     loading: 'Loading…',
     noData: 'No data',
     unknown: 'Unknown',
+    infoTipLabel: 'More information',
     clipboard: {
         writeFailed:
             'Failed to write to the clipboard. Please check clipboard permissions and retry.'

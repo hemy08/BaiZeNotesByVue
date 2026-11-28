@@ -6,7 +6,9 @@
  * 1. BasicPanel / AppearancePanel：props.settings 只读渲染，字段修改 emit('update', 补丁)，
  *    不在子组件内部改 props（含 v-model.number 语义）；
  * 2. MarkdownPanel / AdvancedPanel：无消费方字段保持 disabled + 「暂未实现」提示（防假开关回归）；
- * 3. useEditorSettingForm：
+ * 3. 1.5.6 UI 简洁化（用户补充修正）：4 个页签的面板用途描述、操作说明、状态提示保留常显，
+ *    编辑器设置本身没有逐项长解释文案可迁移为 ⓘ（防止后续误把应常显的说明收进悬浮提示）；
+ * 4. useEditorSettingForm：
  *    - loadSettings：config:read('editor') 逐字段类型守卫合并 + config:read('system') 自动保存字段，
  *      加载后记录初始值供取消恢复；
  *    - saveSettings：await 写 editor 配置并返回提交快照；失败弹错误提示并返回 null
@@ -110,6 +112,37 @@ describe('MarkdownPanel / AdvancedPanel（无消费方字段保持禁用）', ()
         expect(wrapper.find('.panel-hint-warning').exists()).toBe(true)
         expect(wrapper.text()).toContain('性能')
         expect(wrapper.text()).toContain('实验')
+    })
+})
+
+/**
+ * 1.5.6 UI 简洁化（用户补充修正）：面板顶部用途描述、操作说明、状态提示必须保留常显，
+ * 编辑器设置 4 个页签没有「逐项长解释」文案可迁移为 ⓘ，本组断言锁定保留项仍直接可见，
+ * 防止后续把应常显的说明误收进悬浮提示。
+ */
+describe('编辑器设置面板：解释性文案保留常显（不迁移为 ⓘ）', () => {
+    it('BasicPanel：面板描述与「保存后立即应用」操作说明常显', () => {
+        const wrapper = mount(BasicPanel, { props: { settings: draft() } })
+        expect(wrapper.text()).toContain(t('dialogRenderer.editorSetting.panelBasicDesc'))
+        expect(wrapper.text()).toContain(t('dialogRenderer.editorSetting.hintAppliedImmediately'))
+        expect(wrapper.find('.panel-hint').exists()).toBe(true)
+    })
+
+    it('AppearancePanel：面板描述常显', () => {
+        const wrapper = mount(AppearancePanel, { props: { settings: draft() } })
+        expect(wrapper.text()).toContain(t('dialogRenderer.editorSetting.panelAppearanceDesc'))
+    })
+
+    it('MarkdownPanel / AdvancedPanel：面板描述与「暂未实现」状态提示常显', () => {
+        const markdown = mount(MarkdownPanel, { props: { settings: draft() } })
+        expect(markdown.text()).toContain(t('dialogRenderer.editorSetting.panelMarkdownDesc'))
+        expect(markdown.text()).toContain(t('dialogRenderer.editorSetting.hintNotImplemented'))
+        expect(markdown.find('.panel-hint-warning').exists()).toBe(true)
+
+        const advanced = mount(AdvancedPanel, { props: { settings: draft() } })
+        expect(advanced.text()).toContain(t('dialogRenderer.editorSetting.panelAdvancedDesc'))
+        expect(advanced.text()).toContain(t('dialogRenderer.editorSetting.hintNotImplemented'))
+        expect(advanced.find('.panel-hint-warning').exists()).toBe(true)
     })
 })
 

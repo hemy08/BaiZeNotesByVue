@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 /**
- * 设置页拆分 P0 —— 4 个页签 panel 的 props/emit 契约 + useSystemSettingForm composable 单测
+ * 设置页拆分 P0 —— 6 个页签 panel 的 props/emit 契约 + useSystemSettingForm composable 单测
  *
  * 覆盖点：
- * 1. GeneralPanel / FilePanel / AppearancePanel / BackupPanel：
+ * 1. GeneralPanel / FilePanel / AppearancePanel / FeaturesPanel / WritingPanel / BackupPanel：
  *    - props.settings 只读渲染（字段值与显隐）；
  *    - 字段修改 emit('update', 补丁)，不在子组件内部改 props；
  *    - 面板级副作用：文件页签的目录选择 / 自动保存 IPC，外观页签的 open-theme-setting，
  *      备份页签的备份/恢复配置通道与 reload 事件；
+ *    - 1.5.6 UI 简洁化：解释「为什么/是什么」的文案收进 ⓘ（InfoTip），不在界面常显；
+ *      面板顶部用途描述与错误/状态提示按用户补充要求保留常显；
  * 2. useSystemSettingForm：
  *    - loadSettings：读取 system → 合并/语言归一化 → 记录初始值 + 主题显示名；
  *    - isDirty / resetSettings：脏标记与取消恢复；
@@ -20,7 +22,16 @@ import { defineComponent, h, ref } from 'vue'
 import GeneralPanel from '@renderer/components/dialogs/complex/system-setting/GeneralPanel.vue'
 import FilePanel from '@renderer/components/dialogs/complex/system-setting/FilePanel.vue'
 import AppearancePanel from '@renderer/components/dialogs/complex/system-setting/AppearancePanel.vue'
+import FeaturesPanel from '@renderer/components/dialogs/complex/system-setting/FeaturesPanel.vue'
+import WritingPanel from '@renderer/components/dialogs/complex/system-setting/WritingPanel.vue'
 import BackupPanel from '@renderer/components/dialogs/complex/system-setting/BackupPanel.vue'
+import InfoTip from '@renderer/components/common/InfoTip.vue'
+import {
+    OPTIONAL_FEATURE_FLAGS,
+    OPTIONAL_FEATURE_FLAG_IDS,
+    WRITING_EXPERIENCE_FLAGS,
+    WRITING_EXPERIENCE_FLAG_IDS
+} from '../../../src/shared/constants/feature-flags'
 import {
     createDefaultSystemDialogSettings,
     type SystemDialogSettings
@@ -86,6 +97,26 @@ describe('GeneralPanel（通用设置页签）', () => {
         expect(panelSettings.autoOpenLastFolder).toBe(false)
         expect(panelSettings.language).toBe('en-US')
     })
+
+    // 1.5.6 UI 简洁化：解释「为什么/是什么」的文案改为标签旁 ⓘ（InfoTip），不再常显。
+    it('开机自启 / 远程图片的解释文案收进 ⓘ，界面不再直接渲染', () => {
+        const wrapper = mount(GeneralPanel, { props: { settings: draft() } })
+
+        const tipTexts = wrapper.findAllComponents(InfoTip).map((tip) => tip.props('text'))
+        expect(tipTexts).toEqual([
+            t('dialogRenderer.systemSetting.hintAutoStart'),
+            t('dialogRenderer.systemSetting.hintAllowRemoteImages')
+        ])
+        // 原常显说明容器与原 title 提示均不再存在，文案不出现在可见文本中
+        expect(wrapper.find('.group-hint').exists()).toBe(false)
+        expect(wrapper.find('[title]').exists()).toBe(false)
+        expect(wrapper.text()).not.toContain(t('dialogRenderer.systemSetting.hintAutoStart'))
+        expect(wrapper.text()).not.toContain(
+            t('dialogRenderer.systemSetting.hintAllowRemoteImages')
+        )
+        // 面板顶部用途描述按用户补充要求保留常显
+        expect(wrapper.text()).toContain(t('dialogRenderer.systemSetting.panelGeneralDesc'))
+    })
 })
 
 describe('FilePanel（文件设置页签）', () => {
@@ -130,6 +161,22 @@ describe('FilePanel（文件设置页签）', () => {
         const wrapper = mount(FilePanel, { props: { settings: draft({ autoSaveEnabled: false }) } })
         expect(wrapper.find('input[min="10"]').exists()).toBe(false)
         expect(wrapper.find('input[min="5"]').exists()).toBe(true)
+    })
+
+    // 1.5.6 UI 简洁化：字段长解释改为标签旁 ⓘ，原分组说明段落与原生 title 不再常显。
+    it('默认路径 / 最近文件数量的字段解释收进 ⓘ，不再常显', () => {
+        const wrapper = mount(FilePanel, { props: { settings: draft() } })
+
+        const tipTexts = wrapper.findAllComponents(InfoTip).map((tip) => tip.props('text'))
+        expect(tipTexts).toEqual([
+            t('dialogRenderer.systemSetting.hintDefaultFilePath'),
+            t('dialogRenderer.systemSetting.hintRecentFilesCount')
+        ])
+        expect(wrapper.find('.group-hint').exists()).toBe(false)
+        expect(wrapper.text()).not.toContain(t('dialogRenderer.systemSetting.hintDefaultFilePath'))
+        expect(wrapper.text()).not.toContain(t('dialogRenderer.systemSetting.hintRecentFilesCount'))
+        // 文件页签保留面板顶部用途描述常显
+        expect(wrapper.text()).toContain(t('dialogRenderer.systemSetting.panelFileDesc'))
     })
 
     it('浏览默认路径：invoke 目录选择器并把路径 emit 给壳层', async () => {
@@ -315,6 +362,29 @@ describe('AppearancePanel（外观设置页签）', () => {
         expect(wrapper.emitted('update')![2]).toEqual([{ uiReduceTransparency: true }])
     })
 
+    // 1.5.6 UI 简洁化：主题托管/跟随系统/界面风格与密度/减少透明的长解释改为 ⓘ 悬停提示。
+    it('外观解释文案收进 ⓘ，原分组说明段落不再常显', () => {
+        const wrapper = mount(AppearancePanel, {
+            props: { settings: draft(), themeDisplay: 'baize' }
+        })
+
+        const tipTexts = wrapper.findAllComponents(InfoTip).map((tip) => tip.props('text'))
+        expect(tipTexts).toEqual([
+            t('dialogRenderer.systemSetting.hintThemeManaged'),
+            t('dialogRenderer.systemSetting.hintUseSystemTheme'),
+            t('dialogRenderer.systemSetting.hintUiAppearance'),
+            t('dialogRenderer.systemSetting.hintReduceTransparency')
+        ])
+        expect(wrapper.find('.ui-style-hint').exists()).toBe(false)
+        expect(wrapper.text()).not.toContain(t('dialogRenderer.systemSetting.hintUiAppearance'))
+        expect(wrapper.text()).not.toContain(
+            t('dialogRenderer.systemSetting.hintReduceTransparency')
+        )
+        expect(wrapper.text()).not.toContain(t('dialogRenderer.systemSetting.hintUseSystemTheme'))
+        // 面板顶部用途描述与降级状态提示按用户补充要求保留常显
+        expect(wrapper.text()).toContain(t('dialogRenderer.systemSetting.panelAppearanceDesc'))
+    })
+
     // P2 剩余静默失败提示（本批）：主题显示名读取失败时显示内联降级提示（非阻断）
     it('themeDisplayFallback 为 true 时显示内联降级提示，默认不显示', () => {
         const normal = mount(AppearancePanel, {
@@ -329,6 +399,47 @@ describe('AppearancePanel（外观设置页签）', () => {
         expect(hint.exists()).toBe(true)
         expect(hint.text()).toBe(t('dialogRenderer.systemSetting.themeDisplayFallbackHint'))
         expect(fallback.find('.theme-current-name').text()).toBe('未知')
+    })
+})
+
+describe('FeaturesPanel（功能页签）', () => {
+    // 1.5.6 UI 简洁化：11 项可选能力的多行 Desc 全部收进标签旁 ⓘ，开关行恢复单行高度。
+    it('分组说明与各能力 Desc 收进 ⓘ，不再常显', () => {
+        const wrapper = mount(FeaturesPanel, { props: { settings: draft() } })
+
+        const tipTexts = wrapper.findAllComponents(InfoTip).map((tip) => tip.props('text'))
+        expect(tipTexts).toHaveLength(OPTIONAL_FEATURE_FLAG_IDS.length + 2)
+        expect(tipTexts[0]).toBe(t('dialogRenderer.systemSetting.hintDefaultFeatures'))
+        expect(tipTexts[1]).toBe(t('dialogRenderer.systemSetting.hintOptionalFeatures'))
+        expect(tipTexts.slice(2)).toEqual(
+            OPTIONAL_FEATURE_FLAG_IDS.map((id) => t(OPTIONAL_FEATURE_FLAGS[id].descKey))
+        )
+        // 原常显 Desc 容器与分组说明段落均已移除
+        expect(wrapper.find('.feature-desc').exists()).toBe(false)
+        expect(wrapper.find('.group-hint').exists()).toBe(false)
+        expect(wrapper.text()).not.toContain(t(OPTIONAL_FEATURE_FLAGS.tabs.descKey))
+        // 面板顶部用途描述保留常显；默认能力只读清单保留
+        expect(wrapper.text()).toContain(t('dialogRenderer.systemSetting.panelFeaturesDesc'))
+        expect(wrapper.findAll('.feature-fixed-item')).toHaveLength(3)
+    })
+})
+
+describe('WritingPanel（编写体验页签）', () => {
+    // 1.5.6 UI 简洁化：9 项写作能力的多行 Desc 全部收进标签旁 ⓘ，开关行恢复单行高度。
+    it('分组说明与各写作能力 Desc 收进 ⓘ，不再常显', () => {
+        const wrapper = mount(WritingPanel, { props: { settings: draft() } })
+
+        const tipTexts = wrapper.findAllComponents(InfoTip).map((tip) => tip.props('text'))
+        expect(tipTexts).toHaveLength(WRITING_EXPERIENCE_FLAG_IDS.length + 1)
+        expect(tipTexts[0]).toBe(t('dialogRenderer.systemSetting.hintWritingFeatures'))
+        expect(tipTexts.slice(1)).toEqual(
+            WRITING_EXPERIENCE_FLAG_IDS.map((id) => t(WRITING_EXPERIENCE_FLAGS[id].descKey))
+        )
+        expect(wrapper.find('.writing-desc').exists()).toBe(false)
+        expect(wrapper.find('.group-hint').exists()).toBe(false)
+        expect(wrapper.text()).not.toContain(t(WRITING_EXPERIENCE_FLAGS.writingMode.descKey))
+        // 面板顶部用途描述保留常显
+        expect(wrapper.text()).toContain(t('dialogRenderer.systemSetting.panelWritingDesc'))
     })
 })
 
@@ -363,6 +474,24 @@ describe('BackupPanel（备份与恢复页签）', () => {
 
         await wrapper.find('input[max="10"]').setValue('7')
         expect(wrapper.emitted('update')).toEqual([[{ backupCount: 7 }]])
+    })
+
+    // 1.5.6 UI 简洁化：自动备份行为说明 + 间隔/保留数量字段提示改为 ⓘ 悬停提示。
+    it('自动备份说明与字段提示收进 ⓘ，不再常显或依赖原生 title', () => {
+        const wrapper = mount(BackupPanel, { props: { settings: draft() } })
+
+        const tipTexts = wrapper.findAllComponents(InfoTip).map((tip) => tip.props('text'))
+        expect(tipTexts).toEqual([
+            t('dialogRenderer.systemSetting.hintAutoBackupGroup'),
+            t('dialogRenderer.systemSetting.hintBackupInterval'),
+            t('dialogRenderer.systemSetting.hintBackupRetention')
+        ])
+        expect(wrapper.find('.group-hint').exists()).toBe(false)
+        expect(wrapper.find('input[min="1"][max="72"]').attributes('title')).toBeUndefined()
+        expect(wrapper.find('input[max="10"]').attributes('title')).toBeUndefined()
+        expect(wrapper.text()).not.toContain(t('dialogRenderer.systemSetting.hintAutoBackupGroup'))
+        // 面板顶部用途描述保留常显
+        expect(wrapper.text()).toContain(t('dialogRenderer.systemSetting.panelBackupDesc'))
     })
 
     it('立即备份：写 backup 通道（keep 取草稿 backupCount）并展示结果', async () => {

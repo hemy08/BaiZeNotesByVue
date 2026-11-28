@@ -11,19 +11,19 @@
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupWritingFeatures') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupWritingFeatures')
+                }}</span>
+                <!-- 1.5.6 UI 简洁化：分组说明（默认关闭/仅写作模式生效）→ ⓘ 悬停提示 -->
+                <InfoTip :text="t('dialogRenderer.systemSetting.hintWritingFeatures')" />
             </div>
-            <p class="group-hint">
-                {{ t('dialogRenderer.systemSetting.hintWritingFeatures') }}
-            </p>
-            <div v-for="item in writingRows" :key="item.id" class="setting-row writing-row">
-                <div class="writing-copy">
+            <div v-for="item in writingRows" :key="item.id" class="setting-row">
+                <div class="setting-label-group">
                     <label class="setting-label" :for="`writing-${item.id}`">
                         {{ t(item.labelKey) }}
                     </label>
-                    <p class="writing-desc">
-                        {{ t(item.descKey) }}
-                    </p>
+                    <!-- 1.5.6 UI 简洁化：各写作能力详细解释 → 标签旁 ⓘ 悬停提示（行高不再被 Desc 撑开） -->
+                    <InfoTip :text="t(item.descKey)" />
                 </div>
                 <input
                     :id="`writing-${item.id}`"
@@ -45,6 +45,7 @@
  */
 import { computed } from 'vue'
 import { t } from '../../../../common/i18n'
+import InfoTip from '../../../common/InfoTip.vue'
 import {
     WRITING_EXPERIENCE_FLAGS,
     WRITING_EXPERIENCE_FLAG_IDS
@@ -77,23 +78,4 @@ const writingRows = computed(() =>
 
 <style scoped>
 @import './settings-panel.css';
-
-.writing-row {
-    align-items: flex-start;
-}
-
-.writing-copy {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.writing-desc {
-    margin: 0;
-    color: var(--secondary-text-color);
-    font-size: 12px;
-    line-height: 1.5;
-}
 </style>

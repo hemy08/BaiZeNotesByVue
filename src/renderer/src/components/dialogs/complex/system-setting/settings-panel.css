@@ -9,6 +9,11 @@
  *
  * 主题：全部沿用 var(--...) 主题变量（28 套应用主题 + 明暗模式由变量驱动），
  * 不引入任何硬编码色值——暗色/多主题视觉与拆分前一致。
+ *
+ * 1.5.6 UI 简洁化：解释「为什么/是什么」的常显文案统一收进 InfoTip（ⓘ）——
+ * `.setting-label-group` 承载「标签文字 + ⓘ」，`.group-title-text` 承载分组标题文字
+ * （`.group-title` 改为 flex 行内布局，ⓘ 紧随标题，间距 6px）；错误/状态/必填等
+ * 「当前不可用/失败」提示与面板顶部用途描述仍保留常显。
  * ========================================================================== */
 
 /* 页签面板容器（4 个 panel 的根节点，高度占满内容区） */
@@ -42,8 +47,11 @@
     border: 1px solid var(--border-color);
 }
 
-/* 分组标题（带底部分隔线） */
+/* 分组标题（带底部分隔线；1.5.6 UI 简洁化后同行可跟解释性 ⓘ，间距 6px） */
 .group-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 14px;
     font-weight: 600;
     color: var(--text-color);
@@ -52,11 +60,9 @@
     border-bottom: 1px solid var(--border-color);
 }
 
-/* P1-FE-06：分组级提示（功能说明） */
-.group-hint {
-    font-size: 12px;
-    color: #d48806;
-    margin: -8px 0 12px;
+/* 分组标题文字（flex 项：允许收缩换行，避免英文长标题溢出） */
+.group-title-text {
+    min-width: 0;
 }
 
 /* 暂未实现的设置项：禁用态输入统一弱化展示 */
@@ -82,6 +88,15 @@
 .setting-label {
     font-size: 13px;
     color: var(--text-color);
+}
+
+/* 1.5.6 UI 简洁化：标签文字 + 解释性 ⓘ（InfoTip）同一行，图标与文字间距 6px；
+   解释性文案不再常显，鼠标悬停 / 键盘聚焦 / 点击图标时展示。 */
+.setting-label-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
 }
 
 /* 文本 / 数值输入框 */

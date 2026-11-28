@@ -22,7 +22,9 @@
             >
                 <div class="settings-controls">
                     <label class="setting-field">
-                        <span>{{ t('dialogRenderer.tableEditor.rows') }}</span>
+                        <span class="setting-label">{{
+                            t('dialogRenderer.tableEditor.rows')
+                        }}</span>
                         <input
                             v-model.number="rowTarget"
                             class="setting-input"
@@ -34,7 +36,9 @@
                         />
                     </label>
                     <label class="setting-field">
-                        <span>{{ t('dialogRenderer.tableEditor.columns') }}</span>
+                        <span class="setting-label">{{
+                            t('dialogRenderer.tableEditor.columns')
+                        }}</span>
                         <input
                             v-model.number="columnTarget"
                             class="setting-input"
@@ -45,11 +49,14 @@
                             @blur="applyColumnTarget"
                         />
                     </label>
-                    <label class="setting-field setting-field--wide">
-                        <span>{{ t('dialogRenderer.tableEditor.allColumnsAlign') }}</span>
+                    <span class="settings-divider" aria-hidden="true"></span>
+                    <label class="setting-field">
+                        <span class="setting-label">{{
+                            t('dialogRenderer.tableEditor.allColumnsAlign')
+                        }}</span>
                         <select
                             v-model="bulkAlignment"
-                            class="setting-select"
+                            class="setting-select setting-select--align"
                             @change="applyBulkAlignment"
                         >
                             <option
@@ -61,6 +68,40 @@
                             </option>
                         </select>
                     </label>
+                    <span class="settings-divider" aria-hidden="true"></span>
+                    <label class="setting-field">
+                        <span class="setting-label">{{
+                            t('dialogRenderer.tableEditor.sortBy')
+                        }}</span>
+                        <select
+                            :value="sortColumn"
+                            class="setting-select setting-select--sort"
+                            @change="handleSortColumnChange"
+                        >
+                            <option
+                                v-for="(_header, columnIndex) in headers"
+                                :key="`sort-${columnIndex}`"
+                                :value="columnIndex"
+                            >
+                                {{
+                                    headers[columnIndex] ||
+                                    `${t('dialogRenderer.tableEditor.column')} ${columnIndex + 1}`
+                                }}
+                            </option>
+                        </select>
+                    </label>
+                    <div class="tool-btn-group" role="group">
+                        <button type="button" class="tool-btn" @click="sortRows('asc')">
+                            {{ t('dialogRenderer.tableEditor.sortAsc') }}
+                        </button>
+                        <button type="button" class="tool-btn" @click="sortRows('desc')">
+                            {{ t('dialogRenderer.tableEditor.sortDesc') }}
+                        </button>
+                        <button type="button" class="tool-btn" @click="transposeTable">
+                            {{ t('dialogRenderer.tableEditor.transpose') }}
+                        </button>
+                    </div>
+                    <div class="settings-spacer"></div>
                     <button
                         type="button"
                         class="import-btn"
@@ -81,38 +122,11 @@
                         accept=".csv,.xlsx"
                         @change="handleFileSelected"
                     />
+                    <InfoTip
+                        class="settings-hint"
+                        :text="t('dialogRenderer.tableEditor.cellRichHint')"
+                    />
                 </div>
-                <div class="settings-tools">
-                    <label class="setting-field">
-                        <span>{{ t('dialogRenderer.tableEditor.sortBy') }}</span>
-                        <select
-                            :value="sortColumn"
-                            class="setting-select"
-                            @change="handleSortColumnChange"
-                        >
-                            <option
-                                v-for="(_header, columnIndex) in headers"
-                                :key="`sort-${columnIndex}`"
-                                :value="columnIndex"
-                            >
-                                {{
-                                    headers[columnIndex] ||
-                                    `${t('dialogRenderer.tableEditor.column')} ${columnIndex + 1}`
-                                }}
-                            </option>
-                        </select>
-                    </label>
-                    <button type="button" class="tool-btn" @click="sortRows('asc')">
-                        {{ t('dialogRenderer.tableEditor.sortAsc') }}
-                    </button>
-                    <button type="button" class="tool-btn" @click="sortRows('desc')">
-                        {{ t('dialogRenderer.tableEditor.sortDesc') }}
-                    </button>
-                    <button type="button" class="tool-btn" @click="transposeTable">
-                        {{ t('dialogRenderer.tableEditor.transpose') }}
-                    </button>
-                </div>
-                <p class="cell-rich-hint">{{ t('dialogRenderer.tableEditor.cellRichHint') }}</p>
                 <p v-if="importError" class="import-message import-message--error" role="alert">
                     {{ importError }}
                 </p>
@@ -339,15 +353,17 @@
             </button>
 
             <footer class="table-editor-footer">
-                <span class="shortcut-hint">
-                    <span class="shortcut-hint-primary">
-                        {{ t('dialogRenderer.tableEditor.shortcutHint') }}
-                    </span>
-                    <!-- 键盘提示（视觉升级 P2 / T18 i18n 补齐）：电子表格化导航的完整按键说明 -->
-                    <span class="keyboard-hint">
-                        {{ t('dialogRenderer.tableEditor.keyboardHint') }}
-                    </span>
-                </span>
+                <InfoTip
+                    class="table-editor-shortcut-tip"
+                    :aria-label="t('dialogRenderer.tableEditor.shortcutHint')"
+                >
+                    <span class="shortcut-tip-line">{{
+                        t('dialogRenderer.tableEditor.shortcutHint')
+                    }}</span>
+                    <span class="shortcut-tip-line">{{
+                        t('dialogRenderer.tableEditor.keyboardHint')
+                    }}</span>
+                </InfoTip>
                 <div class="table-editor-actions">
                     <button
                         type="button"
@@ -404,6 +420,7 @@
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import BaseDialog from '../../BaseDialog.vue'
+import InfoTip from '../../../common/InfoTip.vue'
 import { t } from '../../../../common/i18n'
 import { useTheme } from '../../../../composables/useTheme'
 import {
@@ -1158,48 +1175,72 @@ function handleApply(): void {
     padding: calc(var(--ui-pad, 12px) + 4px);
 }
 
-/* ---------- 表格设置区 ---------- */
+/* ---------- 表格设置区（1.5.6 UI 重设计：紧凑工具条） ---------- */
 .table-settings {
     flex-shrink: 0;
-    padding: var(--ui-pad, 12px);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
     border: 1px solid var(--ui-border, var(--border-color));
-    border-radius: var(--ui-radius-md, 4px);
-    background: var(--table-body-bg, var(--ui-bg-elevated, var(--bg-primary)));
+    border-radius: var(--ui-radius-lg, 8px);
+    background: var(--table-body-bg, var(--ui-bg-elevated));
 }
 
 .settings-controls {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 8px;
+    align-items: center;
+    gap: 6px 10px;
+}
+
+.settings-divider {
+    flex: 0 0 auto;
+    width: 1px;
+    height: 18px;
+    background: var(--ui-border, var(--border-color));
+    opacity: 0.7;
 }
 
 .setting-field {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    gap: 6px;
     font-size: 11px;
     color: var(--ui-text-secondary, var(--text-secondary));
+    white-space: nowrap;
 }
 
-.setting-field--wide {
-    min-width: 150px;
+.setting-label {
+    color: var(--ui-text-secondary, var(--text-secondary));
 }
 
 .setting-input,
 .setting-select {
-    height: var(--table-control-height, var(--ui-control-height, 32px));
+    height: calc(var(--table-control-height, var(--ui-control-height, 30px)) - 4px);
     padding: 0 8px;
     border: 1px solid var(--ui-border, var(--border-color));
-    border-radius: var(--ui-radius-sm, 2px);
+    border-radius: var(--ui-radius-sm, 4px);
     background: var(--ui-bg, var(--bg-primary));
     color: var(--ui-text, var(--text-primary));
     font: inherit;
-    font-size: var(--table-font-size, 13px);
+    font-size: 12px;
 }
 
 .setting-input {
-    width: 74px;
+    width: 56px;
+}
+
+.setting-select {
+    min-width: 104px;
+}
+
+.setting-select--align {
+    min-width: 116px;
+}
+
+.setting-select--sort {
+    max-width: 132px;
 }
 
 .setting-input:focus,
@@ -1209,22 +1250,56 @@ function handleApply(): void {
     box-shadow: var(--ui-focus-shadow, 0 0 0 3px var(--ui-focus-ring));
 }
 
+.tool-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-md, 6px);
+    background: var(--ui-bg, var(--bg-primary));
+}
+
+.tool-btn {
+    height: calc(var(--table-control-height, var(--ui-control-height, 30px)) - 8px);
+    padding: 0 10px;
+    border: none;
+    border-radius: var(--ui-radius-sm, 3px);
+    background: transparent;
+    color: var(--ui-text-secondary, var(--text-secondary));
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+.tool-btn:hover {
+    color: var(--ui-accent, var(--accent-color));
+    background: var(--ui-accent-soft, transparent);
+}
+
+.settings-spacer {
+    flex: 1 1 auto;
+}
+
 .import-btn {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    height: var(--table-control-height, var(--ui-control-height, 32px));
-    margin-left: auto;
-    padding: 0 12px;
+    height: calc(var(--table-control-height, var(--ui-control-height, 30px)) - 4px);
+    padding: 0 10px;
     border: 1px solid color-mix(in srgb, var(--ui-accent, var(--accent-color)) 45%, transparent);
-    border-radius: var(--ui-radius-sm, 2px);
+    border-radius: var(--ui-radius-sm, 4px);
     background: color-mix(
         in srgb,
         var(--ui-accent, var(--accent-color)) 9%,
         var(--ui-bg-elevated, var(--bg-primary))
     );
     color: var(--ui-accent, var(--accent-color));
-    font-size: var(--table-font-size, 13px);
+    font-size: 12px;
     cursor: pointer;
     white-space: nowrap;
     transition:
@@ -1246,7 +1321,7 @@ function handleApply(): void {
 }
 
 .import-icon {
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1;
 }
 
@@ -1254,8 +1329,12 @@ function handleApply(): void {
     display: none;
 }
 
+.settings-hint {
+    flex: 0 0 auto;
+}
+
 .import-message {
-    margin: 8px 0 0;
+    margin: 4px 0 0;
     font-size: 11px;
     line-height: 1.45;
 }
@@ -1268,49 +1347,6 @@ function handleApply(): void {
     color: var(--ui-success, var(--success-color));
 }
 
-.settings-tools {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 8px;
-    margin-top: var(--ui-pad, 12px);
-    padding-top: var(--ui-pad, 12px);
-    border-top: 1px dashed var(--ui-border, var(--border-color));
-}
-
-.tool-btn {
-    height: var(--table-control-height, var(--ui-control-height, 32px));
-    padding: 0 12px;
-    border: 1px solid var(--ui-border, var(--border-color));
-    border-radius: var(--ui-radius-sm, 2px);
-    background: var(--ui-bg, var(--bg-primary));
-    color: var(--ui-text, var(--text-primary));
-    font: inherit;
-    font-size: var(--table-font-size, 13px);
-    cursor: pointer;
-    transition:
-        border-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
-        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
-        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
-}
-
-.tool-btn:hover {
-    border-color: var(--ui-accent, var(--accent-color));
-    color: var(--ui-accent, var(--accent-color));
-    background: color-mix(
-        in srgb,
-        var(--ui-accent, var(--accent-color)) 8%,
-        var(--ui-bg-elevated, var(--bg-primary))
-    );
-}
-
-.cell-rich-hint {
-    margin: 8px 0 0;
-    font-size: 11px;
-    line-height: 1.5;
-    color: var(--ui-text-secondary, var(--text-secondary));
-}
-
 /* ---------- 网格壳 ---------- */
 .table-editor-body.is-resized .table-editor-scroll {
     max-height: none;
@@ -1318,8 +1354,8 @@ function handleApply(): void {
 
 .table-editor-scroll {
     flex: 1 1 auto;
-    min-height: 140px;
-    max-height: 52vh;
+    min-height: 160px;
+    max-height: none;
     overflow: auto;
     border: 1px solid var(--table-border-color, var(--ui-border));
     border-radius: var(--ui-radius-lg, 8px);
@@ -1789,29 +1825,28 @@ tbody tr:hover .row-delete,
     line-height: 1;
 }
 
-/* ---------- 底部 ---------- */
+/* ---------- 底部操作区（1.5.6 UI 重设计：提示收进 ⓘ） ---------- */
 .table-editor-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     flex-shrink: 0;
-    padding-top: 2px;
+    padding-top: 6px;
+    border-top: 1px solid var(--table-border-color, var(--ui-border));
 }
 
-.shortcut-hint {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 11px;
-    color: var(--ui-text-tertiary, var(--text-secondary));
+.table-editor-shortcut-tip {
+    display: inline-flex;
+    align-items: center;
 }
 
-/* 键盘提示（T18 i18n）：比主快捷键提示再弱一档，避免与 Ctrl+Enter 主操作抢视觉权重 */
-.keyboard-hint {
+.shortcut-tip-line {
+    display: block;
+    white-space: nowrap;
     font-size: 11px;
+    line-height: 1.5;
     color: var(--ui-text-tertiary, var(--text-secondary));
-    opacity: 0.82;
 }
 
 .table-editor-actions {

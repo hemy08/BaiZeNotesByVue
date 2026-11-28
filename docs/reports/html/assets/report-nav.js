@@ -108,6 +108,10 @@
                     {
                         "title": "1.5.2 版本计划（捕获与日常入口）",
                         "file": "02-修复与实施/1.5.2版本计划.html"
+                    },
+                    {
+                        "title": "LLM Wiki 集成实施计划（完整版）",
+                        "file": "02-修复与实施/LLM-Wiki-Implementation-Plan.html"
                     }
                 ]
             },

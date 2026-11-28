@@ -82,6 +82,8 @@
     --ui-z-palette: 60;
     --ui-z-toast: 70;
     --ui-z-guide: 80;
+    /* InfoTip 解释性提示浮层：高于应用层浮层（100~120），全局最高交互浮层 */
+    --ui-z-tooltip: 130;
 
     /* ---------- 应用层相对阶梯（1.5.6 P2-E：z-index 相对阶梯化） ----------
        语义 rank（--ui-z-dialog: 50 / --ui-z-palette: 60）是 0~80 的相对阶梯；应用层高层浮层

@@ -3,7 +3,8 @@
  * 设置对话框二期拆分 —— ThemeSettingDialog 子组件 + composable 契约单测
  *
  * 覆盖点：
- * 1. ThemePreviewCard：纯展示卡片（名称/描述/选中态/3 条预览线/色块 tooltip）与 select 事件；
+ * 1. ThemePreviewCard：纯展示卡片（名称/描述 ⓘ/选中态/3 条预览线/色块 tooltip）与 select 事件；
+ *   1.5.6 UI 简洁化：28 套主题 description 由常显段落改为名称旁 InfoTip（点击展开），卡片收紧；
  * 2. AppThemePanel / EditorThemePanel：按分组/视图项渲染，点选 emit 主题 type；
  * 3. FontSettingsPanel：字体下拉/字号经 emit('update', 补丁) 上报（v-model.number 语义）；
  * 4. useThemeSettingForm：
@@ -14,13 +15,15 @@
  *    - 读取失败只记日志、保持默认值。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import * as fs from 'node:fs'
 import { mount } from '@vue/test-utils'
-import { defineComponent } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 
 import ThemePreviewCard from '@renderer/components/dialogs/complex/theme-setting/ThemePreviewCard.vue'
 import AppThemePanel from '@renderer/components/dialogs/complex/theme-setting/AppThemePanel.vue'
 import EditorThemePanel from '@renderer/components/dialogs/complex/theme-setting/EditorThemePanel.vue'
 import FontSettingsPanel from '@renderer/components/dialogs/complex/theme-setting/FontSettingsPanel.vue'
+import InfoTip from '@renderer/components/common/InfoTip.vue'
 import { useThemeSettingForm } from '@renderer/components/dialogs/complex/theme-setting/useThemeSettingForm'
 import {
     createDefaultThemeFontSettings,
@@ -95,7 +98,7 @@ const SAMPLE_MONACO: MonacoThemeViewItem[] = [
 ]
 
 describe('ThemePreviewCard（主题预览卡片）', () => {
-    it('按 props 渲染名称/描述/选中态/3 条预览线/3 个色块，点击只 emit select', async () => {
+    it('按 props 渲染名称/选中态/3 条预览线/3 个色块，描述改由 ⓘ 承载，点击只 emit select', async () => {
         const wrapper = mount(ThemePreviewCard, {
             props: {
                 selected: true,
@@ -123,13 +126,19 @@ describe('ThemePreviewCard（主题预览卡片）', () => {
                         title: t('dialogRenderer.themeSetting.colorText')
                     }
                 ]
-            }
+            },
+            // InfoTip 浮层 Teleport 到 body；stub 后可在组件内断言展开内容
+            global: { stubs: { teleport: true } }
         })
 
         expect(wrapper.classes()).toContain('theme-card')
         expect(wrapper.classes()).toContain('selected')
         expect(wrapper.find('.theme-name').text()).toBe('白泽')
-        expect(wrapper.find('.theme-desc').text()).toBe('默认浅色主题')
+        // 1.5.6 UI 简洁化：描述不再常显，改由名称旁 ⓘ 承载
+        expect(wrapper.find('.theme-desc').exists()).toBe(false)
+        const tipTrigger = wrapper.find('.theme-name-row .info-tip__trigger')
+        expect(tipTrigger.exists()).toBe(true)
+        expect(tipTrigger.attributes('aria-label')).toContain('白泽')
         expect(wrapper.findAll('.preview-line')).toHaveLength(3)
         const dots = wrapper.findAll('.color-dot')
         expect(dots).toHaveLength(3)
@@ -138,8 +147,39 @@ describe('ThemePreviewCard（主题预览卡片）', () => {
             (wrapper.find('.theme-preview').element as HTMLElement).style.background
         ).toBeTruthy()
 
+        // 点击 ⓘ 展开描述浮层，且不误触发卡片选中
+        await tipTrigger.trigger('click')
+        await nextTick()
+        await nextTick()
+        expect(wrapper.find('.info-tip__popover').text()).toBe('默认浅色主题')
+        expect(wrapper.emitted('select')).toBeUndefined()
+        expect(tipTrigger.attributes('aria-expanded')).toBe('true')
+
         await wrapper.trigger('click')
         expect(wrapper.emitted('select')).toHaveLength(1)
+        wrapper.unmount()
+    })
+})
+
+describe('ThemePreviewCard 紧凑布局（1.5.6 UI 简洁化）', () => {
+    const source = fs.readFileSync(
+        'src/renderer/src/components/dialogs/complex/theme-setting/ThemePreviewCard.vue',
+        'utf8'
+    )
+
+    it('描述不再常显（无 .theme-desc 元素），改由 InfoTip 承载', () => {
+        expect(source).not.toContain('class="theme-desc"')
+        expect(source).toContain('<InfoTip')
+        expect(source).toContain('class="theme-name-row"')
+    })
+
+    it('卡片内边距/间距与缩略预览高度收紧，单卡更矮', () => {
+        const cardRule = source.match(/\.theme-card\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+        expect(cardRule).toContain('padding: 8px')
+        expect(cardRule).toContain('gap: 6px')
+        const previewRule = source.match(/\.theme-preview\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+        expect(previewRule).toContain('height: 88px')
+        expect(source).not.toContain('.theme-desc {')
     })
 })
 
@@ -155,9 +195,15 @@ describe('AppThemePanel / EditorThemePanel（主题页签）', () => {
         expect(cards).toHaveLength(1)
         expect(cards[0].classes()).toContain('selected')
         expect(cards[0].text()).toContain('白泽')
+        // 1.5.6 UI 简洁化：描述不再常显在卡片上，改由名称旁 ⓘ 承载
+        expect(cards[0].find('.theme-desc').exists()).toBe(false)
+        const tips = wrapper.findAllComponents(InfoTip)
+        expect(tips).toHaveLength(1)
+        expect(tips[0].props('text')).toBe('默认浅色主题')
 
         await cards[0].trigger('click')
         expect(wrapper.emitted('select')).toEqual([['baize']])
+        wrapper.unmount()
     })
 
     it('编辑器主题页签按视图项渲染并 emit Monaco 主题 type', async () => {
@@ -241,7 +287,8 @@ describe('AppThemePanel / EditorThemePanel（主题页签）', () => {
     // 2026-11-28 用户反馈「编辑器主题设置不生效」修复：编辑器主题页签恢复「独立编辑器主题」
     // 开关（Vue 迁移时丢失的 JSDOM「是否单独配置编辑区主题」复选框）。开关状态只读展示
     // separateEditorTheme prop，切换只 emit('toggle-separate', checked)，不持有状态。
-    it('编辑器主题页签渲染「独立编辑器主题」开关：关闭时显示跟随应用主题说明', async () => {
+    // 1.5.6 UI 简洁化：两种语义说明由常显段落改为开关标签旁 ⓘ（文本随开关状态切换）。
+    it('编辑器主题页签渲染「独立编辑器主题」开关：关闭时说明收进 ⓘ（跟随应用主题）', async () => {
         const wrapper = mount(EditorThemePanel, {
             props: { themes: SAMPLE_MONACO, currentMonacoTheme: 'vs' }
         })
@@ -251,15 +298,21 @@ describe('AppThemePanel / EditorThemePanel（主题页签）', () => {
         expect(wrapper.find('.editor-theme-toggle-label').text()).toBe(
             t('dialogRenderer.themeSetting.separateEditorThemeLabel')
         )
-        expect(wrapper.find('.editor-theme-hint').text()).toBe(
-            t('dialogRenderer.themeSetting.separateEditorThemeHintOff')
+        // 原常显说明段落已移除，说明保留在 ⓘ 的 text 中
+        expect(wrapper.find('.editor-theme-hint').exists()).toBe(false)
+        const tip = wrapper.find('.editor-theme-toolbar').findComponent(InfoTip)
+        expect(tip.exists()).toBe(true)
+        expect(tip.props('text')).toBe(t('dialogRenderer.themeSetting.separateEditorThemeHintOff'))
+        expect(tip.props('ariaLabel')).toContain(
+            t('dialogRenderer.themeSetting.separateEditorThemeLabel')
         )
 
         await checkbox.setValue(true)
         expect(wrapper.emitted('toggle-separate')).toEqual([[true]])
+        wrapper.unmount()
     })
 
-    it('编辑器主题页签开关开启时选中态与说明跟随 separateEditorTheme', async () => {
+    it('编辑器主题页签开关开启时选中态与 ⓘ 说明跟随 separateEditorTheme', async () => {
         const wrapper = mount(EditorThemePanel, {
             props: {
                 themes: SAMPLE_MONACO,
@@ -269,12 +322,14 @@ describe('AppThemePanel / EditorThemePanel（主题页签）', () => {
         })
         const checkbox = wrapper.find('.editor-theme-toggle-input')
         expect((checkbox.element as HTMLInputElement).checked).toBe(true)
-        expect(wrapper.find('.editor-theme-hint').text()).toBe(
+        expect(wrapper.find('.editor-theme-hint').exists()).toBe(false)
+        expect(wrapper.find('.editor-theme-toolbar').findComponent(InfoTip).props('text')).toBe(
             t('dialogRenderer.themeSetting.separateEditorThemeHintOn')
         )
         expect(wrapper.find('.monaco-theme-list .theme-card.selected').text()).toContain(
             'Dark (Visual Studio)'
         )
+        wrapper.unmount()
     })
 
     it('编辑器主题页签在加载失败态下仍渲染开关（可切回跟随应用主题）', () => {
@@ -287,6 +342,9 @@ describe('AppThemePanel / EditorThemePanel（主题页签）', () => {
         })
         expect(wrapper.find('.editor-theme-toolbar').exists()).toBe(true)
         expect(wrapper.find('.panel-state-error').exists()).toBe(true)
+        // 错误提示保留常显（不迁移为 ⓘ）
+        expect(wrapper.find('[role="alert"]').text()).toContain('主题列表加载失败')
+        wrapper.unmount()
     })
 })
 

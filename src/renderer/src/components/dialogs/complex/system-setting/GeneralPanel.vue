@@ -11,7 +11,9 @@
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupStartup') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupStartup')
+                }}</span>
             </div>
             <div class="setting-row">
                 <label class="setting-label">{{
@@ -26,21 +28,22 @@
                 <input v-model="autoOpenLastFolder" type="checkbox" class="setting-checkbox" />
             </div>
             <div class="setting-row">
-                <label class="setting-label">{{
-                    t('dialogRenderer.systemSetting.labelAutoStart')
-                }}</label>
-                <input
-                    v-model="autoStart"
-                    type="checkbox"
-                    class="setting-checkbox"
-                    :title="t('dialogRenderer.systemSetting.hintAutoStart')"
-                />
+                <div class="setting-label-group">
+                    <label class="setting-label">{{
+                        t('dialogRenderer.systemSetting.labelAutoStart')
+                    }}</label>
+                    <!-- 1.5.6 UI 简洁化：开发模式下自启动不生效属「为什么」解释 → ⓘ 悬停提示 -->
+                    <InfoTip :text="t('dialogRenderer.systemSetting.hintAutoStart')" />
+                </div>
+                <input v-model="autoStart" type="checkbox" class="setting-checkbox" />
             </div>
         </div>
 
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupWindow') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupWindow')
+                }}</span>
             </div>
             <div class="setting-row">
                 <label class="setting-label">{{
@@ -59,7 +62,7 @@
         <!-- CMP-30：界面语言选择（保存后主进程刷新语言并广播，渲染层即时切换） -->
         <div class="settings-group">
             <div class="group-title">
-                {{ t('settings.language.group') }}
+                <span class="group-title-text">{{ t('settings.language.group') }}</span>
             </div>
             <div class="setting-row">
                 <label class="setting-label">{{ t('settings.language.label') }}</label>
@@ -78,15 +81,18 @@
             预览（MarkdownPreviewComponent）据此拦截/放行远程图片，无需重启。 -->
         <div class="settings-group">
             <div class="group-title">
-                {{ t('dialogRenderer.systemSetting.groupPrivacy') }}
+                <span class="group-title-text">{{
+                    t('dialogRenderer.systemSetting.groupPrivacy')
+                }}</span>
             </div>
-            <p class="group-hint">
-                {{ t('dialogRenderer.systemSetting.hintAllowRemoteImages') }}
-            </p>
             <div class="setting-row">
-                <label class="setting-label">{{
-                    t('dialogRenderer.systemSetting.labelAllowRemoteImages')
-                }}</label>
+                <div class="setting-label-group">
+                    <label class="setting-label">{{
+                        t('dialogRenderer.systemSetting.labelAllowRemoteImages')
+                    }}</label>
+                    <!-- AS-9（P3 隐私）：远程图片加载的风险说明属「为什么」解释 → ⓘ 悬停提示 -->
+                    <InfoTip :text="t('dialogRenderer.systemSetting.hintAllowRemoteImages')" />
+                </div>
                 <input v-model="allowRemoteImages" type="checkbox" class="setting-checkbox" />
             </div>
         </div>
@@ -101,6 +107,7 @@
  * 不在本组件内保存/加载/校验（统一由壳层 useSystemSettingForm 承担）。
  */
 import { t } from '../../../../common/i18n'
+import InfoTip from '../../../common/InfoTip.vue'
 import type { SystemDialogSettings } from './model'
 import { usePanelFields } from './panel-model'
 
