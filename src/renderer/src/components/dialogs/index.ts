@@ -110,6 +110,9 @@ export const ImportOptionDialog = lazyDialog(() => import('./medium/ImportOption
 export const InsertImageDialog = lazyDialog(() => import('./medium/InsertImageDialog.vue'))
 export const MathTextDialog = lazyDialog(() => import('./medium/MathTextDialog.vue'))
 
+// 1.5.7 体验微调（用户反馈）：AI 助手配置从系统设置第 7 页签改为「设置 → AI 助手」独立对话框
+// （组件内复用原 system-setting/AiAssistantPanel.vue，入口菜单动作见 menu-actions.ts）。
+export const AiAssistantDialog = lazyDialog(() => import('./complex/AiAssistantDialog.vue'))
 export const EditorSettingDialog = lazyDialog(() => import('./complex/EditorSettingDialog.vue'))
 export const FontSelectDialog = lazyDialog(() => import('./complex/FontSelectDialog.vue'))
 export const MaterialSyntaxDialog = lazyDialog(() => import('./complex/MaterialSyntaxDialog.vue'))

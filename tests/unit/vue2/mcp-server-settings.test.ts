@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 /**
- * 1.5.7 体验升级 B：AI 助手页签「MCP 服务」分组深度单测
+ * 1.5.7 体验升级 B：AI 助手面板「MCP 服务」分组深度单测
+ * （1.5.7 体验微调后该面板由菜单「设置 → AI 助手」独立对话框复用，不再作为系统设置页签）
  * （`system-setting/AiAssistantPanel.vue`，原 FeaturesPanel MCP 分组迁移 + 端口/重置令牌扩展）
  *
  * 与 `ai-assistant-panel.test.ts` 的分工：本文件聚焦 MCP 的失败/降级路径与边界值，

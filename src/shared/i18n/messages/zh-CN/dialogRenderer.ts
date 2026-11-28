@@ -268,8 +268,6 @@ const dialogRenderer = {
         sidebarBackup: '备份与恢复',
         sidebarFeatures: '功能',
         sidebarWriting: '编写体验',
-        // 1.5.7 体验升级 B：AI 助手独立页签（多模型管理 + MCP 服务配置）
-        sidebarAiAssistant: 'AI 助手',
         panelWritingTitle: '编写体验',
         panelWritingDesc:
             '用于提升写作过程体验的辅助能力，默认全部关闭；开启后可在状态栏/菜单中使用。',
@@ -464,12 +462,15 @@ const dialogRenderer = {
         themeDisplayFallbackHint:
             '无法读取当前应用主题的显示名，已回退显示主题标识；可关闭设置后重新打开重试。'
     },
-    // 1.5.7 体验升级 B：系统设置第 7 页签「AI 助手」独立配置页
-    // （多模型管理 + MCP 服务配置；原「功能」页签的 AI/MCP 分组整体迁移到本块）。
+    // 1.5.7 体验升级 B：AI 助手配置块（多模型管理 + MCP 服务配置）。
+    // 1.5.7 体验微调（用户反馈 2026-11-28）：原为系统设置第 7 页签，现改为
+    // 菜单「设置 → AI 助手」打开的独立对话框（../AiAssistantDialog.vue 复用同一面板）。
+    // 原「功能」页签的 AI/MCP 分组在此之前已整体迁移到本块。
     aiAssistant: {
+        title: 'AI 助手',
         panelTitle: 'AI 助手',
         panelDesc:
-            '集中管理 AI 模型与 MCP 服务：可添加多个模型（本地 Ollama / LM Studio 或远程 OpenAI 兼容接口），并让外部 Agent 通过 MCP 只读访问当前工作区。本页配置独立保存、立即生效，不随底部「应用」按钮保存。',
+            '集中管理 AI 模型与 MCP 服务：可添加多个模型（本地 Ollama / LM Studio 或远程 OpenAI 兼容接口），并让外部 Agent 通过 MCP 只读访问当前工作区。配置独立保存、立即生效。',
         groupModels: '模型',
         enabledLabel: '启用 AI 助手',
         storageSafe: 'API Key 存储：系统安全存储（加密保存，可跨重启使用）',

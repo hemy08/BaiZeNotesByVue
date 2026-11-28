@@ -113,6 +113,8 @@ vi.mock('@renderer/components/dialogs', async () => {
         ]),
         EditorSettingDialog: closeOnly('EditorSettingDialog'),
         SystemSettingDialog: closeOnly('SystemSettingDialog'),
+        // 1.5.7 体验微调：AI 助手独立对话框（菜单「设置 → AI 助手」驱动）
+        AiAssistantDialog: closeOnly('AiAssistantDialog'),
         MermaidEditDialog: makeStub('MermaidEditDialog', [
             { cls: 'stub-close', event: 'close' },
             { cls: 'stub-insert', event: 'insert', payload: '```mermaid\ngraph TD\n```' }
@@ -185,6 +187,12 @@ import BaiZeNotes from '@renderer/components/BaiZeNotes.vue'
 import EventBus from '@renderer/common/event-bus/event-bus'
 import { EVENT_BUS } from '@renderer/common/event-bus/event-bus-events'
 import { getConfigStore } from '@renderer/common/useConfigStore'
+// 1.5.7 体验微调：AI 助手独立对话框显隐为模块单例（菜单动作驱动、宿主只挂载）
+import {
+    aiAssistantDialogState,
+    closeAiAssistantDialogState,
+    openAiAssistantDialogState
+} from '@renderer/components/dialogs/complex/ai-assistant-dialog-state'
 import { IPC } from '../../../src/shared/ipc-channels'
 
 const invokeMock = vi.fn()
@@ -245,6 +253,7 @@ beforeEach(() => {
         store.hideDialog(name)
     }
     store.clearMessageDialogRetry()
+    closeAiAssistantDialogState()
 })
 
 afterEach(() => {
@@ -316,6 +325,18 @@ describe('BaiZeNotes 对话框 close 处理器', () => {
             ).toBe(false)
         }
         expect(shell.find('.dialog-stub').exists()).toBe(true)
+    })
+
+    it('AI 助手独立对话框 close 事件关闭模块单例显隐（1.5.7 体验微调）', async () => {
+        await mountShell()
+        // 菜单动作只切模块单例状态；宿主据此渲染对话框
+        openAiAssistantDialogState()
+        await flushPromises()
+        expect(dialogStub('AiAssistantDialog').exists()).toBe(true)
+
+        await clickDialogButton('AiAssistantDialog', 'stub-close')
+
+        expect(aiAssistantDialogState.visible).toBe(false)
     })
 
     it('消息对话框关闭时清空残留的重试动作', async () => {

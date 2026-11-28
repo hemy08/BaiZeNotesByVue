@@ -9,6 +9,7 @@ import {
 import type { BaiZeMenuEntry } from '../../src/renderer/src/components/MenuBar/menu-config'
 import { PLUGIN_TOOL_ACTION_IDS } from '../../src/shared/constants/plugin-tools-manifest'
 import { GRAPH_DIALOG_MENU_ACTION } from '../../src/renderer/src/components/Graph/graph-dialog-state'
+import { AI_ASSISTANT_DIALOG_MENU_ACTION } from '../../src/renderer/src/components/dialogs/complex/ai-assistant-dialog-state'
 
 // CMP-30：菜单数据只存 labelKey，渲染时由 MenuBar.vue 调用 t(labelKey) 输出。
 // 测试辅助：按指定语言还原「渲染后文本」，并对非 labelKey 的存量 label（品牌名/版本号等）原样使用。
@@ -401,6 +402,37 @@ describe('menu-config', () => {
         expect(displayText(graphItem!, 'en-US')).toBe('Relationship graph')
         // 动作 id 为视图域四段式，且不占用主进程菜单动作处理器（纯渲染层对话框）
         expect(GRAPH_DIALOG_MENU_ACTION).toBe('baize:menu:view:graph')
+    })
+
+    // 1.5.7 体验微调（用户反馈 2026-11-28）：AI 助手配置入口从「系统设置」第 7 页签
+    // 迁到「设置」菜单独立项（点击打开独立对话框，不再是系统设置页签）。
+    it('should declare AI assistant entry in setting menu (1.5.7 user feedback)', () => {
+        const settingMenu = menuMap.value.find((item) => item.labelKey === 'menu.setting.label')!
+        const aiItem = settingMenu.submenu!.find(
+            (item) => item.labelKey === 'menu.setting.aiAssistant'
+        )
+        expect(aiItem).toBeDefined()
+        expect(aiItem!.menuAction).toBe(AI_ASSISTANT_DIALOG_MENU_ACTION)
+        // 动作 id 单一真源：纯渲染层设置动作，沿用 baize:menu:setting:* 三段式
+        expect(AI_ASSISTANT_DIALOG_MENU_ACTION).toBe('baize:menu:setting:ai-assistant')
+
+        // 中英文案均可解析（MENU-01/MENU-03）
+        expect(displayText(aiItem!)).toBe('AI 助手')
+        expect(displayText(aiItem!, 'en-US')).toBe('AI Assistant')
+
+        // 位置：紧邻「系统设置」（语义同属设置区），既有设置项相对顺序不变
+        const settingLabels = settingMenu
+            .submenu!.filter((item) => item.type !== 'separator')
+            .map((item) => displayText(item))
+        expect(settingLabels).toEqual([
+            '系统设置',
+            'AI 助手',
+            '主题设置',
+            '快速链接设置',
+            '编辑器设置'
+        ])
+        // 系统设置项仍在原位（AI 助手不再放进系统设置对话框内部）
+        expect(settingMenu.submenu![0].menuAction).toBe('baize:menu:setting:system')
     })
 
     it('should declare encoding menu with two nested encoding groups', () => {

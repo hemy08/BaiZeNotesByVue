@@ -76,6 +76,11 @@ import {
     closeGraphDialogState,
     graphDialogState
 } from '../../src/renderer/src/components/Graph/graph-dialog-state'
+import {
+    AI_ASSISTANT_DIALOG_MENU_ACTION,
+    aiAssistantDialogState,
+    closeAiAssistantDialogState
+} from '../../src/renderer/src/components/dialogs/complex/ai-assistant-dialog-state'
 import { translate } from '../../src/shared/i18n'
 import * as Templates from '@renderer/common/templates'
 
@@ -104,6 +109,8 @@ beforeEach(() => {
     promptMock.mockReset()
     openRecentMock.mockReset()
     openRecentMock.mockResolvedValue({ ok: true })
+    // 1.5.7 体验微调：模块级对话框显隐状态跨用例复位
+    closeAiAssistantDialogState()
     vi.stubGlobal('window', {
         electron: { ipcRenderer: { send: ipcSend, invoke: ipcInvoke } },
         api: { file: { recentList: vi.fn(), openRecent: openRecentMock } },
@@ -889,6 +896,41 @@ describe('HandleMenuAction', () => {
             walk(menuMap.value)
             expect(actions).toEqual([GRAPH_DIALOG_MENU_ACTION])
             expect(GRAPH_DIALOG_MENU_ACTION).toBe('baize:menu:view:graph')
+        })
+    })
+
+    // 1.5.7 体验微调（用户反馈 2026-11-28）：设置 → AI 助手（纯渲染层独立对话框）
+    describe('AI assistant action (1.5.7 user feedback)', () => {
+        it('精确拦截：只切渲染层对话框状态，不转发 MENU.ACTION、不弹其它对话框', () => {
+            closeAiAssistantDialogState()
+            HandleMenuAction(AI_ASSISTANT_DIALOG_MENU_ACTION)
+            expect(aiAssistantDialogState.visible).toBe(true)
+            expect(ipcSend).not.toHaveBeenCalled()
+            expect(showDialogMock).not.toHaveBeenCalled()
+            expect(emitMock).not.toHaveBeenCalled()
+            // 关闭后可再次打开（幂等切显隐）
+            closeAiAssistantDialogState()
+            expect(aiAssistantDialogState.visible).toBe(false)
+            HandleMenuAction(AI_ASSISTANT_DIALOG_MENU_ACTION)
+            expect(aiAssistantDialogState.visible).toBe(true)
+            closeAiAssistantDialogState()
+        })
+
+        it('menu-config 声明的 AI 助手动作与拦截常量一致（菜单树 ↔ 动作分发单真源）', () => {
+            const actions: string[] = []
+            const walk = (items: unknown[]): void => {
+                for (const item of items as Array<{ menuAction?: string; submenu?: unknown[] }>) {
+                    if (item.menuAction === AI_ASSISTANT_DIALOG_MENU_ACTION) {
+                        actions.push(item.menuAction)
+                    }
+                    if (item.submenu) {
+                        walk(item.submenu)
+                    }
+                }
+            }
+            walk(menuMap.value)
+            expect(actions).toEqual([AI_ASSISTANT_DIALOG_MENU_ACTION])
+            expect(AI_ASSISTANT_DIALOG_MENU_ACTION).toBe('baize:menu:setting:ai-assistant')
         })
     })
 })

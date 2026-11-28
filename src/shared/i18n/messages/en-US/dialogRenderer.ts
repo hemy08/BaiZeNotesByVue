@@ -267,8 +267,6 @@ const dialogRenderer = {
         sidebarBackup: 'Backup & restore',
         sidebarFeatures: 'Features',
         sidebarWriting: 'Writing experience',
-        // 1.5.7 experience upgrade B: dedicated AI assistant tab (multi-model + MCP config)
-        sidebarAiAssistant: 'AI assistant',
         panelWritingTitle: 'Writing experience',
         panelWritingDesc:
             'Optional helpers that improve the writing process. All are off by default; enable the ones you need.',
@@ -483,13 +481,15 @@ const dialogRenderer = {
         themeDisplayFallbackHint:
             'Could not read the display name of the current app theme, so the theme id is shown instead. Close the settings and reopen them to retry.'
     },
-    // 1.5.7 experience upgrade B: dedicated "AI assistant" settings tab (7th tab)
-    // (multi-model management + MCP server configuration; the former AI/MCP groups of
-    // the features tab moved here as a whole).
+    // 1.5.7 experience upgrade B: AI assistant configuration block (multi-model + MCP).
+    // 1.5.7 experience tweak (user feedback 2026-11-28): formerly the 7th system-settings
+    // tab; now a standalone dialog opened from Settings -> AI Assistant
+    // (../AiAssistantDialog.vue reuses the same panel).
     aiAssistant: {
+        title: 'AI Assistant',
         panelTitle: 'AI assistant',
         panelDesc:
-            'Manage AI models and the MCP server in one place: add multiple models (local Ollama / LM Studio or remote OpenAI-compatible APIs) and let external agents read the current workspace over MCP. Changes on this page are saved independently and take effect immediately, without the Apply button at the bottom.',
+            'Manage AI models and the MCP server in one place: add multiple models (local Ollama / LM Studio or remote OpenAI-compatible APIs) and let external agents read the current workspace over MCP. Changes are saved independently and take effect immediately.',
         groupModels: 'Models',
         enabledLabel: 'Enable AI assistant',
         storageSafe: 'API key storage: OS secure storage (encrypted, persists across restarts)',

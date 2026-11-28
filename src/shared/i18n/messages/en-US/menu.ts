@@ -150,6 +150,9 @@ export default {
     setting: {
         label: 'Settings',
         system: 'System Settings',
+        // 1.5.7 experience tweak (user feedback 2026-11-28): AI assistant moved from the
+        // system-settings tab to a Settings-menu entry.
+        aiAssistant: 'AI Assistant',
         theme: 'Theme Settings',
         quickLink: 'Quick Link Settings',
         editor: 'Editor Settings'

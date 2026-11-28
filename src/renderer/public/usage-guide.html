@@ -3856,17 +3856,24 @@ aliases:
                 <h3 id="sec-119">26.2 工作台布局（编辑器 / 预览 / AI 面板）</h3>
                 <ul>
                     <li>
-                        切到 LLM Wiki 模式后，工作区布局变为：<strong>左侧编辑区</strong>（「编辑器
-                        / 预览」切换在编辑区<strong>右上角</strong>）+
-                        <strong>右侧 AI 输入面板</strong>；编辑区与 AI
-                        面板之间的<strong>分隔条可拖动</strong>调整宽度（不限制编辑区最小宽度，可把
-                        AI 面板拉宽；双击分隔条或面板头部按钮恢复默认；键盘聚焦分隔条后可用 ←/→
-                        微调；宽度会记住）。
+                        切到 LLM Wiki 模式后，工作区布局变为：<strong>左侧编辑区</strong> +
+                        <strong>右侧 AI 输入面板</strong
+                        >；编辑区<strong>上方的工具菜单栏右侧</strong>有
+                        <strong>编辑器/预览切换按钮</strong>（图标）与
+                        <strong>传统模式/LLM Wiki 模式快速切换按钮</strong>（图标）；编辑区与 AI
+                        面板之间的<strong>分隔条可拖动</strong>调整宽度（<strong>宽度无限制</strong>，可把面板拉宽到全宽或压缩到很窄；双击分隔条或面板头部按钮恢复默认；键盘聚焦分隔条后可用
+                        ←/→ 微调；宽度会记住）。
                     </li>
                     <li>
                         点 AI
                         面板的「收起」后，面板不占编辑区空间，入口收进<strong>右侧边栏</strong>（右侧导航栏顶部的
                         AI 按钮），点击即可重新展开。
+                    </li>
+                    <li>
+                        右侧边栏的 AI 按钮在<strong>传统模式和 LLM Wiki 模式</strong
+                        >都显示：传统模式下点击会按与「设置 → 工作区模式」相同的流程（确认 → 初始化
+                        → 切换）进入 LLM Wiki 模式并打开 AI
+                        面板；也可以在工具菜单栏右侧用模式切换图标按钮快速切换。
                     </li>
                     <li>编辑区切换会保留光标与滚动位置；选择状态会记住，下次打开沿用。</li>
                     <li>AI 面板可手动收起（收进右侧边栏）与展开；不再因编辑区最小宽度自动收起。</li>
@@ -3875,8 +3882,8 @@ aliases:
                 <h3 id="sec-120">26.3 AI 助手配置（本地 / 远程）</h3>
                 <ul>
                     <li>
-                        <strong>入口</strong>：设置 → 系统设置 →
-                        <strong>AI 助手</strong>（独立页签，第 7 页）。
+                        <strong>入口</strong>：<strong>菜单 → 设置 → AI 助手</strong
+                        >（独立对话框；模型管理与 MCP 服务配置都在这里）。
                     </li>
                     <li>
                         <strong>多模型</strong
@@ -3915,8 +3922,8 @@ aliases:
                 <h3 id="sec-122">26.5 MCP 只读桥（给外部 AI Agent 使用）</h3>
                 <ul>
                     <li>
-                        <strong>入口</strong>：设置 → 系统设置 → 功能 →
-                        <strong>MCP 服务</strong>（默认关闭，需手动启用）。
+                        <strong>入口</strong>：<strong>菜单 → 设置 → AI 助手 → MCP 服务</strong
+                        >（默认关闭，需手动启用）。
                     </li>
                     <li>
                         启用后仅监听本机回环（<code>127.0.0.1</code>），每次启用生成新的访问

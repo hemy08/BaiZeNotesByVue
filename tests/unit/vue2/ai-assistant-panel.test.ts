@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
- * 1.5.7 体验升级 B：系统设置第 7 页签「AI 助手」独立面板单测
- * （`system-setting/AiAssistantPanel.vue`）
+ * 1.5.7 体验升级 B：AI 助手独立面板单测（`system-setting/AiAssistantPanel.vue`）
+ * （1.5.7 体验微调后该面板由菜单「设置 → AI 助手」独立对话框复用，不再作为系统设置页签）
  *
  * 覆盖点（对应需求验收）：
  * 1. 模型管理：列表渲染（名称 / 类型 / 模型名 / 默认标记 / 远程密钥已配置标记）、空态引导；

@@ -627,6 +627,9 @@ export default {
     /**
      * 1.5.7 LLM Wiki L5: workbench AI input panel + editor/preview tab switch.
      * UI skeleton batch only; AI calls go through an injectable transport (placeholder by default).
+     * 1.5.7 UX fine-tuning (user feedback batch A4): the editor/preview switch and the workspace
+     * mode quick switch become icon-only buttons at the right of the edit toolbar; the right
+     * sidebar AI entry switches to LLM Wiki mode when clicked in traditional mode.
      */
     llmWikiPanel: {
         ariaLabel: 'AI input panel',
@@ -676,9 +679,16 @@ export default {
         aiError: 'AI request failed. Try again later.',
         collapse: 'Collapse AI panel',
         expand: 'Expand AI panel',
-        editorTabsLabel: 'Editor view switch',
-        tabEditor: 'Editor',
-        tabPreview: 'Preview'
+        switchToPreview: 'Switch to preview',
+        switchToEditor: 'Switch to editor',
+        switchToLlmWiki: 'Switch to LLM Wiki mode',
+        switchToTraditional: 'Switch to traditional mode',
+        switchToLlmWikiEntry: 'Switch to LLM Wiki mode and open the AI assistant',
+        workspaceModeSwitchFailedTitle: 'Failed to switch workspace mode',
+        workspaceModeSwitchFailedMessage:
+            'Failed to save the workspace mode configuration: {error}. The previous mode is still active; please try again.',
+        workspaceModeSwitchUnavailable:
+            'The system configuration cannot be read or written in this environment, so the workspace mode was not switched'
     },
     /**
      * 1.5.7 LLM Wiki L3: AI compile diff approval UI (Markdown/llm-ingest-diff.vue).

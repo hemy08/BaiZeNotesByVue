@@ -620,23 +620,22 @@ describe('SystemSettingDialog', () => {
         vi.restoreAllMocks()
     })
 
-    it('renders seven sidebar items with the general panel visible (AI panel is lazy)', () => {
+    it('renders six sidebar items with the general panel visible (AI assistant tab moved out)', () => {
         const wrapper = mount(SystemSettingDialog, {
             ...dialogMountOptions,
             props: { visible: true }
         })
         const items = wrapper.findAll('.sidebar-item')
-        expect(items).toHaveLength(7)
+        expect(items).toHaveLength(6)
         expect(items.map((item) => item.text())).toEqual([
             '⚙️通用设置',
             '📁文件设置',
             '🎨外观设置',
             '🧩功能',
             '✍️编写体验',
-            '💾备份与恢复',
-            '🤖AI 助手'
+            '💾备份与恢复'
         ])
-        // 1.5.7 体验升级 B：第 7 页签「AI 助手」为懒加载面板，未点击前只有 6 个面板节点
+        // 1.5.7 体验微调：AI 助手配置已迁出为菜单「设置 → AI 助手」独立对话框
         expect(wrapper.findAll('.setting-panel')).toHaveLength(6)
         expect(wrapper.findAll('.setting-panel')[0].isVisible()).toBe(true)
         expect(wrapper.findAll('.setting-panel')[1].isVisible()).toBe(false)
@@ -1126,8 +1125,7 @@ describe('SystemSettingDialog i18n', () => {
             '🎨Appearance',
             '🧩Features',
             '✍️Writing experience',
-            '💾Backup & restore',
-            '🤖AI assistant'
+            '💾Backup & restore'
         ])
         expect(wrapper.findAll('.setting-panel')[0].text()).toContain('Interface language')
         // AS-9：隐私开关文案同步英文

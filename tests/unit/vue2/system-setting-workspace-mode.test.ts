@@ -94,9 +94,9 @@ async function openConfirm(wrapper: VueWrapper): Promise<void> {
 let invoke: ReturnType<typeof vi.fn>
 
 /**
- * 1.5.7 体验升级 B：FeaturesPanel 已不再挂载读取 MCP/AI 配置（两个分组迁移到
- * 「AI 助手」页签），本文件只需工作区初始化通道的桩；涉及「是否调用过主进程」的断言
- * 统一只统计工作区初始化通道。
+ * 1.5.7 体验升级 B：FeaturesPanel 已不再挂载读取 MCP/AI 配置（两个分组迁出「功能」页签；
+ * 1.5.7 体验微调后只存在于菜单「设置 → AI 助手」独立对话框），本文件只需工作区初始化
+ * 通道的桩；涉及「是否调用过主进程」的断言统一只统计工作区初始化通道。
  */
 const INITIALIZE_LLM_WIKI_CHANNEL = IPC.FILE.INITIALIZE_LLM_WIKI
 

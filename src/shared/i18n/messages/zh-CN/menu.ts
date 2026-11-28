@@ -154,6 +154,8 @@ export default {
     setting: {
         label: '设置',
         system: '系统设置',
+        // 1.5.7 体验微调（用户反馈 2026-11-28）：AI 助手配置入口从系统设置页签改为「设置」菜单项
+        aiAssistant: 'AI 助手',
         theme: '主题设置',
         quickLink: '快速链接设置',
         editor: '编辑器设置'

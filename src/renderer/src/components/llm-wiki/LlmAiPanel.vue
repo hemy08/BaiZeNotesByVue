@@ -707,7 +707,8 @@ onBeforeUnmount(() => {
     border-bottom: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
 }
 
-/* 窄面板（拖动分隔条到最小宽度）时收起「模型」文字标签，给下拉与图标按钮让位 */
+/* 窄面板（拖动分隔条把面板拖窄，1.5.7 体验微调后可一直拖到 0）时收起「模型」文字标签，
+   给下拉与图标按钮让位 */
 @container (max-width: 300px) {
     .llm-ai-panel-model-label {
         display: none;

@@ -12,8 +12,9 @@
  * - emits：`(e: 'update', patch: Partial<SystemDialogSettings>)`；外观/备份页签另有
  *   面板级事件（open-theme-setting / reload）。
  *
- * 例外：AiAssistantPanel（AI 助手，1.5.7 体验升级 B）配置由 AI 独立通道保存，
- * 不读写系统设置草稿，因此不使用本桥接。
+ * 例外：AiAssistantPanel（AI 助手，1.5.7 体验升级 B 新增）配置由 AI 独立通道保存，
+ * 不读写系统设置草稿，因此不使用本桥接。该面板自 1.5.7 体验微调起不再作为系统设置页签，
+ * 而是被独立对话框 `../AiAssistantDialog.vue`（菜单「设置 → AI 助手」）复用。
  */
 import { computed } from 'vue'
 import type { WritableComputedRef } from 'vue'

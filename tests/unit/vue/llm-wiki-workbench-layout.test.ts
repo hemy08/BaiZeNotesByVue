@@ -1,23 +1,30 @@
 // @vitest-environment jsdom
 /**
- * 1.5.7 LLM Wiki 工作台布局（WorkSpace）——体验升级批次 A + 体验调整（用户新要求）：
- * 「编辑区右上角切换（由 MarkdownEditComponent 承接）+ 右侧 AI 面板 + 可拖动 split」，
- * 并按用户要求移除「编辑器最小宽度」、把「AI 面板收起」移到工作区右侧边栏。
+ * 1.5.7 LLM Wiki 工作台布局（WorkSpace）——体验升级批次 A + 体验调整（用户新要求）+ 体验微调：
+ * 「编辑区单栏切换 + 右侧 AI 面板 + 可拖动 split」，并按用户要求移除「编辑器最小宽度」、
+ * 把「AI 面板收起」移到工作区右侧边栏；
+ * 体验微调（用户反馈「AI 面板宽度也不要限制，往左拖动一点距离后就拖不动了」）：
+ * **移除 AI 面板宽度固定上下限（原 240/560）**，可拖范围改为
+ * `[0, 当前工作区可用宽度 − 分隔条宽度]`（0 = 面板不可见但仍挂载，可再拖回）。
+ * 体验微调（用户反馈批次 A4）：右侧边栏 AI 入口在**传统模式与 LLM Wiki 模式都显示**，
+ * 传统模式点击走「切换到 LLM Wiki 模式」确认 + 初始化流程（与系统设置同样处理）。
  *
  * 覆盖：
- * 1. traditional 模式：布局零变化（无右侧 AI 面板、无 split 分隔条、无右侧边栏 AI 入口）；
+ * 1. traditional 模式：AI 面板零渲染（无右侧面板、无 split 分隔条），右侧边栏 AI 入口常显；
  * 2. llm-wiki 模式：右侧渲染 LlmAiPanel、编辑区宽度扣除面板与分隔条宽度；
- * 3. split 拖动：实时改 AI 面板宽度，面板 [240, 560] 夹取 + **不为编辑区保留最小宽度**
- *    （编辑区可压到 320 以下甚至 0）；
+ * 3. split 拖动：范围为 [0, 可用宽度 − 分隔条 5]（无固定上下限）——向左可把面板拉到占满
+ *    工作区（编辑区 0），向右可把面板缩到 0（编辑区占满、面板保留挂载并可再拖回）；
  * 4. 无窗口自动收起：窄窗口只按可用宽度夹取面板宽度，收起只由用户手动触发；
  * 5. 收起后 AI 面板容器 v-show=false 且宽度 0（完全不占编辑区宽度），工作区右侧边栏
  *    渲染 AI 入口按钮；点击入口展开面板并隐藏入口（恢复上次持久化宽度）；
  * 6. 收起状态（localStorage）重启恢复、入口无障碍（原生 button + title/aria-label）；
- * 7. 键盘 ←/→/Home/End 调整；双击分隔条 / 面板按钮恢复默认 360px；
- * 8. 切到其它工作区容器时面板与入口隐藏（v-show 保留实例）；传统模式零渲染。
+ * 7. 键盘 ←/→/Home/End 调整（Home=0、End=可用宽度−5）；双击分隔条 / 面板按钮恢复默认 360px
+ *    （可用宽度不足 360+5 时夹到可用宽度−5）；持久化宽度在挂载 / resize 时按可用宽度夹取；
+ * 8. 切到其它工作区容器时面板与入口隐藏（v-show 保留实例）；传统模式仅面板零渲染。
  *
- * 说明：编辑区「编辑器 / 预览」分段控件已移到 MarkdownEditComponent 的编辑区右上角 dock，
- * 对应渲染/切换/持久化行为由 `markdown-edit-llm-wiki-layout.test.ts` 覆盖。
+ * 说明：编辑区「编辑器 / 预览」切换已从「右上角悬浮分段控件」迁移到编辑工具条右侧图标
+ * 按钮（`MarkdownEditToolsComponent`），对应渲染/切换/持久化行为由
+ * `markdown-edit-tools-llm-wiki.test.ts` 与 `markdown-edit-llm-wiki-layout.test.ts` 覆盖。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
@@ -36,6 +43,7 @@ import EventBus from '@renderer/common/event-bus/event-bus'
 import { EVENT_BUS } from '@renderer/common/event-bus/event-bus-events'
 import WorkSpace from '@renderer/components/WorkSpaceArea/WorkSpace.vue'
 import * as workspaceModeModule from '@renderer/composables/useWorkspaceMode'
+import * as workspaceModeSwitchModule from '@renderer/composables/useWorkspaceModeSwitch'
 import LlmAiPanel from '@renderer/components/llm-wiki/LlmAiPanel.vue'
 import { t } from '../../../src/renderer/src/common/i18n'
 
@@ -54,6 +62,33 @@ vi.mock('@renderer/composables/useWorkspaceMode', async () => {
     }
 })
 
+// ============ 工作区模式快速切换 mock（边栏入口/工具条复用；本文件只验证 WorkSpace 接线） ============
+vi.mock('@renderer/composables/useWorkspaceModeSwitch', async () => {
+    const { reactive } = await import('vue')
+    const state = reactive({ visible: false, busy: false })
+    return {
+        // 仅测试可见的状态（业务代码消费同名导出）
+        __testWorkspaceModeSwitchState: state,
+        workspaceModeSwitchState: state,
+        requestSwitchToLlmWiki: vi.fn(),
+        switchToTraditional: vi.fn(),
+        confirmSwitchToLlmWiki: vi.fn(),
+        cancelWorkspaceModeSwitch: vi.fn()
+    }
+})
+
+// ============ 确认对话框桩（对话框自身渲染/交互由 workspace-mode-switch-dialog 用例覆盖） ============
+vi.mock('@renderer/components/dialogs/simple/WorkspaceModeSwitchDialog.vue', async () => {
+    const { defineComponent } = await import('vue')
+    return {
+        // eslint-disable-next-line vue/one-component-per-file -- 测试用对话框桩组件（vi.mock 工厂内联定义）
+        default: defineComponent({
+            name: 'WorkspaceModeSwitchDialogStub',
+            template: '<div class="workspace-mode-switch-dialog-stub" />'
+        })
+    }
+})
+
 /** 测试用工作区模式开关（与 mock 工厂共享同一 reactive state） */
 const testWorkspaceModeState = (
     workspaceModeModule as unknown as {
@@ -61,7 +96,17 @@ const testWorkspaceModeState = (
     }
 ).__testWorkspaceModeState
 
+/** 测试用模式切换 composable mock（断言调用顺序/参数） */
+const workspaceModeSwitchMock = workspaceModeSwitchModule as unknown as {
+    __testWorkspaceModeSwitchState: { visible: boolean; busy: boolean }
+    requestSwitchToLlmWiki: ReturnType<typeof vi.fn>
+    switchToTraditional: ReturnType<typeof vi.fn>
+    confirmSwitchToLlmWiki: ReturnType<typeof vi.fn>
+    cancelWorkspaceModeSwitch: ReturnType<typeof vi.fn>
+}
+
 // ============ 子组件桩（只保留宽度 props 契约） ============
+// eslint-disable-next-line vue/one-component-per-file -- 测试桩组件：与 vi.mock 工厂内的对话框桩同文件，非产品组件
 const MdContainerStub = defineComponent({
     name: 'MdContainerStub',
     props: { mdContainerWidth: { type: String, default: '' } },
@@ -137,6 +182,10 @@ beforeEach(() => {
     testWorkspaceModeState.llmWiki = false
     window.localStorage.clear()
     resetLlmWikiWorkbenchStateForTesting()
+    workspaceModeSwitchMock.__testWorkspaceModeSwitchState.visible = false
+    workspaceModeSwitchMock.__testWorkspaceModeSwitchState.busy = false
+    workspaceModeSwitchMock.requestSwitchToLlmWiki.mockClear()
+    workspaceModeSwitchMock.switchToTraditional.mockClear()
     ipcOnMock = vi.fn()
     ipcRemoveListenerMock = vi.fn()
     vi.stubGlobal('electron', {
@@ -152,17 +201,77 @@ afterEach(() => {
     document.body.innerHTML = ''
 })
 
-describe('WorkSpace 布局：traditional 模式零变化', () => {
-    it('不渲染右侧 AI 面板、split 分隔条与右侧边栏 AI 入口，编辑区宽度沿用既有口径', async () => {
+describe('WorkSpace 布局：traditional 模式（AI 面板零渲染 + 右侧边栏 AI 入口常显）', () => {
+    it('不渲染右侧 AI 面板与 split 分隔条，编辑区宽度沿用既有口径；右侧边栏 AI 入口显示', async () => {
         wrapper = await mountWorkspace()
 
         expect(wrapper.find('#llm-ai-panel-container').exists()).toBe(false)
         expect(wrapper.findComponent(LlmAiPanel).exists()).toBe(false)
         expect(wrapper.find('#llm-ai-splitter').exists()).toBe(false)
-        expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(false)
-        // 1200 - 40*2 - 300 - 2 = 818
+        // 1.5.7 体验微调（用户反馈）：传统模式也显示右侧边栏 AI 入口（点击切换到 LLM Wiki 模式）
+        expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(true)
+        // 1200 - 40*2 - 300 - 2 = 818（入口不占编辑区宽度）
         expect(widthOf(wrapper, '#md-container')).toBe('818px')
         expect(wrapper.find('.md-container-stub').attributes('data-width')).toBe('818px')
+    })
+})
+
+describe('WorkSpace 右侧边栏 AI 入口：传统模式（用户反馈批次 A4）', () => {
+    it('传统模式显示入口：title/aria-label=切换到 LLM Wiki 模式并打开 AI 助手，不占编辑区宽度', async () => {
+        wrapper = await mountWorkspace()
+
+        const entry = wrapper.find('#right-navi #llm-ai-sidebar-entry')
+        expect(entry.exists()).toBe(true)
+        expect(entry.element.tagName).toBe('BUTTON')
+        expect(entry.attributes('type')).toBe('button')
+        expect(entry.attributes('title')).toBe(t('editorUi.llmWikiPanel.switchToLlmWikiEntry'))
+        expect(entry.attributes('aria-label')).toBe(t('editorUi.llmWikiPanel.switchToLlmWikiEntry'))
+        expect(entry.attributes('data-llm-ai-entry-mode')).toBe('traditional')
+        // 传统模式无 AI 面板容器：入口仅作为模式切换动作，不关联不存在的 aria-controls 目标
+        expect(entry.attributes('aria-controls')).toBeUndefined()
+        expect(wrapper.find('#llm-ai-panel-container').exists()).toBe(false)
+        expect(widthOf(wrapper, '#md-container')).toBe('818px')
+    })
+
+    it('传统模式点击入口：请求统一切换流程（确认 → 初始化 → 写配置 → 展开面板），不直接展开面板', async () => {
+        wrapper = await mountWorkspace()
+        expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
+
+        await wrapper.find('#llm-ai-sidebar-entry').trigger('click')
+        await flushPromises()
+
+        // 复用系统设置同款切换链路：只请求切换（弹确认框），不写渲染层面板状态
+        expect(workspaceModeSwitchMock.requestSwitchToLlmWiki).toHaveBeenCalledTimes(1)
+        expect(workspaceModeSwitchMock.switchToTraditional).not.toHaveBeenCalled()
+        expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY)).toBeNull()
+    })
+
+    it('传统模式切到其它工作区容器（插件/工具/HTML/PDF）时入口隐藏，返回编辑区后恢复', async () => {
+        wrapper = await mountWorkspace()
+        expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(true)
+
+        EventBus.$emit(EVENT_BUS.WORKSPACE_SHOW, 'plugins')
+        await flushPromises()
+        expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(false)
+
+        await showMdContainer()
+        expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(true)
+        // 入口在最右侧导航条内，不占编辑区宽度
+        expect(widthOf(wrapper, '#md-container')).toBe('818px')
+    })
+
+    it('切换确认对话框按模块单例状态挂载（右侧边栏与工具条两个入口共用）', async () => {
+        wrapper = await mountWorkspace()
+        expect(wrapper.find('.workspace-mode-switch-dialog-stub').exists()).toBe(false)
+
+        workspaceModeSwitchMock.__testWorkspaceModeSwitchState.visible = true
+        await flushPromises()
+        expect(wrapper.find('.workspace-mode-switch-dialog-stub').exists()).toBe(true)
+
+        workspaceModeSwitchMock.__testWorkspaceModeSwitchState.visible = false
+        await flushPromises()
+        expect(wrapper.find('.workspace-mode-switch-dialog-stub').exists()).toBe(false)
     })
 })
 
@@ -311,7 +420,7 @@ describe('WorkSpace 布局：llm-wiki 模式（单栏编辑 + 右侧 AI 面板�
         expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(true)
     })
 
-    it('收起态切回 traditional 模式：面板容器与右侧边栏入口都不渲染（零变化）', async () => {
+    it('收起态切回 traditional 模式：面板容器不渲染，右侧边栏入口保留（点击可切回 LLM Wiki）', async () => {
         testWorkspaceModeState.llmWiki = true
         wrapper = await mountWorkspace()
         await collapseLlmAiPanel(wrapper)
@@ -321,7 +430,11 @@ describe('WorkSpace 布局：llm-wiki 模式（单栏编辑 + 右侧 AI 面板�
         await flushPromises()
 
         expect(wrapper.find('#llm-ai-panel-container').exists()).toBe(false)
-        expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(false)
+        // 1.5.7 体验微调：传统模式同样保留入口（点击走确认 + 初始化切换流程）
+        const entry = wrapper.find('#llm-ai-sidebar-entry')
+        expect(entry.exists()).toBe(true)
+        expect(entry.attributes('data-llm-ai-entry-mode')).toBe('traditional')
+        expect(entry.attributes('title')).toBe(t('editorUi.llmWikiPanel.switchToLlmWikiEntry'))
         expect(widthOf(wrapper, '#md-container')).toBe('818px')
         // 用户收起偏好保留在状态中（下次进入 llm-wiki 仍为收起态）
         expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(true)
@@ -341,10 +454,10 @@ describe('WorkSpace split 分隔条：渲染与无障碍属性', () => {
         expect(splitter.attributes('aria-controls')).toBe('llm-ai-panel-container')
         // 5px 热区（宽度由脚本常量单一真源绑定）
         expect((splitter.element as HTMLElement).style.width).toBe('5px')
-        // 不再为编辑区保留最小宽度：可用宽度 818 - 5 = 813 > MAX 560 → 上限为面板 MAX
+        // 1.5.7 体验微调：无固定上下限，可拖范围 = [0, 可用宽度 818 − 分隔条 5 = 813]
         expect(splitter.attributes('aria-valuenow')).toBe('360')
-        expect(splitter.attributes('aria-valuemin')).toBe('240')
-        expect(splitter.attributes('aria-valuemax')).toBe('560')
+        expect(splitter.attributes('aria-valuemin')).toBe('0')
+        expect(splitter.attributes('aria-valuemax')).toBe('813')
         expect(splitter.attributes('title')).toBeTruthy()
     })
 
@@ -400,7 +513,7 @@ describe('WorkSpace split 分隔条：鼠标拖动', () => {
         expect(panelWidthPx(wrapper)).toBe(460)
     })
 
-    it('向左拖动超过最大宽度时夹取到面板 MAX 560（编辑区允许小于 320）', async () => {
+    it('向左拖动到尽头：面板占满整个工作区（可用宽度 − 分隔条 = 813），编辑区宽 0', async () => {
         testWorkspaceModeState.llmWiki = true
         wrapper = await mountWorkspace()
 
@@ -408,14 +521,17 @@ describe('WorkSpace split 分隔条：鼠标拖动', () => {
         dispatchWindowMouse('mousemove', -2000)
         await flushPromises()
 
-        // 旧语义会因「编辑区最小 320」夹取到 493；新语义夹取到面板 MAX 560
-        expect(panelWidthPx(wrapper)).toBe(LLM_WIKI_AI_PANEL_WIDTH.MAX)
-        expect(widthOf(wrapper, '#md-container')).toBe('253px')
-        expect(panelWidthPx(wrapper)).toBeGreaterThan(493)
-        expect(wrapper.find('#llm-ai-splitter').attributes('aria-valuenow')).toBe('560')
+        // 1.5.7 体验微调：不再被固定 MAX 560 卡住，面板可一路拉到 818 - 5 = 813
+        expect(panelWidthPx(wrapper)).toBe(813)
+        expect(widthOf(wrapper, '#md-container')).toBe('0px')
+        expect(wrapper.find('#llm-ai-splitter').attributes('aria-valuenow')).toBe('813')
+        // 超过可用宽度继续拖动仍保持在 813（拖满后不再变化）
+        dispatchWindowMouse('mousemove', -4000)
+        await flushPromises()
+        expect(panelWidthPx(wrapper)).toBe(813)
     })
 
-    it('向右拖动超过最小宽度时夹取到面板最小 240px', async () => {
+    it('向右拖动到尽头：面板缩到 0（编辑区占满可用宽度 − 分隔条），面板保留挂载并可再拖回', async () => {
         testWorkspaceModeState.llmWiki = true
         wrapper = await mountWorkspace()
 
@@ -423,8 +539,30 @@ describe('WorkSpace split 分隔条：鼠标拖动', () => {
         dispatchWindowMouse('mousemove', 5000)
         await flushPromises()
 
-        expect(panelWidthPx(wrapper)).toBe(LLM_WIKI_AI_PANEL_WIDTH.MIN)
-        expect(widthOf(wrapper, '#md-container')).toBe('573px')
+        // 1.5.7 体验微调：不再被固定 MIN 240 卡住，面板可缩到 0；编辑区 = 818 - 0 - 5 = 813
+        expect(panelWidthPx(wrapper)).toBe(0)
+        expect(widthOf(wrapper, '#md-container')).toBe('813px')
+        // 面板仍挂载（对话状态不丢）、分隔条仍在（可再拖回），不是「收起」状态
+        expect(wrapper.findComponent(LlmAiPanel).exists()).toBe(true)
+        expect(wrapper.find('#llm-ai-splitter').exists()).toBe(true)
+        expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
+        // 0 宽时去掉左侧 hairline，视觉上等于收起
+        expect(wrapper.find('#llm-ai-panel-container').classes()).toContain(
+            'llm-ai-panel-container--zero-width'
+        )
+
+        dispatchWindowMouse('mouseup')
+        await flushPromises()
+        // 0 为合法宽度：mouseup 持久化 0
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('0')
+        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(0)
+
+        // 用户可再拖回：从 0 宽起步向左拖 100px → 面板 100
+        await wrapper.find('#llm-ai-splitter').trigger('mousedown', { clientX: 500 })
+        dispatchWindowMouse('mousemove', 400)
+        await flushPromises()
+        expect(panelWidthPx(wrapper)).toBe(100)
+        expect(widthOf(wrapper, '#md-container')).toBe('713px')
     })
 
     it('未按下分隔条时移动鼠标不改变宽度', async () => {
@@ -463,15 +601,16 @@ describe('WorkSpace split 分隔条：鼠标拖动', () => {
         const splitter = wrapper.find('#llm-ai-splitter')
 
         await splitter.trigger('mousedown', { clientX: 800 })
-        // 拖动中按 Home：applyLlmWikiAiPanelWidth 清空内存态临时宽度（window 监听仍在）
+        // 拖动中按 Home：applyLlmWikiAiPanelWidth 清空内存态临时宽度（window 监听仍在），
+        // 1.5.7 体验微调：Home 缩到 0（最小可拖宽度）
         await splitter.trigger('keydown', { key: 'Home' })
         await flushPromises()
-        expect(panelWidthPx(wrapper)).toBe(LLM_WIKI_AI_PANEL_WIDTH.MIN)
+        expect(panelWidthPx(wrapper)).toBe(0)
 
         // 临时宽度为 null → handleLlmPanelResizeMove 早退，拖动不再改写宽度
         dispatchWindowMouse('mousemove', 700)
         await flushPromises()
-        expect(panelWidthPx(wrapper)).toBe(LLM_WIKI_AI_PANEL_WIDTH.MIN)
+        expect(panelWidthPx(wrapper)).toBe(0)
 
         // 宽度为 null 时 mouseup：stopLlmPanelResize 跳过持久化，但仍摘除监听
         const removeSpy = vi.spyOn(window, 'removeEventListener')
@@ -479,8 +618,8 @@ describe('WorkSpace split 分隔条：鼠标拖动', () => {
         await flushPromises()
         expect(removeSpy).toHaveBeenCalledWith('mousemove', expect.any(Function))
         expect(removeSpy).toHaveBeenCalledWith('mouseup', expect.any(Function))
-        // 保持 Home 已持久化的最小宽度，不被 null 宽度覆盖
-        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('240')
+        // 保持 Home 已持久化的宽度（0），不被 null 宽度覆盖
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('0')
     })
 })
 
@@ -498,15 +637,16 @@ describe('WorkSpace split 分隔条：持久化 / resize 夹取 / 恢复默认',
 
     it('窗口 resize 时按可用宽度夹取面板宽度（编辑区下限 0），但不覆盖用户保存的宽度偏好', async () => {
         testWorkspaceModeState.llmWiki = true
-        setLlmWikiAiPanelWidth(LLM_WIKI_AI_PANEL_WIDTH.MAX)
+        // 用户偏好 900（无固定上限，允许大于当前可用宽度）
+        setLlmWikiAiPanelWidth(900)
         wrapper = await mountWorkspace()
 
-        // 1200 宽：可用宽度 818 → 上限 = min(560, 818-5) = 560，编辑区 253
-        expect(panelWidthPx(wrapper)).toBe(560)
-        expect(widthOf(wrapper, '#md-container')).toBe('253px')
-        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(560)
+        // 1200 宽：可用宽度 818 → 上限 = 818 - 5 = 813，编辑区 0
+        expect(panelWidthPx(wrapper)).toBe(813)
+        expect(widthOf(wrapper, '#md-container')).toBe('0px')
+        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(900)
 
-        // 窗口缩窄到 900：可用宽度 518 → 上限 513，编辑区被压到 0 但不自动收起
+        // 窗口缩窄到 900：可用宽度 518 → 上限 513，面板随之夹取且不自动收起
         setInnerWidth(900)
         window.dispatchEvent(new Event('resize'))
         await flushPromises()
@@ -514,14 +654,44 @@ describe('WorkSpace split 分隔条：持久化 / resize 夹取 / 恢复默认',
         expect(widthOf(wrapper, '#md-container')).toBe('0px')
         expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(false)
         // 用户保存的宽度偏好不被覆盖
-        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(560)
+        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(900)
 
-        // 窗口放大：恢复用户保存的 560
+        // 窗口放大到 1600：可用宽度 1218 → 上限 1213，恢复用户保存的 900
         setInnerWidth(1600)
         window.dispatchEvent(new Event('resize'))
         await flushPromises()
-        expect(panelWidthPx(wrapper)).toBe(560)
-        expect(widthOf(wrapper, '#md-container')).toBe('653px')
+        expect(panelWidthPx(wrapper)).toBe(900)
+        expect(widthOf(wrapper, '#md-container')).toBe('313px')
+    })
+
+    it('持久化的超范围宽度（大于可用宽度）挂载时被夹取到「可用宽度 − 分隔条」，偏好保留', async () => {
+        testWorkspaceModeState.llmWiki = true
+        window.localStorage.setItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY, '9999')
+        wrapper = await mountWorkspace()
+
+        // 无固定上限：9999 作为用户偏好保留，实际渲染夹取到 818 - 5 = 813（编辑区 0）
+        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(9999)
+        expect(panelWidthPx(wrapper)).toBe(813)
+        expect(widthOf(wrapper, '#md-container')).toBe('0px')
+        const splitter = wrapper.find('#llm-ai-splitter')
+        expect(splitter.attributes('aria-valuenow')).toBe('813')
+        expect(splitter.attributes('aria-valuemax')).toBe('813')
+    })
+
+    it('持久化的负数宽度归一化为 0：面板挂载但不可见，分隔条仍在（可再拖回）', async () => {
+        testWorkspaceModeState.llmWiki = true
+        window.localStorage.setItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY, '-120')
+        wrapper = await mountWorkspace()
+
+        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(0)
+        expect(widthOf(wrapper, '#llm-ai-panel-container')).toBe('0px')
+        expect(widthOf(wrapper, '#md-container')).toBe('813px')
+        // 与「手动收起」不同：面板容器仍可见（v-show=true）、仍挂载、分隔条仍在
+        expect(wrapper.find('#llm-ai-panel-container').exists()).toBe(true)
+        expect(wrapper.findComponent(LlmAiPanel).exists()).toBe(true)
+        expect(wrapper.find('#llm-ai-splitter').exists()).toBe(true)
+        expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(false)
+        expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
     })
 
     it('双击分隔条恢复默认 360px 并持久化', async () => {
@@ -534,6 +704,29 @@ describe('WorkSpace split 分隔条：持久化 / resize 夹取 / 恢复默认',
         await flushPromises()
 
         expect(panelWidthPx(wrapper)).toBe(LLM_WIKI_AI_PANEL_WIDTH.DEFAULT)
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('360')
+    })
+
+    it('可用宽度不足 360 + 分隔条时，双击复位夹到「可用宽度 − 分隔条」（持久化仍写默认 360）', async () => {
+        testWorkspaceModeState.llmWiki = true
+        // 700 宽：可用宽度 318 → 分隔条外最大 313 < 360
+        setInnerWidth(700)
+        wrapper = await mountWorkspace()
+        // 无自定义宽度 + 窄窗 → 窄档默认 280（可放下，不夹取）
+        expect(panelWidthPx(wrapper)).toBe(280)
+
+        // 先拖窄到 150 再双击复位 → 360 被夹到 313（不会超出可用宽度）
+        setLlmWikiAiPanelWidth(150)
+        await flushPromises()
+        expect(panelWidthPx(wrapper)).toBe(150)
+
+        await wrapper.find('#llm-ai-splitter').trigger('dblclick')
+        await flushPromises()
+
+        expect(panelWidthPx(wrapper)).toBe(313)
+        expect(widthOf(wrapper, '#md-container')).toBe('0px')
+        // 持久化的是默认 360（窗口恢复后即用回默认宽度），渲染时按可用宽度夹取
+        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(LLM_WIKI_AI_PANEL_WIDTH.DEFAULT)
         expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('360')
     })
 
@@ -566,20 +759,55 @@ describe('WorkSpace split 分隔条：键盘调整', () => {
         expect(panelWidthPx(wrapper)).toBe(360)
     })
 
-    it('键盘调整同样受 min/max 夹取（Home 最小 240 / End 最大 560，不再受编辑区 320 限制）', async () => {
+    it('键盘 Home 缩到 0 / End 拉到可用宽度 − 分隔条（813），无固定上下限', async () => {
+        testWorkspaceModeState.llmWiki = true
+        wrapper = await mountWorkspace()
+        const splitter = wrapper.find('#llm-ai-splitter')
+
+        // Home = 0（最小可拖宽度）：面板不可见但挂载保留，编辑区占满 818 - 5 = 813
+        await splitter.trigger('keydown', { key: 'Home' })
+        await flushPromises()
+        expect(panelWidthPx(wrapper)).toBe(0)
+        expect(widthOf(wrapper, '#md-container')).toBe('813px')
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('0')
+        expect(wrapper.find('#llm-ai-splitter').attributes('aria-valuenow')).toBe('0')
+
+        // End = 可用宽度 − 分隔条 = 813（最大可拖宽度）：编辑区 0
+        await splitter.trigger('keydown', { key: 'End' })
+        await flushPromises()
+        expect(panelWidthPx(wrapper)).toBe(813)
+        expect(widthOf(wrapper, '#md-container')).toBe('0px')
+        expect(wrapper.find('#llm-ai-splitter').attributes('aria-valuenow')).toBe('813')
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('813')
+
+        // Home/End 与 aria-valuemin/max 同步：min 0、max 813
+        expect(wrapper.find('#llm-ai-splitter').attributes('aria-valuemin')).toBe('0')
+        expect(wrapper.find('#llm-ai-splitter').attributes('aria-valuemax')).toBe('813')
+    })
+
+    it('方向键微调在边界处停止（Home 后 → 回不到负值、End 后 ← 不超出可用宽度）', async () => {
         testWorkspaceModeState.llmWiki = true
         wrapper = await mountWorkspace()
         const splitter = wrapper.find('#llm-ai-splitter')
 
         await splitter.trigger('keydown', { key: 'Home' })
         await flushPromises()
-        expect(panelWidthPx(wrapper)).toBe(LLM_WIKI_AI_PANEL_WIDTH.MIN)
-        expect(widthOf(wrapper, '#md-container')).toBe('573px')
+        await splitter.trigger('keydown', { key: 'ArrowRight' })
+        await flushPromises()
+        // ArrowRight 在 0 处继续收缩：结果被夹到 0（不会出现负宽度）
+        expect(panelWidthPx(wrapper)).toBe(0)
+        await splitter.trigger('keydown', { key: 'ArrowLeft' })
+        await flushPromises()
+        expect(panelWidthPx(wrapper)).toBe(16)
 
         await splitter.trigger('keydown', { key: 'End' })
         await flushPromises()
-        expect(panelWidthPx(wrapper)).toBe(LLM_WIKI_AI_PANEL_WIDTH.MAX)
-        expect(widthOf(wrapper, '#md-container')).toBe('253px')
+        await splitter.trigger('keydown', { key: 'ArrowLeft' })
+        await flushPromises()
+        expect(panelWidthPx(wrapper)).toBe(813)
+        await splitter.trigger('keydown', { key: 'ArrowRight' })
+        await flushPromises()
+        expect(panelWidthPx(wrapper)).toBe(797)
     })
 
     it('输入法组合态 keydown（isComposing）不调整宽度', async () => {
@@ -647,8 +875,21 @@ describe('WorkSpace 右侧边栏 AI 入口：键盘可达与契约', () => {
             workspaceSource.indexOf('</div>', workspaceSource.indexOf('<NaviTab position="right"'))
         )
         expect(rightNaviBlock).toContain('id="llm-ai-sidebar-entry"')
-        expect(rightNaviBlock).toContain('aria-controls="llm-ai-panel-container"')
-        expect(rightNaviBlock).toContain("t('editorUi.llmWikiPanel.expand')")
+        // aria-controls 仅在 LLM Wiki 模式（面板真实存在）时关联面板容器
+        expect(rightNaviBlock).toContain(
+            ':aria-controls="isLlmWikiMode ? \'llm-ai-panel-container\' : undefined"'
+        )
+        // 入口 title/aria-label 随模式变化：LLM Wiki 收起 = 展开面板；传统模式 = 切换模式并打开助手
+        expect(rightNaviBlock).toContain('llmAiSidebarEntryLabel')
+        expect(workspaceSource).toContain("t('editorUi.llmWikiPanel.expand')")
+        expect(workspaceSource).toContain("t('editorUi.llmWikiPanel.switchToLlmWikiEntry')")
+        // 点击分派：传统模式走统一切换 composable（确认 + 初始化 + 写配置），LLM Wiki 展开面板
+        expect(rightNaviBlock).toContain('handleLlmAiSidebarEntryClick')
+        expect(workspaceSource).toContain('requestSwitchToLlmWiki()')
+        // 确认对话框由 WorkSpace 按模块单例状态挂载（两处入口共用）
+        expect(workspaceSource).toContain(
+            'WorkspaceModeSwitchDialog v-if="workspaceModeSwitchState.visible"'
+        )
         expect(workspaceSource).toContain('v-if="showLlmAiSidebarEntry"')
         // 样式：图标按钮走令牌 + focus-visible 焦点环，不写死颜色
         const entryBlock = workspaceSource.slice(workspaceSource.indexOf('.llm-ai-sidebar-entry {'))
@@ -665,6 +906,16 @@ describe('WorkSpace 右侧边栏 AI 入口：键盘可达与契约', () => {
         expect(workspaceSource).not.toContain('isLlmWikiAiPanelAutoCollapsed')
         expect(workspaceSource).not.toContain('AI_PANEL_WIDTH_COLLAPSED')
         expect(workspaceSource).not.toContain('narrowCollapsedHint')
+        // 旧固定上下限移除（1.5.7 体验微调：用户反馈「往左拖一点就拖不动」）
+        expect(workspaceSource).not.toContain('LLM_WIKI_AI_PANEL_WIDTH.MIN')
+        expect(workspaceSource).not.toContain('LLM_WIKI_AI_PANEL_WIDTH.MAX')
+        // 1.5.7 体验微调：面板宽度拖到 0 时视觉上等于收起（去 hairline + 隐藏不可见控件，
+        // 面板仍挂载、对话状态不丢，宽度恢复后样式自动还原）
+        const zeroWidthBlock = workspaceSource.slice(
+            workspaceSource.indexOf('.llm-ai-panel-container--zero-width {')
+        )
+        expect(zeroWidthBlock).toContain('border-left: none')
+        expect(zeroWidthBlock).toContain('visibility: hidden')
 
         const panelSource = fs.readFileSync(
             path.resolve(__dirname, '../../../src/renderer/src/components/llm-wiki/LlmAiPanel.vue'),

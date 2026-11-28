@@ -6,8 +6,6 @@
  * 以及编辑区 tab 分段控件的渲染/切换/无障碍属性。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { nextTick } from 'vue'
 import {
     DEFAULT_LLM_WIKI_EDITOR_TAB,
     LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY,
@@ -16,18 +14,18 @@ import {
     LLM_WIKI_EDITOR_TAB,
     LLM_WIKI_EDITOR_TAB_STORAGE_KEY,
     clampLlmWikiAiPanelWidth,
+    ensureLlmWikiAiPanelExpanded,
     ensureLlmWikiWorkbenchStateLoaded,
     llmWikiWorkbenchState,
     normalizeLlmWikiAiPanelWidth,
     normalizeLlmWikiEditorTab,
     resetLlmWikiAiPanelWidth,
     resetLlmWikiWorkbenchStateForTesting,
+    setLlmWikiAiPanelCollapsed,
     setLlmWikiAiPanelWidth,
     setLlmWikiEditorTab,
     toggleLlmWikiAiPanelCollapsed
 } from '../../../src/renderer/src/components/llm-wiki/llm-wiki-workbench'
-import LlmWikiEditorTabs from '../../../src/renderer/src/components/llm-wiki/LlmWikiEditorTabs.vue'
-import { t } from '../../../src/renderer/src/common/i18n'
 
 beforeEach(() => {
     window.localStorage.clear()
@@ -152,11 +150,17 @@ describe('llm-wiki-workbench 状态写入与恢复', () => {
 })
 
 describe('llm-wiki-workbench AI 面板宽度（split 拖拽）状态', () => {
-    it('clampLlmWikiAiPanelWidth：夹取到 [MIN, MAX]，非有限数值回落默认宽度', () => {
-        expect(LLM_WIKI_AI_PANEL_WIDTH).toEqual({ MIN: 240, DEFAULT: 360, MAX: 560 })
+    it('clampLlmWikiAiPanelWidth：无固定上下限，仅归一化为非负整数；非有限数值回落默认宽度', () => {
+        // 1.5.7 体验微调：移除固定上下限（原 MIN 240 / MAX 560），只保留默认宽度常量
+        expect(LLM_WIKI_AI_PANEL_WIDTH).toEqual({ DEFAULT: 360 })
         expect(clampLlmWikiAiPanelWidth(320)).toBe(320)
-        expect(clampLlmWikiAiPanelWidth(100)).toBe(LLM_WIKI_AI_PANEL_WIDTH.MIN)
-        expect(clampLlmWikiAiPanelWidth(9999)).toBe(LLM_WIKI_AI_PANEL_WIDTH.MAX)
+        // 小宽度合法（面板可缩到 0；0 = 面板不可见但保留挂载、可再拖回）
+        expect(clampLlmWikiAiPanelWidth(100)).toBe(100)
+        expect(clampLlmWikiAiPanelWidth(0)).toBe(0)
+        // 大宽度保留为用户偏好（实际渲染宽度由布局层按可用宽度夹取）
+        expect(clampLlmWikiAiPanelWidth(9999)).toBe(9999)
+        // 负宽度归一化为 0
+        expect(clampLlmWikiAiPanelWidth(-120)).toBe(0)
         // 四舍五入到整数 px（拖拽 mouse 坐标可能带小数）
         expect(clampLlmWikiAiPanelWidth(320.6)).toBe(321)
         expect(clampLlmWikiAiPanelWidth(Number.NaN)).toBe(LLM_WIKI_AI_PANEL_WIDTH.DEFAULT)
@@ -165,13 +169,14 @@ describe('llm-wiki-workbench AI 面板宽度（split 拖拽）状态', () => {
         )
     })
 
-    it('normalizeLlmWikiAiPanelWidth：接受数字/数字字符串，损坏值回落 null', () => {
+    it('normalizeLlmWikiAiPanelWidth：接受数字/数字字符串，负数归零，损坏值回落 null', () => {
         expect(normalizeLlmWikiAiPanelWidth(420)).toBe(420)
         expect(normalizeLlmWikiAiPanelWidth('420')).toBe(420)
         expect(normalizeLlmWikiAiPanelWidth(' 380 ')).toBe(380)
-        // 越界字符串夹取到合法区间
-        expect(normalizeLlmWikiAiPanelWidth('100')).toBe(LLM_WIKI_AI_PANEL_WIDTH.MIN)
-        expect(normalizeLlmWikiAiPanelWidth('9999')).toBe(LLM_WIKI_AI_PANEL_WIDTH.MAX)
+        // 无固定上限：大整数保留（挂载/窗口 resize 时按可用宽度夹取）
+        expect(normalizeLlmWikiAiPanelWidth('9999')).toBe(9999)
+        // 负数归一化为 0（面板不可见但保留挂载）
+        expect(normalizeLlmWikiAiPanelWidth('-120')).toBe(0)
         // 缺失/损坏值 = 未自定义（null）
         expect(normalizeLlmWikiAiPanelWidth(null)).toBeNull()
         expect(normalizeLlmWikiAiPanelWidth(undefined)).toBeNull()
@@ -180,17 +185,23 @@ describe('llm-wiki-workbench AI 面板宽度（split 拖拽）状态', () => {
         expect(normalizeLlmWikiAiPanelWidth({ width: 400 })).toBeNull()
     })
 
-    it('setLlmWikiAiPanelWidth 夹取并持久化；重复设置不重复写', () => {
+    it('setLlmWikiAiPanelWidth 归一化并持久化；重复设置不重复写', () => {
         setLlmWikiAiPanelWidth(420)
         expect(llmWikiWorkbenchState.aiPanelWidth).toBe(420)
         expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('420')
 
+        // 无固定下限：小宽度不再被抬到 240
         setLlmWikiAiPanelWidth(100)
-        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(LLM_WIKI_AI_PANEL_WIDTH.MIN)
-        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('240')
+        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(100)
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('100')
+
+        // 0 合法（面板缩到 0 但仍挂载，可再拖回）
+        setLlmWikiAiPanelWidth(0)
+        expect(llmWikiWorkbenchState.aiPanelWidth).toBe(0)
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)).toBe('0')
 
         const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
-        setLlmWikiAiPanelWidth(LLM_WIKI_AI_PANEL_WIDTH.MIN)
+        setLlmWikiAiPanelWidth(0)
         expect(setItemSpy).not.toHaveBeenCalled()
         setItemSpy.mockRestore()
     })
@@ -234,40 +245,36 @@ describe('llm-wiki-workbench AI 面板宽度（split 拖拽）状态', () => {
     })
 })
 
-describe('LlmWikiEditorTabs 分段控件', () => {
-    it('渲染编辑器/预览两项，默认编辑器选中且 aria-pressed 正确', async () => {
-        const wrapper = mount(LlmWikiEditorTabs)
-        await flushPromises()
+describe('llm-wiki-workbench AI 面板可见性切换（边栏入口 / 工具条共用）', () => {
+    it('setLlmWikiAiPanelCollapsed 显式设置折叠态并持久化；无变化时不重复写', () => {
+        setLlmWikiAiPanelCollapsed(true)
+        expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(true)
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY)).toBe('true')
 
-        const tabs = wrapper.findAll('.llm-wiki-editor-tab')
-        expect(tabs).toHaveLength(2)
-        expect(tabs[0].attributes('data-tab')).toBe('editor')
-        expect(tabs[0].attributes('aria-pressed')).toBe('true')
-        expect(tabs[0].text()).toBe(t('editorUi.llmWikiPanel.tabEditor'))
-        expect(tabs[1].attributes('data-tab')).toBe('preview')
-        expect(tabs[1].attributes('aria-pressed')).toBe('false')
-        expect(tabs[1].text()).toBe(t('editorUi.llmWikiPanel.tabPreview'))
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+        setLlmWikiAiPanelCollapsed(true)
+        expect(setItemSpy).not.toHaveBeenCalled()
+        setItemSpy.mockRestore()
 
-        const group = wrapper.find('.llm-wiki-editor-tabs')
-        expect(group.attributes('role')).toBe('group')
-        expect(group.attributes('aria-label')).toBe(t('editorUi.llmWikiPanel.editorTabsLabel'))
+        setLlmWikiAiPanelCollapsed(false)
+        expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY)).toBe('false')
     })
 
-    it('点击预览切换激活态并持久化到 localStorage', async () => {
-        const wrapper = mount(LlmWikiEditorTabs)
-        await wrapper.find('.llm-wiki-editor-tab[data-tab="preview"]').trigger('click')
-        await nextTick()
+    it('ensureLlmWikiAiPanelExpanded 在收起态下展开并持久化（工作区模式切换成功后调用）', () => {
+        setLlmWikiAiPanelCollapsed(true)
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY)).toBe('true')
 
-        expect(
-            wrapper.find('.llm-wiki-editor-tab[data-tab="preview"]').attributes('aria-pressed')
-        ).toBe('true')
-        expect(wrapper.find('.llm-wiki-editor-tab[data-tab="editor"]').classes()).not.toContain(
-            'is-active'
-        )
-        expect(window.localStorage.getItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)).toBe('preview')
+        ensureLlmWikiAiPanelExpanded()
+        expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
+        expect(window.localStorage.getItem(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY)).toBe('false')
+    })
 
-        await wrapper.find('.llm-wiki-editor-tab[data-tab="editor"]').trigger('click')
-        await nextTick()
-        expect(window.localStorage.getItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)).toBe('editor')
+    it('ensureLlmWikiAiPanelExpanded 幂等：已展开时不再写 localStorage', () => {
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+        ensureLlmWikiAiPanelExpanded()
+        expect(llmWikiWorkbenchState.aiPanelCollapsed).toBe(false)
+        expect(setItemSpy).not.toHaveBeenCalled()
+        setItemSpy.mockRestore()
     })
 })

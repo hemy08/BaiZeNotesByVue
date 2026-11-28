@@ -91,6 +91,15 @@
             :visible="configStore.dialogs.systemSettings.visible"
             @close="configStore.hideDialog('systemSettings')"
         />
+        <!--
+            1.5.7 体验微调（用户反馈）：AI 助手配置独立对话框（菜单「设置 → AI 助手」入口）。
+            原为系统设置对话框第 7 页签；显隐真源为 dialogs/complex/ai-assistant-dialog-state.ts
+            的模块单例（纯渲染层对话框，主进程不参与，故不进 useConfigStore.dialogs 跨进程契约）。
+        -->
+        <BaiZeDialogs.AiAssistantDialog
+            :visible="aiAssistantDialogState.visible"
+            @close="closeAiAssistantDialogState"
+        />
         <BaiZeDialogs.MermaidEditDialog
             :visible="configStore.dialogs.mermaidEdit.visible"
             @close="configStore.hideDialog('mermaidEdit')"
@@ -221,6 +230,11 @@ import EventBus from '../common/event-bus/event-bus'
 import type { DialogActionResult, SelectImageResult, SystemSetting } from '../../../shared/types'
 // 对话框组件导入（统一命名空间导出）
 import * as BaiZeDialogs from './dialogs'
+// 1.5.7 体验微调（用户反馈）：AI 助手独立对话框显隐（模块单例，菜单动作只切状态，本宿主只挂载）
+import {
+    aiAssistantDialogState,
+    closeAiAssistantDialogState
+} from './dialogs/complex/ai-assistant-dialog-state'
 // 2026-11-20（关闭确认应用内对话框）：主界面常驻的关闭确认宿主（监听主进程请求 + 展示确认框）
 import UnsavedCloseConfirmHost from './dialogs/UnsavedCloseConfirmHost.vue'
 // 2026-11-21（应用内消息/确认对话框通用服务）：通用消息框宿主（OPEN_EXE / 大文件 / 更新提示）
@@ -569,6 +583,8 @@ onBeforeUnmount(() => {
     unsubscribeThemeUpdates?.()
     unsubscribeThemeUpdates = null
     cleanupWindowEvents()
+    // 主界面卸载时收起 AI 助手对话框，避免模块级显隐状态残留到下一次挂载
+    closeAiAssistantDialogState()
 })
 </script>
 

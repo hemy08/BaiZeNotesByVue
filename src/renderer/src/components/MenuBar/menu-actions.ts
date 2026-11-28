@@ -41,6 +41,12 @@ import { INITIALIZE_LLM_WIKI_MENU_ACTION, PLUGIN_SEARCH_MENU_ACTION } from './me
 import { initializeLlmWiki } from '../../common/llm-wiki-actions'
 // 1.5.7 LLM Wiki L4：关系图谱对话框（视图菜单入口；显隐状态为模块单例，宿主 SearchOverlayHost 挂载）
 import { GRAPH_DIALOG_MENU_ACTION, openGraphDialogState } from '../Graph/graph-dialog-state'
+// 1.5.7 体验微调（用户反馈）：AI 助手独立对话框（设置菜单入口；显隐状态为模块单例，
+// 宿主 BaiZeNotes.vue 挂载，panel 复用原系统设置第 7 页签的 AiAssistantPanel）
+import {
+    AI_ASSISTANT_DIALOG_MENU_ACTION,
+    openAiAssistantDialogState
+} from '../dialogs/complex/ai-assistant-dialog-state'
 
 /**
  * mkdocs-material 扩展语法插入入口（15 项，对应 menu-config.ts 的 Material 子菜单，
@@ -140,6 +146,15 @@ export function HandleMenuAction(action: string) {
     // 数据来自既有 FILE.GET_WORKSPACE_INDEX；不向主进程转发 IPC.MENU.ACTION。
     if (action === GRAPH_DIALOG_MENU_ACTION) {
         openGraphDialogState()
+        return
+    }
+
+    // ========== 1.5.7 体验微调（用户反馈）：设置 → AI 助手 ==========
+    // AI 助手配置从「系统设置」对话框第 7 页签迁移为独立对话框（纯渲染层，不转发主进程
+    // IPC.MENU.ACTION；主进程也没有该动作的 handler）。必须在通用回退分发之前精确命中，
+    // 否则会漏到主进程形成点击无反应的死入口。
+    if (action === AI_ASSISTANT_DIALOG_MENU_ACTION) {
+        openAiAssistantDialogState()
         return
     }
 

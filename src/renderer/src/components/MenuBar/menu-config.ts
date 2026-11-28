@@ -18,6 +18,9 @@ import type { PluginToolMenuNode } from '../../../../shared/constants/plugin-too
 // 1.5.7 LLM Wiki L4：关系图谱入口动作 id 与图谱对话框状态模块同源（菜单数据/渲染层拦截共用）；
 // 该动作不转发主进程 IPC.MENU.ACTION（纯渲染层对话框）。
 import { GRAPH_DIALOG_MENU_ACTION } from '../Graph/graph-dialog-state'
+// 1.5.7 体验微调（用户反馈）：AI 助手入口动作 id 与对话框状态模块同源（菜单数据/渲染层拦截共用）；
+// 该动作不转发主进程 IPC.MENU.ACTION（纯渲染层对话框）。
+import { AI_ASSISTANT_DIALOG_MENU_ACTION } from '../dialogs/complex/ai-assistant-dialog-state'
 
 // CMP-30：菜单数据只存 labelKey（menu 命名空间键，见 shared/i18n/messages/*/menu.ts），
 // 由 MenuBar.vue 在渲染时调用 t(labelKey) 输出，切换语言即时生效；
@@ -478,6 +481,10 @@ const settingMenu: BaiZeMenuEntry = {
     accessKey: 'S',
     submenu: [
         { labelKey: 'menu.setting.system', menuAction: 'baize:menu:setting:system' },
+        // 1.5.7 体验微调（用户反馈 2026-11-28）：AI 助手配置是独立对话框入口，不再作为
+        // 「系统设置」对话框的第 7 个页签；紧邻系统设置便于用户发现。
+        // 动作 id 为纯渲染层菜单动作（menu-actions.ts 精确拦截 → 切对话框状态），不转发主进程。
+        { labelKey: 'menu.setting.aiAssistant', menuAction: AI_ASSISTANT_DIALOG_MENU_ACTION },
         { labelKey: 'menu.setting.theme', menuAction: 'baize:menu:setting:theme' },
         { type: 'separator' },
         { labelKey: 'menu.setting.quickLink', menuAction: 'baize:menu:setting:quick-link' },
