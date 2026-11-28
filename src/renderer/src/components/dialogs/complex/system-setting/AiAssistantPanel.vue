@@ -117,6 +117,26 @@
                                     : t('dialogRenderer.aiAssistant.testConnection')
                             }}
                         </button>
+                        <!-- 1.5.7 新功能：查询当前运行的模型（用户可配置命令；未配置走内置查询） -->
+                        <button
+                            type="button"
+                            class="browse-btn ai-query-running-models-btn"
+                            data-testid="ai-query-running-models"
+                            :data-model-id="model.id"
+                            :disabled="
+                                aiBusy ||
+                                !aiAvailable ||
+                                !aiConfig.enabled ||
+                                queryingModelId !== null
+                            "
+                            @click="openQueryConfirm(model)"
+                        >
+                            {{
+                                queryingModelId === model.id
+                                    ? t('dialogRenderer.aiAssistant.queryRunning')
+                                    : t('dialogRenderer.aiAssistant.queryRunningModels')
+                            }}
+                        </button>
                         <button
                             type="button"
                             class="browse-btn ai-delete-model-btn"
@@ -146,6 +166,80 @@
                     </button>
                 </li>
             </ul>
+
+            <!-- 1.5.7 缺陷修复：小字说明「测试连接」测的是什么（连通性 + 模型是否已安装/加载，
+                 不做推理），避免用户把「连接成功」误读为「模型已启动、推理可用」 -->
+            <p v-if="aiConfig.models.length > 0" class="ai-test-hint" data-testid="ai-test-hint">
+                {{ t('dialogRenderer.aiAssistant.testHint') }}
+            </p>
+
+            <!-- 1.5.7 新功能：查询运行中模型的方式说明；AI 未启用时按钮禁用并给出原因 -->
+            <p v-if="aiConfig.models.length > 0" class="ai-query-hint" data-testid="ai-query-hint">
+                {{
+                    aiConfig.enabled
+                        ? t('dialogRenderer.aiAssistant.queryHint')
+                        : t('dialogRenderer.aiAssistant.queryDisabledHint')
+                }}
+            </p>
+
+            <!-- 运行中模型查询结果（来源标签 + 可读输出 + 模型列表 + 复制）；失败时给出可读原因 -->
+            <div
+                v-if="runningModelsResult"
+                class="ai-running-models-result"
+                data-testid="ai-running-models-result"
+            >
+                <div class="ai-running-models-head">
+                    <span
+                        v-if="runningModelsSourceLabel"
+                        class="ai-badge ai-running-models-source"
+                        data-testid="ai-running-models-source"
+                    >
+                        {{ runningModelsSourceLabel }}
+                    </span>
+                    <span class="ai-running-models-model-name">
+                        {{ runningModelsResult.modelName }}
+                    </span>
+                    <button
+                        type="button"
+                        class="browse-btn ai-running-models-copy"
+                        data-testid="ai-running-models-copy"
+                        @click="copyRunningModelsOutput"
+                    >
+                        {{
+                            runningModelsCopied
+                                ? t('dialogRenderer.aiAssistant.queryCopied')
+                                : t('dialogRenderer.aiAssistant.queryCopyOutput')
+                        }}
+                    </button>
+                </div>
+                <p v-if="runningModelsError" class="ai-error" data-testid="ai-running-models-error">
+                    {{ t('dialogRenderer.aiAssistant.queryFailed', { error: runningModelsError }) }}
+                </p>
+                <p v-if="runningModelsCommand" class="ai-running-models-command">
+                    <span>{{ t('dialogRenderer.aiAssistant.queryConfirmCommandLabel') }}</span>
+                    <code data-testid="ai-running-models-command">{{ runningModelsCommand }}</code>
+                </p>
+                <pre class="ai-running-models-output" data-testid="ai-running-models-output">{{
+                    runningModelsOutput
+                }}</pre>
+                <ul
+                    v-if="runningModelsModels.length > 0"
+                    class="ai-running-models-chips"
+                    data-testid="ai-running-models-list"
+                >
+                    <li
+                        v-for="(item, index) in runningModelsModels"
+                        :key="`${item.name}-${index}`"
+                        class="ai-running-models-chip"
+                        data-testid="ai-running-models-chip"
+                    >
+                        <code class="ai-running-models-chip-name">{{ item.name }}</code>
+                        <span v-if="item.detail" class="ai-running-models-chip-detail">
+                            {{ item.detail }}
+                        </span>
+                    </li>
+                </ul>
+            </div>
 
             <!-- 添加 / 编辑模型表单（提交后立即经 AI.SAVE_CONFIG 保存并生效） -->
             <form
@@ -264,6 +358,26 @@
                         :disabled="aiBusy"
                     />
                 </div>
+                <!-- 1.5.7 新功能：用户可配置「运行状态查询命令」（查询当前运行的模型用） -->
+                <div class="setting-row">
+                    <label class="setting-label" for="ai-model-form-status-command">
+                        {{ t('dialogRenderer.aiAssistant.formStatusCommand') }}
+                    </label>
+                    <input
+                        id="ai-model-form-status-command"
+                        v-model="modelForm.statusCommand"
+                        type="text"
+                        class="setting-input ai-status-command-input"
+                        data-testid="ai-model-form-status-command"
+                        :placeholder="statusCommandPlaceholder"
+                        :disabled="aiBusy"
+                        spellcheck="false"
+                        autocomplete="off"
+                    />
+                </div>
+                <p class="ai-status-command-hint" data-testid="ai-status-command-hint">
+                    {{ t('dialogRenderer.aiAssistant.formStatusCommandHint') }}
+                </p>
                 <p v-if="formError" class="ai-error" data-testid="ai-form-error">
                     {{ formError }}
                 </p>
@@ -424,6 +538,67 @@
             <p v-if="mcpMessage" class="mcp-success" data-testid="mcp-success">{{ mcpMessage }}</p>
             <p v-if="mcpError" class="mcp-error" data-testid="mcp-error">{{ mcpError }}</p>
         </div>
+
+        <!-- ==================== 查询运行中模型：执行前二次确认（复用 BaseDialog） ==================== -->
+        <!--
+            安全边界：模型配置了 statusCommand 时，命令将在主进程经 shell 执行；
+            每次执行前都必须经用户显式确认（确认后才向主进程传 confirmExecution=true）。
+            内置查询不执行任何命令，确认框展示内置查询说明，保持交互一致。
+        -->
+        <BaseDialog
+            :visible="queryConfirm !== null"
+            :title="t('dialogRenderer.aiAssistant.queryConfirmTitle')"
+            width-size="confirm"
+            @close="cancelQueryConfirm"
+        >
+            <div v-if="queryConfirm" class="ai-query-confirm-body" data-testid="ai-query-confirm">
+                <p class="ai-query-confirm-model">
+                    {{ queryConfirm.modelName }}
+                </p>
+                <template v-if="queryConfirm.command.length > 0">
+                    <p class="ai-query-confirm-label">
+                        {{ t('dialogRenderer.aiAssistant.queryConfirmCommandLabel') }}
+                    </p>
+                    <code class="ai-query-confirm-command" data-testid="ai-query-confirm-command">{{
+                        queryConfirm.command
+                    }}</code>
+                </template>
+                <template v-else>
+                    <p class="ai-query-confirm-label">
+                        {{ t('dialogRenderer.aiAssistant.queryConfirmBuiltinLabel') }}
+                    </p>
+                    <p class="ai-query-confirm-detail">
+                        {{ t('dialogRenderer.aiAssistant.queryConfirmBuiltinDetail') }}
+                    </p>
+                </template>
+                <p class="ai-query-confirm-warning" data-testid="ai-query-confirm-warning">
+                    {{ t('dialogRenderer.aiAssistant.queryConfirmWarning') }}
+                </p>
+            </div>
+            <template #footer>
+                <button
+                    type="button"
+                    class="browse-btn ai-query-confirm-cancel"
+                    data-testid="ai-query-confirm-cancel"
+                    @click="cancelQueryConfirm"
+                >
+                    {{ t('common.cancel') }}
+                </button>
+                <button
+                    type="button"
+                    class="browse-btn ai-query-confirm-execute"
+                    data-testid="ai-query-confirm-execute"
+                    :disabled="queryingModelId !== null"
+                    @click="confirmQueryRunningModels"
+                >
+                    {{
+                        queryingModelId !== null
+                            ? t('dialogRenderer.aiAssistant.queryRunning')
+                            : t('dialogRenderer.aiAssistant.queryConfirmExecute')
+                    }}
+                </button>
+            </template>
+        </BaseDialog>
     </div>
 </template>
 
@@ -440,6 +615,8 @@
  * - 远程模型密钥：password 输入，已保存时只显示掩码与「清除密钥」，明文不回显、不落日志；
  *   新增/修改密钥随保存载荷 `modelApiKey.apiKey` 提交，清除走 `modelApiKey.clearApiKey`；
  * - 「测试连接」按模型调 `AI.CHAT`（`messages: []` + `modelId`），结果内联展示在对应模型行；
+ *   成功文案由主进程给出（明确「服务可达 + 模型可用 / 未提供模型列表接口、未校验模型」），
+ *   面板不再本地二次拼装；下方小字说明测试范围（不做推理，实际可用性需发送消息验证）；
  * - 空态引导、输入校验（名称/模型名必填；远程需基址、首次添加需密钥）；
  * - 隐私提示 + `apiKeyStorage` 形态提示（safe=系统安全存储加密 / memory=仅本会话内存）。
  *
@@ -455,13 +632,18 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { IPC } from '../../../../../../shared/ipc-channels'
 import type {
     AiConfigSnapshot,
+    AiErrorCode,
     AiModelConfig,
+    AiQueryRunningModelsResult,
+    AiRunningModelEntry,
     AiSaveConfigRequest
 } from '../../../../../../shared/types/ai'
+import { AI_STATUS_COMMAND_MAX_CHARS } from '../../../../../../shared/constants/ai'
 import type { McpServerStatus } from '../../../../../../shared/types/ipc'
 import { describeActionError } from '../../../../common/action-feedback'
 import { t } from '../../../../common/i18n'
 import { logger } from '../../../../common/logger'
+import BaseDialog from '../../BaseDialog.vue'
 import InfoTip from '../../../common/InfoTip.vue'
 import {
     createAddModelFormDraft,
@@ -549,8 +731,22 @@ const formError = ref('')
 const testingModelId = ref<string | null>(null)
 /** 按模型保存的最近一次连接测试结果 */
 const testResults = ref<Record<string, { ok: boolean; message: string }>>({})
+/** 正在查询运行中模型的模型 id（非 null = 查询进行中，防重复提交） */
+const queryingModelId = ref<string | null>(null)
+/** 待确认的运行状态查询（null = 确认框未打开；command 为空串表示走内置查询） */
+const queryConfirm = ref<{ modelId: string; modelName: string; command: string } | null>(null)
+/** 最近一次查询结果（含模型信息，供结果区内联展示） */
+const runningModelsResult = ref<{
+    modelId: string
+    modelName: string
+    result: AiQueryRunningModelsResult
+} | null>(null)
+/** 「查询结果已复制」瞬时反馈 */
+const runningModelsCopied = ref(false)
 /** 成功提示复位定时器（组件卸载时清理） */
 let aiMessageTimer: ReturnType<typeof setTimeout> | null = null
+/** 「已复制」复位定时器 */
+let runningModelsCopiedTimer: ReturnType<typeof setTimeout> | null = null
 
 /** apiKeyStorage 形态提示（safe=加密保存 / memory=仅本会话） */
 const storageHint = computed(() =>
@@ -568,6 +764,71 @@ const baseUrlPlaceholder = computed(() => {
     return form.provider === 'remote'
         ? t('dialogRenderer.aiAssistant.formBaseUrlPlaceholderRemote')
         : t('dialogRenderer.aiAssistant.formBaseUrlPlaceholderLocal')
+})
+
+/** 运行状态查询命令占位（按 Provider 给示例；远程模型留空使用内置 /v1/models 查询） */
+const statusCommandPlaceholder = computed(() => {
+    const form = modelForm.value
+    if (!form) {
+        return ''
+    }
+    if (form.provider === 'remote') {
+        return t('dialogRenderer.aiAssistant.formStatusCommandPlaceholderRemote')
+    }
+    return form.localProvider === 'lmstudio'
+        ? t('dialogRenderer.aiAssistant.formStatusCommandPlaceholderLmStudio')
+        : t('dialogRenderer.aiAssistant.formStatusCommandPlaceholderOllama')
+})
+
+/** 查询结果来源标签（配置级失败无来源 → 空串，模板不渲染 badge） */
+const runningModelsSourceLabel = computed(() => {
+    const result = runningModelsResult.value?.result
+    if (!result) {
+        return ''
+    }
+    if (result.source === 'command') {
+        return t('dialogRenderer.aiAssistant.querySourceCommand')
+    }
+    if (result.source === 'builtin') {
+        return t('dialogRenderer.aiAssistant.querySourceBuiltin')
+    }
+    return ''
+})
+
+/** 查询结果的可读输出（内置查询空结果按当前语言显示「未检测到」，避免中英混杂） */
+const runningModelsOutput = computed(() => {
+    const result = runningModelsResult.value?.result
+    if (!result) {
+        return ''
+    }
+    if (!result.ok) {
+        return result.output
+    }
+    if ((result.models?.length ?? 0) === 0 && result.source === 'builtin') {
+        return t('dialogRenderer.aiAssistant.queryNoRunning')
+    }
+    return result.output
+})
+
+/** 查询结果中的模型条目（失败/无 models 时为空数组） */
+const runningModelsModels = computed<AiRunningModelEntry[]>(() => {
+    const result = runningModelsResult.value?.result
+    if (!result || !result.ok || !Array.isArray(result.models)) {
+        return []
+    }
+    return result.models
+})
+
+/** 查询结果中实际执行的用户命令原文（仅 source=command 时存在） */
+const runningModelsCommand = computed(() => {
+    const command = runningModelsResult.value?.result.command
+    return typeof command === 'string' ? command : ''
+})
+
+/** 查询失败的可读原因（成功时为空串） */
+const runningModelsError = computed(() => {
+    const result = runningModelsResult.value?.result
+    return result !== undefined && !result.ok ? result.error : ''
 })
 
 /** 模型类型展示文案（本地模型带 Provider 名；远程统一「远程 API」） */
@@ -590,6 +851,10 @@ function describeFormFieldError(field: AiModelFormField): string {
             return t('dialogRenderer.aiAssistant.formBaseUrlRequired')
         case 'apiKey':
             return t('dialogRenderer.aiAssistant.formApiKeyRequired')
+        case 'statusCommand':
+            return t('dialogRenderer.aiAssistant.formStatusCommandTooLong', {
+                max: AI_STATUS_COMMAND_MAX_CHARS
+            })
     }
 }
 
@@ -605,7 +870,7 @@ function showAiMessage(message: string): void {
     }, STATUS_MESSAGE_TIMEOUT_MS)
 }
 
-/** 应用主进程快照：同步配置；编辑中模型被删除时关闭表单；清理失效测试结果 */
+/** 应用主进程快照：同步配置；编辑中模型被删除时关闭表单；清理失效测试结果/查询结果 */
 function applyConfigSnapshot(snapshot: AiConfigSnapshot): void {
     aiConfig.value = snapshot
     const editingId = modelForm.value?.id
@@ -619,6 +884,13 @@ function applyConfigSnapshot(snapshot: AiConfigSnapshot): void {
         }
     }
     testResults.value = nextResults
+    // 查询结果对应的模型被删除后不再展示（避免悬空结果误导）
+    if (
+        runningModelsResult.value !== null &&
+        !snapshot.models.some((model) => model.id === runningModelsResult.value?.modelId)
+    ) {
+        runningModelsResult.value = null
+    }
 }
 
 /** 读取 AI 配置（面板挂载时调用；失败只显示内联提示，不抛异常） */
@@ -757,6 +1029,8 @@ async function handleSubmitModelForm(): Promise<void> {
         const modelName = form.model.trim()
         const baseUrl = form.baseUrl.trim()
         const apiKey = form.apiKey.trim()
+        // 运行状态查询命令（可选）：空串 = 未配置（走内置查询），保存时不落空字段
+        const statusCommand = form.statusCommand.trim()
         if (form.mode === 'add') {
             const modelId = createAiModelId()
             const nextModels: AiModelConfig[] = [
@@ -767,7 +1041,8 @@ async function handleSubmitModelForm(): Promise<void> {
                     provider: form.provider,
                     localProvider: form.localProvider,
                     baseUrl,
-                    model: modelName
+                    model: modelName,
+                    ...(statusCommand.length > 0 ? { statusCommand } : {})
                 }
             ]
             const payload: AiSaveConfigRequest = {
@@ -784,18 +1059,24 @@ async function handleSubmitModelForm(): Promise<void> {
             }
             return
         }
-        const nextModels: AiModelConfig[] = aiConfig.value.models.map((model) =>
-            model.id === form.id
-                ? {
-                      ...model,
-                      name,
-                      provider: form.provider,
-                      localProvider: form.localProvider,
-                      baseUrl,
-                      model: modelName
-                  }
-                : model
-        )
+        const nextModels: AiModelConfig[] = aiConfig.value.models.map((model) => {
+            if (model.id !== form.id) {
+                return model
+            }
+            const next: AiModelConfig = {
+                id: model.id,
+                name,
+                provider: form.provider,
+                localProvider: form.localProvider,
+                baseUrl,
+                model: modelName
+            }
+            // 编辑时清空命令框 = 删除旧配置（不写空串，主进程按未配置走内置查询）
+            if (statusCommand.length > 0) {
+                next.statusCommand = statusCommand
+            }
+            return next
+        })
         const payload: AiSaveConfigRequest = {
             models: toAiModelsPayload(nextModels),
             defaultModelId: aiConfig.value.defaultModelId
@@ -880,7 +1161,7 @@ async function handleClearModelKey(): Promise<void> {
     }
 }
 
-/** 测试连接：按模型调 `AI.CHAT`（空 messages = 轻量连通性探测），结果内联展示 */
+/** 测试连接：按模型调 `AI.CHAT`（空 messages = 轻量连通性 + 模型存在性探测），结果内联展示 */
 async function handleTestModel(model: AiModelConfig): Promise<void> {
     if (aiBusy.value || !aiAvailable.value || testingModelId.value !== null) {
         return
@@ -910,12 +1191,14 @@ async function handleTestModel(model: AiModelConfig): Promise<void> {
             return
         }
         const record = raw as { content?: unknown } | null
+        // 1.5.7 缺陷修复：成功文案直接采用主进程文本（已明确「服务可达 + 模型是否已校验」），
+        // 不在面板二次拼装，避免出现「连接成功：连接成功…」或丢失「未校验模型」等关键信息。
         const detail = typeof record?.content === 'string' ? record.content : t('common.unknown')
         testResults.value = {
             ...testResults.value,
             [model.id]: {
                 ok: true,
-                message: t('dialogRenderer.aiAssistant.testSuccess', { detail })
+                message: detail
             }
         }
     } catch (error) {
@@ -934,7 +1217,178 @@ async function handleTestModel(model: AiModelConfig): Promise<void> {
     }
 }
 
-/* ==================== 二、MCP 服务（只读桥） ==================== */
+/* ==================== 一（续）、查询运行中模型（1.5.7 新功能） ==================== */
+
+/** 读取主进程查询结果中的模型条目（结构非法条目逐项丢弃；非数组返回 undefined） */
+function readRunningModelEntries(raw: unknown): AiRunningModelEntry[] | undefined {
+    if (!Array.isArray(raw)) {
+        return undefined
+    }
+    const entries: AiRunningModelEntry[] = []
+    for (const item of raw) {
+        if (!item || typeof item !== 'object') {
+            continue
+        }
+        const record = item as Record<string, unknown>
+        if (typeof record.name !== 'string' || record.name.length === 0) {
+            continue
+        }
+        entries.push({
+            name: record.name,
+            ...(typeof record.detail === 'string' && record.detail.length > 0
+                ? { detail: record.detail }
+                : {})
+        })
+    }
+    return entries
+}
+
+/**
+ * 运行时结构守卫：把 `AI.QUERY_RUNNING_MODELS` 返回值收敛为契约类型。
+ *
+ * 主进程已保证结构，这里只防御旧 preload/异常返回：`ok` 缺失或成功缺 source → 视为非法
+ * （返回 null，界面显示通用失败原因），不渲染脏数据。
+ */
+function normalizeRunningModelsResult(raw: unknown): AiQueryRunningModelsResult | null {
+    if (!raw || typeof raw !== 'object') {
+        return null
+    }
+    const record = raw as Record<string, unknown>
+    if (typeof record.ok !== 'boolean') {
+        return null
+    }
+    const source =
+        record.source === 'command' || record.source === 'builtin' ? record.source : undefined
+    const output = typeof record.output === 'string' ? record.output : ''
+    const command = typeof record.command === 'string' ? record.command : undefined
+    if (record.ok) {
+        if (source === undefined) {
+            return null
+        }
+        const models = readRunningModelEntries(record.models)
+        return {
+            ok: true,
+            source,
+            output,
+            ...(command !== undefined ? { command } : {}),
+            ...(models !== undefined ? { models } : {})
+        }
+    }
+    const error =
+        typeof record.error === 'string' && record.error.length > 0
+            ? record.error
+            : t('common.unknown')
+    return {
+        ok: false,
+        output,
+        error,
+        ...(source !== undefined ? { source } : {}),
+        ...(command !== undefined ? { command } : {}),
+        ...(typeof record.code === 'string' ? { code: record.code as AiErrorCode } : {})
+    }
+}
+
+/** 打开「查询运行中模型」确认框（展示将执行的命令原文 / 内置查询说明 + 风险提示） */
+function openQueryConfirm(model: AiModelConfig): void {
+    if (aiBusy.value || !aiAvailable.value || !aiConfig.value.enabled) {
+        return
+    }
+    if (queryingModelId.value !== null) {
+        return
+    }
+    aiError.value = ''
+    queryConfirm.value = {
+        modelId: model.id,
+        modelName: model.name,
+        command: typeof model.statusCommand === 'string' ? model.statusCommand.trim() : ''
+    }
+}
+
+/** 取消查询（关闭确认框，不发起任何 IPC 调用） */
+function cancelQueryConfirm(): void {
+    queryConfirm.value = null
+}
+
+/**
+ * 确认并执行查询：
+ * 1. 关闭确认框（避免重复点击）；
+ * 2. 调 `AI.QUERY_RUNNING_MODELS`（`confirmExecution: true` 表示用户已显式确认）；
+ * 3. 结果/失败内联展示；同一时刻只允许一个查询（`queryingModelId` 防重）。
+ */
+async function confirmQueryRunningModels(): Promise<void> {
+    const target = queryConfirm.value
+    if (!target || queryingModelId.value !== null) {
+        return
+    }
+    const ipcRenderer = getRestrictedIpcRenderer()
+    if (!ipcRenderer) {
+        aiAvailable.value = false
+        aiError.value = t('dialogRenderer.aiAssistant.unavailable')
+        queryConfirm.value = null
+        return
+    }
+    queryConfirm.value = null
+    aiError.value = ''
+    queryingModelId.value = target.modelId
+    try {
+        const raw: unknown = await ipcRenderer.invoke(IPC.AI.QUERY_RUNNING_MODELS, {
+            modelId: target.modelId,
+            confirmExecution: true
+        })
+        const result = normalizeRunningModelsResult(raw)
+        runningModelsResult.value = {
+            modelId: target.modelId,
+            modelName: target.modelName,
+            result: result ?? {
+                ok: false,
+                output: '',
+                error: t('common.unknown')
+            }
+        }
+    } catch (error) {
+        logger.error('[Settings] 查询运行中模型失败：', error)
+        runningModelsResult.value = {
+            modelId: target.modelId,
+            modelName: target.modelName,
+            result: {
+                ok: false,
+                output: '',
+                error: describeActionError(error, t('common.unknown'))
+            }
+        }
+    } finally {
+        queryingModelId.value = null
+    }
+}
+
+/** 复制查询输出到系统剪贴板（失败显示内联提示，提示用户手动选择文本） */
+async function copyRunningModelsOutput(): Promise<void> {
+    const current = runningModelsResult.value
+    if (!current) {
+        return
+    }
+    const text = current.result.ok
+        ? runningModelsOutput.value
+        : `${t('dialogRenderer.aiAssistant.queryFailed', { error: current.result.error })}\n${current.result.output}`
+    try {
+        const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : undefined
+        if (!clipboard || typeof clipboard.writeText !== 'function') {
+            throw new Error('clipboard API unavailable')
+        }
+        await clipboard.writeText(text)
+        runningModelsCopied.value = true
+        if (runningModelsCopiedTimer !== null) {
+            clearTimeout(runningModelsCopiedTimer)
+        }
+        runningModelsCopiedTimer = setTimeout(() => {
+            runningModelsCopied.value = false
+            runningModelsCopiedTimer = null
+        }, TOKEN_COPIED_RESET_MS)
+    } catch (error) {
+        logger.error('[Settings] 复制运行中模型查询结果失败：', error)
+        aiError.value = t('dialogRenderer.aiAssistant.queryCopyFailed')
+    }
+}
 
 /** MCP 服务实时状态（null = 尚未加载/读取失败） */
 const mcpStatus = ref<McpServerStatus | null>(null)
@@ -1215,6 +1669,10 @@ onBeforeUnmount(() => {
         clearTimeout(tokenCopiedTimer)
         tokenCopiedTimer = null
     }
+    if (runningModelsCopiedTimer !== null) {
+        clearTimeout(runningModelsCopiedTimer)
+        runningModelsCopiedTimer = null
+    }
 })
 </script>
 
@@ -1366,6 +1824,14 @@ onBeforeUnmount(() => {
     color: var(--ui-text-secondary, var(--secondary-text-color));
 }
 
+/* 「测试连接」说明（1.5.7 缺陷修复：小字提示测试范围 = 连通性 + 模型存在性，不做推理） */
+.ai-test-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--ui-text-secondary, var(--secondary-text-color));
+}
+
 .ai-test-result {
     margin: 0;
     font-size: 12px;
@@ -1500,5 +1966,173 @@ onBeforeUnmount(() => {
     font-size: 12px;
     color: var(--ui-text, var(--text-color));
     word-break: break-all;
+}
+
+/* ==================== 查询运行中模型（1.5.7 新功能） ==================== */
+
+/* 查询方式说明（与「测试连接」说明同款小字） */
+.ai-query-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--ui-text-secondary, var(--secondary-text-color));
+}
+
+/* 运行状态查询命令输入框（命令可较长，保底宽度） */
+.ai-status-command-input {
+    min-width: 240px;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+/* 命令说明小字（示例 + 内置查询兜底口径 + 每次执行前确认） */
+.ai-status-command-hint {
+    margin: 4px 0 8px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--ui-text-secondary, var(--secondary-text-color));
+}
+
+/* 查询结果卡片：来源标签 + 模型名 + 复制按钮 + 输出 + 模型 chips */
+.ai-running-models-result {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 12px;
+    border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-md, 4px);
+    background: var(--ui-bg, var(--bg-color));
+}
+
+.ai-running-models-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-running-models-source {
+    color: var(--ui-accent, var(--accent-color));
+    border-color: var(--ui-accent, var(--accent-color));
+}
+
+.ai-running-models-model-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ui-text, var(--text-color));
+    word-break: break-all;
+}
+
+/* 输出保留原始换行（等宽、可滚动、最大高度） */
+.ai-running-models-output {
+    max-height: 260px;
+    margin: 0;
+    padding: 8px;
+    overflow: auto;
+    border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-sm, 2px);
+    background: var(--ui-bg-sunken, var(--bg-color));
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--ui-text, var(--text-color));
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.ai-running-models-command {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 12px;
+    color: var(--ui-text-secondary, var(--secondary-text-color));
+}
+
+.ai-running-models-command code {
+    word-break: break-all;
+    color: var(--ui-text, var(--text-color));
+}
+
+/* 模型 chips：等宽名称 + 可选补充信息 */
+.ai-running-models-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ai-running-models-chip {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-sm, 2px);
+    background: var(--ui-bg, var(--bg-color));
+    font-size: 12px;
+    line-height: 20px;
+}
+
+.ai-running-models-chip-name {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    color: var(--ui-text, var(--text-color));
+}
+
+.ai-running-models-chip-detail {
+    color: var(--ui-text-secondary, var(--secondary-text-color));
+}
+
+/* ==================== 查询确认对话框（BaseDialog 内容） ==================== */
+.ai-query-confirm-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 20px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ui-text, var(--text-color));
+}
+
+.ai-query-confirm-model {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.ai-query-confirm-label,
+.ai-query-confirm-detail {
+    margin: 0;
+    color: var(--ui-text-secondary, var(--secondary-text-color));
+}
+
+/* 命令原文：等宽、可换行、限高滚动（防止超长命令撑破对话框） */
+.ai-query-confirm-command {
+    display: block;
+    max-height: 120px;
+    padding: 8px;
+    overflow: auto;
+    border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--border-color));
+    border-radius: var(--ui-radius-sm, 2px);
+    background: var(--ui-bg-sunken, var(--bg-color));
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.ai-query-confirm-warning {
+    margin: 0;
+    padding: 8px;
+    border: var(--ui-hairline-width, 1px) solid var(--ui-danger, var(--danger-color));
+    border-radius: var(--ui-radius-sm, 2px);
+    color: var(--ui-danger, var(--danger-color));
+    font-size: 12px;
 }
 </style>

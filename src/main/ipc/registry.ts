@@ -278,8 +278,9 @@ export function registerAll(mainWindow: BrowserWindow, hooks: RegisterAllHooks =
     //     随机 Bearer token + 7 个只读工具；注册时回落上次会话的启用偏好（token 不落盘）。
     registerMcpIpc(MCP_COMPONENT_ID)
     // 16) 1.5.7 LLM Wiki L3：AI Provider（本地 Ollama/LM Studio + 远程 BYOK）。
-    //     5 个 invoke 通道仅主窗口可信：AI.CHAT（对话/连接测试）、AI.INGEST（raw → wiki 草案 +
+    //     6 个 invoke 通道仅主窗口可信：AI.CHAT（对话/连接测试）、AI.INGEST（raw → wiki 草案 +
     //     行级 diff，不写盘）、AI.APPLY_INGEST（审批后写 wiki/，Path Guard + raw 只读守卫）、
-    //     AI.GET_CONFIG / AI.SAVE_CONFIG（设置页 AI 分组；密钥经 safeStorage 加密落独立文件）。
+    //     AI.GET_CONFIG / AI.SAVE_CONFIG（设置页 AI 分组；密钥经 safeStorage 加密落独立文件）、
+    //     AI.QUERY_RUNNING_MODELS（1.5.7 查询运行中模型：用户配置命令需二次确认，未配置走内置只读查询）。
     registerAiIpc(AI_COMPONENT_ID)
 }

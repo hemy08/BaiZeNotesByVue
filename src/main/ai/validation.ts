@@ -26,6 +26,7 @@ import {
     AI_MODEL_NAME_MAX_CHARS,
     AI_MODEL_MAX_CHARS,
     AI_MODELS_MAX,
+    AI_STATUS_COMMAND_MAX_CHARS,
     isAiLocalProviderId,
     isAiProviderKind
 } from '../../shared/constants/ai'
@@ -37,6 +38,7 @@ import type {
     AiChatRole,
     AiIngestRequest,
     AiModelConfig,
+    AiQueryRunningModelsRequest,
     AiSaveConfigRequest
 } from '../../shared/types/ai'
 import { hasControlChars, isPlainObject } from '../../shared/utils/validate'
@@ -373,7 +375,34 @@ function normalizeAiModelConfigRequest(value: unknown, index: number): AiModelCo
         nameRaw === undefined || nameRaw === null || nameRaw === ''
             ? model.slice(0, AI_MODEL_NAME_MAX_CHARS)
             : readSingleLineString(nameRaw, `${label}的显示名称（name）`, AI_MODEL_NAME_MAX_CHARS)
-    return { id, name, provider: providerRaw, localProvider, baseUrl, model }
+    // 运行状态查询命令（1.5.7「查询当前运行的模型」）：可选；空串/缺省 = 未配置（走内置查询），
+    // 非空时必须单行且长度受限——该命令会在主进程经 shell 执行，禁止换行/控制字符。
+    const statusCommandRaw = readField(value, 'statusCommand')
+    let statusCommand: string | undefined
+    if (statusCommandRaw !== undefined && statusCommandRaw !== null) {
+        if (typeof statusCommandRaw !== 'string') {
+            invalid(`${label}的运行状态查询命令（statusCommand）必须是字符串`)
+        }
+        const trimmed = statusCommandRaw.trim()
+        if (trimmed.length > AI_STATUS_COMMAND_MAX_CHARS) {
+            invalid(`${label}的运行状态查询命令长度不能超过 ${AI_STATUS_COMMAND_MAX_CHARS} 个字符`)
+        }
+        if (hasControlChars(trimmed)) {
+            invalid(`${label}的运行状态查询命令不能包含控制字符或换行`)
+        }
+        if (trimmed.length > 0) {
+            statusCommand = trimmed
+        }
+    }
+    return {
+        id,
+        name,
+        provider: providerRaw,
+        localProvider,
+        baseUrl,
+        model,
+        ...(statusCommand !== undefined ? { statusCommand } : {})
+    }
 }
 
 /**
@@ -471,4 +500,34 @@ export function normalizeAiSaveConfigRequest(payload: unknown): AiSaveConfigRequ
     }
 
     return patch
+}
+
+/**
+ * 校验 `AI.QUERY_RUNNING_MODELS` 载荷（1.5.7「查询当前运行的模型」）。
+ *
+ * - 缺省/`null` → `{}`（使用默认模型、不确认执行）；
+ * - `modelId`：可选，出现时必须是合法模型 id（不存在的模型由业务层返回 AI_MODEL_NOT_FOUND）；
+ * - `confirmExecution`：可选布尔；只有**渲染层用户确认后**才允许传 true，
+ *   主进程在模型配置了 `statusCommand` 且该标记不为 true 时拒绝执行命令（不执行即返回失败）。
+ *
+ * @returns 只含出现字段的查询载荷
+ */
+export function normalizeAiQueryRunningModelsRequest(
+    payload: unknown
+): AiQueryRunningModelsRequest {
+    if (payload === undefined || payload === null) {
+        return {}
+    }
+    if (!isPlainObject(payload)) {
+        throw new AiProviderError('AI_INVALID_PAYLOAD', 'AI.QUERY_RUNNING_MODELS 载荷必须是对象')
+    }
+    const modelId = readOptionalModelId(readField(payload, 'modelId'))
+    const confirmRaw = readField(payload, 'confirmExecution')
+    if (confirmRaw !== undefined && typeof confirmRaw !== 'boolean') {
+        invalid('确认执行标记（confirmExecution）必须是布尔值')
+    }
+    return {
+        ...(modelId !== undefined ? { modelId } : {}),
+        ...(confirmRaw === true ? { confirmExecution: true } : {})
+    }
 }

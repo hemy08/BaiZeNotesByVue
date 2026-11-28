@@ -6,6 +6,8 @@
  * - 对话契约：`AiChatRequest` / `AiChatResult`（供 L5 AI 面板联调，**契约保持稳定**）；
  * - ingest 契约：`AiIngestRequest` / `AiIngestResult` / `AiDiffLine`（草案 + 行级 diff）；
  * - 审批写盘契约：`AiApplyIngestRequest` / `AiApplyIngestResult`；
+ * - 运行状态查询契约：`AiQueryRunningModelsRequest` / `AiQueryRunningModelsResult`
+ *   （1.5.7「查询当前运行的模型」；用户可配置 `statusCommand`，每次执行前渲染层确认）；
  * - 错误码：`AiErrorCode`（主进程结构化失败，永不向渲染层抛堆栈）。
  *
  * 取值白名单/默认值/限额的运行时真源见 `src/shared/constants/ai.ts`；本文件不引用它，
@@ -48,6 +50,17 @@ export interface AiModelConfig {
     baseUrl: string
     /** 模型名称（本地为已拉取模型名；远程为服务商模型 id） */
     model: string
+    /**
+     * 运行状态查询命令（可选；1.5.7「查询当前运行的模型」）。
+     *
+     * 用户显式配置的本机命令（如 Ollama `ollama ps`、LM Studio `lms ps`），
+     * 仅 `AI.QUERY_RUNNING_MODELS` 使用：由主进程以 shell 执行并把 stdout/stderr 合并返回。
+     * 安全约束：
+     * - 只允许用户经设置页保存（`AI.SAVE_CONFIG.models[].statusCommand`），长度 ≤ 500 且禁止换行/控制字符；
+     * - 每次执行前渲染层必须弹出确认（载荷 `confirmExecution === true`），主进程未收到确认时拒绝执行；
+     * - 未配置（undefined/空串）时走内置查询（Ollama `/api/ps` / OpenAI 兼容 `/models`），不执行任何命令。
+     */
+    statusCommand?: string
     /** 远程模型是否已配置 API Key（仅快照返回，不返回明文） */
     apiKeyConfigured?: boolean
 }
@@ -296,3 +309,75 @@ export type AiGetConfigResult = AiConfigSnapshot
 
 /** `AI.SAVE_CONFIG` 返回：成功返回最新配置快照；失败结构化 */
 export type AiSaveConfigResult = { ok: true; config: AiConfigSnapshot } | AiFailure
+
+/* ============================================================================
+ * 七、运行中模型查询（AI.QUERY_RUNNING_MODELS，1.5.7「查询当前运行的模型」）
+ * ========================================================================== */
+
+/**
+ * 查询来源：
+ * - `command`：模型配置了 `statusCommand`，本次在主进程执行该用户命令；
+ * - `builtin`：未配置命令，走内置查询（Ollama `GET /api/ps` / OpenAI 兼容 `GET /models`）。
+ */
+export type AiRunningModelsSource = 'command' | 'builtin'
+
+/** 查询结果中的单条模型（`detail` 为可选补充信息，如到期时间/来源） */
+export interface AiRunningModelEntry {
+    /** 模型名（Ollama 为 `models[].name`；OpenAI 兼容为 `data[].id`） */
+    name: string
+    /** 可选补充信息（到期时间、owned_by 等；仅展示，不参与逻辑） */
+    detail?: string
+}
+
+/**
+ * `AI.QUERY_RUNNING_MODELS` 请求载荷。
+ *
+ * `modelId` 缺省 = 配置中的 `defaultModelId`；显式指定不存在的模型 → 失败 `code=AI_MODEL_NOT_FOUND`。
+ */
+export interface AiQueryRunningModelsRequest {
+    /** 指定模型 id（缺省使用 defaultModelId） */
+    modelId?: string
+    /**
+     * 用户是否已在渲染层确认执行（缺省 false）。
+     *
+     * 仅当模型配置了 `statusCommand` 时主进程才要求该标记为 true（命令只允许
+     * 「用户每次显式确认」后执行）；内置查询不执行任何命令，不要求该标记。
+     */
+    confirmExecution?: boolean
+}
+
+/** `AI.QUERY_RUNNING_MODELS` 成功结构 */
+export interface AiQueryRunningModelsSuccess {
+    ok: true
+    /** 本次查询来源（用户命令 / 内置查询） */
+    source: AiRunningModelsSource
+    /** 执行的用户命令原文（仅 source=command 时返回；用于 UI 展示与审计） */
+    command?: string
+    /** 可读文本输出（命令 stdout+stderr 合并截断；内置查询为格式化列表；空结果为「未检测到运行中的模型」） */
+    output: string
+    /** 解析出的模型列表（可为空数组；命令来源无法可靠解析时缺省） */
+    models?: AiRunningModelEntry[]
+}
+
+/**
+ * `AI.QUERY_RUNNING_MODELS` 失败结构。
+ *
+ * 说明：配置级错误复用既有错误码（`AI_NOT_CONFIGURED` / `AI_MODEL_NOT_FOUND` / `AI_INVALID_PAYLOAD`）；
+ * 命令执行失败/超时/内置查询网络失败只给 `error` 可读原因（不新增错误码，避免契约膨胀）。
+ */
+export interface AiQueryRunningModelsFailure {
+    ok: false
+    /** 失败时若能确定查询来源则返回（配置级错误通常无来源） */
+    source?: AiRunningModelsSource
+    /** 已尝试执行的用户命令原文（source=command 时返回，便于用户核对） */
+    command?: string
+    /** 失败前的可读输出（命令 stderr / 内置查询响应为空串） */
+    output: string
+    /** 可读失败原因（已清洗，不含密钥/堆栈） */
+    error: string
+    /** 配置级错误码（复用既有 AI 错误口径） */
+    code?: AiErrorCode
+}
+
+/** `AI.QUERY_RUNNING_MODELS` 返回：成功 / 失败统一结构化（不向渲染层抛异常） */
+export type AiQueryRunningModelsResult = AiQueryRunningModelsSuccess | AiQueryRunningModelsFailure

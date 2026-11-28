@@ -532,7 +532,12 @@ const dialogRenderer = {
             'AI settings are unavailable in the current environment. Restart the app and try again.',
         testConnection: 'Test connection',
         testing: 'Testing…',
-        testSuccess: 'Connection succeeded: {detail}',
+        // 1.5.7 defect fix (user report: local Ollama reported "connected" while no model was running):
+        // small-print note on what "Test connection" actually checks — reachability + whether the model
+        // is installed/loaded; no inference is performed. The result text comes from the main process
+        // (distinguishing "model verified" from "service has no model-list endpoint, model not verified").
+        testHint:
+            'What the test checks: service reachability and whether the model is installed/loaded. No inference is performed; real usability is verified by sending a message.',
         testFailed: 'Connection failed: {error}',
         groupMcp: 'MCP server',
         mcpEnabled: 'Enable MCP server (read-only bridge)',
@@ -560,7 +565,38 @@ const dialogRenderer = {
         mcpToggleFailed: 'MCP server operation failed: {error}',
         mcpCopyFailed: 'Failed to copy the token. Select the token text and copy it manually.',
         mcpUnavailable:
-            'MCP server control is unavailable in the current environment. Restart the app and try again.'
+            'MCP server control is unavailable in the current environment. Restart the app and try again.',
+        // 1.5.7 new feature (user request): query currently running models + a user-configurable
+        // query command. A configured statusCommand runs first (always after an in-app confirmation);
+        // otherwise the built-in read-only query is used (Ollama /api/ps, OpenAI-compatible /v1/models).
+        queryRunningModels: 'Query running models',
+        queryRunning: 'Querying…',
+        queryHint:
+            'How the query runs depends on the model setting: a configured status query command is executed (you are asked to confirm every time); otherwise the built-in query is used (Ollama /api/ps, OpenAI-compatible /v1/models).',
+        queryDisabledHint: 'Enable the AI assistant to query running models.',
+        queryConfirmTitle: 'Run status query',
+        queryConfirmCommandLabel: 'The following command will run:',
+        queryConfirmBuiltinLabel: 'The built-in query will be used (no local command is run):',
+        queryConfirmBuiltinDetail:
+            'Ollama uses GET /api/ps; OpenAI-compatible / LM Studio uses GET /models (which lists server-side available models).',
+        queryConfirmWarning:
+            'The command runs on this machine — only configure commands you trust.',
+        queryConfirmExecute: 'Run query',
+        querySourceCommand: 'User command',
+        querySourceBuiltin: 'Built-in query',
+        queryNoRunning: 'No running models detected',
+        queryFailed: 'Query failed: {error}',
+        queryCopyOutput: 'Copy output',
+        queryCopied: 'Copied',
+        queryCopyFailed: 'Copy failed. Select the text and copy it manually.',
+        formStatusCommand: 'Status query command (optional)',
+        formStatusCommandHint:
+            'Optional: a command that lists models running on this machine, e.g. Ollama "ollama ps" or LM Studio "lms ps". Leave empty to use the built-in query: Ollama /api/ps, OpenAI-compatible /v1/models. You are asked to confirm before each run.',
+        formStatusCommandPlaceholderOllama: 'e.g. ollama ps',
+        formStatusCommandPlaceholderLmStudio: 'e.g. lms ps',
+        formStatusCommandPlaceholderRemote:
+            'Optional custom command; leave empty to use the built-in /v1/models query',
+        formStatusCommandTooLong: 'The query command cannot exceed {max} characters'
     },
     themeSetting: {
         title: 'Theme settings',

@@ -10,10 +10,17 @@
  * 4. 密钥：已配置掩码 + 清除按钮 → `modelApiKey.clearApiKey` 载荷；保存后不回显明文；
  * 5. 表单校验：名称 / 模型名必填，远程需 baseUrl 与首次添加需密钥（不发起保存）；
  * 6. 测试连接：`AI.CHAT` 以 `{ messages: [], modelId }` 调用，成功/失败结果内联展示；
+ *    **1.5.7 缺陷修复**：成功文案直接采用主进程文本（「服务可达 + 模型可用」或
+ *    「服务未提供模型列表接口、未校验模型」），面板不再本地二次拼装；「测试连接」
+ *    小字说明（测什么、不做推理）在有模型时渲染、空态不渲染；
  * 7. 启用开关 / 存储形态提示 / 隐私提示；保存失败与结构非法降级；
  * 8. MCP：状态展示（运行中/已停止 + 端口/URL/token + 7 个只读工具 + 安全说明）、
  *    启停（携带端口配置）、固定端口应用与校验、复制令牌、重置令牌（regenerateToken）；
- * 9. 受限 ipcRenderer 不可用时的整页降级。
+ * 9. 受限 ipcRenderer 不可用时的整页降级；
+ * 10. **1.5.7 新功能：查询当前运行的模型 + 用户可配置查询命令**——表单命令输入/保存透传
+ *    （编辑清空即删除）、查询按钮 → 确认对话框（命令原文/内置查询说明 + 风险提示）→
+ *    `AI.QUERY_RUNNING_MODELS`（`confirmExecution: true`）→ 来源/输出/模型列表渲染、
+ *    取消不调用、失败可读原因、并发防重、AI 未启用禁用并提示、结构非法通用失败。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
@@ -85,6 +92,7 @@ interface StubOverrides {
     getConfig?: () => unknown
     saveConfig?: (payload: AiSaveConfigRequest, next: AiConfigSnapshot) => unknown
     chat?: (payload: unknown) => unknown
+    queryRunningModels?: (payload: unknown) => unknown
     getMcpStatus?: () => unknown
     setMcpEnabled?: (payload: unknown) => unknown
 }
@@ -200,7 +208,23 @@ beforeEach(() => {
         if (channel === IPC.AI.CHAT) {
             return overrides.chat
                 ? overrides.chat(payload)
-                : { ok: true, content: '连接成功（模型：qwen2.5）', model: 'qwen2.5' }
+                : {
+                      ok: true,
+                      content:
+                          '连接成功：服务可达，模型「qwen2.5」可用（12ms）—— 实际推理可用性请在 AI 面板发送消息验证',
+                      model: 'qwen2.5'
+                  }
+        }
+        // 1.5.7 新功能：查询运行中模型（默认返回内置查询空结果，用例可按需覆盖）
+        if (channel === IPC.AI.QUERY_RUNNING_MODELS) {
+            return overrides.queryRunningModels
+                ? overrides.queryRunningModels(payload)
+                : {
+                      ok: true,
+                      source: 'builtin',
+                      output: '未检测到运行中的模型',
+                      models: []
+                  }
         }
         if (channel === IPC.MCP.GET_STATUS) {
             return overrides.getMcpStatus ? overrides.getMcpStatus() : mcpState
@@ -268,6 +292,32 @@ describe('AiAssistantPanel：模型列表与空态', () => {
         expect((wrapper.find('#ai-assistant-enabled').element as HTMLInputElement).checked).toBe(
             false
         )
+    })
+
+    it('「测试连接」说明提示：有模型时展示测试范围（连通性 + 模型是否已安装/加载，不做推理）', async () => {
+        aiStore = new FakeAiConfigStore(
+            snapshot({
+                models: [model({ id: 'model-local' })],
+                defaultModelId: 'model-local'
+            })
+        )
+        const wrapper = mountPanel()
+        await flushPromises()
+
+        const hint = wrapper.find('[data-testid="ai-test-hint"]')
+        expect(hint.exists()).toBe(true)
+        // 1.5.7 缺陷修复：文案必须讲清「测的是什么」（中文词典值逐字断言）
+        expect(hint.text()).toBe(t('dialogRenderer.aiAssistant.testHint'))
+        expect(hint.text()).toContain('服务连通性')
+        expect(hint.text()).toContain('不会进行推理')
+    })
+
+    it('空态（无模型）不展示「测试连接」说明提示', async () => {
+        const wrapper = mountPanel()
+        await flushPromises()
+
+        expect(wrapper.find('[data-testid="ai-models-empty"]').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="ai-test-hint"]').exists()).toBe(false)
     })
 
     it('列表渲染名称/类型/模型名/默认标记/远程密钥已配置标记', async () => {
@@ -536,7 +586,7 @@ describe('AiAssistantPanel：密钥掩码 / 清除 / 启用开关 / 测试连接
         )
     })
 
-    it('测试连接成功：AI.CHAT 以空 messages + modelId 调用，行内展示成功结果', async () => {
+    it('测试连接成功：AI.CHAT 以空 messages + modelId 调用，行内原样展示主进程返回文案', async () => {
         aiStore = new FakeAiConfigStore(
             snapshot({
                 models: [model({ id: 'model-local', model: 'qwen2.5' })],
@@ -552,9 +602,35 @@ describe('AiAssistantPanel：密钥掩码 / 清除 / 启用开关 / 测试连接
         expect(callsOf(IPC.AI.CHAT)).toEqual([
             [IPC.AI.CHAT, { messages: [], modelId: 'model-local' }]
         ])
-        expect(wrapper.find('[data-testid="ai-test-result"]').text()).toContain(
-            t('dialogRenderer.aiAssistant.testSuccess', { detail: '连接成功（模型：qwen2.5）' })
+        // 1.5.7 缺陷修复：主进程文案已含「服务可达 + 模型可用 + 需发消息验证推理」，
+        // 面板不得再做本地拼装（避免出现「连接成功：连接成功…」）。
+        expect(wrapper.find('[data-testid="ai-test-result"]').text()).toBe(
+            '连接成功：服务可达，模型「qwen2.5」可用（12ms）—— 实际推理可用性请在 AI 面板发送消息验证'
         )
+    })
+
+    it('测试连接成功（服务未提供模型列表接口）：原样展示「未校验模型」说明', async () => {
+        aiStore = new FakeAiConfigStore(
+            snapshot({
+                models: [model({ id: 'model-local', model: 'qwen2.5' })],
+                defaultModelId: 'model-local'
+            })
+        )
+        overrides.chat = () => ({
+            ok: true,
+            content:
+                '连接成功：服务可达（该服务未提供模型列表接口，未校验模型「qwen2.5」，耗时 8ms）—— 实际推理可用性请在 AI 面板发送消息验证',
+            model: 'qwen2.5'
+        })
+        const wrapper = mountPanel()
+        await flushPromises()
+
+        await wrapper.find('.ai-test-model-btn').trigger('click')
+        await flushPromises()
+
+        const result = wrapper.find('[data-testid="ai-test-result"]')
+        expect(result.text()).toContain('服务未提供模型列表接口')
+        expect(result.text()).toContain('未校验模型「qwen2.5」')
     })
 
     it('测试连接失败：行内展示结构化失败原因', async () => {
@@ -833,5 +909,300 @@ describe('AiAssistantPanel：环境降级', () => {
         expect((wrapper.find('#mcp-server-enabled').element as HTMLInputElement).disabled).toBe(
             true
         )
+    })
+})
+
+/* ==================== 1.5.7 新功能：查询运行中模型 ==================== */
+
+/** 构造「已启用 + 指定模型列表」快照（首个为默认模型） */
+function enabledSnapshot(
+    models: AiModelConfig[],
+    defaultModelId?: string | null
+): AiConfigSnapshot {
+    return snapshot({
+        enabled: true,
+        models,
+        defaultModelId: defaultModelId !== undefined ? defaultModelId : (models[0]?.id ?? null)
+    })
+}
+
+/** 打开第 index 个模型的查询确认框 */
+async function openQueryConfirm(wrapper: VueWrapper, index = 0): Promise<void> {
+    await wrapper.findAll('[data-testid="ai-query-running-models"]')[index].trigger('click')
+    await flushPromises()
+}
+
+/** 点击确认框中的「执行查询」 */
+async function confirmQuery(wrapper: VueWrapper): Promise<void> {
+    await wrapper.find('[data-testid="ai-query-confirm-execute"]').trigger('click')
+    await flushPromises()
+}
+
+describe('AiAssistantPanel：查询运行中模型（1.5.7 新功能）', () => {
+    it('每个模型行都有查询按钮；AI 未启用时禁用并提示启用原因', async () => {
+        aiStore = new FakeAiConfigStore(
+            snapshot({
+                enabled: false,
+                models: [model({ id: 'm1' }), model({ id: 'm2' })],
+                defaultModelId: 'm1'
+            })
+        )
+        const wrapper = mountPanel()
+        await flushPromises()
+
+        const buttons = wrapper.findAll('[data-testid="ai-query-running-models"]')
+        expect(buttons).toHaveLength(2)
+        for (const button of buttons) {
+            expect((button.element as HTMLButtonElement).disabled).toBe(true)
+        }
+        expect(wrapper.find('[data-testid="ai-query-hint"]').text()).toBe(
+            t('dialogRenderer.aiAssistant.queryDisabledHint')
+        )
+    })
+
+    it('AI 已启用时按钮可用，展示查询方式说明', async () => {
+        aiStore = new FakeAiConfigStore(
+            enabledSnapshot([model({ id: 'm1', statusCommand: 'ollama ps' })])
+        )
+        const wrapper = mountPanel()
+        await flushPromises()
+
+        const button = wrapper.find('[data-testid="ai-query-running-models"]')
+        expect((button.element as HTMLButtonElement).disabled).toBe(false)
+        expect(wrapper.find('[data-testid="ai-query-hint"]').text()).toBe(
+            t('dialogRenderer.aiAssistant.queryHint')
+        )
+    })
+
+    it('未配置命令：确认框展示内置查询说明 + 风险提示；确认后调用 IPC 并渲染来源/结果', async () => {
+        aiStore = new FakeAiConfigStore(enabledSnapshot([model({ id: 'm1' })]))
+        const wrapper = mountPanel()
+        await flushPromises()
+        await openQueryConfirm(wrapper)
+
+        const confirmBox = wrapper.find('[data-testid="ai-query-confirm"]')
+        expect(confirmBox.exists()).toBe(true)
+        expect(confirmBox.text()).toContain(
+            t('dialogRenderer.aiAssistant.queryConfirmBuiltinLabel')
+        )
+        expect(confirmBox.text()).toContain(
+            t('dialogRenderer.aiAssistant.queryConfirmBuiltinDetail')
+        )
+        expect(wrapper.find('[data-testid="ai-query-confirm-warning"]').text()).toBe(
+            t('dialogRenderer.aiAssistant.queryConfirmWarning')
+        )
+        expect(callsOf(IPC.AI.QUERY_RUNNING_MODELS)).toHaveLength(0)
+
+        await confirmQuery(wrapper)
+
+        expect(callsOf(IPC.AI.QUERY_RUNNING_MODELS)).toEqual([
+            [IPC.AI.QUERY_RUNNING_MODELS, { modelId: 'm1', confirmExecution: true }]
+        ])
+        expect(wrapper.find('[data-testid="ai-query-confirm"]').exists()).toBe(false)
+        expect(wrapper.find('[data-testid="ai-running-models-result"]').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="ai-running-models-source"]').text()).toBe(
+            t('dialogRenderer.aiAssistant.querySourceBuiltin')
+        )
+        expect(wrapper.find('[data-testid="ai-running-models-output"]').text()).toBe(
+            t('dialogRenderer.aiAssistant.queryNoRunning')
+        )
+    })
+
+    it('配置命令：确认框展示命令原文；确认后渲染 source=command / 命令 / 输出 / 模型 chips', async () => {
+        overrides.queryRunningModels = () => ({
+            ok: true,
+            source: 'command',
+            command: 'ollama ps',
+            output: 'NAME  ID\nqwen2.5:latest  abc',
+            models: [{ name: 'qwen2.5:latest', detail: '到期：2026-11-28' }]
+        })
+        aiStore = new FakeAiConfigStore(
+            enabledSnapshot([model({ id: 'm1', statusCommand: 'ollama ps' })])
+        )
+        const wrapper = mountPanel()
+        await flushPromises()
+        await openQueryConfirm(wrapper)
+
+        expect(wrapper.find('[data-testid="ai-query-confirm-command"]').text()).toBe('ollama ps')
+        expect(wrapper.find('[data-testid="ai-query-confirm"]').text()).toContain(
+            t('dialogRenderer.aiAssistant.queryConfirmWarning')
+        )
+
+        await confirmQuery(wrapper)
+
+        expect(wrapper.find('[data-testid="ai-running-models-source"]').text()).toBe(
+            t('dialogRenderer.aiAssistant.querySourceCommand')
+        )
+        expect(wrapper.find('[data-testid="ai-running-models-command"]').text()).toBe('ollama ps')
+        expect(wrapper.find('[data-testid="ai-running-models-output"]').text()).toContain(
+            'qwen2.5:latest'
+        )
+        const chips = wrapper.findAll('[data-testid="ai-running-models-chip"]')
+        expect(chips).toHaveLength(1)
+        expect(chips[0].text()).toContain('qwen2.5:latest')
+        expect(chips[0].text()).toContain('到期：2026-11-28')
+    })
+
+    it('取消确认：关闭对话框且不发起 IPC 调用', async () => {
+        aiStore = new FakeAiConfigStore(enabledSnapshot([model({ id: 'm1' })]))
+        const wrapper = mountPanel()
+        await flushPromises()
+        await openQueryConfirm(wrapper)
+
+        await wrapper.find('[data-testid="ai-query-confirm-cancel"]').trigger('click')
+        await flushPromises()
+
+        expect(wrapper.find('[data-testid="ai-query-confirm"]').exists()).toBe(false)
+        expect(callsOf(IPC.AI.QUERY_RUNNING_MODELS)).toHaveLength(0)
+        expect(wrapper.find('[data-testid="ai-running-models-result"]').exists()).toBe(false)
+    })
+
+    it('查询失败：结果区展示 queryFailed 前缀 + 可读原因', async () => {
+        overrides.queryRunningModels = () => ({
+            ok: false,
+            source: 'command',
+            command: 'ollama ps',
+            output: 'boom',
+            error: '命令执行失败（退出码 2）'
+        })
+        aiStore = new FakeAiConfigStore(
+            enabledSnapshot([model({ id: 'm1', statusCommand: 'ollama ps' })])
+        )
+        const wrapper = mountPanel()
+        await flushPromises()
+        await openQueryConfirm(wrapper)
+        await confirmQuery(wrapper)
+
+        expect(wrapper.find('[data-testid="ai-running-models-error"]').text()).toBe(
+            t('dialogRenderer.aiAssistant.queryFailed', { error: '命令执行失败（退出码 2）' })
+        )
+    })
+
+    it('并发防重：查询进行中按钮显示查询中且禁用，重复点击不重复调用', async () => {
+        let resolveQuery: (value: unknown) => void = () => {}
+        overrides.queryRunningModels = () =>
+            new Promise((resolve) => {
+                resolveQuery = resolve
+            })
+        aiStore = new FakeAiConfigStore(enabledSnapshot([model({ id: 'm1' })]))
+        const wrapper = mountPanel()
+        await flushPromises()
+        await openQueryConfirm(wrapper)
+        await wrapper.find('[data-testid="ai-query-confirm-execute"]').trigger('click')
+        await flushPromises()
+
+        expect(callsOf(IPC.AI.QUERY_RUNNING_MODELS)).toHaveLength(1)
+        const button = wrapper.find('[data-testid="ai-query-running-models"]')
+        expect(button.text()).toBe(t('dialogRenderer.aiAssistant.queryRunning'))
+        expect((button.element as HTMLButtonElement).disabled).toBe(true)
+        // 进行中再次点击按钮不会打开确认框/重复调用
+        await button.trigger('click')
+        await flushPromises()
+        expect(wrapper.find('[data-testid="ai-query-confirm"]').exists()).toBe(false)
+        expect(callsOf(IPC.AI.QUERY_RUNNING_MODELS)).toHaveLength(1)
+
+        resolveQuery({ ok: true, source: 'builtin', output: '完成', models: [] })
+        await flushPromises()
+        expect(wrapper.find('[data-testid="ai-running-models-result"]').exists()).toBe(true)
+        expect(
+            (wrapper.find('[data-testid="ai-query-running-models"]').element as HTMLButtonElement)
+                .disabled
+        ).toBe(false)
+    })
+
+    it('主进程返回结构非法：结果区展示通用失败原因（不渲染脏数据）', async () => {
+        overrides.queryRunningModels = () => ({ ok: true })
+        aiStore = new FakeAiConfigStore(enabledSnapshot([model({ id: 'm1' })]))
+        const wrapper = mountPanel()
+        await flushPromises()
+        await openQueryConfirm(wrapper)
+        await confirmQuery(wrapper)
+
+        expect(wrapper.find('[data-testid="ai-running-models-error"]').text()).toBe(
+            t('dialogRenderer.aiAssistant.queryFailed', { error: t('common.unknown') })
+        )
+    })
+
+    it('复制输出：写入系统剪贴板并显示「已复制」', async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined)
+        Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText },
+            configurable: true
+        })
+        overrides.queryRunningModels = () => ({
+            ok: true,
+            source: 'command',
+            command: 'ollama ps',
+            output: 'NAME  ID\nqwen2.5:latest',
+            models: []
+        })
+        aiStore = new FakeAiConfigStore(
+            enabledSnapshot([model({ id: 'm1', statusCommand: 'ollama ps' })])
+        )
+        const wrapper = mountPanel()
+        await flushPromises()
+        await openQueryConfirm(wrapper)
+        await confirmQuery(wrapper)
+
+        await wrapper.find('[data-testid="ai-running-models-copy"]').trigger('click')
+        await flushPromises()
+
+        expect(writeText).toHaveBeenCalledWith('NAME  ID\nqwen2.5:latest')
+        expect(wrapper.find('[data-testid="ai-running-models-copy"]').text()).toBe(
+            t('dialogRenderer.aiAssistant.queryCopied')
+        )
+    })
+})
+
+describe('AiAssistantPanel：运行状态查询命令表单（1.5.7 新功能）', () => {
+    it('添加模型时提交 statusCommand（trim 后随 models 保存）', async () => {
+        const wrapper = mountPanel()
+        await flushPromises()
+        await openAddForm(wrapper)
+
+        await wrapper.find('#ai-model-form-name').setValue('本地 Qwen')
+        await wrapper.find('#ai-model-form-model').setValue('qwen2.5')
+        await wrapper.find('#ai-model-form-status-command').setValue('  ollama ps  ')
+        await wrapper.find('[data-testid="ai-model-form"]').trigger('submit')
+        await flushPromises()
+
+        const models = lastSavePayload().models ?? []
+        expect(models[models.length - 1].statusCommand).toBe('ollama ps')
+    })
+
+    it('编辑模型时回显命令；清空后保存载荷不再包含该字段（删除旧配置）', async () => {
+        aiStore = new FakeAiConfigStore(
+            snapshot({
+                enabled: true,
+                models: [model({ id: 'm1', statusCommand: 'ollama ps' })],
+                defaultModelId: 'm1'
+            })
+        )
+        const wrapper = mountPanel()
+        await flushPromises()
+        await openEditForm(wrapper)
+
+        const input = wrapper.find('#ai-model-form-status-command')
+        expect((input.element as HTMLInputElement).value).toBe('ollama ps')
+        await input.setValue('')
+        await wrapper.find('[data-testid="ai-model-form"]').trigger('submit')
+        await flushPromises()
+
+        expect(lastSavePayload().models?.[0]).not.toHaveProperty('statusCommand')
+    })
+
+    it('命令超过长度上限：表单校验拒绝保存并提示', async () => {
+        const wrapper = mountPanel()
+        await flushPromises()
+        await openAddForm(wrapper)
+
+        await wrapper.find('#ai-model-form-name').setValue('本地 Qwen')
+        await wrapper.find('#ai-model-form-model').setValue('qwen2.5')
+        await wrapper.find('#ai-model-form-status-command').setValue('x'.repeat(501))
+        await wrapper.find('[data-testid="ai-model-form"]').trigger('submit')
+        await flushPromises()
+
+        expect(wrapper.find('[data-testid="ai-form-error"]').text()).toContain('500')
+        expect(callsOf(IPC.AI.SAVE_CONFIG)).toHaveLength(0)
     })
 })

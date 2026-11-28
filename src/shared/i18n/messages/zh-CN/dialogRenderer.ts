@@ -509,7 +509,11 @@ const dialogRenderer = {
         unavailable: '当前环境不支持 AI 配置，请重启应用后重试。',
         testConnection: '测试连接',
         testing: '测试中…',
-        testSuccess: '连接成功：{detail}',
+        // 1.5.7 缺陷修复（用户反馈「本地 Ollama 模型未启动却提示连接成功」）：
+        // 小字说明「测试连接」到底测什么——只测服务连通性 + 模型是否已安装/加载，不做推理；
+        // 结果文案由主进程返回（区分「模型已校验」与「服务未提供模型列表接口、未校验模型」）。
+        testHint:
+            '测试内容：服务连通性 + 模型是否已安装/加载；不会进行推理，实际可用性由发送消息验证',
         testFailed: '连接失败：{error}',
         groupMcp: 'MCP 服务',
         mcpEnabled: '启用 MCP 服务（只读桥）',
@@ -535,7 +539,36 @@ const dialogRenderer = {
             '重启应用后需在本页重新启用（会生成新令牌），请同步更新外部 Agent 的 MCP 配置。',
         mcpToggleFailed: 'MCP 服务操作失败：{error}',
         mcpCopyFailed: '复制令牌失败，请手动选择令牌文本后复制。',
-        mcpUnavailable: '当前环境不支持 MCP 服务控制，请重启应用后重试。'
+        mcpUnavailable: '当前环境不支持 MCP 服务控制，请重启应用后重试。',
+        // 1.5.7 新功能（用户需求）：查询当前运行的模型 + 用户可配置查询命令。
+        // 命令来源：模型配置了 statusCommand 时执行用户命令（每次执行前必须二次确认），
+        // 未配置时走内置只读查询（Ollama /api/ps、OpenAI 兼容 /v1/models）。
+        queryRunningModels: '查询运行中模型',
+        queryRunning: '查询中…',
+        queryHint:
+            '查询方式由模型配置决定：配置了「运行状态查询命令」时执行该命令（每次执行前会要求确认），未配置时使用内置查询（Ollama /api/ps、OpenAI 兼容 /v1/models）。',
+        queryDisabledHint: '启用 AI 助手后可查询运行中的模型。',
+        queryConfirmTitle: '执行运行状态查询',
+        queryConfirmCommandLabel: '将执行以下命令：',
+        queryConfirmBuiltinLabel: '将使用内置查询（不执行本机命令）：',
+        queryConfirmBuiltinDetail:
+            'Ollama 使用 GET /api/ps；OpenAI 兼容 / LM Studio 使用 GET /models（语义为服务端可用模型）。',
+        queryConfirmWarning: '命令将在本机执行，请只配置可信命令。',
+        queryConfirmExecute: '执行查询',
+        querySourceCommand: '用户命令',
+        querySourceBuiltin: '内置查询',
+        queryNoRunning: '未检测到运行中的模型',
+        queryFailed: '查询失败：{error}',
+        queryCopyOutput: '复制输出',
+        queryCopied: '已复制',
+        queryCopyFailed: '复制失败，请手动选择文本后复制。',
+        formStatusCommand: '运行状态查询命令（可选）',
+        formStatusCommandHint:
+            '可选：查询本机运行中模型的命令，如 Ollama「ollama ps」、LM Studio「lms ps」。留空则使用内置查询：Ollama /api/ps、OpenAI 兼容 /v1/models；命令在每次查询前都会要求确认。',
+        formStatusCommandPlaceholderOllama: '例如 ollama ps',
+        formStatusCommandPlaceholderLmStudio: '例如 lms ps',
+        formStatusCommandPlaceholderRemote: '可选：自定义命令；留空使用内置 /v1/models 查询',
+        formStatusCommandTooLong: '查询命令不能超过 {max} 个字符'
     },
     themeSetting: {
         title: '主题设置',

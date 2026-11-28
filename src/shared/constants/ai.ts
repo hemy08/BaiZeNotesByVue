@@ -162,6 +162,25 @@ export const AI_DIFF_COMPUTE_MAX_LINES = 4_000
 export const AI_DRAFT_PATH_MAX_CHARS = 512
 
 /* ============================================================================
+ * 二点五、运行中模型查询（1.5.7「查询当前运行的模型」）
+ * ========================================================================== */
+
+/** 单模型「运行状态查询命令」长度上限（字符数；命令由用户显式配置，越短越可控） */
+export const AI_STATUS_COMMAND_MAX_CHARS = 500
+
+/** 运行状态查询命令执行超时（毫秒；与连接测试同档，避免设置页长时间等待） */
+export const AI_STATUS_COMMAND_TIMEOUT_MS = 15_000
+
+/** 运行状态查询命令 stdout+stderr 缓冲上限（字节；超出由 child_process 截断并报错） */
+export const AI_STATUS_COMMAND_MAX_BUFFER_BYTES = 1024 * 1024
+
+/** 运行状态查询返回渲染层的输出文本上限（字符数；stdout+stderr 合并后截断） */
+export const AI_STATUS_COMMAND_OUTPUT_MAX_CHARS = 64 * 1024
+
+/** 内置查询的空结果输出（主进程统一文案，渲染层直接展示；避免 UI 误报「有模型」） */
+export const AI_RUNNING_MODELS_EMPTY_OUTPUT = '未检测到运行中的模型'
+
+/* ============================================================================
  * 三、类型守卫/归一化（shared 纯函数：主进程校验与渲染层展示共用）
  * ========================================================================== */
 
@@ -191,6 +210,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * 归一化「运行状态查询命令」（读取历史配置/保存时共用）：
+ * - 非字符串 / 空白 → 空串（视为未配置，走内置查询）；
+ * - 控制字符（含换行/Tab）统一替换为空格并折叠空白——历史文件可能被手工编辑，
+ *   归一化阶段就消除多行命令，避免把带换行的命令交给 shell；
+ * - 截断到 {@link AI_STATUS_COMMAND_MAX_CHARS}（保存链路由 validation 严格拒绝超长）。
+ */
+function normalizeStatusCommand(value: unknown): string {
+    if (typeof value !== 'string') {
+        return ''
+    }
+    let cleaned = ''
+    for (let index = 0; index < value.length; index += 1) {
+        const code = value.charCodeAt(index)
+        cleaned += code <= 0x1f || code === 0x7f ? ' ' : value[index]
+    }
+    return cleaned.replace(/\s+/g, ' ').trim().slice(0, AI_STATUS_COMMAND_MAX_CHARS)
+}
+
+/**
  * 归一化单个模型配置（未知/非法字段回落；结构不可用时返回 null，由调用方丢弃该条）。
  *
  * 说明：本函数只做「结构 + 枚举 + 长度」归一化，**不校验 baseUrl 协议**（协议/凭据等
@@ -210,13 +248,15 @@ export function normalizeAiModelConfig(input: unknown): AiModelConfig | null {
     const modelRaw = typeof input.model === 'string' ? input.model.trim() : ''
     const nameRaw = typeof input.name === 'string' ? input.name.trim() : ''
     const name = (nameRaw.length > 0 ? nameRaw : modelRaw).slice(0, AI_MODEL_NAME_MAX_CHARS)
+    const statusCommand = normalizeStatusCommand(input.statusCommand)
     return {
         id,
         name,
         provider,
         localProvider,
         baseUrl: typeof input.baseUrl === 'string' ? input.baseUrl.trim() : '',
-        model: modelRaw.slice(0, AI_MODEL_MAX_CHARS)
+        model: modelRaw.slice(0, AI_MODEL_MAX_CHARS),
+        ...(statusCommand.length > 0 ? { statusCommand } : {})
     }
 }
 

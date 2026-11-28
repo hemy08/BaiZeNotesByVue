@@ -24,7 +24,10 @@
  * ## 健壮性（CFG-08 口径）
  * - 文件缺失：返回默认值（不创建文件）；
  * - JSON 损坏/结构非法：改名备份 `ai-config.json.corrupt-<ts>` 后按默认值重建（不阻断启动）；
- * - 写入：`mkdir -p` + 临时文件 + `rename` 原子替换；POSIX 平台收紧为 0o600（失败安全降级）。
+ * - 写入：`mkdir -p` + 临时文件 + `rename` 原子替换；POSIX 平台收紧为 0o600（失败安全降级）；
+ * - 模型字段兼容：`statusCommand`（1.5.7 运行状态查询命令）等可选字段由共享归一化
+ *   `normalizeAiModelConfig` 处理——旧配置无该字段时保持 undefined（走内置查询），
+ *   保存时按传入值写入（空串归一化为 undefined，不落空字段）。
  *
  * ## 可测试性
  * 本模块通过 `createAiConfigStore({ filePath, safeStorage, now })` 工厂创建实例，

@@ -72,6 +72,7 @@ describe('IPC 通道命名规范', () => {
         // 1.5.2 E3：新增 `ocr` 域（图片 OCR 两个 invoke 通道），白名单 17 → 18；
         // 1.5.7 L2：新增 `mcp` 域（MCP 只读桥两个 invoke 通道），白名单 18 → 19；
         // 1.5.7 L3：新增 `ai` 域（AI Provider 5 个 invoke 通道），白名单 19 → 20；
+        // 1.5.7 新功能：`ai` 域新增 QUERY_RUNNING_MODELS（6 个 invoke 通道，域数量不变）；
         // 1.5.7 迁移批次：新增 `llm-wiki` 域（状态检测/扫描/迁移/回滚 4 个 invoke 通道），白名单 20 → 21；
         // 用断言锁定口径，避免后续增删 domain 时再次出现注释与实现脱节。
         expect(DOMAINS.size).toBe(21)

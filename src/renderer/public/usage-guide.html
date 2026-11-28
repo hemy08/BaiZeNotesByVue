@@ -3902,6 +3902,42 @@ aliases:
                         <strong>入口</strong>：<strong>菜单 → 设置 → AI 助手</strong
                         >（独立对话框；模型管理与 MCP 服务配置都在这里）。
                     </li>
+                </ul>
+                <p><strong>测试连接</strong>（每个模型行）：</p>
+                <ul>
+                    <li>
+                        测试内容 =
+                        <strong>服务连通性 + 模型是否已安装/已加载</strong
+                        >，<strong>不会进行推理</strong>；实际可用性请在 AI 面板发送消息验证。
+                    </li>
+                    <li>
+                        本地服务可达但没有任何模型时会明确提示（Ollama：请先
+                        <code>ollama pull</code>；LM
+                        Studio：请先在服务中加载模型），不再出现「连接成功」误报。
+                    </li>
+                    <li>
+                        服务不提供模型列表接口（404/405）时会标注「未校验模型」，仅代表服务可达。
+                    </li>
+                </ul>
+                <p><strong>查询运行中模型</strong>（每个模型行「查询运行中模型」）：</p>
+                <ul>
+                    <li>
+                        <strong>自定义查询命令</strong
+                        >（可选）：编辑模型时填写你本机的查询命令，例如 Ollama
+                        <code>ollama ps</code>、LM Studio <code>lms ps</code>（单行、≤500
+                        字符、仅保存后生效）。
+                    </li>
+                    <li>
+                        点击「查询运行中模型」→
+                        <strong>二次确认</strong>（显示将执行的命令与风险提示）→
+                        执行并内联展示结果（来源、输出、模型列表、可复制）；未配置命令时使用内置查询：Ollama
+                        <code>GET /api/ps</code>（运行中模型）、OpenAI 兼容服务
+                        <code>GET /models</code>（服务端可用/已加载模型）。
+                    </li>
+                    <li>
+                        安全提示：命令在本机执行，权限等同当前用户，请只配置可信命令；执行有 15
+                        秒超时与输出截断保护。
+                    </li>
                     <li>
                         <strong>多模型</strong
                         >：可添加多个模型并随时切换（模型列表支持添加/编辑/删除/设为默认；每个模型可单独「测试连接」；AI

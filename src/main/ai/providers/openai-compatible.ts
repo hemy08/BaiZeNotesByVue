@@ -5,7 +5,10 @@
  *   `Authorization: Bearer <apiKey>`（无密钥的本地 LM Studio 不发送该头）；
  *   响应 `{ choices: [{ message: { content } }] }`（兼容部分服务的 `choices[0].text`）；
  * - 连接测试：`GET {baseUrl}/models`（校验基址可达 + 模型存在于列表）；
- *   部分自建服务不实现 /models（404/405）时按「可达」通过，避免误报；
+ *   部分自建服务不实现 /models（404/405）时按「可达」通过并标记 `modelChecked: false`，
+ *   避免误报（结果文案会明确「未校验模型」）；
+ *   **1.5.7 缺陷修复**：`/models` 返回 200 但模型列表为空（服务可达但未加载任何模型）时
+ *   返回 AI_MODEL_NOT_FOUND，不再误报连接成功；
  * - 默认基址：LM Studio `http://127.0.0.1:1234/v1`；远程 BYOK 由用户填写（建议 https）；
  * - 安全：`redirect: 'error'` 禁止跟随重定向（防 Bearer 头被转发到第三方）；
  *   错误消息只含服务名 + 状态码，不含密钥/URL 查询串。
@@ -183,9 +186,14 @@ export function createOpenAiCompatibleProvider(
                         redirect: 'error'
                     })
             )
-            // 部分自建 OpenAI 兼容服务不实现 /models：按「可达」通过，交给真实对话验证
+            // 部分自建 OpenAI 兼容服务不实现 /models：按「可达」通过，交给真实对话验证；
+            // 但必须标记 modelChecked=false，让 IPC 层文案明确「只验证了服务可达、未校验模型」。
             if (response.status === 404 || response.status === 405) {
-                return { model: options.model, latencyMs: Date.now() - startedAt }
+                return {
+                    model: options.model,
+                    latencyMs: Date.now() - startedAt,
+                    modelChecked: false
+                }
             }
             if (!response.ok) {
                 const bodyText = await readAiResponseText(response).catch(() => '')
@@ -193,13 +201,25 @@ export function createOpenAiCompatibleProvider(
             }
             const payload = await readAiJsonBody(response)
             const ids = readModelIds(payload)
-            if (ids.length > 0 && !ids.includes(options.model)) {
+            // 1.5.7 缺陷修复：服务可达但未加载/下载任何模型（模型列表为空）时必须报错，
+            // 不能因为 HTTP 200 就返回「连接成功」（本地 LM Studio 未加载模型即属此场景）。
+            if (ids.length === 0) {
+                throw new AiProviderError(
+                    'AI_MODEL_NOT_FOUND',
+                    `${options.serviceName} 服务可达，但未加载任何模型：请先在本地服务中加载/下载模型（当前配置模型：${options.model}）`
+                )
+            }
+            if (!ids.includes(options.model)) {
                 throw new AiProviderError(
                     'AI_MODEL_NOT_FOUND',
                     `${options.serviceName} 未返回模型「${options.model}」：请检查模型名是否为服务端可用 id`
                 )
             }
-            return { model: options.model, latencyMs: Date.now() - startedAt }
+            return {
+                model: options.model,
+                latencyMs: Date.now() - startedAt,
+                modelChecked: true
+            }
         }
     }
 }

@@ -5,6 +5,8 @@
  *   响应 `{ message: { role, content }, model? }`（非流式；流式本期不做）；
  * - 连接测试：`GET {baseUrl}/api/tags` 列出本地已拉取模型，并校验配置的模型是否可用
  *   （缺失时返回 AI_MODEL_NOT_FOUND，提示先 `ollama pull <model>`）；
+ *   **1.5.7 缺陷修复**：模型列表为空（服务可达但未安装任何模型）同样返回
+ *   AI_MODEL_NOT_FOUND，不再把「HTTP 200 + 空列表」误报为连接成功；
  * - 默认基址 `http://127.0.0.1:11434`（shared/constants/ai.ts 单一真源），仅本地回环；
  * - 超时/取消/错误归一化全部复用 providers/types.ts 的守卫与映射。
  */
@@ -157,13 +159,25 @@ export function createOllamaProvider(options: OllamaProviderOptions): AiProvider
             }
             const body = await readAiJsonBody(response)
             const names = readOllamaModelNames(body)
-            if (names.length > 0 && !names.some((name) => modelMatches(options.model, name))) {
+            // 1.5.7 缺陷修复：Ollama 服务可达但未安装任何模型（/api/tags 返回空列表）时，
+            // 既不能证明配置模型可用、也无法拉取模型，必须报错而不是误报「连接成功」。
+            if (names.length === 0) {
+                throw new AiProviderError(
+                    'AI_MODEL_NOT_FOUND',
+                    `${SERVICE_NAME} 服务可达，但未安装任何模型：请先执行 ollama pull ${options.model}（当前配置模型：${options.model}）`
+                )
+            }
+            if (!names.some((name) => modelMatches(options.model, name))) {
                 throw new AiProviderError(
                     'AI_MODEL_NOT_FOUND',
                     `${SERVICE_NAME} 未找到模型「${options.model}」：请先执行 ollama pull ${options.model}`
                 )
             }
-            return { model: options.model, latencyMs: Date.now() - startedAt }
+            return {
+                model: options.model,
+                latencyMs: Date.now() - startedAt,
+                modelChecked: true
+            }
         }
     }
 }

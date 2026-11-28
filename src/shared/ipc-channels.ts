@@ -291,7 +291,7 @@ export const IPC = {
     } as const,
 
     // ============ 1.5.7 LLM Wiki L3：AI Provider（本地 + 远程 BYOK，domain=ai） ============
-    // 五通道全部为 invoke + 仅主窗口可信（withSenderCheck）。请求统一走主进程 fetch
+    // 六通道全部为 invoke + 仅主窗口可信（withSenderCheck）。请求统一走主进程 fetch
     // （渲染层不直连、不持有 API Key；兼容 CSP 与密钥安全），支持超时（默认 60s）/取消/
     // 错误归一化；API Key 经 safeStorage 加密后落独立文件 `config/ai-config.json`，
     // safeStorage 不可用时退化为仅会话内存（不落盘），禁止明文落盘。
@@ -299,12 +299,16 @@ export const IPC = {
     // - INGEST：扫描 raw/ → 生成 wiki/ 页面草案 + 行级 diff（**不写盘**）；
     // - APPLY_INGEST：用户在 diff 审批 UI 显式确认后写入 wiki/（raw/ 只读守卫 + Path Guard）；
     // - GET_CONFIG / SAVE_CONFIG：设置页 AI 分组的配置读取/保存（返回快照不含密钥明文）。
+    // - QUERY_RUNNING_MODELS（1.5.7 新功能）：查询当前运行的模型。模型配置了用户查询命令
+    //   （statusCommand）时由主进程执行该命令（每次执行前渲染层必须二次确认）；未配置时走
+    //   内置只读查询（Ollama /api/ps、OpenAI 兼容 /models），返回可读输出 + 模型列表。
     AI: {
         CHAT: 'baize:ai:chat',
         INGEST: 'baize:ai:ingest',
         APPLY_INGEST: 'baize:ai:apply-ingest',
         GET_CONFIG: 'baize:ai:get-config',
-        SAVE_CONFIG: 'baize:ai:save-config'
+        SAVE_CONFIG: 'baize:ai:save-config',
+        QUERY_RUNNING_MODELS: 'baize:ai:query-running-models'
     } as const,
 
     // ============ 1.5.7 LLM Wiki 迁移批次（传统工作区 → LLM Wiki，domain=llm-wiki） ============

@@ -3,9 +3,9 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（85 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（87 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（52 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（54 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
  *   白名单**完全相等**（28 个通道）。
@@ -44,6 +44,8 @@ import type {
     AiGetConfigResult,
     AiIngestRequest,
     AiIngestResult,
+    AiQueryRunningModelsRequest,
+    AiQueryRunningModelsResult,
     AiSaveConfigRequest,
     AiSaveConfigResult
 } from './ai'
@@ -813,21 +815,23 @@ export interface McpSetEnabledResult {
  * -------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------------
- * 1.5.7 LLM Wiki L3：AI Provider（本地 + 远程 BYOK）/ AI ingest / diff 审批
- * （AI.CHAT / AI.INGEST / AI.APPLY_INGEST / AI.GET_CONFIG / AI.SAVE_CONFIG，invoke）
+ * 1.5.7 LLM Wiki L3：AI Provider（本地 + 远程 BYOK）/ AI ingest / diff 审批 / 运行模型查询
+ * （AI.CHAT / AI.INGEST / AI.APPLY_INGEST / AI.GET_CONFIG / AI.SAVE_CONFIG /
+ *  AI.QUERY_RUNNING_MODELS，6 个 invoke）
  *
  * 通信链路（IPC-17 六步）：
- *   1. 常量：shared/ipc-channels.ts 的 IPC.AI.*（5 个 invoke 通道）；
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.AI.*（6 个 invoke 通道）；
  *   2. 契约：shared/types/ai.ts（请求/返回/错误码）+ 本文件 IpcRequests / IpcResponses 登记；
  *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
  *   4. 主进程：ipc/ai-ipc.ts（registry 编排 + withSenderCheck）→ main/ai/**：
  *      config-store（safeStorage 加密持久化 + 内存退化）/ providers（Ollama 原生
  *      /api/chat + OpenAI 兼容 /chat/completions）/ ingest（raw 扫描 + 提示词 + 行级 diff）/
- *      apply（Path Guard + raw 只读守卫 + 原子写）；
- *   5. 渲染层：设置页「AI 助手」分组（配置/密钥/测试连接）+ 命令面板「AI 编译」
+ *      apply（Path Guard + raw 只读守卫 + 原子写）/ running-models（1.5.7 查询运行中模型：
+ *      用户配置命令或内置 Ollama /api/ps、OpenAI 兼容 /models 只读查询）；
+ *   5. 渲染层：设置页「AI 助手」分组（配置/密钥/测试连接/查询运行中模型）+ 命令面板「AI 编译」
  *      + Markdown/llm-ingest-diff.vue（diff 审批 UI）；L5 AI 面板可复用 AI.CHAT；
- *   6. 测试：ai-provider / ai-config-store / ai-ingest / ai-ipc / diff UI / 设置页 AI 分组
- *      + 通道命名/契约/白名单/注册门禁。
+ *   6. 测试：ai-provider / ai-config-store / ai-ingest / ai-running-models / ai-ipc / diff UI /
+ *      设置页 AI 分组 + 通道命名/契约/白名单/注册门禁。
  *
  * 安全边界：
  * - 请求统一走主进程 fetch（渲染层不直连、不持有 API Key；兼容 CSP 与密钥安全）；
@@ -837,7 +841,11 @@ export interface McpSetEnabledResult {
  * - AI.INGEST 只读 `raw/`（工作区相对路径 + 扩展名白名单）且**不写盘**；
  * - AI.APPLY_INGEST 必须 `approved === true`，目标只允许 `wiki/` 下 `.md/.markdown`，
  *   经 Path Guard + `assertWorkspaceWritable`（llm-wiki 模式 raw/ 只读）复核后原子写；
- * - 所有失败返回结构化 `{ ok:false, code, message }`，不向渲染层抛异常/堆栈。
+ * - AI.QUERY_RUNNING_MODELS：只在模型**用户显式配置** `statusCommand` 时执行该命令，
+ *   且载荷必须带 `confirmExecution === true`（渲染层每次执行前弹确认框）；命令单行、
+ *   长度 ≤500、固定 15s 超时/1MB 缓冲，输出合并截断 64KB；未配置命令时只做内置只读查询；
+ *   命令/输出不写日志（仅记录模型 id、命令长度与结果摘要）；
+ * - 所有失败返回结构化结构，不向渲染层抛异常/堆栈。
  * -------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------------
@@ -1148,6 +1156,14 @@ export interface IpcRequests {
     [IPC.AI.GET_CONFIG]: []
     /** 保存 AI 配置（invoke；可选字段增量更新，密钥经 safeStorage 加密后落独立文件） */
     [IPC.AI.SAVE_CONFIG]: [payload: AiSaveConfigRequest]
+    /**
+     * 查询当前运行的模型（invoke；1.5.7 新功能）。
+     *
+     * 模型配置了用户查询命令（statusCommand）时由主进程执行该命令——载荷
+     * `confirmExecution` 必须为 true（渲染层每次执行前弹确认框）；未配置命令时走内置
+     * 只读查询（Ollama /api/ps、OpenAI 兼容 /models）。空结果 ok=true（不误报）。
+     */
+    [IPC.AI.QUERY_RUNNING_MODELS]: [payload: AiQueryRunningModelsRequest]
 
     // ============ 1.5.7 LLM Wiki 迁移批次（invoke；工作区根取主进程 appState.rootPath） ============
     /** 检测工作区是否已初始化 LLM Wiki（invoke；无参，只做 stat 不读内容） */
@@ -1239,7 +1255,7 @@ export interface IpcRequests {
 /* ============================================================================
  * 三、invoke 通道返回类型
  *
- * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（52 个）。
+ * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（54 个）。
  * send 通道无返回值，故不在此表。
  * ========================================================================== */
 export interface IpcResponses {
@@ -1305,6 +1321,8 @@ export interface IpcResponses {
     [IPC.AI.GET_CONFIG]: AiGetConfigResult
     /** 保存 AI 配置（invoke；成功返回最新快照，失败返回结构化 code） */
     [IPC.AI.SAVE_CONFIG]: AiSaveConfigResult
+    /** 查询当前运行的模型（invoke；成功返回来源/输出/模型列表，失败返回 error + 可选 code） */
+    [IPC.AI.QUERY_RUNNING_MODELS]: AiQueryRunningModelsResult
 
     // ============ 1.5.7 LLM Wiki 迁移批次（invoke） ============
     /** 检测工作区是否已初始化 LLM Wiki（invoke；安全失败/无工作区全部 false） */

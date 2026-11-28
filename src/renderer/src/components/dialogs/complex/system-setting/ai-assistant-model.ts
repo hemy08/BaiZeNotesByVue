@@ -16,6 +16,7 @@ import type {
     AiProviderKind
 } from '../../../../../../shared/types/ai'
 import {
+    AI_STATUS_COMMAND_MAX_CHARS,
     isAiKeyStorage,
     isAiLocalProviderId,
     isAiProviderKind
@@ -31,6 +32,11 @@ export interface AiModelFormDraft {
     localProvider: AiLocalProviderId
     baseUrl: string
     model: string
+    /**
+     * 运行状态查询命令（可选；1.5.7「查询当前运行的模型」）。
+     * 空串 = 未配置（走内置查询）；保存时只提交非空值，编辑后清空即可删除旧命令。
+     */
+    statusCommand: string
     /** 用户新输入的远程 API Key（明文只存在于表单状态，保存成功后清空） */
     apiKey: string
     /** 主进程是否已保存该模型的密钥（只读展示掩码与「清除密钥」按钮） */
@@ -38,7 +44,7 @@ export interface AiModelFormDraft {
 }
 
 /** 表单校验失败的字段（组件层映射为对应 i18n 文案，纯函数不依赖词典） */
-export type AiModelFormField = 'name' | 'model' | 'baseUrl' | 'apiKey'
+export type AiModelFormField = 'name' | 'model' | 'baseUrl' | 'apiKey' | 'statusCommand'
 
 /**
  * 生成模型唯一 id（渲染层生成、保存后保持稳定，用于默认模型与密钥绑定）。
@@ -64,6 +70,7 @@ export function createAddModelFormDraft(): AiModelFormDraft {
         localProvider: 'ollama',
         baseUrl: '',
         model: '',
+        statusCommand: '',
         apiKey: '',
         apiKeyConfigured: false
     }
@@ -79,6 +86,7 @@ export function createEditModelFormDraft(model: AiModelConfig): AiModelFormDraft
         localProvider: model.localProvider,
         baseUrl: model.baseUrl,
         model: model.model,
+        statusCommand: typeof model.statusCommand === 'string' ? model.statusCommand : '',
         apiKey: '',
         apiKeyConfigured: model.apiKeyConfigured === true
     }
@@ -88,7 +96,8 @@ export function createEditModelFormDraft(model: AiModelConfig): AiModelFormDraft
  * 表单输入校验（按界面顺序返回第一个非法字段；null = 通过）。
  *
  * 规则：显示名称 / 模型名必填；远程模型必须填接口基址，且首次添加（无已保存密钥）
- * 必须填 API Key。范围/长度等强制校验由主进程 IPC 校验兜底（本函数只做界面引导）。
+ * 必须填 API Key；运行状态查询命令可选但长度受限（≤500 字符，与主进程校验同口径）。
+ * 范围/长度等强制校验由主进程 IPC 校验兜底（本函数只做界面引导）。
  */
 export function validateAiModelForm(form: AiModelFormDraft): AiModelFormField | null {
     if (form.name.trim().length === 0) {
@@ -104,6 +113,9 @@ export function validateAiModelForm(form: AiModelFormDraft): AiModelFormField | 
         if (form.apiKey.trim().length === 0 && !form.apiKeyConfigured) {
             return 'apiKey'
         }
+    }
+    if (form.statusCommand.trim().length > AI_STATUS_COMMAND_MAX_CHARS) {
+        return 'statusCommand'
     }
     return null
 }
@@ -123,6 +135,8 @@ export function normalizeAiModelConfig(raw: unknown): AiModelConfig | null {
     if (!isAiProviderKind(record.provider) || !isAiLocalProviderId(record.localProvider)) {
         return null
     }
+    const statusCommand =
+        typeof record.statusCommand === 'string' ? record.statusCommand.trim() : ''
     return {
         id: record.id,
         name: record.name,
@@ -130,6 +144,7 @@ export function normalizeAiModelConfig(raw: unknown): AiModelConfig | null {
         localProvider: record.localProvider,
         baseUrl: typeof record.baseUrl === 'string' ? record.baseUrl : '',
         model: typeof record.model === 'string' ? record.model : '',
+        ...(statusCommand.length > 0 ? { statusCommand } : {}),
         apiKeyConfigured: record.apiKeyConfigured === true
     }
 }
@@ -173,14 +188,24 @@ export function normalizeAiConfigSnapshot(raw: unknown): AiConfigSnapshot | null
  *
  * 密钥状态只能由主进程按 `modelApiKey` 操作维护，渲染层不得回传状态位（避免伪造
  * 「已配置密钥」）；其余字段原样保留（未知字段由主进程归一化丢弃）。
+ * 运行状态查询命令只在非空时提交——编辑时清空输入框即从配置中删除旧命令
+ * （主进程 `models` 为全量替换，字段缺失 = 未配置 → 走内置查询）。
  */
 export function toAiModelsPayload(models: readonly AiModelConfig[]): AiModelConfig[] {
-    return models.map((model) => ({
-        id: model.id,
-        name: model.name,
-        provider: model.provider,
-        localProvider: model.localProvider,
-        baseUrl: model.baseUrl,
-        model: model.model
-    }))
+    return models.map((model) => {
+        const payload: AiModelConfig = {
+            id: model.id,
+            name: model.name,
+            provider: model.provider,
+            localProvider: model.localProvider,
+            baseUrl: model.baseUrl,
+            model: model.model
+        }
+        const statusCommand =
+            typeof model.statusCommand === 'string' ? model.statusCommand.trim() : ''
+        if (statusCommand.length > 0) {
+            payload.statusCommand = statusCommand
+        }
+        return payload
+    })
 }

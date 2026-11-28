@@ -475,3 +475,77 @@ describe('AI 配置存储：损坏与版本兼容', () => {
         expect((parsed?.config as Record<string, unknown>).enabled).toBe(true)
     })
 })
+
+/**
+ * 1.5.7 新功能：`statusCommand`（运行状态查询命令）配置读写兼容。
+ *
+ * 真源为共享归一化 `normalizeAiModelConfig`：旧配置无该字段时保持 undefined（走内置查询），
+ * 保存时非空才落盘、清空即删除字段；历史脏数据中的换行/控制字符在读取时归一化为单行。
+ */
+describe('AI 配置存储：statusCommand（1.5.7 运行状态查询命令）', () => {
+    it('保存后落盘并可按快照读回；清空后保存不再包含该字段', async () => {
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        const saved = await store.save({
+            enabled: true,
+            models: [makeModel({ id: 'aa', statusCommand: 'ollama ps' })],
+            defaultModelId: 'aa'
+        })
+        expect(saved.models[0].statusCommand).toBe('ollama ps')
+        const parsed = await readConfigFileJson()
+        const models = (parsed?.config as { models: Array<Record<string, unknown>> }).models
+        expect(models[0].statusCommand).toBe('ollama ps')
+
+        const cleared = await store.save({
+            models: [makeModel({ id: 'aa' })]
+        })
+        expect(cleared.models[0]).not.toHaveProperty('statusCommand')
+        const parsedAfterClear = await readConfigFileJson()
+        const modelsAfterClear = (
+            parsedAfterClear?.config as { models: Array<Record<string, unknown>> }
+        ).models
+        expect(modelsAfterClear[0]).not.toHaveProperty('statusCommand')
+    })
+
+    it('旧版（无 statusCommand 字段）配置读取后保持 undefined（不制造空字段）', async () => {
+        await fs.writeFile(
+            configPath,
+            JSON.stringify({
+                version: AI_CONFIG_VERSION,
+                config: {
+                    enabled: true,
+                    models: [makeModel({ id: 'aa' })],
+                    defaultModelId: 'aa'
+                },
+                apiKeys: { version: 1, keys: {} }
+            }),
+            'utf-8'
+        )
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        const snapshot = await store.getSnapshot()
+        expect(snapshot.models[0]).not.toHaveProperty('statusCommand')
+    })
+
+    it('历史脏数据中的换行/控制字符在读取时归一化为单行（不会把多行命令交给 shell）', async () => {
+        await fs.writeFile(
+            configPath,
+            JSON.stringify({
+                version: AI_CONFIG_VERSION,
+                config: {
+                    enabled: true,
+                    models: [
+                        makeModel({
+                            id: 'aa',
+                            statusCommand: 'ollama ps\n  --format json\t'
+                        } as Partial<AiModelConfig>)
+                    ],
+                    defaultModelId: 'aa'
+                },
+                apiKeys: { version: 1, keys: {} }
+            }),
+            'utf-8'
+        )
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        const snapshot = await store.getSnapshot()
+        expect(snapshot.models[0].statusCommand).toBe('ollama ps --format json')
+    })
+})

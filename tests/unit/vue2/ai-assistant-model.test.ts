@@ -18,6 +18,7 @@ import {
     type AiModelFormDraft
 } from '@renderer/components/dialogs/complex/system-setting/ai-assistant-model'
 import type { AiModelConfig } from '../../../src/shared/types/ai'
+import { AI_STATUS_COMMAND_MAX_CHARS } from '../../../src/shared/constants/ai'
 
 /** 构造表单草稿（默认本地 Ollama + 名称/模型名齐全） */
 function draft(overrides: Partial<AiModelFormDraft> = {}): AiModelFormDraft {
@@ -53,24 +54,26 @@ describe('createAiModelId', () => {
 })
 
 describe('表单草稿', () => {
-    it('添加模型默认本地 Ollama、空名称/模型名、apiKey 不回显', () => {
+    it('添加模型默认本地 Ollama、空名称/模型名、apiKey 不回显、查询命令为空', () => {
         const form = createAddModelFormDraft()
         expect(form.mode).toBe('add')
         expect(form.id).toBe('')
         expect(form.provider).toBe('local')
         expect(form.localProvider).toBe('ollama')
         expect(form.baseUrl).toBe('')
+        expect(form.statusCommand).toBe('')
         expect(form.apiKey).toBe('')
         expect(form.apiKeyConfigured).toBe(false)
     })
 
-    it('编辑模型复制既有字段，密钥置空并记录已配置状态', () => {
+    it('编辑模型复制既有字段（含运行状态查询命令），密钥置空并记录已配置状态', () => {
         const form = createEditModelFormDraft(
             model({
                 id: 'model-remote',
                 provider: 'remote',
                 baseUrl: 'https://api.example.com/v1',
                 model: 'deepseek-chat',
+                statusCommand: 'lms ps',
                 apiKeyConfigured: true
             })
         )
@@ -78,8 +81,13 @@ describe('表单草稿', () => {
         expect(form.id).toBe('model-remote')
         expect(form.provider).toBe('remote')
         expect(form.baseUrl).toBe('https://api.example.com/v1')
+        expect(form.statusCommand).toBe('lms ps')
         expect(form.apiKey).toBe('')
         expect(form.apiKeyConfigured).toBe(true)
+    })
+
+    it('编辑模型无查询命令时草稿为空串（不写入 undefined）', () => {
+        expect(createEditModelFormDraft(model()).statusCommand).toBe('')
     })
 })
 
@@ -88,6 +96,17 @@ describe('validateAiModelForm', () => {
         expect(validateAiModelForm(draft({ name: '   ' }))).toBe('name')
         expect(validateAiModelForm(draft({ model: '' }))).toBe('model')
         expect(validateAiModelForm(draft())).toBeNull()
+    })
+
+    it('运行状态查询命令超过长度上限 → statusCommand（主进程同口径兜底）', () => {
+        expect(
+            validateAiModelForm(draft({ statusCommand: 'x'.repeat(AI_STATUS_COMMAND_MAX_CHARS) }))
+        ).toBeNull()
+        expect(
+            validateAiModelForm(
+                draft({ statusCommand: 'x'.repeat(AI_STATUS_COMMAND_MAX_CHARS + 1) })
+            )
+        ).toBe('statusCommand')
     })
 
     it('远程模型：基址必填；首次添加（未配置密钥）必须填密钥；编辑已配置可留空', () => {
@@ -136,6 +155,18 @@ describe('normalizeAiModelConfig', () => {
         expect(normalizeAiModelConfig({ ...model(), id: '' })).toBeNull()
         expect(normalizeAiModelConfig({ ...model(), provider: 'cloud' })).toBeNull()
         expect(normalizeAiModelConfig({ ...model(), localProvider: 'vllm' })).toBeNull()
+    })
+
+    it('保留运行状态查询命令；空白/非字符串归一化为缺失（不制造空字段）', () => {
+        expect(
+            normalizeAiModelConfig({ ...model(), statusCommand: '  ollama ps  ' })
+        ).toMatchObject({ statusCommand: 'ollama ps' })
+        expect(normalizeAiModelConfig({ ...model(), statusCommand: '   ' })).not.toHaveProperty(
+            'statusCommand'
+        )
+        expect(normalizeAiModelConfig({ ...model(), statusCommand: 42 })).not.toHaveProperty(
+            'statusCommand'
+        )
     })
 })
 
@@ -217,5 +248,16 @@ describe('toAiModelsPayload', () => {
             }
         ])
         expect(Object.keys(payload[0])).not.toContain('apiKeyConfigured')
+    })
+
+    it('运行状态查询命令只提交非空值（清空命令即删除旧配置）', () => {
+        const payload = toAiModelsPayload([
+            model({ statusCommand: '  ollama ps  ' }),
+            model({ id: 'model-2', statusCommand: '   ' }),
+            model({ id: 'model-3' })
+        ])
+        expect(payload[0].statusCommand).toBe('ollama ps')
+        expect(payload[1]).not.toHaveProperty('statusCommand')
+        expect(payload[2]).not.toHaveProperty('statusCommand')
     })
 })

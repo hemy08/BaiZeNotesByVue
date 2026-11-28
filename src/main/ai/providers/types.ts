@@ -68,6 +68,14 @@ export interface AiProviderTestResult {
     model: string
     /** 往返耗时（毫秒） */
     latencyMs: number
+    /**
+     * 是否真的校验了「模型已安装/已加载」（1.5.7 缺陷修复：连接测试误报成功）。
+     *
+     * - `true`（或缺省，兼容既有调用方）：服务实现了模型列表接口，且已校验配置模型可用；
+     * - `false`：服务未实现模型列表接口（OpenAI 兼容服务返回 HTTP 404/405），
+     *   本次只验证了「服务可达」，**未校验模型**——结果文案必须显式说明，避免误读为可用。
+     */
+    modelChecked?: boolean
 }
 
 /** AI Provider 统一接口（本地 Ollama / LM Studio，远程 OpenAI 兼容） */
@@ -76,7 +84,13 @@ export interface AiProvider {
     readonly id: string
     /** 非流式对话：返回助手回复正文 */
     chat: (messages: AiChatMessage[], options?: AiRequestOptions) => Promise<AiProviderChatResult>
-    /** 连接测试：验证基址可达 + 模型可用（失败抛 AiProviderError） */
+    /**
+     * 连接测试：验证基址可达 + 模型已安装/已加载（失败抛 AiProviderError）。
+     *
+     * 注意：服务可达但模型列表为空时必须抛错（不能因为「HTTP 200」就返回成功）；
+     * 仅服务未实现模型列表接口（HTTP 404/405）时可按可达通过，并用
+     * `AiProviderTestResult.modelChecked = false` 标注「未校验模型」。
+     */
     testConnection: (options?: AiRequestOptions) => Promise<AiProviderTestResult>
 }
 

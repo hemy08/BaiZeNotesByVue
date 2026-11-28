@@ -2,14 +2,17 @@
  * 1.5.7 LLM Wiki L3 / 体验升级批次 C：AI IPC 单测（`src/main/ipc/ai-ipc.ts`）
  *
  * 覆盖：
- * 1. 注册：5 个 invoke 通道经 `ipcListenerManager.registerHandleOnce` 注册（withSenderCheck），
+ * 1. 注册：6 个 invoke 通道经 `ipcListenerManager.registerHandleOnce` 注册（withSenderCheck），
  *    componentId 透传（缺省 `global-ai-ipc`），非受信 sender 返回统一拒绝对象且不执行业务；
- * 2. AI.CHAT：载荷校验 / 未启用 → AI_NOT_CONFIGURED / 成功对话 / 空 messages 连接测试 /
+ * 2. AI.CHAT：载荷校验 / 未启用 → AI_NOT_CONFIGURED / 成功对话 / 空 messages 连接测试
+ *    （**1.5.7 缺陷修复：空模型列表 → 失败透传；404/405 → 成功但文案标注「未校验模型」**）/
  *    **多模型 modelId（显式指定、缺省默认、不存在 → AI_MODEL_NOT_FOUND）** / 远程缺密钥；
  * 3. AI.INGEST：无工作区 → AI_WORKSPACE_UNAVAILABLE / 成功生成草案（不写盘）；
  * 4. AI.APPLY_INGEST：未审批 / raw 目标 / 越界 → 结构化拒绝；成功写入 wiki/；
  * 5. AI.GET_CONFIG / SAVE_CONFIG：快照读取（多模型 + 每模型密钥状态）与
- *    **多模型保存载荷（models/defaultModelId/modelApiKey）校验**。
+ *    **多模型保存载荷（models/defaultModelId/modelApiKey）校验**；
+ * 6. AI.QUERY_RUNNING_MODELS（1.5.7 新功能）：载荷校验 / AI 未启用 / 模型不存在 /
+ *    未确认命令拒绝 / 确认后执行命令（exec 注入）/ 内置查询（fetch 注入）。
  *
  * 说明：AI Provider 的 HTTP 行为由注入的 fetch 替身模拟（真正的网络分支见 ai-provider.test.ts）。
  */
@@ -52,12 +55,14 @@ import {
     aiApplyIngest,
     aiChat,
     aiIngest,
+    aiQueryRunningModels,
     AI_IPC_COMPONENT_ID,
     getAiConfig,
     registerAiIpc,
     saveAiConfig
 } from '../../src/main/ipc/ai-ipc'
 import type { AiConfigStore } from '../../src/main/ai/config-store'
+import type { AiCommandExecLike } from '../../src/main/ai/running-models'
 import type { AiFetchLike } from '../../src/main/ai/providers/types'
 import { resetAiRuntimeForTesting, setAiRuntimeForTesting } from '../../src/main/ai/runtime'
 import { appState } from '../../src/main/utils/app-state'
@@ -131,12 +136,22 @@ function makeStore(
     }
 }
 
-/** fetch 替身：按 URL 返回 Ollama 对话/标签响应（记录调用参数） */
+/** fetch 替身：按 URL 返回 Ollama 对话/标签/运行模型响应（记录调用参数） */
 function makeOllamaFetch(content = 'AI 回复'): AiFetchLike {
     return async (url) => {
         const body = url.endsWith('/api/tags')
             ? { models: [{ name: 'qwen2.5:latest' }, { name: 'deepseek-chat:latest' }] }
-            : { message: { role: 'assistant', content } }
+            : url.endsWith('/api/ps')
+              ? {
+                    models: [
+                        {
+                            name: 'qwen2.5:latest',
+                            size: 4_700_000_000,
+                            expires_at: '2026-11-28T15:00:00Z'
+                        }
+                    ]
+                }
+              : { message: { role: 'assistant', content } }
         const text = JSON.stringify(body)
         return { ok: true, status: 200, statusText: '', text: async () => text }
     }
@@ -178,15 +193,16 @@ function getRegisteredHandler(channel: string): (...args: unknown[]) => unknown 
 }
 
 describe('registerAiIpc：注册形状', () => {
-    it('注册 5 个 invoke 通道，缺省 componentId 为 global-ai-ipc', () => {
+    it('注册 6 个 invoke 通道，缺省 componentId 为 global-ai-ipc', () => {
         registerAiIpc()
-        expect(registered).toHaveLength(5)
+        expect(registered).toHaveLength(6)
         expect(registered.map((item) => item.channel)).toEqual([
             IPC.AI.CHAT,
             IPC.AI.INGEST,
             IPC.AI.APPLY_INGEST,
             IPC.AI.GET_CONFIG,
-            IPC.AI.SAVE_CONFIG
+            IPC.AI.SAVE_CONFIG,
+            IPC.AI.QUERY_RUNNING_MODELS
         ])
         expect(registered.every((item) => item.componentId === AI_IPC_COMPONENT_ID)).toBe(true)
         expect(AI_IPC_COMPONENT_ID).toBe('global-ai-ipc')
@@ -204,7 +220,7 @@ describe('registerAiIpc：注册形状', () => {
         expect(isUntrustedSenderResult(result)).toBe(true)
     })
 
-    it('受信 sender 可调用 5 个通道（真实 handler 闭包接线）', async () => {
+    it('受信 sender 可调用 6 个通道（真实 handler 闭包接线）', async () => {
         // 注入运行时替身，避免 handler 走生产 stderr 目录/真实网络
         setAiRuntimeForTesting({
             store: makeStore({ enabled: true }),
@@ -240,6 +256,13 @@ describe('registerAiIpc：注册形状', () => {
             enabled: 'yes'
         })) as { ok: boolean; code?: string }
         expect(saveResult).toMatchObject({ ok: false, code: 'AI_INVALID_PAYLOAD' })
+
+        // 1.5.7 新功能：查询运行中模型（运行时单例 + 内置 Ollama /api/ps 查询）
+        const queryResult = (await getRegisteredHandler(IPC.AI.QUERY_RUNNING_MODELS)(
+            trustedCall(),
+            {}
+        )) as { ok: boolean; source?: string }
+        expect(queryResult).toMatchObject({ ok: true, source: 'builtin' })
     })
 })
 
@@ -327,14 +350,59 @@ describe('AI.CHAT（对话 / 连接测试 / 多模型）', () => {
         expect(result).toMatchObject({ ok: false, code: 'AI_NOT_CONFIGURED' })
     })
 
-    it('空 messages = 连接测试：调用 /api/tags 并返回可读结果', async () => {
+    it('空 messages = 连接测试：文案明确「服务可达 + 模型可用」并提示推理需发消息验证', async () => {
         const result = await aiChat(
             { messages: [] },
             { store: makeStore({ enabled: true }), fetchImpl: makeOllamaFetch() }
         )
         expect(result.ok).toBe(true)
         if (result.ok) {
-            expect(result.content).toContain('连接成功')
+            expect(result.model).toBe('qwen2.5')
+            expect(result.content).toContain('连接成功：服务可达，模型「qwen2.5」可用（')
+            expect(result.content).toContain('实际推理可用性请在 AI 面板发送消息验证')
+        }
+    })
+
+    it('空 messages = 连接测试：本地无任何模型（/api/tags 空列表）→ 失败原因透传，不再误报成功', async () => {
+        const fetchImpl: AiFetchLike = async () => ({
+            ok: true,
+            status: 200,
+            statusText: '',
+            text: async () => JSON.stringify({ models: [] })
+        })
+        const result = await aiChat(
+            { messages: [] },
+            { store: makeStore({ enabled: true }), fetchImpl }
+        )
+        expect(result).toMatchObject({ ok: false, code: 'AI_MODEL_NOT_FOUND' })
+        if (!result.ok) {
+            expect(result.message).toContain('未安装任何模型')
+            expect(result.message).toContain('ollama pull qwen2.5')
+        }
+    })
+
+    it('空 messages = 连接测试：服务未实现模型列表接口（404）→ 成功但明确「未校验模型」', async () => {
+        const fetchImpl: AiFetchLike = async () => ({
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+            text: async () => JSON.stringify({ error: 'route not found' })
+        })
+        const result = await aiChat(
+            { messages: [] },
+            {
+                store: makeStore({
+                    enabled: true,
+                    models: [makeModel({ localProvider: 'lmstudio', model: 'qwen2.5' })]
+                }),
+                fetchImpl
+            }
+        )
+        expect(result.ok).toBe(true)
+        if (result.ok) {
+            expect(result.content).toContain('服务未提供模型列表接口')
+            expect(result.content).toContain('未校验模型「qwen2.5」')
+            expect(result.content).toContain('实际推理可用性请在 AI 面板发送消息验证')
         }
     })
 
@@ -546,6 +614,38 @@ describe('AI.GET_CONFIG / AI.SAVE_CONFIG（多模型）', () => {
         )
         expect(result.ok).toBe(true)
     })
+
+    it('SAVE_CONFIG 透传 models[].statusCommand（运行状态查询命令，trim 后保存）', async () => {
+        const withCommand = makeModel({ statusCommand: '  ollama ps  ' })
+        const save = vi.fn(async (patch: unknown) => {
+            expect(patch).toEqual({
+                models: [makeModel({ statusCommand: 'ollama ps' })],
+                defaultModelId: 'local-qwen'
+            })
+            return {
+                enabled: true,
+                models: [
+                    {
+                        ...makeModel({ statusCommand: 'ollama ps' }),
+                        apiKeyConfigured: false
+                    }
+                ],
+                defaultModelId: 'local-qwen',
+                apiKeyStorage: 'memory'
+            } satisfies AiConfigSnapshot
+        })
+        const result = await saveAiConfig(
+            {
+                models: [withCommand],
+                defaultModelId: 'local-qwen'
+            },
+            { store: makeStore({ enabled: true, save }) }
+        )
+        expect(result.ok).toBe(true)
+        if (result.ok) {
+            expect(result.config.models[0].statusCommand).toBe('ollama ps')
+        }
+    })
 })
 
 describe('AI IPC：运行时单例与异常归一化分支', () => {
@@ -618,5 +718,103 @@ describe('AI IPC：运行时单例与异常归一化分支', () => {
             { store: makeStore({ enabled: true }), fetchImpl: makeOllamaFetch('已解释') }
         )
         expect(result).toMatchObject({ ok: true, content: '已解释' })
+    })
+})
+
+describe('AI.QUERY_RUNNING_MODELS（1.5.7 查询运行中模型）', () => {
+    /** 命令执行替身（记录调用；默认成功返回一行输出） */
+    function makeExec(stdout = 'qwen2.5:latest'): AiCommandExecLike & {
+        mock: { calls: unknown[][] }
+    } {
+        return vi.fn(
+            (
+                _command: string,
+                _options: unknown,
+                callback: (error: null, stdout: string, stderr: string) => void
+            ) => {
+                callback(null, stdout, '')
+            }
+        ) as unknown as AiCommandExecLike & { mock: { calls: unknown[][] } }
+    }
+
+    it('载荷非法 → AI_INVALID_PAYLOAD（不读取配置/不执行命令）', async () => {
+        const store = makeStore({ enabled: true })
+        const execImpl = makeExec()
+        const result = await aiQueryRunningModels({ modelId: '含 空格' }, { store, execImpl })
+        expect(result).toMatchObject({ ok: false, code: 'AI_INVALID_PAYLOAD' })
+        expect(store.getSnapshot).not.toHaveBeenCalled()
+        expect(execImpl).not.toHaveBeenCalled()
+    })
+
+    it('AI 未启用 → AI_NOT_CONFIGURED；指定模型不存在 → AI_MODEL_NOT_FOUND', async () => {
+        const disabled = await aiQueryRunningModels(
+            {},
+            { store: makeStore({ enabled: false }), fetchImpl: makeOllamaFetch() }
+        )
+        expect(disabled).toMatchObject({ ok: false, code: 'AI_NOT_CONFIGURED' })
+
+        const missing = await aiQueryRunningModels(
+            { modelId: 'not-exist' },
+            { store: makeStore({ enabled: true }), fetchImpl: makeOllamaFetch() }
+        )
+        expect(missing).toMatchObject({ ok: false, code: 'AI_MODEL_NOT_FOUND' })
+    })
+
+    it('配置了 statusCommand 但未确认 → 拒绝执行（exec 不调用）', async () => {
+        const store = makeStore({
+            enabled: true,
+            models: [makeModel({ statusCommand: 'ollama ps' })]
+        })
+        const execImpl = makeExec()
+        const result = await aiQueryRunningModels({}, { store, execImpl })
+        expect(result).toMatchObject({
+            ok: false,
+            source: 'command',
+            command: 'ollama ps'
+        })
+        expect(execImpl).not.toHaveBeenCalled()
+    })
+
+    it('确认后执行用户命令（exec 注入，返回 source=command + 原文 + 输出）', async () => {
+        const store = makeStore({
+            enabled: true,
+            models: [makeModel({ statusCommand: 'ollama ps' })]
+        })
+        const execImpl = makeExec('NAME  ID\nqwen2.5:latest  abc')
+        const result = await aiQueryRunningModels({ confirmExecution: true }, { store, execImpl })
+        expect(result).toMatchObject({ ok: true, source: 'command', command: 'ollama ps' })
+        if (result.ok) {
+            expect(result.output).toContain('qwen2.5:latest')
+        }
+        expect(execImpl).toHaveBeenCalledTimes(1)
+    })
+
+    it('未配置命令 → 内置查询（fetch 注入 Ollama /api/ps）', async () => {
+        const fetchImpl = vi.fn<AiFetchLike>().mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: '',
+            text: async () =>
+                JSON.stringify({ models: [{ name: 'qwen2.5:latest', expires_at: '2026-11-28' }] })
+        })
+        const result = await aiQueryRunningModels(
+            {},
+            { store: makeStore({ enabled: true }), fetchImpl }
+        )
+        expect(result).toMatchObject({ ok: true, source: 'builtin' })
+        if (result.ok) {
+            expect(result.models?.[0].name).toBe('qwen2.5:latest')
+        }
+        expect(fetchImpl).toHaveBeenCalledTimes(1)
+    })
+
+    it('读取配置抛非 AI 错误 → 结构化失败（不抛堆栈）', async () => {
+        const store = makeStore({ enabled: true })
+        vi.mocked(store.getSnapshot).mockRejectedValue(new Error('读取配置失败'))
+        const result = await aiQueryRunningModels({}, { store })
+        expect(result.ok).toBe(false)
+        if (!result.ok) {
+            expect(result.error).toContain('读取配置失败')
+        }
     })
 })

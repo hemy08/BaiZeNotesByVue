@@ -55,7 +55,7 @@ const implementationMocks = vi.hoisted(() => ({
     registerLlmWikiMigrationIpc: vi.fn(),
     // 1.5.7 LLM Wiki L2：MCP 只读桥（设置页状态/开关）独立域注册入口
     registerMcpIpc: vi.fn(),
-    // 1.5.7 LLM Wiki L3：AI Provider / AI ingest / diff 审批（5 个 invoke 通道）独立域注册入口
+    // 1.5.7 LLM Wiki L3：AI Provider / AI ingest / diff 审批 / 运行模型查询（6 个 invoke 通道）独立域注册入口
     registerAiIpc: vi.fn(),
     // 主题广播依赖
     getCurrentThemeStyles: vi.fn(),

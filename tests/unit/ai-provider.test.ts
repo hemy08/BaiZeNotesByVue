@@ -3,9 +3,9 @@
  *
  * 全部使用注入的 fetch 替身，不发起真实网络请求；覆盖：
  * 1. 本地 Ollama：成功 / 401 鉴权失败 / 404 模型不存在 / 429 限流 / 非 JSON / 空内容 /
- *    网络不可达 / 超时 / 外部取消 / 连接测试（模型存在与缺失两种）；
+ *    网络不可达 / 超时 / 外部取消 / 连接测试（模型存在、列表为空、模型缺失三种）；
  * 2. OpenAI 兼容（远程 BYOK 与本地 LM Studio 共用）：成功（含 Authorization 头）/
- *    401 / 模型不存在 / 连接测试 /models 缺失时的可达性回退；
+ *    401 / 模型不存在 / 连接测试（模型存在、列表为空、缺少配置模型、/models 404/405 可达性回退）；
  * 3. 工厂：默认基址解析、模型/基址/远程密钥缺失 → AI_NOT_CONFIGURED（不发请求）；
  * 4. 错误消息不含密钥（安全断言）。
  */
@@ -204,7 +204,7 @@ describe('Ollama Provider（本地）', () => {
         )
     })
 
-    it('连接测试：GET /api/tags 且模型存在 → 返回模型与耗时', async () => {
+    it('连接测试：GET /api/tags 且模型存在 → 返回模型与耗时（已校验模型）', async () => {
         const fetchImpl = vi
             .fn<AiFetchLike>()
             .mockResolvedValue(response(200, { models: [{ name: 'qwen2.5:latest' }] }))
@@ -216,7 +216,23 @@ describe('Ollama Provider（本地）', () => {
         const result = await provider.testConnection()
         expect(result.model).toBe('qwen2.5')
         expect(result.latencyMs).toBeGreaterThanOrEqual(0)
+        expect(result.modelChecked).toBe(true)
         expect(fetchImpl.mock.calls[0][0]).toBe('http://127.0.0.1:11434/api/tags')
+    })
+
+    it('连接测试：服务可达但未安装任何模型（models 为空）→ AI_MODEL_NOT_FOUND（不再误报成功）', async () => {
+        const provider = createOllamaProvider({
+            baseUrl: 'http://127.0.0.1:11434',
+            model: 'qwen2.5',
+            fetchImpl: vi.fn<AiFetchLike>().mockResolvedValue(response(200, { models: [] }))
+        })
+        const error = await expectProviderError(
+            () => provider.testConnection(),
+            'AI_MODEL_NOT_FOUND'
+        )
+        expect(error.message).toContain('未安装任何模型')
+        expect(error.message).toContain('ollama pull qwen2.5')
+        expect(error.message).toContain('当前配置模型：qwen2.5')
     })
 
     it('连接测试：本地无该模型 → AI_MODEL_NOT_FOUND（提示 ollama pull）', async () => {
@@ -306,7 +322,7 @@ describe('OpenAI 兼容 Provider（远程 BYOK / 本地 LM Studio）', () => {
         )
     })
 
-    it('连接测试：GET /models 且模型存在 → 成功', async () => {
+    it('连接测试：GET /models 且模型存在 → 成功（已校验模型）', async () => {
         const fetchImpl = vi
             .fn<AiFetchLike>()
             .mockResolvedValue(response(200, { data: [{ id: 'deepseek-chat' }] }))
@@ -319,11 +335,28 @@ describe('OpenAI 兼容 Provider（远程 BYOK / 本地 LM Studio）', () => {
         })
         const result = await provider.testConnection()
         expect(result.model).toBe('deepseek-chat')
+        expect(result.modelChecked).toBe(true)
         expect(fetchImpl.mock.calls[0][0]).toBe('https://api.example.com/v1/models')
         expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer sk-key')
     })
 
-    it('连接测试：/models 不存在（404）时按可达通过（兼容自建服务）', async () => {
+    it('连接测试：服务可达但模型列表为空 → AI_MODEL_NOT_FOUND（不再误报成功）', async () => {
+        const provider = createOpenAiCompatibleProvider({
+            baseUrl: 'http://127.0.0.1:1234/v1',
+            model: 'qwen2.5',
+            apiKey: null,
+            serviceName: '本地 LM Studio',
+            fetchImpl: vi.fn<AiFetchLike>().mockResolvedValue(response(200, { data: [] }))
+        })
+        const error = await expectProviderError(
+            () => provider.testConnection(),
+            'AI_MODEL_NOT_FOUND'
+        )
+        expect(error.message).toContain('未加载任何模型')
+        expect(error.message).toContain('当前配置模型：qwen2.5')
+    })
+
+    it('连接测试：/models 不存在（404）时按可达通过（标记未校验模型）', async () => {
         const provider = createOpenAiCompatibleProvider({
             baseUrl: 'https://self-hosted.example.com/v1',
             model: 'any-model',
@@ -335,6 +368,22 @@ describe('OpenAI 兼容 Provider（远程 BYOK / 本地 LM Studio）', () => {
         })
         const result = await provider.testConnection()
         expect(result.model).toBe('any-model')
+        expect(result.modelChecked).toBe(false)
+    })
+
+    it('连接测试：/models 方法不允许（405）时同样按可达通过（标记未校验模型）', async () => {
+        const provider = createOpenAiCompatibleProvider({
+            baseUrl: 'https://self-hosted.example.com/v1',
+            model: 'any-model',
+            apiKey: 'sk-key',
+            serviceName: '远程 OpenAI 兼容接口',
+            fetchImpl: vi
+                .fn<AiFetchLike>()
+                .mockResolvedValue(response(405, { error: 'Method Not Allowed' }))
+        })
+        const result = await provider.testConnection()
+        expect(result.model).toBe('any-model')
+        expect(result.modelChecked).toBe(false)
     })
 
     it('连接测试：/models 返回模型列表但缺少配置模型 → AI_MODEL_NOT_FOUND', async () => {
