@@ -1,3 +1,14 @@
+## 开发中 - 版本 1.5.7（LLM Wiki 集成，开发中）
+
+> **发布状态**：**开发中（规划/实现中）**（版本号已升级为 `1.5.7`；1.5.6 已于 2026-11-28 发布）｜范围：LLM Wiki 集成 P0（L1 工作区模式 + L2 MCP 只读桥）
+
+### 📋 规划与启动（2026-11-28）
+
+- 版本号 1.5.6 → **1.5.7**（package.json / package-lock.json / version.json）
+- 需求规划：[1.5.7 需求清单与方案](docs/wiki/04-优化与专项报告/1.5.7-需求清单与方案.md)（15 条需求、批次计划、验收指标、待拍板事项）
+- 实施计划（用户既有、任务级、单一真源）：[LLM-Wiki-Implementation-Plan.md](docs/wiki/02-设计与架构/LLM-Wiki-Implementation-Plan.md)（L0~L4 五阶段、22 个任务，L1+L2 预估 2~3 周）
+- 基线：1.5.6 已发布（375 文件 / 7,041 用例、IPC 108/18、CSP/fuses 8 项、体积预算 9 项）
+
 ## 2026年11月28日 - 版本 1.5.6（工具窗体验与可读性升级，已发布）
 
 > **发布状态**：**已发布**（2026-11-28）｜tag：[release-1.5.6](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.6)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap｜范围：表格编辑器窗口缩放修复、非模态工具窗与插件工具面板的最小化/最大化、主题可读性治理（14 套对比度 + 分组修正 + 硬门禁）、插件工具搜索/最近/收藏、插件菜单「插件搜索」入口、编辑器主题设置修复、帮助文档配图重采集与瘦身

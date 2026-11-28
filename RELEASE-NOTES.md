@@ -1,3 +1,19 @@
+## 版本 1.5.7 (开发中)
+
+> **发布状态**：**开发中（规划/实现中）**｜tag：`release-1.5.7`（发布时创建）｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
+
+[更新日志（CHANGELOG.md）](https://github.com/hemy08/BaiZeNotesByVue/blob/main/CHANGELOG.md)
+
+> 本版本聚焦 **LLM Wiki 集成**（P0：L1 工作区模板 + `raw/` 只读、L2 MCP 只读桥）：按《LLM Wiki 集成实施计划（完整版）》推进；不复制 LLM Wiki 桌面应用的全部 UI，白泽只做**编辑、审阅、检索、管理工作台**。
+
+### 📋 规划（实现中）
+
+- **L1 工作区模板 + `raw/` 只读**：初始化命令、索引忽略 `raw/`、写入守卫（`raw/` 只读）、设置页「工作区模式」、模式切换确认、文档更新
+- **L2 MCP 桥**：MCP IPC 通道常量、只读 handlers（4 个工具）、IPC 注册、主进程 MCP Server、通道安全校验
+- **P1（待拍板）**：L3 内置 AI 工作流（AI ingest + diff 审批 UI）、L4 图谱与嵌入 UI
+- 需求清单：[1.5.7 需求清单与方案](docs/wiki/04-优化与专项报告/1.5.7-需求清单与方案.md)；实施计划（单一真源）：[LLM-Wiki-Implementation-Plan.md](docs/wiki/02-设计与架构/LLM-Wiki-Implementation-Plan.md)
+- 基线：1.5.6 已发布（375 文件 / 7,041 用例、IPC 108 通道 / 18 组、CSP/fuses 8 项）
+
 ## 版本 1.5.6 (2026-11-28)
 
 > **发布状态**：**已发布**（2026-11-28）｜tag：[release-1.5.6](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.6)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap
