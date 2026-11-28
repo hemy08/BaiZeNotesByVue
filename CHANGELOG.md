@@ -1,6 +1,6 @@
-## 2026年11月28日 - 版本 1.5.6（工具窗体验与可读性升级，开发中）
+## 2026年11月28日 - 版本 1.5.6（工具窗体验与可读性升级，已发布）
 
-> **发布状态**：**开发中（待发布）**（版本号已升级为 `1.5.6`；RELEASE-NOTES 1.5.6 段已就绪，GitHub Release 与 tag `release-1.5.6` 待发布窗口创建）｜范围：表格编辑器窗口缩放修复、非模态工具窗与插件工具面板的最小化/最大化、主题可读性治理（14 套对比度 + 分组修正 + 硬门禁）、插件工具搜索/最近/收藏、插件菜单「插件搜索」入口、编辑器主题设置修复、帮助文档配图重采集与瘦身
+> **发布状态**：**已发布**（2026-11-28）｜tag：[release-1.5.6](https://github.com/hemy08/BaiZeNotesByVue/releases/tag/release-1.5.6)｜GitHub Release 资产：Windows NSIS 安装包 / portable / latest.yml / blockmap｜范围：表格编辑器窗口缩放修复、非模态工具窗与插件工具面板的最小化/最大化、主题可读性治理（14 套对比度 + 分组修正 + 硬门禁）、插件工具搜索/最近/收藏、插件菜单「插件搜索」入口、编辑器主题设置修复、帮助文档配图重采集与瘦身
 
 ### ✅ 表格编辑器窗口缩放修复（2026-11-27）
 
@@ -67,7 +67,7 @@
 ### ✅ 门禁（2026-11-28）
 
 - typecheck 四段（node / web / test / e2e）、ESLint `--max-warnings=0`、Prettier `--check`、`docs:check`（998 链接）、`quality:check` 全绿
-- 全量 vitest **375 文件 / 7,041 用例**（7,036 通过 / 5 跳过）；coverage **93.03 / 87.57 / 93.85 / 93.56**（阈值 80 / 75 / 73 / 80）
+- 全量 vitest **375 文件 / 7,041 用例**（7,036 通过 / 5 跳过）；coverage **93.03 / 87.56 / 93.85 / 93.56**（阈值 80 / 75 / 73 / 80）
 - E2E 套件通过（smoke / tool-window-controls / table-editor-resize / plugin-tools-search / theme-first-open / visual-matrix）；`build:win:all` 产物 ProductVersion **1.5.6**、`budget:check` 9/9 全过（portable **101.91 / 102.5 MiB**；NSIS 112.54 / 115、asar 40.30 / 47）
 - 质量基线 **375 文件 / 7,041 用例 / 127,585 行**（与三份对外文档、开发规范附录 C 一致）
 
