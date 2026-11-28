@@ -213,11 +213,11 @@ export const EVENT_BUS_CONTRACT: Record<EventBusEventKey, EventBusContractEntry>
     LLM_WIKI_COMPILE_REQUEST: {
         payload:
             "{ scope: 'all' | 'directory' | 'batch'; directory?: string; batchSize?: number }：" +
-            '迁移弹窗把用户的编译选择交接给批量编译批次（M1 只派发不执行）',
+            '迁移弹窗把用户的编译选择交接给批量编译队列（M2 起由 BatchCompileHost 消费）',
         emitters: ['components/dialogs/simple/MigrationWizardDialog.vue'],
-        receivers: [],
+        receivers: ['components/llm-wiki/BatchCompileHost.vue'],
         note:
-            '无订阅方（M1 迁移批次只交接选择）：批量编译任务队列由 M2 批次实现并新增订阅方；' +
-            'EventBus 派发无副作用，不阻塞迁移完成'
+            'BatchCompileHost 收到后先等迁移弹窗关闭（迁移结果页），再打开批量编译对话框；' +
+            '编译执行只经既有 AI.INGEST / AI.APPLY_INGEST，不新增 IPC'
     }
 }

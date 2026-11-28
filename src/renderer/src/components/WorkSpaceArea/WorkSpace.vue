@@ -170,6 +170,9 @@
          由 `useWorkspaceModeSwitch` 的模块单例状态触发；
          v-if 保证未打开时零 DOM/零副作用（传统模式下不新增常驻对话框节点）。 -->
     <MigrationWizardDialog v-if="workspaceModeSwitchState.visible" />
+    <!-- 1.5.7 迁移批次 M2：批量编译对话框宿主（常驻；订阅 LLM_WIKI_COMPILE_REQUEST 后
+         等迁移弹窗关闭再打开对话框；未打开时零可见 DOM）。 -->
+    <BatchCompileHost />
 </template>
 
 <script setup lang="ts">
@@ -194,6 +197,7 @@ import MdContainer from '@renderer/components/Markdown/MarkdownContainer.vue'
 import PluginTools from '@renderer/components/PluginTools/PluginTools.vue'
 import HemyTools from '@renderer/components/HemyTools/HemyTools.vue'
 import LlmAiPanel from '@renderer/components/llm-wiki/LlmAiPanel.vue'
+import BatchCompileHost from '@renderer/components/llm-wiki/BatchCompileHost.vue'
 import MigrationWizardDialog from '@renderer/components/dialogs/simple/MigrationWizardDialog.vue'
 import {
     requestSwitchToLlmWiki,

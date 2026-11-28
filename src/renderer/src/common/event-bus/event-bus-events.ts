@@ -68,9 +68,10 @@ export const EVENT_BUS = {
     MONACO_FORMAT_STATE_CHANGED: 'monaco-editor-format-state-changed',
     // 请求保存文件内容到磁盘（编辑器内部触发）
     MONACO_SAVE_FILE_CONTENT_TO_DISK: 'monaco-editor-save-file-content-to-disk',
-    // 1.5.7 LLM Wiki 迁移批次：迁移弹窗把「是否编译 + 编译范围」选择交接给批量编译批次
+    // 1.5.7 LLM Wiki 迁移批次：迁移弹窗把「是否编译 + 编译范围」选择交接给批量编译队列
     // （payload：{ scope: 'all' | 'directory' | 'batch', directory?: string, batchSize?: number }）。
-    // M1 只记录/派发，不执行编译；M2 批量编译任务队列批次负责新增订阅方（当前无订阅方）。
+    // M1 只记录/派发；M2 起由 WorkSpace 常驻的 BatchCompileHost 订阅，等迁移弹窗关闭后
+    // 打开批量编译对话框执行（不新增 IPC，编译仍走既有 AI.INGEST / AI.APPLY_INGEST）。
     LLM_WIKI_COMPILE_REQUEST: 'llm-wiki-compile-request'
 } as const
 

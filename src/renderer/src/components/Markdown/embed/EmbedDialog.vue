@@ -529,7 +529,9 @@ function loadRawFiles(): void {
             timeout = null
         }
         try {
-            ipcRenderer.removeListener?.(IPC.FILE_MANAGER.FILE_SYSTEM_DATA, listener)
+            if (typeof ipcRenderer.removeListener === 'function') {
+                ipcRenderer.removeListener(IPC.FILE_MANAGER.FILE_SYSTEM_DATA, listener)
+            }
         } catch (error) {
             logger.warn('[嵌入 UI] 移除目录树监听失败（忽略）', error)
         }

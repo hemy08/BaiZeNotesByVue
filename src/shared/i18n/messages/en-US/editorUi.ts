@@ -743,6 +743,128 @@ export default {
         retry: 'Retry'
     },
     /**
+     * 1.5.7 migration batch M2: batch compile dialog (components/llm-wiki/BatchCompileDialog.vue).
+     * Covers the pre-start summary, remote-model privacy prompt, incremental mode, progress and
+     * queue controls, per-batch diff approval, manual-edit conflicts (skip / overwrite / review),
+     * and the completion summary with single-item retry.
+     */
+    batchCompile: {
+        title: 'Batch compile (raw -> wiki)',
+        subtitle:
+            'Compile raw/ material within the selected scope: drafts are generated batch by batch and written only after diff approval. Canceling never rolls back applied pages and never writes unapplied drafts.',
+        preparing: 'Preparing the compile queue…',
+        blockedTitle: 'Batch compile cannot start',
+        blockedNotConfigured:
+            'The AI assistant is not enabled or has no usable model. Enable it and add a model in System Settings -> Features -> AI Assistant first.',
+        blockedConfigReadFailed:
+            'Failed to read the AI configuration, so compile availability cannot be confirmed. Try again later or check System Settings -> Features -> AI Assistant.',
+        blockedWorkspace:
+            'The current workspace has not initialized the raw/ directory. Run "Initialize LLM Wiki" first.',
+        blockedNoFiles:
+            'No compilable raw material exists in the selected scope (Markdown / text only). Adjust the compile scope and try again.',
+        blockedLoadFailed: 'Failed to read the workspace file tree: {error}',
+        blockedDetail: 'Details: {detail}',
+        blockedRetry: 'Retry',
+        openAiConfig: 'Configure AI assistant',
+        unknownError: 'Unknown error',
+        scopeLabel: 'Compile scope',
+        scopeAll: 'All files',
+        scopeDirectory: 'Directory: {directory}',
+        scopeBatch: 'In batches of {size}',
+        degraded:
+            'The compile scope payload was incomplete, so this run uses the full compile scope.',
+        fileCountLabel: 'Files to compile',
+        fileCount: '{count} files',
+        aiModelLabel: 'Model for this run',
+        aiModelUnknown: 'Default model unavailable',
+        remoteTitle: 'Remote model privacy notice',
+        remoteBody:
+            'This compile sends the content of raw/ material to the configured remote model service ({model}). Make sure the material contains no sensitive information you do not want to send out.',
+        remoteContinue: 'Continue compiling',
+        remoteLocalHint:
+            'Note: AI.INGEST always uses the default model, so this batch cannot switch models per file. To avoid sending data out, switch the default model to a local model in System Settings -> Features -> AI Assistant, then reopen batch compile.',
+        incrementalTitle: 'Compile mode',
+        incrementalLabel: 'Incremental: compile only new or changed files (recommended)',
+        incrementalHint:
+            'Files with a compile record whose wiki page is unchanged are skipped without calling the model; manually modified pages are reported as conflicts first.',
+        previewSkip: '{count} compiled and unmodified files will be skipped',
+        previewConflict:
+            '{count} target pages need manual confirmation (manually modified or missing a compile record)',
+        recompileAllLabel: 'Recompile all files',
+        recompileAllHint:
+            'Ignore existing compile records and regenerate drafts for every target file (slower, more model calls).',
+        start: 'Start compiling',
+        cancel: 'Cancel',
+        cancelRun: 'Cancel compile',
+        pause: 'Pause',
+        pausePending: 'Will pause after the current file finishes',
+        pausedHint: 'Paused (the current file finished; unapplied drafts are not written to disk)',
+        resume: 'Resume',
+        progressLabel: 'Batch compile progress',
+        progress: 'Processed {processed}/{total}',
+        batchProgress: 'Batch {current}/{total}',
+        currentFile: 'Current file: {path}',
+        none: 'None',
+        statusPending: 'Pending',
+        statusSkipped: 'Skipped (incremental)',
+        statusGenerating: 'Generating',
+        statusWaiting: 'Awaiting approval',
+        statusApplying: 'Writing',
+        statusApplied: 'Written',
+        statusSkippedManual: 'Skipped',
+        statusConflictSkipped: 'Skipped on conflict',
+        statusFailed: 'Failed',
+        statusCanceled: 'Canceled',
+        approvalTitle: 'Approve this batch',
+        approvalCount: '{count} item(s) awaiting approval',
+        approvalListLabel: 'Draft approval list',
+        approvalSelectHint:
+            'Select a file in the list to inspect its diff, then apply or skip each item; the next batch starts after all items are handled.',
+        conflictBadge: 'Conflict',
+        conflictTitle: 'Manual modification conflict detected',
+        conflictManualEdit:
+            'The target page was manually modified after the last AI compile; applying directly overwrites that manual work.',
+        conflictManualCreate:
+            'The target page exists but has no AI compile record (manually created or produced by an older version); applying directly overwrites its current content.',
+        conflictSourceMismatch:
+            'The target page records a different source than this raw file; applying directly may overwrite another source compile result.',
+        conflictUnverified:
+            'The target page could not be read, so manual modifications cannot be ruled out.',
+        conflictSkip: 'Skip this file',
+        conflictOverwrite: 'Overwrite anyway',
+        conflictReviewHint:
+            'Alternatively, review the diff below and click "Apply this item" to confirm the overwrite manually.',
+        applyItem: 'Apply this item',
+        applying: 'Writing…',
+        skipItem: 'Skip this item',
+        applyFailed: 'Failed to write: {error}',
+        summaryTitle: 'Batch compile finished',
+        summaryApplied: 'Written: {count}',
+        summarySkipped: 'Skipped: {count}',
+        summaryConflictSkipped: 'Skipped on conflict: {count}',
+        summaryFailed: 'Failed: {count}',
+        summaryCanceled: 'Canceled: {count}',
+        canceledTitle: 'Batch compile canceled',
+        canceledHint:
+            'Already applied content is not rolled back; unapplied drafts are not written to disk.',
+        failedListTitle: 'Failures (retry individually)',
+        skippedListTitle: 'Skipped files',
+        retry: 'Retry',
+        retrying: 'Retrying…',
+        restartAll: 'Recompile all',
+        openWikiHome: 'Open compile result',
+        openWikiHomeEmpty: 'No wiki page available to open',
+        openWikiHomeFailed: 'Failed to open the wiki page; open it from the file explorer later.',
+        ipcUnavailable:
+            'The main process is unavailable, so batch compile cannot run. Restart the app and try again.',
+        noWorkspace: 'No workspace is open, so batch compile cannot run.',
+        invalidTree: 'The workspace file tree data is invalid. Refresh and try again.',
+        treeTimeout: 'Timed out while reading the workspace file tree. Try again later.',
+        invalidIngestResult: 'The AI compile result is incomplete. Try again later.',
+        invalidApplyResult: 'The write result is incomplete. Try again later.',
+        close: 'Close'
+    },
+    /**
      * 1.5.7 LLM Wiki L4: relationship graph dialog (components/Graph/GraphDialog.vue).
      * Appended after L3 llmIngest so existing knowledge-base / AI panel entries stay untouched.
      */

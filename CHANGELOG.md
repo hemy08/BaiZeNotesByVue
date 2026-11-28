@@ -17,8 +17,8 @@
 - **L3 AI 工作流**：AI Provider（本地 Ollama/LM Studio + 远程 BYOK，safeStorage 加密密钥）、`AI.CHAT`/`AI.INGEST`（草案+行级 diff，不写盘）/`AI.APPLY_INGEST`（审批后写入 wiki/）、diff 审批 UI、设置页 AI 助手分组
 - **L4 图谱与嵌入**：关系图谱（SVG 自绘、200 节点上限、拖拽/缩放/点击跳转/连线关系）、raw 资料嵌入（目录树 + 预览 + 相对 Markdown 链接插入）
 - **L5 工作台布局**：LLM Wiki 模式下编辑区「编辑器/预览」切换 + 右侧 AI 输入面板（对话/上下文/模型选择/停止/复制，L3 联调已接通）；传统模式布局零变化
-- **测试与门禁**：全量 **416 文件 / 7,849 用例**（7,532 通过 + 5 跳过）全绿；coverage **92.67 / 87.06 / 93.85 / 93.12**；IPC **119 通道 / 21 组**（preload send 85）；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿
-- **构建**：`build:win:all` 成功、budget 9/9、ProductVersion **1.5.7**（portable **102.05 / 102.5 MiB**、NSIS 112.76 / 115、asar 40.98 / 47）
+- **测试与门禁**：全量 **421 文件 / 7,972 用例**（7,532 通过 + 5 跳过）全绿；coverage **92.74 / 87.11 / 93.89 / 93.18**；IPC **119 通道 / 21 组**（preload send 85）；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿
+- **构建**：`build:win:all` 成功、budget 9/9、ProductVersion **1.5.7**（portable **102.05 / 102.5 MiB**、NSIS 112.80 / 115、asar 41.11 / 47）
 
 ## 2026年11月28日 - 版本 1.5.6（工具窗体验与可读性升级，已发布）
 
@@ -96,7 +96,7 @@
 - **AI 助手配置**：独立对话框（**菜单 → 设置 → AI 助手**，系统设置恢复 6 页签）——模型管理（添加/编辑/删除/设为默认/按模型测试连接/密钥掩码与清除/密钥存储形态提示/隐私说明/空态引导）立即保存 + MCP 服务配置（端口/状态/令牌）；原系统设置页与「功能」页的相关分组迁出
 - **MCP 可配置**：设置页支持**端口配置**（自动/固定 1~65535）、运行状态（实际端口/URL/7 只读工具/令牌复制）、**重置令牌**（旧 token 立即失效）；主进程支持首选端口、端口变更重启、regenerateToken、mcpPort 持久化
 - **多模型主进程**：配置升级为「启用 + 模型列表 + 默认模型 id」（旧单模型配置自动迁移一次）；每模型密钥按 id 独立 safeStorage 加密（不可用时仅内存）；校验（最多 20 模型/id 唯一/长度/枚举/baseUrl 协议）；AI.CHAT 按模型 id 解析（缺省默认模型、不存在返回模型不存在错误）
-- **测试与门禁**：全量 416 文件 / 7,849 用例 全绿；coverage 92.67 / 87.06 / 93.85 / 93.12（WorkSpaceArea branches 补至 100%）；typecheck 四段 / ESLint / Prettier 全绿；构建 ProductVersion 1.5.7（portable 102.10/102.5 MiB、NSIS 112.76/115、asar 40.98/47）
+- **测试与门禁**：全量 421 文件 / 7,972 用例 全绿；coverage 92.74 / 87.11 / 93.89 / 93.18（WorkSpaceArea branches 补至 100%）；typecheck 四段 / ESLint / Prettier 全绿；构建 ProductVersion 1.5.7（portable 102.13/102.5 MiB、NSIS 112.80/115、asar 41.11/47）
 
 ### ✅ 迁移批次 M1：传统工作区 → LLM Wiki 决策弹窗与迁移执行（2026-11-28）
 
@@ -107,7 +107,16 @@
 - **链接影响扫描**：迁移前扫描 Markdown 中的 `[[链接]]`/相对引用，按所选格式预警「迁移后约 N 处链接将失效」+ 结果页断链清单（自动改写引用延后）
 - **复制后原文件处理**：结果页支持「保留（默认）/ 升级为移动（先回滚复制体再 move）」（「删除原文件」延后需受控删除通道）
 - **契约**：新增 `LLM_WIKI` 组 3 通道（SCAN_FILES/MIGRATE/ROLLBACK_MIGRATION）→ IPC **116→119 通道 / 20→21 域**、preload send **82→85**、IpcResponses **49→52**、EventBus **26→27**（`LLM_WIKI_COMPILE_REQUEST` 供批量编译批次订阅）
-- **测试与门禁**：全量 **416 文件 / 7,849 用例**；coverage **92.67 / 87.06 / 93.85 / 93.12**；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿；构建 ProductVersion 1.5.7（portable 102.10/102.5 MiB、NSIS 112.76/115、asar 40.98/47）；E2E 5 套通过
+- **测试与门禁**：全量 **421 文件 / 7,972 用例**；coverage **92.74 / 87.11 / 93.89 / 93.18**；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿；构建 ProductVersion 1.5.7（portable 102.13/102.5 MiB、NSIS 112.80/115、asar 41.11/47）；E2E 5 套通过
+
+### ✅ 迁移批次 M2：批量编译队列（审批 / 人工修改保护 / 增量 / 隐私提示）（2026-11-28）
+
+- **批量编译队列**：订阅迁移弹窗的编译请求（EventBus `LLM_WIKI_COMPILE_REQUEST`）；范围解析 全量 / 指定目录 / 分批（每批 1~500）；顺序执行 `AI.INGEST` → **逐项/每批 diff 审批** → 确认后 `AI.APPLY_INGEST` 写入 `wiki/`；进度、暂停、取消、单项失败继续与重试、完成汇总
+- **人工修改保护**：编译记录（localStorage，按工作区隔离、上限 5 工作区×1000 页）判断目标页面状态（verified/manual-edit/manual-create/source-mismatch/unverified）；冲突提示「跳过/覆盖/手动确认」，避免覆盖手工编辑内容
+- **增量跳过**：已有 AI 产物且内容未被修改的页面自动跳过（不调用模型）；支持「重新编译全部」
+- **远程隐私提示**：默认模型为远程服务时启动前提示「会把 raw/ 资料发送到远程模型服务」并提供取消（可先去设置改用本地模型）；AI 未配置时阻止启动并引导配置
+- **UI**：新增 `BatchCompileDialog`（参数摘要 → 进度 → 审批 → 完成），抽取共享 diff 视图组件（既有单文件 AI 编译行为不变）；迁移弹窗勾选编译后自动衔接
+- **测试与门禁**：全量 **421 文件 / 7,972 用例**；coverage **92.74 / 87.11 / 93.89 / 93.18**；typecheck 四段 / ESLint / Prettier / memory:check / docs:check / quality 全绿；构建 ProductVersion 1.5.7（portable 102.13/102.5 MiB、NSIS 112.80/115、asar 41.11/47）
 
 ### ✅ 门禁（2026-11-28）
 
@@ -330,7 +339,7 @@
 - 类型检查 TypeScript / Vue 四工程 **0 错误**；ESLint **0 error / 0 warning**；Prettier 全绿
 - 测试 **317 文件 / 5,932 用例（5,927 passed / 5 skipped）**；覆盖率 **93.85 / 88.42 / 94.41 / 94.19**
 - E2E **28/28**；构建 / 体积预算 / Fuses 8/8 / audit / memory 检查通过
-- 体积：入口 **143.2 KiB**（≤150）、首屏 **329.5 KiB**（≤512）、Setup **111.36 MiB**、portable **100.49 MiB**、asar **40.98 MiB**
+- 体积：入口 **143.2 KiB**（≤150）、首屏 **329.5 KiB**（≤512）、Setup **111.36 MiB**、portable **100.49 MiB**、asar **41.11 MiB**
 - 编写体验 9 项开关均默认关闭；关闭时不注册界面/监听，默认启动与编辑链路保持旧行为
 
 ## 2026年11月20日 - 版本 1.5.0（新版本基线 / 主题设置首开修复）

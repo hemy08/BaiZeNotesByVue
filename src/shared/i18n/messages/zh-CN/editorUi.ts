@@ -701,6 +701,119 @@ export default {
         retry: '重试'
     },
     /**
+     * 1.5.7 迁移批次 M2：批量编译对话框（components/llm-wiki/BatchCompileDialog.vue）。
+     * 覆盖准备摘要 / 远程模型隐私提示 / 增量模式 / 进度与队列控制 / 逐批 diff 审批 /
+     * 人工修改冲突（跳过·覆盖·手动确认）/ 完成汇总与失败重试。
+     */
+    batchCompile: {
+        title: '批量编译（raw → wiki）',
+        subtitle:
+            '按所选范围编译 raw/ 资料：逐批生成 wiki 草案，经 diff 审批后写入；取消后已应用内容不回滚、未应用内容不写盘。',
+        preparing: '正在准备编译队列…',
+        blockedTitle: '无法开始批量编译',
+        blockedNotConfigured:
+            'AI 助手未启用或未配置可用模型，无法编译。请先在「系统设置 → 功能 → AI 助手」中启用并添加模型。',
+        blockedConfigReadFailed:
+            '读取 AI 配置失败，无法确认编译可用性。请稍后重试，或检查「系统设置 → 功能 → AI 助手」。',
+        blockedWorkspace:
+            '当前工作区尚未初始化 raw/ 目录，无法批量编译。请先执行「初始化 LLM Wiki」。',
+        blockedNoFiles:
+            '所选范围内没有可编译的原始资料（仅支持 Markdown / 文本），请调整编译范围后重试。',
+        blockedLoadFailed: '读取工作区目录树失败：{error}',
+        blockedDetail: '详细信息：{detail}',
+        blockedRetry: '重试',
+        openAiConfig: '去配置 AI 助手',
+        unknownError: '未知错误',
+        scopeLabel: '编译范围',
+        scopeAll: '全量编译',
+        scopeDirectory: '指定目录：{directory}',
+        scopeBatch: '分批编译（每批 {size} 个）',
+        degraded: '编译范围参数不完整，本次已按「全量编译」处理。',
+        fileCountLabel: '待编译文件',
+        fileCount: '共 {count} 个文件',
+        aiModelLabel: '本次使用的模型',
+        aiModelUnknown: '未获取到默认模型',
+        remoteTitle: '远程模型隐私提示',
+        remoteBody:
+            '本次编译会把 raw/ 资料内容发送到配置的远程模型服务（{model}）。请确认资料中不包含不希望外发的敏感信息。',
+        remoteContinue: '我已知晓，继续编译',
+        remoteLocalHint:
+            '提示：AI.INGEST 固定使用默认模型，当前批次无法按文件切换模型；如需避免外发，请先在「系统设置 → 功能 → AI 助手」中把默认模型切换为本地模型，再重新打开批量编译。',
+        incrementalTitle: '编译模式',
+        incrementalLabel: '增量编译：仅编译新增或内容变化的文件（推荐）',
+        incrementalHint:
+            '已有编译记录且 wiki 页面未被修改的文件会直接跳过，不重复调用模型；页面被人工修改时会先提示冲突。',
+        previewSkip: '预计跳过 {count} 个已编译且未被修改的文件',
+        previewConflict: '{count} 个目标页面需要人工确认（人工修改或缺少编译记录）',
+        recompileAllLabel: '重新编译全部文件',
+        recompileAllHint:
+            '忽略已有编译记录，所有目标文件重新生成草案并审批（更慢、消耗更多模型调用）。',
+        start: '开始编译',
+        cancel: '取消',
+        cancelRun: '取消编译',
+        pause: '暂停',
+        pausePending: '将在当前文件完成后暂停',
+        pausedHint: '已暂停（当前文件已完成；未应用的草案不会写盘）',
+        resume: '继续',
+        progressLabel: '批量编译进度',
+        progress: '已处理 {processed}/{total}',
+        batchProgress: '第 {current}/{total} 批',
+        currentFile: '当前文件：{path}',
+        none: '无',
+        statusPending: '待处理',
+        statusSkipped: '已跳过（增量）',
+        statusGenerating: '生成中',
+        statusWaiting: '待审批',
+        statusApplying: '写入中',
+        statusApplied: '已写入',
+        statusSkippedManual: '已跳过',
+        statusConflictSkipped: '冲突跳过',
+        statusFailed: '失败',
+        statusCanceled: '已取消',
+        approvalTitle: '审批本批草案',
+        approvalCount: '待审批 {count} 项',
+        approvalListLabel: '待审批草案列表',
+        approvalSelectHint: '选择列表中的文件查看 diff，逐项应用或跳过；全部处理完后进入下一批。',
+        conflictBadge: '冲突',
+        conflictTitle: '检测到人工修改冲突',
+        conflictManualEdit: '目标页面在上次 AI 编译后被人工修改，直接应用会覆盖人工内容。',
+        conflictManualCreate:
+            '目标页面存在但没有 AI 编译记录（人工创建或旧版本产物），直接应用会覆盖现有内容。',
+        conflictSourceMismatch:
+            '目标页面的来源记录与本次原始资料不一致，直接应用可能覆盖其他资料的编译结果。',
+        conflictUnverified: '目标页面读取失败，无法确认是否被人工修改。',
+        conflictSkip: '跳过该文件',
+        conflictOverwrite: '仍要覆盖',
+        conflictReviewHint: '也可以查看下方 diff 后点击「应用本项」手动确认覆盖。',
+        applyItem: '应用本项',
+        applying: '正在写入…',
+        skipItem: '跳过本项',
+        applyFailed: '写入失败：{error}',
+        summaryTitle: '批量编译完成',
+        summaryApplied: '已写入 {count}',
+        summarySkipped: '跳过 {count}',
+        summaryConflictSkipped: '冲突跳过 {count}',
+        summaryFailed: '失败 {count}',
+        summaryCanceled: '取消 {count}',
+        canceledTitle: '批量编译已取消',
+        canceledHint: '已应用的内容不会回滚，未应用的草案不会写盘。',
+        failedListTitle: '失败清单（可单项重试）',
+        skippedListTitle: '跳过清单',
+        retry: '重试',
+        retrying: '重试中…',
+        restartAll: '重新编译全部',
+        openWikiHome: '打开编译结果',
+        openWikiHomeEmpty: '暂无可打开的 wiki 页面',
+        openWikiHomeFailed: '打开 wiki 页面失败，请稍后在资源管理器中打开。',
+        ipcUnavailable: '主进程不可用，无法执行批量编译，请重启应用后重试。',
+        noWorkspace: '尚未打开工作区，无法批量编译。',
+        invalidTree: '工作区目录树数据无效，请刷新后重试。',
+        treeTimeout: '读取工作区目录树超时，请稍后重试。',
+        invalidIngestResult: 'AI 编译返回结果不完整，请稍后重试。',
+        invalidApplyResult: '写入结果不完整，请稍后重试。',
+        close: '关闭'
+    },
+    /**
      * 1.5.7 LLM Wiki L4：关系图谱对话框（components/Graph/GraphDialog.vue）。
      * 独立区块追加在 L3 llmIngest 之后，不与既有知识库/AI 面板词条互相影响。
      */
