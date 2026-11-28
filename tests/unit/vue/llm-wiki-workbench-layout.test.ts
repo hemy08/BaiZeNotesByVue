@@ -23,8 +23,8 @@
  * 8. 切到其它工作区容器时面板与入口隐藏（v-show 保留实例）；传统模式仅面板零渲染。
  *
  * 说明：编辑区内部视图（编辑 / 预览 / 编辑+预览）已统一为 `workspace-layout` 三态单一真源
- * （体验微调批次 A5），入口在编辑工具条右侧图标按钮（`MarkdownEditToolsComponent`），
- * 对应渲染/切换行为由 `markdown-edit-tools-llm-wiki.test.ts` 与
+ * （体验微调批次 A5），入口在菜单栏右侧图标按钮（`MenuBar.vue`，A6 起从编辑工具条迁移），
+ * 对应渲染/切换行为由 `markdown-edit-tools-llm-wiki.test.ts`、`menubar-actions.test.ts` 与
  * `markdown-edit-llm-wiki-layout.test.ts` 覆盖；旧「编辑区单栏 tab」状态已删除。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -291,7 +291,7 @@ describe('WorkSpace 布局：llm-wiki 模式（单栏编辑 + 右侧 AI 面板�
         expect(wrapper.find('.md-container-stub').attributes('data-width')).toBe('453px')
         // 展开态入口不渲染（收起按钮在面板头部）
         expect(wrapper.find('#llm-ai-sidebar-entry').exists()).toBe(false)
-        // 编辑区内部视图由统一三态真源驱动（入口在编辑工具条右侧），无旧 tab 行节点
+        // 编辑区内部视图由统一三态真源驱动（入口在菜单栏右侧），无旧 tab 行节点
         expect(wrapper.find('.llm-wiki-editor-tabs').exists()).toBe(false)
     })
 

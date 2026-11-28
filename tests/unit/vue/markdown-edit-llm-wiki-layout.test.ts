@@ -3,15 +3,15 @@
  * 1.5.7 体验微调（用户反馈批次 A5）：编辑区三态视图（`MarkdownEditComponent`）。
  *
  * 单一真源：`workspace-layout` 的 `currentWorkspaceLayout.viewMode`（与视图菜单 F9/F10/F11、
- * 布局 profile、编辑工具条右侧三态按钮共用）；传统模式与 LLM Wiki 模式语义完全一致。
+ * 布局 profile、菜单栏右侧三态按钮共用）；传统模式与 LLM Wiki 模式语义完全一致。
  *
  * 覆盖：
  * 1. LLM Wiki 模式三态渲染：edit = 仅编辑器、preview = 仅预览、edit-preview = 编辑器+预览并排
  *    （分隔条可拖动，两个窗格实例始终挂载，v-show 保留光标/滚动状态）；
- * 2. 单一真源外部变化（工具条三态按钮路径 / 视图菜单 IPC / 布局 profile）→ 编辑区布局联动；
+ * 2. 单一真源外部变化（菜单栏三态按钮路径 / 视图菜单 IPC / 布局 profile）→ 编辑区布局联动；
  * 3. 工作区模式切换不重置用户已选视图（传统 ↔ LLM Wiki 三态语义一致）；
  * 4. 旧 LLM Wiki 专属「编辑区 tab」状态（localStorage `baize:llm-wiki:editor-tab`）不再消费；
- * 5. 编辑区右上角旧「编辑器 / 预览」分段控件已移除（三态入口在编辑工具条右侧）；
+ * 5. 编辑区右上角旧「编辑器 / 预览」分段控件已移除（三态入口在菜单栏右侧）；
  * 6. 既有清空/卸载行为与 AI 面板上下文同步不受影响。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -289,7 +289,7 @@ describe('MarkdownEditComponent：LLM Wiki 模式统一三态视图', () => {
         expect(currentWorkspaceLayout.viewMode).toBe('edit-preview')
     })
 
-    it('单一真源外部变化（工具条三态按钮路径）→ 编辑区布局即时联动', async () => {
+    it('单一真源外部变化（菜单栏三态按钮路径）→ 编辑区布局即时联动', async () => {
         await mountEditor('llm-wiki')
 
         // 工具条按钮只调用 updateCurrentWorkspaceViewMode；本组件 watch 同一真源应用布局
@@ -386,7 +386,7 @@ describe('MarkdownEditComponent：LLM Wiki 模式统一三态视图', () => {
 })
 
 describe('MarkdownEditComponent：编辑区右上角旧「编辑器 / 预览」分段控件已移除（体验微调 A5）', () => {
-    it('llm-wiki 模式不再渲染右上角 dock / 分段按钮（三态切换入口在编辑工具条右侧）', async () => {
+    it('llm-wiki 模式不再渲染右上角 dock / 分段按钮（三态切换入口在菜单栏右侧）', async () => {
         await mountEditor('llm-wiki')
 
         expect(document.querySelector('.llm-wiki-editor-tabs-dock')).toBeNull()
@@ -404,7 +404,7 @@ describe('MarkdownEditComponent：编辑区右上角旧「编辑器 / 预览」�
         expect(editorElement().style.top).toBe('')
     })
 
-    it('静态契约：MarkdownEditComponent 只用统一三态真源；工具条承接图标按钮', () => {
+    it('静态契约：MarkdownEditComponent 只用统一三态真源；工具条不再承接图标按钮（已迁移菜单栏）', () => {
         const root = path.resolve(__dirname, '../../..')
         const editSource = fs.readFileSync(
             path.join(root, 'src/renderer/src/components/Markdown/MarkdownEditComponent.vue'),
@@ -422,30 +422,43 @@ describe('MarkdownEditComponent：编辑区右上角旧「编辑器 / 预览」�
         expect(editSource).toContain('updateCurrentWorkspaceViewMode')
         expect(editSource).toContain('resolveViewMode')
 
+        // 1.5.7 体验修正（A6）：视图/模式切换按钮已从编辑工具条迁移到菜单栏右侧，
+        // 工具条源码中不得残留旧入口（防止两个入口并存），格式按钮区自适应契约保留。
         const toolsSource = fs.readFileSync(
             path.join(root, 'src/renderer/src/components/Markdown/MarkdownEditToolsComponent.vue'),
             'utf8'
         )
-        // 工具条右侧纯图标按钮：编辑视图三态切换 + 工作区模式快速切换（两模式都渲染）
-        expect(toolsSource).toContain('data-workspace-view-mode-toggle="true"')
-        expect(toolsSource).toContain('data-workspace-mode-toggle="true"')
-        expect(toolsSource).toContain('id="workspace-view-mode-toggle"')
-        expect(toolsSource).toContain('id="llm-workspace-mode-toggle"')
-        expect(toolsSource).toContain(':data-view-mode="currentViewMode"')
-        // 图标：24 网格 / stroke 1.5 / currentColor（纯图标无文字）
-        expect(toolsSource).toContain('viewBox="0 0 24 24"')
-        expect(toolsSource).toContain('stroke-width="1.5"')
-        expect(toolsSource).toContain('stroke="currentColor"')
-        // 右侧区域不参与裁剪：flex 0 0 auto + margin-left:auto；左侧区可收缩
-        const actionsBlock = toolsSource.slice(toolsSource.indexOf('.toolbar-actions {'))
-        expect(actionsBlock).toContain('flex: 0 0 auto')
-        expect(actionsBlock).toContain('margin-left: auto')
+        expect(toolsSource).not.toContain('data-workspace-view-mode-toggle')
+        expect(toolsSource).not.toContain('data-workspace-mode-toggle')
+        expect(toolsSource).not.toContain('id="workspace-view-mode-toggle"')
+        expect(toolsSource).not.toContain('id="llm-workspace-mode-toggle"')
+        expect(toolsSource).not.toContain('requestSwitchToLlmWiki')
+        expect(toolsSource).not.toContain('switchToTraditional')
+        expect(toolsSource).not.toContain('.toolbar-actions')
         const quickBlock = toolsSource.slice(toolsSource.indexOf('.toolbar-quick-access {'))
         expect(quickBlock).toContain('flex: 1 1 auto')
         expect(quickBlock).toContain('min-width: 0')
+
+        // 菜单栏承接纯图标按钮：24 网格 / stroke 1.5 / currentColor（纯图标无文字），
+        // 右侧区域不参与裁剪（flex 0 0 auto + margin-left:auto）。
+        const menuBarSource = fs.readFileSync(
+            path.join(root, 'src/renderer/src/components/MenuBar.vue'),
+            'utf8'
+        )
+        expect(menuBarSource).toContain('data-workspace-view-mode-toggle="true"')
+        expect(menuBarSource).toContain('data-workspace-mode-toggle="true"')
+        expect(menuBarSource).toContain('id="workspace-view-mode-toggle"')
+        expect(menuBarSource).toContain('id="llm-workspace-mode-toggle"')
+        expect(menuBarSource).toContain(':data-view-mode="currentViewMode"')
+        expect(menuBarSource).toContain('viewBox="0 0 24 24"')
+        expect(menuBarSource).toContain('stroke-width="1.5"')
+        expect(menuBarSource).toContain('stroke="currentColor"')
+        const actionsBlock = menuBarSource.slice(menuBarSource.indexOf('.menu-bar-actions {'))
+        expect(actionsBlock).toContain('flex: 0 0 auto')
+        expect(actionsBlock).toContain('margin-left: auto')
         // 模式切换复用统一 composable（与系统设置同样处理）
-        expect(toolsSource).toContain('requestSwitchToLlmWiki')
-        expect(toolsSource).toContain('switchToTraditional')
+        expect(menuBarSource).toContain('requestSwitchToLlmWiki')
+        expect(menuBarSource).toContain('switchToTraditional')
         // 旧分段控件文件已删除（测试静态断言文件不存在）
         expect(
             fs.existsSync(

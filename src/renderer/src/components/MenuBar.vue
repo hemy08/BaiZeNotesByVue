@@ -39,6 +39,95 @@
             <span class="menu-label">{{ menu.labelKey ? t(menu.labelKey) : menu.label }}</span>
         </button>
 
+        <!--
+            1.5.7 体验修正（用户反馈批次 A6）：编辑视图三态切换 + 传统 / LLM Wiki 模式快速
+            切换从编辑工具条迁移到菜单栏右侧（用户截图要求：放在菜单栏右侧，而不是编辑器
+            工具栏右侧）。契约与迁移前保持一致：
+            - 纯图标按钮（内联 SVG / currentColor / 24 网格 stroke 1.5），DOM id 与
+              data-* 契约不变（#workspace-view-mode-toggle、#llm-workspace-mode-toggle）；
+            - 两模式常显；不参与菜单栏 roving tabindex 与 Alt 字母助记符（Tab 可达、
+              Enter/Space 走原生按钮激活）；
+            - @keydown.stop 隔离菜单栏键盘导航：按钮上的方向键 / Home / End / Esc 不冒泡到
+              根节点，不会移动菜单焦点或展开下拉（根处理器同时只响应 .menu-item 目标）。
+        -->
+        <div class="menu-bar-actions" data-menu-bar-actions @keydown.stop>
+            <!-- 编辑视图三态切换（编辑 → 预览 → 编辑+预览 → 编辑）：状态真源为
+                 workspace-layout 的 viewMode（与「视图」菜单 F9/F10/F11 共用）。 -->
+            <button
+                id="workspace-view-mode-toggle"
+                type="button"
+                class="menu-bar-action"
+                data-workspace-view-mode-toggle="true"
+                :data-view-mode="currentViewMode"
+                :title="viewModeToggleLabel"
+                :aria-label="viewModeToggleLabel"
+                @click="cycleWorkspaceViewMode"
+            >
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    focusable="false"
+                >
+                    <!-- 当前「仅编辑」→ 铅笔 -->
+                    <template v-if="currentViewMode === 'edit'">
+                        <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
+                        <path d="M13.5 6.5l4 4" />
+                    </template>
+                    <!-- 当前「仅预览」→ 眼睛 -->
+                    <template v-else-if="currentViewMode === 'preview'">
+                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </template>
+                    <!-- 当前「编辑+预览」→ 分栏（左右两个窗格） -->
+                    <template v-else>
+                        <rect x="3" y="4" width="18" height="16" rx="2" />
+                        <path d="M12 4v16" />
+                    </template>
+                </svg>
+            </button>
+            <!-- 传统 ↔ LLM Wiki 模式快速切换：传统模式显示「切换到 LLM Wiki」，
+                 LLM Wiki 模式显示「切换到传统模式」（与系统设置走同一确认/初始化/写配置链路）。 -->
+            <button
+                id="llm-workspace-mode-toggle"
+                type="button"
+                class="menu-bar-action"
+                data-workspace-mode-toggle="true"
+                :data-workspace-mode="isLlmWikiMode ? 'llm-wiki' : 'traditional'"
+                :title="workspaceModeToggleLabel"
+                :aria-label="workspaceModeToggleLabel"
+                :aria-pressed="isLlmWikiMode"
+                @click="handleWorkspaceModeToggle"
+            >
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    focusable="false"
+                >
+                    <!-- 传统模式 → 动作「切换到 LLM Wiki」（星芒）；LLM Wiki → 动作「切换到传统」（文稿） -->
+                    <path
+                        v-if="!isLlmWikiMode"
+                        d="M12 3l1.6 4.5a2 2 0 0 0 1.2 1.2L19.5 10l-4.7 1.3a2 2 0 0 0-1.2 1.2L12 17.5l-1.6-5a2 2 0 0 0-1.2-1.2L4.5 10l4.7-1.3a2 2 0 0 0 1.2-1.2L12 3z"
+                    />
+                    <template v-else>
+                        <path d="M14 3H6v18h12V7l-4-4z" />
+                        <path d="M14 3v4h4" />
+                        <path d="M9 12h6" />
+                        <path d="M9 16h6" />
+                    </template>
+                </svg>
+            </button>
+        </div>
+
         <!-- 子菜单容器（teleport 到 body：位置跟随菜单项，层级走 --ui-z-dropdown） -->
         <teleport to="body">
             <transition name="submenu-fade">
@@ -82,6 +171,14 @@ import { t } from '../common/i18n'
 import { getBaseName } from '../../../shared/utils/path'
 import { logger } from '../common/logger'
 import { useFeatureFlags } from '../composables/useFeatureFlags'
+import { useWorkspaceMode } from '../composables/useWorkspaceMode'
+import { requestSwitchToLlmWiki, switchToTraditional } from '../composables/useWorkspaceModeSwitch'
+import {
+    currentWorkspaceLayout,
+    isWorkspaceLayoutViewMode,
+    updateCurrentWorkspaceViewMode,
+    type WorkspaceLayoutViewMode
+} from './Markdown/workspace-layout'
 
 // ---------------------------------------------------------------------------------------------
 // 菜单数据响应式副本
@@ -311,6 +408,88 @@ function hasSubmenu(menu: BaiZeMenuEntry): boolean {
     return hasMenuSubmenu(menu)
 }
 
+// ---------------------------------------------------------------------------------------------
+// 菜单栏右侧操作区：视图三态切换 + 传统 / LLM Wiki 模式快速切换（1.5.7 体验修正，反馈批次 A6）
+//
+// 从编辑工具条（MarkdownEditToolsComponent.vue）迁移而来（用户要求放在菜单栏右侧）：
+// - 视图三态：状态真源仍是 workspace-layout 的 currentWorkspaceLayout.viewMode（与「视图」
+//   菜单 F9/F10/F11、布局 profile 共用，不新增第二份视图状态）。点击按
+//   「编辑 → 预览 → 编辑+预览 → 编辑」循环，图标显示当前视图，title/aria-label 同时说明
+//   「当前视图 + 点击后的目标视图」；
+// - 模式切换：传统 → LLM Wiki 与系统设置同样处理（确认 + 初始化 + 写配置，见
+//   useWorkspaceModeSwitch）；LLM Wiki → 传统直接写配置生效；
+// - 两模式常显、纯图标；i18n 复用 editorUi.viewModeToggle.* / editorUi.llmWikiPanel.switchTo*，
+//   不新增文案；
+// - 按钮不参与菜单栏键盘导航（不是 .menu-item，模板容器 @keydown.stop 隔离按键冒泡）。
+// ---------------------------------------------------------------------------------------------
+const { isLlmWikiMode } = useWorkspaceMode()
+
+/** 三态视图的循环顺序（编辑 → 预览 → 编辑+预览 → 编辑） */
+const VIEW_MODE_CYCLE: readonly WorkspaceLayoutViewMode[] = ['edit', 'preview', 'edit-preview']
+
+/** i18n：当前视图描述键 */
+const VIEW_MODE_CURRENT_LABEL_KEYS: Record<WorkspaceLayoutViewMode, string> = {
+    edit: 'editorUi.viewModeToggle.currentEdit',
+    preview: 'editorUi.viewModeToggle.currentPreview',
+    'edit-preview': 'editorUi.viewModeToggle.currentEditPreview'
+}
+
+/** i18n：点击后的目标视图描述键 */
+const VIEW_MODE_NEXT_LABEL_KEYS: Record<WorkspaceLayoutViewMode, string> = {
+    edit: 'editorUi.viewModeToggle.switchToPreview',
+    preview: 'editorUi.viewModeToggle.switchToEditPreview',
+    'edit-preview': 'editorUi.viewModeToggle.switchToEdit'
+}
+
+/** 当前视图模式（单一真源；非法/损坏值回落默认「编辑+预览」，保证按钮文案可解析） */
+const currentViewMode = computed<WorkspaceLayoutViewMode>(() =>
+    isWorkspaceLayoutViewMode(currentWorkspaceLayout.viewMode)
+        ? currentWorkspaceLayout.viewMode
+        : 'edit-preview'
+)
+
+/** 下一个循环到的视图模式（indexOf 返回 -1 时 `(index + 1) % 3 = 0`，回落「仅编辑」） */
+const nextViewMode = computed<WorkspaceLayoutViewMode>(() => {
+    const index = VIEW_MODE_CYCLE.indexOf(currentViewMode.value)
+    return VIEW_MODE_CYCLE[(index + 1) % VIEW_MODE_CYCLE.length]
+})
+
+/** 视图切换按钮文案：当前视图 + 点击后的目标视图 */
+const viewModeToggleLabel = computed(() =>
+    t('editorUi.viewModeToggle.title', {
+        current: t(VIEW_MODE_CURRENT_LABEL_KEYS[currentViewMode.value]),
+        next: t(VIEW_MODE_NEXT_LABEL_KEYS[currentViewMode.value])
+    })
+)
+
+/**
+ * 循环切换编辑视图：写入单一真源，由 MarkdownEditComponent 按状态渲染三态布局。
+ * 先收起可能展开的顶层菜单——点击发生在菜单栏内部，`handleClickOutside` 不会触发。
+ */
+function cycleWorkspaceViewMode(): void {
+    closeMenu()
+    updateCurrentWorkspaceViewMode(nextViewMode.value)
+}
+
+/** 工作区模式快速切换按钮文案：描述点击后的目标模式 */
+const workspaceModeToggleLabel = computed(() =>
+    t(
+        isLlmWikiMode.value
+            ? 'editorUi.llmWikiPanel.switchToTraditional'
+            : 'editorUi.llmWikiPanel.switchToLlmWiki'
+    )
+)
+
+/** 工作区模式快速切换：传统 → LLM Wiki 走确认+初始化；LLM Wiki → 传统直接写配置 */
+function handleWorkspaceModeToggle(): void {
+    closeMenu()
+    if (isLlmWikiMode.value) {
+        void switchToTraditional()
+        return
+    }
+    requestSwitchToLlmWiki()
+}
+
 /**
  * 计算子菜单位置，确保不超出屏幕。
  *
@@ -402,6 +581,8 @@ function switchTopLevelMenu(fromIndex: number, direction: -1 | 1): void {
 /**
  * 菜单栏键盘事件（事件委托到根节点）：仅处理来自顶层菜单按钮的按键。
  * 下拉面板的键盘事件由 MenuSubmenu 处理——它 teleport 到 body，不在本节点事件流内。
+ * 右侧操作区的两个图标按钮不是菜单项：其容器 `@keydown.stop` 先拦截冒泡，且本处理器
+ * 以 `.menu-item` 目标做门禁，方向键 / Home / End / Esc 不会作用于这两个按钮。
  */
 function handleMenubarKeydown(event: KeyboardEvent): void {
     const target = event.target as HTMLElement | null
@@ -928,6 +1109,85 @@ onBeforeUnmount(() => {
     font-weight: 500;
     color: inherit;
     letter-spacing: 0.02em;
+}
+
+/* ============================ 菜单栏右侧操作区（A6） ============================
+ * 1.5.7 体验修正（用户反馈批次 A6）：编辑视图三态切换 + 传统 / LLM Wiki 模式快速切换按钮。
+ * - 布局：菜单项之后靠右（margin-left: auto），flex 不收缩（flex: 0 0 auto）：窗口变窄时
+ *   菜单项按既有 flex 收缩行为处理，右侧按钮始终可见、不换行；
+ * - 尺寸：点击区 = 密度行高令牌（24 / 28 / 32，与菜单项同一节奏），图标固定 18px；
+ * - 视觉：默认文字色、hover/焦点走强调色软底 + 强调色，焦点环 --ui-focus-shadow，
+ *   模式按钮的「当前处于 LLM Wiki」由 aria-pressed 表达强调色。四风格 × 三密度全部由
+ *   根元素属性下的 --ui-* 变量自动生效，组件内不写风格/密度分支（UI-15）。
+ * ========================================================================== */
+.menu-bar-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+    margin-left: auto;
+    padding: 0 8px;
+    box-sizing: border-box;
+}
+
+.menu-bar-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--ui-row-height, 28px);
+    height: var(--ui-row-height, 28px);
+    padding: 0;
+    border: var(--ui-hairline-width, 1px) solid transparent;
+    border-radius: var(--ui-radius-sm, 2px);
+    background: transparent;
+    appearance: none;
+    color: var(--ui-text);
+    fill: currentColor;
+    font-family: inherit;
+    line-height: 1;
+    cursor: default;
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+/* 悬停与菜单项一致：强调色软底 + 强调色文字（COMPONENTS.md §2） */
+.menu-bar-action:hover {
+    background-color: var(--ui-accent-soft);
+    color: var(--ui-accent);
+}
+
+/* 键盘焦点必须可见（focus-ring 令牌；不依赖浏览器默认 outline） */
+.menu-bar-action:focus-visible {
+    outline: none;
+    background-color: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    box-shadow: var(--ui-focus-shadow);
+}
+
+/*
+ * Alt 激活态（.menu-bar--alt-active）下按钮仍可用：与菜单项一致，脚本化聚焦期间用
+ * 同一 focus-ring 令牌兜底可见反馈；按钮不参与 roving tabindex / 字母助记符。
+ */
+.menu-bar--alt-active .menu-bar-action:focus {
+    outline: none;
+    background-color: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    box-shadow: var(--ui-focus-shadow);
+}
+
+/* 激活态：工作区模式按钮表示「当前处于 LLM Wiki 模式」 */
+.menu-bar-action[aria-pressed='true'] {
+    color: var(--ui-accent);
+    border-color: var(--ui-accent);
+}
+
+/* 纯图标：18px 居中对齐（24 网格 SVG 视觉重量与 13px 菜单文字相当） */
+.menu-bar-action svg {
+    display: block;
+    width: 18px;
+    height: 18px;
 }
 
 /*

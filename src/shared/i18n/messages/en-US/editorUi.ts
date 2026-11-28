@@ -627,9 +627,9 @@ export default {
     /**
      * 1.5.7 LLM Wiki L5: workbench AI input panel.
      * UI skeleton batch only; AI calls go through an injectable transport (placeholder by default).
-     * 1.5.7 UX fine-tuning (user feedback batch A4): the workspace mode quick switch becomes an
-     * icon-only button at the right of the edit toolbar; the right sidebar AI entry switches to
-     * LLM Wiki mode when clicked in traditional mode.
+     * 1.5.7 UX fine-tuning (user feedback batch A4): the workspace mode quick switch has an
+     * icon-only shortcut (moved from the edit toolbar to the right of the menu bar in batch A6);
+     * the right sidebar AI entry switches to LLM Wiki mode when clicked in traditional mode.
      */
     llmWikiPanel: {
         ariaLabel: 'AI input panel',
@@ -689,10 +689,11 @@ export default {
             'The system configuration cannot be read or written in this environment, so the workspace mode was not switched'
     },
     /**
-     * 1.5.7 UX fine-tuning (user feedback batch A5): three-state "editor / preview / editor+preview"
-     * view switch at the right of the edit toolbar. Shared by traditional and LLM Wiki modes
-     * (single source of truth: workspace-layout's currentWorkspaceLayout.viewMode, kept in sync
-     * with the View menu F9/F10/F11); the title shows the current view and the click target.
+     * 1.5.7 UX tuning (user feedback batch A6): three-state "editor / preview / editor+preview"
+     * view switch button (at the right of the menu bar; moved from the edit toolbar in batch A6).
+     * Shared by traditional and LLM Wiki modes (single source of truth: workspace-layout's
+     * currentWorkspaceLayout.viewMode, kept in sync with the View menu F9/F10/F11); the title
+     * shows the current view and the click target.
      */
     viewModeToggle: {
         title: '{current}. Click to {next}.',
