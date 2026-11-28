@@ -734,7 +734,7 @@ npm run clean
 - [x] **工作台与工具条**：顶部菜单栏右侧**视图模式按钮**（编辑/预览/编辑+预览三态，两模式都显示）+ 传统/LLM Wiki **快速切换图标按钮**；可拖动分隔条（宽度无限制、双击复位、键盘可调、宽度持久化）；AI 面板收起进右侧边栏
 - [x] **AI 助手入口跨模式**：右侧边栏 AI 按钮传统模式与 LLM Wiki 模式均显示（传统模式点击 = 按系统设置同样流程切换并打开面板；LLM Wiki 模式 = 展开面板）；AI 助手配置独立为「菜单 → 设置 → AI 助手」对话框
 - [x] **设置页「AI 助手」页签**：多模型管理（添加/编辑/删除/默认/逐模型测试连接/密钥掩码）+ MCP 配置（端口/状态/令牌复制/重置令牌）
-- [x] 门禁：全量 **413 文件 / 7,725 用例**、coverage 92.60/86.94/93.76/93.06、IPC **116 通道/20 组**、typecheck/ESLint/Prettier/docs:check/quality 全绿；构建 ProductVersion 1.5.7（portable 102.04/102.5 MiB）
+- [x] 门禁：全量 **413 文件 / 7,725 用例**、coverage 92.60/86.94/93.76/93.06、IPC **116 通道/20 组**、typecheck/ESLint/Prettier/docs:check/quality 全绿；构建 ProductVersion 1.5.7（portable 102.08/102.5 MiB）
 - 需求清单：[1.5.7 需求清单与方案](docs/wiki/04-优化与专项报告/1.5.7-需求清单与方案.md)；实施计划（单一真源）：[LLM-Wiki-Implementation-Plan.md](docs/wiki/02-设计与架构/LLM-Wiki-Implementation-Plan.md)
 
 ### v1.5.6 (2026-11-28 已发布)
