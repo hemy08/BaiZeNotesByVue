@@ -40,8 +40,11 @@ export interface LlmAiContextSnapshot {
 export interface LlmAiSendPayload {
     /** 用户本次输入的消息文本（已 trim） */
     message: string
-    /** 选中的模型 id（本批次只有占位 mock 数据） */
-    modelId: string
+    /**
+     * 选中的模型 id（`AI.GET_CONFIG` 返回的真实模型 id；1.5.7 体验升级批次 A 起多模型）。
+     * 缺省表示交给主进程使用配置中的 `defaultModelId`（配置读取失败时的降级路径）。
+     */
+    modelId?: string
     /** 本次发送前的对话历史（含刚追加的用户消息，便于后续多轮上下文） */
     history: readonly LlmAiMessage[]
     /** 上下文引用快照 */
@@ -59,16 +62,6 @@ export type LlmAiTransport = (payload: LlmAiSendPayload) => Promise<string>
  */
 export const LLM_AI_TRANSPORT_INJECTION_KEY: InjectionKey<LlmAiTransport> =
     Symbol('baize:llm-ai-transport')
-
-/** 模型选择器占位数据（本批次不发起真实请求，L3 批次接入真实模型列表） */
-export const LLM_AI_MODEL_PLACEHOLDER = {
-    DEFAULT: 'default',
-    LOCAL: 'local-ollama',
-    REMOTE: 'remote-byok'
-} as const
-
-/** 默认模型 id（「默认模型」占位项） */
-export const DEFAULT_LLM_AI_MODEL_ID = LLM_AI_MODEL_PLACEHOLDER.DEFAULT
 
 /**
  * 占位 transport：返回「AI 功能尚未接入（L3 批次提供）」。

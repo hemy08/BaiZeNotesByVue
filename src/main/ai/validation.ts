@@ -1,11 +1,12 @@
 /**
- * 1.5.7 LLM Wiki L3：AI IPC 载荷校验（主进程侧，失败抛 `AiProviderError(AI_INVALID_PAYLOAD)`）
+ * 1.5.7 LLM Wiki L3 / 体验升级批次 C：AI IPC 载荷校验（主进程侧，失败抛
+ * `AiProviderError(AI_INVALID_PAYLOAD)`）
  *
  * 校验口径（IPC 入口统一守卫，避免把非法/超长载荷传进 Provider 或写盘链路）：
  * - 结构：必须是纯对象（排除 null / 数组）；
  * - 枚举：role / provider / localProvider 白名单（shared/constants/ai.ts 单一真源）；
- * - 长度：消息条数/总字符数、上下文、模型名、baseUrl、API Key、写盘内容分别限长；
- * - 字符：单行字段（模型/baseUrl/路径）用 `hasControlChars` 拒绝控制字符；
+ * - 长度：消息条数/总字符数、上下文、模型数量/名称/id、模型名、baseUrl、API Key、写盘内容分别限长；
+ * - 字符：单行字段（模型/baseUrl/路径/模型 id）用 `hasControlChars` 拒绝控制字符；
  * - 密钥：只做「非空 + 长度上限 + 无换行/控制字符」校验，**不在任何日志中输出**。
  *
  * 说明：所有校验失败都抛错，由 IPC handler 统一 catch → `{ ok:false, code, message }`；
@@ -20,7 +21,11 @@ import {
     AI_CHAT_MESSAGE_MAX_CHARS,
     AI_CHAT_TOTAL_MAX_CHARS,
     AI_DRAFT_PATH_MAX_CHARS,
+    AI_MODEL_ID_MAX_CHARS,
+    AI_MODEL_ID_PATTERN,
+    AI_MODEL_NAME_MAX_CHARS,
     AI_MODEL_MAX_CHARS,
+    AI_MODELS_MAX,
     isAiLocalProviderId,
     isAiProviderKind
 } from '../../shared/constants/ai'
@@ -31,6 +36,7 @@ import type {
     AiChatRequest,
     AiChatRole,
     AiIngestRequest,
+    AiModelConfig,
     AiSaveConfigRequest
 } from '../../shared/types/ai'
 import { hasControlChars, isPlainObject } from '../../shared/utils/validate'
@@ -137,6 +143,20 @@ export function sanitizeAiApiKey(value: unknown): string {
     return trimmed
 }
 
+/**
+ * 校验模型 id（渲染层生成并保持稳定；主进程按该 id 绑定密钥）。
+ *
+ * 白名单同时限制长度与字符集（字母/数字开头，后续允许 `_ . : -`），
+ * 空串/非法字符/超长一律拒绝。
+ */
+export function sanitizeAiModelId(value: unknown): string {
+    const trimmed = readSingleLineString(value, '模型 id', AI_MODEL_ID_MAX_CHARS)
+    if (!AI_MODEL_ID_PATTERN.test(trimmed)) {
+        invalid('模型 id 只能包含字母、数字、下划线、点、冒号与连字符，且需以字母/数字开头')
+    }
+    return trimmed
+}
+
 /** 校验可选文本（上下文标题/选中文本）：未出现 → undefined；非法 → 抛错 */
 function readOptionalContextText(value: unknown, label: string): string | undefined {
     if (value === undefined || value === null) {
@@ -217,7 +237,20 @@ export function normalizeAiChatRequest(payload: unknown): AiChatRequest {
         invalid(`AI.CHAT 消息内容总长度不能超过 ${AI_CHAT_TOTAL_MAX_CHARS} 个字符`)
     }
     const context = normalizeChatContext(readField(payload, 'context'))
-    return context ? { messages, context } : { messages }
+    const modelId = readOptionalModelId(readField(payload, 'modelId'))
+    return {
+        messages,
+        ...(context ? { context } : {}),
+        ...(modelId ? { modelId } : {})
+    }
+}
+
+/** 校验可选的模型 id（缺省 = 使用默认模型） */
+function readOptionalModelId(value: unknown): string | undefined {
+    if (value === undefined || value === null) {
+        return undefined
+    }
+    return sanitizeAiModelId(value)
 }
 
 /** 校验 `AI.INGEST` 载荷（缺省 rawPath 表示扫描 raw/ 自动选择） */
@@ -281,13 +314,89 @@ export function normalizeAiApplyIngestRequest(payload: unknown): AiApplyIngestRe
 }
 
 /**
+ * 旧版单模型配置字段（1.5.7 L3）：多模型改造后废弃。
+ *
+ * 出现即拒绝（而不是静默忽略）——渲染层若仍是旧版保存逻辑，能立刻暴露为
+ * AI_INVALID_PAYLOAD，避免用户配置被静默丢弃。
+ */
+const LEGACY_SINGLE_MODEL_FIELDS = [
+    'provider',
+    'localProvider',
+    'baseUrl',
+    'model',
+    'apiKey',
+    'clearApiKey'
+] as const
+
+/**
+ * 校验单个模型配置（多模型列表项）。
+ *
+ * - id：白名单字符集 + 长度，且同批次内唯一（由调用方检查）；
+ * - provider：local / remote 枚举；localProvider 仅本地模型严格校验，远程模型忽略并回落 ollama；
+ * - baseUrl：http/https、无凭据、长度上限；本地模型允许空（使用 Provider 默认基址），
+ *   远程模型必填；
+ * - name / model：非空、长度上限、无控制字符（name 缺失时回落为模型名）。
+ */
+function normalizeAiModelConfigRequest(value: unknown, index: number): AiModelConfig {
+    if (!isPlainObject(value)) {
+        invalid(`第 ${index + 1} 个模型配置必须是对象`)
+    }
+    const label = `第 ${index + 1} 个模型`
+    const id = sanitizeAiModelId(readField(value, 'id'))
+    const providerRaw = readField(value, 'provider')
+    if (!isAiProviderKind(providerRaw)) {
+        invalid(`${label}的 Provider 形态（provider）非法（仅支持 local / remote）`)
+    }
+    const localProviderRaw = readField(value, 'localProvider')
+    let localProvider: 'ollama' | 'lmstudio' = 'ollama'
+    if (providerRaw === 'local') {
+        if (!isAiLocalProviderId(localProviderRaw)) {
+            invalid(`${label}的本地 Provider（localProvider）非法（仅支持 ollama / lmstudio）`)
+        }
+        localProvider = localProviderRaw
+    } else if (isAiLocalProviderId(localProviderRaw)) {
+        localProvider = localProviderRaw
+    }
+    const baseUrlRaw = readField(value, 'baseUrl')
+    const baseUrl =
+        baseUrlRaw === undefined || baseUrlRaw === null ? '' : sanitizeAiBaseUrl(baseUrlRaw)
+    if (providerRaw === 'remote' && baseUrl.length === 0) {
+        invalid(`${label}是远程模型，必须填写接口基址（baseUrl）`)
+    }
+    const model = readSingleLineString(
+        readField(value, 'model'),
+        `${label}的模型名（model）`,
+        AI_MODEL_MAX_CHARS
+    )
+    const nameRaw = readField(value, 'name')
+    const name =
+        nameRaw === undefined || nameRaw === null || nameRaw === ''
+            ? model.slice(0, AI_MODEL_NAME_MAX_CHARS)
+            : readSingleLineString(nameRaw, `${label}的显示名称（name）`, AI_MODEL_NAME_MAX_CHARS)
+    return { id, name, provider: providerRaw, localProvider, baseUrl, model }
+}
+
+/**
  * 校验 `AI.SAVE_CONFIG` 载荷：可选字段增量更新；未出现的字段保持原值。
+ *
+ * - `enabled`：布尔；未启用时仍允许保存配置（便于先配置后启用）；
+ * - `models`：完整模型列表（全量替换），最多 {@link AI_MODELS_MAX} 个、id 唯一；
+ * - `defaultModelId`：null = 清空；字符串必须为合法模型 id（是否存在于列表由存储层回落）；
+ * - `modelApiKey`：单模型密钥保存/清除，与 models 同批次提交；与 models 一起提供时
+ *   密钥绑定的模型必须在本批次列表中。
  *
  * @returns 只含出现字段的补丁对象
  */
 export function normalizeAiSaveConfigRequest(payload: unknown): AiSaveConfigRequest {
     if (!isPlainObject(payload)) {
         throw new AiProviderError('AI_INVALID_PAYLOAD', 'AI.SAVE_CONFIG 载荷必须是对象')
+    }
+    for (const legacyField of LEGACY_SINGLE_MODEL_FIELDS) {
+        if (readField(payload, legacyField) !== undefined) {
+            invalid(
+                `旧版单模型配置字段「${legacyField}」已废弃：请改用 models 数组 + modelApiKey（多模型配置）`
+            )
+        }
     }
     const patch: AiSaveConfigRequest = {}
     const enabled = readField(payload, 'enabled')
@@ -297,45 +406,69 @@ export function normalizeAiSaveConfigRequest(payload: unknown): AiSaveConfigRequ
         }
         patch.enabled = enabled
     }
-    const provider = readField(payload, 'provider')
-    if (provider !== undefined) {
-        if (!isAiProviderKind(provider)) {
-            invalid('Provider 形态（provider）非法（仅支持 local / remote）')
+
+    const rawModels = readField(payload, 'models')
+    let models: AiModelConfig[] | undefined
+    if (rawModels !== undefined) {
+        if (!Array.isArray(rawModels)) {
+            invalid('模型列表（models）必须是数组')
         }
-        patch.provider = provider
-    }
-    const localProvider = readField(payload, 'localProvider')
-    if (localProvider !== undefined) {
-        if (!isAiLocalProviderId(localProvider)) {
-            invalid('本地 Provider（localProvider）非法（仅支持 ollama / lmstudio）')
+        if (rawModels.length > AI_MODELS_MAX) {
+            invalid(`模型数量不能超过 ${AI_MODELS_MAX} 个`)
         }
-        patch.localProvider = localProvider
-    }
-    const baseUrl = readField(payload, 'baseUrl')
-    if (baseUrl !== undefined) {
-        patch.baseUrl = sanitizeAiBaseUrl(baseUrl)
-    }
-    const model = readField(payload, 'model')
-    if (model !== undefined) {
-        // 模型允许清空（空串表示尚未选择，AI_NOT_CONFIGURED 由运行时判定）
-        const trimmed = readSingleLineString(model, '模型名（model）', AI_MODEL_MAX_CHARS, {
-            allowEmpty: true
+        const normalizedModels: AiModelConfig[] = []
+        const seenIds = new Set<string>()
+        rawModels.forEach((item, index) => {
+            const model = normalizeAiModelConfigRequest(item, index)
+            if (seenIds.has(model.id)) {
+                invalid(`模型 id 重复：${model.id}`)
+            }
+            seenIds.add(model.id)
+            normalizedModels.push(model)
         })
-        patch.model = trimmed
+        models = normalizedModels
+        patch.models = normalizedModels
     }
-    const clearApiKey = readField(payload, 'clearApiKey')
-    if (clearApiKey !== undefined && typeof clearApiKey !== 'boolean') {
-        invalid('清除密钥标记（clearApiKey）必须是布尔值')
+
+    const defaultModelIdRaw = readField(payload, 'defaultModelId')
+    if (defaultModelIdRaw !== undefined) {
+        if (defaultModelIdRaw === null) {
+            patch.defaultModelId = null
+        } else if (typeof defaultModelIdRaw === 'string' && defaultModelIdRaw.trim().length === 0) {
+            // 空串按「清空默认模型」处理（兼容表单未选择时的提交）
+            patch.defaultModelId = null
+        } else {
+            patch.defaultModelId = sanitizeAiModelId(defaultModelIdRaw)
+        }
     }
-    const apiKey = readField(payload, 'apiKey')
-    if (apiKey !== undefined) {
-        patch.apiKey = sanitizeAiApiKey(apiKey)
-    }
-    if (clearApiKey === true) {
-        if (patch.apiKey !== undefined) {
+
+    const rawModelApiKey = readField(payload, 'modelApiKey')
+    if (rawModelApiKey !== undefined) {
+        if (!isPlainObject(rawModelApiKey)) {
+            invalid('模型密钥操作（modelApiKey）必须是对象')
+        }
+        const modelId = sanitizeAiModelId(readField(rawModelApiKey, 'modelId'))
+        const rawApiKey = readField(rawModelApiKey, 'apiKey')
+        const rawClearApiKey = readField(rawModelApiKey, 'clearApiKey')
+        if (rawClearApiKey !== undefined && typeof rawClearApiKey !== 'boolean') {
+            invalid('清除密钥标记（clearApiKey）必须是布尔值')
+        }
+        const hasApiKey = rawApiKey !== undefined
+        if (hasApiKey && rawClearApiKey === true) {
             invalid('不能同时保存与清除 API Key')
         }
-        patch.clearApiKey = true
+        if (!hasApiKey && rawClearApiKey !== true) {
+            invalid('模型密钥操作非法：需提供 apiKey 或 clearApiKey')
+        }
+        if (models !== undefined && !models.some((model) => model.id === modelId)) {
+            invalid(`密钥绑定的模型不在本次保存的模型列表中：${modelId}`)
+        }
+        patch.modelApiKey = {
+            modelId,
+            ...(hasApiKey ? { apiKey: sanitizeAiApiKey(rawApiKey) } : {}),
+            ...(rawClearApiKey === true ? { clearApiKey: true } : {})
+        }
     }
+
     return patch
 }

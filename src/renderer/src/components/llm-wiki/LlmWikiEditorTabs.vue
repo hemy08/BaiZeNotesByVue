@@ -21,12 +21,15 @@
 
 <script setup lang="ts">
 /**
- * LLM Wiki 工作台编辑区「编辑器 / 预览」分段切换（1.5.7 L5 / T5.1）。
+ * LLM Wiki 工作台编辑区「编辑器 / 预览」分段切换（1.5.7 L5 / T5.1；
+ * 体验升级批次 A 起悬浮于编辑区右上角）。
  *
  * ## 职责边界
  * - 只切换共享 UI 状态（`llm-wiki-workbench.ts` 的 editorTab，localStorage 持久化），
  *   不直接操作 Monaco/预览组件：两个窗格由 `MarkdownEditComponent` 用 `v-show` 承接，
  *   保证切换时实例不重建（光标/滚动/预览滚动位置保留）；
+ * - 定位/悬浮由宿主 `MarkdownEditComponent` 的 `.llm-wiki-editor-tabs-dock` 负责，本组件
+ *   只负责分段控件自身的材质与尺寸（不写死定位，便于单测独立挂载）；
  * - 颜色/圆角/间距全部消费 `--ui-*` 令牌（四风格 × 三密度由根元素 data-style /
  *   data-density 派生，组件内不做风格分支）。
  */
@@ -59,22 +62,27 @@ function selectTab(tab: LlmWikiEditorTab): void {
 </script>
 
 <style scoped>
-/* 编辑区顶部工具条：与既有 #md-edit-tools-bar 同底，作为单栏工作台的视图切换入口 */
+/* 1.5.7 体验升级（批次 A）：悬浮在编辑区右上角的分段控件（由 MarkdownEditComponent 的
+   `.llm-wiki-editor-tabs-dock` 绝对定位承接，本组件只负责控件自身的材质/尺寸）。
+   - 表面走悬浮面语义色 + hairline + 弱阴影，在 Monaco / 预览两种背景上都清晰可辨；
+   - 颜色/圆角/间距全部消费 --ui-* 令牌（四风格 × 三密度由根元素 data-style /
+     data-density 派生，组件内不做风格分支）。 */
 .llm-wiki-editor-tabs {
-    display: flex;
+    display: inline-flex;
     flex: 0 0 auto;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     box-sizing: border-box;
-    padding: 4px 8px;
-    background-color: var(--theme-card-background);
-    background-color: var(--bz-shell-surface, var(--theme-card-background));
-    border-bottom: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+    padding: 2px;
+    background-color: var(--ui-bg-elevated, var(--theme-card-background));
+    border: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+    border-radius: var(--ui-radius-sm, 2px);
+    box-shadow: var(--ui-shadow-1);
 }
 
 .llm-wiki-editor-tab {
     min-height: var(--ui-row-height, 28px);
-    padding: 4px 12px;
+    padding: 2px 10px;
     font-family: inherit;
     font-size: var(--ui-font-size, 13px);
     line-height: 1.4;

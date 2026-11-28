@@ -268,6 +268,8 @@ const dialogRenderer = {
         sidebarBackup: '备份与恢复',
         sidebarFeatures: '功能',
         sidebarWriting: '编写体验',
+        // 1.5.7 体验升级 B：AI 助手独立页签（多模型管理 + MCP 服务配置）
+        sidebarAiAssistant: 'AI 助手',
         panelWritingTitle: '编写体验',
         panelWritingDesc:
             '用于提升写作过程体验的辅助能力，默认全部关闭；开启后可在状态栏/菜单中使用。',
@@ -355,66 +357,9 @@ const dialogRenderer = {
             // 1.5.3：非模态工具对话框
             nonModalDialogsLabel: '非模态工具对话框',
             nonModalDialogsDesc:
-                '插入/编辑工具对话框打开后不阻塞底层编辑器：点击外部、悬停或按 Esc 不关闭，可继续编辑 Markdown；仅通过关闭按钮和插入/应用操作关闭。默认开启。',
-            // 1.5.7 LLM Wiki L2：MCP 只读桥（设置页开关 + 运行状态 + 安全说明）
-            mcpServerGroupTitle: 'MCP 服务',
-            mcpServerEnabled: '启用 MCP 服务（只读桥）',
-            mcpServerHint:
-                '让外部 AI Agent（Claude Code、DSH、Cursor 等）通过 MCP 协议读取当前 LLM Wiki 工作区：仅绑定本机回环地址、需 Bearer 令牌、只提供只读工具。默认关闭；开关立即生效（无需点「应用」保存）。',
-            mcpServerRunning: '运行中',
-            mcpServerStopped: '已停止',
-            mcpServerPort: '端口',
-            mcpServerUrl: 'MCP 地址',
-            mcpServerToken: '访问令牌',
-            mcpServerCopyToken: '复制令牌',
-            mcpServerTokenCopied: '已复制',
-            mcpServerToolCount: '只读工具：{count} 个',
-            mcpServerSecurityNote:
-                '安全说明：服务只监听本机回环地址（127.0.0.1），每次请求都必须携带 Bearer 令牌；7 个工具全部只读（检索、读取页面/约定/原始资料、标签、反链），不接受绝对路径，不会写入、重命名或删除任何文件。令牌不落盘，关闭服务或重启应用后立即失效。',
-            mcpServerRestartHint:
-                '重启应用后需在本页重新启用（会生成新令牌），请同步更新外部 Agent 的 MCP 配置。',
-            mcpServerToggleFailed: 'MCP 服务操作失败：{error}',
-            mcpServerCopyFailed: '复制令牌失败，请手动选择令牌文本后复制。',
-            mcpServerUnavailable: '当前环境不支持 MCP 服务控制，请重启应用后重试。',
-            // 1.5.7 LLM Wiki L3：AI 助手（本地 Ollama/LM Studio + 远程 BYOK，独立保存）
-            aiGroupTitle: 'AI 助手',
-            aiGroupHint:
-                '本地模型（Ollama / LM Studio）请求只发往本机，隐私友好；远程 API 会把内容发送到所配置的服务商。API Key 经系统安全存储加密，不落明文。AI 配置独立保存（不随本页「应用」保存），保存后立即生效。',
-            aiEnabled: '启用 AI 助手',
-            aiProvider: 'Provider 类型',
-            aiProviderLocal: '本地模型',
-            aiProviderRemote: '远程 API（BYOK）',
-            aiLocalProvider: '本地 Provider',
-            aiLocalOllama: 'Ollama',
-            aiLocalLmStudio: 'LM Studio',
-            aiBaseUrl: '接口基址（baseUrl）',
-            aiBaseUrlPlaceholderOllama: '默认 http://127.0.0.1:11434',
-            aiBaseUrlPlaceholderLmStudio: '默认 http://127.0.0.1:1234/v1',
-            aiBaseUrlPlaceholderRemote: '例如 https://api.openai.com/v1',
-            aiBaseUrlHint: '本地留空使用默认基址；远程 BYOK 必填（建议 https）。',
-            aiModel: '模型（model）',
-            aiModelPlaceholder: '例如 qwen2.5 / deepseek-chat',
-            aiModelHint: '本地 Ollama 需先 ollama pull 对应模型；远程填服务商模型 id。',
-            aiApiKey: 'API Key',
-            aiApiKeyPlaceholder: '输入远程 API Key（保存后不回显明文）',
-            aiApiKeyConfigured: '已配置',
-            aiApiKeyNotConfigured: '未配置',
-            aiApiKeyStorageSafe: '系统安全存储加密',
-            aiApiKeyStorageMemory: '仅本次会话内存（不落盘）',
-            aiClearKey: '清除密钥',
-            aiSave: '保存 AI 配置',
-            aiSaved: 'AI 配置已保存。',
-            aiTest: '测试连接',
-            aiTesting: '正在测试连接…',
-            aiTestSuccess: '连接成功：{detail}',
-            aiTestFailed: '连接测试失败：{error}',
-            aiSaveFailed: '保存 AI 配置失败：{error}',
-            aiLoadFailed: '读取 AI 配置失败：{error}',
-            aiUnavailable: '当前环境不支持 AI 配置，请重启应用后重试。',
-            aiKeyUnavailable:
-                '当前环境 safeStorage 不可用：API Key 仅保存在内存，重启后需重新输入。',
-            aiPrivacyNote:
-                '隐私提示：本地模型的请求只发送到本机服务；使用远程 API 时，对话内容与原始资料会发送到所配置的服务商，请自行确认其隐私政策与数据处理方式。'
+                '插入/编辑工具对话框打开后不阻塞底层编辑器：点击外部、悬停或按 Esc 不关闭，可继续编辑 Markdown；仅通过关闭按钮和插入/应用操作关闭。默认开启。'
+            // 1.5.7 体验升级 B：MCP 服务与 AI 助手配置已迁移到独立页签
+            // （dialogRenderer.aiAssistant.*），功能开关页只保留纯功能开关。
         },
         panelGeneralTitle: '通用设置',
         panelGeneralDesc: '应用程序的基本配置',
@@ -518,6 +463,78 @@ const dialogRenderer = {
         // （非阻断；显示名回退为主题标识，不误导为具体主题名）
         themeDisplayFallbackHint:
             '无法读取当前应用主题的显示名，已回退显示主题标识；可关闭设置后重新打开重试。'
+    },
+    // 1.5.7 体验升级 B：系统设置第 7 页签「AI 助手」独立配置页
+    // （多模型管理 + MCP 服务配置；原「功能」页签的 AI/MCP 分组整体迁移到本块）。
+    aiAssistant: {
+        panelTitle: 'AI 助手',
+        panelDesc:
+            '集中管理 AI 模型与 MCP 服务：可添加多个模型（本地 Ollama / LM Studio 或远程 OpenAI 兼容接口），并让外部 Agent 通过 MCP 只读访问当前工作区。本页配置独立保存、立即生效，不随底部「应用」按钮保存。',
+        groupModels: '模型',
+        enabledLabel: '启用 AI 助手',
+        storageSafe: 'API Key 存储：系统安全存储（加密保存，可跨重启使用）',
+        storageMemory: 'API Key 存储：仅本次会话内存（不落盘，重启后需重新输入）',
+        privacyNote:
+            '隐私提示：本地模型（Ollama / LM Studio）的请求只发送到本机；使用远程 API 时，对话内容与要处理的资料会发送到所配置的服务商，请自行确认其隐私政策与数据处理方式。',
+        modelsEmptyTitle: '还没有添加模型',
+        addModel: '添加模型',
+        defaultBadge: '默认',
+        keyConfiguredBadge: '密钥已配置',
+        setDefault: '设为默认',
+        editModel: '编辑',
+        deleteModel: '删除',
+        saveModel: '保存模型',
+        formTitleEdit: '编辑模型',
+        formName: '显示名称',
+        formNameRequired: '请输入模型显示名称',
+        formProvider: '类型',
+        formProviderLocal: '本地模型',
+        formProviderRemote: '远程 API',
+        formLocalProvider: '本地服务',
+        formBaseUrl: '接口基址（baseUrl）',
+        formBaseUrlPlaceholderLocal: '留空使用默认基址（Ollama 11434 / LM Studio 1234）',
+        formBaseUrlPlaceholderRemote: '例如 https://api.openai.com/v1',
+        formBaseUrlRequired: '远程模型需要填写接口基址（建议 https）',
+        formModel: '模型名称',
+        formModelPlaceholder: '例如 qwen2.5 / deepseek-chat',
+        formModelRequired: '请输入模型名称',
+        formApiKey: '远程 API Key',
+        formApiKeyPlaceholder: '输入远程 API Key（新增必填；编辑时留空保持不变）',
+        formApiKeyRequired: '远程模型首次添加需要填写 API Key',
+        clearKey: '清除密钥',
+        saved: '配置已保存。',
+        saveFailed: '保存 AI 配置失败：{error}',
+        loadFailed: '读取 AI 配置失败：{error}',
+        unavailable: '当前环境不支持 AI 配置，请重启应用后重试。',
+        testConnection: '测试连接',
+        testing: '测试中…',
+        testSuccess: '连接成功：{detail}',
+        testFailed: '连接失败：{error}',
+        groupMcp: 'MCP 服务',
+        mcpEnabled: '启用 MCP 服务（只读桥）',
+        mcpHint:
+            '让外部 AI Agent（Claude Code、DSH、Cursor 等）通过 MCP 协议读取当前 LLM Wiki 工作区：仅绑定本机回环地址、需 Bearer 令牌、只提供只读工具。默认关闭；开关立即生效（无需点「应用」保存）。',
+        mcpRunning: '运行中',
+        mcpStopped: '已停止',
+        mcpPort: '端口',
+        mcpUrl: 'MCP 地址',
+        mcpToken: '访问令牌',
+        mcpCopyToken: '复制令牌',
+        mcpTokenCopied: '已复制',
+        mcpRegenerateToken: '重置令牌',
+        mcpToolsTitle: '只读工具',
+        mcpPortAuto: '自动选择端口（优先 3847）',
+        mcpPortPlaceholder: '1~65535',
+        mcpPortInvalid: '端口必须是 1~65535 之间的整数',
+        mcpApplyPort: '应用端口',
+        mcpPortPending: '端口配置已记录，将在下次启用 MCP 服务时生效。',
+        mcpSecurityNote:
+            '安全说明：服务只监听本机回环地址（127.0.0.1），每次请求都必须携带 Bearer 令牌；7 个工具全部只读（检索、读取页面/约定/原始资料、标签、反链），不接受绝对路径，不会写入、重命名或删除任何文件。令牌不落盘，关闭服务或重启应用后立即失效。',
+        mcpRestartHint:
+            '重启应用后需在本页重新启用（会生成新令牌），请同步更新外部 Agent 的 MCP 配置。',
+        mcpToggleFailed: 'MCP 服务操作失败：{error}',
+        mcpCopyFailed: '复制令牌失败，请手动选择令牌文本后复制。',
+        mcpUnavailable: '当前环境不支持 MCP 服务控制，请重启应用后重试。'
     },
     themeSetting: {
         title: '主题设置',

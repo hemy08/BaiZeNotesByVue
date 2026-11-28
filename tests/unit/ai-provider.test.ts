@@ -13,9 +13,28 @@ import { describe, it, expect, vi } from 'vitest'
 import type { AiFetchLike, AiHttpResponseLike } from '../../src/main/ai/providers/types'
 import { createOllamaProvider } from '../../src/main/ai/providers/ollama'
 import { createOpenAiCompatibleProvider } from '../../src/main/ai/providers/openai-compatible'
-import { createAiProvider } from '../../src/main/ai/providers/factory'
+import { createAiProvider, resolveAiModel } from '../../src/main/ai/providers/factory'
 import { AiProviderError } from '../../src/main/ai/errors'
+import type { AiModelConfig, AiStoredConfig } from '../../src/shared/types/ai'
 import { AI_DEFAULT_CONFIG } from '../../src/shared/constants/ai'
+
+/** 构造模型配置（默认本地 Ollama） */
+function makeModel(overrides: Partial<AiModelConfig> = {}): AiModelConfig {
+    return {
+        id: 'model-a',
+        name: '模型 A',
+        provider: 'local',
+        localProvider: 'ollama',
+        baseUrl: '',
+        model: 'qwen2.5',
+        ...overrides
+    }
+}
+
+/** 构造多模型配置 */
+function makeConfig(overrides: Partial<AiStoredConfig> = {}): AiStoredConfig {
+    return { enabled: true, models: [makeModel()], defaultModelId: 'model-a', ...overrides }
+}
 
 /** 构造 fetch 响应替身 */
 function response(status: number, body: unknown): AiHttpResponseLike {
@@ -332,9 +351,68 @@ describe('OpenAI 兼容 Provider（远程 BYOK / 本地 LM Studio）', () => {
     })
 })
 
-describe('Provider 工厂（createAiProvider）', () => {
+describe('模型解析（resolveAiModel，多模型 + 默认模型）', () => {
+    it('缺省使用 defaultModelId', () => {
+        const config = makeConfig({
+            models: [makeModel({ id: 'aa' }), makeModel({ id: 'bb', model: 'deepseek-chat' })],
+            defaultModelId: 'bb'
+        })
+        expect(resolveAiModel(config).id).toBe('bb')
+    })
+
+    it('显式 modelId 优先于 defaultModelId', () => {
+        const config = makeConfig({
+            models: [makeModel({ id: 'aa' }), makeModel({ id: 'bb' })],
+            defaultModelId: 'bb'
+        })
+        expect(resolveAiModel(config, 'aa').id).toBe('aa')
+    })
+
+    it('显式 modelId 不存在 → AI_MODEL_NOT_FOUND', () => {
+        try {
+            resolveAiModel(makeConfig(), 'ghost')
+            throw new Error('应抛错')
+        } catch (error) {
+            expect(error).toBeInstanceOf(AiProviderError)
+            expect((error as AiProviderError).code).toBe('AI_MODEL_NOT_FOUND')
+        }
+    })
+
+    it('模型列表为空 → AI_NOT_CONFIGURED', () => {
+        expect(() => resolveAiModel({ ...AI_DEFAULT_CONFIG, enabled: true })).toThrowError(
+            AiProviderError
+        )
+        try {
+            resolveAiModel({ ...AI_DEFAULT_CONFIG, enabled: true })
+        } catch (error) {
+            expect((error as AiProviderError).code).toBe('AI_NOT_CONFIGURED')
+            expect((error as AiProviderError).message).toContain('模型')
+        }
+    })
+
+    it('未设置默认模型（defaultModelId=null）→ AI_NOT_CONFIGURED', () => {
+        const config = makeConfig({ models: [makeModel()], defaultModelId: null })
+        try {
+            resolveAiModel(config)
+            throw new Error('应抛错')
+        } catch (error) {
+            expect((error as AiProviderError).code).toBe('AI_NOT_CONFIGURED')
+            expect((error as AiProviderError).message).toContain('默认模型')
+        }
+    })
+
+    it('defaultModelId 指向不存在的模型 → 归一化回落首个模型', () => {
+        const config = makeConfig({
+            models: [makeModel({ id: 'aa' }), makeModel({ id: 'bb' })],
+            defaultModelId: 'ghost'
+        })
+        expect(resolveAiModel(config).id).toBe('aa')
+    })
+})
+
+describe('Provider 工厂（createAiProvider，单模型维度）', () => {
     it('本地默认基址：Ollama 使用 127.0.0.1:11434', () => {
-        const provider = createAiProvider({ ...AI_DEFAULT_CONFIG, model: 'qwen2.5' }, null, {
+        const provider = createAiProvider(makeModel(), null, {
             fetchImpl: vi.fn<AiFetchLike>()
         })
         expect(provider.id).toBe('ollama')
@@ -342,17 +420,17 @@ describe('Provider 工厂（createAiProvider）', () => {
 
     it('本地 LM Studio 默认基址：走 OpenAI 兼容实现', () => {
         const provider = createAiProvider(
-            { ...AI_DEFAULT_CONFIG, localProvider: 'lmstudio', model: 'llama3' },
+            makeModel({ localProvider: 'lmstudio', model: 'llama3' }),
             null,
             { fetchImpl: vi.fn<AiFetchLike>() }
         )
         expect(provider.id).toBe('openai-compatible')
     })
 
-    it('缺少模型 → AI_NOT_CONFIGURED（不发请求）', () => {
-        expect(() => createAiProvider({ ...AI_DEFAULT_CONFIG }, null)).toThrowError(AiProviderError)
+    it('缺少模型名 → AI_NOT_CONFIGURED（不发请求）', () => {
         try {
-            createAiProvider({ ...AI_DEFAULT_CONFIG }, null)
+            createAiProvider(makeModel({ model: '' }), null)
+            throw new Error('应抛错')
         } catch (error) {
             expect((error as AiProviderError).code).toBe('AI_NOT_CONFIGURED')
             expect((error as AiProviderError).message).toContain('模型')
@@ -361,10 +439,7 @@ describe('Provider 工厂（createAiProvider）', () => {
 
     it('远程缺 baseUrl → AI_NOT_CONFIGURED', () => {
         try {
-            createAiProvider(
-                { ...AI_DEFAULT_CONFIG, provider: 'remote', model: 'deepseek-chat' },
-                'sk-key'
-            )
+            createAiProvider(makeModel({ provider: 'remote', model: 'deepseek-chat' }), 'sk-key')
             throw new Error('应抛错')
         } catch (error) {
             expect((error as AiProviderError).code).toBe('AI_NOT_CONFIGURED')
@@ -375,12 +450,11 @@ describe('Provider 工厂（createAiProvider）', () => {
     it('远程缺 API Key → AI_NOT_CONFIGURED（提示密钥安全存储）', () => {
         try {
             createAiProvider(
-                {
-                    ...AI_DEFAULT_CONFIG,
+                makeModel({
                     provider: 'remote',
                     baseUrl: 'https://api.example.com/v1',
                     model: 'deepseek-chat'
-                },
+                }),
                 null
             )
             throw new Error('应抛错')
@@ -394,15 +468,9 @@ describe('Provider 工厂（createAiProvider）', () => {
         const fetchImpl = vi
             .fn<AiFetchLike>()
             .mockResolvedValue(response(200, { message: { content: 'ok' } }))
-        const provider = createAiProvider(
-            {
-                ...AI_DEFAULT_CONFIG,
-                baseUrl: 'http://127.0.0.1:9999/',
-                model: 'qwen2.5'
-            },
-            null,
-            { fetchImpl }
-        )
+        const provider = createAiProvider(makeModel({ baseUrl: 'http://127.0.0.1:9999/' }), null, {
+            fetchImpl
+        })
         await provider.chat([{ role: 'user', content: 'hi' }])
         expect(fetchImpl.mock.calls[0][0]).toBe('http://127.0.0.1:9999/api/chat')
     })

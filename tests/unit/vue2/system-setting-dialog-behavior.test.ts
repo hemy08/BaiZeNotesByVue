@@ -3,7 +3,8 @@
  * 系统设置对话框行为基线（设置页拆分 P0：拆分前后等价的行为契约）
  *
  * 覆盖点（只断言用户可见行为 / 对外 emit / IPC 载荷，不依赖组件内部状态形状）：
- * 1. 6 个页签 × 6 个面板的切换（active 类与 v-show 可见性同步）；
+ * 1. 7 个页签 × 7 个面板的切换（active 类与 v-show 可见性同步；第 7 页签「AI 助手」
+ *    为懒加载面板，首次点击才加载）；
  * 2. 草稿语义：修改不落盘、跨页签保留、取消丢弃并恢复打开时的值；
  * 3. 保存语义：应用写入完整快照并 emit apply（不关闭）；确定 apply + close；
  *    取消不写配置；写入被主进程拒绝（返回 false）时不抛异常、不改变既有 emit 契约；
@@ -30,8 +31,10 @@ import { resetActionFailureThrottleForTesting } from '@renderer/common/action-fe
 
 const dialogMountOptions = { global: { stubs: { teleport: true } } }
 
-/** 面板在 DOM 中的固定顺序（与侧边栏 6 项 1:1，拆分前后一致） */
+/** 面板在 DOM 中的固定顺序（与侧边栏项 1:1；第 7 项 AI 助手为懒加载面板） */
 const PANEL_ORDER = ['general', 'file', 'appearance', 'features', 'writing', 'backup'] as const
+/** 第 7 页签「AI 助手」（懒加载：首次点击后 `.setting-panel` 追加到第 7 个位置） */
+const AI_ASSISTANT_PANEL_INDEX = 6
 
 function mountDialog(visible = true): VueWrapper {
     return mount(SystemSettingDialog, {
@@ -96,19 +99,22 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         vi.restoreAllMocks()
     })
 
-    it('渲染 6 个侧边栏项与 6 个面板，默认仅通用设置面板可见', () => {
+    it('渲染 7 个侧边栏项与 6 个面板，默认仅通用设置面板可见（AI 面板懒加载）', () => {
         const wrapper = mountDialog()
-        expect(wrapper.findAll('.sidebar-item')).toHaveLength(6)
+        expect(wrapper.findAll('.sidebar-item')).toHaveLength(7)
+        // 1.5.7 体验升级 B：第 7 页签「AI 助手」为 defineAsyncComponent 懒加载，
+        // 未点击前不渲染面板节点（打开设置页不加载 AI/MCP 面板代码）。
         expect(wrapper.findAll('.setting-panel')).toHaveLength(6)
         expect(wrapper.findAll('.sidebar-item')[0].classes()).toContain('active')
         expect(isPanelShown(wrapper, 0)).toBe(true)
         for (const index of [1, 2, 3, 4, 5]) {
             expect(isPanelShown(wrapper, index)).toBe(false)
         }
+        expect(wrapper.findAll('.sidebar-item')[6].text()).toBe('🤖AI 助手')
         wrapper.unmount()
     })
 
-    it('点击侧边栏逐页签切换面板：active 类与可见性同步', async () => {
+    it('点击侧边栏逐页签切换面板：active 类与可见性同步（第 7 页签懒加载后可见）', async () => {
         const wrapper = mountDialog()
         for (const [index, id] of PANEL_ORDER.entries()) {
             await switchPanel(wrapper, index)
@@ -123,6 +129,19 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
                     other === index
                 )
             }
+        }
+
+        // 第 7 页签：异步面板 chunk 加载完成后才出现在 DOM；其它面板隐藏、active 同步
+        await switchPanel(wrapper, AI_ASSISTANT_PANEL_INDEX)
+        await vi.dynamicImportSettled()
+        await flushPromises()
+        expect(wrapper.findAll('.setting-panel')).toHaveLength(7)
+        expect(wrapper.findAll('.sidebar-item')[AI_ASSISTANT_PANEL_INDEX].classes()).toContain(
+            'active'
+        )
+        expect(isPanelShown(wrapper, AI_ASSISTANT_PANEL_INDEX)).toBe(true)
+        for (const other of PANEL_ORDER.keys()) {
+            expect(isPanelShown(wrapper, other)).toBe(false)
         }
         wrapper.unmount()
     })
@@ -222,12 +241,10 @@ describe('SystemSettingDialog 行为基线（拆分等价契约）', () => {
         const wrapper = mountDialog()
         await switchPanel(wrapper, 3)
 
+        // 1.5.7 体验升级 B：原「MCP 服务」「AI 助手」分组已迁移到第 7 页签，
+        // 功能页签只剩 11 个纯功能开关（checkbox id 均为 feature-*）。
         const allCheckboxes = panel(wrapper, 3).findAll('.setting-checkbox')
-        // 1.5.7 LLM Wiki L2：功能页签新增「MCP 服务」开关（第 12 个 checkbox，不写入设置草稿，
-        // 由 IPC.MCP.SET_ENABLED 立即生效），能力开关仍为 11 项。
-        // 1.5.7 LLM Wiki L3：新增「AI 助手」启用开关（第 13 个 checkbox，独立经 AI.SAVE_CONFIG
-        // 立即保存，同样不写设置草稿），能力开关仍为 11 项。
-        expect(allCheckboxes).toHaveLength(13)
+        expect(allCheckboxes).toHaveLength(11)
         const checkboxes = allCheckboxes.filter((checkbox) =>
             (checkbox.attributes('id') ?? '').startsWith('feature-')
         )

@@ -2,7 +2,7 @@
 /**
  * L3↔L5 联调：AI 面板 transport → AI.CHAT 契约（1.5.7 LLM Wiki）。
  * 覆盖：成功内容、AI_NOT_CONFIGURED 提示、其他结构化失败、异常、无 invoke、
- * 历史消息与上下文映射、非法返回结构。
+ * 历史消息与上下文映射、多模型 modelId 映射/缺省、非法返回结构。
  */
 import { describe, expect, it, vi } from 'vitest'
 import { t } from '../../../src/renderer/src/common/i18n'
@@ -16,7 +16,7 @@ import { IPC } from '../../../src/shared/ipc-channels'
 function buildPayload(overrides: Partial<LlmAiSendPayload> = {}): LlmAiSendPayload {
     return {
         message: '你好',
-        modelId: 'default',
+        modelId: 'model-remote',
         history: [
             { id: '1', role: 'user', content: '你好' },
             { id: '2', role: 'assistant', content: '你好，有什么可以帮你？' }
@@ -47,6 +47,29 @@ describe('llm-ai-ipc-transport', () => {
             { role: 'assistant', content: '你好，有什么可以帮你？' }
         ])
         expect(request.context).toEqual({ title: 'wiki/示例.md', selection: '片段' })
+    })
+
+    it('多模型：payload.modelId 映射为 AiChatRequest.modelId', async () => {
+        const invoke = vi.fn<LlmAiInvoke>().mockResolvedValue({ ok: true, content: 'ok' })
+        await createLlmAiIpcTransport(invoke)(buildPayload({ modelId: 'model-local' }))
+        const request = invoke.mock.calls[0][1] as { modelId?: string }
+        expect(request.modelId).toBe('model-local')
+    })
+
+    it('缺省 modelId（配置读取失败降级）：请求不带 modelId 字段，由主进程用 defaultModelId', async () => {
+        const invoke = vi.fn<LlmAiInvoke>().mockResolvedValue({ ok: true, content: 'ok' })
+        const payload = buildPayload()
+        delete payload.modelId
+        await createLlmAiIpcTransport(invoke)(payload)
+        const request = invoke.mock.calls[0][1] as { modelId?: string }
+        expect('modelId' in request).toBe(false)
+    })
+
+    it('空串 / 纯空白 modelId 视为缺省（不发送空 modelId）', async () => {
+        const invoke = vi.fn<LlmAiInvoke>().mockResolvedValue({ ok: true, content: 'ok' })
+        await createLlmAiIpcTransport(invoke)(buildPayload({ modelId: '   ' }))
+        const request = invoke.mock.calls[0][1] as { modelId?: string }
+        expect('modelId' in request).toBe(false)
     })
 
     it('空上下文：title/selection 缺省为 undefined（不发送空串）', async () => {

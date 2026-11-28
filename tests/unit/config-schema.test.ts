@@ -326,6 +326,26 @@ describe('AS-4 validateSystemConfig', () => {
         expect(rejected.adjusted).toEqual([expect.stringContaining('mcpEnabled')])
     })
 
+    // 1.5.7 体验升级批次 C：MCP 首选端口（null/0 = 自动选择；1~65535 为固定端口）
+    it('should accept a valid mcpPort, normalize 0 to null, and drop invalid values', () => {
+        const accepted = validateSystemConfig({ mcpPort: 4000, language: 'zh-CN' })
+        expect(accepted.ok).toBe(true)
+        expect((accepted.value as Record<string, unknown>).mcpPort).toBe(4000)
+
+        for (const raw of [null, 0]) {
+            const auto = validateSystemConfig({ mcpPort: raw })
+            expect(auto.ok).toBe(true)
+            expect((auto.value as Record<string, unknown>).mcpPort).toBeNull()
+        }
+
+        for (const raw of [-1, 65536, 1.5, '3847', true]) {
+            const rejected = validateSystemConfig({ mcpPort: raw })
+            expect(rejected.ok).toBe(true)
+            expect((rejected.value as Record<string, unknown>).mcpPort, String(raw)).toBeUndefined()
+            expect(rejected.adjusted).toEqual([expect.stringContaining('mcpPort')])
+        }
+    })
+
     // 批次 A：#4 最近文件列表数量范围收紧为 5~20（越界钳制而非拒绝）
     it('should clamp recentFilesCount into the 5~20 range', () => {
         const low = validateSystemConfig({ recentFilesCount: 2 })

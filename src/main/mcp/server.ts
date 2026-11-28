@@ -16,8 +16,11 @@
  * 5. **拒绝浏览器 Origin**：带 Origin 的请求一律 403（阻断恶意网页访问本机服务），不设 CORS 头；
  * 6. **请求体上限 1 MiB** + 请求超时 30s + 头部超时 10s（防内存/事件循环占用）；
  * 7. **只读工具**：7 个工具全部只读（见 tools.ts），传输层不提供任何写入口；
- * 8. **端口**：优先 3847，被占用依次 +1 最多 10 次，仍失败回退系统分配（port 0）；
- *    实际端口经 `GET_STATUS` 返回给设置页。
+ * 8. **端口**：首选端口可配置（`MCP.SET_ENABLED` 的 `port`，持久化到 system-setting 的
+ *    `mcpPort`）；未配置/0 = 自动选择——优先 3847，被占用依次 +1 最多 10 次，仍失败回退
+ *    系统分配（port 0）；首选端口被占用时同样回退（记录告警，实际端口经 GET_STATUS 返回）；
+ * 9. **token 重置**：`regenerateToken=true` 时强制重新生成 Bearer token（服务运行中则
+ *    重启监听以替换 token 与会话 id，旧 token 立即失效，外部客户端需重新配置）。
  *
  * ## 协议能力范围（本期）
  * - POST：`initialize` / `tools/list` / `tools/call` / `ping` / `notifications/*`（202 空响应）；
@@ -48,6 +51,8 @@ import {
     MCP_KEEP_ALIVE_TIMEOUT_MS,
     MCP_MAX_REQUEST_BODY_BYTES,
     MCP_PORT_ATTEMPTS,
+    MCP_PORT_MAX,
+    MCP_PORT_MIN,
     MCP_REQUEST_TIMEOUT_MS,
     MCP_SERVER_NAME
 } from './constants'
@@ -58,6 +63,16 @@ import { MCP_TOOL_COUNT } from './tools'
 export interface McpServerStartOptions {
     /** serverInfo.version（生产由主进程 app.getVersion() 注入；缺省 '0.0.0'） */
     version?: string
+    /**
+     * 首选端口（1~65535；null/缺省 = 自动选择，优先 3847）。
+     *
+     * - 服务未运行：按该端口启动（被占用时回退自动序列，记录告警）；
+     * - 服务运行中且端口与当前首选不同：**重启监听**到新端口（token 一并更换）；
+     * - 传 undefined 表示「沿用上次会话的首选端口」。
+     */
+    preferredPort?: number | null
+    /** true = 强制重新生成 token（服务运行中则重启监听，旧 token 立即失效） */
+    regenerateToken?: boolean
 }
 
 /** MCP HTTP 服务构造选项（仅测试注入用；生产走 {@link mcpServer} 单例默认值） */
@@ -179,10 +194,48 @@ function parseRequestUrl(rawUrl: string | undefined): URL | null {
 }
 
 /**
+ * 归一化首选端口：非法值/0 一律按「自动选择」（null）处理。
+ *
+ * 说明：用户载荷的严格校验在 `ipc/mcp-ipc.ts`（非法返回结构化失败）；本函数只做
+ * 服务层防御性归一化，保证直接调用 server 的代码不会把非法端口传给 listen。
+ */
+function normalizePreferredPort(value: unknown): number | null {
+    if (typeof value !== 'number' || !Number.isInteger(value)) {
+        return null
+    }
+    if (value < MCP_PORT_MIN || value > MCP_PORT_MAX) {
+        return null
+    }
+    return value
+}
+
+/**
+ * 构造候选端口序列：首选端口优先，随后按默认自动序列（3847..3856）回退。
+ *
+ * 去重且忽略 0（0 由调用方在全部候选失败后作为「系统分配」兜底追加）。
+ */
+function buildCandidatePorts(autoPorts: readonly number[], preferredPort: number | null): number[] {
+    const candidates: number[] = []
+    const push = (port: number): void => {
+        if (port > 0 && !candidates.includes(port)) {
+            candidates.push(port)
+        }
+    }
+    if (preferredPort !== null) {
+        push(preferredPort)
+    }
+    for (const port of autoPorts) {
+        push(port)
+    }
+    return candidates
+}
+
+/**
  * MCP 只读桥 HTTP 服务（可独立实例化，便于单测覆盖随机端口/413/鉴权等分支）。
  *
  * 生命周期：`start()` ↔ `stop()` 幂等且串行化（防设置页快速连点导致并发 listen/close）；
- * 状态（端口/token/URL）只存在于内存，`getStatus()` 为实时值。
+ * 状态（端口/token/URL）只存在于内存，`getStatus()` 为实时值；首选端口（用户配置）
+ * 与 token 重置语义见 {@link McpServerStartOptions}。
  */
 export class McpHttpServer {
     private server: Server | null = null
@@ -190,6 +243,10 @@ export class McpHttpServer {
     private token = ''
     private port = 0
     private sessionId = ''
+    /** 当前生效的首选端口（null = 自动选择；停止后保留，供状态展示与重启复用） */
+    private preferredPort: number | null = null
+    /** 上次启动使用的 serverInfo.version（token 重置/端口变更重启时复用） */
+    private startVersion = '0.0.0'
     private pending: Promise<unknown> = Promise.resolve()
     private readonly options: Required<Omit<McpServerOptions, 'preferredPorts'>> & {
         preferredPorts: readonly number[]
@@ -206,84 +263,140 @@ export class McpHttpServer {
     }
 
     /**
-     * 启动服务（已运行则直接返回当前状态）。
+     * 启动服务（幂等）。
+     *
+     * - 已运行且首选端口未变、未要求重置 token：直接返回当前状态（不换端口/token）；
+     * - 已运行但首选端口变化 / `regenerateToken=true`：重启监听（旧 token 立即失效）；
+     * - 未运行：按首选端口（null = 自动序列）启动并生成新 token。
      *
      * @throws 端口冲突以外的监听错误（由调用方转换为结构化失败并记日志）
      */
     start(options: McpServerStartOptions = {}): Promise<McpServerStatus> {
         return this.enqueueTask(async () => {
+            const hasPreferredPort = Object.prototype.hasOwnProperty.call(options, 'preferredPort')
+            const desiredPort = hasPreferredPort
+                ? normalizePreferredPort(options.preferredPort)
+                : this.preferredPort
+            const regenerateToken = options.regenerateToken === true
             if (this.server !== null) {
-                return this.getStatus()
-            }
-            const token = generateMcpToken()
-            const protocol = createMcpProtocolHandler({
-                serverInfo: { name: MCP_SERVER_NAME, version: options.version ?? '0.0.0' }
-            })
-            const server = createServer((req, res) => {
-                void this.handleRequest(req, res)
-            })
-            server.requestTimeout = this.options.requestTimeoutMs
-            server.headersTimeout = MCP_HEADERS_TIMEOUT_MS
-            server.keepAliveTimeout = MCP_KEEP_ALIVE_TIMEOUT_MS
-
-            let listeningPort = 0
-            for (const candidatePort of this.options.preferredPorts) {
-                try {
-                    await listenOnPort(server, candidatePort)
-                    listeningPort = readListeningPort(server)
-                    break
-                } catch (error) {
-                    if (isPortInUseError(error)) {
-                        continue
-                    }
-                    throw error
+                const portChanged = desiredPort !== this.preferredPort
+                if (!portChanged && !regenerateToken) {
+                    return this.getStatus()
                 }
+                if (portChanged) {
+                    logger.info(
+                        `[MCP] 首选端口变更（${String(this.preferredPort)} → ${String(desiredPort)}），重启监听`
+                    )
+                }
+                if (regenerateToken) {
+                    logger.info(
+                        '[MCP] 收到 token 重置请求：重启监听并生成新 token（旧 token 立即失效，客户端需重新配置）'
+                    )
+                }
+                // 仅重置 token（端口未变）时优先复用当前监听端口，便于客户端迁移（端口尽量不变）
+                const retainedPort = portChanged ? null : this.port
+                await this.stopInternal()
+                return this.startInternal(
+                    options.version ?? this.startVersion,
+                    desiredPort,
+                    retainedPort
+                )
             }
-            if (listeningPort === 0) {
-                // 全部候选端口被占用：回退系统分配的空闲端口（仍只绑定 127.0.0.1）
-                await listenOnPort(server, 0)
-                listeningPort = readListeningPort(server)
-            }
-            // 常驻错误处理：监听成功后的网络错误只记日志，不让 'error' 事件冒泡导致主进程崩溃
-            server.on('error', (error) => {
-                logger.warn('[MCP] HTTP 服务运行期错误：', error)
-            })
-            // 不阻塞应用退出（Electron 主进程由其它 handle 保活；测试进程也不会被挂住）
-            server.unref()
+            return this.startInternal(options.version ?? this.startVersion, desiredPort, null)
+        })
+    }
 
-            this.server = server
-            this.protocol = protocol
-            this.token = token
-            this.port = listeningPort
-            this.sessionId = randomBytes(16).toString('hex')
-            logger.info(
-                `[MCP] 只读桥已启动：${buildMcpUrl(listeningPort)}（工具 ${MCP_TOOL_COUNT} 个；token 已生成，不落盘）`
+    /** 实际启动监听（调用方已通过串行队列；内部不做 start/stop 互斥判断） */
+    private async startInternal(
+        version: string,
+        preferredPort: number | null,
+        retainedPort: number | null
+    ): Promise<McpServerStatus> {
+        const token = generateMcpToken()
+        const protocol = createMcpProtocolHandler({
+            serverInfo: { name: MCP_SERVER_NAME, version }
+        })
+        const server = createServer((req, res) => {
+            void this.handleRequest(req, res)
+        })
+        server.requestTimeout = this.options.requestTimeoutMs
+        server.headersTimeout = MCP_HEADERS_TIMEOUT_MS
+        server.keepAliveTimeout = MCP_KEEP_ALIVE_TIMEOUT_MS
+
+        let listeningPort = 0
+        const candidates = buildCandidatePorts(this.options.preferredPorts, preferredPort)
+        if (retainedPort !== null && retainedPort > 0 && !candidates.includes(retainedPort)) {
+            candidates.unshift(retainedPort)
+        }
+        for (const candidatePort of candidates) {
+            try {
+                await listenOnPort(server, candidatePort)
+                listeningPort = readListeningPort(server)
+                break
+            } catch (error) {
+                if (isPortInUseError(error)) {
+                    continue
+                }
+                throw error
+            }
+        }
+        if (listeningPort === 0) {
+            // 全部候选端口被占用：回退系统分配的空闲端口（仍只绑定 127.0.0.1）
+            await listenOnPort(server, 0)
+            listeningPort = readListeningPort(server)
+        }
+        if (preferredPort !== null && listeningPort !== preferredPort) {
+            logger.warn(
+                `[MCP] 首选端口 ${preferredPort} 不可用（被占用），已回退到 ${listeningPort}；如需固定端口请检查设置或占用进程`
             )
+        }
+        // 常驻错误处理：监听成功后的网络错误只记日志，不让 'error' 事件冒泡导致主进程崩溃
+        server.on('error', (error) => {
+            logger.warn('[MCP] HTTP 服务运行期错误：', error)
+        })
+        // 不阻塞应用退出（Electron 主进程由其它 handle 保活；测试进程也不会被挂住）
+        server.unref()
+
+        this.server = server
+        this.protocol = protocol
+        this.token = token
+        this.port = listeningPort
+        this.sessionId = randomBytes(16).toString('hex')
+        this.preferredPort = preferredPort
+        this.startVersion = version
+        logger.info(
+            `[MCP] 只读桥已启动：${buildMcpUrl(listeningPort)}（工具 ${MCP_TOOL_COUNT} 个；` +
+                `首选端口=${preferredPort === null ? '自动' : preferredPort}；token 已生成，不落盘）`
+        )
+        return this.getStatus()
+    }
+
+    /** 停止服务（清空 token/端口；未运行则直接返回当前状态；首选端口保留供状态展示） */
+    stop(): Promise<McpServerStatus> {
+        return this.enqueueTask(async () => {
+            await this.stopInternal()
             return this.getStatus()
         })
     }
 
-    /** 停止服务（清空 token/端口；未运行则直接返回当前状态） */
-    stop(): Promise<McpServerStatus> {
-        return this.enqueueTask(async () => {
-            const server = this.server
-            this.server = null
-            this.protocol = null
-            this.token = ''
-            this.port = 0
-            this.sessionId = ''
-            if (server !== null) {
-                await new Promise<void>((resolve) => {
-                    server.close(() => resolve())
-                    // 主动关闭 keep-alive 空闲连接，避免 stop 后仍有旧连接可用
-                    if (typeof server.closeAllConnections === 'function') {
-                        server.closeAllConnections()
-                    }
-                })
-                logger.info('[MCP] 只读桥已停止：token 已清空，端口已释放')
-            }
-            return this.getStatus()
-        })
+    /** 实际停止监听并清空运行态（调用方已通过串行队列） */
+    private async stopInternal(): Promise<void> {
+        const server = this.server
+        this.server = null
+        this.protocol = null
+        this.token = ''
+        this.port = 0
+        this.sessionId = ''
+        if (server !== null) {
+            await new Promise<void>((resolve) => {
+                server.close(() => resolve())
+                // 主动关闭 keep-alive 空闲连接，避免 stop 后仍有旧连接可用
+                if (typeof server.closeAllConnections === 'function') {
+                    server.closeAllConnections()
+                }
+            })
+            logger.info('[MCP] 只读桥已停止：token 已清空，端口已释放')
+        }
     }
 
     /** 读取实时状态（token 只在运行态返回；调用方负责只提供给受信主窗口） */
@@ -295,7 +408,8 @@ export class McpHttpServer {
             port: running ? this.port : 0,
             token: running ? this.token : '',
             url: running ? buildMcpUrl(this.port) : '',
-            toolCount: MCP_TOOL_COUNT
+            toolCount: MCP_TOOL_COUNT,
+            preferredPort: this.preferredPort
         }
     }
 

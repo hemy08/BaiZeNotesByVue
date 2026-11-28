@@ -37,14 +37,28 @@
                     <select
                         v-model="selectedModelId"
                         class="llm-ai-panel-model-select"
+                        :data-model-state="modelState"
                         :aria-label="t('editorUi.llmWikiPanel.modelLabel')"
-                        :title="t('editorUi.llmWikiPanel.modelHint')"
+                        :title="modelSelectTitle"
+                        :disabled="modelSelectDisabled"
                     >
+                        <option v-if="modelPlaceholderText" value="" disabled>
+                            {{ modelPlaceholderText }}
+                        </option>
                         <option v-for="option in modelOptions" :key="option.id" :value="option.id">
-                            {{ option.label }}
+                            {{ option.name }}
                         </option>
                     </select>
                 </label>
+                <button
+                    type="button"
+                    class="llm-ai-panel-icon-btn llm-ai-panel-reset-width"
+                    :title="t('editorUi.llmWikiPanel.resetWidth')"
+                    :aria-label="t('editorUi.llmWikiPanel.resetWidth')"
+                    @click="emit('reset-width')"
+                >
+                    ↺
+                </button>
                 <button
                     type="button"
                     class="llm-ai-panel-icon-btn llm-ai-panel-clear"
@@ -65,6 +79,16 @@
                     »
                 </button>
             </header>
+
+            <!-- 模型未配置/读取中/读取失败时的可见提示（aria-live 让读屏用户也能感知配置变化） -->
+            <p
+                v-if="modelNoteText"
+                class="llm-ai-panel-model-note"
+                role="status"
+                aria-live="polite"
+            >
+                {{ modelNoteText }}
+            </p>
 
             <!-- 上下文引用 chips：当前文档 / 选中文本；均为空时展示空态引导 -->
             <div
@@ -149,35 +173,50 @@
 
 <script setup lang="ts">
 /**
- * LLM Wiki 工作台 · AI 输入面板（1.5.7 L5 / T5.2，UI 骨架批次）。
+ * LLM Wiki 工作台 · AI 输入面板（1.5.7 L5 / T5.2，UI 骨架批次；体验升级批次 A 接入多模型）。
  *
- * ## 本批次范围
- * - 交付：消息列表（用户/助手气泡 + 空态）、多行输入（Enter 发送 / Shift+Enter 换行）、
- *   发送/停止、模型选择占位、上下文引用 chips（当前文档 / 选中文本）、结果操作
- *   （复制可用；「应用到编辑器」占位禁用）、清空对话；
- * - **不接入真实 AI 通道**：请求经可注入 transport 发出，默认实现返回
- *   「AI 功能尚未接入（L3 批次提供）」。L3 批次经 props `transport` 或
- *   `provide(LLM_AI_TRANSPORT_INJECTION_KEY, transport)` 注入真实实现即可联调，
- *   面板内部逻辑与通道类型均不写死（见 `llm-ai-transport.ts`）。
+ * ## 范围
+ * - 消息列表（用户/助手气泡 + 空态）、多行输入（Enter 发送 / Shift+Enter 换行）、
+ *   发送/停止、上下文引用 chips（当前文档 / 选中文本）、结果操作（复制可用）、清空对话；
+ * - **多模型选择**（体验升级批次 A）：经既有 `AI.GET_CONFIG` 读取配置快照，下拉展示
+ *   `models[].name`（按配置顺序），默认选中 `defaultModelId`，发送时把真实模型 id
+ *   经 `LlmAiSendPayload.modelId` 传给 transport（→ `AiChatRequest.modelId`）；
+ *   AI 未启用/无模型时展示「未配置模型」占位并禁用发送；配置读取失败时降级为
+ *   「默认模型」（不传 modelId，由主进程回退 defaultModelId），不阻断对话；
+ * - 请求经可注入 transport 发出（`llm-ai-ipc-transport.ts` 默认走 `AI.CHAT`）。
  *
  * ## 交互与状态
  * - 消息为纯文本渲染（不做 HTML 解析）；发送请求带递增序号，停止/清空后迟到的响应被丢弃；
  * - 折叠态由父组件（WorkSpace）驱动：props `collapsed` + emit `toggle-collapse`，
- *   面板自身不持久化折叠状态（状态真源见 `llm-wiki-workbench.ts`）。
+ *   面板自身不持久化折叠状态（状态真源见 `llm-wiki-workbench.ts`）；
+ * - 面板宽度由父组件（WorkSpace）的分隔条拖拽控制，`reset-width` 事件请求恢复默认宽度。
+ *
+ * ## 模型配置刷新时机（设置页保存后无需重启）
+ * 1. 面板挂载时读取一次；
+ * 2. 收到 `SYSTEM_SETTING_UPDATE` 广播时（设置保存的通用广播）重新读取；
+ * 3. 系统设置对话框关闭时（AI 配置页经 `AI.SAVE_CONFIG` 保存，关闭时无 IPC 广播，
+ *    以对话框可见性变化作为「用户可能改过 AI 配置」的刷新信号）；
+ * 4. 面板从折叠恢复展开时重新读取；
+ * 5. 每次发送前**静默**读取（失败保留当前列表），保证设置页新增/切换模型后下一次发送生效。
  */
-import { computed, inject, onBeforeUnmount, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PropType } from 'vue'
 import { t } from '../../common/i18n'
 import { logger } from '../../common/logger'
+import { getConfigStore } from '../../common/useConfigStore'
+import { IPC } from '../../../../shared/ipc-channels'
 import LlmAiMessageList from './LlmAiMessageList.vue'
 import {
-    DEFAULT_LLM_AI_MODEL_ID,
-    LLM_AI_MODEL_PLACEHOLDER,
     LLM_AI_TRANSPORT_INJECTION_KEY,
     placeholderLlmAiTransport,
     type LlmAiMessage,
     type LlmAiTransport
 } from './llm-ai-transport'
+import {
+    readLlmAiModelCatalog,
+    type LlmAiModelCatalog,
+    type LlmAiModelOption
+} from './llm-ai-config'
 
 const props = defineProps({
     /** 是否折叠为 48px 侧栏（由 WorkSpace 控制） */
@@ -212,6 +251,8 @@ const props = defineProps({
 
 const emit = defineEmits<{
     (e: 'toggle-collapse'): void
+    /** 请求父组件把 AI 面板宽度恢复默认（分隔条双击的等价按钮入口） */
+    (e: 'reset-width'): void
 }>()
 
 /** 通过 provide 注入的 transport（L3 或集成方可选注入方式） */
@@ -222,7 +263,8 @@ const injectedTransport = inject<LlmAiTransport | null>(LLM_AI_TRANSPORT_INJECTI
 const inputValue = ref('')
 const messages = ref<LlmAiMessage[]>([])
 const isStreaming = ref(false)
-const selectedModelId = ref<string>(DEFAULT_LLM_AI_MODEL_ID)
+/** 当前选中的真实模型 id（空 = 未选择/降级为默认模型，发送时不传 modelId） */
+const selectedModelId = ref<string>('')
 
 /** 消息 id 序号（仅渲染层 key，不发往主进程） */
 let messageSeq = 0
@@ -230,18 +272,153 @@ let messageSeq = 0
 let requestSeq = 0
 /** 当前请求的取消控制器（L3 流式实现可消费 signal；“停止”同时做本地取消） */
 let activeController: AbortController | null = null
+/** 发送前置配置刷新进行中（防止连点/Enter 重复发送） */
+let preparingSend = false
 
 /** 复制结果反馈状态 */
 type CopyStatus = 'idle' | 'copied' | 'failed'
 const copyStatus = ref<CopyStatus>('idle')
 let copyStatusTimer: ReturnType<typeof setTimeout> | null = null
 
-/** 模型选择器占位数据（真实模型列表由 L3 批次/设置页提供） */
-const modelOptions = computed(() => [
-    { id: LLM_AI_MODEL_PLACEHOLDER.DEFAULT, label: t('editorUi.llmWikiPanel.modelDefault') },
-    { id: LLM_AI_MODEL_PLACEHOLDER.LOCAL, label: t('editorUi.llmWikiPanel.modelLocalMock') },
-    { id: LLM_AI_MODEL_PLACEHOLDER.REMOTE, label: t('editorUi.llmWikiPanel.modelRemoteMock') }
-])
+// ================================ 模型目录（AI.GET_CONFIG） ================================
+
+/** 模型配置读取状态：loading 初次读取 / ready 已读取 / error 读取失败（降级默认模型） */
+type ModelConfigStatus = 'loading' | 'ready' | 'error'
+const modelConfigStatus = ref<ModelConfigStatus>('loading')
+/** 归一化后的模型目录（读取失败时为 null） */
+const modelCatalog = ref<LlmAiModelCatalog | null>(null)
+
+/** 可发送所需的模型状态（unconfigured / loading 时禁用发送；error 降级允许发送） */
+type ModelState = 'loading' | 'ready' | 'unconfigured' | 'error'
+
+/** 当前模型状态（下拉占位、提示与发送禁用统一口径） */
+const modelState = computed<ModelState>(() => {
+    if (modelConfigStatus.value === 'loading') {
+        return 'loading'
+    }
+    if (modelConfigStatus.value === 'error') {
+        return 'error'
+    }
+    const catalog = modelCatalog.value
+    return catalog && catalog.enabled && catalog.models.length > 0 ? 'ready' : 'unconfigured'
+})
+
+/** 下拉选项：已配置时按配置顺序展示真实模型；其余状态无真实选项（仅占位项） */
+const modelOptions = computed<LlmAiModelOption[]>(() =>
+    modelState.value === 'ready' ? (modelCatalog.value?.models ?? []) : []
+)
+
+/** 无真实选项时的占位文案（不可选） */
+const modelPlaceholderText = computed(() => {
+    if (modelState.value === 'loading') {
+        return t('editorUi.llmWikiPanel.modelLoading')
+    }
+    if (modelState.value === 'unconfigured') {
+        return t('editorUi.llmWikiPanel.modelUnconfigured')
+    }
+    if (modelState.value === 'error') {
+        return t('editorUi.llmWikiPanel.modelFallback')
+    }
+    return ''
+})
+
+/** 下拉是否禁用（只有拿到真实模型列表才可切换） */
+const modelSelectDisabled = computed(() => modelState.value !== 'ready')
+
+/** 下拉标题：正常态提示用途；未配置态提示到设置页配置 */
+const modelSelectTitle = computed(() =>
+    modelState.value === 'unconfigured'
+        ? t('editorUi.llmWikiPanel.modelUnconfiguredHint')
+        : t('editorUi.llmWikiPanel.modelSelectHint')
+)
+
+/** 头部下方可见提示（仅未配置/读取失败时展示；正常态不占位） */
+const modelNoteText = computed(() => {
+    if (modelState.value === 'unconfigured') {
+        return t('editorUi.llmWikiPanel.modelUnconfiguredHint')
+    }
+    if (modelState.value === 'error') {
+        return t('editorUi.llmWikiPanel.modelLoadFailedHint')
+    }
+    return ''
+})
+
+/** 应用配置目录：保持当前选择（若仍存在），否则回落默认模型/首个模型 */
+function applyModelCatalog(catalog: LlmAiModelCatalog): void {
+    modelCatalog.value = catalog
+    modelConfigStatus.value = 'ready'
+    const ids = catalog.models.map((model) => model.id)
+    if (ids.length === 0) {
+        selectedModelId.value = ''
+        return
+    }
+    if (selectedModelId.value.length > 0 && ids.includes(selectedModelId.value)) {
+        return
+    }
+    selectedModelId.value =
+        catalog.defaultModelId && ids.includes(catalog.defaultModelId)
+            ? catalog.defaultModelId
+            : ids[0]
+}
+
+/**
+ * 读取/刷新模型目录。
+ * @param silent 静默刷新（发送前）：读取失败时保留当前目录/选择，不把已可用面板降级为错误态
+ */
+async function refreshModelCatalog(options: { silent?: boolean } = {}): Promise<void> {
+    if (!options.silent) {
+        modelConfigStatus.value = 'loading'
+    }
+    const result = await readLlmAiModelCatalog()
+    if (result.status === 'ready') {
+        applyModelCatalog(result.catalog)
+        return
+    }
+    // 静默刷新失败（发送前）：保留当前目录与选中模型，发送由主进程兜底 defaultModelId
+    if (options.silent) {
+        return
+    }
+    modelCatalog.value = null
+    selectedModelId.value = ''
+    modelConfigStatus.value = 'error'
+}
+
+/** 主进程系统设置广播（设置保存后通用广播；AI 配置随之可能变化）→ 重新读取模型列表 */
+function handleSystemSettingUpdate(): void {
+    void refreshModelCatalog()
+}
+
+/** 是否已订阅系统设置广播（卸载时成对退订） */
+let systemSettingSubscribed = false
+
+/** 订阅系统设置广播（缺 ipcRenderer.on 的测试/裁剪环境静默跳过） */
+function subscribeSystemSettingUpdate(): void {
+    if (typeof window === 'undefined' || systemSettingSubscribed) {
+        return
+    }
+    const ipcRenderer = window.electron?.ipcRenderer
+    if (!ipcRenderer || typeof ipcRenderer.on !== 'function') {
+        return
+    }
+    ipcRenderer.on(IPC.SETTING.SYSTEM_SETTING_UPDATE, handleSystemSettingUpdate)
+    systemSettingSubscribed = true
+}
+
+/** 退订系统设置广播（幂等） */
+function unsubscribeSystemSettingUpdate(): void {
+    if (!systemSettingSubscribed) {
+        return
+    }
+    systemSettingSubscribed = false
+    if (typeof window === 'undefined') {
+        return
+    }
+    const ipcRenderer = window.electron?.ipcRenderer
+    if (!ipcRenderer || typeof ipcRenderer.removeListener !== 'function') {
+        return
+    }
+    ipcRenderer.removeListener(IPC.SETTING.SYSTEM_SETTING_UPDATE, handleSystemSettingUpdate)
+}
 
 /** 当前文档名（trim 后展示；空 = 无上下文） */
 const documentNameText = computed(() => (props.documentName ?? '').trim())
@@ -260,8 +437,17 @@ const hasContext = computed(
     () => documentNameText.value.length > 0 || selectionText.value.length > 0
 )
 
-/** 是否可发送：有非空输入且当前没有进行中的请求 */
-const canSend = computed(() => inputValue.value.trim().length > 0 && !isStreaming.value)
+/**
+ * 是否可发送：有非空输入、当前没有进行中的请求，且模型配置已就绪。
+ * 读取中/未配置（AI 未启用或无模型）时禁用发送，避免发出必然失败的请求。
+ */
+const canSend = computed(
+    () =>
+        inputValue.value.trim().length > 0 &&
+        !isStreaming.value &&
+        modelState.value !== 'loading' &&
+        modelState.value !== 'unconfigured'
+)
 
 /** 输入区底部状态文案：优先展示复制结果，否则展示快捷键提示 */
 const statusText = computed(() => {
@@ -289,57 +475,70 @@ function createMessage(role: LlmAiMessage['role'], content: string): LlmAiMessag
 
 /** 发送当前输入（Enter 或发送按钮触发） */
 async function handleSend(): Promise<void> {
-    if (!canSend.value) {
+    if (!canSend.value || preparingSend) {
         return
     }
-    const message = inputValue.value.trim()
-    if (message.length === 0) {
-        return
-    }
-    // 先追加用户消息并清空输入（失败时也保留用户已发送内容，便于重试）
-    messages.value = [...messages.value, createMessage('user', message)]
-    inputValue.value = ''
-    isStreaming.value = true
-    copyStatus.value = 'idle'
-    requestSeq += 1
-    const seq = requestSeq
-    activeController = typeof AbortController === 'function' ? new AbortController() : null
-    const controller = activeController
+    preparingSend = true
     try {
-        const transport = resolveTransport()
-        const reply = await transport({
-            message,
-            modelId: selectedModelId.value,
-            history: messages.value.slice(),
-            context: {
-                documentName: documentNameText.value,
-                selectionText: selectionText.value
-            },
-            ...(controller ? { signal: controller.signal } : {})
-        })
-        // 已被「停止/清空」作废：丢弃迟到响应
-        if (seq !== requestSeq) {
+        // 发送前静默刷新模型配置：设置页新增/切换模型后无需重启即可生效。
+        // 读取失败保留当前选择（降级由主进程使用 defaultModelId）。
+        await refreshModelCatalog({ silent: true })
+        // 刷新后若变为「读取中 / 未配置」，本次发送作废（输入保留在输入框，便于配置后重试）
+        if (!canSend.value) {
             return
         }
-        const content =
-            typeof reply === 'string' && reply.trim().length > 0
-                ? reply
-                : t('editorUi.llmWikiPanel.emptyReply')
-        messages.value = [...messages.value, createMessage('assistant', content)]
-    } catch (error) {
-        if (seq !== requestSeq) {
+        const message = inputValue.value.trim()
+        if (message.length === 0) {
             return
         }
-        logger.error('[LLM AI] 请求 AI 回复失败：', error)
-        messages.value = [
-            ...messages.value,
-            createMessage('assistant', t('editorUi.llmWikiPanel.transportError'))
-        ]
+        // 先追加用户消息并清空输入（失败时也保留用户已发送内容，便于重试）
+        messages.value = [...messages.value, createMessage('user', message)]
+        inputValue.value = ''
+        isStreaming.value = true
+        copyStatus.value = 'idle'
+        requestSeq += 1
+        const seq = requestSeq
+        activeController = typeof AbortController === 'function' ? new AbortController() : null
+        const controller = activeController
+        try {
+            const transport = resolveTransport()
+            const reply = await transport({
+                message,
+                // 仅在拿到真实模型 id 时下发；配置读取失败降级时省略（主进程用 defaultModelId）
+                ...(selectedModelId.value.length > 0 ? { modelId: selectedModelId.value } : {}),
+                history: messages.value.slice(),
+                context: {
+                    documentName: documentNameText.value,
+                    selectionText: selectionText.value
+                },
+                ...(controller ? { signal: controller.signal } : {})
+            })
+            // 已被「停止/清空」作废：丢弃迟到响应
+            if (seq !== requestSeq) {
+                return
+            }
+            const content =
+                typeof reply === 'string' && reply.trim().length > 0
+                    ? reply
+                    : t('editorUi.llmWikiPanel.emptyReply')
+            messages.value = [...messages.value, createMessage('assistant', content)]
+        } catch (error) {
+            if (seq !== requestSeq) {
+                return
+            }
+            logger.error('[LLM AI] 请求 AI 回复失败：', error)
+            messages.value = [
+                ...messages.value,
+                createMessage('assistant', t('editorUi.llmWikiPanel.transportError'))
+            ]
+        } finally {
+            if (seq === requestSeq) {
+                isStreaming.value = false
+                activeController = null
+            }
+        }
     } finally {
-        if (seq === requestSeq) {
-            isStreaming.value = false
-            activeController = null
-        }
+        preparingSend = false
     }
 }
 
@@ -409,12 +608,44 @@ function handleComposerKeydown(event: KeyboardEvent): void {
     void handleSend()
 }
 
+/** 面板从折叠恢复展开时重新读取模型配置（设置页保存后用户回到对话入口） */
+watch(
+    () => props.collapsed,
+    (collapsed) => {
+        if (!collapsed) {
+            void refreshModelCatalog()
+        }
+    }
+)
+
+/**
+ * 系统设置对话框关闭时重新读取模型配置。
+ * AI 助手配置页的模型增删改经 `AI.SAVE_CONFIG` 保存且不广播系统设置更新，因此把
+ * 「设置对话框由打开 → 关闭」作为用户可能改过 AI 配置的刷新信号（无需轮询/新 IPC）。
+ */
+const configStore = getConfigStore()
+watch(
+    () => configStore.dialogs.systemSettings.visible,
+    (visible) => {
+        if (!visible) {
+            void refreshModelCatalog()
+        }
+    }
+)
+
+onMounted(() => {
+    // 首帧读取模型目录（失败降级为默认模型，不阻断面板使用）
+    void refreshModelCatalog()
+    subscribeSystemSettingUpdate()
+})
+
 onBeforeUnmount(() => {
     clearCopyStatusTimer()
     // 组件卸载（退出 LLM Wiki 模式）时作废进行中的请求并中止
     requestSeq += 1
     activeController?.abort()
     activeController = null
+    unsubscribeSystemSettingUpdate()
 })
 </script>
 
@@ -427,6 +658,8 @@ onBeforeUnmount(() => {
     min-width: 0;
     min-height: 0;
     box-sizing: border-box;
+    /* 容器查询：面板宽度由 WorkSpace 分隔条拖拽决定（与窗口宽度无关） */
+    container-type: inline-size;
     color: var(--ui-text, var(--theme-text-color));
 }
 
@@ -531,6 +764,25 @@ onBeforeUnmount(() => {
 .llm-ai-panel-model-select:focus-visible {
     outline: none;
     box-shadow: var(--ui-focus-shadow);
+}
+
+/* 模型未配置 / 读取中 / 读取失败的可见提示行（正常态不渲染，零占位） */
+.llm-ai-panel-model-note {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 6px var(--ui-pad, 12px);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ui-text-secondary, var(--theme-secondary-text-color));
+    background: var(--ui-accent-soft, var(--theme-hover-background));
+    border-bottom: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+}
+
+/* 窄面板（拖动分隔条到最小宽度）时收起「模型」文字标签，给下拉与图标按钮让位 */
+@container (max-width: 300px) {
+    .llm-ai-panel-model-label {
+        display: none;
+    }
 }
 
 .llm-ai-panel-icon-btn {

@@ -94,34 +94,19 @@ async function openConfirm(wrapper: VueWrapper): Promise<void> {
 let invoke: ReturnType<typeof vi.fn>
 
 /**
- * 1.5.7 LLM Wiki L2：FeaturesPanel 挂载即调用 MCP.GET_STATUS 读取 MCP 服务状态，
- * 因此本文件的 invoke 桩按通道分流（MCP 状态返回「已停止」，其余返回初始化成功），
- * 涉及「是否调用过主进程」的断言统一只统计工作区初始化通道。
+ * 1.5.7 体验升级 B：FeaturesPanel 已不再挂载读取 MCP/AI 配置（两个分组迁移到
+ * 「AI 助手」页签），本文件只需工作区初始化通道的桩；涉及「是否调用过主进程」的断言
+ * 统一只统计工作区初始化通道。
  */
-const MCP_GET_STATUS_CHANNEL = IPC.MCP.GET_STATUS
 const INITIALIZE_LLM_WIKI_CHANNEL = IPC.FILE.INITIALIZE_LLM_WIKI
-const STOPPED_MCP_STATUS = {
-    enabled: false,
-    running: false,
-    port: 0,
-    token: '',
-    url: '',
-    toolCount: 7
-}
 
-/** 只取「工作区初始化」通道的 invoke 调用（排除 MCP 状态读取） */
+/** 只取「工作区初始化」通道的 invoke 调用 */
 function initializeInvokeCalls(): unknown[][] {
     return invoke.mock.calls.filter((call) => call[0] === INITIALIZE_LLM_WIKI_CHANNEL)
 }
 
 beforeEach(() => {
-    invoke = vi
-        .fn()
-        .mockImplementation((channel: string) =>
-            channel === MCP_GET_STATUS_CHANNEL
-                ? Promise.resolve(STOPPED_MCP_STATUS)
-                : Promise.resolve({ success: true })
-        )
+    invoke = vi.fn().mockResolvedValue({ success: true })
     vi.stubGlobal('electron', { ipcRenderer: { invoke } })
     store.hideDialog('message')
 })

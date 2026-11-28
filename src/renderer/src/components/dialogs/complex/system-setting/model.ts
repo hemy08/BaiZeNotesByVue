@@ -9,8 +9,9 @@
  * - 设置页拆分 P0 新增：脏标记比较（isSystemSettingsDirty）与保存前校验
  *   （validateDialogSettings，仅诊断日志用，不阻断保存——主进程 AS-4 才是强制校验）。
  *
- * 响应式表单状态见 `./useSystemSettingForm.ts`，4 个页签组件见同目录
- * GeneralPanel / FilePanel / AppearancePanel / BackupPanel。
+ * 响应式表单状态见 `./useSystemSettingForm.ts`；7 个页签组件见同目录
+ * GeneralPanel / FilePanel / AppearancePanel / FeaturesPanel / WritingPanel / BackupPanel，
+ * 以及独立保存的 AiAssistantPanel（AI 助手，1.5.7 体验升级 B）。
  */
 
 import { SYSTEM_SETTING_FALLBACK } from '../../../../../../shared/constants/system-defaults'
@@ -89,7 +90,9 @@ export const SYSTEM_SETTING_SIDEBAR_ITEMS = [
     { id: 'appearance', nameKey: 'dialogRenderer.systemSetting.sidebarAppearance', icon: '🎨' },
     { id: 'features', nameKey: 'dialogRenderer.systemSetting.sidebarFeatures', icon: '🧩' },
     { id: 'writing', nameKey: 'dialogRenderer.systemSetting.sidebarWriting', icon: '✍️' },
-    { id: 'backup', nameKey: 'dialogRenderer.systemSetting.sidebarBackup', icon: '💾' }
+    { id: 'backup', nameKey: 'dialogRenderer.systemSetting.sidebarBackup', icon: '💾' },
+    // 1.5.7 体验升级 B：第 7 页签「AI 助手」（多模型管理 + MCP 服务配置，懒加载面板）
+    { id: 'aiAssistant', nameKey: 'dialogRenderer.systemSetting.sidebarAiAssistant', icon: '🤖' }
 ] as const
 
 /** 侧边栏页签 id（壳层 activePanel 的类型真源，与 4 个 panel 组件一一对应） */

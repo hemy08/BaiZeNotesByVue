@@ -1,10 +1,13 @@
 /**
- * LLM Wiki 工作台 UI 状态（编辑区「编辑器 / 预览」tab、右侧 AI 面板折叠）。
+ * LLM Wiki 工作台 UI 状态（编辑区「编辑器 / 预览」tab、右侧 AI 面板折叠与宽度）。
  *
- * ## 背景（1.5.7 LLM Wiki L5）
+ * ## 背景（1.5.7 LLM Wiki L5 / 体验升级批次 A）
  * `workspaceMode === 'llm-wiki'` 时工作台采用「左侧单栏编辑区 + 右侧 AI 面板」布局：
  * - 编辑区内部用 tab 在 Monaco 编辑器与 Markdown 预览之间切换（`v-show` 保留两实例状态）；
- * - 右侧 AI 面板可在窄窗口下折叠为 48px 侧栏。
+ *   体验升级批次 A 起该分段控件悬浮于编辑区右上角（`MarkdownEditComponent` 负责定位）；
+ * - 右侧 AI 面板可在窄窗口下折叠为 48px 侧栏；
+ * - 编辑区与 AI 面板之间的 split 可拖动：面板宽度持久化在本模块（键
+ *   `baize:llm-wiki:ai-panel-width`），布局层只做可用宽度/编辑区最小宽度夹取。
  *
  * ## 边界
  * - 只存 UI 状态，不触达笔记内容、不新增 IPC、不写系统配置；
@@ -25,9 +28,23 @@ export const LLM_WIKI_EDITOR_TAB = {
 /** 默认 tab：编辑器（用户进入 LLM Wiki 模式后先看到可编辑内容） */
 export const DEFAULT_LLM_WIKI_EDITOR_TAB: LlmWikiEditorTab = LLM_WIKI_EDITOR_TAB.EDITOR
 
+/**
+ * AI 面板宽度约束（px）：拖拽分隔条 / 键盘微调 / 持久化恢复共用同一区间。
+ * 窗口可用宽度不足时由布局层（`WorkSpace.vue`）再按「编辑区最小宽度」二次夹取。
+ */
+export const LLM_WIKI_AI_PANEL_WIDTH = {
+    /** 展开态最小宽度 */
+    MIN: 240,
+    /** 默认宽度（双击分隔条 / 面板按钮恢复默认） */
+    DEFAULT: 360,
+    /** 展开态最大宽度 */
+    MAX: 560
+} as const
+
 /** localStorage 键（版本化，便于以后清理不兼容旧状态） */
 export const LLM_WIKI_EDITOR_TAB_STORAGE_KEY = 'baize:llm-wiki:editor-tab'
 export const LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY = 'baize:llm-wiki:ai-panel-collapsed'
+export const LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY = 'baize:llm-wiki:ai-panel-width'
 
 /** LLM Wiki 工作台 UI 状态（组件只读消费，写入统一走本模块函数） */
 export interface LlmWikiWorkbenchState {
@@ -35,12 +52,18 @@ export interface LlmWikiWorkbenchState {
     editorTab: LlmWikiEditorTab
     /** 右侧 AI 面板是否折叠为侧栏（持久化；窄窗口自动折叠由 WorkSpace 计算，不写回本状态） */
     aiPanelCollapsed: boolean
+    /**
+     * 右侧 AI 面板宽度（px）。
+     * `null` = 用户尚未自定义宽度：布局层按窗口宽度分档取默认值（宽窗 360 / 窄窗 280）。
+     */
+    aiPanelWidth: number | null
 }
 
 /** 运行时状态单例（惰性从 localStorage 恢复） */
 export const llmWikiWorkbenchState = reactive<LlmWikiWorkbenchState>({
     editorTab: DEFAULT_LLM_WIKI_EDITOR_TAB,
-    aiPanelCollapsed: false
+    aiPanelCollapsed: false,
+    aiPanelWidth: null
 })
 
 /** 是否已尝试从 localStorage 恢复（幂等，避免反复读取） */
@@ -91,6 +114,35 @@ export function normalizeLlmWikiEditorTab(value: unknown): LlmWikiEditorTab {
         : DEFAULT_LLM_WIKI_EDITOR_TAB
 }
 
+/**
+ * 把面板宽度夹取到合法区间 [MIN, MAX]。
+ * 非有限数值回落默认宽度（持久化损坏值不打断布局）。
+ */
+export function clampLlmWikiAiPanelWidth(value: number): number {
+    if (!Number.isFinite(value)) {
+        return LLM_WIKI_AI_PANEL_WIDTH.DEFAULT
+    }
+    return Math.min(
+        LLM_WIKI_AI_PANEL_WIDTH.MAX,
+        Math.max(LLM_WIKI_AI_PANEL_WIDTH.MIN, Math.round(value))
+    )
+}
+
+/**
+ * 归一化持久化面板宽度：`null` = 无有效值（布局层按窗口分档默认值）。
+ * 数字与数字字符串（localStorage 只能存字符串）都接受，越界值夹取到合法区间。
+ */
+export function normalizeLlmWikiAiPanelWidth(value: unknown): number | null {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? clampLlmWikiAiPanelWidth(value) : null
+    }
+    if (typeof value !== 'string' || value.trim() === '') {
+        return null
+    }
+    const parsed = Number.parseFloat(value)
+    return Number.isFinite(parsed) ? clampLlmWikiAiPanelWidth(parsed) : null
+}
+
 /** 惰性从 localStorage 恢复 UI 状态（幂等；组件 setup 期调用，保证首帧用上持久化值） */
 export function ensureLlmWikiWorkbenchStateLoaded(): void {
     if (storageLoaded) {
@@ -102,6 +154,9 @@ export function ensureLlmWikiWorkbenchStateLoaded(): void {
     )
     llmWikiWorkbenchState.aiPanelCollapsed =
         readStoredValue(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY) === 'true'
+    llmWikiWorkbenchState.aiPanelWidth = normalizeLlmWikiAiPanelWidth(
+        readStoredValue(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)
+    )
 }
 
 /** 切换编辑区 tab（写入内存状态并持久化；非法值归一化） */
@@ -125,11 +180,31 @@ export function toggleLlmWikiAiPanelCollapsed(): void {
     )
 }
 
+/**
+ * 设置 AI 面板宽度（拖拽结束 / 键盘微调 / 恢复默认时调用；夹取到合法区间并持久化）。
+ * 拖动过程中的临时宽度由布局层本地状态承接，避免 mousemove 高频写 localStorage。
+ */
+export function setLlmWikiAiPanelWidth(width: number): void {
+    ensureLlmWikiWorkbenchStateLoaded()
+    const next = clampLlmWikiAiPanelWidth(width)
+    if (llmWikiWorkbenchState.aiPanelWidth === next) {
+        return
+    }
+    llmWikiWorkbenchState.aiPanelWidth = next
+    writeStoredValue(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY, String(next))
+}
+
+/** 恢复 AI 面板默认宽度（双击分隔条 / 面板「恢复默认宽度」按钮） */
+export function resetLlmWikiAiPanelWidth(): void {
+    setLlmWikiAiPanelWidth(LLM_WIKI_AI_PANEL_WIDTH.DEFAULT)
+}
+
 /** 仅供单元测试：重置模块状态与测试写入的 localStorage 键 */
 export function resetLlmWikiWorkbenchStateForTesting(): void {
     storageLoaded = false
     llmWikiWorkbenchState.editorTab = DEFAULT_LLM_WIKI_EDITOR_TAB
     llmWikiWorkbenchState.aiPanelCollapsed = false
+    llmWikiWorkbenchState.aiPanelWidth = null
     const storage = resolveStorage()
     if (!storage) {
         return
@@ -137,6 +212,7 @@ export function resetLlmWikiWorkbenchStateForTesting(): void {
     try {
         storage.removeItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)
         storage.removeItem(LLM_WIKI_AI_PANEL_COLLAPSED_STORAGE_KEY)
+        storage.removeItem(LLM_WIKI_AI_PANEL_WIDTH_STORAGE_KEY)
     } catch {
         // 测试环境存储异常忽略
     }

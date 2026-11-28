@@ -1,13 +1,14 @@
 /**
- * 1.5.7 LLM Wiki L2：MCP IPC 单测（`src/main/ipc/mcp-ipc.ts`）
+ * 1.5.7 LLM Wiki L2 / 体验升级批次 C：MCP IPC 单测（`src/main/ipc/mcp-ipc.ts`）
  *
  * 覆盖：
  * 1. 注册：两个 invoke 通道经 `ipcListenerManager.registerHandleOnce` 注册
  *    （withSenderCheck 包装），componentId 透传（缺省 `global-mcp-ipc`）；
- * 2. 启动回落：`reconcilePersistedMcpState()` 将上次会话的 mcpEnabled=true 回落 false
- *    并记日志（token 不落盘、不跨重启自动启动）；
- * 3. 状态：`getMcpStatus()` 委托 MCP server 实时状态；
- * 4. 开关：非法载荷结构化拒绝；启用成功才持久化 true；停用持久化 false；
+ * 2. 启动回落：`reconcilePersistedMcpState()` 将上次会话的 mcpEnabled=true 回落 false，
+ *    并把非法持久化端口（mcpPort）归一化为 null（token 不落盘、不跨重启自动启动）；
+ * 3. 状态：`getMcpStatus()` 委托 MCP server 实时状态（含 preferredPort）；
+ * 4. 开关/端口/token：非法载荷结构化拒绝；启用成功才持久化 true；
+ *    `port` 透传与持久化（null/0 = 自动）；`regenerateToken` 透传；
  *    启动失败时清理停止 + 回落偏好 + 返回含原因的失败；
  * 5. sender 校验：受信主窗口可调用两个通道，非受信发送方返回统一拒绝对象且不执行。
  */
@@ -20,7 +21,8 @@ const mocks = vi.hoisted(() => {
         port: 0,
         token: '',
         url: '',
-        toolCount: 7
+        toolCount: 7,
+        preferredPort: null
     }
     const runningStatus = {
         enabled: true,
@@ -28,7 +30,8 @@ const mocks = vi.hoisted(() => {
         port: 3847,
         token: 'a'.repeat(64),
         url: 'http://127.0.0.1:3847/mcp',
-        toolCount: 7
+        toolCount: 7,
+        preferredPort: null as number | null
     }
     return {
         stoppedStatus,
@@ -69,6 +72,7 @@ vi.mock('../../src/main/utils/logger', () => ({ logger: mocks.logger }))
 import { IPC } from '../../src/shared/ipc-channels'
 import {
     getMcpStatus,
+    isValidMcpPort,
     MCP_IPC_COMPONENT_ID,
     reconcilePersistedMcpState,
     registerMcpIpc,
@@ -106,7 +110,7 @@ beforeEach(() => {
     mocks.getMcpServerStatus.mockReturnValue(mocks.stoppedStatus)
     mocks.startMcpServer.mockResolvedValue(mocks.runningStatus)
     mocks.stopMcpServer.mockResolvedValue(mocks.stoppedStatus)
-    mocks.getSystemSetting.mockReturnValue({ mcpEnabled: false })
+    mocks.getSystemSetting.mockReturnValue({ mcpEnabled: false, mcpPort: null })
     mocks.registerHandleOnce.mockImplementation(
         (
             channel: string,
@@ -155,13 +159,13 @@ describe('registerMcpIpc：注册形状', () => {
     })
 
     it('注册时回落上次会话的启用偏好（mcpEnabled=true → false）', () => {
-        mocks.getSystemSetting.mockReturnValue({ mcpEnabled: true })
+        mocks.getSystemSetting.mockReturnValue({ mcpEnabled: true, mcpPort: 4000 })
         registerMcpIpc()
         expect(mocks.saveSystemSetting).toHaveBeenCalledWith({ mcpEnabled: false })
         expect(mocks.logger.info).toHaveBeenCalledWith(expect.stringContaining('MCP 服务'))
     })
 
-    it('上次未启用时不写系统设置', () => {
+    it('上次未启用且端口合法时不写系统设置', () => {
         registerMcpIpc()
         expect(mocks.saveSystemSetting).not.toHaveBeenCalled()
     })
@@ -179,13 +183,35 @@ describe('reconcilePersistedMcpState', () => {
     it('已回落为 false 时返回 false（幂等）', () => {
         expect(reconcilePersistedMcpState()).toBe(false)
     })
+
+    it('持久化端口非法 → 归一化为 null（自动选择）并返回 true', () => {
+        mocks.getSystemSetting.mockReturnValue({ mcpEnabled: false, mcpPort: 70000 })
+        expect(reconcilePersistedMcpState()).toBe(true)
+        expect(mocks.saveSystemSetting).toHaveBeenCalledWith({ mcpPort: null })
+        expect(mocks.logger.warn).toHaveBeenCalledWith(expect.stringContaining('端口'))
+    })
+
+    it('持久化端口合法 → 不改写', () => {
+        mocks.getSystemSetting.mockReturnValue({ mcpEnabled: false, mcpPort: 3847 })
+        expect(reconcilePersistedMcpState()).toBe(false)
+        expect(mocks.saveSystemSetting).not.toHaveBeenCalled()
+    })
 })
 
 describe('getMcpStatus', () => {
-    it('委托 MCP server 实时状态', () => {
+    it('委托 MCP server 实时状态（含 preferredPort）', () => {
         expect(getMcpStatus()).toEqual(mocks.stoppedStatus)
-        mocks.getMcpServerStatus.mockReturnValue(mocks.runningStatus)
-        expect(getMcpStatus()).toEqual(mocks.runningStatus)
+        mocks.getMcpServerStatus.mockReturnValue({ ...mocks.runningStatus, preferredPort: 3847 })
+        expect(getMcpStatus()).toEqual({ ...mocks.runningStatus, preferredPort: 3847 })
+    })
+
+    it('isValidMcpPort：只接受 1~65535 的整数', () => {
+        expect(isValidMcpPort(1)).toBe(true)
+        expect(isValidMcpPort(3847)).toBe(true)
+        expect(isValidMcpPort(65535)).toBe(true)
+        for (const invalid of [0, -1, 65536, 1.5, '3847', null, undefined]) {
+            expect(isValidMcpPort(invalid), String(invalid)).toBe(false)
+        }
     })
 })
 
@@ -199,23 +225,89 @@ describe('setMcpEnabled：载荷校验', () => {
             [],
             {},
             { enabled: 'yes' },
-            { enabled: 1 }
+            { enabled: 1 },
+            { enabled: true, port: '3847' },
+            { enabled: true, port: 1.5 },
+            { enabled: true, port: -1 },
+            { enabled: true, port: 65536 },
+            { enabled: true, regenerateToken: 'yes' }
         ]) {
             const result = await setMcpEnabled(payload)
             expect(result.ok, JSON.stringify(payload)).toBe(false)
-            expect(result.error).toContain('enabled')
+            expect(typeof result.error).toBe('string')
             expect(result.status).toEqual(mocks.stoppedStatus)
         }
         expect(mocks.startMcpServer).not.toHaveBeenCalled()
         expect(mocks.saveSystemSetting).not.toHaveBeenCalled()
     })
+
+    it('非法端口错误提示包含端口范围（便于设置页展示）', async () => {
+        const result = await setMcpEnabled({ enabled: true, port: 99999 })
+        expect(result.ok).toBe(false)
+        expect(result.error).toContain('端口')
+    })
 })
 
 describe('setMcpEnabled：启用/停用', () => {
-    it('启用：启动服务成功后持久化 true，返回运行状态', async () => {
+    it('启用（未指定端口）：沿用持久化偏好 null，启动成功后持久化 true', async () => {
         const result = await setMcpEnabled({ enabled: true })
-        expect(mocks.startMcpServer).toHaveBeenCalledWith({ version: '1.5.7-test' })
+        expect(mocks.startMcpServer).toHaveBeenCalledWith({
+            version: '1.5.7-test',
+            preferredPort: null,
+            regenerateToken: false
+        })
         expect(mocks.saveSystemSetting).toHaveBeenCalledWith({ mcpEnabled: true })
+        expect(result).toEqual({ ok: true, status: mocks.runningStatus })
+    })
+
+    it('启用并指定端口：透传首选端口并持久化 mcpPort', async () => {
+        mocks.startMcpServer.mockResolvedValue({ ...mocks.runningStatus, preferredPort: 4000 })
+        const result = await setMcpEnabled({ enabled: true, port: 4000 })
+        expect(mocks.startMcpServer).toHaveBeenCalledWith({
+            version: '1.5.7-test',
+            preferredPort: 4000,
+            regenerateToken: false
+        })
+        expect(mocks.saveSystemSetting).toHaveBeenCalledWith({ mcpEnabled: true })
+        expect(mocks.saveSystemSetting).toHaveBeenCalledWith({ mcpPort: 4000 })
+        expect(result).toEqual({
+            ok: true,
+            status: { ...mocks.runningStatus, preferredPort: 4000 }
+        })
+    })
+
+    it('端口 0 / null 表示自动选择：透传 null 并持久化 null', async () => {
+        await setMcpEnabled({ enabled: true, port: 0 })
+        expect(mocks.startMcpServer).toHaveBeenLastCalledWith({
+            version: '1.5.7-test',
+            preferredPort: null,
+            regenerateToken: false
+        })
+        expect(mocks.saveSystemSetting).toHaveBeenCalledWith({ mcpPort: null })
+
+        await setMcpEnabled({ enabled: true, port: null })
+        expect(mocks.saveSystemSetting).toHaveBeenCalledWith({ mcpPort: null })
+    })
+
+    it('未指定端口时沿用已持久化的 mcpPort 偏好', async () => {
+        mocks.getSystemSetting.mockReturnValue({ mcpEnabled: false, mcpPort: 4000 })
+        await setMcpEnabled({ enabled: true })
+        expect(mocks.startMcpServer).toHaveBeenCalledWith({
+            version: '1.5.7-test',
+            preferredPort: 4000,
+            regenerateToken: false
+        })
+        // 未显式提交端口 → 不重复写端口偏好
+        expect(mocks.saveSystemSetting).not.toHaveBeenCalledWith({ mcpPort: expect.anything() })
+    })
+
+    it('regenerateToken：透传给 server（运行中重启替换 token）', async () => {
+        const result = await setMcpEnabled({ enabled: true, regenerateToken: true })
+        expect(mocks.startMcpServer).toHaveBeenCalledWith({
+            version: '1.5.7-test',
+            preferredPort: null,
+            regenerateToken: true
+        })
         expect(result).toEqual({ ok: true, status: mocks.runningStatus })
     })
 
@@ -253,7 +345,9 @@ describe('handler：sender 校验与端到端', () => {
         const untrustedEvent = { sender: { id: 999 } }
         expect(isUntrustedSenderResult(await getStatusHandler(untrustedEvent))).toBe(true)
         expect(
-            isUntrustedSenderResult(await setEnabledHandler(untrustedEvent, { enabled: true }))
+            isUntrustedSenderResult(
+                await setEnabledHandler(untrustedEvent, { enabled: true, port: 4000 })
+            )
         ).toBe(true)
         expect(mocks.startMcpServer).not.toHaveBeenCalled()
         expect(mocks.saveSystemSetting).not.toHaveBeenCalled()
@@ -263,10 +357,9 @@ describe('handler：sender 校验与端到端', () => {
         registerMcpIpc()
         const setEnabledHandler = getRegisteredHandler(IPC.MCP.SET_ENABLED)
 
-        await expect(setEnabledHandler(trustedEvent, { enabled: true })).resolves.toEqual({
-            ok: true,
-            status: mocks.runningStatus
-        })
+        await expect(
+            setEnabledHandler(trustedEvent, { enabled: true, port: 4000 })
+        ).resolves.toEqual({ ok: true, status: mocks.runningStatus })
         const invalid = await setEnabledHandler(trustedEvent, { enabled: 'yes' })
         expect((invalid as { ok: boolean }).ok).toBe(false)
     })

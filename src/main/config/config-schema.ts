@@ -25,6 +25,8 @@ import { isKnownThemeType } from './theme-config'
 import { UI_DENSITY_VALUES, UI_STYLE_VALUES } from '../../shared/constants/ui-style'
 // 1.5.7 LLM Wiki L1：工作区模式枚举白名单唯一真源在 shared 常量（CFG-10 白名单归一化）。
 import { WORKSPACE_MODE_VALUES } from '../../shared/constants/workspace-mode'
+// 1.5.7 体验升级批次 C：MCP 首选端口范围单一真源（与 mcp-ipc/server 校验同口径）
+import { MCP_PORT_MAX, MCP_PORT_MIN } from '../mcp/constants'
 // 公共接口归位第 2 批：纯校验函数统一引用 shared/utils/validate 真源
 import {
     clampNumber as clampNumberBase,
@@ -333,6 +335,28 @@ export function validateSystemConfig(data: unknown): ConfigValidationResult {
                 value.defaultFilePath = raw
             } else {
                 adjusted.push('defaultFilePath: 非法路径字符串，已丢弃')
+            }
+            continue
+        }
+        if (field === 'mcpPort') {
+            // 1.5.7 体验升级批次 C：MCP 首选端口（null/0 = 自动选择；1~65535 为固定端口）。
+            // 端口语义特殊（0 表示自动、越界不能钳制为合法端口意图），因此单独处理：
+            // 非法值直接丢弃（保留既有偏好），而不是钳制/拒绝整次保存。
+            if (raw === null || raw === 0) {
+                value.mcpPort = null
+                continue
+            }
+            if (
+                isFiniteNumber(raw) &&
+                Number.isInteger(raw) &&
+                raw >= MCP_PORT_MIN &&
+                raw <= MCP_PORT_MAX
+            ) {
+                value.mcpPort = raw
+            } else {
+                adjusted.push(
+                    `mcpPort: 期望 ${MCP_PORT_MIN}~${MCP_PORT_MAX} 的整数或 null（自动选择），已丢弃`
+                )
             }
             continue
         }

@@ -114,6 +114,10 @@ export interface SystemSetting {
     // 由「系统设置 → 功能 → MCP 服务」开关经主进程 MCP.SET_ENABLED 写入；仅记录用户偏好，
     // 服务本身不跨重启自动启动（Bearer token 不落盘，重启后需在设置页重新启用）。
     mcpEnabled?: boolean
+    // 1.5.7 体验升级批次 C：MCP 首选端口（默认 null = 自动选择，优先 3847）。
+    // 由「系统设置 → 功能 → MCP 服务」的端口输入经主进程 MCP.SET_ENABLED 写入；
+    // 仅记录端口偏好（跨重启保留），实际监听端口以 MCP.GET_STATUS 返回为准。
+    mcpPort?: number | null
     // AS-9（P3 隐私）：是否允许 Markdown 预览加载文档中的远程（http/https/协议相对）图片。
     // 默认 false：渲染层把远程图片替换为占位块，不发起任何网络请求（防跟踪像素/IP 泄露）；
     // 本地相对路径、绝对路径与 data:/blob: 图片不受影响。

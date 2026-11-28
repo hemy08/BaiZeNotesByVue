@@ -4,6 +4,8 @@
  * 把 `LlmAiSendPayload` 转为稳定的 `AI.CHAT` 契约（`src/shared/types/ai.ts`）：
  * - `history`（含刚追加的用户消息）→ `AiChatMessage[]`；
  * - 上下文（文档名/选中文本）→ `AiChatContext { title?, selection? }`；
+ * - 多模型选择：`payload.modelId`（AI.GET_CONFIG 返回的真实模型 id）→ `AiChatRequest.modelId`；
+ *   缺省时不传该字段（主进程使用配置中的 `defaultModelId`）；
  * - 返回成功 `content`；`AI_NOT_CONFIGURED` 等结构化失败 → 可读中文错误（经 t() 动态解析）。
  *
  * 默认调用 `window.electron.ipcRenderer.invoke`（受限 ipcRenderer + 主进程白名单）；
@@ -64,6 +66,12 @@ export function createLlmAiIpcTransport(invokeOverride?: LlmAiInvoke): LlmAiTran
                 title: payload.context.documentName || undefined,
                 selection: payload.context.selectionText || undefined
             }
+        }
+        // 多模型：仅在选择器给出真实模型 id 时下发；缺省（配置读取失败降级）交给主进程
+        // 使用 defaultModelId，不在渲染层猜测模型。
+        const modelId = typeof payload.modelId === 'string' ? payload.modelId.trim() : ''
+        if (modelId.length > 0) {
+            request.modelId = modelId
         }
 
         let result: unknown

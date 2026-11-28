@@ -28,30 +28,49 @@ export type AiLocalProviderId = 'ollama' | 'lmstudio'
  * - `memory`：safeStorage 不可用，密钥**仅保存在本次会话内存**（不落盘），重启后需重新输入。
  */
 export type AiKeyStorage = 'safe' | 'memory'
+/**
+ * 单个模型配置（多模型列表项，1.5.7 体验升级）。
+ *
+ * 用户可添加多个模型（本地 Ollama/LM Studio 或远程 OpenAI 兼容），在 AI 面板/设置页切换。
+ * id 由渲染层生成并保持稳定；密钥不在此结构中（由主进程按模型 id 单独加密存储，
+ * 快照仅暴露 apiKeyConfigured 标记）。
+ */
+export interface AiModelConfig {
+    /** 模型唯一 id（渲染层生成，用于切换/密钥绑定） */
+    id: string
+    /** 显示名称（用户可编辑，如「本地 Qwen」「DeepSeek」） */
+    name: string
+    /** Provider 形态（local / remote） */
+    provider: AiProviderKind
+    /** 本地 Provider 标识（provider=local 时生效；remote 时忽略） */
+    localProvider: AiLocalProviderId
+    /** 接口基址（空串 = 该 Provider 默认基址；远程 BYOK 必填） */
+    baseUrl: string
+    /** 模型名称（本地为已拉取模型名；远程为服务商模型 id） */
+    model: string
+    /** 远程模型是否已配置 API Key（仅快照返回，不返回明文） */
+    apiKeyConfigured?: boolean
+}
 
 /**
  * AI 非敏感配置（持久化到独立配置文件 `ai-config.json`，**不含密钥明文**）。
  *
- * 默认值：`enabled=false` + `provider='local'` + `localProvider='ollama'` + 空 baseUrl/model
- * ——「默认本地 + Ollama + 关闭」，未启用时主进程不发起任何网络请求。
+ * 1.5.7 体验升级后为**多模型**结构：`models` 可添加多个本地/远程模型，
+ * `defaultModelId` 为 AI 面板缺省模型；每模型密钥由主进程按模型 id 单独加密存储。
+ * 默认值：`enabled=false` + `models=[]` + `defaultModelId=null` ——「默认关闭、无模型」，
+ * 未启用或未配置模型时主进程不发起任何网络请求。
  */
 export interface AiStoredConfig {
     /** 是否启用 AI 能力（默认 false；未启用时 AI.CHAT / AI.INGEST 返回 AI_NOT_CONFIGURED） */
     enabled: boolean
-    /** Provider 形态（local / remote） */
-    provider: AiProviderKind
-    /** 本地 Provider 标识（provider='local' 时生效） */
-    localProvider: AiLocalProviderId
-    /** 接口基址（空串 = 使用该 Provider 的默认基址；远程 BYOK 必填） */
-    baseUrl: string
-    /** 模型名称（本地 Ollama/LM Studio 为用户已拉取的模型名；远程为服务商模型 id） */
-    model: string
+    /** 模型列表（可添加多个；默认空数组） */
+    models: AiModelConfig[]
+    /** 默认模型 id（AI 面板缺省使用；无可用模型时为 null） */
+    defaultModelId: string | null
 }
 
 /** `AI.GET_CONFIG` 返回的配置快照（非敏感配置 + 密钥配置状态，永不返回密钥明文） */
 export interface AiConfigSnapshot extends AiStoredConfig {
-    /** 是否已配置 API Key（远程 BYOK 用；本地 Provider 可不需要） */
-    apiKeyConfigured: boolean
     /** 密钥存储形态（safeStorage 可用性探测结果） */
     apiKeyStorage: AiKeyStorage
 }
@@ -65,13 +84,18 @@ export interface AiConfigSnapshot extends AiStoredConfig {
  * - 两者同时出现视为非法载荷（返回 AI_INVALID_PAYLOAD）。
  */
 export interface AiSaveConfigRequest {
+    /** 是否启用 AI 能力（缺省保持不变） */
     enabled?: boolean
-    provider?: AiProviderKind
-    localProvider?: AiLocalProviderId
-    baseUrl?: string
-    model?: string
-    apiKey?: string
-    clearApiKey?: boolean
+    /** 完整模型列表（缺省保持不变；提供时按 id 覆盖/新增，缺失的旧模型被删除） */
+    models?: AiModelConfig[]
+    /** 默认模型 id（缺省保持不变；null = 清空默认） */
+    defaultModelId?: string | null
+    /** 单模型密钥操作（与 models 同批次提交；apiKey 非空=保存，clearApiKey=true=清除） */
+    modelApiKey?: {
+        modelId: string
+        apiKey?: string
+        clearApiKey?: boolean
+    }
 }
 
 /* ============================================================================
@@ -109,6 +133,8 @@ export interface AiChatContext {
 export interface AiChatRequest {
     messages: AiChatMessage[]
     context?: AiChatContext
+    /** 指定使用的模型 id（缺省 = 配置中的 defaultModelId） */
+    modelId?: string
 }
 
 /* ============================================================================

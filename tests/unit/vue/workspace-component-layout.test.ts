@@ -87,4 +87,19 @@ describe('WorkSpace E11 布局应用', () => {
         expect(resource.style.width).toBe('800px')
         expect(currentWorkspaceLayout.resourceManagerWidth).toBe(800)
     })
+
+    it('应用事件 detail 缺失时安全忽略（防御分支，不改变现有布局）', async () => {
+        wrapper = mount(WorkSpace, { global: { stubs }, attachTo: document.body })
+        await nextTick()
+
+        // 无 detail 的 CustomEvent（detail 为 null）：handleApplyWorkspaceLayout 直接 return
+        window.dispatchEvent(new CustomEvent(WORKSPACE_LAYOUT_APPLY_EVENT))
+        await nextTick()
+
+        const resource = document.getElementById('resource-manager') as HTMLElement
+        expect(resource.style.display).not.toBe('none')
+        expect(resource.style.width).toBe('300px')
+        expect(currentWorkspaceLayout.resourceManagerVisible).toBe(true)
+        expect(currentWorkspaceLayout.resourceManagerWidth).toBe(300)
+    })
 })

@@ -15,6 +15,12 @@ export const MCP_DEFAULT_PORT = 3847
 /** 端口被占用时的顺序尝试个数（3847..3856），仍失败则回退 port 0（系统分配） */
 export const MCP_PORT_ATTEMPTS = 10
 
+/** 合法端口下界（用户可配置的首选端口；0 表示自动选择，单独处理） */
+export const MCP_PORT_MIN = 1
+
+/** 合法端口上界（TCP 端口最大值） */
+export const MCP_PORT_MAX = 65535
+
 /** MCP 端点路径（设置页展示给外部 Agent 的 URL 路径） */
 export const MCP_ENDPOINT_PATH = '/mcp'
 

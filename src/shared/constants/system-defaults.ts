@@ -88,6 +88,8 @@ export const SYSTEM_SETTING_FALLBACK: SystemSettingFallback = {
     workspaceMode: DEFAULT_WORKSPACE_MODE,
     // 1.5.7 LLM Wiki L2：MCP 只读桥启用偏好默认关闭（opt-in；token 不落盘、不跨重启自动启动）
     mcpEnabled: false,
+    // 1.5.7 体验升级批次 C：MCP 首选端口默认 null（自动选择，优先 3847）
+    mcpPort: null,
     // 可选能力（2026-11-21 用户选定）：全部 opt-in、默认关闭
     featureTabs: false,
     featureDocumentHistory: false,

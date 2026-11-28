@@ -5,18 +5,33 @@
  * 供主进程（`src/main/ai/**`）与渲染层（设置页 AI 分组 / diff 审批 UI）共同引用，
  * 避免两侧各自写一份默认值/白名单（GEN-03 单一真源）。
  *
+ * 1.5.7 体验升级批次 C：配置结构由「单模型」升级为「多模型列表 + 默认模型」，
+ * 每个远程模型的 API Key 以模型 id 为键独立加密存储（见 `main/ai/config-store.ts`）；
+ * 旧单模型配置（`AI_CONFIG_VERSION = 1`）由主进程一次性迁移（版本升至 2）。
+ *
  * 契约类型见 `src/shared/types/ai.ts`；本文件只提供运行期常量与类型守卫。
  */
-import type { AiKeyStorage, AiLocalProviderId, AiProviderKind, AiStoredConfig } from '../types/ai'
+import type {
+    AiKeyStorage,
+    AiLocalProviderId,
+    AiModelConfig,
+    AiProviderKind,
+    AiStoredConfig
+} from '../types/ai'
 // 1.5.7 LLM Wiki L1：`wiki/` 目录名唯一真源（raw/、wiki/ 目录名都在 workspace-mode.ts）
 import { LLM_WIKI_WIKI_DIR_NAME } from './workspace-mode'
 
 /* ============================================================================
- * 一、配置默认值（默认「本地 + Ollama + 关闭」，未启用时主进程不发起任何请求）
+ * 一、配置默认值（默认「关闭 + 空模型列表」，未启用时主进程不发起任何请求）
  * ========================================================================== */
 
-/** AI 独立配置文件版本（结构升级时递增，读取时按版本做兼容/回落） */
-export const AI_CONFIG_VERSION = 1
+/**
+ * AI 独立配置文件版本（结构升级时递增，读取时按版本做兼容/迁移/回落）。
+ *
+ * - 1：1.5.7 L3 单模型结构（enabled/provider/localProvider/baseUrl/model + 单密钥）；
+ * - 2：1.5.7 体验升级批次 C 多模型结构（enabled/models[]/defaultModelId + 每模型密钥）。
+ */
+export const AI_CONFIG_VERSION = 2
 
 /** AI 独立配置文件文件名（位于 `~/.baizenotes/config/` 下；密钥经 safeStorage 加密后存于此） */
 export const AI_CONFIG_FILE_NAME = 'ai-config.json'
@@ -49,13 +64,22 @@ export const AI_LOCAL_DEFAULT_BASE_URLS: Readonly<Record<AiLocalProviderId, stri
 /** 远程 BYOK 的 baseUrl 提示（空串表示必须由用户填写，不预置服务商地址） */
 export const AI_REMOTE_BASE_URL_PLACEHOLDER = 'https://api.openai.com/v1'
 
-/** AI 配置默认值（主进程/渲染层兜底共用：默认关闭 + 本地 Ollama） */
+/**
+ * 旧单模型配置迁移后生成的模型 id / 显示名（稳定值：迁移幂等，多次读取结果一致）。
+ *
+ * 旧结构只可能包含一个模型，因此固定 id 不会与用户新增模型冲突（用户 id 由渲染层生成，
+ * 需满足 {@link AI_MODEL_ID_PATTERN} 且不能使用保留前缀时也不会撞上该值）。
+ */
+export const AI_LEGACY_MODEL_ID = 'legacy-default-model'
+
+/** 旧单模型配置迁移后生成的模型显示名 */
+export const AI_LEGACY_MODEL_NAME = '默认模型'
+
+/** AI 配置默认值（主进程/渲染层兜底共用：默认关闭 + 空模型列表） */
 export const AI_DEFAULT_CONFIG: AiStoredConfig = {
     enabled: false,
-    provider: 'local',
-    localProvider: 'ollama',
-    baseUrl: '',
-    model: ''
+    models: [],
+    defaultModelId: null
 }
 
 /* ============================================================================
@@ -80,6 +104,15 @@ export const AI_CHAT_TOTAL_MAX_CHARS = 64_000
 /** 对话上下文（标题/选中文本）单字段字符上限 */
 export const AI_CHAT_CONTEXT_MAX_CHARS = 4_000
 
+/** 模型数量上限（多模型列表；防止配置文件/设置页无限膨胀） */
+export const AI_MODELS_MAX = 20
+
+/** 模型 id 长度上限（字符数；渲染层生成并保持稳定，主进程按该 id 绑定密钥） */
+export const AI_MODEL_ID_MAX_CHARS = 64
+
+/** 模型显示名称长度上限（字符数） */
+export const AI_MODEL_NAME_MAX_CHARS = 64
+
 /** 模型名长度上限（字符数） */
 export const AI_MODEL_MAX_CHARS = 128
 
@@ -88,6 +121,12 @@ export const AI_BASE_URL_MAX_CHARS = 2_048
 
 /** API Key 长度上限（字符数；过短/过长直接拒绝，不落盘） */
 export const AI_API_KEY_MAX_CHARS = 512
+
+/**
+ * 模型 id 白名单：字母/数字开头，后续允许字母/数字/下划线/点/冒号/连字符。
+ * 兼容 ULID（字母数字）、UUID（含连字符）与渲染层自定义稳定 id。
+ */
+export const AI_MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/
 
 /** AI ingest 读取原始资料的大小上限（字节；超出截断后送模型并在提示词中标注） */
 export const AI_INGEST_RAW_MAX_BYTES = 256 * 1024
@@ -141,25 +180,81 @@ export function isAiKeyStorage(value: unknown): value is AiKeyStorage {
     return value === 'safe' || value === 'memory'
 }
 
+/** 是否为合法模型 id（长度 + 字符集白名单；空/非字符串 false） */
+export function isAiModelId(value: unknown): value is string {
+    return typeof value === 'string' && AI_MODEL_ID_PATTERN.test(value)
+}
+
+/** 判断值是否为「纯对象」（不引入外部依赖，保持本模块可独立测试） */
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
+ * 归一化单个模型配置（未知/非法字段回落；结构不可用时返回 null，由调用方丢弃该条）。
+ *
+ * 说明：本函数只做「结构 + 枚举 + 长度」归一化，**不校验 baseUrl 协议**（协议/凭据等
+ * 安全校验在 IPC 保存链路的 `main/ai/validation.ts` 中执行）——读取历史文件时容忍
+ * 非标准值，避免一条坏数据导致整个配置文件不可用。
+ */
+export function normalizeAiModelConfig(input: unknown): AiModelConfig | null {
+    if (!isRecord(input)) {
+        return null
+    }
+    const id = typeof input.id === 'string' ? input.id.trim() : ''
+    if (!isAiModelId(id)) {
+        return null
+    }
+    const provider = isAiProviderKind(input.provider) ? input.provider : 'local'
+    const localProvider = isAiLocalProviderId(input.localProvider) ? input.localProvider : 'ollama'
+    const modelRaw = typeof input.model === 'string' ? input.model.trim() : ''
+    const nameRaw = typeof input.name === 'string' ? input.name.trim() : ''
+    const name = (nameRaw.length > 0 ? nameRaw : modelRaw).slice(0, AI_MODEL_NAME_MAX_CHARS)
+    return {
+        id,
+        name,
+        provider,
+        localProvider,
+        baseUrl: typeof input.baseUrl === 'string' ? input.baseUrl.trim() : '',
+        model: modelRaw.slice(0, AI_MODEL_MAX_CHARS)
+    }
+}
+
 /**
  * 归一化非敏感 AI 配置（未知/非法字段回落默认值；不抛异常）。
  *
  * 主进程读取配置文件、渲染层读取返回快照时都走该函数，保证两侧对「非法值」的
- * 回落口径一致（与 CFG-10 的「白名单/范围归一化」口径相同）。
+ * 回落口径一致（与 CFG-10 的「白名单/范围归一化」口径相同）：
+ * - 模型列表：逐项归一化，非法条目丢弃、按 id 去重（保留首个）、数量截断到上限；
+ * - 默认模型：仅保留确实存在于列表中的 id；指向不存在模型时回落首个模型 / null。
  */
 export function normalizeAiStoredConfig(input: unknown): AiStoredConfig {
-    const record =
-        input && typeof input === 'object' && !Array.isArray(input)
-            ? (input as Record<string, unknown>)
-            : {}
+    const record = isRecord(input) ? input : {}
+    const models: AiModelConfig[] = []
+    const seenIds = new Set<string>()
+    if (Array.isArray(record.models)) {
+        for (const item of record.models) {
+            if (models.length >= AI_MODELS_MAX) {
+                break
+            }
+            const model = normalizeAiModelConfig(item)
+            if (model === null || seenIds.has(model.id)) {
+                continue
+            }
+            seenIds.add(model.id)
+            models.push(model)
+        }
+    }
+    const defaultRaw = record.defaultModelId
+    let defaultModelId: string | null = null
+    if (typeof defaultRaw === 'string' && defaultRaw.trim().length > 0) {
+        const candidate = defaultRaw.trim()
+        defaultModelId = seenIds.has(candidate) ? candidate : (models[0]?.id ?? null)
+    }
     return {
         enabled: record.enabled === true,
-        provider: isAiProviderKind(record.provider) ? record.provider : AI_DEFAULT_CONFIG.provider,
-        localProvider: isAiLocalProviderId(record.localProvider)
-            ? record.localProvider
-            : AI_DEFAULT_CONFIG.localProvider,
-        baseUrl: typeof record.baseUrl === 'string' ? record.baseUrl.trim() : '',
-        model: typeof record.model === 'string' ? record.model.trim() : ''
+        models,
+        defaultModelId
     }
 }
 
@@ -169,13 +264,15 @@ export function normalizeAiStoredConfig(input: unknown): AiStoredConfig {
  * 解析实际使用的接口基址：用户 baseUrl 非空时使用用户值（去掉结尾 `/`），
  * 否则按 Provider 取默认值（本地 Ollama/LM Studio）；远程 BYOK 无默认值 → 空串。
  */
-export function resolveAiBaseUrl(config: AiStoredConfig): string {
-    const trimmed = typeof config.baseUrl === 'string' ? config.baseUrl.trim() : ''
+export function resolveAiBaseUrl(
+    model: Pick<AiModelConfig, 'provider' | 'localProvider' | 'baseUrl'>
+): string {
+    const trimmed = typeof model.baseUrl === 'string' ? model.baseUrl.trim() : ''
     if (trimmed.length > 0) {
         return trimmed.replace(/\/+$/, '')
     }
-    if (config.provider === 'local' && isAiLocalProviderId(config.localProvider)) {
-        return AI_LOCAL_DEFAULT_BASE_URLS[config.localProvider]
+    if (model.provider === 'local' && isAiLocalProviderId(model.localProvider)) {
+        return AI_LOCAL_DEFAULT_BASE_URLS[model.localProvider]
     }
     return ''
 }

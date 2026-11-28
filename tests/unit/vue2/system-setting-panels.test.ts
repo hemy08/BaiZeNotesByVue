@@ -405,33 +405,26 @@ describe('AppearancePanel（外观设置页签）', () => {
 describe('FeaturesPanel（功能页签）', () => {
     // 1.5.6 UI 简洁化：11 项可选能力的多行 Desc 全部收进标签旁 ⓘ，开关行恢复单行高度。
     // 1.5.7 LLM Wiki L1：新增「工作区」分组的工作区模式下拉，其说明同样收进 ⓘ。
-    // 1.5.7 LLM Wiki L2：新增「MCP 服务」分组，其安全说明收进 ⓘ（分组位于可选能力之后）。
-    // 1.5.7 LLM Wiki L3：新增「AI 助手」分组（分组说明 + 基址/模型提示均收进 ⓘ）。
-    it('分组说明与各能力 Desc 收进 ⓘ，不再常显', () => {
+    // 1.5.7 体验升级 B：原「MCP 服务」「AI 助手」两个分组已迁移到第 7 页签（AI 助手），
+    // 功能页签只剩「工作区 / 默认能力 / 可选能力」3 个分组提示 + 11 项能力 Desc。
+    it('分组说明与各能力 Desc 收进 ⓘ，不再常显；AI/MCP 分组已迁移出本页', () => {
         const wrapper = mount(FeaturesPanel, { props: { settings: draft() } })
 
         const tipTexts = wrapper.findAllComponents(InfoTip).map((tip) => tip.props('text'))
-        // 可选能力 Desc + 4 个既有分组提示（workspaceMode / 默认能力 / 可选能力 / MCP）
-        // + 3 个 AI 助手分组提示（分组说明 / 接口基址 / 模型）
-        expect(tipTexts).toHaveLength(OPTIONAL_FEATURE_FLAG_IDS.length + 7)
-        // DOM 顺序：工作区模式说明 → 默认能力分组说明 → 可选能力分组说明 → 各能力 Desc →
-        // MCP 服务分组说明 → AI 助手分组说明/基址提示/模型提示
+        // 3 个分组提示（workspaceMode / 默认能力 / 可选能力）+ 11 项能力 Desc
+        expect(tipTexts).toHaveLength(OPTIONAL_FEATURE_FLAG_IDS.length + 3)
+        // DOM 顺序：工作区模式说明 → 默认能力分组说明 → 可选能力分组说明 → 各能力 Desc
         expect(tipTexts[0]).toBe(t('dialogRenderer.systemSetting.features.workspaceModeHint'))
         expect(tipTexts[1]).toBe(t('dialogRenderer.systemSetting.hintDefaultFeatures'))
         expect(tipTexts[2]).toBe(t('dialogRenderer.systemSetting.hintOptionalFeatures'))
-        expect(tipTexts.slice(3, 3 + OPTIONAL_FEATURE_FLAG_IDS.length)).toEqual(
+        expect(tipTexts.slice(3)).toEqual(
             OPTIONAL_FEATURE_FLAG_IDS.map((id) => t(OPTIONAL_FEATURE_FLAGS[id].descKey))
         )
-        const tail = tipTexts.slice(3 + OPTIONAL_FEATURE_FLAG_IDS.length)
-        expect(tail).toEqual([
-            t('dialogRenderer.systemSetting.features.mcpServerHint'),
-            t('dialogRenderer.systemSetting.features.aiGroupHint'),
-            t('dialogRenderer.systemSetting.features.aiBaseUrlHint'),
-            t('dialogRenderer.systemSetting.features.aiModelHint')
-        ])
-        // 原常显 Desc 容器与分组说明段落均已移除
+        // 原常显 Desc 容器与分组说明段落均已移除；AI/MCP 分组不再存在
         expect(wrapper.find('.feature-desc').exists()).toBe(false)
         expect(wrapper.find('.group-hint').exists()).toBe(false)
+        expect(wrapper.find('.ai-models-group').exists()).toBe(false)
+        expect(wrapper.find('.mcp-server-group').exists()).toBe(false)
         expect(wrapper.text()).not.toContain(t(OPTIONAL_FEATURE_FLAGS.tabs.descKey))
         // 面板顶部用途描述保留常显；默认能力只读清单保留
         expect(wrapper.text()).toContain(t('dialogRenderer.systemSetting.panelFeaturesDesc'))

@@ -267,6 +267,8 @@ const dialogRenderer = {
         sidebarBackup: 'Backup & restore',
         sidebarFeatures: 'Features',
         sidebarWriting: 'Writing experience',
+        // 1.5.7 experience upgrade B: dedicated AI assistant tab (multi-model + MCP config)
+        sidebarAiAssistant: 'AI assistant',
         panelWritingTitle: 'Writing experience',
         panelWritingDesc:
             'Optional helpers that improve the writing process. All are off by default; enable the ones you need.',
@@ -367,72 +369,9 @@ const dialogRenderer = {
             // 1.5.3: non-modal tool dialogs
             nonModalDialogsLabel: 'Non-modal tool dialogs',
             nonModalDialogsDesc:
-                'Insert/edit tool dialogs do not block the editor: clicking outside, hovering outside, or pressing Esc will not close them, so Markdown can still be edited. They close only via the close button or an insert/apply action. On by default.',
-            // 1.5.7 LLM Wiki L2: MCP read-only bridge (settings switch + runtime status + security notes)
-            mcpServerGroupTitle: 'MCP server',
-            mcpServerEnabled: 'Enable MCP server (read-only bridge)',
-            mcpServerHint:
-                'Let external AI agents (Claude Code, DSH, Cursor, ...) read the current LLM Wiki workspace over MCP: loopback-only, Bearer token required, read-only tools only. Off by default; the switch takes effect immediately (no need to press Apply).',
-            mcpServerRunning: 'Running',
-            mcpServerStopped: 'Stopped',
-            mcpServerPort: 'Port',
-            mcpServerUrl: 'MCP URL',
-            mcpServerToken: 'Access token',
-            mcpServerCopyToken: 'Copy token',
-            mcpServerTokenCopied: 'Copied',
-            mcpServerToolCount: 'Read-only tools: {count}',
-            mcpServerSecurityNote:
-                'Security: the server listens on the loopback interface only (127.0.0.1) and every request must carry a Bearer token. All 7 tools are read-only (search, read pages/schema/raw sources, tags, backlinks); they reject absolute paths and never write, rename or delete files. The token is never persisted and becomes invalid as soon as the server stops or the app restarts.',
-            mcpServerRestartHint:
-                'After restarting the app, re-enable the server on this page to get a new token, then update your MCP client configuration.',
-            mcpServerToggleFailed: 'MCP server operation failed: {error}',
-            mcpServerCopyFailed:
-                'Failed to copy the token. Select the token text and copy it manually.',
-            mcpServerUnavailable:
-                'MCP server control is unavailable in the current environment. Restart the app and try again.',
-            // 1.5.7 LLM Wiki L3: AI assistant (local Ollama/LM Studio + remote BYOK, saved independently)
-            aiGroupTitle: 'AI assistant',
-            aiGroupHint:
-                'Local models (Ollama / LM Studio) only talk to this machine and are privacy friendly; remote APIs send content to the configured provider. The API key is encrypted with the OS secure storage and never stored in plain text. AI settings are saved independently of this page\u2019s Apply button and take effect immediately.',
-            aiEnabled: 'Enable AI assistant',
-            aiProvider: 'Provider type',
-            aiProviderLocal: 'Local model',
-            aiProviderRemote: 'Remote API (BYOK)',
-            aiLocalProvider: 'Local provider',
-            aiLocalOllama: 'Ollama',
-            aiLocalLmStudio: 'LM Studio',
-            aiBaseUrl: 'Base URL',
-            aiBaseUrlPlaceholderOllama: 'Default http://127.0.0.1:11434',
-            aiBaseUrlPlaceholderLmStudio: 'Default http://127.0.0.1:1234/v1',
-            aiBaseUrlPlaceholderRemote: 'e.g. https://api.openai.com/v1',
-            aiBaseUrlHint:
-                'Leave empty to use the default base URL for local providers; required for remote BYOK (prefer https).',
-            aiModel: 'Model',
-            aiModelPlaceholder: 'e.g. qwen2.5 / deepseek-chat',
-            aiModelHint:
-                'For local Ollama, run ollama pull for the model first; for remote, enter the provider model id.',
-            aiApiKey: 'API Key',
-            aiApiKeyPlaceholder:
-                'Enter the remote API key (never echoed in plain text after saving)',
-            aiApiKeyConfigured: 'Configured',
-            aiApiKeyNotConfigured: 'Not configured',
-            aiApiKeyStorageSafe: 'Encrypted by OS secure storage',
-            aiApiKeyStorageMemory: 'This session only (not saved to disk)',
-            aiClearKey: 'Clear key',
-            aiSave: 'Save AI settings',
-            aiSaved: 'AI settings saved.',
-            aiTest: 'Test connection',
-            aiTesting: 'Testing connection…',
-            aiTestSuccess: 'Connection succeeded: {detail}',
-            aiTestFailed: 'Connection test failed: {error}',
-            aiSaveFailed: 'Failed to save AI settings: {error}',
-            aiLoadFailed: 'Failed to read AI settings: {error}',
-            aiUnavailable:
-                'AI settings are unavailable in the current environment. Restart the app and try again.',
-            aiKeyUnavailable:
-                'safeStorage is unavailable: the API key is kept in memory only and must be re-entered after restart.',
-            aiPrivacyNote:
-                'Privacy note: local model requests go only to the local service; with a remote API, chat content and raw material are sent to the configured provider — check its privacy policy and data processing terms.'
+                'Insert/edit tool dialogs do not block the editor: clicking outside, hovering outside, or pressing Esc will not close them, so Markdown can still be edited. They close only via the close button or an insert/apply action. On by default.'
+            // 1.5.7 experience upgrade B: the MCP server and AI assistant configuration moved to
+            // a dedicated tab (dialogRenderer.aiAssistant.*); the features tab keeps switches only.
         },
         panelGeneralTitle: 'General settings',
         panelGeneralDesc: 'Basic application settings',
@@ -543,6 +482,85 @@ const dialogRenderer = {
         // "App theme" display name cannot be loaded (falls back to the theme id)
         themeDisplayFallbackHint:
             'Could not read the display name of the current app theme, so the theme id is shown instead. Close the settings and reopen them to retry.'
+    },
+    // 1.5.7 experience upgrade B: dedicated "AI assistant" settings tab (7th tab)
+    // (multi-model management + MCP server configuration; the former AI/MCP groups of
+    // the features tab moved here as a whole).
+    aiAssistant: {
+        panelTitle: 'AI assistant',
+        panelDesc:
+            'Manage AI models and the MCP server in one place: add multiple models (local Ollama / LM Studio or remote OpenAI-compatible APIs) and let external agents read the current workspace over MCP. Changes on this page are saved independently and take effect immediately, without the Apply button at the bottom.',
+        groupModels: 'Models',
+        enabledLabel: 'Enable AI assistant',
+        storageSafe: 'API key storage: OS secure storage (encrypted, persists across restarts)',
+        storageMemory:
+            'API key storage: this session only (not saved to disk; re-enter after restart)',
+        privacyNote:
+            'Privacy note: local models (Ollama / LM Studio) only talk to this machine. With a remote API, chat content and processed material are sent to the configured provider — check its privacy policy and data processing terms.',
+        modelsEmptyTitle: 'No models yet',
+        addModel: 'Add model',
+        defaultBadge: 'Default',
+        keyConfiguredBadge: 'Key configured',
+        setDefault: 'Set default',
+        editModel: 'Edit',
+        deleteModel: 'Delete',
+        saveModel: 'Save model',
+        formTitleEdit: 'Edit model',
+        formName: 'Display name',
+        formNameRequired: 'Enter a display name for the model',
+        formProvider: 'Type',
+        formProviderLocal: 'Local model',
+        formProviderRemote: 'Remote API',
+        formLocalProvider: 'Local service',
+        formBaseUrl: 'Base URL',
+        formBaseUrlPlaceholderLocal:
+            'Leave empty to use the default base URL (Ollama 11434 / LM Studio 1234)',
+        formBaseUrlPlaceholderRemote: 'e.g. https://api.openai.com/v1',
+        formBaseUrlRequired: 'Remote models require a base URL (https recommended)',
+        formModel: 'Model name',
+        formModelPlaceholder: 'e.g. qwen2.5 / deepseek-chat',
+        formModelRequired: 'Enter the model name',
+        formApiKey: 'Remote API key',
+        formApiKeyPlaceholder:
+            'Enter the remote API key (required when adding; leave empty to keep the saved key)',
+        formApiKeyRequired: 'A remote model needs an API key when first added',
+        clearKey: 'Clear key',
+        saved: 'Settings saved.',
+        saveFailed: 'Failed to save AI settings: {error}',
+        loadFailed: 'Failed to read AI settings: {error}',
+        unavailable:
+            'AI settings are unavailable in the current environment. Restart the app and try again.',
+        testConnection: 'Test connection',
+        testing: 'Testing…',
+        testSuccess: 'Connection succeeded: {detail}',
+        testFailed: 'Connection failed: {error}',
+        groupMcp: 'MCP server',
+        mcpEnabled: 'Enable MCP server (read-only bridge)',
+        mcpHint:
+            'Let external AI agents (Claude Code, DSH, Cursor, ...) read the current LLM Wiki workspace over MCP: loopback-only, Bearer token required, read-only tools only. Off by default; the switch takes effect immediately (no need to press Apply).',
+        mcpRunning: 'Running',
+        mcpStopped: 'Stopped',
+        mcpPort: 'Port',
+        mcpUrl: 'MCP URL',
+        mcpToken: 'Access token',
+        mcpCopyToken: 'Copy token',
+        mcpTokenCopied: 'Copied',
+        mcpRegenerateToken: 'Reset token',
+        mcpToolsTitle: 'Read-only tools',
+        mcpPortAuto: 'Choose a port automatically (prefers 3847)',
+        mcpPortPlaceholder: '1-65535',
+        mcpPortInvalid: 'Port must be an integer between 1 and 65535',
+        mcpApplyPort: 'Apply port',
+        mcpPortPending:
+            'Port setting recorded; it takes effect the next time the MCP server is enabled.',
+        mcpSecurityNote:
+            'Security: the server listens on the loopback interface only (127.0.0.1) and every request must carry a Bearer token. All 7 tools are read-only (search, read pages/schema/raw sources, tags, backlinks); they reject absolute paths and never write, rename or delete files. The token is never persisted and becomes invalid as soon as the server stops or the app restarts.',
+        mcpRestartHint:
+            'After restarting the app, re-enable the server on this page to get a new token, then update your MCP client configuration.',
+        mcpToggleFailed: 'MCP server operation failed: {error}',
+        mcpCopyFailed: 'Failed to copy the token. Select the token text and copy it manually.',
+        mcpUnavailable:
+            'MCP server control is unavailable in the current environment. Restart the app and try again.'
     },
     themeSetting: {
         title: 'Theme settings',

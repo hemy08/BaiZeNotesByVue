@@ -95,6 +95,9 @@ const systemSettingDefaults: SystemSetting = {
     // 仅记录用户上次显式启用的偏好：Bearer token 不落盘，服务不跨重启自动启动，
     // 应用启动时由 ipc/mcp-ipc.ts 的 reconcile 逻辑回落 false 并记审计日志。
     mcpEnabled: false,
+    // 1.5.7 体验升级批次 C：MCP 首选端口（null = 自动选择，优先 3847；1~65535 为固定端口）。
+    // 仅记录端口偏好（跨重启保留）；非法历史值在启动 reconcile 时回落 null。
+    mcpPort: null,
     // AS-9（P3 隐私）：默认不自动加载 Markdown 预览中的远程图片（防跟踪像素/IP 泄露）。
     // 写入路径：渲染层 SystemSettingDialog → config:write('system') → 本模块，
     // 读取方：MarkdownPreviewComponent（经 config:read('system') 与 SYSTEM_SETTING_UPDATE 广播）。

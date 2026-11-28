@@ -4,7 +4,7 @@
         id="md-edit-component"
         class="md-edit-component"
         :class="{ 'md-edit-component--tabs': tabsEnabled }"
-        :style="{ width: editPaneWidth }"
+        :style="[{ width: editPaneWidth }, llmWikiPaneOffsetStyle]"
     >
         <!-- A1 多标签（opt-in，featureTabs 开启且存在已打开文件时才渲染）：
              标签栏独占编辑区顶部一行，Monaco 经 flex 撑满剩余高度（见 scoped CSS）；
@@ -40,7 +40,7 @@
         v-show="showPreviewPane"
         id="md-preview"
         class="md-preview"
-        :style="{ width: previewPaneWidth, left: previewPaneLeft }"
+        :style="[{ width: previewPaneWidth, left: previewPaneLeft }, llmWikiPaneOffsetStyle]"
     >
         <!-- 结构优化第 2 批 2.2（H4）：预览管线（markdown-it/highlight.js/KaTeX 等）独立
              按需 chunk；活动文件路径由本组件经 IPC 监听后透传，兼容「预览挂载晚于打开文件」
@@ -51,6 +51,14 @@
             :active-file-path="activeFilePath"
             :sync-scroll-target="visibleSyncScrollTarget"
         />
+    </div>
+    <!-- 1.5.7 体验升级（批次 A）：编辑区「编辑器 / 预览」切换移到编辑区右上角。
+         - 作为两个窗格的同级绝对定位节点：tab 切换到预览时切换控件仍可见（不随 v-show 隐藏）；
+         - 编辑区顶部预留一行安全间距（窗格经 llmWikiPaneOffsetStyle 整体下移），控件不遮挡
+           正文首行/预览内容与滚动条；
+         - 传统模式 v-if=false 不渲染（DOM/布局零变化）。 -->
+    <div v-if="isLlmWikiMode" class="llm-wiki-editor-tabs-dock">
+        <LlmWikiEditorTabs />
     </div>
 </template>
 
@@ -100,6 +108,8 @@ import {
     llmWikiWorkbenchState,
     setLlmWikiEditorTab
 } from '../llm-wiki/llm-wiki-workbench'
+// 1.5.7 体验升级（批次 A）：编辑区右上角悬浮「编辑器 / 预览」分段控件
+import LlmWikiEditorTabs from '../llm-wiki/LlmWikiEditorTabs.vue'
 import { setLlmWikiActiveDocument } from '../llm-wiki/llm-wiki-context'
 
 // M5：保存/模板/导入替换 3 个进程内事件订阅统一经 useEventBus 注册，卸载时自动清理
@@ -481,6 +491,23 @@ const previewPaneWidth = computed(() => (isLlmWikiMode.value ? '100%' : editPrev
 
 /** 预览窗格左偏移：LLM Wiki 单栏模式从 0 开始；传统模式跟随分隔条 */
 const previewPaneLeft = computed(() => (isLlmWikiMode.value ? '0' : editPreviewAreaLeft.value))
+
+/**
+ * 1.5.7 体验升级（批次 A）：编辑区右上角「编辑器 / 预览」切换 dock 的保留高度。
+ *
+ * dock 绝对定位在编辑区顶部右侧；默认 Monaco 顶部 padding 为 0，若纯悬浮会压住正文首行，
+ * 因此在单栏工作台的编辑区顶部预留一行安全间距（窗格整体下移、高度扣除），避免遮挡内容。
+ * 高度随密度令牌派生（--ui-row-height 24/28/32 + 8px 上下留白），四风格 × 三密度零分支。
+ */
+const llmWikiPaneOffsetStyle = computed((): Record<string, string> => {
+    if (!isLlmWikiMode.value) {
+        return {}
+    }
+    return {
+        top: 'calc(var(--ui-row-height, 28px) + 8px)',
+        height: 'calc(100% - var(--ui-row-height, 28px) - 8px)'
+    }
+})
 
 /**
  * 传给 Monaco 的容器宽度信号（仅作为「需要重新 layout」的触发器）：
@@ -1092,6 +1119,21 @@ onBeforeUnmount(() => {
     flex: 1 1 auto;
     min-height: 0;
     height: auto;
+}
+
+/* 1.5.7 体验升级（批次 A）：编辑区右上角「编辑器 / 预览」切换 dock。
+   - 绝对定位在编辑区顶部右侧；窗格（编辑器 / 预览）经 llmWikiPaneOffsetStyle 下移一行，
+     dock 落在预留的安全间距内，不遮挡正文/预览内容与滚动条；
+   - 预留高度与控件高度同源（--ui-row-height + 8px），与三档密度自适应；
+   - 表面材质与阴影全部由 --ui-* 令牌派生（四风格 × 三密度零分支）。 */
+.llm-wiki-editor-tabs-dock {
+    position: absolute;
+    top: 0;
+    right: 12px;
+    z-index: var(--ui-z-drag, 20);
+    display: flex;
+    align-items: center;
+    height: calc(var(--ui-row-height, 28px) + 8px);
 }
 
 #resizer-md {

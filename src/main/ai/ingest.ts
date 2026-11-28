@@ -9,6 +9,8 @@
  * 4. 匹配既有 wiki 页面（front matter `source` 指向该 raw 文件 → 作为「更新」目标），
  *    否则按文件名生成新页面路径 `wiki/<slug>.md`（重名自动追加序号）；
  * 5. 调用 Provider（system + user 提示词）生成草案，归一化 front matter/围栏；
+ *    **模型选择**：AI.INGEST 载荷不含 modelId，统一使用配置中的默认模型
+ *    （由 `runtime.loadConfiguredAiProvider` 解析 `defaultModelId`）；
  * 6. 计算「目标文件现有内容 vs 草案」行级 diff；
  * 7. 返回 `{ draftPath, content, diff, sourcePath, ... }` —— **全程不写盘**（写盘只在审批后）。
  *

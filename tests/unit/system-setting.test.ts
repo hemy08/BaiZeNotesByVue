@@ -122,6 +122,15 @@ describe('system-setting', () => {
             expect(getSystemSetting().mcpEnabled).toBe(false)
         })
 
+        // 1.5.7 体验升级批次 C：MCP 首选端口默认 null（自动选择），可持久化
+        it('should default mcpPort to null and persist an explicit port (batch C)', () => {
+            expect(getSystemSetting().mcpPort).toBeNull()
+            saveSystemSetting({ mcpPort: 4000 })
+            expect(getSystemSetting().mcpPort).toBe(4000)
+            saveSystemSetting({ mcpPort: null })
+            expect(getSystemSetting().mcpPort).toBeNull()
+        })
+
         it('should persist visual P0 appearance settings via saveSystemSetting', () => {
             saveSystemSetting({
                 uiStyle: 'glass',

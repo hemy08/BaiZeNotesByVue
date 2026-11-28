@@ -1,15 +1,21 @@
 /**
- * 1.5.7 LLM Wiki L3：AI Provider / AI ingest / diff 审批 IPC（主进程侧）
+ * 1.5.7 LLM Wiki L3 / 体验升级批次 C：AI Provider / AI ingest / diff 审批 IPC（主进程侧）
  *
  * 链路（IPC-17 六步）：
  *   1. 常量：`IPC.AI.CHAT / INGEST / APPLY_INGEST / GET_CONFIG / SAVE_CONFIG`（5 个 invoke）；
  *   2. 契约：shared/types/ai.ts（请求/返回/错误码）+ shared/types/ipc.ts 三张契约表登记；
  *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
  *   4. 主进程：本模块注册 handler（withSenderCheck）→ main/ai/**（配置存储/Provider/ingest/apply）；
- *   5. 渲染层：设置页「AI 助手」分组（配置/密钥/连接测试）、命令面板「AI 编译」+
- *      `Markdown/llm-ingest-diff.vue`（diff 审批 UI）；L5 AI 面板复用 AI.CHAT；
- *   6. 测试：ai-ipc（参数校验/未配置/写盘守卫/sender）+ ai-provider / ai-ingest /
+ *   5. 渲染层：设置页「AI 助手」分组（多模型配置/每模型密钥/连接测试）、命令面板「AI 编译」+
+ *      `Markdown/llm-ingest-diff.vue`（diff 审批 UI）；L5 AI 面板经 AI.CHAT 传 `modelId`；
+ *   6. 测试：ai-ipc（参数校验/未配置/多模型选择/写盘守卫/sender）+ ai-provider / ai-ingest /
  *      ai-config-store + 通道命名/契约/白名单/注册门禁。
+ *
+ * 多模型（批次 C）：
+ * - `AI.GET_CONFIG` 返回多模型快照（每模型仅 `apiKeyConfigured` 状态位，密钥永不出主进程）；
+ * - `AI.SAVE_CONFIG` 支持 `models` 全量替换 / `defaultModelId` / `modelApiKey` 单模型密钥操作；
+ * - `AI.CHAT` 支持可选 `modelId`（缺省 defaultModelId，不存在 → AI_MODEL_NOT_FOUND）；
+ * - `AI.INGEST` 无 modelId 字段，统一使用默认模型。
  *
  * 安全边界：
  * - 仅主窗口可信调用（withSenderCheck，`kind: 'handle'` 拒绝返回统一错误对象）；
@@ -22,17 +28,21 @@ import type {
     AiApplyIngestResult,
     AiChatRequest,
     AiChatResult,
-    AiConfigSnapshot,
     AiGetConfigResult,
     AiIngestResult,
     AiSaveConfigResult
 } from '../../shared/types/ai'
-import { AI_CHAT_CONTEXT_MAX_CHARS, AI_DEFAULT_CONFIG } from '../../shared/constants/ai'
+import { AI_CHAT_CONTEXT_MAX_CHARS } from '../../shared/constants/ai'
 import { appState } from '../utils/app-state'
 import { withSenderCheck } from '../utils/ipc-security'
 import { logger } from '../utils/logger'
 import { runAiApplyIngest } from '../ai/apply'
-import { getAiRuntime, loadConfiguredAiProviderWith, type AiRuntimeDeps } from '../ai/runtime'
+import {
+    buildDefaultAiConfigSnapshot,
+    getAiRuntime,
+    loadConfiguredAiProviderWith,
+    type AiRuntimeDeps
+} from '../ai/runtime'
 import { AiProviderError, aiFailure, sanitizeErrorMessage, toAiFailure } from '../ai/errors'
 import { runAiIngest } from '../ai/ingest'
 import type { AiConfigStore } from '../ai/config-store'
@@ -102,12 +112,8 @@ function buildChatContextPrompt(context: AiChatRequest['context']): string | nul
 }
 
 /** 默认配置快照（配置读取失败/首次使用时的安全兜底，不返回失败结构） */
-function buildDefaultConfigSnapshot(): AiConfigSnapshot {
-    return {
-        ...AI_DEFAULT_CONFIG,
-        apiKeyConfigured: false,
-        apiKeyStorage: 'memory'
-    }
+function buildDefaultConfigSnapshot(): ReturnType<typeof buildDefaultAiConfigSnapshot> {
+    return buildDefaultAiConfigSnapshot()
 }
 
 /**
@@ -115,6 +121,7 @@ function buildDefaultConfigSnapshot(): AiConfigSnapshot {
  *
  * - 非空 messages：调用 Provider 非流式对话，返回助手回复；
  * - `messages: []`：连接测试（设置页「测试连接」按钮），返回可读测试结果文本；
+ * - `modelId` 缺省使用配置中的 `defaultModelId`；指定不存在的模型 → `AI_MODEL_NOT_FOUND`；
  * - AI 未启用/配置不完整：返回 `AI_NOT_CONFIGURED` 结构化失败（不发起请求）。
  */
 export async function aiChat(payload: unknown, deps: AiIpcDeps = {}): Promise<AiChatResult> {
@@ -126,14 +133,15 @@ export async function aiChat(payload: unknown, deps: AiIpcDeps = {}): Promise<Ai
     }
     try {
         const runtime = await resolveRuntime(deps)
-        const { provider, config } = await loadConfiguredAiProviderWith(runtime, {
-            fetchImpl: deps.fetchImpl
+        const { provider, model } = await loadConfiguredAiProviderWith(runtime, {
+            fetchImpl: deps.fetchImpl,
+            modelId: request.modelId
         })
         if (request.messages.length === 0) {
             const startedAt = Date.now()
             const result = await provider.testConnection()
             logger.info(
-                `[AI] 连接测试成功：provider=${config.provider}/${config.localProvider} ` +
+                `[AI] 连接测试成功：provider=${model.provider}/${model.localProvider} ` +
                     `model=${result.model} 耗时=${Date.now() - startedAt}ms`
             )
             return {
@@ -149,7 +157,7 @@ export async function aiChat(payload: unknown, deps: AiIpcDeps = {}): Promise<Ai
         const startedAt = Date.now()
         const result = await provider.chat(messages)
         logger.info(
-            `[AI] chat 完成：provider=${config.provider}/${config.localProvider} ` +
+            `[AI] chat 完成：provider=${model.provider}/${model.localProvider} ` +
                 `model=${result.model} messages=${request.messages.length} ` +
                 `耗时=${Date.now() - startedAt}ms`
         )
@@ -167,6 +175,8 @@ export async function aiChat(payload: unknown, deps: AiIpcDeps = {}): Promise<Ai
 /**
  * `AI.INGEST` 业务入口：扫描/读取 raw/ → 调 Provider → 生成 wiki 页面草案 + 行级 diff。
  * **不写盘**；失败返回结构化 code（未启用 → AI_NOT_CONFIGURED，无 raw/ → AI_WORKSPACE_UNAVAILABLE）。
+ *
+ * 模型选择：AI.INGEST 载荷不含 modelId，统一使用配置中的默认模型（defaultModelId）。
  */
 export async function aiIngest(payload: unknown, deps: AiIpcDeps = {}): Promise<AiIngestResult> {
     let request

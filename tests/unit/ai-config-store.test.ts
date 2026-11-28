@@ -1,14 +1,16 @@
 /**
- * 1.5.7 LLM Wiki L3：AI 配置与 API Key 安全存储单测（`src/main/ai/config-store.ts`）
+ * 1.5.7 LLM Wiki L3 / 体验升级批次 C：AI 配置与 API Key 安全存储单测
+ * （`src/main/ai/config-store.ts`，多模型结构）
  *
  * 覆盖：
- * 1. 默认值：文件缺失时返回「默认本地 Ollama + 关闭」，不创建文件；
- * 2. 保存：非敏感配置落盘到独立 ai-config.json（版本/结构正确）；
- * 3. 密钥安全：safeStorage 可用时密文落盘（**文件内不出现明文**），运行时解密可用；
- *    清除密钥后文件与运行时均无密钥；
+ * 1. 默认值：文件缺失时返回「关闭 + 空模型列表」，不创建文件；
+ * 2. 保存：多模型列表 / 默认模型 / enabled 落盘（版本/结构正确），未启用时仍允许保存；
+ * 3. 每模型密钥：safeStorage 可用时按模型 id 分别加密落盘（**文件内不出现明文**），
+ *    运行时按模型 id 解密；清除单模型密钥 / 删除模型时密钥同步清理；
  * 4. 内存退化：safeStorage 不可用时密钥**绝不落盘**，仅会话内存可用，快照 storage=memory；
- * 5. 健壮性：损坏 JSON 改名备份为 `.corrupt-<ts>` 并按默认值重建；未知版本忽略密钥；
- * 6. 非法 patch 由上层 validation 拦截（本文件只验证存储层行为）。
+ * 5. 旧配置迁移：版本 1 单模型结构 → 多模型结构（稳定 id + 默认模型 + 密钥迁移），
+ *    迁移只发生一次并写回新版本（幂等）；
+ * 6. 健壮性：损坏 JSON 改名备份为 `.corrupt-<ts>` 并按默认值重建；未知版本忽略密钥。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { promises as fs } from 'fs'
@@ -20,7 +22,12 @@ vi.mock('../../src/main/utils/logger', () => ({
 }))
 
 import { createAiConfigStore, type AiSafeStorageLike } from '../../src/main/ai/config-store'
-import { AI_CONFIG_VERSION } from '../../src/shared/constants/ai'
+import {
+    AI_CONFIG_VERSION,
+    AI_LEGACY_MODEL_ID,
+    AI_LEGACY_MODEL_NAME
+} from '../../src/shared/constants/ai'
+import type { AiModelConfig } from '../../src/shared/types/ai'
 
 /** safeStorage 替身：可用时用 `enc:` 前缀模拟系统加密（便于断言「密文不含明文」） */
 function makeSafeStorage(available = true): AiSafeStorageLike & {
@@ -36,6 +43,19 @@ function makeSafeStorage(available = true): AiSafeStorageLike & {
             }
             return text.slice(4)
         }
+    }
+}
+
+/** 构造模型配置（默认远程模型，便于测试密钥） */
+function makeModel(overrides: Partial<AiModelConfig> = {}): AiModelConfig {
+    return {
+        id: 'model-a',
+        name: '模型 A',
+        provider: 'remote',
+        localProvider: 'ollama',
+        baseUrl: 'https://api.example.com/v1',
+        model: 'deepseek-chat',
+        ...overrides
     }
 }
 
@@ -60,109 +80,175 @@ async function readConfigFileRaw(): Promise<string | null> {
     }
 }
 
+/** 读取落盘 JSON（不存在返回 null） */
+async function readConfigFileJson(): Promise<Record<string, unknown> | null> {
+    const raw = await readConfigFileRaw()
+    return raw === null ? null : (JSON.parse(raw) as Record<string, unknown>)
+}
+
 describe('AI 配置存储：默认值与保存', () => {
-    it('文件缺失时返回「本地 Ollama + 关闭」默认值，且不创建文件', async () => {
+    it('文件缺失时返回「关闭 + 空模型列表」默认值，且不创建文件', async () => {
         const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
         const snapshot = await store.getSnapshot()
-        expect(snapshot).toMatchObject({
+        expect(snapshot).toEqual({
             enabled: false,
-            provider: 'local',
-            localProvider: 'ollama',
-            baseUrl: '',
-            model: '',
-            apiKeyConfigured: false,
+            models: [],
+            defaultModelId: null,
             apiKeyStorage: 'safe'
         })
         expect(await readConfigFileRaw()).toBeNull()
     })
 
-    it('保存非敏感配置：写入独立 ai-config.json（版本 + 归一化字段）', async () => {
+    it('保存多模型配置：写入独立 ai-config.json（版本 + 模型列表 + 默认模型）', async () => {
         const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
         const snapshot = await store.save({
             enabled: true,
-            provider: 'remote',
-            baseUrl: 'https://api.example.com/v1',
-            model: 'deepseek-chat'
+            models: [
+                makeModel({ id: 'local', name: '本地 Qwen', provider: 'local', baseUrl: '' }),
+                makeModel({ id: 'remote', name: 'DeepSeek' })
+            ],
+            defaultModelId: 'remote'
         })
         expect(snapshot.enabled).toBe(true)
-        expect(snapshot.provider).toBe('remote')
-        expect(snapshot.apiKeyConfigured).toBe(false)
+        expect(snapshot.models.map((model) => model.id)).toEqual(['local', 'remote'])
+        expect(snapshot.defaultModelId).toBe('remote')
+        expect(snapshot.models.every((model) => model.apiKeyConfigured === false)).toBe(true)
 
-        const raw = await readConfigFileRaw()
-        expect(raw).not.toBeNull()
-        const parsed = JSON.parse(raw as string)
+        const parsed = (await readConfigFileJson()) as {
+            version: number
+            config: Record<string, unknown>
+            apiKeys: { version: number; keys: Record<string, string> }
+        }
         expect(parsed.version).toBe(AI_CONFIG_VERSION)
         expect(parsed.config).toMatchObject({
             enabled: true,
-            provider: 'remote',
-            localProvider: 'ollama',
-            baseUrl: 'https://api.example.com/v1',
-            model: 'deepseek-chat'
+            defaultModelId: 'remote'
         })
-        expect(parsed.apiKey ?? null).toBeNull()
+        expect(parsed.apiKeys).toEqual({ version: 1, keys: {} })
+    })
+
+    it('未启用时仍允许保存配置（先配置后启用）', async () => {
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        const snapshot = await store.save({
+            enabled: false,
+            models: [makeModel()],
+            defaultModelId: 'model-a'
+        })
+        expect(snapshot.enabled).toBe(false)
+        expect(snapshot.models).toHaveLength(1)
+        expect(snapshot.defaultModelId).toBe('model-a')
+    })
+
+    it('默认模型指向不存在模型 → 回落首个模型；null → 清空', async () => {
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        await store.save({ models: [makeModel({ id: 'aa' }), makeModel({ id: 'bb' })] })
+        const fallback = await store.save({ defaultModelId: 'not-exist' })
+        expect(fallback.defaultModelId).toBe('aa')
+        const cleared = await store.save({ defaultModelId: null })
+        expect(cleared.defaultModelId).toBeNull()
+    })
+
+    it('模型列表全量替换：被删除的模型从快照消失', async () => {
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        await store.save({ models: [makeModel({ id: 'aa' }), makeModel({ id: 'bb' })] })
+        const replaced = await store.save({ models: [makeModel({ id: 'bb' })] })
+        expect(replaced.models.map((model) => model.id)).toEqual(['bb'])
+    })
+
+    it('非法密钥操作（模型不在列表内）→ AI_INVALID_PAYLOAD', async () => {
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        await expect(
+            store.save({ models: [makeModel()], modelApiKey: { modelId: 'ghost', apiKey: 'sk-x' } })
+        ).rejects.toMatchObject({ code: 'AI_INVALID_PAYLOAD' })
     })
 })
 
-describe('AI 配置存储：API Key 安全（safeStorage 可用）', () => {
-    it('密钥密文落盘，文件内不出现明文；运行时解密可用', async () => {
+describe('AI 配置存储：每模型 API Key 安全（safeStorage 可用）', () => {
+    it('多个模型密钥分别加密落盘，文件内不出现明文；运行时按模型 id 解密', async () => {
         const safeStorage = makeSafeStorage()
         const store = createAiConfigStore({ filePath: configPath, safeStorage })
-        const plainKey = 'sk-very-secret-key-1234567890'
-
+        const keyA = 'sk-model-a-secret-111111'
+        const keyB = 'sk-model-b-secret-222222'
         const snapshot = await store.save({
             enabled: true,
-            provider: 'remote',
-            baseUrl: 'https://api.example.com/v1',
-            model: 'deepseek-chat',
-            apiKey: plainKey
+            models: [
+                makeModel({ id: 'model-a' }),
+                makeModel({ id: 'model-b', baseUrl: 'https://b.example.com/v1' })
+            ],
+            defaultModelId: 'model-a',
+            modelApiKey: { modelId: 'model-a', apiKey: keyA }
         })
-        expect(snapshot.apiKeyConfigured).toBe(true)
-        expect(snapshot.apiKeyStorage).toBe('safe')
+        expect(snapshot.models.find((model) => model.id === 'model-a')?.apiKeyConfigured).toBe(true)
+        expect(snapshot.models.find((model) => model.id === 'model-b')?.apiKeyConfigured).toBe(
+            false
+        )
 
-        const raw = await readConfigFileRaw()
-        expect(raw).not.toBeNull()
-        expect(raw as string).not.toContain(plainKey)
-        const parsed = JSON.parse(raw as string)
-        expect(parsed.apiKey).toMatchObject({ encrypted: true })
-        expect(typeof parsed.apiKey.cipher).toBe('string')
-        expect(safeStorage.encryptString).toHaveBeenCalledWith(plainKey)
+        const afterB = await store.save({ modelApiKey: { modelId: 'model-b', apiKey: keyB } })
+        expect(afterB.models.every((model) => model.apiKeyConfigured === true)).toBe(true)
+        expect(afterB.apiKeyStorage).toBe('safe')
 
-        expect(await store.getRuntimeApiKey()).toBe(plainKey)
+        const raw = (await readConfigFileRaw()) as string
+        expect(raw).not.toContain(keyA)
+        expect(raw).not.toContain(keyB)
+        const parsed = JSON.parse(raw) as {
+            apiKeys: { version: number; keys: Record<string, string> }
+        }
+        expect(parsed.apiKeys.version).toBe(1)
+        expect(Object.keys(parsed.apiKeys.keys).sort()).toEqual(['model-a', 'model-b'])
+        expect(typeof parsed.apiKeys.keys['model-a']).toBe('string')
+        expect(safeStorage.encryptString).toHaveBeenCalledWith(keyA)
+
+        expect(await store.getRuntimeApiKey('model-a')).toBe(keyA)
+        expect(await store.getRuntimeApiKey('model-b')).toBe(keyB)
+        expect(await store.getRuntimeApiKey('ghost')).toBeNull()
     })
 
-    it('清除密钥：文件与运行时均无密钥，其余配置保持', async () => {
+    it('清除单模型密钥：只清除指定模型，其余模型密钥保留', async () => {
         const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
         await store.save({
-            enabled: true,
-            provider: 'remote',
-            baseUrl: 'https://api.example.com/v1',
-            model: 'deepseek-chat',
-            apiKey: 'sk-to-clear'
+            models: [makeModel({ id: 'aa' }), makeModel({ id: 'bb' })],
+            modelApiKey: { modelId: 'aa', apiKey: 'sk-aa' }
         })
-        const snapshot = await store.save({ clearApiKey: true })
-        expect(snapshot.apiKeyConfigured).toBe(false)
-        expect(await store.getRuntimeApiKey()).toBeNull()
-        expect(snapshot.provider).toBe('remote')
-        expect(snapshot.model).toBe('deepseek-chat')
+        await store.save({ modelApiKey: { modelId: 'bb', apiKey: 'sk-bb' } })
+        const snapshot = await store.save({ modelApiKey: { modelId: 'aa', clearApiKey: true } })
+        expect(snapshot.models.find((model) => model.id === 'aa')?.apiKeyConfigured).toBe(false)
+        expect(snapshot.models.find((model) => model.id === 'bb')?.apiKeyConfigured).toBe(true)
+        expect(await store.getRuntimeApiKey('aa')).toBeNull()
+        expect(await store.getRuntimeApiKey('bb')).toBe('sk-bb')
+    })
 
-        const parsed = JSON.parse((await readConfigFileRaw()) as string)
-        expect(parsed.apiKey ?? null).toBeNull()
+    it('删除模型时其密钥同步清理（落盘结构不残留）', async () => {
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        await store.save({
+            models: [makeModel({ id: 'aa' }), makeModel({ id: 'bb' })],
+            modelApiKey: { modelId: 'aa', apiKey: 'sk-aa' }
+        })
+        await store.save({ models: [makeModel({ id: 'bb' })] })
+        const parsed = (await readConfigFileJson()) as { apiKeys: { keys: Record<string, string> } }
+        expect(parsed.apiKeys.keys).toEqual({})
+        expect(await store.getRuntimeApiKey('aa')).toBeNull()
     })
 
     it('解密失败时按未配置密钥处理（不崩溃、不清空文件）', async () => {
         const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
-        await store.save({ enabled: true, apiKey: 'sk-abc' })
-        // 模拟系统凭据变化：把密文改为非法内容
-        const parsed = JSON.parse((await readConfigFileRaw()) as string)
-        parsed.apiKey.cipher = Buffer.from('garbage', 'utf-8').toString('base64')
+        await store.save({
+            models: [makeModel({ id: 'aa' })],
+            modelApiKey: { modelId: 'aa', apiKey: 'sk-abc' }
+        })
+        // 模拟系统凭据变化：把密文改为非法内容（保持合法 base64 但无法解密）
+        const parsed = (await readConfigFileJson()) as {
+            apiKeys: { keys: Record<string, string> }
+        }
+        parsed.apiKeys.keys['aa'] = Buffer.from('garbage', 'utf-8').toString('base64')
         await fs.writeFile(configPath, JSON.stringify(parsed), 'utf-8')
         const reloaded = createAiConfigStore({
             filePath: configPath,
             safeStorage: makeSafeStorage()
         })
-        expect(await reloaded.getRuntimeApiKey()).toBeNull()
+        expect(await reloaded.getRuntimeApiKey('aa')).toBeNull()
         // 快照不显示「已配置」——避免设置页误导用户（实际请求会因缺密钥失败）
-        expect((await reloaded.getSnapshot()).apiKeyConfigured).toBe(false)
+        const snapshot = await reloaded.getSnapshot()
+        expect(snapshot.models[0].apiKeyConfigured).toBe(false)
     })
 })
 
@@ -175,27 +261,138 @@ describe('AI 配置存储：safeStorage 不可用时的内存退化', () => {
         const plainKey = 'sk-memory-only-key'
         const snapshot = await store.save({
             enabled: true,
-            provider: 'remote',
-            baseUrl: 'https://api.example.com/v1',
-            model: 'deepseek-chat',
-            apiKey: plainKey
+            models: [makeModel({ id: 'aa' })],
+            modelApiKey: { modelId: 'aa', apiKey: plainKey }
         })
-        expect(snapshot.apiKeyConfigured).toBe(true)
+        expect(snapshot.models[0].apiKeyConfigured).toBe(true)
         expect(snapshot.apiKeyStorage).toBe('memory')
-        expect(await store.getRuntimeApiKey()).toBe(plainKey)
+        expect(await store.getRuntimeApiKey('aa')).toBe(plainKey)
 
-        const raw = await readConfigFileRaw()
-        expect(raw).not.toBeNull()
-        expect(raw as string).not.toContain(plainKey)
-        const parsed = JSON.parse(raw as string)
-        expect(parsed.apiKey ?? null).toBeNull()
+        const raw = (await readConfigFileRaw()) as string
+        expect(raw).not.toContain(plainKey)
+        const parsed = JSON.parse(raw) as { apiKeys: { keys: Record<string, string> } }
+        expect(parsed.apiKeys.keys).toEqual({})
     })
 
     it('safeStorage 为 null 时不崩溃（按不可用处理）', async () => {
         const store = createAiConfigStore({ filePath: configPath, safeStorage: null })
-        const snapshot = await store.save({ enabled: true, apiKey: 'sk-null-safe-storage' })
+        const snapshot = await store.save({
+            models: [makeModel({ id: 'aa' })],
+            modelApiKey: { modelId: 'aa', apiKey: 'sk-null-safe-storage' }
+        })
         expect(snapshot.apiKeyStorage).toBe('memory')
-        expect(await store.getRuntimeApiKey()).toBe('sk-null-safe-storage')
+        expect(snapshot.models[0].apiKeyConfigured).toBe(true)
+        expect(await store.getRuntimeApiKey('aa')).toBe('sk-null-safe-storage')
+    })
+
+    it('safeStorage 加密抛错时退化为仅会话内存（绝不把明文写盘）', async () => {
+        const safeStorage = makeSafeStorage()
+        safeStorage.encryptString.mockImplementation(() => {
+            throw new Error('DPAPI unavailable')
+        })
+        const store = createAiConfigStore({ filePath: configPath, safeStorage })
+        const snapshot = await store.save({
+            models: [makeModel({ id: 'aa' })],
+            modelApiKey: { modelId: 'aa', apiKey: 'sk-encrypt-failed' }
+        })
+        // 加密失败：本次会话内存可用，但文件里不落任何密钥（含明文）
+        expect(snapshot.models[0].apiKeyConfigured).toBe(true)
+        expect(await store.getRuntimeApiKey('aa')).toBe('sk-encrypt-failed')
+        const raw = (await readConfigFileRaw()) as string
+        expect(raw).not.toContain('sk-encrypt-failed')
+        const parsed = JSON.parse(raw) as { apiKeys: { keys: Record<string, string> } }
+        expect(parsed.apiKeys.keys).toEqual({})
+    })
+})
+
+describe('AI 配置存储：旧单模型配置迁移', () => {
+    /** 写入版本 1 旧结构文件（单模型 + 单密钥） */
+    async function writeLegacyFile(
+        config: Record<string, unknown>,
+        cipher?: string
+    ): Promise<void> {
+        await fs.writeFile(
+            configPath,
+            JSON.stringify({
+                version: 1,
+                config,
+                apiKey: cipher ? { encrypted: true, cipher } : null
+            }),
+            'utf-8'
+        )
+    }
+
+    it('v1 单模型配置 → 多模型结构（稳定 id + 默认模型 + 密钥迁移），并写回版本 2', async () => {
+        const legacyCipher = Buffer.from('enc:sk-legacy-key', 'utf-8').toString('base64')
+        await writeLegacyFile(
+            {
+                enabled: true,
+                provider: 'remote',
+                localProvider: 'ollama',
+                baseUrl: 'https://api.example.com/v1',
+                model: 'deepseek-chat'
+            },
+            legacyCipher
+        )
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        const snapshot = await store.getSnapshot()
+        expect(snapshot.enabled).toBe(true)
+        expect(snapshot.models).toEqual([
+            {
+                id: AI_LEGACY_MODEL_ID,
+                name: AI_LEGACY_MODEL_NAME,
+                provider: 'remote',
+                localProvider: 'ollama',
+                baseUrl: 'https://api.example.com/v1',
+                model: 'deepseek-chat',
+                apiKeyConfigured: true
+            }
+        ])
+        expect(snapshot.defaultModelId).toBe(AI_LEGACY_MODEL_ID)
+        expect(await store.getRuntimeApiKey(AI_LEGACY_MODEL_ID)).toBe('sk-legacy-key')
+
+        // 迁移只发生一次：文件已重写为当前版本，旧单密钥字段消失
+        const parsed = (await readConfigFileJson()) as {
+            version: number
+            config: { models: unknown[] }
+            apiKey?: unknown
+            apiKeys: { keys: Record<string, string> }
+        }
+        expect(parsed.version).toBe(AI_CONFIG_VERSION)
+        expect(parsed.config.models).toHaveLength(1)
+        expect(parsed.apiKey).toBeUndefined()
+        expect(parsed.apiKeys.keys[AI_LEGACY_MODEL_ID]).toBe(legacyCipher)
+    })
+
+    it('迁移幂等：重复读取返回相同稳定 id，不重复生成模型', async () => {
+        await writeLegacyFile(
+            {
+                enabled: false,
+                provider: 'local',
+                localProvider: 'ollama',
+                baseUrl: '',
+                model: 'qwen2.5'
+            },
+            undefined
+        )
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        const first = await store.getSnapshot()
+        const second = await store.getSnapshot()
+        expect(first.models).toHaveLength(1)
+        expect(first.models[0].id).toBe(AI_LEGACY_MODEL_ID)
+        expect(second).toEqual(first)
+    })
+
+    it('v1 空壳配置（默认本地 + 空模型 + 无密钥）→ 空模型列表（不制造无效模型）', async () => {
+        await writeLegacyFile(
+            { enabled: true, provider: 'local', localProvider: 'ollama', baseUrl: '', model: '' },
+            undefined
+        )
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        const snapshot = await store.getSnapshot()
+        expect(snapshot.enabled).toBe(true)
+        expect(snapshot.models).toEqual([])
+        expect(snapshot.defaultModelId).toBeNull()
     })
 })
 
@@ -209,28 +406,60 @@ describe('AI 配置存储：损坏与版本兼容', () => {
         })
         const snapshot = await store.getSnapshot()
         expect(snapshot.enabled).toBe(false)
-        expect(snapshot.provider).toBe('local')
+        expect(snapshot.models).toEqual([])
+        expect(snapshot.defaultModelId).toBeNull()
         const backupPath = `${configPath}.corrupt-1700000000000`
         await expect(fs.stat(backupPath)).resolves.toBeDefined()
     })
 
-    it('未知版本：尽力读取非敏感字段并忽略密钥', async () => {
+    it('版本 2 中的脏模型条目：逐项归一化（非法丢弃 / 重复 id 保留首个 / 默认回落首个）', async () => {
+        await fs.writeFile(
+            configPath,
+            JSON.stringify({
+                version: AI_CONFIG_VERSION,
+                config: {
+                    enabled: true,
+                    models: [
+                        makeModel({ id: 'aa' }),
+                        makeModel({ id: 'aa', name: '重复 id 应丢弃' }),
+                        { id: '含 空格', name: '非法 id' },
+                        { ...makeModel({ id: 'bb' }), provider: 'unknown' }
+                    ],
+                    defaultModelId: 'not-exist'
+                },
+                apiKeys: { version: 1, keys: {} }
+            }),
+            'utf-8'
+        )
+        const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
+        const snapshot = await store.getSnapshot()
+        expect(snapshot.models.map((model) => model.id)).toEqual(['aa', 'bb'])
+        expect(snapshot.models[0].name).toBe('模型 A')
+        // 未知 provider 回落 local（结构容错），且默认模型指向不存在 id → 回落首个
+        expect(snapshot.models[1].provider).toBe('local')
+        expect(snapshot.defaultModelId).toBe('aa')
+    })
+
+    it('未知版本：尽力读取新结构非敏感字段并忽略密钥', async () => {
         await fs.writeFile(
             configPath,
             JSON.stringify({
                 version: 99,
-                config: { enabled: true, provider: 'remote', model: 'x' },
-                apiKey: { encrypted: true, cipher: 'AAAA' }
+                config: {
+                    enabled: true,
+                    models: [makeModel({ id: 'aa' })],
+                    defaultModelId: 'aa'
+                },
+                apiKeys: { version: 1, keys: { aa: 'AAAA' } }
             }),
             'utf-8'
         )
         const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
         const snapshot = await store.getSnapshot()
         expect(snapshot.enabled).toBe(true)
-        expect(snapshot.provider).toBe('remote')
-        expect(snapshot.model).toBe('x')
-        expect(snapshot.apiKeyConfigured).toBe(false)
-        expect(await store.getRuntimeApiKey()).toBeNull()
+        expect(snapshot.models.map((model) => model.id)).toEqual(['aa'])
+        expect(snapshot.models[0].apiKeyConfigured).toBe(false)
+        expect(await store.getRuntimeApiKey('aa')).toBeNull()
     })
 
     it('下次保存会重写为当前版本（版本自愈）', async () => {
@@ -241,8 +470,8 @@ describe('AI 配置存储：损坏与版本兼容', () => {
         )
         const store = createAiConfigStore({ filePath: configPath, safeStorage: makeSafeStorage() })
         await store.save({ enabled: true })
-        const parsed = JSON.parse((await readConfigFileRaw()) as string)
-        expect(parsed.version).toBe(AI_CONFIG_VERSION)
-        expect(parsed.config.enabled).toBe(true)
+        const parsed = await readConfigFileJson()
+        expect(parsed?.version).toBe(AI_CONFIG_VERSION)
+        expect((parsed?.config as Record<string, unknown>).enabled).toBe(true)
     })
 })

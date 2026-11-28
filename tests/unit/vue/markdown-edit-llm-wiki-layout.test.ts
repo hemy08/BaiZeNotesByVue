@@ -12,6 +12,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import * as fs from 'fs'
+import * as path from 'path'
 
 // ============ 工作区模式 mock（测试内可切换 llm-wiki / traditional） ============
 vi.mock('@renderer/composables/useWorkspaceMode', async () => {
@@ -247,6 +249,8 @@ describe('MarkdownEditComponent：LLM Wiki 单栏编辑区', () => {
         // 初始并排
         expect(editorElement().style.width).toBe('50%')
         expect(resizerElement().style.display).not.toBe('none')
+        // 传统模式不渲染右上角切换 dock
+        expect(document.querySelector('.llm-wiki-editor-tabs-dock')).toBeNull()
 
         testWorkspaceModeState.llmWiki = true
         await nextTick()
@@ -258,6 +262,9 @@ describe('MarkdownEditComponent：LLM Wiki 单栏编辑区', () => {
         expect(previewElement().style.display).toBe('none')
         expect(mounted.findComponent(MdPreview).exists()).toBe(true)
         expect(currentWorkspaceLayout.viewMode).toBe('edit')
+        // 切换后右上角 dock 即时出现，且编辑区让出顶部安全间距
+        expect(document.querySelector('.llm-wiki-editor-tabs-dock')).toBeTruthy()
+        expect(editorElement().style.top).toBe('calc(var(--ui-row-height, 28px) + 8px)')
     })
 
     it('traditional 模式下 tab 状态变化不改变并排布局（watch 提前返回）', async () => {
@@ -272,6 +279,87 @@ describe('MarkdownEditComponent：LLM Wiki 单栏编辑区', () => {
         expect(resizerElement().style.display).not.toBe('none')
         expect(editorElement().style.width).toBe('50%')
         expect(currentWorkspaceLayout.viewMode).toBe(viewModeBefore)
+    })
+})
+
+describe('MarkdownEditComponent：编辑区右上角「编辑器 / 预览」切换（体验升级批次 A）', () => {
+    it('llm-wiki 模式渲染右上角 dock，包含两个分段按钮且默认编辑器选中', async () => {
+        await mountEditor('llm-wiki')
+
+        const dock = document.querySelector('.llm-wiki-editor-tabs-dock')
+        expect(dock).toBeTruthy()
+        const tabs = dock!.querySelectorAll('.llm-wiki-editor-tab')
+        expect(tabs).toHaveLength(2)
+        expect(tabs[0].getAttribute('data-tab')).toBe('editor')
+        expect(tabs[0].getAttribute('aria-pressed')).toBe('true')
+        expect(tabs[1].getAttribute('data-tab')).toBe('preview')
+        expect(tabs[1].getAttribute('aria-pressed')).toBe('false')
+    })
+
+    it('点击右上角分段控件切换窗格，且切换后控件仍可见（预览窗格之上）', async () => {
+        await mountEditor('llm-wiki')
+
+        const previewButton = document.querySelector(
+            '.llm-wiki-editor-tab[data-tab="preview"]'
+        ) as HTMLButtonElement
+        previewButton.click()
+        await nextTick()
+        await nextTick()
+
+        expect(previewElement().style.display).not.toBe('none')
+        expect(editorElement().style.display).toBe('none')
+        expect(window.localStorage.getItem(LLM_WIKI_EDITOR_TAB_STORAGE_KEY)).toBe('preview')
+        // dock 为两个窗格的同级节点，不随编辑器 v-show 隐藏
+        expect(document.querySelector('.llm-wiki-editor-tabs-dock')).toBeTruthy()
+    })
+
+    it('traditional 模式不渲染右上角 dock（DOM/布局零变化）', async () => {
+        await mountEditor('traditional')
+        expect(document.querySelector('.llm-wiki-editor-tabs-dock')).toBeNull()
+        expect(document.querySelector('.llm-wiki-editor-tabs')).toBeNull()
+    })
+
+    it('llm-wiki 模式为 dock 预留顶部安全间距（窗格下移、高度扣除），traditional 模式无偏移', async () => {
+        const mounted = await mountEditor('llm-wiki')
+
+        // 预留高度 = --ui-row-height + 8px（与 dock 高度同源），避免控件遮挡正文首行
+        expect(editorElement().style.top).toBe('calc(var(--ui-row-height, 28px) + 8px)')
+        expect(editorElement().style.height).toBe('calc(100% - var(--ui-row-height, 28px) - 8px)')
+        expect(previewElement().style.top).toBe('calc(var(--ui-row-height, 28px) + 8px)')
+        expect(previewElement().style.height).toBe('calc(100% - var(--ui-row-height, 28px) - 8px)')
+
+        // 切回传统模式：偏移样式移除，恢复既有并排布局（DOM/布局零变化）
+        testWorkspaceModeState.llmWiki = false
+        await nextTick()
+        await nextTick()
+        expect(mounted.findComponent(MdPreview).exists()).toBe(true)
+        expect(editorElement().style.top).toBe('')
+        expect(editorElement().style.height).toBe('')
+        expect(previewElement().style.top).toBe('')
+    })
+
+    it('静态契约：dock 绝对定位在编辑区右上角，由 MarkdownEditComponent 承接（WorkSpace 不再渲染）', () => {
+        const root = path.resolve(__dirname, '../../..')
+        const editSource = fs.readFileSync(
+            path.join(root, 'src/renderer/src/components/Markdown/MarkdownEditComponent.vue'),
+            'utf8'
+        )
+        // 模板：llm-wiki 模式渲染 dock，内含 LlmWikiEditorTabs
+        expect(editSource).toContain('v-if="isLlmWikiMode" class="llm-wiki-editor-tabs-dock"')
+        expect(editSource).toContain('<LlmWikiEditorTabs />')
+        // 样式：绝对定位 + 右上角 + 浮层层级（不占编辑区高度、不遮挡正文首行）
+        const dockBlock = editSource.slice(editSource.indexOf('.llm-wiki-editor-tabs-dock {'))
+        expect(dockBlock).toContain('position: absolute')
+        expect(dockBlock).toContain('top:')
+        expect(dockBlock).toContain('right:')
+        expect(dockBlock).toContain('z-index: var(--ui-z-drag')
+        // 切换控件不再由 WorkSpace 渲染（顶部 tab 行已移除）
+        const workspaceSource = fs.readFileSync(
+            path.join(root, 'src/renderer/src/components/WorkSpaceArea/WorkSpace.vue'),
+            'utf8'
+        )
+        expect(workspaceSource).not.toContain('<LlmWikiEditorTabs')
+        expect(workspaceSource).not.toContain('LlmWikiEditorTabs.vue')
     })
 })
 

@@ -1,13 +1,15 @@
 /**
- * 1.5.7 LLM Wiki L3：AI IPC 单测（`src/main/ipc/ai-ipc.ts`）
+ * 1.5.7 LLM Wiki L3 / 体验升级批次 C：AI IPC 单测（`src/main/ipc/ai-ipc.ts`）
  *
  * 覆盖：
  * 1. 注册：5 个 invoke 通道经 `ipcListenerManager.registerHandleOnce` 注册（withSenderCheck），
  *    componentId 透传（缺省 `global-ai-ipc`），非受信 sender 返回统一拒绝对象且不执行业务；
- * 2. AI.CHAT：载荷校验 / 未启用 → AI_NOT_CONFIGURED / 成功对话 / 空 messages 连接测试；
+ * 2. AI.CHAT：载荷校验 / 未启用 → AI_NOT_CONFIGURED / 成功对话 / 空 messages 连接测试 /
+ *    **多模型 modelId（显式指定、缺省默认、不存在 → AI_MODEL_NOT_FOUND）** / 远程缺密钥；
  * 3. AI.INGEST：无工作区 → AI_WORKSPACE_UNAVAILABLE / 成功生成草案（不写盘）；
  * 4. AI.APPLY_INGEST：未审批 / raw 目标 / 越界 → 结构化拒绝；成功写入 wiki/；
- * 5. AI.GET_CONFIG / SAVE_CONFIG：快照读取与增量保存（注入存储替身）。
+ * 5. AI.GET_CONFIG / SAVE_CONFIG：快照读取（多模型 + 每模型密钥状态）与
+ *    **多模型保存载荷（models/defaultModelId/modelApiKey）校验**。
  *
  * 说明：AI Provider 的 HTTP 行为由注入的 fetch 替身模拟（真正的网络分支见 ai-provider.test.ts）。
  */
@@ -45,7 +47,7 @@ vi.mock('../../src/main/ipc/ipc-listener-manager', () => ({
 vi.mock('../../src/main/utils/logger', () => ({ logger: mocks.logger }))
 
 import { IPC } from '../../src/shared/ipc-channels'
-import type { AiConfigSnapshot } from '../../src/shared/types/ai'
+import type { AiConfigSnapshot, AiModelConfig } from '../../src/shared/types/ai'
 import {
     aiApplyIngest,
     aiChat,
@@ -81,39 +83,59 @@ const mainWindow = {
     isDestroyed: () => false
 }
 
-/** 构造配置存储替身（可配置 enabled/密钥） */
+/** 构造模型配置（默认本地 Ollama） */
+function makeModel(overrides: Partial<AiModelConfig> = {}): AiModelConfig {
+    return {
+        id: 'local-qwen',
+        name: '本地 Qwen',
+        provider: 'local',
+        localProvider: 'ollama',
+        baseUrl: '',
+        model: 'qwen2.5',
+        ...overrides
+    }
+}
+
+/** 构造配置存储替身（可配置多模型/默认模型/每模型密钥） */
 function makeStore(
     options: {
         enabled?: boolean
-        provider?: 'local' | 'remote'
-        localProvider?: 'ollama' | 'lmstudio'
-        baseUrl?: string
-        model?: string
-        apiKey?: string | null
+        models?: AiModelConfig[]
+        defaultModelId?: string | null
+        apiKeys?: Record<string, string>
         save?: (patch: unknown) => Promise<AiConfigSnapshot>
     } = {}
 ): AiConfigStore {
+    const models = options.models ?? [makeModel()]
+    const defaultModelId =
+        options.defaultModelId !== undefined ? options.defaultModelId : (models[0]?.id ?? null)
+    const apiKeys = options.apiKeys ?? {}
     const snapshot = (): AiConfigSnapshot => ({
         enabled: options.enabled === true,
-        provider: options.provider ?? 'local',
-        localProvider: options.localProvider ?? 'ollama',
-        baseUrl: options.baseUrl ?? '',
-        model: options.model ?? 'qwen2.5',
-        apiKeyConfigured: (options.apiKey ?? null) !== null,
+        models: models.map((model) => ({
+            ...model,
+            apiKeyConfigured: apiKeys[model.id] !== undefined
+        })),
+        defaultModelId,
         apiKeyStorage: 'memory'
     })
     return {
         getSnapshot: vi.fn(async () => snapshot()),
-        save: vi.fn(options.save ?? (async () => snapshot())),
-        getRuntimeApiKey: vi.fn(async () => options.apiKey ?? null)
+        save: vi.fn(
+            options.save ??
+                (async () => {
+                    return snapshot()
+                })
+        ),
+        getRuntimeApiKey: vi.fn(async (modelId: string) => apiKeys[modelId] ?? null)
     }
 }
 
-/** fetch 替身：按 URL 返回 Ollama 对话/标签响应 */
+/** fetch 替身：按 URL 返回 Ollama 对话/标签响应（记录调用参数） */
 function makeOllamaFetch(content = 'AI 回复'): AiFetchLike {
     return async (url) => {
         const body = url.endsWith('/api/tags')
-            ? { models: [{ name: 'qwen2.5:latest' }] }
+            ? { models: [{ name: 'qwen2.5:latest' }, { name: 'deepseek-chat:latest' }] }
             : { message: { role: 'assistant', content } }
         const text = JSON.stringify(body)
         return { ok: true, status: 200, statusText: '', text: async () => text }
@@ -215,7 +237,7 @@ describe('registerAiIpc：注册形状', () => {
         expect(configResult.enabled).toBe(true)
 
         const saveResult = (await getRegisteredHandler(IPC.AI.SAVE_CONFIG)(trustedCall(), {
-            provider: 'bad'
+            enabled: 'yes'
         })) as { ok: boolean; code?: string }
         expect(saveResult).toMatchObject({ ok: false, code: 'AI_INVALID_PAYLOAD' })
     })
@@ -226,7 +248,7 @@ function trustedCall(): { sender: { id: number; send: ReturnType<typeof vi.fn> }
     return { sender: mainWindow.webContents }
 }
 
-describe('AI.CHAT（对话 / 连接测试）', () => {
+describe('AI.CHAT（对话 / 连接测试 / 多模型）', () => {
     it('载荷非法 → AI_INVALID_PAYLOAD（不发起请求）', async () => {
         const fetchImpl = vi.fn<AiFetchLike>()
         const result = await aiChat({ messages: 'bad' } as never, {
@@ -249,12 +271,60 @@ describe('AI.CHAT（对话 / 连接测试）', () => {
         expect(store.getRuntimeApiKey).not.toHaveBeenCalled()
     })
 
-    it('成功对话：返回 content 与 model', async () => {
+    it('成功对话：缺省使用 defaultModelId，返回 content 与 model', async () => {
+        const store = makeStore({
+            enabled: true,
+            models: [makeModel({ id: 'aa' }), makeModel({ id: 'bb', model: 'deepseek-chat' })],
+            defaultModelId: 'bb'
+        })
+        const fetchImpl = vi.fn<AiFetchLike>(makeOllamaFetch('默认模型回答'))
         const result = await aiChat(
             { messages: [{ role: 'user', content: '你好' }], context: { title: '文档' } },
-            { store: makeStore({ enabled: true }), fetchImpl: makeOllamaFetch('白泽回答') }
+            { store, fetchImpl }
         )
-        expect(result).toMatchObject({ ok: true, content: '白泽回答', model: 'qwen2.5' })
+        expect(result).toMatchObject({ ok: true, content: '默认模型回答', model: 'deepseek-chat' })
+        expect(store.getRuntimeApiKey).toHaveBeenCalledWith('bb')
+        // 请求体使用默认模型的 model 名
+        const body = JSON.parse(fetchImpl.mock.calls[0][1].body as string) as { model: string }
+        expect(body.model).toBe('deepseek-chat')
+    })
+
+    it('显式 modelId：按指定模型调用并读取该模型密钥', async () => {
+        const secondModel = makeModel({ id: 'local-bb', model: 'deepseek-r1' })
+        const store = makeStore({
+            enabled: true,
+            models: [makeModel({ id: 'local-aa' }), secondModel],
+            defaultModelId: 'local-aa',
+            apiKeys: { 'local-bb': 'sk-local-key' }
+        })
+        const fetchImpl = vi.fn<AiFetchLike>(makeOllamaFetch('指定模型回答'))
+        const result = await aiChat(
+            { messages: [{ role: 'user', content: 'hi' }], modelId: 'local-bb' },
+            { store, fetchImpl }
+        )
+        expect(result).toMatchObject({ ok: true, content: '指定模型回答', model: 'deepseek-r1' })
+        expect(store.getRuntimeApiKey).toHaveBeenCalledWith('local-bb')
+        const body = JSON.parse(fetchImpl.mock.calls[0][1].body as string) as { model: string }
+        expect(body.model).toBe('deepseek-r1')
+    })
+
+    it('显式 modelId 不存在 → AI_MODEL_NOT_FOUND', async () => {
+        const result = await aiChat(
+            { messages: [{ role: 'user', content: 'hi' }], modelId: 'ghost' },
+            { store: makeStore({ enabled: true }), fetchImpl: makeOllamaFetch() }
+        )
+        expect(result).toMatchObject({ ok: false, code: 'AI_MODEL_NOT_FOUND' })
+    })
+
+    it('未设置默认模型且未指定 modelId → AI_NOT_CONFIGURED', async () => {
+        const result = await aiChat(
+            { messages: [{ role: 'user', content: 'hi' }] },
+            {
+                store: makeStore({ enabled: true, models: [makeModel()], defaultModelId: null }),
+                fetchImpl: makeOllamaFetch()
+            }
+        )
+        expect(result).toMatchObject({ ok: false, code: 'AI_NOT_CONFIGURED' })
     })
 
     it('空 messages = 连接测试：调用 /api/tags 并返回可读结果', async () => {
@@ -274,10 +344,14 @@ describe('AI.CHAT（对话 / 连接测试）', () => {
             {
                 store: makeStore({
                     enabled: true,
-                    provider: 'remote',
-                    baseUrl: 'https://api.example.com/v1',
-                    model: 'deepseek-chat',
-                    apiKey: null
+                    models: [
+                        makeModel({
+                            provider: 'remote',
+                            baseUrl: 'https://api.example.com/v1',
+                            model: 'deepseek-chat'
+                        })
+                    ],
+                    apiKeys: {}
                 }),
                 fetchImpl: makeOllamaFetch()
             }
@@ -362,70 +436,115 @@ describe('AI.APPLY_INGEST（审批写盘守卫）', () => {
     })
 })
 
-describe('AI.GET_CONFIG / AI.SAVE_CONFIG', () => {
-    it('GET_CONFIG 返回配置快照（不含密钥明文）', async () => {
+describe('AI.GET_CONFIG / AI.SAVE_CONFIG（多模型）', () => {
+    it('GET_CONFIG 返回多模型快照（每模型带 apiKeyConfigured，不含密钥明文）', async () => {
         const snapshot = await getAiConfig({
-            store: makeStore({ enabled: true, provider: 'remote', apiKey: 'sk-x' })
+            store: makeStore({
+                enabled: true,
+                models: [
+                    makeModel({ id: 'aa' }),
+                    makeModel({ id: 'bb', provider: 'remote', baseUrl: 'https://x.example.com/v1' })
+                ],
+                apiKeys: { bb: 'sk-x' }
+            })
         })
         expect(snapshot.enabled).toBe(true)
-        expect(snapshot.provider).toBe('remote')
-        expect(snapshot.apiKeyConfigured).toBe(true)
+        expect(snapshot.models.map((model) => model.id)).toEqual(['aa', 'bb'])
+        expect(snapshot.models[0].apiKeyConfigured).toBe(false)
+        expect(snapshot.models[1].apiKeyConfigured).toBe(true)
         expect(JSON.stringify(snapshot)).not.toContain('sk-x')
     })
 
-    it('GET_CONFIG 读取失败时回退默认值（不抛异常）', async () => {
+    it('GET_CONFIG 读取失败时回退默认空配置（不抛异常）', async () => {
         const failingStore = makeStore()
         vi.mocked(failingStore.getSnapshot).mockRejectedValue(new Error('io error'))
         const snapshot = await getAiConfig({ store: failingStore })
-        expect(snapshot.enabled).toBe(false)
-        expect(snapshot.provider).toBe('local')
-        expect(snapshot.localProvider).toBe('ollama')
+        expect(snapshot).toEqual({
+            enabled: false,
+            models: [],
+            defaultModelId: null,
+            apiKeyStorage: 'memory'
+        })
     })
 
-    it('SAVE_CONFIG 非法载荷 → AI_INVALID_PAYLOAD', async () => {
+    it('SAVE_CONFIG 非法载荷 → AI_INVALID_PAYLOAD（旧单模型字段/非法模型/重复 id）', async () => {
         const store = makeStore()
-        const result = await saveAiConfig({ provider: 'cloud' }, { store })
-        expect(result).toMatchObject({ ok: false, code: 'AI_INVALID_PAYLOAD' })
+        for (const payload of [
+            { provider: 'remote' },
+            { apiKey: 'sk-x' },
+            { models: [{ ...makeModel(), id: '含空格' }] },
+            { models: [makeModel(), makeModel()] },
+            { models: [makeModel({ provider: 'remote', baseUrl: '' })] },
+            { modelApiKey: { modelId: 'local-qwen', apiKey: 'sk-x', clearApiKey: true } }
+        ]) {
+            const result = await saveAiConfig(payload, { store })
+            expect(result, JSON.stringify(payload)).toMatchObject({
+                ok: false,
+                code: 'AI_INVALID_PAYLOAD'
+            })
+        }
         expect(store.save).not.toHaveBeenCalled()
     })
 
-    it('SAVE_CONFIG 成功 → 透传补丁并返回最新快照', async () => {
+    it('SAVE_CONFIG 成功 → 透传多模型补丁与密钥操作并返回最新快照', async () => {
+        const remoteModel = makeModel({
+            id: 'remote-bb',
+            name: 'DeepSeek',
+            provider: 'remote',
+            baseUrl: 'https://api.example.com/v1',
+            model: 'deepseek-chat'
+        })
         const save = vi.fn(async (patch: unknown) => {
-            expect(patch).toMatchObject({
+            expect(patch).toEqual({
                 enabled: true,
-                provider: 'remote',
-                baseUrl: 'https://api.example.com/v1',
-                model: 'deepseek-chat',
-                apiKey: 'sk-new'
+                models: [makeModel(), remoteModel],
+                defaultModelId: 'remote-bb',
+                modelApiKey: { modelId: 'remote-bb', apiKey: 'sk-new' }
             })
             return {
                 enabled: true,
-                provider: 'remote',
-                localProvider: 'ollama',
-                baseUrl: 'https://api.example.com/v1',
-                model: 'deepseek-chat',
-                apiKeyConfigured: true,
+                models: [
+                    { ...makeModel(), apiKeyConfigured: false },
+                    { ...remoteModel, apiKeyConfigured: true }
+                ],
+                defaultModelId: 'remote-bb',
                 apiKeyStorage: 'safe'
             } satisfies AiConfigSnapshot
         })
         const result = await saveAiConfig(
             {
                 enabled: true,
-                provider: 'remote',
-                baseUrl: 'https://api.example.com/v1',
-                model: 'deepseek-chat',
-                apiKey: 'sk-new'
+                models: [makeModel(), remoteModel],
+                defaultModelId: 'remote-bb',
+                modelApiKey: { modelId: 'remote-bb', apiKey: 'sk-new' }
             },
             { store: makeStore({ save }) }
         )
         expect(result.ok).toBe(true)
         if (result.ok) {
-            expect(result.config).toMatchObject({
-                enabled: true,
-                provider: 'remote',
-                apiKeyConfigured: true
-            })
+            expect(result.config.defaultModelId).toBe('remote-bb')
+            expect(result.config.models[1].apiKeyConfigured).toBe(true)
         }
+    })
+
+    it('SAVE_CONFIG 支持清除密钥与清空默认模型（null）', async () => {
+        const save = vi.fn(async (patch: unknown) => {
+            expect(patch).toEqual({
+                defaultModelId: null,
+                modelApiKey: { modelId: 'local-qwen', clearApiKey: true }
+            })
+            return {
+                enabled: false,
+                models: [makeModel({ apiKeyConfigured: false })],
+                defaultModelId: null,
+                apiKeyStorage: 'memory'
+            } satisfies AiConfigSnapshot
+        })
+        const result = await saveAiConfig(
+            { defaultModelId: null, modelApiKey: { modelId: 'local-qwen', clearApiKey: true } },
+            { store: makeStore({ save }) }
+        )
+        expect(result.ok).toBe(true)
     })
 })
 

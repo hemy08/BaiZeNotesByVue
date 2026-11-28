@@ -3,7 +3,7 @@
         C-3 迁移：regular + rounded + 900×650；标题 16px/600、关闭按钮 18px + Electron no-drag、
         底栏 15px 24px / gap 12px、标题栏与底栏 flex-shrink:0、容器固定高 650px，均由下方
         属性 / 内联样式常量等价承载（与迁移前 BaseDialog 外壳逐条对应，见各常量注释）。
-        设置页拆分 P0：本组件为壳层（侧边栏 + 4 个 panel + 保存/取消）；共享草稿/加载/保存/
+        设置页拆分 P0：本组件为壳层（侧边栏 + 7 个 panel + 保存/取消）；共享草稿/加载/保存/
         取消/脏标记/校验见 system-setting/useSystemSettingForm.ts，页签见同目录 *Panel.vue。
     -->
     <BaseDialog
@@ -25,7 +25,7 @@
                     v-for="item in sidebarItems"
                     :key="item.id"
                     :class="['sidebar-item', { active: activePanel === item.id }]"
-                    @click="activePanel = item.id"
+                    @click="selectPanel(item.id)"
                 >
                     <span class="sidebar-icon">{{ item.icon }}</span>
                     <span class="sidebar-name">{{ t(item.nameKey) }}</span>
@@ -67,6 +67,15 @@
                     @update="updateSettings"
                     @reload="handleBackupReload"
                 />
+                <!--
+                    1.5.7 体验升级 B：第 7 页签「AI 助手」（多模型管理 + MCP 配置）。
+                    懒加载：首次切到该页签时才触发异步 chunk 加载（v-if 门控 + 之后 v-show 保活），
+                    避免打开设置页即加载 AI/MCP 面板代码与 IPC。
+                -->
+                <AiAssistantPanel
+                    v-if="aiAssistantPanelLoaded"
+                    v-show="activePanel === 'aiAssistant'"
+                />
             </div>
         </div>
 
@@ -96,14 +105,15 @@
 /**
  * 系统设置对话框 —— 壳层（设置页拆分 P0）
  *
- * 职责：BaseDialog 外壳覆盖 + 左侧页签切换（activePanel 状态保留在壳层）+ 4 个 panel
+ * 职责：BaseDialog 外壳覆盖 + 左侧页签切换（activePanel 状态保留在壳层）+ 7 个 panel
  * 的组合 + 底栏保存/取消编排。
  *
  * 对外契约不变：props `visible`；emits `close` / `apply(settings)`（与拆分前一致）。
  * 共享草稿 / 打开时加载 / 应用写配置 / 取消恢复 / 脏标记 / 保存前诊断校验统一由
- * `./system-setting/useSystemSettingForm` 承担；4 个页签各自只读 props + emit 字段补丁。
+ * `./system-setting/useSystemSettingForm` 承担；各页签各自只读 props + emit 字段补丁
+ * （「AI 助手」页签配置独立保存，不进入系统设置草稿）。
  */
-import { ref, watch } from 'vue'
+import { defineAsyncComponent, ref, watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import { t } from '../../../common/i18n'
 import BaseDialog from '../BaseDialog.vue'
@@ -122,6 +132,15 @@ import AppearancePanel from './system-setting/AppearancePanel.vue'
 import FeaturesPanel from './system-setting/FeaturesPanel.vue'
 import WritingPanel from './system-setting/WritingPanel.vue'
 import BackupPanel from './system-setting/BackupPanel.vue'
+
+/**
+ * 1.5.7 体验升级 B：第 7 页签「AI 助手」面板懒加载（defineAsyncComponent）。
+ *
+ * 原因：AI 助手页承载多模型管理与 MCP 配置，代码量较大且首次打开设置页时通常不需要；
+ * 用异步组件拆分独立 chunk，仅当用户首次切到该页签时才请求加载（见模板 v-if 门控），
+ * 不增加打开设置页的首屏负担。加载期间显示 BaseDialog 内占位（空面板）。
+ */
+const AiAssistantPanel = defineAsyncComponent(() => import('./system-setting/AiAssistantPanel.vue'))
 
 interface Props {
     visible: boolean
@@ -160,8 +179,22 @@ const footerStyle: CSSProperties = {
 
 /** 当前页签（壳层状态；拆分前即与 4 个 panel 的 v-show 共享，保留在壳层） */
 const activePanel = ref<SystemSettingPanelId>('general')
+/**
+ * AI 助手面板是否已首次加载过（懒加载门控）：
+ * 首次切到「AI 助手」页签才置 true 触发异步 chunk 加载；之后保持挂载（v-show 保活），
+ * 与其它页签一致地保留页内状态（未保存的表单/测试结果不因切页丢失）。
+ */
+const aiAssistantPanelLoaded = ref(false)
 /** 左侧页签（纯数据由 ./system-setting/model.ts 提供） */
 const sidebarItems = SYSTEM_SETTING_SIDEBAR_ITEMS
+
+/** 切换页签（唯一入口：确保「AI 助手」懒加载面板在首次访问时才开始加载） */
+function selectPanel(panelId: SystemSettingPanelId): void {
+    activePanel.value = panelId
+    if (panelId === 'aiAssistant') {
+        aiAssistantPanelLoaded.value = true
+    }
+}
 /** P2 功能错误处理修复：保存中标志（防重复提交；保存失败时对话框保持打开） */
 const isSaving = ref(false)
 

@@ -1,308 +1,194 @@
 // @vitest-environment jsdom
 /**
- * 1.5.7 LLM Wiki L3：设置页「AI 助手」分组单测（FeaturesPanel.vue）
+ * 1.5.7 体验升级 B：系统设置第 7 页签「AI 助手」集成单测
  *
- * 覆盖：
- * 1. 渲染：默认本地 Ollama、关闭；远程形态显示 API Key 输入；密钥状态与存储形态展示；
- * 2. 保存：AI.SAVE_CONFIG 携带表单值；输入新密钥时随保存提交并清空输入框；
- * 3. 清除密钥：AI.SAVE_CONFIG({ clearApiKey: true })；
- * 4. 测试连接：先保存当前表单，再以空 messages 调 AI.CHAT 并展示成功/失败结果；
- * 5. 环境不可用：受限 ipcRenderer 缺失时整组禁用并提示；
- * 6. 结构与既有分组不冲突（MCP 分组仍在，AI 分组位于其后）。
+ * 覆盖点：
+ * 1. SystemSettingDialog 侧边栏 6 → 7 项，第 7 项为「AI 助手」（图标 + 中英 i18n 标签）；
+ * 2. 懒加载：打开设置页不加载 AI 面板；首次点击「AI 助手」页签才加载并读取 AI/MCP 配置，
+ *    之后切页保持挂载（v-show 保活，页内状态不丢）；
+ * 3. 迁移：原「功能」页签不再包含 AI/MCP 分组与开关（配置入口只在 AI 助手页签）；
+ * 4. FeaturesPanel 挂载不再调用 MCP/AI IPC（迁移后功能页只做纯功能开关）。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 
+import SystemSettingDialog from '@renderer/components/dialogs/complex/SystemSettingDialog.vue'
 import FeaturesPanel from '@renderer/components/dialogs/complex/system-setting/FeaturesPanel.vue'
 import {
     createDefaultSystemDialogSettings,
     type SystemDialogSettings
 } from '@renderer/components/dialogs/complex/system-setting/model'
 import { IPC } from '../../../src/shared/ipc-channels'
-import { t } from '@renderer/common/i18n'
+import type { AiConfigSnapshot } from '../../../src/shared/types/ai'
+import type { McpServerStatus } from '../../../src/shared/types/ipc'
 
-/** 构造设置草稿（默认值 + 局部覆盖） */
+const dialogMountOptions = { global: { stubs: { teleport: true } } }
+
+/** 默认 AI 快照（关闭 + 无模型） */
+function aiSnapshot(): AiConfigSnapshot {
+    return { enabled: false, models: [], defaultModelId: null, apiKeyStorage: 'safe' }
+}
+
+/** 已停止的 MCP 状态（含新增必填字段 preferredPort） */
+function mcpStopped(): McpServerStatus {
+    return {
+        enabled: false,
+        running: false,
+        port: 0,
+        token: '',
+        url: '',
+        toolCount: 7,
+        preferredPort: null
+    }
+}
+
+/** 构造设置草稿（与组件默认值真源一致） */
 function draft(overrides: Partial<SystemDialogSettings> = {}): SystemDialogSettings {
     return { ...createDefaultSystemDialogSettings(), ...overrides }
 }
 
-/** 默认 AI 配置快照（关闭 + 本地 Ollama） */
-function defaultAiSnapshot(overrides: Record<string, unknown> = {}) {
-    return {
-        enabled: false,
-        provider: 'local',
-        localProvider: 'ollama',
-        baseUrl: '',
-        model: '',
-        apiKeyConfigured: false,
-        apiKeyStorage: 'safe',
-        ...overrides
-    }
-}
-
-let invoke: ReturnType<typeof vi.fn>
 let wrappers: VueWrapper[] = []
+let invoke: ReturnType<typeof vi.fn>
+let configRead: ReturnType<typeof vi.fn>
 
-/** 挂载设置页功能面板 */
-function mountPanel(settings: SystemDialogSettings = draft()): VueWrapper {
-    const wrapper = mount(FeaturesPanel, {
-        props: { settings },
-        global: { stubs: { teleport: true } },
-        attachTo: document.body
-    })
+/** 记录挂载实例，afterEach 统一卸载 */
+function track<T extends VueWrapper>(wrapper: T): T {
     wrappers.push(wrapper)
     return wrapper
+}
+
+/** 挂载系统设置对话框（async panel 首次点击页签后加载） */
+function mountDialog(): VueWrapper {
+    return track(
+        mount(SystemSettingDialog, {
+            ...dialogMountOptions,
+            props: { visible: true }
+        }) as VueWrapper
+    )
+}
+
+/** 点击第 index 个侧边栏项并等待面板切换 / 异步 chunk 加载 */
+async function switchTab(wrapper: VueWrapper, index: number): Promise<void> {
+    await wrapper.findAll('.sidebar-item')[index].trigger('click')
+    // AI 助手面板为 defineAsyncComponent：等待动态 import 完成后组件才真正渲染
+    await vi.dynamicImportSettled()
+    await flushPromises()
+}
+
+/** 取某通道的 invoke 调用次数 */
+function callCountOf(channel: string): number {
+    return invoke.mock.calls.filter((call) => call[0] === channel).length
 }
 
 beforeEach(() => {
     invoke = vi.fn(async (channel: string) => {
         if (channel === IPC.AI.GET_CONFIG) {
-            return defaultAiSnapshot()
-        }
-        if (channel === IPC.AI.SAVE_CONFIG) {
-            const payload = (invoke.mock.calls.at(-1)?.[1] ?? {}) as Record<string, unknown>
-            return {
-                ok: true,
-                config: defaultAiSnapshot({
-                    enabled: payload.enabled === true,
-                    provider: typeof payload.provider === 'string' ? payload.provider : 'local',
-                    baseUrl: typeof payload.baseUrl === 'string' ? payload.baseUrl : '',
-                    model: typeof payload.model === 'string' ? payload.model : '',
-                    apiKeyConfigured:
-                        typeof payload.apiKey === 'string' || payload.clearApiKey !== true
-                })
-            }
-        }
-        if (channel === IPC.AI.CHAT) {
-            return { ok: true, content: '连接成功（模型：qwen2.5）', model: 'qwen2.5' }
+            return aiSnapshot()
         }
         if (channel === IPC.MCP.GET_STATUS) {
-            return {
-                enabled: false,
-                running: false,
-                port: 0,
-                token: '',
-                url: '',
-                toolCount: 7
-            }
+            return mcpStopped()
         }
         return undefined
     })
-    vi.stubGlobal('electron', { ipcRenderer: { invoke } })
+    configRead = vi
+        .fn()
+        .mockImplementation((name: string) =>
+            Promise.resolve(name === 'backup' ? { backups: [], latest: null } : {})
+        )
+    vi.stubGlobal('api', { config: { write: vi.fn().mockResolvedValue(true), read: configRead } })
+    vi.stubGlobal('electron', { ipcRenderer: { send: vi.fn(), invoke } })
 })
 
 afterEach(() => {
     for (const wrapper of wrappers) {
-        wrapper.unmount()
+        if (wrapper.exists()) {
+            wrapper.unmount()
+        }
     }
     wrappers = []
     document.body.innerHTML = ''
+    document.body.style.removeProperty('overflow')
     vi.unstubAllGlobals()
-    vi.useRealTimers()
+    vi.restoreAllMocks()
 })
 
-describe('FeaturesPanel：AI 助手分组渲染', () => {
-    it('默认渲染本地 Ollama + 关闭状态，MCP 分组保留且 AI 分组位于其后', async () => {
-        const wrapper = mountPanel()
-        await flushPromises()
-
-        expect(invoke).toHaveBeenCalledWith(IPC.AI.GET_CONFIG)
-        expect(wrapper.find('#ai-enabled').exists()).toBe(true)
-        expect((wrapper.find('#ai-enabled').element as HTMLInputElement).checked).toBe(false)
-        expect((wrapper.find('#ai-provider').element as HTMLSelectElement).value).toBe('local')
-        expect((wrapper.find('#ai-local-provider').element as HTMLSelectElement).value).toBe(
-            'ollama'
-        )
-        expect(wrapper.find('#ai-base-url').exists()).toBe(true)
-        expect(wrapper.find('#ai-model').exists()).toBe(true)
-        // 本地形态不显示远程 API Key 输入
-        expect(wrapper.find('[data-testid="ai-api-key-row"]').exists()).toBe(false)
-        // MCP 分组仍在（不破坏 L2 结构），且 AI 分组 DOM 在其后
-        expect(wrapper.find('[data-testid="mcp-server-status"]').exists()).toBe(true)
-        const groups = wrapper.findAll('.settings-group')
-        const mcpGroupIndex = groups.findIndex((group) =>
-            group.classes().includes('mcp-server-group')
-        )
-        const aiGroupIndex = groups.findIndex((group) =>
-            group.classes().includes('ai-assistant-group')
-        )
-        expect(mcpGroupIndex).toBeGreaterThanOrEqual(0)
-        expect(aiGroupIndex).toBeGreaterThan(mcpGroupIndex)
+describe('SystemSettingDialog：AI 助手页签（第 7 项）', () => {
+    it('渲染 7 个侧边栏项，第 7 项为 AI 助手（i18n 标签）', () => {
+        const wrapper = mountDialog()
+        const items = wrapper.findAll('.sidebar-item')
+        expect(items).toHaveLength(7)
+        expect(items.map((item) => item.text())).toEqual([
+            '⚙️通用设置',
+            '📁文件设置',
+            '🎨外观设置',
+            '🧩功能',
+            '✍️编写体验',
+            '💾备份与恢复',
+            '🤖AI 助手'
+        ])
     })
 
-    it('远程形态显示 API Key 输入与密钥状态（已配置 + 安全存储）', async () => {
-        invoke.mockImplementation(async (channel: string) => {
-            if (channel === IPC.AI.GET_CONFIG) {
-                return defaultAiSnapshot({
-                    enabled: true,
-                    provider: 'remote',
-                    baseUrl: 'https://api.example.com/v1',
-                    model: 'deepseek-chat',
-                    apiKeyConfigured: true,
-                    apiKeyStorage: 'safe'
-                })
-            }
-            return undefined
-        })
-        const wrapper = mountPanel()
+    it('懒加载：首次点击 AI 助手页签才加载面板并读取 AI/MCP 配置，切页后保持挂载', async () => {
+        const wrapper = mountDialog()
         await flushPromises()
 
-        expect(wrapper.find('[data-testid="ai-api-key-row"]').exists()).toBe(true)
-        const keyInput = wrapper.find('#ai-api-key')
-        expect(keyInput.attributes('type')).toBe('password')
-        const status = wrapper.find('[data-testid="ai-key-status"]').text()
-        expect(status).toContain(t('dialogRenderer.systemSetting.features.aiApiKeyConfigured'))
-        expect(status).toContain(t('dialogRenderer.systemSetting.features.aiApiKeyStorageSafe'))
+        // 打开设置页时：AI 面板未加载、也不读取 AI/MCP 配置
+        expect(wrapper.find('#ai-assistant-enabled').exists()).toBe(false)
+        expect(callCountOf(IPC.AI.GET_CONFIG)).toBe(0)
+        expect(callCountOf(IPC.MCP.GET_STATUS)).toBe(0)
+
+        // 首次切到 AI 助手页签：异步面板加载完成并读取两份配置
+        await switchTab(wrapper, 6)
+        expect(wrapper.find('#ai-assistant-enabled').exists()).toBe(true)
+        expect(wrapper.find('.ai-models-group').exists()).toBe(true)
+        expect(callCountOf(IPC.AI.GET_CONFIG)).toBe(1)
+        expect(callCountOf(IPC.MCP.GET_STATUS)).toBe(1)
+
+        // 切回通用页签：AI 面板保持挂载（v-show 隐藏，状态不丢），不重复读取配置
+        await switchTab(wrapper, 0)
+        expect(wrapper.find('.ai-models-group').exists()).toBe(true)
+        expect(callCountOf(IPC.AI.GET_CONFIG)).toBe(1)
+        expect(callCountOf(IPC.MCP.GET_STATUS)).toBe(1)
     })
 
-    it('safeStorage 不可用（memory）时显示「仅会话内存」提示', async () => {
-        invoke.mockImplementation(async (channel: string) => {
-            if (channel === IPC.AI.GET_CONFIG) {
-                return defaultAiSnapshot({
-                    enabled: true,
-                    provider: 'remote',
-                    apiKeyConfigured: true,
-                    apiKeyStorage: 'memory'
-                })
-            }
-            return undefined
-        })
-        const wrapper = mountPanel()
-        await flushPromises()
-        const status = wrapper.find('[data-testid="ai-key-status"]').text()
-        expect(status).toContain(t('dialogRenderer.systemSetting.features.aiApiKeyStorageMemory'))
-        expect(wrapper.text()).toContain(
-            t('dialogRenderer.systemSetting.features.aiKeyUnavailable')
+    it('功能页签已移除 AI 助手 / MCP 服务分组与开关（配置入口已迁移）', async () => {
+        const wrapper = mountDialog()
+        await switchTab(wrapper, 3)
+
+        const featuresPanel = wrapper.findAll('.setting-panel')[3]
+        expect(featuresPanel.find('#ai-assistant-enabled').exists()).toBe(false)
+        expect(featuresPanel.find('#mcp-server-enabled').exists()).toBe(false)
+        expect(featuresPanel.find('.ai-models-group').exists()).toBe(false)
+        expect(featuresPanel.find('.mcp-server-group').exists()).toBe(false)
+        // 可选功能开关仍为 11 项（“纯功能开关”页语义不变）
+        expect(
+            featuresPanel
+                .findAll('.setting-checkbox')
+                .filter((checkbox) => (checkbox.attributes('id') ?? '').startsWith('feature-'))
+        ).toHaveLength(11)
+        // 面板顶部用途描述保留
+        expect(featuresPanel.text()).toContain(
+            '默认能力始终开启；可选能力按需开启，关闭时不注册界面与编辑行为，不增加启动负担。'
         )
+        // 迁移后操作入口只存在于 AI 助手页签
+        await switchTab(wrapper, 6)
+        expect(wrapper.find('#ai-assistant-enabled').exists()).toBe(true)
+        expect(wrapper.find('#mcp-server-enabled').exists()).toBe(true)
     })
 })
 
-describe('FeaturesPanel：AI 配置保存/清除/测试连接', () => {
-    it('保存：AI.SAVE_CONFIG 携带表单值（provider/baseUrl/model/enabled），并显示已保存', async () => {
-        const wrapper = mountPanel()
-        await flushPromises()
-
-        await wrapper.find('#ai-enabled').setValue(true)
-        await wrapper.find('#ai-provider').setValue('remote')
-        await wrapper.find('#ai-base-url').setValue('https://api.example.com/v1')
-        await wrapper.find('#ai-model').setValue('deepseek-chat')
-        await wrapper.find('.ai-save-btn').trigger('click')
-        await flushPromises()
-
-        expect(invoke).toHaveBeenCalledWith(IPC.AI.SAVE_CONFIG, {
-            enabled: true,
-            provider: 'remote',
-            localProvider: 'ollama',
-            baseUrl: 'https://api.example.com/v1',
-            model: 'deepseek-chat'
-        })
-        expect(wrapper.find('[data-testid="ai-success"]').text()).toContain(
-            t('dialogRenderer.systemSetting.features.aiSaved')
+describe('FeaturesPanel：迁移后不再读取 AI / MCP 配置', () => {
+    it('挂载只渲染功能开关，不调用 MCP/AI IPC', async () => {
+        const wrapper = track(
+            mount(FeaturesPanel, {
+                props: { settings: draft() },
+                global: { stubs: { teleport: true } }
+            }) as VueWrapper
         )
-    })
-
-    it('输入新 API Key 后保存：密钥随载荷提交并清空输入框', async () => {
-        const wrapper = mountPanel()
-        await flushPromises()
-        await wrapper.find('#ai-provider').setValue('remote')
-        await wrapper.find('#ai-api-key').setValue('sk-new-key')
-        await wrapper.find('.ai-save-btn').trigger('click')
         await flushPromises()
 
-        expect(invoke).toHaveBeenCalledWith(
-            IPC.AI.SAVE_CONFIG,
-            expect.objectContaining({ apiKey: 'sk-new-key' })
-        )
-        expect((wrapper.find('#ai-api-key').element as HTMLInputElement).value).toBe('')
-    })
-
-    it('清除密钥：AI.SAVE_CONFIG({ clearApiKey: true })', async () => {
-        invoke.mockImplementation(async (channel: string) => {
-            if (channel === IPC.AI.GET_CONFIG) {
-                return defaultAiSnapshot({
-                    enabled: true,
-                    provider: 'remote',
-                    apiKeyConfigured: true
-                })
-            }
-            if (channel === IPC.AI.SAVE_CONFIG) {
-                return { ok: true, config: defaultAiSnapshot({ provider: 'remote' }) }
-            }
-            return undefined
-        })
-        const wrapper = mountPanel()
-        await flushPromises()
-
-        await wrapper.find('.ai-clear-key-btn').trigger('click')
-        await flushPromises()
-        expect(invoke).toHaveBeenCalledWith(IPC.AI.SAVE_CONFIG, { clearApiKey: true })
-        expect(wrapper.find('[data-testid="ai-key-status"]').text()).toContain(
-            t('dialogRenderer.systemSetting.features.aiApiKeyNotConfigured')
-        )
-    })
-
-    it('测试连接：先保存当前表单，再以空 messages 调 AI.CHAT 并展示成功结果', async () => {
-        const wrapper = mountPanel()
-        await flushPromises()
-        await wrapper.find('#ai-model').setValue('qwen2.5')
-        await wrapper.find('.ai-test-btn').trigger('click')
-        await flushPromises()
-
-        expect(invoke).toHaveBeenCalledWith(
-            IPC.AI.SAVE_CONFIG,
-            expect.objectContaining({ model: 'qwen2.5' })
-        )
-        expect(invoke).toHaveBeenCalledWith(IPC.AI.CHAT, { messages: [] })
-        expect(wrapper.find('[data-testid="ai-success"]').text()).toContain('连接成功')
-    })
-
-    it('测试连接失败：展示结构化失败原因（AI_NOT_CONFIGURED）', async () => {
-        invoke.mockImplementation(async (channel: string) => {
-            if (channel === IPC.AI.GET_CONFIG) {
-                return defaultAiSnapshot()
-            }
-            if (channel === IPC.AI.SAVE_CONFIG) {
-                return { ok: true, config: defaultAiSnapshot() }
-            }
-            if (channel === IPC.AI.CHAT) {
-                return { ok: false, code: 'AI_NOT_CONFIGURED', message: 'AI 助手未启用' }
-            }
-            return undefined
-        })
-        const wrapper = mountPanel()
-        await flushPromises()
-        await wrapper.find('.ai-test-btn').trigger('click')
-        await flushPromises()
-
-        expect(wrapper.find('[data-testid="ai-error"]').text()).toContain('AI 助手未启用')
-    })
-
-    it('保存失败：展示结构化失败原因', async () => {
-        invoke.mockImplementation(async (channel: string) => {
-            if (channel === IPC.AI.GET_CONFIG) {
-                return defaultAiSnapshot()
-            }
-            if (channel === IPC.AI.SAVE_CONFIG) {
-                return { ok: false, code: 'AI_CONFIG_STORE_FAILED', message: '写入失败' }
-            }
-            return undefined
-        })
-        const wrapper = mountPanel()
-        await flushPromises()
-        await wrapper.find('.ai-save-btn').trigger('click')
-        await flushPromises()
-        expect(wrapper.find('[data-testid="ai-error"]').text()).toContain('写入失败')
-    })
-
-    it('受限 ipcRenderer 不可用：显示不可用提示并禁用保存/测试按钮', async () => {
-        vi.stubGlobal('electron', undefined)
-        const wrapper = mountPanel()
-        await flushPromises()
-
-        expect(wrapper.find('[data-testid="ai-error"]').text()).toContain(
-            t('dialogRenderer.systemSetting.features.aiUnavailable')
-        )
-        expect((wrapper.find('.ai-save-btn').element as HTMLButtonElement).disabled).toBe(true)
-        expect((wrapper.find('.ai-test-btn').element as HTMLButtonElement).disabled).toBe(true)
+        expect(invoke).not.toHaveBeenCalled()
+        expect(wrapper.find('.mcp-server-group').exists()).toBe(false)
+        expect(wrapper.find('.ai-models-group').exists()).toBe(false)
     })
 })

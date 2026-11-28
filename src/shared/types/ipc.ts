@@ -761,12 +761,18 @@ export interface McpServerStatus {
     url: string
     /** 暴露的只读工具数量（固定 7） */
     toolCount: number
+    /** 用户配置的首选端口（null = 自动选择，优先 3847） */
+    preferredPort: number | null
 }
 
 /** `MCP.SET_ENABLED` 请求载荷 */
 export interface McpSetEnabledPayload {
     /** true = 启动服务并生成新 token；false = 停止服务并清空 token */
     enabled: boolean
+    /** 首选端口（1~65535；null/0 = 自动选择，优先 3847；仅 enabled=true 时生效） */
+    port?: number | null
+    /** true = 强制重新生成 token（用于「重置 token」；服务保持运行/重启） */
+    regenerateToken?: boolean
 }
 
 /**

@@ -105,8 +105,9 @@ function makeDeps(provider: AiProvider, rootPath = workspaceRoot) {
         rootPath,
         providerLoader: async () => ({
             provider,
-            config: {
-                enabled: true,
+            model: {
+                id: 'fake-model-id',
+                name: '假模型',
                 provider: 'local' as const,
                 localProvider: 'ollama' as const,
                 baseUrl: '',
@@ -281,6 +282,20 @@ describe('IPC 载荷校验（validation）', () => {
         expect(() => normalizeAiChatRequest({ messages: 'x' })).toThrowError(AiProviderError)
     })
 
+    it('chat：可选 modelId 白名单校验（缺省/null 不出现，非法字符拒绝）', () => {
+        expect(normalizeAiChatRequest({ messages: [], modelId: 'model-a' })).toEqual({
+            messages: [],
+            modelId: 'model-a'
+        })
+        expect(normalizeAiChatRequest({ messages: [], modelId: null })).toEqual({ messages: [] })
+        expect(() => normalizeAiChatRequest({ messages: [], modelId: '含 空格' })).toThrowError(
+            AiProviderError
+        )
+        expect(() => normalizeAiChatRequest({ messages: [], modelId: 1 })).toThrowError(
+            AiProviderError
+        )
+    })
+
     it('chat：role 白名单与内容长度上限', () => {
         expect(
             normalizeAiChatRequest({
@@ -333,19 +348,76 @@ describe('IPC 载荷校验（validation）', () => {
         expect(normalized).toEqual({ draftPath: 'wiki/a.md', content: '# x', approved: true })
     })
 
-    it('save-config：枚举/布尔/baseUrl/密钥互斥校验', () => {
-        expect(normalizeAiSaveConfigRequest({ enabled: true, provider: 'remote' })).toEqual({
+    it('save-config：模型列表/默认模型/密钥互斥/旧字段废弃校验', () => {
+        const model = {
+            id: 'model-a',
+            name: '模型 A',
+            provider: 'remote' as const,
+            localProvider: 'ollama' as const,
+            baseUrl: 'https://api.example.com/v1',
+            model: 'deepseek-chat'
+        }
+        expect(
+            normalizeAiSaveConfigRequest({
+                enabled: true,
+                models: [model],
+                defaultModelId: 'model-a',
+                modelApiKey: { modelId: 'model-a', apiKey: 'sk-x' }
+            })
+        ).toEqual({
             enabled: true,
-            provider: 'remote'
+            models: [model],
+            defaultModelId: 'model-a',
+            modelApiKey: { modelId: 'model-a', apiKey: 'sk-x' }
         })
-        expect(() => normalizeAiSaveConfigRequest({ provider: 'cloud' })).toThrowError(
+        expect(normalizeAiSaveConfigRequest({ defaultModelId: null })).toEqual({
+            defaultModelId: null
+        })
+        expect(
+            normalizeAiSaveConfigRequest({ modelApiKey: { modelId: 'model-a', clearApiKey: true } })
+        ).toEqual({
+            modelApiKey: { modelId: 'model-a', clearApiKey: true }
+        })
+        // 旧版单模型字段废弃：出现即拒绝（避免渲染层未升级时静默丢配置）
+        expect(() => normalizeAiSaveConfigRequest({ provider: 'remote' })).toThrowError(
             AiProviderError
         )
+        expect(() => normalizeAiSaveConfigRequest({ apiKey: 'sk-x' })).toThrowError(AiProviderError)
         expect(() => normalizeAiSaveConfigRequest({ enabled: 'yes' })).toThrowError(AiProviderError)
+        // 模型 id 白名单/重复/数量上限
         expect(() =>
-            normalizeAiSaveConfigRequest({ apiKey: 'sk-x', clearApiKey: true })
+            normalizeAiSaveConfigRequest({ models: [{ ...model, id: '含 空格' }] })
         ).toThrowError(AiProviderError)
-        expect(normalizeAiSaveConfigRequest({ clearApiKey: true })).toEqual({ clearApiKey: true })
+        expect(() =>
+            normalizeAiSaveConfigRequest({ models: [model, { ...model, name: '重复' }] })
+        ).toThrowError(AiProviderError)
+        expect(() =>
+            normalizeAiSaveConfigRequest({
+                models: Array.from({ length: 21 }, (_, i) => ({ ...model, id: `m${i}` }))
+            })
+        ).toThrowError(AiProviderError)
+        // 远程模型必须填写 baseUrl；本地模型允许空
+        expect(() =>
+            normalizeAiSaveConfigRequest({ models: [{ ...model, baseUrl: '' }] })
+        ).toThrowError(AiProviderError)
+        expect(
+            normalizeAiSaveConfigRequest({ models: [{ ...model, provider: 'local', baseUrl: '' }] })
+        ).toEqual({ models: [{ ...model, provider: 'local', baseUrl: '' }] })
+        // 密钥互斥 / 必须提供操作 / 与模型列表不匹配
+        expect(() =>
+            normalizeAiSaveConfigRequest({
+                modelApiKey: { modelId: 'model-a', apiKey: 'sk-x', clearApiKey: true }
+            })
+        ).toThrowError(AiProviderError)
+        expect(() =>
+            normalizeAiSaveConfigRequest({ modelApiKey: { modelId: 'model-a' } })
+        ).toThrowError(AiProviderError)
+        expect(() =>
+            normalizeAiSaveConfigRequest({
+                models: [{ ...model, id: 'other' }],
+                modelApiKey: { modelId: 'model-a', apiKey: 'sk-x' }
+            })
+        ).toThrowError(AiProviderError)
         expect(sanitizeAiBaseUrl('https://api.example.com/v1/')).toBe('https://api.example.com/v1')
         expect(sanitizeAiBaseUrl('')).toBe('')
         expect(() => sanitizeAiBaseUrl('ftp://x')).toThrowError(AiProviderError)
@@ -461,8 +533,9 @@ describe('ingest 编排（runAiIngest，不写盘）', () => {
                         rootPath: workspaceRoot,
                         providerLoader: async () => ({
                             provider: failingProvider,
-                            config: {
-                                enabled: true,
+                            model: {
+                                id: 'failing-model',
+                                name: '失败模型',
                                 provider: 'local',
                                 localProvider: 'ollama',
                                 baseUrl: '',

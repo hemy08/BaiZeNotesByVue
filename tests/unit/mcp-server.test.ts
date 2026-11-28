@@ -125,6 +125,8 @@ describe('启动/停止与状态', () => {
         expect(status.token).toMatch(MCP_TOKEN_PATTERN)
         expect(status.url).toBe(`http://127.0.0.1:${status.port}/mcp`)
         expect(status.toolCount).toBe(7)
+        // 未配置首选端口 = 自动选择
+        expect(status.preferredPort).toBeNull()
         // 状态查询与 start 返回同源实时值
         expect(server.getStatus()).toEqual(status)
     })
@@ -153,7 +155,8 @@ describe('启动/停止与状态', () => {
             port: 0,
             token: '',
             url: '',
-            toolCount: 7
+            toolCount: 7,
+            preferredPort: null
         })
         // 停止后旧端口不再监听
         await expect(request({ port: status.port })).rejects.toThrow()
@@ -190,6 +193,133 @@ describe('启动/停止与状态', () => {
             await fallbackServer.stop()
             await new Promise<void>((resolve) => occupied.close(() => resolve()))
         }
+    })
+})
+
+describe('首选端口与 token 重置（体验升级批次 C）', () => {
+    /** 分配一个当前空闲的本机端口（分配后立即释放，供 server 监听） */
+    async function allocateFreePort(): Promise<number> {
+        const probe = net.createServer()
+        const port: number = await new Promise((resolve, reject) => {
+            probe.once('error', reject)
+            probe.listen(0, '127.0.0.1', () => {
+                const address = probe.address()
+                resolve(typeof address === 'object' && address !== null ? address.port : 0)
+            })
+        })
+        await new Promise<void>((resolve) => probe.close(() => resolve()))
+        return port
+    }
+
+    it('指定首选端口：按该端口监听，状态回显 preferredPort', async () => {
+        const freePort = await allocateFreePort()
+        const customServer = new McpHttpServer({ preferredPorts: [0] })
+        try {
+            const customStatus = await customServer.start({
+                version: '1.5.7-test',
+                preferredPort: freePort
+            })
+            expect(customStatus.port).toBe(freePort)
+            expect(customStatus.preferredPort).toBe(freePort)
+            expect(customStatus.url).toBe(`http://127.0.0.1:${freePort}/mcp`)
+            // 新端口可正常响应鉴权请求
+            const response = await request({
+                port: customStatus.port,
+                method: 'POST',
+                headers: authHeaders(customStatus.token),
+                body: rpcBody('ping')
+            })
+            expect(response.status).toBe(200)
+        } finally {
+            await customServer.stop()
+        }
+    })
+
+    it('首选端口被占用 → 回退（仍返回实际端口与配置的首选端口）', async () => {
+        const occupied = net.createServer()
+        const occupiedPort: number = await new Promise((resolve, reject) => {
+            occupied.once('error', reject)
+            occupied.listen(0, '127.0.0.1', () => {
+                const address = occupied.address()
+                resolve(typeof address === 'object' && address !== null ? address.port : 0)
+            })
+        })
+        const fallbackServer = new McpHttpServer({ preferredPorts: [0] })
+        try {
+            const fallbackStatus = await fallbackServer.start({
+                version: '1.5.7-test',
+                preferredPort: occupiedPort
+            })
+            expect(fallbackStatus.port).toBeGreaterThan(0)
+            expect(fallbackStatus.port).not.toBe(occupiedPort)
+            expect(fallbackStatus.preferredPort).toBe(occupiedPort)
+        } finally {
+            await fallbackServer.stop()
+            await new Promise<void>((resolve) => occupied.close(() => resolve()))
+        }
+    })
+
+    it('运行中变更首选端口 → 重启监听（新端口 + 新 token）', async () => {
+        const firstPort = await allocateFreePort()
+        const secondPort = await allocateFreePort()
+        const customServer = new McpHttpServer({ preferredPorts: [0] })
+        try {
+            const first = await customServer.start({
+                version: '1.5.7-test',
+                preferredPort: firstPort
+            })
+            expect(first.port).toBe(firstPort)
+
+            const second = await customServer.start({
+                version: '1.5.7-test',
+                preferredPort: secondPort
+            })
+            expect(second.port).toBe(secondPort)
+            expect(second.preferredPort).toBe(secondPort)
+            expect(second.token).not.toBe(first.token)
+            // 旧端口已释放
+            await expect(request({ port: first.port })).rejects.toThrow()
+        } finally {
+            await customServer.stop()
+        }
+    })
+
+    it('regenerateToken：服务保持运行、端口不变、token 立即更换且旧 token 失效', async () => {
+        const oldToken = status.token
+        const oldPort = status.port
+        const regenerated = await server.start({
+            version: '1.5.7-test',
+            regenerateToken: true
+        })
+        expect(regenerated.running).toBe(true)
+        expect(regenerated.port).toBe(oldPort)
+        expect(regenerated.token).not.toBe(oldToken)
+        // 新 token 可用
+        const ok = await request({
+            port: oldPort,
+            method: 'POST',
+            headers: authHeaders(regenerated.token),
+            body: rpcBody('ping')
+        })
+        expect(ok.status).toBe(200)
+        // 旧 token 立即失效
+        const denied = await request({
+            port: oldPort,
+            method: 'POST',
+            headers: authHeaders(oldToken),
+            body: rpcBody('ping')
+        })
+        expect(denied.status).toBe(401)
+    })
+
+    it('首选端口在 stop 后保留（供设置页展示与重启复用）', async () => {
+        const freePort = await allocateFreePort()
+        const customServer = new McpHttpServer({ preferredPorts: [0] })
+        await customServer.start({ version: '1.5.7-test', preferredPort: freePort })
+        const stopped = await customServer.stop()
+        expect(stopped.running).toBe(false)
+        expect(stopped.port).toBe(0)
+        expect(stopped.preferredPort).toBe(freePort)
     })
 })
 

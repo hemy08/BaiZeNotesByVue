@@ -632,10 +632,18 @@ export default {
         ariaLabel: 'AI input panel',
         title: 'AI Assistant',
         modelLabel: 'Model',
-        modelDefault: 'Default model',
-        modelLocalMock: 'Local model (not connected)',
-        modelRemoteMock: 'Remote model (not connected)',
-        modelHint: 'Model selection is a placeholder; real models arrive in the L3 batch',
+        modelSelectHint: 'Choose the model used for this conversation',
+        modelLoading: 'Loading models…',
+        modelUnconfigured: 'No model configured',
+        modelUnconfiguredHint:
+            'The AI assistant is not enabled or has no model configured. Configure it in Settings > AI Assistant and try again.',
+        modelFallback: 'Default model (config unavailable)',
+        modelLoadFailedHint:
+            'Failed to read the AI model configuration; the default model will be used. Reopen the panel or check the configuration in Settings.',
+        resetWidth: 'Reset panel width',
+        splitterLabel: 'Resize the AI panel',
+        splitterHint:
+            'Drag to resize the AI panel (arrow keys for fine adjustment, double-click to reset)',
         clear: 'Clear conversation',
         contextTitle: 'Context',
         contextDocument: 'Current document',
@@ -663,7 +671,7 @@ export default {
         emptyReply: 'AI returned no content. Try again later.',
         transportError: 'AI request failed. Try again later.',
         aiNotConfigured:
-            'The AI assistant is not enabled yet. Configure it in Settings > System Settings > Features > AI assistant and try again.',
+            'The AI assistant is not enabled or is incompletely configured. Finish the configuration in Settings > AI Assistant and try again.',
         aiUnavailable: 'Unavailable in this environment: the AI service channel cannot be reached.',
         aiError: 'AI request failed. Try again later.',
         collapse: 'Collapse AI panel',
