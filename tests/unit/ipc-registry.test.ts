@@ -57,6 +57,8 @@ const implementationMocks = vi.hoisted(() => ({
     registerMcpIpc: vi.fn(),
     // 1.5.7 LLM Wiki L3：AI Provider / AI ingest / diff 审批 / 运行模型查询（6 个 invoke 通道）独立域注册入口
     registerAiIpc: vi.fn(),
+    // 1.5.7 终端工具（阶段 A）：pty 会话创建/写入/尺寸/关闭（4 个 invoke 通道）独立域注册入口
+    registerTerminalIpc: vi.fn(),
     // 主题广播依赖
     getCurrentThemeStyles: vi.fn(),
     getThemeStylesByType: vi.fn(),
@@ -140,6 +142,11 @@ vi.mock('../../src/main/ipc/mcp-ipc', () => ({
 // 1.5.7 LLM Wiki L3：AI Provider / ingest / diff 审批独立域模块（本文件只验证编排）
 vi.mock('../../src/main/ipc/ai-ipc', () => ({
     registerAiIpc: implementationMocks.registerAiIpc
+}))
+
+// 1.5.7 终端工具（阶段 A）：pty 会话独立域模块（本文件只验证编排；node-pty 原生模块不加载）
+vi.mock('../../src/main/ipc/terminal-ipc', () => ({
+    registerTerminalIpc: implementationMocks.registerTerminalIpc
 }))
 
 // P1-1：主题广播实现已迁到中性层 utils/theme-broadcast（config 不再 import ipc/**）
@@ -263,6 +270,9 @@ beforeEach(() => {
     implementationMocks.registerAiIpc.mockImplementation(() => {
         callOrder.push('ai')
     })
+    implementationMocks.registerTerminalIpc.mockImplementation(() => {
+        callOrder.push('terminal')
+    })
     implementationMocks.getCurrentThemeStyles.mockReturnValue({ name: 'baize' })
     implementationMocks.getThemeStylesByType.mockImplementation((themeType: string) => ({
         name: themeType
@@ -312,7 +322,8 @@ describe('registerAll（建窗后一次性注册清单）', () => {
             'llm-wiki',
             'llm-wiki-migration',
             'mcp',
-            'ai'
+            'ai',
+            'terminal'
         ])
         expect(implementationMocks.mainWindowListenDialogsEvent).toHaveBeenCalledWith(mainWindow)
         expect(implementationMocks.registerUtilsIpcHandlers).toHaveBeenCalledWith(mainWindow)
@@ -352,6 +363,8 @@ describe('registerAll（建窗后一次性注册清单）', () => {
         expect(implementationMocks.registerMcpIpc).toHaveBeenCalledWith('global-mcp-ipc')
         // 1.5.7 LLM Wiki L3：AI Provider / ingest / diff 审批 handler（无窗口参数，仅台账组件 ID）
         expect(implementationMocks.registerAiIpc).toHaveBeenCalledWith('global-ai-ipc')
+        // 1.5.7 终端工具（阶段 A）：pty 会话 4 个 invoke handler（无窗口参数，仅台账组件 ID）
+        expect(implementationMocks.registerTerminalIpc).toHaveBeenCalledWith('global-terminal-ipc')
     })
 
     it('should register the persistent theme/ready listeners before the window-level registrations', () => {

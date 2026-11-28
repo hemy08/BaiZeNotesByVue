@@ -26,7 +26,8 @@
  *    1.5.1 工作区索引 → 1.5.1 B5 附件管理 → 1.5.2 E6 今日日记/快速收件箱 →
  *    1.5.2 E2 PDF 标注与摘录 → 1.5.2 E3 图片 OCR（剪贴板识别）→
  *    1.5.7 LLM Wiki L1 工作区初始化 → 1.5.7 LLM Wiki 迁移批次（扫描/复制移动/回滚）→
- *    1.5.7 LLM Wiki L2 MCP 只读桥 → 1.5.7 LLM Wiki L3 AI Provider / AI ingest / diff 审批）。
+ *    1.5.7 LLM Wiki L2 MCP 只读桥 → 1.5.7 LLM Wiki L3 AI Provider / AI ingest / diff 审批 →
+ *    1.5.7 终端工具（pty 会话：创建/写入/尺寸/关闭 4 个 invoke））。
  *
  * 窗口重建（macOS activate）不会再次调用本文件：全局注册为进程级 persistent
  * （ipcListenerManager.registerOnce/registerHandleOnce），窗口重建只需刷新
@@ -82,6 +83,8 @@ import { registerLlmWikiMigrationIpc } from './llm-wiki-migration-ipc'
 import { registerMcpIpc } from './mcp-ipc'
 // 1.5.7 LLM Wiki L3：AI Provider（本地 + 远程 BYOK）/ AI ingest / diff 审批（5 个 invoke 通道）
 import { registerAiIpc } from './ai-ipc'
+// 1.5.7 终端工具（阶段 A）：pty 会话创建/写入/尺寸/关闭（4 个 invoke 通道）
+import { registerTerminalIpc } from './terminal-ipc'
 import { logger } from '../utils/logger'
 import { IPC } from '../../shared/ipc-channels'
 
@@ -124,6 +127,9 @@ const MCP_COMPONENT_ID = 'global-mcp-ipc'
 
 /** 1.5.7 LLM Wiki L3 AI Provider / ingest / diff 审批 IPC 的监听台账组件 ID */
 const AI_COMPONENT_ID = 'global-ai-ipc'
+
+/** 1.5.7 终端工具（pty 会话）IPC 的监听台账组件 ID */
+const TERMINAL_COMPONENT_ID = 'global-terminal-ipc'
 
 /** registerAll 的入口钩子：由 main/index.ts 提供的跨模块行为（避免 registry 反向依赖入口） */
 export interface RegisterAllHooks {
@@ -283,4 +289,9 @@ export function registerAll(mainWindow: BrowserWindow, hooks: RegisterAllHooks =
     //     AI.GET_CONFIG / AI.SAVE_CONFIG（设置页 AI 分组；密钥经 safeStorage 加密落独立文件）、
     //     AI.QUERY_RUNNING_MODELS（1.5.7 查询运行中模型：用户配置命令需二次确认，未配置走内置只读查询）。
     registerAiIpc(AI_COMPONENT_ID)
+    // 17) 1.5.7 终端工具（阶段 A）：pty 会话 4 个 invoke 通道（CREATE/WRITE/RESIZE/CLOSE）。
+    //     仅主窗口可信；payload 全部校验（尺寸 1..500 / 写入 ≤64 KiB / shell 白名单）；
+    //     cwd 固定取主进程 appState.rootPath（渲染层不传路径），无工作区返回 NO_WORKSPACE；
+    //     会话上限 8，输出经 webContents.send 节流聚合为 TERMINAL.DATA，退出发 TERMINAL.EXIT。
+    registerTerminalIpc(TERMINAL_COMPONENT_ID)
 }

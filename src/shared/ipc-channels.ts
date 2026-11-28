@@ -5,8 +5,8 @@
  * - 主进程 / preload / 渲染层的 ipcMain、ipcRenderer、webContents.send、
  *   ipcListenerManager 注册一律引用本文件常量，禁止再写通道字符串字面量；
  * - 通道字符串统一为 `baize:<domain>:<name>`（2026-11-15 命名统一后 100% 带 `baize:`
- *   前缀，domain 限定 21 个白名单（1.5.2 E3 新增 ocr 域、1.5.7 L2 新增 mcp 域、
- *   1.5.7 L3 新增 ai 域、1.5.7 迁移批次新增 llm-wiki 域），
+ *   前缀，domain 限定 22 个白名单（1.5.2 E3 新增 ocr 域、1.5.7 L2 新增 mcp 域、
+ *   1.5.7 L3 新增 ai 域、1.5.7 迁移批次新增 llm-wiki 域、1.5.7 终端工具新增 terminal 域），
  *   见 tests/unit/ipc-channel-naming.test.ts）；
  * - 常量分组与通道 domain 一一对应（2026-11-18 遗留清单 #3/#7 修复：原 CQ-13 的
  *   10 个「域错配」通道已归位——编码类 4 通道并入 FILE 组、系统类 3 通道新建 SYSTEM 组、
@@ -325,6 +325,27 @@ export const IPC = {
         SCAN_FILES: 'baize:llm-wiki:scan-files',
         MIGRATE: 'baize:llm-wiki:migrate',
         ROLLBACK_MIGRATION: 'baize:llm-wiki:rollback-migration'
+    } as const,
+
+    // ============ 1.5.7 终端工具（阶段 A：IPC 契约 + 主进程 pty 服务，domain=terminal） ============
+    // 右侧边栏终端：默认打开系统命令提示符（Windows cmd.exe / macOS·Linux /bin/bash），
+    // 运行目录固定为用户当前打开的工具文件夹（主进程 appState.rootPath，渲染层不传路径）。
+    // 四个 invoke（均仅主窗口可信、payload 由主进程校验）：
+    // - CREATE：创建 pty 会话（cols/rows 必填 1..500；shell 仅 cmd/powershell/bash 白名单）；
+    // - WRITE：向 pty stdin 写入用户输入（单次 ≤64 KiB）；
+    // - RESIZE：同步终端尺寸（1..500）；
+    // - CLOSE：kill pty 并清理会话。
+    // 两个主进程 → 渲染层事件（仅主窗口）：
+    // - DATA：pty 输出（按会话 16ms 节流聚合，≥8 KiB 立即发送，单条 ≤64 KiB）；
+    // - EXIT：pty 退出（exitCode/signal）。
+    // 会话上限 8 个（主进程硬限制）；pty 仅由用户显式打开终端面板后创建。
+    TERMINAL: {
+        CREATE: 'baize:terminal:create',
+        WRITE: 'baize:terminal:write',
+        RESIZE: 'baize:terminal:resize',
+        CLOSE: 'baize:terminal:close',
+        DATA: 'baize:terminal:data',
+        EXIT: 'baize:terminal:exit'
     } as const,
 
     // ============ 主进程 → 渲染层广播事件 ============

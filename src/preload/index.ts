@@ -106,7 +106,7 @@ const api = {
 
 // <preload-whitelist:renderer-send>
 /**
- * 渲染层 → 主进程（send / invoke）允许通道：87 个。
+ * 渲染层 → 主进程（send / invoke）允许通道：91 个。
  * 由 build/generate-preload-whitelist.js 从 shared/types/ipc.ts 的 IpcRequests 生成，禁止手改。
  */
 const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
@@ -165,6 +165,10 @@ const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
     IPC.LLM_WIKI.SCAN_FILES,
     IPC.LLM_WIKI.MIGRATE,
     IPC.LLM_WIKI.ROLLBACK_MIGRATION,
+    IPC.TERMINAL.CREATE,
+    IPC.TERMINAL.WRITE,
+    IPC.TERMINAL.RESIZE,
+    IPC.TERMINAL.CLOSE,
     IPC.FILE_MANAGER.COPY_RELATIVE_PATH,
     IPC.FILE_MANAGER.COPY_IMAGELINK,
     IPC.FILE_MANAGER.COPY_FILELINK,
@@ -202,7 +206,7 @@ const ALLOWED_RENDERER_SEND_CHANNELS = new Set<string>([
 
 // <preload-whitelist:renderer-receive>
 /**
- * 主进程 → 渲染层（on / once）允许通道：28 个。
+ * 主进程 → 渲染层（on / once）允许通道：30 个。
  * 由 build/generate-preload-whitelist.js 从 shared/types/ipc.ts 的 IpcEvents 生成，禁止手改。
  */
 const ALLOWED_RENDERER_RECEIVE_CHANNELS = new Set<string>([
@@ -218,6 +222,8 @@ const ALLOWED_RENDERER_RECEIVE_CHANNELS = new Set<string>([
     IPC.EVENTS.FILE_SAVED_SUCCESS,
     IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT,
     IPC.EVENTS.STATUS_BAR_UPDATE,
+    IPC.TERMINAL.DATA,
+    IPC.TERMINAL.EXIT,
     IPC.FILE.CLEAR_EDITOR_PREVIEW,
     IPC.FILE.USER_SELECT_FILE,
     IPC.FILE.WELCOME_ENTER_MAIN,

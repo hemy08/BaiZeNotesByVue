@@ -982,6 +982,7 @@
                                                 >26.8 切换与迁移（传统工作区 → LLM Wiki）</a
                                             >
                                         </li>
+                                        <li class="toc-h3"><a href="#sec-126">26.9 终端工具</a></li>
                                     </ul>
                                 </li>
                             </ul>
@@ -4203,6 +4204,38 @@ updated: 2026-11-28
                     </p>
                     <p>
                         已初始化过的工作区再次切换<strong>不会弹迁移窗</strong>，直接完成切换并用轻提示告知。
+                    </p>
+                </blockquote>
+                <h3 id="sec-126">26.9 终端工具</h3>
+                <p>
+                    <strong>入口</strong>：右侧边栏的终端图标（<code>&gt;_</code>，与 AI
+                    助手入口并列；传统模式与 LLM Wiki 模式都可用）。
+                </p>
+                <ul>
+                    <li>
+                        点击后右侧展开<strong>终端面板</strong>，布局与 AI
+                        助手面板一致：宽度可拖动（双击分隔条复位 360px、键盘 ←/→
+                        可调）、可收起回右侧边栏；AI
+                        面板与终端面板<strong>互斥显示</strong>（同一时刻只显示一个，切换不丢失各自状态）。
+                    </li>
+                    <li>
+                        默认启动<strong>系统命令提示符</strong>（Windows 为
+                        <code>cmd.exe</code>，也可选 PowerShell）。
+                    </li>
+                    <li>
+                        <strong>运行目录 = 当前打开的文件夹</strong
+                        >（工作区根目录）；若尚未打开文件夹，面板会明确提示「未打开工作区」，请先打开一个文件夹再使用终端。
+                    </li>
+                    <li>
+                        工具栏（纯图标）：<strong>重启</strong>进程、<strong>清屏</strong>、<strong>复制</strong>选中内容、<strong>粘贴</strong>、<strong>收起</strong>面板。
+                    </li>
+                    <li>
+                        进程退出后面板显示「进程已退出（代码）」并可一键重启；关闭面板/应用退出时会回收终端进程。
+                    </li>
+                </ul>
+                <blockquote>
+                    <p>
+                        安全提示：终端具有当前用户权限，可执行任意命令，请只在本机正常使用；应用不会替你自动执行命令。
                     </p>
                 </blockquote>
 

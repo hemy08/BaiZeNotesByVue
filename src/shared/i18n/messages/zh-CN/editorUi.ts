@@ -663,6 +663,42 @@ export default {
         workspaceModeSwitchConfigFailed: '保存工作区模式配置失败，工作区模式未切换'
     },
     /**
+     * 1.5.7 终端工具（阶段 B）：工作区右侧终端面板（与 AI 助手面板同布局）。
+     * 入口在工作区右侧边栏（传统模式与 LLM Wiki 模式都可用）；面板宽度可拖动/键盘微调/
+     * 双击复位，收起后回到右侧边栏入口；运行目录固定为当前打开的工作区根（主进程解析，
+     * 渲染层不传路径），默认 shell 为系统命令提示符。
+     */
+    terminalPanel: {
+        ariaLabel: '终端面板',
+        title: '终端',
+        entryTitle: '打开终端（运行目录为当前工作区目录）',
+        entryAriaLabel: '打开终端',
+        cwdLabel: '目录',
+        shellLabel: 'Shell',
+        splitterLabel: '调整终端面板宽度',
+        splitterHint: '拖动调整终端面板宽度（方向键微调，双击恢复默认宽度）',
+        cwdPending: '读取中…',
+        shellPending: '读取中…',
+        loading: '正在启动终端…',
+        restarting: '正在重启终端…',
+        createFailed: '终端启动失败：{error}',
+        createFailedUnknown: '未知原因，请稍后重试',
+        ipcUnavailable: '当前环境无法访问主进程，终端不可用',
+        retry: '重试',
+        restart: '重新启动终端',
+        restartProcess: '重启进程',
+        clear: '清屏',
+        copy: '复制选中内容',
+        paste: '粘贴',
+        collapse: '收起终端面板',
+        copied: '已复制',
+        copyEmpty: '终端中没有选中的内容',
+        copyFailed: '复制失败',
+        pasteFailed: '粘贴失败：无法读取剪贴板',
+        exited: '进程已退出（代码 {code}）',
+        exitedUnknown: '进程已退出（退出码未知）'
+    },
+    /**
      * 1.5.7 体验修正（用户反馈批次 A6）：「编辑 / 预览 / 编辑+预览」三态视图切换按钮
      * （位于菜单栏右侧，A6 起从编辑工具条迁移）。传统模式与 LLM Wiki 模式共用（状态真源为
      * workspace-layout 的 currentWorkspaceLayout.viewMode，与视图菜单 F9/F10/F11 同步）；

@@ -246,6 +246,8 @@ const internalMocks = vi.hoisted(() => ({
     initUserDataDirectory: vi.fn(),
     // 第 4 批 P3：主窗口图标目录统一由 app-paths.getIconPath() 解析
     getIconPath: vi.fn(() => 'C:\\app\\resources\\icon'),
+    // 1.5.7 终端工具：退出清理 kill 全部 pty 会话（细节由 terminal-pty-manager.test.ts 覆盖）
+    disposeAllTerminalSessions: vi.fn(),
     isDirty: vi.fn(() => false)
 }))
 
@@ -376,6 +378,12 @@ vi.mock('../../src/main/config/system-theme', () => ({
 vi.mock('../../src/main/utils/auto-backup', () => ({
     syncAutoBackupTimer: internalMocks.syncAutoBackupTimer,
     stopAutoBackupTimer: internalMocks.stopAutoBackupTimer
+}))
+
+// 1.5.7 终端工具（阶段 A）：入口只做退出清理挂接；pty-manager 依赖 node-pty 原生模块，
+// 单测环境必须 mock（spawn/节流/上限等行为由 terminal-pty-manager.test.ts 覆盖）
+vi.mock('../../src/main/terminal/pty-manager', () => ({
+    disposeAllTerminalSessions: internalMocks.disposeAllTerminalSessions
 }))
 
 vi.mock('../../src/main/utils/app-state', () => ({
@@ -1270,6 +1278,8 @@ describe('app lifecycle cleanup', () => {
         expect(internalMocks.disposeTray).toHaveBeenCalled()
         // 批次 C #8/#9：退出停止自动备份定时器
         expect(internalMocks.stopAutoBackupTimer).toHaveBeenCalled()
+        // 1.5.7 终端工具：退出清理必须 kill 全部 pty 会话（防窗口销毁后进程残留）
+        expect(internalMocks.disposeAllTerminalSessions).toHaveBeenCalled()
         // 非 darwin 平台退出应用
         expect(electronMocks.app.quit).toHaveBeenCalled()
     })

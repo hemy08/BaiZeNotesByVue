@@ -3,12 +3,12 @@
  *
  * ## 三张契约表
  * - `IpcRequests`：渲染层 → 主进程（send / invoke）通道 → **参数元组**。
- *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（87 个通道）；
+ *   键集合与 preload 的 `ALLOWED_RENDERER_SEND_CHANNELS` 白名单**完全相等**（91 个通道）；
  * - `IpcResponses`：invoke（ipcMain.handle）通道 → 返回类型。
- *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（54 个）；
+ *   键集合 = IpcRequests 中「主进程以 registerHandleOnce 注册」的通道（58 个）；
  * - `IpcEvents`：主进程 → 渲染层广播（ipcRenderer.on/once）通道 → 监听回调参数元组
  *   （单载荷即一元元组）。键集合与 preload 的 `ALLOWED_RENDERER_RECEIVE_CHANNELS`
- *   白名单**完全相等**（28 个通道）。
+ *   白名单**完全相等**（30 个通道）。
  *
  * ## 键的写法（可静态校验）
  * 三张表统一用计算属性名 `[IPC.<组>.<键>]` 引用 `src/shared/ipc-channels.ts` 常量，
@@ -1028,10 +1028,119 @@ export interface LlmWikiRollbackResult {
     error?: string
 }
 
+/* ----------------------------------------------------------------------------
+ * 1.5.7 终端工具（阶段 A：IPC 契约 + 主进程 pty 服务，TERMINAL.*，4 invoke + 2 events）
+ *
+ * 通信链路（IPC-17 六步）：
+ *   1. 常量：shared/ipc-channels.ts 的 IPC.TERMINAL.CREATE / WRITE / RESIZE / CLOSE（invoke）
+ *      与 DATA / EXIT（主进程 → 渲染层事件）；
+ *   2. 契约：本段 Terminal* 类型 + IpcRequests / IpcResponses / IpcEvents 登记；
+ *   3. 白名单：build/generate-preload-whitelist.js 生成（禁止手改）；
+ *   4. 主进程：ipc/terminal-ipc.ts（registry 编排 + withSenderCheck + payload 校验）→
+ *      terminal/pty-manager.ts（node-pty 会话 Map / 输出节流 / 上限 / 清理）；
+ *   5. 渲染层（阶段 B）：右侧边栏终端面板（xterm + addon-fit），与 AI 助手面板同布局；
+ *   6. 测试：terminal-pty-manager（spawn 参数/节流/上限/退出/清理）/
+ *      terminal-ipc（注册/payload 校验/sender 校验）+ 通道命名/契约/白名单/注册门禁。
+ *
+ * 安全边界：
+ * - 仅主窗口可信调用（withSenderCheck，`kind: 'handle'` 拒绝返回统一错误对象）；
+ * - cwd 固定为主进程 appState.rootPath（渲染层不传路径；无工作区返回 TERMINAL_NO_WORKSPACE）；
+ * - shell 白名单（cmd / powershell / bash），由主进程按平台解析为可执行文件；
+ * - 会话上限 8；WRITE 单次 ≤64 KiB；CREATE/RESIZE 尺寸 1..500；
+ * - DATA 事件按会话节流聚合（16ms 或 ≥8 KiB 立即发送），单条 ≤64 KiB；
+ * - 日志只记录会话 id / 尺寸 / 退出码，不记录终端输入输出内容。
+ * -------------------------------------------------------------------------- */
+
+/** 终端 shell 白名单（渲染层可选；缺省 = 系统命令提示符） */
+export type TerminalShell = 'cmd' | 'powershell' | 'bash'
+
+/**
+ * 终端 IPC 结构化错误码（渲染层可按 code 映射文案；error 已带中文可读文本）。
+ * 注：未受信发送方由 withSenderCheck 返回既有统一拒绝对象
+ * `{ ok:false, code:'untrusted-sender', error:'IPC sender is not trusted' }`。
+ */
+export type TerminalErrorCode =
+    | 'TERMINAL_NO_WORKSPACE'
+    | 'TERMINAL_INVALID_PAYLOAD'
+    | 'TERMINAL_LIMIT_REACHED'
+    | 'TERMINAL_NOT_FOUND'
+    | 'TERMINAL_SPAWN_FAILED'
+    | 'TERMINAL_IO_FAILED'
+
+/** `TERMINAL.CREATE` 请求载荷（cwd 由主进程取 appState.rootPath，渲染层不可指定） */
+export interface TerminalCreateRequest {
+    /** 初始列数（整数 1..500） */
+    cols: number
+    /** 初始行数（整数 1..500） */
+    rows: number
+    /** shell 白名单（缺省 = 平台默认系统命令提示符） */
+    shell?: TerminalShell
+}
+
+/** `TERMINAL.CREATE` 成功结果（shell 为主进程解析后的可执行文件路径/命令） */
+export interface TerminalCreateSuccess {
+    ok: true
+    /** 终端会话 id（后续 WRITE/RESIZE/CLOSE 与 DATA/EXIT 事件均以它关联） */
+    id: string
+    /** 实际运行目录（= 主进程 appState.rootPath，即当前打开的工具文件夹） */
+    cwd: string
+    /** 实际 shell（解析后的可执行文件路径/命令） */
+    shell: string
+}
+
+/** `TERMINAL.CREATE` 失败结果（安全失败不抛异常；error 为中文可读文本） */
+export interface TerminalCreateFailure {
+    ok: false
+    error: string
+    code?: TerminalErrorCode | 'untrusted-sender'
+}
+
+/** `TERMINAL.CREATE` 返回结构 */
+export type TerminalCreateResult = TerminalCreateSuccess | TerminalCreateFailure
+
+/** `TERMINAL.WRITE` 请求载荷（data 为键盘输入，写入 pty stdin；单次 ≤64 KiB） */
+export interface TerminalWriteRequest {
+    id: string
+    data: string
+}
+
+/** `TERMINAL.RESIZE` 请求载荷（cols/rows 为整数 1..500） */
+export interface TerminalResizeRequest {
+    id: string
+    cols: number
+    rows: number
+}
+
+/** `TERMINAL.CLOSE` 请求载荷 */
+export interface TerminalCloseRequest {
+    id: string
+}
+
+/** `TERMINAL.WRITE / RESIZE / CLOSE` 统一返回结构（安全失败不抛异常） */
+export interface TerminalOperationResult {
+    ok: boolean
+    error?: string
+    code?: TerminalErrorCode | 'untrusted-sender'
+}
+
+/** `TERMINAL.DATA` 事件载荷（主进程 → 渲染层；单条 data ≤64 KiB） */
+export interface TerminalDataEventPayload {
+    id: string
+    data: string
+}
+
+/** `TERMINAL.EXIT` 事件载荷（主进程 → 渲染层；exitCode 不可用时为 null） */
+export interface TerminalExitEventPayload {
+    id: string
+    exitCode: number | null
+    /** 终止信号（POSIX；Windows 通常缺省） */
+    signal?: number
+}
+
 /* ============================================================================
  * 二、渲染层 → 主进程（send / invoke）请求参数元组
  *
- * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（85 个，双向核对见测试）。
+ * 键集合 == preload ALLOWED_RENDERER_SEND_CHANNELS（91 个，双向核对见测试）。
  * 元组即 ipcRenderer.send/invoke 除通道名之外的实参列表（可为空元组）。
  * ========================================================================== */
 export interface IpcRequests {
@@ -1175,6 +1284,16 @@ export interface IpcRequests {
     /** 回滚最近一次迁移（invoke；缺省回滚最近未回滚的日志） */
     [IPC.LLM_WIKI.ROLLBACK_MIGRATION]: [payload?: LlmWikiRollbackRequest]
 
+    // ============ 1.5.7 终端工具（invoke；cwd 固定取主进程 appState.rootPath） ============
+    /** 创建终端会话（invoke；cols/rows 1..500，shell 白名单，会话上限 8） */
+    [IPC.TERMINAL.CREATE]: [payload: TerminalCreateRequest]
+    /** 写入终端输入（invoke；data 单次 ≤64 KiB） */
+    [IPC.TERMINAL.WRITE]: [payload: TerminalWriteRequest]
+    /** 同步终端尺寸（invoke；cols/rows 1..500） */
+    [IPC.TERMINAL.RESIZE]: [payload: TerminalResizeRequest]
+    /** 关闭终端会话（invoke；kill pty + 清理） */
+    [IPC.TERMINAL.CLOSE]: [payload: TerminalCloseRequest]
+
     // ============ 文件管理器右键动作（全部为 send） ============
     [IPC.FILE_MANAGER.COPY_RELATIVE_PATH]: [path: string]
     [IPC.FILE_MANAGER.COPY_IMAGELINK]: [path: string]
@@ -1255,7 +1374,7 @@ export interface IpcRequests {
 /* ============================================================================
  * 三、invoke 通道返回类型
  *
- * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（54 个）。
+ * 键集合 = IpcRequests 中由主进程 registerHandleOnce 注册的通道（58 个）。
  * send 通道无返回值，故不在此表。
  * ========================================================================== */
 export interface IpcResponses {
@@ -1334,6 +1453,16 @@ export interface IpcResponses {
     /** 回滚最近一次迁移（invoke；安全失败返回 ok=false + error，失败逐项返回） */
     [IPC.LLM_WIKI.ROLLBACK_MIGRATION]: LlmWikiRollbackResult
 
+    // ============ 1.5.7 终端工具（invoke） ============
+    /** 创建终端会话（invoke；无工作区/超上限/spawn 失败返回结构化失败，不抛异常） */
+    [IPC.TERMINAL.CREATE]: TerminalCreateResult
+    /** 写入终端输入（invoke；会话不存在/写入失败返回结构化失败） */
+    [IPC.TERMINAL.WRITE]: TerminalOperationResult
+    /** 同步终端尺寸（invoke；会话不存在/尺寸非法返回结构化失败） */
+    [IPC.TERMINAL.RESIZE]: TerminalOperationResult
+    /** 关闭终端会话（invoke；kill pty + 清理，会话不存在返回结构化失败） */
+    [IPC.TERMINAL.CLOSE]: TerminalOperationResult
+
     // ============ 对话框确认动作 ============
     [IPC.DIALOG.RENAME_FILE_FOLDER_SUBMIT]: DialogActionResult
     [IPC.DIALOG.DELETE_FILE_FOLDER_CONFIRM]: DialogActionResult
@@ -1369,7 +1498,7 @@ export interface IpcResponses {
 /* ============================================================================
  * 四、主进程 → 渲染层广播（on / once）监听回调参数元组
  *
- * 键集合 == preload ALLOWED_RENDERER_RECEIVE_CHANNELS（28 个，双向核对见测试）。
+ * 键集合 == preload ALLOWED_RENDERER_RECEIVE_CHANNELS（30 个，双向核对见测试）。
  * 元组即 ipcRenderer.on 回调除 event 之外的参数列表（单载荷 = 一元元组）。
  * ========================================================================== */
 export interface IpcEvents {
@@ -1413,6 +1542,12 @@ export interface IpcEvents {
     [IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT]: [content: string]
     /** 状态栏更新（消息/类型/可选编码） */
     [IPC.EVENTS.STATUS_BAR_UPDATE]: [payload: StatusBarUpdatePayload]
+
+    // ============ 1.5.7 终端工具（主进程 → 渲染层） ============
+    /** 终端输出（按会话节流聚合，单条 data ≤64 KiB；仅主窗口收到） */
+    [IPC.TERMINAL.DATA]: [payload: TerminalDataEventPayload]
+    /** 终端退出（pty 进程结束；渲染层据此标记/移除会话） */
+    [IPC.TERMINAL.EXIT]: [payload: TerminalExitEventPayload]
 
     // ============ 文件 ============
     /** 清空编辑器预览（切目录/新建文件等场景） */

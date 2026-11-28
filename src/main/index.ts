@@ -36,6 +36,8 @@ import { StartAutoSaveFileTime, StopAutoSaveFileTime } from './utils/file-utils'
 import { disposeWordWorkerClient } from './utils/file-utils/word-worker-client'
 // 1.5.2 E3：退出时回收图片 OCR worker 线程（懒创建；未使用过则空操作，dispose 幂等）
 import { disposeOcrWorkerClient } from './utils/ocr/ocr-worker-client'
+// 1.5.7 终端工具（阶段 A）：退出/主窗口销毁时 kill 全部 pty 会话并清理输出节流定时器（幂等）
+import { disposeAllTerminalSessions } from './terminal/pty-manager'
 // 2026-11-20（关闭确认应用内对话框）：原生 dialog.showMessageBox → 渲染层 BaseDialog。
 // 本入口只负责「何时请求确认 + 拿到结果后放行/中止」；保存动作与超时/兜底均在
 // utils/close-confirm 内完成（含渲染层不可用时的原生回退）。
@@ -733,6 +735,9 @@ function cleanupApp(): void {
     disposeWordWorkerClient()
     // 1.5.2 E3：终止图片 OCR worker 线程（tesseract.js wasm/语言包内存随线程释放）
     disposeOcrWorkerClient()
+    // 1.5.7 终端工具：kill 全部 pty 会话并清理输出节流定时器，避免窗口销毁后 pty 进程残留
+    //（未创建过终端时为空操作；dispose 幂等，macOS window-all-closed 后再退出也安全）
+    disposeAllTerminalSessions()
     ipcListenerManager.cleanupAll()
 
     const windows = BrowserWindow.getAllWindows()

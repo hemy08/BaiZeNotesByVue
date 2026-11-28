@@ -702,6 +702,47 @@ export default {
             'Failed to save the workspace mode configuration, so the workspace mode was not switched'
     },
     /**
+     * 1.5.7 Terminal tool (phase B): terminal panel on the right side of the workspace, laid out
+     * like the AI assistant panel. The entry lives in the workspace right sidebar (available in
+     * both traditional and LLM Wiki modes); the panel width can be dragged / nudged with the
+     * keyboard / reset by double-clicking, and collapsing it returns to the sidebar entry. The
+     * working directory is fixed to the currently opened workspace root (resolved by the main
+     * process; the renderer never passes a path) and the default shell is the system command
+     * prompt.
+     */
+    terminalPanel: {
+        ariaLabel: 'Terminal panel',
+        title: 'Terminal',
+        entryTitle: 'Open terminal (runs in the current workspace directory)',
+        entryAriaLabel: 'Open terminal',
+        cwdLabel: 'Directory',
+        shellLabel: 'Shell',
+        splitterLabel: 'Resize the terminal panel',
+        splitterHint:
+            'Drag to resize the terminal panel (arrow keys for fine adjustment, double-click to reset)',
+        cwdPending: 'Reading…',
+        shellPending: 'Reading…',
+        loading: 'Starting terminal…',
+        restarting: 'Restarting terminal…',
+        createFailed: 'Failed to start terminal: {error}',
+        createFailedUnknown: 'Unknown error. Try again later.',
+        ipcUnavailable:
+            'The main process is unavailable in this environment; the terminal cannot be used',
+        retry: 'Retry',
+        restart: 'Restart terminal',
+        restartProcess: 'Restart process',
+        clear: 'Clear screen',
+        copy: 'Copy selection',
+        paste: 'Paste',
+        collapse: 'Collapse terminal panel',
+        copied: 'Copied',
+        copyEmpty: 'Nothing is selected in the terminal',
+        copyFailed: 'Copy failed',
+        pasteFailed: 'Paste failed: the clipboard cannot be read',
+        exited: 'Process exited (code {code})',
+        exitedUnknown: 'Process exited (exit code unknown)'
+    },
+    /**
      * 1.5.7 UX tuning (user feedback batch A6): three-state "editor / preview / editor+preview"
      * view switch button (at the right of the menu bar; moved from the edit toolbar in batch A6).
      * Shared by traditional and LLM Wiki modes (single source of truth: workspace-layout's

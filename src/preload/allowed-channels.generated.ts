@@ -24,7 +24,7 @@ type AllIpcChannel = {
 /** window.api.* 直连通道键类型（来源 IpcPreloadApiRequests） */
 type PreloadApiChannel = keyof IpcPreloadApiRequests
 
-/** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 87 个 */
+/** 渲染层 → 主进程（send / invoke）白名单：来源 IpcRequests，共 91 个 */
 export const RENDERER_SEND_CHANNELS = [
     IPC.WINDOW.MINIMIZE,
     IPC.WINDOW.MAXIMIZE,
@@ -81,6 +81,10 @@ export const RENDERER_SEND_CHANNELS = [
     IPC.LLM_WIKI.SCAN_FILES,
     IPC.LLM_WIKI.MIGRATE,
     IPC.LLM_WIKI.ROLLBACK_MIGRATION,
+    IPC.TERMINAL.CREATE,
+    IPC.TERMINAL.WRITE,
+    IPC.TERMINAL.RESIZE,
+    IPC.TERMINAL.CLOSE,
     IPC.FILE_MANAGER.COPY_RELATIVE_PATH,
     IPC.FILE_MANAGER.COPY_IMAGELINK,
     IPC.FILE_MANAGER.COPY_FILELINK,
@@ -115,7 +119,7 @@ export const RENDERER_SEND_CHANNELS = [
     IPC.QUICK_LINKS.SAVE
 ] as const satisfies readonly IpcSendChannel[]
 
-/** 主进程 → 渲染层（on / once）白名单：来源 IpcEvents，共 28 个 */
+/** 主进程 → 渲染层（on / once）白名单：来源 IpcEvents，共 30 个 */
 export const RENDERER_RECEIVE_CHANNELS = [
     IPC.DIALOG.OPEN_VUE_DIALOG,
     IPC.DIALOG.UNSAVED_CLOSE_REQUEST,
@@ -129,6 +133,8 @@ export const RENDERER_RECEIVE_CHANNELS = [
     IPC.EVENTS.FILE_SAVED_SUCCESS,
     IPC.EVENTS.SHOW_SELECTED_FILE_CONTEXT,
     IPC.EVENTS.STATUS_BAR_UPDATE,
+    IPC.TERMINAL.DATA,
+    IPC.TERMINAL.EXIT,
     IPC.FILE.CLEAR_EDITOR_PREVIEW,
     IPC.FILE.USER_SELECT_FILE,
     IPC.FILE.WELCOME_ENTER_MAIN,

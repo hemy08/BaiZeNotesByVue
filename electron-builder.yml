@@ -116,6 +116,26 @@ files:
     - '!**/node_modules/opencollective-postinstall/**'
     # bmp-js：setImage 在模块加载期 require（保留包本体），仅排除其测试图片（约 0.6 MiB）
     - '!**/node_modules/bmp-js/test/**'
+    # ===== 1.5.7 terminal tool: trim node-pty packaging (keep win32-x64 prebuilds only) =====
+    - '!**/node_modules/node-pty/prebuilds/win32-arm64/**'
+    - '!**/node_modules/node-pty/prebuilds/darwin-*/**'
+    - '!**/node_modules/node-pty/prebuilds/linux-*/**'
+    - '!**/node_modules/node-pty/third_party/**'
+    - '!**/node_modules/node-pty/deps/**'
+    - '!**/node_modules/node-pty/build/**'
+    - '!**/node_modules/node-pty/src/**'
+    # ConPTY-only: Windows 10+ terminal uses conpty.node; winpty fallback binaries are
+    # unreachable for supported OS (Electron requires Win10+). Keeps packaged size in budget.
+    - '!**/node_modules/node-pty/prebuilds/win32-x64/winpty.dll'
+    - '!**/node_modules/node-pty/prebuilds/win32-x64/winpty-agent.exe'
+    - '!**/node_modules/node-pty/prebuilds/win32-x64/pty.node'
+    - '!**/node_modules/node-pty/node-addon-api/**'
+    - '!**/node_modules/node-pty/scripts/**'
+    # ConPTY is built into Windows 10 1809+ (Electron 43 minimum OS); the bundled
+    # OpenConsole.exe host targets older Win10 builds only. Drop it plus npm test files.
+    - '!**/node_modules/node-pty/prebuilds/win32-x64/conpty/OpenConsole.exe'
+    - '!**/node_modules/node-pty/lib/*.test.js'
+    - '!**/node_modules/node-pty/lib/**/*.test.js'
     # ===== 1.5.2 E3 附带：主进程生产依赖「运行期不可达死重」回收 =====
     # 背景：OCR（tesseract.js-core baseline LSTM ~2.8 MiB）使 portable 逼近 101 MiB 预算上限，
     # 按 PERF-01/PERF-02 不得放宽阈值，改为回收既有依赖中运行期不可达的文件（每条均注明依据，

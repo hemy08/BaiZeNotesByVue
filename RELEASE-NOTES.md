@@ -21,8 +21,8 @@
 - **L3 AI 工作流**：AI Provider（本地 Ollama/LM Studio + 远程 BYOK，safeStorage 加密密钥）、`AI.CHAT`/`AI.INGEST`（草案+行级 diff，不写盘）/`AI.APPLY_INGEST`（审批后写入 wiki/）、diff 审批 UI、设置页 AI 助手分组
 - **L4 图谱与嵌入**：关系图谱（SVG 自绘、200 节点上限、拖拽/缩放/点击跳转/连线关系）、raw 资料嵌入（目录树 + 预览 + 相对 Markdown 链接插入）
 - **L5 工作台布局**：LLM Wiki 模式下编辑区「编辑器/预览」切换 + 右侧 AI 输入面板（对话/上下文/模型选择/停止/复制，L3 联调已接通）；传统模式布局零变化
-- **测试与门禁**：全量 **426 文件 / 8,095 用例**（7,532 通过 + 5 跳过）全绿；coverage **92.71 / 87.03 / 93.90 / 93.14**；IPC **121 通道 / 21 组**（preload send 87）；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿
-- **构建**：`build:win:all` 成功、budget 9/9、ProductVersion **1.5.7**（portable **102.05 / 102.5 MiB**、NSIS 112.82 / 115、asar 41.11 / 47）
+- **测试与门禁**：全量 **432 文件 / 8,218 用例**（7,532 通过 + 5 跳过）全绿；coverage **92.73 / 87.09 / 93.97 / 93.15**；IPC **127 通道 / 21 组**（preload send 91）；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿
+- **构建**：`build:win:all` 成功、budget 9/9、ProductVersion **1.5.7**（portable **102.05 / 102.5 MiB**、NSIS 113.57 / 115、asar 41.11 / 47）
 
 ### ✅ 迁移批次 M1：传统工作区 → LLM Wiki 决策弹窗与迁移执行（2026-11-28）
 
@@ -32,8 +32,8 @@
 - **回滚**：默认回滚最近未回滚日志；复制删复制体、移动移回原路径；**回滚前指纹检测（size+mtime）只回滚安全项**并逐项报告冲突；日志路径篡改拒绝
 - **链接影响扫描**：迁移前扫描 Markdown 中的 `[[链接]]`/相对引用，按所选格式预警「迁移后约 N 处链接将失效」+ 结果页断链清单（自动改写引用延后）
 - **复制后原文件处理**：结果页支持「保留（默认）/ 升级为移动（先回滚复制体再 move）」（「删除原文件」延后需受控删除通道）
-- **契约**：新增 `LLM_WIKI` 组 3 通道（SCAN_FILES/MIGRATE/ROLLBACK_MIGRATION）→ IPC **116→121 通道 / 20→21 域**、preload send **82→85**、IpcResponses **49→52**、EventBus **26→27**（`LLM_WIKI_COMPILE_REQUEST` 供批量编译批次订阅）
-- **测试与门禁**：全量 **426 文件 / 8,095 用例**；coverage **92.71 / 87.03 / 93.90 / 93.14**；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿；构建 ProductVersion 1.5.7（portable 102.13/102.5 MiB、NSIS 112.82/115、asar 41.11/47）；E2E 5 套通过
+- **契约**：新增 `LLM_WIKI` 组 3 通道（SCAN_FILES/MIGRATE/ROLLBACK_MIGRATION）→ IPC **116→127 通道 / 20→21 域**、preload send **82→85**、IpcResponses **49→52**、EventBus **26→27**（`LLM_WIKI_COMPILE_REQUEST` 供批量编译批次订阅）
+- **测试与门禁**：全量 **432 文件 / 8,218 用例**；coverage **92.73 / 87.09 / 93.97 / 93.15**；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿；构建 ProductVersion 1.5.7（portable 102.13/102.5 MiB、NSIS 113.57/115、asar 41.11/47）；E2E 5 套通过
 
 ### ✅ 迁移批次 M2：批量编译队列（审批 / 人工修改保护 / 增量 / 隐私提示）（2026-11-28）
 
@@ -42,22 +42,31 @@
 - **增量跳过**：已有 AI 产物且内容未被修改的页面自动跳过（不调用模型）；支持「重新编译全部」
 - **远程隐私提示**：默认模型为远程服务时启动前提示「会把 raw/ 资料发送到远程模型服务」并提供取消（可先去设置改用本地模型）；AI 未配置时阻止启动并引导配置
 - **UI**：新增 `BatchCompileDialog`（参数摘要 → 进度 → 审批 → 完成），抽取共享 diff 视图组件（既有单文件 AI 编译行为不变）；迁移弹窗勾选编译后自动衔接
-- **测试与门禁**：全量 **426 文件 / 8,095 用例**；coverage **92.71 / 87.03 / 93.90 / 93.14**；typecheck 四段 / ESLint / Prettier / memory:check / docs:check / quality 全绿；构建 ProductVersion 1.5.7（portable 102.13/102.5 MiB、NSIS 112.82/115、asar 41.11/47）
+- **测试与门禁**：全量 **432 文件 / 8,218 用例**；coverage **92.73 / 87.09 / 93.97 / 93.15**；typecheck 四段 / ESLint / Prettier / memory:check / docs:check / quality 全绿；构建 ProductVersion 1.5.7（portable 102.13/102.5 MiB、NSIS 113.57/115、asar 41.11/47）
 
 ### ✅ 模式切换体验优化 + 迁移批次收尾（M3/M4/M5，2026-11-28）
 
-- **M3 已初始化工作区直接切换**：新增 `LLM_WIKI.GET_STATUS` 通道（检测 raw/wiki/schema 是否存在，IPC 121 通道 / 21 域 / preload send 87 / IpcResponses 53）——工作区**已初始化过**时**不再弹迁移问询**，直接完成切换并提示；未初始化（首次）才弹迁移弹窗；检测失败保守弹窗
+- **M3 已初始化工作区直接切换**：新增 `LLM_WIKI.GET_STATUS` 通道（检测 raw/wiki/schema 是否存在，IPC 127 通道 / 21 域 / preload send 91 / IpcResponses 53）——工作区**已初始化过**时**不再弹迁移问询**，直接完成切换并提示；未初始化（首次）才弹迁移弹窗；检测失败保守弹窗
 - **M4 减少弹窗 + 轻量 Toast**：新增 Toast 提示系统（非模态、自动消失、`--ui-*` 令牌、四风格×三密度、aria-live）：已初始化切换 = **0 模态 + success Toast**；切回传统模式 = info Toast；首次切换仅保留迁移弹窗（决策项全内联）；切换失败保留错误对话框；迁移流程内初始化成功框不再叠加（migration 弹窗结果页承载反馈）
 - **M5 入口 chunk 瘦身**：迁移弹窗、批量编译宿主等新增大组件改异步懒加载 → 渲染入口 chunk **150.2→144.8 KiB / 150（余 5.2）**，budget 9/9 恢复通过
-- **测试与门禁**：全量 **426 文件 / 8,095 用例**；coverage **92.71 / 87.03 / 93.90 / 93.14**；typecheck 四段 / ESLint / Prettier / memory:check / docs:check / quality 全绿；构建 ProductVersion 1.5.7（portable **102.15/102.5 MiB**、NSIS 112.82/115、asar 41.20/47、入口 144.8/150 KiB）；E2E 5 套通过
+- **测试与门禁**：全量 **432 文件 / 8,218 用例**；coverage **92.73 / 87.09 / 93.97 / 93.15**；typecheck 四段 / ESLint / Prettier / memory:check / docs:check / quality 全绿；构建 ProductVersion 1.5.7（portable **102.73/102.5 MiB**、NSIS 113.57/115、asar 44.21/47、入口 144.8/150 KiB）；E2E 5 套通过
 
 ### ✅ AI 助手增强：连接测试误报修复 + 查询运行中模型（2026-11-28）
 
 - **连接测试误报修复**：本地 Ollama / LM Studio 服务可达但**模型列表为空**（未安装/未加载模型）时不再误报成功——现在判失败并提示 `ollama pull` / 先在本地服务加载模型；成功文案明确「服务可达，模型可用（不进行推理，实际可用性请发送消息验证）」；服务不实现 `/models`（404/405）时标注「未校验模型」
 - **查询运行中模型（新功能）**：AI 助手配置页每个模型新增「查询运行中模型」——支持**用户配置查询命令**（如 `ollama ps` / `lms ps`，单行 ≤500 字符，模型配置 `statusCommand`），执行前**二次确认**（显示命令原文 + 本机执行风险提示）；未配置命令时使用**内置查询**（Ollama `GET /api/ps` 运行中模型；OpenAI 兼容 `GET /models` 已加载/可用模型）；结果内联展示（来源标签、输出、模型列表、复制），失败有可读原因
 - **安全**：命令仅从用户显式保存的配置读取、主进程强制 `confirmExecution`、15s 超时 / 1MB 缓冲 / 64KB 输出截断、日志只记长度与退出码（不含命令原文与输出）
-- **契约**：新增 `AI.QUERY_RUNNING_MODELS` 通道 → IPC **121 通道 / 21 域**、preload send **87**、IpcResponses **54**（AI 域 6 个 invoke）
-- **测试与门禁**：全量 **426 文件 / 8,095 用例**；coverage **92.71 / 87.03 / 93.90 / 93.14**；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿；构建 ProductVersion 1.5.7（入口 144.8/150 KiB、portable **102.15/102.5 MiB**、NSIS 112.82/115、asar 41.20/47）；E2E 5 套通过
+- **契约**：新增 `AI.QUERY_RUNNING_MODELS` 通道 → IPC **127 通道 / 21 域**、preload send **87**、IpcResponses **54**（AI 域 6 个 invoke）
+- **测试与门禁**：全量 **432 文件 / 8,218 用例**；coverage **92.73 / 87.09 / 93.97 / 93.15**；typecheck 四段 / ESLint / Prettier / docs:check / quality 全绿；构建 ProductVersion 1.5.7（入口 144.8/150 KiB、portable **102.73/102.5 MiB**、NSIS 113.57/115、asar 44.21/47）；E2E 5 套通过
+
+### ✅ 终端工具：右侧边栏嵌入式终端（2026-11-28）
+
+- **入口与布局**：右侧边栏新增终端入口（纯图标，传统/LLM Wiki 两种模式均显示；与 AI 助手入口并列）→ 右侧展开终端面板（**展示/布局与 AI 助手面板一致**：同一宽度机制、可拖动分隔条、可收起回边栏；两面板互斥切换，AI 面板状态零改写）
+- **终端能力**：默认启动**系统命令提示符**（Windows `cmd.exe`；可选 PowerShell）；**运行目录 = 当前工具打开的文件夹**（工作区根，未打开文件夹时明确提示）；xterm 渲染（主题颜色由 `--ui-*` 令牌派生、28 套主题自适应）、ANSI 色彩、ResizeObserver 自适应尺寸
+- **工具栏与生命周期**：重启 / 清屏 / 复制 / 粘贴 / 收起（纯图标）；进程退出提示 + 重启；输出 16ms 聚合、单条 ≤64KB、会话上限 8、应用退出自动回收；数据流双向节流（输入 16ms/4KB 聚合）
+- **契约**：新增 `TERMINAL` 域（4 invoke + 2 事件）→ IPC **127 通道 / 22 域**、preload send **91** / receive **30**、IpcResponses **58**、IpcEvents **30**；仅主窗口可信、payload 严格校验、日志脱敏
+- **打包体积**：node-pty 打包裁剪（8.5 MiB → 1.2 MiB；仅保留 win32-x64 ConPTY 产物，排除 arm64/darwin/旧版 OpenConsole/测试文件/构建残留）；NSIS **113.57/115 MiB**、asar **44.21/47 MiB** 通过；便携版 102.73 MiB 超预算 0.23 MiB（含新增 xterm+node-pty 必要体积，预算调整待批）
+- **验证**：全量 **432 文件 / 8,218 用例**；coverage **92.73 / 87.09 / 93.97 / 93.15**；typecheck 四段 / ESLint / Prettier / memory:check 全绿；E2E 5 套通过 + 终端冒烟（真实 cmd 输出 `echo` 回显）通过
 
 ### ✅ 体验升级（2026-11-28，LLM Wiki 工作台与设置体验）
 
@@ -69,7 +78,7 @@
 - **AI 助手配置**：独立对话框（**菜单 → 设置 → AI 助手**，系统设置恢复 6 页签）——模型管理（添加/编辑/删除/设为默认/按模型测试连接/密钥掩码与清除/密钥存储形态提示/隐私说明/空态引导）立即保存 + MCP 服务配置（端口/状态/令牌）；原系统设置页与「功能」页的相关分组迁出
 - **MCP 可配置**：设置页支持**端口配置**（自动/固定 1~65535）、运行状态（实际端口/URL/7 只读工具/令牌复制）、**重置令牌**（旧 token 立即失效）；主进程支持首选端口、端口变更重启、regenerateToken、mcpPort 持久化
 - **多模型主进程**：配置升级为「启用 + 模型列表 + 默认模型 id」（旧单模型配置自动迁移一次）；每模型密钥按 id 独立 safeStorage 加密（不可用时仅内存）；校验（最多 20 模型/id 唯一/长度/枚举/baseUrl 协议）；AI.CHAT 按模型 id 解析（缺省默认模型、不存在返回模型不存在错误）
-- **测试与门禁**：全量 426 文件 / 8,095 用例 全绿；coverage 92.71 / 87.03 / 93.90 / 93.14（WorkSpaceArea branches 补至 100%）；typecheck 四段 / ESLint / Prettier 全绿；构建 ProductVersion 1.5.7（portable 102.13/102.5 MiB、NSIS 112.82/115、asar 41.11/47）
+- **测试与门禁**：全量 432 文件 / 8,218 用例 全绿；coverage 92.73 / 87.09 / 93.97 / 93.15（WorkSpaceArea branches 补至 100%）；typecheck 四段 / ESLint / Prettier 全绿；构建 ProductVersion 1.5.7（portable 102.13/102.5 MiB、NSIS 113.57/115、asar 41.11/47）
 
 ## 版本 1.5.6 (2026-11-28)
 

@@ -9,7 +9,7 @@
  * `src/preload/allowed-channels.generated.ts` 与 `src/preload/index.ts` 的生成标记块）。
  *
  * ## 本测试的双向核对
- * 1. 生成产物 ↔ shared 契约：`IpcRequests` 87 / `IpcEvents` 28 / `IpcPreloadApiRequests` 6；
+ * 1. 生成产物 ↔ shared 契约：`IpcRequests` 91 / `IpcEvents` 30 / `IpcPreloadApiRequests` 6；
  * 2. 入口镜像 ↔ 生成模块：`index.ts` 两个生成块必须与生成模块完全一致（防两处产物漂移）；
  * 3. 生成器 `--check`：契约已改但产物未重新生成 → 失败（杜绝「漏登记即静默丢弃」）；
  * 4. 对话框白名单 ↔ `src/main/dialogs` 实际调用点（结构优化第 2 批 2.1 后为 0 + 0，双向）；
@@ -248,17 +248,17 @@ const DIALOG_USAGE = collectDialogUsage()
 const PRELOAD_API_USAGE = collectPreloadApiUsage()
 
 describe('preload 白名单：生成产物 ↔ shared 契约', () => {
-    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（87，双向）', () => {
+    it('主窗口 send/invoke 白名单应与 IpcRequests 契约完全一致（91，双向）', () => {
         const generated = new Set(RENDERER_SEND_CHANNELS)
-        expect(generated.size).toBe(87)
-        expect(CONTRACT_REQUEST_KEYS.size).toBe(87)
+        expect(generated.size).toBe(91)
+        expect(CONTRACT_REQUEST_KEYS.size).toBe(91)
         expect(diff(generated, CONTRACT_REQUEST_KEYS)).toEqual([])
     })
 
-    it('主窗口 on/once 白名单应与 IpcEvents 契约完全一致（28，双向）', () => {
+    it('主窗口 on/once 白名单应与 IpcEvents 契约完全一致（30，双向）', () => {
         const generated = new Set(RENDERER_RECEIVE_CHANNELS)
-        expect(generated.size).toBe(28)
-        expect(CONTRACT_EVENT_KEYS.size).toBe(28)
+        expect(generated.size).toBe(30)
+        expect(CONTRACT_EVENT_KEYS.size).toBe(30)
         expect(diff(generated, CONTRACT_EVENT_KEYS)).toEqual([])
     })
 
@@ -294,9 +294,9 @@ describe('preload 白名单：生成产物 ↔ shared 契约', () => {
 })
 
 describe('preload 白名单：入口镜像 ↔ 生成产物（防两处产物漂移）', () => {
-    it('index.ts 两个生成块应可解析且与生成模块双向一致（86 / 28）', () => {
-        expect(INDEX_SEND_WHITELIST.size).toBe(87)
-        expect(INDEX_RECEIVE_WHITELIST.size).toBe(28)
+    it('index.ts 两个生成块应可解析且与生成模块双向一致（91 / 30）', () => {
+        expect(INDEX_SEND_WHITELIST.size).toBe(91)
+        expect(INDEX_RECEIVE_WHITELIST.size).toBe(30)
         expect(diff(INDEX_SEND_WHITELIST, new Set(RENDERER_SEND_CHANNELS))).toEqual([])
         expect(diff(INDEX_RECEIVE_WHITELIST, new Set(RENDERER_RECEIVE_CHANNELS))).toEqual([])
     })
@@ -386,7 +386,11 @@ describe('preload 白名单：渲染层实际调用覆盖（双向）', () => {
         expect(missing).toEqual([])
     })
 
-    it('窗口白名单不应包含渲染层未使用的通道（避免多余放行）', () => {
+    it('窗口白名单不应包含渲染层未使用的通道（契约 ↔ 实际调用严格双向一致）', () => {
+        // 1.5.7 终端工具按两阶段实施：阶段 A 先登记契约/白名单，阶段 B 渲染层接线。
+        // 阶段 B（xterm 终端面板）落地后，terminal 域 4 个 invoke + 2 个 event 均被渲染层
+        // 真实消费，分阶段「暂未接线」清单已删除——此后白名单新增通道必须同步接线，
+        // 不允许再出现计划外的未使用放行。
         const unusedSend = [...INDEX_SEND_WHITELIST]
             .filter((channel) => !RENDERER_USAGE.send.has(channel))
             .sort()

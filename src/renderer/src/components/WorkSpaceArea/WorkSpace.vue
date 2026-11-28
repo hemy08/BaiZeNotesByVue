@@ -90,6 +90,44 @@
                 @reset-width="handleResetLlmWikiAiPanelWidth"
             />
         </div>
+        <!-- 1.5.7 终端工具（阶段 B）：编辑区与终端面板之间的分隔条（与 AI 面板 split 同一
+             视觉/交互体系：5px 透明热区、拖动改宽、方向键 ±16、Home/End 两端、双击复位）。
+             仅在终端面板显示（active=terminal 且未收起且编辑区可见）时渲染。 -->
+        <div
+            v-if="showTerminalPanel"
+            id="terminal-splitter"
+            class="terminal-splitter"
+            role="separator"
+            aria-orientation="vertical"
+            aria-controls="terminal-panel-container"
+            :aria-label="t('editorUi.terminalPanel.splitterLabel')"
+            :title="t('editorUi.terminalPanel.splitterHint')"
+            :tabindex="0"
+            :aria-valuenow="terminalPanelWidthPx"
+            :aria-valuemin="0"
+            :aria-valuemax="terminalPanelMaxAvailablePx"
+            :style="{ width: `${TERMINAL_SPLITTER_WIDTH}px` }"
+            @mousedown="startTerminalPanelResize"
+            @dblclick="handleResetTerminalPanelWidth"
+            @keydown="handleTerminalSplitterKeydown"
+        ></div>
+        <!-- 1.5.7 终端工具（阶段 B）：右侧终端面板（与 AI 助手面板同一布局/同一互斥位置）。
+             - 挂载条件：终端面板已打开（visible）且右侧由终端占据（active=terminal）——
+               切到 AI 时终端容器卸载（组件卸载链路 TERMINAL.CLOSE 回收 pty）；
+             - v-show：仅在编辑区可见（插件/工具/HTML/PDF 视图隐藏，收起态隐藏）；
+             - 宽度由父组件内联 style 提供（拖动 / 键盘微调 / 双击复位 360，夹取 0~可用宽）；
+             - 终端组件按需异步加载（xterm + addon-fit 不进主界面壳 chunk）。 -->
+        <div
+            v-if="isTerminalPanelMounted"
+            v-show="showTerminalPanel"
+            id="terminal-panel-container"
+            class="terminal-panel-container"
+            :class="{ 'terminal-panel-container--zero-width': isTerminalPanelZeroWidth }"
+            :style="{ width: terminalPanelWidth }"
+            data-terminal-panel-active="true"
+        >
+            <TerminalPanel @toggle-collapse="toggleTerminalCollapsed" />
+        </div>
         <div
             v-show="isShowPluginsContainer"
             id="plugin-containers"
@@ -142,6 +180,7 @@
         id="right-navi"
         class="navi-tab"
         :data-llm-ai-entry-visible="showLlmAiSidebarEntry ? 'true' : 'false'"
+        :data-terminal-entry-visible="showTerminalSidebarEntry ? 'true' : 'false'"
         :style="{ width: naviTabWidth, float: 'right' }"
     >
         <button
@@ -162,6 +201,37 @@
                 <path
                     d="M12 2l1.9 5.4a2 2 0 0 0 1.2 1.2L20.5 10.5a.7.7 0 0 1 0 1.3l-5.4 1.9a2 2 0 0 0-1.2 1.2L12 20.3a.7.7 0 0 1-1.3 0L8.8 14.9a2 2 0 0 0-1.2-1.2L2.2 11.8a.7.7 0 0 1 0-1.3l5.4-1.9a2 2 0 0 0 1.2-1.2L11.4 2a.7.7 0 0 1 1.2 0z"
                 />
+            </svg>
+        </button>
+        <!-- 1.5.7 终端工具（阶段 B）：右侧边栏终端入口（纯图标 >_ 风格）。
+             两种工作区模式都可用（与 AI 入口相同：仅编辑区可见时显示；面板显示中不显示，
+             收起后回落到本入口）。入口不变更编辑区宽度。 -->
+        <button
+            v-if="showTerminalSidebarEntry"
+            id="terminal-sidebar-entry"
+            type="button"
+            class="terminal-sidebar-entry"
+            data-terminal-entry="true"
+            :title="t('editorUi.terminalPanel.entryTitle')"
+            :aria-label="t('editorUi.terminalPanel.entryAriaLabel')"
+            :aria-controls="isTerminalPanelMounted ? 'terminal-panel-container' : undefined"
+            :aria-expanded="showTerminalPanel ? 'true' : 'false'"
+            @click="handleTerminalSidebarEntryClick"
+        >
+            <!-- 终端图标（24 网格 / stroke 1.5 / currentColor，颜色由入口令牌驱动） -->
+            <svg
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+            >
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="M7 9l3 3-3 3" />
+                <path d="M12.5 15H17" />
             </svg>
         </button>
         <NaviTab position="right" @update:navi:tab="onSwitchLeftNaviTab" />
@@ -219,6 +289,16 @@ import {
     toggleLlmWikiAiPanelCollapsed
 } from '@renderer/components/llm-wiki/llm-wiki-workbench'
 import { llmWikiEditorContext } from '@renderer/components/llm-wiki/llm-wiki-context'
+import {
+    activateRightPanel,
+    ensureTerminalPanelStateLoaded,
+    normalizeTerminalPanelWidth,
+    openTerminalPanel,
+    resetTerminalPanelWidth,
+    setTerminalPanelWidth,
+    terminalPanelState,
+    toggleTerminalCollapsed
+} from '@renderer/components/terminal/terminal-panel-state'
 import { LLM_AI_TRANSPORT_INJECTION_KEY } from '@renderer/components/llm-wiki/llm-ai-transport'
 import { createLlmAiIpcTransport } from '@renderer/components/llm-wiki/llm-ai-ipc-transport'
 import { IPC } from '../../../../shared/ipc-channels'
@@ -304,6 +384,21 @@ const BatchCompileHost = defineAsyncComponent({
     // 宿主无可见 UI：失败时仅记录日志并 fail()（编译入口能力缺失属于异常，需可诊断）
     onError: (error: Error, _retry: () => void, fail: () => void) => {
         logger.error('批量编译宿主组件加载失败:', error)
+        fail()
+    }
+})
+
+// 1.5.7 终端工具（阶段 B）：终端面板按需异步加载——xterm + addon-fit + xterm.css 体积较大，
+// 只在用户首次打开终端面板时拉取对应 chunk，不进入主界面壳 chunk（与 HTML/PDF 查看器同口径）。
+// 加载中占位沿用「加载中...」文本；失败时记录日志并展示「加载失败，请重试」占位（不静默）。
+const loadTerminalPanel = () => import('@renderer/components/terminal/TerminalPanel.vue')
+const TerminalPanel = defineAsyncComponent({
+    loader: loadTerminalPanel,
+    loadingComponent: AsyncLoadingPlaceholder,
+    errorComponent: AsyncLoadErrorPlaceholder,
+    delay: 200,
+    onError: (error: Error, _retry: () => void, fail: () => void) => {
+        logger.error('终端面板组件加载失败:', error)
         fail()
     }
 })
@@ -413,6 +508,9 @@ const { isLlmWikiMode } = useWorkspaceMode()
 provide(LLM_AI_TRANSPORT_INJECTION_KEY, createLlmAiIpcTransport())
 // 首帧即恢复持久化 UI 状态（AI 面板收起 / AI 面板宽度），避免布局二次跳变
 ensureLlmWikiWorkbenchStateLoaded()
+// 1.5.7 终端工具（阶段 B）：同样在首帧恢复持久化的终端面板宽度（宽度是唯一持久化项；
+// 面板打开状态不持久化，避免应用启动即拉起命令提示符子进程）
+ensureTerminalPanelStateLoaded()
 
 /** 未自定义宽度时的窗口分档默认值：宽窗 360 / 窄窗 280（px） */
 const AI_PANEL_WIDTH_NARROW = 280
@@ -434,9 +532,12 @@ const isLlmAiPanelAvailable = computed(
     () => isLlmWikiMode.value && isShowMdContainer.value && !isPluginPanelDocked.value
 )
 
-/** 面板是否展开显示：可用上下文 + 未收起（收起仅由用户手动控制，无窗口自动收起） */
+/** 面板是否展开显示：可用上下文 + 未收起 + 右侧由 AI 面板占据（与终端面板互斥） */
 const showLlmAiPanel = computed(
-    () => isLlmAiPanelAvailable.value && !isLlmWikiAiPanelCollapsed.value
+    () =>
+        isLlmAiPanelAvailable.value &&
+        !isLlmWikiAiPanelCollapsed.value &&
+        terminalPanelState.active === 'ai'
 )
 
 /**
@@ -444,14 +545,15 @@ const showLlmAiPanel = computed(
  *
  * - 仅编辑区可见（且插件面板未折叠停靠）时渲染——入口属于编辑区工具入口，切到插件/工具/
  *   HTML/PDF 容器时不显示；
- * - LLM Wiki 模式：面板已收起时显示（点击展开面板），展开态不渲染（收起按钮在面板头部）；
+ * - LLM Wiki 模式：AI 面板未显示时显示（已收起，或右侧正被终端面板占据——点击切回 AI）；
+ *   面板展开时入口不渲染（收起按钮在面板头部）；
  * - 传统模式：始终显示，点击走「切换到 LLM Wiki 模式」确认 + 初始化流程。
  */
 const showLlmAiSidebarEntry = computed(() => {
     if (!isShowMdContainer.value || isPluginPanelDocked.value) {
         return false
     }
-    return isLlmWikiMode.value ? isLlmWikiAiPanelCollapsed.value : true
+    return isLlmWikiMode.value ? !showLlmAiPanel.value : true
 })
 
 /** 右侧边栏 AI 入口的 title / aria-label（随模式变化；t() 在 computed 内保证响应式） */
@@ -507,13 +609,87 @@ const isLlmAiPanelZeroWidth = computed(
 /** 分隔条是否渲染（仅展开态；收起 / 传统模式 / 其它工作区容器下不渲染） */
 const showLlmAiSplitter = computed(() => showLlmAiPanel.value)
 
-/** 编辑区容器宽度：面板展开时扣除面板与分隔条（编辑区最小 0）；收起/其它容器/传统模式保持既有宽度 */
+/* ============================================================================
+ * 1.5.7 终端工具（阶段 B）：右侧终端面板布局（与 AI 面板同布局、同一右侧位置互斥）
+ *
+ * - 挂载（v-if）：面板已打开（`visible`）且右侧由终端占据（`active='terminal'`）。
+ *   切到 AI 面板时终端容器卸载 → 组件卸载链路 `TERMINAL.CLOSE` 回收 pty；
+ * - 显示（v-show）：仅编辑区可见（`isShowMdContainer && !isPluginPanelDocked`）且未收起；
+ *   切到插件/工具/HTML/PDF 视图只是隐藏，运行中的会话保留（与 AI 面板口径一致）；
+ * - 宽度：`[0, 当前可用宽度 − 分隔条宽度]`，拖动中的临时值仅内存态，mouseup 才持久化；
+ * - 收起：面板仍挂载（会话不丢），入口回落到右侧边栏 `#terminal-sidebar-entry`；
+ * - 与 AI 面板互斥：`terminalPanelState.active` 是唯一真源，打开终端只隐藏 AI 面板容器
+ *   （AI 的收起/宽度持久化状态不改写），切回 AI 时终端容器卸载。
+ * ========================================================================== */
+/** 终端面板与编辑区之间的分隔条宽度（px；与 AI split 同一 5px 热区口径） */
+const TERMINAL_SPLITTER_WIDTH = 5
+/** 终端分隔条键盘微调步长（px；← 变宽 / → 变窄） */
+const TERMINAL_PANEL_KEYBOARD_STEP = 16
+
+/** 终端面板是否已挂载（已打开 + 右侧由终端占据） */
+const isTerminalPanelMounted = computed(
+    () => terminalPanelState.visible && terminalPanelState.active === 'terminal'
+)
+
+/** 终端工具可用上下文：编辑区可见 + 插件面板未折叠停靠 */
+const isTerminalToolAvailable = computed(
+    () => isShowMdContainer.value && !isPluginPanelDocked.value
+)
+
+/** 终端面板是否显示（挂载 + 可用上下文 + 未收起） */
+const showTerminalPanel = computed(
+    () =>
+        isTerminalPanelMounted.value &&
+        isTerminalToolAvailable.value &&
+        !terminalPanelState.collapsed
+)
+
+/** 右侧边栏终端入口：编辑区可见且面板未显示时渲染（收起/切到 AI 后回到入口） */
+const showTerminalSidebarEntry = computed(
+    () => isTerminalToolAvailable.value && !showTerminalPanel.value
+)
+
+/** 拖动中的临时面板宽度：仅内存态，mouseup 时才写回持久化状态（避免高频写 localStorage） */
+const terminalPanelDragWidth = ref<number | null>(null)
+
+/** 当前可用宽度下终端面板能达到的最大值（= 可用宽度 − 分隔条宽度；此时编辑区宽度为 0） */
+const terminalPanelMaxAvailablePx = computed(() =>
+    Math.max(0, workAreaWidthPx.value - TERMINAL_SPLITTER_WIDTH)
+)
+
+/** 把目标宽度夹取到 `[0, 当前可用宽度 − 分隔条宽度]`（0 = 面板可见但宽度 0，仍可再拖回） */
+function clampTerminalPanelWidthToAvailable(desired: number): number {
+    return Math.min(normalizeTerminalPanelWidth(desired), terminalPanelMaxAvailablePx.value)
+}
+
+/** 终端面板展开态宽度（px）：拖动临时值 > 持久化宽度（默认 360），始终按可用宽度夹取 */
+const terminalPanelWidthPx = computed(() =>
+    clampTerminalPanelWidthToAvailable(terminalPanelDragWidth.value ?? terminalPanelState.width)
+)
+
+/** 终端面板容器内联宽度（未显示时不占编辑区宽度） */
+const terminalPanelWidth = computed(
+    () => `${showTerminalPanel.value ? terminalPanelWidthPx.value : 0}px`
+)
+
+/** 显示态但宽度被拖到 0：面板仍挂载（可再拖回），仅去掉左侧 border 保证视觉 0 宽 */
+const isTerminalPanelZeroWidth = computed(
+    () => showTerminalPanel.value && terminalPanelWidthPx.value === 0
+)
+
+/** 编辑区容器宽度：面板展开时扣除面板与分隔条（编辑区最小 0）；收起/其它容器保持既有宽度 */
 const mdContainerWidth = computed(() => {
-    if (!showLlmAiPanel.value) {
-        return workAreaWidth.value
+    if (showLlmAiPanel.value) {
+        const remaining =
+            workAreaWidthPx.value - llmWikiAiPanelWidthPx.value - LLM_WIKI_SPLITTER_WIDTH
+        return `${Math.max(0, remaining)}px`
     }
-    const remaining = workAreaWidthPx.value - llmWikiAiPanelWidthPx.value - LLM_WIKI_SPLITTER_WIDTH
-    return `${Math.max(0, remaining)}px`
+    if (showTerminalPanel.value) {
+        const remaining =
+            workAreaWidthPx.value - terminalPanelWidthPx.value - TERMINAL_SPLITTER_WIDTH
+        return `${Math.max(0, remaining)}px`
+    }
+    return workAreaWidth.value
 })
 
 /* ---------------- split 拖动 / 键盘 / 恢复默认 ---------------- */
@@ -602,6 +778,111 @@ function handleResetLlmWikiAiPanelWidth(): void {
     resetLlmWikiAiPanelWidth()
 }
 
+/* ---------------- 终端面板：split 拖动 / 键盘 / 恢复默认（与 AI 面板同一交互模式） ---------------- */
+
+/** 终端分隔条拖拽起点（clientX）与起点面板宽度 */
+let terminalPanelResizeStartX = 0
+let terminalPanelResizeStartWidth = 0
+
+/** 摘除终端分隔条拖动期间挂在 window 上的全局监听（重入前与卸载时成对调用） */
+function detachTerminalPanelResizeListeners(): void {
+    window.removeEventListener('mousemove', handleTerminalPanelResizeMove)
+    window.removeEventListener('mouseup', stopTerminalPanelResize)
+}
+
+/** 按下终端分隔条开始拖动（左键；阻止默认的文本选择/原生拖拽） */
+function startTerminalPanelResize(event: MouseEvent): void {
+    if (event.button !== 0) {
+        return
+    }
+    event.preventDefault()
+    detachTerminalPanelResizeListeners()
+    terminalPanelResizeStartX = event.clientX
+    terminalPanelResizeStartWidth = terminalPanelWidthPx.value
+    terminalPanelDragWidth.value = terminalPanelResizeStartWidth
+    window.addEventListener('mousemove', handleTerminalPanelResizeMove)
+    window.addEventListener('mouseup', stopTerminalPanelResize)
+}
+
+/** 拖动中：分隔条向左 → 终端面板变宽（增量取反），实时夹取到可用区间 */
+function handleTerminalPanelResizeMove(event: MouseEvent): void {
+    if (terminalPanelDragWidth.value === null) {
+        return
+    }
+    const delta = terminalPanelResizeStartX - event.clientX
+    terminalPanelDragWidth.value = clampTerminalPanelWidthToAvailable(
+        terminalPanelResizeStartWidth + delta
+    )
+}
+
+/** 结束拖动：把最终宽度写回持久化状态（内存态先保留同值再清理，避免一帧跳变） */
+function stopTerminalPanelResize(): void {
+    const width = terminalPanelDragWidth.value
+    if (width !== null) {
+        setTerminalPanelWidth(width)
+    }
+    terminalPanelDragWidth.value = null
+    detachTerminalPanelResizeListeners()
+}
+
+/** 应用终端面板绝对宽度（键盘/恢复默认共用；夹取到 [0, 可用宽度 − 分隔条] 并持久化） */
+function applyTerminalPanelWidth(width: number): void {
+    terminalPanelDragWidth.value = null
+    setTerminalPanelWidth(clampTerminalPanelWidthToAvailable(width))
+}
+
+/**
+ * 终端分隔条键盘：← 变宽 / → 变窄（±16px）；Home 缩到 0 / End 拉到可用宽度 − 分隔条。
+ * 与 AI 面板分隔条同一键位契约（含输入法组合态保护）。
+ */
+function handleTerminalSplitterKeydown(event: KeyboardEvent): void {
+    if (event.isComposing || event.keyCode === 229) {
+        return
+    }
+    const current = terminalPanelWidthPx.value
+    if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        applyTerminalPanelWidth(current + TERMINAL_PANEL_KEYBOARD_STEP)
+    } else if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        applyTerminalPanelWidth(current - TERMINAL_PANEL_KEYBOARD_STEP)
+    } else if (event.key === 'Home') {
+        event.preventDefault()
+        applyTerminalPanelWidth(0)
+    } else if (event.key === 'End') {
+        event.preventDefault()
+        applyTerminalPanelWidth(terminalPanelMaxAvailablePx.value)
+    }
+}
+
+/** 恢复终端面板默认宽度（双击分隔条；默认 360，可用宽度不足时由布局层夹取） */
+function handleResetTerminalPanelWidth(): void {
+    terminalPanelDragWidth.value = null
+    resetTerminalPanelWidth()
+}
+
+/**
+ * 右侧边栏终端入口点击：打开终端面板（右侧切到终端，AI 面板容器隐藏但状态保留）。
+ * 收起态点击 = 重新展开；切到 AI 后点击 = 重新打开（旧会话已在终端容器卸载时关闭）。
+ */
+function handleTerminalSidebarEntryClick(): void {
+    terminalPanelDragWidth.value = null
+    openTerminalPanel()
+}
+
+/**
+ * 工作区模式切换到 LLM Wiki 成功后，把右侧默认交还 AI 面板。
+ *
+ * 覆盖三处切换入口（右侧 AI 入口 / 设置页 / 菜单栏）：面板是否可见由 `active` 与
+ * AI 面板自身收起态共同决定；切换成功时 AI 面板已被展开（useWorkspaceModeSwitch 内
+ * `ensureLlmWikiAiPanelExpanded`），这里只需把互斥真源切回 AI。
+ */
+watch(isLlmWikiMode, (llmWikiMode) => {
+    if (llmWikiMode) {
+        activateRightPanel('ai')
+    }
+})
+
 /**
  * 右侧边栏 AI 入口点击（两模式共用同一个按钮）：
  * - LLM Wiki 模式（面板已收起）：展开面板（隐藏入口按钮）；
@@ -620,13 +901,20 @@ function handleLlmAiSidebarEntryClick(): void {
 }
 
 /**
- * 右侧边栏 AI 入口：展开面板（隐藏入口按钮）。
+ * 右侧边栏 AI 入口：把右侧交还 AI 面板并按需展开（隐藏入口按钮）。
  * 宽度沿用持久化的上次宽度 / 窗口分档默认值（不重置用户宽度偏好）；
  * 清空拖动临时态，避免上一次拖动的内存值覆盖持久化宽度。
+ *
+ * 1.5.7 终端工具（阶段 B）：入口除了「收起态展开」还覆盖「右侧正被终端占据」的场景——
+ * 先切互斥真源（终端容器随之卸载、pty 回收），再仅在 AI 确实处于收起态时展开；
+ * 已展开但被终端隐藏的情况下不再 toggle，避免把用户已展开的面板误收起。
  */
 function handleOpenLlmWikiAiPanel(): void {
     llmWikiAiPanelDragWidth.value = null
-    toggleLlmWikiAiPanelCollapsed()
+    activateRightPanel('ai')
+    if (isLlmWikiAiPanelCollapsed.value) {
+        toggleLlmWikiAiPanelCollapsed()
+    }
 }
 
 // 定义事件处理函数
@@ -809,6 +1097,8 @@ onBeforeUnmount(() => {
     window.removeEventListener('mouseup', onMouseUp)
     // 1.5.7 体验升级：AI 面板分隔条拖拽期间挂在 window 上的监听成对摘除
     detachLlmPanelResizeListeners()
+    // 1.5.7 终端工具（阶段 B）：终端面板分隔条拖拽监听同样成对摘除
+    detachTerminalPanelResizeListeners()
     window.electron.ipcRenderer.removeListener(
         IPC.VIEW.TOGGLE_RES_MANAGER,
         handleHideDisplayResManager
@@ -1072,6 +1362,39 @@ onBeforeUnmount(() => {
 }
 
 /* ============================================================================
+ * 1.5.7 终端工具（阶段 B）：右侧终端面板容器
+ *
+ * 与 AI 面板容器同一材质与分隔口径（--bz-shell-* 上壳层材质 + 左侧 hairline）：
+ * - workbench 下与既有卡片底同值（默认观感零变化），paper / glass / hybrid 自动获得
+ *   风格化表面；四风格 × 三密度差异全部由 --ui-* / --bz-* 令牌派生，不写风格分支；
+ * - 宽度由父组件内联 style 提供（展开 / 0 宽两种状态），本规则只负责材质、可收缩与分隔。
+ * ========================================================================== */
+.terminal-panel-container {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    position: relative;
+    background-color: var(--theme-card-background);
+    background-color: var(--bz-shell-surface, var(--theme-card-background));
+    background-image: linear-gradient(
+        var(--bz-shell-veil, transparent),
+        var(--bz-shell-veil, transparent)
+    );
+    border-left: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+    border-radius: var(--bz-shell-radius, 0);
+}
+
+/* 宽度拖到 0 时与 AI 面板同口径：面板仍挂载（可再拖回），去掉 hairline 并隐藏不可见控件 */
+.terminal-panel-container--zero-width {
+    border-left: none;
+    visibility: hidden;
+}
+
+/* ============================================================================
  * 1.5.7 体验升级：编辑区与 AI 面板之间的 split 分隔条
  *
  * - 5px 透明热区（宽度由脚本常量绑定内联 style，单一真源），视觉分隔线由面板
@@ -1113,6 +1436,50 @@ onBeforeUnmount(() => {
 }
 
 .llm-ai-splitter:focus-visible {
+    outline: none;
+    box-shadow: var(--ui-focus-shadow);
+}
+
+/* ============================================================================
+ * 1.5.7 终端工具（阶段 B）：编辑区与终端面板之间的 split 分隔条
+ *
+ * 与 AI 面板 split 完全一致的视觉/交互契约（同一 5px 透明热区、hover / focus-visible
+ * 强调色高亮、cursor: col-resize）；两条规则并行保留各自面板语义，差异全部由 --ui-* 令牌派生。
+ * ========================================================================== */
+.terminal-splitter {
+    position: relative;
+    flex: 0 0 auto;
+    align-self: stretch;
+    min-height: 0;
+    cursor: col-resize;
+    touch-action: none;
+    background: transparent;
+    transition: background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+.terminal-splitter::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: var(--ui-hairline-width, 1px);
+    background: transparent;
+    transform: translateX(-50%);
+    transition: background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+.terminal-splitter:hover,
+.terminal-splitter:focus-visible {
+    background-color: var(--ui-accent-soft, var(--theme-hover-background));
+}
+
+.terminal-splitter:hover::before,
+.terminal-splitter:focus-visible::before {
+    background-color: var(--ui-accent, var(--theme-accent-color));
+}
+
+.terminal-splitter:focus-visible {
     outline: none;
     box-shadow: var(--ui-focus-shadow);
 }
@@ -1178,6 +1545,50 @@ onBeforeUnmount(() => {
     width: calc(var(--ui-row-height, 28px) - 6px);
     height: calc(var(--ui-row-height, 28px) - 6px);
     fill: currentColor;
+}
+
+/* ============================================================================
+ * 1.5.7 终端工具（阶段 B）：右侧边栏终端入口（与 AI 入口同一视觉/交互体系）
+ *
+ * - 与 AI 入口并列渲染在 #right-navi 顶部，宽度跟随右侧栏（40px），**不占编辑区宽度**；
+ * - 面板收起 / 右侧被 AI 占据 / 尚未打开时显示，点击打开（或重新展开）终端面板；
+ * - 图标为 24 网格 stroke 1.5 的纯图标（>_ 终端语义），颜色与背景走 --ui-* / --bz-* 令牌。
+ * ========================================================================== */
+.terminal-sidebar-entry {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    /* 三密度：入口行高与图标尺寸随 --ui-row-height（紧凑 24 / 标准 28 / 宽松 32）派生 */
+    height: calc(var(--ui-row-height, 28px) + 8px);
+    padding: 0;
+    color: var(--ui-accent, var(--theme-accent-color));
+    cursor: pointer;
+    background-color: var(--theme-card-background);
+    background-color: var(--bz-shell-surface, var(--theme-card-background));
+    border: none;
+    border-bottom: var(--ui-hairline-width, 1px) solid var(--ui-border, var(--theme-border-color));
+    transition:
+        background-color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease),
+        color var(--ui-duration-fast, 120ms) var(--ui-ease-standard, ease);
+}
+
+.terminal-sidebar-entry:hover {
+    background-color: var(--ui-accent-soft, var(--theme-hover-background));
+}
+
+.terminal-sidebar-entry:focus-visible {
+    outline: none;
+    box-shadow: var(--ui-focus-shadow);
+}
+
+.terminal-sidebar-entry svg {
+    width: calc(var(--ui-row-height, 28px) - 6px);
+    height: calc(var(--ui-row-height, 28px) - 6px);
+    fill: none;
+    stroke: currentColor;
 }
 
 /* 应用主题到所有子元素 */
